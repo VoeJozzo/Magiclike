@@ -54,6 +54,16 @@ var _pending_target_filter: String = ""
 # block. Cleared after the block declares (or via the cancel button).
 var _pending_block_blocker_iid: int = -1
 
+# Atomic-block-commit flag for defender's COMBAT_BLOCK. In real MTG, all
+# blocks are declared as a single turn-based action before priority opens for
+# response casting. To preserve that structure, we make the player explicitly
+# "Confirm blocks" before allowing them to cast Giant Growth or other instants
+# during defender's combat. This way the attacker (in Phase 5+ when AI exists)
+# reacts to a fully-known set of blocks.
+# Only relevant when active_player == "opp" and phase == COMBAT_BLOCK; reset
+# automatically when leaving that state.
+var _blocks_committed: bool = false
+
 # Number of engine-log lines we've already piped to the UI log. Tracked here
 # (rather than relying on a log_appended signal that EngineState's RefCounted
 # nature can't emit) so we can pull deltas on each state_changed.
@@ -271,6 +281,11 @@ func _on_state_changed() -> void:
 
 func _refresh_ui() -> void:
 	var s: EngineState = RulesEngine.state()
+	# Reset block-commit flag when no longer in defender's COMBAT_BLOCK
+	# (e.g., advanced to COMBAT_DAMAGE, started a new turn, etc.).
+	if s.phase_machine.current != PhaseMachine.Phase.COMBAT_BLOCK \
+			or s.active_player_key != "opp":
+		_blocks_committed = false
 	# Player panels
 	_you_panel.update_from_player(s.you)
 	_opp_panel.update_from_player(s.opp)
@@ -305,10 +320,16 @@ func _update_action_button(s: EngineState) -> void:
 	if not s.stack.is_empty():
 		_action_button.text = "Resolve"
 		return
-	# Defending player's COMBAT_BLOCK (we are defender = you, active = opp):
-	# label changes based on whether we've declared any blockers.
+	# Defending player's COMBAT_BLOCK (we are defender = you, active = opp).
+	# Two-stage button:
+	#   - Pre-commit: "Confirm blocks" (or "Skip blocks" if none declared) —
+	#     locks in the block declaration so the cast window can open.
+	#   - Post-commit: "Pass priority" — actually passes priority and advances.
 	if s.phase_machine.current == PhaseMachine.Phase.COMBAT_BLOCK and s.active_player_key == "opp":
-		_action_button.text = "Confirm blocks" if not s.blockers.is_empty() else "Skip blocks"
+		if not _blocks_committed:
+			_action_button.text = "Confirm blocks" if not s.blockers.is_empty() else "Skip blocks"
+		else:
+			_action_button.text = "Pass priority"
 		return
 	match s.phase_machine.current:
 		PhaseMachine.Phase.MAIN1:
@@ -443,16 +464,20 @@ func _on_your_battlefield_card_pressed(visual: Card) -> void:
 
 	# Defending player's COMBAT_BLOCK: clicking your creature picks it as a
 	# pending blocker; the next click on an opp attacker finalizes the block.
+	# Only return if the click was actually consumed by block-selection logic;
+	# otherwise fall through (e.g., clicking a Land should still tap for mana).
 	if phase == PhaseMachine.Phase.COMBAT_BLOCK and s.active_player_key == "opp":
 		var found = s.find_instance(iid)
 		if found != null and found.card != null \
 				and found.card.template is CreatureResource \
 				and not found.card.tapped \
-				and not s.blockers.has(iid):
+				and not s.blockers.has(iid) \
+				and not _blocks_committed:
 			_pending_block_blocker_iid = iid
 			_log_local("[color=#ffd866]Selected %s as blocker — click an attacker.[/color]" % found.card.name())
 			_refresh_ui()  # update button label
-		return
+			return
+		# Fall through: click on land (tap for mana), or any non-blocker click
 
 	# Active player's COMBAT_ATTACK: click your creature to declare attacker.
 	if phase == PhaseMachine.Phase.COMBAT_ATTACK and s.active_player_key == "you":
@@ -547,6 +572,15 @@ func _on_hand_card_gui_input(event: InputEvent, visual: Card) -> void:
 			_log_local("[color=#ff8888]Can't play %s right now[/color]" % card.name())
 		return
 
+	# Defender's COMBAT_BLOCK: must commit blocks before casting spells, so
+	# attacker reacts to a fully-known set of blocks (Phase 5+). For Phase 3
+	# this is a structural rule with no functional impact (no opp combat AI).
+	if s.phase_machine.current == PhaseMachine.Phase.COMBAT_BLOCK \
+			and s.active_player_key == "opp" \
+			and not _blocks_committed:
+		_log_local("[color=#ffd866]Confirm blocks before casting spells.[/color]")
+		return
+
 	# Spells (instant/sorcery/creature): pay mana, push to stack.
 	var ctrl: Player = found.controller
 	if not ctrl.mana.can_pay(card.template.mana_cost):
@@ -590,6 +624,17 @@ func _on_pass_pressed() -> void:
 		_log_local("[color=#888]Cancelled block selection[/color]")
 		_refresh_ui()
 		return
+	# Defender's COMBAT_BLOCK: first press commits blocks (no priority pass yet),
+	# second press passes priority. This preserves the MTG structure where
+	# blocks are declared atomically before the cast window opens.
+	var s: EngineState = RulesEngine.state()
+	if s.phase_machine.current == PhaseMachine.Phase.COMBAT_BLOCK \
+			and s.active_player_key == "opp" \
+			and not _blocks_committed:
+		_blocks_committed = true
+		_log_local("[color=#88ddff]Blocks committed. Cast spells or pass priority to advance.[/color]")
+		_refresh_ui()
+		return
 	RulesEngine.execute_action(Action.make_pass_priority())
 
 
@@ -629,11 +674,16 @@ func _log_local(line: String) -> void:
 	_log_display.append_text(line + "\n")
 
 
+# MTG mana notation: colored mana repeats letters ("RR" = 2 reds), generic
+# uses a leading number ("1R" = 1 generic + 1 red, NEVER "one red").
+# See engine/mana_pool.gd to_string_short for the canonical implementation.
 func _fmt_cost(cost: Dictionary) -> String:
-	var parts: Array[String] = []
-	for color in ["W", "U", "B", "R", "G", "C"]:
-		if cost.get(color, 0) > 0:
-			parts.append("%d%s" % [cost[color], color])
-	if parts.size() == 0:
+	if cost.is_empty():
 		return "(free)"
-	return ", ".join(parts)
+	var s := ""
+	if cost.get("C", 0) > 0:
+		s += str(cost["C"])
+	for color in ["W", "U", "B", "R", "G"]:
+		for i in range(cost.get(color, 0)):
+			s += color
+	return s if s != "" else "(free)"
