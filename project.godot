@@ -11,7 +11,7 @@ config_version=5
 [application]
 
 config/name="Magiclike"
-run/main_scene="uid://da2ychl5cqelk"
+run/main_scene="res://scenes/game/game_board.tscn"
 config/features=PackedStringArray("4.6", "Forward Plus")
 config/icon="res://icon.svg"
 
