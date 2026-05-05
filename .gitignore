@@ -11,3 +11,7 @@ export_presets.cfg.bak
 *.import.bak
 .DS_Store
 Thumbs.db
+
+# Claude Code per-user local settings (permission grants, etc.).
+# Project-shared Claude settings (.claude/settings.json) ARE committable.
+.claude/settings.local.json
