@@ -17,6 +17,7 @@ const _TYPE_HEIGHT := 18
 var _name_label: Label
 var _cost_label: Label
 var _type_label: Label
+var _pt_label: Label
 var _color_tint: ColorRect
 
 
@@ -81,6 +82,20 @@ func _build_text_overlay() -> void:
 	_type_label.mouse_filter = MOUSE_FILTER_IGNORE
 	front_face.add_child(_type_label)
 
+	# P/T badge — bottom-right, only shown for creatures
+	_pt_label = Label.new()
+	_pt_label.position = Vector2(card_size.x - 48, card_size.y - 36)
+	_pt_label.size = Vector2(40, 28)
+	_pt_label.add_theme_font_size_override("font_size", 18)
+	_pt_label.add_theme_color_override("font_color", Color(1, 0.92, 0.6))
+	_pt_label.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.95))
+	_pt_label.add_theme_constant_override("shadow_outline_size", 4)
+	_pt_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_pt_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_pt_label.mouse_filter = MOUSE_FILTER_IGNORE
+	_pt_label.visible = false
+	front_face.add_child(_pt_label)
+
 
 # Populates the labels and tint from card_info. Call this AFTER setting
 # card_info on the visual (game_board does so right after spawn + duplicate).
@@ -102,10 +117,17 @@ func apply_card_text() -> void:
 		_cost_label.text = _fmt_cost(template.mana_cost)
 		_type_label.text = _fmt_type_line(template)
 		_color_tint.color = _tint_for(template)
+		# P/T only for creatures
+		if template is CreatureResource:
+			_pt_label.text = "%d/%d" % [template.power, template.toughness]
+			_pt_label.visible = true
+		else:
+			_pt_label.visible = false
 	else:
 		_cost_label.text = ""
 		_type_label.text = ""
 		_color_tint.color = Color(0, 0, 0, 0)
+		_pt_label.visible = false
 
 
 # Mana cost as compact symbols, e.g. {"R":1} -> "R", {"W":1, "C":2} -> "2W".

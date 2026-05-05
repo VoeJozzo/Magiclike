@@ -17,6 +17,8 @@ static func get_card(card_id: String) -> CardResource:
 			return _make_mountain()
 		"lightning_bolt":
 			return _make_lightning_bolt()
+		"goblin_raider":
+			return _make_goblin_raider()
 		_:
 			push_error("CardDatabase: unknown card_id '%s'" % card_id)
 			return null
@@ -24,7 +26,7 @@ static func get_card(card_id: String) -> CardResource:
 
 # Returns all known card_ids. Used by Engine boot-time predicate validation.
 static func all_card_ids() -> Array[String]:
-	return ["mountain", "lightning_bolt"]
+	return ["mountain", "lightning_bolt", "goblin_raider"]
 
 
 # Returns all card resources. Used by Engine boot-time predicate validation.
@@ -66,4 +68,21 @@ static func _make_lightning_bolt() -> SpellResource:
 	r.on_cast_effects = [
 		{"kind": "damage", "amount": 3, "target": "chosen"},
 	]
+	return r
+
+
+static func _make_goblin_raider() -> CreatureResource:
+	var r := CreatureResource.new()
+	r.card_id = "goblin_raider"
+	r.display_name = "Goblin Raider"
+	r.card_types = ["creature"]
+	r.subtypes = ["goblin"]
+	r.mana_cost = {"R": 1}
+	r.oracle_text = "A vanilla 2/1 — no abilities."
+	r.power = 2
+	r.toughness = 1
+	r.keywords = []
+	# No on_cast_effects — when a creature spell resolves, the engine puts it
+	# on the battlefield (its "effect" is becoming a permanent). Phase 2 will
+	# handle this via a special-case in stack resolution, not via an effect kind.
 	return r

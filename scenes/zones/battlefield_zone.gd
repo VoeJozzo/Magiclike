@@ -15,7 +15,8 @@ extends CardContainer
 
 signal card_pressed(card: Card)
 
-# Phase 1: only lands. Phase 2 will broaden to all permanents.
+# Phase 2: lands and creatures (and any other permanent — artifacts /
+# enchantments later). Instants and sorceries should never end up here.
 #
 # IMPORTANT — card-framework quirk: JsonCardFactory.create_card() calls this
 # BEFORE populating card.card_info, so during initial spawn the card_info dict
@@ -33,7 +34,7 @@ func _card_can_be_added(cards: Array) -> bool:
 		if card_id == "":
 			return false
 		var template: CardResource = CardDatabase.get_card(card_id)
-		if template == null or not template.is_land():
+		if template == null or not template.is_permanent():
 			return false
 	return true
 
