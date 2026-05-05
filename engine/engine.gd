@@ -212,10 +212,19 @@ func _settle_state() -> void:
 		return  # avoid recursion if a sub-action triggers state changes
 	_settling = true
 	var safety: int = 50  # cap iterations to detect infinite loops
-	while _state.active_player_key == "opp" and _state.winner == "" and safety > 0:
+	while _state.winner == "" and safety > 0:
 		safety -= 1
-		# On opp's turn with no AI, auto-pass priority and advance phases
-		# (or resolve top of stack — though stack should be empty for Phase 2).
+		# On player's turn, stop auto-cycling — player needs to act.
+		if _state.active_player_key != "opp":
+			break
+		# Phase 3: stop at opp's COMBAT_BLOCK so the player can declare blockers
+		# (you are the defender during opp's combat). Skip the stop if there
+		# are no attackers — empty COMBAT_BLOCK has nothing to block, so we
+		# auto-pass through it instead of forcing the player to click.
+		if _state.phase_machine.current == PhaseMachine.Phase.COMBAT_BLOCK \
+				and not _state.attackers.is_empty():
+			break
+		# Otherwise auto-advance opp's turn (no real AI yet for Phase 3).
 		if not _state.stack.is_empty():
 			_resolve_top_of_stack()
 			_state.priority_player_key = _state.active_player_key
@@ -688,8 +697,13 @@ func _advance_phase() -> void:
 					if c.template is CreatureResource:
 						c.clear_eot_modifiers()
 
-	# Reset priority for the new phase.
-	_state.priority_player_key = _state.active_player_key
+	# Reset priority for the new phase. COMBAT_BLOCK is special: the defender
+	# (non-active player) gets first priority to declare blockers, per MTG.
+	# Every other phase gives priority to the active player.
+	if _state.phase_machine.current == PhaseMachine.Phase.COMBAT_BLOCK:
+		_state.priority_player_key = _state.opponent_of(_state.active_player_key)
+	else:
+		_state.priority_player_key = _state.active_player_key
 	_reset_priority_passes()
 	_state.append_log("Phase: %s" % _state.phase_machine.phase_name())
 
@@ -744,12 +758,21 @@ func _check_win_conditions() -> void:
 # proper heuristic AI ported from the JS prototype.
 
 func _opp_auto_declare_attackers_phase3() -> void:
-	# All untapped, non-summoning-sick creatures attack.
+	# Phase 3 simplification: attack with all untapped creatures EXCEPT
+	# leave one back for defense if there are 2+ available. Pure "always
+	# attack" leaves opp tapped and unable to block on your turn, which
+	# (per Joe's playtest feedback) results in an unblockable game.
+	var available: Array = []
 	for c in _state.opp.battlefield:
 		if not (c.template is CreatureResource):
 			continue
 		if c.tapped or c.summoning_sick:
 			continue
+		available.append(c)
+	var to_attack: Array = available.duplicate()
+	if available.size() >= 2:
+		to_attack.pop_back()  # keep one creature untapped for blocking next turn
+	for c in to_attack:
 		c.tapped = true
 		c.attacking = true
 		_state.attackers.append(c.instance_id)
