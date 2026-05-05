@@ -225,6 +225,10 @@ func _spawn_visual_for_instance(inst: CardInstance, zone: CardContainer) -> Card
 	visual.card_info = visual.card_info.duplicate()
 	visual.card_info["instance_id"] = inst.instance_id
 	_iid_to_visual[inst.instance_id] = visual
+	# Populate the name/cost/type overlay now that card_info is final.
+	# (Card._ready already built the empty labels; this fills them.)
+	if visual.has_method("apply_card_text"):
+		visual.apply_card_text()
 	# Hook click handling. card-framework's _handle_mouse_pressed calls
 	# card_container.on_card_pressed, which for BattlefieldZone we already
 	# wired via the signal. For Hand, we connect to the visual's signals
