@@ -135,11 +135,14 @@ func _build_ui() -> void:
 	# of card visuals. Added AFTER CardManager so it renders above the cards
 	# in normal sibling order; z_index also bumped to ensure it stays on top
 	# even when card-framework's hover system elevates a card's z_index.
+	# Hardcoded position/size (rather than anchors) to guarantee global_pos =
+	# (0,0) regardless of parent layout timing.
 	var lines_script := preload("res://scenes/game/combat_lines.gd")
 	_combat_lines = Control.new()
 	_combat_lines.set_script(lines_script)
 	_combat_lines.name = "CombatLines"
-	_combat_lines.anchors_preset = Control.PRESET_FULL_RECT
+	_combat_lines.position = Vector2.ZERO
+	_combat_lines.size = Vector2(1920, 1080)
 	_combat_lines.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_combat_lines.z_index = 100
 	_combat_lines.set("game_board", self)
@@ -443,9 +446,12 @@ func _sync_card_visuals(s: EngineState) -> void:
 # Walk attackers + blockers and tag each visual with its combat state.
 # Highlight states (see scenes/card.gd set_combat_highlight):
 #   "pending"   — your creature you've clicked to begin blocking with
-#   "committed" — already paired (either side: blocker or its attacker)
-#   "unblocked" — attacker that no blocker is on
-#   "none"      — clear
+#   "committed" — already paired (either side: blocker or its blocked attacker)
+#   "none"      — clear (includes attackers not yet paired with a blocker)
+#
+# Per playtest feedback: attackers don't glow until a blocker is declared
+# against them. "Unblocked" attackers get no highlight — they're just normal
+# creatures heading for face damage.
 func _apply_combat_highlights(s: EngineState) -> void:
 	# Build the set of attackers that have at least one blocker.
 	var blocked_attackers: Dictionary = {}
@@ -467,8 +473,6 @@ func _apply_combat_highlights(s: EngineState) -> void:
 				state_name = "committed"  # blocker
 			elif blocked_attackers.has(iid):
 				state_name = "committed"  # attacker that's been blocked
-			elif iid in s.attackers:
-				state_name = "unblocked"  # attacker with no blocker
 			else:
 				state_name = "none"
 			visual.set_combat_highlight(state_name)

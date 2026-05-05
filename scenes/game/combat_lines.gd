@@ -45,11 +45,11 @@ func _draw() -> void:
 		var attacker_visual = iid_to_visual.get(attacker_iid)
 		if blocker_visual == null or attacker_visual == null:
 			continue
-		# Card visuals' global_position is the top-left; offset to the center.
-		var b_size: Vector2 = blocker_visual.size
-		var a_size: Vector2 = attacker_visual.size
-		var b_center: Vector2 = blocker_visual.global_position + b_size * 0.5
-		var a_center: Vector2 = attacker_visual.global_position + a_size * 0.5
+		# Use get_global_rect().get_center() — accounts for any transform on
+		# the Control beyond the simple position+size assumption (rotation,
+		# scale, layout-driven sizing) that plain global_position+size/2 misses.
+		var b_center: Vector2 = blocker_visual.get_global_rect().get_center()
+		var a_center: Vector2 = attacker_visual.get_global_rect().get_center()
 		# Draw in this Control's local coordinates.
 		var b_local: Vector2 = b_center - global_position
 		var a_local: Vector2 = a_center - global_position
