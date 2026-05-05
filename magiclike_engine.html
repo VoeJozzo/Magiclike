@@ -83,6 +83,7 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
 .stk-badge{display:inline-block;font-size:8px;padding:1px 4px;border-radius:6px;font-weight:bold;line-height:1.2;letter-spacing:.3px;border:1px solid;background:#0a0a14;white-space:nowrap}
 .stk-badge.stat{color:#ffe066;border-color:#ffe066;background:#3a2c00}
 .stk-badge.kw{color:#88ccff;border-color:#5588cc;background:#0c1c30}
+.stk-badge.kw-granted{color:#7fe5d4;border-color:#3aa898;background:#0a2622}
 .stk-badge.skw{color:#ffd700;border-color:#cc9900;background:#2a2200}
 .stk-badge.innate{color:#ffaa44;border-color:#cc7722;background:#2a1a0a}
 .stk-badge.restrict{color:#ff8888;border-color:#cc4444;background:#2a0808}
@@ -401,7 +402,7 @@ body.ai-thinking #status{
 // and every display site (the version div, the log title, and the
 // startup log message in init()) reads from it. Avoids the bug we kept
 // hitting where one of the three sites lagged behind the others.
-const VERSION = 'v0.99.48';
+const VERSION = 'v0.99.49';
 
 // =========================================================================
 // CARD TEMPLATES — pure data.
@@ -10783,29 +10784,54 @@ function stripKeywordPrefix(text, nativeKw) {
 }
 
 function nativeKeywordBadgesHtml(card, big) {
-  let nativeKw;
+  // Build the keyword list to display, tagging each entry by source so we
+  // can color them differently. Three categories:
+  //   - 'intrinsic'  → from the template; can't be lost while the creature
+  //     stays in play (or via stickers, which fold into the same category
+  //     for runtime purposes — see intrinsicKeywords()). Blue badge.
+  //   - 'granted'    → not on the template, currently in card.grantedBy
+  //     because some other permanent is granting it (Sky Champion, lord
+  //     static buffs, Bindspeaker). Will disappear if every source leaves
+  //     play. Cyan badge.
+  // A keyword that's BOTH intrinsic AND granted is shown as intrinsic —
+  // the granting is redundant and the keyword survives the source's death.
+  const entries = [];
+  let templateKw = [];
   if (card.tplId && CARDS[card.tplId]) {
-    nativeKw = (CARDS[card.tplId].keywords || []).slice();
-    // Append runtime-granted keywords (e.g., from Bindspeaker). They display
-    // as blue badges alongside natives because mechanically the creature
-    // really does have them now — sticker keywords are the only ones we
-    // distinguish (gold), since those are part of the long-term run state.
+    templateKw = (CARDS[card.tplId].keywords || []).slice();
+    for (const kw of templateKw) entries.push({ kw, source: 'intrinsic' });
     if (card.grantedBy instanceof Map) {
       for (const [kw, sources] of card.grantedBy) {
-        if (sources.size > 0 && !nativeKw.includes(kw)) nativeKw.push(kw);
+        if (sources.size === 0) continue;
+        if (templateKw.includes(kw)) continue;  // already shown as intrinsic
+        // Resolve granting source names for the tooltip.
+        const names = [];
+        for (const srcIid of sources) {
+          const f = ENGINE.findCard(srcIid);
+          if (f) names.push(f.card.name);
+        }
+        entries.push({ kw, source: 'granted', grantSources: names });
       }
     }
   } else {
-    nativeKw = card.keywords || [];
+    // Fallback: synthetic card-shaped object (e.g., card browser preview).
+    // No template, no grant tracking — treat all keywords as intrinsic.
+    for (const kw of (card.keywords || [])) entries.push({ kw, source: 'intrinsic' });
   }
-  if (!nativeKw.length) return '';
+  if (!entries.length) return '';
   const parts = [];
-  for (const kw of nativeKw) {
+  for (const { kw, source, grantSources } of entries) {
     const label = KEYWORD_DISPLAY[kw] || (kw.charAt(0).toUpperCase() + kw.slice(1));
     // Defender is a downside ability (creature can't attack) — color it red
     // like restrictions, distinct from blue upside-keyword badges.
-    const cls = (kw === 'defender') ? 'restrict' : 'kw';
-    parts.push(`<span class="stk-badge ${cls}" title="${label}">${label}</span>`);
+    let cls;
+    if (kw === 'defender')        cls = 'restrict';
+    else if (source === 'granted') cls = 'kw-granted';
+    else                           cls = 'kw';
+    const tooltip = (source === 'granted' && grantSources && grantSources.length)
+      ? `${label} (granted by ${grantSources.join(', ')})`
+      : label;
+    parts.push(`<span class="stk-badge ${cls}" title="${tooltip}">${label}</span>`);
   }
   return `<div class="stickers-row${big ? '-big' : ''}">${parts.join('')}</div>`;
 }
