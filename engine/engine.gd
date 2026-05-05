@@ -218,11 +218,16 @@ func _settle_state() -> void:
 		if _state.active_player_key != "opp":
 			break
 		# Phase 3: stop at opp's COMBAT_BLOCK so the player can declare blockers
-		# (you are the defender during opp's combat). Skip the stop if there
-		# are no attackers — empty COMBAT_BLOCK has nothing to block, so we
-		# auto-pass through it instead of forcing the player to click.
+		# AND cast combat tricks (Giant Growth on their blocker). Skip if
+		# there are no attackers — empty COMBAT_BLOCK has nothing to do.
+		# We also auto-pass opp's priority before stopping so the player has
+		# priority to cast spells (otherwise priority sits on the active
+		# player and the cast attempt is rejected by _legal_cast_spell).
 		if _state.phase_machine.current == PhaseMachine.Phase.COMBAT_BLOCK \
 				and not _state.attackers.is_empty():
+			if _state.priority_player_key == "opp":
+				_state.priority_passed["opp"] = true
+				_state.priority_player_key = "you"
 			break
 		# Otherwise auto-advance opp's turn (no real AI yet for Phase 3).
 		if not _state.stack.is_empty():
@@ -517,10 +522,10 @@ func _legal_declare_blocker(action: Dictionary) -> bool:
 		return false
 	if _state.phase_machine.current != PhaseMachine.Phase.COMBAT_BLOCK:
 		return false
-	# Defending player declares blockers. Defender = the non-active player.
+	# Block declaration is a *special action* in MTG — it happens at the
+	# start of COMBAT_BLOCK before priority opens, and doesn't require the
+	# defender to currently hold priority. So we don't gate on priority here.
 	var defending_key: String = _state.opponent_of(_state.active_player_key)
-	if _state.priority_player_key != defending_key:
-		return false
 	var blocker_iid: int = action.get("source_iid", -1)
 	var attacker_iid: int = action.get("attacker_iid", -1)
 	if _state.blockers.has(blocker_iid):
@@ -697,13 +702,13 @@ func _advance_phase() -> void:
 					if c.template is CreatureResource:
 						c.clear_eot_modifiers()
 
-	# Reset priority for the new phase. COMBAT_BLOCK is special: the defender
-	# (non-active player) gets first priority to declare blockers, per MTG.
-	# Every other phase gives priority to the active player.
-	if _state.phase_machine.current == PhaseMachine.Phase.COMBAT_BLOCK:
-		_state.priority_player_key = _state.opponent_of(_state.active_player_key)
-	else:
-		_state.priority_player_key = _state.active_player_key
+	# Reset priority for the new phase. Per MTG rule 117.1b, the active player
+	# gets priority at the start of every step/phase. (Block declaration is
+	# a special action that happens BEFORE priority opens — we handle that
+	# above as the COMBAT_BLOCK entry hook for opp; for player as defender,
+	# block declaration is gated on phase, not priority — see
+	# _legal_declare_blocker.)
+	_state.priority_player_key = _state.active_player_key
 	_reset_priority_passes()
 	_state.append_log("Phase: %s" % _state.phase_machine.phase_name())
 
