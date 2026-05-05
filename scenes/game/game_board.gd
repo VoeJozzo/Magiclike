@@ -340,11 +340,15 @@ func _sync_card_visuals(s: EngineState) -> void:
 			continue
 		visual.visible = true
 		# Stack visual: detach from any container so layout doesn't reposition,
-		# then move to the stack anchor position.
+		# then cascade by stack index so multiple stack entries don't pile
+		# on top of each other. Bottom-of-stack at the anchor; subsequent
+		# items step up-and-right.
 		if found.zone_name == "stack":
 			if visual.card_container != null and visual.card_container.has_card(visual):
 				visual.card_container.remove_card(visual)
-			visual.move(_stack_anchor_global_pos(), 0.0)
+			var stack_idx := _find_stack_index(s, iid)
+			var cascade := Vector2(stack_idx * 30.0, -stack_idx * 25.0)
+			visual.move(_stack_anchor_global_pos() + cascade, 0.0)
 			continue
 		# Normal zones: ensure the visual is in the right CardContainer.
 		var target_zone: CardContainer = _zone_for(found.controller.key, found.zone_name)
@@ -362,6 +366,15 @@ func _sync_card_visuals(s: EngineState) -> void:
 # directly (move() works in global coordinates).
 func _stack_anchor_global_pos() -> Vector2:
 	return Vector2(900, 440)
+
+
+# Index of the stack entry with the given source_iid (0 = bottom of stack,
+# size-1 = top). -1 if not on stack.
+func _find_stack_index(s: EngineState, iid: int) -> int:
+	for i in range(s.stack.entries.size()):
+		if s.stack.entries[i].get("source_iid", -1) == iid:
+			return i
+	return -1
 
 
 func _zone_for(controller_key: String, zone_name: String) -> CardContainer:
