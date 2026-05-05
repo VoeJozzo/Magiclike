@@ -45,6 +45,14 @@ var _iid_to_visual: Dictionary = {}
 # Targeting-mode state. When non-null, a spell has been clicked and we're
 # waiting for the player to choose a target.
 var _pending_cast_iid: int = -1
+# Target filter for the pending spell ("any", "creature", "player", etc.) —
+# determines which clicks count as valid targets.
+var _pending_target_filter: String = ""
+
+# Block-declaration mode. When non-null, the player has clicked one of their
+# creatures to be a blocker; we're waiting for them to click an attacker to
+# block. Cleared after the block declares (or via the cancel button).
+var _pending_block_blocker_iid: int = -1
 
 # Number of engine-log lines we've already piped to the UI log. Tracked here
 # (rather than relying on a log_appended signal that EngineState's RefCounted
@@ -56,9 +64,10 @@ func _ready() -> void:
 	_build_ui()
 	_connect_engine_signals()
 	# Boot the engine and spawn initial visuals.
-	# Phase 2 demo: 1 Mountain in play, 3 in hand, plus Goblin Raider and Bolt.
-	# (init_phase1 still works for the headless smoke test.)
-	RulesEngine.init_phase2()
+	# Phase 3 demo: 2 lands in play + plenty of cards in hand. Opp has 1
+	# Forest + 2 Grizzly Bears + Giant Growth in hand for the response test.
+	# (init_phase1 / init_phase2 still work for the headless smoke tests.)
+	RulesEngine.init_phase3()
 	_spawn_initial_visuals()
 	_refresh_ui()
 
@@ -90,9 +99,10 @@ func _build_ui() -> void:
 	_opp_library = _make_pile("OppLibrary", Vector2(80, 60), false)
 	_opp_battlefield = _make_battlefield("OppBattlefield", Vector2(560, 200))
 	_opp_graveyard = _make_pile("OppGraveyard", Vector2(1700, 60), true)
-	# Opp hand isn't shown in Phase 1 (we don't simulate opponent draws).
+	# Phase 3+: opp can have cards in hand (e.g., Giant Growth). We show them
+	# face-up at the top of the screen for testing/visibility — Phase 5 (real
+	# AI) will hide them properly with show_front=false.
 	_opp_hand = _make_hand("OppHand", Vector2(960, 80))
-	_opp_hand.visible = false
 
 	# Your row (bottom)
 	_you_battlefield = _make_battlefield("YouBattlefield", Vector2(560, 600))
@@ -104,6 +114,10 @@ func _build_ui() -> void:
 	# at spawn time (see _spawn_visual_for_instance) since Hand/CardContainer
 	# don't expose a clean pressed signal we can listen to globally.
 	_you_battlefield.card_pressed.connect(_on_your_battlefield_card_pressed)
+	# Opp's battlefield: clicks are meaningful for creature-targeting (cast
+	# Bolt at an opp Bear) and for block declaration (clicking opp's
+	# attacker after selecting a blocker on your side).
+	_opp_battlefield.card_pressed.connect(_on_opp_battlefield_card_pressed)
 
 	# UI overlay (children of game_board, not CardManager)
 	_you_panel = PlayerPanel.new()
@@ -201,17 +215,24 @@ func _connect_engine_signals() -> void:
 
 # ─── Initial visual spawn ──────────────────────────────────────────────────
 
-# Spawn a visual Card for every CardInstance in the engine's zones.
-# Called once after RulesEngine.init_phase1().
+# Spawn a visual Card for every CardInstance in the engine's zones, both sides.
+# Called once after RulesEngine.init_phase*().
 func _spawn_initial_visuals() -> void:
 	var s: EngineState = RulesEngine.state()
+	# You
 	for c in s.you.battlefield:
 		_spawn_visual_for_instance(c, _you_battlefield)
 	for c in s.you.hand:
 		_spawn_visual_for_instance(c, _you_hand)
 	for c in s.you.library:
 		_spawn_visual_for_instance(c, _you_library)
-	# Opp side empty in Phase 1 demo.
+	# Opp
+	for c in s.opp.battlefield:
+		_spawn_visual_for_instance(c, _opp_battlefield)
+	for c in s.opp.hand:
+		_spawn_visual_for_instance(c, _opp_hand)
+	for c in s.opp.library:
+		_spawn_visual_for_instance(c, _opp_library)
 
 
 func _spawn_visual_for_instance(inst: CardInstance, zone: CardContainer) -> Card:
@@ -271,15 +292,23 @@ func _refresh_ui() -> void:
 		_engine_log_seen += 1
 
 
-# Phase-aware label for the action button. Targeting mode overrides; stack-
-# non-empty overrides phase (because passing priority resolves the top of
-# stack rather than advancing the phase, regardless of which phase you're in).
+# Phase-aware label for the action button. Targeting/block-selection modes
+# override; stack-non-empty overrides phase (passing priority resolves the
+# top of stack rather than advancing the phase).
 func _update_action_button(s: EngineState) -> void:
 	if _pending_cast_iid != -1:
 		_action_button.text = "Cancel target"
 		return
+	if _pending_block_blocker_iid != -1:
+		_action_button.text = "Cancel block"
+		return
 	if not s.stack.is_empty():
 		_action_button.text = "Resolve"
+		return
+	# Defending player's COMBAT_BLOCK (we are defender = you, active = opp):
+	# label changes based on whether we've declared any blockers.
+	if s.phase_machine.current == PhaseMachine.Phase.COMBAT_BLOCK and s.active_player_key == "opp":
+		_action_button.text = "Confirm blocks" if not s.blockers.is_empty() else "Skip blocks"
 		return
 	match s.phase_machine.current:
 		PhaseMachine.Phase.MAIN1:
@@ -359,6 +388,15 @@ func _sync_card_visuals(s: EngineState) -> void:
 	# interference from card-framework.
 	_you_battlefield.update_card_ui()
 	_opp_battlefield.update_card_ui()
+	# Refresh live P/T display (current_power/toughness, temp pumps, damage
+	# markers) for every creature on either battlefield.
+	for player_state in [s.you, s.opp]:
+		for c in player_state.battlefield:
+			if not (c.template is CreatureResource):
+				continue
+			var visual: Card = _iid_to_visual.get(c.instance_id)
+			if visual != null and visual.has_method("apply_creature_state"):
+				visual.apply_creature_state(c)
 
 
 # Where stack-held card visuals appear on screen. Center-ish, between the
@@ -390,16 +428,34 @@ func _zone_for(controller_key: String, zone_name: String) -> CardContainer:
 # ─── Click handling ────────────────────────────────────────────────────────
 
 func _on_your_battlefield_card_pressed(visual: Card) -> void:
-	# In targeting mode, ignore battlefield clicks (Phase 1/2 has no creature targets)
-	if _pending_cast_iid != -1:
-		return
 	var iid: int = visual.card_info.get("instance_id", -1)
 	if iid == -1:
 		return
 
-	# During COMBAT_ATTACK, clicking a creature declares it as an attacker.
-	var phase = RulesEngine.state().phase_machine.current
-	if phase == PhaseMachine.Phase.COMBAT_ATTACK:
+	# Targeting mode: clicks on creatures may set the spell's target.
+	if _pending_cast_iid != -1:
+		if _is_valid_creature_target(iid):
+			_execute_pending_cast_with_target({"kind": "creature", "iid": iid})
+		return
+
+	var s: EngineState = RulesEngine.state()
+	var phase = s.phase_machine.current
+
+	# Defending player's COMBAT_BLOCK: clicking your creature picks it as a
+	# pending blocker; the next click on an opp attacker finalizes the block.
+	if phase == PhaseMachine.Phase.COMBAT_BLOCK and s.active_player_key == "opp":
+		var found = s.find_instance(iid)
+		if found != null and found.card != null \
+				and found.card.template is CreatureResource \
+				and not found.card.tapped \
+				and not s.blockers.has(iid):
+			_pending_block_blocker_iid = iid
+			_log_local("[color=#ffd866]Selected %s as blocker — click an attacker.[/color]" % found.card.name())
+			_refresh_ui()  # update button label
+		return
+
+	# Active player's COMBAT_ATTACK: click your creature to declare attacker.
+	if phase == PhaseMachine.Phase.COMBAT_ATTACK and s.active_player_key == "you":
 		var attack := Action.make_declare_attacker(iid)
 		if RulesEngine.is_legal_action(attack):
 			RulesEngine.execute_action(attack)
@@ -410,6 +466,56 @@ func _on_your_battlefield_card_pressed(visual: Card) -> void:
 	var action := Action.make_activate_ability(iid)
 	if RulesEngine.is_legal_action(action):
 		RulesEngine.execute_action(action)
+
+
+func _on_opp_battlefield_card_pressed(visual: Card) -> void:
+	var iid: int = visual.card_info.get("instance_id", -1)
+	if iid == -1:
+		return
+
+	# Targeting mode: this opp creature could be the target.
+	if _pending_cast_iid != -1:
+		if _is_valid_creature_target(iid):
+			_execute_pending_cast_with_target({"kind": "creature", "iid": iid})
+		return
+
+	# Block declaration: if a blocker is selected and this is an attacker,
+	# the click finalizes the block.
+	var s: EngineState = RulesEngine.state()
+	if _pending_block_blocker_iid != -1 \
+			and s.phase_machine.current == PhaseMachine.Phase.COMBAT_BLOCK \
+			and s.active_player_key == "opp" \
+			and iid in s.attackers:
+		var action := Action.make_declare_blocker(_pending_block_blocker_iid, iid)
+		if RulesEngine.is_legal_action(action):
+			RulesEngine.execute_action(action)
+		_pending_block_blocker_iid = -1
+		_refresh_ui()
+
+
+# True if `iid` is a legal creature target for the currently-pending cast.
+# Phase 3 supports filters "any" (creature or player; here we just check
+# creature-ness) and "creature".
+func _is_valid_creature_target(iid: int) -> bool:
+	if _pending_target_filter != "any" and _pending_target_filter != "creature":
+		return false
+	var s: EngineState = RulesEngine.state()
+	var found = s.find_instance(iid)
+	if found == null or found.card == null:
+		return false
+	if found.zone_name != "battlefield":
+		return false
+	return found.card.template is CreatureResource
+
+
+# Execute a cast with the given target. Used by both panel clicks (player
+# targets) and battlefield clicks (creature targets).
+func _execute_pending_cast_with_target(target: Dictionary) -> void:
+	var action := Action.make_cast_spell(_pending_cast_iid, [target])
+	if RulesEngine.execute_action(action):
+		_pending_cast_iid = -1
+		_pending_target_filter = ""
+		_exit_targeting_mode()
 
 
 # Hand cards don't go through CardContainer.on_card_pressed cleanly because
@@ -464,20 +570,25 @@ func _on_hand_card_gui_input(event: InputEvent, visual: Card) -> void:
 func _on_panel_clicked(panel_key: String) -> void:
 	if _pending_cast_iid == -1:
 		return
-	# Player chose a target
-	var action := Action.make_cast_spell(_pending_cast_iid, [Action.target_player(panel_key)])
-	var ok: bool = RulesEngine.execute_action(action)
-	if ok:
-		_pending_cast_iid = -1
-		_exit_targeting_mode()
+	# Player targets are only valid for "any" or "player" filters.
+	if _pending_target_filter != "any" and _pending_target_filter != "player":
+		return
+	_execute_pending_cast_with_target(Action.target_player(panel_key))
 
 
 func _on_pass_pressed() -> void:
-	# If in targeting mode, cancel it instead of passing priority.
+	# Cancel targeting if active
 	if _pending_cast_iid != -1:
 		_pending_cast_iid = -1
+		_pending_target_filter = ""
 		_exit_targeting_mode()
 		_log_local("[color=#888]Cancelled targeting[/color]")
+		return
+	# Cancel block-selection if active
+	if _pending_block_blocker_iid != -1:
+		_pending_block_blocker_iid = -1
+		_log_local("[color=#888]Cancelled block selection[/color]")
+		_refresh_ui()
 		return
 	RulesEngine.execute_action(Action.make_pass_priority())
 
@@ -486,11 +597,13 @@ func _on_pass_pressed() -> void:
 
 func _enter_targeting_mode(spell_iid: int, target_filter: String) -> void:
 	_pending_cast_iid = spell_iid
-	# Mark valid targets clickable. Phase 1 supports "any" and "player".
-	if target_filter == "any" or target_filter == "player":
-		_you_panel.is_clickable = true
-		_opp_panel.is_clickable = true
-	# Visual cue in the action button
+	_pending_target_filter = target_filter
+	# Mark player panels clickable if filter allows player targets.
+	# (Creature targets are handled via battlefield click handlers; no extra
+	# highlight in Phase 3 — player just clicks a creature on either side.)
+	var allows_player := (target_filter == "any" or target_filter == "player")
+	_you_panel.is_clickable = allows_player
+	_opp_panel.is_clickable = allows_player
 	_action_button.text = "Cancel target"
 	_log_local("[color=#ffd866]Pick a target...[/color]")
 

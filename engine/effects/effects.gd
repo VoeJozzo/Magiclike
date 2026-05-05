@@ -20,10 +20,12 @@ extends RefCounted
 
 const _Damage := preload("res://engine/effects/damage.gd")
 const _AddMana := preload("res://engine/effects/add_mana.gd")
+const _Pump := preload("res://engine/effects/pump.gd")
 
 const HANDLERS := {
 	"damage": _Damage,
 	"add_mana": _AddMana,
+	"pump": _Pump,
 }
 
 

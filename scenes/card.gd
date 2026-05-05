@@ -136,7 +136,9 @@ func apply_card_text() -> void:
 		_cost_label.text = _fmt_cost(template.mana_cost)
 		_type_label.text = _fmt_type_line(template)
 		_color_tint.color = _tint_for(template)
-		# P/T only for creatures
+		# P/T only for creatures (initial display from template — call
+		# apply_creature_state to refresh with live current_power/toughness
+		# and damage marker once the instance is in play).
 		if template is CreatureResource:
 			_pt_label.text = "%d/%d" % [template.power, template.toughness]
 			_pt_label.visible = true
@@ -147,6 +149,32 @@ func apply_card_text() -> void:
 		_type_label.text = ""
 		_color_tint.color = Color(0, 0, 0, 0)
 		_pt_label.visible = false
+
+
+# Refresh the P/T badge from a live CardInstance — shows current_power/
+# current_toughness (base + temp + counters) and a "(-N)" damage marker
+# when wounded. Pumped creatures show their boosted stats and the label
+# turns green; damaged creatures show the marker and the label turns red.
+func apply_creature_state(inst: CardInstance) -> void:
+	if _pt_label == null:
+		return
+	if inst == null or inst.template == null or not (inst.template is CreatureResource):
+		_pt_label.visible = false
+		return
+	var p: int = inst.current_power()
+	var t: int = inst.current_toughness()
+	var dmg: int = inst.damage_marked
+	var pumped: bool = inst.temp_power > 0 or inst.temp_toughness > 0
+	if dmg > 0:
+		_pt_label.text = "%d/%d (-%d)" % [p, t, dmg]
+		_pt_label.add_theme_color_override("font_color", Color(1.0, 0.5, 0.5))  # red-ish for damaged
+	elif pumped:
+		_pt_label.text = "%d/%d*" % [p, t]
+		_pt_label.add_theme_color_override("font_color", Color(0.6, 1.0, 0.6))  # green-ish for pumped
+	else:
+		_pt_label.text = "%d/%d" % [p, t]
+		_pt_label.add_theme_color_override("font_color", Color(1, 0.92, 0.6))  # default gold
+	_pt_label.visible = true
 
 
 # Mana cost as compact symbols, e.g. {"R":1} -> "R", {"W":1, "C":2} -> "2W".

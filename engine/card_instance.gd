@@ -20,7 +20,15 @@ var controller_key: String = ""  # same as above
 var tapped: bool = false
 var summoning_sick: bool = true  # Set true on entry, cleared at controller's untap step
 var counters: Dictionary = {}    # e.g., {"+1/+1": 2} for Phase 2+
-var damage_marked: int = 0       # Combat damage held until cleanup (Phase 3+)
+var damage_marked: int = 0       # Combat damage held until cleanup
+# Until-end-of-turn pump bonuses. Cleared during CLEANUP. Pump effects (Giant
+# Growth and friends) accumulate here additively across multiple casts.
+var temp_power: int = 0
+var temp_toughness: int = 0
+# Combat declaration. attacking_iid: this creature is attacking; for blockers,
+# this is the iid of the creature it's blocking. For attackers, just the bool flag.
+var attacking: bool = false
+var blocking_iid: int = -1  # -1 = not blocking; otherwise the attacker's iid
 
 
 func _init(p_template: CardResource = null, p_owner: String = "", p_controller: String = "") -> void:
@@ -57,3 +65,34 @@ func mana_cost() -> Dictionary:
 func to_string_short() -> String:
 	var tap_str := "T" if tapped else "U"
 	return "%s[#%d %s]" % [tap_str, instance_id, name()]
+
+
+# Live power/toughness — base plus temp bonuses plus +1/+1 counters etc.
+# Used by combat damage, state-based actions, and the UI's P/T display.
+# Returns 0 for non-creatures.
+func current_power() -> int:
+	if template == null or not (template is CreatureResource):
+		return 0
+	var p: int = template.power + temp_power
+	# +1/+1 counters
+	if counters.has("+1/+1"):
+		p += counters["+1/+1"]
+	return p
+
+
+func current_toughness() -> int:
+	if template == null or not (template is CreatureResource):
+		return 0
+	var t: int = template.toughness + temp_toughness
+	if counters.has("+1/+1"):
+		t += counters["+1/+1"]
+	return t
+
+
+# Reset until-end-of-turn modifiers. Called during CLEANUP for every creature.
+func clear_eot_modifiers() -> void:
+	temp_power = 0
+	temp_toughness = 0
+	damage_marked = 0
+	attacking = false
+	blocking_iid = -1
