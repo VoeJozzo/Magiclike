@@ -1,0 +1,8 @@
+{
+    "name": "placeholder",
+    "front_image": "card_front.png",
+    "type": "creature",
+    "cost": 1,
+    "power": 1,
+    "toughness": 1
+}

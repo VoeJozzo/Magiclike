@@ -1,0 +1,62 @@
+[gd_scene format=3 uid="uid://da2ychl5cqelk"]
+
+[ext_resource type="Script" uid="uid://ddfti75yoq8te" path="res://test.gd" id="1_ppyta"]
+[ext_resource type="Script" uid="uid://dj46jo3lfbclo" path="res://addons/card-framework/hand.gd" id="2_6uqi0"]
+[ext_resource type="PackedScene" uid="uid://d4jx7k33rml60" path="res://scenes/json_card_factory.tscn" id="2_ppyta"]
+[ext_resource type="Script" uid="uid://6ams8uvg43gu" path="res://addons/card-framework/pile.gd" id="3_ppyta"]
+
+[node name="CardManager" type="Control" unique_id=1965981124]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_ppyta")
+card_factory_scene = ExtResource("2_ppyta")
+debug_mode = true
+metadata/_custom_type_script = "uid://clqgq1n7v0ar"
+
+[node name="Hand" type="Control" parent="." unique_id=774537584]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 960.0
+offset_top = 800.0
+offset_right = 960.0
+offset_bottom = 800.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("2_6uqi0")
+metadata/_custom_type_script = "uid://dj46jo3lfbclo"
+
+[node name="Pile" type="Control" parent="." unique_id=1367941217]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 100.0
+offset_top = 800.0
+offset_right = 100.0
+offset_bottom = 800.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("3_ppyta")
+card_face_up = false
+metadata/_custom_type_script = "uid://6ams8uvg43gu"
+
+[node name="PlayArea" type="Control" parent="." unique_id=15161039]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 960.0
+offset_top = 400.0
+offset_right = 960.0
+offset_bottom = 400.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 1
+script = ExtResource("2_6uqi0")
+metadata/_custom_type_script = "uid://dj46jo3lfbclo"
