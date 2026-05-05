@@ -45,11 +45,11 @@ func _draw() -> void:
 		var attacker_visual = iid_to_visual.get(attacker_iid)
 		if blocker_visual == null or attacker_visual == null:
 			continue
-		# Use get_global_rect().get_center() — accounts for any transform on
-		# the Control beyond the simple position+size assumption (rotation,
-		# scale, layout-driven sizing) that plain global_position+size/2 misses.
-		var b_center: Vector2 = blocker_visual.get_global_rect().get_center()
-		var a_center: Vector2 = attacker_visual.get_global_rect().get_center()
+		# Apply the visual's full global transform to its local center.
+		# get_global_rect() returns an axis-aligned box and ignores rotation —
+		# tapped cards (rotated 90°) anchor wrong without this.
+		var b_center: Vector2 = blocker_visual.get_global_transform() * (blocker_visual.size * 0.5)
+		var a_center: Vector2 = attacker_visual.get_global_transform() * (attacker_visual.size * 0.5)
 		# Draw in this Control's local coordinates.
 		var b_local: Vector2 = b_center - global_position
 		var a_local: Vector2 = a_center - global_position
