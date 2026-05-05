@@ -38,6 +38,8 @@ var _stack_display: VBoxContainer
 var _log_display: RichTextLabel
 var _action_button: Button
 var _phase_label: Label
+# Top-level overlay that draws blocker→attacker connection lines.
+var _combat_lines: Control
 
 # Map of engine instance_id → visual Card node, for bidirectional UI ↔ engine.
 var _iid_to_visual: Dictionary = {}
@@ -128,6 +130,20 @@ func _build_ui() -> void:
 	# Bolt at an opp Bear) and for block declaration (clicking opp's
 	# attacker after selecting a blocker on your side).
 	_opp_battlefield.card_pressed.connect(_on_opp_battlefield_card_pressed)
+
+	# Combat-lines overlay: draws blocker→attacker connection lines on top
+	# of card visuals. Added AFTER CardManager so it renders above the cards
+	# in normal sibling order; z_index also bumped to ensure it stays on top
+	# even when card-framework's hover system elevates a card's z_index.
+	var lines_script := preload("res://scenes/game/combat_lines.gd")
+	_combat_lines = Control.new()
+	_combat_lines.set_script(lines_script)
+	_combat_lines.name = "CombatLines"
+	_combat_lines.anchors_preset = Control.PRESET_FULL_RECT
+	_combat_lines.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_combat_lines.z_index = 100
+	_combat_lines.set("game_board", self)
+	add_child(_combat_lines)
 
 	# UI overlay (children of game_board, not CardManager)
 	_you_panel = PlayerPanel.new()
@@ -418,6 +434,44 @@ func _sync_card_visuals(s: EngineState) -> void:
 			var visual: Card = _iid_to_visual.get(c.instance_id)
 			if visual != null and visual.has_method("apply_creature_state"):
 				visual.apply_creature_state(c)
+	# Apply combat-state highlights so the player can see at a glance which
+	# creatures are pending blocker, in a committed block pair, or attacking
+	# unblocked.
+	_apply_combat_highlights(s)
+
+
+# Walk attackers + blockers and tag each visual with its combat state.
+# Highlight states (see scenes/card.gd set_combat_highlight):
+#   "pending"   — your creature you've clicked to begin blocking with
+#   "committed" — already paired (either side: blocker or its attacker)
+#   "unblocked" — attacker that no blocker is on
+#   "none"      — clear
+func _apply_combat_highlights(s: EngineState) -> void:
+	# Build the set of attackers that have at least one blocker.
+	var blocked_attackers: Dictionary = {}
+	for blk_iid in s.blockers:
+		blocked_attackers[s.blockers[blk_iid]] = true
+	# Walk every battlefield creature and decide its highlight.
+	for player_state in [s.you, s.opp]:
+		for c in player_state.battlefield:
+			if not (c.template is CreatureResource):
+				continue
+			var visual: Card = _iid_to_visual.get(c.instance_id)
+			if visual == null or not visual.has_method("set_combat_highlight"):
+				continue
+			var iid: int = c.instance_id
+			var state_name: String
+			if iid == _pending_block_blocker_iid:
+				state_name = "pending"
+			elif s.blockers.has(iid):
+				state_name = "committed"  # blocker
+			elif blocked_attackers.has(iid):
+				state_name = "committed"  # attacker that's been blocked
+			elif iid in s.attackers:
+				state_name = "unblocked"  # attacker with no blocker
+			else:
+				state_name = "none"
+			visual.set_combat_highlight(state_name)
 
 
 # Where stack-held card visuals appear on screen. Center-ish, between the
