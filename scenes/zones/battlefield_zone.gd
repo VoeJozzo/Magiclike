@@ -42,11 +42,26 @@ func on_card_pressed(card: Card) -> void:
 	card_pressed.emit(card)
 
 
-# Layout: simple horizontal row.
+# Layout: simple horizontal row. Reads tap state from engine to pass the
+# correct rotation to card.move() — needed because Card's hover animation
+# tweens rotation to 0 every time the mouse enters, so we can't simply set
+# rotation_degrees=90 and have it stick. Going through the proper move()
+# pathway keeps rotation correct across hover transitions.
 func _update_target_positions() -> void:
 	var spacing: float = 70.0
+	# Spacing changes when cards are tapped (rotated 90°) — they take more
+	# horizontal room. For Phase 1 with at most 2 mountains, fixed spacing is fine.
 	for i in range(_held_cards.size()):
 		var card: Card = _held_cards[i]
 		var target_pos: Vector2 = position + Vector2(i * spacing, 0)
-		card.move(target_pos, 0)
+		var rotation_rad: float = 0.0
+		# Look up tap state from the rules engine via instance_id.
+		var iid: int = card.card_info.get("instance_id", -1)
+		if iid != -1:
+			var s = RulesEngine.state()
+			if s != null:
+				var found = s.find_instance(iid)
+				if found != null and found.card != null and found.card.tapped:
+					rotation_rad = deg_to_rad(90.0)
+		card.move(target_pos, rotation_rad)
 		card.can_be_interacted_with = true

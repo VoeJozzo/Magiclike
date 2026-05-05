@@ -46,6 +46,11 @@ var _iid_to_visual: Dictionary = {}
 # waiting for the player to choose a target.
 var _pending_cast_iid: int = -1
 
+# Number of engine-log lines we've already piped to the UI log. Tracked here
+# (rather than relying on a log_appended signal that EngineState's RefCounted
+# nature can't emit) so we can pull deltas on each state_changed.
+var _engine_log_seen: int = 0
+
 
 func _ready() -> void:
 	_build_ui()
@@ -213,7 +218,11 @@ func _spawn_visual_for_instance(inst: CardInstance, zone: CardContainer) -> Card
 	if visual == null:
 		push_error("Failed to spawn visual for card_id=%s" % card_id)
 		return null
-	# Stamp the engine's instance_id onto the visual so we can round-trip.
+	# IMPORTANT: card-framework's JsonCardFactory caches card_info dicts and
+	# assigns the SAME Dictionary by reference to every visual sharing a
+	# card_id. We must duplicate before stamping per-instance data, or every
+	# Mountain ends up with the iid of whichever was spawned last.
+	visual.card_info = visual.card_info.duplicate()
 	visual.card_info["instance_id"] = inst.instance_id
 	_iid_to_visual[inst.instance_id] = visual
 	# Hook click handling. card-framework's _handle_mouse_pressed calls
@@ -248,6 +257,10 @@ func _refresh_ui() -> void:
 	_refresh_stack_display(s)
 	# Visual card sync
 	_sync_card_visuals(s)
+	# Drain new engine log lines into the UI log
+	while _engine_log_seen < s.log.size():
+		_log_local("[color=#88aaff]%s[/color]" % s.log[_engine_log_seen])
+		_engine_log_seen += 1
 
 
 func _refresh_stack_display(s: EngineState) -> void:
@@ -289,16 +302,16 @@ func _sync_card_visuals(s: EngineState) -> void:
 			visual.visible = false
 			continue
 		visual.visible = true
-		var card: CardInstance = found.card
 		var target_zone: CardContainer = _zone_for(found.controller.key, found.zone_name)
 		if target_zone != null and visual.card_container != target_zone:
 			# Card moved zones — relocate it.
 			target_zone.move_cards([visual], -1, false)
-		# Apply tap state
-		if card != null and card.tapped:
-			visual.rotation_degrees = 90
-		elif card != null:
-			visual.rotation_degrees = 0
+	# Refresh layouts on zones whose cards' tap-state may have changed. This
+	# triggers _update_target_positions which reads tap state from the engine
+	# and passes the right rotation to card.move() — the canonical pathway
+	# that survives hover-animation interference.
+	_you_battlefield.update_card_ui()
+	_opp_battlefield.update_card_ui()
 
 
 func _zone_for(controller_key: String, zone_name: String) -> CardContainer:
