@@ -102,9 +102,9 @@ Verification: `git log --follow reference/html-proto/magiclike_engine.html` show
 
 ### Engine architecture decisions
 
-- **`engine/engine.gd` as autoload.** Closest to the JS prototype's IIFE singleton. Globally accessible to UI panels via `Engine.state`. Emits `state_changed` for UI to subscribe.
-- **Logic in `RefCounted` classes**, not in the autoload itself. `Player`, `ManaPool`, `Stack`, `PhaseMachine`, `CardInstance` are all RefCounted — instantiable in tests without autoload boilerplate.
-- **Action descriptor pattern.** All state mutations go through `Engine.execute_action(action: Dictionary)` where action is `{kind: "cast_spell" | "activate_ability" | "play_land" | "pass_priority", source, targets, ...}`. Mirrors the JS prototype's `executeAction`.
+- **`engine/engine.gd` as autoload, registered as `RulesEngine`.** Closest to the JS prototype's IIFE singleton. Globally accessible to UI panels via `RulesEngine.state()`. Emits `state_changed` for UI to subscribe. (Autoload identifier is `RulesEngine` rather than `Engine` because Godot already has a built-in global named `Engine` — found this the hard way during smoke-test bring-up.)
+- **Logic in `RefCounted` classes**, not in the autoload itself. `Player`, `ManaPool`, `Stack`, `PhaseMachine`, `CardInstance`, `EngineState` are all RefCounted — instantiable in tests without autoload boilerplate.
+- **Action descriptor pattern.** All state mutations go through `RulesEngine.execute_action(action: Dictionary)` where action is `{kind: "cast_spell" | "activate_ability" | "play_land" | "pass_priority", source, targets, ...}`. Mirrors the JS prototype's `executeAction`.
 - **Stack pathway exercised even with no responses.** Casting Lightning Bolt: pay mana → push StackEntry → grant priority to opponent → opponent passes (auto-stub) → both passed → resolve top → effects run → instance to graveyard. If we short-circuit and run effects directly, decision C1 is broken on day one.
 - **Click-to-cast UI**, not drag-to-cast. Drag conflicts with card-framework's drag-to-move semantics. Click Bolt in hand → enter target-picking mode (overlay dims invalid, highlights valid) → click opponent's life total → resolve.
 
@@ -142,23 +142,23 @@ scenes/zones/
   stack.gd / .tscn             NOT a CardContainer — VBoxContainer of StackEntry visuals (triggers later phases will add non-card entries)
   library.gd / .tscn, graveyard.gd / .tscn  CardContainer subclasses, simple piles
 scenes/game/
-  game_board.gd / .tscn        main scene — CardManager + zones + PlayerPanels, wires Engine signals to UI
+  game_board.gd / .tscn        main scene — CardManager + zones + PlayerPanels, wires RulesEngine signals to UI
   player_panel.gd / .tscn      life total label (clickable for opp), mana pool labels, name
 tests/
   test_phase1.gd / .tscn       scripted smoke test
 ```
 
 Update `project.godot`:
-- `[autoload] Engine="*res://engine/engine.gd"`
+- `[autoload] RulesEngine="*res://engine/engine.gd"` (named `RulesEngine` to avoid clashing with Godot's built-in `Engine` global)
 - `run/main_scene` → `res://scenes/game/game_board.tscn`
 
 ### Verification
 
 **Scripted smoke test** (`tests/test_phase1.tscn`):
 1. Boot engine: you = `{life: 20, hand: [LightningBolt], battlefield: [Mountain, Mountain]}`, opp = `{life: 20, no permanents}`.
-2. `Engine.execute_action(activate_mountain_0)` → assert `you.mana.R == 1`.
-3. `Engine.execute_action(activate_mountain_1)` → assert `you.mana.R == 2`.
-4. `Engine.execute_action(cast_bolt_at_opp)` → assert stack has 1 entry, `you.mana.R == 1`.
+2. `RulesEngine.execute_action(activate_mountain_0)` → assert `you.mana.R == 1`.
+3. `RulesEngine.execute_action(activate_mountain_1)` → assert `you.mana.R == 2`.
+4. `RulesEngine.execute_action(cast_bolt_at_opp)` → assert stack has 1 entry, `you.mana.R == 1`.
 5. Both auto-pass priority → assert stack empties, `opp.life == 17`, Bolt is in your graveyard, both Mountains are tapped.
 
 **Manual play-through:** open `game_board.tscn`, see hand with Mountains and a Bolt, tap a Mountain (rotates 90°), see R appear in mana display, click Bolt (target picker overlay), click opponent's life total, see 20 → 17, see Bolt move to graveyard.
@@ -177,19 +177,19 @@ Update `project.godot`:
 
 ## Risks and discipline notes
 
-- **Predicates need explicit state access.** JS prototype's Bloodlust trigger reads `G[them].lifeLostThisTurn`. In GDScript: pass full state as the first argument to every predicate (`func creature_self_damaged_died(state, source, event) -> bool`). Documented as the calling convention in `predicates.gd` header. **Don't** reach into the `Engine` autoload from inside predicates — keeps them testable and matches JS prototype's pure-function style.
+- **Predicates need explicit state access.** JS prototype's Bloodlust trigger reads `G[them].lifeLostThisTurn`. In GDScript: pass full state as the first argument to every predicate (`func creature_self_damaged_died(state, source, event) -> bool`). Documented as the calling convention in `predicates.gd` header. **Don't** reach into the `RulesEngine` autoload from inside predicates — keeps them testable and matches JS prototype's pure-function style.
 
-- **Stack as VBoxContainer, not CardContainer.** Triggered abilities go on the stack but aren't cards. Forcing them through `Card` introduces type-checks everywhere. The `Stack` engine model is `Array[StackEntry]`; the UI is a plain `VBoxContainer` observing `Engine.stack_changed`.
+- **Stack as VBoxContainer, not CardContainer.** Triggered abilities go on the stack but aren't cards. Forcing them through `Card` introduces type-checks everywhere. The `Stack` engine model is `Array[StackEntry]`; the UI is a plain `VBoxContainer` observing `RulesEngine.stack_changed`.
 
 - **Deep-copy bugs.** The JS prototype has known scars (e.g., City of Brass `extraManaColors` lost on instantiation, comment at engine line ~2107). Mitigation: model all per-turn mutable state on `Player` and `CardInstance` as plain typed fields, not dynamically-attached dictionaries. Write `duplicate()` overrides on `CardInstance` and `Player` once and use them everywhere. Don't reinvent deep-copy logic per use site.
 
-- **`@tool` annotation gotcha.** Existing `test.gd` is `@tool`-annotated, which triggers `_ready()` in the Godot editor. New game scenes must NOT be `@tool` — the editor will spam errors when the Engine autoload isn't initialized. Drop `@tool` on `game_board.gd` and any new gameplay scripts.
+- **`@tool` annotation gotcha.** Existing `test.gd` is `@tool`-annotated, which triggers `_ready()` in the Godot editor. New game scenes must NOT be `@tool` — the editor will spam errors when the RulesEngine autoload isn't initialized. Drop `@tool` on `game_board.gd` and any new gameplay scripts.
 
 - **Card-framework drag conflict.** Drag is reserved for "move card between containers." Casting a spell with targets is conceptually different. Phase 1: click-to-cast with overlay target picker. If drag-to-cast is desired later, override `Card._on_gui_input` to disambiguate intent — but this is fragile, likely not worth it.
 
 - **Predicate registry validation at boot.** ~10 lines in `engine.gd._ready()` that walks all loaded `CardResource` instances, collects every `condition_predicate` string, and asserts each is a key in `predicates.gd`'s registry. Catches typos at startup instead of at runtime.
 
-- **Don't half-implement priority.** Tempting to "stack exists but priority always belongs to active player" in Phase 1. Resist. The minimum viable system is `Engine.priority_player`, `Engine.pass_priority()`, both-passed → resolve top. ~30 lines, baked in correctly day one.
+- **Don't half-implement priority.** Tempting to "stack exists but priority always belongs to active player" in Phase 1. Resist. The minimum viable system is `RulesEngine.state().priority_player_key`, `RulesEngine.execute_action(Action.make_pass_priority())`, both-passed → resolve top. ~30 lines, baked in correctly day one.
 
 ## Verification per phase
 
