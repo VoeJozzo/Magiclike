@@ -21,6 +21,7 @@ const KIND_PASS_PRIORITY := "pass_priority"
 const KIND_ACTIVATE_ABILITY := "activate_ability"
 const KIND_PLAY_LAND := "play_land"
 const KIND_CAST_SPELL := "cast_spell"
+const KIND_DECLARE_ATTACKER := "declare_attacker"
 
 
 static func make_pass_priority() -> Dictionary:
@@ -41,6 +42,10 @@ static func make_play_land(source_iid: int) -> Dictionary:
 
 static func make_cast_spell(source_iid: int, targets: Array = []) -> Dictionary:
 	return {"kind": KIND_CAST_SPELL, "source_iid": source_iid, "targets": targets}
+
+
+static func make_declare_attacker(source_iid: int) -> Dictionary:
+	return {"kind": KIND_DECLARE_ATTACKER, "source_iid": source_iid}
 
 
 static func target_player(who: String) -> Dictionary:

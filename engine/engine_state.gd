@@ -27,6 +27,12 @@ var turn: int = 1
 
 var stack: Stack = null
 
+# Combat state. attackers: Array of CardInstance.instance_id values for creatures
+# declared as attacking this combat. Cleared during cleanup.
+# blockers (Phase 3+): Dictionary mapping blocker_iid -> attacker_iid.
+var attackers: Array[int] = []
+var blockers: Dictionary = {}
+
 # Log of human-readable lines describing what happened. UI subscribes to display.
 var log: Array[String] = []
 

@@ -81,11 +81,27 @@ func total() -> int:
 	return t
 
 
+# MTG mana-cost notation: colored mana is shown as repeated letters (RR for
+# two reds), colorless/generic is shown as a leading number (1R for 1 generic
+# + 1 red). Critically, "1R" never means "one red" — it always means
+# 1 generic + 1 red. So we must NOT use "1R" to display a single red mana.
+#
+# Examples:
+#   {R:1}         → "R"
+#   {R:2}         → "RR"
+#   {R:1, C:2}    → "2R"
+#   {W:1, R:1}    → "WR"
+#   {R:5}         → "RRRRR" (acceptable until we reach realistically large
+#                            mana totals; revisit with icon-based UI later)
 func to_string_short() -> String:
-	var parts: Array[String] = []
-	for color in COLORS:
-		if pool[color] > 0:
-			parts.append("%d%s" % [pool[color], color])
-	if parts.size() == 0:
+	var s := ""
+	# Generic / colorless first (matches MTG card-text convention)
+	if pool["C"] > 0:
+		s += str(pool["C"])
+	# Colored repeated by count
+	for color in ["W", "U", "B", "R", "G"]:
+		for i in range(pool[color]):
+			s += color
+	if s == "":
 		return "(empty)"
-	return ", ".join(parts)
+	return s

@@ -1,9 +1,28 @@
 @tool
 extends Card
 
-# Magiclike Card subclass — adds text overlays (name, mana cost, type line)
-# on top of the placeholder front face so cards are distinguishable at a
-# glance during Phase 1+ development.
+# Magiclike Card subclass — adds text overlays (name, mana cost, type line,
+# P/T) on top of the placeholder front face, AND disables card-framework's
+# drag/hover quirks that fight with our click-to-execute flow.
+#
+# Why the drag/hover overrides exist:
+#   - Drag conflicts with click actions: card-framework transitions cards to
+#     HOLDING on press, registers them in _holding_cards, and on release
+#     tries to "drop" them based on cursor position. Meanwhile our engine
+#     action has already programmatically moved the card. The release-drop
+#     can bounce a freshly-played land back to hand if the user releases
+#     over the hand zone.
+#   - Hover scale compounds: card-framework's _start_hover_animation captures
+#     `original_scale = scale` AFTER each hover completes, so original_scale
+#     creeps up by hover_scale (default 1.05) per hover. Cards balloon
+#     visibly over a play session.
+#   - Hover rotation flickers tapped cards: hover always tweens rotation to
+#     deg_to_rad(0), so tapped cards (90°) briefly look untapped on hover.
+#
+# We don't actually USE drag for anything in this game — every move is via
+# an engine action. So disabling drag entirely is the simplest correct fix.
+# We keep the hover lift for visual feedback, just without the buggy scale
+# and rotation animations.
 #
 # Text is populated AFTER instantiation by game_board calling apply_card_text(),
 # because card-framework's JsonCardFactory sets card_info AFTER the Card's
@@ -17,6 +36,7 @@ const _TYPE_HEIGHT := 18
 var _name_label: Label
 var _cost_label: Label
 var _type_label: Label
+var _pt_label: Label
 var _color_tint: ColorRect
 
 
@@ -81,6 +101,20 @@ func _build_text_overlay() -> void:
 	_type_label.mouse_filter = MOUSE_FILTER_IGNORE
 	front_face.add_child(_type_label)
 
+	# P/T badge — bottom-right, only shown for creatures
+	_pt_label = Label.new()
+	_pt_label.position = Vector2(card_size.x - 48, card_size.y - 36)
+	_pt_label.size = Vector2(40, 28)
+	_pt_label.add_theme_font_size_override("font_size", 18)
+	_pt_label.add_theme_color_override("font_color", Color(1, 0.92, 0.6))
+	_pt_label.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.95))
+	_pt_label.add_theme_constant_override("shadow_outline_size", 4)
+	_pt_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_pt_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_pt_label.mouse_filter = MOUSE_FILTER_IGNORE
+	_pt_label.visible = false
+	front_face.add_child(_pt_label)
+
 
 # Populates the labels and tint from card_info. Call this AFTER setting
 # card_info on the visual (game_board does so right after spawn + duplicate).
@@ -102,10 +136,17 @@ func apply_card_text() -> void:
 		_cost_label.text = _fmt_cost(template.mana_cost)
 		_type_label.text = _fmt_type_line(template)
 		_color_tint.color = _tint_for(template)
+		# P/T only for creatures
+		if template is CreatureResource:
+			_pt_label.text = "%d/%d" % [template.power, template.toughness]
+			_pt_label.visible = true
+		else:
+			_pt_label.visible = false
 	else:
 		_cost_label.text = ""
 		_type_label.text = ""
 		_color_tint.color = Color(0, 0, 0, 0)
+		_pt_label.visible = false
 
 
 # Mana cost as compact symbols, e.g. {"R":1} -> "R", {"W":1, "C":2} -> "2W".
@@ -159,3 +200,55 @@ func _primary_color(t: CardResource) -> String:
 	if t is LandResource and not t.mana_produced.is_empty():
 		return t.mana_produced[0]
 	return ""
+
+
+# ─── Drag / hover overrides ────────────────────────────────────────────────
+
+# Skip the HOLDING state transition entirely. We don't use drag-to-move; all
+# card movement goes through engine actions. By not entering HOLDING:
+#   - card_container.hold_card() never registers this card in _holding_cards
+#   - On mouse release, release_holding_cards iterates an empty list (no drop)
+#   - card-framework's _process drag-follow behavior never engages
+# Click handlers still receive events via card_container.on_card_pressed and
+# our gui_input listener in game_board.
+func _handle_mouse_pressed() -> void:
+	is_pressed = true
+	if card_container:
+		card_container.on_card_pressed(self)
+	# Deliberately NOT calling super._handle_mouse_pressed — that would
+	# transition us to HOLDING and engage the drag-drop machinery.
+
+
+# Override hover animation to skip the compounding scale and rotation-reset
+# bugs. We keep the position lift (cards rise on hover) for visual feedback,
+# but don't touch scale or rotation — those are managed by us (rotation via
+# BattlefieldZone tap state, scale stays at 1.0 always).
+func _start_hover_animation() -> void:
+	if hover_tween and hover_tween.is_valid():
+		hover_tween.kill()
+		hover_tween = null
+
+	original_position = position
+	# Intentionally NOT updating original_scale or original_hover_rotation —
+	# those would compound on each hover. We let scale/rotation stay where
+	# they are; only position lifts.
+	current_hover_position = position
+
+	hover_tween = create_tween()
+	hover_tween.set_parallel(true)
+	var target_position := Vector2(position.x, position.y - hover_distance)
+	hover_tween.tween_property(self, "position", target_position, hover_duration)
+	hover_tween.tween_method(_update_hover_position, position, target_position, hover_duration)
+	# Skip the scale and rotation tweens that card-framework's default does.
+
+
+func _stop_hover_animation() -> void:
+	if hover_tween and hover_tween.is_valid():
+		hover_tween.kill()
+		hover_tween = null
+
+	hover_tween = create_tween()
+	hover_tween.set_parallel(true)
+	hover_tween.tween_property(self, "position", original_position, hover_duration)
+	hover_tween.tween_method(_update_hover_position, position, original_position, hover_duration)
+	# Skip scale and rotation reset — we control those externally.

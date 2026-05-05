@@ -56,7 +56,9 @@ func _ready() -> void:
 	_build_ui()
 	_connect_engine_signals()
 	# Boot the engine and spawn initial visuals.
-	RulesEngine.init_phase1()
+	# Phase 2 demo: 1 Mountain in play, 3 in hand, plus Goblin Raider and Bolt.
+	# (init_phase1 still works for the headless smoke test.)
+	RulesEngine.init_phase2()
 	_spawn_initial_visuals()
 	_refresh_ui()
 
@@ -261,10 +263,40 @@ func _refresh_ui() -> void:
 	_refresh_stack_display(s)
 	# Visual card sync
 	_sync_card_visuals(s)
+	# Action button label reflects current phase / mode
+	_update_action_button(s)
 	# Drain new engine log lines into the UI log
 	while _engine_log_seen < s.log.size():
 		_log_local("[color=#88aaff]%s[/color]" % s.log[_engine_log_seen])
 		_engine_log_seen += 1
+
+
+# Phase-aware label for the action button. Targeting mode overrides; stack-
+# non-empty overrides phase (because passing priority resolves the top of
+# stack rather than advancing the phase, regardless of which phase you're in).
+func _update_action_button(s: EngineState) -> void:
+	if _pending_cast_iid != -1:
+		_action_button.text = "Cancel target"
+		return
+	if not s.stack.is_empty():
+		_action_button.text = "Resolve"
+		return
+	match s.phase_machine.current:
+		PhaseMachine.Phase.MAIN1:
+			_action_button.text = "Move to combat"
+		PhaseMachine.Phase.COMBAT_ATTACK:
+			if s.attackers.is_empty():
+				_action_button.text = "Skip attack"
+			else:
+				_action_button.text = "Confirm attack"
+		PhaseMachine.Phase.COMBAT_BLOCK:
+			_action_button.text = "Continue"
+		PhaseMachine.Phase.COMBAT_DAMAGE:
+			_action_button.text = "Continue"
+		PhaseMachine.Phase.MAIN2:
+			_action_button.text = "End turn"
+		_:
+			_action_button.text = "Pass priority"
 
 
 func _refresh_stack_display(s: EngineState) -> void:
@@ -296,26 +328,53 @@ func _sync_card_visuals(s: EngineState) -> void:
 	# For each tracked iid, ensure its visual is in the right zone.
 	# A card may be:
 	#   - In a zone (hand/battlefield/graveyard/library/exile) on either player
-	#   - On the stack (then it's not in any zone array, but in engine's _stack_held_cards)
-	#   - Removed entirely (shouldn't happen in Phase 1)
+	#   - On the stack (find_instance returns zone_name="stack", card=null —
+	#     the actual CardInstance is held in Engine._stack_held_cards)
+	#   - Removed entirely (shouldn't happen in Phase 1/2)
 	for iid in _iid_to_visual.keys():
 		var visual: Card = _iid_to_visual[iid]
 		var found = s.find_instance(iid)
 		if found == null:
-			# In-flight on the stack — engine's _stack_held_cards has it. Hide visual.
+			# Untracked — hide. Shouldn't happen in normal play.
 			visual.visible = false
 			continue
 		visual.visible = true
+		# Stack visual: detach from any container so layout doesn't reposition,
+		# then cascade by stack index so multiple stack entries don't pile
+		# on top of each other. Bottom-of-stack at the anchor; subsequent
+		# items step up-and-right.
+		if found.zone_name == "stack":
+			if visual.card_container != null and visual.card_container.has_card(visual):
+				visual.card_container.remove_card(visual)
+			var stack_idx := _find_stack_index(s, iid)
+			var cascade := Vector2(stack_idx * 30.0, -stack_idx * 25.0)
+			visual.move(_stack_anchor_global_pos() + cascade, 0.0)
+			continue
+		# Normal zones: ensure the visual is in the right CardContainer.
 		var target_zone: CardContainer = _zone_for(found.controller.key, found.zone_name)
 		if target_zone != null and visual.card_container != target_zone:
-			# Card moved zones — relocate it.
 			target_zone.move_cards([visual], -1, false)
-	# Refresh layouts on zones whose cards' tap-state may have changed. This
-	# triggers _update_target_positions which reads tap state from the engine
-	# and passes the right rotation to card.move() — the canonical pathway
-	# that survives hover-animation interference.
+	# Refresh battlefield layouts so tap state (rotation) is re-applied via
+	# card.move() — the canonical pathway that survives hover-animation
+	# interference from card-framework.
 	_you_battlefield.update_card_ui()
 	_opp_battlefield.update_card_ui()
+
+
+# Where stack-held card visuals appear on screen. Center-ish, between the
+# two battlefields. Returned as global position so card.move() can use it
+# directly (move() works in global coordinates).
+func _stack_anchor_global_pos() -> Vector2:
+	return Vector2(900, 440)
+
+
+# Index of the stack entry with the given source_iid (0 = bottom of stack,
+# size-1 = top). -1 if not on stack.
+func _find_stack_index(s: EngineState, iid: int) -> int:
+	for i in range(s.stack.entries.size()):
+		if s.stack.entries[i].get("source_iid", -1) == iid:
+			return i
+	return -1
 
 
 func _zone_for(controller_key: String, zone_name: String) -> CardContainer:
@@ -331,12 +390,23 @@ func _zone_for(controller_key: String, zone_name: String) -> CardContainer:
 # ─── Click handling ────────────────────────────────────────────────────────
 
 func _on_your_battlefield_card_pressed(visual: Card) -> void:
-	# In targeting mode, ignore battlefield clicks (Phase 1 has no creature targets)
+	# In targeting mode, ignore battlefield clicks (Phase 1/2 has no creature targets)
 	if _pending_cast_iid != -1:
 		return
 	var iid: int = visual.card_info.get("instance_id", -1)
 	if iid == -1:
 		return
+
+	# During COMBAT_ATTACK, clicking a creature declares it as an attacker.
+	var phase = RulesEngine.state().phase_machine.current
+	if phase == PhaseMachine.Phase.COMBAT_ATTACK:
+		var attack := Action.make_declare_attacker(iid)
+		if RulesEngine.is_legal_action(attack):
+			RulesEngine.execute_action(attack)
+			return
+		# Fall through if not legal (e.g., land clicked during combat)
+
+	# Default: try to activate ability (taps land for mana)
 	var action := Action.make_activate_ability(iid)
 	if RulesEngine.is_legal_action(action):
 		RulesEngine.execute_action(action)
@@ -352,7 +422,7 @@ func _on_hand_card_gui_input(event: InputEvent, visual: Card) -> void:
 	var iid: int = visual.card_info.get("instance_id", -1)
 	if iid == -1:
 		return
-	# If we're already targeting, this is a 2nd click — ignore (shouldn't happen).
+	# If we're already targeting, this is a 2nd click — ignore.
 	if _pending_cast_iid != -1:
 		return
 	# Look up the card instance
@@ -361,20 +431,34 @@ func _on_hand_card_gui_input(event: InputEvent, visual: Card) -> void:
 	if found == null or found.zone_name != "hand":
 		return
 	var card: CardInstance = found.card
-	# Phase 1: only Lightning Bolt in hand. It's a spell that requires a target.
+
+	# Lands: special action, doesn't use stack.
+	if card.is_land():
+		var play := Action.make_play_land(iid)
+		if RulesEngine.is_legal_action(play):
+			RulesEngine.execute_action(play)
+		else:
+			_log_local("[color=#ff8888]Can't play %s right now[/color]" % card.name())
+		return
+
+	# Spells (instant/sorcery/creature): pay mana, push to stack.
+	var ctrl: Player = found.controller
+	if not ctrl.mana.can_pay(card.template.mana_cost):
+		_log_local("[color=#ff8888]Can't pay %s for %s[/color]" % [
+			_fmt_cost(card.template.mana_cost),
+			card.name(),
+		])
+		return
+
+	# Targeted spells enter targeting mode; untargeted ones cast directly.
 	if card.template is SpellResource and card.template.requires_target:
-		# Check we can pay before entering targeting mode (avoid wasted clicks)
-		var ctrl: Player = found.controller
-		if not ctrl.mana.can_pay(card.template.mana_cost):
-			_log_local("[color=#ff8888]Can't pay %s for %s[/color]" % [
-				_fmt_cost(card.template.mana_cost),
-				card.name(),
-			])
-			return
 		_enter_targeting_mode(iid, card.template.target_filter)
 	else:
-		# No target — cast directly
-		RulesEngine.execute_action(Action.make_cast_spell(iid, []))
+		var cast := Action.make_cast_spell(iid, [])
+		if RulesEngine.is_legal_action(cast):
+			RulesEngine.execute_action(cast)
+		else:
+			_log_local("[color=#ff8888]Can't cast %s right now (wrong phase?)[/color]" % card.name())
 
 
 func _on_panel_clicked(panel_key: String) -> void:
