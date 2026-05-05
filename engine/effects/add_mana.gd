@@ -24,12 +24,17 @@ static func execute(effect: Dictionary, ctx: Dictionary) -> void:
 	_log(ctx, "%s adds %s (pool: %s)" % [ctx.source_name, _fmt(amounts), ctx.controller.mana.to_string_short()])
 
 
+# MTG mana notation (see mana_pool.gd to_string_short for rationale): colored
+# mana repeats letters, generic uses a leading number. "1R" means 1 generic +
+# 1 red, never "one red".
 static func _fmt(amounts: Dictionary) -> String:
-	var parts: Array[String] = []
-	for color in ["W", "U", "B", "R", "G", "C"]:
-		if amounts.get(color, 0) > 0:
-			parts.append("%d%s" % [amounts[color], color])
-	return ", ".join(parts) if parts.size() > 0 else "(none)"
+	var s := ""
+	if amounts.get("C", 0) > 0:
+		s += str(amounts["C"])
+	for color in ["W", "U", "B", "R", "G"]:
+		for i in range(amounts.get(color, 0)):
+			s += color
+	return s if s != "" else "(none)"
 
 
 static func _log(ctx: Dictionary, msg: String) -> void:

@@ -271,11 +271,15 @@ func _refresh_ui() -> void:
 		_engine_log_seen += 1
 
 
-# Phase-aware label for the action button. Targeting mode overrides; otherwise
-# the label hints at what passing priority will accomplish from the current phase.
+# Phase-aware label for the action button. Targeting mode overrides; stack-
+# non-empty overrides phase (because passing priority resolves the top of
+# stack rather than advancing the phase, regardless of which phase you're in).
 func _update_action_button(s: EngineState) -> void:
 	if _pending_cast_iid != -1:
 		_action_button.text = "Cancel target"
+		return
+	if not s.stack.is_empty():
+		_action_button.text = "Resolve"
 		return
 	match s.phase_machine.current:
 		PhaseMachine.Phase.MAIN1:
@@ -324,26 +328,40 @@ func _sync_card_visuals(s: EngineState) -> void:
 	# For each tracked iid, ensure its visual is in the right zone.
 	# A card may be:
 	#   - In a zone (hand/battlefield/graveyard/library/exile) on either player
-	#   - On the stack (then it's not in any zone array, but in engine's _stack_held_cards)
-	#   - Removed entirely (shouldn't happen in Phase 1)
+	#   - On the stack (find_instance returns zone_name="stack", card=null —
+	#     the actual CardInstance is held in Engine._stack_held_cards)
+	#   - Removed entirely (shouldn't happen in Phase 1/2)
 	for iid in _iid_to_visual.keys():
 		var visual: Card = _iid_to_visual[iid]
 		var found = s.find_instance(iid)
 		if found == null:
-			# In-flight on the stack — engine's _stack_held_cards has it. Hide visual.
+			# Untracked — hide. Shouldn't happen in normal play.
 			visual.visible = false
 			continue
 		visual.visible = true
+		# Stack visual: detach from any container so layout doesn't reposition,
+		# then move to the stack anchor position.
+		if found.zone_name == "stack":
+			if visual.card_container != null and visual.card_container.has_card(visual):
+				visual.card_container.remove_card(visual)
+			visual.move(_stack_anchor_global_pos(), 0.0)
+			continue
+		# Normal zones: ensure the visual is in the right CardContainer.
 		var target_zone: CardContainer = _zone_for(found.controller.key, found.zone_name)
 		if target_zone != null and visual.card_container != target_zone:
-			# Card moved zones — relocate it.
 			target_zone.move_cards([visual], -1, false)
-	# Refresh layouts on zones whose cards' tap-state may have changed. This
-	# triggers _update_target_positions which reads tap state from the engine
-	# and passes the right rotation to card.move() — the canonical pathway
-	# that survives hover-animation interference.
+	# Refresh battlefield layouts so tap state (rotation) is re-applied via
+	# card.move() — the canonical pathway that survives hover-animation
+	# interference from card-framework.
 	_you_battlefield.update_card_ui()
 	_opp_battlefield.update_card_ui()
+
+
+# Where stack-held card visuals appear on screen. Center-ish, between the
+# two battlefields. Returned as global position so card.move() can use it
+# directly (move() works in global coordinates).
+func _stack_anchor_global_pos() -> Vector2:
+	return Vector2(900, 440)
 
 
 func _zone_for(controller_key: String, zone_name: String) -> CardContainer:

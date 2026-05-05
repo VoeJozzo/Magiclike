@@ -1,9 +1,28 @@
 @tool
 extends Card
 
-# Magiclike Card subclass — adds text overlays (name, mana cost, type line)
-# on top of the placeholder front face so cards are distinguishable at a
-# glance during Phase 1+ development.
+# Magiclike Card subclass — adds text overlays (name, mana cost, type line,
+# P/T) on top of the placeholder front face, AND disables card-framework's
+# drag/hover quirks that fight with our click-to-execute flow.
+#
+# Why the drag/hover overrides exist:
+#   - Drag conflicts with click actions: card-framework transitions cards to
+#     HOLDING on press, registers them in _holding_cards, and on release
+#     tries to "drop" them based on cursor position. Meanwhile our engine
+#     action has already programmatically moved the card. The release-drop
+#     can bounce a freshly-played land back to hand if the user releases
+#     over the hand zone.
+#   - Hover scale compounds: card-framework's _start_hover_animation captures
+#     `original_scale = scale` AFTER each hover completes, so original_scale
+#     creeps up by hover_scale (default 1.05) per hover. Cards balloon
+#     visibly over a play session.
+#   - Hover rotation flickers tapped cards: hover always tweens rotation to
+#     deg_to_rad(0), so tapped cards (90°) briefly look untapped on hover.
+#
+# We don't actually USE drag for anything in this game — every move is via
+# an engine action. So disabling drag entirely is the simplest correct fix.
+# We keep the hover lift for visual feedback, just without the buggy scale
+# and rotation animations.
 #
 # Text is populated AFTER instantiation by game_board calling apply_card_text(),
 # because card-framework's JsonCardFactory sets card_info AFTER the Card's
@@ -181,3 +200,55 @@ func _primary_color(t: CardResource) -> String:
 	if t is LandResource and not t.mana_produced.is_empty():
 		return t.mana_produced[0]
 	return ""
+
+
+# ─── Drag / hover overrides ────────────────────────────────────────────────
+
+# Skip the HOLDING state transition entirely. We don't use drag-to-move; all
+# card movement goes through engine actions. By not entering HOLDING:
+#   - card_container.hold_card() never registers this card in _holding_cards
+#   - On mouse release, release_holding_cards iterates an empty list (no drop)
+#   - card-framework's _process drag-follow behavior never engages
+# Click handlers still receive events via card_container.on_card_pressed and
+# our gui_input listener in game_board.
+func _handle_mouse_pressed() -> void:
+	is_pressed = true
+	if card_container:
+		card_container.on_card_pressed(self)
+	# Deliberately NOT calling super._handle_mouse_pressed — that would
+	# transition us to HOLDING and engage the drag-drop machinery.
+
+
+# Override hover animation to skip the compounding scale and rotation-reset
+# bugs. We keep the position lift (cards rise on hover) for visual feedback,
+# but don't touch scale or rotation — those are managed by us (rotation via
+# BattlefieldZone tap state, scale stays at 1.0 always).
+func _start_hover_animation() -> void:
+	if hover_tween and hover_tween.is_valid():
+		hover_tween.kill()
+		hover_tween = null
+
+	original_position = position
+	# Intentionally NOT updating original_scale or original_hover_rotation —
+	# those would compound on each hover. We let scale/rotation stay where
+	# they are; only position lifts.
+	current_hover_position = position
+
+	hover_tween = create_tween()
+	hover_tween.set_parallel(true)
+	var target_position := Vector2(position.x, position.y - hover_distance)
+	hover_tween.tween_property(self, "position", target_position, hover_duration)
+	hover_tween.tween_method(_update_hover_position, position, target_position, hover_duration)
+	# Skip the scale and rotation tweens that card-framework's default does.
+
+
+func _stop_hover_animation() -> void:
+	if hover_tween and hover_tween.is_valid():
+		hover_tween.kill()
+		hover_tween = null
+
+	hover_tween = create_tween()
+	hover_tween.set_parallel(true)
+	hover_tween.tween_property(self, "position", original_position, hover_duration)
+	hover_tween.tween_method(_update_hover_position, position, original_position, hover_duration)
+	# Skip scale and rotation reset — we control those externally.
