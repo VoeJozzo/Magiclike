@@ -98,6 +98,59 @@ func init_phase2() -> void:
 	state_changed.emit()
 
 
+# Phase 3 demo: introduces blockers, the first instant exercising the stack
+# architecture, and basic opp behavior.
+#
+# You start with: 1 Mountain + 1 Forest in play, hand has Mountain, Forest,
+# Goblin Raider, Lightning Bolt, Giant Growth.
+# Opp starts with: 1 Forest + 2 Grizzly Bears in play (untapped, no sickness),
+# Giant Growth in hand.
+#
+# Test scenarios available:
+#   - Cast Bolt at an opp Bear → opp casts Giant Growth in response → bear
+#     becomes 5/5 → Bolt resolves for 3 damage → bear survives at 5/5 with
+#     3 marked → cleanup clears temp/damage → bear back to 2/2 next turn.
+#   - Attack with Goblin (2/1) → opp blocks with a Bear (2/2) → mutual damage
+#     → Goblin dies (2 damage = 1 toughness), Bear survives at 2/2 with
+#     2 damage marked → cleanup clears damage → bear at 2/2 next turn.
+#   - Opp's turn: opp attacks with both bears → you block with creatures or
+#     take 4 damage to face.
+func init_phase3() -> void:
+	_state = EngineState.new()
+	_state.active_player_key = "you"
+	_state.priority_player_key = "you"
+	_state.phase_machine.current = PhaseMachine.Phase.MAIN1
+
+	# You: 1 Mountain + 1 Forest in play (no sickness)
+	var mtn0 := _state.make_instance(CardDatabase.get_card("mountain"), "you")
+	mtn0.summoning_sick = false
+	_state.you.battlefield.append(mtn0)
+	var fst0 := _state.make_instance(CardDatabase.get_card("forest"), "you")
+	fst0.summoning_sick = false
+	_state.you.battlefield.append(fst0)
+	# You: hand
+	for i in range(2):
+		_state.you.hand.append(_state.make_instance(CardDatabase.get_card("mountain"), "you"))
+	_state.you.hand.append(_state.make_instance(CardDatabase.get_card("forest"), "you"))
+	_state.you.hand.append(_state.make_instance(CardDatabase.get_card("goblin_raider"), "you"))
+	_state.you.hand.append(_state.make_instance(CardDatabase.get_card("lightning_bolt"), "you"))
+	_state.you.hand.append(_state.make_instance(CardDatabase.get_card("giant_growth"), "you"))
+
+	# Opp: 1 Forest + 2 Grizzly Bears in play (no sickness, untapped)
+	var opp_fst := _state.make_instance(CardDatabase.get_card("forest"), "opp")
+	opp_fst.summoning_sick = false
+	_state.opp.battlefield.append(opp_fst)
+	for i in range(2):
+		var bear := _state.make_instance(CardDatabase.get_card("grizzly_bears"), "opp")
+		bear.summoning_sick = false
+		_state.opp.battlefield.append(bear)
+	# Opp: Giant Growth in hand for instant-response testing
+	_state.opp.hand.append(_state.make_instance(CardDatabase.get_card("giant_growth"), "opp"))
+
+	_state.append_log("Phase 3 demo: you have 2 lands in play + plenty of cards in hand. Opp has 1 Forest + 2 Grizzly Bears + Giant Growth.")
+	state_changed.emit()
+
+
 # ─── Action execution ──────────────────────────────────────────────────────
 
 func execute_action(action: Dictionary) -> bool:
@@ -116,6 +169,8 @@ func execute_action(action: Dictionary) -> bool:
 			ok = _do_cast_spell(action)
 		Action.KIND_DECLARE_ATTACKER:
 			ok = _do_declare_attacker(action)
+		Action.KIND_DECLARE_BLOCKER:
+			ok = _do_declare_blocker(action)
 		Action.KIND_PASS_PRIORITY:
 			ok = _do_pass_priority(action)
 		_:
@@ -141,6 +196,8 @@ func is_legal_action(action: Dictionary) -> bool:
 			return _legal_cast_spell(action)
 		Action.KIND_DECLARE_ATTACKER:
 			return _legal_declare_attacker(action)
+		Action.KIND_DECLARE_BLOCKER:
+			return _legal_declare_blocker(action)
 		_:
 			return false
 
@@ -155,10 +212,24 @@ func _settle_state() -> void:
 		return  # avoid recursion if a sub-action triggers state changes
 	_settling = true
 	var safety: int = 50  # cap iterations to detect infinite loops
-	while _state.active_player_key == "opp" and _state.winner == "" and safety > 0:
+	while _state.winner == "" and safety > 0:
 		safety -= 1
-		# On opp's turn with no AI, auto-pass priority and advance phases
-		# (or resolve top of stack — though stack should be empty for Phase 2).
+		# On player's turn, stop auto-cycling — player needs to act.
+		if _state.active_player_key != "opp":
+			break
+		# Phase 3: stop at opp's COMBAT_BLOCK so the player can declare blockers
+		# AND cast combat tricks (Giant Growth on their blocker). Skip if
+		# there are no attackers — empty COMBAT_BLOCK has nothing to do.
+		# We also auto-pass opp's priority before stopping so the player has
+		# priority to cast spells (otherwise priority sits on the active
+		# player and the cast attempt is rejected by _legal_cast_spell).
+		if _state.phase_machine.current == PhaseMachine.Phase.COMBAT_BLOCK \
+				and not _state.attackers.is_empty():
+			if _state.priority_player_key == "opp":
+				_state.priority_passed["opp"] = true
+				_state.priority_player_key = "you"
+			break
+		# Otherwise auto-advance opp's turn (no real AI yet for Phase 3).
 		if not _state.stack.is_empty():
 			_resolve_top_of_stack()
 			_state.priority_player_key = _state.active_player_key
@@ -346,11 +417,13 @@ func _do_pass_priority(_action: Dictionary) -> bool:
 	else:
 		# Hand priority to the other player.
 		_state.priority_player_key = _state.opponent_of(_state.priority_player_key)
-		# Phase 1: opponent is a do-nothing stub. If priority just landed on opp,
-		# auto-pass for them so the player isn't stuck waiting.
+		# Phase 3: when priority lands on opp, give them a chance to respond
+		# (cast Giant Growth in response to Lightning Bolt). If they do nothing,
+		# auto-pass so the player isn't stuck waiting.
 		if _state.priority_player_key == "opp":
+			if _opp_tries_to_respond_phase3():
+				return true  # opp cast a spell; they retain priority
 			_state.append_log("Opponent passes priority (stub)")
-			# Recursive call — opp's pass will either flip back or trigger resolution.
 			return _do_pass_priority({})
 	return true
 
@@ -396,7 +469,8 @@ func _resolve_top_of_stack() -> void:
 		owner.graveyard.append(card)
 		_state.append_log("%s resolves" % card.name())
 	_stack_held_cards.erase(iid)
-	# Check win conditions (life ≤ 0).
+	# Run state-based actions after the spell resolves, then check win.
+	_run_sbas()
 	_check_win_conditions()
 
 
@@ -441,27 +515,156 @@ func _do_declare_attacker(action: Dictionary) -> bool:
 	return true
 
 
-# Combat damage resolution. Phase 2: each attacker deals its power to the
-# defending player (no blockers, no first-strike, no trample). Phase 3 will
-# add full combat damage with blockers, multi-damage assignment, and
-# first/double strike.
+# ─── Declare blocker (Phase 3) ─────────────────────────────────────────────
+
+func _legal_declare_blocker(action: Dictionary) -> bool:
+	if _state == null or _state.winner != "":
+		return false
+	if _state.phase_machine.current != PhaseMachine.Phase.COMBAT_BLOCK:
+		return false
+	# Block declaration is a *special action* in MTG — it happens at the
+	# start of COMBAT_BLOCK before priority opens, and doesn't require the
+	# defender to currently hold priority. So we don't gate on priority here.
+	var defending_key: String = _state.opponent_of(_state.active_player_key)
+	var blocker_iid: int = action.get("source_iid", -1)
+	var attacker_iid: int = action.get("attacker_iid", -1)
+	if _state.blockers.has(blocker_iid):
+		return false  # blocker already assigned
+	var found = _state.find_instance(blocker_iid)
+	if found == null or found.card == null:
+		return false
+	var blocker: CardInstance = found.card
+	if found.controller.key != defending_key:
+		return false
+	if found.zone_name != "battlefield":
+		return false
+	if not (blocker.template is CreatureResource):
+		return false
+	if blocker.tapped:
+		return false
+	if not (attacker_iid in _state.attackers):
+		return false
+	return true
+
+
+func _do_declare_blocker(action: Dictionary) -> bool:
+	var blocker_iid: int = action.source_iid
+	var attacker_iid: int = action.attacker_iid
+	_state.blockers[blocker_iid] = attacker_iid
+	var blocker_found = _state.find_instance(blocker_iid)
+	var attacker_found = _state.find_instance(attacker_iid)
+	if blocker_found != null and attacker_found != null:
+		var b: CardInstance = blocker_found.card
+		var a: CardInstance = attacker_found.card
+		b.blocking_iid = attacker_iid
+		_state.append_log("%s blocks %s" % [b.name(), a.name()])
+	return true
+
+
+# ─── State-based actions (SBA) ────────────────────────────────────────────
+# Run after every effect resolution and after combat damage. Walks the
+# battlefield and moves dead creatures (toughness ≤ 0 or damage_marked ≥
+# toughness) to graveyard. Also clears combat-state references to dead
+# creatures so we don't carry stale iids in attackers/blockers maps.
+#
+# SBAs run in a loop because killing a creature might cascade (e.g.,
+# removing a +1/+1 lord could push other creatures below toughness).
+# Capped at 20 iterations as a runaway-loop safety belt.
+func _run_sbas() -> void:
+	var changed := false
+	var safety := 20
+	while safety > 0:
+		safety -= 1
+		var any_died := false
+		for player in [_state.you, _state.opp]:
+			var dying: Array = []
+			for c in player.battlefield:
+				if not (c.template is CreatureResource):
+					continue
+				if c.current_toughness() <= 0 or c.damage_marked >= c.current_toughness():
+					dying.append(c)
+			for c in dying:
+				player.battlefield.erase(c)
+				player.graveyard.append(c)
+				_state.append_log("%s dies" % c.name())
+				_clear_combat_state_for_dead(c.instance_id)
+				any_died = true
+		if not any_died:
+			break
+		changed = true
+	if changed:
+		_check_win_conditions()
+
+
+# When a creature leaves the battlefield, remove its iid from attackers
+# and from any blockers entries (both as blocker and as the blocked target).
+func _clear_combat_state_for_dead(dead_iid: int) -> void:
+	if dead_iid in _state.attackers:
+		_state.attackers.erase(dead_iid)
+	_state.blockers.erase(dead_iid)
+	# Also remove blockers that were blocking this creature
+	for b_iid in _state.blockers.keys():
+		if _state.blockers[b_iid] == dead_iid:
+			_state.blockers.erase(b_iid)
+
+
+# ─── Combat damage resolution (Phase 3) ───────────────────────────────────
+# For each attacker:
+#   - If unblocked: deal power damage to defending player (face damage).
+#   - If blocked: attacker and its blocker(s) deal mutual damage. Phase 3
+#     simplification — multi-block uses simple "all blockers deal full
+#     damage to attacker; attacker deals all damage to first blocker."
+#     Phase 4+ may add player-controlled damage assignment ordering.
+# After damage assignment, SBAs sweep up any dead creatures.
 func _resolve_combat_damage() -> void:
 	if _state.attackers.is_empty():
 		return
 	var defending: Player = _state.player_by_key(_state.opponent_of(_state.active_player_key))
-	for iid in _state.attackers:
-		var found = _state.find_instance(iid)
-		if found == null or found.card == null:
+
+	# Build attacker → list-of-blockers map
+	var attacker_blockers: Dictionary = {}
+	for atk_iid in _state.attackers:
+		attacker_blockers[atk_iid] = []
+	for blk_iid in _state.blockers:
+		var atk_iid: int = _state.blockers[blk_iid]
+		if attacker_blockers.has(atk_iid):
+			attacker_blockers[atk_iid].append(blk_iid)
+
+	for atk_iid in _state.attackers:
+		var atk_found = _state.find_instance(atk_iid)
+		if atk_found == null or atk_found.card == null:
 			continue
-		var attacker: CardInstance = found.card
-		var damage: int = attacker.template.power
-		defending.life -= damage
-		defending.life_lost_this_turn += damage
-		_state.append_log("%s deals %d to %s (life: %d)" % [
-			attacker.name(), damage, defending.name, defending.life])
-	# Attackers stay tapped after combat damage; they're not removed from
-	# state.attackers until cleanup. (Real MTG: attackers list cleared at end
-	# of combat — Phase 3 will handle this. Phase 2 just clears at cleanup.)
+		var attacker: CardInstance = atk_found.card
+		var atk_pow: int = attacker.current_power()
+		var blockers: Array = attacker_blockers.get(atk_iid, [])
+
+		if blockers.is_empty():
+			# Unblocked — face damage
+			defending.life -= atk_pow
+			defending.life_lost_this_turn += atk_pow
+			_state.append_log("%s deals %d to %s (life: %d)" % [
+				attacker.name(), atk_pow, defending.name, defending.life,
+			])
+		else:
+			# Blocked — mutual damage. Attacker dumps full power on first
+			# blocker (Phase 3 simplification); each blocker deals their
+			# power to the attacker.
+			var first_blocker_iid: int = blockers[0]
+			var first_blocker_found = _state.find_instance(first_blocker_iid)
+			if first_blocker_found != null and first_blocker_found.card != null:
+				first_blocker_found.card.damage_marked += atk_pow
+			var total_blocker_dmg: int = 0
+			for b_iid in blockers:
+				var b_found = _state.find_instance(b_iid)
+				if b_found != null and b_found.card != null:
+					total_blocker_dmg += b_found.card.current_power()
+			attacker.damage_marked += total_blocker_dmg
+			_state.append_log("%s (%d) is blocked; mutual damage assigned" % [
+				attacker.name(), atk_pow,
+			])
+
+	# Sweep up dead creatures
+	_run_sbas()
 	_check_win_conditions()
 
 
@@ -480,15 +683,31 @@ func _advance_phase() -> void:
 		PhaseMachine.Phase.UNTAP:
 			# Untap permanents, clear summoning sickness, reset land-per-turn.
 			_state.active_player().untap_step()
+		PhaseMachine.Phase.COMBAT_ATTACK:
+			# Phase 3: opp's hardcoded "always attack" AI fires here on opp's turn.
+			if _state.active_player_key == "opp":
+				_opp_auto_declare_attackers_phase3()
+		PhaseMachine.Phase.COMBAT_BLOCK:
+			# Phase 3: opp's hardcoded "always block" AI fires here on player's turn.
+			if _state.active_player_key == "you":
+				_opp_auto_declare_blockers_phase3()
 		PhaseMachine.Phase.COMBAT_DAMAGE:
-			# Resolve combat damage. Phase 2: face damage only, no blockers.
 			_resolve_combat_damage()
 		PhaseMachine.Phase.CLEANUP:
-			# Clear combat state at end of turn.
+			# Clear combat state and EOT modifiers on every creature.
 			_state.attackers.clear()
 			_state.blockers.clear()
+			for player in [_state.you, _state.opp]:
+				for c in player.battlefield:
+					if c.template is CreatureResource:
+						c.clear_eot_modifiers()
 
-	# Reset priority for the new phase.
+	# Reset priority for the new phase. Per MTG rule 117.1b, the active player
+	# gets priority at the start of every step/phase. (Block declaration is
+	# a special action that happens BEFORE priority opens — we handle that
+	# above as the COMBAT_BLOCK entry hook for opp; for player as defender,
+	# block declaration is gated on phase, not priority — see
+	# _legal_declare_blocker.)
 	_state.priority_player_key = _state.active_player_key
 	_reset_priority_passes()
 	_state.append_log("Phase: %s" % _state.phase_machine.phase_name())
@@ -534,3 +753,117 @@ func _check_win_conditions() -> void:
 			_state.append_log("Game over — %s wins" % _state.player_by_key(_state.winner).name)
 			game_over.emit(_state.winner)
 			return
+
+
+# ─── Phase 3 hardcoded opp AI ──────────────────────────────────────────────
+# These three helpers stand in for a real AI module (Phase 5). They cover
+# only what the Phase 3 demo needs: opp auto-attacks on their turn, auto-
+# blocks on yours, and casts Giant Growth in response to a Lightning Bolt
+# targeting one of their creatures. Phase 5 will replace these with the
+# proper heuristic AI ported from the JS prototype.
+
+func _opp_auto_declare_attackers_phase3() -> void:
+	# Phase 3 simplification: attack with all untapped creatures EXCEPT
+	# leave one back for defense if there are 2+ available. Pure "always
+	# attack" leaves opp tapped and unable to block on your turn, which
+	# (per Joe's playtest feedback) results in an unblockable game.
+	var available: Array = []
+	for c in _state.opp.battlefield:
+		if not (c.template is CreatureResource):
+			continue
+		if c.tapped or c.summoning_sick:
+			continue
+		available.append(c)
+	var to_attack: Array = available.duplicate()
+	if available.size() >= 2:
+		to_attack.pop_back()  # keep one creature untapped for blocking next turn
+	for c in to_attack:
+		c.tapped = true
+		c.attacking = true
+		_state.attackers.append(c.instance_id)
+		_state.append_log("%s attacks (auto)" % c.name())
+
+
+func _opp_auto_declare_blockers_phase3() -> void:
+	# Pair each untapped opp creature with one attacker (one-to-one). Excess
+	# attackers go unblocked; excess blockers stay home.
+	var available_attackers := _state.attackers.duplicate()
+	for c in _state.opp.battlefield:
+		if available_attackers.is_empty():
+			break
+		if not (c.template is CreatureResource):
+			continue
+		if c.tapped or c.summoning_sick:
+			continue
+		var attacker_iid: int = available_attackers.pop_front()
+		_state.blockers[c.instance_id] = attacker_iid
+		c.blocking_iid = attacker_iid
+		var atk_found = _state.find_instance(attacker_iid)
+		if atk_found != null and atk_found.card != null:
+			_state.append_log("%s blocks %s (auto)" % [c.name(), atk_found.card.name()])
+
+
+# Returns true if opp cast Giant Growth in response (in which case caller
+# should NOT also auto-pass priority for opp). Returns false if opp had
+# nothing to do — caller should auto-pass.
+func _opp_tries_to_respond_phase3() -> bool:
+	if _state.stack.is_empty():
+		return false
+	var top = _state.stack.top()
+	if top.controller_key != "you":
+		return false  # not responding to player
+	# Phase 3 only responds to Lightning Bolt
+	var top_iid: int = top.source_iid
+	var top_card: CardInstance = _stack_held_cards.get(top_iid)
+	if top_card == null or top_card.template.card_id != "lightning_bolt":
+		return false
+	var top_targets: Array = top.get("targets", [])
+	if top_targets.is_empty():
+		return false
+	var t: Dictionary = top_targets[0]
+	if t.get("kind", "") != "creature":
+		return false
+	# Is the targeted creature one of opp's? (No point growing player's stuff.)
+	var target_iid: int = t.get("iid", -1)
+	var target_found = _state.find_instance(target_iid)
+	if target_found == null or target_found.card == null:
+		return false
+	if target_found.controller.key != "opp":
+		return false
+	# Find Giant Growth in opp's hand
+	var giant_growth: CardInstance = null
+	for c in _state.opp.hand:
+		if c.template.card_id == "giant_growth":
+			giant_growth = c
+			break
+	if giant_growth == null:
+		return false
+	# Pay G mana — tap an untapped Forest if needed
+	var cost: Dictionary = giant_growth.template.mana_cost
+	if not _state.opp.mana.can_pay(cost):
+		var forest: CardInstance = null
+		for c in _state.opp.battlefield:
+			if c.template is LandResource and c.template.mana_produced.has("G") and not c.tapped:
+				forest = c
+				break
+		if forest == null:
+			return false
+		forest.tapped = true
+		_state.opp.mana.add("G", 1)
+		_state.append_log("Opponent taps %s for G" % forest.name())
+	if not _state.opp.mana.pay(cost):
+		return false
+	# Cast Giant Growth on the target
+	_state.opp.hand.erase(giant_growth)
+	_state.stack.push({
+		"kind": "spell",
+		"source_iid": giant_growth.instance_id,
+		"controller_key": "opp",
+		"targets": [{"kind": "creature", "iid": target_iid}],
+	})
+	_stack_held_cards[giant_growth.instance_id] = giant_growth
+	_state.append_log("Opponent casts Giant Growth targeting %s (in response)" % target_found.card.name())
+	# Caster keeps priority after casting
+	_state.priority_player_key = "opp"
+	_reset_priority_passes()
+	return true

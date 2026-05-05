@@ -22,6 +22,7 @@ const KIND_ACTIVATE_ABILITY := "activate_ability"
 const KIND_PLAY_LAND := "play_land"
 const KIND_CAST_SPELL := "cast_spell"
 const KIND_DECLARE_ATTACKER := "declare_attacker"
+const KIND_DECLARE_BLOCKER := "declare_blocker"
 
 
 static func make_pass_priority() -> Dictionary:
@@ -46,6 +47,17 @@ static func make_cast_spell(source_iid: int, targets: Array = []) -> Dictionary:
 
 static func make_declare_attacker(source_iid: int) -> Dictionary:
 	return {"kind": KIND_DECLARE_ATTACKER, "source_iid": source_iid}
+
+
+# Declare a blocker. blocker_iid is the defending player's creature; attacker_iid
+# is the attacking creature it's blocking. State.blockers is a Dictionary
+# mapping blocker_iid → attacker_iid.
+static func make_declare_blocker(blocker_iid: int, attacker_iid: int) -> Dictionary:
+	return {
+		"kind": KIND_DECLARE_BLOCKER,
+		"source_iid": blocker_iid,
+		"attacker_iid": attacker_iid,
+	}
 
 
 static func target_player(who: String) -> Dictionary:

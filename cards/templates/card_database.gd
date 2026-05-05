@@ -15,10 +15,16 @@ static func get_card(card_id: String) -> CardResource:
 	match card_id:
 		"mountain":
 			return _make_mountain()
+		"forest":
+			return _make_forest()
 		"lightning_bolt":
 			return _make_lightning_bolt()
 		"goblin_raider":
 			return _make_goblin_raider()
+		"grizzly_bears":
+			return _make_grizzly_bears()
+		"giant_growth":
+			return _make_giant_growth()
 		_:
 			push_error("CardDatabase: unknown card_id '%s'" % card_id)
 			return null
@@ -26,7 +32,11 @@ static func get_card(card_id: String) -> CardResource:
 
 # Returns all known card_ids. Used by Engine boot-time predicate validation.
 static func all_card_ids() -> Array[String]:
-	return ["mountain", "lightning_bolt", "goblin_raider"]
+	return [
+		"mountain", "forest",
+		"lightning_bolt", "goblin_raider",
+		"grizzly_bears", "giant_growth",
+	]
 
 
 # Returns all card resources. Used by Engine boot-time predicate validation.
@@ -85,4 +95,46 @@ static func _make_goblin_raider() -> CreatureResource:
 	# No on_cast_effects — when a creature spell resolves, the engine puts it
 	# on the battlefield (its "effect" is becoming a permanent). Phase 2 will
 	# handle this via a special-case in stack resolution, not via an effect kind.
+	return r
+
+
+static func _make_forest() -> LandResource:
+	var r := LandResource.new()
+	r.card_id = "forest"
+	r.display_name = "Forest"
+	r.card_types = ["land"]
+	r.subtypes = ["forest"]
+	r.mana_cost = {}
+	r.oracle_text = "{T}: Add {G}."
+	r.mana_produced = ["G"]
+	return r
+
+
+static func _make_grizzly_bears() -> CreatureResource:
+	var r := CreatureResource.new()
+	r.card_id = "grizzly_bears"
+	r.display_name = "Grizzly Bears"
+	r.card_types = ["creature"]
+	r.subtypes = ["bear"]
+	r.mana_cost = {"G": 1, "C": 1}
+	r.oracle_text = "A vanilla 2/2 — no abilities."
+	r.power = 2
+	r.toughness = 2
+	r.keywords = []
+	return r
+
+
+static func _make_giant_growth() -> SpellResource:
+	var r := SpellResource.new()
+	r.card_id = "giant_growth"
+	r.display_name = "Giant Growth"
+	r.card_types = ["instant"]
+	r.subtypes = []
+	r.mana_cost = {"G": 1}
+	r.oracle_text = "Target creature gets +3/+3 until end of turn."
+	r.requires_target = true
+	r.target_filter = "creature"
+	r.on_cast_effects = [
+		{"kind": "pump", "amount_power": 3, "amount_toughness": 3, "target": "chosen", "duration": "eot"},
+	]
 	return r

@@ -38,6 +38,10 @@ var _cost_label: Label
 var _type_label: Label
 var _pt_label: Label
 var _color_tint: ColorRect
+# Combat-state highlight (overlay above color tint, below labels). Yellow for
+# selected/pending, green for committed in a block, dimmed-red for unblocked
+# attackers. Set via set_combat_highlight() from game_board's UI sync.
+var _combat_highlight: ColorRect
 
 
 func _ready() -> void:
@@ -64,6 +68,16 @@ func _build_text_overlay() -> void:
 	_color_tint.color = Color(0, 0, 0, 0)  # transparent until apply_card_text fills it
 	_color_tint.mouse_filter = MOUSE_FILTER_IGNORE
 	front_face.add_child(_color_tint)
+
+	# Combat-state highlight overlay. Stacks above the color tint so it's
+	# visible at a glance, but below the labels so text stays readable.
+	# Set via set_combat_highlight() based on whether the card is a pending
+	# blocker, committed blocker, blocked attacker, or unblocked attacker.
+	_combat_highlight = ColorRect.new()
+	_combat_highlight.size = card_size
+	_combat_highlight.color = Color(0, 0, 0, 0)
+	_combat_highlight.mouse_filter = MOUSE_FILTER_IGNORE
+	front_face.add_child(_combat_highlight)
 
 	# Name banner — top of card
 	_name_label = Label.new()
@@ -136,7 +150,9 @@ func apply_card_text() -> void:
 		_cost_label.text = _fmt_cost(template.mana_cost)
 		_type_label.text = _fmt_type_line(template)
 		_color_tint.color = _tint_for(template)
-		# P/T only for creatures
+		# P/T only for creatures (initial display from template — call
+		# apply_creature_state to refresh with live current_power/toughness
+		# and damage marker once the instance is in play).
 		if template is CreatureResource:
 			_pt_label.text = "%d/%d" % [template.power, template.toughness]
 			_pt_label.visible = true
@@ -147,6 +163,32 @@ func apply_card_text() -> void:
 		_type_label.text = ""
 		_color_tint.color = Color(0, 0, 0, 0)
 		_pt_label.visible = false
+
+
+# Refresh the P/T badge from a live CardInstance — shows current_power/
+# current_toughness (base + temp + counters) and a "(-N)" damage marker
+# when wounded. Pumped creatures show their boosted stats and the label
+# turns green; damaged creatures show the marker and the label turns red.
+func apply_creature_state(inst: CardInstance) -> void:
+	if _pt_label == null:
+		return
+	if inst == null or inst.template == null or not (inst.template is CreatureResource):
+		_pt_label.visible = false
+		return
+	var p: int = inst.current_power()
+	var t: int = inst.current_toughness()
+	var dmg: int = inst.damage_marked
+	var pumped: bool = inst.temp_power > 0 or inst.temp_toughness > 0
+	if dmg > 0:
+		_pt_label.text = "%d/%d (-%d)" % [p, t, dmg]
+		_pt_label.add_theme_color_override("font_color", Color(1.0, 0.5, 0.5))  # red-ish for damaged
+	elif pumped:
+		_pt_label.text = "%d/%d*" % [p, t]
+		_pt_label.add_theme_color_override("font_color", Color(0.6, 1.0, 0.6))  # green-ish for pumped
+	else:
+		_pt_label.text = "%d/%d" % [p, t]
+		_pt_label.add_theme_color_override("font_color", Color(1, 0.92, 0.6))  # default gold
+	_pt_label.visible = true
 
 
 # Mana cost as compact symbols, e.g. {"R":1} -> "R", {"W":1, "C":2} -> "2W".
@@ -200,6 +242,27 @@ func _primary_color(t: CardResource) -> String:
 	if t is LandResource and not t.mana_produced.is_empty():
 		return t.mana_produced[0]
 	return ""
+
+
+# ─── Combat highlight ──────────────────────────────────────────────────────
+
+# Apply a combat-state tint to the card. Recognized states:
+#   "none"          — clear (no highlight)
+#   "pending"       — clicked as blocker, waiting for attacker pick (yellow)
+#   "committed"     — block declared (green) — attacker or blocker side
+#   "unblocked"     — attacker that no blocker stopped (dim red)
+func set_combat_highlight(state: String) -> void:
+	if _combat_highlight == null:
+		return
+	match state:
+		"pending":
+			_combat_highlight.color = Color(1.0, 0.95, 0.30, 0.40)  # bright yellow
+		"committed":
+			_combat_highlight.color = Color(0.30, 0.85, 0.45, 0.32)  # green
+		"unblocked":
+			_combat_highlight.color = Color(0.95, 0.35, 0.30, 0.25)  # dim red
+		_:
+			_combat_highlight.color = Color(0, 0, 0, 0)
 
 
 # ─── Drag / hover overrides ────────────────────────────────────────────────

@@ -45,9 +45,20 @@ static func _apply_damage_to_target(t: Dictionary, amount: int, ctx: Dictionary)
 			p.life_lost_this_turn += amount
 			_log(ctx, "%s takes %d damage from %s (life: %d)" % [p.name, amount, ctx.source_name, p.life])
 		"creature":
-			# Phase 2+: deal damage to a creature on the battlefield.
-			# For Phase 1, log and ignore — there are no creatures yet.
-			push_warning("damage: creature target not implemented in Phase 1")
+			# Find the creature instance on the battlefield. If gone, fizzle.
+			var iid: int = t.get("iid", -1)
+			var found = ctx.state.find_instance(iid)
+			if found == null or found.card == null or found.zone_name != "battlefield":
+				_log(ctx, "%s fizzles (target gone)" % ctx.source_name)
+				return
+			var creature: CardInstance = found.card
+			creature.damage_marked += amount
+			_log(ctx, "%s deals %d to %s (marked: %d / toughness %d)" % [
+				ctx.source_name, amount, creature.name(),
+				creature.damage_marked, creature.current_toughness(),
+			])
+			# State-based actions will run after this effect to clean up
+			# any creature with damage_marked >= toughness.
 		_:
 			push_warning("damage: unknown target kind '%s'" % t.get("kind", ""))
 
