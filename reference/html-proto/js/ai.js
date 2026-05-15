@@ -509,6 +509,39 @@ function decideMain(state, who, actions) {
   return {type:'pass'};
 }
 
+// Enumerate spells/abilities in `actions` that deal damage to opp's face.
+// Shared by findBurnLethal (single-spell kill check) and
+// computeReservedBurnForLethal (multi-spell reserved-burn planner).
+function getDirectBurnSources(state, who, actions) {
+  const them = opp(who);
+  const sources = [];
+  for (const a of actions) {
+    if (a.type !== 'castSpell' && a.type !== 'activateAbility') continue;
+    const tgt = a.targets && a.targets[0];
+    if (!tgt || tgt.kind !== 'player' || tgt.who !== them) continue;
+    let amount = 0;
+    let cost = 0;
+    if (a.type === 'castSpell') {
+      const card = state[who].hand.find(c => c.iid === a.cardIid);
+      if (!card) continue;
+      // effectsForMode handles modal cards transparently (modeIdx defaults to 0).
+      const dmg = ENGINE.effectsForMode(card, a.modeIdx).find(e => e.kind === 'damage');
+      if (!dmg) continue;
+      amount = dmg.amount;
+      cost = ENGINE.cardCost(card);
+    } else {
+      const card = state[who].battlefield.find(c => c.iid === a.cardIid);
+      if (!card || !card.abilities) continue;
+      const ab = card.abilities[a.abilityIdx];
+      const dmg = ab && ab.effects && ab.effects.find(e => e.kind === 'damage');
+      if (!dmg) continue;
+      amount = dmg.amount;
+    }
+    sources.push({ action: a, iid: a.cardIid, amount, cost });
+  }
+  return sources;
+}
+
 // MAIN1 multi-spell lethal projection: attack damage + post-combat burn-to-face.
 // Returns iids to reserve for burn during MAIN1, or null if no lethal.
 // Conservative — only kind:'damage' at player, no pump combos or X-spells.
@@ -529,43 +562,15 @@ function computeReservedBurnForLethal(state, who) {
     const out = simulateCombat(state, who, eligible, blocks);
     projectedDamage = Math.max(0, out.damageToDefender - out.defenderLifeGain);
   }
-  // Find castable burn-to-face from hand + activated abilities. Sort by
-  // cost ascending so we reserve the cheapest sources first (most likely
-  // to actually be castable post-combat with available mana).
-  const burnSources = [];
-  // Hand burn spells. Walk legal cast actions to confirm castability.
-  const actions = ENGINE.getLegalActions(who);
-  for (const a of actions) {
-    if (a.type === 'castSpell') {
-      const card = state[who].hand.find(c => c.iid === a.cardIid);
-      if (!card) continue;
-      const eff = ENGINE.effectsForMode(card, a.modeIdx).find(e => e.kind === 'damage');
-      if (!eff) continue;
-      // Must be able to target opp directly (some damage spells are
-      // creature-only; can't finish with those).
-      const tgt = a.targets && a.targets[0];
-      if (!tgt || tgt.kind !== 'player' || tgt.who !== them) continue;
-      burnSources.push({ iid: a.cardIid, amount: eff.amount, cost: ENGINE.cardCost(card) });
-    } else if (a.type === 'activateAbility') {
-      const c = state[who].battlefield.find(x => x.iid === a.cardIid);
-      if (!c || !c.abilities) continue;
-      const ab = c.abilities[a.abilityIdx];
-      if (!ab) continue;
-      const eff = (ab.effects || []).find(e => e.kind === 'damage');
-      if (!eff) continue;
-      const tgt = a.targets && a.targets[0];
-      if (!tgt || tgt.kind !== 'player' || tgt.who !== them) continue;
-      burnSources.push({ iid: a.cardIid, amount: eff.amount, cost: 0 });
-    }
-  }
-  if (burnSources.length === 0) return null;
+  const sources = getDirectBurnSources(state, who, ENGINE.getLegalActions(who));
+  if (sources.length === 0) return null;
   // Sort cheapest-first so we use minimal mana to achieve lethal — leaves
   // the maximum chance the line is mana-feasible post-combat.
-  burnSources.sort((a, b) => a.cost - b.cost);
+  sources.sort((a, b) => a.cost - b.cost);
   // Greedily accumulate burn until lethal achieved.
   let acc = projectedDamage;
   const reserved = new Set();
-  for (const src of burnSources) {
+  for (const src of sources) {
     if (acc >= oppLife) break;
     acc += src.amount;
     reserved.add(src.iid);
@@ -574,42 +579,13 @@ function computeReservedBurnForLethal(state, who) {
   return null;
 }
 
-// Look for a burn spell or activated ability whose damage would kill opp
-// directly. We only do single-spell lethal here — multi-spell sequencing
-// is a richer search problem we don't need yet.
+// Single-spell lethal: any one burn source that kills opp on its own.
+// Multi-spell sequencing is computeReservedBurnForLethal's job.
 function findBurnLethal(state, who, actions) {
-  const them = opp(who);
-  const oppLife = state[them].life;
+  const oppLife = state[opp(who)].life;
   if (oppLife <= 0) return null;
-  for (const a of actions) {
-    if (a.type !== 'castSpell' && a.type !== 'activateAbility') continue;
-    if (!a.targets || !a.targets[0]) continue;
-    const t = a.targets[0];
-    if (t.kind !== 'player' || t.who !== them) continue;
-    // Find the damage amount of this action's effect.
-    let amount = 0;
-    if (a.type === 'castSpell') {
-      const card = state[who].hand.find(c => c.iid === a.cardIid);
-      if (!card) continue;
-      // Read effects from the action's chosen mode (or flat effects for
-      // non-modal). modeIdx defaults to 0 transparently.
-      const effects = ENGINE.effectsForMode(card, a.modeIdx);
-      if (!effects.length) continue;
-      const dmg = effects.find(e => e.kind === 'damage');
-      if (!dmg) continue;
-      amount = dmg.amount;
-    } else {
-      const card = state[who].battlefield.find(c => c.iid === a.cardIid);
-      if (!card || !card.abilities) continue;
-      const ab = card.abilities[a.abilityIdx];
-      if (!ab || !ab.effects) continue;
-      const dmg = ab.effects.find(e => e.kind === 'damage');
-      if (!dmg) continue;
-      amount = dmg.amount;
-    }
-    if (amount >= oppLife) return a;
-  }
-  return null;
+  const killer = getDirectBurnSources(state, who, actions).find(s => s.amount >= oppLife);
+  return killer ? killer.action : null;
 }
 
 // Pick the land that fixes us most. If our hand has an unplayable card due
