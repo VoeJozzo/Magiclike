@@ -4433,8 +4433,7 @@ function remapEffectSlots(effects, offset) {
   });
 }
 
-function makeCard(tplId, stickers, slotIdx, empowerRolls, permaBuffs, bonusTr
-igger, stapledTpls, subtypeRolls, slotMeta) {
+function makeCard(tplId, stickers, slotIdx, empowerRolls, permaBuffs, bonusTrigger, stapledTpls, subtypeRolls, slotMeta) {
   // Synthesize the template if the slot has staples. Otherwise look up the
   // base CARDS entry directly. stapledTpls is an array of tplIds to merge
   // into the base; absent/empty means a normal single-card slot.
@@ -9776,8 +9775,7 @@ function isLegalAction(who, action) {
         blockerCount[aIid] = (blockerCount[aIid] || 0) + 1;
         const fb = findCard(bIid), fa = findCard(aIid);
         if (!fb || fb.controller !== who) return false;
-        if (!fa || !G.attackers.include
-s(aIid)) return false;
+        if (!fa || !G.attackers.includes(aIid)) return false;
         if (!canCreatureBlock(fb.card, fa.card)) return false;
       }
       // Menace: any attacker with menace must be blocked by 2+ creatures, or 0.
@@ -15467,8 +15465,7 @@ function nextGame() {
   if (RUN.getReward()) return;
   // If the just-cleared node has a fork, show the map and let the player
   // pick before starting the next combat. The map UI calls pickMapNodeClick
-  // which clears pendingMapChoice an
-d re-enters this flow via startNextGame.
+  // which clears pendingMapChoice and re-enters this flow via startNextGame.
   const mapState = RUN.getMapState && RUN.getMapState();
   if (mapState && mapState.pendingChoice) {
     document.getElementById('gameover').classList.remove('vis');
