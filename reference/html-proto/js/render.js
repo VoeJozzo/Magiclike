@@ -246,9 +246,8 @@ function render() {
 
   const sb = document.getElementById('status');
   // Search modal — show/hide and populate.
-  const searchModal = document.getElementById('searchModal');
   if (G.pendingSearch && G.pendingSearch.who === 'you') {
-    searchModal.classList.add('vis');
+    Modal.show('searchModal', { dismissible: false });
     setText('searchTitle', `${G.pendingSearch.source.toUpperCase()} — PICK A CARD`);
     const list = document.getElementById('searchList');
     list.innerHTML = '';
@@ -270,13 +269,12 @@ function render() {
       }
     }
   } else {
-    searchModal.classList.remove('vis');
+    Modal.hide('searchModal');
   }
   // Trigger-build modal — Codex-style procedural-trigger pickers.
   // Three-step flow: condition → effect → (optional) compare new vs current.
-  const tbModal = document.getElementById('triggerBuildModal');
   if (G.pendingTriggerBuild && G.pendingTriggerBuild.who === 'you') {
-    tbModal.style.display = 'flex';
+    Modal.show('triggerBuildModal', { dismissible: false });
     const ptb = G.pendingTriggerBuild;
     // Look up the source card's name for displays.
     let sourceName = 'this card';
@@ -341,13 +339,12 @@ function render() {
       list.appendChild(kBtn);
     }
   } else {
-    tbModal.style.display = 'none';
+    Modal.hide('triggerBuildModal');
   }
   // Number-choice modal — Archdemon of Bargains. Player picks an integer
   // in [min, max]. Each integer is a button; clicking submits the action.
-  const ncModal = document.getElementById('numberChoiceModal');
   if (G.pendingNumberChoice && G.pendingNumberChoice.who === 'you') {
-    ncModal.style.display = 'flex';
+    Modal.show('numberChoiceModal', { dismissible: false });
     const p = G.pendingNumberChoice;
     document.getElementById('numberChoiceSubtitle').innerHTML =
       `${p.source}: choose a number from ${p.min} to ${p.max}.<br>` +
@@ -365,14 +362,13 @@ function render() {
       btns.appendChild(b);
     }
   } else {
-    ncModal.style.display = 'none';
+    Modal.hide('numberChoiceModal');
   }
   // Symmetricize modal. Target's controller picks one of three labels;
   // each shows the value that all three will become. Click sends the
   // symmetricizeChoice action through CONTROLLER.
-  const scModal = document.getElementById('symmetricizeChoiceModal');
   if (G.pendingSymmetricizeChoice && G.pendingSymmetricizeChoice.who === 'you') {
-    scModal.style.display = 'flex';
+    Modal.show('symmetricizeChoiceModal', { dismissible: false });
     const p = G.pendingSymmetricizeChoice;
     document.getElementById('symmetricizeChoiceSubtitle').innerHTML =
       `${p.source} targets <b>${p.targetName}</b> (currently ${p.values.power}/${p.values.toughness} for {${p.values.cost}}).<br>` +
@@ -394,19 +390,18 @@ function render() {
       btns.appendChild(b);
     }
   } else {
-    scModal.style.display = 'none';
+    Modal.hide('symmetricizeChoiceModal');
   }
   // Modal-spell mode picker. Shown when player clicks a modal card from
   // hand. One button per mode, each labeled with the modeName from the
   // card template. Modes that aren't currently legal (no valid target,
   // can't pay cost, etc.) are visually disabled but still rendered so
   // the player sees what the card CAN do, even if not right now.
-  const modalChoiceModal = document.getElementById('modalChoiceModal');
   const pmc = CONTROLLER.pendingModalChoice();
   if (pmc) {
     const card = G.you.hand.find(c => c.iid === pmc.cardIid);
     if (card) {
-      modalChoiceModal.classList.add('vis');
+      Modal.show('modalChoiceModal', { onClose: () => CONTROLLER.cancelModalChoice() });
       const isUrlArt = typeof card.art === 'string'
         && (card.art.startsWith('data:') || card.art.startsWith('http'));
       const inlineArt = isUrlArt ? '🎴' : (card.art || '');
@@ -440,14 +435,14 @@ function render() {
       }
     } else {
       // Card no longer in hand (shouldn't happen, but defensive).
-      modalChoiceModal.classList.remove('vis');
+      Modal.hide('modalChoiceModal');
     }
   } else {
-    modalChoiceModal.classList.remove('vis');
+    Modal.hide('modalChoiceModal');
   }
   if (G.gameOver) {
     sb.textContent = `Game over — ${G[G.winner].name} wins.`;
-    document.getElementById('gameover').classList.add('vis');
+    Modal.show('gameover', { dismissible: false });
     const box = document.getElementById('gameover-box');
     box.classList.toggle('win', G.winner === 'you');
     box.classList.toggle('lose', G.winner === 'opp');
@@ -754,7 +749,7 @@ function submitGraveyardTarget(iid) {
   // routes the chosen target through the right path (trigger pick vs
   // pending spell cast) and returns true if it submitted.
   if (CONTROLLER.submitTargetedAction(target)) {
-    document.getElementById('zoneModal').classList.remove('vis');
+    Modal.hide('zoneModal');
   }
 }
 

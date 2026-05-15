@@ -18,6 +18,63 @@ let aiThinking = false;         // true while AI.decide() promise is in-flight
 let inDraft = false;            // true while draft screen is up
 let lastGameRecorded = false;   // ensures we only record run result once per game
 
+// Modal helper: standardized show/hide for any modal using the '.vis' class.
+// Adds Escape-to-close (per-modal opt-in via dismissible), focus restoration,
+// and aria-modal attributes. Stack-aware so nested modals dismiss LIFO.
+//
+// `dismissible: false` for modals where Escape would softlock — gameover (no
+// other exit), neow (boon pick required before draft), postDraftOffer (basic
+// pick required before game 1), reward (must commit a reward to continue).
+const Modal = {
+  _stack: [],
+  _escapeBound: false,
+  show(id, opts) {
+    opts = opts || {};
+    const el = document.getElementById(id);
+    if (!el) return;
+    // Idempotent: render-driven callers may invoke this every frame while
+    // the modal is up. Don't push duplicates onto the stack.
+    if (this._stack.some(e => e.id === id)) return;
+    this._stack.push({
+      id,
+      dismissible: opts.dismissible !== false,
+      onClose: opts.onClose || null,
+      prevFocus: document.activeElement,
+    });
+    el.classList.add('vis');
+    el.setAttribute('role', 'dialog');
+    el.setAttribute('aria-modal', 'true');
+    if (!this._escapeBound) {
+      document.addEventListener('keydown', this._onEscape);
+      this._escapeBound = true;
+    }
+  },
+  hide(id, opts) {
+    const el = document.getElementById(id);
+    if (el) {
+      el.classList.remove('vis');
+      el.removeAttribute('role');
+      el.removeAttribute('aria-modal');
+    }
+    const idx = this._stack.findIndex(e => e.id === id);
+    if (idx === -1) return;
+    const entry = this._stack[idx];
+    this._stack.splice(idx, 1);
+    if (entry.prevFocus && typeof entry.prevFocus.focus === 'function') {
+      try { entry.prevFocus.focus(); } catch (_) {}
+    }
+    // onClose fires only when the user dismissed via Escape — code-driven
+    // hides (render-loop, explicit caller) already know what they're doing.
+    if (entry.onClose && opts && opts.userInitiated) entry.onClose();
+  },
+  _onEscape(e) {
+    if (e.key !== 'Escape') return;
+    const top = Modal._stack[Modal._stack.length - 1];
+    if (!top || !top.dismissible) return;
+    Modal.hide(top.id, { userInitiated: true });
+  },
+};
+
 // Visually show that the AI is awaiting a response. Non-invasive — adds a
 // class on the body so CSS can style anything we want (we just append a
 // pulsing dot to the status bar text via the render path).
@@ -150,7 +207,6 @@ function appendStickerSectionToBrowser(inner) {
 }
 
 function showCardBrowser() {
-  const modal = document.getElementById('cardBrowserModal');
   const inner = document.getElementById('cardBrowserInner');
   inner.innerHTML = '';
 
@@ -164,7 +220,7 @@ function showCardBrowser() {
   const closeBtn = document.createElement('button');
   closeBtn.textContent = 'Close';
   closeBtn.style.cssText = 'padding:6px 14px;background:#332;border:1px solid #663;color:#ccc;cursor:pointer;border-radius:3px;font-family:inherit;font-size:12px';
-  closeBtn.onclick = () => { modal.style.display = 'none'; };
+  closeBtn.onclick = () => { Modal.hide('cardBrowserModal'); };
   header.appendChild(title);
   header.appendChild(closeBtn);
   inner.appendChild(header);
@@ -235,9 +291,9 @@ function showCardBrowser() {
     inner.appendChild(section);
   }
 
-  modal.style.display = 'block';
+  Modal.show('cardBrowserModal');
   // Reset scroll on each open.
-  modal.scrollTop = 0;
+  document.getElementById('cardBrowserModal').scrollTop = 0;
 }
 
 function showStartScreen() {
@@ -399,7 +455,7 @@ function newRun(mode) {
   // out what makes sense. The pendingNeowModifier stays null and RUN.start
   // gets called with no modifier, same as if the player had picked a
   // hypothetical "no boon" option.
-  document.getElementById('gameover').classList.remove('vis');
+  Modal.hide('gameover');
   pendingNeowModifier = null;
   pendingDraftMode = mode || 'classic';
   if (pendingDraftMode === 'desertCube') {
@@ -438,7 +494,6 @@ function showNeowChoice() {
 
   const offered = [...alwaysIds, ...randomIds];
 
-  const modal = document.getElementById('neowModal');
   const optsEl = document.getElementById('neowOptions');
   optsEl.innerHTML = '';
   for (const id of offered) {
@@ -453,12 +508,12 @@ function showNeowChoice() {
     `;
     optsEl.appendChild(div);
   }
-  modal.classList.add('vis');
+  Modal.show('neowModal', { dismissible: false });
 }
 
 function pickNeow(id) {
   pendingNeowModifier = id;
-  document.getElementById('neowModal').classList.remove('vis');
+  Modal.hide('neowModal');
   // Now begin the actual draft.
   DRAFT.startDraft(pendingDraftMode);
   inDraft = true;
@@ -498,13 +553,13 @@ function nextGame() {
   // which clears pendingMapChoice and re-enters this flow via startNextGame.
   const mapState = RUN.getMapState && RUN.getMapState();
   if (mapState && mapState.pendingChoice) {
-    document.getElementById('gameover').classList.remove('vis');
-    document.getElementById('rewardModal').classList.remove('vis');
+    Modal.hide('gameover');
+    Modal.hide('rewardModal');
     renderMap();
     return;
   }
-  document.getElementById('gameover').classList.remove('vis');
-  document.getElementById('rewardModal').classList.remove('vis');
+  Modal.hide('gameover');
+  Modal.hide('rewardModal');
   lastGameRecorded = false;
   startNextGameWithBossBanner();
 }
@@ -518,7 +573,7 @@ function gameOverClick() {
   if (RUN.isActive()) {
     nextGame();
   } else {
-    document.getElementById('gameover').classList.remove('vis');
+    Modal.hide('gameover');
     showStartScreen();
   }
 }
@@ -685,9 +740,8 @@ function attachMapLongPress(el, label) {
 function renderPostDraftOffer() {
   if (!RUN.getPostDraftOffer) return;
   const offer = RUN.getPostDraftOffer();
-  const modal = document.getElementById('postDraftOfferModal');
-  if (!offer) { modal.style.display = 'none'; return; }
-  modal.style.display = 'flex';
+  if (!offer) { Modal.hide('postDraftOfferModal'); return; }
+  Modal.show('postDraftOfferModal', { dismissible: false });
   const btns = document.getElementById('postDraftOfferButtons');
   btns.innerHTML = '';
   // One button per distinct basic the player drafted. Use the basic's
@@ -713,7 +767,7 @@ function renderPostDraftOffer() {
 // modal, and starts game 1.
 function pickPostDraftOfferClick(tplId) {
   if (!RUN.pickPostDraftOffer(tplId)) return;
-  document.getElementById('postDraftOfferModal').style.display = 'none';
+  Modal.hide('postDraftOfferModal');
   lastGameRecorded = false;
   startNextGameWithBossBanner();
   render();
@@ -721,12 +775,11 @@ function pickPostDraftOfferClick(tplId) {
 
 function renderMap() {
   const ms = RUN.getMapState();
-  const modal = document.getElementById('mapModal');
   if (!ms || !ms.pendingChoice) {
-    modal.classList.remove('vis');
+    Modal.hide('mapModal');
     return;
   }
-  modal.classList.add('vis');
+  Modal.show('mapModal');
   // Sector indicator in title — Roman numerals for that classic
   // tabletop-campaign feel.
   const toRoman = n => {
@@ -904,7 +957,7 @@ function renderMap() {
 
 function pickMapNodeClick(nodeId) {
   if (!RUN.pickMapNode(nodeId)) return;
-  document.getElementById('mapModal').classList.remove('vis');
+  Modal.hide('mapModal');
   lastGameRecorded = false;
   startNextGameWithBossBanner();
   render();
@@ -977,12 +1030,11 @@ function showBossBanner(bossName, icon) {
 
 function renderReward() {
   const reward = RUN.getReward();
-  const modal = document.getElementById('rewardModal');
   if (!reward) {
-    modal.classList.remove('vis');
+    Modal.hide('rewardModal');
     return;
   }
-  modal.classList.add('vis');
+  Modal.show('rewardModal', { dismissible: false });
   // Show "your colors" pip row across all reward phases — the player wants
   // continuity with the draft HUD when deciding what to pick.
   renderColorHud('rewardColors', RUN.getSlots());
@@ -2160,7 +2212,6 @@ function openZone(who, zone) {
   const G = ENGINE.state();
   if (!G || !G[who]) return;
   const cards = G[who][zone] || [];
-  const modal = document.getElementById('zoneModal');
   const titleEl = document.getElementById('zoneTitle');
   const listEl = document.getElementById('zoneList');
   const ZONE_LABELS = {graveyard:'GRAVEYARD', exile:'EXILE'};
@@ -2188,12 +2239,12 @@ function openZone(who, zone) {
       listEl.appendChild(btn);
     }
   }
-  modal.classList.add('vis');
+  Modal.show('zoneModal');
 }
 
 function closeZone(e) {
   if (e && e.target && e.target.id !== 'zoneModal' && e.target.id !== 'zoneCloseBtn') return;
-  document.getElementById('zoneModal').classList.remove('vis');
+  Modal.hide('zoneModal');
 }
 
 function toggleLog() {

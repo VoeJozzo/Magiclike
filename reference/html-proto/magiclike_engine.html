@@ -191,6 +191,16 @@ button:disabled{opacity:.4;cursor:not-allowed}
 #rewardModal.vis{display:flex}
 #mapModal{position:fixed;inset:0;background:rgba(0,0,0,.92);display:none;align-items:flex-start;justify-content:center;z-index:1100;padding:20px;overflow-y:auto}
 #mapModal.vis{display:flex}
+#postDraftOfferModal{position:fixed;inset:0;background:rgba(0,0,0,.92);display:none;align-items:center;justify-content:center;z-index:1100;padding:20px;box-sizing:border-box}
+#postDraftOfferModal.vis{display:flex}
+#cardBrowserModal{position:fixed;inset:0;background:rgba(0,0,0,.96);z-index:1150;display:none;overflow-y:auto;padding:16px;box-sizing:border-box;font-family:inherit}
+#cardBrowserModal.vis{display:block}
+#triggerBuildModal{position:fixed;inset:0;background:rgba(0,0,0,.88);display:none;align-items:center;justify-content:center;z-index:1100;padding:20px;box-sizing:border-box}
+#triggerBuildModal.vis{display:flex}
+#numberChoiceModal{position:fixed;inset:0;background:rgba(0,0,0,.92);display:none;align-items:center;justify-content:center;z-index:1100;padding:20px;box-sizing:border-box}
+#numberChoiceModal.vis{display:flex}
+#symmetricizeChoiceModal{position:fixed;inset:0;background:rgba(0,0,0,.92);display:none;align-items:center;justify-content:center;z-index:1100;padding:20px;box-sizing:border-box}
+#symmetricizeChoiceModal.vis{display:flex}
 #mapBox{background:#101820;border:2px solid #66ddaa;border-radius:10px;padding:24px 18px;max-width:760px;width:100%;text-align:center;box-shadow:0 0 30px rgba(102,221,170,.2);margin:auto}
 #mapTitle{color:#66ddaa;font-size:18px;letter-spacing:2px;margin-bottom:6px;text-transform:uppercase}
 #mapSubtitle{color:#7aa;font-size:11px;margin-bottom:18px}
@@ -431,7 +441,7 @@ body.ai-thinking #status{
 <!-- Trigger-build modal — appears when a buildOnDraw card is drawn.
      Shows three randomly-rolled trigger options as picker cards, plus
      a "keep current" button if the slot already has a bonus trigger. -->
-<div id="triggerBuildModal" style="position:fixed;inset:0;background:rgba(0,0,0,.88);display:none;align-items:center;justify-content:center;z-index:1100;padding:20px;box-sizing:border-box">
+<div id="triggerBuildModal">
   <div id="triggerBuildBox" style="background:#1a1822;border:2px solid #ffd700;border-radius:8px;padding:20px;max-width:520px;width:100%;max-height:90vh;overflow-y:auto;font-family:Georgia,serif;color:#ddd">
     <h2 id="triggerBuildTitle" style="color:#ffd700;font-size:18px;margin:0 0 6px 0;text-align:center;letter-spacing:0.1em">📜 BUILD AN ABILITY</h2>
     <div id="triggerBuildSubtitle" style="color:#888;font-size:11px;text-align:center;margin-bottom:14px;font-style:italic"></div>
@@ -441,21 +451,21 @@ body.ai-thinking #status{
     </div>
   </div>
 </div>
-<div id="numberChoiceModal" style="position:fixed;inset:0;background:rgba(0,0,0,.92);display:none;align-items:center;justify-content:center;z-index:1100;padding:20px;box-sizing:border-box">
+<div id="numberChoiceModal">
   <div id="numberChoiceBox" style="background:#1a0820;border:2px solid #cc44aa;border-radius:8px;padding:24px 20px;max-width:480px;width:100%;font-family:Georgia,serif;color:#ddd;box-shadow:0 0 30px rgba(204,68,170,.3)">
     <h2 id="numberChoiceTitle" style="color:#ee88cc;font-size:18px;margin:0 0 8px 0;text-align:center;letter-spacing:0.1em">👹 THE BARGAIN</h2>
     <div id="numberChoiceSubtitle" style="color:#aaa;font-size:12px;text-align:center;margin-bottom:18px;font-style:italic;line-height:1.5"></div>
     <div id="numberChoiceButtons" style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap"></div>
   </div>
 </div>
-<div id="symmetricizeChoiceModal" style="position:fixed;inset:0;background:rgba(0,0,0,.92);display:none;align-items:center;justify-content:center;z-index:1100;padding:20px;box-sizing:border-box">
+<div id="symmetricizeChoiceModal">
   <div id="symmetricizeChoiceBox" style="background:#0a0e1a;border:2px solid #88aacc;border-radius:8px;padding:24px 20px;max-width:520px;width:100%;font-family:Georgia,serif;color:#ddd;box-shadow:0 0 30px rgba(136,170,204,.3)">
     <h2 style="color:#aaccee;font-size:18px;margin:0 0 8px 0;text-align:center;letter-spacing:0.1em">⚖ SYMMETRICIZE</h2>
     <div id="symmetricizeChoiceSubtitle" style="color:#aaa;font-size:12px;text-align:center;margin-bottom:18px;font-style:italic;line-height:1.5"></div>
     <div id="symmetricizeChoiceButtons" style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap"></div>
   </div>
 </div>
-<div id="postDraftOfferModal" style="position:fixed;inset:0;background:rgba(0,0,0,.92);display:none;align-items:center;justify-content:center;z-index:1100;padding:20px;box-sizing:border-box">
+<div id="postDraftOfferModal">
   <div style="background:#0e1c14;border:2px solid #66bb6a;border-radius:8px;padding:24px 20px;max-width:520px;width:100%;font-family:Georgia,serif;color:#ddd;box-shadow:0 0 30px rgba(102,187,106,.25)">
     <h2 style="color:#9fdfa1;font-size:18px;margin:0 0 8px 0;text-align:center;letter-spacing:0.1em">🌱 A GIFT BEFORE THE JOURNEY</h2>
     <div style="color:#aaa;font-size:12px;text-align:center;margin-bottom:18px;font-style:italic;line-height:1.5">
@@ -466,7 +476,7 @@ body.ai-thinking #status{
 </div>
 <div id="modalChoiceModal"><div id="modalChoiceBox"><h2>CHOOSE A MODE</h2><div id="modalChoiceCardName"></div><div id="modalChoiceList"></div><button id="modalChoiceCancelBtn" onclick="CONTROLLER.cancelModalChoice()">Cancel</button></div></div>
 <div id="zoneModal" onclick="CONTROLLER.closeZone(event)"><div id="zoneBox" onclick="event.stopPropagation()"><h2 id="zoneTitle">ZONE</h2><div id="zoneList"></div><button id="zoneCloseBtn" onclick="CONTROLLER.closeZone()" style="margin-top:12px;padding:4px 14px;background:#332;border:1px solid #663;color:#ccc;font-family:inherit;cursor:pointer;border-radius:3px">Close</button></div></div>
-<div id="cardBrowserModal" style="position:fixed;inset:0;background:rgba(0,0,0,.96);z-index:1150;display:none;overflow-y:auto;padding:16px;box-sizing:border-box;font-family:inherit">
+<div id="cardBrowserModal">
   <div id="cardBrowserInner" style="max-width:960px;margin:0 auto;color:#ccc"></div>
 </div>
 <div id="neowModal">
