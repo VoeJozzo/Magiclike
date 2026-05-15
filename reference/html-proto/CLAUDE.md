@@ -1,31 +1,28 @@
 # Magiclike — Rules Engine
 
-Magic: The Gathering-style card game. Currently a single self-contained HTML file (`magiclike_engine.html`). Vanilla JS, no build step, no frameworks, no network calls. Open in any modern browser to play.
+Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folder of vanilla-JS modules — no build step, no frameworks, no network calls. Open in any modern browser to play.
 
-Current version: `v0.99.48` (defined at `magiclike_engine.html:404`).
+Current version: `v1.0.128` (defined at `js/main.js`, `const VERSION`).
 
 ## File structure
 
-Currently everything lives in `magiclike_engine.html`. This started as a Claude.ai artifact, where single-file is mandatory. Splitting into modules (`cards.js`, `engine.js`, `ai.js`, `ui.js`) is acceptable when navigability clearly outweighs portability — but check with the user first; don't refactor preemptively. ES modules work without a build step, so a multi-file split wouldn't require Webpack/Vite.
+The codebase was a single self-contained HTML file until it crossed ~19k lines. It's now split into per-subsystem JS files loaded as plain `<script src>` tags (no ES modules, no build step). The HTML shell holds the body, CSS, and seven script tags in dependency order.
 
-Also in the repo: `index.html`, a small redirect that points GitHub Pages at the engine file.
+Also in the repo: `index.html` at the repo root — a small redirect that points GitHub Pages at the engine file.
 
-## Module layout (line ranges in the JS section, lines 397-10859)
+## Module layout
 
-| Module | Lines | Role |
-|---|---|---|
-| Card data (`CARDS`) | 444-1743 | ~217 card templates by color |
-| Stickers / empowerment | 1859-1926 | Card-modifier system |
-| `ENGINE` (IIFE) | 2075-5206 | State, mana, effects, triggers, phases, combat |
-| Card valuation | 2505-2882 | Heuristics shared by AI and draft |
-| `EFFECTS` dispatch | 2958+ | ~40 effect kinds (damage, draw, pump, etc.) |
-| `AI` (IIFE) | 5507-6659 | Decision logic, combat sim, lethal detection |
-| `DRAFT` (IIFE) | 6660-7197 | 23-pick draft, opp deck simulation |
-| `RUN` (IIFE) | 7198-7808 | Roguelike meta, save/load, schema migrations |
-| `PICKLOG` (IIFE) | 7809-8000 | localStorage analytics, exposed on `window.PICKLOG` |
-| `CONTROLLER` (IIFE) | 8001-9251 | Input handling, modals, AI scheduling |
-| Rendering | 9252-10839 | `render()` is the main repaint, called on state change |
-| Entry point | 10848+ | `CONTROLLER.init()` |
+| File | Role |
+|---|---|
+| `js/cards.js` | `CARDS` (~210 templates), `TOKENS`, `KEYWORDS`, `STICKERS`, `EMPOWER_FIELDS`, `RUN_MODIFIERS` (Neow boons) |
+| `js/engine.js` | Mercurial pool, sticker application, card-text description helpers, `ENGINE` IIFE (state, mana, triggers, phases, combat), `EFFECTS` dispatch (~40 effect kinds) |
+| `js/ai.js` | `AI` IIFE — decision logic, combat sim, lethal detection |
+| `js/meta.js` | `DRAFT` IIFE (pack generation, 23-pick draft, opp deck sim), `RUN` IIFE (roguelike meta, save/load, schema migrations), `PICKLOG` IIFE (analytics, `window.PICKLOG`) |
+| `js/controller.js` | `CONTROLLER` IIFE — input handling, modals, AI scheduling, plus the meta-game render helpers it owns (renderMap, renderReward, renderDraft, renderStatsContent, …) |
+| `js/render.js` | `render()` main repaint, `renderManaPool`, `renderHand`, `renderBf`, `passLabel`, etc. — in-game UI only |
+| `js/main.js` | Module-level helpers (`VERSION`, `opp`, trigger-generation for Mercurial Adept / Codex) and the three-line bootstrap that wires `window.PICKLOG` and calls `CONTROLLER.init()` |
+
+Load order in `magiclike_engine.html` is: cards → engine → ai → meta → controller → render → main. Each IIFE declares as a top-level `const`, so it's a global accessible from later scripts.
 
 ## Persistence
 
@@ -37,13 +34,7 @@ Schema migrations live in the `RUN` module and run on load.
 
 ## Design backlog
 
-The original developer left an explicit roadmap as a comment block at `magiclike_engine.html:2884-2956`. Treat this as a *reference*, not gospel — the user may have changed priorities since it was written. Ask before assuming any item is the next thing to build. Highlights from that comment block:
-
-- Tier 1: Tokens, Sacrifice, Static Lord effects (continuous "+1/+1 to other Goblins")
-- Tier 2: AOE damage, Mass bounce, EOT keyword grants, Lifegain trigger event, Flicker
-- Tier 3: Modal spells, Cycling, Protection, Reanimate, Storm, Cascade
-
-Static Lords are partially implemented: lords currently grant `staticBuffs` (stat changes) but not keywords. See `magiclike_engine.html:1502-1504`.
+The earlier in-code roadmap comment block has been removed as features shipped (tokens, modal spells, etc. are now implemented). Static Lords remain partially implemented: lords grant `staticBuffs` (stat changes) but not keywords — see the `staticBuffs:` entries in `js/cards.js`. Ask the user about current priorities before assuming what's next.
 
 ## Existing code style (descriptive, not prescriptive)
 
@@ -74,6 +65,6 @@ Console hooks for analytics: `window.PICKLOG.summarize()`, `window.PICKLOG.getCa
 
 ## Git workflow
 
-- Develop on `claude/recover-artifact-work-TyaAQ`.
+- Develop on the feature branch specified by the current session (varies).
 - Commit changes, but only push when explicitly asked.
 - Don't open PRs unless explicitly asked.
