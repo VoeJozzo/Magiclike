@@ -6,7 +6,7 @@ Current version: `v1.0.129` (defined at `js/main.js`, `const VERSION`).
 
 ## File structure
 
-The codebase was a single self-contained HTML file until it crossed ~19k lines. It's now split into per-subsystem JS files loaded as plain `<script src>` tags (no ES modules, no build step). The HTML shell holds the body, CSS, and seven script tags in dependency order.
+The codebase was a single self-contained HTML file until it crossed ~19k lines. It's now split into per-subsystem JS files loaded as plain `<script src>` tags (no ES modules, no build step). The HTML shell holds the body, CSS, and nine script tags in dependency order.
 
 Also in the repo: `index.html` at the repo root — a small redirect that points GitHub Pages at the engine file.
 
@@ -20,9 +20,11 @@ Also in the repo: `index.html` at the repo root — a small redirect that points
 | `js/meta.js` | `DRAFT` IIFE (pack generation, 23-pick draft, opp deck sim), `RUN` IIFE (roguelike meta, save/load, schema migrations), `PICKLOG` IIFE (analytics, `window.PICKLOG`) |
 | `js/controller.js` | `CONTROLLER` IIFE — input handling, modals, AI scheduling, plus the meta-game render helpers it owns (renderMap, renderReward, renderDraft, renderStatsContent, …) |
 | `js/render.js` | `render()` main repaint, `renderManaPool`, `renderHand`, `renderBf`, `passLabel`, etc. — in-game UI only |
-| `js/main.js` | Module-level helpers (`VERSION`, `opp`, trigger-generation for Mercurial Adept / Codex) and the three-line bootstrap that wires `window.PICKLOG` and calls `CONTROLLER.init()` |
+| `js/triggers.js` | `TRIGGER_CONDITIONS` registry (condId → predicate) and `evalTriggerCondition` resolver — the trigger vocabulary used at runtime |
+| `js/trigger-generator.js` | `GENERATOR_EFFECTS` / `GENERATOR_CONDITIONS` data plus the rolling functions for Mercurial Adept / Architect's Codex (`generateRandomTrigger`, `generateConditionOptions`, `generateEffectOptions`, `assembleTrigger`) |
+| `js/main.js` | `VERSION`, the `opp(who)` helper, and the two-line bootstrap that wires `window.PICKLOG` and calls `CONTROLLER.init()` |
 
-Load order in `magiclike_engine.html` is: cards → engine → ai → meta → controller → render → main. Each IIFE declares as a top-level `const`, so it's a global accessible from later scripts.
+Load order in `magiclike_engine.html` is: cards → engine → ai → meta → controller → render → triggers → trigger-generator → main. Each IIFE declares as a top-level `const`, so it's a global accessible from later scripts.
 
 ## Persistence
 
