@@ -242,6 +242,18 @@ function showCardBrowser() {
 
 function showStartScreen() {
   const screen = document.getElementById('startScreen');
+  // Trigger Fullscreen API on the first click within the start screen. The
+  // request must run synchronously inside a user gesture handler, so we
+  // attach it in the capture phase to fire before the button's onclick.
+  // `once:true` self-removes after one fire; if the request fails (e.g.
+  // unsupported, denied, or already fullscreen) we silently ignore.
+  screen.addEventListener('click', () => {
+    const el = document.documentElement;
+    const req = el.requestFullscreen || el.webkitRequestFullscreen;
+    if (req && !document.fullscreenElement && !document.webkitFullscreenElement) {
+      try { req.call(el).catch(() => {}); } catch (_) {}
+    }
+  }, {capture: true, once: true});
   const btns = document.getElementById('startBtns');
   const sub = document.getElementById('startSub');
   btns.innerHTML = '';
