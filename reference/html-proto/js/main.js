@@ -3,7 +3,7 @@
 // IIFEs hold state + its mutators. Cross-IIFE refs are ReferenceErrors at
 // call time — pure helpers go to module scope, parameterized.
 
-const VERSION = 'v1.0.128';
+const VERSION = 'v1.0.129';
 
 function opp(who) { return who === 'you' ? 'opp' : 'you'; }
 
