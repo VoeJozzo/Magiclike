@@ -178,9 +178,14 @@ Update `project.godot`:
 - `tests/test_phase4.gd` covers ETB fire+resolve, death-trigger-with-predicate-true, and the negative case (predicate-false → trigger suppressed).
 
 **Phase 4 deferred to Phase 4.5 (or whenever it becomes blocking):**
-- **Interactive trigger target picking.** Pyromaniac's printed oracle text is "any target" but the implemented effect uses hardcoded `target: "opponent"`. Real target picking for trigger effects requires a new pending-state in the engine (`awaiting_target_for_trigger`) plus a UI mode parallel to the spell target picker.
-- **Non-self triggers in tests.** The `self_only=false` listener path is implemented but not exercised by a Phase 4 card. Add one when a card legitimately needs it (e.g., "Whenever a creature you control dies, …").
-- **"Intervening if" predicate re-check at resolve time.** Currently the predicate is checked only at queue time; MTG rules check again on resolution. Will matter when a between-events action invalidates the condition.
+- **Interactive trigger target picking.** ✓ DONE in 4.5b.
+- **Non-self triggers in tests.** Still deferred. The `self_only=false` listener path is implemented but not exercised. Add when a card legitimately needs it.
+- **"Intervening if" predicate re-check at resolve time.** Still deferred. Currently the predicate is checked only at queue time; MTG rules check again on resolution. Will matter when a between-events action invalidates the condition (e.g., a creature with a "while you control X" condition where X leaves play between trigger queueing and resolution).
+
+**Phase 4.5 — Real-game interlude.** ✓ DONE.
+- **Slice 4.5a (library + draw + decking).** `RulesEngine.init_game(you_decklist, opp_decklist)` builds libraries from `card_id:count` dicts, shuffles, draws opening hand. DRAW phase entry fires `_do_draw_card`; empty-library draw ends the game with the opponent winning (MTG 704.5b). Legacy `init_phase*` demo helpers seed each player's library with 20 buffer Mountains so existing tests don't deck out. UI: `PlayerPanel` shows hand/library/graveyard counts with a low-library warning glyph.
+- **Slice 4.5b (interactive trigger target picker).** Triggers can specify `target_filter` on the ability dict. `_drain_pending_triggers` pauses for you-controlled triggers (surfacing `state.awaiting_target_for_trigger`) and auto-picks for opp-controlled triggers. New action `KIND_PICK_TRIGGER_TARGET` completes the pick. UI mirrors the spell-target flow.
+- **Slice 4.5c (card pool + new effects).** Card pool grew 8 → 16: Plains/Island/Swamp basic lands, Bear Cub / Gray Ogre / Hill Giant vanilla curve, Healing Salve (exercises new `gain_life` effect), Counterspell (exercises new `counter_spell` effect — first card whose target is a stack entry, with new `RulesEngine.counter_stack_entry` engine helper).
 
 **Phase 5 — AI.** Port `AI.decide(state, who) → action`. Single entry point, reads engine state, returns one action descriptor. Combat-sim subroutine for declaring attackers/blockers. Lethal detection. Snapshots state via `Resource.duplicate(true)` and explicit `duplicate()` overrides on `Player` / `CardInstance`. Threading deferred until profiling shows it's needed. Verification: AI plays a complete game against itself without crashing; spot-check decision quality via log lines.
 
@@ -211,6 +216,9 @@ Update `project.godot`:
 | 2 | Cast 1/1, end turn, untap, attack → opp at 19 | Goblin enters tapped (sick), next turn taps to attack |
 | 3 | Combat with Giant Growth on stack saves a 1/1 from a 2-power attacker | Full combat phase + instant cast in response |
 | 4 | Pyromaniac ETB fires + resolves; Bloodlust death trigger fires with predicate-true; trigger suppressed on predicate-false | Cast Pyromaniac → opp takes 1; cast Berserker + bolt your own → opp takes +2 |
+| 4.5a | init_game builds libraries from decklists; DRAW fires; empty-library → opp wins | Open the game_board, see hand+library+gy counts on each panel |
+| 4.5b | Trigger needing target pauses drain; KIND_PICK_TRIGGER_TARGET completes the cast; opp-controlled triggers auto-pick | Cast Pyromaniac → "Pick a target…" prompt → click opp or click any creature |
+| 4.5c | Healing Salve gains 3 life; Counterspell removes target Bolt from stack into opp's graveyard | Cast Counterspell on opp's Lightning Bolt during their cast |
 | 5 | AI plays itself a full game without crash | Sit and watch AI vs AI; spot-check no obviously bad attacks |
 | 6 | Draft 23 picks, complete 3-game run, save/load mid-run | Full roguelike loop end-to-end |
 
