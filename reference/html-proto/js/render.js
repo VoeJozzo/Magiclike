@@ -719,8 +719,8 @@ function openZoneTargeting(who, zone, validTargets) {
       const btn = document.createElement('div');
       btn.className = 'zone-card';
       const typeHint = card.type ? card.type.charAt(0) : '?';
-      const cost = card.cost ? formatCost(card.cost) : '';
-      btn.innerHTML = `<span style="opacity:0.6">[${typeHint}]</span> <span class="card-name"></span>${cost ? ' <span style="opacity:0.5;font-size:10px">' + cost + '</span>' : ''}`;
+      const cost = card.cost ? renderManaSymbols(formatCostBraced(card.cost)) : '';
+      btn.innerHTML = `<span style="opacity:0.6">[${typeHint}]</span> <span class="card-name"></span>${cost ? ' <span style="opacity:0.7;font-size:10px">' + cost + '</span>' : ''}`;
       btn.querySelector('.card-name').textContent = card.name;
       if (validIids.has(card.iid)) {
         // Valid target — highlight and wire up submission.
@@ -764,8 +764,13 @@ function escapeHtml(s) { return String(s).replace(/[&<>]/g, c => ({'&':'&amp;','
 function segmentsToHtml(segs) {
   if (!Array.isArray(segs)) return '';
   return segs.map(s => {
-    const escaped = escapeHtml(s.text || '');
-    return s.highlight ? `<span class="bumped">${escaped}</span>` : escaped;
+    // escapeHtml runs first to keep raw text safe (e.g. <stripe> or
+    // ampersands); renderManaSymbols then converts the still-intact
+    // {R}/{T}/{1} tokens into pip spans. escapeHtml leaves braces alone,
+    // so the order is correct.
+    const safe = escapeHtml(s.text || '');
+    const withPips = renderManaSymbols(safe);
+    return s.highlight ? `<span class="bumped">${withPips}</span>` : withPips;
   }).join('');
 }
 
@@ -1206,9 +1211,9 @@ function makeCardEl(card, opts) {
       const effC = eff && eff.C || 0;
       const baseC = card.cost.C || 0;
       const bumped = effC > baseC;
-      costHtml = `<div class="ccost">${formatCost(eff)}${bumped ? ' <span style="color:#ffaa44;font-size:9px">↑</span>' : ''}</div>`;
+      costHtml = `<div class="ccost">${renderManaSymbols(formatCostBraced(eff))}${bumped ? ' <span style="color:#ffaa44;font-size:9px">↑</span>' : ''}</div>`;
     } else {
-      costHtml = `<div class="ccost">${formatCost(card.cost)}</div>`;
+      costHtml = `<div class="ccost">${renderManaSymbols(formatCostBraced(card.cost))}</div>`;
     }
   }
   div.innerHTML = `
@@ -1231,4 +1236,42 @@ function formatCost(c) {
   if (c.C) s += c.C;
   for (const k of ['W','U','B','R','G']) s += k.repeat(c[k] || 0);
   return s || '0';
+}
+
+// Mana-cost in MtG-canonical braced notation: {R:2, C:4} -> "{4}{R}{R}".
+// Plain text — caller pipes through renderManaSymbols() to get pip HTML.
+function formatCostBraced(c) {
+  if (!c) return '';
+  let s = '';
+  if (c.C) s += '{' + c.C + '}';
+  for (const k of ['W','U','B','R','G']) s += ('{' + k + '}').repeat(c[k] || 0);
+  return s || '{0}';
+}
+
+// Convert `{X}` patterns embedded in card text or formatCostBraced output
+// into mana-pip HTML spans. The pipeline:
+//   card text "{R}: gets +1/+0" -> escapeHtml -> renderManaSymbols
+//   cost {R:2,C:4} -> formatCostBraced -> renderManaSymbols
+//
+// CSS in magiclike_engine.html defines a default colored-circle look for
+// .mana / .mana-W / .mana-R / etc. The pathway is set up so a future
+// `.mana-R { background-image: url('assets/mana/R.png'); color:
+// transparent; }` swap will replace text pips with PNG art globally.
+//
+// Recognized symbols: WUBRGC (color/colorless pips), T (tap), X (variable
+// cost), and any pure-number sequence (generic mana). Unrecognized braces
+// are returned untouched so existing text like "{1.5}" or "{foo}" can't
+// break rendering.
+function renderManaSymbols(text) {
+  if (text == null) return '';
+  return String(text).replace(/\{([^}]+)\}/g, (whole, sym) => {
+    const upper = sym.toUpperCase();
+    if (/^[WUBRGC]$/.test(upper)) {
+      return '<span class="mana mana-' + upper + '" title="' + upper + '">' + upper + '</span>';
+    }
+    if (upper === 'T') return '<span class="mana mana-T" title="Tap">T</span>';
+    if (upper === 'X') return '<span class="mana mana-X" title="X">X</span>';
+    if (/^\d+$/.test(sym)) return '<span class="mana mana-num" title="' + sym + '">' + sym + '</span>';
+    return whole;
+  });
 }

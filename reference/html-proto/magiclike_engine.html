@@ -81,7 +81,29 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
 .ctext{font-size:6px;padding:1px 2px;color:#ccc;overflow:hidden;max-height:18px;line-height:1.1}
 .bumped{color:#ffd700;font-weight:bold}
 .cstats{font-size:10px;font-weight:bold;text-align:right;padding:0 3px 1px;color:#ffd700}
-.ccost{position:absolute;top:1px;right:2px;font-size:8px;color:#ffd700;background:rgba(0,0,0,.6);border-radius:2px;padding:0 2px}
+.ccost{position:absolute;top:1px;right:2px;font-size:8px;color:#ffd700;background:rgba(0,0,0,.6);border-radius:2px;padding:0 2px;display:flex;gap:1px;align-items:center}
+
+/* Mana-symbol pips. The `<span class="mana mana-X">` markup is emitted
+   by renderManaSymbols() (js/render.js) — used for cost displays AND
+   for parsing {R}/{T}/{1} tokens inside card text. Defaults below are
+   text-on-colored-circle so things look reasonable without art.
+   PATHWAY for PNG mana art: override per-color, e.g.
+     .mana-R { background-image: url('assets/mana/R.png'); color: transparent; }
+   text-indent + color:transparent hides the letter when art ships. */
+.mana{display:inline-block;width:1.2em;height:1.2em;line-height:1.2em;
+  border-radius:50%;text-align:center;font-weight:bold;font-size:0.85em;
+  vertical-align:middle;margin:0 0.05em;background-size:contain;
+  background-position:center;background-repeat:no-repeat;
+  color:#fff;font-family:Arial,sans-serif;text-shadow:0 0 1px rgba(0,0,0,.6)}
+.mana-W{background-color:#e8d770;color:#443;text-shadow:none}
+.mana-U{background-color:#5588cc}
+.mana-B{background-color:#444}
+.mana-R{background-color:#c34433}
+.mana-G{background-color:#4a9844}
+.mana-C{background-color:#aaa;color:#333;text-shadow:none}
+.mana-T{background-color:#888;color:#fff;font-style:italic}
+.mana-X{background-color:#666;color:#fff}
+.mana-num{background-color:#555;color:#fff}
 .cdmg{position:absolute;bottom:14px;right:2px;background:#cc0000;color:#fff;border-radius:50%;width:14px;height:14px;font-size:9px;display:flex;align-items:center;justify-content:center;font-weight:bold}
 .cmod{position:absolute;top:1px;left:2px;font-size:8px;color:#88ddff;background:rgba(0,0,0,.6);border-radius:2px;padding:0 2px}
 .stickers-row{display:flex;flex-wrap:wrap;gap:2px;margin-top:3px;padding:0 2px;justify-content:center}

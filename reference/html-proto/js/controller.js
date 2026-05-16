@@ -1348,16 +1348,16 @@ function renderDraft() {
     // get the col-X CSS class. Same renderer the splice-merge tiles use.
     div.className = 'draft-pick';
     applyTileColorFromTpl(div, tpl);
-    const costStr = tpl.cost ? formatCost(tpl.cost) : '';
+    const costHtml = tpl.cost ? renderManaSymbols(formatCostBraced(tpl.cost)) : '';
     const isCreature = tpl.type === 'Creature';
     const stats = isCreature ? `${tpl.power}/${tpl.toughness}` : '';
     div.innerHTML =
       `<div class="art">${artHtml(tpl.art, '·')}</div>` +
       `<div class="name">${tpl.name}</div>` +
-      `<div class="cost">${costStr}</div>` +
+      `<div class="cost">${costHtml}</div>` +
       `<div class="type">${tpl.type}${tpl.sub ? ' — ' + tpl.sub : ''}</div>` +
       (stats ? `<div class="stats">${stats}</div>` : '') +
-      (tpl.text ? `<div class="text">${tpl.text}</div>` : '');
+      (tpl.text ? `<div class="text">${renderManaSymbols(escapeHtml(tpl.text))}</div>` : '');
     div.onclick = () => pickDraft(tplId);
     attachLongPress(div, tpl);
     packEl.appendChild(div);
@@ -2122,7 +2122,7 @@ function openCardPopup(card) {
          <div class="pop-stickers-title" style="color:#cc4444">Restrictions</div>
          ${restrictionBadgesHtml(card, true)}
        </div>` : '';
-  const costPart = card.cost ? `<div class="pop-cost">Cost: ${formatCost(card.cost)}</div>` : '';
+  const costPart = card.cost ? `<div class="pop-cost">Cost: ${renderManaSymbols(formatCostBraced(card.cost))}</div>` : '';
   const damagePart = card.damage ? `<div style="color:#ff6060;font-size:13px;margin-top:6px">Damage marked: ${card.damage}</div>` : '';
   // Build segment-rendered text with empower-bumped values highlighted.
   // The popup is the prime real estate for showing what stickers did, so it
@@ -2243,8 +2243,8 @@ function openZone(who, zone) {
       btn.className = 'zone-card';
       // Show card name with a small color/type hint.
       const typeHint = card.type ? card.type.charAt(0) : '?';
-      const cost = card.cost ? formatCost(card.cost) : '';
-      btn.innerHTML = `<span style="opacity:0.6">[${typeHint}]</span> <span class="card-name"></span>${cost ? ' <span style="opacity:0.5;font-size:10px">' + cost + '</span>' : ''}`;
+      const cost = card.cost ? renderManaSymbols(formatCostBraced(card.cost)) : '';
+      btn.innerHTML = `<span style="opacity:0.6">[${typeHint}]</span> <span class="card-name"></span>${cost ? ' <span style="opacity:0.7;font-size:10px">' + cost + '</span>' : ''}`;
       btn.querySelector('.card-name').textContent = card.name;
       btn.onclick = () => openCardPopup(card);
       listEl.appendChild(btn);
