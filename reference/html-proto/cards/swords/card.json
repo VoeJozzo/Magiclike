@@ -1,0 +1,31 @@
+{
+  "tplId": "swords",
+  "name": "Swords to Plowshares",
+  "type": "Instant",
+  "cost": {
+    "W": 1
+  },
+  "art": "🌾",
+  "text": "Exile target creature; its controller gains life equal to its power.",
+  "effects": [
+    {
+      "kind": "removeCreature",
+      "severity": 4,
+      "target": "creature"
+    },
+    {
+      "kind": "gainLife",
+      "target": "creature",
+      "who": {
+        "from": "targetController"
+      },
+      "amount": {
+        "from": "targetPower"
+      }
+    }
+  ],
+  "color": "W",
+  "colors": [
+    "W"
+  ]
+}

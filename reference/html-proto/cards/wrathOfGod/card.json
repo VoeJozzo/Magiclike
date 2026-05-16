@@ -1,0 +1,21 @@
+{
+  "tplId": "wrathOfGod",
+  "name": "Day of Reckoning",
+  "type": "Sorcery",
+  "cost": {
+    "W": 2,
+    "C": 3
+  },
+  "art": "⛅",
+  "text": "Destroy all creatures.",
+  "effects": [
+    {
+      "kind": "removeAll",
+      "severity": 3
+    }
+  ],
+  "color": "W",
+  "colors": [
+    "W"
+  ]
+}

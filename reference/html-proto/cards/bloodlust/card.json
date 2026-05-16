@@ -1,0 +1,36 @@
+{
+  "tplId": "bloodlust",
+  "name": "Bloodlust Berserker",
+  "type": "Creature",
+  "sub": "Goblin Berserker",
+  "cost": {
+    "R": 1,
+    "C": 2
+  },
+  "power": 3,
+  "toughness": 2,
+  "art": "⚒",
+  "text": "Haste. When this attacks, if an opponent has lost life this turn, it gets +1/+1 EOT.",
+  "keywords": [
+    "haste"
+  ],
+  "triggers": [
+    {
+      "event": "attacks",
+      "condId": "thisAttacksAfterOppLifeLoss",
+      "text": "When ~ attacks (if opp lost life), it gets +1/+1 EOT.",
+      "effects": [
+        {
+          "kind": "pump",
+          "target": "self",
+          "power": 1,
+          "toughness": 1
+        }
+      ]
+    }
+  ],
+  "color": "R",
+  "colors": [
+    "R"
+  ]
+}

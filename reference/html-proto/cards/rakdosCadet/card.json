@@ -1,0 +1,17 @@
+{
+  "tplId": "rakdosCadet",
+  "name": "Rakdos Cadet",
+  "type": "Creature",
+  "sub": "Imp",
+  "cost": {
+    "B": 1,
+    "C": 1
+  },
+  "power": 2,
+  "toughness": 2,
+  "art": "👹",
+  "color": "B",
+  "colors": [
+    "B"
+  ]
+}

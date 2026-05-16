@@ -1,0 +1,52 @@
+{
+  "tplId": "drakelord",
+  "name": "Skyfire Drakelord",
+  "type": "Creature",
+  "sub": "Drake",
+  "cost": {
+    "U": 1,
+    "C": 4
+  },
+  "power": 3,
+  "toughness": 4,
+  "art": "🐲",
+  "keywords": [
+    "flying",
+    "firstStrike"
+  ],
+  "text": "Flying, First Strike. Other Drakes you control get +1/+1 and have first strike. Whenever another Drake enters under your control, deal 1 damage to any target.",
+  "staticBuffs": [
+    {
+      "filter": {
+        "controller": "self"
+      },
+      "subtype": "Drake",
+      "power": 1,
+      "toughness": 1,
+      "keywords": [
+        "firstStrike"
+      ]
+    }
+  ],
+  "triggers": [
+    {
+      "event": "cardEntersBattlefield",
+      "condId": "anotherCreatureYouEntersOfSubtype",
+      "params": {
+        "sub": "Drake"
+      },
+      "text": "Another Drake entered — deal 1 to any target.",
+      "effects": [
+        {
+          "kind": "damage",
+          "target": "any",
+          "amount": 1
+        }
+      ]
+    }
+  ],
+  "color": "U",
+  "colors": [
+    "U"
+  ]
+}

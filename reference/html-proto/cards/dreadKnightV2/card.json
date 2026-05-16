@@ -1,0 +1,35 @@
+{
+  "tplId": "dreadKnightV2",
+  "name": "Dread Knight",
+  "type": "Creature",
+  "sub": "Human Knight",
+  "cost": {
+    "B": 2,
+    "C": 2
+  },
+  "power": 4,
+  "toughness": 3,
+  "art": "🏴",
+  "keywords": [
+    "menace"
+  ],
+  "text": "Menace. When this enters, you lose 2 life.",
+  "triggers": [
+    {
+      "event": "cardEntersBattlefield",
+      "condId": "thisEnters",
+      "text": "When ~ enters, you lose 2 life.",
+      "effects": [
+        {
+          "kind": "damage",
+          "target": "self",
+          "amount": 2
+        }
+      ]
+    }
+  ],
+  "color": "B",
+  "colors": [
+    "B"
+  ]
+}

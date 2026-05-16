@@ -1,0 +1,21 @@
+{
+  "tplId": "spider",
+  "name": "Giant Spider",
+  "type": "Creature",
+  "sub": "Spider",
+  "cost": {
+    "G": 1,
+    "C": 2
+  },
+  "power": 2,
+  "toughness": 4,
+  "art": "🕷",
+  "text": "Reach",
+  "keywords": [
+    "reach"
+  ],
+  "color": "G",
+  "colors": [
+    "G"
+  ]
+}

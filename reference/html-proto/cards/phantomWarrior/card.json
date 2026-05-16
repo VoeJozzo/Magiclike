@@ -1,0 +1,21 @@
+{
+  "tplId": "phantomWarrior",
+  "name": "Phantom Warrior",
+  "type": "Creature",
+  "sub": "Spirit",
+  "cost": {
+    "U": 1,
+    "C": 2
+  },
+  "power": 2,
+  "toughness": 2,
+  "art": "👻",
+  "text": "Unblockable",
+  "keywords": [
+    "unblockable"
+  ],
+  "color": "U",
+  "colors": [
+    "U"
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "tplId": "savannahLions",
+  "name": "Savannah Lions",
+  "type": "Creature",
+  "sub": "Cat",
+  "cost": {
+    "W": 1
+  },
+  "power": 2,
+  "toughness": 1,
+  "art": "🦁",
+  "color": "W",
+  "colors": [
+    "W"
+  ]
+}

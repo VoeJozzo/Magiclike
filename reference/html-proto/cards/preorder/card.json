@@ -1,0 +1,20 @@
+{
+  "tplId": "preorder",
+  "name": "Preordain",
+  "type": "Sorcery",
+  "cost": {
+    "U": 1
+  },
+  "art": "🔮",
+  "text": "Draw a card.",
+  "effects": [
+    {
+      "kind": "draw",
+      "amount": 1
+    }
+  ],
+  "color": "U",
+  "colors": [
+    "U"
+  ]
+}

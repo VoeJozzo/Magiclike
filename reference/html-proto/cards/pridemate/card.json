@@ -1,0 +1,33 @@
+{
+  "tplId": "pridemate",
+  "name": "Ajani's Pridemate",
+  "type": "Creature",
+  "sub": "Cat Soldier",
+  "cost": {
+    "W": 1,
+    "C": 1
+  },
+  "power": 2,
+  "toughness": 2,
+  "art": "🦁",
+  "text": "Whenever you gain life, put a +1/+1 counter on this.",
+  "triggers": [
+    {
+      "event": "lifeGained",
+      "condId": "youGainLife",
+      "text": "When you gain life, put a +1/+1 counter on ~.",
+      "effects": [
+        {
+          "kind": "addCounter",
+          "target": "self",
+          "power": 1,
+          "toughness": 1
+        }
+      ]
+    }
+  ],
+  "color": "W",
+  "colors": [
+    "W"
+  ]
+}

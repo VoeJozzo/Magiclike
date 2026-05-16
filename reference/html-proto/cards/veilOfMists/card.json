@@ -1,0 +1,22 @@
+{
+  "tplId": "veilOfMists",
+  "name": "Veil of Mists",
+  "type": "Instant",
+  "cost": {
+    "U": 1,
+    "C": 1
+  },
+  "art": "💨",
+  "text": "Return target creature to its owner's hand.",
+  "effects": [
+    {
+      "kind": "removeCreature",
+      "severity": 2,
+      "target": "creature"
+    }
+  ],
+  "color": "U",
+  "colors": [
+    "U"
+  ]
+}

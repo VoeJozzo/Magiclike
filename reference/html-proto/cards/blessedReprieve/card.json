@@ -1,0 +1,22 @@
+{
+  "tplId": "blessedReprieve",
+  "name": "Healing Light",
+  "type": "Instant",
+  "cost": {
+    "W": 1,
+    "C": 1
+  },
+  "art": "🌟",
+  "text": "Target player gains 5 life.",
+  "effects": [
+    {
+      "kind": "gainLife",
+      "target": "player",
+      "amount": 5
+    }
+  ],
+  "color": "W",
+  "colors": [
+    "W"
+  ]
+}

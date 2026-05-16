@@ -1,0 +1,32 @@
+{
+  "tplId": "swordAndSorcery",
+  "name": "Sword and Sorcery",
+  "type": "Instant",
+  "cost": {
+    "W": 1,
+    "U": 1,
+    "C": 1
+  },
+  "art": "📜",
+  "multiTarget": true,
+  "text": "Target creature gets +2/+2 until end of turn. Tap target creature.",
+  "effects": [
+    {
+      "kind": "pump",
+      "target": "creature",
+      "power": 2,
+      "toughness": 2
+    },
+    {
+      "kind": "removeCreature",
+      "severity": 1,
+      "target": "creature",
+      "targetSlot": 1
+    }
+  ],
+  "color": "W",
+  "colors": [
+    "W",
+    "U"
+  ]
+}

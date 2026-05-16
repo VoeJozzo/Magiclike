@@ -1,0 +1,25 @@
+{
+  "tplId": "smolder",
+  "name": "Faithless Looting",
+  "type": "Sorcery",
+  "cost": {
+    "R": 1
+  },
+  "art": "📜",
+  "text": "Draw 2 cards, then discard 2 cards.",
+  "effects": [
+    {
+      "kind": "draw",
+      "amount": 2
+    },
+    {
+      "kind": "discard",
+      "target": "self",
+      "amount": 2
+    }
+  ],
+  "color": "R",
+  "colors": [
+    "R"
+  ]
+}

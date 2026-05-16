@@ -1,0 +1,35 @@
+{
+  "tplId": "patientSaint",
+  "name": "Patient Saint",
+  "type": "Creature",
+  "sub": "Human Cleric Wall",
+  "cost": {
+    "W": 1,
+    "C": 1
+  },
+  "power": 0,
+  "toughness": 4,
+  "art": "🕯",
+  "keywords": [
+    "defender"
+  ],
+  "text": "Defender. T: You gain 1 life.",
+  "abilities": [
+    {
+      "cost": {
+        "tap": true
+      },
+      "effects": [
+        {
+          "kind": "gainLife",
+          "target": "self",
+          "amount": 1
+        }
+      ]
+    }
+  ],
+  "color": "W",
+  "colors": [
+    "W"
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "tplId": "mindControl",
+  "name": "Mind Control",
+  "type": "Sorcery",
+  "cost": {
+    "U": 2,
+    "C": 2
+  },
+  "art": "🧠",
+  "text": "Gain control of target creature.",
+  "effects": [
+    {
+      "kind": "gainControl",
+      "target": "creature",
+      "filter": {
+        "controller": "opp"
+      }
+    }
+  ],
+  "color": "U",
+  "colors": [
+    "U"
+  ]
+}

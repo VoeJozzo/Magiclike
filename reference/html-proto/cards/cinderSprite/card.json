@@ -1,0 +1,22 @@
+{
+  "tplId": "cinderSprite",
+  "name": "Cinder Sprite",
+  "type": "Creature",
+  "sub": "Imp",
+  "cost": {
+    "R": 1,
+    "C": 1
+  },
+  "power": 1,
+  "toughness": 1,
+  "art": "cards/cinderSprite/art.png",
+  "text": "Flying, Haste",
+  "keywords": [
+    "flying",
+    "haste"
+  ],
+  "color": "R",
+  "colors": [
+    "R"
+  ]
+}

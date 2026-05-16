@@ -1,0 +1,22 @@
+{
+  "tplId": "raiseAlarm",
+  "name": "Raise the Alarm",
+  "type": "Instant",
+  "cost": {
+    "W": 1,
+    "C": 1
+  },
+  "art": "🚨",
+  "text": "Create two 1/1 white Soldier tokens.",
+  "effects": [
+    {
+      "kind": "createTokens",
+      "tokenId": "soldier_w_1_1",
+      "count": 2
+    }
+  ],
+  "color": "W",
+  "colors": [
+    "W"
+  ]
+}

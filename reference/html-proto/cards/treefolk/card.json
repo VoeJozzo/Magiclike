@@ -1,0 +1,21 @@
+{
+  "tplId": "treefolk",
+  "name": "Treefolk Guard",
+  "type": "Creature",
+  "sub": "Treefolk",
+  "cost": {
+    "G": 1,
+    "C": 2
+  },
+  "power": 2,
+  "toughness": 5,
+  "art": "🌳",
+  "text": "Reach",
+  "keywords": [
+    "reach"
+  ],
+  "color": "G",
+  "colors": [
+    "G"
+  ]
+}
