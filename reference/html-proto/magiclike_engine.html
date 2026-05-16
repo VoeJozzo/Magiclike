@@ -222,7 +222,9 @@ button:disabled{opacity:.4;cursor:not-allowed}
 #neowOptions{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
 .neow-opt{background:#13243a;border:1px solid #2c5780;border-radius:8px;padding:14px 12px;width:200px;cursor:pointer;transition:all .15s;display:flex;flex-direction:column;align-items:center;gap:8px}
 .neow-opt:hover{background:#1d3550;border-color:#5da0d8;transform:translateY(-2px);box-shadow:0 4px 14px rgba(74,144,200,.3)}
-.neow-opt .neow-art{font-size:42px;line-height:1}
+.neow-opt .neow-art{font-size:42px;line-height:1;display:flex;align-items:center;justify-content:center;min-height:64px}
+/* Boon picker is a generously-sized tile (200px wide) — render pixel art at 2x. */
+.neow-opt .neow-art img{width:128px;height:64px;image-rendering:pixelated;display:block}
 .neow-opt .neow-name{color:#9bd0ff;font-weight:bold;font-size:14px;letter-spacing:1px}
 .neow-opt .neow-text{color:#bcd;font-size:11px;line-height:1.5;font-style:italic}
 #rewardModal{position:fixed;inset:0;background:rgba(0,0,0,.92);display:none;align-items:flex-start;justify-content:center;z-index:1100;padding:20px;overflow-y:auto}

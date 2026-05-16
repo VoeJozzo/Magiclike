@@ -361,7 +361,7 @@ RUN_MODIFIERS['endomorph'] = {
   id: 'endomorph',
   name: 'The Hungering Mimic',
   text: 'Begin your run with Endomorph in your deck — a 2-mana 2/2 that permanently absorbs a keyword from each creature it kills (or +1/+1 if it can\'t).',
-  art: '🧬',
+  art: 'cards/endomorph/art.png',
   apply: () => ({
     extras: [{ tplId: 'endomorph', stickers: [] }],
   }),
@@ -379,7 +379,7 @@ RUN_MODIFIERS['phylactery'] = {
   id: 'phylactery',
   name: 'Phylactery',
   text: "Begin your run with a Phylactery (Swamp, in opening hand). You can't lose to 0 life or to decking out — each damage past zero or would-be overdraw rips a slot from your deck instead. Phylactery itself is always ripped last.",
-  art: '💀',
+  art: 'cards/phylactery/art.png',
   apply: () => ({
     extras: [{ tplId: 'phylactery', stickers: ['innate'] }],
   }),
@@ -388,7 +388,7 @@ RUN_MODIFIERS['elystra'] = {
   id: 'elystra',
   name: 'Elystra the Immortal',
   text: "Begin your run with Elystra in your deck — a 3-mana 1/1. End-of-turn effects on her last forever, but every spell that targets her is ripped from its caster's deck after it resolves.",
-  art: '👻',
+  art: 'cards/elystra/art-1.png',
   // v1.0.48: unpinned. Was pinned because Elystra was the headline build-around
   // and players wanted reliable access; with the pool grown (Codex, Mercurial,
   // others now competitive), guaranteed visibility crowds out exploration of
@@ -403,7 +403,7 @@ RUN_MODIFIERS['stapler'] = {
   id: 'stapler',
   name: 'Stapler',
   text: "Begin your run with Stapler — a {3} Artifact with 3 per-run charges. {3}, T: choose two target permanents, staple the second onto the first. When out of charges, ripped from the run.",
-  art: '📎',
+  art: 'cards/stapler/art.png',
   // Charges initialize from CARDS.stapler.chargesAtRunStart (= 3) via the
   // extras-loop in start(). Persist across games on slot.charges.
   // v1.0.68: unpinned. Was pinned during initial playtesting (v1.0.52) to

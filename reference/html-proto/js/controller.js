@@ -512,10 +512,15 @@ function showNeowChoice() {
     const div = document.createElement('div');
     div.className = 'neow-opt';
     div.onclick = () => pickNeow(id);
+    // m.art may be an emoji or a file path. artHtml() picks the right
+    // rendering (text vs <img>). m.text may carry {3}/{T}/etc. brace
+    // tokens (Stapler's "{3} Artifact with 3 per-run charges. {3}, T:"
+    // is the current offender), so route the text through the mana-pip
+    // pipeline same as cost displays / card text.
     div.innerHTML = `
-      <div class="neow-art">${m.art || '✦'}</div>
-      <div class="neow-name">${m.name}</div>
-      <div class="neow-text">${m.text}</div>
+      <div class="neow-art">${artHtml(m.art || '✦')}</div>
+      <div class="neow-name">${escapeHtml(m.name || '')}</div>
+      <div class="neow-text">${renderManaSymbols(escapeHtml(m.text || ''))}</div>
     `;
     optsEl.appendChild(div);
   }
