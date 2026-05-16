@@ -2,7 +2,7 @@
 
 Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folder of vanilla-JS modules — no build step, no frameworks, no network calls. Open in any modern browser to play.
 
-Current version: `v1.0.130` (defined at `js/main.js`, `const VERSION`).
+Current version: `v1.0.131` (defined at `js/main.js`, `const VERSION`).
 
 ## File structure
 
@@ -67,6 +67,7 @@ Console hooks for analytics: `window.PICKLOG.summarize()`, `window.PICKLOG.getCa
 
 ## Git workflow
 
-- Develop on the feature branch specified by the current session (varies).
+- `dev` is the primary working branch.
 - Commit changes, but only push when explicitly asked.
 - Don't open PRs unless explicitly asked.
+- **Bump `VERSION` (in `js/main.js`) and the version line at the top of this file on every push that updates `dev`.** This is the player-visible cache-buster — GitHub Pages caches aggressively, and the only reliable way to confirm a fresh build is loaded is to read the version string off the running page. One push to `dev` = one version bump, in the same commit as the substantive change (or a follow-up commit if you forgot).
