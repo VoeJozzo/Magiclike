@@ -123,7 +123,7 @@ function installDomStubs() {
 //   ENGINE.makeCard, ENGINE.findCard       (instead of bare makeCard / findCard)
 //   RUN.applyStickerToSlot, RUN.stickersFor (instead of bare names)
 // See engine.js's IIFE return object for the full ENGINE export set,
-// and meta.js for the RUN / DRAFT exports.
+// and run.js / draft.js / picklog.js for their respective IIFE exports.
 const EXPOSED = [
   // Public module objects (top of each .js file).
   'ENGINE', 'AI', 'RUN', 'DRAFT', 'CARDS', 'STICKERS',
