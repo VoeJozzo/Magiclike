@@ -195,18 +195,16 @@ function appendStickerSectionToBrowser(inner) {
       top.appendChild(meta);
       item.appendChild(top);
 
-      // Effect text. Routes through renderManaSymbols so landColor
-      // stickers (text contains {W}/{U}/etc) render the pip icons.
+      // Effect text.
       const text = document.createElement('div');
-      text.innerHTML = renderManaSymbols(escapeHtml(s.text || ''));
+      text.textContent = s.text;
       text.style.cssText = 'color:#bbb';
       item.appendChild(text);
 
       // Eligibility line — what cards this sticker can be applied to.
       const goes = document.createElement('div');
       goes.innerHTML = '<span style="color:#777">Goes on:</span> <span class="apply-text" style="color:#999"></span>';
-      // Same {W}/{U}/etc treatment for the landColor eligibility blurb.
-      goes.querySelector('.apply-text').innerHTML = renderManaSymbols(escapeHtml(stickerAppliesLabel(s)));
+      goes.querySelector('.apply-text').textContent = stickerAppliesLabel(s);
       goes.style.cssText = 'font-size:10px;margin-top:2px';
       item.appendChild(goes);
 
@@ -512,18 +510,10 @@ function showNeowChoice() {
     const div = document.createElement('div');
     div.className = 'neow-opt';
     div.onclick = () => pickNeow(id);
-    // Boon art is derived from the card the boon grants -- every current
-    // RUN_MODIFIERS entry's id matches the tplId of its granted card, so
-    // CARDS[m.id].art is the source of truth. A boon can override with an
-    // explicit `art:` field if its picker view should diverge from the
-    // card itself (no current boon needs this).
-    // m.text may carry {3}/{T}/etc. brace tokens (Stapler's "{3} Artifact
-    // with 3 per-run charges. {3}, T:") so it goes through the pip pipeline.
-    const boonArt = m.art || (CARDS[m.id] && CARDS[m.id].art) || '✦';
     div.innerHTML = `
-      <div class="neow-art">${artHtml(boonArt)}</div>
-      <div class="neow-name">${escapeHtml(m.name || '')}</div>
-      <div class="neow-text">${renderManaSymbols(escapeHtml(m.text || ''))}</div>
+      <div class="neow-art">${m.art || '✦'}</div>
+      <div class="neow-name">${m.name}</div>
+      <div class="neow-text">${m.text}</div>
     `;
     optsEl.appendChild(div);
   }
@@ -1209,7 +1199,7 @@ function renderReward() {
         }
         stickerEl.innerHTML =
           `<div class="name">${stickerName}</div>` +
-          `<div class="text">${renderManaSymbols(escapeHtml(sticker.text || ''))}</div>`;
+          `<div class="text">${sticker.text}</div>`;
         div.appendChild(stickerEl);
       } else if (cand.kind === 'twoStickers') {
         const connector = document.createElement('div');
@@ -1358,16 +1348,16 @@ function renderDraft() {
     // get the col-X CSS class. Same renderer the splice-merge tiles use.
     div.className = 'draft-pick';
     applyTileColorFromTpl(div, tpl);
-    const costHtml = tpl.cost ? renderManaSymbols(formatCostBraced(tpl.cost)) : '';
+    const costStr = tpl.cost ? formatCost(tpl.cost) : '';
     const isCreature = tpl.type === 'Creature';
     const stats = isCreature ? `${tpl.power}/${tpl.toughness}` : '';
     div.innerHTML =
       `<div class="art">${artHtml(tpl.art, '·')}</div>` +
       `<div class="name">${tpl.name}</div>` +
-      `<div class="cost">${costHtml}</div>` +
+      `<div class="cost">${costStr}</div>` +
       `<div class="type">${tpl.type}${tpl.sub ? ' — ' + tpl.sub : ''}</div>` +
       (stats ? `<div class="stats">${stats}</div>` : '') +
-      (tpl.text ? `<div class="text">${renderManaSymbols(escapeHtml(tpl.text))}</div>` : '');
+      (tpl.text ? `<div class="text">${tpl.text}</div>` : '');
     div.onclick = () => pickDraft(tplId);
     attachLongPress(div, tpl);
     packEl.appendChild(div);
@@ -1421,14 +1411,12 @@ function renderColorHud(elementId, tplIds) {
     }
   }
   el.innerHTML = '';
+  const COLOR_LABEL = { W:'{W}', U:'{U}', B:'{B}', R:'{R}', G:'{G}' };
   for (const c of ['W','U','B','R','G']) {
     const n = colorCounts[c];
     const pip = document.createElement('span');
     pip.className = 'draft-pip col-' + c + (n === 0 ? ' dim' : '');
-    // renderManaSymbols turns the {W} token into the same pip span used
-    // everywhere else (cost displays, card text), so the draft counters
-    // get the emoji-glyph fallback / future PNG drop-in for free.
-    pip.innerHTML = `${renderManaSymbols('{' + c + '}')}<span>${n}</span>`;
+    pip.innerHTML = `<span>${COLOR_LABEL[c]}</span><span>${n}</span>`;
     el.appendChild(pip);
   }
 }
@@ -2134,7 +2122,7 @@ function openCardPopup(card) {
          <div class="pop-stickers-title" style="color:#cc4444">Restrictions</div>
          ${restrictionBadgesHtml(card, true)}
        </div>` : '';
-  const costPart = card.cost ? `<div class="pop-cost">Cost: ${renderManaSymbols(formatCostBraced(card.cost))}</div>` : '';
+  const costPart = card.cost ? `<div class="pop-cost">Cost: ${formatCost(card.cost)}</div>` : '';
   const damagePart = card.damage ? `<div style="color:#ff6060;font-size:13px;margin-top:6px">Damage marked: ${card.damage}</div>` : '';
   // Build segment-rendered text with empower-bumped values highlighted.
   // The popup is the prime real estate for showing what stickers did, so it
@@ -2203,7 +2191,7 @@ function openCardPopup(card) {
   inner.innerHTML = `
     <div class="pop-name">${card.name}</div>
     ${costPart}
-    <div class="pop-art">${artHtml(effectiveArt(card))}</div>
+    <div class="pop-art">${artHtml(card.art)}</div>
     <div class="pop-type">${card.sub ? card.sub + ' — ' : ''}${card.type}</div>
     ${popDisplayHtml ? `<div class="pop-text">${popDisplayHtml}</div>` : ''}
     ${isCreature ? `<div class="pop-stats">${pow}/${tou}${(pow !== basePow || tou !== baseTou) ? `<span class="bonus">(was ${basePow}/${baseTou})</span>` : ''}</div>` : ''}
@@ -2255,8 +2243,8 @@ function openZone(who, zone) {
       btn.className = 'zone-card';
       // Show card name with a small color/type hint.
       const typeHint = card.type ? card.type.charAt(0) : '?';
-      const cost = card.cost ? renderManaSymbols(formatCostBraced(card.cost)) : '';
-      btn.innerHTML = `<span style="opacity:0.6">[${typeHint}]</span> <span class="card-name"></span>${cost ? ' <span style="opacity:0.7;font-size:10px">' + cost + '</span>' : ''}`;
+      const cost = card.cost ? formatCost(card.cost) : '';
+      btn.innerHTML = `<span style="opacity:0.6">[${typeHint}]</span> <span class="card-name"></span>${cost ? ' <span style="opacity:0.5;font-size:10px">' + cost + '</span>' : ''}`;
       btn.querySelector('.card-name').textContent = card.name;
       btn.onclick = () => openCardPopup(card);
       listEl.appendChild(btn);
@@ -2347,10 +2335,7 @@ function showAbilityPicker(card, options) {
   btnCol.style.cssText = 'display:flex;flex-direction:column;gap:8px';
   for (const opt of options) {
     const b = document.createElement('button');
-    // Picker labels can carry {T}/{W}/etc. brace tokens (e.g. "Tap for
-    // {W}", "{T}: Draw 1"). Route through renderManaSymbols so the
-    // pips render instead of literal {X} text.
-    b.innerHTML = renderManaSymbols(escapeHtml(opt.label));
+    b.textContent = opt.label;
     b.style.cssText = 'background:#2a2a36;color:#ddd;border:1px solid #555;border-radius:5px;padding:10px 12px;font-size:12px;cursor:pointer;font-family:inherit;text-align:left';
     b.onclick = () => {
       document.body.removeChild(dimmer);
