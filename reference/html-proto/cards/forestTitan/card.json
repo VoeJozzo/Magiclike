@@ -9,7 +9,7 @@
   },
   "power": 5,
   "toughness": 5,
-  "art": "👹",
+  "art": "cards/forestTitan/art.png",
   "text": "Trample",
   "keywords": [
     "trample"

@@ -6,7 +6,7 @@
     "B": 1,
     "C": 3
   },
-  "art": "🩸",
+  "art": "cards/consume/art.png",
   "text": "Deal 4 damage to any target. You gain 4 life.",
   "effects": [
     {

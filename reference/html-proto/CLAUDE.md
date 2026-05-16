@@ -2,7 +2,7 @@
 
 Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folder of vanilla-JS modules — no build step, no frameworks, no network calls. Open in any modern browser to play.
 
-Current version: `v1.0.139` (defined at `js/main.js`, `const VERSION`).
+Current version: `v1.0.140` (defined at `js/main.js`, `const VERSION`).
 Always update the Current Version whenever you push a change to the Dev branch. This will allow the User to verify that the current version is live on Github Pages.
 When working on the html prototype, always work on the Dev branch, in order to enable the User to live-test on Github Pages.
 

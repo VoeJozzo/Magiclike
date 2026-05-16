@@ -5,7 +5,7 @@
   "cost": {
     "C": 5
   },
-  "art": "🪄",
+  "art": "cards/steal/art.png",
   "special": true,
   "text": "Counter target non-token spell or take target non-token permanent. The card becomes yours forever — shuffle it into your library.",
   "effects": [
