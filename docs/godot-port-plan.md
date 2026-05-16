@@ -187,7 +187,16 @@ Update `project.godot`:
 - **Slice 4.5b (interactive trigger target picker).** Triggers can specify `target_filter` on the ability dict. `_drain_pending_triggers` pauses for you-controlled triggers (surfacing `state.awaiting_target_for_trigger`) and auto-picks for opp-controlled triggers. New action `KIND_PICK_TRIGGER_TARGET` completes the pick. UI mirrors the spell-target flow.
 - **Slice 4.5c (card pool + new effects).** Card pool grew 8 → 16: Plains/Island/Swamp basic lands, Bear Cub / Gray Ogre / Hill Giant vanilla curve, Healing Salve (exercises new `gain_life` effect), Counterspell (exercises new `counter_spell` effect — first card whose target is a stack entry, with new `RulesEngine.counter_stack_entry` engine helper).
 
-**Phase 5 — AI.** Port `AI.decide(state, who) → action`. Single entry point, reads engine state, returns one action descriptor. Combat-sim subroutine for declaring attackers/blockers. Lethal detection. Snapshots state via `Resource.duplicate(true)` and explicit `duplicate()` overrides on `Player` / `CardInstance`. Threading deferred until profiling shows it's needed. Verification: AI plays a complete game against itself without crashing; spot-check decision quality via log lines.
+**Phase 5a — Combat keywords.** ✓ DONE.
+- `CardInstance.effective_keywords()` / `has_keyword(name)` — single seam unioning template baseline + runtime grants (sticker hook).
+- All eleven evergreens wired: defender / haste / vigilance / flying / reach / unblockable / first_strike / lifelink / deathtouch / trample / indestructible / menace / hexproof. Block legality, attack legality, and combat damage all consult `has_keyword`.
+- Combat damage rewritten as a two-pass system (`_combat_damage_pass(first_strike_only)`); `_deal_combat_damage` centralises target dispatch and handles lifelink + deathtouch (sets `lethal_marked` on creature target).
+- SBA in `_run_sbas` checks indestructible before lethal-damage death.
+- Hexproof in `_legal_cast_spell` blocks cross-controller targeting.
+- New cards: Wind Drake, Giant Spider, Serra Angel, Trained Armodon, Vampire Nighthawk, Raging Goblin, Walking Wall (one per keyword profile).
+- `tests/test_phase5a` covers one scenario per keyword.
+
+**Phase 5b — Engine introspection API for AI.** Port `AI.decide(state, who) → action`. Single entry point, reads engine state, returns one action descriptor. Combat-sim subroutine for declaring attackers/blockers. Lethal detection. Snapshots state via `Resource.duplicate(true)` and explicit `duplicate()` overrides on `Player` / `CardInstance`. Threading deferred until profiling shows it's needed. Verification: AI plays a complete game against itself without crashing; spot-check decision quality via log lines.
 
 **Phase 6 — Draft and roguelike meta.** Port `DRAFT` (23-pick draft, opponent deck simulation) and `RUN` (sticker system, weighted reward rolls, save/load). Use Godot's `FileAccess` + JSON in lieu of localStorage. Schema migrations from JS port directly. New scenes: `draft_screen.tscn`, `run_map.tscn`. Verification: draft a deck, complete a 3-game run, save mid-run and reload.
 
@@ -219,6 +228,7 @@ Update `project.godot`:
 | 4.5a | init_game builds libraries from decklists; DRAW fires; empty-library → opp wins | Open the game_board, see hand+library+gy counts on each panel |
 | 4.5b | Trigger needing target pauses drain; KIND_PICK_TRIGGER_TARGET completes the cast; opp-controlled triggers auto-pick | Cast Pyromaniac → "Pick a target…" prompt → click opp or click any creature |
 | 4.5c | Healing Salve gains 3 life; Counterspell removes target Bolt from stack into opp's graveyard | Cast Counterspell on opp's Lightning Bolt during their cast |
+| 5a | One assertion per keyword: defender, haste, vigilance, flying/reach, unblockable, first_strike, lifelink, deathtouch, trample, indestructible, hexproof | Attack with Serra Angel (flying + vigilance, doesn't tap); Bolt opponent's hexproof creature fails |
 | 5 | AI plays itself a full game without crash | Sit and watch AI vs AI; spot-check no obviously bad attacks |
 | 6 | Draft 23 picks, complete 3-game run, save/load mid-run | Full roguelike loop end-to-end |
 
