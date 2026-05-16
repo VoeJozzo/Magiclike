@@ -1,0 +1,26 @@
+{
+  "tplId": "vinestrangle",
+  "name": "Vine Strangle",
+  "type": "Sorcery",
+  "cost": {
+    "G": 1,
+    "C": 2
+  },
+  "art": "🌱",
+  "text": "Vine Strangle deals 5 damage to target creature with flying.",
+  "effects": [
+    {
+      "kind": "damage",
+      "target": "creature",
+      "amount": 5,
+      "filter": {
+        "controller": "opp",
+        "hasKeyword": "flying"
+      }
+    }
+  ],
+  "color": "G",
+  "colors": [
+    "G"
+  ]
+}

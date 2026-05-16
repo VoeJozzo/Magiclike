@@ -1,0 +1,46 @@
+{
+  "tplId": "archmagePatriarch",
+  "name": "Archmage Patriarch",
+  "type": "Creature",
+  "sub": "Human Wizard",
+  "cost": {
+    "U": 1,
+    "C": 3
+  },
+  "power": 2,
+  "toughness": 3,
+  "art": "🧙",
+  "text": "Other Wizards you control get +1/+1. Whenever you cast a spell, draw a card, then discard a card.",
+  "staticBuffs": [
+    {
+      "filter": {
+        "controller": "self"
+      },
+      "subtype": "Wizard",
+      "power": 1,
+      "toughness": 1
+    }
+  ],
+  "triggers": [
+    {
+      "event": "spellCast",
+      "condId": "youCastSpell",
+      "text": "Spell cast — loot 1 (draw, then discard).",
+      "effects": [
+        {
+          "kind": "draw",
+          "amount": 1
+        },
+        {
+          "kind": "discard",
+          "target": "self",
+          "amount": 1
+        }
+      ]
+    }
+  ],
+  "color": "U",
+  "colors": [
+    "U"
+  ]
+}

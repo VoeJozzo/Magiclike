@@ -1,0 +1,22 @@
+{
+  "tplId": "washAway",
+  "name": "Wash Away",
+  "type": "Sorcery",
+  "cost": {
+    "U": 1,
+    "C": 2
+  },
+  "art": "🌊",
+  "text": "Return all creatures to their owners' hands.",
+  "effects": [
+    {
+      "kind": "removeAll",
+      "severity": 2,
+      "whose": "all"
+    }
+  ],
+  "color": "U",
+  "colors": [
+    "U"
+  ]
+}

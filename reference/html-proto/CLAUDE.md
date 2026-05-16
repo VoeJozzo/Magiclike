@@ -2,7 +2,7 @@
 
 Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folder of vanilla-JS modules — no build step, no frameworks, no network calls. Open in any modern browser to play.
 
-Current version: `v1.0.133` (defined at `js/main.js`, `const VERSION`).
+Current version: `v1.0.134` (defined at `js/main.js`, `const VERSION`).
 Always update the Current Version whenever you push a change to the Dev branch. This will allow the User to verify that the current version is live on Github Pages.
 When working on the html prototype, always work on the Dev branch, in order to enable the User to live-test on Github Pages.
 
@@ -18,7 +18,8 @@ Also in the repo: `index.html` at the repo root — a small redirect that points
 
 | File | Role |
 |---|---|
-| `js/cards.js` | `CARDS` (~210 templates), `TOKENS`, `KEYWORDS`, `STICKERS`, `EMPOWER_FIELDS`, `RUN_MODIFIERS` (Neow boons) |
+| `cards/<tplId>/card.json` | One file per card template (258 cards). Each folder will also hold `art.png` once art arrives. `cards/_manifest.json` lists every folder name. |
+| `js/cards.js` | `CARDS = {}` + `async loadCards()` fetcher (populates CARDS from the per-card JSONs at boot). Also holds `TOKENS`, `KEYWORDS`, `STICKERS`, `EMPOWER_FIELDS`, `KEYWORD_DISPLAY`, `KEYWORD_STICKER_WEIGHTS`, `RUN_MODIFIERS` — the shared registries that don't fit the per-card model. |
 | `js/engine.js` | Mercurial pool, sticker application, card-text description helpers, `ENGINE` IIFE (state, mana, triggers, phases, combat), `EFFECTS` dispatch (~40 effect kinds) |
 | `js/ai.js` | `AI` IIFE — decision logic, combat sim, lethal detection |
 | `js/meta.js` | `DRAFT` IIFE (pack generation, 23-pick draft, opp deck sim), `RUN` IIFE (roguelike meta, save/load, schema migrations), `PICKLOG` IIFE (analytics, `window.PICKLOG`) |
@@ -26,9 +27,11 @@ Also in the repo: `index.html` at the repo root — a small redirect that points
 | `js/render.js` | `render()` main repaint, `renderManaPool`, `renderHand`, `renderBf`, `passLabel`, etc. — in-game UI only |
 | `js/triggers.js` | `TRIGGER_CONDITIONS` registry (condId → predicate) and `evalTriggerCondition` resolver — the trigger vocabulary used at runtime |
 | `js/trigger-generator.js` | `GENERATOR_EFFECTS` / `GENERATOR_CONDITIONS` data plus the rolling functions for Mercurial Adept / Architect's Codex (`generateRandomTrigger`, `generateConditionOptions`, `generateEffectOptions`, `assembleTrigger`) |
-| `js/main.js` | `VERSION`, the `opp(who)` helper, and the two-line bootstrap that wires `window.PICKLOG` and calls `CONTROLLER.init()` |
+| `js/main.js` | `VERSION`, the `opp(who)` helper, and the bootstrap that awaits `loadCards()` then calls `CONTROLLER.init()`. |
 
 Load order in `magiclike_engine.html` is: cards → engine → ai → meta → controller → render → triggers → trigger-generator → main. Each IIFE declares as a top-level `const`, so it's a global accessible from later scripts.
+
+**Card data:** Cards live one-folder-per-template under `cards/`. The tplId is the folder name AND a top-level field in `card.json`. To add a new card, create a folder, write `card.json`, append the folder name to `cards/_manifest.json`. The browser loads everything at boot via the manifest. Tests sync-load via `fs.readFileSync` (see `tests/_setup.js`).
 
 ## Persistence
 
@@ -40,7 +43,7 @@ Schema migrations live in the `RUN` module and run on load.
 
 ## Design backlog
 
-The earlier in-code roadmap comment block has been removed as features shipped (tokens, modal spells, etc. are now implemented). Static Lords remain partially implemented: lords grant `staticBuffs` (stat changes) but not keywords — see the `staticBuffs:` entries in `js/cards.js`. Ask the user about current priorities before assuming what's next.
+The earlier in-code roadmap comment block has been removed as features shipped (tokens, modal spells, etc. are now implemented). Static Lords remain partially implemented: lords grant `staticBuffs` (stat changes) but not keywords — grep `cards/*/card.json` for `staticBuffs` to find them. Ask the user about current priorities before assuming what's next.
 
 ## Existing code style (descriptive, not prescriptive)
 

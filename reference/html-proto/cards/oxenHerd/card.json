@@ -1,0 +1,22 @@
+{
+  "tplId": "oxenHerd",
+  "name": "Oxen Herd",
+  "type": "Creature",
+  "sub": "Beast",
+  "cost": {
+    "G": 2,
+    "C": 2
+  },
+  "power": 4,
+  "toughness": 4,
+  "art": "🐂",
+  "text": "Trample, Lifelink",
+  "keywords": [
+    "trample",
+    "lifelink"
+  ],
+  "color": "G",
+  "colors": [
+    "G"
+  ]
+}

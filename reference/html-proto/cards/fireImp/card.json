@@ -1,0 +1,22 @@
+{
+  "tplId": "fireImp",
+  "name": "Cinder Sprite",
+  "type": "Creature",
+  "sub": "Imp",
+  "cost": {
+    "R": 1,
+    "C": 1
+  },
+  "power": 1,
+  "toughness": 1,
+  "art": "🔥",
+  "text": "Flying, Haste",
+  "keywords": [
+    "flying",
+    "haste"
+  ],
+  "color": "R",
+  "colors": [
+    "R"
+  ]
+}

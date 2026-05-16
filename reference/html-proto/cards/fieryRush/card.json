@@ -1,0 +1,22 @@
+{
+  "tplId": "fieryRush",
+  "name": "Fiery Rush",
+  "type": "Instant",
+  "cost": {
+    "R": 1
+  },
+  "art": "💨",
+  "text": "Target creature gets +2/+0 EOT.",
+  "effects": [
+    {
+      "kind": "pump",
+      "target": "creature",
+      "power": 2,
+      "toughness": 0
+    }
+  ],
+  "color": "R",
+  "colors": [
+    "R"
+  ]
+}

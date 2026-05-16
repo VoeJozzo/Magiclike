@@ -1,0 +1,32 @@
+{
+  "tplId": "blackKnight",
+  "name": "Ravenous Chupacabra",
+  "type": "Creature",
+  "sub": "Beast",
+  "cost": {
+    "B": 1,
+    "C": 3
+  },
+  "power": 2,
+  "toughness": 2,
+  "art": "🐺",
+  "text": "When this enters, destroy target creature.",
+  "triggers": [
+    {
+      "event": "cardEntersBattlefield",
+      "condId": "thisEnters",
+      "text": "When ~ enters, destroy target creature.",
+      "effects": [
+        {
+          "kind": "removeCreature",
+          "severity": 3,
+          "target": "creature"
+        }
+      ]
+    }
+  ],
+  "color": "B",
+  "colors": [
+    "B"
+  ]
+}

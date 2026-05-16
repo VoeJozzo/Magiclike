@@ -36,6 +36,7 @@ These would round out the PR #5 test plan but require a real browser:
 
 ## Recently done
 
+- v1.0.134 — Card data decomposition. `cards.js` shrunk from 1768 to 418 lines; 258 card templates moved out to `cards/<tplId>/card.json` (one folder per card, ready for per-card PNG art). `cards.js` now holds an empty `CARDS = {}` + `async loadCards()` fetcher and keeps the supporting registries (TOKENS, KEYWORDS, STICKERS, EMPOWER_FIELDS, KEYWORD_DISPLAY, KEYWORD_STICKER_WEIGHTS, RUN_MODIFIERS). `main.js` awaits the fetch before init; tests sync-load via `fs.readFileSync` in `tests/_setup.js`. Verified bit-identical to the pre-refactor CARDS object; 362/362 assertions pass; 100/100 self-play games clean.
 - v1.0.133 — removed stale `/tmp/trigger_vocab_test.js` comment.
 - v1.0.132 — Modal helper lifted to module scope (was throwing `ReferenceError` on every render); added 3 test files for PR #5's testable items (modal helper, trigger-generator data shape, AI burn-lethal).
 - v1.0.131 — documented the version-bump-on-every-dev-push rule.

@@ -1,0 +1,22 @@
+{
+  "tplId": "fireball",
+  "name": "Volcanic Hammer",
+  "type": "Sorcery",
+  "cost": {
+    "R": 1,
+    "C": 2
+  },
+  "art": "🔨",
+  "text": "Deal 4 damage to any target.",
+  "effects": [
+    {
+      "kind": "damage",
+      "target": "any",
+      "amount": 4
+    }
+  ],
+  "color": "R",
+  "colors": [
+    "R"
+  ]
+}

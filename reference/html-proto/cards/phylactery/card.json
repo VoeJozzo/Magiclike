@@ -1,0 +1,12 @@
+{
+  "tplId": "phylactery",
+  "name": "Phylactery",
+  "type": "Land",
+  "sub": "Swamp",
+  "art": "💀",
+  "mana": "B",
+  "special": true,
+  "text": "Your life can't go below 0 and you can't lose to an empty library. Damage past 0 — and each would-be overdraw — rips that many slots from your deck instead. (This card is always ripped last.)",
+  "color": null,
+  "colors": []
+}

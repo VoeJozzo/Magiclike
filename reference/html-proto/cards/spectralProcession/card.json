@@ -1,0 +1,21 @@
+{
+  "tplId": "spectralProcession",
+  "name": "Spectral Procession",
+  "type": "Sorcery",
+  "cost": {
+    "W": 3
+  },
+  "art": "👻",
+  "text": "Create three 1/1 white Spirit tokens with flying.",
+  "effects": [
+    {
+      "kind": "createTokens",
+      "tokenId": "spirit_w_1_1",
+      "count": 3
+    }
+  ],
+  "color": "W",
+  "colors": [
+    "W"
+  ]
+}

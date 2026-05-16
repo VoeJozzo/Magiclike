@@ -1,0 +1,35 @@
+{
+  "tplId": "goblinWarDrummer",
+  "name": "Goblin War Drummer",
+  "type": "Creature",
+  "sub": "Goblin Shaman",
+  "cost": {
+    "R": 1,
+    "C": 1
+  },
+  "power": 2,
+  "toughness": 1,
+  "art": "🥁",
+  "text": "Whenever another Goblin enters under your control, deal 1 damage to any target.",
+  "triggers": [
+    {
+      "event": "cardEntersBattlefield",
+      "condId": "anotherCreatureYouEntersOfSubtype",
+      "params": {
+        "sub": "Goblin"
+      },
+      "text": "Another Goblin entered — deal 1 to any target.",
+      "effects": [
+        {
+          "kind": "damage",
+          "target": "any",
+          "amount": 1
+        }
+      ]
+    }
+  ],
+  "color": "R",
+  "colors": [
+    "R"
+  ]
+}

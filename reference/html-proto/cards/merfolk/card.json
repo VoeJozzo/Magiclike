@@ -1,0 +1,36 @@
+{
+  "tplId": "merfolk",
+  "name": "Merfolk Looter",
+  "type": "Creature",
+  "sub": "Merfolk",
+  "cost": {
+    "U": 1
+  },
+  "power": 1,
+  "toughness": 1,
+  "art": "🐟",
+  "text": "T: Draw a card, then discard a card.",
+  "abilities": [
+    {
+      "cost": {
+        "tap": true
+      },
+      "sorcerySpeed": false,
+      "effects": [
+        {
+          "kind": "draw",
+          "amount": 1
+        },
+        {
+          "kind": "discard",
+          "target": "self",
+          "amount": 1
+        }
+      ]
+    }
+  ],
+  "color": "U",
+  "colors": [
+    "U"
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "tplId": "burnoutShaman",
+  "name": "Burnout Shaman",
+  "type": "Creature",
+  "sub": "Goblin Shaman",
+  "cost": {
+    "R": 1,
+    "C": 1
+  },
+  "power": 2,
+  "toughness": 1,
+  "art": "🔥",
+  "text": "When this dies, deal 2 damage to any target.",
+  "triggers": [
+    {
+      "event": "cardDies",
+      "condId": "thisDies",
+      "text": "When ~ dies, deal 2 to any target.",
+      "effects": [
+        {
+          "kind": "damage",
+          "target": "any",
+          "amount": 2
+        }
+      ]
+    }
+  ],
+  "color": "R",
+  "colors": [
+    "R"
+  ]
+}

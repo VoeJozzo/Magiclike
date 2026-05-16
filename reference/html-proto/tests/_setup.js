@@ -136,15 +136,37 @@ const EXPOSED = [
   'stickerBadgesHtml',
 ];
 
+// Card templates now live in cards/<tplId>/card.json. The browser-side
+// loadCards() uses fetch() — useless in Node. Tests instead populate
+// CARDS synchronously from disk via fs.readFileSync, much faster than
+// awaiting a fetch loop and gives identical data.
+const CARDS_DIR = path.join(__dirname, '..', 'cards');
+function loadCardsFromDisk() {
+  const manifest = JSON.parse(fs.readFileSync(path.join(CARDS_DIR, '_manifest.json'), 'utf8'));
+  const out = {};
+  for (const tplId of manifest) {
+    const card = JSON.parse(fs.readFileSync(path.join(CARDS_DIR, tplId, 'card.json'), 'utf8'));
+    out[tplId] = card;
+  }
+  return out;
+}
+
 let _loaded = false;
 function loadEngine() {
   if (_loaded) return;
   _loaded = true;
   installDomStubs();
   let code = getSource();
-  // Strip the bootstrap call — it tries to wire up real DOM listeners we
-  // don't have. The engine APIs are fully usable without it.
-  code = code.replace(/CONTROLLER\.init\(\);?/g, '/* CONTROLLER.init() stripped for tests */');
+  // Strip the browser bootstrap. main.js now wraps CONTROLLER.init() in a
+  // loadCards().then(...) so cards arrive before init. In Node we'll
+  // populate CARDS ourselves and call nothing — leaving the .then chain
+  // intact would invoke fetch(), which doesn't exist here.
+  code = code.replace(
+    /loadCards\(\)\.then\([\s\S]*?\}\);/,
+    '/* main.js bootstrap stripped for tests */'
+  );
+  // Also strip any bare CONTROLLER.init() that might remain elsewhere.
+  code = code.replace(/^\s*CONTROLLER\.init\(\);?\s*$/m, '/* CONTROLLER.init() stripped */');
   // Expose engine module-scope identifiers to the surrounding Node global,
   // so test code outside the new Function() can use them. The engine code
   // runs inside a fresh function scope (because of the new Function()),
@@ -152,6 +174,14 @@ function loadEngine() {
   // otherwise.
   const expose = EXPOSED.map(n => `try { global.${n} = ${n}; } catch (_) {}`).join('\n');
   new Function(code + '\n' + expose)();
+  // Populate CARDS now that the engine modules are loaded. Done after
+  // eval so the engine's `const CARDS = {}` exists; we mutate it in place
+  // rather than replace the binding (other modules captured the
+  // reference via closure).
+  const cards = loadCardsFromDisk();
+  for (const tplId of Object.keys(cards)) {
+    global.CARDS[tplId] = cards[tplId];
+  }
 }
 
 module.exports = { getSource, loadEngine, ENGINE_FILES };

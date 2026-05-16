@@ -1,0 +1,20 @@
+{
+  "tplId": "awakenStone",
+  "name": "Awaken the Stone",
+  "type": "Instant",
+  "cost": {
+    "U": 1
+  },
+  "art": "⏰",
+  "text": "Untap target creature.",
+  "effects": [
+    {
+      "kind": "untap",
+      "target": "creature"
+    }
+  ],
+  "color": "U",
+  "colors": [
+    "U"
+  ]
+}
