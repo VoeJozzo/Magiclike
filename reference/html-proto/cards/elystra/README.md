@@ -1,13 +1,25 @@
 # Elystra — art notes
 
-`art.png` is the active card art (rendered in-game).
+Elystra has an **art ladder** — her displayed portrait evolves as
+she grows. The renderer picks one of three pieces based on her
+current power+toughness (computed by `ENGINE.getStats`, so all
+modifiers, sticker pumps, permanent EOT buffs, and lord/static
+bumps count):
 
-`art-alt-1.png` and `art-alt-2.png` are alternates kept on disk but not
-referenced by `card.json`. The engine doesn't load them. They're here
-because the user has a "weird concept" planned for Elystra that may
-swap her art mid-run or rotate it; saving the alternates with the
-card keeps them findable.
+| Total p+t | Art shown |
+|---|---|
+| 0–9 (base, mild growth) | `art-1.png` |
+| 10–19 (mid-form) | `art-2.png` |
+| 20+ (final form) | `art-3.png` |
 
-Nothing in `card.json` or engine code references the alt files. To
-activate one in the future, copy or rename it to `art.png` (or update
-the JSON's `art` field to point at the alt directly).
+Configuration lives in `card.json` under the `artLadder` field —
+each rung is `{ "minPT": N, "art": "<path>" }`. The renderer walks
+the ladder and picks the highest threshold the card currently meets.
+The `art` field on the card stays set as the default (used by
+template-only views like the draft pick, reward modal, and card
+browser, where no live stats are available).
+
+The art-ladder mechanism is generic — any card that wants
+state-driven portraits can add an `artLadder` to its `card.json`.
+See `effectiveArt()` in `reference/html-proto/js/render.js` for the
+selection logic. Currently only Elystra uses it.

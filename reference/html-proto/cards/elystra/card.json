@@ -8,7 +8,12 @@
   },
   "power": 1,
   "toughness": 1,
-  "art": "cards/elystra/art.png",
+  "art": "cards/elystra/art-1.png",
+  "artLadder": [
+    { "minPT": 0, "art": "cards/elystra/art-1.png" },
+    { "minPT": 10, "art": "cards/elystra/art-2.png" },
+    { "minPT": 20, "art": "cards/elystra/art-3.png" }
+  ],
   "special": true,
   "permanentEot": true,
   "ripOnTarget": true,

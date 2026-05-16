@@ -133,7 +133,7 @@ const EXPOSED = [
   'applyStickersToCard', 'rollSubtypeFromDeck', 'pushStickerWithRoll',
   'stickersForSlot', 'deckColorsFromSlots', 'fakeTargetsForLegality',
   // Render module-scope helpers (render.js has no IIFE).
-  'stickerBadgesHtml',
+  'stickerBadgesHtml', 'effectiveArt', 'renderManaSymbols', 'formatCostBraced',
 ];
 
 // Card templates now live in cards/<tplId>/card.json. The browser-side

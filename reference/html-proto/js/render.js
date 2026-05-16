@@ -1160,6 +1160,47 @@ function nativeKeywordBadgesHtml(card, big) {
 //
 // `fallback` is what to render when art is missing/empty (defaults to ''
 // since most callers handle empty gracefully).
+// Pick the right art for a card based on its current power+toughness.
+//
+// Cards with a static art simply have an "art" string in their template
+// and return early. Cards with an `artLadder` array on their template
+// (currently only Elystra) evolve their portrait as they grow — each
+// ladder entry is `{minPT, art}`, and we walk the ladder picking the
+// highest threshold the card's current p+t meets.
+//
+// Stats come from ENGINE.getStats so live modifiers + sticker pumps +
+// staticBuffs + permanent EOT bumps all count. For non-Creatures (no
+// stats to compute), fall back to the base art unconditionally.
+//
+// Called by makeCardEl (hand/board) and openCardPopup (zoom). Draft,
+// reward, and card-browser views work off templates and don't get
+// runtime stats, so they use the base `art` field directly — that's
+// the "show the early/base form" default for browse contexts.
+function effectiveArt(card) {
+  if (!card) return '';
+  // Ladder lives on the template, not the instance — makeCard doesn't
+  // copy it across, and rather than add an engine change to do so, we
+  // look it up here. This is a render-only concern; the engine never
+  // needs to know about art variants.
+  const tpl = (typeof CARDS !== 'undefined') ? CARDS[card.tplId] : null;
+  const ladder = (tpl && Array.isArray(tpl.artLadder)) ? tpl.artLadder : card.artLadder;
+  if (!Array.isArray(ladder) || ladder.length === 0) return card.art;
+  if (card.type !== 'Creature') return card.art;
+  let p = 0, t = 0;
+  try {
+    const stats = ENGINE.getStats(card);
+    if (Array.isArray(stats)) { p = stats[0] || 0; t = stats[1] || 0; }
+  } catch (_) {
+    p = card.power || 0; t = card.toughness || 0;
+  }
+  const sum = (p || 0) + (t || 0);
+  let pick = card.art;
+  for (const rung of ladder) {
+    if (rung && sum >= (rung.minPT || 0)) pick = rung.art;
+  }
+  return pick;
+}
+
 function artHtml(art, fallback) {
   if (!art) return fallback || '';
   // Heuristic: anything that looks like a URL or an image file path is a
@@ -1218,7 +1259,7 @@ function makeCardEl(card, opts) {
   }
   div.innerHTML = `
     <div class="cname" title="${card.name}">${card.name}</div>
-    <div class="cart">${artHtml(card.art)}</div>
+    <div class="cart">${artHtml(effectiveArt(card))}</div>
     <div class="ctype">${card.sub || card.type}</div>
     ${displayHtml ? `<div class="ctext">${displayHtml}</div>` : ''}
     ${card.type === 'Creature' ? `<div class="cstats">${p}/${t}</div>` : ''}

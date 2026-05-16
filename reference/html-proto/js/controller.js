@@ -2191,7 +2191,7 @@ function openCardPopup(card) {
   inner.innerHTML = `
     <div class="pop-name">${card.name}</div>
     ${costPart}
-    <div class="pop-art">${artHtml(card.art)}</div>
+    <div class="pop-art">${artHtml(effectiveArt(card))}</div>
     <div class="pop-type">${card.sub ? card.sub + ' — ' : ''}${card.type}</div>
     ${popDisplayHtml ? `<div class="pop-text">${popDisplayHtml}</div>` : ''}
     ${isCreature ? `<div class="pop-stats">${pow}/${tou}${(pow !== basePow || tou !== baseTou) ? `<span class="bonus">(was ${basePow}/${baseTou})</span>` : ''}</div>` : ''}
