@@ -5,7 +5,7 @@
   "cost": {
     "C": 3
   },
-  "art": "📎",
+  "art": "cards/stapler/art.png",
   "special": true,
   "chargesAtRunStart": 3,
   "text": "3 charges (persist across runs). {3}, T: Choose two target permanents. Staple the second onto the first. When this is out of charges, rip it up.",
