@@ -2,7 +2,7 @@
 
 Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folder of vanilla-JS modules — no build step, no frameworks, no network calls. Open in any modern browser to play.
 
-Current version: `v1.0.133` (defined at `js/main.js`, `const VERSION`).
+Current version: `v1.0.134` (defined at `js/main.js`, `const VERSION`).
 Always update the Current Version whenever you push a change to the Dev branch. This will allow the User to verify that the current version is live on Github Pages.
 When working on the html prototype, always work on the Dev branch, in order to enable the User to live-test on Github Pages.
 
@@ -19,7 +19,8 @@ Also in the repo: `index.html` at the repo root — a small redirect that points
 | File | Role |
 |---|---|
 | `js/cards.js` | `CARDS` (~210 templates), `TOKENS`, `KEYWORDS`, `STICKERS`, `EMPOWER_FIELDS`, `RUN_MODIFIERS` (Neow boons) |
-| `js/engine.js` | Mercurial pool, sticker application, card-text description helpers, `ENGINE` IIFE (state, mana, triggers, phases, combat), `EFFECTS` dispatch (~40 effect kinds) |
+| `js/engine.js` | Mercurial pool, sticker application, `ENGINE` IIFE (state, mana, triggers, phases, combat), `EFFECTS` dispatch (~40 effect kinds) |
+| `js/card-text.js` | Card-text description helpers — `describeCardSegments`, `describeCardText`, `describeEffect/Trigger/Ability/StaticBuff/ModalSegs` + internal helpers (targetPhrase, withFilter, bumpedSeg/Derived, capitalizeSegs, triggerPreamble, keywordPreamble, abilityCostPhrase, segsToText). Pure data → English; reads `ENGINE.synthesizeStapledTemplate` for stapled-card baselines. |
 | `js/ai.js` | `AI` IIFE — decision logic, combat sim, lethal detection |
 | `js/meta.js` | `DRAFT` IIFE (pack generation, 23-pick draft, opp deck sim), `RUN` IIFE (roguelike meta, save/load, schema migrations), `PICKLOG` IIFE (analytics, `window.PICKLOG`) |
 | `js/controller.js` | `CONTROLLER` IIFE — input handling, modals, AI scheduling, plus the meta-game render helpers it owns (renderMap, renderReward, renderDraft, renderStatsContent, …) |
@@ -28,7 +29,7 @@ Also in the repo: `index.html` at the repo root — a small redirect that points
 | `js/trigger-generator.js` | `GENERATOR_EFFECTS` / `GENERATOR_CONDITIONS` data plus the rolling functions for Mercurial Adept / Architect's Codex (`generateRandomTrigger`, `generateConditionOptions`, `generateEffectOptions`, `assembleTrigger`) |
 | `js/main.js` | `VERSION`, the `opp(who)` helper, and the two-line bootstrap that wires `window.PICKLOG` and calls `CONTROLLER.init()` |
 
-Load order in `magiclike_engine.html` is: cards → engine → ai → meta → controller → render → triggers → trigger-generator → main. Each IIFE declares as a top-level `const`, so it's a global accessible from later scripts.
+Load order in `magiclike_engine.html` is: cards → engine → card-text → ai → meta → controller → render → triggers → trigger-generator → main. Each IIFE declares as a top-level `const`, so it's a global accessible from later scripts.
 
 ## Persistence
 
@@ -61,7 +62,16 @@ For *new* code I write, I'll lean toward these defaults unless told otherwise. F
 
 ## Testing
 
-No test suite. Verify changes by:
+Node-based regression suite under `tests/`. Run from `reference/html-proto/`:
+
+```
+node tests/run_all.js                       # 362 assertions, ~2s
+node tests/selfplay_harness.js 500 bughunt  # AI vs AI, ~20s
+```
+
+`tests/_setup.js` boots the engine in Node by stubbing the DOM and concatenating the JS modules in script-tag order. Coverage is engine-level (card synthesis, sticker application, target legality, trigger generation, AI burn lethal, modal helper). See `tests/README.md` for the file-by-file breakdown.
+
+DOM/UI behavior isn't covered by the harness — verify those by:
 1. Opening `magiclike_engine.html` directly in a browser (or visiting the GitHub Pages URL).
 2. Watching the devtools console — uncaught errors are the strongest signal of regression.
 3. Playing through at least one combat phase, one stack interaction, and one draft pick if those areas were touched.

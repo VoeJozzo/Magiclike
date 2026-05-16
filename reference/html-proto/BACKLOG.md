@@ -36,6 +36,7 @@ These would round out the PR #5 test plan but require a real browser:
 
 ## Recently done
 
+- v1.0.134 — extracted card-text helpers (`describeCardSegments` and friends, ~720 lines / 21 functions) from `engine.js` into new `js/card-text.js`. Engine.js dropped 7,823 → 7,128 lines. Surgical extraction of top-level helpers above the ENGINE IIFE; doesn't touch the IIFE itself, so it's distinct from the broader engine.js decomposition still parked behind the `step()` refactor.
 - v1.0.133 — removed stale `/tmp/trigger_vocab_test.js` comment.
 - v1.0.132 — Modal helper lifted to module scope (was throwing `ReferenceError` on every render); added 3 test files for PR #5's testable items (modal helper, trigger-generator data shape, AI burn-lethal).
 - v1.0.131 — documented the version-bump-on-every-dev-push rule.
