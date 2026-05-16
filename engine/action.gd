@@ -23,6 +23,10 @@ const KIND_PLAY_LAND := "play_land"
 const KIND_CAST_SPELL := "cast_spell"
 const KIND_DECLARE_ATTACKER := "declare_attacker"
 const KIND_DECLARE_BLOCKER := "declare_blocker"
+# Phase 4.5b: fills in the target for a queued triggered ability that's
+# waiting on player input. Engine sets state.awaiting_target_for_trigger
+# to signal which trigger is pending; this action supplies the chosen target.
+const KIND_PICK_TRIGGER_TARGET := "pick_trigger_target"
 
 
 static func make_pass_priority() -> Dictionary:
@@ -66,3 +70,9 @@ static func target_player(who: String) -> Dictionary:
 
 static func target_creature(iid: int) -> Dictionary:
 	return {"kind": "creature", "iid": iid}
+
+
+# Phase 4.5b: fill the pending trigger's target. The engine reads
+# state.awaiting_target_for_trigger to know which trigger this completes.
+static func make_pick_trigger_target(target: Dictionary) -> Dictionary:
+	return {"kind": KIND_PICK_TRIGGER_TARGET, "target": target}

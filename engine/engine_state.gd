@@ -45,6 +45,14 @@ var blockers: Dictionary = {}
 # }
 var pending_triggers: Array[Dictionary] = []
 
+# Phase 4.5b: when a "you"-controlled trigger needs an interactive target
+# pick, the drainer pauses and stuffs metadata here so the UI can prompt the
+# player. Cleared once KIND_PICK_TRIGGER_TARGET fires. Empty Dictionary when
+# nothing awaits a target.
+# Shape: {"source_iid": int, "controller_key": "you", "ability_index": int,
+#         "filter": String}
+var awaiting_target_for_trigger: Dictionary = {}
+
 # Log of human-readable lines describing what happened. UI subscribes to display.
 var log: Array[String] = []
 

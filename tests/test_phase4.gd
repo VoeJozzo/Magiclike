@@ -49,10 +49,12 @@ func _ready() -> void:
 	# fires ETB trigger which queues and drains onto stack.
 	ok = RulesEngine.execute_action(Action.make_pass_priority())
 	_assert_true(ok, "you pass priority")
-	# Pyromaniac resolves on second pass — opp auto-passes via Phase 3 stub
-	# AFTER triggers drain. Check stack now contains the trigger.
-	_assert_eq(s.stack.size(), 1, "stack has Pyromaniac's ETB trigger after resolution")
-	_assert_eq(s.pending_triggers.size(), 0, "pending_triggers drained")
+	# Phase 4.5b: Pyromaniac's ETB ability needs a target (any target). After
+	# resolution + ETB drain, the engine halts at awaiting_target_for_trigger.
+	# The trigger is in pending_triggers but NOT yet on stack.
+	_assert_eq(s.pending_triggers.size(), 1, "Pyromaniac ETB trigger pending a target")
+	_assert_true(not s.awaiting_target_for_trigger.is_empty(), "engine awaits target pick")
+	_assert_eq(s.stack.size(), 0, "stack empty until target is picked")
 
 	# Find the Pyromaniac on battlefield (it resolved already)
 	var pyro_in_play: CardInstance = null
@@ -61,6 +63,15 @@ func _ready() -> void:
 			pyro_in_play = c
 			break
 	_assert_true(pyro_in_play != null, "Pyromaniac is on the battlefield")
+
+	# Pick the opp player as target — Pyromaniac shoots opp's face.
+	ok = RulesEngine.execute_action(Action.make_pick_trigger_target(
+		{"kind": "player", "who": "opp"}
+	))
+	_assert_true(ok, "pick opp as Pyromaniac's ETB target")
+	_assert_eq(s.stack.size(), 1, "stack has Pyromaniac's ETB trigger after target picked")
+	_assert_eq(s.pending_triggers.size(), 0, "pending_triggers drained")
+	_assert_true(s.awaiting_target_for_trigger.is_empty(), "no more awaiting target")
 
 	# Both pass on the trigger → it resolves, opp takes 1
 	ok = RulesEngine.execute_action(Action.make_pass_priority())

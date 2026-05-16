@@ -318,6 +318,8 @@ func execute_action(action: Dictionary) -> bool:
 			ok = _do_declare_blocker(action)
 		Action.KIND_PASS_PRIORITY:
 			ok = _do_pass_priority(action)
+		Action.KIND_PICK_TRIGGER_TARGET:
+			ok = _do_pick_trigger_target(action)
 		_:
 			push_warning("execute_action: unknown kind '%s'" % kind)
 
@@ -343,6 +345,8 @@ func is_legal_action(action: Dictionary) -> bool:
 			return _legal_declare_attacker(action)
 		Action.KIND_DECLARE_BLOCKER:
 			return _legal_declare_blocker(action)
+		Action.KIND_PICK_TRIGGER_TARGET:
+			return _legal_pick_trigger_target(action)
 		_:
 			return false
 
@@ -1181,28 +1185,188 @@ func _fire_event(event: Dictionary) -> void:
 #
 # After pushing, priority resets to the active player and passes clear, so
 # both players can respond before any trigger resolves.
+# Phase 4.5b: pick the target for a queued trigger that's awaiting one.
+# Legal only when state.awaiting_target_for_trigger is set AND the supplied
+# target matches the trigger's declared filter.
+func _legal_pick_trigger_target(action: Dictionary) -> bool:
+	if _state == null or _state.winner != "":
+		return false
+	if _state.awaiting_target_for_trigger.is_empty():
+		return false
+	var target: Dictionary = action.get("target", {})
+	if target.is_empty():
+		return false
+	return _target_matches_filter(target, _state.awaiting_target_for_trigger.filter)
+
+
+# Validates a target descriptor against a filter string. Phase 4.5b supports:
+#   - "creature_or_player": any player or any battlefield creature
+#   - "creature":           any battlefield creature
+#   - "player":             either player
+# Future filters (hexproof, controller-restricted, etc.) extend this.
+func _target_matches_filter(target: Dictionary, filter: String) -> bool:
+	var kind: String = target.get("kind", "")
+	match filter:
+		"creature_or_player":
+			if kind == "player":
+				return target.get("who", "") in ["you", "opp"]
+			if kind == "creature":
+				var iid: int = target.get("iid", -1)
+				var found = _state.find_instance(iid)
+				return found != null and found.card != null \
+					and found.card.template is CreatureResource \
+					and found.zone_name == "battlefield"
+			return false
+		"creature":
+			if kind != "creature":
+				return false
+			var iid: int = target.get("iid", -1)
+			var found = _state.find_instance(iid)
+			return found != null and found.card != null \
+				and found.card.template is CreatureResource \
+				and found.zone_name == "battlefield"
+		"player":
+			return kind == "player" and target.get("who", "") in ["you", "opp"]
+		_:
+			return false
+
+
+func _do_pick_trigger_target(action: Dictionary) -> bool:
+	var target: Dictionary = action.target
+	# The awaiting trigger is at the head of pending_triggers (the drainer
+	# halted there). Fill in its targets, then resume draining.
+	if _state.pending_triggers.is_empty():
+		push_warning("_do_pick_trigger_target: no pending trigger to fill")
+		return false
+	var trig: Dictionary = _state.pending_triggers[0]
+	trig.targets = [target]
+	_state.awaiting_target_for_trigger = {}
+	var src: CardInstance = _find_card_anywhere(trig.source_iid)
+	var src_name: String = src.name() if src != null else "?"
+	_state.append_log("%s targets %s" % [src_name, _describe_targets([target])])
+	# Resume the drain. The trig at index 0 now has targets so it'll push
+	# this iteration. Any further triggers continue per APNAP.
+	_drain_continue()
+	return true
+
+
 func _drain_pending_triggers() -> void:
 	if _state.pending_triggers.is_empty():
 		return
+	# If we're already paused waiting on a target pick, don't double-drain.
+	if not _state.awaiting_target_for_trigger.is_empty():
+		return
+	# Reorder the entire queue in APNAP order so that AP's triggers come
+	# first (push first → bottom of stack → resolve last). Phase 4.5b adds
+	# a sub-step: each trigger that needs an interactive target either picks
+	# automatically (opp-controlled) or pauses the drain (you-controlled).
 	var ap_key: String = _state.active_player_key
-	var ap_triggers: Array = []
-	var nap_triggers: Array = []
+	var ap_triggers: Array[Dictionary] = []
+	var nap_triggers: Array[Dictionary] = []
 	for trig in _state.pending_triggers:
 		if trig.controller_key == ap_key:
 			ap_triggers.append(trig)
 		else:
 			nap_triggers.append(trig)
+	# Single queue in resolution order: AP first, then NAP. We pop from the
+	# front (FIFO) and push to the stack one at a time so a pause leaves the
+	# tail in pending_triggers for the next drain. Rebuild the typed array
+	# explicitly — concatenation widens the type and trips Godot's typed
+	# assignment check.
 	_state.pending_triggers.clear()
-	# AP pushes first (bottom of batch).
 	for trig in ap_triggers:
-		_push_trigger_to_stack(trig)
-	# NAP pushes after (top of batch — resolves first).
+		_state.pending_triggers.append(trig)
 	for trig in nap_triggers:
-		_push_trigger_to_stack(trig)
-	# Triggers landing on the stack reset priority to AP so both players can
-	# respond. This matches MTG rule 116.5.
+		_state.pending_triggers.append(trig)
+	_drain_continue()
+
+
+# Phase 4.5b: pull triggers off the pending queue one at a time, resolving
+# target picks as we go. Stops if a "you"-controlled trigger needs an
+# interactive target (UI will issue KIND_PICK_TRIGGER_TARGET to resume).
+func _drain_continue() -> void:
+	while not _state.pending_triggers.is_empty():
+		var trig: Dictionary = _state.pending_triggers[0]
+		var filter: String = _trigger_target_filter(trig)
+		if filter == "":
+			# No target needed — push to stack directly.
+			_state.pending_triggers.pop_front()
+			_push_trigger_to_stack(trig)
+			continue
+		# Trigger needs a target. Two paths based on controller.
+		if trig.controller_key == "you":
+			# Pause drain; record what's awaiting for the UI.
+			_state.awaiting_target_for_trigger = {
+				"source_iid": trig.source_iid,
+				"controller_key": trig.controller_key,
+				"ability_index": trig.ability_index,
+				"filter": filter,
+			}
+			var src: CardInstance = _find_card_anywhere(trig.source_iid)
+			var src_name: String = src.name() if src != null else "?"
+			_state.append_log("%s's triggered ability needs a target" % src_name)
+			return
+		else:
+			# Opp-controlled: AI picks the first legal target. Phase 5c will
+			# replace this with the real AI; for now we mirror the Phase-3
+			# stubs and target the player (since opp's only Phase-4.5 trigger
+			# card, Pyromaniac, is "deal 1 to any target" — face damage is
+			# the safe greedy pick).
+			var auto_target := _auto_pick_trigger_target(filter, trig.controller_key)
+			if auto_target.is_empty():
+				# No legal target available — trigger fizzles silently.
+				_state.pending_triggers.pop_front()
+				_state.append_log("Trigger fizzles (no legal target)")
+				continue
+			trig.targets = [auto_target]
+			_state.pending_triggers.pop_front()
+			_push_trigger_to_stack(trig)
+	# All triggers drained. Reset priority to AP so both players can respond
+	# to whatever just hit the stack (MTG 116.5).
 	_state.priority_player_key = _state.active_player_key
 	_reset_priority_passes()
+
+
+# Returns the target_filter string for this trigger, or "" if the ability
+# doesn't need a chosen target. The filter lives on the trigger ability
+# definition (CardResource.triggered_abilities[i].target_filter).
+func _trigger_target_filter(trig: Dictionary) -> String:
+	var source: CardInstance = _find_card_anywhere(trig.source_iid)
+	if source == null or source.template == null:
+		return ""
+	var abilities: Array = source.template.triggered_abilities
+	var idx: int = trig.ability_index
+	if idx < 0 or idx >= abilities.size():
+		return ""
+	var ability: Dictionary = abilities[idx]
+	# If targets are already filled (e.g., from auto-pick), no need to ask
+	# again.
+	if not trig.get("targets", []).is_empty():
+		return ""
+	return ability.get("target_filter", "")
+
+
+# Phase 4.5b: simple opp-AI target picker. Returns the first legal target
+# matching the filter, or an empty Dictionary if nothing is legal. For
+# "creature_or_player" we prefer the opponent (Pyromaniac-style face-damage
+# triggers) — Phase 5c's AI replaces this with real scoring.
+func _auto_pick_trigger_target(filter: String, controller_key: String) -> Dictionary:
+	var opp_key: String = _state.opponent_of(controller_key)
+	match filter:
+		"creature_or_player":
+			# Greedy: target the opponent's life total.
+			return {"kind": "player", "who": opp_key}
+		"creature":
+			# Greedy: target the first opposing creature on battlefield.
+			for c in _state.player_by_key(opp_key).battlefield:
+				if c.template is CreatureResource:
+					return {"kind": "creature", "iid": c.instance_id}
+			return {}
+		"player":
+			return {"kind": "player", "who": opp_key}
+		_:
+			push_warning("_auto_pick_trigger_target: unknown filter '%s'" % filter)
+			return {}
 
 
 func _push_trigger_to_stack(trig: Dictionary) -> void:
@@ -1212,7 +1376,7 @@ func _push_trigger_to_stack(trig: Dictionary) -> void:
 		"controller_key": trig.controller_key,
 		"ability_index": trig.ability_index,
 		"event": trig.event,
-		"targets": trig.targets,
+		"targets": trig.get("targets", []),
 	})
 	var source: CardInstance = _find_card_anywhere(trig.source_iid)
 	var src_name: String = source.name() if source != null else "?"

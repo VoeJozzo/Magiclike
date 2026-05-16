@@ -66,6 +66,12 @@ var _pending_block_blocker_iid: int = -1
 # automatically when leaving that state.
 var _blocks_committed: bool = false
 
+# Phase 4.5b: tracks whether we're in the trigger target picker UI mode.
+# Driven by state.awaiting_target_for_trigger; toggling is automatic in
+# _refresh_ui. When true, panel clicks issue KIND_PICK_TRIGGER_TARGET
+# instead of falling through to the spell-target path.
+var _picking_trigger_target: bool = false
+
 # Number of engine-log lines we've already piped to the UI log. Tracked here
 # (rather than relying on a log_appended signal that EngineState's RefCounted
 # nature can't emit) so we can pull deltas on each state_changed.
@@ -306,6 +312,13 @@ func _refresh_ui() -> void:
 	if s.phase_machine.current != PhaseMachine.Phase.COMBAT_BLOCK \
 			or s.active_player_key != "opp":
 		_blocks_committed = false
+	# Phase 4.5b: enter / exit trigger-target picker mode based on engine state.
+	var was_picking := _picking_trigger_target
+	_picking_trigger_target = not s.awaiting_target_for_trigger.is_empty()
+	if _picking_trigger_target and not was_picking:
+		_enter_trigger_target_mode(s.awaiting_target_for_trigger)
+	elif was_picking and not _picking_trigger_target:
+		_exit_trigger_target_mode()
 	# Player panels
 	_you_panel.update_from_player(s.you)
 	_opp_panel.update_from_player(s.opp)
@@ -331,6 +344,9 @@ func _refresh_ui() -> void:
 # override; stack-non-empty overrides phase (passing priority resolves the
 # top of stack rather than advancing the phase).
 func _update_action_button(s: EngineState) -> void:
+	if _picking_trigger_target:
+		_action_button.text = "Pick a target…"
+		return
 	if _pending_cast_iid != -1:
 		_action_button.text = "Cancel target"
 		return
@@ -520,6 +536,12 @@ func _on_your_battlefield_card_pressed(visual: Card) -> void:
 	if iid == -1:
 		return
 
+	# Phase 4.5b: trigger target picker. Creatures on either battlefield are
+	# legal under creature_or_player / creature filters.
+	if _picking_trigger_target:
+		_try_pick_creature_as_trigger_target(iid)
+		return
+
 	# Targeting mode: clicks on creatures may set the spell's target.
 	if _pending_cast_iid != -1:
 		if _is_valid_creature_target(iid):
@@ -563,6 +585,11 @@ func _on_your_battlefield_card_pressed(visual: Card) -> void:
 func _on_opp_battlefield_card_pressed(visual: Card) -> void:
 	var iid: int = visual.card_info.get("instance_id", -1)
 	if iid == -1:
+		return
+
+	# Phase 4.5b: trigger target picker — same rule, either side legal.
+	if _picking_trigger_target:
+		_try_pick_creature_as_trigger_target(iid)
 		return
 
 	# Targeting mode: this opp creature could be the target.
@@ -669,6 +696,16 @@ func _on_hand_card_gui_input(event: InputEvent, visual: Card) -> void:
 
 
 func _on_panel_clicked(panel_key: String) -> void:
+	# Phase 4.5b: trigger target picker takes precedence over spell-cast targeting.
+	if _picking_trigger_target:
+		var s: EngineState = RulesEngine.state()
+		var filter: String = s.awaiting_target_for_trigger.get("filter", "")
+		# Player targets are legal under creature_or_player and player filters.
+		if filter == "creature_or_player" or filter == "player":
+			var action := Action.make_pick_trigger_target(Action.target_player(panel_key))
+			if RulesEngine.execute_action(action):
+				_log_local("[color=#88dd88]Trigger targets %s[/color]" % panel_key)
+		return
 	if _pending_cast_iid == -1:
 		return
 	# Player targets are only valid for "any" or "player" filters.
@@ -724,6 +761,46 @@ func _exit_targeting_mode() -> void:
 	_you_panel.is_clickable = false
 	_opp_panel.is_clickable = false
 	_action_button.text = "Pass priority"
+
+
+# ─── Trigger target picker (Phase 4.5b) ────────────────────────────────────
+
+func _enter_trigger_target_mode(meta: Dictionary) -> void:
+	# Both panels become clickable for filters that allow player targets.
+	var filter: String = meta.get("filter", "")
+	var allows_player := (filter == "creature_or_player" or filter == "player")
+	_you_panel.is_clickable = allows_player
+	_opp_panel.is_clickable = allows_player
+	# Find the source card's name for the prompt.
+	var iid: int = meta.get("source_iid", -1)
+	var source_name := "?"
+	if _iid_to_visual.has(iid):
+		source_name = str(_iid_to_visual[iid].card_info.get("display_name", "?"))
+	_log_local("[color=#ffd866]Pick a target for %s's ability…[/color]" % source_name)
+
+
+func _exit_trigger_target_mode() -> void:
+	_you_panel.is_clickable = false
+	_opp_panel.is_clickable = false
+
+
+# Try to use the clicked creature as the trigger target. Filter-aware: a
+# creature is legal under creature_or_player or creature filters.
+func _try_pick_creature_as_trigger_target(iid: int) -> void:
+	var s: EngineState = RulesEngine.state()
+	var filter: String = s.awaiting_target_for_trigger.get("filter", "")
+	if filter != "creature_or_player" and filter != "creature":
+		return
+	var found = s.find_instance(iid)
+	if found == null or found.card == null:
+		return
+	if found.zone_name != "battlefield":
+		return
+	if not (found.card.template is CreatureResource):
+		return
+	var action := Action.make_pick_trigger_target({"kind": "creature", "iid": iid})
+	if RulesEngine.execute_action(action):
+		_log_local("[color=#88dd88]Trigger targets %s[/color]" % found.card.name())
 
 
 # ─── Misc helpers ──────────────────────────────────────────────────────────

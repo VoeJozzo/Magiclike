@@ -145,10 +145,10 @@ static func _make_giant_growth() -> SpellResource:
 	return r
 
 
-# Phase 4: ETB trigger. When Pyromaniac enters the battlefield, it deals 1
-# damage to the opponent of its controller. No predicate (always fires).
-# Phase 4 simplification: hardcoded "opp" target rather than player-chosen.
-# Phase 4.5+ will add interactive trigger target selection.
+# Phase 4: ETB trigger. When Pyromaniac enters the battlefield, deals 1
+# damage to any target. Phase 4.5b made this fully interactive — the
+# controller picks the target via KIND_PICK_TRIGGER_TARGET (opp's auto-AI
+# picks the opponent player by default).
 static func _make_pyromaniac() -> CreatureResource:
 	var r := CreatureResource.new()
 	r.card_id = "pyromaniac"
@@ -156,17 +156,18 @@ static func _make_pyromaniac() -> CreatureResource:
 	r.card_types = ["creature"]
 	r.subtypes = ["human", "shaman"]
 	r.mana_cost = {"R": 1, "C": 1}
-	r.oracle_text = "When Pyromaniac enters, it deals 1 damage to the opponent."
+	r.oracle_text = "When Pyromaniac enters, it deals 1 damage to any target."
 	r.power = 1
 	r.toughness = 1
 	r.keywords = []
 	r.triggered_abilities = [
 		{
 			"event": "card_etb",
-			"self_only": true,                  # only fires for this creature's own ETB
-			"condition_predicate": "",          # unconditional
+			"self_only": true,                       # only fires for this creature's own ETB
+			"condition_predicate": "",               # unconditional
+			"target_filter": "creature_or_player",   # any target
 			"effects": [
-				{"kind": "damage", "amount": 1, "target": "opponent"},
+				{"kind": "damage", "amount": 1, "target": "chosen"},
 			],
 		},
 	]
