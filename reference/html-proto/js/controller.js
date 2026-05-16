@@ -1,26 +1,14 @@
 // =========================================================================
 // CONTROLLER — owns player UI state, schedules AI, glues clicks to engine.
 // =========================================================================
-const CONTROLLER = (function() {
-
-// Player input state (in-flight selections that haven't been submitted yet).
-let pendingTarget = null;       // {kind:'cast'|'ability', cardIid, abilityIdx?, modeIdx?}
-// Modal-spell mode picker. When set, the UI shows a mode selection dialog
-// for the named card. Cleared once the player picks a mode (then either
-// submits directly if that mode is untargeted, or sets pendingTarget for
-// targeting). Cancellable.
-let pendingModalChoice = null;  // {cardIid} — open mode picker for this card
-let uiAtk = [];                 // attacker selection in progress
-let uiBlk = new Map();          // block selection in progress (blocker → attacker)
-let uiPickBlk = null;           // currently selected blocker awaiting attacker click
-let aiScheduled = false;        // single-flight flag for AI setTimeouts
-let aiThinking = false;         // true while AI.decide() promise is in-flight
-let inDraft = false;            // true while draft screen is up
-let lastGameRecorded = false;   // ensures we only record run result once per game
 
 // Modal helper: standardized show/hide for any modal using the '.vis' class.
 // Adds Escape-to-close (per-modal opt-in via dismissible), focus restoration,
 // and aria-modal attributes. Stack-aware so nested modals dismiss LIFO.
+//
+// Lives at module scope (not inside the CONTROLLER IIFE) because render.js
+// calls Modal.show / Modal.hide directly — and render.js is itself at module
+// scope, so it can't see anything that's only inside the IIFE.
 //
 // `dismissible: false` for modals where Escape would softlock — gameover (no
 // other exit), neow (boon pick required before draft), postDraftOffer (basic
@@ -74,6 +62,23 @@ const Modal = {
     Modal.hide(top.id, { userInitiated: true });
   },
 };
+
+const CONTROLLER = (function() {
+
+// Player input state (in-flight selections that haven't been submitted yet).
+let pendingTarget = null;       // {kind:'cast'|'ability', cardIid, abilityIdx?, modeIdx?}
+// Modal-spell mode picker. When set, the UI shows a mode selection dialog
+// for the named card. Cleared once the player picks a mode (then either
+// submits directly if that mode is untargeted, or sets pendingTarget for
+// targeting). Cancellable.
+let pendingModalChoice = null;  // {cardIid} — open mode picker for this card
+let uiAtk = [];                 // attacker selection in progress
+let uiBlk = new Map();          // block selection in progress (blocker → attacker)
+let uiPickBlk = null;           // currently selected blocker awaiting attacker click
+let aiScheduled = false;        // single-flight flag for AI setTimeouts
+let aiThinking = false;         // true while AI.decide() promise is in-flight
+let inDraft = false;            // true while draft screen is up
+let lastGameRecorded = false;   // ensures we only record run result once per game
 
 // Visually show that the AI is awaiting a response. Non-invasive — adds a
 // class on the body so CSS can style anything we want (we just append a

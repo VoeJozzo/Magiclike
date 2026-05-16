@@ -2,7 +2,7 @@
 
 Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folder of vanilla-JS modules — no build step, no frameworks, no network calls. Open in any modern browser to play.
 
-Current version: `v1.0.131` (defined at `js/main.js`, `const VERSION`).
+Current version: `v1.0.132` (defined at `js/main.js`, `const VERSION`).
 
 ## File structure
 
