@@ -61,16 +61,321 @@ const MERCURIAL_TRIGGER_POOL = [
 // triggerPool, which still works via the slot-level path.
 
 
+RUN_MODIFIERS['architectsCodex'] = {
+  id: 'architectsCodex',
+  name: "The Architect's Codex",
+  text: "Begin your run with The Architect's Codex — a 4-mana 2/3. The first time you draw it each game, choose one of three procedurally-generated abilities (or keep the current one).",
+  art: '📜',
+  apply: () => ({
+    extras: [{ tplId: 'architectsCodex', stickers: [] }],
+  }),
+};
+
 // ENGINE — game rules, state, phase machine.
 // Public API: init, state, expectedActor, getLegalActions, executeAction,
 // subscribe, findCard, getStats.
 
-// Sticker pipeline moved to js/stickers.js — see that file for
-// weightedPick, applyStickersToCard, applyOneStickerToRuntimeCard,
-// applyRandomStickersToSide, empowerRollLabel, applyEmpowerRoll
-// (this range), and rollSubtypeFromDeck, pushStickerWithRoll,
-// stickersForSlot (further below). They remain in global scope.
+// Weighted-random pick from a sticker list (default weight 3).
+function weightedPick(stickers) {
+  let total = 0;
+  for (const s of stickers) total += (s.weight || 3);
+  if (total <= 0) return stickers[Math.floor(Math.random() * stickers.length)];
+  let roll = Math.random() * total;
+  for (const s of stickers) {
+    roll -= (s.weight || 3);
+    if (roll < 0) return s;
+  }
+  return stickers[stickers.length - 1];
+}
 
+// Apply run-persistent stickers to a card. Called from makeCard and from
+// stickersForSlot's eligibility view.
+function applyStickersToCard(card) {
+  // Empower rolls are consumed in order — Nth 'empower' sticker uses Nth roll.
+  // If a roll is missing (legacy save, or the slot was created before we
+  // started recording rolls), we fall back to a fresh uniform roll on the
+  // template at apply time. This is non-deterministic but only happens for
+  // legacy data; new applications always have a recorded roll.
+  let empowerCursor = 0;
+  let subtypeCursor = 0;
+  for (const sId of card.stickers) {
+    const s = STICKERS[sId];
+    if (!s) continue;
+    if (s.kind === 'statBoost') {
+      // Symmetricize beats stat-boost stickers — the card has been
+      // numerically flattened to N/N for {N}, and the boss's "all values
+      // become the same" promise overrides earned +1/+1 buffs. Keyword
+      // stickers, innate, landColor, costReduction, trigger, and subtype
+      // all continue to apply normally.
+      if (typeof card.symmetrizedTo === 'number') continue;
+      card.modifiers.push({ power: s.power || 0, toughness: s.toughness || 0 });
+    } else if (s.kind === 'keyword') {
+      if (!card.keywords.includes(s.keyword)) card.keywords.push(s.keyword);
+    } else if (s.kind === 'innate') {
+      card.innate = true;
+    } else if (s.kind === 'landColor') {
+      if (!Array.isArray(card.extraManaColors)) card.extraManaColors = [];
+      if (!card.extraManaColors.includes(s.color) && card.mana !== s.color) {
+        card.extraManaColors.push(s.color);
+      }
+    } else if (s.kind === 'costReduction') {
+      if (card.cost) {
+        const generic = card.cost.C || 0;
+        card.cost.C = Math.max(0, generic - (s.amount || 1));
+      }
+    } else if (s.kind === 'empower') {
+      let roll = (card.empowerRolls || [])[empowerCursor];
+      if (!roll) {
+        // Stapled-aware fallback: if the card was synthesized from a staple
+        // chain, use the merged template so the fresh roll can land on the
+        // staple half's effects. Otherwise we'd silently constrain the empower
+        // target to base-only fields.
+        // applyStickersToCard lives at module scope (so DRAFT and RUN can both
+        // call it before the ENGINE IIFE has constructed); synthesizeStapledTemplate
+        // is inside ENGINE's IIFE. Use the exposed ENGINE.synthesizeStapledTemplate
+        // which is in scope at call time (when ENGINE has been built).
+        const tpl = card.stapledFrom
+          ? ENGINE.synthesizeStapledTemplate(card.stapledFrom.baseTplId,
+                                              card.stapledFrom.stapledTpls)
+          : CARDS[card.tplId];
+        roll = tpl ? rollEmpowerTarget(tpl) : null;
+      }
+      empowerCursor++;
+      if (roll) applyEmpowerRoll(card, roll, s.amount || 1);
+    } else if (s.kind === 'trigger') {
+      card.triggers.push({...s.trigger});
+    } else if (s.kind === 'subtype') {
+      // The specific subtype is stored on card.subtypeRolls (parallel to
+      // occurrences of 'subtype' in card.stickers). Mirrors the Empower
+      // cursor pattern. If a roll is missing (legacy save), skip — we
+      // can't deterministically pick a subtype without runtime context
+      // (the rolling needs the full deck), so we defer to the next save.
+      const rolled = (card.subtypeRolls || [])[subtypeCursor];
+      subtypeCursor++;
+      if (!rolled) continue;
+      const tokens = (card.sub || '').split(/\s+/).filter(Boolean);
+      if (!tokens.includes(rolled)) {
+        tokens.push(rolled);
+        card.sub = tokens.join(' ');
+      }
+    }
+  }
+}
+
+// Apply a SINGLE sticker to a runtime card incrementally. Mirrors the
+// per-sticker logic in applyStickersToCard (for one sticker only). Used
+// when a sticker is added mid-game (Archdemon of Bargains) and the
+// runtime card already has its other stickers' effects baked in — we
+// only want to apply the NEW one, not re-apply everything. Modifies
+// the card in place; also pushes the stickerId into card.stickers so a
+// later full rebuild stays consistent.
+//
+// Skips empower/subtype paths — they require rolls that we don't generate
+// here. The bargain effect only picks from statBoost/keyword/innate/
+// landColor/costReduction/trigger stickers (filtered at call site).
+function applyOneStickerToRuntimeCard(card, stickerId) {
+  if (!card) return;
+  const s = STICKERS[stickerId];
+  if (!s) return;
+  if (!Array.isArray(card.stickers)) card.stickers = [];
+  if (!s.stackable && card.stickers.includes(stickerId)) return;
+  card.stickers.push(stickerId);
+  if (s.kind === 'statBoost') {
+    if (!Array.isArray(card.modifiers)) card.modifiers = [];
+    card.modifiers.push({ power: s.power || 0, toughness: s.toughness || 0 });
+  } else if (s.kind === 'keyword') {
+    if (!Array.isArray(card.keywords)) card.keywords = [];
+    if (!card.keywords.includes(s.keyword)) card.keywords.push(s.keyword);
+  } else if (s.kind === 'innate') {
+    card.innate = true;
+  } else if (s.kind === 'landColor') {
+    if (!Array.isArray(card.extraManaColors)) card.extraManaColors = [];
+    if (!card.extraManaColors.includes(s.color) && card.mana !== s.color) {
+      card.extraManaColors.push(s.color);
+    }
+  } else if (s.kind === 'costReduction') {
+    if (card.cost) {
+      const generic = card.cost.C || 0;
+      card.cost.C = Math.max(0, generic - (s.amount || 1));
+    }
+  } else if (s.kind === 'trigger') {
+    if (!Array.isArray(card.triggers)) card.triggers = [];
+    card.triggers.push({...s.trigger});
+  }
+}
+
+// Apply N random stickers to permanents controlled by `side`. Used by
+// Archdemon of Bargains. For each of the N rolls: pick a random eligible
+// (permanent, sticker) pair where the sticker's appliesTo predicate
+// accepts the card. Skip if no eligible pair exists (defensive — happens
+// when side has no permanents at all).
+//
+// PLAYER-SIDE: applies via RUN.applyStickerToSlot for persistence across
+// games. The runtime card on the battlefield also gets the sticker
+// applied this game via applyOneStickerToRuntimeCard, so the buff is
+// visible immediately.
+//
+// OPP-SIDE: only applies to the runtime card. Opp slots are regenerated
+// each game so persistence isn't possible (and isn't desired — the
+// boss's deck shouldn't accumulate stickers across encounters).
+// Apply N random stickers to permanents controlled by `side`. Used by
+// Archdemon of Bargains. For each of the N rolls: pick a random eligible
+// (permanent, sticker) pair where the sticker's appliesTo predicate
+// accepts the card. Skip if no eligible pair exists (defensive — happens
+// when side has no permanents at all).
+//
+// PLAYER-SIDE: applies via RUN.applyStickerToSlot for persistence across
+// games. The runtime card on the battlefield also gets the sticker
+// applied this game via applyOneStickerToRuntimeCard, so the buff is
+// visible immediately.
+//
+// OPP-SIDE: only applies to the runtime card. Opp slots are regenerated
+// each game so persistence isn't possible (and isn't desired — the
+// boss's deck shouldn't accumulate stickers across encounters).
+//
+// `state` is the engine's G state (passed in since this helper lives
+// at module scope, outside the ENGINE IIFE). `logFn` is the engine's
+// internal log function, also passed in.
+function applyRandomStickersToSide(state, side, n, sourceName, logFn) {
+  if (n <= 0) return;
+  // Pool of sticker IDs eligible to be applied via bargain. Excludes:
+  //  - scarified (boss-only, would be cruel to give to player)
+  //  - subtype (needs deck-context roll; thematically odd as a buff)
+  //  - empower (needs effect-target roll; complex)
+  // Yields a mix of statBoost (+1/+1) and keyword stickers (the ones that
+  // exist in the STICKERS pool — flying, lifelink, etc.).
+  const eligibleStickerIds = Object.keys(STICKERS).filter(id => {
+    if (id === 'scarified' || id === 'subtype' || id === 'empower') return false;
+    const s = STICKERS[id];
+    if (!s) return false;
+    if (s.weight === 0) return false;       // not in normal reward pools
+    return true;
+  });
+  const perms = state[side].battlefield;
+  if (perms.length === 0) {
+    if (logFn) logFn(`${sourceName} — no permanents to sticker.`, 'sp');
+    return;
+  }
+  let applied = 0;
+  for (let i = 0; i < n; i++) {
+    const tries = [];
+    for (const p of perms) {
+      for (const sid of eligibleStickerIds) {
+        const s = STICKERS[sid];
+        if (!s.appliesTo || s.appliesTo(p)) tries.push({perm: p, sid});
+      }
+    }
+    if (tries.length === 0) break;
+    const pick = tries[Math.floor(Math.random() * tries.length)];
+    applyOneStickerToRuntimeCard(pick.perm, pick.sid);
+    if (side === 'you' && typeof pick.perm.slotIdx === 'number'
+        && typeof RUN !== 'undefined' && RUN.applyStickerToSlot) {
+      RUN.applyStickerToSlot(pick.perm.slotIdx, pick.sid);
+    }
+    const s = STICKERS[pick.sid];
+    if (logFn) logFn(`${pick.perm.name} gains "${s.name}" sticker.`, 'sp');
+    applied++;
+  }
+  if (applied === 0 && logFn) {
+    logFn(`${sourceName} — no eligible permanents.`, 'sp');
+  }
+}
+
+// Player-friendly label for a rolled empower target. The roll stores a
+// `field` like 'amount' / 'power' / 'severity', but 'amount' is shared by
+// many effect kinds (damage, draw, discard, gainLife, etc.) — so when the
+// field is generic, we use the effect's KIND as the label instead. Faithless
+// Looting empowering "amount" on draw or discard shows up as "Empower (draw)"
+// or "Empower (discard)" rather than the ambiguous "Empower (amount)".
+// Falls back to the raw field name if we can't resolve the effect.
+function empowerRollLabel(card, roll) {
+  if (!roll) return '';
+  // Resolve the effect this roll points at on the given card/template.
+  let effs = null;
+  if (roll.location === 'effects') {
+    if (roll.modeIdx == null) {
+      effs = Array.isArray(card.effects) ? card.effects : null;
+    } else {
+      effs = (card.effects && Array.isArray(card.effects.modes))
+        ? card.effects.modes[roll.modeIdx] : null;
+    }
+  } else if (roll.location === 'triggers') {
+    effs = (Array.isArray(card.triggers) && card.triggers[roll.subIdx])
+      ? card.triggers[roll.subIdx].effects : null;
+  } else if (roll.location === 'abilities') {
+    effs = (Array.isArray(card.abilities) && card.abilities[roll.subIdx])
+      ? card.abilities[roll.subIdx].effects : null;
+  }
+  const eff = effs && effs[roll.effIdx];
+  // 'amount' is generic — many effect kinds share it (damage, gainLife,
+  // draw, discard, etc.). Use kind+target to produce a player-readable
+  // phrase rather than the internal field name.
+  // Other field names ('power', 'toughness', 'severity', 'count') are
+  // already self-explanatory.
+  let fieldLabel;
+  if (roll.field === 'amount' && eff && eff.kind) {
+    // Target-aware labels: a `damage target:'self'` effect is the recoil/
+    // drawback half of cards like Char or Final Strike — calling it "damage"
+    // reads the same as the spell's main payload, so we tag it "self damage"
+    // to distinguish. `damage target:'player'` is opp-side damage (Grave
+    // Charm mode 3, Lava Spike) — labeled "damage to opponent" so the
+    // direction is unambiguous from the badge alone.
+    if (eff.kind === 'damage') {
+      const t = eff.target;
+      fieldLabel = t === 'self'   ? 'self damage'
+                 : t === 'player' ? 'damage to opponent'
+                 : 'damage';
+    } else if (eff.kind === 'gainLife') {
+      fieldLabel = 'life gain';
+    } else if (eff.kind === 'damageAll') {
+      fieldLabel = 'damage to all';
+    } else if (eff.kind === 'removeAll') {
+      fieldLabel = 'severity';
+    } else {
+      // draw / discard / etc. — kind name is already player-readable.
+      fieldLabel = eff.kind;
+    }
+  } else {
+    fieldLabel = roll.field;
+  }
+  const modeSuffix = (roll.modeIdx != null) ? `, mode ${roll.modeIdx + 1}` : '';
+  return `${fieldLabel}${modeSuffix}`;
+}
+
+// Apply a single rolled empower target to a card (or card-view). The card's
+// effect lists must already have the same shape as the template's (deep-copied
+// at makeCard / stickersForSlot time) so mutating the field doesn't leak.
+// Pure function of its inputs.
+function applyEmpowerRoll(card, roll, amount) {
+  if (!roll) return;
+  const {location, subIdx, effIdx, modeIdx, field} = roll;
+  let effs;
+  if (location === 'effects') {
+    if (modeIdx == null) {
+      effs = Array.isArray(card.effects) ? card.effects : null;
+    } else {
+      effs = (card.effects && Array.isArray(card.effects.modes))
+        ? card.effects.modes[modeIdx]
+        : null;
+    }
+  } else if (location === 'triggers') {
+    effs = (Array.isArray(card.triggers) && card.triggers[subIdx])
+      ? card.triggers[subIdx].effects : null;
+  } else if (location === 'abilities') {
+    effs = (Array.isArray(card.abilities) && card.abilities[subIdx])
+      ? card.abilities[subIdx].effects : null;
+  }
+  if (!effs || !effs[effIdx]) return;
+  const e = effs[effIdx];
+  const v = e[field];
+  if (typeof v === 'object' && v !== null && 'from' in v) return;
+  const cur = (typeof v === 'number') ? v : 0;
+  if ((e.kind === 'removeCreature' || e.kind === 'removeAll') && field === 'severity') {
+    e[field] = Math.min(4, cur + amount);
+  } else {
+    e[field] = cur + amount;
+  }
+}
 
 // Splice eligibility — module-level so both ENGINE (synthesis) and RUN
 // (reward roll/apply) can use them. v1.0.55: Lands are now spliceable on
@@ -213,9 +518,147 @@ function tplForSlot(slot) {
   return CARDS[slot.tplId] || null;
 }
 
-// (continued) Sticker deck-construction helpers — rollSubtypeFromDeck,
-// pushStickerWithRoll, stickersForSlot — moved to js/stickers.js.
+// Roll a creature subtype for the slot at targetSlotIdx, weighted by token
+// frequency in slots. Excludes subtypes the target already has. Returns
+// null if nothing eligible.
+function rollSubtypeFromDeck(slots, targetSlotIdx) {
+  if (!Array.isArray(slots)) return null;
+  const targetSlot = slots[targetSlotIdx];
+  if (!targetSlot) return null;
+  const targetTpl = tplForSlot(targetSlot);
+  if (!targetTpl) return null;
+  const targetTokens = new Set((targetTpl.sub || '').split(/\s+/).filter(Boolean));
+  for (const r of (targetSlot.subtypeRolls || [])) {
+    if (r) targetTokens.add(r);
+  }
+  // Weight tokens across all creature slots in the deck. Each (slot, token)
+  // pair contributes one count — so a Goblin Wizard contributes one Goblin
+  // weight and one Wizard weight. Stapled creatures' merged subs flow
+  // through tplForSlot's synthesis.
+  const tokenCount = {};
+  for (const slot of slots) {
+    const tpl = tplForSlot(slot);
+    if (!tpl || tpl.type !== 'Creature') continue;
+    const tokens = (tpl.sub || '').split(/\s+/).filter(Boolean);
+    for (const tok of tokens) {
+      if (targetTokens.has(tok)) continue;
+      tokenCount[tok] = (tokenCount[tok] || 0) + 1;
+    }
+  }
+  const entries = Object.entries(tokenCount);
+  if (entries.length === 0) return null;
+  let total = 0;
+  for (const [_, c] of entries) total += c;
+  let r = Math.random() * total;
+  for (const [tok, c] of entries) {
+    r -= c;
+    if (r <= 0) return tok;
+  }
+  return entries[entries.length - 1][0];
+}
 
+// Push a sticker onto a slot, recording an empower or subtype roll if
+// the kind needs one. `slotsForRoll` is the deck context for subtype
+// rolling — pass the slots array the slot lives in (opp's transient list
+// or runState.slots).
+function pushStickerWithRoll(slot, stickerId, slotsForRoll) {
+  slot.stickers.push(stickerId);
+  if (stickerId === 'empower') {
+    // tplForSlot is stapled-aware, so empower can target the staple half's
+    // effects/triggers as well as the base.
+    const tpl = tplForSlot(slot);
+    const roll = tpl ? rollEmpowerTarget(tpl) : null;
+    if (!Array.isArray(slot.empowerRolls)) slot.empowerRolls = [];
+    slot.empowerRolls.push(roll);
+  }
+  if (stickerId === 'subtype') {
+    let roll = null;
+    if (Array.isArray(slotsForRoll)) {
+      const idx = slotsForRoll.indexOf(slot);
+      if (idx >= 0) roll = rollSubtypeFromDeck(slotsForRoll, idx);
+    }
+    if (!Array.isArray(slot.subtypeRolls)) slot.subtypeRolls = [];
+    slot.subtypeRolls.push(roll);
+  }
+}
+
+// Filter STICKERS to those legal for a slot. Builds a synthetic "view" of
+// the card with current stickers reflected so appliesTo doesn't re-offer
+// dupes. Used by opp-AI (direct) and player path (RUN.stickersFor wraps).
+//
+// Effects/triggers/abilities are deep-copied for template isolation —
+// sharing refs has bitten before (City of Brass extraManaColors pre-
+// v0.99.44). Cost is trivial at offer-generation time.
+function stickersForSlot(slot, deckColors) {
+  const tpl = tplForSlot(slot);
+  if (!tpl) return [];
+  const copyEffs = (effs) => Array.isArray(effs) ? effs.map(e => ({...e})) : [];
+  const copyTopEffects = (effs) => {
+    if (Array.isArray(effs)) return effs.map(e => ({...e}));
+    if (effs && Array.isArray(effs.modes)) {
+      // Modal (charms): preserve {modeNames, modes:[[...]]} shape.
+      return {
+        modeNames: effs.modeNames ? effs.modeNames.slice() : undefined,
+        modes: effs.modes.map(modeEffs => modeEffs.map(e => ({...e}))),
+      };
+    }
+    return [];
+  };
+  const view = {
+    type: tpl.type,
+    sub: tpl.sub || '',
+    keywords: (tpl.keywords || []).slice(),
+    stickers: slot.stickers.slice(),
+    mana: tpl.mana,
+    extraManaColors: [],
+    deckColors: deckColors || [],
+    cost: tpl.cost ? {...tpl.cost} : undefined,
+    // hasEmpowerableEffect walks effects/triggers/abilities — all three
+    // needed for creatures whose empowerable field lives in an ability
+    // or trigger (Spitfire Bastion, War Drummer).
+    effects: copyTopEffects(tpl.effects),
+    triggers: (tpl.triggers || []).map(t => ({...t, effects: copyEffs(t.effects)})),
+    abilities: (tpl.abilities || []).map(a => ({...a, effects: copyEffs(a.effects)})),
+  };
+  // Reflect applied stickers so we don't re-offer invalid ones.
+  let subtypeCursor = 0;
+  for (const sId of slot.stickers) {
+    const s = STICKERS[sId];
+    if (!s) continue;
+    if (s.kind === 'keyword' && !view.keywords.includes(s.keyword)) {
+      view.keywords.push(s.keyword);
+    }
+    if (s.kind === 'subtype') {
+      // Cursor-walk slot.subtypeRolls in occurrence order.
+      const rolled = (slot.subtypeRolls || [])[subtypeCursor];
+      subtypeCursor++;
+      if (rolled) {
+        const tokens = (view.sub || '').split(/\s+/).filter(Boolean);
+        if (!tokens.includes(rolled)) {
+          tokens.push(rolled);
+          view.sub = tokens.join(' ');
+        }
+      }
+    }
+    if (s.kind === 'landColor' && !view.extraManaColors.includes(s.color)) {
+      view.extraManaColors.push(s.color);
+    }
+    if (s.kind === 'costReduction' && view.cost) {
+      const generic = view.cost.C || 0;
+      view.cost.C = Math.max(0, generic - (s.amount || 1));
+    }
+  }
+  return Object.values(STICKERS).filter(s => {
+    // weight: 0 stickers are excluded from random offers — they're
+    // boss-only or otherwise restricted to specific application paths
+    // (e.g., 'scarified' applied by Scarification spell, never as a
+    // reward).
+    if (!s.weight) return false;
+    if (!s.appliesTo(view)) return false;
+    if (!s.stackable && slot.stickers.includes(s.id)) return false;
+    return true;
+  });
+}
 
 // Compute deck color set from a list of slot objects. Pure helper for
 // gating land-color stickers, evaluating splice color compatibility, etc.
@@ -259,11 +702,706 @@ function fakeTargetsForLegality(effects, who) {
 }
 
 
-// Card-text helpers (describeCardSegments, describeCardText, describeEffect,
-// describeTrigger, describeAbility, describeStaticBuff, describeModalSegs,
-// and their internal helpers targetPhrase/withFilter/bumpedSeg/etc.) moved
-// to js/card-text.js. Still in global scope — render.js and controller.js
-// continue to call them directly without a namespace prefix.
+// CARD TEXT GENERATION — describeCardText walks effects/triggers/abilities.
+// Called by makeCard after stickers, so reflects empower-bumped values.
+// Opt-out: tpl.customText: true (Endomorph, Codex, Elystra).
+
+const COLOR_NAMES = { W: 'White', U: 'Blue', B: 'Black', R: 'Red', G: 'Green' };
+const NUM_WORDS = { 1: 'one', 2: 'two', 3: 'three', 4: 'four', 5: 'five' };
+
+// targetPhrase: eff.target → noun phrase. target:'player' reads as "target
+// opponent" for damage/discard (offensive context) but "target player" for
+// gainLife (either-direction). target:'self' resolves at call site.
+function targetPhrase(eff) {
+  const t = eff.target;
+  if (t === 'self')     return 'you';
+  if (t === 'player') {
+    if (eff.kind === 'gainLife') return 'target player';
+    if (eff.kind === 'discard')  return 'target player';
+    return 'target opponent';
+  }
+  if (t === 'creature') return 'target creature';
+  if (t === 'graveyardCreature') return 'target creature card';
+  if (t === 'permanent')return 'target permanent';
+  if (t === 'spell')    return 'target spell';
+  if (t === 'any')      return 'any target';
+  if (t === 'card')     return 'target card';
+  return t || '';
+}
+
+// withFilter: apply eff.filter to a noun phrase. Filters add adjectives
+// before the noun ("tapped creature", "non-Black creature") or modifying
+// clauses after ("creature with flying", "creature you control").
+// Pre-modifiers are stat/color-style; post-modifiers are relational.
+function withFilter(noun, eff) {
+  if (!eff.filter) return noun;
+  const f = eff.filter;
+  const pre = [];
+  const post = [];
+  if (f.tapped === true)  pre.push('tapped');
+  if (f.tapped === false) pre.push('untapped');
+  if (f.color)            pre.push(COLOR_NAMES[f.color] || f.color);
+  if (f.notColor)         pre.push('non-' + (COLOR_NAMES[f.notColor] || f.notColor));
+  // Subtype: "Spirit creature card", "Goblin creature", etc. The subtype
+  // is a literal string from the card data — we trust it to be properly
+  // capitalized at the source (e.g., 'Spirit', 'Goblin', 'Wizard Artificer').
+  if (f.subtype)          pre.push(f.subtype);
+  if (f.hasKeyword)       post.push('with ' + f.hasKeyword);
+  if (f.notKeyword)       post.push('without ' + f.notKeyword);
+  if (f.controller === 'you' || f.controller === 'self') post.push('you control');
+  if (f.controller === 'opp') post.push('an opponent controls');
+  // Stat filters: "with toughness N or less", "with power N or greater".
+  if (typeof f.maxTough === 'number') post.push('with toughness ' + f.maxTough + ' or less');
+  if (typeof f.minTough === 'number') post.push('with toughness ' + f.minTough + ' or greater');
+  if (typeof f.maxPower === 'number') post.push('with power ' + f.maxPower + ' or less');
+  if (typeof f.minPower === 'number') post.push('with power ' + f.minPower + ' or greater');
+  let out = noun;
+  if (pre.length) {
+    out = out.replace('creature', pre.join(' ') + ' creature')
+             .replace('permanent', pre.join(' ') + ' permanent');
+  }
+  if (post.length) out += ' ' + post.join(' ');
+  return out;
+}
+
+// describeAmount: numeric values pass through; dynamic-value objects like
+// {from:'targetPower'} get a player-readable phrase. Used for damage,
+// gainLife, and any other field that might reference resolve-time values.
+function describeAmount(amount) {
+  if (typeof amount === 'number') return String(amount);
+  if (amount && typeof amount === 'object' && amount.from) {
+    const dynMap = {
+      targetPower:    "the target's power",
+      targetTough:    "the target's toughness",
+      sourcePower:    "this creature's power",
+      sourceToughness:"this creature's toughness",
+      manaSpent:      'mana spent on it',
+    };
+    return dynMap[amount.from] || ('X (' + amount.from + ')');
+  }
+  return String(amount);
+}
+
+// Segment-tagged value: emit a numeric (or otherwise comparable) field as a
+// segment, marking it `highlight: true` if the live value differs from the
+// template baseline. This is how empower-bumped values get visual emphasis
+// in the rendered card text. tplEff may be undefined (no baseline available
+// → no highlights). The non-tpl callsites pass undefined, the bumped check
+// silently skips.
+function bumpedSeg(field, eff, tplEff, fallback) {
+  const v = eff[field] !== undefined ? eff[field] : fallback;
+  const tplV = tplEff ? (tplEff[field] !== undefined ? tplEff[field] : fallback) : undefined;
+  const bumped = tplEff != null
+    && typeof v === 'number' && typeof tplV === 'number'
+    && v !== tplV;
+  return { text: String(v), highlight: bumped };
+}
+
+// Like bumpedSeg but takes a precomputed display string (e.g. severity tier
+// name "destroy" / "exile" derived from numeric severity). Highlights when
+// the underlying numeric source differs from the template baseline.
+function bumpedDerived(displayText, sourceField, eff, tplEff) {
+  const v = eff[sourceField];
+  const tplV = tplEff ? tplEff[sourceField] : undefined;
+  const bumped = tplEff != null
+    && typeof v === 'number' && typeof tplV === 'number'
+    && v !== tplV;
+  return { text: displayText, highlight: bumped };
+}
+
+// Plain non-highlighted segment.
+function plainSeg(text) {
+  return { text, highlight: false };
+}
+
+// describeEffect: render a single effect as an array of {text, highlight}
+// segments. Lowercase-leading so the caller can decide capitalization.
+// `tplEff` (optional) is the corresponding template effect for diff
+// comparison — values that differ from the baseline get marked for visual
+// highlighting in the renderer. Without tplEff, no highlights are emitted.
+function describeEffect(eff, tplEff) {
+  const t = withFilter(targetPhrase(eff), eff);
+  const amtSeg = (() => {
+    // Dynamic amounts (e.g., {from:'targetPower'}) are non-numeric; render
+    // their phrase string and never highlight (empower can't bump them).
+    if (typeof eff.amount === 'object' && eff.amount && eff.amount.from) {
+      return plainSeg(describeAmount(eff.amount));
+    }
+    return bumpedSeg('amount', eff, tplEff);
+  })();
+  switch (eff.kind) {
+    case 'damage':
+      if (eff.target === 'self') return [plainSeg('you take '), amtSeg, plainSeg(' damage')];
+      return [plainSeg('deal '), amtSeg, plainSeg(' damage to ' + t)];
+    case 'damageAll':
+      return [plainSeg('deal '), amtSeg, plainSeg(' damage to each creature')];
+    case 'gainLife':
+      // Dynamic-value gainLife (Swords to Plowshares) — non-bumpable.
+      if (typeof eff.amount === 'object' && eff.amount && eff.amount.from) {
+        const owner = (eff.who && eff.who.from === 'targetController') ? "its controller" : 'you';
+        return [plainSeg(owner + ' gains life equal to ' + describeAmount(eff.amount))];
+      }
+      if (eff.target === 'self')   return [plainSeg('you gain '), amtSeg, plainSeg(' life')];
+      if (eff.target === 'player') return [plainSeg(t + ' gains '), amtSeg, plainSeg(' life')];
+      return [plainSeg('gain '), amtSeg, plainSeg(' life')];
+    case 'draw':
+      if (eff.target === 'player') {
+        if (eff.amount === 1) return [plainSeg(t + ' draws a card')];
+        return [plainSeg(t + ' draws '), amtSeg, plainSeg(' cards')];
+      }
+      if (eff.amount === 1) return [plainSeg('draw a card')];
+      return [plainSeg('draw '), amtSeg, plainSeg(' cards')];
+    case 'discard':
+      if (eff.target === 'player') {
+        if (eff.amount === 1) return [plainSeg(t + ' discards a card')];
+        return [plainSeg(t + ' discards '), amtSeg, plainSeg(' cards')];
+      }
+      if (eff.amount === 1) return [plainSeg('discard a card')];
+      return [plainSeg('discard '), amtSeg, plainSeg(' cards')];
+    case 'pump': {
+      // Power and toughness are independently bumpable.
+      const pSeg = bumpedSeg('power', eff, tplEff, 0);
+      const tSeg = bumpedSeg('toughness', eff, tplEff, 0);
+      const subj = eff.target === 'self' ? 'this creature' : t;
+      return [plainSeg(subj + ' gets +'), pSeg, plainSeg('/+'), tSeg, plainSeg(' until end of turn')];
+    }
+    case 'pumpAllYours': {
+      const pSeg = bumpedSeg('power', eff, tplEff, 0);
+      const tSeg = bumpedSeg('toughness', eff, tplEff, 0);
+      return [plainSeg('creatures you control get +'), pSeg, plainSeg('/+'), tSeg, plainSeg(' until end of turn')];
+    }
+    case 'addCounter': {
+      const pSeg = bumpedSeg('power', eff, tplEff, 1);
+      const tSeg = bumpedSeg('toughness', eff, tplEff, 1);
+      const tail = eff.target === 'self' ? ' counter on this' : ' counter on ' + t;
+      return [plainSeg('put a +'), pSeg, plainSeg('/+'), tSeg, plainSeg(tail)];
+    }
+    case 'grantKeyword': {
+      // Duration text. Three cases:
+      //   - 'eot': until end of turn (combat tricks, Overrun-style)
+      //   - absent + target is a creature: persistent grant that ends when
+      //     the source leaves the battlefield (engine clears via
+      //     clearRestrictionsFromSource). Surface that — otherwise the
+      //     reader has no way to know the grant isn't truly permanent.
+      //   - absent + target is self/no target (none in current pool, but
+      //     defensively): omit duration text.
+      let dur;
+      if (eff.duration === 'eot') {
+        dur = ' until end of turn';
+      } else if (eff.target === 'creature' || eff.whose === 'allYours' || eff.whose === 'all') {
+        dur = ' as long as this is on the battlefield';
+      } else {
+        dur = '';
+      }
+      if (eff.whose === 'allYours') {
+        return [plainSeg('creatures you control gain ' + eff.keyword + dur)];
+      }
+      if (eff.target === 'self') return [plainSeg('this creature gains ' + eff.keyword + dur)];
+      return [plainSeg(t + ' gains ' + eff.keyword + dur)];
+    }
+    case 'removeCreature': {
+      // Severity ladder: 1=tap, 2=return, 3=destroy, 4=exile. The displayed
+      // verb is derived from severity, so highlight the verb when severity
+      // differs from baseline (empower can promote tier).
+      const sev = eff.severity || 1;
+      const verb = sev >= 4 ? 'exile' : sev >= 3 ? 'destroy'
+                 : sev >= 2 ? 'return' : 'tap';
+      const verbSeg = bumpedDerived(verb, 'severity', eff, tplEff);
+      if (sev >= 2 && sev < 3) return [verbSeg, plainSeg(' ' + t + " to its owner's hand")];
+      return [verbSeg, plainSeg(' ' + t)];
+    }
+    case 'removeAll': {
+      const sev = eff.severity || 1;
+      const scope = eff.whose === 'opp' ? "all creatures an opponent controls"
+                  : eff.whose === 'self' || eff.whose === 'you' ? "all creatures you control"
+                  : 'all creatures';
+      const verb = sev >= 4 ? 'exile' : sev >= 3 ? 'destroy'
+                 : sev >= 2 ? 'return' : 'tap';
+      const verbSeg = bumpedDerived(verb, 'severity', eff, tplEff);
+      if (sev >= 2 && sev < 3) return [verbSeg, plainSeg(' ' + scope + " to their owners' hands")];
+      return [verbSeg, plainSeg(' ' + scope)];
+    }
+    case 'counter':
+      return [plainSeg('counter ' + t)];
+    case 'createTokens': {
+      const tok = eff.tokenId || 'creature';
+      const tokTpl = (typeof TOKENS !== 'undefined' && TOKENS[tok]) || null;
+      const niceName = tokTpl ? tokTpl.name : tok.replace(/_.*/, '').replace(/^./, c => c.toUpperCase());
+      const colorWord = tokTpl && tokTpl.color
+        ? (COLOR_NAMES[tokTpl.color] || '').toLowerCase() + ' ' : '';
+      const stats = tokTpl ? (tokTpl.power + '/' + tokTpl.toughness) : '1/1';
+      const kwSuffix = tokTpl && tokTpl.keywords && tokTpl.keywords.length
+        ? ' with ' + tokTpl.keywords.join(', ') : '';
+      // count is bumpable; render as word ("two" / "three") and highlight
+      // the word when count differs from baseline.
+      if (eff.count === 1) {
+        return [plainSeg('create a ' + colorWord + stats + ' ' + niceName + ' token' + kwSuffix)];
+      }
+      const wordCount = NUM_WORDS[eff.count] || String(eff.count);
+      const countSeg = bumpedDerived(wordCount, 'count', eff, tplEff);
+      return [plainSeg('create '), countSeg, plainSeg(' ' + colorWord + stats + ' ' + niceName + ' tokens' + kwSuffix)];
+    }
+    case 'searchCreature':
+      return [plainSeg('search your library for a creature card and put it into your hand')];
+    case 'searchLandTapped':
+      return [plainSeg('search your library for a basic land and put it onto the battlefield tapped')];
+    case 'returnFromGraveyard':
+      return [plainSeg('return ' + t + ' from your graveyard to your hand')];
+    case 'shuffleIntoLibrary':
+      return [plainSeg('shuffle ' + t + " into its owner's library")];
+    case 'untap': {
+      if (eff.target === 'self') return [plainSeg('untap this creature')];
+      const filterMinusTapped = eff.filter ? Object.assign({}, eff.filter, {tapped: undefined}) : null;
+      const tNoTap = withFilter(targetPhrase(eff), filterMinusTapped ? Object.assign({}, eff, {filter: filterMinusTapped}) : eff);
+      return [plainSeg('untap ' + tNoTap)];
+    }
+    case 'applyInGameSplice':
+      // Stapler's effect. The card has hand-authored text describing the
+      // two-target shape; auto-gen falls back to a minimal description
+      // for diagnostic surfaces (deck-viewer fallback, error rendering).
+      return [plainSeg('staple the second target permanent onto the first')];
+    case 'noop':
+      // Marker effect used to force a second target in the validation
+      // harness — has no described behavior. Render as empty so it doesn't
+      // appear in any sentence.
+      return [plainSeg('')];
+    case 'fightTarget':
+      return [plainSeg('your strongest creature fights ' + t)];
+    case 'restrict':
+      return [plainSeg(t + " can't attack or block")];
+    case 'flicker':
+      return [plainSeg('exile ' + t + ', then return it to the battlefield')];
+    case 'exileUntilEOT':
+      return [plainSeg('exile ' + t + ' until end of turn')];
+    case 'gainControl': {
+      // Mind Control / Threaten. Text composition mirrors MtG: "gain
+      // control of X" with optional duration and rider clauses.
+      const parts = ['gain control of ' + t];
+      if (eff.duration === 'eot') parts.push(' until end of turn');
+      // Riders read as a separate sentence ("Untap it. It gains haste
+      // until end of turn.") rather than chained — matches Threaten's
+      // template better than a comma-stitched run-on.
+      const segs = [plainSeg(parts.join(''))];
+      const riders = [];
+      if (eff.untap) riders.push('untap it');
+      if (eff.grantHaste) riders.push('it gains haste until end of turn');
+      if (riders.length > 0) {
+        // Capitalize each rider clause for sentence-y feel.
+        const cap = riders.map(r => r.charAt(0).toUpperCase() + r.slice(1)).join('. ');
+        segs.push(plainSeg('. ' + cap));
+      }
+      return segs;
+    }
+    case 'addMana': {
+      if (eff.amounts) {
+        let symbols = '';
+        for (const [color, n] of Object.entries(eff.amounts)) {
+          for (let i = 0; i < n; i++) symbols += '{' + color + '}';
+        }
+        return [plainSeg('add ' + (symbols || '{C}'))];
+      }
+      return [plainSeg('add ' + (eff.mana || '{C}'))];
+    }
+    case 'edict':
+      return [plainSeg(t + ' sacrifices a creature')];
+    case 'weaken': {
+      const pSeg = bumpedSeg('power', eff, tplEff, 1);
+      const tSeg = bumpedSeg('toughness', eff, tplEff, 1);
+      return [plainSeg(t + ' gets -'), pSeg, plainSeg('/-'), tSeg, plainSeg(' until end of turn')];
+    }
+    case 'steal':
+      return [plainSeg('shuffle ' + t + ' into your library')];
+    case 'endomorphAbsorb':
+      return [plainSeg('gain a keyword from the slain creature, or +1/+1 if none')];
+    case 'ripPermanent':
+      // Vile Edict: the target player chooses one of their permanents to
+      // rip. Cards have their hand-authored text on the template; this is
+      // a fallback for any path that auto-describes the effect.
+      return [plainSeg(t + ' rips a permanent they control')];
+    case 'destroyAndStickerSlot':
+      // Scarification: card text is hand-authored. This fallback gives
+      // something readable if a non-template path tries to describe it.
+      return [plainSeg('destroy ' + t + ' and scar it')];
+    case 'symmetricize':
+      return [plainSeg(t + "'s controller equalizes its power, toughness, or cost")];
+    case 'embargo':
+      return [plainSeg('return ' + t + ' to hand; it costs {1} more forever')];
+    case 'bleach':
+      return [plainSeg('exile ' + t + '; it is colorless forever')];
+  }
+  return [plainSeg('[' + eff.kind + ']')];
+}
+
+// Convenience: flatten a segment array to a plain string.
+function segsToText(segs) {
+  return segs.map(s => s.text).join('');
+}
+
+// describeEffectList: join multiple effect clauses into a sentence/paragraph.
+// Special-case for damage-only multi-target spells (Branching Bolt, Char,
+// Drain Life): use shared-subject "X deals A damage to T1 and B damage to T2"
+// phrasing which reads naturally with empower bumps. Otherwise, separate
+// sentences.
+//
+// Returns an array of {text, highlight} segments. tplEffects is the parallel
+// template effects array — passed through to describeEffect for the diff.
+function describeEffectList(effects, cardName, tplEffects) {
+  if (!Array.isArray(effects) || effects.length === 0) return [];
+  const tplOf = i => (Array.isArray(tplEffects) ? tplEffects[i] : undefined);
+  const parts = effects.map((e, i) => describeEffect(e, tplOf(i)));
+  if (parts.length === 1) {
+    return capitalizeSegs(parts[0]).concat(plainSeg('.'));
+  }
+  // Damage-only 2-effect: shared-subject style. Re-render directly so we can
+  // intersperse the shared-subject prefix and the "and" connector around the
+  // bumpable amounts.
+  const allDamage = effects.every(e => e.kind === 'damage');
+  if (allDamage && effects.length === 2) {
+    const e0 = effects[0], e1 = effects[1];
+    const tpl0 = tplOf(0), tpl1 = tplOf(1);
+    const t0 = withFilter(targetPhrase(e0), e0);
+    const t1 = withFilter(targetPhrase(e1), e1);
+    const prefix = cardName ? cardName : 'This';
+    const seg0 = (typeof e0.amount === 'object' && e0.amount && e0.amount.from)
+      ? plainSeg(describeAmount(e0.amount))
+      : bumpedSeg('amount', e0, tpl0);
+    const seg1 = (typeof e1.amount === 'object' && e1.amount && e1.amount.from)
+      ? plainSeg(describeAmount(e1.amount))
+      : bumpedSeg('amount', e1, tpl1);
+    if (e1.target === 'self') {
+      return [
+        plainSeg(prefix + ' deals '), seg0, plainSeg(' damage to ' + t0 + ' and '),
+        seg1, plainSeg(' damage to you.'),
+      ];
+    }
+    return [
+      plainSeg(prefix + ' deals '), seg0, plainSeg(' damage to ' + t0 + ' and '),
+      seg1, plainSeg(' damage to ' + t1 + '.'),
+    ];
+  }
+  // Rummage / loot pattern: "draw N, then discard M".
+  if (effects.length === 2
+      && effects[0].kind === 'draw'
+      && effects[1].kind === 'discard'
+      && effects[1].target === 'self') {
+    return capitalizeSegs(parts[0]).concat(plainSeg(', then ')).concat(parts[1]).concat(plainSeg('.'));
+  }
+  // Default: separate sentences. Capitalize the first segment of each part
+  // and join with periods.
+  const out = [];
+  for (let i = 0; i < parts.length; i++) {
+    if (i > 0) out.push(plainSeg('. '));
+    out.push(...capitalizeSegs(parts[i]));
+  }
+  out.push(plainSeg('.'));
+  return out;
+}
+
+function capitalize(s) {
+  return s ? s[0].toUpperCase() + s.slice(1) : s;
+}
+
+// capitalizeSegs: capitalize the very first character of the first
+// non-empty segment. Used at sentence boundaries.
+function capitalizeSegs(segs) {
+  if (!segs || segs.length === 0) return segs;
+  const out = segs.slice();
+  for (let i = 0; i < out.length; i++) {
+    if (out[i].text && out[i].text.length > 0) {
+      out[i] = { text: capitalize(out[i].text), highlight: out[i].highlight };
+      break;
+    }
+  }
+  return out;
+}
+
+// triggerPreamble: render the "When/Whenever ..." prefix for a trigger.
+// Branches on event + condId; falls back to generic phrasing if condId is
+// unrecognized so we still emit something sensible.
+function triggerPreamble(trig) {
+  const ev = trig.event;
+  const cid = trig.condId;
+  const params = trig.params || {};
+  // "this" triggers — singular, usually "When this <event>, ..."
+  if (cid === 'thisEnters')  return 'When this enters the battlefield,';
+  if (cid === 'thisDies')    return 'When this dies,';
+  if (cid === 'thisAttacks') return 'When this attacks,';
+  if (cid === 'thisKillsCreature') return 'Whenever a creature dealt damage by this dies,';
+  if (cid === 'thisAttacksAfterOppLifeLoss') {
+    return 'When this attacks, if an opponent has lost life this turn,';
+  }
+  // "another" triggers — plural-event, "Whenever another ..."
+  if (cid === 'anotherCreatureYouEntersOfSubtype') {
+    return 'Whenever another ' + (params.sub || 'creature') + ' enters under your control,';
+  }
+  if (cid === 'anotherCreatureYouEntersStrict') {
+    return 'Whenever another creature enters under your control,';
+  }
+  if (cid === 'anotherCreatureDies') {
+    return 'Whenever another creature dies,';
+  }
+  if (cid === 'creatureYouAttacksOfSubtype') {
+    return 'Whenever a ' + (params.sub || 'creature') + ' you control attacks,';
+  }
+  if (cid === 'anyCardDies')    return 'Whenever a creature dies,';
+  if (cid === 'youCastSpell')   return 'Whenever you cast a spell,';
+  if (cid === 'youCastCounterspell') return 'Whenever you counter a spell,';
+  if (cid === 'youGainLife')    return 'Whenever you gain life,';
+  // Fallbacks by event alone.
+  if (ev === 'cardEntersBattlefield') return 'When this enters the battlefield,';
+  if (ev === 'cardDies')              return 'When this dies,';
+  if (ev === 'attacks')               return 'When this attacks,';
+  return 'Whenever a relevant event occurs,';
+}
+
+// describeTrigger: render a full trigger clause as segments. Returns
+// segments so empower-bumped values inside trigger effects (e.g., a stapled
+// Bolt's ETB damage) get highlighted along with the body. tplTrig is the
+// corresponding template trigger for diff comparison.
+function describeTrigger(trig, tplTrig) {
+  const preamble = triggerPreamble(trig);
+  const tplEffs = tplTrig ? tplTrig.effects : undefined;
+  const body = describeEffectList(trig.effects || [], null, tplEffs);
+  // body's first segment was capitalized for sentence-start; we want
+  // sentence-mid since preamble ends in a comma. Lowercase the first letter
+  // of the first non-empty segment.
+  const bodyLower = body.slice();
+  for (let i = 0; i < bodyLower.length; i++) {
+    if (bodyLower[i].text && bodyLower[i].text.length > 0) {
+      bodyLower[i] = {
+        text: bodyLower[i].text[0].toLowerCase() + bodyLower[i].text.slice(1),
+        highlight: bodyLower[i].highlight,
+      };
+      break;
+    }
+  }
+  return [plainSeg(preamble + ' ')].concat(bodyLower);
+}
+
+// abilityCostPhrase: convert an ability's cost into a player-readable prefix
+// like "{T}: " or "{R}: " or "Sacrifice this: ".
+function abilityCostPhrase(cost) {
+  if (!cost) return '';
+  const parts = [];
+  if (cost.tap) parts.push('{T}');
+  if (cost.mana) {
+    let s = '';
+    for (const [color, n] of Object.entries(cost.mana)) {
+      for (let i = 0; i < n; i++) s += '{' + color + '}';
+    }
+    if (s) parts.push(s);
+  }
+  if (cost.sacrifice) {
+    parts.push('Sacrifice ' + (cost.sacrifice === 'self' ? 'this' : 'a ' + cost.sacrifice));
+  }
+  return parts.join(', ');
+}
+
+// describeAbility: "<cost>: <effect>." — activated ability format. Returns
+// segments; the body's bumpable fields propagate through. tplAb is the
+// corresponding template ability.
+function describeAbility(ab, tplAb) {
+  const cost = abilityCostPhrase(ab.cost);
+  const tplEffs = tplAb ? tplAb.effects : undefined;
+  let body = describeEffectList(ab.effects || [], null, tplEffs);
+  // Strip the trailing period segment — caller adds it.
+  if (body.length > 0 && body[body.length - 1].text === '.') {
+    body = body.slice(0, -1);
+  }
+  if (!cost) return body;
+  // Lowercase the first character of body since it follows a colon.
+  if (body.length > 0) {
+    for (let i = 0; i < body.length; i++) {
+      if (body[i].text && body[i].text.length > 0) {
+        body[i] = {
+          text: body[i].text[0].toLowerCase() + body[i].text.slice(1),
+          highlight: body[i].highlight,
+        };
+        break;
+      }
+    }
+  }
+  return [plainSeg(cost + ': ')].concat(body);
+}
+
+// describeStaticBuff: render a lord-style continuous ability.
+// Shape: { filter, subtype, power, toughness, keywords }
+//   "Other <subtype>s you control get +P/+T and have <kw1>, <kw2>."
+// The subtype + filter combination determines the noun phrase. Most lords
+// use filter:{controller:'self'} which means "you control". We always use
+// "Other" since a creature can't buff itself via staticBuffs (self is
+// excluded by the engine's lord logic).
+function describeStaticBuff(buff) {
+  const sub = buff.subtype ? buff.subtype + 's' : 'creatures';
+  let scope;
+  if (buff.filter && (buff.filter.controller === 'self' || buff.filter.controller === 'you')) {
+    scope = 'Other ' + sub + ' you control';
+  } else if (buff.filter && buff.filter.controller === 'opp') {
+    scope = 'Other ' + sub + ' an opponent controls';
+  } else {
+    scope = 'Other ' + sub;
+  }
+  const stats = (buff.power || buff.toughness)
+    ? 'get +' + (buff.power || 0) + '/+' + (buff.toughness || 0)
+    : '';
+  // Lookup display names so "firstStrike" → "first strike", etc.
+  const kwDisplay = {
+    flying: 'flying', vigilance: 'vigilance', trample: 'trample', haste: 'haste',
+    firstStrike: 'first strike', doubleStrike: 'double strike', deathtouch: 'deathtouch',
+    lifelink: 'lifelink', reach: 'reach', menace: 'menace', defender: 'defender',
+    flash: 'flash', hexproof: 'hexproof', indestructible: 'indestructible',
+  };
+  const kwList = (buff.keywords && buff.keywords.length)
+    ? buff.keywords.map(k => 'have ' + (kwDisplay[k] || k)).join(' and ')
+    : '';
+  let body;
+  if (stats && kwList) body = scope + ' ' + stats + ' and ' + kwList;
+  else if (stats)      body = scope + ' ' + stats;
+  else if (kwList)     body = scope + ' ' + kwList;
+  else                 return '';
+  return body + '.';
+}
+
+// keywordPreamble: list intrinsic keywords as a leading sentence.
+// "Flying. Vigilance. <rest of text>".
+function keywordPreamble(keywords) {
+  if (!Array.isArray(keywords) || keywords.length === 0) return '';
+  // Map internal keyword IDs to display names (matches KEYWORD_DISPLAY).
+  const display = {
+    flying: 'Flying', vigilance: 'Vigilance', trample: 'Trample', haste: 'Haste',
+    firstStrike: 'First strike', doubleStrike: 'Double strike', deathtouch: 'Deathtouch',
+    lifelink: 'Lifelink', reach: 'Reach', menace: 'Menace', defender: 'Defender',
+    flash: 'Flash', hexproof: 'Hexproof', indestructible: 'Indestructible',
+  };
+  return keywords.map(k => display[k] || (k[0].toUpperCase() + k.slice(1))).join(', ');
+}
+
+// describeCardText: top-level card text generator. Returns a flat string
+// (suitable for storage in card.text and for logging/console output).
+// Visual highlighting of empower-bumped values is the renderer's concern —
+// it calls describeCardSegments instead.
+function describeCardText(card) {
+  return segsToText(describeCardSegments(card));
+}
+
+// describeCardSegments: like describeCardText but returns segments with
+// `highlight` flags on values that differ from the template baseline.
+// opts.skipKeywords skips the leading "Flying, Lifelink." preamble (for UI
+// that shows keywords as badges).
+function describeCardSegments(card, opts) {
+  opts = opts || {};
+  const tpl = CARDS[card.tplId] || card;
+  if (tpl.customText === true || tpl.special === true) {
+    return [plainSeg(card.text || tpl.text || '')];
+  }
+  // Resolve the template baseline used for empower diffing. Stapled cards
+  // need the synthesized template (so the staple half's effects exist in
+  // the baseline) — otherwise we'd be diffing against just the base and
+  // bumped values on the staple side would silently fail to highlight.
+  let tplBaseline = tpl;
+  if (card.stapledFrom && typeof ENGINE !== 'undefined' && ENGINE.synthesizeStapledTemplate) {
+    try {
+      tplBaseline = ENGINE.synthesizeStapledTemplate(
+        card.stapledFrom.baseTplId, card.stapledFrom.stapledTpls);
+    } catch (e) {
+      tplBaseline = tpl;
+    }
+  }
+  // Each "section" emits a segment list; we join sections with a single
+  // space segment.
+  const sections = [];
+  // Keyword preamble — skipped for renderers that show keywords as badges.
+  if (!opts.skipKeywords && (card.type === 'Creature' || tpl.type === 'Creature')) {
+    const kw = keywordPreamble(card.keywords || tpl.keywords || []);
+    if (kw) sections.push([plainSeg(kw + '.')]);
+  }
+  // Modal vs top-level effects (mutually exclusive in current pool).
+  if (card.effects && card.effects.modes) {
+    sections.push(describeModalSegs(card.effects.modes, tplBaseline.effects && tplBaseline.effects.modes));
+  } else if (Array.isArray(card.effects) && card.effects.length > 0) {
+    const tplEffs = Array.isArray(tplBaseline.effects) ? tplBaseline.effects : undefined;
+    sections.push(describeEffectList(card.effects, card.name || tpl.name, tplEffs));
+  }
+  // Static buffs (lords) — render before triggers.
+  if (Array.isArray(card.staticBuffs)) {
+    for (const buff of card.staticBuffs) {
+      const phrase = describeStaticBuff(buff);
+      if (phrase) sections.push([plainSeg(phrase)]);
+    }
+  }
+  // Triggers — each is a self-contained sentence.
+  if (Array.isArray(card.triggers)) {
+    const tplTriggers = Array.isArray(tplBaseline.triggers) ? tplBaseline.triggers : [];
+    for (let i = 0; i < card.triggers.length; i++) {
+      const trig = card.triggers[i];
+      const tplTrig = tplTriggers[i];
+      sections.push(describeTrigger(trig, tplTrig));
+    }
+  }
+  // Abilities.
+  if (Array.isArray(card.abilities)) {
+    const tplAbilities = Array.isArray(tplBaseline.abilities) ? tplBaseline.abilities : [];
+    for (let i = 0; i < card.abilities.length; i++) {
+      const ab = card.abilities[i];
+      const tplAb = tplAbilities[i];
+      const abSegs = describeAbility(ab, tplAb);
+      sections.push(abSegs.concat(plainSeg('.')));
+    }
+  }
+  // Drop empty sections; join with single-space separators.
+  const nonEmpty = sections.filter(s => s && s.length > 0);
+  if (nonEmpty.length === 0) {
+    // No rules content. For non-skip-keywords callers, fall back to flavor
+    // text (vanilla creatures whose only rules content is intrinsic keywords
+    // would otherwise render blank). For skip-keywords callers, the flavor
+    // text IS just the keyword preamble (e.g., "Flying" for Cloud Pegasus),
+    // which is redundant with the badges they're showing — skip the fallback
+    // and return empty.
+    if (opts.skipKeywords) return [];
+    const flavor = tpl.text || '';
+    return flavor ? [plainSeg(flavor)] : [];
+  }
+  const out = [];
+  for (let i = 0; i < nonEmpty.length; i++) {
+    if (i > 0) out.push(plainSeg(' '));
+    out.push(...nonEmpty[i]);
+  }
+  return out;
+}
+
+// describeModalSegs: render a "Choose one — A; or B; or C." block as
+// segments. tplModes is the parallel template modes array; per-mode tpl
+// effects are passed through to describeEffectList for the empower diff.
+function describeModalSegs(modes, tplModes) {
+  const out = [plainSeg('Choose one — ')];
+  for (let i = 0; i < modes.length; i++) {
+    if (i > 0) out.push(plainSeg('; or '));
+    const tplMode = Array.isArray(tplModes) ? tplModes[i] : undefined;
+    let modeSegs = describeEffectList(modes[i], null, tplMode);
+    // Strip trailing period (the final period is added at the end).
+    if (modeSegs.length > 0 && modeSegs[modeSegs.length - 1].text === '.') {
+      modeSegs = modeSegs.slice(0, -1);
+    }
+    // Lowercase the first character for "; or" continuation. The first mode
+    // gets a sentence-start capital from the "Choose one — " prefix's
+    // emphatic dash; all subsequent modes follow a "; or" connector and
+    // should be lowercase.
+    if (i > 0 && modeSegs.length > 0) {
+      for (let j = 0; j < modeSegs.length; j++) {
+        if (modeSegs[j].text && modeSegs[j].text.length > 0) {
+          modeSegs[j] = {
+            text: modeSegs[j].text[0].toLowerCase() + modeSegs[j].text.slice(1),
+            highlight: modeSegs[j].highlight,
+          };
+          break;
+        }
+      }
+    }
+    out.push(...modeSegs);
+  }
+  out.push(plainSeg('.'));
+  return out;
+}
 
 const ENGINE = (function() {
 

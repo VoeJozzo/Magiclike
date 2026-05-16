@@ -160,7 +160,9 @@ function render() {
         }
         // Stack pill is small/inline — show emoji art directly, skip for
         // URL art (would force-stretch an <img> into a narrow pill).
-        const inlineArt = isArtUrl(it.card.art) ? '🎴' : (it.card.art || '');
+        const isUrlArt = typeof it.card.art === 'string'
+          && (it.card.art.startsWith('data:') || it.card.art.startsWith('http'));
+        const inlineArt = isUrlArt ? '🎴' : (it.card.art || '');
         div.innerHTML =
           `<div class="topline">${inlineArt} ${it.card.name}${modeLabel}</div>` +
           `<div class="botline">cast by ${G[it.controller].name}${tgtLabel}</div>`;
@@ -258,7 +260,9 @@ function render() {
         const btn = document.createElement('button');
         btn.className = 'search-card';
         // textContent only — strip URL art to avoid showing the data: prefix.
-        const inlineArt = isArtUrl(card.art) ? '🎴' : (card.art || '');
+        const isUrlArt = typeof card.art === 'string'
+          && (card.art.startsWith('data:') || card.art.startsWith('http'));
+        const inlineArt = isUrlArt ? '🎴' : (card.art || '');
         btn.textContent = `${inlineArt} ${card.name}`;
         btn.onclick = () => CONTROLLER.searchPick(card.iid);
         list.appendChild(btn);
@@ -398,7 +402,9 @@ function render() {
     const card = G.you.hand.find(c => c.iid === pmc.cardIid);
     if (card) {
       Modal.show('modalChoiceModal', { onClose: () => CONTROLLER.cancelModalChoice() });
-      const inlineArt = isArtUrl(card.art) ? '🎴' : (card.art || '');
+      const isUrlArt = typeof card.art === 'string'
+        && (card.art.startsWith('data:') || card.art.startsWith('http'));
+      const inlineArt = isUrlArt ? '🎴' : (card.art || '');
       setText('modalChoiceCardName', `${inlineArt} ${card.name}`);
       const list = document.getElementById('modalChoiceList');
       list.innerHTML = '';
@@ -713,8 +719,8 @@ function openZoneTargeting(who, zone, validTargets) {
       const btn = document.createElement('div');
       btn.className = 'zone-card';
       const typeHint = card.type ? card.type.charAt(0) : '?';
-      const cost = card.cost ? renderManaSymbols(formatCostBraced(card.cost)) : '';
-      btn.innerHTML = `<span style="opacity:0.6">[${typeHint}]</span> <span class="card-name"></span>${cost ? ' <span style="opacity:0.7;font-size:10px">' + cost + '</span>' : ''}`;
+      const cost = card.cost ? formatCost(card.cost) : '';
+      btn.innerHTML = `<span style="opacity:0.6">[${typeHint}]</span> <span class="card-name"></span>${cost ? ' <span style="opacity:0.5;font-size:10px">' + cost + '</span>' : ''}`;
       btn.querySelector('.card-name').textContent = card.name;
       if (validIids.has(card.iid)) {
         // Valid target — highlight and wire up submission.
@@ -758,13 +764,8 @@ function escapeHtml(s) { return String(s).replace(/[&<>]/g, c => ({'&':'&amp;','
 function segmentsToHtml(segs) {
   if (!Array.isArray(segs)) return '';
   return segs.map(s => {
-    // escapeHtml runs first to keep raw text safe (e.g. <stripe> or
-    // ampersands); renderManaSymbols then converts the still-intact
-    // {R}/{T}/{1} tokens into pip spans. escapeHtml leaves braces alone,
-    // so the order is correct.
-    const safe = escapeHtml(s.text || '');
-    const withPips = renderManaSymbols(safe);
-    return s.highlight ? `<span class="bumped">${withPips}</span>` : withPips;
+    const escaped = escapeHtml(s.text || '');
+    return s.highlight ? `<span class="bumped">${escaped}</span>` : escaped;
   }).join('');
 }
 
@@ -1070,11 +1071,7 @@ function stickerBadgesHtml(stickers, big, empowerRolls, tplId, stapledTpls, subt
     let label;
     if (s.kind === 'statBoost') label = '+1/+1';
     else if (s.kind === 'innate') label = 'Innate';
-    // landColor badge label is "+{W}"-style — route the brace token
-    // through renderManaSymbols so it shows the color pip / future PNG
-    // instead of literal {W} text. The label gets injected into
-    // innerHTML below, so an HTML span is fine here.
-    else if (s.kind === 'landColor') label = '+' + renderManaSymbols('{' + s.color + '}');
+    else if (s.kind === 'landColor') label = '+{' + s.color + '}';
     else if (s.kind === 'costReduction') label = '-' + (s.amount || 1) + ' cost';
     else if (s.kind === 'trigger') label = s.name || 'Trigger';
     else if (s.kind === 'keyword') label = s.keyword;
@@ -1158,77 +1155,18 @@ function nativeKeywordBadgesHtml(card, big) {
 //
 // `fallback` is what to render when art is missing/empty (defaults to ''
 // since most callers handle empty gracefully).
-// Pick the right art for a card based on its current power+toughness.
-//
-// Cards with a static art simply have an "art" string in their template
-// and return early. Cards with an `artLadder` array on their template
-// (currently only Elystra) evolve their portrait as they grow — each
-// ladder entry is `{minPT, art}`, and we walk the ladder picking the
-// highest threshold the card's current p+t meets.
-//
-// Stats come from ENGINE.getStats so live modifiers + sticker pumps +
-// staticBuffs + permanent EOT bumps all count. For non-Creatures (no
-// stats to compute), fall back to the base art unconditionally.
-//
-// Called by makeCardEl (hand/board) and openCardPopup (zoom). Draft,
-// reward, and card-browser views work off templates and don't get
-// runtime stats, so they use the base `art` field directly — that's
-// the "show the early/base form" default for browse contexts.
-function effectiveArt(card) {
-  if (!card) return '';
-  // Ladder lives on the template, not the instance — makeCard doesn't
-  // copy it across, and rather than add an engine change to do so, we
-  // look it up here. This is a render-only concern; the engine never
-  // needs to know about art variants.
-  const tpl = (typeof CARDS !== 'undefined') ? CARDS[card.tplId] : null;
-  const ladder = (tpl && Array.isArray(tpl.artLadder)) ? tpl.artLadder : card.artLadder;
-  if (!Array.isArray(ladder) || ladder.length === 0) return card.art;
-  if (card.type !== 'Creature') return card.art;
-  let p = 0, t = 0;
-  try {
-    const stats = ENGINE.getStats(card);
-    if (Array.isArray(stats)) { p = stats[0] || 0; t = stats[1] || 0; }
-  } catch (_) {
-    p = card.power || 0; t = card.toughness || 0;
-  }
-  const sum = (p || 0) + (t || 0);
-  let pick = card.art;
-  for (const rung of ladder) {
-    if (rung && sum >= (rung.minPT || 0)) pick = rung.art;
-  }
-  return pick;
-}
-
-// Is this art value something the browser should resolve as an image
-// source? Used by artHtml (to decide between <img> and inline text) AND
-// by the small inline-art callers (stack pill, library search, zone
-// modal) which substitute a generic 🎴 glyph rather than try to render
-// a real image inside a narrow text pill. Centralized here so a new
-// flavor of art source (e.g. data:image/svg+xml, or a future blob URL)
-// gets recognized in every site at once.
-//   - data:           — inline base64 (legacy embeds, e.g. the old dragon)
-//   - http            — full URL
-//   - ends in .png/.jpg/.jpeg/.gif/.webp/.svg — relative file path,
-//     resolved against magiclike_engine.html (cards/<tplId>/art.png)
-// Emoji are 1-4 chars and never match.
-function isArtUrl(art) {
-  return typeof art === 'string' && (
-    art.startsWith('data:') ||
-    art.startsWith('http') ||
-    /\.(png|jpe?g|gif|webp|svg)$/i.test(art)
-  );
-}
-
 function artHtml(art, fallback) {
   if (!art) return fallback || '';
-  if (isArtUrl(art)) {
+  // Heuristic: anything starting with "data:" or "http" is a URL → <img>.
+  // Emoji and short glyph strings render as text. Two-char emoji like 🛡
+  // are fine — they never match the URL prefixes.
+  if (typeof art === 'string' && (art.startsWith('data:') || art.startsWith('http'))) {
     // pixelated rendering preserves the chunky look of small pixel-art
-    // sources (the 64x32 native size is intentionally low-res). Per-
-    // context sizing (.cart img, .pop-art img, etc.) lives in CSS so
-    // each render site can integer-scale the source to suit its frame.
-    // alt="" because the card name is rendered separately — duplicating
-    // it in alt text creates noise for screen readers.
-    return `<img src="${art}" alt="">`;
+    // sources. For higher-res art this is a no-op (browser ignores it
+    // when the source is already > display size). alt="" because the
+    // card name is rendered separately — duplicating it in alt text
+    // creates noise for screen readers.
+    return `<img src="${art}" alt="" style="max-width:100%;max-height:100%;object-fit:contain;image-rendering:pixelated">`;
   }
   return art;
 }
@@ -1258,14 +1196,14 @@ function makeCardEl(card, opts) {
       const effC = eff && eff.C || 0;
       const baseC = card.cost.C || 0;
       const bumped = effC > baseC;
-      costHtml = `<div class="ccost">${renderManaSymbols(formatCostBraced(eff))}${bumped ? ' <span style="color:#ffaa44;font-size:9px">↑</span>' : ''}</div>`;
+      costHtml = `<div class="ccost">${formatCost(eff)}${bumped ? ' <span style="color:#ffaa44;font-size:9px">↑</span>' : ''}</div>`;
     } else {
-      costHtml = `<div class="ccost">${renderManaSymbols(formatCostBraced(card.cost))}</div>`;
+      costHtml = `<div class="ccost">${formatCost(card.cost)}</div>`;
     }
   }
   div.innerHTML = `
     <div class="cname" title="${card.name}">${card.name}</div>
-    <div class="cart">${artHtml(effectiveArt(card))}</div>
+    <div class="cart">${artHtml(card.art)}</div>
     <div class="ctype">${card.sub || card.type}</div>
     ${displayHtml ? `<div class="ctext">${displayHtml}</div>` : ''}
     ${card.type === 'Creature' ? `<div class="cstats">${p}/${t}</div>` : ''}
@@ -1283,52 +1221,4 @@ function formatCost(c) {
   if (c.C) s += c.C;
   for (const k of ['W','U','B','R','G']) s += k.repeat(c[k] || 0);
   return s || '0';
-}
-
-// Mana-cost in MtG-canonical braced notation: {R:2, C:4} -> "{4}{R}{R}".
-// Plain text — caller pipes through renderManaSymbols() to get pip HTML.
-function formatCostBraced(c) {
-  if (!c) return '';
-  let s = '';
-  if (c.C) s += '{' + c.C + '}';
-  for (const k of ['W','U','B','R','G']) s += ('{' + k + '}').repeat(c[k] || 0);
-  return s || '{0}';
-}
-
-// Convert `{X}` patterns embedded in card text or formatCostBraced output
-// into mana-pip HTML spans. The pipeline:
-//   card text "{R}: gets +1/+0" -> escapeHtml -> renderManaSymbols
-//   cost {R:2,C:4} -> formatCostBraced -> renderManaSymbols
-//
-// CSS in magiclike_engine.html defines a default colored-circle look for
-// .mana / .mana-W / .mana-R / etc. The pathway is set up so a future
-// `.mana-R { background-image: url('assets/mana/R.png'); color:
-// transparent; }` swap will replace text pips with PNG art globally.
-//
-// Recognized symbols: WUBRGC (color/colorless pips), T (tap), X (variable
-// cost), and any pure-number sequence (generic mana). Unrecognized braces
-// are returned untouched so existing text like "{1.5}" or "{foo}" can't
-// break rendering.
-// Per-color glyph used as the FALLBACK rendering (no PNG art yet). The
-// five Unicode circle emoji are coincidentally the right shape and color
-// for mana symbols, so they look recognizable without shipping any image
-// files. When real PNGs land in assets/mana/, the .mana-W / .mana-U / ...
-// CSS overrides will hide the emoji via color:transparent and show the
-// art instead. C (colorless) has no canonical emoji match — keep it
-// as a letter pip until art ships.
-const MANA_GLYPH = { W: '⚪', U: '🔵', B: '⚫', R: '🔴', G: '🟢', C: 'C' };
-
-function renderManaSymbols(text) {
-  if (text == null) return '';
-  return String(text).replace(/\{([^}]+)\}/g, (whole, sym) => {
-    const upper = sym.toUpperCase();
-    if (/^[WUBRGC]$/.test(upper)) {
-      const glyph = MANA_GLYPH[upper];
-      return '<span class="mana mana-' + upper + '" title="' + upper + '">' + glyph + '</span>';
-    }
-    if (upper === 'T') return '<span class="mana mana-T" title="Tap">T</span>';
-    if (upper === 'X') return '<span class="mana mana-X" title="X">X</span>';
-    if (/^\d+$/.test(sym)) return '<span class="mana mana-num" title="' + sym + '">' + sym + '</span>';
-    return whole;
-  });
 }

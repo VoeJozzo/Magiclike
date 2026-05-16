@@ -73,49 +73,11 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
 .csorcery{background:linear-gradient(180deg,#2a1a08,#180e04)}
 .cname{font-size:7px;font-weight:bold;padding:1px 2px;background:rgba(0,0,0,.6);color:#eee;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-radius:2px 2px 0 0}
 .cart{flex:1;display:flex;align-items:center;justify-content:center;font-size:22px}
-/* Pixel-art image inside the hand/board card. Source is 64x32; fitting
-   to the 62px card width gets ~1x scale. image-rendering:pixelated keeps
-   the chunky look on any browser-decided sub-pixel positioning. */
-.cart img{width:100%;height:auto;max-height:100%;object-fit:contain;image-rendering:pixelated;display:block}
 .ctype{font-size:6px;padding:0 2px;color:#aaa;background:rgba(0,0,0,.4)}
 .ctext{font-size:6px;padding:1px 2px;color:#ccc;overflow:hidden;max-height:18px;line-height:1.1}
 .bumped{color:#ffd700;font-weight:bold}
 .cstats{font-size:10px;font-weight:bold;text-align:right;padding:0 3px 1px;color:#ffd700}
-.ccost{position:absolute;top:1px;right:2px;font-size:8px;color:#ffd700;background:rgba(0,0,0,.6);border-radius:2px;padding:0 2px;display:flex;gap:1px;align-items:center}
-
-/* Mana-symbol pips. The `<span class="mana mana-X">` markup is emitted
-   by renderManaSymbols() (js/render.js) — used for cost displays AND
-   for parsing {R}/{T}/{1} tokens inside card text.
-   Current fallback for W/U/B/R/G is a Unicode circle emoji (⚪🔵⚫🔴🟢)
-   injected as the span's text content. The emoji is already a colored
-   circle, so .mana-W/.mana-U/etc. don't apply a background-color — the
-   emoji IS the visual.
-   For T/X/colorless/numeric pips there's no recognized emoji match, so
-   those keep the letter-in-colored-circle look.
-   PATHWAY for PNG mana art: drop W.png/U.png/etc. into assets/mana/
-   then uncomment the matching override block below. The override sets
-   background-image + color:transparent (hides the emoji glyph) so only
-   the PNG shows. */
-.mana{display:inline-block;min-width:1.2em;height:1.2em;line-height:1.2em;
-  text-align:center;font-size:0.95em;vertical-align:middle;
-  margin:0 0.05em;background-size:contain;
-  background-position:center;background-repeat:no-repeat;
-  font-family:Arial,sans-serif}
-/* Color pips: emoji glyph supplies the visual, no backdrop styling. */
-.mana-W, .mana-U, .mana-B, .mana-R, .mana-G { font-family: inherit }
-/* Non-color pips: letter inside a colored disc (no emoji match). */
-.mana-C{background-color:#aaa;color:#333;border-radius:50%;font-weight:bold;font-size:0.85em}
-.mana-T{background-color:#888;color:#fff;border-radius:50%;font-weight:bold;font-style:italic;font-size:0.85em;text-shadow:0 0 1px rgba(0,0,0,.6)}
-.mana-X{background-color:#666;color:#fff;border-radius:50%;font-weight:bold;font-size:0.85em;text-shadow:0 0 1px rgba(0,0,0,.6)}
-.mana-num{background-color:#555;color:#fff;border-radius:50%;font-weight:bold;font-size:0.85em;text-shadow:0 0 1px rgba(0,0,0,.6)}
-/* PNG mana art drop-in — uncomment per color when assets/mana/<X>.png exists.
-.mana-W{background-image:url('assets/mana/W.png');color:transparent}
-.mana-U{background-image:url('assets/mana/U.png');color:transparent}
-.mana-B{background-image:url('assets/mana/B.png');color:transparent}
-.mana-R{background-image:url('assets/mana/R.png');color:transparent}
-.mana-G{background-image:url('assets/mana/G.png');color:transparent}
-.mana-C{background-image:url('assets/mana/C.png');color:transparent;background-color:transparent}
-*/
+.ccost{position:absolute;top:1px;right:2px;font-size:8px;color:#ffd700;background:rgba(0,0,0,.6);border-radius:2px;padding:0 2px}
 .cdmg{position:absolute;bottom:14px;right:2px;background:#cc0000;color:#fff;border-radius:50%;width:14px;height:14px;font-size:9px;display:flex;align-items:center;justify-content:center;font-weight:bold}
 .cmod{position:absolute;top:1px;left:2px;font-size:8px;color:#88ddff;background:rgba(0,0,0,.6);border-radius:2px;padding:0 2px}
 .stickers-row{display:flex;flex-wrap:wrap;gap:2px;margin-top:3px;padding:0 2px;justify-content:center}
@@ -222,9 +184,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
 #neowOptions{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
 .neow-opt{background:#13243a;border:1px solid #2c5780;border-radius:8px;padding:14px 12px;width:200px;cursor:pointer;transition:all .15s;display:flex;flex-direction:column;align-items:center;gap:8px}
 .neow-opt:hover{background:#1d3550;border-color:#5da0d8;transform:translateY(-2px);box-shadow:0 4px 14px rgba(74,144,200,.3)}
-.neow-opt .neow-art{font-size:42px;line-height:1;display:flex;align-items:center;justify-content:center;min-height:64px}
-/* Boon picker is a generously-sized tile (200px wide) — render pixel art at 2x. */
-.neow-opt .neow-art img{width:128px;height:64px;image-rendering:pixelated;display:block}
+.neow-opt .neow-art{font-size:42px;line-height:1}
 .neow-opt .neow-name{color:#9bd0ff;font-weight:bold;font-size:14px;letter-spacing:1px}
 .neow-opt .neow-text{color:#bcd;font-size:11px;line-height:1.5;font-style:italic}
 #rewardModal{position:fixed;inset:0;background:rgba(0,0,0,.92);display:none;align-items:flex-start;justify-content:center;z-index:1100;padding:20px;overflow-y:auto}
@@ -276,9 +236,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
 #rewardOptions{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
 .rwd-card{background:#1a2030;border:2px solid #44557a;border-radius:6px;padding:14px 12px;cursor:pointer;width:200px;min-height:200px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:6px;transition:transform .12s,border-color .12s,background .12s;font-family:Georgia,serif}
 .rwd-card:hover{background:#252e44;border-color:#88aacc;transform:translateY(-3px)}
-.rwd-card .art{font-size:42px;line-height:1;display:flex;align-items:center;justify-content:center;min-height:64px}
-/* 64x32 source rendered at 2x (128x64) — readable without dominating the tile. */
-.rwd-card .art img{width:128px;height:64px;image-rendering:pixelated;display:block}
+.rwd-card .art{font-size:42px;line-height:1}
 .rwd-card .name{color:#ffe7a0;font-size:13px;font-weight:bold;text-align:center}
 .rwd-card .type{color:#88a;font-size:10px}
 .rwd-card .stats{color:#fff;font-size:13px;font-weight:bold}
@@ -290,8 +248,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
 .rwd-pair{background:#1a1a2a;border:2px solid #44557a;border-radius:8px;padding:12px 10px;cursor:pointer;width:200px;display:flex;flex-direction:column;align-items:center;gap:6px;font-family:Georgia,serif;transition:transform .12s,border-color .12s,background .12s}
 .rwd-pair:hover{background:#252540;border-color:#88aacc;transform:translateY(-3px)}
 .rwd-pair-card{display:flex;flex-direction:column;align-items:center;gap:4px;width:100%;padding:8px 4px;background:#0e1424;border-radius:5px}
-.rwd-pair-card .art{font-size:36px;line-height:1;display:flex;align-items:center;justify-content:center;min-height:64px}
-.rwd-pair-card .art img{width:128px;height:64px;image-rendering:pixelated;display:block}
+.rwd-pair-card .art{font-size:36px;line-height:1}
 .rwd-pair-card .name{color:#ffe7a0;font-size:13px;font-weight:bold;text-align:center}
 .rwd-pair-card .type{color:#88a;font-size:10px}
 .rwd-pair-card .stats{color:#fff;font-size:13px;font-weight:bold}
@@ -320,11 +277,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
 #cardPopupCard{background:#1a1a26;border:2px solid #5a5a7a;border-radius:10px;padding:20px;width:100%;max-width:340px;max-height:90vh;overflow-y:auto;text-align:center;cursor:default;box-shadow:0 10px 40px rgba(0,0,0,.7);font-family:Georgia,serif;position:relative}
 #cardPopupCard .pop-name{color:#ffe7a0;font-size:20px;font-weight:bold;margin-bottom:6px}
 #cardPopupCard .pop-cost{color:#ccc;font-size:13px;margin-bottom:8px}
-#cardPopupCard .pop-art{font-size:80px;line-height:1;margin:8px 0;display:flex;align-items:center;justify-content:center;min-height:128px}
-/* Popup is the showcase view — 4x scale (256x128) so pixel detail is
-   readable on phone. max-width:100% keeps it in bounds on narrow
-   viewports where the popup itself shrinks. */
-#cardPopupCard .pop-art img{width:256px;height:128px;max-width:100%;image-rendering:pixelated;display:block}
+#cardPopupCard .pop-art{font-size:80px;line-height:1;margin:8px 0}
 #cardPopupCard .pop-type{color:#aab;font-size:12px;margin-bottom:12px;font-style:italic}
 #cardPopupCard .pop-text{color:#ddd;font-size:13px;line-height:1.5;margin:10px 0;padding:8px;background:#0d0d18;border-radius:4px;text-align:left}
 #cardPopupCard .pop-stats{color:#fff;font-size:22px;font-weight:bold;margin-top:8px}
@@ -354,8 +307,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
 #draftPack{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin:18px 0}
 .draft-pick{background:#1a2030;border:2px solid #44557a;border-radius:6px;padding:14px 12px;cursor:pointer;width:200px;min-height:200px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:6px;transition:transform .12s,border-color .12s,background .12s;font-family:Georgia,serif}
 .draft-pick:hover{background:#252e44;border-color:#88aacc;transform:translateY(-3px)}
-.draft-pick .art{font-size:42px;line-height:1;display:flex;align-items:center;justify-content:center;min-height:64px}
-.draft-pick .art img{width:128px;height:64px;image-rendering:pixelated;display:block}
+.draft-pick .art{font-size:42px;line-height:1}
 .draft-pick .name{color:#ffe7a0;font-size:13px;font-weight:bold;text-align:center}
 .draft-pick .type{color:#88a;font-size:10px}
 .draft-pick .cost{color:#ccc;font-size:11px;font-weight:bold}
@@ -569,12 +521,8 @@ body.ai-thinking #status{
 
 <script src="js/cards.js"></script>
 <script src="js/engine.js"></script>
-<script src="js/card-text.js"></script>
-<script src="js/stickers.js"></script>
 <script src="js/ai.js"></script>
-<script src="js/draft.js"></script>
-<script src="js/run.js"></script>
-<script src="js/picklog.js"></script>
+<script src="js/meta.js"></script>
 <script src="js/controller.js"></script>
 <script src="js/render.js"></script>
 <script src="js/triggers.js"></script>
