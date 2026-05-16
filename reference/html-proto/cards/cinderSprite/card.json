@@ -1,5 +1,5 @@
 {
-  "tplId": "fireImp",
+  "tplId": "cinderSprite",
   "name": "Cinder Sprite",
   "type": "Creature",
   "sub": "Imp",
@@ -9,7 +9,7 @@
   },
   "power": 1,
   "toughness": 1,
-  "art": "cards/fireImp/art.png",
+  "art": "cards/cinderSprite/art.png",
   "text": "Flying, Haste",
   "keywords": [
     "flying",

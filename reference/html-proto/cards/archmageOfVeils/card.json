@@ -1,5 +1,5 @@
 {
-  "tplId": "archmage",
+  "tplId": "archmageOfVeils",
   "name": "Archmage of Veils",
   "type": "Creature",
   "sub": "Human Wizard",
@@ -9,7 +9,7 @@
   },
   "power": 2,
   "toughness": 4,
-  "art": "cards/archmage/art.png",
+  "art": "cards/archmageOfVeils/art.png",
   "text": "T: Draw a card.",
   "abilities": [
     {

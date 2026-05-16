@@ -1,5 +1,5 @@
 {
-  "tplId": "zealot",
+  "tplId": "holyZealot",
   "name": "Holy Zealot",
   "type": "Creature",
   "sub": "Human Cleric",
@@ -8,7 +8,7 @@
   },
   "power": 1,
   "toughness": 1,
-  "art": "cards/zealot/art.png",
+  "art": "cards/holyZealot/art.png",
   "text": "Haste. When this attacks, you gain 1 life.",
   "keywords": [
     "haste"

@@ -1,5 +1,5 @@
 {
-  "tplId": "merfolk",
+  "tplId": "merfolkLooter",
   "name": "Merfolk Looter",
   "type": "Creature",
   "sub": "Merfolk",
@@ -8,7 +8,7 @@
   },
   "power": 1,
   "toughness": 1,
-  "art": "cards/merfolk/art.png",
+  "art": "cards/merfolkLooter/art.png",
   "text": "T: Draw a card, then discard a card.",
   "abilities": [
     {

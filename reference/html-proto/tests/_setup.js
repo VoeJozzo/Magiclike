@@ -124,6 +124,8 @@ const EXPOSED = [
   // Public module objects (top of each .js file).
   'ENGINE', 'AI', 'RUN', 'DRAFT', 'CARDS', 'STICKERS',
   'CONTROLLER', 'PICKLOG', 'VERSION', 'Modal', 'RUN_MODIFIERS',
+  // tplId rename plumbing — exposed for tplid_renames_test.
+  'TPLID_RENAMES', 'renameTplId', 'MIGRATIONS', 'SAVE_VERSION', 'SAVE_KEY',
   // Trigger-generator surface (triggers.js + trigger-generator.js —
   // no IIFE, all module-scope).
   'TRIGGER_CONDITIONS', 'GENERATOR_EFFECTS', 'GENERATOR_CONDITIONS',
