@@ -88,7 +88,10 @@ function updateThinkingUi() {
   render();
 }
 
+let _inited = false;
 function init() {
+  if (_inited) return;
+  _inited = true;
   ENGINE.subscribe(onStateChange);
   // Populate the two static UI sites that show the version number — the
   // header div and the game-log title. Both used to be hand-edited HTML
