@@ -1157,10 +1157,19 @@ function nativeKeywordBadgesHtml(card, big) {
 // since most callers handle empty gracefully).
 function artHtml(art, fallback) {
   if (!art) return fallback || '';
-  // Heuristic: anything starting with "data:" or "http" is a URL → <img>.
-  // Emoji and short glyph strings render as text. Two-char emoji like 🛡
-  // are fine — they never match the URL prefixes.
-  if (typeof art === 'string' && (art.startsWith('data:') || art.startsWith('http'))) {
+  // Heuristic: anything that looks like a URL or an image file path is a
+  // src for <img>. Emoji and short glyph strings render as text.
+  //   - data:           — inline base64 (legacy embeds, e.g. the old dragon)
+  //   - http            — full URL
+  //   - ends in .png/.jpg/.jpeg/.gif/.webp/.svg — relative file path,
+  //     resolved against magiclike_engine.html (cards/<tplId>/art.png)
+  // Emoji are 1-4 chars and never match these.
+  const isUrl = typeof art === 'string' && (
+    art.startsWith('data:') ||
+    art.startsWith('http') ||
+    /\.(png|jpe?g|gif|webp|svg)$/i.test(art)
+  );
+  if (isUrl) {
     // pixelated rendering preserves the chunky look of small pixel-art
     // sources. For higher-res art this is a no-op (browser ignores it
     // when the source is already > display size). alt="" because the

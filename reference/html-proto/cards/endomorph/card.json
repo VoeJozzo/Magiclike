@@ -8,7 +8,7 @@
   },
   "power": 2,
   "toughness": 2,
-  "art": "🧬",
+  "art": "cards/endomorph/art.png",
   "special": true,
   "text": "When this kills a creature, it permanently gains one of that creature's keywords. If it gained no keyword, it gains +1/+1 permanently instead.",
   "triggers": [

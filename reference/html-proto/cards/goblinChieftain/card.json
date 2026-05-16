@@ -9,7 +9,7 @@
   },
   "power": 2,
   "toughness": 2,
-  "art": "👑",
+  "art": "cards/goblinChieftain/art.png",
   "keywords": [
     "haste"
   ],
