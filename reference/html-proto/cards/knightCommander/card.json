@@ -1,0 +1,34 @@
+{
+  "tplId": "knightCommander",
+  "name": "Knight Commander",
+  "type": "Creature",
+  "sub": "Human Knight",
+  "cost": {
+    "W": 1,
+    "C": 3
+  },
+  "power": 3,
+  "toughness": 3,
+  "art": "🏰",
+  "keywords": [
+    "vigilance"
+  ],
+  "text": "Vigilance. Other Knights you control get +1/+1 and have vigilance.",
+  "staticBuffs": [
+    {
+      "filter": {
+        "controller": "self"
+      },
+      "subtype": "Knight",
+      "power": 1,
+      "toughness": 1,
+      "keywords": [
+        "vigilance"
+      ]
+    }
+  ],
+  "color": "W",
+  "colors": [
+    "W"
+  ]
+}

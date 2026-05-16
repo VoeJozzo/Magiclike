@@ -1,0 +1,30 @@
+{
+  "tplId": "lastDruid",
+  "name": "Last Druid",
+  "type": "Creature",
+  "sub": "Elf Druid",
+  "cost": {
+    "G": 1,
+    "C": 2
+  },
+  "power": 2,
+  "toughness": 2,
+  "art": "🍃",
+  "text": "When this dies, search your library for a creature card.",
+  "triggers": [
+    {
+      "event": "cardDies",
+      "condId": "thisDies",
+      "text": "When ~ dies, tutor a creature.",
+      "effects": [
+        {
+          "kind": "searchCreature"
+        }
+      ]
+    }
+  ],
+  "color": "G",
+  "colors": [
+    "G"
+  ]
+}

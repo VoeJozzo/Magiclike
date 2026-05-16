@@ -1,0 +1,10 @@
+{
+  "tplId": "island",
+  "name": "Island",
+  "type": "Land",
+  "sub": "Basic Land",
+  "art": "🌊",
+  "mana": "U",
+  "color": null,
+  "colors": []
+}

@@ -1,0 +1,31 @@
+{
+  "tplId": "graveDigger",
+  "name": "Grave Digger",
+  "type": "Creature",
+  "sub": "Zombie",
+  "cost": {
+    "B": 1,
+    "C": 3
+  },
+  "power": 3,
+  "toughness": 3,
+  "art": "⚰",
+  "text": "When this enters the battlefield, return target creature card from your graveyard to your hand.",
+  "triggers": [
+    {
+      "event": "cardEntersBattlefield",
+      "condId": "thisEnters",
+      "text": "When ~ enters, return a creature from your graveyard.",
+      "effects": [
+        {
+          "kind": "returnFromGraveyard",
+          "target": "graveyardCreature"
+        }
+      ]
+    }
+  ],
+  "color": "B",
+  "colors": [
+    "B"
+  ]
+}

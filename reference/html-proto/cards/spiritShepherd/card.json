@@ -1,0 +1,51 @@
+{
+  "tplId": "spiritShepherd",
+  "name": "Spirit Shepherd",
+  "type": "Creature",
+  "sub": "Spirit",
+  "cost": {
+    "W": 1,
+    "C": 3
+  },
+  "power": 2,
+  "toughness": 3,
+  "art": "👻",
+  "keywords": [
+    "flying",
+    "hexproof"
+  ],
+  "text": "Flying, Hexproof. Other Spirits you control get +1/+1 and have hexproof. When this dies, return a Spirit creature card from your graveyard to your hand.",
+  "staticBuffs": [
+    {
+      "filter": {
+        "controller": "self"
+      },
+      "subtype": "Spirit",
+      "power": 1,
+      "toughness": 1,
+      "keywords": [
+        "hexproof"
+      ]
+    }
+  ],
+  "triggers": [
+    {
+      "event": "cardDies",
+      "condId": "thisDies",
+      "text": "When ~ dies, return a Spirit creature from your graveyard to your hand.",
+      "effects": [
+        {
+          "kind": "returnFromGraveyard",
+          "target": "graveyardCreature",
+          "filter": {
+            "subtype": "Spirit"
+          }
+        }
+      ]
+    }
+  ],
+  "color": "W",
+  "colors": [
+    "W"
+  ]
+}

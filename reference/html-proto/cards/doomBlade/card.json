@@ -1,0 +1,25 @@
+{
+  "tplId": "doomBlade",
+  "name": "Doom Blade",
+  "type": "Instant",
+  "cost": {
+    "B": 1,
+    "C": 1
+  },
+  "art": "🗡",
+  "text": "Destroy target non-Black creature.",
+  "effects": [
+    {
+      "kind": "removeCreature",
+      "severity": 3,
+      "target": "creature",
+      "filter": {
+        "notColor": "B"
+      }
+    }
+  ],
+  "color": "B",
+  "colors": [
+    "B"
+  ]
+}

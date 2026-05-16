@@ -1,0 +1,20 @@
+{
+  "tplId": "hastyOgre",
+  "name": "Raging Goblin",
+  "type": "Creature",
+  "sub": "Goblin Berserker",
+  "cost": {
+    "R": 1
+  },
+  "power": 1,
+  "toughness": 1,
+  "art": "😡",
+  "text": "Haste",
+  "keywords": [
+    "haste"
+  ],
+  "color": "R",
+  "colors": [
+    "R"
+  ]
+}

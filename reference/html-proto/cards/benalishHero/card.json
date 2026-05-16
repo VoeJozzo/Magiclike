@@ -1,0 +1,20 @@
+{
+  "tplId": "benalishHero",
+  "name": "Benalish Hero",
+  "type": "Creature",
+  "sub": "Human Soldier",
+  "cost": {
+    "W": 1
+  },
+  "power": 1,
+  "toughness": 1,
+  "art": "🪖",
+  "text": "Vigilance",
+  "keywords": [
+    "vigilance"
+  ],
+  "color": "W",
+  "colors": [
+    "W"
+  ]
+}

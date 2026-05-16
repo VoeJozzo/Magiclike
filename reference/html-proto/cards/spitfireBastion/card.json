@@ -1,0 +1,35 @@
+{
+  "tplId": "spitfireBastion",
+  "name": "Spitfire Bastion",
+  "type": "Creature",
+  "sub": "Wall",
+  "cost": {
+    "R": 1,
+    "C": 1
+  },
+  "power": 1,
+  "toughness": 3,
+  "art": "🏰",
+  "keywords": [
+    "defender"
+  ],
+  "text": "Defender. T: Deal 1 damage to any target.",
+  "abilities": [
+    {
+      "cost": {
+        "tap": true
+      },
+      "effects": [
+        {
+          "kind": "damage",
+          "target": "any",
+          "amount": 1
+        }
+      ]
+    }
+  ],
+  "color": "R",
+  "colors": [
+    "R"
+  ]
+}

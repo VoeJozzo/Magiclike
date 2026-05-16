@@ -1,0 +1,21 @@
+{
+  "tplId": "ancientHydra",
+  "name": "Ancient Hydra",
+  "type": "Creature",
+  "sub": "Hydra",
+  "cost": {
+    "G": 2,
+    "C": 5
+  },
+  "power": 7,
+  "toughness": 7,
+  "art": "🐲",
+  "text": "Trample",
+  "keywords": [
+    "trample"
+  ],
+  "color": "G",
+  "colors": [
+    "G"
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "tplId": "diabolicEdict",
+  "name": "Diabolic Edict",
+  "type": "Instant",
+  "cost": {
+    "B": 1,
+    "C": 1
+  },
+  "art": "😈",
+  "text": "Target opponent sacrifices a creature.",
+  "effects": [
+    {
+      "kind": "edict"
+    }
+  ],
+  "color": "B",
+  "colors": [
+    "B"
+  ]
+}

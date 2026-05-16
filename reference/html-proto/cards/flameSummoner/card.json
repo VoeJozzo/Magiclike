@@ -1,0 +1,32 @@
+{
+  "tplId": "flameSummoner",
+  "name": "Flame Summoner",
+  "type": "Creature",
+  "sub": "Human Shaman",
+  "cost": {
+    "R": 1,
+    "C": 2
+  },
+  "power": 2,
+  "toughness": 2,
+  "art": "🔥",
+  "text": "When this enters the battlefield, deal 2 damage to any target.",
+  "triggers": [
+    {
+      "event": "cardEntersBattlefield",
+      "condId": "thisEnters",
+      "text": "When ~ enters, deal 2 damage to any target.",
+      "effects": [
+        {
+          "kind": "damage",
+          "target": "any",
+          "amount": 2
+        }
+      ]
+    }
+  ],
+  "color": "R",
+  "colors": [
+    "R"
+  ]
+}

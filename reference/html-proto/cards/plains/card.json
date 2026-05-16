@@ -1,0 +1,10 @@
+{
+  "tplId": "plains",
+  "name": "Plains",
+  "type": "Land",
+  "sub": "Basic Land",
+  "art": "⛰",
+  "mana": "W",
+  "color": null,
+  "colors": []
+}

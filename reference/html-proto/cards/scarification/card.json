@@ -1,0 +1,23 @@
+{
+  "tplId": "scarification",
+  "name": "Scarification",
+  "type": "Sorcery",
+  "cost": {
+    "B": 2,
+    "C": 1
+  },
+  "art": "🩸",
+  "text": "Destroy target creature. Scar it: each time it enters the battlefield, its controller loses 1 life.",
+  "special": true,
+  "effects": [
+    {
+      "kind": "destroyAndStickerSlot",
+      "target": "creature",
+      "stickerId": "scarified"
+    }
+  ],
+  "color": "B",
+  "colors": [
+    "B"
+  ]
+}

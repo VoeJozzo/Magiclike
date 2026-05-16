@@ -1,0 +1,34 @@
+{
+  "tplId": "holyZealot",
+  "name": "Holy Zealot",
+  "type": "Creature",
+  "sub": "Human Cleric",
+  "cost": {
+    "W": 1
+  },
+  "power": 1,
+  "toughness": 1,
+  "art": "cards/holyZealot/art.png",
+  "text": "Haste. When this attacks, you gain 1 life.",
+  "keywords": [
+    "haste"
+  ],
+  "triggers": [
+    {
+      "event": "attacks",
+      "condId": "thisAttacks",
+      "text": "When ~ attacks, you gain 1 life.",
+      "effects": [
+        {
+          "kind": "gainLife",
+          "target": "self",
+          "amount": 1
+        }
+      ]
+    }
+  ],
+  "color": "W",
+  "colors": [
+    "W"
+  ]
+}

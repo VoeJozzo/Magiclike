@@ -1,0 +1,31 @@
+{
+  "tplId": "beastWhisperer",
+  "name": "Beast Whisperer",
+  "type": "Creature",
+  "sub": "Elf Druid",
+  "cost": {
+    "G": 1,
+    "C": 3
+  },
+  "power": 2,
+  "toughness": 4,
+  "art": "🦉",
+  "text": "Whenever another creature enters under your control, draw a card.",
+  "triggers": [
+    {
+      "event": "cardEntersBattlefield",
+      "condId": "anotherCreatureYouEntersStrict",
+      "text": "Another creature entered — draw a card.",
+      "effects": [
+        {
+          "kind": "draw",
+          "amount": 1
+        }
+      ]
+    }
+  ],
+  "color": "G",
+  "colors": [
+    "G"
+  ]
+}

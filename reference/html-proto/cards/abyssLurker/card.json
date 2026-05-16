@@ -1,0 +1,21 @@
+{
+  "tplId": "abyssLurker",
+  "name": "Abyss Lurker",
+  "type": "Creature",
+  "sub": "Horror",
+  "cost": {
+    "B": 2,
+    "C": 3
+  },
+  "power": 5,
+  "toughness": 3,
+  "art": "👁",
+  "text": "Flying",
+  "keywords": [
+    "flying"
+  ],
+  "color": "B",
+  "colors": [
+    "B"
+  ]
+}

@@ -1,0 +1,51 @@
+{
+  "tplId": "stormCharm",
+  "name": "Storm Charm",
+  "type": "Instant",
+  "cost": {
+    "R": 1,
+    "C": 2
+  },
+  "art": "🌩",
+  "text": "Choose one — Deal 3 damage to any target; or target creature gets +2/+0 and gains haste until end of turn; or deal 1 damage to each creature.",
+  "effects": {
+    "modeNames": [
+      "Bolt (deal 3)",
+      "Frenzy (+2/+0 haste EOT)",
+      "Sweep (1 to each)"
+    ],
+    "modes": [
+      [
+        {
+          "kind": "damage",
+          "target": "any",
+          "amount": 3
+        }
+      ],
+      [
+        {
+          "kind": "pump",
+          "target": "creature",
+          "power": 2,
+          "toughness": 0
+        },
+        {
+          "kind": "grantKeyword",
+          "target": "creature",
+          "keyword": "haste",
+          "duration": "eot"
+        }
+      ],
+      [
+        {
+          "kind": "damageAll",
+          "amount": 1
+        }
+      ]
+    ]
+  },
+  "color": "R",
+  "colors": [
+    "R"
+  ]
+}
