@@ -33,6 +33,18 @@ var stack: Stack = null
 var attackers: Array[int] = []
 var blockers: Dictionary = {}
 
+# Phase 4: queue of triggers that have fired but haven't yet been pushed onto
+# the stack. Drained between actions (after SBAs settle) in APNAP order, then
+# each entry becomes a stack push. Mirrors the JS prototype's pendingTriggers.
+# Each entry: {
+#   "source_iid": int,           # the permanent whose ability triggered
+#   "controller_key": String,    # who controls the trigger
+#   "ability_index": int,        # index into source.template.triggered_abilities
+#   "event": Dictionary,         # the event that caused this (for predicate inspection)
+#   "targets": Array,            # any targets baked in at trigger time
+# }
+var pending_triggers: Array[Dictionary] = []
+
 # Log of human-readable lines describing what happened. UI subscribes to display.
 var log: Array[String] = []
 

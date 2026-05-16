@@ -27,8 +27,23 @@ static func execute(effect: Dictionary, ctx: Dictionary) -> void:
 		var t: Dictionary = ctx.targets[0]
 		_apply_damage_to_target(t, amount, ctx)
 	elif target_spec == "controller":
+		# Self-damage for the controller. Tracks life_lost_this_turn so
+		# downstream predicates (e.g., bloodlust) see this correctly.
 		ctx.controller.life -= amount
-		_log(ctx, "%s takes %d damage from %s" % [ctx.controller.name, amount, ctx.source_name])
+		ctx.controller.life_lost_this_turn += amount
+		_log(ctx, "%s takes %d damage from %s (life: %d)" % [ctx.controller.name, amount, ctx.source_name, ctx.controller.life])
+	elif target_spec == "opponent":
+		# Hardcoded "the opponent of the controller" — used by Phase 4 triggers
+		# (Pyromaniac ETB, Bloodlust death) that don't take a player-chosen
+		# target. Phase 4.5+ will replace this with an interactive picker.
+		var opp_key: String = ctx.state.opponent_of(ctx.controller.key)
+		var opp_player = ctx.state.player_by_key(opp_key)
+		if opp_player == null:
+			push_warning("damage: opponent of %s not found" % ctx.controller.key)
+			return
+		opp_player.life -= amount
+		opp_player.life_lost_this_turn += amount
+		_log(ctx, "%s deals %d to %s (life: %d)" % [ctx.source_name, amount, opp_player.name, opp_player.life])
 	else:
 		push_warning("damage: unrecognized target spec '%s'" % target_spec)
 

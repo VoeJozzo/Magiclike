@@ -151,6 +151,43 @@ func init_phase3() -> void:
 	state_changed.emit()
 
 
+# Phase 4 demo: triggered abilities. Mountains in play, hand has Pyromaniac
+# (ETB → 1 to opp), Bloodlust Berserker (death → +2 to opp if opp lost life
+# this turn), and a Lightning Bolt to test the kill-your-own-creature
+# scenario. Opp has 1 Grizzly Bears just to be hittable + a Lightning Bolt
+# to send back at the Berserker for the death-trigger test.
+func init_phase4() -> void:
+	_state = EngineState.new()
+	_state.active_player_key = "you"
+	_state.priority_player_key = "you"
+	_state.phase_machine.current = PhaseMachine.Phase.MAIN1
+
+	# You: 3 Mountains in play (no sickness), Pyromaniac + Bloodlust + Bolt in hand
+	for i in range(3):
+		var mtn := _state.make_instance(CardDatabase.get_card("mountain"), "you")
+		mtn.summoning_sick = false
+		_state.you.battlefield.append(mtn)
+	_state.you.hand.append(_state.make_instance(CardDatabase.get_card("pyromaniac"), "you"))
+	_state.you.hand.append(_state.make_instance(CardDatabase.get_card("bloodlust_berserker"), "you"))
+	_state.you.hand.append(_state.make_instance(CardDatabase.get_card("lightning_bolt"), "you"))
+
+	# Opp: a Grizzly Bears (hittable target) and a Lightning Bolt + Forest +
+	# Mountain so opp can return fire on the Berserker for the death-trigger test.
+	var fst := _state.make_instance(CardDatabase.get_card("forest"), "opp")
+	fst.summoning_sick = false
+	_state.opp.battlefield.append(fst)
+	var opp_mtn := _state.make_instance(CardDatabase.get_card("mountain"), "opp")
+	opp_mtn.summoning_sick = false
+	_state.opp.battlefield.append(opp_mtn)
+	var bear := _state.make_instance(CardDatabase.get_card("grizzly_bears"), "opp")
+	bear.summoning_sick = false
+	_state.opp.battlefield.append(bear)
+	_state.opp.hand.append(_state.make_instance(CardDatabase.get_card("lightning_bolt"), "opp"))
+
+	_state.append_log("Phase 4 demo: triggered abilities. Cast Pyromaniac → ETB deals 1 to opp. Cast Bloodlust Berserker, then Bolt your own Berserker → death trigger checks 'opp lost life this turn' and fires +2 to opp.")
+	state_changed.emit()
+
+
 # ─── Action execution ──────────────────────────────────────────────────────
 
 func execute_action(action: Dictionary) -> bool:
@@ -323,6 +360,11 @@ func _do_play_land(action: Dictionary) -> bool:
 	controller.land_played_this_turn = true
 	card.summoning_sick = false  # lands don't get summoning sickness
 	_state.append_log("%s plays %s" % [controller.name, card.name()])
+	# Lands ETB fires triggers in Phase 4+. Lands themselves don't have
+	# triggered abilities yet, but a landfall card on the battlefield could
+	# react. Fire the event and drain in case anything matches.
+	_fire_event({"kind": "card_etb", "subject_iid": card.instance_id, "subject_card": card})
+	_drain_pending_triggers()
 	return true
 
 
@@ -439,6 +481,14 @@ func _resolve_top_of_stack() -> void:
 	var entry = _state.stack.pop_top()
 	if entry == null:
 		return
+	var kind: String = entry.get("kind", "spell")
+	if kind == "trigger":
+		_resolve_trigger_entry(entry)
+	else:
+		_resolve_spell_entry(entry)
+
+
+func _resolve_spell_entry(entry: Dictionary) -> void:
 	var iid: int = entry.source_iid
 	var controller_key: String = entry.controller_key
 	var controller: Player = _state.player_by_key(controller_key)
@@ -464,14 +514,60 @@ func _resolve_top_of_stack() -> void:
 		else:
 			card.summoning_sick = false
 		_state.append_log("%s enters the battlefield under %s" % [card.name(), controller.name])
+		# Fire ETB event so triggered abilities can react.
+		_fire_event({"kind": "card_etb", "subject_iid": card.instance_id, "subject_card": card})
 	else:
 		var owner: Player = _state.player_by_key(card.owner_key)
 		owner.graveyard.append(card)
 		_state.append_log("%s resolves" % card.name())
 	_stack_held_cards.erase(iid)
-	# Run state-based actions after the spell resolves, then check win.
+	# State-based actions sweep up any deaths from this resolution (which may
+	# fire more triggers via _fire_event from inside _run_sbas).
 	_run_sbas()
+	# Drain anything that triggered from the resolution or its SBAs.
+	_drain_pending_triggers()
 	_check_win_conditions()
+
+
+# A triggered ability resolves: runs that ability's effects with the source as
+# context. Source may be in the graveyard (death triggers) or battlefield (ETB
+# and "while in play" triggers); find_instance scans every zone.
+func _resolve_trigger_entry(entry: Dictionary) -> void:
+	var iid: int = entry.source_iid
+	var controller_key: String = entry.controller_key
+	var controller: Player = _state.player_by_key(controller_key)
+	var ability_index: int = entry.get("ability_index", 0)
+	var source: CardInstance = _find_card_anywhere(iid)
+	if source == null or source.template == null:
+		_state.append_log("Trigger fizzles: source card missing")
+		return
+	var abilities: Array = source.template.triggered_abilities
+	if ability_index < 0 or ability_index >= abilities.size():
+		_state.append_log("Trigger fizzles: ability_index out of range")
+		return
+	var trig: Dictionary = abilities[ability_index]
+	var ctx := _build_ctx(controller, source, entry.get("targets", []))
+	_state.append_log("%s's triggered ability resolves" % source.name())
+	var effects: Array = trig.get("effects", [])
+	if not effects.is_empty():
+		Effects.resolve_list(effects, ctx)
+	# SBAs and re-drain, just like spell resolution. A triggered effect that
+	# kills something can fire a chain of death triggers; this catches them.
+	_run_sbas()
+	_drain_pending_triggers()
+	_check_win_conditions()
+
+
+# Find a card by instance_id across all zones AND the stack-held buffer.
+# Used by trigger resolution because the source might be anywhere (e.g., a
+# death trigger's source has already moved to the graveyard).
+func _find_card_anywhere(iid: int) -> CardInstance:
+	var found = _state.find_instance(iid)
+	if found != null and found.card != null:
+		return found.card
+	if _stack_held_cards.has(iid):
+		return _stack_held_cards[iid]
+	return null
 
 
 # ─── Declare attacker (Phase 2 combat) ─────────────────────────────────────
@@ -588,6 +684,16 @@ func _run_sbas() -> void:
 				player.graveyard.append(c)
 				_state.append_log("%s dies" % c.name())
 				_clear_combat_state_for_dead(c.instance_id)
+				# Fire dies event so triggered abilities (death triggers) can
+				# react. We pass the card reference because by the time the
+				# trigger resolves, source has moved to the graveyard — but
+				# find_instance picks it up there.
+				_fire_event({
+					"kind": "card_dies",
+					"subject_iid": c.instance_id,
+					"subject_card": c,
+					"from_zone": "battlefield",
+				})
 				any_died = true
 		if not any_died:
 			break
@@ -867,3 +973,110 @@ func _opp_tries_to_respond_phase3() -> bool:
 	_state.priority_player_key = "opp"
 	_reset_priority_passes()
 	return true
+
+
+# ─── Phase 4: triggered abilities ──────────────────────────────────────────
+# Fire an event into the trigger system. Walks battlefield permanents (plus
+# the event's own subject card, for leaves-the-battlefield triggers) and
+# queues any matching triggered abilities into _state.pending_triggers.
+#
+# Triggers don't go on the stack here — they wait in the queue until a
+# subsequent _drain_pending_triggers call (which APNAP-orders them and pushes
+# to the stack). This matches MTG rule 603.2: triggers wait until "the next
+# time a player would receive priority."
+#
+# Event shape:
+#   {"kind": "card_etb" | "card_dies" | ..., "subject_iid": int,
+#    "subject_card": CardInstance, ...other event-specific fields}
+func _fire_event(event: Dictionary) -> void:
+	var event_kind: String = event.get("kind", "")
+	if event_kind == "":
+		push_warning("_fire_event: event has no 'kind'; ignoring")
+		return
+	var subject_iid: int = event.get("subject_iid", -1)
+	# Build the candidate listener set: every battlefield permanent, plus the
+	# event's subject (so a card's own leave-play trigger can see itself even
+	# after moving to the graveyard).
+	var listeners: Array[CardInstance] = []
+	for p in [_state.you, _state.opp]:
+		for c in p.battlefield:
+			listeners.append(c)
+	var subject_card = event.get("subject_card", null)
+	if subject_card != null and subject_card is CardInstance and not listeners.has(subject_card):
+		listeners.append(subject_card)
+
+	for source in listeners:
+		if source == null or source.template == null:
+			continue
+		var abilities: Array = source.template.triggered_abilities
+		for i in range(abilities.size()):
+			var trig: Dictionary = abilities[i]
+			if trig.get("event", "") != event_kind:
+				continue
+			# self_only: only fires when this source IS the event subject.
+			# Used for "When ~ enters" / "When ~ dies" style triggers.
+			if trig.get("self_only", false) and source.instance_id != subject_iid:
+				continue
+			# Predicate gate (B1). Empty predicate = always fires.
+			var pred: String = trig.get("condition_predicate", "")
+			if not Predicates.evaluate(pred, _state, source, event):
+				_state.append_log("Trigger condition false for %s — skipping" % source.name())
+				continue
+			# Phase 4: triggers have no chosen targets (their effects use
+			# hardcoded target specs like "opponent"). Phase 4.5+ will add
+			# interactive target picking when trigger.effects need them.
+			_state.pending_triggers.append({
+				"source_iid": source.instance_id,
+				"controller_key": source.controller_key,
+				"ability_index": i,
+				"event": event.duplicate(),
+				"targets": [],
+			})
+			_state.append_log("Trigger queued: %s (%s)" % [source.name(), event_kind])
+
+
+# Drain pending_triggers onto the stack in APNAP order.
+# Per MTG 603.3b: each player, in APNAP order, puts their triggers on the
+# stack in any order. So AP's triggers go on first (becoming the BOTTOM of
+# the newly-pushed batch), then NAP's go on top — meaning NAP's resolve
+# first (LIFO). Phase 4 simplification: within each player, triggers push
+# in queue order.
+#
+# After pushing, priority resets to the active player and passes clear, so
+# both players can respond before any trigger resolves.
+func _drain_pending_triggers() -> void:
+	if _state.pending_triggers.is_empty():
+		return
+	var ap_key: String = _state.active_player_key
+	var ap_triggers: Array = []
+	var nap_triggers: Array = []
+	for trig in _state.pending_triggers:
+		if trig.controller_key == ap_key:
+			ap_triggers.append(trig)
+		else:
+			nap_triggers.append(trig)
+	_state.pending_triggers.clear()
+	# AP pushes first (bottom of batch).
+	for trig in ap_triggers:
+		_push_trigger_to_stack(trig)
+	# NAP pushes after (top of batch — resolves first).
+	for trig in nap_triggers:
+		_push_trigger_to_stack(trig)
+	# Triggers landing on the stack reset priority to AP so both players can
+	# respond. This matches MTG rule 116.5.
+	_state.priority_player_key = _state.active_player_key
+	_reset_priority_passes()
+
+
+func _push_trigger_to_stack(trig: Dictionary) -> void:
+	_state.stack.push({
+		"kind": "trigger",
+		"source_iid": trig.source_iid,
+		"controller_key": trig.controller_key,
+		"ability_index": trig.ability_index,
+		"event": trig.event,
+		"targets": trig.targets,
+	})
+	var source: CardInstance = _find_card_anywhere(trig.source_iid)
+	var src_name: String = source.name() if source != null else "?"
+	_state.append_log("%s's triggered ability goes on the stack" % src_name)

@@ -76,10 +76,12 @@ func _ready() -> void:
 	_build_ui()
 	_connect_engine_signals()
 	# Boot the engine and spawn initial visuals.
-	# Phase 3 demo: 2 lands in play + plenty of cards in hand. Opp has 1
-	# Forest + 2 Grizzly Bears + Giant Growth in hand for the response test.
-	# (init_phase1 / init_phase2 still work for the headless smoke tests.)
-	RulesEngine.init_phase3()
+	# Phase 4 demo: triggered abilities. 3 Mountains in play + Pyromaniac,
+	# Bloodlust Berserker, and a Lightning Bolt in hand. Opp has a Bear to
+	# bolt (or be bolted), plus their own Bolt for return fire on your
+	# Berserker to test the death-trigger predicate.
+	# (init_phase1 / init_phase2 / init_phase3 still work for the headless tests.)
+	RulesEngine.init_phase4()
 	_spawn_initial_visuals()
 	_refresh_ui()
 
@@ -388,8 +390,16 @@ func _refresh_stack_display(s: EngineState) -> void:
 			# Best effort — visual still has card_info with display_name
 			name = str(_iid_to_visual[iid].card_info.get("display_name", "?"))
 		var lbl := Label.new()
-		lbl.text = "▶ %s" % name
-		lbl.add_theme_color_override("font_color", Color(1, 0.9, 0.5))
+		var kind: String = entry.get("kind", "spell")
+		if kind == "trigger":
+			# Phase 4: triggered abilities show as "⚡ <source name>'s ability"
+			# so the player can tell them apart from cast spells. Yellow stays
+			# the same so the stack still reads as a unified LIFO list.
+			lbl.text = "⚡ %s's ability" % name
+			lbl.add_theme_color_override("font_color", Color(1.0, 0.75, 0.30))
+		else:
+			lbl.text = "▶ %s" % name
+			lbl.add_theme_color_override("font_color", Color(1, 0.9, 0.5))
 		_stack_display.add_child(lbl)
 
 

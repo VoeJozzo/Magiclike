@@ -25,6 +25,10 @@ static func get_card(card_id: String) -> CardResource:
 			return _make_grizzly_bears()
 		"giant_growth":
 			return _make_giant_growth()
+		"pyromaniac":
+			return _make_pyromaniac()
+		"bloodlust_berserker":
+			return _make_bloodlust_berserker()
 		_:
 			push_error("CardDatabase: unknown card_id '%s'" % card_id)
 			return null
@@ -36,6 +40,7 @@ static func all_card_ids() -> Array[String]:
 		"mountain", "forest",
 		"lightning_bolt", "goblin_raider",
 		"grizzly_bears", "giant_growth",
+		"pyromaniac", "bloodlust_berserker",
 	]
 
 
@@ -136,5 +141,62 @@ static func _make_giant_growth() -> SpellResource:
 	r.target_filter = "creature"
 	r.on_cast_effects = [
 		{"kind": "pump", "amount_power": 3, "amount_toughness": 3, "target": "chosen", "duration": "eot"},
+	]
+	return r
+
+
+# Phase 4: ETB trigger. When Pyromaniac enters the battlefield, it deals 1
+# damage to the opponent of its controller. No predicate (always fires).
+# Phase 4 simplification: hardcoded "opp" target rather than player-chosen.
+# Phase 4.5+ will add interactive trigger target selection.
+static func _make_pyromaniac() -> CreatureResource:
+	var r := CreatureResource.new()
+	r.card_id = "pyromaniac"
+	r.display_name = "Pyromaniac"
+	r.card_types = ["creature"]
+	r.subtypes = ["human", "shaman"]
+	r.mana_cost = {"R": 1, "C": 1}
+	r.oracle_text = "When Pyromaniac enters, it deals 1 damage to the opponent."
+	r.power = 1
+	r.toughness = 1
+	r.keywords = []
+	r.triggered_abilities = [
+		{
+			"event": "card_etb",
+			"self_only": true,                  # only fires for this creature's own ETB
+			"condition_predicate": "",          # unconditional
+			"effects": [
+				{"kind": "damage", "amount": 1, "target": "opponent"},
+			],
+		},
+	]
+	return r
+
+
+# Phase 4: death trigger with predicate. When Bloodlust Berserker dies, if the
+# opponent has lost life this turn, deal 2 damage to the opponent. Exercises
+# the predicate registry — the trigger is queued unconditionally, then the
+# predicate is checked at queue time (and again at resolve time per MTG's
+# "intervening if" rule, though Phase 4 only checks once at queue time).
+static func _make_bloodlust_berserker() -> CreatureResource:
+	var r := CreatureResource.new()
+	r.card_id = "bloodlust_berserker"
+	r.display_name = "Bloodlust Berserker"
+	r.card_types = ["creature"]
+	r.subtypes = ["human", "warrior"]
+	r.mana_cost = {"R": 2, "C": 1}
+	r.oracle_text = "When Bloodlust Berserker dies, if the opponent lost life this turn, it deals 2 damage to the opponent."
+	r.power = 3
+	r.toughness = 2
+	r.keywords = []
+	r.triggered_abilities = [
+		{
+			"event": "card_dies",
+			"self_only": true,
+			"condition_predicate": "opp_lost_life_this_turn",
+			"effects": [
+				{"kind": "damage", "amount": 2, "target": "opponent"},
+			],
+		},
 	]
 	return r
