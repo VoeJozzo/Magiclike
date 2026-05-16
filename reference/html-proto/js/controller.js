@@ -1411,12 +1411,14 @@ function renderColorHud(elementId, tplIds) {
     }
   }
   el.innerHTML = '';
-  const COLOR_LABEL = { W:'{W}', U:'{U}', B:'{B}', R:'{R}', G:'{G}' };
   for (const c of ['W','U','B','R','G']) {
     const n = colorCounts[c];
     const pip = document.createElement('span');
     pip.className = 'draft-pip col-' + c + (n === 0 ? ' dim' : '');
-    pip.innerHTML = `<span>${COLOR_LABEL[c]}</span><span>${n}</span>`;
+    // renderManaSymbols turns the {W} token into the same pip span used
+    // everywhere else (cost displays, card text), so the draft counters
+    // get the emoji-glyph fallback / future PNG drop-in for free.
+    pip.innerHTML = `${renderManaSymbols('{' + c + '}')}<span>${n}</span>`;
     el.appendChild(pip);
   }
 }
