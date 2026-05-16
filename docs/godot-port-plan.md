@@ -196,7 +196,13 @@ Update `project.godot`:
 - New cards: Wind Drake, Giant Spider, Serra Angel, Trained Armodon, Vampire Nighthawk, Raging Goblin, Walking Wall (one per keyword profile).
 - `tests/test_phase5a` covers one scenario per keyword.
 
-**Phase 5b — Engine introspection API for AI.** Port `AI.decide(state, who) → action`. Single entry point, reads engine state, returns one action descriptor. Combat-sim subroutine for declaring attackers/blockers. Lethal detection. Snapshots state via `Resource.duplicate(true)` and explicit `duplicate()` overrides on `Player` / `CardInstance`. Threading deferred until profiling shows it's needed. Verification: AI plays a complete game against itself without crashing; spot-check decision quality via log lines.
+**Phase 5b — Engine introspection API for AI.** ✓ DONE (except `simulate_combat`).
+- `RulesEngine.get_legal_actions(player_key) → Array[Dictionary]` enumerates every legal action descriptor (pass/play_land/activate_ability/cast×targets/declare_attacker/declare_blocker/pick_trigger_target). Casts fan out one entry per legal target. Helper `_enumerate_filter_targets` supports `any`/`creature_or_player`/`creature`/`player`/`spell` filters and respects hexproof.
+- `EngineState.duplicate_deep()` + `duplicate_deep()` on Player / ManaPool / Stack / CardInstance. Mutations on a copy don't leak. CardResource templates are shared by reference.
+- `engine/ai/scoring.gd` — `AIScoring.card_value(template, purpose)` heuristic scoring (stats minus cost + keyword bonuses + triggered-ability bump). Exposed via `RulesEngine.card_value`. Per-effect triggered-ability scoring deferred to 5c.
+- **Deferred to 5c**: `simulate_combat(state, attacker_key, attackers, blockers) → outcome`. The deep-copy plumbing is in place — the simulator itself is the largest single piece in the AI port (~200 lines) and is best done alongside the rest of the AI.
+
+**Phase 5c — AI.decide port.** Port `AI.decide(state, who) → action`. Single entry point, reads engine state, returns one action descriptor. Combat-sim subroutine for declaring attackers/blockers. Lethal detection. Snapshots state via `Resource.duplicate(true)` and explicit `duplicate()` overrides on `Player` / `CardInstance`. Threading deferred until profiling shows it's needed. Verification: AI plays a complete game against itself without crashing; spot-check decision quality via log lines.
 
 **Phase 6 — Draft and roguelike meta.** Port `DRAFT` (23-pick draft, opponent deck simulation) and `RUN` (sticker system, weighted reward rolls, save/load). Use Godot's `FileAccess` + JSON in lieu of localStorage. Schema migrations from JS port directly. New scenes: `draft_screen.tscn`, `run_map.tscn`. Verification: draft a deck, complete a 3-game run, save mid-run and reload.
 
@@ -229,6 +235,7 @@ Update `project.godot`:
 | 4.5b | Trigger needing target pauses drain; KIND_PICK_TRIGGER_TARGET completes the cast; opp-controlled triggers auto-pick | Cast Pyromaniac → "Pick a target…" prompt → click opp or click any creature |
 | 4.5c | Healing Salve gains 3 life; Counterspell removes target Bolt from stack into opp's graveyard | Cast Counterspell on opp's Lightning Bolt during their cast |
 | 5a | One assertion per keyword: defender, haste, vigilance, flying/reach, unblockable, first_strike, lifelink, deathtouch, trample, indestructible, hexproof | Attack with Serra Angel (flying + vigilance, doesn't tap); Bolt opponent's hexproof creature fails |
+| 5b | get_legal_actions enumerates the right action set; card_value orders Serra > Bears > Walking Wall; duplicate_deep separates copy from original | Engine-only — no manual demo |
 | 5 | AI plays itself a full game without crash | Sit and watch AI vs AI; spot-check no obviously bad attacks |
 | 6 | Draft 23 picks, complete 3-game run, save/load mid-run | Full roguelike loop end-to-end |
 
