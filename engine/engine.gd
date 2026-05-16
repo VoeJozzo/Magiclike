@@ -512,8 +512,16 @@ func _legal_cast_spell(action: Dictionary) -> bool:
 		var targets: Array = action.get("targets", [])
 		if targets.is_empty():
 			return false
-		# Phase 1: only validate target shape; legality of who/what is light.
-		# Phase 4+ would validate target_filter against current state.
+		# Phase 5a: hexproof gates opponent-cast targets. A creature with
+		# hexproof can't be targeted by spells controlled by an opposing
+		# player. (Your own spells can still target it.)
+		for t in targets:
+			if t.get("kind", "") == "creature":
+				var tfound = _state.find_instance(t.get("iid", -1))
+				if tfound != null and tfound.card != null \
+						and tfound.card.has_keyword("hexproof") \
+						and tfound.controller.key != found.controller.key:
+					return false
 	return true
 
 
@@ -707,9 +715,15 @@ func _legal_declare_attacker(action: Dictionary) -> bool:
 		return false
 	if not (card.template is CreatureResource):
 		return false
-	if card.tapped or card.summoning_sick:
+	if card.tapped:
 		return false
-	# Defender keyword (Phase 4+) would block here too.
+	# Phase 5a: haste bypasses summoning sickness for attacks (and tap-for-
+	# ability, handled inside _legal_activate_ability). Defender outright
+	# prevents attacking.
+	if card.summoning_sick and not card.has_keyword("haste"):
+		return false
+	if card.has_keyword("defender"):
+		return false
 	return true
 
 
@@ -717,7 +731,9 @@ func _do_declare_attacker(action: Dictionary) -> bool:
 	var iid: int = action.source_iid
 	var found = _state.find_instance(iid)
 	var card: CardInstance = found.card
-	card.tapped = true
+	# Phase 5a: vigilance — attacker doesn't tap.
+	if not card.has_keyword("vigilance"):
+		card.tapped = true
 	_state.attackers.append(iid)
 	_state.append_log("%s attacks" % card.name())
 	return true
@@ -752,6 +768,24 @@ func _legal_declare_blocker(action: Dictionary) -> bool:
 		return false
 	if not (attacker_iid in _state.attackers):
 		return false
+	# Phase 5a: keyword-driven block legality.
+	var attacker_found = _state.find_instance(attacker_iid)
+	if attacker_found == null or attacker_found.card == null:
+		return false
+	var attacker: CardInstance = attacker_found.card
+	# Unblockable — nothing legal.
+	if attacker.has_keyword("unblockable"):
+		return false
+	# Flying — only flying or reach may block.
+	if attacker.has_keyword("flying") \
+			and not blocker.has_keyword("flying") \
+			and not blocker.has_keyword("reach"):
+		return false
+	# Menace is a multi-blocker requirement (≥2 blockers), validated at the
+	# COMBAT_DAMAGE step rather than per-block (one menace blocker is fine
+	# during declaration so long as another joins before resolution). See
+	# _resolve_combat_damage where menace-with-one-blocker is treated as
+	# unblocked.
 	return true
 
 
@@ -789,7 +823,15 @@ func _run_sbas() -> void:
 			for c in player.battlefield:
 				if not (c.template is CreatureResource):
 					continue
-				if c.current_toughness() <= 0 or c.damage_marked >= c.current_toughness():
+				# Phase 5a: indestructible creatures ignore lethal-damage SBAs
+				# (but 0 toughness still kills them — rare edge case).
+				if c.has_keyword("indestructible"):
+					if c.current_toughness() <= 0:
+						dying.append(c)
+					continue
+				if c.current_toughness() <= 0 \
+						or c.damage_marked >= c.current_toughness() \
+						or c.lethal_marked:
 					dying.append(c)
 			for c in dying:
 				player.battlefield.erase(c)
@@ -826,20 +868,24 @@ func _clear_combat_state_for_dead(dead_iid: int) -> void:
 			_state.blockers.erase(b_iid)
 
 
-# ─── Combat damage resolution (Phase 3) ───────────────────────────────────
-# For each attacker:
-#   - If unblocked: deal power damage to defending player (face damage).
-#   - If blocked: attacker and its blocker(s) deal mutual damage. Phase 3
-#     simplification — multi-block uses simple "all blockers deal full
-#     damage to attacker; attacker deals all damage to first blocker."
-#     Phase 4+ may add player-controlled damage assignment ordering.
-# After damage assignment, SBAs sweep up any dead creatures.
+# ─── Combat damage resolution (Phase 5a) ───────────────────────────────────
+# Two-pass damage step driven by first_strike. Keyword handling:
+#   - first_strike — sources with this deal damage in pass 1; without in pass 2
+#   - lifelink     — source's controller gains life equal to damage dealt
+#   - deathtouch   — any nonzero damage flags the target as lethal_marked
+#   - trample      — excess damage on blocked attacker spills to defender
+#   - indestructible — SBAs (in _run_sbas) ignore lethal damage on these
+#   - menace       — attacker with menace and only one blocker is treated as
+#                    unblocked (rule 702.110b — minimum 2 blockers required)
+#   - unblockable / flying — enforced at _legal_declare_blocker, not here
+# After each pass, SBAs sweep dead creatures so they don't deal pass-2 damage.
 func _resolve_combat_damage() -> void:
 	if _state.attackers.is_empty():
 		return
 	var defending: Player = _state.player_by_key(_state.opponent_of(_state.active_player_key))
 
-	# Build attacker → list-of-blockers map
+	# Build attacker → list-of-blockers map. Menace re-classifies an attacker
+	# with fewer than 2 blockers as unblocked.
 	var attacker_blockers: Dictionary = {}
 	for atk_iid in _state.attackers:
 		attacker_blockers[atk_iid] = []
@@ -847,43 +893,156 @@ func _resolve_combat_damage() -> void:
 		var atk_iid: int = _state.blockers[blk_iid]
 		if attacker_blockers.has(atk_iid):
 			attacker_blockers[atk_iid].append(blk_iid)
-
+	# Menace: collapse single-blocker assignments back to "unblocked".
 	for atk_iid in _state.attackers:
 		var atk_found = _state.find_instance(atk_iid)
 		if atk_found == null or atk_found.card == null:
 			continue
 		var attacker: CardInstance = atk_found.card
+		if attacker.has_keyword("menace") and attacker_blockers[atk_iid].size() < 2:
+			# The lone blocker (if any) is "ignored" — its damage assignment
+			# is dropped. Record so we can log it.
+			if attacker_blockers[atk_iid].size() == 1:
+				_state.append_log("%s has menace — single blocker is illegal, ignored" % attacker.name())
+			attacker_blockers[atk_iid] = []
+
+	# Detect whether we need a first-strike pass at all (skip the work when no
+	# combatant has first strike — most combats).
+	var need_first_strike: bool = _combat_needs_first_strike_step(attacker_blockers)
+
+	if need_first_strike:
+		_combat_damage_pass(defending, attacker_blockers, true)
+		_run_sbas()
+		_check_win_conditions()
+		if _state.winner != "":
+			return
+	# Normal damage step — sources without first_strike, plus first_strikers
+	# that survived (which deal damage again only if they had double_strike;
+	# we don't have double_strike in Phase 5a). For now: pass 2 covers all
+	# living combatants that DIDN'T deal in pass 1.
+	_combat_damage_pass(defending, attacker_blockers, false)
+	_run_sbas()
+	_check_win_conditions()
+
+
+# Returns true if any current attacker or assigned blocker has first_strike.
+func _combat_needs_first_strike_step(attacker_blockers: Dictionary) -> bool:
+	for atk_iid in attacker_blockers:
+		var atk_found = _state.find_instance(atk_iid)
+		if atk_found != null and atk_found.card != null \
+				and atk_found.card.has_keyword("first_strike"):
+			return true
+		for b_iid in attacker_blockers[atk_iid]:
+			var b_found = _state.find_instance(b_iid)
+			if b_found != null and b_found.card != null \
+					and b_found.card.has_keyword("first_strike"):
+				return true
+	return false
+
+
+# Apply one damage pass. If first_strike_only is true, only first-strike
+# sources deal damage; otherwise only non-first-strike (and any that survived
+# the first pass) deal damage. Skips creatures that have already left the
+# battlefield (dead from a previous pass).
+func _combat_damage_pass(
+	defending: Player,
+	attacker_blockers: Dictionary,
+	first_strike_only: bool
+) -> void:
+	for atk_iid in _state.attackers:
+		var atk_found = _state.find_instance(atk_iid)
+		if atk_found == null or atk_found.card == null:
+			continue
+		if atk_found.zone_name != "battlefield":
+			continue
+		var attacker: CardInstance = atk_found.card
+		var atk_first_strike: bool = attacker.has_keyword("first_strike")
+		# Filter by pass: pass 1 only first-strikers, pass 2 only non-first-strikers.
+		if first_strike_only != atk_first_strike:
+			# Still process blockers below — a non-first-strike attacker can be
+			# damaged in pass 1 by a first-strike BLOCKER.
+			pass
 		var atk_pow: int = attacker.current_power()
 		var blockers: Array = attacker_blockers.get(atk_iid, [])
 
 		if blockers.is_empty():
-			# Unblocked — face damage
-			defending.life -= atk_pow
-			defending.life_lost_this_turn += atk_pow
-			_state.append_log("%s deals %d to %s (life: %d)" % [
-				attacker.name(), atk_pow, defending.name, defending.life,
-			])
+			# Unblocked — face damage (only on this attacker's pass).
+			if first_strike_only == atk_first_strike:
+				_deal_combat_damage(attacker, atk_pow, _damage_target_player(defending))
 		else:
-			# Blocked — mutual damage. Attacker dumps full power on first
-			# blocker (Phase 3 simplification); each blocker deals their
-			# power to the attacker.
-			var first_blocker_iid: int = blockers[0]
-			var first_blocker_found = _state.find_instance(first_blocker_iid)
-			if first_blocker_found != null and first_blocker_found.card != null:
-				first_blocker_found.card.damage_marked += atk_pow
-			var total_blocker_dmg: int = 0
+			# Blocked — attacker hits the first blocker (or trample-style
+			# split below); each blocker hits the attacker.
+			# Attacker → first blocker (simplification: dump on slot 0).
+			if first_strike_only == atk_first_strike:
+				var first_blocker_iid: int = blockers[0]
+				var first_blocker_found = _state.find_instance(first_blocker_iid)
+				if first_blocker_found != null and first_blocker_found.card != null \
+						and first_blocker_found.zone_name == "battlefield":
+					var first_blocker: CardInstance = first_blocker_found.card
+					var blocker_t: int = first_blocker.current_toughness() - first_blocker.damage_marked
+					var assigned: int = min(atk_pow, blocker_t) if attacker.has_keyword("trample") else atk_pow
+					# Deal assigned damage to blocker.
+					_deal_combat_damage(attacker, assigned, {"kind": "creature", "iid": first_blocker_iid})
+					# Trample spill: any leftover goes to defender.
+					if attacker.has_keyword("trample"):
+						var spill: int = atk_pow - assigned
+						if spill > 0:
+							_deal_combat_damage(attacker, spill, _damage_target_player(defending))
+			# Blockers → attacker (each blocker's pass).
 			for b_iid in blockers:
 				var b_found = _state.find_instance(b_iid)
-				if b_found != null and b_found.card != null:
-					total_blocker_dmg += b_found.card.current_power()
-			attacker.damage_marked += total_blocker_dmg
-			_state.append_log("%s (%d) is blocked; mutual damage assigned" % [
-				attacker.name(), atk_pow,
+				if b_found == null or b_found.card == null:
+					continue
+				if b_found.zone_name != "battlefield":
+					continue
+				var blocker: CardInstance = b_found.card
+				var b_first_strike: bool = blocker.has_keyword("first_strike")
+				if first_strike_only != b_first_strike:
+					continue
+				_deal_combat_damage(blocker, blocker.current_power(), {"kind": "creature", "iid": atk_iid})
+
+
+# Apply `amount` damage to `target` from `source`. Centralises lifelink and
+# deathtouch handling so every combat damage assignment routes through here.
+# target shape: {"kind": "player", "who": "..."} or {"kind": "creature", "iid": int}
+func _deal_combat_damage(source: CardInstance, amount: int, target: Dictionary) -> void:
+	if amount <= 0:
+		return
+	match target.get("kind", ""):
+		"player":
+			var p: Player = _state.player_by_key(target.who)
+			if p == null:
+				return
+			p.life -= amount
+			p.life_lost_this_turn += amount
+			_state.append_log("%s deals %d to %s (life: %d)" % [
+				source.name(), amount, p.name, p.life,
+			])
+		"creature":
+			var found = _state.find_instance(target.iid)
+			if found == null or found.card == null or found.zone_name != "battlefield":
+				return
+			var target_card: CardInstance = found.card
+			target_card.damage_marked += amount
+			if source.has_keyword("deathtouch"):
+				target_card.lethal_marked = true
+			_state.append_log("%s deals %d to %s%s" % [
+				source.name(), amount, target_card.name(),
+				" (deathtouch)" if source.has_keyword("deathtouch") else "",
+			])
+	# Lifelink — source's controller gains life equal to damage dealt.
+	if source.has_keyword("lifelink"):
+		var controller: Player = _state.player_by_key(source.controller_key)
+		if controller != null:
+			controller.life += amount
+			_state.append_log("%s lifelink: %s gains %d (life: %d)" % [
+				source.name(), controller.name, amount, controller.life,
 			])
 
-	# Sweep up dead creatures
-	_run_sbas()
-	_check_win_conditions()
+
+# Build a "player target" descriptor referring to the defending player.
+func _damage_target_player(defending: Player) -> Dictionary:
+	return {"kind": "player", "who": defending.key}
 
 
 # ─── Phase machine ─────────────────────────────────────────────────────────

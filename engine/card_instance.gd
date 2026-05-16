@@ -30,6 +30,16 @@ var temp_toughness: int = 0
 var attacking: bool = false
 var blocking_iid: int = -1  # -1 = not blocking; otherwise the attacker's iid
 
+# Phase 5a: runtime-granted keywords. Empty by default; populated by pump
+# effects (later phases) and stickers (Phase 7). Combined with the template's
+# baseline keywords via effective_keywords().
+var granted_keywords: Array[String] = []
+
+# Phase 5a: damage from a deathtouch source flags the recipient for death
+# regardless of how little damage was dealt (MTG 702.2). Cleared in
+# clear_eot_modifiers along with damage_marked.
+var lethal_marked: bool = false
+
 
 func _init(p_template: CardResource = null, p_owner: String = "", p_controller: String = "") -> void:
 	template = p_template
@@ -94,5 +104,32 @@ func clear_eot_modifiers() -> void:
 	temp_power = 0
 	temp_toughness = 0
 	damage_marked = 0
+	lethal_marked = false
 	attacking = false
 	blocking_iid = -1
+	granted_keywords.clear()
+
+
+# Phase 5a: combined keyword set — template's baseline + any runtime grants
+# (pump effects, stickers). Single seam used by all combat / target checks.
+# Non-creatures return their template keywords unchanged (lands can have
+# defender on the template, but that's not modeled yet).
+func effective_keywords() -> Array:
+	if template == null:
+		return granted_keywords
+	var base: Array = []
+	if template is CreatureResource:
+		base = template.keywords
+	var result: Array = []
+	for kw in base:
+		if not (kw in result):
+			result.append(kw)
+	for kw in granted_keywords:
+		if not (kw in result):
+			result.append(kw)
+	return result
+
+
+# Convenience: true iff this card has the given keyword (baseline or granted).
+func has_keyword(kw: String) -> bool:
+	return kw in effective_keywords()

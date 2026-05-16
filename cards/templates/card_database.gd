@@ -45,6 +45,20 @@ static func get_card(card_id: String) -> CardResource:
 			return _make_healing_salve()
 		"counterspell":
 			return _make_counterspell()
+		"wind_drake":
+			return _make_wind_drake()
+		"giant_spider":
+			return _make_giant_spider()
+		"serra_angel":
+			return _make_serra_angel()
+		"trained_armodon":
+			return _make_trained_armodon()
+		"vampire_nighthawk":
+			return _make_vampire_nighthawk()
+		"raging_goblin":
+			return _make_raging_goblin()
+		"walking_wall":
+			return _make_walking_wall()
 		_:
 			push_error("CardDatabase: unknown card_id '%s'" % card_id)
 			return null
@@ -59,6 +73,8 @@ static func all_card_ids() -> Array[String]:
 		"pyromaniac", "bloodlust_berserker",
 		"bear_cub", "gray_ogre", "hill_giant",
 		"healing_salve", "counterspell",
+		"wind_drake", "giant_spider", "serra_angel", "trained_armodon",
+		"vampire_nighthawk", "raging_goblin", "walking_wall",
 	]
 
 
@@ -340,4 +356,112 @@ static func _make_counterspell() -> SpellResource:
 	r.on_cast_effects = [
 		{"kind": "counter_spell", "target": "chosen"},
 	]
+	return r
+
+
+# ─── Phase 5a: keyword-bearing creatures ──────────────────────────────────
+
+# Flying — 2/2 evasive flyer for UU.
+static func _make_wind_drake() -> CreatureResource:
+	var r := CreatureResource.new()
+	r.card_id = "wind_drake"
+	r.display_name = "Wind Drake"
+	r.card_types = ["creature"]
+	r.subtypes = ["drake"]
+	r.mana_cost = {"U": 1, "C": 1}
+	r.oracle_text = "Flying."
+	r.power = 2
+	r.toughness = 2
+	r.keywords = ["flying"]
+	return r
+
+
+# Reach — defensive 2/4 spider that can block flyers.
+static func _make_giant_spider() -> CreatureResource:
+	var r := CreatureResource.new()
+	r.card_id = "giant_spider"
+	r.display_name = "Giant Spider"
+	r.card_types = ["creature"]
+	r.subtypes = ["spider"]
+	r.mana_cost = {"G": 1, "C": 2}
+	r.oracle_text = "Reach. (This creature can block creatures with flying.)"
+	r.power = 2
+	r.toughness = 4
+	r.keywords = ["reach"]
+	return r
+
+
+# Flying + vigilance — premium aerial defender / attacker, 5cc 4/4.
+static func _make_serra_angel() -> CreatureResource:
+	var r := CreatureResource.new()
+	r.card_id = "serra_angel"
+	r.display_name = "Serra Angel"
+	r.card_types = ["creature"]
+	r.subtypes = ["angel"]
+	r.mana_cost = {"W": 2, "C": 3}
+	r.oracle_text = "Flying. Vigilance."
+	r.power = 4
+	r.toughness = 4
+	r.keywords = ["flying", "vigilance"]
+	return r
+
+
+# Trample — 3/3 elephant that pushes excess damage through blockers.
+static func _make_trained_armodon() -> CreatureResource:
+	var r := CreatureResource.new()
+	r.card_id = "trained_armodon"
+	r.display_name = "Trained Armodon"
+	r.card_types = ["creature"]
+	r.subtypes = ["elephant"]
+	r.mana_cost = {"G": 1, "C": 2}
+	r.oracle_text = "Trample."
+	r.power = 3
+	r.toughness = 3
+	r.keywords = ["trample"]
+	return r
+
+
+# Lifelink + deathtouch + flying — vampire that drains AND kills anything it
+# touches. Exercises three combat keywords on one source.
+static func _make_vampire_nighthawk() -> CreatureResource:
+	var r := CreatureResource.new()
+	r.card_id = "vampire_nighthawk"
+	r.display_name = "Vampire Nighthawk"
+	r.card_types = ["creature"]
+	r.subtypes = ["vampire", "shaman"]
+	r.mana_cost = {"B": 1, "C": 2}
+	r.oracle_text = "Flying. Deathtouch. Lifelink."
+	r.power = 2
+	r.toughness = 3
+	r.keywords = ["flying", "deathtouch", "lifelink"]
+	return r
+
+
+# Haste — 1/1 goblin that can attack the turn it enters.
+static func _make_raging_goblin() -> CreatureResource:
+	var r := CreatureResource.new()
+	r.card_id = "raging_goblin"
+	r.display_name = "Raging Goblin"
+	r.card_types = ["creature"]
+	r.subtypes = ["goblin"]
+	r.mana_cost = {"R": 1}
+	r.oracle_text = "Haste."
+	r.power = 1
+	r.toughness = 1
+	r.keywords = ["haste"]
+	return r
+
+
+# Defender — 0/4 wall that can't attack.
+static func _make_walking_wall() -> CreatureResource:
+	var r := CreatureResource.new()
+	r.card_id = "walking_wall"
+	r.display_name = "Walking Wall"
+	r.card_types = ["creature"]
+	r.subtypes = ["wall"]
+	r.mana_cost = {"C": 2}
+	r.oracle_text = "Defender. (This creature can't attack.)"
+	r.power = 0
+	r.toughness = 4
+	r.keywords = ["defender"]
 	return r
