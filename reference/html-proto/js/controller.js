@@ -512,13 +512,16 @@ function showNeowChoice() {
     const div = document.createElement('div');
     div.className = 'neow-opt';
     div.onclick = () => pickNeow(id);
-    // m.art may be an emoji or a file path. artHtml() picks the right
-    // rendering (text vs <img>). m.text may carry {3}/{T}/etc. brace
-    // tokens (Stapler's "{3} Artifact with 3 per-run charges. {3}, T:"
-    // is the current offender), so route the text through the mana-pip
-    // pipeline same as cost displays / card text.
+    // Boon art is derived from the card the boon grants -- every current
+    // RUN_MODIFIERS entry's id matches the tplId of its granted card, so
+    // CARDS[m.id].art is the source of truth. A boon can override with an
+    // explicit `art:` field if its picker view should diverge from the
+    // card itself (no current boon needs this).
+    // m.text may carry {3}/{T}/etc. brace tokens (Stapler's "{3} Artifact
+    // with 3 per-run charges. {3}, T:") so it goes through the pip pipeline.
+    const boonArt = m.art || (CARDS[m.id] && CARDS[m.id].art) || '✦';
     div.innerHTML = `
-      <div class="neow-art">${artHtml(m.art || '✦')}</div>
+      <div class="neow-art">${artHtml(boonArt)}</div>
       <div class="neow-name">${escapeHtml(m.name || '')}</div>
       <div class="neow-text">${renderManaSymbols(escapeHtml(m.text || ''))}</div>
     `;

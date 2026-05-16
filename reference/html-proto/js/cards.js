@@ -343,11 +343,15 @@ STICKERS['scarified'] = {
 // Future hooks (stickerBias, lifeOffset, etc) can be added similarly.
 // =========================================================================
 const RUN_MODIFIERS = {};
+// NOTE: no `art:` field on these. The boon picker derives the visual
+// from CARDS[m.id].art (every boon's id matches the tplId of the card
+// it grants). A boon CAN set an explicit `art:` to override, but
+// shouldn't need to in normal cases — keeping the boon and the card
+// visually in sync as art changes is the whole point.
 RUN_MODIFIERS['cityOfBrass'] = {
   id: 'cityOfBrass',
   name: 'Polychrome Pact',
   text: 'Begin your run with a City of Brass already in hand. Taps for any color.',
-  art: '🏛',
   // Pinned during early development to guarantee a universally-applicable
   // boon was always available. Now unpinned — competes with other boons
   // in the random rotation. Re-pin if a future round of playtest signals
@@ -361,7 +365,6 @@ RUN_MODIFIERS['endomorph'] = {
   id: 'endomorph',
   name: 'The Hungering Mimic',
   text: 'Begin your run with Endomorph in your deck — a 2-mana 2/2 that permanently absorbs a keyword from each creature it kills (or +1/+1 if it can\'t).',
-  art: 'cards/endomorph/art.png',
   apply: () => ({
     extras: [{ tplId: 'endomorph', stickers: [] }],
   }),
@@ -370,7 +373,6 @@ RUN_MODIFIERS['steal'] = {
   id: 'steal',
   name: 'The Long Heist',
   text: 'Begin your run with Steal in your deck — a 5-mana instant that counters target spell or takes target permanent, putting it into your library forever.',
-  art: '🪄',
   apply: () => ({
     extras: [{ tplId: 'steal', stickers: [] }],
   }),
@@ -379,7 +381,6 @@ RUN_MODIFIERS['phylactery'] = {
   id: 'phylactery',
   name: 'Phylactery',
   text: "Begin your run with a Phylactery (Swamp, in opening hand). You can't lose to 0 life or to decking out — each damage past zero or would-be overdraw rips a slot from your deck instead. Phylactery itself is always ripped last.",
-  art: 'cards/phylactery/art.png',
   apply: () => ({
     extras: [{ tplId: 'phylactery', stickers: ['innate'] }],
   }),
@@ -388,7 +389,6 @@ RUN_MODIFIERS['elystra'] = {
   id: 'elystra',
   name: 'Elystra the Immortal',
   text: "Begin your run with Elystra in your deck — a 3-mana 1/1. End-of-turn effects on her last forever, but every spell that targets her is ripped from its caster's deck after it resolves.",
-  art: 'cards/elystra/art-1.png',
   // v1.0.48: unpinned. Was pinned because Elystra was the headline build-around
   // and players wanted reliable access; with the pool grown (Codex, Mercurial,
   // others now competitive), guaranteed visibility crowds out exploration of
@@ -403,7 +403,6 @@ RUN_MODIFIERS['stapler'] = {
   id: 'stapler',
   name: 'Stapler',
   text: "Begin your run with Stapler — a {3} Artifact with 3 per-run charges. {3}, T: choose two target permanents, staple the second onto the first. When out of charges, ripped from the run.",
-  art: 'cards/stapler/art.png',
   // Charges initialize from CARDS.stapler.chargesAtRunStart (= 3) via the
   // extras-loop in start(). Persist across games on slot.charges.
   // v1.0.68: unpinned. Was pinned during initial playtesting (v1.0.52) to
