@@ -978,6 +978,40 @@ func _check_win_conditions() -> void:
 			return
 
 
+# Phase 4.5c: remove a spell from the stack and send it to its owner's
+# graveyard. Used by Counterspell's counter_spell effect handler. Returns
+# true on success, false if the iid wasn't on the stack (target gone =
+# fizzle). Public so engine/effects/counter_spell.gd can call it; the
+# autoload is the only place that owns _stack_held_cards.
+func counter_stack_entry(iid: int) -> bool:
+	# Find the entry in state.stack by source_iid.
+	var idx: int = -1
+	for i in range(_state.stack.entries.size()):
+		if _state.stack.entries[i].get("source_iid", -1) == iid:
+			idx = i
+			break
+	if idx == -1:
+		return false
+	var entry: Dictionary = _state.stack.entries[idx]
+	# Phase 4.5c: only spell entries can be countered. Trigger entries
+	# represent triggered abilities, which Counterspell doesn't hit per
+	# MTG rules (and Stifle isn't in our card pool yet).
+	if entry.get("kind", "spell") != "spell":
+		return false
+	# Remove from stack (Stack.entries.remove_at handles the index shift).
+	_state.stack.entries.remove_at(idx)
+	# Move the held card to its owner's graveyard. Spells go to graveyard
+	# regardless of whether they would normally enter the battlefield —
+	# counterspell intercepts before resolution.
+	var card: CardInstance = _stack_held_cards.get(iid)
+	if card != null:
+		var owner: Player = _state.player_by_key(card.owner_key)
+		if owner != null:
+			owner.graveyard.append(card)
+		_stack_held_cards.erase(iid)
+	return true
+
+
 # Phase 4.5: draw a card during the DRAW step. Called from _advance_phase
 # when the new phase is DRAW. If the player's library is empty, they lose
 # the game (MTG 704.5b). The loss is processed through the standard winner

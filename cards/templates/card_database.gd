@@ -17,6 +17,12 @@ static func get_card(card_id: String) -> CardResource:
 			return _make_mountain()
 		"forest":
 			return _make_forest()
+		"plains":
+			return _make_plains()
+		"island":
+			return _make_island()
+		"swamp":
+			return _make_swamp()
 		"lightning_bolt":
 			return _make_lightning_bolt()
 		"goblin_raider":
@@ -29,6 +35,16 @@ static func get_card(card_id: String) -> CardResource:
 			return _make_pyromaniac()
 		"bloodlust_berserker":
 			return _make_bloodlust_berserker()
+		"bear_cub":
+			return _make_bear_cub()
+		"gray_ogre":
+			return _make_gray_ogre()
+		"hill_giant":
+			return _make_hill_giant()
+		"healing_salve":
+			return _make_healing_salve()
+		"counterspell":
+			return _make_counterspell()
 		_:
 			push_error("CardDatabase: unknown card_id '%s'" % card_id)
 			return null
@@ -37,10 +53,12 @@ static func get_card(card_id: String) -> CardResource:
 # Returns all known card_ids. Used by Engine boot-time predicate validation.
 static func all_card_ids() -> Array[String]:
 	return [
-		"mountain", "forest",
+		"mountain", "forest", "plains", "island", "swamp",
 		"lightning_bolt", "goblin_raider",
 		"grizzly_bears", "giant_growth",
 		"pyromaniac", "bloodlust_berserker",
+		"bear_cub", "gray_ogre", "hill_giant",
+		"healing_salve", "counterspell",
 	]
 
 
@@ -199,5 +217,127 @@ static func _make_bloodlust_berserker() -> CreatureResource:
 				{"kind": "damage", "amount": 2, "target": "opponent"},
 			],
 		},
+	]
+	return r
+
+
+# ─── Phase 4.5c: basic lands across remaining colors ──────────────────────
+
+static func _make_plains() -> LandResource:
+	var r := LandResource.new()
+	r.card_id = "plains"
+	r.display_name = "Plains"
+	r.card_types = ["land"]
+	r.subtypes = ["plains"]
+	r.mana_cost = {}
+	r.oracle_text = "{T}: Add {W}."
+	r.mana_produced = ["W"]
+	return r
+
+
+static func _make_island() -> LandResource:
+	var r := LandResource.new()
+	r.card_id = "island"
+	r.display_name = "Island"
+	r.card_types = ["land"]
+	r.subtypes = ["island"]
+	r.mana_cost = {}
+	r.oracle_text = "{T}: Add {U}."
+	r.mana_produced = ["U"]
+	return r
+
+
+static func _make_swamp() -> LandResource:
+	var r := LandResource.new()
+	r.card_id = "swamp"
+	r.display_name = "Swamp"
+	r.card_types = ["land"]
+	r.subtypes = ["swamp"]
+	r.mana_cost = {}
+	r.oracle_text = "{T}: Add {B}."
+	r.mana_produced = ["B"]
+	return r
+
+
+# ─── Phase 4.5c: vanilla creature curve fillers ───────────────────────────
+
+static func _make_bear_cub() -> CreatureResource:
+	var r := CreatureResource.new()
+	r.card_id = "bear_cub"
+	r.display_name = "Bear Cub"
+	r.card_types = ["creature"]
+	r.subtypes = ["bear"]
+	r.mana_cost = {"G": 1}
+	r.oracle_text = "A vanilla 1/1 — no abilities."
+	r.power = 1
+	r.toughness = 1
+	r.keywords = []
+	return r
+
+
+static func _make_gray_ogre() -> CreatureResource:
+	var r := CreatureResource.new()
+	r.card_id = "gray_ogre"
+	r.display_name = "Gray Ogre"
+	r.card_types = ["creature"]
+	r.subtypes = ["ogre"]
+	r.mana_cost = {"R": 1, "C": 1}
+	r.oracle_text = "A vanilla 2/2 — no abilities."
+	r.power = 2
+	r.toughness = 2
+	r.keywords = []
+	return r
+
+
+static func _make_hill_giant() -> CreatureResource:
+	var r := CreatureResource.new()
+	r.card_id = "hill_giant"
+	r.display_name = "Hill Giant"
+	r.card_types = ["creature"]
+	r.subtypes = ["giant"]
+	r.mana_cost = {"R": 1, "C": 2}
+	r.oracle_text = "A vanilla 3/3 — no abilities."
+	r.power = 3
+	r.toughness = 3
+	r.keywords = []
+	return r
+
+
+# ─── Phase 4.5c: instants with new effect kinds ───────────────────────────
+
+# Exercises the new gain_life effect handler.
+static func _make_healing_salve() -> SpellResource:
+	var r := SpellResource.new()
+	r.card_id = "healing_salve"
+	r.display_name = "Healing Salve"
+	r.card_types = ["instant"]
+	r.subtypes = []
+	r.mana_cost = {"W": 1}
+	r.oracle_text = "You gain 3 life."
+	r.requires_target = false  # gain_life applies to controller — no chosen target
+	r.target_filter = ""
+	r.on_cast_effects = [
+		{"kind": "gain_life", "amount": 3},
+	]
+	return r
+
+
+# Exercises the new counter_spell effect handler. First card whose target is
+# a stack entry rather than a creature/player. Validation of the stack target
+# is partly deferred to Phase 5b's get_legal_actions — currently the legality
+# check only requires that targets be non-empty, and the effect itself
+# fizzles cleanly when the target spell is no longer on the stack.
+static func _make_counterspell() -> SpellResource:
+	var r := SpellResource.new()
+	r.card_id = "counterspell"
+	r.display_name = "Counterspell"
+	r.card_types = ["instant"]
+	r.subtypes = []
+	r.mana_cost = {"U": 2}
+	r.oracle_text = "Counter target spell."
+	r.requires_target = true
+	r.target_filter = "spell"  # target must be a stack entry of kind "spell"
+	r.on_cast_effects = [
+		{"kind": "counter_spell", "target": "chosen"},
 	]
 	return r
