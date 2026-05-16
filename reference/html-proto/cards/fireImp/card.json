@@ -9,7 +9,7 @@
   },
   "power": 1,
   "toughness": 1,
-  "art": "🔥",
+  "art": "cards/fireImp/art.png",
   "text": "Flying, Haste",
   "keywords": [
     "flying",

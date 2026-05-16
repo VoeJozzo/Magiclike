@@ -6,7 +6,7 @@
     "W": 1,
     "C": 2
   },
-  "art": "🕊",
+  "art": "cards/oblation/art.png",
   "text": "Shuffle target creature into its owner's library.",
   "effects": [
     {

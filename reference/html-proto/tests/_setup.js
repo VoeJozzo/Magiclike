@@ -123,7 +123,7 @@ function installDomStubs() {
 const EXPOSED = [
   // Public module objects (top of each .js file).
   'ENGINE', 'AI', 'RUN', 'DRAFT', 'CARDS', 'STICKERS',
-  'CONTROLLER', 'PICKLOG', 'VERSION', 'Modal',
+  'CONTROLLER', 'PICKLOG', 'VERSION', 'Modal', 'RUN_MODIFIERS',
   // Trigger-generator surface (triggers.js + trigger-generator.js —
   // no IIFE, all module-scope).
   'TRIGGER_CONDITIONS', 'GENERATOR_EFFECTS', 'GENERATOR_CONDITIONS',

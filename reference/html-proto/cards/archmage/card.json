@@ -9,7 +9,7 @@
   },
   "power": 2,
   "toughness": 4,
-  "art": "🧙‍♂",
+  "art": "cards/archmage/art.png",
   "text": "T: Draw a card.",
   "abilities": [
     {

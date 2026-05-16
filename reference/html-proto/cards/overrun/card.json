@@ -6,7 +6,7 @@
     "G": 2,
     "C": 3
   },
-  "art": "🏞",
+  "art": "cards/overrun/art.png",
   "text": "Creatures you control get +3/+3 and gain trample until end of turn.",
   "effects": [
     {

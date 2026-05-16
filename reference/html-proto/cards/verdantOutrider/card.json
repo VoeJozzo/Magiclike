@@ -9,7 +9,7 @@
   },
   "power": 3,
   "toughness": 2,
-  "art": "🏇",
+  "art": "cards/verdantOutrider/art.png",
   "text": "When this attacks, search your library for a basic land card and put it onto the battlefield tapped.",
   "triggers": [
     {

@@ -8,7 +8,7 @@
   },
   "power": 1,
   "toughness": 1,
-  "art": "🔥",
+  "art": "cards/zealot/art.png",
   "text": "Haste. When this attacks, you gain 1 life.",
   "keywords": [
     "haste"

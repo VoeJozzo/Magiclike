@@ -3,7 +3,7 @@
   "name": "City of Brass",
   "type": "Land",
   "sub": "Land",
-  "art": "🏛",
+  "art": "cards/cityOfBrass/art.png",
   "mana": "W",
   "extraManaColors": [
     "U",

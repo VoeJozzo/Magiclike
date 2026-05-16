@@ -29,6 +29,7 @@ const CATEGORY_A = [
   'choice_prompts_test.js',
   'art_ladder_test.js',
   'draft_pool_lazy_test.js',
+  'boon_art_derives_from_card_test.js',
 ];
 
 const TESTS_DIR = __dirname;
