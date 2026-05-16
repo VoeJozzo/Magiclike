@@ -169,7 +169,18 @@ Update `project.godot`:
 
 **Phase 3 — Combat and the stack actually doing work.** Implement `COMBAT_ATTACK`, `COMBAT_BLOCK`, `COMBAT_DAMAGE` phases. Declare-attackers UI (click your untapped creatures), declare-blockers UI. Damage assignment with first-strike step. **Now C1 pays off:** add the first instant — Giant Growth. Cast it during combat in response to a damage step, see the stack hold while priority passes, see resolution unwind LIFO. New effects: `pump_until_eot`, EOT cleanup. Verification: a creature dies in combat; a creature survives because Giant Growth resolved on the stack.
 
-**Phase 4 — Triggered abilities.** Wire up `predicates/`. Add cards with ETB triggers (Pyromaniac: "When ~ enters, deal 1 to any target") and death triggers (Bloodlust Berserker: "attacks if opp lost life this turn"). Implement the JS prototype's `pendingTriggers` queue: state changes emit events, events match listeners (registered when permanents enter battlefield), matching listeners create stack entries. Predicate string `"creature_self_damaged_died"` looks up in `predicates.gd`. **Add boot-time validation pass** (~10 lines) that walks all `CardResource.triggered_abilities[].condition_predicate` strings and asserts each exists in the registry — catches typos at startup, not when the trigger fires. Verification: chain of triggers resolves in correct APNAP order; no infinite loops via depth cap.
+**Phase 4 — Triggered abilities.** ✓ DONE.
+- `pending_triggers` queue on `EngineState`; events fire via `RulesEngine._fire_event`; queue drains via `_drain_pending_triggers` in APNAP order onto the stack. Triggers resolve through `_resolve_trigger_entry` alongside spell entries — the C1 stack pathway covers both.
+- Predicate registry at `engine/predicates/predicates.gd` with `evaluate(name, state, source, event)`. Boot-time `validate_all_card_predicates()` walks all `CardResource.triggered_abilities[].condition_predicate` strings and `push_error`s on any missing entry.
+- Event firing points (Phase 4): `card_etb` (lands via `_do_play_land`, permanents via `_resolve_spell_entry`), `card_dies` (deaths inside `_run_sbas`).
+- Cards added: **Pyromaniac** (1R 1/1) with `{event: card_etb, self_only: true}` → deals 1 to opp; **Bloodlust Berserker** (1RR 3/2) with `{event: card_dies, self_only: true, condition_predicate: "opp_lost_life_this_turn"}` → deals 2 to opp if predicate true.
+- UI: stack panel renders triggers as `⚡ <source>'s ability` to distinguish them from cast spells.
+- `tests/test_phase4.gd` covers ETB fire+resolve, death-trigger-with-predicate-true, and the negative case (predicate-false → trigger suppressed).
+
+**Phase 4 deferred to Phase 4.5 (or whenever it becomes blocking):**
+- **Interactive trigger target picking.** Pyromaniac's printed oracle text is "any target" but the implemented effect uses hardcoded `target: "opponent"`. Real target picking for trigger effects requires a new pending-state in the engine (`awaiting_target_for_trigger`) plus a UI mode parallel to the spell target picker.
+- **Non-self triggers in tests.** The `self_only=false` listener path is implemented but not exercised by a Phase 4 card. Add one when a card legitimately needs it (e.g., "Whenever a creature you control dies, …").
+- **"Intervening if" predicate re-check at resolve time.** Currently the predicate is checked only at queue time; MTG rules check again on resolution. Will matter when a between-events action invalidates the condition.
 
 **Phase 5 — AI.** Port `AI.decide(state, who) → action`. Single entry point, reads engine state, returns one action descriptor. Combat-sim subroutine for declaring attackers/blockers. Lethal detection. Snapshots state via `Resource.duplicate(true)` and explicit `duplicate()` overrides on `Player` / `CardInstance`. Threading deferred until profiling shows it's needed. Verification: AI plays a complete game against itself without crashing; spot-check decision quality via log lines.
 
@@ -199,7 +210,7 @@ Update `project.godot`:
 | 1 | Scripted: 2 Mountains + 1 Bolt → opp at 17 | Click Mountain, click Bolt, click opp life → 20 drops to 17 |
 | 2 | Cast 1/1, end turn, untap, attack → opp at 19 | Goblin enters tapped (sick), next turn taps to attack |
 | 3 | Combat with Giant Growth on stack saves a 1/1 from a 2-power attacker | Full combat phase + instant cast in response |
-| 4 | Pyromaniac ETB + Bloodlust death triggers chain in APNAP order | Play 2-3 trigger cards, observe log shows stack ordering |
+| 4 | Pyromaniac ETB fires + resolves; Bloodlust death trigger fires with predicate-true; trigger suppressed on predicate-false | Cast Pyromaniac → opp takes 1; cast Berserker + bolt your own → opp takes +2 |
 | 5 | AI plays itself a full game without crash | Sit and watch AI vs AI; spot-check no obviously bad attacks |
 | 6 | Draft 23 picks, complete 3-game run, save/load mid-run | Full roguelike loop end-to-end |
 
