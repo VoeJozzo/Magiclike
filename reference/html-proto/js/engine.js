@@ -61,20 +61,6 @@ const MERCURIAL_TRIGGER_POOL = [
 // triggerPool, which still works via the slot-level path.
 
 
-RUN_MODIFIERS['architectsCodex'] = {
-  id: 'architectsCodex',
-  name: "The Architect's Codex",
-  text: "Begin your run with The Architect's Codex — a 4-mana 2/3. The first time you draw it each game, choose one of three procedurally-generated abilities (or keep the current one).",
-  // No `art:` field — derived from CARDS.architectsCodex.art at render
-  // time. See the comment block above RUN_MODIFIERS['cityOfBrass'] in
-  // cards.js. TODO: this boon really belongs in cards.js with the
-  // others; defining it in engine.js makes it easy to miss in
-  // cross-cutting changes (e.g. the v1.0.134.13 boon-art dedup).
-  apply: () => ({
-    extras: [{ tplId: 'architectsCodex', stickers: [] }],
-  }),
-};
-
 // ENGINE — game rules, state, phase machine.
 // Public API: init, state, expectedActor, getLegalActions, executeAction,
 // subscribe, findCard, getStats.

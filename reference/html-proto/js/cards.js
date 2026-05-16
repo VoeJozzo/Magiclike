@@ -348,6 +348,14 @@ const RUN_MODIFIERS = {};
 // it grants). A boon CAN set an explicit `art:` to override, but
 // shouldn't need to in normal cases — keeping the boon and the card
 // visually in sync as art changes is the whole point.
+RUN_MODIFIERS['architectsCodex'] = {
+  id: 'architectsCodex',
+  name: "The Architect's Codex",
+  text: "Begin your run with The Architect's Codex — a 4-mana 2/3. The first time you draw it each game, choose one of three procedurally-generated abilities (or keep the current one).",
+  apply: () => ({
+    extras: [{ tplId: 'architectsCodex', stickers: [] }],
+  }),
+};
 RUN_MODIFIERS['cityOfBrass'] = {
   id: 'cityOfBrass',
   name: 'Polychrome Pact',
