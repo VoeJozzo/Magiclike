@@ -160,9 +160,7 @@ function render() {
         }
         // Stack pill is small/inline — show emoji art directly, skip for
         // URL art (would force-stretch an <img> into a narrow pill).
-        const isUrlArt = typeof it.card.art === 'string'
-          && (it.card.art.startsWith('data:') || it.card.art.startsWith('http'));
-        const inlineArt = isUrlArt ? '🎴' : (it.card.art || '');
+        const inlineArt = isArtUrl(it.card.art) ? '🎴' : (it.card.art || '');
         div.innerHTML =
           `<div class="topline">${inlineArt} ${it.card.name}${modeLabel}</div>` +
           `<div class="botline">cast by ${G[it.controller].name}${tgtLabel}</div>`;
@@ -260,9 +258,7 @@ function render() {
         const btn = document.createElement('button');
         btn.className = 'search-card';
         // textContent only — strip URL art to avoid showing the data: prefix.
-        const isUrlArt = typeof card.art === 'string'
-          && (card.art.startsWith('data:') || card.art.startsWith('http'));
-        const inlineArt = isUrlArt ? '🎴' : (card.art || '');
+        const inlineArt = isArtUrl(card.art) ? '🎴' : (card.art || '');
         btn.textContent = `${inlineArt} ${card.name}`;
         btn.onclick = () => CONTROLLER.searchPick(card.iid);
         list.appendChild(btn);
@@ -402,9 +398,7 @@ function render() {
     const card = G.you.hand.find(c => c.iid === pmc.cardIid);
     if (card) {
       Modal.show('modalChoiceModal', { onClose: () => CONTROLLER.cancelModalChoice() });
-      const isUrlArt = typeof card.art === 'string'
-        && (card.art.startsWith('data:') || card.art.startsWith('http'));
-      const inlineArt = isUrlArt ? '🎴' : (card.art || '');
+      const inlineArt = isArtUrl(card.art) ? '🎴' : (card.art || '');
       setText('modalChoiceCardName', `${inlineArt} ${card.name}`);
       const list = document.getElementById('modalChoiceList');
       list.innerHTML = '';
@@ -1201,21 +1195,29 @@ function effectiveArt(card) {
   return pick;
 }
 
-function artHtml(art, fallback) {
-  if (!art) return fallback || '';
-  // Heuristic: anything that looks like a URL or an image file path is a
-  // src for <img>. Emoji and short glyph strings render as text.
-  //   - data:           — inline base64 (legacy embeds, e.g. the old dragon)
-  //   - http            — full URL
-  //   - ends in .png/.jpg/.jpeg/.gif/.webp/.svg — relative file path,
-  //     resolved against magiclike_engine.html (cards/<tplId>/art.png)
-  // Emoji are 1-4 chars and never match these.
-  const isUrl = typeof art === 'string' && (
+// Is this art value something the browser should resolve as an image
+// source? Used by artHtml (to decide between <img> and inline text) AND
+// by the small inline-art callers (stack pill, library search, zone
+// modal) which substitute a generic 🎴 glyph rather than try to render
+// a real image inside a narrow text pill. Centralized here so a new
+// flavor of art source (e.g. data:image/svg+xml, or a future blob URL)
+// gets recognized in every site at once.
+//   - data:           — inline base64 (legacy embeds, e.g. the old dragon)
+//   - http            — full URL
+//   - ends in .png/.jpg/.jpeg/.gif/.webp/.svg — relative file path,
+//     resolved against magiclike_engine.html (cards/<tplId>/art.png)
+// Emoji are 1-4 chars and never match.
+function isArtUrl(art) {
+  return typeof art === 'string' && (
     art.startsWith('data:') ||
     art.startsWith('http') ||
     /\.(png|jpe?g|gif|webp|svg)$/i.test(art)
   );
-  if (isUrl) {
+}
+
+function artHtml(art, fallback) {
+  if (!art) return fallback || '';
+  if (isArtUrl(art)) {
     // pixelated rendering preserves the chunky look of small pixel-art
     // sources (the 64x32 native size is intentionally low-res). Per-
     // context sizing (.cart img, .pop-art img, etc.) lives in CSS so
