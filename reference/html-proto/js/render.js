@@ -1171,11 +1171,12 @@ function artHtml(art, fallback) {
   );
   if (isUrl) {
     // pixelated rendering preserves the chunky look of small pixel-art
-    // sources. For higher-res art this is a no-op (browser ignores it
-    // when the source is already > display size). alt="" because the
-    // card name is rendered separately — duplicating it in alt text
-    // creates noise for screen readers.
-    return `<img src="${art}" alt="" style="max-width:100%;max-height:100%;object-fit:contain;image-rendering:pixelated">`;
+    // sources (the 64x32 native size is intentionally low-res). Per-
+    // context sizing (.cart img, .pop-art img, etc.) lives in CSS so
+    // each render site can integer-scale the source to suit its frame.
+    // alt="" because the card name is rendered separately — duplicating
+    // it in alt text creates noise for screen readers.
+    return `<img src="${art}" alt="">`;
   }
   return art;
 }
