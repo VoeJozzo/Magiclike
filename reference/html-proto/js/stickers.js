@@ -1,9 +1,12 @@
 // =========================================================================
 // STICKERS — runtime sticker application and deck-construction helpers.
-// Extracted from engine.js in v1.0.136. References ENGINE.synthesizeStapledTemplate,
-// tplForSlot, and deckColorsFromSlots as late-bound globals (engine.js loads
-// before this file in magiclike_engine.html, so the references resolve at
-// function-call time).
+// Extracted from engine.js in v1.0.136. References two engine.js globals
+// as late-bound calls: ENGINE.synthesizeStapledTemplate (used when applying
+// an empower sticker to a stapled card — the merged template is the
+// baseline for the roll) and tplForSlot (used in eligibility checks).
+// Both resolve at function-call time, after engine.js has loaded.
+// deckColorsFromSlots stays in engine.js but is passed INTO stickers via
+// the `deckColors` parameter on stickersForSlot — not late-bound here.
 //
 // Two logical groupings, in original engine.js order:
 //   1. Runtime sticker application: weightedPick, applyStickersToCard,
