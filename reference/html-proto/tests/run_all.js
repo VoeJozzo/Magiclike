@@ -27,6 +27,8 @@ const CATEGORY_A = [
   'trigger_generator_test.js',
   'ai_burn_lethal_test.js',
   'choice_prompts_test.js',
+  // Locks in card-text output after the card-text.js extraction (v1.0.134).
+  'card_text_test.js',
 ];
 
 const TESTS_DIR = __dirname;

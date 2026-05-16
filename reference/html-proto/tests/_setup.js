@@ -135,6 +135,15 @@ const EXPOSED = [
   'stickersForSlot', 'deckColorsFromSlots', 'fakeTargetsForLegality',
   // Render module-scope helpers (render.js has no IIFE).
   'stickerBadgesHtml',
+  // Card-text module surface (card-text.js, all module-scope, no IIFE).
+  'describeAmount', 'describeEffect', 'describeEffectList',
+  'describeTrigger', 'describeAbility', 'describeStaticBuff',
+  'describeCardText', 'describeCardSegments', 'describeModalSegs',
+  // Card-text internal helpers — exposed so tests can target them
+  // independently if a regression localizes to one.
+  'targetPhrase', 'withFilter', 'plainSeg', 'bumpedSeg', 'bumpedDerived',
+  'segsToText', 'capitalize', 'capitalizeSegs',
+  'triggerPreamble', 'abilityCostPhrase', 'keywordPreamble',
 ];
 
 let _loaded = false;
