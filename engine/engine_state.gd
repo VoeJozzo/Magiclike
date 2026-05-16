@@ -118,3 +118,31 @@ func find_instance(iid: int) -> Variant:
 func append_log(line: String) -> void:
 	log.append(line)
 	print("[ENG] %s" % line)
+
+
+# Phase 5b: deep copy for AI state snapshots. Used by simulate_combat and
+# any other AI subroutine that needs to mutate state hypothetically. All
+# RefCounted children are deep-copied via their duplicate_deep methods.
+# CardResource templates are shared by reference (immutable per-game).
+func duplicate_deep() -> EngineState:
+	var copy := EngineState.new()
+	# _init created fresh you/opp/phase_machine/stack; replace with deep copies.
+	copy.you = you.duplicate_deep()
+	copy.opp = opp.duplicate_deep()
+	copy.active_player_key = active_player_key
+	copy.priority_player_key = priority_player_key
+	copy.priority_passed = priority_passed.duplicate()
+	copy.phase_machine = PhaseMachine.new()
+	copy.phase_machine.current = phase_machine.current
+	copy.turn = turn
+	copy.stack = stack.duplicate_deep()
+	copy.attackers = attackers.duplicate()
+	copy.blockers = blockers.duplicate()
+	copy.pending_triggers = []
+	for trig in pending_triggers:
+		copy.pending_triggers.append(trig.duplicate(true))
+	copy.awaiting_target_for_trigger = awaiting_target_for_trigger.duplicate(true)
+	copy.log = log.duplicate()  # logs aren't deep but no mutation hazard
+	copy.winner = winner
+	copy._next_iid = _next_iid
+	return copy

@@ -110,6 +110,25 @@ func clear_eot_modifiers() -> void:
 	granted_keywords.clear()
 
 
+# Phase 5b: deep copy for AI state snapshots. The template (CardResource) is
+# shared by reference — it's immutable per-game. Per-instance fields are
+# copied; mutable Dictionary fields (counters) are deep-cloned.
+func duplicate_deep() -> CardInstance:
+	var copy := CardInstance.new(template, owner_key, controller_key)
+	copy.instance_id = instance_id
+	copy.tapped = tapped
+	copy.summoning_sick = summoning_sick
+	copy.counters = counters.duplicate()
+	copy.damage_marked = damage_marked
+	copy.lethal_marked = lethal_marked
+	copy.temp_power = temp_power
+	copy.temp_toughness = temp_toughness
+	copy.attacking = attacking
+	copy.blocking_iid = blocking_iid
+	copy.granted_keywords = granted_keywords.duplicate()
+	return copy
+
+
 # Phase 5a: combined keyword set — template's baseline + any runtime grants
 # (pump effects, stickers). Single seam used by all combat / target checks.
 # Non-creatures return their template keywords unchanged (lands can have

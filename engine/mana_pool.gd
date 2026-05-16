@@ -81,6 +81,16 @@ func total() -> int:
 	return t
 
 
+# Phase 5b: deep copy. Used by EngineState.duplicate_deep for AI snapshots.
+# RefCounted's default `duplicate()` shares Dictionary references, which
+# would let mutations on the copy leak into the original — we explicitly
+# duplicate() the inner Dictionary.
+func duplicate_deep() -> ManaPool:
+	var copy := ManaPool.new()
+	copy.pool = pool.duplicate()
+	return copy
+
+
 # MTG mana-cost notation: colored mana is shown as repeated letters (RR for
 # two reds), colorless/generic is shown as a leading number (1R for 1 generic
 # + 1 red). Critically, "1R" never means "one red" — it always means

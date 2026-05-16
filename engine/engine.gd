@@ -329,6 +329,134 @@ func execute_action(action: Dictionary) -> bool:
 	return ok
 
 
+# Phase 5b: AI scoring. Thin wrapper around AIScoring.card_value so callers
+# can stay on the autoload surface (mirrors JS prototype's ENGINE.getCardValue
+# shape). Phase 5c's AI module will call this from its hand-evaluator.
+func card_value(template: CardResource, purpose: String = "draft") -> float:
+	return AIScoring.card_value(template, purpose)
+
+
+# Phase 5b: enumerate every legal action descriptor for `player_key` in the
+# current state. Single read-only entry point used by Phase 5c's AI module.
+# Returns an empty array if the player doesn't have priority (or the game is
+# over). Casts with multiple legal targets fan out into one entry per target
+# choice so the AI can score each individually.
+#
+# Performance note: walks the priority player's hand + battlefield + the
+# combat phase declarations. At Phase 5 scale (~30-card decks, ~10 perms in
+# play) this is microseconds; no optimisation needed.
+func get_legal_actions(player_key: String) -> Array[Dictionary]:
+	var actions: Array[Dictionary] = []
+	if _state == null or _state.winner != "":
+		return actions
+	# Trigger target picker takes precedence — when the engine is waiting on
+	# a target pick, the player's only legal action is to pick one.
+	if not _state.awaiting_target_for_trigger.is_empty() \
+			and _state.awaiting_target_for_trigger.get("controller_key", "") == player_key:
+		var filter: String = _state.awaiting_target_for_trigger.get("filter", "")
+		for target in _enumerate_filter_targets(filter, player_key):
+			actions.append(Action.make_pick_trigger_target(target))
+		return actions
+	# Outside of trigger-target mode, the player needs priority for most
+	# actions. Exception: block declaration during COMBAT_BLOCK is a special
+	# action that doesn't gate on priority.
+	var is_combat_block: bool = _state.phase_machine.current == PhaseMachine.Phase.COMBAT_BLOCK
+	var is_defender: bool = player_key == _state.opponent_of(_state.active_player_key)
+	if _state.priority_player_key != player_key and not (is_combat_block and is_defender):
+		return actions
+	# Pass priority is always available when you have priority.
+	if _state.priority_player_key == player_key:
+		actions.append(Action.make_pass_priority())
+	# Lands — playable from hand if all legality checks pass.
+	for card in _state.player_by_key(player_key).hand:
+		if card.is_land():
+			var play := Action.make_play_land(card.instance_id)
+			if _legal_play_land(play):
+				actions.append(play)
+	# Mana abilities — tap untapped lands on your battlefield.
+	for card in _state.player_by_key(player_key).battlefield:
+		var ability := Action.make_activate_ability(card.instance_id)
+		if _legal_activate_ability(ability):
+			actions.append(ability)
+	# Spells — fan out across legal target combinations.
+	for card in _state.player_by_key(player_key).hand:
+		if card.is_land():
+			continue
+		_enumerate_cast_actions(card, player_key, actions)
+	# Combat declarations — only when the relevant combat phase is open.
+	if _state.phase_machine.current == PhaseMachine.Phase.COMBAT_ATTACK \
+			and player_key == _state.active_player_key:
+		for card in _state.player_by_key(player_key).battlefield:
+			var atk := Action.make_declare_attacker(card.instance_id)
+			if _legal_declare_attacker(atk):
+				actions.append(atk)
+	if is_combat_block and is_defender:
+		for blocker in _state.player_by_key(player_key).battlefield:
+			for attacker_iid in _state.attackers:
+				var blk := Action.make_declare_blocker(blocker.instance_id, attacker_iid)
+				if _legal_declare_blocker(blk):
+					actions.append(blk)
+	return actions
+
+
+# Helper: yield action descriptors for every legal target combination of
+# casting `card`. Untargeted spells fan out to a single entry; targeted
+# spells fan out one entry per legal target. Multi-target spells (Phase 6+)
+# would do a Cartesian product here.
+func _enumerate_cast_actions(card: CardInstance, player_key: String, out: Array[Dictionary]) -> void:
+	if not (card.template is SpellResource):
+		# Creatures, etc. — cast with no target list.
+		var cast := Action.make_cast_spell(card.instance_id, [])
+		if _legal_cast_spell(cast):
+			out.append(cast)
+		return
+	var spell: SpellResource = card.template
+	if not spell.requires_target:
+		var cast := Action.make_cast_spell(card.instance_id, [])
+		if _legal_cast_spell(cast):
+			out.append(cast)
+		return
+	for target in _enumerate_filter_targets(spell.target_filter, player_key):
+		var cast := Action.make_cast_spell(card.instance_id, [target])
+		if _legal_cast_spell(cast):
+			out.append(cast)
+
+
+# Returns every legal target descriptor matching `filter` from the perspective
+# of `picker_key` (used for hexproof checks — own creatures with hexproof are
+# still legal targets for the picker's spells).
+func _enumerate_filter_targets(filter: String, picker_key: String) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	match filter:
+		"any", "creature_or_player":
+			out.append({"kind": "player", "who": "you"})
+			out.append({"kind": "player", "who": "opp"})
+			for p in [_state.you, _state.opp]:
+				for c in p.battlefield:
+					if c.template is CreatureResource:
+						if c.has_keyword("hexproof") and c.controller_key != picker_key:
+							continue
+						out.append({"kind": "creature", "iid": c.instance_id})
+		"creature":
+			for p in [_state.you, _state.opp]:
+				for c in p.battlefield:
+					if c.template is CreatureResource:
+						if c.has_keyword("hexproof") and c.controller_key != picker_key:
+							continue
+						out.append({"kind": "creature", "iid": c.instance_id})
+		"player":
+			out.append({"kind": "player", "who": "you"})
+			out.append({"kind": "player", "who": "opp"})
+		"spell":
+			# Counterspell-style: any spell currently on the stack.
+			for entry in _state.stack.entries:
+				if entry.get("kind", "spell") == "spell":
+					out.append({"kind": "stack", "iid": entry.get("source_iid", -1)})
+		_:
+			pass  # unknown filter → empty list
+	return out
+
+
 func is_legal_action(action: Dictionary) -> bool:
 	var kind: String = action.get("kind", "")
 	match kind:
