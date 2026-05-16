@@ -720,7 +720,8 @@ function openZoneTargeting(who, zone, validTargets) {
       btn.className = 'zone-card';
       const typeHint = card.type ? card.type.charAt(0) : '?';
       const cost = card.cost ? formatCost(card.cost) : '';
-      btn.innerHTML = `<span style="opacity:0.6">[${typeHint}]</span> ${card.name}${cost ? ' <span style="opacity:0.5;font-size:10px">' + cost + '</span>' : ''}`;
+      btn.innerHTML = `<span style="opacity:0.6">[${typeHint}]</span> <span class="card-name"></span>${cost ? ' <span style="opacity:0.5;font-size:10px">' + cost + '</span>' : ''}`;
+      btn.querySelector('.card-name').textContent = card.name;
       if (validIids.has(card.iid)) {
         // Valid target — highlight and wire up submission.
         btn.style.cursor = 'pointer';
@@ -919,7 +920,7 @@ function renderBf(id, bf, who) {
   if (showPlayerTargetButton) {
     const btn = document.createElement('button');
     btn.className = 'ptgt-btn';
-    btn.innerHTML = `→ Target ${G[who].name}`;
+    btn.textContent = `→ Target ${G[who].name}`;
     btn.onclick = () => CONTROLLER.clickPlayerTarget(who);
     el.appendChild(btn);
   }

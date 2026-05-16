@@ -195,7 +195,8 @@ function appendStickerSectionToBrowser(inner) {
 
       // Eligibility line — what cards this sticker can be applied to.
       const goes = document.createElement('div');
-      goes.innerHTML = '<span style="color:#777">Goes on:</span> <span style="color:#999">' + stickerAppliesLabel(s) + '</span>';
+      goes.innerHTML = '<span style="color:#777">Goes on:</span> <span class="apply-text" style="color:#999"></span>';
+      goes.querySelector('.apply-text').textContent = stickerAppliesLabel(s);
       goes.style.cssText = 'font-size:10px;margin-top:2px';
       item.appendChild(goes);
 
@@ -755,7 +756,8 @@ function renderPostDraftOffer() {
     const art = LAND_ART[tplId] || '🏞';
     const b = document.createElement('button');
     b.style.cssText = `background:#0e1c14;border:2px solid ${color};color:#ddd;padding:14px 16px;font-family:inherit;font-size:14px;font-weight:bold;cursor:pointer;border-radius:6px;min-width:130px;display:flex;flex-direction:column;align-items:center;gap:6px;transition:transform .1s,background .1s`;
-    b.innerHTML = `<span style="font-size:30px">${art}</span><span>${name}</span>`;
+    b.innerHTML = `<span style="font-size:30px">${art}</span><span class="land-name"></span>`;
+    b.querySelector('.land-name').textContent = name;
     b.onmouseover = () => { b.style.background = '#1a3020'; b.style.transform = 'translateY(-2px)'; };
     b.onmouseout  = () => { b.style.background = '#0e1c14'; b.style.transform = 'translateY(0)'; };
     b.onclick = () => pickPostDraftOfferClick(tplId);
@@ -2234,7 +2236,8 @@ function openZone(who, zone) {
       // Show card name with a small color/type hint.
       const typeHint = card.type ? card.type.charAt(0) : '?';
       const cost = card.cost ? formatCost(card.cost) : '';
-      btn.innerHTML = `<span style="opacity:0.6">[${typeHint}]</span> ${card.name}${cost ? ' <span style="opacity:0.5;font-size:10px">' + cost + '</span>' : ''}`;
+      btn.innerHTML = `<span style="opacity:0.6">[${typeHint}]</span> <span class="card-name"></span>${cost ? ' <span style="opacity:0.5;font-size:10px">' + cost + '</span>' : ''}`;
+      btn.querySelector('.card-name').textContent = card.name;
       btn.onclick = () => openCardPopup(card);
       listEl.appendChild(btn);
     }
@@ -2965,8 +2968,10 @@ function showStatsExportPicker(jsonPretty, filename) {
       background:#222;border:1px solid #444;color:#ddd;padding:10px 14px;
       border-radius:5px;cursor:pointer;font-size:12px;font-family:inherit;
       text-align:left;line-height:1.5`;
-    b.innerHTML = `<div style="color:#88ccff;font-weight:bold">${label}</div>` +
-                  `<div style="color:#888;font-size:10px;margin-top:2px">${hint}</div>`;
+    b.innerHTML = `<div class="btn-label" style="color:#88ccff;font-weight:bold"></div>` +
+                  `<div class="btn-hint" style="color:#888;font-size:10px;margin-top:2px"></div>`;
+    b.querySelector('.btn-label').textContent = label;
+    b.querySelector('.btn-hint').textContent = hint;
     b.onclick = onClick;
     return b;
   };
