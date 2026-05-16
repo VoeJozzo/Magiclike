@@ -3,8 +3,6 @@
 // Lives outside the ENGINE IIFE so card templates can reference condIds at
 // module-load time without a circular dependency.
 
-// IMPORTANT: when adding an entry, also add to /tmp/trigger_vocab_test.js
-// — forcing function that prevents silent gaps.
 const TRIGGER_CONDITIONS = {
   // ─── ETB / cardEntersBattlefield ─────────────────────────────────────
   thisEnters: {
