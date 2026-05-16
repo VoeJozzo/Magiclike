@@ -31,6 +31,7 @@ const ENGINE_FILES = [
   'cards.js',
   'engine.js',
   'card-text.js',
+  'stickers.js',
   'ai.js',
   'draft.js',
   'run.js',
@@ -133,8 +134,12 @@ const EXPOSED = [
   'evalTriggerCondition', 'generateRandomTrigger',
   'generateConditionOptions', 'generateEffectOptions', 'assembleTrigger',
   // Engine module-scope helpers (above the ENGINE IIFE).
-  'applyStickersToCard', 'rollSubtypeFromDeck', 'pushStickerWithRoll',
-  'stickersForSlot', 'deckColorsFromSlots', 'fakeTargetsForLegality',
+  'deckColorsFromSlots', 'fakeTargetsForLegality',
+  // Sticker module surface (stickers.js, all top-level).
+  'weightedPick',
+  'applyStickersToCard', 'applyOneStickerToRuntimeCard',
+  'applyRandomStickersToSide', 'empowerRollLabel', 'applyEmpowerRoll',
+  'rollSubtypeFromDeck', 'pushStickerWithRoll', 'stickersForSlot',
   // Render module-scope helpers (render.js has no IIFE).
   'stickerBadgesHtml',
   // Card-text module surface (card-text.js, all module-scope, no IIFE).
