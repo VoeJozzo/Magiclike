@@ -1070,7 +1070,11 @@ function stickerBadgesHtml(stickers, big, empowerRolls, tplId, stapledTpls, subt
     let label;
     if (s.kind === 'statBoost') label = '+1/+1';
     else if (s.kind === 'innate') label = 'Innate';
-    else if (s.kind === 'landColor') label = '+{' + s.color + '}';
+    // landColor badge label is "+{W}"-style — route the brace token
+    // through renderManaSymbols so it shows the color pip / future PNG
+    // instead of literal {W} text. The label gets injected into
+    // innerHTML below, so an HTML span is fine here.
+    else if (s.kind === 'landColor') label = '+' + renderManaSymbols('{' + s.color + '}');
     else if (s.kind === 'costReduction') label = '-' + (s.amount || 1) + ' cost';
     else if (s.kind === 'trigger') label = s.name || 'Trigger';
     else if (s.kind === 'keyword') label = s.keyword;

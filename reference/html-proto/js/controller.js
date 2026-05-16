@@ -195,16 +195,18 @@ function appendStickerSectionToBrowser(inner) {
       top.appendChild(meta);
       item.appendChild(top);
 
-      // Effect text.
+      // Effect text. Routes through renderManaSymbols so landColor
+      // stickers (text contains {W}/{U}/etc) render the pip icons.
       const text = document.createElement('div');
-      text.textContent = s.text;
+      text.innerHTML = renderManaSymbols(escapeHtml(s.text || ''));
       text.style.cssText = 'color:#bbb';
       item.appendChild(text);
 
       // Eligibility line — what cards this sticker can be applied to.
       const goes = document.createElement('div');
       goes.innerHTML = '<span style="color:#777">Goes on:</span> <span class="apply-text" style="color:#999"></span>';
-      goes.querySelector('.apply-text').textContent = stickerAppliesLabel(s);
+      // Same {W}/{U}/etc treatment for the landColor eligibility blurb.
+      goes.querySelector('.apply-text').innerHTML = renderManaSymbols(escapeHtml(stickerAppliesLabel(s)));
       goes.style.cssText = 'font-size:10px;margin-top:2px';
       item.appendChild(goes);
 
@@ -1199,7 +1201,7 @@ function renderReward() {
         }
         stickerEl.innerHTML =
           `<div class="name">${stickerName}</div>` +
-          `<div class="text">${sticker.text}</div>`;
+          `<div class="text">${renderManaSymbols(escapeHtml(sticker.text || ''))}</div>`;
         div.appendChild(stickerEl);
       } else if (cand.kind === 'twoStickers') {
         const connector = document.createElement('div');
@@ -2337,7 +2339,10 @@ function showAbilityPicker(card, options) {
   btnCol.style.cssText = 'display:flex;flex-direction:column;gap:8px';
   for (const opt of options) {
     const b = document.createElement('button');
-    b.textContent = opt.label;
+    // Picker labels can carry {T}/{W}/etc. brace tokens (e.g. "Tap for
+    // {W}", "{T}: Draw 1"). Route through renderManaSymbols so the
+    // pips render instead of literal {X} text.
+    b.innerHTML = renderManaSymbols(escapeHtml(opt.label));
     b.style.cssText = 'background:#2a2a36;color:#ddd;border:1px solid #555;border-radius:5px;padding:10px 12px;font-size:12px;cursor:pointer;font-family:inherit;text-align:left';
     b.onclick = () => {
       document.body.removeChild(dimmer);
