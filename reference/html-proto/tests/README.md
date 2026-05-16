@@ -14,7 +14,7 @@ Node.js. No npm install needed — tests use only built-in modules.
 ## Quick start
 
 ```bash
-# Run the core suite (134 assertions, ~1 second).
+# Run the core suite (319 assertions, ~1 second).
 node tests/run_all.js
 
 # Run an individual test.
@@ -31,8 +31,10 @@ within `tests/` directly — they reference `js/` via `__dirname`.
 
 ### Core regression suite (run via `run_all.js`)
 
-134 assertions across 9 files, ~1s total. Guards engine invariants
+319 assertions across 12 files, ~1s total. Guards engine invariants
 and structural patterns that protect against silent regressions.
+
+**Ported from the prior-session bundle:**
 
 - `v80_helpers_test.js` — `leavesPlayPreservingBuffs` and
   `appendMergedText` helpers exist; older inlined patterns are gone
@@ -56,6 +58,32 @@ and structural patterns that protect against silent regressions.
   keyword, innate, landColor, costReduction, empower, subtype)
   exercised across `applyStickersToCard`, `stickersForSlot`, and
   `stickerBadgesHtml`
+
+**Authored this session to cover PR #5's test-plan items:**
+
+- `modal_helper_test.js` — Modal helper stack/dismissible logic.
+  Covers test-plan items "Escape closes dismissible modals" and
+  "Escape does NOT close decision modals." Stack push/pop, LIFO
+  ordering, idempotency, nested modals, `onClose` userInitiated flag.
+- `trigger_generator_test.js` — procedural trigger generator
+  (Mercurial Adept / Architect's Codex). Covers test-plan item
+  "Mercurial Adept / Architect's Codex trigger-generator UI works
+  end-to-end" at the data-shape layer. Validates every emitted
+  trigger has well-formed event/condId/effects/text, the
+  needsLiveSource × sourceLive filter holds across 500 rolls, and
+  the Adept deck-build integration rolls a bonus from
+  MERCURIAL_TRIGGER_POOL.
+- `ai_burn_lethal_test.js` — AI burn-lethal recognition. Covers
+  test-plan item "AI burn-lethal still fires for both single-spell
+  and multi-spell variants." Single-spell (Bolt/Shock to lethal),
+  multi-spell sequencing (two Shocks taking opp from 4 to 0),
+  ability-based burn (tap-Acolyte for face), and no-lethal smoke
+  test. Refactor protection for `getDirectBurnSources`.
+
+**Not covered:** test-plan item "every modal opens and closes
+correctly" — that's DOM visibility, which can't be observed from
+Node with stubbed DOM. UI-side coverage requires manual browser
+testing.
 
 ### Stability harness
 

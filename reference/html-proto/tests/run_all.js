@@ -11,6 +11,7 @@ const { spawnSync } = require('child_process');
 const path = require('path');
 
 const CATEGORY_A = [
+  // Ported from prior-session bundle.
   'v80_helpers_test.js',
   'subtype_v2_test.js',
   'subtype_rolls_complete_test.js',
@@ -20,6 +21,10 @@ const CATEGORY_A = [
   'template_isolation_test.js',
   'extracted_helpers_test.js',
   'sticker_kinds_dispatch_test.js',
+  // Authored this session to cover PR #5's test-plan items 2/3, 4, 5.
+  'modal_helper_test.js',
+  'trigger_generator_test.js',
+  'ai_burn_lethal_test.js',
 ];
 
 const TESTS_DIR = __dirname;

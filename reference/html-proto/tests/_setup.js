@@ -107,25 +107,33 @@ function installDomStubs() {
 // Names the engine declares at module scope that we want exposed for
 // tests. Each becomes `global.<NAME> = <NAME>` after eval.
 //
-// Two layers:
-//   - Module objects (ENGINE, AI, ...) — the public API.
-//   - Engine-internal helpers (resolveTarget, makeCard, ...) — top-level
-//     functions in engine.js / meta.js that aren't on the public surface
-//     but are useful for direct testing. The previous-session test
-//     bundle exercised these directly (e.g. subtype_v2_test.js calls
-//     rollSubtypeFromDeck). Loaded via <script> in a browser they'd be
-//     on `window`; here we hoist them onto `global` explicitly.
+// Scope rule: only declarations at the OUTERMOST scope of each .js
+// file (i.e. not inside an IIFE) can be hoisted to `global` from here.
+// Helpers declared INSIDE the ENGINE / RUN / DRAFT / PICKLOG IIFEs are
+// closure-captured and unreachable from outside. The try/catch around
+// the assignment silently swallows the ReferenceError for those — so
+// adding a name here doesn't break the loader, it just won't take
+// effect for an IIFE-internal name.
+//
+// For IIFE-internal helpers, prefer the public route:
+//   ENGINE.makeCard, ENGINE.findCard       (instead of bare makeCard / findCard)
+//   RUN.applyStickerToSlot, RUN.stickersFor (instead of bare names)
+// See engine.js's IIFE return object for the full ENGINE export set,
+// and meta.js for the RUN / DRAFT exports.
 const EXPOSED = [
-  // Public module objects.
+  // Public module objects (top of each .js file).
   'ENGINE', 'AI', 'RUN', 'DRAFT', 'CARDS', 'STICKERS',
-  'CONTROLLER', 'PICKLOG', 'VERSION',
-  // Engine-internal helpers exercised by tests directly.
-  'appendMergedText', 'applyStickerToSlot', 'findCard',
-  'leavesPlayPreservingBuffs', 'makeCard',
-  'pluckFromBattlefield', 'resolveTarget',
-  'rollSubtypeFromDeck', 'pushStickerWithRoll', 'stickersFor',
-  'fakeTargetsForLegality', 'stickersForSlot', 'deckColorsFromSlots',
-  'applyStickersToCard', 'stickerBadgesHtml',
+  'CONTROLLER', 'PICKLOG', 'VERSION', 'Modal',
+  // Trigger-generator surface (triggers.js + trigger-generator.js —
+  // no IIFE, all module-scope).
+  'TRIGGER_CONDITIONS', 'GENERATOR_EFFECTS', 'GENERATOR_CONDITIONS',
+  'evalTriggerCondition', 'generateRandomTrigger',
+  'generateConditionOptions', 'generateEffectOptions', 'assembleTrigger',
+  // Engine module-scope helpers (above the ENGINE IIFE).
+  'applyStickersToCard', 'rollSubtypeFromDeck', 'pushStickerWithRoll',
+  'stickersForSlot', 'deckColorsFromSlots', 'fakeTargetsForLegality',
+  // Render module-scope helpers (render.js has no IIFE).
+  'stickerBadgesHtml',
 ];
 
 let _loaded = false;
