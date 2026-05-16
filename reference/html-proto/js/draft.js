@@ -1,0 +1,866 @@
+// =========================================================================
+// DRAFT — pack generation (color-biased slot 3), deck assembly with auto-lands.
+// API: startDraft, getPlayerPack, getProgress, pickPlayer, isComplete,
+//      getPlayerDeck, buildOpponentDeck.
+// =========================================================================
+const DRAFT = (function() {
+
+const TOTAL_PICKS = 23;
+const TOTAL_LANDS = 17;
+const TOTAL_DECK_SIZE = TOTAL_PICKS + TOTAL_LANDS;   // 40 — used by Desert Cube
+const PACK_SIZE = 3;
+const COLORS = ['W','U','B','R','G'];
+const COLOR_TO_LAND = { W:'plains', U:'island', B:'swamp', R:'mountain', G:'forest' };
+// Desert Cube: each pack slot has this probability of being a basic land
+// instead of a spell. Independent per slot — most packs have 0-1 lands,
+// some have 2 or 3.
+const DESERT_CUBE_LAND_PROB = 1 / 3;
+
+// Eligible draft picks: all non-land, non-special cards. Special cards are
+// Neow-only gifts curated outside the random pool. Multi-target cards
+// (multiTarget:true) are in this pool; the multi-step target picker UI
+// (v1.0.16) lets the player cast them. OPP_POOL is currently identical
+// to DRAFT_POOL — kept as a separate name since opp's deck construction
+// may diverge in the future (e.g., difficulty tuning, archetype seeds).
+const DRAFT_POOL = Object.keys(CARDS).filter(id => CARDS[id].type !== 'Land' && !CARDS[id].special);
+const OPP_POOL = DRAFT_POOL;
+
+let state = null;
+
+function rollPackForMode(pool, picksSoFar, mode) {
+  const pack = rollPack(pool, picksSoFar);
+  if (mode !== 'desertCube') return pack;
+  // For each slot, independently roll: with probability DESERT_CUBE_LAND_PROB,
+  // replace the slot with a basic land of a random color. This is post-rollPack
+  // so the color-aware sampling still works for the spell slots.
+  //
+  // Pack uniqueness: rollPack enforces "no two copies of the same card in
+  // one pack" via its `used` set, so spell slots are guaranteed distinct.
+  // When we substitute lands, we preserve that invariant — a pack like
+  // [Bolt, Mountain, Mountain] would feel wrong (two of the same basic
+  // side by side). Track basic-land tplIds already in the pack and pick
+  // an available color for each new land slot.
+  for (let i = 0; i < pack.length; i++) {
+    if (Math.random() < DESERT_CUBE_LAND_PROB) {
+      const usedLandTplIds = new Set();
+      for (let j = 0; j < pack.length; j++) {
+        if (j === i) continue;
+        const tpl = CARDS[pack[j]];
+        if (tpl && tpl.type === 'Land' && tpl.mana) usedLandTplIds.add(pack[j]);
+      }
+      const availableColors = COLORS.filter(c => !usedLandTplIds.has(COLOR_TO_LAND[c]));
+      if (availableColors.length === 0) continue;   // all 5 basics in pack (impossible with 3 slots)
+      const colorIdx = Math.floor(Math.random() * availableColors.length);
+      pack[i] = COLOR_TO_LAND[availableColors[colorIdx]];
+    }
+  }
+  return pack;
+}
+
+function startDraft(mode) {
+  state = {
+    youPicks: [],
+    // Default to classic if no mode passed — preserves backward compat.
+    mode: mode || 'classic',
+    complete: false,
+  };
+  state.currentPack = rollPackForMode(DRAFT_POOL, [], state.mode);
+  PICKLOG.startDraft();
+}
+
+// Constructed enemy decks — hand-curated card lists used at map nodes that
+// roll as 'constructed' rather than 'colored' or 'neutral'. Each entry has
+// 23 spell-slot tplIds; lands are auto-allocated from the deck's pip
+// distribution by allocLands. Opp sticker/staple/clone scaling applies on
+// top of the curated base. To add a new deck: pick a unique key, list 23
+// existing tplIds from CARDS, declare its colors for tooltip display.
+const CONSTRUCTED_DECKS = {
+  goblinAggro: {
+    name: 'Goblin Aggro',
+    colors: ['R'],
+    description: 'Cheap goblins, burn finishers',
+    cards: [
+      'goblinPiercer', 'goblinPiercer', 'hastyOgre', 'hastyOgre',
+      'goblinRaider', 'goblinRaider', 'duelist', 'duelist',
+      'raidLeader', 'raidLeader', 'goblinWarDrummer', 'goblinWarDrummer',
+      'goblinChieftain', 'bloodlust', 'bloodlust',
+      'bolt', 'bolt', 'shock', 'shock',
+      'incinerate', 'fireball', 'goblinRabble', 'pyroclasm',
+    ],
+  },
+  spiritTribal: {
+    name: 'Spirit Tribal',
+    colors: ['W'],
+    description: 'Spirits, removal, evasion',
+    cards: [
+      'savannahLions', 'whiteKnight', 'whiteKnight',
+      'ancestralGuard', 'ancestralGuard', 'phantomWarrior', 'phantomWarrior',
+      'vengefulSpirit', 'vengefulSpirit', 'echoSpirit', 'echoSpirit',
+      'spiritShepherd', 'spiritShepherd', 'cloudGiant', 'serra',
+      'salve', 'pacifism', 'pacifism', 'swords', 'swords',
+      'divineFavor', 'divineFavor', 'wrathOfGod',
+    ],
+  },
+  aristocrats: {
+    name: 'Aristocrats',
+    colors: ['B', 'R'],
+    description: 'Sacrifice synergies, drain effects',
+    cards: [
+      'goblinPiercer', 'goblinRaider', 'bloodBat', 'bloodBat',
+      'rakdosCadet', 'rakdosCadet', 'cultPriest', 'cultPriest',
+      'bloodPriest', 'bloodPriest', 'bloodArtist', 'bloodArtist',
+      'carrionFeeder', 'carrionFeeder', 'bloodthirster',
+      'bolt', 'shock', 'doomBlade', 'doomBlade',
+      'drainLife', 'drainLife', 'mindrot', 'consume',
+    ],
+  },
+  // Boss deck — Archdemon of Bargains. Mono-B with a removal-heavy shell
+  // and recursion threats. Acts as the placeholder until the bespoke boss
+  // cards (Vile Edict, Scarification, Archdemon of Bargains itself) ship in
+  // subsequent stages — at which point those slot in to replace 5 of the
+  // current cards. Has no `colors` color-affinity force currently — flagged
+  // as boss via the isBoss flag instead.
+  archdemonBoss: {
+    name: 'Archdemon of Bargains',
+    icon: '👹',
+    colors: ['B'],
+    description: 'Mono-black demonic toolbox: removal, drain, recursion',
+    isBoss: true,
+    cards: [
+      // The titular Archdemon — single copy, the climactic threat.
+      'archdemonBargains',
+      // Creatures (13) — heavy on threats and value engines. One less
+      // bloodBat to make room for the Archdemon while keeping the deck
+      // at 23 spell slots.
+      'bloodBat', 'rakdosCadet', 'rakdosCadet',
+      'cultPriest', 'cultPriest', 'bloodPriest', 'bloodPriest',
+      'bloodArtist', 'bloodArtist', 'hypnotic', 'hypnotic',
+      'nightmare', 'bloodthirster',
+      // Removal & disruption (9): special boss cards + standard removal.
+      'vileEdict', 'vileEdict',
+      'scarification', 'scarification',
+      'doomBlade', 'doomBlade', 'terror', 'terror',
+      'drainLife',
+    ],
+  },
+  // The Balancer — mono-W control. Anchored by 2 City Guardians (legendary
+  // 2/1 First Strike that tax all casts +1) and four equalization spells:
+  // Symmetricize (collapse stats to one value), Embargo (bounce + cost +1
+  // forever), Bleach (exile + colorless forever). Backbone: white removal,
+  // pacifism, soldier tokens, healing.
+  balancerBoss: {
+    name: 'The Balancer',
+    icon: '⚖',
+    colors: ['W'],
+    description: 'Mono-white control: taxation, exile, equalization',
+    isBoss: true,
+    cards: [
+      // Special boss cards (7): 2 of each tactical disruption, 1 Bleach.
+      'cityGuardian', 'cityGuardian',
+      'symmetricize', 'symmetricize',
+      'embargo', 'embargo',
+      'bleach',
+      // Creatures (9) — soldier-flavored white midrange.
+      'savannahLions', 'whiteKnight', 'ancestralGuard', 'ancestralGuard',
+      'benalishHero', 'squireOath', 'paladinValor',
+      'serra', 'ageOfDawn',
+      // White removal & disruption (7).
+      'swords', 'swords',
+      'pacifism', 'pacifism',
+      'oblation',
+      'wrathOfGod',
+      'salve',
+    ],
+  },
+};
+
+// Lookup helper — returns the deck spec or null. Defensive: tolerates
+// unknown IDs (e.g., if a map node was generated under an old build that
+// included a since-removed deck). Caller falls back to colored/neutral.
+function getConstructedDeck(id) {
+  if (!id) return null;
+  return CONSTRUCTED_DECKS[id] || null;
+}
+
+// Build opp deck (23 spells + lands) by simulating a draft with a heuristic
+// scorer (color commitment, curve, density, value, dedup). Factor-decomposed
+// for future archetype-specific weight sets.
+//
+// When constructedId is set (and resolves to a CONSTRUCTED_DECKS entry),
+// the draft loop is skipped — the curated card list is used directly. Opp
+// sticker/staple/clone scaling still applies via the same downstream path
+// so harder sectors face the same constructed base but with more bonuses.
+function buildOpponentDeck(numStickers, numStaples, numClones, colorAffinity, constructedId) {
+  const constructed = getConstructedDeck(constructedId);
+  let picks;
+  if (constructed) {
+    // Skip drafting entirely — use the curated list. Slice defensively in
+    // case the spec has more than TOTAL_PICKS entries (would unbalance the
+    // game). Pad with extra random color picks if it has fewer (also
+    // shouldn't happen, but defensive).
+    picks = constructed.cards.slice(0, TOTAL_PICKS);
+    if (picks.length < TOTAL_PICKS) {
+      // Underfilled deck — pad with neutral packs to reach TOTAL_PICKS.
+      // Should never trigger if decks are authored correctly, but the
+      // engine shouldn't crash on a malformed spec.
+      console.warn(`Constructed deck "${constructedId}" has ${picks.length} cards; padding to ${TOTAL_PICKS}.`);
+      for (let i = picks.length; i < TOTAL_PICKS; i++) {
+        const pack = rollPack(OPP_POOL, picks);
+        if (!pack.length) break;
+        picks.push(pickFromPack(pack, picks));
+      }
+    }
+  } else {
+    picks = [];
+    // If colorAffinity is set, the first pack is forced to be all that color.
+    // This biases the drafter strongly toward that color via the existing
+    // color-commitment logic in pickFromPack: once pick 1 is of color C,
+    // subsequent in-color picks get +30 and off-color picks get penalized.
+    if (colorAffinity) {
+      const sameColorPool = OPP_POOL.filter(id => {
+        const c = CARDS[id];
+        return c && c.color === colorAffinity;
+      });
+      const used = new Set();
+      const firstPack = [];
+      const sampleCount = Math.min(PACK_SIZE, sameColorPool.length);
+      while (firstPack.length < sampleCount) {
+        const id = sameColorPool[Math.floor(Math.random() * sameColorPool.length)];
+        if (!used.has(id)) { used.add(id); firstPack.push(id); }
+      }
+      if (firstPack.length > 0) {
+        const chosen = pickFromPack(firstPack, picks);
+        picks.push(chosen);
+      }
+    }
+    // Continue with normal pack rolls for the remaining picks.
+    for (let i = picks.length; i < TOTAL_PICKS; i++) {
+      const pack = rollPack(OPP_POOL, picks);
+      if (!pack.length) break;
+      const chosen = pickFromPack(pack, picks);
+      picks.push(chosen);
+    }
+  }
+  // Derive the deck's two primary colors. For constructed decks, prefer the
+  // spec's own declared colors — they describe the archetype's intent and
+  // avoid filler-padding noise for mono-color builds (where the "second
+  // color" fallback would otherwise inject an arbitrary color).
+  let oppColors;
+  if (constructed && Array.isArray(constructed.colors) && constructed.colors.length > 0) {
+    oppColors = constructed.colors.slice(0, 2);
+  } else {
+    const pips0 = countPips(picks);
+    const colorOrder = COLORS.slice().sort((a, b) => pips0[b] - pips0[a]);
+    oppColors = colorOrder.filter(k => pips0[k] > 0).slice(0, 2);
+    // Fallback if somehow we ended up with all-colorless picks.
+    if (oppColors.length < 2) {
+      const remaining = COLORS.filter(k => !oppColors.includes(k));
+      while (oppColors.length < 2 && remaining.length) {
+        oppColors.push(remaining.shift());
+      }
+    }
+  }
+  const pips = countPips(picks);
+  const lands = allocLands(pips);
+  // Convert flat tplId arrays into slot-shaped {tplId, stickers:[]} entries
+  // so we can apply opp stickers using the same shape as the player's slots.
+  // makePlayer accepts both string entries and {tplId, stickers} entries
+  // interchangeably, so this is a clean upgrade.
+  const slots = [...picks, ...lands].map(tplId => ({ tplId, stickers: [] }));
+  // Order matters:
+  //   1. Staples FIRST — staples consume slots, so applying stickers to
+  //      slots-being-consumed would just waste them.
+  //   2. Stickers next — applied to whatever slots survived the staple pass.
+  //   3. Clones LAST — photocopy the fully-modified slot, mirroring the
+  //      player's clone reward semantics. The player clones an existing
+  //      run-built slot (with its accumulated stickers/staples/rolls); opp's
+  //      analog should likewise photocopy modified slots, not pre-modification
+  //      ones. A clone target with stickers/staples produces a duplicate
+  //      threat at construction time — bigger threat density.
+  if (numStaples > 0)  applyOpponentStaples(slots, numStaples);
+  if (numStickers > 0) applyOpponentStickers(slots, numStickers);
+  if (numClones > 0)   applyOpponentClones(slots, numClones);
+  return { cards: slots, colors: oppColors };
+}
+
+// Apply N staples to opp's deck. Each round: find compatible pairs, pick
+// weighted (bias creature+creature), absorb staple slot into base. Mutates
+// slots in place.
+function applyOpponentStaples(slots, n) {
+  // Pre-compute land color set — filter cross-color pairs to lower weight
+  // (don't ban entirely; drafter's output shifts mid-game).
+  const deckColors = new Set();
+  for (const slot of slots) {
+    const tpl = CARDS[slot.tplId];
+    if (tpl && tpl.type === 'Land' && tpl.mana) deckColors.add(tpl.mana);
+  }
+  const COLOR_KEYS = ['W','U','B','R','G'];
+  const isCastable = (baseTplId, stapleTplId) => {
+    // Cheap merged-cost check: every color in merged cost must be producible.
+    // requirement is covered by the deck's lands. Doesn't synthesize the full
+    // template — just sums cost.
+    const baseTpl = CARDS[baseTplId];
+    const stapleTpl = CARDS[stapleTplId];
+    for (const c of COLOR_KEYS) {
+      const need = (baseTpl.cost && baseTpl.cost[c] || 0) +
+                   (stapleTpl.cost && stapleTpl.cost[c] || 0);
+      if (need > 0 && !deckColors.has(c)) return false;
+    }
+    return true;
+  };
+  for (let round = 0; round < n; round++) {
+    const pairs = [];
+    // v1.0.56: enumerate UNORDERED pairs (i < j) and canonicalize. The
+    // type-priority rule decides base vs staple; iterating ordered pairs
+    // would double-count and require dedup downstream. Mirrors the
+    // reward-time candidate generator change.
+    for (let i = 0; i < slots.length; i++) {
+      for (let j = i + 1; j < slots.length; j++) {
+        const [, , swapped] = canonicalSplicePair(slots[i].tplId, slots[j].tplId);
+        const bi = swapped ? j : i;
+        const si = swapped ? i : j;
+        if (!isSpliceableBase(slots[bi].tplId)) continue;
+        const stapleSlot = slots[si];
+        if (Array.isArray(stapleSlot.stapledTpls) && stapleSlot.stapledTpls.length > 0) continue;
+        if (!isCompatibleStaplePair(slots[bi].tplId, stapleSlot.tplId)) continue;
+        const baseTpl = CARDS[slots[bi].tplId];
+        const stapleTpl = CARDS[slots[si].tplId];
+        const ccPair = (baseTpl.type === 'Creature' && stapleTpl.type === 'Creature');
+        let weight = ccPair ? 3 : 1;
+        if (!isCastable(slots[bi].tplId, slots[si].tplId)) weight *= 0.1;
+        pairs.push({bi, si, weight});
+      }
+    }
+    if (pairs.length === 0) break;
+    const totalWeight = pairs.reduce((s, p) => s + p.weight, 0);
+    let roll = Math.random() * totalWeight;
+    let chosen = pairs[0];
+    for (const p of pairs) {
+      roll -= p.weight;
+      if (roll <= 0) { chosen = p; break; }
+    }
+    absorbStapledSlot(slots, chosen.bi, chosen.si);
+  }
+}
+
+// Append staple slot `si` into base slot `bi`, propagating the staple's own
+// chain. Result: baseSlot.stapledTpls = [...prior, staple.tplId, ...staple.stapledTpls].
+// Order matters — synthesis walks stapledTpls sequentially and slot-remaps
+// each entry, so [B, A] vs [A, B] produces different effect arrangements.
+function absorbStapledSlot(slots, bi, si) {
+  const baseSlot = slots[bi];
+  const stapleSlot = slots[si];
+  if (!Array.isArray(baseSlot.stapledTpls)) baseSlot.stapledTpls = [];
+  baseSlot.stapledTpls.push(stapleSlot.tplId);
+  if (Array.isArray(stapleSlot.stapledTpls)) {
+    for (const t of stapleSlot.stapledTpls) baseSlot.stapledTpls.push(t);
+  }
+  slots.splice(si, 1);
+}
+
+// Apply N clones to opp's deck. Each clone picks the highest-value non-land
+// slot not yet cloned, then inserts a literal photocopy (stickers, staples,
+// empower rolls, permaBuffs, bonusTrigger) after the original.
+//
+// Mirrors player's clone semantics — photocopy, not re-roll. Tracking by
+// tplId (not index) prevents 3 copies of the same card from one budget and
+// stays stable across the mid-loop splice.
+function applyOpponentClones(slots, n) {
+  const clonedTplIds = new Set();
+  for (let round = 0; round < n; round++) {
+    // Find the highest-value non-land slot whose tplId we haven't cloned.
+    let bestIdx = -1, bestScore = -Infinity;
+    for (let i = 0; i < slots.length; i++) {
+      if (clonedTplIds.has(slots[i].tplId)) continue;
+      const tpl = tplForSlot(slots[i]);
+      if (!tpl || tpl.type === 'Land') continue;
+      const score = intrinsicCardValue(tpl);
+      if (score > bestScore) { bestScore = score; bestIdx = i; }
+    }
+    if (bestIdx < 0) break;   // no more cloneable slots
+    const orig = slots[bestIdx];
+    const clone = {
+      tplId: orig.tplId,
+      stickers: (orig.stickers || []).slice(),
+    };
+    if (Array.isArray(orig.stapledTpls) && orig.stapledTpls.length > 0) {
+      clone.stapledTpls = orig.stapledTpls.slice();
+    }
+    if (Array.isArray(orig.empowerRolls) && orig.empowerRolls.length > 0) {
+      clone.empowerRolls = orig.empowerRolls.map(r => ({...r}));
+    }
+    if (Array.isArray(orig.subtypeRolls) && orig.subtypeRolls.length > 0) {
+      clone.subtypeRolls = orig.subtypeRolls.slice();
+    }
+    if (Array.isArray(orig.permaBuffs) && orig.permaBuffs.length > 0) {
+      clone.permaBuffs = orig.permaBuffs.map(b => ({...b}));
+    }
+    if (orig.bonusTrigger) {
+      clone.bonusTrigger = {
+        ...orig.bonusTrigger,
+        effects: (orig.bonusTrigger.effects || []).map(e => ({...e})),
+      };
+    }
+    slots.splice(bestIdx + 1, 0, clone);
+    clonedTplIds.add(orig.tplId);
+  }
+}
+
+// Distribute N stickers across opp's deck. Bursts of 1/2/3 mirror the
+// player's sticker/twoStickers/threeStickersBlind reward weights (12:3:2)
+// so distribution shapes match.
+function applyOpponentStickers(slots, n) {
+  const oppColors = deckColorsFromSlots(slots);
+  // Bursts concentrate stickers on a single slot — produces polarized threats
+  // (a 4/4 with 3 keywords) instead of spreading thin (six 2/2s with one buff
+  // each). Total power level is the same; distribution shape changes.
+  let remaining = n;
+  while (remaining > 0) {
+    // Find slots with at least one applicable sticker.
+    const eligibleIdx = slots
+      .map((_, i) => i)
+      .filter(i => stickersForSlot(slots[i], oppColors).length > 0);
+    if (eligibleIdx.length === 0) break;   // no legal targets, stop early
+    // Pick 3 random eligible slots — mirroring the player's offer.
+    const cardOffer = [];
+    const cardPool = eligibleIdx.slice();
+    while (cardOffer.length < 3 && cardPool.length > 0) {
+      const idx = Math.floor(Math.random() * cardPool.length);
+      cardOffer.push(cardPool.splice(idx, 1)[0]);
+    }
+    // Score each offered slot — prefer high-intrinsic-value cards.
+    let bestSlotIdx = cardOffer[0], bestSlotScore = -Infinity;
+    for (const i of cardOffer) {
+      // Stapled-aware scoring: a stapled slot is worth more than its base
+      // alone (extra triggers, P/T, keywords). Without this, opp would
+      // weight stapled slots the same as their base — undervaluing them
+      // for sticker placement.
+      const tpl = tplForSlot(slots[i]);
+      // Slight bonus for slots that already have stickers (clustering creates
+      // bigger threats than spreading thin).
+      const stickerBonus = slots[i].stickers.length * 5;
+      const score = intrinsicCardValue(tpl) + stickerBonus;
+      if (score > bestSlotScore) { bestSlotScore = score; bestSlotIdx = i; }
+    }
+    // Roll a burst size mirroring player reward weights: 12:3:2 for
+    // single/double/triple → 70.6%/17.6%/11.8%. Cap at remaining budget so
+    // the last burst doesn't overspend.
+    const burstRoll = Math.random() * 17;
+    let burstSize = (burstRoll < 12) ? 1 : (burstRoll < 15) ? 2 : 3;
+    burstSize = Math.min(burstSize, remaining);
+    // Apply `burstSize` stickers to the chosen slot. Each sticker re-rolls
+    // the candidate offer (since prior stickers may make the slot eligible
+    // for new ones, or saturate non-stackable slots), and we re-check
+    // eligibility after each application.
+    for (let k = 0; k < burstSize; k++) {
+      const stickerCandidates = stickersForSlot(slots[bestSlotIdx], oppColors);
+      if (stickerCandidates.length === 0) break;   // slot saturated mid-burst
+      // Roll 3 random sticker options for this slot. Use weighted sampling
+      // (matching the player's offer mechanism) so weights apply consistently
+      // across both players.
+      const stickerOffer = [];
+      const stickerPool = stickerCandidates.slice();
+      while (stickerOffer.length < 3 && stickerPool.length > 0) {
+        const picked = weightedPick(stickerPool);
+        const idx = stickerPool.indexOf(picked);
+        stickerOffer.push(stickerPool.splice(idx, 1)[0]);
+      }
+      // Pick the highest-value sticker for this card.
+      let bestSticker = stickerOffer[0], bestStickerScore = -Infinity;
+      for (const s of stickerOffer) {
+        const score = scoreOpponentSticker(s, slots[bestSlotIdx]);
+        if (score > bestStickerScore) { bestStickerScore = score; bestSticker = s; }
+      }
+      pushStickerWithRoll(slots[bestSlotIdx], bestSticker.id, slots);
+      remaining--;
+    }
+  }
+}
+
+// Heuristic sticker value per slot. Evasion keywords beat stat boosts;
+// land/cost/empower stickers vary with slot context.
+function scoreOpponentSticker(sticker, slot) {
+  if (sticker.kind === 'statBoost') {
+    return 8 + (sticker.power || 0) * 2 + (sticker.toughness || 0) * 2;
+  }
+  if (sticker.kind === 'keyword') {
+    const tier = {
+      flying: 14, indestructible: 14, hexproof: 11, lifelink: 10, deathtouch: 10,
+      firstStrike: 8, vigilance: 7, haste: 7, trample: 6, menace: 5, reach: 4, flash: 3,
+    }[sticker.keyword] || 5;
+    return tier;
+  }
+  if (sticker.kind === 'innate') return 6;     // free opening-hand land
+  if (sticker.kind === 'landColor') return 7;
+  if (sticker.kind === 'costReduction') {
+    // Bigger cards benefit more. For stapled slots, the merged cost is
+    // higher than the base alone — a costMinus1 on a Lions+Bolt at WR
+    // is worth slightly more than on Lions alone.
+    const tpl = tplForSlot(slot);
+    const totalCost = tpl && tpl.cost
+      ? (tpl.cost.C || 0) + ['W','U','B','R','G'].reduce((s,k) => s + (tpl.cost[k]||0), 0)
+      : 0;
+    return 4 + totalCost;
+  }
+  if (sticker.kind === 'trigger') return 10;   // architecture only — unused
+  if (sticker.kind === 'subtype') {
+    // Opp's decks aren't tribal-themed, so a stickered subtype is usually
+    // inert. Score 1 — not zero (opp can still pick one if nothing else is
+    // available, which is fine), but lower than everything else above.
+    return 1;
+  }
+  if (sticker.kind === 'empower') {
+    // Single-field Empower (v0.99.80+): exactly ONE eligible field is rolled
+    // and bumped per stack. Score is the expected value across the uniform
+    // pool of eligible (location, effect, mode?, field) targets — i.e., the
+    // average per-field value over enumerateEmpowerTargets. Charms have ~3-6
+    // eligible fields spread across modes, so an Empower on a charm is worth
+    // ~one-mode's-worth in expectation. For stapled slots the merged template
+    // adds the staple's empowerable fields to the pool.
+    const tpl = tplForSlot(slot);
+    if (!tpl) return 4;
+    const FIELD_VALUE_BY_KIND = {
+      damage: 4, damageAll: 5, pump: 2, weaken: 2, addCounter: 3, pumpAllYours: 4,
+      gainLife: 1, draw: 3, discard: 3, removeCreature: 6, removeAll: 8, createTokens: 3,
+    };
+    const targets = enumerateEmpowerTargets(tpl);
+    if (targets.length === 0) return 4;
+    // Each target contributes its kind's per-field value. For pump, the
+    // value table is per-effect, not per-field; split it across power and
+    // toughness slots (so a Giant Growth target doesn't double-count).
+    let total = 0;
+    for (const t of targets) {
+      // Look up the actual effect kind via the location.
+      let eff;
+      if (t.location === 'effects') {
+        eff = (t.modeIdx == null)
+          ? (Array.isArray(tpl.effects) ? tpl.effects[t.effIdx] : null)
+          : (tpl.effects && tpl.effects.modes ? tpl.effects.modes[t.modeIdx][t.effIdx] : null);
+      } else if (t.location === 'triggers') {
+        eff = tpl.triggers && tpl.triggers[t.subIdx] ? tpl.triggers[t.subIdx].effects[t.effIdx] : null;
+      } else if (t.location === 'abilities') {
+        eff = tpl.abilities && tpl.abilities[t.subIdx] ? tpl.abilities[t.subIdx].effects[t.effIdx] : null;
+      }
+      if (!eff) continue;
+      const baseVal = FIELD_VALUE_BY_KIND[eff.kind] || 0;
+      // Pump-shaped effects have two fields (power, toughness); each field's
+      // expected value is half the kind's value.
+      const fieldsForKind = EMPOWER_FIELDS[eff.kind] || [];
+      const perField = fieldsForKind.length > 0 ? baseVal / fieldsForKind.length : baseVal;
+      total += perField;
+    }
+    const expected = total / targets.length;
+    return Math.max(4, Math.round(expected));
+  }
+  return 0;
+}
+
+// Pick the highest-scoring card in a pack given what's been drafted so far.
+// Scoring philosophy:
+//   - Commit to two colors as picks accumulate.
+//   - Maintain a healthy curve (lots of 2s and 3s, fewer 5+).
+//   - Maintain creature density (~14-17 of 23 picks should be creatures).
+//   - Reward intrinsically strong cards (stats, evasion, removal).
+//   - Penalize stacking too many copies of one card.
+function pickFromPack(pack, picksSoFar) {
+  let best = pack[0], bestScore = -Infinity;
+  for (const id of pack) {
+    const sc = scoreDraftCard(id, picksSoFar);
+    if (sc > bestScore) { bestScore = sc; best = id; }
+  }
+  return best;
+}
+
+// Heuristic card score for drafting. Returns a number; higher = better pick.
+function scoreDraftCard(id, picksSoFar) {
+  const card = CARDS[id];
+  if (!card) return -1000;
+  let score = 0;
+
+  // ----- 1. Color commitment -----
+  // Early picks: color-agnostic. As picks accumulate, prefer cards in our
+  // emerging colors. After ~5 picks we should be locked in.
+  const myColorPips = countPips(picksSoFar);
+  const myColors = COLORS.filter(k => myColorPips[k] > 0)
+    .sort((a, b) => myColorPips[b] - myColorPips[a]);
+  const topTwo = myColors.slice(0, 2);
+  if (card.color) {
+    if (topTwo.includes(card.color)) {
+      // In one of our two colors — strong bonus that grows with commitment.
+      score += 30 + Math.min(picksSoFar.length, 10);
+    } else if (myColors.length === 0) {
+      // First pick or no colors yet — neutral.
+      score += 10;
+    } else if (myColors.length === 1) {
+      // Picking a second color — fine if early, expensive if late.
+      score += picksSoFar.length < 5 ? 5 : -25;
+    } else {
+      // Splash into a third color. Tolerated early, punished later.
+      // Curve: -5 at pick 2, -15 at pick 5, -30 at pick 10+.
+      score -= Math.min(30, 5 + picksSoFar.length * 2.5);
+    }
+  }
+
+  // ----- 2. Curve needs -----
+  // Count how many cards of each cost we have. Score bonus for filling gaps.
+  const curve = [0, 0, 0, 0, 0, 0, 0, 0]; // index = cost (0..7+)
+  for (const pid of picksSoFar) {
+    const c = CARDS[pid];
+    if (!c.cost) continue;
+    const cost = ENGINE.cardCost(c);
+    curve[Math.min(cost, 7)]++;
+  }
+  const cardCost = card.cost ? Math.min(ENGINE.cardCost(card), 7) : 0;
+  // Target distribution (rough): plenty of 2s and 3s, moderate 4s, few 5+s.
+  const target = [0, 4, 6, 5, 4, 2, 1, 1];
+  const gap = target[cardCost] - curve[cardCost];
+  if (gap > 0) score += gap * 3;
+  else if (gap < -1) score -= 5;     // already over-supplied at this cost
+
+  // ----- 3. Creature density -----
+  const creatureCount = picksSoFar.filter(pid => CARDS[pid].type === 'Creature').length;
+  const expectedCreatures = picksSoFar.length * (15 / 23);
+  if (card.type === 'Creature') {
+    if (creatureCount < expectedCreatures) score += 8;
+  } else {
+    if (creatureCount < expectedCreatures - 2) score -= 8;
+  }
+
+  // ----- 4. Intrinsic card value -----
+  score += intrinsicCardValue(card, picksSoFar);
+
+  // ----- 5. Duplication penalty -----
+  const copies = picksSoFar.filter(pid => pid === id).length;
+  if (copies >= 1) score -= copies * 8;
+  if (copies >= 4) score -= 1000;    // hard cap at 4 (never play 5+)
+
+  return score;
+}
+
+// Intrinsic value: how good is this card on its own merits?
+// Stats matter for creatures; effect type matters for spells.
+// picksSoFar (optional): when present, lord/static-buff cards see how much
+// tribe they've already enabled, so their value scales with deck density
+// rather than using the conservative flat baseline.
+function intrinsicCardValue(card, picksSoFar) {
+  const ctx = Array.isArray(picksSoFar) ? { picksSoFar, totalPicks: TOTAL_PICKS } : undefined;
+  return ENGINE.getCardValue(card, 'draft', ctx);
+}
+
+// Slot 3 of each pack is biased toward existing deck colors as a rescue
+// against color-screw — see rollPack for the policy. Earlier packs (when
+// you have 0 or 1 colors in your picks) are fully uniform random.
+
+function rollPack(pool, picksSoFar) {
+  // Color-aware pack: roll a color per slot, sample a card from that color's
+  // bucket. Off-deck colors (no picks of that color yet) appear at most once
+  // per pack; in-deck colors can repeat. "In-deck" = ≥1 prior pick of that
+  // color (looser than the UI's ≥2 threshold — we honor any signal).
+  //
+  // Sampling is weighted by `card.draftWeight`. Default is 1 — cards
+  // without an explicit draftWeight appear at the baseline rate. Setting
+  // weight 0 explicitly excludes a card; positive weights bias sampling
+  // proportionally. Useful for stress-testing a specific mechanic by
+  // boosting one card's weight while leaving others at default.
+  const weightOf = (id) => {
+    const c = CARDS[id];
+    if (!c) return 0;
+    const w = c.draftWeight;
+    return (typeof w === 'number' && w >= 0) ? w : 1;
+  };
+  const weightedPick = (ids) => {
+    if (ids.length === 0) return null;
+    const total = ids.reduce((s, id) => s + weightOf(id), 0);
+    if (total <= 0) return null;
+    let r = Math.random() * total;
+    for (const id of ids) {
+      r -= weightOf(id);
+      if (r <= 0) return id;
+    }
+    return ids[ids.length - 1];   // float drift fallback
+  };
+
+  // Which colors does the player already have in their deck? In Desert
+  // Cube the player picks lands directly, so a Plains pick should signal
+  // "I want white" just as much as a White Knight pick does. Read both
+  // c.color (set for spells with colored cost) and c.mana (set for basic
+  // lands) — either signal commits the deck to that color.
+  const inDeckColors = new Set();
+  for (const id of (picksSoFar || [])) {
+    const c = CARDS[id];
+    if (!c) continue;
+    if (c.color) inDeckColors.add(c.color);
+    else if (c.type === 'Land' && c.mana) inDeckColors.add(c.mana);
+  }
+
+  // Bucket the pool by color once; each slot pick is a uniform sample.
+  const byColor = {W:[], U:[], B:[], R:[], G:[]};
+  for (const id of pool) {
+    const c = CARDS[id];
+    if (c && c.color && byColor[c.color]) byColor[c.color].push(id);
+  }
+
+  const out = [];
+  const used = new Set();
+  // Color table starts as all 5; we drop off-colors as they appear in earlier slots.
+  let colorTable = COLORS.slice();
+
+  for (let slot = 0; slot < PACK_SIZE; slot++) {
+    // If somehow the color table was emptied (shouldn't happen with 5 colors
+    // and 3 slots), fall back to the full color list.
+    if (colorTable.length === 0) colorTable = COLORS.slice();
+
+    // Roll a color uniformly from the current table.
+    const color = colorTable[Math.floor(Math.random() * colorTable.length)];
+
+    // Pick a card of that color, avoiding duplicates already in the pack.
+    // weightedPick returns null when no candidate has positive weight; in
+    // that case we fall through to "any unused card with positive weight"
+    // from the full pool. This matters for the modal-stress-test config
+    // where most cards have weight 0 — color-rolled slots whose color has
+    // no positive-weight cards would otherwise emit nothing.
+    const sub = byColor[color] || [];
+    const candidates = sub.filter(id => !used.has(id));
+    let id = candidates.length > 0 ? weightedPick(candidates) : null;
+    if (!id) {
+      const anyUnused = pool.filter(id => !used.has(id) && weightOf(id) > 0);
+      if (anyUnused.length === 0) break;
+      id = weightedPick(anyUnused);
+      if (!id) break;
+    }
+    used.add(id);
+    out.push(id);
+
+    // If this color is OFF-deck, drop it from the table for future slots.
+    // In-deck colors stay on the table and can repeat — that's how mono-/
+    // committed-color drafters get rewarded with concentrated packs.
+    if (!inDeckColors.has(color)) {
+      colorTable = colorTable.filter(c => c !== color);
+    }
+  }
+
+  return out;
+}
+
+function getPlayerPack() { return state ? state.currentPack.slice() : []; }
+function getProgress() {
+  if (!state) return {picked:0, total:TOTAL_PICKS};
+  // In Desert Cube the player picks the full deck (40 cards including lands)
+  // in a single draft phase; in classic they pick only the 23 spells.
+  const total = state.mode === 'desertCube' ? TOTAL_DECK_SIZE : TOTAL_PICKS;
+  return {picked: state.youPicks.length, total};
+}
+function isComplete()    { return state ? state.complete : false; }
+
+function pickPlayer(tplId) {
+  if (!state || state.complete) return;
+  if (!state.currentPack.includes(tplId)) return;
+  // Log the pick before mutating state — capture the pack as it was offered.
+  PICKLOG.logPick(tplId, state.currentPack);
+  state.youPicks.push(tplId);
+  // Pick limit varies by mode: classic ends after 23 spell picks (lands are
+  // auto-allocated downstream); desertCube ends after a full 40-card deck
+  // (lands picked alongside spells from the packs).
+  const limit = state.mode === 'desertCube' ? TOTAL_DECK_SIZE : TOTAL_PICKS;
+  if (state.youPicks.length >= limit) {
+    state.complete = true;
+    state.currentPack = [];
+    return;
+  }
+  state.currentPack = rollPackForMode(DRAFT_POOL, state.youPicks, state.mode);
+}
+
+// Count colored mana symbols across a card list. Each pip = 1. In Desert
+// Cube mode, basic lands also signal color intent (a Plains contributes a
+// "W pip"), so pack rolling and downstream UI treat early land picks as
+// color commitment. Classic ignores lands (cards have no cost, so they
+// contribute nothing — same behavior as before).
+function countPips(tplIds) {
+  const pips = {W:0, U:0, B:0, R:0, G:0};
+  for (const id of tplIds) {
+    const c = CARDS[id];
+    if (!c) continue;
+    if (c.cost) {
+      for (const k of COLORS) pips[k] += (c.cost[k] || 0);
+    } else if (c.type === 'Land' && c.mana && pips[c.mana] !== undefined) {
+      pips[c.mana] += 1;
+    }
+  }
+  return pips;
+}
+
+// Allocate TOTAL_LANDS basic lands proportional to colored pips.
+// Largest-remainder method to handle rounding cleanly.
+function allocLands(pips) {
+  const totalPips = COLORS.reduce((s, k) => s + pips[k], 0);
+  if (totalPips === 0) {
+    // Edge case: no colored pips. Default to all forests.
+    return Array(TOTAL_LANDS).fill('forest');
+  }
+  const exact = {};
+  const floor = {};
+  let allocated = 0;
+  for (const k of COLORS) {
+    exact[k] = (pips[k] / totalPips) * TOTAL_LANDS;
+    floor[k] = Math.floor(exact[k]);
+    allocated += floor[k];
+  }
+  // Distribute remaining lands by largest fractional remainder.
+  let remaining = TOTAL_LANDS - allocated;
+  const remainders = COLORS
+    .map(k => ({ k, frac: exact[k] - floor[k], pips: pips[k] }))
+    .sort((a, b) => (b.frac - a.frac) || (b.pips - a.pips));
+  for (let i = 0; i < remaining; i++) {
+    floor[remainders[i % remainders.length].k]++;
+  }
+  // Build list.
+  const out = [];
+  for (const k of COLORS) {
+    for (let i = 0; i < floor[k]; i++) out.push(COLOR_TO_LAND[k]);
+  }
+  return out;
+}
+
+function getPlayerDeck() {
+  if (!state) return null;
+  const pips = countPips(state.youPicks);
+  const colors = summarizeColors(pips);
+  // Finalize the picklog entry for this draft. Idempotent — if called
+  // multiple times only the first finishes (currentDraft is null after).
+  PICKLOG.finishDraft(colors);
+  // Classic mode: 23 spell picks + 17 auto-allocated lands (proportional to
+  // colored pips). Desert Cube: the youPicks list already includes lands
+  // since the player drafted them directly — no extra allocation.
+  const cards = state.mode === 'desertCube'
+    ? state.youPicks.slice()
+    : [...state.youPicks, ...allocLands(pips)];
+  return {
+    cards,
+    colors,
+    picks: state.youPicks.slice(),
+  };
+}
+
+function summarizeColors(pips) {
+  return COLORS.filter(k => pips[k] > 0);
+}
+
+return {
+  startDraft, getPlayerPack, getProgress, pickPlayer, isComplete,
+  getPlayerDeck, buildOpponentDeck,
+  // Heuristic card picker. Exposed for the self-play harness (heuristic-drafted
+  // player mode) and any other consumer that wants to drive a programmatic
+  // draft with the same scorer opp uses.
+  pickFromPack,
+  // Roll a fresh pack against the standard draft pool, biased toward the
+  // colors implied by `picksSoFar` (a list of tplIds, typically the player's
+  // current deck minus lands). Used by RUN for the Transform reward.
+  rollTransformPack: (picksSoFar) => rollPack(DRAFT_POOL, picksSoFar || []),
+  // Constructed deck registry — read-only access for UI (map tooltips need
+  // deck names) and map generation (needs the ID list to pick a deck).
+  getConstructedDeck,
+  getConstructedDeckIds: () => Object.keys(CONSTRUCTED_DECKS),
+  // for debugging:
+  _state: () => state,
+};
+})();
