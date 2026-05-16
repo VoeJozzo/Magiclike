@@ -6,7 +6,7 @@
     "B": 1,
     "C": 1
   },
-  "art": "🗡",
+  "art": "cards/doomBlade/art.png",
   "text": "Destroy target non-Black creature.",
   "effects": [
     {

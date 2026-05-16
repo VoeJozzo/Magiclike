@@ -9,7 +9,7 @@
   },
   "power": 4,
   "toughness": 4,
-  "art": "🦬",
+  "art": "cards/apexElder/art.png",
   "keywords": [
     "trample"
   ],

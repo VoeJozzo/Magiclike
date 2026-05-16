@@ -9,7 +9,7 @@
   },
   "power": 4,
   "toughness": 3,
-  "art": "🩸",
+  "art": "cards/bloodKnight/art.png",
   "text": "First strike, Trample",
   "keywords": [
     "firstStrike",

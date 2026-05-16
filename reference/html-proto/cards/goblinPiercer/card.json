@@ -8,7 +8,7 @@
   },
   "power": 1,
   "toughness": 1,
-  "art": "🏹",
+  "art": "cards/goblinPiercer/art.png",
   "text": "When this attacks, deal 1 damage to target opponent.",
   "triggers": [
     {

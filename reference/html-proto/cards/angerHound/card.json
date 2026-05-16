@@ -9,7 +9,7 @@
   },
   "power": 2,
   "toughness": 1,
-  "art": "🐕",
+  "art": "cards/angerHound/art.png",
   "text": "Whenever you cast a spell, this gets +1/+0 EOT.",
   "triggers": [
     {

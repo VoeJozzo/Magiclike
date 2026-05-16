@@ -6,7 +6,7 @@
     "G": 1,
     "C": 2
   },
-  "art": "🌱",
+  "art": "cards/vinestrangle/art.png",
   "text": "Vine Strangle deals 5 damage to target creature with flying.",
   "effects": [
     {

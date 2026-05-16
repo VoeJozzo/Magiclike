@@ -9,7 +9,7 @@
   },
   "power": 2,
   "toughness": 1,
-  "art": "🤺",
+  "art": "cards/duelist/art.png",
   "text": "First strike",
   "keywords": [
     "firstStrike"
