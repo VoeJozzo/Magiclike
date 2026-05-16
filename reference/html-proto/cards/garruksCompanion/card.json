@@ -1,0 +1,21 @@
+{
+  "tplId": "garruksCompanion",
+  "name": "Garruk's Companion",
+  "type": "Creature",
+  "sub": "Beast",
+  "cost": {
+    "G": 1,
+    "C": 1
+  },
+  "power": 3,
+  "toughness": 2,
+  "art": "🐺",
+  "keywords": [
+    "trample"
+  ],
+  "text": "Trample.",
+  "color": "G",
+  "colors": [
+    "G"
+  ]
+}

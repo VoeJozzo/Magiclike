@@ -1,0 +1,35 @@
+{
+  "tplId": "sageOfTheWilds",
+  "name": "Sage of the Wilds",
+  "type": "Creature",
+  "sub": "Elf Druid",
+  "cost": {
+    "G": 1,
+    "C": 2
+  },
+  "power": 2,
+  "toughness": 3,
+  "art": "🦌",
+  "text": "T: Untap target creature you control.",
+  "abilities": [
+    {
+      "cost": {
+        "tap": true
+      },
+      "effects": [
+        {
+          "kind": "untap",
+          "target": "creature",
+          "filter": {
+            "controller": "self",
+            "tapped": true
+          }
+        }
+      ]
+    }
+  ],
+  "color": "G",
+  "colors": [
+    "G"
+  ]
+}

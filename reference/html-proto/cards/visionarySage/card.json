@@ -1,0 +1,31 @@
+{
+  "tplId": "visionarySage",
+  "name": "Visionary Sage",
+  "type": "Creature",
+  "sub": "Human Wizard",
+  "cost": {
+    "U": 1,
+    "C": 2
+  },
+  "power": 2,
+  "toughness": 2,
+  "art": "👴",
+  "text": "When this enters the battlefield, draw a card.",
+  "triggers": [
+    {
+      "event": "cardEntersBattlefield",
+      "condId": "thisEnters",
+      "text": "When ~ enters, draw a card.",
+      "effects": [
+        {
+          "kind": "draw",
+          "amount": 1
+        }
+      ]
+    }
+  ],
+  "color": "U",
+  "colors": [
+    "U"
+  ]
+}

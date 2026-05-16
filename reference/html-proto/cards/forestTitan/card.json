@@ -1,0 +1,21 @@
+{
+  "tplId": "forestTitan",
+  "name": "Forest Titan",
+  "type": "Creature",
+  "sub": "Giant",
+  "cost": {
+    "G": 2,
+    "C": 3
+  },
+  "power": 5,
+  "toughness": 5,
+  "art": "👹",
+  "text": "Trample",
+  "keywords": [
+    "trample"
+  ],
+  "color": "G",
+  "colors": [
+    "G"
+  ]
+}

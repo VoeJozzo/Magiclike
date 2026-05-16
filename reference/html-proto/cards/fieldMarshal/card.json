@@ -1,0 +1,51 @@
+{
+  "tplId": "fieldMarshal",
+  "name": "Field Marshal",
+  "type": "Creature",
+  "sub": "Human Soldier",
+  "cost": {
+    "W": 2,
+    "C": 1
+  },
+  "power": 2,
+  "toughness": 2,
+  "art": "cards/fieldMarshal/art.png",
+  "keywords": [
+    "vigilance"
+  ],
+  "text": "Vigilance. Other Soldiers you control get +1/+1 and have vigilance. Whenever a Soldier you control attacks, you gain 1 life.",
+  "staticBuffs": [
+    {
+      "filter": {
+        "controller": "self"
+      },
+      "subtype": "Soldier",
+      "power": 1,
+      "toughness": 1,
+      "keywords": [
+        "vigilance"
+      ]
+    }
+  ],
+  "triggers": [
+    {
+      "event": "attacks",
+      "condId": "creatureYouAttacksOfSubtype",
+      "params": {
+        "sub": "Soldier"
+      },
+      "text": "A Soldier attacked — you gain 1 life.",
+      "effects": [
+        {
+          "kind": "gainLife",
+          "target": "self",
+          "amount": 1
+        }
+      ]
+    }
+  ],
+  "color": "W",
+  "colors": [
+    "W"
+  ]
+}

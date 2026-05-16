@@ -29,6 +29,10 @@ const CATEGORY_A = [
   'choice_prompts_test.js',
   // Locks in card-text output after the card-text.js extraction (v1.0.134).
   'card_text_test.js',
+  'art_ladder_test.js',
+  'draft_pool_lazy_test.js',
+  'boon_art_derives_from_card_test.js',
+  'tplid_renames_test.js',
 ];
 
 const TESTS_DIR = __dirname;

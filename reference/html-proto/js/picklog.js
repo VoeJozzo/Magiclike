@@ -28,6 +28,19 @@ function ensureLoaded() {
       data = { schemaVersion: SCHEMA_VERSION, drafts: [] };
       return;
     }
+    // Apply tplId renames inline (no schema bump -- analytics has no
+    // migration framework, and bumping schemaVersion would wipe history).
+    // renameTplId is defined at module scope by run.js (loaded before
+    // picklog.js — see magiclike_engine.html script order); a future
+    // reorder of the script list would break this call. It's a no-op
+    // for ids not in the rename map, so it's safe to run every load.
+    for (const draft of blob.drafts) {
+      if (!Array.isArray(draft.picks)) continue;
+      for (const pick of draft.picks) {
+        if (pick.picked) pick.picked = renameTplId(pick.picked);
+        if (Array.isArray(pick.offered)) pick.offered = pick.offered.map(renameTplId);
+      }
+    }
     data = blob;
   } catch (e) {
     console.warn('Picklog load failed; resetting:', e);

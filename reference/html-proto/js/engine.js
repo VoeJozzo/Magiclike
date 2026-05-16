@@ -61,16 +61,6 @@ const MERCURIAL_TRIGGER_POOL = [
 // triggerPool, which still works via the slot-level path.
 
 
-RUN_MODIFIERS['architectsCodex'] = {
-  id: 'architectsCodex',
-  name: "The Architect's Codex",
-  text: "Begin your run with The Architect's Codex — a 4-mana 2/3. The first time you draw it each game, choose one of three procedurally-generated abilities (or keep the current one).",
-  art: '📜',
-  apply: () => ({
-    extras: [{ tplId: 'architectsCodex', stickers: [] }],
-  }),
-};
-
 // ENGINE — game rules, state, phase machine.
 // Public API: init, state, expectedActor, getLegalActions, executeAction,
 // subscribe, findCard, getStats.

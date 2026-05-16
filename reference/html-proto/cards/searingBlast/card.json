@@ -1,0 +1,22 @@
+{
+  "tplId": "searingBlast",
+  "name": "Searing Blast",
+  "type": "Sorcery",
+  "cost": {
+    "R": 2,
+    "C": 2
+  },
+  "art": "☄",
+  "text": "Deal 5 damage to any target.",
+  "effects": [
+    {
+      "kind": "damage",
+      "target": "any",
+      "amount": 5
+    }
+  ],
+  "color": "R",
+  "colors": [
+    "R"
+  ]
+}

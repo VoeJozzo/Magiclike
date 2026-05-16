@@ -1,0 +1,21 @@
+{
+  "tplId": "mistDjinn",
+  "name": "Mist Djinn",
+  "type": "Creature",
+  "sub": "Djinn",
+  "cost": {
+    "U": 1,
+    "C": 3
+  },
+  "power": 3,
+  "toughness": 4,
+  "art": "🌫",
+  "text": "Flying",
+  "keywords": [
+    "flying"
+  ],
+  "color": "U",
+  "colors": [
+    "U"
+  ]
+}

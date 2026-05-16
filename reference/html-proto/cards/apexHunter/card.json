@@ -1,0 +1,34 @@
+{
+  "tplId": "apexHunter",
+  "name": "Apex Hunter",
+  "type": "Creature",
+  "sub": "Beast",
+  "cost": {
+    "G": 2,
+    "C": 2
+  },
+  "power": 4,
+  "toughness": 3,
+  "art": "🐯",
+  "text": "When this enters, your strongest creature fights target opponent's creature.",
+  "triggers": [
+    {
+      "event": "cardEntersBattlefield",
+      "condId": "thisEnters",
+      "text": "When ~ enters, fight target creature.",
+      "effects": [
+        {
+          "kind": "fightTarget",
+          "target": "creature",
+          "filter": {
+            "controller": "opp"
+          }
+        }
+      ]
+    }
+  ],
+  "color": "G",
+  "colors": [
+    "G"
+  ]
+}

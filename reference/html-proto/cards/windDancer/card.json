@@ -1,0 +1,20 @@
+{
+  "tplId": "windDancer",
+  "name": "Wind Dancer",
+  "type": "Creature",
+  "sub": "Faerie",
+  "cost": {
+    "U": 1
+  },
+  "power": 1,
+  "toughness": 1,
+  "art": "🧚",
+  "text": "Flying",
+  "keywords": [
+    "flying"
+  ],
+  "color": "U",
+  "colors": [
+    "U"
+  ]
+}

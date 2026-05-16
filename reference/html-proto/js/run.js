@@ -1,17 +1,69 @@
+// PERSISTENCE — auto-saved to localStorage after state changes.
+// SAVE_VERSION bumps on schema change; MIGRATIONS walks old saves forward.
+// Hoisted out of the RUN IIFE so the test harness can exercise the
+// migration helpers directly via the EXPOSED list in tests/_setup.js.
+// save() and load() inside the IIFE still see these via outer-scope closure.
+const SAVE_KEY = 'magiclike_run_v1';
+const SAVE_VERSION = 2;
+
+// tplId renames -- old tplId -> new tplId. Persists forever (we never know
+// when a stale save will surface). Used by both the v1->v2 run-save
+// migration AND the on-load PICKLOG translation (analytics has no
+// migration framework, so picklog.js translates inline without a schema
+// bump).
+//
+// v1.0.134.16 -- four cards had tplIds that didn't match their display
+// names (legacy from earlier renames where the engine id wasn't updated).
+// Per the rename, every save and picklog entry needs the new id to look
+// up cards correctly.
+const TPLID_RENAMES = {
+  archmage: 'archmageOfVeils',
+  fireImp:  'cinderSprite',
+  zealot:   'holyZealot',
+  merfolk:  'merfolkLooter',
+};
+function renameTplId(id) { return TPLID_RENAMES[id] || id; }
+
+// keyed by from-version: (old) => newer
+const MIGRATIONS = {
+  1: (blob) => {
+    // Walk every place a tplId persists and apply the rename map.
+    // Run save shape (from save()):
+    //   blob.runState.slots[].tplId
+    //   blob.runState.slots[].stapledTpls[]
+    //   blob.runState.pendingNeowModifier  (boon id; matches a card tplId)
+    //   blob.runState.currentPack[]        (mid-draft tplIds)
+    //   blob.runState.youPicks[]           (mid-draft pick history)
+    //   blob.runState.oppDecks[]           (opp deck tplIds, when present)
+    const rs = blob.runState || {};
+    if (Array.isArray(rs.slots)) {
+      for (const slot of rs.slots) {
+        if (slot && slot.tplId) slot.tplId = renameTplId(slot.tplId);
+        if (slot && Array.isArray(slot.stapledTpls)) {
+          slot.stapledTpls = slot.stapledTpls.map(renameTplId);
+        }
+      }
+    }
+    if (rs.pendingNeowModifier) rs.pendingNeowModifier = renameTplId(rs.pendingNeowModifier);
+    if (Array.isArray(rs.currentPack)) rs.currentPack = rs.currentPack.map(renameTplId);
+    if (Array.isArray(rs.youPicks))    rs.youPicks    = rs.youPicks.map(renameTplId);
+    if (Array.isArray(rs.oppDecks)) {
+      for (const deck of rs.oppDecks) {
+        if (Array.isArray(deck)) {
+          for (let i = 0; i < deck.length; i++) deck[i] = renameTplId(deck[i]);
+        }
+      }
+    }
+    blob.version = 2;
+    return blob;
+  },
+};
+
 // RUN — owns the drafted deck across games. Public API: start, startNextGame,
 // recordResult, getStats, isActive.
 const RUN = (function() {
 
 let runState = null;
-
-// PERSISTENCE — auto-saved to localStorage after state changes.
-// SAVE_VERSION bumps on schema change; MIGRATIONS walks old saves forward.
-const SAVE_KEY = 'magiclike_run_v1';
-const SAVE_VERSION = 1;
-
-// keyed by from-version: (old) => newer
-const MIGRATIONS = {
-};
 
 function save() {
   if (!runState) return;

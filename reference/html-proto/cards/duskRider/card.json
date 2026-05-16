@@ -1,0 +1,39 @@
+{
+  "tplId": "duskRider",
+  "name": "Dusk Rider",
+  "type": "Creature",
+  "sub": "Drake",
+  "cost": {
+    "U": 1,
+    "C": 2
+  },
+  "power": 2,
+  "toughness": 2,
+  "art": "🌒",
+  "keywords": [
+    "flying"
+  ],
+  "text": "Flying. When this attacks, draw a card, then discard a card.",
+  "triggers": [
+    {
+      "event": "attacks",
+      "condId": "thisAttacks",
+      "text": "When ~ attacks, loot 1.",
+      "effects": [
+        {
+          "kind": "draw",
+          "amount": 1
+        },
+        {
+          "kind": "discard",
+          "target": "self",
+          "amount": 1
+        }
+      ]
+    }
+  ],
+  "color": "U",
+  "colors": [
+    "U"
+  ]
+}

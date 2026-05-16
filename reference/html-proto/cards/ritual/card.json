@@ -1,0 +1,22 @@
+{
+  "tplId": "ritual",
+  "name": "Dark Ritual",
+  "type": "Instant",
+  "cost": {
+    "B": 1
+  },
+  "art": "🕯",
+  "text": "Add {B}{B}{B}.",
+  "effects": [
+    {
+      "kind": "addMana",
+      "amounts": {
+        "B": 3
+      }
+    }
+  ],
+  "color": "B",
+  "colors": [
+    "B"
+  ]
+}

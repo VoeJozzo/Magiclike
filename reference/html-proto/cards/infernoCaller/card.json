@@ -1,0 +1,32 @@
+{
+  "tplId": "infernoCaller",
+  "name": "Inferno Caller",
+  "type": "Creature",
+  "sub": "Human Shaman",
+  "cost": {
+    "R": 1,
+    "C": 3
+  },
+  "power": 2,
+  "toughness": 3,
+  "art": "🔥",
+  "text": "When this attacks, deal 2 damage to any target.",
+  "triggers": [
+    {
+      "event": "attacks",
+      "condId": "thisAttacks",
+      "text": "When ~ attacks, deal 2 to any target.",
+      "effects": [
+        {
+          "kind": "damage",
+          "target": "any",
+          "amount": 2
+        }
+      ]
+    }
+  ],
+  "color": "R",
+  "colors": [
+    "R"
+  ]
+}

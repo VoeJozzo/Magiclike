@@ -1,0 +1,21 @@
+{
+  "tplId": "paladinValor",
+  "name": "Paladin of Valor",
+  "type": "Creature",
+  "sub": "Human Knight",
+  "cost": {
+    "W": 1,
+    "C": 3
+  },
+  "power": 3,
+  "toughness": 4,
+  "art": "🛡",
+  "text": "Vigilance",
+  "keywords": [
+    "vigilance"
+  ],
+  "color": "W",
+  "colors": [
+    "W"
+  ]
+}

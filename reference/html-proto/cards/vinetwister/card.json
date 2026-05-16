@@ -1,0 +1,35 @@
+{
+  "tplId": "vinetwister",
+  "name": "Vine Twister",
+  "type": "Creature",
+  "sub": "Treefolk",
+  "cost": {
+    "G": 2,
+    "C": 1
+  },
+  "power": 2,
+  "toughness": 2,
+  "art": "🌿",
+  "text": "When this enters, target creature you control gains trample as long as ~ stays in play.",
+  "triggers": [
+    {
+      "event": "cardEntersBattlefield",
+      "condId": "thisEnters",
+      "text": "When ~ enters, target creature gains trample.",
+      "effects": [
+        {
+          "kind": "grantKeyword",
+          "target": "creature",
+          "keyword": "trample",
+          "filter": {
+            "controller": "self"
+          }
+        }
+      ]
+    }
+  ],
+  "color": "G",
+  "colors": [
+    "G"
+  ]
+}
