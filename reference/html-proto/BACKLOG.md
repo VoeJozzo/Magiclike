@@ -14,10 +14,10 @@ This file is a parking lot for deferred work on the html-proto, not a session ag
 
 ## Open
 
-- **`step()` phase-handler refactor** (`engine.js:7450`) — user wants to examine the turn state machine more deeply before approving structural changes.
+- **`step()` phase-handler refactor** (`engine.js:6322`) — user wants to examine the turn state machine more deeply before approving structural changes.
 - **`engine.js` multi-file decomposition** (likely 10+ files) — agreed direction. Blocked behind the `step()` refactor because the IIFE pattern makes the migration non-trivial.
-- **`endomorphAbsorb()` modularization** (`engine.js:3053`) — revisit when the absorb logic itself changes; refactor against the new behavior rather than the current 95-line handler.
-- **Category B test port** (~24 feature/E2E tests from the prior-session bundle: Balancer, Symmetricize, Steal, Splice, Bleach, Embargo, Scarification, Stapler, Spirit Shepherd, etc.). Originals live in the transcript attachment. Port incrementally when modifying the corresponding mechanic.
+- **`endomorphAbsorb()` modularization** (`engine.js:1925`) — revisit when the absorb logic itself changes; refactor against the new behavior rather than the current 95-line handler.
+- **Per-mechanic feature tests** — when touching a mechanic non-trivially (Balancer, Symmetricize, Steal, Splice, Bleach, Embargo, Scarification, Stapler, Spirit Shepherd, etc.), write a fresh test alongside the change. The prior-session test bundle (in the transcript attachment) is a useful **reference** for "what was worth checking for X" but no longer a queue to port — the code has shifted enough that translation cost rivals fresh authoring. Model: `tests/card_text_test.js` (v1.0.136 sticker extraction).
 
 ## Considered, rejected
 
