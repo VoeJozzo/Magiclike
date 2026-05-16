@@ -6,6 +6,8 @@ Current version: `v1.0.133` (defined at `js/main.js`, `const VERSION`).
 Always update the Current Version whenever you push a change to the Dev branch. This will allow the User to verify that the current version is live on Github Pages.
 When working on the html prototype, always work on the Dev branch, in order to enable the User to live-test on Github Pages.
 
+Deferred work and rejected proposals live in `BACKLOG.md`. Read it for context when relevant, but don't open a session by attacking it — the user picks what to work on.
+
 ## File structure
 
 The codebase was a single self-contained HTML file until it crossed ~19k lines. It's now split into per-subsystem JS files loaded as plain `<script src>` tags (no ES modules, no build step). The HTML shell holds the body, CSS, and nine script tags in dependency order.
