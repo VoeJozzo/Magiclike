@@ -17,6 +17,7 @@ signal clicked
 var _name_label: Label
 var _life_label: Label
 var _mana_label: Label
+var _zones_label: Label  # Phase 4.5: hand/library/graveyard counts
 var _highlight: ColorRect
 
 # Set true to indicate this panel is a valid target during targeting mode.
@@ -29,7 +30,7 @@ var is_clickable: bool = false:
 
 
 func _ready() -> void:
-	custom_minimum_size = Vector2(280, 100)
+	custom_minimum_size = Vector2(280, 120)
 	mouse_filter = MOUSE_FILTER_PASS
 
 	# Background tint
@@ -68,6 +69,13 @@ func _ready() -> void:
 	_mana_label.add_theme_color_override("font_color", Color(0.7, 0.85, 1))
 	v.add_child(_mana_label)
 
+	# Phase 4.5: hand / library / graveyard counts. Library is the critical
+	# one — the count tells you how close you are to decking out.
+	_zones_label = Label.new()
+	_zones_label.add_theme_font_size_override("font_size", 12)
+	_zones_label.add_theme_color_override("font_color", Color(0.65, 0.65, 0.75))
+	v.add_child(_zones_label)
+
 
 func update_from_player(player: Player) -> void:
 	if _name_label == null:
@@ -78,6 +86,14 @@ func update_from_player(player: Player) -> void:
 		_mana_label.text = "Mana: (none)"
 	else:
 		_mana_label.text = "Mana: %s" % player.mana.to_string_short()
+	# Hand / library / graveyard counts. Library prefixed with a warning glyph
+	# below 5 cards so the player can see they're decking out before it
+	# happens.
+	var lib_size: int = player.library.size()
+	var lib_marker: String = "" if lib_size > 5 else "⚠ "
+	_zones_label.text = "Hand: %d  •  %sLibrary: %d  •  GY: %d" % [
+		player.hand.size(), lib_marker, lib_size, player.graveyard.size(),
+	]
 
 
 func _gui_input(event: InputEvent) -> void:

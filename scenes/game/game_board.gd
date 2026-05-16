@@ -76,12 +76,11 @@ func _ready() -> void:
 	_build_ui()
 	_connect_engine_signals()
 	# Boot the engine and spawn initial visuals.
-	# Phase 4 demo: triggered abilities. 3 Mountains in play + Pyromaniac,
-	# Bloodlust Berserker, and a Lightning Bolt in hand. Opp has a Bear to
-	# bolt (or be bolted), plus their own Bolt for return fire on your
-	# Berserker to test the death-trigger predicate.
-	# (init_phase1 / init_phase2 / init_phase3 still work for the headless tests.)
-	RulesEngine.init_phase4()
+	# Phase 4.5: real game from a decklist (library, draw step, lose-on-decking).
+	# Both players run a balanced 40-card R/G demo deck so a full match plays
+	# out top-to-bottom. The older init_phase* demo helpers stay around for
+	# headless tests but are no longer the default launch state.
+	RulesEngine.init_phase4_5_demo()
 	_spawn_initial_visuals()
 	_refresh_ui()
 

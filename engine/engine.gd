@@ -49,6 +49,16 @@ func state() -> EngineState:
 	return _state
 
 
+# Demo libraries: each init_phase* helper seeds both players with 20 buffer
+# Mountains so the DRAW step (Phase 4.5+) doesn't deck them out on the first
+# turn-cycle. The legacy demo helpers were authored before libraries existed;
+# this keeps them runnable as smoke-test fixtures without rewriting them.
+func _seed_demo_library(player: Player, count: int = 20) -> void:
+	for i in range(count):
+		var mtn := _state.make_instance(CardDatabase.get_card("mountain"), player.key)
+		player.library.append(mtn)
+
+
 # ─── Phase 1 demo setup ────────────────────────────────────────────────────
 
 # Initialize state for the Phase 1 demo: you have 2 Mountains in play and
@@ -68,6 +78,8 @@ func init_phase1() -> void:
 	var bolt := _state.make_instance(CardDatabase.get_card("lightning_bolt"), "you")
 	_state.you.hand.append(bolt)
 
+	_seed_demo_library(_state.you)
+	_seed_demo_library(_state.opp)
 	_state.append_log("Phase 1 demo initialized: 2 Mountains, 1 Lightning Bolt in hand. Opp at 20.")
 	state_changed.emit()
 
@@ -94,6 +106,8 @@ func init_phase2() -> void:
 	var bolt := _state.make_instance(CardDatabase.get_card("lightning_bolt"), "you")
 	_state.you.hand.append(bolt)
 
+	_seed_demo_library(_state.you)
+	_seed_demo_library(_state.opp)
 	_state.append_log("Phase 2 demo: 1 Mountain in play, 3 in hand, plus Goblin Raider and Lightning Bolt. Opp at 20.")
 	state_changed.emit()
 
@@ -147,6 +161,8 @@ func init_phase3() -> void:
 	# Opp: Giant Growth in hand for instant-response testing
 	_state.opp.hand.append(_state.make_instance(CardDatabase.get_card("giant_growth"), "opp"))
 
+	_seed_demo_library(_state.you)
+	_seed_demo_library(_state.opp)
 	_state.append_log("Phase 3 demo: you have 2 lands in play + plenty of cards in hand. Opp has 1 Forest + 2 Grizzly Bears + Giant Growth.")
 	state_changed.emit()
 
@@ -184,8 +200,100 @@ func init_phase4() -> void:
 	_state.opp.battlefield.append(bear)
 	_state.opp.hand.append(_state.make_instance(CardDatabase.get_card("lightning_bolt"), "opp"))
 
+	_seed_demo_library(_state.you)
+	_seed_demo_library(_state.opp)
 	_state.append_log("Phase 4 demo: triggered abilities. Cast Pyromaniac → ETB deals 1 to opp. Cast Bloodlust Berserker, then Bolt your own Berserker → death trigger checks 'opp lost life this turn' and fires +2 to opp.")
 	state_changed.emit()
+
+
+# ─── Phase 4.5: real-game init from decklists ──────────────────────────────
+# Replaces the hardcoded init_phase* demo helpers when running an actual game.
+# Each decklist is a Dictionary mapping card_id → count, e.g.:
+#   {"mountain": 12, "lightning_bolt": 4, "goblin_raider": 4, "grizzly_bears": 4, ...}
+# Cards are instantiated, shuffled into the player's library, and the opening
+# hand is drawn. No mulligan in 4.5a — always draws the full hand_size.
+# Active player is "you", current phase is MAIN1, priority "you".
+#
+# Caller is responsible for providing valid card_ids (CardDatabase.get_card
+# logs an error and returns null for unknown ids; those slots are skipped).
+# Phase 4.5 demo deck — a balanced two-color list playable end-to-end with
+# the cards available so far. Used by the game_board scene as the default
+# launch state. Both players get the same list (mirror match) for simplicity.
+const _PHASE4_5_DEMO_DECK := {
+	"mountain": 10,
+	"forest": 10,
+	"lightning_bolt": 4,
+	"goblin_raider": 4,
+	"grizzly_bears": 4,
+	"giant_growth": 3,
+	"pyromaniac": 3,
+	"bloodlust_berserker": 2,
+}
+
+
+# Convenience wrapper: boot a game with the Phase 4.5 demo deck on both
+# sides. Falls back gracefully if some Phase-4.5c cards aren't in CardDatabase
+# yet (skip-unknown is handled inside _populate_library).
+func init_phase4_5_demo() -> void:
+	init_game(_PHASE4_5_DEMO_DECK, _PHASE4_5_DEMO_DECK)
+
+
+func init_game(you_decklist: Dictionary, opp_decklist: Dictionary, hand_size: int = 7) -> void:
+	_state = EngineState.new()
+	_state.active_player_key = "you"
+	_state.priority_player_key = "you"
+	_state.phase_machine.current = PhaseMachine.Phase.MAIN1
+
+	_populate_library(_state.you, you_decklist)
+	_populate_library(_state.opp, opp_decklist)
+	_shuffle_library(_state.you)
+	_shuffle_library(_state.opp)
+	# Opening hands — draw without firing the empty-library loss (a sub-7-card
+	# starter shouldn't immediately end the game; the player gets a partial
+	# hand and decks out on their first real draw).
+	_draw_opening_hand(_state.you, hand_size)
+	_draw_opening_hand(_state.opp, hand_size)
+
+	_state.append_log("Game starts. You: %d-card deck. Opp: %d-card deck." % [
+		_total_count(you_decklist), _total_count(opp_decklist),
+	])
+	state_changed.emit()
+
+
+func _populate_library(player: Player, decklist: Dictionary) -> void:
+	for card_id in decklist:
+		var count: int = decklist[card_id]
+		for i in range(count):
+			var tmpl: CardResource = CardDatabase.get_card(card_id)
+			if tmpl == null:
+				continue
+			var inst := _state.make_instance(tmpl, player.key)
+			player.library.append(inst)
+
+
+# Fisher-Yates shuffle. Godot's Array.shuffle() uses the global RNG which is
+# fine for now; if we ever need seeded shuffles (e.g., for replay testing),
+# swap to a RandomNumberGenerator instance owned by EngineState.
+func _shuffle_library(player: Player) -> void:
+	player.library.shuffle()
+
+
+# Draw opening hand without triggering the deck-out loss. If the library is
+# smaller than hand_size we just draw what's there — the player has fewer
+# cards but the game still starts.
+func _draw_opening_hand(player: Player, hand_size: int) -> void:
+	var to_draw: int = min(hand_size, player.library.size())
+	for i in range(to_draw):
+		var card: CardInstance = player.library.pop_back()
+		player.hand.append(card)
+
+
+# Counts cards across a decklist Dictionary (for log lines).
+func _total_count(decklist: Dictionary) -> int:
+	var total: int = 0
+	for k in decklist:
+		total += decklist[k]
+	return total
 
 
 # ─── Action execution ──────────────────────────────────────────────────────
@@ -789,6 +897,11 @@ func _advance_phase() -> void:
 		PhaseMachine.Phase.UNTAP:
 			# Untap permanents, clear summoning sickness, reset land-per-turn.
 			_state.active_player().untap_step()
+		PhaseMachine.Phase.DRAW:
+			# Phase 4.5: active player draws one card. If their library is
+			# empty, they lose (MTG rule 704.5b — can't draw from an empty
+			# library at the moment they're required to draw).
+			_do_draw_card(_state.active_player_key)
 		PhaseMachine.Phase.COMBAT_ATTACK:
 			# Phase 3: opp's hardcoded "always attack" AI fires here on opp's turn.
 			if _state.active_player_key == "opp":
@@ -859,6 +972,30 @@ func _check_win_conditions() -> void:
 			_state.append_log("Game over — %s wins" % _state.player_by_key(_state.winner).name)
 			game_over.emit(_state.winner)
 			return
+
+
+# Phase 4.5: draw a card during the DRAW step. Called from _advance_phase
+# when the new phase is DRAW. If the player's library is empty, they lose
+# the game (MTG 704.5b). The loss is processed through the standard winner
+# pathway so _check_win_conditions and game_over signaling stay consistent.
+func _do_draw_card(player_key: String) -> void:
+	if _state.winner != "":
+		return
+	var p: Player = _state.player_by_key(player_key)
+	if p == null:
+		push_warning("_do_draw_card: unknown player_key '%s'" % player_key)
+		return
+	if p.library.is_empty():
+		# Decked. Opponent wins immediately.
+		_state.winner = _state.opponent_of(player_key)
+		_state.append_log("%s tried to draw from an empty library — %s wins!" % [
+			p.name, _state.player_by_key(_state.winner).name,
+		])
+		game_over.emit(_state.winner)
+		return
+	var card: CardInstance = p.library.pop_back()
+	p.hand.append(card)
+	_state.append_log("%s draws a card" % p.name)
 
 
 # ─── Phase 3 hardcoded opp AI ──────────────────────────────────────────────
