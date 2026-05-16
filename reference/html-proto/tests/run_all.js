@@ -21,10 +21,12 @@ const CATEGORY_A = [
   'template_isolation_test.js',
   'extracted_helpers_test.js',
   'sticker_kinds_dispatch_test.js',
-  // Authored this session to cover PR #5's test-plan items 2/3, 4, 5.
+  // Authored this session to cover PR #5's test-plan items 2/3, 4, 5
+  // plus cast-time decision prompts.
   'modal_helper_test.js',
   'trigger_generator_test.js',
   'ai_burn_lethal_test.js',
+  'choice_prompts_test.js',
 ];
 
 const TESTS_DIR = __dirname;

@@ -14,7 +14,7 @@ Node.js. No npm install needed — tests use only built-in modules.
 ## Quick start
 
 ```bash
-# Run the core suite (319 assertions, ~1 second).
+# Run the core suite (362 assertions, ~1 second).
 node tests/run_all.js
 
 # Run an individual test.
@@ -31,7 +31,7 @@ within `tests/` directly — they reference `js/` via `__dirname`.
 
 ### Core regression suite (run via `run_all.js`)
 
-319 assertions across 12 files, ~1s total. Guards engine invariants
+362 assertions across 13 files, ~1s total. Guards engine invariants
 and structural patterns that protect against silent regressions.
 
 **Ported from the prior-session bundle:**
@@ -79,6 +79,13 @@ and structural patterns that protect against silent regressions.
   multi-spell sequencing (two Shocks taking opp from 4 to 0),
   ability-based burn (tap-Acolyte for face), and no-lethal smoke
   test. Refactor protection for `getDirectBurnSources`.
+- `choice_prompts_test.js` — Symmetricize + numberChoice cast-time
+  prompts. Both are normally only reachable mid-game (Symmetricize is
+  a card; numberChoice is Archdemon's ETB), making manual testing
+  tedious. State-machine coverage: prompt shape after cast,
+  submission collapses the target's stats / stashes the number on
+  the source, slot persistence for player-side symmetricize,
+  boundary validation on numberChoice's min/max.
 
 **Not covered:** test-plan item "every modal opens and closes
 correctly" — that's DOM visibility, which can't be observed from
