@@ -1262,12 +1262,22 @@ function formatCostBraced(c) {
 // cost), and any pure-number sequence (generic mana). Unrecognized braces
 // are returned untouched so existing text like "{1.5}" or "{foo}" can't
 // break rendering.
+// Per-color glyph used as the FALLBACK rendering (no PNG art yet). The
+// five Unicode circle emoji are coincidentally the right shape and color
+// for mana symbols, so they look recognizable without shipping any image
+// files. When real PNGs land in assets/mana/, the .mana-W / .mana-U / ...
+// CSS overrides will hide the emoji via color:transparent and show the
+// art instead. C (colorless) has no canonical emoji match — keep it
+// as a letter pip until art ships.
+const MANA_GLYPH = { W: '⚪', U: '🔵', B: '⚫', R: '🔴', G: '🟢', C: 'C' };
+
 function renderManaSymbols(text) {
   if (text == null) return '';
   return String(text).replace(/\{([^}]+)\}/g, (whole, sym) => {
     const upper = sym.toUpperCase();
     if (/^[WUBRGC]$/.test(upper)) {
-      return '<span class="mana mana-' + upper + '" title="' + upper + '">' + upper + '</span>';
+      const glyph = MANA_GLYPH[upper];
+      return '<span class="mana mana-' + upper + '" title="' + upper + '">' + glyph + '</span>';
     }
     if (upper === 'T') return '<span class="mana mana-T" title="Tap">T</span>';
     if (upper === 'X') return '<span class="mana mana-X" title="X">X</span>';
