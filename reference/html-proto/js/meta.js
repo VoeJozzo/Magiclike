@@ -19,11 +19,23 @@ const DESERT_CUBE_LAND_PROB = 1 / 3;
 // Eligible draft picks: all non-land, non-special cards. Special cards are
 // Neow-only gifts curated outside the random pool. Multi-target cards
 // (multiTarget:true) are in this pool; the multi-step target picker UI
-// (v1.0.16) lets the player cast them. OPP_POOL is currently identical
-// to DRAFT_POOL — kept as a separate name since opp's deck construction
+// (v1.0.16) lets the player cast them. oppPool() is currently identical
+// to draftPool() — kept as a separate name since opp's deck construction
 // may diverge in the future (e.g., difficulty tuning, archetype seeds).
-const DRAFT_POOL = Object.keys(CARDS).filter(id => CARDS[id].type !== 'Land' && !CARDS[id].special);
-const OPP_POOL = DRAFT_POOL;
+//
+// Lazy-cached: since the card-data refactor (v1.0.134), CARDS is empty at
+// module-load time and gets populated asynchronously by loadCards(). A
+// `const DRAFT_POOL = Object.keys(CARDS).filter(...)` evaluated up here
+// would freeze the pool at the empty initial state. draftPool()/oppPool()
+// compute on first call (post-loadCards) and cache thereafter.
+let _draftPoolCache = null;
+function draftPool() {
+  if (_draftPoolCache === null) {
+    _draftPoolCache = Object.keys(CARDS).filter(id => CARDS[id].type !== 'Land' && !CARDS[id].special);
+  }
+  return _draftPoolCache;
+}
+function oppPool() { return draftPool(); }
 
 let state = null;
 
@@ -64,7 +76,7 @@ function startDraft(mode) {
     mode: mode || 'classic',
     complete: false,
   };
-  state.currentPack = rollPackForMode(DRAFT_POOL, [], state.mode);
+  state.currentPack = rollPackForMode(draftPool(), [], state.mode);
   PICKLOG.startDraft();
 }
 
@@ -205,7 +217,7 @@ function buildOpponentDeck(numStickers, numStaples, numClones, colorAffinity, co
       // engine shouldn't crash on a malformed spec.
       console.warn(`Constructed deck "${constructedId}" has ${picks.length} cards; padding to ${TOTAL_PICKS}.`);
       for (let i = picks.length; i < TOTAL_PICKS; i++) {
-        const pack = rollPack(OPP_POOL, picks);
+        const pack = rollPack(oppPool(), picks);
         if (!pack.length) break;
         picks.push(pickFromPack(pack, picks));
       }
@@ -217,7 +229,7 @@ function buildOpponentDeck(numStickers, numStaples, numClones, colorAffinity, co
     // color-commitment logic in pickFromPack: once pick 1 is of color C,
     // subsequent in-color picks get +30 and off-color picks get penalized.
     if (colorAffinity) {
-      const sameColorPool = OPP_POOL.filter(id => {
+      const sameColorPool = oppPool().filter(id => {
         const c = CARDS[id];
         return c && c.color === colorAffinity;
       });
@@ -235,7 +247,7 @@ function buildOpponentDeck(numStickers, numStaples, numClones, colorAffinity, co
     }
     // Continue with normal pack rolls for the remaining picks.
     for (let i = picks.length; i < TOTAL_PICKS; i++) {
-      const pack = rollPack(OPP_POOL, picks);
+      const pack = rollPack(oppPool(), picks);
       if (!pack.length) break;
       const chosen = pickFromPack(pack, picks);
       picks.push(chosen);
@@ -767,7 +779,7 @@ function pickPlayer(tplId) {
     state.currentPack = [];
     return;
   }
-  state.currentPack = rollPackForMode(DRAFT_POOL, state.youPicks, state.mode);
+  state.currentPack = rollPackForMode(draftPool(), state.youPicks, state.mode);
 }
 
 // Count colored mana symbols across a card list. Each pip = 1. In Desert
@@ -855,7 +867,7 @@ return {
   // Roll a fresh pack against the standard draft pool, biased toward the
   // colors implied by `picksSoFar` (a list of tplIds, typically the player's
   // current deck minus lands). Used by RUN for the Transform reward.
-  rollTransformPack: (picksSoFar) => rollPack(DRAFT_POOL, picksSoFar || []),
+  rollTransformPack: (picksSoFar) => rollPack(draftPool(), picksSoFar || []),
   // Constructed deck registry — read-only access for UI (map tooltips need
   // deck names) and map generation (needs the ID list to pick a deck).
   getConstructedDeck,

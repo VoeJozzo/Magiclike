@@ -28,6 +28,7 @@ const CATEGORY_A = [
   'ai_burn_lethal_test.js',
   'choice_prompts_test.js',
   'art_ladder_test.js',
+  'draft_pool_lazy_test.js',
 ];
 
 const TESTS_DIR = __dirname;
