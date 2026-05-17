@@ -202,7 +202,18 @@ Update `project.godot`:
 - `engine/ai/scoring.gd` — `AIScoring.card_value(template, purpose)` heuristic scoring (stats minus cost + keyword bonuses + triggered-ability bump). Exposed via `RulesEngine.card_value`. Per-effect triggered-ability scoring deferred to 5c.
 - **Deferred to 5c**: `simulate_combat(state, attacker_key, attackers, blockers) → outcome`. The deep-copy plumbing is in place — the simulator itself is the largest single piece in the AI port (~200 lines) and is best done alongside the rest of the AI.
 
-**Phase 5c — AI.decide port.** Port `AI.decide(state, who) → action`. Single entry point, reads engine state, returns one action descriptor. Combat-sim subroutine for declaring attackers/blockers. Lethal detection. Snapshots state via `Resource.duplicate(true)` and explicit `duplicate()` overrides on `Player` / `CardInstance`. Threading deferred until profiling shows it's needed. Verification: AI plays a complete game against itself without crashing; spot-check decision quality via log lines.
+**Phase 5c — AI.decide port.** ✓ DONE.
+- `engine/ai/ai.gd::AI.decide(state, player_key) -> Dictionary` — top-level dispatcher matching JS prototype's `AI.decide(state, who)` shape. Decision order: trigger target pick → block declaration (if defender) → attack declaration (if active) → instant-speed response → main phase actions → pass.
+- `engine/ai/combat.gd` — `simulate_combat` (uses `EngineState.duplicate_deep` from 5b), `decide_attackers` (lethal check + per-attacker positive-trade heuristic), `decide_blockers` (greedy "minimise damage" with flying/menace/deathtouch awareness via `_score_block_pair`).
+- `engine/ai/burn.gd` — `face_damage_in_hand` and `has_lethal` for direct-damage lethal recognition.
+- `engine/ai/scoring.gd` (extends 5b) — used by AI for spell-target scoring and trigger-target priority.
+- `_settle_state` in `engine.gd` rewritten: drives opp via `AI.decide` instead of the Phase-3 hardcoded stubs. Breaks when `_current_actor()` returns "you" — i.e., hands control to the UI when the human needs to decide. Phase-3 `_opp_*` helpers deleted (112 lines).
+- Caster-priority bug fix: `_do_cast_spell` now sets `priority_player_key = controller.key` (caster retains, per MTG 117.1c) instead of always-active-player. Previously broke opp's instant-speed responses.
+- New showcase deck `_PHASE5_SHOWCASE_DECK` + `init_phase5_demo()` — multi-color 40-card list with one of each Phase 4.5c/5a card so manual playtest sees everything. `game_board` boots into this by default.
+- Tests pass post-rewire: Phase 2/3 tests updated to expect the new AI-driven flow (Phase 2's turn-cycle now needs more priority passes; Phase 3's opp no longer "holds" priority after casting in response).
+- `tests/test_phase5c` covers: AI passes when idle; AI picks trigger target; `simulate_combat` reports correct 2/2-vs-2/2 mutual death; **AI vs AI plays a complete game** (recent runs hit a winner in ~400 actions).
+
+**Phase 6 — Card pool expansion.** Port `AI.decide(state, who) → action`. Single entry point, reads engine state, returns one action descriptor. Combat-sim subroutine for declaring attackers/blockers. Lethal detection. Snapshots state via `Resource.duplicate(true)` and explicit `duplicate()` overrides on `Player` / `CardInstance`. Threading deferred until profiling shows it's needed. Verification: AI plays a complete game against itself without crashing; spot-check decision quality via log lines.
 
 **Phase 6 — Draft and roguelike meta.** Port `DRAFT` (23-pick draft, opponent deck simulation) and `RUN` (sticker system, weighted reward rolls, save/load). Use Godot's `FileAccess` + JSON in lieu of localStorage. Schema migrations from JS port directly. New scenes: `draft_screen.tscn`, `run_map.tscn`. Verification: draft a deck, complete a 3-game run, save mid-run and reload.
 
@@ -236,6 +247,7 @@ Update `project.godot`:
 | 4.5c | Healing Salve gains 3 life; Counterspell removes target Bolt from stack into opp's graveyard | Cast Counterspell on opp's Lightning Bolt during their cast |
 | 5a | One assertion per keyword: defender, haste, vigilance, flying/reach, unblockable, first_strike, lifelink, deathtouch, trample, indestructible, hexproof | Attack with Serra Angel (flying + vigilance, doesn't tap); Bolt opponent's hexproof creature fails |
 | 5b | get_legal_actions enumerates the right action set; card_value orders Serra > Bears > Walking Wall; duplicate_deep separates copy from original | Engine-only — no manual demo |
+| 5c | AI passes when idle; picks trigger target; simulate_combat reports correct trade; AI vs AI plays a full game to a winner | Boot `init_phase5_demo` and watch opp play itself — taps lands, casts creatures, attacks, counters your spells |
 | 5 | AI plays itself a full game without crash | Sit and watch AI vs AI; spot-check no obviously bad attacks |
 | 6 | Draft 23 picks, complete 3-game run, save/load mid-run | Full roguelike loop end-to-end |
 

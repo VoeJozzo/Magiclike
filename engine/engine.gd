@@ -231,11 +231,48 @@ const _PHASE4_5_DEMO_DECK := {
 }
 
 
+# Phase 5c showcase deck: a multi-color 40-card list that includes one of
+# each Phase 4.5c / 5a addition so a manual playtest can see Counterspell,
+# Healing Salve, and the keyword zoo (Wind Drake, Serra Angel, Vampire
+# Nighthawk, Trained Armodon, Giant Spider, Raging Goblin, Walking Wall)
+# all in one session. Mana fixing is intentionally generous (lots of basics).
+const _PHASE5_SHOWCASE_DECK := {
+	# Lands — 18 across 5 colors, biased toward what the colored spells need
+	"mountain": 4, "forest": 4, "island": 4, "plains": 3, "swamp": 3,
+	# Phase 4.5c instants
+	"counterspell": 2,
+	"healing_salve": 2,
+	# Phase 5a keyword creatures
+	"wind_drake": 2,
+	"giant_spider": 1,
+	"serra_angel": 1,
+	"trained_armodon": 1,
+	"vampire_nighthawk": 1,
+	"raging_goblin": 2,
+	"walking_wall": 1,
+	# Phase 4 trigger creatures (already exercised by 4.5b)
+	"pyromaniac": 1,
+	"bloodlust_berserker": 1,
+	# Vanilla curve + utility
+	"lightning_bolt": 2,
+	"giant_growth": 2,
+	"grizzly_bears": 1,
+	"bear_cub": 1,
+}
+
+
 # Convenience wrapper: boot a game with the Phase 4.5 demo deck on both
 # sides. Falls back gracefully if some Phase-4.5c cards aren't in CardDatabase
 # yet (skip-unknown is handled inside _populate_library).
 func init_phase4_5_demo() -> void:
 	init_game(_PHASE4_5_DEMO_DECK, _PHASE4_5_DEMO_DECK)
+
+
+# Phase 5c showcase: real AI vs AI with a multi-color deck variety so a
+# playtest can see Counterspell, Healing Salve, and every Phase 5a keyword
+# creature in one session.
+func init_phase5_demo() -> void:
+	init_game(_PHASE5_SHOWCASE_DECK, _PHASE5_SHOWCASE_DECK)
 
 
 func init_game(you_decklist: Dictionary, opp_decklist: Dictionary, hand_size: int = 7) -> void:
@@ -488,34 +525,82 @@ func _settle_state() -> void:
 	if _settling:
 		return  # avoid recursion if a sub-action triggers state changes
 	_settling = true
-	var safety: int = 50  # cap iterations to detect infinite loops
+	# Phase 5c: AI drives opp's turn AND opp's block declarations on your
+	# turn. The loop stops when the "current actor" becomes "you" — meaning
+	# the human player needs to decide something. Safety cap is generous
+	# because AI may make many small actions per opp-turn (play land, tap
+	# mana, cast spell, attack, pass) before yielding.
+	var safety: int = 200
 	while _state.winner == "" and safety > 0:
 		safety -= 1
-		# On player's turn, stop auto-cycling — player needs to act.
-		if _state.active_player_key != "opp":
+		var actor: String = _current_actor()
+		if actor == "you":
 			break
-		# Phase 3: stop at opp's COMBAT_BLOCK so the player can declare blockers
-		# AND cast combat tricks (Giant Growth on their blocker). Skip if
-		# there are no attackers — empty COMBAT_BLOCK has nothing to do.
-		# We also auto-pass opp's priority before stopping so the player has
-		# priority to cast spells (otherwise priority sits on the active
-		# player and the cast attempt is rejected by _legal_cast_spell).
-		if _state.phase_machine.current == PhaseMachine.Phase.COMBAT_BLOCK \
-				and not _state.attackers.is_empty():
-			if _state.priority_player_key == "opp":
-				_state.priority_passed["opp"] = true
-				_state.priority_player_key = "you"
-			break
-		# Otherwise auto-advance opp's turn (no real AI yet for Phase 3).
-		if not _state.stack.is_empty():
-			_resolve_top_of_stack()
-			_state.priority_player_key = _state.active_player_key
-			_reset_priority_passes()
-		else:
-			_advance_phase()
+		# Actor is "opp" — ask the AI for the next action and execute it.
+		# AI.decide is pure (deep-copies for sim), so it's safe to call
+		# directly without re-entering settle.
+		var action: Dictionary = AI.decide(_state, "opp")
+		if action.is_empty():
+			# AI couldn't decide — pass priority to keep things moving.
+			action = Action.make_pass_priority()
+		# Execute the action through the same kind-dispatch as
+		# execute_action, but without re-entering settle (we're already in
+		# it; the _settling guard would skip the inner call anyway).
+		_dispatch_action(action)
 	if safety == 0:
-		push_warning("_settle_state: hit iteration cap; possible infinite loop in phase machine")
+		push_warning("_settle_state: hit iteration cap; possible infinite loop or AI livelock")
 	_settling = false
+
+
+# Phase 5c: who's "up next" given the engine state? Used by _settle_state to
+# decide whether to keep auto-running (opp) or hand control back to the UI.
+#
+# Order of precedence:
+#   1. Trigger target pick is in flight → controller of the pending trigger
+#   2. Defender's COMBAT_BLOCK with attackers declared → defender
+#   3. Otherwise → whoever holds priority
+func _current_actor() -> String:
+	if not _state.awaiting_target_for_trigger.is_empty():
+		return _state.awaiting_target_for_trigger.get("controller_key", _state.priority_player_key)
+	# COMBAT_BLOCK special: blocks are declared by the defender before
+	# priority opens. If we're in that phase with attackers and the defender
+	# hasn't finished declaring, the defender acts next.
+	if _state.phase_machine.current == PhaseMachine.Phase.COMBAT_BLOCK \
+			and not _state.attackers.is_empty():
+		var defender: String = _state.opponent_of(_state.active_player_key)
+		# Only defer to defender if they have legal blockers AND haven't yet
+		# yielded by passing priority. If priority is already the attacker's,
+		# block declaration is complete.
+		if _state.priority_player_key == defender:
+			return defender
+	return _state.priority_player_key
+
+
+# Dispatch an action by kind without going through execute_action (which
+# would re-enter settle and noop via the guard). This is the same match
+# block as execute_action's body, factored so settle can reuse it.
+func _dispatch_action(action: Dictionary) -> bool:
+	if not is_legal_action(action):
+		_state.append_log("AI illegal action: %s" % action)
+		return false
+	var kind: String = action.get("kind", "")
+	match kind:
+		Action.KIND_ACTIVATE_ABILITY:
+			return _do_activate_ability(action)
+		Action.KIND_PLAY_LAND:
+			return _do_play_land(action)
+		Action.KIND_CAST_SPELL:
+			return _do_cast_spell(action)
+		Action.KIND_DECLARE_ATTACKER:
+			return _do_declare_attacker(action)
+		Action.KIND_DECLARE_BLOCKER:
+			return _do_declare_blocker(action)
+		Action.KIND_PASS_PRIORITY:
+			return _do_pass_priority(action)
+		Action.KIND_PICK_TRIGGER_TARGET:
+			return _do_pick_trigger_target(action)
+	push_warning("_dispatch_action: unknown kind '%s'" % kind)
+	return false
 
 
 # ─── Activate ability (Phase 1: only mana abilities — taps a land for mana) ─
@@ -678,8 +763,11 @@ func _do_cast_spell(action: Dictionary) -> bool:
 		card.name(),
 		"" if targets.is_empty() else " targeting " + _describe_targets(targets),
 	])
-	# Casting a spell resets priority to the active player and clears passes.
-	_state.priority_player_key = _state.active_player_key
+	# Casting a spell resets the priority round. Per MTG 117.1c, the player
+	# who took the action receives priority — so the caster retains it.
+	# (Previously this set priority to the active player, which broke opp's
+	# instant-speed responses on the active player's turn.)
+	_state.priority_player_key = controller.key
 	_reset_priority_passes()
 
 	# Hold the CardInstance so we can graveyard it on resolution. We tuck it
@@ -705,16 +793,11 @@ func _do_pass_priority(_action: Dictionary) -> bool:
 			# Nobody had anything to do; advance phase.
 			_advance_phase()
 	else:
-		# Hand priority to the other player.
+		# Hand priority to the other player. Phase 5c: when priority lands
+		# on opp, the AI driver in _settle_state will see actor=="opp" and
+		# pull AI.decide on the next iteration. We no longer recurse here
+		# into a Phase-3 stub.
 		_state.priority_player_key = _state.opponent_of(_state.priority_player_key)
-		# Phase 3: when priority lands on opp, give them a chance to respond
-		# (cast Giant Growth in response to Lightning Bolt). If they do nothing,
-		# auto-pass so the player isn't stuck waiting.
-		if _state.priority_player_key == "opp":
-			if _opp_tries_to_respond_phase3():
-				return true  # opp cast a spell; they retain priority
-			_state.append_log("Opponent passes priority (stub)")
-			return _do_pass_priority({})
 	return true
 
 
@@ -1194,13 +1277,13 @@ func _advance_phase() -> void:
 			# library at the moment they're required to draw).
 			_do_draw_card(_state.active_player_key)
 		PhaseMachine.Phase.COMBAT_ATTACK:
-			# Phase 3: opp's hardcoded "always attack" AI fires here on opp's turn.
-			if _state.active_player_key == "opp":
-				_opp_auto_declare_attackers_phase3()
+			# Phase 5c: attack declarations come from AI.decide via _settle_state
+			# on opp's turn. No phase-entry hook needed.
+			pass
 		PhaseMachine.Phase.COMBAT_BLOCK:
-			# Phase 3: opp's hardcoded "always block" AI fires here on player's turn.
-			if _state.active_player_key == "you":
-				_opp_auto_declare_blockers_phase3()
+			# Phase 5c: block declarations come from AI.decide via _settle_state
+			# when opp is defender. No phase-entry hook needed.
+			pass
 		PhaseMachine.Phase.COMBAT_DAMAGE:
 			_resolve_combat_damage()
 		PhaseMachine.Phase.CLEANUP:
@@ -1321,120 +1404,6 @@ func _do_draw_card(player_key: String) -> void:
 	var card: CardInstance = p.library.pop_back()
 	p.hand.append(card)
 	_state.append_log("%s draws a card" % p.name)
-
-
-# ─── Phase 3 hardcoded opp AI ──────────────────────────────────────────────
-# These three helpers stand in for a real AI module (Phase 5). They cover
-# only what the Phase 3 demo needs: opp auto-attacks on their turn, auto-
-# blocks on yours, and casts Giant Growth in response to a Lightning Bolt
-# targeting one of their creatures. Phase 5 will replace these with the
-# proper heuristic AI ported from the JS prototype.
-
-func _opp_auto_declare_attackers_phase3() -> void:
-	# Phase 3 simplification: attack with all untapped creatures EXCEPT
-	# leave one back for defense if there are 2+ available. Pure "always
-	# attack" leaves opp tapped and unable to block on your turn, which
-	# (per Joe's playtest feedback) results in an unblockable game.
-	var available: Array = []
-	for c in _state.opp.battlefield:
-		if not (c.template is CreatureResource):
-			continue
-		if c.tapped or c.summoning_sick:
-			continue
-		available.append(c)
-	var to_attack: Array = available.duplicate()
-	if available.size() >= 2:
-		to_attack.pop_back()  # keep one creature untapped for blocking next turn
-	for c in to_attack:
-		c.tapped = true
-		c.attacking = true
-		_state.attackers.append(c.instance_id)
-		_state.append_log("%s attacks (auto)" % c.name())
-
-
-func _opp_auto_declare_blockers_phase3() -> void:
-	# Pair each untapped opp creature with one attacker (one-to-one). Excess
-	# attackers go unblocked; excess blockers stay home.
-	var available_attackers := _state.attackers.duplicate()
-	for c in _state.opp.battlefield:
-		if available_attackers.is_empty():
-			break
-		if not (c.template is CreatureResource):
-			continue
-		if c.tapped or c.summoning_sick:
-			continue
-		var attacker_iid: int = available_attackers.pop_front()
-		_state.blockers[c.instance_id] = attacker_iid
-		c.blocking_iid = attacker_iid
-		var atk_found = _state.find_instance(attacker_iid)
-		if atk_found != null and atk_found.card != null:
-			_state.append_log("%s blocks %s (auto)" % [c.name(), atk_found.card.name()])
-
-
-# Returns true if opp cast Giant Growth in response (in which case caller
-# should NOT also auto-pass priority for opp). Returns false if opp had
-# nothing to do — caller should auto-pass.
-func _opp_tries_to_respond_phase3() -> bool:
-	if _state.stack.is_empty():
-		return false
-	var top = _state.stack.top()
-	if top.controller_key != "you":
-		return false  # not responding to player
-	# Phase 3 only responds to Lightning Bolt
-	var top_iid: int = top.source_iid
-	var top_card: CardInstance = _stack_held_cards.get(top_iid)
-	if top_card == null or top_card.template.card_id != "lightning_bolt":
-		return false
-	var top_targets: Array = top.get("targets", [])
-	if top_targets.is_empty():
-		return false
-	var t: Dictionary = top_targets[0]
-	if t.get("kind", "") != "creature":
-		return false
-	# Is the targeted creature one of opp's? (No point growing player's stuff.)
-	var target_iid: int = t.get("iid", -1)
-	var target_found = _state.find_instance(target_iid)
-	if target_found == null or target_found.card == null:
-		return false
-	if target_found.controller.key != "opp":
-		return false
-	# Find Giant Growth in opp's hand
-	var giant_growth: CardInstance = null
-	for c in _state.opp.hand:
-		if c.template.card_id == "giant_growth":
-			giant_growth = c
-			break
-	if giant_growth == null:
-		return false
-	# Pay G mana — tap an untapped Forest if needed
-	var cost: Dictionary = giant_growth.template.mana_cost
-	if not _state.opp.mana.can_pay(cost):
-		var forest: CardInstance = null
-		for c in _state.opp.battlefield:
-			if c.template is LandResource and c.template.mana_produced.has("G") and not c.tapped:
-				forest = c
-				break
-		if forest == null:
-			return false
-		forest.tapped = true
-		_state.opp.mana.add("G", 1)
-		_state.append_log("Opponent taps %s for G" % forest.name())
-	if not _state.opp.mana.pay(cost):
-		return false
-	# Cast Giant Growth on the target
-	_state.opp.hand.erase(giant_growth)
-	_state.stack.push({
-		"kind": "spell",
-		"source_iid": giant_growth.instance_id,
-		"controller_key": "opp",
-		"targets": [{"kind": "creature", "iid": target_iid}],
-	})
-	_stack_held_cards[giant_growth.instance_id] = giant_growth
-	_state.append_log("Opponent casts Giant Growth targeting %s (in response)" % target_found.card.name())
-	# Caster keeps priority after casting
-	_state.priority_player_key = "opp"
-	_reset_priority_passes()
-	return true
 
 
 # ─── Phase 4: triggered abilities ──────────────────────────────────────────

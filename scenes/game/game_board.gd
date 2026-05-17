@@ -82,11 +82,12 @@ func _ready() -> void:
 	_build_ui()
 	_connect_engine_signals()
 	# Boot the engine and spawn initial visuals.
-	# Phase 4.5: real game from a decklist (library, draw step, lose-on-decking).
-	# Both players run a balanced 40-card R/G demo deck so a full match plays
-	# out top-to-bottom. The older init_phase* demo helpers stay around for
-	# headless tests but are no longer the default launch state.
-	RulesEngine.init_phase4_5_demo()
+	# Phase 5c: AI vs AI with a multi-color showcase deck so a manual playtest
+	# can see Counterspell, Healing Salve, and every Phase 5a keyword card in
+	# one session. Opp's turn is driven by AI.decide; player still drives
+	# their own via UI. (Switch back to init_phase4_5_demo if you want the
+	# tight R/G mirror without the keyword zoo.)
+	RulesEngine.init_phase5_demo()
 	_spawn_initial_visuals()
 	_refresh_ui()
 
