@@ -169,9 +169,51 @@ Update `project.godot`:
 
 **Phase 3 — Combat and the stack actually doing work.** Implement `COMBAT_ATTACK`, `COMBAT_BLOCK`, `COMBAT_DAMAGE` phases. Declare-attackers UI (click your untapped creatures), declare-blockers UI. Damage assignment with first-strike step. **Now C1 pays off:** add the first instant — Giant Growth. Cast it during combat in response to a damage step, see the stack hold while priority passes, see resolution unwind LIFO. New effects: `pump_until_eot`, EOT cleanup. Verification: a creature dies in combat; a creature survives because Giant Growth resolved on the stack.
 
-**Phase 4 — Triggered abilities.** Wire up `predicates/`. Add cards with ETB triggers (Pyromaniac: "When ~ enters, deal 1 to any target") and death triggers (Bloodlust Berserker: "attacks if opp lost life this turn"). Implement the JS prototype's `pendingTriggers` queue: state changes emit events, events match listeners (registered when permanents enter battlefield), matching listeners create stack entries. Predicate string `"creature_self_damaged_died"` looks up in `predicates.gd`. **Add boot-time validation pass** (~10 lines) that walks all `CardResource.triggered_abilities[].condition_predicate` strings and asserts each exists in the registry — catches typos at startup, not when the trigger fires. Verification: chain of triggers resolves in correct APNAP order; no infinite loops via depth cap.
+**Phase 4 — Triggered abilities.** ✓ DONE.
+- `pending_triggers` queue on `EngineState`; events fire via `RulesEngine._fire_event`; queue drains via `_drain_pending_triggers` in APNAP order onto the stack. Triggers resolve through `_resolve_trigger_entry` alongside spell entries — the C1 stack pathway covers both.
+- Predicate registry at `engine/predicates/predicates.gd` with `evaluate(name, state, source, event)`. Boot-time `validate_all_card_predicates()` walks all `CardResource.triggered_abilities[].condition_predicate` strings and `push_error`s on any missing entry.
+- Event firing points (Phase 4): `card_etb` (lands via `_do_play_land`, permanents via `_resolve_spell_entry`), `card_dies` (deaths inside `_run_sbas`).
+- Cards added: **Pyromaniac** (1R 1/1) with `{event: card_etb, self_only: true}` → deals 1 to opp; **Bloodlust Berserker** (1RR 3/2) with `{event: card_dies, self_only: true, condition_predicate: "opp_lost_life_this_turn"}` → deals 2 to opp if predicate true.
+- UI: stack panel renders triggers as `⚡ <source>'s ability` to distinguish them from cast spells.
+- `tests/test_phase4.gd` covers ETB fire+resolve, death-trigger-with-predicate-true, and the negative case (predicate-false → trigger suppressed).
 
-**Phase 5 — AI.** Port `AI.decide(state, who) → action`. Single entry point, reads engine state, returns one action descriptor. Combat-sim subroutine for declaring attackers/blockers. Lethal detection. Snapshots state via `Resource.duplicate(true)` and explicit `duplicate()` overrides on `Player` / `CardInstance`. Threading deferred until profiling shows it's needed. Verification: AI plays a complete game against itself without crashing; spot-check decision quality via log lines.
+**Phase 4 deferred to Phase 4.5 (or whenever it becomes blocking):**
+- **Interactive trigger target picking.** ✓ DONE in 4.5b.
+- **Non-self triggers in tests.** Still deferred. The `self_only=false` listener path is implemented but not exercised. Add when a card legitimately needs it.
+- **"Intervening if" predicate re-check at resolve time.** Still deferred. Currently the predicate is checked only at queue time; MTG rules check again on resolution. Will matter when a between-events action invalidates the condition (e.g., a creature with a "while you control X" condition where X leaves play between trigger queueing and resolution).
+
+**Phase 4.5 — Real-game interlude.** ✓ DONE.
+- **Slice 4.5a (library + draw + decking).** `RulesEngine.init_game(you_decklist, opp_decklist)` builds libraries from `card_id:count` dicts, shuffles, draws opening hand. DRAW phase entry fires `_do_draw_card`; empty-library draw ends the game with the opponent winning (MTG 704.5b). Legacy `init_phase*` demo helpers seed each player's library with 20 buffer Mountains so existing tests don't deck out. UI: `PlayerPanel` shows hand/library/graveyard counts with a low-library warning glyph.
+- **Slice 4.5b (interactive trigger target picker).** Triggers can specify `target_filter` on the ability dict. `_drain_pending_triggers` pauses for you-controlled triggers (surfacing `state.awaiting_target_for_trigger`) and auto-picks for opp-controlled triggers. New action `KIND_PICK_TRIGGER_TARGET` completes the pick. UI mirrors the spell-target flow.
+- **Slice 4.5c (card pool + new effects).** Card pool grew 8 → 16: Plains/Island/Swamp basic lands, Bear Cub / Gray Ogre / Hill Giant vanilla curve, Healing Salve (exercises new `gain_life` effect), Counterspell (exercises new `counter_spell` effect — first card whose target is a stack entry, with new `RulesEngine.counter_stack_entry` engine helper).
+
+**Phase 5a — Combat keywords.** ✓ DONE.
+- `CardInstance.effective_keywords()` / `has_keyword(name)` — single seam unioning template baseline + runtime grants (sticker hook).
+- All eleven evergreens wired: defender / haste / vigilance / flying / reach / unblockable / first_strike / lifelink / deathtouch / trample / indestructible / menace / hexproof. Block legality, attack legality, and combat damage all consult `has_keyword`.
+- Combat damage rewritten as a two-pass system (`_combat_damage_pass(first_strike_only)`); `_deal_combat_damage` centralises target dispatch and handles lifelink + deathtouch (sets `lethal_marked` on creature target).
+- SBA in `_run_sbas` checks indestructible before lethal-damage death.
+- Hexproof in `_legal_cast_spell` blocks cross-controller targeting.
+- New cards: Wind Drake, Giant Spider, Serra Angel, Trained Armodon, Vampire Nighthawk, Raging Goblin, Walking Wall (one per keyword profile).
+- `tests/test_phase5a` covers one scenario per keyword.
+
+**Phase 5b — Engine introspection API for AI.** ✓ DONE (except `simulate_combat`).
+- `RulesEngine.get_legal_actions(player_key) → Array[Dictionary]` enumerates every legal action descriptor (pass/play_land/activate_ability/cast×targets/declare_attacker/declare_blocker/pick_trigger_target). Casts fan out one entry per legal target. Helper `_enumerate_filter_targets` supports `any`/`creature_or_player`/`creature`/`player`/`spell` filters and respects hexproof.
+- `EngineState.duplicate_deep()` + `duplicate_deep()` on Player / ManaPool / Stack / CardInstance. Mutations on a copy don't leak. CardResource templates are shared by reference.
+- `engine/ai/scoring.gd` — `AIScoring.card_value(template, purpose)` heuristic scoring (stats minus cost + keyword bonuses + triggered-ability bump). Exposed via `RulesEngine.card_value`. Per-effect triggered-ability scoring deferred to 5c.
+- **Deferred to 5c**: `simulate_combat(state, attacker_key, attackers, blockers) → outcome`. The deep-copy plumbing is in place — the simulator itself is the largest single piece in the AI port (~200 lines) and is best done alongside the rest of the AI.
+
+**Phase 5c — AI.decide port.** ✓ DONE.
+- `engine/ai/ai.gd::AI.decide(state, player_key) -> Dictionary` — top-level dispatcher matching JS prototype's `AI.decide(state, who)` shape. Decision order: trigger target pick → block declaration (if defender) → attack declaration (if active) → instant-speed response → main phase actions → pass.
+- `engine/ai/combat.gd` — `simulate_combat` (uses `EngineState.duplicate_deep` from 5b), `decide_attackers` (lethal check + per-attacker positive-trade heuristic), `decide_blockers` (greedy "minimise damage" with flying/menace/deathtouch awareness via `_score_block_pair`).
+- `engine/ai/burn.gd` — `face_damage_in_hand` and `has_lethal` for direct-damage lethal recognition.
+- `engine/ai/scoring.gd` (extends 5b) — used by AI for spell-target scoring and trigger-target priority.
+- `_settle_state` in `engine.gd` rewritten: drives opp via `AI.decide` instead of the Phase-3 hardcoded stubs. Breaks when `_current_actor()` returns "you" — i.e., hands control to the UI when the human needs to decide. Phase-3 `_opp_*` helpers deleted (112 lines).
+- Caster-priority bug fix: `_do_cast_spell` now sets `priority_player_key = controller.key` (caster retains, per MTG 117.1c) instead of always-active-player. Previously broke opp's instant-speed responses.
+- New showcase deck `_PHASE5_SHOWCASE_DECK` + `init_phase5_demo()` — multi-color 40-card list with one of each Phase 4.5c/5a card so manual playtest sees everything. `game_board` boots into this by default.
+- Tests pass post-rewire: Phase 2/3 tests updated to expect the new AI-driven flow (Phase 2's turn-cycle now needs more priority passes; Phase 3's opp no longer "holds" priority after casting in response).
+- `tests/test_phase5c` covers: AI passes when idle; AI picks trigger target; `simulate_combat` reports correct 2/2-vs-2/2 mutual death; **AI vs AI plays a complete game** (recent runs hit a winner in ~400 actions).
+
+**Phase 6 — Card pool expansion.** Port `AI.decide(state, who) → action`. Single entry point, reads engine state, returns one action descriptor. Combat-sim subroutine for declaring attackers/blockers. Lethal detection. Snapshots state via `Resource.duplicate(true)` and explicit `duplicate()` overrides on `Player` / `CardInstance`. Threading deferred until profiling shows it's needed. Verification: AI plays a complete game against itself without crashing; spot-check decision quality via log lines.
 
 **Phase 6 — Draft and roguelike meta.** Port `DRAFT` (23-pick draft, opponent deck simulation) and `RUN` (sticker system, weighted reward rolls, save/load). Use Godot's `FileAccess` + JSON in lieu of localStorage. Schema migrations from JS port directly. New scenes: `draft_screen.tscn`, `run_map.tscn`. Verification: draft a deck, complete a 3-game run, save mid-run and reload.
 
@@ -199,7 +241,13 @@ Update `project.godot`:
 | 1 | Scripted: 2 Mountains + 1 Bolt → opp at 17 | Click Mountain, click Bolt, click opp life → 20 drops to 17 |
 | 2 | Cast 1/1, end turn, untap, attack → opp at 19 | Goblin enters tapped (sick), next turn taps to attack |
 | 3 | Combat with Giant Growth on stack saves a 1/1 from a 2-power attacker | Full combat phase + instant cast in response |
-| 4 | Pyromaniac ETB + Bloodlust death triggers chain in APNAP order | Play 2-3 trigger cards, observe log shows stack ordering |
+| 4 | Pyromaniac ETB fires + resolves; Bloodlust death trigger fires with predicate-true; trigger suppressed on predicate-false | Cast Pyromaniac → opp takes 1; cast Berserker + bolt your own → opp takes +2 |
+| 4.5a | init_game builds libraries from decklists; DRAW fires; empty-library → opp wins | Open the game_board, see hand+library+gy counts on each panel |
+| 4.5b | Trigger needing target pauses drain; KIND_PICK_TRIGGER_TARGET completes the cast; opp-controlled triggers auto-pick | Cast Pyromaniac → "Pick a target…" prompt → click opp or click any creature |
+| 4.5c | Healing Salve gains 3 life; Counterspell removes target Bolt from stack into opp's graveyard | Cast Counterspell on opp's Lightning Bolt during their cast |
+| 5a | One assertion per keyword: defender, haste, vigilance, flying/reach, unblockable, first_strike, lifelink, deathtouch, trample, indestructible, hexproof | Attack with Serra Angel (flying + vigilance, doesn't tap); Bolt opponent's hexproof creature fails |
+| 5b | get_legal_actions enumerates the right action set; card_value orders Serra > Bears > Walking Wall; duplicate_deep separates copy from original | Engine-only — no manual demo |
+| 5c | AI passes when idle; picks trigger target; simulate_combat reports correct trade; AI vs AI plays a full game to a winner | Boot `init_phase5_demo` and watch opp play itself — taps lands, casts creatures, attacks, counters your spells |
 | 5 | AI plays itself a full game without crash | Sit and watch AI vs AI; spot-check no obviously bad attacks |
 | 6 | Draft 23 picks, complete 3-game run, save/load mid-run | Full roguelike loop end-to-end |
 

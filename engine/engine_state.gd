@@ -33,6 +33,34 @@ var stack: Stack = null
 var attackers: Array[int] = []
 var blockers: Dictionary = {}
 
+# Phase 4: queue of triggers that have fired but haven't yet been pushed onto
+# the stack. Drained between actions (after SBAs settle) in APNAP order, then
+# each entry becomes a stack push. Mirrors the JS prototype's pendingTriggers.
+# Each entry: {
+#   "source_iid": int,           # the permanent whose ability triggered
+#   "controller_key": String,    # who controls the trigger
+#   "ability_index": int,        # index into source.template.triggered_abilities
+#   "event": Dictionary,         # the event that caused this (for predicate inspection)
+#   "targets": Array,            # any targets baked in at trigger time
+# }
+var pending_triggers: Array[Dictionary] = []
+
+# Phase 4.5b: when a "you"-controlled trigger needs an interactive target
+# pick, the drainer pauses and stuffs metadata here so the UI can prompt the
+# player. Cleared once KIND_PICK_TRIGGER_TARGET fires. Empty Dictionary when
+# nothing awaits a target.
+# Shape: {"source_iid": int, "controller_key": "you", "ability_index": int,
+#         "filter": String}
+var awaiting_target_for_trigger: Dictionary = {}
+
+# Phase 5c UI polish (strict COMBAT_BLOCK ordering — MTG rule 509.1a): true
+# between the start of the COMBAT_BLOCK step and the moment the defender
+# confirms blocks. While true, NO player has priority — the defender
+# declares blocks as a turn-based action without spell casting. Cleared by
+# the AI driver immediately at phase entry (AI defender) or by the human
+# defender's CONFIRM_BLOCKS action (manual defender).
+var awaiting_block_declaration: bool = false
+
 # Log of human-readable lines describing what happened. UI subscribes to display.
 var log: Array[String] = []
 
@@ -98,3 +126,31 @@ func find_instance(iid: int) -> Variant:
 func append_log(line: String) -> void:
 	log.append(line)
 	print("[ENG] %s" % line)
+
+
+# Phase 5b: deep copy for AI state snapshots. Used by simulate_combat and
+# any other AI subroutine that needs to mutate state hypothetically. All
+# RefCounted children are deep-copied via their duplicate_deep methods.
+# CardResource templates are shared by reference (immutable per-game).
+func duplicate_deep() -> EngineState:
+	var copy := EngineState.new()
+	# _init created fresh you/opp/phase_machine/stack; replace with deep copies.
+	copy.you = you.duplicate_deep()
+	copy.opp = opp.duplicate_deep()
+	copy.active_player_key = active_player_key
+	copy.priority_player_key = priority_player_key
+	copy.priority_passed = priority_passed.duplicate()
+	copy.phase_machine = PhaseMachine.new()
+	copy.phase_machine.current = phase_machine.current
+	copy.turn = turn
+	copy.stack = stack.duplicate_deep()
+	copy.attackers = attackers.duplicate()
+	copy.blockers = blockers.duplicate()
+	copy.pending_triggers = []
+	for trig in pending_triggers:
+		copy.pending_triggers.append(trig.duplicate(true))
+	copy.awaiting_target_for_trigger = awaiting_target_for_trigger.duplicate(true)
+	copy.log = log.duplicate()  # logs aren't deep but no mutation hazard
+	copy.winner = winner
+	copy._next_iid = _next_iid
+	return copy

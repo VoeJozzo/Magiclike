@@ -69,11 +69,14 @@ func _ready() -> void:
 	# → opp's whole turn auto-cycles via _settle_state → wrap again → your UNTAP.
 	# Each Pass advances one phase. Player needs to click through ~7 phases to
 	# wrap. Let's verify the auto-cycle works by passing repeatedly until turn 2.
+	# Phase 5c: AI-driven opp now stops at every priority-pass round instead
+	# of auto-cycling through its whole turn, so we may need more iterations
+	# AND we need to actually wait until we're back on the player's turn.
 	var phase_passes: int = 0
-	while s.turn < 2 and phase_passes < 30:
+	while not (s.turn >= 2 and s.active_player_key == "you") and phase_passes < 60:
 		RulesEngine.execute_action(Action.make_pass_priority())
 		phase_passes += 1
-	_assert_true(s.turn >= 2, "advanced to turn 2 (took %d passes)" % phase_passes)
+	_assert_true(s.turn >= 2 and s.active_player_key == "you", "advanced to your turn 2 (took %d passes)" % phase_passes)
 	_assert_eq(s.active_player_key, "you", "back to your turn")
 
 	# Step 6: untap step should have cleared summoning sickness on Goblin
