@@ -37,6 +37,12 @@ var _name_label: Label
 var _cost_label: Label
 var _type_label: Label
 var _pt_label: Label
+# Phase 5c UI polish: oracle text overlay so the player can read what a card
+# actually does (Pyromaniac's trigger, Counterspell's effect, etc.).
+var _oracle_label: Label
+# Opaque backer for the oracle label so the placeholder art's stock
+# "description" text doesn't bleed through behind the real rules text.
+var _oracle_bg: ColorRect
 var _color_tint: ColorRect
 # Combat-state highlight (overlay above color tint, below labels). Yellow for
 # selected/pending, green for committed in a block, dimmed-red for unblocked
@@ -115,6 +121,30 @@ func _build_text_overlay() -> void:
 	_type_label.mouse_filter = MOUSE_FILTER_IGNORE
 	front_face.add_child(_type_label)
 
+	# Phase 5c: Oracle text — covers the placeholder art's description box.
+	# A solid-ish backer hides the placeholder text underneath, then a
+	# word-wrapped label renders the actual oracle text from the template.
+	# Position is below the cost label and above the type line.
+	var oracle_top: float = 40.0
+	var oracle_bottom: float = card_size.y - _TYPE_HEIGHT - _PADDING - 4.0
+	var oracle_height: float = oracle_bottom - oracle_top
+	_oracle_bg = ColorRect.new()
+	_oracle_bg.position = Vector2(_PADDING, oracle_top)
+	_oracle_bg.size = Vector2(card_size.x - _PADDING * 2, oracle_height)
+	_oracle_bg.color = Color(0.05, 0.05, 0.08, 0.85)
+	_oracle_bg.mouse_filter = MOUSE_FILTER_IGNORE
+	front_face.add_child(_oracle_bg)
+	_oracle_label = Label.new()
+	_oracle_label.position = Vector2(_PADDING + 4, oracle_top + 4)
+	_oracle_label.size = Vector2(card_size.x - _PADDING * 2 - 8, oracle_height - 8)
+	_oracle_label.add_theme_font_size_override("font_size", 10)
+	_oracle_label.add_theme_color_override("font_color", Color(0.92, 0.92, 0.96))
+	_oracle_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_oracle_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+	_oracle_label.clip_text = true
+	_oracle_label.mouse_filter = MOUSE_FILTER_IGNORE
+	front_face.add_child(_oracle_label)
+
 	# P/T badge — bottom-right, only shown for creatures
 	_pt_label = Label.new()
 	_pt_label.position = Vector2(card_size.x - 48, card_size.y - 36)
@@ -150,6 +180,12 @@ func apply_card_text() -> void:
 		_cost_label.text = _fmt_cost(template.mana_cost)
 		_type_label.text = _fmt_type_line(template)
 		_color_tint.color = _tint_for(template)
+		# Phase 5c: oracle text overlay — fall back to "" if a card has no
+		# rules text (vanilla creatures, basic lands). Empty oracle text
+		# hides the backer too so the placeholder art shows through cleanly.
+		var oracle: String = str(template.oracle_text)
+		_oracle_label.text = oracle
+		_oracle_bg.visible = oracle != ""
 		# P/T only for creatures (initial display from template — call
 		# apply_creature_state to refresh with live current_power/toughness
 		# and damage marker once the instance is in play).
@@ -162,6 +198,8 @@ func apply_card_text() -> void:
 		_cost_label.text = ""
 		_type_label.text = ""
 		_color_tint.color = Color(0, 0, 0, 0)
+		_oracle_label.text = ""
+		_oracle_bg.visible = false
 		_pt_label.visible = false
 
 

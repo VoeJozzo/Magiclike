@@ -115,20 +115,21 @@ func _build_ui() -> void:
 	# Layout: opp at top, you at bottom; each side has hand, battlefield, library, graveyard.
 	# Window is 1920x1080.
 
-	# Opponent row (top)
+	# Opponent row (top). Battlefield grew taller in Phase 5c UI polish so
+	# creatures and lands get separate rows. Opp's battlefield flips
+	# creatures_on_top=false so opp's creatures sit at the BOTTOM of their
+	# zone (closer to combat center) and opp's lands push to the top.
 	_opp_library = _make_pile("OppLibrary", Vector2(80, 60), false)
-	_opp_battlefield = _make_battlefield("OppBattlefield", Vector2(560, 200))
+	_opp_battlefield = _make_battlefield("OppBattlefield", Vector2(560, 120), false)
 	_opp_graveyard = _make_pile("OppGraveyard", Vector2(1700, 60), true)
-	# Phase 3+: opp can have cards in hand (e.g., Giant Growth). We show them
-	# face-up at the top of the screen for testing/visibility — Phase 5 (real
-	# AI) will hide them properly with show_front=false.
-	_opp_hand = _make_hand("OppHand", Vector2(960, 80))
+	_opp_hand = _make_hand("OppHand", Vector2(960, 60))
 
-	# Your row (bottom)
-	_you_battlefield = _make_battlefield("YouBattlefield", Vector2(560, 600))
+	# Your row (bottom). Creatures on top (closer to center, matching opp's
+	# creatures sitting closer to center on their side).
+	_you_battlefield = _make_battlefield("YouBattlefield", Vector2(560, 560), true)
 	_you_library = _make_pile("YouLibrary", Vector2(80, 880), false)
 	_you_graveyard = _make_pile("YouGraveyard", Vector2(1700, 880), true)
-	_you_hand = _make_hand("YouHand", Vector2(960, 950))
+	_you_hand = _make_hand("YouHand", Vector2(960, 980))
 
 	# Wire battlefield clicks. Hand cards get per-card gui_input listeners
 	# at spawn time (see _spawn_visual_for_instance) since Hand/CardContainer
@@ -210,11 +211,13 @@ func _build_ui() -> void:
 	add_child(_action_button)
 
 
-func _make_battlefield(name_str: String, pos: Vector2) -> BattlefieldZone:
+func _make_battlefield(name_str: String, pos: Vector2, creatures_on_top: bool) -> BattlefieldZone:
 	var zone := BattlefieldZone.new()
 	zone.name = name_str
 	zone.position = pos
-	zone.size = Vector2(800, 220)
+	# Tall enough for two rows: creature row (~210) + gap + land row (~210).
+	zone.size = Vector2(900, 440)
+	zone.creatures_on_top = creatures_on_top
 	zone.mouse_filter = Control.MOUSE_FILTER_PASS
 	_card_manager.add_child(zone)
 	return zone
@@ -403,20 +406,74 @@ func _refresh_stack_display(s: EngineState) -> void:
 		var iid: int = entry.get("source_iid", -1)
 		var name: String = "?"
 		if _iid_to_visual.has(iid):
-			# Best effort — visual still has card_info with display_name
 			name = str(_iid_to_visual[iid].card_info.get("display_name", "?"))
-		var lbl := Label.new()
 		var kind: String = entry.get("kind", "spell")
+		var lbl := Label.new()
+		lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		lbl.size = Vector2(420, 0)
+		lbl.custom_minimum_size = Vector2(420, 0)
 		if kind == "trigger":
-			# Phase 4: triggered abilities show as "⚡ <source name>'s ability"
-			# so the player can tell them apart from cast spells. Yellow stays
-			# the same so the stack still reads as a unified LIFO list.
-			lbl.text = "⚡ %s's ability" % name
+			# Phase 5c UI polish: show the trigger's oracle text under the
+			# header so the player sees what's about to resolve, not just
+			# whose ability it is.
+			lbl.text = "⚡ %s\n   %s" % [name, _trigger_oracle_text(entry)]
 			lbl.add_theme_color_override("font_color", Color(1.0, 0.75, 0.30))
 		else:
-			lbl.text = "▶ %s" % name
+			# Spell entry: header + oracle text + targets (if any).
+			lbl.text = "▶ %s\n   %s%s" % [
+				name,
+				_spell_oracle_text(iid),
+				_format_targets_for_log(entry.get("targets", [])),
+			]
 			lbl.add_theme_color_override("font_color", Color(1, 0.9, 0.5))
 		_stack_display.add_child(lbl)
+
+
+# Pull oracle text off the source CardResource for a trigger entry, with a
+# fallback that names the triggered-ability event so the line isn't empty.
+func _trigger_oracle_text(entry: Dictionary) -> String:
+	var iid: int = entry.get("source_iid", -1)
+	var s: EngineState = RulesEngine.state()
+	var found = s.find_instance(iid)
+	if found != null and found.card != null and found.card.template != null:
+		var oracle: String = str(found.card.template.oracle_text)
+		if oracle != "":
+			return oracle
+	return "(triggered ability)"
+
+
+# Pull oracle text for a spell on the stack via its iid. Spell sources may be
+# held in the engine's _stack_held_cards (not in any zone), so we use the
+# engine's own find_anywhere helper indirectly via _iid_to_visual.
+func _spell_oracle_text(iid: int) -> String:
+	if _iid_to_visual.has(iid):
+		var visual: Card = _iid_to_visual[iid]
+		var card_id: String = str(visual.card_info.get("card_id", ""))
+		if card_id != "":
+			var template: CardResource = CardDatabase.get_card(card_id)
+			if template != null and template.oracle_text != "":
+				return str(template.oracle_text)
+	return ""
+
+
+# Formats target descriptors as a compact " → opp" or " → creature#5" suffix.
+func _format_targets_for_log(targets: Array) -> String:
+	if targets.is_empty():
+		return ""
+	var parts: Array[String] = []
+	for t in targets:
+		match t.get("kind", ""):
+			"player": parts.append(str(t.get("who", "?")))
+			"creature":
+				var iid: int = t.get("iid", -1)
+				if _iid_to_visual.has(iid):
+					parts.append(str(_iid_to_visual[iid].card_info.get("display_name", "creature")))
+				else:
+					parts.append("creature#%d" % iid)
+			"stack":
+				parts.append("the spell on stack")
+			_: parts.append("?")
+	return "\n   → " + ", ".join(parts)
 
 
 func _sync_card_visuals(s: EngineState) -> void:
@@ -640,6 +697,8 @@ func _execute_pending_cast_with_target(target: Dictionary) -> void:
 
 # Hand cards don't go through CardContainer.on_card_pressed cleanly because
 # Hand's drag system intercepts. We hook gui_input on each spawned hand card.
+# Phase 5c UI polish: this handler logs every reason it bails, so when a
+# click "does nothing" the player can see why in the log.
 func _on_hand_card_gui_input(event: InputEvent, visual: Card) -> void:
 	if not (event is InputEventMouseButton):
 		return
@@ -648,13 +707,24 @@ func _on_hand_card_gui_input(event: InputEvent, visual: Card) -> void:
 	var iid: int = visual.card_info.get("instance_id", -1)
 	if iid == -1:
 		return
-	# If we're already targeting, this is a 2nd click — ignore.
+	# If we're already in spell-targeting mode, this 2nd click is ignored.
+	# Log so the player knows targeting is pending (most likely cause of
+	# "nothing happens when I click").
 	if _pending_cast_iid != -1:
+		_log_local("[color=#888]Already picking a target — click a creature/player, or press Cancel.[/color]")
+		return
+	# If we're awaiting a trigger target, hand clicks are also ignored.
+	if _picking_trigger_target:
+		_log_local("[color=#888]Pick a target for the pending trigger first.[/color]")
 		return
 	# Look up the card instance
 	var s: EngineState = RulesEngine.state()
 	var found = s.find_instance(iid)
-	if found == null or found.zone_name != "hand":
+	if found == null:
+		_log_local("[color=#ff8888]Click on stale card visual (iid %d not found in state).[/color]" % iid)
+		return
+	if found.zone_name != "hand":
+		_log_local("[color=#ff8888]Clicked card is in %s, not hand — ignoring.[/color]" % found.zone_name)
 		return
 	var card: CardInstance = found.card
 
@@ -667,9 +737,7 @@ func _on_hand_card_gui_input(event: InputEvent, visual: Card) -> void:
 			_log_local("[color=#ff8888]Can't play %s right now[/color]" % card.name())
 		return
 
-	# Defender's COMBAT_BLOCK: must commit blocks before casting spells, so
-	# attacker reacts to a fully-known set of blocks (Phase 5+). For Phase 3
-	# this is a structural rule with no functional impact (no opp combat AI).
+	# Defender's COMBAT_BLOCK: must commit blocks before casting spells.
 	if s.phase_machine.current == PhaseMachine.Phase.COMBAT_BLOCK \
 			and s.active_player_key == "opp" \
 			and not _blocks_committed:
@@ -679,21 +747,47 @@ func _on_hand_card_gui_input(event: InputEvent, visual: Card) -> void:
 	# Spells (instant/sorcery/creature): pay mana, push to stack.
 	var ctrl: Player = found.controller
 	if not ctrl.mana.can_pay(card.template.mana_cost):
-		_log_local("[color=#ff8888]Can't pay %s for %s[/color]" % [
+		_log_local("[color=#ff8888]Can't pay %s for %s — pool is %s[/color]" % [
 			_fmt_cost(card.template.mana_cost),
 			card.name(),
+			ctrl.mana.to_string_short(),
 		])
 		return
 
 	# Targeted spells enter targeting mode; untargeted ones cast directly.
 	if card.template is SpellResource and card.template.requires_target:
+		# Counterspell needs a spell on the stack — bail with a clear
+		# message if there isn't one.
+		if card.template.target_filter == "spell" and s.stack.is_empty():
+			_log_local("[color=#ff8888]Can't cast %s: no spell on the stack to target.[/color]" % card.name())
+			return
 		_enter_targeting_mode(iid, card.template.target_filter)
 	else:
 		var cast := Action.make_cast_spell(iid, [])
 		if RulesEngine.is_legal_action(cast):
 			RulesEngine.execute_action(cast)
 		else:
-			_log_local("[color=#ff8888]Can't cast %s right now (wrong phase?)[/color]" % card.name())
+			# Diagnose WHY it's illegal — most common: sorcery-speed during
+			# wrong phase, or instant-speed during your own untap/draw, etc.
+			var reason: String = _diagnose_cast_failure(card, s)
+			_log_local("[color=#ff8888]Can't cast %s — %s[/color]" % [card.name(), reason])
+
+
+# Phase 5c UI polish: when a cast is rejected by is_legal_action, produce a
+# specific reason string so the player isn't left guessing.
+func _diagnose_cast_failure(card: CardInstance, s: EngineState) -> String:
+	if s.winner != "":
+		return "game is over"
+	if not card.template.has_type("instant"):
+		if s.active_player_key != "you":
+			return "sorcery-speed only on your turn"
+		if not s.phase_machine.is_main_phase():
+			return "sorcery-speed only in your main phase"
+		if not s.stack.is_empty():
+			return "sorcery-speed requires an empty stack"
+	if s.priority_player_key != "you":
+		return "you don't have priority right now"
+	return "(unknown; see editor console for details)"
 
 
 func _on_panel_clicked(panel_key: String) -> void:
