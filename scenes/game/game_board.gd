@@ -346,11 +346,19 @@ func _refresh_ui() -> void:
 	# Player panels
 	_you_panel.update_from_player(s.you)
 	_opp_panel.update_from_player(s.opp)
-	# Phase label
+	# Phase label. Phase 5c UI polish: priority_player() can return null when
+	# priority is intentionally closed (awaiting block declaration during
+	# COMBAT_BLOCK). Surface that to the player instead of crashing.
+	var priority_name: String
+	var pp: Player = s.priority_player()
+	if pp == null:
+		priority_name = "(declaring blocks)" if s.awaiting_block_declaration else "(none)"
+	else:
+		priority_name = pp.name
 	_phase_label.text = "Turn %d — %s — Priority: %s" % [
 		s.turn,
 		s.phase_machine.phase_name(),
-		s.priority_player().name,
+		priority_name,
 	]
 	# Stack display
 	_refresh_stack_display(s)
