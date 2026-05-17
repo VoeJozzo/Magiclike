@@ -1,9 +1,7 @@
 class_name PhaseMachine
 extends RefCounted
 
-# Phase machine — tracks which phase of the turn we're in. Full skeleton from
-# day one per plan decision C1; in Phase 1 only MAIN1 actually accepts player
-# actions, but the structure is real so combat phases drop in cleanly later.
+# Tracks the current phase of the turn.
 
 enum Phase {
 	UNTAP,
@@ -34,10 +32,7 @@ const PHASE_NAMES := {
 var current: Phase = Phase.UNTAP
 
 
-# Advances to the next phase. Wraps from CLEANUP back to UNTAP (caller is
-# responsible for switching active player and incrementing turn count
-# at the wrap-around — see Engine).
-# Returns true if the advance wrapped (i.e., a new turn started).
+# Wraps CLEANUP→UNTAP. Returns true on wrap (caller bumps turn / swaps active player).
 func advance() -> bool:
 	if current == Phase.CLEANUP:
 		current = Phase.UNTAP

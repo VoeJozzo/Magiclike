@@ -1,27 +1,11 @@
 extends Control
 
-# game_board — top-level UI scene for the Phase 1 Lightning Bolt slice.
-#
-# Orchestrates: card-framework's CardManager + zone subclasses (Hand, Pile,
-# BattlefieldZone) + PlayerPanels + a simple stack/log/action-button overlay.
-# Subscribes to RulesEngine.state_changed to keep the visuals in sync after
-# every state mutation.
-#
-# Construction is programmatic in _ready — the .tscn is just a Control with
-# this script attached. Avoids hand-writing a deeply-nested .tscn that would
-# need Godot's editor to clean up.
-#
-# Phase 1 interaction flow:
-#   - Click a Mountain on your battlefield → tap for R mana
-#   - Click Lightning Bolt in your hand → enter targeting mode
-#   - Click opponent's life panel → cast Bolt at opp
-#   - Click "Pass priority" button → resolve the stack, see life drop 20→17
+# game_board — top-level UI for the Phase 1 Lightning Bolt slice.
+# Programmatic UI in _ready; .tscn is just an empty Control. Subscribes to RulesEngine.state_changed.
 
-# Card-framework refs
 var _card_manager: CardManager
 var _factory_scene: PackedScene = preload("res://scenes/json_card_factory.tscn")
 
-# Zones
 var _you_hand: Hand
 var _you_battlefield: BattlefieldZone
 var _you_library: Pile
@@ -31,24 +15,19 @@ var _opp_battlefield: BattlefieldZone
 var _opp_library: Pile
 var _opp_graveyard: Pile
 
-# UI overlay
 var _you_panel: PlayerPanel
 var _opp_panel: PlayerPanel
 var _stack_display: VBoxContainer
 var _log_display: RichTextLabel
 var _action_button: Button
 var _phase_label: Label
-# Top-level overlay that draws blocker→attacker connection lines.
 var _combat_lines: Control
 
-# Map of engine instance_id → visual Card node, for bidirectional UI ↔ engine.
+# engine.instance_id → visual Card.
 var _iid_to_visual: Dictionary = {}
 
-# Targeting-mode state. When non-null, a spell has been clicked and we're
-# waiting for the player to choose a target.
+# Targeting + block-declaration mode state.
 var _pending_cast_iid: int = -1
-# Target filter for the pending spell ("any", "creature", "player", etc.) —
-# determines which clicks count as valid targets.
 var _pending_target_filter: String = ""
 # Phase 5c UI polish (per playtest #1): the auto-tap plan computed when
 # the player clicked a spell. Lands aren't actually tapped until the
@@ -85,9 +64,7 @@ func _is_awaiting_blocks() -> bool:
 # instead of falling through to the spell-target path.
 var _picking_trigger_target: bool = false
 
-# Number of engine-log lines we've already piped to the UI log. Tracked here
-# (rather than relying on a log_appended signal that EngineState's RefCounted
-# nature can't emit) so we can pull deltas on each state_changed.
+# Delta-tracked engine log (EngineState is RefCounted; no log_appended signal).
 var _engine_log_seen: int = 0
 
 
@@ -112,14 +89,12 @@ func _ready() -> void:
 
 func _build_ui() -> void:
 	anchors_preset = Control.PRESET_FULL_RECT
-	# Background
 	var bg := ColorRect.new()
 	bg.color = Color(0.05, 0.06, 0.08)
 	bg.anchor_right = 1.0
 	bg.anchor_bottom = 1.0
 	add_child(bg)
 
-	# Card manager (root of card-framework subtree)
 	_card_manager = CardManager.new()
 	_card_manager.name = "CardManager"
 	_card_manager.card_factory_scene = _factory_scene
@@ -149,21 +124,11 @@ func _build_ui() -> void:
 	_you_graveyard = _make_pile("YouGraveyard", Vector2(1700, 880), true)
 	_you_hand = _make_hand("YouHand", Vector2(960, 980))
 
-	# Wire battlefield clicks. Hand cards get per-card gui_input listeners
-	# at spawn time (see _spawn_visual_for_instance) since Hand/CardContainer
-	# don't expose a clean pressed signal we can listen to globally.
+	# Hand cards get per-card listeners (Hand has no global pressed signal).
 	_you_battlefield.card_pressed.connect(_on_your_battlefield_card_pressed)
-	# Opp's battlefield: clicks are meaningful for creature-targeting (cast
-	# Bolt at an opp Bear) and for block declaration (clicking opp's
-	# attacker after selecting a blocker on your side).
 	_opp_battlefield.card_pressed.connect(_on_opp_battlefield_card_pressed)
 
-	# Combat-lines overlay: draws blocker→attacker connection lines on top
-	# of card visuals. Added AFTER CardManager so it renders above the cards
-	# in normal sibling order; z_index also bumped to ensure it stays on top
-	# even when card-framework's hover system elevates a card's z_index.
-	# Hardcoded position/size (rather than anchors) to guarantee global_pos =
-	# (0,0) regardless of parent layout timing.
+	# Combat-lines overlay above cards (z_index for hover elevation).
 	var lines_script := preload("res://scenes/game/combat_lines.gd")
 	_combat_lines = Control.new()
 	_combat_lines.set_script(lines_script)
@@ -175,7 +140,6 @@ func _build_ui() -> void:
 	_combat_lines.set("game_board", self)
 	add_child(_combat_lines)
 
-	# UI overlay (children of game_board, not CardManager)
 	_you_panel = PlayerPanel.new()
 	_you_panel.player_key = "you"
 	_you_panel.position = Vector2(40, 800)
@@ -188,14 +152,12 @@ func _build_ui() -> void:
 	add_child(_opp_panel)
 	_opp_panel.clicked.connect(_on_panel_clicked.bind("opp"))
 
-	# Phase label (top center)
 	_phase_label = Label.new()
 	_phase_label.position = Vector2(840, 12)
 	_phase_label.add_theme_font_size_override("font_size", 16)
 	_phase_label.add_theme_color_override("font_color", Color(0.7, 0.7, 0.85))
 	add_child(_phase_label)
 
-	# Stack display (center-right)
 	var stack_label := Label.new()
 	stack_label.text = "Stack:"
 	stack_label.position = Vector2(1450, 350)
@@ -206,7 +168,6 @@ func _build_ui() -> void:
 	_stack_display.add_theme_constant_override("separation", 4)
 	add_child(_stack_display)
 
-	# Log (right side, fairly tall)
 	var log_label := Label.new()
 	log_label.text = "Log:"
 	log_label.position = Vector2(1450, 580)
@@ -220,7 +181,6 @@ func _build_ui() -> void:
 	_log_display.add_theme_color_override("default_color", Color(0.85, 0.85, 0.9))
 	add_child(_log_display)
 
-	# Action button (Pass priority)
 	_action_button = Button.new()
 	_action_button.text = "Pass priority"
 	_action_button.position = Vector2(40, 930)
@@ -276,20 +236,14 @@ func _connect_engine_signals() -> void:
 	RulesEngine.game_over.connect(_on_game_over)
 
 
-# ─── Initial visual spawn ──────────────────────────────────────────────────
-
-# Spawn a visual Card for every CardInstance in the engine's zones, both sides.
-# Called once after RulesEngine.init_phase*().
 func _spawn_initial_visuals() -> void:
 	var s: EngineState = RulesEngine.state()
-	# You
 	for c in s.you.battlefield:
 		_spawn_visual_for_instance(c, _you_battlefield)
 	for c in s.you.hand:
 		_spawn_visual_for_instance(c, _you_hand)
 	for c in s.you.library:
 		_spawn_visual_for_instance(c, _you_library)
-	# Opp
 	for c in s.opp.battlefield:
 		_spawn_visual_for_instance(c, _opp_battlefield)
 	for c in s.opp.hand:
@@ -304,15 +258,10 @@ func _spawn_visual_for_instance(inst: CardInstance, zone: CardContainer) -> Card
 	if visual == null:
 		push_error("Failed to spawn visual for card_id=%s" % card_id)
 		return null
-	# IMPORTANT: card-framework's JsonCardFactory caches card_info dicts and
-	# assigns the SAME Dictionary by reference to every visual sharing a
-	# card_id. We must duplicate before stamping per-instance data, or every
-	# Mountain ends up with the iid of whichever was spawned last.
+	# Duplicate card_info — JsonCardFactory caches by ref, so per-instance data leaks otherwise.
 	visual.card_info = visual.card_info.duplicate()
 	visual.card_info["instance_id"] = inst.instance_id
 	_iid_to_visual[inst.instance_id] = visual
-	# Populate the name/cost/type overlay now that card_info is final.
-	# (Card._ready already built the empty labels; this fills them.)
 	if visual.has_method("apply_card_text"):
 		visual.apply_card_text()
 	# Hook click handling. card-framework's _handle_mouse_pressed calls
@@ -327,8 +276,6 @@ func _spawn_visual_for_instance(inst: CardInstance, zone: CardContainer) -> Card
 	visual.gui_input.connect(_on_hand_card_gui_input.bind(visual))
 	return visual
 
-
-# ─── State sync ────────────────────────────────────────────────────────────
 
 func _on_state_changed() -> void:
 	_refresh_ui()
@@ -360,21 +307,15 @@ func _refresh_ui() -> void:
 		s.phase_machine.phase_name(),
 		priority_name,
 	]
-	# Stack display
 	_refresh_stack_display(s)
-	# Visual card sync
 	_sync_card_visuals(s)
-	# Action button label reflects current phase / mode
 	_update_action_button(s)
-	# Drain new engine log lines into the UI log
 	while _engine_log_seen < s.log.size():
 		_log_local("[color=#88aaff]%s[/color]" % s.log[_engine_log_seen])
 		_engine_log_seen += 1
 
 
-# Phase-aware label for the action button. Targeting/block-selection modes
-# override; stack-non-empty overrides phase (passing priority resolves the
-# top of stack rather than advancing the phase).
+# Phase-aware action-button label; targeting/block-mode overrides; stack-non-empty → Resolve.
 func _update_action_button(s: EngineState) -> void:
 	if _picking_trigger_target:
 		_action_button.text = "Pick a target…"
@@ -388,11 +329,7 @@ func _update_action_button(s: EngineState) -> void:
 	if not s.stack.is_empty():
 		_action_button.text = "Resolve"
 		return
-	# Defending player's COMBAT_BLOCK (we are defender = you, active = opp).
-	# Two-stage button:
-	#   - Pre-commit: "Confirm blocks" (or "Skip blocks" if none declared) —
-	#     locks in the block declaration so the cast window can open.
-	#   - Post-commit: "Pass priority" — actually passes priority and advances.
+	# Defender's COMBAT_BLOCK: 2-stage button. Pre-commit confirms blocks, post-commit passes.
 	if s.phase_machine.current == PhaseMachine.Phase.COMBAT_BLOCK and s.active_player_key == "opp":
 		if _is_awaiting_blocks():
 			_action_button.text = "Confirm blocks" if not s.blockers.is_empty() else "Skip blocks"
@@ -418,7 +355,6 @@ func _update_action_button(s: EngineState) -> void:
 
 
 func _refresh_stack_display(s: EngineState) -> void:
-	# Clear previous
 	for c in _stack_display.get_children():
 		c.queue_free()
 	if s.stack.is_empty():
@@ -535,24 +471,14 @@ func _format_targets_for_log(targets: Array) -> String:
 
 
 func _sync_card_visuals(s: EngineState) -> void:
-	# For each tracked iid, ensure its visual is in the right zone.
-	# A card may be:
-	#   - In a zone (hand/battlefield/graveyard/library/exile) on either player
-	#   - On the stack (find_instance returns zone_name="stack", card=null —
-	#     the actual CardInstance is held in Engine._stack_held_cards)
-	#   - Removed entirely (shouldn't happen in Phase 1/2)
+	# Place each tracked visual in its current zone. Stack visuals cascade off anchor.
 	for iid in _iid_to_visual.keys():
 		var visual: Card = _iid_to_visual[iid]
 		var found = s.find_instance(iid)
 		if found == null:
-			# Untracked — hide. Shouldn't happen in normal play.
 			visual.visible = false
 			continue
 		visual.visible = true
-		# Stack visual: detach from any container so layout doesn't reposition,
-		# then cascade by stack index so multiple stack entries don't pile
-		# on top of each other. Bottom-of-stack at the anchor; subsequent
-		# items step up-and-right.
 		if found.zone_name == "stack":
 			if visual.card_container != null and visual.card_container.has_card(visual):
 				visual.card_container.remove_card(visual)
@@ -560,17 +486,12 @@ func _sync_card_visuals(s: EngineState) -> void:
 			var cascade := Vector2(stack_idx * 30.0, -stack_idx * 25.0)
 			visual.move(_stack_anchor_global_pos() + cascade, 0.0)
 			continue
-		# Normal zones: ensure the visual is in the right CardContainer.
 		var target_zone: CardContainer = _zone_for(found.controller.key, found.zone_name)
 		if target_zone != null and visual.card_container != target_zone:
 			target_zone.move_cards([visual], -1, false)
-	# Refresh battlefield layouts so tap state (rotation) is re-applied via
-	# card.move() — the canonical pathway that survives hover-animation
-	# interference from card-framework.
+	# update_card_ui re-applies tap rotation via card.move (survives card-framework hover anims).
 	_you_battlefield.update_card_ui()
 	_opp_battlefield.update_card_ui()
-	# Refresh live P/T display (current_power/toughness, temp pumps, damage
-	# markers) for every creature on either battlefield.
 	for player_state in [s.you, s.opp]:
 		for c in player_state.battlefield:
 			if not (c.template is CreatureResource):
@@ -578,9 +499,6 @@ func _sync_card_visuals(s: EngineState) -> void:
 			var visual: Card = _iid_to_visual.get(c.instance_id)
 			if visual != null and visual.has_method("apply_creature_state"):
 				visual.apply_creature_state(c)
-	# Apply combat-state highlights so the player can see at a glance which
-	# creatures are pending blocker, in a committed block pair, or attacking
-	# unblocked.
 	_apply_combat_highlights(s)
 	# Phase 5c UI polish: green glow on cards that are legal to act on
 	# right now (castable spells, playable lands, mana-tappable lands,
@@ -589,21 +507,12 @@ func _sync_card_visuals(s: EngineState) -> void:
 	_apply_legality_glows(s)
 
 
-# Walk attackers + blockers and tag each visual with its combat state.
-# Highlight states (see scenes/card.gd set_combat_highlight):
-#   "pending"   — your creature you've clicked to begin blocking with
-#   "committed" — already paired (either side: blocker or its blocked attacker)
-#   "none"      — clear (includes attackers not yet paired with a blocker)
-#
-# Per playtest feedback: attackers don't glow until a blocker is declared
-# against them. "Unblocked" attackers get no highlight — they're just normal
-# creatures heading for face damage.
+# Tag combat-highlight on each creature. States: "pending" (selected blocker),
+# "committed" (paired blocker or blocked attacker), "none" (incl. unblocked attackers).
 func _apply_combat_highlights(s: EngineState) -> void:
-	# Build the set of attackers that have at least one blocker.
 	var blocked_attackers: Dictionary = {}
 	for blk_iid in s.blockers:
 		blocked_attackers[s.blockers[blk_iid]] = true
-	# Walk every battlefield creature and decide its highlight.
 	for player_state in [s.you, s.opp]:
 		for c in player_state.battlefield:
 			if not (c.template is CreatureResource):
@@ -616,9 +525,9 @@ func _apply_combat_highlights(s: EngineState) -> void:
 			if iid == _pending_block_blocker_iid:
 				state_name = "pending"
 			elif s.blockers.has(iid):
-				state_name = "committed"  # blocker
+				state_name = "committed"
 			elif blocked_attackers.has(iid):
-				state_name = "committed"  # attacker that's been blocked
+				state_name = "committed"
 			else:
 				state_name = "none"
 			visual.set_combat_highlight(state_name)
@@ -691,8 +600,6 @@ func _stack_anchor_global_pos() -> Vector2:
 	return Vector2(900, 440)
 
 
-# Index of the stack entry with the given source_iid (0 = bottom of stack,
-# size-1 = top). -1 if not on stack.
 func _find_stack_index(s: EngineState, iid: int) -> int:
 	for i in range(s.stack.entries.size()):
 		if s.stack.entries[i].get("source_iid", -1) == iid:
@@ -753,9 +660,8 @@ func _on_your_battlefield_card_pressed(visual: Card) -> void:
 				and _is_awaiting_blocks():
 			_pending_block_blocker_iid = iid
 			_log_local("[color=#ffd866]Selected %s as blocker — click an attacker.[/color]" % found.card.name())
-			_refresh_ui()  # update button label
+			_refresh_ui()
 			return
-		# Fall through: click on land (tap for mana), or any non-blocker click
 
 	# Active player's COMBAT_ATTACK: click your creature to declare attacker,
 	# OR un-declare it if it's already attacking.
@@ -770,9 +676,8 @@ func _on_your_battlefield_card_pressed(visual: Card) -> void:
 		if RulesEngine.is_legal_action(attack):
 			RulesEngine.execute_action(attack)
 			return
-		# Fall through if not legal (e.g., land clicked during combat)
 
-	# Default: try to activate ability (taps land for mana)
+	# Default: activate ability (tap land for mana).
 	var action := Action.make_activate_ability(iid)
 	if RulesEngine.is_legal_action(action):
 		RulesEngine.execute_action(action)
@@ -794,8 +699,7 @@ func _on_opp_battlefield_card_pressed(visual: Card) -> void:
 			_execute_pending_cast_with_target({"kind": "creature", "iid": iid})
 		return
 
-	# Block declaration: if a blocker is selected and this is an attacker,
-	# the click finalizes the block.
+	# Block declaration: blocker selected + opp creature is attacker → finalize.
 	var s: EngineState = RulesEngine.state()
 	if _pending_block_blocker_iid != -1 \
 			and s.phase_machine.current == PhaseMachine.Phase.COMBAT_BLOCK \
@@ -808,9 +712,7 @@ func _on_opp_battlefield_card_pressed(visual: Card) -> void:
 		_refresh_ui()
 
 
-# True if `iid` is a legal creature target for the currently-pending cast.
-# Phase 3 supports filters "any" (creature or player; here we just check
-# creature-ness) and "creature".
+# Phase 3 filters: "any"|"creature".
 func _is_valid_creature_target(iid: int) -> bool:
 	if _pending_target_filter != "any" and _pending_target_filter != "creature":
 		return false
@@ -892,7 +794,6 @@ func _on_hand_card_gui_input(event: InputEvent, visual: Card) -> void:
 	if _picking_trigger_target:
 		_log_local("[color=#888]Pick a target for the pending trigger first.[/color]")
 		return
-	# Look up the card instance
 	var s: EngineState = RulesEngine.state()
 	var found = s.find_instance(iid)
 	if found == null:
@@ -903,7 +804,6 @@ func _on_hand_card_gui_input(event: InputEvent, visual: Card) -> void:
 		return
 	var card: CardInstance = found.card
 
-	# Lands: special action, doesn't use stack.
 	if card.is_land():
 		var play := Action.make_play_land(iid)
 		if RulesEngine.is_legal_action(play):
@@ -1118,7 +1018,6 @@ func _on_panel_clicked(panel_key: String) -> void:
 		return
 	if _pending_cast_iid == -1:
 		return
-	# Player targets are only valid for "any" or "player" filters.
 	if _pending_target_filter != "any" and _pending_target_filter != "player":
 		return
 	_execute_pending_cast_with_target(Action.target_player(panel_key))
@@ -1135,7 +1034,6 @@ func _on_pass_pressed() -> void:
 		_exit_targeting_mode()
 		_log_local("[color=#888]Cancelled targeting (lands stayed untapped)[/color]")
 		return
-	# Cancel block-selection if active
 	if _pending_block_blocker_iid != -1:
 		_pending_block_blocker_iid = -1
 		_log_local("[color=#888]Cancelled block selection[/color]")
@@ -1158,9 +1056,6 @@ func _on_pass_pressed() -> void:
 func _enter_targeting_mode(spell_iid: int, target_filter: String) -> void:
 	_pending_cast_iid = spell_iid
 	_pending_target_filter = target_filter
-	# Mark player panels clickable if filter allows player targets.
-	# (Creature targets are handled via battlefield click handlers; no extra
-	# highlight in Phase 3 — player just clicks a creature on either side.)
 	var allows_player := (target_filter == "any" or target_filter == "player")
 	_you_panel.is_clickable = allows_player
 	_opp_panel.is_clickable = allows_player
@@ -1260,9 +1155,7 @@ func _log_local(line: String) -> void:
 	_log_display.append_text(line + "\n")
 
 
-# MTG mana notation: colored mana repeats letters ("RR" = 2 reds), generic
-# uses a leading number ("1R" = 1 generic + 1 red, NEVER "one red").
-# See engine/mana_pool.gd to_string_short for the canonical implementation.
+# MTG mana notation: "1R" = 1 generic + 1 red. See mana_pool.gd to_string_short.
 func _fmt_cost(cost: Dictionary) -> String:
 	if cost.is_empty():
 		return "(free)"

@@ -1,38 +1,26 @@
-// =========================================================================
 // UI / RENDER — reads ENGINE.state() and CONTROLLER UI state. No mutation.
-// =========================================================================
 function passLabel(G, expectedActor) {
-  // Contextual label for the unified Pass button. Same action under the hood
-  // (doPass → passPriority or empty-declaration), but the wording reflects
-  // what passing means right now.
   if (expectedActor !== 'you') return 'Pass';
-  // A pending target prompt outranks priority/reaction labelling — the player
-  // owes a target click before anything else can happen. Button is disabled
-  // in this state (see render), but the label still reads correctly if shown.
   if (G.pendingTriggerTarget && G.pendingTriggerTarget.controller === 'you') return 'Pick Target';
   if (G.pendingRipSelect && G.pendingRipSelect.who === 'you') return 'Rip a Permanent';
   if (G.pendingNumberChoice && G.pendingNumberChoice.who === 'you') return 'Pick a Number';
   if (G.pendingSymmetricizeChoice && G.pendingSymmetricizeChoice.who === 'you') return 'Pick a Value';
-  // Reacting to something on the stack.
   if (G.priority && G.stack.length > 0) return 'No Reaction';
-  // Pre-declaration phases (priority not yet open).
   if (G.phase === 'COMBAT_ATTACK' && G.activePlayer === 'you' && !G.attackersDeclared) return 'Skip Combat';
   if (G.phase === 'COMBAT_BLOCK'  && G.activePlayer === 'opp' && !G.blockersDeclared) return 'No Blocks';
-  // Empty-stack priority round — label by phase.
   if (G.priority) {
     if (G.phase === 'MAIN1' && G.activePlayer === 'you') return 'To Combat';
     if (G.phase === 'MAIN2' && G.activePlayer === 'you') return 'To End Step';
     if (G.phase === 'COMBAT_ATTACK') return 'To Blocks';
     if (G.phase === 'COMBAT_BLOCK')  return 'To Damage';
     if (G.phase === 'END' && G.activePlayer === 'you') return 'End Turn';
-    if (G.phase === 'END' && G.activePlayer === 'opp') return 'Pass';   // your end-of-opp window
+    if (G.phase === 'END' && G.activePlayer === 'opp') return 'Pass';
     return 'Pass Priority';
   }
   return 'Pass';
 }
 
-// Build a trigger-build option button (Codex-style modal). Used in both
-// condition and effect picker steps — identical styling and hover.
+// Codex-style trigger-build modal button (condition + effect steps).
 function makeTriggerBuildOptionBtn(innerHtml, onClick) {
   const btn = document.createElement('button');
   btn.style.cssText = 'display:block;width:100%;background:#252030;border:1px solid #5a4a7a;color:#ddd;padding:10px 12px;margin:6px 0;font-family:inherit;font-size:12px;cursor:pointer;border-radius:5px;text-align:left;line-height:1.5;transition:background .15s';
@@ -63,8 +51,6 @@ function render() {
   const phaseNames = {UNTAP:'Untap',DRAW:'Draw',MAIN1:'M1',COMBAT_ATTACK:'Atk',COMBAT_BLOCK:'Blk',COMBAT_DAMAGE:'Dmg',MAIN2:'M2',END:'End',CLEANUP:'Clnp'};
   const phases = ['UNTAP','DRAW','MAIN1','COMBAT_ATTACK','COMBAT_BLOCK','COMBAT_DAMAGE','MAIN2','END','CLEANUP'];
   document.getElementById('phases').innerHTML = phases.map(p => `<div class="ph${G.phase === p ? ' on' : ''}">${phaseNames[p]}</div>`).join('');
-  // Surface the current game number as a small tag prefix. RUN may be
-  // null in dev/test contexts; the label degrades gracefully in that case.
   const runStats = (typeof RUN !== 'undefined' && RUN.getStats) ? RUN.getStats() : null;
   const gamePrefix = (runStats && runStats.gameNum) ? `<span style="color:#888;font-weight:normal">G${runStats.gameNum}</span> · ` : '';
   document.getElementById('turnlbl').innerHTML =
@@ -74,37 +60,23 @@ function render() {
   const bannerItems = document.getElementById('stackBannerItems');
   const bannerHint = document.getElementById('stackBannerHint');
   const bannerCancel = document.getElementById('stackBannerCancelBtn');
-  // Show the in-banner Cancel only when the player has a cancellable
-  // spell-cast or ability-activation in progress (pt). Triggered abilities
-  // (ptt) require a target and can't be cancelled, so we don't surface
-  // Cancel for those. The banner itself is only visible when the stack is
-  // non-empty, so this button is the in-context backup for when the stack
-  // banner is covering the top tgtbar's Cancel button.
+  // In-banner Cancel only for cancellable cast/activation. Triggers can't be cancelled.
   bannerCancel.style.display = pt ? 'inline-block' : 'none';
   if (!G.stack.length) {
     banner.classList.remove('vis');
   } else {
-    // pt.cardIid is the source card of the pending target action. For
-    // spell casts, that's a card in hand. For ability activations
-    // (Stapler), it's a card on the battlefield. Search both zones.
+    // pt.cardIid: cast → hand; ability → battlefield.
     const ptCard = pt && (
       G.you.hand.find(c => c.iid === pt.cardIid) ||
       G.you.battlefield.find(c => c.iid === pt.cardIid)
     );
-    // Read effects from the chosen mode (pt.modeIdx) — for non-modal cards
-    // this returns the flat effects list; for modal cards, just the mode the
-    // player picked. We can't tell if a card is "a counterspell" until we
-    // know which mode is being cast, since a modal card's counter-mode might
-    // not be the chosen one.
+    // Effects via pt.modeIdx — counterspell check needs the chosen mode.
     const isCounterTarget = (() => {
       if (!pt || !ptCard) return false;
-      // Spell-cast path: read the chosen mode's effects.
       if (pt.kind === 'cast') {
         const modeEffects = ENGINE.effectsForMode(ptCard, pt.modeIdx);
         return modeEffects.some(e => e.target === 'spell' || e.target === 'permanentOrSpell');
       }
-      // Ability-activation path: read the activated ability's effects so
-      // Stapler (target: permanentOrSpell) lights up stack items too.
       if (pt.kind === 'ability') {
         const ab = (ptCard.abilities || [])[pt.abilityIdx || 0];
         if (!ab) return false;
@@ -113,9 +85,7 @@ function render() {
       return false;
     })();
     banner.classList.add('vis');
-    // Detect whether the pending action is a Stapler-style splice (target
-    // 'permanentOrSpell') vs a counterspell (target 'spell'). Same UI
-    // affordance (click stack item), different framing.
+    // Splice vs counterspell — same click affordance, different text.
     const isSpliceTargetMode = (() => {
       if (!pt || !ptCard) return false;
       let effects = [];
@@ -136,37 +106,28 @@ function render() {
       const tgtLabel = (it.targets && it.targets[0] && it.targets[0].label) ? ` → ${it.targets[0].label}` : '';
       const div = document.createElement('div');
       div.className = 'bnr-item' + (isCounterTarget ? ' tgt' : '');
-      // data-stack-idx: lets the target-line overlay locate this pill
-      // when drawing lines to its declared targets. Real-index (not the
-      // reversed display index) so the layer can index G.stack directly.
+      // stackIdx (real, not reversed) — target-line overlay indexes G.stack directly.
       div.dataset.stackIdx = String(realIdx);
-      // Display differs for triggers vs spells — triggers don't have a card.
       if (it.kind === 'trigger') {
         div.innerHTML =
           `<div class="topline">⚡ ${it.sourceName} triggers</div>` +
           `<div class="botline">${it.trig.text || it.trig.event}${tgtLabel}</div>`;
-        // Long-press a trigger pill: show the source card.
         const src = ENGINE.findCard(it.sourceIid);
         if (src) CONTROLLER.attachLongPress(div, src.card);
       } else {
-        // For modal cards on the stack, show the chosen mode in the
-        // top line so the player can see what the spell will actually
-        // do if it resolves — especially important when deciding whether
-        // to counter it.
+        // Modal cards: show chosen mode so countering decisions are informed.
         let modeLabel = '';
         if (ENGINE.isModal(it.card)) {
           const mn = (it.card.effects.modeNames || [])[it.modeIdx || 0];
           if (mn) modeLabel = ` <span style="color:#aaccee;font-size:10px">(${mn})</span>`;
         }
-        // Stack pill is small/inline — show emoji art directly, skip for
-        // URL art (would force-stretch an <img> into a narrow pill).
+        // Inline art, skip URL art (would stretch in narrow pill).
         const inlineArt = isArtUrl(it.card.art) ? '🎴' : (it.card.art || '');
         div.innerHTML =
           `<div class="topline">${inlineArt} ${it.card.name}${modeLabel}</div>` +
           `<div class="botline">cast by ${G[it.controller].name}${tgtLabel}</div>`;
         CONTROLLER.attachLongPress(div, it.card);
       }
-      // Counter targeting only applies to spells, not triggers.
       if (isCounterTarget && it.kind !== 'trigger') {
         div.onclick = () => CONTROLLER.clickStackTarget(realIdx);
       }
@@ -188,8 +149,6 @@ function render() {
   const expectedActor = ENGINE.expectedActor();
   const inReaction = !!(G.priority && G.stack.length > 0);
 
-  // Single Pass button: label varies by context, enabled whenever the engine
-  // is waiting on the player and 'pass' is a meaningful move.
   const passBtn = document.getElementById('btnPass');
   passBtn.textContent = passLabel(G, expectedActor);
   passBtn.disabled = G.gameOver || !!pt || G.cleanupDiscarding
@@ -212,11 +171,7 @@ function render() {
   const tb = document.getElementById('tgtbar');
   const ptt = G.pendingTriggerTarget;
   const tgtCancelBtn = document.getElementById('tgtCancelBtn');
-  // Floating Cancel button anchored to the bottom-right. Shown alongside
-  // the top tgtbar so the player can always cancel an in-flight target
-  // even when the stack banner is covering the top of the screen.
-  // Triggered abilities (pendingTriggerTarget) can't be cancelled — you
-  // must choose a target — so we hide it in that case.
+  // Floating Cancel — covers top tgtbar when stack banner blocks it. Hidden for trigger targets (uncancellable).
   const statusCancelBtn = document.getElementById('statusCancelBtn');
   if (pt) {
     tb.classList.add('vis');
@@ -224,9 +179,6 @@ function render() {
     statusCancelBtn.style.display = '';
     const card = G.you.hand.find(c => c.iid === pt.cardIid)
               || (ENGINE.findCard(pt.cardIid) || {}).card;
-    // abilitySac: show "Sacrifice for {cardName}" so the player knows they
-    // need to click a creature to sacrifice rather than pick a target for
-    // the effect itself.
     if (pt.kind === 'abilitySac' && card) {
       setText('tgtname', `Sacrifice a creature for ${card.name}`);
     } else {
@@ -243,7 +195,6 @@ function render() {
   }
 
   const sb = document.getElementById('status');
-  // Search modal — show/hide and populate.
   if (G.pendingSearch && G.pendingSearch.who === 'you') {
     Modal.show('searchModal', { dismissible: false });
     setText('searchTitle', `${G.pendingSearch.source.toUpperCase()} — PICK A CARD`);
@@ -257,7 +208,6 @@ function render() {
       for (const card of matches) {
         const btn = document.createElement('button');
         btn.className = 'search-card';
-        // textContent only — strip URL art to avoid showing the data: prefix.
         const inlineArt = isArtUrl(card.art) ? '🎴' : (card.art || '');
         btn.textContent = `${inlineArt} ${card.name}`;
         btn.onclick = () => CONTROLLER.searchPick(card.iid);
@@ -267,12 +217,10 @@ function render() {
   } else {
     Modal.hide('searchModal');
   }
-  // Trigger-build modal — Codex-style procedural-trigger pickers.
-  // Three-step flow: condition → effect → (optional) compare new vs current.
+  // Codex 3-step: condition → effect → compare new vs current.
   if (G.pendingTriggerBuild && G.pendingTriggerBuild.who === 'you') {
     Modal.show('triggerBuildModal', { dismissible: false });
     const ptb = G.pendingTriggerBuild;
-    // Look up the source card's name for displays.
     let sourceName = 'this card';
     for (const z of ['hand','battlefield','library','graveyard','exile']) {
       const c = G.you[z]?.find(x => x.iid === ptb.cardIid);
@@ -283,7 +231,7 @@ function render() {
     const list = document.getElementById('triggerBuildList');
     const keepWrap = document.getElementById('triggerBuildKeepWrap');
     list.innerHTML = '';
-    keepWrap.style.display = 'none';   // re-shown only on the compare step
+    keepWrap.style.display = 'none';
 
     if (ptb.step === 'condition') {
       titleEl.textContent = '📜 STEP 1 OF 2: CHOOSE WHEN';
@@ -337,8 +285,6 @@ function render() {
   } else {
     Modal.hide('triggerBuildModal');
   }
-  // Number-choice modal — Archdemon of Bargains. Player picks an integer
-  // in [min, max]. Each integer is a button; clicking submits the action.
   if (G.pendingNumberChoice && G.pendingNumberChoice.who === 'you') {
     Modal.show('numberChoiceModal', { dismissible: false });
     const p = G.pendingNumberChoice;
@@ -360,9 +306,6 @@ function render() {
   } else {
     Modal.hide('numberChoiceModal');
   }
-  // Symmetricize modal. Target's controller picks one of three labels;
-  // each shows the value that all three will become. Click sends the
-  // symmetricizeChoice action through CONTROLLER.
   if (G.pendingSymmetricizeChoice && G.pendingSymmetricizeChoice.who === 'you') {
     Modal.show('symmetricizeChoiceModal', { dismissible: false });
     const p = G.pendingSymmetricizeChoice;
@@ -388,11 +331,7 @@ function render() {
   } else {
     Modal.hide('symmetricizeChoiceModal');
   }
-  // Modal-spell mode picker. Shown when player clicks a modal card from
-  // hand. One button per mode, each labeled with the modeName from the
-  // card template. Modes that aren't currently legal (no valid target,
-  // can't pay cost, etc.) are visually disabled but still rendered so
-  // the player sees what the card CAN do, even if not right now.
+  // Modal-spell mode picker — illegal modes disabled but rendered for visibility.
   const pmc = CONTROLLER.pendingModalChoice();
   if (pmc) {
     const card = G.you.hand.find(c => c.iid === pmc.cardIid);
@@ -407,9 +346,6 @@ function render() {
       for (let mIdx = 0; mIdx < modes.length; mIdx++) {
         const modeEffects = modes[mIdx];
         const targetedEff = (modeEffects || []).find(ENGINE.effectNeedsTarget);
-        // Legality check: can this specific mode be cast right now?
-        // For targeted effects, we need any legal target to test castability;
-        // get one from getValidTargets, falling back to a player target.
         let fakeAction;
         if (targetedEff) {
           const valid = ENGINE.getValidTargets(targetedEff, 'you');
@@ -428,7 +364,6 @@ function render() {
         list.appendChild(btn);
       }
     } else {
-      // Card no longer in hand (shouldn't happen, but defensive).
       Modal.hide('modalChoiceModal');
     }
   } else {
@@ -447,35 +382,22 @@ function render() {
     const statsEl = document.getElementById('gameover-stats');
     if (stats) {
       if (stats.active) {
-        // Won this game; run continues.
         statsEl.textContent = `Game ${stats.gameNum} — ${stats.wins} win${stats.wins === 1 ? '' : 's'} this run`;
-        // Label reflects what the player will see next. If there's a map
-        // fork pending after the reward is resolved, surface that. Reward
-        // modal still overlays first; this is a hint for the post-reward
-        // state.
         const mapState = RUN.getMapState && RUN.getMapState();
         const hasMapChoice = mapState && mapState.pendingChoice;
         btn.textContent = hasMapChoice ? 'Choose Path' : 'Next Game';
-        // While a reward is pending, the button is disabled until the player
-        // completes the sticker pick (the reward modal will overlay anyway).
         btn.disabled = !!RUN.getReward();
       } else {
-        // Run is over — gameOverClick will return the player to the start
-        // screen rather than silently launching a new draft. Label matches.
         statsEl.textContent = `Run over — ${stats.wins} win${stats.wins === 1 ? '' : 's'} across ${stats.gameNum} game${stats.gameNum === 1 ? '' : 's'}`;
         btn.textContent = 'Main Menu';
         btn.disabled = false;
       }
     } else {
-      // No run state (shouldn't happen post-bootstrap, but be defensive).
       statsEl.textContent = '';
       btn.textContent = 'New Run';
       btn.disabled = false;
     }
   } else if (pt) {
-    // For multi-target spells/abilities, show "Pick target N of M" so the
-    // player knows where they are in the sequence. Single-target picks fall
-    // through to the original prompt.
     const slotsNeeded = slotsNeededForPending(pt);
     if (slotsNeeded.length > 1) {
       const pickedCount = (pt.pickedSlots && pt.pickedSlots.length) || 0;
@@ -521,14 +443,7 @@ function render() {
 
   document.getElementById('log').innerHTML = G.log.map(e => `<div class="le ${e.cls}">${escapeHtml(e.msg)}</div>`).join('');
 
-  // Auto-open the graveyard modal in targeting mode when a graveyard target
-  // is needed. Two routes lead here:
-  //   - pendingTriggerTarget with valid = graveyardCreature[] (e.g., Grave
-  //     Digger ETB asking for a graveyard creature to recur)
-  //   - pendingTarget (spell cast) where the spell's effect targets a
-  //     graveyard creature (no such spell yet, but the path is supported)
-  // The modal renders with click handlers that submit the target. Outside
-  // targeting mode, openZone is a passive viewer (existing behavior).
+  // Auto-open graveyard modal when a graveyard target is needed.
   if (!G.gameOver) {
     let graveTargets = null;
     if (G.pendingTriggerTarget
@@ -547,26 +462,13 @@ function render() {
       openZoneTargeting('you', 'graveyard', graveTargets);
     }
   }
-  // Draw target lines from stack items to their declared targets. Deferred
-  // via requestAnimationFrame so the browser has applied layout for every
-  // card div before we measure positions. The handler clears the SVG and
-  // redraws on every call — stale lines from previous renders don't leak.
   requestAnimationFrame(drawTargetLines);
 }
 
-// Draw thin dashed lines from each stack item to its declared target(s).
-// Reads G.stack and resolves each target's iid to its on-screen DOM
-// element (via data-iid attribute set by makeCardEl). Stack pills are
-// located via data-stack-idx. Skips targets we can't visualize (players,
-// off-screen cards, gone-from-board targets).
-//
-// Color: red for counterspells/Steal (target: spell/permanentOrSpell),
-// soft orange for everything else. An arrowhead at the target end makes
-// the direction explicit.
+// Dashed SVG lines from stack pills to their targets. Red for counters/steal; orange neutral.
 function drawTargetLines() {
   const svg = document.getElementById('targetLines');
   if (!svg) return;
-  // Clear previous lines but keep <defs> (which holds the arrowhead markers).
   for (const child of [...svg.children]) {
     if (child.tagName !== 'defs') svg.removeChild(child);
   }
@@ -580,8 +482,6 @@ function drawTargetLines() {
     const pillRect = pillEl.getBoundingClientRect();
     const sx = pillRect.left + pillRect.width / 2;
     const sy = pillRect.bottom;
-    // Compute effects this stack item will run (chosen mode for modals,
-    // flat effects for spells, the trigger's effects for triggers).
     let effects = [];
     if (item.kind === 'trigger') {
       effects = (item.trig && item.trig.effects) || [];
@@ -591,8 +491,7 @@ function drawTargetLines() {
     for (let ti = 0; ti < targets.length; ti++) {
       const tgt = targets[ti];
       if (!tgt) continue;
-      // Resolve target to a DOM element. Player targets have no good DOM
-      // anchor — skip those.
+      // Player targets have no good DOM anchor — skip.
       let targetEl = null;
       if (tgt.kind === 'creature' || tgt.kind === 'permanent' || tgt.kind === 'graveyardCreature') {
         if (typeof tgt.iid === 'number') {
@@ -606,10 +505,7 @@ function drawTargetLines() {
       const tRect = targetEl.getBoundingClientRect();
       const tx = tRect.left + tRect.width / 2;
       const ty = tRect.top + tRect.height / 2;
-      // Pick effects that consume THIS target slot. By default effects
-      // share targets[0]; an effect can declare targetSlot:N to consume
-      // targets[N] instead. So filter effects whose targetSlot matches
-      // this loop's index.
+      // Effects share targets[0] by default; targetSlot:N picks targets[N].
       const slotEffects = effects.filter(e => (e.targetSlot || 0) === ti);
       const valence = classifyValence(slotEffects, tgt, item.controller, G);
       const palette = VALENCE_PALETTE[valence];
@@ -628,11 +524,7 @@ function drawTargetLines() {
   });
 }
 
-// Effect-kind valence buckets. Used by drawTargetLines to color the line
-// red (harm), green (benefit), or orange (neutral/mixed). The harmful set
-// includes counterspells, removal, bounce, debuffs, color erasure,
-// equalization, stealing, etc. The beneficial set is buffs/heals/untap/
-// recursion. Everything else falls through to neutral.
+// Valence → line color (red=harm, green=benefit, orange=neutral).
 const HARMFUL_KINDS = new Set([
   'damage', 'damageAll', 'removeCreature', 'removeAll', 'destroyAndStickerSlot',
   'weaken', 'restrict', 'discard', 'edict', 'bleach', 'embargo',
@@ -677,8 +569,7 @@ function classifyValence(slotEffects, target, casterSide, G) {
   } else if (target.kind === 'stack' && target.stackItem) {
     targetController = target.stackItem.controller;
   }
-  // Self-target harmful = neutral. Opp-target beneficial = neutral.
-  // Otherwise honor the effect-kind classification.
+  // Self-harm + opp-benefit collapse to neutral; otherwise effect-kind decides.
   if (hasHarm && targetController === casterSide) return 'neutral';
   if (hasBenefit && !hasHarm && targetController && targetController !== casterSide) return 'neutral';
   if (hasHarm) return 'harm';
@@ -686,10 +577,7 @@ function classifyValence(slotEffects, target, casterSide, G) {
   return 'neutral';
 }
 
-// Targeting-mode wrapper around openZone — shows the graveyard with valid
-// target cards highlighted and clickable. Cards that aren't valid are still
-// shown but not selectable. Clicking a valid card submits the target via
-// the appropriate path (trigger target pick OR spell cast action).
+// Open zone modal with valid targets highlighted/clickable. Submits via CONTROLLER.
 function openZoneTargeting(who, zone, validTargets) {
   const G = ENGINE.state();
   if (!G || !G[who]) return;
@@ -717,14 +605,11 @@ function openZoneTargeting(who, zone, validTargets) {
       btn.innerHTML = `<span style="opacity:0.6">[${typeHint}]</span> <span class="card-name"></span>${cost ? ' <span style="opacity:0.7;font-size:10px">' + cost + '</span>' : ''}`;
       btn.querySelector('.card-name').textContent = card.name;
       if (validIids.has(card.iid)) {
-        // Valid target — highlight and wire up submission.
         btn.style.cursor = 'pointer';
         btn.style.borderColor = '#ffcc44';
         btn.style.background = '#332';
         btn.onclick = () => submitGraveyardTarget(card.iid);
       } else {
-        // Not a valid target (e.g., a non-creature card in the same graveyard).
-        // Show but don't highlight; click does nothing.
         btn.style.opacity = '0.4';
       }
       listEl.appendChild(btn);
@@ -733,16 +618,10 @@ function openZoneTargeting(who, zone, validTargets) {
   modal.classList.add('vis');
 }
 
-// Submits a chosen graveyard target. Routes through whichever pending
-// prompt is active — trigger target pick OR spell cast action.
 function submitGraveyardTarget(iid) {
   const G = ENGINE.state();
   const card = G.you.graveyard.find(c => c.iid === iid);
   const target = {kind:'graveyardCreature', iid, label: card ? card.name : 'creature', controller: 'you'};
-  // Delegate to CONTROLLER — submit() and pendingTarget live inside the
-  // CONTROLLER IIFE and aren't accessible from this scope. The helper
-  // routes the chosen target through the right path (trigger pick vs
-  // pending spell cast) and returns true if it submitted.
   if (CONTROLLER.submitTargetedAction(target)) {
     Modal.hide('zoneModal');
   }
@@ -751,10 +630,7 @@ function submitGraveyardTarget(iid) {
 function setText(id, v) { document.getElementById(id).textContent = v; }
 function escapeHtml(s) { return String(s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
 
-// Render an array of {text, highlight} segments to HTML, wrapping
-// highlighted segments in <span class="bumped">. Used for card text where
-// empower-bumped values get visual emphasis. The describeCardSegments
-// generator at module scope produces these arrays; this is the renderer.
+// {text, highlight}[] → HTML, with .bumped spans for empower-emphasized values.
 function segmentsToHtml(segs) {
   if (!Array.isArray(segs)) return '';
   return segs.map(s => {
@@ -789,8 +665,7 @@ function renderHand(id, hand, who) {
   }
 }
 function canPlayFromUI(who, card) {
-  // Probe legality with placeholder targets. Multi-target spells need one
-  // fake target per targetSlot — castSpell's legality check enforces it.
+  // Probe legality with placeholder targets per targetSlot.
   if (card.type === 'Land') {
     return ENGINE.isLegalAction(who, {type:'playLand', cardIid: card.iid});
   }
@@ -833,16 +708,12 @@ function renderBf(id, bf, who) {
   const uiBlk = CONTROLLER.uiBlk();
   const uiPickBlk = CONTROLLER.uiPickBlk();
 
-  // Display order: creatures (most clickable), artifacts (active perms —
-  // Stapler), lands grouped by WUBRG-then-colorless and then by name.
-  // Stable across rerenders.
+  // Display: creatures > artifacts > lands (WUBRG then C). Stable across rerenders.
   const typeOrder = (t) => {
     if (t === 'Creature') return 0;
     if (t === 'Artifact') return 1;
     return 2;
   };
-  // Multi-color lands sort by primary mana only — keeps a Forest+Plains
-  // staple sitting with the Forests.
   const colorOrder = {W:0, U:1, B:2, R:3, G:4, C:5};
   const landKey = (card) => {
     const c = card.mana || 'C';
@@ -862,16 +733,15 @@ function renderBf(id, bf, who) {
 
   for (const card of sorted) {
     const div = makeCardEl(card);
-    // Highlight in-progress combat selections (player's UI state)
+    // In-progress combat UI state.
     if (uiAtk.includes(card.iid)) div.classList.add('atk');
     if (uiBlk.has(card.iid)) div.classList.add('blk');
     for (const aIid of uiBlk.values()) if (aIid === card.iid) div.classList.add('atk');
     if (uiPickBlk === card.iid) div.classList.add('pblk');
-    // Highlight committed engine combat state too (during damage phase, etc.)
+    // Committed engine combat state.
     if (G.attackers.includes(card.iid)) div.classList.add('atk');
     if (G.blockers.has(card.iid)) div.classList.add('blk');
 
-    // Targetable highlight (spell-cast OR trigger-target prompt)
     if (pt) {
       const eff = pendingTargetEffect(pt);
       if (eff && isValidTargetCreature(eff, card)) div.classList.add('targetable');
@@ -882,12 +752,10 @@ function renderBf(id, bf, who) {
         div.classList.add('targetable');
       }
     }
-    // Rip-select highlight — every permanent on YOUR battlefield is a
-    // valid rip target. Opp's permanents stay unhighlighted.
+    // Rip-select: every player permanent is targetable.
     if (G.pendingRipSelect && G.pendingRipSelect.who === 'you' && who === 'you') {
       div.classList.add('targetable');
     }
-    // Activatable highlight
     if (who === 'you' && card.type === 'Creature' && card.abilities && !card.tapped && !card.sick) {
       const hasAvail = card.abilities.some((ab, i) => {
         if (ab.effects[0].kind === 'addMana') return true;
@@ -904,7 +772,6 @@ function renderBf(id, bf, who) {
     el.appendChild(div);
   }
 
-  // Player-target buttons during target selection (spell or trigger).
   let showPlayerTargetButton = false;
   if (pt) {
     const eff = pendingTargetEffect(pt);
@@ -925,10 +792,7 @@ function renderBf(id, bf, who) {
   }
 }
 
-// Read the relevant effects array for a pending pick state. For spell casts,
-// this is the chosen mode's effects (or the flat list for non-modal). For
-// activated abilities, it's the ability's effects. Returns [] if the state
-// is malformed (defensive).
+// Effects for the pending pick: chosen mode (cast) or ability (activate).
 function pendingTargetEffects(pt) {
   if (!pt) return [];
   const G = ENGINE.state();
@@ -946,10 +810,7 @@ function pendingTargetEffects(pt) {
   return [];
 }
 
-// Sorted unique list of targetSlot values used by the pending pick. Multi-
-// target spells need one user pick per unique slot; same-slot effects share
-// a single target (Strength of the Pack: pump and grant-trample both at
-// slot 0 → slotsNeeded === [0], one pick).
+// Unique sorted targetSlot values; one user pick per slot.
 function slotsNeededForPending(pt) {
   const effects = pendingTargetEffects(pt);
   const slots = new Set();
@@ -959,12 +820,7 @@ function slotsNeededForPending(pt) {
   return [...slots].sort((a, b) => a - b);
 }
 
-// The effect describing what the CURRENT slot expects to target. Used by the
-// valid-target highlighter and the prompt label. For a multi-target spell
-// mid-pick, this reads the slot we're currently asking the player to fill.
-// Falls back to the first targeted effect for the slot, since multiple
-// effects on the same slot share one target (the highlighter only needs to
-// know the target shape, which is consistent across same-slot effects).
+// Effect describing the CURRENT slot. Same-slot effects share target shape.
 function pendingTargetEffect(pt) {
   if (!pt) return null;
   const slots = slotsNeededForPending(pt);

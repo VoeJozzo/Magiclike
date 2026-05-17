@@ -1,20 +1,6 @@
 extends RefCounted
 
-# Effect handler: damage. Mutates the resolved target's life (player) or
-# damage_marked (creature, Phase 2+).
-#
-# Effect dictionary shape:
-#   {"kind": "damage", "amount": <int>, "target": "chosen" | "controller" | ...}
-#
-# In Phase 1, only target="chosen" matters — the cast-time target is read from
-# ctx.targets[0].
-#
-# ctx fields:
-#   ctx.controller : Player        — who cast/activated the source
-#   ctx.source     : CardInstance  — the card that produced this effect
-#   ctx.state      : EngineState   — the full game state (for resolving target refs)
-#   ctx.targets    : Array         — targets chosen at cast time (each: {kind, who?, iid?})
-
+# {"kind": "damage", "amount": int, "target": "chosen"|"controller"|"opponent"}.
 
 static func execute(effect: Dictionary, ctx: Dictionary) -> void:
 	var amount: int = effect.get("amount", 0)
@@ -27,15 +13,10 @@ static func execute(effect: Dictionary, ctx: Dictionary) -> void:
 		var t: Dictionary = ctx.targets[0]
 		_apply_damage_to_target(t, amount, ctx)
 	elif target_spec == "controller":
-		# Self-damage for the controller. Tracks life_lost_this_turn so
-		# downstream predicates (e.g., bloodlust) see this correctly.
 		ctx.controller.life -= amount
 		ctx.controller.life_lost_this_turn += amount
 		_log(ctx, "%s takes %d damage from %s (life: %d)" % [ctx.controller.name, amount, ctx.source_name, ctx.controller.life])
 	elif target_spec == "opponent":
-		# Hardcoded "the opponent of the controller" — used by Phase 4 triggers
-		# (Pyromaniac ETB, Bloodlust death) that don't take a player-chosen
-		# target. Phase 4.5+ will replace this with an interactive picker.
 		var opp_key: String = ctx.state.opponent_of(ctx.controller.key)
 		var opp_player = ctx.state.player_by_key(opp_key)
 		if opp_player == null:
@@ -60,7 +41,6 @@ static func _apply_damage_to_target(t: Dictionary, amount: int, ctx: Dictionary)
 			p.life_lost_this_turn += amount
 			_log(ctx, "%s takes %d damage from %s (life: %d)" % [p.name, amount, ctx.source_name, p.life])
 		"creature":
-			# Find the creature instance on the battlefield. If gone, fizzle.
 			var iid: int = t.get("iid", -1)
 			var found = ctx.state.find_instance(iid)
 			if found == null or found.card == null or found.zone_name != "battlefield":
@@ -72,8 +52,7 @@ static func _apply_damage_to_target(t: Dictionary, amount: int, ctx: Dictionary)
 				ctx.source_name, amount, creature.name(),
 				creature.damage_marked, creature.current_toughness(),
 			])
-			# State-based actions will run after this effect to clean up
-			# any creature with damage_marked >= toughness.
+			# SBAs run after to clean up creatures w/ damage_marked >= toughness.
 		_:
 			push_warning("damage: unknown target kind '%s'" % t.get("kind", ""))
 

@@ -1,17 +1,8 @@
 class_name ManaPool
 extends RefCounted
 
-# Mana pool — a per-player accumulator emptied at end of each phase in real MTG,
-# but Phase 1 keeps it simple and only clears at end of turn (handled by Engine).
-#
-# Keys: W, U, B, R, G (colored), C (colorless / generic).
-# Values: int counts.
-#
-# Cost-paying convention:
-# - Colored requirements ({R: 1}) must be paid in the matching color.
-# - Generic requirements ({C: 2}) can be paid from any color.
-# - When this pool's pay() is called, it satisfies colored exactly, then generic
-#   greedily (prefers C, then alphabetical).
+# Per-player mana pool. Keys: W/U/B/R/G (colored), C (generic).
+# pay() satisfies colored exactly, then generic greedily (C first, then WUBRG).
 
 const COLORS := ["W", "U", "B", "R", "G", "C"]
 
@@ -35,17 +26,15 @@ func clear() -> void:
 		pool[color] = 0
 
 
-# True if `cost` can be paid from this pool. Generic (C) is satisfied by any color.
+# Generic (C) satisfied by any color.
 func can_pay(cost: Dictionary) -> bool:
 	var available: Dictionary = pool.duplicate()
-	# Colored first
 	for color in cost:
 		if color == "C":
 			continue
 		if available.get(color, 0) < cost[color]:
 			return false
 		available[color] -= cost[color]
-	# Generic from anything remaining
 	var generic_needed: int = cost.get("C", 0)
 	var total_remaining: int = 0
 	for color in available:
@@ -53,16 +42,14 @@ func can_pay(cost: Dictionary) -> bool:
 	return total_remaining >= generic_needed
 
 
-# Pays `cost`. Returns true on success (pool decremented), false if can't pay (pool unchanged).
+# Atomic: returns false and leaves pool unchanged if it can't pay.
 func pay(cost: Dictionary) -> bool:
 	if not can_pay(cost):
 		return false
-	# Pay colored exactly
 	for color in cost:
 		if color == "C":
 			continue
 		pool[color] -= cost[color]
-	# Pay generic, preferring C then WUBRG
 	var generic_needed: int = cost.get("C", 0)
 	var pay_order := ["C", "W", "U", "B", "R", "G"]
 	for color in pay_order:
@@ -81,28 +68,15 @@ func total() -> int:
 	return t
 
 
-# Phase 5b: deep copy. Used by EngineState.duplicate_deep for AI snapshots.
-# RefCounted's default `duplicate()` shares Dictionary references, which
-# would let mutations on the copy leak into the original — we explicitly
-# duplicate() the inner Dictionary.
+# Inner Dictionary duplicated explicitly — default RefCounted.duplicate() shares it by ref.
 func duplicate_deep() -> ManaPool:
 	var copy := ManaPool.new()
 	copy.pool = pool.duplicate()
 	return copy
 
 
-# MTG mana-cost notation: colored mana is shown as repeated letters (RR for
-# two reds), colorless/generic is shown as a leading number (1R for 1 generic
-# + 1 red). Critically, "1R" never means "one red" — it always means
-# 1 generic + 1 red. So we must NOT use "1R" to display a single red mana.
-#
-# Examples:
-#   {R:1}         → "R"
-#   {R:2}         → "RR"
-#   {R:1, C:2}    → "2R"
-#   {W:1, R:1}    → "WR"
-#   {R:5}         → "RRRRR" (acceptable until we reach realistically large
-#                            mana totals; revisit with icon-based UI later)
+# MTG notation: generic as leading number, colored as repeated letters.
+# {R:1}→"R", {R:2}→"RR", {R:1,C:2}→"2R". "1R" is ALWAYS 1 generic + 1 red, never one red.
 func to_string_short() -> String:
 	var s := ""
 	# Generic / colorless first (matches MTG card-text convention)

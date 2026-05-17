@@ -31,8 +31,7 @@ const GENERATOR_EFFECTS = [
     id: 'gainLifeSelf',
     weight: 3,
     needsLiveSource: false,
-    // Lifegain less swingy than damage, so the curve is gentler — bigger
-    // numbers are still rare but not as punishingly so.
+    // Lifegain less swingy than damage — gentler curve.
     roll: () => [{kind: 'gainLife', target: 'self', amount: _genWeightedInt([4, 3, 2])}],
     describe: (eff) => `gain ${eff.amount} life`,
   },
@@ -40,7 +39,7 @@ const GENERATOR_EFFECTS = [
     id: 'drawSelf',
     weight: 3,
     needsLiveSource: false,
-    // Card draw is the most snowball-y resource; keep the high-end rare.
+    // Card draw snowballs; keep high-end rare.
     roll: () => [{kind: 'draw', target: 'self', amount: _genWeightedInt([7, 1])}],
     describe: (eff) => eff.amount === 1 ? `draw a card` : `draw ${eff.amount} cards`,
   },
@@ -50,7 +49,7 @@ const GENERATOR_EFFECTS = [
     needsLiveSource: true,
     roll: () => {
       const power = _genWeightedInt([4, 2]);
-      const tou = _genWeightedInt([5, 3], 0);   // tou starts at 0
+      const tou = _genWeightedInt([5, 3], 0);
       return [{kind: 'pump', target: 'self', power, toughness: tou}];
     },
     describe: (eff) => `~ gets +${eff.power}/+${eff.toughness} EOT`,
@@ -59,7 +58,7 @@ const GENERATOR_EFFECTS = [
     id: 'addCounterSelf',
     weight: 2,
     needsLiveSource: true,
-    // Counters are permanent so always +1/+1 — bigger would snowball hard.
+    // Always +1/+1; counters are permanent — bigger would snowball.
     roll: () => [{kind: 'addCounter', target: 'self', power: 1, toughness: 1}],
     describe: () => `~ gets a +1/+1 counter`,
   },
@@ -67,9 +66,7 @@ const GENERATOR_EFFECTS = [
     id: 'createTokenSoldier',
     weight: 2,
     needsLiveSource: false,
-    // TOKENS is keyed by the full descriptor (e.g. 'soldier_w_1_1'), not the
-    // bare type. The createTokens handler lookups TOKENS[tokenId] directly,
-    // so the bare 'soldier' fails to resolve and the trigger fizzles.
+    // TOKENS keyed by full descriptor; bare 'soldier' would fizzle.
     roll: () => [{kind: 'createTokens', tokenId: 'soldier_w_1_1', count: _genWeightedInt([5, 2])}],
     describe: (eff) => eff.count === 1 ? `create a 1/1 Soldier token` : `create ${eff.count} 1/1 Soldier tokens`,
   },
@@ -78,9 +75,7 @@ const GENERATOR_EFFECTS = [
     weight: 2,
     needsLiveSource: false,
     roll: () => [{kind: 'createTokens', tokenId: 'goblin_r_1_1', count: _genWeightedInt([5, 2])}],
-    // Goblin tokens have intrinsic haste (the TOKENS entry has keywords:['haste']);
-    // surface that in the generated description so the player knows what they
-    // get without having to inspect the token template.
+    // Goblin tokens have intrinsic haste — surface in description.
     describe: (eff) => eff.count === 1
       ? `create a 1/1 Goblin token with haste`
       : `create ${eff.count} 1/1 Goblin tokens with haste`,
@@ -94,11 +89,8 @@ const GENERATOR_EFFECTS = [
   },
 ];
 
-// Condition entries the generator knows how to use. Excludes parameterized
-// conditions (subtype filters) since the generator has no basis for picking
-// a subtype. Each entry references a condId in TRIGGER_CONDITIONS and adds
-// generator-specific metadata: how to label the event, and whether the
-// source is alive at trigger fire time (gates effects with needsLiveSource).
+// Excludes parameterized conditions (no basis for picking subtype).
+// sourceLive gates needsLiveSource effects.
 const GENERATOR_CONDITIONS = [
   {condId: 'thisEnters',                 weight: 3, sourceLive: true,  text: '~ enters'},
   {condId: 'thisAttacks',                weight: 3, sourceLive: true,  text: '~ attacks'},
@@ -110,7 +102,6 @@ const GENERATOR_CONDITIONS = [
   {condId: 'youCastSpell',               weight: 3, sourceLive: true,  text: 'you cast a spell'},
 ];
 
-// Pick from a weighted list, returning the chosen entry.
 function _genWeightedPick(entries) {
   const total = entries.reduce((s, e) => s + (e.weight || 1), 0);
   let r = Math.random() * total;
@@ -121,16 +112,11 @@ function _genWeightedPick(entries) {
   return entries[entries.length - 1];
 }
 
-// Roll a single trigger. Loops until a coherent (cond, eff) pair is found —
-// the only hard-break filter is "self-targeting effects on dead-source
-// conditions." With ~70% of effects being source-agnostic, the rejection
-// rate is low and the loop terminates quickly.
+// Roll a (cond, eff) pair. Only hard-break: needsLiveSource effect + dead-source cond.
 function generateRandomTrigger() {
   for (let attempt = 0; attempt < 30; attempt++) {
     const cond = _genWeightedPick(GENERATOR_CONDITIONS);
     const eff = _genWeightedPick(GENERATOR_EFFECTS);
-    // HARD BREAK: effects that need a live source can't fire when source
-    // is in the graveyard. Skip and reroll.
     if (eff.needsLiveSource && !cond.sourceLive) continue;
     const effects = eff.roll();
     const condEntry = TRIGGER_CONDITIONS[cond.condId];
@@ -145,7 +131,6 @@ function generateRandomTrigger() {
       generated: true,
     };
   }
-  // Fallback: should be unreachable but defensive.
   return {
     event: 'cardEntersBattlefield',
     condId: 'thisEnters',
@@ -155,12 +140,7 @@ function generateRandomTrigger() {
   };
 }
 
-// Two-step build flow for Mercurial Adept:
-//   generateConditionOptions → player picks one of 3
-//   generateEffectOptions(chosenCondition) → player picks one of 3
-//   assembleTrigger(cond, eff) → finalize
-
-// Pick N distinct entries from a weighted list (no duplicates).
+// Mercurial Adept two-step: generateConditionOptions → generateEffectOptions → assembleTrigger.
 function _genWeightedPickN(entries, n) {
   const pool = entries.slice();
   const out = [];
@@ -182,12 +162,7 @@ function generateConditionOptions() {
   return _genWeightedPickN(GENERATOR_CONDITIONS, 3);
 }
 
-// Roll 3 effect candidates for step 2, scoped to the chosen condition's
-// liveness. If condition has sourceLive=false (e.g., thisDies), filter out
-// effects with needsLiveSource=true (self-targeting effects that crash on
-// graveyard sources). Effect templates are picked without replacement, but
-// each effect's parameters are rolled fresh per offer — so two players
-// seeing the same effect set get different numerical values.
+// 3 effect candidates filtered by chosen cond's sourceLive. Params re-rolled per offer.
 function generateEffectOptions(chosenCondition) {
   const eligible = GENERATOR_EFFECTS.filter(e =>
     !e.needsLiveSource || chosenCondition.sourceLive);
@@ -202,9 +177,7 @@ function generateEffectOptions(chosenCondition) {
   });
 }
 
-// Combine a chosen condition and a chosen effect into a finalized trigger
-// object — the same shape produced by generateRandomTrigger, ready to slot
-// into card.triggers / slot.bonusTrigger.
+// Finalize (cond, eff) → trigger object, same shape as generateRandomTrigger.
 function assembleTrigger(chosenCondition, chosenEffect) {
   const condEntry = TRIGGER_CONDITIONS[chosenCondition.condId];
   const event = (condEntry && condEntry.events && condEntry.events[0]) || 'cardEntersBattlefield';
@@ -214,11 +187,7 @@ function assembleTrigger(chosenCondition, chosenEffect) {
     text: `When ${chosenCondition.text}, ${chosenEffect.describe}.`,
     effects: chosenEffect.effects.map(e => ({...e})),
     generated: true,
-    // Procedurally-generated triggers don't fire from their own card's
-    // effects. Stops self-cascade loops in the (condition × effect) space
-    // (e.g., "creature enters → create tokens" cascading through the tokens
-    // themselves; "you gain life → gain life" feeding back). The guard is
-    // evaluated in evalTriggerCondition.
+    // Stops self-cascade loops (e.g. enter→create-tokens cascading via the tokens).
     noSelfCascade: true,
   };
 }

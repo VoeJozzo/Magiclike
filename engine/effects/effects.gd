@@ -1,22 +1,9 @@
 class_name Effects
 extends RefCounted
 
-# Universal effects dispatcher. Mirrors the JS prototype's EFFECTS table.
-#
-# Each effect kind has its own GDScript file under engine/effects/, with a
-# static execute(effect: Dictionary, ctx: Dictionary) -> void method.
-#
-# ctx fields (assembled by Engine before dispatching):
-#   ctx.controller  : Player        — who's casting/activating
-#   ctx.source      : CardInstance  — the source card
-#   ctx.source_name : String        — convenience for logs
-#   ctx.source_iid  : int
-#   ctx.state       : EngineState   — full game state
-#   ctx.targets     : Array         — resolved at cast time, validated at resolution
-#   ctx.log         : Array[String] — append log lines here
-#
-# Adding a new effect kind: write engine/effects/<kind>.gd with a static execute(),
-# add to HANDLERS below.
+# Effects dispatcher. Each kind has a static execute(effect, ctx) in engine/effects/<kind>.gd.
+# ctx assembled by Engine: {controller, source, source_name, source_iid, state, targets, log}.
+# To add a kind: drop the file + register in HANDLERS below.
 
 const _Damage := preload("res://engine/effects/damage.gd")
 const _AddMana := preload("res://engine/effects/add_mana.gd")
@@ -33,8 +20,7 @@ const HANDLERS := {
 }
 
 
-# Resolve a list of effects in order. Each effect runs to completion before the
-# next; targets and ctx are shared.
+# In-order resolution; targets and ctx shared.
 static func resolve_list(effects: Array, ctx: Dictionary) -> void:
 	for effect in effects:
 		resolve_one(effect, ctx)

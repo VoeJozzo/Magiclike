@@ -1,14 +1,8 @@
 class_name PlayerPanel
 extends Control
 
-# Player panel — shows life total, mana pool, and player name. Acts as a
-# clickable target sink during target-picking mode (e.g., clicking the
-# opponent's life total to target them with Lightning Bolt).
-#
-# Construction is fully programmatic — no .tscn required. Owner adds as child:
-#   var panel = PlayerPanel.new()
-#   panel.player_key = "you"
-#   add_child(panel)
+# Life/mana/zone counts plus clickable target sink (e.g. for Lightning Bolt's opponent).
+# Programmatic — no .tscn needed.
 
 signal clicked
 
@@ -17,10 +11,9 @@ signal clicked
 var _name_label: Label
 var _life_label: Label
 var _mana_label: Label
-var _zones_label: Label  # Phase 4.5: hand/library/graveyard counts
+var _zones_label: Label
 var _highlight: ColorRect
 
-# Set true to indicate this panel is a valid target during targeting mode.
 var is_clickable: bool = false:
 	set(value):
 		is_clickable = value
@@ -33,14 +26,12 @@ func _ready() -> void:
 	custom_minimum_size = Vector2(280, 120)
 	mouse_filter = MOUSE_FILTER_PASS
 
-	# Background tint
 	var bg := ColorRect.new()
 	bg.color = Color(0.10, 0.10, 0.16, 0.85)
 	bg.size = custom_minimum_size
 	bg.mouse_filter = MOUSE_FILTER_IGNORE
 	add_child(bg)
 
-	# Targeting-mode highlight (yellow tint, hidden by default)
 	_highlight = ColorRect.new()
 	_highlight.color = Color(1, 1, 0.2, 0.25)
 	_highlight.size = custom_minimum_size
@@ -48,7 +39,6 @@ func _ready() -> void:
 	_highlight.mouse_filter = MOUSE_FILTER_IGNORE
 	add_child(_highlight)
 
-	# Labels in a vbox
 	var v := VBoxContainer.new()
 	v.position = Vector2(12, 8)
 	v.size = Vector2(custom_minimum_size.x - 24, custom_minimum_size.y - 16)
@@ -61,7 +51,7 @@ func _ready() -> void:
 
 	_life_label = Label.new()
 	_life_label.add_theme_font_size_override("font_size", 36)
-	_life_label.add_theme_color_override("font_color", Color(1, 0.85, 0.2))  # gold
+	_life_label.add_theme_color_override("font_color", Color(1, 0.85, 0.2))
 	v.add_child(_life_label)
 
 	_mana_label = Label.new()
@@ -69,8 +59,6 @@ func _ready() -> void:
 	_mana_label.add_theme_color_override("font_color", Color(0.7, 0.85, 1))
 	v.add_child(_mana_label)
 
-	# Phase 4.5: hand / library / graveyard counts. Library is the critical
-	# one — the count tells you how close you are to decking out.
 	_zones_label = Label.new()
 	_zones_label.add_theme_font_size_override("font_size", 12)
 	_zones_label.add_theme_color_override("font_color", Color(0.65, 0.65, 0.75))
@@ -79,16 +67,14 @@ func _ready() -> void:
 
 func update_from_player(player: Player) -> void:
 	if _name_label == null:
-		return  # Not yet ready
+		return
 	_name_label.text = player.name
 	_life_label.text = "Life: %d" % player.life
 	if player.mana.total() == 0:
 		_mana_label.text = "Mana: (none)"
 	else:
 		_mana_label.text = "Mana: %s" % player.mana.to_string_short()
-	# Hand / library / graveyard counts. Library prefixed with a warning glyph
-	# below 5 cards so the player can see they're decking out before it
-	# happens.
+	# Library warning glyph below 5 cards = decking-out alert.
 	var lib_size: int = player.library.size()
 	var lib_marker: String = "" if lib_size > 5 else "⚠ "
 	_zones_label.text = "Hand: %d  •  %sLibrary: %d  •  GY: %d" % [

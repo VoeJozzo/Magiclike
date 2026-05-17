@@ -38,8 +38,7 @@ async function loadCards() {
   }
 }
 
-// TOKENS — minted by effects, not drafted. No slotIdx, vanish on leave-play
-// (no graveyard residence). Dies-triggers DO fire on token death.
+// TOKENS — minted by effects. Vanish on leave-play (dies-triggers still fire).
 const TOKENS = {
   spirit_w_1_1:  {name:'Spirit',  type:'Creature', sub:'Spirit',  power:1, toughness:1, art:'👻', color:'W', text:'Flying', keywords:['flying']},
   soldier_w_1_1: {name:'Soldier', type:'Creature', sub:'Human Soldier', power:1, toughness:1, art:'⚔', color:'W'},
@@ -48,9 +47,7 @@ const TOKENS = {
   bear_g_2_2:    {name:'Bear',    type:'Creature', sub:'Bear',    power:2, toughness:2, art:'🐻', color:'G'},
 };
 
-// SHARED CONSTANTS
-
-// Single source of truth — new keywords here auto-become available stickers.
+// SHARED CONSTANTS — new keywords here auto-become available stickers.
 const KEYWORDS = [
   'flying', 'vigilance', 'trample', 'haste',
   'firstStrike', 'reach', 'defender', 'indestructible',
@@ -58,9 +55,7 @@ const KEYWORDS = [
   'unblockable',
 ];
 
-// STICKERS — run-long card modifications. Auto-generated from KEYWORDS plus
-// hand-defined entries. Shape: {id, name, text, appliesTo, stackable, kind,
-// weight, ...kind-payload}.
+// STICKERS — run-long card mods. Shape: {id, name, text, appliesTo, stackable, kind, weight, ...payload}.
 const STICKERS = {};
 STICKERS['plus1plus1'] = {
   id: 'plus1plus1', name: '+1/+1',
@@ -78,8 +73,7 @@ STICKERS['innate'] = {
   weight: 10,
   kind: 'innate',
 };
-// landColor stickers — make a basic land also produce another color. Legal
-// only when the deck plays that color. appliesTo reads c.deckColors.
+// landColor stickers — extra color on a basic. Gated by deck color (c.deckColors).
 for (const color of ['W','U','B','R','G']) {
   const id = 'landColor_' + color;
   const colorName = { W:'Plains', U:'Island', B:'Swamp', R:'Mountain', G:'Forest' }[color];
@@ -89,27 +83,19 @@ for (const color of ['W','U','B','R','G']) {
     text: 'This land also produces {' + color + '}.',
     appliesTo: (c) => {
       if (c.type !== 'Land') return false;
-      if (c.mana === color) return false;                          // already produces it natively
-      if ((c.extraManaColors || []).includes(color)) return false;  // already added via sticker
-      // Deck-color gate: only offer if deck already plays this color.
+      if (c.mana === color) return false;
+      if ((c.extraManaColors || []).includes(color)) return false;
       if (c.deckColors && !c.deckColors.includes(color)) return false;
       return true;
     },
     stackable: false,
-    weight: 10,                 // baseline
+    weight: 10,
     kind: 'landColor',
     color,
     colorAdj,
   };
 }
-// Cost reduction — card costs 1 less generic mana to cast. Legal only on
-// non-land cards with at least 1 generic mana in their cost AND total cost
-// ≥ 2 (so we don't make a 1-drop free). Stackable: each application strips
-// another generic, capped by the card's actual generic mana count.
-//
-// Weight 1 (rare) — cost reduction is genuinely powerful, especially when
-// stacked on a bomb. Was briefly bumped to 10 during early playtest to
-// see it more often; back at 1 for production.
+// Cost reduction — strips 1 generic; floors at total ≥ 2 (no free 1-drops).
 STICKERS['costMinus1'] = {
   id: 'costMinus1', name: 'Costs 1 Less',
   text: 'This costs {1} less to cast.',
@@ -118,23 +104,18 @@ STICKERS['costMinus1'] = {
     if (!c.cost) return false;
     const generic = c.cost.C || 0;
     if (generic < 1) return false;
-    // c.cost reflects prior costMinus1 stickers (stickersFor pre-reduces the
-    // view's cost), so generic and total here are CURRENT, not original.
-    // Floor at total ≥ 2 prevents reducing cards to free.
     let total = generic;
     for (const k of ['W','U','B','R','G']) total += (c.cost[k] || 0);
     if (total < 2) return false;
     return true;
   },
   stackable: true,
-  weight: 1,                   // rare — cost reduction is genuinely powerful
+  weight: 1,
   kind: 'costReduction',
   amount: 1,
 };
 
-// Empower bumps one buffable field (location, effect, mode?, field) per
-// application, picked uniformly. Roll recorded on slot.empowerRolls at apply
-// time for deterministic load.
+// Empower bumps one buffable field per application. Roll recorded on slot.empowerRolls.
 const EMPOWER_FIELDS = {
   damage:         ['amount'],
   damageAll:      ['amount'],
@@ -153,18 +134,15 @@ function isEmpowerableField(eff, field) {
   if (!eff || !eff.kind) return false;
   const fields = EMPOWER_FIELDS[eff.kind];
   if (!fields || !fields.includes(field)) return false;
-  // Severity caps at 4 (single-target removeCreature and mass removeAll).
   if ((eff.kind === 'removeCreature' || eff.kind === 'removeAll') && field === 'severity') {
     return (eff.severity || 1) < 4;
   }
-  // Skip {from:...} expression values — can't add 1 without losing semantics.
+  // Skip {from:...} expressions (can't bump without losing semantics).
   const v = eff[field];
   if (typeof v === 'object' && v !== null && 'from' in v) return false;
   return true;
 }
-// Enumerate every eligible (location, subIdx, effIdx, modeIdx, field) target
-// for an Empower roll. Modal effect bundles expand to one entry per
-// (mode, effect, field) — each mode is an independent roll target.
+// Enumerate eligible (location, subIdx, effIdx, modeIdx, field) targets.
 function enumerateEmpowerTargets(c) {
   const targets = [];
   const walkEffectsArray = (effs, location, subIdx, modeIdx) => {
@@ -179,8 +157,6 @@ function enumerateEmpowerTargets(c) {
       }
     });
   };
-  // Top-level effects: either a flat array (most cards) or a modal
-  // {modeNames, modes:[[...],[...]]} object (charms).
   const e = c.effects;
   if (Array.isArray(e)) {
     walkEffectsArray(e, 'effects', null, null);
@@ -189,13 +165,11 @@ function enumerateEmpowerTargets(c) {
       walkEffectsArray(modeEffs, 'effects', null, modeIdx);
     });
   }
-  // Triggers' effects (no modal triggers in the current pool, but be defensive).
   if (Array.isArray(c.triggers)) {
     c.triggers.forEach((t, subIdx) => {
       walkEffectsArray(t.effects, 'triggers', subIdx, null);
     });
   }
-  // Activated abilities' effects.
   if (Array.isArray(c.abilities)) {
     c.abilities.forEach((a, subIdx) => {
       walkEffectsArray(a.effects, 'abilities', subIdx, null);
@@ -206,10 +180,7 @@ function enumerateEmpowerTargets(c) {
 function hasEmpowerableEffect(c) {
   return enumerateEmpowerTargets(c).length > 0;
 }
-// Roll a single empower target uniformly from the card template's eligible
-// pool. Returns the rolled descriptor (suitable for storing on slot.empowerRolls)
-// or null if the card has no empowerable fields. Caller is expected to have
-// gated the roll on hasEmpowerableEffect already.
+// Roll one empower target uniformly. Returns descriptor or null. Caller gates on hasEmpowerableEffect.
 function rollEmpowerTarget(tpl) {
   const targets = enumerateEmpowerTargets(tpl);
   if (targets.length === 0) return null;

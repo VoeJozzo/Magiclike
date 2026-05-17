@@ -1,16 +1,7 @@
 extends RefCounted
 
-# Effect handler: pump. Adds temporary +N/+M to a target creature until end
-# of turn (or for "permanent" duration, accumulates as +N/+M counters — but
-# Phase 3 only does EOT pumps).
-#
-# Effect dictionary shape:
-#   {"kind": "pump", "amount_power": <int>, "amount_toughness": <int>,
-#    "target": "chosen", "duration": "eot"}
-#
-# Targets a creature picked at cast time (ctx.targets[0] with kind=="creature").
-# Phase 4+ may add "any creature you control" or other filters.
-
+# {"kind": "pump", "amount_power": int, "amount_toughness": int, "target": "chosen", "duration": "eot"}.
+# duration != "eot" → permanent +1/+1 counters (using max of dp/dt).
 
 static func execute(effect: Dictionary, ctx: Dictionary) -> void:
 	var dp: int = effect.get("amount_power", 0)
@@ -35,7 +26,6 @@ static func execute(effect: Dictionary, ctx: Dictionary) -> void:
 		creature.temp_power += dp
 		creature.temp_toughness += dt
 	else:
-		# Permanent +1/+1 counters (Phase 4+ for cards that grant these).
 		var key := "+1/+1"
 		var current: int = creature.counters.get(key, 0)
 		creature.counters[key] = current + max(dp, dt)
