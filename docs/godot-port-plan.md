@@ -1,187 +1,48 @@
-# Godot port plan — Magiclike
+# Godot port — phase roadmap
 
-## Context
+Forward-looking roadmap for the Godot port. State of the engine and architectural decisions live in [`/CLAUDE.md`](../CLAUDE.md); deferred work lives in [`BACKLOG.md`](BACKLOG.md).
 
-The browser prototype at the root of this repo's history (now under [`reference/html-proto/`](../reference/html-proto/)) is ~10,887 lines of vanilla JS in a single HTML file, version 0.99.49, with a real MTG-style rules engine: 217 card templates, triggered abilities, full priority/stack model, combat with first-strike and trample, a heuristic AI, draft mode, and a roguelike meta-layer (sticker-based card modification, weighted reward rolls, versioned saves).
+The port ships in slices. Each slice has a corresponding `tests/test_phaseN.{gd,tscn}` smoke test (see `/CLAUDE.md` for the invocation pattern). A slice is "done" when its new test passes and all prior phase tests still pass.
 
-A Godot 4.6 project lives at the root of the repo with the `card-framework` addon vendored at [`addons/card-framework/`](../addons/card-framework/). At the time this plan was written, the Godot project did one thing: built a 10-card pile and drew an opening hand of 7. Everything else from the prototype is ahead.
+## Completed
 
-The goal of this plan is to port the prototype to Godot — not as a faithful 1:1 reproduction (the JS rendering layer doesn't translate, and a few JS-specific patterns need rethinking), but as a structurally-similar engine that runs in Godot and can be extended natively from there.
+- **Phase 0** — Repo setup. ✓
+- **Phase 1** — Lightning Bolt slice (click-to-cast, real stack, priority). ✓ — `tests/test_phase1.gd`
+- **Phase 2** — Creatures + summoning sickness + SBAs. ✓ — `tests/test_phase2.gd`
+- **Phase 3** — Combat (attackers, blockers, first-strike step) + first instant on the stack (Giant Growth). ✓ — `tests/test_phase3.gd`
+- **Phase 4** — Triggered abilities (pending_triggers queue, APNAP drain, predicate registry). ✓ — `tests/test_phase4.gd`
+- **Phase 4.5** — Real-game interlude.
+  - **4.5a** — Libraries, draw, decking (MTG 704.5b loss). ✓ — `tests/test_phase4_5a.gd`
+  - **4.5b** — Interactive trigger target picker. ✓ — `tests/test_phase4_5b.gd`
+  - **4.5c** — Card pool 8 → 16 (basics + vanilla curve + Healing Salve + Counterspell). ✓ — `tests/test_phase4_5c.gd`
+- **Phase 5a** — Combat keywords (11 evergreens) + two-pass damage. ✓ — `tests/test_phase5a.gd`
+- **Phase 5b** — Engine introspection API for AI (`get_legal_actions`, `duplicate_deep`, `AIScoring.card_value`). ✓ — `tests/test_phase5b.gd`
+- **Phase 5c** — `AI.decide` port. Real AI vs AI plays full games to a winner. ✓ — `tests/test_phase5c.gd`
 
-This is a solo hobby project with no deadlines, exploratory mindset. Plans favor incremental verifiable progress over big-bang ports.
+## Phase 6 — Card pool expansion
 
-## Decisions locked in
+Pure data work, no engine changes. Grow the pool from 23 to ~40 cards across two or three colors (R/G/U) so draft has meaningful picks. Each color gets ~10 commons — vanilla curve fillers plus a couple of mechanic-bearing cards. Bulk-translate JS card templates from `reference/html-proto/cards/<tplId>/card.json` into `cards/templates/card_database.gd` entries.
 
-| Decision | Choice | Rationale |
-|---|---|---|
-| First slice scope | **A1 — Lightning Bolt only** | Smallest viable port. Validates entire pipeline (card resource → hand → cast → effect → state → repaint) without committing to combat. After it works, adding creatures/combat is filling in handlers, not architectural change. |
-| Trigger architecture | **B1 with future-proof seams** | Each card with non-trivial trigger conditions gets a small GDScript with `cond_*` methods. **But** card resources reference conditions by string name (`condition_predicate: "creature_self_damaged_died"`), not direct method binding. Today: string names a method on the card's own script. Later (if procedural triggers happen): a shared predicate library is added without changing the resource shape. |
-| Stack/priority fidelity | **C1 — Full from day one** | Port the prototype's stack and priority-passing model from v1. The stack is *the* defining MTG mechanic; ~40% of cards depend on it. Cleaner to bake in than retrofit. The minimum viable priority system is ~30 lines (`priority_player`, `pass_priority`, both-passed → resolve top of stack); it gets implemented for real in Phase 1 even though only auto-passes exercise it. |
+Verification: pick 10 cards at random, smoke-assert each instantiates, has correct cost, and casts + resolves.
 
-## Repo structure
+## Phase 7 — Stickers
 
-```
-/                              (repo root, Godot project, on GitHub as VoeJozzo/Magiclike)
-├── index.html                  redirect to reference/html-proto/magiclike_engine.html (keeps GitHub Pages working)
-├── project.godot, icon.svg, .gitignore, .gitattributes, .editorconfig
-├── addons/
-│   └── card-framework/         vendored, do not modify
-├── cards/
-│   ├── data/                   JSON templates (card-framework's JsonCardFactory reads these)
-│   ├── images/                 card art
-│   └── templates/              .tres CardResource files (engine identity) — added in Phase 1
-├── scenes/
-│   ├── card.gd / card.tscn     existing — Card subclass for card-framework
-│   ├── json_card_factory.tscn  existing
-│   ├── game/                   top-level game scenes — added in Phase 1
-│   └── zones/                  CardContainer subclasses — added in Phase 1
-├── engine/                     pure-data rules engine, no UI imports — added in Phase 1
-│   ├── engine.gd               autoload (registered in project.godot)
-│   ├── player.gd, mana_pool.gd, card_instance.gd, stack.gd, phase_machine.gd, action.gd
-│   ├── effects/                one handler file per effect kind
-│   └── predicates/             B1 string-keyed condition registry
-├── data/                       engine-side resource base classes — added in Phase 1
-│   ├── card_resource.gd, land_resource.gd, spell_resource.gd, creature_resource.gd
-├── tests/                      smoke-test scenes per phase
-├── docs/
-│   └── godot-port-plan.md      this file
-└── reference/
-    └── html-proto/             prototype mirror — preserved git history via git mv
-        ├── CLAUDE.md
-        └── magiclike_engine.html
-```
+Per-instance card modifiers that persist with the deck across runs. New `engine/sticker.gd` (RefCounted `{kind, params}`); add `CardInstance.stickers: Array[Sticker]`; effective-stat / effective-keyword reads union template + grants + sticker contributions (the seam already exists in `CardInstance.effective_keywords()`). `Sticker.is_legal_for(card_resource)` mirrors JS eligibility rules (empower needs an empowerable effect; lifelink needs a damage-dealing source).
 
-GitHub Pages stays working at `voejozzo.github.io/Magiclike/` because `index.html` is preserved at root with a redirect target pointing into `reference/html-proto/`.
+Verification: `kw_flying` sticker on Grizzly Bears lets bears attack past a ground blocker; empower sticker on Lightning Bolt deals 4 instead of 3.
 
-**Naming note:** `cards/data/` (JSON, visual) and `cards/templates/` (`.tres`, engine) live in the same parent for discoverability, with distinct names to avoid confusion. They're linked by a `card_id` string field — `card.card_info["card_id"] == "lightning_bolt"` looks up `res://cards/templates/lightning_bolt.tres`.
+## Phase 8 — Draft
 
-## Findings from exploration
+Port `DRAFT.startDraft` and `pickFromPack` from `reference/html-proto/js/draft.js`. 23-pick single-player draft, 3-card packs, color-biased pool sampling. Opponent deck simulated post-draft via the heuristic scorer (`AIScoring.card_value` is already in place from Phase 5b). Auto-land allocation via `allocLands()` port. New `scenes/draft/draft_screen.{gd,tscn}`.
 
-### card-framework addon (vendored at `addons/card-framework/`)
+Verification: complete a 23-pick draft, deck size 40, lands allocated to roughly 17, opponent deck generated.
 
-- Good fit, not opinionated about game state. `Card` carries `card_info: Dictionary` for arbitrary data.
-- `CardContainer` is extensible — subclass for Battlefield, Stack, Library, Graveyard, Exile.
-- `_card_can_be_added(cards) -> bool` is the validation hook; returning false auto-reverts.
-- `CardManager` is a `Control` node, not autoload. Holds card_container_dict and history.
-- Drag-only UX. Tap, click, right-click need custom `_on_gui_input` overrides on Card subclasses.
-- `JsonCardFactory.create_card(card_id, target_container)` instantiates from JSON templates.
+## Phase 9 — Run / roguelike loop / persistence
 
-### Prototype engine (`reference/html-proto/magiclike_engine.html`)
+Port `RUN` from `reference/html-proto/js/run.js`. Run state `{slots, colors, modifier, game_num, wins, active, last_result, pending_reward}` saved to `user://magiclike_run_v1.json` via `FileAccess` + `JSON.stringify`. Reward flow after wins: sticker / two-stickers / transform / clone / rip-up. Per-game opponent scaling: game N gets N-1 stickers on their deck. Schema versioning + migrations port directly from JS. New `scenes/run/run_map.{gd,tscn}`.
 
-- `G` state: two-player flat structure, each player has `{life, mana, library, hand, battlefield, graveyard, exile, landPlayedThisTurn, lifeLostThisTurn}`. Top-level: `activePlayer, phase, turn, stack, priority, attackers, blockers, pendingTriggers, log, winner`.
-- Phases: UNTAP → UPKEEP → DRAW → MAIN1 → COMBAT_ATTACK → COMBAT_BLOCK → COMBAT_DAMAGE → MAIN2 → END → CLEANUP.
-- Real priority/stack model with instant-speed responses.
-- ~40 EFFECTS handlers, signature `EFFECTS[kind](ctx, params, target)`. Targets chosen at cast time, validated at resolution (fizzle if gone).
-- Triggers stored on cards as `{event, condition, effects}`; condition is a JS closure that may reach into global `G`.
-- AI: heuristic, single-entry-point `AI.decide(state, who) → action`. No game-tree search, no state mutation.
-- Public API: `ENGINE.{init, state, expectedActor, getLegalActions, executeAction, ...}`, `AI.decide`, `RUN.{start, startNextGame, recordResult, applyStickerToSlot, ...}`, `DRAFT.{startDraft, pickPlayer, getPlayerDeck, ...}`.
+Verification: start a run, win 2 games with auto-AI, save, reload, confirm slots / wins / game_num match.
 
-## Phase 1 — Lightning Bolt slice
+## Phase 10 — Analytics (optional)
 
-**Goal:** Player taps Mountain → mana pool gains R → casts Lightning Bolt at opponent → opponent's life drops 20 → 17 → log shows the cast and resolution → Bolt moves to graveyard.
-
-### Engine architecture decisions
-
-- **`engine/engine.gd` as autoload, registered as `RulesEngine`.** Closest to the JS prototype's IIFE singleton. Globally accessible to UI panels via `RulesEngine.state()`. Emits `state_changed` for UI to subscribe. (Autoload identifier is `RulesEngine` rather than `Engine` because Godot already has a built-in global named `Engine` — found this the hard way during smoke-test bring-up.)
-- **Logic in `RefCounted` classes**, not in the autoload itself. `Player`, `ManaPool`, `Stack`, `PhaseMachine`, `CardInstance`, `EngineState` are all RefCounted — instantiable in tests without autoload boilerplate.
-- **Action descriptor pattern.** All state mutations go through `RulesEngine.execute_action(action: Dictionary)` where action is `{kind: "cast_spell" | "activate_ability" | "play_land" | "pass_priority", source, targets, ...}`. Mirrors the JS prototype's `executeAction`.
-- **Stack pathway exercised even with no responses.** Casting Lightning Bolt: pay mana → push StackEntry → grant priority to opponent → opponent passes (auto-stub) → both passed → resolve top → effects run → instance to graveyard. If we short-circuit and run effects directly, decision C1 is broken on day one.
-- **Click-to-cast UI**, not drag-to-cast. Drag conflicts with card-framework's drag-to-move semantics. Click Bolt in hand → enter target-picking mode (overlay dims invalid, highlights valid) → click opponent's life total → resolve.
-
-## Phases 2 through 6 — outline
-
-**Phase 2 — Creatures and summoning sickness.** Add `creature_resource.gd` (power, toughness, keywords). Battlefield zone accepts creatures. Cards enter tapped/untapped, summoning-sick on entry, cleared at controller's untap. New effects: `pump`, `weaken`, `add_counter`, `remove_creature`. State-based actions (creatures with toughness ≤ 0 die) run after every effect resolution. Verification: cast a 1/1, attack next turn (opponent takes it — no blockers yet).
-
-**Phase 3 — Combat and the stack actually doing work.** Implement `COMBAT_ATTACK`, `COMBAT_BLOCK`, `COMBAT_DAMAGE` phases. Declare-attackers UI (click your untapped creatures), declare-blockers UI. Damage assignment with first-strike step. **Now C1 pays off:** add the first instant — Giant Growth. Cast it during combat in response to a damage step, see the stack hold while priority passes, see resolution unwind LIFO. New effects: `pump_until_eot`, EOT cleanup. Verification: a creature dies in combat; a creature survives because Giant Growth resolved on the stack.
-
-**Phase 4 — Triggered abilities.** ✓ DONE.
-- `pending_triggers` queue on `EngineState`; events fire via `RulesEngine._fire_event`; queue drains via `_drain_pending_triggers` in APNAP order onto the stack. Triggers resolve through `_resolve_trigger_entry` alongside spell entries — the C1 stack pathway covers both.
-- Predicate registry at `engine/predicates/predicates.gd` with `evaluate(name, state, source, event)`. Boot-time `validate_all_card_predicates()` walks all `CardResource.triggered_abilities[].condition_predicate` strings and `push_error`s on any missing entry.
-- Event firing points (Phase 4): `card_etb` (lands via `_do_play_land`, permanents via `_resolve_spell_entry`), `card_dies` (deaths inside `_run_sbas`).
-- Cards added: **Pyromaniac** (1R 1/1) with `{event: card_etb, self_only: true}` → deals 1 to opp; **Bloodlust Berserker** (1RR 3/2) with `{event: card_dies, self_only: true, condition_predicate: "opp_lost_life_this_turn"}` → deals 2 to opp if predicate true.
-- UI: stack panel renders triggers as `⚡ <source>'s ability` to distinguish them from cast spells.
-- `tests/test_phase4.gd` covers ETB fire+resolve, death-trigger-with-predicate-true, and the negative case (predicate-false → trigger suppressed).
-
-**Phase 4 deferred to Phase 4.5 (or whenever it becomes blocking):**
-- **Interactive trigger target picking.** ✓ DONE in 4.5b.
-- **Non-self triggers in tests.** Still deferred. The `self_only=false` listener path is implemented but not exercised. Add when a card legitimately needs it.
-- **"Intervening if" predicate re-check at resolve time.** Still deferred. Currently the predicate is checked only at queue time; MTG rules check again on resolution. Will matter when a between-events action invalidates the condition (e.g., a creature with a "while you control X" condition where X leaves play between trigger queueing and resolution).
-
-**Phase 4.5 — Real-game interlude.** ✓ DONE.
-- **Slice 4.5a (library + draw + decking).** `RulesEngine.init_game(you_decklist, opp_decklist)` builds libraries from `card_id:count` dicts, shuffles, draws opening hand. DRAW phase entry fires `_do_draw_card`; empty-library draw ends the game with the opponent winning (MTG 704.5b). Legacy `init_phase*` demo helpers seed each player's library with 20 buffer Mountains so existing tests don't deck out. UI: `PlayerPanel` shows hand/library/graveyard counts with a low-library warning glyph.
-- **Slice 4.5b (interactive trigger target picker).** Triggers can specify `target_filter` on the ability dict. `_drain_pending_triggers` pauses for you-controlled triggers (surfacing `state.awaiting_target_for_trigger`) and auto-picks for opp-controlled triggers. New action `KIND_PICK_TRIGGER_TARGET` completes the pick. UI mirrors the spell-target flow.
-- **Slice 4.5c (card pool + new effects).** Card pool grew 8 → 16: Plains/Island/Swamp basic lands, Bear Cub / Gray Ogre / Hill Giant vanilla curve, Healing Salve (exercises new `gain_life` effect), Counterspell (exercises new `counter_spell` effect — first card whose target is a stack entry, with new `RulesEngine.counter_stack_entry` engine helper).
-
-**Phase 5a — Combat keywords.** ✓ DONE.
-- `CardInstance.effective_keywords()` / `has_keyword(name)` — single seam unioning template baseline + runtime grants (sticker hook).
-- All eleven evergreens wired: defender / haste / vigilance / flying / reach / unblockable / first_strike / lifelink / deathtouch / trample / indestructible / menace / hexproof. Block legality, attack legality, and combat damage all consult `has_keyword`.
-- Combat damage rewritten as a two-pass system (`_combat_damage_pass(first_strike_only)`); `_deal_combat_damage` centralises target dispatch and handles lifelink + deathtouch (sets `lethal_marked` on creature target).
-- SBA in `_run_sbas` checks indestructible before lethal-damage death.
-- Hexproof in `_legal_cast_spell` blocks cross-controller targeting.
-- New cards: Wind Drake, Giant Spider, Serra Angel, Trained Armodon, Vampire Nighthawk, Raging Goblin, Walking Wall (one per keyword profile).
-- `tests/test_phase5a` covers one scenario per keyword.
-
-**Phase 5b — Engine introspection API for AI.** ✓ DONE (except `simulate_combat`).
-- `RulesEngine.get_legal_actions(player_key) → Array[Dictionary]` enumerates every legal action descriptor (pass/play_land/activate_ability/cast×targets/declare_attacker/declare_blocker/pick_trigger_target). Casts fan out one entry per legal target. Helper `_enumerate_filter_targets` supports `any`/`creature_or_player`/`creature`/`player`/`spell` filters and respects hexproof.
-- `EngineState.duplicate_deep()` + `duplicate_deep()` on Player / ManaPool / Stack / CardInstance. Mutations on a copy don't leak. CardResource templates are shared by reference.
-- `engine/ai/scoring.gd` — `AIScoring.card_value(template, purpose)` heuristic scoring (stats minus cost + keyword bonuses + triggered-ability bump). Exposed via `RulesEngine.card_value`. Per-effect triggered-ability scoring deferred to 5c.
-- **Deferred to 5c**: `simulate_combat(state, attacker_key, attackers, blockers) → outcome`. The deep-copy plumbing is in place — the simulator itself is the largest single piece in the AI port (~200 lines) and is best done alongside the rest of the AI.
-
-**Phase 5c — AI.decide port.** ✓ DONE.
-- `engine/ai/ai.gd::AI.decide(state, player_key) -> Dictionary` — top-level dispatcher matching JS prototype's `AI.decide(state, who)` shape. Decision order: trigger target pick → block declaration (if defender) → attack declaration (if active) → instant-speed response → main phase actions → pass.
-- `engine/ai/combat.gd` — `simulate_combat` (uses `EngineState.duplicate_deep` from 5b), `decide_attackers` (lethal check + per-attacker positive-trade heuristic), `decide_blockers` (greedy "minimise damage" with flying/menace/deathtouch awareness via `_score_block_pair`).
-- `engine/ai/burn.gd` — `face_damage_in_hand` and `has_lethal` for direct-damage lethal recognition.
-- `engine/ai/scoring.gd` (extends 5b) — used by AI for spell-target scoring and trigger-target priority.
-- `_settle_state` in `engine.gd` rewritten: drives opp via `AI.decide` instead of the Phase-3 hardcoded stubs. Breaks when `_current_actor()` returns "you" — i.e., hands control to the UI when the human needs to decide. Phase-3 `_opp_*` helpers deleted (112 lines).
-- Caster-priority bug fix: `_do_cast_spell` now sets `priority_player_key = controller.key` (caster retains, per MTG 117.1c) instead of always-active-player. Previously broke opp's instant-speed responses.
-- New showcase deck `_PHASE5_SHOWCASE_DECK` + `init_phase5_demo()` — multi-color 40-card list with one of each Phase 4.5c/5a card so manual playtest sees everything. `game_board` boots into this by default.
-- Tests pass post-rewire: Phase 2/3 tests updated to expect the new AI-driven flow (Phase 2's turn-cycle now needs more priority passes; Phase 3's opp no longer "holds" priority after casting in response).
-- `tests/test_phase5c` covers: AI passes when idle; AI picks trigger target; `simulate_combat` reports correct 2/2-vs-2/2 mutual death; **AI vs AI plays a complete game** (recent runs hit a winner in ~400 actions).
-
-**Phase 6 — Draft and roguelike meta.** Port `DRAFT` (23-pick draft, opponent deck simulation) and `RUN` (sticker system, weighted reward rolls, save/load). Use Godot's `FileAccess` + JSON in lieu of localStorage. Schema migrations from JS port directly. New scenes: `draft_screen.tscn`, `run_map.tscn`. Verification: draft a deck, complete a 3-game run, save mid-run and reload.
-
-## Risks and discipline notes
-
-- **Predicates need explicit state access.** JS prototype's Bloodlust trigger reads `G[them].lifeLostThisTurn`. In GDScript: pass full state as the first argument to every predicate (`func creature_self_damaged_died(state, source, event) -> bool`). Documented as the calling convention in `predicates.gd` header. **Don't** reach into the `RulesEngine` autoload from inside predicates — keeps them testable and matches JS prototype's pure-function style.
-
-- **Stack as VBoxContainer, not CardContainer.** Triggered abilities go on the stack but aren't cards. Forcing them through `Card` introduces type-checks everywhere. The `Stack` engine model is `Array[StackEntry]`; the UI is a plain `VBoxContainer` observing `RulesEngine.stack_changed`.
-
-- **Deep-copy bugs.** The JS prototype has known scars (e.g., City of Brass `extraManaColors` lost on instantiation, comment at engine line ~2107). Mitigation: model all per-turn mutable state on `Player` and `CardInstance` as plain typed fields, not dynamically-attached dictionaries. Write `duplicate()` overrides on `CardInstance` and `Player` once and use them everywhere. Don't reinvent deep-copy logic per use site.
-
-- **`@tool` annotation gotcha.** Existing `test.gd` is `@tool`-annotated, which triggers `_ready()` in the Godot editor. New game scenes must NOT be `@tool` — the editor will spam errors when the RulesEngine autoload isn't initialized. Drop `@tool` on `game_board.gd` and any new gameplay scripts.
-
-- **Card-framework drag conflict.** Drag is reserved for "move card between containers." Casting a spell with targets is conceptually different. Phase 1: click-to-cast with overlay target picker. If drag-to-cast is desired later, override `Card._on_gui_input` to disambiguate intent — but this is fragile, likely not worth it.
-
-- **Predicate registry validation at boot.** ~10 lines in `engine.gd._ready()` that walks all loaded `CardResource` instances, collects every `condition_predicate` string, and asserts each is a key in `predicates.gd`'s registry. Catches typos at startup instead of at runtime.
-
-- **Don't half-implement priority.** Tempting to "stack exists but priority always belongs to active player" in Phase 1. Resist. The minimum viable system is `RulesEngine.state().priority_player_key`, `RulesEngine.execute_action(Action.make_pass_priority())`, both-passed → resolve top. ~30 lines, baked in correctly day one.
-
-## Verification per phase
-
-| Phase | Smoke test | Playable demo |
-|---|---|---|
-| 0 | `git status` clean; project opens in Godot 4.6 without errors; GitHub Pages still serves prototype | n/a |
-| 1 | Scripted: 2 Mountains + 1 Bolt → opp at 17 | Click Mountain, click Bolt, click opp life → 20 drops to 17 |
-| 2 | Cast 1/1, end turn, untap, attack → opp at 19 | Goblin enters tapped (sick), next turn taps to attack |
-| 3 | Combat with Giant Growth on stack saves a 1/1 from a 2-power attacker | Full combat phase + instant cast in response |
-| 4 | Pyromaniac ETB fires + resolves; Bloodlust death trigger fires with predicate-true; trigger suppressed on predicate-false | Cast Pyromaniac → opp takes 1; cast Berserker + bolt your own → opp takes +2 |
-| 4.5a | init_game builds libraries from decklists; DRAW fires; empty-library → opp wins | Open the game_board, see hand+library+gy counts on each panel |
-| 4.5b | Trigger needing target pauses drain; KIND_PICK_TRIGGER_TARGET completes the cast; opp-controlled triggers auto-pick | Cast Pyromaniac → "Pick a target…" prompt → click opp or click any creature |
-| 4.5c | Healing Salve gains 3 life; Counterspell removes target Bolt from stack into opp's graveyard | Cast Counterspell on opp's Lightning Bolt during their cast |
-| 5a | One assertion per keyword: defender, haste, vigilance, flying/reach, unblockable, first_strike, lifelink, deathtouch, trample, indestructible, hexproof | Attack with Serra Angel (flying + vigilance, doesn't tap); Bolt opponent's hexproof creature fails |
-| 5b | get_legal_actions enumerates the right action set; card_value orders Serra > Bears > Walking Wall; duplicate_deep separates copy from original | Engine-only — no manual demo |
-| 5c | AI passes when idle; picks trigger target; simulate_combat reports correct trade; AI vs AI plays a full game to a winner | Boot `init_phase5_demo` and watch opp play itself — taps lands, casts creatures, attacks, counters your spells |
-| 5 | AI plays itself a full game without crash | Sit and watch AI vs AI; spot-check no obviously bad attacks |
-| 6 | Draft 23 picks, complete 3-game run, save/load mid-run | Full roguelike loop end-to-end |
-
-Each phase's smoke test lives in `tests/` as a runnable scene (`test_phase1.tscn` etc.) so regressions are catchable in <30s.
-
-## What this plan deliberately doesn't decide
-
-- **UI polish.** Card art is placeholders, animations are card-framework defaults. Iterate on look-and-feel in a later pass.
-- **Save format details for Phase 6.** Will be designed when we get there; the JS prototype's schema migrations port directly.
-- **Multiplayer.** Out of scope. Engine is single-machine, two-player (you vs AI).
-- **Mobile / touch input.** Card-framework supports drag on mobile; click-to-cast generalizes. Not a focus of this plan.
-- **Localization.** All strings hardcoded English for now.
-
-These are intentionally deferred — surfaced here so they don't get rediscovered as "blockers" mid-implementation.
+Port `PICKLOG` from `reference/html-proto/js/picklog.js`. Records draft history to `user://magiclike_picklog_v1.json` for offline pick-quality analysis. Low priority; ship without and add later if useful.
