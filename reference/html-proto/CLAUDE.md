@@ -2,15 +2,19 @@
 
 Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folder of vanilla-JS modules — no build step, no frameworks, no network calls. Open in any modern browser to play.
 
-Current version: `v1.0.142` (defined at `js/main.js`, `const VERSION`).
-Always update the Current Version whenever you push a change to the Dev branch. This will allow the User to verify that the current version is live on Github Pages.
-When working on the html prototype, always work on the Dev branch, in order to enable the User to live-test on Github Pages.
+## Version
 
-Deferred work and rejected proposals live in `BACKLOG.md`. Read it for context when relevant, but don't open a session by attacking it — the user picks what to work on.
+**Current: `v1.0.144`** — defined at `js/main.js` (`const VERSION`).
+
+> **MUST UPDATE on every dev-branch push that touches code.** Bump `VERSION` in `js/main.js` AND the line above, in the same commit. GitHub Pages caches aggressively; the version string is the only reliable way to confirm a fresh build is live.
+
+Always work on `dev` for html-proto changes.
+
+Deferred work lives in `BACKLOG.md` (gating rules in `/CLAUDE.md`).
 
 ## File structure
 
-The codebase was a single self-contained HTML file until it crossed ~19k lines. It's now split into per-subsystem JS files loaded as plain `<script src>` tags (no ES modules, no build step). The HTML shell holds the body, CSS, and nine script tags in dependency order.
+The codebase was a single self-contained HTML file until it crossed ~19k lines. It's now split into per-subsystem JS files loaded as plain `<script src>` tags (no ES modules, no build step). The HTML shell holds the body, CSS, and thirteen script tags in dependency order.
 
 Also in the repo: `index.html` at the repo root — a small redirect that points GitHub Pages at the engine file.
 
@@ -32,6 +36,7 @@ Also in the repo: `index.html` at the repo root — a small redirect that points
 | `js/triggers.js` | `TRIGGER_CONDITIONS` registry (condId → predicate) and `evalTriggerCondition` resolver — the trigger vocabulary used at runtime |
 | `js/trigger-generator.js` | `GENERATOR_EFFECTS` / `GENERATOR_CONDITIONS` data plus the rolling functions for Mercurial Adept / Architect's Codex (`generateRandomTrigger`, `generateConditionOptions`, `generateEffectOptions`, `assembleTrigger`) |
 | `js/main.js` | `VERSION`, the `opp(who)` helper, and the bootstrap that awaits `loadCards()` then calls `CONTROLLER.init()`. |
+| `tests/` | Node-based regression suite (~20 test files + harness). See `tests/README.md`. |
 
 Load order in `magiclike_engine.html` is: cards → engine → card-text → stickers → ai → draft → run → picklog → controller → render → triggers → trigger-generator → main. Each IIFE declares as a top-level `const`, so it's a global accessible from later scripts. Note: DRAFT calls PICKLOG at runtime (not at module-load), so the DRAFT-before-PICKLOG order is fine — identifier resolution inside IIFE function bodies is lazy. Same goes for stickers.js's late-bound references into ENGINE and into engine.js's top-level helpers.
 
@@ -48,23 +53,6 @@ Schema migrations live in the `RUN` module and run on load.
 ## Design backlog
 
 The earlier in-code roadmap comment block has been removed as features shipped (tokens, modal spells, etc. are now implemented). Static Lords remain partially implemented: lords grant `staticBuffs` (stat changes) but not keywords — grep `cards/*/card.json` for `staticBuffs` to find them. Ask the user about current priorities before assuming what's next.
-
-## Existing code style (descriptive, not prescriptive)
-
-- IIFE modules — each subsystem (`ENGINE`, `AI`, `DRAFT`, etc.) is a function that returns its public surface.
-- Comments are used liberally as documentation, including multi-line block comments explaining design decisions and roadmaps. Match this style; don't strip explanatory comments without asking.
-- Some defensive coding is present in the engine (depth caps on triggers, null guards in renderers). Match the surrounding style of the area being edited.
-- Vanilla JS, no transpilation, no TypeScript.
-
-## Claude's general defaults — ask before applying to this codebase
-
-I (Claude) carry general defaults that may not match this project. Before applying any of these to existing code, surface the change and ask:
-
-- **"Don't add comments unless the WHY is non-obvious."** Will conflict with the existing comments-as-docs style.
-- **"Don't add error handling for unreachable cases."** May conflict with intentional defensive guards in the engine.
-- **"Three similar lines is better than a premature abstraction."** Fine for new code, but don't refactor existing duplication without checking.
-
-For *new* code I write, I'll lean toward these defaults unless told otherwise. For *existing* code I'm editing, I'll match the surrounding style.
 
 ## Testing
 
@@ -84,10 +72,3 @@ DOM/UI behavior isn't covered by the harness — verify those by:
 4. For AI changes: play a full game and watch the AI log entries (orange `.cb` log lines) for nonsensical decisions.
 
 Console hooks for analytics: `window.PICKLOG.summarize()`, `window.PICKLOG.getCardStats()`, `window.PICKLOG.getPairsMatrix()`.
-
-## Git workflow
-
-- `dev` is the primary working branch.
-- Commit changes, but only push when explicitly asked.
-- Don't open PRs unless explicitly asked.
-- **Bump `VERSION` (in `js/main.js`) and the version line at the top of this file on every push that updates `dev`.** This is the player-visible cache-buster — GitHub Pages caches aggressively, and the only reliable way to confirm a fresh build is loaded is to read the version string off the running page. One push to `dev` = one version bump, in the same commit as the substantive change (or a follow-up commit if you forgot).

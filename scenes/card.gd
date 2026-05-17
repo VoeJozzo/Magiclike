@@ -1,33 +1,11 @@
 @tool
 extends Card
 
-# Magiclike Card subclass — adds text overlays (name, mana cost, type line,
-# P/T) on top of the placeholder front face, AND disables card-framework's
-# drag/hover quirks that fight with our click-to-execute flow.
-#
-# Why the drag/hover overrides exist:
-#   - Drag conflicts with click actions: card-framework transitions cards to
-#     HOLDING on press, registers them in _holding_cards, and on release
-#     tries to "drop" them based on cursor position. Meanwhile our engine
-#     action has already programmatically moved the card. The release-drop
-#     can bounce a freshly-played land back to hand if the user releases
-#     over the hand zone.
-#   - Hover scale compounds: card-framework's _start_hover_animation captures
-#     `original_scale = scale` AFTER each hover completes, so original_scale
-#     creeps up by hover_scale (default 1.05) per hover. Cards balloon
-#     visibly over a play session.
-#   - Hover rotation flickers tapped cards: hover always tweens rotation to
-#     deg_to_rad(0), so tapped cards (90°) briefly look untapped on hover.
-#
-# We don't actually USE drag for anything in this game — every move is via
-# an engine action. So disabling drag entirely is the simplest correct fix.
-# We keep the hover lift for visual feedback, just without the buggy scale
-# and rotation animations.
-#
-# Text is populated AFTER instantiation by game_board calling apply_card_text(),
-# because card-framework's JsonCardFactory sets card_info AFTER the Card's
-# _ready runs. The labels are built in _ready (empty); apply_card_text() fills
-# them in once card_info is available.
+# Magiclike Card subclass: text overlays + disables card-framework drag/hover.
+# - Drag disabled — engine drives all moves; release-drop would bounce played lands back.
+# - Hover scale disabled — compounds (original_scale captured post-anim → ballooning).
+# - Hover rotation disabled — flickers tapped cards back to upright.
+# Text populated by apply_card_text() after card_info lands (post-_ready).
 
 const _PADDING := 6
 const _NAME_HEIGHT := 22
@@ -37,30 +15,16 @@ var _name_label: Label
 var _cost_label: Label
 var _type_label: Label
 var _pt_label: Label
-# Phase 5c UI polish: oracle text overlay so the player can read what a card
-# actually does (Pyromaniac's trigger, Counterspell's effect, etc.).
 var _oracle_label: Label
-# Opaque backer for the oracle label so the placeholder art's stock
-# "description" text doesn't bleed through behind the real rules text.
-var _oracle_bg: ColorRect
+var _oracle_bg: ColorRect  # opaque backer so placeholder art's "description" doesn't bleed through
 var _color_tint: ColorRect
-# Combat-state highlight (overlay above color tint, below labels). Yellow for
-# selected/pending, green for committed in a block, dimmed-red for unblocked
-# attackers. Set via set_combat_highlight() from game_board's UI sync.
+# Yellow=pending, green=committed, dim-red=unblocked attacker.
 var _combat_highlight: ColorRect
-# Phase 5c UI polish: green border-glow for cards that are legal to act on
-# right now (castable spells / playable lands / mana abilities, attackers
-# during COMBAT_ATTACK, blockers during COMBAT_BLOCK). Set via
-# set_legality_glow() each _refresh_ui. Rendered as a hollow rectangle
-# outline (Control with _draw override) so the card art and labels stay
-# fully visible — no fill tint fighting the placeholder description.
+# Hollow border = "legal to act on". Drawn via _draw so art+labels stay visible.
 var _legality_glow: _CardBorderGlow
 
 
-# Inner class: a Control that draws a hollow rectangle outline at its size,
-# in `glow_color`, with `glow_width` pixels of thickness. Update glow_color
-# to retint; queue_redraw to repaint. Set glow_color to Color(0,0,0,0) to
-# hide the border.
+# Hollow-rect outline Control. Update glow_color to retint; alpha=0 to hide.
 class _CardBorderGlow extends Control:
 	var glow_color: Color = Color(0, 0, 0, 0):
 		set(value):
@@ -72,14 +36,13 @@ class _CardBorderGlow extends Control:
 	func _draw() -> void:
 		if glow_color.a <= 0.0:
 			return
-		# Four edges, drawn as filled rects (cleaner than draw_rect's
-		# outline mode at small widths since outline mode can subpixel).
+		# Four filled rects (outline mode subpixels at small widths).
 		var w: float = glow_width
 		var s: Vector2 = size
-		draw_rect(Rect2(0, 0, s.x, w), glow_color)               # top
-		draw_rect(Rect2(0, s.y - w, s.x, w), glow_color)         # bottom
-		draw_rect(Rect2(0, 0, w, s.y), glow_color)               # left
-		draw_rect(Rect2(s.x - w, 0, w, s.y), glow_color)         # right
+		draw_rect(Rect2(0, 0, s.x, w), glow_color)
+		draw_rect(Rect2(0, s.y - w, s.x, w), glow_color)
+		draw_rect(Rect2(0, 0, w, s.y), glow_color)
+		draw_rect(Rect2(s.x - w, 0, w, s.y), glow_color)
 
 
 func _ready() -> void:
@@ -91,41 +54,31 @@ func _ready() -> void:
 	_build_text_overlay()
 
 
-# Builds the label nodes inside FrontFace. Called once at _ready; text stays
-# blank until apply_card_text() populates it.
+# Build label nodes; apply_card_text() populates them post-card_info.
 func _build_text_overlay() -> void:
 	var front_face: Node = get_node_or_null("FrontFace")
 	if front_face == null:
 		return
 
-	# Color tint — sits between the front art and the labels. Lets us shade
-	# the card by color identity (red for R, blue for U, etc.) so even at a
-	# distance you can tell what color a card is.
+	# Color tint — shade by color identity (R/U/etc).
 	_color_tint = ColorRect.new()
 	_color_tint.size = card_size
-	_color_tint.color = Color(0, 0, 0, 0)  # transparent until apply_card_text fills it
+	_color_tint.color = Color(0, 0, 0, 0)
 	_color_tint.mouse_filter = MOUSE_FILTER_IGNORE
 	front_face.add_child(_color_tint)
 
-	# Combat-state highlight overlay. Stacks above the color tint so it's
-	# visible at a glance, but below the labels so text stays readable.
-	# Set via set_combat_highlight() based on whether the card is a pending
-	# blocker, committed blocker, blocked attacker, or unblocked attacker.
+	# Combat highlight — above tint, below labels.
 	_combat_highlight = ColorRect.new()
 	_combat_highlight.size = card_size
 	_combat_highlight.color = Color(0, 0, 0, 0)
 	_combat_highlight.mouse_filter = MOUSE_FILTER_IGNORE
 	front_face.add_child(_combat_highlight)
 
-	# Legality glow — a hollow green outline around the card edge. Reads
-	# as "available to act on" without obscuring the art or text. Stacks
-	# on top of all other overlays so the border is the last thing drawn
-	# and stays visible against any color.
+	# Legality glow on top of all overlays.
 	_legality_glow = _CardBorderGlow.new()
 	_legality_glow.size = card_size
 	front_face.add_child(_legality_glow)
 
-	# Name banner — top of card
 	_name_label = Label.new()
 	_name_label.position = Vector2(_PADDING, _PADDING)
 	_name_label.size = Vector2(card_size.x - _PADDING * 2, _NAME_HEIGHT)
@@ -137,7 +90,6 @@ func _build_text_overlay() -> void:
 	_name_label.mouse_filter = MOUSE_FILTER_IGNORE
 	front_face.add_child(_name_label)
 
-	# Mana cost — top right corner
 	_cost_label = Label.new()
 	_cost_label.position = Vector2(card_size.x - 50, _PADDING)
 	_cost_label.size = Vector2(44, _NAME_HEIGHT)
@@ -149,7 +101,6 @@ func _build_text_overlay() -> void:
 	_cost_label.mouse_filter = MOUSE_FILTER_IGNORE
 	front_face.add_child(_cost_label)
 
-	# Type line — near the bottom
 	_type_label = Label.new()
 	_type_label.position = Vector2(_PADDING, card_size.y - _TYPE_HEIGHT - _PADDING)
 	_type_label.size = Vector2(card_size.x - _PADDING * 2, _TYPE_HEIGHT)
@@ -161,10 +112,7 @@ func _build_text_overlay() -> void:
 	_type_label.mouse_filter = MOUSE_FILTER_IGNORE
 	front_face.add_child(_type_label)
 
-	# Phase 5c: Oracle text — covers the placeholder art's description box.
-	# A solid-ish backer hides the placeholder text underneath, then a
-	# word-wrapped label renders the actual oracle text from the template.
-	# Position is below the cost label and above the type line.
+	# Oracle text overlay — backer hides placeholder description, label wraps oracle text.
 	var oracle_top: float = 40.0
 	var oracle_bottom: float = card_size.y - _TYPE_HEIGHT - _PADDING - 4.0
 	var oracle_height: float = oracle_bottom - oracle_top
@@ -185,7 +133,7 @@ func _build_text_overlay() -> void:
 	_oracle_label.mouse_filter = MOUSE_FILTER_IGNORE
 	front_face.add_child(_oracle_label)
 
-	# P/T badge — bottom-right, only shown for creatures
+	# P/T badge — bottom-right; creatures only.
 	_pt_label = Label.new()
 	_pt_label.position = Vector2(card_size.x - 48, card_size.y - 36)
 	_pt_label.size = Vector2(40, 28)
@@ -220,15 +168,11 @@ func apply_card_text() -> void:
 		_cost_label.text = _fmt_cost(template.mana_cost)
 		_type_label.text = _fmt_type_line(template)
 		_color_tint.color = _tint_for(template)
-		# Phase 5c: oracle text overlay — fall back to "" if a card has no
-		# rules text (vanilla creatures, basic lands). Empty oracle text
-		# hides the backer too so the placeholder art shows through cleanly.
+		# Empty oracle hides the backer so placeholder art shows through.
 		var oracle: String = str(template.oracle_text)
 		_oracle_label.text = oracle
 		_oracle_bg.visible = oracle != ""
-		# P/T only for creatures (initial display from template — call
-		# apply_creature_state to refresh with live current_power/toughness
-		# and damage marker once the instance is in play).
+		# Template P/T; apply_creature_state refreshes with live values + damage.
 		if template is CreatureResource:
 			_pt_label.text = "%d/%d" % [template.power, template.toughness]
 			_pt_label.visible = true
@@ -243,10 +187,7 @@ func apply_card_text() -> void:
 		_pt_label.visible = false
 
 
-# Refresh the P/T badge from a live CardInstance — shows current_power/
-# current_toughness (base + temp + counters) and a "(-N)" damage marker
-# when wounded. Pumped creatures show their boosted stats and the label
-# turns green; damaged creatures show the marker and the label turns red.
+# Live P/T from inst (base+temp+counters), "(-N)" damage marker, color: red=damaged, green=pumped, gold=default.
 func apply_creature_state(inst: CardInstance) -> void:
 	if _pt_label == null:
 		return
@@ -259,24 +200,23 @@ func apply_creature_state(inst: CardInstance) -> void:
 	var pumped: bool = inst.temp_power > 0 or inst.temp_toughness > 0
 	if dmg > 0:
 		_pt_label.text = "%d/%d (-%d)" % [p, t, dmg]
-		_pt_label.add_theme_color_override("font_color", Color(1.0, 0.5, 0.5))  # red-ish for damaged
+		_pt_label.add_theme_color_override("font_color", Color(1.0, 0.5, 0.5))
 	elif pumped:
 		_pt_label.text = "%d/%d*" % [p, t]
-		_pt_label.add_theme_color_override("font_color", Color(0.6, 1.0, 0.6))  # green-ish for pumped
+		_pt_label.add_theme_color_override("font_color", Color(0.6, 1.0, 0.6))
 	else:
 		_pt_label.text = "%d/%d" % [p, t]
-		_pt_label.add_theme_color_override("font_color", Color(1, 0.92, 0.6))  # default gold
+		_pt_label.add_theme_color_override("font_color", Color(1, 0.92, 0.6))
 	_pt_label.visible = true
 
 
-# Mana cost as compact symbols, e.g. {"R":1} -> "R", {"W":1, "C":2} -> "2W".
-# Generic mana goes first (matching MTG card-text convention).
+# {"R":1} → "R"; {"W":1, "C":2} → "2W". Generic first per MTG convention.
 func _fmt_cost(cost: Dictionary) -> String:
 	if cost.is_empty():
 		return ""
 	var s := ""
 	if cost.get("C", 0) > 0:
-		s += str(cost["C"])  # generic shown as a number
+		s += str(cost["C"])
 	for color in ["W", "U", "B", "R", "G"]:
 		var n: int = cost.get(color, 0)
 		for i in range(n):
@@ -297,98 +237,70 @@ func _fmt_type_line(t: CardResource) -> String:
 	return "%s — %s" % [head, " ".join(tail)]
 
 
-# Color-identity tint (semi-transparent overlay over the placeholder art).
-# Multi-color cards aren't a Phase 1 concern; we just look at the dominant
-# color of the cost (or, for lands with empty cost, the produced color).
+# Color-identity tint over placeholder art.
 func _tint_for(t: CardResource) -> Color:
 	var primary: String = _primary_color(t)
 	match primary:
-		"W": return Color(0.92, 0.88, 0.75, 0.18)  # cream
-		"U": return Color(0.30, 0.55, 0.85, 0.22)  # blue
-		"B": return Color(0.20, 0.18, 0.20, 0.30)  # near-black
-		"R": return Color(0.85, 0.30, 0.20, 0.22)  # red
-		"G": return Color(0.30, 0.65, 0.35, 0.22)  # green
-		_:   return Color(0.5, 0.5, 0.5, 0.10)     # colorless / artifact
+		"W": return Color(0.92, 0.88, 0.75, 0.18)
+		"U": return Color(0.30, 0.55, 0.85, 0.22)
+		"B": return Color(0.20, 0.18, 0.20, 0.30)
+		"R": return Color(0.85, 0.30, 0.20, 0.22)
+		"G": return Color(0.30, 0.65, 0.35, 0.22)
+		_:   return Color(0.5, 0.5, 0.5, 0.10)
 
 
 func _primary_color(t: CardResource) -> String:
-	# Spell: read first colored cost
 	for color in ["W", "U", "B", "R", "G"]:
 		if t.mana_cost.get(color, 0) > 0:
 			return color
-	# Land: read first produced color (LandResource only)
 	if t is LandResource and not t.mana_produced.is_empty():
 		return t.mana_produced[0]
 	return ""
 
 
-# ─── Combat highlight ──────────────────────────────────────────────────────
-
-# Apply a combat-state tint to the card. Recognized states:
-#   "none"          — clear (no highlight)
-#   "pending"       — clicked as blocker, waiting for attacker pick (yellow)
-#   "committed"     — block declared (green) — attacker or blocker side
-#   "unblocked"     — attacker that no blocker stopped (dim red)
+# State: "pending" (yellow), "committed" (green), "unblocked" (dim red), else clear.
 func set_combat_highlight(state: String) -> void:
 	if _combat_highlight == null:
 		return
 	match state:
 		"pending":
-			_combat_highlight.color = Color(1.0, 0.95, 0.30, 0.40)  # bright yellow
+			_combat_highlight.color = Color(1.0, 0.95, 0.30, 0.40)
 		"committed":
-			_combat_highlight.color = Color(0.30, 0.85, 0.45, 0.32)  # green
+			_combat_highlight.color = Color(0.30, 0.85, 0.45, 0.32)
 		"unblocked":
-			_combat_highlight.color = Color(0.95, 0.35, 0.30, 0.25)  # dim red
+			_combat_highlight.color = Color(0.95, 0.35, 0.30, 0.25)
 		_:
 			_combat_highlight.color = Color(0, 0, 0, 0)
 
 
-# Phase 5c UI polish: set the "this card is a legal action right now" border
-# glow. Pass "playable" for the green castable/attackable border, "target"
-# for a yellow legal-target border (used during spell-target picker mode),
-# or "none" / empty to clear.
+# State: "playable" (green border), "target" (yellow), else clear.
 func set_legality_glow(state: String) -> void:
 	if _legality_glow == null:
 		return
 	match state:
 		"playable":
-			_legality_glow.glow_color = Color(0.30, 0.95, 0.45, 0.95)  # bright green
+			_legality_glow.glow_color = Color(0.30, 0.95, 0.45, 0.95)
 		"target":
-			_legality_glow.glow_color = Color(1.0, 0.85, 0.30, 0.95)   # gold/yellow
+			_legality_glow.glow_color = Color(1.0, 0.85, 0.30, 0.95)
 		_:
 			_legality_glow.glow_color = Color(0, 0, 0, 0)
 
 
-# ─── Drag / hover overrides ────────────────────────────────────────────────
-
-# Skip the HOLDING state transition entirely. We don't use drag-to-move; all
-# card movement goes through engine actions. By not entering HOLDING:
-#   - card_container.hold_card() never registers this card in _holding_cards
-#   - On mouse release, release_holding_cards iterates an empty list (no drop)
-#   - card-framework's _process drag-follow behavior never engages
-# Click handlers still receive events via card_container.on_card_pressed and
-# our gui_input listener in game_board.
+# Skip HOLDING transition (drag-drop unused). Clicks still flow via on_card_pressed/gui_input.
 func _handle_mouse_pressed() -> void:
 	is_pressed = true
 	if card_container:
 		card_container.on_card_pressed(self)
-	# Deliberately NOT calling super._handle_mouse_pressed — that would
-	# transition us to HOLDING and engage the drag-drop machinery.
 
 
-# Override hover animation to skip the compounding scale and rotation-reset
-# bugs. We keep the position lift (cards rise on hover) for visual feedback,
-# but don't touch scale or rotation — those are managed by us (rotation via
-# BattlefieldZone tap state, scale stays at 1.0 always).
+# Position-only hover (skip card-framework's scale/rotation bugs).
 func _start_hover_animation() -> void:
 	if hover_tween and hover_tween.is_valid():
 		hover_tween.kill()
 		hover_tween = null
 
 	original_position = position
-	# Intentionally NOT updating original_scale or original_hover_rotation —
-	# those would compound on each hover. We let scale/rotation stay where
-	# they are; only position lifts.
+	# Don't capture scale/rotation — they compound on each hover.
 	current_hover_position = position
 
 	hover_tween = create_tween()
@@ -396,7 +308,6 @@ func _start_hover_animation() -> void:
 	var target_position := Vector2(position.x, position.y - hover_distance)
 	hover_tween.tween_property(self, "position", target_position, hover_duration)
 	hover_tween.tween_method(_update_hover_position, position, target_position, hover_duration)
-	# Skip the scale and rotation tweens that card-framework's default does.
 
 
 func _stop_hover_animation() -> void:
@@ -408,4 +319,3 @@ func _stop_hover_animation() -> void:
 	hover_tween.set_parallel(true)
 	hover_tween.tween_property(self, "position", original_position, hover_duration)
 	hover_tween.tween_method(_update_hover_position, position, original_position, hover_duration)
-	# Skip scale and rotation reset — we control those externally.

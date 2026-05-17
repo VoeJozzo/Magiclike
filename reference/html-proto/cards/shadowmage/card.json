@@ -9,7 +9,7 @@
   },
   "power": 2,
   "toughness": 3,
-  "art": "🌑",
+  "art": "cards/shadowmage/art.png",
   "text": "Flying",
   "keywords": [
     "flying"

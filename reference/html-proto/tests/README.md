@@ -105,7 +105,7 @@ testing.
 
 ## How a test loads the engine
 
-Browser-side, the engine is 9 module files loaded via
+Browser-side, the engine is 13 module files loaded via
 `<script src>` tags. Each file is at script (module) scope; later
 files reference identifiers declared in earlier files.
 
@@ -115,10 +115,10 @@ For Node tests, `_setup.js` is the shared loader:
    `MutationObserver`, `requestAnimationFrame`, etc. The engine's
    `init()` and the render loop touch these even though tests don't
    exercise UI.
-2. Read the 9 JS module files and concatenate them in the same order
-   `magiclike_engine.html` loads them: `cards` → `engine` → `ai` →
-   `meta` → `controller` → `render` → `triggers` →
-   `trigger-generator` → `main`.
+2. Read the 13 JS module files and concatenate them in the same order
+   `magiclike_engine.html` loads them: `cards` → `engine` → `card-text`
+   → `stickers` → `ai` → `draft` → `run` → `picklog` → `controller` →
+   `render` → `triggers` → `trigger-generator` → `main`.
 3. Strip `CONTROLLER.init();` from the bootstrap (it tries to wire up
    real DOM listeners we don't have).
 4. Eval the result inside a `new Function(...)`, with a trailing
@@ -170,8 +170,8 @@ If you want the test included in `run_all.js`, add its filename to
 
 ## Maintenance notes
 
-Tests were originally built against engine v1.0.128 and re-validated
-against the current refactored multi-file layout.
+Tests were originally built when the engine was a single monolithic
+HTML file, and validated against the current 13-module layout.
 
 Major engine changes that may require test updates:
 - New `PENDING_DECISIONS` entries — tests poke `G.pending*` directly
@@ -193,15 +193,8 @@ Major engine changes that may require test updates:
   500-game self-play runs don't produce identical results, but
   failure rates are stable.
 - **Each test loads the engine fresh** (~50-100ms overhead per
-  process). Adds up for the full suite. A unified runner that loads
-  once and runs every test's assertions cumulatively would be a
-  worthwhile future investment.
+  process). Adds up for the full suite.
 
 ## Future work
 
-Not yet ported from the prior-session test bundle (~14 feature/E2E
-tests for specific mechanics — Balancer, Archdemon, Symmetricize,
-Steal, Splice, Bleach, Embargo, Spirit Shepherd, Scarification,
-Stapler, etc.). Port incrementally when modifying the corresponding
-mechanic. The originals live in this session's transcript attachment
-if you need to recover them.
+- **Unified test runner.** A runner that loads the engine once and runs every test's assertions cumulatively would dramatically speed up the full suite (~50-100ms × ~20 tests today).

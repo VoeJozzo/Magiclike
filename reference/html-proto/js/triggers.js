@@ -1,25 +1,19 @@
-// Trigger vocabulary — named predicates for `condId`-based triggers.
-// Each entry maps a condId to (events it can fire on, human label, check predicate).
-// Lives outside the ENGINE IIFE so card templates can reference condIds at
-// module-load time without a circular dependency.
+// condId → (events, label, check). Module-scope so card templates can reference at load time.
 
 const TRIGGER_CONDITIONS = {
-  // ─── ETB / cardEntersBattlefield ─────────────────────────────────────
+  // ─── cardEntersBattlefield ───────────────────────────────────────────
   thisEnters: {
     events: ['cardEntersBattlefield'],
     label: 'this enters the battlefield',
     check: (self, evt) => evt.card.iid === self.iid,
   },
   anotherCreatureYouEntersStrict: {
-    // Same as above with explicit type === 'Creature' check. Used where
-    // the original closure had the type guard. Kept distinct so migration
-    // is a faithful 1:1 translation rather than a behavior change.
     events: ['cardEntersBattlefield'],
     label: 'another creature (Creature type) enters under your control',
     check: (self, evt, who) => evt.controller === who && evt.card.iid !== self.iid && evt.card.type === 'Creature',
   },
   anotherCreatureYouEntersOfSubtype: {
-    // Tribal lord triggers — e.g., "Whenever another Goblin enters, …"
+    // Tribal lord ("another Goblin enters").
     events: ['cardEntersBattlefield'],
     paramSchema: ['sub'],
     label: 'another creature of subtype X enters under your control',
@@ -37,9 +31,7 @@ const TRIGGER_CONDITIONS = {
     check: (self, evt) => evt.attacker.iid === self.iid,
   },
   thisAttacksAfterOppLifeLoss: {
-    // Sengir Knight bloodlust: "When this attacks, if opp lost life this
-    // turn, +1/+1 EOT." Coupled with how lifeLostThisTurn accumulates
-    // intra-turn — a single source of life loss enables the trigger.
+    // Sengir Knight bloodlust: enabled by any intra-turn life loss.
     events: ['attacks'],
     label: 'this attacks while the opponent has lost life this turn',
     check: (self, evt, who) => {
@@ -50,7 +42,7 @@ const TRIGGER_CONDITIONS = {
     },
   },
   creatureYouAttacksOfSubtype: {
-    // Tribal commander triggers — e.g., "Whenever a Goblin attacks, deal 1."
+    // Tribal commander ("Whenever a Goblin attacks").
     events: ['attacks'],
     paramSchema: ['sub'],
     label: 'a creature of subtype X you control attacks',
@@ -66,33 +58,26 @@ const TRIGGER_CONDITIONS = {
     label: 'this dies',
     check: (self, evt) => evt.card.iid === self.iid,
   },
-  // ─── cardLeavesBattlefield ───────────────────────────────────────────
-  // Fires on any leave-play path: death, bounce, exile, shuffle-to-library,
-  // exile-until-EOT, steal. A superset of thisDies. Cards should declare
-  // ONE of (thisDies, thisLeaves) — declaring both will double-fire on
-  // death.
+  // Superset of thisDies (death + bounce + exile + shuffle + steal). Pick ONE of (thisDies, thisLeaves).
   thisLeaves: {
     events: ['cardLeavesBattlefield'],
     label: 'this leaves the battlefield',
     check: (self, evt) => evt.card.iid === self.iid,
   },
   anotherCreatureDies: {
-    // Either side of the table — tribal "one of yours OR theirs" payoffs.
+    // Either side — tribal "yours OR theirs" payoffs.
     events: ['cardDies'],
     label: 'another creature (any side) dies',
     check: (self, evt) => evt.card.type === 'Creature' && evt.card.iid !== self.iid,
   },
   anyCardDies: {
-    // Blood Artist — fires on EVERY card death including self. Aristocrats
-    // payoff. Self-trigger included so a Blood Artist dying still pings.
+    // Blood Artist — fires on ANY death incl. self.
     events: ['cardDies'],
     label: 'any card dies (including this)',
     check: () => true,
   },
   thisKillsCreature: {
-    // Sengir Vampire / Endomorph — "When this kills a creature, …"
-    // Implementation reads damagedBySources at death time; the dying
-    // card carries a record of who damaged it.
+    // Sengir/Endomorph — reads damagedBySources on the dying card.
     events: ['cardDies'],
     label: 'this creature kills another creature',
     check: (self, evt) =>
@@ -111,16 +96,13 @@ const TRIGGER_CONDITIONS = {
 
   // ─── spellCast ───────────────────────────────────────────────────────
   youCastSpell: {
-    // The `evt.card.iid !== self.iid` exclusion is defensive — a creature
-    // spell shouldn't trigger as a "spell cast" by the creature itself.
-    // Guards against pathological self-triggering if event semantics shift.
+    // Self-exclusion is defensive against future event-semantics shifts.
     events: ['spellCast'],
     label: 'you cast a spell (other than this)',
     check: (self, evt, who) => evt.controller === who && evt.card.iid !== self.iid,
   },
   youCastCounterspell: {
-    // Counter Specialist — grows from your own counters. Filter by effect
-    // kind: any spell whose effects include {kind: 'counter', ...}.
+    // Counter Specialist — any spell with a counter effect.
     events: ['spellCast'],
     label: 'you cast a non-self spell with a counter effect',
     check: (self, evt, who) => {
@@ -130,13 +112,9 @@ const TRIGGER_CONDITIONS = {
   },
 };
 
-// Resolve trigger condition: condId → registry lookup, else legacy closure,
-// else fire unconditionally. Missing condId logs and refuses to fire.
+// Resolve: condId registry → legacy closure → fire unconditionally.
 function evalTriggerCondition(trig, self, evt, who) {
-  // noSelfCascade: refuses to fire when the event was caused by own source.
-  // Used by Codex-generated triggers to break loops (life-gain → gain life,
-  // ETB → token-creation chains). Only events carrying sourceIid (lifeGained,
-  // cardEntersBattlefield) can cascade; for others the guard no-ops.
+  // Codex-generated trigger guard: refuse to fire when source caused the event.
   if (trig.noSelfCascade && evt && evt.sourceIid != null && evt.sourceIid === self.iid) {
     return false;
   }

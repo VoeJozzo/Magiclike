@@ -1,33 +1,17 @@
-// =========================================================================
-// DRAFT — pack generation (color-biased slot 3), deck assembly with auto-lands.
-// API: startDraft, getPlayerPack, getProgress, pickPlayer, isComplete,
-//      getPlayerDeck, buildOpponentDeck.
-// =========================================================================
+// DRAFT — color-biased pack rolls, auto-lands, opponent deck construction.
+// API: startDraft, getPlayerPack, getProgress, pickPlayer, isComplete, getPlayerDeck, buildOpponentDeck.
 const DRAFT = (function() {
 
 const TOTAL_PICKS = 23;
 const TOTAL_LANDS = 17;
-const TOTAL_DECK_SIZE = TOTAL_PICKS + TOTAL_LANDS;   // 40 — used by Desert Cube
+const TOTAL_DECK_SIZE = TOTAL_PICKS + TOTAL_LANDS;
 const PACK_SIZE = 3;
 const COLORS = ['W','U','B','R','G'];
 const COLOR_TO_LAND = { W:'plains', U:'island', B:'swamp', R:'mountain', G:'forest' };
-// Desert Cube: each pack slot has this probability of being a basic land
-// instead of a spell. Independent per slot — most packs have 0-1 lands,
-// some have 2 or 3.
 const DESERT_CUBE_LAND_PROB = 1 / 3;
 
-// Eligible draft picks: all non-land, non-special cards. Special cards are
-// Neow-only gifts curated outside the random pool. Multi-target cards
-// (multiTarget:true) are in this pool; the multi-step target picker UI
-// (v1.0.16) lets the player cast them. oppPool() is currently identical
-// to draftPool() — kept as a separate name since opp's deck construction
-// may diverge in the future (e.g., difficulty tuning, archetype seeds).
-//
-// Lazy-cached: since the card-data refactor (v1.0.134), CARDS is empty at
-// module-load time and gets populated asynchronously by loadCards(). A
-// `const DRAFT_POOL = Object.keys(CARDS).filter(...)` evaluated up here
-// would freeze the pool at the empty initial state. draftPool()/oppPool()
-// compute on first call (post-loadCards) and cache thereafter.
+// Lazy-cached because CARDS is populated async by loadCards() (v1.0.134).
+// oppPool() kept separate for future archetype divergence.
 let _draftPoolCache = null;
 function draftPool() {
   if (_draftPoolCache === null) {
@@ -42,16 +26,8 @@ let state = null;
 function rollPackForMode(pool, picksSoFar, mode) {
   const pack = rollPack(pool, picksSoFar);
   if (mode !== 'desertCube') return pack;
-  // For each slot, independently roll: with probability DESERT_CUBE_LAND_PROB,
-  // replace the slot with a basic land of a random color. This is post-rollPack
-  // so the color-aware sampling still works for the spell slots.
-  //
-  // Pack uniqueness: rollPack enforces "no two copies of the same card in
-  // one pack" via its `used` set, so spell slots are guaranteed distinct.
-  // When we substitute lands, we preserve that invariant — a pack like
-  // [Bolt, Mountain, Mountain] would feel wrong (two of the same basic
-  // side by side). Track basic-land tplIds already in the pack and pick
-  // an available color for each new land slot.
+  // Substitute lands post-rollPack so color-aware sampling still works for spells.
+  // Dedup substituted lands so packs don't show two identical basics.
   for (let i = 0; i < pack.length; i++) {
     if (Math.random() < DESERT_CUBE_LAND_PROB) {
       const usedLandTplIds = new Set();
@@ -61,7 +37,7 @@ function rollPackForMode(pool, picksSoFar, mode) {
         if (tpl && tpl.type === 'Land' && tpl.mana) usedLandTplIds.add(pack[j]);
       }
       const availableColors = COLORS.filter(c => !usedLandTplIds.has(COLOR_TO_LAND[c]));
-      if (availableColors.length === 0) continue;   // all 5 basics in pack (impossible with 3 slots)
+      if (availableColors.length === 0) continue;
       const colorIdx = Math.floor(Math.random() * availableColors.length);
       pack[i] = COLOR_TO_LAND[availableColors[colorIdx]];
     }
@@ -72,7 +48,6 @@ function rollPackForMode(pool, picksSoFar, mode) {
 function startDraft(mode) {
   state = {
     youPicks: [],
-    // Default to classic if no mode passed — preserves backward compat.
     mode: mode || 'classic',
     complete: false,
   };
@@ -80,12 +55,8 @@ function startDraft(mode) {
   PICKLOG.startDraft();
 }
 
-// Constructed enemy decks — hand-curated card lists used at map nodes that
-// roll as 'constructed' rather than 'colored' or 'neutral'. Each entry has
-// 23 spell-slot tplIds; lands are auto-allocated from the deck's pip
-// distribution by allocLands. Opp sticker/staple/clone scaling applies on
-// top of the curated base. To add a new deck: pick a unique key, list 23
-// existing tplIds from CARDS, declare its colors for tooltip display.
+// Hand-curated constructed decks for 'constructed' map nodes.
+// 23 tplIds; lands auto-allocated. Opp scaling layers on top.
 const CONSTRUCTED_DECKS = {
   goblinAggro: {
     name: 'Goblin Aggro',
@@ -126,12 +97,6 @@ const CONSTRUCTED_DECKS = {
       'drainLife', 'drainLife', 'mindrot', 'consume',
     ],
   },
-  // Boss deck — Archdemon of Bargains. Mono-B with a removal-heavy shell
-  // and recursion threats. Acts as the placeholder until the bespoke boss
-  // cards (Vile Edict, Scarification, Archdemon of Bargains itself) ship in
-  // subsequent stages — at which point those slot in to replace 5 of the
-  // current cards. Has no `colors` color-affinity force currently — flagged
-  // as boss via the isBoss flag instead.
   archdemonBoss: {
     name: 'Archdemon of Bargains',
     icon: '👹',
@@ -139,27 +104,17 @@ const CONSTRUCTED_DECKS = {
     description: 'Mono-black demonic toolbox: removal, drain, recursion',
     isBoss: true,
     cards: [
-      // The titular Archdemon — single copy, the climactic threat.
       'archdemonBargains',
-      // Creatures (13) — heavy on threats and value engines. One less
-      // bloodBat to make room for the Archdemon while keeping the deck
-      // at 23 spell slots.
       'bloodBat', 'rakdosCadet', 'rakdosCadet',
       'cultPriest', 'cultPriest', 'bloodPriest', 'bloodPriest',
       'bloodArtist', 'bloodArtist', 'hypnotic', 'hypnotic',
       'nightmare', 'bloodthirster',
-      // Removal & disruption (9): special boss cards + standard removal.
       'vileEdict', 'vileEdict',
       'scarification', 'scarification',
       'doomBlade', 'doomBlade', 'terror', 'terror',
       'drainLife',
     ],
   },
-  // The Balancer — mono-W control. Anchored by 2 City Guardians (legendary
-  // 2/1 First Strike that tax all casts +1) and four equalization spells:
-  // Symmetricize (collapse stats to one value), Embargo (bounce + cost +1
-  // forever), Bleach (exile + colorless forever). Backbone: white removal,
-  // pacifism, soldier tokens, healing.
   balancerBoss: {
     name: 'The Balancer',
     icon: '⚖',
@@ -167,16 +122,13 @@ const CONSTRUCTED_DECKS = {
     description: 'Mono-white control: taxation, exile, equalization',
     isBoss: true,
     cards: [
-      // Special boss cards (7): 2 of each tactical disruption, 1 Bleach.
       'cityGuardian', 'cityGuardian',
       'symmetricize', 'symmetricize',
       'embargo', 'embargo',
       'bleach',
-      // Creatures (9) — soldier-flavored white midrange.
       'savannahLions', 'whiteKnight', 'ancestralGuard', 'ancestralGuard',
       'benalishHero', 'squireOath', 'paladinValor',
       'serra', 'ageOfDawn',
-      // White removal & disruption (7).
       'swords', 'swords',
       'pacifism', 'pacifism',
       'oblation',
@@ -186,35 +138,18 @@ const CONSTRUCTED_DECKS = {
   },
 };
 
-// Lookup helper — returns the deck spec or null. Defensive: tolerates
-// unknown IDs (e.g., if a map node was generated under an old build that
-// included a since-removed deck). Caller falls back to colored/neutral.
 function getConstructedDeck(id) {
   if (!id) return null;
   return CONSTRUCTED_DECKS[id] || null;
 }
 
-// Build opp deck (23 spells + lands) by simulating a draft with a heuristic
-// scorer (color commitment, curve, density, value, dedup). Factor-decomposed
-// for future archetype-specific weight sets.
-//
-// When constructedId is set (and resolves to a CONSTRUCTED_DECKS entry),
-// the draft loop is skipped — the curated card list is used directly. Opp
-// sticker/staple/clone scaling still applies via the same downstream path
-// so harder sectors face the same constructed base but with more bonuses.
+// Build opp deck (23 spells + lands). constructedId → curated list; else heuristic draft.
 function buildOpponentDeck(numStickers, numStaples, numClones, colorAffinity, constructedId) {
   const constructed = getConstructedDeck(constructedId);
   let picks;
   if (constructed) {
-    // Skip drafting entirely — use the curated list. Slice defensively in
-    // case the spec has more than TOTAL_PICKS entries (would unbalance the
-    // game). Pad with extra random color picks if it has fewer (also
-    // shouldn't happen, but defensive).
     picks = constructed.cards.slice(0, TOTAL_PICKS);
     if (picks.length < TOTAL_PICKS) {
-      // Underfilled deck — pad with neutral packs to reach TOTAL_PICKS.
-      // Should never trigger if decks are authored correctly, but the
-      // engine shouldn't crash on a malformed spec.
       console.warn(`Constructed deck "${constructedId}" has ${picks.length} cards; padding to ${TOTAL_PICKS}.`);
       for (let i = picks.length; i < TOTAL_PICKS; i++) {
         const pack = rollPack(oppPool(), picks);
@@ -224,10 +159,7 @@ function buildOpponentDeck(numStickers, numStaples, numClones, colorAffinity, co
     }
   } else {
     picks = [];
-    // If colorAffinity is set, the first pack is forced to be all that color.
-    // This biases the drafter strongly toward that color via the existing
-    // color-commitment logic in pickFromPack: once pick 1 is of color C,
-    // subsequent in-color picks get +30 and off-color picks get penalized.
+    // colorAffinity forces pick 1 same-color → biases via pickFromPack's commitment logic.
     if (colorAffinity) {
       const sameColorPool = oppPool().filter(id => {
         const c = CARDS[id];
@@ -245,7 +177,6 @@ function buildOpponentDeck(numStickers, numStaples, numClones, colorAffinity, co
         picks.push(chosen);
       }
     }
-    // Continue with normal pack rolls for the remaining picks.
     for (let i = picks.length; i < TOTAL_PICKS; i++) {
       const pack = rollPack(oppPool(), picks);
       if (!pack.length) break;
@@ -253,10 +184,7 @@ function buildOpponentDeck(numStickers, numStaples, numClones, colorAffinity, co
       picks.push(chosen);
     }
   }
-  // Derive the deck's two primary colors. For constructed decks, prefer the
-  // spec's own declared colors — they describe the archetype's intent and
-  // avoid filler-padding noise for mono-color builds (where the "second
-  // color" fallback would otherwise inject an arbitrary color).
+  // Constructed: prefer declared colors (avoid filler-padding noise for mono builds).
   let oppColors;
   if (constructed && Array.isArray(constructed.colors) && constructed.colors.length > 0) {
     oppColors = constructed.colors.slice(0, 2);
@@ -264,7 +192,6 @@ function buildOpponentDeck(numStickers, numStaples, numClones, colorAffinity, co
     const pips0 = countPips(picks);
     const colorOrder = COLORS.slice().sort((a, b) => pips0[b] - pips0[a]);
     oppColors = colorOrder.filter(k => pips0[k] > 0).slice(0, 2);
-    // Fallback if somehow we ended up with all-colorless picks.
     if (oppColors.length < 2) {
       const remaining = COLORS.filter(k => !oppColors.includes(k));
       while (oppColors.length < 2 && remaining.length) {
@@ -274,33 +201,15 @@ function buildOpponentDeck(numStickers, numStaples, numClones, colorAffinity, co
   }
   const pips = countPips(picks);
   const lands = allocLands(pips);
-  // Convert flat tplId arrays into slot-shaped {tplId, stickers:[]} entries
-  // so we can apply opp stickers using the same shape as the player's slots.
-  // makePlayer accepts both string entries and {tplId, stickers} entries
-  // interchangeably, so this is a clean upgrade.
   const slots = [...picks, ...lands].map(tplId => ({ tplId, stickers: [] }));
-  // Order matters:
-  //   1. Staples FIRST — staples consume slots, so applying stickers to
-  //      slots-being-consumed would just waste them.
-  //   2. Stickers next — applied to whatever slots survived the staple pass.
-  //   3. Clones LAST — photocopy the fully-modified slot, mirroring the
-  //      player's clone reward semantics. The player clones an existing
-  //      run-built slot (with its accumulated stickers/staples/rolls); opp's
-  //      analog should likewise photocopy modified slots, not pre-modification
-  //      ones. A clone target with stickers/staples produces a duplicate
-  //      threat at construction time — bigger threat density.
+  // Order: staples first (consume slots), then stickers, then clones (photocopy modified slots).
   if (numStaples > 0)  applyOpponentStaples(slots, numStaples);
   if (numStickers > 0) applyOpponentStickers(slots, numStickers);
   if (numClones > 0)   applyOpponentClones(slots, numClones);
   return { cards: slots, colors: oppColors };
 }
 
-// Apply N staples to opp's deck. Each round: find compatible pairs, pick
-// weighted (bias creature+creature), absorb staple slot into base. Mutates
-// slots in place.
 function applyOpponentStaples(slots, n) {
-  // Pre-compute land color set — filter cross-color pairs to lower weight
-  // (don't ban entirely; drafter's output shifts mid-game).
   const deckColors = new Set();
   for (const slot of slots) {
     const tpl = CARDS[slot.tplId];
@@ -308,8 +217,7 @@ function applyOpponentStaples(slots, n) {
   }
   const COLOR_KEYS = ['W','U','B','R','G'];
   const isCastable = (baseTplId, stapleTplId) => {
-    // Cheap merged-cost check: every color in merged cost must be producible.
-    // requirement is covered by the deck's lands. Doesn't synthesize the full
+    // Cheap castability check: every color in merged cost must be in deck colors.
     // template — just sums cost.
     const baseTpl = CARDS[baseTplId];
     const stapleTpl = CARDS[stapleTplId];
