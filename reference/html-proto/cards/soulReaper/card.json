@@ -9,7 +9,7 @@
   },
   "power": 3,
   "toughness": 3,
-  "art": "🌑",
+  "art": "cards/soulReaper/art.png",
   "keywords": [
     "flying"
   ],
