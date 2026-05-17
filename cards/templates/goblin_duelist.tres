@@ -9,6 +9,7 @@ toughness = 1
 keywords = Array[String](["first_strike"])
 card_id = "goblin_duelist"
 display_name = "Goblin Duelist"
+front_image_path = "goblin_duelist.png"
 card_types = Array[String](["creature"])
 subtypes = Array[String](["goblin", "warrior"])
 mana_cost = {
