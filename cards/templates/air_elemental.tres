@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="CreatureResource" format=3]
+
+[ext_resource type="Script" path="res://data/creature_resource.gd" id="1_cr"]
+
+[resource]
+script = ExtResource("1_cr")
+power = 4
+toughness = 4
+keywords = Array[String](["flying"])
+card_id = "air_elemental"
+display_name = "Air Elemental"
+card_types = Array[String](["creature"])
+subtypes = Array[String](["elemental"])
+mana_cost = {
+"C": 3,
+"U": 2
+}
+oracle_text = "Flying."

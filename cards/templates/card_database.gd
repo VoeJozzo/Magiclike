@@ -33,6 +33,10 @@ static func all_card_ids() -> Array[String]:
 		"healing_salve", "counterspell",
 		"wind_drake", "giant_spider", "serra_angel", "trained_armodon",
 		"vampire_nighthawk", "raging_goblin", "walking_wall",
+		# Phase 6 seed: ported from reference/html-proto, vanilla keyword
+		# creatures expanding W/U color coverage. No new mechanics.
+		"dawn_angel", "air_elemental", "mist_djinn", "cloud_pegasus",
+		"white_knight", "goblin_duelist", "blood_knight", "ember_drake",
 	]
 
 
