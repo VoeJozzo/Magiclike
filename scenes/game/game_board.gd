@@ -411,34 +411,62 @@ func _refresh_stack_display(s: EngineState) -> void:
 		empty.add_theme_color_override("font_color", Color(0.5, 0.5, 0.6))
 		_stack_display.add_child(empty)
 		return
-	# Top of stack at top of display (LIFO visual)
+	# Top of stack at top of display (LIFO visual). Phase 5c UI polish (#6):
+	# stack entries are now Buttons so the player can click them when in
+	# "target a spell" mode (Counterspell). Buttons are visually clear when
+	# the picker is active (highlighted) so the player knows what to click.
 	var entries := s.stack.entries.duplicate()
 	entries.reverse()
+	var picking_spell_target: bool = _pending_cast_iid != -1 and _pending_target_filter == "spell"
 	for entry in entries:
 		var iid: int = entry.get("source_iid", -1)
 		var name: String = "?"
 		if _iid_to_visual.has(iid):
 			name = str(_iid_to_visual[iid].card_info.get("display_name", "?"))
 		var kind: String = entry.get("kind", "spell")
-		var lbl := Label.new()
-		lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		lbl.size = Vector2(420, 0)
-		lbl.custom_minimum_size = Vector2(420, 0)
+		var btn := Button.new()
+		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		btn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		btn.custom_minimum_size = Vector2(420, 0)
+		btn.focus_mode = Control.FOCUS_NONE  # avoid Space-key shenanigans
 		if kind == "trigger":
-			# Phase 5c UI polish: show the trigger's oracle text under the
-			# header so the player sees what's about to resolve, not just
-			# whose ability it is.
-			lbl.text = "⚡ %s\n   %s" % [name, _trigger_oracle_text(entry)]
-			lbl.add_theme_color_override("font_color", Color(1.0, 0.75, 0.30))
+			btn.text = "⚡ %s\n   %s" % [name, _trigger_oracle_text(entry)]
+			btn.add_theme_color_override("font_color", Color(1.0, 0.75, 0.30))
 		else:
-			# Spell entry: header + oracle text + targets (if any).
-			lbl.text = "▶ %s\n   %s%s" % [
+			btn.text = "▶ %s\n   %s%s" % [
 				name,
 				_spell_oracle_text(iid),
 				_format_targets_for_log(entry.get("targets", [])),
 			]
-			lbl.add_theme_color_override("font_color", Color(1, 0.9, 0.5))
-		_stack_display.add_child(lbl)
+			btn.add_theme_color_override("font_color", Color(1, 0.9, 0.5))
+		# When in spell-target mode, only spell entries are clickable
+		# targets. Trigger entries can't be countered with a vanilla
+		# Counterspell. Highlight clickable entries and connect handler.
+		if picking_spell_target and kind == "spell":
+			btn.disabled = false
+			btn.add_theme_color_override("font_color", Color(1.0, 0.85, 0.30))  # gold = clickable target
+			btn.pressed.connect(_on_stack_entry_clicked.bind(iid))
+		else:
+			# Disable visually so it doesn't look clickable when it isn't.
+			# (Still readable — disabled buttons grey out the text slightly.)
+			btn.disabled = true
+		_stack_display.add_child(btn)
+
+
+# Phase 5c UI polish (#6): handler for clicks on a stack entry when the
+# player is choosing a spell to counter. Fires the cast_spell action with
+# the chosen stack entry as the target.
+func _on_stack_entry_clicked(stack_iid: int) -> void:
+	if _pending_cast_iid == -1:
+		return
+	if _pending_target_filter != "spell":
+		return
+	var target := {"kind": "stack", "iid": stack_iid}
+	var action := Action.make_cast_spell(_pending_cast_iid, [target])
+	if RulesEngine.execute_action(action):
+		_pending_cast_iid = -1
+		_pending_target_filter = ""
+		_exit_targeting_mode()
 
 
 # Pull oracle text off the source CardResource for a trigger entry, with a
@@ -594,10 +622,21 @@ func _apply_legality_glows(s: EngineState) -> void:
 		var filter: String = s.awaiting_target_for_trigger.get("filter", "")
 		_collect_legal_target_iids(s, filter, glow_state)
 	else:
+		# Strict-legal actions (current mana exactly covers).
 		for action in RulesEngine.get_legal_actions("you"):
 			var iid: int = int(action.get("source_iid", -1))
 			if iid != -1:
 				glow_state[iid] = "playable"
+		# Phase 5c UI polish (per playtest #2): also glow hand cards that
+		# would be castable AFTER auto-tap. Player shouldn't have to
+		# manually tap lands to see what they can cast.
+		for card in s.you.hand:
+			if card.template == null:
+				continue
+			if glow_state.has(card.instance_id):
+				continue  # already counted as currently-legal
+			if _can_potentially_cast(card, s):
+				glow_state[card.instance_id] = "playable"
 	# Apply to every tracked visual. Anything not in the glow set gets
 	# cleared. This keeps the glow in sync with mana / phase / priority
 	# changes without us needing to track previous-frame state.
@@ -676,10 +715,18 @@ func _on_your_battlefield_card_pressed(visual: Card) -> void:
 	var phase = s.phase_machine.current
 
 	# Defending player's COMBAT_BLOCK: clicking your creature picks it as a
-	# pending blocker; the next click on an opp attacker finalizes the block.
+	# pending blocker, OR un-declares it if it's already a blocker.
 	# Only return if the click was actually consumed by block-selection logic;
 	# otherwise fall through (e.g., clicking a Land should still tap for mana).
 	if phase == PhaseMachine.Phase.COMBAT_BLOCK and s.active_player_key == "opp":
+		# Phase 5c UI polish: clicking a creature that's already blocking
+		# un-declares it (lets the player change their mind before
+		# committing). Only allowed pre-commit.
+		if s.blockers.has(iid) and not _blocks_committed:
+			var undo := Action.make_undeclare_blocker(iid)
+			if RulesEngine.is_legal_action(undo):
+				RulesEngine.execute_action(undo)
+				return
 		var found = s.find_instance(iid)
 		if found != null and found.card != null \
 				and found.card.template is CreatureResource \
@@ -692,8 +739,15 @@ func _on_your_battlefield_card_pressed(visual: Card) -> void:
 			return
 		# Fall through: click on land (tap for mana), or any non-blocker click
 
-	# Active player's COMBAT_ATTACK: click your creature to declare attacker.
+	# Active player's COMBAT_ATTACK: click your creature to declare attacker,
+	# OR un-declare it if it's already attacking.
 	if phase == PhaseMachine.Phase.COMBAT_ATTACK and s.active_player_key == "you":
+		# Phase 5c UI polish: clicking an attacking creature un-declares it.
+		if iid in s.attackers:
+			var undo := Action.make_undeclare_attacker(iid)
+			if RulesEngine.is_legal_action(undo):
+				RulesEngine.execute_action(undo)
+				return
 		var attack := Action.make_declare_attacker(iid)
 		if RulesEngine.is_legal_action(attack):
 			RulesEngine.execute_action(attack)
@@ -810,12 +864,17 @@ func _on_hand_card_gui_input(event: InputEvent, visual: Card) -> void:
 		_log_local("[color=#ffd866]Confirm blocks before casting spells.[/color]")
 		return
 
-	# Spells (instant/sorcery/creature): pay mana, push to stack.
+	# Phase 5c UI polish (per playtest #1): check phase/priority/stack
+	# legality BEFORE attempting auto-tap. Otherwise clicking a sorcery
+	# during your upkeep would tap lands needlessly before bailing.
 	var ctrl: Player = found.controller
+	var reason: String = _diagnose_cast_failure(card, s)
+	if reason != "":
+		_log_local("[color=#ff8888]Can't cast %s — %s[/color]" % [card.name(), reason])
+		return
+
+	# Spells (instant/sorcery/creature): auto-tap if needed, then cast.
 	if not ctrl.mana.can_pay(card.template.mana_cost):
-		# Phase 5c UI polish: auto-tap lands to make up the shortfall. If
-		# we can plan a set of untapped lands that covers the cost, tap
-		# them all and proceed. If the plan can't cover, log and bail.
 		var lands_to_tap: Array = _plan_lands_to_tap(ctrl, card.template.mana_cost)
 		if lands_to_tap.is_empty():
 			_log_local("[color=#ff8888]Can't pay %s for %s — pool is %s, not enough untapped lands[/color]" % [
@@ -826,31 +885,20 @@ func _on_hand_card_gui_input(event: InputEvent, visual: Card) -> void:
 			return
 		for land in lands_to_tap:
 			RulesEngine.execute_action(Action.make_activate_ability(land.instance_id))
-		# After auto-tap we should be able to pay. If not, something
-		# went sideways — bail with an explanation rather than silently
-		# failing.
 		if not ctrl.mana.can_pay(card.template.mana_cost):
 			_log_local("[color=#ff8888]Auto-tap completed but can't pay %s for %s (pool: %s)[/color]" % [
 				_fmt_cost(card.template.mana_cost), card.name(), ctrl.mana.to_string_short(),
 			])
 			return
 
-	# Targeted spells enter targeting mode; untargeted ones cast directly.
+	# Targeted spells enter targeting mode (now including "spell" filter
+	# which routes clicks through the clickable stack panel — see #6).
+	# Untargeted ones cast directly.
 	if card.template is SpellResource and card.template.requires_target:
-		# Counterspell-style "target spell" filter: there's no stack-entry
-		# click UI yet. Auto-target the topmost opponent spell since
-		# countering the most recent thing is the typical intent. If
-		# nothing legal is on the stack, bail with a clear message.
-		if card.template.target_filter == "spell":
-			var top_spell: Dictionary = _top_targetable_spell(s, "you")
-			if top_spell.is_empty():
-				_log_local("[color=#ff8888]Can't cast %s: no spell on the stack to target.[/color]" % card.name())
-				return
-			var cast := Action.make_cast_spell(iid, [top_spell])
-			if RulesEngine.is_legal_action(cast):
-				RulesEngine.execute_action(cast)
-			else:
-				_log_local("[color=#ff8888]Can't cast %s — %s[/color]" % [card.name(), _diagnose_cast_failure(card, s)])
+		# Filter "spell" still needs SOMETHING on the stack to target —
+		# bail early with a clear message if the stack is empty.
+		if card.template.target_filter == "spell" and s.stack.is_empty():
+			_log_local("[color=#ff8888]Can't cast %s: no spell on the stack to target.[/color]" % card.name())
 			return
 		_enter_targeting_mode(iid, card.template.target_filter)
 	else:
@@ -858,10 +906,48 @@ func _on_hand_card_gui_input(event: InputEvent, visual: Card) -> void:
 		if RulesEngine.is_legal_action(cast):
 			RulesEngine.execute_action(cast)
 		else:
-			# Diagnose WHY it's illegal — most common: sorcery-speed during
-			# wrong phase, or instant-speed during your own untap/draw, etc.
-			var reason: String = _diagnose_cast_failure(card, s)
-			_log_local("[color=#ff8888]Can't cast %s — %s[/color]" % [card.name(), reason])
+			_log_local("[color=#ff8888]Can't cast %s — %s[/color]" % [card.name(), _diagnose_cast_failure(card, s)])
+
+
+# Phase 5c UI polish: returns true if the player could cast this hand card
+# right now, given that auto-tap would handle mana. Mirrors the cast-time
+# logic in _on_hand_card_gui_input. Lands are not "casts" — they're played
+# directly; play_land legality already shows up in get_legal_actions.
+func _can_potentially_cast(card: CardInstance, s: EngineState) -> bool:
+	if card.is_land():
+		return false  # lands go through play_land, not cast
+	if not (card.template is SpellResource or card.template is CreatureResource):
+		return false
+	# Phase / priority / stack check (same as _diagnose_cast_failure but
+	# returns bool instead of a reason string).
+	if s.priority_player_key != "you":
+		return false
+	if not card.template.has_type("instant"):
+		if s.active_player_key != "you":
+			return false
+		if not s.phase_machine.is_main_phase():
+			return false
+		if not s.stack.is_empty():
+			return false
+	# Defender's COMBAT_BLOCK pre-commit blocks all casts.
+	if s.phase_machine.current == PhaseMachine.Phase.COMBAT_BLOCK \
+			and s.active_player_key == "opp" \
+			and not _blocks_committed:
+		return false
+	# Target filter: spells that need targets require at least one legal
+	# target to exist. "spell" filter requires something on the stack.
+	if card.template is SpellResource and card.template.requires_target:
+		var filter: String = card.template.target_filter
+		if filter == "spell":
+			if s.stack.is_empty():
+				return false
+		# Other filters: we don't pre-validate target existence (a creature
+		# might exist by cast time; player gets the glow as a hint that the
+		# spell is otherwise legal).
+	# Mana: current pool can pay OR auto-tap plan covers it.
+	if s.you.mana.can_pay(card.template.mana_cost):
+		return true
+	return not _plan_lands_to_tap(s.you, card.template.mana_cost).is_empty()
 
 
 # Phase 5c UI polish: plan a set of untapped lands to tap to cover `cost`,
@@ -960,7 +1046,10 @@ func _diagnose_cast_failure(card: CardInstance, s: EngineState) -> String:
 			return "sorcery-speed requires an empty stack"
 	if s.priority_player_key != "you":
 		return "you don't have priority right now"
-	return "(unknown; see editor console for details)"
+	# All timing/legality checks passed — empty string means "castable
+	# right now if you can pay the mana." Callers can then proceed to
+	# auto-tap and cast.
+	return ""
 
 
 func _on_panel_clicked(panel_key: String) -> void:

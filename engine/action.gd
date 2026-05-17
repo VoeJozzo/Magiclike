@@ -23,6 +23,12 @@ const KIND_PLAY_LAND := "play_land"
 const KIND_CAST_SPELL := "cast_spell"
 const KIND_DECLARE_ATTACKER := "declare_attacker"
 const KIND_DECLARE_BLOCKER := "declare_blocker"
+# Phase 5c UI polish: undo a combat declaration before the phase advances.
+# Both actions take source_iid (attacker or blocker creature iid). Legality
+# requires the relevant combat phase and that the creature is currently
+# declared. Engine untaps an undeclared attacker and clears blocker links.
+const KIND_UNDECLARE_ATTACKER := "undeclare_attacker"
+const KIND_UNDECLARE_BLOCKER := "undeclare_blocker"
 # Phase 4.5b: fills in the target for a queued triggered ability that's
 # waiting on player input. Engine sets state.awaiting_target_for_trigger
 # to signal which trigger is pending; this action supplies the chosen target.
@@ -62,6 +68,14 @@ static func make_declare_blocker(blocker_iid: int, attacker_iid: int) -> Diction
 		"source_iid": blocker_iid,
 		"attacker_iid": attacker_iid,
 	}
+
+
+static func make_undeclare_attacker(source_iid: int) -> Dictionary:
+	return {"kind": KIND_UNDECLARE_ATTACKER, "source_iid": source_iid}
+
+
+static func make_undeclare_blocker(source_iid: int) -> Dictionary:
+	return {"kind": KIND_UNDECLARE_BLOCKER, "source_iid": source_iid}
 
 
 static func target_player(who: String) -> Dictionary:

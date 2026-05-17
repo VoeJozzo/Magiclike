@@ -353,6 +353,10 @@ func execute_action(action: Dictionary) -> bool:
 			ok = _do_declare_attacker(action)
 		Action.KIND_DECLARE_BLOCKER:
 			ok = _do_declare_blocker(action)
+		Action.KIND_UNDECLARE_ATTACKER:
+			ok = _do_undeclare_attacker(action)
+		Action.KIND_UNDECLARE_BLOCKER:
+			ok = _do_undeclare_blocker(action)
 		Action.KIND_PASS_PRIORITY:
 			ok = _do_pass_priority(action)
 		Action.KIND_PICK_TRIGGER_TARGET:
@@ -510,6 +514,10 @@ func is_legal_action(action: Dictionary) -> bool:
 			return _legal_declare_attacker(action)
 		Action.KIND_DECLARE_BLOCKER:
 			return _legal_declare_blocker(action)
+		Action.KIND_UNDECLARE_ATTACKER:
+			return _legal_undeclare_attacker(action)
+		Action.KIND_UNDECLARE_BLOCKER:
+			return _legal_undeclare_blocker(action)
 		Action.KIND_PICK_TRIGGER_TARGET:
 			return _legal_pick_trigger_target(action)
 		_:
@@ -595,6 +603,10 @@ func _dispatch_action(action: Dictionary) -> bool:
 			return _do_declare_attacker(action)
 		Action.KIND_DECLARE_BLOCKER:
 			return _do_declare_blocker(action)
+		Action.KIND_UNDECLARE_ATTACKER:
+			return _do_undeclare_attacker(action)
+		Action.KIND_UNDECLARE_BLOCKER:
+			return _do_undeclare_blocker(action)
 		Action.KIND_PASS_PRIORITY:
 			return _do_pass_priority(action)
 		Action.KIND_PICK_TRIGGER_TARGET:
@@ -1011,6 +1023,77 @@ func _do_declare_blocker(action: Dictionary) -> bool:
 		var a: CardInstance = attacker_found.card
 		b.blocking_iid = attacker_iid
 		_state.append_log("%s blocks %s" % [b.name(), a.name()])
+	return true
+
+
+# ─── Undeclare attacker/blocker (Phase 5c UI polish) ───────────────────────
+# Lets the player change their mind about a combat declaration before the
+# phase advances. Both are reverse operations of their declare counterparts:
+# untap the attacker (if not vigilance), remove from state arrays, clear
+# combat-state flags on the CardInstance.
+
+func _legal_undeclare_attacker(action: Dictionary) -> bool:
+	if _state == null or _state.winner != "":
+		return false
+	if _state.phase_machine.current != PhaseMachine.Phase.COMBAT_ATTACK:
+		return false
+	if _state.priority_player_key != _state.active_player_key:
+		return false
+	var iid: int = action.get("source_iid", -1)
+	if not (iid in _state.attackers):
+		return false
+	# Must belong to the active player (the attacker).
+	var found = _state.find_instance(iid)
+	if found == null or found.controller.key != _state.active_player_key:
+		return false
+	return true
+
+
+func _do_undeclare_attacker(action: Dictionary) -> bool:
+	var iid: int = action.source_iid
+	_state.attackers.erase(iid)
+	# Clear any blockers that were pointing at this attacker.
+	for b_iid in _state.blockers.keys():
+		if _state.blockers[b_iid] == iid:
+			_state.blockers.erase(b_iid)
+			var b_found = _state.find_instance(b_iid)
+			if b_found != null and b_found.card != null:
+				b_found.card.blocking_iid = -1
+	var found = _state.find_instance(iid)
+	if found != null and found.card != null:
+		var card: CardInstance = found.card
+		card.attacking = false
+		# Untap unless vigilance (vigilance never tapped in the first place,
+		# but untapping a vigilance creature is a no-op so this is harmless).
+		if not card.has_keyword("vigilance"):
+			card.tapped = false
+		_state.append_log("%s no longer attacks" % card.name())
+	return true
+
+
+func _legal_undeclare_blocker(action: Dictionary) -> bool:
+	if _state == null or _state.winner != "":
+		return false
+	if _state.phase_machine.current != PhaseMachine.Phase.COMBAT_BLOCK:
+		return false
+	var iid: int = action.get("source_iid", -1)
+	if not _state.blockers.has(iid):
+		return false
+	# Must be the defender's creature.
+	var defending_key: String = _state.opponent_of(_state.active_player_key)
+	var found = _state.find_instance(iid)
+	if found == null or found.controller.key != defending_key:
+		return false
+	return true
+
+
+func _do_undeclare_blocker(action: Dictionary) -> bool:
+	var iid: int = action.source_iid
+	_state.blockers.erase(iid)
+	var found = _state.find_instance(iid)
+	if found != null and found.card != null:
+		found.card.blocking_iid = -1
+		_state.append_log("%s no longer blocks" % found.card.name())
 	return true
 
 
