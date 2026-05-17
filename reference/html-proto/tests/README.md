@@ -170,8 +170,8 @@ If you want the test included in `run_all.js`, add its filename to
 
 ## Maintenance notes
 
-Tests were originally built against engine v1.0.128 and re-validated
-against the current refactored multi-file layout.
+Tests were originally built when the engine was a single monolithic
+HTML file, and validated against the current 13-module layout.
 
 Major engine changes that may require test updates:
 - New `PENDING_DECISIONS` entries — tests poke `G.pending*` directly
@@ -193,15 +193,8 @@ Major engine changes that may require test updates:
   500-game self-play runs don't produce identical results, but
   failure rates are stable.
 - **Each test loads the engine fresh** (~50-100ms overhead per
-  process). Adds up for the full suite. A unified runner that loads
-  once and runs every test's assertions cumulatively would be a
-  worthwhile future investment.
+  process). Adds up for the full suite.
 
 ## Future work
 
-Not yet ported from the prior-session test bundle (~14 feature/E2E
-tests for specific mechanics — Balancer, Archdemon, Symmetricize,
-Steal, Splice, Bleach, Embargo, Spirit Shepherd, Scarification,
-Stapler, etc.). Port incrementally when modifying the corresponding
-mechanic. The originals live in this session's transcript attachment
-if you need to recover them.
+- **Unified test runner.** A runner that loads the engine once and runs every test's assertions cumulatively would dramatically speed up the full suite (~50-100ms × ~20 tests today).
