@@ -122,15 +122,17 @@ func _build_ui() -> void:
 	# creatures and lands get separate rows. Opp's battlefield flips
 	# creatures_on_top=false so opp's creatures sit at the BOTTOM of their
 	# zone (closer to combat center) and opp's lands push to the top.
-	_opp_library = _make_pile("OppLibrary", Vector2(80, 60), false)
+	# Library moved to X=340 to clear the player panel at (40, 40, w=280).
+	_opp_library = _make_pile("OppLibrary", Vector2(340, 40), false)
 	_opp_battlefield = _make_battlefield("OppBattlefield", Vector2(560, 120), false)
 	_opp_graveyard = _make_pile("OppGraveyard", Vector2(1700, 60), true)
 	_opp_hand = _make_hand("OppHand", Vector2(960, 60))
 
 	# Your row (bottom). Creatures on top (closer to center, matching opp's
-	# creatures sitting closer to center on their side).
+	# creatures sitting closer to center on their side). Library moved to
+	# X=340 so it doesn't sit on top of the you-panel.
 	_you_battlefield = _make_battlefield("YouBattlefield", Vector2(560, 560), true)
-	_you_library = _make_pile("YouLibrary", Vector2(80, 880), false)
+	_you_library = _make_pile("YouLibrary", Vector2(340, 800), false)
 	_you_graveyard = _make_pile("YouGraveyard", Vector2(1700, 880), true)
 	_you_hand = _make_hand("YouHand", Vector2(960, 980))
 
@@ -529,6 +531,11 @@ func _sync_card_visuals(s: EngineState) -> void:
 	# creatures are pending blocker, in a committed block pair, or attacking
 	# unblocked.
 	_apply_combat_highlights(s)
+	# Phase 5c UI polish: green glow on cards that are legal to act on
+	# right now (castable spells, playable lands, mana-tappable lands,
+	# attackable creatures, blockable creatures). Walks the priority
+	# player's hand + battlefield against get_legal_actions().
+	_apply_legality_glows(s)
 
 
 # Walk attackers + blockers and tag each visual with its combat state.
@@ -564,6 +571,28 @@ func _apply_combat_highlights(s: EngineState) -> void:
 			else:
 				state_name = "none"
 			visual.set_combat_highlight(state_name)
+
+
+# Phase 5c UI polish: green glow on every "you"-side card whose iid appears
+# in get_legal_actions("you"). Covers castable spells, playable lands,
+# tappable mana abilities, attackers during COMBAT_ATTACK, AND blockers
+# during COMBAT_BLOCK (each iid that's a legal source for any action gets
+# the glow). Glow is cleared from cards not in the legal set.
+func _apply_legality_glows(s: EngineState) -> void:
+	# Build the set of iids the player can act on right now.
+	var legal_iids: Dictionary = {}
+	for action in RulesEngine.get_legal_actions("you"):
+		var iid: int = int(action.get("source_iid", -1))
+		if iid != -1:
+			legal_iids[iid] = true
+	# Apply the glow to every visual we know about. Cards on opp's side and
+	# cards not in the legal set get cleared. Cards that ARE legal actions
+	# get the green tint.
+	for iid in _iid_to_visual.keys():
+		var visual: Card = _iid_to_visual[iid]
+		if visual == null or not visual.has_method("set_legality_glow"):
+			continue
+		visual.set_legality_glow(legal_iids.has(iid))
 
 
 # Where stack-held card visuals appear on screen. Center-ish, between the

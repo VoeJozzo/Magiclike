@@ -48,6 +48,12 @@ var _color_tint: ColorRect
 # selected/pending, green for committed in a block, dimmed-red for unblocked
 # attackers. Set via set_combat_highlight() from game_board's UI sync.
 var _combat_highlight: ColorRect
+# Phase 5c UI polish: green glow for cards that are legal to act on right
+# now (castable spells / playable lands / mana abilities, attackers during
+# COMBAT_ATTACK, blockers during COMBAT_BLOCK). Set via set_legality_glow()
+# each _refresh_ui. Renders as a border-style tint so it doesn't fight with
+# combat highlights.
+var _legality_glow: ColorRect
 
 
 func _ready() -> void:
@@ -84,6 +90,15 @@ func _build_text_overlay() -> void:
 	_combat_highlight.color = Color(0, 0, 0, 0)
 	_combat_highlight.mouse_filter = MOUSE_FILTER_IGNORE
 	front_face.add_child(_combat_highlight)
+
+	# Legality glow — a green tint on cards that are legal actions right
+	# now. Lower alpha than combat highlights so it reads as "available"
+	# rather than "selected".
+	_legality_glow = ColorRect.new()
+	_legality_glow.size = card_size
+	_legality_glow.color = Color(0, 0, 0, 0)
+	_legality_glow.mouse_filter = MOUSE_FILTER_IGNORE
+	front_face.add_child(_legality_glow)
 
 	# Name banner — top of card
 	_name_label = Label.new()
@@ -301,6 +316,18 @@ func set_combat_highlight(state: String) -> void:
 			_combat_highlight.color = Color(0.95, 0.35, 0.30, 0.25)  # dim red
 		_:
 			_combat_highlight.color = Color(0, 0, 0, 0)
+
+
+# Phase 5c UI polish: set the "this card is a legal action right now" glow.
+# True = green tint; false = clear. Called from game_board._refresh_ui
+# after computing legal actions for the priority player.
+func set_legality_glow(enabled: bool) -> void:
+	if _legality_glow == null:
+		return
+	if enabled:
+		_legality_glow.color = Color(0.30, 0.95, 0.45, 0.22)  # soft green
+	else:
+		_legality_glow.color = Color(0, 0, 0, 0)
 
 
 # ─── Drag / hover overrides ────────────────────────────────────────────────

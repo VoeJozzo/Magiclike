@@ -1124,6 +1124,7 @@ func _resolve_combat_damage() -> void:
 	if need_first_strike:
 		_combat_damage_pass(defending, attacker_blockers, true)
 		_run_sbas()
+		_drain_pending_triggers()  # death triggers from first-strike pass
 		_check_win_conditions()
 		if _state.winner != "":
 			return
@@ -1133,6 +1134,13 @@ func _resolve_combat_damage() -> void:
 	# living combatants that DIDN'T deal in pass 1.
 	_combat_damage_pass(defending, attacker_blockers, false)
 	_run_sbas()
+	# Phase 5c UI polish fix: drain death triggers from combat NOW, not
+	# during the next spell's resolution. Previously, death triggers fired
+	# into pending_triggers from _run_sbas but didn't get pushed onto the
+	# stack until the next spell/trigger resolved — leading to Bloodlust
+	# Berserker's death trigger surfacing AFTER a Counterspell on a wholly
+	# unrelated spell.
+	_drain_pending_triggers()
 	_check_win_conditions()
 
 
