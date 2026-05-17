@@ -4,7 +4,7 @@ extends Control
 # Programmatic UI in _ready; .tscn is just an empty Control. Subscribes to RulesEngine.state_changed.
 
 var _card_manager: CardManager
-var _factory_scene: PackedScene = preload("res://scenes/json_card_factory.tscn")
+var _factory_scene: PackedScene = preload("res://scenes/tres_card_factory.tscn")
 
 var _you_hand: Hand
 var _you_battlefield: BattlefieldZone

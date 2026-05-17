@@ -1,11 +1,15 @@
 class_name CardResource
 extends Resource
 
-# Card-template base. Engine state lives here; visual layer (front_image etc.)
-# lives in cards/data/<id>.json. Linked by card_id.
+# Card template base — engine identity + visual data, one .tres per card under
+# cards/templates/<id>.tres. Loaded via CardDatabase.get_card(card_id) for
+# engine use and via TresCardFactory.create_card(card_id, zone) for visual
+# spawning. front_image_path is a filename relative to the factory's
+# card_asset_dir (currently res://cards/images).
 
 @export var card_id: String = ""
 @export var display_name: String = ""
+@export var front_image_path: String = "card_front.png"
 
 @export var card_types: Array[String] = []
 @export var subtypes: Array[String] = []
