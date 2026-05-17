@@ -212,6 +212,11 @@ func _build_ui() -> void:
 	_action_button.text = "Pass priority"
 	_action_button.position = Vector2(40, 930)
 	_action_button.size = Vector2(180, 40)
+	# Phase 5c UI polish: disable keyboard focus so Space/Enter only fire
+	# the global keybind path (game_board._unhandled_input) once. Previously
+	# the button could grab focus from a click and then process ui_accept
+	# in addition to our global handler, advancing two phases per press.
+	_action_button.focus_mode = Control.FOCUS_NONE
 	_action_button.pressed.connect(_on_pass_pressed)
 	add_child(_action_button)
 
@@ -808,19 +813,44 @@ func _on_hand_card_gui_input(event: InputEvent, visual: Card) -> void:
 	# Spells (instant/sorcery/creature): pay mana, push to stack.
 	var ctrl: Player = found.controller
 	if not ctrl.mana.can_pay(card.template.mana_cost):
-		_log_local("[color=#ff8888]Can't pay %s for %s — pool is %s[/color]" % [
-			_fmt_cost(card.template.mana_cost),
-			card.name(),
-			ctrl.mana.to_string_short(),
-		])
-		return
+		# Phase 5c UI polish: auto-tap lands to make up the shortfall. If
+		# we can plan a set of untapped lands that covers the cost, tap
+		# them all and proceed. If the plan can't cover, log and bail.
+		var lands_to_tap: Array = _plan_lands_to_tap(ctrl, card.template.mana_cost)
+		if lands_to_tap.is_empty():
+			_log_local("[color=#ff8888]Can't pay %s for %s — pool is %s, not enough untapped lands[/color]" % [
+				_fmt_cost(card.template.mana_cost),
+				card.name(),
+				ctrl.mana.to_string_short(),
+			])
+			return
+		for land in lands_to_tap:
+			RulesEngine.execute_action(Action.make_activate_ability(land.instance_id))
+		# After auto-tap we should be able to pay. If not, something
+		# went sideways — bail with an explanation rather than silently
+		# failing.
+		if not ctrl.mana.can_pay(card.template.mana_cost):
+			_log_local("[color=#ff8888]Auto-tap completed but can't pay %s for %s (pool: %s)[/color]" % [
+				_fmt_cost(card.template.mana_cost), card.name(), ctrl.mana.to_string_short(),
+			])
+			return
 
 	# Targeted spells enter targeting mode; untargeted ones cast directly.
 	if card.template is SpellResource and card.template.requires_target:
-		# Counterspell needs a spell on the stack — bail with a clear
-		# message if there isn't one.
-		if card.template.target_filter == "spell" and s.stack.is_empty():
-			_log_local("[color=#ff8888]Can't cast %s: no spell on the stack to target.[/color]" % card.name())
+		# Counterspell-style "target spell" filter: there's no stack-entry
+		# click UI yet. Auto-target the topmost opponent spell since
+		# countering the most recent thing is the typical intent. If
+		# nothing legal is on the stack, bail with a clear message.
+		if card.template.target_filter == "spell":
+			var top_spell: Dictionary = _top_targetable_spell(s, "you")
+			if top_spell.is_empty():
+				_log_local("[color=#ff8888]Can't cast %s: no spell on the stack to target.[/color]" % card.name())
+				return
+			var cast := Action.make_cast_spell(iid, [top_spell])
+			if RulesEngine.is_legal_action(cast):
+				RulesEngine.execute_action(cast)
+			else:
+				_log_local("[color=#ff8888]Can't cast %s — %s[/color]" % [card.name(), _diagnose_cast_failure(card, s)])
 			return
 		_enter_targeting_mode(iid, card.template.target_filter)
 	else:
@@ -832,6 +862,88 @@ func _on_hand_card_gui_input(event: InputEvent, visual: Card) -> void:
 			# wrong phase, or instant-speed during your own untap/draw, etc.
 			var reason: String = _diagnose_cast_failure(card, s)
 			_log_local("[color=#ff8888]Can't cast %s — %s[/color]" % [card.name(), reason])
+
+
+# Phase 5c UI polish: plan a set of untapped lands to tap to cover `cost`,
+# accounting for mana already in the pool. Returns the list of lands (in
+# tap order) or an empty Array if the cost can't be paid even with full
+# tap-out.
+#
+# Algorithm: colored pips first (each requires a land producing that
+# color), then generic pips (any remaining untapped land). Greedy —
+# doesn't backtrack. Works correctly for single-color basic lands; will
+# need extension when multi-color lands enter the pool (e.g., dual lands,
+# City of Brass).
+func _plan_lands_to_tap(controller: Player, cost: Dictionary) -> Array:
+	# Pool already has some mana — only need to make up the difference.
+	var still_needed: Dictionary = {}
+	for color in ["W", "U", "B", "R", "G", "C"]:
+		var c: int = int(cost.get(color, 0)) - int(controller.mana.pool.get(color, 0))
+		still_needed[color] = max(0, c)
+	# Available untapped lands.
+	var available: Array = []
+	for card in controller.battlefield:
+		if card.tapped:
+			continue
+		if card.template == null or not (card.template is LandResource):
+			continue
+		if card.summoning_sick:  # haste etc — but lands don't get sickness; defensive
+			continue
+		available.append(card)
+	var planned: Array = []
+	# Pass 1: colored requirements. For each color we still need, find a
+	# land producing that color.
+	for color in ["W", "U", "B", "R", "G"]:
+		var count: int = still_needed.get(color, 0)
+		for i in range(count):
+			var land: CardInstance = _find_land_producing(available, color)
+			if land == null:
+				return []  # Can't satisfy this color
+			planned.append(land)
+			available.erase(land)
+	# Pass 2: generic. Any remaining untapped land works. Mana in pool of
+	# any color can also pay generic, so let can_pay decide after taps.
+	var generic_needed: int = still_needed.get("C", 0)
+	# Generic can be paid by extra colored mana already in pool too —
+	# count how much surplus we have after colored requirements.
+	var surplus_in_pool: int = 0
+	for color in ["W", "U", "B", "R", "G"]:
+		surplus_in_pool += max(0, int(controller.mana.pool.get(color, 0)) - int(cost.get(color, 0)))
+	generic_needed = max(0, generic_needed - surplus_in_pool)
+	for i in range(generic_needed):
+		if available.is_empty():
+			return []
+		planned.append(available.pop_front())
+	return planned
+
+
+# Find an untapped land in `available` that produces `color`, or null.
+func _find_land_producing(available: Array, color: String) -> CardInstance:
+	for land in available:
+		if land.template is LandResource and color in land.template.mana_produced:
+			return land
+	return null
+
+
+# Phase 5c UI polish: pick the "top of stack" spell entry to target with
+# Counterspell. Prefers opponent's spells (the usual counter target);
+# falls back to top-of-stack regardless of controller if there's no opp
+# spell on the stack (unlikely but handles "counter your own spell" cases
+# like saving stack-slot for the opp). Returns a {kind: "stack", iid}
+# target dict or {} if no spell entries exist.
+func _top_targetable_spell(s: EngineState, caster_key: String) -> Dictionary:
+	# Walk stack top-to-bottom, prefer opp's spells first.
+	var entries: Array = s.stack.entries
+	for i in range(entries.size() - 1, -1, -1):
+		var e: Dictionary = entries[i]
+		if e.get("kind", "") == "spell" and e.get("controller_key", "") != caster_key:
+			return {"kind": "stack", "iid": int(e.source_iid)}
+	# No opp spell — fall back to any spell on stack.
+	for i in range(entries.size() - 1, -1, -1):
+		var e: Dictionary = entries[i]
+		if e.get("kind", "") == "spell":
+			return {"kind": "stack", "iid": int(e.source_iid)}
+	return {}
 
 
 # Phase 5c UI polish: when a cast is rejected by is_legal_action, produce a
