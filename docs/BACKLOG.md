@@ -6,8 +6,6 @@ For html-proto deferred work, see [`reference/html-proto/BACKLOG.md`](../referen
 
 ## How to maintain this file
 
-(Session-gating rules — when to open this file vs not — live in `/CLAUDE.md`. Below are rules for when you're already editing it.)
-
 - **Update on state change.** Adding a new deferred item, moving one to "Recently done," or marking one rejected — all part of normal work. Include the date or phase tag on "Recently done" entries.
 - **Prune "Recently done" periodically.** Once an item is a few phases old and visibly shipped, drop it. This isn't a changelog — git log is the changelog.
 
