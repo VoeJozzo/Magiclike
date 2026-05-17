@@ -1,0 +1,32 @@
+{
+  "tplId": "curseShade",
+  "name": "Curse Shade",
+  "type": "Creature",
+  "sub": "Shade",
+  "cost": {
+    "B": 1,
+    "C": 2
+  },
+  "power": 2,
+  "toughness": 2,
+  "art": "🌫",
+  "text": "When this dies, exile target creature.",
+  "triggers": [
+    {
+      "event": "cardDies",
+      "condId": "thisDies",
+      "text": "When ~ dies, exile target creature.",
+      "effects": [
+        {
+          "kind": "removeCreature",
+          "severity": 4,
+          "target": "creature"
+        }
+      ]
+    }
+  ],
+  "color": "B",
+  "colors": [
+    "B"
+  ]
+}

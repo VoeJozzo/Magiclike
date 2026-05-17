@@ -43,3 +43,19 @@ func size() -> int:
 
 func clear() -> void:
 	entries.clear()
+
+
+# Phase 5b: deep copy. Each entry Dictionary is duplicated (including its
+# nested targets array) so mutations on the copy don't leak.
+func duplicate_deep() -> Stack:
+	var copy := Stack.new()
+	for entry in entries:
+		var entry_copy: Dictionary = entry.duplicate()
+		# targets is a nested Array of Dictionaries — deep-clone each.
+		if entry_copy.has("targets"):
+			var targets_copy: Array = []
+			for t in entry_copy.targets:
+				targets_copy.append(t.duplicate() if t is Dictionary else t)
+			entry_copy.targets = targets_copy
+		copy.entries.append(entry_copy)
+	return copy

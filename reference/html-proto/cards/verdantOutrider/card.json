@@ -1,0 +1,30 @@
+{
+  "tplId": "verdantOutrider",
+  "name": "Verdant Outrider",
+  "type": "Creature",
+  "sub": "Beast",
+  "cost": {
+    "G": 1,
+    "C": 2
+  },
+  "power": 3,
+  "toughness": 2,
+  "art": "cards/verdantOutrider/art.png",
+  "text": "When this attacks, search your library for a basic land card and put it onto the battlefield tapped.",
+  "triggers": [
+    {
+      "event": "attacks",
+      "condId": "thisAttacks",
+      "text": "When ~ attacks, fetch a land tapped.",
+      "effects": [
+        {
+          "kind": "searchLandTapped"
+        }
+      ]
+    }
+  ],
+  "color": "G",
+  "colors": [
+    "G"
+  ]
+}

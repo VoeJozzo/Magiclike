@@ -1,0 +1,22 @@
+{
+  "tplId": "flamewave",
+  "name": "Flame Lash",
+  "type": "Sorcery",
+  "cost": {
+    "R": 1,
+    "C": 2
+  },
+  "art": "🔥",
+  "text": "Deal 4 damage to target creature.",
+  "effects": [
+    {
+      "kind": "damage",
+      "target": "creature",
+      "amount": 4
+    }
+  ],
+  "color": "R",
+  "colors": [
+    "R"
+  ]
+}

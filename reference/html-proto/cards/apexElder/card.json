@@ -1,0 +1,55 @@
+{
+  "tplId": "apexElder",
+  "name": "Apex Elder",
+  "type": "Creature",
+  "sub": "Beast",
+  "cost": {
+    "G": 2,
+    "C": 3
+  },
+  "power": 4,
+  "toughness": 4,
+  "art": "cards/apexElder/art.png",
+  "keywords": [
+    "trample"
+  ],
+  "text": "Trample. Other Beasts you control get +1/+1 and have trample. Whenever a Beast you control attacks, draw a card. Then discard a card.",
+  "staticBuffs": [
+    {
+      "filter": {
+        "controller": "self"
+      },
+      "subtype": "Beast",
+      "power": 1,
+      "toughness": 1,
+      "keywords": [
+        "trample"
+      ]
+    }
+  ],
+  "triggers": [
+    {
+      "event": "attacks",
+      "condId": "creatureYouAttacksOfSubtype",
+      "params": {
+        "sub": "Beast"
+      },
+      "text": "A Beast attacked — loot 1.",
+      "effects": [
+        {
+          "kind": "draw",
+          "amount": 1
+        },
+        {
+          "kind": "discard",
+          "target": "self",
+          "amount": 1
+        }
+      ]
+    }
+  ],
+  "color": "G",
+  "colors": [
+    "G"
+  ]
+}

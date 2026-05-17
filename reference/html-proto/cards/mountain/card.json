@@ -1,0 +1,10 @@
+{
+  "tplId": "mountain",
+  "name": "Mountain",
+  "type": "Land",
+  "sub": "Basic Land",
+  "art": "🌋",
+  "mana": "R",
+  "color": null,
+  "colors": []
+}

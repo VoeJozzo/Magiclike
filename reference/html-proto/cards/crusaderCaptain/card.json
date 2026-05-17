@@ -1,0 +1,36 @@
+{
+  "tplId": "crusaderCaptain",
+  "name": "Crusader Captain",
+  "type": "Creature",
+  "sub": "Human Knight",
+  "cost": {
+    "W": 2,
+    "C": 2
+  },
+  "power": 3,
+  "toughness": 3,
+  "art": "🛡",
+  "text": "When this attacks, target creature you control gets +1/+1 EOT.",
+  "triggers": [
+    {
+      "event": "attacks",
+      "condId": "thisAttacks",
+      "text": "When ~ attacks, target friendly creature gets +1/+1 EOT.",
+      "effects": [
+        {
+          "kind": "pump",
+          "target": "creature",
+          "power": 1,
+          "toughness": 1,
+          "filter": {
+            "controller": "self"
+          }
+        }
+      ]
+    }
+  ],
+  "color": "W",
+  "colors": [
+    "W"
+  ]
+}

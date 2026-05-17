@@ -1,0 +1,22 @@
+{
+  "tplId": "sicken",
+  "name": "Sicken",
+  "type": "Instant",
+  "cost": {
+    "B": 1
+  },
+  "art": "🤢",
+  "text": "Target creature gets -2/-2 EOT.",
+  "effects": [
+    {
+      "kind": "weaken",
+      "target": "creature",
+      "power": 2,
+      "toughness": 2
+    }
+  ],
+  "color": "B",
+  "colors": [
+    "B"
+  ]
+}

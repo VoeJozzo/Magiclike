@@ -1,0 +1,28 @@
+{
+  "tplId": "predatorsSpeed",
+  "name": "Predator's Speed",
+  "type": "Instant",
+  "cost": {
+    "G": 1
+  },
+  "art": "cards/predatorsSpeed/art.png",
+  "text": "Target creature gains haste and trample until end of turn.",
+  "effects": [
+    {
+      "kind": "grantKeyword",
+      "target": "creature",
+      "keyword": "haste",
+      "duration": "eot"
+    },
+    {
+      "kind": "grantKeyword",
+      "target": "creature",
+      "keyword": "trample",
+      "duration": "eot"
+    }
+  ],
+  "color": "G",
+  "colors": [
+    "G"
+  ]
+}

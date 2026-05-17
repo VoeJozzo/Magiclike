@@ -1,0 +1,38 @@
+{
+  "tplId": "furnaceWhelp",
+  "name": "Furnace Whelp",
+  "type": "Creature",
+  "sub": "Dragon",
+  "cost": {
+    "R": 1,
+    "C": 2
+  },
+  "power": 2,
+  "toughness": 2,
+  "art": "🐉",
+  "keywords": [
+    "flying"
+  ],
+  "text": "Flying. {R}: this gets +1/+0 EOT.",
+  "abilities": [
+    {
+      "cost": {
+        "mana": {
+          "R": 1
+        }
+      },
+      "effects": [
+        {
+          "kind": "pump",
+          "target": "self",
+          "power": 1,
+          "toughness": 0
+        }
+      ]
+    }
+  ],
+  "color": "R",
+  "colors": [
+    "R"
+  ]
+}

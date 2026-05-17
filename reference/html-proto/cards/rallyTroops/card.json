@@ -1,0 +1,22 @@
+{
+  "tplId": "rallyTroops",
+  "name": "Rally the Troops",
+  "type": "Sorcery",
+  "cost": {
+    "W": 1,
+    "C": 1
+  },
+  "art": "📯",
+  "text": "Creatures you control get +1/+1 EOT.",
+  "effects": [
+    {
+      "kind": "pumpAllYours",
+      "power": 1,
+      "toughness": 1
+    }
+  ],
+  "color": "W",
+  "colors": [
+    "W"
+  ]
+}

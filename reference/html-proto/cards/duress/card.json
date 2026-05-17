@@ -1,0 +1,21 @@
+{
+  "tplId": "duress",
+  "name": "Duress",
+  "type": "Sorcery",
+  "cost": {
+    "B": 1
+  },
+  "art": "😖",
+  "text": "Target opponent discards 1 card.",
+  "effects": [
+    {
+      "kind": "discard",
+      "target": "player",
+      "amount": 1
+    }
+  ],
+  "color": "B",
+  "colors": [
+    "B"
+  ]
+}

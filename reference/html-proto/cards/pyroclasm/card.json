@@ -1,0 +1,21 @@
+{
+  "tplId": "pyroclasm",
+  "name": "Pyroclasm",
+  "type": "Sorcery",
+  "cost": {
+    "R": 1,
+    "C": 1
+  },
+  "art": "🌋",
+  "text": "Deal 2 damage to each creature.",
+  "effects": [
+    {
+      "kind": "damageAll",
+      "amount": 2
+    }
+  ],
+  "color": "R",
+  "colors": [
+    "R"
+  ]
+}

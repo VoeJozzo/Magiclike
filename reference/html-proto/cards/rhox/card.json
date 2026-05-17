@@ -1,0 +1,17 @@
+{
+  "tplId": "rhox",
+  "name": "Centaur Courser",
+  "type": "Creature",
+  "sub": "Centaur",
+  "cost": {
+    "G": 1,
+    "C": 2
+  },
+  "power": 3,
+  "toughness": 3,
+  "art": "🐎",
+  "color": "G",
+  "colors": [
+    "G"
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "tplId": "bears",
+  "name": "Grizzly Bears",
+  "type": "Creature",
+  "sub": "Bear",
+  "cost": {
+    "G": 1
+  },
+  "power": 2,
+  "toughness": 2,
+  "art": "🐻",
+  "color": "G",
+  "colors": [
+    "G"
+  ]
+}

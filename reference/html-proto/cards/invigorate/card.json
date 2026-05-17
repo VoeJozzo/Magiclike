@@ -1,0 +1,23 @@
+{
+  "tplId": "invigorate",
+  "name": "Invigorate",
+  "type": "Instant",
+  "cost": {
+    "G": 1,
+    "C": 1
+  },
+  "art": "⚡",
+  "text": "Target creature gets +4/+4 EOT.",
+  "effects": [
+    {
+      "kind": "pump",
+      "target": "creature",
+      "power": 4,
+      "toughness": 4
+    }
+  ],
+  "color": "G",
+  "colors": [
+    "G"
+  ]
+}

@@ -61,28 +61,30 @@ func _ready() -> void:
 	_assert_true(ok, "cast Bolt at opp's bear")
 	_assert_eq(s.stack.size(), 1, "stack has Bolt")
 
-	# Step 3: pass priority — opp's AI hook should fire and put Giant Growth on stack
+	# Step 3: pass priority — Phase 5c AI casts Giant Growth in response then
+	# auto-passes (caster doesn't hold priority indefinitely — that was a
+	# Phase-3 stub quirk). Net effect after one pass_priority from us:
+	#   - opp tapped Forest for G, cast Giant Growth (stack=[Bolt, GG])
+	#   - opp passed priority — now you have priority
 	ok = RulesEngine.execute_action(Action.make_pass_priority())
 	_assert_true(ok, "pass priority (triggers opp Giant Growth response)")
 	_assert_eq(s.stack.size(), 2, "stack now has [Bolt, Giant Growth]")
 	_assert_eq(s.opp.hand.size(), 0, "opp's Giant Growth left their hand")
-	_assert_eq(s.priority_player_key, "opp", "opp has priority after casting in response")
+	_assert_eq(s.priority_player_key, "you", "you have priority after opp's response (opp passed)")
 
-	# Step 4: pass priority — flips priority to you, no resolution yet
-	ok = RulesEngine.execute_action(Action.make_pass_priority())
-	_assert_true(ok, "pass priority (flips to you)")
-	_assert_eq(s.stack.size(), 2, "stack still has both")
-
-	# Step 5: pass priority — both passed, top (Giant Growth) resolves first
+	# Step 4: pass priority — both passed, top (Giant Growth) resolves first
 	ok = RulesEngine.execute_action(Action.make_pass_priority())
 	_assert_true(ok, "pass priority — resolve Giant Growth")
+	# After GG resolves the stack has just [Bolt]. _settle_state then cycles
+	# opp's instant-response check — they have nothing else to respond with,
+	# so they pass; that leaves priority with you, NOT yet resolving Bolt.
 	_assert_eq(s.stack.size(), 1, "Giant Growth resolved, only Bolt left")
 	_assert_eq(opp_bear.temp_power, 3, "bear has +3 temp_power")
 	_assert_eq(opp_bear.temp_toughness, 3, "bear has +3 temp_toughness")
 	_assert_eq(opp_bear.current_power(), 5, "bear is now 5 power")
 	_assert_eq(opp_bear.current_toughness(), 5, "bear is now 5 toughness")
 
-	# Step 6: pass priority — both pass (opp has nothing left), Bolt resolves
+	# Step 5: pass priority — both pass (opp has nothing left), Bolt resolves
 	ok = RulesEngine.execute_action(Action.make_pass_priority())
 	_assert_true(ok, "pass priority — resolve Bolt")
 	_assert_eq(s.stack.size(), 0, "stack empty")

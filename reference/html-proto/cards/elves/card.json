@@ -1,0 +1,32 @@
+{
+  "tplId": "elves",
+  "name": "Llanowar Elves",
+  "type": "Creature",
+  "sub": "Elf Druid",
+  "cost": {
+    "G": 1
+  },
+  "power": 1,
+  "toughness": 1,
+  "art": "🧝",
+  "text": "T: Add {G}.",
+  "abilities": [
+    {
+      "cost": {
+        "tap": true
+      },
+      "effects": [
+        {
+          "kind": "addMana",
+          "amounts": {
+            "G": 1
+          }
+        }
+      ]
+    }
+  ],
+  "color": "G",
+  "colors": [
+    "G"
+  ]
+}

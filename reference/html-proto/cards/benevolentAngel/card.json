@@ -1,0 +1,35 @@
+{
+  "tplId": "benevolentAngel",
+  "name": "Benevolent Angel",
+  "type": "Creature",
+  "sub": "Angel",
+  "cost": {
+    "W": 2,
+    "C": 3
+  },
+  "power": 3,
+  "toughness": 4,
+  "art": "👼",
+  "text": "Flying. When this enters the battlefield, you gain 3 life.",
+  "keywords": [
+    "flying"
+  ],
+  "triggers": [
+    {
+      "event": "cardEntersBattlefield",
+      "condId": "thisEnters",
+      "text": "When ~ enters, you gain 3 life.",
+      "effects": [
+        {
+          "kind": "gainLife",
+          "target": "self",
+          "amount": 3
+        }
+      ]
+    }
+  ],
+  "color": "W",
+  "colors": [
+    "W"
+  ]
+}

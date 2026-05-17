@@ -64,3 +64,25 @@ func untap_step() -> void:
 		c.summoning_sick = false  # cards become "battle-ready" on controller's untap
 	land_played_this_turn = false
 	life_lost_this_turn = 0
+
+
+# Phase 5b: deep copy for AI state snapshots. CardInstances are deep-copied
+# via their own duplicate_deep; ManaPool likewise. Zone arrays are rebuilt
+# from the deep copies, never shared by reference.
+func duplicate_deep() -> Player:
+	var copy := Player.new(name, key)
+	copy.life = life
+	copy.mana = mana.duplicate_deep()
+	for c in library:
+		copy.library.append(c.duplicate_deep())
+	for c in hand:
+		copy.hand.append(c.duplicate_deep())
+	for c in battlefield:
+		copy.battlefield.append(c.duplicate_deep())
+	for c in graveyard:
+		copy.graveyard.append(c.duplicate_deep())
+	for c in exile:
+		copy.exile.append(c.duplicate_deep())
+	copy.land_played_this_turn = land_played_this_turn
+	copy.life_lost_this_turn = life_lost_this_turn
+	return copy

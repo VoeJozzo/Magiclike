@@ -1,0 +1,43 @@
+{
+  "tplId": "druidElder",
+  "name": "Elder of the Grove",
+  "type": "Creature",
+  "sub": "Elf Druid",
+  "cost": {
+    "G": 1,
+    "C": 2
+  },
+  "power": 1,
+  "toughness": 3,
+  "art": "🌿",
+  "text": "Other Druids you control get +1/+1. T: Add {G}{G}.",
+  "staticBuffs": [
+    {
+      "filter": {
+        "controller": "self"
+      },
+      "subtype": "Druid",
+      "power": 1,
+      "toughness": 1
+    }
+  ],
+  "abilities": [
+    {
+      "cost": {
+        "tap": true
+      },
+      "effects": [
+        {
+          "kind": "addMana",
+          "amounts": {
+            "G": 2
+          }
+        }
+      ]
+    }
+  ],
+  "color": "G",
+  "colors": [
+    "G"
+  ]
+}

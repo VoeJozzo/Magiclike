@@ -1,0 +1,16 @@
+{
+  "tplId": "llanowarSentry",
+  "name": "Llanowar Sentry",
+  "type": "Creature",
+  "sub": "Elf Warrior",
+  "cost": {
+    "G": 1
+  },
+  "power": 2,
+  "toughness": 1,
+  "art": "🌿",
+  "color": "G",
+  "colors": [
+    "G"
+  ]
+}

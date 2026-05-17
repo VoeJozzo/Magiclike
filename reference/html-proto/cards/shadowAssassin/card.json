@@ -1,0 +1,22 @@
+{
+  "tplId": "shadowAssassin",
+  "name": "Shadow Assassin",
+  "type": "Creature",
+  "sub": "Human Assassin",
+  "cost": {
+    "B": 1,
+    "C": 2
+  },
+  "power": 2,
+  "toughness": 2,
+  "art": "🗡",
+  "text": "Deathtouch, Menace",
+  "keywords": [
+    "deathtouch",
+    "menace"
+  ],
+  "color": "B",
+  "colors": [
+    "B"
+  ]
+}

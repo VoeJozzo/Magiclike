@@ -182,8 +182,12 @@ console.log('\n=== stickerBadgesHtml: each kind renders correctly ===');
 }
 
 {
+  // landColor badge now routes the {R} token through renderManaSymbols
+  // so the pip icon shows instead of literal '+{R}' text. Check for the
+  // resulting mana-R span plus the leading '+'.
   const html = stickerBadgesHtml(['landColor_R']);
-  check("landColor badge contains '+{R}'", html.includes('+{R}'));
+  check('landColor badge contains a +<mana-R pip>', html.includes('+<span class="mana mana-R"'));
+  check('landColor badge no longer contains literal +{R} text', !html.includes('+{R}'));
 }
 
 {

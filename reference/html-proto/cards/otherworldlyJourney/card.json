@@ -1,0 +1,21 @@
+{
+  "tplId": "otherworldlyJourney",
+  "name": "Otherworldly Journey",
+  "type": "Instant",
+  "cost": {
+    "W": 1,
+    "C": 1
+  },
+  "art": "🌌",
+  "text": "Exile target creature; return it at end of turn.",
+  "effects": [
+    {
+      "kind": "exileUntilEOT",
+      "target": "creature"
+    }
+  ],
+  "color": "W",
+  "colors": [
+    "W"
+  ]
+}

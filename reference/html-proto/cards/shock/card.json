@@ -1,0 +1,21 @@
+{
+  "tplId": "shock",
+  "name": "Shock",
+  "type": "Instant",
+  "cost": {
+    "R": 1
+  },
+  "art": "💥",
+  "text": "Deal 2 damage to any target.",
+  "effects": [
+    {
+      "kind": "damage",
+      "target": "any",
+      "amount": 2
+    }
+  ],
+  "color": "R",
+  "colors": [
+    "R"
+  ]
+}

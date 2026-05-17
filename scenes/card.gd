@@ -37,11 +37,49 @@ var _name_label: Label
 var _cost_label: Label
 var _type_label: Label
 var _pt_label: Label
+# Phase 5c UI polish: oracle text overlay so the player can read what a card
+# actually does (Pyromaniac's trigger, Counterspell's effect, etc.).
+var _oracle_label: Label
+# Opaque backer for the oracle label so the placeholder art's stock
+# "description" text doesn't bleed through behind the real rules text.
+var _oracle_bg: ColorRect
 var _color_tint: ColorRect
 # Combat-state highlight (overlay above color tint, below labels). Yellow for
 # selected/pending, green for committed in a block, dimmed-red for unblocked
 # attackers. Set via set_combat_highlight() from game_board's UI sync.
 var _combat_highlight: ColorRect
+# Phase 5c UI polish: green border-glow for cards that are legal to act on
+# right now (castable spells / playable lands / mana abilities, attackers
+# during COMBAT_ATTACK, blockers during COMBAT_BLOCK). Set via
+# set_legality_glow() each _refresh_ui. Rendered as a hollow rectangle
+# outline (Control with _draw override) so the card art and labels stay
+# fully visible — no fill tint fighting the placeholder description.
+var _legality_glow: _CardBorderGlow
+
+
+# Inner class: a Control that draws a hollow rectangle outline at its size,
+# in `glow_color`, with `glow_width` pixels of thickness. Update glow_color
+# to retint; queue_redraw to repaint. Set glow_color to Color(0,0,0,0) to
+# hide the border.
+class _CardBorderGlow extends Control:
+	var glow_color: Color = Color(0, 0, 0, 0):
+		set(value):
+			glow_color = value
+			queue_redraw()
+	var glow_width: float = 4.0
+	func _ready() -> void:
+		mouse_filter = MOUSE_FILTER_IGNORE
+	func _draw() -> void:
+		if glow_color.a <= 0.0:
+			return
+		# Four edges, drawn as filled rects (cleaner than draw_rect's
+		# outline mode at small widths since outline mode can subpixel).
+		var w: float = glow_width
+		var s: Vector2 = size
+		draw_rect(Rect2(0, 0, s.x, w), glow_color)               # top
+		draw_rect(Rect2(0, s.y - w, s.x, w), glow_color)         # bottom
+		draw_rect(Rect2(0, 0, w, s.y), glow_color)               # left
+		draw_rect(Rect2(s.x - w, 0, w, s.y), glow_color)         # right
 
 
 func _ready() -> void:
@@ -79,6 +117,14 @@ func _build_text_overlay() -> void:
 	_combat_highlight.mouse_filter = MOUSE_FILTER_IGNORE
 	front_face.add_child(_combat_highlight)
 
+	# Legality glow — a hollow green outline around the card edge. Reads
+	# as "available to act on" without obscuring the art or text. Stacks
+	# on top of all other overlays so the border is the last thing drawn
+	# and stays visible against any color.
+	_legality_glow = _CardBorderGlow.new()
+	_legality_glow.size = card_size
+	front_face.add_child(_legality_glow)
+
 	# Name banner — top of card
 	_name_label = Label.new()
 	_name_label.position = Vector2(_PADDING, _PADDING)
@@ -115,6 +161,30 @@ func _build_text_overlay() -> void:
 	_type_label.mouse_filter = MOUSE_FILTER_IGNORE
 	front_face.add_child(_type_label)
 
+	# Phase 5c: Oracle text — covers the placeholder art's description box.
+	# A solid-ish backer hides the placeholder text underneath, then a
+	# word-wrapped label renders the actual oracle text from the template.
+	# Position is below the cost label and above the type line.
+	var oracle_top: float = 40.0
+	var oracle_bottom: float = card_size.y - _TYPE_HEIGHT - _PADDING - 4.0
+	var oracle_height: float = oracle_bottom - oracle_top
+	_oracle_bg = ColorRect.new()
+	_oracle_bg.position = Vector2(_PADDING, oracle_top)
+	_oracle_bg.size = Vector2(card_size.x - _PADDING * 2, oracle_height)
+	_oracle_bg.color = Color(0.05, 0.05, 0.08, 0.85)
+	_oracle_bg.mouse_filter = MOUSE_FILTER_IGNORE
+	front_face.add_child(_oracle_bg)
+	_oracle_label = Label.new()
+	_oracle_label.position = Vector2(_PADDING + 4, oracle_top + 4)
+	_oracle_label.size = Vector2(card_size.x - _PADDING * 2 - 8, oracle_height - 8)
+	_oracle_label.add_theme_font_size_override("font_size", 10)
+	_oracle_label.add_theme_color_override("font_color", Color(0.92, 0.92, 0.96))
+	_oracle_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_oracle_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+	_oracle_label.clip_text = true
+	_oracle_label.mouse_filter = MOUSE_FILTER_IGNORE
+	front_face.add_child(_oracle_label)
+
 	# P/T badge — bottom-right, only shown for creatures
 	_pt_label = Label.new()
 	_pt_label.position = Vector2(card_size.x - 48, card_size.y - 36)
@@ -150,6 +220,12 @@ func apply_card_text() -> void:
 		_cost_label.text = _fmt_cost(template.mana_cost)
 		_type_label.text = _fmt_type_line(template)
 		_color_tint.color = _tint_for(template)
+		# Phase 5c: oracle text overlay — fall back to "" if a card has no
+		# rules text (vanilla creatures, basic lands). Empty oracle text
+		# hides the backer too so the placeholder art shows through cleanly.
+		var oracle: String = str(template.oracle_text)
+		_oracle_label.text = oracle
+		_oracle_bg.visible = oracle != ""
 		# P/T only for creatures (initial display from template — call
 		# apply_creature_state to refresh with live current_power/toughness
 		# and damage marker once the instance is in play).
@@ -162,6 +238,8 @@ func apply_card_text() -> void:
 		_cost_label.text = ""
 		_type_label.text = ""
 		_color_tint.color = Color(0, 0, 0, 0)
+		_oracle_label.text = ""
+		_oracle_bg.visible = false
 		_pt_label.visible = false
 
 
@@ -263,6 +341,22 @@ func set_combat_highlight(state: String) -> void:
 			_combat_highlight.color = Color(0.95, 0.35, 0.30, 0.25)  # dim red
 		_:
 			_combat_highlight.color = Color(0, 0, 0, 0)
+
+
+# Phase 5c UI polish: set the "this card is a legal action right now" border
+# glow. Pass "playable" for the green castable/attackable border, "target"
+# for a yellow legal-target border (used during spell-target picker mode),
+# or "none" / empty to clear.
+func set_legality_glow(state: String) -> void:
+	if _legality_glow == null:
+		return
+	match state:
+		"playable":
+			_legality_glow.glow_color = Color(0.30, 0.95, 0.45, 0.95)  # bright green
+		"target":
+			_legality_glow.glow_color = Color(1.0, 0.85, 0.30, 0.95)   # gold/yellow
+		_:
+			_legality_glow.glow_color = Color(0, 0, 0, 0)
 
 
 # ─── Drag / hover overrides ────────────────────────────────────────────────

@@ -1,0 +1,21 @@
+{
+  "tplId": "divin",
+  "name": "Divination",
+  "type": "Sorcery",
+  "cost": {
+    "U": 1,
+    "C": 1
+  },
+  "art": "cards/divin/art.png",
+  "text": "Draw 2 cards.",
+  "effects": [
+    {
+      "kind": "draw",
+      "amount": 2
+    }
+  ],
+  "color": "U",
+  "colors": [
+    "U"
+  ]
+}

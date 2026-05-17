@@ -1,0 +1,16 @@
+{
+  "tplId": "cryptRat",
+  "name": "Sewer Rat",
+  "type": "Creature",
+  "sub": "Rat",
+  "cost": {
+    "B": 1
+  },
+  "power": 2,
+  "toughness": 1,
+  "art": "cards/cryptRat/art.png",
+  "color": "B",
+  "colors": [
+    "B"
+  ]
+}

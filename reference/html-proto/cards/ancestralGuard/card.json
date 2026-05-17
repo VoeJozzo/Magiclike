@@ -1,0 +1,21 @@
+{
+  "tplId": "ancestralGuard",
+  "name": "Devoted Watcher",
+  "type": "Creature",
+  "sub": "Human Soldier",
+  "cost": {
+    "W": 1,
+    "C": 1
+  },
+  "power": 1,
+  "toughness": 3,
+  "art": "cards/ancestralGuard/art.png",
+  "text": "Vigilance",
+  "keywords": [
+    "vigilance"
+  ],
+  "color": "W",
+  "colors": [
+    "W"
+  ]
+}

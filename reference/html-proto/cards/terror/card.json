@@ -1,0 +1,22 @@
+{
+  "tplId": "terror",
+  "name": "Murder",
+  "type": "Instant",
+  "cost": {
+    "B": 1,
+    "C": 2
+  },
+  "art": "🗡",
+  "text": "Destroy target creature.",
+  "effects": [
+    {
+      "kind": "removeCreature",
+      "severity": 3,
+      "target": "creature"
+    }
+  ],
+  "color": "B",
+  "colors": [
+    "B"
+  ]
+}

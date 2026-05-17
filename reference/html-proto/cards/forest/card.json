@@ -1,0 +1,10 @@
+{
+  "tplId": "forest",
+  "name": "Forest",
+  "type": "Land",
+  "sub": "Basic Land",
+  "art": "🌲",
+  "mana": "G",
+  "color": null,
+  "colors": []
+}

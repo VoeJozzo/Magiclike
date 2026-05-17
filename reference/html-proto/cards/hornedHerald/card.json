@@ -1,0 +1,32 @@
+{
+  "tplId": "hornedHerald",
+  "name": "Horned Herald",
+  "type": "Creature",
+  "sub": "Beast",
+  "cost": {
+    "G": 1,
+    "C": 3
+  },
+  "power": 3,
+  "toughness": 3,
+  "art": "🦬",
+  "text": "When this enters, creatures you control get +1/+1 EOT.",
+  "triggers": [
+    {
+      "event": "cardEntersBattlefield",
+      "condId": "thisEnters",
+      "text": "When ~ enters, your creatures get +1/+1 EOT.",
+      "effects": [
+        {
+          "kind": "pumpAllYours",
+          "power": 1,
+          "toughness": 1
+        }
+      ]
+    }
+  ],
+  "color": "G",
+  "colors": [
+    "G"
+  ]
+}

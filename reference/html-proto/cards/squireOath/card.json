@@ -1,0 +1,18 @@
+{
+  "tplId": "squireOath",
+  "name": "Squire of Oaths",
+  "type": "Creature",
+  "sub": "Human Soldier",
+  "cost": {
+    "W": 1,
+    "C": 1
+  },
+  "power": 2,
+  "toughness": 3,
+  "art": "⚜",
+  "text": "A devoted defender.",
+  "color": "W",
+  "colors": [
+    "W"
+  ]
+}
