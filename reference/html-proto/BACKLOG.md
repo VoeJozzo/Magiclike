@@ -25,7 +25,3 @@ These would round out the PR #5 test plan but require a real browser:
 
 - "Every modal opens and closes correctly" — DOM visibility.
 - Trigger-generator UI clickthrough (3-condition → 3-effect picker flow) — DOM event handling.
-
-## Recently done
-
-- v1.0.139 — **Merge of `card-refactor` and `proto/refactor-decomposition-2026-05-15`.** Both branches diverged from `d275235` and both landed substantial work at "v1.0.134" (concurrent collision). card-refactor's 18 commits (`v1.0.134` + `.1`..`.16`) handled card-data layer concerns: per-folder JSON files, pixel art, mana pips, art ladder, tplId renames, persistence migrations, Pages fix. proto/refactor's 7 commits (`v1.0.134`..`v1.0.138`) handled JS module decomposition: extracted card-text helpers, sticker pipeline, and split meta.js into draft/run/picklog. The merge redistributed card-refactor's 5 modifications to meta.js into the new three-file split (TPLID_RENAMES + MIGRATIONS into run.js, lazy draftPool() into draft.js, PICKLOG inline-translate into picklog.js). 6-file conflict resolved; engine.js and the HTML auto-merged cleanly.
