@@ -213,8 +213,6 @@ Update `project.godot`:
 - Tests pass post-rewire: Phase 2/3 tests updated to expect the new AI-driven flow (Phase 2's turn-cycle now needs more priority passes; Phase 3's opp no longer "holds" priority after casting in response).
 - `tests/test_phase5c` covers: AI passes when idle; AI picks trigger target; `simulate_combat` reports correct 2/2-vs-2/2 mutual death; **AI vs AI plays a complete game** (recent runs hit a winner in ~400 actions).
 
-**Phase 6 — Card pool expansion.** Port `AI.decide(state, who) → action`. Single entry point, reads engine state, returns one action descriptor. Combat-sim subroutine for declaring attackers/blockers. Lethal detection. Snapshots state via `Resource.duplicate(true)` and explicit `duplicate()` overrides on `Player` / `CardInstance`. Threading deferred until profiling shows it's needed. Verification: AI plays a complete game against itself without crashing; spot-check decision quality via log lines.
-
 **Phase 6 — Draft and roguelike meta.** Port `DRAFT` (23-pick draft, opponent deck simulation) and `RUN` (sticker system, weighted reward rolls, save/load). Use Godot's `FileAccess` + JSON in lieu of localStorage. Schema migrations from JS port directly. New scenes: `draft_screen.tscn`, `run_map.tscn`. Verification: draft a deck, complete a 3-game run, save mid-run and reload.
 
 ## Risks and discipline notes
