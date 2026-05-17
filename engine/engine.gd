@@ -1267,6 +1267,18 @@ func _damage_target_player(defending: Player) -> Dictionary:
 # ─── Phase machine ─────────────────────────────────────────────────────────
 
 func _advance_phase() -> void:
+	# Phase 5c UI polish (MTG rule 106.4): mana empties from each player's
+	# pool as the previous step or phase ENDS. Equivalently, mana is empty
+	# at the START of every new step/phase. Implemented here at the
+	# phase-advance boundary. Floating mana into the next phase was a
+	# Phase 1 simplification — it's tighter to MTG to clear it. If a player
+	# wants to cast in a particular phase they need to tap mana during
+	# that phase (the legality glow on lands surfaces this clearly).
+	if _state.you.mana.total() > 0:
+		_state.you.mana.clear()
+	if _state.opp.mana.total() > 0:
+		_state.opp.mana.clear()
+
 	var wrapped: bool = _state.phase_machine.advance()
 	if wrapped:
 		# New turn — switch active player, increment turn count.

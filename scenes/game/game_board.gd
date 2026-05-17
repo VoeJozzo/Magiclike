@@ -573,26 +573,53 @@ func _apply_combat_highlights(s: EngineState) -> void:
 			visual.set_combat_highlight(state_name)
 
 
-# Phase 5c UI polish: green glow on every "you"-side card whose iid appears
-# in get_legal_actions("you"). Covers castable spells, playable lands,
-# tappable mana abilities, attackers during COMBAT_ATTACK, AND blockers
-# during COMBAT_BLOCK (each iid that's a legal source for any action gets
-# the glow). Glow is cleared from cards not in the legal set.
+# Phase 5c UI polish: edge glow on cards that are legal actions right now.
+# Has two modes:
+#   - Default: green on every "you"-side card whose iid appears in
+#     get_legal_actions("you"). Covers castable spells, playable lands,
+#     tappable mana abilities, declarable attackers, declarable blockers.
+#   - Spell-target mode: when _pending_cast_iid is set, glow shifts to
+#     yellow on legal TARGETS of the spell being cast (the castable cards
+#     and other actions are not relevant because targeting is in progress).
 func _apply_legality_glows(s: EngineState) -> void:
-	# Build the set of iids the player can act on right now.
-	var legal_iids: Dictionary = {}
-	for action in RulesEngine.get_legal_actions("you"):
-		var iid: int = int(action.get("source_iid", -1))
-		if iid != -1:
-			legal_iids[iid] = true
-	# Apply the glow to every visual we know about. Cards on opp's side and
-	# cards not in the legal set get cleared. Cards that ARE legal actions
-	# get the green tint.
+	var glow_state: Dictionary = {}  # iid -> "playable" or "target"
+	if _pending_cast_iid != -1:
+		_collect_legal_target_iids(s, _pending_target_filter, glow_state)
+	elif _picking_trigger_target:
+		var filter: String = s.awaiting_target_for_trigger.get("filter", "")
+		_collect_legal_target_iids(s, filter, glow_state)
+	else:
+		for action in RulesEngine.get_legal_actions("you"):
+			var iid: int = int(action.get("source_iid", -1))
+			if iid != -1:
+				glow_state[iid] = "playable"
+	# Apply to every tracked visual. Anything not in the glow set gets
+	# cleared. This keeps the glow in sync with mana / phase / priority
+	# changes without us needing to track previous-frame state.
 	for iid in _iid_to_visual.keys():
 		var visual: Card = _iid_to_visual[iid]
 		if visual == null or not visual.has_method("set_legality_glow"):
 			continue
-		visual.set_legality_glow(legal_iids.has(iid))
+		visual.set_legality_glow(glow_state.get(iid, "none"))
+
+
+# Phase 5c UI polish: walk the current state and add every iid that's a
+# legal target under the given filter. Used by both the spell-cast target
+# picker and the trigger target picker.
+func _collect_legal_target_iids(s: EngineState, filter: String, out: Dictionary) -> void:
+	# Filters that allow creature targets: glow legal creatures on either
+	# battlefield (modulo hexproof). Player-only or spell-only filters
+	# don't need a creature glow — player panels handle their own.
+	if filter != "any" and filter != "creature" and filter != "creature_or_player":
+		return
+	for player in [s.you, s.opp]:
+		for c in player.battlefield:
+			if c.template == null or not (c.template is CreatureResource):
+				continue
+			# Hexproof on opponent's creatures means you can't target them.
+			if c.has_keyword("hexproof") and c.controller_key != "you":
+				continue
+			out[c.instance_id] = "target"
 
 
 # Where stack-held card visuals appear on screen. Center-ish, between the

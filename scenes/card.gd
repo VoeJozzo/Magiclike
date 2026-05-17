@@ -48,12 +48,38 @@ var _color_tint: ColorRect
 # selected/pending, green for committed in a block, dimmed-red for unblocked
 # attackers. Set via set_combat_highlight() from game_board's UI sync.
 var _combat_highlight: ColorRect
-# Phase 5c UI polish: green glow for cards that are legal to act on right
-# now (castable spells / playable lands / mana abilities, attackers during
-# COMBAT_ATTACK, blockers during COMBAT_BLOCK). Set via set_legality_glow()
-# each _refresh_ui. Renders as a border-style tint so it doesn't fight with
-# combat highlights.
-var _legality_glow: ColorRect
+# Phase 5c UI polish: green border-glow for cards that are legal to act on
+# right now (castable spells / playable lands / mana abilities, attackers
+# during COMBAT_ATTACK, blockers during COMBAT_BLOCK). Set via
+# set_legality_glow() each _refresh_ui. Rendered as a hollow rectangle
+# outline (Control with _draw override) so the card art and labels stay
+# fully visible — no fill tint fighting the placeholder description.
+var _legality_glow: _CardBorderGlow
+
+
+# Inner class: a Control that draws a hollow rectangle outline at its size,
+# in `glow_color`, with `glow_width` pixels of thickness. Update glow_color
+# to retint; queue_redraw to repaint. Set glow_color to Color(0,0,0,0) to
+# hide the border.
+class _CardBorderGlow extends Control:
+	var glow_color: Color = Color(0, 0, 0, 0):
+		set(value):
+			glow_color = value
+			queue_redraw()
+	var glow_width: float = 4.0
+	func _ready() -> void:
+		mouse_filter = MOUSE_FILTER_IGNORE
+	func _draw() -> void:
+		if glow_color.a <= 0.0:
+			return
+		# Four edges, drawn as filled rects (cleaner than draw_rect's
+		# outline mode at small widths since outline mode can subpixel).
+		var w: float = glow_width
+		var s: Vector2 = size
+		draw_rect(Rect2(0, 0, s.x, w), glow_color)               # top
+		draw_rect(Rect2(0, s.y - w, s.x, w), glow_color)         # bottom
+		draw_rect(Rect2(0, 0, w, s.y), glow_color)               # left
+		draw_rect(Rect2(s.x - w, 0, w, s.y), glow_color)         # right
 
 
 func _ready() -> void:
@@ -91,13 +117,12 @@ func _build_text_overlay() -> void:
 	_combat_highlight.mouse_filter = MOUSE_FILTER_IGNORE
 	front_face.add_child(_combat_highlight)
 
-	# Legality glow — a green tint on cards that are legal actions right
-	# now. Lower alpha than combat highlights so it reads as "available"
-	# rather than "selected".
-	_legality_glow = ColorRect.new()
+	# Legality glow — a hollow green outline around the card edge. Reads
+	# as "available to act on" without obscuring the art or text. Stacks
+	# on top of all other overlays so the border is the last thing drawn
+	# and stays visible against any color.
+	_legality_glow = _CardBorderGlow.new()
 	_legality_glow.size = card_size
-	_legality_glow.color = Color(0, 0, 0, 0)
-	_legality_glow.mouse_filter = MOUSE_FILTER_IGNORE
 	front_face.add_child(_legality_glow)
 
 	# Name banner — top of card
@@ -318,16 +343,20 @@ func set_combat_highlight(state: String) -> void:
 			_combat_highlight.color = Color(0, 0, 0, 0)
 
 
-# Phase 5c UI polish: set the "this card is a legal action right now" glow.
-# True = green tint; false = clear. Called from game_board._refresh_ui
-# after computing legal actions for the priority player.
-func set_legality_glow(enabled: bool) -> void:
+# Phase 5c UI polish: set the "this card is a legal action right now" border
+# glow. Pass "playable" for the green castable/attackable border, "target"
+# for a yellow legal-target border (used during spell-target picker mode),
+# or "none" / empty to clear.
+func set_legality_glow(state: String) -> void:
 	if _legality_glow == null:
 		return
-	if enabled:
-		_legality_glow.color = Color(0.30, 0.95, 0.45, 0.22)  # soft green
-	else:
-		_legality_glow.color = Color(0, 0, 0, 0)
+	match state:
+		"playable":
+			_legality_glow.glow_color = Color(0.30, 0.95, 0.45, 0.95)  # bright green
+		"target":
+			_legality_glow.glow_color = Color(1.0, 0.85, 0.30, 0.95)   # gold/yellow
+		_:
+			_legality_glow.glow_color = Color(0, 0, 0, 0)
 
 
 # ─── Drag / hover overrides ────────────────────────────────────────────────
