@@ -10,11 +10,11 @@ Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folde
 
 Always work on `dev` for html-proto changes.
 
-Deferred work and rejected proposals live in `BACKLOG.md`. Read it for context when relevant, but don't open a session by attacking it — the user picks what to work on.
+Deferred work lives in `BACKLOG.md` (gating rules in `/CLAUDE.md`).
 
 ## File structure
 
-The codebase was a single self-contained HTML file until it crossed ~19k lines. It's now split into per-subsystem JS files loaded as plain `<script src>` tags (no ES modules, no build step). The HTML shell holds the body, CSS, and nine script tags in dependency order.
+The codebase was a single self-contained HTML file until it crossed ~19k lines. It's now split into per-subsystem JS files loaded as plain `<script src>` tags (no ES modules, no build step). The HTML shell holds the body, CSS, and thirteen script tags in dependency order.
 
 Also in the repo: `index.html` at the repo root — a small redirect that points GitHub Pages at the engine file.
 
@@ -72,10 +72,3 @@ DOM/UI behavior isn't covered by the harness — verify those by:
 4. For AI changes: play a full game and watch the AI log entries (orange `.cb` log lines) for nonsensical decisions.
 
 Console hooks for analytics: `window.PICKLOG.summarize()`, `window.PICKLOG.getCardStats()`, `window.PICKLOG.getPairsMatrix()`.
-
-## Git workflow
-
-- `dev` is the primary working branch.
-- Commit changes, but only push when explicitly asked.
-- Don't open PRs unless explicitly asked.
-- **Bump `VERSION` (in `js/main.js`) and the version line at the top of this file on every push that updates `dev`.** This is the player-visible cache-buster — GitHub Pages caches aggressively, and the only reliable way to confirm a fresh build is loaded is to read the version string off the running page. One push to `dev` = one version bump, in the same commit as the substantive change (or a follow-up commit if you forgot).
