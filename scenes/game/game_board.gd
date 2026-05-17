@@ -69,7 +69,15 @@ var _pending_block_blocker_iid: int = -1
 # reacts to a fully-known set of blocks.
 # Only relevant when active_player == "opp" and phase == COMBAT_BLOCK; reset
 # automatically when leaving that state.
-var _blocks_committed: bool = false
+#
+# Phase 5c UI polish (strict ordering): now derived from engine state
+# (`state.awaiting_block_declaration`) instead of a separate local flag.
+# Defender-confirming fires KIND_CONFIRM_BLOCKS, which clears the engine
+# flag — the UI just reads back. This getter keeps existing call sites
+# working without refactoring every reference.
+func _is_awaiting_blocks() -> bool:
+	var s: EngineState = RulesEngine.state()
+	return s != null and s.awaiting_block_declaration
 
 # Phase 4.5b: tracks whether we're in the trigger target picker UI mode.
 # Driven by state.awaiting_target_for_trigger; toggling is automatic in
@@ -328,11 +336,6 @@ func _on_state_changed() -> void:
 
 func _refresh_ui() -> void:
 	var s: EngineState = RulesEngine.state()
-	# Reset block-commit flag when no longer in defender's COMBAT_BLOCK
-	# (e.g., advanced to COMBAT_DAMAGE, started a new turn, etc.).
-	if s.phase_machine.current != PhaseMachine.Phase.COMBAT_BLOCK \
-			or s.active_player_key != "opp":
-		_blocks_committed = false
 	# Phase 4.5b: enter / exit trigger-target picker mode based on engine state.
 	var was_picking := _picking_trigger_target
 	_picking_trigger_target = not s.awaiting_target_for_trigger.is_empty()
@@ -383,7 +386,7 @@ func _update_action_button(s: EngineState) -> void:
 	#     locks in the block declaration so the cast window can open.
 	#   - Post-commit: "Pass priority" — actually passes priority and advances.
 	if s.phase_machine.current == PhaseMachine.Phase.COMBAT_BLOCK and s.active_player_key == "opp":
-		if not _blocks_committed:
+		if _is_awaiting_blocks():
 			_action_button.text = "Confirm blocks" if not s.blockers.is_empty() else "Skip blocks"
 		else:
 			_action_button.text = "Pass priority"
@@ -729,7 +732,7 @@ func _on_your_battlefield_card_pressed(visual: Card) -> void:
 		# Phase 5c UI polish: clicking a creature that's already blocking
 		# un-declares it (lets the player change their mind before
 		# committing). Only allowed pre-commit.
-		if s.blockers.has(iid) and not _blocks_committed:
+		if s.blockers.has(iid) and _is_awaiting_blocks():
 			var undo := Action.make_undeclare_blocker(iid)
 			if RulesEngine.is_legal_action(undo):
 				RulesEngine.execute_action(undo)
@@ -739,7 +742,7 @@ func _on_your_battlefield_card_pressed(visual: Card) -> void:
 				and found.card.template is CreatureResource \
 				and not found.card.tapped \
 				and not s.blockers.has(iid) \
-				and not _blocks_committed:
+				and _is_awaiting_blocks():
 			_pending_block_blocker_iid = iid
 			_log_local("[color=#ffd866]Selected %s as blocker — click an attacker.[/color]" % found.card.name())
 			_refresh_ui()  # update button label
@@ -902,9 +905,10 @@ func _on_hand_card_gui_input(event: InputEvent, visual: Card) -> void:
 		return
 
 	# Defender's COMBAT_BLOCK: must commit blocks before casting spells.
-	if s.phase_machine.current == PhaseMachine.Phase.COMBAT_BLOCK \
-			and s.active_player_key == "opp" \
-			and not _blocks_committed:
+	# Engine now enforces this via priority_player_key = "" while awaiting,
+	# but we keep a friendly log message so the player knows why their click
+	# didn't enter targeting mode.
+	if _is_awaiting_blocks():
 		_log_local("[color=#ffd866]Confirm blocks before casting spells.[/color]")
 		return
 
@@ -970,10 +974,10 @@ func _can_potentially_cast(card: CardInstance, s: EngineState) -> bool:
 			return false
 		if not s.stack.is_empty():
 			return false
-	# Defender's COMBAT_BLOCK pre-commit blocks all casts.
-	if s.phase_machine.current == PhaseMachine.Phase.COMBAT_BLOCK \
-			and s.active_player_key == "opp" \
-			and not _blocks_committed:
+	# Defender's COMBAT_BLOCK pre-commit blocks all casts. (Engine enforces
+	# this too by closing priority during the awaiting window; the glow
+	# check just mirrors the rule so we don't tease castable cards.)
+	if _is_awaiting_blocks():
 		return false
 	# Target filter: spells that need targets require at least one legal
 	# target to exist. "spell" filter requires something on the stack.
@@ -1129,16 +1133,14 @@ func _on_pass_pressed() -> void:
 		_log_local("[color=#888]Cancelled block selection[/color]")
 		_refresh_ui()
 		return
-	# Defender's COMBAT_BLOCK: first press commits blocks (no priority pass yet),
-	# second press passes priority. This preserves the MTG structure where
-	# blocks are declared atomically before the cast window opens.
-	var s: EngineState = RulesEngine.state()
-	if s.phase_machine.current == PhaseMachine.Phase.COMBAT_BLOCK \
-			and s.active_player_key == "opp" \
-			and not _blocks_committed:
-		_blocks_committed = true
+	# Defender's COMBAT_BLOCK: first press commits blocks (CONFIRM_BLOCKS
+	# engine action — clears state.awaiting_block_declaration, opens APNAP
+	# priority window). Second press passes priority. This preserves the
+	# MTG structure where blocks are declared atomically before any cast
+	# window opens.
+	if _is_awaiting_blocks():
+		RulesEngine.execute_action(Action.make_confirm_blocks())
 		_log_local("[color=#88ddff]Blocks committed. Cast spells or pass priority to advance.[/color]")
-		_refresh_ui()
 		return
 	RulesEngine.execute_action(Action.make_pass_priority())
 

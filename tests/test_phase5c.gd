@@ -121,11 +121,10 @@ func _test_ai_vs_ai_completes() -> void:
 func _current_actor(s: EngineState) -> String:
 	if not s.awaiting_target_for_trigger.is_empty():
 		return s.awaiting_target_for_trigger.get("controller_key", s.priority_player_key)
-	if s.phase_machine.current == PhaseMachine.Phase.COMBAT_BLOCK \
-			and not s.attackers.is_empty():
-		var defender: String = s.opponent_of(s.active_player_key)
-		if s.priority_player_key == defender:
-			return defender
+	# Mirror engine's _current_actor: when awaiting block declaration, the
+	# defender is the actor regardless of (absent) priority.
+	if s.awaiting_block_declaration:
+		return s.opponent_of(s.active_player_key)
 	return s.priority_player_key
 
 

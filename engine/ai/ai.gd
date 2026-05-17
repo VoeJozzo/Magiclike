@@ -30,7 +30,12 @@ static func decide(state: EngineState, player_key: String) -> Dictionary:
 		var next_block: Dictionary = _next_block_action(state, player_key)
 		if not next_block.is_empty():
 			return next_block
-		# All wanted blocks committed — pass.
+		# All wanted blocks declared. If the engine is awaiting block
+		# declaration (turn-based action window — no priority is open),
+		# confirm blocks instead of passing priority (which would be
+		# illegal). Otherwise pass priority as normal.
+		if state.awaiting_block_declaration:
+			return Action.make_confirm_blocks()
 		return Action.make_pass_priority()
 	if phase == PhaseMachine.Phase.COMBAT_ATTACK and player_key == state.active_player_key:
 		var next_attack: Dictionary = _next_attack_action(state, player_key)

@@ -53,6 +53,14 @@ var pending_triggers: Array[Dictionary] = []
 #         "filter": String}
 var awaiting_target_for_trigger: Dictionary = {}
 
+# Phase 5c UI polish (strict COMBAT_BLOCK ordering — MTG rule 509.1a): true
+# between the start of the COMBAT_BLOCK step and the moment the defender
+# confirms blocks. While true, NO player has priority — the defender
+# declares blocks as a turn-based action without spell casting. Cleared by
+# the AI driver immediately at phase entry (AI defender) or by the human
+# defender's CONFIRM_BLOCKS action (manual defender).
+var awaiting_block_declaration: bool = false
+
 # Log of human-readable lines describing what happened. UI subscribes to display.
 var log: Array[String] = []
 

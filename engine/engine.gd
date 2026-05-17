@@ -357,6 +357,8 @@ func execute_action(action: Dictionary) -> bool:
 			ok = _do_undeclare_attacker(action)
 		Action.KIND_UNDECLARE_BLOCKER:
 			ok = _do_undeclare_blocker(action)
+		Action.KIND_CONFIRM_BLOCKS:
+			ok = _do_confirm_blocks(action)
 		Action.KIND_PASS_PRIORITY:
 			ok = _do_pass_priority(action)
 		Action.KIND_PICK_TRIGGER_TARGET:
@@ -502,8 +504,12 @@ func is_legal_action(action: Dictionary) -> bool:
 	var kind: String = action.get("kind", "")
 	match kind:
 		Action.KIND_PASS_PRIORITY:
-			# Always legal as long as the player has priority.
-			return _state != null and _state.winner == ""
+			# Legal whenever someone has priority. Phase 5c UI polish: when
+			# the engine is awaiting block declaration, priority is "" (no
+			# player holds it) and passing is illegal — defender must
+			# confirm blocks first via KIND_CONFIRM_BLOCKS.
+			return _state != null and _state.winner == "" \
+				and _state.priority_player_key != ""
 		Action.KIND_ACTIVATE_ABILITY:
 			return _legal_activate_ability(action)
 		Action.KIND_PLAY_LAND:
@@ -518,6 +524,8 @@ func is_legal_action(action: Dictionary) -> bool:
 			return _legal_undeclare_attacker(action)
 		Action.KIND_UNDECLARE_BLOCKER:
 			return _legal_undeclare_blocker(action)
+		Action.KIND_CONFIRM_BLOCKS:
+			return _legal_confirm_blocks(action)
 		Action.KIND_PICK_TRIGGER_TARGET:
 			return _legal_pick_trigger_target(action)
 		_:
@@ -570,17 +578,12 @@ func _settle_state() -> void:
 func _current_actor() -> String:
 	if not _state.awaiting_target_for_trigger.is_empty():
 		return _state.awaiting_target_for_trigger.get("controller_key", _state.priority_player_key)
-	# COMBAT_BLOCK special: blocks are declared by the defender before
-	# priority opens. If we're in that phase with attackers and the defender
-	# hasn't finished declaring, the defender acts next.
-	if _state.phase_machine.current == PhaseMachine.Phase.COMBAT_BLOCK \
-			and not _state.attackers.is_empty():
-		var defender: String = _state.opponent_of(_state.active_player_key)
-		# Only defer to defender if they have legal blockers AND haven't yet
-		# yielded by passing priority. If priority is already the attacker's,
-		# block declaration is complete.
-		if _state.priority_player_key == defender:
-			return defender
+	# Phase 5c UI polish (strict COMBAT_BLOCK ordering): while the engine is
+	# awaiting block declaration, the defender is the actor regardless of
+	# priority (priority is intentionally closed during this turn-based
+	# action). Once the defender confirms, priority opens normally.
+	if _state.awaiting_block_declaration:
+		return _state.opponent_of(_state.active_player_key)
 	return _state.priority_player_key
 
 
@@ -628,6 +631,8 @@ func _dispatch_action(action: Dictionary) -> bool:
 			return _do_undeclare_attacker(action)
 		Action.KIND_UNDECLARE_BLOCKER:
 			return _do_undeclare_blocker(action)
+		Action.KIND_CONFIRM_BLOCKS:
+			return _do_confirm_blocks(action)
 		Action.KIND_PASS_PRIORITY:
 			return _do_pass_priority(action)
 		Action.KIND_PICK_TRIGGER_TARGET:
@@ -1118,6 +1123,31 @@ func _do_undeclare_blocker(action: Dictionary) -> bool:
 	return true
 
 
+# ─── Confirm blocks (Phase 5c UI polish, strict COMBAT_BLOCK ordering) ─────
+# Defender signals "I'm done declaring blocks." Clears the awaiting flag and
+# opens the APNAP priority window (active player first). Legal only when the
+# engine is actually waiting on a block declaration and the actor is the
+# defender (the only player allowed to declare blocks).
+func _legal_confirm_blocks(_action: Dictionary) -> bool:
+	if _state == null or _state.winner != "":
+		return false
+	if not _state.awaiting_block_declaration:
+		return false
+	if _state.phase_machine.current != PhaseMachine.Phase.COMBAT_BLOCK:
+		return false
+	return true
+
+
+func _do_confirm_blocks(_action: Dictionary) -> bool:
+	_state.awaiting_block_declaration = false
+	# Open the APNAP priority window — active player gets priority first per
+	# MTG 117.1b. Both pass-flags reset so we collect fresh round.
+	_state.priority_player_key = _state.active_player_key
+	_reset_priority_passes()
+	_state.append_log("Blocks confirmed — %s gets priority" % _state.active_player().name)
+	return true
+
+
 # ─── State-based actions (SBA) ────────────────────────────────────────────
 # Run after every effect resolution and after combat damage. Walks the
 # battlefield and moves dead creatures (toughness ≤ 0 or damage_marked ≥
@@ -1405,17 +1435,18 @@ func _advance_phase() -> void:
 			# on opp's turn. No phase-entry hook needed.
 			pass
 		PhaseMachine.Phase.COMBAT_BLOCK:
-			# Phase 5c UI polish (per playtest #3): when AI is the defender
-			# (your turn), drive AI's block declarations synchronously at
-			# phase entry. In MTG, the defender declares blocks as a
-			# turn-based action BEFORE priority opens — without this, the
-			# AI never gets a chance because _current_actor would only
-			# flag it as actor when priority was already its (and priority
-			# resets to active=you below). After this loop, state.blockers
-			# is populated, the combat_lines overlay can draw, and the
-			# active player gets a normal priority window to cast tricks.
-			if _state.active_player_key == "you" and not _state.attackers.is_empty():
-				_drive_ai_block_declarations("opp")
+			# Phase 5c UI polish (strict ordering): on COMBAT_BLOCK entry
+			# with attackers, the defender declares blocks as a turn-based
+			# action BEFORE priority opens. Set the awaiting flag so the
+			# end-of-_advance_phase priority setup leaves priority closed.
+			# For AI defender, drive blocks synchronously and clear the
+			# flag immediately. For human defender, the flag stays true
+			# until KIND_CONFIRM_BLOCKS fires (from the UI).
+			if not _state.attackers.is_empty():
+				_state.awaiting_block_declaration = true
+				if _state.active_player_key == "you":
+					_drive_ai_block_declarations("opp")
+					_state.awaiting_block_declaration = false
 		PhaseMachine.Phase.COMBAT_DAMAGE:
 			_resolve_combat_damage()
 		PhaseMachine.Phase.CLEANUP:
@@ -1428,12 +1459,14 @@ func _advance_phase() -> void:
 						c.clear_eot_modifiers()
 
 	# Reset priority for the new phase. Per MTG rule 117.1b, the active player
-	# gets priority at the start of every step/phase. (Block declaration is
-	# a special action that happens BEFORE priority opens — we handle that
-	# above as the COMBAT_BLOCK entry hook for opp; for player as defender,
-	# block declaration is gated on phase, not priority — see
-	# _legal_declare_blocker.)
-	_state.priority_player_key = _state.active_player_key
+	# gets priority at the start of every step/phase. EXCEPTION: COMBAT_BLOCK
+	# while awaiting_block_declaration is true — block declaration is a
+	# turn-based action that runs BEFORE priority opens, so nobody has
+	# priority until the defender confirms blocks (KIND_CONFIRM_BLOCKS).
+	if _state.awaiting_block_declaration:
+		_state.priority_player_key = ""  # sentinel: no priority open
+	else:
+		_state.priority_player_key = _state.active_player_key
 	_reset_priority_passes()
 	_state.append_log("Phase: %s" % _state.phase_machine.phase_name())
 
