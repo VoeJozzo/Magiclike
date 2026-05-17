@@ -50,6 +50,11 @@ var _pending_cast_iid: int = -1
 # Target filter for the pending spell ("any", "creature", "player", etc.) —
 # determines which clicks count as valid targets.
 var _pending_target_filter: String = ""
+# Phase 5c UI polish (per playtest #1): the auto-tap plan computed when
+# the player clicked a spell. Lands aren't actually tapped until the
+# cast commits (target picked, action dispatched). If the player cancels
+# targeting, this is discarded and the lands stay untapped.
+var _pending_cast_tap_plan: Array = []
 
 # Block-declaration mode. When non-null, the player has clicked one of their
 # creatures to be a blocker; we're waiting for them to click an attacker to
@@ -454,19 +459,21 @@ func _refresh_stack_display(s: EngineState) -> void:
 
 
 # Phase 5c UI polish (#6): handler for clicks on a stack entry when the
-# player is choosing a spell to counter. Fires the cast_spell action with
-# the chosen stack entry as the target.
+# player is choosing a spell to counter. Commits the deferred auto-tap
+# plan and dispatches the cast.
 func _on_stack_entry_clicked(stack_iid: int) -> void:
 	if _pending_cast_iid == -1:
 		return
 	if _pending_target_filter != "spell":
 		return
+	var iid := _pending_cast_iid
+	var plan := _pending_cast_tap_plan
+	_pending_cast_iid = -1
+	_pending_target_filter = ""
+	_pending_cast_tap_plan = []
 	var target := {"kind": "stack", "iid": stack_iid}
-	var action := Action.make_cast_spell(_pending_cast_iid, [target])
-	if RulesEngine.execute_action(action):
-		_pending_cast_iid = -1
-		_pending_target_filter = ""
-		_exit_targeting_mode()
+	_commit_taps_and_cast(iid, [target], plan)
+	_exit_targeting_mode()
 
 
 # Pull oracle text off the source CardResource for a trigger entry, with a
@@ -806,13 +813,50 @@ func _is_valid_creature_target(iid: int) -> bool:
 
 
 # Execute a cast with the given target. Used by both panel clicks (player
-# targets) and battlefield clicks (creature targets).
+# targets) and battlefield clicks (creature targets). Commits the deferred
+# auto-tap plan first, then dispatches the cast.
 func _execute_pending_cast_with_target(target: Dictionary) -> void:
-	var action := Action.make_cast_spell(_pending_cast_iid, [target])
-	if RulesEngine.execute_action(action):
-		_pending_cast_iid = -1
-		_pending_target_filter = ""
+	var iid := _pending_cast_iid
+	var plan := _pending_cast_tap_plan
+	# Clear pending state BEFORE committing so a failed cast doesn't
+	# leave us in a weird half-state.
+	_pending_cast_iid = -1
+	_pending_target_filter = ""
+	_pending_cast_tap_plan = []
+	if not _commit_taps_and_cast(iid, [target], plan):
+		# Cast failed for some reason — already logged by inner. Restore
+		# targeting cleanup so UI doesn't think we're still picking.
 		_exit_targeting_mode()
+		return
+	_exit_targeting_mode()
+
+
+# Phase 5c UI polish (per playtest #1): atomically tap the planned lands
+# and dispatch the cast. If the cast is rejected, this is the LAST step
+# before any state changes, so reverting taps is unnecessary (we'd never
+# get here if the cast would fail — pre-checks already ran). But if the
+# cast somehow fails post-tap, log it and let the player retry.
+func _commit_taps_and_cast(spell_iid: int, targets: Array, lands_to_tap: Array) -> bool:
+	# Tap planned lands first (each is a normal mana ability).
+	for land in lands_to_tap:
+		RulesEngine.execute_action(Action.make_activate_ability(land.instance_id))
+	# Confirm we can actually pay after the taps.
+	var s: EngineState = RulesEngine.state()
+	var found = s.find_instance(spell_iid)
+	if found == null or found.card == null:
+		_log_local("[color=#ff8888]Cast failed: card no longer in hand.[/color]")
+		return false
+	var card: CardInstance = found.card
+	if not found.controller.mana.can_pay(card.template.mana_cost):
+		_log_local("[color=#ff8888]Auto-tap completed but can't pay %s for %s.[/color]" % [
+			_fmt_cost(card.template.mana_cost), card.name(),
+		])
+		return false
+	var action := Action.make_cast_spell(spell_iid, targets)
+	if RulesEngine.execute_action(action):
+		return true
+	_log_local("[color=#ff8888]Cast rejected for %s — %s[/color]" % [card.name(), _diagnose_cast_failure(card, s)])
+	return false
 
 
 # Hand cards don't go through CardContainer.on_card_pressed cleanly because
@@ -873,9 +917,12 @@ func _on_hand_card_gui_input(event: InputEvent, visual: Card) -> void:
 		_log_local("[color=#ff8888]Can't cast %s — %s[/color]" % [card.name(), reason])
 		return
 
-	# Spells (instant/sorcery/creature): auto-tap if needed, then cast.
+	# Phase 5c UI polish (per playtest #1): plan auto-tap but defer the
+	# actual tap to the moment the cast commits. For targeted spells this
+	# means we don't tap lands until the player picks a target.
+	var lands_to_tap: Array = []
 	if not ctrl.mana.can_pay(card.template.mana_cost):
-		var lands_to_tap: Array = _plan_lands_to_tap(ctrl, card.template.mana_cost)
+		lands_to_tap = _plan_lands_to_tap(ctrl, card.template.mana_cost)
 		if lands_to_tap.is_empty():
 			_log_local("[color=#ff8888]Can't pay %s for %s — pool is %s, not enough untapped lands[/color]" % [
 				_fmt_cost(card.template.mana_cost),
@@ -883,30 +930,24 @@ func _on_hand_card_gui_input(event: InputEvent, visual: Card) -> void:
 				ctrl.mana.to_string_short(),
 			])
 			return
-		for land in lands_to_tap:
-			RulesEngine.execute_action(Action.make_activate_ability(land.instance_id))
-		if not ctrl.mana.can_pay(card.template.mana_cost):
-			_log_local("[color=#ff8888]Auto-tap completed but can't pay %s for %s (pool: %s)[/color]" % [
-				_fmt_cost(card.template.mana_cost), card.name(), ctrl.mana.to_string_short(),
-			])
-			return
 
 	# Targeted spells enter targeting mode (now including "spell" filter
 	# which routes clicks through the clickable stack panel — see #6).
-	# Untargeted ones cast directly.
+	# Untargeted ones tap + cast atomically right here.
 	if card.template is SpellResource and card.template.requires_target:
 		# Filter "spell" still needs SOMETHING on the stack to target —
 		# bail early with a clear message if the stack is empty.
 		if card.template.target_filter == "spell" and s.stack.is_empty():
 			_log_local("[color=#ff8888]Can't cast %s: no spell on the stack to target.[/color]" % card.name())
 			return
+		# Defer auto-tap: stash the plan and enter targeting mode. Lands
+		# stay untapped until the target is picked or the player cancels
+		# (in which case the plan is discarded).
+		_pending_cast_tap_plan = lands_to_tap
 		_enter_targeting_mode(iid, card.template.target_filter)
 	else:
-		var cast := Action.make_cast_spell(iid, [])
-		if RulesEngine.is_legal_action(cast):
-			RulesEngine.execute_action(cast)
-		else:
-			_log_local("[color=#ff8888]Can't cast %s — %s[/color]" % [card.name(), _diagnose_cast_failure(card, s)])
+		# Untargeted spell — commit the auto-tap now and cast.
+		_commit_taps_and_cast(iid, [], lands_to_tap)
 
 
 # Phase 5c UI polish: returns true if the player could cast this hand card
@@ -1072,12 +1113,15 @@ func _on_panel_clicked(panel_key: String) -> void:
 
 
 func _on_pass_pressed() -> void:
-	# Cancel targeting if active
+	# Cancel targeting if active. Phase 5c UI polish (per playtest #1):
+	# discard the deferred auto-tap plan so the player's lands stay
+	# untapped when they bail on a cast.
 	if _pending_cast_iid != -1:
 		_pending_cast_iid = -1
 		_pending_target_filter = ""
+		_pending_cast_tap_plan = []
 		_exit_targeting_mode()
-		_log_local("[color=#888]Cancelled targeting[/color]")
+		_log_local("[color=#888]Cancelled targeting (lands stayed untapped)[/color]")
 		return
 	# Cancel block-selection if active
 	if _pending_block_blocker_iid != -1:
@@ -1112,12 +1156,20 @@ func _enter_targeting_mode(spell_iid: int, target_filter: String) -> void:
 	_opp_panel.is_clickable = allows_player
 	_action_button.text = "Cancel target"
 	_log_local("[color=#ffd866]Pick a target...[/color]")
+	# Phase 5c UI polish (per playtest #2): refresh UI so the legality
+	# glow swaps from "castable cards" to "legal targets" immediately.
+	# Without this, the glow stayed in its previous state until the next
+	# engine state_changed signal — which wouldn't fire just from
+	# entering targeting mode.
+	_refresh_ui()
 
 
 func _exit_targeting_mode() -> void:
 	_you_panel.is_clickable = false
 	_opp_panel.is_clickable = false
 	_action_button.text = "Pass priority"
+	# Refresh so the legality glow returns to "castable cards" state.
+	_refresh_ui()
 
 
 # ─── Trigger target picker (Phase 4.5b) ────────────────────────────────────

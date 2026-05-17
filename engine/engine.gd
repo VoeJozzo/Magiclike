@@ -584,6 +584,27 @@ func _current_actor() -> String:
 	return _state.priority_player_key
 
 
+# Phase 5c UI polish (per playtest #3): drive AI's defender-block
+# declarations as a turn-based action at COMBAT_BLOCK phase entry.
+# Loops calling AI.decide(state, key) and dispatching DECLARE_BLOCKER
+# actions until the AI returns something else (typically pass priority),
+# which means "I'm done blocking." Safety cap prevents runaways.
+func _drive_ai_block_declarations(defender_key: String) -> void:
+	var safety: int = 50
+	while safety > 0:
+		safety -= 1
+		var action: Dictionary = AI.decide(_state, defender_key)
+		if action.is_empty() or action.get("kind", "") != Action.KIND_DECLARE_BLOCKER:
+			break  # AI is done assigning blocks
+		# Apply the block directly (skips _dispatch_action's
+		# is_legal_action since we're in phase-entry context where
+		# priority might not match the legality check).
+		if _legal_declare_blocker(action):
+			_do_declare_blocker(action)
+		else:
+			break  # shouldn't happen but defensive
+
+
 # Dispatch an action by kind without going through execute_action (which
 # would re-enter settle and noop via the guard). This is the same match
 # block as execute_action's body, factored so settle can reuse it.
@@ -1384,9 +1405,17 @@ func _advance_phase() -> void:
 			# on opp's turn. No phase-entry hook needed.
 			pass
 		PhaseMachine.Phase.COMBAT_BLOCK:
-			# Phase 5c: block declarations come from AI.decide via _settle_state
-			# when opp is defender. No phase-entry hook needed.
-			pass
+			# Phase 5c UI polish (per playtest #3): when AI is the defender
+			# (your turn), drive AI's block declarations synchronously at
+			# phase entry. In MTG, the defender declares blocks as a
+			# turn-based action BEFORE priority opens — without this, the
+			# AI never gets a chance because _current_actor would only
+			# flag it as actor when priority was already its (and priority
+			# resets to active=you below). After this loop, state.blockers
+			# is populated, the combat_lines overlay can draw, and the
+			# active player gets a normal priority window to cast tricks.
+			if _state.active_player_key == "you" and not _state.attackers.is_empty():
+				_drive_ai_block_declarations("opp")
 		PhaseMachine.Phase.COMBAT_DAMAGE:
 			_resolve_combat_damage()
 		PhaseMachine.Phase.CLEANUP:
