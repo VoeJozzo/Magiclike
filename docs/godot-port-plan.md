@@ -42,8 +42,6 @@ This is a solo hobby project with no deadlines, exploratory mindset. Plans favor
 │   └── predicates/             B1 string-keyed condition registry
 ├── data/                       engine-side resource base classes — added in Phase 1
 │   ├── card_resource.gd, land_resource.gd, spell_resource.gd, creature_resource.gd
-├── ai/                         Phase 5
-├── run/                        Phase 6 (roguelike meta)
 ├── tests/                      smoke-test scenes per phase
 ├── docs/
 │   └── godot-port-plan.md      this file
@@ -78,24 +76,6 @@ GitHub Pages stays working at `voejozzo.github.io/Magiclike/` because `index.htm
 - AI: heuristic, single-entry-point `AI.decide(state, who) → action`. No game-tree search, no state mutation.
 - Public API: `ENGINE.{init, state, expectedActor, getLegalActions, executeAction, ...}`, `AI.decide`, `RUN.{start, startNextGame, recordResult, applyStickerToSlot, ...}`, `DRAFT.{startDraft, pickPlayer, getPlayerDeck, ...}`.
 
-## Phase 0 — Repo setup
-
-Take the Godot project and the GitHub `VoeJozzo/Magiclike` repo (which originally held the html prototype at root) and unify them into one repo with the structure above. Preserve git history of the prototype files via `git mv`.
-
-Procedure:
-
-1. Clone the existing GitHub repo to a sibling temp directory (preserves the prototype's commit history).
-2. In the cloned repo: `git mv CLAUDE.md magiclike_engine.html reference/html-proto/`. This preserves history of those files even though they moved.
-3. Edit `index.html` in place: change the redirect target from `magiclike_engine.html` to `reference/html-proto/magiclike_engine.html`.
-4. Copy the Godot project files into the cloned repo.
-5. Verify `.gitignore` includes at minimum: `.godot/`, `*.tmp`, `*.import.bak`, `.DS_Store`, `/export/`. The `*.uid` files SHOULD be committed (Godot 4.4+ uses them for stable references).
-6. Write this plan into `docs/godot-port-plan.md` (this file).
-7. `git add .`, commit, push to `origin main`.
-8. Replace the local Godot folder with the merged repo (rename original to backup first; delete after verifying the merged version opens cleanly).
-9. Verify GitHub Pages still works at `voejozzo.github.io/Magiclike/` (may take a few minutes to re-deploy).
-
-Verification: `git log --follow reference/html-proto/magiclike_engine.html` shows the original commits; the Godot project opens without errors; the GitHub Pages URL still loads the prototype.
-
 ## Phase 1 — Lightning Bolt slice
 
 **Goal:** Player taps Mountain → mana pool gains R → casts Lightning Bolt at opponent → opponent's life drops 20 → 17 → log shows the cast and resolution → Bolt moves to graveyard.
@@ -107,61 +87,6 @@ Verification: `git log --follow reference/html-proto/magiclike_engine.html` show
 - **Action descriptor pattern.** All state mutations go through `RulesEngine.execute_action(action: Dictionary)` where action is `{kind: "cast_spell" | "activate_ability" | "play_land" | "pass_priority", source, targets, ...}`. Mirrors the JS prototype's `executeAction`.
 - **Stack pathway exercised even with no responses.** Casting Lightning Bolt: pay mana → push StackEntry → grant priority to opponent → opponent passes (auto-stub) → both passed → resolve top → effects run → instance to graveyard. If we short-circuit and run effects directly, decision C1 is broken on day one.
 - **Click-to-cast UI**, not drag-to-cast. Drag conflicts with card-framework's drag-to-move semantics. Click Bolt in hand → enter target-picking mode (overlay dims invalid, highlights valid) → click opponent's life total → resolve.
-
-### Files to create
-
-```
-engine/
-  engine.gd                    autoload, state holder, execute_action, signal emitter
-  player.gd                    RefCounted: name, life, mana, hand, library, battlefield, graveyard, exile, land_played_this_turn, life_lost_this_turn
-  mana_pool.gd                 RefCounted: {W,U,B,R,G,C} + extra colors
-  card_instance.gd             RefCounted: instance_id, template (CardResource), owner, controller, tapped, counters, summoning_sick
-  stack.gd                     RefCounted: Array[StackEntry]; push, top, resolve_top
-  phase_machine.gd             RefCounted: enum Phase, advance() — full skeleton, only MAIN1 active in Phase 1
-  action.gd                    RefCounted: action descriptor helpers
-  effects/
-    effects.gd                 const HANDLERS = {"damage": ..., "add_mana": ...}; static resolve(effect, ctx)
-    damage.gd                  reads amount, target; mutates target.life
-    add_mana.gd                reads colors; adds to ctx.controller.mana
-  predicates/
-    predicates.gd              registry skeleton (no entries Phase 1) + boot-time validation pass
-data/
-  card_resource.gd             base Resource: card_id, display_name, card_types, subtypes, mana_cost, oracle_text, on_cast_effects, activated_abilities, triggered_abilities
-  land_resource.gd             extends + mana_produced
-  spell_resource.gd            extends + requires_target, target_filter
-cards/templates/
-  mountain.tres                LandResource: card_id="mountain", types=["land"], subtypes=["mountain"], mana_produced=["R"]
-  lightning_bolt.tres          SpellResource: card_id="lightning_bolt", types=["instant"], cost=["R"], on_cast_effects=[{kind:"damage", amount:3, target:"chosen"}]
-cards/data/
-  mountain.json                card-framework visual: name, front_image, card_id="mountain"
-  lightning_bolt.json          card-framework visual: name, front_image, card_id="lightning_bolt"
-cards/images/
-  mountain.png, lightning_bolt.png  placeholders
-scenes/zones/
-  battlefield.gd / .tscn       CardContainer subclass; _card_can_be_added rejects non-lands in Phase 1
-  stack.gd / .tscn             NOT a CardContainer — VBoxContainer of StackEntry visuals (triggers later phases will add non-card entries)
-  library.gd / .tscn, graveyard.gd / .tscn  CardContainer subclasses, simple piles
-scenes/game/
-  game_board.gd / .tscn        main scene — CardManager + zones + PlayerPanels, wires RulesEngine signals to UI
-  player_panel.gd / .tscn      life total label (clickable for opp), mana pool labels, name
-tests/
-  test_phase1.gd / .tscn       scripted smoke test
-```
-
-Update `project.godot`:
-- `[autoload] RulesEngine="*res://engine/engine.gd"` (named `RulesEngine` to avoid clashing with Godot's built-in `Engine` global)
-- `run/main_scene` → `res://scenes/game/game_board.tscn`
-
-### Verification
-
-**Scripted smoke test** (`tests/test_phase1.tscn`):
-1. Boot engine: you = `{life: 20, hand: [LightningBolt], battlefield: [Mountain, Mountain]}`, opp = `{life: 20, no permanents}`.
-2. `RulesEngine.execute_action(activate_mountain_0)` → assert `you.mana.R == 1`.
-3. `RulesEngine.execute_action(activate_mountain_1)` → assert `you.mana.R == 2`.
-4. `RulesEngine.execute_action(cast_bolt_at_opp)` → assert stack has 1 entry, `you.mana.R == 1`.
-5. Both auto-pass priority → assert stack empties, `opp.life == 17`, Bolt is in your graveyard, both Mountains are tapped.
-
-**Manual play-through:** open `game_board.tscn`, see hand with Mountains and a Bolt, tap a Mountain (rotates 90°), see R appear in mana display, click Bolt (target picker overlay), click opponent's life total, see 20 → 17, see Bolt move to graveyard.
 
 ## Phases 2 through 6 — outline
 
