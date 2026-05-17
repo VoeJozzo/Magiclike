@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="CreatureResource" format=3]
+
+[ext_resource type="Script" path="res://data/creature_resource.gd" id="1_t78w0"]
+
+[resource]
+script = ExtResource("1_t78w0")
+toughness = 4
+keywords = Array[String](["defender"])
+card_id = "walking_wall"
+display_name = "Walking Wall"
+card_types = Array[String](["creature"])
+subtypes = Array[String](["wall"])
+mana_cost = {
+"C": 2
+}
+oracle_text = "Defender. (This creature can't attack.)"

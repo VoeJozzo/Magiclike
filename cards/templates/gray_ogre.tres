@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="CreatureResource" format=3]
+
+[ext_resource type="Script" path="res://data/creature_resource.gd" id="1_klmay"]
+
+[resource]
+script = ExtResource("1_klmay")
+power = 2
+toughness = 2
+card_id = "gray_ogre"
+display_name = "Gray Ogre"
+card_types = Array[String](["creature"])
+subtypes = Array[String](["ogre"])
+mana_cost = {
+"C": 1,
+"R": 1
+}
+oracle_text = "A vanilla 2/2 — no abilities."

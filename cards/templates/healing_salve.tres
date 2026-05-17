@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="SpellResource" format=3]
+
+[ext_resource type="Script" path="res://data/spell_resource.gd" id="1_8f3iu"]
+
+[resource]
+script = ExtResource("1_8f3iu")
+target_filter = ""
+card_id = "healing_salve"
+display_name = "Healing Salve"
+card_types = Array[String](["instant"])
+mana_cost = {
+"W": 1
+}
+oracle_text = "You gain 3 life."
+on_cast_effects = Array[Dictionary]([{
+"amount": 3,
+"kind": "gain_life"
+}])

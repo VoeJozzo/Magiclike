@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="CreatureResource" format=3]
+
+[ext_resource type="Script" path="res://data/creature_resource.gd" id="1_xn0ui"]
+
+[resource]
+script = ExtResource("1_xn0ui")
+power = 3
+toughness = 3
+card_id = "hill_giant"
+display_name = "Hill Giant"
+card_types = Array[String](["creature"])
+subtypes = Array[String](["giant"])
+mana_cost = {
+"C": 2,
+"R": 1
+}
+oracle_text = "A vanilla 3/3 — no abilities."
