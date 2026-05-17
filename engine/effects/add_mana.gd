@@ -1,18 +1,10 @@
 extends RefCounted
 
-# Effect handler: add_mana. Adds mana to the controller's mana pool.
-#
-# Effect dictionary shape:
-#   {"kind": "add_mana", "amounts": {"R": 1}}
-#       or {"R": 1} as a flat shorthand on the effect (back-compat)
-#
-# ctx fields used: ctx.controller (Player with .mana: ManaPool), ctx.source_name
-
+# {"kind": "add_mana", "amounts": {"R": 1}} OR flat shorthand: {"kind": "add_mana", "R": 1}.
 
 static func execute(effect: Dictionary, ctx: Dictionary) -> void:
 	var amounts: Dictionary = effect.get("amounts", {})
 	if amounts.is_empty():
-		# Back-compat shorthand: take any color keys directly off the effect dict.
 		amounts = {}
 		for k in ["W", "U", "B", "R", "G", "C"]:
 			if effect.has(k):
@@ -24,9 +16,7 @@ static func execute(effect: Dictionary, ctx: Dictionary) -> void:
 	_log(ctx, "%s adds %s (pool: %s)" % [ctx.source_name, _fmt(amounts), ctx.controller.mana.to_string_short()])
 
 
-# MTG mana notation (see mana_pool.gd to_string_short for rationale): colored
-# mana repeats letters, generic uses a leading number. "1R" means 1 generic +
-# 1 red, never "one red".
+# MTG notation: colored repeats letters, generic uses leading number. See mana_pool.to_string_short.
 static func _fmt(amounts: Dictionary) -> String:
 	var s := ""
 	if amounts.get("C", 0) > 0:

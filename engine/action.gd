@@ -1,21 +1,8 @@
 class_name Action
 extends RefCounted
 
-# Action descriptor helpers. Actions are plain Dictionaries with a "kind" key —
-# this class just provides constants and constructor helpers to keep call sites
-# readable and prevent string typos.
-#
-# Mirrors the JS prototype's executeAction({kind, ...}) shape.
-#
-# Action shapes:
-#   PASS_PRIORITY:    {kind}
-#   ACTIVATE_ABILITY: {kind, source_iid, ability_index?}        (default ability_index=0)
-#   PLAY_LAND:        {kind, source_iid}
-#   CAST_SPELL:       {kind, source_iid, targets: Array[Dict]}
-#
-# A target descriptor is a Dictionary like:
-#   {"kind": "player", "who": "you" | "opp"}
-#   {"kind": "creature", "iid": int}        (Phase 2+)
+# Actions are Dictionaries keyed by "kind". This class holds constants + constructors.
+# Target descriptor: {"kind": "player"|"creature", "who": "you"|"opp"} or {"kind": "creature", "iid": int}.
 
 const KIND_PASS_PRIORITY := "pass_priority"
 const KIND_ACTIVATE_ABILITY := "activate_ability"
@@ -23,21 +10,12 @@ const KIND_PLAY_LAND := "play_land"
 const KIND_CAST_SPELL := "cast_spell"
 const KIND_DECLARE_ATTACKER := "declare_attacker"
 const KIND_DECLARE_BLOCKER := "declare_blocker"
-# Phase 5c UI polish: undo a combat declaration before the phase advances.
-# Both actions take source_iid (attacker or blocker creature iid). Legality
-# requires the relevant combat phase and that the creature is currently
-# declared. Engine untaps an undeclared attacker and clears blocker links.
+# Undo a declaration before the phase advances. Engine untaps undeclared attackers and clears blocker links.
 const KIND_UNDECLARE_ATTACKER := "undeclare_attacker"
 const KIND_UNDECLARE_BLOCKER := "undeclare_blocker"
-# Phase 5c UI polish (strict COMBAT_BLOCK ordering): defender signals
-# "blocks are committed" via this action, which clears
-# state.awaiting_block_declaration and opens the APNAP priority window
-# (active player first). For AI defender (your turn), the engine fires
-# this implicitly after _drive_ai_block_declarations finishes.
+# Defender commits block declarations: clears awaiting_block_declaration, opens APNAP priority window.
 const KIND_CONFIRM_BLOCKS := "confirm_blocks"
-# Phase 4.5b: fills in the target for a queued triggered ability that's
-# waiting on player input. Engine sets state.awaiting_target_for_trigger
-# to signal which trigger is pending; this action supplies the chosen target.
+# Supplies the target for a queued triggered ability awaiting input (see state.awaiting_target_for_trigger).
 const KIND_PICK_TRIGGER_TARGET := "pick_trigger_target"
 
 
@@ -65,9 +43,6 @@ static func make_declare_attacker(source_iid: int) -> Dictionary:
 	return {"kind": KIND_DECLARE_ATTACKER, "source_iid": source_iid}
 
 
-# Declare a blocker. blocker_iid is the defending player's creature; attacker_iid
-# is the attacking creature it's blocking. State.blockers is a Dictionary
-# mapping blocker_iid → attacker_iid.
 static func make_declare_blocker(blocker_iid: int, attacker_iid: int) -> Dictionary:
 	return {
 		"kind": KIND_DECLARE_BLOCKER,
@@ -84,7 +59,6 @@ static func make_undeclare_blocker(source_iid: int) -> Dictionary:
 	return {"kind": KIND_UNDECLARE_BLOCKER, "source_iid": source_iid}
 
 
-# Phase 5c UI polish: defender signals "I'm done blocking."
 static func make_confirm_blocks() -> Dictionary:
 	return {"kind": KIND_CONFIRM_BLOCKS}
 
@@ -97,7 +71,5 @@ static func target_creature(iid: int) -> Dictionary:
 	return {"kind": "creature", "iid": iid}
 
 
-# Phase 4.5b: fill the pending trigger's target. The engine reads
-# state.awaiting_target_for_trigger to know which trigger this completes.
 static func make_pick_trigger_target(target: Dictionary) -> Dictionary:
 	return {"kind": KIND_PICK_TRIGGER_TARGET, "target": target}

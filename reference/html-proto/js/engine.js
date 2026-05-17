@@ -1,11 +1,6 @@
-// Mercurial Adept's trigger pool. Six abilities, each rolled into the slot's
-// triggerPool field at boon-application time. makeCard rolls one fresh per
-// game when materializing the card, so the same Adept slot has a different
-// personality each fight. Each entry carries:
-//   - All standard trigger fields (event, condId, effects, text)
-//   - label: short human-readable name shown in the card popup repertoire
-// The label is what makes the modularity visible to the player — they see
-// the full pool on the card popup with the active one indicated.
+// Mercurial Adept's trigger pool. makeCard rolls one fresh per game from
+// this pool, so the same slot has a different personality each fight.
+// `label` is shown in the card popup repertoire (with the active one indicated).
 const MERCURIAL_TRIGGER_POOL = [
   {
     label: 'Striker',
@@ -51,19 +46,12 @@ const MERCURIAL_TRIGGER_POOL = [
   },
 ];
 
-// Note: Mercurial Adept previously had a Neow boon entry that injected her
-// into the deck with a triggerPool. As of v1.0.0 she's promoted to the
-// regular draft pool — the variance is fun-card territory, not run-defining
-// boon territory. The triggerPool now seeds from the template via
-// triggerPoolSeed:'mercurial' (see makePlayer). Keeping this comment as
-// migration breadcrumb in case a save from the boon era is ever loaded:
-// such a save would have the slot already populated with an embedded
-// triggerPool, which still works via the slot-level path.
+// Mercurial Adept now seeds her pool via triggerPoolSeed:'mercurial' (see makePlayer).
+// Pre-v1.0.0 saves carried an embedded triggerPool on the slot — still works via the slot-level path.
 
 
 // ENGINE — game rules, state, phase machine.
-// Public API: init, state, expectedActor, getLegalActions, executeAction,
-// subscribe, findCard, getStats.
+// Public API: init, state, expectedActor, getLegalActions, executeAction, subscribe, findCard, getStats.
 
 // Sticker pipeline moved to js/stickers.js — see that file for
 // weightedPick, applyStickersToCard, applyOneStickerToRuntimeCard,
@@ -72,23 +60,16 @@ const MERCURIAL_TRIGGER_POOL = [
 // stickersForSlot (further below). They remain in global scope.
 
 
-// Splice eligibility — module-level so both ENGINE (synthesis) and RUN
-// (reward roll/apply) can use them. v1.0.55: Lands are now spliceable on
-// both sides. The compatibility matrix in isCompatibleStaplePair enforces
-// which (base, staple) pairings are actually legal — lands-as-base reject
-// creature-staples (no clean interpretation, would require type-changing).
+// Splice eligibility — module-level so ENGINE (synthesis) and RUN (reward) share.
+// Modal-as-base unsupported. See isCompatibleStaplePair for type-pair matrix.
 function isSpliceableBase(tplId) {
   const tpl = CARDS[tplId];
   if (!tpl) return false;
   if (tpl.special) return false;
   if (tpl.stapleable === false) return false;
-  // Modal-as-base would require synthesizing modes — punt for v1.
   if (tpl.effects && tpl.effects.modes) return false;
   return true;
 }
-// Generic staple eligibility: any non-special non-modal card. Whether a
-// SPECIFIC staple is compatible with a SPECIFIC base depends on their
-// types — see isCompatibleStaplePair.
 function isSpliceableStaple(tplId) {
   const tpl = CARDS[tplId];
   if (!tpl) return false;
@@ -97,24 +78,15 @@ function isSpliceableStaple(tplId) {
   if (tpl.effects && tpl.effects.modes) return false;
   return true;
 }
-// Compatibility check between a specific base and staple.
-//   Base \ Staple    Creature    Spell    Land
-//   Creature           OK (1)    OK (3)   OK (2)
-//   Spell              NO       OK (7)    OK (6)
-//   Land               NO       OK (5)    OK (4)
-// Cases:
-//   1. Creature + Creature: full body+ability merge.
-//   2. Creature + Land: land's tap-for-mana ability appended to creature.
-//   3. Creature + Spell: spell becomes ETB trigger on creature.
-//   4. Land + Land: mana production merges.
-//   5. Land + Spell: spell becomes ETB trigger on land.
-//   6. Spell + Land: spell gains an addMana effect.
-//   7. Spell + Spell: effects concat.
-// Both halves must individually pass isSpliceableBase / isSpliceableStaple.
+// Splice compatibility:
+//   Base\Staple  Creature  Spell  Land
+//   Creature     ok(merge) ETB    tap-ability
+//   Spell        NO        concat addMana
+//   Land         NO        ETB    mana-merge
+// Callers must canonicalize first (canonicalSplicePair).
 
-// Canonical base/staple ordering by type priority:
-// Creature(0) > Artifact(1) > Land(2) > Spell(3) — lower becomes base.
-// Returns [baseTplId, stapleTplId, swapped] so callers can fix parallel arrays.
+// Canonical ordering by type priority: Creature(0) > Artifact(1) > Land(2) > Spell(3).
+// Returns [base, staple, swapped] so callers can fix parallel arrays.
 function canonicalSplicePair(tplA, tplB) {
   const priority = (tplId) => {
     const tpl = CARDS[tplId];
@@ -135,20 +107,9 @@ function isCompatibleStaplePair(baseTplId, stapleTplId) {
   if (!isSpliceableStaple(stapleTplId)) return false;
   const baseTpl = CARDS[baseTplId];
   const stapleTpl = CARDS[stapleTplId];
-  // v1.0.56: previously rejected spell-base+creature-staple and land-base+
-  // creature-staple as "no clean interpretation." Replaced with upstream
-  // canonicalization (canonicalSplicePair reorders by type priority so
-  // creature is always the base when paired with land or spell). Callers
-  // canonicalize first; this function now just enforces multi-color-land
-  // restrictions, which are direction-sensitive (the addMana-as-ability
-  // and addMana-on-resolve shapes don't have "tap, pick one" semantics).
-  //
-  // Multi-color land restriction: creature+land and spell+land require a
-  // single-color staple. City of Brass (extraManaColors populated) only
-  // works as a land+land staple. The synthesis would otherwise generate
-  // an addMana ability/effect that produces all WUBRG simultaneously,
-  // which is much stronger than MtG's "tap, choose one." Until modal
-  // addMana is implemented, exclude multi-color lands from those pairings.
+  // Multi-color land restriction: creature+land/spell+land require single-color
+  // staple, since synthesized addMana lacks "tap, choose one" semantics. Multi-color
+  // lands (City of Brass) only valid as land+land.
   if (baseTpl.type === 'Creature' && stapleTpl.type === 'Land'
       && Array.isArray(stapleTpl.extraManaColors) && stapleTpl.extraManaColors.length > 0) {
     return false;
@@ -160,10 +121,7 @@ function isCompatibleStaplePair(baseTplId, stapleTplId) {
   return true;
 }
 
-// Splice merge math — pure helpers used by both the reward-time path
-// (RUN.applySplice) and the in-game path (ENGINE.EFFECTS.applyInGameSplice).
-// Moved to module scope so both IIFEs can reach them. Original copies
-// inside the RUN IIFE were forwarded to these to avoid duplication.
+// Splice merge math — shared by RUN.applySplice and ENGINE.EFFECTS.applyInGameSplice.
 function countEffects(tpl) {
   if (!tpl || !tpl.effects) return 0;
   if (Array.isArray(tpl.effects)) return tpl.effects.length;
@@ -199,12 +157,7 @@ function remapEmpowerRollForStaple(roll, baseIsCreature, stapleIsCreature,
   };
 }
 
-// Resolve a slot to its effective template — synthesized merged template if
-// the slot has staples, otherwise the base CARDS entry. Centralizes the
-// "is this a stapled slot? get the merged tpl" decision so callers don't
-// each re-implement it. Called at offer time, apply time, and various
-// scoring/eligibility paths that need the slot's effective effects/triggers/
-// abilities/cost/keywords.
+// Resolve slot → effective template (synthesized merge if stapled, else CARDS entry).
 function tplForSlot(slot) {
   if (!slot) return null;
   if (Array.isArray(slot.stapledTpls) && slot.stapledTpls.length > 0) {
@@ -259,11 +212,8 @@ function fakeTargetsForLegality(effects, who) {
 }
 
 
-// Card-text helpers (describeCardSegments, describeCardText, describeEffect,
-// describeTrigger, describeAbility, describeStaticBuff, describeModalSegs,
-// and their internal helpers targetPhrase/withFilter/bumpedSeg/etc.) moved
-// to js/card-text.js. Still in global scope — render.js and controller.js
-// continue to call them directly without a namespace prefix.
+// Card-text helpers (describeCardSegments, describeCardText, etc.) live in
+// js/card-text.js. Still global — callers use them without a namespace prefix.
 
 const ENGINE = (function() {
 
@@ -273,10 +223,8 @@ let G = null;
 let nextIid = 1;
 let listeners = [];
 
-// PENDING_DECISIONS — registry of "player owes a decision" modal types.
-// To add: add G.<field> to makeState, then add an entry here. whoHasPriority
-// and step() pick it up automatically. `who` extractor handles the
-// pendingTriggerTarget exception (uses .controller, not .who).
+// Registry of "player owes a decision" modal types. To add: add G.<field> to
+// makeState, then add an entry here. Note pendingTriggerTarget uses .controller, not .who.
 const PENDING_DECISIONS = [
   { field: 'forcedDiscard',        who: d => d.who,        active: d => d.remaining > 0 },
   { field: 'pendingSearch',        who: d => d.who,        active: () => true },
@@ -287,9 +235,7 @@ const PENDING_DECISIONS = [
   { field: 'pendingSymmetricizeChoice', who: d => d.who,   active: () => true },
 ];
 
-// True if `who` (typically 'you') is owed a decision by any open modal.
-// Use this from any code that gates a specific player's action availability:
-// priority checks, expected-actor queries, end-turn autopilot abort.
+// True if `who` is owed a decision by any open modal.
 function playerOwesDecision(who) {
   for (const d of PENDING_DECISIONS) {
     const obj = G[d.field];
@@ -298,10 +244,7 @@ function playerOwesDecision(who) {
   return false;
 }
 
-// True if any modal is open for any player. Use this from the phase machine
-// (step) to pause the engine while a decision is outstanding — regardless of
-// whether it's the player's or the AI's. The AI resolves its prompts via
-// executeAction, which restarts step on completion.
+// True if any modal is open. Phase machine pauses while a decision is outstanding.
 function anyoneOwesDecision() {
   for (const d of PENDING_DECISIONS) {
     const obj = G[d.field];
@@ -311,13 +254,9 @@ function anyoneOwesDecision() {
 }
 
 // ----- Construction -----
-// Deck entries are either a tplId string (opp, no stickers) or
-// {tplId, stickers:[...]} (player, RUN-owned stickered slots).
-// Deep-copy a card template's effects field. Handles both shapes:
-//   - flat array (most cards): copy each effect object.
-//   - modal {modeNames, modes}: copy modeNames array and deep-copy each mode.
-// Used by makeCard at instance creation; per-instance isolation matters
-// because Severity sticker mutates effect amounts in place.
+// Deck entries: tplId string (opp) or {tplId, stickers:[...]} (player).
+// Deep-copy effects (flat array OR modal {modeNames, modes}). Per-instance
+// isolation matters because Severity mutates effect amounts in place.
 function copyCardEffects(effects) {
   if (!effects) return undefined;
   if (Array.isArray(effects)) return effects.map(e => ({...e}));
@@ -328,12 +267,8 @@ function copyCardEffects(effects) {
   };
 }
 
-// Stapling: combine cards into one slot via stapledTpls. Engine sees the
-// synthesized merged template and doesn't need to know about stapling. See
-// canonicalSplicePair for the type-pair compatibility matrix.
-//
-// Multi-target slot remap: each staple's targeted effects get targetSlot +=
-// (next-free-slot above base), preserving intra-staple slot sharing.
+// Stapling: combine cards via stapledTpls. Engine sees only the merged template.
+// Multi-target remap: staple's targeted effects get targetSlot += next-free-above-base.
 function synthesizeStapledTemplate(baseTplId, stapledTpls) {
   const baseTpl = CARDS[baseTplId];
   if (!baseTpl) throw new Error('Unknown card: ' + baseTplId);
@@ -369,11 +304,8 @@ function synthesizeStapledTemplate(baseTplId, stapledTpls) {
     special: baseTpl.special,
     multiTarget: baseTpl.multiTarget,
     stapleable: baseTpl.stapleable,
-    // Synthesized — marker that this template is a runtime synthesis, not
-    // a CARDS entry. Used by makeCard to thread metadata to in-flight cards
-    // (which preserve it as card.stapledFrom for downstream callers that
-    // need to recover the merged baseline — empower target enumeration,
-    // sticker eligibility checks, etc.).
+    // Runtime synthesis marker, threaded via card.stapledFrom for downstream
+    // callers (empower target enumeration, sticker eligibility, etc.).
     stapledFrom: { baseTplId, stapledTpls: stapledTpls.slice() },
   };
   for (const stapleTplId of stapledTpls) {
@@ -381,11 +313,8 @@ function synthesizeStapledTemplate(baseTplId, stapledTpls) {
     if (!stapleTpl) continue;
     mergeStapleInto(merged, stapleTpl);
   }
-  // Re-derive merged.color (primary, first in WUBRG order) and merged.colors
-  // (full set in WUBRG order) from the now-merged cost. The primary color
-  // matches the canonical convention used by annotateColors() — picked for
-  // single-color CSS classes (col-W, col-U, etc.). The full set is what the
-  // splice-picker tile uses to draw multi-color tiles.
+  // Re-derive primary (first WUBRG present) and full color set from merged cost.
+  // Primary feeds col-W/col-U CSS classes; full set drives multi-color splice tiles.
   if (merged.cost) {
     const present = ['W','U','B','R','G'].filter(k => (merged.cost[k] || 0) > 0);
     merged.color = present[0] || baseTpl.color || null;
@@ -399,42 +328,27 @@ function appendMergedText(merged, addition) {
   merged.text = (merged.text ? merged.text + ' ' : '') + (addition || '');
 }
 
-// Mutate `merged` in place to add the staple's costs, effects, and (for
-// creature bases) ETB trigger. Helper — only called by
-// synthesizeStapledTemplate.
+// Mutate `merged` to add the staple's contribution. Branch order matters.
+// Merge cases (Spell+Creature and Land+Creature are rejected upstream):
+//   Cr+Cr: body+ability merge.  Cr+Ld: land becomes {T}:addMana ability.
+//   Cr+Sp: spell becomes ETB.   Ld+Ld: mana production merges.
+//   Ld+Sp: spell becomes ETB.   Sp+Ld: spell gains addMana effect.
+//   Sp+Sp: effects concat with slot remap.
 function mergeStapleInto(merged, stapleTpl) {
-  // Cost sum (per color including C).
   if (stapleTpl.cost) {
     for (const [k, v] of Object.entries(stapleTpl.cost)) {
       merged.cost[k] = (merged.cost[k] || 0) + v;
     }
   }
-  // Merge cases by (base type, staple type). The check order matters
-  // because earlier branches handle subsets:
-  //   1. Creature + Creature: full body+ability merge.
-  //   2. Creature + Land: land's mana production becomes a {tap}: addMana
-  //      activated ability on the creature (Llanowar Elves shape).
-  //   3. Creature + Spell: spell becomes ETB trigger on the creature.
-  //   4. Land + Land: mana production merges (primary + extras).
-  //   5. Land + Spell: spell becomes ETB trigger on the land.
-  //   6. Spell + Land: spell gains an addMana effect for the land's color.
-  //   7. Spell + Spell: effects concat with slot remap.
-  // Forbidden (rejected by isCompatibleStaplePair, never reach here):
-  //   - Spell + Creature (no clean interpretation)
-  //   - Land + Creature (would need type-changing — out of scope)
   if (merged.type === 'Creature' && stapleTpl.type === 'Creature') {
-    // Case 1: creature + creature.
     merged.power = (merged.power || 0) + (stapleTpl.power || 0);
     merged.toughness = (merged.toughness || 0) + (stapleTpl.toughness || 0);
-    // Keywords: union with dedup.
     const stapleKws = stapleTpl.keywords || [];
     for (const kw of stapleKws) {
       if (!merged.keywords.includes(kw)) merged.keywords.push(kw);
     }
-    // Subtype concat with dedup-by-token. Existing lord checks use substring
-    // match on card.sub (e.g. card.sub.indexOf('Goblin') !== -1), so a
-    // space-joined string covers the lookup. Dedup by splitting on whitespace
-    // so 'Goblin' + 'Goblin' doesn't become 'Goblin Goblin'.
+    // Subtype: token-level dedup so Goblin+Goblin doesn't double; lord checks
+    // use substring match on card.sub.
     const baseTokens = (merged.sub || '').split(/\s+/).filter(Boolean);
     const stapleTokens = (stapleTpl.sub || '').split(/\s+/).filter(Boolean);
     const mergedTokens = baseTokens.slice();
@@ -442,10 +356,7 @@ function mergeStapleInto(merged, stapleTpl) {
       if (!mergedTokens.includes(t)) mergedTokens.push(t);
     }
     merged.sub = mergedTokens.join(' ');
-    // Triggers, abilities, staticBuffs: concat with deep copy. Trigger
-    // ordering preserved (base's first, then staple's) — matters for any
-    // ordering-sensitive trigger logic, though there's no current example
-    // where order changes outcomes.
+    // Triggers/abilities/staticBuffs: concat with deep copy. Base's first.
     if (stapleTpl.triggers) {
       for (const t of stapleTpl.triggers) {
         merged.triggers.push({
@@ -474,28 +385,13 @@ function mergeStapleInto(merged, stapleTpl) {
         });
       }
     }
-    // permanentEot: if either half has it, the merged creature does too.
-    // (No current creature has permanentEot besides Elystra, who is
-    // special and excluded — but be defensive for future cards.)
     if (stapleTpl.permanentEot) merged.permanentEot = true;
-    // Synthesized text — concatenate base text and staple text.
     appendMergedText(merged, stapleTpl.text);
   } else if (merged.type === 'Creature' && stapleTpl.type === 'Land') {
-    // Case 2: creature + land. Add a {tap}: addMana ability matching the
-    // land's mana production. The creature can then be tapped for mana
-    // like a Llanowar Elves. Tap-cost means it can't also attack the
-    // same turn (one tap, one effect — engine enforces via card.tapped).
+    // Llanowar-Elves shape: {T}: addMana matching land's production.
+    // Multi-color lands rejected by isCompatibleStaplePair (no "tap, choose one").
     if (!Array.isArray(merged.abilities)) merged.abilities = [];
     const colors = [stapleTpl.mana].concat(stapleTpl.extraManaColors || []).filter(Boolean);
-    // The new ability mirrors the basic-land mana shape. If the land has
-    // a single color, the ability adds that one color. If it has extras
-    // (City of Brass), we encode each as a separate amounts entry — but
-    // addMana takes one amounts object, not a list. For single-color
-    // simplicity in v1, we add one ability with all colors in the same
-    // amounts dict (which the engine reads as "produces all of these
-    // simultaneously"). That's stronger than MtG's "pick one," but for
-    // now the only multi-color land is City of Brass (special, never
-    // a staple). Single-color lands are the common case.
     const amounts = {};
     for (const c of colors) amounts[c] = (amounts[c] || 0) + 1;
     merged.abilities.push({
@@ -504,7 +400,7 @@ function mergeStapleInto(merged, stapleTpl) {
     });
     appendMergedText(merged, '{T}: Add {' + colors.join('}{') + '}.');
   } else if (merged.type === 'Creature') {
-    // Case 3: creature + spell. The spell becomes an ETB trigger.
+    // Creature + Spell: spell becomes ETB trigger.
     const nextFreeSlot = computeNextFreeSlot(merged);
     const remapped = remapEffectSlots(stapleTpl.effects, nextFreeSlot);
     merged.triggers.push({
@@ -515,23 +411,17 @@ function mergeStapleInto(merged, stapleTpl) {
     });
     appendMergedText(merged, 'When this enters, ' + (stapleTpl.text || stapleTpl.name) + '.');
   } else if (merged.type === 'Land' && stapleTpl.type === 'Land') {
-    // Case 4: land + land. Mana production merges. The base's primary
-    // color stays; the staple's primary + extras get appended to extras.
-    // Dedup so stapling Plains + Plains stays Plains (the staple is
-    // wasted, but doesn't break anything).
+    // Land + Land: mana production merges, dedup so Plains+Plains stays Plains.
     const staplerColors = [stapleTpl.mana].concat(stapleTpl.extraManaColors || []).filter(Boolean);
     for (const c of staplerColors) {
       if (c !== merged.mana && !merged.extraManaColors.includes(c)) {
         merged.extraManaColors.push(c);
       }
     }
-    // Synthesized text reflects the new color set.
     const allColors = [merged.mana].concat(merged.extraManaColors);
     merged.text = '{T}: Add one of {' + allColors.join('}{') + '}.';
   } else if (merged.type === 'Land') {
-    // Case 5: land + spell. Spell becomes ETB trigger on the land.
-    // Same shape as creature + spell. Lands emit cardEntersBattlefield
-    // when played (see line ~5593), so the trigger fires.
+    // Land + Spell: spell becomes ETB. Lands emit cardEntersBattlefield on play.
     const nextFreeSlot = computeNextFreeSlot(merged);
     const remapped = remapEffectSlots(stapleTpl.effects, nextFreeSlot);
     if (!Array.isArray(merged.triggers)) merged.triggers = [];
@@ -543,11 +433,7 @@ function mergeStapleInto(merged, stapleTpl) {
     });
     appendMergedText(merged, 'When this enters, ' + (stapleTpl.text || stapleTpl.name) + '.');
   } else if (stapleTpl.type === 'Land') {
-    // Case 6: spell + land. The spell gains an addMana effect — when it
-    // resolves, you get one mana of the land's color (in addition to
-    // whatever the spell normally does). The mana is added to the
-    // caster's pool at resolution time, so it can be used by spells
-    // resolving later in the same priority window.
+    // Spell + Land: spell gains addMana on resolve, usable for later spells in window.
     const colors = [stapleTpl.mana].concat(stapleTpl.extraManaColors || []).filter(Boolean);
     const amounts = {};
     for (const c of colors) amounts[c] = (amounts[c] || 0) + 1;
@@ -555,7 +441,7 @@ function mergeStapleInto(merged, stapleTpl) {
     merged.effects.push({ kind: 'addMana', amounts, target: 'self' });
     appendMergedText(merged, 'Add {' + colors.join('}{') + '} to your mana pool.');
   } else {
-    // Case 7: spell + spell. Effects concat with slot remap.
+    // Spell + Spell: effects concat with slot remap.
     const nextFreeSlot = computeNextFreeSlot(merged);
     const remapped = remapEffectSlots(stapleTpl.effects, nextFreeSlot);
     if (!Array.isArray(merged.effects)) merged.effects = [];
@@ -565,17 +451,11 @@ function mergeStapleInto(merged, stapleTpl) {
     appendMergedText(merged, stapleTpl.text);
     merged.multiTarget = true;
   }
-  // Synthesize name as the joined names. Keep simple; could be cuter later.
   merged.name = merged.name + ' + ' + stapleTpl.name;
-  // Mark as multiTarget if any effects use targetSlot > 0.
   if (computeNextFreeSlot(merged) > 1) merged.multiTarget = true;
 }
 
-// Walk a card-shape (effects + triggers + abilities) and find the highest
-// targetSlot in use. Returns max + 1 (the next free slot to assign).
-// Defaults to 1 when no targeted effects exist (so the first staple's
-// effects start at slot 1, leaving slot 0 to the base if it had targeted
-// effects; harmless for non-targeted bases).
+// Highest targetSlot in use + 1 (next free slot). 0 if untargeted.
 function computeNextFreeSlot(merged) {
   let maxSlot = -1;
   function visit(eff) {
@@ -585,7 +465,6 @@ function computeNextFreeSlot(merged) {
     }
   }
   if (Array.isArray(merged.effects)) merged.effects.forEach(visit);
-  // Modal effects: walk all modes.
   if (merged.effects && merged.effects.modes) {
     merged.effects.modes.forEach(m => m.forEach(visit));
   }
@@ -594,15 +473,11 @@ function computeNextFreeSlot(merged) {
   return maxSlot + 1;
 }
 
-// Deep-copy an effects array and rewrite each targeted effect's
-// targetSlot by adding `offset`. Same-slot effects within the input
-// stay grouped (their original slot value + offset preserves the
-// grouping). Modal effects (object shape) are not supported as a
-// staple half in v1 — this helper returns the input unchanged for
-// modal shapes so the caller can detect and skip.
+// Deep-copy effects and offset each targetSlot. Same-slot grouping preserved.
+// Modal shape (object) returned unchanged — staple-as-modal unsupported.
 function remapEffectSlots(effects, offset) {
   if (!effects) return [];
-  if (!Array.isArray(effects)) return effects;   // modal — caller handles
+  if (!Array.isArray(effects)) return effects;
   return effects.map(e => {
     const copy = {...e};
     if (copy.target && copy.target !== 'self') {
@@ -613,9 +488,6 @@ function remapEffectSlots(effects, offset) {
 }
 
 function makeCard(tplId, stickers, slotIdx, empowerRolls, permaBuffs, bonusTrigger, stapledTpls, subtypeRolls, slotMeta) {
-  // Synthesize the template if the slot has staples. Otherwise look up the
-  // base CARDS entry directly. stapledTpls is an array of tplIds to merge
-  // into the base; absent/empty means a normal single-card slot.
   const tpl = (stapledTpls && stapledTpls.length > 0)
     ? synthesizeStapledTemplate(tplId, stapledTpls)
     : CARDS[tplId];
@@ -623,30 +495,18 @@ function makeCard(tplId, stickers, slotIdx, empowerRolls, permaBuffs, bonusTrigg
   const card = {
     iid: nextIid++,
     tplId,
-    // Index into the owning player's deck array. For player, == runState.slots
-    // index — used by run-persistent effects. For opp, transient.
+    // slotIdx: player → runState.slots index for run-persistent effects; opp → transient.
     slotIdx: (typeof slotIdx === 'number') ? slotIdx : null,
     name: tpl.name, type: tpl.type, sub: tpl.sub, art: tpl.art, text: tpl.text,
-    // Legendary: copied from template. Used for the cast-time uniqueness
-    // check (you may not cast a legendary if you already control one
-    // with the same tplId). No "legend rule" SBA — uniqueness is enforced
-    // at cast time only.
+    // Legendary uniqueness enforced at cast time only (no SBA).
     legendary: !!tpl.legendary,
-    // cost: deep-copy — costReduction sticker mutates per-instance.
+    // Deep-copy mutable fields for per-instance isolation (costReduction,
+    // Severity, etc.). City of Brass pre-v0.99.44 leaked extraManaColors.
     cost: tpl.cost ? {...tpl.cost} : undefined,
     mana: tpl.mana, color: tpl.color,
-    // extraManaColors: copy needed for City of Brass (template has 4 extras).
-    // Was a long-standing bug pre-v0.99.44 — not copying made City of Brass
-    // tap only for its primary color.
     extraManaColors: (tpl.extraManaColors || []).slice(),
-    // keywords: copy so sticker keywords can be appended without leaking.
     keywords: (tpl.keywords || []).slice(),
     power: tpl.power, toughness: tpl.toughness,
-    // effects/abilities/triggers/staticBuffs: deep-copy for per-instance
-    // isolation (Severity sticker mutates effect amounts; future "loses all
-    // abilities" effects might mutate ability lists). Modal cards have
-    // effects shaped {modeNames, modes: [[...], [...]]} rather than a flat
-    // array — handle both shapes.
     effects: copyCardEffects(tpl.effects),
     abilities: tpl.abilities ? tpl.abilities.map(ab => ({
       ...ab,
@@ -659,92 +519,51 @@ function makeCard(tplId, stickers, slotIdx, empowerRolls, permaBuffs, bonusTrigg
       keywords: b.keywords ? b.keywords.slice() : undefined,
     })) : undefined,
     tapped: false, sick: false, damage: 0,
-    tempPower: 0, tempTou: 0,    // EOT buffs — cleared at end of turn
-    permPower: 0, permTou: 0,    // counters — reset on leave-play (death,
-                                 // bounce, exile, library shuffle). Distinct
-                                 // from run-persistent stickers (modifiers).
+    tempPower: 0, tempTou: 0,    // EOT — cleared at end of turn
+    permPower: 0, permTou: 0,    // counters — reset on leave-play (death/bounce/exile)
     dealtDeathtouch: false,
-    // killedBy: player ('you'/'opp') whose action caused this card to die or
-    // be exiled. Set by combat damage, damage effects, removeCreature
-    // (destroy/exile), removeAll, edict, fightTarget. Read at death-emit
-    // time to credit the killer for keyword claims (G[killer].claimedKeywords).
-    // Last writer wins — approximation of "killer" since Magic has no such
-    // concept. resetInPlayState clears this when a card returns to play
-    // fresh (bounce, exile-until-EOT return).
+    // Last-writer-wins approximation of "killer". Cleared by resetInPlayState
+    // when a card returns fresh. Credits killer for G[killer].claimedKeywords.
     killedBy: null,
     cantAttack: false, cantBlock: false,
-    // Source-iid sets for various restrictions/grants. Each granting source's
-    // iid is added; clearRestrictionsFromSource walks these on leave-play.
+    // Source-iid sets — clearRestrictionsFromSource walks these on leave-play.
     cantAttackBy: new Set(),
     cantBlockBy: new Set(),
-    damagedBySources: new Set(),  // damage-this-turn — e.g. Sengir's trigger
-    grantedBy: new Map(),         // kw → Set of source iids granting it
-    eotGrants: [],                 // keywords granted until end of turn
-                                   // (cleared in EOT cleanup pass)
+    damagedBySources: new Set(),
+    grantedBy: new Map(),         // kw → Set of source iids
+    eotGrants: [],                // cleared in EOT cleanup
     modifiers: [],
-    stickers: (stickers || []).slice(),  // run-persistent
-    // Empower rolls — parallel to occurrences of the 'empower' sticker in
-    // `stickers`. The Nth 'empower' entry consumes the Nth roll. Each roll
-    // is {location, subIdx, effIdx, modeIdx, field} as produced by
-    // rollEmpowerTarget. Rolled at sticker-apply time (RUN.applyStickerToSlot)
-    // so the bumped field is fixed for the run's duration. Saved/loaded.
+    stickers: (stickers || []).slice(),
+    // Rolls parallel occurrences of 'empower'/'subtype' stickers. Rolled at
+    // sticker-apply time so the choice is fixed for the run. Saved/loaded.
     empowerRolls: (empowerRolls || []).slice(),
-    // Subtype rolls — parallel to occurrences of the 'subtype' sticker in
-    // `stickers`. The Nth 'subtype' entry consumes the Nth roll. Each
-    // roll is a string like 'Goblin' or 'Wizard'. Rolled at sticker-apply
-    // time so the granted subtype is fixed for the run's duration.
     subtypeRolls: (subtypeRolls || []).slice(),
-    innate: false,                       // set by 'innate' sticker
-    // triggers: deep-copy effects so per-effect mutations don't leak.
+    innate: false,
     triggers: (tpl.triggers || []).map(t => ({
       ...t,
       effects: (t.effects || []).map(e => ({...e})),
     })),
-    // If this card was built from a stapled slot, preserve the synth metadata
-    // so downstream code (empower target enumeration, sticker eligibility,
-    // diagnostic dumps) can recover the full merged template baseline.
-    // Set only when actually stapled — undefined for normal cards keeps the
-    // field absent in JSON dumps.
+    // Stapled metadata for empower-target enumeration, sticker eligibility, etc.
     stapledFrom: tpl.stapledFrom,
   };
-  // Balancer-boss persistent overrides: symmetricize (set p=t=cost.C=N),
-  // colorOverride (set card.color), extraCost (+N to cost.C). Applied
-  // BEFORE stickers/permaBuffs so those modifiers stack on the new baseline.
+  // Order: balancer overrides → stickers → permaBuffs → bonusTrigger.
+  // Balancer overrides (Balancer boss): symmetricize, colorOverride, extraCost.
   applyBalancerOverrides(card, slotMeta);
   applyStickersToCard(card);
-  // permaBuffs: slot-persistent buffs accumulated by permanentEot creatures
-  // (Elystra). Applied via the shared helper so the same logic runs from
-  // makeCard (game-init) AND from resetInPlayState (bounce/flicker recast,
-  // where the existing card object needs permaBuffs re-applied after its
-  // in-play state is stripped). Power/toughness flow into modifiers;
-  // keywords get registered in grantedBy with synthetic source -1.
+  // permaBuffs: slot-persistent buffs from permanentEot creatures (Elystra).
+  // Shared with resetInPlayState (bounce/flicker recast).
   if (permaBuffs) applyPermaBuffsToCard(card, permaBuffs);
-  // bonusTrigger: a slot-persistent triggered ability appended to the card's
-  // intrinsic triggers. Used by The Watcher's Gift boon (and any future
-  // boon that attaches a trigger to an existing card). The trigger object
-  // is stored as data — same shape as triggers in CARDS — so it survives
-  // save/load and the LLM gamestate serializer can read it. The condId
-  // form is required (closure form would not roundtrip through localStorage).
-  // Applied AFTER the template's own triggers so any combat/trigger ordering
-  // logic that walks card.triggers in order sees them in a stable position.
+  // bonusTrigger: slot-persistent trigger from boons (Watcher's Gift). Stored
+  // as data so it survives save/load; condId form is required (not closure).
   if (bonusTrigger && typeof bonusTrigger === 'object') {
     if (!Array.isArray(card.triggers)) card.triggers = [];
-    // Defensive deep-copy of effects (matches the template trigger copy
-    // pattern above) — prevents accidental mutation of the slot-stored
-    // trigger from in-game mutation of the card-bound copy.
     card.triggers.push({
       ...bonusTrigger,
       effects: (bonusTrigger.effects || []).map(e => ({...e})),
     });
   }
-  // Regenerate card.text from effects/triggers/abilities. Empower stickers
-  // have already mutated effect values (damage amounts, pump P/T, etc.) at
-  // applyStickersToCard time, so the generated text reflects current state.
-  // Cards with customText:true keep their hand-authored text — used for
-  // Endomorph, Codex, Elystra, Steal where hand-tuned prose is needed.
-  // Lands (no .effects, no .triggers, no .abilities) don't go through makeCard
-  // for casting, but tokens and special cards do — describeCardText falls back
-  // to the template text for empty results.
+  // Regenerate text from effects/triggers/abilities (post-empower mutation).
+  // customText:true cards keep hand-authored text (Endomorph, Codex, Elystra, Steal).
   card.text = describeCardText(card);
   return card;
 }
@@ -789,19 +608,13 @@ function makeToken(tokenTplId, controller) {
   return card;
 }
 
-// "Intrinsic" keywords = template + stickers (NOT runtime grants). Used by
-// clearRestrictionsFromSource to decide if a granted keyword survives the
-// source leaving play.
+// Intrinsic = template + stickers (NOT runtime grants). Used by
+// clearRestrictionsFromSource. Stapled-aware so Knight+Spirit retains both halves' keywords.
 function intrinsicKeywords(card) {
   if (card.isToken) {
     const tpl = TOKENS[card.tplId];
     return (tpl && tpl.keywords) ? tpl.keywords.slice() : [];
   }
-  // Stapled-aware: a creature+creature staple may have keywords from BOTH
-  // halves (e.g., Knight+Spirit gets first strike AND flying). Reading from
-  // CARDS[card.tplId] would only see the base's keywords, leading
-  // clearRestrictionsFromSource to incorrectly remove a granted keyword
-  // that the staple half actually provides natively.
   const tpl = card.stapledFrom
     ? synthesizeStapledTemplate(card.stapledFrom.baseTplId,
                                  card.stapledFrom.stapledTpls)
@@ -815,9 +628,7 @@ function intrinsicKeywords(card) {
 }
 
 
-// Colors a land can produce when tapped. Returns [primary, ...extras] for
-// stickered duals; just [primary] for normal lands. Used by canPayPotential,
-// the tap action, and the AI's pickBestLand color-fixing.
+// Colors a land taps for: [primary, ...extras]. Shared by canPayPotential, tap action, AI.
 function landProducibleColors(card) {
   if (card.type !== 'Land' || !card.mana) return [];
   const out = [card.mana];
@@ -827,29 +638,21 @@ function landProducibleColors(card) {
   return out;
 }
 
-// Single source of truth for attack eligibility. Used by getLegalActions
-// (engine), the UI's attacker click handler, and the AI's attacker chooser
-// — anything that asks "can this creature attack right now?" goes through
-// here. New attack restrictions (e.g., a future "Snow creatures can't
-// attack" sticker) get added here once and propagate to all three.
+// Single source of truth for attack eligibility — shared by engine, UI, AI.
 function canCreatureAttack(card) {
   if (!card || card.type !== 'Creature') return false;
   if (card.tapped) return false;
-  if (card.cantAttack) return false;                              // runtime restriction
-  if ((card.keywords || []).includes('defender')) return false;   // keyword restriction
+  if (card.cantAttack) return false;
+  if ((card.keywords || []).includes('defender')) return false;
   if (card.sick && !(card.keywords || []).includes('haste')) return false;
   return true;
 }
-// Single source of truth for block eligibility (mirror of canCreatureAttack).
-// `attacker` is optional — when provided, also checks attacker-vs-blocker
-// constraints like flying/reach. Without it, just checks whether the
-// creature is eligible to block at all.
+// Block eligibility. `attacker` optional — when given, also checks flying/reach etc.
 function canCreatureBlock(card, attacker) {
   if (!card || card.type !== 'Creature') return false;
   if (card.tapped) return false;
   if (card.cantBlock) return false;
   if (!attacker) return true;
-  // Unblockable: nothing blocks this attacker, period.
   if ((attacker.keywords || []).includes('unblockable')) return false;
   if ((attacker.keywords || []).includes('flying')
       && !(card.keywords || []).includes('flying')
@@ -857,36 +660,14 @@ function canCreatureBlock(card, attacker) {
   return true;
 }
 function makePlayer(name, deck, ownerSide) {
-  // ownerSide: 'you' or 'opp'. Stamped onto every spawned card as card.owner
-  // so zone-routing (graveyard/hand/exile) can return cards to their owner
-  // rather than their current controller. Matters when a card changes
-  // controller mid-game (steal effects); for cards that never change
-  // controller, owner === controller throughout the game and the routing
-  // is a no-op. See moveToGraveyard / sacrificeCard / checkDeaths / bounce
-  // / exile / flicker for the owner-routed sites.
-  // deck: array of (string tplId) OR ({tplId, stickers}). Normalize.
-  // We thread the deck-array index into each card as `slotIdx`. For the
-  // player, this maps directly to runState.slots[i] — letting effects like
-  // Endomorph's keyword-absorb apply persistent stickers to the right slot.
-  // For the opponent, slotIdx points into a transient per-game array (opp's
-  // deck is regenerated each game), so it's not useful for persistence. The
-  // controller-side check happens in the effect handler, not here.
+  // ownerSide stamped as card.owner so zone-routing returns cards to owner,
+  // not controller — matters for steal effects. slotIdx threads deck index;
+  // for player → runState.slots[i] for sticker persistence, for opp → transient.
   const cards = deck.map((entry, i) => {
     if (typeof entry === 'string') return makeCard(entry, undefined, i, undefined, undefined);
-    // Bonus trigger resolution: a slot can carry a fixed bonusTrigger
-    // (Watcher's-Gift-style: locked at run-start), OR a triggerPool
-    // (Mercurial-Adept-style: roll one fresh per game). Fixed bonus wins
-    // if both are present (defensive — no current path produces both,
-    // but if a future feature adds a "lock the trigger" mechanic, the
-    // fixed value should override the rolling pool). When rolling from
-    // the pool, deep-copy the chosen entry so per-game mutations don't
-    // bleed back into slot.triggerPool.
+    // Bonus trigger: fixed bonusTrigger (locked at run-start) OR triggerPool
+    // (rolled fresh per game). Fixed wins. Slot-level pool overrides template seed.
     let bonus = entry.bonusTrigger;
-    // Slot-level triggerPool (boon-injected, like the original Mercurial
-    // Adept boon), OR template-level pool indicated by triggerPoolSeed
-    // (drafted card with a built-in pool, like the regular-pool Adept).
-    // Slot-level wins if both are present — boons are more specific than
-    // templates.
     let pool = Array.isArray(entry.triggerPool) ? entry.triggerPool : null;
     if (!pool && !bonus) {
       const tpl = CARDS[entry.tplId];
@@ -901,9 +682,7 @@ function makePlayer(name, deck, ownerSide) {
         effects: (pick.effects || []).map(e => ({...e})),
       };
     }
-    // Slot meta (Balancer-boss overrides): symmetricized/colorOverride/
-    // extraCost. Carried as named fields on the slot entry so they
-    // survive save/load alongside other slot meta.
+    // Balancer-boss slot meta. Survives save/load alongside other slot fields.
     const slotMeta = {
       symmetricized: entry.symmetricized,
       colorOverride: entry.colorOverride,
@@ -911,16 +690,8 @@ function makePlayer(name, deck, ownerSide) {
     };
     return makeCard(entry.tplId, entry.stickers, i, entry.empowerRolls, entry.permaBuffs, bonus, entry.stapledTpls, entry.subtypeRolls, slotMeta);
   });
-  // Stamp owner onto every card. makeCard doesn't know which side it's
-  // spawning for (it's called from both deck construction paths plus reward
-  // flows like clone), so we attach owner here at the deck-construction
-  // boundary where the side is known.
   for (const c of cards) c.owner = ownerSide;
-  // Stamp live charges from slot data, and rewrite hand-authored text to
-  // surface remaining count (Stapler v1.0.54+). Template carries the
-  // declarative "chargesAtRunStart" marker; the slot's actual count
-  // (decremented on each use, persisted on slot.charges) is what we want
-  // to show. Cards without chargesAtRunStart skip this entirely.
+  // Stamp live charges and rewrite "N charges" text from slot data (Stapler etc.).
   for (let i = 0; i < deck.length; i++) {
     const entry = deck[i];
     const tplId = (typeof entry === 'string') ? entry : entry.tplId;
@@ -931,11 +702,6 @@ function makePlayer(name, deck, ownerSide) {
       : tpl.chargesAtRunStart;
     const card = cards[i];
     card.chargesLeft = slotCharges;
-    // Replace the static "3 charges (persist across runs)" prefix with a
-    // live "N charges left." version. Heuristic: match the first sentence
-    // ending with a period. If the template text doesn't follow this
-    // pattern, leave it alone (defensive — future cards might use a
-    // different text shape).
     if (typeof card.text === 'string' && /^\d+ charges\b/.test(card.text)) {
       card.text = card.text.replace(/^\d+ charges[^.]*\./,
         slotCharges + ' charge' + (slotCharges === 1 ? '' : 's') + ' left.');
@@ -948,14 +714,8 @@ function makePlayer(name, deck, ownerSide) {
   shuffle(rest);
   const drawNeeded = Math.max(0, 7 - innate.length);
   let hand = innate.concat(rest.splice(0, drawNeeded));
-  // Forced-mulligan rule. If the opening hand has 0, 1, 6, or 7 lands, the
-  // player is "mana-screwed" or "mana-flooded" badly enough that the game
-  // is likely over before it starts. Reshuffle the drawn (non-innate)
-  // portion into the library and redraw once. Innates stay in hand (they
-  // bypass shuffling by design). Single mulligan only — if the redraw is
-  // also 0/1/6/7 lands, the player keeps it. With 17 lands of 40 cards,
-  // ~14% of opening hands trigger this; a second-tier bad-hand on the
-  // redraw is ~2% and we accept it as variance.
+  // Forced single mulligan if opening hand has 0/1/6/7 lands (screwed/flooded).
+  // Innates stay in hand; only the drawn portion reshuffles.
   const isLand = c => {
     const tpl = CARDS[c.tplId];
     return tpl && tpl.type === 'Land';
@@ -964,7 +724,6 @@ function makePlayer(name, deck, ownerSide) {
   const lc = landCount(hand);
   let mulliganed = false;
   if (lc <= 1 || lc >= 6) {
-    // Put the drawn portion (non-innates) back into rest, reshuffle, redraw.
     const drawnPortion = hand.filter(c => !c.innate);
     rest.push(...drawnPortion);
     shuffle(rest);
@@ -974,36 +733,15 @@ function makePlayer(name, deck, ownerSide) {
   return { name, life: 20, mana:{W:0,U:0,B:0,R:0,G:0,C:0},
            library: rest, hand, battlefield: [], graveyard: [], exile: [],
            landPlayedThisTurn: false,
-           // Set to true if the opening-hand mulligan rule fired for this
-           // player. Consumed by init() once to log the event, then ignored.
-           // Doesn't persist past the init log line.
-           mulliganed,
-           // Slot indexes of cards this player actually played this game.
-           // Populated in doPlayLand and doCastSpell. Snapshotted at game-end
-           // into runState.lastPlayedSlotIdxs and consumed by the sticker-
-           // reward filter — sticker rewards target only cards you played
-           // (with a fallback to all slots when the set is empty, e.g.,
-           // immediate concede). Slot indexes survive shuffles, bounces,
-           // and recasts; a card played twice still counts once. Opponent's
-           // set is populated for symmetry but not currently consumed —
-           // useful for future "stickers based on what opp threatened"
-           // mechanics if those ever land.
+           mulliganed, // logged once by init(), then ignored
+           // Slot indexes played this game → runState.lastPlayedSlotIdxs.
+           // Sticker rewards target only cards actually played (fallback: all).
            playedSlotIdxs: new Set(),
-           // Keywords claimed by killing/exiling opp's creatures this game.
-           // Populated in checkDeaths and exile-effect paths when the dying
-           // creature was opp's and was killed by player action. Snapshotted
-           // at game-end as runState.lastClaimedKeywords; consumed by the
-           // sticker-reward filter to restrict keyword stickers to keywords
-           // the player actually fought against. The thematic intent: "you
-           // claim the wings of the flying creature you killed." Non-keyword
-           // stickers (stat boosts, cost reductions, empower) are unaffected
-           // — those reward different design axes.
+           // Keywords claimed by killing opp's creatures → restricts keyword
+           // sticker rewards. Thematic: "you claim the wings of what you killed."
            claimedKeywords: new Set(),
-           // Tracks total life lost this turn (resets at UNTAP). Used by
-           // bloodlust-style triggers. Counts ACTUAL life decreases — if
-           // Phylactery absorbs damage as slot rips, that doesn't count
-           // as life loss here. Sum of decreases, not net (life gain
-           // doesn't decrement this counter).
+           // Total life lost this turn (UNTAP-reset). Used by bloodlust triggers.
+           // Counts decreases only — Phylactery-absorbed damage doesn't count.
            lifeLostThisTurn: 0 };
 }
 function shuffle(a) {
@@ -1011,14 +749,7 @@ function shuffle(a) {
   return a;
 }
 function makeState(playerDeck, oppDeck) {
-  // Hard fail rather than silently fall back to a default deck. Earlier
-  // versions had `playerDeck || DECK_PLAYER` here; that fallback was dead
-  // code under normal play (every legitimate path goes through
-  // RUN.startNextGame which always passes runState.slots), but it had
-  // teeth: any future call to ENGINE.init() with no args would silently
-  // boot a phantom default game. We caught a stale-cache bug that LOOKED
-  // like the fallback was firing; replacing it with a throw means any
-  // future regression is loud rather than mysterious.
+  // Hard fail (no default-deck fallback) so missed-arg regressions are loud.
   if (!playerDeck) throw new Error('makeState: playerDeck is required (no default fallback)');
   if (!oppDeck)    throw new Error('makeState: oppDeck is required (no default fallback)');
   return {
@@ -1051,57 +782,19 @@ function makeState(playerDeck, oppDeck) {
     blockersDeclared: false,
     // Cleanup discard window.
     cleanupDiscarding: false,
-    // Pending rip-select prompt — set when a "rip a permanent" effect
-    // (Vile Edict and similar) targets a player. That player chooses one
-    // of their own permanents to be ripped (destroyed + slot removed
-    // from runState if the card has a persistent slot). {who, source}.
-    // Player clicks a permanent → engine validates ownership → rip.
-    pendingRipSelect: null,
-    // Pending number-choice prompt — set when an effect needs the player
-    // to pick a number from a fixed range (Archdemon of Bargains). State:
-    // {who, source, min, max, sourceIid, callback?}. UI displays a number-
-    // picker; AI auto-selects via decideNumberChoice. The source can read
-    // the chosen number via its own continuation logic — currently bargain
-    // resolution reads it directly from a field set by doNumberChoice.
-    pendingNumberChoice: null,
-    // Pending Symmetricize choice — the target creature's controller must
-    // pick power/toughness/cost as the value that all three become.
-    // {who, source, targetIid, targetName, targetSlotIdx, targetIsYours,
-    //  values: {power, toughness, cost}}. The player clicks one of the
-    //  three labeled buttons; engine applies the trio update.
-    pendingSymmetricizeChoice: null,
-    // Pending forced-discard prompt — set when an opponent's effect targets the player
-    // for discard. {who:'you'|'opp', remaining:N}. Player chooses what to lose
-    // (matches MtG: discarding player picks). For AI we still auto-pick.
-    forcedDiscard: null,
-    // Pending library search — set when a tutor-style effect needs the
-    // player to pick a card from their library.
-    // {who, filter:{type:'Creature'|...}, source}.
-    pendingSearch: null,
-    // Pending procedural-trigger build prompt — set when a card with the
-    // buildOnDraw flag is drawn into the player's hand. The Codex (or any
-    // future card with similar mechanics) generates 3 candidate triggers
-    // and pauses the game until the player picks one (or "keep current").
-    // {who, cardIid, options: [trigger,trigger,trigger], allowKeep: bool}.
-    pendingTriggerBuild: null,
-    // Pending trigger-target prompt — set when a player-controlled triggered
-    // ability needs a target choice. {controller, sourceIid, sourceName,
-    // trig, valid: [...targets]}. Player clicks a valid target → trigger
-    // goes onto the stack with that target chosen.
-    pendingTriggerTarget: null,
-    // Triggered abilities waiting to go on the stack. Each entry:
-    // {trigger, sourceIid, sourceName, controller, event, params}.
-    // Drained at the next priority-round opening (see drainTriggers).
+    // Modal-prompt slots. Each gets PENDING_DECISIONS entry above; engine pauses while non-null.
+    pendingRipSelect: null,           // {who, source} — Vile Edict etc.
+    pendingNumberChoice: null,        // {who, source, min, max, sourceIid, callback?} — Bargain
+    pendingSymmetricizeChoice: null,  // {who, source, targetIid, ..., values:{power,toughness,cost}}
+    forcedDiscard: null,              // {who, remaining}
+    pendingSearch: null,              // {who, filter, source} — tutors
+    pendingTriggerBuild: null,        // {who, cardIid, options, allowKeep} — Codex etc.
+    pendingTriggerTarget: null,       // {controller, sourceIid, sourceName, trig, valid}
+    // Trigger queue/budget. Drained at priority-round open. Depth cap kills loops.
     pendingTriggers: [],
-    // Sanity cap: how many trigger resolutions we allow in a single chain
-    // before bailing. Protects against runaway loops from buggy cards.
     triggerChainDepth: 0,
-    // Delayed triggers — scheduled to fire at a future event (currently
-    // only 'endStep'). Each entry: {fireAt, fireFor, effect, controller,
-    // sourceName, sourceIid, ...payload}. Processed during EOT cleanup.
-    // Used by Otherworldly Journey-style "exile target, return EOT" effects.
+    // Delayed triggers fire at scheduled events (endStep). Otherworldly Journey etc.
     delayedTriggers: [],
-    // End-turn auto-pass flag (controller-driven shortcut).
     endTurnPending: false,
   };
 }
@@ -1128,19 +821,8 @@ function resolveTarget(ctx, target) {
   return null;
 }
 
-// Resolve a permanentOrSpell target into a uniform shape. Used by effects
-// that accept either a battlefield permanent or a stack spell as their
-// target (currently Stapler's applyInGameSplice and Steal). Returns:
-//   { kind: 'perm', card, controller }                       — permanent
-//   { kind: 'spell', card, controller, stackItem }           — spell on stack
-//   null                                                      — target gone
-//
-// Permanent path looks up the card via findCard (any zone, but in practice
-// the targeting layer only offers battlefield perms for this target type).
-// Spell path verifies the stack item is still present — could have resolved
-// or been countered between target lock-in and this effect's resolution.
-// Stack triggers (item.kind === 'trigger') return null too: their target
-// shape has no .card to operate on.
+// permanentOrSpell target → {kind:'perm'|'spell', card, controller, [stackItem]} or null.
+// Used by Stapler's applyInGameSplice and Steal. Spell path verifies stack item still present.
 function resolveStackOrPermanent(target) {
   if (!target) return null;
   if (target.kind === 'permanent' || target.kind === 'creature') {
@@ -1168,15 +850,12 @@ function pluckFromBattlefield(f) {
 }
 
 function getStats(card) {
-  // Defensive: called on real instances AND synthetic card-shaped objects
-  // (template + stickers from reward UI). Templates lack runtime fields, and
-  // synthetic shapes have stickers but no modifiers — honor both.
+  // Works on real instances AND synthetic template+stickers shapes (reward UI).
   let p = (card.power || 0) + (card.tempPower || 0) + (card.permPower || 0);
   let t = (card.toughness || 0) + (card.tempTou || 0) + (card.permTou || 0);
   if (Array.isArray(card.modifiers)) {
     for (const m of card.modifiers) { p += (m.power||0); t += (m.toughness||0); }
   } else if (Array.isArray(card.stickers)) {
-    // Synthetic card-shaped object: derive stat bonuses from stickers directly.
     for (const sId of card.stickers) {
       const s = STICKERS[sId];
       if (s && s.kind === 'statBoost') {
@@ -1185,16 +864,8 @@ function getStats(card) {
     }
   }
 
-  // Static lord effects (continuous-effect layer, narrow scope).
-  // A "lord" is any creature with a `staticBuffs` field — an array of
-  // {filter, power, toughness} entries describing what OTHER creatures
-  // it buffs while it's on the battlefield. Lords never buff themselves;
-  // the iid !== card.iid check handles that. Mutual-tribe buffs work
-  // naturally because each lord scans the other's buff list independently.
-  //
-  // Synthetic card objects (templates) skip this — they aren't on the
-  // battlefield, so no lord can apply to them. We detect synthetic by
-  // absence of an iid (real instances always have one assigned).
+  // Static lord buffs. Lords (creatures with staticBuffs) buff OTHER creatures
+  // matching filter while on battlefield. Synthetic shapes (no iid) skip this.
   if (card.iid != null && typeof G !== 'undefined' && G && G.you && G.you.battlefield) {
     const owner = findCard(card.iid);
     if (owner) {
@@ -1205,14 +876,9 @@ function getStats(card) {
       for (const { card: lord, controller: lordCtrl } of allCreatures) {
         if (!lord.staticBuffs || lord.iid === card.iid) continue;
         for (const buff of lord.staticBuffs) {
-          // Filter is matched against the buffed card. controller:'self' on
-          // the filter means "shares controller with the lord" — the
-          // standard MTG "creatures you control" pattern.
+          // filter.controller:'self' = "creatures you control" (shares lord controller).
           if (!matchFilter(card, buff.filter, owner.controller, lordCtrl)) continue;
           if (buff.subtype) {
-            // Tribal lord: only buff cards whose sub field includes the
-            // named subtype. Multi-word subs like "Cleric Wall" match
-            // both "Cleric" and "Wall" via indexOf word-boundary.
             const sub = card.sub || '';
             const re = new RegExp('\\b' + buff.subtype + '\\b');
             if (!re.test(sub)) continue;
@@ -1235,97 +901,57 @@ function costTotalCard(card) {
 
 function getCardValue(card, purpose, ctx) {
   if (!card) return 0;
-  // Spells (sorcery / instant): purpose doesn't really matter — we score
-  // by effects. Reuse the existing draft-style scoring.
-  if (card.type === 'Sorcery' || card.type === 'Instant') {
-    return spellValue(card);
-  }
+  if (card.type === 'Sorcery' || card.type === 'Instant') return spellValue(card);
   if (card.type !== 'Creature') return 0;
 
-  // Auto-derive in-game ctx if not supplied: when scoring an instance card
-  // (has iid + controller, i.e. on the battlefield), look up its controller's
-  // battlefield. This lets static-buff scoring use real tribe counts during
-  // kill/bounce/sac targeting without every caller having to pass a ctx.
-  // Note: in-game branch uses count+1.0 to forward-look — see staticBuffs loop.
+  // Auto-derive ctx for in-game instances so static-buff scoring sees real tribe counts.
   if (!ctx && card.iid != null && card.controller && typeof G !== 'undefined' && G[card.controller]) {
     ctx = { friendlyBattlefield: G[card.controller].battlefield };
   }
 
   const cost = costTotalCard(card);
-  // Baseline efficiency: pow + tou should beat 2 * cost for "good" creatures.
-  // Use getStats so permanent buffs (Sengir +1/+1, sticker modifiers) are
-  // counted — a grown Sengir really is more valuable to kill than a fresh
-  // one. getStats is defensive against both templates and instances.
+  // Baseline: pow+tou should beat 2*cost. getStats counts permanent buffs.
   const [pow, tou] = getStats(card);
   let v = pow + tou - cost * 2;
 
-  // Persistent keywords — same value regardless of purpose. These traits
-  // matter as long as the creature is in play.
+  // Body-scaled keyword values (flat bonuses misvalue both 1/1 unblockables and 5/5 vanillas).
   const kw = card.keywords || [];
-  // Body-scaled keyword values. Each keyword's bonus depends on what the
-  // body brings to the table — flat bonuses misvalue 1/1 unblockables (clock
-  // is small) and 5/5 vanilla finishers (no keyword love). See design doc.
-  if (kw.includes('flying'))         v += 1 + pow * 0.5;          // floor + power-scaled damage delivery
-  if (kw.includes('unblockable'))    v += 1.5 + pow * 0.75;       // strictly better evasion, ~1.5× flying
-  if (kw.includes('reach'))          v += 1;                       // defensive utility, body-independent
-  if (kw.includes('menace'))         v += 1 + pow * 0.3;          // half-evasion, scales w/ power
-  if (kw.includes('trample'))        v += pow * 0.5;               // overkill carries with power
-  if (kw.includes('lifelink'))       v += pow * 0.6;               // life gained = damage dealt
-  if (kw.includes('vigilance'))      v += tou * 0.4;               // toughness-scaled defensive carryover
-  if (kw.includes('haste'))          v += pow * 0.5;               // one extra turn of attacks ≈ power damage
-  if (kw.includes('firstStrike'))    v += 2 + Math.max(0, (pow - tou) * 0.5);   // saves fragile attackers; floor +2
-  if (kw.includes('deathtouch'))     v += 1 + Math.max(0, 4 - pow);             // inverse-power; 1/1 trades up, 5/5 doesn't care
-  if (kw.includes('indestructible')) v += 1 + Math.max(0, 5 - tou);             // inverse-toughness; small bodies benefit most
-  if (kw.includes('hexproof'))       v += 3;                       // categorical: priced in by opp's desire to remove
+  if (kw.includes('flying'))         v += 1 + pow * 0.5;
+  if (kw.includes('unblockable'))    v += 1.5 + pow * 0.75;
+  if (kw.includes('reach'))          v += 1;
+  if (kw.includes('menace'))         v += 1 + pow * 0.3;
+  if (kw.includes('trample'))        v += pow * 0.5;
+  if (kw.includes('lifelink'))       v += pow * 0.6;
+  if (kw.includes('vigilance'))      v += tou * 0.4;
+  if (kw.includes('haste'))          v += pow * 0.5;
+  if (kw.includes('firstStrike'))    v += 2 + Math.max(0, (pow - tou) * 0.5);
+  if (kw.includes('deathtouch'))     v += 1 + Math.max(0, 4 - pow);   // inverse-power
+  if (kw.includes('indestructible')) v += 1 + Math.max(0, 5 - tou);   // inverse-toughness
+  if (kw.includes('hexproof'))       v += 3;
 
-  // "Can't attack" — defender keyword OR runtime restriction (Bonds of
-  // Faith, Bindspeaker ETB, etc). Both mean the same thing in practice;
-  // unifying here avoids double-penalizing a defender with cantAttack on
-  // top, AND ensures Bindspeaker'd creatures correctly drop in kill-value
-  // (so the AI doesn't waste removal on a creature already neutered).
-  // "Can't block" only comes from runtime restrictions; smaller penalty
-  // because the creature still threatens us offensively.
+  // defender + cantAttack collapse (avoid double-penalty); cantBlock is lighter.
   const cantAtk = kw.includes('defender') || !!card.cantAttack;
   const cantBlk = !!card.cantBlock;
-  if (cantAtk && cantBlk) v -= 5;     // pacified — minimal threat
-  else if (cantAtk) v -= 3;            // can still block but no offense
-  else if (cantBlk) v -= 1;            // still attacks, just no defense
+  if (cantAtk && cantBlk) v -= 5;
+  else if (cantAtk) v -= 3;
+  else if (cantBlk) v -= 1;
 
-  // Triggered abilities — scored via the same effect-kind dispatch as
-  // activated abilities (abilityValue), times a frequency multiplier that
-  // depends on both the trigger's condId AND the scoring purpose:
-  //
-  // For 'draft' (acquiring the card — every trigger is future value):
-  //   thisEnters:  ×1   (fires when you play it)
-  //   thisDies:    ×1   (fires when it dies, ≤ 1 per copy)
-  //   multiple:    ×2   (event-driven, fires repeatedly)
-  //
-  // For 'kill' (deciding what to destroy — value of denying future firings):
-  //   thisEnters:  ×0   (already fired by the time it's on board)
-  //   thisDies:    ×1   (still pending — killing it triggers, so denial=0;
-  //                       BUT for kill purpose this is still a reason to be
-  //                       wary, so keep ×1 to reflect "I'll have to deal
-  //                       with this when it dies anyway")
-  //   multiple:    ×2   (each future trigger is a real denial)
-  //
-  // For 'bounce' (returning to hand — opp gets to recast):
-  //   thisEnters:  ×-1  (recasting RE-FIRES the ETB; bouncing is actively
-  //                       bad on creatures with strong ETB triggers)
-  //   thisDies:    ×0   (delays without denying)
-  //   multiple:    ×1   (one fewer cycle of firings; net positive)
+  // Trigger frequency multipliers by (condId, purpose).
+  //   draft:  ETB×1, dies×1, multi×2
+  //   kill:   ETB×0 (already fired), dies×1, multi×2 (denial)
+  //   bounce: ETB×-1 (recast refires!), dies×0, multi×1
   function triggerFreq(condId, purpose) {
     const isOnce = condId === 'thisEnters' || condId === 'thisDies';
     if (purpose === 'kill') {
-      if (condId === 'thisEnters') return 0;   // already fired
-      if (condId === 'thisDies')   return 1;   // pending denial
+      if (condId === 'thisEnters') return 0;
+      if (condId === 'thisDies')   return 1;
       return 2;
     }
     if (purpose === 'bounce') {
-      if (condId === 'thisEnters') return -1;  // recasting refires!
-      if (condId === 'thisDies')   return 0;   // just a delay
-      return 1;                                 // one cycle deferred
+      if (condId === 'thisEnters') return -1;
+      if (condId === 'thisDies')   return 0;
+      return 1;
     }
-    // draft (and any other purpose) — all future firings count
     return isOnce ? 1 : 2;
   }
   for (const trig of (card.triggers || [])) {
@@ -1335,31 +961,14 @@ function getCardValue(card, purpose, ctx) {
     v += perFiring * triggerFreq(trig.condId, purpose);
   }
 
-  // Activated abilities — recurring threats. Same in both purposes (an
-  // activated removal ability stays a threat as long as the creature lives,
-  // and you DON'T want it to keep firing). Mana abilities are utility, less
-  // urgent to remove.
+  // Activated abilities — recurring threats while alive.
   for (const ab of (card.abilities || [])) {
     v += abilityValue(ab);
   }
 
-  // Static lord buffs — buffs to N other creatures. Value = (per-recipient
-  // value) × (estimated recipient count).
-  //
-  // Per-recipient value reuses the body-scaled keyword formula at "typical
-  // recipient power" (we use power=2 as a reasonable mid-curve estimate;
-  // tribal lord recipients average around 2-power in this card pool). Stat
-  // pumps add (p+t) directly per recipient.
-  //
-  // Estimated recipient count:
-  //   - Draft ctx with picksSoFar: 0.5 × tribe_already_drafted + 0.1 × remaining_picks
-  //     This rewards lord cards more once tribe density is high, while keeping
-  //     them attractive early via the remaining_picks term.
-  //   - In-game ctx with friendlyBattlefield: actual count of matching creatures
-  //     on the battlefield under our control (excluding self).
-  //   - No ctx: fall back to 2.0 (conservative mid-game baseline).
-  //
-  // typical recipient power for keyword-value math
+  // Lord buffs = per-recipient-value × estimated-recipient-count.
+  // Recipient body uses TYPICAL_RECIPIENT_POW/TOU (mid-curve estimate).
+  // Count: draft=0.5×tribe + 0.1×remaining; in-game=actual on battlefield+1; else 2.
   const TYPICAL_RECIPIENT_POW = 2;
   const TYPICAL_RECIPIENT_TOU = 2;
   function keywordValueAtTypical(kwName) {
@@ -1381,18 +990,12 @@ function getCardValue(card, purpose, ctx) {
     }
   }
   for (const buff of (card.staticBuffs || [])) {
-    // Per-recipient value: stat pump (p+t) + each granted keyword's value
-    // at the typical recipient body. Recipient body value is already on
-    // the recipient itself; we're scoring only the buff's contribution.
     let perRecipient = (buff.power || 0) + (buff.toughness || 0);
     for (const gKw of (buff.keywords || [])) {
       perRecipient += keywordValueAtTypical(gKw);
     }
-    // Estimated recipient count.
-    let estCount = 2.0;   // fallback when no ctx provided
+    let estCount = 2.0;
     if (ctx && Array.isArray(ctx.picksSoFar)) {
-      // Draft context. Count tribe matches in picksSoFar (or all creatures
-      // if the buff has no subtype filter). Future picks contribute 0.1 each.
       const totalPicks = ctx.totalPicks || 23;
       const remaining = Math.max(0, totalPicks - ctx.picksSoFar.length);
       let tribeSoFar = 0;
@@ -1406,13 +1009,7 @@ function getCardValue(card, purpose, ctx) {
       }
       estCount = 0.5 * tribeSoFar + 0.1 * remaining;
     } else if (ctx && Array.isArray(ctx.friendlyBattlefield)) {
-      // In-game context. Count actual matching creatures on the battlefield
-      // (excluding self — buffs target "other" creatures), plus a small
-      // forward-looking term for creatures opp may play later. Without
-      // knowing hand/library composition, +1.0 is a rough proxy for
-      // "you'll see at least one more tribe member if you live a few turns."
-      // This prevents the AI from underestimating a lord's value when its
-      // tribe is currently empty on the board.
+      // +1.0 forward-look proxy so empty-tribe lords aren't undervalued.
       let count = 0;
       for (const bc of ctx.friendlyBattlefield) {
         if (bc.iid === card.iid) continue;
@@ -1430,16 +1027,13 @@ function getCardValue(card, purpose, ctx) {
   return v;
 }
 
-// Value of a creature on board for sac decisions. Doesn't subtract cost
-// (sunk) — measures threat presence. Used by edict and AI sac-cost scorer.
+// Sac/edict scoring — measures board-presence threat (cost sunk).
+// ~75% of getCardValue coefficients.
 function sacValueOnBoard(card) {
   if (!card) return 0;
   const [pow, tou] = getStats(card);
   let v = pow + tou;
   const kw = card.keywords || [];
-  // Body-scaled keyword values, ~75% of getCardValue's coefficients —
-  // sacValueOnBoard measures board-presence threat (cost is sunk), not
-  // card-acquisition value. Same shapes, smaller magnitudes.
   if (kw.includes('flying'))         v += 1 + pow * 0.4;
   if (kw.includes('unblockable'))    v += 1 + pow * 0.6;
   if (kw.includes('reach'))          v += 1;
@@ -1449,31 +1043,16 @@ function sacValueOnBoard(card) {
   if (kw.includes('vigilance'))      v += tou * 0.3;
   if (kw.includes('haste'))          v += pow * 0.4;
   if (kw.includes('firstStrike'))    v += 1 + Math.max(0, (pow - tou) * 0.4);
-  if (kw.includes('deathtouch'))     v += 1 + Math.max(0, 3 - pow);   // smaller bodies trade up
+  if (kw.includes('deathtouch'))     v += 1 + Math.max(0, 3 - pow);
   if (kw.includes('indestructible')) v += 1 + Math.max(0, 4 - tou);
   if (kw.includes('hexproof'))       v += 2;
-  // Defender means the body can block but never attack — still has value
-  // as a wall, but lower than a normal creature. The historical edict
-  // helper went further and made defender a *negative* (encouraging the
-  // chooser to gladly dump walls) but for sac-cost decisions a wall is
-  // still worth keeping if it's holding back a threat. Tone down to 0.
   if (kw.includes('defender')) v -= 1;
-  // Activated and triggered abilities matter — sacing your Lore Seeker to
-  // pump a 1/1 Carrion Feeder by +1/+1 is bad. Reuse the same scoring as
-  // getCardValue so the comparison is consistent across decision paths.
   for (const ab of (card.abilities || [])) v += abilityValue(ab);
-  // Trigger value uses the same once/multiple frequency model as
-  // getCardValue. Note: sacValueOnBoard runs in-game on existing
-  // battlefield creatures, so "once" triggers (thisEnters) won't fire
-  // again — we still credit a small value because losing the body
-  // forfeits any in-flight triggers and forecloses re-flicker plays.
+  // thisEnters already fired → 0.3× (residual for flicker plays).
   const FREQ_ONCE = new Set(['thisEnters', 'thisDies']);
   for (const trig of (card.triggers || [])) {
     if (!trig.effects || !trig.effects.length) continue;
     const perFiring = abilityValue({ effects: trig.effects });
-    // On board, thisEnters has already fired — score it at 0.3× as a
-    // residual (flicker/re-enter plays). thisDies still pending — 1×.
-    // Multiple-firing triggers continue to fire — 3×.
     let freq;
     if (trig.condId === 'thisEnters') freq = 0.3;
     else if (trig.condId === 'thisDies') freq = 1;
@@ -1483,109 +1062,88 @@ function sacValueOnBoard(card) {
   return v;
 }
 
-// Score one activated ability on its own. Used by getCardValue and as a
-// shared helper.
+// Score one activated ability.
 function abilityValue(ab) {
   if (!ab || !ab.effects || !ab.effects.length) return 0;
   const eff = ab.effects[0];
   switch (eff.kind) {
-    case 'damage':         return 6 + (eff.amount || 0);   // burn ability scales with damage
+    case 'damage':         return 6 + (eff.amount || 0);
     case 'removeCreature': {
-      // Severity-graded value: tap is mild lockdown, exile is strict removal.
       const sev = eff.severity || 1;
       return sev === 1 ? 4 : sev === 2 ? 5 : sev === 3 ? 8 : 9;
     }
     case 'pump':           return 2 + (eff.power || 0) + (eff.toughness || 0);
-    case 'addCounter':     return 3 + (eff.power || 0) + (eff.toughness || 0);   // permanent
-    case 'addMana':        return 3;   // mana dork — utility, not a threat
+    case 'addCounter':     return 3 + (eff.power || 0) + (eff.toughness || 0);
+    case 'addMana':        return 3;
     case 'draw':           return 4 + (eff.amount || 1) - 1;
-    case 'discard':        return 3 + (eff.amount || 1) - 1;  // hand attack; per-card valuation matches draw
+    case 'discard':        return 3 + (eff.amount || 1) - 1;
     case 'gainLife':       return 1 + (eff.amount || 0);
-    case 'createTokens':   return 3 + (eff.count || 1) * 2;  // baseline; spellValue does full body-aware scoring
+    case 'createTokens':   return 3 + (eff.count || 1) * 2;
     default:               return 2;
   }
 }
 
-// Score a spell card (sorcery/instant) by its effects. Hoisted out of the
-// old intrinsicCardValue so getCardValue can delegate cleanly.
+// Score a sorcery/instant by best mode. Instants get a flexibility premium.
 function spellValue(card) {
-  // For modal cards, return the MAX value across modes — the AI gets to
-  // choose which mode to cast, so the card's value is whichever mode is best
-  // in the current state. Non-modal cards are a single mode, so this just
-  // scores the flat effect list.
   const modes = ENGINE.getModes ? ENGINE.getModes(card) : [card.effects || []];
   let bestModeValue = 0;
   for (const modeEffects of modes) {
     const v = spellValueForEffects(modeEffects);
     if (v > bestModeValue) bestModeValue = v;
   }
-  if (card.type === 'Instant') bestModeValue += 1;   // flexibility premium
+  if (card.type === 'Instant') bestModeValue += 1;
   return bestModeValue;
 }
 function spellValueForEffects(effects) {
   let v = 0;
   for (const e of (effects || [])) {
     if (e.kind === 'removeCreature') {
-      // Severity grades the value: tap < bounce < destroy < exile.
+      // tap < bounce < destroy < exile.
       const sev = e.severity || 1;
       v += sev === 1 ? 3 : sev === 2 ? 4 : sev === 3 ? 12 : 12;
     }
     else if (e.kind === 'damage') v += 6 + (e.amount || 0);
-    else if (e.kind === 'damageAll') v += 8 + (e.amount || 0) * 2;  // hits every creature; scales with damage
+    else if (e.kind === 'damageAll') v += 8 + (e.amount || 0) * 2;
     else if (e.kind === 'removeAll') {
-      // Unified mass removal — severity grades the value, whose:'opp'
-      // bumps it (asymmetric blowouts are stronger than symmetric).
       const sev = e.severity || 3;
       const sevVal = sev === 1 ? 4 : sev === 2 ? 8 : sev === 3 ? 10 : 14;
       v += sevVal + ((e.whose === 'opp') ? 4 : 0);
     }
-    else if (e.kind === 'edict') v += 7;     // forced-sac removal that bypasses hexproof; less than destroy because chooser picks lowest
-    else if (e.kind === 'sacrifice') v += 0;  // depends on context — usually paired as a cost or part of a larger combo, not standalone
+    else if (e.kind === 'edict') v += 7;
+    else if (e.kind === 'sacrifice') v += 0;
     else if (e.kind === 'counter') v += 8;
-    else if (e.kind === 'steal') v += 16;        // destroy + permanent gain to caster, with cross-game slot retention. Strictly better than removal.
+    else if (e.kind === 'steal') v += 16;
     else if (e.kind === 'gainControl') {
-      // Mind Control shape (no duration): in-game destroy + caster gains
-      // the creature for this game. Slot reverts cross-game (unlike steal).
-      // ~destroy × 1.5. Threaten shape (duration:'eot') is "1 turn of swings
-      // using their best creature" — modest tempo bump above pump.
+      // Mind Control = destroy + cross-game-revertible gain. Threaten (eot) = tempo only.
       if (e.duration === 'eot') v += 6;
       else v += 14;
     }
-    else if (e.kind === 'applyInGameSplice') v += 18;  // 2-for-1 cross-owner: opponent loses BOTH inputs to caster's pool, with cross-game retention. Dominates steal (16) because it consumes a second input.
-    else if (e.kind === 'noop') v += 0;  // marker effect, no value
-    else if (e.kind === 'shuffleIntoLibrary') v += 5;  // between bounce (4) and destroy (12); harder to recover than bounce, easier than destroy
-    else if (e.kind === 'weaken') v += 3 + (e.toughness || 0);  // small if -1/-1, real removal if -3/-3 etc; scales like a conditional destroy
-    else if (e.kind === 'returnFromGraveyard') v += 4;  // value depends on what's in graveyard at cast time; baseline ≈ a card draw, scales via target scoring
-    else if (e.kind === 'ripPermanent') v += 14;  // edict-shape (target picks low value), but RIPS the slot — destroys AND removes from run permanently. Worse than steal for caster (caster gains nothing) but devastating for victim. Score above edict (7), below steal (16) — closer to destroy+exile combined.
-    else if (e.kind === 'destroyAndStickerSlot') v += 13;  // destroy (12) + persistent sticker that haunts the creature's slot forever. Slightly above bare destroy. Real value swings on the sticker — for 'scarified' it's 1 life per recast which compounds.
-    else if (e.kind === 'symmetricize') v += 8;  // controller picks favorable value → typically modest in-game impact; but locks the slot's stats/cost forever. Symmetrical (player picks, so often beneficial to player); slightly above bounce, well below destroy.
-    else if (e.kind === 'embargo') v += 6;  // bounce (4) + cost+1 forever — closer to a hard removal once the cost-stacking matters, but the creature returns immediately, so tempo is positive for the victim
-    else if (e.kind === 'bleach') v += 8;  // exile (>destroy) + colorless forever. Colorless is mostly aesthetic in current game state (few color-matters effects), so scored close to bare exile.
+    else if (e.kind === 'applyInGameSplice') v += 18;   // 2-for-1 with cross-game retention
+    else if (e.kind === 'noop') v += 0;
+    else if (e.kind === 'shuffleIntoLibrary') v += 5;
+    else if (e.kind === 'weaken') v += 3 + (e.toughness || 0);
+    else if (e.kind === 'returnFromGraveyard') v += 4;
+    else if (e.kind === 'ripPermanent') v += 14;        // destroy + run-permanent slot rip
+    else if (e.kind === 'destroyAndStickerSlot') v += 13;
+    else if (e.kind === 'symmetricize') v += 8;
+    else if (e.kind === 'embargo') v += 6;
+    else if (e.kind === 'bleach') v += 8;
     else if (e.kind === 'draw') v += (e.amount || 1) * 3;
     else if (e.kind === 'discard') v += 4;
     else if (e.kind === 'gainLife') v += 1;
-    else if (e.kind === 'flicker') v += 4;  // re-fires ETB (card-draw value), dodges removal, resets damage; effective value depends on target — base 4 covers the "re-trigger Wall of Omens" line
-    else if (e.kind === 'exileUntilEOT') v += 5;  // tempo removal — one turn off the board, dodges combat. Slightly better than flicker because it can hit opp creatures.
+    else if (e.kind === 'flicker') v += 4;
+    else if (e.kind === 'exileUntilEOT') v += 5;
     else if (e.kind === 'pump') v += 2;
     else if (e.kind === 'pumpAllYours') v += 8;
     else if (e.kind === 'grantKeyword') {
-      // Single-target permanent grant (Sky Champion-shape on a spell): ~3.
-      // Single-target EOT: ~2 (combat trick, situational).
-      // Mass yours EOT (Overrun-shape): ~6 — explosive when paired with pump,
-      // smaller standalone since you only get the alpha-strike turn.
-      // Mass symmetric: 0 (rarely useful — both sides benefit).
+      // mass-yours-eot Overrun-shape vs single-target permanent vs symmetric.
       const eot = e.duration === 'eot';
       const mass = e.whose === 'allYours' || e.whose === 'all';
       if (e.whose === 'all') v += 0;
-      else if (mass) v += eot ? 6 : 8;  // mass permanent grant is rare but powerful
+      else if (mass) v += eot ? 6 : 8;
       else v += eot ? 2 : 3;
     }
     else if (e.kind === 'createTokens') {
-      // Token value scales with count × stats × keyword weight. A 1/1 vanilla
-      // is worth ~2 (chump blocker, slot of damage). Flying or haste roughly
-      // doubles it. Three 1/1 spirits with flying = 3 × 4 = 12, putting
-      // Spectral Procession in destroyAll territory — accurate, that card
-      // wins games.
       const tpl = TOKENS[e.tokenId];
       if (tpl) {
         const stat = (tpl.power || 0) + (tpl.toughness || 0);
@@ -1611,15 +1169,8 @@ function canPayFromPool(pool, cost) {
   for (const c of COLORS) m[c] -= (cost[c]||0);
   return ((m.W||0)+(m.U||0)+(m.B||0)+(m.R||0)+(m.G||0)+(m.C||0)) >= (cost.C||0);
 }
-// Compute total static cost bump from all battlefield permanents with a
-// staticCostBump field on their template (City Guardian: +1 per copy,
-// global — affects both players). Symmetric: each copy of City Guardian
-// bumps EVERY spell's cost by its declared amount, regardless of which
-// side cast it. Lands are excluded automatically (you don't "cast" a
-// land — it doesn't route through this code).
-//
-// Returns an integer amount to add to the cost's generic (C) component.
-// Most spells have a "1 more" aura but the API is N-flexible.
+// Total staticCostBump from all battlefield permanents (City Guardian etc.).
+// Global/symmetric. Returns int to add to cost.C.
 function totalStaticCostBump() {
   let bump = 0;
   for (const side of ['you', 'opp']) {
@@ -1633,10 +1184,7 @@ function totalStaticCostBump() {
   return bump;
 }
 
-// Return the effective cost for casting `card` — base cost + global static
-// bumps (City Guardian). The returned object is a copy; mutations don't
-// leak back into the card. Lands have cost = 0/undefined so the bump is
-// effectively a no-op for them (they don't go through this path anyway).
+// Effective cast cost = base + totalStaticCostBump. Returns a copy.
 function effectiveCastCost(card) {
   if (!card.cost) return card.cost;
   const bump = totalStaticCostBump();
@@ -1646,17 +1194,11 @@ function effectiveCastCost(card) {
   return cost;
 }
 
-// True iff `who` can pay `cost` from current pool + untapped mana sources,
-// considering that dual-typed lands can be tapped for one of their colors.
-// Uses backtracking over dual-land color choices; mono lands fold directly
-// into the pool. For typical games (≤3 duals), the search is trivial.
+// Can `who` pay `cost` from pool + untapped sources? Backtracks over dual-land choices.
 function canPayPotential(who, cost) {
   if (!cost) return true;
-  // Start from current pool.
   const pool = {...G[who].mana};
-  // Build source list: each entry is a list of colors the source can produce.
-  // Mono sources fold directly into the pool (no choice). Multi-color sources
-  // (stickered duals) become choice points.
+  // Mono sources fold into pool; multi-color sources become choice points.
   const choices = [];
   for (const c of G[who].battlefield) {
     if (c.tapped) continue;
@@ -1664,15 +1206,10 @@ function canPayPotential(who, cost) {
     if (c.type === 'Land') {
       producible = landProducibleColors(c);
     } else if (c.abilities && !c.sick) {
-      // Scan all abilities for the first mana ability (v1.0.64). Stapled
-      // creature+land merges put the addMana ability at index >= 1 since
-      // the base creature's abilities come first in the array.
       const manaAb = c.abilities.find(ab => ab.effects && ab.effects[0] && ab.effects[0].kind === 'addMana');
       if (!manaAb) continue;
       const am = manaAb.effects[0].amounts;
       const ks = Object.keys(am);
-      // For mana dorks producing a single color with amount 1 we can model as
-      // a choice; multi-color or amount>1 dorks fold into pool directly.
       if (ks.length === 1 && am[ks[0]] === 1) {
         producible = [ks[0]];
       } else {
@@ -1686,7 +1223,6 @@ function canPayPotential(who, cost) {
       choices.push(producible);
     }
   }
-  // Backtrack over multi-choice sources.
   function tryAssign(idx, p) {
     if (idx === choices.length) return canPayFromPool(p, cost);
     for (const color of choices[idx]) {
@@ -1698,37 +1234,29 @@ function canPayPotential(who, cost) {
   }
   return tryAssign(0, pool);
 }
+// Pay from pool first; if short, auto-tap sources. Color costs first, then generic.
 function payMana(who, cost) {
-  // Auto-tap-as-fallback: pay from pool first; if short, tap untapped sources to cover.
   if (!cost) return;
   const p = G[who];
-  // If pool already covers it, just deduct.
   if (canPayFromPool(p.mana, cost)) { deductFromPool(p.mana, cost); return; }
-  // Else tap sources. Prefer color sources for color costs.
   const need = {...cost};
-  // First satisfy colored costs
   for (const c of COLORS) {
     while ((need[c]||0) > 0) {
       if ((p.mana[c]||0) > 0) { p.mana[c]--; need[c]--; continue; }
       if (!tapSourceProducing(who, c)) {
         throw new Error('Mana payment failed (color): ' + c);
       }
-      // After tap, that color went up by 1; deduct.
       p.mana[c]--; need[c]--;
     }
   }
-  // Then satisfy generic
   let generic = need.C || 0;
   while (generic > 0) {
-    // Use any colored mana left
     let used = false;
     for (const c of [...COLORS, 'C']) {
       if ((p.mana[c]||0) > 0) { p.mana[c]--; generic--; used = true; break; }
     }
     if (used) continue;
-    // Need to tap something
     if (!tapSourceProducing(who, null)) throw new Error('Mana payment failed (generic)');
-    // After tap, some color went up; loop will use it.
   }
 }
 function deductFromPool(pool, cost) {
@@ -1741,17 +1269,10 @@ function deductFromPool(pool, cost) {
     generic -= used;
   }
 }
+// Tap an untapped source producing `color` (or any if null).
+// Preference: mono-land > dual-land > creature mana ability.
 function tapSourceProducing(who, color) {
-  // Find untapped source that produces `color`. If color is null, any source.
-  // Preference order:
-  //   1. Mono-color lands (no opportunity cost, no flexibility loss)
-  //   2. Dual-typed lands that produce this color
-  //   3. Creature mana abilities (creatures could attack/block instead)
-  // Among duals, prefer one whose extra colors are LEAST useful elsewhere
-  // (heuristic: fewer extra colors = less flex sacrifice). Currently all
-  // duals have exactly one extra color, so this is a simple loop.
   const lands = G[who].battlefield.filter(c => c.type === 'Land' && !c.tapped);
-  // Pass 1: mono lands matching exactly.
   for (const c of lands) {
     if ((c.extraManaColors || []).length === 0
         && (color === null || c.mana === color)) {
@@ -1759,7 +1280,6 @@ function tapSourceProducing(who, color) {
       return true;
     }
   }
-  // Pass 2: dual lands that produce the target color.
   if (color !== null) {
     for (const c of lands) {
       if ((c.extraManaColors || []).length > 0
@@ -1769,7 +1289,6 @@ function tapSourceProducing(who, color) {
       }
     }
   } else {
-    // Color-agnostic fallback for generic mana — pick the dual's primary.
     for (const c of lands) {
       if ((c.extraManaColors || []).length > 0) {
         c.tapped = true; G[who].mana[c.mana]++;
@@ -1777,7 +1296,6 @@ function tapSourceProducing(who, color) {
       }
     }
   }
-  // Pass 3: creature mana abilities. v1.0.64: scan all abilities (was [0] only).
   for (const c of G[who].battlefield) {
     if (c.tapped) continue;
     if (c.sick || !Array.isArray(c.abilities)) continue;
@@ -1796,9 +1314,7 @@ function tapSourceProducing(who, color) {
 
 // ----- Effects -----
 
-// Apply `amt` damage from source to target. Respects deathtouch (flag for
-// checkDeaths), lifelink (source controller gains life), trample. Source from
-// ctx.sourceCard (stack) or findCard(ctx.sourceIid) (battlefield).
+// Damage with deathtouch/lifelink/trample. Source: ctx.sourceCard or findCard(ctx.sourceIid).
 function applyDamageFrom(ctx, target, amt) {
   if (amt <= 0) return;
   let sourceCard = ctx.sourceCard || null;
@@ -1815,10 +1331,7 @@ function applyDamageFrom(ctx, target, amt) {
   } else {
     const f = resolveTarget(ctx, target);
     if (!f) return;
-    // Trample on non-combat damage: lethal-damage-needed for this creature
-    // is (toughness − damage already marked). Excess damage spills to that
-    // creature's controller. Indestructibles still absorb up to lethal so
-    // overkill carries — same model as combat trample (v0.66).
+    // Non-combat trample: spills (amt - lethal-needed) to controller.
     let toCreature = amt;
     let spill = 0;
     if (hasTrample) {
@@ -1831,42 +1344,25 @@ function applyDamageFrom(ctx, target, amt) {
     }
     f.card.damage += toCreature;
     if (hasDeathtouch) f.card.dealtDeathtouch = true;
-    // Tag killer for keyword-claim attribution.
     f.card.killedBy = ctx.controller;
-    // Track which source dealt damage — used by Sengir-style triggers
-    // ("whenever a creature dealt damage by ~ this turn dies"). Only
-    // meaningful when the source is a creature on the battlefield.
+    // damagedBySources powers Sengir-style "dealt-damage-this-turn dies" triggers.
     if (sourceCard && sourceCard.type === 'Creature') {
       if (!(f.card.damagedBySources instanceof Set)) f.card.damagedBySources = new Set();
       f.card.damagedBySources.add(sourceCard.iid);
     }
     log(`${ctx.sourceName} deals ${toCreature} to ${f.card.name}.`, 'dmg');
     if (spill > 0) {
-      // Spill to the creature's controller via damagePlayer so Phylactery
-      // can intercept overflow. The "tramples" log is preserved for flavor;
-      // damagePlayer adds its own deals-damage line as well.
       damagePlayer(f.controller, spill, `${ctx.sourceName} (trample)`);
     }
   }
   if (hasLifelink) {
     G[ctx.controller].life += amt;
     log(`${ctx.sourceName} (lifelink) — ${pname(ctx.controller)} gains ${amt} life.`, 'sp');
-    // Lifelink life gain fires lifeGained, just like the gainLife effect.
-    // Ajani's Pridemate-style triggers care about ANY life gain, regardless
-    // of whether it came from a spell, lifelink combat damage, or other.
-    // sourceIid identifies which card produced the life gain — used by
-    // triggers that opt out of firing on their own effects (Codex-style
-    // self-cascade prevention).
     emit({type: 'lifeGained', who: ctx.controller, amount: amt, sourceIid: ctx.sourceIid});
   }
 }
 
-// =========================================================================
 // EFFECTS TABLE — dispatch from {kind: 'foo', ...} to handler.
-// TODO (impact/cost order): flicker (immediate), modal spells, cycling,
-// EOT-flicker (Restoration Angel), proliferate (real counter objects).
-// Lower: protection, full reanimate, storm/cascade, damage prevention.
-// =========================================================================
 const EFFECTS = {
   damage(ctx, params, target) {
     applyDamageFrom(ctx, target, params.amount);
@@ -1878,8 +1374,7 @@ const EFFECTS = {
     f.card.tempTou += (params.toughness||0);
     log(`${f.card.name} gets +${params.power}/+${params.toughness} EOT.`, 'sp');
   },
-  // Black's debuff. Negative tempPower/tempTou — cleared at EOT. If toughness
-  // hits 0, SBA kills the creature regardless of damage; indestructible saves.
+  // Negative tempPower/tempTou — cleared at EOT. Toughness 0 = SBA death (unless indestructible).
   weaken(ctx, params, target) {
     const f = resolveTarget(ctx, target);
     if (!f) return;
@@ -1887,11 +1382,7 @@ const EFFECTS = {
     f.card.tempTou -= (params.toughness||0);
     log(`${f.card.name} gets -${params.power}/-${params.toughness} EOT.`, 'sp');
   },
-  // +1/+1 counter on target. Persists while card is on battlefield; resets
-  // on leave-play (death/bounce/exile/library). Stored as permPower/permTou
-  // (a stat sum, not discrete counter objects) — simple but sufficient for
-  // current cards. If proliferate/remove-counter ever ships, replace with
-  // a real counter list without changing card definitions.
+  // +1/+1 counter (permPower/permTou stat sum; resets on leave-play).
   addCounter(ctx, params, target) {
     const f = resolveTarget(ctx, target);
     if (!f) return;
@@ -1899,32 +1390,23 @@ const EFFECTS = {
     const t = params.toughness || 0;
     f.card.permPower += p;
     f.card.permTou += t;
-    // MtG convention: "+X/+X counter" (equal P/T); fall back to "counters"
-    // for the rare unequal case.
     if (p === t) {
       log(`Put a +${p}/+${t} counter on ${f.card.name}.`, 'sp');
     } else {
       log(`Put +${p}/+${t} counters on ${f.card.name}.`, 'sp');
     }
   },
-  // Endomorph: absorb a keyword from a slain victim, OR grow +1/+1 if no
-  // novel keyword exists. Persists across games via slot sticker.
-  // Reads target.iid (Endomorph) and ctx.event.card (victim).
-  // "Novel" excludes keywords Endomorph has + 'defender' (downside).
-  // Auto-picks highest KEYWORD_PRIORITY when multiple novel — v2 will prompt.
+  // Absorb a novel keyword from victim, else grow +1/+1. Persists via slot sticker.
+  // Auto-picks highest-priority keyword; defender excluded (downside).
   endomorphAbsorb(ctx, params, target) {
     const KEYWORD_PRIORITY = {
       flying: 4, indestructible: 4,
       lifelink: 3, deathtouch: 3, hexproof: 3, trample: 3,
       haste: 2, vigilance: 2, firstStrike: 2, flash: 2,
       reach: 1, menace: 1,
-      // defender intentionally absent.
     };
     const f = findCard(target.iid);
-    // Endomorph might have died in the same combat damage step that triggered
-    // this effect. The source instance is gone from the battlefield, but the
-    // dead card object still lives in a graveyard — and we can mutate it so
-    // the player sees the absorbed reward on the corpse.
+    // Endomorph may be dead this step — mutate the graveyard corpse so reward is visible.
     const sourceCard = f ? f.card : null;
     const victim = ctx.event && ctx.event.card ? ctx.event.card : null;
     if (!victim) {
@@ -1957,50 +1439,31 @@ const EFFECTS = {
         for (const kw of (deadCard.keywords || [])) sourceKeywords.add(kw);
       }
     }
-    // Whichever instance we found (live on battlefield or dead in graveyard)
-    // is the one to mutate for in-game visibility. Live: badges show on the
-    // battlefield card. Dead: badges show on the graveyard corpse so the
-    // player sees their reward was earned, even if Endomorph died killing it.
-    const inGameTarget = sourceCard || deadCard;
+    const inGameTarget = sourceCard || deadCard;   // graveyard corpse still mutable
     const novel = (victim.keywords || [])
       .filter(kw => kw !== 'defender' && !sourceKeywords.has(kw));
-    // Pick: 0 → fallback +1/+1; ≥1 → highest priority keyword (auto-pick v1).
     let absorbed = null;
     if (novel.length > 0) {
       novel.sort((a, b) => (KEYWORD_PRIORITY[b] || 0) - (KEYWORD_PRIORITY[a] || 0));
       absorbed = novel[0];
     }
-    // Apply persistence (slot sticker) — only meaningful when the source has
-    // a slot in runState (player-controlled, runState exists).
+    // Persistence only when controller is player-side with a runState slot.
     const canPersist = (ctx.controller === 'you')
       && (slotIdx != null)
       && (typeof RUN !== 'undefined' && RUN.applyStickerToSlot);
     if (absorbed) {
       const stickerId = 'kw_' + absorbed;
       if (canPersist) RUN.applyStickerToSlot(slotIdx, stickerId);
-      // In-game updates so the absorb is visible AND usable RIGHT NOW
-      // (without these the player would have to wait until next game):
-      //   - keywords array: makes the keyword mechanically active.
-      //   - stickers array: makes the gold sticker badge appear on the card.
-      // RUN.applyStickerToSlot persists this across games via runState; we
-      // mirror those changes onto the in-game instance here. Whether the
-      // card is alive or in the graveyard, the player sees the trophy.
+      // Mirror onto in-game instance so the keyword is active AND the sticker badge shows now.
       if (inGameTarget) {
         if (!inGameTarget.keywords.includes(absorbed)) inGameTarget.keywords.push(absorbed);
         if (!inGameTarget.stickers.includes(stickerId)) inGameTarget.stickers.push(stickerId);
       }
       log(`${ctx.sourceName} absorbs ${absorbed} from ${victim.name}.`, 'sp');
     } else {
-      // Fallback: no novel keyword. Grow +1/+1 permanently via slot sticker
-      // — distinct from addCounter (counters reset on leave-play; this
-      // persists across games via the slot sticker).
+      // Fallback +1/+1 via slot sticker (persists across games, unlike counter).
       const stickerId = 'plus1plus1';
       if (canPersist) RUN.applyStickerToSlot(slotIdx, stickerId);
-      // In-game updates: push a modifier (so getStats reflects the buff)
-      // AND push the sticker id (so the badge appears). Stackable sticker —
-      // each absorb adds another instance. Applied to live OR dead instance
-      // so a 2/2 Endomorph that mutual-killed a 2/2 visibly shows the +1/+1
-      // earned, even sitting in the graveyard.
       if (inGameTarget) {
         inGameTarget.modifiers.push({ power: 1, toughness: 1 });
         inGameTarget.stickers.push(stickerId);
@@ -2008,12 +1471,8 @@ const EFFECTS = {
       log(`${ctx.sourceName} eats ${victim.name} and grows +1/+1.`, 'sp');
     }
   },
-  // Unified creature-removal effect. `severity` controls the depth of removal:
-  //   1 = tap         (creature taps; recovers next untap)
-  //   2 = bounce      (returns to owner's hand; resets state)
-  //   3 = destroy     (graveyard; blocked by indestructible)
-  //   4 = exile       (out of play; bypasses indestructible)
-  // Composed this way so the Severity sticker can escalate one tier per stack.
+  // Unified removal. severity: 1=tap, 2=bounce, 3=destroy (indestructible blocks), 4=exile.
+  // Severity sticker escalates one tier per stack.
   removeCreature(ctx, params, target) {
     const f = resolveTarget(ctx, target);
     if (!f) return;
@@ -2026,24 +1485,14 @@ const EFFECTS = {
     }
 
     if (sev === 2) {
-      // Bounce. Pull from battlefield, reset all in-play state, send to hand.
-      // Tokens cease to exist instead of going to hand (they have no library
-      // to be cast from again).
+      // Bounce. Tokens cease to exist.
       const card = pluckFromBattlefield(f);
       if (!card) return;
-      // Flush permanentEot buffs (Elystra) before resetInPlayState clears
-      // tempPower/tempTou/eotGrants. Standard MtG would lose the EOT pump
-      // on bounce, but Elystra's flavor is "EOT effects last forever" — and
-      // letting bounce strip her accumulated buffs would make bounce a hard
-      // counter to her core mechanic. The buffs were earned this turn;
-      // they belong on the slot regardless of whether she stays on the
-      // battlefield. Non-Elystra creatures bounce normally (the helper
-      // no-ops without the permanentEot template flag).
+      // permanentEot creatures (Elystra) keep their EOT buffs through bounce —
+      // their flavor is "EOT effects last forever", and stripping would hard-counter her.
       leavesPlayPreservingBuffs(card);
       if (!card.isToken) {
-        // Owner-routed — stolen creature bounced returns to original
-        // owner's hand, not the thief's. See moveToGraveyard for the
-        // routing pattern.
+        // Owner-routed (steal returns to original owner, not thief).
         G[card.owner || f.controller].hand.push(card);
         log(`${ctx.sourceName} returns ${card.name} to hand.`, 'sp');
       } else {
@@ -2054,44 +1503,25 @@ const EFFECTS = {
     }
 
     if (sev === 3) {
-      // Destroy. Indestructible blocks at this tier specifically.
       if (f.card.keywords.includes('indestructible')) {
         log(`${f.card.name} is indestructible — ${ctx.sourceName} fizzles.`, 'sp');
         return;
       }
-      // Tag killer before moveToGraveyard so the dies-emit carries the credit.
       f.card.killedBy = ctx.controller;
       moveToGraveyard(f.card, f.controller);
       log(`${ctx.sourceName} destroys ${f.card.name}.`, 'sp');
       return;
     }
 
-    // sev === 4: exile. Bypasses indestructible. Card lands in the
-    // controller's exile zone — preserved (rather than dropped on the
-    // floor) so the UI can display it and so future "return from exile"
-    // mechanics have a real source to draw from. We reset in-play state
-    // on the way out so any future exile-recursion mechanic gets a clean
-    // card, not one stuck with stale counters/grants. Tokens cease to
-    // exist instead of going to exile (they have no template-bound future).
+    // sev=4 exile: bypasses indestructible. Routes to exile zone (not dropped) for UI/recursion.
     const card = pluckFromBattlefield(f);
     if (!card) return;
-    // Claim keywords for the exiling player BEFORE resetInPlayState wipes
-    // the keyword grants. Exile doesn't fire cardDies, so the dies-listener
-    // path doesn't credit it — we tag here directly. Only credit when the
-    // exiled card was a creature owned by the OTHER player (you don't
-    // "claim" your own creatures).
+    // Exile doesn't fire cardDies; claim keywords here for opp-creature kills.
     if (card.type === 'Creature' && f.controller !== ctx.controller) {
       claimKeywordsFromKill(card, ctx.controller);
     }
-    // Flush permanentEot before resetInPlayState. Same rationale as
-    // checkDeaths — Elystra's accumulated buffs shouldn't vanish if she
-    // gets exiled (e.g., Path to Exile shape). Buffs persist through the
-    // exile zone — when she re-enters from exile (currently no path
-    // exists, but if one is added later) she'll already have them via
-    // slot.permaBuffs.
     leavesPlayPreservingBuffs(card);
     if (!card.isToken) {
-      // Owner-routed exile — see moveToGraveyard.
       G[card.owner || f.controller].exile.push(card);
       log(`${ctx.sourceName} exiles ${card.name}.`, 'sp');
     } else {
@@ -2099,16 +1529,8 @@ const EFFECTS = {
     }
     emitLeavesBattlefield(card, f.controller);
   },
-  // Scarification shape: destroy the target creature AND apply a sticker
-  // to its slot. The sticker persists across games via runState, so a
-  // scarred creature will haunt the player on every future cast.
-  //
-  // Symmetry note: only player-side cards have persistent slots. Opp cards
-  // are regenerated each game, so applying a sticker to an opp slot is a
-  // no-op — the destroy still resolves, but no persistent effect. That's
-  // fine for boss play (boss is opp, casts on you), and for the rare
-  // mirror case (you somehow control Scarification and cast on opp) you
-  // still get the destroy. params.stickerId names the sticker to apply.
+  // Destroy + apply sticker to slot (Scarification). Player-side persistent;
+  // opp-side: in-game destroy only (opp slots regenerate). params.stickerId names it.
   destroyAndStickerSlot(ctx, params, target) {
     const f = resolveTarget(ctx, target);
     if (!f) return;
@@ -2116,26 +1538,16 @@ const EFFECTS = {
       log(`${ctx.sourceName} fizzles — target must be a creature.`, 'sp');
       return;
     }
-    // Indestructible blocks both halves — if we can't destroy it, the
-    // sticker doesn't land either. (Thematically: you can't scar what
-    // you can't break.)
+    // Indestructible blocks both halves (can't scar what you can't break).
     if ((f.card.keywords || []).includes('indestructible')) {
       log(`${f.card.name} is indestructible — ${ctx.sourceName} fizzles.`, 'sp');
       return;
     }
-    // Capture slot before destruction — pluck/moveToGraveyard preserve
-    // slotIdx on the card, but the card object will be in graveyard
-    // afterward and we want to be unambiguous about the slot we're
-    // stickering.
     const slotIdx = f.card.slotIdx;
     const slotController = f.controller;
-    // Destroy — route through the normal kill path so dies-triggers and
-    // SBAs all fire.
     f.card.killedBy = ctx.controller;
     moveToGraveyard(f.card, f.controller);
     log(`${ctx.sourceName} destroys ${f.card.name}.`, 'sp');
-    // Apply sticker. Only player-side slots persist; opp gets in-game
-    // destroy only.
     const stickerId = params.stickerId;
     if (!stickerId) return;
     if (slotController === 'you' && typeof slotIdx === 'number'
@@ -2148,15 +1560,8 @@ const EFFECTS = {
     }
   },
   // ─── Balancer boss effects ─────────────────────────────────────────
-  // Symmetricize: target creature's CONTROLLER chooses one of three values
-  // (power, toughness, mana cost-total). All three become that value. The
-  // chosen value persists across games via slot.symmetricized (replacing
-  // the baseline at instantiation). Opp-side: no slot exists, so the
-  // change is in-game only.
-  //
-  // Resolution: open a pendingSymmetricizeChoice prompt for the target's
-  // controller. They click one of [power, toughness, cost]; the engine
-  // reads that value from the card and applies the trio update.
+  // Target's controller picks one of {power, toughness, cost-total}; all three become that value.
+  // Persists via slot.symmetricized (player-side only).
   symmetricize(ctx, params, target) {
     const f = resolveTarget(ctx, target);
     if (!f) return;
@@ -2164,8 +1569,6 @@ const EFFECTS = {
       log(`${ctx.sourceName} fizzles — target must be a creature.`, 'sp');
       return;
     }
-    // Compute the three current values. Power and toughness from getStats
-    // (includes modifiers). Cost from cost-pip total.
     const [curPow, curTou] = getStats(f.card);
     let curCost = 0;
     if (f.card.cost) {
@@ -2183,10 +1586,7 @@ const EFFECTS = {
     };
     log(`${ctx.sourceName}: ${pname(f.controller)} must pick power, toughness, or mana cost for ${f.card.name}.`, 'sp');
   },
-  // Embargo: bounce target creature to its owner's hand AND add +1 to its
-  // cost forever (slot.extraCost++). Stacks: multiple Embargos accumulate.
-  // The in-game bounce mutates the runtime card too (so even THIS game's
-  // recast is more expensive); next-game instantiation reads slot.extraCost.
+  // Bounce + slot.extraCost++ forever (stackable). Runtime cost also bumps for same-game recast.
   embargo(ctx, params, target) {
     const f = resolveTarget(ctx, target);
     if (!f) return;
@@ -2194,11 +1594,8 @@ const EFFECTS = {
       log(`${ctx.sourceName} fizzles — target must be a creature.`, 'sp');
       return;
     }
-    // Capture before bounce.
     const owner = f.card.owner || f.controller;
     const slotIdx = (typeof f.card.slotIdx === 'number') ? f.card.slotIdx : null;
-    // Bounce: pluck from battlefield, route to owner's hand. Emit
-    // cardLeavesBattlefield so leaves-play triggers fire normally.
     pluckFromBattlefield(f);
     clearRestrictionsFromSource(f.card.iid);
     if (!f.card.isToken) {
@@ -2207,8 +1604,6 @@ const EFFECTS = {
     }
     emitLeavesBattlefield(f.card, f.controller);
     log(`${ctx.sourceName} returns ${f.card.name} to ${pname(owner)}'s hand.`, 'sp');
-    // Add +1 to slot.extraCost (player-side only). Also bump the runtime
-    // card's cost so a same-game recast costs the extra mana.
     if (!f.card.isToken) {
       if (f.card.cost) f.card.cost.C = (f.card.cost.C || 0) + 1;
     }
@@ -2222,9 +1617,7 @@ const EFFECTS = {
       }
     }
   },
-  // Bleach: exile target creature AND make it colorless forever (slot.
-  // colorOverride='C'). The exile is in-game; the color change is the
-  // run-persistent effect. Indestructible doesn't block exile.
+  // Exile + slot.colorOverride='C' forever. Bypasses indestructible.
   bleach(ctx, params, target) {
     const f = resolveTarget(ctx, target);
     if (!f) return;
@@ -2234,7 +1627,6 @@ const EFFECTS = {
     }
     const owner = f.card.owner || f.controller;
     const slotIdx = (typeof f.card.slotIdx === 'number') ? f.card.slotIdx : null;
-    // Exile: pluck from battlefield, route to exile zone. Emit leaves-play.
     pluckFromBattlefield(f);
     clearRestrictionsFromSource(f.card.iid);
     if (!f.card.isToken) {
@@ -2243,7 +1635,6 @@ const EFFECTS = {
     }
     emitLeavesBattlefield(f.card, f.controller);
     log(`${ctx.sourceName} exiles ${f.card.name}.`, 'sp');
-    // Run-persistent color erasure (player-side only).
     if (owner === 'you' && typeof slotIdx === 'number'
         && typeof RUN !== 'undefined' && RUN.getSlots) {
       const slot = RUN.getSlots()[slotIdx];
@@ -2254,16 +1645,9 @@ const EFFECTS = {
       }
     }
   },
-  // Archdemon of Bargains — phase 1 (ETB). Prompt the player to choose
-  // a number 1-5. The chosen number is stashed on the demon card so the
-  // dies trigger can read it later. Then apply N random stickers to
-  // permanents the BOSS (source controller) controls. The player gets
-  // hurt at ETB (boss buffs up), gets compensated only if they kill the
-  // demon. params.side: 'self' = boss-side stickering at ETB.
+  // Archdemon Bargains ETB. Player picks 1-5, stashed on demon for dies trigger payoff.
+  // Always prompts player even when boss casts (player is the dealmaker).
   bargainStickerSelf(ctx, params) {
-    // Always prompts the human side — even when the boss casts, the
-    // player chooses the bargain number. (That's the design: the player
-    // is the dealmaker.)
     const sourceCard = findCard(ctx.sourceIid);
     if (!sourceCard) return;
     G.pendingNumberChoice = {
@@ -2272,33 +1656,19 @@ const EFFECTS = {
       sourceIid: ctx.sourceIid,
       min: 1,
       max: 5,
-      // Continuation: when the player picks N, apply N stickers to the
-      // source's controller's permanents and stash N on the source card.
       onChoose: 'bargainEtb',
     };
     log(`${ctx.sourceName} — choose a number from 1 to 5.`, 'sp');
   },
-  // Archdemon of Bargains — phase 2 (dies). Read the chosen number from
-  // the source card (set during ETB). Apply that many random stickers to
-  // permanents the OPP-of-source-controller controls.
+  // Phase 2 (dies). Read bargainsNum stashed on dying card, sticker OTHER side as compensation.
   bargainStickerOther(ctx) {
-    // ctx.sourceIid is the demon; ctx.event.card is the dying card. They
-    // should be the same for a "this dies" trigger. Read bargainsNum from
-    // ctx.event.card (the trigger source as it left play) — that's where
-    // ETB stashed it. Fallback: 1 if nothing was recorded (shouldn't
-    // happen but defensive).
     const dyingCard = ctx.event && ctx.event.card;
     const n = (dyingCard && dyingCard.bargainsNum) || 1;
-    // The dying card was opp's (boss's), so its controller was opp at
-    // ETB time. The "compensation" stickering goes to the OTHER side.
     const recipient = opp(ctx.controller);
     log(`${ctx.sourceName} — applying ${n} sticker(s) to ${pname(recipient)}'s permanents.`, 'sp');
     applyRandomStickersToSide(G, recipient, n, ctx.sourceName, log);
   },
-  // White Oblation-style removal — slower than exile but doesn't bypass
-  // indestructible. Resets in-play state so card returns "fresh." Routes
-  // to owner's library: a stolen creature shuffled into a library returns
-  // to its original owner's, not the thief's.
+  // Oblation-style. Owner-routed (stolen creature returns to original owner's library).
   shuffleIntoLibrary(ctx, params, target) {
     const f = resolveTarget(ctx, target);
     if (!f) return;
@@ -2312,28 +1682,13 @@ const EFFECTS = {
       shuffle(G[dest].library);
       log(`${ctx.sourceName} shuffles ${card.name} into ${pname(dest)}'s library.`, 'sp');
     } else {
-      // Tokens have no library home — they cease to exist on leave-play.
       log(`${ctx.sourceName} targets ${card.name} — token ceases to exist.`, 'sp');
     }
     emitLeavesBattlefield(card, f.controller);
   },
-  // Steal: counter a spell on the stack OR take a permanent off the
-  // battlefield. Either way, the card becomes yours forever — a new slot
-  // is appended to runState (tplId + stickers + metadata), and a fresh
-  // instance is shuffled into your library.
-  //
-  // Spell target: the stack item is removed from G.stack (countered). The
-  // spell's effects DO NOT fire — you intercepted it before resolution.
-  // Mirrors counterspell semantics. The spell card is not routed to its
-  // owner's graveyard — it ceases to exist as a spell (same disposition
-  // as Stapler's spell-consumption path).
-  //
-  // Permanent target: pluck from battlefield, emit cardLeavesBattlefield
-  // (so leaves-play triggers fire — Archdemon's bargain death-payout etc.).
-  //
-  // Old runtime state (counters, grants, damage, combat role) is discarded.
-  // Slot identity (tplId + stickers + empower/subtype rolls + permaBuffs +
-  // bonusTrigger + stapledTpls + charges) is preserved.
+  // Counter a stack spell OR take a battlefield permanent — adds slot to runState forever.
+  // Spell path: removes from stack (no effects fire); spell ceases (not graveyard).
+  // Slot identity preserved (tplId + stickers + rolls + permaBuffs + bonusTrigger + stapledTpls + charges).
   steal(ctx, params, target) {
     const r = resolveStackOrPermanent(target);
     if (!r) {
@@ -2343,11 +1698,7 @@ const EFFECTS = {
     const stolenTplId = r.card.tplId;
     const stolenCardName = r.card.name;
     const fromStack = r.kind === 'spell';
-    // ─── Capture source slot (player-side perms only) ──────────────────
-    // Source-of-truth: prefer the runState slot when stealing a player-side
-    // permanent (catches mid-game additions like Endomorph absorbs that
-    // haven't been synced back to card.stickers). Opp-side perms and stack
-    // items have no persistent slot — opp slots are transient per-game.
+    // Prefer runState slot for player-side perms (captures mid-game absorbs etc.).
     let stolenSlot = null;
     if (r.kind === 'perm' && r.controller === 'you'
         && typeof r.card.slotIdx === 'number'
@@ -2410,26 +1761,16 @@ const EFFECTS = {
   // Black's signature recursion: pull a creature card from the caster's
   // graveyard back to hand. Mandatory in our engine (no "may" optional
   // triggers yet) — if the graveyard has no creatures, the trigger doesn't
-  // queue (triggerHasAnyValidTarget filters it out). Resets card state
-  // defensively, though graveyard cards should already be reset from
-  // their last bf→grave transition.
+  // queue (triggerHasAnyValidTarget filters it out).
   returnFromGraveyard(ctx, params, target) {
     const grave = G[ctx.controller].graveyard;
     const idx = grave.findIndex(c => c.iid === target.iid);
     if (idx < 0) { log(`${ctx.sourceName} fizzles — target gone.`, 'sp'); return; }
     const [card] = grave.splice(idx, 1);
-    // Defensive reset (graveyard cards should already be clean from death,
-    // but this keeps the pipeline tidy even if some other path put a
-    // mid-state card there).
     card.tapped = false; card.sick = false; card.damage = 0;
     card.tempPower = 0; card.tempTou = 0;
     if (card.damagedBySources instanceof Set) card.damagedBySources.clear();
     card.dealtDeathtouch = false;
-    // Pull from caster's graveyard back to caster's hand. (Current
-    // engine only allows targeting your own graveyard, so owner-routing
-    // is a no-op here, but use owner for principled correctness in case
-    // a "return target creature from any graveyard to its owner's hand"
-    // shape is added later.)
     G[card.owner || ctx.controller].hand.push(card);
     log(`${ctx.sourceName} returns ${card.name} from graveyard to ${pname(card.owner || ctx.controller)}'s hand.`, 'sp');
   },
@@ -2437,7 +1778,6 @@ const EFFECTS = {
     const idx = G.stack.indexOf(target.stackItem);
     if (idx < 0) { log(`Target spell no longer on stack.`); return; }
     if (G.stack[idx].kind === 'trigger') {
-      // Defensive: should be excluded by getValidTargets already.
       log(`${ctx.sourceName} can't counter that.`, 'sp'); return;
     }
     const removed = G.stack.splice(idx, 1)[0];
@@ -2450,23 +1790,14 @@ const EFFECTS = {
     log(`${pname(ctx.controller)} adds ${txt}.`, 'sp');
   },
   gainLife(ctx, params, target) {
-    // Who gains life, in priority order:
-    //   1. params.who if explicitly resolved (e.g., from {from:'targetController'}
-    //      for Swords-style "target's controller gains life").
-    //   2. target.who if target is a player.
-    //   3. ctx.controller as fallback (Drain Life's gainLife with target:'self').
+    // Priority: params.who (resolved) > target.who (player target) > ctx.controller.
     const who = params.who
       || (target && target.kind === 'player' ? target.who : null)
       || ctx.controller;
     const amount = params.amount;
     G[who].life += amount;
     log(`${pname(who)} gains ${amount} life.`, 'sp');
-    // Emit lifeGained event so triggers can fire (Ajani's Pridemate puts
-    // a +1/+1 counter, Soul Warden-style scaling, etc). The event captures
-    // the gainer and amount; trigger conditions filter on those.
     if (amount > 0) {
-      // sourceIid: see comment on lifelink emit above. Lets self-cascade-guarded
-      // triggers (e.g., Codex's generated abilities) skip their own life gain.
       emit({type: 'lifeGained', who, amount, sourceIid: ctx.sourceIid});
     }
   },
@@ -2475,9 +1806,7 @@ const EFFECTS = {
     log(`${pname(ctx.controller)} draws ${params.amount}.`, 'sp');
   },
   discard(ctx, params, target) {
-    // target may be {kind:'player', who} (forced discard, e.g. Mind Rot),
-    // {kind:'creature', ...} (spell self-target — fallback to controller),
-    // or null. In any non-player case, default to the caster discarding.
+    // Non-player targets default to caster.
     const who = (target && target.kind === 'player' && target.who)
       ? target.who : ctx.controller;
     const tp = G[who];
@@ -2487,17 +1816,10 @@ const EFFECTS = {
       return;
     }
     if (who === 'you') {
-      // Player chooses. Set the prompt; UI handles the rest. step() will pause.
       G.forcedDiscard = { who: 'you', remaining: n, source: ctx.sourceName };
       log(`${ctx.sourceName} — choose ${n} card(s) to discard.`, 'sp');
     } else {
-      // AI is discarding from its OWN hand. Always pick cheapest — AI wants
-      // to keep its best cards regardless of who triggered the discard. (The
-      // caster of a Mind Rot doesn't choose what the target discards; the
-      // discarding player does. Pre-v0.98 this branch flipped sort order
-      // when the caster was a different player — that was wrong: opp would
-      // deliberately discard its OWN expensive cards when player cast Mind
-      // Rot at it. Now consistent: the discarder optimizes for itself.)
+      // AI picks cheapest from own hand (discarder optimizes for self, per MtG).
       const sorted = tp.hand.slice().sort((a, b) => costTotalCard(a) - costTotalCard(b));
       for (let i = 0; i < n; i++) {
         const card = sorted[i];
@@ -2538,18 +1860,11 @@ const EFFECTS = {
       G[ctx.controller].hand.push(card);
       shuffle(lib);
       log(`${pname(ctx.controller)} searches for ${card.name}.`, 'sp');
-      // AI-tutored buildOnDraw cards: the helper no-ops for opp (the AI
-      // can't interact with a modal). Defensive call — safe if buildOnDraw
-      // ever opens up to opp's pool, otherwise harmless.
       tryBuildOnDraw(card, ctx.controller);
     }
   },
   restrict(ctx, params, target) {
-    // Persistent: target creature can't attack and/or can't block until the
-    // source leaves the battlefield. Tracked as a Set of source iids per
-    // restriction kind — the creature is restricted iff its set is non-empty.
-    // When sources die or leave play, their iid is cleared from each set
-    // (see clearRestrictionsFromSource, called from moveToGraveyard etc).
+    // Persistent until source leaves play. Per-kind Set of source iids; clearRestrictionsFromSource cleans up.
     const f = resolveTarget(ctx, target);
     if (!f) return;
     if (params.cantAttack) {
@@ -2567,29 +1882,13 @@ const EFFECTS = {
     if (params.cantBlock) parts.push("can't block");
     log(`${ctx.sourceName} binds ${f.card.name} (${parts.join(', ')}).`, 'sp');
   },
-  // Grant a keyword to target creature. Tied to source's lifetime — when
-  // the source leaves play, clearRestrictionsFromSource walks all granted
-  // keywords and removes this source's contribution. If a keyword has no
-  // remaining sources granting it AND it isn't intrinsic, it comes off the
-  // target's keywords list. Mirrors cantAttackBy / cantBlockBy bookkeeping.
-  // Grant a keyword to a creature. Three axes:
-  //   target: 'creature' (single target chosen at cast time) — default
-  //           or omitted for the mass form below.
-  //   whose:  'allYours' | 'all'  — mass form, ignores target. Iterates
-  //           the relevant battlefield(s).
-  //   duration: 'eot' | 'permanent' (default permanent for backwards compat
-  //           with existing static-grant cards like Sky Champion).
-  //
-  // Permanent grants flow through grantedBy (revoked when source leaves play).
-  // EOT grants flow through eotGrants (revoked at end of turn cleanup).
-  // The two systems are separate but additive — a creature can have a kw
-  // from both at once; either source alone keeps it on.
+  // Grant keyword. Axes: target (single), whose:'allYours'|'all' (mass), duration:'eot'|'permanent'.
+  // Permanent → grantedBy (revoked on leave-play); EOT → eotGrants (revoked at end-turn).
+  // Additive: a creature can have a kw from both systems at once.
   grantKeyword(ctx, params, target) {
     const kw = params.keyword;
     if (!kw) return;
     const eot = params.duration === 'eot';
-    // Mass form. `whose: 'allYours'` is the Overrun shape; 'all' is symmetric
-    // (rare). Ignores target.
     if (params.whose === 'allYours' || params.whose === 'all') {
       const sides = params.whose === 'all' ? ['you', 'opp'] : [ctx.controller];
       const recipients = [];
@@ -2611,38 +1910,22 @@ const EFFECTS = {
       }
       return;
     }
-    // Single-target form (today's behavior, plus optional EOT).
     const f = resolveTarget(ctx, target);
     if (!f) return;
     const alreadyHad = f.card.keywords.includes(kw);
     applyGrant(f.card, kw, ctx.sourceIid, eot);
     const display = (typeof KEYWORD_DISPLAY !== 'undefined' && KEYWORD_DISPLAY[kw]) || kw;
     if (alreadyHad && !eot) {
-      // Already had it via another source — log informatively. (For EOT
-      // grants this is less interesting; just skip the special-case log.)
       log(`${ctx.sourceName} targets ${f.card.name} — already has ${display}.`, 'sp');
     } else {
       const dur = eot ? ' until end of turn' : '';
       log(`${ctx.sourceName} — ${f.card.name} gains ${display}${dur}.`, 'sp');
     }
   },
-  // Mint creature tokens onto the controller's battlefield. Each token
-  // gets a fresh iid, ETB triggers fire normally (so future "when a creature
-  // ETBs" payoffs see the tokens). Tokens are flagged isToken — every
-  // leave-play path checks this and vanishes instead of routing the token
-  // to graveyard/hand/library/exile.
-  //
-  // Params:
-  //   tokenId: key into TOKENS (e.g., 'soldier_w_1_1')
-  //   count:   how many tokens to create (default 1)
-  //   controller: 'self' (default) | 'opp' — who controls the new tokens
+  // Mint tokens. Params: tokenId (TOKENS key), count (default 1), controller ('self'|'opp').
   createTokens(ctx, params) {
     let tokenId = params.tokenId;
-    // Defensive: older saves may have bare-name tokenIds ('goblin', 'soldier')
-    // from a bug where the Codex's procedural trigger generator emitted
-    // shortnames instead of TOKENS keys. Normalize to the full key so
-    // legacy saves don't fizzle. Fixed at the source in v1.0.37 — this
-    // alias remap is the safety net.
+    // Legacy save safety: older Codex outputs used bare-name ids ('goblin' etc.).
     const TOKEN_ALIAS = {
       goblin: 'goblin_r_1_1',
       soldier: 'soldier_w_1_1',
@@ -2666,23 +1949,13 @@ const EFFECTS = {
     }
     const plural = count === 1 ? '' : 's';
     log(`${ctx.sourceName} creates ${count} ${tpl.power}/${tpl.toughness} ${tpl.name} token${plural}.`, 'sp');
-    // Fire ETB triggers per minted token. Mirrors the ETB-emit pattern
-    // used by playLand and the spell-resolution path. sourceIid identifies
-    // the card that minted these tokens — used by self-cascade-guarded
-    // triggers (Codex's generated abilities) to skip their own creations
-    // and avoid cascading token-spam loops.
+    // Per-token ETB. sourceIid lets self-cascade-guarded triggers skip own tokens.
     for (const tok of made) {
       emit({type:'cardEntersBattlefield', card: tok, controller: owner, sourceIid: ctx.sourceIid});
     }
   },
-  // Edict: force the spell's controller's opponent to sacrifice a creature.
-  // No targeting (the opponent picks from their own creatures), so hexproof
-  // doesn't protect. If opp has no creatures, fizzles cleanly.
-  //
-  // v1 limitation: only auto-resolves when the chooser is AI. If a player
-  // is forced to sacrifice (opp casts edict at us), we'd need a forced-pick
-  // UI similar to forcedDiscard. Punted to a follow-up — no opp-side edicts
-  // in v1 cards anyway, so this branch never triggers in real play.
+  // Force opp to sacrifice a creature (no targeting, so hexproof doesn't protect).
+  // v1: only auto-resolves when chooser is AI; no opp-side edicts exist in card pool.
   edict(ctx) {
     const them = opp(ctx.controller);
     const targets = G[them].battlefield.filter(c => c.type === 'Creature');
@@ -2690,26 +1963,18 @@ const EFFECTS = {
       log(`${ctx.sourceName} fizzles — ${pname(them)} has no creatures.`, 'sp');
       return;
     }
-    // Chooser = opp of caster — picks the creature they want to lose.
     if (them === 'you') {
-      // TODO: forced-sacrifice UI for player-side edicts. Auto-picks for now.
+      // TODO: forced-sac UI for player-side edicts.
       log(`${ctx.sourceName} — auto-selecting (forced-sac UI not implemented).`, 'sp');
     }
     targets.sort((a, b) => sacValueOnBoard(a) - sacValueOnBoard(b));
     const victim = targets[0];
-    // Credit caster for keyword-claim, not the victim's controller.
     victim.killedBy = ctx.controller;
     sacrificeCard(victim, them);
   },
-  // Vile Edict shape: "Target player chooses a permanent they control to
-  // rip up." Differs from edict in three ways:
-  //   1. Target is a player (caster targets you/opp; edict always hits opp)
-  //   2. Targets ANY permanent (creature/artifact/enchantment/land), not
-  //      just creatures
-  //   3. The picked permanent is RIPPED — destroyed AND its slot is removed
-  //      from runState, so it's gone from the deck for the rest of the run.
-  //      A persistent loss, much more punishing than a destroy.
-  // Resolution: set a pendingRipSelect prompt for the targeted player. The
+  // Vile Edict: target player picks own permanent to RIP (destroy + slot removed from runState).
+  // Targets any permanent type, not just creatures. Permanent run loss.
+  // Resolution: pendingRipSelect prompt for targeted player. The
   // target chooses via UI (you) or AI (opp). Step machine waits.
   ripPermanent(ctx, params, target) {
     // Target should be a {kind:'player'} from the existing player-target
@@ -2778,8 +2043,7 @@ const EFFECTS = {
     const sev = Math.max(1, Math.min(4, params.severity || 3));
     const whose = params.whose || 'all';
     const sides = whose === 'opp' ? [opp(ctx.controller)] : ['you', 'opp'];
-    // Snapshot targets up front — sev 2/3/4 mutate battlefield arrays
-    // (splice / moveToGraveyard) and would break iteration otherwise.
+    // Snapshot before mutating battlefield arrays.
     const targets = [];
     for (const who of sides) {
       for (const c of G[who].battlefield) {
@@ -2799,40 +2063,29 @@ const EFFECTS = {
       const card = f.card;
       const ctrl = f.controller;
       if (sev === 1) {
-        // Tap. Already-tapped is a no-op. Doesn't trigger anything beyond
-        // what single-target tap would (no destroy/leave-play emits).
         if (!card.tapped) card.tapped = true;
       } else if (sev === 2) {
-        // Bounce: same as single-target severity-2 path. Tokens cease.
         const bf = G[ctrl].battlefield;
         const idx = bf.findIndex(c => c.iid === t.iid);
         if (idx < 0) continue;
         const removed = bf.splice(idx, 1)[0];
-        // Flush permanentEot — same rationale as single-target bounce.
         leavesPlayPreservingBuffs(removed);
         if (!removed.isToken) G[removed.owner || ctrl].hand.push(removed);
         emitLeavesBattlefield(removed, ctrl);
       } else if (sev === 3) {
-        // Destroy. Indestructible saves. Mirrors destroyAll's prior behavior.
         if (card.keywords.includes('indestructible')) continue;
-        // Tag killer for keyword-claim (only opp's creatures dying to your
-        // Wrath count — the kill-claim listener filters that side).
         card.killedBy = ctx.controller;
         moveToGraveyard(card, ctrl);
         log(`${card.name} dies.`, 'dmg');
       } else if (sev === 4) {
-        // Exile. Bypasses indestructible. Tokens cease.
         const bf = G[ctrl].battlefield;
         const idx = bf.findIndex(c => c.iid === t.iid);
         if (idx < 0) continue;
         const removed = bf.splice(idx, 1)[0];
-        // Claim keywords from the exiled creature if it was opp's. Mirrors
-        // the single-target exile path; do this BEFORE resetInPlayState
-        // clears the keyword grants.
+        // Claim keywords BEFORE resetInPlayState clears grants.
         if (removed.type === 'Creature' && ctrl !== ctx.controller) {
           claimKeywordsFromKill(removed, ctx.controller);
         }
-        // Flush permanentEot — same rationale as the single-target exile.
         leavesPlayPreservingBuffs(removed);
         if (!removed.isToken) G[removed.owner || ctrl].exile.push(removed);
         log(`${removed.name} is exiled.`, 'dmg');
@@ -2840,19 +2093,8 @@ const EFFECTS = {
       }
     }
   },
-  // Flicker (Cloudshift-style): exile target creature, then immediately
-  // return it to the battlefield under owner's control. Re-fires ETB
-  // triggers (the main use), resets damage marks, clears counters, revokes
-  // permanent grants, but preserves stickers (those live on the slot, not
-  // the runtime card object). Static-grant lords still in play will re-grant
-  // on the return — applyStaticKeywordGrants runs as part of the emit pre-pass.
-  //
-  // Tokens flicker → cease to exist (existing token leave-play rule). They
-  // don't return because there's no "owner's library/hand" home for them.
-  // This matches MtG canon (tokens that exile cease to exist).
-  //
-  // v1: immediate flicker only (Cloudshift). EOT-flicker (Restoration Angel)
-  // requires a delayed-trigger system to schedule the return — deferred.
+  // Cloudshift-shape immediate flicker. Re-fires ETB; clears damage/counters/grants.
+  // Stickers preserved (slot-level). Tokens cease to exist. EOT-flicker deferred.
   flicker(ctx, params, target) {
     const f = resolveTarget(ctx, target);
     if (!f) return;
@@ -2865,77 +2107,23 @@ const EFFECTS = {
       return;
     }
     log(`${ctx.sourceName} flickers ${card.name}.`, 'sp');
-    // Assign a new iid before returning to battlefield. Per MtG rules, a
-    // flickered creature returns as a "new object," which means anything
-    // tracking it by identity loses its reference. The mechanically
-    // observable consequence: spells and triggers on the stack that
-    // targeted the old iid (Bolt, Flame Wisp's deal-2-to-target trigger,
-    // etc.) fizzle when they resolve, because findCard(oldIid) returns
-    // null. This is the central reason flicker exists as a defensive
-    // play — without the iid change, flicker is mechanically equivalent
-    // to a "redraw your ETB triggers" effect that doesn't dodge removal.
-    //
-    // Side effects of the iid swap that we accept:
-    //   - damagedBySources sets on OTHER creatures may still hold the
-    //     old iid; harmless (those are read by Sengir-shape triggers
-    //     which check membership against their own iid).
-    //   - The card's own damagedBySources was cleared by resetInPlayState.
-    //   - Slot tracking via slotIdx is unchanged — that's the persistent
-    //     identity for run-state purposes.
+    // New iid: returns as "new object", so stack spells/triggers targeting old iid fizzle.
+    // This is the defensive value of flicker (without it, removal still hits).
     card.iid = nextIid++;
-    // Return to battlefield with sickness reset (ETB sick, except for haste).
-    // resetInPlayState already cleared sick; intrinsic haste re-derived from
-    // intrinsicKeywords if applicable. Push back, then emit ETB so triggers
-    // fire (Wall of Omens re-draws, Grave Digger re-recurs, etc).
     card.sick = !card.keywords.includes('haste');
-    // Owner-routed return — a stolen creature flickered returns to its
-    // original owner's battlefield, not the thief's. The ETB event carries
-    // the new controller (owner) so triggers see the correct side.
+    // Owner-routed (stolen + flickered → returns to original owner's bf).
     const returnTo = card.owner || f.controller;
     G[returnTo].battlefield.push(card);
     emit({type: 'cardEntersBattlefield', card, controller: returnTo, sourceIid: ctx.sourceIid});
   },
-  // Exile target creature until end of turn (Otherworldly Journey-shape).
-  // Splice the card off the battlefield, hold it on a delayed trigger that
-  // fires at end of turn and returns it. Differs from flicker (which is
-  // immediate exile-and-return) — this one is removal-as-tempo, taking a
-  // creature out of the game for one turn.
-  //
-  // Key uses:
-  //   - Removal answer (one turn off the board, dodging your block step)
-  //   - Saving your own creature from removal on the stack
-  //   - Re-firing your own ETB triggers at end of turn (Wall of Omens
-  //     re-draws when the spell wears off)
-  //   - Resetting damage/counters on a creature
-  //
-  // Tokens that exile cease to exist; their delayed return entry processes
-  // but logs the disappearance instead of returning.
-  // Take control of target creature (Threaten / Mind Control shape). Moves
-  // the card from its current controller's battlefield to the caster's.
-  // Two variants by params.duration:
-  //   - omitted: permanent steal (Mind Control). Card stays with caster
-  //     until it leaves the battlefield by other means.
-  //   - 'eot': temporary steal (Threaten). card.tempControlUntilEot = true;
-  //     the EOT cleanup pass reverts it to owner's battlefield.
-  // Other knobs:
-  //   - params.haste: if true, gives the stolen creature haste for the rest
-  //     of the turn (Threaten gives haste so you can attack with what you
-  //     stole — without this, sickness rules apply).
-  //   - params.untap: if true, untaps the stolen creature so it can attack
-  //     even if it was tapped (Threaten does this too).
-  // Owner field on the card is NOT modified — the original owner is
-  // preserved so death/bounce/exile/EOT all route the card home correctly.
-  // Token consideration: stealing a token works mechanically (it moves to
-  // your battlefield) but if the temporary-steal expires while the token
-  // is still on board, the EOT revert pushes it back to owner. If the
-  // token dies while stolen, it ceases to exist (tokens never reach a
-  // graveyard) and there's nothing to revert.
+  // Otherworldly-Journey-shape: exile until end of turn via delayed trigger.
+  // Tempo removal (1 turn off-board, dodge combat, re-fire your own ETB).
+  // Note: there's a second gainControl definition below — this one is older;
+  // the lower one is the one that runs. Threaten/Mind Control via params.duration.
   gainControl(ctx, params, target) {
     const f = resolveTarget(ctx, target);
     if (!f) return;
     if (f.controller === ctx.controller) {
-      // Defensive: shouldn't get here (targeting filters out your own
-      // creatures for gainControl), but if it does, no-op.
       log(`${ctx.sourceName} fizzles — already controlled.`, 'sp');
       return;
     }
@@ -2945,31 +2133,17 @@ const EFFECTS = {
     if (idx < 0) return;
     fromBf.splice(idx, 1);
     G[ctx.controller].battlefield.push(card);
-    // Mark for EOT revert if temporary. Both flags help the cleanup pass:
-    // tempControlUntilEot says "revert me at EOT," and tempControlSource
-    // (informational, for log) names what stole it. A creature stolen
-    // permanently has neither flag and never reverts.
     if (params && params.duration === 'eot') {
       card.tempControlUntilEot = true;
     }
-    // Haste / untap riders (Threaten pattern).
     if (params && params.haste) {
-      // EOT-granted haste — uses the same eotGrants pipeline as combat-trick
-      // grants. Cleared at EOT cleanup; works alongside the control revert.
       if (!Array.isArray(card.eotGrants)) card.eotGrants = [];
       card.eotGrants.push('haste');
       if (!card.keywords.includes('haste')) card.keywords.push('haste');
-      // Override sickness since the haste grant makes it moot. Without
-      // this, a sick creature given haste-for-EOT still can't attack
-      // because canCreatureAttack checks sick BEFORE haste.
+      // canCreatureAttack checks sick before haste, so override here.
       card.sick = false;
     } else {
-      // No haste rider: stolen creature is "sick under new controller."
-      // MtG: sickness applies if hasn't been under your control since
-      // your most recent turn began. A permanent steal needs to set sick
-      // so the thief can't attack with it immediately on the steal turn.
-      // (A natural Threaten without haste would be near-useless — that's
-      // why MtG's Threaten template always includes haste.)
+      // Standard sickness — thief can't immediately attack (MtG: not yours since your turn started).
       card.sick = true;
     }
     if (params && params.untap) {
@@ -2982,87 +2156,44 @@ const EFFECTS = {
     if (!f) return;
     const card = pluckFromBattlefield(f);
     if (!card) return;
-    // Flush permanentEot before resetInPlayState — same rationale as bounce.
-    // Flicker is a temporary exile, but the creature returns as a "new
-    // instance" with buffs cleared per standard MtG. Elystra's flavor wants
-    // those buffs to persist on the slot regardless of leave-play form.
     leavesPlayPreservingBuffs(card);
     log(`${ctx.sourceName} exiles ${card.name} until end of turn.`, 'sp');
     emitLeavesBattlefield(card, f.controller);
-    // Schedule the return. Hold the card on the delayed trigger so we
-    // don't have to reconcile with the exile zone (which today is also
-    // used by permanent-exile cards and recursion-from-exile). Using a
-    // separate holding location keeps the two domains independent.
+    // Hold card on delayed trigger (separate from exile zone, which handles permanent exile).
     G.delayedTriggers.push({
       fireAt: 'endStep',
-      fireFor: 'either',          // any player's end step (typically same turn)
+      fireFor: 'either',
       effect: 'returnFromExile',
       controller: ctx.controller,
       sourceName: ctx.sourceName,
       sourceIid: ctx.sourceIid,
       exiledCard: card,
-      // Return to OWNER's battlefield. For a stolen creature exiled-til-EOT,
-      // the temporary-control spell would have already been temp, but the
-      // exile-til-EOT effect itself is independent — it should always return
-      // the card to where it belongs. Falls back to f.controller if owner
-      // somehow unset.
       exiledFrom: card.owner || f.controller,
     });
   },
-  // Take control of target creature. Two flavors via duration param:
-  //   - omitted: permanent (Mind Control shape). Creature stays under the
-  //     caster's control until it leaves play. Survives across turns. If it
-  //     dies, it goes to its OWNER's graveyard (owner-routed). If it
-  //     bounces, it goes to its OWNER's hand. Etc.
-  //   - 'eot': temporary (Threaten shape). Reverts at end of turn — the EOT
-  //     cleanup pass walks both battlefields for cards with
-  //     tempControlUntilEot and pushes them back to card.owner's battlefield.
-  // Optional flags:
-  //   - untap: also untap the stolen creature (Threaten). Without this, a
-  //     tapped creature stays tapped — it's still yours but it can't attack
-  //     this turn for any reason of its own.
-  //   - grantHaste: grant haste until end of turn (Threaten). Without this,
-  //     summoning sickness is unchanged. If the creature was sick on opp's
-  //     side, it's still sick on yours. Threaten gives haste specifically so
-  //     the steal-and-attack play works on the same turn.
-  // Static lord grants:
-  //   - When the creature moves to your battlefield, applyStaticKeywordGrants
-  //     (called every emit pre-pass) picks up your lords' grants automatically.
-  //   - The opp's lord grants on the creature persist as stale entries in
-  //     card.grantedBy. Cosmetic bug for v1: the creature appears to have
-  //     keywords from opp's lord still. Accepted because the bug favors the
-  //     stealing player and is rare in practice. Fix: full rebuild of the
-  //     static-grant map in applyStaticKeywordGrants. Defer.
+  // Take control. duration:'eot' = Threaten (EOT revert via tempControlUntilEot); omitted = Mind Control.
+  // params: untap, grantHaste. Card.owner unmodified so death/bounce/EOT route home correctly.
+  // Known v1 cosmetic: opp's stale lord grants persist in grantedBy; favors thief, rare. Defer fix.
   gainControl(ctx, params, target) {
     const f = resolveTarget(ctx, target);
     if (!f) return;
     const card = f.card;
     const fromCtrl = f.controller;
     const toCtrl = ctx.controller;
-    // No-op if caster targeting their own creature. Targeting filters should
-    // prevent this (steal targets are opp creatures), but defensive guard.
     if (fromCtrl === toCtrl) {
       log(`${ctx.sourceName} fizzles — ${card.name} is already under ${pname(toCtrl)}'s control.`, 'sp');
       return;
     }
-    // Move the card. splice from fromCtrl's battlefield, push to toCtrl's.
     const fromBf = G[fromCtrl].battlefield;
     const idx = fromBf.findIndex(c => c.iid === card.iid);
     if (idx < 0) return;
     fromBf.splice(idx, 1);
     G[toCtrl].battlefield.push(card);
-    // Untap (Threaten) — runs before haste so a tapped creature is unblocked
-    // for the haste check. (Haste alone doesn't untap; the two riders are
-    // separate and Threaten specifies both.)
+    // Untap before haste so canCreatureAttack passes.
     if (params && params.untap) card.tapped = false;
-    // Haste grant (Threaten). Use applyGrant with eot=true so the cleanup
-    // path handles revocation via clearEotState. ctx.sourceIid is the steal
-    // spell — when the spell's grants are cleared at EOT, haste vanishes.
     if (params && params.grantHaste) {
       applyGrant(card, 'haste', ctx.sourceIid, true);
     }
-    // Temporary control: tag for EOT revert. The EOT pass (clearEotState)
-    // checks this flag and pushes the card back to card.owner's battlefield.
     if (params && params.duration === 'eot') {
       card.tempControlUntilEot = true;
     }
@@ -3079,22 +2210,9 @@ const EFFECTS = {
     }
     log(`${pname(ctx.controller)}'s ${n} creature(s) get +${params.power}/+${params.toughness} EOT.`, 'sp');
   },
-  // Fight: target creature you control and target opp's creature each deal
-  // damage to each other equal to their power. Encoded as a single-target
-  // spell where the target is the opponent's creature; the source's
-  // creature comes from ctx (the spell card itself doesn't fight, but on
-  // a creature with a "fight" activated ability, ctx.sourceIid is the
-  // attacker). For the simpler form here, the spell version, we pump the
-  // controller's strongest creature into a fight — this is intentionally
-  // a small-scoped implementation. See cards using kind:'fightTarget'.
+  // Fight: target opp creature; our biggest creature fights it (each deals damage = power).
+  // Tap status doesn't matter (Beast's Fury post-combat).
   fightTarget(ctx, params, target) {
-    // Pick the controller's biggest creature as the fighter. Tap status
-    // doesn't matter — in MtG fight is just "each deals damage equal to
-    // its power", which works whether the fighter has attacked this turn
-    // or not. Earlier versions of this engine excluded tapped creatures
-    // here, but that caused Beast's Fury cast post-combat to fizzle
-    // surprisingly when the player still had creatures on the field, just
-    // ones that had attacked.
     const ours = G[ctx.controller].battlefield
       .filter(c => c.type === 'Creature');
     if (!ours.length) { log(`${ctx.sourceName} fizzles — no creature to fight.`, 'sp'); return; }
@@ -3106,9 +2224,7 @@ const EFFECTS = {
     const [ourPow] = getStats(ourCreature);
     const [theirPow] = getStats(them);
     log(`${ourCreature.name} (${ourPow}) fights ${them.name} (${theirPow}).`, 'cb');
-    // Each fighter deals damage AS THEMSELVES — so deathtouch/lifelink on
-    // the fighter applies even though fightTarget was triggered by ctx.
-    // Build per-fighter ctx objects so applyDamageFrom looks them up.
+    // Per-fighter ctx so deathtouch/lifelink apply on the fighter, not the spell.
     const ourCtx   = { controller: ctx.controller, sourceName: ourCreature.name, sourceIid: ourCreature.iid };
     const theirCtx = { controller: f.controller,   sourceName: them.name,        sourceIid: them.iid };
     applyDamageFrom(ourCtx,   {kind:'creature', iid: them.iid},        ourPow);
@@ -3121,41 +2237,13 @@ const EFFECTS = {
     log(`${ctx.sourceName} untaps ${f.card.name}.`, 'sp');
   },
 
-  // Pure no-op. Exists so multi-target spells/abilities can have a "marker"
-  // effect at a target slot whose only purpose is forcing the validation
-  // harness to require a target at that slot. Used by Stapler: the real
-  // merge work lives in applyInGameSplice (which reads both targets via
-  // ctx.allTargets); the second target is requested via this marker.
+  // Marker — forces target-validation to require a slot. Stapler's second target.
   noop() {},
 
-  // In-game splice (Stapler v1.0.51). Reads two permanent targets from
-  // ctx.allTargets and merges the second onto the first using the same
-  // splice infrastructure that powers the reward-time splice path. The
-  // merged result is owned by the caster — when inputs cross owners, the
-  // merged slot moves into the caster's runState, functioning as
-  // removal/steal for opp-owned inputs.
-  //
-  // Pre-conditions (re-validated defensively; the target eligibility
-  // filter already enforces these at cast time):
-  //   - both targets must be on a battlefield
-  //   - target 0 must be a spliceable base (no Lands, no special, no
-  //     tokens, no modal-card bases)
-  //   - target 1 must be a spliceable staple (the above, plus not
-  //     already-stapled)
-  //   - the (base, staple) pair must satisfy isCompatibleStaplePair
-  //     (spell-base can't take creature-staple)
-  //
-  // The base card stays on the battlefield with its identity rebuilt as
-  // the merged template. The staple card is removed from its battlefield
-  // and its slot (if it has a persistent slot) is removed from its
-  // owner's runState. The merged card's slot becomes the caster's.
-  //
-  // v1.0.51 limitation: only permanent + permanent. Spell-on-stack as
-  // either input is deferred to v1.0.52+ (needs stack-merging infra).
+  // Stapler in-game splice. Merges target 1 onto target 0 using the reward-time
+  // splice infra. Cross-owner: merged slot moves to caster's runState (removal/steal).
+  // Targets validated: spliceable base/staple + isCompatibleStaplePair.
   applyInGameSplice(ctx, params, target) {
-    // Both targets come from ctx.allTargets (not the per-effect target).
-    // Defensive: the activation path threads allTargets in; if missing
-    // (e.g., called from a trigger path that hasn't been updated), abort.
     const all = ctx.allTargets;
     if (!Array.isArray(all) || all.length < 2) {
       log(`${ctx.sourceName} fizzles — needs two targets.`, 'sp');
@@ -3163,41 +2251,23 @@ const EFFECTS = {
     }
     const t0 = all[0], t1 = all[1];
     if (!t0 || !t1) { log(`${ctx.sourceName} fizzles — target missing.`, 'sp'); return; }
-    // ─── Resolve each target into a uniform shape ──────────────────────
-    // resolveStackOrPermanent (module helper) handles both target.kind
-    // values that Stapler's permanentOrSpell target accepts. Returns
-    // { kind: 'perm'|'spell', card, controller, stackItem? } or null on
-    // fizzle (target gone from battlefield, or no-longer-on-stack spell).
     const r0 = resolveStackOrPermanent(t0);
     const r1 = resolveStackOrPermanent(t1);
     if (!r0 || !r1) { log(`${ctx.sourceName} fizzles — target gone.`, 'sp'); return; }
     if (r0.card.iid === r1.card.iid) {
       log(`${ctx.sourceName} fizzles — can't staple a card to itself.`, 'sp'); return;
     }
-    // ─── Auto-determine base ───────────────────────────────────────────
-    // Delegates to canonicalSplicePair (module-scope helper) so the
-    // type-priority rule lives in one place and the reward-time path
-    // and Stapler stay in sync. Returns swap=true if t0 and t1 should
-    // be reordered to make t0 the base.
     const [canonBaseTpl, canonStapleTpl, swapped] = canonicalSplicePair(
       r0.card.tplId, r1.card.tplId);
     const baseR = swapped ? r1 : r0;
     const stapleR = swapped ? r0 : r1;
     const baseCard = baseR.card;
     const stapleCard = stapleR.card;
-    // ─── Eligibility ──────────────────────────────────────────────────
     if (!isSpliceableBase(baseCard.tplId)) {
       log(`${ctx.sourceName} fizzles — ${baseCard.name} can't be a splice base.`, 'sp'); return;
     }
-    // Reject already-stapled cards as staples (stapled-as-staple is forbidden
-    // in v1 for the same reason it's forbidden in the reward path: the synth
-    // path needs the staple to be a single unmerged template). Note: on
-    // IN-GAME cards the staple chain lives at card.stapledFrom.stapledTpls
-    // (set by makeCard via synthesizeStapledTemplate), NOT card.stapledTpls
-    // (which is a slot-level field). Previous code read the wrong field and
-    // the guard never fired — leading to silent data loss when the base's
-    // prior chain was also misread. v1.0.60 — fixed by reading via the
-    // stapledFrom path.
+    // In-game staple chain lives at card.stapledFrom.stapledTpls (NOT card.stapledTpls,
+    // which is slot-level). Reading the wrong field silently misses prior chains.
     const stapleStaples = (stapleCard.stapledFrom && Array.isArray(stapleCard.stapledFrom.stapledTpls))
       ? stapleCard.stapledFrom.stapledTpls
       : (Array.isArray(stapleCard.stapledTpls) ? stapleCard.stapledTpls : []);
@@ -3207,20 +2277,13 @@ const EFFECTS = {
     if (!isCompatibleStaplePair(baseCard.tplId, stapleCard.tplId)) {
       log(`${ctx.sourceName} fizzles — ${baseCard.name} and ${stapleCard.name} aren't compatible.`, 'sp'); return;
     }
-    // ─── Fire any stack-input's effects against their original targets ─
-    // For each input on the stack (spell), resolve its effects now using
-    // its locked-in targets. After firing, remove the spell from the stack
-    // — it's consumed by Stapler (does NOT go to the original caster's
-    // graveyard like a normal spell resolution; it ceases to exist).
-    // Snapshotted "last known information" target semantics handled by
-    // applyEffect's existing snapshot path.
+    // Fire stack inputs' effects with their locked-in targets, then consume them
+    // (no graveyard — Stapler absorbed them).
     const fireStackEffects = (r) => {
       if (r.kind !== 'spell') return;
       const item = r.stackItem;
       const spellCard = item.card;
       const spellCtx = { controller: item.controller, sourceName: spellCard.name, sourceIid: spellCard.iid, sourceCard: spellCard };
-      // Mirror resolveTopOfStack's effect loop. Use the spell's locked-in
-      // targets via item.targets; targetSlot dispatch via getTargetForSlot.
       const slotSnapshots = new Map();
       const itemTargets = Array.isArray(item.targets) ? item.targets : [];
       const getTargetForSlot = (slot) => {
@@ -3250,34 +2313,18 @@ const EFFECTS = {
         }
         applyEffect(spellCtx, eff, tgt, snap);
       }
-      // Remove the spell from the stack. NOT routed to graveyard — Stapler
-      // consumed it. The spell's resolution-time effects fired above; the
-      // card itself ceases to exist as a spell (it gets absorbed into the
-      // merged template via the slot mutation below).
       const stIdx = G.stack.indexOf(item);
       if (stIdx >= 0) G.stack.splice(stIdx, 1);
     };
-    // Fire staple first (the one being absorbed), then base if it was a
-    // spell. Order matters: if both are spells, firing staple first
-    // matches the typical mental model "staple resolves into base"; but
-    // honestly with no shared state between them it doesn't change
-    // outcomes. Consistent ordering for predictability.
     fireStackEffects(stapleR);
     if (baseR.kind === 'spell') fireStackEffects(baseR);
-    // ─── Merge math ─────────────────────────────────────────────────────
     const baseTpl = CARDS[baseCard.tplId];
     const baseEffectCount = countEffects(baseTpl);
     const baseTriggerCount = (baseTpl.triggers || []).length;
     const baseAbilityCount = (baseTpl.abilities || []).length;
     const baseIsCreature = baseTpl.type === 'Creature';
     const stapleIsCreature = CARDS[stapleCard.tplId] && CARDS[stapleCard.tplId].type === 'Creature';
-    // Read base's existing staple chain. Same field-name trap as in the
-    // stapleStaples check above: in-game cards carry the chain at
-    // card.stapledFrom.stapledTpls (set by synthesizeStapledTemplate via
-    // makeCard), NOT at card.stapledTpls. Previous code read the wrong
-    // field, returning [] for cards that had been stapled at game-start
-    // OR via earlier Stapler activations — which meant the merge math
-    // forgot the prior chain and produced a "regressed" merged card.
+    // Same field-name trap as stapleStaples above — read via stapledFrom path.
     const priorStaples = (baseCard.stapledFrom && Array.isArray(baseCard.stapledFrom.stapledTpls))
       ? baseCard.stapledFrom.stapledTpls.slice()
       : (Array.isArray(baseCard.stapledTpls) ? baseCard.stapledTpls.slice() : []);
@@ -3303,52 +2350,31 @@ const EFFECTS = {
       remapEmpowerRollForStaple(roll, baseIsCreature, stapleIsCreature,
                                 priorMergedEffectCount, priorMergedTriggerCount, priorMergedAbilityCount));
     const mergedRolls = (baseCard.empowerRolls || []).concat(remappedRolls);
-    // Subtype rolls — simple concat. The Nth 'subtype' sticker in the merged
-    // stickers list consumes the Nth roll; since stickers are concatenated
-    // base-then-staple, the rolls follow the same order. No remap needed —
-    // subtypes are tokens, not target-indexed effects.
+    // Subtype rolls: simple concat (tokens, not target-indexed).
     const mergedSubtypeRolls = (baseCard.subtypeRolls || []).concat(stapleCard.subtypeRolls || []);
     const mergedPermaBuffs = (Array.isArray(baseCard.permaBuffs) ? baseCard.permaBuffs.slice() : [])
       .concat(Array.isArray(stapleCard.permaBuffs) ? stapleCard.permaBuffs : []);
     const baseBonus = baseCard.bonusTrigger;
     const stapleBonus = stapleCard.bonusTrigger;
     const mergedBonus = baseBonus || stapleBonus || null;
-    // ─── Determine ownership of the merged result ──────────────────────
-    // Rule (v1.0.54): if AT LEAST ONE input is the caster's, the caster
-    // owns the merged result (slot lives in caster's runState, in-game
-    // card moves to caster's battlefield). If NEITHER input is the
-    // caster's, the splice is pure removal — the merged result stays
-    // with its base's owner (typically opp), no slot is minted anywhere
-    // (opp's slots are transient per-game), and the in-game card stays
-    // on the base's battlefield.
-    //
-    // This is principled: contributing one of your cards earns you the
-    // upgrade; messing with only opp's stuff is just attrition.
+    // Ownership: caster owns the merge IFF they contributed an input. Pure
+    // opp+opp splices are attrition only (no slot mint, stays on base's bf).
     const callerContributes = (baseCard.owner === ctx.controller) || (stapleCard.owner === ctx.controller);
     const resultOwner = callerContributes ? ctx.controller : baseCard.owner;
-    const mintSlot = callerContributes;   // only mint a persistent slot when caster contributes
-    // ─── Branch: base is permanent vs base is spell ────────────────────
+    const mintSlot = callerContributes;
     if (baseR.kind === 'perm') {
-      // ─── PERM-BASE PATH (P+P, P+S, S+P) ────────────────────────────
       if (stapleR.kind === 'perm') {
         const stapleBf = G[stapleR.controller].battlefield;
         const stapleIdx = stapleBf.findIndex(c => c.iid === stapleCard.iid);
         if (stapleIdx >= 0) stapleBf.splice(stapleIdx, 1);
         clearRestrictionsFromSource(stapleCard.iid);
       }
-      // Remove staple's persistent slot if it's the caster's. For opp's
-      // slots, slotIdx is transient per-game — no removal needed.
       if (stapleCard.owner === 'you' && typeof stapleCard.slotIdx === 'number'
           && typeof RUN !== 'undefined' && RUN.removeSlotByIdx) {
         const removedIdx = stapleCard.slotIdx;
         RUN.removeSlotByIdx(removedIdx);
-        // CRITICAL: removeSlotByIdx splices out the slot, shifting every
-        // higher index down by 1. In-game cards (Stapler itself, any other
-        // card in any zone) hold cached slotIdx pointers that are now
-        // stale for indices > removedIdx. Without this fixup, the next
-        // charge-accounting block reads slots[stapler.slotIdx] which is
-        // either undefined or the wrong slot — silently no-op'ing the
-        // charge decrement. Mirrors the pattern in ripSlotByIdx (line ~8290).
+        // CRITICAL: splice shifts higher indices down by 1 — fix cached slotIdx
+        // pointers in every zone. Otherwise charge-accounting silently no-ops.
         const zones = ['library', 'hand', 'battlefield', 'graveyard', 'exile'];
         for (const zoneName of zones) {
           const zone = G.you[zoneName];
@@ -3360,15 +2386,12 @@ const EFFECTS = {
           }
         }
       }
-      // Determine the slot home for the merged result. Only mint when the
-      // caster contributed; opp-only splices leave no persistent slot.
       let newSlotIdx = null;
       if (mintSlot) {
         const reuseBaseSlot = (baseCard.owner === ctx.controller && typeof baseCard.slotIdx === 'number');
         newSlotIdx = reuseBaseSlot
           ? baseCard.slotIdx
           : (typeof RUN !== 'undefined' && RUN.appendSlot ? RUN.appendSlot(baseCard.tplId, mergedStickers) : null);
-        // Populate the slot's merged state.
         if (typeof RUN !== 'undefined' && RUN.getSlots) {
           const slots = RUN.getSlots();
           const slot = (typeof newSlotIdx === 'number') ? slots[newSlotIdx] : null;
@@ -3575,11 +2598,8 @@ const EFFECTS = {
     }
   },
 };
-// EXPRESSIONS — effect params can be literals or {from:'<name>'} resolved at
-// apply time. Targets snapshotted at resolution start ("last known info")
-// so later effects read pre-resolution state. To add: case in resolveExpr.
-
-// Snapshot a target into a stable record, immune to destroy/exile mid-resolution.
+// EXPRESSIONS: params can be literals or {from:'<name>'}. Targets snapshotted
+// at resolution start ("last known info"). Add new exprs in resolveExpr.
 function snapshotTarget(target) {
   if (!target) return null;
   if (target.kind === 'creature' && target.iid != null) {
@@ -3599,12 +2619,10 @@ function snapshotTarget(target) {
   if (target.kind === 'player') {
     return { kind: 'player', who: target.who, label: target.label };
   }
-  // Other kinds (stack, etc.) pass through; expressions don't currently use them.
   return target;
 }
 
-// Resolve an expression value. Literals pass through; {from:'<name>'} reads
-// from snapshot/ctx. See switch cases below for the vocabulary.
+// Resolve {from:'<name>'} from snapshot/ctx; literals pass through.
 function resolveExpr(value, ctx, targetSnap) {
   if (value == null) return value;
   if (typeof value !== 'object' || !value.from) return value;
@@ -3637,9 +2655,7 @@ function resolveExpr(value, ctx, targetSnap) {
   }
 }
 
-// Walk an effect's top-level fields and resolve any {from:...} expressions
-// against the target snapshot + ctx. Returns a new effect object with
-// resolved values. Non-expression fields (kind, target, etc.) pass through.
+// Resolve all {from:...} fields against snapshot+ctx; return new effect.
 function resolveEffectParams(effect, ctx, targetSnap) {
   const out = {};
   for (const key of Object.keys(effect)) {
@@ -3651,24 +2667,14 @@ function resolveEffectParams(effect, ctx, targetSnap) {
 function applyEffect(ctx, effect, target, targetSnap) {
   const fn = EFFECTS[effect.kind];
   if (!fn) { console.warn('Unknown effect:', effect.kind); return; }
-  // Resolve dynamic params before handing off. Effects always see static
-  // values — the {from:...} machinery is invisible to them.
-  // If the caller passed a snapshot (multi-effect spell needing pre-resolution
-  // state), use it. Otherwise snapshot the live target now.
   const snap = (targetSnap !== undefined) ? targetSnap : snapshotTarget(target);
   const resolved = resolveEffectParams(effect, ctx, snap);
   fn(ctx, resolved, target);
 }
 function effectNeedsTarget(eff) { return !!eff.target && eff.target !== 'self'; }
 
-// Single source of truth for "does this effect kind operate on a creature
-// (vs a player)?" Used by both the spell resolver and the trigger resolver
-// to decide what target:'self' means: the source creature for creature-
-// effects, the source's controller for player-effects.
-//
-// Add new creature-operating effects here when introducing them. Player-
-// operating effects (damage, gainLife, draw, discard, addMana) do NOT go
-// here — they correctly resolve self → source's controller.
+// Effect kinds that operate on a creature (vs player) — drives target:'self' meaning.
+// Add creature-operators here; damage/gainLife/draw/discard/addMana resolve self → controller.
 const CREATURE_EFFECT_KINDS = new Set([
   'pump', 'weaken', 'addCounter', 'untap', 'removeCreature',
   'fightTarget', 'endomorphAbsorb', 'flicker', 'exileUntilEOT',
@@ -3679,9 +2685,7 @@ function effectOperatesOnCreature(eff) {
   return CREATURE_EFFECT_KINDS.has(eff.kind);
 }
 
-// Modal: card.effects is either flat list (single-mode) or {modes:[[...],...]}.
-// getModes normalizes — always returns an array of modes. Iterate via
-// getModes(card)[modeIdx || 0], never card.effects directly.
+// card.effects is flat array OR {modes:[[...],...]}. getModes always returns array-of-modes.
 function getModes(card) {
   const e = card.effects;
   if (!e) return [[]];
@@ -3692,15 +2696,12 @@ function getModes(card) {
 function isModal(card) {
   return !!(card.effects && !Array.isArray(card.effects) && Array.isArray(card.effects.modes));
 }
-// Pull the active effect list given a (card, modeIdx). Modeless cards
-// ignore modeIdx and return their flat effects.
+// Active effects for (card, modeIdx). Modeless ignores modeIdx.
 function effectsForMode(card, modeIdx) {
   const modes = getModes(card);
   return modes[modeIdx || 0] || [];
 }
-// Flatten card.effects across all modes. Use for "does card contain effect
-// X anywhere?" queries (counterspell detection, sticker eligibility). For
-// resolution with a locked-in mode, use effectsForMode instead.
+// Flatten across all modes. For "does card contain effect X anywhere" queries.
 function allCardEffects(card) {
   if (!card || !card.effects) return [];
   if (Array.isArray(card.effects)) return card.effects;
@@ -3713,9 +2714,7 @@ function allCardEffects(card) {
   }
   return [];
 }
-// Sugar for the common "does this card have an effect matching X" pattern.
-// Equivalent to allCardEffects(card).some(predicate) but reads more clearly
-// at call sites and avoids allocating the intermediate array.
+// Predicate any-match across modes; avoids the intermediate flatten array.
 function cardHasEffect(card, predicate) {
   if (!card || !card.effects) return false;
   if (Array.isArray(card.effects)) return card.effects.some(predicate);
@@ -3727,21 +2726,12 @@ function cardHasEffect(card, predicate) {
   return false;
 }
 
-// =========================================================================
-// EVENTS & TRIGGERS — every state change emits {type, ...payload}. emit()
-// walks battlefields, calls each trigger's condition(self, evt), queues
-// matches in G.pendingTriggers (drained to stack at next priority round).
-// Card trigger shape: {event, condition, effects, text}. At resolution,
-// targeted effects re-validate per MtG-modern fizzle rule.
-// =========================================================================
+// EVENTS & TRIGGERS — emit() queues matched triggers in G.pendingTriggers,
+// drained to stack at next priority round. Targets re-validate at resolution.
 const TRIGGER_DEPTH_CAP = 100;
 
-// Apply lord-granted keywords to applicable creatures. Called from emit()
-// before triggers fire so any battlefield change reconciles before triggers
-// see post-state. Idempotent (one entry per (target, lord, kw) in grantedBy).
-// Lord-leave cleanup goes through clearRestrictionsFromSource. One-way apply
-// is sufficient: a creature only stops matching by leaving play, which also
-// clears grantedBy.
+// Lord-grant reconciliation, called from emit() pre-trigger. Idempotent.
+// Cleanup via clearRestrictionsFromSource on lord leave-play.
 function applyStaticKeywordGrants() {
   if (!G || !G.you || !G.opp) return;
   const all = [
@@ -3753,22 +2743,18 @@ function applyStaticKeywordGrants() {
     for (const buff of lord.staticBuffs) {
       if (!buff.keywords || !buff.keywords.length) continue;
       for (const { card: target, controller: tgtCtrl } of all) {
-        if (target.iid === lord.iid) continue;     // lords don't grant to themselves
-        if (target.type !== 'Creature') continue;  // walls of a different type? — skip non-creatures defensively
+        if (target.iid === lord.iid) continue;
+        if (target.type !== 'Creature') continue;
         if (!matchFilter(target, buff.filter, tgtCtrl, lordCtrl)) continue;
         if (buff.subtype) {
           const sub = target.sub || '';
           const re = new RegExp('\\b' + buff.subtype + '\\b');
           if (!re.test(sub)) continue;
         }
-        // Apply each keyword via the existing grantedBy infrastructure,
-        // mirroring what the grantKeyword effect handler does. Source
-        // iid is the lord's, so when the lord leaves play
-        // clearRestrictionsFromSource finds and revokes these grants.
         if (!(target.grantedBy instanceof Map)) target.grantedBy = new Map();
         for (const kw of buff.keywords) {
           if (!target.grantedBy.has(kw)) target.grantedBy.set(kw, new Set());
-          if (target.grantedBy.get(kw).has(lord.iid)) continue;  // already applied
+          if (target.grantedBy.get(kw).has(lord.iid)) continue;
           target.grantedBy.get(kw).add(lord.iid);
           if (!target.keywords.includes(kw)) target.keywords.push(kw);
         }
@@ -3779,22 +2765,12 @@ function applyStaticKeywordGrants() {
 
 function emit(evt, extraSources) {
   if (G.gameOver) return;
-  // Reconcile static lord keyword grants before any trigger fires. This
-  // catches the cases where (a) a lord just ETB'd (its grants need to
-  // propagate), and (b) a tribe member just ETB'd (existing lords need
-  // to grant to the newcomer). Idempotent — see applyStaticKeywordGrants.
   applyStaticKeywordGrants();
-  // Walk every card on every battlefield, plus any extraSources passed in.
-  // extraSources is used for events where the source has just left play
-  // (e.g., dies-triggers — the dying card is no longer on the battlefield
-  // by the time we emit, but its trigger should still fire from a snapshot
-  // of the card "as it left play"). Each source: {card, controller}.
+  // extraSources for dies-triggers etc. where source has left play. {card, controller}.
   const checkSource = (card, who) => {
     if (!card.triggers || card.triggers.length === 0) return;
     for (const trig of card.triggers) {
       if (trig.event !== evt.type) continue;
-      // Bilingual condition resolver — handles both new condId form and
-      // legacy closure form. See evalTriggerCondition for resolution rules.
       if (!evalTriggerCondition(trig, card, evt, who)) continue;
       if (!triggerHasAnyValidTarget(trig, who)) continue;
       G.pendingTriggers.push({
@@ -3825,36 +2801,22 @@ function triggerHasAnyValidTarget(trig, controller) {
   return true;
 }
 
-// True if a trigger's effect requires a real player choice.
-// Auto-pick (no prompt): no target, target='self'|'player'|'spell'.
-// Prompt: target='creature'|'any' with >1 valid option.
+// Auto-pick: no target, or target='self'|'player'|'spell'|'opp'. Else prompt iff >1 valid.
 function triggerNeedsPlayerChoice(eff, controller) {
   if (!effectNeedsTarget(eff)) return false;
   const tgt = eff.target;
-  // 'opp' = implicit single opponent target, no choice. Same exemption as
-  // 'self' (caster), 'player' (auto-resolved to opp by pickBestTriggerTarget),
-  // and 'spell' (resolved against top of stack).
   if (tgt === 'self' || tgt === 'player' || tgt === 'spell' || tgt === 'opp') return false;
-  // 'creature' or 'any' — real choice possible. Only prompt if there's
-  // more than one valid target (one valid = forced choice = auto-pick fine).
   const valid = getValidTargets(eff, controller);
   return valid.length > 1;
 }
 
-// Move queued triggers onto the stack. Active player's triggers go first,
-// then non-active player's. Within a controller's triggers, they're queued
-// in firing order.
-//
-// If a player-controlled trigger requires a meaningful target choice, we
-// stop draining and set G.pendingTriggerTarget — the engine then waits for
-// the player to pick. The remaining un-drained triggers stay in
-// pendingTriggers and will drain after the prompt is resolved.
+// Drain queued triggers to stack. Active player's first, then opp. Pauses on
+// pendingTriggerTarget prompt; remaining triggers drain post-prompt.
 function drainTriggers() {
   if (G.gameOver) return false;
-  if (G.pendingTriggerTarget) return false;   // already waiting on a prompt
+  if (G.pendingTriggerTarget) return false;
   if (G.pendingTriggers.length === 0) return false;
   const active = G.activePlayer;
-  // Stable partition: active player's triggers, then opponent's.
   const ordered = [
     ...G.pendingTriggers.filter(p => p.controller === active),
     ...G.pendingTriggers.filter(p => p.controller !== active),
@@ -3862,7 +2824,6 @@ function drainTriggers() {
   G.pendingTriggers = [];
   for (let i = 0; i < ordered.length; i++) {
     const p = ordered[i];
-    // Find the first targeted effect that needs a player prompt.
     const promptEff = (p.controller === 'you')
       ? (p.trig.effects || []).find(e => triggerNeedsPlayerChoice(e, p.controller))
       : null;
@@ -3891,27 +2852,16 @@ function drainTriggers() {
 }
 
 function pushTriggerOnStack(p) {
-  // Triggers go on the stack like spells. We construct a stack item that
-  // resolveTopOfStack() understands as a trigger. AI/player can interact
-  // (counter, respond) just like with spells.
-  // For targeted triggers, target is chosen NOW (when going on stack),
-  // matching MtG rules. AI auto-picks; player would need a UI prompt —
-  // for v1 we auto-pick the AI heuristic for the player too on triggers
-  // they don't directly cause (acceptable since trigger targets are
-  // usually obvious / forced). NOTE: future improvement = full UI prompt.
+  // Triggers go on the stack like spells. Target chosen now (MtG rules).
+  // v1: auto-pick via AI heuristic for both sides; player UI prompt is future work.
   const targetEff = (p.trig.effects || []).find(effectNeedsTarget);
   let chosenTarget = null;
   if (targetEff) {
     const valid = getValidTargets(targetEff, p.controller);
     if (valid.length === 0) {
-      // Shouldn't happen — pre-queue check should have prevented this,
-      // but if state changed between queue and drain, fizzle silently.
       log(`${p.sourceName} trigger fizzles — no legal target.`, 'sp');
       return;
     }
-    // Auto-pick: best target via the AI heuristic shape (works for both).
-    // We pick the highest-scoring target. For player-controlled triggers,
-    // this is a v1 simplification — proper UI prompt is future work.
     chosenTarget = pickBestTriggerTarget(targetEff, valid, p.controller);
   }
   G.stack.push({
@@ -3921,47 +2871,37 @@ function pushTriggerOnStack(p) {
     sourceName: p.sourceName,
     controller: p.controller,
     targets: chosenTarget ? [chosenTarget] : [],
-    // Carry the original triggering event onto the stack item so the
-    // resolver can expose it via ctx.event. Most effects don't need this;
-    // ones that operate on a non-target reference (e.g., Endomorph reading
-    // the dying creature's keywords from the cardDies event) do.
+    // event → ctx.event for effects that read non-target data (Endomorph etc.).
     event: p.event || null,
   });
   log(`${p.sourceName} triggers: ${p.trig.text || p.trig.event}.`, 'sp');
-  // Putting something on the stack opens (or restarts) a priority round.
   if (!G.priority) G.priority = { passes: new Set() };
   G.priority.passes.clear();
   G.priorityHolder = opp(p.controller);
 }
 
-// Pick best target for a trigger. Auto-picks for both AI and player in v1.
+// Auto-pick best trigger target. v1 used for both sides.
 function pickBestTriggerTarget(eff, valid, controller) {
   const them = opp(controller);
-  // Resolve creature target's controller (getValidTargets doesn't populate it).
   const ctrlOf = t => {
     const f = findCard(t.iid);
     return f ? f.controller : null;
   };
-  // Damage to "any target" — try to kill an opp creature, else hit face.
   if (eff.kind === 'damage') {
     const amt = eff.amount || 0;
     const oppCreatures = valid.filter(t => t.kind === 'creature' && ctrlOf(t) === them);
-    // Prefer killing the highest-toughness creature we can lethal.
     const killable = oppCreatures
       .map(t => { const f = findCard(t.iid); return {t, tou: f ? getStats(f.card)[1] - f.card.damage : 99}; })
       .filter(x => x.tou <= amt)
       .sort((a, b) => b.tou - a.tou);
     if (killable.length) return killable[0].t;
-    // Otherwise pick opp face if available.
     const oppFace = valid.find(t => t.kind === 'player' && t.who === them);
     if (oppFace) return oppFace;
   }
-  // Discard / hand attack — always opp.
   if (eff.kind === 'discard') {
     const oppFace = valid.find(t => t.kind === 'player' && t.who === them);
     if (oppFace) return oppFace;
   }
-  // Removal-y stuff — pick opp's biggest creature.
   const harmful = ['removeCreature', 'restrict', 'fightTarget'];
   if (harmful.includes(eff.kind)) {
     const oppC = valid.filter(t => t.kind === 'creature' && ctrlOf(t) === them);
@@ -3975,7 +2915,6 @@ function pickBestTriggerTarget(eff, valid, controller) {
       return sorted[0];
     }
   }
-  // Buff-y stuff — prefer our biggest creature.
   if (['pump', 'addCounter', 'untap'].includes(eff.kind)) {
     const ours = valid.filter(t => t.kind === 'creature' && ctrlOf(t) === controller);
     if (ours.length) {
@@ -3988,15 +2927,11 @@ function pickBestTriggerTarget(eff, valid, controller) {
       return sorted[0];
     }
   }
-  // grantKeyword: behavior depends on whether the keyword is a buff or a
-  // debuff. Defender is the only current debuff (locks creatures down) —
-  // we want it on opp's best creature. Everything else (flying, haste,
-  // etc.) is a buff — we want it on our best.
+  // defender = debuff (target opp's best); other keywords = buff (target our best).
   if (eff.kind === 'grantKeyword') {
     const isDebuff = (eff.keyword === 'defender');
     const wantedCtrl = isDebuff ? them : controller;
     const candidates = valid.filter(t => t.kind === 'creature' && ctrlOf(t) === wantedCtrl);
-    // Skip targets that already have this keyword (the grant would be a no-op).
     const usable = candidates.filter(t => {
       const f = findCard(t.iid);
       return f && !f.card.keywords.includes(eff.keyword);
@@ -4011,12 +2946,6 @@ function pickBestTriggerTarget(eff, valid, controller) {
       return sorted[0];
     }
   }
-  // tap: similar to removal in spirit (locks down opp creatures), but our own
-  // tapped creature is wasted. Prefer untapped opp creatures.
-  // (removeCreature with severity 1 is handled in the harmful branch above.)
-  // Graveyard recursion: pick the highest-value creature in our graveyard.
-  // Targets here are kind:'graveyardCreature' so we look up the card in
-  // the controller's graveyard rather than via findCard (battlefield only).
   if (eff.kind === 'returnFromGraveyard') {
     const graveCards = G[controller].graveyard;
     const scored = valid
@@ -4032,22 +2961,18 @@ function pickBestTriggerTarget(eff, valid, controller) {
   return valid[0];
 }
 
-// Lightweight intrinsic-value helper for in-engine target picking — avoids
-// reaching into the AI module (which itself imports ENGINE). Mirrors the
-// AI's getCardValue intent at a coarser grain. Used by graveyard recursion
-// pickers since the AI's full scorer isn't available here.
+// Coarse intrinsic value for in-engine picking (avoids reaching into AI module).
 function cardValueOrZero(card) {
   if (!card) return 0;
   const cost = costTotalCard(card);
   if (card.type === 'Creature') {
     const [pow, tou] = getStats(card);
-    return pow + tou + cost * 2;       // bigger + costlier = more worth recurring
+    return pow + tou + cost * 2;
   }
   return cost * 2;
 }
 
-// Resolve a trigger from the stack. Called by resolveTopOfStack when
-// item.kind === 'trigger'. Re-validates targets per modern MtG rules.
+// Resolve a trigger from the stack.
 function resolveTrigger(item) {
   G.triggerChainDepth = (G.triggerChainDepth || 0) + 1;
   if (G.triggerChainDepth > TRIGGER_DEPTH_CAP) {
@@ -4058,21 +2983,13 @@ function resolveTrigger(item) {
     sourceIid: item.sourceIid,
     sourceName: item.sourceName,
     controller: item.controller,
-    // Best-effort sourceCard lookup — the source may have left play between
-    // queueing and resolution. Used by `from: sourcePower` etc.
+    // Best-effort lookup — source may have left play between queue and resolve.
     sourceCard: (() => {
       const f = item.sourceIid != null ? findCard(item.sourceIid) : null;
       return f ? f.card : null;
     })(),
-    // Original triggering event, for effects that read off-target data
-    // (e.g., Endomorph reading the dying creature's keywords). null for
-    // non-trigger resolves.
     event: item.event || null,
   };
-  // Multi-target dispatch (mirrors resolveTopOfStack). By default, all
-  // targeted effects share item.targets[0]. Effects can opt into a distinct
-  // slot via `targetSlot: N`. Triggers today are mostly single-target;
-  // multi-target support exists for symmetry with spells.
   const triggerSlotSnapshots = new Map();
   const triggerTargets = Array.isArray(item.targets) ? item.targets : [];
   const getTriggerTargetForSlot = (slot) => {
@@ -4087,23 +3004,12 @@ function resolveTrigger(item) {
       const slot = eff.targetSlot || 0;
       const { tgt, snap } = getTriggerTargetForSlot(slot);
       if (!tgt) { log(`${item.sourceName} trigger fizzles — no target.`, 'sp'); continue; }
-      // Note: we deliberately don't re-validate the target here. Multi-effect
-      // triggers (Exorcist's [exile, gainLife]) need effect 1 to operate on
-      // the SNAPSHOT taken before effect 0 ran — re-validating after exile
-      // would make findCard return null and falsely fizzle the lifegain.
-      // Each effect that needs a LIVE target (removeCreature, damage-to-
-      // creature, etc.) handles missing-target via its own findCard guard.
-      // Effects that read only from the snapshot (gainLife with from-exprs)
-      // resolve correctly even when the live target is gone. Matches the
-      // spell resolver's behavior.
+      // No re-validation: multi-effect triggers (Exorcist [exile, gainLife]) need
+      // effect 1 to read pre-effect-0 snapshot. Each effect guards live-target itself.
       applyEffect(ctx, eff, tgt, snap);
     } else {
-      // Untargeted, OR target:'self'. For self, what we pass depends on
-      // what the effect operates on:
-      //   - Creature-operating effects (pump, tap, untap, bounce, destroy,
-      //     exile) treat 'self' as the source creature.
-      //   - Player-operating effects (gainLife, damage, discard, draw)
-      //     treat 'self' as the source's controller.
+      // Untargeted or target:'self'. Self → source creature OR source's controller
+      // depending on effectOperatesOnCreature.
       let selfTarget = null;
       let selfSnap = null;
       if (eff.target === 'self') {
@@ -4127,8 +3033,6 @@ function getValidTargets(effect, controller) {
     ...G.you.battlefield.map(c => ({card: c, ctrl: 'you'})),
     ...G.opp.battlefield.map(c => ({card: c, ctrl: 'opp'})),
   ].filter(x => x.card.type === 'Creature')
-   // Hexproof: creature can't be targeted by spells/abilities controlled by
-   // its opponent. Excluded from target lists when source's controller != ctrl.
    .filter(x => !(x.card.keywords.includes('hexproof') && x.ctrl !== controller));
   switch (effect.target) {
     case 'any':
@@ -4143,25 +3047,14 @@ function getValidTargets(effect, controller) {
         {kind:'player', who:'opp', label: G.opp.name},
       ];
     case 'opp':
-      // Implicit-opponent target — no player choice involved. Used by the
-      // Architect's Codex generator for effects like "opponent discards a
-      // card" where there's no targeting decision (effect always lands on
-      // controller's opponent). Returns the opponent as a single 'player'
-      // target so downstream resolvers (discard, damage, etc.) that branch
-      // on target.kind === 'player' work without special-casing.
+      // Implicit single-opponent (no choice). Returns as 'player' so resolvers don't special-case.
       return [{kind:'player', who: opp(controller), label: G[opp(controller)].name}];
     case 'creature':
       return allCreatures
         .filter(x => matchFilter(x.card, effect.filter, x.ctrl, controller))
         .map(x => ({kind:'creature', iid:x.card.iid, label:x.card.name}));
     case 'permanent':
-      // Any permanent on either battlefield — Creatures + Lands + Artifacts.
-      // Artifacts (Stapler is the first) get included here so Stapler-style
-      // effects could target other artifacts. Stapler's eligibility filter
-      // (spliceableBase / spliceableStaple) then excludes Stapler-itself
-      // and other special cards via isSpliceableBase/isSpliceableStaple.
-      // Hexproof still applies to creatures (can't target opp's hexproof
-      // creatures). Lands are never hexproof.
+      // Creatures + Lands + Artifacts. Special-card exclusions live in caller filters.
       return [
         ...G.you.battlefield.map(c => ({card: c, ctrl: 'you'})),
         ...G.opp.battlefield.map(c => ({card: c, ctrl: 'opp'})),
@@ -4171,12 +3064,7 @@ function getValidTargets(effect, controller) {
         .filter(x => matchFilter(x.card, effect.filter, x.ctrl, controller))
         .map(x => ({kind:'permanent', iid:x.card.iid, label:x.card.name}));
     case 'graveyardCreature':
-      // Creature cards in the casting controller's graveyard. Hexproof
-      // doesn't apply (graveyard is your own private pile; nothing in
-      // there is "protected from you"). Used by recursion effects like
-      // Grave Digger that pull a creature back to hand. Filters apply —
-      // e.g., Spirit Shepherd uses filter:{subtype:'Spirit'} to restrict
-      // to its own tribe.
+      // Caster's own graveyard; hexproof doesn't apply. Filter for tribal recursion.
       return G[controller].graveyard
         .filter(c => c.type === 'Creature')
         .filter(c => matchFilter(c, effect.filter, controller, controller))
@@ -4186,14 +3074,7 @@ function getValidTargets(effect, controller) {
         .filter(s => s.kind !== 'trigger' && s.card)
         .map(s => ({kind:'stack', stackItem: s, label: s.card.name}));
     case 'permanentOrSpell': {
-      // Union of 'permanent' and 'spell' target kinds — used by Stapler
-      // (v1.0.53+) to let a single target slot accept either a battlefield
-      // permanent or a spell on the stack. Eligibility filters apply
-      // separately to each half: a permanent passes if it's a spliceable
-      // base/staple (matchFilter), a spell passes if its card template is
-      // spliceable (matchFilterSpell — separate path, since stack items
-      // are not card instances on the battlefield and matchFilter's
-      // hexproof / controller checks don't make sense for stack items).
+      // Stapler target: perm OR spell. Each half uses its own match function.
       const perms = [
         ...G.you.battlefield.map(c => ({card: c, ctrl: 'you'})),
         ...G.opp.battlefield.map(c => ({card: c, ctrl: 'opp'})),
@@ -4212,18 +3093,11 @@ function getValidTargets(effect, controller) {
   }
 }
 
-// Stack-item filter for splice eligibility. Stack items are spells (not on
-// the battlefield), so the matchFilter checks for tapped/controller/hexproof
-// don't apply. The only filter axes that matter for v1's Stapler use case:
-// the spliceableBase/spliceableStaple keys. Extensible — add filter axes
-// here as needed (e.g., spell color, type).
+// Stack-item filter (stack items aren't on bf, so no tapped/controller/hexproof).
 function matchFilterSpell(card, filter) {
   if (!filter) return true;
   if (filter.spliceableBase && !isSpliceableBase(card.tplId)) return false;
   if (filter.spliceableStaple && !isSpliceableStaple(card.tplId)) return false;
-  // Defensive: tokens currently can't appear on the stack as spells (they're
-  // minted directly onto battlefields), but if a future mechanic puts one
-  // there, Steal still shouldn't try to add it to the player's deck.
   if (filter.notToken && card.isToken) return false;
   return true;
 }

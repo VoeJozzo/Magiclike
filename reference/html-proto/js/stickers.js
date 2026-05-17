@@ -1,21 +1,6 @@
-// =========================================================================
-// STICKERS — runtime sticker application and deck-construction helpers.
-// Extracted from engine.js in v1.0.136. References two engine.js globals
-// as late-bound calls: ENGINE.synthesizeStapledTemplate (used when applying
-// an empower sticker to a stapled card — the merged template is the
-// baseline for the roll) and tplForSlot (used in eligibility checks).
-// Both resolve at function-call time, after engine.js has loaded.
-// deckColorsFromSlots stays in engine.js but is passed INTO stickers via
-// the `deckColors` parameter on stickersForSlot — not late-bound here.
-//
-// Two logical groupings, in original engine.js order:
-//   1. Runtime sticker application: weightedPick, applyStickersToCard,
-//      applyOneStickerToRuntimeCard, applyRandomStickersToSide,
-//      empowerRollLabel, applyEmpowerRoll.
-//   2. Deck-construction sticker helpers: rollSubtypeFromDeck,
-//      pushStickerWithRoll, stickersForSlot.
-// =========================================================================
-// Weighted-random pick from a sticker list (default weight 3).
+// STICKERS — runtime application + deck-construction helpers (extracted from engine.js).
+// Late-binds ENGINE.synthesizeStapledTemplate and tplForSlot (both resolve at call time).
+
 function weightedPick(stickers) {
   let total = 0;
   for (const s of stickers) total += (s.weight || 3);
@@ -28,25 +13,18 @@ function weightedPick(stickers) {
   return stickers[stickers.length - 1];
 }
 
-// Apply run-persistent stickers to a card. Called from makeCard and from
-// stickersForSlot's eligibility view.
+// Apply run-persistent stickers to a card. Called from makeCard and stickersForSlot.
+// Empower/subtype rolls consumed in order (Nth occurrence uses Nth roll);
+// missing rolls (legacy saves) fall back to a fresh uniform roll.
 function applyStickersToCard(card) {
-  // Empower rolls are consumed in order — Nth 'empower' sticker uses Nth roll.
-  // If a roll is missing (legacy save, or the slot was created before we
-  // started recording rolls), we fall back to a fresh uniform roll on the
-  // template at apply time. This is non-deterministic but only happens for
-  // legacy data; new applications always have a recorded roll.
   let empowerCursor = 0;
   let subtypeCursor = 0;
   for (const sId of card.stickers) {
     const s = STICKERS[sId];
     if (!s) continue;
     if (s.kind === 'statBoost') {
-      // Symmetricize beats stat-boost stickers — the card has been
-      // numerically flattened to N/N for {N}, and the boss's "all values
-      // become the same" promise overrides earned +1/+1 buffs. Keyword
-      // stickers, innate, landColor, costReduction, trigger, and subtype
-      // all continue to apply normally.
+      // Symmetricize boss flattens stats to N/N, overriding stat-boost stickers.
+      // Other sticker kinds still apply.
       if (typeof card.symmetrizedTo === 'number') continue;
       card.modifiers.push({ power: s.power || 0, toughness: s.toughness || 0 });
     } else if (s.kind === 'keyword') {
@@ -66,14 +44,7 @@ function applyStickersToCard(card) {
     } else if (s.kind === 'empower') {
       let roll = (card.empowerRolls || [])[empowerCursor];
       if (!roll) {
-        // Stapled-aware fallback: if the card was synthesized from a staple
-        // chain, use the merged template so the fresh roll can land on the
-        // staple half's effects. Otherwise we'd silently constrain the empower
-        // target to base-only fields.
-        // applyStickersToCard lives at module scope (so DRAFT and RUN can both
-        // call it before the ENGINE IIFE has constructed); synthesizeStapledTemplate
-        // is inside ENGINE's IIFE. Use the exposed ENGINE.synthesizeStapledTemplate
-        // which is in scope at call time (when ENGINE has been built).
+        // Stapled fallback: use merged tpl so roll can land on staple half's effects.
         const tpl = card.stapledFrom
           ? ENGINE.synthesizeStapledTemplate(card.stapledFrom.baseTplId,
                                               card.stapledFrom.stapledTpls)
@@ -85,11 +56,8 @@ function applyStickersToCard(card) {
     } else if (s.kind === 'trigger') {
       card.triggers.push({...s.trigger});
     } else if (s.kind === 'subtype') {
-      // The specific subtype is stored on card.subtypeRolls (parallel to
-      // occurrences of 'subtype' in card.stickers). Mirrors the Empower
-      // cursor pattern. If a roll is missing (legacy save), skip — we
-      // can't deterministically pick a subtype without runtime context
-      // (the rolling needs the full deck), so we defer to the next save.
+      // Specific subtype stored on card.subtypeRolls (parallel to occurrences). Legacy
+      // saves missing a roll skip — rolling needs deck context, deferred to next save.
       const rolled = (card.subtypeRolls || [])[subtypeCursor];
       subtypeCursor++;
       if (!rolled) continue;
@@ -102,17 +70,9 @@ function applyStickersToCard(card) {
   }
 }
 
-// Apply a SINGLE sticker to a runtime card incrementally. Mirrors the
-// per-sticker logic in applyStickersToCard (for one sticker only). Used
-// when a sticker is added mid-game (Archdemon of Bargains) and the
-// runtime card already has its other stickers' effects baked in — we
-// only want to apply the NEW one, not re-apply everything. Modifies
-// the card in place; also pushes the stickerId into card.stickers so a
-// later full rebuild stays consistent.
-//
-// Skips empower/subtype paths — they require rolls that we don't generate
-// here. The bargain effect only picks from statBoost/keyword/innate/
-// landColor/costReduction/trigger stickers (filtered at call site).
+// Apply a SINGLE sticker to a runtime card incrementally (Archdemon of Bargains
+// adds a sticker mid-game without re-applying all the others). Skips empower/subtype
+// (they need rolls); bargain filters those out at the call site.
 function applyOneStickerToRuntimeCard(card, stickerId) {
   if (!card) return;
   const s = STICKERS[stickerId];
@@ -144,51 +104,19 @@ function applyOneStickerToRuntimeCard(card, stickerId) {
   }
 }
 
-// Apply N random stickers to permanents controlled by `side`. Used by
-// Archdemon of Bargains. For each of the N rolls: pick a random eligible
-// (permanent, sticker) pair where the sticker's appliesTo predicate
-// accepts the card. Skip if no eligible pair exists (defensive — happens
-// when side has no permanents at all).
-//
-// PLAYER-SIDE: applies via RUN.applyStickerToSlot for persistence across
-// games. The runtime card on the battlefield also gets the sticker
-// applied this game via applyOneStickerToRuntimeCard, so the buff is
-// visible immediately.
-//
-// OPP-SIDE: only applies to the runtime card. Opp slots are regenerated
-// each game so persistence isn't possible (and isn't desired — the
-// boss's deck shouldn't accumulate stickers across encounters).
-// Apply N random stickers to permanents controlled by `side`. Used by
-// Archdemon of Bargains. For each of the N rolls: pick a random eligible
-// (permanent, sticker) pair where the sticker's appliesTo predicate
-// accepts the card. Skip if no eligible pair exists (defensive — happens
-// when side has no permanents at all).
-//
-// PLAYER-SIDE: applies via RUN.applyStickerToSlot for persistence across
-// games. The runtime card on the battlefield also gets the sticker
-// applied this game via applyOneStickerToRuntimeCard, so the buff is
-// visible immediately.
-//
-// OPP-SIDE: only applies to the runtime card. Opp slots are regenerated
-// each game so persistence isn't possible (and isn't desired — the
-// boss's deck shouldn't accumulate stickers across encounters).
-//
-// `state` is the engine's G state (passed in since this helper lives
-// at module scope, outside the ENGINE IIFE). `logFn` is the engine's
-// internal log function, also passed in.
+// Apply N random stickers to permanents controlled by `side` (Archdemon of
+// Bargains). Player-side: persists via RUN.applyStickerToSlot AND applies to
+// the runtime card. Opp-side: runtime card only (opp slots regenerate each
+// game). `state` is G; `logFn` is the engine's internal log.
 function applyRandomStickersToSide(state, side, n, sourceName, logFn) {
   if (n <= 0) return;
-  // Pool of sticker IDs eligible to be applied via bargain. Excludes:
-  //  - scarified (boss-only, would be cruel to give to player)
-  //  - subtype (needs deck-context roll; thematically odd as a buff)
-  //  - empower (needs effect-target roll; complex)
-  // Yields a mix of statBoost (+1/+1) and keyword stickers (the ones that
-  // exist in the STICKERS pool — flying, lifelink, etc.).
+  // Exclude scarified (boss-only), subtype/empower (need rolls). Yields a mix of
+  // statBoost and keyword stickers from the normal reward pool.
   const eligibleStickerIds = Object.keys(STICKERS).filter(id => {
     if (id === 'scarified' || id === 'subtype' || id === 'empower') return false;
     const s = STICKERS[id];
     if (!s) return false;
-    if (s.weight === 0) return false;       // not in normal reward pools
+    if (s.weight === 0) return false;
     return true;
   });
   const perms = state[side].battlefield;
@@ -247,19 +175,9 @@ function empowerRollLabel(card, roll) {
       ? card.abilities[roll.subIdx].effects : null;
   }
   const eff = effs && effs[roll.effIdx];
-  // 'amount' is generic — many effect kinds share it (damage, gainLife,
-  // draw, discard, etc.). Use kind+target to produce a player-readable
-  // phrase rather than the internal field name.
-  // Other field names ('power', 'toughness', 'severity', 'count') are
-  // already self-explanatory.
   let fieldLabel;
   if (roll.field === 'amount' && eff && eff.kind) {
-    // Target-aware labels: a `damage target:'self'` effect is the recoil/
-    // drawback half of cards like Char or Final Strike — calling it "damage"
-    // reads the same as the spell's main payload, so we tag it "self damage"
-    // to distinguish. `damage target:'player'` is opp-side damage (Grave
-    // Charm mode 3, Lava Spike) — labeled "damage to opponent" so the
-    // direction is unambiguous from the badge alone.
+    // Disambiguate damage direction so self-recoil reads distinctly from spell payload.
     if (eff.kind === 'damage') {
       const t = eff.target;
       fieldLabel = t === 'self'   ? 'self damage'
@@ -272,7 +190,6 @@ function empowerRollLabel(card, roll) {
     } else if (eff.kind === 'removeAll') {
       fieldLabel = 'severity';
     } else {
-      // draw / discard / etc. — kind name is already player-readable.
       fieldLabel = eff.kind;
     }
   } else {
@@ -282,10 +199,8 @@ function empowerRollLabel(card, roll) {
   return `${fieldLabel}${modeSuffix}`;
 }
 
-// Apply a single rolled empower target to a card (or card-view). The card's
-// effect lists must already have the same shape as the template's (deep-copied
-// at makeCard / stickersForSlot time) so mutating the field doesn't leak.
-// Pure function of its inputs.
+// Apply a rolled empower target to a card. Effect lists must already be deep-copied
+// (makeCard / stickersForSlot) so mutating the field doesn't leak to other instances.
 function applyEmpowerRoll(card, roll, amount) {
   if (!roll) return;
   const {location, subIdx, effIdx, modeIdx, field} = roll;
@@ -317,9 +232,8 @@ function applyEmpowerRoll(card, roll, amount) {
   }
 }
 
-// Roll a creature subtype for the slot at targetSlotIdx, weighted by token
-// frequency in slots. Excludes subtypes the target already has. Returns
-// null if nothing eligible.
+// Roll a creature subtype for targetSlotIdx, weighted by deck token frequency.
+// Excludes subtypes the target already has. Null if nothing eligible.
 function rollSubtypeFromDeck(slots, targetSlotIdx) {
   if (!Array.isArray(slots)) return null;
   const targetSlot = slots[targetSlotIdx];
@@ -330,10 +244,8 @@ function rollSubtypeFromDeck(slots, targetSlotIdx) {
   for (const r of (targetSlot.subtypeRolls || [])) {
     if (r) targetTokens.add(r);
   }
-  // Weight tokens across all creature slots in the deck. Each (slot, token)
-  // pair contributes one count — so a Goblin Wizard contributes one Goblin
-  // weight and one Wizard weight. Stapled creatures' merged subs flow
-  // through tplForSlot's synthesis.
+  // Each (slot, token) pair contributes one count — Goblin Wizard adds 1 weight
+  // each to Goblin and Wizard. Stapled subs flow through tplForSlot.
   const tokenCount = {};
   for (const slot of slots) {
     const tpl = tplForSlot(slot);
@@ -356,15 +268,11 @@ function rollSubtypeFromDeck(slots, targetSlotIdx) {
   return entries[entries.length - 1][0];
 }
 
-// Push a sticker onto a slot, recording an empower or subtype roll if
-// the kind needs one. `slotsForRoll` is the deck context for subtype
-// rolling — pass the slots array the slot lives in (opp's transient list
-// or runState.slots).
+// Push a sticker onto a slot, recording an empower/subtype roll if needed.
+// `slotsForRoll` is the deck context for subtype rolling.
 function pushStickerWithRoll(slot, stickerId, slotsForRoll) {
   slot.stickers.push(stickerId);
   if (stickerId === 'empower') {
-    // tplForSlot is stapled-aware, so empower can target the staple half's
-    // effects/triggers as well as the base.
     const tpl = tplForSlot(slot);
     const roll = tpl ? rollEmpowerTarget(tpl) : null;
     if (!Array.isArray(slot.empowerRolls)) slot.empowerRolls = [];
@@ -381,13 +289,9 @@ function pushStickerWithRoll(slot, stickerId, slotsForRoll) {
   }
 }
 
-// Filter STICKERS to those legal for a slot. Builds a synthetic "view" of
-// the card with current stickers reflected so appliesTo doesn't re-offer
-// dupes. Used by opp-AI (direct) and player path (RUN.stickersFor wraps).
-//
-// Effects/triggers/abilities are deep-copied for template isolation —
-// sharing refs has bitten before (City of Brass extraManaColors pre-
-// v0.99.44). Cost is trivial at offer-generation time.
+// Filter STICKERS to those legal for a slot. Builds a synthetic view reflecting
+// applied stickers so appliesTo doesn't re-offer dupes.
+// Effects/triggers/abilities deep-copied — shared refs have bitten before.
 function stickersForSlot(slot, deckColors) {
   const tpl = tplForSlot(slot);
   if (!tpl) return [];
@@ -395,7 +299,7 @@ function stickersForSlot(slot, deckColors) {
   const copyTopEffects = (effs) => {
     if (Array.isArray(effs)) return effs.map(e => ({...e}));
     if (effs && Array.isArray(effs.modes)) {
-      // Modal (charms): preserve {modeNames, modes:[[...]]} shape.
+      // Modal (charms): preserve shape.
       return {
         modeNames: effs.modeNames ? effs.modeNames.slice() : undefined,
         modes: effs.modes.map(modeEffs => modeEffs.map(e => ({...e}))),
@@ -412,14 +316,10 @@ function stickersForSlot(slot, deckColors) {
     extraManaColors: [],
     deckColors: deckColors || [],
     cost: tpl.cost ? {...tpl.cost} : undefined,
-    // hasEmpowerableEffect walks effects/triggers/abilities — all three
-    // needed for creatures whose empowerable field lives in an ability
-    // or trigger (Spitfire Bastion, War Drummer).
     effects: copyTopEffects(tpl.effects),
     triggers: (tpl.triggers || []).map(t => ({...t, effects: copyEffs(t.effects)})),
     abilities: (tpl.abilities || []).map(a => ({...a, effects: copyEffs(a.effects)})),
   };
-  // Reflect applied stickers so we don't re-offer invalid ones.
   let subtypeCursor = 0;
   for (const sId of slot.stickers) {
     const s = STICKERS[sId];
@@ -428,7 +328,6 @@ function stickersForSlot(slot, deckColors) {
       view.keywords.push(s.keyword);
     }
     if (s.kind === 'subtype') {
-      // Cursor-walk slot.subtypeRolls in occurrence order.
       const rolled = (slot.subtypeRolls || [])[subtypeCursor];
       subtypeCursor++;
       if (rolled) {
@@ -448,10 +347,7 @@ function stickersForSlot(slot, deckColors) {
     }
   }
   return Object.values(STICKERS).filter(s => {
-    // weight: 0 stickers are excluded from random offers — they're
-    // boss-only or otherwise restricted to specific application paths
-    // (e.g., 'scarified' applied by Scarification spell, never as a
-    // reward).
+    // weight 0 = excluded from random offers (boss-only or specific application paths).
     if (!s.weight) return false;
     if (!s.appliesTo(view)) return false;
     if (!s.stackable && slot.stickers.includes(s.id)) return false;

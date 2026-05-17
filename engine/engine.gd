@@ -1,27 +1,10 @@
 extends Node
 
-# Engine — the central game-state authority.
-#
-# Registered as autoload "Engine" in project.godot. Closest GDScript analog of
-# the JS prototype's IIFE-singleton ENGINE module.
-#
-# Public API:
-#   RulesEngine.init_phase1()                              — set up Phase 1 demo state
-#   RulesEngine.state() -> EngineState                     — read-only state accessor
-#   RulesEngine.execute_action(action: Dictionary) -> bool — single mutation entry point
-#   RulesEngine.is_legal_action(action) -> bool            — check without mutating
-#   RulesEngine signals: state_changed, log_appended, game_over
-#
-# (Autoload name is `RulesEngine` rather than `Engine` because Godot has a
-# built-in global named `Engine` already. The script file is still engine.gd.)
-#
-# Action shapes are documented in engine/action.gd. The action's `kind` dispatches
-# to a private _do_<kind> method below.
-#
-# State mutation policy:
-#   - All mutations route through execute_action.
-#   - Each successful action emits state_changed at the end.
-#   - Failed/illegal actions return false WITHOUT mutating state.
+# Engine — central game-state authority. Autoloaded as `RulesEngine` (Godot has built-in `Engine`).
+# Public API: init_phase{1,2,3}, state(), execute_action(action), is_legal_action(action).
+# Signals: state_changed, log_appended, game_over.
+# Action shapes in engine/action.gd. action.kind dispatches to _do_<kind>.
+# Failed actions return false without mutating; successful actions emit state_changed.
 
 signal state_changed
 signal log_appended(line: String)
@@ -31,49 +14,35 @@ var _state: EngineState = null
 
 
 func _ready() -> void:
-	# Predicate validation runs at engine boot — catches typos in card resources.
-	# Phase 1 has no triggers so this is mostly scaffolding for Phase 4+.
+	# Predicate validation at boot — catches typos in card resources.
 	Predicates.validate_all_card_predicates(CardDatabase.all_resources())
 
 
-# Reentrancy guard for the opp-turn auto-cycle. Phase 2 has no AI, so when
-# active_player swaps to opp we need to immediately advance through opp's
-# turn back to player's UNTAP. The cycle is bounded by phase count + a
-# safety belt to prevent infinite loops if state goes weird.
+# Reentrancy guard for opp-turn auto-cycle (Phase 2 has no AI).
 var _settling: bool = false
 
-
-# ─── State access ──────────────────────────────────────────────────────────
 
 func state() -> EngineState:
 	return _state
 
 
-# Demo libraries: each init_phase* helper seeds both players with 20 buffer
-# Mountains so the DRAW step (Phase 4.5+) doesn't deck them out on the first
-# turn-cycle. The legacy demo helpers were authored before libraries existed;
-# this keeps them runnable as smoke-test fixtures without rewriting them.
+# Seed buffer Mountains so legacy demo helpers don't deck out on first DRAW step.
 func _seed_demo_library(player: Player, count: int = 20) -> void:
 	for i in range(count):
 		var mtn := _state.make_instance(CardDatabase.get_card("mountain"), player.key)
 		player.library.append(mtn)
 
 
-# ─── Phase 1 demo setup ────────────────────────────────────────────────────
-
-# Initialize state for the Phase 1 demo: you have 2 Mountains in play and
-# 1 Lightning Bolt in hand. Opp does nothing. It's your Main 1, you have
-# priority.
+# Phase 1: 2 Mountains in play, 1 Lightning Bolt in hand.
 func init_phase1() -> void:
 	_state = EngineState.new()
 	_state.active_player_key = "you"
 	_state.priority_player_key = "you"
 	_state.phase_machine.current = PhaseMachine.Phase.MAIN1
 
-	# Build your starting position
 	for i in range(2):
 		var mtn := _state.make_instance(CardDatabase.get_card("mountain"), "you")
-		mtn.summoning_sick = false  # Demo: lands enter battle-ready
+		mtn.summoning_sick = false
 		_state.you.battlefield.append(mtn)
 	var bolt := _state.make_instance(CardDatabase.get_card("lightning_bolt"), "you")
 	_state.you.hand.append(bolt)
@@ -84,11 +53,7 @@ func init_phase1() -> void:
 	state_changed.emit()
 
 
-# Phase 2 demo: 1 Mountain in play, 3 more in hand, plus a Goblin Raider
-# and a Lightning Bolt. Lets the player exercise the full Phase 2 path —
-# play another land, tap mountains, cast Goblin (hits battlefield, summoning
-# sick), end turn (opp's turn auto-cycles), untap your stuff (Goblin loses
-# sickness), attack opp on turn 2 for 2 damage.
+# Phase 2: 1 Mountain in play, 3 in hand + Goblin Raider + Lightning Bolt.
 func init_phase2() -> void:
 	_state = EngineState.new()
 	_state.active_player_key = "you"
@@ -112,37 +77,20 @@ func init_phase2() -> void:
 	state_changed.emit()
 
 
-# Phase 3 demo: introduces blockers, the first instant exercising the stack
-# architecture, and basic opp behavior.
-#
-# You start with: 1 Mountain + 1 Forest in play, hand has Mountain, Forest,
-# Goblin Raider, Lightning Bolt, Giant Growth.
-# Opp starts with: 1 Forest + 2 Grizzly Bears in play (untapped, no sickness),
-# Giant Growth in hand.
-#
-# Test scenarios available:
-#   - Cast Bolt at an opp Bear → opp casts Giant Growth in response → bear
-#     becomes 5/5 → Bolt resolves for 3 damage → bear survives at 5/5 with
-#     3 marked → cleanup clears temp/damage → bear back to 2/2 next turn.
-#   - Attack with Goblin (2/1) → opp blocks with a Bear (2/2) → mutual damage
-#     → Goblin dies (2 damage = 1 toughness), Bear survives at 2/2 with
-#     2 damage marked → cleanup clears damage → bear at 2/2 next turn.
-#   - Opp's turn: opp attacks with both bears → you block with creatures or
-#     take 4 damage to face.
+# Phase 3: blockers + stack instants + basic opp behavior.
+# You: 2 lands + hand with Goblin, Bolt, Giant Growth. Opp: 1 Forest + 2 Bears + Giant Growth.
 func init_phase3() -> void:
 	_state = EngineState.new()
 	_state.active_player_key = "you"
 	_state.priority_player_key = "you"
 	_state.phase_machine.current = PhaseMachine.Phase.MAIN1
 
-	# You: 1 Mountain + 1 Forest in play (no sickness)
 	var mtn0 := _state.make_instance(CardDatabase.get_card("mountain"), "you")
 	mtn0.summoning_sick = false
 	_state.you.battlefield.append(mtn0)
 	var fst0 := _state.make_instance(CardDatabase.get_card("forest"), "you")
 	fst0.summoning_sick = false
 	_state.you.battlefield.append(fst0)
-	# You: hand
 	for i in range(2):
 		_state.you.hand.append(_state.make_instance(CardDatabase.get_card("mountain"), "you"))
 	_state.you.hand.append(_state.make_instance(CardDatabase.get_card("forest"), "you"))
@@ -150,7 +98,6 @@ func init_phase3() -> void:
 	_state.you.hand.append(_state.make_instance(CardDatabase.get_card("lightning_bolt"), "you"))
 	_state.you.hand.append(_state.make_instance(CardDatabase.get_card("giant_growth"), "you"))
 
-	# Opp: 1 Forest + 2 Grizzly Bears in play (no sickness, untapped)
 	var opp_fst := _state.make_instance(CardDatabase.get_card("forest"), "opp")
 	opp_fst.summoning_sick = false
 	_state.opp.battlefield.append(opp_fst)
@@ -158,7 +105,6 @@ func init_phase3() -> void:
 		var bear := _state.make_instance(CardDatabase.get_card("grizzly_bears"), "opp")
 		bear.summoning_sick = false
 		_state.opp.battlefield.append(bear)
-	# Opp: Giant Growth in hand for instant-response testing
 	_state.opp.hand.append(_state.make_instance(CardDatabase.get_card("giant_growth"), "opp"))
 
 	_seed_demo_library(_state.you)
@@ -167,18 +113,14 @@ func init_phase3() -> void:
 	state_changed.emit()
 
 
-# Phase 4 demo: triggered abilities. Mountains in play, hand has Pyromaniac
-# (ETB → 1 to opp), Bloodlust Berserker (death → +2 to opp if opp lost life
-# this turn), and a Lightning Bolt to test the kill-your-own-creature
-# scenario. Opp has 1 Grizzly Bears just to be hittable + a Lightning Bolt
-# to send back at the Berserker for the death-trigger test.
+# Phase 4: triggered abilities. You: Pyromaniac (ETB→1), Bloodlust (death→+2 if life lost), Bolt.
+# Opp: Grizzly Bears + Bolt for return-fire on the Berserker's death trigger.
 func init_phase4() -> void:
 	_state = EngineState.new()
 	_state.active_player_key = "you"
 	_state.priority_player_key = "you"
 	_state.phase_machine.current = PhaseMachine.Phase.MAIN1
 
-	# You: 3 Mountains in play (no sickness), Pyromaniac + Bloodlust + Bolt in hand
 	for i in range(3):
 		var mtn := _state.make_instance(CardDatabase.get_card("mountain"), "you")
 		mtn.summoning_sick = false
@@ -187,8 +129,6 @@ func init_phase4() -> void:
 	_state.you.hand.append(_state.make_instance(CardDatabase.get_card("bloodlust_berserker"), "you"))
 	_state.you.hand.append(_state.make_instance(CardDatabase.get_card("lightning_bolt"), "you"))
 
-	# Opp: a Grizzly Bears (hittable target) and a Lightning Bolt + Forest +
-	# Mountain so opp can return fire on the Berserker for the death-trigger test.
 	var fst := _state.make_instance(CardDatabase.get_card("forest"), "opp")
 	fst.summoning_sick = false
 	_state.opp.battlefield.append(fst)
@@ -206,19 +146,9 @@ func init_phase4() -> void:
 	state_changed.emit()
 
 
-# ─── Phase 4.5: real-game init from decklists ──────────────────────────────
-# Replaces the hardcoded init_phase* demo helpers when running an actual game.
-# Each decklist is a Dictionary mapping card_id → count, e.g.:
-#   {"mountain": 12, "lightning_bolt": 4, "goblin_raider": 4, "grizzly_bears": 4, ...}
-# Cards are instantiated, shuffled into the player's library, and the opening
-# hand is drawn. No mulligan in 4.5a — always draws the full hand_size.
-# Active player is "you", current phase is MAIN1, priority "you".
-#
-# Caller is responsible for providing valid card_ids (CardDatabase.get_card
-# logs an error and returns null for unknown ids; those slots are skipped).
-# Phase 4.5 demo deck — a balanced two-color list playable end-to-end with
-# the cards available so far. Used by the game_board scene as the default
-# launch state. Both players get the same list (mirror match) for simplicity.
+# ─── Real-game init from decklists ──────────────────────────────────────────
+# init_game(decklist_you, decklist_opp) → MAIN1, hand drawn. Unknown card_ids skipped.
+# No mulligan; player starts with whatever is shorter than hand_size.
 const _PHASE4_5_DEMO_DECK := {
 	"mountain": 10,
 	"forest": 10,
@@ -231,18 +161,11 @@ const _PHASE4_5_DEMO_DECK := {
 }
 
 
-# Phase 5c showcase deck: a multi-color 40-card list that includes one of
-# each Phase 4.5c / 5a addition so a manual playtest can see Counterspell,
-# Healing Salve, and the keyword zoo (Wind Drake, Serra Angel, Vampire
-# Nighthawk, Trained Armodon, Giant Spider, Raging Goblin, Walking Wall)
-# all in one session. Mana fixing is intentionally generous (lots of basics).
+# Multi-color showcase deck — exercises every Phase 4.5c/5a addition.
 const _PHASE5_SHOWCASE_DECK := {
-	# Lands — 18 across 5 colors, biased toward what the colored spells need
 	"mountain": 4, "forest": 4, "island": 4, "plains": 3, "swamp": 3,
-	# Phase 4.5c instants
 	"counterspell": 2,
 	"healing_salve": 2,
-	# Phase 5a keyword creatures
 	"wind_drake": 2,
 	"giant_spider": 1,
 	"serra_angel": 1,
@@ -250,10 +173,8 @@ const _PHASE5_SHOWCASE_DECK := {
 	"vampire_nighthawk": 1,
 	"raging_goblin": 2,
 	"walking_wall": 1,
-	# Phase 4 trigger creatures (already exercised by 4.5b)
 	"pyromaniac": 1,
 	"bloodlust_berserker": 1,
-	# Vanilla curve + utility
 	"lightning_bolt": 2,
 	"giant_growth": 2,
 	"grizzly_bears": 1,
@@ -261,16 +182,10 @@ const _PHASE5_SHOWCASE_DECK := {
 }
 
 
-# Convenience wrapper: boot a game with the Phase 4.5 demo deck on both
-# sides. Falls back gracefully if some Phase-4.5c cards aren't in CardDatabase
-# yet (skip-unknown is handled inside _populate_library).
 func init_phase4_5_demo() -> void:
 	init_game(_PHASE4_5_DEMO_DECK, _PHASE4_5_DEMO_DECK)
 
 
-# Phase 5c showcase: real AI vs AI with a multi-color deck variety so a
-# playtest can see Counterspell, Healing Salve, and every Phase 5a keyword
-# creature in one session.
 func init_phase5_demo() -> void:
 	init_game(_PHASE5_SHOWCASE_DECK, _PHASE5_SHOWCASE_DECK)
 
@@ -285,9 +200,6 @@ func init_game(you_decklist: Dictionary, opp_decklist: Dictionary, hand_size: in
 	_populate_library(_state.opp, opp_decklist)
 	_shuffle_library(_state.you)
 	_shuffle_library(_state.opp)
-	# Opening hands — draw without firing the empty-library loss (a sub-7-card
-	# starter shouldn't immediately end the game; the player gets a partial
-	# hand and decks out on their first real draw).
 	_draw_opening_hand(_state.you, hand_size)
 	_draw_opening_hand(_state.opp, hand_size)
 
@@ -308,16 +220,12 @@ func _populate_library(player: Player, decklist: Dictionary) -> void:
 			player.library.append(inst)
 
 
-# Fisher-Yates shuffle. Godot's Array.shuffle() uses the global RNG which is
-# fine for now; if we ever need seeded shuffles (e.g., for replay testing),
-# swap to a RandomNumberGenerator instance owned by EngineState.
+# Global-RNG shuffle (swap for seeded RandomNumberGenerator if replays needed).
 func _shuffle_library(player: Player) -> void:
 	player.library.shuffle()
 
 
-# Draw opening hand without triggering the deck-out loss. If the library is
-# smaller than hand_size we just draw what's there — the player has fewer
-# cards but the game still starts.
+# Sub-hand-size libraries get a partial hand, no deck-out loss.
 func _draw_opening_hand(player: Player, hand_size: int) -> void:
 	var to_draw: int = min(hand_size, player.library.size())
 	for i in range(to_draw):
@@ -325,7 +233,6 @@ func _draw_opening_hand(player: Player, hand_size: int) -> void:
 		player.hand.append(card)
 
 
-# Counts cards across a decklist Dictionary (for log lines).
 func _total_count(decklist: Dictionary) -> int:
 	var total: int = 0
 	for k in decklist:
@@ -379,54 +286,39 @@ func card_value(template: CardResource, purpose: String = "draft") -> float:
 	return AIScoring.card_value(template, purpose)
 
 
-# Phase 5b: enumerate every legal action descriptor for `player_key` in the
-# current state. Single read-only entry point used by Phase 5c's AI module.
-# Returns an empty array if the player doesn't have priority (or the game is
-# over). Casts with multiple legal targets fan out into one entry per target
-# choice so the AI can score each individually.
-#
-# Performance note: walks the priority player's hand + battlefield + the
-# combat phase declarations. At Phase 5 scale (~30-card decks, ~10 perms in
-# play) this is microseconds; no optimisation needed.
+# Every legal action descriptor for `player_key`. Casts fan out per target.
+# Used by the AI module. Empty if no priority or game over.
 func get_legal_actions(player_key: String) -> Array[Dictionary]:
 	var actions: Array[Dictionary] = []
 	if _state == null or _state.winner != "":
 		return actions
-	# Trigger target picker takes precedence — when the engine is waiting on
-	# a target pick, the player's only legal action is to pick one.
+	# Trigger-target mode is exclusive — only target picks are legal.
 	if not _state.awaiting_target_for_trigger.is_empty() \
 			and _state.awaiting_target_for_trigger.get("controller_key", "") == player_key:
 		var filter: String = _state.awaiting_target_for_trigger.get("filter", "")
 		for target in _enumerate_filter_targets(filter, player_key):
 			actions.append(Action.make_pick_trigger_target(target))
 		return actions
-	# Outside of trigger-target mode, the player needs priority for most
-	# actions. Exception: block declaration during COMBAT_BLOCK is a special
-	# action that doesn't gate on priority.
+	# Need priority (exception: defender's COMBAT_BLOCK is a special action).
 	var is_combat_block: bool = _state.phase_machine.current == PhaseMachine.Phase.COMBAT_BLOCK
 	var is_defender: bool = player_key == _state.opponent_of(_state.active_player_key)
 	if _state.priority_player_key != player_key and not (is_combat_block and is_defender):
 		return actions
-	# Pass priority is always available when you have priority.
 	if _state.priority_player_key == player_key:
 		actions.append(Action.make_pass_priority())
-	# Lands — playable from hand if all legality checks pass.
 	for card in _state.player_by_key(player_key).hand:
 		if card.is_land():
 			var play := Action.make_play_land(card.instance_id)
 			if _legal_play_land(play):
 				actions.append(play)
-	# Mana abilities — tap untapped lands on your battlefield.
 	for card in _state.player_by_key(player_key).battlefield:
 		var ability := Action.make_activate_ability(card.instance_id)
 		if _legal_activate_ability(ability):
 			actions.append(ability)
-	# Spells — fan out across legal target combinations.
 	for card in _state.player_by_key(player_key).hand:
 		if card.is_land():
 			continue
 		_enumerate_cast_actions(card, player_key, actions)
-	# Combat declarations — only when the relevant combat phase is open.
 	if _state.phase_machine.current == PhaseMachine.Phase.COMBAT_ATTACK \
 			and player_key == _state.active_player_key:
 		for card in _state.player_by_key(player_key).battlefield:
@@ -442,13 +334,9 @@ func get_legal_actions(player_key: String) -> Array[Dictionary]:
 	return actions
 
 
-# Helper: yield action descriptors for every legal target combination of
-# casting `card`. Untargeted spells fan out to a single entry; targeted
-# spells fan out one entry per legal target. Multi-target spells (Phase 6+)
-# would do a Cartesian product here.
+# One descriptor per legal target. Multi-target spells deferred to Phase 6+.
 func _enumerate_cast_actions(card: CardInstance, player_key: String, out: Array[Dictionary]) -> void:
 	if not (card.template is SpellResource):
-		# Creatures, etc. — cast with no target list.
 		var cast := Action.make_cast_spell(card.instance_id, [])
 		if _legal_cast_spell(cast):
 			out.append(cast)
@@ -465,9 +353,7 @@ func _enumerate_cast_actions(card: CardInstance, player_key: String, out: Array[
 			out.append(cast)
 
 
-# Returns every legal target descriptor matching `filter` from the perspective
-# of `picker_key` (used for hexproof checks — own creatures with hexproof are
-# still legal targets for the picker's spells).
+# Legal targets matching `filter`. picker_key drives hexproof check.
 func _enumerate_filter_targets(filter: String, picker_key: String) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	match filter:
@@ -491,7 +377,6 @@ func _enumerate_filter_targets(filter: String, picker_key: String) -> Array[Dict
 			out.append({"kind": "player", "who": "you"})
 			out.append({"kind": "player", "who": "opp"})
 		"spell":
-			# Counterspell-style: any spell currently on the stack.
 			for entry in _state.stack.entries:
 				if entry.get("kind", "spell") == "spell":
 					out.append({"kind": "stack", "iid": entry.get("source_iid", -1)})
@@ -504,10 +389,7 @@ func is_legal_action(action: Dictionary) -> bool:
 	var kind: String = action.get("kind", "")
 	match kind:
 		Action.KIND_PASS_PRIORITY:
-			# Legal whenever someone has priority. Phase 5c UI polish: when
-			# the engine is awaiting block declaration, priority is "" (no
-			# player holds it) and passing is illegal — defender must
-			# confirm blocks first via KIND_CONFIRM_BLOCKS.
+			# Illegal when awaiting block declaration (priority is "" — defender must CONFIRM_BLOCKS first).
 			return _state != null and _state.winner == "" \
 				and _state.priority_player_key != ""
 		Action.KIND_ACTIVATE_ABILITY:
@@ -532,85 +414,52 @@ func is_legal_action(action: Dictionary) -> bool:
 			return false
 
 
-# After every successful action, settle the state. In Phase 2 the only
-# settlement work is auto-cycling opp's turn (no AI yet). This iterates
-# phase advancement until the active player is back to "you" (or until
-# game-over). Phase 3 will replace this with real opponent priority for
-# instants.
+# Settle after each action — auto-cycles opp's turn (no AI yet).
 func _settle_state() -> void:
 	if _settling:
-		return  # avoid recursion if a sub-action triggers state changes
+		return
 	_settling = true
-	# Phase 5c: AI drives opp's turn AND opp's block declarations on your
-	# turn. The loop stops when the "current actor" becomes "you" — meaning
-	# the human player needs to decide something. Safety cap is generous
-	# because AI may make many small actions per opp-turn (play land, tap
-	# mana, cast spell, attack, pass) before yielding.
+	# AI drives opp's turn + opp's blocks on player's turn. Stops when actor → "you".
 	var safety: int = 200
 	while _state.winner == "" and safety > 0:
 		safety -= 1
 		var actor: String = _current_actor()
 		if actor == "you":
 			break
-		# Actor is "opp" — ask the AI for the next action and execute it.
-		# AI.decide is pure (deep-copies for sim), so it's safe to call
-		# directly without re-entering settle.
 		var action: Dictionary = AI.decide(_state, "opp")
 		if action.is_empty():
-			# AI couldn't decide — pass priority to keep things moving.
 			action = Action.make_pass_priority()
-		# Execute the action through the same kind-dispatch as
-		# execute_action, but without re-entering settle (we're already in
-		# it; the _settling guard would skip the inner call anyway).
 		_dispatch_action(action)
 	if safety == 0:
 		push_warning("_settle_state: hit iteration cap; possible infinite loop or AI livelock")
 	_settling = false
 
 
-# Phase 5c: who's "up next" given the engine state? Used by _settle_state to
-# decide whether to keep auto-running (opp) or hand control back to the UI.
-#
-# Order of precedence:
-#   1. Trigger target pick is in flight → controller of the pending trigger
-#   2. Defender's COMBAT_BLOCK with attackers declared → defender
-#   3. Otherwise → whoever holds priority
+# Order: pending trigger-target controller → awaiting-block-declaration defender → priority holder.
 func _current_actor() -> String:
 	if not _state.awaiting_target_for_trigger.is_empty():
 		return _state.awaiting_target_for_trigger.get("controller_key", _state.priority_player_key)
-	# Phase 5c UI polish (strict COMBAT_BLOCK ordering): while the engine is
-	# awaiting block declaration, the defender is the actor regardless of
-	# priority (priority is intentionally closed during this turn-based
-	# action). Once the defender confirms, priority opens normally.
 	if _state.awaiting_block_declaration:
 		return _state.opponent_of(_state.active_player_key)
 	return _state.priority_player_key
 
 
-# Phase 5c UI polish (per playtest #3): drive AI's defender-block
-# declarations as a turn-based action at COMBAT_BLOCK phase entry.
-# Loops calling AI.decide(state, key) and dispatching DECLARE_BLOCKER
-# actions until the AI returns something else (typically pass priority),
-# which means "I'm done blocking." Safety cap prevents runaways.
+# Loop AI block declarations at COMBAT_BLOCK entry. Skips _dispatch_action since
+# priority doesn't match yet (we apply blocks directly).
 func _drive_ai_block_declarations(defender_key: String) -> void:
 	var safety: int = 50
 	while safety > 0:
 		safety -= 1
 		var action: Dictionary = AI.decide(_state, defender_key)
 		if action.is_empty() or action.get("kind", "") != Action.KIND_DECLARE_BLOCKER:
-			break  # AI is done assigning blocks
-		# Apply the block directly (skips _dispatch_action's
-		# is_legal_action since we're in phase-entry context where
-		# priority might not match the legality check).
+			break
 		if _legal_declare_blocker(action):
 			_do_declare_blocker(action)
 		else:
-			break  # shouldn't happen but defensive
+			break
 
 
-# Dispatch an action by kind without going through execute_action (which
-# would re-enter settle and noop via the guard). This is the same match
-# block as execute_action's body, factored so settle can reuse it.
+# Like execute_action but skips settle (caller is already settling).
 func _dispatch_action(action: Dictionary) -> bool:
 	if not is_legal_action(action):
 		_state.append_log("AI illegal action: %s" % action)
@@ -641,8 +490,7 @@ func _dispatch_action(action: Dictionary) -> bool:
 	return false
 
 
-# ─── Activate ability (Phase 1: only mana abilities — taps a land for mana) ─
-
+# Phase 1: only mana abilities (tap land).
 func _legal_activate_ability(action: Dictionary) -> bool:
 	if _state == null or _state.winner != "":
 		return false
@@ -651,15 +499,12 @@ func _legal_activate_ability(action: Dictionary) -> bool:
 	if found == null:
 		return false
 	var card: CardInstance = found.card
-	# Phase 1: only land-tap mana abilities. Card must be in priority player's
-	# battlefield, untapped, and a land with mana_produced.
 	if card == null or not card.is_land():
 		return false
 	if found.controller.key != _state.priority_player_key:
 		return false
 	if card.tapped:
 		return false
-	# Must be a LandResource with non-empty mana_produced.
 	if not (card.template is LandResource):
 		return false
 	var produced: Array = card.template.mana_produced
@@ -673,20 +518,16 @@ func _do_activate_ability(action: Dictionary) -> bool:
 	var found = _state.find_instance(iid)
 	var card: CardInstance = found.card
 	var controller: Player = found.controller
-	# Phase 1 mana ability: tap and add mana.
 	card.tapped = true
-	# Add the first produced color (Phase 1 — no choice; multi-color lands are Phase 2+).
+	# Multi-color lands are Phase 2+; for now first produced color.
 	var color: String = card.template.mana_produced[0]
 	var ctx := _build_ctx(controller, card, [])
 	Effects.resolve_one({"kind": "add_mana", "amounts": {color: 1}}, ctx)
-	# Mana abilities don't pass priority — caster retains it.
+	# Mana abilities retain priority.
 	return true
 
 
-# ─── Play land ─────────────────────────────────────────────────────────────
-# Lands are a special action — they don't use the stack. They go directly
-# from hand to battlefield, untapped, no summoning sickness.
-
+# Lands skip the stack — hand → battlefield, untapped, no sickness.
 func _legal_play_land(action: Dictionary) -> bool:
 	if _state == null or _state.winner != "":
 		return false
@@ -697,17 +538,14 @@ func _legal_play_land(action: Dictionary) -> bool:
 	var card: CardInstance = found.card
 	if card == null or not card.is_land() or found.zone_name != "hand":
 		return false
-	# Must be your card and you must have priority and be the active player.
 	if found.controller.key != _state.priority_player_key:
 		return false
 	if found.controller.key != _state.active_player_key:
 		return false
-	# Must be a main phase with empty stack.
 	if not _state.phase_machine.is_main_phase():
 		return false
 	if not _state.stack.is_empty():
 		return false
-	# One land per turn.
 	if found.controller.land_played_this_turn:
 		return false
 	return true
@@ -721,7 +559,7 @@ func _do_play_land(action: Dictionary) -> bool:
 	controller.hand.erase(card)
 	controller.battlefield.append(card)
 	controller.land_played_this_turn = true
-	card.summoning_sick = false  # lands don't get summoning sickness
+	card.summoning_sick = false
 	_state.append_log("%s plays %s" % [controller.name, card.name()])
 	# Lands ETB fires triggers in Phase 4+. Lands themselves don't have
 	# triggered abilities yet, but a landfall card on the battlefield could
@@ -731,8 +569,6 @@ func _do_play_land(action: Dictionary) -> bool:
 	return true
 
 
-# ─── Cast spell ────────────────────────────────────────────────────────────
-
 func _legal_cast_spell(action: Dictionary) -> bool:
 	if _state == null or _state.winner != "":
 		return false
@@ -741,24 +577,19 @@ func _legal_cast_spell(action: Dictionary) -> bool:
 	if found == null:
 		return false
 	var card: CardInstance = found.card
-	# Card must be in priority player's hand.
 	if card == null or found.zone_name != "hand":
 		return false
 	if found.controller.key != _state.priority_player_key:
 		return false
-	# Sorcery-speed restrictions: anything that's not an instant must be cast
-	# during the controller's main phase with an empty stack. Creatures, lands,
-	# sorceries, artifacts, enchantments all fall under sorcery-speed.
+	# Non-instants are sorcery-speed: own main phase, empty stack.
 	if not card.template.has_type("instant"):
 		var is_active = (found.controller.key == _state.active_player_key)
 		var is_main = _state.phase_machine.is_main_phase()
 		var stack_empty = _state.stack.is_empty()
 		if not (is_active and is_main and stack_empty):
 			return false
-	# Caster must be able to pay the mana cost.
 	if not found.controller.mana.can_pay(card.template.mana_cost):
 		return false
-	# If the card requires a target, action must supply one.
 	if card.template is SpellResource and card.template.requires_target:
 		var targets: Array = action.get("targets", [])
 		if targets.is_empty():
@@ -783,12 +614,10 @@ func _do_cast_spell(action: Dictionary) -> bool:
 	var controller: Player = found.controller
 	var targets: Array = action.get("targets", [])
 
-	# Pay cost
 	if not controller.mana.pay(card.template.mana_cost):
 		_state.append_log("ERROR: cast_spell pay() failed after legality check")
 		return false
 
-	# Move from hand to stack-limbo (no zone array — it's "on the stack")
 	controller.hand.erase(card)
 	_state.stack.push({
 		"kind": "spell",
@@ -801,48 +630,32 @@ func _do_cast_spell(action: Dictionary) -> bool:
 		card.name(),
 		"" if targets.is_empty() else " targeting " + _describe_targets(targets),
 	])
-	# Casting a spell resets the priority round. Per MTG 117.1c, the player
-	# who took the action receives priority — so the caster retains it.
-	# (Previously this set priority to the active player, which broke opp's
-	# instant-speed responses on the active player's turn.)
+	# MTG 117.1c: caster retains priority (not active player — would break opp instants).
 	_state.priority_player_key = controller.key
 	_reset_priority_passes()
 
-	# Hold the CardInstance so we can graveyard it on resolution. We tuck it
-	# in a private map keyed by iid, since it's not in any zone right now.
+	# Held off-zone keyed by iid; routed to graveyard on resolution.
 	_stack_held_cards[card.instance_id] = card
 	return true
 
 
-# ─── Pass priority ─────────────────────────────────────────────────────────
-
 func _do_pass_priority(_action: Dictionary) -> bool:
-	# Mark current priority holder as passed.
 	_state.priority_passed[_state.priority_player_key] = true
 
-	# If both passed: resolve top of stack (if any) or advance phase (if empty).
 	if _state.priority_passed["you"] and _state.priority_passed["opp"]:
 		if not _state.stack.is_empty():
 			_resolve_top_of_stack()
-			# After resolution, priority returns to active player; passes reset.
 			_state.priority_player_key = _state.active_player_key
 			_reset_priority_passes()
 		else:
-			# Nobody had anything to do; advance phase.
 			_advance_phase()
 	else:
-		# Hand priority to the other player. Phase 5c: when priority lands
-		# on opp, the AI driver in _settle_state will see actor=="opp" and
-		# pull AI.decide on the next iteration. We no longer recurse here
-		# into a Phase-3 stub.
+		# Hand priority; _settle_state's AI driver picks it up on next iteration.
 		_state.priority_player_key = _state.opponent_of(_state.priority_player_key)
 	return true
 
 
-# ─── Stack resolution ──────────────────────────────────────────────────────
-
-# Cards on the stack don't live in any player's zone; we hold them here keyed
-# by iid so we can move them to graveyard on resolution.
+# Stack-held instances (off any zone) keyed by iid.
 var _stack_held_cards: Dictionary = {}
 
 
@@ -866,18 +679,13 @@ func _resolve_spell_entry(entry: Dictionary) -> void:
 		_state.append_log("ERROR: stack entry iid=%d has no held card" % iid)
 		return
 	var ctx := _build_ctx(controller, card, entry.get("targets", []))
-	# Run all on_cast_effects in order.
 	var effects: Array = card.template.on_cast_effects
 	if not effects.is_empty():
 		Effects.resolve_list(effects, ctx)
-	# Where does the card go after resolution?
-	#   - Permanents (creatures, lands, artifacts, enchantments) → battlefield
-	#   - Non-permanents (instants, sorceries) → owner's graveyard
+	# Permanents → battlefield; instants/sorceries → owner graveyard.
 	if card.template.is_permanent():
-		# Spell becomes a permanent on the controller's battlefield.
 		controller.battlefield.append(card)
 		card.controller_key = controller.key
-		# Creatures enter with summoning sickness; lands and other types don't.
 		if card.template is CreatureResource:
 			card.summoning_sick = true
 		else:
@@ -890,17 +698,12 @@ func _resolve_spell_entry(entry: Dictionary) -> void:
 		owner.graveyard.append(card)
 		_state.append_log("%s resolves" % card.name())
 	_stack_held_cards.erase(iid)
-	# State-based actions sweep up any deaths from this resolution (which may
-	# fire more triggers via _fire_event from inside _run_sbas).
 	_run_sbas()
-	# Drain anything that triggered from the resolution or its SBAs.
 	_drain_pending_triggers()
 	_check_win_conditions()
 
 
-# A triggered ability resolves: runs that ability's effects with the source as
-# context. Source may be in the graveyard (death triggers) or battlefield (ETB
-# and "while in play" triggers); find_instance scans every zone.
+# Source may be in any zone (death triggers fire from graveyard).
 func _resolve_trigger_entry(entry: Dictionary) -> void:
 	var iid: int = entry.source_iid
 	var controller_key: String = entry.controller_key
@@ -920,16 +723,12 @@ func _resolve_trigger_entry(entry: Dictionary) -> void:
 	var effects: Array = trig.get("effects", [])
 	if not effects.is_empty():
 		Effects.resolve_list(effects, ctx)
-	# SBAs and re-drain, just like spell resolution. A triggered effect that
-	# kills something can fire a chain of death triggers; this catches them.
 	_run_sbas()
 	_drain_pending_triggers()
 	_check_win_conditions()
 
 
-# Find a card by instance_id across all zones AND the stack-held buffer.
-# Used by trigger resolution because the source might be anywhere (e.g., a
-# death trigger's source has already moved to the graveyard).
+# Scan zones + stack-held buffer (death-trigger sources may already be in graveyard).
 func _find_card_anywhere(iid: int) -> CardInstance:
 	var found = _state.find_instance(iid)
 	if found != null and found.card != null:
@@ -939,11 +738,7 @@ func _find_card_anywhere(iid: int) -> CardInstance:
 	return null
 
 
-# ─── Declare attacker (Phase 2 combat) ─────────────────────────────────────
-# Adds a creature to state.attackers and taps it. Real MTG handles this
-# in batches with a single confirm; for Phase 2 we let the player click
-# attackers one at a time and confirm via Pass priority.
-
+# Phase 2 incremental attacker declaration (click + Pass to confirm).
 func _legal_declare_attacker(action: Dictionary) -> bool:
 	if _state == null or _state.winner != "":
 		return false
@@ -953,7 +748,7 @@ func _legal_declare_attacker(action: Dictionary) -> bool:
 		return false
 	var iid: int = action.get("source_iid", -1)
 	if iid in _state.attackers:
-		return false  # already declared
+		return false
 	var found = _state.find_instance(iid)
 	if found == null or found.card == null:
 		return false
@@ -966,9 +761,7 @@ func _legal_declare_attacker(action: Dictionary) -> bool:
 		return false
 	if card.tapped:
 		return false
-	# Phase 5a: haste bypasses summoning sickness for attacks (and tap-for-
-	# ability, handled inside _legal_activate_ability). Defender outright
-	# prevents attacking.
+	# Haste bypasses summoning sickness; defender forbids attacks entirely.
 	if card.summoning_sick and not card.has_keyword("haste"):
 		return false
 	if card.has_keyword("defender"):
@@ -980,7 +773,6 @@ func _do_declare_attacker(action: Dictionary) -> bool:
 	var iid: int = action.source_iid
 	var found = _state.find_instance(iid)
 	var card: CardInstance = found.card
-	# Phase 5a: vigilance — attacker doesn't tap.
 	if not card.has_keyword("vigilance"):
 		card.tapped = true
 	_state.attackers.append(iid)
@@ -988,21 +780,17 @@ func _do_declare_attacker(action: Dictionary) -> bool:
 	return true
 
 
-# ─── Declare blocker (Phase 3) ─────────────────────────────────────────────
-
+# Special action — happens at COMBAT_BLOCK start before priority opens.
 func _legal_declare_blocker(action: Dictionary) -> bool:
 	if _state == null or _state.winner != "":
 		return false
 	if _state.phase_machine.current != PhaseMachine.Phase.COMBAT_BLOCK:
 		return false
-	# Block declaration is a *special action* in MTG — it happens at the
-	# start of COMBAT_BLOCK before priority opens, and doesn't require the
-	# defender to currently hold priority. So we don't gate on priority here.
 	var defending_key: String = _state.opponent_of(_state.active_player_key)
 	var blocker_iid: int = action.get("source_iid", -1)
 	var attacker_iid: int = action.get("attacker_iid", -1)
 	if _state.blockers.has(blocker_iid):
-		return false  # blocker already assigned
+		return false
 	var found = _state.find_instance(blocker_iid)
 	if found == null or found.card == null:
 		return false
@@ -1017,24 +805,17 @@ func _legal_declare_blocker(action: Dictionary) -> bool:
 		return false
 	if not (attacker_iid in _state.attackers):
 		return false
-	# Phase 5a: keyword-driven block legality.
 	var attacker_found = _state.find_instance(attacker_iid)
 	if attacker_found == null or attacker_found.card == null:
 		return false
 	var attacker: CardInstance = attacker_found.card
-	# Unblockable — nothing legal.
 	if attacker.has_keyword("unblockable"):
 		return false
-	# Flying — only flying or reach may block.
 	if attacker.has_keyword("flying") \
 			and not blocker.has_keyword("flying") \
 			and not blocker.has_keyword("reach"):
 		return false
-	# Menace is a multi-blocker requirement (≥2 blockers), validated at the
-	# COMBAT_DAMAGE step rather than per-block (one menace blocker is fine
-	# during declaration so long as another joins before resolution). See
-	# _resolve_combat_damage where menace-with-one-blocker is treated as
-	# unblocked.
+	# Menace's ≥2 requirement is validated at damage resolution (single blocker → unblocked).
 	return true
 
 
@@ -1052,11 +833,7 @@ func _do_declare_blocker(action: Dictionary) -> bool:
 	return true
 
 
-# ─── Undeclare attacker/blocker (Phase 5c UI polish) ───────────────────────
-# Lets the player change their mind about a combat declaration before the
-# phase advances. Both are reverse operations of their declare counterparts:
-# untap the attacker (if not vigilance), remove from state arrays, clear
-# combat-state flags on the CardInstance.
+# Reverse declare_attacker/blocker so player can undo before phase advances.
 
 func _legal_undeclare_attacker(action: Dictionary) -> bool:
 	if _state == null or _state.winner != "":
@@ -1123,11 +900,7 @@ func _do_undeclare_blocker(action: Dictionary) -> bool:
 	return true
 
 
-# ─── Confirm blocks (Phase 5c UI polish, strict COMBAT_BLOCK ordering) ─────
-# Defender signals "I'm done declaring blocks." Clears the awaiting flag and
-# opens the APNAP priority window (active player first). Legal only when the
-# engine is actually waiting on a block declaration and the actor is the
-# defender (the only player allowed to declare blocks).
+# Defender signals "done blocking" → opens APNAP priority (active player first).
 func _legal_confirm_blocks(_action: Dictionary) -> bool:
 	if _state == null or _state.winner != "":
 		return false
@@ -1140,23 +913,14 @@ func _legal_confirm_blocks(_action: Dictionary) -> bool:
 
 func _do_confirm_blocks(_action: Dictionary) -> bool:
 	_state.awaiting_block_declaration = false
-	# Open the APNAP priority window — active player gets priority first per
-	# MTG 117.1b. Both pass-flags reset so we collect fresh round.
+	# MTG 117.1b: AP gets priority first.
 	_state.priority_player_key = _state.active_player_key
 	_reset_priority_passes()
 	_state.append_log("Blocks confirmed — %s gets priority" % _state.active_player().name)
 	return true
 
 
-# ─── State-based actions (SBA) ────────────────────────────────────────────
-# Run after every effect resolution and after combat damage. Walks the
-# battlefield and moves dead creatures (toughness ≤ 0 or damage_marked ≥
-# toughness) to graveyard. Also clears combat-state references to dead
-# creatures so we don't carry stale iids in attackers/blockers maps.
-#
-# SBAs run in a loop because killing a creature might cascade (e.g.,
-# removing a +1/+1 lord could push other creatures below toughness).
-# Capped at 20 iterations as a runaway-loop safety belt.
+# SBAs: move dead creatures to graveyard, clear combat refs. Loops for cascade kills.
 func _run_sbas() -> void:
 	var changed := false
 	var safety := 20
@@ -1168,8 +932,7 @@ func _run_sbas() -> void:
 			for c in player.battlefield:
 				if not (c.template is CreatureResource):
 					continue
-				# Phase 5a: indestructible creatures ignore lethal-damage SBAs
-				# (but 0 toughness still kills them — rare edge case).
+				# Indestructible ignores lethal damage but 0 toughness still kills.
 				if c.has_keyword("indestructible"):
 					if c.current_toughness() <= 0:
 						dying.append(c)
@@ -1183,10 +946,7 @@ func _run_sbas() -> void:
 				player.graveyard.append(c)
 				_state.append_log("%s dies" % c.name())
 				_clear_combat_state_for_dead(c.instance_id)
-				# Fire dies event so triggered abilities (death triggers) can
-				# react. We pass the card reference because by the time the
-				# trigger resolves, source has moved to the graveyard — but
-				# find_instance picks it up there.
+				# Pass subject_card — death triggers fire from graveyard.
 				_fire_event({
 					"kind": "card_dies",
 					"subject_iid": c.instance_id,
@@ -1201,36 +961,25 @@ func _run_sbas() -> void:
 		_check_win_conditions()
 
 
-# When a creature leaves the battlefield, remove its iid from attackers
-# and from any blockers entries (both as blocker and as the blocked target).
+# Clear dead iid from attackers/blockers maps (both as blocker and as blocked target).
 func _clear_combat_state_for_dead(dead_iid: int) -> void:
 	if dead_iid in _state.attackers:
 		_state.attackers.erase(dead_iid)
 	_state.blockers.erase(dead_iid)
-	# Also remove blockers that were blocking this creature
 	for b_iid in _state.blockers.keys():
 		if _state.blockers[b_iid] == dead_iid:
 			_state.blockers.erase(b_iid)
 
 
-# ─── Combat damage resolution (Phase 5a) ───────────────────────────────────
-# Two-pass damage step driven by first_strike. Keyword handling:
-#   - first_strike — sources with this deal damage in pass 1; without in pass 2
-#   - lifelink     — source's controller gains life equal to damage dealt
-#   - deathtouch   — any nonzero damage flags the target as lethal_marked
-#   - trample      — excess damage on blocked attacker spills to defender
-#   - indestructible — SBAs (in _run_sbas) ignore lethal damage on these
-#   - menace       — attacker with menace and only one blocker is treated as
-#                    unblocked (rule 702.110b — minimum 2 blockers required)
-#   - unblockable / flying — enforced at _legal_declare_blocker, not here
-# After each pass, SBAs sweep dead creatures so they don't deal pass-2 damage.
+# Two-pass damage (first_strike pass 1, rest pass 2). Keywords: first_strike, lifelink,
+# deathtouch, trample, indestructible, menace (needs ≥2 blockers else unblocked).
+# Unblockable/flying enforced at _legal_declare_blocker. SBAs sweep between passes.
 func _resolve_combat_damage() -> void:
 	if _state.attackers.is_empty():
 		return
 	var defending: Player = _state.player_by_key(_state.opponent_of(_state.active_player_key))
 
-	# Build attacker → list-of-blockers map. Menace re-classifies an attacker
-	# with fewer than 2 blockers as unblocked.
+	# attacker → blockers map. Menace + <2 blockers collapses to unblocked.
 	var attacker_blockers: Dictionary = {}
 	for atk_iid in _state.attackers:
 		attacker_blockers[atk_iid] = []
@@ -1245,14 +994,10 @@ func _resolve_combat_damage() -> void:
 			continue
 		var attacker: CardInstance = atk_found.card
 		if attacker.has_keyword("menace") and attacker_blockers[atk_iid].size() < 2:
-			# The lone blocker (if any) is "ignored" — its damage assignment
-			# is dropped. Record so we can log it.
 			if attacker_blockers[atk_iid].size() == 1:
 				_state.append_log("%s has menace — single blocker is illegal, ignored" % attacker.name())
 			attacker_blockers[atk_iid] = []
 
-	# Detect whether we need a first-strike pass at all (skip the work when no
-	# combatant has first strike — most combats).
 	var need_first_strike: bool = _combat_needs_first_strike_step(attacker_blockers)
 
 	if need_first_strike:
@@ -1262,18 +1007,10 @@ func _resolve_combat_damage() -> void:
 		_check_win_conditions()
 		if _state.winner != "":
 			return
-	# Normal damage step — sources without first_strike, plus first_strikers
-	# that survived (which deal damage again only if they had double_strike;
-	# we don't have double_strike in Phase 5a). For now: pass 2 covers all
-	# living combatants that DIDN'T deal in pass 1.
+	# Pass 2: non-first-strikers (and any survivors of pass 1; no double-strike in Phase 5a).
 	_combat_damage_pass(defending, attacker_blockers, false)
 	_run_sbas()
-	# Phase 5c UI polish fix: drain death triggers from combat NOW, not
-	# during the next spell's resolution. Previously, death triggers fired
-	# into pending_triggers from _run_sbas but didn't get pushed onto the
-	# stack until the next spell/trigger resolved — leading to Bloodlust
-	# Berserker's death trigger surfacing AFTER a Counterspell on a wholly
-	# unrelated spell.
+	# Drain death triggers HERE so they don't leak into an unrelated next spell.
 	_drain_pending_triggers()
 	_check_win_conditions()
 
@@ -1293,10 +1030,7 @@ func _combat_needs_first_strike_step(attacker_blockers: Dictionary) -> bool:
 	return false
 
 
-# Apply one damage pass. If first_strike_only is true, only first-strike
-# sources deal damage; otherwise only non-first-strike (and any that survived
-# the first pass) deal damage. Skips creatures that have already left the
-# battlefield (dead from a previous pass).
+# One damage pass; first_strike_only=true → pass 1, false → pass 2.
 func _combat_damage_pass(
 	defending: Player,
 	attacker_blockers: Dictionary,
@@ -1310,22 +1044,18 @@ func _combat_damage_pass(
 			continue
 		var attacker: CardInstance = atk_found.card
 		var atk_first_strike: bool = attacker.has_keyword("first_strike")
-		# Filter by pass: pass 1 only first-strikers, pass 2 only non-first-strikers.
+		# Pass 1: first-strikers only. (Non-first-strike still process blockers below,
+		# since a first-strike BLOCKER could damage them in pass 1.)
 		if first_strike_only != atk_first_strike:
-			# Still process blockers below — a non-first-strike attacker can be
-			# damaged in pass 1 by a first-strike BLOCKER.
 			pass
 		var atk_pow: int = attacker.current_power()
 		var blockers: Array = attacker_blockers.get(atk_iid, [])
 
 		if blockers.is_empty():
-			# Unblocked — face damage (only on this attacker's pass).
 			if first_strike_only == atk_first_strike:
 				_deal_combat_damage(attacker, atk_pow, _damage_target_player(defending))
 		else:
-			# Blocked — attacker hits the first blocker (or trample-style
-			# split below); each blocker hits the attacker.
-			# Attacker → first blocker (simplification: dump on slot 0).
+			# Attacker → first blocker only (dump on slot 0); blockers → attacker.
 			if first_strike_only == atk_first_strike:
 				var first_blocker_iid: int = blockers[0]
 				var first_blocker_found = _state.find_instance(first_blocker_iid)
@@ -1401,13 +1131,7 @@ func _damage_target_player(defending: Player) -> Dictionary:
 # ─── Phase machine ─────────────────────────────────────────────────────────
 
 func _advance_phase() -> void:
-	# Phase 5c UI polish (MTG rule 106.4): mana empties from each player's
-	# pool as the previous step or phase ENDS. Equivalently, mana is empty
-	# at the START of every new step/phase. Implemented here at the
-	# phase-advance boundary. Floating mana into the next phase was a
-	# Phase 1 simplification — it's tighter to MTG to clear it. If a player
-	# wants to cast in a particular phase they need to tap mana during
-	# that phase (the legality glow on lands surfaces this clearly).
+	# MTG 106.4: mana empties at end of each step/phase.
 	if _state.you.mana.total() > 0:
 		_state.you.mana.clear()
 	if _state.opp.mana.total() > 0:
@@ -1415,33 +1139,21 @@ func _advance_phase() -> void:
 
 	var wrapped: bool = _state.phase_machine.advance()
 	if wrapped:
-		# New turn — switch active player, increment turn count.
 		_state.active_player_key = _state.opponent_of(_state.active_player_key)
 		_state.turn += 1
 		_state.append_log("Turn %d — active: %s" % [_state.turn, _state.active_player().name])
 
-	# On-entry actions per phase
 	match _state.phase_machine.current:
 		PhaseMachine.Phase.UNTAP:
-			# Untap permanents, clear summoning sickness, reset land-per-turn.
 			_state.active_player().untap_step()
 		PhaseMachine.Phase.DRAW:
-			# Phase 4.5: active player draws one card. If their library is
-			# empty, they lose (MTG rule 704.5b — can't draw from an empty
-			# library at the moment they're required to draw).
+			# MTG 704.5b: empty-library draw = loss.
 			_do_draw_card(_state.active_player_key)
 		PhaseMachine.Phase.COMBAT_ATTACK:
-			# Phase 5c: attack declarations come from AI.decide via _settle_state
-			# on opp's turn. No phase-entry hook needed.
 			pass
 		PhaseMachine.Phase.COMBAT_BLOCK:
-			# Phase 5c UI polish (strict ordering): on COMBAT_BLOCK entry
-			# with attackers, the defender declares blocks as a turn-based
-			# action BEFORE priority opens. Set the awaiting flag so the
-			# end-of-_advance_phase priority setup leaves priority closed.
-			# For AI defender, drive blocks synchronously and clear the
-			# flag immediately. For human defender, the flag stays true
-			# until KIND_CONFIRM_BLOCKS fires (from the UI).
+			# Block declaration is turn-based — runs BEFORE priority opens.
+			# AI defender: drive sync; human: flag stays until KIND_CONFIRM_BLOCKS.
 			if not _state.attackers.is_empty():
 				_state.awaiting_block_declaration = true
 				if _state.active_player_key == "you":
@@ -1450,7 +1162,6 @@ func _advance_phase() -> void:
 		PhaseMachine.Phase.COMBAT_DAMAGE:
 			_resolve_combat_damage()
 		PhaseMachine.Phase.CLEANUP:
-			# Clear combat state and EOT modifiers on every creature.
 			_state.attackers.clear()
 			_state.blockers.clear()
 			for player in [_state.you, _state.opp]:
@@ -1458,13 +1169,9 @@ func _advance_phase() -> void:
 					if c.template is CreatureResource:
 						c.clear_eot_modifiers()
 
-	# Reset priority for the new phase. Per MTG rule 117.1b, the active player
-	# gets priority at the start of every step/phase. EXCEPTION: COMBAT_BLOCK
-	# while awaiting_block_declaration is true — block declaration is a
-	# turn-based action that runs BEFORE priority opens, so nobody has
-	# priority until the defender confirms blocks (KIND_CONFIRM_BLOCKS).
+	# MTG 117.1b: AP priority on phase start. Exception: awaiting_block_declaration → "" sentinel.
 	if _state.awaiting_block_declaration:
-		_state.priority_player_key = ""  # sentinel: no priority open
+		_state.priority_player_key = ""
 	else:
 		_state.priority_player_key = _state.active_player_key
 	_reset_priority_passes()
@@ -1513,13 +1220,9 @@ func _check_win_conditions() -> void:
 			return
 
 
-# Phase 4.5c: remove a spell from the stack and send it to its owner's
-# graveyard. Used by Counterspell's counter_spell effect handler. Returns
-# true on success, false if the iid wasn't on the stack (target gone =
-# fizzle). Public so engine/effects/counter_spell.gd can call it; the
-# autoload is the only place that owns _stack_held_cards.
+# Counter a stack spell → owner's graveyard. False if iid not on stack (target gone).
+# Public so counter_spell.gd can call; autoload owns _stack_held_cards.
 func counter_stack_entry(iid: int) -> bool:
-	# Find the entry in state.stack by source_iid.
 	var idx: int = -1
 	for i in range(_state.stack.entries.size()):
 		if _state.stack.entries[i].get("source_iid", -1) == iid:
@@ -1528,16 +1231,11 @@ func counter_stack_entry(iid: int) -> bool:
 	if idx == -1:
 		return false
 	var entry: Dictionary = _state.stack.entries[idx]
-	# Phase 4.5c: only spell entries can be countered. Trigger entries
-	# represent triggered abilities, which Counterspell doesn't hit per
-	# MTG rules (and Stifle isn't in our card pool yet).
+	# Only spells (triggers aren't counterable per MTG; no Stifle in pool).
 	if entry.get("kind", "spell") != "spell":
 		return false
-	# Remove from stack (Stack.entries.remove_at handles the index shift).
 	_state.stack.entries.remove_at(idx)
-	# Move the held card to its owner's graveyard. Spells go to graveyard
-	# regardless of whether they would normally enter the battlefield —
-	# counterspell intercepts before resolution.
+	# Countered spells go to graveyard, never battlefield.
 	var card: CardInstance = _stack_held_cards.get(iid)
 	if card != null:
 		var owner: Player = _state.player_by_key(card.owner_key)
@@ -1547,10 +1245,7 @@ func counter_stack_entry(iid: int) -> bool:
 	return true
 
 
-# Phase 4.5: draw a card during the DRAW step. Called from _advance_phase
-# when the new phase is DRAW. If the player's library is empty, they lose
-# the game (MTG 704.5b). The loss is processed through the standard winner
-# pathway so _check_win_conditions and game_over signaling stay consistent.
+# DRAW step — empty library → loss (MTG 704.5b).
 func _do_draw_card(player_key: String) -> void:
 	if _state.winner != "":
 		return
@@ -1559,7 +1254,6 @@ func _do_draw_card(player_key: String) -> void:
 		push_warning("_do_draw_card: unknown player_key '%s'" % player_key)
 		return
 	if p.library.is_empty():
-		# Decked. Opponent wins immediately.
 		_state.winner = _state.opponent_of(player_key)
 		_state.append_log("%s tried to draw from an empty library — %s wins!" % [
 			p.name, _state.player_by_key(_state.winner).name,
@@ -1571,28 +1265,16 @@ func _do_draw_card(player_key: String) -> void:
 	_state.append_log("%s draws a card" % p.name)
 
 
-# ─── Phase 4: triggered abilities ──────────────────────────────────────────
-# Fire an event into the trigger system. Walks battlefield permanents (plus
-# the event's own subject card, for leaves-the-battlefield triggers) and
-# queues any matching triggered abilities into _state.pending_triggers.
-#
-# Triggers don't go on the stack here — they wait in the queue until a
-# subsequent _drain_pending_triggers call (which APNAP-orders them and pushes
-# to the stack). This matches MTG rule 603.2: triggers wait until "the next
-# time a player would receive priority."
-#
-# Event shape:
-#   {"kind": "card_etb" | "card_dies" | ..., "subject_iid": int,
-#    "subject_card": CardInstance, ...other event-specific fields}
+# Queue triggered abilities into _state.pending_triggers. They go on the stack
+# only via _drain_pending_triggers (MTG 603.2 — wait until next priority).
+# event = {kind, subject_iid, subject_card, ...event-specific fields}.
 func _fire_event(event: Dictionary) -> void:
 	var event_kind: String = event.get("kind", "")
 	if event_kind == "":
 		push_warning("_fire_event: event has no 'kind'; ignoring")
 		return
 	var subject_iid: int = event.get("subject_iid", -1)
-	# Build the candidate listener set: every battlefield permanent, plus the
-	# event's subject (so a card's own leave-play trigger can see itself even
-	# after moving to the graveyard).
+	# Listeners = battlefield + event subject (for leaves-play triggers on the dead source).
 	var listeners: Array[CardInstance] = []
 	for p in [_state.you, _state.opp]:
 		for c in p.battlefield:
@@ -1609,18 +1291,14 @@ func _fire_event(event: Dictionary) -> void:
 			var trig: Dictionary = abilities[i]
 			if trig.get("event", "") != event_kind:
 				continue
-			# self_only: only fires when this source IS the event subject.
-			# Used for "When ~ enters" / "When ~ dies" style triggers.
+			# self_only: source IS event subject ("When ~ enters/dies").
 			if trig.get("self_only", false) and source.instance_id != subject_iid:
 				continue
-			# Predicate gate (B1). Empty predicate = always fires.
 			var pred: String = trig.get("condition_predicate", "")
 			if not Predicates.evaluate(pred, _state, source, event):
 				_state.append_log("Trigger condition false for %s — skipping" % source.name())
 				continue
-			# Phase 4: triggers have no chosen targets (their effects use
-			# hardcoded target specs like "opponent"). Phase 4.5+ will add
-			# interactive target picking when trigger.effects need them.
+			# Phase 4: no chosen targets (effects use hardcoded specs).
 			_state.pending_triggers.append({
 				"source_iid": source.instance_id,
 				"controller_key": source.controller_key,
@@ -1631,18 +1309,8 @@ func _fire_event(event: Dictionary) -> void:
 			_state.append_log("Trigger queued: %s (%s)" % [source.name(), event_kind])
 
 
-# Drain pending_triggers onto the stack in APNAP order.
-# Per MTG 603.3b: each player, in APNAP order, puts their triggers on the
-# stack in any order. So AP's triggers go on first (becoming the BOTTOM of
-# the newly-pushed batch), then NAP's go on top — meaning NAP's resolve
-# first (LIFO). Phase 4 simplification: within each player, triggers push
-# in queue order.
-#
-# After pushing, priority resets to the active player and passes clear, so
-# both players can respond before any trigger resolves.
-# Phase 4.5b: pick the target for a queued trigger that's awaiting one.
-# Legal only when state.awaiting_target_for_trigger is set AND the supplied
-# target matches the trigger's declared filter.
+# MTG 603.3b APNAP order: AP first (bottom of batch), NAP on top (resolves first LIFO).
+# Phase 4 simplification: queue order within each player.
 func _legal_pick_trigger_target(action: Dictionary) -> bool:
 	if _state == null or _state.winner != "":
 		return false
@@ -1654,11 +1322,7 @@ func _legal_pick_trigger_target(action: Dictionary) -> bool:
 	return _target_matches_filter(target, _state.awaiting_target_for_trigger.filter)
 
 
-# Validates a target descriptor against a filter string. Phase 4.5b supports:
-#   - "creature_or_player": any player or any battlefield creature
-#   - "creature":           any battlefield creature
-#   - "player":             either player
-# Future filters (hexproof, controller-restricted, etc.) extend this.
+# filter: "creature_or_player"|"creature"|"player".
 func _target_matches_filter(target: Dictionary, filter: String) -> bool:
 	var kind: String = target.get("kind", "")
 	match filter:
@@ -1688,8 +1352,7 @@ func _target_matches_filter(target: Dictionary, filter: String) -> bool:
 
 func _do_pick_trigger_target(action: Dictionary) -> bool:
 	var target: Dictionary = action.target
-	# The awaiting trigger is at the head of pending_triggers (the drainer
-	# halted there). Fill in its targets, then resume draining.
+	# Head of pending_triggers is the paused one; fill its target and resume.
 	if _state.pending_triggers.is_empty():
 		push_warning("_do_pick_trigger_target: no pending trigger to fill")
 		return false
@@ -1699,8 +1362,6 @@ func _do_pick_trigger_target(action: Dictionary) -> bool:
 	var src: CardInstance = _find_card_anywhere(trig.source_iid)
 	var src_name: String = src.name() if src != null else "?"
 	_state.append_log("%s targets %s" % [src_name, _describe_targets([target])])
-	# Resume the drain. The trig at index 0 now has targets so it'll push
-	# this iteration. Any further triggers continue per APNAP.
 	_drain_continue()
 	return true
 
@@ -1708,13 +1369,9 @@ func _do_pick_trigger_target(action: Dictionary) -> bool:
 func _drain_pending_triggers() -> void:
 	if _state.pending_triggers.is_empty():
 		return
-	# If we're already paused waiting on a target pick, don't double-drain.
 	if not _state.awaiting_target_for_trigger.is_empty():
 		return
-	# Reorder the entire queue in APNAP order so that AP's triggers come
-	# first (push first → bottom of stack → resolve last). Phase 4.5b adds
-	# a sub-step: each trigger that needs an interactive target either picks
-	# automatically (opp-controlled) or pauses the drain (you-controlled).
+	# Reorder APNAP: AP first → bottom of stack → resolves last.
 	var ap_key: String = _state.active_player_key
 	var ap_triggers: Array[Dictionary] = []
 	var nap_triggers: Array[Dictionary] = []
@@ -1723,11 +1380,7 @@ func _drain_pending_triggers() -> void:
 			ap_triggers.append(trig)
 		else:
 			nap_triggers.append(trig)
-	# Single queue in resolution order: AP first, then NAP. We pop from the
-	# front (FIFO) and push to the stack one at a time so a pause leaves the
-	# tail in pending_triggers for the next drain. Rebuild the typed array
-	# explicitly — concatenation widens the type and trips Godot's typed
-	# assignment check.
+	# Rebuild explicitly — concat widens the type past Godot's typed-assign check.
 	_state.pending_triggers.clear()
 	for trig in ap_triggers:
 		_state.pending_triggers.append(trig)
@@ -1736,21 +1389,16 @@ func _drain_pending_triggers() -> void:
 	_drain_continue()
 
 
-# Phase 4.5b: pull triggers off the pending queue one at a time, resolving
-# target picks as we go. Stops if a "you"-controlled trigger needs an
-# interactive target (UI will issue KIND_PICK_TRIGGER_TARGET to resume).
+# Drain queue one at a time; pause on "you"-controlled needing target (UI resumes via KIND_PICK_TRIGGER_TARGET).
 func _drain_continue() -> void:
 	while not _state.pending_triggers.is_empty():
 		var trig: Dictionary = _state.pending_triggers[0]
 		var filter: String = _trigger_target_filter(trig)
 		if filter == "":
-			# No target needed — push to stack directly.
 			_state.pending_triggers.pop_front()
 			_push_trigger_to_stack(trig)
 			continue
-		# Trigger needs a target. Two paths based on controller.
 		if trig.controller_key == "you":
-			# Pause drain; record what's awaiting for the UI.
 			_state.awaiting_target_for_trigger = {
 				"source_iid": trig.source_iid,
 				"controller_key": trig.controller_key,
@@ -1762,29 +1410,21 @@ func _drain_continue() -> void:
 			_state.append_log("%s's triggered ability needs a target" % src_name)
 			return
 		else:
-			# Opp-controlled: AI picks the first legal target. Phase 5c will
-			# replace this with the real AI; for now we mirror the Phase-3
-			# stubs and target the player (since opp's only Phase-4.5 trigger
-			# card, Pyromaniac, is "deal 1 to any target" — face damage is
-			# the safe greedy pick).
+			# Opp auto-pick (Phase 3 stub).
 			var auto_target := _auto_pick_trigger_target(filter, trig.controller_key)
 			if auto_target.is_empty():
-				# No legal target available — trigger fizzles silently.
 				_state.pending_triggers.pop_front()
 				_state.append_log("Trigger fizzles (no legal target)")
 				continue
 			trig.targets = [auto_target]
 			_state.pending_triggers.pop_front()
 			_push_trigger_to_stack(trig)
-	# All triggers drained. Reset priority to AP so both players can respond
-	# to whatever just hit the stack (MTG 116.5).
+	# MTG 116.5: priority resets to AP after drain.
 	_state.priority_player_key = _state.active_player_key
 	_reset_priority_passes()
 
 
-# Returns the target_filter string for this trigger, or "" if the ability
-# doesn't need a chosen target. The filter lives on the trigger ability
-# definition (CardResource.triggered_abilities[i].target_filter).
+# triggered_abilities[i].target_filter; "" if no target needed.
 func _trigger_target_filter(trig: Dictionary) -> String:
 	var source: CardInstance = _find_card_anywhere(trig.source_iid)
 	if source == null or source.template == null:
@@ -1794,25 +1434,18 @@ func _trigger_target_filter(trig: Dictionary) -> String:
 	if idx < 0 or idx >= abilities.size():
 		return ""
 	var ability: Dictionary = abilities[idx]
-	# If targets are already filled (e.g., from auto-pick), no need to ask
-	# again.
 	if not trig.get("targets", []).is_empty():
 		return ""
 	return ability.get("target_filter", "")
 
 
-# Phase 4.5b: simple opp-AI target picker. Returns the first legal target
-# matching the filter, or an empty Dictionary if nothing is legal. For
-# "creature_or_player" we prefer the opponent (Pyromaniac-style face-damage
-# triggers) — Phase 5c's AI replaces this with real scoring.
+# Greedy auto-pick: face damage / first opp creature. Phase 5c replaces with real AI.
 func _auto_pick_trigger_target(filter: String, controller_key: String) -> Dictionary:
 	var opp_key: String = _state.opponent_of(controller_key)
 	match filter:
 		"creature_or_player":
-			# Greedy: target the opponent's life total.
 			return {"kind": "player", "who": opp_key}
 		"creature":
-			# Greedy: target the first opposing creature on battlefield.
 			for c in _state.player_by_key(opp_key).battlefield:
 				if c.template is CreatureResource:
 					return {"kind": "creature", "iid": c.instance_id}

@@ -1,16 +1,10 @@
 class_name CardDatabase
 extends RefCounted
 
-# Programmatic card definitions for Phase 1.
-#
-# Long-term, each card will be a .tres Resource file under cards/templates/
-# authored in the Godot editor. For Phase 1 (just 2 cards), defining them in
-# code is faster and avoids hand-writing .tres syntax. The migration to .tres
-# files is a Phase 2+ task — call sites use get(card_id) regardless of where
-# the data comes from.
+# Programmatic card definitions. Migration to .tres files is a Phase 2+ task —
+# call sites use get_card(card_id) regardless of backing storage.
 
 
-# Returns a CardResource for the given card_id, or null if unknown.
 static func get_card(card_id: String) -> CardResource:
 	match card_id:
 		"mountain":
@@ -64,7 +58,7 @@ static func get_card(card_id: String) -> CardResource:
 			return null
 
 
-# Returns all known card_ids. Used by Engine boot-time predicate validation.
+# Used by Engine boot-time predicate validation.
 static func all_card_ids() -> Array[String]:
 	return [
 		"mountain", "forest", "plains", "island", "swamp",
@@ -78,7 +72,6 @@ static func all_card_ids() -> Array[String]:
 	]
 
 
-# Returns all card resources. Used by Engine boot-time predicate validation.
 static func all_resources() -> Array:
 	var arr: Array = []
 	for cid in all_card_ids():
@@ -86,9 +79,8 @@ static func all_resources() -> Array:
 	return arr
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Card definitions. Keep these terse — most cards are just data; only the
-# shape of the on_cast / activated / triggered ability arrays carries logic.
+# ─── Card definitions ─────────────────────────────────────────────────────
+# Tap-to-mana ability is auto-constructed by Engine from mana_produced.
 
 static func _make_mountain() -> LandResource:
 	var r := LandResource.new()
@@ -96,11 +88,9 @@ static func _make_mountain() -> LandResource:
 	r.display_name = "Mountain"
 	r.card_types = ["land"]
 	r.subtypes = ["mountain"]
-	r.mana_cost = {}  # Lands cost no mana
+	r.mana_cost = {}
 	r.oracle_text = "{T}: Add {R}."
 	r.mana_produced = ["R"]
-	# The tap ability is constructed automatically by Engine from mana_produced;
-	# no need to populate activated_abilities by hand.
 	return r
 
 
@@ -131,9 +121,7 @@ static func _make_goblin_raider() -> CreatureResource:
 	r.power = 2
 	r.toughness = 1
 	r.keywords = []
-	# No on_cast_effects — when a creature spell resolves, the engine puts it
-	# on the battlefield (its "effect" is becoming a permanent). Phase 2 will
-	# handle this via a special-case in stack resolution, not via an effect kind.
+	# Creatures have no on_cast_effects — resolution puts them onto the battlefield (handled in stack).
 	return r
 
 
@@ -179,10 +167,7 @@ static func _make_giant_growth() -> SpellResource:
 	return r
 
 
-# Phase 4: ETB trigger. When Pyromaniac enters the battlefield, deals 1
-# damage to any target. Phase 4.5b made this fully interactive — the
-# controller picks the target via KIND_PICK_TRIGGER_TARGET (opp's auto-AI
-# picks the opponent player by default).
+# ETB trigger w/ chosen target (picked via KIND_PICK_TRIGGER_TARGET).
 static func _make_pyromaniac() -> CreatureResource:
 	var r := CreatureResource.new()
 	r.card_id = "pyromaniac"
@@ -197,9 +182,9 @@ static func _make_pyromaniac() -> CreatureResource:
 	r.triggered_abilities = [
 		{
 			"event": "card_etb",
-			"self_only": true,                       # only fires for this creature's own ETB
-			"condition_predicate": "",               # unconditional
-			"target_filter": "creature_or_player",   # any target
+			"self_only": true,
+			"condition_predicate": "",
+			"target_filter": "creature_or_player",
 			"effects": [
 				{"kind": "damage", "amount": 1, "target": "chosen"},
 			],
@@ -208,11 +193,7 @@ static func _make_pyromaniac() -> CreatureResource:
 	return r
 
 
-# Phase 4: death trigger with predicate. When Bloodlust Berserker dies, if the
-# opponent has lost life this turn, deal 2 damage to the opponent. Exercises
-# the predicate registry — the trigger is queued unconditionally, then the
-# predicate is checked at queue time (and again at resolve time per MTG's
-# "intervening if" rule, though Phase 4 only checks once at queue time).
+# Death trigger w/ predicate. Predicate checked at queue time only (no "intervening if" recheck yet).
 static func _make_bloodlust_berserker() -> CreatureResource:
 	var r := CreatureResource.new()
 	r.card_id = "bloodlust_berserker"
@@ -237,7 +218,7 @@ static func _make_bloodlust_berserker() -> CreatureResource:
 	return r
 
 
-# ─── Phase 4.5c: basic lands across remaining colors ──────────────────────
+# ─── Basic lands ──────────────────────────────────────────────────────────
 
 static func _make_plains() -> LandResource:
 	var r := LandResource.new()
@@ -275,7 +256,7 @@ static func _make_swamp() -> LandResource:
 	return r
 
 
-# ─── Phase 4.5c: vanilla creature curve fillers ───────────────────────────
+# ─── Vanilla creature curve ───────────────────────────────────────────────
 
 static func _make_bear_cub() -> CreatureResource:
 	var r := CreatureResource.new()
@@ -319,9 +300,8 @@ static func _make_hill_giant() -> CreatureResource:
 	return r
 
 
-# ─── Phase 4.5c: instants with new effect kinds ───────────────────────────
+# ─── Instants ─────────────────────────────────────────────────────────────
 
-# Exercises the new gain_life effect handler.
 static func _make_healing_salve() -> SpellResource:
 	var r := SpellResource.new()
 	r.card_id = "healing_salve"
@@ -330,7 +310,7 @@ static func _make_healing_salve() -> SpellResource:
 	r.subtypes = []
 	r.mana_cost = {"W": 1}
 	r.oracle_text = "You gain 3 life."
-	r.requires_target = false  # gain_life applies to controller — no chosen target
+	r.requires_target = false
 	r.target_filter = ""
 	r.on_cast_effects = [
 		{"kind": "gain_life", "amount": 3},
@@ -338,11 +318,7 @@ static func _make_healing_salve() -> SpellResource:
 	return r
 
 
-# Exercises the new counter_spell effect handler. First card whose target is
-# a stack entry rather than a creature/player. Validation of the stack target
-# is partly deferred to Phase 5b's get_legal_actions — currently the legality
-# check only requires that targets be non-empty, and the effect itself
-# fizzles cleanly when the target spell is no longer on the stack.
+# First card whose target is a stack entry. Effect fizzles cleanly if target leaves the stack.
 static func _make_counterspell() -> SpellResource:
 	var r := SpellResource.new()
 	r.card_id = "counterspell"
@@ -352,16 +328,15 @@ static func _make_counterspell() -> SpellResource:
 	r.mana_cost = {"U": 2}
 	r.oracle_text = "Counter target spell."
 	r.requires_target = true
-	r.target_filter = "spell"  # target must be a stack entry of kind "spell"
+	r.target_filter = "spell"
 	r.on_cast_effects = [
 		{"kind": "counter_spell", "target": "chosen"},
 	]
 	return r
 
 
-# ─── Phase 5a: keyword-bearing creatures ──────────────────────────────────
+# ─── Keyword creatures ────────────────────────────────────────────────────
 
-# Flying — 2/2 evasive flyer for UU.
 static func _make_wind_drake() -> CreatureResource:
 	var r := CreatureResource.new()
 	r.card_id = "wind_drake"
@@ -376,7 +351,6 @@ static func _make_wind_drake() -> CreatureResource:
 	return r
 
 
-# Reach — defensive 2/4 spider that can block flyers.
 static func _make_giant_spider() -> CreatureResource:
 	var r := CreatureResource.new()
 	r.card_id = "giant_spider"
@@ -391,7 +365,6 @@ static func _make_giant_spider() -> CreatureResource:
 	return r
 
 
-# Flying + vigilance — premium aerial defender / attacker, 5cc 4/4.
 static func _make_serra_angel() -> CreatureResource:
 	var r := CreatureResource.new()
 	r.card_id = "serra_angel"
@@ -406,7 +379,6 @@ static func _make_serra_angel() -> CreatureResource:
 	return r
 
 
-# Trample — 3/3 elephant that pushes excess damage through blockers.
 static func _make_trained_armodon() -> CreatureResource:
 	var r := CreatureResource.new()
 	r.card_id = "trained_armodon"
@@ -421,8 +393,7 @@ static func _make_trained_armodon() -> CreatureResource:
 	return r
 
 
-# Lifelink + deathtouch + flying — vampire that drains AND kills anything it
-# touches. Exercises three combat keywords on one source.
+# Three combat keywords on one source.
 static func _make_vampire_nighthawk() -> CreatureResource:
 	var r := CreatureResource.new()
 	r.card_id = "vampire_nighthawk"
@@ -437,7 +408,6 @@ static func _make_vampire_nighthawk() -> CreatureResource:
 	return r
 
 
-# Haste — 1/1 goblin that can attack the turn it enters.
 static func _make_raging_goblin() -> CreatureResource:
 	var r := CreatureResource.new()
 	r.card_id = "raging_goblin"
@@ -452,7 +422,6 @@ static func _make_raging_goblin() -> CreatureResource:
 	return r
 
 
-# Defender — 0/4 wall that can't attack.
 static func _make_walking_wall() -> CreatureResource:
 	var r := CreatureResource.new()
 	r.card_id = "walking_wall"

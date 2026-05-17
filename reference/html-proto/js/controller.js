@@ -1,18 +1,8 @@
-// =========================================================================
-// CONTROLLER — owns player UI state, schedules AI, glues clicks to engine.
-// =========================================================================
+// CONTROLLER — UI state, AI scheduling, click-to-engine glue.
 
-// Modal helper: standardized show/hide for any modal using the '.vis' class.
-// Adds Escape-to-close (per-modal opt-in via dismissible), focus restoration,
-// and aria-modal attributes. Stack-aware so nested modals dismiss LIFO.
-//
-// Lives at module scope (not inside the CONTROLLER IIFE) because render.js
-// calls Modal.show / Modal.hide directly — and render.js is itself at module
-// scope, so it can't see anything that's only inside the IIFE.
-//
-// `dismissible: false` for modals where Escape would softlock — gameover (no
-// other exit), neow (boon pick required before draft), postDraftOffer (basic
-// pick required before game 1), reward (must commit a reward to continue).
+// Modal helper. Module-scope so render.js can call Modal.show/hide directly.
+// Escape-to-close, focus restore, aria-modal, LIFO stack. dismissible:false for
+// flow-gates (gameover/neow/postDraftOffer/reward) where Escape would softlock.
 const Modal = {
   _stack: [],
   _escapeBound: false,
@@ -20,8 +10,6 @@ const Modal = {
     opts = opts || {};
     const el = document.getElementById(id);
     if (!el) return;
-    // Idempotent: render-driven callers may invoke this every frame while
-    // the modal is up. Don't push duplicates onto the stack.
     if (this._stack.some(e => e.id === id)) return;
     this._stack.push({
       id,
@@ -51,8 +39,7 @@ const Modal = {
     if (entry.prevFocus && typeof entry.prevFocus.focus === 'function') {
       try { entry.prevFocus.focus(); } catch (_) {}
     }
-    // onClose fires only when the user dismissed via Escape — code-driven
-    // hides (render-loop, explicit caller) already know what they're doing.
+    // Only fire onClose for user-initiated dismiss (render-loop hides know what they want).
     if (entry.onClose && opts && opts.userInitiated) entry.onClose();
   },
   _onEscape(e) {
@@ -65,31 +52,23 @@ const Modal = {
 
 const CONTROLLER = (function() {
 
-// Player input state (in-flight selections that haven't been submitted yet).
+// In-flight UI selections.
 let pendingTarget = null;       // {kind:'cast'|'ability', cardIid, abilityIdx?, modeIdx?}
-// Modal-spell mode picker. When set, the UI shows a mode selection dialog
-// for the named card. Cleared once the player picks a mode (then either
-// submits directly if that mode is untargeted, or sets pendingTarget for
-// targeting). Cancellable.
-let pendingModalChoice = null;  // {cardIid} — open mode picker for this card
-let uiAtk = [];                 // attacker selection in progress
-let uiBlk = new Map();          // block selection in progress (blocker → attacker)
-let uiPickBlk = null;           // currently selected blocker awaiting attacker click
-let aiScheduled = false;        // single-flight flag for AI setTimeouts
-let aiThinking = false;         // true while AI.decide() promise is in-flight
-let inDraft = false;            // true while draft screen is up
-let lastGameRecorded = false;   // ensures we only record run result once per game
+let pendingModalChoice = null;  // {cardIid} — open mode picker
+let uiAtk = [];                 // attacker selection
+let uiBlk = new Map();          // blocker → attacker
+let uiPickBlk = null;           // selected blocker awaiting attacker click
+let aiScheduled = false;
+let aiThinking = false;
+let inDraft = false;
+let lastGameRecorded = false;
 
-// Visually show that the AI is awaiting a response. Non-invasive — adds a
-// class on the body so CSS can style anything we want (we just append a
-// pulsing dot to the status bar text via the render path).
 function updateThinkingUi() {
   if (aiThinking) {
     document.body.classList.add('ai-thinking');
   } else {
     document.body.classList.remove('ai-thinking');
   }
-  // Re-render so the status bar picks up the change.
   render();
 }
 
@@ -98,17 +77,11 @@ function init() {
   if (_inited) return;
   _inited = true;
   ENGINE.subscribe(onStateChange);
-  // Populate the two static UI sites that show the version number — the
-  // header div and the game-log title. Both used to be hand-edited HTML
-  // strings carrying the version, which meant every release had three
-  // separate sites to bump (often forgetting one). Now driven from the
-  // single VERSION constant at the top of the script.
+  // VERSION → header + game-log title (single source of truth).
   const versionEl = document.getElementById('version');
   if (versionEl) versionEl.textContent = VERSION;
   const logTitleEl = document.getElementById('log-title');
   if (logTitleEl) {
-    // Preserve the existing structure (title + close button) but replace
-    // the version text. Cleaner than rebuilding the whole element.
     logTitleEl.innerHTML =
       '<span>Game Log <span style="color:#ffd700">— ' + VERSION + '</span></span>' +
       '<button id="logCloseBtn" onclick="CONTROLLER.toggleLog()">close</button>';
@@ -116,10 +89,7 @@ function init() {
   showStartScreen();
 }
 
-// Translate a sticker's `appliesTo` predicate into a human-readable label
-// for the card browser. Hardcoded against sticker.kind because the predicates
-// themselves are functions and can't be introspected. Keep this in sync if
-// new sticker kinds are added.
+// Sticker.appliesTo → human label (predicates can't be introspected; keep in sync with sticker kinds).
 function stickerAppliesLabel(s) {
   switch (s.kind) {
     case 'statBoost':     return 'creatures';
@@ -152,9 +122,7 @@ function appendStickerSectionToBrowser(inner) {
   heading.style.cssText = 'color:#e0b060;font-size:13px;letter-spacing:.1em;margin:0 0 8px;border-left:3px solid #e0b060;padding:2px 0 2px 8px;text-transform:uppercase';
   wrap.appendChild(heading);
 
-  // Group by kind family. "Card boosts" covers stat/cost/empower (the
-  // generally-applicable modifiers), "Land mods" covers innate + landColor
-  // (only legal on lands), "Keyword grants" covers kw_*.
+  // Card boosts = stat/cost/empower; Land mods = innate+landColor; Keyword grants = kw_*.
   const groups = {
     'Card boosts':       [],
     'Land mods':         [],
@@ -165,7 +133,6 @@ function appendStickerSectionToBrowser(inner) {
     else if (s.kind === 'keyword')                     groups['Keyword grants'].push(s);
     else                                               groups['Card boosts'].push(s);
   }
-  // Within each group: weight desc (most common first), then name.
   for (const k of Object.keys(groups)) {
     groups[k].sort((a, b) => (b.weight - a.weight) || a.name.localeCompare(b.name));
   }
@@ -182,7 +149,6 @@ function appendStickerSectionToBrowser(inner) {
       const item = document.createElement('div');
       item.style.cssText = 'background:#1a1a25;border:1px solid #2c2c3a;border-left:3px solid #886622;border-radius:3px;padding:7px 10px;margin-bottom:5px;font-size:11px;line-height:1.5';
 
-      // Top row: name on left, weight/stackable on right.
       const top = document.createElement('div');
       top.style.cssText = 'display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:2px';
       const name = document.createElement('span');
@@ -195,8 +161,7 @@ function appendStickerSectionToBrowser(inner) {
       top.appendChild(meta);
       item.appendChild(top);
 
-      // Effect text. Routes through renderManaSymbols so landColor
-      // stickers (text contains {W}/{U}/etc) render the pip icons.
+      // renderManaSymbols → landColor sticker pips ({W}/{U}/etc).
       const text = document.createElement('div');
       text.innerHTML = renderManaSymbols(escapeHtml(s.text || ''));
       text.style.cssText = 'color:#bbb';
@@ -236,16 +201,8 @@ function showCardBrowser() {
   header.appendChild(closeBtn);
   inner.appendChild(header);
 
-  // Sticker reference section — shown above the cards so opening the
-  // browser surfaces both the card pool and the modifier vocabulary at a
-  // glance. Compact rows: name + weight/stackable on the right, text and
-  // eligibility below. Grouped by category since the keyword grants
-  // outnumber everything else and would dominate visually otherwise.
   appendStickerSectionToBrowser(inner);
 
-  // Group templates by color. Lands get their own bucket (color === null and
-  // type === 'Land'). Anything else with color === null goes to "Colorless"
-  // even though we don't currently have any such cards — future-proof.
   const groups = {
     W: { label: 'White',     tone: '#cdb46a', cards: [] },
     U: { label: 'Blue',      tone: '#5588cc', cards: [] },
@@ -262,8 +219,6 @@ function showCardBrowser() {
     else groups.C.cards.push({ tplId, tpl });
   }
 
-  // Sort within each group: by total mana cost ascending, then by name.
-  // Lands have no cost — sort alphabetically.
   for (const k of Object.keys(groups)) {
     groups[k].cards.sort((a, b) => {
       const ca = a.tpl.cost ? Object.values(a.tpl.cost).reduce((s, v) => s + v, 0) : 0;
@@ -273,7 +228,6 @@ function showCardBrowser() {
     });
   }
 
-  // Render. Skip empty buckets (Colorless will usually be empty).
   const order = ['W', 'U', 'B', 'R', 'G', 'C', 'L'];
   for (const k of order) {
     const g = groups[k];
@@ -291,9 +245,6 @@ function showCardBrowser() {
     grid.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px';
 
     for (const { tplId } of g.cards) {
-      // makeCard increments nextIid — fine; iids are just numbers and we
-      // don't share state with an in-progress game (browser is opened from
-      // the start screen). Long-press popup works here too.
       const card = ENGINE.makeCard(tplId);
       grid.appendChild(makeCardEl(card));
     }
@@ -303,17 +254,12 @@ function showCardBrowser() {
   }
 
   Modal.show('cardBrowserModal');
-  // Reset scroll on each open.
   document.getElementById('cardBrowserModal').scrollTop = 0;
 }
 
 function showStartScreen() {
   const screen = document.getElementById('startScreen');
-  // Trigger Fullscreen API on the first click within the start screen. The
-  // request must run synchronously inside a user gesture handler, so we
-  // attach it in the capture phase to fire before the button's onclick.
-  // `once:true` self-removes after one fire; if the request fails (e.g.
-  // unsupported, denied, or already fullscreen) we silently ignore.
+  // Fullscreen API needs a user gesture — capture-phase + once:true.
   screen.addEventListener('click', () => {
     const el = document.documentElement;
     const req = el.requestFullscreen || el.webkitRequestFullscreen;
@@ -366,9 +312,7 @@ function showStartScreen() {
     };
     btns.appendChild(fresh);
 
-    // Desert Cube: alternate draft mode where lands appear in packs at 1/3
-    // chance per slot. Player drafts their own manabase (40-card deck total)
-    // instead of getting auto-allocated lands. Opp still drafts classic.
+    // Desert Cube: lands in packs 1/3 per slot, player drafts own manabase.
     const freshDC = document.createElement('button');
     freshDC.textContent = 'New Desert Cube Run';
     freshDC.style.cssText = 'padding:10px 20px;background:#3a3a1a;border:1px solid #888844;color:#ddcc88;border-radius:4px;cursor:pointer;font-size:14px';
@@ -378,15 +322,11 @@ function showStartScreen() {
     };
     btns.appendChild(freshDC);
   }
-  // Stats — secondary action, available regardless of save state. Closing
-  // the stats modal returns here (start screen stays mounted underneath).
   const stats = document.createElement('button');
   stats.textContent = '📊 Stats';
   stats.style.cssText = 'padding:8px 20px;background:#1a1a2a;border:1px solid #444;color:#aaa;border-radius:4px;cursor:pointer;font-size:12px;margin-top:6px';
   stats.onclick = toggleStats;
   btns.appendChild(stats);
-  // Card Browser — secondary action, also save-state-agnostic. Lets the
-  // player browse the full card pool from the menu without starting a run.
   const browser = document.createElement('button');
   browser.textContent = '📖 Card Browser';
   browser.style.cssText = 'padding:8px 20px;background:#1a1a2a;border:1px solid #444;color:#aaa;border-radius:4px;cursor:pointer;font-size:12px';
@@ -397,36 +337,23 @@ function showStartScreen() {
 
 function continueRun() {
   if (!RUN.load()) {
-    // Save was corrupt or missing; fall through to fresh draft.
     document.getElementById('startScreen').style.display = 'none';
     newRun();
     return;
   }
   document.getElementById('startScreen').style.display = 'none';
-  // We have a loaded runState. Three cases:
-  //   (1) Pending reward (player won last game, hadn't picked yet) — render
-  //       the reward modal; player picks; nextGame triggers normally.
-  //   (2) Mid-game (lastResult === null, gameNum > 0) — they closed during
-  //       a game. We don't save mid-game G state, so they forfeit that game
-  //       but the run continues. RUN.rollbackForMidGameRestore() handles
-  //       the gameNum bookkeeping internally.
-  //   (3) Between games — call startNextGame to begin the next.
+  // Three cases: pending reward, mid-game (forfeit + continue), or between games.
   try {
     const reward = RUN.getReward();
     if (reward) {
       renderReward();
     } else {
-      RUN.rollbackForMidGameRestore();   // no-op if not mid-game
+      RUN.rollbackForMidGameRestore();
       lastGameRecorded = false;
-      // Pending post-draft offer (player closed the tab between draft
-      // completion and the Innate offer pick). Show the offer modal;
-      // pickPostDraftOfferClick will start game 1.
       if (RUN.getPostDraftOffer && RUN.getPostDraftOffer()) {
         renderPostDraftOffer();
         return;
       }
-      // Check for pending map choice (resume after a fork, before
-      // committing the next node). UI restores the map view.
       const mapState = RUN.getMapState && RUN.getMapState();
       if (mapState && mapState.pendingChoice) {
         renderMap();
@@ -435,37 +362,18 @@ function continueRun() {
       }
     }
   } catch (e) {
-    // Defensive: if the loaded run is in an unrecoverable state (e.g., a
-    // saved slot references a card template that no longer exists, a
-    // saved bonusTrigger has a malformed shape, etc.) we'd previously crash
-    // mid-init and leave the page in a half-loaded state — the user sees
-    // an empty board and a console error with no path forward. Instead,
-    // catch, log, clear the save, and bounce back to the start screen so
-    // the user can begin a new run.
+    // Unrecoverable save state → clear and bounce to start.
     console.error('Continue-run failed; clearing save and returning to start screen.', e);
     RUN.clearSave();
     showStartScreen();
   }
 }
-// Pending Neow modifier — set when player picks an option on the Neow
-// screen, consumed when draft completes. null = no modifier chosen yet.
-// Lives at controller scope (not runState) because it's a transient
-// pre-run choice; once draft completes we hand it off to RUN.start which
-// records it in runState.modifier permanently.
+// Transient pre-run choice; runState.modifier holds the final value post-draft.
 let pendingNeowModifier = null;
-// Pending draft mode chosen at the start screen. Threaded through newRun →
-// showNeowChoice → pickNeow → DRAFT.startDraft so the draft UI knows
-// whether to roll classic packs or Desert Cube packs (lands seeded into
-// packs at 1/3 per slot, no auto-land allocation, full-deck pick count).
 let pendingDraftMode = 'classic';
 
 function newRun(mode) {
-  // Begin a fresh run: Neow choose-screen first, then draft, then games.
-  // Desert Cube skips Neow entirely — boon-and-cube interaction isn't
-  // designed yet, so the cleaner experience is "no boon" until we figure
-  // out what makes sense. The pendingNeowModifier stays null and RUN.start
-  // gets called with no modifier, same as if the player had picked a
-  // hypothetical "no boon" option.
+  // Desert Cube skips Neow (cube+boon interaction not designed).
   Modal.hide('gameover');
   pendingNeowModifier = null;
   pendingDraftMode = mode || 'classic';
@@ -479,22 +387,12 @@ function newRun(mode) {
 }
 
 function showNeowChoice() {
-  // Pick 3 boons to offer. Always-offered ones (alwaysOffered: true) are
-  // included unconditionally; the rest are filled by random selection from
-  // the remaining pool. Slot count is capped at TARGET_BOONS — if there
-  // are fewer total boons available, we just show what we have.
-  //
-  // Display order: always-offered first (stable position so the player
-  // recognizes them across runs), then randomly-picked. The random choices
-  // are presented in randomized order too so the player doesn't get
-  // positional cues.
+  // alwaysOffered boons fill stable left positions; rest random-fill.
   const TARGET_BOONS = 3;
   const allIds = Object.keys(RUN_MODIFIERS);
   const alwaysIds = allIds.filter(id => RUN_MODIFIERS[id].alwaysOffered);
   const poolIds = allIds.filter(id => !RUN_MODIFIERS[id].alwaysOffered);
 
-  // Random fill from the pool. Fisher-Yates style: shuffle pool, take
-  // however many are needed to reach TARGET_BOONS.
   const shuffledPool = poolIds.slice();
   for (let i = shuffledPool.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -533,7 +431,6 @@ function showNeowChoice() {
 function pickNeow(id) {
   pendingNeowModifier = id;
   Modal.hide('neowModal');
-  // Now begin the actual draft.
   DRAFT.startDraft(pendingDraftMode);
   inDraft = true;
   renderDraft();
@@ -549,10 +446,6 @@ function pickDraft(tplId) {
     RUN.start(playerDeck, pendingNeowModifier);
     pendingNeowModifier = null;
     lastGameRecorded = false;
-    // Post-draft offer (Innate on a basic land type). If there's one
-    // open, render the modal and stop — the player picks, which clears
-    // the offer, and we re-enter via the post-offer-pick handler that
-    // then calls startNextGame.
     if (RUN.getPostDraftOffer && RUN.getPostDraftOffer()) {
       renderPostDraftOffer();
       return;
@@ -563,13 +456,8 @@ function pickDraft(tplId) {
   }
 }
 function nextGame() {
-  // Called from the post-game screen when the player won. Reuses the
-  // drafted deck and faces a fresh opponent. Blocked while a reward is pending.
   if (!RUN.isActive()) return;
   if (RUN.getReward()) return;
-  // If the just-cleared node has a fork, show the map and let the player
-  // pick before starting the next combat. The map UI calls pickMapNodeClick
-  // which clears pendingMapChoice and re-enters this flow via startNextGame.
   const mapState = RUN.getMapState && RUN.getMapState();
   if (mapState && mapState.pendingChoice) {
     Modal.hide('gameover');
@@ -583,12 +471,7 @@ function nextGame() {
   startNextGameWithBossBanner();
 }
 function gameOverClick() {
-  // Won → continue the run via the next-game path (reward flow already
-  // happened off the gameover modal). Lost → return to the start screen
-  // rather than silently dropping the player into a fresh boon pick. The
-  // start screen surfaces "New Run" and "Stats" explicitly and gives the
-  // player a moment to breathe between runs instead of immediately
-  // launching them into another draft.
+  // Won → nextGame; lost → start screen (don't silently re-launch into draft).
   if (RUN.isActive()) {
     nextGame();
   } else {
@@ -605,18 +488,9 @@ function pickTransformReplacementClick(tplId) {
   renderReward();
 }
 
-// Apply a color tint to a splice-picker / reward tile based on the slot's
-// effective (possibly merged) color set. For single-color cards, just adds
-// the `col-X` class — same as the existing convention. For stapled multi-
-// color cards, sets a `border-image` linear gradient inline so the player
-// can see the merged color identity at a glance (e.g., a Lions+Bolt slot
-// shows W/R split, not just the base's W). Mutates `div` in place.
-//
-// Color palette mirrors the .col-* CSS rules (border colors).
+// Tile color tint for splice/reward. Multi-color stapled slots get a 45° flag-stripe gradient.
 const TILE_COLOR_HEX = { W:'#cdb46a', U:'#5588cc', B:'#7a4488', R:'#cc5544', G:'#5a8844' };
 
-// Core multi-color tile renderer. Reads tpl.colors (WUBRG-ordered, set by
-// annotateColors); falls back to single tpl.color.
 function applyTileColorFromTpl(div, tpl) {
   if (!tpl) return;
   const colors = (tpl.colors && tpl.colors.length > 0) ? tpl.colors
@@ -627,7 +501,6 @@ function applyTileColorFromTpl(div, tpl) {
     div.classList.add('col-' + colors[0]);
     return;
   }
-  // Flag-stripe gradient with hard stops, 45deg diagonal.
   const stops = [];
   const step = 100 / colors.length;
   for (let i = 0; i < colors.length; i++) {
@@ -690,9 +563,7 @@ function makeRewardCardEl(tpl, slot) {
   return cardEl;
 }
 
-// Map node label popover. Tap shows the label briefly; long-press shows it
-// while the press is held. Used for "what is this node" preview on mobile
-// where hover tooltips don't fire.
+// Map node tooltip — tap shows briefly, long-press shows while held (mobile-friendly).
 let mapTooltipHideTimer = null;
 function showMapTooltip(nodeEl, label) {
   const tt = document.getElementById('mapTooltip');
@@ -700,11 +571,8 @@ function showMapTooltip(nodeEl, label) {
   if (!tt || !canvas) return;
   tt.textContent = label;
   tt.classList.add('vis');
-  // Position centered above the node, relative to the canvas. We measure
-  // both rects and compute offsets so the tooltip sits ~8px above the node.
   const cr = canvas.getBoundingClientRect();
   const nr = nodeEl.getBoundingClientRect();
-  // First render with default size to read dimensions, then reposition.
   tt.style.left = '0px';
   tt.style.top  = '0px';
   const tr = tt.getBoundingClientRect();
@@ -712,8 +580,6 @@ function showMapTooltip(nodeEl, label) {
   const ty = nr.top - cr.top - tr.height - 8;
   tt.style.left = Math.max(4, cx - tr.width / 2) + 'px';
   tt.style.top  = Math.max(2, ty) + 'px';
-  // Auto-hide after a beat. Clears any pending timer first so repeated taps
-  // don't stack timers.
   if (mapTooltipHideTimer) clearTimeout(mapTooltipHideTimer);
   mapTooltipHideTimer = setTimeout(() => {
     tt.classList.remove('vis');
@@ -721,9 +587,6 @@ function showMapTooltip(nodeEl, label) {
   }, 1500);
 }
 function attachMapLongPress(el, label) {
-  // Lightweight long-press: show tooltip on touchstart-hold for ≥400ms.
-  // Cancel if the press lifts or moves significantly. Doesn't interfere
-  // with the click handler — releasing within 400ms is a tap.
   let pressTimer = null;
   let startX = 0, startY = 0;
   const start = (x, y) => {
@@ -752,10 +615,7 @@ function attachMapLongPress(el, label) {
   el.addEventListener('mouseleave', cancel);
 }
 
-// Post-draft Innate offer modal. Shown once per run, right after draft
-// completes. Player picks one of their drafted basic land types; that
-// type's first slot gets the Innate sticker, guaranteeing it in the
-// opening hand every game. No skip option in v1 — see pickPostDraftOfferClick.
+// Post-draft Innate offer: pick a basic land type to guarantee in opening hands.
 function renderPostDraftOffer() {
   if (!RUN.getPostDraftOffer) return;
   const offer = RUN.getPostDraftOffer();
@@ -763,8 +623,6 @@ function renderPostDraftOffer() {
   Modal.show('postDraftOfferModal', { dismissible: false });
   const btns = document.getElementById('postDraftOfferButtons');
   btns.innerHTML = '';
-  // One button per distinct basic the player drafted. Use the basic's
-  // template name + art for visual recognition.
   const LAND_ART = { plains: '☀️', island: '🌊', swamp: '💀', mountain: '⛰️', forest: '🌲' };
   const LAND_COLOR = { plains: '#cdb46a', island: '#5588cc', swamp: '#9966bb', mountain: '#cc5544', forest: '#5a8844' };
   for (const tplId of offer.basics) {
@@ -783,8 +641,6 @@ function renderPostDraftOffer() {
   }
 }
 
-// Click handler for post-draft offer buttons. Commits the pick, hides the
-// modal, and starts game 1.
 function pickPostDraftOfferClick(tplId) {
   if (!RUN.pickPostDraftOffer(tplId)) return;
   Modal.hide('postDraftOfferModal');
@@ -800,8 +656,6 @@ function renderMap() {
     return;
   }
   Modal.show('mapModal');
-  // Sector indicator in title — Roman numerals for that classic
-  // tabletop-campaign feel.
   const toRoman = n => {
     const r = ['', 'I','II','III','IV','V','VI','VII','VIII','IX','X'];
     return r[n] || String(n);
@@ -811,7 +665,6 @@ function renderMap() {
   const visited = new Set(ms.visitedNodeIds);
   const current = ms.currentNodeId;
 
-  // Group nodes by level for column layout.
   const byLevel = {};
   for (const n of ms.nodes) {
     if (!byLevel[n.level]) byLevel[n.level] = [];
@@ -821,19 +674,11 @@ function renderMap() {
     byLevel[lvl].sort((a, b) => a.col - b.col);
   }
 
-  // Render levels top-to-bottom (root at top, exit at bottom).
   const levelsContainer = document.getElementById('mapLevels');
   levelsContainer.innerHTML = '';
-  // Render bottom-up: root (level 0) at the BOTTOM, exit (highest level)
-  // at the TOP. Player travels upward as they progress, matching the
-  // climbing-the-tower feel of Slay-the-Spire-likes.
+  // Bottom-up render: root at bottom, exit at top (climbing-the-tower feel).
   const levels = Object.keys(byLevel).map(Number).sort((a, b) => b - a);
   const iconFor = (node) => {
-    // Bosses look up their per-spec icon from the constructed deck. Each
-    // boss spec carries a distinctive glyph (👹 for Archdemon, ⚖ for The
-    // Balancer, etc.) so the map distinguishes them at a glance. Falls
-    // back to a generic boss icon if the lookup fails (legacy save with
-    // a missing constructedId, or a boss spec with no icon field).
     if (node.type === 'boss') {
       if (node.constructedId) {
         const spec = (typeof DRAFT !== 'undefined' && DRAFT.getConstructedDeck)
@@ -851,14 +696,11 @@ function renderMap() {
       default:       return '?';
     }
   };
-  // Per-type tooltip text. The full label combines node type and color
-  // affinity: "Red Draft Deck", "Black Elite Enemy", neutral "Draft Deck".
-  // For constructed nodes the label is the deck's own name (e.g. "Goblin
-  // Aggro") and the colored ring uses the deck's declared colors.
+  // Tooltip combines type + color (e.g., "Red Draft Deck"). Constructed nodes use deck name.
   const COLOR_NAME = {W:'White', U:'Blue', B:'Black', R:'Red', G:'Green'};
   const labelForType = (type) => {
     switch (type) {
-      case 'combat': return 'Draft Deck';   // simple "what is at this node"
+      case 'combat': return 'Draft Deck';
       case 'elite':  return 'Elite Enemy';
       case 'shop':   return 'Shop';
       case 'event':  return 'Event';
@@ -872,8 +714,6 @@ function renderMap() {
       const spec = (typeof DRAFT !== 'undefined' && DRAFT.getConstructedDeck)
         ? DRAFT.getConstructedDeck(node.constructedId) : null;
       if (spec) return spec.name;
-      // Spec missing (renamed/removed since save) — fall through to generic
-      // label so the node still says something sensible.
     }
     const base = labelForType(node.type);
     if (node.color && COLOR_NAME[node.color]) {
@@ -889,13 +729,8 @@ function renderMap() {
       el.className = 'map-node';
       el.id = 'map-' + n.id;
       el.textContent = iconFor(n);
-      el.title = tooltipFor(n);   // browser-native hover tooltip (desktop)
-      // Color-tinted ring for colored nodes — uses the same palette as
-      // the draft pips for consistency. Constructed nodes show their
-      // declared color (first color of the deck) as the ring, plus a
-      // distinctive "★" badge so they're visually distinct from drafted
-      // colored opps. Boss nodes get an extra "boss" class for size/glow
-      // emphasis and a 👹 badge instead of ★ or the color letter.
+      el.title = tooltipFor(n);
+      // Constructed: ring = spec's first color + ★ badge. Boss: 👹 badge.
       let ringColor = n.color;
       let isConstructed = false;
       const isBoss = (n.type === 'boss');
@@ -910,11 +745,6 @@ function renderMap() {
       if (isBoss) el.classList.add('boss');
       if (ringColor) {
         el.classList.add('col-' + ringColor);
-        // Mobile-friendly: always-visible color/type letter badge in the
-        // corner. For colored nodes this is the color letter (W/U/B/R/G).
-        // For constructed nodes it's a ★ so they read as "special" at a
-        // glance. Boss nodes use 👹 instead. Hover tooltips don't fire
-        // on touch.
         const badge = document.createElement('div');
         badge.className = 'map-color-badge col-' + ringColor;
         badge.textContent = isBoss ? iconFor(n) : (isConstructed ? '★' : ringColor);
@@ -925,24 +755,17 @@ function renderMap() {
       const label = tooltipFor(n);
       if (legal.has(n.id)) {
         el.classList.add('legal');
-        // Legal nodes commit the choice on tap (existing behavior). To preview
-        // the label first, the player can long-press — handled below.
         el.onclick = () => pickMapNodeClick(n.id);
       } else {
-        // Non-legal nodes show their label on tap. Useful for previewing what
-        // a future node will be on mobile, where hover tooltips don't fire.
         el.onclick = () => showMapTooltip(el, label);
       }
-      // Long-press on ANY node shows the label. Lets the player preview a
-      // legal node's identity before committing to it.
       attachMapLongPress(el, label);
       row.appendChild(el);
     }
     levelsContainer.appendChild(row);
   }
 
-  // Render edges as SVG lines, computed after layout so node positions
-  // are known. Defer one frame to let the browser lay out the rows first.
+  // SVG edges — deferred a frame so node positions are laid out.
   requestAnimationFrame(() => {
     const svg = document.getElementById('mapEdges');
     const canvas = document.getElementById('mapCanvas');
@@ -960,7 +783,6 @@ function renderMap() {
       const y1 = fr.top + fr.height / 2 - canvasRect.top;
       const x2 = tr.left + tr.width / 2 - canvasRect.left;
       const y2 = tr.top + tr.height / 2 - canvasRect.top;
-      // Color: visited path = dim, legal next = bright, future = faint.
       const fromVisited = visited.has(e.from);
       const toLegal = legal.has(e.to);
       const stroke = (fromVisited && toLegal) ? '#66ddaa' :
@@ -983,26 +805,14 @@ function pickMapNodeClick(nodeId) {
   render();
 }
 
-// Wraps RUN.startNextGame to fire a boss-intro banner when the new game
-// is at a boss node. The banner reads "You face [Boss Name]" and auto-
-// dismisses after a few seconds (player can also tap to dismiss early).
-// All five startNextGame callers route through this so the banner shows
-// regardless of which entry path (fresh draft, post-draft offer, map
-// pick, between-games, load-resume) triggered the encounter.
+// Wraps startNextGame to fire boss banner. All startNextGame callers route through here.
 function startNextGameWithBossBanner() {
   const info = RUN.startNextGame();
   if (info && info.bossName) showBossBanner(info.bossName, info.bossIcon);
 }
 
-// Show a short-lived banner near the top of the screen announcing the
-// boss encounter. Click-through dismisses. Auto-dismisses after 3s.
-// `icon` is the boss's signature glyph (👹 for Archdemon, ⚖ for The
-// Balancer, etc.) — falls back to 👹 if a boss spec is missing one.
 function showBossBanner(bossName, icon) {
   const glyph = icon || '👹';
-  // Remove any existing banner (defensive — shouldn't double-fire, but if
-  // a state-change re-enters startNextGameWithBossBanner mid-animation,
-  // we don't want a pileup).
   const existing = document.getElementById('bossBanner');
   if (existing) existing.remove();
   const banner = document.createElement('div');
@@ -1022,8 +832,6 @@ function showBossBanner(bossName, icon) {
     <div style="font-size: 10px; letter-spacing: 0.3em; opacity: 0.7; margin-bottom: 6px;">YOU FACE</div>
     <div style="font-size: 22px; font-weight: bold; letter-spacing: 0.05em;">${glyph} ${bossName}</div>
   `;
-  // Inject keyframes for the entry animation (idempotent — only adds the
-  // <style> once even across multiple boss encounters).
   if (!document.getElementById('bossBannerKeyframes')) {
     const style = document.createElement('style');
     style.id = 'bossBannerKeyframes';
@@ -1055,8 +863,6 @@ function renderReward() {
     return;
   }
   Modal.show('rewardModal', { dismissible: false });
-  // Show "your colors" pip row across all reward phases — the player wants
-  // continuity with the draft HUD when deciding what to pick.
   renderColorHud('rewardColors', RUN.getSlots());
   const optionsEl = document.getElementById('rewardOptions');
   optionsEl.innerHTML = '';
@@ -1066,9 +872,6 @@ function renderReward() {
     setText('rewardSubtitle', 'Pick one option to apply between games.');
     const slots = RUN.getSlots();
     reward.candidates.forEach((cand, idx) => {
-      // Defensive: a candidate without a recognized kind is a bug. Skip it
-      // entirely rather than rendering a broken half-card the player can't
-      // interact with.
       const KNOWN_KINDS = ['sticker', 'twoStickers', 'transform', 'clone', 'ripUp', 'threeStickersBlind', 'splice'];
       if (!cand || !KNOWN_KINDS.includes(cand.kind)) {
         console.warn('Skipping reward candidate with unknown kind:', cand);

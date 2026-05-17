@@ -1,26 +1,19 @@
 extends Control
 
-# Overlay that draws connection lines between blockers and the attackers they
-# block. Sits above CardManager in the scene tree so lines render on top of
-# card visuals. Reads state.blockers from the engine and looks up visual
-# positions via game_board's _iid_to_visual map.
-#
-# Redraws every frame while combat is active so lines follow card-framework's
-# move tweens. Cheap at Phase 3 scale (≤ 5 active lines).
+# Lines between blockers and the attackers they block. Sits above CardManager
+# so lines render on top. Redraws each frame during combat to track move tweens.
 
 var game_board: Control = null
 
 
 func _process(_delta: float) -> void:
-	# Only redraw when in a combat phase to avoid wasted work the rest of the time.
 	if game_board == null:
 		return
 	var s: EngineState = RulesEngine.state()
 	if s == null:
 		return
 	if s.blockers.is_empty():
-		# Nothing to draw — but if we *just* exited combat with stale lines,
-		# request one final redraw to clear them, then idle.
+		# One final redraw to clear stale lines on combat exit, then idle.
 		if visible_redraw_dirty:
 			queue_redraw()
 			visible_redraw_dirty = false
@@ -45,16 +38,12 @@ func _draw() -> void:
 		var attacker_visual = iid_to_visual.get(attacker_iid)
 		if blocker_visual == null or attacker_visual == null:
 			continue
-		# Apply the visual's full global transform to its local center.
-		# get_global_rect() returns an axis-aligned box and ignores rotation —
-		# tapped cards (rotated 90°) anchor wrong without this.
+		# Full global transform — get_global_rect() ignores rotation, breaking tapped (90°) anchors.
 		var b_center: Vector2 = blocker_visual.get_global_transform() * (blocker_visual.size * 0.5)
 		var a_center: Vector2 = attacker_visual.get_global_transform() * (attacker_visual.size * 0.5)
-		# Draw in this Control's local coordinates.
 		var b_local: Vector2 = b_center - global_position
 		var a_local: Vector2 = a_center - global_position
-		# Line: green-ish, 4px, anti-aliased. End-circles for emphasis.
 		var line_color := Color(0.30, 0.95, 0.55, 0.85)
 		draw_line(b_local, a_local, line_color, 4.0, true)
-		draw_circle(b_local, 7.0, Color(0.30, 0.95, 0.55, 0.95))  # blocker end
-		draw_circle(a_local, 7.0, Color(0.95, 0.45, 0.40, 0.95))  # attacker end
+		draw_circle(b_local, 7.0, Color(0.30, 0.95, 0.55, 0.95))
+		draw_circle(a_local, 7.0, Color(0.95, 0.45, 0.40, 0.95))

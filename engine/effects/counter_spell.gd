@@ -1,22 +1,8 @@
 extends RefCounted
 
-# Effect handler: counter_spell. Removes a spell from the stack and sends it
-# to its owner's graveyard. Phase 4.5c's first "card targets the stack"
-# effect — required for Counterspell, the prototypical hard-counter.
-#
-# Effect dictionary shape:
-#   {"kind": "counter_spell", "target": "chosen"}
-#
-# The chosen target must be a stack descriptor:
-#   {"kind": "stack", "iid": <spell_iid>}
-#
-# Engine-side: the actual removal lives on RulesEngine.counter_stack_entry
-# because the engine's _stack_held_cards buffer (cards-in-flight while on
-# the stack) isn't exposed to the effect dispatcher. The effect just routes.
-#
-# Fizzles cleanly if the target is gone (e.g., the spell already resolved or
-# was countered by another card earlier in the same effect chain).
-
+# {"kind": "counter_spell", "target": "chosen"} — target must be {"kind": "stack", "iid": int}.
+# Routes to RulesEngine.counter_stack_entry (touches the autoload-only _stack_held_cards buffer).
+# Fizzles cleanly if target spell left the stack.
 
 static func execute(effect: Dictionary, ctx: Dictionary) -> void:
 	var target_spec: String = effect.get("target", "chosen")
@@ -31,8 +17,6 @@ static func execute(effect: Dictionary, ctx: Dictionary) -> void:
 		push_warning("counter_spell: target kind must be 'stack', got '%s'" % t.get("kind", ""))
 		return
 	var iid: int = t.get("iid", -1)
-	# Hand off to RulesEngine for the actual stack-entry removal — this needs
-	# to touch _stack_held_cards which lives on the autoload.
 	var ok: bool = RulesEngine.counter_stack_entry(iid)
 	if ok:
 		_log(ctx, "%s counters the targeted spell" % ctx.source_name)

@@ -1,19 +1,6 @@
 extends RefCounted
 
-# Effect handler: gain_life. Mutates the controller's life upward.
-#
-# Effect dictionary shape:
-#   {"kind": "gain_life", "amount": <int>}
-#
-# Target spec is always the controller — no chosen target needed. Phase 5+
-# can extend with target: "chosen" for lifelink-style abilities that grant
-# life to a chosen target's controller, but Healing Salve doesn't need it.
-#
-# ctx fields:
-#   ctx.controller : Player        — who cast/activated the source
-#   ctx.source     : CardInstance  — the card that produced this effect
-#   ctx.state      : EngineState   — the full game state
-
+# {"kind": "gain_life", "amount": int} — always applies to ctx.controller.
 
 static func execute(effect: Dictionary, ctx: Dictionary) -> void:
 	var amount: int = effect.get("amount", 0)
