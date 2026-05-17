@@ -6,7 +6,7 @@
     "R": 1,
     "C": 1
   },
-  "art": "🔥",
+  "art": "cards/incinerate/art.png",
   "text": "Char deals 4 damage to any target and 1 damage to you.",
   "effects": [
     {

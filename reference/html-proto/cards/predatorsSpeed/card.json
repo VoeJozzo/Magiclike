@@ -5,7 +5,7 @@
   "cost": {
     "G": 1
   },
-  "art": "💨",
+  "art": "cards/predatorsSpeed/art.png",
   "text": "Target creature gains haste and trample until end of turn.",
   "effects": [
     {

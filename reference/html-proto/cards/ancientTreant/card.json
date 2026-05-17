@@ -9,7 +9,7 @@
   },
   "power": 4,
   "toughness": 5,
-  "art": "🌲",
+  "art": "cards/ancientTreant/art.png",
   "keywords": [
     "reach"
   ],

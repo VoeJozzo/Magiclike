@@ -9,7 +9,7 @@
   },
   "power": 3,
   "toughness": 2,
-  "art": "⚒",
+  "art": "cards/bloodlust/art.png",
   "text": "Haste. When this attacks, if an opponent has lost life this turn, it gets +1/+1 EOT.",
   "keywords": [
     "haste"

@@ -9,7 +9,7 @@
   },
   "power": 2,
   "toughness": 5,
-  "art": "🌳",
+  "art": "cards/treefolk/art.png",
   "text": "Reach",
   "keywords": [
     "reach"

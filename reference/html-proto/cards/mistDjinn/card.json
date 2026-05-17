@@ -9,7 +9,7 @@
   },
   "power": 3,
   "toughness": 4,
-  "art": "🌫",
+  "art": "cards/mistDjinn/art.png",
   "text": "Flying",
   "keywords": [
     "flying"

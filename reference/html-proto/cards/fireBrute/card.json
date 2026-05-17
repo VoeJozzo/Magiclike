@@ -9,7 +9,7 @@
   },
   "power": 3,
   "toughness": 1,
-  "art": "🔥",
+  "art": "cards/fireBrute/art.png",
   "text": "Haste",
   "keywords": [
     "haste"

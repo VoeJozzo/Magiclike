@@ -6,7 +6,7 @@
     "W": 1,
     "C": 2
   },
-  "art": "⚡",
+  "art": "cards/smite/art.png",
   "text": "Destroy target tapped creature.",
   "effects": [
     {

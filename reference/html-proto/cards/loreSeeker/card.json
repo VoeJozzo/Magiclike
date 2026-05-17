@@ -9,7 +9,7 @@
   },
   "power": 1,
   "toughness": 4,
-  "art": "📖",
+  "art": "cards/loreSeeker/art.png",
   "text": "When you cast a spell, draw a card.",
   "triggers": [
     {

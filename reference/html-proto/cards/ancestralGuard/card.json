@@ -9,7 +9,7 @@
   },
   "power": 1,
   "toughness": 3,
-  "art": "🛡",
+  "art": "cards/ancestralGuard/art.png",
   "text": "Vigilance",
   "keywords": [
     "vigilance"

@@ -9,7 +9,7 @@
   },
   "power": 1,
   "toughness": 2,
-  "art": "🗂",
+  "art": "cards/archivist/art.png",
   "text": "When this enters, draw 2 cards, then discard 1 card.",
   "triggers": [
     {

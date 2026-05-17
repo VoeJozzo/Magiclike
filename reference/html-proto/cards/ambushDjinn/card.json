@@ -9,7 +9,7 @@
   },
   "power": 4,
   "toughness": 4,
-  "art": "🌪",
+  "art": "cards/ambushDjinn/art.png",
   "text": "Flash, Flying",
   "keywords": [
     "flash",

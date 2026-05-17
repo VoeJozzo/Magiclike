@@ -5,7 +5,7 @@
   "cost": {
     "W": 1
   },
-  "art": "✨",
+  "art": "cards/salve/art.png",
   "text": "Target player gains 3 life.",
   "effects": [
     {

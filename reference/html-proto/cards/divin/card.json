@@ -6,7 +6,7 @@
     "U": 1,
     "C": 1
   },
-  "art": "📖",
+  "art": "cards/divin/art.png",
   "text": "Draw 2 cards.",
   "effects": [
     {

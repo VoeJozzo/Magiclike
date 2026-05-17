@@ -9,7 +9,7 @@
   },
   "power": 2,
   "toughness": 3,
-  "art": "🌳",
+  "art": "cards/treetopSentry/art.png",
   "keywords": [
     "reach"
   ],

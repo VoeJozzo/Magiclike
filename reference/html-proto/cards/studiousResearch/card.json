@@ -6,7 +6,7 @@
     "U": 1,
     "C": 2
   },
-  "art": "📚",
+  "art": "cards/studiousResearch/art.png",
   "text": "Draw 3 cards, then discard 1 card.",
   "effects": [
     {
