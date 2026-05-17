@@ -1061,7 +1061,8 @@ function shouldCastUntargeted(state, who, card, modeIdx) {
     if (oppC.length === 0) return false;
     const sortedByValue = oppC.slice().sort((a, b) =>
       ENGINE.getCardValue(a, 'kill') - ENGINE.getCardValue(b, 'kill'));
-    return ENGINE.getCardValue(sortedByValue[0], 'kill') >= 3;
+    const minWorthwhile = 3;  // 1/1 ~0, 2/2 ~2, real threat ≥4 by getCardValue
+    return ENGINE.getCardValue(sortedByValue[0], 'kill') >= minWorthwhile;
   }
   if (eff.kind === 'pumpAllYours') {
     const ours = state[us].battlefield.filter(c => c.type === 'Creature').length;
