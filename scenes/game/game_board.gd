@@ -81,6 +81,9 @@ var _engine_log_seen: int = 0
 func _ready() -> void:
 	_build_ui()
 	_connect_engine_signals()
+	# Phase 5c UI polish: capture global keystrokes for pass-priority
+	# (Enter/Space) and cancel-targeting (Escape).
+	set_process_unhandled_input(true)
 	# Boot the engine and spawn initial visuals.
 	# Phase 5c: AI vs AI with a multi-color showcase deck so a manual playtest
 	# can see Counterspell, Healing Salve, and every Phase 5a keyword card in
@@ -294,12 +297,14 @@ func _spawn_visual_for_instance(inst: CardInstance, zone: CardContainer) -> Card
 		visual.apply_card_text()
 	# Hook click handling. card-framework's _handle_mouse_pressed calls
 	# card_container.on_card_pressed, which for BattlefieldZone we already
-	# wired via the signal. For Hand, we connect to the visual's signals
-	# directly here as a fallback.
-	if zone is Hand:
-		# Connect this card's pressed event to our hand handler.
-		# Card emits no direct "pressed" signal — we listen via gui_input on the card.
-		visual.gui_input.connect(_on_hand_card_gui_input.bind(visual))
+	# wired via the signal. For Hand, we connect the visual's gui_input
+	# directly — but we connect it ALWAYS, not just when the card spawns in
+	# a Hand. Cards spawned in the library will later be drawn into the
+	# hand, and without an eager connection here those drawn cards would
+	# silently swallow clicks. The handler itself checks
+	# `found.zone_name != "hand"` and bails when called on a battlefield/
+	# library/graveyard card, so it's safe to wire for every visual.
+	visual.gui_input.connect(_on_hand_card_gui_input.bind(visual))
 	return visual
 
 
@@ -896,6 +901,29 @@ func _try_pick_creature_as_trigger_target(iid: int) -> void:
 	var action := Action.make_pick_trigger_target({"kind": "creature", "iid": iid})
 	if RulesEngine.execute_action(action):
 		_log_local("[color=#88dd88]Trigger targets %s[/color]" % found.card.name())
+
+
+# ─── Global keybinds (Phase 5c UI polish) ──────────────────────────────────
+# Routes Enter/Space to the action button (typically "Pass priority") and
+# Escape to "cancel targeting / cancel block" so the player isn't stuck
+# hunting for the cancel button. Triggers the same code path as clicking
+# the button or pressing the right widget — no duplicated logic.
+func _unhandled_input(event: InputEvent) -> void:
+	if not (event is InputEventKey):
+		return
+	if not event.pressed or event.echo:
+		return
+	match event.keycode:
+		KEY_ENTER, KEY_KP_ENTER, KEY_SPACE:
+			_on_pass_pressed()
+			get_viewport().set_input_as_handled()
+		KEY_ESCAPE:
+			# Cancel spell-targeting or block-selection. (Trigger-target
+			# picks can't be cancelled — the trigger is on the queue and
+			# must resolve with some target.)
+			if _pending_cast_iid != -1 or _pending_block_blocker_iid != -1:
+				_on_pass_pressed()
+				get_viewport().set_input_as_handled()
 
 
 # ─── Misc helpers ──────────────────────────────────────────────────────────
