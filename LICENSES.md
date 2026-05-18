@@ -47,21 +47,8 @@ schema later.
 
 ---
 
-## Inspiration / influence (not direct usage)
-
-These aren't licensed resources — they're cultural debt. Listed for honesty.
-
-### Magic: The Gathering (Wizards of the Coast)
-
-- **Card-name reuse:** several card templates use names directly lifted from MTG — `bolt` (Lightning Bolt), `wrathOfGod` (Wrath of God), `doomBlade` (Doom Blade), `shivanDragon` (Shivan Dragon — via tplId `dragon`), `savannahLions` (Savannah Lions), and others.
-- **Mechanical inspiration:** mana costs (WUBRG + C), the stack, priority model, instants/sorceries, triggered abilities, the WUBRG color pie — all lifted from MTG's design.
-- **Status:** game mechanics aren't copyrightable, but specific card names and any reused flavor text are protected by Wizards of the Coast. **If this project ever becomes commercial or publicly distributed beyond playtesting, those card names need to be renamed or replaced with originals.** Pure-playtest / educational fair use covers the current state.
-
----
-
 ## To revisit later
 
 - Exact pixellab terms (download/distribution clauses).
 - Any sound effects or music if/when they're added.
 - Fonts (none external currently — using system / Georgia / Arial fallbacks).
-- The MTG card-name reuse list grows whenever new cards are added — periodically reconcile against this list.

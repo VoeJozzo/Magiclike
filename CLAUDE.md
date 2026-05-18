@@ -111,7 +111,7 @@ Each test prints assertion results and exits with code 0 (pass) / 1 (fail). Roug
 
 **Any time a new outside resource is added to the project — code library, asset pack, AI-art batch, font, sound, tool, anything — log it in `LICENSES.md` at the repo root.** That file is the canonical record of what we depend on, what license each dependency is under, and what we owe attribution-wise. Add the entry in the same commit that pulls the resource in.
 
-Current entries (as of v1.0.144): chun92's Godot Card Framework (MIT), Godot Engine 4.6, pixellab AI art, Claude (this assistant). See `LICENSES.md` for the full list including the MTG card-name reuse note that needs attention before any commercial distribution.
+Current entries (as of v1.0.144): chun92's Godot Card Framework (MIT), Godot Engine 4.6, pixellab AI art, Claude (this assistant). See `LICENSES.md` for the full list.
 
 ## Git workflow
 
