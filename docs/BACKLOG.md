@@ -21,6 +21,10 @@ For html-proto deferred work, see [`reference/html-proto/BACKLOG.md`](../referen
 ### AI
 - **Per-effect triggered-ability scoring in `AIScoring.card_value`.** Currently a flat keyword/triggered-ability bump. The JS prototype walks effects to score them individually (a Pyromaniac-style ETB is worth less than a Sheoldred-style draw-step lifelink). Deferred from Phase 5b.
 
+### Addons / vendored
+- **Bump `addons/card-framework/` from v1.3.2 → v1.4.0.** Relevant changes: defensive handling for freed cards in `_held_cards`, fix for card offset after layout shifts, `get_target_pose_for()` hook for layout-race-safe returns. Not blocking but worth doing alongside the layout / cramping pass (touches the same area). Our hover-scale override in `scenes/card.gd` will continue to apply — the upstream bug isn't fixed in main yet.
+- **Upstream the hover-scale fix to chun92/card-framework.** Our local override at `scenes/card.gd::_start_hover_animation` is a clean fix for a real bug in their `draggable_object.gd`: `original_scale = scale` captured at each hover-start compounds during rapid mouse in/out. The upstream-quality version captures `_baseline_scale = scale` once in `_ready()` and uses that constant on each hover, so consumers with non-1.0 baseline scales still work. MIT-licensed; PR-friendly project. Worth doing once we've confirmed our fix holds up in playtest.
+
 ### UI / UX
 - **Board layout / cramping pass.** Manual playtest at 1856×1044 surfaced several independent issues that compound: battlefield horizontal overflow with 8+ creatures, stack-anchor visual colliding with the top-row land cascade, right-side log bleed into card zones. Joe's directional preferences:
   - **Hover-to-zoom** (or long-press / double-click) on any card to show a full-size version. Standard card-game UX. Pairs with making the default tile smaller — small tiles fit more, hover gives detail on demand.
