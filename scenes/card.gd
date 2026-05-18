@@ -410,25 +410,41 @@ func _stop_hover_animation() -> void:
 	hover_tween.tween_method(_update_hover_position, position, original_position, hover_duration)
 
 
-# Skip all addon state transitions while focused — focus owns scale, z_index,
-# and position. Without this guard, mouse_exited (which fires when focus
-# moves the card out from under the cursor) triggers HOVERING → IDLE, which
-# resets z_index back to stored_z_index, dropping the card behind its
-# neighbors instantly. Same effect with mouse_entered re-firing HOVERING
-# state and clobbering scale via _start_hover_animation.
+# State transitions during focus: ALWAYS let super run (it does important
+# bookkeeping like Card.hovering_card_count which is a global guard on
+# whether ANY card can start hovering). Then re-apply focus visuals
+# afterward to undo whatever super's transition did to z_index / scale.
 #
-# Addon bug workaround (MOVING entry): when a card is mid-hover (scale
-# tweening toward 1.1x) and the engine calls move() on it, MOVING entry
-# kills hover_tween but never resets scale. Snap to Vector2.ONE here.
+# Without letting super run during focus, hovering_card_count gets stuck
+# at 1 (incremented on HOVERING entry pre-focus, never decremented because
+# we'd skip the HOVERING → IDLE exit). After focus dismisses, every future
+# mouse_entered fails the `_can_start_hovering()` check (which is
+# `hovering_card_count == 0 and holding_card_count == 0`), permanently
+# disabling hover scale.
+#
+# Addon bug workaround (MOVING entry, separate issue): when a card is
+# mid-hover and the engine calls move() on it, MOVING entry kills
+# hover_tween without resetting scale. Snap to Vector2.ONE.
 func _enter_state(state, from_state) -> void:
-	if is_focused:
-		return
+	var was_focused: bool = is_focused
 	super._enter_state(state, from_state)
-	if state == DraggableState.MOVING:
+	if was_focused:
+		# super may have reset z_index (HOVERING entry adds DRAG_Z_OFFSET to
+		# stored_z_index; IDLE entry sets z_index to stored_z_index). Force
+		# focus visuals back on. _start_hover_animation also gets called
+		# from HOVERING entry, but its own is_focused guard early-returns.
+		scale = Vector2.ONE * _FOCUS_SCALE
+		z_index = _FOCUS_Z
+	elif state == DraggableState.MOVING:
 		scale = Vector2.ONE
 
 
 func _exit_state(state) -> void:
-	if is_focused:
-		return
+	var was_focused: bool = is_focused
 	super._exit_state(state)
+	if was_focused:
+		# Same dance as _enter_state — super resets z_index and may start
+		# a stop-hover tween (skipped by _stop_hover_animation's guard);
+		# re-apply focus visuals.
+		scale = Vector2.ONE * _FOCUS_SCALE
+		z_index = _FOCUS_Z
