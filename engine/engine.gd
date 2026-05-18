@@ -256,35 +256,7 @@ func execute_action(action: Dictionary) -> bool:
 	if not is_legal_action(action):
 		_state.append_log("Illegal action: %s" % action)
 		return false
-
-	var kind: String = action.get("kind", "")
-	var ok: bool = false
-	match kind:
-		Action.KIND_ACTIVATE_ABILITY:
-			ok = _do_activate_ability(action)
-		Action.KIND_PLAY_LAND:
-			ok = _do_play_land(action)
-		Action.KIND_CAST_SPELL:
-			ok = _do_cast_spell(action)
-		Action.KIND_DECLARE_ATTACKER:
-			ok = _do_declare_attacker(action)
-		Action.KIND_DECLARE_BLOCKER:
-			ok = _do_declare_blocker(action)
-		Action.KIND_UNDECLARE_ATTACKER:
-			ok = _do_undeclare_attacker(action)
-		Action.KIND_UNDECLARE_BLOCKER:
-			ok = _do_undeclare_blocker(action)
-		Action.KIND_CONFIRM_BLOCKS:
-			ok = _do_confirm_blocks(action)
-		Action.KIND_PASS_PRIORITY:
-			ok = _do_pass_priority(action)
-		Action.KIND_PICK_TRIGGER_TARGET:
-			ok = _do_pick_trigger_target(action)
-		Action.KIND_DISCARD_CARD:
-			ok = _do_discard_card(action)
-		_:
-			push_warning("execute_action: unknown kind '%s'" % kind)
-
+	var ok: bool = _do_action(action)
 	if ok:
 		_settle_state()
 		state_changed.emit()
@@ -488,6 +460,14 @@ func _dispatch_action(action: Dictionary) -> bool:
 	if not is_legal_action(action):
 		_state.append_log("AI illegal action: %s" % action)
 		return false
+	return _do_action(action)
+
+
+# Action-kind dispatch table. Shared by execute_action and _dispatch_action so
+# adding a new action kind requires updating exactly one place (not two — that
+# divergence soft-locked the AI when KIND_DISCARD_CARD was added to
+# execute_action but not here).
+func _do_action(action: Dictionary) -> bool:
 	var kind: String = action.get("kind", "")
 	match kind:
 		Action.KIND_ACTIVATE_ABILITY:
@@ -510,7 +490,9 @@ func _dispatch_action(action: Dictionary) -> bool:
 			return _do_pass_priority(action)
 		Action.KIND_PICK_TRIGGER_TARGET:
 			return _do_pick_trigger_target(action)
-	push_warning("_dispatch_action: unknown kind '%s'" % kind)
+		Action.KIND_DISCARD_CARD:
+			return _do_discard_card(action)
+	push_warning("_do_action: unknown kind '%s'" % kind)
 	return false
 
 
