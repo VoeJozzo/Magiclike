@@ -16,7 +16,6 @@ For html-proto deferred work, see [`reference/html-proto/BACKLOG.md`](../referen
 ### Rules-engine correctness
 - **"Intervening if" predicate re-check at trigger resolution.** Currently `engine/predicates/predicates.gd` is consulted at trigger queue time only. MTG rules check the condition again on resolution (rule 603.4). Matters when a between-events action invalidates the condition (e.g., a "while you control X" trigger where X leaves play between queue and resolution). Deferred from Phase 4.
 - **Non-self triggers exercised in tests.** The `self_only=false` listener path in trigger draining is implemented but no card or test currently exercises it. Add when a card legitimately needs a non-self listener.
-- **Remove `Hand.max_hand_size = 100` workaround.** The engine now enforces MTG 514.3 cleanup-step discard, so the visual-layer cap is redundant. Test that removing it doesn't reintroduce the face-down stranding bug, then drop the override from `_make_hand`.
 
 ### AI
 - **Per-effect triggered-ability scoring in `AIScoring.card_value`.** Currently a flat keyword/triggered-ability bump. The JS prototype walks effects to score them individually (a Pyromaniac-style ETB is worth less than a Sheoldred-style draw-step lifelink). Deferred from Phase 5b.
