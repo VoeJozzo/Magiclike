@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="CreatureResource" format=3]
+
+[ext_resource type="Script" path="res://data/creature_resource.gd" id="1_cr"]
+
+[resource]
+script = ExtResource("1_cr")
+power = 3
+toughness = 4
+keywords = Array[String](["flying", "lifelink"])
+card_id = "dawn_angel"
+display_name = "Dawn Angel"
+card_types = Array[String](["creature"])
+subtypes = Array[String](["angel"])
+mana_cost = {
+"C": 3,
+"W": 2
+}
+oracle_text = "Flying. Lifelink."

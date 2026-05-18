@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="SpellResource" format=3]
+
+[ext_resource type="Script" path="res://data/spell_resource.gd" id="1_3rhtk"]
+
+[resource]
+script = ExtResource("1_3rhtk")
+requires_target = true
+target_filter = "creature"
+card_id = "giant_growth"
+display_name = "Giant Growth"
+card_types = Array[String](["instant"])
+mana_cost = {
+"G": 1
+}
+oracle_text = "Target creature gets +3/+3 until end of turn."
+on_cast_effects = Array[Dictionary]([{
+"amount_power": 3,
+"amount_toughness": 3,
+"duration": "eot",
+"kind": "pump",
+"target": "chosen"
+}])

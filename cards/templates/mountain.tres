@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="LandResource" format=3]
+
+[ext_resource type="Script" path="res://data/land_resource.gd" id="1_5p1qt"]
+
+[resource]
+script = ExtResource("1_5p1qt")
+mana_produced = Array[String](["R"])
+card_id = "mountain"
+display_name = "Mountain"
+card_types = Array[String](["land"])
+subtypes = Array[String](["mountain"])
+oracle_text = "{T}: Add {R}."

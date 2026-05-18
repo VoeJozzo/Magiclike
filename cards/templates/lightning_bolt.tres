@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="SpellResource" format=3]
+
+[ext_resource type="Script" path="res://data/spell_resource.gd" id="1_m0ct4"]
+
+[resource]
+script = ExtResource("1_m0ct4")
+requires_target = true
+card_id = "lightning_bolt"
+display_name = "Lightning Bolt"
+card_types = Array[String](["instant"])
+mana_cost = {
+"R": 1
+}
+oracle_text = "Lightning Bolt deals 3 damage to any target."
+on_cast_effects = Array[Dictionary]([{
+"amount": 3,
+"kind": "damage",
+"target": "chosen"
+}])

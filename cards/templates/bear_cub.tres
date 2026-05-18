@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="CreatureResource" format=3]
+
+[ext_resource type="Script" path="res://data/creature_resource.gd" id="1_wdyn0"]
+
+[resource]
+script = ExtResource("1_wdyn0")
+power = 1
+toughness = 1
+card_id = "bear_cub"
+display_name = "Bear Cub"
+card_types = Array[String](["creature"])
+subtypes = Array[String](["bear"])
+mana_cost = {
+"G": 1
+}
+oracle_text = "A vanilla 1/1 — no abilities."

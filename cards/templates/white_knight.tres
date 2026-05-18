@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="CreatureResource" format=3]
+
+[ext_resource type="Script" path="res://data/creature_resource.gd" id="1_cr"]
+
+[resource]
+script = ExtResource("1_cr")
+power = 2
+toughness = 2
+keywords = Array[String](["first_strike"])
+card_id = "white_knight"
+display_name = "White Knight"
+card_types = Array[String](["creature"])
+subtypes = Array[String](["human", "knight"])
+mana_cost = {
+"W": 2
+}
+oracle_text = "First strike."

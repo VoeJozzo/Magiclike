@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="CreatureResource" format=3]
+
+[ext_resource type="Script" path="res://data/creature_resource.gd" id="1_l2yfv"]
+
+[resource]
+script = ExtResource("1_l2yfv")
+power = 1
+toughness = 1
+keywords = Array[String](["haste"])
+card_id = "raging_goblin"
+display_name = "Raging Goblin"
+card_types = Array[String](["creature"])
+subtypes = Array[String](["goblin"])
+mana_cost = {
+"R": 1
+}
+oracle_text = "Haste."
