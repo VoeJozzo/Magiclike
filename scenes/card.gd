@@ -330,13 +330,18 @@ func exit_focus() -> void:
 	position = _focus_orig_position
 	# Force a clean IDLE state. While we were focused, super._enter_state /
 	# _exit_state were no-ops, but change_state still updated current_state
-	# internally. That internal value may have drifted (e.g. mouse_exited
-	# transitioned us to IDLE without applying its visual side effects).
-	# Now that focus has released its hold on visuals, snap the addon's
-	# state machine back to a known-good rest so the next mouse_entered
-	# correctly fires HOVERING → _start_hover_animation.
+	# internally. That internal value may have drifted, leaving the addon's
+	# state machine confused about where it really is.
 	if current_state != DraggableState.IDLE:
 		change_state(DraggableState.IDLE)
+	# Godot doesn't auto-refire mouse_entered when a control moves under a
+	# stationary cursor. After we restore position, the cursor may now be
+	# back over the card but is_mouse_inside is still false (cleared when
+	# the card moved away during focus). Manually hit-test and trigger
+	# HOVERING so hover works without requiring a mouse-wiggle.
+	var mouse_global: Vector2 = get_global_mouse_position()
+	if get_global_rect().has_point(mouse_global):
+		_on_mouse_enter()
 
 
 func set_legality_glow(state: String) -> void:

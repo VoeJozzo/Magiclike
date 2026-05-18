@@ -103,6 +103,10 @@ func _build_ui() -> void:
 	bg.color = Color(0.05, 0.06, 0.08)
 	bg.anchor_right = 1.0
 	bg.anchor_bottom = 1.0
+	# Don't eat mouse events — otherwise clicks on the blank board are
+	# consumed here before reaching _unhandled_input, which prevents the
+	# focus-dismiss-on-any-click behavior from firing.
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(bg)
 
 	_card_manager = CardManager.new()
