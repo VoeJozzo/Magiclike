@@ -596,25 +596,27 @@ function showNeowChoice() {
     const m = RUN_MODIFIERS[id];
     // Boon art is derived from the card the boon grants -- every current
     // RUN_MODIFIERS entry's id matches the tplId of its granted card, so
-    // CARDS[m.id].art is the source of truth. A boon can override with an
-    // explicit `art:` field if its picker view should diverge from the
-    // card itself (no current boon needs this).
-    // m.text may carry {3}/{T}/etc. brace tokens so it goes through the
-    // pip pipeline (renderManaSymbols or the v2 frame's body section).
+    // CARDS[m.id].art is the source of truth.
     const boonArt = m.art || (CARDS[m.id] && CARDS[m.id].art) || '✦';
     let el;
     if (useV2) {
-      // Render the boon as a v2-frame "Boon"-type card. No cost / no P/T,
-      // text fills the oracle box. Scale 2 matches the rest of the modal
-      // tier (reward cards, draft picks).
-      el = makeV2CardLike({
-        name: m.name || '',
-        type: 'Boon',
-        text: m.text || '',
-        art: boonArt,
-        color: 'C',
-        scale: 2,
-      });
+      // Render the boon AS the card it grants (matches the visual style of
+      // a draft pick). Falls back to a Boon-shaped placeholder for any
+      // modifier whose id doesn't resolve to a real card.
+      if (CARDS[m.id]) {
+        const card = ENGINE.makeCard(m.id);
+        el = makeCardEl(card);
+        el.style.setProperty('--scale', '2');
+      } else {
+        el = makeV2CardLike({
+          name: m.name || '',
+          type: 'Boon',
+          text: m.text || '',
+          art: boonArt,
+          color: 'C',
+          scale: 2,
+        });
+      }
       el.style.cursor = 'pointer';
     } else {
       el = document.createElement('div');
@@ -814,21 +816,32 @@ function renderPostDraftOffer() {
   Modal.show('postDraftOfferModal', { dismissible: false });
   const btns = document.getElementById('postDraftOfferButtons');
   btns.innerHTML = '';
+  const useV2 = SETTINGS.get('cardFrameStyle') === 'new';
   const LAND_ART = { plains: '☀️', island: '🌊', swamp: '💀', mountain: '⛰️', forest: '🌲' };
   const LAND_COLOR = { plains: '#cdb46a', island: '#5588cc', swamp: '#9966bb', mountain: '#cc5544', forest: '#5a8844' };
   for (const tplId of offer.basics) {
     const tpl = CARDS[tplId];
-    const name = tpl ? tpl.name : tplId;
-    const color = LAND_COLOR[tplId] || '#888';
-    const art = LAND_ART[tplId] || '🏞';
-    const b = document.createElement('button');
-    b.style.cssText = `background:#0e1c14;border:2px solid ${color};color:#ddd;padding:14px 16px;font-family:inherit;font-size:14px;font-weight:bold;cursor:pointer;border-radius:6px;min-width:130px;display:flex;flex-direction:column;align-items:center;gap:6px;transition:transform .1s,background .1s`;
-    b.innerHTML = `<span style="font-size:30px">${art}</span><span class="land-name"></span>`;
-    b.querySelector('.land-name').textContent = name;
-    b.onmouseover = () => { b.style.background = '#1a3020'; b.style.transform = 'translateY(-2px)'; };
-    b.onmouseout  = () => { b.style.background = '#0e1c14'; b.style.transform = 'translateY(0)'; };
-    b.onclick = () => pickPostDraftOfferClick(tplId);
-    btns.appendChild(b);
+    let el;
+    if (useV2 && tpl) {
+      // Real basic-land card via makeCardEl. The land's color frame and
+      // type line communicate which basic this is.
+      const card = ENGINE.makeCard(tplId);
+      el = makeCardEl(card);
+      el.style.setProperty('--scale', '2');
+      el.style.cursor = 'pointer';
+    } else {
+      const name = tpl ? tpl.name : tplId;
+      const color = LAND_COLOR[tplId] || '#888';
+      const art = LAND_ART[tplId] || '🏞';
+      el = document.createElement('button');
+      el.style.cssText = `background:#0e1c14;border:2px solid ${color};color:#ddd;padding:14px 16px;font-family:inherit;font-size:14px;font-weight:bold;cursor:pointer;border-radius:6px;min-width:130px;display:flex;flex-direction:column;align-items:center;gap:6px;transition:transform .1s,background .1s`;
+      el.innerHTML = `<span style="font-size:30px">${art}</span><span class="land-name"></span>`;
+      el.querySelector('.land-name').textContent = name;
+      el.onmouseover = () => { el.style.background = '#1a3020'; el.style.transform = 'translateY(-2px)'; };
+      el.onmouseout  = () => { el.style.background = '#0e1c14'; el.style.transform = 'translateY(0)'; };
+    }
+    el.onclick = () => pickPostDraftOfferClick(tplId);
+    btns.appendChild(el);
   }
 }
 
