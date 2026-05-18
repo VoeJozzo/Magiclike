@@ -1209,6 +1209,13 @@ func _try_pick_creature_as_trigger_target(iid: int) -> void:
 # hunting for the cancel button. Triggers the same code path as clicking
 # the button or pressing the right widget — no duplicated logic.
 func _unhandled_input(event: InputEvent) -> void:
+	# Click anywhere (outside any card visual) dismisses focus. Clicks ON
+	# a card go through _on_hand_card_gui_input which already handles
+	# dismissal as part of its left-click flow.
+	if event is InputEventMouseButton and event.pressed and _focused_card != null:
+		_dismiss_focus()
+		get_viewport().set_input_as_handled()
+		return
 	if not (event is InputEventKey):
 		return
 	if not event.pressed or event.echo:
