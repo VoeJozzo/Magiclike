@@ -312,6 +312,15 @@ func enter_focus() -> void:
 	_focus_orig_z = z_index
 	_focus_orig_position = position
 	pivot_offset = card_size / 2.0  # scale from center, not corner
+	# Kill any in-flight tweens so they don't fight focus visuals. A hover
+	# tween mid-flight would continue interpolating scale; a move tween
+	# would continue interpolating global_position back to layout slot.
+	if hover_tween and hover_tween.is_valid():
+		hover_tween.kill()
+		hover_tween = null
+	if move_tween and move_tween.is_valid():
+		move_tween.kill()
+		move_tween = null
 	scale = Vector2.ONE * _FOCUS_SCALE
 	z_index = _FOCUS_Z
 	# Center in viewport via global_position so we don't fight with whatever
@@ -320,6 +329,18 @@ func enter_focus() -> void:
 	# the SCALED size to center the visible card on the viewport center.
 	var viewport_center := Vector2(960, 540)
 	global_position = viewport_center - (card_size * _FOCUS_SCALE * 0.5)
+
+
+# Short-circuit the addon's move() while focused. Layout passes (which fire
+# on every state_changed signal) call card.move(target_slot) on every card
+# in the zone, including the focused one — without this guard, the focused
+# card would slide from viewport center toward its battlefield slot, then
+# every subsequent pass-priority would re-fire the tween, producing the
+# "card creeps up the screen" symptom Joe reported.
+func move(target_destination: Vector2, degree: float) -> void:
+	if is_focused:
+		return
+	super.move(target_destination, degree)
 
 
 func exit_focus() -> void:
