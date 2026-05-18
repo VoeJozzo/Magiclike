@@ -598,6 +598,17 @@ func _apply_legality_glows(s: EngineState) -> void:
 				continue  # already counted as currently-legal
 			if _can_potentially_cast(card, s):
 				glow_state[card.instance_id] = "playable"
+	# Spell-target mode (Counterspell): visually emphasize the stack visuals
+	# that are legal counter targets. Build a set of iids that match the
+	# "spell on stack, not yours" filter; cards in that set get scaled up.
+	var stack_emphasis: Dictionary = {}
+	if _pending_cast_iid != -1 and _pending_target_filter == "spell":
+		for entry in s.stack.entries:
+			if entry.get("kind", "spell") != "spell":
+				continue
+			if entry.get("controller_key", "") == "you":
+				continue  # can't counter your own spells in MTG by default
+			stack_emphasis[int(entry.get("source_iid", -1))] = true
 	# Apply to every tracked visual. Anything not in the glow set gets
 	# cleared. This keeps the glow in sync with mana / phase / priority
 	# changes without us needing to track previous-frame state.
@@ -606,6 +617,8 @@ func _apply_legality_glows(s: EngineState) -> void:
 		if visual == null or not visual.has_method("set_legality_glow"):
 			continue
 		visual.set_legality_glow(glow_state.get(iid, "none"))
+		if visual.has_method("set_target_emphasis"):
+			visual.set_target_emphasis(stack_emphasis.has(iid))
 
 
 # Phase 5c UI polish: walk the current state and add every iid that's a

@@ -1245,9 +1245,20 @@ func _describe_targets(targets: Array) -> String:
 	for t in targets:
 		match t.get("kind", ""):
 			"player":
-				parts.append(t.get("who", "?"))
+				var who: String = t.get("who", "?")
+				var p: Player = _state.player_by_key(who)
+				parts.append(p.name if p != null else who)
 			"creature":
-				parts.append("creature#%d" % t.get("iid", -1))
+				var iid: int = t.get("iid", -1)
+				var card: CardInstance = _find_card_anywhere(iid)
+				parts.append(card.name() if card != null else "creature#%d" % iid)
+			"stack":
+				# Counterspell-style: target is a spell on the stack. Pull the
+				# source card's display name via _find_card_anywhere (which
+				# checks _stack_held_cards for cards mid-resolution).
+				var siid: int = t.get("iid", -1)
+				var scard: CardInstance = _find_card_anywhere(siid)
+				parts.append(scard.name() if scard != null else "the spell on stack")
 			_:
 				parts.append("?")
 	return ", ".join(parts)
