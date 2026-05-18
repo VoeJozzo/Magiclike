@@ -1,15 +1,22 @@
 class_name CardDatabase
 extends RefCounted
 
-# Thin loader over the per-card .tres files in this directory. Backing store
+# Thin loader over the per-card .tres files in cards/templates/. Backing store
 # is res://cards/templates/<card_id>.tres; the engine, scenes, and tests call
 # CardDatabase.get_card(card_id) and don't know (or care) it's a load().
 #
-# To add a card: drop a new <card_id>.tres in this folder and add the card_id
-# to all_card_ids() below. To remove: delete the file and remove the entry.
+# Card pool is discovered by scanning the directory — no hand-maintained list.
+# To add a card: drop a new <card_id>.tres in this folder. To remove: delete
+# the file. all_card_ids() picks up changes automatically.
+#
 # To regenerate from scratch after structural changes: see tools/generate_card_tres.gd.
 
 const _TEMPLATE_DIR := "res://cards/templates/"
+
+# Cached card_id list — first call walks the directory, subsequent calls
+# return the cached array. Cards are added/removed at edit time, not at
+# runtime, so a single scan per session is the right tradeoff.
+static var _cached_ids: Array[String] = []
 
 
 static func get_card(card_id: String) -> CardResource:
@@ -20,24 +27,28 @@ static func get_card(card_id: String) -> CardResource:
 	return res
 
 
-# Used by Engine boot-time predicate validation and any caller that needs to
-# iterate the full pool. Manually maintained; add new card_ids here when you
-# add a .tres in this directory.
+# Walks cards/templates/ for *.tres files. Self-maintaining: adding a new
+# template under that directory automatically extends the pool without a
+# manual edit here. Used by engine boot validation and any caller that needs
+# to iterate the full pool.
 static func all_card_ids() -> Array[String]:
-	return [
-		"mountain", "forest", "plains", "island", "swamp",
-		"lightning_bolt", "goblin_raider",
-		"grizzly_bears", "giant_growth",
-		"pyromaniac", "bloodlust_berserker",
-		"bear_cub", "gray_ogre", "hill_giant",
-		"healing_salve", "counterspell",
-		"wind_drake", "giant_spider", "serra_angel", "trained_armodon",
-		"vampire_nighthawk", "raging_goblin", "walking_wall",
-		# Phase 6 seed: ported from reference/html-proto, vanilla keyword
-		# creatures expanding W/U color coverage. No new mechanics.
-		"dawn_angel", "air_elemental", "mist_djinn", "cloud_pegasus",
-		"white_knight", "goblin_duelist", "blood_knight", "ember_drake",
-	]
+	if not _cached_ids.is_empty():
+		return _cached_ids
+	var ids: Array[String] = []
+	var dir := DirAccess.open(_TEMPLATE_DIR)
+	if dir == null:
+		push_error("CardDatabase: cannot open %s" % _TEMPLATE_DIR)
+		return ids
+	dir.list_dir_begin()
+	var name: String = dir.get_next()
+	while name != "":
+		if name.ends_with(".tres"):
+			ids.append(name.get_basename())
+		name = dir.get_next()
+	dir.list_dir_end()
+	ids.sort()  # deterministic order so test logs / boot validation iterate predictably
+	_cached_ids = ids
+	return _cached_ids
 
 
 static func all_resources() -> Array:
