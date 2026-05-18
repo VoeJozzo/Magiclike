@@ -86,6 +86,12 @@ function init() {
       '<span>Game Log <span style="color:#ffd700">— ' + VERSION + '</span></span>' +
       '<button id="logCloseBtn" onclick="CONTROLLER.toggleLog()">close</button>';
   }
+  // Settings modal close-button. Wired once at init since the modal HTML
+  // is static (only the inner #settingsList is rebuilt per-open).
+  const settingsCloseBtn = document.getElementById('settingsCloseBtn');
+  if (settingsCloseBtn) {
+    settingsCloseBtn.onclick = () => { Modal.hide('settingsModal'); };
+  }
   showStartScreen();
 }
 
@@ -332,7 +338,54 @@ function showStartScreen() {
   browser.style.cssText = 'padding:8px 20px;background:#1a1a2a;border:1px solid #444;color:#aaa;border-radius:4px;cursor:pointer;font-size:12px';
   browser.onclick = showCardBrowser;
   btns.appendChild(browser);
+  const settings = document.createElement('button');
+  settings.textContent = '⚙ Settings';
+  settings.style.cssText = 'padding:8px 20px;background:#1a1a2a;border:1px solid #444;color:#aaa;border-radius:4px;cursor:pointer;font-size:12px';
+  settings.onclick = showSettings;
+  btns.appendChild(settings);
   screen.style.display = 'flex';
+}
+
+// Settings modal — populated dynamically from SETTINGS.getAll() so adding
+// a new toggle only needs (a) a DEFAULTS entry in settings.js, (b) a row
+// builder here, (c) wire-up of the consumer. Each row builder reads the
+// current value, renders a control, and persists+re-renders on change.
+function showSettings() {
+  renderSettings();
+  Modal.show('settingsModal');
+}
+function renderSettings() {
+  const list = document.getElementById('settingsList');
+  list.innerHTML = '';
+
+  // Row 1: card frame style. Dropdown with two options.
+  const frameRow = document.createElement('div');
+  frameRow.style.cssText = 'display:flex;flex-direction:column;gap:4px';
+  const frameLabel = document.createElement('label');
+  frameLabel.textContent = 'Card frames';
+  frameLabel.style.cssText = 'color:#ccd;font-size:12px;font-weight:bold;letter-spacing:.05em';
+  const frameSelect = document.createElement('select');
+  frameSelect.style.cssText = 'padding:6px;background:#0d0d18;border:1px solid #555;color:#ddd;border-radius:3px;font-family:inherit;font-size:12px';
+  const optNew = document.createElement('option');
+  optNew.value = 'new';
+  optNew.textContent = 'Pixel-art (new)';
+  const optClassic = document.createElement('option');
+  optClassic.value = 'classic';
+  optClassic.textContent = 'Classic wireframes';
+  frameSelect.appendChild(optNew);
+  frameSelect.appendChild(optClassic);
+  frameSelect.value = SETTINGS.get('cardFrameStyle');
+  frameSelect.onchange = () => {
+    SETTINGS.set('cardFrameStyle', frameSelect.value);
+    // Re-render visible cards. render() handles game-state cards; for the
+    // start screen / browser views we'd re-show their respective modals
+    // if they're open. For now the popup is the only v2-aware site and
+    // it'll regenerate on next click.
+    try { render(); } catch (_) { /* not in-game yet */ }
+  };
+  frameRow.appendChild(frameLabel);
+  frameRow.appendChild(frameSelect);
+  list.appendChild(frameRow);
 }
 
 function continueRun() {
@@ -1905,11 +1958,98 @@ function attachLongPress(element, card) {
   }, true);   // capture phase so we run before the existing onclick
 }
 
+// Pixel-art v2 popup. Built per the 80x112 frame spec, rendered at 4x scale
+// (320x448 actual) inside the existing #cardPopup dimmer overlay. Used when
+// SETTINGS.get('cardFrameStyle') === 'new'. The classic .pop-* layout in
+// openCardPopup is the fallback for 'classic'.
+function openCardPopupV2(card) {
+  const popup = document.getElementById('cardPopup');
+  const inner = document.getElementById('cardPopupCard');
+
+  // Frame color. Spells/creatures: first color in cost. Lands/artifacts: 'C'.
+  // Multi-color uses the first color in WUBRG order; refining this for proper
+  // dual-color frames is a future enhancement.
+  const colorKey = (card.colors && card.colors[0]) || card.color || 'C';
+
+  const isCreature = card.type === 'Creature';
+  let basePow = card.power || 0, baseTou = card.toughness || 0;
+  const [pow, tou] = isCreature
+    ? ENGINE.getStats(card)
+    : [basePow, baseTou];
+
+  // Mana cost pips. Generic count rendered as a single pip with the number
+  // inside; then one pip per colored point in WUBRG order.
+  let pipsHtml = '';
+  if (card.cost) {
+    if (card.cost.C) {
+      pipsHtml += `<span class="v2-pip col-num">${card.cost.C}</span>`;
+    }
+    for (const c of ['W','U','B','R','G']) {
+      const n = card.cost[c] || 0;
+      for (let i = 0; i < n; i++) {
+        pipsHtml += `<span class="v2-pip col-${c}"></span>`;
+      }
+    }
+  }
+
+  // Type line.
+  const typeText = card.type + (card.sub ? ' — ' + card.sub : '');
+
+  // Oracle text via the same segment renderer as the classic popup.
+  const popSegs = describeCardSegments(card, {skipKeywords: true});
+  const oracleHtml = segmentsToHtml(popSegs);
+
+  // Art slot. effectiveArt handles ladder; isArtUrl distinguishes file paths
+  // from emoji glyphs.
+  const artVal = effectiveArt(card);
+  const artInner = isArtUrl(artVal)
+    ? `<img src="${artVal}" alt="">`
+    : escapeHtml(artVal || '');
+
+  // Stickers go at the bottom of the text panel per user direction.
+  const stickersInner = card.stickers && card.stickers.length
+    ? stickerBadgesHtml(card.stickers, false, card.empowerRolls, card.tplId, card.stapledFrom && card.stapledFrom.stapledTpls, card.subtypeRolls)
+    : '';
+
+  const ptInner = isCreature
+    ? `<div class="v2-pt">${pow}/${tou}</div>`
+    : '';
+
+  // Strip the .pop-* chrome from the inner container -- the frame IS the
+  // visual now, no need for the modal-box styling.
+  inner.className = '';
+  inner.style.cssText = 'background:transparent;border:none;box-shadow:none;padding:0;width:auto;max-width:none;text-align:center;cursor:default';
+  inner.innerHTML = `
+    <div class="card-v2 col-${colorKey}" style="--scale: 4">
+      <div class="v2-title">
+        <div class="v2-name">${escapeHtml(card.name || '')}</div>
+        <div class="v2-cost">${pipsHtml}</div>
+      </div>
+      <div class="v2-art">${artInner}</div>
+      <div class="v2-type">${escapeHtml(typeText)}</div>
+      <div class="v2-text">
+        <div class="v2-oracle">${oracleHtml}</div>
+        ${stickersInner ? '<div class="v2-stickers">' + stickersInner + '</div>' : ''}
+      </div>
+      ${ptInner}
+    </div>
+  `;
+  popup.classList.add('vis');
+}
+
 function openCardPopup(card) {
+  // Branch on the user's frame-style setting. v2 = the new 80x112 pixel-art
+  // frame; classic = the existing .pop-* wireframe layout below.
+  if (typeof SETTINGS !== 'undefined' && SETTINGS.get('cardFrameStyle') === 'new') {
+    return openCardPopupV2(card);
+  }
   // `card` may be a runtime card object (with iid/stickers/damage) OR a
   // template-shaped object from the draft picker. Render whatever we have.
   const popup = document.getElementById('cardPopup');
   const inner = document.getElementById('cardPopupCard');
+  // Restore default classic-popup styling in case the v2 path ran first
+  // (it strips the .pop-* chrome via inline styles).
+  inner.style.cssText = '';
   // Color class (for border).
   inner.className = '';
   if (card.color) inner.classList.add('col-' + card.color);

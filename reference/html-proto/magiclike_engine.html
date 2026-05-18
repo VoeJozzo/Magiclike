@@ -546,6 +546,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
 .rwd-kind-ripUp{color:#ff6060;background:#1f0808;border:1px solid #ff606044}
 #cardPopup{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;z-index:1200;padding:24px;cursor:pointer;animation:fadeIn .15s ease-out}
 #cardPopup.vis{display:flex}
+#settingsModal.vis{display:flex}
 @keyframes fadeIn { from {opacity:0} to {opacity:1} }
 #cardPopupCard{background:#1a1a26;border:2px solid #5a5a7a;border-radius:10px;padding:20px;width:100%;max-width:340px;max-height:90vh;overflow-y:auto;text-align:center;cursor:default;box-shadow:0 10px 40px rgba(0,0,0,.7);font-family:Georgia,serif;position:relative}
 #cardPopupCard .pop-name{color:#ffe7a0;font-size:20px;font-weight:bold;margin-bottom:6px}
@@ -716,6 +717,19 @@ body.ai-thinking #status{
 </div>
 <div id="cardPopup" onclick="CONTROLLER.closeCardPopup(event)"><div id="cardPopupCard" onclick="event.stopPropagation()"></div></div>
 <div id="searchModal"><div id="searchBox"><h2 id="searchTitle">SEARCH LIBRARY</h2><div id="searchList"></div></div></div>
+<!-- Settings modal — opened from the start-screen ⚙ button. Houses
+     user-configurable toggles. Each row is built dynamically by
+     renderSettings() in controller.js so adding a new setting only
+     needs (a) a DEFAULTS entry in settings.js, (b) a row in the
+     render function, (c) wire-up of the consumer (renderer / engine
+     / etc.) to read SETTINGS.get('keyName'). -->
+<div id="settingsModal" style="position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;z-index:1200;padding:24px;font-family:Georgia,serif">
+  <div id="settingsBox" style="background:#1a1a26;border:2px solid #5a5a7a;border-radius:10px;padding:20px;width:100%;max-width:340px;max-height:90vh;overflow-y:auto;font-family:Georgia,serif;color:#ddd;position:relative">
+    <h2 style="color:#ffd700;font-size:18px;margin:0 0 14px 0;text-align:center;letter-spacing:0.1em">⚙ SETTINGS</h2>
+    <div id="settingsList" style="display:flex;flex-direction:column;gap:12px"></div>
+    <button id="settingsCloseBtn" style="margin-top:16px;width:100%;padding:8px;background:#2a4a2a;border:1px solid #4a8a4a;color:#aaffaa;border-radius:4px;cursor:pointer;font-size:13px">Close</button>
+  </div>
+</div>
 <!-- Trigger-build modal — appears when a buildOnDraw card is drawn.
      Shows three randomly-rolled trigger options as picker cards, plus
      a "keep current" button if the slot already has a bonus trigger. -->
@@ -797,6 +811,7 @@ body.ai-thinking #status{
   </div>
 </div>
 
+<script src="js/settings.js"></script>
 <script src="js/cards.js"></script>
 <script src="js/engine.js"></script>
 <script src="js/card-text.js"></script>
