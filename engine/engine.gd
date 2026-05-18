@@ -810,6 +810,12 @@ func _legal_declare_blocker(action: Dictionary) -> bool:
 		return false
 	if _state.phase_machine.current != PhaseMachine.Phase.COMBAT_BLOCK:
 		return false
+	# MTG 509.1a: block declaration is a single turn-based action at the start
+	# of the step. Once awaiting_block_declaration clears (defender confirmed
+	# blocks, or the AI driver finished its sync), the window is closed —
+	# subsequent priority is for casting instants, not declaring more blockers.
+	if not _state.awaiting_block_declaration:
+		return false
 	var defending_key: String = _state.opponent_of(_state.active_player_key)
 	var blocker_iid: int = action.get("source_iid", -1)
 	var attacker_iid: int = action.get("attacker_iid", -1)
