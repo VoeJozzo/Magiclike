@@ -122,9 +122,9 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
 .zone-btn:active{background:#3a3a4a}
 .pstatus{font-size:10px;color:#6688cc;font-style:italic}
 
-.bf{flex:1;background:rgba(0,40,0,0.10);border:1px solid #1e3a1e;border-radius:4px;padding:4px;display:flex;flex-wrap:wrap;align-content:flex-start;gap:4px;overflow-y:auto;min-height:90px}
+.bf{flex:1;background:rgba(0,40,0,0.10);border:1px solid #1e3a1e;border-radius:4px;padding:4px;display:flex;flex-wrap:wrap;align-content:flex-start;gap:8px;overflow-y:auto;min-height:90px}
 .bf.aturn{border-color:#3a6a3a;background:rgba(0,60,0,0.18)}
-.hand{display:flex;gap:3px;padding:3px;overflow-x:auto;min-height:96px;align-items:center;flex-shrink:0}
+.hand{display:flex;gap:8px;padding:3px;overflow-x:auto;min-height:96px;align-items:center;flex-shrink:0}
 .hand-hidden{display:flex;gap:2px;padding:6px;flex-shrink:0;min-height:30px;align-items:center}
 .cardback{width:24px;height:16px;background:linear-gradient(135deg,#3a2a4a,#1a1a2a);border-radius:2px;border:1px solid #555}
 
@@ -459,15 +459,19 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
    texture stays clean (the PNG has no border for us to recolor). Last-
    defined rule wins when a card has multiple states; ordered castable
    -> activatable -> targetable -> atk -> blk -> pblk -> discardable so
-   combat states visually override "you can use this" states. */
-.card-v2.castable{box-shadow:0 0 calc(6px * var(--scale)) #44cc44}
-.card-v2.activatable{box-shadow:0 0 calc(6px * var(--scale)) #44aa44}
-.card-v2.targetable{box-shadow:0 0 calc(6px * var(--scale)) #ffff00; animation:tpulse .6s infinite alternate}
-.card-v2.atk{box-shadow:0 0 calc(6px * var(--scale)) #ff4444}
-.card-v2.blk{box-shadow:0 0 calc(6px * var(--scale)) #4488ff}
-.card-v2.pblk{box-shadow:0 0 calc(6px * var(--scale)) #ffff44}
+   combat states visually override "you can use this" states.
+   The 4th box-shadow value (spread) keeps the inner pixels fully opaque
+   before the blur fades out -- without it the halo washes out against
+   dark backgrounds. Combat states get a heavier blur + spread so they
+   read louder than use-this states. */
+.card-v2.castable{box-shadow:0 0 calc(10px * var(--scale)) calc(2px * var(--scale)) #44cc44}
+.card-v2.activatable{box-shadow:0 0 calc(10px * var(--scale)) calc(2px * var(--scale)) #44aa44}
+.card-v2.targetable{box-shadow:0 0 calc(10px * var(--scale)) calc(2px * var(--scale)) #ffff00; animation:tpulse .6s infinite alternate}
+.card-v2.atk{box-shadow:0 0 calc(12px * var(--scale)) calc(3px * var(--scale)) #ff4444}
+.card-v2.blk{box-shadow:0 0 calc(12px * var(--scale)) calc(3px * var(--scale)) #4488ff}
+.card-v2.pblk{box-shadow:0 0 calc(12px * var(--scale)) calc(3px * var(--scale)) #ffff44}
 .card-v2.sick{opacity:.65}
-.card-v2.discardable{box-shadow:0 0 calc(6px * var(--scale)) #ff9944}
+.card-v2.discardable{box-shadow:0 0 calc(10px * var(--scale)) calc(2px * var(--scale)) #ff9944}
 
 /* ========================================================================= */
 /* End v2 card frame                                                         */
