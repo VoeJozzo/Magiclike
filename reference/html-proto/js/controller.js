@@ -382,6 +382,20 @@ function renderSettings() {
       sel.appendChild(opt);
     }
     sel.value = currentValue;
+    // If currentValue doesn't match any option (e.g. a stored numeric
+    // multiplier carried over from an older settings schema), snap the
+    // dropdown to the closest numeric option so the UI doesn't show a
+    // mismatched selection. Don't write back to settings here; the user's
+    // first change will overwrite the stored value cleanly.
+    if (sel.value === '' && typeof currentValue === 'number') {
+      let closest = options[0];
+      let minDelta = Math.abs(currentValue - Number(closest.value));
+      for (const opt of options) {
+        const delta = Math.abs(currentValue - Number(opt.value));
+        if (delta < minDelta) { closest = opt; minDelta = delta; }
+      }
+      sel.value = closest.value;
+    }
     sel.onchange = () => onChange(sel.value);
     return sel;
   }
@@ -436,9 +450,18 @@ function renderSettings() {
   presetRow.appendChild(presetSelect);
   list.appendChild(presetRow);
 
+  // Footnote: size labels are anchored to 1x scale (the card browser /
+  // hand / board). At 2x scale (popup, draft, rewards) every shown size
+  // doubles. Keeping the label-at-1x convention because that matches the
+  // most common viewing context.
+  const scaleNote = document.createElement('div');
+  scaleNote.textContent = 'Sizes shown at 1× scale (cards in hand / board).';
+  scaleNote.style.cssText = 'color:#778;font-size:10px;font-style:italic;margin-top:-2px';
+  list.appendChild(scaleNote);
+
   // Rows: per-slot pickers. Changing any of these flips the preset to Custom
   // (the next renderSettings call recomputes activePresetName()).
-  function makeFontRow(labelText, fontKey, sizeKey) {
+  function makeFontRow(labelText, fontKey, sizeKey, sizeOptions) {
     const row = makeRow(labelText);
     row.appendChild(makeSelect(
       SETTINGS.FONT_OPTIONS,
@@ -460,7 +483,7 @@ function renderSettings() {
     sizeLabel.style.cssText = 'color:#889;font-size:11px;min-width:30px';
     sizeRow.appendChild(sizeLabel);
     const sizeSelect = makeSelect(
-      SETTINGS.FONT_SIZE_OPTIONS,
+      sizeOptions,
       SETTINGS.get(sizeKey),
       (val) => {
         // makeSelect serializes values as strings via option.value; coerce
@@ -474,9 +497,9 @@ function renderSettings() {
     row.appendChild(sizeRow);
     list.appendChild(row);
   }
-  makeFontRow('Title font (name / type / P/T)', 'cardFontTitle', 'cardFontSizeTitle');
-  makeFontRow('Body font (oracle / stickers)',  'cardFontBody',  'cardFontSizeBody');
-  makeFontRow('Pip font (mana numbers)',        'cardFontPip',   'cardFontSizePip');
+  makeFontRow('Title font (name / type / P/T)', 'cardFontTitle', 'cardFontSizeTitle', SETTINGS.FONT_SIZE_OPTIONS_TITLE);
+  makeFontRow('Body font (oracle / stickers)',  'cardFontBody',  'cardFontSizeBody',  SETTINGS.FONT_SIZE_OPTIONS_BODY);
+  makeFontRow('Pip font (mana numbers)',        'cardFontPip',   'cardFontSizePip',   SETTINGS.FONT_SIZE_OPTIONS_PIP);
 }
 
 function continueRun() {

@@ -32,19 +32,20 @@ const DEFAULTS = {
 };
 
 // Per-slot font-size multipliers offered in the settings dropdown. Each
-// scales the slot's baseline font-sizes (defined in CSS) by the given
-// factor. 1.0 = current size.
-const FONT_SIZE_OPTIONS = [
-  { label: '70%',  value: 0.7 },
-  { label: '80%',  value: 0.8 },
-  { label: '90%',  value: 0.9 },
-  { label: '100% (default)', value: 1 },
-  { label: '110%', value: 1.1 },
-  { label: '125%', value: 1.25 },
-  { label: '150%', value: 1.5 },
-  { label: '175%', value: 1.75 },
-  { label: '200%', value: 2 },
-];
+// slot's labels reflect the px the slot's most prominent element renders at
+// at 1x scale: title -> card name (7px baseline), body -> oracle text (6px
+// baseline), pip -> mana number (3px baseline). The stored value is a
+// multiplier so it composes cleanly with --scale across the 1x card-browser
+// and 2x popup/draft contexts.
+function buildSizeOptions(baseline, sizes) {
+  return sizes.map(px => ({
+    label: px === baseline ? `${px}px (default)` : `${px}px`,
+    value: px / baseline,
+  }));
+}
+const FONT_SIZE_OPTIONS_TITLE = buildSizeOptions(7, [4, 5, 6, 7, 8, 9, 10, 12, 14]);
+const FONT_SIZE_OPTIONS_BODY  = buildSizeOptions(6, [3, 4, 5, 6, 7, 8, 9, 10, 12]);
+const FONT_SIZE_OPTIONS_PIP   = buildSizeOptions(3, [2, 3, 4, 5, 6]);
 
 // Per-slot picker options. Each entry is { label, value } where value is the
 // CSS font-family string. Adding a new font: drop the @font-face into the
@@ -153,6 +154,10 @@ function applyFontsToRoot() {
   root.setProperty('--card-fsize-pip', data.cardFontSizePip);
 }
 
-return { get, set, getAll, applyFontsToRoot, FONT_OPTIONS, FONT_PRESETS, FONT_SIZE_OPTIONS };
+return {
+  get, set, getAll, applyFontsToRoot,
+  FONT_OPTIONS, FONT_PRESETS,
+  FONT_SIZE_OPTIONS_TITLE, FONT_SIZE_OPTIONS_BODY, FONT_SIZE_OPTIONS_PIP,
+};
 
 })();
