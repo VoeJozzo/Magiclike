@@ -8,8 +8,15 @@ signal card_pressed(card: Card)
 
 @export var creatures_on_top: bool = true
 
-const _CREATURE_SPACING: float = 165.0
-const _LAND_SPACING: float = 40.0
+# Adaptive spacing: spread cards across `_AVAILABLE_WIDTH` if they fit at
+# `_MAX_*_SPACING`, otherwise compress down to `_MIN_*_SPACING` (cascade).
+# Different min/max per row because creatures need more identity-width
+# (P/T + art legibility) than lands (mostly title bar matters).
+const _MAX_CREATURE_SPACING: float = 165.0
+const _MIN_CREATURE_SPACING: float = 90.0
+const _MAX_LAND_SPACING: float = 165.0
+const _MIN_LAND_SPACING: float = 40.0
+const _AVAILABLE_WIDTH: float = 1100.0
 const _ROW_GAP: float = 230.0
 
 # card-framework quirk: JsonCardFactory.create_card() calls this BEFORE populating card_info,
@@ -44,8 +51,20 @@ func _update_target_positions() -> void:
 			creatures.append(card)
 	var creature_y: float = 0.0 if creatures_on_top else _ROW_GAP
 	var land_y: float = _ROW_GAP if creatures_on_top else 0.0
-	_layout_row(creatures, Vector2(0.0, creature_y), _CREATURE_SPACING)
-	_layout_row(lands, Vector2(0.0, land_y), _LAND_SPACING)
+	var creature_spacing := _adaptive_spacing(creatures.size(), _MAX_CREATURE_SPACING, _MIN_CREATURE_SPACING)
+	var land_spacing := _adaptive_spacing(lands.size(), _MAX_LAND_SPACING, _MIN_LAND_SPACING)
+	_layout_row(creatures, Vector2(0.0, creature_y), creature_spacing)
+	_layout_row(lands, Vector2(0.0, land_y), land_spacing)
+
+
+# Spread cards across _AVAILABLE_WIDTH if they fit at max_spacing; compress
+# toward min_spacing (cascade overlap) when they don't. count <= 1 always
+# uses max (single card has no neighbor to space from).
+func _adaptive_spacing(count: int, max_spacing: float, min_spacing: float) -> float:
+	if count <= 1:
+		return max_spacing
+	var fit_spacing: float = _AVAILABLE_WIDTH / float(count - 1)
+	return clamp(fit_spacing, min_spacing, max_spacing)
 
 
 func _layout_row(cards: Array, offset_from_zone: Vector2, spacing: float) -> void:

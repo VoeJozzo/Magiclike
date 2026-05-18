@@ -344,3 +344,16 @@ func _stop_hover_animation() -> void:
 	if hover_animates_rotation:
 		hover_tween.tween_property(self, "rotation", original_hover_rotation, hover_duration)
 	hover_tween.tween_method(_update_hover_position, position, original_position, hover_duration)
+
+
+# Addon bug workaround: when a card is mid-hover (scale tweening toward
+# 1.1x) and the engine calls move() on it, the state machine transitions
+# HOVERING → MOVING. The MOVING enter handler kills hover_tween but never
+# resets scale, so the card gets stuck at the interpolated mid-tween
+# value (~1.05 typically) for the rest of its life. _finish_move only
+# resets rotation, not scale. Override the state entry to snap scale
+# back to ONE whenever MOVING starts.
+func _enter_state(state, from_state) -> void:
+	super._enter_state(state, from_state)
+	if state == DraggableState.MOVING:
+		scale = Vector2.ONE
