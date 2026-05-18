@@ -519,6 +519,22 @@ function renderSettings() {
   SETTINGS.CARD_FONT_ELEMENTS.filter(e => e.slot === 'body').forEach(makeElementRow);
   makeSlotHeader('Pip elements');
   SETTINGS.CARD_FONT_ELEMENTS.filter(e => e.slot === 'pip').forEach(makeElementRow);
+
+  // Popup text scale. Applies on top of the per-element sizes when a card
+  // is rendered in the long-press popup (.in-popup class). 1 = text scales
+  // proportionally with the 4x popup frame; lower values keep text smaller
+  // so more oracle text fits in the same frame.
+  makeSlotHeader('Popup (long-press detail)');
+  const popupRow = makeRow('Text scale relative to frame');
+  popupRow.appendChild(makeSelect(
+    SETTINGS.POPUP_TEXT_SCALE_OPTIONS,
+    SETTINGS.get('cardPopupTextScale'),
+    (val) => {
+      SETTINGS.set('cardPopupTextScale', Number(val));
+      try { render(); } catch (_) {}
+    }
+  ));
+  list.appendChild(popupRow);
 }
 
 function continueRun() {
@@ -2190,7 +2206,7 @@ function openCardPopupV2(card) {
   inner.className = '';
   inner.style.cssText = 'background:transparent;border:none;box-shadow:none;padding:0;width:auto;max-width:none;text-align:center;cursor:default';
   inner.innerHTML = `
-    <div class="card-v2 col-${colorKey}" style="--scale: 4">
+    <div class="card-v2 in-popup col-${colorKey}" style="--scale: 4">
       <div class="v2-title">
         <div class="v2-name">${escapeHtml(card.name || '')}</div>
         <div class="v2-cost">${pipsHtml}</div>

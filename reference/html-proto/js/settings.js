@@ -58,7 +58,23 @@ const DEFAULTS = {
   cardFontSizeStickers: 1,
   cardFontSizePip:      1,
   cardFontSizeBumped:   1,
+  // Popup-only extra font multiplier (v1.0.161). 1 = text scales
+  // proportionally with the popup's 4x frame (default). <1 keeps text
+  // smaller relative to the frame so more oracle text fits.
+  cardPopupTextScale: 1,
 };
+
+// Options for the popup text scale dropdown. Values < 1 dampen the text
+// growth in the 4x popup; > 1 amplifies it (rarely useful).
+const POPUP_TEXT_SCALE_OPTIONS = [
+  { label: '40% (very dense text)',   value: 0.4 },
+  { label: '50%',                     value: 0.5 },
+  { label: '60%',                     value: 0.6 },
+  { label: '70%',                     value: 0.7 },
+  { label: '85%',                     value: 0.85 },
+  { label: '100% (matches frame)',    value: 1 },
+  { label: '125%',                    value: 1.25 },
+];
 
 const FONT_OPTIONS = [
   { label: 'Cinzel (display serif)',      value: "'Cinzel', Georgia, serif" },
@@ -202,6 +218,7 @@ function set(key, value) {
       if (key === settingsKeyFont(el.key))  document.documentElement.style.setProperty(cssVarFont(el.key), value);
       if (key === settingsKeyFsize(el.key)) document.documentElement.style.setProperty(cssVarFsize(el.key), value);
     }
+    if (key === 'cardPopupTextScale') document.documentElement.style.setProperty('--card-popup-text-scale', value);
   }
 }
 
@@ -218,6 +235,7 @@ function applyFontsToRoot() {
     root.setProperty(cssVarFont(el.key),  data[settingsKeyFont(el.key)]);
     root.setProperty(cssVarFsize(el.key), data[settingsKeyFsize(el.key)]);
   }
+  root.setProperty('--card-popup-text-scale', data.cardPopupTextScale);
 }
 
 return {
@@ -225,6 +243,7 @@ return {
   FONT_OPTIONS, FONT_PRESETS,
   CARD_FONT_ELEMENTS,
   FONT_SIZE_OPTIONS_BY_ELEMENT,
+  POPUP_TEXT_SCALE_OPTIONS,
   // Element-key utilities exposed for controller.js's settings UI.
   settingsKeyFont, settingsKeyFsize,
 };
