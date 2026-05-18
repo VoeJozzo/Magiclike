@@ -591,25 +591,42 @@ function showNeowChoice() {
 
   const optsEl = document.getElementById('neowOptions');
   optsEl.innerHTML = '';
+  const useV2 = SETTINGS.get('cardFrameStyle') === 'new';
   for (const id of offered) {
     const m = RUN_MODIFIERS[id];
-    const div = document.createElement('div');
-    div.className = 'neow-opt';
-    div.onclick = () => pickNeow(id);
     // Boon art is derived from the card the boon grants -- every current
     // RUN_MODIFIERS entry's id matches the tplId of its granted card, so
     // CARDS[m.id].art is the source of truth. A boon can override with an
     // explicit `art:` field if its picker view should diverge from the
     // card itself (no current boon needs this).
-    // m.text may carry {3}/{T}/etc. brace tokens (Stapler's "{3} Artifact
-    // with 3 per-run charges. {3}, T:") so it goes through the pip pipeline.
+    // m.text may carry {3}/{T}/etc. brace tokens so it goes through the
+    // pip pipeline (renderManaSymbols or the v2 frame's body section).
     const boonArt = m.art || (CARDS[m.id] && CARDS[m.id].art) || '✦';
-    div.innerHTML = `
-      <div class="neow-art">${artHtml(boonArt)}</div>
-      <div class="neow-name">${escapeHtml(m.name || '')}</div>
-      <div class="neow-text">${renderManaSymbols(escapeHtml(m.text || ''))}</div>
-    `;
-    optsEl.appendChild(div);
+    let el;
+    if (useV2) {
+      // Render the boon as a v2-frame "Boon"-type card. No cost / no P/T,
+      // text fills the oracle box. Scale 2 matches the rest of the modal
+      // tier (reward cards, draft picks).
+      el = makeV2CardLike({
+        name: m.name || '',
+        type: 'Boon',
+        text: m.text || '',
+        art: boonArt,
+        color: 'C',
+        scale: 2,
+      });
+      el.style.cursor = 'pointer';
+    } else {
+      el = document.createElement('div');
+      el.className = 'neow-opt';
+      el.innerHTML = `
+        <div class="neow-art">${artHtml(boonArt)}</div>
+        <div class="neow-name">${escapeHtml(m.name || '')}</div>
+        <div class="neow-text">${renderManaSymbols(escapeHtml(m.text || ''))}</div>
+      `;
+    }
+    el.onclick = () => pickNeow(id);
+    optsEl.appendChild(el);
   }
   Modal.show('neowModal', { dismissible: false });
 }
@@ -1062,13 +1079,27 @@ function renderReward() {
         labelEl.className = 'rwd-kind-label rwd-kind-threeStickersBlind';
         labelEl.textContent = '3 STICKERS — RANDOM CARD';
         div.appendChild(labelEl);
-        // Mystery card placeholder — visually distinct from real card tiles.
-        const mystery = document.createElement('div');
-        mystery.className = 'rwd-card rwd-card-mystery';
-        mystery.innerHTML =
-          `<div class="art" style="font-size:48px">❓</div>` +
-          `<div class="name">Mystery Creature</div>` +
-          `<div class="text" style="font-style:italic;opacity:0.7">A random creature in your deck</div>`;
+        // Mystery card placeholder. v2 rendering builds a "Mystery Creature"
+        // fake card with no cost / no P/T; classic mode keeps the rwd-card
+        // wireframe variant.
+        let mystery;
+        if (SETTINGS.get('cardFrameStyle') === 'new') {
+          mystery = makeV2CardLike({
+            name: 'Mystery Creature',
+            type: 'Reward',
+            text: 'A random creature in your deck',
+            art: '❓',
+            color: 'C',
+            scale: 2,
+          });
+        } else {
+          mystery = document.createElement('div');
+          mystery.className = 'rwd-card rwd-card-mystery';
+          mystery.innerHTML =
+            `<div class="art" style="font-size:48px">❓</div>` +
+            `<div class="name">Mystery Creature</div>` +
+            `<div class="text" style="font-style:italic;opacity:0.7">A random creature in your deck</div>`;
+        }
         div.appendChild(mystery);
         const connector = document.createElement('div');
         connector.className = 'rwd-pair-plus';

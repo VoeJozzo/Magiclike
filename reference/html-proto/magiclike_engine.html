@@ -413,6 +413,12 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
   text-shadow:0 0 calc(2px * var(--scale)) #000;
 }
 
+/* Cardback variant: face-down v2 frame for opponent-hand placeholders.
+   Strips all the inner element layouts down to just the frame PNG so the
+   small (--scale ~0.3) face-down look reads cleanly. */
+.card-v2.v2-cardback > *{display:none}
+.card-v2.v2-cardback{cursor:default}
+
 /* Tapped state: 85deg rotation (matches existing .card.tapped). */
 .card-v2.tapped{transform:rotate(85deg)}
 

@@ -101,35 +101,63 @@ function render() {
       ? (isSpliceTargetMode ? '— click a spell or permanent to splice it' : '— click a spell to counter it')
       : (G.stack.length === 1 ? '— top resolves first' : `— ${G.stack.length} on stack, top resolves first`);
     bannerItems.innerHTML = '';
+    const useV2Banner = SETTINGS.get('cardFrameStyle') === 'new';
     G.stack.slice().reverse().forEach((it, displayIdx) => {
       const realIdx = G.stack.length - 1 - displayIdx;
       const tgtLabel = (it.targets && it.targets[0] && it.targets[0].label) ? ` → ${it.targets[0].label}` : '';
-      const div = document.createElement('div');
-      div.className = 'bnr-item' + (isCounterTarget ? ' tgt' : '');
+      let div;
+      if (useV2Banner) {
+        if (it.kind === 'trigger') {
+          // Triggers have no card backing -- build a card-like with the
+          // trigger text in the body.
+          div = makeV2CardLike({
+            name: it.sourceName + ' triggers',
+            type: 'Trigger',
+            text: (it.trig.text || it.trig.event) + tgtLabel,
+            art: '⚡',
+            color: 'C',
+            scale: 0.7,
+          });
+          const src = ENGINE.findCard(it.sourceIid);
+          if (src) CONTROLLER.attachLongPress(div, src.card);
+        } else {
+          // Real card. makeCardEl gives the full v2 frame; smaller scale
+          // keeps the banner pill from dominating the screen.
+          div = makeCardEl(it.card);
+          div.style.setProperty('--scale', '0.7');
+        }
+      } else {
+        div = document.createElement('div');
+        div.className = 'bnr-item' + (isCounterTarget ? ' tgt' : '');
+        if (it.kind === 'trigger') {
+          div.innerHTML =
+            `<div class="topline">⚡ ${it.sourceName} triggers</div>` +
+            `<div class="botline">${it.trig.text || it.trig.event}${tgtLabel}</div>`;
+          const src = ENGINE.findCard(it.sourceIid);
+          if (src) CONTROLLER.attachLongPress(div, src.card);
+        } else {
+          // Modal cards: show chosen mode so countering decisions are informed.
+          let modeLabel = '';
+          if (ENGINE.isModal(it.card)) {
+            const mn = (it.card.effects.modeNames || [])[it.modeIdx || 0];
+            if (mn) modeLabel = ` <span style="color:#aaccee;font-size:10px">(${mn})</span>`;
+          }
+          // Inline art, skip URL art (would stretch in narrow pill).
+          const inlineArt = isArtUrl(it.card.art) ? '🎴' : (it.card.art || '');
+          div.innerHTML =
+            `<div class="topline">${inlineArt} ${it.card.name}${modeLabel}</div>` +
+            `<div class="botline">cast by ${G[it.controller].name}${tgtLabel}</div>`;
+          CONTROLLER.attachLongPress(div, it.card);
+        }
+      }
       // stackIdx (real, not reversed) — target-line overlay indexes G.stack directly.
       div.dataset.stackIdx = String(realIdx);
-      if (it.kind === 'trigger') {
-        div.innerHTML =
-          `<div class="topline">⚡ ${it.sourceName} triggers</div>` +
-          `<div class="botline">${it.trig.text || it.trig.event}${tgtLabel}</div>`;
-        const src = ENGINE.findCard(it.sourceIid);
-        if (src) CONTROLLER.attachLongPress(div, src.card);
-      } else {
-        // Modal cards: show chosen mode so countering decisions are informed.
-        let modeLabel = '';
-        if (ENGINE.isModal(it.card)) {
-          const mn = (it.card.effects.modeNames || [])[it.modeIdx || 0];
-          if (mn) modeLabel = ` <span style="color:#aaccee;font-size:10px">(${mn})</span>`;
+      if (isCounterTarget) {
+        if (useV2Banner) div.classList.add('targetable');
+        else div.classList.add('tgt');
+        if (it.kind !== 'trigger') {
+          div.onclick = () => CONTROLLER.clickStackTarget(realIdx);
         }
-        // Inline art, skip URL art (would stretch in narrow pill).
-        const inlineArt = isArtUrl(it.card.art) ? '🎴' : (it.card.art || '');
-        div.innerHTML =
-          `<div class="topline">${inlineArt} ${it.card.name}${modeLabel}</div>` +
-          `<div class="botline">cast by ${G[it.controller].name}${tgtLabel}</div>`;
-        CONTROLLER.attachLongPress(div, it.card);
-      }
-      if (isCounterTarget && it.kind !== 'trigger') {
-        div.onclick = () => CONTROLLER.clickStackTarget(realIdx);
       }
       bannerItems.appendChild(div);
     });
@@ -205,11 +233,19 @@ function render() {
     if (matches.length === 0) {
       list.innerHTML = '<div style="color:#888;font-size:11px">No matching cards.</div>';
     } else {
+      const useV2 = SETTINGS.get('cardFrameStyle') === 'new';
       for (const card of matches) {
-        const btn = document.createElement('button');
-        btn.className = 'search-card';
-        const inlineArt = isArtUrl(card.art) ? '🎴' : (card.art || '');
-        btn.textContent = `${inlineArt} ${card.name}`;
+        let btn;
+        if (useV2) {
+          // Real card, so makeCardEl handles the full v2 render.
+          btn = makeCardEl(card);
+          btn.style.cursor = 'pointer';
+        } else {
+          btn = document.createElement('button');
+          btn.className = 'search-card';
+          const inlineArt = isArtUrl(card.art) ? '🎴' : (card.art || '');
+          btn.textContent = `${inlineArt} ${card.name}`;
+        }
         btn.onclick = () => CONTROLLER.searchPick(card.iid);
         list.appendChild(btn);
       }
@@ -597,20 +633,33 @@ function openZoneTargeting(who, zone, validTargets) {
   } else {
     const validIids = new Set(validTargets.map(t => t.iid));
     const display = cards.slice().reverse();
+    const useV2 = SETTINGS.get('cardFrameStyle') === 'new';
     for (const card of display) {
-      const btn = document.createElement('div');
-      btn.className = 'zone-card';
-      const typeHint = card.type ? card.type.charAt(0) : '?';
-      const cost = card.cost ? renderManaSymbols(formatCostBraced(card.cost)) : '';
-      btn.innerHTML = `<span style="opacity:0.6">[${typeHint}]</span> <span class="card-name"></span>${cost ? ' <span style="opacity:0.7;font-size:10px">' + cost + '</span>' : ''}`;
-      btn.querySelector('.card-name').textContent = card.name;
-      if (validIids.has(card.iid)) {
-        btn.style.cursor = 'pointer';
-        btn.style.borderColor = '#ffcc44';
-        btn.style.background = '#332';
-        btn.onclick = () => submitGraveyardTarget(card.iid);
+      let btn;
+      if (useV2) {
+        btn = makeCardEl(card);
+        if (validIids.has(card.iid)) {
+          btn.style.cursor = 'pointer';
+          btn.classList.add('targetable');
+          btn.onclick = () => submitGraveyardTarget(card.iid);
+        } else {
+          btn.style.opacity = '0.4';
+        }
       } else {
-        btn.style.opacity = '0.4';
+        btn = document.createElement('div');
+        btn.className = 'zone-card';
+        const typeHint = card.type ? card.type.charAt(0) : '?';
+        const cost = card.cost ? renderManaSymbols(formatCostBraced(card.cost)) : '';
+        btn.innerHTML = `<span style="opacity:0.6">[${typeHint}]</span> <span class="card-name"></span>${cost ? ' <span style="opacity:0.7;font-size:10px">' + cost + '</span>' : ''}`;
+        btn.querySelector('.card-name').textContent = card.name;
+        if (validIids.has(card.iid)) {
+          btn.style.cursor = 'pointer';
+          btn.style.borderColor = '#ffcc44';
+          btn.style.background = '#332';
+          btn.onclick = () => submitGraveyardTarget(card.iid);
+        } else {
+          btn.style.opacity = '0.4';
+        }
       }
       listEl.appendChild(btn);
     }
@@ -696,7 +745,16 @@ function canPlayFromUI(who, card) {
 function renderOppHandBacks(n) {
   const el = document.getElementById('oppHandView');
   el.innerHTML = '';
-  for (let i=0; i<n; i++) el.innerHTML += '<div class="cardback"></div>';
+  const useV2 = typeof SETTINGS !== 'undefined' && SETTINGS.get('cardFrameStyle') === 'new';
+  for (let i=0; i<n; i++) {
+    if (useV2) {
+      // v2 cardback: just the C-color frame at small scale, inner elements
+      // hidden by .v2-cardback CSS. No name / no art / no cost rendered.
+      el.innerHTML += '<div class="card-v2 col-C v2-cardback" style="--scale: 0.35"></div>';
+    } else {
+      el.innerHTML += '<div class="cardback"></div>';
+    }
+  }
 }
 
 function renderBf(id, bf, who) {
@@ -1144,11 +1202,18 @@ function makeCardElV2(card, opts) {
 
   const typeText = card.type + (card.sub ? ' — ' + card.sub : '');
 
-  // Oracle text WITH keywords (skipKeywords: false) -- the in-hand card has
-  // no separate keyword badge row, so keywords need to inline into the
-  // oracle text via describeCardSegments's keyword preamble.
-  const segs = describeCardSegments(card, {skipKeywords: false});
-  const oracleHtml = segmentsToHtml(segs);
+  // Oracle text. Default path runs describeCardSegments through the
+  // engine's pip pipeline. opts.overrideOracleText (set by makeV2CardLike
+  // for boons, mystery placeholders, etc.) lets callers pass a literal
+  // string that bypasses describeCardSegments -- those non-cards don't
+  // have engine-shaped abilities/effects to describe.
+  let oracleHtml;
+  if (opts && opts.overrideOracleText !== undefined) {
+    oracleHtml = renderManaSymbols(escapeHtml(opts.overrideOracleText));
+  } else {
+    const segs = describeCardSegments(card, {skipKeywords: false});
+    oracleHtml = segmentsToHtml(segs);
+  }
 
   const artVal = effectiveArt(card);
   const artInner = isArtUrl(artVal)
@@ -1183,6 +1248,34 @@ function makeCardElV2(card, opts) {
 
   CONTROLLER.attachLongPress(div, card);
   return div;
+}
+
+// Build a v2 card frame for things that aren't engine-shaped cards (Neow
+// boons, mystery placeholders, sticker rewards, cardbacks, etc.). Caller
+// supplies a flat object; we fabricate just enough of the card-shape that
+// makeCardElV2 doesn't crash, and pass the literal text through opts so
+// describeCardSegments is bypassed.
+//
+// Returns a v2 .card-v2 div regardless of SETTINGS.cardFrameStyle -- the
+// caller is the one deciding to use v2 here (the "classic" branch keeps
+// the site's pre-existing wireframe).
+function makeV2CardLike({ name, type, sub, text, art, color, cost, power, toughness, scale }) {
+  const fakeCard = {
+    name: name || '',
+    type: type || '',
+    sub: sub || '',
+    art: art || '',
+    color: color || 'C',
+    cost: cost || null,
+    power: power || 0,
+    toughness: toughness || 0,
+    abilities: [], effects: [], triggers: [], staticBuffs: [],
+    stickers: [], keywords: [], colors: [],
+    iid: -1,
+  };
+  const el = makeCardElV2(fakeCard, { overrideOracleText: text || '' });
+  if (scale !== undefined) el.style.setProperty('--scale', String(scale));
+  return el;
 }
 
 function makeCardEl(card, opts) {
