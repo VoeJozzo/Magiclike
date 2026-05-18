@@ -358,34 +358,104 @@ function renderSettings() {
   const list = document.getElementById('settingsList');
   list.innerHTML = '';
 
-  // Row 1: card frame style. Dropdown with two options.
-  const frameRow = document.createElement('div');
-  frameRow.style.cssText = 'display:flex;flex-direction:column;gap:4px';
-  const frameLabel = document.createElement('label');
-  frameLabel.textContent = 'Card frames';
-  frameLabel.style.cssText = 'color:#ccd;font-size:12px;font-weight:bold;letter-spacing:.05em';
-  const frameSelect = document.createElement('select');
-  frameSelect.style.cssText = 'padding:6px;background:#0d0d18;border:1px solid #555;color:#ddd;border-radius:3px;font-family:inherit;font-size:12px';
-  const optNew = document.createElement('option');
-  optNew.value = 'new';
-  optNew.textContent = 'Pixel-art (new)';
-  const optClassic = document.createElement('option');
-  optClassic.value = 'classic';
-  optClassic.textContent = 'Classic wireframes';
-  frameSelect.appendChild(optNew);
-  frameSelect.appendChild(optClassic);
-  frameSelect.value = SETTINGS.get('cardFrameStyle');
-  frameSelect.onchange = () => {
-    SETTINGS.set('cardFrameStyle', frameSelect.value);
-    // Re-render visible cards. render() handles game-state cards; for the
-    // start screen / browser views we'd re-show their respective modals
-    // if they're open. For now the popup is the only v2-aware site and
-    // it'll regenerate on next click.
-    try { render(); } catch (_) { /* not in-game yet */ }
-  };
-  frameRow.appendChild(frameLabel);
-  frameRow.appendChild(frameSelect);
+  const ROW_STYLE = 'display:flex;flex-direction:column;gap:4px';
+  const LABEL_STYLE = 'color:#ccd;font-size:12px;font-weight:bold;letter-spacing:.05em';
+  const SELECT_STYLE = 'padding:6px;background:#0d0d18;border:1px solid #555;color:#ddd;border-radius:3px;font-family:inherit;font-size:12px';
+
+  function makeRow(labelText) {
+    const row = document.createElement('div');
+    row.style.cssText = ROW_STYLE;
+    const label = document.createElement('label');
+    label.textContent = labelText;
+    label.style.cssText = LABEL_STYLE;
+    row.appendChild(label);
+    return row;
+  }
+
+  function makeSelect(options, currentValue, onChange) {
+    const sel = document.createElement('select');
+    sel.style.cssText = SELECT_STYLE;
+    for (const { label, value } of options) {
+      const opt = document.createElement('option');
+      opt.value = value;
+      opt.textContent = label;
+      sel.appendChild(opt);
+    }
+    sel.value = currentValue;
+    sel.onchange = () => onChange(sel.value);
+    return sel;
+  }
+
+  // Row 1: card frame style.
+  const frameRow = makeRow('Card frames');
+  frameRow.appendChild(makeSelect(
+    [
+      { label: 'Pixel-art (new)', value: 'new' },
+      { label: 'Classic wireframes', value: 'classic' },
+    ],
+    SETTINGS.get('cardFrameStyle'),
+    (val) => {
+      SETTINGS.set('cardFrameStyle', val);
+      try { render(); } catch (_) { /* not in-game yet */ }
+    }
+  ));
   list.appendChild(frameRow);
+
+  // Section header for font controls.
+  const fontHeader = document.createElement('div');
+  fontHeader.textContent = 'Card fonts';
+  fontHeader.style.cssText = 'color:#ffd700;font-size:13px;font-weight:bold;letter-spacing:.06em;margin-top:6px;padding-top:8px;border-top:1px solid #333';
+  list.appendChild(fontHeader);
+
+  // Row: preset dropdown (writes all three slots).
+  const presetEntries = Object.entries(SETTINGS.FONT_PRESETS);
+  // Compute which preset (if any) matches the current trio; otherwise show 'Custom'.
+  function activePresetName() {
+    const cur = {
+      title: SETTINGS.get('cardFontTitle'),
+      body:  SETTINGS.get('cardFontBody'),
+      pip:   SETTINGS.get('cardFontPip'),
+    };
+    for (const [name, preset] of presetEntries) {
+      if (preset.title === cur.title && preset.body === cur.body && preset.pip === cur.pip) return name;
+    }
+    return '__custom__';
+  }
+  const presetRow = makeRow('Preset');
+  const presetOptions = presetEntries.map(([name]) => ({ label: name, value: name }));
+  presetOptions.push({ label: 'Custom', value: '__custom__' });
+  const presetSelect = makeSelect(presetOptions, activePresetName(), (val) => {
+    if (val === '__custom__') return; // no-op; custom means "leave the slots as-is"
+    const preset = SETTINGS.FONT_PRESETS[val];
+    SETTINGS.set('cardFontTitle', preset.title);
+    SETTINGS.set('cardFontBody',  preset.body);
+    SETTINGS.set('cardFontPip',   preset.pip);
+    renderSettings(); // re-sync per-slot dropdowns to the preset's values
+    try { render(); } catch (_) {}
+  });
+  presetRow.appendChild(presetSelect);
+  list.appendChild(presetRow);
+
+  // Rows: per-slot pickers. Changing any of these flips the preset to Custom
+  // (the next renderSettings call recomputes activePresetName()).
+  function makeFontRow(labelText, settingsKey) {
+    const row = makeRow(labelText);
+    row.appendChild(makeSelect(
+      SETTINGS.FONT_OPTIONS,
+      SETTINGS.get(settingsKey),
+      (val) => {
+        SETTINGS.set(settingsKey, val);
+        // Re-render the preset dropdown so it switches to "Custom" if the
+        // new trio doesn't match a preset.
+        presetSelect.value = activePresetName();
+        try { render(); } catch (_) {}
+      }
+    ));
+    list.appendChild(row);
+  }
+  makeFontRow('Title font (name / type / P/T)', 'cardFontTitle');
+  makeFontRow('Body font (oracle / stickers)',  'cardFontBody');
+  makeFontRow('Pip font (mana numbers)',        'cardFontPip');
 }
 
 function continueRun() {
