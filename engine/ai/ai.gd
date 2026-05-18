@@ -11,6 +11,9 @@ static func decide(state: EngineState, player_key: String) -> Dictionary:
 	if not state.awaiting_target_for_trigger.is_empty() \
 			and state.awaiting_target_for_trigger.get("controller_key", "") == player_key:
 		return _decide_trigger_target(state, player_key)
+	if not state.awaiting_discard.is_empty() \
+			and state.awaiting_discard.get("player_key", "") == player_key:
+		return _decide_discard(state, player_key)
 	var phase = state.phase_machine.current
 	if phase == PhaseMachine.Phase.COMBAT_BLOCK and player_key != state.active_player_key:
 		var next_block: Dictionary = _next_block_action(state, player_key)
@@ -62,6 +65,27 @@ static func _decide_trigger_target(state: EngineState, player_key: String) -> Di
 				return Action.make_pick_trigger_target({"kind": "creature", "iid": best.instance_id})
 	# Should never happen — fallback prevents engine hang.
 	return Action.make_pass_priority()
+
+
+# ─── Cleanup-step discard ─────────────────────────────────────────────────
+# Pick the lowest-value card in hand by AIScoring.card_value. Ties go to the
+# first one encountered. Lands tend to score low so a flooded AI dumps them
+# first, which is the right call in most mana-screw-then-stabilize scenarios.
+static func _decide_discard(state: EngineState, player_key: String) -> Dictionary:
+	var p: Player = state.player_by_key(player_key)
+	if p.hand.is_empty():
+		# Shouldn't happen — engine wouldn't set awaiting_discard with empty hand
+		# — but bail safely rather than hang.
+		return Action.make_pass_priority()
+	var worst: CardInstance = p.hand[0]
+	var worst_score: float = AIScoring.card_value(worst.template, "keep_in_hand")
+	for i in range(1, p.hand.size()):
+		var c: CardInstance = p.hand[i]
+		var s: float = AIScoring.card_value(c.template, "keep_in_hand")
+		if s < worst_score:
+			worst_score = s
+			worst = c
+	return Action.make_discard_card(worst.instance_id)
 
 
 # ─── Combat ───────────────────────────────────────────────────────────────

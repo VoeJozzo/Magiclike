@@ -17,6 +17,10 @@ var land_played_this_turn: bool = false
 # Cumulative damage-style life loss (excludes natural decay). Powers Bloodlust-style triggers.
 var life_lost_this_turn: int = 0
 
+# Maximum hand size enforced at the cleanup step (MTG 514.3). Default 7; can be
+# pumped/cut by future effects (e.g. Reliquary Tower-style "no maximum").
+var max_hand_size: int = 7
+
 
 func _init(p_name: String = "", p_key: String = "") -> void:
 	name = p_name
@@ -72,4 +76,5 @@ func duplicate_deep() -> Player:
 		copy.exile.append(c.duplicate_deep())
 	copy.land_played_this_turn = land_played_this_turn
 	copy.life_lost_this_turn = life_lost_this_turn
+	copy.max_hand_size = max_hand_size
 	return copy
