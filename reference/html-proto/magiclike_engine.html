@@ -5,6 +5,25 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Magiclike — Rules Engine</title>
 <style>
+/* Fonts for the v2 card frame design (80x112 pixel-art card spec).
+   - Cinzel Regular: card name, type line, P/T number
+   - Press Start 2P: oracle text, flavour text
+   Both shipped at assets/fonts/ at repo root (../../ from this HTML) so
+   the Godot port can also reference them. SIL OFL 1.1 -- see LICENSES.md. */
+@font-face {
+  font-family: 'Cinzel';
+  src: url('../../assets/fonts/Cinzel/static/Cinzel-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Press Start 2P';
+  src: url('../../assets/fonts/Press_Start_2P/PressStart2P-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;display:flex;flex-direction:column;overflow:hidden;font-size:12px}
 #wrap{display:flex;flex:1;min-height:0}
