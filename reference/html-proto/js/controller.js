@@ -92,6 +92,12 @@ function init() {
   if (settingsCloseBtn) {
     settingsCloseBtn.onclick = () => { Modal.hide('settingsModal'); };
   }
+  // Persistent in-game settings gear. Always visible top-left so the user
+  // can adjust fonts / frames / etc. without going back to the start screen.
+  const settingsBtnPersistent = document.getElementById('settingsBtnPersistent');
+  if (settingsBtnPersistent) {
+    settingsBtnPersistent.onclick = showSettings;
+  }
   showStartScreen();
 }
 
