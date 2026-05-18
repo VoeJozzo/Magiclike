@@ -310,7 +310,16 @@ func enter_focus() -> void:
 		return
 	is_focused = true
 	_focus_orig_z = z_index
-	_focus_orig_position = position
+	# When the card is hovering, `position` is the lifted value (tweened up by
+	# hover_distance), not the rest position. The addon's `original_position`
+	# holds the pre-hover-lift base — captured in _start_hover_animation. Use
+	# THAT when restoring on exit, otherwise each focus+dismiss cycle would
+	# leave the card one hover_distance higher than before, accumulating with
+	# every right-click. (Joe's "card crept up" report.)
+	if current_state == DraggableState.HOVERING:
+		_focus_orig_position = original_position
+	else:
+		_focus_orig_position = position
 	pivot_offset = card_size / 2.0  # scale from center, not corner
 	# Kill any in-flight tweens so they don't fight focus visuals. A hover
 	# tween mid-flight would continue interpolating scale; a move tween
