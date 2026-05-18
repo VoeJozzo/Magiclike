@@ -191,14 +191,13 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
 }
 .card-v2 .v2-name{
   font-family: 'Cinzel', Georgia, serif;
-  font-size: calc(8px * var(--scale));
+  font-size: calc(9px * var(--scale));
   color: #f0e6c8;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   flex: 1;
   line-height: 1;
-  letter-spacing: calc(0.2px * var(--scale));
 }
 .card-v2 .v2-cost{
   display: flex;
@@ -258,7 +257,7 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
   align-items: center;
   padding: 0 calc(3px * var(--scale));
   font-family: 'Cinzel', Georgia, serif;
-  font-size: calc(6px * var(--scale));
+  font-size: calc(7px * var(--scale));
   color: #f0e6c8;
   line-height: 1;
   white-space: nowrap;
@@ -276,10 +275,11 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
   height: calc(51px * var(--scale));
   padding: calc(3px * var(--scale));
   font-family: 'Press Start 2P', monospace;
-  font-size: calc(5px * var(--scale));
+  font-size: calc(6px * var(--scale));
   color: #d8d4c8;
   line-height: 1.5;
   overflow: hidden;
+  text-align: left;
 }
 .card-v2 .v2-oracle{
   /* No special treatment -- inherits v2-text styling. */
@@ -308,7 +308,7 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
    .v2-pt only when card.type === 'Creature'. */
 .card-v2 .v2-pt{
   left: calc(61px * var(--scale));
-  top: calc(101px * var(--scale));
+  top: calc(99px * var(--scale));
   width: calc(15px * var(--scale));
   height: calc(9px * var(--scale));
   background-size: 100% 100%;
@@ -318,7 +318,7 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
   align-items: center;
   justify-content: center;
   font-family: 'Cinzel', Georgia, serif;
-  font-size: calc(6px * var(--scale));
+  font-size: calc(7px * var(--scale));
   color: #e8c840;
   font-weight: bold;
   line-height: 1;
@@ -546,7 +546,11 @@ button:disabled{opacity:.4;cursor:not-allowed}
 .rwd-kind-ripUp{color:#ff6060;background:#1f0808;border:1px solid #ff606044}
 #cardPopup{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;z-index:1200;padding:24px;cursor:pointer;animation:fadeIn .15s ease-out}
 #cardPopup.vis{display:flex}
+#settingsModal{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;z-index:1200;padding:24px;font-family:Georgia,serif}
 #settingsModal.vis{display:flex}
+#settingsBox{background:#1a1a26;border:2px solid #5a5a7a;border-radius:10px;padding:20px;width:100%;max-width:340px;max-height:90vh;overflow-y:auto;font-family:Georgia,serif;color:#ddd;position:relative}
+#settingsBox h2{color:#ffd700;font-size:18px;margin:0 0 14px 0;text-align:center;letter-spacing:0.1em}
+#settingsCloseBtn{margin-top:16px;width:100%;padding:8px;background:#2a4a2a;border:1px solid #4a8a4a;color:#aaffaa;border-radius:4px;cursor:pointer;font-size:13px}
 @keyframes fadeIn { from {opacity:0} to {opacity:1} }
 #cardPopupCard{background:#1a1a26;border:2px solid #5a5a7a;border-radius:10px;padding:20px;width:100%;max-width:340px;max-height:90vh;overflow-y:auto;text-align:center;cursor:default;box-shadow:0 10px 40px rgba(0,0,0,.7);font-family:Georgia,serif;position:relative}
 #cardPopupCard .pop-name{color:#ffe7a0;font-size:20px;font-weight:bold;margin-bottom:6px}
@@ -722,12 +726,14 @@ body.ai-thinking #status{
      renderSettings() in controller.js so adding a new setting only
      needs (a) a DEFAULTS entry in settings.js, (b) a row in the
      render function, (c) wire-up of the consumer (renderer / engine
-     / etc.) to read SETTINGS.get('keyName'). -->
-<div id="settingsModal" style="position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;z-index:1200;padding:24px;font-family:Georgia,serif">
-  <div id="settingsBox" style="background:#1a1a26;border:2px solid #5a5a7a;border-radius:10px;padding:20px;width:100%;max-width:340px;max-height:90vh;overflow-y:auto;font-family:Georgia,serif;color:#ddd;position:relative">
-    <h2 style="color:#ffd700;font-size:18px;margin:0 0 14px 0;text-align:center;letter-spacing:0.1em">⚙ SETTINGS</h2>
+     / etc.) to read SETTINGS.get('keyName'). Styling lives in the
+     <style> block above so Modal.show's `.vis` class can override
+     `display:none` without an inline-style specificity fight. -->
+<div id="settingsModal">
+  <div id="settingsBox">
+    <h2>⚙ SETTINGS</h2>
     <div id="settingsList" style="display:flex;flex-direction:column;gap:12px"></div>
-    <button id="settingsCloseBtn" style="margin-top:16px;width:100%;padding:8px;background:#2a4a2a;border:1px solid #4a8a4a;color:#aaffaa;border-radius:4px;cursor:pointer;font-size:13px">Close</button>
+    <button id="settingsCloseBtn">Close</button>
   </div>
 </div>
 <!-- Trigger-build modal — appears when a buildOnDraw card is drawn.
