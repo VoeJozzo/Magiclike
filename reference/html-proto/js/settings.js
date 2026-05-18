@@ -26,7 +26,25 @@ const DEFAULTS = {
   cardFontTitle: "'Cinzel', Georgia, serif",          // name, type, P/T, damage
   cardFontBody:  "Georgia, serif",                    // oracle text, stickers
   cardFontPip:   "Arial, sans-serif",                 // mana pip numbers, bumped arrow
+  cardFontSizeTitle: 1,                               // multiplier; 1 = baseline
+  cardFontSizeBody:  1,
+  cardFontSizePip:   1,
 };
+
+// Per-slot font-size multipliers offered in the settings dropdown. Each
+// scales the slot's baseline font-sizes (defined in CSS) by the given
+// factor. 1.0 = current size.
+const FONT_SIZE_OPTIONS = [
+  { label: '70%',  value: 0.7 },
+  { label: '80%',  value: 0.8 },
+  { label: '90%',  value: 0.9 },
+  { label: '100% (default)', value: 1 },
+  { label: '110%', value: 1.1 },
+  { label: '125%', value: 1.25 },
+  { label: '150%', value: 1.5 },
+  { label: '175%', value: 1.75 },
+  { label: '200%', value: 2 },
+];
 
 // Per-slot picker options. Each entry is { label, value } where value is the
 // CSS font-family string. Adding a new font: drop the @font-face into the
@@ -109,6 +127,9 @@ function set(key, value) {
     if (key === 'cardFontTitle') document.documentElement.style.setProperty('--card-font-title', value);
     if (key === 'cardFontBody')  document.documentElement.style.setProperty('--card-font-body', value);
     if (key === 'cardFontPip')   document.documentElement.style.setProperty('--card-font-pip', value);
+    if (key === 'cardFontSizeTitle') document.documentElement.style.setProperty('--card-fsize-title', value);
+    if (key === 'cardFontSizeBody')  document.documentElement.style.setProperty('--card-fsize-body', value);
+    if (key === 'cardFontSizePip')   document.documentElement.style.setProperty('--card-fsize-pip', value);
   }
 }
 
@@ -127,8 +148,11 @@ function applyFontsToRoot() {
   root.setProperty('--card-font-title', data.cardFontTitle);
   root.setProperty('--card-font-body', data.cardFontBody);
   root.setProperty('--card-font-pip', data.cardFontPip);
+  root.setProperty('--card-fsize-title', data.cardFontSizeTitle);
+  root.setProperty('--card-fsize-body', data.cardFontSizeBody);
+  root.setProperty('--card-fsize-pip', data.cardFontSizePip);
 }
 
-return { get, set, getAll, applyFontsToRoot, FONT_OPTIONS, FONT_PRESETS };
+return { get, set, getAll, applyFontsToRoot, FONT_OPTIONS, FONT_PRESETS, FONT_SIZE_OPTIONS };
 
 })();

@@ -438,24 +438,45 @@ function renderSettings() {
 
   // Rows: per-slot pickers. Changing any of these flips the preset to Custom
   // (the next renderSettings call recomputes activePresetName()).
-  function makeFontRow(labelText, settingsKey) {
+  function makeFontRow(labelText, fontKey, sizeKey) {
     const row = makeRow(labelText);
     row.appendChild(makeSelect(
       SETTINGS.FONT_OPTIONS,
-      SETTINGS.get(settingsKey),
+      SETTINGS.get(fontKey),
       (val) => {
-        SETTINGS.set(settingsKey, val);
+        SETTINGS.set(fontKey, val);
         // Re-render the preset dropdown so it switches to "Custom" if the
         // new trio doesn't match a preset.
         presetSelect.value = activePresetName();
         try { render(); } catch (_) {}
       }
     ));
+    // Size dropdown sits inline under the font dropdown so the two controls
+    // visually pair up per slot.
+    const sizeRow = document.createElement('div');
+    sizeRow.style.cssText = 'display:flex;align-items:center;gap:6px;margin-top:2px';
+    const sizeLabel = document.createElement('span');
+    sizeLabel.textContent = 'Size';
+    sizeLabel.style.cssText = 'color:#889;font-size:11px;min-width:30px';
+    sizeRow.appendChild(sizeLabel);
+    const sizeSelect = makeSelect(
+      SETTINGS.FONT_SIZE_OPTIONS,
+      SETTINGS.get(sizeKey),
+      (val) => {
+        // makeSelect serializes values as strings via option.value; coerce
+        // back to number so the CSS var gets a numeric multiplier.
+        SETTINGS.set(sizeKey, Number(val));
+        try { render(); } catch (_) {}
+      }
+    );
+    sizeSelect.style.flex = '1';
+    sizeRow.appendChild(sizeSelect);
+    row.appendChild(sizeRow);
     list.appendChild(row);
   }
-  makeFontRow('Title font (name / type / P/T)', 'cardFontTitle');
-  makeFontRow('Body font (oracle / stickers)',  'cardFontBody');
-  makeFontRow('Pip font (mana numbers)',        'cardFontPip');
+  makeFontRow('Title font (name / type / P/T)', 'cardFontTitle', 'cardFontSizeTitle');
+  makeFontRow('Body font (oracle / stickers)',  'cardFontBody',  'cardFontSizeBody');
+  makeFontRow('Pip font (mana numbers)',        'cardFontPip',   'cardFontSizePip');
 }
 
 function continueRun() {
