@@ -14,6 +14,7 @@ For html-proto deferred work, see [`reference/html-proto/BACKLOG.md`](../referen
 ## Open
 
 ### Rules-engine correctness
+- **Cleanup-step discard to max hand size (MTG 514.3).** Engine has a CLEANUP phase but doesn't enforce the discard-down-to-7 rule. New action `KIND_DISCARD_CARD` needed; UI picker for the human player; AI heuristic for opp (pick lowest-value cards, mirror the JS prototype). Card-framework's `Hand.max_hand_size` is currently bumped to 100 in `_make_hand` as a visual-layer safety net — proper engine enforcement makes that workaround removable. Surfaced playing the Phase 6 demo deck (opp got mana-screwed, drew to 11+ cards, hit the card-framework hand cap which manifested as face-down strandings).
 - **"Intervening if" predicate re-check at trigger resolution.** Currently `engine/predicates/predicates.gd` is consulted at trigger queue time only. MTG rules check the condition again on resolution (rule 603.4). Matters when a between-events action invalidates the condition (e.g., a "while you control X" trigger where X leaves play between queue and resolution). Deferred from Phase 4.
 - **Non-self triggers exercised in tests.** The `self_only=false` listener path in trigger draining is implemented but no card or test currently exercises it. Add when a card legitimately needs a non-self listener.
 

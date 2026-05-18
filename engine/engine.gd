@@ -161,7 +161,8 @@ const _PHASE4_5_DEMO_DECK := {
 }
 
 
-# Multi-color showcase deck — exercises every Phase 4.5c/5a addition.
+# Multi-color showcase deck — exercises every Phase 4.5c/5a addition
+# plus the Phase 6 seed cards ported from html-proto.
 const _PHASE5_SHOWCASE_DECK := {
 	"mountain": 4, "forest": 4, "island": 4, "plains": 3, "swamp": 3,
 	"counterspell": 2,
@@ -179,6 +180,15 @@ const _PHASE5_SHOWCASE_DECK := {
 	"giant_growth": 2,
 	"grizzly_bears": 1,
 	"bear_cub": 1,
+	# Phase 6 seed (one of each, so the showcase visibly exercises them).
+	"dawn_angel": 1,
+	"air_elemental": 1,
+	"mist_djinn": 1,
+	"cloud_pegasus": 1,
+	"white_knight": 1,
+	"goblin_duelist": 1,
+	"blood_knight": 1,
+	"ember_drake": 1,
 }
 
 
