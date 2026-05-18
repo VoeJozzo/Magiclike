@@ -62,6 +62,9 @@ func _ready() -> void:
 	super._ready()
 	custom_minimum_size = card_size
 	size = card_size
+	# Override the addon's default hover_scale (1.1) — 1.25 makes hover-zoom
+	# actually useful for reading P/T and oracle text at a glance.
+	hover_scale = 1.25
 	if Engine.is_editor_hint():
 		return
 	_build_text_overlay()

@@ -49,12 +49,36 @@ func _update_target_positions() -> void:
 			lands.append(card)
 		else:
 			creatures.append(card)
+	# Group lands by color in WUBRG order so the row reads as W..W U..U B..B
+	# R..R G..G C..C — easier to count "how many Forests do I have" at a glance.
+	lands.sort_custom(_compare_lands_by_color)
 	var creature_y: float = 0.0 if creatures_on_top else _ROW_GAP
 	var land_y: float = _ROW_GAP if creatures_on_top else 0.0
 	var creature_spacing := _adaptive_spacing(creatures.size(), _MAX_CREATURE_SPACING, _MIN_CREATURE_SPACING)
 	var land_spacing := _adaptive_spacing(lands.size(), _MAX_LAND_SPACING, _MIN_LAND_SPACING)
 	_layout_row(creatures, Vector2(0.0, creature_y), creature_spacing)
 	_layout_row(lands, Vector2(0.0, land_y), land_spacing)
+
+
+# WUBRG color ordering for land sort. Lands with no mana_produced (shouldn't
+# happen for vanilla basics; here for safety) sort to the end.
+const _COLOR_ORDER := {"W": 0, "U": 1, "B": 2, "R": 3, "G": 4, "C": 5}
+
+static func _land_color_key(card: Card) -> int:
+	var card_id: String = card.card_info.get("card_id", "")
+	if card_id == "":
+		return 99
+	var template: CardResource = CardDatabase.get_card(card_id)
+	if template == null or not (template is LandResource):
+		return 99
+	var produced: Array = template.mana_produced
+	if produced.is_empty():
+		return 99
+	return _COLOR_ORDER.get(String(produced[0]), 99)
+
+
+static func _compare_lands_by_color(a: Card, b: Card) -> bool:
+	return _land_color_key(a) < _land_color_key(b)
 
 
 # Spread cards across _AVAILABLE_WIDTH if they fit at max_spacing; compress
