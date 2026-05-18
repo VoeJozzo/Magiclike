@@ -575,45 +575,33 @@ function applyTileColor(div, slot) {
 // pair, transform, and ripUp candidates — anywhere we show a slot's card.
 // Returns a DOM element. `slot` is the runState slot (with current stickers);
 // `tpl` is the resolved template.
+// Reward-modal card tile. Delegates to makeCardEl (the same renderer used
+// for hand/board cards), so the SETTINGS.cardFrameStyle toggle propagates
+// to the reward picker too. The slot (when present) carries stickers /
+// staples / rolls; we build a runtime card with those baked in so the tile
+// reflects the slot's actual state (effective cost, statBoost stats,
+// sticker badges, granted keywords).
+//
+// Splice's "merged preview" passes slot=null with a synthesized template
+// not in CARDS — that case is handled inline in renderReward via
+// makeCard(baseTpl, [], ..., stapledTpls=[...]) so the merged card is a
+// real runtime card with all stapled mechanics; it doesn't come through
+// this function.
 function makeRewardCardEl(tpl, slot) {
-  // If the slot has staples, render the synthesized template so the player
-  // sees the merged name/cost/text. Falls back to the passed tpl when
-  // there's no slot or no staples.
-  if (slot && Array.isArray(slot.stapledTpls) && slot.stapledTpls.length > 0) {
-    tpl = ENGINE.synthesizeStapledTemplate(slot.tplId, slot.stapledTpls);
-  }
-  const cardEl = document.createElement('div');
-  cardEl.className = 'rwd-pair-card';
-  const stats = tpl.type === 'Creature' ? `${tpl.power}/${tpl.toughness}` : '';
-  let displayStats = stats;
-  if (tpl.type === 'Creature' && slot) {
-    let bonus = 0;
-    for (const sId of slot.stickers) {
-      const s = STICKERS[sId];
-      if (s && s.kind === 'statBoost') bonus += (s.power || 0);
-    }
-    if (bonus > 0) displayStats = `${tpl.power + bonus}/${tpl.toughness + bonus}*`;
-  }
-  const stickerSummary = slot ? stickerBadgesHtml(slot.stickers, true, slot.empowerRolls, slot.tplId, slot.stapledTpls, slot.subtypeRolls) : '';
-  cardEl.innerHTML =
-    `<div class="art">${artHtml(tpl.art, '·')}</div>` +
-    `<div class="name">${tpl.name}</div>` +
-    `<div class="type">${tpl.type}</div>` +
-    (displayStats ? `<div class="stats">${displayStats}</div>` : '') +
-    stickerSummary;
-  // Long-press → full popup with current stickers + reduced cost preview.
-  if (slot) {
-    const popupCost = tpl.cost ? {...tpl.cost} : undefined;
-    if (popupCost) {
-      const reductions = slot.stickers.filter(sId => sId === 'costMinus1').length;
-      if (reductions > 0) popupCost.C = Math.max(0, (popupCost.C || 0) - reductions);
-    }
-    const popupCard = {...tpl, cost: popupCost, stickers: slot.stickers.slice(), empowerRolls: (slot.empowerRolls || []).slice(), subtypeRolls: (slot.subtypeRolls || []).slice()};
-    attachLongPress(cardEl, popupCard);
-  } else {
-    attachLongPress(cardEl, tpl);
-  }
-  return cardEl;
+  const tplId = (slot && slot.tplId) || tpl.tplId;
+  const card = ENGINE.makeCard(
+    tplId,
+    (slot && slot.stickers) || [],
+    undefined,
+    (slot && slot.empowerRolls) || [],
+    undefined, undefined,
+    (slot && slot.stapledTpls) || [],
+    (slot && slot.subtypeRolls) || []
+  );
+  const el = makeCardEl(card, { inHand: true });
+  // 2x scale for the reward picker -- same showcase size as draft picks.
+  el.style.setProperty('--scale', '2');
+  return el;
 }
 
 // Map node tooltip — tap shows briefly, long-press shows while held (mobile-friendly).
@@ -973,16 +961,22 @@ function renderReward() {
         const baseTpl = baseSlot ? CARDS[baseSlot.tplId] : null;
         const stapleTpl = stapleSlot ? CARDS[stapleSlot.tplId] : null;
         if (!baseTpl || !stapleTpl) return;
-        // Build the merged-result template. The base may already be stapled
-        // (multi-stapling supported), so synthesize against the full prior
-        // stapledTpls plus the new staple. ENGINE.synthesizeStapledTemplate
-        // is the same path makeRewardCardEl uses internally for stapled
-        // slots, so the preview matches what the resolved card will look
-        // like once applySplice mutates the slot.
+        // Build the merged-result card. The base may already be stapled
+        // (multi-stapling supported), so include the full prior stapledTpls
+        // plus the new staple. ENGINE.makeCard internally calls
+        // synthesizeStapledTemplate when stapledTpls is non-empty, so the
+        // resulting card is a real runtime card with all merged mechanics
+        // applied -- name, cost, effects, etc. -- matching what
+        // applySplice will produce once the player picks.
         const priorStaples = Array.isArray(baseSlot.stapledTpls) ? baseSlot.stapledTpls : [];
-        const mergedTpl = ENGINE.synthesizeStapledTemplate(
+        const mergedCard = ENGINE.makeCard(
           baseSlot.tplId,
-          priorStaples.concat([stapleSlot.tplId])
+          [],                               // no stickers on merged preview
+          undefined,
+          [],                               // no empowerRolls
+          undefined, undefined,
+          priorStaples.concat([stapleSlot.tplId]),
+          []
         );
         const div = document.createElement('div');
         div.className = 'rwd-pair rwd-pair-splice';
@@ -1004,10 +998,13 @@ function renderReward() {
         arrow.className = 'rwd-pair-plus';
         arrow.textContent = '→';
         div.appendChild(arrow);
-        // Merged preview (right). No slot — synthesis already rolled in
-        // any prior staples; sticker badges from inputs won't show on the
-        // preview (they DO transfer at resolve time — see applySplice).
-        div.appendChild(makeRewardCardEl(mergedTpl, null));
+        // Merged preview (right). Render via makeCardEl directly with the
+        // pre-built mergedCard (which already has stapled mechanics baked
+        // in). Sticker badges from the inputs don't show on the preview;
+        // they DO transfer at resolve time (see applySplice).
+        const mergedEl = makeCardEl(mergedCard, { inHand: true });
+        mergedEl.style.setProperty('--scale', '2');
+        div.appendChild(mergedEl);
         div.onclick = () => pickRewardCandidateClick(idx);
         optionsEl.appendChild(div);
         return;
@@ -1207,26 +1204,22 @@ function renderDraft() {
   const packEl = document.getElementById('draftPack');
   packEl.innerHTML = '';
   for (const tplId of pack) {
-    const tpl = CARDS[tplId];
-    const div = document.createElement('div');
-    // Base class only; multi-color cards (Sword and Sorcery, future hybrids)
-    // get a flag-stripe gradient via applyTileColorFromTpl, mono-color cards
-    // get the col-X CSS class. Same renderer the splice-merge tiles use.
-    div.className = 'draft-pick';
-    applyTileColorFromTpl(div, tpl);
-    const costHtml = tpl.cost ? renderManaSymbols(formatCostBraced(tpl.cost)) : '';
-    const isCreature = tpl.type === 'Creature';
-    const stats = isCreature ? `${tpl.power}/${tpl.toughness}` : '';
-    div.innerHTML =
-      `<div class="art">${artHtml(tpl.art, '·')}</div>` +
-      `<div class="name">${tpl.name}</div>` +
-      `<div class="cost">${costHtml}</div>` +
-      `<div class="type">${tpl.type}${tpl.sub ? ' — ' + tpl.sub : ''}</div>` +
-      (stats ? `<div class="stats">${stats}</div>` : '') +
-      (tpl.text ? `<div class="text">${renderManaSymbols(escapeHtml(tpl.text))}</div>` : '');
-    div.onclick = () => pickDraft(tplId);
-    attachLongPress(div, tpl);
-    packEl.appendChild(div);
+    // Use makeCardEl (the same renderer that builds hand/board cards) so
+    // draft picks pick up the v2 frame design automatically when the
+    // SETTINGS.cardFrameStyle is 'new', and the classic wireframe when
+    // 'classic'. Build a vanilla card instance from the template -- the
+    // draft pack isn't slot-bound yet, no stickers or runtime state.
+    const card = ENGINE.makeCard(tplId);
+    const el = makeCardEl(card);
+    // Showcase scale -- v2 cards render at 2x (160x224) for the picker so
+    // the player can read them. --scale is a no-op on the classic .card
+    // (it's hardcoded 62x88); classic-mode draft picks render at hand
+    // size, which is a tolerable fallback.
+    el.style.setProperty('--scale', '2');
+    el.style.cursor = 'pointer';
+    el.onclick = () => pickDraft(tplId);
+    // Long-press is wired by makeCardEl already (via attachLongPress).
+    packEl.appendChild(el);
   }
   // Footer: list of picks so far. If the player picked a Neow boon, show
   // it as the first entry with a ✦ marker so it's visually distinct from
