@@ -330,6 +330,31 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
 .card-v2.col-G .v2-pt{background-image:url('assets/frames/pt_box_g.png')}
 .card-v2.col-C .v2-pt{background-image:url('assets/frames/pt_box_c.png')}
 
+/* Cost-bumped marker (City Guardian etc. taxing the cast). Tiny orange ↑
+   sits inside .v2-cost alongside the pips when effective cost > base. */
+.card-v2 .v2-bumped{
+  color:#ffaa44;
+  font-family:Arial,sans-serif;
+  font-size:calc(4px * var(--scale));
+  font-weight:bold;
+  line-height:1;
+  margin-left:calc(1px * var(--scale));
+}
+
+/* Damage badge: red number bottom-left for creatures that have taken damage.
+   Mirrors P/T's bottom-right placement. */
+.card-v2 .v2-damage{
+  position:absolute;
+  left:calc(4px * var(--scale));
+  top:calc(99px * var(--scale));
+  font-family:'Cinzel',Georgia,serif;
+  font-size:calc(7px * var(--scale));
+  color:#ff4040;
+  font-weight:bold;
+  line-height:1;
+  text-shadow:0 0 calc(2px * var(--scale)) #000;
+}
+
 /* Tapped state: 85deg rotation (matches existing .card.tapped). */
 .card-v2.tapped{transform:rotate(85deg)}
 

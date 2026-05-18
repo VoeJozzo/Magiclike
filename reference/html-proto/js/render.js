@@ -1089,7 +1089,108 @@ function artHtml(art, fallback) {
   return art;
 }
 
+// Pixel-art v2 in-hand / on-board card. Builds the 80x112 frame at 1x scale
+// (so it renders at native 80x112 pixels). State classes (.tapped/.castable/
+// .targetable/etc.) get applied by the same code paths that decorate the
+// classic .card -- they're added AFTER the element is returned, and the
+// v2 CSS handles each via .card-v2.{state}. Returns the same kind of div
+// the classic path returns, so callers don't need to know which variant.
+function makeCardElV2(card, opts) {
+  const div = document.createElement('div');
+  div.dataset.iid = String(card.iid);
+
+  const [p, t] = card.type === 'Creature'
+    ? ENGINE.getStats(card)
+    : [card.power || 0, card.toughness || 0];
+
+  // Frame color resolution: cost colors > card.color > land's produced
+  // color (Plains -> W) > Colorless. Multicolor uses the first color
+  // (WUBRG order); refining for dual-color frames is a future tweak.
+  const colorKey = (card.colors && card.colors[0])
+    || card.color
+    || (card.type === 'Land' && card.mana)
+    || 'C';
+
+  div.className = 'card-v2 col-' + colorKey +
+    (card.tapped ? ' tapped' : '') +
+    (card.sick ? ' sick' : '');
+
+  const isCreature = card.type === 'Creature';
+
+  // Mana cost pips. In-hand shows the EFFECTIVE cost (cast tax from City
+  // Guardian etc.) with a small ↑ marker when bumped, so the player sees
+  // what they'd actually pay. Anywhere else shows the base cost.
+  const displayCost = (opts && opts.inHand)
+    ? ENGINE.effectiveCastCost(card)
+    : card.cost;
+  let pipsHtml = '';
+  if (displayCost) {
+    if (displayCost.C) {
+      pipsHtml += '<span class="v2-pip col-num">' + displayCost.C + '</span>';
+    }
+    for (const c of ['W','U','B','R','G']) {
+      const n = displayCost[c] || 0;
+      for (let i = 0; i < n; i++) {
+        pipsHtml += '<span class="v2-pip col-' + c + '"></span>';
+      }
+    }
+  }
+  let bumpedMarker = '';
+  if (opts && opts.inHand && card.cost) {
+    const baseC = card.cost.C || 0;
+    const effC = (displayCost && displayCost.C) || 0;
+    if (effC > baseC) bumpedMarker = '<span class="v2-bumped">↑</span>';
+  }
+
+  const typeText = card.type + (card.sub ? ' — ' + card.sub : '');
+
+  // Oracle text WITH keywords (skipKeywords: false) -- the in-hand card has
+  // no separate keyword badge row, so keywords need to inline into the
+  // oracle text via describeCardSegments's keyword preamble.
+  const segs = describeCardSegments(card, {skipKeywords: false});
+  const oracleHtml = segmentsToHtml(segs);
+
+  const artVal = effectiveArt(card);
+  const artInner = isArtUrl(artVal)
+    ? '<img src="' + artVal + '" alt="">'
+    : escapeHtml(artVal || '');
+
+  // Stickers + restrictions pin to the bottom of the text panel per user
+  // direction (v1.0.146 spec note).
+  const stickersInner = (card.stickers && card.stickers.length)
+    ? stickerBadgesHtml(card.stickers, false, card.empowerRolls, card.tplId, card.stapledFrom && card.stapledFrom.stapledTpls, card.subtypeRolls)
+    : '';
+  const restrictInner = restrictionBadgesHtml(card, false);
+  const stickerSection = (stickersInner || restrictInner)
+    ? '<div class="v2-stickers">' + stickersInner + restrictInner + '</div>'
+    : '';
+
+  const ptInner = isCreature ? '<div class="v2-pt">' + p + '/' + t + '</div>' : '';
+  const damageInner = card.damage ? '<div class="v2-damage">' + card.damage + '</div>' : '';
+
+  div.innerHTML =
+    '<div class="v2-title">' +
+      '<div class="v2-name">' + escapeHtml(card.name || '') + '</div>' +
+      '<div class="v2-cost">' + pipsHtml + bumpedMarker + '</div>' +
+    '</div>' +
+    '<div class="v2-art">' + artInner + '</div>' +
+    '<div class="v2-type">' + escapeHtml(typeText) + '</div>' +
+    '<div class="v2-text">' +
+      '<div class="v2-oracle">' + oracleHtml + '</div>' +
+      stickerSection +
+    '</div>' +
+    ptInner + damageInner;
+
+  CONTROLLER.attachLongPress(div, card);
+  return div;
+}
+
 function makeCardEl(card, opts) {
+  // Branch on the user's frame-style setting. v2 = the new 80x112 pixel-art
+  // frame at 1x scale; classic = the existing .card wireframe below.
+  if (typeof SETTINGS !== 'undefined' && SETTINGS.get('cardFrameStyle') === 'new') {
+    return makeCardElV2(card, opts);
+  }
   const div = document.createElement('div');
   // data-iid: lets the target-line overlay find this card's DOM element
   // by iid. Set on every card render (hand + battlefield + zones) so the
