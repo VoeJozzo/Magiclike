@@ -455,6 +455,18 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
 .card-v2.tapped:hover{transform:rotate(85deg) translateY(-3px)}
 .card-v2.v2-cardback:hover{transform:none}
 
+/* Ambient/eligibility states. Subtler than the explicit selection states
+   below -- defined FIRST so the brighter castable/activatable/atk/blk
+   rules override them when both apply (e.g. a creature that's both an
+   eligible blocker AND selected as a blocker shows the brighter .blk).
+   land-tappable: always-on for your untapped lands. Reads as "this can
+   do something" without dominating the battlefield visually.
+   could-atk / could-blk: present during the relevant declaration step
+   for creatures that satisfy canCreatureAttack/canCreatureBlock. */
+.card-v2.land-tappable{box-shadow:0 0 calc(4px * var(--scale)) 0 rgba(68,170,68,0.55)}
+.card-v2.could-atk{box-shadow:0 0 calc(8px * var(--scale)) calc(1px * var(--scale)) rgba(255,68,68,0.55)}
+.card-v2.could-blk{box-shadow:0 0 calc(8px * var(--scale)) calc(1px * var(--scale)) rgba(68,136,255,0.55)}
+
 /* Highlight states. Glow OUTSIDE the frame via box-shadow so the PNG
    texture stays clean (the PNG has no border for us to recolor). Last-
    defined rule wins when a card has multiple states; ordered castable

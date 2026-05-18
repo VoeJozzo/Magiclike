@@ -814,6 +814,22 @@ function renderBf(id, bf, who) {
     if (G.pendingRipSelect && G.pendingRipSelect.who === 'you' && who === 'you') {
       div.classList.add('targetable');
     }
+    // Subtle ambient glow on untapped lands you control -- signals "this
+    // can be tapped for mana" without the full .activatable intensity.
+    if (who === 'you' && card.type === 'Land' && !card.tapped) {
+      div.classList.add('land-tappable');
+    }
+    // Eligibility glow for attackers/blockers during the declaration step.
+    // Distinct (dimmer) from .atk/.blk so SELECTED creatures still pop
+    // brighter than eligible-but-not-selected ones.
+    if (G.phase === 'COMBAT_ATTACK' && G.activePlayer === 'you' && !G.attackersDeclared
+        && who === 'you' && canCreatureAttack(card)) {
+      div.classList.add('could-atk');
+    }
+    if (G.phase === 'COMBAT_BLOCK' && G.activePlayer === 'opp' && !G.blockersDeclared
+        && who === 'you' && canCreatureBlock(card)) {
+      div.classList.add('could-blk');
+    }
     if (who === 'you' && card.type === 'Creature' && card.abilities && !card.tapped && !card.sick) {
       const hasAvail = card.abilities.some((ab, i) => {
         if (ab.effects[0].kind === 'addMana') return true;
