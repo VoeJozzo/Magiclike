@@ -135,6 +135,217 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
 .mana-G{background-image:url('assets/mana/G.png');color:transparent}
 .mana-C{background-image:url('assets/mana/C.png');color:transparent;background-color:transparent}
 */
+
+/* ========================================================================= */
+/* v2 card frame design (80x112 native pixel-art spec).                      */
+/* ========================================================================= */
+/* Defined side-by-side with the existing .card wireframe. Activated by      */
+/* JS render code that emits `.card-v2.col-X` markup when the frame-style    */
+/* toggle is on (step 3 plumbing pending; step 2 just scaffolds the CSS).    */
+/*                                                                           */
+/* Scale via --scale CSS var. Default 1x (hand-card sized); set per context: */
+/*   .card-v2 { --scale: 1 } -- hand/board, 80x112 actual                    */
+/*   .card-v2 { --scale: 2 } -- draft pick, reward modal, 160x224            */
+/*   .card-v2 { --scale: 4 } -- popup showcase, 320x448                      */
+/* All dimensions multiply by --scale on integer-pixel grid so the pixel-art */
+/* texture stays crisp with image-rendering:pixelated.                       */
+/*                                                                           */
+/* The frame_X.png contains all decorative texture (outer border, side       */
+/* braids, title-bar texture, separators, type-bar texture, text-panel       */
+/* background). Per-region child elements absolutely-position at the spec's  */
+/* native pixel coordinates and host their own content (name / cost / art /  */
+/* type / oracle / flavour / stickers / P+T).                                */
+
+.card-v2{
+  --scale: 1;
+  position: relative;
+  width: calc(80px * var(--scale));
+  height: calc(112px * var(--scale));
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+  flex-shrink: 0;
+  cursor: pointer;
+  font-family: 'Cinzel', Georgia, serif;
+  user-select: none;
+}
+.card-v2.col-W{background-image:url('assets/frames/frame_w.png')}
+.card-v2.col-U{background-image:url('assets/frames/frame_u.png')}
+.card-v2.col-B{background-image:url('assets/frames/frame_b.png')}
+.card-v2.col-R{background-image:url('assets/frames/frame_r.png')}
+.card-v2.col-G{background-image:url('assets/frames/frame_g.png')}
+.card-v2.col-C{background-image:url('assets/frames/frame_c.png')}
+.card-v2 > *{position:absolute}
+
+/* Title bar: x=2, y=2, w=76, h=12 (per spec). Houses name + mana cost. */
+.card-v2 .v2-title{
+  left: calc(2px * var(--scale));
+  top: calc(2px * var(--scale));
+  width: calc(76px * var(--scale));
+  height: calc(12px * var(--scale));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 calc(3px * var(--scale));
+  overflow: hidden;
+}
+.card-v2 .v2-name{
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: calc(8px * var(--scale));
+  color: #f0e6c8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  line-height: 1;
+  letter-spacing: calc(0.2px * var(--scale));
+}
+.card-v2 .v2-cost{
+  display: flex;
+  align-items: center;
+  gap: calc(2px * var(--scale));
+  flex-shrink: 0;
+  margin-left: calc(2px * var(--scale));
+}
+
+/* Mana pips inside the cost area (4px diameter per spec). Colored circles
+   with the count rendered inside the generic pip. Matches the existing
+   .mana-W/U/B/R/G palette for visual consistency. */
+.card-v2 .v2-pip{
+  width: calc(4px * var(--scale));
+  height: calc(4px * var(--scale));
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: Arial, sans-serif;
+  font-size: calc(3px * var(--scale));
+  font-weight: bold;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.card-v2 .v2-pip.col-W{background-color:#e8d770;color:#443}
+.card-v2 .v2-pip.col-U{background-color:#5588cc;color:#fff}
+.card-v2 .v2-pip.col-B{background-color:#222;color:#fff}
+.card-v2 .v2-pip.col-R{background-color:#c34433;color:#fff}
+.card-v2 .v2-pip.col-G{background-color:#4a9844;color:#fff}
+.card-v2 .v2-pip.col-C{background-color:#aaa;color:#222}
+.card-v2 .v2-pip.col-num{background-color:#555;color:#fff}
+
+/* Art window: x=8, y=15, w=64, h=32 (matches the native 64x32 pixel-art
+   format we've been shipping for ~61 cards). */
+.card-v2 .v2-art{
+  left: calc(8px * var(--scale));
+  top: calc(15px * var(--scale));
+  width: calc(64px * var(--scale));
+  height: calc(32px * var(--scale));
+  overflow: hidden;
+}
+.card-v2 .v2-art img{
+  width: 100%;
+  height: 100%;
+  display: block;
+  image-rendering: pixelated;
+}
+
+/* Type bar: x=2, y=48, w=76, h=10. */
+.card-v2 .v2-type{
+  left: calc(2px * var(--scale));
+  top: calc(48px * var(--scale));
+  width: calc(76px * var(--scale));
+  height: calc(10px * var(--scale));
+  display: flex;
+  align-items: center;
+  padding: 0 calc(3px * var(--scale));
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: calc(6px * var(--scale));
+  color: #f0e6c8;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Text box: x=2, y=59, w=76, h=51. Houses oracle text + flavour divider
+   + flavour text. On creatures the P/T box overlays the bottom-right
+   corner of this region. Sticker chips pin to the bottom (per user). */
+.card-v2 .v2-text{
+  left: calc(2px * var(--scale));
+  top: calc(59px * var(--scale));
+  width: calc(76px * var(--scale));
+  height: calc(51px * var(--scale));
+  padding: calc(3px * var(--scale));
+  font-family: 'Press Start 2P', monospace;
+  font-size: calc(5px * var(--scale));
+  color: #d8d4c8;
+  line-height: 1.5;
+  overflow: hidden;
+}
+.card-v2 .v2-oracle{
+  /* No special treatment -- inherits v2-text styling. */
+}
+.card-v2 .v2-flavor{
+  margin-top: calc(2px * var(--scale));
+  padding-top: calc(2px * var(--scale));
+  border-top: 1px solid rgba(255,255,255,0.18);
+  color: #b0a890;
+}
+.card-v2 .v2-stickers{
+  /* Pinned to bottom of text box per user direction -- tries not to cover
+     the oracle/flavour above. Tiny chips, color-coded gold. */
+  position: absolute;
+  bottom: calc(2px * var(--scale));
+  left: calc(3px * var(--scale));
+  right: calc(3px * var(--scale));
+  font-size: calc(4px * var(--scale));
+  font-family: 'Press Start 2P', monospace;
+  color: #e8c840;
+  line-height: 1.2;
+  text-align: center;
+}
+
+/* P/T box overlay: x=61, y=101, w=15, h=9. Creatures only -- emit
+   .v2-pt only when card.type === 'Creature'. */
+.card-v2 .v2-pt{
+  left: calc(61px * var(--scale));
+  top: calc(101px * var(--scale));
+  width: calc(15px * var(--scale));
+  height: calc(9px * var(--scale));
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: calc(6px * var(--scale));
+  color: #e8c840;
+  font-weight: bold;
+  line-height: 1;
+}
+.card-v2.col-W .v2-pt{background-image:url('assets/frames/pt_box_w.png')}
+.card-v2.col-U .v2-pt{background-image:url('assets/frames/pt_box_u.png')}
+.card-v2.col-B .v2-pt{background-image:url('assets/frames/pt_box_b.png')}
+.card-v2.col-R .v2-pt{background-image:url('assets/frames/pt_box_r.png')}
+.card-v2.col-G .v2-pt{background-image:url('assets/frames/pt_box_g.png')}
+.card-v2.col-C .v2-pt{background-image:url('assets/frames/pt_box_c.png')}
+
+/* Tapped state: 85deg rotation (matches existing .card.tapped). */
+.card-v2.tapped{transform:rotate(85deg)}
+
+/* Highlight states (castable / target / atk / blk). Glow OUTSIDE the
+   2px black border via box-shadow so the frame texture stays clean. */
+.card-v2.castable{box-shadow:0 0 calc(6px * var(--scale)) #44cc44}
+.card-v2.targetable{box-shadow:0 0 calc(6px * var(--scale)) #ffff00; animation:tpulse .6s infinite alternate}
+.card-v2.atk{box-shadow:0 0 calc(6px * var(--scale)) #ff4444}
+.card-v2.blk{box-shadow:0 0 calc(6px * var(--scale)) #4488ff}
+.card-v2.sick{opacity:.65}
+.card-v2.discardable{box-shadow:0 0 calc(6px * var(--scale)) #ff9944}
+
+/* ========================================================================= */
+/* End v2 card frame                                                         */
+/* ========================================================================= */
+
 .cdmg{position:absolute;bottom:14px;right:2px;background:#cc0000;color:#fff;border-radius:50%;width:14px;height:14px;font-size:9px;display:flex;align-items:center;justify-content:center;font-weight:bold}
 .cmod{position:absolute;top:1px;left:2px;font-size:8px;color:#88ddff;background:rgba(0,0,0,.6);border-radius:2px;padding:0 2px}
 .stickers-row{display:flex;flex-wrap:wrap;gap:2px;margin-top:3px;padding:0 2px;justify-content:center}
