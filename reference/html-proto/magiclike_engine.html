@@ -429,8 +429,17 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
 
 /* Popup mode: the .in-popup class is added by openCardPopupV2. Switches
    --card-text-scale to the user-set --card-popup-text-scale so a 4x popup
-   can render text at, e.g., 2x instead of 4x. */
+   can render text at, e.g., 2x instead of 4x. Also makes the oracle text
+   scrollable (hidden scrollbar) so long abilities aren't clipped -- the
+   small frame's text box has a fixed height, so a 4x popup of a card
+   with a paragraph of text still wouldn't fit at the default scaling. */
 .card-v2.in-popup{--card-text-scale: var(--card-popup-text-scale)}
+.card-v2.in-popup .v2-text{
+  overflow-y: auto;
+  scrollbar-width: none;          /* Firefox */
+  -ms-overflow-style: none;       /* legacy Edge */
+}
+.card-v2.in-popup .v2-text::-webkit-scrollbar{display:none}  /* Chromium / Safari / iOS+Android Chrome */
 
 /* Tapped state: 85deg rotation (matches existing .card.tapped). */
 .card-v2.tapped{transform:rotate(85deg)}
