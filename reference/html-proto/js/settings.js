@@ -51,12 +51,17 @@ const FONT_SIZE_OPTIONS_PIP   = buildSizeOptions(3, [2, 3, 4, 5, 6]);
 // CSS font-family string. Adding a new font: drop the @font-face into the
 // HTML, then add an entry here.
 const FONT_OPTIONS = [
-  { label: 'Cinzel (display serif)',  value: "'Cinzel', Georgia, serif" },
-  { label: 'Georgia (serif)',         value: "Georgia, serif" },
-  { label: 'Press Start 2P (pixel)',  value: "'Press Start 2P', monospace" },
-  { label: 'Arial (sans-serif)',      value: "Arial, sans-serif" },
-  { label: 'System UI',               value: "system-ui, sans-serif" },
-  { label: 'Monospace',               value: "monospace" },
+  { label: 'Cinzel (display serif)',     value: "'Cinzel', Georgia, serif" },
+  { label: 'Almendra (fantasy serif)',   value: "'Almendra', Georgia, serif" },
+  { label: 'Inknut Antiqua (book serif)', value: "'Inknut Antiqua', Georgia, serif" },
+  { label: 'Inknut Antiqua Light',       value: "'Inknut Antiqua Light', Georgia, serif" },
+  { label: 'Philosopher (humanist)',     value: "'Philosopher', Georgia, serif" },
+  { label: 'Georgia (serif)',            value: "Georgia, serif" },
+  { label: 'Pixelify Sans (pixel)',      value: "'Pixelify Sans', monospace" },
+  { label: 'Press Start 2P (pixel)',     value: "'Press Start 2P', monospace" },
+  { label: 'Arial (sans-serif)',         value: "Arial, sans-serif" },
+  { label: 'System UI',                  value: "system-ui, sans-serif" },
+  { label: 'Monospace',                  value: "monospace" },
 ];
 
 // Named presets — one-click bundles. The settings UI writes all three font

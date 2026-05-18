@@ -55,6 +55,38 @@ schema later.
 - **Files:** `PressStart2P-Regular.ttf` (bitmap font, single weight)
 - **Note:** "Reserved Font Name" clause — if we modify/derive from this font, the derivative must use a different name (we won't be modifying it, just embedding).
 
+### Almendra (Google Fonts) — fantasy serif
+
+- **Location in tree:** `assets/fonts/Almendra/`
+- **Used for:** offered in the card-font picker (v1.0.156) for runtime experimentation
+- **License:** SIL Open Font License v1.1 (`assets/fonts/Almendra/OFL.txt`)
+- **Source:** Google Fonts
+- **Files:** Regular, Bold, Italic, BoldItalic (`Almendra-*.ttf`)
+
+### Inknut Antiqua (Google Fonts) — antique book serif
+
+- **Location in tree:** `assets/fonts/Inknut_Antiqua/`
+- **Used for:** offered in the card-font picker (v1.0.156) for runtime experimentation; the Light cut is also registered as a separate `'Inknut Antiqua Light'` family so the picker can offer it without a font-weight UI
+- **License:** SIL Open Font License v1.1 (`assets/fonts/Inknut_Antiqua/OFL.txt`)
+- **Source:** Google Fonts
+- **Files:** Light, Regular, Medium, SemiBold, Bold, ExtraBold, Black (`InknutAntiqua-*.ttf`)
+
+### Philosopher (Google Fonts) — humanist serif/sans
+
+- **Location in tree:** `assets/fonts/Philosopher/`
+- **Used for:** offered in the card-font picker (v1.0.156) for runtime experimentation
+- **License:** SIL Open Font License v1.1 (`assets/fonts/Philosopher/OFL.txt`)
+- **Source:** Google Fonts
+- **Files:** Regular, Bold, Italic, BoldItalic (`Philosopher-*.ttf`)
+
+### Pixelify Sans (Google Fonts) — pixel-art sans-serif
+
+- **Location in tree:** `assets/fonts/Pixelify_Sans/`
+- **Used for:** offered in the card-font picker (v1.0.156) for runtime experimentation — softer pixel alternative to Press Start 2P
+- **License:** SIL Open Font License v1.1 (`assets/fonts/Pixelify_Sans/OFL.txt`)
+- **Source:** Google Fonts
+- **Files:** variable font (`PixelifySans-VariableFont_wght.ttf`, weight axis 400–700) plus Regular, Medium, SemiBold, Bold static cuts
+
 ---
 
 ## AI assistance
@@ -71,4 +103,3 @@ schema later.
 
 - Exact pixellab terms (download/distribution clauses).
 - Any sound effects or music if/when they're added.
-- Fonts (none external currently — using system / Georgia / Arial fallbacks).
