@@ -301,22 +301,24 @@ func set_combat_highlight(state: String) -> void:
 
 
 # State: "playable" (green border), "target" (yellow), else clear.
-# Right-click inspection mode. Scales 3x, lifts above neighbors. Position is
-# nudged toward viewport center so the focused card doesn't clip offscreen
-# when focused at the edges (e.g. a hand card on the far right).
+# Right-click inspection mode. Scales 3x, lifts above neighbors, recenters
+# globally so the giant card lands in the middle of the viewport regardless
+# of which zone the source was in.
 func enter_focus() -> void:
 	if is_focused:
 		return
 	is_focused = true
 	_focus_orig_z = z_index
 	_focus_orig_position = position
-	pivot_offset = card_size / 2.0  # scale from center
+	pivot_offset = card_size / 2.0  # scale from center, not corner
 	scale = Vector2.ONE * _FOCUS_SCALE
 	z_index = _FOCUS_Z
-	# Nudge toward viewport center so the giant scaled card stays on-screen.
-	# Approx half the screen size; tune if cards still clip on small monitors.
+	# Center in viewport via global_position so we don't fight with whatever
+	# parent CardContainer's offset is. card_size is the base size; the
+	# rendered footprint is card_size * _FOCUS_SCALE, so subtract half of
+	# the SCALED size to center the visible card on the viewport center.
 	var viewport_center := Vector2(960, 540)
-	position = viewport_center - (card_size * _FOCUS_SCALE * 0.5)
+	global_position = viewport_center - (card_size * _FOCUS_SCALE * 0.5)
 
 
 func exit_focus() -> void:
@@ -351,8 +353,11 @@ func _handle_mouse_pressed() -> void:
 # Compounding fix: snap to Vector2.ONE before starting a new tween, so a
 # rapid in-out sequence can't capture a mid-flight scale as the baseline.
 # Pivot is set to card center so the scale grows from the middle, not the
-# top-left.
+# top-left. Skipped entirely when the card is focused — focus owns the
+# visual transform.
 func _start_hover_animation() -> void:
+	if is_focused:
+		return
 	if hover_tween and hover_tween.is_valid():
 		hover_tween.kill()
 		hover_tween = null
@@ -374,6 +379,8 @@ func _start_hover_animation() -> void:
 
 
 func _stop_hover_animation() -> void:
+	if is_focused:
+		return
 	if hover_tween and hover_tween.is_valid():
 		hover_tween.kill()
 		hover_tween = null
@@ -387,14 +394,25 @@ func _stop_hover_animation() -> void:
 	hover_tween.tween_method(_update_hover_position, position, original_position, hover_duration)
 
 
-# Addon bug workaround: when a card is mid-hover (scale tweening toward
-# 1.1x) and the engine calls move() on it, the state machine transitions
-# HOVERING → MOVING. The MOVING enter handler kills hover_tween but never
-# resets scale, so the card gets stuck at the interpolated mid-tween
-# value (~1.05 typically) for the rest of its life. _finish_move only
-# resets rotation, not scale. Override the state entry to snap scale
-# back to ONE whenever MOVING starts.
+# Skip all addon state transitions while focused — focus owns scale, z_index,
+# and position. Without this guard, mouse_exited (which fires when focus
+# moves the card out from under the cursor) triggers HOVERING → IDLE, which
+# resets z_index back to stored_z_index, dropping the card behind its
+# neighbors instantly. Same effect with mouse_entered re-firing HOVERING
+# state and clobbering scale via _start_hover_animation.
+#
+# Addon bug workaround (MOVING entry): when a card is mid-hover (scale
+# tweening toward 1.1x) and the engine calls move() on it, MOVING entry
+# kills hover_tween but never resets scale. Snap to Vector2.ONE here.
 func _enter_state(state, from_state) -> void:
+	if is_focused:
+		return
 	super._enter_state(state, from_state)
 	if state == DraggableState.MOVING:
 		scale = Vector2.ONE
+
+
+func _exit_state(state) -> void:
+	if is_focused:
+		return
+	super._exit_state(state)
