@@ -212,6 +212,12 @@ func _make_hand(name_str: String, pos: Vector2) -> Hand:
 	zone.position = pos
 	zone.size = Vector2(700, 120)
 	zone.mouse_filter = Control.MOUSE_FILTER_PASS
+	# card-framework's default max_hand_size is 10 — when exceeded, the spawn
+	# path fails silently and visuals end up face-down / stranded. The MTG
+	# rule (514.3 — discard to max hand size at end of turn) is a proper
+	# engine concern parked in BACKLOG.md; until that lands, set the cap
+	# generously so the visual layer never trips it.
+	zone.max_hand_size = 100
 	_card_manager.add_child(zone)
 	return zone
 
