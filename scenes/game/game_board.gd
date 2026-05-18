@@ -829,6 +829,16 @@ func _on_hand_card_gui_input(event: InputEvent, visual: Card) -> void:
 		else:
 			_log_local("[color=#ff8888]Discard a card from YOUR hand.[/color]")
 		return
+	# Spell-target mode (Counterspell etc.): clicking the spell's CARD VISUAL
+	# at the stack anchor should work the same as clicking its stack-panel
+	# button. Delegate to the panel handler. Triggers don't have a card
+	# visual on the stack, so this only ever fires for spell entries.
+	if _pending_cast_iid != -1 and _pending_target_filter == "spell":
+		var s_target: EngineState = RulesEngine.state()
+		var found_target = s_target.find_instance(iid)
+		if found_target != null and found_target.zone_name == "stack":
+			_on_stack_entry_clicked(iid)
+			return
 	# If we're already in spell-targeting mode, this 2nd click is ignored.
 	# Log so the player knows targeting is pending (most likely cause of
 	# "nothing happens when I click").
