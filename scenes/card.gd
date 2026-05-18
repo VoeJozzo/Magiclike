@@ -7,13 +7,22 @@ extends Card
 #   captured `original_scale = scale` at each hover-start, so rapid mouse in/out
 #   captured a mid-tween value and ballooned the card) is fixed by snapping
 #   scale to Vector2.ONE before starting a new hover.
-# - Hover rotation disabled — addon tweens rotation to 0° on hover, which
-#   flickers our tap-rotated (90°) battlefield cards back to upright.
+# - Hover rotation: opt-in via `hover_animates_rotation` (default false). Off
+#   for battlefield + current hand because we use rotation to indicate tap
+#   state (90° = tapped); the addon's tween-to-0° would flicker tapped
+#   permanents back to upright on hover. When we add a fanned hand layout
+#   later, flip the flag to true on hand cards to get the addon's intended
+#   straighten-on-hover effect for the fan.
 # Text populated by apply_card_text() after card_info lands (post-_ready).
 
 const _PADDING := 6
 const _NAME_HEIGHT := 22
 const _TYPE_HEIGHT := 18
+
+# Opt-in rotation animation on hover. Off by default because rotation is
+# semantic state (tap) on battlefield cards. Flip to true on cards that
+# live in a fanned hand layout so the addon's straighten-on-hover applies.
+@export var hover_animates_rotation: bool = false
 
 var _name_label: Label
 var _cost_label: Label
@@ -297,7 +306,7 @@ func _handle_mouse_pressed() -> void:
 		card_container.on_card_pressed(self)
 
 
-# Position + scale hover (rotation skipped — see header comment).
+# Position + scale hover, with rotation gated by `hover_animates_rotation`.
 # Compounding fix: snap to Vector2.ONE before starting a new tween, so a
 # rapid in-out sequence can't capture a mid-flight scale as the baseline.
 # Pivot is set to card center so the scale grows from the middle, not the
@@ -309,6 +318,7 @@ func _start_hover_animation() -> void:
 		scale = Vector2.ONE  # discard any in-flight scale value
 
 	original_position = position
+	original_hover_rotation = rotation  # only used when hover_animates_rotation
 	current_hover_position = position
 	pivot_offset = card_size / 2.0  # scale from center, not corner
 
@@ -317,6 +327,8 @@ func _start_hover_animation() -> void:
 	var target_position := Vector2(position.x, position.y - hover_distance)
 	hover_tween.tween_property(self, "position", target_position, hover_duration)
 	hover_tween.tween_property(self, "scale", Vector2.ONE * hover_scale, hover_duration)
+	if hover_animates_rotation:
+		hover_tween.tween_property(self, "rotation", deg_to_rad(hover_rotation), hover_duration)
 	hover_tween.tween_method(_update_hover_position, position, target_position, hover_duration)
 
 
@@ -329,4 +341,6 @@ func _stop_hover_animation() -> void:
 	hover_tween.set_parallel(true)
 	hover_tween.tween_property(self, "position", original_position, hover_duration)
 	hover_tween.tween_property(self, "scale", Vector2.ONE, hover_duration)
+	if hover_animates_rotation:
+		hover_tween.tween_property(self, "rotation", original_hover_rotation, hover_duration)
 	hover_tween.tween_method(_update_hover_position, position, original_position, hover_duration)
