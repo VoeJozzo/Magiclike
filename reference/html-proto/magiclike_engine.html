@@ -447,12 +447,25 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
 }
 .card-v2.col-W .v2-flavor{color:#444}
 
-/* Highlight states (castable / target / atk / blk). Glow OUTSIDE the
-   2px black border via box-shadow so the frame texture stays clean. */
+/* Hover lift -- mirrors classic .card:hover. translateY pops the card up
+   and z-index ensures the lifted card paints above its siblings so the
+   shadow isn't clipped by neighbor cards. Cardbacks (face-down opponent
+   hand placeholders) opt out -- they aren't interactive. */
+.card-v2:hover{transform:translateY(-5px);z-index:20}
+.card-v2.tapped:hover{transform:rotate(85deg) translateY(-3px)}
+.card-v2.v2-cardback:hover{transform:none}
+
+/* Highlight states. Glow OUTSIDE the frame via box-shadow so the PNG
+   texture stays clean (the PNG has no border for us to recolor). Last-
+   defined rule wins when a card has multiple states; ordered castable
+   -> activatable -> targetable -> atk -> blk -> pblk -> discardable so
+   combat states visually override "you can use this" states. */
 .card-v2.castable{box-shadow:0 0 calc(6px * var(--scale)) #44cc44}
+.card-v2.activatable{box-shadow:0 0 calc(6px * var(--scale)) #44aa44}
 .card-v2.targetable{box-shadow:0 0 calc(6px * var(--scale)) #ffff00; animation:tpulse .6s infinite alternate}
 .card-v2.atk{box-shadow:0 0 calc(6px * var(--scale)) #ff4444}
 .card-v2.blk{box-shadow:0 0 calc(6px * var(--scale)) #4488ff}
+.card-v2.pblk{box-shadow:0 0 calc(6px * var(--scale)) #ffff44}
 .card-v2.sick{opacity:.65}
 .card-v2.discardable{box-shadow:0 0 calc(6px * var(--scale)) #ff9944}
 
