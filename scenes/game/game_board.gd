@@ -64,6 +64,11 @@ func _is_awaiting_blocks() -> bool:
 # instead of falling through to the spell-target path.
 var _picking_trigger_target: bool = false
 
+# MTG 514.3 cleanup-step discard picker mode. Derived from
+# state.awaiting_discard.player_key == "you". When true, hand clicks dispatch
+# KIND_DISCARD_CARD instead of running cast logic.
+var _picking_discard: bool = false
+
 # Delta-tracked engine log (EngineState is RefCounted; no log_appended signal).
 var _engine_log_seen: int = 0
 
@@ -296,6 +301,9 @@ func _refresh_ui() -> void:
 		_enter_trigger_target_mode(s.awaiting_target_for_trigger)
 	elif was_picking and not _picking_trigger_target:
 		_exit_trigger_target_mode()
+	# MTG 514.3 cleanup-step discard picker mode.
+	_picking_discard = not s.awaiting_discard.is_empty() \
+		and s.awaiting_discard.get("player_key", "") == "you"
 	# Player panels
 	_you_panel.update_from_player(s.you)
 	_opp_panel.update_from_player(s.opp)
@@ -305,7 +313,17 @@ func _refresh_ui() -> void:
 	var priority_name: String
 	var pp: Player = s.priority_player()
 	if pp == null:
-		priority_name = "(declaring blocks)" if s.awaiting_block_declaration else "(none)"
+		if s.awaiting_block_declaration:
+			priority_name = "(declaring blocks)"
+		elif not s.awaiting_discard.is_empty():
+			var discard_owner: String = s.awaiting_discard.get("player_key", "")
+			var n: int = int(s.awaiting_discard.get("count_remaining", 0))
+			priority_name = "(%s discarding %d)" % [
+				s.player_by_key(discard_owner).name if discard_owner != "" else "?",
+				n,
+			]
+		else:
+			priority_name = "(none)"
 	else:
 		priority_name = pp.name
 	_phase_label.text = "Turn %d — %s — Priority: %s" % [
@@ -323,6 +341,12 @@ func _refresh_ui() -> void:
 
 # Phase-aware action-button label; targeting/block-mode overrides; stack-non-empty → Resolve.
 func _update_action_button(s: EngineState) -> void:
+	if _picking_discard:
+		var n: int = int(s.awaiting_discard.get("count_remaining", 0))
+		_action_button.text = "Discard %d card%s" % [n, "s" if n != 1 else ""]
+		_action_button.disabled = true  # not a click target; just a prompt
+		return
+	_action_button.disabled = false
 	if _picking_trigger_target:
 		_action_button.text = "Pick a target…"
 		return
@@ -549,7 +573,11 @@ func _apply_combat_highlights(s: EngineState) -> void:
 #     and other actions are not relevant because targeting is in progress).
 func _apply_legality_glows(s: EngineState) -> void:
 	var glow_state: Dictionary = {}  # iid -> "playable" or "target"
-	if _pending_cast_iid != -1:
+	if _picking_discard:
+		# Every card in your hand is a legal discard. Glow them as targets.
+		for card in s.you.hand:
+			glow_state[card.instance_id] = "target"
+	elif _pending_cast_iid != -1:
 		_collect_legal_target_iids(s, _pending_target_filter, glow_state)
 	elif _picking_trigger_target:
 		var filter: String = s.awaiting_target_for_trigger.get("filter", "")
@@ -789,6 +817,17 @@ func _on_hand_card_gui_input(event: InputEvent, visual: Card) -> void:
 		return
 	var iid: int = visual.card_info.get("instance_id", -1)
 	if iid == -1:
+		return
+	# MTG 514.3 cleanup-step discard picker: hand clicks discard the card.
+	# Overrides every other interpretation — you have to discard down before
+	# anything else can happen.
+	if _picking_discard:
+		var s_disc: EngineState = RulesEngine.state()
+		var found_disc = s_disc.find_instance(iid)
+		if found_disc != null and found_disc.zone_name == "hand" and found_disc.controller.key == "you":
+			RulesEngine.execute_action(Action.make_discard_card(iid))
+		else:
+			_log_local("[color=#ff8888]Discard a card from YOUR hand.[/color]")
 		return
 	# If we're already in spell-targeting mode, this 2nd click is ignored.
 	# Log so the player knows targeting is pending (most likely cause of
