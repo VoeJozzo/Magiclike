@@ -427,35 +427,6 @@ function renderSettings() {
   fontHeader.style.cssText = 'color:#ffd700;font-size:13px;font-weight:bold;letter-spacing:.06em;margin-top:6px;padding-top:8px;border-top:1px solid #333';
   list.appendChild(fontHeader);
 
-  // Row: preset dropdown (writes all three slots).
-  const presetEntries = Object.entries(SETTINGS.FONT_PRESETS);
-  // Compute which preset (if any) matches the current trio; otherwise show 'Custom'.
-  function activePresetName() {
-    const cur = {
-      title: SETTINGS.get('cardFontTitle'),
-      body:  SETTINGS.get('cardFontBody'),
-      pip:   SETTINGS.get('cardFontPip'),
-    };
-    for (const [name, preset] of presetEntries) {
-      if (preset.title === cur.title && preset.body === cur.body && preset.pip === cur.pip) return name;
-    }
-    return '__custom__';
-  }
-  const presetRow = makeRow('Preset');
-  const presetOptions = presetEntries.map(([name]) => ({ label: name, value: name }));
-  presetOptions.push({ label: 'Custom', value: '__custom__' });
-  const presetSelect = makeSelect(presetOptions, activePresetName(), (val) => {
-    if (val === '__custom__') return; // no-op; custom means "leave the slots as-is"
-    const preset = SETTINGS.FONT_PRESETS[val];
-    SETTINGS.set('cardFontTitle', preset.title);
-    SETTINGS.set('cardFontBody',  preset.body);
-    SETTINGS.set('cardFontPip',   preset.pip);
-    renderSettings(); // re-sync per-slot dropdowns to the preset's values
-    try { render(); } catch (_) {}
-  });
-  presetRow.appendChild(presetSelect);
-  list.appendChild(presetRow);
-
   // Footnote: size labels are anchored to 1x scale (the card browser /
   // hand / board). At 2x scale (popup, draft, rewards) every shown size
   // doubles. Keeping the label-at-1x convention because that matches the
@@ -465,23 +436,58 @@ function renderSettings() {
   scaleNote.style.cssText = 'color:#778;font-size:10px;font-style:italic;margin-top:-2px';
   list.appendChild(scaleNote);
 
-  // Rows: per-slot pickers. Changing any of these flips the preset to Custom
-  // (the next renderSettings call recomputes activePresetName()).
-  function makeFontRow(labelText, fontKey, sizeKey, sizeOptions) {
-    const row = makeRow(labelText);
+  // Slot-shaped preset dropdown. Applying a preset writes the title font
+  // to all four title-slot elements, body font to both body-slot elements,
+  // pip font to both pip-slot elements. The 'Custom' option appears when
+  // the current per-element values don't all match a single preset.
+  const presetEntries = Object.entries(SETTINGS.FONT_PRESETS);
+  function slotFontsMatch(slot, fontValue) {
+    return SETTINGS.CARD_FONT_ELEMENTS
+      .filter(el => el.slot === slot)
+      .every(el => SETTINGS.get(SETTINGS.settingsKeyFont(el.key)) === fontValue);
+  }
+  function activePresetName() {
+    for (const [name, preset] of presetEntries) {
+      if (slotFontsMatch('title', preset.title)
+          && slotFontsMatch('body', preset.body)
+          && slotFontsMatch('pip', preset.pip)) {
+        return name;
+      }
+    }
+    return '__custom__';
+  }
+  const presetRow = makeRow('Preset (applies to slot)');
+  const presetOptions = presetEntries.map(([name]) => ({ label: name, value: name }));
+  presetOptions.push({ label: 'Custom', value: '__custom__' });
+  const presetSelect = makeSelect(presetOptions, activePresetName(), (val) => {
+    if (val === '__custom__') return;
+    const preset = SETTINGS.FONT_PRESETS[val];
+    const slotToFont = { title: preset.title, body: preset.body, pip: preset.pip };
+    for (const el of SETTINGS.CARD_FONT_ELEMENTS) {
+      SETTINGS.set(SETTINGS.settingsKeyFont(el.key), slotToFont[el.slot]);
+    }
+    renderSettings();
+    try { render(); } catch (_) {}
+  });
+  presetRow.appendChild(presetSelect);
+  list.appendChild(presetRow);
+
+  // Per-element rows. Eight elements grouped by slot under headers so the
+  // panel reads top-to-bottom: title elements (name/type/PT/damage), body
+  // elements (oracle text/stickers), pip elements (mana number/cost arrow).
+  function makeElementRow(element) {
+    const row = makeRow(element.label);
+    const fontKey = SETTINGS.settingsKeyFont(element.key);
+    const sizeKey = SETTINGS.settingsKeyFsize(element.key);
     row.appendChild(makeSelect(
       SETTINGS.FONT_OPTIONS,
       SETTINGS.get(fontKey),
       (val) => {
         SETTINGS.set(fontKey, val);
-        // Re-render the preset dropdown so it switches to "Custom" if the
-        // new trio doesn't match a preset.
         presetSelect.value = activePresetName();
         try { render(); } catch (_) {}
       }
     ));
-    // Size dropdown sits inline under the font dropdown so the two controls
-    // visually pair up per slot.
     const sizeRow = document.createElement('div');
     sizeRow.style.cssText = 'display:flex;align-items:center;gap:6px;margin-top:2px';
     const sizeLabel = document.createElement('span');
@@ -489,11 +495,9 @@ function renderSettings() {
     sizeLabel.style.cssText = 'color:#889;font-size:11px;min-width:30px';
     sizeRow.appendChild(sizeLabel);
     const sizeSelect = makeSelect(
-      sizeOptions,
+      SETTINGS.FONT_SIZE_OPTIONS_BY_ELEMENT[element.key],
       SETTINGS.get(sizeKey),
       (val) => {
-        // makeSelect serializes values as strings via option.value; coerce
-        // back to number so the CSS var gets a numeric multiplier.
         SETTINGS.set(sizeKey, Number(val));
         try { render(); } catch (_) {}
       }
@@ -503,9 +507,18 @@ function renderSettings() {
     row.appendChild(sizeRow);
     list.appendChild(row);
   }
-  makeFontRow('Title font (name / type / P/T)', 'cardFontTitle', 'cardFontSizeTitle', SETTINGS.FONT_SIZE_OPTIONS_TITLE);
-  makeFontRow('Body font (oracle / stickers)',  'cardFontBody',  'cardFontSizeBody',  SETTINGS.FONT_SIZE_OPTIONS_BODY);
-  makeFontRow('Pip font (mana numbers)',        'cardFontPip',   'cardFontSizePip',   SETTINGS.FONT_SIZE_OPTIONS_PIP);
+  function makeSlotHeader(text) {
+    const h = document.createElement('div');
+    h.textContent = text;
+    h.style.cssText = 'color:#aab;font-size:11px;font-weight:bold;letter-spacing:.08em;margin-top:6px;text-transform:uppercase';
+    list.appendChild(h);
+  }
+  makeSlotHeader('Title elements');
+  SETTINGS.CARD_FONT_ELEMENTS.filter(e => e.slot === 'title').forEach(makeElementRow);
+  makeSlotHeader('Body elements');
+  SETTINGS.CARD_FONT_ELEMENTS.filter(e => e.slot === 'body').forEach(makeElementRow);
+  makeSlotHeader('Pip elements');
+  SETTINGS.CARD_FONT_ELEMENTS.filter(e => e.slot === 'pip').forEach(makeElementRow);
 }
 
 function continueRun() {
