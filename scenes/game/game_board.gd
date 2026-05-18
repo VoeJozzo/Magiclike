@@ -118,6 +118,7 @@ func _build_ui() -> void:
 	# Library moved to X=340 to clear the player panel at (40, 40, w=280).
 	_opp_library = _make_pile("OppLibrary", Vector2(340, 40), false)
 	_opp_battlefield = _make_battlefield("OppBattlefield", Vector2(560, 120), false)
+	_opp_battlefield.player_key = "opp"
 	_opp_graveyard = _make_pile("OppGraveyard", Vector2(1700, 60), true)
 	_opp_hand = _make_hand("OppHand", Vector2(960, 60))
 
@@ -125,6 +126,7 @@ func _build_ui() -> void:
 	# creatures sitting closer to center on their side). Library moved to
 	# X=340 so it doesn't sit on top of the you-panel.
 	_you_battlefield = _make_battlefield("YouBattlefield", Vector2(560, 560), true)
+	_you_battlefield.player_key = "you"
 	_you_library = _make_pile("YouLibrary", Vector2(340, 800), false)
 	_you_graveyard = _make_pile("YouGraveyard", Vector2(1700, 880), true)
 	_you_hand = _make_hand("YouHand", Vector2(960, 980))

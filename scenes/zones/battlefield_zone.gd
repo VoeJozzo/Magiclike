@@ -7,6 +7,10 @@ extends CardContainer
 signal card_pressed(card: Card)
 
 @export var creatures_on_top: bool = true
+# Which player's battlefield this is. Used to decide whether creatures should
+# be ordered as attackers (active side) or blockers (defending side) when
+# combat is in progress. Set by game_board on construction.
+@export var player_key: String = ""
 
 # Adaptive spacing: spread cards across `_AVAILABLE_WIDTH` if they fit at
 # `_MAX_*_SPACING`, otherwise compress down to `_MIN_*_SPACING` (cascade).
@@ -52,12 +56,57 @@ func _update_target_positions() -> void:
 	# Group lands by color in WUBRG order so the row reads as W..W U..U B..B
 	# R..R G..G C..C — easier to count "how many Forests do I have" at a glance.
 	lands.sort_custom(_compare_lands_by_color)
+	# Reorder creatures by combat involvement when an attack is in progress.
+	# Attackers come first on attacker's side; blockers come first on defender's
+	# side, grouped by the attacker they block — so the line overlay reads
+	# left-to-right with parallel (non-crossing) attacker/blocker pairs.
+	creatures = _combat_sorted_creatures(creatures)
 	var creature_y: float = 0.0 if creatures_on_top else _ROW_GAP
 	var land_y: float = _ROW_GAP if creatures_on_top else 0.0
 	var creature_spacing := _adaptive_spacing(creatures.size(), _MAX_CREATURE_SPACING, _MIN_CREATURE_SPACING)
 	var land_spacing := _adaptive_spacing(lands.size(), _MAX_LAND_SPACING, _MIN_LAND_SPACING)
 	_layout_row(creatures, Vector2(0.0, creature_y), creature_spacing)
 	_layout_row(lands, Vector2(0.0, land_y), land_spacing)
+
+
+# When combat is live (s.attackers non-empty), reorder creatures so combat
+# pairs line up vertically across the two battlefields. Attacker's side gets
+# attackers in s.attackers order, then non-attackers. Defender's side gets
+# blockers grouped by which attacker they block (in attacker order), then
+# non-blockers. With matching attacker order on both sides, the line overlay
+# from combat_lines.gd renders as roughly parallel verticals instead of a
+# crossed mess.
+func _combat_sorted_creatures(creatures: Array) -> Array:
+	var s = RulesEngine.state()
+	if s == null or s.attackers.is_empty() or player_key == "":
+		return creatures
+	var iam_attacker_side: bool = (player_key == s.active_player_key)
+	if iam_attacker_side:
+		var attacking: Array = []
+		var non_attacking: Array = []
+		for card in creatures:
+			var iid: int = card.card_info.get("instance_id", -1)
+			if iid in s.attackers:
+				attacking.append(card)
+			else:
+				non_attacking.append(card)
+		attacking.sort_custom(func(a, b):
+			return s.attackers.find(a.card_info["instance_id"]) < s.attackers.find(b.card_info["instance_id"]))
+		return attacking + non_attacking
+	# Defender side: order blockers by their attacker's position in s.attackers.
+	var blocking: Array = []
+	var non_blocking: Array = []
+	for card in creatures:
+		var iid: int = card.card_info.get("instance_id", -1)
+		if s.blockers.has(iid):
+			blocking.append(card)
+		else:
+			non_blocking.append(card)
+	blocking.sort_custom(func(a, b):
+		var aiid_a: int = s.blockers.get(a.card_info["instance_id"], -1)
+		var aiid_b: int = s.blockers.get(b.card_info["instance_id"], -1)
+		return s.attackers.find(aiid_a) < s.attackers.find(aiid_b))
+	return blocking + non_blocking
 
 
 # WUBRG color ordering for land sort. Lands with no mana_produced (shouldn't
