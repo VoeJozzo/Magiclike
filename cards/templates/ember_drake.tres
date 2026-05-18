@@ -9,7 +9,6 @@ toughness = 2
 keywords = Array[String](["flying", "haste"])
 card_id = "ember_drake"
 display_name = "Ember Drake"
-front_image_path = "ember_drake.png"
 card_types = Array[String](["creature"])
 subtypes = Array[String](["drake"])
 mana_cost = {
