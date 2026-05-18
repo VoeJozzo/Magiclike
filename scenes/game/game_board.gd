@@ -99,6 +99,11 @@ func _ready() -> void:
 
 func _build_ui() -> void:
 	anchors_preset = Control.PRESET_FULL_RECT
+	# Control default is mouse_filter = STOP, which consumes mouse events
+	# at the root and prevents _unhandled_input from firing for clicks on
+	# empty space. PASS lets clicks bubble up to _unhandled_input so the
+	# focus-dismiss-on-any-click handler there fires.
+	mouse_filter = Control.MOUSE_FILTER_PASS
 	var bg := ColorRect.new()
 	bg.color = Color(0.05, 0.06, 0.08)
 	bg.anchor_right = 1.0

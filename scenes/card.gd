@@ -34,6 +34,7 @@ const _FOCUS_Z: int = 200
 var is_focused: bool = false
 var _focus_orig_z: int = 0
 var _focus_orig_position: Vector2
+var _focus_orig_mouse_filter: int = Control.MOUSE_FILTER_STOP
 
 var _name_label: Label
 var _cost_label: Label
@@ -303,16 +304,20 @@ func set_combat_highlight(state: String) -> void:
 # State: "playable" (green border), "target" (yellow), else clear.
 # Right-click inspection mode. Scales 3x, lifts above neighbors, recenters
 # globally so the giant card lands in the middle of the viewport regardless
-# of which zone the source was in.
+# of which zone the source was in. Sets mouse_filter to IGNORE so the addon's
+# state machine doesn't see any mouse events during focus — clicks pass
+# through to game_board's _unhandled_input which handles dismissal.
 func enter_focus() -> void:
 	if is_focused:
 		return
 	is_focused = true
 	_focus_orig_z = z_index
 	_focus_orig_position = position
+	_focus_orig_mouse_filter = mouse_filter
 	pivot_offset = card_size / 2.0  # scale from center, not corner
 	scale = Vector2.ONE * _FOCUS_SCALE
 	z_index = _FOCUS_Z
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	# Center in viewport via global_position so we don't fight with whatever
 	# parent CardContainer's offset is. card_size is the base size; the
 	# rendered footprint is card_size * _FOCUS_SCALE, so subtract half of
@@ -328,20 +333,22 @@ func exit_focus() -> void:
 	scale = Vector2.ONE
 	z_index = _focus_orig_z
 	position = _focus_orig_position
-	# Force a clean IDLE state. While we were focused, super._enter_state /
-	# _exit_state were no-ops, but change_state still updated current_state
-	# internally. That internal value may have drifted, leaving the addon's
-	# state machine confused about where it really is.
+	mouse_filter = _focus_orig_mouse_filter
+	# is_mouse_inside was either never updated (mouse_filter IGNORE during
+	# focus = no mouse_entered/exited fires) or stale from pre-focus. Reset
+	# it so the addon's state machine starts fresh.
+	is_mouse_inside = false
+	# Force a clean IDLE — current_state may have drifted while focused.
 	if current_state != DraggableState.IDLE:
 		change_state(DraggableState.IDLE)
-	# Godot doesn't auto-refire mouse_entered when a control moves under a
-	# stationary cursor. After we restore position, the cursor may now be
-	# back over the card but is_mouse_inside is still false (cleared when
-	# the card moved away during focus). Manually hit-test and trigger
-	# HOVERING so hover works without requiring a mouse-wiggle.
+	# Godot doesn't auto-refire mouse_entered when a control's mouse_filter
+	# changes back to STOP under a stationary cursor. Hit-test and explicitly
+	# transition to HOVERING if the cursor is over us right now, so hover
+	# works without requiring the user to mouse-off-and-back-on.
 	var mouse_global: Vector2 = get_global_mouse_position()
 	if get_global_rect().has_point(mouse_global):
-		_on_mouse_enter()
+		is_mouse_inside = true
+		change_state(DraggableState.HOVERING)
 
 
 func set_legality_glow(state: String) -> void:
