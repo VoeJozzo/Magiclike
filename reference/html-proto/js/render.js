@@ -823,11 +823,11 @@ function renderBf(id, bf, who) {
     // Distinct (dimmer) from .atk/.blk so SELECTED creatures still pop
     // brighter than eligible-but-not-selected ones.
     if (G.phase === 'COMBAT_ATTACK' && G.activePlayer === 'you' && !G.attackersDeclared
-        && who === 'you' && canCreatureAttack(card)) {
+        && who === 'you' && ENGINE.canCreatureAttack(card)) {
       div.classList.add('could-atk');
     }
     if (G.phase === 'COMBAT_BLOCK' && G.activePlayer === 'opp' && !G.blockersDeclared
-        && who === 'you' && canCreatureBlock(card)) {
+        && who === 'you' && ENGINE.canCreatureBlock(card)) {
       div.classList.add('could-blk');
     }
     if (who === 'you' && card.type === 'Creature' && card.abilities && !card.tapped && !card.sick) {
