@@ -1,19 +1,13 @@
 @tool
 extends Card
 
-# Magiclike Card subclass: text overlays + selective card-framework drag/hover overrides.
-# - Drag disabled — engine drives all moves; release-drop would bounce played lands back.
-# - Hover scale: kept (1.1x by default). Compounding bug from the addon (which
-#   captured `original_scale = scale` at each hover-start, so rapid mouse in/out
-#   captured a mid-tween value and ballooned the card) is fixed by snapping
-#   scale to Vector2.ONE before starting a new hover.
-# - Hover rotation: opt-in via `hover_animates_rotation` (default false). Off
-#   for battlefield + current hand because we use rotation to indicate tap
-#   state (90° = tapped); the addon's tween-to-0° would flicker tapped
-#   permanents back to upright on hover. When we add a fanned hand layout
-#   later, flip the flag to true on hand cards to get the addon's intended
-#   straighten-on-hover effect for the fan.
-# Text populated by apply_card_text() after card_info lands (post-_ready).
+# Magiclike Card subclass: text overlays + addon hover/drag tweaks.
+# - Drag disabled (engine drives moves; release-drop would bounce lands back).
+# - Hover scale at 1.25x with compounding bug fixed via Vector2.ONE baseline.
+# - Hover rotation opt-in via hover_animates_rotation (default false) — see
+#   below; we use rotation for tap state, addon's tween-to-0° would flicker it.
+# - Right-click → focus mode (3x scale, viewport center) for card inspection.
+# See docs/BACKLOG.md for the upstream-to-card-framework PR these all enable.
 
 const _PADDING := 6
 const _NAME_HEIGHT := 22

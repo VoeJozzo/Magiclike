@@ -28,14 +28,13 @@ For html-proto deferred work, see [`reference/html-proto/BACKLOG.md`](../referen
   MIT-licensed, PR-friendly project. Worth doing once our local fix holds up in playtest. Once landed upstream + we bump versions, our `scenes/card.gd::_start_hover_animation` override goes away entirely.
 
 ### UI / UX
-- **Board layout / cramping pass.** Manual playtest at 1856×1044 surfaced several independent issues that compound: battlefield horizontal overflow with 8+ creatures, stack-anchor visual colliding with the top-row land cascade, right-side log bleed into card zones. Joe's directional preferences:
-  - **Hover-to-zoom** (or long-press / double-click) on any card to show a full-size version. Standard card-game UX. Pairs with making the default tile smaller — small tiles fit more, hover gives detail on demand.
-  - **Adaptive spacing** for both creatures AND lands, modeled on how the existing Hand container squeezes cards together as count grows. Right now `_CREATURE_SPACING` and `_LAND_SPACING` in `BattlefieldZone.gd` are fixed constants.
-  - **Multi-row creature layout** when count exceeds a row's capacity.
+- **Board layout / cramping pass.** Open items from playtest at 1856×1044 that are still unaddressed:
   - **Stack as expandable popup / tray.** Currently the stack panel sits permanently top-center, colliding with the top-row land cascade. Move it into a tray the player can open/close as needed.
-  - **NOT land piling.** Looked promising on paper but Joe's playtest shows lands don't even fill their row — the problem isn't volume, it's spacing and the stack anchor collision.
-  Worth a dedicated session — touches `BattlefieldZone`, `_make_battlefield`, `_make_hand`, `card.gd` (for hover-zoom), the stack panel scenes. ~300-500 LOC.
+  - **Multi-row creature layout** when count exceeds a row's capacity.
+  - **Right-side log bleed** into the card zones — log panel resize/clip or move out of the card area.
+  - **Smaller card tiles** to fit more on screen, paired with the existing right-click focus for detail-on-demand.
+  Done in earlier sessions: adaptive spacing for creatures and lands, color clumping for lands, right-click focus for inspection. Touches `BattlefieldZone`, `_make_battlefield`, `_make_hand`, the stack panel scenes.
 - **Config for priority-pass stops.** MTGO-style "stop on cast / stop on draw / stop on attack" settings — let the player control which auto-passes are allowed and when the engine hands them priority explicitly. Engine has the seams (single `execute_action(pass_priority)` entry point); needs a settings layer and game-board wiring.
 - **Manual "hold priority" UI for the human player.** Currently the player has a Space/Enter keybind that passes priority; no UI to retain priority for a follow-up instant. Becomes relevant once players have multi-instant lines they want to chain.
 - **Touch/mobile: long-press to inspect.** Desktop currently uses right-click for card inspection (focus mode). When/if we port to touch, replace the right-click trigger with a long-press on the card visual (~400ms hold without significant movement). Existing `_toggle_focus` / `enter_focus` / `exit_focus` infrastructure carries over; only the input gesture changes.
-- **Card art for the 23 existing cards.** Placeholders today. The html-proto has pixel-art PNGs for some cards under `reference/html-proto/cards/<tplId>/art.png` that could port over for shared names (Lightning Bolt, Counterspell, etc.).
+- **Card art for the 23 existing cards.** Placeholders today. Four PNGs (blood_knight, cloud_pegasus, ember_drake, goblin_duelist) are already ported to `cards/images/` but unwired — they're art *inserts*, not full card faces, and our `scenes/card.tscn` treats `front_image` as the entire face. Wiring needs a frame+slot rebuild of card.tscn (Frame TextureRect + Art TextureRect children), then TresCardFactory sets both. After that, port the remaining cards' art from `reference/html-proto/cards/<tplId>/art.png`.
