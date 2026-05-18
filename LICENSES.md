@@ -35,6 +35,26 @@ schema later.
 - **Source:** pixellab.ai
 - **License:** (user-managed account; check pixellab's terms of service for distribution rights — placeholder until exact terms are documented)
 
+### Cinzel (Google Fonts) — display font
+
+- **Location in tree:** `assets/fonts/Cinzel/`
+- **Used for:** card name + type + P/T text in the new 80×112 card frame design (`ui` branch)
+- **License:** SIL Open Font License v1.1 (`assets/fonts/Cinzel/OFL.txt`)
+- **Copyright:** © 2020 The Cinzel Project Authors (https://github.com/NDISCOVER/Cinzel)
+- **Source:** Google Fonts
+- **Files:** variable font (`Cinzel-VariableFont_wght.ttf`) + 6 static weights (Black, Bold, ExtraBold, Medium, Regular, SemiBold)
+- **Note:** placed at repo root rather than in `reference/html-proto/assets/` so the Godot port can also load via `res://assets/fonts/Cinzel/...`.
+
+### Press Start 2P (Google Fonts) — pixel body font
+
+- **Location in tree:** `assets/fonts/Press_Start_2P/`
+- **Used for:** card body text + flavour text in the new 80×112 card frame design (`ui` branch)
+- **License:** SIL Open Font License v1.1 (`assets/fonts/Press_Start_2P/OFL.txt`)
+- **Copyright:** © 2012 The Press Start 2P Project Authors (cody@zone38.net), with Reserved Font Name "Press Start 2P"
+- **Source:** Google Fonts
+- **Files:** `PressStart2P-Regular.ttf` (bitmap font, single weight)
+- **Note:** "Reserved Font Name" clause — if we modify/derive from this font, the derivative must use a different name (we won't be modifying it, just embedding).
+
 ---
 
 ## AI assistance
