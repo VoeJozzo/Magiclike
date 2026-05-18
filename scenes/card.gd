@@ -286,15 +286,6 @@ func set_legality_glow(state: String) -> void:
 			_legality_glow.glow_color = Color(0, 0, 0, 0)
 
 
-# Visual emphasis for "this card is currently being targeted by something."
-# Used when spell-target mode highlights a stack entry the player can counter.
-# scale + pivot around the card's center; resets cleanly when called with false.
-func set_target_emphasis(emphasized: bool) -> void:
-	pivot_offset = card_size / 2.0
-	scale = Vector2(1.15, 1.15) if emphasized else Vector2.ONE
-	z_index = 5 if emphasized else 0  # float above neighbors when emphasized
-
-
 # Skip HOLDING transition (drag-drop unused). Clicks still flow via on_card_pressed/gui_input.
 func _handle_mouse_pressed() -> void:
 	is_pressed = true

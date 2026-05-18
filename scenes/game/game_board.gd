@@ -598,17 +598,6 @@ func _apply_legality_glows(s: EngineState) -> void:
 				continue  # already counted as currently-legal
 			if _can_potentially_cast(card, s):
 				glow_state[card.instance_id] = "playable"
-	# Spell-target mode (Counterspell): visually emphasize the stack visuals
-	# that are legal counter targets. Build a set of iids that match the
-	# "spell on stack, not yours" filter; cards in that set get scaled up.
-	var stack_emphasis: Dictionary = {}
-	if _pending_cast_iid != -1 and _pending_target_filter == "spell":
-		for entry in s.stack.entries:
-			if entry.get("kind", "spell") != "spell":
-				continue
-			if entry.get("controller_key", "") == "you":
-				continue  # can't counter your own spells in MTG by default
-			stack_emphasis[int(entry.get("source_iid", -1))] = true
 	# Apply to every tracked visual. Anything not in the glow set gets
 	# cleared. This keeps the glow in sync with mana / phase / priority
 	# changes without us needing to track previous-frame state.
@@ -617,24 +606,35 @@ func _apply_legality_glows(s: EngineState) -> void:
 		if visual == null or not visual.has_method("set_legality_glow"):
 			continue
 		visual.set_legality_glow(glow_state.get(iid, "none"))
-		if visual.has_method("set_target_emphasis"):
-			visual.set_target_emphasis(stack_emphasis.has(iid))
 
 
 # Phase 5c UI polish: walk the current state and add every iid that's a
 # legal target under the given filter. Used by both the spell-cast target
 # picker and the trigger target picker.
 func _collect_legal_target_iids(s: EngineState, filter: String, out: Dictionary) -> void:
-	# Filters that allow creature targets: glow legal creatures on either
-	# battlefield (modulo hexproof). Player-only or spell-only filters
-	# don't need a creature glow — player panels handle their own.
+	# "spell" filter (Counterspell): glow legal spell entries on the stack.
+	# Their visuals sit at the stack anchor and get the same gold-target
+	# treatment as a targetable creature would. Triggers can't be countered.
+	# (Player-target filters don't glow anything here — the player panels
+	# handle their own targeting affordance.)
+	if filter == "spell":
+		for entry in s.stack.entries:
+			if entry.get("kind", "spell") != "spell":
+				continue
+			if entry.get("controller_key", "") == "you":
+				continue  # MTG default: can't counter your own spells
+			var siid: int = int(entry.get("source_iid", -1))
+			if siid != -1:
+				out[siid] = "target"
+		return
+	# Creature/any/creature_or_player filters: glow legal creatures on
+	# either battlefield (modulo hexproof for opp's side).
 	if filter != "any" and filter != "creature" and filter != "creature_or_player":
 		return
 	for player in [s.you, s.opp]:
 		for c in player.battlefield:
 			if c.template == null or not (c.template is CreatureResource):
 				continue
-			# Hexproof on opponent's creatures means you can't target them.
 			if c.has_keyword("hexproof") and c.controller_key != "you":
 				continue
 			out[c.instance_id] = "target"
