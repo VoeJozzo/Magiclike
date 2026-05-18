@@ -69,6 +69,11 @@ var _picking_trigger_target: bool = false
 # KIND_DISCARD_CARD instead of running cast logic.
 var _picking_discard: bool = false
 
+# Right-click-to-inspect: the currently focused card (if any). One at a time.
+# Toggled by right-click on a card; dismissed by left-click on any card,
+# right-click on the focused card, or Escape.
+var _focused_card: Card = null
+
 # Delta-tracked engine log (EngineState is RefCounted; no log_appended signal).
 var _engine_log_seen: int = 0
 
@@ -828,8 +833,19 @@ func _commit_taps_and_cast(spell_iid: int, targets: Array, lands_to_tap: Array) 
 func _on_hand_card_gui_input(event: InputEvent, visual: Card) -> void:
 	if not (event is InputEventMouseButton):
 		return
-	if not event.pressed or event.button_index != MOUSE_BUTTON_LEFT:
+	if not event.pressed:
 		return
+	# Right-click: toggle focus / inspect mode. Doesn't fall through to cast.
+	if event.button_index == MOUSE_BUTTON_RIGHT:
+		_toggle_focus(visual)
+		return
+	if event.button_index != MOUSE_BUTTON_LEFT:
+		return
+	# Left-click while another card is focused: dismiss the focus first, then
+	# proceed with the click (single-click both unfocuses and clicks the new
+	# target, since holding focus across click would be confusing).
+	if _focused_card != null:
+		_dismiss_focus()
 	var iid: int = visual.card_info.get("instance_id", -1)
 	if iid == -1:
 		return
@@ -1202,12 +1218,39 @@ func _unhandled_input(event: InputEvent) -> void:
 			_on_pass_pressed()
 			get_viewport().set_input_as_handled()
 		KEY_ESCAPE:
+			# Esc dismisses focus (inspect mode) before anything else.
+			if _focused_card != null:
+				_dismiss_focus()
+				get_viewport().set_input_as_handled()
+				return
 			# Cancel spell-targeting or block-selection. (Trigger-target
 			# picks can't be cancelled — the trigger is on the queue and
 			# must resolve with some target.)
 			if _pending_cast_iid != -1 or _pending_block_blocker_iid != -1:
 				_on_pass_pressed()
 				get_viewport().set_input_as_handled()
+
+
+# ─── Card focus (right-click inspect) ─────────────────────────────────────
+
+# Right-click on a card: focus it. Right-click on the already-focused card
+# dismisses. Right-click on a different card switches focus. Touch / mobile
+# would use long-press for the same gesture (BACKLOG when we port).
+func _toggle_focus(visual: Card) -> void:
+	if _focused_card == visual:
+		_dismiss_focus()
+		return
+	if _focused_card != null:
+		_focused_card.exit_focus()
+	_focused_card = visual
+	visual.enter_focus()
+
+
+func _dismiss_focus() -> void:
+	if _focused_card == null:
+		return
+	_focused_card.exit_focus()
+	_focused_card = null
 
 
 # ─── Misc helpers ──────────────────────────────────────────────────────────

@@ -18,11 +18,22 @@ extends Card
 const _PADDING := 6
 const _NAME_HEIGHT := 22
 const _TYPE_HEIGHT := 18
+# Focus mode: card pops to 3x scale + high z when right-clicked. Lets the
+# player read oracle text / P/T at full size without sacrificing the cramped
+# board layout's small default. Click any card / press Esc to dismiss.
+const _FOCUS_SCALE: float = 3.0
+const _FOCUS_Z: int = 200
 
 # Opt-in rotation animation on hover. Off by default because rotation is
 # semantic state (tap) on battlefield cards. Flip to true on cards that
 # live in a fanned hand layout so the addon's straighten-on-hover applies.
 @export var hover_animates_rotation: bool = false
+
+# Focus state. Toggled via enter_focus / exit_focus, called from game_board's
+# right-click handler. _focus_orig_* hold the pre-focus values to restore.
+var is_focused: bool = false
+var _focus_orig_z: int = 0
+var _focus_orig_position: Vector2
 
 var _name_label: Label
 var _cost_label: Label
@@ -290,6 +301,33 @@ func set_combat_highlight(state: String) -> void:
 
 
 # State: "playable" (green border), "target" (yellow), else clear.
+# Right-click inspection mode. Scales 3x, lifts above neighbors. Position is
+# nudged toward viewport center so the focused card doesn't clip offscreen
+# when focused at the edges (e.g. a hand card on the far right).
+func enter_focus() -> void:
+	if is_focused:
+		return
+	is_focused = true
+	_focus_orig_z = z_index
+	_focus_orig_position = position
+	pivot_offset = card_size / 2.0  # scale from center
+	scale = Vector2.ONE * _FOCUS_SCALE
+	z_index = _FOCUS_Z
+	# Nudge toward viewport center so the giant scaled card stays on-screen.
+	# Approx half the screen size; tune if cards still clip on small monitors.
+	var viewport_center := Vector2(960, 540)
+	position = viewport_center - (card_size * _FOCUS_SCALE * 0.5)
+
+
+func exit_focus() -> void:
+	if not is_focused:
+		return
+	is_focused = false
+	scale = Vector2.ONE
+	z_index = _focus_orig_z
+	position = _focus_orig_position
+
+
 func set_legality_glow(state: String) -> void:
 	if _legality_glow == null:
 		return
