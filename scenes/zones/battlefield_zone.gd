@@ -27,6 +27,13 @@ const _ROW_GAP: float = 230.0
 # clumps instead of one continuous strip.
 const _LAND_COLOR_GROUP_GAP: float = 30.0
 
+# Persistent creature display order across renders. Without this, _held_cards
+# iteration determines layout, so combat-driven reorders snap back the
+# moment combat ends. With this, the post-combat order persists into the
+# next layout pass; new creatures (ETBs) join at the end; departing
+# creatures (deaths, returns to hand) drop out cleanly.
+var _creature_iid_order: Array[int] = []
+
 # card-framework quirk: JsonCardFactory.create_card() calls this BEFORE populating card_info,
 # so spawn-time card_info is empty. Trust the caller (game_board spawns into the right zone);
 # only enforce the type filter on drag-drop from another zone.
@@ -59,10 +66,11 @@ func _update_target_positions() -> void:
 			creatures.append(card)
 	# Group lands by color in WUBRG order.
 	lands.sort_custom(_compare_lands_by_color)
-	# Reorder creatures by combat involvement when an attack is in progress.
-	# Minimum-disruption: combatants reorder among themselves in their
-	# existing slots; non-combatants don't move at all.
+	# Apply remembered display order, then apply any combat-driven reorder
+	# on top. Save the final order so post-combat layouts don't snap back.
+	creatures = _apply_persistent_order(creatures)
 	creatures = _combat_sorted_creatures(creatures)
+	_save_creature_order(creatures)
 	var creature_y: float = 0.0 if creatures_on_top else _ROW_GAP
 	var land_y: float = _ROW_GAP if creatures_on_top else 0.0
 	var creature_spacing := _adaptive_spacing(creatures.size(), _MAX_CREATURE_SPACING, _MIN_CREATURE_SPACING)
@@ -100,6 +108,40 @@ func _layout_lands_with_color_groups(lands: Array, offset_from_zone: Vector2) ->
 		card.move(target_pos, _tap_rotation(card))
 		card.can_be_interacted_with = true
 		x += card_spacing
+
+
+# Apply the remembered display order (`_creature_iid_order`) on top of the
+# current `_held_cards`-derived creature list. Cards still in play but
+# already in the list stay in their remembered slots; new arrivals append
+# at the end. Stale iids in the remembered order silently drop out.
+func _apply_persistent_order(creatures: Array) -> Array:
+	if _creature_iid_order.is_empty():
+		return creatures
+	var by_iid: Dictionary = {}
+	for card in creatures:
+		var iid: int = card.card_info.get("instance_id", -1)
+		if iid != -1:
+			by_iid[iid] = card
+	var result: Array = []
+	var placed: Dictionary = {}
+	for iid in _creature_iid_order:
+		if by_iid.has(iid):
+			result.append(by_iid[iid])
+			placed[iid] = true
+	# New creatures (ETBs since last layout) join at the end.
+	for card in creatures:
+		var iid: int = card.card_info.get("instance_id", -1)
+		if iid != -1 and not placed.has(iid):
+			result.append(card)
+	return result
+
+
+func _save_creature_order(creatures: Array) -> void:
+	_creature_iid_order.clear()
+	for card in creatures:
+		var iid: int = card.card_info.get("instance_id", -1)
+		if iid != -1:
+			_creature_iid_order.append(iid)
 
 
 # Minimum-disruption combat reorder. Only the cards involved in combat shift
