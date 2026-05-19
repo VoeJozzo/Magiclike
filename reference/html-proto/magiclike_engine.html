@@ -189,21 +189,22 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
   margin:0 0.05em;background-size:contain;
   background-position:center;background-repeat:no-repeat;
   font-family:Arial,sans-serif}
-/* Color pips: emoji glyph supplies the visual, no backdrop styling. */
-.mana-W, .mana-U, .mana-B, .mana-R, .mana-G { font-family: inherit }
-/* Non-color pips: letter inside a colored disc (no emoji match). */
+/* Color pips: emoji glyph used to supply the visual. v1.0.172 replaces
+   that with SVG art (designed in the manaiconsv13.jsx spec): smooth
+   vector symbols on a colored disc with double-rim. background-image
+   draws the art; color:transparent hides the underlying emoji glyph
+   in the span. */
+.mana-W, .mana-U, .mana-B, .mana-R, .mana-G { font-family: inherit; color: transparent; background-color: transparent }
+.mana-W{background-image:url('../../assets/mana/W.svg')}
+.mana-U{background-image:url('../../assets/mana/U.svg')}
+.mana-B{background-image:url('../../assets/mana/B.svg')}
+.mana-R{background-image:url('../../assets/mana/R.svg')}
+.mana-G{background-image:url('../../assets/mana/G.svg')}
+/* Non-color pips: letter inside a colored disc (no SVG match yet). */
 .mana-C{background-color:#aaa;color:#333;border-radius:50%;font-weight:bold;font-size:0.85em}
 .mana-T{background-color:#888;color:#fff;border-radius:50%;font-weight:bold;font-style:italic;font-size:0.85em;text-shadow:0 0 1px rgba(0,0,0,.6)}
 .mana-X{background-color:#666;color:#fff;border-radius:50%;font-weight:bold;font-size:0.85em;text-shadow:0 0 1px rgba(0,0,0,.6)}
 .mana-num{background-color:#555;color:#fff;border-radius:50%;font-weight:bold;font-size:0.85em;text-shadow:0 0 1px rgba(0,0,0,.6)}
-/* PNG mana art drop-in — uncomment per color when assets/mana/<X>.png exists.
-.mana-W{background-image:url('assets/mana/W.png');color:transparent}
-.mana-U{background-image:url('assets/mana/U.png');color:transparent}
-.mana-B{background-image:url('assets/mana/B.png');color:transparent}
-.mana-R{background-image:url('assets/mana/R.png');color:transparent}
-.mana-G{background-image:url('assets/mana/G.png');color:transparent}
-.mana-C{background-image:url('assets/mana/C.png');color:transparent;background-color:transparent}
-*/
 
 /* ========================================================================= */
 /* v2 card frame design (80x112 native pixel-art spec).                      */
@@ -292,11 +293,20 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
   line-height: 1;
   flex-shrink: 0;
 }
-.card-v2 .v2-pip.col-W{background-color:#e8d770;color:#443}
-.card-v2 .v2-pip.col-U{background-color:#5588cc;color:#fff}
-.card-v2 .v2-pip.col-B{background-color:#222;color:#fff}
-.card-v2 .v2-pip.col-R{background-color:#c34433;color:#fff}
-.card-v2 .v2-pip.col-G{background-color:#4a9844;color:#fff}
+/* Color pips: SVG iconography (manaiconsv13 spec) draws disc + symbol + rim.
+   The SVG includes the colored disc itself, so background-color stays
+   transparent. background-size:100% 100% scales the 40-unit viewBox to
+   the pip's actual rendered size at any --scale. */
+.card-v2 .v2-pip.col-W,
+.card-v2 .v2-pip.col-U,
+.card-v2 .v2-pip.col-B,
+.card-v2 .v2-pip.col-R,
+.card-v2 .v2-pip.col-G{background-color:transparent;background-size:100% 100%;background-repeat:no-repeat;color:transparent}
+.card-v2 .v2-pip.col-W{background-image:url('../../assets/mana/W.svg')}
+.card-v2 .v2-pip.col-U{background-image:url('../../assets/mana/U.svg')}
+.card-v2 .v2-pip.col-B{background-image:url('../../assets/mana/B.svg')}
+.card-v2 .v2-pip.col-R{background-image:url('../../assets/mana/R.svg')}
+.card-v2 .v2-pip.col-G{background-image:url('../../assets/mana/G.svg')}
 .card-v2 .v2-pip.col-C{background-color:#aaa;color:#222}
 .card-v2 .v2-pip.col-num{background-color:#555;color:#fff}
 

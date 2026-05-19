@@ -87,6 +87,14 @@ schema later.
 - **Source:** Google Fonts
 - **Files:** variable font (`PixelifySans-VariableFont_wght.ttf`, weight axis 400–700) plus Regular, Medium, SemiBold, Bold static cuts
 
+### Mana symbol SVGs (Claude-authored, "manaiconsv13" spec)
+
+- **Location in tree:** `assets/mana/{W,U,B,R,G}.svg`
+- **Used for:** the five WUBRG color pips in card text + v2 frame cost pips (v1.0.172)
+- **Source:** authored by Claude (in a separate session) per a "manaiconsv13" JSX/React design spec the user provided; converted from JSX components to standalone SVGs for use in the prototype
+- **License:** project-owned (commissioned art, no external license)
+- **Concepts:** White = tipping scales, Blue = open book, Green = leaf, Red = fissure, Black = eclipse (sun + moon)
+
 ---
 
 ## AI assistance
