@@ -535,6 +535,30 @@ function renderSettings() {
     }
   ));
   list.appendChild(popupRow);
+
+  // Mana symbol sizes -- two knobs, one per surface.
+  makeSlotHeader('Mana symbols');
+  const manaPipRow = makeRow('Cost pip (on card frame)');
+  manaPipRow.appendChild(makeSelect(
+    SETTINGS.MANA_PIP_SIZE_OPTIONS,
+    SETTINGS.get('cardManaPipSize'),
+    (val) => {
+      SETTINGS.set('cardManaPipSize', Number(val));
+      try { render(); } catch (_) {}
+    }
+  ));
+  list.appendChild(manaPipRow);
+
+  const manaTextRow = makeRow('In-text symbol (oracle text {R}/{T})');
+  manaTextRow.appendChild(makeSelect(
+    SETTINGS.MANA_TEXT_SIZE_OPTIONS,
+    SETTINGS.get('cardManaTextSize'),
+    (val) => {
+      SETTINGS.set('cardManaTextSize', Number(val));
+      try { render(); } catch (_) {}
+    }
+  ));
+  list.appendChild(manaTextRow);
 }
 
 function continueRun() {

@@ -62,6 +62,10 @@ const DEFAULTS = {
   // proportionally with the popup's 4x frame (default). <1 keeps text
   // smaller relative to the frame so more oracle text fits.
   cardPopupTextScale: 1,
+  // Mana symbol size knobs (v1.0.173). Each is a multiplier on the
+  // surface's baseline -- 1 = unchanged.
+  cardManaPipSize: 1,      // v2 cost pip (baseline 4px at --scale 1)
+  cardManaTextSize: 1,     // in-text .mana symbol (baseline 1.2em)
 };
 
 // Options for the popup text scale dropdown. Values < 1 dampen the text
@@ -74,6 +78,20 @@ const POPUP_TEXT_SCALE_OPTIONS = [
   { label: '85%',                     value: 0.85 },
   { label: '100% (matches frame)',    value: 1 },
   { label: '125%',                    value: 1.25 },
+];
+
+// Mana cost-pip size options. Px-anchored to the v2-pip's 4px baseline at
+// --scale 1, so labels read as actual rendered size in hand/board.
+const MANA_PIP_SIZE_OPTIONS = buildSizeOptions(4, [3, 4, 5, 6, 8, 10]);
+
+// In-text .mana symbol size options. em-based (scales with surrounding
+// text), so we express as a multiplier of the 1.2em baseline.
+const MANA_TEXT_SIZE_OPTIONS = [
+  { label: '80%',                value: 0.8 },
+  { label: '100% (default)',     value: 1 },
+  { label: '125%',               value: 1.25 },
+  { label: '150%',               value: 1.5 },
+  { label: '200%',               value: 2 },
 ];
 
 const FONT_OPTIONS = [
@@ -219,6 +237,8 @@ function set(key, value) {
       if (key === settingsKeyFsize(el.key)) document.documentElement.style.setProperty(cssVarFsize(el.key), value);
     }
     if (key === 'cardPopupTextScale') document.documentElement.style.setProperty('--card-popup-text-scale', value);
+    if (key === 'cardManaPipSize')    document.documentElement.style.setProperty('--card-mana-pip-size', value);
+    if (key === 'cardManaTextSize')   document.documentElement.style.setProperty('--card-mana-text-size', value);
   }
 }
 
@@ -236,6 +256,8 @@ function applyFontsToRoot() {
     root.setProperty(cssVarFsize(el.key), data[settingsKeyFsize(el.key)]);
   }
   root.setProperty('--card-popup-text-scale', data.cardPopupTextScale);
+  root.setProperty('--card-mana-pip-size', data.cardManaPipSize);
+  root.setProperty('--card-mana-text-size', data.cardManaTextSize);
 }
 
 return {
@@ -244,6 +266,7 @@ return {
   CARD_FONT_ELEMENTS,
   FONT_SIZE_OPTIONS_BY_ELEMENT,
   POPUP_TEXT_SCALE_OPTIONS,
+  MANA_PIP_SIZE_OPTIONS, MANA_TEXT_SIZE_OPTIONS,
   // Element-key utilities exposed for controller.js's settings UI.
   settingsKeyFont, settingsKeyFsize,
 };

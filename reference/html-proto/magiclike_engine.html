@@ -92,6 +92,11 @@
      more room for long oracle text). User-controlled via settings. */
   --card-text-scale:       1;
   --card-popup-text-scale: 1;
+  /* Mana symbol sizing. Two surfaces, two knobs:
+     --card-mana-pip-size: multiplier on the v2-frame cost pip (baseline 4px at --scale 1)
+     --card-mana-text-size: multiplier on the in-text .mana symbol (baseline 1.2em) */
+  --card-mana-pip-size:  1;
+  --card-mana-text-size: 1;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;display:flex;flex-direction:column;overflow:hidden;font-size:12px}
@@ -184,7 +189,10 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
    then uncomment the matching override block below. The override sets
    background-image + color:transparent (hides the emoji glyph) so only
    the PNG shows. */
-.mana{display:inline-block;min-width:1.2em;height:1.2em;line-height:1.2em;
+.mana{display:inline-block;
+  min-width:calc(1.2em * var(--card-mana-text-size));
+  height:calc(1.2em * var(--card-mana-text-size));
+  line-height:calc(1.2em * var(--card-mana-text-size));
   text-align:center;font-size:0.95em;vertical-align:middle;
   margin:0 0.05em;background-size:contain;
   background-position:center;background-repeat:no-repeat;
@@ -282,8 +290,8 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
    with the count rendered inside the generic pip. Matches the existing
    .mana-W/U/B/R/G palette for visual consistency. */
 .card-v2 .v2-pip{
-  width: calc(4px * var(--scale));
-  height: calc(4px * var(--scale));
+  width: calc(4px * var(--scale) * var(--card-mana-pip-size));
+  height: calc(4px * var(--scale) * var(--card-mana-pip-size));
   border-radius: 50%;
   display: flex;
   align-items: center;
