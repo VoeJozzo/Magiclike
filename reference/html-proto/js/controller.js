@@ -2235,8 +2235,12 @@ function openCardPopupV2(card) {
   // Type line.
   const typeText = card.type + (card.sub ? ' — ' + card.sub : '');
 
-  // Oracle text via the same segment renderer as the classic popup.
-  const popSegs = describeCardSegments(card, {skipKeywords: true});
+  // Oracle text. skipKeywords:false inlines the keyword preamble at the
+  // top of the oracle (the v2 frame has no separate keyword-badge row, so
+  // inlining is the only way granted keywords surface). Matches the v2
+  // in-hand frame's behavior; differs from the classic popup which uses
+  // nativeKeywordBadgesHtml badges instead.
+  const popSegs = describeCardSegments(card, {skipKeywords: false});
   const oracleHtml = segmentsToHtml(popSegs);
 
   // Art slot. effectiveArt handles ladder; isArtUrl distinguishes file paths

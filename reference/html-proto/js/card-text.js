@@ -490,7 +490,27 @@ function describeCardSegments(card, opts) {
   opts = opts || {};
   const tpl = CARDS[card.tplId] || card;
   if (tpl.customText === true || tpl.special === true) {
-    return [plainSeg(card.text || tpl.text || '')];
+    // Hand-authored static text. Many special cards (City Guardian,
+    // Archdemon Bargains) already mention their intrinsic keywords
+    // inline, so we DON'T prepend the full keyword list -- that would
+    // duplicate "First Strike" etc. But GRANTED keywords (from Elystra's
+    // permanentEot accumulator, Endomorph's absorb, runtime spell
+    // effects) aren't in the static text and need to be surfaced. We
+    // compute granted = card.keywords \ tpl.keywords and prepend just
+    // those, mirroring how non-special cards inline their full preamble.
+    // Skipped when opts.skipKeywords (the classic frame renders its own
+    // keyword badges via nativeKeywordBadgesHtml).
+    const sections = [];
+    if (!opts.skipKeywords && (card.type === 'Creature' || tpl.type === 'Creature')) {
+      const intrinsic = new Set(tpl.keywords || []);
+      const granted = (card.keywords || []).filter(kw => !intrinsic.has(kw));
+      if (granted.length > 0) {
+        const kw = keywordPreamble(granted);
+        if (kw) sections.push([plainSeg(kw + '.')]);
+      }
+    }
+    sections.push([plainSeg(card.text || tpl.text || '')]);
+    return sections;
   }
   // Stapled cards diff against synthesized template (so staple-half bumps highlight).
   let tplBaseline = tpl;
