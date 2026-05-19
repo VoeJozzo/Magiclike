@@ -481,8 +481,13 @@ function keywordPreamble(keywords) {
 }
 
 // Flat string for storage/logging. UI uses describeCardSegments for highlights.
+// skipKeywords:true keeps the stored text free of the keyword preamble so
+// successive engine regenerations (line 567 of engine.js fires on every
+// makeCard / makeCard-after-grant) don't bake "Trample. " into card.text
+// and double up with the render-time preamble. The keyword preamble is a
+// UI concern, added fresh by the v2 frame's describeCardSegments call.
 function describeCardText(card) {
-  return segsToText(describeCardSegments(card));
+  return segsToText(describeCardSegments(card, {skipKeywords: true}));
 }
 
 // Segments with highlight flags. opts.skipKeywords for badge-rendering UI.
