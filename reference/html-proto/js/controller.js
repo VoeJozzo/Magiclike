@@ -536,9 +536,9 @@ function renderSettings() {
   ));
   list.appendChild(popupRow);
 
-  // Mana symbol sizes -- two knobs, one per surface.
+  // Mana symbol sizes -- three knobs across two pip surfaces + one text surface.
   makeSlotHeader('Mana symbols');
-  const manaPipRow = makeRow('Cost pip (on card frame)');
+  const manaPipRow = makeRow('Cost pip (hand / board)');
   manaPipRow.appendChild(makeSelect(
     SETTINGS.MANA_PIP_SIZE_OPTIONS,
     SETTINGS.get('cardManaPipSize'),
@@ -548,6 +548,17 @@ function renderSettings() {
     }
   ));
   list.appendChild(manaPipRow);
+
+  const manaPipPopupRow = makeRow('Cost pip (long-press popup)');
+  manaPipPopupRow.appendChild(makeSelect(
+    SETTINGS.MANA_PIP_SIZE_OPTIONS,
+    SETTINGS.get('cardManaPipPopupSize'),
+    (val) => {
+      SETTINGS.set('cardManaPipPopupSize', Number(val));
+      try { render(); } catch (_) {}
+    }
+  ));
+  list.appendChild(manaPipPopupRow);
 
   const manaTextRow = makeRow('In-text symbol (oracle text {R}/{T})');
   manaTextRow.appendChild(makeSelect(

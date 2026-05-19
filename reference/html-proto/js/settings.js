@@ -64,7 +64,8 @@ const DEFAULTS = {
   cardPopupTextScale: 1,
   // Mana symbol size knobs (v1.0.173). Each is a multiplier on the
   // surface's baseline -- 1 = unchanged.
-  cardManaPipSize: 1,      // v2 cost pip (baseline 4px at --scale 1)
+  cardManaPipSize: 1,      // v2 cost pip (baseline 4px at --scale 1) in default contexts
+  cardManaPipPopupSize: 1, // v2 cost pip override in popup (v1.0.174)
   cardManaTextSize: 1,     // in-text .mana symbol (baseline 1.2em)
 };
 
@@ -82,7 +83,7 @@ const POPUP_TEXT_SCALE_OPTIONS = [
 
 // Mana cost-pip size options. Px-anchored to the v2-pip's 4px baseline at
 // --scale 1, so labels read as actual rendered size in hand/board.
-const MANA_PIP_SIZE_OPTIONS = buildSizeOptions(4, [3, 4, 5, 6, 8, 10]);
+const MANA_PIP_SIZE_OPTIONS = buildSizeOptions(4, [3, 4, 5, 6, 8, 9, 10, 12]);
 
 // In-text .mana symbol size options. em-based (scales with surrounding
 // text), so we express as a multiplier of the 1.2em baseline.
@@ -153,7 +154,7 @@ function buildSizeOptions(baseline, sizes) {
 const FONT_SIZE_OPTIONS_TITLE   = buildSizeOptions(7, [4, 5, 6, 7, 8, 9, 10, 12, 14]);
 const FONT_SIZE_OPTIONS_SECONDARY = buildSizeOptions(5, [3, 4, 5, 6, 7, 8, 10]);
 const FONT_SIZE_OPTIONS_BODY    = buildSizeOptions(6, [3, 4, 5, 6, 7, 8, 9, 10, 12]);
-const FONT_SIZE_OPTIONS_PIP     = buildSizeOptions(3, [2, 3, 4, 5, 6]);
+const FONT_SIZE_OPTIONS_PIP     = buildSizeOptions(3, [2, 3, 4, 5, 6, 7, 8, 10, 12, 14]);
 const FONT_SIZE_OPTIONS_BUMPED  = buildSizeOptions(4, [2, 3, 4, 5, 6, 8]);
 
 // Map each element key to its size-options array. The settings UI reads
@@ -237,8 +238,9 @@ function set(key, value) {
       if (key === settingsKeyFsize(el.key)) document.documentElement.style.setProperty(cssVarFsize(el.key), value);
     }
     if (key === 'cardPopupTextScale') document.documentElement.style.setProperty('--card-popup-text-scale', value);
-    if (key === 'cardManaPipSize')    document.documentElement.style.setProperty('--card-mana-pip-size', value);
-    if (key === 'cardManaTextSize')   document.documentElement.style.setProperty('--card-mana-text-size', value);
+    if (key === 'cardManaPipSize')      document.documentElement.style.setProperty('--card-mana-pip-size', value);
+    if (key === 'cardManaPipPopupSize') document.documentElement.style.setProperty('--card-mana-pip-popup-size', value);
+    if (key === 'cardManaTextSize')     document.documentElement.style.setProperty('--card-mana-text-size', value);
   }
 }
 
@@ -257,6 +259,7 @@ function applyFontsToRoot() {
   }
   root.setProperty('--card-popup-text-scale', data.cardPopupTextScale);
   root.setProperty('--card-mana-pip-size', data.cardManaPipSize);
+  root.setProperty('--card-mana-pip-popup-size', data.cardManaPipPopupSize);
   root.setProperty('--card-mana-text-size', data.cardManaTextSize);
 }
 
