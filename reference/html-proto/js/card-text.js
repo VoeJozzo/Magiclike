@@ -500,6 +500,11 @@ function describeCardSegments(card, opts) {
     // those, mirroring how non-special cards inline their full preamble.
     // Skipped when opts.skipKeywords (the classic frame renders its own
     // keyword badges via nativeKeywordBadgesHtml).
+    //
+    // Sections must be flattened before return because consumers
+    // (segmentsToHtml, the test harness) expect a flat array of segment
+    // objects, not array-of-arrays. The non-special branch below has
+    // its own flatten loop; we mirror it.
     const sections = [];
     if (!opts.skipKeywords && (card.type === 'Creature' || tpl.type === 'Creature')) {
       const intrinsic = new Set(tpl.keywords || []);
@@ -509,8 +514,14 @@ function describeCardSegments(card, opts) {
         if (kw) sections.push([plainSeg(kw + '.')]);
       }
     }
-    sections.push([plainSeg(card.text || tpl.text || '')]);
-    return sections;
+    const staticText = card.text || tpl.text || '';
+    if (staticText) sections.push([plainSeg(staticText)]);
+    const out = [];
+    for (let i = 0; i < sections.length; i++) {
+      if (i > 0) out.push(plainSeg(' '));
+      out.push(...sections[i]);
+    }
+    return out;
   }
   // Stapled cards diff against synthesized template (so staple-half bumps highlight).
   let tplBaseline = tpl;
