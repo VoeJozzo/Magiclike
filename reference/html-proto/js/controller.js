@@ -2148,6 +2148,60 @@ function attachLongPress(element, card) {
 // (320x448 actual) inside the existing #cardPopup dimmer overlay. Used when
 // SETTINGS.get('cardFrameStyle') === 'new'. The classic .pop-* layout in
 // openCardPopup is the fallback for 'classic'.
+
+// Shared helper: builds the "Repertoire" (Mercurial triggerPool) and
+// "Built Ability" (Codex buildOnDraw) HTML sections for a card's popup.
+// Returns empty string if neither applies. Used by both the v2 popup
+// (openCardPopupV2) and the classic popup (openCardPopup) so the two
+// frame styles stay in sync on these auxiliary panels.
+//
+// Both panels read the SLOT (RUN.getSlots()[card.slotIdx]), not the card,
+// because the slot is the durable record across saves and the slot's
+// bonusTrigger may have updated more recently than the in-game card
+// instance (e.g. just before a re-draw triggers makeCard).
+function buildPopupTriggerSections(card) {
+  if (typeof card.slotIdx !== 'number') return '';
+  if (typeof RUN === 'undefined' || !RUN.getSlots) return '';
+  const slots = RUN.getSlots();
+  const slot = slots && slots[card.slotIdx];
+  if (!slot) return '';
+  let html = '';
+  // Mercurial-style repertoire.
+  if (Array.isArray(slot.triggerPool) && slot.triggerPool.length > 0) {
+    const activeLabels = (card.triggers || []).map(t => t.label).filter(Boolean);
+    const items = slot.triggerPool.map(entry => {
+      const isActive = activeLabels.includes(entry.label);
+      const styleAttr = isActive
+        ? 'color:#ffe7a0;font-weight:bold;background:#3a2f1a;border-left:3px solid #ffd700;padding-left:6px'
+        : 'color:#888;padding-left:9px';
+      const marker = isActive ? '◆ ' : '○ ';
+      return `<div style="${styleAttr};font-size:11px;line-height:1.5;padding:3px 6px;margin:2px 0">${marker}<b>${entry.label}:</b> ${entry.text || ''}</div>`;
+    }).join('');
+    html += `
+      <div class="pop-stickers">
+        <div class="pop-stickers-title" style="color:#ffd700">Repertoire</div>
+        <div style="text-align:left">${items}</div>
+      </div>`;
+  }
+  // Codex-style built ability.
+  const tpl = CARDS[card.tplId];
+  if (tpl && tpl.buildOnDraw) {
+    let body;
+    if (slot.bonusTrigger) {
+      const text = (slot.bonusTrigger.text || '').replace(/~/g, card.name);
+      body = `<div style="color:#ffe7a0;font-size:12px;line-height:1.5;padding:6px 8px;background:#1f1828;border-left:3px solid #ffd700;border-radius:3px">${text}</div>`;
+    } else {
+      body = `<div style="color:#888;font-size:11px;line-height:1.5;padding:6px 8px;background:#181820;border-left:3px solid #555;border-radius:3px;font-style:italic">No ability built yet — draw this card to build one.</div>`;
+    }
+    html += `
+      <div class="pop-stickers">
+        <div class="pop-stickers-title" style="color:#ffd700">Built Ability</div>
+        ${body}
+      </div>`;
+  }
+  return html;
+}
+
 function openCardPopupV2(card) {
   const popup = document.getElementById('cardPopup');
   const inner = document.getElementById('cardPopupCard');
@@ -2203,6 +2257,13 @@ function openCardPopupV2(card) {
 
   // Strip the .pop-* chrome from the inner container -- the frame IS the
   // visual now, no need for the modal-box styling.
+  // Repertoire (Mercurial) and Built Ability (Codex) sections appear
+  // below the v2 frame for cards that need them. Constrained to the
+  // frame's 320px width so they line up visually with the card above.
+  const extraSections = buildPopupTriggerSections(card);
+  const extrasHtml = extraSections
+    ? `<div style="width:320px;margin:8px auto 0;text-align:left">${extraSections}</div>`
+    : '';
   inner.className = '';
   inner.style.cssText = 'background:transparent;border:none;box-shadow:none;padding:0;width:auto;max-width:none;text-align:center;cursor:default';
   inner.innerHTML = `
@@ -2219,6 +2280,7 @@ function openCardPopupV2(card) {
       </div>
       ${ptInner}
     </div>
+    ${extrasHtml}
   `;
   popup.classList.add('vis');
 }
@@ -2272,63 +2334,9 @@ function openCardPopup(card) {
   // a string strip after the fact.
   const popSegs = describeCardSegments(card, {skipKeywords: true});
   const popDisplayHtml = segmentsToHtml(popSegs);
-  // Mercurial-style repertoire: if this card's slot has a triggerPool,
-  // show the full set of possible abilities with the currently-active one
-  // marked. Pool lives on the slot, not the card — runtime card.triggers
-  // shows only the active one. We look up the slot by slotIdx; if RUN
-  // isn't active (e.g., card browser preview), skip silently.
-  let repertoireSection = '';
-  // Codex-style built ability: if the template has buildOnDraw, show the
-  // currently-built bonusTrigger from the slot (or "not yet built" if it
-  // hasn't been chosen yet this run). The slot is the source of truth —
-  // card.triggers may not reflect the latest pick if rendered between
-  // games or before makeCard re-stamps. Mutually exclusive with the
-  // Mercurial repertoire above; a card has either a triggerPool OR a
-  // build slot, not both.
-  let builtAbilitySection = '';
-  if (typeof card.slotIdx === 'number' && typeof RUN !== 'undefined' && RUN.getSlots) {
-    const slots = RUN.getSlots();
-    const slot = slots && slots[card.slotIdx];
-    if (slot && Array.isArray(slot.triggerPool) && slot.triggerPool.length > 0) {
-      // Find which entry is active by matching the currently-applied
-      // bonus against the pool. Match on label since that's stable across
-      // deep-copies.
-      const activeLabels = (card.triggers || [])
-        .map(t => t.label)
-        .filter(Boolean);
-      const items = slot.triggerPool.map(entry => {
-        const isActive = activeLabels.includes(entry.label);
-        const styleAttr = isActive
-          ? 'color:#ffe7a0;font-weight:bold;background:#3a2f1a;border-left:3px solid #ffd700;padding-left:6px'
-          : 'color:#888;padding-left:9px';
-        const marker = isActive ? '◆ ' : '○ ';
-        return `<div style="${styleAttr};font-size:11px;line-height:1.5;padding:3px 6px;margin:2px 0">${marker}<b>${entry.label}:</b> ${entry.text || ''}</div>`;
-      }).join('');
-      repertoireSection = `
-        <div class="pop-stickers">
-          <div class="pop-stickers-title" style="color:#ffd700">Repertoire</div>
-          <div style="text-align:left">${items}</div>
-        </div>`;
-    }
-    // Codex case: template has buildOnDraw flag → show built ability or
-    // a "not yet built" placeholder. The slot's bonusTrigger is the
-    // durable record; we substitute the card name for ~ for display.
-    const popTpl = CARDS[card.tplId];
-    if (popTpl && popTpl.buildOnDraw && slot) {
-      let body;
-      if (slot.bonusTrigger) {
-        const text = (slot.bonusTrigger.text || '').replace(/~/g, card.name);
-        body = `<div style="color:#ffe7a0;font-size:12px;line-height:1.5;padding:6px 8px;background:#1f1828;border-left:3px solid #ffd700;border-radius:3px">${text}</div>`;
-      } else {
-        body = `<div style="color:#888;font-size:11px;line-height:1.5;padding:6px 8px;background:#181820;border-left:3px solid #555;border-radius:3px;font-style:italic">No ability built yet — draw this card to build one.</div>`;
-      }
-      builtAbilitySection = `
-        <div class="pop-stickers">
-          <div class="pop-stickers-title" style="color:#ffd700">Built Ability</div>
-          ${body}
-        </div>`;
-    }
-  }
+  // Mercurial repertoire + Codex built ability sections. Extracted to
+  // buildPopupTriggerSections so the v2 popup uses the same logic.
+  const triggerSections = buildPopupTriggerSections(card);
   inner.innerHTML = `
     <div class="pop-name">${card.name}</div>
     ${costPart}
@@ -2338,8 +2346,7 @@ function openCardPopup(card) {
     ${isCreature ? `<div class="pop-stats">${pow}/${tou}${(pow !== basePow || tou !== baseTou) ? `<span class="bonus">(was ${basePow}/${baseTou})</span>` : ''}</div>` : ''}
     ${damagePart}
     ${keywordSection}
-    ${repertoireSection}
-    ${builtAbilitySection}
+    ${triggerSections}
     ${stickerBadges}
     ${restrictBadges}
   `;
