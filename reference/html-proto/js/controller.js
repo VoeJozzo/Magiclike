@@ -406,21 +406,6 @@ function renderSettings() {
     return sel;
   }
 
-  // Row 1: card frame style.
-  const frameRow = makeRow('Card frames');
-  frameRow.appendChild(makeSelect(
-    [
-      { label: 'Pixel-art (new)', value: 'new' },
-      { label: 'Classic wireframes', value: 'classic' },
-    ],
-    SETTINGS.get('cardFrameStyle'),
-    (val) => {
-      SETTINGS.set('cardFrameStyle', val);
-      try { render(); } catch (_) { /* not in-game yet */ }
-    }
-  ));
-  list.appendChild(frameRow);
-
   // Devtools section: a collapsible affordance for the font picker UI
   // (and future debug controls). Default-collapsed; if showFontDevtools
   // is already true from a prior session, start expanded so the toggle
@@ -731,7 +716,6 @@ function showNeowChoice() {
 
   const optsEl = document.getElementById('neowOptions');
   optsEl.innerHTML = '';
-  const useV2 = SETTINGS.get('cardFrameStyle') === 'new';
   for (const id of offered) {
     const m = RUN_MODIFIERS[id];
     // Boon art is derived from the card the boon grants -- every current
@@ -739,34 +723,24 @@ function showNeowChoice() {
     // CARDS[m.id].art is the source of truth.
     const boonArt = m.art || (CARDS[m.id] && CARDS[m.id].art) || '✦';
     let el;
-    if (useV2) {
-      // Render the boon AS the card it grants (matches the visual style of
-      // a draft pick). Falls back to a Boon-shaped placeholder for any
-      // modifier whose id doesn't resolve to a real card.
-      if (CARDS[m.id]) {
-        const card = ENGINE.makeCard(m.id);
-        el = makeCardEl(card);
-        el.style.setProperty('--scale', '2');
-      } else {
-        el = makeV2CardLike({
-          name: m.name || '',
-          type: 'Boon',
-          text: m.text || '',
-          art: boonArt,
-          color: 'C',
-          scale: 2,
-        });
-      }
-      el.style.cursor = 'pointer';
+    // Render the boon AS the card it grants (matches the visual style of
+    // a draft pick). Falls back to a Boon-shaped placeholder for any
+    // modifier whose id doesn't resolve to a real card.
+    if (CARDS[m.id]) {
+      const card = ENGINE.makeCard(m.id);
+      el = makeCardEl(card);
+      el.style.setProperty('--scale', '2');
     } else {
-      el = document.createElement('div');
-      el.className = 'neow-opt';
-      el.innerHTML = `
-        <div class="neow-art">${artHtml(boonArt)}</div>
-        <div class="neow-name">${escapeHtml(m.name || '')}</div>
-        <div class="neow-text">${renderManaSymbols(escapeHtml(m.text || ''))}</div>
-      `;
+      el = makeV2CardLike({
+        name: m.name || '',
+        type: 'Boon',
+        text: m.text || '',
+        art: boonArt,
+        color: 'C',
+        scale: 2,
+      });
     }
+    el.style.cursor = 'pointer';
     el.onclick = () => pickNeow(id);
     optsEl.appendChild(el);
   }
@@ -868,8 +842,7 @@ function applyTileColor(div, slot) {
 // Returns a DOM element. `slot` is the runState slot (with current stickers);
 // `tpl` is the resolved template.
 // Reward-modal card tile. Delegates to makeCardEl (the same renderer used
-// for hand/board cards), so the SETTINGS.cardFrameStyle toggle propagates
-// to the reward picker too. The slot (when present) carries stickers /
+// for hand/board cards). The slot (when present) carries stickers /
 // staples / rolls; we build a runtime card with those baked in so the tile
 // reflects the slot's actual state (effective cost, statBoost stats,
 // sticker badges, granted keywords).
@@ -956,30 +929,15 @@ function renderPostDraftOffer() {
   Modal.show('postDraftOfferModal', { dismissible: false });
   const btns = document.getElementById('postDraftOfferButtons');
   btns.innerHTML = '';
-  const useV2 = SETTINGS.get('cardFrameStyle') === 'new';
-  const LAND_ART = { plains: '☀️', island: '🌊', swamp: '💀', mountain: '⛰️', forest: '🌲' };
-  const LAND_COLOR = { plains: '#cdb46a', island: '#5588cc', swamp: '#9966bb', mountain: '#cc5544', forest: '#5a8844' };
   for (const tplId of offer.basics) {
     const tpl = CARDS[tplId];
-    let el;
-    if (useV2 && tpl) {
-      // Real basic-land card via makeCardEl. The land's color frame and
-      // type line communicate which basic this is.
-      const card = ENGINE.makeCard(tplId);
-      el = makeCardEl(card);
-      el.style.setProperty('--scale', '2');
-      el.style.cursor = 'pointer';
-    } else {
-      const name = tpl ? tpl.name : tplId;
-      const color = LAND_COLOR[tplId] || '#888';
-      const art = LAND_ART[tplId] || '🏞';
-      el = document.createElement('button');
-      el.style.cssText = `background:#0e1c14;border:2px solid ${color};color:#ddd;padding:14px 16px;font-family:inherit;font-size:14px;font-weight:bold;cursor:pointer;border-radius:6px;min-width:130px;display:flex;flex-direction:column;align-items:center;gap:6px;transition:transform .1s,background .1s`;
-      el.innerHTML = `<span style="font-size:30px">${art}</span><span class="land-name"></span>`;
-      el.querySelector('.land-name').textContent = name;
-      el.onmouseover = () => { el.style.background = '#1a3020'; el.style.transform = 'translateY(-2px)'; };
-      el.onmouseout  = () => { el.style.background = '#0e1c14'; el.style.transform = 'translateY(0)'; };
-    }
+    if (!tpl) continue;
+    // Real basic-land card via makeCardEl. The land's color frame and
+    // type line communicate which basic this is.
+    const card = ENGINE.makeCard(tplId);
+    const el = makeCardEl(card);
+    el.style.setProperty('--scale', '2');
+    el.style.cursor = 'pointer';
     el.onclick = () => pickPostDraftOfferClick(tplId);
     btns.appendChild(el);
   }
@@ -1232,27 +1190,16 @@ function renderReward() {
         labelEl.className = 'rwd-kind-label rwd-kind-threeStickersBlind';
         labelEl.textContent = '3 STICKERS — RANDOM CARD';
         div.appendChild(labelEl);
-        // Mystery card placeholder. v2 rendering builds a "Mystery Creature"
-        // fake card with no cost / no P/T; classic mode keeps the rwd-card
-        // wireframe variant.
-        let mystery;
-        if (SETTINGS.get('cardFrameStyle') === 'new') {
-          mystery = makeV2CardLike({
-            name: 'Mystery Creature',
-            type: 'Reward',
-            text: 'A random creature in your deck',
-            art: '❓',
-            color: 'C',
-            scale: 2,
-          });
-        } else {
-          mystery = document.createElement('div');
-          mystery.className = 'rwd-card rwd-card-mystery';
-          mystery.innerHTML =
-            `<div class="art" style="font-size:48px">❓</div>` +
-            `<div class="name">Mystery Creature</div>` +
-            `<div class="text" style="font-style:italic;opacity:0.7">A random creature in your deck</div>`;
-        }
+        // Mystery card placeholder: build a "Mystery Creature" fake card
+        // with no cost / no P/T.
+        const mystery = makeV2CardLike({
+          name: 'Mystery Creature',
+          type: 'Reward',
+          text: 'A random creature in your deck',
+          art: '❓',
+          color: 'C',
+          scale: 2,
+        });
         div.appendChild(mystery);
         const connector = document.createElement('div');
         connector.className = 'rwd-pair-plus';
@@ -1521,11 +1468,9 @@ function renderDraft() {
   const packEl = document.getElementById('draftPack');
   packEl.innerHTML = '';
   for (const tplId of pack) {
-    // Use makeCardEl (the same renderer that builds hand/board cards) so
-    // draft picks pick up the v2 frame design automatically when the
-    // SETTINGS.cardFrameStyle is 'new', and the classic wireframe when
-    // 'classic'. Build a vanilla card instance from the template -- the
-    // draft pack isn't slot-bound yet, no stickers or runtime state.
+    // Use makeCardEl (the same renderer that builds hand/board cards).
+    // Build a vanilla card instance from the template -- the draft pack
+    // isn't slot-bound yet, no stickers or runtime state.
     const card = ENGINE.makeCard(tplId);
     const el = makeCardEl(card);
     // Showcase scale -- v2 cards render at 2x (160x224) for the picker so
@@ -2268,21 +2213,15 @@ function attachLongPress(element, card) {
   }, true);   // capture phase so we run before the existing onclick
 }
 
-// Pixel-art v2 popup. Built per the 80x112 frame spec, rendered at 4x scale
-// (320x448 actual) inside the existing #cardPopup dimmer overlay. Used when
-// SETTINGS.get('cardFrameStyle') === 'new'. The classic .pop-* layout in
-// openCardPopup is the fallback for 'classic'.
+// Pixel-art card popup. Built per the 80x112 frame spec, rendered at 4x
+// scale (320x448 actual) inside the existing #cardPopup dimmer overlay.
 
-// Shared helper: builds the "Repertoire" (Mercurial triggerPool) and
-// "Built Ability" (Codex buildOnDraw) HTML sections for a card's popup.
-// Returns empty string if neither applies. Used by both the v2 popup
-// (openCardPopupV2) and the classic popup (openCardPopup) so the two
-// frame styles stay in sync on these auxiliary panels.
-//
-// Both panels read the SLOT (RUN.getSlots()[card.slotIdx]), not the card,
-// because the slot is the durable record across saves and the slot's
-// bonusTrigger may have updated more recently than the in-game card
-// instance (e.g. just before a re-draw triggers makeCard).
+// Helper: builds the "Repertoire" (Mercurial triggerPool) and "Built
+// Ability" (Codex buildOnDraw) HTML sections for a card's popup. Returns
+// empty string if neither applies. Reads the SLOT (RUN.getSlots()[card.slotIdx]),
+// not the card, because the slot is the durable record across saves and
+// the slot's bonusTrigger may have updated more recently than the in-game
+// card instance (e.g. just before a re-draw triggers makeCard).
 function buildPopupTriggerSections(card) {
   if (typeof card.slotIdx !== 'number') return '';
   if (typeof RUN === 'undefined' || !RUN.getSlots) return '';
@@ -2326,7 +2265,7 @@ function buildPopupTriggerSections(card) {
   return html;
 }
 
-function openCardPopupV2(card) {
+function openCardPopup(card) {
   const popup = document.getElementById('cardPopup');
   const inner = document.getElementById('cardPopupCard');
 
@@ -2360,10 +2299,8 @@ function openCardPopupV2(card) {
   const typeText = card.type + (card.sub ? ' — ' + card.sub : '');
 
   // Oracle text. skipKeywords:false inlines the keyword preamble at the
-  // top of the oracle (the v2 frame has no separate keyword-badge row, so
-  // inlining is the only way granted keywords surface). Matches the v2
-  // in-hand frame's behavior; differs from the classic popup which uses
-  // nativeKeywordBadgesHtml badges instead.
+  // top of the oracle (the frame has no separate keyword-badge row, so
+  // inlining is the only way granted keywords surface).
   const popSegs = describeCardSegments(card, {skipKeywords: false});
   const oracleHtml = segmentsToHtml(popSegs);
 
@@ -2413,73 +2350,6 @@ function openCardPopupV2(card) {
   popup.classList.add('vis');
 }
 
-function openCardPopup(card) {
-  // Branch on the user's frame-style setting. v2 = the new 80x112 pixel-art
-  // frame; classic = the existing .pop-* wireframe layout below.
-  if (typeof SETTINGS !== 'undefined' && SETTINGS.get('cardFrameStyle') === 'new') {
-    return openCardPopupV2(card);
-  }
-  // `card` may be a runtime card object (with iid/stickers/damage) OR a
-  // template-shaped object from the draft picker. Render whatever we have.
-  const popup = document.getElementById('cardPopup');
-  const inner = document.getElementById('cardPopupCard');
-  // Restore default classic-popup styling in case the v2 path ran first
-  // (it strips the .pop-* chrome via inline styles).
-  inner.style.cssText = '';
-  // Color class (for border).
-  inner.className = '';
-  if (card.color) inner.classList.add('col-' + card.color);
-  // Compute display stats for creatures using ENGINE.getStats (single source
-  // of truth — includes tempPower, permPower, modifiers).
-  let basePow = card.power || 0, baseTou = card.toughness || 0;
-  const [pow, tou] = card.type === 'Creature'
-    ? ENGINE.getStats(card)
-    : [basePow, baseTou];
-  const isCreature = card.type === 'Creature';
-  const stickerBadges = card.stickers && card.stickers.length
-    ? `<div class="pop-stickers">
-         <div class="pop-stickers-title">Stickers</div>
-         ${stickerBadgesHtml(card.stickers, true, card.empowerRolls, card.tplId, card.stapledFrom && card.stapledFrom.stapledTpls, card.subtypeRolls)}
-       </div>` : '';
-  // Native keywords (from template if available, else from card directly).
-  const nativeKwHtml = nativeKeywordBadgesHtml(card, true);
-  const keywordSection = nativeKwHtml
-    ? `<div class="pop-stickers">
-         <div class="pop-stickers-title" style="color:#5588cc">Keywords</div>
-         ${nativeKwHtml}
-       </div>` : '';
-  const restrictBadges = (card.cantAttack || card.cantBlock)
-    ? `<div class="pop-stickers">
-         <div class="pop-stickers-title" style="color:#cc4444">Restrictions</div>
-         ${restrictionBadgesHtml(card, true)}
-       </div>` : '';
-  const costPart = card.cost ? `<div class="pop-cost">Cost: ${renderManaSymbols(formatCostBraced(card.cost))}</div>` : '';
-  const damagePart = card.damage ? `<div style="color:#ff6060;font-size:13px;margin-top:6px">Damage marked: ${card.damage}</div>` : '';
-  // Build segment-rendered text with empower-bumped values highlighted.
-  // The popup is the prime real estate for showing what stickers did, so it
-  // gets the full styled treatment. Keywords are surfaced as badges below,
-  // so we skip the preamble in the segment generation rather than running
-  // a string strip after the fact.
-  const popSegs = describeCardSegments(card, {skipKeywords: true});
-  const popDisplayHtml = segmentsToHtml(popSegs);
-  // Mercurial repertoire + Codex built ability sections. Extracted to
-  // buildPopupTriggerSections so the v2 popup uses the same logic.
-  const triggerSections = buildPopupTriggerSections(card);
-  inner.innerHTML = `
-    <div class="pop-name">${card.name}</div>
-    ${costPart}
-    <div class="pop-art">${artHtml(effectiveArt(card))}</div>
-    <div class="pop-type">${card.sub ? card.sub + ' — ' : ''}${card.type}</div>
-    ${popDisplayHtml ? `<div class="pop-text">${popDisplayHtml}</div>` : ''}
-    ${isCreature ? `<div class="pop-stats">${pow}/${tou}${(pow !== basePow || tou !== baseTou) ? `<span class="bonus">(was ${basePow}/${baseTou})</span>` : ''}</div>` : ''}
-    ${damagePart}
-    ${keywordSection}
-    ${triggerSections}
-    ${stickerBadges}
-    ${restrictBadges}
-  `;
-  popup.classList.add('vis');
-}
 function closeCardPopup(e) {
   // Only close if the click is on the dimmer itself, not on the card content.
   if (e && e.target.id !== 'cardPopup') return;

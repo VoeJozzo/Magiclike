@@ -101,60 +101,31 @@ function render() {
       ? (isSpliceTargetMode ? '— click a spell or permanent to splice it' : '— click a spell to counter it')
       : (G.stack.length === 1 ? '— top resolves first' : `— ${G.stack.length} on stack, top resolves first`);
     bannerItems.innerHTML = '';
-    const useV2Banner = SETTINGS.get('cardFrameStyle') === 'new';
     G.stack.slice().reverse().forEach((it, displayIdx) => {
       const realIdx = G.stack.length - 1 - displayIdx;
       const tgtLabel = (it.targets && it.targets[0] && it.targets[0].label) ? ` → ${it.targets[0].label}` : '';
       let div;
-      if (useV2Banner) {
-        if (it.kind === 'trigger') {
-          // Triggers have no card backing -- build a card-like with the
-          // trigger text in the body.
-          div = makeV2CardLike({
-            name: it.sourceName + ' triggers',
-            type: 'Trigger',
-            text: (it.trig.text || it.trig.event) + tgtLabel,
-            art: '⚡',
-            color: 'C',
-            scale: 0.7,
-          });
-          const src = ENGINE.findCard(it.sourceIid);
-          if (src) CONTROLLER.attachLongPress(div, src.card);
-        } else {
-          // Real card. makeCardEl gives the full v2 frame; smaller scale
-          // keeps the banner pill from dominating the screen.
-          div = makeCardEl(it.card);
-          div.style.setProperty('--scale', '0.7');
-        }
+      if (it.kind === 'trigger') {
+        // Triggers have no card backing -- build a card-like with the
+        // trigger text in the body.
+        div = makeV2CardLike({
+          name: it.sourceName + ' triggers',
+          type: 'Trigger',
+          text: (it.trig.text || it.trig.event) + tgtLabel,
+          art: '⚡',
+          color: 'C',
+          scale: 0.7,
+        });
+        const src = ENGINE.findCard(it.sourceIid);
+        if (src) CONTROLLER.attachLongPress(div, src.card);
       } else {
-        div = document.createElement('div');
-        div.className = 'bnr-item' + (isCounterTarget ? ' tgt' : '');
-        if (it.kind === 'trigger') {
-          div.innerHTML =
-            `<div class="topline">⚡ ${it.sourceName} triggers</div>` +
-            `<div class="botline">${it.trig.text || it.trig.event}${tgtLabel}</div>`;
-          const src = ENGINE.findCard(it.sourceIid);
-          if (src) CONTROLLER.attachLongPress(div, src.card);
-        } else {
-          // Modal cards: show chosen mode so countering decisions are informed.
-          let modeLabel = '';
-          if (ENGINE.isModal(it.card)) {
-            const mn = (it.card.effects.modeNames || [])[it.modeIdx || 0];
-            if (mn) modeLabel = ` <span style="color:#aaccee;font-size:10px">(${mn})</span>`;
-          }
-          // Inline art, skip URL art (would stretch in narrow pill).
-          const inlineArt = isArtUrl(it.card.art) ? '🎴' : (it.card.art || '');
-          div.innerHTML =
-            `<div class="topline">${inlineArt} ${it.card.name}${modeLabel}</div>` +
-            `<div class="botline">cast by ${G[it.controller].name}${tgtLabel}</div>`;
-          CONTROLLER.attachLongPress(div, it.card);
-        }
+        div = makeCardEl(it.card);
+        div.style.setProperty('--scale', '0.7');
       }
       // stackIdx (real, not reversed) — target-line overlay indexes G.stack directly.
       div.dataset.stackIdx = String(realIdx);
       if (isCounterTarget) {
-        if (useV2Banner) div.classList.add('targetable');
-        else div.classList.add('tgt');
+        div.classList.add('targetable');
         if (it.kind !== 'trigger') {
           div.onclick = () => CONTROLLER.clickStackTarget(realIdx);
         }
@@ -233,19 +204,9 @@ function render() {
     if (matches.length === 0) {
       list.innerHTML = '<div style="color:#888;font-size:11px">No matching cards.</div>';
     } else {
-      const useV2 = SETTINGS.get('cardFrameStyle') === 'new';
       for (const card of matches) {
-        let btn;
-        if (useV2) {
-          // Real card, so makeCardEl handles the full v2 render.
-          btn = makeCardEl(card);
-          btn.style.cursor = 'pointer';
-        } else {
-          btn = document.createElement('button');
-          btn.className = 'search-card';
-          const inlineArt = isArtUrl(card.art) ? '🎴' : (card.art || '');
-          btn.textContent = `${inlineArt} ${card.name}`;
-        }
+        const btn = makeCardEl(card);
+        btn.style.cursor = 'pointer';
         btn.onclick = () => CONTROLLER.searchPick(card.iid);
         list.appendChild(btn);
       }
@@ -633,33 +594,14 @@ function openZoneTargeting(who, zone, validTargets) {
   } else {
     const validIids = new Set(validTargets.map(t => t.iid));
     const display = cards.slice().reverse();
-    const useV2 = SETTINGS.get('cardFrameStyle') === 'new';
     for (const card of display) {
-      let btn;
-      if (useV2) {
-        btn = makeCardEl(card);
-        if (validIids.has(card.iid)) {
-          btn.style.cursor = 'pointer';
-          btn.classList.add('targetable');
-          btn.onclick = () => submitGraveyardTarget(card.iid);
-        } else {
-          btn.style.opacity = '0.4';
-        }
+      const btn = makeCardEl(card);
+      if (validIids.has(card.iid)) {
+        btn.style.cursor = 'pointer';
+        btn.classList.add('targetable');
+        btn.onclick = () => submitGraveyardTarget(card.iid);
       } else {
-        btn = document.createElement('div');
-        btn.className = 'zone-card';
-        const typeHint = card.type ? card.type.charAt(0) : '?';
-        const cost = card.cost ? renderManaSymbols(formatCostBraced(card.cost)) : '';
-        btn.innerHTML = `<span style="opacity:0.6">[${typeHint}]</span> <span class="card-name"></span>${cost ? ' <span style="opacity:0.7;font-size:10px">' + cost + '</span>' : ''}`;
-        btn.querySelector('.card-name').textContent = card.name;
-        if (validIids.has(card.iid)) {
-          btn.style.cursor = 'pointer';
-          btn.style.borderColor = '#ffcc44';
-          btn.style.background = '#332';
-          btn.onclick = () => submitGraveyardTarget(card.iid);
-        } else {
-          btn.style.opacity = '0.4';
-        }
+        btn.style.opacity = '0.4';
       }
       listEl.appendChild(btn);
     }
@@ -745,15 +687,10 @@ function canPlayFromUI(who, card) {
 function renderOppHandBacks(n) {
   const el = document.getElementById('oppHandView');
   el.innerHTML = '';
-  const useV2 = typeof SETTINGS !== 'undefined' && SETTINGS.get('cardFrameStyle') === 'new';
   for (let i=0; i<n; i++) {
-    if (useV2) {
-      // v2 cardback: just the C-color frame at small scale, inner elements
-      // hidden by .v2-cardback CSS. No name / no art / no cost rendered.
-      el.innerHTML += '<div class="card-v2 col-C v2-cardback" style="--scale: 0.35"></div>';
-    } else {
-      el.innerHTML += '<div class="cardback"></div>';
-    }
+    // v2 cardback: just the C-color frame at small scale, inner elements
+    // hidden by .v2-cardback CSS. No name / no art / no cost rendered.
+    el.innerHTML += '<div class="card-v2 col-C v2-cardback" style="--scale: 0.35"></div>';
   }
 }
 
@@ -1163,13 +1100,11 @@ function artHtml(art, fallback) {
   return art;
 }
 
-// Pixel-art v2 in-hand / on-board card. Builds the 80x112 frame at 1x scale
+// Pixel-art in-hand / on-board card. Builds the 80x112 frame at 1x scale
 // (so it renders at native 80x112 pixels). State classes (.tapped/.castable/
-// .targetable/etc.) get applied by the same code paths that decorate the
-// classic .card -- they're added AFTER the element is returned, and the
-// v2 CSS handles each via .card-v2.{state}. Returns the same kind of div
-// the classic path returns, so callers don't need to know which variant.
-function makeCardElV2(card, opts) {
+// .targetable/etc.) get applied AFTER the element is returned; the .card-v2
+// CSS handles each via .card-v2.{state}.
+function makeCardEl(card, opts) {
   const div = document.createElement('div');
   div.dataset.iid = String(card.iid);
 
@@ -1269,12 +1204,8 @@ function makeCardElV2(card, opts) {
 // Build a v2 card frame for things that aren't engine-shaped cards (Neow
 // boons, mystery placeholders, sticker rewards, cardbacks, etc.). Caller
 // supplies a flat object; we fabricate just enough of the card-shape that
-// makeCardElV2 doesn't crash, and pass the literal text through opts so
+// makeCardEl doesn't crash, and pass the literal text through opts so
 // describeCardSegments is bypassed.
-//
-// Returns a v2 .card-v2 div regardless of SETTINGS.cardFrameStyle -- the
-// caller is the one deciding to use v2 here (the "classic" branch keeps
-// the site's pre-existing wireframe).
 function makeV2CardLike({ name, type, sub, text, art, color, cost, power, toughness, scale }) {
   const fakeCard = {
     name: name || '',
@@ -1289,61 +1220,11 @@ function makeV2CardLike({ name, type, sub, text, art, color, cost, power, toughn
     stickers: [], keywords: [], colors: [],
     iid: -1,
   };
-  const el = makeCardElV2(fakeCard, { overrideOracleText: text || '' });
+  const el = makeCardEl(fakeCard, { overrideOracleText: text || '' });
   if (scale !== undefined) el.style.setProperty('--scale', String(scale));
   return el;
 }
 
-function makeCardEl(card, opts) {
-  // Branch on the user's frame-style setting. v2 = the new 80x112 pixel-art
-  // frame at 1x scale; classic = the existing .card wireframe below.
-  if (typeof SETTINGS !== 'undefined' && SETTINGS.get('cardFrameStyle') === 'new') {
-    return makeCardElV2(card, opts);
-  }
-  const div = document.createElement('div');
-  // data-iid: lets the target-line overlay find this card's DOM element
-  // by iid. Set on every card render (hand + battlefield + zones) so the
-  // line layer can resolve any target referenced from a stack item.
-  div.dataset.iid = String(card.iid);
-  const [p, t] = card.type === 'Creature'
-    ? ENGINE.getStats(card)
-    : [card.power || 0, card.toughness || 0];
-  div.className = `card c${card.type.toLowerCase()}${card.tapped ? ' tapped' : ''}${card.sick ? ' sick' : ''}`;
-  // skipKeywords — keywords show as badges below.
-  const tileSegs = describeCardSegments(card, {skipKeywords: true});
-  const displayHtml = segmentsToHtml(tileSegs);
-  // Cost display: in hand, show the EFFECTIVE cost (base + static bumps
-  // from City Guardian etc.) so the player sees what they'd pay. Anywhere
-  // else (battlefield/zones) we show the base cost — there's no "cast" to
-  // tax. When the cost is bumped, add a small ↑ marker so the player
-  // understands the increase isn't intrinsic to the card.
-  let costHtml = '';
-  if (card.cost) {
-    if (opts && opts.inHand) {
-      const eff = ENGINE.effectiveCastCost(card);
-      const effC = eff && eff.C || 0;
-      const baseC = card.cost.C || 0;
-      const bumped = effC > baseC;
-      costHtml = `<div class="ccost">${renderManaSymbols(formatCostBraced(eff))}${bumped ? ' <span style="color:#ffaa44;font-size:9px">↑</span>' : ''}</div>`;
-    } else {
-      costHtml = `<div class="ccost">${renderManaSymbols(formatCostBraced(card.cost))}</div>`;
-    }
-  }
-  div.innerHTML = `
-    <div class="cname" title="${card.name}">${card.name}</div>
-    <div class="cart">${artHtml(effectiveArt(card))}</div>
-    <div class="ctype">${card.sub || card.type}</div>
-    ${displayHtml ? `<div class="ctext">${displayHtml}</div>` : ''}
-    ${card.type === 'Creature' ? `<div class="cstats">${p}/${t}</div>` : ''}
-    ${costHtml}
-    ${card.damage ? `<div class="cdmg">${card.damage}</div>` : ''}
-    ${nativeKeywordBadgesHtml(card, false)}
-    ${stickerBadgesHtml(card.stickers, false, card.empowerRolls, card.tplId, card.stapledFrom && card.stapledFrom.stapledTpls, card.subtypeRolls)}
-    ${restrictionBadgesHtml(card, false)}
-  `;
-  CONTROLLER.attachLongPress(div, card);
-  return div;
-}
 function formatCost(c) {
   let s = '';
   if (c.C) s += c.C;

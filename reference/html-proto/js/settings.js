@@ -12,7 +12,7 @@
 // the new value into the matching CSS custom property on :root.
 //
 // Settings history:
-// - v1.0.147: cardFrameStyle ('new' | 'classic')
+// - v1.0.147: cardFrameStyle ('new' | 'classic') — removed v1.0.180 (v1 wireframe gone)
 // - v1.0.153: cardFontTitle / -Body / -Pip (slot-based fonts, deprecated v1.0.158)
 // - v1.0.154: cardFontSizeTitle / -Body / -Pip (slot-based size multipliers, deprecated v1.0.158)
 // - v1.0.158: per-element font + size keys (name, type, pt, damage, text,
@@ -38,7 +38,6 @@ const CARD_FONT_ELEMENTS = [
 ];
 
 const DEFAULTS = {
-  cardFrameStyle: 'new',
   // Baseline tuned for mobile (Pixel 8 / DPR 2.625) per a v1.0.177 session
   // dump. Almendra everywhere; size multipliers landed on the values below.
   // Existing users keep their localStorage tuning; fresh installs start here.
