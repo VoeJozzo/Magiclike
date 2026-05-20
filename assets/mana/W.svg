@@ -8,17 +8,17 @@
   </defs>
   <circle cx="20" cy="20" r="17" fill="#DEC96A"/>
   <circle cx="20" cy="20" r="17" fill="url(#shine)"/>
-  <g clip-path="url(#clip)" stroke="#140A02" fill="#140A02" stroke-linecap="round" stroke-linejoin="round">
-    <line x1="20" y1="17" x2="20" y2="29" stroke-width="2"/>
+  <g clip-path="url(#clip)" stroke="#000000" fill="#000000" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="20" y1="17" x2="20" y2="29" stroke-width="3"/>
     <polygon points="16.5,32 23.5,32 20,27.5" stroke-width="0"/>
-    <line x1="10" y1="14" x2="30" y2="20" stroke-width="2.5"/>
-    <circle cx="20" cy="17" r="2.2" stroke-width="0"/>
-    <line x1="10" y1="14" x2="6" y2="20" stroke-width="1.5"/>
-    <line x1="10" y1="14" x2="14" y2="20" stroke-width="1.5"/>
-    <line x1="6" y1="20" x2="14" y2="20" stroke-width="2.5"/>
-    <line x1="30" y1="20" x2="26" y2="30" stroke-width="1.5"/>
-    <line x1="30" y1="20" x2="33" y2="30" stroke-width="1.5"/>
-    <line x1="26" y1="30" x2="33" y2="30" stroke-width="2.5"/>
+    <line x1="10" y1="14" x2="30" y2="20" stroke-width="3.75"/>
+    <circle cx="20" cy="17" r="2.8" stroke-width="0"/>
+    <line x1="10" y1="14" x2="6" y2="20" stroke-width="2.25"/>
+    <line x1="10" y1="14" x2="14" y2="20" stroke-width="2.25"/>
+    <line x1="6" y1="20" x2="14" y2="20" stroke-width="3.75"/>
+    <line x1="30" y1="20" x2="26" y2="30" stroke-width="2.25"/>
+    <line x1="30" y1="20" x2="33" y2="30" stroke-width="2.25"/>
+    <line x1="26" y1="30" x2="33" y2="30" stroke-width="3.75"/>
   </g>
   <circle cx="20" cy="20" r="17" fill="none" stroke="#8A6810" stroke-width="2"/>
   <circle cx="20" cy="20" r="19" fill="none" stroke="#C8B040" stroke-width="1.8"/>
