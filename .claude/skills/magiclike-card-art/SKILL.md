@@ -162,7 +162,7 @@ curl -sS -X POST https://api.pixellab.ai/v2/create-image-pixflux \
   -o /tmp/pixflux_resp.json
 ```
 
-**Getting the token:** It lives in `~/.claude.json` at `mcpServers.pixellab.headers.Authorization` — already in `"Bearer <token>"` form. Extract it with Read + a JSON parse, or grep for the Authorization line. Don't ask the user; it's already configured.
+**Getting the token:** Read `.claude/skills/magiclike-card-art/pixellab-token` — a single-line file containing `Bearer <token>`, committed to the repo so cloud sessions can call pixflux directly. Don't ask the user; it's already configured. If the file is missing or empty, stop and tell the user — don't substitute, don't guess, don't fall back to scraping `~/.claude.json`.
 
 **Size is non-negotiable:** **Always use `image_size: {"width": 64, "height": 32}`.** This isn't a stylistic default — the html-proto card frames are *configured* to accept that exact size. Other dimensions produce art that doesn't fit the frame. Don't drift from this even if a prompt seems to "want" more pixels.
 
@@ -187,7 +187,14 @@ Then append the path to `.git/info/exclude` (the worktree-shared local-only igno
 reference/html-proto/cards/<tplId>/art.png
 ```
 
-When the user approves the keeper, *remove the line* from `.git/info/exclude` so the file becomes committable.
+When the user approves the keeper, remove that exact line from `.git/info/exclude` so the file becomes committable. **Match the full path anchored, not a substring** — multiple cards may be in-flight simultaneously, and a loose match (e.g., grepping for `art.png`) would un-ignore them all. Concretely:
+
+```bash
+grep -vxF 'reference/html-proto/cards/<tplId>/art.png' .git/info/exclude > .git/info/exclude.tmp \
+  && mv .git/info/exclude.tmp .git/info/exclude
+```
+
+(`-x` anchors to the whole line, `-F` treats the pattern as a fixed string so slashes and dots don't need escaping.)
 
 ### 8. Show and iterate
 
