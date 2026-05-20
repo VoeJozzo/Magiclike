@@ -39,34 +39,33 @@ const CARD_FONT_ELEMENTS = [
 
 const DEFAULTS = {
   cardFrameStyle: 'new',
-  // Per-element fonts. Defaults match the v1.0.157 slot-based values so
-  // upgrading users see the same look until they tune individual elements.
-  cardFontName:     "'Cinzel', Georgia, serif",
-  cardFontType:     "'Cinzel', Georgia, serif",
-  cardFontPt:       "'Cinzel', Georgia, serif",
-  cardFontDamage:   "'Cinzel', Georgia, serif",
-  cardFontText:     "Georgia, serif",
-  cardFontStickers: "Georgia, serif",
-  cardFontPip:      "Arial, sans-serif",
-  cardFontBumped:   "Arial, sans-serif",
-  // Per-element size multipliers. 1.0 = each element's baseline px.
-  cardFontSizeName:     1,
-  cardFontSizeType:     1,
-  cardFontSizePt:       1,
-  cardFontSizeDamage:   1,
-  cardFontSizeText:     1,
-  cardFontSizeStickers: 1,
-  cardFontSizePip:      1,
-  cardFontSizeBumped:   1,
-  // Popup-only extra font multiplier (v1.0.161). 1 = text scales
-  // proportionally with the popup's 4x frame (default). <1 keeps text
-  // smaller relative to the frame so more oracle text fits.
-  cardPopupTextScale: 1,
-  // Mana symbol size knobs (v1.0.173). Each is a multiplier on the
-  // surface's baseline -- 1 = unchanged.
-  cardManaPipSize: 1,      // v2 cost pip (baseline 4px at --scale 1) in default contexts
-  cardManaPipPopupSize: 1, // v2 cost pip override in popup (v1.0.174)
-  cardManaTextSize: 1,     // in-text .mana symbol (baseline 1.2em)
+  // Baseline tuned for mobile (Pixel 8 / DPR 2.625) per a v1.0.177 session
+  // dump. Almendra everywhere; size multipliers landed on the values below.
+  // Existing users keep their localStorage tuning; fresh installs start here.
+  cardFontName:     "'Almendra', Georgia, serif",
+  cardFontType:     "'Almendra', Georgia, serif",
+  cardFontPt:       "'Almendra', Georgia, serif",
+  cardFontDamage:   "'Almendra', Georgia, serif",
+  cardFontText:     "'Almendra', Georgia, serif",
+  cardFontStickers: "'Almendra', Georgia, serif",
+  cardFontPip:      "'Almendra', Georgia, serif",
+  cardFontBumped:   "'Almendra', Georgia, serif",
+  // Per-element size multipliers (each * its element's baseline px).
+  cardFontSizeName:     8/7,    // 8px (baseline 7)
+  cardFontSizeType:     7/5,    // 7px (baseline 5)
+  cardFontSizePt:       2,      // 10px (baseline 5)
+  cardFontSizeDamage:   2,      // 10px
+  cardFontSizeText:     7/6,    // 7px (baseline 6)
+  cardFontSizeStickers: 1,      // 5px
+  cardFontSizePip:      10/3,   // 10px (baseline 3)
+  cardFontSizeBumped:   1.5,    // 6px (baseline 4)
+  // Popup mode: dampen text growth so a 4x popup frame renders text at
+  // ~2.8x effective scale, leaving more room for long oracle text.
+  cardPopupTextScale: 0.7,
+  // Mana symbol size knobs.
+  cardManaPipSize:      3,      // 12px (baseline 4)
+  cardManaPipPopupSize: 1.5,    // 6px-at-1x = 24px in 4x popup
+  cardManaTextSize:     1,      // 1.2em (baseline)
 };
 
 // Options for the popup text scale dropdown. Values < 1 dampen the text

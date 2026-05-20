@@ -79,37 +79,39 @@
    match the v1.0.157 slot-based values; the panel writes overrides via
    JS at runtime. */
 :root{
-  --card-font-name:     'Cinzel', Georgia, serif;
-  --card-font-type:     'Cinzel', Georgia, serif;
-  --card-font-pt:       'Cinzel', Georgia, serif;
-  --card-font-damage:   'Cinzel', Georgia, serif;
-  --card-font-text:     Georgia, serif;
-  --card-font-stickers: Georgia, serif;
-  --card-font-pip:      Arial, sans-serif;
-  --card-font-bumped:   Arial, sans-serif;
-  --card-fsize-name:     1;
-  --card-fsize-type:     1;
-  --card-fsize-pt:       1;
-  --card-fsize-damage:   1;
-  --card-fsize-text:     1;
-  --card-fsize-stickers: 1;
-  --card-fsize-pip:      1;
-  --card-fsize-bumped:   1;
+  /* Mobile-tuned baseline (v1.0.178). Synced with DEFAULTS in settings.js
+     so the brief pre-applyFontsToRoot paint matches the SETTINGS values. */
+  --card-font-name:     'Almendra', Georgia, serif;
+  --card-font-type:     'Almendra', Georgia, serif;
+  --card-font-pt:       'Almendra', Georgia, serif;
+  --card-font-damage:   'Almendra', Georgia, serif;
+  --card-font-text:     'Almendra', Georgia, serif;
+  --card-font-stickers: 'Almendra', Georgia, serif;
+  --card-font-pip:      'Almendra', Georgia, serif;
+  --card-font-bumped:   'Almendra', Georgia, serif;
+  --card-fsize-name:     1.142857;  /* 8/7  -> 8px from 7px baseline */
+  --card-fsize-type:     1.4;       /* 7/5  -> 7px from 5px */
+  --card-fsize-pt:       2;         /* 10/5 -> 10px */
+  --card-fsize-damage:   2;         /* 10/5 -> 10px */
+  --card-fsize-text:     1.166667;  /* 7/6  -> 7px from 6px */
+  --card-fsize-stickers: 1;         /* 5px */
+  --card-fsize-pip:      3.333333;  /* 10/3 -> 10px from 3px */
+  --card-fsize-bumped:   1.5;       /* 6/4  -> 6px from 4px */
   /* Context-dependent extra font multiplier. 1 everywhere by default;
      inside .card-v2.in-popup it switches to --card-popup-text-scale so
      the popup can dampen text growth relative to the frame (a 4x popup
      with 0.5 popup-text-scale renders fonts at 2x instead of 4x, leaving
      more room for long oracle text). User-controlled via settings. */
   --card-text-scale:       1;
-  --card-popup-text-scale: 1;
+  --card-popup-text-scale: 0.7;
   /* Mana symbol sizing. Three knobs:
      --card-mana-pip-size: multiplier on the v2-frame cost pip (baseline 4px at --scale 1) in
                             default (non-popup) contexts.
      --card-mana-pip-popup-size: multiplier override that takes effect ONLY inside
                             .card-v2.in-popup (long-press detail).
      --card-mana-text-size: multiplier on the in-text .mana symbol (baseline 1.2em). */
-  --card-mana-pip-size:       1;
-  --card-mana-pip-popup-size: 1;
+  --card-mana-pip-size:       3;     /* 12px from 4px baseline */
+  --card-mana-pip-popup-size: 1.5;   /* 6px-at-1x = 24px in 4x popup */
   --card-mana-text-size:      1;
 }
 *{box-sizing:border-box;margin:0;padding:0}
