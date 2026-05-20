@@ -35,57 +35,13 @@ schema later.
 - **Source:** pixellab.ai
 - **License:** (user-managed account; check pixellab's terms of service for distribution rights — placeholder until exact terms are documented)
 
-### Cinzel (Google Fonts) — display font
-
-- **Location in tree:** `assets/fonts/Cinzel/`
-- **Used for:** card name + type + P/T text in the new 80×112 card frame design (`ui` branch)
-- **License:** SIL Open Font License v1.1 (`assets/fonts/Cinzel/OFL.txt`)
-- **Copyright:** © 2020 The Cinzel Project Authors (https://github.com/NDISCOVER/Cinzel)
-- **Source:** Google Fonts
-- **Files:** variable font (`Cinzel-VariableFont_wght.ttf`) + 6 static weights (Black, Bold, ExtraBold, Medium, Regular, SemiBold)
-- **Note:** placed at repo root rather than in `reference/html-proto/assets/` so the Godot port can also load via `res://assets/fonts/Cinzel/...`.
-
-### Press Start 2P (Google Fonts) — pixel body font
-
-- **Location in tree:** `assets/fonts/Press_Start_2P/`
-- **Used for:** card body text + flavour text in the new 80×112 card frame design (`ui` branch)
-- **License:** SIL Open Font License v1.1 (`assets/fonts/Press_Start_2P/OFL.txt`)
-- **Copyright:** © 2012 The Press Start 2P Project Authors (cody@zone38.net), with Reserved Font Name "Press Start 2P"
-- **Source:** Google Fonts
-- **Files:** `PressStart2P-Regular.ttf` (bitmap font, single weight)
-- **Note:** "Reserved Font Name" clause — if we modify/derive from this font, the derivative must use a different name (we won't be modifying it, just embedding).
-
 ### Almendra (Google Fonts) — fantasy serif
 
 - **Location in tree:** `assets/fonts/Almendra/`
-- **Used for:** offered in the card-font picker (v1.0.156) for runtime experimentation
+- **Used for:** every text element on the v2 card frame (name / type / P/T / damage / oracle text / stickers / mana pip number / cost arrow). Shipped baseline as of v1.0.178.
 - **License:** SIL Open Font License v1.1 (`assets/fonts/Almendra/OFL.txt`)
 - **Source:** Google Fonts
-- **Files:** Regular, Bold, Italic, BoldItalic (`Almendra-*.ttf`)
-
-### Inknut Antiqua (Google Fonts) — antique book serif
-
-- **Location in tree:** `assets/fonts/Inknut_Antiqua/`
-- **Used for:** offered in the card-font picker (v1.0.156) for runtime experimentation; the Light cut is also registered as a separate `'Inknut Antiqua Light'` family so the picker can offer it without a font-weight UI
-- **License:** SIL Open Font License v1.1 (`assets/fonts/Inknut_Antiqua/OFL.txt`)
-- **Source:** Google Fonts
-- **Files:** Light, Regular, Medium, SemiBold, Bold, ExtraBold, Black (`InknutAntiqua-*.ttf`)
-
-### Philosopher (Google Fonts) — humanist serif/sans
-
-- **Location in tree:** `assets/fonts/Philosopher/`
-- **Used for:** offered in the card-font picker (v1.0.156) for runtime experimentation
-- **License:** SIL Open Font License v1.1 (`assets/fonts/Philosopher/OFL.txt`)
-- **Source:** Google Fonts
-- **Files:** Regular, Bold, Italic, BoldItalic (`Philosopher-*.ttf`)
-
-### Pixelify Sans (Google Fonts) — pixel-art sans-serif
-
-- **Location in tree:** `assets/fonts/Pixelify_Sans/`
-- **Used for:** offered in the card-font picker (v1.0.156) for runtime experimentation — softer pixel alternative to Press Start 2P
-- **License:** SIL Open Font License v1.1 (`assets/fonts/Pixelify_Sans/OFL.txt`)
-- **Source:** Google Fonts
-- **Files:** variable font (`PixelifySans-VariableFont_wght.ttf`, weight axis 400–700) plus Regular, Medium, SemiBold, Bold static cuts
+- **Files:** `Almendra-Regular.ttf` and `Almendra-Bold.ttf` (Bold registered as a separate `'Almendra Bold'` family so the font picker can offer it without a font-weight UI). Italic and BoldItalic cuts shipped alongside but not currently wired into a font-family.
 
 ### Mana symbol SVGs (Claude-authored, "manaiconsv13" spec)
 

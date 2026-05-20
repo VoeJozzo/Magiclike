@@ -99,15 +99,9 @@ const MANA_TEXT_SIZE_OPTIONS = [
 ];
 
 const FONT_OPTIONS = [
-  { label: 'Cinzel (display serif)',      value: "'Cinzel', Georgia, serif" },
   { label: 'Almendra (fantasy serif)',    value: "'Almendra', Georgia, serif" },
   { label: 'Almendra Bold',               value: "'Almendra Bold', Georgia, serif" },
-  { label: 'Inknut Antiqua (book serif)', value: "'Inknut Antiqua', Georgia, serif" },
-  { label: 'Inknut Antiqua Light',        value: "'Inknut Antiqua Light', Georgia, serif" },
-  { label: 'Philosopher (humanist)',      value: "'Philosopher', Georgia, serif" },
   { label: 'Georgia (serif)',             value: "Georgia, serif" },
-  { label: 'Pixelify Sans (pixel)',       value: "'Pixelify Sans', monospace" },
-  { label: 'Press Start 2P (pixel)',      value: "'Press Start 2P', monospace" },
   { label: 'Arial (sans-serif)',          value: "Arial, sans-serif" },
   { label: 'System UI',                   value: "system-ui, sans-serif" },
   { label: 'Monospace',                   value: "monospace" },
@@ -117,25 +111,20 @@ const FONT_OPTIONS = [
 // preset writes the title font to all four title-slot elements, body font
 // to both body-slot elements, pip font to both pip-slot elements.
 const FONT_PRESETS = {
-  'Display Serif (default)': {
-    title: "'Cinzel', Georgia, serif",
-    body:  "Georgia, serif",
-    pip:   "Arial, sans-serif",
+  'Almendra (default)': {
+    title: "'Almendra', Georgia, serif",
+    body:  "'Almendra', Georgia, serif",
+    pip:   "'Almendra', Georgia, serif",
+  },
+  'Almendra Bold headers': {
+    title: "'Almendra Bold', Georgia, serif",
+    body:  "'Almendra', Georgia, serif",
+    pip:   "'Almendra', Georgia, serif",
   },
   'Classic (all Georgia)': {
     title: "Georgia, serif",
     body:  "Georgia, serif",
     pip:   "Georgia, serif",
-  },
-  'Pixel Headers': {
-    title: "'Press Start 2P', monospace",
-    body:  "Georgia, serif",
-    pip:   "Arial, sans-serif",
-  },
-  'Full Pixel (Press Start 2P)': {
-    title: "'Press Start 2P', monospace",
-    body:  "'Press Start 2P', monospace",
-    pip:   "'Press Start 2P', monospace",
   },
   'Modern Sans': {
     title: "system-ui, sans-serif",
