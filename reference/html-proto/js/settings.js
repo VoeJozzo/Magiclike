@@ -98,6 +98,7 @@ const MANA_TEXT_SIZE_OPTIONS = [
 const FONT_OPTIONS = [
   { label: 'Cinzel (display serif)',      value: "'Cinzel', Georgia, serif" },
   { label: 'Almendra (fantasy serif)',    value: "'Almendra', Georgia, serif" },
+  { label: 'Almendra Bold',               value: "'Almendra Bold', Georgia, serif" },
   { label: 'Inknut Antiqua (book serif)', value: "'Inknut Antiqua', Georgia, serif" },
   { label: 'Inknut Antiqua Light',        value: "'Inknut Antiqua Light', Georgia, serif" },
   { label: 'Philosopher (humanist)',      value: "'Philosopher', Georgia, serif" },
