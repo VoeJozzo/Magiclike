@@ -1131,11 +1131,9 @@ function cardToViewModel(card, opts) {
     || 'C';
 
   const isCreature = card.type === 'Creature';
-  const basePow = card.power || 0;
-  const baseTou = card.toughness || 0;
   const [pow, tou] = isCreature
     ? ENGINE.getStats(card)
-    : [basePow, baseTou];
+    : [card.power || 0, card.toughness || 0];
 
   const displayCost = inHand
     ? ENGINE.effectiveCastCost(card)
@@ -1179,7 +1177,7 @@ function cardToViewModel(card, opts) {
     : '';
 
   return {
-    colorKey, isCreature, pow, tou, basePow, baseTou,
+    colorKey, isCreature, pow, tou,
     pipsHtml, bumpedMarker, typeText, oracleHtml,
     artInner, stickersInner,
   };

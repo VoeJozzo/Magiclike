@@ -109,9 +109,9 @@ function renderDevtoolsCollapsible(list) {
 // Slot-shaped preset dropdown. Applying a preset writes the title font to
 // all four title-slot elements, body font to body-slot, pip font to pip-
 // slot. 'Custom' appears when per-element values don't all match a preset.
-// Returns presetSelect so renderFontElementRows can update its value on
-// per-element changes (so the dropdown reflects "Custom" the moment the
-// user diverges from a named preset).
+// Returns a refreshPresetActive() callback so renderFontElementRows can
+// flip the dropdown to "Custom" the moment a per-element font change
+// diverges from the active named preset.
 function renderFontPresetRow(pickerArea) {
   const fontHeader = document.createElement('div');
   fontHeader.textContent = 'Card fonts';
@@ -157,15 +157,19 @@ function renderFontPresetRow(pickerArea) {
   presetRow.appendChild(presetSelect);
   pickerArea.appendChild(presetRow);
 
-  presetSelect.refreshActive = () => { presetSelect.value = activePresetName(); };
-  return presetSelect;
+  // Returned to renderFontElementRows so each per-element font change
+  // can flip the preset dropdown to 'Custom' the moment the user
+  // diverges from a named preset.
+  return function refreshPresetActive() {
+    presetSelect.value = activePresetName();
+  };
 }
 
 // Per-element rows: title (name/type/PT/damage), body (oracle/stickers),
 // pip (mana number/cost arrow). Each row has a font dropdown and a size
 // dropdown. On font change, refresh the preset dropdown so 'Custom'
 // appears when the user diverges from a named preset.
-function renderFontElementRows(pickerArea, presetSelect) {
+function renderFontElementRows(pickerArea, refreshPresetActive) {
   function makeElementRow(element) {
     const row = makeRow(element.label);
     const fontKey = SETTINGS.settingsKeyFont(element.key);
@@ -175,7 +179,7 @@ function renderFontElementRows(pickerArea, presetSelect) {
       SETTINGS.get(fontKey),
       (val) => {
         SETTINGS.set(fontKey, val);
-        presetSelect.refreshActive();
+        refreshPresetActive();
         render();
       }
     ));
@@ -304,8 +308,8 @@ function renderPanel() {
   list.innerHTML = '';
 
   const pickerArea = renderDevtoolsCollapsible(list);
-  const presetSelect = renderFontPresetRow(pickerArea);
-  renderFontElementRows(pickerArea, presetSelect);
+  const refreshPresetActive = renderFontPresetRow(pickerArea);
+  renderFontElementRows(pickerArea, refreshPresetActive);
   renderPopupTextScaleRow(pickerArea);
   renderManaPipSizeRows(pickerArea);
   renderManaTextScaleRow(pickerArea);
