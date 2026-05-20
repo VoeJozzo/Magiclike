@@ -570,6 +570,50 @@ function renderSettings() {
     }
   ));
   list.appendChild(manaTextRow);
+
+  // Export-current-settings button. Dumps SETTINGS.getAll() to clipboard
+  // as JSON so the dev can snapshot a tuning session and bake the values
+  // into DEFAULTS. Falls back to an inline textarea on browsers that
+  // refuse clipboard.writeText (HTTPS / user-gesture restrictions).
+  const exportWrap = document.createElement('div');
+  exportWrap.style.cssText = 'margin-top:14px;padding-top:10px;border-top:1px solid #333';
+  const exportBtn = document.createElement('button');
+  exportBtn.textContent = '📋 Copy settings as JSON';
+  exportBtn.style.cssText = 'padding:8px 14px;background:#2a3a44;border:1px solid #4a6a8a;color:#cce;border-radius:4px;cursor:pointer;font-family:inherit;font-size:12px;width:100%';
+  exportBtn.onclick = () => {
+    const json = JSON.stringify(SETTINGS.getAll(), null, 2);
+    const flash = (msg, ok) => {
+      exportBtn.textContent = msg;
+      exportBtn.style.background = ok ? '#1a4a2a' : '#4a2a2a';
+      setTimeout(() => {
+        exportBtn.textContent = '📋 Copy settings as JSON';
+        exportBtn.style.background = '#2a3a44';
+      }, 1800);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(json).then(
+        () => flash('✓ Copied to clipboard', true),
+        () => showFallbackTextarea()
+      );
+    } else {
+      showFallbackTextarea();
+    }
+    function showFallbackTextarea() {
+      // Inline textarea fallback when clipboard API is unavailable -- user
+      // selects + copies manually.
+      let ta = exportWrap.querySelector('textarea');
+      if (!ta) {
+        ta = document.createElement('textarea');
+        ta.style.cssText = 'width:100%;height:160px;margin-top:6px;background:#0d0d18;color:#ddd;border:1px solid #444;border-radius:3px;font-family:monospace;font-size:10px;padding:4px;box-sizing:border-box';
+        exportWrap.appendChild(ta);
+      }
+      ta.value = json;
+      ta.select();
+      flash('⚠ Clipboard blocked — select + copy', false);
+    }
+  };
+  exportWrap.appendChild(exportBtn);
+  list.appendChild(exportWrap);
 }
 
 function continueRun() {
