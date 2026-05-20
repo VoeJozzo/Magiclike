@@ -1105,36 +1105,39 @@ function artHtml(art, fallback) {
   return art;
 }
 
-// Pixel-art in-hand / on-board card. Builds the 80x112 frame at 1x scale
-// (so it renders at native 80x112 pixels). State classes (.tapped/.castable/
-// .targetable/etc.) get applied AFTER the element is returned; the .card-v2
-// CSS handles each via .card-v2.{state}.
-function makeCardEl(card, opts) {
-  const div = document.createElement('div');
-  div.dataset.iid = String(card.iid);
+// Pre-computed display values for a card, consumed by both makeCardEl
+// (in-hand / on-board frame) and openCardPopup (4x popup frame in
+// controller.js). Centralizing here keeps cost-pip rendering, type-line
+// assembly, art resolution, and sticker-badge construction in one place
+// — both consumers used to inline these and were prone to drift.
+//
+// opts.inHand        — show effective cost (cast tax) with ↑ marker.
+//                      Default: show base cost (board/zone view).
+// opts.overrideOracleText — bypass describeCardSegments; render the
+//                      literal string through escape + mana pipeline.
+//                      Used by makeV2CardLike for boons / mystery
+//                      placeholders / cardbacks that aren't engine cards.
+function cardToViewModel(card, opts) {
+  opts = opts || {};
+  const inHand = !!opts.inHand;
+  const overrideOracleText = opts.overrideOracleText;
 
-  const [p, t] = card.type === 'Creature'
-    ? ENGINE.getStats(card)
-    : [card.power || 0, card.toughness || 0];
-
-  // Frame color resolution: cost colors > card.color > land's produced
-  // color (Plains -> W) > Colorless. Multicolor uses the first color
-  // (WUBRG order); refining for dual-color frames is a future tweak.
+  // Frame color: cost colors > card.color > land's produced color
+  // (Plains -> W) > Colorless. Multicolor uses first WUBRG-order color;
+  // dual-color frame design is a future tweak.
   const colorKey = (card.colors && card.colors[0])
     || card.color
     || (card.type === 'Land' && card.mana)
     || 'C';
 
-  div.className = 'card-v2 col-' + colorKey +
-    (card.tapped ? ' tapped' : '') +
-    (card.sick ? ' sick' : '');
-
   const isCreature = card.type === 'Creature';
+  const basePow = card.power || 0;
+  const baseTou = card.toughness || 0;
+  const [pow, tou] = isCreature
+    ? ENGINE.getStats(card)
+    : [basePow, baseTou];
 
-  // Mana cost pips. In-hand shows the EFFECTIVE cost (cast tax from City
-  // Guardian etc.) with a small ↑ marker when bumped, so the player sees
-  // what they'd actually pay. Anywhere else shows the base cost.
-  const displayCost = (opts && opts.inHand)
+  const displayCost = inHand
     ? ENGINE.effectiveCastCost(card)
     : card.cost;
   let pipsHtml = '';
@@ -1150,7 +1153,7 @@ function makeCardEl(card, opts) {
     }
   }
   let bumpedMarker = '';
-  if (opts && opts.inHand && card.cost) {
+  if (inHand && card.cost) {
     const baseC = card.cost.C || 0;
     const effC = (displayCost && displayCost.C) || 0;
     if (effC > baseC) bumpedMarker = '<span class="v2-bumped">↑</span>';
@@ -1158,14 +1161,9 @@ function makeCardEl(card, opts) {
 
   const typeText = card.type + (card.sub ? ' — ' + card.sub : '');
 
-  // Oracle text. Default path runs describeCardSegments through the
-  // engine's pip pipeline. opts.overrideOracleText (set by makeV2CardLike
-  // for boons, mystery placeholders, etc.) lets callers pass a literal
-  // string that bypasses describeCardSegments -- those non-cards don't
-  // have engine-shaped abilities/effects to describe.
   let oracleHtml;
-  if (opts && opts.overrideOracleText !== undefined) {
-    oracleHtml = renderManaSymbols(escapeHtml(opts.overrideOracleText));
+  if (overrideOracleText !== undefined) {
+    oracleHtml = renderManaSymbols(escapeHtml(overrideOracleText));
   } else {
     const segs = describeCardSegments(card, {skipKeywords: false});
     oracleHtml = segmentsToHtml(segs);
@@ -1176,28 +1174,51 @@ function makeCardEl(card, opts) {
     ? '<img src="' + artVal + '" alt="">'
     : escapeHtml(artVal || '');
 
-  // Stickers + restrictions pin to the bottom of the text panel per user
-  // direction (v1.0.146 spec note).
   const stickersInner = (card.stickers && card.stickers.length)
     ? stickerBadgesHtml(card.stickers, false, card.empowerRolls, card.tplId, card.stapledFrom && card.stapledFrom.stapledTpls, card.subtypeRolls)
     : '';
+
+  return {
+    colorKey, isCreature, pow, tou, basePow, baseTou,
+    pipsHtml, bumpedMarker, typeText, oracleHtml,
+    artInner, stickersInner,
+  };
+}
+
+// Pixel-art in-hand / on-board card. Builds the 80x112 frame at 1x scale
+// (so it renders at native 80x112 pixels). State classes (.tapped/.castable/
+// .targetable/etc.) get applied AFTER the element is returned; the .card-v2
+// CSS handles each via .card-v2.{state}.
+function makeCardEl(card, opts) {
+  const div = document.createElement('div');
+  div.dataset.iid = String(card.iid);
+
+  const vm = cardToViewModel(card, opts);
+
+  div.className = 'card-v2 col-' + vm.colorKey +
+    (card.tapped ? ' tapped' : '') +
+    (card.sick ? ' sick' : '');
+
+  // Restrictions render only on the in-hand/board frame, not on the
+  // popup or on fake cards. Inlined here because the popup intentionally
+  // doesn't surface restrictions in the frame body.
   const restrictInner = restrictionBadgesHtml(card, false);
-  const stickerSection = (stickersInner || restrictInner)
-    ? '<div class="v2-stickers">' + stickersInner + restrictInner + '</div>'
+  const stickerSection = (vm.stickersInner || restrictInner)
+    ? '<div class="v2-stickers">' + vm.stickersInner + restrictInner + '</div>'
     : '';
 
-  const ptInner = isCreature ? '<div class="v2-pt">' + p + '/' + t + '</div>' : '';
+  const ptInner = vm.isCreature ? '<div class="v2-pt">' + vm.pow + '/' + vm.tou + '</div>' : '';
   const damageInner = card.damage ? '<div class="v2-damage">' + card.damage + '</div>' : '';
 
   div.innerHTML =
     '<div class="v2-title">' +
       '<div class="v2-name">' + escapeHtml(card.name || '') + '</div>' +
-      '<div class="v2-cost">' + pipsHtml + bumpedMarker + '</div>' +
+      '<div class="v2-cost">' + vm.pipsHtml + vm.bumpedMarker + '</div>' +
     '</div>' +
-    '<div class="v2-art">' + artInner + '</div>' +
-    '<div class="v2-type">' + escapeHtml(typeText) + '</div>' +
+    '<div class="v2-art">' + vm.artInner + '</div>' +
+    '<div class="v2-type">' + escapeHtml(vm.typeText) + '</div>' +
     '<div class="v2-text">' +
-      '<div class="v2-oracle">' + oracleHtml + '</div>' +
+      '<div class="v2-oracle">' + vm.oracleHtml + '</div>' +
       stickerSection +
     '</div>' +
     ptInner + damageInner;

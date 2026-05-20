@@ -2269,79 +2269,35 @@ function openCardPopup(card) {
   const popup = document.getElementById('cardPopup');
   const inner = document.getElementById('cardPopupCard');
 
-  // Frame color. Spells/creatures: first color in cost. Lands/artifacts: 'C'.
-  // Multi-color uses the first color in WUBRG order; refining this for proper
-  // dual-color frames is a future enhancement.
-  const colorKey = (card.colors && card.colors[0]) || card.color || 'C';
+  // Shared display values (cost pips, art, oracle, stickers, P/T, type).
+  // Popup always shows base cost (inHand:false) — there's no "cast" to
+  // tax in popup context, so the effective-cost ↑ marker doesn't apply.
+  const vm = cardToViewModel(card);
+  const ptInner = vm.isCreature ? `<div class="v2-pt">${vm.pow}/${vm.tou}</div>` : '';
 
-  const isCreature = card.type === 'Creature';
-  let basePow = card.power || 0, baseTou = card.toughness || 0;
-  const [pow, tou] = isCreature
-    ? ENGINE.getStats(card)
-    : [basePow, baseTou];
-
-  // Mana cost pips. Generic count rendered as a single pip with the number
-  // inside; then one pip per colored point in WUBRG order.
-  let pipsHtml = '';
-  if (card.cost) {
-    if (card.cost.C) {
-      pipsHtml += `<span class="v2-pip col-num">${card.cost.C}</span>`;
-    }
-    for (const c of ['W','U','B','R','G']) {
-      const n = card.cost[c] || 0;
-      for (let i = 0; i < n; i++) {
-        pipsHtml += `<span class="v2-pip col-${c}"></span>`;
-      }
-    }
-  }
-
-  // Type line.
-  const typeText = card.type + (card.sub ? ' — ' + card.sub : '');
-
-  // Oracle text. skipKeywords:false inlines the keyword preamble at the
-  // top of the oracle (the frame has no separate keyword-badge row, so
-  // inlining is the only way granted keywords surface).
-  const popSegs = describeCardSegments(card, {skipKeywords: false});
-  const oracleHtml = segmentsToHtml(popSegs);
-
-  // Art slot. effectiveArt handles ladder; isArtUrl distinguishes file paths
-  // from emoji glyphs.
-  const artVal = effectiveArt(card);
-  const artInner = isArtUrl(artVal)
-    ? `<img src="${artVal}" alt="">`
-    : escapeHtml(artVal || '');
-
-  // Stickers go at the bottom of the text panel per user direction.
-  const stickersInner = card.stickers && card.stickers.length
-    ? stickerBadgesHtml(card.stickers, false, card.empowerRolls, card.tplId, card.stapledFrom && card.stapledFrom.stapledTpls, card.subtypeRolls)
-    : '';
-
-  const ptInner = isCreature
-    ? `<div class="v2-pt">${pow}/${tou}</div>`
-    : '';
-
-  // Strip the .pop-* chrome from the inner container -- the frame IS the
-  // visual now, no need for the modal-box styling.
   // Repertoire (Mercurial) and Built Ability (Codex) sections appear
-  // below the v2 frame for cards that need them. Constrained to the
-  // frame's 320px width so they line up visually with the card above.
+  // below the frame for cards that need them. Constrained to the frame's
+  // 320px width so they line up visually with the card above.
   const extraSections = buildPopupTriggerSections(card);
   const extrasHtml = extraSections
     ? `<div style="width:320px;margin:8px auto 0;text-align:left">${extraSections}</div>`
     : '';
+
+  // Strip the modal-box chrome from #cardPopupCard -- the frame IS the
+  // visual now, no need for the box styling.
   inner.className = '';
   inner.style.cssText = 'background:transparent;border:none;box-shadow:none;padding:0;width:auto;max-width:none;text-align:center;cursor:default';
   inner.innerHTML = `
-    <div class="card-v2 in-popup col-${colorKey}" style="--scale: 4">
+    <div class="card-v2 in-popup col-${vm.colorKey}" style="--scale: 4">
       <div class="v2-title">
         <div class="v2-name">${escapeHtml(card.name || '')}</div>
-        <div class="v2-cost">${pipsHtml}</div>
+        <div class="v2-cost">${vm.pipsHtml}</div>
       </div>
-      <div class="v2-art">${artInner}</div>
-      <div class="v2-type">${escapeHtml(typeText)}</div>
+      <div class="v2-art">${vm.artInner}</div>
+      <div class="v2-type">${escapeHtml(vm.typeText)}</div>
       <div class="v2-text">
-        <div class="v2-oracle">${oracleHtml}</div>
-        ${stickersInner ? '<div class="v2-stickers">' + stickersInner + '</div>' : ''}
+        <div class="v2-oracle">${vm.oracleHtml}</div>
+        ${vm.stickersInner ? '<div class="v2-stickers">' + vm.stickersInner + '</div>' : ''}
       </div>
       ${ptInner}
     </div>
