@@ -421,11 +421,56 @@ function renderSettings() {
   ));
   list.appendChild(frameRow);
 
+  // Devtools section: a collapsible affordance for the font picker UI
+  // (and future debug controls). Default-collapsed; if showFontDevtools
+  // is already true from a prior session, start expanded so the toggle
+  // is reachable. The actual font-picker UI lives in pickerArea below
+  // and is shown/hidden via display:none toggle, NOT re-rendered, so
+  // checking the box doesn't re-flow the panel.
+  const devtoolsHeader = document.createElement('button');
+  const startExpanded = !!SETTINGS.get('showFontDevtools');
+  devtoolsHeader.textContent = (startExpanded ? '▾' : '▸') + ' Devtools';
+  devtoolsHeader.style.cssText = 'margin-top:10px;padding:6px 10px;background:#0d0d18;border:1px solid #444;color:#aab;border-radius:3px 3px 0 0;cursor:pointer;font-family:inherit;font-size:12px;width:100%;text-align:left;letter-spacing:.05em';
+  list.appendChild(devtoolsHeader);
+
+  const devtoolsBody = document.createElement('div');
+  devtoolsBody.style.cssText = 'padding:8px 10px;background:#0d0d18;border:1px solid #333;border-top:none;border-radius:0 0 3px 3px;margin-bottom:6px';
+  devtoolsBody.style.display = startExpanded ? '' : 'none';
+  list.appendChild(devtoolsBody);
+
+  devtoolsHeader.onclick = () => {
+    const visible = devtoolsBody.style.display !== 'none';
+    devtoolsBody.style.display = visible ? 'none' : '';
+    devtoolsHeader.textContent = (visible ? '▸' : '▾') + ' Devtools';
+  };
+
+  // Show-font-picker checkbox inside the devtools body. Toggles the
+  // visibility of pickerArea without re-rendering the settings panel.
+  const fontPickerToggle = document.createElement('label');
+  fontPickerToggle.style.cssText = 'display:flex;align-items:center;gap:8px;color:#cce;font-size:12px;cursor:pointer;padding:2px 0';
+  const fontPickerCheckbox = document.createElement('input');
+  fontPickerCheckbox.type = 'checkbox';
+  fontPickerCheckbox.checked = !!SETTINGS.get('showFontDevtools');
+  fontPickerToggle.appendChild(fontPickerCheckbox);
+  fontPickerToggle.appendChild(document.createTextNode('Show font picker UI'));
+  devtoolsBody.appendChild(fontPickerToggle);
+
+  // Container for the font picker rows. Always exists in the DOM;
+  // visibility is driven by the checkbox + saved showFontDevtools value.
+  const pickerArea = document.createElement('div');
+  pickerArea.style.display = SETTINGS.get('showFontDevtools') ? '' : 'none';
+  list.appendChild(pickerArea);
+
+  fontPickerCheckbox.onchange = () => {
+    SETTINGS.set('showFontDevtools', fontPickerCheckbox.checked);
+    pickerArea.style.display = fontPickerCheckbox.checked ? '' : 'none';
+  };
+
   // Section header for font controls.
   const fontHeader = document.createElement('div');
   fontHeader.textContent = 'Card fonts';
   fontHeader.style.cssText = 'color:#ffd700;font-size:13px;font-weight:bold;letter-spacing:.06em;margin-top:6px;padding-top:8px;border-top:1px solid #333';
-  list.appendChild(fontHeader);
+  pickerArea.appendChild(fontHeader);
 
   // Footnote: size labels are anchored to 1x scale (the card browser /
   // hand / board). At 2x scale (popup, draft, rewards) every shown size
@@ -434,7 +479,7 @@ function renderSettings() {
   const scaleNote = document.createElement('div');
   scaleNote.textContent = 'Sizes shown at 1× scale (cards in hand / board).';
   scaleNote.style.cssText = 'color:#778;font-size:10px;font-style:italic;margin-top:-2px';
-  list.appendChild(scaleNote);
+  pickerArea.appendChild(scaleNote);
 
   // Slot-shaped preset dropdown. Applying a preset writes the title font
   // to all four title-slot elements, body font to both body-slot elements,
@@ -470,7 +515,7 @@ function renderSettings() {
     try { render(); } catch (_) {}
   });
   presetRow.appendChild(presetSelect);
-  list.appendChild(presetRow);
+  pickerArea.appendChild(presetRow);
 
   // Per-element rows. Eight elements grouped by slot under headers so the
   // panel reads top-to-bottom: title elements (name/type/PT/damage), body
@@ -505,13 +550,13 @@ function renderSettings() {
     sizeSelect.style.flex = '1';
     sizeRow.appendChild(sizeSelect);
     row.appendChild(sizeRow);
-    list.appendChild(row);
+    pickerArea.appendChild(row);
   }
   function makeSlotHeader(text) {
     const h = document.createElement('div');
     h.textContent = text;
     h.style.cssText = 'color:#aab;font-size:11px;font-weight:bold;letter-spacing:.08em;margin-top:6px;text-transform:uppercase';
-    list.appendChild(h);
+    pickerArea.appendChild(h);
   }
   makeSlotHeader('Title elements');
   SETTINGS.CARD_FONT_ELEMENTS.filter(e => e.slot === 'title').forEach(makeElementRow);
@@ -534,7 +579,7 @@ function renderSettings() {
       try { render(); } catch (_) {}
     }
   ));
-  list.appendChild(popupRow);
+  pickerArea.appendChild(popupRow);
 
   // Mana symbol sizes -- three knobs across two pip surfaces + one text surface.
   makeSlotHeader('Mana symbols');
@@ -547,7 +592,7 @@ function renderSettings() {
       try { render(); } catch (_) {}
     }
   ));
-  list.appendChild(manaPipRow);
+  pickerArea.appendChild(manaPipRow);
 
   const manaPipPopupRow = makeRow('Cost pip (long-press popup)');
   manaPipPopupRow.appendChild(makeSelect(
@@ -558,7 +603,7 @@ function renderSettings() {
       try { render(); } catch (_) {}
     }
   ));
-  list.appendChild(manaPipPopupRow);
+  pickerArea.appendChild(manaPipPopupRow);
 
   const manaTextRow = makeRow('In-text symbol (oracle text {R}/{T})');
   manaTextRow.appendChild(makeSelect(
@@ -569,7 +614,7 @@ function renderSettings() {
       try { render(); } catch (_) {}
     }
   ));
-  list.appendChild(manaTextRow);
+  pickerArea.appendChild(manaTextRow);
 
   // Export-current-settings button. Dumps SETTINGS.getAll() to clipboard
   // as JSON so the dev can snapshot a tuning session and bake the values
@@ -613,7 +658,7 @@ function renderSettings() {
     }
   };
   exportWrap.appendChild(exportBtn);
-  list.appendChild(exportWrap);
+  pickerArea.appendChild(exportWrap);
 }
 
 function continueRun() {

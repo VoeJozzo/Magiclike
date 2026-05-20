@@ -66,6 +66,10 @@ const DEFAULTS = {
   cardManaPipSize:      3,      // 12px (baseline 4)
   cardManaPipPopupSize: 1.5,    // 6px-at-1x = 24px in 4x popup
   cardManaTextSize:     1,      // 1.2em (baseline)
+  // Devtools: when true, the settings panel shows the full font / mana
+  // picker UI. Off by default for the user-facing build; flipped on via
+  // the "Devtools" section in the settings panel.
+  showFontDevtools:     false,
 };
 
 // Options for the popup text scale dropdown. Values < 1 dampen the text
