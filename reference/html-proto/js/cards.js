@@ -28,6 +28,16 @@ async function loadCards() {
   );
   for (const card of cards) {
     CARDS[card.tplId] = card;
+    // The ~ character is a reserved placeholder for the card's own name
+    // in trigger / effect templates (formatTriggerText in card-text.js).
+    // A literal ~ in a name would get silently substituted later; a literal
+    // ~ in text would do the same. Warn on either so we catch authoring slips.
+    if (typeof card.name === 'string' && card.name.includes('~')) {
+      console.warn('Card name contains reserved ~ placeholder:', card.tplId, JSON.stringify(card.name));
+    }
+    if (typeof card.text === 'string' && card.text.includes('~') && !card.customText) {
+      console.warn('Card text contains ~ outside customText flag:', card.tplId);
+    }
   }
   // Defensive: warn if the loaded count doesn't match the manifest. A
   // missing card.json (404) would resolve to a parse error and reject the

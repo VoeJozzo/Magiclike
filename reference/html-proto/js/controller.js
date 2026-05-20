@@ -2251,7 +2251,7 @@ function buildPopupTriggerSections(card) {
   if (tpl && tpl.buildOnDraw) {
     let body;
     if (slot.bonusTrigger) {
-      const text = (slot.bonusTrigger.text || '').replace(/~/g, card.name);
+      const text = formatTriggerText(slot.bonusTrigger.text, card.name);
       body = `<div style="color:#ffe7a0;font-size:12px;line-height:1.5;padding:6px 8px;background:#1f1828;border-left:3px solid #ffd700;border-radius:3px">${text}</div>`;
     } else {
       body = `<div style="color:#888;font-size:11px;line-height:1.5;padding:6px 8px;background:#181820;border-left:3px solid #555;border-radius:3px;font-style:italic">No ability built yet — draw this card to build one.</div>`;

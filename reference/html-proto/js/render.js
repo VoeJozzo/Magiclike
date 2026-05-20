@@ -234,16 +234,18 @@ function render() {
       titleEl.textContent = '📜 STEP 1 OF 2: CHOOSE WHEN';
       subtitleEl.textContent = `When should ${sourceName}'s ability fire?`;
       ptb.conditionOptions.forEach((cond, idx) => {
-        const text = (cond.text || '').replace(/~/g, sourceName);
+        const text = formatTriggerText(cond.text, sourceName);
         const html = `<span style="color:#ffd700;font-weight:bold">Option ${idx+1}</span><br>When ${text}…`;
         list.appendChild(makeTriggerBuildOptionBtn(html, () => CONTROLLER.triggerBuildPick(idx)));
       });
     } else if (ptb.step === 'effect') {
       titleEl.textContent = '📜 STEP 2 OF 2: CHOOSE WHAT';
+      // textContent target: substitute raw (no HTML escape — entities
+      // would render as literal '&amp;' text).
       const condText = (ptb.chosenCondition.text || '').replace(/~/g, sourceName);
       subtitleEl.textContent = `When ${condText} — what happens?`;
       ptb.effectOptions.forEach((eff, idx) => {
-        const text = (eff.describe || '').replace(/~/g, sourceName);
+        const text = formatTriggerText(eff.describe, sourceName);
         const display = text.length > 0 ? (text[0].toUpperCase() + text.slice(1)) : text;
         const html = `<span style="color:#ffd700;font-weight:bold">Option ${idx+1}</span><br>${display}`;
         list.appendChild(makeTriggerBuildOptionBtn(html, () => CONTROLLER.triggerBuildPick(idx)));
@@ -252,8 +254,8 @@ function render() {
       titleEl.textContent = '📜 KEEP OR REPLACE?';
       subtitleEl.textContent = `Compare your new ability with the current one.`;
       // Render two side-by-side cards: current (left/top) vs new (right/bottom).
-      const currentText = (ptb.currentTrigger.text || '').replace(/~/g, sourceName);
-      const newText = (ptb.assembledTrigger.text || '').replace(/~/g, sourceName);
+      const currentText = formatTriggerText(ptb.currentTrigger.text, sourceName);
+      const newText = formatTriggerText(ptb.assembledTrigger.text, sourceName);
       const compareBox = document.createElement('div');
       compareBox.style.cssText = 'display:flex;flex-direction:column;gap:10px;margin:8px 0';
       compareBox.innerHTML = `
@@ -619,7 +621,7 @@ function submitGraveyardTarget(iid) {
 }
 
 function setText(id, v) { document.getElementById(id).textContent = v; }
-function escapeHtml(s) { return String(s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+// escapeHtml + formatTriggerText live in card-text.js (loads before this file).
 
 // {text, highlight}[] → HTML, with .bumped spans for empower-emphasized values.
 function segmentsToHtml(segs) {

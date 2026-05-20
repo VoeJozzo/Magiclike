@@ -7,6 +7,23 @@
 const COLOR_NAMES = { W: 'White', U: 'Blue', B: 'Black', R: 'Red', G: 'Green' };
 const NUM_WORDS = { 1: 'one', 2: 'two', 3: 'three', 4: 'four', 5: 'five' };
 
+// HTML escape for text destined for innerHTML. Renders &<> safe; leaves
+// braces alone so renderManaSymbols can find {R}/{T}/{X}/{1} tokens
+// downstream. Quotes pass through because we never interpolate user-
+// derived strings into attribute values, only into text content.
+function escapeHtml(s) { return String(s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+
+// Substitute a card name into a trigger / effect template. The ~ token
+// is the conventional placeholder used across MERCURIAL_TRIGGER_POOL
+// (engine.js) and GENERATOR_EFFECTS / GENERATOR_CONDITIONS (trigger-
+// generator.js). The cardName is HTML-escaped because the result lands
+// in innerHTML — designer-authored templates may contain HTML (e.g.
+// future <b>emphasis</b>), but card names are display data that should
+// never be parsed as markup.
+function formatTriggerText(template, cardName) {
+  return (template || '').replace(/~/g, escapeHtml(cardName || ''));
+}
+
 // eff.target → noun phrase. 'player' = "target opponent" for damage/discard, "target player" for gainLife.
 function targetPhrase(eff) {
   const t = eff.target;
