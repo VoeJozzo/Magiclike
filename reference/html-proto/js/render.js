@@ -33,7 +33,10 @@ function makeTriggerBuildOptionBtn(innerHtml, onClick) {
 
 function render() {
   const G = ENGINE.state();
-  if (!G) return;
+  // Deep guard: any of these missing means we're not in-game (start
+  // screen, post-game, settings panel before first draft, etc.). Callers
+  // can fire-and-forget render() without needing to wrap in try/catch.
+  if (!G || !G.you || !G.opp || !G.phase) return;
   CONTROLLER.clearUiOnPhaseChange();
   const pt = CONTROLLER.pendingTarget();
 

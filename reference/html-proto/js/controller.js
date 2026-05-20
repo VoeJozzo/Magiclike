@@ -497,7 +497,7 @@ function renderSettings() {
       SETTINGS.set(SETTINGS.settingsKeyFont(el.key), slotToFont[el.slot]);
     }
     renderSettings();
-    try { render(); } catch (_) {}
+    render();
   });
   presetRow.appendChild(presetSelect);
   pickerArea.appendChild(presetRow);
@@ -515,7 +515,7 @@ function renderSettings() {
       (val) => {
         SETTINGS.set(fontKey, val);
         presetSelect.value = activePresetName();
-        try { render(); } catch (_) {}
+        render();
       }
     ));
     const sizeRow = document.createElement('div');
@@ -529,7 +529,7 @@ function renderSettings() {
       SETTINGS.get(sizeKey),
       (val) => {
         SETTINGS.set(sizeKey, Number(val));
-        try { render(); } catch (_) {}
+        render();
       }
     );
     sizeSelect.style.flex = '1';
@@ -561,7 +561,7 @@ function renderSettings() {
     SETTINGS.get('cardPopupTextScale'),
     (val) => {
       SETTINGS.set('cardPopupTextScale', Number(val));
-      try { render(); } catch (_) {}
+      render();
     }
   ));
   pickerArea.appendChild(popupRow);
@@ -574,7 +574,7 @@ function renderSettings() {
     SETTINGS.get('cardManaPipSize'),
     (val) => {
       SETTINGS.set('cardManaPipSize', Number(val));
-      try { render(); } catch (_) {}
+      render();
     }
   ));
   pickerArea.appendChild(manaPipRow);
@@ -585,7 +585,7 @@ function renderSettings() {
     SETTINGS.get('cardManaPipPopupSize'),
     (val) => {
       SETTINGS.set('cardManaPipPopupSize', Number(val));
-      try { render(); } catch (_) {}
+      render();
     }
   ));
   pickerArea.appendChild(manaPipPopupRow);
@@ -596,7 +596,7 @@ function renderSettings() {
     SETTINGS.get('cardManaTextSize'),
     (val) => {
       SETTINGS.set('cardManaTextSize', Number(val));
-      try { render(); } catch (_) {}
+      render();
     }
   ));
   pickerArea.appendChild(manaTextRow);
