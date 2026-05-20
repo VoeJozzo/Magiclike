@@ -39,6 +39,7 @@ const ENGINE_FILES = [
   'picklog.js',
   'controller.js',
   'render.js',
+  'settings-panel.js',
   'triggers.js',
   'trigger-generator.js',
   'main.js',

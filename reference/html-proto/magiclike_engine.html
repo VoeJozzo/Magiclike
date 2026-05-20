@@ -805,11 +805,11 @@ body.ai-thinking #status{
 <div id="searchModal"><div id="searchBox"><h2 id="searchTitle">SEARCH LIBRARY</h2><div id="searchList"></div></div></div>
 <!-- Settings modal — opened from the start-screen ⚙ button. Houses
      user-configurable toggles. Each row is built dynamically by
-     renderSettings() in controller.js so adding a new setting only
-     needs (a) a DEFAULTS entry in settings.js, (b) a row in the
-     render function, (c) wire-up of the consumer (renderer / engine
-     / etc.) to read SETTINGS.get('keyName'). Styling lives in the
-     <style> block above so Modal.show's `.vis` class can override
+     SETTINGS_PANEL.render() in js/settings-panel.js so adding a new
+     setting only needs (a) a DEFAULTS entry in settings.js, (b) a row
+     builder in settings-panel.js, (c) wire-up of the consumer (renderer
+     / engine / etc.) to read SETTINGS.get('keyName'). Styling lives in
+     the <style> block above so Modal.show's `.vis` class can override
      `display:none` without an inline-style specificity fight. -->
 <div id="settingsModal">
   <div id="settingsBox">
@@ -910,6 +910,7 @@ body.ai-thinking #status{
 <script src="js/picklog.js"></script>
 <script src="js/controller.js"></script>
 <script src="js/render.js"></script>
+<script src="js/settings-panel.js"></script>
 <script src="js/triggers.js"></script>
 <script src="js/trigger-generator.js"></script>
 <script src="js/main.js"></script>
