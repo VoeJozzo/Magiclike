@@ -215,6 +215,19 @@ function get(key) {
   return data[key];
 }
 
+// Non-element settings keys mapped to their :root CSS custom property
+// names. Element keys (cardFontName / cardFontSizeName / etc.) are
+// handled by the CARD_FONT_ELEMENTS loop below — they fan out from a
+// single data table and don't need entries here. Adding a new global
+// tunable: append one row to this table and one --var to the CSS, no
+// new if/else in set().
+const CSS_VAR_BINDINGS = {
+  cardPopupTextScale:   '--card-popup-text-scale',
+  cardManaPipSize:      '--card-mana-pip-size',
+  cardManaPipPopupSize: '--card-mana-pip-popup-size',
+  cardManaTextSize:     '--card-mana-text-size',
+};
+
 function set(key, value) {
   ensureLoaded();
   data[key] = value;
@@ -229,10 +242,7 @@ function set(key, value) {
       if (key === settingsKeyFont(el.key))  document.documentElement.style.setProperty(cssVarFont(el.key), value);
       if (key === settingsKeyFsize(el.key)) document.documentElement.style.setProperty(cssVarFsize(el.key), value);
     }
-    if (key === 'cardPopupTextScale') document.documentElement.style.setProperty('--card-popup-text-scale', value);
-    if (key === 'cardManaPipSize')      document.documentElement.style.setProperty('--card-mana-pip-size', value);
-    if (key === 'cardManaPipPopupSize') document.documentElement.style.setProperty('--card-mana-pip-popup-size', value);
-    if (key === 'cardManaTextSize')     document.documentElement.style.setProperty('--card-mana-text-size', value);
+    if (CSS_VAR_BINDINGS[key]) document.documentElement.style.setProperty(CSS_VAR_BINDINGS[key], value);
   }
 }
 
