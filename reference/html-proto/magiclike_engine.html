@@ -5,6 +5,68 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Magiclike — Rules Engine</title>
 <style>
+/* Fonts available to the card frame. All shipped under assets/fonts/ at
+   the repo root (../../ from this HTML) so the Godot port can also use
+   them. SIL OFL 1.1 -- see LICENSES.md.
+   The font-family strings declared here are the values that show up in the
+   settings panel's font picker (SETTINGS.FONT_OPTIONS). */
+@font-face {
+  font-family: 'Almendra';
+  src: url('../../assets/fonts/Almendra/Almendra-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  /* Bold cut registered as a separate family ('Almendra Bold') so the
+     font picker can offer it as a distinct option without needing a
+     font-weight UI. */
+  font-family: 'Almendra Bold';
+  src: url('../../assets/fonts/Almendra/Almendra-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+/* Card-frame font slots — one font + one size multiplier per element so
+   the settings panel can tune each independently (v1.0.158). Defaults
+   match the v1.0.157 slot-based values; the panel writes overrides via
+   JS at runtime. */
+:root{
+  /* Mobile-tuned baseline (v1.0.178). Synced with DEFAULTS in settings.js
+     so the brief pre-applyFontsToRoot paint matches the SETTINGS values. */
+  --card-font-name:     'Almendra', Georgia, serif;
+  --card-font-type:     'Almendra', Georgia, serif;
+  --card-font-pt:       'Almendra', Georgia, serif;
+  --card-font-damage:   'Almendra', Georgia, serif;
+  --card-font-text:     'Almendra', Georgia, serif;
+  --card-font-stickers: 'Almendra', Georgia, serif;
+  --card-font-pip:      'Almendra', Georgia, serif;
+  --card-font-bumped:   'Almendra', Georgia, serif;
+  --card-fsize-name:     1.142857;  /* 8/7  -> 8px from 7px baseline */
+  --card-fsize-type:     1.4;       /* 7/5  -> 7px from 5px */
+  --card-fsize-pt:       2;         /* 10/5 -> 10px */
+  --card-fsize-damage:   2;         /* 10/5 -> 10px */
+  --card-fsize-text:     1.166667;  /* 7/6  -> 7px from 6px */
+  --card-fsize-stickers: 1;         /* 5px */
+  --card-fsize-pip:      3.333333;  /* 10/3 -> 10px from 3px */
+  --card-fsize-bumped:   1.5;       /* 6/4  -> 6px from 4px */
+  /* Context-dependent extra font multiplier. 1 everywhere by default;
+     inside .card-frame.in-popup it switches to --card-popup-text-scale so
+     the popup can dampen text growth relative to the frame (a 4x popup
+     with 0.5 popup-text-scale renders fonts at 2x instead of 4x, leaving
+     more room for long oracle text). User-controlled via settings. */
+  --card-text-scale:       1;
+  --card-popup-text-scale: 0.7;
+  /* Mana symbol sizing. Three knobs:
+     --card-mana-pip-size: multiplier on the card-frame cost pip (baseline 4px at --scale 1) in
+                            default (non-popup) contexts.
+     --card-mana-pip-popup-size: multiplier override that takes effect ONLY inside
+                            .card-frame.in-popup (long-press detail).
+     --card-mana-text-size: multiplier on the in-text .mana symbol (baseline 1.2em). */
+  --card-mana-pip-size:       3;     /* 12px from 4px baseline */
+  --card-mana-pip-popup-size: 1.5;   /* 6px-at-1x = 24px in 4x popup */
+  --card-mana-text-size:      1;
+}
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;display:flex;flex-direction:column;overflow:hidden;font-size:12px}
 #wrap{display:flex;flex:1;min-height:0}
@@ -34,15 +96,13 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
 .zone-btn:active{background:#3a3a4a}
 .pstatus{font-size:10px;color:#6688cc;font-style:italic}
 
-.bf{flex:1;background:rgba(0,40,0,0.10);border:1px solid #1e3a1e;border-radius:4px;padding:4px;display:flex;flex-wrap:wrap;align-content:flex-start;gap:4px;overflow-y:auto;min-height:90px}
+.bf{flex:1;background:rgba(0,40,0,0.10);border:1px solid #1e3a1e;border-radius:4px;padding:4px;display:flex;flex-wrap:wrap;align-content:flex-start;gap:8px;overflow-y:auto;min-height:90px}
 .bf.aturn{border-color:#3a6a3a;background:rgba(0,60,0,0.18)}
-.hand{display:flex;gap:3px;padding:3px;overflow-x:auto;min-height:96px;align-items:center;flex-shrink:0}
+.hand{display:flex;gap:8px;padding:3px;overflow-x:auto;min-height:96px;align-items:center;flex-shrink:0}
 .hand-hidden{display:flex;gap:2px;padding:6px;flex-shrink:0;min-height:30px;align-items:center}
-.cardback{width:24px;height:16px;background:linear-gradient(135deg,#3a2a4a,#1a1a2a);border-radius:2px;border:1px solid #555}
 
 /* Suppress mobile long-press text-selection / callout menu on UI elements. */
-.card, .card *, .draft-pick, .draft-pick *, .rwd-card, .rwd-card *,
-.rwd-sticker, .rwd-sticker *, .rwd-pair, .rwd-pair *, .bnr-item, .bnr-item *,
+.draft-pick, .draft-pick *, .rwd-sticker, .rwd-sticker *, .rwd-pair, .rwd-pair *,
 #cardPopupCard, #cardPopupCard *, .acts button, .stk-badge {
   -webkit-user-select: none;
   -moz-user-select: none;
@@ -51,37 +111,8 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
   -webkit-touch-callout: none;
   -webkit-tap-highlight-color: transparent;
 }
-.card{width:62px;height:88px;border-radius:4px;border:2px solid #444;display:flex;flex-direction:column;cursor:pointer;position:relative;transition:transform .12s,border-color .12s,box-shadow .12s;user-select:none;flex-shrink:0}
-.card:hover{transform:translateY(-5px);z-index:20}
-.card.tapped{transform:rotate(85deg);margin:8px 4px}
-.card.tapped:hover{transform:rotate(85deg) translateY(-3px)}
-.card.sick{opacity:.65}
-.card.castable{border-color:#44cc44 !important}
-.card.activatable{border-color:#88cc88 !important;box-shadow:0 0 6px #44aa44}
-.card.discardable{border-color:#ff9944 !important;box-shadow:0 0 6px #cc7733}
-.card.targetable{border-color:#ffff00 !important;animation:tpulse .6s infinite alternate}
-/* Combat selection states go LAST so their shadows take precedence over
-   .activatable / .castable shadows. Outlines also draw a thick ring that
-   reads clearly regardless of border styling. */
-.card.atk{box-shadow:0 0 12px #ff4444; outline:3px solid #ff4444; outline-offset:-1px}
-.card.blk{box-shadow:0 0 12px #4488ff; outline:3px solid #4488ff; outline-offset:-1px}
-.card.pblk{box-shadow:0 0 12px #ffff44; outline:3px solid #ffff44; outline-offset:-1px}
 @keyframes tpulse{from{box-shadow:0 0 4px #ff0}to{box-shadow:0 0 14px #ff0}}
-.cland{background:linear-gradient(180deg,#1e3a10,#0e2008)}
-.ccreature{background:linear-gradient(180deg,#102030,#081420)}
-.cinstant{background:linear-gradient(180deg,#2a1020,#180810)}
-.csorcery{background:linear-gradient(180deg,#2a1a08,#180e04)}
-.cname{font-size:7px;font-weight:bold;padding:1px 2px;background:rgba(0,0,0,.6);color:#eee;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-radius:2px 2px 0 0}
-.cart{flex:1;display:flex;align-items:center;justify-content:center;font-size:22px}
-/* Pixel-art image inside the hand/board card. Source is 64x32; fitting
-   to the 62px card width gets ~1x scale. image-rendering:pixelated keeps
-   the chunky look on any browser-decided sub-pixel positioning. */
-.cart img{width:100%;height:auto;max-height:100%;object-fit:contain;image-rendering:pixelated;display:block}
-.ctype{font-size:6px;padding:0 2px;color:#aaa;background:rgba(0,0,0,.4)}
-.ctext{font-size:6px;padding:1px 2px;color:#ccc;overflow:hidden;max-height:18px;line-height:1.1}
 .bumped{color:#ffd700;font-weight:bold}
-.cstats{font-size:10px;font-weight:bold;text-align:right;padding:0 3px 1px;color:#ffd700}
-.ccost{position:absolute;top:1px;right:2px;font-size:8px;color:#ffd700;background:rgba(0,0,0,.6);border-radius:2px;padding:0 2px;display:flex;gap:1px;align-items:center}
 
 /* Mana-symbol pips. The `<span class="mana mana-X">` markup is emitted
    by renderManaSymbols() (js/render.js) — used for cost displays AND
@@ -96,28 +127,338 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
    then uncomment the matching override block below. The override sets
    background-image + color:transparent (hides the emoji glyph) so only
    the PNG shows. */
-.mana{display:inline-block;min-width:1.2em;height:1.2em;line-height:1.2em;
+.mana{display:inline-block;
+  min-width:calc(1.2em * var(--card-mana-text-size));
+  height:calc(1.2em * var(--card-mana-text-size));
+  line-height:calc(1.2em * var(--card-mana-text-size));
   text-align:center;font-size:0.95em;vertical-align:middle;
   margin:0 0.05em;background-size:contain;
   background-position:center;background-repeat:no-repeat;
   font-family:Arial,sans-serif}
-/* Color pips: emoji glyph supplies the visual, no backdrop styling. */
-.mana-W, .mana-U, .mana-B, .mana-R, .mana-G { font-family: inherit }
-/* Non-color pips: letter inside a colored disc (no emoji match). */
+/* Color pips: emoji glyph used to supply the visual. v1.0.172 replaces
+   that with SVG art (designed in the manaiconsv13.jsx spec): smooth
+   vector symbols on a colored disc with double-rim. background-image
+   draws the art; color:transparent hides the underlying emoji glyph
+   in the span. */
+.mana-W, .mana-U, .mana-B, .mana-R, .mana-G { font-family: inherit; color: transparent; background-color: transparent }
+.mana-W{background-image:url('../../assets/mana/W.svg')}
+.mana-U{background-image:url('../../assets/mana/U.svg')}
+.mana-B{background-image:url('../../assets/mana/B.svg')}
+.mana-R{background-image:url('../../assets/mana/R.svg')}
+.mana-G{background-image:url('../../assets/mana/G.svg')}
+/* Non-color pips: letter inside a colored disc (no SVG match yet). */
 .mana-C{background-color:#aaa;color:#333;border-radius:50%;font-weight:bold;font-size:0.85em}
 .mana-T{background-color:#888;color:#fff;border-radius:50%;font-weight:bold;font-style:italic;font-size:0.85em;text-shadow:0 0 1px rgba(0,0,0,.6)}
 .mana-X{background-color:#666;color:#fff;border-radius:50%;font-weight:bold;font-size:0.85em;text-shadow:0 0 1px rgba(0,0,0,.6)}
 .mana-num{background-color:#555;color:#fff;border-radius:50%;font-weight:bold;font-size:0.85em;text-shadow:0 0 1px rgba(0,0,0,.6)}
-/* PNG mana art drop-in — uncomment per color when assets/mana/<X>.png exists.
-.mana-W{background-image:url('assets/mana/W.png');color:transparent}
-.mana-U{background-image:url('assets/mana/U.png');color:transparent}
-.mana-B{background-image:url('assets/mana/B.png');color:transparent}
-.mana-R{background-image:url('assets/mana/R.png');color:transparent}
-.mana-G{background-image:url('assets/mana/G.png');color:transparent}
-.mana-C{background-image:url('assets/mana/C.png');color:transparent;background-color:transparent}
-*/
-.cdmg{position:absolute;bottom:14px;right:2px;background:#cc0000;color:#fff;border-radius:50%;width:14px;height:14px;font-size:9px;display:flex;align-items:center;justify-content:center;font-weight:bold}
-.cmod{position:absolute;top:1px;left:2px;font-size:8px;color:#88ddff;background:rgba(0,0,0,.6);border-radius:2px;padding:0 2px}
+
+/* ========================================================================= */
+/* Card frame design (80x112 native pixel-art spec).                      */
+/* ========================================================================= */
+/* Defined side-by-side with the existing .card wireframe. Activated by      */
+/* JS render code that emits `.card-frame.col-X` markup when the frame-style    */
+/* toggle is on (step 3 plumbing pending; step 2 just scaffolds the CSS).    */
+/*                                                                           */
+/* Scale via --scale CSS var. Default 1x (hand-card sized); set per context: */
+/*   .card-frame { --scale: 1 } -- hand/board, 80x112 actual                    */
+/*   .card-frame { --scale: 2 } -- draft pick, reward modal, 160x224            */
+/*   .card-frame { --scale: 4 } -- popup showcase, 320x448                      */
+/* All dimensions multiply by --scale on integer-pixel grid so the pixel-art */
+/* texture stays crisp with image-rendering:pixelated.                       */
+/*                                                                           */
+/* The frame_X.png contains all decorative texture (outer border, side       */
+/* braids, title-bar texture, separators, type-bar texture, text-panel       */
+/* background). Per-region child elements absolutely-position at the spec's  */
+/* native pixel coordinates and host their own content (name / cost / art /  */
+/* type / oracle / flavour / stickers / P+T).                                */
+
+.card-frame{
+  --scale: 1;
+  position: relative;
+  width: calc(80px * var(--scale));
+  height: calc(112px * var(--scale));
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+  flex-shrink: 0;
+  cursor: pointer;
+  font-family: var(--card-font-name);
+  user-select: none;
+}
+.card-frame.col-W{background-image:url('assets/frames/frame_w.png')}
+.card-frame.col-U{background-image:url('assets/frames/frame_u.png')}
+.card-frame.col-B{background-image:url('assets/frames/frame_b.png')}
+.card-frame.col-R{background-image:url('assets/frames/frame_r.png')}
+.card-frame.col-G{background-image:url('assets/frames/frame_g.png')}
+.card-frame.col-C{background-image:url('assets/frames/frame_c.png')}
+.card-frame > *{position:absolute}
+
+/* Title bar: x=2, y=2, w=76, h=12 (per spec). Houses name + mana cost. */
+.card-frame .frame-title{
+  left: calc(2px * var(--scale));
+  top: calc(2px * var(--scale));
+  width: calc(76px * var(--scale));
+  height: calc(12px * var(--scale));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 calc(3px * var(--scale));
+  overflow: hidden;
+}
+.card-frame .frame-name{
+  font-family: var(--card-font-name);
+  font-size: calc(7px * var(--scale) * var(--card-fsize-name) * var(--card-text-scale));
+  color: #f0e6c8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
+  flex: 1;
+  line-height: 1;
+}
+.card-frame .frame-cost{
+  display: flex;
+  align-items: center;
+  gap: calc(2px * var(--scale));
+  flex-shrink: 0;
+  margin-left: calc(2px * var(--scale));
+}
+
+/* Mana pips inside the cost area (4px diameter per spec). Colored circles
+   with the count rendered inside the generic pip. Matches the existing
+   .mana-W/U/B/R/G palette for visual consistency. */
+.card-frame .frame-pip{
+  width: calc(4px * var(--scale) * var(--card-mana-pip-size));
+  height: calc(4px * var(--scale) * var(--card-mana-pip-size));
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--card-font-pip);
+  font-size: calc(3px * var(--scale) * var(--card-fsize-pip) * var(--card-text-scale));
+  line-height: 1;
+  flex-shrink: 0;
+}
+/* Color pips: SVG iconography (manaiconsv13 spec) draws disc + symbol + rim.
+   The SVG includes the colored disc itself, so background-color stays
+   transparent. background-size:100% 100% scales the 40-unit viewBox to
+   the pip's actual rendered size at any --scale. */
+.card-frame .frame-pip.col-W,
+.card-frame .frame-pip.col-U,
+.card-frame .frame-pip.col-B,
+.card-frame .frame-pip.col-R,
+.card-frame .frame-pip.col-G{background-color:transparent;background-size:100% 100%;background-repeat:no-repeat;color:transparent}
+.card-frame .frame-pip.col-W{background-image:url('../../assets/mana/W.svg')}
+.card-frame .frame-pip.col-U{background-image:url('../../assets/mana/U.svg')}
+.card-frame .frame-pip.col-B{background-image:url('../../assets/mana/B.svg')}
+.card-frame .frame-pip.col-R{background-image:url('../../assets/mana/R.svg')}
+.card-frame .frame-pip.col-G{background-image:url('../../assets/mana/G.svg')}
+.card-frame .frame-pip.col-C{background-color:#aaa;color:#222}
+.card-frame .frame-pip.col-num{background-color:#555;color:#fff}
+
+/* Art window: x=8, y=15, w=64, h=32 (matches the native 64x32 pixel-art
+   format we've been shipping for ~61 cards). */
+.card-frame .frame-art{
+  left: calc(8px * var(--scale));
+  top: calc(15px * var(--scale));
+  width: calc(64px * var(--scale));
+  height: calc(32px * var(--scale));
+  overflow: hidden;
+}
+.card-frame .frame-art img{
+  width: 100%;
+  height: 100%;
+  display: block;
+  image-rendering: pixelated;
+}
+
+/* Type bar: x=2, y=48, w=76, h=10. */
+.card-frame .frame-type{
+  left: calc(2px * var(--scale));
+  top: calc(48px * var(--scale));
+  width: calc(76px * var(--scale));
+  height: calc(10px * var(--scale));
+  display: flex;
+  align-items: center;
+  padding: 0 calc(3px * var(--scale));
+  font-family: var(--card-font-type);
+  font-size: calc(5px * var(--scale) * var(--card-fsize-type) * var(--card-text-scale));
+  color: #f0e6c8;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Text box: x=2, y=59, w=76, h=51. Houses oracle text + flavour divider
+   + flavour text. On creatures the P/T box overlays the bottom-right
+   corner of this region. Sticker chips pin to the bottom (per user). */
+.card-frame .frame-text{
+  left: calc(2px * var(--scale));
+  top: calc(59px * var(--scale));
+  width: calc(76px * var(--scale));
+  height: calc(51px * var(--scale));
+  padding: calc(3px * var(--scale));
+  font-family: var(--card-font-text);
+  font-size: calc(6px * var(--scale) * var(--card-fsize-text) * var(--card-text-scale));
+  color: #d8d4c8;
+  line-height: 1.3;
+  overflow: hidden;
+  text-align: left;
+}
+.card-frame .frame-oracle{
+  /* No special treatment -- inherits frame-text styling. */
+}
+.card-frame .frame-flavor{
+  margin-top: calc(2px * var(--scale));
+  padding-top: calc(2px * var(--scale));
+  border-top: 1px solid rgba(255,255,255,0.18);
+  color: #b0a890;
+}
+.card-frame .frame-stickers{
+  /* Pinned to bottom of text box per user direction -- tries not to cover
+     the oracle/flavour above. Tiny chips, color-coded gold. */
+  position: absolute;
+  bottom: calc(2px * var(--scale));
+  left: calc(3px * var(--scale));
+  right: calc(3px * var(--scale));
+  font-size: calc(5px * var(--scale) * var(--card-fsize-stickers) * var(--card-text-scale));
+  font-family: var(--card-font-stickers);
+  color: #e8c840;
+  line-height: 1.2;
+  text-align: center;
+}
+
+/* P/T box overlay: x=61, y=101, w=15, h=9. Creatures only -- emit
+   .frame-pt only when card.type === 'Creature'. */
+.card-frame .frame-pt{
+  left: calc(61px * var(--scale));
+  top: calc(99px * var(--scale));
+  width: calc(15px * var(--scale));
+  height: calc(9px * var(--scale));
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--card-font-pt);
+  font-size: calc(5px * var(--scale) * var(--card-fsize-pt) * var(--card-text-scale));
+  color: #e8c840;
+  line-height: 1;
+}
+.card-frame.col-W .frame-pt{background-image:url('assets/frames/pt_box_w.png')}
+.card-frame.col-U .frame-pt{background-image:url('assets/frames/pt_box_u.png')}
+.card-frame.col-B .frame-pt{background-image:url('assets/frames/pt_box_b.png')}
+.card-frame.col-R .frame-pt{background-image:url('assets/frames/pt_box_r.png')}
+.card-frame.col-G .frame-pt{background-image:url('assets/frames/pt_box_g.png')}
+.card-frame.col-C .frame-pt{background-image:url('assets/frames/pt_box_c.png')}
+
+/* Cost-bumped marker (City Guardian etc. taxing the cast). Tiny orange ↑
+   sits inside .frame-cost alongside the pips when effective cost > base. */
+.card-frame .frame-bumped{
+  color:#ffaa44;
+  font-family:var(--card-font-bumped);
+  font-size:calc(4px * var(--scale) * var(--card-fsize-bumped) * var(--card-text-scale));
+  line-height:1;
+  margin-left:calc(1px * var(--scale));
+}
+
+/* Damage badge: red number bottom-left for creatures that have taken damage.
+   Mirrors P/T's bottom-right placement. */
+.card-frame .frame-damage{
+  position:absolute;
+  left:calc(4px * var(--scale));
+  top:calc(99px * var(--scale));
+  font-family:var(--card-font-damage);
+  font-size:calc(5px * var(--scale) * var(--card-fsize-damage) * var(--card-text-scale));
+  color:#ff4040;
+  line-height:1;
+  text-shadow:0 0 calc(2px * var(--scale)) #000;
+}
+
+/* Cardback variant: face-down card frame for opponent-hand placeholders.
+   Strips all the inner element layouts down to just the frame PNG so the
+   small (--scale ~0.3) face-down look reads cleanly. */
+.card-frame.frame-cardback > *{display:none}
+.card-frame.frame-cardback{cursor:default}
+
+/* Popup mode: the .in-popup class is added by openCardPopup. Switches
+   --card-text-scale to the user-set --card-popup-text-scale so a 4x popup
+   can render text at, e.g., 2x instead of 4x. Also makes the oracle text
+   scrollable (hidden scrollbar) so long abilities aren't clipped -- the
+   small frame's text box has a fixed height, so a 4x popup of a card
+   with a paragraph of text still wouldn't fit at the default scaling.
+   Same indirection for the cost pip: --card-mana-pip-size is overridden
+   in popup to the user-set --card-mana-pip-popup-size. */
+.card-frame.in-popup{
+  --card-text-scale: var(--card-popup-text-scale);
+  --card-mana-pip-size: var(--card-mana-pip-popup-size);
+}
+.card-frame.in-popup .frame-text{
+  overflow-y: auto;
+  scrollbar-width: none;          /* Firefox */
+  -ms-overflow-style: none;       /* legacy Edge */
+}
+.card-frame.in-popup .frame-text::-webkit-scrollbar{display:none}  /* Chromium / Safari / iOS+Android Chrome */
+
+/* Tapped state: 85deg rotation (matches existing .card.tapped). */
+.card-frame.tapped{transform:rotate(85deg)}
+
+/* White cards: frame is cream/light, so all the cream/gold text colors
+   used elsewhere blend in. Force dark text instead. Damage stays red
+   (state indicator, still readable on cream). */
+.card-frame.col-W .frame-name,
+.card-frame.col-W .frame-type,
+.card-frame.col-W .frame-text,
+.card-frame.col-W .frame-stickers,
+.card-frame.col-W .frame-pt{
+  color:#1a1a1a;
+}
+.card-frame.col-W .frame-flavor{color:#444}
+
+/* Hover lift -- mirrors classic .card:hover. translateY pops the card up
+   and z-index ensures the lifted card paints above its siblings so the
+   shadow isn't clipped by neighbor cards. Cardbacks (face-down opponent
+   hand placeholders) opt out -- they aren't interactive. */
+.card-frame:hover{transform:translateY(-5px);z-index:20}
+.card-frame.tapped:hover{transform:rotate(85deg) translateY(-3px)}
+.card-frame.frame-cardback:hover{transform:none}
+
+/* Ambient/eligibility states. Subtler than the explicit selection states
+   below -- defined FIRST so the brighter castable/activatable/atk/blk
+   rules override them when both apply (e.g. a creature that's both an
+   eligible blocker AND selected as a blocker shows the brighter .blk).
+   land-tappable: always-on for your untapped lands. Reads as "this can
+   do something" without dominating the battlefield visually.
+   could-atk / could-blk: present during the relevant declaration step
+   for creatures that satisfy canCreatureAttack/canCreatureBlock. */
+.card-frame.land-tappable{box-shadow:0 0 calc(4px * var(--scale)) 0 rgba(68,170,68,0.55)}
+.card-frame.could-atk{box-shadow:0 0 calc(8px * var(--scale)) calc(1px * var(--scale)) rgba(255,68,68,0.55)}
+.card-frame.could-blk{box-shadow:0 0 calc(8px * var(--scale)) calc(1px * var(--scale)) rgba(68,136,255,0.55)}
+
+/* Highlight states. Glow OUTSIDE the frame via box-shadow so the PNG
+   texture stays clean (the PNG has no border for us to recolor). Last-
+   defined rule wins when a card has multiple states; ordered castable
+   -> activatable -> targetable -> atk -> blk -> pblk -> discardable so
+   combat states visually override "you can use this" states.
+   The 4th box-shadow value (spread) keeps the inner pixels fully opaque
+   before the blur fades out -- without it the halo washes out against
+   dark backgrounds. Combat states get a heavier blur + spread so they
+   read louder than use-this states. */
+.card-frame.castable{box-shadow:0 0 calc(10px * var(--scale)) calc(2px * var(--scale)) #44cc44}
+.card-frame.activatable{box-shadow:0 0 calc(10px * var(--scale)) calc(2px * var(--scale)) #44aa44}
+.card-frame.targetable{box-shadow:0 0 calc(10px * var(--scale)) calc(2px * var(--scale)) #ffff00; animation:tpulse .6s infinite alternate}
+.card-frame.atk{box-shadow:0 0 calc(12px * var(--scale)) calc(3px * var(--scale)) #ff4444}
+.card-frame.blk{box-shadow:0 0 calc(12px * var(--scale)) calc(3px * var(--scale)) #4488ff}
+.card-frame.pblk{box-shadow:0 0 calc(12px * var(--scale)) calc(3px * var(--scale)) #ffff44}
+.card-frame.sick{opacity:.65}
+.card-frame.discardable{box-shadow:0 0 calc(10px * var(--scale)) calc(2px * var(--scale)) #ff9944}
+
+/* ========================================================================= */
+/* End card frame                                                         */
+/* ========================================================================= */
+
 .stickers-row{display:flex;flex-wrap:wrap;gap:2px;margin-top:3px;padding:0 2px;justify-content:center}
 .stk-badge{display:inline-block;font-size:8px;padding:1px 4px;border-radius:6px;font-weight:bold;line-height:1.2;letter-spacing:.3px;border:1px solid;background:#0a0a14;white-space:nowrap}
 .stk-badge.stat{color:#ffe066;border-color:#ffe066;background:#3a2c00}
@@ -152,11 +493,6 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
 #stackBannerTitle{color:#ffcc44;font-weight:bold;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;display:flex;justify-content:space-between;align-items:center}
 #stackBannerHint{color:#aa8844;font-size:10px;font-style:italic}
 #stackBannerItems{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
-.bnr-item{background:#2a1440;border:2px solid #8a4adc;border-radius:5px;padding:6px 10px;font-size:13px;color:#e8d8ff;font-weight:bold;cursor:default;animation:stkpop .25s ease-out;display:flex;flex-direction:column;align-items:flex-start;gap:1px;min-width:0}
-.bnr-item .topline{display:flex;align-items:center;gap:5px;font-size:13px}
-.bnr-item .botline{font-size:10px;color:#bba6dc;font-weight:normal}
-.bnr-item.tgt{border-color:#ffff44;background:#3a3408;color:#fff8aa;cursor:pointer;box-shadow:0 0 10px rgba(255,255,68,.5)}
-.bnr-item.tgt:hover{background:#4a4410;border-color:#ffff88}
 .acts{display:flex;flex-direction:column;gap:3px;min-width:130px}
 button{padding:4px 10px;border:1px solid #444;background:#1e1e2e;color:#ddd;border-radius:3px;cursor:pointer;font-size:11px;font-family:Georgia,serif}
 button:hover:not(:disabled){background:#2e2e4e;border-color:#666}
@@ -169,6 +505,11 @@ button:disabled{opacity:.4;cursor:not-allowed}
 .btn-pass:hover:not(:disabled){background:#2a3a4a}
 .btn-d{background:#3a1a1a;border-color:#6a3a3a;color:#ca8a8a}
 #version{position:fixed;top:38px;right:8px;font-size:11px;color:#ffd700;background:#000;padding:2px 6px;border-radius:3px;border:1px solid #ffd700;z-index:1;font-family:monospace;font-weight:bold;opacity:0.7}
+/* Persistent in-game settings gear. Lives top-left, fixed-position, so
+   the user can re-open the settings panel from anywhere (start screen,
+   mid-game, draft, reward, etc.) without going back to the menu. */
+#settingsBtnPersistent{position:fixed;top:8px;left:8px;width:28px;height:28px;border-radius:50%;border:1px solid #444;background:#1a1a2a;color:#aaa;font-size:14px;cursor:pointer;z-index:1100;display:flex;align-items:center;justify-content:center;padding:0;opacity:0.7;transition:opacity .12s,background .12s}
+#settingsBtnPersistent:hover{opacity:1;background:#2a2a3a}
 
 #tgtbar{display:none;background:#2a2000;border-bottom:1px solid #888800;color:#ffee44;padding:5px 12px;font-size:11px;align-items:center;gap:10px;flex-shrink:0}
 #tgtbar.vis{display:flex}
@@ -187,8 +528,6 @@ button:disabled{opacity:.4;cursor:not-allowed}
 #searchBox{background:#1a2a1a;border:2px solid #886600;border-radius:8px;padding:18px;max-width:520px;max-height:70vh;overflow-y:auto;text-align:center}
 #searchBox h2{font-size:14px;color:#ffcc44;margin-bottom:10px;letter-spacing:1px}
 #searchList{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin-top:8px}
-.search-card{background:#244;border:1px solid #488;color:#bef;padding:6px 10px;border-radius:4px;cursor:pointer;font-size:11px;font-family:Georgia,serif;min-width:130px}
-.search-card:hover{background:#356;border-color:#6cc}
 /* Modal-spell mode picker. Same pattern as searchModal but distinct
    styling so the player can tell modes-of-a-spell from cards-from-library. */
 #modalChoiceModal{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;z-index:905}
@@ -220,13 +559,6 @@ button:disabled{opacity:.4;cursor:not-allowed}
 #neowTitle{color:#9bd0ff;font-size:18px;letter-spacing:2px;margin-bottom:6px;text-transform:uppercase}
 #neowSubtitle{color:#aaa;font-size:11px;margin-bottom:18px}
 #neowOptions{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
-.neow-opt{background:#13243a;border:1px solid #2c5780;border-radius:8px;padding:14px 12px;width:200px;cursor:pointer;transition:all .15s;display:flex;flex-direction:column;align-items:center;gap:8px}
-.neow-opt:hover{background:#1d3550;border-color:#5da0d8;transform:translateY(-2px);box-shadow:0 4px 14px rgba(74,144,200,.3)}
-.neow-opt .neow-art{font-size:42px;line-height:1;display:flex;align-items:center;justify-content:center;min-height:64px}
-/* Boon picker is a generously-sized tile (200px wide) — render pixel art at 2x. */
-.neow-opt .neow-art img{width:128px;height:64px;image-rendering:pixelated;display:block}
-.neow-opt .neow-name{color:#9bd0ff;font-weight:bold;font-size:14px;letter-spacing:1px}
-.neow-opt .neow-text{color:#bcd;font-size:11px;line-height:1.5;font-style:italic}
 #rewardModal{position:fixed;inset:0;background:rgba(0,0,0,.92);display:none;align-items:flex-start;justify-content:center;z-index:1100;padding:20px;overflow-y:auto}
 #rewardModal.vis{display:flex}
 #mapModal{position:fixed;inset:0;background:rgba(0,0,0,.92);display:none;align-items:flex-start;justify-content:center;z-index:1100;padding:20px;overflow-y:auto}
@@ -274,15 +606,6 @@ button:disabled{opacity:.4;cursor:not-allowed}
 #rewardTitle{color:#ffd700;font-size:18px;letter-spacing:2px;margin-bottom:6px;text-transform:uppercase}
 #rewardSubtitle{color:#aaa;font-size:11px;margin-bottom:18px}
 #rewardOptions{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
-.rwd-card{background:#1a2030;border:2px solid #44557a;border-radius:6px;padding:14px 12px;cursor:pointer;width:200px;min-height:200px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:6px;transition:transform .12s,border-color .12s,background .12s;font-family:Georgia,serif}
-.rwd-card:hover{background:#252e44;border-color:#88aacc;transform:translateY(-3px)}
-.rwd-card .art{font-size:42px;line-height:1;display:flex;align-items:center;justify-content:center;min-height:64px}
-/* 64x32 source rendered at 2x (128x64) — readable without dominating the tile. */
-.rwd-card .art img{width:128px;height:64px;image-rendering:pixelated;display:block}
-.rwd-card .name{color:#ffe7a0;font-size:13px;font-weight:bold;text-align:center}
-.rwd-card .type{color:#88a;font-size:10px}
-.rwd-card .stats{color:#fff;font-size:13px;font-weight:bold}
-.rwd-card .stickers{color:#ffd700;font-size:9px;font-style:italic;line-height:1.4;text-align:center;margin-top:2px}
 .rwd-sticker{background:#2a2010;border:2px solid #ffd700;border-radius:6px;padding:14px 14px;cursor:pointer;width:200px;min-height:120px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;font-family:Georgia,serif;transition:transform .12s,background .12s}
 .rwd-sticker:hover{background:#3a2e10;transform:translateY(-3px)}
 .rwd-sticker .name{color:#ffd700;font-size:15px;font-weight:bold}
@@ -316,26 +639,19 @@ button:disabled{opacity:.4;cursor:not-allowed}
 .rwd-kind-ripUp{color:#ff6060;background:#1f0808;border:1px solid #ff606044}
 #cardPopup{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;z-index:1200;padding:24px;cursor:pointer;animation:fadeIn .15s ease-out}
 #cardPopup.vis{display:flex}
+#settingsModal{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;z-index:1200;padding:24px;font-family:Georgia,serif}
+#settingsModal.vis{display:flex}
+#settingsBox{background:#1a1a26;border:2px solid #5a5a7a;border-radius:10px;padding:20px;width:100%;max-width:340px;max-height:90vh;overflow-y:auto;font-family:Georgia,serif;color:#ddd;position:relative}
+#settingsBox h2{color:#ffd700;font-size:18px;margin:0 0 14px 0;text-align:center;letter-spacing:0.1em}
+#settingsCloseBtn{margin-top:16px;width:100%;padding:8px;background:#2a4a2a;border:1px solid #4a8a4a;color:#aaffaa;border-radius:4px;cursor:pointer;font-size:13px}
 @keyframes fadeIn { from {opacity:0} to {opacity:1} }
-#cardPopupCard{background:#1a1a26;border:2px solid #5a5a7a;border-radius:10px;padding:20px;width:100%;max-width:340px;max-height:90vh;overflow-y:auto;text-align:center;cursor:default;box-shadow:0 10px 40px rgba(0,0,0,.7);font-family:Georgia,serif;position:relative}
-#cardPopupCard .pop-name{color:#ffe7a0;font-size:20px;font-weight:bold;margin-bottom:6px}
-#cardPopupCard .pop-cost{color:#ccc;font-size:13px;margin-bottom:8px}
-#cardPopupCard .pop-art{font-size:80px;line-height:1;margin:8px 0;display:flex;align-items:center;justify-content:center;min-height:128px}
-/* Popup is the showcase view — 4x scale (256x128) so pixel detail is
-   readable on phone. max-width:100% keeps it in bounds on narrow
-   viewports where the popup itself shrinks. */
-#cardPopupCard .pop-art img{width:256px;height:128px;max-width:100%;image-rendering:pixelated;display:block}
-#cardPopupCard .pop-type{color:#aab;font-size:12px;margin-bottom:12px;font-style:italic}
-#cardPopupCard .pop-text{color:#ddd;font-size:13px;line-height:1.5;margin:10px 0;padding:8px;background:#0d0d18;border-radius:4px;text-align:left}
-#cardPopupCard .pop-stats{color:#fff;font-size:22px;font-weight:bold;margin-top:8px}
-#cardPopupCard .pop-stats .bonus{color:#ffe066;font-size:14px;margin-left:6px}
+/* openCardPopup (controller.js) sets #cardPopupCard's style.cssText
+   inline (transparent background, no chrome) since the .card-frame frame
+   IS the visual. .pop-stickers / .pop-stickers-title below style the
+   auxiliary Repertoire / Built Ability panels appended below the frame
+   for cards that need them. */
 #cardPopupCard .pop-stickers{margin-top:12px;border-top:1px solid #333;padding-top:10px}
 #cardPopupCard .pop-stickers-title{color:#ffd700;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px}
-#cardPopupCard.col-W{border-color:#cdb46a}
-#cardPopupCard.col-U{border-color:#5588cc}
-#cardPopupCard.col-B{border-color:#7a4488}
-#cardPopupCard.col-R{border-color:#cc5544}
-#cardPopupCard.col-G{border-color:#5a8844}
 #draftScreen{position:fixed;inset:0;background:radial-gradient(ellipse at center,#1a1a2a 0%,#0a0a1a 80%);display:none;align-items:flex-start;justify-content:center;z-index:950;padding:20px;overflow-y:auto}
 #draftScreen.vis{display:flex}
 #draftBox{background:#10101a;border:2px solid #5a4a20;border-radius:8px;padding:24px;max-width:760px;width:100%;text-align:center;margin:auto}
@@ -392,6 +708,7 @@ body.ai-thinking #status{
 </head>
 <body>
 <div id="version"></div>
+<button id="settingsBtnPersistent" title="Settings" aria-label="Open settings">⚙</button>
 <div id="tgtbar">
   <span>Target for <b id="tgtname">?</b> — click highlighted creatures or player buttons</span>
   <button id="tgtCancelBtn" onclick="CONTROLLER.cancelTarget()" style="margin-left:auto">Cancel</button>
@@ -486,6 +803,21 @@ body.ai-thinking #status{
 </div>
 <div id="cardPopup" onclick="CONTROLLER.closeCardPopup(event)"><div id="cardPopupCard" onclick="event.stopPropagation()"></div></div>
 <div id="searchModal"><div id="searchBox"><h2 id="searchTitle">SEARCH LIBRARY</h2><div id="searchList"></div></div></div>
+<!-- Settings modal — opened from the start-screen ⚙ button. Houses
+     user-configurable toggles. Each row is built dynamically by
+     SETTINGS_PANEL.render() in js/settings-panel.js so adding a new
+     setting only needs (a) a DEFAULTS entry in settings.js, (b) a row
+     builder in settings-panel.js, (c) wire-up of the consumer (renderer
+     / engine / etc.) to read SETTINGS.get('keyName'). Styling lives in
+     the <style> block above so Modal.show's `.vis` class can override
+     `display:none` without an inline-style specificity fight. -->
+<div id="settingsModal">
+  <div id="settingsBox">
+    <h2>⚙ SETTINGS</h2>
+    <div id="settingsList" style="display:flex;flex-direction:column;gap:12px"></div>
+    <button id="settingsCloseBtn">Close</button>
+  </div>
+</div>
 <!-- Trigger-build modal — appears when a buildOnDraw card is drawn.
      Shows three randomly-rolled trigger options as picker cards, plus
      a "keep current" button if the slot already has a bonus trigger. -->
@@ -567,6 +899,7 @@ body.ai-thinking #status{
   </div>
 </div>
 
+<script src="js/settings.js"></script>
 <script src="js/cards.js"></script>
 <script src="js/engine.js"></script>
 <script src="js/card-text.js"></script>
@@ -577,6 +910,7 @@ body.ai-thinking #status{
 <script src="js/picklog.js"></script>
 <script src="js/controller.js"></script>
 <script src="js/render.js"></script>
+<script src="js/settings-panel.js"></script>
 <script src="js/triggers.js"></script>
 <script src="js/trigger-generator.js"></script>
 <script src="js/main.js"></script>

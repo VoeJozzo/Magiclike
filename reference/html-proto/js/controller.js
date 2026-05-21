@@ -86,6 +86,18 @@ function init() {
       '<span>Game Log <span style="color:#ffd700">— ' + VERSION + '</span></span>' +
       '<button id="logCloseBtn" onclick="CONTROLLER.toggleLog()">close</button>';
   }
+  // Settings modal close-button. Wired once at init since the modal HTML
+  // is static (only the inner #settingsList is rebuilt per-open).
+  const settingsCloseBtn = document.getElementById('settingsCloseBtn');
+  if (settingsCloseBtn) {
+    settingsCloseBtn.onclick = () => { Modal.hide('settingsModal'); };
+  }
+  // Persistent in-game settings gear. Always visible top-left so the user
+  // can adjust fonts / frames / etc. without going back to the start screen.
+  const settingsBtnPersistent = document.getElementById('settingsBtnPersistent');
+  if (settingsBtnPersistent) {
+    settingsBtnPersistent.onclick = SETTINGS_PANEL.show;
+  }
   showStartScreen();
 }
 
@@ -332,8 +344,14 @@ function showStartScreen() {
   browser.style.cssText = 'padding:8px 20px;background:#1a1a2a;border:1px solid #444;color:#aaa;border-radius:4px;cursor:pointer;font-size:12px';
   browser.onclick = showCardBrowser;
   btns.appendChild(browser);
+  const settings = document.createElement('button');
+  settings.textContent = '⚙ Settings';
+  settings.style.cssText = 'padding:8px 20px;background:#1a1a2a;border:1px solid #444;color:#aaa;border-radius:4px;cursor:pointer;font-size:12px';
+  settings.onclick = SETTINGS_PANEL.show;
+  btns.appendChild(settings);
   screen.style.display = 'flex';
 }
+
 
 function continueRun() {
   if (!RUN.load()) {
@@ -407,23 +425,31 @@ function showNeowChoice() {
   optsEl.innerHTML = '';
   for (const id of offered) {
     const m = RUN_MODIFIERS[id];
-    const div = document.createElement('div');
-    div.className = 'neow-opt';
-    div.onclick = () => pickNeow(id);
     // Boon art is derived from the card the boon grants -- every current
     // RUN_MODIFIERS entry's id matches the tplId of its granted card, so
-    // CARDS[m.id].art is the source of truth. A boon can override with an
-    // explicit `art:` field if its picker view should diverge from the
-    // card itself (no current boon needs this).
-    // m.text may carry {3}/{T}/etc. brace tokens (Stapler's "{3} Artifact
-    // with 3 per-run charges. {3}, T:") so it goes through the pip pipeline.
+    // CARDS[m.id].art is the source of truth.
     const boonArt = m.art || (CARDS[m.id] && CARDS[m.id].art) || '✦';
-    div.innerHTML = `
-      <div class="neow-art">${artHtml(boonArt)}</div>
-      <div class="neow-name">${escapeHtml(m.name || '')}</div>
-      <div class="neow-text">${renderManaSymbols(escapeHtml(m.text || ''))}</div>
-    `;
-    optsEl.appendChild(div);
+    let el;
+    // Render the boon AS the card it grants (matches the visual style of
+    // a draft pick). Falls back to a Boon-shaped placeholder for any
+    // modifier whose id doesn't resolve to a real card.
+    if (CARDS[m.id]) {
+      const card = ENGINE.makeCard(m.id);
+      el = makeCardEl(card);
+      el.style.setProperty('--scale', '2');
+    } else {
+      el = makeSyntheticCard({
+        name: m.name || '',
+        type: 'Boon',
+        text: m.text || '',
+        art: boonArt,
+        color: 'C',
+        scale: 2,
+      });
+    }
+    el.style.cursor = 'pointer';
+    el.onclick = () => pickNeow(id);
+    optsEl.appendChild(el);
   }
   Modal.show('neowModal', { dismissible: false });
 }
@@ -522,45 +548,32 @@ function applyTileColor(div, slot) {
 // pair, transform, and ripUp candidates — anywhere we show a slot's card.
 // Returns a DOM element. `slot` is the runState slot (with current stickers);
 // `tpl` is the resolved template.
+// Reward-modal card tile. Delegates to makeCardEl (the same renderer used
+// for hand/board cards). The slot (when present) carries stickers /
+// staples / rolls; we build a runtime card with those baked in so the tile
+// reflects the slot's actual state (effective cost, statBoost stats,
+// sticker badges, granted keywords).
+//
+// Splice's "merged preview" passes slot=null with a synthesized template
+// not in CARDS — that case is handled inline in renderReward via
+// makeCard(baseTpl, [], ..., stapledTpls=[...]) so the merged card is a
+// real runtime card with all stapled mechanics; it doesn't come through
+// this function.
 function makeRewardCardEl(tpl, slot) {
-  // If the slot has staples, render the synthesized template so the player
-  // sees the merged name/cost/text. Falls back to the passed tpl when
-  // there's no slot or no staples.
-  if (slot && Array.isArray(slot.stapledTpls) && slot.stapledTpls.length > 0) {
-    tpl = ENGINE.synthesizeStapledTemplate(slot.tplId, slot.stapledTpls);
-  }
-  const cardEl = document.createElement('div');
-  cardEl.className = 'rwd-pair-card';
-  const stats = tpl.type === 'Creature' ? `${tpl.power}/${tpl.toughness}` : '';
-  let displayStats = stats;
-  if (tpl.type === 'Creature' && slot) {
-    let bonus = 0;
-    for (const sId of slot.stickers) {
-      const s = STICKERS[sId];
-      if (s && s.kind === 'statBoost') bonus += (s.power || 0);
-    }
-    if (bonus > 0) displayStats = `${tpl.power + bonus}/${tpl.toughness + bonus}*`;
-  }
-  const stickerSummary = slot ? stickerBadgesHtml(slot.stickers, true, slot.empowerRolls, slot.tplId, slot.stapledTpls, slot.subtypeRolls) : '';
-  cardEl.innerHTML =
-    `<div class="art">${artHtml(tpl.art, '·')}</div>` +
-    `<div class="name">${tpl.name}</div>` +
-    `<div class="type">${tpl.type}</div>` +
-    (displayStats ? `<div class="stats">${displayStats}</div>` : '') +
-    stickerSummary;
-  // Long-press → full popup with current stickers + reduced cost preview.
-  if (slot) {
-    const popupCost = tpl.cost ? {...tpl.cost} : undefined;
-    if (popupCost) {
-      const reductions = slot.stickers.filter(sId => sId === 'costMinus1').length;
-      if (reductions > 0) popupCost.C = Math.max(0, (popupCost.C || 0) - reductions);
-    }
-    const popupCard = {...tpl, cost: popupCost, stickers: slot.stickers.slice(), empowerRolls: (slot.empowerRolls || []).slice(), subtypeRolls: (slot.subtypeRolls || []).slice()};
-    attachLongPress(cardEl, popupCard);
-  } else {
-    attachLongPress(cardEl, tpl);
-  }
-  return cardEl;
+  const tplId = (slot && slot.tplId) || tpl.tplId;
+  const card = ENGINE.makeCard(
+    tplId,
+    (slot && slot.stickers) || [],
+    undefined,
+    (slot && slot.empowerRolls) || [],
+    undefined, undefined,
+    (slot && slot.stapledTpls) || [],
+    (slot && slot.subtypeRolls) || []
+  );
+  const el = makeCardEl(card, { inHand: true });
+  // 2x scale for the reward picker -- same showcase size as draft picks.
+  el.style.setProperty('--scale', '2');
+  return el;
 }
 
 // Map node tooltip — tap shows briefly, long-press shows while held (mobile-friendly).
@@ -623,21 +636,17 @@ function renderPostDraftOffer() {
   Modal.show('postDraftOfferModal', { dismissible: false });
   const btns = document.getElementById('postDraftOfferButtons');
   btns.innerHTML = '';
-  const LAND_ART = { plains: '☀️', island: '🌊', swamp: '💀', mountain: '⛰️', forest: '🌲' };
-  const LAND_COLOR = { plains: '#cdb46a', island: '#5588cc', swamp: '#9966bb', mountain: '#cc5544', forest: '#5a8844' };
   for (const tplId of offer.basics) {
     const tpl = CARDS[tplId];
-    const name = tpl ? tpl.name : tplId;
-    const color = LAND_COLOR[tplId] || '#888';
-    const art = LAND_ART[tplId] || '🏞';
-    const b = document.createElement('button');
-    b.style.cssText = `background:#0e1c14;border:2px solid ${color};color:#ddd;padding:14px 16px;font-family:inherit;font-size:14px;font-weight:bold;cursor:pointer;border-radius:6px;min-width:130px;display:flex;flex-direction:column;align-items:center;gap:6px;transition:transform .1s,background .1s`;
-    b.innerHTML = `<span style="font-size:30px">${art}</span><span class="land-name"></span>`;
-    b.querySelector('.land-name').textContent = name;
-    b.onmouseover = () => { b.style.background = '#1a3020'; b.style.transform = 'translateY(-2px)'; };
-    b.onmouseout  = () => { b.style.background = '#0e1c14'; b.style.transform = 'translateY(0)'; };
-    b.onclick = () => pickPostDraftOfferClick(tplId);
-    btns.appendChild(b);
+    if (!tpl) continue;
+    // Real basic-land card via makeCardEl. The land's color frame and
+    // type line communicate which basic this is.
+    const card = ENGINE.makeCard(tplId);
+    const el = makeCardEl(card);
+    el.style.setProperty('--scale', '2');
+    el.style.cursor = 'pointer';
+    el.onclick = () => pickPostDraftOfferClick(tplId);
+    btns.appendChild(el);
   }
 }
 
@@ -888,13 +897,16 @@ function renderReward() {
         labelEl.className = 'rwd-kind-label rwd-kind-threeStickersBlind';
         labelEl.textContent = '3 STICKERS — RANDOM CARD';
         div.appendChild(labelEl);
-        // Mystery card placeholder — visually distinct from real card tiles.
-        const mystery = document.createElement('div');
-        mystery.className = 'rwd-card rwd-card-mystery';
-        mystery.innerHTML =
-          `<div class="art" style="font-size:48px">❓</div>` +
-          `<div class="name">Mystery Creature</div>` +
-          `<div class="text" style="font-style:italic;opacity:0.7">A random creature in your deck</div>`;
+        // Mystery card placeholder: build a "Mystery Creature" fake card
+        // with no cost / no P/T.
+        const mystery = makeSyntheticCard({
+          name: 'Mystery Creature',
+          type: 'Reward',
+          text: 'A random creature in your deck',
+          art: '❓',
+          color: 'C',
+          scale: 2,
+        });
         div.appendChild(mystery);
         const connector = document.createElement('div');
         connector.className = 'rwd-pair-plus';
@@ -920,16 +932,22 @@ function renderReward() {
         const baseTpl = baseSlot ? CARDS[baseSlot.tplId] : null;
         const stapleTpl = stapleSlot ? CARDS[stapleSlot.tplId] : null;
         if (!baseTpl || !stapleTpl) return;
-        // Build the merged-result template. The base may already be stapled
-        // (multi-stapling supported), so synthesize against the full prior
-        // stapledTpls plus the new staple. ENGINE.synthesizeStapledTemplate
-        // is the same path makeRewardCardEl uses internally for stapled
-        // slots, so the preview matches what the resolved card will look
-        // like once applySplice mutates the slot.
+        // Build the merged-result card. The base may already be stapled
+        // (multi-stapling supported), so include the full prior stapledTpls
+        // plus the new staple. ENGINE.makeCard internally calls
+        // synthesizeStapledTemplate when stapledTpls is non-empty, so the
+        // resulting card is a real runtime card with all merged mechanics
+        // applied -- name, cost, effects, etc. -- matching what
+        // applySplice will produce once the player picks.
         const priorStaples = Array.isArray(baseSlot.stapledTpls) ? baseSlot.stapledTpls : [];
-        const mergedTpl = ENGINE.synthesizeStapledTemplate(
+        const mergedCard = ENGINE.makeCard(
           baseSlot.tplId,
-          priorStaples.concat([stapleSlot.tplId])
+          [],                               // no stickers on merged preview
+          undefined,
+          [],                               // no empowerRolls
+          undefined, undefined,
+          priorStaples.concat([stapleSlot.tplId]),
+          []
         );
         const div = document.createElement('div');
         div.className = 'rwd-pair rwd-pair-splice';
@@ -951,10 +969,13 @@ function renderReward() {
         arrow.className = 'rwd-pair-plus';
         arrow.textContent = '→';
         div.appendChild(arrow);
-        // Merged preview (right). No slot — synthesis already rolled in
-        // any prior staples; sticker badges from inputs won't show on the
-        // preview (they DO transfer at resolve time — see applySplice).
-        div.appendChild(makeRewardCardEl(mergedTpl, null));
+        // Merged preview (right). Render via makeCardEl directly with the
+        // pre-built mergedCard (which already has stapled mechanics baked
+        // in). Sticker badges from the inputs don't show on the preview;
+        // they DO transfer at resolve time (see applySplice).
+        const mergedEl = makeCardEl(mergedCard, { inHand: true });
+        mergedEl.style.setProperty('--scale', '2');
+        div.appendChild(mergedEl);
         div.onclick = () => pickRewardCandidateClick(idx);
         optionsEl.appendChild(div);
         return;
@@ -1154,26 +1175,20 @@ function renderDraft() {
   const packEl = document.getElementById('draftPack');
   packEl.innerHTML = '';
   for (const tplId of pack) {
-    const tpl = CARDS[tplId];
-    const div = document.createElement('div');
-    // Base class only; multi-color cards (Sword and Sorcery, future hybrids)
-    // get a flag-stripe gradient via applyTileColorFromTpl, mono-color cards
-    // get the col-X CSS class. Same renderer the splice-merge tiles use.
-    div.className = 'draft-pick';
-    applyTileColorFromTpl(div, tpl);
-    const costHtml = tpl.cost ? renderManaSymbols(formatCostBraced(tpl.cost)) : '';
-    const isCreature = tpl.type === 'Creature';
-    const stats = isCreature ? `${tpl.power}/${tpl.toughness}` : '';
-    div.innerHTML =
-      `<div class="art">${artHtml(tpl.art, '·')}</div>` +
-      `<div class="name">${tpl.name}</div>` +
-      `<div class="cost">${costHtml}</div>` +
-      `<div class="type">${tpl.type}${tpl.sub ? ' — ' + tpl.sub : ''}</div>` +
-      (stats ? `<div class="stats">${stats}</div>` : '') +
-      (tpl.text ? `<div class="text">${renderManaSymbols(escapeHtml(tpl.text))}</div>` : '');
-    div.onclick = () => pickDraft(tplId);
-    attachLongPress(div, tpl);
-    packEl.appendChild(div);
+    // Use makeCardEl (the same renderer that builds hand/board cards).
+    // Build a vanilla card instance from the template -- the draft pack
+    // isn't slot-bound yet, no stickers or runtime state.
+    const card = ENGINE.makeCard(tplId);
+    const el = makeCardEl(card);
+    // Showcase scale -- cards render at 2x (160x224) for the picker so
+    // the player can read them. --scale is a no-op on the classic .card
+    // (it's hardcoded 62x88); classic-mode draft picks render at hand
+    // size, which is a tolerable fallback.
+    el.style.setProperty('--scale', '2');
+    el.style.cursor = 'pointer';
+    el.onclick = () => pickDraft(tplId);
+    // Long-press is wired by makeCardEl already (via attachLongPress).
+    packEl.appendChild(el);
   }
   // Footer: list of picks so far. If the player picked a Neow boon, show
   // it as the first entry with a ✦ marker so it's visually distinct from
@@ -1905,120 +1920,99 @@ function attachLongPress(element, card) {
   }, true);   // capture phase so we run before the existing onclick
 }
 
+// Pixel-art card popup. Built per the 80x112 frame spec, rendered at 4x
+// scale (320x448 actual) inside the existing #cardPopup dimmer overlay.
+
+// Helper: builds the "Repertoire" (Mercurial triggerPool) and "Built
+// Ability" (Codex buildOnDraw) HTML sections for a card's popup. Returns
+// empty string if neither applies. Reads the SLOT (RUN.getSlots()[card.slotIdx]),
+// not the card, because the slot is the durable record across saves and
+// the slot's bonusTrigger may have updated more recently than the in-game
+// card instance (e.g. just before a re-draw triggers makeCard).
+function buildPopupTriggerSections(card) {
+  if (typeof card.slotIdx !== 'number') return '';
+  if (typeof RUN === 'undefined' || !RUN.getSlots) return '';
+  const slots = RUN.getSlots();
+  const slot = slots && slots[card.slotIdx];
+  if (!slot) return '';
+  let html = '';
+  // Mercurial-style repertoire.
+  if (Array.isArray(slot.triggerPool) && slot.triggerPool.length > 0) {
+    const activeLabels = (card.triggers || []).map(t => t.label).filter(Boolean);
+    const items = slot.triggerPool.map(entry => {
+      const isActive = activeLabels.includes(entry.label);
+      const styleAttr = isActive
+        ? 'color:#ffe7a0;font-weight:bold;background:#3a2f1a;border-left:3px solid #ffd700;padding-left:6px'
+        : 'color:#888;padding-left:9px';
+      const marker = isActive ? '◆ ' : '○ ';
+      return `<div style="${styleAttr};font-size:11px;line-height:1.5;padding:3px 6px;margin:2px 0">${marker}<b>${entry.label}:</b> ${entry.text || ''}</div>`;
+    }).join('');
+    html += `
+      <div class="pop-stickers">
+        <div class="pop-stickers-title" style="color:#ffd700">Repertoire</div>
+        <div style="text-align:left">${items}</div>
+      </div>`;
+  }
+  // Codex-style built ability.
+  const tpl = CARDS[card.tplId];
+  if (tpl && tpl.buildOnDraw) {
+    let body;
+    if (slot.bonusTrigger) {
+      const text = formatTriggerText(slot.bonusTrigger.text, card.name);
+      body = `<div style="color:#ffe7a0;font-size:12px;line-height:1.5;padding:6px 8px;background:#1f1828;border-left:3px solid #ffd700;border-radius:3px">${text}</div>`;
+    } else {
+      body = `<div style="color:#888;font-size:11px;line-height:1.5;padding:6px 8px;background:#181820;border-left:3px solid #555;border-radius:3px;font-style:italic">No ability built yet — draw this card to build one.</div>`;
+    }
+    html += `
+      <div class="pop-stickers">
+        <div class="pop-stickers-title" style="color:#ffd700">Built Ability</div>
+        ${body}
+      </div>`;
+  }
+  return html;
+}
+
 function openCardPopup(card) {
-  // `card` may be a runtime card object (with iid/stickers/damage) OR a
-  // template-shaped object from the draft picker. Render whatever we have.
   const popup = document.getElementById('cardPopup');
   const inner = document.getElementById('cardPopupCard');
-  // Color class (for border).
+
+  // Shared display values (cost pips, art, oracle, stickers, P/T, type).
+  // Popup always shows base cost (inHand:false) — there's no "cast" to
+  // tax in popup context, so the effective-cost ↑ marker doesn't apply.
+  const vm = cardToViewModel(card);
+  const ptInner = vm.isCreature ? `<div class="frame-pt">${vm.pow}/${vm.tou}</div>` : '';
+
+  // Repertoire (Mercurial) and Built Ability (Codex) sections appear
+  // below the frame for cards that need them. Constrained to the frame's
+  // 320px width so they line up visually with the card above.
+  const extraSections = buildPopupTriggerSections(card);
+  const extrasHtml = extraSections
+    ? `<div style="width:320px;margin:8px auto 0;text-align:left">${extraSections}</div>`
+    : '';
+
+  // Strip the modal-box chrome from #cardPopupCard -- the frame IS the
+  // visual now, no need for the box styling.
   inner.className = '';
-  if (card.color) inner.classList.add('col-' + card.color);
-  // Compute display stats for creatures using ENGINE.getStats (single source
-  // of truth — includes tempPower, permPower, modifiers).
-  let basePow = card.power || 0, baseTou = card.toughness || 0;
-  const [pow, tou] = card.type === 'Creature'
-    ? ENGINE.getStats(card)
-    : [basePow, baseTou];
-  const isCreature = card.type === 'Creature';
-  const stickerBadges = card.stickers && card.stickers.length
-    ? `<div class="pop-stickers">
-         <div class="pop-stickers-title">Stickers</div>
-         ${stickerBadgesHtml(card.stickers, true, card.empowerRolls, card.tplId, card.stapledFrom && card.stapledFrom.stapledTpls, card.subtypeRolls)}
-       </div>` : '';
-  // Native keywords (from template if available, else from card directly).
-  const nativeKwHtml = nativeKeywordBadgesHtml(card, true);
-  const keywordSection = nativeKwHtml
-    ? `<div class="pop-stickers">
-         <div class="pop-stickers-title" style="color:#5588cc">Keywords</div>
-         ${nativeKwHtml}
-       </div>` : '';
-  const restrictBadges = (card.cantAttack || card.cantBlock)
-    ? `<div class="pop-stickers">
-         <div class="pop-stickers-title" style="color:#cc4444">Restrictions</div>
-         ${restrictionBadgesHtml(card, true)}
-       </div>` : '';
-  const costPart = card.cost ? `<div class="pop-cost">Cost: ${renderManaSymbols(formatCostBraced(card.cost))}</div>` : '';
-  const damagePart = card.damage ? `<div style="color:#ff6060;font-size:13px;margin-top:6px">Damage marked: ${card.damage}</div>` : '';
-  // Build segment-rendered text with empower-bumped values highlighted.
-  // The popup is the prime real estate for showing what stickers did, so it
-  // gets the full styled treatment. Keywords are surfaced as badges below,
-  // so we skip the preamble in the segment generation rather than running
-  // a string strip after the fact.
-  const popSegs = describeCardSegments(card, {skipKeywords: true});
-  const popDisplayHtml = segmentsToHtml(popSegs);
-  // Mercurial-style repertoire: if this card's slot has a triggerPool,
-  // show the full set of possible abilities with the currently-active one
-  // marked. Pool lives on the slot, not the card — runtime card.triggers
-  // shows only the active one. We look up the slot by slotIdx; if RUN
-  // isn't active (e.g., card browser preview), skip silently.
-  let repertoireSection = '';
-  // Codex-style built ability: if the template has buildOnDraw, show the
-  // currently-built bonusTrigger from the slot (or "not yet built" if it
-  // hasn't been chosen yet this run). The slot is the source of truth —
-  // card.triggers may not reflect the latest pick if rendered between
-  // games or before makeCard re-stamps. Mutually exclusive with the
-  // Mercurial repertoire above; a card has either a triggerPool OR a
-  // build slot, not both.
-  let builtAbilitySection = '';
-  if (typeof card.slotIdx === 'number' && typeof RUN !== 'undefined' && RUN.getSlots) {
-    const slots = RUN.getSlots();
-    const slot = slots && slots[card.slotIdx];
-    if (slot && Array.isArray(slot.triggerPool) && slot.triggerPool.length > 0) {
-      // Find which entry is active by matching the currently-applied
-      // bonus against the pool. Match on label since that's stable across
-      // deep-copies.
-      const activeLabels = (card.triggers || [])
-        .map(t => t.label)
-        .filter(Boolean);
-      const items = slot.triggerPool.map(entry => {
-        const isActive = activeLabels.includes(entry.label);
-        const styleAttr = isActive
-          ? 'color:#ffe7a0;font-weight:bold;background:#3a2f1a;border-left:3px solid #ffd700;padding-left:6px'
-          : 'color:#888;padding-left:9px';
-        const marker = isActive ? '◆ ' : '○ ';
-        return `<div style="${styleAttr};font-size:11px;line-height:1.5;padding:3px 6px;margin:2px 0">${marker}<b>${entry.label}:</b> ${entry.text || ''}</div>`;
-      }).join('');
-      repertoireSection = `
-        <div class="pop-stickers">
-          <div class="pop-stickers-title" style="color:#ffd700">Repertoire</div>
-          <div style="text-align:left">${items}</div>
-        </div>`;
-    }
-    // Codex case: template has buildOnDraw flag → show built ability or
-    // a "not yet built" placeholder. The slot's bonusTrigger is the
-    // durable record; we substitute the card name for ~ for display.
-    const popTpl = CARDS[card.tplId];
-    if (popTpl && popTpl.buildOnDraw && slot) {
-      let body;
-      if (slot.bonusTrigger) {
-        const text = (slot.bonusTrigger.text || '').replace(/~/g, card.name);
-        body = `<div style="color:#ffe7a0;font-size:12px;line-height:1.5;padding:6px 8px;background:#1f1828;border-left:3px solid #ffd700;border-radius:3px">${text}</div>`;
-      } else {
-        body = `<div style="color:#888;font-size:11px;line-height:1.5;padding:6px 8px;background:#181820;border-left:3px solid #555;border-radius:3px;font-style:italic">No ability built yet — draw this card to build one.</div>`;
-      }
-      builtAbilitySection = `
-        <div class="pop-stickers">
-          <div class="pop-stickers-title" style="color:#ffd700">Built Ability</div>
-          ${body}
-        </div>`;
-    }
-  }
+  inner.style.cssText = 'background:transparent;border:none;box-shadow:none;padding:0;width:auto;max-width:none;text-align:center;cursor:default';
   inner.innerHTML = `
-    <div class="pop-name">${card.name}</div>
-    ${costPart}
-    <div class="pop-art">${artHtml(effectiveArt(card))}</div>
-    <div class="pop-type">${card.sub ? card.sub + ' — ' : ''}${card.type}</div>
-    ${popDisplayHtml ? `<div class="pop-text">${popDisplayHtml}</div>` : ''}
-    ${isCreature ? `<div class="pop-stats">${pow}/${tou}${(pow !== basePow || tou !== baseTou) ? `<span class="bonus">(was ${basePow}/${baseTou})</span>` : ''}</div>` : ''}
-    ${damagePart}
-    ${keywordSection}
-    ${repertoireSection}
-    ${builtAbilitySection}
-    ${stickerBadges}
-    ${restrictBadges}
+    <div class="card-frame in-popup col-${vm.colorKey}" style="--scale: 4">
+      <div class="frame-title">
+        <div class="frame-name">${escapeHtml(card.name || '')}</div>
+        <div class="frame-cost">${vm.pipsHtml}</div>
+      </div>
+      <div class="frame-art">${vm.artInner}</div>
+      <div class="frame-type">${escapeHtml(vm.typeText)}</div>
+      <div class="frame-text">
+        <div class="frame-oracle">${vm.oracleHtml}</div>
+        ${vm.stickersInner ? '<div class="frame-stickers">' + vm.stickersInner + '</div>' : ''}
+      </div>
+      ${ptInner}
+    </div>
+    ${extrasHtml}
   `;
   popup.classList.add('vis');
 }
+
 function closeCardPopup(e) {
   // Only close if the click is on the dimmer itself, not on the card content.
   if (e && e.target.id !== 'cardPopup') return;

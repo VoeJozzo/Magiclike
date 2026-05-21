@@ -33,7 +33,10 @@ function makeTriggerBuildOptionBtn(innerHtml, onClick) {
 
 function render() {
   const G = ENGINE.state();
-  if (!G) return;
+  // Deep guard: any of these missing means we're not in-game (start
+  // screen, post-game, settings panel before first draft, etc.). Callers
+  // can fire-and-forget render() without needing to wrap in try/catch.
+  if (!G || !G.you || !G.opp || !G.phase) return;
   CONTROLLER.clearUiOnPhaseChange();
   const pt = CONTROLLER.pendingTarget();
 
@@ -104,32 +107,31 @@ function render() {
     G.stack.slice().reverse().forEach((it, displayIdx) => {
       const realIdx = G.stack.length - 1 - displayIdx;
       const tgtLabel = (it.targets && it.targets[0] && it.targets[0].label) ? ` → ${it.targets[0].label}` : '';
-      const div = document.createElement('div');
-      div.className = 'bnr-item' + (isCounterTarget ? ' tgt' : '');
-      // stackIdx (real, not reversed) — target-line overlay indexes G.stack directly.
-      div.dataset.stackIdx = String(realIdx);
+      let div;
       if (it.kind === 'trigger') {
-        div.innerHTML =
-          `<div class="topline">⚡ ${it.sourceName} triggers</div>` +
-          `<div class="botline">${it.trig.text || it.trig.event}${tgtLabel}</div>`;
+        // Triggers have no card backing -- build a card-like with the
+        // trigger text in the body.
+        div = makeSyntheticCard({
+          name: it.sourceName + ' triggers',
+          type: 'Trigger',
+          text: (it.trig.text || it.trig.event) + tgtLabel,
+          art: '⚡',
+          color: 'C',
+          scale: 0.7,
+        });
         const src = ENGINE.findCard(it.sourceIid);
         if (src) CONTROLLER.attachLongPress(div, src.card);
       } else {
-        // Modal cards: show chosen mode so countering decisions are informed.
-        let modeLabel = '';
-        if (ENGINE.isModal(it.card)) {
-          const mn = (it.card.effects.modeNames || [])[it.modeIdx || 0];
-          if (mn) modeLabel = ` <span style="color:#aaccee;font-size:10px">(${mn})</span>`;
-        }
-        // Inline art, skip URL art (would stretch in narrow pill).
-        const inlineArt = isArtUrl(it.card.art) ? '🎴' : (it.card.art || '');
-        div.innerHTML =
-          `<div class="topline">${inlineArt} ${it.card.name}${modeLabel}</div>` +
-          `<div class="botline">cast by ${G[it.controller].name}${tgtLabel}</div>`;
-        CONTROLLER.attachLongPress(div, it.card);
+        div = makeCardEl(it.card);
+        div.style.setProperty('--scale', '0.7');
       }
-      if (isCounterTarget && it.kind !== 'trigger') {
-        div.onclick = () => CONTROLLER.clickStackTarget(realIdx);
+      // stackIdx (real, not reversed) — target-line overlay indexes G.stack directly.
+      div.dataset.stackIdx = String(realIdx);
+      if (isCounterTarget) {
+        div.classList.add('targetable');
+        if (it.kind !== 'trigger') {
+          div.onclick = () => CONTROLLER.clickStackTarget(realIdx);
+        }
       }
       bannerItems.appendChild(div);
     });
@@ -206,10 +208,8 @@ function render() {
       list.innerHTML = '<div style="color:#888;font-size:11px">No matching cards.</div>';
     } else {
       for (const card of matches) {
-        const btn = document.createElement('button');
-        btn.className = 'search-card';
-        const inlineArt = isArtUrl(card.art) ? '🎴' : (card.art || '');
-        btn.textContent = `${inlineArt} ${card.name}`;
+        const btn = makeCardEl(card);
+        btn.style.cursor = 'pointer';
         btn.onclick = () => CONTROLLER.searchPick(card.iid);
         list.appendChild(btn);
       }
@@ -237,16 +237,18 @@ function render() {
       titleEl.textContent = '📜 STEP 1 OF 2: CHOOSE WHEN';
       subtitleEl.textContent = `When should ${sourceName}'s ability fire?`;
       ptb.conditionOptions.forEach((cond, idx) => {
-        const text = (cond.text || '').replace(/~/g, sourceName);
+        const text = formatTriggerText(cond.text, sourceName);
         const html = `<span style="color:#ffd700;font-weight:bold">Option ${idx+1}</span><br>When ${text}…`;
         list.appendChild(makeTriggerBuildOptionBtn(html, () => CONTROLLER.triggerBuildPick(idx)));
       });
     } else if (ptb.step === 'effect') {
       titleEl.textContent = '📜 STEP 2 OF 2: CHOOSE WHAT';
+      // textContent target: substitute raw (no HTML escape — entities
+      // would render as literal '&amp;' text).
       const condText = (ptb.chosenCondition.text || '').replace(/~/g, sourceName);
       subtitleEl.textContent = `When ${condText} — what happens?`;
       ptb.effectOptions.forEach((eff, idx) => {
-        const text = (eff.describe || '').replace(/~/g, sourceName);
+        const text = formatTriggerText(eff.describe, sourceName);
         const display = text.length > 0 ? (text[0].toUpperCase() + text.slice(1)) : text;
         const html = `<span style="color:#ffd700;font-weight:bold">Option ${idx+1}</span><br>${display}`;
         list.appendChild(makeTriggerBuildOptionBtn(html, () => CONTROLLER.triggerBuildPick(idx)));
@@ -255,8 +257,8 @@ function render() {
       titleEl.textContent = '📜 KEEP OR REPLACE?';
       subtitleEl.textContent = `Compare your new ability with the current one.`;
       // Render two side-by-side cards: current (left/top) vs new (right/bottom).
-      const currentText = (ptb.currentTrigger.text || '').replace(/~/g, sourceName);
-      const newText = (ptb.assembledTrigger.text || '').replace(/~/g, sourceName);
+      const currentText = formatTriggerText(ptb.currentTrigger.text, sourceName);
+      const newText = formatTriggerText(ptb.assembledTrigger.text, sourceName);
       const compareBox = document.createElement('div');
       compareBox.style.cssText = 'display:flex;flex-direction:column;gap:10px;margin:8px 0';
       compareBox.innerHTML = `
@@ -598,16 +600,10 @@ function openZoneTargeting(who, zone, validTargets) {
     const validIids = new Set(validTargets.map(t => t.iid));
     const display = cards.slice().reverse();
     for (const card of display) {
-      const btn = document.createElement('div');
-      btn.className = 'zone-card';
-      const typeHint = card.type ? card.type.charAt(0) : '?';
-      const cost = card.cost ? renderManaSymbols(formatCostBraced(card.cost)) : '';
-      btn.innerHTML = `<span style="opacity:0.6">[${typeHint}]</span> <span class="card-name"></span>${cost ? ' <span style="opacity:0.7;font-size:10px">' + cost + '</span>' : ''}`;
-      btn.querySelector('.card-name').textContent = card.name;
+      const btn = makeCardEl(card);
       if (validIids.has(card.iid)) {
         btn.style.cursor = 'pointer';
-        btn.style.borderColor = '#ffcc44';
-        btn.style.background = '#332';
+        btn.classList.add('targetable');
         btn.onclick = () => submitGraveyardTarget(card.iid);
       } else {
         btn.style.opacity = '0.4';
@@ -628,7 +624,7 @@ function submitGraveyardTarget(iid) {
 }
 
 function setText(id, v) { document.getElementById(id).textContent = v; }
-function escapeHtml(s) { return String(s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+// escapeHtml + formatTriggerText live in card-text.js (loads before this file).
 
 // {text, highlight}[] → HTML, with .bumped spans for empower-emphasized values.
 function segmentsToHtml(segs) {
@@ -696,7 +692,11 @@ function canPlayFromUI(who, card) {
 function renderOppHandBacks(n) {
   const el = document.getElementById('oppHandView');
   el.innerHTML = '';
-  for (let i=0; i<n; i++) el.innerHTML += '<div class="cardback"></div>';
+  for (let i=0; i<n; i++) {
+    // Cardback: just the C-color frame at small scale, inner elements
+    // hidden by .frame-cardback CSS. No name / no art / no cost rendered.
+    el.innerHTML += '<div class="card-frame col-C frame-cardback" style="--scale: 0.35"></div>';
+  }
 }
 
 function renderBf(id, bf, who) {
@@ -755,6 +755,22 @@ function renderBf(id, bf, who) {
     // Rip-select: every player permanent is targetable.
     if (G.pendingRipSelect && G.pendingRipSelect.who === 'you' && who === 'you') {
       div.classList.add('targetable');
+    }
+    // Subtle ambient glow on untapped lands you control -- signals "this
+    // can be tapped for mana" without the full .activatable intensity.
+    if (who === 'you' && card.type === 'Land' && !card.tapped) {
+      div.classList.add('land-tappable');
+    }
+    // Eligibility glow for attackers/blockers during the declaration step.
+    // Distinct (dimmer) from .atk/.blk so SELECTED creatures still pop
+    // brighter than eligible-but-not-selected ones.
+    if (G.phase === 'COMBAT_ATTACK' && G.activePlayer === 'you' && !G.attackersDeclared
+        && who === 'you' && ENGINE.canCreatureAttack(card)) {
+      div.classList.add('could-atk');
+    }
+    if (G.phase === 'COMBAT_BLOCK' && G.activePlayer === 'opp' && !G.blockersDeclared
+        && who === 'you' && ENGINE.canCreatureBlock(card)) {
+      div.classList.add('could-blk');
     }
     if (who === 'you' && card.type === 'Creature' && card.abilities && !card.tapped && !card.sick) {
       const hasAvail = card.abilities.some((ab, i) => {
@@ -1089,51 +1105,150 @@ function artHtml(art, fallback) {
   return art;
 }
 
-function makeCardEl(card, opts) {
-  const div = document.createElement('div');
-  // data-iid: lets the target-line overlay find this card's DOM element
-  // by iid. Set on every card render (hand + battlefield + zones) so the
-  // line layer can resolve any target referenced from a stack item.
-  div.dataset.iid = String(card.iid);
-  const [p, t] = card.type === 'Creature'
+// Pre-computed display values for a card, consumed by both makeCardEl
+// (in-hand / on-board frame) and openCardPopup (4x popup frame in
+// controller.js). Centralizing here keeps cost-pip rendering, type-line
+// assembly, art resolution, and sticker-badge construction in one place
+// — both consumers used to inline these and were prone to drift.
+//
+// opts.inHand        — show effective cost (cast tax) with ↑ marker.
+//                      Default: show base cost (board/zone view).
+// opts.overrideOracleText — bypass describeCardSegments; render the
+//                      literal string through escape + mana pipeline.
+//                      Used by makeSyntheticCard for boons / mystery
+//                      placeholders / cardbacks that aren't engine cards.
+function cardToViewModel(card, opts) {
+  opts = opts || {};
+  const inHand = !!opts.inHand;
+  const overrideOracleText = opts.overrideOracleText;
+
+  // Frame color: cost colors > card.color > land's produced color
+  // (Plains -> W) > Colorless. Multicolor uses first WUBRG-order color;
+  // dual-color frame design is a future tweak.
+  const colorKey = (card.colors && card.colors[0])
+    || card.color
+    || (card.type === 'Land' && card.mana)
+    || 'C';
+
+  const isCreature = card.type === 'Creature';
+  const [pow, tou] = isCreature
     ? ENGINE.getStats(card)
     : [card.power || 0, card.toughness || 0];
-  div.className = `card c${card.type.toLowerCase()}${card.tapped ? ' tapped' : ''}${card.sick ? ' sick' : ''}`;
-  // skipKeywords — keywords show as badges below.
-  const tileSegs = describeCardSegments(card, {skipKeywords: true});
-  const displayHtml = segmentsToHtml(tileSegs);
-  // Cost display: in hand, show the EFFECTIVE cost (base + static bumps
-  // from City Guardian etc.) so the player sees what they'd pay. Anywhere
-  // else (battlefield/zones) we show the base cost — there's no "cast" to
-  // tax. When the cost is bumped, add a small ↑ marker so the player
-  // understands the increase isn't intrinsic to the card.
-  let costHtml = '';
-  if (card.cost) {
-    if (opts && opts.inHand) {
-      const eff = ENGINE.effectiveCastCost(card);
-      const effC = eff && eff.C || 0;
-      const baseC = card.cost.C || 0;
-      const bumped = effC > baseC;
-      costHtml = `<div class="ccost">${renderManaSymbols(formatCostBraced(eff))}${bumped ? ' <span style="color:#ffaa44;font-size:9px">↑</span>' : ''}</div>`;
-    } else {
-      costHtml = `<div class="ccost">${renderManaSymbols(formatCostBraced(card.cost))}</div>`;
+
+  const displayCost = inHand
+    ? ENGINE.effectiveCastCost(card)
+    : card.cost;
+  let pipsHtml = '';
+  if (displayCost) {
+    if (displayCost.C) {
+      pipsHtml += '<span class="frame-pip col-num">' + displayCost.C + '</span>';
+    }
+    for (const c of ['W','U','B','R','G']) {
+      const n = displayCost[c] || 0;
+      for (let i = 0; i < n; i++) {
+        pipsHtml += '<span class="frame-pip col-' + c + '"></span>';
+      }
     }
   }
-  div.innerHTML = `
-    <div class="cname" title="${card.name}">${card.name}</div>
-    <div class="cart">${artHtml(effectiveArt(card))}</div>
-    <div class="ctype">${card.sub || card.type}</div>
-    ${displayHtml ? `<div class="ctext">${displayHtml}</div>` : ''}
-    ${card.type === 'Creature' ? `<div class="cstats">${p}/${t}</div>` : ''}
-    ${costHtml}
-    ${card.damage ? `<div class="cdmg">${card.damage}</div>` : ''}
-    ${nativeKeywordBadgesHtml(card, false)}
-    ${stickerBadgesHtml(card.stickers, false, card.empowerRolls, card.tplId, card.stapledFrom && card.stapledFrom.stapledTpls, card.subtypeRolls)}
-    ${restrictionBadgesHtml(card, false)}
-  `;
+  let bumpedMarker = '';
+  if (inHand && card.cost) {
+    const baseC = card.cost.C || 0;
+    const effC = (displayCost && displayCost.C) || 0;
+    if (effC > baseC) bumpedMarker = '<span class="frame-bumped">↑</span>';
+  }
+
+  const typeText = card.type + (card.sub ? ' — ' + card.sub : '');
+
+  let oracleHtml;
+  if (overrideOracleText !== undefined) {
+    oracleHtml = renderManaSymbols(escapeHtml(overrideOracleText));
+  } else {
+    const segs = describeCardSegments(card, {skipKeywords: false});
+    oracleHtml = segmentsToHtml(segs);
+  }
+
+  const artVal = effectiveArt(card);
+  const artInner = isArtUrl(artVal)
+    ? '<img src="' + artVal + '" alt="">'
+    : escapeHtml(artVal || '');
+
+  const stickersInner = (card.stickers && card.stickers.length)
+    ? stickerBadgesHtml(card.stickers, false, card.empowerRolls, card.tplId, card.stapledFrom && card.stapledFrom.stapledTpls, card.subtypeRolls)
+    : '';
+
+  return {
+    colorKey, isCreature, pow, tou,
+    pipsHtml, bumpedMarker, typeText, oracleHtml,
+    artInner, stickersInner,
+  };
+}
+
+// Pixel-art in-hand / on-board card. Builds the 80x112 frame at 1x scale
+// (so it renders at native 80x112 pixels). State classes (.tapped/.castable/
+// .targetable/etc.) get applied AFTER the element is returned; the .card-frame
+// CSS handles each via .card-frame.{state}.
+function makeCardEl(card, opts) {
+  const div = document.createElement('div');
+  div.dataset.iid = String(card.iid);
+
+  const vm = cardToViewModel(card, opts);
+
+  div.className = 'card-frame col-' + vm.colorKey +
+    (card.tapped ? ' tapped' : '') +
+    (card.sick ? ' sick' : '');
+
+  // Restrictions render only on the in-hand/board frame, not on the
+  // popup or on fake cards. Inlined here because the popup intentionally
+  // doesn't surface restrictions in the frame body.
+  const restrictInner = restrictionBadgesHtml(card, false);
+  const stickerSection = (vm.stickersInner || restrictInner)
+    ? '<div class="frame-stickers">' + vm.stickersInner + restrictInner + '</div>'
+    : '';
+
+  const ptInner = vm.isCreature ? '<div class="frame-pt">' + vm.pow + '/' + vm.tou + '</div>' : '';
+  const damageInner = card.damage ? '<div class="frame-damage">' + card.damage + '</div>' : '';
+
+  div.innerHTML =
+    '<div class="frame-title">' +
+      '<div class="frame-name">' + escapeHtml(card.name || '') + '</div>' +
+      '<div class="frame-cost">' + vm.pipsHtml + vm.bumpedMarker + '</div>' +
+    '</div>' +
+    '<div class="frame-art">' + vm.artInner + '</div>' +
+    '<div class="frame-type">' + escapeHtml(vm.typeText) + '</div>' +
+    '<div class="frame-text">' +
+      '<div class="frame-oracle">' + vm.oracleHtml + '</div>' +
+      stickerSection +
+    '</div>' +
+    ptInner + damageInner;
+
   CONTROLLER.attachLongPress(div, card);
   return div;
 }
+
+// Build a card frame for things that aren't engine-shaped cards (Neow
+// boons, mystery placeholders, sticker rewards, cardbacks, etc.). Caller
+// supplies a flat object; we fabricate just enough of the card-shape that
+// makeCardEl doesn't crash, and pass the literal text through opts so
+// describeCardSegments is bypassed.
+function makeSyntheticCard({ name, type, sub, text, art, color, cost, power, toughness, scale }) {
+  const fakeCard = {
+    name: name || '',
+    type: type || '',
+    sub: sub || '',
+    art: art || '',
+    color: color || 'C',
+    cost: cost || null,
+    power: power || 0,
+    toughness: toughness || 0,
+    abilities: [], effects: [], triggers: [], staticBuffs: [],
+    stickers: [], keywords: [], colors: [],
+    iid: -1,
+  };
+  const el = makeCardEl(fakeCard, { overrideOracleText: text || '' });
+  if (scale !== undefined) el.style.setProperty('--scale', String(scale));
+  return el;
+}
+
 function formatCost(c) {
   let s = '';
   if (c.C) s += c.C;

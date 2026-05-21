@@ -28,6 +28,7 @@ const JS_DIR = path.join(__dirname, '..', 'js');
 // declare module-scope constants that later files reference (e.g. main.js
 // calls CONTROLLER.init() so controller.js must load first).
 const ENGINE_FILES = [
+  'settings.js',
   'cards.js',
   'engine.js',
   'card-text.js',
@@ -38,6 +39,7 @@ const ENGINE_FILES = [
   'picklog.js',
   'controller.js',
   'render.js',
+  'settings-panel.js',
   'triggers.js',
   'trigger-generator.js',
   'main.js',
@@ -127,7 +129,7 @@ function installDomStubs() {
 const EXPOSED = [
   // Public module objects (top of each .js file).
   'ENGINE', 'AI', 'RUN', 'DRAFT', 'CARDS', 'STICKERS',
-  'CONTROLLER', 'PICKLOG', 'VERSION', 'Modal', 'RUN_MODIFIERS',
+  'CONTROLLER', 'PICKLOG', 'VERSION', 'Modal', 'RUN_MODIFIERS', 'SETTINGS',
   // tplId rename plumbing — exposed for tplid_renames_test.
   'TPLID_RENAMES', 'renameTplId', 'MIGRATIONS', 'SAVE_VERSION', 'SAVE_KEY',
   // Trigger-generator surface (triggers.js + trigger-generator.js —
