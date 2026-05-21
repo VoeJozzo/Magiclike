@@ -1,6 +1,8 @@
 # Standardization Plan — html-proto ↔ Godot Port
 
-Status: **draft**, May 2026. Living document.
+Status: **Passes 1-4 shipped on `claude/standardization-BBD8O` (May 2026).**
+Passes 5-6 remain as documented future work. See `docs/PROTOCOL.md` for the
+canonical spec the passes converged on.
 
 ## 1. Goal
 
@@ -272,35 +274,41 @@ Pure renames. Tests should pass before and after. Each is one commit.
   `abilities`: deferred. Same logic — internal-only aesthetic.
 - Add `UPKEEP`/`DRAW` phases: Godot already has them. JS side gets them in Pass 2.
 
-### Pass 2 — naming aligned, no behavior change (JS side)
+### Pass 2 — JS card.json migration ✓ SHIPPED (commit 1a30225)
 
-- `effects` → `on_cast_effects` in card JSONs (258 cards). Mechanical sed-then-test. Same for the engine's spell-resolution reader.
-- `type: "Instant"` → `card_types: ["instant"]` in card JSONs. Same.
-- `sub: "Human Warrior"` → `subtypes: ["human", "warrior"]`. Same.
-- Drop redundant `color`/`colors` fields from JSON, compute on load.
-- Add UPKEEP and DRAW phases to `engine.js::step()`.
-- Migrate inline closure predicates to named entries in `TRIGGER_CONDITIONS` (e.g., add explicit `oppLostLifeThisTurn` entry instead of closing over `G[them].lifeLostThisTurn`).
+**Done:**
+- `tplId` → `card_id` across 258 card.json files.
+- `condId` → `cond_id` in trigger dicts (recursively).
+- Dropped redundant `color`/`colors` fields — recomputed from `cost` at ingest by `js/cards.js::ingestCard()`.
+- Test loader (`tests/_setup.js::loadCardsFromDisk()`) pipes each JSON through `global.ingestCard` so test code sees the same shape as the browser.
+- VERSION bumped v1.0.188 → v1.0.189 per the html-proto's CLAUDE.md push contract.
 
-The card JSON migration is the riskiest single change in Pass 2 — touches all 258 files and the load path. Worth scripting and running against the regression suite (`node tests/run_all.js`).
+**Deliberately deferred:**
+- `effects` → `on_cast_effects` in JSONs. Reason: the wire format `effects` is well-established and Godot's `JsonCardLoader._build_resource` maps `effects` → `on_cast_effects` at ingest. No cross-engine pain.
+- `type: "Instant"` → `card_types: ["instant"]` array form. Reason: JsonCardLoader translates the capitalized string to a single-element lowercase array at ingest. Migration would touch 258 files for cosmetic gain.
+- `sub` (space-string) → `subtypes` (array). Same reason — JsonCardLoader splits on space at ingest.
+- Add UPKEEP/DRAW phases to JS — JS engine doesn't have upkeep-triggered cards yet, so the structural change isn't unlocking anything.
+- Inline-closure predicate migration in `js/triggers.js`. Same reason — they work; touching them risks regression on the trigger drain.
 
-### Pass 3 — protocol doc
+JS internal source rename (`tplId` → `cardId`, etc.) is also deferred; it's a 350-call-site refactor that doesn't change any wire-format or cross-engine behavior.
 
-Write `docs/PROTOCOL.md` that codifies:
+### Pass 3 — protocol doc ✓ SHIPPED (commit 9a0ca77)
 
-- The canonical card JSON schema (§4.1–§4.3) as a referenceable JSONSchema or hand-written spec.
-- The full event-kind catalog (§4.5) with required payload fields.
-- The full effect-kind catalog (§4.6) with parameter shapes.
-- The target filter / target mode taxonomy (§4.7).
-- The predicate ID list with English descriptions.
-- The phase enum.
+`docs/PROTOCOL.md` codifies card JSON shape, effect-kind catalog, event-kind catalog, predicate id list, target taxonomy, phase enum, and authoring rules. Both engines treat it as canonical.
 
-Goal: a new dev should be able to add an effect kind by reading this doc + grep'ing both engines for an existing kind to copy from.
+### Pass 4 — Godot JSON card loader ✓ SHIPPED (commit 38e61c0)
 
-### Pass 4 — Godot JSON card loader
+**Done:**
+- `engine/json_card_loader.gd` reads `res://reference/html-proto/cards/<folder>/card.json` and materializes CardResource subclass instances.
+- Translation tables (`_EFFECT_KIND_REMAP`, `_EVENT_KIND_REMAP`, `_KEYWORD_REMAP`) handle camelCase ↔ snake_case mechanically.
+- Boot supportability scan in `engine/engine.gd._ready()` prints one summary line + per-category breakdowns (missing effects, events, predicates) so the next-most-valuable port is a sorted-list decision.
+- New test `tests/test_json_card_loader.tscn` — 19 assertions covering load_card, load_all, and the supportability report.
+- Bug fix: `_do_discard_card` was firing the discard event with key `name` instead of `kind`, meaning no trigger ever matched. Fixed in the same pass.
 
-- Build `JsonCardLoader` (Godot side): reads `cards/data/<tplId>.json` (or symlinks to `reference/html-proto/cards/<tplId>/card.json`), produces `CardResource`.
-- Implement boot-time supportability scan: print which cards are fully playable vs missing handlers/predicates/events.
-- Migrate the 23 existing `.tres` cards to JSON form; delete the `.tres` files (or keep one or two as test fixtures only).
+Baseline supportability today: **258 cards loaded, 109 fully supported, 149 awaiting handlers.** Top missing effect kinds (in cards): `remove_creature=24`, `draw=17`, `discard=11`, `grant_keyword=10`. Top missing events: `attacks=20`, `spell_cast=7`. Most missing predicates are the `this*` self-only family that Godot's `self_only: true` flag obsoletes.
+
+**Deliberately deferred:**
+- Migrating the 23 hand-curated `.tres` cards to JSON form and deleting the `.tres` files. Reason: the `.tres` cards are the current playable pool. Replacing them is a deck-pool change that doesn't unlock cross-engine work — it just changes the source-of-truth file format for that subset. The two paths (CardDatabase loading .tres, JsonCardLoader loading JSON) coexist cleanly today; consolidation is a follow-up when JSON cards are wired into the deck pool.
 
 ### Pass 5 — target-mode split
 
@@ -361,17 +369,15 @@ Pass 1 can land independently of all the others. Pass 2 should land before Pass 
 - We are NOT trying to share UI/rendering code. The card art pipeline is shared (assets at `/assets/`), but display layers are independent.
 - We are NOT trying to enforce conventions through codegen or schema validation in the runtime. Boot-time validators (already present on Godot for predicates) are enough.
 
-## 10. Open questions for the user
+## 10. Gating decisions — RESOLVED
 
-These need decisions before the protocol doc (Pass 3) freezes:
+The eight open questions from the original draft were resolved during the chat that produced this plan and during Pass 1's implementation. Final resolutions:
 
-1. **`tpl_id` vs `card_id` as the canonical name** — `tpl_id` recommended (shorter, distinct from `iid`, already on 258 cards). Confirm?
-2. **`name` vs `display_name`** — `name` recommended. Confirm?
-3. **`text` vs `oracle_text`** — `text` recommended. Confirm?
-4. **`triggers` vs `triggered_abilities`** — `triggers` recommended. Confirm?
-5. **Effect target shape** — do we like the two-field `target_mode` + `target_filter` split (§4.7), or push for a richer descriptor object like `{mode: "chosen", filter: "creature"}`?
-6. **`iid` vs `instance_id`** — `iid` recommended (universally short, already on JS). Confirm?
-7. **`color` / `colors` as redundant fields** — drop from JSON and compute? Or keep for fast filtering during draft pack generation?
-8. **Should we maintain "engine compatibility" tags on cards** (e.g., `"engines": ["html-proto"]`) once the Godot loader exists? Or just let the boot scan report unsupported cards by missing-kind enumeration?
-
-A discussion pass on these eight questions is the gate to starting Pass 2.
+1. **Template-ID name** → wire: `card_id`, JS-internal: `tplId` (no rename, ingest rebind), Godot: `card_id`. JSON files migrated; JS rebinder in `js/cards.js::ingestCard`.
+2. **Display-name** → wire: `name`, JS-internal: `name`, Godot: `display_name`. Original plan called for `card_name` to match the card-framework's `@export var card_name`, but investigation showed the framework's field is semantically an *identifier* (it gets set to `card_id` in `tres_card_factory.gd`), not a display name. Aliasing would create confusion. JsonCardLoader maps `name` → `display_name` at ingest.
+3. **Oracle-text** → `text` (both engines). Godot renamed `oracle_text` → `text` in Pass 1d.
+4. **Trigger collection** → `triggers` (both engines). Godot renamed `triggered_abilities` → `triggers` in Pass 1d.
+5. **Target shape** → Option A (`target_mode` + `target_filter`). Pass 5, deferred. Today's single `target` string keeps working; the protocol doc (§3.5) shows the planned migration table.
+6. **Instance ID** → Godot keeps `instance_id`, JS keeps `iid`. No wire impact — runtime-only field.
+7. **`color` / `colors`** → DROP from JSON. Recomputed from `cost` at ingest by both engines. Pre-migration audit confirmed all 258 cards had cost-derived stored colors, so the recompute is lossless.
+8. **Engine-compatibility tags** → REJECTED. The Godot boot scan (Pass 4) reports unsupported cards by missing-kind enumeration; no per-card opt-out tags needed.
