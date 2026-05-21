@@ -111,7 +111,7 @@ function render() {
       if (it.kind === 'trigger') {
         // Triggers have no card backing -- build a card-like with the
         // trigger text in the body.
-        div = makeV2CardLike({
+        div = makeSyntheticCard({
           name: it.sourceName + ' triggers',
           type: 'Trigger',
           text: (it.trig.text || it.trig.event) + tgtLabel,
@@ -693,9 +693,9 @@ function renderOppHandBacks(n) {
   const el = document.getElementById('oppHandView');
   el.innerHTML = '';
   for (let i=0; i<n; i++) {
-    // v2 cardback: just the C-color frame at small scale, inner elements
-    // hidden by .v2-cardback CSS. No name / no art / no cost rendered.
-    el.innerHTML += '<div class="card-v2 col-C v2-cardback" style="--scale: 0.35"></div>';
+    // Cardback: just the C-color frame at small scale, inner elements
+    // hidden by .frame-cardback CSS. No name / no art / no cost rendered.
+    el.innerHTML += '<div class="card-frame col-C frame-cardback" style="--scale: 0.35"></div>';
   }
 }
 
@@ -1115,7 +1115,7 @@ function artHtml(art, fallback) {
 //                      Default: show base cost (board/zone view).
 // opts.overrideOracleText — bypass describeCardSegments; render the
 //                      literal string through escape + mana pipeline.
-//                      Used by makeV2CardLike for boons / mystery
+//                      Used by makeSyntheticCard for boons / mystery
 //                      placeholders / cardbacks that aren't engine cards.
 function cardToViewModel(card, opts) {
   opts = opts || {};
@@ -1141,12 +1141,12 @@ function cardToViewModel(card, opts) {
   let pipsHtml = '';
   if (displayCost) {
     if (displayCost.C) {
-      pipsHtml += '<span class="v2-pip col-num">' + displayCost.C + '</span>';
+      pipsHtml += '<span class="frame-pip col-num">' + displayCost.C + '</span>';
     }
     for (const c of ['W','U','B','R','G']) {
       const n = displayCost[c] || 0;
       for (let i = 0; i < n; i++) {
-        pipsHtml += '<span class="v2-pip col-' + c + '"></span>';
+        pipsHtml += '<span class="frame-pip col-' + c + '"></span>';
       }
     }
   }
@@ -1154,7 +1154,7 @@ function cardToViewModel(card, opts) {
   if (inHand && card.cost) {
     const baseC = card.cost.C || 0;
     const effC = (displayCost && displayCost.C) || 0;
-    if (effC > baseC) bumpedMarker = '<span class="v2-bumped">↑</span>';
+    if (effC > baseC) bumpedMarker = '<span class="frame-bumped">↑</span>';
   }
 
   const typeText = card.type + (card.sub ? ' — ' + card.sub : '');
@@ -1185,15 +1185,15 @@ function cardToViewModel(card, opts) {
 
 // Pixel-art in-hand / on-board card. Builds the 80x112 frame at 1x scale
 // (so it renders at native 80x112 pixels). State classes (.tapped/.castable/
-// .targetable/etc.) get applied AFTER the element is returned; the .card-v2
-// CSS handles each via .card-v2.{state}.
+// .targetable/etc.) get applied AFTER the element is returned; the .card-frame
+// CSS handles each via .card-frame.{state}.
 function makeCardEl(card, opts) {
   const div = document.createElement('div');
   div.dataset.iid = String(card.iid);
 
   const vm = cardToViewModel(card, opts);
 
-  div.className = 'card-v2 col-' + vm.colorKey +
+  div.className = 'card-frame col-' + vm.colorKey +
     (card.tapped ? ' tapped' : '') +
     (card.sick ? ' sick' : '');
 
@@ -1202,21 +1202,21 @@ function makeCardEl(card, opts) {
   // doesn't surface restrictions in the frame body.
   const restrictInner = restrictionBadgesHtml(card, false);
   const stickerSection = (vm.stickersInner || restrictInner)
-    ? '<div class="v2-stickers">' + vm.stickersInner + restrictInner + '</div>'
+    ? '<div class="frame-stickers">' + vm.stickersInner + restrictInner + '</div>'
     : '';
 
-  const ptInner = vm.isCreature ? '<div class="v2-pt">' + vm.pow + '/' + vm.tou + '</div>' : '';
-  const damageInner = card.damage ? '<div class="v2-damage">' + card.damage + '</div>' : '';
+  const ptInner = vm.isCreature ? '<div class="frame-pt">' + vm.pow + '/' + vm.tou + '</div>' : '';
+  const damageInner = card.damage ? '<div class="frame-damage">' + card.damage + '</div>' : '';
 
   div.innerHTML =
-    '<div class="v2-title">' +
-      '<div class="v2-name">' + escapeHtml(card.name || '') + '</div>' +
-      '<div class="v2-cost">' + vm.pipsHtml + vm.bumpedMarker + '</div>' +
+    '<div class="frame-title">' +
+      '<div class="frame-name">' + escapeHtml(card.name || '') + '</div>' +
+      '<div class="frame-cost">' + vm.pipsHtml + vm.bumpedMarker + '</div>' +
     '</div>' +
-    '<div class="v2-art">' + vm.artInner + '</div>' +
-    '<div class="v2-type">' + escapeHtml(vm.typeText) + '</div>' +
-    '<div class="v2-text">' +
-      '<div class="v2-oracle">' + vm.oracleHtml + '</div>' +
+    '<div class="frame-art">' + vm.artInner + '</div>' +
+    '<div class="frame-type">' + escapeHtml(vm.typeText) + '</div>' +
+    '<div class="frame-text">' +
+      '<div class="frame-oracle">' + vm.oracleHtml + '</div>' +
       stickerSection +
     '</div>' +
     ptInner + damageInner;
@@ -1225,12 +1225,12 @@ function makeCardEl(card, opts) {
   return div;
 }
 
-// Build a v2 card frame for things that aren't engine-shaped cards (Neow
+// Build a card frame for things that aren't engine-shaped cards (Neow
 // boons, mystery placeholders, sticker rewards, cardbacks, etc.). Caller
 // supplies a flat object; we fabricate just enough of the card-shape that
 // makeCardEl doesn't crash, and pass the literal text through opts so
 // describeCardSegments is bypassed.
-function makeV2CardLike({ name, type, sub, text, art, color, cost, power, toughness, scale }) {
+function makeSyntheticCard({ name, type, sub, text, art, color, cost, power, toughness, scale }) {
   const fakeCard = {
     name: name || '',
     type: type || '',

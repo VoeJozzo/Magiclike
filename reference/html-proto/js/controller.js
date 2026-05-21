@@ -438,7 +438,7 @@ function showNeowChoice() {
       el = makeCardEl(card);
       el.style.setProperty('--scale', '2');
     } else {
-      el = makeV2CardLike({
+      el = makeSyntheticCard({
         name: m.name || '',
         type: 'Boon',
         text: m.text || '',
@@ -899,7 +899,7 @@ function renderReward() {
         div.appendChild(labelEl);
         // Mystery card placeholder: build a "Mystery Creature" fake card
         // with no cost / no P/T.
-        const mystery = makeV2CardLike({
+        const mystery = makeSyntheticCard({
           name: 'Mystery Creature',
           type: 'Reward',
           text: 'A random creature in your deck',
@@ -1180,7 +1180,7 @@ function renderDraft() {
     // isn't slot-bound yet, no stickers or runtime state.
     const card = ENGINE.makeCard(tplId);
     const el = makeCardEl(card);
-    // Showcase scale -- v2 cards render at 2x (160x224) for the picker so
+    // Showcase scale -- cards render at 2x (160x224) for the picker so
     // the player can read them. --scale is a no-op on the classic .card
     // (it's hardcoded 62x88); classic-mode draft picks render at hand
     // size, which is a tolerable fallback.
@@ -1980,7 +1980,7 @@ function openCardPopup(card) {
   // Popup always shows base cost (inHand:false) — there's no "cast" to
   // tax in popup context, so the effective-cost ↑ marker doesn't apply.
   const vm = cardToViewModel(card);
-  const ptInner = vm.isCreature ? `<div class="v2-pt">${vm.pow}/${vm.tou}</div>` : '';
+  const ptInner = vm.isCreature ? `<div class="frame-pt">${vm.pow}/${vm.tou}</div>` : '';
 
   // Repertoire (Mercurial) and Built Ability (Codex) sections appear
   // below the frame for cards that need them. Constrained to the frame's
@@ -1995,16 +1995,16 @@ function openCardPopup(card) {
   inner.className = '';
   inner.style.cssText = 'background:transparent;border:none;box-shadow:none;padding:0;width:auto;max-width:none;text-align:center;cursor:default';
   inner.innerHTML = `
-    <div class="card-v2 in-popup col-${vm.colorKey}" style="--scale: 4">
-      <div class="v2-title">
-        <div class="v2-name">${escapeHtml(card.name || '')}</div>
-        <div class="v2-cost">${vm.pipsHtml}</div>
+    <div class="card-frame in-popup col-${vm.colorKey}" style="--scale: 4">
+      <div class="frame-title">
+        <div class="frame-name">${escapeHtml(card.name || '')}</div>
+        <div class="frame-cost">${vm.pipsHtml}</div>
       </div>
-      <div class="v2-art">${vm.artInner}</div>
-      <div class="v2-type">${escapeHtml(vm.typeText)}</div>
-      <div class="v2-text">
-        <div class="v2-oracle">${vm.oracleHtml}</div>
-        ${vm.stickersInner ? '<div class="v2-stickers">' + vm.stickersInner + '</div>' : ''}
+      <div class="frame-art">${vm.artInner}</div>
+      <div class="frame-type">${escapeHtml(vm.typeText)}</div>
+      <div class="frame-text">
+        <div class="frame-oracle">${vm.oracleHtml}</div>
+        ${vm.stickersInner ? '<div class="frame-stickers">' + vm.stickersInner + '</div>' : ''}
       </div>
       ${ptInner}
     </div>

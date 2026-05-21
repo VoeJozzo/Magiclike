@@ -1,7 +1,7 @@
 // Bootstrap + shared module-level helpers. Loaded last so all IIFEs
 // (ENGINE, AI, DRAFT, RUN, CONTROLLER, PICKLOG) are defined first.
 
-const VERSION = 'v1.0.186';
+const VERSION = 'v1.0.187';
 
 function opp(who) { return who === 'you' ? 'opp' : 'you'; }
 
@@ -12,7 +12,7 @@ window.PICKLOG = PICKLOG;
 // during init would hit an empty object and the start screen would render
 // no cards.
 // Push saved font choices into the :root CSS custom properties before the
-// first paint — otherwise the v2 cards flash with default fonts for a frame
+// first paint — otherwise the cards flash with default fonts for a frame
 // before the saved override applies.
 SETTINGS.applyFontsToRoot();
 

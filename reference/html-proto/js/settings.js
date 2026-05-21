@@ -25,7 +25,7 @@ const STORAGE_KEY = 'magiclike_settings_v1';
 // Per-element baseline px sizes (at --scale 1). Drives the size dropdown
 // labels in the settings UI and the buildSizeOptions() helper below.
 // Element names match the suffix on each CSS custom property
-// (--card-font-NAME / --card-fsize-NAME / etc.) and the .v2-NAME class.
+// (--card-font-NAME / --card-fsize-NAME / etc.) and the .frame-NAME class.
 const CARD_FONT_ELEMENTS = [
   { key: 'name',     label: 'Name',          baseline: 7, slot: 'title' },
   { key: 'type',     label: 'Type line',     baseline: 5, slot: 'title' },
@@ -83,7 +83,7 @@ const POPUP_TEXT_SCALE_OPTIONS = [
   { label: '125%',                    value: 1.25 },
 ];
 
-// Mana cost-pip size options. Px-anchored to the v2-pip's 4px baseline at
+// Mana cost-pip size options. Px-anchored to the frame-pip's 4px baseline at
 // --scale 1, so labels read as actual rendered size in hand/board.
 const MANA_PIP_SIZE_OPTIONS = buildSizeOptions(4, [3, 4, 5, 6, 8, 9, 10, 12]);
 

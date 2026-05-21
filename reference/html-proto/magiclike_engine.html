@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Magiclike — Rules Engine</title>
 <style>
-/* Fonts available to the v2 card frame. All shipped under assets/fonts/ at
+/* Fonts available to the card frame. All shipped under assets/fonts/ at
    the repo root (../../ from this HTML) so the Godot port can also use
    them. SIL OFL 1.1 -- see LICENSES.md.
    The font-family strings declared here are the values that show up in the
@@ -51,17 +51,17 @@
   --card-fsize-pip:      3.333333;  /* 10/3 -> 10px from 3px */
   --card-fsize-bumped:   1.5;       /* 6/4  -> 6px from 4px */
   /* Context-dependent extra font multiplier. 1 everywhere by default;
-     inside .card-v2.in-popup it switches to --card-popup-text-scale so
+     inside .card-frame.in-popup it switches to --card-popup-text-scale so
      the popup can dampen text growth relative to the frame (a 4x popup
      with 0.5 popup-text-scale renders fonts at 2x instead of 4x, leaving
      more room for long oracle text). User-controlled via settings. */
   --card-text-scale:       1;
   --card-popup-text-scale: 0.7;
   /* Mana symbol sizing. Three knobs:
-     --card-mana-pip-size: multiplier on the v2-frame cost pip (baseline 4px at --scale 1) in
+     --card-mana-pip-size: multiplier on the card-frame cost pip (baseline 4px at --scale 1) in
                             default (non-popup) contexts.
      --card-mana-pip-popup-size: multiplier override that takes effect ONLY inside
-                            .card-v2.in-popup (long-press detail).
+                            .card-frame.in-popup (long-press detail).
      --card-mana-text-size: multiplier on the in-text .mana symbol (baseline 1.2em). */
   --card-mana-pip-size:       3;     /* 12px from 4px baseline */
   --card-mana-pip-popup-size: 1.5;   /* 6px-at-1x = 24px in 4x popup */
@@ -153,16 +153,16 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
 .mana-num{background-color:#555;color:#fff;border-radius:50%;font-weight:bold;font-size:0.85em;text-shadow:0 0 1px rgba(0,0,0,.6)}
 
 /* ========================================================================= */
-/* v2 card frame design (80x112 native pixel-art spec).                      */
+/* Card frame design (80x112 native pixel-art spec).                      */
 /* ========================================================================= */
 /* Defined side-by-side with the existing .card wireframe. Activated by      */
-/* JS render code that emits `.card-v2.col-X` markup when the frame-style    */
+/* JS render code that emits `.card-frame.col-X` markup when the frame-style    */
 /* toggle is on (step 3 plumbing pending; step 2 just scaffolds the CSS).    */
 /*                                                                           */
 /* Scale via --scale CSS var. Default 1x (hand-card sized); set per context: */
-/*   .card-v2 { --scale: 1 } -- hand/board, 80x112 actual                    */
-/*   .card-v2 { --scale: 2 } -- draft pick, reward modal, 160x224            */
-/*   .card-v2 { --scale: 4 } -- popup showcase, 320x448                      */
+/*   .card-frame { --scale: 1 } -- hand/board, 80x112 actual                    */
+/*   .card-frame { --scale: 2 } -- draft pick, reward modal, 160x224            */
+/*   .card-frame { --scale: 4 } -- popup showcase, 320x448                      */
 /* All dimensions multiply by --scale on integer-pixel grid so the pixel-art */
 /* texture stays crisp with image-rendering:pixelated.                       */
 /*                                                                           */
@@ -172,7 +172,7 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
 /* native pixel coordinates and host their own content (name / cost / art /  */
 /* type / oracle / flavour / stickers / P+T).                                */
 
-.card-v2{
+.card-frame{
   --scale: 1;
   position: relative;
   width: calc(80px * var(--scale));
@@ -185,16 +185,16 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
   font-family: var(--card-font-name);
   user-select: none;
 }
-.card-v2.col-W{background-image:url('assets/frames/frame_w.png')}
-.card-v2.col-U{background-image:url('assets/frames/frame_u.png')}
-.card-v2.col-B{background-image:url('assets/frames/frame_b.png')}
-.card-v2.col-R{background-image:url('assets/frames/frame_r.png')}
-.card-v2.col-G{background-image:url('assets/frames/frame_g.png')}
-.card-v2.col-C{background-image:url('assets/frames/frame_c.png')}
-.card-v2 > *{position:absolute}
+.card-frame.col-W{background-image:url('assets/frames/frame_w.png')}
+.card-frame.col-U{background-image:url('assets/frames/frame_u.png')}
+.card-frame.col-B{background-image:url('assets/frames/frame_b.png')}
+.card-frame.col-R{background-image:url('assets/frames/frame_r.png')}
+.card-frame.col-G{background-image:url('assets/frames/frame_g.png')}
+.card-frame.col-C{background-image:url('assets/frames/frame_c.png')}
+.card-frame > *{position:absolute}
 
 /* Title bar: x=2, y=2, w=76, h=12 (per spec). Houses name + mana cost. */
-.card-v2 .v2-title{
+.card-frame .frame-title{
   left: calc(2px * var(--scale));
   top: calc(2px * var(--scale));
   width: calc(76px * var(--scale));
@@ -205,7 +205,7 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
   padding: 0 calc(3px * var(--scale));
   overflow: hidden;
 }
-.card-v2 .v2-name{
+.card-frame .frame-name{
   font-family: var(--card-font-name);
   font-size: calc(7px * var(--scale) * var(--card-fsize-name) * var(--card-text-scale));
   color: #f0e6c8;
@@ -216,7 +216,7 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
   flex: 1;
   line-height: 1;
 }
-.card-v2 .v2-cost{
+.card-frame .frame-cost{
   display: flex;
   align-items: center;
   gap: calc(2px * var(--scale));
@@ -227,7 +227,7 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
 /* Mana pips inside the cost area (4px diameter per spec). Colored circles
    with the count rendered inside the generic pip. Matches the existing
    .mana-W/U/B/R/G palette for visual consistency. */
-.card-v2 .v2-pip{
+.card-frame .frame-pip{
   width: calc(4px * var(--scale) * var(--card-mana-pip-size));
   height: calc(4px * var(--scale) * var(--card-mana-pip-size));
   border-radius: 50%;
@@ -243,29 +243,29 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
    The SVG includes the colored disc itself, so background-color stays
    transparent. background-size:100% 100% scales the 40-unit viewBox to
    the pip's actual rendered size at any --scale. */
-.card-v2 .v2-pip.col-W,
-.card-v2 .v2-pip.col-U,
-.card-v2 .v2-pip.col-B,
-.card-v2 .v2-pip.col-R,
-.card-v2 .v2-pip.col-G{background-color:transparent;background-size:100% 100%;background-repeat:no-repeat;color:transparent}
-.card-v2 .v2-pip.col-W{background-image:url('../../assets/mana/W.svg')}
-.card-v2 .v2-pip.col-U{background-image:url('../../assets/mana/U.svg')}
-.card-v2 .v2-pip.col-B{background-image:url('../../assets/mana/B.svg')}
-.card-v2 .v2-pip.col-R{background-image:url('../../assets/mana/R.svg')}
-.card-v2 .v2-pip.col-G{background-image:url('../../assets/mana/G.svg')}
-.card-v2 .v2-pip.col-C{background-color:#aaa;color:#222}
-.card-v2 .v2-pip.col-num{background-color:#555;color:#fff}
+.card-frame .frame-pip.col-W,
+.card-frame .frame-pip.col-U,
+.card-frame .frame-pip.col-B,
+.card-frame .frame-pip.col-R,
+.card-frame .frame-pip.col-G{background-color:transparent;background-size:100% 100%;background-repeat:no-repeat;color:transparent}
+.card-frame .frame-pip.col-W{background-image:url('../../assets/mana/W.svg')}
+.card-frame .frame-pip.col-U{background-image:url('../../assets/mana/U.svg')}
+.card-frame .frame-pip.col-B{background-image:url('../../assets/mana/B.svg')}
+.card-frame .frame-pip.col-R{background-image:url('../../assets/mana/R.svg')}
+.card-frame .frame-pip.col-G{background-image:url('../../assets/mana/G.svg')}
+.card-frame .frame-pip.col-C{background-color:#aaa;color:#222}
+.card-frame .frame-pip.col-num{background-color:#555;color:#fff}
 
 /* Art window: x=8, y=15, w=64, h=32 (matches the native 64x32 pixel-art
    format we've been shipping for ~61 cards). */
-.card-v2 .v2-art{
+.card-frame .frame-art{
   left: calc(8px * var(--scale));
   top: calc(15px * var(--scale));
   width: calc(64px * var(--scale));
   height: calc(32px * var(--scale));
   overflow: hidden;
 }
-.card-v2 .v2-art img{
+.card-frame .frame-art img{
   width: 100%;
   height: 100%;
   display: block;
@@ -273,7 +273,7 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
 }
 
 /* Type bar: x=2, y=48, w=76, h=10. */
-.card-v2 .v2-type{
+.card-frame .frame-type{
   left: calc(2px * var(--scale));
   top: calc(48px * var(--scale));
   width: calc(76px * var(--scale));
@@ -293,7 +293,7 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
 /* Text box: x=2, y=59, w=76, h=51. Houses oracle text + flavour divider
    + flavour text. On creatures the P/T box overlays the bottom-right
    corner of this region. Sticker chips pin to the bottom (per user). */
-.card-v2 .v2-text{
+.card-frame .frame-text{
   left: calc(2px * var(--scale));
   top: calc(59px * var(--scale));
   width: calc(76px * var(--scale));
@@ -306,16 +306,16 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
   overflow: hidden;
   text-align: left;
 }
-.card-v2 .v2-oracle{
-  /* No special treatment -- inherits v2-text styling. */
+.card-frame .frame-oracle{
+  /* No special treatment -- inherits frame-text styling. */
 }
-.card-v2 .v2-flavor{
+.card-frame .frame-flavor{
   margin-top: calc(2px * var(--scale));
   padding-top: calc(2px * var(--scale));
   border-top: 1px solid rgba(255,255,255,0.18);
   color: #b0a890;
 }
-.card-v2 .v2-stickers{
+.card-frame .frame-stickers{
   /* Pinned to bottom of text box per user direction -- tries not to cover
      the oracle/flavour above. Tiny chips, color-coded gold. */
   position: absolute;
@@ -330,8 +330,8 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
 }
 
 /* P/T box overlay: x=61, y=101, w=15, h=9. Creatures only -- emit
-   .v2-pt only when card.type === 'Creature'. */
-.card-v2 .v2-pt{
+   .frame-pt only when card.type === 'Creature'. */
+.card-frame .frame-pt{
   left: calc(61px * var(--scale));
   top: calc(99px * var(--scale));
   width: calc(15px * var(--scale));
@@ -347,16 +347,16 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
   color: #e8c840;
   line-height: 1;
 }
-.card-v2.col-W .v2-pt{background-image:url('assets/frames/pt_box_w.png')}
-.card-v2.col-U .v2-pt{background-image:url('assets/frames/pt_box_u.png')}
-.card-v2.col-B .v2-pt{background-image:url('assets/frames/pt_box_b.png')}
-.card-v2.col-R .v2-pt{background-image:url('assets/frames/pt_box_r.png')}
-.card-v2.col-G .v2-pt{background-image:url('assets/frames/pt_box_g.png')}
-.card-v2.col-C .v2-pt{background-image:url('assets/frames/pt_box_c.png')}
+.card-frame.col-W .frame-pt{background-image:url('assets/frames/pt_box_w.png')}
+.card-frame.col-U .frame-pt{background-image:url('assets/frames/pt_box_u.png')}
+.card-frame.col-B .frame-pt{background-image:url('assets/frames/pt_box_b.png')}
+.card-frame.col-R .frame-pt{background-image:url('assets/frames/pt_box_r.png')}
+.card-frame.col-G .frame-pt{background-image:url('assets/frames/pt_box_g.png')}
+.card-frame.col-C .frame-pt{background-image:url('assets/frames/pt_box_c.png')}
 
 /* Cost-bumped marker (City Guardian etc. taxing the cast). Tiny orange ↑
-   sits inside .v2-cost alongside the pips when effective cost > base. */
-.card-v2 .v2-bumped{
+   sits inside .frame-cost alongside the pips when effective cost > base. */
+.card-frame .frame-bumped{
   color:#ffaa44;
   font-family:var(--card-font-bumped);
   font-size:calc(4px * var(--scale) * var(--card-fsize-bumped) * var(--card-text-scale));
@@ -366,7 +366,7 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
 
 /* Damage badge: red number bottom-left for creatures that have taken damage.
    Mirrors P/T's bottom-right placement. */
-.card-v2 .v2-damage{
+.card-frame .frame-damage{
   position:absolute;
   left:calc(4px * var(--scale));
   top:calc(99px * var(--scale));
@@ -377,11 +377,11 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
   text-shadow:0 0 calc(2px * var(--scale)) #000;
 }
 
-/* Cardback variant: face-down v2 frame for opponent-hand placeholders.
+/* Cardback variant: face-down card frame for opponent-hand placeholders.
    Strips all the inner element layouts down to just the frame PNG so the
    small (--scale ~0.3) face-down look reads cleanly. */
-.card-v2.v2-cardback > *{display:none}
-.card-v2.v2-cardback{cursor:default}
+.card-frame.frame-cardback > *{display:none}
+.card-frame.frame-cardback{cursor:default}
 
 /* Popup mode: the .in-popup class is added by openCardPopup. Switches
    --card-text-scale to the user-set --card-popup-text-scale so a 4x popup
@@ -391,39 +391,39 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
    with a paragraph of text still wouldn't fit at the default scaling.
    Same indirection for the cost pip: --card-mana-pip-size is overridden
    in popup to the user-set --card-mana-pip-popup-size. */
-.card-v2.in-popup{
+.card-frame.in-popup{
   --card-text-scale: var(--card-popup-text-scale);
   --card-mana-pip-size: var(--card-mana-pip-popup-size);
 }
-.card-v2.in-popup .v2-text{
+.card-frame.in-popup .frame-text{
   overflow-y: auto;
   scrollbar-width: none;          /* Firefox */
   -ms-overflow-style: none;       /* legacy Edge */
 }
-.card-v2.in-popup .v2-text::-webkit-scrollbar{display:none}  /* Chromium / Safari / iOS+Android Chrome */
+.card-frame.in-popup .frame-text::-webkit-scrollbar{display:none}  /* Chromium / Safari / iOS+Android Chrome */
 
 /* Tapped state: 85deg rotation (matches existing .card.tapped). */
-.card-v2.tapped{transform:rotate(85deg)}
+.card-frame.tapped{transform:rotate(85deg)}
 
 /* White cards: frame is cream/light, so all the cream/gold text colors
    used elsewhere blend in. Force dark text instead. Damage stays red
    (state indicator, still readable on cream). */
-.card-v2.col-W .v2-name,
-.card-v2.col-W .v2-type,
-.card-v2.col-W .v2-text,
-.card-v2.col-W .v2-stickers,
-.card-v2.col-W .v2-pt{
+.card-frame.col-W .frame-name,
+.card-frame.col-W .frame-type,
+.card-frame.col-W .frame-text,
+.card-frame.col-W .frame-stickers,
+.card-frame.col-W .frame-pt{
   color:#1a1a1a;
 }
-.card-v2.col-W .v2-flavor{color:#444}
+.card-frame.col-W .frame-flavor{color:#444}
 
 /* Hover lift -- mirrors classic .card:hover. translateY pops the card up
    and z-index ensures the lifted card paints above its siblings so the
    shadow isn't clipped by neighbor cards. Cardbacks (face-down opponent
    hand placeholders) opt out -- they aren't interactive. */
-.card-v2:hover{transform:translateY(-5px);z-index:20}
-.card-v2.tapped:hover{transform:rotate(85deg) translateY(-3px)}
-.card-v2.v2-cardback:hover{transform:none}
+.card-frame:hover{transform:translateY(-5px);z-index:20}
+.card-frame.tapped:hover{transform:rotate(85deg) translateY(-3px)}
+.card-frame.frame-cardback:hover{transform:none}
 
 /* Ambient/eligibility states. Subtler than the explicit selection states
    below -- defined FIRST so the brighter castable/activatable/atk/blk
@@ -433,9 +433,9 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
    do something" without dominating the battlefield visually.
    could-atk / could-blk: present during the relevant declaration step
    for creatures that satisfy canCreatureAttack/canCreatureBlock. */
-.card-v2.land-tappable{box-shadow:0 0 calc(4px * var(--scale)) 0 rgba(68,170,68,0.55)}
-.card-v2.could-atk{box-shadow:0 0 calc(8px * var(--scale)) calc(1px * var(--scale)) rgba(255,68,68,0.55)}
-.card-v2.could-blk{box-shadow:0 0 calc(8px * var(--scale)) calc(1px * var(--scale)) rgba(68,136,255,0.55)}
+.card-frame.land-tappable{box-shadow:0 0 calc(4px * var(--scale)) 0 rgba(68,170,68,0.55)}
+.card-frame.could-atk{box-shadow:0 0 calc(8px * var(--scale)) calc(1px * var(--scale)) rgba(255,68,68,0.55)}
+.card-frame.could-blk{box-shadow:0 0 calc(8px * var(--scale)) calc(1px * var(--scale)) rgba(68,136,255,0.55)}
 
 /* Highlight states. Glow OUTSIDE the frame via box-shadow so the PNG
    texture stays clean (the PNG has no border for us to recolor). Last-
@@ -446,17 +446,17 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
    before the blur fades out -- without it the halo washes out against
    dark backgrounds. Combat states get a heavier blur + spread so they
    read louder than use-this states. */
-.card-v2.castable{box-shadow:0 0 calc(10px * var(--scale)) calc(2px * var(--scale)) #44cc44}
-.card-v2.activatable{box-shadow:0 0 calc(10px * var(--scale)) calc(2px * var(--scale)) #44aa44}
-.card-v2.targetable{box-shadow:0 0 calc(10px * var(--scale)) calc(2px * var(--scale)) #ffff00; animation:tpulse .6s infinite alternate}
-.card-v2.atk{box-shadow:0 0 calc(12px * var(--scale)) calc(3px * var(--scale)) #ff4444}
-.card-v2.blk{box-shadow:0 0 calc(12px * var(--scale)) calc(3px * var(--scale)) #4488ff}
-.card-v2.pblk{box-shadow:0 0 calc(12px * var(--scale)) calc(3px * var(--scale)) #ffff44}
-.card-v2.sick{opacity:.65}
-.card-v2.discardable{box-shadow:0 0 calc(10px * var(--scale)) calc(2px * var(--scale)) #ff9944}
+.card-frame.castable{box-shadow:0 0 calc(10px * var(--scale)) calc(2px * var(--scale)) #44cc44}
+.card-frame.activatable{box-shadow:0 0 calc(10px * var(--scale)) calc(2px * var(--scale)) #44aa44}
+.card-frame.targetable{box-shadow:0 0 calc(10px * var(--scale)) calc(2px * var(--scale)) #ffff00; animation:tpulse .6s infinite alternate}
+.card-frame.atk{box-shadow:0 0 calc(12px * var(--scale)) calc(3px * var(--scale)) #ff4444}
+.card-frame.blk{box-shadow:0 0 calc(12px * var(--scale)) calc(3px * var(--scale)) #4488ff}
+.card-frame.pblk{box-shadow:0 0 calc(12px * var(--scale)) calc(3px * var(--scale)) #ffff44}
+.card-frame.sick{opacity:.65}
+.card-frame.discardable{box-shadow:0 0 calc(10px * var(--scale)) calc(2px * var(--scale)) #ff9944}
 
 /* ========================================================================= */
-/* End v2 card frame                                                         */
+/* End card frame                                                         */
 /* ========================================================================= */
 
 .stickers-row{display:flex;flex-wrap:wrap;gap:2px;margin-top:3px;padding:0 2px;justify-content:center}
@@ -646,7 +646,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
 #settingsCloseBtn{margin-top:16px;width:100%;padding:8px;background:#2a4a2a;border:1px solid #4a8a4a;color:#aaffaa;border-radius:4px;cursor:pointer;font-size:13px}
 @keyframes fadeIn { from {opacity:0} to {opacity:1} }
 /* openCardPopup (controller.js) sets #cardPopupCard's style.cssText
-   inline (transparent background, no chrome) since the .card-v2 frame
+   inline (transparent background, no chrome) since the .card-frame frame
    IS the visual. .pop-stickers / .pop-stickers-title below style the
    auxiliary Repertoire / Built Ability panels appended below the frame
    for cards that need them. */
