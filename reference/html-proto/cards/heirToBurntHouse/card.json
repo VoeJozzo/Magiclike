@@ -1,0 +1,31 @@
+{
+  "tplId": "heirToBurntHouse",
+  "name": "Heir to the Burnt House",
+  "type": "Creature",
+  "sub": "Human Noble",
+  "cost": {
+    "B": 1,
+    "C": 3
+  },
+  "power": 3,
+  "toughness": 3,
+  "art": "cards/heirToBurntHouse/art.png",
+  "text": "When this dies, target opponent rips a permanent.",
+  "triggers": [
+    {
+      "event": "cardDies",
+      "condId": "thisDies",
+      "text": "When ~ dies, target opp rips a permanent.",
+      "effects": [
+        {
+          "kind": "ripPermanent",
+          "target": "player"
+        }
+      ]
+    }
+  ],
+  "color": "B",
+  "colors": [
+    "B"
+  ]
+}
