@@ -1210,6 +1210,20 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
     if (sev >= 2) score += laneOpeningBonus(state, us, target.iid);
     return score;
   }
+  if (eff.kind === 'destroyLand') {
+    if (target.kind !== 'land') return -100;
+    const c = ENGINE.findCard(target.iid);
+    if (!c) return -100;
+    if (c.controller === us) return -100;
+    if (c.card.keywords && c.card.keywords.includes('hexproof')) return -100;
+    if (c.card.keywords && c.card.keywords.includes('indestructible')) return -100;
+    let score = 30;
+    // Mana-denial scales as opp's land base shrinks.
+    const oppLands = state[them].battlefield.filter(x => x.type === 'Land').length;
+    if (oppLands <= 2) score += 20;
+    else if (oppLands <= 4) score += 8;
+    return score;
+  }
   if (eff.kind === 'pump' || eff.kind === 'addCounter') {
     // pump/addCounter only fire when combat-relevant (combatBuffSwingValue).
     // addCounter gets +3 baseline (permanent buff) so it can fire for stat development.

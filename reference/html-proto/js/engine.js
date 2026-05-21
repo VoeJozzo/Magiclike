@@ -1124,6 +1124,7 @@ function spellValueForEffects(effects) {
     else if (e.kind === 'weaken') v += 3 + (e.toughness || 0);
     else if (e.kind === 'returnFromGraveyard') v += 4;
     else if (e.kind === 'ripPermanent') v += 14;        // destroy + run-permanent slot rip
+    else if (e.kind === 'destroyLand') v += 10;         // targeted land destruction (mana denial)
     else if (e.kind === 'destroyAndStickerSlot') v += 13;
     else if (e.kind === 'symmetricize') v += 8;
     else if (e.kind === 'embargo') v += 6;
@@ -1993,6 +1994,25 @@ const EFFECTS = {
     // and rips on selection.
     G.pendingRipSelect = { who, source: ctx.sourceName, ripBy: ctx.controller };
     log(`${ctx.sourceName} — ${pname(who)} must choose a permanent to rip.`, 'sp');
+  },
+  // Direct land destruction. Target a Land; move it to graveyard. Lands
+  // don't fire cardDies (only creatures do) but cardLeavesBattlefield
+  // fires via moveToGraveyard, so future "when this land leaves play"
+  // mechanics compose. Respects indestructible.
+  destroyLand(ctx, params, target) {
+    const f = resolveTarget(ctx, target);
+    if (!f) return;
+    if (f.card.type !== 'Land') {
+      log(`${ctx.sourceName} fizzles — target must be a land.`, 'sp');
+      return;
+    }
+    if ((f.card.keywords || []).includes('indestructible')) {
+      log(`${f.card.name} is indestructible — ${ctx.sourceName} fizzles.`, 'sp');
+      return;
+    }
+    f.card.killedBy = ctx.controller;
+    moveToGraveyard(f.card, f.controller);
+    log(`${ctx.sourceName} destroys ${f.card.name}.`, 'sp');
   },
   // Sacrifice as an effect (rare — usually sacs are costs). "Sacrifice a
   // creature" with target:'self' resolves to the source itself; with no
@@ -2946,6 +2966,23 @@ function pickBestTriggerTarget(eff, valid, controller) {
       return sorted[0];
     }
   }
+  if (eff.kind === 'destroyLand') {
+    // Target opp's lands; untapped first (more disruption to next turn).
+    const oppLands = valid.filter(t => t.kind === 'land' && ctrlOf(t) === them);
+    if (oppLands.length) {
+      const sorted = oppLands.slice().sort((a, b) => {
+        const fa = findCard(a.iid), fb = findCard(b.iid);
+        const ta = fa && fa.card.tapped ? 1 : 0;
+        const tb = fb && fb.card.tapped ? 1 : 0;
+        return ta - tb;
+      });
+      return sorted[0];
+    }
+    // No opp lands? Fall through to valid[0]. Self-LD is bad but the
+    // trigger announces with valid.length > 0, so we can't fizzle it
+    // here without a separate skip path. Heir's flavor is spite, not
+    // self-preservation — picking your own land is fine.
+  }
   if (eff.kind === 'returnFromGraveyard') {
     const graveCards = G[controller].graveyard;
     const scored = valid
@@ -3053,6 +3090,15 @@ function getValidTargets(effect, controller) {
       return allCreatures
         .filter(x => matchFilter(x.card, effect.filter, x.ctrl, controller))
         .map(x => ({kind:'creature', iid:x.card.iid, label:x.card.name}));
+    case 'land':
+      return [
+        ...G.you.battlefield.map(c => ({card: c, ctrl: 'you'})),
+        ...G.opp.battlefield.map(c => ({card: c, ctrl: 'opp'})),
+      ]
+        .filter(x => x.card.type === 'Land')
+        .filter(x => !(x.card.keywords && x.card.keywords.includes('hexproof') && x.ctrl !== controller))
+        .filter(x => matchFilter(x.card, effect.filter, x.ctrl, controller))
+        .map(x => ({kind:'land', iid:x.card.iid, label:x.card.name}));
     case 'permanent':
       // Creatures + Lands + Artifacts. Special-card exclusions live in caller filters.
       return [
@@ -3155,6 +3201,7 @@ function sameTarget(a, b) {
   if (a.kind !== b.kind) return false;
   if (a.kind === 'player') return a.who === b.who;
   if (a.kind === 'creature') return a.iid === b.iid;
+  if (a.kind === 'land') return a.iid === b.iid;
   if (a.kind === 'permanent') return a.iid === b.iid;
   if (a.kind === 'graveyardCreature') return a.iid === b.iid;
   if (a.kind === 'stack') return a.stackItem === b.stackItem;

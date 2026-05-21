@@ -27,8 +27,8 @@ outerCheck('resolveTarget defined', /function resolveTarget\(ctx, target\)/.test
 outerCheck('pluckFromBattlefield defined', /function pluckFromBattlefield\(f\)/.test(code));
 
 const resolveCalls = (code.match(/const f = resolveTarget\(ctx, target\)/g) || []).length;
-outerCheck('resolveTarget call sites = 19 (18 + 1 in helper comment)',
-  resolveCalls === 19, 'actual=' + resolveCalls);
+outerCheck('resolveTarget call sites = 20 (19 + 1 in helper comment)',
+  resolveCalls === 20, 'actual=' + resolveCalls);
 
 const pluckCalls = (code.match(/pluckFromBattlefield\(/g) || []).length;
 outerCheck('pluckFromBattlefield call sites = 10 (incl. helper + comments)',

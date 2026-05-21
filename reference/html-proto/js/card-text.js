@@ -35,6 +35,7 @@ function targetPhrase(eff) {
   }
   if (t === 'creature') return 'target creature';
   if (t === 'graveyardCreature') return 'target creature card';
+  if (t === 'land')     return 'target land';
   if (t === 'permanent')return 'target permanent';
   if (t === 'spell')    return 'target spell';
   if (t === 'any')      return 'any target';
@@ -64,6 +65,7 @@ function withFilter(noun, eff) {
   let out = noun;
   if (pre.length) {
     out = out.replace('creature', pre.join(' ') + ' creature')
+             .replace('land', pre.join(' ') + ' land')
              .replace('permanent', pre.join(' ') + ' permanent');
   }
   if (post.length) out += ' ' + post.join(' ');
@@ -280,6 +282,8 @@ function describeEffect(eff, tplEff) {
       return [plainSeg('gain a keyword from the slain creature, or +1/+1 if none')];
     case 'ripPermanent':
       return [plainSeg(t + ' rips a permanent they control')];
+    case 'destroyLand':
+      return [plainSeg('destroy ' + t)];
     case 'destroyAndStickerSlot':
       return [plainSeg('destroy ' + t + ' and scar it')];
     case 'symmetricize':

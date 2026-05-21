@@ -10,16 +10,16 @@
   "power": 3,
   "toughness": 3,
   "art": "cards/heirToBurntHouse/art.png",
-  "text": "When this dies, target opponent rips a permanent.",
+  "text": "When this dies, destroy target land.",
   "triggers": [
     {
       "event": "cardDies",
       "condId": "thisDies",
-      "text": "When ~ dies, target opp rips a permanent.",
+      "text": "When ~ dies, destroy target land.",
       "effects": [
         {
-          "kind": "ripPermanent",
-          "target": "player"
+          "kind": "destroyLand",
+          "target": "land"
         }
       ]
     }
