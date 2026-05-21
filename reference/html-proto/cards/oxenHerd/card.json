@@ -1,22 +1,18 @@
 {
-  "tplId": "oxenHerd",
-  "name": "Oxen Herd",
-  "type": "Creature",
-  "sub": "Beast",
+  "card_id": "oxenHerd",
+  "art": "🐂",
   "cost": {
     "G": 2,
     "C": 2
   },
-  "power": 4,
-  "toughness": 4,
-  "art": "🐂",
-  "text": "Trample, Lifelink",
   "keywords": [
     "trample",
     "lifelink"
   ],
-  "color": "G",
-  "colors": [
-    "G"
-  ]
+  "name": "Oxen Herd",
+  "power": 4,
+  "sub": "Beast",
+  "text": "Trample, Lifelink",
+  "toughness": 4,
+  "type": "Creature"
 }

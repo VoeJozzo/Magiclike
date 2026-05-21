@@ -1,16 +1,5 @@
 {
-  "tplId": "prodigal",
-  "name": "Prodigal Sorcerer",
-  "type": "Creature",
-  "sub": "Human Wizard",
-  "cost": {
-    "U": 1,
-    "C": 2
-  },
-  "power": 1,
-  "toughness": 1,
-  "art": "🧙",
-  "text": "T: Deal 1 damage to any target.",
+  "card_id": "prodigal",
   "abilities": [
     {
       "cost": {
@@ -25,8 +14,15 @@
       ]
     }
   ],
-  "color": "U",
-  "colors": [
-    "U"
-  ]
+  "art": "🧙",
+  "cost": {
+    "U": 1,
+    "C": 2
+  },
+  "name": "Prodigal Sorcerer",
+  "power": 1,
+  "sub": "Human Wizard",
+  "text": "T: Deal 1 damage to any target.",
+  "toughness": 1,
+  "type": "Creature"
 }

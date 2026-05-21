@@ -1,20 +1,18 @@
 {
-  "tplId": "oldGuardian",
-  "name": "Old Guardian",
-  "type": "Creature",
-  "sub": "Treefolk",
+  "card_id": "oldGuardian",
+  "art": "🌳",
   "cost": {
     "G": 1,
     "C": 3
   },
+  "name": "Old Guardian",
   "power": 2,
-  "toughness": 5,
-  "art": "🌳",
+  "sub": "Treefolk",
   "text": "When this dies, put two +1/+1 counters on target creature you control.",
+  "toughness": 5,
   "triggers": [
     {
       "event": "cardDies",
-      "condId": "thisDies",
       "text": "When ~ dies, put two +1/+1 counters on target friendly creature.",
       "effects": [
         {
@@ -26,11 +24,9 @@
             "controller": "self"
           }
         }
-      ]
+      ],
+      "cond_id": "thisDies"
     }
   ],
-  "color": "G",
-  "colors": [
-    "G"
-  ]
+  "type": "Creature"
 }

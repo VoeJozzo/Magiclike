@@ -1,12 +1,9 @@
 {
-  "tplId": "mightOfFaith",
-  "name": "Might of Faith",
-  "type": "Instant",
+  "card_id": "mightOfFaith",
+  "art": "✋",
   "cost": {
     "W": 1
   },
-  "art": "✋",
-  "text": "Target creature gets +2/+2 EOT.",
   "effects": [
     {
       "kind": "pump",
@@ -15,8 +12,7 @@
       "toughness": 2
     }
   ],
-  "color": "W",
-  "colors": [
-    "W"
-  ]
+  "name": "Might of Faith",
+  "text": "Target creature gets +2/+2 EOT.",
+  "type": "Instant"
 }

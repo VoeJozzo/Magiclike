@@ -1,12 +1,9 @@
 {
-  "tplId": "ritual",
-  "name": "Dark Ritual",
-  "type": "Instant",
+  "card_id": "ritual",
+  "art": "🕯",
   "cost": {
     "B": 1
   },
-  "art": "🕯",
-  "text": "Add {B}{B}{B}.",
   "effects": [
     {
       "kind": "addMana",
@@ -15,8 +12,7 @@
       }
     }
   ],
-  "color": "B",
-  "colors": [
-    "B"
-  ]
+  "name": "Dark Ritual",
+  "text": "Add {B}{B}{B}.",
+  "type": "Instant"
 }

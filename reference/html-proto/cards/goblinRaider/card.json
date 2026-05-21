@@ -1,16 +1,12 @@
 {
-  "tplId": "goblinRaider",
-  "name": "Goblin Raider",
-  "type": "Creature",
-  "sub": "Goblin Warrior",
+  "card_id": "goblinRaider",
+  "art": "👺",
   "cost": {
     "R": 1
   },
+  "name": "Goblin Raider",
   "power": 2,
+  "sub": "Goblin Warrior",
   "toughness": 1,
-  "art": "👺",
-  "color": "R",
-  "colors": [
-    "R"
-  ]
+  "type": "Creature"
 }

@@ -1,20 +1,18 @@
 {
-  "tplId": "beastBaiter",
-  "name": "Furnace Brute",
-  "type": "Creature",
-  "sub": "Goblin Berserker",
+  "card_id": "beastBaiter",
+  "art": "cards/beastBaiter/art.png",
   "cost": {
     "R": 1,
     "C": 3
   },
+  "name": "Furnace Brute",
   "power": 3,
-  "toughness": 3,
-  "art": "cards/beastBaiter/art.png",
+  "sub": "Goblin Berserker",
   "text": "When this enters, deal 3 damage to target creature.",
+  "toughness": 3,
   "triggers": [
     {
       "event": "cardEntersBattlefield",
-      "condId": "thisEnters",
       "text": "When ~ enters, deal 3 to target creature.",
       "effects": [
         {
@@ -22,11 +20,9 @@
           "target": "creature",
           "amount": 3
         }
-      ]
+      ],
+      "cond_id": "thisEnters"
     }
   ],
-  "color": "R",
-  "colors": [
-    "R"
-  ]
+  "type": "Creature"
 }

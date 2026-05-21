@@ -1,21 +1,17 @@
 {
-  "tplId": "airel",
-  "name": "Air Elemental",
-  "type": "Creature",
-  "sub": "Elemental",
+  "card_id": "airel",
+  "art": "💨",
   "cost": {
     "U": 2,
     "C": 3
   },
-  "power": 4,
-  "toughness": 4,
-  "art": "💨",
-  "text": "Flying",
   "keywords": [
     "flying"
   ],
-  "color": "U",
-  "colors": [
-    "U"
-  ]
+  "name": "Air Elemental",
+  "power": 4,
+  "sub": "Elemental",
+  "text": "Flying",
+  "toughness": 4,
+  "type": "Creature"
 }

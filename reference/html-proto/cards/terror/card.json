@@ -1,13 +1,10 @@
 {
-  "tplId": "terror",
-  "name": "Murder",
-  "type": "Instant",
+  "card_id": "terror",
+  "art": "🗡",
   "cost": {
     "B": 1,
     "C": 2
   },
-  "art": "🗡",
-  "text": "Destroy target creature.",
   "effects": [
     {
       "kind": "removeCreature",
@@ -15,8 +12,7 @@
       "target": "creature"
     }
   ],
-  "color": "B",
-  "colors": [
-    "B"
-  ]
+  "name": "Murder",
+  "text": "Destroy target creature.",
+  "type": "Instant"
 }

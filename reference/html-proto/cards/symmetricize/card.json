@@ -1,22 +1,18 @@
 {
-  "tplId": "symmetricize",
-  "name": "Symmetricize",
-  "type": "Instant",
+  "card_id": "symmetricize",
+  "art": "⚖",
   "cost": {
     "W": 1,
     "C": 1
   },
-  "art": "⚖",
-  "special": true,
-  "text": "Target creature's controller chooses its power, toughness, or mana cost. Each becomes the same value. Forever.",
   "effects": [
     {
       "kind": "symmetricize",
       "target": "creature"
     }
   ],
-  "color": "W",
-  "colors": [
-    "W"
-  ]
+  "name": "Symmetricize",
+  "special": true,
+  "text": "Target creature's controller chooses its power, toughness, or mana cost. Each becomes the same value. Forever.",
+  "type": "Instant"
 }

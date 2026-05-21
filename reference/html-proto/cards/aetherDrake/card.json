@@ -1,23 +1,21 @@
 {
-  "tplId": "aetherDrake",
-  "name": "Aether Drake",
-  "type": "Creature",
-  "sub": "Drake",
+  "card_id": "aetherDrake",
+  "art": "🐲",
   "cost": {
     "U": 1,
     "C": 3
   },
-  "power": 2,
-  "toughness": 3,
-  "art": "🐲",
   "keywords": [
     "flying"
   ],
+  "name": "Aether Drake",
+  "power": 2,
+  "sub": "Drake",
   "text": "Flying. When this enters, target creature you control gains hexproof as long as ~ stays in play.",
+  "toughness": 3,
   "triggers": [
     {
       "event": "cardEntersBattlefield",
-      "condId": "thisEnters",
       "text": "When ~ enters, target friendly creature gains hexproof.",
       "effects": [
         {
@@ -28,11 +26,9 @@
             "controller": "self"
           }
         }
-      ]
+      ],
+      "cond_id": "thisEnters"
     }
   ],
-  "color": "U",
-  "colors": [
-    "U"
-  ]
+  "type": "Creature"
 }

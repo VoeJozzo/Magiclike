@@ -1,20 +1,18 @@
 {
-  "tplId": "bloodArtist",
-  "name": "Blood Artist",
-  "type": "Creature",
-  "sub": "Vampire",
+  "card_id": "bloodArtist",
+  "art": "🧛",
   "cost": {
     "B": 1,
     "C": 1
   },
+  "name": "Blood Artist",
   "power": 0,
-  "toughness": 1,
-  "art": "🧛",
+  "sub": "Vampire",
   "text": "Whenever a creature dies, target opponent loses 1 life and you gain 1 life.",
+  "toughness": 1,
   "triggers": [
     {
       "event": "cardDies",
-      "condId": "anyCardDies",
       "text": "When a creature dies, opp loses 1, you gain 1.",
       "effects": [
         {
@@ -27,11 +25,9 @@
           "target": "self",
           "amount": 1
         }
-      ]
+      ],
+      "cond_id": "anyCardDies"
     }
   ],
-  "color": "B",
-  "colors": [
-    "B"
-  ]
+  "type": "Creature"
 }

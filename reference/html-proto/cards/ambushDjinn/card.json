@@ -1,22 +1,18 @@
 {
-  "tplId": "ambushDjinn",
-  "name": "Ambush Djinn",
-  "type": "Creature",
-  "sub": "Djinn",
+  "card_id": "ambushDjinn",
+  "art": "cards/ambushDjinn/art.png",
   "cost": {
     "U": 2,
     "C": 3
   },
-  "power": 4,
-  "toughness": 4,
-  "art": "cards/ambushDjinn/art.png",
-  "text": "Flash, Flying",
   "keywords": [
     "flash",
     "flying"
   ],
-  "color": "U",
-  "colors": [
-    "U"
-  ]
+  "name": "Ambush Djinn",
+  "power": 4,
+  "sub": "Djinn",
+  "text": "Flash, Flying",
+  "toughness": 4,
+  "type": "Creature"
 }

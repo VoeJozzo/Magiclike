@@ -1,22 +1,18 @@
 {
-  "tplId": "forestGuard",
-  "name": "Forest Guardian",
-  "type": "Creature",
-  "sub": "Treefolk",
+  "card_id": "forestGuard",
+  "art": "🌳",
   "cost": {
     "G": 1,
     "C": 3
   },
-  "power": 3,
-  "toughness": 5,
-  "art": "🌳",
-  "text": "Reach, Vigilance",
   "keywords": [
     "reach",
     "vigilance"
   ],
-  "color": "G",
-  "colors": [
-    "G"
-  ]
+  "name": "Forest Guardian",
+  "power": 3,
+  "sub": "Treefolk",
+  "text": "Reach, Vigilance",
+  "toughness": 5,
+  "type": "Creature"
 }

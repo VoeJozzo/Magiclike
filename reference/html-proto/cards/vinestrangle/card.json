@@ -1,13 +1,10 @@
 {
-  "tplId": "vinestrangle",
-  "name": "Vine Strangle",
-  "type": "Sorcery",
+  "card_id": "vinestrangle",
+  "art": "cards/vinestrangle/art.png",
   "cost": {
     "G": 1,
     "C": 2
   },
-  "art": "cards/vinestrangle/art.png",
-  "text": "Vine Strangle deals 5 damage to target creature with flying.",
   "effects": [
     {
       "kind": "damage",
@@ -19,8 +16,7 @@
       }
     }
   ],
-  "color": "G",
-  "colors": [
-    "G"
-  ]
+  "name": "Vine Strangle",
+  "text": "Vine Strangle deals 5 damage to target creature with flying.",
+  "type": "Sorcery"
 }

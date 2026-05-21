@@ -20,6 +20,51 @@
 // tplId persists in saves/PICKLOG — renames need save migration.
 const CARDS = {};
 
+// Wire format is canonical snake_case (docs/STANDARDIZATION-PLAN.md §4). The
+// loader rebinds to the JS-internal camelCase names the engine has used since
+// day one, so engine code stays unchanged while the JSON files become the
+// cross-engine source of truth (Godot reads the same shape).
+//
+// Wire    →  JS-internal
+//   card_id  →  tplId
+//   cond_id  →  condId       (recursively in triggers)
+//   (derived) →  color, colors (computed from cost; not stored in JSON)
+function ingestCard(card) {
+  if (card == null || typeof card !== 'object') return card;
+  if (Object.prototype.hasOwnProperty.call(card, 'card_id')) {
+    card.tplId = card.card_id;
+    delete card.card_id;
+  }
+  if (Array.isArray(card.triggers)) _rebindCondIdRecursive(card.triggers);
+  if (!Object.prototype.hasOwnProperty.call(card, 'color')
+      || !Object.prototype.hasOwnProperty.call(card, 'colors')) {
+    const colors = [];
+    if (card.cost) {
+      for (const c of ['W', 'U', 'B', 'R', 'G']) {
+        if ((card.cost[c] || 0) > 0) colors.push(c);
+      }
+    }
+    if (!Object.prototype.hasOwnProperty.call(card, 'color')) card.color = colors[0] || null;
+    if (!Object.prototype.hasOwnProperty.call(card, 'colors')) card.colors = colors;
+  }
+  return card;
+}
+
+function _rebindCondIdRecursive(obj) {
+  if (obj == null || typeof obj !== 'object') return;
+  if (Array.isArray(obj)) {
+    for (const item of obj) _rebindCondIdRecursive(item);
+    return;
+  }
+  if (Object.prototype.hasOwnProperty.call(obj, 'cond_id')) {
+    obj.condId = obj.cond_id;
+    delete obj.cond_id;
+  }
+  for (const v of Object.values(obj)) {
+    if (v && typeof v === 'object') _rebindCondIdRecursive(v);
+  }
+}
+
 async function loadCards() {
   const base = 'cards/';
   const manifest = await fetch(base + '_manifest.json').then(r => r.json());
@@ -27,6 +72,7 @@ async function loadCards() {
     manifest.map(id => fetch(base + id + '/card.json').then(r => r.json()))
   );
   for (const card of cards) {
+    ingestCard(card);
     CARDS[card.tplId] = card;
     // The ~ character is a reserved placeholder for the card's own name
     // in trigger / effect templates (formatTriggerText in card-text.js).

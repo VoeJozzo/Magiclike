@@ -1,19 +1,15 @@
 {
-  "tplId": "ancientTreant",
-  "name": "Ancient Treant",
-  "type": "Creature",
-  "sub": "Treefolk",
+  "card_id": "ancientTreant",
+  "art": "cards/ancientTreant/art.png",
   "cost": {
     "G": 2,
     "C": 3
   },
-  "power": 4,
-  "toughness": 5,
-  "art": "cards/ancientTreant/art.png",
   "keywords": [
     "reach"
   ],
-  "text": "Reach. Other Treefolk you control get +1/+1. When this enters, search your library for a Forest and put it onto the battlefield tapped.",
+  "name": "Ancient Treant",
+  "power": 4,
   "staticBuffs": [
     {
       "filter": {
@@ -24,20 +20,20 @@
       "toughness": 1
     }
   ],
+  "sub": "Treefolk",
+  "text": "Reach. Other Treefolk you control get +1/+1. When this enters, search your library for a Forest and put it onto the battlefield tapped.",
+  "toughness": 5,
   "triggers": [
     {
       "event": "cardEntersBattlefield",
-      "condId": "thisEnters",
       "text": "When ~ enters, fetch a Forest tapped.",
       "effects": [
         {
           "kind": "searchLandTapped"
         }
-      ]
+      ],
+      "cond_id": "thisEnters"
     }
   ],
-  "color": "G",
-  "colors": [
-    "G"
-  ]
+  "type": "Creature"
 }

@@ -1,21 +1,17 @@
 {
-  "tplId": "angerOfGods",
-  "name": "Anger of the Gods",
-  "type": "Sorcery",
+  "card_id": "angerOfGods",
+  "art": "cards/angerOfGods/art.png",
   "cost": {
     "R": 2,
     "C": 1
   },
-  "art": "cards/angerOfGods/art.png",
-  "text": "Deal 3 damage to each creature.",
   "effects": [
     {
       "kind": "damageAll",
       "amount": 3
     }
   ],
-  "color": "R",
-  "colors": [
-    "R"
-  ]
+  "name": "Anger of the Gods",
+  "text": "Deal 3 damage to each creature.",
+  "type": "Sorcery"
 }

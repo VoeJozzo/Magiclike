@@ -1,20 +1,16 @@
 {
-  "tplId": "hastyOgre",
-  "name": "Raging Goblin",
-  "type": "Creature",
-  "sub": "Goblin Berserker",
+  "card_id": "hastyOgre",
+  "art": "😡",
   "cost": {
     "R": 1
   },
-  "power": 1,
-  "toughness": 1,
-  "art": "😡",
-  "text": "Haste",
   "keywords": [
     "haste"
   ],
-  "color": "R",
-  "colors": [
-    "R"
-  ]
+  "name": "Raging Goblin",
+  "power": 1,
+  "sub": "Goblin Berserker",
+  "text": "Haste",
+  "toughness": 1,
+  "type": "Creature"
 }

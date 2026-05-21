@@ -1,21 +1,17 @@
 {
-  "tplId": "inferno",
-  "name": "Inferno Drake",
-  "type": "Creature",
-  "sub": "Drake",
+  "card_id": "inferno",
+  "art": "cards/inferno/art.png",
   "cost": {
     "R": 2,
     "C": 3
   },
-  "power": 5,
-  "toughness": 3,
-  "art": "cards/inferno/art.png",
-  "text": "Flying",
   "keywords": [
     "flying"
   ],
-  "color": "R",
-  "colors": [
-    "R"
-  ]
+  "name": "Inferno Drake",
+  "power": 5,
+  "sub": "Drake",
+  "text": "Flying",
+  "toughness": 3,
+  "type": "Creature"
 }

@@ -1,13 +1,10 @@
 {
-  "tplId": "mindControl",
-  "name": "Mind Control",
-  "type": "Sorcery",
+  "card_id": "mindControl",
+  "art": "🧠",
   "cost": {
     "U": 2,
     "C": 2
   },
-  "art": "🧠",
-  "text": "Gain control of target creature.",
   "effects": [
     {
       "kind": "gainControl",
@@ -17,8 +14,7 @@
       }
     }
   ],
-  "color": "U",
-  "colors": [
-    "U"
-  ]
+  "name": "Mind Control",
+  "text": "Gain control of target creature.",
+  "type": "Sorcery"
 }

@@ -1,13 +1,10 @@
 {
-  "tplId": "invigorate",
-  "name": "Invigorate",
-  "type": "Instant",
+  "card_id": "invigorate",
+  "art": "⚡",
   "cost": {
     "G": 1,
     "C": 1
   },
-  "art": "⚡",
-  "text": "Target creature gets +4/+4 EOT.",
   "effects": [
     {
       "kind": "pump",
@@ -16,8 +13,7 @@
       "toughness": 4
     }
   ],
-  "color": "G",
-  "colors": [
-    "G"
-  ]
+  "name": "Invigorate",
+  "text": "Target creature gets +4/+4 EOT.",
+  "type": "Instant"
 }

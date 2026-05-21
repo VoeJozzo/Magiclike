@@ -1,13 +1,10 @@
 {
-  "tplId": "arcaneDenial",
-  "name": "Arcane Denial",
-  "type": "Instant",
+  "card_id": "arcaneDenial",
+  "art": "🚫",
   "cost": {
     "U": 1,
     "C": 2
   },
-  "art": "🚫",
-  "text": "Counter target spell. You draw a card.",
   "effects": [
     {
       "kind": "counter",
@@ -18,8 +15,7 @@
       "amount": 1
     }
   ],
-  "color": "U",
-  "colors": [
-    "U"
-  ]
+  "name": "Arcane Denial",
+  "text": "Counter target spell. You draw a card.",
+  "type": "Instant"
 }

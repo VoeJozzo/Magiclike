@@ -1,16 +1,5 @@
 {
-  "tplId": "wickedAcolyte",
-  "name": "Wicked Acolyte",
-  "type": "Creature",
-  "sub": "Human Cleric",
-  "cost": {
-    "B": 1,
-    "C": 1
-  },
-  "power": 2,
-  "toughness": 2,
-  "art": "cards/wickedAcolyte/art.png",
-  "text": "T: Target player loses 1 life.",
+  "card_id": "wickedAcolyte",
   "abilities": [
     {
       "cost": {
@@ -25,8 +14,15 @@
       ]
     }
   ],
-  "color": "B",
-  "colors": [
-    "B"
-  ]
+  "art": "cards/wickedAcolyte/art.png",
+  "cost": {
+    "B": 1,
+    "C": 1
+  },
+  "name": "Wicked Acolyte",
+  "power": 2,
+  "sub": "Human Cleric",
+  "text": "T: Target player loses 1 life.",
+  "toughness": 2,
+  "type": "Creature"
 }

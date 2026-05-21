@@ -1,23 +1,21 @@
 {
-  "tplId": "bloodlust",
-  "name": "Bloodlust Berserker",
-  "type": "Creature",
-  "sub": "Goblin Berserker",
+  "card_id": "bloodlust",
+  "art": "cards/bloodlust/art.png",
   "cost": {
     "R": 1,
     "C": 2
   },
-  "power": 3,
-  "toughness": 2,
-  "art": "cards/bloodlust/art.png",
-  "text": "Haste. When this attacks, if an opponent has lost life this turn, it gets +1/+1 EOT.",
   "keywords": [
     "haste"
   ],
+  "name": "Bloodlust Berserker",
+  "power": 3,
+  "sub": "Goblin Berserker",
+  "text": "Haste. When this attacks, if an opponent has lost life this turn, it gets +1/+1 EOT.",
+  "toughness": 2,
   "triggers": [
     {
       "event": "attacks",
-      "condId": "thisAttacksAfterOppLifeLoss",
       "text": "When ~ attacks (if opp lost life), it gets +1/+1 EOT.",
       "effects": [
         {
@@ -26,11 +24,9 @@
           "power": 1,
           "toughness": 1
         }
-      ]
+      ],
+      "cond_id": "thisAttacksAfterOppLifeLoss"
     }
   ],
-  "color": "R",
-  "colors": [
-    "R"
-  ]
+  "type": "Creature"
 }

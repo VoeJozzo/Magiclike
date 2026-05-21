@@ -1,13 +1,9 @@
 {
-  "tplId": "steal",
-  "name": "Steal",
-  "type": "Instant",
+  "card_id": "steal",
+  "art": "cards/steal/art.png",
   "cost": {
     "C": 5
   },
-  "art": "cards/steal/art.png",
-  "special": true,
-  "text": "Counter target non-token spell or take target non-token permanent. The card becomes yours forever — shuffle it into your library.",
   "effects": [
     {
       "kind": "steal",
@@ -17,6 +13,8 @@
       }
     }
   ],
-  "color": null,
-  "colors": []
+  "name": "Steal",
+  "special": true,
+  "text": "Counter target non-token spell or take target non-token permanent. The card becomes yours forever — shuffle it into your library.",
+  "type": "Instant"
 }

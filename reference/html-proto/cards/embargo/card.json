@@ -1,22 +1,18 @@
 {
-  "tplId": "embargo",
-  "name": "Embargo",
-  "type": "Sorcery",
+  "card_id": "embargo",
+  "art": "🚫",
   "cost": {
     "W": 1,
     "C": 1
   },
-  "art": "🚫",
-  "special": true,
-  "text": "Return target creature to its owner's hand. It costs {1} more, forever.",
   "effects": [
     {
       "kind": "embargo",
       "target": "creature"
     }
   ],
-  "color": "W",
-  "colors": [
-    "W"
-  ]
+  "name": "Embargo",
+  "special": true,
+  "text": "Return target creature to its owner's hand. It costs {1} more, forever.",
+  "type": "Sorcery"
 }

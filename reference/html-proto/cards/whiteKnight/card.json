@@ -1,20 +1,16 @@
 {
-  "tplId": "whiteKnight",
-  "name": "White Knight",
-  "type": "Creature",
-  "sub": "Human Knight",
+  "card_id": "whiteKnight",
+  "art": "cards/whiteKnight/art.png",
   "cost": {
     "W": 2
   },
-  "power": 2,
-  "toughness": 2,
-  "art": "cards/whiteKnight/art.png",
-  "text": "First strike",
   "keywords": [
     "firstStrike"
   ],
-  "color": "W",
-  "colors": [
-    "W"
-  ]
+  "name": "White Knight",
+  "power": 2,
+  "sub": "Human Knight",
+  "text": "First strike",
+  "toughness": 2,
+  "type": "Creature"
 }

@@ -1,17 +1,13 @@
 {
-  "tplId": "greatStag",
-  "name": "Great Stag",
-  "type": "Creature",
-  "sub": "Beast",
+  "card_id": "greatStag",
+  "art": "🦌",
   "cost": {
     "G": 1,
     "C": 2
   },
+  "name": "Great Stag",
   "power": 3,
+  "sub": "Beast",
   "toughness": 4,
-  "art": "🦌",
-  "color": "G",
-  "colors": [
-    "G"
-  ]
+  "type": "Creature"
 }

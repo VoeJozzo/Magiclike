@@ -1,10 +1,8 @@
 {
-  "tplId": "mountain",
-  "name": "Mountain",
-  "type": "Land",
-  "sub": "Basic Land",
+  "card_id": "mountain",
   "art": "🌋",
   "mana": "R",
-  "color": null,
-  "colors": []
+  "name": "Mountain",
+  "sub": "Basic Land",
+  "type": "Land"
 }

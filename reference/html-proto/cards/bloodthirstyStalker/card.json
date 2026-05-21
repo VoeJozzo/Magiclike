@@ -1,23 +1,21 @@
 {
-  "tplId": "bloodthirstyStalker",
-  "name": "Bloodthirsty Stalker",
-  "type": "Creature",
-  "sub": "Vampire",
+  "card_id": "bloodthirstyStalker",
+  "art": "🧛",
   "cost": {
     "B": 1,
     "C": 2
   },
-  "power": 2,
-  "toughness": 2,
-  "art": "🧛",
   "keywords": [
     "menace"
   ],
+  "name": "Bloodthirsty Stalker",
+  "power": 2,
+  "sub": "Vampire",
   "text": "Menace. When this attacks, target opponent loses 1 life.",
+  "toughness": 2,
   "triggers": [
     {
       "event": "attacks",
-      "condId": "thisAttacks",
       "text": "When ~ attacks, opp loses 1 life.",
       "effects": [
         {
@@ -25,11 +23,9 @@
           "target": "player",
           "amount": 1
         }
-      ]
+      ],
+      "cond_id": "thisAttacks"
     }
   ],
-  "color": "B",
-  "colors": [
-    "B"
-  ]
+  "type": "Creature"
 }

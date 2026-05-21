@@ -1,21 +1,17 @@
 {
-  "tplId": "treefolk",
-  "name": "Treefolk Guard",
-  "type": "Creature",
-  "sub": "Treefolk",
+  "card_id": "treefolk",
+  "art": "cards/treefolk/art.png",
   "cost": {
     "G": 1,
     "C": 2
   },
-  "power": 2,
-  "toughness": 5,
-  "art": "cards/treefolk/art.png",
-  "text": "Reach",
   "keywords": [
     "reach"
   ],
-  "color": "G",
-  "colors": [
-    "G"
-  ]
+  "name": "Treefolk Guard",
+  "power": 2,
+  "sub": "Treefolk",
+  "text": "Reach",
+  "toughness": 5,
+  "type": "Creature"
 }

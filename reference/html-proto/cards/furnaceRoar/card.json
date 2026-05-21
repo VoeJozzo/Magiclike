@@ -1,21 +1,17 @@
 {
-  "tplId": "furnaceRoar",
-  "name": "Furnace Roar",
-  "type": "Sorcery",
+  "card_id": "furnaceRoar",
+  "art": "🔥",
   "cost": {
     "R": 2,
     "C": 3
   },
-  "art": "🔥",
-  "text": "Deal 5 damage to each creature.",
   "effects": [
     {
       "kind": "damageAll",
       "amount": 5
     }
   ],
-  "color": "R",
-  "colors": [
-    "R"
-  ]
+  "name": "Furnace Roar",
+  "text": "Deal 5 damage to each creature.",
+  "type": "Sorcery"
 }

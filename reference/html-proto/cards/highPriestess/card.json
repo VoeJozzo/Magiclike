@@ -1,16 +1,12 @@
 {
-  "tplId": "highPriestess",
-  "name": "High Priestess",
-  "type": "Creature",
-  "sub": "Human Cleric",
+  "card_id": "highPriestess",
+  "art": "⛪",
   "cost": {
     "W": 1,
     "C": 2
   },
+  "name": "High Priestess",
   "power": 2,
-  "toughness": 3,
-  "art": "⛪",
-  "text": "Other Clerics you control get +1/+1. Whenever another Cleric enters under your control, you gain 2 life.",
   "staticBuffs": [
     {
       "filter": {
@@ -21,10 +17,12 @@
       "toughness": 1
     }
   ],
+  "sub": "Human Cleric",
+  "text": "Other Clerics you control get +1/+1. Whenever another Cleric enters under your control, you gain 2 life.",
+  "toughness": 3,
   "triggers": [
     {
       "event": "cardEntersBattlefield",
-      "condId": "anotherCreatureYouEntersOfSubtype",
       "params": {
         "sub": "Cleric"
       },
@@ -35,11 +33,9 @@
           "target": "self",
           "amount": 2
         }
-      ]
+      ],
+      "cond_id": "anotherCreatureYouEntersOfSubtype"
     }
   ],
-  "color": "W",
-  "colors": [
-    "W"
-  ]
+  "type": "Creature"
 }

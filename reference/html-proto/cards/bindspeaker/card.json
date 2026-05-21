@@ -1,20 +1,18 @@
 {
-  "tplId": "bindspeaker",
-  "name": "Bindspeaker",
-  "type": "Creature",
-  "sub": "Human Wizard",
+  "card_id": "bindspeaker",
+  "art": "🪢",
   "cost": {
     "U": 2,
     "C": 1
   },
+  "name": "Bindspeaker",
   "power": 1,
-  "toughness": 3,
-  "art": "🪢",
+  "sub": "Human Wizard",
   "text": "When this enters, target creature gains defender until ~ dies.",
+  "toughness": 3,
   "triggers": [
     {
       "event": "cardEntersBattlefield",
-      "condId": "thisEnters",
       "text": "~ enters — target creature gains defender.",
       "effects": [
         {
@@ -22,11 +20,9 @@
           "target": "creature",
           "keyword": "defender"
         }
-      ]
+      ],
+      "cond_id": "thisEnters"
     }
   ],
-  "color": "U",
-  "colors": [
-    "U"
-  ]
+  "type": "Creature"
 }

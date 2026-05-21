@@ -1,21 +1,17 @@
 {
-  "tplId": "ageOfDawn",
-  "name": "Dawn Sentinel",
-  "type": "Creature",
-  "sub": "Spirit",
+  "card_id": "ageOfDawn",
+  "art": "cards/ageOfDawn/art.png",
   "cost": {
     "W": 2,
     "C": 2
   },
-  "power": 2,
-  "toughness": 5,
-  "art": "cards/ageOfDawn/art.png",
-  "text": "Flying",
   "keywords": [
     "flying"
   ],
-  "color": "W",
-  "colors": [
-    "W"
-  ]
+  "name": "Dawn Sentinel",
+  "power": 2,
+  "sub": "Spirit",
+  "text": "Flying",
+  "toughness": 5,
+  "type": "Creature"
 }

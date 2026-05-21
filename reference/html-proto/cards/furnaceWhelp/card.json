@@ -1,19 +1,5 @@
 {
-  "tplId": "furnaceWhelp",
-  "name": "Furnace Whelp",
-  "type": "Creature",
-  "sub": "Dragon",
-  "cost": {
-    "R": 1,
-    "C": 2
-  },
-  "power": 2,
-  "toughness": 2,
-  "art": "cards/furnaceWhelp/art.png",
-  "keywords": [
-    "flying"
-  ],
-  "text": "Flying. {R}: this gets +1/+0 EOT.",
+  "card_id": "furnaceWhelp",
   "abilities": [
     {
       "cost": {
@@ -31,8 +17,18 @@
       ]
     }
   ],
-  "color": "R",
-  "colors": [
-    "R"
-  ]
+  "art": "cards/furnaceWhelp/art.png",
+  "cost": {
+    "R": 1,
+    "C": 2
+  },
+  "keywords": [
+    "flying"
+  ],
+  "name": "Furnace Whelp",
+  "power": 2,
+  "sub": "Dragon",
+  "text": "Flying. {R}: this gets +1/+0 EOT.",
+  "toughness": 2,
+  "type": "Creature"
 }

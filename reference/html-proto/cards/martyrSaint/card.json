@@ -1,20 +1,18 @@
 {
-  "tplId": "martyrSaint",
-  "name": "Martyr-Saint",
-  "type": "Creature",
-  "sub": "Human Cleric",
+  "card_id": "martyrSaint",
+  "art": "🕯",
   "cost": {
     "W": 1,
     "C": 1
   },
+  "name": "Martyr-Saint",
   "power": 1,
-  "toughness": 2,
-  "art": "🕯",
+  "sub": "Human Cleric",
   "text": "When this dies, you gain 3 life.",
+  "toughness": 2,
   "triggers": [
     {
       "event": "cardDies",
-      "condId": "thisDies",
       "text": "When ~ dies, you gain 3 life.",
       "effects": [
         {
@@ -22,11 +20,9 @@
           "target": "self",
           "amount": 3
         }
-      ]
+      ],
+      "cond_id": "thisDies"
     }
   ],
-  "color": "W",
-  "colors": [
-    "W"
-  ]
+  "type": "Creature"
 }

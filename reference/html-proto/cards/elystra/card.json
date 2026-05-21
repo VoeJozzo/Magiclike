@@ -1,23 +1,30 @@
 {
-  "tplId": "elystra",
-  "name": "Elystra the Immortal",
-  "type": "Creature",
-  "sub": "Spirit",
+  "card_id": "elystra",
+  "art": "cards/elystra/art-1.png",
+  "artLadder": [
+    {
+      "minPT": 0,
+      "art": "cards/elystra/art-1.png"
+    },
+    {
+      "minPT": 10,
+      "art": "cards/elystra/art-2.png"
+    },
+    {
+      "minPT": 20,
+      "art": "cards/elystra/art-3.png"
+    }
+  ],
   "cost": {
     "C": 3
   },
-  "power": 1,
-  "toughness": 1,
-  "art": "cards/elystra/art-1.png",
-  "artLadder": [
-    { "minPT": 0, "art": "cards/elystra/art-1.png" },
-    { "minPT": 10, "art": "cards/elystra/art-2.png" },
-    { "minPT": 20, "art": "cards/elystra/art-3.png" }
-  ],
-  "special": true,
+  "name": "Elystra the Immortal",
   "permanentEot": true,
+  "power": 1,
   "ripOnTarget": true,
+  "special": true,
+  "sub": "Spirit",
   "text": "End-of-turn effects on Elystra last forever (buffs, granted keywords). Whenever a non-creature spell targets Elystra, rip it from its caster's deck after it resolves.",
-  "color": null,
-  "colors": []
+  "toughness": 1,
+  "type": "Creature"
 }

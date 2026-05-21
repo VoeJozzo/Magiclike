@@ -1,12 +1,9 @@
 {
-  "tplId": "fieryRush",
-  "name": "Fiery Rush",
-  "type": "Instant",
+  "card_id": "fieryRush",
+  "art": "cards/fieryRush/art.png",
   "cost": {
     "R": 1
   },
-  "art": "cards/fieryRush/art.png",
-  "text": "Target creature gets +2/+0 EOT.",
   "effects": [
     {
       "kind": "pump",
@@ -15,8 +12,7 @@
       "toughness": 0
     }
   ],
-  "color": "R",
-  "colors": [
-    "R"
-  ]
+  "name": "Fiery Rush",
+  "text": "Target creature gets +2/+0 EOT.",
+  "type": "Instant"
 }

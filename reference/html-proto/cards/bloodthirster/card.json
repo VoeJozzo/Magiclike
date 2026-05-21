@@ -1,24 +1,22 @@
 {
-  "tplId": "bloodthirster",
-  "name": "Bloodthirster",
-  "type": "Creature",
-  "sub": "Vampire",
+  "card_id": "bloodthirster",
+  "art": "🦇",
   "cost": {
     "B": 1,
     "C": 2
   },
-  "power": 2,
-  "toughness": 2,
-  "art": "🦇",
   "keywords": [
     "flying",
     "lifelink"
   ],
+  "name": "Bloodthirster",
+  "power": 2,
+  "sub": "Vampire",
   "text": "Flying, Lifelink. When this attacks, deal 1 damage to any target.",
+  "toughness": 2,
   "triggers": [
     {
       "event": "attacks",
-      "condId": "thisAttacks",
       "text": "When ~ attacks, deal 1 to any target.",
       "effects": [
         {
@@ -26,11 +24,9 @@
           "target": "any",
           "amount": 1
         }
-      ]
+      ],
+      "cond_id": "thisAttacks"
     }
   ],
-  "color": "B",
-  "colors": [
-    "B"
-  ]
+  "type": "Creature"
 }

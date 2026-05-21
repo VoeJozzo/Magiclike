@@ -1,23 +1,21 @@
 {
-  "tplId": "wolfbriarElemental",
-  "name": "Wolfbriar Elemental",
-  "type": "Creature",
-  "sub": "Elemental",
+  "card_id": "wolfbriarElemental",
+  "art": "cards/wolfbriarElemental/art.png",
   "cost": {
     "G": 1,
     "C": 3
   },
-  "power": 4,
-  "toughness": 4,
-  "art": "cards/wolfbriarElemental/art.png",
   "keywords": [
     "trample"
   ],
+  "name": "Wolfbriar Elemental",
+  "power": 4,
+  "sub": "Elemental",
   "text": "Trample. When this enters, untap target creature you control.",
+  "toughness": 4,
   "triggers": [
     {
       "event": "cardEntersBattlefield",
-      "condId": "thisEnters",
       "text": "When ~ enters, untap target friendly creature.",
       "effects": [
         {
@@ -27,11 +25,9 @@
             "controller": "self"
           }
         }
-      ]
+      ],
+      "cond_id": "thisEnters"
     }
   ],
-  "color": "G",
-  "colors": [
-    "G"
-  ]
+  "type": "Creature"
 }

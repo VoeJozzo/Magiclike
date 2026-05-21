@@ -1,13 +1,10 @@
 {
-  "tplId": "incinerate",
-  "name": "Char",
-  "type": "Instant",
+  "card_id": "incinerate",
+  "art": "cards/incinerate/art.png",
   "cost": {
     "R": 1,
     "C": 1
   },
-  "art": "cards/incinerate/art.png",
-  "text": "Char deals 4 damage to any target and 1 damage to you.",
   "effects": [
     {
       "kind": "damage",
@@ -20,8 +17,7 @@
       "amount": 1
     }
   ],
-  "color": "R",
-  "colors": [
-    "R"
-  ]
+  "name": "Char",
+  "text": "Char deals 4 damage to any target and 1 damage to you.",
+  "type": "Instant"
 }

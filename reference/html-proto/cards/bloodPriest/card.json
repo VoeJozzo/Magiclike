@@ -1,20 +1,18 @@
 {
-  "tplId": "bloodPriest",
-  "name": "Blood Priest",
-  "type": "Creature",
-  "sub": "Human Cleric",
+  "card_id": "bloodPriest",
+  "art": "🩸",
   "cost": {
     "B": 1,
     "C": 1
   },
+  "name": "Blood Priest",
   "power": 1,
-  "toughness": 2,
-  "art": "🩸",
+  "sub": "Human Cleric",
   "text": "When this enters, target opponent loses 2 life.",
+  "toughness": 2,
   "triggers": [
     {
       "event": "cardEntersBattlefield",
-      "condId": "thisEnters",
       "text": "When ~ enters, target opponent loses 2 life.",
       "effects": [
         {
@@ -22,11 +20,9 @@
           "target": "player",
           "amount": 2
         }
-      ]
+      ],
+      "cond_id": "thisEnters"
     }
   ],
-  "color": "B",
-  "colors": [
-    "B"
-  ]
+  "type": "Creature"
 }

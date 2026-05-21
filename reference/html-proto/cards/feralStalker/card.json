@@ -1,20 +1,18 @@
 {
-  "tplId": "feralStalker",
-  "name": "Feral Stalker",
-  "type": "Creature",
-  "sub": "Cat",
+  "card_id": "feralStalker",
+  "art": "cards/feralStalker/art.png",
   "cost": {
     "G": 1,
     "C": 2
   },
+  "name": "Feral Stalker",
   "power": 2,
-  "toughness": 2,
-  "art": "cards/feralStalker/art.png",
+  "sub": "Cat",
   "text": "When this attacks, it gets +2/+2 EOT.",
+  "toughness": 2,
   "triggers": [
     {
       "event": "attacks",
-      "condId": "thisAttacks",
       "text": "When ~ attacks, it gets +2/+2 EOT.",
       "effects": [
         {
@@ -23,11 +21,9 @@
           "power": 2,
           "toughness": 2
         }
-      ]
+      ],
+      "cond_id": "thisAttacks"
     }
   ],
-  "color": "G",
-  "colors": [
-    "G"
-  ]
+  "type": "Creature"
 }

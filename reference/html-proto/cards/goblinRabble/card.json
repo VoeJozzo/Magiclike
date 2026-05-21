@@ -1,13 +1,10 @@
 {
-  "tplId": "goblinRabble",
-  "name": "Goblin Rabble",
-  "type": "Sorcery",
+  "card_id": "goblinRabble",
+  "art": "cards/goblinRabble/art.png",
   "cost": {
     "R": 1,
     "C": 2
   },
-  "art": "cards/goblinRabble/art.png",
-  "text": "Create three 1/1 red Goblin tokens with haste.",
   "effects": [
     {
       "kind": "createTokens",
@@ -15,8 +12,7 @@
       "count": 3
     }
   ],
-  "color": "R",
-  "colors": [
-    "R"
-  ]
+  "name": "Goblin Rabble",
+  "text": "Create three 1/1 red Goblin tokens with haste.",
+  "type": "Sorcery"
 }

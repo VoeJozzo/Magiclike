@@ -1,21 +1,17 @@
 {
-  "tplId": "garruksCompanion",
-  "name": "Garruk's Companion",
-  "type": "Creature",
-  "sub": "Beast",
+  "card_id": "garruksCompanion",
+  "art": "🐺",
   "cost": {
     "G": 1,
     "C": 1
   },
-  "power": 3,
-  "toughness": 2,
-  "art": "🐺",
   "keywords": [
     "trample"
   ],
+  "name": "Garruk's Companion",
+  "power": 3,
+  "sub": "Beast",
   "text": "Trample.",
-  "color": "G",
-  "colors": [
-    "G"
-  ]
+  "toughness": 2,
+  "type": "Creature"
 }

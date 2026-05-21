@@ -1,21 +1,17 @@
 {
-  "tplId": "illusionDrake",
-  "name": "Illusion Drake",
-  "type": "Creature",
-  "sub": "Drake",
+  "card_id": "illusionDrake",
+  "art": "🐉",
   "cost": {
     "U": 1,
     "C": 2
   },
-  "power": 3,
-  "toughness": 2,
-  "art": "🐉",
-  "text": "Flying",
   "keywords": [
     "flying"
   ],
-  "color": "U",
-  "colors": [
-    "U"
-  ]
+  "name": "Illusion Drake",
+  "power": 3,
+  "sub": "Drake",
+  "text": "Flying",
+  "toughness": 2,
+  "type": "Creature"
 }

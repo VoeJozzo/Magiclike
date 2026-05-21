@@ -1,19 +1,5 @@
 {
-  "tplId": "patientSaint",
-  "name": "Patient Saint",
-  "type": "Creature",
-  "sub": "Human Cleric Wall",
-  "cost": {
-    "W": 1,
-    "C": 1
-  },
-  "power": 0,
-  "toughness": 4,
-  "art": "🕯",
-  "keywords": [
-    "defender"
-  ],
-  "text": "Defender. T: You gain 1 life.",
+  "card_id": "patientSaint",
   "abilities": [
     {
       "cost": {
@@ -28,8 +14,18 @@
       ]
     }
   ],
-  "color": "W",
-  "colors": [
-    "W"
-  ]
+  "art": "🕯",
+  "cost": {
+    "W": 1,
+    "C": 1
+  },
+  "keywords": [
+    "defender"
+  ],
+  "name": "Patient Saint",
+  "power": 0,
+  "sub": "Human Cleric Wall",
+  "text": "Defender. T: You gain 1 life.",
+  "toughness": 4,
+  "type": "Creature"
 }

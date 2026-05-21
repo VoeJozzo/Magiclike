@@ -1,31 +1,27 @@
 {
-  "tplId": "loreSeeker",
-  "name": "Lore Seeker",
-  "type": "Creature",
-  "sub": "Human Wizard",
+  "card_id": "loreSeeker",
+  "art": "cards/loreSeeker/art.png",
   "cost": {
     "U": 2,
     "C": 3
   },
+  "name": "Lore Seeker",
   "power": 1,
-  "toughness": 4,
-  "art": "cards/loreSeeker/art.png",
+  "sub": "Human Wizard",
   "text": "When you cast a spell, draw a card.",
+  "toughness": 4,
   "triggers": [
     {
       "event": "spellCast",
-      "condId": "youCastSpell",
       "text": "When you cast a spell, draw a card.",
       "effects": [
         {
           "kind": "draw",
           "amount": 1
         }
-      ]
+      ],
+      "cond_id": "youCastSpell"
     }
   ],
-  "color": "U",
-  "colors": [
-    "U"
-  ]
+  "type": "Creature"
 }

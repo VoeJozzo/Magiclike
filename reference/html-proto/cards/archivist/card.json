@@ -1,20 +1,18 @@
 {
-  "tplId": "archivist",
-  "name": "Archivist",
-  "type": "Creature",
-  "sub": "Human Wizard",
+  "card_id": "archivist",
+  "art": "cards/archivist/art.png",
   "cost": {
     "U": 1,
     "C": 2
   },
+  "name": "Archivist",
   "power": 1,
-  "toughness": 2,
-  "art": "cards/archivist/art.png",
+  "sub": "Human Wizard",
   "text": "When this enters, draw 2 cards, then discard 1 card.",
+  "toughness": 2,
   "triggers": [
     {
       "event": "cardEntersBattlefield",
-      "condId": "thisEnters",
       "text": "When ~ enters, draw 2, discard 1.",
       "effects": [
         {
@@ -26,11 +24,9 @@
           "target": "self",
           "amount": 1
         }
-      ]
+      ],
+      "cond_id": "thisEnters"
     }
   ],
-  "color": "U",
-  "colors": [
-    "U"
-  ]
+  "type": "Creature"
 }

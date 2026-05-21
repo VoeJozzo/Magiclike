@@ -1,21 +1,17 @@
 {
-  "tplId": "cloudGiant",
-  "name": "Cloud Pegasus",
-  "type": "Creature",
-  "sub": "Pegasus",
+  "card_id": "cloudGiant",
+  "art": "cards/cloudGiant/art.png",
   "cost": {
     "W": 1,
     "C": 2
   },
-  "power": 2,
-  "toughness": 2,
-  "art": "cards/cloudGiant/art.png",
-  "text": "Flying",
   "keywords": [
     "flying"
   ],
-  "color": "W",
-  "colors": [
-    "W"
-  ]
+  "name": "Cloud Pegasus",
+  "power": 2,
+  "sub": "Pegasus",
+  "text": "Flying",
+  "toughness": 2,
+  "type": "Creature"
 }

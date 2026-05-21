@@ -1,13 +1,10 @@
 {
-  "tplId": "primalRoar",
-  "name": "Primal Roar",
-  "type": "Sorcery",
+  "card_id": "primalRoar",
+  "art": "🦁",
   "cost": {
     "G": 1,
     "C": 2
   },
-  "art": "🦁",
-  "text": "Creatures you control get +2/+2 EOT.",
   "effects": [
     {
       "kind": "pumpAllYours",
@@ -15,8 +12,7 @@
       "toughness": 2
     }
   ],
-  "color": "G",
-  "colors": [
-    "G"
-  ]
+  "name": "Primal Roar",
+  "text": "Creatures you control get +2/+2 EOT.",
+  "type": "Sorcery"
 }

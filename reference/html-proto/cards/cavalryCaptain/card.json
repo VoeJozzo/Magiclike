@@ -1,23 +1,21 @@
 {
-  "tplId": "cavalryCaptain",
-  "name": "Cavalry Captain",
-  "type": "Creature",
-  "sub": "Human Knight",
+  "card_id": "cavalryCaptain",
+  "art": "🐎",
   "cost": {
     "W": 1,
     "C": 2
   },
-  "power": 2,
-  "toughness": 2,
-  "art": "🐎",
-  "text": "First strike. When this attacks, it gets +2/+0 EOT.",
   "keywords": [
     "firstStrike"
   ],
+  "name": "Cavalry Captain",
+  "power": 2,
+  "sub": "Human Knight",
+  "text": "First strike. When this attacks, it gets +2/+0 EOT.",
+  "toughness": 2,
   "triggers": [
     {
       "event": "attacks",
-      "condId": "thisAttacks",
       "text": "When ~ attacks, it gets +2/+0 EOT.",
       "effects": [
         {
@@ -26,11 +24,9 @@
           "power": 2,
           "toughness": 0
         }
-      ]
+      ],
+      "cond_id": "thisAttacks"
     }
   ],
-  "color": "W",
-  "colors": [
-    "W"
-  ]
+  "type": "Creature"
 }

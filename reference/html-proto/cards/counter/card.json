@@ -1,20 +1,16 @@
 {
-  "tplId": "counter",
-  "name": "Counterspell",
-  "type": "Instant",
+  "card_id": "counter",
+  "art": "🚫",
   "cost": {
     "U": 2
   },
-  "art": "🚫",
-  "text": "Counter target spell.",
   "effects": [
     {
       "kind": "counter",
       "target": "spell"
     }
   ],
-  "color": "U",
-  "colors": [
-    "U"
-  ]
+  "name": "Counterspell",
+  "text": "Counter target spell.",
+  "type": "Instant"
 }

@@ -1,13 +1,10 @@
 {
-  "tplId": "searingBlast",
-  "name": "Searing Blast",
-  "type": "Sorcery",
+  "card_id": "searingBlast",
+  "art": "☄",
   "cost": {
     "R": 2,
     "C": 2
   },
-  "art": "☄",
-  "text": "Deal 5 damage to any target.",
   "effects": [
     {
       "kind": "damage",
@@ -15,8 +12,7 @@
       "amount": 5
     }
   ],
-  "color": "R",
-  "colors": [
-    "R"
-  ]
+  "name": "Searing Blast",
+  "text": "Deal 5 damage to any target.",
+  "type": "Sorcery"
 }

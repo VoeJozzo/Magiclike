@@ -1,21 +1,17 @@
 {
-  "tplId": "flashMage",
-  "name": "Quickdraw Mage",
-  "type": "Creature",
-  "sub": "Human Wizard",
+  "card_id": "flashMage",
+  "art": "cards/flashMage/art.png",
   "cost": {
     "U": 1,
     "C": 2
   },
-  "power": 2,
-  "toughness": 2,
-  "art": "cards/flashMage/art.png",
-  "text": "Flash",
   "keywords": [
     "flash"
   ],
-  "color": "U",
-  "colors": [
-    "U"
-  ]
+  "name": "Quickdraw Mage",
+  "power": 2,
+  "sub": "Human Wizard",
+  "text": "Flash",
+  "toughness": 2,
+  "type": "Creature"
 }

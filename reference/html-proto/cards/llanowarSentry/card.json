@@ -1,16 +1,12 @@
 {
-  "tplId": "llanowarSentry",
-  "name": "Llanowar Sentry",
-  "type": "Creature",
-  "sub": "Elf Warrior",
+  "card_id": "llanowarSentry",
+  "art": "🌿",
   "cost": {
     "G": 1
   },
+  "name": "Llanowar Sentry",
   "power": 2,
+  "sub": "Elf Warrior",
   "toughness": 1,
-  "art": "🌿",
-  "color": "G",
-  "colors": [
-    "G"
-  ]
+  "type": "Creature"
 }

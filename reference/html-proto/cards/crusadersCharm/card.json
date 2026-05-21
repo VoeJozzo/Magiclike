@@ -1,13 +1,10 @@
 {
-  "tplId": "crusadersCharm",
-  "name": "Crusader's Charm",
-  "type": "Instant",
+  "card_id": "crusadersCharm",
+  "art": "✚",
   "cost": {
     "W": 2,
     "C": 1
   },
-  "art": "✚",
-  "text": "Choose one — Deal 2 damage to any target; or target creature gets +2/+2 until end of turn; or you gain 3 life and draw a card.",
   "effects": {
     "modeNames": [
       "Smite (deal 2)",
@@ -43,8 +40,7 @@
       ]
     ]
   },
-  "color": "W",
-  "colors": [
-    "W"
-  ]
+  "name": "Crusader's Charm",
+  "text": "Choose one — Deal 2 damage to any target; or target creature gets +2/+2 until end of turn; or you gain 3 life and draw a card.",
+  "type": "Instant"
 }

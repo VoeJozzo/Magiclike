@@ -1,31 +1,27 @@
 {
-  "tplId": "stormSage",
-  "name": "Storm Sage",
-  "type": "Creature",
-  "sub": "Human Wizard",
+  "card_id": "stormSage",
+  "art": "⛈",
   "cost": {
     "U": 2,
     "C": 2
   },
+  "name": "Storm Sage",
   "power": 2,
-  "toughness": 3,
-  "art": "⛈",
+  "sub": "Human Wizard",
   "text": "Whenever another creature enters under your control, draw a card.",
+  "toughness": 3,
   "triggers": [
     {
       "event": "cardEntersBattlefield",
-      "condId": "anotherCreatureYouEntersStrict",
       "text": "Another creature entered — draw a card.",
       "effects": [
         {
           "kind": "draw",
           "amount": 1
         }
-      ]
+      ],
+      "cond_id": "anotherCreatureYouEntersStrict"
     }
   ],
-  "color": "U",
-  "colors": [
-    "U"
-  ]
+  "type": "Creature"
 }

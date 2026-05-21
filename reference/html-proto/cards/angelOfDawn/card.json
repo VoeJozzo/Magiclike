@@ -1,22 +1,18 @@
 {
-  "tplId": "angelOfDawn",
-  "name": "Dawn Angel",
-  "type": "Creature",
-  "sub": "Angel",
+  "card_id": "angelOfDawn",
+  "art": "cards/angelOfDawn/art.png",
   "cost": {
     "W": 2,
     "C": 3
   },
-  "power": 3,
-  "toughness": 4,
-  "art": "cards/angelOfDawn/art.png",
-  "text": "Flying, Lifelink",
   "keywords": [
     "flying",
     "lifelink"
   ],
-  "color": "W",
-  "colors": [
-    "W"
-  ]
+  "name": "Dawn Angel",
+  "power": 3,
+  "sub": "Angel",
+  "text": "Flying, Lifelink",
+  "toughness": 4,
+  "type": "Creature"
 }

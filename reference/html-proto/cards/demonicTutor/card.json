@@ -1,13 +1,10 @@
 {
-  "tplId": "demonicTutor",
-  "name": "Demonic Tutor",
-  "type": "Sorcery",
+  "card_id": "demonicTutor",
+  "art": "🩸",
   "cost": {
     "B": 1,
     "C": 1
   },
-  "art": "🩸",
-  "text": "Search your library for a creature card. You lose 2 life.",
   "effects": [
     {
       "kind": "searchCreature"
@@ -18,8 +15,7 @@
       "amount": 2
     }
   ],
-  "color": "B",
-  "colors": [
-    "B"
-  ]
+  "name": "Demonic Tutor",
+  "text": "Search your library for a creature card. You lose 2 life.",
+  "type": "Sorcery"
 }

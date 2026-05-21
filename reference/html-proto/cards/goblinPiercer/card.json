@@ -1,19 +1,17 @@
 {
-  "tplId": "goblinPiercer",
-  "name": "Goblin Piercer",
-  "type": "Creature",
-  "sub": "Goblin Warrior",
+  "card_id": "goblinPiercer",
+  "art": "cards/goblinPiercer/art.png",
   "cost": {
     "R": 1
   },
+  "name": "Goblin Piercer",
   "power": 1,
-  "toughness": 1,
-  "art": "cards/goblinPiercer/art.png",
+  "sub": "Goblin Warrior",
   "text": "When this attacks, deal 1 damage to target opponent.",
+  "toughness": 1,
   "triggers": [
     {
       "event": "attacks",
-      "condId": "thisAttacks",
       "text": "When ~ attacks, deal 1 to target opp.",
       "effects": [
         {
@@ -21,11 +19,9 @@
           "target": "player",
           "amount": 1
         }
-      ]
+      ],
+      "cond_id": "thisAttacks"
     }
   ],
-  "color": "R",
-  "colors": [
-    "R"
-  ]
+  "type": "Creature"
 }

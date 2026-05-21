@@ -1,23 +1,21 @@
 {
-  "tplId": "skyChampion",
-  "name": "Sky Champion",
-  "type": "Creature",
-  "sub": "Spirit",
+  "card_id": "skyChampion",
+  "art": "🪽",
   "cost": {
     "W": 1,
     "C": 2
   },
-  "power": 2,
-  "toughness": 2,
-  "art": "🪽",
   "keywords": [
     "flying"
   ],
+  "name": "Sky Champion",
+  "power": 2,
+  "sub": "Spirit",
   "text": "Flying. When this enters, target creature you control gains flying as long as ~ stays in play.",
+  "toughness": 2,
   "triggers": [
     {
       "event": "cardEntersBattlefield",
-      "condId": "thisEnters",
       "text": "When ~ enters, target friendly creature gains flying.",
       "effects": [
         {
@@ -28,11 +26,9 @@
             "controller": "self"
           }
         }
-      ]
+      ],
+      "cond_id": "thisEnters"
     }
   ],
-  "color": "W",
-  "colors": [
-    "W"
-  ]
+  "type": "Creature"
 }

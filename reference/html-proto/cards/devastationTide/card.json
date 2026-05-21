@@ -1,13 +1,10 @@
 {
-  "tplId": "devastationTide",
-  "name": "Devastation Tide",
-  "type": "Sorcery",
+  "card_id": "devastationTide",
+  "art": "🌀",
   "cost": {
     "U": 2,
     "C": 3
   },
-  "art": "🌀",
-  "text": "Return all creatures your opponent controls to their owner's hand.",
   "effects": [
     {
       "kind": "removeAll",
@@ -15,8 +12,7 @@
       "whose": "opp"
     }
   ],
-  "color": "U",
-  "colors": [
-    "U"
-  ]
+  "name": "Devastation Tide",
+  "text": "Return all creatures your opponent controls to their owner's hand.",
+  "type": "Sorcery"
 }

@@ -1,13 +1,10 @@
 {
-  "tplId": "smite",
-  "name": "Smite the Wicked",
-  "type": "Sorcery",
+  "card_id": "smite",
+  "art": "cards/smite/art.png",
   "cost": {
     "W": 1,
     "C": 2
   },
-  "art": "cards/smite/art.png",
-  "text": "Destroy target tapped creature.",
   "effects": [
     {
       "kind": "removeCreature",
@@ -18,8 +15,7 @@
       }
     }
   ],
-  "color": "W",
-  "colors": [
-    "W"
-  ]
+  "name": "Smite the Wicked",
+  "text": "Destroy target tapped creature.",
+  "type": "Sorcery"
 }

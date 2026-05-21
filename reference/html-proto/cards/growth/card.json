@@ -1,12 +1,9 @@
 {
-  "tplId": "growth",
-  "name": "Giant Growth",
-  "type": "Instant",
+  "card_id": "growth",
+  "art": "💪",
   "cost": {
     "G": 1
   },
-  "art": "💪",
-  "text": "Target creature gets +3/+3 EOT.",
   "effects": [
     {
       "kind": "pump",
@@ -15,8 +12,7 @@
       "toughness": 3
     }
   ],
-  "color": "G",
-  "colors": [
-    "G"
-  ]
+  "name": "Giant Growth",
+  "text": "Target creature gets +3/+3 EOT.",
+  "type": "Instant"
 }

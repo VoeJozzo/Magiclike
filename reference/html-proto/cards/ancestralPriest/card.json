@@ -1,20 +1,18 @@
 {
-  "tplId": "ancestralPriest",
-  "name": "Ancestral Priest",
-  "type": "Creature",
-  "sub": "Human Cleric",
+  "card_id": "ancestralPriest",
+  "art": "🙏",
   "cost": {
     "W": 1,
     "C": 1
   },
+  "name": "Ancestral Priest",
   "power": 1,
-  "toughness": 3,
-  "art": "🙏",
+  "sub": "Human Cleric",
   "text": "When this enters, you gain 2 life.",
+  "toughness": 3,
   "triggers": [
     {
       "event": "cardEntersBattlefield",
-      "condId": "thisEnters",
       "text": "When ~ enters, you gain 2 life.",
       "effects": [
         {
@@ -22,11 +20,9 @@
           "target": "self",
           "amount": 2
         }
-      ]
+      ],
+      "cond_id": "thisEnters"
     }
   ],
-  "color": "W",
-  "colors": [
-    "W"
-  ]
+  "type": "Creature"
 }

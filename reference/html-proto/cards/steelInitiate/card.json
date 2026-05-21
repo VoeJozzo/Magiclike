@@ -1,19 +1,17 @@
 {
-  "tplId": "steelInitiate",
-  "name": "Steel Initiate",
-  "type": "Creature",
-  "sub": "Human Soldier",
+  "card_id": "steelInitiate",
+  "art": "⚔",
   "cost": {
     "W": 1
   },
+  "name": "Steel Initiate",
   "power": 2,
-  "toughness": 2,
-  "art": "⚔",
+  "sub": "Human Soldier",
   "text": "When this attacks, you gain 1 life.",
+  "toughness": 2,
   "triggers": [
     {
       "event": "attacks",
-      "condId": "thisAttacks",
       "text": "When ~ attacks, you gain 1 life.",
       "effects": [
         {
@@ -21,11 +19,9 @@
           "target": "self",
           "amount": 1
         }
-      ]
+      ],
+      "cond_id": "thisAttacks"
     }
   ],
-  "color": "W",
-  "colors": [
-    "W"
-  ]
+  "type": "Creature"
 }

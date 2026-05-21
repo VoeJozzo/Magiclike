@@ -1,23 +1,21 @@
 {
-  "tplId": "warDancer",
-  "name": "War Dancer",
-  "type": "Creature",
-  "sub": "Human Warrior",
+  "card_id": "warDancer",
+  "art": "💃",
   "cost": {
     "R": 1,
     "C": 1
   },
-  "power": 1,
-  "toughness": 2,
-  "art": "💃",
   "keywords": [
     "haste"
   ],
+  "name": "War Dancer",
+  "power": 1,
+  "sub": "Human Warrior",
   "text": "Haste. When this enters, it gets +1/+0 EOT.",
+  "toughness": 2,
   "triggers": [
     {
       "event": "cardEntersBattlefield",
-      "condId": "thisEnters",
       "text": "When ~ enters, it gets +1/+0 EOT.",
       "effects": [
         {
@@ -26,11 +24,9 @@
           "power": 1,
           "toughness": 0
         }
-      ]
+      ],
+      "cond_id": "thisEnters"
     }
   ],
-  "color": "R",
-  "colors": [
-    "R"
-  ]
+  "type": "Creature"
 }

@@ -1,22 +1,18 @@
 {
-  "tplId": "serra",
-  "name": "Serra Angel",
-  "type": "Creature",
-  "sub": "Angel",
+  "card_id": "serra",
+  "art": "😇",
   "cost": {
     "W": 2,
     "C": 3
   },
-  "power": 4,
-  "toughness": 4,
-  "art": "😇",
-  "text": "Flying, Vigilance",
   "keywords": [
     "flying",
     "vigilance"
   ],
-  "color": "W",
-  "colors": [
-    "W"
-  ]
+  "name": "Serra Angel",
+  "power": 4,
+  "sub": "Angel",
+  "text": "Flying, Vigilance",
+  "toughness": 4,
+  "type": "Creature"
 }

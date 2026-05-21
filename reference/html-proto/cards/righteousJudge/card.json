@@ -1,20 +1,18 @@
 {
-  "tplId": "righteousJudge",
-  "name": "Righteous Judge",
-  "type": "Creature",
-  "sub": "Human Knight",
+  "card_id": "righteousJudge",
+  "art": "cards/righteousJudge/art.png",
   "cost": {
     "W": 2,
     "C": 3
   },
+  "name": "Righteous Judge",
   "power": 3,
-  "toughness": 3,
-  "art": "cards/righteousJudge/art.png",
+  "sub": "Human Knight",
   "text": "When this enters, destroy target tapped creature.",
+  "toughness": 3,
   "triggers": [
     {
       "event": "cardEntersBattlefield",
-      "condId": "thisEnters",
       "text": "When ~ enters, destroy target tapped creature.",
       "effects": [
         {
@@ -25,11 +23,9 @@
             "tapped": true
           }
         }
-      ]
+      ],
+      "cond_id": "thisEnters"
     }
   ],
-  "color": "W",
-  "colors": [
-    "W"
-  ]
+  "type": "Creature"
 }

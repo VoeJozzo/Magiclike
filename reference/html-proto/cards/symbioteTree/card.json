@@ -1,23 +1,21 @@
 {
-  "tplId": "symbioteTree",
-  "name": "Symbiote Tree",
-  "type": "Creature",
-  "sub": "Treefolk",
+  "card_id": "symbioteTree",
+  "art": "🌲",
   "cost": {
     "G": 1,
     "C": 3
   },
-  "power": 2,
-  "toughness": 4,
-  "art": "🌲",
   "keywords": [
     "reach"
   ],
+  "name": "Symbiote Tree",
+  "power": 2,
+  "sub": "Treefolk",
   "text": "Reach. When this enters, put a +1/+1 counter on target creature you control and it gains reach as long as ~ stays in play.",
+  "toughness": 4,
   "triggers": [
     {
       "event": "cardEntersBattlefield",
-      "condId": "thisEnters",
       "text": "When ~ enters, put a +1/+1 counter on target friendly creature and it gains reach.",
       "effects": [
         {
@@ -37,11 +35,9 @@
             "controller": "self"
           }
         }
-      ]
+      ],
+      "cond_id": "thisEnters"
     }
   ],
-  "color": "G",
-  "colors": [
-    "G"
-  ]
+  "type": "Creature"
 }

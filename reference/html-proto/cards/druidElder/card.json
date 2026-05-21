@@ -1,26 +1,5 @@
 {
-  "tplId": "druidElder",
-  "name": "Elder of the Grove",
-  "type": "Creature",
-  "sub": "Elf Druid",
-  "cost": {
-    "G": 1,
-    "C": 2
-  },
-  "power": 1,
-  "toughness": 3,
-  "art": "🌿",
-  "text": "Other Druids you control get +1/+1. T: Add {G}{G}.",
-  "staticBuffs": [
-    {
-      "filter": {
-        "controller": "self"
-      },
-      "subtype": "Druid",
-      "power": 1,
-      "toughness": 1
-    }
-  ],
+  "card_id": "druidElder",
   "abilities": [
     {
       "cost": {
@@ -36,8 +15,25 @@
       ]
     }
   ],
-  "color": "G",
-  "colors": [
-    "G"
-  ]
+  "art": "🌿",
+  "cost": {
+    "G": 1,
+    "C": 2
+  },
+  "name": "Elder of the Grove",
+  "power": 1,
+  "staticBuffs": [
+    {
+      "filter": {
+        "controller": "self"
+      },
+      "subtype": "Druid",
+      "power": 1,
+      "toughness": 1
+    }
+  ],
+  "sub": "Elf Druid",
+  "text": "Other Druids you control get +1/+1. T: Add {G}{G}.",
+  "toughness": 3,
+  "type": "Creature"
 }

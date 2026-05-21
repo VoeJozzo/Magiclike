@@ -1,15 +1,5 @@
 {
-  "tplId": "carrionFeeder",
-  "name": "Carrion Feeder",
-  "type": "Creature",
-  "sub": "Zombie",
-  "cost": {
-    "B": 1
-  },
-  "power": 1,
-  "toughness": 1,
-  "art": "cards/carrionFeeder/art.png",
-  "text": "Sacrifice a creature: Put a +1/+1 counter on this.",
+  "card_id": "carrionFeeder",
   "abilities": [
     {
       "cost": {
@@ -25,8 +15,14 @@
       ]
     }
   ],
-  "color": "B",
-  "colors": [
-    "B"
-  ]
+  "art": "cards/carrionFeeder/art.png",
+  "cost": {
+    "B": 1
+  },
+  "name": "Carrion Feeder",
+  "power": 1,
+  "sub": "Zombie",
+  "text": "Sacrifice a creature: Put a +1/+1 counter on this.",
+  "toughness": 1,
+  "type": "Creature"
 }

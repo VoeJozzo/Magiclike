@@ -1,19 +1,5 @@
 {
-  "tplId": "dragon",
-  "name": "Shivan Dragon",
-  "type": "Creature",
-  "sub": "Dragon",
-  "cost": {
-    "R": 2,
-    "C": 4
-  },
-  "power": 5,
-  "toughness": 5,
-  "art": "cards/dragon/art.png",
-  "text": "Flying. {R}: this gets +1/+0 EOT.",
-  "keywords": [
-    "flying"
-  ],
+  "card_id": "dragon",
   "abilities": [
     {
       "cost": {
@@ -31,8 +17,18 @@
       ]
     }
   ],
-  "color": "R",
-  "colors": [
-    "R"
-  ]
+  "art": "cards/dragon/art.png",
+  "cost": {
+    "R": 2,
+    "C": 4
+  },
+  "keywords": [
+    "flying"
+  ],
+  "name": "Shivan Dragon",
+  "power": 5,
+  "sub": "Dragon",
+  "text": "Flying. {R}: this gets +1/+0 EOT.",
+  "toughness": 5,
+  "type": "Creature"
 }

@@ -1,12 +1,9 @@
 {
-  "tplId": "freezeMoment",
-  "name": "Freeze Moment",
-  "type": "Instant",
+  "card_id": "freezeMoment",
+  "art": "❄",
   "cost": {
     "U": 1
   },
-  "art": "❄",
-  "text": "Tap target creature.",
   "effects": [
     {
       "kind": "removeCreature",
@@ -14,8 +11,7 @@
       "target": "creature"
     }
   ],
-  "color": "U",
-  "colors": [
-    "U"
-  ]
+  "name": "Freeze Moment",
+  "text": "Tap target creature.",
+  "type": "Instant"
 }

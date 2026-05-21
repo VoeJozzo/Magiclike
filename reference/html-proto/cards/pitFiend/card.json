@@ -1,22 +1,18 @@
 {
-  "tplId": "pitFiend",
-  "name": "Pit Fiend",
-  "type": "Creature",
-  "sub": "Demon",
+  "card_id": "pitFiend",
+  "art": "😈",
   "cost": {
     "B": 2,
     "C": 3
   },
-  "power": 5,
-  "toughness": 4,
-  "art": "😈",
-  "text": "Menace, Flying",
   "keywords": [
     "menace",
     "flying"
   ],
-  "color": "B",
-  "colors": [
-    "B"
-  ]
+  "name": "Pit Fiend",
+  "power": 5,
+  "sub": "Demon",
+  "text": "Menace, Flying",
+  "toughness": 4,
+  "type": "Creature"
 }

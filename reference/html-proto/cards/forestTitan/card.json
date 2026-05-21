@@ -1,21 +1,17 @@
 {
-  "tplId": "forestTitan",
-  "name": "Forest Titan",
-  "type": "Creature",
-  "sub": "Giant",
+  "card_id": "forestTitan",
+  "art": "cards/forestTitan/art.png",
   "cost": {
     "G": 2,
     "C": 3
   },
-  "power": 5,
-  "toughness": 5,
-  "art": "cards/forestTitan/art.png",
-  "text": "Trample",
   "keywords": [
     "trample"
   ],
-  "color": "G",
-  "colors": [
-    "G"
-  ]
+  "name": "Forest Titan",
+  "power": 5,
+  "sub": "Giant",
+  "text": "Trample",
+  "toughness": 5,
+  "type": "Creature"
 }

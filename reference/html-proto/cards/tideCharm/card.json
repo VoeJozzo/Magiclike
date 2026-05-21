@@ -1,13 +1,10 @@
 {
-  "tplId": "tideCharm",
-  "name": "Tide Charm",
-  "type": "Instant",
+  "card_id": "tideCharm",
+  "art": "🌊",
   "cost": {
     "U": 1,
     "C": 2
   },
-  "art": "🌊",
-  "text": "Choose one — Counter target spell; or return target creature to its owner's hand; or draw 2 cards.",
   "effects": {
     "modeNames": [
       "Counter (target spell)",
@@ -36,8 +33,7 @@
       ]
     ]
   },
-  "color": "U",
-  "colors": [
-    "U"
-  ]
+  "name": "Tide Charm",
+  "text": "Choose one — Counter target spell; or return target creature to its owner's hand; or draw 2 cards.",
+  "type": "Instant"
 }

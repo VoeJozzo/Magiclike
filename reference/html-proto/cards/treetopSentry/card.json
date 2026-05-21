@@ -1,23 +1,21 @@
 {
-  "tplId": "treetopSentry",
-  "name": "Treetop Sentry",
-  "type": "Creature",
-  "sub": "Treefolk",
+  "card_id": "treetopSentry",
+  "art": "cards/treetopSentry/art.png",
   "cost": {
     "G": 1,
     "C": 1
   },
-  "power": 2,
-  "toughness": 3,
-  "art": "cards/treetopSentry/art.png",
   "keywords": [
     "reach"
   ],
+  "name": "Treetop Sentry",
+  "power": 2,
+  "sub": "Treefolk",
   "text": "Reach. When this dies, you gain 2 life.",
+  "toughness": 3,
   "triggers": [
     {
       "event": "cardDies",
-      "condId": "thisDies",
       "text": "When ~ dies, you gain 2 life.",
       "effects": [
         {
@@ -25,11 +23,9 @@
           "target": "self",
           "amount": 2
         }
-      ]
+      ],
+      "cond_id": "thisDies"
     }
   ],
-  "color": "G",
-  "colors": [
-    "G"
-  ]
+  "type": "Creature"
 }

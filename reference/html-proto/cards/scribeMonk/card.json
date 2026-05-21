@@ -1,34 +1,30 @@
 {
-  "tplId": "scribeMonk",
-  "name": "Wall of Omens",
-  "type": "Creature",
-  "sub": "Wall",
+  "card_id": "scribeMonk",
+  "art": "📜",
   "cost": {
     "W": 1,
     "C": 1
   },
-  "power": 0,
-  "toughness": 4,
-  "art": "📜",
   "keywords": [
     "defender"
   ],
+  "name": "Wall of Omens",
+  "power": 0,
+  "sub": "Wall",
   "text": "Defender. When this enters, draw a card.",
+  "toughness": 4,
   "triggers": [
     {
       "event": "cardEntersBattlefield",
-      "condId": "thisEnters",
       "text": "When ~ enters, draw a card.",
       "effects": [
         {
           "kind": "draw",
           "amount": 1
         }
-      ]
+      ],
+      "cond_id": "thisEnters"
     }
   ],
-  "color": "W",
-  "colors": [
-    "W"
-  ]
+  "type": "Creature"
 }

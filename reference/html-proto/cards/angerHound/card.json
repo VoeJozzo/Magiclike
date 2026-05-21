@@ -1,20 +1,18 @@
 {
-  "tplId": "angerHound",
-  "name": "Anger Hound",
-  "type": "Creature",
-  "sub": "Hound",
+  "card_id": "angerHound",
+  "art": "cards/angerHound/art.png",
   "cost": {
     "R": 1,
     "C": 1
   },
+  "name": "Anger Hound",
   "power": 2,
-  "toughness": 1,
-  "art": "cards/angerHound/art.png",
+  "sub": "Hound",
   "text": "Whenever you cast a spell, this gets +1/+0 EOT.",
+  "toughness": 1,
   "triggers": [
     {
       "event": "spellCast",
-      "condId": "youCastSpell",
       "text": "Spell cast — ~ gets +1/+0 EOT.",
       "effects": [
         {
@@ -23,11 +21,9 @@
           "power": 1,
           "toughness": 0
         }
-      ]
+      ],
+      "cond_id": "youCastSpell"
     }
   ],
-  "color": "R",
-  "colors": [
-    "R"
-  ]
+  "type": "Creature"
 }
