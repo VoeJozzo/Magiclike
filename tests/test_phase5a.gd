@@ -92,6 +92,7 @@ func _test_flying_blocking() -> void:
 	var ogre := _put_creature(s, "opp", "gray_ogre")
 	s.attackers.append(drake.instance_id)
 	s.phase_machine.current = PhaseMachine.Phase.COMBAT_BLOCK
+	s.awaiting_block_declaration = true  # MTG 509.1a: block declaration window open
 	# Ground Gray Ogre can't block Wind Drake (which has flying).
 	var bad := Action.make_declare_blocker(ogre.instance_id, drake.instance_id)
 	_assert_true(not RulesEngine.is_legal_action(bad), "flying: Gray Ogre can't block Wind Drake")
@@ -103,6 +104,7 @@ func _test_reach_blocks_flyer() -> void:
 	var spider := _put_creature(s, "opp", "giant_spider")
 	s.attackers.append(drake.instance_id)
 	s.phase_machine.current = PhaseMachine.Phase.COMBAT_BLOCK
+	s.awaiting_block_declaration = true  # MTG 509.1a: block declaration window open
 	var good := Action.make_declare_blocker(spider.instance_id, drake.instance_id)
 	_assert_true(RulesEngine.is_legal_action(good), "reach: Giant Spider blocks Wind Drake")
 
@@ -117,6 +119,7 @@ func _test_unblockable() -> void:
 	var bear := _put_creature(s, "opp", "grizzly_bears")
 	s.attackers.append(ogre.instance_id)
 	s.phase_machine.current = PhaseMachine.Phase.COMBAT_BLOCK
+	s.awaiting_block_declaration = true  # MTG 509.1a: block declaration window open
 	var bad := Action.make_declare_blocker(bear.instance_id, ogre.instance_id)
 	_assert_true(not RulesEngine.is_legal_action(bad), "unblockable: nothing can block")
 

@@ -121,6 +121,10 @@ func _test_ai_vs_ai_completes() -> void:
 func _current_actor(s: EngineState) -> String:
 	if not s.awaiting_target_for_trigger.is_empty():
 		return s.awaiting_target_for_trigger.get("controller_key", s.priority_player_key)
+	# Cleanup-step discard: the awaiting player is the actor regardless of
+	# priority (which is "" sentinel during the hold).
+	if not s.awaiting_discard.is_empty():
+		return s.awaiting_discard.get("player_key", s.priority_player_key)
 	# Mirror engine's _current_actor: when awaiting block declaration, the
 	# defender is the actor regardless of (absent) priority.
 	if s.awaiting_block_declaration:

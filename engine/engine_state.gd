@@ -31,6 +31,12 @@ var awaiting_target_for_trigger: Dictionary = {}
 # MTG 509.1a: true during COMBAT_BLOCK turn-based block declaration. No priority while true.
 var awaiting_block_declaration: bool = false
 
+# MTG 514.3: cleanup-step discard pause state. Set when the active player has
+# more cards in hand than their max_hand_size at CLEANUP entry. Shape:
+# {"player_key": "you"|"opp", "count_remaining": int}.
+# Cleared once enough KIND_DISCARD_CARD actions have resolved.
+var awaiting_discard: Dictionary = {}
+
 var log: Array[String] = []
 var winner: String = ""  # "" | "you" | "opp"
 var _next_iid: int = 1
@@ -107,6 +113,8 @@ func duplicate_deep() -> EngineState:
 	for trig in pending_triggers:
 		copy.pending_triggers.append(trig.duplicate(true))
 	copy.awaiting_target_for_trigger = awaiting_target_for_trigger.duplicate(true)
+	copy.awaiting_block_declaration = awaiting_block_declaration
+	copy.awaiting_discard = awaiting_discard.duplicate(true)
 	copy.log = log.duplicate()
 	copy.winner = winner
 	copy._next_iid = _next_iid

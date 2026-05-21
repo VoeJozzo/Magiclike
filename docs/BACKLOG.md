@@ -14,14 +14,27 @@ For html-proto deferred work, see [`reference/html-proto/BACKLOG.md`](../referen
 ## Open
 
 ### Rules-engine correctness
-- **Cleanup-step discard to max hand size (MTG 514.3).** Engine has a CLEANUP phase but doesn't enforce the discard-down-to-7 rule. New action `KIND_DISCARD_CARD` needed; UI picker for the human player; AI heuristic for opp (pick lowest-value cards, mirror the JS prototype). Card-framework's `Hand.max_hand_size` is currently bumped to 100 in `_make_hand` as a visual-layer safety net — proper engine enforcement makes that workaround removable. Surfaced playing the Phase 6 demo deck (opp got mana-screwed, drew to 11+ cards, hit the card-framework hand cap which manifested as face-down strandings).
 - **"Intervening if" predicate re-check at trigger resolution.** Currently `engine/predicates/predicates.gd` is consulted at trigger queue time only. MTG rules check the condition again on resolution (rule 603.4). Matters when a between-events action invalidates the condition (e.g., a "while you control X" trigger where X leaves play between queue and resolution). Deferred from Phase 4.
 - **Non-self triggers exercised in tests.** The `self_only=false` listener path in trigger draining is implemented but no card or test currently exercises it. Add when a card legitimately needs a non-self listener.
 
 ### AI
 - **Per-effect triggered-ability scoring in `AIScoring.card_value`.** Currently a flat keyword/triggered-ability bump. The JS prototype walks effects to score them individually (a Pyromaniac-style ETB is worth less than a Sheoldred-style draw-step lifelink). Deferred from Phase 5b.
 
+### Addons / vendored
+- **Bump `addons/card-framework/` from v1.3.2 → v1.4.0.** Relevant changes: defensive handling for freed cards in `_held_cards`, fix for card offset after layout shifts, `get_target_pose_for()` hook for layout-race-safe returns. Not blocking but worth doing alongside the layout / cramping pass (touches the same area). Our hover-scale override in `scenes/card.gd` will continue to apply — the upstream bug isn't fixed in main yet.
+- **Upstream the hover fixes to chun92/card-framework.** Two real bugs in their `draggable_object.gd` that any consumer would benefit from fixing:
+  1. **Scale accumulation.** `original_scale = scale` is captured at each hover-start, so rapid mouse in/out compounds (mid-tween value becomes the new "baseline"). Fix: capture `_baseline_scale` once in `_ready()` and use that constant; preserves consumer-set non-1.0 baselines.
+  2. **Rotation tween is forced-on.** addon always tweens `rotation` to `hover_rotation` on hover. Correct for fanned hands (straightens for reading), wrong for any game where rotation is semantic state (Magic-style tap=90°, sideways "exhausted" indicators, etc.). Fix: add `@export var hover_animates_rotation: bool = true`; consumers with semantic rotation set it to false. Our override becomes a one-line property set instead of a full method override.
+  MIT-licensed, PR-friendly project. Worth doing once our local fix holds up in playtest. Once landed upstream + we bump versions, our `scenes/card.gd::_start_hover_animation` override goes away entirely.
+
 ### UI / UX
+- **Board layout / cramping pass.** Open items from playtest at 1856×1044 that are still unaddressed:
+  - **Stack as expandable popup / tray.** Currently the stack panel sits permanently top-center, colliding with the top-row land cascade. Move it into a tray the player can open/close as needed.
+  - **Multi-row creature layout** when count exceeds a row's capacity.
+  - **Right-side log bleed** into the card zones — log panel resize/clip or move out of the card area.
+  - **Smaller card tiles** to fit more on screen, paired with the existing right-click focus for detail-on-demand.
+  Done in earlier sessions: adaptive spacing for creatures and lands, color clumping for lands, right-click focus for inspection. Touches `BattlefieldZone`, `_make_battlefield`, `_make_hand`, the stack panel scenes.
 - **Config for priority-pass stops.** MTGO-style "stop on cast / stop on draw / stop on attack" settings — let the player control which auto-passes are allowed and when the engine hands them priority explicitly. Engine has the seams (single `execute_action(pass_priority)` entry point); needs a settings layer and game-board wiring.
 - **Manual "hold priority" UI for the human player.** Currently the player has a Space/Enter keybind that passes priority; no UI to retain priority for a follow-up instant. Becomes relevant once players have multi-instant lines they want to chain.
-- **Card art for the 23 existing cards.** Placeholders today. The html-proto has pixel-art PNGs for some cards under `reference/html-proto/cards/<tplId>/art.png` that could port over for shared names (Lightning Bolt, Counterspell, etc.).
+- **Touch/mobile: long-press to inspect.** Desktop currently uses right-click for card inspection (focus mode). When/if we port to touch, replace the right-click trigger with a long-press on the card visual (~400ms hold without significant movement). Existing `_toggle_focus` / `enter_focus` / `exit_focus` infrastructure carries over; only the input gesture changes.
+- **Card art for the 23 existing cards.** Placeholders today. Four PNGs (blood_knight, cloud_pegasus, ember_drake, goblin_duelist) are already ported to `cards/images/` but unwired — they're art *inserts*, not full card faces, and our `scenes/card.tscn` treats `front_image` as the entire face. Wiring needs a frame+slot rebuild of card.tscn (Frame TextureRect + Art TextureRect children), then TresCardFactory sets both. After that, port the remaining cards' art from `reference/html-proto/cards/<tplId>/art.png`.
