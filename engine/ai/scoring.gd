@@ -45,7 +45,7 @@ static func card_value(template: CardResource, purpose: String = "draft") -> flo
 			match effect.get("kind", ""):
 				"damage":
 					score += 2.0 + float(effect.get("amount", 0))
-				"counter_spell":
+				"counter":
 					score += 6.0
 				"gain_life":
 					score += 1.0

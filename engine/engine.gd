@@ -1258,7 +1258,7 @@ func _check_win_conditions() -> void:
 
 
 # Counter a stack spell → owner's graveyard. False if iid not on stack (target gone).
-# Public so counter_spell.gd can call; autoload owns _stack_held_cards.
+# Public so counter.gd can call; autoload owns _stack_held_cards.
 func counter_stack_entry(iid: int) -> bool:
 	var idx: int = -1
 	for i in range(_state.stack.entries.size()):

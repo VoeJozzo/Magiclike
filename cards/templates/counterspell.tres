@@ -14,6 +14,6 @@ mana_cost = {
 }
 oracle_text = "Counter target spell."
 on_cast_effects = Array[Dictionary]([{
-"kind": "counter_spell",
+"kind": "counter",
 "target": "chosen"
 }])

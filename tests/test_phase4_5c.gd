@@ -4,7 +4,7 @@ extends Node
 #   - Healing Salve (W instant: gain 3 life) — exercises the gain_life
 #     effect handler.
 #   - Counterspell (UU instant: counter target spell) — exercises the
-#     counter_spell effect, stack-as-target, and the engine's
+#     counter effect, stack-as-target, and the engine's
 #     counter_stack_entry helper.
 #   - Basic lands across all five colors (Plains/Island/Swamp added).
 #   - Vanilla creature curve (Bear Cub 1/1, Gray Ogre 2/2, Hill Giant 3/3)
