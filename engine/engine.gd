@@ -16,6 +16,15 @@ var _state: EngineState = null
 func _ready() -> void:
 	# Predicate validation at boot — catches typos in card resources.
 	Predicates.validate_all_card_predicates(CardDatabase.all_resources())
+	# Cross-engine supportability scan over the full html-proto card pool.
+	# Loads 258 JSONs and prints one line summarizing how many are fully
+	# playable today vs awaiting effect/event/predicate handlers. Skip in
+	# CI / headless tests that don't want the disk hit by setting the env
+	# var MAGICLIKE_SKIP_SUPPORTABILITY_SCAN=1.
+	if not OS.has_environment("MAGICLIKE_SKIP_SUPPORTABILITY_SCAN"):
+		var json_cards: Dictionary = JsonCardLoader.load_all()
+		if not json_cards.is_empty():
+			JsonCardLoader.supportability_report(json_cards, true)
 
 
 # Reentrancy guard for opp-turn auto-cycle (Phase 2 has no AI).
@@ -1432,7 +1441,7 @@ func _do_discard_card(action: Dictionary) -> bool:
 	player.move_card(card, player.hand, player.graveyard)
 	_state.append_log("%s discards %s." % [player.name, card.name()])
 	# Phase 4-style event hook for future "when X is discarded" triggers.
-	_fire_event({"name": "card_discarded", "card": card, "controller_key": player_key})
+	_fire_event({"kind": "card_discarded", "subject_card": card, "controller_key": player_key})
 	# Decrement count; clear awaiting state when satisfied.
 	var remaining: int = _state.awaiting_discard.get("count_remaining", 0) - 1
 	if remaining <= 0:
