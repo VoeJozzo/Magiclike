@@ -50,7 +50,7 @@ static func card_value(template: CardResource, purpose: String = "draft") -> flo
 				"gain_life":
 					score += 1.0
 				"pump":
-					score += float(effect.get("amount_power", 0)) + float(effect.get("amount_toughness", 0))
+					score += float(effect.get("power", 0)) + float(effect.get("toughness", 0))
 	if not template.triggered_abilities.is_empty():
 		score += 2.0
 	return score

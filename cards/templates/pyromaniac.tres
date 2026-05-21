@@ -16,7 +16,7 @@ mana_cost = {
 }
 oracle_text = "When Pyromaniac enters, it deals 1 damage to any target."
 triggered_abilities = Array[Dictionary]([{
-"condition_predicate": "",
+"cond_id": "",
 "effects": [{
 "amount": 1,
 "kind": "damage",

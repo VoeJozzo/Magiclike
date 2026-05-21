@@ -1331,7 +1331,7 @@ func _fire_event(event: Dictionary) -> void:
 			# self_only: source IS event subject ("When ~ enters/dies").
 			if trig.get("self_only", false) and source.instance_id != subject_iid:
 				continue
-			var pred: String = trig.get("condition_predicate", "")
+			var pred: String = trig.get("cond_id", "")
 			if not Predicates.evaluate(pred, _state, source, event):
 				_state.append_log("Trigger condition false for %s — skipping" % source.name())
 				continue

@@ -2,7 +2,7 @@ class_name Predicates
 extends RefCounted
 
 # String-keyed condition registry for triggered abilities (decision B1, see docs/godot-port-plan.md).
-# Cards reference predicates by string: triggered_abilities: [{"condition_predicate": "name", ...}].
+# Cards reference predicates by string: triggers: [{"cond_id": "name", ...}].
 # Calling convention: cond_<name>(state, source, event) -> bool. Pass state explicitly (no autoload reach).
 
 const _PRED_NAMES := [
@@ -48,13 +48,13 @@ static func validate_all_card_predicates(card_resources: Array) -> void:
 		if card == null:
 			continue
 		for trig in card.triggered_abilities:
-			var pred: String = trig.get("condition_predicate", "")
+			var pred: String = trig.get("cond_id", "")
 			if pred == "":
 				continue
 			if not _PRED_NAMES.has(pred) and not _is_card_local_predicate(card, pred):
 				unknown.append("%s.%s" % [card.card_id, pred])
 	if not unknown.is_empty():
-		push_error("Unknown condition_predicate(s): %s" % ", ".join(unknown))
+		push_error("Unknown cond_id(s): %s" % ", ".join(unknown))
 
 
 # Reserved hook for card-local cond_<name> methods (B1 pattern). No callers yet.
