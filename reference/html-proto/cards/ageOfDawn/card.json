@@ -9,7 +9,7 @@
   },
   "power": 2,
   "toughness": 5,
-  "art": "☁",
+  "art": "cards/ageOfDawn/art.png",
   "text": "Flying",
   "keywords": [
     "flying"

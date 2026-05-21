@@ -7,6 +7,23 @@
 const COLOR_NAMES = { W: 'White', U: 'Blue', B: 'Black', R: 'Red', G: 'Green' };
 const NUM_WORDS = { 1: 'one', 2: 'two', 3: 'three', 4: 'four', 5: 'five' };
 
+// HTML escape for text destined for innerHTML. Renders &<> safe; leaves
+// braces alone so renderManaSymbols can find {R}/{T}/{X}/{1} tokens
+// downstream. Quotes pass through because we never interpolate user-
+// derived strings into attribute values, only into text content.
+function escapeHtml(s) { return String(s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+
+// Substitute a card name into a trigger / effect template. The ~ token
+// is the conventional placeholder used across MERCURIAL_TRIGGER_POOL
+// (engine.js) and GENERATOR_EFFECTS / GENERATOR_CONDITIONS (trigger-
+// generator.js). The cardName is HTML-escaped because the result lands
+// in innerHTML — designer-authored templates may contain HTML (e.g.
+// future <b>emphasis</b>), but card names are display data that should
+// never be parsed as markup.
+function formatTriggerText(template, cardName) {
+  return (template || '').replace(/~/g, escapeHtml(cardName || ''));
+}
+
 // eff.target → noun phrase. 'player' = "target opponent" for damage/discard, "target player" for gainLife.
 function targetPhrase(eff) {
   const t = eff.target;
@@ -481,8 +498,13 @@ function keywordPreamble(keywords) {
 }
 
 // Flat string for storage/logging. UI uses describeCardSegments for highlights.
+// skipKeywords:true keeps the stored text free of the keyword preamble so
+// successive engine regenerations (line 567 of engine.js fires on every
+// makeCard / makeCard-after-grant) don't bake "Trample. " into card.text
+// and double up with the render-time preamble. The keyword preamble is a
+// UI concern, added fresh by the card frame's describeCardSegments call.
 function describeCardText(card) {
-  return segsToText(describeCardSegments(card));
+  return segsToText(describeCardSegments(card, {skipKeywords: true}));
 }
 
 // Segments with highlight flags. opts.skipKeywords for badge-rendering UI.
@@ -490,7 +512,38 @@ function describeCardSegments(card, opts) {
   opts = opts || {};
   const tpl = CARDS[card.tplId] || card;
   if (tpl.customText === true || tpl.special === true) {
-    return [plainSeg(card.text || tpl.text || '')];
+    // Hand-authored static text. Many special cards (City Guardian,
+    // Archdemon Bargains) already mention their intrinsic keywords
+    // inline, so we DON'T prepend the full keyword list -- that would
+    // duplicate "First Strike" etc. But GRANTED keywords (from Elystra's
+    // permanentEot accumulator, Endomorph's absorb, runtime spell
+    // effects) aren't in the static text and need to be surfaced. We
+    // compute granted = card.keywords \ tpl.keywords and prepend just
+    // those, mirroring how non-special cards inline their full preamble.
+    // Skipped when opts.skipKeywords (the classic frame renders its own
+    // keyword badges via nativeKeywordBadgesHtml).
+    //
+    // Sections must be flattened before return because consumers
+    // (segmentsToHtml, the test harness) expect a flat array of segment
+    // objects, not array-of-arrays. The non-special branch below has
+    // its own flatten loop; we mirror it.
+    const sections = [];
+    if (!opts.skipKeywords && (card.type === 'Creature' || tpl.type === 'Creature')) {
+      const intrinsic = new Set(tpl.keywords || []);
+      const granted = (card.keywords || []).filter(kw => !intrinsic.has(kw));
+      if (granted.length > 0) {
+        const kw = keywordPreamble(granted);
+        if (kw) sections.push([plainSeg(kw + '.')]);
+      }
+    }
+    const staticText = card.text || tpl.text || '';
+    if (staticText) sections.push([plainSeg(staticText)]);
+    const out = [];
+    for (let i = 0; i < sections.length; i++) {
+      if (i > 0) out.push(plainSeg(' '));
+      out.push(...sections[i]);
+    }
+    return out;
   }
   // Stapled cards diff against synthesized template (so staple-half bumps highlight).
   let tplBaseline = tpl;

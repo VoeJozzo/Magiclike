@@ -17,6 +17,8 @@ const KIND_UNDECLARE_BLOCKER := "undeclare_blocker"
 const KIND_CONFIRM_BLOCKS := "confirm_blocks"
 # Supplies the target for a queued triggered ability awaiting input (see state.awaiting_target_for_trigger).
 const KIND_PICK_TRIGGER_TARGET := "pick_trigger_target"
+# MTG 514.3 cleanup-step discard. Resolves one card while state.awaiting_discard is set.
+const KIND_DISCARD_CARD := "discard_card"
 
 
 static func make_pass_priority() -> Dictionary:
@@ -73,3 +75,7 @@ static func target_creature(iid: int) -> Dictionary:
 
 static func make_pick_trigger_target(target: Dictionary) -> Dictionary:
 	return {"kind": KIND_PICK_TRIGGER_TARGET, "target": target}
+
+
+static func make_discard_card(source_iid: int) -> Dictionary:
+	return {"kind": KIND_DISCARD_CARD, "source_iid": source_iid}

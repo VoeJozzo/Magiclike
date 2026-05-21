@@ -1,15 +1,33 @@
 @tool
 extends Card
 
-# Magiclike Card subclass: text overlays + disables card-framework drag/hover.
-# - Drag disabled — engine drives all moves; release-drop would bounce played lands back.
-# - Hover scale disabled — compounds (original_scale captured post-anim → ballooning).
-# - Hover rotation disabled — flickers tapped cards back to upright.
-# Text populated by apply_card_text() after card_info lands (post-_ready).
+# Magiclike Card subclass: text overlays + addon hover/drag tweaks.
+# - Drag disabled (engine drives moves; release-drop would bounce lands back).
+# - Hover scale at 1.25x with compounding bug fixed via Vector2.ONE baseline.
+# - Hover rotation opt-in via hover_animates_rotation (default false) — see
+#   below; we use rotation for tap state, addon's tween-to-0° would flicker it.
+# - Right-click → focus mode (3x scale, viewport center) for card inspection.
+# See docs/BACKLOG.md for the upstream-to-card-framework PR these all enable.
 
 const _PADDING := 6
 const _NAME_HEIGHT := 22
 const _TYPE_HEIGHT := 18
+# Focus mode: card pops to 3x scale + high z when right-clicked. Lets the
+# player read oracle text / P/T at full size without sacrificing the cramped
+# board layout's small default. Click any card / press Esc to dismiss.
+const _FOCUS_SCALE: float = 3.0
+const _FOCUS_Z: int = 200
+
+# Opt-in rotation animation on hover. Off by default because rotation is
+# semantic state (tap) on battlefield cards. Flip to true on cards that
+# live in a fanned hand layout so the addon's straighten-on-hover applies.
+@export var hover_animates_rotation: bool = false
+
+# Focus state. Toggled via enter_focus / exit_focus, called from game_board's
+# right-click handler. _focus_orig_* hold the pre-focus values to restore.
+var is_focused: bool = false
+var _focus_orig_z: int = 0
+var _focus_orig_position: Vector2
 
 var _name_label: Label
 var _cost_label: Label
@@ -49,6 +67,9 @@ func _ready() -> void:
 	super._ready()
 	custom_minimum_size = card_size
 	size = card_size
+	# Override the addon's default hover_scale (1.1) — 1.25 makes hover-zoom
+	# actually useful for reading P/T and oracle text at a glance.
+	hover_scale = 1.25
 	if Engine.is_editor_hint():
 		return
 	_build_text_overlay()
@@ -273,7 +294,82 @@ func set_combat_highlight(state: String) -> void:
 			_combat_highlight.color = Color(0, 0, 0, 0)
 
 
-# State: "playable" (green border), "target" (yellow), else clear.
+# Right-click inspection mode. Scales 3x, lifts above neighbors, recenters
+# globally so the giant card lands in the middle of the viewport regardless
+# of which zone the source was in. Doesn't touch mouse_filter — the addon's
+# state machine still sees mouse events; the _enter_state/_exit_state guards
+# (is_focused checks) prevent it from clobbering our visuals.
+func enter_focus() -> void:
+	if is_focused:
+		return
+	is_focused = true
+	_focus_orig_z = z_index
+	# When the card is hovering, `position` is the lifted value (tweened up by
+	# hover_distance), not the rest position. The addon's `original_position`
+	# holds the pre-hover-lift base — captured in _start_hover_animation. Use
+	# THAT when restoring on exit, otherwise each focus+dismiss cycle would
+	# leave the card one hover_distance higher than before, accumulating with
+	# every right-click. (Joe's "card crept up" report.)
+	if current_state == DraggableState.HOVERING:
+		_focus_orig_position = original_position
+	else:
+		_focus_orig_position = position
+	pivot_offset = card_size / 2.0  # scale from center, not corner
+	# Kill any in-flight tweens so they don't fight focus visuals. A hover
+	# tween mid-flight would continue interpolating scale; a move tween
+	# would continue interpolating global_position back to layout slot.
+	if hover_tween and hover_tween.is_valid():
+		hover_tween.kill()
+		hover_tween = null
+	if move_tween and move_tween.is_valid():
+		move_tween.kill()
+		move_tween = null
+	scale = Vector2.ONE * _FOCUS_SCALE
+	z_index = _FOCUS_Z
+	# Center in viewport via global_position so we don't fight with whatever
+	# parent CardContainer's offset is. card_size is the base size; the
+	# rendered footprint is card_size * _FOCUS_SCALE, so subtract half of
+	# the SCALED size to center the visible card on the viewport center.
+	var viewport_center := Vector2(960, 540)
+	global_position = viewport_center - (card_size * _FOCUS_SCALE * 0.5)
+
+
+# Short-circuit the addon's move() while focused. Layout passes (which fire
+# on every state_changed signal) call card.move(target_slot) on every card
+# in the zone, including the focused one — without this guard, the focused
+# card would slide from viewport center toward its battlefield slot, then
+# every subsequent pass-priority would re-fire the tween, producing the
+# "card creeps up the screen" symptom Joe reported.
+func move(target_destination: Vector2, degree: float) -> void:
+	if is_focused:
+		return
+	super.move(target_destination, degree)
+
+
+func exit_focus() -> void:
+	if not is_focused:
+		return
+	is_focused = false
+	scale = Vector2.ONE
+	z_index = _focus_orig_z
+	position = _focus_orig_position
+	# State machine could have drifted while focused (mouse_entered / exited
+	# fired during focus, our guards prevented visual side effects but
+	# change_state still updated current_state internally). Snap to IDLE
+	# explicitly so the next mouse_entered cleanly fires HOVERING.
+	is_mouse_inside = false
+	if current_state != DraggableState.IDLE:
+		change_state(DraggableState.IDLE)
+	# Godot doesn't auto-refire mouse_entered when a control moves under a
+	# stationary cursor. After we restore position, hit-test the cursor; if
+	# it's over us right now, explicitly transition to HOVERING so hover
+	# resumes without requiring the user to mouse-off-and-back-on.
+	var mouse_global: Vector2 = get_global_mouse_position()
+	if get_global_rect().has_point(mouse_global):
+		is_mouse_inside = true
+		change_state(DraggableState.HOVERING)
+
+
 func set_legality_glow(state: String) -> void:
 	if _legality_glow == null:
 		return
@@ -293,24 +389,38 @@ func _handle_mouse_pressed() -> void:
 		card_container.on_card_pressed(self)
 
 
-# Position-only hover (skip card-framework's scale/rotation bugs).
+# Position + scale hover, with rotation gated by `hover_animates_rotation`.
+# Compounding fix: snap to Vector2.ONE before starting a new tween, so a
+# rapid in-out sequence can't capture a mid-flight scale as the baseline.
+# Pivot is set to card center so the scale grows from the middle, not the
+# top-left. Skipped entirely when the card is focused — focus owns the
+# visual transform.
 func _start_hover_animation() -> void:
+	if is_focused:
+		return
 	if hover_tween and hover_tween.is_valid():
 		hover_tween.kill()
 		hover_tween = null
+		scale = Vector2.ONE  # discard any in-flight scale value
 
 	original_position = position
-	# Don't capture scale/rotation — they compound on each hover.
+	original_hover_rotation = rotation  # only used when hover_animates_rotation
 	current_hover_position = position
+	pivot_offset = card_size / 2.0  # scale from center, not corner
 
 	hover_tween = create_tween()
 	hover_tween.set_parallel(true)
 	var target_position := Vector2(position.x, position.y - hover_distance)
 	hover_tween.tween_property(self, "position", target_position, hover_duration)
+	hover_tween.tween_property(self, "scale", Vector2.ONE * hover_scale, hover_duration)
+	if hover_animates_rotation:
+		hover_tween.tween_property(self, "rotation", deg_to_rad(hover_rotation), hover_duration)
 	hover_tween.tween_method(_update_hover_position, position, target_position, hover_duration)
 
 
 func _stop_hover_animation() -> void:
+	if is_focused:
+		return
 	if hover_tween and hover_tween.is_valid():
 		hover_tween.kill()
 		hover_tween = null
@@ -318,4 +428,47 @@ func _stop_hover_animation() -> void:
 	hover_tween = create_tween()
 	hover_tween.set_parallel(true)
 	hover_tween.tween_property(self, "position", original_position, hover_duration)
+	hover_tween.tween_property(self, "scale", Vector2.ONE, hover_duration)
+	if hover_animates_rotation:
+		hover_tween.tween_property(self, "rotation", original_hover_rotation, hover_duration)
 	hover_tween.tween_method(_update_hover_position, position, original_position, hover_duration)
+
+
+# State transitions during focus: ALWAYS let super run (it does important
+# bookkeeping like Card.hovering_card_count which is a global guard on
+# whether ANY card can start hovering). Then re-apply focus visuals
+# afterward to undo whatever super's transition did to z_index / scale.
+#
+# Without letting super run during focus, hovering_card_count gets stuck
+# at 1 (incremented on HOVERING entry pre-focus, never decremented because
+# we'd skip the HOVERING → IDLE exit). After focus dismisses, every future
+# mouse_entered fails the `_can_start_hovering()` check (which is
+# `hovering_card_count == 0 and holding_card_count == 0`), permanently
+# disabling hover scale.
+#
+# Addon bug workaround (MOVING entry, separate issue): when a card is
+# mid-hover and the engine calls move() on it, MOVING entry kills
+# hover_tween without resetting scale. Snap to Vector2.ONE.
+func _enter_state(state, from_state) -> void:
+	var was_focused: bool = is_focused
+	super._enter_state(state, from_state)
+	if was_focused:
+		# super may have reset z_index (HOVERING entry adds DRAG_Z_OFFSET to
+		# stored_z_index; IDLE entry sets z_index to stored_z_index). Force
+		# focus visuals back on. _start_hover_animation also gets called
+		# from HOVERING entry, but its own is_focused guard early-returns.
+		scale = Vector2.ONE * _FOCUS_SCALE
+		z_index = _FOCUS_Z
+	elif state == DraggableState.MOVING:
+		scale = Vector2.ONE
+
+
+func _exit_state(state) -> void:
+	var was_focused: bool = is_focused
+	super._exit_state(state)
+	if was_focused:
+		# Same dance as _enter_state — super resets z_index and may start
+		# a stop-hover tween (skipped by _stop_hover_animation's guard);
+		# re-apply focus visuals.
+		scale = Vector2.ONE * _FOCUS_SCALE
+		z_index = _FOCUS_Z

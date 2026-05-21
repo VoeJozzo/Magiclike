@@ -4,7 +4,7 @@ extends Control
 # Programmatic UI in _ready; .tscn is just an empty Control. Subscribes to RulesEngine.state_changed.
 
 var _card_manager: CardManager
-var _factory_scene: PackedScene = preload("res://scenes/json_card_factory.tscn")
+var _factory_scene: PackedScene = preload("res://scenes/tres_card_factory.tscn")
 
 var _you_hand: Hand
 var _you_battlefield: BattlefieldZone
@@ -64,6 +64,16 @@ func _is_awaiting_blocks() -> bool:
 # instead of falling through to the spell-target path.
 var _picking_trigger_target: bool = false
 
+# MTG 514.3 cleanup-step discard picker mode. Derived from
+# state.awaiting_discard.player_key == "you". When true, hand clicks dispatch
+# KIND_DISCARD_CARD instead of running cast logic.
+var _picking_discard: bool = false
+
+# Right-click-to-inspect: the currently focused card (if any). One at a time.
+# Toggled by right-click on a card; dismissed by left-click on any card,
+# right-click on the focused card, or Escape.
+var _focused_card: Card = null
+
 # Delta-tracked engine log (EngineState is RefCounted; no log_appended signal).
 var _engine_log_seen: int = 0
 
@@ -89,10 +99,19 @@ func _ready() -> void:
 
 func _build_ui() -> void:
 	anchors_preset = Control.PRESET_FULL_RECT
+	# Control default is mouse_filter = STOP, which consumes mouse events
+	# at the root and prevents _unhandled_input from firing for clicks on
+	# empty space. PASS lets clicks bubble up to _unhandled_input so the
+	# focus-dismiss-on-any-click handler there fires.
+	mouse_filter = Control.MOUSE_FILTER_PASS
 	var bg := ColorRect.new()
 	bg.color = Color(0.05, 0.06, 0.08)
 	bg.anchor_right = 1.0
 	bg.anchor_bottom = 1.0
+	# Don't eat mouse events — otherwise clicks on the blank board are
+	# consumed here before reaching _unhandled_input, which prevents the
+	# focus-dismiss-on-any-click behavior from firing.
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(bg)
 
 	_card_manager = CardManager.new()
@@ -113,6 +132,7 @@ func _build_ui() -> void:
 	# Library moved to X=340 to clear the player panel at (40, 40, w=280).
 	_opp_library = _make_pile("OppLibrary", Vector2(340, 40), false)
 	_opp_battlefield = _make_battlefield("OppBattlefield", Vector2(560, 120), false)
+	_opp_battlefield.player_key = "opp"
 	_opp_graveyard = _make_pile("OppGraveyard", Vector2(1700, 60), true)
 	_opp_hand = _make_hand("OppHand", Vector2(960, 60))
 
@@ -120,6 +140,7 @@ func _build_ui() -> void:
 	# creatures sitting closer to center on their side). Library moved to
 	# X=340 so it doesn't sit on top of the you-panel.
 	_you_battlefield = _make_battlefield("YouBattlefield", Vector2(560, 560), true)
+	_you_battlefield.player_key = "you"
 	_you_library = _make_pile("YouLibrary", Vector2(340, 800), false)
 	_you_graveyard = _make_pile("YouGraveyard", Vector2(1700, 880), true)
 	_you_hand = _make_hand("YouHand", Vector2(960, 980))
@@ -212,6 +233,10 @@ func _make_hand(name_str: String, pos: Vector2) -> Hand:
 	zone.position = pos
 	zone.size = Vector2(700, 120)
 	zone.mouse_filter = Control.MOUSE_FILTER_PASS
+	# card-framework's default max_hand_size is 10. The engine's MTG 514.3
+	# cleanup-step discard rule (Player.max_hand_size = 7, engine forces
+	# discard before turn ends) means we never hit the addon's cap in
+	# normal play — leaving it at the default is fine.
 	_card_manager.add_child(zone)
 	return zone
 
@@ -290,6 +315,9 @@ func _refresh_ui() -> void:
 		_enter_trigger_target_mode(s.awaiting_target_for_trigger)
 	elif was_picking and not _picking_trigger_target:
 		_exit_trigger_target_mode()
+	# MTG 514.3 cleanup-step discard picker mode.
+	_picking_discard = not s.awaiting_discard.is_empty() \
+		and s.awaiting_discard.get("player_key", "") == "you"
 	# Player panels
 	_you_panel.update_from_player(s.you)
 	_opp_panel.update_from_player(s.opp)
@@ -299,7 +327,17 @@ func _refresh_ui() -> void:
 	var priority_name: String
 	var pp: Player = s.priority_player()
 	if pp == null:
-		priority_name = "(declaring blocks)" if s.awaiting_block_declaration else "(none)"
+		if s.awaiting_block_declaration:
+			priority_name = "(declaring blocks)"
+		elif not s.awaiting_discard.is_empty():
+			var discard_owner: String = s.awaiting_discard.get("player_key", "")
+			var n: int = int(s.awaiting_discard.get("count_remaining", 0))
+			priority_name = "(%s discarding %d)" % [
+				s.player_by_key(discard_owner).name if discard_owner != "" else "?",
+				n,
+			]
+		else:
+			priority_name = "(none)"
 	else:
 		priority_name = pp.name
 	_phase_label.text = "Turn %d — %s — Priority: %s" % [
@@ -317,6 +355,12 @@ func _refresh_ui() -> void:
 
 # Phase-aware action-button label; targeting/block-mode overrides; stack-non-empty → Resolve.
 func _update_action_button(s: EngineState) -> void:
+	if _picking_discard:
+		var n: int = int(s.awaiting_discard.get("count_remaining", 0))
+		_action_button.text = "Discard %d card%s" % [n, "s" if n != 1 else ""]
+		_action_button.disabled = true  # not a click target; just a prompt
+		return
+	_action_button.disabled = false
 	if _picking_trigger_target:
 		_action_button.text = "Pick a target…"
 		return
@@ -543,7 +587,11 @@ func _apply_combat_highlights(s: EngineState) -> void:
 #     and other actions are not relevant because targeting is in progress).
 func _apply_legality_glows(s: EngineState) -> void:
 	var glow_state: Dictionary = {}  # iid -> "playable" or "target"
-	if _pending_cast_iid != -1:
+	if _picking_discard:
+		# Every card in your hand is a legal discard. Glow them as targets.
+		for card in s.you.hand:
+			glow_state[card.instance_id] = "target"
+	elif _pending_cast_iid != -1:
 		_collect_legal_target_iids(s, _pending_target_filter, glow_state)
 	elif _picking_trigger_target:
 		var filter: String = s.awaiting_target_for_trigger.get("filter", "")
@@ -578,16 +626,29 @@ func _apply_legality_glows(s: EngineState) -> void:
 # legal target under the given filter. Used by both the spell-cast target
 # picker and the trigger target picker.
 func _collect_legal_target_iids(s: EngineState, filter: String, out: Dictionary) -> void:
-	# Filters that allow creature targets: glow legal creatures on either
-	# battlefield (modulo hexproof). Player-only or spell-only filters
-	# don't need a creature glow — player panels handle their own.
+	# "spell" filter (Counterspell): glow legal spell entries on the stack.
+	# Their visuals sit at the stack anchor and get the same gold-target
+	# treatment as a targetable creature would. Triggers can't be countered.
+	# (Player-target filters don't glow anything here — the player panels
+	# handle their own targeting affordance.)
+	if filter == "spell":
+		for entry in s.stack.entries:
+			if entry.get("kind", "spell") != "spell":
+				continue
+			if entry.get("controller_key", "") == "you":
+				continue  # MTG default: can't counter your own spells
+			var siid: int = int(entry.get("source_iid", -1))
+			if siid != -1:
+				out[siid] = "target"
+		return
+	# Creature/any/creature_or_player filters: glow legal creatures on
+	# either battlefield (modulo hexproof for opp's side).
 	if filter != "any" and filter != "creature" and filter != "creature_or_player":
 		return
 	for player in [s.you, s.opp]:
 		for c in player.battlefield:
 			if c.template == null or not (c.template is CreatureResource):
 				continue
-			# Hexproof on opponent's creatures means you can't target them.
 			if c.has_keyword("hexproof") and c.controller_key != "you":
 				continue
 			out[c.instance_id] = "target"
@@ -779,11 +840,43 @@ func _commit_taps_and_cast(spell_iid: int, targets: Array, lands_to_tap: Array) 
 func _on_hand_card_gui_input(event: InputEvent, visual: Card) -> void:
 	if not (event is InputEventMouseButton):
 		return
-	if not event.pressed or event.button_index != MOUSE_BUTTON_LEFT:
+	if not event.pressed:
 		return
+	# Right-click: toggle focus / inspect mode. Doesn't fall through to cast.
+	if event.button_index == MOUSE_BUTTON_RIGHT:
+		_toggle_focus(visual)
+		return
+	if event.button_index != MOUSE_BUTTON_LEFT:
+		return
+	# Left-click while another card is focused: dismiss the focus first, then
+	# proceed with the click (single-click both unfocuses and clicks the new
+	# target, since holding focus across click would be confusing).
+	if _focused_card != null:
+		_dismiss_focus()
 	var iid: int = visual.card_info.get("instance_id", -1)
 	if iid == -1:
 		return
+	# MTG 514.3 cleanup-step discard picker: hand clicks discard the card.
+	# Overrides every other interpretation — you have to discard down before
+	# anything else can happen.
+	if _picking_discard:
+		var s_disc: EngineState = RulesEngine.state()
+		var found_disc = s_disc.find_instance(iid)
+		if found_disc != null and found_disc.zone_name == "hand" and found_disc.controller.key == "you":
+			RulesEngine.execute_action(Action.make_discard_card(iid))
+		else:
+			_log_local("[color=#ff8888]Discard a card from YOUR hand.[/color]")
+		return
+	# Spell-target mode (Counterspell etc.): clicking the spell's CARD VISUAL
+	# at the stack anchor should work the same as clicking its stack-panel
+	# button. Delegate to the panel handler. Triggers don't have a card
+	# visual on the stack, so this only ever fires for spell entries.
+	if _pending_cast_iid != -1 and _pending_target_filter == "spell":
+		var s_target: EngineState = RulesEngine.state()
+		var found_target = s_target.find_instance(iid)
+		if found_target != null and found_target.zone_name == "stack":
+			_on_stack_entry_clicked(iid)
+			return
 	# If we're already in spell-targeting mode, this 2nd click is ignored.
 	# Log so the player knows targeting is pending (most likely cause of
 	# "nothing happens when I click").
@@ -1123,6 +1216,13 @@ func _try_pick_creature_as_trigger_target(iid: int) -> void:
 # hunting for the cancel button. Triggers the same code path as clicking
 # the button or pressing the right widget — no duplicated logic.
 func _unhandled_input(event: InputEvent) -> void:
+	# Click anywhere (outside any card visual) dismisses focus. Clicks ON
+	# a card go through _on_hand_card_gui_input which already handles
+	# dismissal as part of its left-click flow.
+	if event is InputEventMouseButton and event.pressed and _focused_card != null:
+		_dismiss_focus()
+		get_viewport().set_input_as_handled()
+		return
 	if not (event is InputEventKey):
 		return
 	if not event.pressed or event.echo:
@@ -1132,12 +1232,39 @@ func _unhandled_input(event: InputEvent) -> void:
 			_on_pass_pressed()
 			get_viewport().set_input_as_handled()
 		KEY_ESCAPE:
+			# Esc dismisses focus (inspect mode) before anything else.
+			if _focused_card != null:
+				_dismiss_focus()
+				get_viewport().set_input_as_handled()
+				return
 			# Cancel spell-targeting or block-selection. (Trigger-target
 			# picks can't be cancelled — the trigger is on the queue and
 			# must resolve with some target.)
 			if _pending_cast_iid != -1 or _pending_block_blocker_iid != -1:
 				_on_pass_pressed()
 				get_viewport().set_input_as_handled()
+
+
+# ─── Card focus (right-click inspect) ─────────────────────────────────────
+
+# Right-click on a card: focus it. Right-click on the already-focused card
+# dismisses. Right-click on a different card switches focus. Touch / mobile
+# would use long-press for the same gesture (BACKLOG when we port).
+func _toggle_focus(visual: Card) -> void:
+	if _focused_card == visual:
+		_dismiss_focus()
+		return
+	if _focused_card != null:
+		_focused_card.exit_focus()
+	_focused_card = visual
+	visual.enter_focus()
+
+
+func _dismiss_focus() -> void:
+	if _focused_card == null:
+		return
+	_focused_card.exit_focus()
+	_focused_card = null
 
 
 # ─── Misc helpers ──────────────────────────────────────────────────────────

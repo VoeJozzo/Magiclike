@@ -8,7 +8,7 @@
   },
   "power": 2,
   "toughness": 1,
-  "art": "🦁",
+  "art": "cards/savannahLions/art.png",
   "color": "W",
   "colors": [
     "W"

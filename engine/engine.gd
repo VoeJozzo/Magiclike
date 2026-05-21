@@ -161,7 +161,8 @@ const _PHASE4_5_DEMO_DECK := {
 }
 
 
-# Multi-color showcase deck — exercises every Phase 4.5c/5a addition.
+# Multi-color showcase deck — exercises every Phase 4.5c/5a addition
+# plus the Phase 6 seed cards ported from html-proto.
 const _PHASE5_SHOWCASE_DECK := {
 	"mountain": 4, "forest": 4, "island": 4, "plains": 3, "swamp": 3,
 	"counterspell": 2,
@@ -179,6 +180,15 @@ const _PHASE5_SHOWCASE_DECK := {
 	"giant_growth": 2,
 	"grizzly_bears": 1,
 	"bear_cub": 1,
+	# Phase 6 seed (one of each, so the showcase visibly exercises them).
+	"dawn_angel": 1,
+	"air_elemental": 1,
+	"mist_djinn": 1,
+	"cloud_pegasus": 1,
+	"white_knight": 1,
+	"goblin_duelist": 1,
+	"blood_knight": 1,
+	"ember_drake": 1,
 }
 
 
@@ -246,33 +256,7 @@ func execute_action(action: Dictionary) -> bool:
 	if not is_legal_action(action):
 		_state.append_log("Illegal action: %s" % action)
 		return false
-
-	var kind: String = action.get("kind", "")
-	var ok: bool = false
-	match kind:
-		Action.KIND_ACTIVATE_ABILITY:
-			ok = _do_activate_ability(action)
-		Action.KIND_PLAY_LAND:
-			ok = _do_play_land(action)
-		Action.KIND_CAST_SPELL:
-			ok = _do_cast_spell(action)
-		Action.KIND_DECLARE_ATTACKER:
-			ok = _do_declare_attacker(action)
-		Action.KIND_DECLARE_BLOCKER:
-			ok = _do_declare_blocker(action)
-		Action.KIND_UNDECLARE_ATTACKER:
-			ok = _do_undeclare_attacker(action)
-		Action.KIND_UNDECLARE_BLOCKER:
-			ok = _do_undeclare_blocker(action)
-		Action.KIND_CONFIRM_BLOCKS:
-			ok = _do_confirm_blocks(action)
-		Action.KIND_PASS_PRIORITY:
-			ok = _do_pass_priority(action)
-		Action.KIND_PICK_TRIGGER_TARGET:
-			ok = _do_pick_trigger_target(action)
-		_:
-			push_warning("execute_action: unknown kind '%s'" % kind)
-
+	var ok: bool = _do_action(action)
 	if ok:
 		_settle_state()
 		state_changed.emit()
@@ -298,6 +282,12 @@ func get_legal_actions(player_key: String) -> Array[Dictionary]:
 		var filter: String = _state.awaiting_target_for_trigger.get("filter", "")
 		for target in _enumerate_filter_targets(filter, player_key):
 			actions.append(Action.make_pick_trigger_target(target))
+		return actions
+	# Cleanup-step discard mode is exclusive — only discards are legal.
+	if not _state.awaiting_discard.is_empty() \
+			and _state.awaiting_discard.get("player_key", "") == player_key:
+		for card in _state.player_by_key(player_key).hand:
+			actions.append(Action.make_discard_card(card.instance_id))
 		return actions
 	# Need priority (exception: defender's COMBAT_BLOCK is a special action).
 	var is_combat_block: bool = _state.phase_machine.current == PhaseMachine.Phase.COMBAT_BLOCK
@@ -389,9 +379,11 @@ func is_legal_action(action: Dictionary) -> bool:
 	var kind: String = action.get("kind", "")
 	match kind:
 		Action.KIND_PASS_PRIORITY:
-			# Illegal when awaiting block declaration (priority is "" — defender must CONFIRM_BLOCKS first).
+			# Illegal when awaiting block declaration (priority is "" — defender must CONFIRM_BLOCKS first)
+			# or awaiting cleanup-step discard (active player must discard down to max before passing).
 			return _state != null and _state.winner == "" \
-				and _state.priority_player_key != ""
+				and _state.priority_player_key != "" \
+				and _state.awaiting_discard.is_empty()
 		Action.KIND_ACTIVATE_ABILITY:
 			return _legal_activate_ability(action)
 		Action.KIND_PLAY_LAND:
@@ -410,6 +402,8 @@ func is_legal_action(action: Dictionary) -> bool:
 			return _legal_confirm_blocks(action)
 		Action.KIND_PICK_TRIGGER_TARGET:
 			return _legal_pick_trigger_target(action)
+		Action.KIND_DISCARD_CARD:
+			return _legal_discard_card(action)
 		_:
 			return false
 
@@ -435,10 +429,12 @@ func _settle_state() -> void:
 	_settling = false
 
 
-# Order: pending trigger-target controller → awaiting-block-declaration defender → priority holder.
+# Order: pending trigger-target controller → awaiting-discard player → awaiting-block-declaration defender → priority holder.
 func _current_actor() -> String:
 	if not _state.awaiting_target_for_trigger.is_empty():
 		return _state.awaiting_target_for_trigger.get("controller_key", _state.priority_player_key)
+	if not _state.awaiting_discard.is_empty():
+		return _state.awaiting_discard.get("player_key", _state.priority_player_key)
 	if _state.awaiting_block_declaration:
 		return _state.opponent_of(_state.active_player_key)
 	return _state.priority_player_key
@@ -464,6 +460,14 @@ func _dispatch_action(action: Dictionary) -> bool:
 	if not is_legal_action(action):
 		_state.append_log("AI illegal action: %s" % action)
 		return false
+	return _do_action(action)
+
+
+# Action-kind dispatch table. Shared by execute_action and _dispatch_action so
+# adding a new action kind requires updating exactly one place (not two — that
+# divergence soft-locked the AI when KIND_DISCARD_CARD was added to
+# execute_action but not here).
+func _do_action(action: Dictionary) -> bool:
 	var kind: String = action.get("kind", "")
 	match kind:
 		Action.KIND_ACTIVATE_ABILITY:
@@ -486,7 +490,9 @@ func _dispatch_action(action: Dictionary) -> bool:
 			return _do_pass_priority(action)
 		Action.KIND_PICK_TRIGGER_TARGET:
 			return _do_pick_trigger_target(action)
-	push_warning("_dispatch_action: unknown kind '%s'" % kind)
+		Action.KIND_DISCARD_CARD:
+			return _do_discard_card(action)
+	push_warning("_do_action: unknown kind '%s'" % kind)
 	return false
 
 
@@ -785,6 +791,12 @@ func _legal_declare_blocker(action: Dictionary) -> bool:
 	if _state == null or _state.winner != "":
 		return false
 	if _state.phase_machine.current != PhaseMachine.Phase.COMBAT_BLOCK:
+		return false
+	# MTG 509.1a: block declaration is a single turn-based action at the start
+	# of the step. Once awaiting_block_declaration clears (defender confirmed
+	# blocks, or the AI driver finished its sync), the window is closed —
+	# subsequent priority is for casting instants, not declaring more blockers.
+	if not _state.awaiting_block_declaration:
 		return false
 	var defending_key: String = _state.opponent_of(_state.active_player_key)
 	var blocker_iid: int = action.get("source_iid", -1)
@@ -1168,9 +1180,23 @@ func _advance_phase() -> void:
 				for c in player.battlefield:
 					if c.template is CreatureResource:
 						c.clear_eot_modifiers()
+			# MTG 514.3: discard down to max_hand_size. Held by the active
+			# player; priority closes (no window for instants) until satisfied.
+			var ap: Player = _state.active_player()
+			var excess: int = ap.hand.size() - ap.max_hand_size
+			if excess > 0:
+				_state.awaiting_discard = {
+					"player_key": _state.active_player_key,
+					"count_remaining": excess,
+				}
+				_state.append_log("%s must discard %d card%s to %d." % [
+					ap.name, excess, "s" if excess > 1 else "", ap.max_hand_size,
+				])
 
-	# MTG 117.1b: AP priority on phase start. Exception: awaiting_block_declaration → "" sentinel.
-	if _state.awaiting_block_declaration:
+	# MTG 117.1b: AP priority on phase start. Exceptions: awaiting_block_declaration
+	# and awaiting_discard both close priority ("" sentinel) until the gating
+	# turn-based action completes.
+	if _state.awaiting_block_declaration or not _state.awaiting_discard.is_empty():
 		_state.priority_player_key = ""
 	else:
 		_state.priority_player_key = _state.active_player_key
@@ -1201,9 +1227,20 @@ func _describe_targets(targets: Array) -> String:
 	for t in targets:
 		match t.get("kind", ""):
 			"player":
-				parts.append(t.get("who", "?"))
+				var who: String = t.get("who", "?")
+				var p: Player = _state.player_by_key(who)
+				parts.append(p.name if p != null else who)
 			"creature":
-				parts.append("creature#%d" % t.get("iid", -1))
+				var iid: int = t.get("iid", -1)
+				var card: CardInstance = _find_card_anywhere(iid)
+				parts.append(card.name() if card != null else "creature#%d" % iid)
+			"stack":
+				# Counterspell-style: target is a spell on the stack. Pull the
+				# source card's display name via _find_card_anywhere (which
+				# checks _stack_held_cards for cards mid-resolution).
+				var siid: int = t.get("iid", -1)
+				var scard: CardInstance = _find_card_anywhere(siid)
+				parts.append(scard.name() if scard != null else "the spell on stack")
 			_:
 				parts.append("?")
 	return ", ".join(parts)
@@ -1363,6 +1400,49 @@ func _do_pick_trigger_target(action: Dictionary) -> bool:
 	var src_name: String = src.name() if src != null else "?"
 	_state.append_log("%s targets %s" % [src_name, _describe_targets([target])])
 	_drain_continue()
+	return true
+
+
+# MTG 514.3 cleanup-step discard. Legal iff awaiting_discard is set for the
+# acting player AND the named card is in their hand. Triggered discards
+# (e.g. "discard a card as you cast X") will reuse this action later.
+func _legal_discard_card(action: Dictionary) -> bool:
+	if _state == null or _state.winner != "":
+		return false
+	if _state.awaiting_discard.is_empty():
+		return false
+	var iid: int = action.get("source_iid", -1)
+	if iid == -1:
+		return false
+	var player_key: String = _state.awaiting_discard.get("player_key", "")
+	var player: Player = _state.player_by_key(player_key)
+	if player == null:
+		return false
+	return player.find_hand(iid) != null
+
+
+func _do_discard_card(action: Dictionary) -> bool:
+	var iid: int = action.source_iid
+	var player_key: String = _state.awaiting_discard.get("player_key", "")
+	var player: Player = _state.player_by_key(player_key)
+	var card: CardInstance = player.find_hand(iid)
+	if card == null:
+		push_warning("_do_discard_card: card iid=%d not in %s's hand" % [iid, player_key])
+		return false
+	player.move_card(card, player.hand, player.graveyard)
+	_state.append_log("%s discards %s." % [player.name, card.name()])
+	# Phase 4-style event hook for future "when X is discarded" triggers.
+	_fire_event({"name": "card_discarded", "card": card, "controller_key": player_key})
+	# Decrement count; clear awaiting state when satisfied.
+	var remaining: int = _state.awaiting_discard.get("count_remaining", 0) - 1
+	if remaining <= 0:
+		_state.awaiting_discard = {}
+		# Restore priority to the active player so the turn can advance to UNTAP
+		# on the next pass. (No window for instants — cleanup is over.)
+		_state.priority_player_key = _state.active_player_key
+		_reset_priority_passes()
+	else:
+		_state.awaiting_discard["count_remaining"] = remaining
 	return true
 
 

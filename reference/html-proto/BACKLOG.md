@@ -14,10 +14,14 @@ This file is a parking lot for deferred work on the html-proto, not a session ag
 
 ## Open
 
+- **SVG disc for {C}/{T}/{X}/numeric mana pips** — the 5 WUBRG pips are SVG (`assets/mana/{W,U,B,R,G}.svg`); the rest still use CSS letter-on-disc. Design an SVG disc treatment to match the WUBRG family (number content stays — by design).
+- **Tighten remaining bare `catch (_) {}` blocks** — `controller.js` L40 (`entry.prevFocus.focus()`) and L279 (fullscreen `req.call(el).catch(()=>{})`) silently swallow errors. Tighten to `console.warn` when convenient. (The 7 `try { render(); } catch (_) {}` repeats in `renderSettings` were retired in v1.0.182 — `render()` now deep-guards `!G || !G.you || !G.opp || !G.phase`.)
 - **`step()` phase-handler refactor** (`engine.js:6322`) — user wants to examine the turn state machine more deeply before approving structural changes.
 - **`engine.js` multi-file decomposition** (likely 10+ files) — agreed direction. Blocked behind the `step()` refactor because the IIFE pattern makes the migration non-trivial.
 - **`endomorphAbsorb()` modularization** (`engine.js:1925`) — revisit when the absorb logic itself changes; refactor against the new behavior rather than the current 95-line handler.
 - **Per-mechanic feature tests** — when touching a mechanic non-trivially (Balancer, Symmetricize, Steal, Splice, Bleach, Embargo, Scarification, Stapler, Spirit Shepherd, etc.), write a fresh test alongside the change. The prior-session test bundle (in the transcript attachment) is a useful **reference** for "what was worth checking for X" but no longer a queue to port — the code has shifted enough that translation cost rivals fresh authoring. Model: `tests/card_text_test.js` (v1.0.136 sticker extraction).
+- **Decouple `SETTINGS_PANEL.show()` from `renderPanel()`** — `show()` currently always re-renders before opening the modal. Asymmetric coupling: callers can render-without-show but not show-without-render. Only one caller today (the gear button in `controller.js` init) and only one mode (open-fresh), so YAGNI. Note here so a future feature that needs to re-show without re-rendering (e.g. a keyboard shortcut while the modal is already open) has the API note already on file.
+- **Reconsider `cardToViewModel`'s `opts` interface** — `opts.inHand` and `opts.overrideOracleText` are only set by `makeCardEl` (and `makeSyntheticCard` via passthrough). `openCardPopup` calls `cardToViewModel(card)` with no opts. The implicit contract works but isn't enforced. Possible shapes when revisiting: split into `cardToViewModel(card)` + `cardToViewModelInHand(card)`, or a `CardViewModel` class with `.forHand()` / `.forPopup()` methods. Not worth a refactor commit on its own; revisit when a third consumer appears.
 
 ## Not currently testable from Node
 

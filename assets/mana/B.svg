@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40">
+  <defs>
+    <clipPath id="clip"><circle cx="20" cy="20" r="16.5"/></clipPath>
+    <radialGradient id="shine" cx="36%" cy="28%" r="55%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.22"/>
+    </radialGradient>
+  </defs>
+  <circle cx="20" cy="20" r="17" fill="#080814"/>
+  <circle cx="20" cy="20" r="17" fill="url(#shine)"/>
+  <g clip-path="url(#clip)">
+    <path d="M33.5,16.1 L33.5,13.9 L39.0,15.0 Z" fill="#FFEBC8" stroke="none"/>
+    <path d="M30.2,21.8 L31.8,20.2 L34.9,24.9 Z" fill="#FFEBC8" stroke="none"/>
+    <path d="M23.9,23.5 L26.1,23.5 L25.0,29.0 Z" fill="#FFEBC8" stroke="none"/>
+    <path d="M18.2,20.2 L19.8,21.8 L15.1,24.9 Z" fill="#FFEBC8" stroke="none"/>
+    <path d="M16.5,13.9 L16.5,16.1 L11.0,15.0 Z" fill="#FFEBC8" stroke="none"/>
+    <path d="M19.8,8.2 L18.2,9.8 L15.1,5.1 Z" fill="#FFEBC8" stroke="none"/>
+    <path d="M26.1,6.5 L23.9,6.5 L25.0,1.0 Z" fill="#FFEBC8" stroke="none"/>
+    <path d="M31.8,9.8 L30.2,8.2 L34.9,5.1 Z" fill="#FFEBC8" stroke="none"/>
+    <circle cx="25" cy="15" r="6.5" fill="#FFEBC8"/>
+    <circle cx="16" cy="24" r="9" fill="#080814" stroke="#FFEBC8" stroke-width="2.25"/>
+  </g>
+  <circle cx="20" cy="20" r="17" fill="none" stroke="#20203C" stroke-width="2"/>
+  <circle cx="20" cy="20" r="19" fill="none" stroke="#C8B040" stroke-width="1.8"/>
+</svg>

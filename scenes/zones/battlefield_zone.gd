@@ -7,10 +7,32 @@ extends CardContainer
 signal card_pressed(card: Card)
 
 @export var creatures_on_top: bool = true
+# Which player's battlefield this is. Used to decide whether creatures should
+# be ordered as attackers (active side) or blockers (defending side) when
+# combat is in progress. Set by game_board on construction.
+@export var player_key: String = ""
 
-const _CREATURE_SPACING: float = 165.0
-const _LAND_SPACING: float = 40.0
+# Adaptive spacing: spread cards across `_AVAILABLE_WIDTH` if they fit at
+# `_MAX_*_SPACING`, otherwise compress down to `_MIN_*_SPACING` (cascade).
+# Different min/max per row because creatures need more identity-width
+# (P/T + art legibility) than lands (mostly title bar matters).
+const _MAX_CREATURE_SPACING: float = 165.0
+const _MIN_CREATURE_SPACING: float = 90.0
+const _MAX_LAND_SPACING: float = 165.0
+const _MIN_LAND_SPACING: float = 40.0
+const _AVAILABLE_WIDTH: float = 1100.0
 const _ROW_GAP: float = 230.0
+# Visual gap between WUBRG color groups in the land row, ON TOP of the
+# normal intra-group spacing. Makes "4 Plains + 4 Islands" read as two
+# clumps instead of one continuous strip.
+const _LAND_COLOR_GROUP_GAP: float = 30.0
+
+# Persistent creature display order across renders. Without this, _held_cards
+# iteration determines layout, so combat-driven reorders snap back the
+# moment combat ends. With this, the post-combat order persists into the
+# next layout pass; new creatures (ETBs) join at the end; departing
+# creatures (deaths, returns to hand) drop out cleanly.
+var _creature_iid_order: Array[int] = []
 
 # card-framework quirk: JsonCardFactory.create_card() calls this BEFORE populating card_info,
 # so spawn-time card_info is empty. Trust the caller (game_board spawns into the right zone);
@@ -42,10 +64,167 @@ func _update_target_positions() -> void:
 			lands.append(card)
 		else:
 			creatures.append(card)
+	# Group lands by color in WUBRG order.
+	lands.sort_custom(_compare_lands_by_color)
+	# Apply remembered display order, then apply any combat-driven reorder
+	# on top. Save the final order so post-combat layouts don't snap back.
+	creatures = _apply_persistent_order(creatures)
+	creatures = _combat_sorted_creatures(creatures)
+	_save_creature_order(creatures)
 	var creature_y: float = 0.0 if creatures_on_top else _ROW_GAP
 	var land_y: float = _ROW_GAP if creatures_on_top else 0.0
-	_layout_row(creatures, Vector2(0.0, creature_y), _CREATURE_SPACING)
-	_layout_row(lands, Vector2(0.0, land_y), _LAND_SPACING)
+	var creature_spacing := _adaptive_spacing(creatures.size(), _MAX_CREATURE_SPACING, _MIN_CREATURE_SPACING)
+	_layout_row(creatures, Vector2(0.0, creature_y), creature_spacing)
+	_layout_lands_with_color_groups(lands, Vector2(0.0, land_y))
+
+
+# Lands: tight intra-color spacing + a fixed gap between color groups, so
+# "4 Plains + 4 Islands" reads as two visible clumps. Falls back to plain
+# adaptive spacing when there's only one color (no group boundaries).
+func _layout_lands_with_color_groups(lands: Array, offset_from_zone: Vector2) -> void:
+	if lands.is_empty():
+		return
+	# Count color-group transitions (boundaries between WUBRG groups).
+	var num_transitions: int = 0
+	for i in range(1, lands.size()):
+		if _land_color_key(lands[i]) != _land_color_key(lands[i - 1]):
+			num_transitions += 1
+	# Reserve room for inter-group gaps, then spread cards across the rest.
+	var gap_budget: float = float(num_transitions) * _LAND_COLOR_GROUP_GAP
+	var spacing_budget: float = max(0.0, _AVAILABLE_WIDTH - gap_budget)
+	var card_spacing: float = _MAX_LAND_SPACING
+	if lands.size() > 1:
+		card_spacing = clamp(
+			spacing_budget / float(lands.size() - 1),
+			_MIN_LAND_SPACING,
+			_MAX_LAND_SPACING,
+		)
+	var x: float = 0.0
+	for i in range(lands.size()):
+		if i > 0 and _land_color_key(lands[i]) != _land_color_key(lands[i - 1]):
+			x += _LAND_COLOR_GROUP_GAP  # visible separator before this group
+		var card: Card = lands[i]
+		var target_pos: Vector2 = position + offset_from_zone + Vector2(x, 0.0)
+		card.move(target_pos, _tap_rotation(card))
+		card.can_be_interacted_with = true
+		x += card_spacing
+
+
+# Apply the remembered display order (`_creature_iid_order`) on top of the
+# current `_held_cards`-derived creature list. Cards still in play but
+# already in the list stay in their remembered slots; new arrivals append
+# at the end. Stale iids in the remembered order silently drop out.
+func _apply_persistent_order(creatures: Array) -> Array:
+	if _creature_iid_order.is_empty():
+		return creatures
+	var by_iid: Dictionary = {}
+	for card in creatures:
+		var iid: int = card.card_info.get("instance_id", -1)
+		if iid != -1:
+			by_iid[iid] = card
+	var result: Array = []
+	var placed: Dictionary = {}
+	for iid in _creature_iid_order:
+		if by_iid.has(iid):
+			result.append(by_iid[iid])
+			placed[iid] = true
+	# New creatures (ETBs since last layout) join at the end.
+	for card in creatures:
+		var iid: int = card.card_info.get("instance_id", -1)
+		if iid != -1 and not placed.has(iid):
+			result.append(card)
+	return result
+
+
+func _save_creature_order(creatures: Array) -> void:
+	_creature_iid_order.clear()
+	for card in creatures:
+		var iid: int = card.card_info.get("instance_id", -1)
+		if iid != -1:
+			_creature_iid_order.append(iid)
+
+
+# Minimum-disruption combat reorder. Only the cards involved in combat shift
+# positions, and only relative to each other; non-combatants don't move.
+#
+# Algorithm:
+#   1. Find the slot indices of all combatants in the original creature order.
+#   2. Sort just the combatants by combat order (attacker index in s.attackers).
+#   3. Place sorted combatants back into those original slots.
+#
+# So [C1 C2 C3 C4 C5] with s.attackers=[C4 C2] becomes [C1 C4 C3 C2 C5] —
+# only C2 and C4 swapped, three cards stayed put. The old version moved all
+# combatants to the front, which Joe correctly called out as unnecessarily
+# disruptive ("always moves stuff to the left").
+func _combat_sorted_creatures(creatures: Array) -> Array:
+	var s = RulesEngine.state()
+	if s == null or s.attackers.is_empty() or player_key == "":
+		return creatures
+	var iam_attacker_side: bool = (player_key == s.active_player_key)
+	# Collect combatants with their original slot indices.
+	var combatant_slots: Array[int] = []
+	var combatants: Array = []
+	for i in range(creatures.size()):
+		var card: Card = creatures[i]
+		var iid: int = card.card_info.get("instance_id", -1)
+		if iid == -1:
+			continue
+		var is_combatant: bool
+		if iam_attacker_side:
+			is_combatant = iid in s.attackers
+		else:
+			is_combatant = s.blockers.has(iid)
+		if is_combatant:
+			combatant_slots.append(i)
+			combatants.append(card)
+	if combatants.size() < 2:
+		# 0 or 1 combatant on this side — no reordering possible.
+		return creatures
+	# Sort combatants by combat order (which attacker comes first).
+	if iam_attacker_side:
+		combatants.sort_custom(func(a, b):
+			return s.attackers.find(a.card_info["instance_id"]) < s.attackers.find(b.card_info["instance_id"]))
+	else:
+		combatants.sort_custom(func(a, b):
+			var aiid_a: int = s.blockers.get(a.card_info["instance_id"], -1)
+			var aiid_b: int = s.blockers.get(b.card_info["instance_id"], -1)
+			return s.attackers.find(aiid_a) < s.attackers.find(aiid_b))
+	# Place sorted combatants back into their original slots.
+	var result: Array = creatures.duplicate()
+	for k in range(combatants.size()):
+		result[combatant_slots[k]] = combatants[k]
+	return result
+
+
+# WUBRG color ordering for land sort. Lands with no mana_produced (shouldn't
+# happen for vanilla basics; here for safety) sort to the end.
+const _COLOR_ORDER := {"W": 0, "U": 1, "B": 2, "R": 3, "G": 4, "C": 5}
+
+static func _land_color_key(card: Card) -> int:
+	var card_id: String = card.card_info.get("card_id", "")
+	if card_id == "":
+		return 99
+	var template: CardResource = CardDatabase.get_card(card_id)
+	if template == null or not (template is LandResource):
+		return 99
+	var produced: Array = template.mana_produced
+	if produced.is_empty():
+		return 99
+	return _COLOR_ORDER.get(String(produced[0]), 99)
+
+
+static func _compare_lands_by_color(a: Card, b: Card) -> bool:
+	return _land_color_key(a) < _land_color_key(b)
+
+
+# Spread cards across _AVAILABLE_WIDTH if they fit at max_spacing; compress
+# toward min_spacing (cascade overlap) when they don't. count <= 1 always
+# uses max (single card has no neighbor to space from).
+func _adaptive_spacing(count: int, max_spacing: float, min_spacing: float) -> float:
+	if count <= 1:
+		return max_spacing
+	var fit_spacing: float = _AVAILABLE_WIDTH / float(count - 1)
+	return clamp(fit_spacing, min_spacing, max_spacing)
 
 
 func _layout_row(cards: Array, offset_from_zone: Vector2, spacing: float) -> void:

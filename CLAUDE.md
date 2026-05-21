@@ -107,6 +107,14 @@ Each phase has a runnable scene at `tests/test_phaseN.{gd,tscn}` (e.g., `test_ph
 
 Each test prints assertion results and exits with code 0 (pass) / 1 (fail). Roughly 30 seconds per phase. A slice is "done" when its new test passes AND all prior phase tests still pass.
 
+## Licenses & attributions
+
+**Any time a new outside resource is added to the project — code library, asset pack, AI-art batch, font, sound, tool, anything — log it in `LICENSES.md` at the repo root.** That file is the canonical record of what we depend on, what license each dependency is under, and what we owe attribution-wise. Add the entry in the same commit that pulls the resource in.
+
+Current entries (as of v1.0.180): chun92's Godot Card Framework (MIT), Godot Engine 4.6, pixellab AI art, Claude (this assistant), Almendra fantasy serif font (Google Fonts, SIL OFL 1.1), Claude-authored mana symbol SVGs. See `LICENSES.md` for the full list.
+
+Shared assets (used by both the Godot port and the html-proto) live at `assets/` at repo root. Currently: `assets/fonts/Almendra/` and `assets/mana/` (WUBRG SVGs + design source). Html-proto-specific assets live at `reference/html-proto/assets/`.
+
 ## Git workflow
 
 - Commit changes, but only push when explicitly asked.

@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="CreatureResource" format=3]
+
+[ext_resource type="Script" path="res://data/creature_resource.gd" id="1_7iv6y"]
+
+[resource]
+script = ExtResource("1_7iv6y")
+power = 1
+toughness = 1
+card_id = "pyromaniac"
+display_name = "Pyromaniac"
+card_types = Array[String](["creature"])
+subtypes = Array[String](["human", "shaman"])
+mana_cost = {
+"C": 1,
+"R": 1
+}
+oracle_text = "When Pyromaniac enters, it deals 1 damage to any target."
+triggered_abilities = Array[Dictionary]([{
+"condition_predicate": "",
+"effects": [{
+"amount": 1,
+"kind": "damage",
+"target": "chosen"
+}],
+"event": "card_etb",
+"self_only": true,
+"target_filter": "creature_or_player"
+}])

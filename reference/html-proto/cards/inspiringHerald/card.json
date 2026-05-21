@@ -9,7 +9,7 @@
   },
   "power": 2,
   "toughness": 3,
-  "art": "📯",
+  "art": "cards/inspiringHerald/art.png",
   "text": "When this enters, creatures you control get +1/+1 EOT.",
   "triggers": [
     {

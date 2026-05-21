@@ -8,7 +8,7 @@
   },
   "power": 1,
   "toughness": 1,
-  "art": "🦅",
+  "art": "cards/carrionFeeder/art.png",
   "text": "Sacrifice a creature: Put a +1/+1 counter on this.",
   "abilities": [
     {

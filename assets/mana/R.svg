@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40">
+  <defs>
+    <clipPath id="clip"><circle cx="20" cy="20" r="16.5"/></clipPath>
+    <radialGradient id="shine" cx="36%" cy="28%" r="55%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.22"/>
+    </radialGradient>
+  </defs>
+  <circle cx="20" cy="20" r="17" fill="#7C0A0A"/>
+  <circle cx="20" cy="20" r="17" fill="url(#shine)"/>
+  <g clip-path="url(#clip)">
+    <path d="M22,20 L18,20 L20,5 Z" fill="#FFEEDD" stroke="none"/>
+    <path d="M21.3,21.5 L18.7,18.5 L34,8 Z" fill="#FFEEDD" stroke="none"/>
+    <path d="M18.5,21.3 L21.5,18.7 L32,34 Z" fill="#FFEEDD" stroke="none"/>
+    <path d="M18.5,18.7 L21.5,21.3 L8,34 Z" fill="#FFEEDD" stroke="none"/>
+    <path d="M20,20 L25,20 L30,18 L36,19" fill="none" stroke="#FFEEDD" stroke-width="3.3" stroke-linecap="butt" stroke-linejoin="miter"/>
+    <path d="M20,20 L19,25 L21,30 L20,36" fill="none" stroke="#FFEEDD" stroke-width="2.25" stroke-linecap="butt" stroke-linejoin="miter"/>
+    <path d="M20,20 L15,21 L10,20 L4,21" fill="none" stroke="#FFEEDD" stroke-width="3.3" stroke-linecap="butt" stroke-linejoin="miter"/>
+    <path d="M20,20 L16,16 L12,13 L8,8" fill="none" stroke="#FFEEDD" stroke-width="2.25" stroke-linecap="butt" stroke-linejoin="miter"/>
+    <circle cx="20" cy="20" r="3" fill="#FFEEDD" stroke="none"/>
+  </g>
+  <circle cx="20" cy="20" r="17" fill="none" stroke="#C02424" stroke-width="2"/>
+  <circle cx="20" cy="20" r="19" fill="none" stroke="#C8B040" stroke-width="1.8"/>
+</svg>

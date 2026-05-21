@@ -8,7 +8,7 @@
   },
   "power": 1,
   "toughness": 1,
-  "art": "🪖",
+  "art": "cards/benalishHero/art.png",
   "text": "Vigilance",
   "keywords": [
     "vigilance"

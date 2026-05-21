@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="CreatureResource" format=3]
+
+[ext_resource type="Script" path="res://data/creature_resource.gd" id="1_bw85y"]
+
+[resource]
+script = ExtResource("1_bw85y")
+power = 2
+toughness = 3
+keywords = Array[String](["flying", "deathtouch", "lifelink"])
+card_id = "vampire_nighthawk"
+display_name = "Vampire Nighthawk"
+card_types = Array[String](["creature"])
+subtypes = Array[String](["vampire", "shaman"])
+mana_cost = {
+"B": 1,
+"C": 2
+}
+oracle_text = "Flying. Deathtouch. Lifelink."
