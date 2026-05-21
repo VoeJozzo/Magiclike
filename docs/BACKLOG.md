@@ -28,8 +28,7 @@ The following items live in `docs/DIVERGENCE.md` as their primary tracker. Liste
 - **B3** — CLEANUP step ordering harmonization (either)
 - **B4** — delayed triggers (godot, Phase 7+)
 - **B5** — temp-control revert (godot, Phase 7+)
-- **B6** — `_open_priority_window` helper + auto-pass when no legal action (godot)
-- **B7** — end-turn fast-forward action (godot)
+- **B6 + B7** — `_open_priority_window` helper + auto-pass when no legal action + end-turn fast-forward (godot). Detailed refactor plan: [`docs/plan-priority-window-refactor.md`](plan-priority-window-refactor.md). Effort: M, ~8 hours.
 - **C1, C2** — multi-blocker damage assignment + deathtouch (godot)
 - **C4** — declaration UI refactor: build selection in UI, atomic commit (godot)
 - **C5** — `killedBy` tracking for keyword-claim death triggers (godot, Phase 7+)
