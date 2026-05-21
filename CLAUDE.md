@@ -84,9 +84,12 @@ Deferred work lives in `docs/BACKLOG.md` — read it when relevant, but don't op
 The html-proto is the reference, but its rules engine has known scars from organic growth. When porting a feature, port the **behavior**, not the implementation shape. Specifically:
 
 - **Don't reach into autoloads from inside predicates or effect handlers.** Predicates take `(state, source, event)` and return bool. Effects take `(ctx, params, target)` and resolve. No reading `RulesEngine.state()` from inside these — it breaks testability and matches the JS prototype's worst pattern (`G[them].lifeLostThisTurn` closures into global state).
-- **Don't add depth caps to trigger draining.** The prototype has them as a safety net for past infinite-loop bugs. If our drain code is correct, it doesn't need a safety net.
 - **Don't model per-instance mutable state as dynamically-attached dictionary fields.** Use typed properties on `CardInstance` / `Player`. The prototype's City of Brass `extraManaColors` lost on instantiation (see engine.js ~L2107 comment) is the cautionary tale; our `duplicate_deep()` overrides prevent that class of bug.
 - **Auto-passes are agent UX, not rules.** The `_settle_state` loop auto-passes for the AI driver and for unattended priority windows. Don't conflate this with "priority is skipped" — the priority pass IS happening, the AI driver is just calling `execute_action(pass_priority)` automatically.
+
+## Patterns to REPLICATE from the prototype
+
+- **Trigger chain depth cap.** Proto has a hardcoded cap of 100 nested trigger resolutions; if a chain exceeds it, the engine bails with a warning. Initially excluded from Godot ("if our drain code is correct, no cap needed"), but real card design produces accidental infinite-loop combinations (proto has hit this), and the cap costs essentially nothing. Mirror proto's threshold in `_drain_pending_triggers`. See `docs/DIVERGENCE.md` E6.
 
 ## Risks and gotchas
 

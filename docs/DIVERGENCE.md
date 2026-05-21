@@ -12,13 +12,16 @@ When the two implementations disagree, **`RULES.md` is the tie-breaker** — the
 
 ## TO-DO tags
 
-- **godot:** an item for the Godot port to fix
-- **proto:** an item for the html-proto to fix
-- **either-fine:** both implementations are defensible; pick one and align if convenient
-- **convention:** no code change needed; the fix is a card-authoring or doc-discipline rule
-- **already-aligned:** same behavior in both implementations; no action
-- **intentionally-divergent:** different by design or policy; do not change
-- **non-issue:** divergent on paper but operationally invisible (no card or scenario exposes the difference)
+The TO-DO column describes the action; the tag describes who needs to do it.
+
+- **godot:** the Godot port needs work. Covers both *alignment* (match proto's existing behavior) and *implementation* (add a feature proto has but Godot doesn't).
+- **proto:** the html-proto needs work. Same two flavors.
+- **both:** both engines need work to converge on a new (shared) behavior. Used when the canonical answer isn't "match the other side" but "redesign and align."
+- **either-fine:** both implementations are defensible; pick one and align if convenient.
+- **convention:** no code change needed; the fix is a card-authoring or doc-discipline rule.
+- **already-aligned:** same behavior in both implementations; no action.
+- **intentionally-divergent:** different by design or policy; do not change.
+- **non-issue:** divergent on paper but operationally invisible (no card or scenario exposes the difference).
 
 ---
 
@@ -53,7 +56,7 @@ A1 + A2 together: in proto the first player gets a tempo advantage offset by dra
 | C1 | **Multi-blocker damage assignment** | Dumps all damage on `blockers[0]` (engine.gd:1080) | Smart distribution — sorts blockers by kill-value, indestructibles last, assigns minimum lethal to each in order (engine.js:4062-4153) | 🔴 BIG | **godot:** harmonize to proto's smart-distribution algorithm (RULES.md §803). |
 | C2 | Deathtouch + multi-block | Marks first blocker lethal; subsequent take 0 damage from attacker | Uses "lethal = 1" against killable blockers; can kill multiple in one combat | 🔴 | **godot:** falls out of C1 fix automatically — implementing smart-distribution requires the deathtouch-reduces-threshold logic. |
 | C3 | Menace single-blocker handling | Legal at declaration; collapses to unblocked at damage time (engine.gd:1008) | Illegal at declaration (engine.js:4842) | 🟡 (same outcome, different UX) | **either-fine:** pick one. Defer-collapse is more permissive; reject-at-declaration is more decisive. Pure UX call. |
-| C4 | Attacker/blocker declaration undo | `undeclare_attacker` / `undeclare_blocker` actions exist (engine.gd) | No undo — declarations atomic | 🟡 | **either-fine:** pure UX. Godot is mistake-friendly, proto is decisive. MTG itself has no formal rule. Pick one if you care; can also leave indefinitely. |
+| C4 | Attacker/blocker declaration undo | `undeclare_attacker` / `undeclare_blocker` actions exist (engine.gd) | No undo — declarations atomic; pre-commit state lives in UI selection | 🟡 | **godot:** align on proto's UI-tracked model. Build attacker/blocker selection as UI state in `game_board.gd`; engine receives one `declare_attackers([list])` / `declare_blockers({map})` action on commit; remove `undeclare_*` actions from `Action`. Smaller engine API, cleaner state, UI bugs no longer corrupt engine. |
 | C5 | Killer attribution (`killedBy`) | Not tracked in combat | Tracked for keyword-claim death triggers (e.g., Endomorph Absorb) | 🔴 (when porting cards that need it) | **godot:** implement when first card needs killer-credit (likely Phase 7+ for proto-style absorb mechanics). |
 | C6 | Unblockable keyword string | `"unblockable"` | `"unblockable"` | ✅ Same | **already-aligned** |
 
@@ -74,7 +77,7 @@ This is purely a player-experience choice. MTG itself has no formal rule on take
 | D1 | Multi-effect target snapshot | Live state read at each effect's resolution | Snapshots target stats per `targetSlot` before any effect runs (engine.js:3900-3938) | 🔴 (when multi-effect spells are added) | **either-fine:** matters zero times today (no multi-effect spell in current pool). MTG canon is closer to Godot's live read. Pick one and align. |
 | D2 | `pump` effect duration | Parametrized via `duration: "eot"` / `"permanent"` | Two separate effects: `pump` (always EOT), `addCounter` (always permanent) | 🟡 | **proto:** consolidate to Godot's pattern — one `pump` effect with `duration` parameter, deprecate `addCounter` as a separate effect kind. |
 | D3 | `gain_life` flexibility | Always to `ctx.controller` | Can route via `params.who` or target descriptor | 🟡 | **godot:** extend `gain_life.gd` to accept `who`/`target` parameters per proto's pattern. Enables future "target opponent gains N life" cards. |
-| D4 | `gain_life` non-positive amount | Warns and skips (engine/effects/gain_life.gd:8) | Silent no-op (applies negative as life-loss-via-gain-event, semantically wrong) | 🟡 | **proto:** align on Godot. MTG keeps "gain life," "lose life," and "take damage" as three distinct events with different triggers. Overloading `gain_life` with negative amounts conflates them. When `lose_life` mechanics are needed, add a separate effect kind. |
+| D4 | `gain_life` sign-based delta | Refuses non-positive amounts (warn+skip) | Silent apply (no event for negative direction) | 🟡 | **both:** redesign `gain_life` as a unified life-delta effect. Accept any integer amount; sign determines event direction. Positive → fire "life gained" event (for gain-life triggers). Negative → fire "life lost" event (for lose-life triggers). Zero → no event. Preserves the trigger-time distinction between gain and loss while making the card-authoring side a single effect, enabling runtime sign-flip mechanics (Ser Severity etc.). Lifelink unchanged (fires on damage-dealing, not life-gain). |
 | D5 | `add_mana` shorthand | Accepts flat `{"R": 1}` OR canonical `{"amounts": {"R": 1}}` | Requires canonical form only | 🔵 | **convention:** all card authors write the canonical form `{"kind": "add_mana", "amounts": {...}}`. Both engines accept it. No code change in either engine. |
 | D6 | `counter_spell` refuses to counter triggered abilities | Yes (engine.gd:1272) | Yes (engine.js:1780) | ✅ Same | **already-aligned** |
 | D7 | Legendary uniqueness ("only one of each legendary tplId on the battlefield per player") | Not enforced | Enforced at cast-legality (engine.js:4721) | 🔴 (when Godot adds legendary cards) | **godot:** implement at the point Godot's pool gains its first legendary creature. |
@@ -107,12 +110,12 @@ Both forms produce identical mana pool changes. Cards using `{"kind": "add_mana"
 
 | # | Area | Godot | Proto | Tag | TO-DO |
 |---|---|---|---|---|---|
-| E1 | Event vocabulary | 2 emitted: `card_etb`, `card_dies` | 6+ emitted: `cardEntersBattlefield`, `cardDies`, `cardLeavesBattlefield`, `attacks`, `spellCast`, `lifeGained` | 🔴 | **godot:** expand emission to cover `cardLeavesBattlefield`, `attacks`, `spellCast`, `lifeGained`. Driven by card-pool needs (Phase 6+). |
-| E2 | Predicate registry size | 1 (`opp_lost_life_this_turn`) | 14 (see list below) | 🔴 | **godot:** implement remaining predicates as cards demand them. Each is a small static function in `predicates.gd` + one entry in `_PRED_NAMES`. |
+| E1 | Event vocabulary + zone-change unification | 2 emitted: `card_etb`, `card_dies` | 6+ emitted, with overlapping `cardDies`/`cardLeavesBattlefield` | 🔴 | **both:** unify zone-change events into a single emission with destination data (e.g., `card_left_battlefield` with `to_zone: "graveyard"/"hand"/"exile"`). "Dies" becomes a composable predicate over the unified event, not a separate event. Then expand emission to cover `attacks`, `spell_cast`, `life_gained`. Driven by card-pool needs (Phase 6+) and the E2 composable-predicate refactor. |
+| E2 | Predicate composability + registry size | 1 monolithic predicate (`opp_lost_life_this_turn`); registry is name→function | 14 monolithic predicates; registry is name→function | 🔴 | **both:** refactor to composable predicates. Registry holds atomic primitives (e.g., `subject_is_source`, `subject_is_creature`, `controller_is_you`, `opp_lost_life_this_turn`). Card data uses an expression — single name for trivial cases, list of names for AND, optionally a `{op, terms}` tree for OR/NOT. Evaluator walks the expression; boot validation walks every leaf. Cards become declarative compositions of building blocks instead of N specific functions. Scales to 258+ cards plus Architect's Codex runtime composition naturally. Pre-empts tech debt before Phase 6 expansion. |
 | E3 | Queue-and-drain pattern | Same | Same | ✅ Same | **already-aligned** |
 | E4 | APNAP drain order | Yes (engine.gd:1449) | Yes (engine.js:2820) | ✅ Same | **already-aligned** |
 | E5 | Intervening-"if" re-check on resolution | Not implemented | Not implemented | ✅ Same (mutual deviation from MTG 603.4) | **either-fine:** implement on both sides if any card needs it. Already in Godot's BACKLOG. |
-| E6 | Trigger chain depth cap | None (per CLAUDE.md guidance) | 100 (engine.js:2731) | 🟡 | **intentionally-divergent.** Proto keeps its safety net (historical bug protection). Godot bets on drain correctness per CLAUDE.md "Patterns to NOT replicate." Don't add a cap to Godot until and unless a card pool change introduces real loop risk. |
+| E6 | Trigger chain depth cap | None | 100 (engine.js:2731) | 🟡 | **godot:** add the cap. The "bet on drain correctness" stance from CLAUDE.md doesn't survive contact with real card design — the user has already accidentally produced infinite-loop card combinations on proto. The cap costs one counter + one comparison; the defensive value (preventing a hung session, surfacing the bug at the right place) is high. Mirror proto's 100-depth threshold. CLAUDE.md "Patterns to NOT replicate" entry to be removed in the same commit. |
 | E7 | Auto-pick trigger target (AI) | Greedy: face damage first → first creature | Effect-aware scoring (damage prefers killable, pump prefers own best) | 🟡 | **godot:** upgrade AI auto-pick to effect-aware scoring as the AI iterates (Phase 6+ AI work). |
 | E8 | Death triggers fire from graveyard | Yes — `subject_card` in event payload | Yes — `extraSources` in emit call | ✅ Same | **already-aligned** |
 
