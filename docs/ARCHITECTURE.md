@@ -62,7 +62,7 @@ GitHub Pages serves from `dev`, pointing at `reference/html-proto/magiclike_engi
 | `engine/player.gd` | 80 | Per-player zones (hand, library, battlefield, graveyard, exile), life, mana, land-play flag, `life_lost_this_turn`. | `find_battlefield`, `find_hand`, `move_card`, `untap_step`, `duplicate_deep` |
 | `engine/mana_pool.gd` | 91 | Color + generic mana accounting (greedy saturation), pretty-printer. | `add_dict`, `pay`, `to_string_short` |
 | `engine/stack.gd` | 51 | LIFO of `StackEntry` (spells AND triggered abilities). | `push`, `pop`, `top`, `clear` |
-| `engine/phase_machine.gd` | 57 | Turn structure (UNTAP / DRAW / MAIN1 / COMBAT_BEGIN / COMBAT_ATTACK / COMBAT_BLOCK / COMBAT_DAMAGE / MAIN2 / END / CLEANUP). | `current`, `advance`, `set_phase` |
+| `engine/phase_machine.gd` | 57 | Turn structure (UNTAP / UPKEEP / DRAW / MAIN1 / COMBAT_ATTACK / COMBAT_BLOCK / COMBAT_DAMAGE / MAIN2 / END / CLEANUP). | `current`, `advance`, `phase_name`, `is_main_phase`, `is_combat_phase` |
 | `engine/card_instance.gd` | 131 | Per-card runtime state — tapped, damage_marked, temp_power/toughness, counters, summoning_sick, granted_keywords. | `current_power`, `current_toughness`, `effective_keywords`, `has_keyword`, `clear_eot_modifiers` |
 | `engine/action.gd` | 81 | Action constants (`KIND_*`) + factory functions. | All `make_*` helpers, `target_player`, `target_creature` |
 | `engine/effects/effects.gd` | 38 | Effect dispatcher. `HANDLERS` table maps `kind` → handler script. | `resolve_one(effect, ctx)`, `resolve_list(effects, ctx)` |
