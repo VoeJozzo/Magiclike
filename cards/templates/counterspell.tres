@@ -12,7 +12,7 @@ card_types = Array[String](["instant"])
 mana_cost = {
 "U": 2
 }
-oracle_text = "Counter target spell."
+text = "Counter target spell."
 on_cast_effects = Array[Dictionary]([{
 "kind": "counter",
 "target": "chosen"

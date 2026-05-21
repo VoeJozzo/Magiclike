@@ -719,7 +719,7 @@ func _resolve_trigger_entry(entry: Dictionary) -> void:
 	if source == null or source.template == null:
 		_state.append_log("Trigger fizzles: source card missing")
 		return
-	var abilities: Array = source.template.triggered_abilities
+	var abilities: Array = source.template.triggers
 	if ability_index < 0 or ability_index >= abilities.size():
 		_state.append_log("Trigger fizzles: ability_index out of range")
 		return
@@ -1323,7 +1323,7 @@ func _fire_event(event: Dictionary) -> void:
 	for source in listeners:
 		if source == null or source.template == null:
 			continue
-		var abilities: Array = source.template.triggered_abilities
+		var abilities: Array = source.template.triggers
 		for i in range(abilities.size()):
 			var trig: Dictionary = abilities[i]
 			if trig.get("event", "") != event_kind:
@@ -1504,12 +1504,12 @@ func _drain_continue() -> void:
 	_reset_priority_passes()
 
 
-# triggered_abilities[i].target_filter; "" if no target needed.
+# triggers[i].target_filter; "" if no target needed.
 func _trigger_target_filter(trig: Dictionary) -> String:
 	var source: CardInstance = _find_card_anywhere(trig.source_iid)
 	if source == null or source.template == null:
 		return ""
-	var abilities: Array = source.template.triggered_abilities
+	var abilities: Array = source.template.triggers
 	var idx: int = trig.ability_index
 	if idx < 0 or idx >= abilities.size():
 		return ""

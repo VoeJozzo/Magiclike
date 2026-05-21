@@ -14,4 +14,4 @@ mana_cost = {
 "C": 2,
 "R": 1
 }
-oracle_text = "A vanilla 3/3 — no abilities."
+text = "A vanilla 3/3 — no abilities."

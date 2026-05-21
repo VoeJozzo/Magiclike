@@ -238,22 +238,39 @@ Ordered roughly by ROI / risk ratio.
 
 Pure renames. Tests should pass before and after. Each is one commit.
 
-- `card_id` → `tpl_id` across `CardResource`, `card_database.gd`, all `.tres` files, all callers in engine
-- `display_name` → `name`
-- `oracle_text` → `text`
-- `mana_cost` → `cost`
-- `front_image_path` → `art`
-- `triggered_abilities` → `triggers`
-- `activated_abilities` → `abilities`
-- `on_cast_effects` stays (it's the clearer name; JS will migrate to it)
-- `condition_predicate` → `cond_id` inside trigger dicts
-- `amount_power` / `amount_toughness` → `power` / `toughness` inside pump effect dicts
-- `counter_spell` effect kind → `counter`
-- `card_etb` event kind → `card_enters_battlefield`
-- `instance_id` → `iid` on `CardInstance`
-- `owner_key` → `owner`, `controller_key` → `controller`
-- `active_player_key` → `active_player`, `priority_player_key` → `priority_player`
-- Add `UPKEEP` and `DRAW` phases to phase machine (currently absent on JS too — see Pass 2)
+**Decided / shipped:**
+
+- `condition_predicate` → `cond_id` inside trigger dicts ✓ (Pass 1a)
+- `amount_power` / `amount_toughness` → `power` / `toughness` inside pump effect dicts ✓ (Pass 1a)
+- `counter_spell` effect kind → `counter` ✓ (Pass 1b)
+- `card_etb` event kind → `card_enters_battlefield` ✓ (Pass 1c)
+- `oracle_text` → `text` on `CardResource` ✓ (Pass 1d)
+- `triggered_abilities` → `triggers` on `CardResource` ✓ (Pass 1d)
+
+**Decided NOT to do (revised from earlier plan):**
+
+- `display_name` → `card_name` on `CardResource`: **rejected.** The card-framework's
+  `Card.card_name` field (addons/card-framework/card.gd:28) is semantically a
+  card *identifier* (it's set to `card_id` in tres_card_factory.gd:39 and
+  card-framework's json_card_factory uses `card_name` as the JSON filename
+  parameter). Aliasing our display-name field to the same identifier would
+  create exactly the confusion the rename was supposed to prevent. Keep
+  `display_name` on Godot. The cross-engine wire format can use whatever
+  the JsonCardLoader (Pass 4) decides — current proposal: `name` on the wire
+  (matches JS today, zero JS migration), translated to `display_name` at
+  ingest by JsonCardLoader.
+- `card_id` → `tpl_id`: deferred (not strictly needed for cross-engine work;
+  the locked decision in the gating questions was to keep `card_id` on the
+  wire, which means Godot stays as-is).
+- `instance_id` → `iid`, `owner_key` → `owner`, `controller_key` → `controller`,
+  `active_player_key` → `active_player`, `priority_player_key` → `priority_player`:
+  deferred. These are Godot-internal renames that don't affect wire format
+  or cross-engine vocabulary. `active_player`/`priority_player` would
+  collide with existing methods on `EngineState`. Address as a separate pass
+  if/when the user explicitly wants them; they don't unblock anything.
+- `mana_cost` → `cost`, `front_image_path` → `art`, `activated_abilities` →
+  `abilities`: deferred. Same logic — internal-only aesthetic.
+- Add `UPKEEP`/`DRAW` phases: Godot already has them. JS side gets them in Pass 2.
 
 ### Pass 2 — naming aligned, no behavior change (JS side)
 

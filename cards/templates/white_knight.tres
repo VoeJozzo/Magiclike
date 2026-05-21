@@ -14,4 +14,4 @@ subtypes = Array[String](["human", "knight"])
 mana_cost = {
 "W": 2
 }
-oracle_text = "First strike."
+text = "First strike."

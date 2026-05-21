@@ -12,7 +12,7 @@ card_types = Array[String](["instant"])
 mana_cost = {
 "G": 1
 }
-oracle_text = "Target creature gets +3/+3 until end of turn."
+text = "Target creature gets +3/+3 until end of turn."
 on_cast_effects = Array[Dictionary]([{
 "duration": "eot",
 "kind": "pump",

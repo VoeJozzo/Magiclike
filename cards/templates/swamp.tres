@@ -9,4 +9,4 @@ card_id = "swamp"
 display_name = "Swamp"
 card_types = Array[String](["land"])
 subtypes = Array[String](["swamp"])
-oracle_text = "{T}: Add {B}."
+text = "{T}: Add {B}."

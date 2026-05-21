@@ -47,7 +47,7 @@ static func validate_all_card_predicates(card_resources: Array) -> void:
 	for card in card_resources:
 		if card == null:
 			continue
-		for trig in card.triggered_abilities:
+		for trig in card.triggers:
 			var pred: String = trig.get("cond_id", "")
 			if pred == "":
 				continue
