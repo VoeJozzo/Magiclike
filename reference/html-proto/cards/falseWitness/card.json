@@ -1,0 +1,32 @@
+{
+  "tplId": "falseWitness",
+  "name": "The False Witness",
+  "type": "Creature",
+  "sub": "Insect",
+  "cost": {
+    "U": 1,
+    "C": 2
+  },
+  "power": 2,
+  "toughness": 2,
+  "art": "cards/falseWitness/art.png",
+  "text": "When this enters the battlefield, return target creature to its owner's hand.",
+  "triggers": [
+    {
+      "event": "cardEntersBattlefield",
+      "condId": "thisEnters",
+      "text": "When ~ enters, bounce target creature.",
+      "effects": [
+        {
+          "kind": "removeCreature",
+          "severity": 2,
+          "target": "creature"
+        }
+      ]
+    }
+  ],
+  "color": "U",
+  "colors": [
+    "U"
+  ]
+}
