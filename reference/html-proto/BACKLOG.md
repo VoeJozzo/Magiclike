@@ -14,6 +14,19 @@ This file is a parking lot for deferred work on the html-proto, not a session ag
 
 ## Open
 
+### Divergence-tracked work
+The following items live in `docs/DIVERGENCE.md` as their primary tracker. Listed here so they're visible in the proto-side BACKLOG queue.
+
+- **B2** — clear mana pool at every phase boundary, not just CLEANUP (MTG 106.4).
+- **B3** — CLEANUP step ordering harmonization.
+- **D2** — consolidate `pump` + `addCounter` into one `pump` effect with `duration` parameter.
+- **D4** — `gain_life` signed-delta with direction-based event emission (both engines).
+- **E1** — zone-change event unification (both).
+- **E2** — composable predicate refactor (both).
+- **F2** — preserve marked damage on indestructibles (don't clear `damage = 0` during SBA).
+
+### Other
+
 - **SVG disc for {C}/{T}/{X}/numeric mana pips** — the 5 WUBRG pips are SVG (`assets/mana/{W,U,B,R,G}.svg`); the rest still use CSS letter-on-disc. Design an SVG disc treatment to match the WUBRG family (number content stays — by design).
 - **Tighten remaining bare `catch (_) {}` blocks** — `controller.js` L40 (`entry.prevFocus.focus()`) and L279 (fullscreen `req.call(el).catch(()=>{})`) silently swallow errors. Tighten to `console.warn` when convenient. (The 7 `try { render(); } catch (_) {}` repeats in `renderSettings` were retired in v1.0.182 — `render()` now deep-guards `!G || !G.you || !G.opp || !G.phase`.)
 - **`step()` phase-handler refactor** (`engine.js:6322`) — user wants to examine the turn state machine more deeply before approving structural changes.

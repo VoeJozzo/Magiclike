@@ -14,8 +14,32 @@ For html-proto deferred work, see [`reference/html-proto/BACKLOG.md`](../referen
 ## Open
 
 ### Rules-engine correctness
-- **"Intervening if" predicate re-check at trigger resolution.** Currently `engine/predicates/predicates.gd` is consulted at trigger queue time only. MTG rules check the condition again on resolution (rule 603.4). Matters when a between-events action invalidates the condition (e.g., a "while you control X" trigger where X leaves play between queue and resolution). Deferred from Phase 4.
+- **Trigger chain depth cap** — Godot to mirror proto's 100-depth threshold in `_drain_pending_triggers`. See `docs/DIVERGENCE.md` E6.
+- **"Intervening if" predicate re-check at trigger resolution** — both engines deviate from MTG 603.4 (predicate checked only at queue time, not at resolution). See `docs/DIVERGENCE.md` E5.
 - **Non-self triggers exercised in tests.** The `self_only=false` listener path in trigger draining is implemented but no card or test currently exercises it. Add when a card legitimately needs a non-self listener.
+
+### Divergence-tracked work
+The following items live in `docs/DIVERGENCE.md` as their primary tracker. Listed here so they're visible in the BACKLOG queue. Look up each by its ID for full context and TO-DO details.
+
+- **A1** — randomize first player at game start (godot)
+- **A2** — first-turn draw-skip rule (godot)
+- **A4** — forced mulligan on extreme land counts (godot)
+- **A5** — `KIND_CONCEDE` action (godot)
+- **B3** — CLEANUP step ordering harmonization (either)
+- **B4** — delayed triggers (godot, Phase 7+)
+- **B5** — temp-control revert (godot, Phase 7+)
+- **B6** — `_open_priority_window` helper + auto-pass when no legal action (godot)
+- **B7** — end-turn fast-forward action (godot)
+- **C1, C2** — multi-blocker damage assignment + deathtouch (godot)
+- **C4** — declaration UI refactor: build selection in UI, atomic commit (godot)
+- **C5** — `killedBy` tracking for keyword-claim death triggers (godot, Phase 7+)
+- **D3** — `gain_life` flexibility (target/who parameter) (godot)
+- **D4** — `gain_life` signed-delta with direction-based event emission (both)
+- **D7** — legendary uniqueness at cast (godot, when first legendary lands)
+- **E1** — zone-change event unification (both)
+- **E2** — composable predicate refactor (both)
+- **E7** — effect-aware AI trigger-target picking (godot)
+- **F3** — token vanishing on leave-play (godot, when first token lands)
 
 ### AI
 - **Per-effect triggered-ability scoring in `AIScoring.card_value`.** Currently a flat keyword/triggered-ability bump. The JS prototype walks effects to score them individually (a Pyromaniac-style ETB is worth less than a Sheoldred-style draw-step lifelink). Deferred from Phase 5b.

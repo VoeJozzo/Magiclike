@@ -39,7 +39,11 @@ Each player begins the game with **20 life**.
 - Deck composition is determined by the run-meta layer (see [1400](#1400-draft) and [1500](#1500-the-run-roguelike-meta)); the rules in this section assume a deck already exists.
 
 ### 100.4 Starting hand
-At the start of the game, each player **draws seven cards** from their library into their hand. There is no mulligan step.
+At the start of the game, each player **draws seven cards** from their library into their hand.
+
+**Forced mulligan.** If a player's opening hand contains 0, 1, 6, or 7 lands (statistically extreme — screwed or flooded), the drawn portion is reshuffled into the library and a fresh 7 is drawn. This forced mulligan is **automatic and one-shot** — no player choice, no recursion. The reshuffle preserves any "innate" starting cards (run-meta features that begin in hand); only the drawn 7 portion is reshuffled.
+
+There is no traditional player-choice mulligan (Vancouver, London, etc.).
 
 ### 100.5 First player
 - One player is the **active player** for turn 1.
@@ -61,8 +65,9 @@ Both players losing simultaneously is treated as the active player losing (the i
 - The game log is public to both players.
 
 ### Implementation status — Game Concepts
-- 100.6 concede: not implemented.
-- 100.5 random first player: html-proto randomizes; Godot port currently uses a fixed first player in tests.
+- 100.4 forced mulligan: implemented in html-proto only. Godot port has no mulligan logic — opening hands stand as drawn regardless of land count. See `docs/DIVERGENCE.md` A4.
+- 100.5 random first player: html-proto randomizes; Godot port currently uses a fixed first player. See DIVERGENCE A1.
+- 100.6 concede: implemented in html-proto only. Godot port has no concede action. See DIVERGENCE A5.
 
 ---
 
