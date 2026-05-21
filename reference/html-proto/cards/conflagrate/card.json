@@ -5,7 +5,7 @@
   "cost": {
     "R": 1
   },
-  "art": "🪨",
+  "art": "cards/conflagrate/art.png",
   "text": "Deal 3 damage to target opponent.",
   "effects": [
     {

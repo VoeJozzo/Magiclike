@@ -8,7 +8,7 @@
   },
   "power": 2,
   "toughness": 2,
-  "art": "⚔",
+  "art": "cards/whiteKnight/art.png",
   "text": "First strike",
   "keywords": [
     "firstStrike"

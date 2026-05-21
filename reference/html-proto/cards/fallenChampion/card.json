@@ -9,7 +9,7 @@
   },
   "power": 3,
   "toughness": 2,
-  "art": "💀",
+  "art": "cards/fallenChampion/art.png",
   "text": "When this dies, target opponent loses 2 life.",
   "triggers": [
     {

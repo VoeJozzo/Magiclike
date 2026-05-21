@@ -9,7 +9,7 @@
   },
   "power": 3,
   "toughness": 3,
-  "art": "🔨",
+  "art": "cards/beastBaiter/art.png",
   "text": "When this enters, deal 3 damage to target creature.",
   "triggers": [
     {

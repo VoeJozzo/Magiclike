@@ -6,7 +6,7 @@
     "R": 1,
     "C": 2
   },
-  "art": "🔨",
+  "art": "cards/fireball/art.png",
   "text": "Deal 4 damage to any target.",
   "effects": [
     {

@@ -9,7 +9,7 @@
   },
   "power": 5,
   "toughness": 3,
-  "art": "🐉",
+  "art": "cards/inferno/art.png",
   "text": "Flying",
   "keywords": [
     "flying"
