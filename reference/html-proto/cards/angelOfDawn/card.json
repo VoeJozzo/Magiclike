@@ -9,7 +9,7 @@
   },
   "power": 3,
   "toughness": 4,
-  "art": "👼",
+  "art": "cards/angelOfDawn/art.png",
   "text": "Flying, Lifelink",
   "keywords": [
     "flying",

@@ -9,7 +9,7 @@
   },
   "power": 2,
   "toughness": 1,
-  "art": "😈",
+  "art": "cards/spitefulImp/art.png",
   "keywords": [
     "flying"
   ],

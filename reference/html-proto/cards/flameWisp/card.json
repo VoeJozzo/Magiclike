@@ -9,7 +9,7 @@
   },
   "power": 2,
   "toughness": 2,
-  "art": "✨",
+  "art": "cards/flameWisp/art.png",
   "text": "When this enters, deal 2 damage to target creature.",
   "triggers": [
     {

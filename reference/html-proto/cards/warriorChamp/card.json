@@ -9,7 +9,7 @@
   },
   "power": 3,
   "toughness": 2,
-  "art": "⚔",
+  "art": "cards/warriorChamp/art.png",
   "text": "First strike, Haste",
   "keywords": [
     "firstStrike",

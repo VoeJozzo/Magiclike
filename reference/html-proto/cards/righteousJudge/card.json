@@ -9,7 +9,7 @@
   },
   "power": 3,
   "toughness": 3,
-  "art": "⚖",
+  "art": "cards/righteousJudge/art.png",
   "text": "When this enters, destroy target tapped creature.",
   "triggers": [
     {

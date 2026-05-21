@@ -6,7 +6,7 @@
     "W": 1,
     "C": 1
   },
-  "art": "🌌",
+  "art": "cards/otherworldlyJourney/art.png",
   "text": "Exile target creature; return it at end of turn.",
   "effects": [
     {
