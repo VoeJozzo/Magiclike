@@ -40,6 +40,7 @@ The following items live in `docs/DIVERGENCE.md` as their primary tracker. Liste
 - **E2** — composable predicate refactor (both)
 - **E7** — effect-aware AI trigger-target picking (godot)
 - **F3** — token vanishing on leave-play (godot, when first token lands)
+- **G1** — opponent hand face-down UI (godot) — engine handles hidden info correctly; UI leaks identity
 
 ### AI
 - **Per-effect triggered-ability scoring in `AIScoring.card_value`.** Currently a flat keyword/triggered-ability bump. The JS prototype walks effects to score them individually (a Pyromaniac-style ETB is worth less than a Sheoldred-style draw-step lifelink). Deferred from Phase 5b.

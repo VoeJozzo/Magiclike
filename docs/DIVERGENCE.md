@@ -32,7 +32,7 @@ The TO-DO column describes the action; the tag describes who needs to do it.
 | A1 | First player choice | Fixed to `"you"` (engine_state.gd init) | Random 50/50 (engine.js:5501) | 🔴 | **godot:** randomize first player at game start |
 | A2 | First-turn draw skip | Not implemented — first player draws on turn 1 | Implemented (engine.js:5258) | 🔴 | **godot:** implement first-player draw-skip rule per RULES 100.5 |
 | A3 | Starting life / hand / max hand | 20 / 7 / 7 | 20 / 7 / 7 | ✅ Same | **already-aligned** |
-| A4 | Forced mulligan on extreme land counts | Not implemented | Implemented (engine.js:717-732). If opening hand has 0/1 or 6/7 lands, the drawn portion is reshuffled into library and re-drawn. One-shot, no player choice, no recursion. | 🔴 (different opening-hand distribution) | **godot:** implement the same forced single-mulligan. Statistical: triggers ~15% of games. Affects the opening-hand distribution; without it Godot players see screwed/flooded hands more often. |
+| A4 | Forced mulligan on extreme land counts | Not implemented | Implemented (engine.js:717-732). If opening hand has 0/1 or 6/7 lands, the drawn portion is reshuffled into library and re-drawn. One-shot, no player choice, no recursion. | 🔴 (different opening-hand distribution) | **godot:** *(DEFERRED — site of active experimentation in proto; do not align until the proto rule stabilizes)*. When the time comes: implement the same forced single-mulligan. Affects opening-hand distribution; without it Godot players see screwed/flooded hands more often. |
 | A5 | Concede action | Not implemented | Implemented as `ENGINE.concede()` (engine.js:5551). Sets `G.gameOver = true; G.winner = opp`. | 🟡 (UX gap; game-affecting in that the player can resign) | **godot:** add `KIND_CONCEDE` action and engine handler. Mirrors proto: sets `state.winner` to opponent, emits `game_over`. RULES.md §100.6 already mentions concede as a loss condition; it's just unimplemented. |
 
 A1 + A2 together: in proto the first player gets a tempo advantage offset by drawing one fewer card; in Godot, whoever is "you" goes first AND draws on turn 1 — a real fairness gap.
@@ -177,6 +177,16 @@ Proto's predicate registry (14):
 | F2 | Indestructible damage handling | Preserves marked damage; only the death-check is skipped (engine.gd:948). If indestructible is lost mid-turn, marked damage is still present and the creature dies at the next SBA — MTG-correct. | Clears `damage` on indestructibles during SBA (engine.js:3591-3594). If indestructible is removed, the previously-marked damage is gone and the creature survives damage it shouldn't have. | 🔴 (when a card removes indestructible mid-turn) | **proto:** align on Godot. Don't clear damage from indestructibles — just skip the death check. Damage clears at end of turn like everything else. |
 | F3 | Token vanishing on leave-play | N/A (no tokens) | Implemented | 🔴 (when porting tokens) | **godot:** implement at the point Godot's pool gains tokens. |
 | F4 | SBA sweep ordering | Single-pass collect-and-apply, iterative repeat | Single-pass collect-and-apply, iterative repeat | ✅ Same | **already-aligned** |
+
+---
+
+## G. UI / information visibility
+
+The rules engine handles hidden information correctly in both implementations (neither AI peeks at the opponent's hand). The UI layer is where the two diverge.
+
+| # | Area | Godot | Proto | Tag | TO-DO |
+|---|---|---|---|---|---|
+| G1 | Opponent's hand visibility to the human player | Spawned with the same visual as the player's own hand — face-up, fully readable. `game_board.gd:274` calls `_spawn_visual_for_instance` for every card in `s.opp.hand` into the `_opp_hand` zone with no face-down treatment. | Rendered as card backs only. `render.js:141` calls `renderOppHandBacks(G.opp.hand.length)`; only the count is visible, not card identities. Proto's `.frame-cardback` CSS hides name/art/cost. | 🔴 (information leak) | **godot:** add a face-down/cardback visual for cards in `_opp_hand`. Either skip spawning full Card visuals and just show N placeholder backs, or extend `scenes/card.gd` with a `face_down` mode that suppresses oracle text, name, and art. The engine state is already correct (the AI doesn't read the human's hand); only the UI presentation leaks. |
 
 ---
 
