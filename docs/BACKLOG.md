@@ -14,6 +14,7 @@ For html-proto deferred work, see [`reference/html-proto/BACKLOG.md`](../referen
 ## Open
 
 ### Rules-engine correctness
+- **Trigger chain depth cap in `_drain_pending_triggers`.** Mirror proto's 100-depth threshold. The "bet on drain correctness" stance from CLAUDE.md doesn't survive contact with real card design — the user has already accidentally produced infinite-loop card combinations on proto. The cap costs one counter + one comparison; the defensive value (preventing a hung session, surfacing the bug at the right place) is high. Cross-ref: `docs/DIVERGENCE.md` item E6. CLAUDE.md guidance was updated in the same review pass to call this out as a pattern to REPLICATE from proto, not avoid.
 - **"Intervening if" predicate re-check at trigger resolution.** Currently `engine/predicates/predicates.gd` is consulted at trigger queue time only. MTG rules check the condition again on resolution (rule 603.4). Matters when a between-events action invalidates the condition (e.g., a "while you control X" trigger where X leaves play between queue and resolution). Deferred from Phase 4.
 - **Non-self triggers exercised in tests.** The `self_only=false` listener path in trigger draining is implemented but no card or test currently exercises it. Add when a card legitimately needs a non-self listener.
 
