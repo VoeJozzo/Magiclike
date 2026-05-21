@@ -1,0 +1,185 @@
+# Implementation Divergence — Godot ↔ html-proto
+
+A living catalog of behavioral differences between the Godot port (at the repo root) and the html-proto reference implementation (`reference/html-proto/`). Pairs with [`RULES.md`](RULES.md) (the canonical spec) and [`ARCHITECTURE.md`](ARCHITECTURE.md) (the module map).
+
+When the two implementations disagree, **`RULES.md` is the tie-breaker** — the implementation that doesn't match the canonical rule is wrong and is the one with a to-do.
+
+## Severity tags
+
+- 🔴 **GAME-AFFECTING** — running the same scenario in both produces a different game outcome
+- 🟡 **UX-ONLY** — same final outcome, different player-facing interaction
+- 🔵 **INTERNAL** — different mechanism, observably equivalent
+
+## TO-DO tags
+
+- **godot:** an item for the Godot port to fix
+- **proto:** an item for the html-proto to fix
+- **either-fine:** both implementations are defensible; pick one and align if convenient
+- **none:** no action needed (either intentional or already a known/expected state)
+
+---
+
+## A. Game setup
+
+| # | Area | Godot | Proto | Tag | TO-DO |
+|---|---|---|---|---|---|
+| A1 | First player choice | Fixed to `"you"` (engine_state.gd init) | Random 50/50 (engine.js:5501) | 🔴 | **godot:** randomize first player at game start |
+| A2 | First-turn draw skip | Not implemented — first player draws on turn 1 | Implemented (engine.js:5258) | 🔴 | **godot:** implement first-player draw-skip rule per RULES 100.5 |
+| A3 | Starting life / hand / max hand | 20 / 7 / 7 | 20 / 7 / 7 | ✅ Same | **none** |
+
+A1 + A2 together: in proto the first player gets a tempo advantage offset by drawing one fewer card; in Godot, whoever is "you" goes first AND draws on turn 1 — a real fairness gap.
+
+---
+
+## B. Turn structure
+
+| # | Area | Godot | Proto | Tag | TO-DO |
+|---|---|---|---|---|---|
+| B1 | UPKEEP phase | Exists, no-op, opens priority (phase_machine.gd:8) | Doesn't exist — `step()` switch has no UPKEEP case | 🟡 | **none** — intentional simplification per user. Phase exists in Godot for future "at beginning of upkeep" triggers; proto's absence is consistent and clean (verified 2026-05-21). |
+| B2 | Mana pool clearing | Every phase boundary (engine.gd:1147) — matches MTG 106.4 | Only at CLEANUP (engine.js:5413) | 🔴 (theoretically; no current card exposes it) | **proto:** clear mana at every phase boundary. Tracked in `reference/html-proto/BACKLOG.md`. |
+| B3 | CLEANUP ordering | EOT modifiers clear → check discard | Discard → delayed triggers → EOT clear → mana clear → active-player swap | 🟡 | **either-fine:** harmonize the step ordering. Pick one canonical sequence and have both implementations match it. |
+| B4 | Delayed triggers (e.g., "return at end of turn") | Not implemented | Implemented (CLEANUP-phase processing of `delayedTriggers`) | 🔴 (when porting cards that need it) | **godot:** implement delayed-trigger queue at Phase 7+ (when first card needs it). |
+| B5 | Temporary control revert (stolen creatures return at EOT) | Not implemented | Implemented (engine.js:5387-5411) | 🔴 (when porting cards that need it) | **godot:** implement temp-control revert at Phase 7+. |
+
+---
+
+## C. Combat
+
+| # | Area | Godot | Proto | Tag | TO-DO |
+|---|---|---|---|---|---|
+| C1 | **Multi-blocker damage assignment** | Dumps all damage on `blockers[0]` (engine.gd:1080) | Smart distribution — sorts blockers by kill-value, indestructibles last, assigns minimum lethal to each in order (engine.js:4062-4153) | 🔴 BIG | **godot:** harmonize to proto's smart-distribution algorithm (RULES.md §803). |
+| C2 | Deathtouch + multi-block | Marks first blocker lethal; subsequent take 0 damage from attacker | Uses "lethal = 1" against killable blockers; can kill multiple in one combat | 🔴 | **godot:** falls out of C1 fix automatically — implementing smart-distribution requires the deathtouch-reduces-threshold logic. |
+| C3 | Menace single-blocker handling | Legal at declaration; collapses to unblocked at damage time (engine.gd:1008) | Illegal at declaration (engine.js:4842) | 🟡 (same outcome, different UX) | **either-fine:** pick one. Defer-collapse is more permissive; reject-at-declaration is more decisive. Pure UX call. |
+| C4 | Attacker/blocker declaration undo | `undeclare_attacker` / `undeclare_blocker` actions exist (engine.gd) | No undo — declarations atomic | 🟡 | **either-fine:** pure UX. Godot is mistake-friendly, proto is decisive. MTG itself has no formal rule. Pick one if you care; can also leave indefinitely. |
+| C5 | Killer attribution (`killedBy`) | Not tracked in combat | Tracked for keyword-claim death triggers (e.g., Endomorph Absorb) | 🔴 (when porting cards that need it) | **godot:** implement when first card needs killer-credit (likely Phase 7+ for proto-style absorb mechanics). |
+| C6 | Unblockable keyword string | `"unblockable"` | `"unblockable"` | ✅ Same | **none** |
+
+### C4 detail — what declaration undo means in play
+
+Godot lets the active player declare an attacker, then change their mind before passing priority. They issue an `undeclare_attacker` action — the creature untaps, leaves the attackers list, and the player can declare something else. Same for blockers.
+
+Proto: clicking "declare attackers" with a set commits that set atomically. To change a decision, you'd have to back up to a prior game state (which proto doesn't support either).
+
+This is purely a player-experience choice. MTG itself has no formal rule on take-backs — paper play allows them by social convention, MTGO doesn't. Neither implementation is "more correct."
+
+---
+
+## D. Spells and effects
+
+| # | Area | Godot | Proto | Tag | TO-DO |
+|---|---|---|---|---|---|
+| D1 | Multi-effect target snapshot | Live state read at each effect's resolution | Snapshots target stats per `targetSlot` before any effect runs (engine.js:3900-3938) | 🔴 (when multi-effect spells are added) | **either-fine:** matters zero times today (no multi-effect spell in current pool). MTG canon is closer to Godot's live read. Pick one and align. |
+| D2 | `pump` effect duration | Parametrized via `duration: "eot"` / `"permanent"` | Two separate effects: `pump` (always EOT), `addCounter` (always permanent) | 🟡 | **proto:** consolidate to Godot's pattern — one `pump` effect with `duration` parameter, deprecate `addCounter` as a separate effect kind. |
+| D3 | `gain_life` flexibility | Always to `ctx.controller` | Can route via `params.who` or target descriptor | 🟡 | **godot:** extend `gain_life.gd` to accept `who`/`target` parameters per proto's pattern. Enables future "target opponent gains N life" cards. |
+| D4 | `gain_life` non-positive amount | Warns and skips (engine/effects/gain_life.gd:8) | Silent no-op | 🔵 | **either-fine:** pick a stance. Godot's warning is debug-friendly; proto's silence trusts the data. Slight lean toward warn-and-skip. |
+| D5 | `add_mana` shorthand | Accepts flat `{"R": 1}` OR canonical `{"amounts": {"R": 1}}` | Requires canonical form only | 🔵 | **none:** data-format flexibility only. Cards using the canonical form work in both. Don't use the shorthand for cards that may round-trip. |
+| D6 | `counter_spell` refuses to counter triggered abilities | Yes (engine.gd:1272) | Yes (engine.js:1780) | ✅ Same | **none** |
+| D7 | Legendary uniqueness ("only one of each legendary tplId on the battlefield per player") | Not enforced | Enforced at cast-legality (engine.js:4721) | 🔴 (when Godot adds legendary cards) | **godot:** implement at the point Godot's pool gains its first legendary creature. |
+
+### D1 detail — when target snapshots matter
+
+This matters when a single spell has multiple effects that all reference the same target, AND an earlier effect modifies the target in a way the later effect cares about.
+
+Hypothetical card we don't have yet: *"Target creature gets +2/+2 and gains lifelink. Then it deals damage equal to its toughness to its controller."*
+
+- **Proto**: snapshots toughness BEFORE any effect runs. The pump applies, then the damage effect deals damage equal to the SNAPSHOT toughness (e.g., 3 for a 2/3 creature, not 5).
+- **Godot**: each effect reads the live state at its own resolution. The pump applies (creature becomes 4/5), then damage = 5.
+
+Today this matters zero times — no spell in either pool has multi-effect with same-target stat references. It becomes a real difference the first time we port one.
+
+### D4 detail — non-positive life gain
+
+- **Godot**: `gain_life.gd:7-9` pushes a warning ("nonpositive amount X — skipping") and returns without applying. You catch authoring bugs ("oops I wrote `amount: 0`") at runtime.
+- **Proto**: just applies the amount. `amount: 0` → no change, no log entry. `amount: -2` → life DROPS by 2 (proto doesn't guard).
+
+MTG-canonical: "gain 0 life" is a real but no-op event, and triggers like "whenever you gain life" should NOT fire on it. Both implementations match this (Godot by skipping entirely, proto by adding 0 silently with no event emission).
+
+### D5 detail — add_mana data formats
+
+Both forms produce identical mana pool changes. Cards using `{"kind": "add_mana", "amounts": {"R": 1}}` work in both engines. Cards using `{"kind": "add_mana", "R": 1}` work only in Godot. The shorthand was probably added for hand-authoring convenience.
+
+---
+
+## E. Triggered abilities
+
+| # | Area | Godot | Proto | Tag | TO-DO |
+|---|---|---|---|---|---|
+| E1 | Event vocabulary | 2 emitted: `card_etb`, `card_dies` | 6+ emitted: `cardEntersBattlefield`, `cardDies`, `cardLeavesBattlefield`, `attacks`, `spellCast`, `lifeGained` | 🔴 | **godot:** expand emission to cover `cardLeavesBattlefield`, `attacks`, `spellCast`, `lifeGained`. Driven by card-pool needs (Phase 6+). |
+| E2 | Predicate registry size | 1 (`opp_lost_life_this_turn`) | 14 (see list below) | 🔴 | **godot:** implement remaining predicates as cards demand them. Each is a small static function in `predicates.gd` + one entry in `_PRED_NAMES`. |
+| E3 | Queue-and-drain pattern | Same | Same | ✅ Same | **none** |
+| E4 | APNAP drain order | Yes (engine.gd:1449) | Yes (engine.js:2820) | ✅ Same | **none** |
+| E5 | Intervening-"if" re-check on resolution | Not implemented | Not implemented | ✅ Same (deviation from MTG 603.4) | **either:** implement on both sides if any card needs it. Already in Godot's BACKLOG. |
+| E6 | Trigger chain depth cap | None (per CLAUDE.md guidance) | 100 (engine.js:2731) | 🟡 | **none.** Intentional. Proto keeps its safety net (historical bug protection). Godot bets on drain correctness per CLAUDE.md "Patterns to NOT replicate." |
+| E7 | Auto-pick trigger target (AI) | Greedy: face damage first → first creature | Effect-aware scoring (damage prefers killable, pump prefers own best) | 🟡 | **godot:** upgrade AI auto-pick to effect-aware scoring as the AI iterates (Phase 6+ AI work). |
+| E8 | Death triggers fire from graveyard | Yes — `subject_card` in event payload | Yes — `extraSources` in emit call | ✅ Same | **none** |
+
+### E1 + E2 detail — events and predicates explained
+
+In our game, cards have triggered abilities like "When this creature dies, do X" or "Whenever you cast a spell, do Y." For these to work, the engine needs two pieces of machinery:
+
+1. **Events**: a notice the engine posts when something happens. "Creature X just entered the battlefield." "Player Y just cast a spell." Every category of trigger needs the right kind of notice to listen for.
+2. **Predicates**: the criteria each card uses to decide "does this notice apply to me?" Bloodlust Berserker doesn't fire on every death — only its own death, and only when the opponent lost life this turn.
+
+**Godot's bulletin board** (current state):
+- `card_etb` — a card entered the battlefield
+- `card_dies` — a card died
+
+Godot's predicate registry: 1 entry, `opp_lost_life_this_turn`.
+
+**Proto's bulletin board:**
+- `cardEntersBattlefield` — same as Godot's card_etb
+- `cardDies` — same as Godot's card_dies
+- `cardLeavesBattlefield` — broader than dying. Includes bouncing back to hand, exiling, etc.
+- `attacks` — a creature was declared as attacker
+- `spellCast` — any spell was put on the stack
+- `lifeGained` — any player gained life
+
+Proto's predicate registry (14):
+
+| Predicate | Fires when |
+|---|---|
+| `thisEnters` | The card that just entered IS this trigger's source |
+| `anotherCreatureYouEntersStrict` | Another (non-self) creature you control entered |
+| `anotherCreatureYouEntersOfSubtype` | Another of your creatures with a specific subtype entered |
+| `thisAttacks` | This trigger's source just attacked |
+| `thisAttacksAfterOppLifeLoss` | ... and the opponent lost life this turn |
+| `creatureYouAttacksOfSubtype` | Any of your creatures with subtype X attacked |
+| `thisDies` | This trigger's source just died |
+| `thisLeaves` | This trigger's source just left play (any way) |
+| `anotherCreatureDies` | Another creature you control just died |
+| `anyCardDies` | Any card died, either side |
+| `thisKillsCreature` | A creature died, killed by damage from this source |
+| `youGainLife` | You gained life |
+| `youCastSpell` | You cast a spell |
+| `youCastCounterspell` | You cast a counterspell specifically |
+
+**Why this matters for porting.** Of proto's 258 cards, roughly 80-120 have triggered abilities, and most of those use one of these 14 predicates against one of the 6 events. Until Godot has the matching events AND predicates, porting those cards is blocked at the templating step.
+
+**The good news.** Each event is one or two lines of code (an `_fire_event({...})` call placed at the right point in the engine). Each predicate is a small static function in `predicates.gd` plus one entry in `_PRED_NAMES`. Boot validation catches typos. The work for Phase 6 (card pool expansion) is really: pick the next 15–20 cards, identify which events and predicates they need, add those, then write the templates.
+
+---
+
+## F. State-based actions
+
+| # | Area | Godot | Proto | Tag | TO-DO |
+|---|---|---|---|---|---|
+| F1 | Creature death checks (lethal damage, deathtouch, 0 toughness) | Same | Same | ✅ Same | **none** |
+| F2 | Indestructible exemption | Same — ignores lethal-damage/marked checks; still dies at 0 toughness (engine.gd:948) | Same (engine.js:3591) | ✅ Same | **none** — confirmed aligned. |
+| F3 | Token vanishing on leave-play | N/A (no tokens) | Implemented | 🔴 (when porting tokens) | **godot:** implement at the point Godot's pool gains tokens. |
+| F4 | SBA sweep ordering | Single-pass collect-and-apply, iterative repeat | Single-pass collect-and-apply, iterative repeat | ✅ Same | **none** |
+
+---
+
+## False positives flagged during audit
+
+The audit surfaced one claim that turned out to be wrong; logging it here so it doesn't get repeated:
+
+- **"Godot Phase 4 promises Mercurial Adept spellCast triggers but doesn't emit the event."** False. Mercurial Adept is a proto-only card. Godot's Phase 4 ships Pyromaniac (`card_etb`) and Bloodlust Berserker (`card_dies`) — both events are emitted. The audit confused proto's Phase 4 with Godot's Phase 4.
+
+---
+
+## Maintaining this file
+
+- When an item is fixed in one implementation, update the affected row and either delete the row or move it to a "Recently aligned" section with a date.
+- When a new divergence is discovered, add a row with a stable ID. Don't renumber existing rows — IDs are referenced from RULES.md and elsewhere.
+- The TO-DO column is part of the row, not a separate tracker. When work begins on a TO-DO, no need to migrate it elsewhere; just check status here.

@@ -343,22 +343,21 @@ Combat damage is resolved in **up to two passes**:
 Within each pass, each attacker assigns damage as follows:
 
 - **Unblocked attacker**: assigns its full power as damage to the defending player.
-- **Blocked attacker**: assigns its full power to the FIRST blocker assigned to it. (See Implementation status below on multi-block damage assignment.)
-- **Trample**: if the attacker has [trample](#9018-trample), only damage equal to the blocker's remaining toughness needs to be assigned to the blocker. Excess damage spills to the defending player.
+- **Blocked attacker**: assigns its damage across all assigned blockers in order, applying enough damage to be lethal to each blocker before moving on to the next.
+- **Trample**: if the attacker has [trample](#9018-trample), excess damage beyond what was assigned to blockers spills to the defending player. With trample, the attacker need only assign each blocker's *remaining toughness* worth of damage (not more) before considering the blocker satisfied; if deathtouch is also present, "enough to be lethal" drops to 1 damage per blocker.
 
 Each blocker assigns its full power to the attacker it is blocking.
 
-When a creature is dealt damage by a source with [deathtouch](#9019-deathtouch), that creature is **marked as lethal** for the next state-based-action sweep regardless of damage amount.
+When a creature is dealt damage by a source with [deathtouch](#9019-deathtouch), that creature is **marked as lethal** for the next state-based-action sweep regardless of damage amount. With deathtouch, the "lethal damage" threshold for damage-assignment purposes drops to 1.
 
 When a creature deals damage and its source has [lifelink](#9020-lifelink), the source's controller gains life equal to the damage dealt.
 
 [Indestructible](#9021-indestructible) creatures do not die from damage (lethal-marked or otherwise). They die only when their toughness becomes 0 or less.
 
 ### Implementation status — Combat
-- **Multi-blocker damage assignment**: in MTG, the attacker chooses how to divide damage across multiple blockers (subject to: each blocker must have lethal damage assigned before the next gets any, modified by trample). Currently both Godot and html-proto **dump all attacker damage on the FIRST assigned blocker**. This means three weenies blocking a 5/5 — only the first weenie takes damage. The other two block (they can damage the attacker back) but take no damage from the attacker. This is a known simplification.
-- **First-strike interaction with double-strike**: double-strike is not implemented. A first-strike creature surviving pass 1 contributes no damage in pass 2.
-- **Trample with multiple blockers + deathtouch**: the MTG-canonical rule (deathtouch lets 1 damage count as lethal, so the rest tramples) interacts with multi-block assignment; given the multi-block simplification above, this is implementation-defined behavior today.
-- **Damage assignment by attacker**: in MTG the attacker chooses the blocker order at declare-blockers step (508.6). Currently the order is fixed at block declaration time (the order the defender declared them in).
+- **Multi-blocker damage assignment** is currently split between the two implementations and the divergence is gameplay-affecting. See `docs/DIVERGENCE.md` items C1, C2, C3 for details. Briefly: html-proto matches the canonical rule above (smart distribution, deathtouch reduces threshold to 1). Godot **dumps all attacker damage on the first assigned blocker** — three 1/1 chumps blocking a 5/5 result in 1 death (Godot) vs. 3 deaths (proto). Harmonization to Godot is on the to-do list.
+- **First-strike interaction with double-strike**: double-strike is not implemented in either. A first-strike creature surviving pass 1 contributes no damage in pass 2.
+- **Damage assignment by attacker**: in MTG the attacker chooses the blocker order at declare-blockers step (508.6). Currently the order is fixed at block declaration time (the order the defender declared them in) in both implementations.
 
 ---
 
@@ -675,13 +674,16 @@ When you (the user) want to confirm "is the implementation doing what I expect,"
 - [ ] Land per turn limit: 1, active player only, main phase only. ([701](#701-playing-a-land))
 
 ## A3. Known deviations from the canonical rules
-Rolling list of places where the implementation knowingly diverges from this document:
+Rolling list of places where the implementation knowingly diverges from this document. For the full Godot↔proto comparison, see [`docs/DIVERGENCE.md`](DIVERGENCE.md).
 
-- [Implementation status — Combat](#implementation-status--combat): multi-blocker damage assignment is "dump on first blocker" rather than attacker-chosen division.
-- [1007](#1007-intervening-if-re-check): "intervening if" not re-checked on resolution.
-- [502](#500-turn-structure) Upkeep step: phase exists but no triggers fire there yet.
-- [509](#500-turn-structure) End step: same.
-- No Beginning-of-Combat step — combat starts directly with declare attackers.
-- [1102](#1102-sba-sweep-order): SBA ordering is single-pass collect-and-apply, not the strict per-rule order from MTG 704.5.
-- No exile-zone effects today.
+- **Godot multi-blocker damage assignment** dumps all damage on the first blocker (proto matches the canonical rule). See DIVERGENCE C1.
+- **No first-player draw-skip in Godot** (proto implements it). See DIVERGENCE A2.
+- **Proto only clears mana at CLEANUP**, not at every phase boundary (Godot matches the canonical rule). See DIVERGENCE B2.
+- [1007](#1007-intervening-if-re-check): "intervening if" not re-checked on resolution (both implementations).
+- [502](#500-turn-structure) Upkeep step: phase exists in Godot but no triggers fire there yet; proto does not implement upkeep at all.
+- [509](#500-turn-structure) End step: phase exists but no triggers fire there yet (both).
+- No Beginning-of-Combat step — combat starts directly with declare attackers (both).
+- [1102](#1102-sba-sweep-order): SBA ordering is single-pass collect-and-apply, not the strict per-rule order from MTG 704.5 (both).
+- No exile-zone effects today (both).
 - No tokens in Godot port (html-proto has tokens).
+- No delayed triggers or temporary control revert in Godot port (proto has both).

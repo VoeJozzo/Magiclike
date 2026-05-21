@@ -14,6 +14,7 @@ This file is a parking lot for deferred work on the html-proto, not a session ag
 
 ## Open
 
+- **Mana pool empties at every phase boundary, not just CLEANUP** (MTG 106.4) — currently `engine.js:5413-5414` only zeros mana pools inside the CLEANUP case. The Godot port clears at every phase transition, which is the canonical behavior. Invisible today because no card exposes floated mana across a phase boundary, but it'd surface the moment a card cares. Cross-ref: `docs/DIVERGENCE.md` item B2.
 - **SVG disc for {C}/{T}/{X}/numeric mana pips** — the 5 WUBRG pips are SVG (`assets/mana/{W,U,B,R,G}.svg`); the rest still use CSS letter-on-disc. Design an SVG disc treatment to match the WUBRG family (number content stays — by design).
 - **Tighten remaining bare `catch (_) {}` blocks** — `controller.js` L40 (`entry.prevFocus.focus()`) and L279 (fullscreen `req.call(el).catch(()=>{})`) silently swallow errors. Tighten to `console.warn` when convenient. (The 7 `try { render(); } catch (_) {}` repeats in `renderSettings` were retired in v1.0.182 — `render()` now deep-guards `!G || !G.you || !G.opp || !G.phase`.)
 - **`step()` phase-handler refactor** (`engine.js:6322`) — user wants to examine the turn state machine more deeply before approving structural changes.
