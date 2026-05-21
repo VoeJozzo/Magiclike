@@ -570,7 +570,7 @@ func _do_play_land(action: Dictionary) -> bool:
 	# Lands ETB fires triggers in Phase 4+. Lands themselves don't have
 	# triggered abilities yet, but a landfall card on the battlefield could
 	# react. Fire the event and drain in case anything matches.
-	_fire_event({"kind": "card_etb", "subject_iid": card.instance_id, "subject_card": card})
+	_fire_event({"kind": "card_enters_battlefield", "subject_iid": card.instance_id, "subject_card": card})
 	_drain_pending_triggers()
 	return true
 
@@ -698,7 +698,7 @@ func _resolve_spell_entry(entry: Dictionary) -> void:
 			card.summoning_sick = false
 		_state.append_log("%s enters the battlefield under %s" % [card.name(), controller.name])
 		# Fire ETB event so triggered abilities can react.
-		_fire_event({"kind": "card_etb", "subject_iid": card.instance_id, "subject_card": card})
+		_fire_event({"kind": "card_enters_battlefield", "subject_iid": card.instance_id, "subject_card": card})
 	else:
 		var owner: Player = _state.player_by_key(card.owner_key)
 		owner.graveyard.append(card)

@@ -22,7 +22,7 @@ triggered_abilities = Array[Dictionary]([{
 "kind": "damage",
 "target": "chosen"
 }],
-"event": "card_etb",
+"event": "card_enters_battlefield",
 "self_only": true,
 "target_filter": "creature_or_player"
 }])
