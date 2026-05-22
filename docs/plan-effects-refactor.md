@@ -1,7 +1,7 @@
 # Refactor Plan: Unified Effects Registry — Audit, Decompose, and Align
 
 **Status:** Plan complete, ready for review. Not yet executed.
-**Pre-execution flag:** The `rip` effect's behavior needs another discussion before this refactor runs — see §13. The plan currently codifies "kludge" semantics (rip = sacrifice + slot_remove, fires triggers); the user has flagged this as known-not-final and wants to revisit before implementation begins.
+**Pre-execution note:** The structural design for `rip` is resolved (compositional approach: `[force_sacrifice, rip(previous_target)]`; see §4 and §13). One remaining open question — trigger semantics (annihilation vs sacrifice) — is deferred to either a card-pool change that surfaces it or a deliberate retrofit decision. The plan is implementable as written.
 **Cross-references:** `docs/DIVERGENCE.md` items D1 (target target-state semantics — see §3.6), D2 (`pump` duration → `addCounter`), D3 (`gain_life` flexibility), D4 (`gain_life` signed delta), B4 (delayed-trigger machinery — required for `exile_until_eot` decomposition), C5 (killer attribution — adjacent), E1/E2 (event vocabulary + composable predicates, prerequisite for the `move_card` effect's destination semantics). `docs/RULES.md` §703 (target legality), §704 (resolution + fizzle), §904 (hexproof). `docs/SPEC.md` §1.4 (effect descriptor schema).
 **Effort estimate:** **L** (~4.5–5.5 days end-to-end across both engines, ~64–69 hours, including card migration, tests, splice helper extraction, and registry consolidation; this is the largest of the three planned refactors because it touches all 258 proto cards, all 32 Godot templates, and rewrites the dispatch table itself).
 
@@ -322,13 +322,15 @@ Shorthand-style signature; parameters are descriptive, not exhaustive.
 **Stickers (1)**
 - `apply_sticker(kind, target)` — replaces `embargo`, `bleach`, `symmetricize`. **TENTATIVE per decision 7** — subject to revision after the sticker-system audit. Kept inside the registry as a placeholder so card data has a stable name to write against.
 
-**Specials — card-bespoke (6)**
+**Specials — card-bespoke (5)**
 - `endomorph_absorb` — Endomorph.
 - `bargain_sticker_self` — Archdemon ETB.
 - `bargain_sticker_other` — Archdemon LTB.
 - `fight_target(target_filter)` — Beast's Fury.
-- `rip(target_player)` — Vile Edict (slot-loss is roguelike layer, see §3.4; engine action kludge documented in §13).
 - `apply_in_game_splice(target_pair)` — Stapler.
+
+**Run-layer primitives (1)**
+- `rip(target)` — removes the targeted card's slot from the run via `RUN.removeSlotByIdx`. Does NOT touch the in-play card itself (that's the caller's responsibility — typically a preceding `force_sacrifice` or similar). Compositional building block: "Vile Edict"-style cards become `[force_sacrifice(opponent, 1, creature), rip(previous_target)]`. Phylactery's engine-internal path also ends up calling `RUN.removeSlotByIdx` (same underlying primitive) but doesn't go through this effect dispatcher (it's not card-effect-driven). See §13 for trigger-semantics discussion.
 
 | Category | Count |
 |---|---|
@@ -342,7 +344,8 @@ Shorthand-style signature; parameters are descriptive, not exhaustive.
 | Tokens | 1 |
 | Sacrifice | 1 |
 | Stickers (tentative) | 1 |
-| Specials (card-bespoke) | 6 |
+| Specials (card-bespoke) | 5 |
+| Run-layer (`rip`) | 1 |
 | **Total** | **19** |
 
 Compare to proto's 38 (37 distinct + 1 dup + 1 dead `sacrifice`). 50% reduction.
@@ -382,16 +385,19 @@ The `move_card` primitive is powerful but verbose for the common cases. To keep 
 | `target_player_discards(N)` | `move_card(hand, graveyard, target_player_chosen, N)` |
 | `mill(N)` | `move_card(library, graveyard, controller_top, N)` |
 | `bounce(target)` | `move_card(battlefield, hand, target, 1)` |
-| `flicker(target)` | TWO calls: `[move_card(battlefield, exile, target, 1, post: {keep_buffs: true}), move_card(exile, battlefield, the_slot_just_moved, 1, post: {enter_via_etb: true})]` |
+| `flicker(target)` | TWO calls: `[move_card(battlefield, exile, target, 1, post: {keep_buffs: true}), move_card(exile, battlefield, previous_target, 1, post: {enter_via_etb: true})]` |
 | `search_for(filter)` | `move_card(library, hand, library_search(filter), 1, post: {shuffle: true})` |
 | `search_land_tapped()` | `move_card(library, battlefield, library_search(land), 1, post: {tap: true, shuffle: true})` |
-| `return_from_graveyard(filter)` | `move_card(graveyard, hand, controller_chosen_with(filter), 1)` |
 | `shuffle_into_library(target)` | `move_card(battlefield, library, target, 1, post: {shuffle: true})` |
+
+**Note on `post`**: the `post` argument is an OPTIONAL affix on `move_card`. The canonical signature is `move_card(from_zone, to_zone, selector, amount, post?)`. A bare `move_card(library, hand, controller_top, 1)` is fully valid — no post needed. Each key inside `post` is also optional. The examples above include `post: {...}` only because THOSE specific shorthand patterns need post-actions; most uses of `move_card` carry no post argument.
+
+**Note on `return_from_graveyard`**: NOT included in the shorthand set, even though it's a common card-design pattern. Reason: graveyard cards can return to hand (Mortician's Assistant style), to battlefield (reanimation), or to library (top or shuffled). One shorthand can't cover all variants without an extra parameter that breaks the simplicity. Card authors who need it use the full `move_card(graveyard, ...)` form, or we add specific shorthand later if a clear sub-pattern emerges (e.g., `reanimate(target)` for graveyard→battlefield specifically).
 
 **Design rules for the shorthand set:**
 - Each shorthand is a parser-table entry; ONE canonical handler (`move_card`) runs at execution time.
 - Card data files can use EITHER the shorthand OR the full canonical form — boot validation accepts both.
-- New shorthands are added only when a card-design pattern is common enough to warrant one. Don't preemptively add shorthand for one-off cases.
+- New shorthands are added only when a card-design pattern is common enough to warrant one AND has unambiguous default parameters. Don't preemptively add shorthand for one-off cases or ambiguous patterns (`return_from_graveyard` is the cautionary case).
 - The shorthand-to-canonical mapping lives in a single registry (boot-time parser), making it easy to evolve. Adding `target_player_mills(N)` later is a one-line entry.
 
 **Effect on registry size**: from a card-author perspective, the effective vocabulary is ~30 effects (19 canonical atomic + 10 shorthand names for movement). From an engine perspective, still 19 handlers. Best of both worlds.
@@ -597,12 +603,12 @@ The "loot" idiom becomes two shorthand calls that desugar to `move_card` invocat
      "trigger": "end_step",
      "effects": [
        {"kind": "move_card", "from_zone": "exile", "to_zone": "battlefield",
-        "selector": "the_card_just_moved", "amount": 1, "post": {"enter_via_etb": true}}
+        "selector": "previous_target", "amount": 1, "post": {"enter_via_etb": true}}
      ]}
   ] }
 ```
 
-`schedule_delayed` is the B4 primitive (delayed-trigger machinery). The `the_card_just_moved` selector references the card the prior `move_card` operated on — this DOES need a small chaining mechanism (1 line of context-passing in the resolver). Not the same as the open question above; this is a forward reference from one effect to the prior effect's resolved subject. Until B4 lands, `exile_until_eot` stays as its own primitive in both engines and migrates after B4.
+`schedule_delayed` is the B4 primitive (delayed-trigger machinery). The `previous_target` selector references the card the prior `move_card` operated on — this DOES need a small chaining mechanism (1 line of context-passing in the resolver). Not the same as the open question above; this is a forward reference from one effect to the prior effect's resolved subject. Until B4 lands, `exile_until_eot` stays as its own primitive in both engines and migrates after B4.
 
 `flicker` is the immediate variant: skip `schedule_delayed`, just do the two `move_card` calls back-to-back. So `flicker` can migrate earlier than `exile_until_eot`.
 
@@ -919,30 +925,40 @@ For each shorthand effect name, verify it desugars correctly to its canonical `m
 
 ---
 
-## 13. The `rip` effect — kludge documented; needs design discussion before refactor
+## 13. The `rip` effect — compositional approach adopted; remaining trigger-semantics question
 
-**Status: PRE-EXECUTION DECISION REQUIRED.** The `rip` effect in this plan is a **rename of current `ripPermanent` with no behavior change**. Current proto behavior:
+**Status: STRUCTURAL DECISION RESOLVED. TRIGGER-SEMANTICS DECISION DEFERRED.**
 
-1. Opens `pendingRipSelect` prompt for the targeted player.
-2. Player picks a permanent they control.
-3. Engine calls `sacrificeCard(card, who)` — fires death (`cardDies`) and leave-play (`cardLeavesBattlefield`) triggers; card goes to graveyard.
-4. Engine calls `RUN.removeSlotByIdx(slotIdx)` — slot removed from run.
+Previously, this section flagged "the `rip` effect's behavior needs another discussion before refactor." The user resolved the structural question by proposing the compositional decomposition (rip is just the run-layer slot-removal primitive; cards compose `[force_sacrifice, rip(previous_target)]` to get "Vile Edict" semantics). That's now spec'd in §4 and the worked examples.
 
-This **does not match the Chaos Orb / Phylactery semantics** the user intuited. The card has a normal in-game death (triggers fire, graveyard receives it); only the slot-removal at run-layer gives the "ceases to exist" feel.
+### What the compositional approach buys us
+- No bundled "rip" effect kind. Card data composes two existing/new primitives.
+- `force_sacrifice` is reused naturally from Diabolic Edict.
+- `rip` is a small focused primitive (~20 lines): take a target, call `RUN.removeSlotByIdx(target.slotIdx)`. That's it.
+- The `previous_target` selector is generalized infrastructure useful beyond rip (also serves `flicker`'s second move_card).
+- Future cards like "Target player sacrifices a creature, then exile it" become `[force_sacrifice(target_player), exile(previous_target)]` naturally.
 
-**Functionally OK today**: no currently-rippable card has a death or LTB trigger. The trigger-firing on rip is a latent bug that doesn't surface in current gameplay.
+### What's still pending: trigger semantics
 
-**Three known unfinished design points the user has flagged for revisit:**
+The structural decomposition does NOT fix the trigger-firing issue:
+- `force_sacrifice` calls `sacrificeCard`, which fires `cardDies` and `cardLeavesBattlefield` events.
+- So a rip-card-style spell currently fires death + LTB triggers, then the slot is removed.
+- The user's "Chaos Orb / Phylactery" mental model was "no triggers fire; card just annihilates."
 
-1. **Engine action on selection**: should rip use `sacrificeCard` (current, fires triggers, in-game card goes to graveyard) OR a new `annihilate_card` helper extracted from `ripSlotForPhylactery`'s body (no triggers fire, in-play card just splice'd out of its zone)? The latter matches Phylactery's actual behavior and the "Chaos Orb" mental model; the former is what proto does today.
+**Three pending questions for pre-execution decision:**
 
-2. **Composable edicts**: in MTG, "Choose target player. That player sacrifices a creature they control." is a composable construct — `[target_player(filter), player_action(sacrifice(creature))]`. We currently have edict-style UI baked into the effect handler (`pendingRipSelect`). A future refactor would decompose into `target_player` + `player_action(effect)` primitives, making "the targeted player picks X" reusable across cards (rip, edict, "target player discards a card," etc.). Not a small piece of infrastructure.
+1. **Is the trigger-firing actually wrong, or just a non-issue today?** Currently no rippable card has a death or LTB trigger. The trigger-firing on rip is a latent bug that doesn't surface in current gameplay. We could defer the decision until a card pool change makes it visible.
 
-3. **Trigger semantics**: independent of #1 and #2, IF we go to annihilate semantics, should LTB triggers fire (the card DID leave the battlefield) or NOT (the card is annihilated, not displaced)? Defensible both ways.
+2. **If we DO want annihilation semantics**, what's the mechanism? Two options:
+   - **(a) Annihilation effect**: a new primitive like `annihilate(target)` that removes the in-play card from its zone without zone-change emit (like Phylactery's body of `ripSlotForPhylactery`). Vile Edict's effects become `[force_sacrifice(opponent, 1, creature), annihilate(previous_target), rip(previous_target)]` — three effects in sequence. Cleanest.
+   - **(b) `force_sacrifice` with a flag**: e.g., `force_sacrifice(opponent, 1, creature, suppress_triggers=true)`. Adds a parameter to a common primitive for one edge case. Uglier.
+   - Recommend (a) when we decide to fix this.
 
-**Decision needed before this refactor executes.** If we leave it as the current kludge, the plan is implementable as written. If we want to fix the trigger bug, we extract `annihilate_card` (~1-2 hours of work) and swap the `doRipSelect` body to call it. If we want full composable edicts, that's a separate plan with its own scope.
+3. **Composable edicts as a broader pattern**: in MTG, "Choose target player. That player [verb]s [object]." is a decomposable structure. A future refactor could introduce `target_player(filter)` + `player_action(effect)` primitives that let ANY effect run with a different player as the "controller-for-resolution." Out of scope for this refactor; flagged as a future direction.
 
-The user has said "kludge is fine for now, with the understanding that this is not the ultimate behavior." The plan honors that — but flagging here so the decision is conscious rather than accidental.
+### Recommended pre-execution decision
+
+Use the compositional approach as currently spec'd. The structural improvement (no bundled rip effect, cards compose primitives) is solid. The trigger-semantics question is deferred until either (a) a new card requires annihilation semantics, or (b) the user decides to retrofit the existing rip-card. Decision (a) above (add `annihilate` primitive) is the cheapest fix when the time comes.
 
 ---
 
