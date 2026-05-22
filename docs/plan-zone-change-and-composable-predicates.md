@@ -44,14 +44,14 @@ For each proto predicate, the atomic checks it bundles (using the human-readable
 | `anotherCreatureYouEntersStrict` | ETB | `another_card` + `card_is_creature` + `card_is_yours` |
 | `anotherCreatureYouEntersOfSubtype` | ETB | `another_card` + `card_is_yours` + `card_has_subtype(sub)` (currently no `is_creature` — subtype is creature-only de facto) |
 | `thisAttacks` | attacks | `this_card` |
-| `thisAttacksAfterOppLifeLoss` | attacks | `this_card` + `opp_lost_life_this_turn` |
+| `thisAttacksAfterOppLifeLoss` | attacks | `this_card` + `lost_life_this_turn("opp")` |
 | `creatureYouAttacksOfSubtype` | attacks | `card_is_yours` + `card_has_subtype(sub)` |
 | `thisDies` | dies | `this_card` |
 | `thisLeaves` | leaves | `this_card` |
 | `anotherCreatureDies` | dies | `another_card` + `card_is_creature` |
 | `anyCardDies` | dies | (none — fires always) |
 | `thisKillsCreature` | dies | `another_card` + `card_is_creature` + `card_damaged_by_this` |
-| `youGainLife` | lifeGained | `is_life_gain` + `affected_player_is_you` |
+| `youGainLife` | lifeGained | `is_life_gain` + `affected_player_is("you")` |
 | `youCastSpell` | spellCast | `another_card` + `card_is_yours` |
 | `youCastCounterspell` | spellCast | `another_card` + `card_is_yours` + `card_has_effect("counter_spell")` |
 
@@ -128,13 +128,13 @@ triggered_abilities = [{
         "this_card",
         {"name": "card_moves_to", "params": {"zone": "graveyard"}},
         "card_is_creature",
-        "opp_lost_life_this_turn",
+        {"name": "lost_life_this_turn", "params": {"player": "opp"}},
     ],
     "effects": [{"kind": "damage", "amount": 2, "target": "opponent"}],
 }]
 ```
 
-Reads almost as English: "this card, it moves to the graveyard, it's a creature, and the opponent lost life this turn."
+Reads almost as English: "this card, it moves to the graveyard, it's a creature, and the opponent has lost life this turn."
 
 ### 4.2 Worked composition: hypothetical "When another creature you control enters and you control a flier"
 
@@ -175,8 +175,7 @@ All take `(state, source, event, params) -> bool`. Naming convention: read like 
 |---|---|---|
 | `is_life_gain` | — | `event.delta > 0`. Filters the `life_changed` event to gain direction. |
 | `is_life_loss` | — | `event.delta < 0`. Filters to loss direction. |
-| `affected_player_is_you` | — | `event.who == source.controller_key`. The player whose life changed is the trigger's controller. |
-| `affected_player_is_opp` | — | `event.who == opponent_of(source.controller_key)`. |
+| `affected_player_is` | `{player}` | `event.who` matches `params.player`, where `player` is `"you"` (== `source.controller_key`) or `"opp"` (== opponent of source). Parameterized for consistency with other parameterized predicates. |
 
 Note: `is_life_gain` / `is_life_loss` are predicates on the `life_changed` event (current event's direction) — DIFFERENT from D4's redesigned `gain_life` effect, which is what PRODUCES the event. The effect's signed amount produces a `life_changed` event with matching delta sign; the predicate filters on that delta. Different layers, complementary.
 
@@ -184,21 +183,26 @@ Note: `is_life_gain` / `is_life_loss` are predicates on the `life_changed` event
 
 | Name | Params | Purpose |
 |---|---|---|
-| `you_lost_life_this_turn` | — | `player_by_key(source.controller_key).life_lost_this_turn > 0`. Historical — true at any moment after you've lost life this turn, regardless of which event is currently firing. |
-| `opp_lost_life_this_turn` | — | (existing predicate, kept verbatim for parity with Bloodlust Berserker). Same historical semantics. |
+| `lost_life_this_turn` | `{player}` | `player_by_key(player_key).life_lost_this_turn > 0`, where `player_key` is `"you"` or `"opp"` (resolved relative to the trigger source's controller). Historical — true at any moment after that player has lost life this turn, regardless of which event is currently firing. |
 
-Note: distinct from `is_life_loss` + `affected_player_is_you`. That pair is event-instant ("fire when THIS event is your life loss"); `you_lost_life_this_turn` is historical ("fire when X happens IF you lost life earlier this turn"). Bloodlust Berserker uses the historical one — checks at the moment of its death, not at the moment of the life loss.
+Note: distinct from `is_life_loss` + `affected_player_is(player)`. That pair is event-instant ("fire when THIS event is a life loss for that player"); `lost_life_this_turn(player)` is historical ("fire when X happens IF that player lost life earlier this turn"). Bloodlust Berserker uses the historical one — checks at the moment of its death, not at the moment of the life loss.
 
-That's **16 primitives** covering all 14 proto compounds. Each is 1–5 lines. Adding a new card-specific atomic is one new entry plus one registry registration.
+That's **14 primitives** covering all 14 proto compounds. Each is 1–5 lines. Adding a new card-specific atomic is one new entry plus one registry registration.
+
+**Naming conventions used here**:
+- **Parameterize** when the axis has multiple values OR when the predicate appears infrequently enough that verbosity is acceptable (`card_moves_to`, `card_has_subtype`, `card_has_effect`, `lost_life_this_turn`, `affected_player_is`).
+- **Use dedicated bare names** for binary predicates that appear in nearly every condition list — verbosity compounds otherwise (`card_is_yours`, `card_is_opps`, `this_card`, `another_card`).
 
 Predicates that were considered but dropped:
 - `event_controller_is_self` (for `spell_cast`) — redundant with `card_is_yours`, which works for spell_cast too (the spell's controller IS the card's controller).
 - `event_kind_is(kind)` — redundant with the trigger's `event` field, which already specifies which event kind to listen for.
 - `card_killed_by_self` — decomposed into `card_damaged_by_this` + zone-change conditions. The bundled predicate hid what's really happening: "killed by me" = "I damaged it" + "it died from the battlefield."
+- `you_lost_life_this_turn` / `opp_lost_life_this_turn` — collapsed into parameterized `lost_life_this_turn(player)`.
+- `affected_player_is_you` / `affected_player_is_opp` — collapsed into parameterized `affected_player_is(player)`.
 
 When future events introduce multiple cards (e.g., a hypothetical "creature deals damage to creature" event with both `attacker` and `defender` subjects), introduce `attacker_*` and `defender_*` prefixes for that event specifically — same pattern, per-event-type prefixes only when there's genuine ambiguity.
 
-**For discard triggers** ("when you discard a card, do X") — note that discard is a `card_zone_change` event (`from_zone: "hand"`, `to_zone: "graveyard"`), not a player-subject event. Use `[card_is_yours, card_moves_from("hand"), card_moves_to("graveyard")]`. `affected_player_is_you` is for events without a card subject only.
+**For discard triggers** ("when you discard a card, do X") — note that discard is a `card_zone_change` event (`from_zone: "hand"`, `to_zone: "graveyard"`), not a player-subject event. Use `[card_is_yours, card_moves_from("hand"), card_moves_to("graveyard")]`. `affected_player_is` is for events without a card subject only.
 
 ## 6. Evaluator design
 
@@ -307,7 +311,7 @@ Recommended order: **land B6/B7 first** because (a) it's smaller (M, ~8h), (b) i
 
 | Work | Engine | Effort |
 |---|---|---|
-| New `Predicates` registry + atomic table (16 primitives) | Godot | M (~4h) |
+| New `Predicates` registry + atomic table (14 primitives) | Godot | M (~4h) |
 | New JS `ATOMIC_PREDICATES` table + evaluator | Proto | M (~4h) |
 | `evaluate()` recursive walker + tests | both | S (~3h) |
 | Add `card_zone_change` emission alongside legacy events | Godot | S (~2h) |
@@ -325,7 +329,7 @@ Recommended order: **land B6/B7 first** because (a) it's smaller (M, ~8h), (b) i
 
 Each step leaves both engines in a runnable, test-passing state.
 
-1. **Add atomic predicate primitives alongside the existing monolith.** Both engines: introduce `_ATOMICS` table with the 16 primitives. Existing `opp_lost_life_this_turn` (Godot) and the 14 proto compounds keep working unchanged. Run all tests; semantic no-op.
+1. **Add atomic predicate primitives alongside the existing monolith.** Both engines: introduce `_ATOMICS` table with the 14 primitives. Existing `opp_lost_life_this_turn` (Godot) and the 14 proto compounds keep working unchanged. Run all tests; semantic no-op.
 2. **Add `evaluate()` accepting String OR Array OR Dict.** Single-name lookup routes through the existing path; new shapes route through the new walker. Wire `engine.gd:1335` (`Predicates.evaluate`) and `triggers.js:121` (`evalTriggerCondition`) to call the new entry point. Tests: 6–8 evaluator unit tests covering each shape + malformed input.
 3. **Emit unified `card_zone_change` alongside legacy events.** Godot: add a `_fire_zone_change(card, from, to, controller)` helper; call it from `_run_sbas` (alongside `card_dies`) and from `_do_play_land`/`_resolve_spell_entry` (alongside `card_etb`). Proto: same pattern at the 6 existing `cardEntersBattlefield` sites, 3 `cardDies` sites, and inside `emitLeavesBattlefield`. Listeners that subscribe to the new event start receiving notifications; nobody subscribes yet. No behavior change.
 4. **Boot validator rewrite.** New recursive walker. Continues to accept the legacy `condition_predicate` field. New `condition` field is also validated. Add event-kind validation. Tests: malformed expression detected at boot.
