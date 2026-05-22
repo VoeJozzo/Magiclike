@@ -80,14 +80,6 @@ Deferred work lives in `docs/BACKLOG.md` — read it when relevant, but don't op
 - **Click-to-cast UI, not drag-to-cast.** Drag conflicts with card-framework's drag-to-move semantics. Click a spell in hand → enter target-picking mode → click a target → resolve.
 - **Data on `EngineState`, behavior on `RulesEngine`.** `EngineState` is a passive container (fields plus a few accessors like `player_by_key`, `find_instance`, `duplicate_deep`). All game-logic behavior — settling, action dispatch, priority opening, trigger drain, combat resolution — lives on `RulesEngine`. The dependency direction is one-way: `RulesEngine` reads/writes `EngineState`, never the reverse. Don't put helper functions that need `get_legal_actions` or `_dispatch_action` on `EngineState`; that would force a circular reference. New behavior goes on the autoload.
 
-## Active follow-ups (from the v1.0.188 documentation audit)
-
-These are agreed-upon to-dos surfaced by the audit pass, parked here so new sessions notice them up front. Full context in [`docs/DIVERGENCE.md`](docs/DIVERGENCE.md).
-
-- **Priority-window refactor** — extract `_open_priority_window(player_key)` helper on `RulesEngine`; eliminate the 8 direct assignments to `state.priority_player_key`; introduce `KIND_TAP_LAND_FOR_MANA` as its own action kind; implement B6 (auto-pass when no legal action) and B7 (end-turn fast-forward). Detailed plan in [`docs/plan-priority-window-refactor.md`](docs/plan-priority-window-refactor.md). Effort: M (~8 hours). Highest-leverage cleanup item — do this before adding cards that open priority in new ways (Phase 6+).
-- **Zone-change event unification + composable predicates** (DIVERGENCE E1 + E2). Refactor both engines. Should be done before Phase 6 card-pool expansion lands cards in the old style. No detailed plan yet — would benefit from a Plan-agent pass when the user is ready.
-- **All other divergence items** — list in [`docs/BACKLOG.md`](docs/BACKLOG.md) "Divergence-tracked work" section, with IDs cross-referencing DIVERGENCE.md.
-
 ## Patterns to NOT replicate from the prototype
 
 The html-proto is the reference, but its rules engine has known scars from organic growth. When porting a feature, port the **behavior**, not the implementation shape. Specifically:
