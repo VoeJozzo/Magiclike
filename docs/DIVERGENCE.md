@@ -76,6 +76,8 @@ This is purely a player-experience choice. MTG itself has no formal rule on take
 
 ## D. Spells and effects
 
+**Full effects refactor plan**: [`docs/plan-effects-refactor.md`](plan-effects-refactor.md) — 19-effect registry, target-filter unification, hexproof model, compound decomposition. D2, D3, D4 below are subsumed by that plan; tracked here individually for status.
+
 | # | Area | Godot | Proto | Tag | TO-DO |
 |---|---|---|---|---|---|
 | D0 | Stack resolution order | LIFO via `Stack.push` / `Stack.pop_top` (engine.gd:628, 669). Caster retains priority after cast (engine.gd:640 in `_do_cast_spell`). | LIFO via `G.stack.push` / `G.stack.pop` (engine.js:2867, 3874). Caster retains priority (MTG 117.1c). | ✅ Same | **already-aligned** |

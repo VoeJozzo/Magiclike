@@ -21,6 +21,13 @@ For html-proto deferred work, see [`reference/html-proto/BACKLOG.md`](../referen
 ### Divergence-tracked work
 The following items live in `docs/DIVERGENCE.md` as their primary tracker. Listed here so they're visible in the BACKLOG queue. Look up each by its ID for full context and TO-DO details.
 
+**Major refactor plans** (own docs, multi-item):
+- **B6 + B7** — priority-window helper + auto-pass + end-turn fast-forward (godot). Plan: [`docs/plan-priority-window-refactor.md`](plan-priority-window-refactor.md). Effort: M (~8h).
+- **E1 + E2** — zone-change event unification + composable predicates (both). Plan: [`docs/plan-zone-change-and-composable-predicates.md`](plan-zone-change-and-composable-predicates.md). Effort: L (~34h).
+- **Effects refactor** (subsumes D2, D3, D4; touches every card with effects) — 38 proto effects → 19 atomic registry, target-filter unification, hexproof model, compound decomposition. Plan: [`docs/plan-effects-refactor.md`](plan-effects-refactor.md). Effort: L (~60–65h). Sequenced AFTER E1/E2.
+
+**Individual items:**
+
 - **A1** — randomize first player at game start (godot)
 - **A2** — first-turn draw-skip rule (godot)
 - **A4** — forced mulligan on extreme land counts (godot)

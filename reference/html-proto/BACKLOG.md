@@ -17,6 +17,12 @@ This file is a parking lot for deferred work on the html-proto, not a session ag
 ### Divergence-tracked work
 The following items live in `docs/DIVERGENCE.md` as their primary tracker. Listed here so they're visible in the proto-side BACKLOG queue.
 
+**Major refactor plans** (own docs):
+- **E1 + E2** — zone-change event unification + composable predicates (both engines). Plan: [`../../docs/plan-zone-change-and-composable-predicates.md`](../../docs/plan-zone-change-and-composable-predicates.md).
+- **Effects refactor** — 38 proto effects → 19 atomic registry; fixes the duplicate `gainControl` bug (engine.js:2123 dead-code), unifies naming to snake_case, decomposes compounds. Plan: [`../../docs/plan-effects-refactor.md`](../../docs/plan-effects-refactor.md). Sequenced AFTER E1/E2.
+
+**Individual items:**
+
 - **B2** — clear mana pool at every phase boundary, not just CLEANUP (MTG 106.4).
 - **B3** — CLEANUP step ordering harmonization.
 - **D1** — drop the multi-effect target-snapshot system; align on Godot's live-read approach (MTG canon).
