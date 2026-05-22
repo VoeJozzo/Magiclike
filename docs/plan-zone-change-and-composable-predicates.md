@@ -40,20 +40,20 @@ For each proto predicate, the atomic checks it bundles (using the human-readable
 
 | Predicate | Event | Atomic conditions bundled |
 |---|---|---|
-| `thisEnters` | ETB | `card_is_self` |
-| `anotherCreatureYouEntersStrict` | ETB | `card_is_other` + `card_is_creature` + `card_is_yours` |
-| `anotherCreatureYouEntersOfSubtype` | ETB | `card_is_other` + `card_is_yours` + `card_has_subtype(sub)` (currently no `is_creature` — subtype is creature-only de facto) |
-| `thisAttacks` | attacks | `card_is_self` |
-| `thisAttacksAfterOppLifeLoss` | attacks | `card_is_self` + `opp_lost_life_this_turn` |
+| `thisEnters` | ETB | `this_card` |
+| `anotherCreatureYouEntersStrict` | ETB | `another_card` + `card_is_creature` + `card_is_yours` |
+| `anotherCreatureYouEntersOfSubtype` | ETB | `another_card` + `card_is_yours` + `card_has_subtype(sub)` (currently no `is_creature` — subtype is creature-only de facto) |
+| `thisAttacks` | attacks | `this_card` |
+| `thisAttacksAfterOppLifeLoss` | attacks | `this_card` + `opp_lost_life_this_turn` |
 | `creatureYouAttacksOfSubtype` | attacks | `card_is_yours` + `card_has_subtype(sub)` |
-| `thisDies` | dies | `card_is_self` |
-| `thisLeaves` | leaves | `card_is_self` |
-| `anotherCreatureDies` | dies | `card_is_other` + `card_is_creature` |
+| `thisDies` | dies | `this_card` |
+| `thisLeaves` | leaves | `this_card` |
+| `anotherCreatureDies` | dies | `another_card` + `card_is_creature` |
 | `anyCardDies` | dies | (none — fires always) |
-| `thisKillsCreature` | dies | `card_is_other` + `card_is_creature` + `card_killed_by_self` |
-| `youGainLife` | lifeGained | `affected_player_is_you` |
-| `youCastSpell` | spellCast | `card_is_other` + `card_is_yours` |
-| `youCastCounterspell` | spellCast | `card_is_other` + `card_is_yours` + `card_has_effect("counter_spell")` |
+| `thisKillsCreature` | dies | `another_card` + `card_is_creature` + `card_damaged_by_this` |
+| `youGainLife` | lifeGained | `is_life_gain` + `affected_player_is_you` |
+| `youCastSpell` | spellCast | `another_card` + `card_is_yours` |
+| `youCastCounterspell` | spellCast | `another_card` + `card_is_yours` + `card_has_effect("counter_spell")` |
 
 **Observation.** All 14 collapse to combinations of ~12 atomic primitives plus 2 parameterized ones (`card_has_subtype`, `card_has_effect`).
 
@@ -78,7 +78,7 @@ damage_dealt       {kind, source_iid, target_iid_or_who, amount, is_combat}   # 
 ### 3.1 ETB ergonomics
 `card_etb` is so common that listeners benefit from a shorthand. Two viable shapes; recommend (a):
 
-- **(a)** Emit ONLY `card_zone_change` from non-battlefield → battlefield. Predicate registry exposes `card_moves_to(battlefield)` so the common ETB pattern is `[card_is_self, card_moves_to("battlefield")]`. No alias.
+- **(a)** Emit ONLY `card_zone_change` from non-battlefield → battlefield. Predicate registry exposes `card_moves_to(battlefield)` so the common ETB pattern is `[this_card, card_moves_to("battlefield")]`. No alias.
 - **(b)** Emit BOTH `card_zone_change` and a legacy alias `card_etb`. Easier migration; permanent debt.
 
 Pick (a). The migration window in §11 keeps the old emission temporarily so both can coexist during cutover — no permanent alias.
@@ -86,12 +86,13 @@ Pick (a). The migration window in §11 keeps the old emission temporarily so bot
 ### 3.2 Verification by predicate enumeration
 Every one of proto's 14 predicates maps cleanly:
 
-- `thisDies` → `card_zone_change` + `[card_is_self, card_moves_to("graveyard"), card_is_creature]`
-- `thisLeaves` → `card_zone_change` + `[card_is_self, card_moved_from("battlefield")]`
-- `anotherCreatureDies` → `card_zone_change` + `[card_is_other, card_is_creature, card_moves_to("graveyard"), card_moved_from("battlefield")]`
-- `youCastCounterspell` → `spell_cast` + `[card_is_yours, card_is_other, card_has_effect("counter_spell")]`
+- `thisDies` → `card_zone_change` + `[this_card, card_moves_to("graveyard"), card_is_creature]`
+- `thisLeaves` → `card_zone_change` + `[this_card, card_moves_from("battlefield")]`
+- `anotherCreatureDies` → `card_zone_change` + `[another_card, card_is_creature, card_moves_to("graveyard"), card_moves_from("battlefield")]`
+- `thisKillsCreature` → `card_zone_change` + `[another_card, card_is_creature, card_moves_to("graveyard"), card_damaged_by_this]`
+- `youCastCounterspell` → `spell_cast` + `[card_is_yours, another_card, card_has_effect("counter_spell")]`
 
-(...and the remaining 10 by mechanical decomposition.)
+(...and the remaining 9 by mechanical decomposition.)
 
 ## 4. Predicate composition format (card data)
 
@@ -107,7 +108,7 @@ Accept three shapes on `triggered_abilities[i].condition`:
 
 The field is renamed `condition` (was `condition_predicate`). A migration shim accepts both names during the cutover; `condition_predicate` is removed in the final cleanup step.
 
-**`self_only: true` is removed** in favor of explicit `card_is_self` in the predicate list — the spelling is consistent with every other constraint.
+**`self_only: true` is removed** in favor of explicit `this_card` in the predicate list — the spelling is consistent with every other constraint.
 
 ### 4.1 Worked migration: Bloodlust Berserker
 
@@ -124,7 +125,7 @@ triggered_abilities = [{
 triggered_abilities = [{
     "event": "card_zone_change",
     "condition": [
-        "card_is_self",
+        "this_card",
         {"name": "card_moves_to", "params": {"zone": "graveyard"}},
         "card_is_creature",
         "opp_lost_life_this_turn",
@@ -133,17 +134,17 @@ triggered_abilities = [{
 }]
 ```
 
-Reads almost as English: "the card is this card, it moves to the graveyard, it's a creature, and the opponent lost life this turn."
+Reads almost as English: "this card, it moves to the graveyard, it's a creature, and the opponent lost life this turn."
 
 ### 4.2 Worked composition: hypothetical "When another creature you control enters and you control a flier"
 
 ```
 "condition": [
-    "card_is_other",
+    "another_card",
     "card_is_creature",
     "card_is_yours",
     {"name": "card_moves_to", "params": {"zone": "battlefield"}},
-    "you_control_creature_with_keyword.flying",
+    {"name": "you_control_creature_with_keyword", "params": {"keyword": "flying"}},
 ]
 ```
 
@@ -151,46 +152,53 @@ Built from primitives — no new monolithic predicate, no new registry entry.
 
 ## 5. Atomic predicate registry (starter set)
 
-All take `(state, source, event, params) -> bool`. Naming convention: read like English. In MTG terminology, "this card" / "self" means the trigger source; "the card" / "subject" means the card the event is about.
+All take `(state, source, event, params) -> bool`. Naming convention: read like English. In MTG terminology, "this card" means the trigger source; "another card" means a card that is NOT the trigger source. Tense for action-on-the-card predicates: present (matches MTG card text — "when this creature dies," not "died").
 
 **Card predicates** (event has a subject card — applies to `card_zone_change`, `spell_cast`, `attacks`):
 
 | Name | Params | Purpose |
 |---|---|---|
-| `card_is_self` | — | The event's card IS the trigger source. Replaces `self_only:true`. Matches MTG's "this" semantics. |
-| `card_is_other` | — | The event's card is NOT the trigger source. |
+| `this_card` | — | The event's card IS the trigger source. Replaces `self_only:true`. Matches MTG's "this creature / this card" phrasing. |
+| `another_card` | — | The event's card is NOT the trigger source. |
 | `card_is_creature` | — | The event's card has type "creature". |
 | `card_is_yours` | — | The event's card is controlled by the trigger source's controller. (For spell_cast: the spell's caster is you.) |
 | `card_is_opps` | — | The event's card is controlled by the opponent of the trigger source's controller. |
-| `card_moved_from` | `{zone}` | Zone-change event's `from_zone` matches. |
+| `card_moves_from` | `{zone}` | Zone-change event's `from_zone` matches. |
 | `card_moves_to` | `{zone}` | Zone-change event's `to_zone` matches. |
 | `card_has_subtype` | `{subtype}` | Event's card template has the named subtype. |
-| `card_killed_by_self` | — | Event's card's `damaged_by_sources` includes the trigger source (Sengir/Endomorph; requires combat-credit tracking, which Godot doesn't have yet — see DIVERGENCE C5; gated until that lands). |
-| `card_has_effect` | `{kind}` | Event's card template has an `on_cast_effects` entry with matching `kind` (counterspell-listener). |
+| `card_damaged_by_this` | — | Event's card's `damaged_by_sources` includes the trigger source. Composes with `card_moves_to("graveyard")` to express MTG's "killed credit" semantics. (Requires combat-credit tracking, which Godot doesn't have yet — see DIVERGENCE C5; gated until that lands.) |
+| `card_has_effect` | `{kind}` | Event's card template has an `on_cast_effects` entry with matching `kind`. Used for "whenever you cast a [counterspell / damage spell / etc.]" triggers; `kind` matches the effect-kind names from SPEC.md (`damage`, `gain_life`, `counter_spell`, etc.). |
 
-**Life-event predicates** (apply to `life_changed`):
+**Life-event predicates** (apply to `life_changed` — events with a player subject but no card subject):
 
 | Name | Params | Purpose |
 |---|---|---|
-| `is_life_gain` | — | `event.delta > 0`. |
-| `is_life_loss` | — | `event.delta < 0`. |
-| `affected_player_is_you` | — | `event.who == source.controller_key`. |
+| `is_life_gain` | — | `event.delta > 0`. Filters the `life_changed` event to gain direction. |
+| `is_life_loss` | — | `event.delta < 0`. Filters to loss direction. |
+| `affected_player_is_you` | — | `event.who == source.controller_key`. The player whose life changed is the trigger's controller. |
 | `affected_player_is_opp` | — | `event.who == opponent_of(source.controller_key)`. |
 
-**Game-state predicates** (no event reference; query the world):
+Note: `is_life_gain` / `is_life_loss` are predicates on the `life_changed` event (current event's direction) — DIFFERENT from D4's redesigned `gain_life` effect, which is what PRODUCES the event. The effect's signed amount produces a `life_changed` event with matching delta sign; the predicate filters on that delta. Different layers, complementary.
+
+**Game-state predicates** (historical state of the world; no event reference):
 
 | Name | Params | Purpose |
 |---|---|---|
-| `you_lost_life_this_turn` | — | `player_by_key(source.controller_key).life_lost_this_turn > 0`. |
-| `opp_lost_life_this_turn` | — | (existing predicate, kept verbatim for parity with Bloodlust Berserker). |
+| `you_lost_life_this_turn` | — | `player_by_key(source.controller_key).life_lost_this_turn > 0`. Historical — true at any moment after you've lost life this turn, regardless of which event is currently firing. |
+| `opp_lost_life_this_turn` | — | (existing predicate, kept verbatim for parity with Bloodlust Berserker). Same historical semantics. |
+
+Note: distinct from `is_life_loss` + `affected_player_is_you`. That pair is event-instant ("fire when THIS event is your life loss"); `you_lost_life_this_turn` is historical ("fire when X happens IF you lost life earlier this turn"). Bloodlust Berserker uses the historical one — checks at the moment of its death, not at the moment of the life loss.
 
 That's **16 primitives** covering all 14 proto compounds. Each is 1–5 lines. Adding a new card-specific atomic is one new entry plus one registry registration.
 
 Predicates that were considered but dropped:
 - `event_controller_is_self` (for `spell_cast`) — redundant with `card_is_yours`, which works for spell_cast too (the spell's controller IS the card's controller).
 - `event_kind_is(kind)` — redundant with the trigger's `event` field, which already specifies which event kind to listen for.
+- `card_killed_by_self` — decomposed into `card_damaged_by_this` + zone-change conditions. The bundled predicate hid what's really happening: "killed by me" = "I damaged it" + "it died from the battlefield."
 
 When future events introduce multiple cards (e.g., a hypothetical "creature deals damage to creature" event with both `attacker` and `defender` subjects), introduce `attacker_*` and `defender_*` prefixes for that event specifically — same pattern, per-event-type prefixes only when there's genuine ambiguity.
+
+**For discard triggers** ("when you discard a card, do X") — note that discard is a `card_zone_change` event (`from_zone: "hand"`, `to_zone: "graveyard"`), not a player-subject event. Use `[card_is_yours, card_moves_from("hand"), card_moves_to("graveyard")]`. `affected_player_is_you` is for events without a card subject only.
 
 ## 6. Evaluator design
 
@@ -240,7 +248,7 @@ static func _call_atomic(name, ctx, params) -> bool:
 ## 7. Card data migration
 
 **Godot (2 cards):**
-- `cards/templates/pyromaniac.tres` — `card_etb` + `self_only:true` → `card_zone_change` with `[card_is_self, card_moves_to("battlefield")]`.
+- `cards/templates/pyromaniac.tres` — `card_etb` + `self_only:true` → `card_zone_change` with `[this_card, card_moves_to("battlefield")]`.
 - `cards/templates/bloodlust_berserker.tres` — see §4.1 worked example.
 
 Hand-translate. Two `.tres` files; mechanical script not worth writing.
@@ -254,7 +262,7 @@ Mechanical migration with a small Node script (`reference/html-proto/tools/migra
 
 Add a test (`tests/test_trigger_migration.js`) that asserts every migrated card's trigger fires under the same conditions as before, using a golden-event harness — feed in a synthetic event, check pass/fail symmetry for each (card, scenario) pair.
 
-`generateRandomTrigger` / `generateConditionOptions` in `trigger-generator.js` need an analogous rewrite: the `GENERATOR_CONDITIONS` table emits the new composed shape directly. `noSelfCascade` becomes a `card_is_other` term in the generated expression — no special-case field on the trigger.
+`generateRandomTrigger` / `generateConditionOptions` in `trigger-generator.js` need an analogous rewrite: the `GENERATOR_CONDITIONS` table emits the new composed shape directly. `noSelfCascade` becomes an `another_card` term in the generated expression — no special-case field on the trigger.
 
 ## 8. Boot validation
 
@@ -323,7 +331,7 @@ Each step leaves both engines in a runnable, test-passing state.
 4. **Boot validator rewrite.** New recursive walker. Continues to accept the legacy `condition_predicate` field. New `condition` field is also validated. Add event-kind validation. Tests: malformed expression detected at boot.
 5. **Migrate Godot cards (2 files).** Pyromaniac and Bloodlust Berserker switch to `event: "card_zone_change"` and composed `condition`. Run `tests/test_phase4*.gd` — both cards' integration tests must pass with the new shape. Legacy emissions still firing means a card could double-trigger if migrated incompletely; an integration test enforces single-trigger semantics.
 6. **Migrate proto cards via script.** Run `tools/migrate-triggers.js` against `cards/*/card.json`. Run `node tests/run_all.js` (the existing 362 assertions). Add golden-event tests for the 14 trigger archetypes. Hand-verify ~10 cards across archetypes (`bloodthirstyStalker`, `goblinChieftain`, `morticianAssistant`, `wizardAdept`, etc.).
-7. **Migrate `trigger-generator.js`.** Rewrite `GENERATOR_CONDITIONS` entries to produce the composed shape. `noSelfCascade` becomes a `card_is_other` term. Mercurial Adept + Architect's Codex runtime composition exercise this path naturally; selfplay harness (`tests/selfplay_harness.js 500 bughunt`) is the regression check.
+7. **Migrate `trigger-generator.js`.** Rewrite `GENERATOR_CONDITIONS` entries to produce the composed shape. `noSelfCascade` becomes an `another_card` term. Mercurial Adept + Architect's Codex runtime composition exercise this path naturally; selfplay harness (`tests/selfplay_harness.js 500 bughunt`) is the regression check.
 8. **Remove legacy emissions and legacy fields.** Delete `card_etb`/`card_dies`/`cardEntersBattlefield`/`cardDies`/`cardLeavesBattlefield` emit sites. Delete `self_only` and `condition_predicate` handling in both engines. Delete the 14 proto monolithic predicates from `triggers.js`. Boot validator stops accepting the legacy field name.
 9. **Update `docs/DIVERGENCE.md`** rows E1 and E2 to mark implemented (or move to a "Recently aligned" section). Update `docs/RULES.md` §1002 to describe the unified event vocabulary as canonical.
 
