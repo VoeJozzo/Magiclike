@@ -13,6 +13,17 @@ The user is the art director. You are doing prompt drafting and API calls. Brain
 
 ---
 
+## Reference docs
+
+For anything not covered in this skill — new endpoints, parameter additions, unfamiliar errors — fetch from:
+
+- **API spec (machine-readable):** `https://api.pixellab.ai/v2/llms.txt` — every v2 endpoint, params, ranges, output shapes
+- **Marketing/docs page:** `https://www.pixellab.ai/pixellab-api` — less complete but readable
+
+Don't guess at signatures. WebFetch and verify.
+
+---
+
 ## The single most important principle: mechanic-in-art
 
 **The card's rules text and its art are in dialogue. The art should *enact* the mechanic, not just decorate the theme.**
