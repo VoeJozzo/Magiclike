@@ -19,6 +19,7 @@ The following items live in `docs/DIVERGENCE.md` as their primary tracker. Liste
 
 - **B2** — clear mana pool at every phase boundary, not just CLEANUP (MTG 106.4).
 - **B3** — CLEANUP step ordering harmonization.
+- **D1** — drop the multi-effect target-snapshot system; align on Godot's live-read approach (MTG canon).
 - **D2** — consolidate `pump` + `addCounter` into one `pump` effect with `duration` parameter.
 - **D4** — `gain_life` signed-delta with direction-based event emission (both engines).
 - **E1** — zone-change event unification (both).
