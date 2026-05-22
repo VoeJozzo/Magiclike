@@ -129,8 +129,11 @@ Each step ends with `tests/test_phase*.gd` runs. Recommend sequenced, not all-at
    - Player with empty hand + tapped lands in MAIN1 → auto-passes (B6).
    - Player with only lands in hand at END step with empty stack → AP auto-passes (proto "skipApEndStep").
    - End-turn fast-forward: cast `KIND_END_TURN` in MAIN1 → engine fast-forwards to CLEANUP and stops (B7).
+   - **End-turn during COMBAT_ATTACK before declaring attackers** → engine commits empty attackers automatically, then fast-forwards. Mirrors proto:4622. The mid-declaration case from B7 design.
+   - End-turn during COMBAT_BLOCK with declared attackers → blocks already settled (or fast-forward begins after they're confirmed); subsequent priority windows auto-pass.
+   - End-turn with a triggered ability firing mid-fast-forward → stack populates, fast-forward pauses, active player regains priority for instant-speed response; if they pass, trigger resolves and fast-forward resumes.
    - End-turn flag clears on UNTAP of next turn.
-   - End-turn flag clears mid-turn if active player casts a spell.
+   - End-turn flag clears mid-turn if active player casts a spell (re-engagement).
    - Mana abilities (`KIND_TAP_LAND_FOR_MANA`) alone do NOT prevent auto-pass.
    - Existing `test_phase1..5c` should still pass unchanged.
 6. **Update `docs/DIVERGENCE.md`** B6 and B7 rows to mark implemented (or move to a "Recently aligned" section).
