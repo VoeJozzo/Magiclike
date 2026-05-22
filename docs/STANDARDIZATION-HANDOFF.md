@@ -1,241 +1,340 @@
 # Standardization Handoff — for the Rules-Standardization Session
 
-**Target audience.** A second Claude instance picking up rules-standardization work that turned out to overlap with the data/structural standardization I did on `claude/standardization-BBD8O`.
+**Target reader.** The Claude instance on `claude/documentation-and-mapping-wa8Pd`. You shipped `ARCHITECTURE.md`, `SPEC.md`, `REFACTOR-NOTES.md`, and `RULES.md` — work that intersects with the data/structural standardization I shipped on `claude/standardization-BBD8O`. Joe realized the two threads aren't sibling projects; they're the same project at different layers, and asked me to write you what you'd need to (a) decide if/how to integrate this branch's work, (b) replicate it if needed, (c) keep going with rules work on top of what I built.
 
-**Author.** Claude session running on `claude/standardization-BBD8O`, May 21–28, 2026.
+**Author.** Claude session on `claude/standardization-BBD8O`, May 21–28, 2026.
 
-**Purpose.** Give you enough context to (a) decide if/how to integrate this branch's work with yours, (b) replicate any of it cleanly, and (c) make informed calls about how your rules work hooks into the data layer this branch already touched. Joe (the user) realized late that "rules" and "data" aren't sibling projects — they're the same project at different layers.
-
----
-
-## Table of contents
-
-1. [The branch, in 30 seconds](#1-the-branch-in-30-seconds)
-2. [Where to read first](#2-where-to-read-first)
-3. [What shipped — pass by pass](#3-what-shipped--pass-by-pass)
-4. [Decisions we made (and reversed) during work](#4-decisions-we-made-and-reversed-during-work)
-5. [Outstanding work: Pass 5 reframe](#5-outstanding-work-pass-5-reframe)
-6. [Where your branch and mine overlap](#6-where-your-branch-and-mine-overlap)
-7. [Why rules and data are the same project](#7-why-rules-and-data-are-the-same-project)
-8. [Patterns, gotchas, and anti-patterns](#8-patterns-gotchas-and-anti-patterns)
-9. [Test infrastructure](#9-test-infrastructure)
-10. [Open questions you may run into](#10-open-questions-you-may-run-into)
-11. [How to pick up Pass 5 cleanly](#11-how-to-pick-up-pass-5-cleanly)
+**Branch state.** 11 commits ahead of `dev`, parallel to yours (we both forked from `b070f1a`). All commits pushed. Pass 1–4 done; Pass 5 reframed but not started.
 
 ---
 
-## 1. The branch, in 30 seconds
+## 0. The thing you most need to know first
 
-`claude/standardization-BBD8O` is 10 commits ahead of `dev`. It does **cross-engine vocabulary alignment** between the JS html-proto and the Godot port. The thesis is in `docs/STANDARDIZATION-PLAN.md` (committed) and the canonical wire-format spec is in `docs/PROTOCOL.md` (also committed).
+**Your docs have stale field/event/effect names because of my Pass 1 renames.** See §1 below for the exact reconciliation. If you start writing or referencing card data using `SPEC.md` or `RULES.md` as the source of truth today, you'll author code/cards using the old vocabulary. Read §1 before anything else.
 
-```
-39e6e1c  Commit Godot-generated .import metadata for assets and reference cards
-3da32ac  Docs: update CLAUDE.md and STANDARDIZATION-PLAN.md for Pass 1-4 shipping
-38e61c0  Pass 4: add JsonCardLoader + boot supportability scan
-9a0ca77  Pass 3: add docs/PROTOCOL.md — canonical cross-engine spec
-1a30225  Pass 2: migrate 258 card.json files to canonical snake_case wire format
-b95c828  Pass 1d: rename oracle_text→text, triggered_abilities→triggers
-60960bd  Pass 1c: rename card_etb event kind to card_enters_battlefield
-f52dc95  Pass 1b: rename counter_spell effect kind to counter
-f4dfd9b  Pass 1a: rename trigger and pump dict keys for cross-engine vocab alignment
-e07e492  Add cross-engine standardization plan (docs/STANDARDIZATION-PLAN.md, 360 lines)
-```
-
-**Headline result.** The Godot autoload boot now prints:
-
-```
-[JsonCardLoader] Loaded 258 cards; 109 fully supported, 149 awaiting handlers
-[JsonCardLoader] Missing effect kinds (count): remove_creature=24, draw=17, discard=11, grant_keyword=10, pump_all_yours=7, add_counter=7, ...
-[JsonCardLoader] Missing event kinds (count): attacks=20, spell_cast=7, life_gained=1, ...
-[JsonCardLoader] Missing predicate ids (count): thisEnters=42, thisDies=16, thisAttacks=16, ...
-```
-
-This converts "which JS card should I port next?" from open-ended research into a sorted prioritization list.
-
-**Verification at last push.** All 10 Godot phase smoke tests pass + new `test_json_card_loader.tscn` (19 assertions) + all 482 JS regression assertions pass + 100-game JS self-play harness runs clean.
+The conceptual model in `RULES.md` is still correct — the names are just out of date.
 
 ---
 
-## 2. Where to read first
+## 1. Stale references in your existing docs
 
-If you want to understand this branch deeply, read in this order:
+These changed on this branch. Your docs reference the *old* names. When you next touch these files, sweep them.
 
-| File | Purpose | Length |
-|---|---|---|
-| **`docs/STANDARDIZATION-PLAN.md`** | Top-level thesis. §6 lists what shipped + what was deferred for each pass. §10 records the eight gating decisions and their resolutions. | 397 lines |
-| **`docs/PROTOCOL.md`** | Canonical wire-format spec. Card JSON shape, effect-kind catalog (§3.2), event-kind catalog (§3.3), predicate ID list (§3.4), target taxonomy (§3.5), phase enum (§3.6), authoring rules (§8). | 339 lines |
-| **`engine/json_card_loader.gd`** | The reference implementation of the ingest boundary. Translation tables (`_EFFECT_KIND_REMAP`, `_EVENT_KIND_REMAP`, `_KEYWORD_REMAP`, `_TARGET_FILTER_REMAP`) document the camelCase↔snake_case mapping concretely. Boot supportability scan is here too. | 301 lines |
-| **`reference/html-proto/js/cards.js`** | The JS-side counterpart — `ingestCard()` does the inverse rebinding for the JS engine. | function ~70 lines |
-| **`/CLAUDE.md`** | Project-level context. Includes the "Patterns to NOT replicate" section that this branch enforces. | 124 lines |
+### `docs/SPEC.md`
 
-If you want to look at the other branch's docs (the one this handoff is for), they live on `origin/claude/documentation-and-mapping-wa8Pd`:
+| Line(s) | Old (what your doc says) | New (after Pass 1) | Pass |
+|---|---|---|---|
+| §1.3 table line 53 | `oracle_text` | `text` | 1d |
+| §1.3 table line 56 | `triggered_abilities` | `triggers` | 1d |
+| §1.3 worked example line 94 | `oracle_text = "When Bloodlust..."` | `text = "When Bloodlust..."` | 1d |
+| §1.3 worked example line 95 | `triggered_abilities = ...` | `triggers = ...` | 1d |
+| §1.3 worked example line 96 | `"condition_predicate": "opp_lost_life_this_turn"` | `"cond_id": "opp_lost_life_this_turn"` | 1a |
+| §1.4 `pump` block (line 139–148) | `"amount_power"`, `"amount_toughness"` | `"power"`, `"toughness"` | 1a |
+| §1.4 `counter_spell` block (line 156–161) | `"counter_spell"` kind, `engine/effects/counter_spell.gd` file | `"counter"` kind, `engine/effects/counter.gd` | 1b |
+| §1.5 schema block (line 171) | `"condition_predicate": String` | `"cond_id": String` | 1a |
+| §1.5 observed events (line 178) | `"card_etb"` | `"card_enters_battlefield"` | 1c |
+| §1.6 entire section uses `condition_predicate` (line 199, 213, 215) | `condition_predicate` (5+ refs) | `cond_id` | 1a |
+| §2.1 base fields table | `tplId` (still correct in JS source; **wire format is now `card_id`**) | Wire: `card_id`; JS rebinds to `tplId` internally | 2 |
+| §2.1 base fields table line 308–309 | Lists `color`, `colors` as optional fields | Dropped from card.json; recomputed from `cost` at ingest | 2 |
+| §2.1 worked example (`cards/bolt/card.json` block lines 336–348) | Has `"tplId": "bolt"`, `"color": "R"`, `"colors": ["R"]` | After migration: `"card_id": "bolt"`, no color fields | 2 |
+| §2.2 triggered ability schema (line 356) | `"condId"` | Wire: `"cond_id"`; JS rebinds to `condId` internally | 2 |
 
-| File | What it covers |
+**Also worth knowing:** SPEC.md §1.9 lists `iid` as the `CardInstance` field name. Godot actually uses `instance_id` — has always used that name; you got that one wrong (or you took it from the JS naming and meant it as the concept name). The Pass 1 work did NOT rename `instance_id` to `iid` — it was on the gating list and Joe chose to keep `instance_id` on Godot. That decision is recorded at `docs/STANDARDIZATION-PLAN.md` §10 item 6.
+
+Similarly, SPEC.md §1.10 lists `priority_holder` and `winner_key`. Godot's actual `EngineState` fields are `priority_player_key` and `winner` (just `winner`, not `winner_key`). These weren't part of my renames — they're just SPEC.md misreads of the actual code.
+
+### `docs/RULES.md`
+
+| Line(s) | Old | New | Pass |
+|---|---|---|---|
+| Line 72 (§200.1) | `card_id` in Godot, `tplId` in html-proto | Wire format and Godot internal are both `card_id`; JS-internal stays `tplId`. The sentence is fine as written but the framing changed — wire is canonical now. | 2 |
+| Lines 436–440 (§1000 schema example) | `"event": "card_etb"`, `"condition_predicate": "opp_lost_life_this_turn"` | `"event": "card_enters_battlefield"`, `"cond_id": "opp_lost_life_this_turn"` | 1a + 1c |
+| Line 446 (§1002 event vocabulary) | `card_etb` | `card_enters_battlefield` | 1c |
+| Line 448 (planned events list) | `"card_attacks", "spell_cast", "card_drawn", "damage_dealt", "life_gained"` | Same conceptually. The Godot loader's `_FIRED_EVENT_KINDS` is the source of truth for what's *fired*; PROTOCOL.md §3.3 catalogs all of them in canonical snake_case. | (informational) |
+
+### `docs/ARCHITECTURE.md`
+
+Mostly fine — it's a module map, not a field reference. Two updates:
+
+| Line(s) | Update |
 |---|---|
-| `docs/ARCHITECTURE.md` | Module map across both engines. |
-| `docs/SPEC.md` | Data contracts (actions, target descriptors, CardResource schema). **Overlaps with `docs/PROTOCOL.md` from this branch** — see §6 below. |
-| `docs/REFACTOR-NOTES.md` | Prioritized structural debt. Some items intersect with Pass 5 work. |
-| `docs/RULES.md` | Canonical game spec in plain English. The rules-standardization work proper. |
+| Line 31 | `effects/` lists `counter_spell.gd`. Now `counter.gd`. |
+| Line 69 | Same. |
+| Line 70 | Predicates description says "checks every `condition_predicate` string". Now `cond_id`. |
+| Line 124 | "match `event` + `condition_predicate`". Now `cond_id`. |
+| Line 132 | Lists `counter_spell` in the EFFECTS handlers. Now `counter`. |
+| Line 141 | `condition_predicate` (twice). Now `cond_id`. |
+
+Also: ARCHITECTURE.md doesn't yet mention `engine/json_card_loader.gd` or the boot supportability scan. Drop in a new entry around line 70:
+
+```
+| `engine/json_card_loader.gd` | 301 | Loads html-proto card.json files into CardResource instances. Translation tables for camelCase↔snake_case (JS-isms → Godot). Boot supportability scan reports unsupported cards by missing effect/event/predicate kind. | `load_card`, `load_all`, `supportability_report` |
+```
+
+### `docs/REFACTOR-NOTES.md`
+
+Several items intersect with Pass 1-4 — covered separately in §2 below because the analysis is item-by-item, not just a stale-name sweep.
 
 ---
 
-## 3. What shipped — pass by pass
+## 2. REFACTOR-NOTES items, after Pass 1-4
 
-### Pass 1: Godot-side renames (4 commits)
+Going through your list in order with what's changed:
 
-**Pass 1a (`f4dfd9b`).** Trigger and pump dict keys.
+### §3.1 — Don't replicate `G[them]` closures when porting [P0/S documentation-only]
 
-- Trigger dict key `condition_predicate` → `cond_id`. Touched `engine/predicates/predicates.gd` (header + reader + error message), `engine/engine.gd:1334`, and 2 `.tres` files (`bloodlust_berserker`, `pyromaniac`).
-- Pump effect dict keys `amount_power` / `amount_toughness` → `power` / `toughness`. Touched `engine/effects/pump.gd` (header + readers), `engine/ai/scoring.gd:53`, and `giant_growth.tres`.
+**Still relevant.** This anti-pattern is now also documented at `docs/PROTOCOL.md` §8 rule 3 and `/CLAUDE.md` "Patterns to NOT replicate." Three places saying the same thing is fine — they reinforce each other. No action.
 
-Naming alignment with `js/triggers.js`'s `condId` and `js/engine.js`'s `pump` effect's `power`/`toughness` params.
+### §4.1 — Remove vestigial JSON wiring (Godot) [P1/S]
 
-**Pass 1b (`f52dc95`).** Effect kind `counter_spell` → `counter`.
+**Resurrected. The JSON wiring is no longer vestigial.**
 
-- Renamed `engine/effects/counter_spell.gd` → `engine/effects/counter.gd` (also the `.uid` sidecar via `git mv`).
-- Updated all callers: `engine/effects/effects.gd` HANDLERS dict, `engine/ai/scoring.gd:48` match, `engine/engine.gd:1261` comment, `counterspell.tres` kind value, `tests/test_phase4_5c.gd:7` comment.
+This item said `cards/data/` is empty and `JsonCardFactory` is unused; recommended deleting both. Pass 4 changed that: `engine/json_card_loader.gd` is now a load-bearing component, reading `reference/html-proto/cards/<id>/card.json` directly and running the boot supportability scan. The `JsonCardFactory` from the card-framework is still unused by the *visual* layer (`TresCardFactory` still does that), but the engine-side JSON path is alive.
 
-Adopted the shorter JS form (`EFFECTS.counter` in `js/engine.js`).
+**Recommended action.** Reword §4.1 to:
 
-**Pass 1c (`60960bd`).** Event kind `card_etb` → `card_enters_battlefield`.
+> **[P2/S] Visual factory still reads `.tres`; engine side reads JSON.**
+>
+> `engine/json_card_loader.gd` is the live JSON loader (Pass 4). `scenes/tres_card_factory.gd` still reads `.tres` files for the visual layer. The next pass (Pass 5) consolidates: wire the visual factory to JSON too, delete `.tres`, get a single source of truth. Until that lands, both paths coexist.
 
-- `engine/engine.gd:573, 701` (the two fire sites).
-- `pyromaniac.tres` (the only card listening for this event).
-- `tests/test_phase4_5b.gd:110` (test fixture).
+### §4.2 — `.tres` schema versioning [P2/M]
 
-The abbreviation buys nothing and breaks the JS↔Godot camelCase↔snake_case conversion rule.
+**Pass 1d dodged this bullet but the bullet is real.** When I renamed `oracle_text` → `text` and `triggered_abilities` → `triggers` in `CardResource`, I had to update 31 `.tres` files explicitly. If any user had `.tres` files outside the repo (e.g., a fork mid-flight), they'd silently break.
 
-**Pass 1d (`b95c828`).** CardResource fields `oracle_text` → `text`, `triggered_abilities` → `triggers`.
+**No change to the item.** Still P2. If Pass 5 lands (which deletes `.tres` files entirely), this becomes moot. If Pass 5 stalls or partial-lands, schema versioning becomes more urgent because `.tres` migrations get harder as the schema evolves.
 
-- Renamed both `@export` fields in `data/card_resource.gd`.
-- Updated readers: `engine/engine.gd` (3 sites + 1 comment), `engine/predicates/predicates.gd:50`, `engine/ai/scoring.gd:54`, `scenes/card.gd:193`, `scenes/game/game_board.gd:477, 492, 493`.
-- Bulk-renamed `oracle_text =` → `text =` and `triggered_abilities =` → `triggers =` in all 31 `.tres` files via sed.
+### §5.1 — Phase test batch runner [P1/S]
 
-**Method names left alone.** `_trigger_oracle_text` and `_spell_oracle_text` in `game_board.gd` describe a UI concept ("oracle text" = card descriptive text in MTG parlance), not a field reference. Method renames are aesthetic.
+**I built this informally but didn't commit it.** The bash loop in `docs/STANDARDIZATION-HANDOFF.md` §9.1 (this doc) is what I used to verify every pass. Promoting it to `tests/run_all.sh` (or a `tests/run_all.gd` if you prefer GDScript) is a 30-minute task. Still P1.
 
-### Pass 2: JS card.json migration (`1a30225`)
+### §5.2 — Cover non-self triggered abilities [P1/S]
 
-Migrated all 258 card JSONs to canonical snake_case structural keys via `/tmp/migrate_card_json.js` (one-shot script, not committed):
+**Unchanged.** Still a gap. The new `test_json_card_loader.gd` (Pass 4) doesn't exercise non-self triggers either — it just verifies loading.
 
-- `tplId` → `card_id`
-- `condId` → `cond_id` (recursively inside `triggers[]`)
-- Dropped `color` / `colors` — they're cost-derived. Pre-migration audit verified all 258 cards had cost-derived stored colors (zero mismatches), so the recompute is lossless.
+### §5.3 — Illegal-action rejection paths [P2/S]
 
-The script also reordered keys alphabetically (with `card_id` first) to keep diffs readable.
+**Unchanged.** Boot supportability scan (Pass 4) catches *one* class of illegality at load time (unknown effect/event/predicate kinds in card data), but runtime illegality of action descriptors is still untested.
 
-**JS-side plumbing:**
+### Items not affected by Pass 1-4
 
-- `js/cards.js` gained `ingestCard()` — the ingest boundary. Rebinds `card_id` → `tplId`, walks `triggers[]` rebinding `cond_id` → `condId`, recomputes `color` / `colors` from cost. `loadCards()` (the browser path) calls it. ~70 lines.
-- `tests/_setup.js` `loadCardsFromDisk()` pipes each JSON through `global.ingestCard` so test code sees the same shape as the browser. Added `ingestCard` to the `EXPOSED` list.
-
-**JS engine internals unchanged.** Engine still uses `tplId`, `condId`, `card.color`, `card.colors`. No 350-call-site source refactor — that was explicitly de-scoped (see §4 reversal of Tier 3).
-
-VERSION v1.0.188 → v1.0.189 per `reference/html-proto/CLAUDE.md`'s push contract.
-
-### Pass 3: Protocol doc (`9a0ca77`)
-
-`docs/PROTOCOL.md` is the canonical cross-engine wire-format spec. Key sections:
-
-- **§1 Tier model** — concept layer / wire layer / idiom layer. Wire is canonical, idiom is per-engine, both translate at the ingest boundary.
-- **§2 Card JSON schema** — every top-level field with type, requiredness, semantics. Includes the loader contract that says both engines must validate effect/event/predicate references at boot.
-- **§3.1 Keywords** — the shared keyword set, with underscored ⇔ camelCased forms.
-- **§3.2 Effect kinds** — full catalog (~40 from the JS side), each with params and "implemented in" status. JS has all of them; Godot has 5 today (`damage`, `pump`, `gain_life`, `add_mana`, `counter`).
-- **§3.3 Event kinds** — wire form, JS internal, Godot internal, payload shape.
-- **§3.4 Predicate ids** — currently camelCase ids registered in `js/triggers.js::TRIGGER_CONDITIONS` and snake_case ids in `engine/predicates/predicates.gd::_PRED_NAMES`. Notes the `self_only: true` flag pattern that Godot adopted to obsolete the JS `this*` predicates.
-- **§3.5 Target shapes** — today's single `target` string and the planned Pass 5 split into `target_mode` + `target_filter`. Migration table included.
-- **§3.6 Phase enum** — Godot has all 10, JS collapses UNTAP+UPKEEP+DRAW into UNTAP.
-- **§8 Authoring rules** — six binding rules. New cards as JSON, new effect/event/predicate kinds get added to PROTOCOL.md in the same PR, predicate calling convention is `(state, source, event)`, all mutations through `execute_action`, no compat shims, boot-time validators.
-
-### Pass 4: Godot JsonCardLoader + supportability scan (`38e61c0`)
-
-**`engine/json_card_loader.gd`** (301 lines): reads `res://reference/html-proto/cards/<folder>/card.json` and materializes them as CardResource subclass instances.
-
-- Resource subclass selection by JSON `type` field: `Creature`→`CreatureResource`, `Land`→`LandResource`, `Instant`/`Sorcery`→`SpellResource`, anything else (`Artifact`, `Enchantment`)→base `CardResource`.
-- Translation tables at top of file: `_EFFECT_KIND_REMAP`, `_EVENT_KIND_REMAP`, `_KEYWORD_REMAP`, `_TARGET_FILTER_REMAP`. These are the **single point of camelCase↔snake_case translation** for the Godot ingest path. **If you need to look up what JS calls something or what Godot calls something, these tables are the rosetta stone.**
-- `_USER_PICKED_TARGETS` — the list of target strings that mean "caster picks at cast time" (used to set `SpellResource.requires_target`).
-- `_FIRED_EVENT_KINDS` — events the Godot engine actually fires today. Note this is shorter than the registered-event set; a card listening for `attacks` won't fire because Godot doesn't yet emit that event from combat. Grow this list as the engine learns to fire new events.
-
-**Supportability scan.** `engine/engine.gd._ready()` calls `JsonCardLoader.load_all()` then `JsonCardLoader.supportability_report(cards, true)`. The report prints one summary line plus per-category breakdowns sorted by frequency. Env var `MAGICLIKE_SKIP_SUPPORTABILITY_SCAN=1` disables it for tight test loops.
-
-**Bug fix in same commit.** `engine.gd._do_discard_card` was firing the discard event with key `name` instead of `kind`, meaning no trigger ever matched. Fixed to `kind: "card_discarded"`. This was latent — no current card listens for discarded events, but the bug would have bitten the next person to write one.
-
-**New test.** `tests/test_json_card_loader.tscn` — 19 assertions covering single-card load (bolt, salve, whiteKnight, holyZealot, forest, cityOfBrass), the full 258-card `load_all`, and supportability sanity (>0 supported, >100 unsupported, `remove_creature` present in missing list).
-
-### Pass 5: doc updates + import file hygiene (`3da32ac`, `39e6e1c`)
-
-- `/CLAUDE.md` file-tree adds `engine/json_card_loader.gd`; "Patterns to NOT replicate" notes still hold; the boot-validator note mentions the new supportability scan.
-- `docs/STANDARDIZATION-PLAN.md` header marks Pass 1–4 as shipped; §6 details what each pass delivered vs deliberately deferred; §10 reframes the eight gating questions as resolved decisions.
-- Committed 104 Godot-auto-generated `.import` files (sidecars for `assets/fonts/`, `assets/mana/`, `reference/html-proto/cards/*/art.png`) that had been missed from previous commits — these are needed for asset reproducibility, not noise.
+- 1.1 (action dispatch consolidation) — unchanged
+- 1.2 (combat keyword extensibility) — unchanged
+- 1.3 (Dictionary type safety) — partially addressed by the boot supportability scan, which catches one class of "string-key typo" at load time. Doesn't address all action/event typos.
+- 1.4 (mutation outside execute_action) — unchanged
+- 1.5 (Mode enum for awaiting states) — unchanged
+- 1.6 (target enumeration dedup) — unchanged
+- 1.7 (`_stack_held_cards` band-aid) — unchanged
+- 1.8 (engine god-object split) — engine.gd grew slightly (from 1551 to 1560 — added 9 lines for the supportability scan call in `_ready`)
+- 2.1–2.6 (UI section) — unchanged
+- 3.2–3.8 (html-proto section) — unchanged
+- 6.1 (CLAUDE.md line-count drift) — `/CLAUDE.md` was edited in commit `3da32ac`. Whatever LOC numbers were in there are fresh again; the drift will resume.
 
 ---
 
-## 4. Decisions we made (and reversed) during work
+## 3. What shipped on this branch — short version
 
-Joe and I had a long planning chat before the work and a follow-up chat after the work. Several decisions evolved. Read these before you make calls about what to keep / change:
+Read `docs/STANDARDIZATION-PLAN.md` §6 for the canonical record. The 30-second version:
 
-### Tier 1 / 2 / 3 distinction (early in the planning chat)
+```
+Pass 1a (f4dfd9b) — Godot dict keys aligned. trigger.condition_predicate → cond_id;
+                    pump.amount_power/amount_toughness → power/toughness.
+Pass 1b (f52dc95) — Effect kind counter_spell → counter (file + all callers).
+Pass 1c (60960bd) — Event kind card_etb → card_enters_battlefield. + fixed latent
+                    bug: _do_discard_card was firing key 'name' instead of 'kind'.
+Pass 1d (b95c828) — CardResource fields oracle_text → text, triggered_abilities → triggers.
+                    31 .tres files swept.
+Pass 2  (1a30225) — Migrated all 258 card.json to canonical snake_case. tplId →
+                    card_id, condId → cond_id, dropped color/colors (recomputed
+                    from cost). JS ingestCard rebinds at the boundary; engine
+                    internals untouched. VERSION 1.0.188 → 1.0.189.
+Pass 3  (9a0ca77) — docs/PROTOCOL.md. Canonical cross-engine wire-format spec.
+Pass 4  (38e61c0) — engine/json_card_loader.gd + boot supportability scan.
+                    Headline: 258 cards loaded, 109 fully supported, 149 awaiting
+                    handlers. New test test_json_card_loader.tscn (19 asserts).
+3da32ac           — CLAUDE.md + STANDARDIZATION-PLAN.md doc updates.
+39e6e1c           — 104 Godot auto-generated .import sidecars committed.
+6da03d1           — This handoff doc.
+```
 
-I framed three possible levels of harmonization:
-
-- **Tier 1** — Just the concept layer (docs only). Shared vocabulary in human discussion.
-- **Tier 2** — Wire-format harmonization. Card JSON keys are snake_case on disk; each engine rebinds at ingest. Internal idioms stay per-engine.
-- **Tier 3** — Full source-level alignment. JS source uses snake_case throughout (~16k LOC of variable renames).
-
-We picked **Tier 2.** Tier 3 was rejected because Godot's stdlib is rigidly snake_case (every `get_node`, every signal connect) — GDScript can't reasonably move. The only Tier 3 option was renaming JS, which delivers visual parallelism for side-by-side reading but **does NOT unlock any code sharing** because the language gap (duck-typed JS with IIFEs/closures/DOM vs gradually-typed GDScript with RefCounted/signals/scene tree) is the wall, not the identifier convention.
-
-### Eight gating decisions (resolved before Pass 1)
-
-Recorded in `docs/STANDARDIZATION-PLAN.md` §10:
-
-1. **Template-ID** → wire `card_id`, JS-internal `tplId` (no rename, ingest rebind), Godot `card_id`.
-2. **Display-name** → wire `name`, JS-internal `name`, Godot `display_name`. **ORIGINALLY** we locked `card_name` to match `Card.card_name` from the card-framework. **REVERSED MID-WORK** when I checked and found the framework's field is semantically an *identifier* (it gets set to `card_id` in `scenes/tres_card_factory.gd:39`), not a display name. Aliasing would create exactly the confusion the rename was supposed to prevent. **Kept `display_name` on Godot. JsonCardLoader maps `name` → `display_name` at ingest.**
-3. **Oracle-text** → `text` (both engines).
-4. **Trigger collection** → `triggers` (both engines).
-5. **Target shape** → two-field `target_mode` + `target_filter`. **Deferred to Pass 5.** Today's single `target` string keeps working.
-6. **Instance ID** → Godot `instance_id`, JS `iid`. Runtime-only field, no wire impact.
-7. **`color` / `colors`** → DROP from JSON; recomputed at ingest by both engines.
-8. **Engine-compatibility tags** → REJECTED. The Godot boot scan reports unsupported cards by missing-kind enumeration; no per-card opt-out tags needed.
-
-### Reversal: dispatch-key surface IS worth aligning (late in follow-up chat)
-
-In the original plan I lumped "rename JS effect-kind dispatch keys to snake_case" into Tier 3 and rejected it. Joe pushed back during the follow-up chat. I revised:
-
-- **General JS variable rename (e.g., `tplId` → `card_id` everywhere)** — still rejected. Aesthetic-only, unlocks nothing.
-- **JS dispatch-key surface (`EFFECTS.gainLife` → `EFFECTS.gain_life`, `TRIGGER_CONDITIONS.youGainLife` → `TRIGGER_CONDITIONS.you_gain_life`)** — **worth doing** as part of Pass 5. ~150 call sites, mechanical, delivers a uniformly snake_case wire format where both engines dispatch on the same strings without any `_EFFECT_KIND_REMAP` table.
-
-The argument was: if the JSON is supposed to be the single source of truth, then `"kind": "gainLife"` in the JSON is a wart. Either JS dispatches natively on the snake_case form, or we keep a translation table forever. Joe sees the wart and wants it gone.
-
-### Reversal: ".tres → JSON" is the headline next move (also follow-up chat)
-
-The deepest realization from the follow-up chat: Joe priced the `.tres` → JSON storage migration as "nice to have eventually" when I deferred it. After we walked through what it actually delivers, his framing was: **"editing `bolt/card.json` once should update Lightning Bolt in both engines."** That's the user-visible payoff of single-source-of-truth — and the JsonCardLoader I built in Pass 4 is the *mechanism*, not the *delivery*.
-
-Joe asked the sharpest question of the chat: **"Did I make a mistake going from JSON to `.tres`?"** My honest answer: no, the May 17 migration solved a real within-Godot duplication problem (programmatic CardResource + duplicate `cards/data/*.json` for the card-framework's JsonCardFactory). It was a local optimum that didn't anticipate cross-engine sharing being prioritized this soon. The cost of *reversing* it now is bounded — see Pass 5 below.
-
-### Reframe: JSON shape = Godot's CardResource shape, not a "compromise canonical"
-
-Last point from the follow-up chat. Originally Pass 5 was scoped as "split target into target_mode + target_filter." After the back-and-forth, the bigger move emerged: **make the JSON wire format literally Godot's CardResource shape.** Not a compromise canonical, just Godot-native. Then:
-
-- Godot reads JSON natively — `JsonCardLoader` becomes trivial (no remap tables).
-- JS pays the inverse cost via `ingestCard` rebinder (Option A) — about 100 lines mirroring what Godot currently does.
-- The 23 hand-curated `.tres` cards get expressed as JSON entries in the html-proto manifest.
-- The `.tres` files get deleted (or kept as test fixtures).
-- This is the real "Stage 3" to the May 17 work: Stage 1 was programmatic → `.tres`; Stage 2 was killing duplicate `cards/data/json`; Stage 3 is `.tres` → canonical JSON.
-
-This is **what Pass 5 actually is**. See §5.
+**Verification at last push.** All 10 Godot phase smoke tests + JsonCardLoader test pass. All 482 JS regression assertions pass. 100-game JS self-play harness runs clean.
 
 ---
 
-## 5. Outstanding work: Pass 5 reframe
+## 4. Decisions made (and reversed) during work
 
-### Scope
+Joe and I had a long planning chat before the work, and a follow-up chat after. Some decisions changed mid-stream. The ones that matter most to your work:
 
-**Make the JSON wire format literally Godot's CardResource shape, then wire Godot's playable pool to JSON.**
+### Tier 1/2/3 framing — picked Tier 2
 
-Five concrete sub-tasks:
+I gave Joe three levels:
 
-#### 5.1 Migrate 258 card JSONs to Godot-native field/value shapes
+- **Tier 1**: docs only (shared concept vocabulary).
+- **Tier 2**: wire format harmonization (JSON keys are snake_case; each engine rebinds at ingest).
+- **Tier 3**: full source-level alignment (e.g., rename JS source `tplId` → `card_id` throughout).
 
-| JSON today (JS-shape) | JSON after (Godot-shape) |
+We picked Tier 2 because Tier 3's payoff is aesthetic only — the language gap between JS and GDScript is the wall to code sharing, not the identifier convention. Tier 3's 16k-LOC JS rename is real risk for visual-parallelism gain.
+
+**One caveat from the follow-up chat:** Joe pushed back specifically on the JS *dispatch-key surface* (the `EFFECTS.gainLife` table keys, `TRIGGER_CONDITIONS.youGainLife` keys, event names in `_fire` calls — about ~150 sites, not 16k). Those are different from general variable renames because they appear in card JSON as string values. The follow-up agreement was: that subset *is* worth migrating to snake_case as part of Pass 5, because otherwise the JSON wire format keeps the inconsistency where structural keys are snake_case but enum values aren't. See §6.4 below for details.
+
+### Locked decisions (8 of them)
+
+Recorded at `docs/STANDARDIZATION-PLAN.md` §10. Highlights for your work:
+
+1. Template ID — wire: `card_id`, JS: `tplId` (rebind), Godot: `card_id`.
+2. Display name — wire: `name`, JS: `name`, Godot: `display_name`. **This one was reversed mid-work.** Originally locked as `card_name` to "match the card-framework's `Card.card_name`." Then I checked and found `Card.card_name` is semantically an *identifier* (it gets set to `card_id` in `scenes/tres_card_factory.gd:39`), not a display name. Renaming would have created the exact confusion the rename was supposed to prevent. **Kept `display_name` on Godot.** JsonCardLoader maps `name` (wire) → `display_name` (Godot) at ingest.
+6. Instance ID — Godot keeps `instance_id`, JS keeps `iid`. No rename. Heads up because your SPEC.md §1.9 lists `iid` for Godot.
+
+### Pass 5 reframed during follow-up chat
+
+Originally Pass 5 was scoped as "split target into target_mode + target_filter" (the §3.5 work in PROTOCOL.md). After the back-and-forth, the bigger move emerged: **make the JSON wire format literally Godot's CardResource shape, not a "compromise canonical."** Then Godot reads JSON natively (no translation), JS pays the inverse cost via ingest rebinding. The 23 hand-curated `.tres` cards get expressed as JSON entries in the html-proto manifest. The `.tres` files get deleted.
+
+This is the real "Stage 3" to the May 17 `.tres` migration. See §6 below.
+
+### Joe's deeper realization (the one that produced this handoff)
+
+After Pass 4 shipped, Joe asked: *"Did I make a mistake going from JSON to .tres on May 17?"*
+
+My honest answer: no — the May 17 work solved a real *within-Godot* duplication problem (programmatic CardResource definitions in `card_database.gd` + duplicate `cards/data/*.json` stubs for `JsonCardFactory`). The choice was correct at the time. The friction Joe is feeling now is that it's a local optimum that didn't anticipate cross-engine sharing being prioritized this soon. Cost of reversing is bounded; Pass 5 is exactly that reversal.
+
+The bigger realization: rules and data aren't sibling projects. See §5.
+
+---
+
+## 5. Why rules and data standardization are the same project
+
+This is Joe's reframe, and it's the reason he asked me to write this handoff. Putting words to it:
+
+A card game's rules decompose into:
+
+1. **State invariants** — what's in EngineState, who owns what, when phases advance. Mostly code.
+2. **Action surface** — what actions players can take, when. Action-descriptor kinds + legality functions. Code + data (descriptors).
+3. **Resolution semantics** — how an effect or trigger changes state. Code (handlers) + data (parameters in card JSON).
+4. **Event dispatch** — what fires when, who listens. Code (`_fire_event` sites) + data (event-kind catalog).
+5. **Condition checks** — when a trigger fires. Code (predicate functions) + data (the `cond_id` string in the card).
+
+Items 2–5 are *partially encoded in card data.* Every triggered ability in a card.json is a five-tuple: `(event, cond_id, target_filter, effects, self_only)`. Every effect descriptor is `(kind, target, amount, …)`. These data shapes pin down rules.
+
+So "standardize the rules" without "standardize the data" produces a clean English doc that no code matches. "Standardize the data" without "standardize the rules" produces clean schemas that don't say what they mean. You need both.
+
+**Practical consequence.** Every time RULES.md says "this is how X works," check whether the wire format (PROTOCOL.md) and dispatch tables (`Effects.HANDLERS`, `TRIGGER_CONDITIONS`, `_PRED_NAMES`) actually express that rule. If they don't, the RULES.md description is aspirational and the code is the spec — and you have a bug to fix. If they do, the wire format becomes the *binding* spec: change the JSON and you've changed what the game does.
+
+---
+
+## 6. How your work and mine fit together — proposed merge
+
+Both branches forked from `b070f1a`. Neither has been merged. The conflict is doc-level, not code-level (your branch only added docs; my branch did both).
+
+### 6.1 The docs to reconcile
+
+| Your file | My file | Recommendation |
+|---|---|---|
+| `docs/ARCHITECTURE.md` | (none — `/CLAUDE.md` has a module map but it's smaller) | Keep ARCHITECTURE.md. Apply the stale-name corrections in §1 above. Add a `JsonCardLoader` row. |
+| `docs/SPEC.md` | `docs/PROTOCOL.md` | **Significant overlap.** See §6.2 below. |
+| `docs/REFACTOR-NOTES.md` | (none) | Keep REFACTOR-NOTES.md. Apply §2 above (resurrect §4.1, no other code changes needed). |
+| `docs/RULES.md` | (none) | Keep RULES.md. Apply the stale-name corrections in §1 above. |
+| `docs/STANDARDIZATION-PLAN.md` | (same file, my version) | Mine has Pass 1-4 shipping notes that yours doesn't. Take mine. |
+| `docs/STANDARDIZATION-HANDOFF.md` | (this file) | This file exists only on `claude/standardization-BBD8O`. Keep or rename to `docs/STANDARDIZATION-CONTEXT.md` once read. |
+| `docs/PROTOCOL.md` | (mine only) | Keep mine. Reconcile with SPEC.md per §6.2. |
+
+### 6.2 SPEC.md vs PROTOCOL.md
+
+These overlap. The cleanest partition:
+
+- **PROTOCOL.md = the wire format.** What goes in `card.json`. What string values the dispatch keys accept. What the boot-time validators check. Contract *between* engines.
+- **SPEC.md = the runtime data structures.** Action descriptors, target descriptors, EngineState shape, signals, awaiting-state fields, CardInstance runtime layer. Contract *within* an engine.
+
+They reference each other where they touch. The card JSON shape lives in PROTOCOL.md; `CardResource.<field>` reads go to SPEC.md. Effect parameter shapes live in PROTOCOL.md (since they're authored in JSON); the dispatch contract `Effects.HANDLERS["kind"].execute(effect, ctx)` and the `ctx` shape live in SPEC.md.
+
+Three sections from SPEC.md should move to PROTOCOL.md (because they're really wire-format concerns):
+
+- SPEC.md §1.3 CardResource schema → already in PROTOCOL.md §2.1 (mine is more current; delete from SPEC.md).
+- SPEC.md §1.4 Effect descriptors → kind list is in PROTOCOL.md §3.2; per-kind parameter docs are richer in SPEC.md. Move the per-kind docs to PROTOCOL.md §3.2 entries.
+- SPEC.md §1.5 Triggered ability schema + §1.6 Predicate contract → consolidate into PROTOCOL.md §5 + §3.4.
+- SPEC.md §2.1 html-proto card JSON schema → move to PROTOCOL.md §2 (delete the JS-shape table; the wire format is now canonical).
+
+What stays in SPEC.md (because it's runtime, not wire):
+
+- §1.1 Action descriptors — stays. Add a forward reference to PROTOCOL.md §8 authoring rules.
+- §1.2 Target descriptors — stays.
+- §1.7 Engine signals — stays.
+- §1.8 Awaiting states — stays.
+- §1.9 CardInstance runtime state — stays. Apply the field-name corrections (§1 above).
+- §1.10 EngineState snapshot — stays. Apply the field-name corrections.
+- §2.3 Runtime slot fields — stays (RUN-tracked, not on the wire).
+- §2.4 Save schema — stays.
+- §2.5 Other localStorage keys — stays.
+- §3 Asset path conventions — stays.
+
+**Alternative merge strategy.** If you'd rather keep one doc, fold PROTOCOL.md into SPEC.md as a new top-level section ("§4 Wire format and dispatch vocabulary"). Either works; pick whichever makes the cross-references shorter.
+
+### 6.3 Your branch's commits don't touch code
+
+Your four commits on `claude/documentation-and-mapping-wa8Pd` are all `docs/*.md` additions:
+
+```
+03f0947  Add docs/RULES.md as canonical game spec; fix phase list in ARCHITECTURE.md
+ed6b755  Add docs/REFACTOR-NOTES.md with prioritized structural debt
+3916c0b  Add docs/SPEC.md documenting data contracts
+3b0f0b4  Add docs/ARCHITECTURE.md mapping Godot port + html-proto
+```
+
+This means a clean rebase of your branch onto mine should produce only doc-merge work, no code-level conflicts. Recommended merge path:
+
+```bash
+git checkout claude/documentation-and-mapping-wa8Pd
+git rebase claude/standardization-BBD8O
+# Resolve doc conflicts (your edits to ARCHITECTURE.md from 03f0947 will conflict
+# with whatever you'd update from this handoff §1; your other 3 commits are
+# additions that should rebase cleanly)
+```
+
+Or invert it — rebase mine onto yours, then sweep my Pass 1 renames through your docs. Same end state.
+
+### 6.4 The dispatch-key snake_case sweep (sub-pass of Pass 5)
+
+Mentioned in §4 above. The detail you need:
+
+Today's JSON wire format has inconsistent casing. Structural keys are snake_case (`card_id`, `cond_id`) after Pass 2. But enum *values* are still camelCase:
+
+```json
+{
+  "card_id": "salve",                            ← snake_case (Pass 2)
+  "effects": [
+    {"kind": "gainLife", "amount": 3, ...}       ← camelCase ✗
+  ],
+  "triggers": [
+    {
+      "event": "cardEntersBattlefield",          ← camelCase ✗
+      "cond_id": "thisAttacksAfterOppLifeLoss",  ← key is snake_case (Pass 2),
+                                                    value is camelCase ✗
+    }
+  ]
+}
+```
+
+For full wire-format consistency, the camelCase values should be snake_case too. This requires JS source changes to its dispatch tables:
+
+```js
+// Before
+const EFFECTS = { gainLife(...) { } };
+
+// After
+const EFFECTS = { gain_life(...) { } };
+```
+
+About ~150 call sites in JS (effect kinds in `js/engine.js`, condition ids in `js/triggers.js`, event names in `_fire` calls). Mechanical sed sweep. Once done, both engines dispatch on the same strings, and the JsonCardLoader's `_EFFECT_KIND_REMAP` / `_EVENT_KIND_REMAP` / `_KEYWORD_REMAP` tables all delete.
+
+I documented this at PROTOCOL.md §3.2 "Naming rule" — wire is *aspirationally* snake_case but Pass 2 left it half-done. Picking up the sweep is straightforward.
+
+---
+
+## 7. Pass 5 — outstanding work
+
+Recap of what we agreed on for the next push. Five sub-tasks:
+
+### 7.1 Migrate 258 card JSONs to Godot-native shape
+
+| Today | After |
 |---|---|
 | `"name": "Lightning Bolt"` | `"display_name": "Lightning Bolt"` |
 | `"type": "Instant"` | `"card_types": ["instant"]` |
@@ -250,193 +349,132 @@ Five concrete sub-tasks:
 | `"event": "cardEntersBattlefield"` | `"event": "card_enters_battlefield"` |
 | `"cond_id": "thisAttacks"` | `"cond_id": "this_attacks"` |
 
-Script-driven migration (one commit, run `node tests/run_all.js` after each field-rename batch if you want bisect-friendly history; one big commit is fine if all tests stay green).
+Script-driven. The script I used in Pass 2 (`/tmp/migrate_card_json.js`) is a starting point — extend it.
 
-#### 5.2 JS `ingestCard` rebinder (Option A from the chat)
+### 7.2 JS `ingestCard` rebinder
 
-JS's `ingestCard()` in `reference/html-proto/js/cards.js` grows to do the inverse translation:
+Mirror image of what Godot's JsonCardLoader does today. The 70-line function in `reference/html-proto/js/cards.js` grows to ~150 lines, doing the inverse translation (Godot-shape → JS-shape internally). Engine source untouched.
 
-```js
-function ingestCard(card) {
-  card.tplId = card.card_id;
-  card.name = card.display_name;
-  card.cost = card.mana_cost;
-  card.type = capitalize(card.card_types[0] || "");
-  card.sub = (card.subtypes || []).map(capitalize).join(" ");
-  card.effects = card.on_cast_effects;
-  card.abilities = card.activated_abilities;
-  // Plus: rebind effect.kind values gain_life → gainLife etc. inside effects + triggers,
-  //       rebind event names, rebind keyword values, rebind cond_id values.
-}
+### 7.3 JsonCardLoader simplifies dramatically
+
+Delete `_EFFECT_KIND_REMAP`, `_EVENT_KIND_REMAP`, `_KEYWORD_REMAP`, `_TARGET_FILTER_REMAP`. `_build_resource()` becomes direct field assignment. Loader drops from ~300 to ~120 lines. The supportability scan stays.
+
+### 7.4 Wire the Godot playable pool to JSON
+
+The big one. `CardDatabase.get_card(id)` reads from the JsonCardLoader map instead of `.tres`. The 23 hand-curated cards (Lightning Bolt, Giant Growth, basic lands, etc.) need JSON representations — added to `reference/html-proto/cards/_manifest.json` with their own folders. Delete the `.tres` files.
+
+**Decision needed:** for cards that exist in both pools (e.g., Godot's `lightning_bolt` vs html-proto's `bolt`), pick one folder name and update references. Recommended: rename Godot's references to use html-proto folder names, because html-proto has 258 cards vs Godot's 23 — fewer references to update.
+
+### 7.5 Visual layer rebuild
+
+Already on `docs/BACKLOG.md`. Frame + art-insert TextureRect rebuild of `scenes/card.tscn`. Replaces `TresCardFactory` with a JSON-backed factory. Unlocks loading html-proto card art PNGs.
+
+### Estimated effort
+
+~1.5 days of focused, well-tested work. **Bounded.** The mechanism is built; Pass 5 is wiring + JSON shape migration + a card.tscn rebuild.
+
+---
+
+## 8. Things I didn't anticipate that matter for your rules work
+
+### 8.1 The Godot engine `_fire_event` set is smaller than the trigger-listener set
+
+The Godot engine currently fires three events: `card_enters_battlefield` (engine.gd:573 and :701), `card_dies` (engine.gd:962), `card_discarded` (engine.gd:1435 — and I fixed a bug there during Pass 4 where it was keyed `name` instead of `kind`, meaning no trigger could match it).
+
+But cards in the html-proto pool listen for **many** more event kinds:
+```
+[JsonCardLoader] Missing event kinds (count):
+  attacks=20, card_leaves_battlefield=1, life_gained=1, spell_cast=7
 ```
 
-Roughly 100 lines. JS engine internals untouched.
+`attacks` is the biggest — 20 cards listen for it. Most of them have triggers like "When this attacks, do X." `JsonCardLoader._FIRED_EVENT_KINDS` is the source of truth for what *fires*; cards listening for events not in that list are flagged unsupported. RULES.md §1002 mentions these as "planned events for future cards" — they're already on the wire, the engine just doesn't fire them yet.
 
-**Option B (rejected for now)** was renaming JS source to use the snake_case forms throughout (~350 call sites). Aesthetic-only gain, real risk. Joe wants this deferred.
+**If your rules work catalogues these events as canonical** (RULES.md §1002 should list them), the implementation task is "fire the event at the right state-mutation point." Most are one-liners in `engine.gd`:
 
-#### 5.3 JsonCardLoader simplifies dramatically
+- `attacks` — fire from `_do_declare_attacker` after appending to `attackers`.
+- `spell_cast` — fire from `_do_cast_spell` after pushing to stack.
+- `life_gained` — fire from `gain_life.gd::execute` after `controller.life += amount`.
+- `card_leaves_battlefield` — fire from any path that moves a card off battlefield (bounce, exile, sacrifice). Multi-site.
 
-- Delete `_EFFECT_KIND_REMAP`, `_EVENT_KIND_REMAP`, `_KEYWORD_REMAP`, `_TARGET_FILTER_REMAP`.
-- `_build_resource()` becomes direct field assignment: `card.display_name = json.display_name`, etc.
-- The whole file goes from ~300 lines to maybe ~120.
+### 8.2 The `self_only` flag obsoletes most JS `this*` predicates
 
-**Important:** the supportability scan stays. It's still useful for telling you which effect/event/predicate kinds are unimplemented in Godot.
+The Godot Pyromaniac trigger uses:
+```gdscript
+"event": "card_enters_battlefield",
+"cond_id": "",        # always-true predicate
+"self_only": true,    # source must be event subject
+```
 
-#### 5.4 Wire the Godot playable pool to JSON
+The JS equivalent uses:
+```js
+"event": "cardEntersBattlefield",
+"condId": "thisEnters",    # predicate: source.iid === event.card.iid
+```
 
-This is the headline change.
+Functionally identical. The Godot form is cleaner — `self_only` is a structural flag, not a predicate that needs registration.
 
-- `cards/templates/card_database.gd::get_card(id)` currently does `load("res://cards/templates/<id>.tres")`. Change it to look up `id` in the JsonCardLoader map.
-- Decide on caching: load all 258 cards once at autoload `_ready` (already happens for supportability scan; just retain the map) and serve `get_card` from memory.
-- The 23 hand-curated cards (Lightning Bolt, Giant Growth, Mountain, etc.) need JSON representations. Two paths:
-  - **Path A**: Find the closest html-proto equivalents and use their `card_id`s. `bolt` (html-proto) replaces `lightning_bolt` (Godot). Touches every reference: `engine/engine.gd::init_phase1`, `init_phase4`, `_PHASE5_SHOWCASE_DECK`, all test files. Risky.
-  - **Path B**: Add new entries to `reference/html-proto/cards/_manifest.json` and create folders for `lightning_bolt`, `giant_growth`, etc., with their canonical JSON. The 23 hand-curated cards become part of the shared pool. Touches no Godot test code.
-  - **Recommended: Path B.** It expands the shared pool symmetrically. Path A creates ID conflicts (`bolt` vs `lightning_bolt` mean the same thing).
-- Delete the 31 `.tres` files (or keep one or two as test fixtures for the resource-format itself — but the boot validator + JsonCardLoader test cover that).
-- `scenes/tres_card_factory.gd` becomes vestigial; replace with a JSON-driven factory (extends the card-framework's `JsonCardFactory`).
+**The supportability scan reports `thisEnters=42, thisDies=16, thisAttacks=16, thisLeaves=1`** because that many cards in the pool use the JS pattern. To make them Godot-supportable, **either** add `this*` predicates to Godot's `_PRED_NAMES` registry, **or** migrate the cards to use `self_only: true` + an empty `cond_id`.
 
-#### 5.5 Visual layer rebuild
+The latter is cleaner and lines up with what PROTOCOL.md §3.4 already documents:
 
-This was already on `docs/BACKLOG.md` for unrelated reasons (the four already-ported PNGs in `cards/images/` need it):
+> The canonical predicate set will collapse `thisEnters`/`thisDies`/`thisLeaves`/`thisAttacks` into the `self_only` flag over time.
 
-> Card art for the 23 existing cards. Placeholders today. Four PNGs (blood_knight, cloud_pegasus, ember_drake, goblin_duelist) are already ported to `cards/images/` but unwired — they're art *inserts*, not full card faces, and our `scenes/card.tscn` treats `front_image` as the entire face. Wiring needs a frame+slot rebuild of card.tscn (Frame TextureRect + Art TextureRect children), then TresCardFactory sets both.
+So 42+16+16+1 = 75 cards are blocked on this single decision. If RULES.md §1000 codifies `self_only` as the canonical form (which it should), Pass 5's JSON migration should sweep these.
 
-In the Pass 5 context: the same rebuild also unblocks loading html-proto card art PNGs (which exist at `reference/html-proto/cards/<id>/art.png`). Same change, two payoffs.
+### 8.3 The cleanup-step discard bug I fixed
 
-### Effort
+`engine.gd:1435` used to fire the discard event as:
 
-~1.5 days of focused, well-tested work. **Bounded.** All the mechanism is built; Pass 5 is wiring + JSON shape migration + a card.tscn rebuild.
+```gdscript
+_fire_event({"name": "card_discarded", "card": card, "controller_key": player_key})
+```
 
-### What Pass 5 explicitly does NOT do
+The key `name` should have been `kind`. Without `kind`, `_fire_event` early-returns with `push_warning("_fire_event: event has no 'kind'; ignoring")`. So no trigger ever matched. I fixed it in commit `60960bd` (Pass 1c) alongside the `card_etb` → `card_enters_battlefield` rename, since both touched event-kind handling.
 
-- **Pass 6 (port more JS effect kinds to Godot)** — still separate ongoing work. The supportability scan tells you which to port first.
-- **Full JS source rename** — still rejected.
-- **Target_mode/target_filter split** — could be folded into Pass 5 (since the JSON migration is touching every effect dict anyway) OR done as a separate Pass 5b. PROTOCOL.md §3.5 has the migration table ready either way.
+**Implication for your rules work:** any RULES.md description of cleanup-step discard triggers ("When a card is discarded during cleanup, …") was previously untestable. Now it's testable but unimplemented — no card listens for `card_discarded` yet. The infrastructure is now correct; cards using it would need to be authored.
 
----
+### 8.4 The Godot autoload boot runs the supportability scan EVERY test invocation
 
-## 6. Where your branch and mine overlap
+The supportability scan adds ~1–2 seconds per Godot run. If you're iterating on tests, set `MAGICLIKE_SKIP_SUPPORTABILITY_SCAN=1` in the environment:
 
-The other instance (the branch this handoff is for) shipped four docs on `origin/claude/documentation-and-mapping-wa8Pd`. Here's how they intersect with the documents I shipped:
+```bash
+MAGICLIKE_SKIP_SUPPORTABILITY_SCAN=1 godot --headless --path . res://tests/test_phase4.tscn
+```
 
-### `docs/SPEC.md` ↔ `docs/PROTOCOL.md`
+The skip is documented at `engine.gd._ready()` and in the loader source. Use it.
 
-**Significant overlap.** Both document the data contracts on the Godot side. Concrete examples:
+### 8.5 The `.import` file dance
 
-| Topic | `docs/SPEC.md` (rules branch) | `docs/PROTOCOL.md` (this branch) |
-|---|---|---|
-| Action descriptors | §1.1 — the 11 action kinds, constructors, fields | Mentions in passing; PROTOCOL.md focuses on card JSON wire format, not the runtime action surface |
-| Target descriptors | §1.2 — `{kind, who, iid}` shapes | §3.5 covers target *filter* taxonomy; descriptor shape mentioned but not catalogued the same way |
-| CardResource schema | §1.3 — fields, types, defaults | §2.1 — same fields documented from the *wire-format* angle (what's in card.json) |
-| Effect kinds | Mentioned (§1.4-ish?) | §3.2 — full catalog with implementation status per engine |
-| Event kinds | Probably | §3.3 — full catalog |
+If you add new assets (fonts, images, SVGs) anywhere in the project tree, Godot will generate `.import` sidecars next to them on first project open or `--import` pass. The repo's convention (now consistent after my hygiene commit `39e6e1c`) is: commit `.import` sidecars, gitignore `.godot/` cache.
 
-**Recommendation for the rules-standardization session:** SPEC.md and PROTOCOL.md should converge. One option:
+If you bring new assets onto a Linux dev machine that hasn't run Godot yet, you'll need to run:
 
-- **PROTOCOL.md** stays focused on the *wire format* (what's in the JSON, what string values are accepted in the dispatch keys). It's the contract between engines.
-- **SPEC.md** stays focused on the *runtime data structures* (action descriptors, target descriptors, the EngineState dict, signals). It's the contract within an engine.
+```bash
+godot --headless --path . --import
+```
 
-The two docs reference each other where they touch. The card JSON shape is in PROTOCOL.md but `CardResource.<field>` reads go to SPEC.md. Effect parameter shapes live in PROTOCOL.md (since they're authored in JSON); the dispatch contract `Effects.HANDLERS["kind"].execute(effect, ctx)` lives in SPEC.md.
+once before tests work. The `class_name` index lives in `.godot/global_script_class_cache.cfg` and is built by `--import`. Without it, GDScript can't resolve types across files.
 
-**Or**: merge them. They could be one doc with §A for wire-format and §B for runtime. Joe should decide.
+### 8.6 Reference assets inside the Godot project tree
 
-### `docs/ARCHITECTURE.md` ↔ `/CLAUDE.md`
+`reference/html-proto/` sits inside the Godot project. That means Godot's importer scans it and generates `.import` files for every PNG/SVG/TTF in there. Joe asked about adding `.gdignore` to `reference/html-proto/`; I recommended **not** to, because Pass 5's art-pipeline rebuild will want Godot to load html-proto card art PNGs as Texture2D resources, which needs the `.import` sidecars in place.
 
-The Godot-side module map in ARCHITECTURE.md overlaps with the file-tree + module-layout tables in `/CLAUDE.md`. Same content, different framing. ARCHITECTURE.md is more comprehensive; CLAUDE.md is the per-session quickref. They should stay distinct and reference each other.
-
-### `docs/REFACTOR-NOTES.md` ↔ Pass 5 work
-
-Several items in REFACTOR-NOTES.md intersect with what Pass 5 would touch:
-
-- **REFACTOR-NOTES §1.1 [P0/M] Consolidate action dispatch.** Not directly related to Pass 5, but if Pass 5 adds a JSON-loaded card with a previously-unseen action shape, the dispatch consolidation becomes more urgent. Keep this on the radar.
-- **REFACTOR-NOTES §1.2 [P1/M] Combat-keyword extensibility hook.** Tangential — Pass 5 doesn't touch combat, but does make it easier to add cards that *test* new keywords.
-- **REFACTOR-NOTES §1.3 [P1/S–M] Action and event Dictionary type safety.** Closely related. The boot supportability scan in Pass 4 is in the same spirit — catching identifier typos at load time, not runtime. Pass 5 could extend it.
-- **REFACTOR-NOTES §1.4 [P1/M] State mutation outside `execute_action`.** Unrelated to Pass 5 directly, but the PROTOCOL.md §8 authoring rules codify "all state mutation through execute_action" as a protocol-level invariant. Worth cross-referencing.
-
-### `docs/RULES.md` ↔ `docs/PROTOCOL.md`
-
-This is the interesting one. The rules-standardization work is at a higher abstraction level than the data-standardization work — RULES.md describes the game in plain English ("priority follows MTG rules where it matters"), while PROTOCOL.md describes the wire format that encodes that behavior ("trigger dict has `cond_id` field that's a string registered in either engine's predicate registry").
-
-**Joe's reframe:** these turn out to be the same project because rule mechanics are partially encoded in the data. Examples:
-
-- A new effect kind (rules) requires a new entry in the wire-format catalog (data) AND a new handler in both engines (code).
-- A new event kind (rules — "when X happens") requires the engine to fire it (code), a wire-format entry (data), and a registry of `event` strings cards can listen for (data + code).
-- The predicate `oppLostLifeThisTurn` is a *rule* (defines when a trigger fires) and a *data identifier* (what cards say in their `cond_id` field) and a *code function* (in `triggers.js` / `predicates.gd`).
-
-So whenever your RULES.md work catalogues a new rule, three things need to stay consistent:
-
-1. **RULES.md** (your branch) — the English description.
-2. **PROTOCOL.md** (this branch) — the wire-format entry.
-3. **Code in both engines** — registered handlers/predicates/event firings.
-
-Pass 5's effect of "edit `card.json` once → both engines update" is the *delivery* of that consistency at the data layer. Your rules work is the *spec* that the data layer encodes.
+If you eventually decide `reference/html-proto/` shouldn't be Godot-loaded, the alternative is to load PNGs via `FileAccess.open()` + `Image.load_png_from_buffer()` (works without `.import`). Cleaner but a separate code path.
 
 ---
 
-## 7. Why rules and data are the same project
-
-Joe said: "they're ultimately the same." I want to put words to why.
-
-A card game's "rules" decompose into:
-
-1. **State invariants** — what's in the EngineState, who owns what, when phases advance. Mostly code.
-2. **Action surface** — what actions players can take, when. Encoded as action-descriptor kinds + legality functions. Code + data (the descriptors).
-3. **Resolution semantics** — how an effect or trigger actually changes state. Code (the handlers) + data (the parameters in the card JSON).
-4. **Event dispatch** — what fires when, who listens. Code (the `_fire_event` sites) + data (the event-kind catalog).
-5. **Condition checks** — when a triggered ability fires. Code (the predicate functions) + data (the `cond_id` string in the card).
-
-Items 2–5 are *partially encoded in card data.* Every triggered ability in a card JSON is a five-tuple: `(event, cond_id, target_filter, effects, self_only)`. Every effect descriptor is `(kind, target, amount, ...)`. These data shapes pin down rules.
-
-So "standardize the rules" without "standardize the data" produces a clean English doc that no code matches. "Standardize the data" without "standardize the rules" produces clean schemas that don't say what they mean. You need both.
-
-**Practical consequence for your branch:** every time RULES.md says "this is how X works," check whether the wire format (PROTOCOL.md) and dispatch tables (effects.gd, triggers.js, predicates.gd) actually express that rule. If they don't, the RULES.md description is aspirational, and the code is the spec. If they do, the wire format becomes the *binding* spec — change the JSON and you've changed what the game does.
-
----
-
-## 8. Patterns, gotchas, and anti-patterns
-
-### Anti-patterns the protocol enforces
-
-From `/CLAUDE.md` "Patterns to NOT replicate from the prototype":
-
-1. **No autoload reach from predicates or effect handlers.** Predicates take `(state, source, event)` and return bool. Effects take `(effect, ctx)` and resolve. **No reading `RulesEngine.state()` from inside these.** The JS prototype's worst pattern (`G[them].lifeLostThisTurn` closures) is the cautionary tale. The Godot side passes `state` explicitly through the args.
-2. **No depth caps on trigger draining.** The JS prototype has them as a safety net for past infinite-loop bugs. If the drain code is correct, it doesn't need a safety net.
-3. **No dynamically-attached dictionary fields on instances.** Use typed properties on `CardInstance` / `Player`. City of Brass's `extraManaColors` lost on instantiation (see JS comment) is the cautionary tale; Godot's `duplicate_deep()` overrides prevent that class of bug.
-4. **All state mutation through `execute_action`.** Auto-passes are agent UX, not rules. The `_settle_state` loop auto-passes for the AI driver and unattended priority windows — but the priority pass IS happening, just automatically.
-
-These are protocol-level invariants. PROTOCOL.md §8 calls them out. If your work touches state mutation, predicate semantics, or trigger drain, re-read these.
-
-### Gotchas I hit
-
-- **Class resolution requires `--import` first.** When I downloaded a Linux Godot binary fresh, my first test run failed with "Identifier `Player` not declared." Solution: run `godot --headless --path . --import` once to build the script class index, then tests work. The `.godot/` cache directory is what's being populated.
-- **`.import` files for non-Godot-loaded assets.** The repo had `cards/images/*.png.import` committed but not `assets/mana/*.svg.import` or `reference/html-proto/cards/*/art.png.import`. My `--import` pass generated them; I committed them in `39e6e1c`. **If your work adds new assets, expect new `.import` sidecars and commit them alongside the source asset.** Godot convention is "commit .import sidecars, gitignore .godot/ cache directory" — and the repo's `.gitignore` is already set up for this.
-- **`.tres` file format is order-sensitive in subtle ways.** When I edited `bloodlust_berserker.tres` to rename `condition_predicate` → `cond_id`, the editor would have reordered keys alphabetically on re-save. My sed-based edit preserved file order, which worked because the script doesn't depend on key order. If you write tooling that re-saves `.tres` files, expect Godot to canonicalize key order.
-- **`reference/html-proto/` is *inside* the Godot project directory tree.** This means Godot's scanner sees html-proto assets and generates `.import` files for them. Joe asked whether `.gdignore` would solve this; my answer was "it would, but it'd also block any future Godot integration with html-proto art." Don't add `.gdignore` to `reference/html-proto/` without explicit decision.
-- **Boot supportability scan adds time to test runs.** ~1-2 seconds per Godot invocation because it loads 258 JSONs. `MAGICLIKE_SKIP_SUPPORTABILITY_SCAN=1` disables it. Use this for tight test loops.
-- **The Godot autoload runs `_ready` even when running a test scene.** The autoload is `RulesEngine = engine/engine.gd`, declared in `project.godot`. Every test scene gets the autoload booted before the test's own `_ready` runs. This is why the supportability scan ran during my test runs — and why I added the env-var skip.
-
-### Patterns to lean on
-
-- **Translation tables at the ingest boundary** — `JsonCardLoader._EFFECT_KIND_REMAP` and `ingestCard()` in cards.js are the patterns. **All wire-format ↔ idiom translation happens in these two places.** Nowhere else. If you need to add a new wire-format value, add it to one of these tables (and to PROTOCOL.md).
-- **Boot validators over runtime guards.** `validate_all_card_predicates` walks every card at startup and `push_error`s typos. `supportability_report` extends the pattern to effect/event kinds. **Catch identifier mismatches at boot, not at runtime.** Pass 5 should preserve this principle.
-- **Effect handler shape.** Each handler is a `.gd` file with `static func execute(effect: Dictionary, ctx: Dictionary)`. Registered in `Effects.HANDLERS`. The `ctx` is `{controller, source, source_name, source_iid, state, targets, log}`. **Effects do not reach into the autoload.** (Exception: `counter.gd` calls `RulesEngine.counter_stack_entry` because countering touches `_stack_held_cards` which is autoload-internal. Documented as an exception.)
-- **Action descriptor factories.** All action creation goes through `Action.make_<kind>(...)` factories in `engine/action.gd`. Don't hand-construct action dicts. SPEC.md §1.1 (your branch) catalogues these.
-- **`.gd.uid` sidecars stay with their script.** When I renamed `counter_spell.gd` → `counter.gd`, I also did `git mv counter_spell.gd.uid counter.gd.uid`. Godot uses the UID for scene references; losing it breaks references.
-
----
-
-## 9. Test infrastructure
+## 9. Test invocations
 
 ### Godot tests
 
-10 phase smoke tests + 1 JsonCardLoader smoke test. All headless-runnable:
-
 ```bash
-# One test:
+# Single test:
 godot --headless --path . res://tests/test_phase4_5b.tscn
 
-# All tests:
-for t in test_phase1 test_phase2 test_phase3 test_phase4 test_phase4_5a test_phase4_5b test_phase4_5c test_phase5a test_phase5b test_phase5c test_json_card_loader; do
+# All 11 tests (10 phase + new JsonCardLoader smoke):
+for t in test_phase1 test_phase2 test_phase3 test_phase4 test_phase4_5a \
+         test_phase4_5b test_phase4_5c test_phase5a test_phase5b test_phase5c \
+         test_json_card_loader; do
   out=$(MAGICLIKE_SKIP_SUPPORTABILITY_SCAN=1 godot --headless --path . "res://tests/${t}.tscn" 2>&1)
   if echo "$out" | grep -q "ALL ASSERTIONS PASSED\|ALL PASS"; then
     echo "PASS: $t"
@@ -447,159 +485,112 @@ for t in test_phase1 test_phase2 test_phase3 test_phase4 test_phase4_5a test_pha
 done
 ```
 
-Each test exits with code 0 (pass) / 1 (fail). The harness above shows pass/fail per test.
-
-**On Linux without a system Godot:** download from https://github.com/godotengine/godot/releases/download/4.6-stable/Godot_v4.6-stable_linux.x86_64.zip — that's what I used. Unzip and the binary is ready to run. Run `--import` once before the first test.
+Each test exits 0/1. Promoting this to `tests/run_all.sh` (committed) resolves REFACTOR-NOTES §5.1.
 
 ### JS tests
 
 ```bash
 cd reference/html-proto
-
-# Regression suite — ~2s, 482 assertions:
-node tests/run_all.js
-
-# Self-play harness — ~20s for 500 games, useful for shaking out engine bugs:
-node tests/selfplay_harness.js 500 bughunt
-
-# Smaller self-play for fast iteration:
-node tests/selfplay_harness.js 100 bughunt
+node tests/run_all.js                       # ~2s, 482 assertions
+node tests/selfplay_harness.js 500 bughunt  # ~20s, AI vs AI
 ```
-
-The `_setup.js` setup file pipes cards through `ingestCard` so test code sees the same shape as the browser. **If you add new wire-format translations to `ingestCard`, the tests pick them up automatically** — no test-harness changes needed.
 
 ### Cross-engine verification pattern
 
-When Pass 5 lands, the headline cross-engine test is:
+When Pass 5 lands, the headline test becomes:
 
 1. Edit `reference/html-proto/cards/bolt/card.json` — change `amount: 3` → `amount: 4`.
 2. Run `node tests/run_all.js` — JS sees the change.
-3. Run Godot — boot supportability scan still shows bolt as supported. A phase test that casts bolt deals 4 damage instead of 3.
+3. Run a Godot phase test that casts bolt — deals 4 damage instead of 3.
 
-That single edit affecting both engines is the proof point for the whole standardization project.
+That single edit affecting both engines is the proof point.
 
 ---
 
-## 10. Open questions you may run into
+## 10. Open questions you'll have to make calls on
 
-### Q1: Should the JSON migration use folder-rename for the 23 hand-curated cards?
+### Q1: Folder-rename for the 23 hand-curated Godot cards
 
-The 23 Godot-hand-curated cards have folder names like `lightning_bolt`, `giant_growth`, `mountain`. The html-proto's equivalent cards have folder names like `bolt`, `growth`, `forest`. Some are duplicates (Godot has `mountain` and `forest`, html-proto has `mountain` and `forest` too — but `forest` might exist on both with different art). Some are alternates (Godot's `lightning_bolt` = html-proto's `bolt`).
+`bolt` (html-proto) and `lightning_bolt` (Godot) refer to the same card. When merging the pools, do you:
 
-**Three options when adding the 23 to the html-proto manifest:**
+- **A:** Keep both (duplication, two source files).
+- **B:** Rename Godot references to use html-proto folder names (touches `engine.gd::init_phase*`, test files, showcase deck).
+- **C:** Rename html-proto folder to Godot-style names (touches the manifest, art paths, JS engine).
 
-- **A: Keep both.** `bolt/card.json` and `lightning_bolt/card.json` coexist. The Godot side uses `lightning_bolt`, the JS deck pool uses whichever it wants. Adds complexity.
-- **B: Pick one.** Rename Godot references to the html-proto folder names (touches `engine/engine.gd`, every test, the showcase deck). Renaming + careful regression testing.
-- **C: Picky.** Keep Godot's names, delete the html-proto equivalents. Touches html-proto less but means JS-side reference cards (cards used in tests like `bolt`) need their references updated.
+**My recommendation:** B. Godot has fewer references (23 cards' worth vs 258 cards' worth of folder paths).
 
-**My recommendation:** Option B. Touch Godot once, end up with one folder per concept across the whole project. Pass 5 is the natural moment for this because every Godot test is already getting touched.
+### Q2: Modal card JSON shape
 
-### Q2: How to handle modal cards in the JSON shape
-
-`tideCharm`, `verdantCharm`, `oblation` and a few others have modal effects:
-
+Cards like `tideCharm`, `verdantCharm`, `oblation` use:
 ```json
-{
-  "effects": {
-    "modeNames": ["Counter target spell", "Bounce target creature", "Draw 2"],
-    "modes": [[...effect_list_1...], [...effect_list_2...], [...effect_list_3...]]
-  }
+"effects": {
+  "modeNames": ["...", "...", "..."],
+  "modes": [[effect_list_1], [effect_list_2], [effect_list_3]]
 }
 ```
 
-When the JSON shape becomes Godot-native, this needs an answer. Options:
+In Godot-native shape, this needs a decision. Options:
+- New `on_cast_modes: Array[Dictionary]` field on `SpellResource`.
+- Reuse `on_cast_effects` accepting either an Array or a single modal Dict.
+- A `ModalSpellResource` subclass.
 
-- A new `on_cast_modes: Array[Dictionary]` field on `SpellResource`.
-- Reuse `on_cast_effects` but allow either an Array or a single modal Dict.
-- A dedicated `ModalSpellResource` subclass.
+JsonCardLoader currently produces empty `on_cast_effects` for modal cards (TODO comment in code). They show as unsupported. **Joe will probably want them supported in Pass 5** since modal spells are an existing JS feature with 5+ cards.
 
-JsonCardLoader currently produces empty `on_cast_effects` for modal cards (TODO comment in the code). They show as unsupported. **Joe will probably want them supported in Pass 5 since modal spells are an existing JS feature.**
+### Q3: `extraManaColors` (City of Brass) handling
 
-### Q3: How to handle `extraManaColors` (City of Brass)
-
-The JSON has `mana: "W", extraManaColors: ["U", "B", "R", "G"]` for City of Brass. JsonCardLoader unions these into `LandResource.mana_produced`. Godot-native shape might prefer:
+The JSON has `mana: "W", extraManaColors: ["U", "B", "R", "G"]`. JsonCardLoader unions them into `LandResource.mana_produced`. Godot-native shape might prefer:
 
 ```json
 "mana_produced": ["W", "U", "B", "R", "G"]
 ```
 
-Cleaner but loses the "primary color" distinction. JS uses `mana` separately from `extraManaColors` for some logic. Decide whether to preserve the distinction or flatten.
+Cleaner but loses the "primary color" distinction. JS uses `mana` separately from `extraManaColors` for some logic (display, color identity). Decide whether to preserve.
 
-### Q4: How does the rules-standardization work define "canonical" for ambiguous rules?
+### Q4: RULES.md vs PROTOCOL.md authority
 
-RULES.md is plain English. PROTOCOL.md is wire format. Where they disagree (and they will, because English is imprecise), which one wins?
+RULES.md says "this is canon; the code is the patient." PROTOCOL.md says "wire format is authoritative; engines conform." Where they disagree (and they will, because English is imprecise), which wins?
 
-**My take:** RULES.md is the spec for what *should* happen; PROTOCOL.md is the spec for what *the engine* does. If RULES.md and PROTOCOL.md disagree, that's a bug — either the rule is wrong or the data encoding doesn't express the rule. PROTOCOL.md §8 should probably be updated to say "RULES.md is the higher-authority document for behavior; PROTOCOL.md encodes how that behavior is expressed in data."
+**My take:** RULES.md is the spec for what *should* happen behaviorally; PROTOCOL.md is the spec for how that behavior gets encoded. If they disagree, that's a bug — either the rule needs revision or the data encoding doesn't express the rule. PROTOCOL.md §8 should probably be updated with a one-liner: "RULES.md is the higher-authority document for game behavior; this document encodes how that behavior is expressed in data."
 
----
+But the call is yours.
 
-## 11. How to pick up Pass 5 cleanly
+### Q5: Boot scan for the action surface
 
-If Joe asks you to ship Pass 5, here's the order I'd take:
+Pass 4's boot supportability scan covers effect kinds, event kinds, and predicate ids — the data-driven dispatch surface. **It does not cover action kinds.** REFACTOR-NOTES §1.3 flags "action and event Dictionary type safety" as a related gap.
 
-### Step 1: Reconcile SPEC.md and PROTOCOL.md (half day)
+Adding action-kind validation is a small extension: on boot, enumerate `Action.KIND_*` constants and assert every kind has a `_do_<kind>` and `_legal_<kind>` function. Catches typos at boot, not runtime.
 
-Don't start writing code until the rules / data docs are consistent. Read both, identify overlap, decide on a partition:
-
-- PROTOCOL.md = wire format (what's in `card.json`, dispatch-key catalogs).
-- SPEC.md = runtime data structures (action descriptors, engine state shape, signals).
-- RULES.md = behavioral spec (the highest-authority document; cited from both PROTOCOL.md and SPEC.md).
-
-Update headers in each doc to reference the others. Add a "Doc map" section to one of them (probably ARCHITECTURE.md) that explains the partition.
-
-### Step 2: Lock the Godot-native JSON shape (half day)
-
-Write a new `docs/CARD-JSON.md` (or extend PROTOCOL.md §2) that nails down the post-migration JSON shape. Every field, every required/optional flag, every value enum. **This is the contract you're migrating to.** Get Joe to approve it before touching JSON files.
-
-### Step 3: Write the migration script (half day)
-
-`tools/migrate_card_json_to_godot_shape.js`. Idempotent (running twice is a no-op). Walks the manifest, applies all field/value renames, writes back. Print a summary.
-
-Don't run it on the canonical files yet — run it on a scratch copy, diff a few cards, and have Joe spot-check. Then run for real and commit.
-
-### Step 4: Update JS `ingestCard` (1-2 hours)
-
-Add the inverse rebinding. Run `node tests/run_all.js` — all 482 assertions must pass. Run self-play harness — must run clean.
-
-### Step 5: Simplify JsonCardLoader (1-2 hours)
-
-Delete the remap tables. Replace `_build_resource` with direct field assignment. Run Godot tests + the JsonCardLoader smoke test — all must pass.
-
-### Step 6: Wire Godot's playable pool to JSON (half day)
-
-Add JSON entries for the 23 hand-curated cards (Path B from §10 Q1). Modify `CardDatabase.get_card(id)` to read from the JsonCardLoader map instead of `.tres`. Update all references if you used Path B (renaming Godot's identifiers to match html-proto names).
-
-Run all Godot tests — must pass.
-
-### Step 7: Delete `.tres` files + `TresCardFactory` (half day)
-
-Replace `TresCardFactory` with a JSON-backed factory. Delete the 31 `.tres` files. Run `tools/smoke_tres_factory.gd` to verify the visual factory still works.
-
-### Step 8: Visual card.tscn rebuild (half day)
-
-The Frame + Art TextureRect rebuild from BACKLOG. Wire it to load html-proto art PNGs (or Godot-local PNGs) per the JSON's `front_image_path`.
-
-### Step 9: Test + commit + push
-
-```bash
-# Final verification:
-MAGICLIKE_SKIP_SUPPORTABILITY_SCAN=1 godot --headless --path . res://tests/test_phaseX.tscn  # all 10 phase tests + json loader
-node reference/html-proto/tests/run_all.js
-node reference/html-proto/tests/selfplay_harness.js 100 bughunt
-```
-
-Commit per Joe's preference (the Pass 1/2/3/4 commits are good models — descriptive, scope-bounded, list of touched files in body). Push to `claude/standardization-BBD8O` (or your own branch, then merge).
-
-### Estimated total
-
-5–8 working hours of focused engineering, depending on how many surprises the modal-card / City-of-Brass / 23-card-naming questions throw. The mechanism is built; this is the wiring.
+Worth doing? Probably yes, but it's a separate sub-task. Could be part of REFACTOR-NOTES §1.1 (action dispatch consolidation) since both involve registry-ifying the action layer.
 
 ---
 
-## Closing note
+## 11. The principles I'd carry forward
 
-The standardization project is meaningful but not load-bearing for shipping the game itself. Joe can keep playing the JS prototype and the Godot Phase 5c+ work without Pass 5 ever landing. The value of Pass 5 is **eliminating a recurring "edit two places" tax** on every card change going forward. That tax compounds with every new card Joe authors; Pass 5 pays it off.
+Three guidelines that did most of the work on this branch:
 
-If you find yourself making a decision that I didn't anticipate here, **err toward making the wire format simpler** (fewer remap tables, fewer "special case" fields) and **err toward boot-time validation over runtime checks**. Those two principles do most of the work in keeping the standardization actually standardized.
+1. **Wire format is authoritative; engines translate at the ingest boundary.** All translation logic lives in two places: `JsonCardLoader._build_resource()` (Godot side) and `cards.js::ingestCard()` (JS side). When in doubt about where new translation logic goes, those are the only correct answers. Don't sprinkle translation tables across the engine.
+
+2. **Boot-time validation over runtime guards.** `validate_all_card_predicates` walks every card at startup. `supportability_report` extends it. Boot-time error messages are easier to fix than runtime `null`-dereferences. When adding a new dispatch surface (action kinds, event payload shapes), add a boot validator.
+
+3. **Anti-patterns are protocol-level, not just style.** The four rules in `/CLAUDE.md` "Patterns to NOT replicate" (no autoload reach from predicates/effects, no depth caps on trigger drain, no dynamic dict fields on instances, all mutations through `execute_action`) are now also codified at `docs/PROTOCOL.md` §8. If your rules work introduces a new rule, the implementation must obey these. The `/CLAUDE.md` "patterns" section is the more authoritative location.
+
+---
+
+## Closing
+
+The standardization project is meaningful but not load-bearing for shipping the game itself. Joe can keep playing the JS prototype and the Godot Phase 5c+ work without Pass 5 ever landing. The value of Pass 5 is **eliminating a recurring "edit two places" tax** on every card change. That tax compounds with every new card Joe authors; Pass 5 pays it off.
+
+Your rules-standardization work is the cleaner-spec half of the same project. If RULES.md becomes the binding behavioral spec and PROTOCOL.md becomes the binding wire-format spec, with both engines validating against each at boot, the result is a system where:
+
+- Adding a new rule means updating RULES.md, PROTOCOL.md, and both engines' dispatch tables (one PR touches all four).
+- Adding a new card means writing one JSON file that both engines play.
+- Drift between the two engines is caught at boot, not at runtime.
+
+That's the win condition. Pass 5 wires the data side; your work makes the rule side canonical.
+
+If you find yourself making a decision I didn't anticipate, lean on:
+- Wire format simpler (fewer remap tables, fewer special-case fields).
+- Boot-time validation over runtime checks.
+- When stuck, ask Joe — he's the one whose intuition produced both threads.
 
 Good hunting.
