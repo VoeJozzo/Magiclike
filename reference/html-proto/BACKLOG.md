@@ -22,8 +22,7 @@ The following items live in `docs/DIVERGENCE.md` as their primary tracker. Liste
 - **D1** — drop the multi-effect target-snapshot system; align on Godot's live-read approach (MTG canon).
 - **D2** — consolidate `pump` + `addCounter` into one `pump` effect with `duration` parameter.
 - **D4** — `gain_life` signed-delta with direction-based event emission (both engines).
-- **E1** — zone-change event unification (both).
-- **E2** — composable predicate refactor (both).
+- **E1 + E2** — zone-change event unification + composable predicate refactor (both engines). Detailed plan: [`docs/plan-zone-change-and-composable-predicates.md`](../../docs/plan-zone-change-and-composable-predicates.md). Effort: L (~34h).
 - **F2** — preserve marked damage on indestructibles (don't clear `damage = 0` during SBA).
 
 ### Other

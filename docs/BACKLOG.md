@@ -35,8 +35,7 @@ The following items live in `docs/DIVERGENCE.md` as their primary tracker. Liste
 - **D3** — `gain_life` flexibility (target/who parameter) (godot)
 - **D4** — `gain_life` signed-delta with direction-based event emission (both)
 - **D7** — legendary uniqueness at cast (godot, when first legendary lands)
-- **E1** — zone-change event unification (both)
-- **E2** — composable predicate refactor (both)
+- **E1 + E2** — zone-change event unification + composable predicate refactor (both engines). Detailed plan: [`docs/plan-zone-change-and-composable-predicates.md`](plan-zone-change-and-composable-predicates.md). Effort: L (~34h). Recommended **before** Phase 6 card-pool expansion so new cards don't accumulate in the old monolithic style.
 - **E7** — effect-aware AI trigger-target picking (godot)
 - **F3** — token vanishing on leave-play (godot, when first token lands)
 - **G1** — opponent hand face-down UI (godot) — engine handles hidden info correctly; UI leaks identity
