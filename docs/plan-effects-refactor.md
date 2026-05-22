@@ -1,8 +1,9 @@
 # Refactor Plan: Unified Effects Registry — Audit, Decompose, and Align
 
 **Status:** Plan complete, ready for review. Not yet executed.
-**Cross-references:** `docs/DIVERGENCE.md` items D2 (`pump` duration → `addCounter`), D3 (`gain_life` flexibility), D4 (`gain_life` signed delta), B4 (delayed-trigger machinery — required for `exile_until_eot` decomposition), C5 (killer attribution — adjacent), E1/E2 (event vocabulary + composable predicates, prerequisite for the `move_card` effect's destination semantics). `docs/RULES.md` §703 (target legality), §704 (resolution + fizzle), §904 (hexproof). `docs/SPEC.md` §1.4 (effect descriptor schema).
-**Effort estimate:** **L** (~4–5 days end-to-end across both engines, including card migration, tests, and registry consolidation; this is the largest of the three planned refactors because it touches all 258 proto cards, all 32 Godot templates, and rewrites the dispatch table itself).
+**Pre-execution flag:** The `rip` effect's behavior needs another discussion before this refactor runs — see §13. The plan currently codifies "kludge" semantics (rip = sacrifice + slot_remove, fires triggers); the user has flagged this as known-not-final and wants to revisit before implementation begins.
+**Cross-references:** `docs/DIVERGENCE.md` items D1 (target target-state semantics — see §3.6), D2 (`pump` duration → `addCounter`), D3 (`gain_life` flexibility), D4 (`gain_life` signed delta), B4 (delayed-trigger machinery — required for `exile_until_eot` decomposition), C5 (killer attribution — adjacent), E1/E2 (event vocabulary + composable predicates, prerequisite for the `move_card` effect's destination semantics). `docs/RULES.md` §703 (target legality), §704 (resolution + fizzle), §904 (hexproof). `docs/SPEC.md` §1.4 (effect descriptor schema).
+**Effort estimate:** **L** (~4.5–5.5 days end-to-end across both engines, ~64–69 hours, including card migration, tests, splice helper extraction, and registry consolidation; this is the largest of the three planned refactors because it touches all 258 proto cards, all 32 Godot templates, and rewrites the dispatch table itself).
 
 Produced by an Explore/Plan pass against `reference/html-proto/js/engine.js` (EFFECTS table at line 1366, 38 handlers below it), `engine/effects/*.gd` (Godot's 5 handlers), `data/card_resource.gd`, and all 32 Godot templates plus 258 proto card JSONs. The goal is to land the long-term effects design (a small registry of atomic effects, parameterized target filters, decomposed compounds) before Phase 6 card-pool expansion makes mechanical migration expensive.
 
@@ -84,6 +85,7 @@ All 33 other proto kinds: proto-only. (The Godot side will gain everything below
 
 - **Duplicate `gainControl` (#32 / #34)**: real bug. JS object literals silently override. The first definition (line 2123) handles `params.haste` (string-additive), the second (line 2177) handles `params.grantHaste` (boolean → `applyGrant`). The two have subtly different semantics for the haste-grant path — the first puts the creature out of sickness manually, the second uses the proper grant infrastructure. Fixing this falls out of decision 11 (unify into `change_control`).
 - **`noop` (#38) usage** is structural, not semantic — `cards/stapler/card.json` uses `kind: "noop"` to mark the second target slot of the activated ability so the target-validation system requires two targets. The handler body is `{}`. Decision 17 said "investigate; if unused, delete." Audit verdict: it IS used, but not as an effect — it's a target-slot marker. **Recommendation: replace `noop` with a structural property on the ability** (`target_slots: 2`) so the effect-kind registry doesn't have to carry an empty-body marker. Pure handler-side cleanup, no semantic change. Flagged as a step in §10.
+- **`target_slots: N` generalization** — beyond Stapler, five other cards use multi-target patterns: `twinStrike`, `branchingBolt`, `drainLife`, `rootsAndBranches`, `swordAndSorcery`. They currently use ad-hoc `targetSlot` indexing per effect. The `target_slots: N` ability-schema field becomes the canonical declaration for ALL multi-target abilities, not just Stapler. Each effect in the array can declare `target_slot: 0` or `target_slot: 1` (etc.) to say which target it operates on. Replaces the `noop` Stapler hack AND unifies the ad-hoc indexing of the other 5 cards.
 - **`sacrifice` (#28)** is defined but no card uses `kind: "sacrifice"` as an EFFECT (Carrion Feeder uses `sacrifice: "creature"` as a COST, which is a separate code path in the cost-payment logic). Decision 15 unifies it with `edict`. Audit confirms `sacrifice` is effectively dead — only the unified `force_sacrifice` lives in the new registry.
 - **Splice duplicate-pathway**: confirmed at `js/engine.js:124` ("Splice merge math — shared by RUN.applySplice and ENGINE.EFFECTS.applyInGameSplice") and `js/run.js:865`. The two paths share `canonicalSplicePair`, `isSpliceableBase`, `isCompatibleStaplePair`, `remapEmpowerRollForStaple` helpers, but each has its own ~200-line body for slot mutation, slotIdx index fixups, and merged-data assembly. Decision 8 flagged this; §7 makes it an investigation sub-task.
 - **`damageAll`'s hexproof note** at engine.js:2010-2014 already documents the correct rule ("Hexproof doesn't protect (this isn't a targeted effect)") and `edict` at engine.js:1957 has the matching note ("no targeting, so hexproof doesn't protect"). Decision 2's hexproof contract is already encoded in the proto behavior; this refactor is making it structural rather than per-kind tribal knowledge.
@@ -124,6 +126,7 @@ Every fixed decision from the prompt, traced to its kinds.
 | 10 | Card-movement unification → `move_card` | `draw`, `discard`, `shuffle_into_library`, `return_from_graveyard`, `search_land_tapped`, `search_creature`, `flicker`, `exile_until_eot` | All collapse to `move_card(from_zone, to_zone, selector, amount, [post_action])`. The post_action open question is resolved in §4.1 → **bundle** them as parameters of `move_card`. |
 | 11 | `gain_control` + `steal` → `change_control` | `gainControl` (both copies), `steal` | Unified into `change_control(target, duration, grant_haste, untap_on_take)`. `steal` is the variant that also flips ownership permanently (parameter: `transfer_ownership: bool`). The dead duplicate is dropped. |
 | 12 | Rename `remove_creature` | `removeCreature` (single + mass via #2) | **Recommendation: `affect_creature(severity)`** with severity values `tap, bounce, destroy, exile`. "Affect" rather than "act_on" because the latter is too generic for code-search. Tap-as-severity-1 stays as a single effect — splitting tap out as its own kind would lose the empower-bump-severity mechanic that Codex/Mercurial rolls produce (e.g., a tap that escalates to bounce via empower). The "affect" name lets severity=tap read naturally without implying destruction. |
+| 12b | Rename `ripPermanent` → `rip` | `ripPermanent` | Per-user-decision: drop the "Permanent" qualifier. Just `rip(target)`. **Behavior unchanged from current proto** — see §13 for why this is a kludge and what the final design should be. |
 | 13 | `restrict` → `grant_keyword` | `restrict` | Deleted. `restrict(cantAttack: true)` → `grant_keyword(defender)`. `restrict(cantBlock: true)` → `grant_keyword(no_block)` where `no_block` is a new hidden internal keyword added to the keyword registry. `restrict(cantAttack: true, cantBlock: true)` → an array of two `grant_keyword` effects (the existing array-of-effects machinery handles compounds). |
 | 14 | `untap` stays | `untap` | Kept as its own primitive. Not on the severity ladder (it's the inverse of tap, not part of removal). |
 | 15 | `edict` + `sacrifice` → `force_sacrifice` | both | Unified. `force_sacrifice(player, count, filter)` where `player` is `controller`\|`opponent`. Existing `edict` is `force_sacrifice(opponent, 1, creature)`. Future "sacrifice X of your own" would be `force_sacrifice(controller, N, ...)`. `rip_permanent` is structurally similar but stays distinct because of the slot-loss permanence — see §3.4. |
@@ -165,7 +168,7 @@ For each of the 38 proto kinds, what happens. Final column shows the new home; "
 | 24 | `grantKeyword` | renamed + unified (#2) | `grant_keyword(keyword, duration, target_filter)` |
 | 25 | `createTokens` | renamed | `create_tokens(token_id, count, controller)` |
 | 26 | `edict` | unified (#15) | `force_sacrifice(opponent, 1, creature)` |
-| 27 | `ripPermanent` | renamed (kept distinct) | `rip_permanent(target_player)` — see §3.4 |
+| 27 | `ripPermanent` | renamed `rip(target)` | See §3.4 and §13. Engine action currently kludge (sacrifice + slot remove); pre-execution decision flagged. |
 | 28 | `sacrifice` | unified (#15) | `force_sacrifice(controller, 1, target_or_self)` (no current card uses it) |
 | 29 | `damageAll` | removed (#2) | → `damage(amount, target_filter: all_creatures)` |
 | 30 | `removeAll` | removed (#2) | → `affect_creature(severity, target_filter: all_creatures \| all_opps)` |
@@ -179,9 +182,9 @@ For each of the 38 proto kinds, what happens. Final column shows the new home; "
 | 38 | `noop` | removed (#17 audit) | (replaced by `target_slots` ability-schema field) |
 | 39 | `applyInGameSplice` | renamed; harmonize w/ RUN.applySplice as sub-task (#8) | `apply_in_game_splice` (or possibly `staple` after harmonization) |
 
-### 3.4 Why `rip_permanent` stays distinct from `force_sacrifice`
+### 3.4 Why `rip` stays distinct from `force_sacrifice`
 
-`force_sacrifice` is a sac (battlefield → graveyard) selected by the target player. `rip_permanent` opens a player-choice prompt that ALSO removes the slot from the run permanently (run.js bookkeeping, not just engine). The slot-loss is a roguelike-layer side effect; folding it into `force_sacrifice` would either (a) saddle every sac with a "permanent-loss" parameter that's only true for one card, or (b) require post-effect chaining that runs `slot_remove` after sacrifice. Neither pays off. Keep `rip_permanent` separate; document the overlap in card-author notes.
+`force_sacrifice` is a sac (battlefield → graveyard) selected by the target player. `rip` opens a player-choice prompt that ALSO removes the slot from the run permanently (run.js bookkeeping, not just engine). The slot-loss is a roguelike-layer side effect; folding it into `force_sacrifice` would either (a) saddle every sac with a "permanent-loss" parameter that's only true for one card, or (b) require post-effect chaining that runs `slot_remove` after sacrifice. Neither pays off. Keep `rip` separate; document the overlap in card-author notes. See §13 for the pre-execution decision on `rip`'s engine action.
 
 ### 3.5 Hexproof / targeting model — the critical correctness section
 
@@ -214,6 +217,49 @@ For each of the 38 proto kinds, what happens. Final column shows the new home; "
 **Special case — `library_search`.** The controller picks a card from their own library at resolution time. MTG calls this "choose" but not "target" (Demonic Tutor doesn't target). Hexproof never applies (your own library, no opponent involvement). The filter is parametric — `library_search(land)`, `library_search(creature)`, `library_search(creature, cost_le: 3)`. Phase 1 of this refactor only needs `library_search(land)` and `library_search(creature)`; the filter language can grow later. Classified as untargeted.
 
 **Test obligation.** §12 includes regression tests verifying Pyroclasm hits hexproof creatures, Lightning Bolt does not target hexproof opponent's creatures, force_sacrifice on hexproof creatures works (no target gate), and grant_keyword(mass) bypasses hexproof.
+
+### 3.6 Last-known-information + iid-mint-on-arrival — the MTG hybrid
+
+**The contract** (MTG CR 113.7a, 608.2g): when a multi-effect spell resolves, each effect sees:
+- **Live state** for any referenced target/object that's STILL in its expected zone.
+- **Last-known-information** — a snapshot of relevant attributes — for any target that has LEFT its zone between effects in the same resolution.
+
+This supersedes DIVERGENCE D1, which previously said "align proto on Godot's live-read." The correct alignment is the hybrid:
+
+| Scenario | Effect sees |
+|---|---|
+| Target stays on battlefield throughout | Live state (post-each-effect mutations visible to subsequent effects) |
+| Target leaves battlefield between effects | Snapshot captured at the moment it left |
+
+**Worked example — Swords to Plowshares**: `[move_card(battlefield, exile, chosen_creature), gain_life(amount=??, target=controller_of_chosen)]`. The exile moves the creature out of battlefield; the gain_life references "its power" — which is no longer queryable from a live battlefield position. The engine reads last-known-info: power at the moment of zone-change. Without this, the second effect would either crash or return 0.
+
+**Worked example — Self-buff-then-damage**: `[pump(+2/+2, chosen), grant_keyword(lifelink, chosen), damage(amount=its_toughness, target=chosen)]`. The creature stays on battlefield throughout. Live state applies: damage = post-pump toughness. **Order matters**: if the spell text were "deal damage = toughness, then +2/+2 and lifelink," the damage uses pre-pump toughness because that's the live state at THAT effect's resolution.
+
+**Implementation**: each `CardInstance` (Godot) / `card` object (proto) gets a `last_known_info` snapshot field. When a card leaves a zone (`move_card` to non-original-zone, `sacrificeCard`, etc.), the engine snapshots `{power, toughness, controller, subtypes, granted_keywords, ...}` into that field BEFORE the zone-change completes. Subsequent references to the card's properties during the same spell's resolution check `last_known_info` if the card is no longer in its expected zone.
+
+The snapshot lifetime is "one spell's resolution scope." After the resolution completes, the snapshot can be cleared (it's irrelevant once we're between spells).
+
+**Estimated implementation**: ~30-50 lines per engine. One field on the card struct, one capture site (in `move_card` / `sacrificeCard` / etc.), one resolution-time check site (in each effect handler that reads target properties).
+
+### 3.7 iid-mint-on-arrival — the rule that gives "flicker beats removal" for free
+
+**The contract** (MTG): every time a card enters the battlefield, it gets a fresh iid. The slot persists across the move (it identifies the deck-slot the card belongs to); the iid does NOT.
+
+**Why this matters**: targeting locks onto iid. A spell targeting iid=12 cannot be redirected; if iid=12 ceases to exist (because the underlying card was flickered and the returning card got iid=17), the spell fizzles on resolution.
+
+**Worked scenario — Lightning Bolt vs Cloudshift**:
+1. You target opp's Grizzly Bear (iid=12) with Lightning Bolt.
+2. Opp casts Cloudshift on the Bear in response.
+3. Cloudshift resolves: Bear exits battlefield to exile (iid=12 cleanup), then returns with a fresh iid (let's call it 17). Same slot, new game object.
+4. Lightning Bolt resolves: looks for iid=12. Not found in any zone. Fizzles.
+
+This is MTG-canonical and gives "flicker beats removal" without any special rule. The engine just mints a new iid every time `move_card(zone, battlefield, ...)` completes; targeting checks iid-existence at resolution per the existing fizzle mechanism.
+
+**Currently a bug in proto**: returning cards reuse the old iid, so Lightning Bolt would resolve on the returned creature. The refactor fixes this by ensuring every battlefield-arrival is a fresh game object.
+
+**Implementation**: in `move_card`, when `to_zone == "battlefield"`, allocate a new iid for the arriving card instance. The slot.iid mapping updates accordingly. Existing iid-lookup paths (e.g., `find_instance`) work unchanged because they find by current iid, not historical iid.
+
+**Estimated implementation**: ~10 lines per engine.
 
 ---
 
@@ -281,7 +327,7 @@ Shorthand-style signature; parameters are descriptive, not exhaustive.
 - `bargain_sticker_self` — Archdemon ETB.
 - `bargain_sticker_other` — Archdemon LTB.
 - `fight_target(target_filter)` — Beast's Fury.
-- `rip_permanent(target_player)` — Vile Edict (slot-loss is roguelike layer, see §3.4).
+- `rip(target_player)` — Vile Edict (slot-loss is roguelike layer, see §3.4; engine action kludge documented in §13).
 - `apply_in_game_splice(target_pair)` — Stapler.
 
 | Category | Count |
@@ -324,6 +370,33 @@ The function-call shorthand is the same parser introduced in the predicate plan 
 **`target_filter` replaces `target`.** The proto field name `target` was overloaded (it was both a target-shape selector AND a controller-relative hint like `"any"` or `"self"`). The new `target_filter` is unambiguously about which entities the effect operates on. Migration shim accepts `target` and aliases it to `target_filter` during cutover; final cleanup step removes the alias.
 
 **`severity` enum.** `affect_creature`'s `severity` field is one of `tap|bounce|destroy|exile` (was `1|2|3|4` in proto). String-typed for readability; the dispatcher maps to internal severity values. Empower-bump-severity remains supported (an empower sticker promotes `tap`→`bounce`→`destroy`→`exile`).
+
+### 5.2 Shorthand effect names for common card-movement idioms
+
+The `move_card` primitive is powerful but verbose for the common cases. To keep card authoring natural, the parser recognizes a small curated set of **shorthand effect names** that desugar to canonical `move_card` invocations at boot:
+
+| Shorthand | Desugars to |
+|---|---|
+| `draw(N)` | `move_card(library, hand, controller_top, N)` |
+| `discard(N)` | `move_card(hand, graveyard, controller_chosen, N)` |
+| `target_player_discards(N)` | `move_card(hand, graveyard, target_player_chosen, N)` |
+| `mill(N)` | `move_card(library, graveyard, controller_top, N)` |
+| `bounce(target)` | `move_card(battlefield, hand, target, 1)` |
+| `flicker(target)` | TWO calls: `[move_card(battlefield, exile, target, 1, post: {keep_buffs: true}), move_card(exile, battlefield, the_slot_just_moved, 1, post: {enter_via_etb: true})]` |
+| `search_for(filter)` | `move_card(library, hand, library_search(filter), 1, post: {shuffle: true})` |
+| `search_land_tapped()` | `move_card(library, battlefield, library_search(land), 1, post: {tap: true, shuffle: true})` |
+| `return_from_graveyard(filter)` | `move_card(graveyard, hand, controller_chosen_with(filter), 1)` |
+| `shuffle_into_library(target)` | `move_card(battlefield, library, target, 1, post: {shuffle: true})` |
+
+**Design rules for the shorthand set:**
+- Each shorthand is a parser-table entry; ONE canonical handler (`move_card`) runs at execution time.
+- Card data files can use EITHER the shorthand OR the full canonical form — boot validation accepts both.
+- New shorthands are added only when a card-design pattern is common enough to warrant one. Don't preemptively add shorthand for one-off cases.
+- The shorthand-to-canonical mapping lives in a single registry (boot-time parser), making it easy to evolve. Adding `target_player_mills(N)` later is a one-line entry.
+
+**Effect on registry size**: from a card-author perspective, the effective vocabulary is ~30 effects (19 canonical atomic + 10 shorthand names for movement). From an engine perspective, still 19 handlers. Best of both worlds.
+
+**Boot validation**: validator accepts shorthand names AND canonical names. Card data is normalized to canonical form at parse time. Grep-ability is preserved on both sides.
 
 ---
 
@@ -472,7 +545,7 @@ The "same target picked once at cast time and locked in" semantics already exist
                  "post": {"shuffle": true}} ] }
 ```
 
-### 6.11 Wizard Adept — already array-based, just renames
+### 6.11 Wizard Adept — already array-based, uses the shorthand
 
 ```js
 // Before:
@@ -481,16 +554,19 @@ The "same target picked once at cast time and locked in" semantics already exist
     {"kind": "discard", "target": "self", "amount": 1}
   ] }
 
-// After:
+// After (canonical):
 { "effects": [
     {"kind": "move_card", "from_zone": "library", "to_zone": "hand",
-     "selector": "controller", "amount": 1},
+     "selector": "controller_top", "amount": 1},
     {"kind": "move_card", "from_zone": "hand", "to_zone": "graveyard",
-     "selector": "controller", "amount": 1}
+     "selector": "controller_chosen", "amount": 1}
   ] }
+
+// After (shorthand — recommended):
+{ "effects": [ "draw(1)", "discard(1)" ] }
 ```
 
-The "loot" idiom becomes two `move_card` invocations.
+The "loot" idiom becomes two shorthand calls that desugar to `move_card` invocations. Card data stays nearly as compact as before; engine has a single handler for both.
 
 ### 6.12 Scarification — compound decomposition (decision 18)
 
@@ -529,6 +605,32 @@ The "loot" idiom becomes two `move_card` invocations.
 `schedule_delayed` is the B4 primitive (delayed-trigger machinery). The `the_card_just_moved` selector references the card the prior `move_card` operated on — this DOES need a small chaining mechanism (1 line of context-passing in the resolver). Not the same as the open question above; this is a forward reference from one effect to the prior effect's resolved subject. Until B4 lands, `exile_until_eot` stays as its own primitive in both engines and migrates after B4.
 
 `flicker` is the immediate variant: skip `schedule_delayed`, just do the two `move_card` calls back-to-back. So `flicker` can migrate earlier than `exile_until_eot`.
+
+### 6.14 Swords to Plowshares — last-known-information in action (§3.6)
+
+A canonical MTG card: "Exile target creature. Its controller gains life equal to its power." Proto doesn't have this card today, but porting it (and similar designs) requires the last-known-information machinery from §3.6.
+
+```js
+// After (illustrative — card not in proto today):
+{ "effects": [
+    "move_card(battlefield, exile, chosen_creature, 1)",
+    {"kind": "gain_life",
+     "amount": "<chosen_creature.power>",      // ← references the moved target
+     "target": "<controller_of_chosen_creature>"}
+  ] }
+```
+
+**The mechanism at resolution time**:
+1. Cast time: `chosen_creature` locks onto iid=12 (Grizzly Bear, power=2, controlled by opp).
+2. First effect: `move_card` exiles iid=12. BEFORE removing from battlefield, engine snapshots `{power: 2, toughness: 2, controller: opp, ...}` into iid=12's `last_known_info` field.
+3. Second effect: `gain_life` reads `chosen_creature.power` and `controller_of_chosen_creature`. Engine checks: is iid=12 still on the battlefield? No (it's now in exile). Read from `last_known_info`: power=2, controller=opp. Opp gains 2 life.
+4. After the spell's resolution completes, the snapshot can be cleared.
+
+**Why this works**: the spell's targeting locked onto iid=12 at cast time. By the second effect, the in-play card is gone, but the snapshot preserves what the spell needs to know. Matches MTG's "last known information" rule.
+
+**Without last-known-info**: the second effect would either fizzle (no live target to read) or crash (null-deref on the missing card). Neither is correct.
+
+**Cards in the current proto pool that benefit from this**: a quick audit shows `dampingMatrix`, `bleach`, `embargo`, and several lifelink/death-trigger combos rely on similar "the thing I targeted is now elsewhere but I still need to know what it was." The mechanism is general — any multi-effect spell with cross-effect target references benefits.
 
 ---
 
@@ -670,6 +772,8 @@ exile_until_eot decomposition
 
 Each step leaves both engines in a runnable, test-passing state. Recommend sequencing AFTER `plan-zone-change-and-composable-predicates.md` (E1/E2).
 
+0. **(Proto only) Extract `applySpliceCore(baseSlotIdx, stapleSlotIdx, opts)` helper.** The splice logic is currently duplicated across four sites (`js/engine.js:2246` `EFFECTS.applyInGameSplice`, `js/run.js:872` `RUN.applySplice`, `js/draft.js:239` and `js/run.js:584` pair-enumeration). Extract the shared body (slot mutation, slotIdx fixups, sticker/roll merging) into a single helper in `engine.js`. The Stapler path layers stack-spell-firing logic on top via `opts.fireSpellEffects: true`; reward-time path passes `opts.fireSpellEffects: false`. Unit test: splice the same two cards via Stapler's in-game path AND the reward path; assert identical end state. ~4 hours. Decouples from the refactor's later steps — could land independently if scheduled before the rest.
+
 1. **Add `target_filter` field to `affect_creature` and `pump` and `damage` in BOTH engines, alongside existing per-effect-kind shape.** This is the parameterized-target groundwork. New `target_filter` values (`all_creatures`, `all_yours`, etc.) work in the dispatcher; old per-kind code (`damageAll`, `pumpAllYours`, `removeAll`) still runs. Tests: existing tests pass; new tests for each filter value pass against synthetic effects. Semantic no-op overall.
 
 2. **Add `is_targeted_filter` and route hexproof through it.** Both engines: introduce the function (returns true for `chosen*`, false for `all_*`, `controller`, `opponent`, `self`, etc.). Cast-legality gates target selection on `is_targeted_filter(any_effect_filter)`. Resolution-time hexproof check runs only when true. Add hexproof regression tests (§12). At this point Pyroclasm (still old `damageAll`) and the new `damage(target_filter=all_creatures)` both behave correctly.
@@ -706,25 +810,28 @@ Per-engine, per-step. S = an hour or two, M = half a day to a day, L = multi-day
 
 | Work | Engine | Effort |
 |---|---|---|
+| **Step 0**: Extract `applySpliceCore` helper from 4 duplicate sites | Proto | M (~4h) |
 | `target_filter` field on `damage`/`pump`/`affect_creature`; old kinds still work | Godot | M (~4h) — `damage.gd` and `pump.gd` extended; new `affect_creature.gd` created |
 | `target_filter` field on `damage`/`pump`/`removeCreature`; old kinds still work | Proto | M (~5h) — more handlers, more existing branches |
 | `is_targeted_filter` predicate + hexproof routing | Godot | S (~2h) |
 | `is_targeted_filter` predicate + hexproof routing | Proto | S (~3h) — multiple gate sites |
+| **§3.6 last-known-info snapshot machinery + per-effect resolution-time checks** | both | M (~4h) — one snapshot field, one capture site per zone-exit, one check site per property read |
+| **§3.7 iid-mint-on-arrival** in `move_card` for `to_zone=battlefield` | both | S (~2h) — including flicker-beats-removal regression test |
 | New atomic effects (`move_card`, `change_control`, `force_sacrifice`, `apply_sticker`) | Godot | L (~8h) — these are mostly new handlers from scratch; `move_card` alone is ~3h |
 | New atomic effects (same set, written to match proto's existing semantics) | Proto | M (~6h) — most logic exists, just refactored into the new entry points |
-| Effect-kind boot validation + per-kind schema | both | M (~4h) including parser extension for keyword args |
-| Function-call shorthand parser extension (keyword args) | both | S (~3h) — extends the predicate parser |
+| Shorthand parser extension (curated `draw`/`discard`/`flicker`/etc. names that desugar to `move_card`) | both | S (~3h) — extends the predicate parser |
+| Effect-kind boot validation + per-kind schema (accepts both canonical kind names and shorthand) | both | M (~4h) |
 | Hand-migrate Godot 6 templates with effects | Godot | S (~30min) |
 | `migrate-effects.js` script + manual verification on 258 proto cards | Proto | L (~8h) including golden-output testing and redundancy-cleanup pass |
 | Card-text helpers (`describeEffect`, etc.) updated for new kinds + signed pump | Proto | M (~4h) |
 | Dead-code purge (duplicate gainControl, weaken, addCounter, etc.) | Proto | S (~2h) |
 | `flicker` decomposition + test | both | S (~2h) |
 | `exile_until_eot` decomposition (gated on B4) | both | S (~2h) AFTER B4 lands |
-| Stapler's `noop` removal + `target_slots` ability schema | both | S (~2h) |
-| New unit tests for each atomic + hexproof regression suite + boot-validator tests | both | M (~6h) |
-| SPEC.md + DIVERGENCE.md updates | doc | S (~2h) |
+| Stapler's `noop` removal + `target_slots: N` ability schema generalized to 6 cards | both | S (~3h) — covers `stapler`, `twinStrike`, `branchingBolt`, `drainLife`, `rootsAndBranches`, `swordAndSorcery` |
+| New unit tests for each atomic + hexproof regression suite + last-known-info regression + iid-mint regression + boot-validator tests | both | M (~7h) |
+| SPEC.md + DIVERGENCE.md updates (including D1 revision per §3.6) | doc | S (~2h) |
 
-**Total: ~60-65 hours = L** (4-5 days, sliceable into the steps above). The biggest unknowns are `move_card`'s post-action plumbing (~3h estimated, could be more if zone-emit semantics in Godot diverge from proto's `cardEntersBattlefield` patterns) and the `migrate-effects.js` script (~8h estimated, could blow up if the existing card data has format inconsistencies the audit missed).
+**Total: ~64–69 hours = L** (4.5–5.5 days, sliceable into the steps above). Biggest unknowns: `move_card`'s post-action plumbing (~3h estimated, could be more if zone-emit semantics in Godot diverge from proto's `cardEntersBattlefield` patterns), the `migrate-effects.js` script (~8h estimated, could blow up if the existing card data has format inconsistencies the audit missed), and last-known-info snapshot capture (~4h estimated, depends on how many "card property read" sites there are across effects).
 
 ---
 
@@ -789,6 +896,53 @@ Subset of the predicate parser tests, extended for keyword args:
 ### 12.8 Cross-engine semantic-equivalence tests (optional but recommended)
 
 A small harness that builds the same card in both engines from the migrated data, fires the same effect against the same synthetic state, asserts the same end state. Three or four cards in this harness (bolt, pyroclasm, wrath, pacifism) provides high confidence the dispatcher rewiring didn't drift between engines.
+
+### 12.9 Last-known-information regression (§3.6)
+
+Tests that verify the live/snapshot hybrid:
+1. **Swords to Plowshares analog** — multi-effect spell where the first effect exiles the target, the second references its (now-gone) power. Snapshot fires correctly; gain_life amount matches pre-exile power.
+2. **Self-buff-then-damage** — target stays put across all effects. Live state, post-pump toughness. (Confirms live state is the default.)
+3. **Order reversal** — same effects, opposite order. Damage-then-pump uses pre-pump toughness; pump-then-damage uses post-pump. Tests that order genuinely matters per MTG canon.
+4. **Cross-effect controller reference** — Vraska-style "exile target creature, you gain life equal to its power." Controller reference still works post-exile because it's read from the snapshot.
+
+### 12.10 iid-mint-on-arrival regression (§3.7)
+
+Tests that verify flicker beats removal:
+1. **Lightning Bolt + Cloudshift** — cast Bolt targeting opp's Bear (iid=12). Opp casts Cloudshift in response. Bear exits to exile then returns with new iid (iid=17). Bolt resolves: fizzles (iid=12 no longer exists).
+2. **Targeted destruction beaten by flicker** — same pattern with `affect_creature(severity=destroy)` instead of damage.
+3. **iid sequence verification** — flicker a creature; assert the returning creature's iid is greater than (not equal to) the exited creature's iid.
+4. **Non-flicker zone bounces** — bounce-to-hand-then-replay also gets a fresh iid on re-arrival. Same rule, different mechanic.
+
+### 12.11 Shorthand parser tests (§5.2)
+
+For each shorthand effect name, verify it desugars correctly to its canonical `move_card` form. Plus verify malformed shorthand (e.g., `draw(N=oops)`) fails at boot.
+
+---
+
+## 13. The `rip` effect — kludge documented; needs design discussion before refactor
+
+**Status: PRE-EXECUTION DECISION REQUIRED.** The `rip` effect in this plan is a **rename of current `ripPermanent` with no behavior change**. Current proto behavior:
+
+1. Opens `pendingRipSelect` prompt for the targeted player.
+2. Player picks a permanent they control.
+3. Engine calls `sacrificeCard(card, who)` — fires death (`cardDies`) and leave-play (`cardLeavesBattlefield`) triggers; card goes to graveyard.
+4. Engine calls `RUN.removeSlotByIdx(slotIdx)` — slot removed from run.
+
+This **does not match the Chaos Orb / Phylactery semantics** the user intuited. The card has a normal in-game death (triggers fire, graveyard receives it); only the slot-removal at run-layer gives the "ceases to exist" feel.
+
+**Functionally OK today**: no currently-rippable card has a death or LTB trigger. The trigger-firing on rip is a latent bug that doesn't surface in current gameplay.
+
+**Three known unfinished design points the user has flagged for revisit:**
+
+1. **Engine action on selection**: should rip use `sacrificeCard` (current, fires triggers, in-game card goes to graveyard) OR a new `annihilate_card` helper extracted from `ripSlotForPhylactery`'s body (no triggers fire, in-play card just splice'd out of its zone)? The latter matches Phylactery's actual behavior and the "Chaos Orb" mental model; the former is what proto does today.
+
+2. **Composable edicts**: in MTG, "Choose target player. That player sacrifices a creature they control." is a composable construct — `[target_player(filter), player_action(sacrifice(creature))]`. We currently have edict-style UI baked into the effect handler (`pendingRipSelect`). A future refactor would decompose into `target_player` + `player_action(effect)` primitives, making "the targeted player picks X" reusable across cards (rip, edict, "target player discards a card," etc.). Not a small piece of infrastructure.
+
+3. **Trigger semantics**: independent of #1 and #2, IF we go to annihilate semantics, should LTB triggers fire (the card DID leave the battlefield) or NOT (the card is annihilated, not displaced)? Defensible both ways.
+
+**Decision needed before this refactor executes.** If we leave it as the current kludge, the plan is implementable as written. If we want to fix the trigger bug, we extract `annihilate_card` (~1-2 hours of work) and swap the `doRipSelect` body to call it. If we want full composable edicts, that's a separate plan with its own scope.
+
+The user has said "kludge is fine for now, with the understanding that this is not the ultimate behavior." The plan honors that — but flagging here so the decision is conscious rather than accidental.
 
 ---
 

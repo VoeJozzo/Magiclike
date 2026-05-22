@@ -81,7 +81,7 @@ This is purely a player-experience choice. MTG itself has no formal rule on take
 | # | Area | Godot | Proto | Tag | TO-DO |
 |---|---|---|---|---|---|
 | D0 | Stack resolution order | LIFO via `Stack.push` / `Stack.pop_top` (engine.gd:628, 669). Caster retains priority after cast (engine.gd:640 in `_do_cast_spell`). | LIFO via `G.stack.push` / `G.stack.pop` (engine.js:2867, 3874). Caster retains priority (MTG 117.1c). | ✅ Same | **already-aligned** |
-| D1 | Multi-effect target snapshot | Live state read at each effect's resolution | Snapshots target stats per `targetSlot` before any effect runs (engine.js:3900-3938) | 🔴 (when multi-effect spells are added) | **proto:** align on Godot's live-read approach. MTG canon is closer to Godot's per-effect re-evaluation. Matters zero times today (no multi-effect spell in current pool); becomes a divergence when the first multi-effect spell ports. |
+| D1 | Multi-effect target state | Live state read at each effect's resolution | Pre-resolution snapshot of all targets (engine.js:3900-3938) | 🔴 (when multi-effect spells are added) | **both:** revised per effects-plan §3.6. The correct MTG-canonical behavior is a HYBRID: live state by default for targets still in their original zone; **last-known-information snapshot for targets that have left their zone between effects**. Proto's "always snapshot pre-resolution" is the wrong granularity; Godot's "always live" misses the Swords-to-Plowshares case. Both engines add a `last_known_info` field on the CardInstance captured at zone-exit time. Implementation lives with the effects refactor (`docs/plan-effects-refactor.md` §3.6). |
 | D2 | `pump` effect duration | Parametrized via `duration: "eot"` / `"permanent"` | Two separate effects: `pump` (always EOT), `addCounter` (always permanent) | 🟡 | **proto:** consolidate to Godot's pattern — one `pump` effect with `duration` parameter, deprecate `addCounter` as a separate effect kind. |
 | D3 | `gain_life` flexibility | Always to `ctx.controller` | Can route via `params.who` or target descriptor | 🟡 | **godot:** extend `gain_life.gd` to accept `who`/`target` parameters per proto's pattern. Enables future "target opponent gains N life" cards. |
 | D4 | `gain_life` sign-based delta | Refuses non-positive amounts (warn+skip) | Silent apply (no event for negative direction) | 🟡 | **both:** redesign `gain_life` as a unified life-delta effect. Accept any integer amount; sign determines event direction. Positive → fire "life gained" event (for gain-life triggers). Negative → fire "life lost" event (for lose-life triggers). Zero → no event. Preserves the trigger-time distinction between gain and loss while making the card-authoring side a single effect, enabling runtime sign-flip mechanics. Lifelink unchanged (fires on damage-dealing, not life-gain). **Naming:** keep `gain_life` as the effect kind; card-text parser renders contextually based on sign (`amount: 3` → "gain 3 life", `amount: -1` → "lose 1 life"). Don't rename. |
@@ -90,16 +90,23 @@ This is purely a player-experience choice. MTG itself has no formal rule on take
 | D7 | Legendary uniqueness ("only one of each legendary tplId on the battlefield per player") | Not enforced | Enforced at cast-legality (engine.js:4721) | 🔴 (when Godot adds legendary cards) | **godot:** implement at the point Godot's pool gains its first legendary creature. |
 | D8 | Mana payment fast-path | Mana abilities skip the stack — `_do_activate_ability` (engine.gd:522-533) calls `Effects.resolve_one` directly when the source is a land, no stack push, controller retains priority. Currently only supports land mana abilities (non-mana activated abilities are Phase 6+). | Same fast-path. Mana abilities skip the stack and don't require priority (engine.js:4778-4783 with explicit comment "mana abilities don't require priority and don't use the stack"). Non-mana activations route through the stack normally. | ✅ Same | **already-aligned** for the fast-path itself. Separate concern: Godot has no non-mana activated abilities yet (Phase 6+ gap, tracked elsewhere as a feature, not a divergence). |
 
-### D1 detail — when target snapshots matter
+### D1 detail — when target state matters (MTG hybrid model)
 
-This matters when a single spell has multiple effects that all reference the same target, AND an earlier effect modifies the target in a way the later effect cares about.
+This matters when a single spell has multiple effects that all reference the same target. There are TWO distinct scenarios with different correct answers, governed by whether the target is still in its expected zone:
 
-Hypothetical card we don't have yet: *"Target creature gets +2/+2 and gains lifelink. Then it deals damage equal to its toughness to its controller."*
+**Scenario A — target stays put. Live state applies.**
+Hypothetical card: *"Target creature gets +2/+2 and gains lifelink. Then it deals damage equal to its toughness to its controller."*
+- Live state per effect (Godot's default, MTG-canonical for this case): pump applies (creature becomes 4/5), then damage = 5.
+- Proto's "always snapshot" approach gives 3, which is wrong.
 
-- **Proto**: snapshots toughness BEFORE any effect runs. The pump applies, then the damage effect deals damage equal to the SNAPSHOT toughness (e.g., 3 for a 2/3 creature, not 5).
-- **Godot**: each effect reads the live state at its own resolution. The pump applies (creature becomes 4/5), then damage = 5.
+**Scenario B — target leaves between effects. Last-known-information applies.**
+Real MTG card (not in proto today): *Swords to Plowshares — "Exile target creature. Its controller gains life equal to its power."*
+- The first effect exiles the target; the second references "its power." The target is no longer in battlefield.
+- Correct MTG behavior: the engine snapshots the target's attributes (power, controller, etc.) at the moment of zone-exit. The second effect reads from the snapshot.
+- Pure live state (Godot's current default) would fail here — the target's power isn't queryable from a removed-from-zone card.
+- Proto's pre-resolution snapshot accidentally handles this case but for the wrong reason (it snapshots ALL targets, not just departed ones).
 
-Today this matters zero times — no spell in either pool has multi-effect with same-target stat references. It becomes a real difference the first time we port one.
+**The hybrid (what we're aligning on)**: live state by default; last-known-information snapshot only when a target has left its expected zone. Both engines need updating; the implementation lives with the effects refactor.
 
 ### D4 detail — non-positive life gain
 
