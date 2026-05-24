@@ -317,6 +317,24 @@ All three sticker kinds get `weight: 0` (never offered in random reward pools, l
 
 > **Still open before execution:** the `rip` trigger-semantics discussion (§3.4 / decision notes).
 
+### 3.10 Staple template-synthesis cleanup
+
+`synthesizeStapledTemplate` + `mergeStapleInto` (engine.js:270–454) merge a base and staple card into one template. The refactor already touches this function (mana-model rewrite §3.9 step 5, `target_slots` §1.2, empower remap §3.8); since it's being edited anyway, fold in three structural fixes — proto-side cleanup, and design-from-scratch guidance for the Godot port (which has no staple system yet).
+
+**The seven-way type matrix → dispatch table.** Stapling has 3×3 = 9 type pairings; `canonicalSplicePair` (engine.js:90) forces a creature to be the base whenever one is present, which rejects Land+Creature and Spell+Creature, leaving **seven** live cases:
+
+| Base ↓ \ Staple → | Creature | Land | Spell |
+|---|---|---|---|
+| **Creature** | Cr+Cr (bodies/keywords/subtypes/triggers merge) | Cr+Ld ({T}:add_mana ability) | Cr+Sp (spell → ETB trigger) |
+| **Land** | ✗ rejected | Ld+Ld (mana merges) | Ld+Sp (spell → ETB trigger) |
+| **Spell** | ✗ rejected | Sp+Ld (gains add_mana on resolve) | Sp+Sp (effects concat, multiTarget) |
+
+The current implementation is an **order-dependent if/else chain**: branches for Cr+Sp (`else if type==='Creature'`) and Ld+Sp (`else if type==='Land'`) are catch-alls that don't check the staple type, relying on the more-specific branches above having peeled off first; the final `else` is Sp+Sp and **silently swallows any unexpected pair**. Replace with a dispatch table keyed on `${baseType}+${stapleType}` → named handler, with a `throw` on an unmapped key (loud failure instead of silent Sp+Sp misrouting). The §3.9 mana work collapses the three land branches (Cr+Ld/Ld+Ld/Sp+Ld) into ability-concatenation, so write those handlers once in final form.
+
+**Hand-maintained field-copy → generic deep clone.** The `merged` object (277–310) manually copies every template field. A new schema field forgotten here is silently lost on every stapled card — the same bug-class as the City-of-Brass `extraManaColors` loss that CLAUDE.md warns about. Templates are pure JSON (no functions), so replace the manual copy with `structuredClone(baseTpl)` (or a JSON round-trip) + attach `stapledFrom`. New fields then carry automatically.
+
+**Drop hand-concatenated merged text; rely on `describeCardText`.** `mergeStapleInto` builds `merged.text` via `appendMergedText`, but `makeCard` overwrites it with `describeCardText(card)` (engine.js:567, regenerating from the merged effects/triggers/abilities, with a `customText:true` opt-out). So the concat is already redundant in the runtime path; it only survives for consumers reading a synthesized template before `makeCard` (staple-preview tooltips). Since `describeCardText` already renders stapled templates (card-text.js reads `synthesizeStapledTemplate` for baselines), remove the `appendMergedText` calls and point preview consumers at `describeCardText(merged)`. Single source of truth for card text.
+
 ---
 
 ## 4. Final atomic effects registry (proposed)
