@@ -120,7 +120,7 @@ Every fixed decision from the prompt, traced to its kinds.
 | 4 | `add_counter` → `pump` | `pump`+`addCounter` | `pump` gains `duration` parameter (`eot`\|`permanent`). Godot's pump already had this; proto migrates. `add_counter` deleted. |
 | 5 | `fight_target` stays | `fightTarget` | Kept as a primitive. Self-as-source-and-target structure (each fighter is both target and damage source) doesn't decompose into chained damage primitives without bespoke chaining machinery. |
 | 6 | `bargain_sticker_*` stays | both `bargainSticker*` | Card-specific (Archdemon of Bargains) with unique player-input flow. Kept verbatim. |
-| 7 | `embargo` / `bleach` / `symmetricize` → `apply_sticker` (TENTATIVE) | three sticker effects | Collapse to `apply_sticker(kind, target)` where `kind` is `embargo`\|`bleach`\|`symmetricize` (or sticker-system canonical names). **PENDING the sticker-system audit** — these may end up further decomposed once stickers get their own refactor. Flagged in §9.2. |
+| 7 | `embargo` / `bleach` / `symmetricize` → decompose Scarified-style (**REVISED** — was tentative `apply_sticker` collapse) | three sticker effects | **Sticker audit complete (§3.8).** Each decomposes into `[effect] → apply_sticker(specific_kind)`: `embargo` → `cost_mod(+1)`, `bleach` → `set_color('C')`, `symmetricize` → snapshot `stat_boost` + `cost_mod` (no new kind). `applyBalancerOverrides` deleted. `apply_sticker` stays as the generic primitive carrying whichever kind. Full design + empower/dedup/persistence cleanup in §3.8. |
 | 8 | `apply_in_game_splice` duplicate hunt | `RUN.applySplice` + `EFFECTS.applyInGameSplice` | Sub-task in §7. Don't fully spec splice harmonization here. |
 | 9 | `exile_until_eot` + `flicker` → `move_card` + delayed-effect | both | Both become `move_card(battlefield, exile, ...)` followed by a delayed `move_card(exile, battlefield)`. `flicker` is the synchronous variant (delay = "immediately"); `exile_until_eot` uses an actual delay until end step. **Depends on B4 (delayed-trigger machinery).** §9 sequences this. |
 | 10 | Card-movement unification → `move_card` | `draw`, `discard`, `shuffle_into_library`, `return_from_graveyard`, `search_land_tapped`, `search_creature`, `flicker`, `exile_until_eot` | All collapse to `move_card(from_zone, to_zone, selector, amount, [post_action])`. The post_action open question is resolved in §4.1 → **bundle** them as parameters of `move_card`. |
@@ -149,9 +149,9 @@ For each of the 38 proto kinds, what happens. Final column shows the new home; "
 | 5 | `endomorphAbsorb` | kept (#16) | `endomorph_absorb` |
 | 6 | `removeCreature` | renamed + unified (#2, #12) | `affect_creature(severity, target_filter)` |
 | 7 | `destroyAndStickerSlot` | decomposed (#18) | `[affect_creature(severity:destroy), apply_sticker(scarified)]` |
-| 8 | `symmetricize` | tentative collapse (#7) | `apply_sticker(symmetricize, target)` |
-| 9 | `embargo` | tentative collapse (#7) | `apply_sticker(embargo, target)` |
-| 10 | `bleach` | tentative collapse (#7) | `apply_sticker(bleach, target)` |
+| 8 | `symmetricize` | decomposed (#7, §3.8) | `[stat_boost(snapshot Δ), cost_mod(snapshot Δ)]` via `apply_sticker` |
+| 9 | `embargo` | decomposed (#7, §3.8) | `[move_card(battlefield, hand), apply_sticker(cost_mod, +1)]` |
+| 10 | `bleach` | decomposed (#7, §3.8) | `[move_card(battlefield, exile), apply_sticker(set_color, 'C')]` |
 | 11 | `bargainStickerSelf` | kept (#6) | `bargain_sticker_self` |
 | 12 | `bargainStickerOther` | kept (#6) | `bargain_sticker_other` |
 | 13 | `shuffleIntoLibrary` | unified (#10) | `move_card(battlefield, library, target, 1, {post: shuffle})` |
@@ -263,6 +263,52 @@ This is MTG-canonical and gives "flicker beats removal" without any special rule
 
 ---
 
+### 3.8 Sticker-system integration — DECISION 7 REVERSED
+
+The sticker-system audit (proto-only today; Godot has no sticker layer yet) overturned decision 7's tentative "collapse the three Balancer effects into a generic `apply_sticker(kind)`." The corrected design decomposes each effect Scarified-style — an in-game effect runs, then **applies a persistent sticker** through the normal pipeline — and deletes the parallel `applyBalancerOverrides` channel (engine.js:3473) entirely. Everything flows through one sticker pipeline.
+
+**Why the reversal.** `embargo` (`extraCost`), `bleach` (`colorOverride`), and `symmetricize` (`symmetricized`) currently write slot fields that `applyBalancerOverrides` reads at card-birth *before* the sticker loop runs — a second modification channel that bypasses stickers. They are doing the same job as stickers (persistent per-slot card modification), so the clean model is to make them stickers, exactly as `Scarification` already does with `scarified`.
+
+**New sticker kinds (snake_case throughout):**
+
+| Source effect | Sticker kind | Semantics | Notes |
+|---|---|---|---|
+| `embargo` (extraCost) | `cost_mod` (signed) | additive | **unifies with `costMinus1`** — one signed kind: `-1` for the reward sticker, `+1` for embargo. No floor guard (per-run reductions are fine; clamp generic at 0). |
+| `bleach` (colorOverride) | `set_color` (any WUBRG/C) | set | also serves a future "this card is blue" reward sticker. Color has no additive counterpart, so no ordering concern. |
+| `symmetricize` | **none — reuses `stat_boost` + `cost_mod`** | additive snapshot | see below |
+
+**Symmetricize as an additive snapshot.** Design intent: the card is balanced *at that moment*; nothing stops it being re-buffed later. So it is NOT a persistent "set P=T=cost=N" clamp — it's a one-time delta computed at resolution. Pick power(N) on an effective 3/3-for-2 → apply `stat_boost {power:0, toughness:0}` + `cost_mod +1` → 3/3-for-3. Pick cost(2) → `stat_boost {-1,-1}`, `cost_mod 0`. Every choice reduces to "store the delta needed right now," all additive. Consequences:
+- **No new `set_stats` kind** — symmetricize reuses `stat_boost` (signed) and `cost_mod`.
+- **No two-phase set-before-add ordering** (the old `applyBalancerOverrides` constraint). Later `+1/+1`s just stack.
+- **The `symmetrizedTo` sentinel is deleted** (set at engine.js:3487, 4457; read at 3431 and stickers.js:28). This also removes the sole behavioral divergence between the batch and incremental apply paths (see dedup below), making their merge a behavioral no-op.
+
+All three sticker kinds get `weight: 0` (never offered in random reward pools, like `scarified`). The effect computes its value (symmetricize via its player-choice prompt) and calls the shared apply + persistence path.
+
+**Empower redesign (rides along with the effects pass — it touches effect shape).**
+1. **Fold empowerable params into the effect registry.** Today `EMPOWER_FIELDS` (cards.js:129) is a parallel table that can silently drift from the effect definitions. Each effect kind should declare its own bumpable params (`damage.amount`, `pump.power/toughness`, `affect_creature.severity`). Single source of truth.
+2. **Address by semantic identity, not raw array index.** Replace the positional `{location, subIdx, effIdx, modeIdx, field}` pointer with "(effect-kind + field + Nth-of-that-kind)." Stable under reordering; stapling keeps a remap hook but keyed on identity.
+3. **Store the resolved delta and apply additively — stop mutating effect objects in place.** `applyEmpowerRoll` currently does `e[field] = cur + amount` on a possibly-shared object (stickers.js:231), requiring implicit deep-copy discipline. Storing `{field-identity, +N}` and adding at read time makes cross-instance leakage structurally impossible.
+4. **Drop the non-deterministic fallback** (`re-roll on missing roll`, stickers.js:46–52) — always persist the resolved roll.
+
+**`grant_mana_ability(color)` generalizes `landColor`.** The engine already supports tap-for-mana on non-lands via `abilities: [{cost:{tap}, effects:[{addMana, amounts}]}]` (Llanowar Elves, `cards/elves/`). The generalized sticker emits that ability shape for any permanent, so a future "tap this creature for {G}" needs no new engine work. See the open mana-model question in §3.9.
+
+**Pipeline cleanup (refactor smells from the audit):**
+- **Dedup.** `applyStickersToCard` (batch, card-birth) and `applyOneStickerToRuntimeCard` (incremental, sole caller = Archdemon of Bargains via `applyRandomStickersToSide`, stickers.js:138) are ~90% identical. Unify into one `applyStickerToCard(card, id, rollProvider)`; the only real difference (empower/subtype rolls) is the callback. Archdemon's *selection* stays in its `eligibleStickerIds` filter, so his picks are unchanged.
+- **Decouple persistence from application.** `embargo`/`bleach` call `RUN.save()` mid-resolution (engine.js:1615, 1643). Application (mutating the live card) and persistence (writing the run save) must be separated: the sticker primitive mutates the card and *records* "slot N gained sticker X"; the run layer persists at a defined checkpoint. This also matches the Godot rule (no reaching into the save layer from effect handlers) and lets the pipeline be tested without a save system attached.
+- **snake_case rename.** `plus1plus1 → plus1_plus1`, `costMinus1`/`extraCost → cost_mod`, `landColor_W → land_color_w`, kinds `statBoost → stat_boost`, `costReduction → cost_mod`. No save-migration map needed (single player, proto-only).
+
+### 3.9 OPEN QUESTION — unify the mana-production model?
+
+`extraManaColors` (lands) and the `addMana` ability (non-lands) are two parallel mana models, both handled by branching in `doTapLandForMana` (engine.js:4177). `extraManaColors` is a legacy shortcut predating the general `addMana` ability. Two paths to clean up the land/mana sticker:
+- **Light:** keep `extraManaColors` for lands; the sticker emits the `addMana` ability shape only for non-lands. Cheap, two models remain.
+- **Deep:** unify lands onto the `addMana` ability model (a Forest becomes `abilities:[{cost:{tap}, effects:[{addMana, amounts:{G:1}}]}]`). `extraManaColors` disappears; `doTapLandForMana` loses its type branch; the sticker is trivially generic. Requires (a) `addMana` to express a **color choice** (City of Brass = any color; dual = one-of-two), which a fixed `amounts` dict can't yet, and (b) rewriting every land's `card.json`.
+
+Leaning deep (kills a parallel model, and `add_mana` is already on the registry), gated on the color-choice expressiveness. **Needs a decision before this section is executed.**
+
+> **Still open before execution:** (1) the `rip` trigger-semantics discussion (flagged in §3.4 / decision notes); (2) the §3.9 mana-model scope choice.
+
+---
+
 ## 4. Final atomic effects registry (proposed)
 
 Target count: **19 atomic effects** down from proto's 38. Grouped by category. All take `(effect: Dictionary, ctx: Dictionary)` per the existing Godot `Effects.resolve_one` contract.
@@ -320,7 +366,7 @@ Shorthand-style signature; parameters are descriptive, not exhaustive.
 - `force_sacrifice(player, count, filter)` — replaces `edict` + `sacrifice`. Player: `controller|opponent`.
 
 **Stickers (1)**
-- `apply_sticker(kind, target)` — replaces `embargo`, `bleach`, `symmetricize`. **TENTATIVE per decision 7** — subject to revision after the sticker-system audit. Kept inside the registry as a placeholder so card data has a stable name to write against.
+- `apply_sticker(kind, target, ...params)` — the generic persistent-modification primitive. Carries a sticker `kind` (`stat_boost`, `cost_mod`, `set_color`, `grant_mana_ability`, `scarified`, keyword kinds, etc.) plus that kind's params. Replaces the `embargo`/`bleach`/`symmetricize` bespoke channel: each is now `[movement/choice effect] → apply_sticker(specific_kind)` and `applyBalancerOverrides` is deleted. Full design in §3.8.
 
 **Specials — card-bespoke (5)**
 - `endomorph_absorb` — Endomorph.
@@ -764,7 +810,7 @@ exile_until_eot decomposition
 
 - **`move_card` effect needs E1 done.** The `move_card` effect's job is to emit a `card_zone_change` event. The predicate refactor introduces `card_zone_change` as the unified event vocabulary. If EFFECTS lands first, every `move_card` invocation has to emit BOTH the old per-kind events AND the new `card_zone_change` — temporary double-emission. If E1 lands first, `move_card` just emits `card_zone_change` once and listeners (already migrated to use the predicate-composition shape) receive it naturally. **Recommendation: E1 first.**
 - **`exile_until_eot` decomposition needs B4.** The "return at end of turn" half requires `schedule_delayed`, which IS the B4 machinery. Until B4 lands, this one effect stays as a primitive in both engines. The rest of the EFFECTS refactor proceeds.
-- **The `apply_sticker` collapse is pending the sticker-system audit.** Decision 7 marked this tentative. The plan ships `apply_sticker(kind, target)` as the new registry entry but acknowledges the THREE callers (`embargo`, `bleach`, `symmetricize`) may move to different decomposed forms after the sticker audit. The boot validator accepts `apply_sticker` from day one; the card data switches to `apply_sticker` during this refactor and may switch again later.
+- **The sticker-system audit is complete (§3.8); decision 7 is resolved.** `embargo`/`bleach`/`symmetricize` decompose into `[movement/choice effect] → apply_sticker(specific_kind)`, `applyBalancerOverrides` is deleted, and the sticker pipeline (apply dedup, empower redesign, persistence decoupling, snake_case) is folded into this refactor. The boot validator accepts `apply_sticker` from day one. Two items remain open before execution: the `rip` trigger semantics (§3.4) and the mana-model unification scope (§3.9).
 - **B6/B7 (priority-window) is independent.** Touches priority/auto-pass logic, not effect handlers. Land in parallel or earlier.
 
 ### 9.3 Adjacent items
@@ -798,7 +844,7 @@ Each step leaves both engines in a runnable, test-passing state. Recommend seque
 
 9. **(After B4 lands) Decompose `exile_until_eot`.** Replace with `move_card` + `schedule_delayed(move_card)`. Test: Otherworldly Journey still works.
 
-10. **(After sticker audit lands) Re-evaluate `apply_sticker`.** Decision 7's three callers (`embargo`, `bleach`, `symmetricize`) may need to migrate again. Card data already uses `apply_sticker(kind=X, target=...)` so the change is dispatcher-side only.
+10. **Sticker pipeline (§3.8).** Add the new sticker kinds (`cost_mod` signed, `set_color`, `grant_mana_ability`); decompose `embargo`/`bleach`/`symmetricize` into `[effect] → apply_sticker`; delete `applyBalancerOverrides`; redesign empower (registry-declared params, identity addressing, additive deltas); dedup the two apply functions; decouple persistence from application; snake_case the sticker IDs/kinds. Sequence after the core atomic effects exist (step 3) since `apply_sticker` and `cost_mod`/`add_mana` are registry entries.
 
 11. **Splice duplicate-pathway harmonization** (separate follow-up plan per §7).
 
