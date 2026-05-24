@@ -321,15 +321,26 @@ All three sticker kinds get `weight: 0` (never offered in random reward pools, l
 
 `synthesizeStapledTemplate` + `mergeStapleInto` (engine.js:270–454) merge a base and staple card into one template. The refactor already touches this function (mana-model rewrite §3.9 step 5, `target_slots` §1.2, empower remap §3.8); since it's being edited anyway, fold in three structural fixes — proto-side cleanup, and design-from-scratch guidance for the Godot port (which has no staple system yet).
 
-**The seven-way type matrix → dispatch table.** Stapling has 3×3 = 9 type pairings; `canonicalSplicePair` (engine.js:90) forces a creature to be the base whenever one is present, which rejects Land+Creature and Spell+Creature, leaving **seven** live cases:
+**The merge is a triangular matrix, not a square one — leverage the canonicalization hierarchy.** `canonicalSplicePair` (engine.js:90–103) already picks the base by a type *priority*: Creature(0) > Artifact(1) > Land(2) > Spell(3), lower wins the base slot. That guarantee makes most of the 3×3 grid unreachable: a Land base can never have a Creature staple (the creature would have won the base slot), and a Spell base can only ever pair with a Spell staple. **Six reachable cells, not seven:**
 
 | Base ↓ \ Staple → | Creature | Land | Spell |
 |---|---|---|---|
-| **Creature** | Cr+Cr (bodies/keywords/subtypes/triggers merge) | Cr+Ld ({T}:add_mana ability) | Cr+Sp (spell → ETB trigger) |
-| **Land** | ✗ rejected | Ld+Ld (mana merges) | Ld+Sp (spell → ETB trigger) |
-| **Spell** | ✗ rejected | Sp+Ld (gains add_mana on resolve) | Sp+Sp (effects concat, multiTarget) |
+| **Creature** | Cr+Cr (body merge) | Cr+Ld ({T}:add_mana ability) | Cr+Sp (spell → ETB trigger) |
+| **Land** | — creature would be base | Ld+Ld (mana merges) | Ld+Sp (spell → ETB trigger) |
+| **Spell** | — | **— land would be base (Sp+Ld is DEAD CODE)** | Sp+Sp (effects concat, multiTarget) |
 
-The current implementation is an **order-dependent if/else chain**: branches for Cr+Sp (`else if type==='Creature'`) and Ld+Sp (`else if type==='Land'`) are catch-alls that don't check the staple type, relying on the more-specific branches above having peeled off first; the final `else` is Sp+Sp and **silently swallows any unexpected pair**. Replace with a dispatch table keyed on `${baseType}+${stapleType}` → named handler, with a `throw` on an unmapped key (loud failure instead of silent Sp+Sp misrouting). The §3.9 mana work collapses the three land branches (Cr+Ld/Ld+Ld/Sp+Ld) into ability-concatenation, so write those handlers once in final form.
+The current `else if (stapleTpl.type === 'Land')` branch (engine.js:435, "spell gains add_mana on resolve") **cannot be reached** through canonicalization — a Spell+Land pair always stores Land as base (Land=2 beats Spell=3). Verify no caller bypasses `canonicalSplicePair`, then **delete it**.
+
+**Dispatch by the canonicalization hierarchy + what the staple contributes — NOT by branch order.** The current implementation is an order-dependent if/else where catch-alls (`else if type==='Creature'`/`'Land'`) rely on earlier cases peeling off first, and the final `else` silently swallows unexpected pairs as Sp+Sp. This fragility only exists because the code re-derives behavior instead of trusting the canonicalization guarantee. The clean structure:
+- **Base is chosen by hierarchy** (already done by `canonicalSplicePair`; the "if creature → creature, else if land → land, else spell" rule).
+- **Merge dispatches on the staple's contribution + whether the base is a permanent**, which collapses redundant cells:
+  - Staple = Creature → body merge (base is always Creature here).
+  - Staple = Spell → permanent base gets an ETB trigger; spell base concatenates effects. **Cr+Sp and Ld+Sp are byte-for-byte identical today** (same `cardEntersBattlefield`/`thisEnters` trigger) — collapse to one handler.
+  - Staple = Land → permanent base gains the land's tap-ability. Post-§3.9 (lands *are* tap-abilities), Cr+Ld and Ld+Ld collapse into "append the staple's mana ability."
+
+Net: ~3 behaviors keyed on staple-type, with permanent-vs-spell as the only secondary split — replacing a 7-branch order-dependent chain. An unmapped/impossible pair should `throw`, not fall through to Sp+Sp.
+
+**Delete the multi-color-land staple rejection once `add_mana` has `choose`.** `isCompatibleStaplePair` (engine.js:113–120) refuses a multi-color land stapled onto a creature/spell base, because the synthesized ability uses a fixed `amounts` dict (engine.js:394–399) — a WU land would build `{W:1,U:1}` = "add W *and* U," not "choose one." (Note: multi-color *lands* already tap-for-choice fine via `extraManaColors` + `landProducibleColors`; only the synthesized *ability* lacks choice.) §3.9's `add_mana` `choose` form fixes this directly, so the 113–120 rejection can be removed — multi-color lands become valid staples onto any base.
 
 **Hand-maintained field-copy → generic deep clone.** The `merged` object (277–310) manually copies every template field. A new schema field forgotten here is silently lost on every stapled card — the same bug-class as the City-of-Brass `extraManaColors` loss that CLAUDE.md warns about. Templates are pure JSON (no functions), so replace the manual copy with `structuredClone(baseTpl)` (or a JSON round-trip) + attach `stapledFrom`. New fields then carry automatically.
 
