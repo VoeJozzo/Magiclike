@@ -290,6 +290,8 @@ All three sticker kinds get `weight: 0` (never offered in random reward pools, l
 3. **Store the resolved delta and apply additively — stop mutating effect objects in place.** `applyEmpowerRoll` currently does `e[field] = cur + amount` on a possibly-shared object (stickers.js:231), requiring implicit deep-copy discipline. Storing `{field-identity, +N}` and adding at read time makes cross-instance leakage structurally impossible.
 4. **Drop the non-deterministic fallback** (`re-roll on missing roll`, stickers.js:46–52) — always persist the resolved roll.
 
+**Subtype rolls get the same treatment.** The `subtype` sticker uses an identical parallel-array cursor pattern (`subtypeRolls` parallel to `'subtype'` occurrences, consumed by `subtypeCursor` in `applyStickersToCard` and `stickersForSlot`) and carries the same positional-fragility and silent-skip-on-missing-roll smells as empower. Apply the same fixes: persist the resolved roll deterministically, and address by occurrence-identity rather than a raw positional cursor.
+
 **`grant_mana_ability(color)` generalizes `landColor`.** The engine already supports tap-for-mana on non-lands via `abilities: [{cost:{tap}, effects:[{addMana, amounts}]}]` (Llanowar Elves, `cards/elves/`). The generalized sticker emits that ability shape for any permanent, so a future "tap this creature for {G}" needs no new engine work. See the open mana-model question in §3.9.
 
 **Pipeline cleanup (refactor smells from the audit):**
@@ -297,15 +299,23 @@ All three sticker kinds get `weight: 0` (never offered in random reward pools, l
 - **Decouple persistence from application.** `embargo`/`bleach` call `RUN.save()` mid-resolution (engine.js:1615, 1643). Application (mutating the live card) and persistence (writing the run save) must be separated: the sticker primitive mutates the card and *records* "slot N gained sticker X"; the run layer persists at a defined checkpoint. This also matches the Godot rule (no reaching into the save layer from effect handlers) and lets the pipeline be tested without a save system attached.
 - **snake_case rename.** `plus1plus1 → plus1_plus1`, `costMinus1`/`extraCost → cost_mod`, `landColor_W → land_color_w`, kinds `statBoost → stat_boost`, `costReduction → cost_mod`. No save-migration map needed (single player, proto-only).
 
-### 3.9 OPEN QUESTION — unify the mana-production model?
+### 3.9 Mana-production model — DECISION: deep clean (unify onto abilities)
 
-`extraManaColors` (lands) and the `addMana` ability (non-lands) are two parallel mana models, both handled by branching in `doTapLandForMana` (engine.js:4177). `extraManaColors` is a legacy shortcut predating the general `addMana` ability. Two paths to clean up the land/mana sticker:
-- **Light:** keep `extraManaColors` for lands; the sticker emits the `addMana` ability shape only for non-lands. Cheap, two models remain.
-- **Deep:** unify lands onto the `addMana` ability model (a Forest becomes `abilities:[{cost:{tap}, effects:[{addMana, amounts:{G:1}}]}]`). `extraManaColors` disappears; `doTapLandForMana` loses its type branch; the sticker is trivially generic. Requires (a) `addMana` to express a **color choice** (City of Brass = any color; dual = one-of-two), which a fixed `amounts` dict can't yet, and (b) rewriting every land's `card.json`.
+`extraManaColors` (lands) and the `add_mana` ability (non-lands) are two parallel mana models, both handled by branching in `doTapLandForMana` (engine.js:4177). `extraManaColors` is a legacy shortcut predating the general `add_mana` ability. **Decision: unify lands onto the `add_mana` ability model** — a land becomes a permanent with a tap-for-mana ability, exactly like Llanowar Elves (`cards/elves/`). `extraManaColors` is retired; `doTapLandForMana` loses its type branch; the `grant_mana_ability` sticker becomes trivially generic across lands and creatures.
 
-Leaning deep (kills a parallel model, and `add_mana` is already on the registry), gated on the color-choice expressiveness. **Needs a decision before this section is executed.**
+**The one new engine capability required:** `add_mana` carries a fixed `amounts` dict today, which can't express a color *choice* (a dual taps for W-or-U; City of Brass taps for any). Extend `add_mana` with a choice form — `{add_mana, choose: ["W","U"]}` / `{add_mana, choose: "any"}` — alongside the existing fixed `amounts`. Without this the ability model can't represent the lands we already have.
 
-> **Still open before execution:** (1) the `rip` trigger-semantics discussion (flagged in §3.4 / decision notes); (2) the §3.9 mana-model scope choice.
+**Scope this pulls in** (mana is foundational — every game touches it turn one, so this carries real regression risk and needs solid test coverage):
+1. Extend `add_mana` with the color-choice form.
+2. Migrate every land's `card.json` from `{mana, extraManaColors}` to the ability shape, plus basic-land generation in the engine.
+3. Collapse `doTapLandForMana`'s land/non-land branch into one ability path.
+4. Update `landProducibleColors` consumers — AI mana planning (`canPayPotential`), the tap action, auto-tap-for-cost (engine.js:1277–1308).
+5. Rewrite the land+creature staple-merge logic (engine.js:391–441) that reads `extraManaColors`.
+6. UI: color-choice tap prompt + mana-pip rendering read the ability's color set.
+
+**Sequencing:** done as an **adjacent step within this same coordinated pass**, sequenced *after* the effects+sticker core is passing tests — so a mana regression has a clean diagnostic surface and can't be confused with an effect/sticker regression during bring-up. (Architectural detail; the "what" is settled, the exact step ordering is at the implementer's discretion.)
+
+> **Still open before execution:** the `rip` trigger-semantics discussion (§3.4 / decision notes).
 
 ---
 
