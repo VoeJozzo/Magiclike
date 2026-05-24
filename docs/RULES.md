@@ -35,7 +35,7 @@ Each player begins the game with **20 life**.
 
 ### 100.3 The deck
 - Each player has a **deck**, used to populate their library at game start.
-- Within a single game, a deck is fixed and known to both players' libraries are shuffled at the start of the game.
+- Within a single game, a deck is fixed. Both players' libraries are shuffled at the start of the game.
 - Deck composition is determined by the run-meta layer (see [1400](#1400-draft) and [1500](#1500-the-run-roguelike-meta)); the rules in this section assume a deck already exists.
 
 ### 100.4 Starting hand
@@ -402,7 +402,7 @@ A creature with first strike **deals its combat damage in a separate, earlier pa
 When a creature with trample attacks and is blocked, damage in excess of the blocker's remaining toughness **spills over to the defending player**. The attacker need only assign enough damage to be lethal to the blocker before assigning the rest.
 
 #### 902.3 Deathtouch
-Any amount of damage (including 0+1 damage, but in practice >0 damage) dealt by a source with deathtouch to a creature is considered **lethal**. The creature is destroyed in the next state-based-action sweep.
+Any nonzero amount of damage dealt by a source with deathtouch to a creature is considered **lethal**. The creature is destroyed in the next state-based-action sweep.
 
 #### 902.4 Lifelink
 When a source with lifelink deals damage, **its controller gains that much life**. Lifelink fires on combat damage and on damage from spells/abilities equally.
@@ -477,7 +477,7 @@ When a trigger's stack entry reaches the top:
 Currently, the engine **only checks `condition_predicate` at queue time**, not at resolution. If a trigger's condition becomes false between queue and resolution, the trigger still resolves. Listed in `docs/BACKLOG.md` as a known deviation.
 
 ### 1008. Trigger chain depth
-There is no engine-imposed cap on trigger-chain depth. The html-proto has a safety net of 100 (historical); the Godot port does not (intentionally — if drain logic is correct, no net is needed).
+The html-proto caps trigger-chain depth at 100 nested resolutions; exceeding it bails with a warning. The Godot port does not yet have this cap, but **will mirror proto's threshold** — an earlier "no cap needed if drain is correct" stance was reversed after real card design produced accidental infinite-loop combinations. See `docs/DIVERGENCE.md` E6 and the "Patterns to REPLICATE" note in the root `CLAUDE.md`.
 
 ### Implementation status — Triggered Abilities
 - 1007 intervening-if: not implemented (known deviation).

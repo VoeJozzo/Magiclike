@@ -329,7 +329,9 @@ All three sticker kinds get `weight: 0` (never offered in random reward pools, l
 | **Land** | — creature would be base | Ld+Ld (mana merges) | Ld+Sp (spell → ETB trigger) |
 | **Spell** | — | **— land would be base (Sp+Ld is DEAD CODE)** | Sp+Sp (effects concat, multiTarget) |
 
-The current `else if (stapleTpl.type === 'Land')` branch (engine.js:435, "spell gains add_mana on resolve") **cannot be reached** through canonicalization — a Spell+Land pair always stores Land as base (Land=2 beats Spell=3). Verify no caller bypasses `canonicalSplicePair`, then **delete it**.
+The current `else if (stapleTpl.type === 'Land')` branch (engine.js:435, "spell gains add_mana on resolve") **cannot be reached** through canonicalization — a Spell+Land pair always stores Land as base (Land=2 beats Spell=3). **Confirmed dead code (user verified the reward was unreachable and unmissed) — delete it.**
+
+> **Ld+Sp rebalance is out of scope here.** The surviving Ld+Sp behavior (spell → *free* ETB trigger) is recognized as too strong, but the fix — an *optional, paid* ETB — is new design work requiring optional-trigger + pay-on-resolution machinery the engine lacks. Tracked in `reference/html-proto/BACKLOG.md` ("Optional paid ETB for Land+Spell staples"); this refactor only cleans up the existing free version.
 
 **Dispatch by the canonicalization hierarchy + what the staple contributes — NOT by branch order.** The current implementation is an order-dependent if/else where catch-alls (`else if type==='Creature'`/`'Land'`) rely on earlier cases peeling off first, and the final `else` silently swallows unexpected pairs as Sp+Sp. This fragility only exists because the code re-derives behavior instead of trusting the canonicalization guarantee. The clean structure:
 - **Base is chosen by hierarchy** (already done by `canonicalSplicePair`; the "if creature → creature, else if land → land, else spell" rule).
@@ -428,7 +430,7 @@ Shorthand-style signature; parameters are descriptive, not exhaustive.
 | Counter | 1 |
 | Tokens | 1 |
 | Sacrifice | 1 |
-| Stickers (tentative) | 1 |
+| Stickers | 1 |
 | Specials (card-bespoke) | 5 |
 | Run-layer (`rip`) | 1 |
 | **Total** | **19** |
