@@ -21,13 +21,17 @@ The port ships in slices. Each slice has a corresponding `tests/test_phaseN.{gd,
 
 ## Phase 6 — Card pool expansion
 
+> **Sequencing note:** land the **E1/E2** (zone-change + composable predicates) and **effects** refactors *before* this phase — see [`plan-zone-change-and-composable-predicates.md`](plan-zone-change-and-composable-predicates.md) and [`plan-effects-refactor.md`](plan-effects-refactor.md). Both plans recommend this explicitly so new cards are authored in the atomic/composable style instead of accumulating in the old monolithic shape (which would then have to be migrated). The "no engine changes" below applies to the data-translation work itself, once those refactors are in place.
+
 Pure data work, no engine changes. Grow the pool from 23 to ~40 cards across two or three colors (R/G/U) so draft has meaningful picks. Each color gets ~10 commons — vanilla curve fillers plus a couple of mechanic-bearing cards. Bulk-translate JS card templates from `reference/html-proto/cards/<tplId>/card.json` into `cards/templates/card_database.gd` entries.
 
 Verification: pick 10 cards at random, smoke-assert each instantiates, has correct cost, and casts + resolves.
 
 ## Phase 7 — Stickers
 
-Per-instance card modifiers that persist with the deck across runs. New `engine/sticker.gd` (RefCounted `{kind, params}`); add `CardInstance.stickers: Array[Sticker]`; effective-stat / effective-keyword reads union template + grants + sticker contributions (the seam already exists in `CardInstance.effective_keywords()`). `Sticker.is_legal_for(card_resource)` mirrors JS eligibility rules (empower needs an empowerable effect; lifelink needs a damage-dealing source).
+> **Design target:** follow the refined sticker design in [`plan-effects-refactor.md`](plan-effects-refactor.md) §3.8, **not** a literal port of the current JS sticker shapes. That section is canonical (signed `cost_mod`, `set_color`, `grant_mana_ability`, the empower redesign with registry-declared empowerable params, the dedup'd apply path, snake_case kinds, and `apply_sticker` as an effect primitive). Stickers and effects are entangled via `apply_sticker`, so this phase rides on the effects refactor.
+
+Per-instance card modifiers that persist with the deck across runs. New `engine/sticker.gd` (RefCounted `{kind, params}`); add `CardInstance.stickers: Array[Sticker]`; effective-stat / effective-keyword reads union template + grants + sticker contributions (the seam already exists in `CardInstance.effective_keywords()`). `Sticker.is_legal_for(card_resource)` mirrors the eligibility rules (empower needs an empowerable effect; lifelink needs a damage-dealing source) — see §3.8 for the canonical form.
 
 Verification: `kw_flying` sticker on Grizzly Bears lets bears attack past a ground blocker; empower sticker on Lightning Bolt deals 4 instead of 3.
 

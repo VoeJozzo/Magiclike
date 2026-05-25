@@ -1,0 +1,34 @@
+# docs/ — index
+
+Map of the documentation set. Each doc has a single, distinct job; this page is the entry point that says which is which and how they relate. (Onboarding + architecture *decisions* live in the root [`/CLAUDE.md`](../CLAUDE.md); the html-proto has its own [`reference/html-proto/CLAUDE.md`](../reference/html-proto/CLAUDE.md).)
+
+## Reference docs — "how things are"
+
+| Doc | Answers |
+|---|---|
+| [`RULES.md`](RULES.md) | **Canon.** How the game works, in plain English, independent of code. When doc and code disagree, this wins. |
+| [`ARCHITECTURE.md`](ARCHITECTURE.md) | Module map of both codebases — where each piece of behavior lives, with LOC and public surface. |
+| [`SPEC.md`](SPEC.md) | Data contracts — the in-memory shapes (actions, card schema, effects, triggers, save format). Current-state snapshot. |
+| [`DIVERGENCE.md`](DIVERGENCE.md) | Where the Godot port and html-proto behave differently, each row tagged with severity + a to-do. RULES.md is the tie-breaker. |
+
+## Planning docs — "what to change"
+
+| Doc | Scope |
+|---|---|
+| [`godot-port-plan.md`](godot-port-plan.md) | Forward phase roadmap for the Godot port (what ships next, in order). |
+| [`BACKLOG.md`](BACKLOG.md) | Deferred **features**, unsequenced parking lot (Godot side). Proto side: [`../reference/html-proto/BACKLOG.md`](../reference/html-proto/BACKLOG.md). |
+| [`REFACTOR-NOTES.md`](REFACTOR-NOTES.md) | Structural **debt**, prioritized P0–P2. Advisory; pick up opportunistically. |
+
+## Refactor specs — "the big coordinated pass"
+
+Three sequenced, cross-referencing refactor plans intended as one coordinated effort (not three branches). Recommended order: priority-window → E1/E2 → effects (the latter two before Phase 6 card expansion).
+
+| Doc | Covers |
+|---|---|
+| [`plan-priority-window-refactor.md`](plan-priority-window-refactor.md) | B6/B7 — centralize priority-window opening, auto-pass, end-turn fast-forward (Godot). |
+| [`plan-zone-change-and-composable-predicates.md`](plan-zone-change-and-composable-predicates.md) | E1/E2 — unified `card_zone_change` event + atomic composable predicates (both engines). |
+| [`plan-effects-refactor.md`](plan-effects-refactor.md) | 38→19 atomic effects + target-filter/hexproof model; also folds in the **sticker system** (§3.8), **mana-model deep clean** (§3.9), and **staple-synthesis cleanup** (§3.10). |
+
+## How the trackers divide
+
+`DIVERGENCE.md` (behavior gaps), `REFACTOR-NOTES.md` (code-quality debt), and `BACKLOG.md` (deferred features) are three different lenses on "things to do." A few items are intentionally cross-listed for visibility, with explicit notes where so. Refactor specs supersede the corresponding `DIVERGENCE`/`BACKLOG` rows once they land.
