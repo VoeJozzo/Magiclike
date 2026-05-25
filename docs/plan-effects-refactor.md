@@ -1,7 +1,7 @@
 # Refactor Plan: Unified Effects Registry — Audit, Decompose, and Align
 
 **Status:** Plan complete, ready for review. Not yet executed.
-**Pre-execution note:** The structural design for `rip` is resolved (compositional approach: `[force_sacrifice, rip(previous_target)]`; see §4 and §13). One remaining open question — trigger semantics (annihilation vs sacrifice) — is deferred to either a card-pool change that surfaces it or a deliberate retrofit decision. The plan is implementable as written.
+**Pre-execution note:** `rip` is fully resolved — **annihilation semantics** (the chosen creature ceases to exist: no zone change, no death/LTB triggers, no graveyard; its run-slot is removed). It's a self-contained edict-targeted primitive, NOT a `force_sacrifice` composition (sacrifice fires triggers, which the decision forbids). See §4.2 and §13. No open questions remain; the plan is implementable as written.
 **Cross-references:** `docs/DIVERGENCE.md` items D1 (target target-state semantics — see §3.6), D2 (`pump` duration → `addCounter`), D3 (`gain_life` flexibility), D4 (`gain_life` signed delta), B4 (delayed-trigger machinery — required for `exile_until_eot` decomposition), C5 (killer attribution — adjacent), E1/E2 (event vocabulary + composable predicates, prerequisite for the `move_card` effect's destination semantics). `docs/RULES.md` §703 (target legality), §704 (resolution + fizzle), §904 (hexproof). `docs/SPEC.md` §1.4 (effect descriptor schema).
 **Effort estimate:** **L** (~4.5–5.5 days end-to-end across both engines, ~64–69 hours, including card migration, tests, splice helper extraction, and registry consolidation; this is the largest of the three planned refactors because it touches all 258 proto cards, all 32 Godot templates, and rewrites the dispatch table itself).
 
@@ -184,7 +184,7 @@ For each of the 38 proto kinds, what happens. Final column shows the new home; "
 
 ### 3.4 Why `rip` stays distinct from `force_sacrifice`
 
-`force_sacrifice` is a sac (battlefield → graveyard) selected by the target player. `rip` opens a player-choice prompt that ALSO removes the slot from the run permanently (run.js bookkeeping, not just engine). The slot-loss is a roguelike-layer side effect; folding it into `force_sacrifice` would either (a) saddle every sac with a "permanent-loss" parameter that's only true for one card, or (b) require post-effect chaining that runs `slot_remove` after sacrifice. Neither pays off. Keep `rip` separate; document the overlap in card-author notes. See §13 for the pre-execution decision on `rip`'s engine action.
+`force_sacrifice` is a sac (battlefield → graveyard, selected by the target player) and it **fires death/LTB triggers**. `rip` is fundamentally different on two axes: (1) it **annihilates** — the creature ceases to exist with no zone change and no triggers (DECIDED, §13); and (2) it ALSO removes the slot from the run permanently (run.js bookkeeping). They share only the edict-style *choice* UI (the target player picks which creature). Folding rip into `force_sacrifice` would require both a trigger-suppression flag AND a permanent-loss flag that are true for only this card — not worth it. Keep `rip` a distinct, self-contained primitive. See §13.
 
 ### 3.5 Hexproof / targeting model — the critical correctness section
 
@@ -317,7 +317,7 @@ All three sticker kinds get `weight: 0` (never offered in random reward pools, l
 
 **Godot coordination note.** This land-as-ability model is proto-side. When the Godot port adopts it, reconcile with the priority-window plan's `KIND_TAP_LAND_FOR_MANA`: generalize that land-named action kind to a structural `is_mana_ability` classification (produces mana, no target) so the auto-pass meaningfulness check and stack fast-path cover land taps *and* creature mana dorks uniformly. See `plan-priority-window-refactor.md` §3.
 
-> **Still open before execution:** the `rip` trigger-semantics discussion (§3.4 / decision notes).
+> **No open questions before execution.** (The `rip` trigger-semantics question is resolved — annihilation, §13. The mana-model scope is decided — deep clean, above.)
 
 ### 3.10 Staple template-synthesis cleanup
 
@@ -419,7 +419,7 @@ Shorthand-style signature; parameters are descriptive, not exhaustive.
 - `apply_in_game_splice(target_pair)` — Stapler.
 
 **Run-layer primitives (1)**
-- `rip(target)` — removes the targeted card's slot from the run via `RUN.removeSlotByIdx`. Does NOT touch the in-play card itself (that's the caller's responsibility — typically a preceding `force_sacrifice` or similar). Compositional building block: "Vile Edict"-style cards become `[force_sacrifice(opponent, 1, creature), rip(previous_target)]`. Phylactery's engine-internal path also ends up calling `RUN.removeSlotByIdx` (same underlying primitive) but doesn't go through this effect dispatcher (it's not card-effect-driven). See §13 for trigger-semantics discussion.
+- `rip(target)` — **annihilation semantics (DECIDED, see §13).** Edict-style targeting: the target player's controller chooses one of their creatures; that creature **ceases to exist** — removed from play with no zone-change event, so **no death/LTB triggers fire and it never reaches the graveyard** — AND its run-slot is removed via `RUN.removeSlotByIdx`. Self-contained primitive matching proto's Phylactery (`ripSlotForPhylactery`) behavior. **Not** built on `force_sacrifice`: a sacrifice moves the creature to the graveyard and fires death triggers, which the annihilation decision forbids. The earlier `[force_sacrifice, rip]` composition is dropped for this reason.
 
 | Category | Count |
 |---|---|
@@ -855,7 +855,7 @@ exile_until_eot decomposition
 
 - **`move_card` effect needs E1 done.** The `move_card` effect's job is to emit a `card_zone_change` event. The predicate refactor introduces `card_zone_change` as the unified event vocabulary. If EFFECTS lands first, every `move_card` invocation has to emit BOTH the old per-kind events AND the new `card_zone_change` — temporary double-emission. If E1 lands first, `move_card` just emits `card_zone_change` once and listeners (already migrated to use the predicate-composition shape) receive it naturally. **Recommendation: E1 first.**
 - **`exile_until_eot` decomposition needs B4.** The "return at end of turn" half requires `schedule_delayed`, which IS the B4 machinery. Until B4 lands, this one effect stays as a primitive in both engines. The rest of the EFFECTS refactor proceeds.
-- **The sticker-system audit is complete (§3.8); decision 7 is resolved.** `embargo`/`bleach`/`symmetricize` decompose into `[movement/choice effect] → apply_sticker(specific_kind)`, `applyBalancerOverrides` is deleted, and the sticker pipeline (apply dedup, empower redesign, persistence decoupling, snake_case) is folded into this refactor. The boot validator accepts `apply_sticker` from day one. Two items remain open before execution: the `rip` trigger semantics (§3.4) and the mana-model unification scope (§3.9).
+- **The sticker-system audit is complete (§3.8); decision 7 is resolved.** `embargo`/`bleach`/`symmetricize` decompose into `[movement/choice effect] → apply_sticker(specific_kind)`, `applyBalancerOverrides` is deleted, and the sticker pipeline (apply dedup, empower redesign, persistence decoupling, snake_case) is folded into this refactor. The boot validator accepts `apply_sticker` from day one. No items remain open before execution: the `rip` trigger semantics (annihilation, §13) and the mana-model unification scope (deep clean, §3.9) are both decided.
 - **B6/B7 (priority-window) is independent.** Touches priority/auto-pass logic, not effect handlers. Land in parallel or earlier.
 
 ### 9.3 Adjacent items
@@ -1016,40 +1016,24 @@ For each shorthand effect name, verify it desugars correctly to its canonical `m
 
 ---
 
-## 13. The `rip` effect — compositional approach adopted; remaining trigger-semantics question
+## 13. The `rip` effect — RESOLVED: annihilation semantics
 
-**Status: STRUCTURAL DECISION RESOLVED. TRIGGER-SEMANTICS DECISION DEFERRED.**
+**Status: FULLY RESOLVED.** The chosen creature **ceases to exist** — it does not move anywhere. No zone change, **no `cardDies`/`cardLeavesBattlefield` triggers, never reaches the graveyard.** Its run-slot is removed permanently.
 
-Previously, this section flagged "the `rip` effect's behavior needs another discussion before refactor." The user resolved the structural question by proposing the compositional decomposition (rip is just the run-layer slot-removal primitive; cards compose `[force_sacrifice, rip(previous_target)]` to get "Vile Edict" semantics). That's now spec'd in §4 and the worked examples.
+### The decision and why the earlier composition is dropped
+An earlier sketch composed `[force_sacrifice, rip(previous_target)]` (reuse Diabolic Edict, then strip the slot). That is **rejected** because `force_sacrifice` calls `sacrificeCard`, which moves the creature to the graveyard and fires death + LTB triggers — directly contrary to "ceases to exist, no triggers." So `rip` is a **self-contained primitive**, not a composition over sacrifice.
 
-### What the compositional approach buys us
-- No bundled "rip" effect kind. Card data composes two existing/new primitives.
-- `force_sacrifice` is reused naturally from Diabolic Edict.
-- `rip` is a small focused primitive (~20 lines): take a target, call `RUN.removeSlotByIdx(target.slotIdx)`. That's it.
-- The `previous_target` selector is generalized infrastructure useful beyond rip (also serves `flicker`'s second move_card).
-- Future cards like "Target player sacrifices a creature, then exile it" become `[force_sacrifice(target_player), exile(previous_target)]` naturally.
+### What `rip` is (the spec)
+- **Targeting:** edict-style. The card targets a *player*; that player's controller chooses one of their creatures (reuses the existing edict choice UI — this is the part the user wanted to keep).
+- **Removal:** the chosen creature is **annihilated** — plucked from the battlefield with no zone-change emit (mirrors proto's `ripSlotForPhylactery` body), so no death/LTB triggers fire and nothing lands in the graveyard.
+- **Slot loss:** `RUN.removeSlotByIdx(slotIdx)` removes the card from the run permanently.
+- Small, focused handler. Does not depend on `force_sacrifice`, `move_card`, or `previous_target`.
 
-### What's still pending: trigger semantics
+### Implementation note
+Because rip annihilates *and* removes the slot *and* uses edict targeting, it's cleaner as one primitive than as a chain. If a future card ever wants "edict where the creature is annihilated but the SLOT survives" (annihilate-without-rip), factor an `annihilate` removal out then — YAGNI today, since the only card with this behavior also rips the slot.
 
-The structural decomposition does NOT fix the trigger-firing issue:
-- `force_sacrifice` calls `sacrificeCard`, which fires `cardDies` and `cardLeavesBattlefield` events.
-- So a rip-card-style spell currently fires death + LTB triggers, then the slot is removed.
-- The user's "Chaos Orb / Phylactery" mental model was "no triggers fire; card just annihilates."
-
-**Three pending questions for pre-execution decision:**
-
-1. **Is the trigger-firing actually wrong, or just a non-issue today?** Currently no rippable card has a death or LTB trigger. The trigger-firing on rip is a latent bug that doesn't surface in current gameplay. We could defer the decision until a card pool change makes it visible.
-
-2. **If we DO want annihilation semantics**, what's the mechanism? Two options:
-   - **(a) Annihilation effect**: a new primitive like `annihilate(target)` that removes the in-play card from its zone without zone-change emit (like Phylactery's body of `ripSlotForPhylactery`). Vile Edict's effects become `[force_sacrifice(opponent, 1, creature), annihilate(previous_target), rip(previous_target)]` — three effects in sequence. Cleanest.
-   - **(b) `force_sacrifice` with a flag**: e.g., `force_sacrifice(opponent, 1, creature, suppress_triggers=true)`. Adds a parameter to a common primitive for one edge case. Uglier.
-   - Recommend (a) when we decide to fix this.
-
-3. **Composable edicts as a broader pattern**: in MTG, "Choose target player. That player [verb]s [object]." is a decomposable structure. A future refactor could introduce `target_player(filter)` + `player_action(effect)` primitives that let ANY effect run with a different player as the "controller-for-resolution." Out of scope for this refactor; flagged as a future direction.
-
-### Recommended pre-execution decision
-
-Use the compositional approach as currently spec'd. The structural improvement (no bundled rip effect, cards compose primitives) is solid. The trigger-semantics question is deferred until either (a) a new card requires annihilation semantics, or (b) the user decides to retrofit the existing rip-card. Decision (a) above (add `annihilate` primitive) is the cheapest fix when the time comes.
+### Future direction (out of scope)
+Composable edicts — "Choose target player. That player [verb]s [object]." — could later become `target_player(filter)` + `player_action(effect)` primitives letting any effect run with a different player as controller-for-resolution. Not needed for this refactor; noted so the pattern is on file.
 
 ---
 
