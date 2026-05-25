@@ -1,7 +1,10 @@
 # Refactor Plan: Unified Effects Registry — Audit, Decompose, and Align
 
 **Status:** Plan complete, ready for review. Not yet executed.
-**Pre-execution note:** `rip` ships as a deliberate kludge — `[force_sacrifice, rip(previous_target)]` (the edict sacrifices, firing death/LTB triggers; rip strips the slot). The **long-term intent is annihilation** (creature ceases to exist, no triggers) — DECIDED, but intentionally deferred. The kludge produces behavior that diverges from that target today (the creature is sacrificed to the graveyard rather than annihilated); that divergence is knowingly accepted for now. See §4.2 and §13. No open questions block execution; the plan is implementable as written.
+
+> **⚠ TARGETING MODEL SUPERSEDED — read §3.5 first.** The authoritative targeting model is now the **`target()` / `chooses()` decomposition** (§3.5): targeting is explicit leading steps, effects operate on the established target, and "is it targeted?" = "did it have a `target()` step?" (the old `is_targeted_filter` helper is retired). Several earlier sections — the §2/§3 decision tables (esp. the `force_sacrifice` rows #15/#26/#28), the §5–§6 worked examples (which show inline `target_filter`/`target: "chosen"` and a bundled `force_sacrifice`), §10 step 2, and a few §11/§12 rows — still use the **pre-decomposition wording**. Their *effect semantics are unchanged*; only how targeting/edicts are *expressed* shifts (per-effect `target: "chosen"` → a leading `target()` step; `force_sacrifice` → `target(player) → chooses(creature) → sacrifice`). Those sections get re-expressed during execution; §3.5/§4.2/§13 are canonical where they differ.
+
+**Pre-execution note:** `rip` is now a **one-verb difference from an edict** (§3.5/§13): edict = `target(player) → chooses(creature) → sacrifice`; rip-edict = the same but `annihilate` instead of `sacrifice`, plus a `rip` slot-strip. The kludge ships with `sacrifice` today (off-target: fires death/LTB triggers — knowingly accepted); the **decided long-term** swaps that one verb to `annihilate` (creature ceases to exist, no triggers). No open questions block execution.
 **Cross-references:** `docs/DIVERGENCE.md` items D1 (target target-state semantics — see §3.6), D2 (`pump` duration → `addCounter`), D3 (`gain_life` flexibility), D4 (`gain_life` signed delta), B4 (delayed-trigger machinery — required for `exile_until_eot` decomposition), C5 (killer attribution — adjacent), E1/E2 (event vocabulary + composable predicates, prerequisite for the `move_card` effect's destination semantics). `docs/RULES.md` §703 (target legality), §704 (resolution + fizzle), §904 (hexproof). `docs/SPEC.md` §1.4 (effect descriptor schema).
 **Effort estimate:** **L** (~4.5–5.5 days end-to-end across both engines, ~64–69 hours, including card migration, tests, splice helper extraction, and registry consolidation; this is the largest of the three planned refactors because it touches all 258 proto cards, all 32 Godot templates, and rewrites the dispatch table itself).
 
@@ -182,41 +185,56 @@ For each of the 38 proto kinds, what happens. Final column shows the new home; "
 | 38 | `noop` | removed (#17 audit) | (replaced by `target_slots` ability-schema field) |
 | 39 | `applyInGameSplice` | renamed; harmonize w/ RUN.applySplice as sub-task (#8) | `apply_in_game_splice` (or possibly `staple` after harmonization) |
 
-### 3.4 Why `rip` stays distinct from `force_sacrifice`
+### 3.4 Why `rip` is its own step (not part of the removal verb)
 
-`force_sacrifice` is a sac (battlefield → graveyard) selected by the target player. `rip` is the run-layer slot-removal primitive — it removes the card's slot permanently (run.js bookkeeping, not just engine). The slot-loss is a roguelike-layer side effect; folding it into `force_sacrifice` would saddle every sac with a permanent-loss parameter that's only true for one card. Keep `rip` separate. The current rip-card is the composition `[force_sacrifice, rip(previous_target)]` (a deliberate kludge — the sacrifice fires death/LTB triggers). The long-term intent is annihilation (no triggers); see §13 for the decision and migration path.
+Under the targeting decomposition (§3.5), an edict is `target(player) → chooses(creature) → sacrifice`. `rip` is a separate **run-layer** step that strips the chosen creature's deck-slot permanently (run.js bookkeeping, not just engine). Keeping it a distinct step — rather than baking slot-loss into `sacrifice`/`annihilate` — means the removal verbs stay clean (a normal sacrifice doesn't touch the run) and rip-cards just append the `rip` step. Edict and rip-edict then differ by exactly one verb plus the trailing `rip` (see §13).
 
-### 3.5 Hexproof / targeting model — the critical correctness section
+### 3.5 Targeting model — `target()` / `chooses()` primitives (the critical correctness section)
 
-**The contract.** An effect's `target_filter` value falls into one of two classes:
+**DECISION (supersedes the earlier single-`target_filter` + `is_targeted_filter` design).** Targeting is decomposed into explicit atomic steps that precede the effects — matching our decomposition philosophy and MTG's actual structure. A spell/ability declares its targeting up front; effects then operate on what was established. This also supersedes the standardization branch's deferred two-field `target_mode`/`target_filter` plan (their Pass 5) with a cleaner decomposition, built on the same wire/loader foundation they shipped.
 
-- **Targeted filters** (the engine resolves targets at cast time, locks them in, and re-validates at resolution — RULES.md §703/§704). Subject to hexproof. The card-author UX surface is "the spell prompts the player to pick a target."
-- **Untargeted filters** (the effect enumerates affected cards/players at resolution time without any cast-time choice). NOT subject to hexproof. MTG-canonical: Pyroclasm hits hexproof creatures.
+**Two targeting primitives:**
 
-**Concrete filter-value classification:**
+| Primitive | Meaning | Who acts | Hexproof? |
+|---|---|---|---|
+| `target(filter)` | The **caster aims** at something at cast time; locked in, re-validated at resolution (RULES §703/§704). | caster | **Yes — this is the hexproof checkpoint** |
+| `chooses(filter)` | A **targeted player selects** one of their own permanents at resolution. NOT targeting. | the targeted player | **No** |
 
-| `target_filter` value | Class | Resolves via |
+`filter` values are the legal-object taxonomy: `creature`, `player`, `creature_or_player`, `spell`, `permanent`, `your_creature`, `opp_creature`, `graveyard_creature`, …
+
+Effects after a targeting step operate on **"the target"** (or "the chosen") via the resolution context — no per-effect target field needed for the chosen case.
+
+**Automatic / mass effects have NO targeting step.** They carry their own scope directly on the effect: `controller`, `opponent`, `self`, `all_creatures`, `all_yours`, `all_opps`, `each_player`. These never prompt and never check hexproof. (`library_search(filter)` is also untargeted — the controller picks from their own library at resolution; MTG "choose," not "target.")
+
+**"Is this targeted?" is now structural, not a value lookup.** The question "does hexproof apply / does the caster pick / does it fizzle if the thing leaves" has one answer: **did the spell have a `target()` step?** This retires the `is_targeted_filter(value)` helper — the structure carries the answer, so there's nothing to classify.
+
+**Why the `target`/`chooses` split is correct, not just clean — the edict case.** Diabolic Edict is "target player sacrifices a creature." It targets the *player*; the creature is *chosen by that player*, not targeted. That's exactly why an edict kills a hexproof creature in MTG — hexproof only blocks targeting, and the creature was never targeted. The decomposition encodes this for free:
+
+```
+Diabolic Edict:  target(player) → chooses(creature) → sacrifice
+```
+
+Only `target(player)` is a targeting step. The `chooses(creature)` step is selection-by-the-targeted-player, so creature-hexproof is irrelevant — correct. A flat "this effect targets a creature" model would wrongly let hexproof block the edict.
+
+**Worked shapes:**
+
+| Card | Targeting | Effects (operate on the target/chosen unless scoped) |
 |---|---|---|
-| `chosen` | Targeted | `ctx.targets[i]` from cast-time choice |
-| `chosen_creature` | Targeted | same; creature-only |
-| `chosen_player` | Targeted | same; player-only |
-| `chosen_spell` | Targeted | same; stack entry |
-| `controller` | Untargeted | `ctx.controller` (constant) |
-| `opponent` | Untargeted | `ctx.state.opponent_of(ctx.controller.key)` |
-| `self` | Untargeted | `ctx.source` (the source card itself) |
-| `all_creatures` | Untargeted | enumerate every creature in battlefield zones |
-| `all_yours` | Untargeted | enumerate `ctx.controller`'s creatures |
-| `all_opps` | Untargeted | enumerate opponent's creatures |
-| `each_player` | Untargeted | both players (e.g., "each player draws a card") |
-| `library_search(filter)` | Untargeted-with-choice | enumerate from library; controller picks at resolve time (not cast time → not "targeting") |
+| Lightning Bolt | `target(creature_or_player)` | `damage(3)` |
+| Pyroclasm | *(none)* | `damage(2, all_creatures)` |
+| Wrath of God | *(none)* | `affect_creature(destroy, all_creatures)` |
+| Diabolic Edict | `target(player)` | `chooses(creature)`, `sacrifice` |
+| Scarification | `target(creature)` | `affect_creature(destroy)`, `apply_sticker(scarified)` |
+| Mind Control | `target(creature)` | `change_control` |
+| Healing Salve | *(none)* | `gain_life(3, controller)` |
 
-**Implementation.** Add `Effects.is_targeted_filter(filter: String) -> bool` to both engines. Cast-legality (RULES.md §703) walks every effect, calls `is_targeted_filter` per effect's target_filter, and only enters the target-selection flow if at least one effect's filter is targeted. Resolution-time hexproof check runs only when `is_targeted_filter` is true. Untargeted enumeration just runs the enumerator and applies — no hexproof gate.
+**Multi-target spells** declare multiple `target()` steps (Twin Strike = two `target(creature)`). This is the `target_slots: N` mechanism from §1.2 — now expressed as N explicit targeting steps rather than a count plus per-effect `targetSlot` indices.
 
-**Why this is structural, not per-effect:** today, proto encodes the "this isn't a targeted effect" rule as inline comments at `damageAll` (engine.js:2010-2014) and `edict` (engine.js:1957). The semantics are correct but the rule is invisible to anyone reading just the EFFECTS table. After the refactor, `is_targeted_filter` makes it a one-line lookup. Boot-time validation can assert that any effect with `target_filter: "chosen*"` has a matching `target_slots` declaration on its ability.
+**Shared targets are the default.** A spell with one `target()` step and several effects: all effects use that one target. This retires the awkward `same_as_previous` / `target: "chosen"`-on-every-effect machinery the earlier design needed (and simplifies the §6.12 Scarification example).
 
-**Special case — `library_search`.** The controller picks a card from their own library at resolution time. MTG calls this "choose" but not "target" (Demonic Tutor doesn't target). Hexproof never applies (your own library, no opponent involvement). The filter is parametric — `library_search(land)`, `library_search(creature)`, `library_search(creature, cost_le: 3)`. Phase 1 of this refactor only needs `library_search(land)` and `library_search(creature)`; the filter language can grow later. Classified as untargeted.
+**Resolution-model change (scope note).** This moves both engines to "resolution first establishes targets/choices, then runs effects against them," rather than each effect independently reading `ctx.targets[i]`. It's a resolution-layer change — it touches the target-pick flow, hexproof gating, and every targeted card — not just a card-data rename. Worth it during this pass: targeting touches every targeted card, so doing it now means touching cards once, not twice.
 
-**Test obligation.** §12 includes regression tests verifying Pyroclasm hits hexproof creatures, Lightning Bolt does not target hexproof opponent's creatures, force_sacrifice on hexproof creatures works (no target gate), and grant_keyword(mass) bypasses hexproof.
+**Test obligation.** §12 includes: Pyroclasm hits hexproof creatures (no target step); Lightning Bolt cannot `target()` a hexproof opp creature; an edict (`target(player) → chooses(creature)`) sacrifices a hexproof creature (the creature is never targeted); multi-`target()` spells pick distinct targets.
 
 ### 3.6 Last-known-information + iid-mint-on-arrival — the MTG hybrid
 
@@ -405,8 +423,13 @@ Shorthand-style signature; parameters are descriptive, not exhaustive.
 **Tokens (1)**
 - `create_tokens(token_id, count, controller)` — kept.
 
-**Sacrifice (1)**
-- `force_sacrifice(player, count, filter)` — replaces `edict` + `sacrifice`. Player: `controller|opponent`.
+**Targeting (2)** — see §3.5
+- `target(filter)` — caster aims at something at cast time (the hexproof checkpoint). Effects after it operate on "the target."
+- `chooses(filter)` — the targeted player selects one of their own permanents at resolution (NOT targeting; no hexproof).
+
+**Sacrifice / removal verbs (1, +1 pending)**
+- `sacrifice` — the chosen/target creature is sacrificed by its controller (→ graveyard, fires death/LTB triggers). The edict (formerly the bundled `force_sacrifice`/`edict`) decomposes to `target(player) → chooses(creature) → sacrifice`; there is no longer a bundled `force_sacrifice` effect. (Targeted removal the *caster* aims — destroy/exile/bounce/tap — stays under `affect_creature`.)
+- `annihilate` *(pending — rip's no-trigger sibling, §13)* — like `sacrifice` but the creature ceases to exist: no zone change, no triggers. Not built yet; the rip kludge uses `sacrifice` today.
 
 **Stickers (1)**
 - `apply_sticker(kind, target, ...params)` — the generic persistent-modification primitive. Carries a sticker `kind` (`stat_boost`, `cost_mod`, `set_color`, `grant_mana_ability`, `scarified`, keyword kinds, etc.) plus that kind's params. Replaces the `embargo`/`bleach`/`symmetricize` bespoke channel: each is now `[movement/choice effect] → apply_sticker(specific_kind)` and `applyBalancerOverrides` is deleted. Full design in §3.8.
@@ -419,25 +442,26 @@ Shorthand-style signature; parameters are descriptive, not exhaustive.
 - `apply_in_game_splice(target_pair)` — Stapler.
 
 **Run-layer primitives (1)**
-- `rip(target)` — removes the targeted card's slot from the run via `RUN.removeSlotByIdx`. Does NOT touch the in-play card itself (the caller does). **Current implementation = deliberate kludge:** "Vile Edict"-style cards are `[force_sacrifice(opponent, 1, creature), rip(previous_target)]` — the sacrifice removes the creature (firing `cardDies`/`cardLeavesBattlefield` triggers) and rip strips its slot. **Long-term intent (DECIDED, not yet implemented): annihilation** — the creature should cease to exist with no zone change and no triggers (§13). The kludge produces off-target behavior today (the creature is sacrificed → graveyard + death/LTB triggers, not annihilated); that divergence is knowingly accepted as a temporary state, not assumed invisible. Phylactery's engine-internal path already calls `RUN.removeSlotByIdx`.
+- `rip` — strips the chosen creature's slot from the run via `RUN.removeSlotByIdx`. Operates on the creature established by the preceding `chooses`/`target` step; does NOT itself remove the in-play card (a removal verb does). With the targeting decomposition, edict and rip-edict are now a clean **one-verb difference** (§13): edict = `target(player) → chooses(creature) → sacrifice`; rip-edict (target) = `target(player) → chooses(creature) → annihilate → rip`. **Current kludge** uses `sacrifice` (fires triggers — off-target but accepted); **decided long-term** swaps it for `annihilate` (no triggers). Phylactery's engine-internal path already calls `RUN.removeSlotByIdx`.
 
 | Category | Count |
 |---|---|
+| Targeting (`target`, `chooses`) | 2 |
 | Damage | 1 |
 | Stat-modify | 3 |
-| Removal | 1 |
+| Removal (`affect_creature`) | 1 |
 | Card-movement | 1 |
 | Control | 1 |
 | Mana / life | 2 |
 | Counter | 1 |
 | Tokens | 1 |
-| Sacrifice | 1 |
+| Sacrifice / removal verbs (`sacrifice`; `annihilate` pending) | 1 |
 | Stickers | 1 |
 | Specials (card-bespoke) | 5 |
 | Run-layer (`rip`) | 1 |
-| **Total** | **19** |
+| **Total** | **~21** |
 
-Compare to proto's 38 (37 distinct + 1 dup + 1 dead `sacrifice`). 50% reduction.
+Roughly half of proto's 38, now including the two targeting primitives. The headline "fewer, sharper primitives" holds; the targeting decomposition added two atoms while dissolving the bundled `force_sacrifice`/`edict`/per-effect-`target` shapes into composable steps.
 
 ---
 
@@ -597,16 +621,24 @@ The "same target picked once at cast time and locked in" semantics already exist
 // Shorthand: "affect_creature(severity=destroy, target_filter=all_creatures)"
 ```
 
-### 6.8 Diabolic Edict — edict folds into force_sacrifice
+### 6.8 Diabolic Edict — decomposes into target → chooses → sacrifice (§3.5)
 
 ```js
 // Before:
 { "effects": [ {"kind": "edict"} ] }
 
-// After:
-{ "effects": [ {"kind": "force_sacrifice", "player": "opponent", "count": 1, "filter": "creature"} ] }
-// Shorthand: "force_sacrifice(player=opponent, count=1, filter=creature)"
+// After (targeting decomposition — §3.5):
+{
+  "target": "player",                       // caster targets a player (the hexproof checkpoint)
+  "effects": [
+    {"kind": "chooses", "filter": "creature"},  // that targeted player picks one of THEIR creatures (not targeted → hexproof irrelevant)
+    {"kind": "sacrifice"}                        // the chosen creature is sacrificed
+  ]
+}
+// Shorthand: target(player); chooses(creature); sacrifice
 ```
+
+This is *why* an edict kills a hexproof creature: only `target(player)` is a targeting step; the creature is *chosen*, never targeted. (The old `force_sacrifice(opponent, 1, creature)` bundle is gone — it was this decomposition collapsed into one effect, which hid the target-vs-choose distinction.)
 
 ### 6.9 Mind Control + Steal — both fold into change_control
 
@@ -676,7 +708,7 @@ The "loot" idiom becomes two shorthand calls that desugar to `move_card` invocat
   ] }
 ```
 
-**OPEN QUESTION: `same_as_previous` target reference.** The existing engine model passes one target through the effects array (the cast-time pick). For Scarification, both effects need the same creature target — the creature being destroyed gets the sticker on its slot. The current model handles this implicitly (one cast-time target picked, all effects see it via ctx.targets[0]). Recommended resolution: the engine's already-implicit "shared target" via ctx.targets[0] handles this case naturally — `target_filter: "chosen"` on the second effect reads the same target. No new vocabulary needed. But this works ONLY because the target survives the destroy (Scarification's sticker applies to the slot, not the in-play card, so the in-play card being gone after the destroy doesn't matter). Other compound decompositions might need different chaining — flag this as a design constraint for Phase 6+ compound cards. Reviewer call: keep "shared via ctx.targets[0]" as the implicit chaining mechanism, document explicitly in the new SPEC.md.
+**RESOLVED by the targeting decomposition (§3.5).** Scarification is `target(creature) → [affect_creature(destroy), apply_sticker(scarified)]`. With one leading `target()` step, **all effects share that target by default** — both the destroy and the sticker operate on the one chosen creature, with no `same_as_previous` vocabulary needed. (It still works because the sticker applies to the slot, not the in-play card, so the destroy removing the body doesn't matter.) The earlier "shared via `ctx.targets[0]`" mechanism is subsumed: "the target" is whatever the `target()` step established.
 
 ### 6.13 Otherworldly Journey — exile_until_eot (needs B4)
 
@@ -873,7 +905,7 @@ Each step leaves both engines in a runnable, test-passing state. Recommend seque
 
 1. **Add `target_filter` field to `affect_creature` and `pump` and `damage` in BOTH engines, alongside existing per-effect-kind shape.** This is the parameterized-target groundwork. New `target_filter` values (`all_creatures`, `all_yours`, etc.) work in the dispatcher; old per-kind code (`damageAll`, `pumpAllYours`, `removeAll`) still runs. Tests: existing tests pass; new tests for each filter value pass against synthetic effects. Semantic no-op overall.
 
-2. **Add `is_targeted_filter` and route hexproof through it.** Both engines: introduce the function (returns true for `chosen*`, false for `all_*`, `controller`, `opponent`, `self`, etc.). Cast-legality gates target selection on `is_targeted_filter(any_effect_filter)`. Resolution-time hexproof check runs only when true. Add hexproof regression tests (§12). At this point Pyroclasm (still old `damageAll`) and the new `damage(target_filter=all_creatures)` both behave correctly.
+2. **Add `target()` / `chooses()` targeting steps and route hexproof through them (§3.5).** Both engines: introduce the leading targeting primitives. "Is it targeted?" becomes structural — a spell has a `target()` step or it doesn't — replacing the earlier `is_targeted_filter(value)` helper. Hexproof is checked at `target()` steps only; `chooses()` and mass/automatic-scoped effects (`all_creatures`, `controller`, …) never check it. Add hexproof regression tests (§12), including the edict case (`target(player) → chooses(creature)` sacrifices a hexproof creature).
 
 3. **Add new atomic effects alongside the legacy ones.** Both engines: register `move_card`, `change_control`, `force_sacrifice`, `apply_sticker`, `pump` (signed/permanent extensions). Old kinds (`draw`, `discard`, `gainControl`, `edict`, `weaken`, etc.) still dispatch correctly. New atomics callable from card data once cards migrate.
 
@@ -1016,33 +1048,34 @@ For each shorthand effect name, verify it desugars correctly to its canonical `m
 
 ---
 
-## 13. The `rip` effect — kludge now, annihilation intent (DECIDED)
+## 13. The `rip` effect — a one-verb difference from edict (clarified by the targeting decomposition)
 
-**Status: SHIP THE KLUDGE; LONG-TERM INTENT DECIDED.** Both halves are settled, so nothing here blocks execution.
+**Status: SHIP THE KLUDGE; LONG-TERM INTENT DECIDED.** Both halves are settled; nothing here blocks execution. The `target()`/`chooses()` decomposition (§3.5) makes rip and edict almost the same recipe, differing by a single verb.
+
+### Edict vs rip-edict, side by side
+```
+Diabolic Edict:        target(player) → chooses(creature) → sacrifice
+Rip-edict (TARGET):    target(player) → chooses(creature) → annihilate → rip
+Rip-edict (KLUDGE today): target(player) → chooses(creature) → sacrifice  → rip
+```
+The first two steps are shared (the player is *targeted*; that player *chooses* one of their creatures — and because the creature is chosen, not targeted, hexproof doesn't protect it, exactly like a real edict, §3.5). The only differences:
+- **Removal verb:** `sacrifice` (→ graveyard, fires triggers) vs `annihilate` (ceases to exist, no triggers).
+- Rip adds the `rip` step (strip the run-slot).
 
 ### Current implementation — the deliberate kludge
-`rip` is the run-layer slot-removal primitive only (~20 lines: take a target, call `RUN.removeSlotByIdx(target.slotIdx)`). The rip-card composes it with an edict:
-
-```
-[force_sacrifice(opponent, 1, creature), rip(previous_target)]
-```
-
-The `force_sacrifice` reuses Diabolic Edict's machinery (the target player's controller chooses a creature); `rip(previous_target)` then strips that creature's run-slot. This is a **deliberate kludge**: `force_sacrifice` calls `sacrificeCard`, which moves the creature to the graveyard and fires `cardDies` / `cardLeavesBattlefield` triggers. **This is off-target behavior — it's happening right now, not hidden** (a ripped creature really does go to the graveyard and fire its death/LTB triggers, rather than ceasing to exist). We knowingly accept it for now because it lets us ship the rip-card without building new removal machinery, and the divergence is tolerable in current play.
+The kludge uses `sacrifice` (the verb that exists today). **This is off-target behavior happening right now, not hidden:** a ripped creature really does go to the graveyard and fire its death/LTB triggers, rather than ceasing to exist. We knowingly accept it for now — it ships the rip-card without building new removal machinery, and the divergence is tolerable in current play.
 
 ### Long-term intent — annihilation (DECIDED, not yet implemented)
-The eventual behavior: the chosen creature **ceases to exist** — it doesn't move anywhere. No zone change, no `cardDies`/`cardLeavesBattlefield` triggers, never reaches the graveyard; only the slot-loss remains. This matches proto's Phylactery (`ripSlotForPhylactery`) body, which plucks the card with no zone-change emit.
+Swap the one verb: `sacrifice` → `annihilate`. The chosen creature then **ceases to exist** — no zone change, no `cardDies`/`cardLeavesBattlefield` triggers, never reaches the graveyard; only the slot-loss remains. This matches proto's Phylactery (`ripSlotForPhylactery`) body, which plucks the card with no zone-change emit.
 
 ### Migration path (when we do it)
-Add an `annihilate(target)` removal primitive (removes the in-play card with no zone-change emit / no triggers) and swap the rip-card from `[force_sacrifice, rip]` to an edict-targeted annihilation that still strips the slot — i.e., keep the edict *choice* UI but replace the sacrifice *removal* with annihilation. Do it whenever we decide the current divergence is no longer acceptable (e.g., it starts mattering for graveyard interactions or death-trigger combos) or simply want the target behavior. Cheap and localized; no card data changes beyond this one card.
-
-### Future direction (out of scope)
-Composable edicts — "Choose target player. That player [verb]s [object]." — could later become `target_player(filter)` + `player_action(effect)` primitives letting any effect run with a different player as controller-for-resolution. Not needed for this refactor; noted so the pattern is on file.
+Add the `annihilate` removal verb (removes the in-play card with no zone-change emit / no triggers) and change the rip-card's third step from `sacrifice` to `annihilate`. Do it whenever the divergence stops being acceptable (e.g., it starts mattering for graveyard interactions or death-trigger combos) or we simply want the target behavior. Cheap and localized — one verb on one card; no targeting changes (the `target(player) → chooses(creature)` front half is already the shared, correct shape).
 
 ---
 
 ## Critical files for implementation
 
-- `/home/user/Magiclike/engine/effects/effects.gd` (dispatch table + `resolve_one`; gains the new atomic kinds and the `is_targeted_filter` helper)
+- `/home/user/Magiclike/engine/effects/effects.gd` (dispatch table + `resolve_one`; gains the new atomic kinds and the `target()`/`chooses()` targeting steps — §3.5)
 - `/home/user/Magiclike/reference/html-proto/js/engine.js` (the EFFECTS table at line 1366; receives all dispatch changes, dead-code deletions, and the parameterization work)
 - `/home/user/Magiclike/data/card_resource.gd` (the `triggered_abilities` / `on_cast_effects` / `activated_abilities` schema fields; gains `target_slots` for Stapler-style multi-target abilities)
 - `/home/user/Magiclike/reference/html-proto/tools/migrate-effects.js` (new — the proto card-data migration script, modeled on the predicate plan's `migrate-triggers.js`)
