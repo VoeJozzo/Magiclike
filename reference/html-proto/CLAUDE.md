@@ -30,7 +30,7 @@ Also in the repo: `index.html` at the repo root — a small redirect that points
 | `js/stickers.js` | Sticker pipeline — runtime application (`weightedPick`, `applyStickersToCard`, `applyOneStickerToRuntimeCard`, `applyRandomStickersToSide`, `empowerRollLabel`, `applyEmpowerRoll`) and deck-construction helpers (`rollSubtypeFromDeck`, `pushStickerWithRoll`, `stickersForSlot`). Late-binds to `ENGINE.synthesizeStapledTemplate`, `tplForSlot`, `deckColorsFromSlots`. |
 | `js/ai.js` | `AI` IIFE — decision logic, combat sim, lethal detection |
 | `js/draft.js` | `DRAFT` IIFE — pack generation, color-aware sampling, 23-pick player draft, opp deck construction (incl. constructed-deck registry: Goblin Aggro, Spirit Tribal, Aristocrats, Archdemon Boss, Balancer Boss) |
-| `js/run.js` | `RUN` IIFE — roguelike meta (map generation, rewards, post-draft offers), save/load to `magiclike_run` localStorage key, schema migrations |
+| `js/run.js` | `RUN` IIFE — roguelike meta (map generation, rewards, post-draft offers), save/load to `magiclike_run_v1` localStorage key, schema migrations |
 | `js/picklog.js` | `PICKLOG` IIFE — draft pick analytics, `magiclike_picklog_v1` storage, exposed on `window.PICKLOG` for console queries |
 | `js/controller.js` | `CONTROLLER` IIFE — input handling, modals, AI scheduling, plus the meta-game render helpers it owns (renderMap, renderReward, renderDraft, renderStatsContent, …) |
 | `js/render.js` | `render()` main repaint, `renderManaPool`, `renderHand`, `renderBf`, `passLabel`, `makeCardEl`, `cardToViewModel`, etc. — in-game UI only |
@@ -47,8 +47,8 @@ Load order in `magiclike_engine.html` is: settings → cards → engine → card
 ## Persistence
 
 `localStorage` is the only persistence. Keys:
-- `magiclike_run` — current roguelike run (deck, stickers, wins/losses)
-- `magiclike_picklog` — draft history analytics
+- `magiclike_run_v1` — current roguelike run (deck, stickers, wins/losses)
+- `magiclike_picklog_v1` — draft history analytics
 - `magiclike_settings_v1` — user display preferences (fonts, sizes, devtools flag)
 
 Schema migrations live in the `RUN` module and run on load.

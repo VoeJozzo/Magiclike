@@ -24,7 +24,7 @@ Deferred work lives in `docs/BACKLOG.md` — read it when relevant, but don't op
 ├── .nojekyll                   disables Jekyll on Pages (needed for cards/_manifest.json)
 ├── addons/card-framework/      vendored — do not modify
 ├── cards/
-│   ├── data/                   JSON templates (card-framework's JsonCardFactory)
+│   ├── data/                   empty — JsonCardFactory wiring is vestigial (cards load from templates/*.tres)
 │   ├── images/                 card art
 │   └── templates/card_database.gd  programmatic CardResource registry (23 cards)
 ├── data/                       engine-side resource base classes
@@ -52,7 +52,7 @@ Deferred work lives in `docs/BACKLOG.md` — read it when relevant, but don't op
 
 | File | Role |
 |---|---|
-| `engine/engine.gd` | Autoload `RulesEngine`. State holder, `execute_action`, settle loop, `_fire_event`, `_drain_pending_triggers`, `_resolve_*_entry`, `_run_sbas`, two-pass combat damage, `get_legal_actions`. ~1840 lines. |
+| `engine/engine.gd` | Autoload `RulesEngine`. State holder, `execute_action`, settle loop, `_fire_event`, `_drain_pending_triggers`, `_resolve_*_entry`, `_run_sbas`, two-pass combat damage, `get_legal_actions`. ~1551 lines. |
 | `engine/engine_state.gd` | RefCounted state container: players, stack, attackers, blockers, `pending_triggers`, `awaiting_target_for_trigger`, `awaiting_block_declaration`, `duplicate_deep()`. |
 | `engine/player.gd`, `mana_pool.gd`, `stack.gd`, `phase_machine.gd` | RefCounted state subclasses. Each has a `duplicate_deep()` for AI snapshots. |
 | `engine/card_instance.gd` | Per-card runtime state — tapped, damage, summoning_sick, granted_keywords, lethal_marked. `effective_keywords()` unions template + grants + (future) stickers. |
@@ -64,7 +64,7 @@ Deferred work lives in `docs/BACKLOG.md` — read it when relevant, but don't op
 | `engine/effects/effects.gd` | `HANDLERS` dispatch table. Per-kind handlers in sibling files. |
 | `engine/predicates/predicates.gd` | String-keyed `cond_*` predicates with `evaluate(name, state, source, event)`. Boot-time `validate_all_card_predicates()` checks all `condition_predicate` strings against the registry. |
 | `cards/templates/card_database.gd` | Programmatic `CardResource` definitions. Hand-authored; grow as new cards are added. |
-| `scenes/game/game_board.gd` | UI orchestrator. Reads `RulesEngine.state()`, paints zones, manages target-pick / trigger-target / block-decl modes, keybinds. ~1275 lines. |
+| `scenes/game/game_board.gd` | UI orchestrator. Reads `RulesEngine.state()`, paints zones, manages target-pick / trigger-target / block-decl modes, keybinds. ~1295 lines. |
 | `scenes/game/player_panel.gd` | Life total, mana pips, hand / library / graveyard counts, low-library warning glyph. |
 | `scenes/game/combat_lines.gd` | Overlay drawing the attacker → blocker lines during COMBAT_BLOCK / COMBAT_DAMAGE. |
 | `scenes/card.gd` | Card visual subclass — oracle text overlay, legality glow, combat highlight states. |

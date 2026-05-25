@@ -297,12 +297,12 @@ Reference via `TUNING.X` in scorers.
 
 ## 4. Card data
 
-### 4.1 [P1/S] Remove vestigial JSON wiring (Godot)
-**Where.** `addons/card-framework` ships `JsonCardFactory`; `cards/data/` directory exists but is empty; the project uses `TresCardFactory` exclusively. `CLAUDE.md:27` still mentions JSON templates as if active.
+### 4.1 [P2/S] Remove vestigial JSON wiring (Godot)
+**Where.** `addons/card-framework` ships `JsonCardFactory`; `cards/data/` directory exists but is empty; the project uses `TresCardFactory` exclusively. (The CLAUDE.md text that previously called JSON templates "active" is now corrected to "vestigial.")
 
 **Smell.** False trail for new contributors. Suggests two data sources when there's one.
 
-**Recommended.** Either (a) delete `cards/data/` and update `CLAUDE.md` to say `.tres`-only, or (b) document explicitly that JSON wiring is reserved for future use and explain why. Option (a) is cleaner.
+**Remaining.** The doc wording is fixed; the optional code cleanup is to delete the empty `cards/data/` directory (and the unused `JsonCardFactory` wiring) so there's no dead path at all. Downgraded to P2 since the misleading-doc part is resolved.
 
 **Triggered by.** Whenever this confuses a new session. Cheap to do at any time.
 
@@ -356,14 +356,12 @@ Reference via `TUNING.X` in scorers.
 
 ## 6. Cross-cutting
 
-### 6.1 [P2/S] Inconsistent line counts in `CLAUDE.md` module table
-**Where.** Root `CLAUDE.md:55` says `engine.gd` is "~1840 lines", `CLAUDE.md:67` says `game_board.gd` is "~1275 lines". Actual: 1551 and 1295 respectively.
+### 6.1 [P2/S — DONE] Inconsistent line counts in `CLAUDE.md` module table
+**Where.** Root `CLAUDE.md` module table.
 
-**Smell.** Onboarding doc drift.
+**Status.** Corrected — `engine.gd` / `game_board.gd` now read ~1551 / ~1295 (actual) instead of the stale ~1840 / ~1275.
 
-**Recommended.** Update CLAUDE.md numbers OR drop the line-count column entirely (it ages fast). Note that this `REFACTOR-NOTES.md` deliberately avoids per-file LOC in the header line and keeps it only in `ARCHITECTURE.md` where it's easier to refresh.
-
-**Triggered by.** Next CLAUDE.md edit.
+**Standing advice.** Hardcoded LOC ages fast; consider dropping the line-count column from CLAUDE.md entirely (ARCHITECTURE.md is the better home for per-file LOC, easier to refresh). Left as a P2 nicety.
 
 ---
 
@@ -402,9 +400,9 @@ Reference via `TUNING.X` in scorers.
 | 3.6 | Proto — render diffing | P2 | M | Perceptible UI lag |
 | 3.7 | Proto — mana SVG path | P2 | S | Pages-serving issue |
 | 3.8 | Proto — modal builder | P2 | M | New modal |
-| 4.1 | Cards — vestigial JSON | P1 | S | Anytime |
+| 4.1 | Cards — vestigial JSON | P2 | S | Anytime (doc part done; dir-delete remains) |
 | 4.2 | Cards — .tres versioning | P2 | M | Post-Phase-6 schema change |
 | 5.1 | Tests — batch runner | P1 | S | First missed regression |
 | 5.2 | Tests — non-self triggers | P1 | S | Phase 6 |
 | 5.3 | Tests — illegality paths | P2 | S | Co-schedule w/ 1.3 |
-| 6.1 | CLAUDE.md drift | P2 | S | Next CLAUDE edit |
+| 6.1 | CLAUDE.md drift | — | — | DONE (LOC corrected) |
