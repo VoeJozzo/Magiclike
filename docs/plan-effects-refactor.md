@@ -1,7 +1,7 @@
 # Refactor Plan: Unified Effects Registry — Audit, Decompose, and Align
 
 **Status:** Plan complete, ready for review. Not yet executed.
-**Pre-execution note:** `rip` is fully resolved — **annihilation semantics** (the chosen creature ceases to exist: no zone change, no death/LTB triggers, no graveyard; its run-slot is removed). It's a self-contained edict-targeted primitive, NOT a `force_sacrifice` composition (sacrifice fires triggers, which the decision forbids). See §4.2 and §13. No open questions remain; the plan is implementable as written.
+**Pre-execution note:** `rip` ships as a deliberate kludge — `[force_sacrifice, rip(previous_target)]` (the edict sacrifices, firing death/LTB triggers; rip strips the slot). The **long-term intent is annihilation** (creature ceases to exist, no triggers) — DECIDED, but intentionally deferred; the kludge is safe today because no rippable card has a death/LTB trigger. See §4.2 and §13. No open questions block execution; the plan is implementable as written.
 **Cross-references:** `docs/DIVERGENCE.md` items D1 (target target-state semantics — see §3.6), D2 (`pump` duration → `addCounter`), D3 (`gain_life` flexibility), D4 (`gain_life` signed delta), B4 (delayed-trigger machinery — required for `exile_until_eot` decomposition), C5 (killer attribution — adjacent), E1/E2 (event vocabulary + composable predicates, prerequisite for the `move_card` effect's destination semantics). `docs/RULES.md` §703 (target legality), §704 (resolution + fizzle), §904 (hexproof). `docs/SPEC.md` §1.4 (effect descriptor schema).
 **Effort estimate:** **L** (~4.5–5.5 days end-to-end across both engines, ~64–69 hours, including card migration, tests, splice helper extraction, and registry consolidation; this is the largest of the three planned refactors because it touches all 258 proto cards, all 32 Godot templates, and rewrites the dispatch table itself).
 
@@ -184,7 +184,7 @@ For each of the 38 proto kinds, what happens. Final column shows the new home; "
 
 ### 3.4 Why `rip` stays distinct from `force_sacrifice`
 
-`force_sacrifice` is a sac (battlefield → graveyard, selected by the target player) and it **fires death/LTB triggers**. `rip` is fundamentally different on two axes: (1) it **annihilates** — the creature ceases to exist with no zone change and no triggers (DECIDED, §13); and (2) it ALSO removes the slot from the run permanently (run.js bookkeeping). They share only the edict-style *choice* UI (the target player picks which creature). Folding rip into `force_sacrifice` would require both a trigger-suppression flag AND a permanent-loss flag that are true for only this card — not worth it. Keep `rip` a distinct, self-contained primitive. See §13.
+`force_sacrifice` is a sac (battlefield → graveyard) selected by the target player. `rip` is the run-layer slot-removal primitive — it removes the card's slot permanently (run.js bookkeeping, not just engine). The slot-loss is a roguelike-layer side effect; folding it into `force_sacrifice` would saddle every sac with a permanent-loss parameter that's only true for one card. Keep `rip` separate. The current rip-card is the composition `[force_sacrifice, rip(previous_target)]` (a deliberate kludge — the sacrifice fires death/LTB triggers). The long-term intent is annihilation (no triggers); see §13 for the decision and migration path.
 
 ### 3.5 Hexproof / targeting model — the critical correctness section
 
@@ -317,7 +317,7 @@ All three sticker kinds get `weight: 0` (never offered in random reward pools, l
 
 **Godot coordination note.** This land-as-ability model is proto-side. When the Godot port adopts it, reconcile with the priority-window plan's `KIND_TAP_LAND_FOR_MANA`: generalize that land-named action kind to a structural `is_mana_ability` classification (produces mana, no target) so the auto-pass meaningfulness check and stack fast-path cover land taps *and* creature mana dorks uniformly. See `plan-priority-window-refactor.md` §3.
 
-> **No open questions before execution.** (The `rip` trigger-semantics question is resolved — annihilation, §13. The mana-model scope is decided — deep clean, above.)
+> **No open questions block execution.** (`rip` ships as the kludge composition with annihilation as the decided long-term intent — §13. The mana-model scope is decided — deep clean, above.)
 
 ### 3.10 Staple template-synthesis cleanup
 
@@ -419,7 +419,7 @@ Shorthand-style signature; parameters are descriptive, not exhaustive.
 - `apply_in_game_splice(target_pair)` — Stapler.
 
 **Run-layer primitives (1)**
-- `rip(target)` — **annihilation semantics (DECIDED, see §13).** Edict-style targeting: the target player's controller chooses one of their creatures; that creature **ceases to exist** — removed from play with no zone-change event, so **no death/LTB triggers fire and it never reaches the graveyard** — AND its run-slot is removed via `RUN.removeSlotByIdx`. Self-contained primitive matching proto's Phylactery (`ripSlotForPhylactery`) behavior. **Not** built on `force_sacrifice`: a sacrifice moves the creature to the graveyard and fires death triggers, which the annihilation decision forbids. The earlier `[force_sacrifice, rip]` composition is dropped for this reason.
+- `rip(target)` — removes the targeted card's slot from the run via `RUN.removeSlotByIdx`. Does NOT touch the in-play card itself (the caller does). **Current implementation = deliberate kludge:** "Vile Edict"-style cards are `[force_sacrifice(opponent, 1, creature), rip(previous_target)]` — the sacrifice removes the creature (firing `cardDies`/`cardLeavesBattlefield` triggers) and rip strips its slot. **Long-term intent (DECIDED, not yet implemented): annihilation** — the creature should cease to exist with no zone change and no triggers (§13). The kludge is shippable today because no rippable card has a death/LTB trigger, so the trigger-firing is invisible in current play. Phylactery's engine-internal path already calls `RUN.removeSlotByIdx`.
 
 | Category | Count |
 |---|---|
@@ -855,7 +855,7 @@ exile_until_eot decomposition
 
 - **`move_card` effect needs E1 done.** The `move_card` effect's job is to emit a `card_zone_change` event. The predicate refactor introduces `card_zone_change` as the unified event vocabulary. If EFFECTS lands first, every `move_card` invocation has to emit BOTH the old per-kind events AND the new `card_zone_change` — temporary double-emission. If E1 lands first, `move_card` just emits `card_zone_change` once and listeners (already migrated to use the predicate-composition shape) receive it naturally. **Recommendation: E1 first.**
 - **`exile_until_eot` decomposition needs B4.** The "return at end of turn" half requires `schedule_delayed`, which IS the B4 machinery. Until B4 lands, this one effect stays as a primitive in both engines. The rest of the EFFECTS refactor proceeds.
-- **The sticker-system audit is complete (§3.8); decision 7 is resolved.** `embargo`/`bleach`/`symmetricize` decompose into `[movement/choice effect] → apply_sticker(specific_kind)`, `applyBalancerOverrides` is deleted, and the sticker pipeline (apply dedup, empower redesign, persistence decoupling, snake_case) is folded into this refactor. The boot validator accepts `apply_sticker` from day one. No items remain open before execution: the `rip` trigger semantics (annihilation, §13) and the mana-model unification scope (deep clean, §3.9) are both decided.
+- **The sticker-system audit is complete (§3.8); decision 7 is resolved.** `embargo`/`bleach`/`symmetricize` decompose into `[movement/choice effect] → apply_sticker(specific_kind)`, `applyBalancerOverrides` is deleted, and the sticker pipeline (apply dedup, empower redesign, persistence decoupling, snake_case) is folded into this refactor. The boot validator accepts `apply_sticker` from day one. No items block execution: `rip` ships as the kludge with annihilation as the decided long-term intent (§13), and the mana-model unification scope is decided (deep clean, §3.9).
 - **B6/B7 (priority-window) is independent.** Touches priority/auto-pass logic, not effect handlers. Land in parallel or earlier.
 
 ### 9.3 Adjacent items
@@ -1016,21 +1016,24 @@ For each shorthand effect name, verify it desugars correctly to its canonical `m
 
 ---
 
-## 13. The `rip` effect — RESOLVED: annihilation semantics
+## 13. The `rip` effect — kludge now, annihilation intent (DECIDED)
 
-**Status: FULLY RESOLVED.** The chosen creature **ceases to exist** — it does not move anywhere. No zone change, **no `cardDies`/`cardLeavesBattlefield` triggers, never reaches the graveyard.** Its run-slot is removed permanently.
+**Status: SHIP THE KLUDGE; LONG-TERM INTENT DECIDED.** Both halves are settled, so nothing here blocks execution.
 
-### The decision and why the earlier composition is dropped
-An earlier sketch composed `[force_sacrifice, rip(previous_target)]` (reuse Diabolic Edict, then strip the slot). That is **rejected** because `force_sacrifice` calls `sacrificeCard`, which moves the creature to the graveyard and fires death + LTB triggers — directly contrary to "ceases to exist, no triggers." So `rip` is a **self-contained primitive**, not a composition over sacrifice.
+### Current implementation — the deliberate kludge
+`rip` is the run-layer slot-removal primitive only (~20 lines: take a target, call `RUN.removeSlotByIdx(target.slotIdx)`). The rip-card composes it with an edict:
 
-### What `rip` is (the spec)
-- **Targeting:** edict-style. The card targets a *player*; that player's controller chooses one of their creatures (reuses the existing edict choice UI — this is the part the user wanted to keep).
-- **Removal:** the chosen creature is **annihilated** — plucked from the battlefield with no zone-change emit (mirrors proto's `ripSlotForPhylactery` body), so no death/LTB triggers fire and nothing lands in the graveyard.
-- **Slot loss:** `RUN.removeSlotByIdx(slotIdx)` removes the card from the run permanently.
-- Small, focused handler. Does not depend on `force_sacrifice`, `move_card`, or `previous_target`.
+```
+[force_sacrifice(opponent, 1, creature), rip(previous_target)]
+```
 
-### Implementation note
-Because rip annihilates *and* removes the slot *and* uses edict targeting, it's cleaner as one primitive than as a chain. If a future card ever wants "edict where the creature is annihilated but the SLOT survives" (annihilate-without-rip), factor an `annihilate` removal out then — YAGNI today, since the only card with this behavior also rips the slot.
+The `force_sacrifice` reuses Diabolic Edict's machinery (the target player's controller chooses a creature); `rip(previous_target)` then strips that creature's run-slot. This is a **deliberate kludge**: `force_sacrifice` calls `sacrificeCard`, which moves the creature to the graveyard and fires `cardDies` / `cardLeavesBattlefield` triggers. We accept that for now — it lets us ship the rip-card without building new removal machinery, and it's **invisible in current play because no rippable card has a death/LTB trigger.**
+
+### Long-term intent — annihilation (DECIDED, not yet implemented)
+The eventual behavior: the chosen creature **ceases to exist** — it doesn't move anywhere. No zone change, no `cardDies`/`cardLeavesBattlefield` triggers, never reaches the graveyard; only the slot-loss remains. This matches proto's Phylactery (`ripSlotForPhylactery`) body, which plucks the card with no zone-change emit.
+
+### Migration path (when we do it)
+Add an `annihilate(target)` removal primitive (removes the in-play card with no zone-change emit / no triggers) and swap the rip-card from `[force_sacrifice, rip]` to an edict-targeted annihilation that still strips the slot — i.e., keep the edict *choice* UI but replace the sacrifice *removal* with annihilation. Trigger it when (a) a rippable card gains a death/LTB trigger and the kludge becomes visible, or (b) we deliberately retrofit. Cheap and localized; no card data changes beyond this one card.
 
 ### Future direction (out of scope)
 Composable edicts — "Choose target player. That player [verb]s [object]." — could later become `target_player(filter)` + `player_action(effect)` primitives letting any effect run with a different player as controller-for-resolution. Not needed for this refactor; noted so the pattern is on file.
