@@ -57,6 +57,8 @@ if _should_auto_pass(player_key):
 - A separate kind mirrors proto exactly (`tapLandForMana` is its own action kind in `engine.js`). It makes "this is a mana ability" a structural fact, not an inference. The B6 filter becomes a clean kind-set check.
 - Phase 1 has **only** land mana abilities under `KIND_ACTIVATE_ABILITY`, so the migration is mechanical: rename `_legal_activate_ability` / `_do_activate_ability` to `_legal_tap_land_for_mana` / `_do_tap_land_for_mana`, swap the kind constant, and update `get_legal_actions`. When non-mana activations land in Phase 6+, `KIND_ACTIVATE_ABILITY` returns clean.
 
+**Long-term coordination with the effects-plan mana model.** `KIND_TAP_LAND_FOR_MANA` is named land-specifically because Phase 1 has only land mana abilities. The thing the auto-pass check *actually* cares about is "is this a **mana ability**" (produces mana, no target — MTG's definition), not "is this a land." When Godot adopts the effects-plan §3.9 land-as-`add_mana`-ability model (and gains creature mana dorks like Llanowar), generalize this to a structural `is_mana_ability` classification on the ability — keying both the stack fast-path (D8) and the auto-pass meaningfulness check off that property. Proto already works this way in spirit: its `tapLandForMana` action kind covers creature dorks too (engine.js:4191). This is a forward note, not Phase-1 work.
+
 **Predicate body:**
 ```gdscript
 func _has_no_meaningful_action(player_key: String) -> bool:

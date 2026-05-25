@@ -315,6 +315,8 @@ All three sticker kinds get `weight: 0` (never offered in random reward pools, l
 
 **Sequencing:** done as an **adjacent step within this same coordinated pass**, sequenced *after* the effects+sticker core is passing tests — so a mana regression has a clean diagnostic surface and can't be confused with an effect/sticker regression during bring-up. (Architectural detail; the "what" is settled, the exact step ordering is at the implementer's discretion.)
 
+**Godot coordination note.** This land-as-ability model is proto-side. When the Godot port adopts it, reconcile with the priority-window plan's `KIND_TAP_LAND_FOR_MANA`: generalize that land-named action kind to a structural `is_mana_ability` classification (produces mana, no target) so the auto-pass meaningfulness check and stack fast-path cover land taps *and* creature mana dorks uniformly. See `plan-priority-window-refactor.md` §3.
+
 > **Still open before execution:** the `rip` trigger-semantics discussion (§3.4 / decision notes).
 
 ### 3.10 Staple template-synthesis cleanup
@@ -695,7 +697,9 @@ The "loot" idiom becomes two shorthand calls that desugar to `move_card` invocat
   ] }
 ```
 
-`schedule_delayed` is the B4 primitive (delayed-trigger machinery). The `previous_target` selector references the card the prior `move_card` operated on — this DOES need a small chaining mechanism (1 line of context-passing in the resolver). Not the same as the open question above; this is a forward reference from one effect to the prior effect's resolved subject. Until B4 lands, `exile_until_eot` stays as its own primitive in both engines and migrates after B4.
+`schedule_delayed` is the B4 primitive (delayed-trigger machinery). The `previous_target` selector references the card the prior `move_card` operated on. Not the same as the `same_as_previous` / shared-cast-time-target mechanism (§6.12, also what StP uses) — `previous_target` chains to the *output of the immediately-prior effect*, which need not be a cast-time choice (e.g., "exile the top creature of your library, then return it" has no chosen target). Until B4 lands, `exile_until_eot` stays as its own primitive in both engines and migrates after B4.
+
+**`previous_target` resolver spec** (the "small chaining mechanism"; one sensible shape — no open design choice). During a single spell/ability resolution, the effect loop carries one extra context field, `ctx.previous_subject_iid`. After each effect resolves, the resolver sets it to the iid of the card that effect acted on or produced (for `move_card`, the moved card's current iid — note that for a battlefield *arrival* this is the freshly-minted iid per §3.7, but for the exile-then-return chain the second move reads the still-current exile-zone iid set by the first move). The selector value `previous_target` resolves to `state.find_instance(ctx.previous_subject_iid)`. Scope is the immediately-prior effect only; the field resets at the start of each resolution. Multi-step back-references ("two effects ago") are out of scope until a card needs them. Naming (`previous_target` vs `previous_subject`, selector-string vs ctx-field) is implementer's discretion.
 
 `flicker` is the immediate variant: skip `schedule_delayed`, just do the two `move_card` calls back-to-back. So `flicker` can migrate earlier than `exile_until_eot`.
 
