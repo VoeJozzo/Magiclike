@@ -1044,11 +1044,11 @@ Tests that verify the live/snapshot hybrid:
 
 ### 12.10 iid-mint-on-arrival regression (§3.7)
 
-Tests that verify a returning creature is a fresh game object:
-1. **Otherworldly Journey (`exileUntilEOT`) — THE one that exercises the fix.** Cast Bolt targeting opp's Bear (iid=12). Opp exiles-until-EOT its own Bear in response. At end step the Bear returns; assert its iid is fresh (≠ 12), and that a spell/trigger still pointing at iid=12 fizzles. This is the path that reuses the iid today (engine.js:2154–2173 / 5319–5345), so this test must FAIL before the fix and PASS after.
-2. **Lightning Bolt + Cloudshift (flicker) — regression guard, already green.** Same pattern with Cloudshift. Note flicker already mints a fresh iid (engine.js:2112), so this passes before the fix too; it guards against a regression rather than exercising the fix.
-3. **Targeted destruction beaten by exile-return** — same pattern with `affect_creature(severity=destroy)` instead of damage.
-4. **iid sequence verification** — exile-and-return a creature; assert the returning creature's iid is greater than (not equal to) the exited creature's iid.
+Tests that verify a returning creature is a fresh game object. **Both mechanics are covered** — `exileUntilEOT` (the path the fix corrects) and `flicker` (already correct; guarded against regression) — they're separate handlers and each needs its own coverage:
+1. **Otherworldly Journey (`exileUntilEOT`) — exercises the fix.** Cast Bolt targeting opp's Bear (iid=12). Opp exiles-until-EOT its own Bear in response. At end step the Bear returns; assert its iid is fresh (≠ 12) and that the Bolt still pointing at iid=12 fizzles. This path reuses the iid today (engine.js:2154–2173 / 5319–5345), so it must FAIL before the fix and PASS after.
+2. **Lightning Bolt + Cloudshift (`flicker`) — regression guard.** Same pattern via Cloudshift. flicker already mints a fresh iid (engine.js:2112), so this is green before and after; it guards against a future regression rather than exercising the fix.
+3. **Targeted destruction beaten by re-entry — run for BOTH mechanics.** Same as #1/#2 with `affect_creature(severity=destroy)` instead of damage: one case via flicker, one via exile-until-EOT.
+4. **iid sequence verification — BOTH mechanics.** flicker a creature, and separately exile-and-return one; in each case assert the returning creature's iid is greater than (not equal to) the exited creature's iid.
 5. **Non-flicker zone bounces** — bounce-to-hand-then-replay also gets a fresh iid on re-arrival. Same rule, different mechanic.
 
 ### 12.11 Shorthand parser tests (§5.2)
