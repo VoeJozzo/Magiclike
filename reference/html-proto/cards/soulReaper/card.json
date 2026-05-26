@@ -1,23 +1,21 @@
 {
-  "tplId": "soulReaper",
-  "name": "Soul Reaper",
-  "type": "Creature",
-  "sub": "Demon",
+  "card_id": "soulReaper",
+  "art": "cards/soulReaper/art.png",
   "cost": {
     "B": 1,
     "C": 3
   },
-  "power": 3,
-  "toughness": 3,
-  "art": "cards/soulReaper/art.png",
   "keywords": [
     "flying"
   ],
+  "name": "Soul Reaper",
+  "power": 3,
+  "sub": "Demon",
   "text": "Flying. Whenever another creature dies, you gain 1 life.",
+  "toughness": 3,
   "triggers": [
     {
       "event": "cardDies",
-      "condId": "anotherCreatureDies",
       "text": "Another creature died — you gain 1 life.",
       "effects": [
         {
@@ -25,11 +23,9 @@
           "target": "self",
           "amount": 1
         }
-      ]
+      ],
+      "cond_id": "anotherCreatureDies"
     }
   ],
-  "color": "B",
-  "colors": [
-    "B"
-  ]
+  "type": "Creature"
 }

@@ -1,16 +1,5 @@
 {
-  "tplId": "archmageOfVeils",
-  "name": "Archmage of Veils",
-  "type": "Creature",
-  "sub": "Human Wizard",
-  "cost": {
-    "U": 2,
-    "C": 2
-  },
-  "power": 2,
-  "toughness": 4,
-  "art": "cards/archmageOfVeils/art.png",
-  "text": "T: Draw a card.",
+  "card_id": "archmageOfVeils",
   "abilities": [
     {
       "cost": {
@@ -24,8 +13,15 @@
       ]
     }
   ],
-  "color": "U",
-  "colors": [
-    "U"
-  ]
+  "art": "cards/archmageOfVeils/art.png",
+  "cost": {
+    "U": 2,
+    "C": 2
+  },
+  "name": "Archmage of Veils",
+  "power": 2,
+  "sub": "Human Wizard",
+  "text": "T: Draw a card.",
+  "toughness": 4,
+  "type": "Creature"
 }

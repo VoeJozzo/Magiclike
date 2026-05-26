@@ -1,31 +1,27 @@
 {
-  "tplId": "morticianAssistant",
-  "name": "Mortician's Assistant",
-  "type": "Creature",
-  "sub": "Zombie",
+  "card_id": "morticianAssistant",
+  "art": "⚰",
   "cost": {
     "B": 1,
     "C": 1
   },
+  "name": "Mortician's Assistant",
   "power": 1,
-  "toughness": 3,
-  "art": "⚰",
+  "sub": "Zombie",
   "text": "When this dies, return target creature card from your graveyard to your hand.",
+  "toughness": 3,
   "triggers": [
     {
       "event": "cardDies",
-      "condId": "thisDies",
       "text": "When ~ dies, return a creature from your graveyard.",
       "effects": [
         {
           "kind": "returnFromGraveyard",
           "target": "graveyardCreature"
         }
-      ]
+      ],
+      "cond_id": "thisDies"
     }
   ],
-  "color": "B",
-  "colors": [
-    "B"
-  ]
+  "type": "Creature"
 }

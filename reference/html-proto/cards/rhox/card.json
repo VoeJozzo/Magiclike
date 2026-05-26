@@ -1,17 +1,13 @@
 {
-  "tplId": "rhox",
-  "name": "Centaur Courser",
-  "type": "Creature",
-  "sub": "Centaur",
+  "card_id": "rhox",
+  "art": "🐎",
   "cost": {
     "G": 1,
     "C": 2
   },
+  "name": "Centaur Courser",
   "power": 3,
+  "sub": "Centaur",
   "toughness": 3,
-  "art": "🐎",
-  "color": "G",
-  "colors": [
-    "G"
-  ]
+  "type": "Creature"
 }

@@ -1,20 +1,18 @@
 {
-  "tplId": "vexingOgre",
-  "name": "Vexing Ogre",
-  "type": "Creature",
-  "sub": "Ogre",
+  "card_id": "vexingOgre",
+  "art": "👹",
   "cost": {
     "R": 1,
     "C": 2
   },
+  "name": "Vexing Ogre",
   "power": 4,
-  "toughness": 2,
-  "art": "👹",
+  "sub": "Ogre",
   "text": "When this enters, you lose 1 life.",
+  "toughness": 2,
   "triggers": [
     {
       "event": "cardEntersBattlefield",
-      "condId": "thisEnters",
       "text": "When ~ enters, you lose 1 life.",
       "effects": [
         {
@@ -22,11 +20,9 @@
           "target": "self",
           "amount": 1
         }
-      ]
+      ],
+      "cond_id": "thisEnters"
     }
   ],
-  "color": "R",
-  "colors": [
-    "R"
-  ]
+  "type": "Creature"
 }

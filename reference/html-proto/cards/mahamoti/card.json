@@ -1,21 +1,17 @@
 {
-  "tplId": "mahamoti",
-  "name": "Mahamoti Djinn",
-  "type": "Creature",
-  "sub": "Djinn",
+  "card_id": "mahamoti",
+  "art": "🌀",
   "cost": {
     "U": 2,
     "C": 4
   },
-  "power": 5,
-  "toughness": 6,
-  "art": "🌀",
-  "text": "Flying",
   "keywords": [
     "flying"
   ],
-  "color": "U",
-  "colors": [
-    "U"
-  ]
+  "name": "Mahamoti Djinn",
+  "power": 5,
+  "sub": "Djinn",
+  "text": "Flying",
+  "toughness": 6,
+  "type": "Creature"
 }

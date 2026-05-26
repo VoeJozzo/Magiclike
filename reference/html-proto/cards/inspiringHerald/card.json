@@ -1,20 +1,18 @@
 {
-  "tplId": "inspiringHerald",
-  "name": "Inspiring Herald",
-  "type": "Creature",
-  "sub": "Human Soldier",
+  "card_id": "inspiringHerald",
+  "art": "cards/inspiringHerald/art.png",
   "cost": {
     "W": 1,
     "C": 3
   },
+  "name": "Inspiring Herald",
   "power": 2,
-  "toughness": 3,
-  "art": "cards/inspiringHerald/art.png",
+  "sub": "Human Soldier",
   "text": "When this enters, creatures you control get +1/+1 EOT.",
+  "toughness": 3,
   "triggers": [
     {
       "event": "cardEntersBattlefield",
-      "condId": "thisEnters",
       "text": "When ~ enters, creatures you control get +1/+1 EOT.",
       "effects": [
         {
@@ -22,11 +20,9 @@
           "power": 1,
           "toughness": 1
         }
-      ]
+      ],
+      "cond_id": "thisEnters"
     }
   ],
-  "color": "W",
-  "colors": [
-    "W"
-  ]
+  "type": "Creature"
 }

@@ -1,13 +1,10 @@
 {
-  "tplId": "pacifism",
-  "name": "Pacifism",
-  "type": "Sorcery",
+  "card_id": "pacifism",
+  "art": "🕊",
   "cost": {
     "W": 1,
     "C": 1
   },
-  "art": "🕊",
-  "text": "Target creature can't attack or block.",
   "effects": [
     {
       "kind": "restrict",
@@ -16,8 +13,7 @@
       "cantBlock": true
     }
   ],
-  "color": "W",
-  "colors": [
-    "W"
-  ]
+  "name": "Pacifism",
+  "text": "Target creature can't attack or block.",
+  "type": "Sorcery"
 }

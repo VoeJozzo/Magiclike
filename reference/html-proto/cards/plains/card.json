@@ -1,10 +1,8 @@
 {
-  "tplId": "plains",
-  "name": "Plains",
-  "type": "Land",
-  "sub": "Basic Land",
+  "card_id": "plains",
   "art": "⛰",
   "mana": "W",
-  "color": null,
-  "colors": []
+  "name": "Plains",
+  "sub": "Basic Land",
+  "type": "Land"
 }

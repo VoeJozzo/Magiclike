@@ -1,20 +1,18 @@
 {
-  "tplId": "awakener",
-  "name": "Awakener",
-  "type": "Creature",
-  "sub": "Elf Druid",
+  "card_id": "awakener",
+  "art": "🌅",
   "cost": {
     "G": 1,
     "C": 2
   },
+  "name": "Awakener",
   "power": 2,
-  "toughness": 3,
-  "art": "🌅",
+  "sub": "Elf Druid",
   "text": "When this enters, put a +1/+1 counter on target creature you control.",
+  "toughness": 3,
   "triggers": [
     {
       "event": "cardEntersBattlefield",
-      "condId": "thisEnters",
       "text": "When ~ enters, put a +1/+1 counter on target friendly creature.",
       "effects": [
         {
@@ -26,11 +24,9 @@
             "controller": "self"
           }
         }
-      ]
+      ],
+      "cond_id": "thisEnters"
     }
   ],
-  "color": "G",
-  "colors": [
-    "G"
-  ]
+  "type": "Creature"
 }

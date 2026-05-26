@@ -1,12 +1,9 @@
 {
-  "tplId": "salve",
-  "name": "Healing Salve",
-  "type": "Instant",
+  "card_id": "salve",
+  "art": "cards/salve/art.png",
   "cost": {
     "W": 1
   },
-  "art": "cards/salve/art.png",
-  "text": "Target player gains 3 life.",
   "effects": [
     {
       "kind": "gainLife",
@@ -14,8 +11,7 @@
       "amount": 3
     }
   ],
-  "color": "W",
-  "colors": [
-    "W"
-  ]
+  "name": "Healing Salve",
+  "text": "Target player gains 3 life.",
+  "type": "Instant"
 }

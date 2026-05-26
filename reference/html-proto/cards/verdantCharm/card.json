@@ -1,13 +1,10 @@
 {
-  "tplId": "verdantCharm",
-  "name": "Verdant Charm",
-  "type": "Sorcery",
+  "card_id": "verdantCharm",
+  "art": "cards/verdantCharm/art.png",
   "cost": {
     "G": 1,
     "C": 2
   },
-  "art": "cards/verdantCharm/art.png",
-  "text": "Choose one — Target creature gets +3/+3 until end of turn; or put a +1/+1 counter on target creature you control; or search your library for a creature card.",
   "effects": {
     "modeNames": [
       "Wilds (+3/+3 EOT)",
@@ -41,8 +38,7 @@
       ]
     ]
   },
-  "color": "G",
-  "colors": [
-    "G"
-  ]
+  "name": "Verdant Charm",
+  "text": "Choose one — Target creature gets +3/+3 until end of turn; or put a +1/+1 counter on target creature you control; or search your library for a creature card.",
+  "type": "Sorcery"
 }

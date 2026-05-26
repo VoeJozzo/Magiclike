@@ -1,13 +1,10 @@
 {
-  "tplId": "raiseAlarm",
-  "name": "Raise the Alarm",
-  "type": "Instant",
+  "card_id": "raiseAlarm",
+  "art": "🚨",
   "cost": {
     "W": 1,
     "C": 1
   },
-  "art": "🚨",
-  "text": "Create two 1/1 white Soldier tokens.",
   "effects": [
     {
       "kind": "createTokens",
@@ -15,8 +12,7 @@
       "count": 2
     }
   ],
-  "color": "W",
-  "colors": [
-    "W"
-  ]
+  "name": "Raise the Alarm",
+  "text": "Create two 1/1 white Soldier tokens.",
+  "type": "Instant"
 }

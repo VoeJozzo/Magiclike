@@ -1,12 +1,9 @@
 {
-  "tplId": "bolt",
-  "name": "Lightning Bolt",
-  "type": "Instant",
+  "card_id": "bolt",
+  "art": "⚡",
   "cost": {
     "R": 1
   },
-  "art": "⚡",
-  "text": "Deal 3 damage to any target.",
   "effects": [
     {
       "kind": "damage",
@@ -14,8 +11,7 @@
       "amount": 3
     }
   ],
-  "color": "R",
-  "colors": [
-    "R"
-  ]
+  "name": "Lightning Bolt",
+  "text": "Deal 3 damage to any target.",
+  "type": "Instant"
 }

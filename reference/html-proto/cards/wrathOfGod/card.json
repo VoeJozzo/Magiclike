@@ -1,21 +1,17 @@
 {
-  "tplId": "wrathOfGod",
-  "name": "Day of Reckoning",
-  "type": "Sorcery",
+  "card_id": "wrathOfGod",
+  "art": "⛅",
   "cost": {
     "W": 2,
     "C": 3
   },
-  "art": "⛅",
-  "text": "Destroy all creatures.",
   "effects": [
     {
       "kind": "removeAll",
       "severity": 3
     }
   ],
-  "color": "W",
-  "colors": [
-    "W"
-  ]
+  "name": "Day of Reckoning",
+  "text": "Destroy all creatures.",
+  "type": "Sorcery"
 }

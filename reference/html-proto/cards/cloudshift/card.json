@@ -1,12 +1,9 @@
 {
-  "tplId": "cloudshift",
-  "name": "Cloudshift",
-  "type": "Instant",
+  "card_id": "cloudshift",
+  "art": "☁",
   "cost": {
     "W": 1
   },
-  "art": "☁",
-  "text": "Exile target creature you control, then return it to the battlefield.",
   "effects": [
     {
       "kind": "flicker",
@@ -16,8 +13,7 @@
       }
     }
   ],
-  "color": "W",
-  "colors": [
-    "W"
-  ]
+  "name": "Cloudshift",
+  "text": "Exile target creature you control, then return it to the battlefield.",
+  "type": "Instant"
 }

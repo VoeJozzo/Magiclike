@@ -1,20 +1,16 @@
 {
-  "tplId": "benalishHero",
-  "name": "Benalish Hero",
-  "type": "Creature",
-  "sub": "Human Soldier",
+  "card_id": "benalishHero",
+  "art": "cards/benalishHero/art.png",
   "cost": {
     "W": 1
   },
-  "power": 1,
-  "toughness": 1,
-  "art": "cards/benalishHero/art.png",
-  "text": "Vigilance",
   "keywords": [
     "vigilance"
   ],
-  "color": "W",
-  "colors": [
-    "W"
-  ]
+  "name": "Benalish Hero",
+  "power": 1,
+  "sub": "Human Soldier",
+  "text": "Vigilance",
+  "toughness": 1,
+  "type": "Creature"
 }

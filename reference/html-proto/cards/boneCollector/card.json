@@ -1,20 +1,18 @@
 {
-  "tplId": "boneCollector",
-  "name": "Bone Collector",
-  "type": "Creature",
-  "sub": "Zombie",
+  "card_id": "boneCollector",
+  "art": "💀",
   "cost": {
     "B": 2,
     "C": 2
   },
+  "name": "Bone Collector",
   "power": 2,
-  "toughness": 3,
-  "art": "💀",
+  "sub": "Zombie",
   "text": "Whenever another creature dies, put a +1/+1 counter on this.",
+  "toughness": 3,
   "triggers": [
     {
       "event": "cardDies",
-      "condId": "anotherCreatureDies",
       "text": "Another creature died — put a +1/+1 counter on ~.",
       "effects": [
         {
@@ -23,11 +21,9 @@
           "power": 1,
           "toughness": 1
         }
-      ]
+      ],
+      "cond_id": "anotherCreatureDies"
     }
   ],
-  "color": "B",
-  "colors": [
-    "B"
-  ]
+  "type": "Creature"
 }

@@ -1,21 +1,17 @@
 {
-  "tplId": "wurm",
-  "name": "Craw Wurm",
-  "type": "Creature",
-  "sub": "Wurm",
+  "card_id": "wurm",
+  "art": "🐍",
   "cost": {
     "G": 2,
     "C": 4
   },
-  "power": 6,
-  "toughness": 4,
-  "art": "🐍",
-  "text": "Trample",
   "keywords": [
     "trample"
   ],
-  "color": "G",
-  "colors": [
-    "G"
-  ]
+  "name": "Craw Wurm",
+  "power": 6,
+  "sub": "Wurm",
+  "text": "Trample",
+  "toughness": 4,
+  "type": "Creature"
 }

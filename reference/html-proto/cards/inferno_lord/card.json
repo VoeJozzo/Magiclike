@@ -1,20 +1,18 @@
 {
-  "tplId": "inferno_lord",
-  "name": "Inferno Lord",
-  "type": "Creature",
-  "sub": "Elemental",
+  "card_id": "inferno_lord",
+  "art": "🌋",
   "cost": {
     "R": 2,
     "C": 3
   },
+  "name": "Inferno Lord",
   "power": 3,
-  "toughness": 3,
-  "art": "🌋",
+  "sub": "Elemental",
   "text": "When this enters, deal 3 damage to any target.",
+  "toughness": 3,
   "triggers": [
     {
       "event": "cardEntersBattlefield",
-      "condId": "thisEnters",
       "text": "When ~ enters, deal 3 to any target.",
       "effects": [
         {
@@ -22,11 +20,9 @@
           "target": "any",
           "amount": 3
         }
-      ]
+      ],
+      "cond_id": "thisEnters"
     }
   ],
-  "color": "R",
-  "colors": [
-    "R"
-  ]
+  "type": "Creature"
 }

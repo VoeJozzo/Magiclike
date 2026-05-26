@@ -1,13 +1,10 @@
 {
-  "tplId": "mindrot",
-  "name": "Mind Rot",
-  "type": "Sorcery",
+  "card_id": "mindrot",
+  "art": "🧠",
   "cost": {
     "B": 1,
     "C": 1
   },
-  "art": "🧠",
-  "text": "Target player discards 2.",
   "effects": [
     {
       "kind": "discard",
@@ -15,8 +12,7 @@
       "amount": 2
     }
   ],
-  "color": "B",
-  "colors": [
-    "B"
-  ]
+  "name": "Mind Rot",
+  "text": "Target player discards 2.",
+  "type": "Sorcery"
 }

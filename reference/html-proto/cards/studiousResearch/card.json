@@ -1,13 +1,10 @@
 {
-  "tplId": "studiousResearch",
-  "name": "Studious Research",
-  "type": "Sorcery",
+  "card_id": "studiousResearch",
+  "art": "cards/studiousResearch/art.png",
   "cost": {
     "U": 1,
     "C": 2
   },
-  "art": "cards/studiousResearch/art.png",
-  "text": "Draw 3 cards, then discard 1 card.",
   "effects": [
     {
       "kind": "draw",
@@ -19,8 +16,7 @@
       "amount": 1
     }
   ],
-  "color": "U",
-  "colors": [
-    "U"
-  ]
+  "name": "Studious Research",
+  "text": "Draw 3 cards, then discard 1 card.",
+  "type": "Sorcery"
 }

@@ -1,16 +1,5 @@
 {
-  "tplId": "sageOfTheWilds",
-  "name": "Sage of the Wilds",
-  "type": "Creature",
-  "sub": "Elf Druid",
-  "cost": {
-    "G": 1,
-    "C": 2
-  },
-  "power": 2,
-  "toughness": 3,
-  "art": "🦌",
-  "text": "T: Untap target creature you control.",
+  "card_id": "sageOfTheWilds",
   "abilities": [
     {
       "cost": {
@@ -28,8 +17,15 @@
       ]
     }
   ],
-  "color": "G",
-  "colors": [
-    "G"
-  ]
+  "art": "🦌",
+  "cost": {
+    "G": 1,
+    "C": 2
+  },
+  "name": "Sage of the Wilds",
+  "power": 2,
+  "sub": "Elf Druid",
+  "text": "T: Untap target creature you control.",
+  "toughness": 3,
+  "type": "Creature"
 }

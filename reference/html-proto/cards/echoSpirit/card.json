@@ -1,23 +1,21 @@
 {
-  "tplId": "echoSpirit",
-  "name": "Echo Spirit",
-  "type": "Creature",
-  "sub": "Spirit",
+  "card_id": "echoSpirit",
+  "art": "💨",
   "cost": {
     "U": 1,
     "C": 1
   },
-  "power": 1,
-  "toughness": 2,
-  "art": "💨",
   "keywords": [
     "flying"
   ],
+  "name": "Echo Spirit",
+  "power": 1,
+  "sub": "Spirit",
   "text": "Flying. When this dies, return target creature to its owner's hand.",
+  "toughness": 2,
   "triggers": [
     {
       "event": "cardDies",
-      "condId": "thisDies",
       "text": "When ~ dies, bounce target creature.",
       "effects": [
         {
@@ -25,11 +23,9 @@
           "severity": 2,
           "target": "creature"
         }
-      ]
+      ],
+      "cond_id": "thisDies"
     }
   ],
-  "color": "U",
-  "colors": [
-    "U"
-  ]
+  "type": "Creature"
 }

@@ -1,20 +1,16 @@
 {
-  "tplId": "windDancer",
-  "name": "Wind Dancer",
-  "type": "Creature",
-  "sub": "Faerie",
+  "card_id": "windDancer",
+  "art": "🧚",
   "cost": {
     "U": 1
   },
-  "power": 1,
-  "toughness": 1,
-  "art": "🧚",
-  "text": "Flying",
   "keywords": [
     "flying"
   ],
-  "color": "U",
-  "colors": [
-    "U"
-  ]
+  "name": "Wind Dancer",
+  "power": 1,
+  "sub": "Faerie",
+  "text": "Flying",
+  "toughness": 1,
+  "type": "Creature"
 }

@@ -1,21 +1,17 @@
 {
-  "tplId": "venomViper",
-  "name": "Venom Viper",
-  "type": "Creature",
-  "sub": "Snake",
+  "card_id": "venomViper",
+  "art": "🐍",
   "cost": {
     "B": 1,
     "C": 1
   },
-  "power": 1,
-  "toughness": 2,
-  "art": "🐍",
-  "text": "Deathtouch",
   "keywords": [
     "deathtouch"
   ],
-  "color": "B",
-  "colors": [
-    "B"
-  ]
+  "name": "Venom Viper",
+  "power": 1,
+  "sub": "Snake",
+  "text": "Deathtouch",
+  "toughness": 2,
+  "type": "Creature"
 }

@@ -1,22 +1,18 @@
 {
-  "tplId": "warriorChamp",
-  "name": "Warrior Champion",
-  "type": "Creature",
-  "sub": "Human Warrior",
+  "card_id": "warriorChamp",
+  "art": "cards/warriorChamp/art.png",
   "cost": {
     "R": 1,
     "C": 2
   },
-  "power": 3,
-  "toughness": 2,
-  "art": "cards/warriorChamp/art.png",
-  "text": "First strike, Haste",
   "keywords": [
     "firstStrike",
     "haste"
   ],
-  "color": "R",
-  "colors": [
-    "R"
-  ]
+  "name": "Warrior Champion",
+  "power": 3,
+  "sub": "Human Warrior",
+  "text": "First strike, Haste",
+  "toughness": 2,
+  "type": "Creature"
 }

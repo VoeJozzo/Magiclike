@@ -1,20 +1,18 @@
 {
-  "tplId": "cloudCaller",
-  "name": "Cloud Caller",
-  "type": "Creature",
-  "sub": "Human Wizard",
+  "card_id": "cloudCaller",
+  "art": "☁",
   "cost": {
     "U": 1,
     "C": 2
   },
+  "name": "Cloud Caller",
   "power": 1,
-  "toughness": 3,
-  "art": "☁",
+  "sub": "Human Wizard",
   "text": "When this enters, return target creature to its owner's hand.",
+  "toughness": 3,
   "triggers": [
     {
       "event": "cardEntersBattlefield",
-      "condId": "thisEnters",
       "text": "When ~ enters, bounce target creature.",
       "effects": [
         {
@@ -22,11 +20,9 @@
           "severity": 2,
           "target": "creature"
         }
-      ]
+      ],
+      "cond_id": "thisEnters"
     }
   ],
-  "color": "U",
-  "colors": [
-    "U"
-  ]
+  "type": "Creature"
 }

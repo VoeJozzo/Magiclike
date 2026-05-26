@@ -17,7 +17,7 @@ extends Resource
 # Cost keys: W/U/B/R/G + C (generic). Empty for lands / free spells.
 @export var mana_cost: Dictionary = {}
 
-@export var oracle_text: String = ""
+@export var text: String = ""
 
 # Each: {"kind": "<effect_kind>", ...}. Resolved through engine/effects/effects.gd.
 @export var on_cast_effects: Array[Dictionary] = []
@@ -25,8 +25,8 @@ extends Resource
 # Each: {"cost": {"tap": true, "mana": {...}}, "effects": [...]}.
 @export var activated_abilities: Array[Dictionary] = []
 
-# Each: {"event": ..., "condition_predicate": "<name>", "effects": [...]}. See engine/predicates/.
-@export var triggered_abilities: Array[Dictionary] = []
+# Each: {"event": ..., "cond_id": "<name>", "effects": [...]}. See engine/predicates/.
+@export var triggers: Array[Dictionary] = []
 
 
 func has_type(type_name: String) -> bool:

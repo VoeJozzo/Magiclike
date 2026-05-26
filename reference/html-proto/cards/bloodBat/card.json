@@ -1,20 +1,16 @@
 {
-  "tplId": "bloodBat",
-  "name": "Vampire Bat",
-  "type": "Creature",
-  "sub": "Bat",
+  "card_id": "bloodBat",
+  "art": "🦇",
   "cost": {
     "B": 1
   },
-  "power": 1,
-  "toughness": 1,
-  "art": "🦇",
-  "text": "Flying",
   "keywords": [
     "flying"
   ],
-  "color": "B",
-  "colors": [
-    "B"
-  ]
+  "name": "Vampire Bat",
+  "power": 1,
+  "sub": "Bat",
+  "text": "Flying",
+  "toughness": 1,
+  "type": "Creature"
 }

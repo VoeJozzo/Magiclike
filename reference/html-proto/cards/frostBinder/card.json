@@ -1,20 +1,18 @@
 {
-  "tplId": "frostBinder",
-  "name": "Frost Binder",
-  "type": "Creature",
-  "sub": "Human Wizard",
+  "card_id": "frostBinder",
+  "art": "❄",
   "cost": {
     "U": 1,
     "C": 1
   },
+  "name": "Frost Binder",
   "power": 1,
-  "toughness": 2,
-  "art": "❄",
+  "sub": "Human Wizard",
   "text": "When this enters, tap target creature.",
+  "toughness": 2,
   "triggers": [
     {
       "event": "cardEntersBattlefield",
-      "condId": "thisEnters",
       "text": "When ~ enters, tap target creature.",
       "effects": [
         {
@@ -22,11 +20,9 @@
           "severity": 1,
           "target": "creature"
         }
-      ]
+      ],
+      "cond_id": "thisEnters"
     }
   ],
-  "color": "U",
-  "colors": [
-    "U"
-  ]
+  "type": "Creature"
 }

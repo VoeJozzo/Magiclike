@@ -1,20 +1,18 @@
 {
-  "tplId": "wildfireDevil",
-  "name": "Wildfire Devil",
-  "type": "Creature",
-  "sub": "Devil",
+  "card_id": "wildfireDevil",
+  "art": "😈",
   "cost": {
     "R": 2,
     "C": 3
   },
+  "name": "Wildfire Devil",
   "power": 3,
-  "toughness": 3,
-  "art": "😈",
+  "sub": "Devil",
   "text": "When this dies, deal 3 damage to any target.",
+  "toughness": 3,
   "triggers": [
     {
       "event": "cardDies",
-      "condId": "thisDies",
       "text": "When ~ dies, deal 3 to any target.",
       "effects": [
         {
@@ -22,11 +20,9 @@
           "target": "any",
           "amount": 3
         }
-      ]
+      ],
+      "cond_id": "thisDies"
     }
   ],
-  "color": "R",
-  "colors": [
-    "R"
-  ]
+  "type": "Creature"
 }

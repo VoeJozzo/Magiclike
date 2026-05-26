@@ -1,13 +1,10 @@
 {
-  "tplId": "rallyTroops",
-  "name": "Rally the Troops",
-  "type": "Sorcery",
+  "card_id": "rallyTroops",
+  "art": "cards/rallyTroops/art.png",
   "cost": {
     "W": 1,
     "C": 1
   },
-  "art": "cards/rallyTroops/art.png",
-  "text": "Creatures you control get +1/+1 EOT.",
   "effects": [
     {
       "kind": "pumpAllYours",
@@ -15,8 +12,7 @@
       "toughness": 1
     }
   ],
-  "color": "W",
-  "colors": [
-    "W"
-  ]
+  "name": "Rally the Troops",
+  "text": "Creatures you control get +1/+1 EOT.",
+  "type": "Sorcery"
 }

@@ -1,20 +1,18 @@
 {
-  "tplId": "flameWisp",
-  "name": "Flame Wisp",
-  "type": "Creature",
-  "sub": "Elemental",
+  "card_id": "flameWisp",
+  "art": "cards/flameWisp/art.png",
   "cost": {
     "R": 1,
     "C": 2
   },
+  "name": "Flame Wisp",
   "power": 2,
-  "toughness": 2,
-  "art": "cards/flameWisp/art.png",
+  "sub": "Elemental",
   "text": "When this enters, deal 2 damage to target creature.",
+  "toughness": 2,
   "triggers": [
     {
       "event": "cardEntersBattlefield",
-      "condId": "thisEnters",
       "text": "When ~ enters, deal 2 to target creature.",
       "effects": [
         {
@@ -22,11 +20,9 @@
           "target": "creature",
           "amount": 2
         }
-      ]
+      ],
+      "cond_id": "thisEnters"
     }
   ],
-  "color": "R",
-  "colors": [
-    "R"
-  ]
+  "type": "Creature"
 }

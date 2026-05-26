@@ -1,21 +1,17 @@
 {
-  "tplId": "veilSerpent",
-  "name": "Veiled Serpent",
-  "type": "Creature",
-  "sub": "Serpent",
+  "card_id": "veilSerpent",
+  "art": "🐍",
   "cost": {
     "U": 1,
     "C": 2
   },
-  "power": 2,
-  "toughness": 3,
-  "art": "🐍",
-  "text": "Hexproof",
   "keywords": [
     "hexproof"
   ],
-  "color": "U",
-  "colors": [
-    "U"
-  ]
+  "name": "Veiled Serpent",
+  "power": 2,
+  "sub": "Serpent",
+  "text": "Hexproof",
+  "toughness": 3,
+  "type": "Creature"
 }

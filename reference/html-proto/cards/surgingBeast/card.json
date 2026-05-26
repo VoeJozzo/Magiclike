@@ -1,23 +1,21 @@
 {
-  "tplId": "surgingBeast",
-  "name": "Surging Beast",
-  "type": "Creature",
-  "sub": "Beast",
+  "card_id": "surgingBeast",
+  "art": "🐗",
   "cost": {
     "G": 1,
     "C": 2
   },
-  "power": 3,
-  "toughness": 2,
-  "art": "🐗",
   "keywords": [
     "haste"
   ],
+  "name": "Surging Beast",
+  "power": 3,
+  "sub": "Beast",
   "text": "Haste. When this enters, it gets +1/+1 EOT.",
+  "toughness": 2,
   "triggers": [
     {
       "event": "cardEntersBattlefield",
-      "condId": "thisEnters",
       "text": "When ~ enters, it gets +1/+1 EOT.",
       "effects": [
         {
@@ -26,11 +24,9 @@
           "power": 1,
           "toughness": 1
         }
-      ]
+      ],
+      "cond_id": "thisEnters"
     }
   ],
-  "color": "G",
-  "colors": [
-    "G"
-  ]
+  "type": "Creature"
 }

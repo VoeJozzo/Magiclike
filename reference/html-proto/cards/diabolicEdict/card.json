@@ -1,20 +1,16 @@
 {
-  "tplId": "diabolicEdict",
-  "name": "Diabolic Edict",
-  "type": "Instant",
+  "card_id": "diabolicEdict",
+  "art": "😈",
   "cost": {
     "B": 1,
     "C": 1
   },
-  "art": "😈",
-  "text": "Target opponent sacrifices a creature.",
   "effects": [
     {
       "kind": "edict"
     }
   ],
-  "color": "B",
-  "colors": [
-    "B"
-  ]
+  "name": "Diabolic Edict",
+  "text": "Target opponent sacrifices a creature.",
+  "type": "Instant"
 }

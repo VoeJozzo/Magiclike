@@ -1,13 +1,10 @@
 {
-  "tplId": "ravenousPlague",
-  "name": "Ravenous Plague",
-  "type": "Sorcery",
+  "card_id": "ravenousPlague",
+  "art": "☠",
   "cost": {
     "B": 1,
     "C": 2
   },
-  "art": "☠",
-  "text": "Destroy target creature with toughness 3 or less.",
   "effects": [
     {
       "kind": "removeCreature",
@@ -18,8 +15,7 @@
       }
     }
   ],
-  "color": "B",
-  "colors": [
-    "B"
-  ]
+  "name": "Ravenous Plague",
+  "text": "Destroy target creature with toughness 3 or less.",
+  "type": "Sorcery"
 }

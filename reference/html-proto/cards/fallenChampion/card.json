@@ -1,20 +1,18 @@
 {
-  "tplId": "fallenChampion",
-  "name": "Fallen Champion",
-  "type": "Creature",
-  "sub": "Human Warrior",
+  "card_id": "fallenChampion",
+  "art": "cards/fallenChampion/art.png",
   "cost": {
     "B": 1,
     "C": 2
   },
+  "name": "Fallen Champion",
   "power": 3,
-  "toughness": 2,
-  "art": "cards/fallenChampion/art.png",
+  "sub": "Human Warrior",
   "text": "When this dies, target opponent loses 2 life.",
+  "toughness": 2,
   "triggers": [
     {
       "event": "cardDies",
-      "condId": "thisDies",
       "text": "When ~ dies, opp loses 2 life.",
       "effects": [
         {
@@ -22,11 +20,9 @@
           "target": "player",
           "amount": 2
         }
-      ]
+      ],
+      "cond_id": "thisDies"
     }
   ],
-  "color": "B",
-  "colors": [
-    "B"
-  ]
+  "type": "Creature"
 }

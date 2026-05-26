@@ -1,21 +1,17 @@
 {
-  "tplId": "duelist",
-  "name": "Goblin Duelist",
-  "type": "Creature",
-  "sub": "Goblin Warrior",
+  "card_id": "duelist",
+  "art": "cards/duelist/art.png",
   "cost": {
     "R": 1,
     "C": 1
   },
-  "power": 2,
-  "toughness": 1,
-  "art": "cards/duelist/art.png",
-  "text": "First strike",
   "keywords": [
     "firstStrike"
   ],
-  "color": "R",
-  "colors": [
-    "R"
-  ]
+  "name": "Goblin Duelist",
+  "power": 2,
+  "sub": "Goblin Warrior",
+  "text": "First strike",
+  "toughness": 1,
+  "type": "Creature"
 }

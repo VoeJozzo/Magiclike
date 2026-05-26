@@ -1,13 +1,10 @@
 {
-  "tplId": "graveCharm",
-  "name": "Grave Charm",
-  "type": "Instant",
+  "card_id": "graveCharm",
+  "art": "💀",
   "cost": {
     "B": 1,
     "C": 2
   },
-  "art": "💀",
-  "text": "Choose one — Destroy target creature; or target opponent discards 2 cards; or you gain 4 life and that opponent loses 2 life.",
   "effects": {
     "modeNames": [
       "Slay (destroy)",
@@ -43,8 +40,7 @@
       ]
     ]
   },
-  "color": "B",
-  "colors": [
-    "B"
-  ]
+  "name": "Grave Charm",
+  "text": "Choose one — Destroy target creature; or target opponent discards 2 cards; or you gain 4 life and that opponent loses 2 life.",
+  "type": "Instant"
 }

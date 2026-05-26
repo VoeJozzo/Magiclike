@@ -1,20 +1,18 @@
 {
-  "tplId": "reaperShade",
-  "name": "Reaper Shade",
-  "type": "Creature",
-  "sub": "Shade",
+  "card_id": "reaperShade",
+  "art": "🌑",
   "cost": {
     "B": 1,
     "C": 3
   },
+  "name": "Reaper Shade",
   "power": 2,
-  "toughness": 3,
-  "art": "🌑",
+  "sub": "Shade",
   "text": "When this enters, destroy target creature with toughness 2 or less.",
+  "toughness": 3,
   "triggers": [
     {
       "event": "cardEntersBattlefield",
-      "condId": "thisEnters",
       "text": "When ~ enters, destroy weak creature.",
       "effects": [
         {
@@ -25,11 +23,9 @@
             "maxTough": 2
           }
         }
-      ]
+      ],
+      "cond_id": "thisEnters"
     }
   ],
-  "color": "B",
-  "colors": [
-    "B"
-  ]
+  "type": "Creature"
 }

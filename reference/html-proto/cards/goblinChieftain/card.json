@@ -1,19 +1,15 @@
 {
-  "tplId": "goblinChieftain",
-  "name": "Goblin Chieftain",
-  "type": "Creature",
-  "sub": "Goblin",
+  "card_id": "goblinChieftain",
+  "art": "cards/goblinChieftain/art.png",
   "cost": {
     "R": 1,
     "C": 1
   },
-  "power": 2,
-  "toughness": 2,
-  "art": "cards/goblinChieftain/art.png",
   "keywords": [
     "haste"
   ],
-  "text": "Haste. Other Goblins you control get +1/+1 and have haste. Whenever a Goblin you control attacks, target opponent loses 1 life.",
+  "name": "Goblin Chieftain",
+  "power": 2,
   "staticBuffs": [
     {
       "filter": {
@@ -27,10 +23,12 @@
       ]
     }
   ],
+  "sub": "Goblin",
+  "text": "Haste. Other Goblins you control get +1/+1 and have haste. Whenever a Goblin you control attacks, target opponent loses 1 life.",
+  "toughness": 2,
   "triggers": [
     {
       "event": "attacks",
-      "condId": "creatureYouAttacksOfSubtype",
       "params": {
         "sub": "Goblin"
       },
@@ -41,11 +39,9 @@
           "target": "player",
           "amount": 1
         }
-      ]
+      ],
+      "cond_id": "creatureYouAttacksOfSubtype"
     }
   ],
-  "color": "R",
-  "colors": [
-    "R"
-  ]
+  "type": "Creature"
 }

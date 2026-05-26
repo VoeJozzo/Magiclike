@@ -1,20 +1,18 @@
 {
-  "tplId": "soulbladeCaptain",
-  "name": "Soulblade Captain",
-  "type": "Creature",
-  "sub": "Human Knight",
+  "card_id": "soulbladeCaptain",
+  "art": "🏇",
   "cost": {
     "W": 1,
     "C": 2
   },
+  "name": "Soulblade Captain",
   "power": 2,
-  "toughness": 2,
-  "art": "🏇",
+  "sub": "Human Knight",
   "text": "Whenever you cast a spell, creatures you control get +1/+0 EOT.",
+  "toughness": 2,
   "triggers": [
     {
       "event": "spellCast",
-      "condId": "youCastSpell",
       "text": "Spell cast — your creatures get +1/+0 EOT.",
       "effects": [
         {
@@ -22,11 +20,9 @@
           "power": 1,
           "toughness": 0
         }
-      ]
+      ],
+      "cond_id": "youCastSpell"
     }
   ],
-  "color": "W",
-  "colors": [
-    "W"
-  ]
+  "type": "Creature"
 }

@@ -1,21 +1,17 @@
 {
-  "tplId": "fireBrute",
-  "name": "Fire Brute",
-  "type": "Creature",
-  "sub": "Goblin Berserker",
+  "card_id": "fireBrute",
+  "art": "cards/fireBrute/art.png",
   "cost": {
     "R": 1,
     "C": 1
   },
-  "power": 3,
-  "toughness": 1,
-  "art": "cards/fireBrute/art.png",
-  "text": "Haste",
   "keywords": [
     "haste"
   ],
-  "color": "R",
-  "colors": [
-    "R"
-  ]
+  "name": "Fire Brute",
+  "power": 3,
+  "sub": "Goblin Berserker",
+  "text": "Haste",
+  "toughness": 1,
+  "type": "Creature"
 }

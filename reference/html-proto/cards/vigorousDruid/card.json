@@ -1,16 +1,5 @@
 {
-  "tplId": "vigorousDruid",
-  "name": "Vigorous Druid",
-  "type": "Creature",
-  "sub": "Elf Druid",
-  "cost": {
-    "G": 1,
-    "C": 2
-  },
-  "power": 2,
-  "toughness": 3,
-  "art": "🌱",
-  "text": "T: Add {G}{G}.",
+  "card_id": "vigorousDruid",
   "abilities": [
     {
       "cost": {
@@ -26,8 +15,15 @@
       ]
     }
   ],
-  "color": "G",
-  "colors": [
-    "G"
-  ]
+  "art": "🌱",
+  "cost": {
+    "G": 1,
+    "C": 2
+  },
+  "name": "Vigorous Druid",
+  "power": 2,
+  "sub": "Elf Druid",
+  "text": "T: Add {G}{G}.",
+  "toughness": 3,
+  "type": "Creature"
 }

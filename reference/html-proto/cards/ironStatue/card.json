@@ -1,22 +1,18 @@
 {
-  "tplId": "ironStatue",
-  "name": "Iron Statue",
-  "type": "Creature",
-  "sub": "Construct Wall",
+  "card_id": "ironStatue",
+  "art": "🗿",
   "cost": {
     "W": 1,
     "C": 2
   },
-  "power": 0,
-  "toughness": 5,
-  "art": "🗿",
-  "text": "Defender, Indestructible",
   "keywords": [
     "defender",
     "indestructible"
   ],
-  "color": "W",
-  "colors": [
-    "W"
-  ]
+  "name": "Iron Statue",
+  "power": 0,
+  "sub": "Construct Wall",
+  "text": "Defender, Indestructible",
+  "toughness": 5,
+  "type": "Creature"
 }

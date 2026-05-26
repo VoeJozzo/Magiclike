@@ -16,6 +16,15 @@ var _state: EngineState = null
 func _ready() -> void:
 	# Predicate validation at boot — catches typos in card resources.
 	Predicates.validate_all_card_predicates(CardDatabase.all_resources())
+	# Cross-engine supportability scan over the full html-proto card pool.
+	# Loads 258 JSONs and prints one line summarizing how many are fully
+	# playable today vs awaiting effect/event/predicate handlers. Skip in
+	# CI / headless tests that don't want the disk hit by setting the env
+	# var MAGICLIKE_SKIP_SUPPORTABILITY_SCAN=1.
+	if not OS.has_environment("MAGICLIKE_SKIP_SUPPORTABILITY_SCAN"):
+		var json_cards: Dictionary = JsonCardLoader.load_all()
+		if not json_cards.is_empty():
+			JsonCardLoader.supportability_report(json_cards, true)
 
 
 # Reentrancy guard for opp-turn auto-cycle (Phase 2 has no AI).
@@ -570,7 +579,7 @@ func _do_play_land(action: Dictionary) -> bool:
 	# Lands ETB fires triggers in Phase 4+. Lands themselves don't have
 	# triggered abilities yet, but a landfall card on the battlefield could
 	# react. Fire the event and drain in case anything matches.
-	_fire_event({"kind": "card_etb", "subject_iid": card.instance_id, "subject_card": card})
+	_fire_event({"kind": "card_enters_battlefield", "subject_iid": card.instance_id, "subject_card": card})
 	_drain_pending_triggers()
 	return true
 
@@ -698,7 +707,7 @@ func _resolve_spell_entry(entry: Dictionary) -> void:
 			card.summoning_sick = false
 		_state.append_log("%s enters the battlefield under %s" % [card.name(), controller.name])
 		# Fire ETB event so triggered abilities can react.
-		_fire_event({"kind": "card_etb", "subject_iid": card.instance_id, "subject_card": card})
+		_fire_event({"kind": "card_enters_battlefield", "subject_iid": card.instance_id, "subject_card": card})
 	else:
 		var owner: Player = _state.player_by_key(card.owner_key)
 		owner.graveyard.append(card)
@@ -719,7 +728,7 @@ func _resolve_trigger_entry(entry: Dictionary) -> void:
 	if source == null or source.template == null:
 		_state.append_log("Trigger fizzles: source card missing")
 		return
-	var abilities: Array = source.template.triggered_abilities
+	var abilities: Array = source.template.triggers
 	if ability_index < 0 or ability_index >= abilities.size():
 		_state.append_log("Trigger fizzles: ability_index out of range")
 		return
@@ -1258,7 +1267,7 @@ func _check_win_conditions() -> void:
 
 
 # Counter a stack spell → owner's graveyard. False if iid not on stack (target gone).
-# Public so counter_spell.gd can call; autoload owns _stack_held_cards.
+# Public so counter.gd can call; autoload owns _stack_held_cards.
 func counter_stack_entry(iid: int) -> bool:
 	var idx: int = -1
 	for i in range(_state.stack.entries.size()):
@@ -1323,7 +1332,7 @@ func _fire_event(event: Dictionary) -> void:
 	for source in listeners:
 		if source == null or source.template == null:
 			continue
-		var abilities: Array = source.template.triggered_abilities
+		var abilities: Array = source.template.triggers
 		for i in range(abilities.size()):
 			var trig: Dictionary = abilities[i]
 			if trig.get("event", "") != event_kind:
@@ -1331,7 +1340,7 @@ func _fire_event(event: Dictionary) -> void:
 			# self_only: source IS event subject ("When ~ enters/dies").
 			if trig.get("self_only", false) and source.instance_id != subject_iid:
 				continue
-			var pred: String = trig.get("condition_predicate", "")
+			var pred: String = trig.get("cond_id", "")
 			if not Predicates.evaluate(pred, _state, source, event):
 				_state.append_log("Trigger condition false for %s — skipping" % source.name())
 				continue
@@ -1432,7 +1441,7 @@ func _do_discard_card(action: Dictionary) -> bool:
 	player.move_card(card, player.hand, player.graveyard)
 	_state.append_log("%s discards %s." % [player.name, card.name()])
 	# Phase 4-style event hook for future "when X is discarded" triggers.
-	_fire_event({"name": "card_discarded", "card": card, "controller_key": player_key})
+	_fire_event({"kind": "card_discarded", "subject_card": card, "controller_key": player_key})
 	# Decrement count; clear awaiting state when satisfied.
 	var remaining: int = _state.awaiting_discard.get("count_remaining", 0) - 1
 	if remaining <= 0:
@@ -1504,12 +1513,12 @@ func _drain_continue() -> void:
 	_reset_priority_passes()
 
 
-# triggered_abilities[i].target_filter; "" if no target needed.
+# triggers[i].target_filter; "" if no target needed.
 func _trigger_target_filter(trig: Dictionary) -> String:
 	var source: CardInstance = _find_card_anywhere(trig.source_iid)
 	if source == null or source.template == null:
 		return ""
-	var abilities: Array = source.template.triggered_abilities
+	var abilities: Array = source.template.triggers
 	var idx: int = trig.ability_index
 	if idx < 0 or idx >= abilities.size():
 		return ""

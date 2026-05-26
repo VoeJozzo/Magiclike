@@ -1,20 +1,18 @@
 {
-  "tplId": "wizardAdept",
-  "name": "Wizard Adept",
-  "type": "Creature",
-  "sub": "Human Wizard",
+  "card_id": "wizardAdept",
+  "art": "🧠",
   "cost": {
     "U": 1,
     "C": 2
   },
+  "name": "Wizard Adept",
   "power": 1,
-  "toughness": 3,
-  "art": "🧠",
+  "sub": "Human Wizard",
   "text": "Whenever you cast a spell, draw a card, then discard a card.",
+  "toughness": 3,
   "triggers": [
     {
       "event": "spellCast",
-      "condId": "youCastSpell",
       "text": "Spell cast — loot 1.",
       "effects": [
         {
@@ -26,11 +24,9 @@
           "target": "self",
           "amount": 1
         }
-      ]
+      ],
+      "cond_id": "youCastSpell"
     }
   ],
-  "color": "U",
-  "colors": [
-    "U"
-  ]
+  "type": "Creature"
 }

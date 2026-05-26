@@ -1,20 +1,18 @@
 {
-  "tplId": "frostbiteMage",
-  "name": "Frostbite Mage",
-  "type": "Creature",
-  "sub": "Human Wizard",
+  "card_id": "frostbiteMage",
+  "art": "❄",
   "cost": {
     "U": 1,
     "C": 1
   },
+  "name": "Frostbite Mage",
   "power": 1,
-  "toughness": 2,
-  "art": "❄",
+  "sub": "Human Wizard",
   "text": "When this enters, target creature gets -2/-0 EOT.",
+  "toughness": 2,
   "triggers": [
     {
       "event": "cardEntersBattlefield",
-      "condId": "thisEnters",
       "text": "When ~ enters, target creature gets -2/-0 EOT.",
       "effects": [
         {
@@ -23,11 +21,9 @@
           "power": 2,
           "toughness": 0
         }
-      ]
+      ],
+      "cond_id": "thisEnters"
     }
   ],
-  "color": "U",
-  "colors": [
-    "U"
-  ]
+  "type": "Creature"
 }

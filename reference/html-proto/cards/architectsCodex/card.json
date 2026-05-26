@@ -1,17 +1,15 @@
 {
-  "tplId": "architectsCodex",
-  "name": "The Architect's Codex",
-  "type": "Creature",
-  "sub": "Wizard Artificer",
+  "card_id": "architectsCodex",
+  "art": "cards/architectsCodex/art.png",
+  "buildOnDraw": true,
   "cost": {
     "C": 4
   },
+  "name": "The Architect's Codex",
   "power": 2,
-  "toughness": 3,
-  "art": "cards/architectsCodex/art.png",
   "special": true,
-  "buildOnDraw": true,
+  "sub": "Wizard Artificer",
   "text": "When you draw ~, build an ability: pick one of three randomly-generated triggers (or keep the current one). The chosen ability persists for the rest of the run. Built abilities don't trigger from ~'s own effects.",
-  "color": null,
-  "colors": []
+  "toughness": 3,
+  "type": "Creature"
 }

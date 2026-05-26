@@ -1,20 +1,18 @@
 {
-  "tplId": "raidLeader",
-  "name": "Goblin Slinger",
-  "type": "Creature",
-  "sub": "Goblin Warrior",
+  "card_id": "raidLeader",
+  "art": "cards/raidLeader/art.png",
   "cost": {
     "R": 1,
     "C": 2
   },
+  "name": "Goblin Slinger",
   "power": 2,
-  "toughness": 2,
-  "art": "cards/raidLeader/art.png",
+  "sub": "Goblin Warrior",
   "text": "When this attacks, deal 1 damage to any target.",
+  "toughness": 2,
   "triggers": [
     {
       "event": "attacks",
-      "condId": "thisAttacks",
       "text": "When ~ attacks, deal 1 to any target.",
       "effects": [
         {
@@ -22,11 +20,9 @@
           "target": "any",
           "amount": 1
         }
-      ]
+      ],
+      "cond_id": "thisAttacks"
     }
   ],
-  "color": "R",
-  "colors": [
-    "R"
-  ]
+  "type": "Creature"
 }

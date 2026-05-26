@@ -1,20 +1,18 @@
 {
-  "tplId": "counterSpecialist",
-  "name": "Counter Specialist",
-  "type": "Creature",
-  "sub": "Human Wizard",
+  "card_id": "counterSpecialist",
+  "art": "🚫",
   "cost": {
     "U": 1,
     "C": 2
   },
+  "name": "Counter Specialist",
   "power": 1,
-  "toughness": 4,
-  "art": "🚫",
+  "sub": "Human Wizard",
   "text": "Whenever you cast a counterspell, put a +1/+1 counter on this.",
+  "toughness": 4,
   "triggers": [
     {
       "event": "spellCast",
-      "condId": "youCastCounterspell",
       "text": "Counter cast — put a +1/+1 counter on ~.",
       "effects": [
         {
@@ -23,11 +21,9 @@
           "power": 1,
           "toughness": 1
         }
-      ]
+      ],
+      "cond_id": "youCastCounterspell"
     }
   ],
-  "color": "U",
-  "colors": [
-    "U"
-  ]
+  "type": "Creature"
 }

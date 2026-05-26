@@ -1,13 +1,10 @@
 {
-  "tplId": "aerialManeuver",
-  "name": "Aerial Maneuver",
-  "type": "Instant",
+  "card_id": "aerialManeuver",
+  "art": "🕊",
   "cost": {
     "W": 2,
     "C": 1
   },
-  "art": "🕊",
-  "text": "Creatures you control gain flying until end of turn.",
   "effects": [
     {
       "kind": "grantKeyword",
@@ -16,8 +13,7 @@
       "duration": "eot"
     }
   ],
-  "color": "W",
-  "colors": [
-    "W"
-  ]
+  "name": "Aerial Maneuver",
+  "text": "Creatures you control gain flying until end of turn.",
+  "type": "Instant"
 }

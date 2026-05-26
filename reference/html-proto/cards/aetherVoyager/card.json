@@ -1,34 +1,30 @@
 {
-  "tplId": "aetherVoyager",
-  "name": "Aether Voyager",
-  "type": "Creature",
-  "sub": "Spirit",
+  "card_id": "aetherVoyager",
+  "art": "🌬",
   "cost": {
     "U": 1,
     "C": 3
   },
-  "power": 2,
-  "toughness": 3,
-  "art": "🌬",
   "keywords": [
     "flying"
   ],
+  "name": "Aether Voyager",
+  "power": 2,
+  "sub": "Spirit",
   "text": "Flying. When this attacks, draw a card.",
+  "toughness": 3,
   "triggers": [
     {
       "event": "attacks",
-      "condId": "thisAttacks",
       "text": "When ~ attacks, draw a card.",
       "effects": [
         {
           "kind": "draw",
           "amount": 1
         }
-      ]
+      ],
+      "cond_id": "thisAttacks"
     }
   ],
-  "color": "U",
-  "colors": [
-    "U"
-  ]
+  "type": "Creature"
 }

@@ -1,13 +1,10 @@
 {
-  "tplId": "threaten",
-  "name": "Threaten",
-  "type": "Sorcery",
+  "card_id": "threaten",
+  "art": "😈",
   "cost": {
     "R": 1,
     "C": 2
   },
-  "art": "😈",
-  "text": "Gain control of target creature until end of turn. Untap it. It gains haste until end of turn.",
   "effects": [
     {
       "kind": "gainControl",
@@ -20,8 +17,7 @@
       "untap": true
     }
   ],
-  "color": "R",
-  "colors": [
-    "R"
-  ]
+  "name": "Threaten",
+  "text": "Gain control of target creature until end of turn. Untap it. It gains haste until end of turn.",
+  "type": "Sorcery"
 }

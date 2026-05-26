@@ -1,21 +1,17 @@
 {
-  "tplId": "bleach",
-  "name": "Bleach",
-  "type": "Instant",
+  "card_id": "bleach",
+  "art": "🧴",
   "cost": {
     "W": 1
   },
-  "art": "🧴",
-  "special": true,
-  "text": "Exile target creature. It is colorless. Forever.",
   "effects": [
     {
       "kind": "bleach",
       "target": "creature"
     }
   ],
-  "color": "W",
-  "colors": [
-    "W"
-  ]
+  "name": "Bleach",
+  "special": true,
+  "text": "Exile target creature. It is colorless. Forever.",
+  "type": "Instant"
 }

@@ -1,22 +1,18 @@
 {
-  "tplId": "bloodKnight",
-  "name": "Blood Knight",
-  "type": "Creature",
-  "sub": "Human Knight",
+  "card_id": "bloodKnight",
+  "art": "cards/bloodKnight/art.png",
   "cost": {
     "R": 1,
     "C": 3
   },
-  "power": 4,
-  "toughness": 3,
-  "art": "cards/bloodKnight/art.png",
-  "text": "First strike, Trample",
   "keywords": [
     "firstStrike",
     "trample"
   ],
-  "color": "R",
-  "colors": [
-    "R"
-  ]
+  "name": "Blood Knight",
+  "power": 4,
+  "sub": "Human Knight",
+  "text": "First strike, Trample",
+  "toughness": 3,
+  "type": "Creature"
 }

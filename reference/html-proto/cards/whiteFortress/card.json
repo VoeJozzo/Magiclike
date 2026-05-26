@@ -1,22 +1,18 @@
 {
-  "tplId": "whiteFortress",
-  "name": "Steadfast Wall",
-  "type": "Creature",
-  "sub": "Wall",
+  "card_id": "whiteFortress",
+  "art": "🧱",
   "cost": {
     "W": 1,
     "C": 1
   },
-  "power": 0,
-  "toughness": 5,
-  "art": "🧱",
-  "text": "Defender, Flying",
   "keywords": [
     "defender",
     "flying"
   ],
-  "color": "W",
-  "colors": [
-    "W"
-  ]
+  "name": "Steadfast Wall",
+  "power": 0,
+  "sub": "Wall",
+  "text": "Defender, Flying",
+  "toughness": 5,
+  "type": "Creature"
 }

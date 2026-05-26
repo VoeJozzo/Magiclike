@@ -1,13 +1,10 @@
 {
-  "tplId": "lifeForLife",
-  "name": "Final Strike",
-  "type": "Sorcery",
+  "card_id": "lifeForLife",
+  "art": "⚱",
   "cost": {
     "B": 1,
     "C": 2
   },
-  "art": "⚱",
-  "text": "Destroy target creature. You lose 2 life.",
   "effects": [
     {
       "kind": "removeCreature",
@@ -20,8 +17,7 @@
       "amount": 2
     }
   ],
-  "color": "B",
-  "colors": [
-    "B"
-  ]
+  "name": "Final Strike",
+  "text": "Destroy target creature. You lose 2 life.",
+  "type": "Sorcery"
 }

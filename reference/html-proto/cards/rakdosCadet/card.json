@@ -1,17 +1,13 @@
 {
-  "tplId": "rakdosCadet",
-  "name": "Rakdos Cadet",
-  "type": "Creature",
-  "sub": "Imp",
+  "card_id": "rakdosCadet",
+  "art": "👹",
   "cost": {
     "B": 1,
     "C": 1
   },
+  "name": "Rakdos Cadet",
   "power": 2,
+  "sub": "Imp",
   "toughness": 2,
-  "art": "👹",
-  "color": "B",
-  "colors": [
-    "B"
-  ]
+  "type": "Creature"
 }

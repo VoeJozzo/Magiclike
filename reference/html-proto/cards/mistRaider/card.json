@@ -1,23 +1,21 @@
 {
-  "tplId": "mistRaider",
-  "name": "Mist Raider",
-  "type": "Creature",
-  "sub": "Human Pirate",
+  "card_id": "mistRaider",
+  "art": "⚓",
   "cost": {
     "U": 1,
     "C": 3
   },
-  "power": 2,
-  "toughness": 3,
-  "art": "⚓",
   "keywords": [
     "flying"
   ],
+  "name": "Mist Raider",
+  "power": 2,
+  "sub": "Human Pirate",
   "text": "Flying. When this attacks, return target creature to its owner's hand.",
+  "toughness": 3,
   "triggers": [
     {
       "event": "attacks",
-      "condId": "thisAttacks",
       "text": "When ~ attacks, bounce target creature.",
       "effects": [
         {
@@ -25,11 +23,9 @@
           "severity": 2,
           "target": "creature"
         }
-      ]
+      ],
+      "cond_id": "thisAttacks"
     }
   ],
-  "color": "U",
-  "colors": [
-    "U"
-  ]
+  "type": "Creature"
 }

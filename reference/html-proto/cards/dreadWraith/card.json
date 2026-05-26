@@ -1,23 +1,21 @@
 {
-  "tplId": "dreadWraith",
-  "name": "Dread Wraith",
-  "type": "Creature",
-  "sub": "Spirit",
+  "card_id": "dreadWraith",
+  "art": "cards/dreadWraith/art.png",
   "cost": {
     "B": 1,
     "C": 2
   },
-  "power": 3,
-  "toughness": 2,
-  "art": "cards/dreadWraith/art.png",
   "keywords": [
     "flying"
   ],
+  "name": "Dread Wraith",
+  "power": 3,
+  "sub": "Spirit",
   "text": "Flying. When this enters, target opponent loses 2 life.",
+  "toughness": 2,
   "triggers": [
     {
       "event": "cardEntersBattlefield",
-      "condId": "thisEnters",
       "text": "When ~ enters, opp loses 2 life.",
       "effects": [
         {
@@ -25,11 +23,9 @@
           "target": "player",
           "amount": 2
         }
-      ]
+      ],
+      "cond_id": "thisEnters"
     }
   ],
-  "color": "B",
-  "colors": [
-    "B"
-  ]
+  "type": "Creature"
 }

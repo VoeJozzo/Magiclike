@@ -1,23 +1,21 @@
 {
-  "tplId": "hypnotic",
-  "name": "Hypnotic Specter",
-  "type": "Creature",
-  "sub": "Specter",
+  "card_id": "hypnotic",
+  "art": "😱",
   "cost": {
     "B": 2,
     "C": 1
   },
-  "power": 2,
-  "toughness": 2,
-  "art": "😱",
-  "text": "Flying. When this attacks, target opponent discards a card.",
   "keywords": [
     "flying"
   ],
+  "name": "Hypnotic Specter",
+  "power": 2,
+  "sub": "Specter",
+  "text": "Flying. When this attacks, target opponent discards a card.",
+  "toughness": 2,
   "triggers": [
     {
       "event": "attacks",
-      "condId": "thisAttacks",
       "text": "When ~ attacks, target opponent discards a card.",
       "effects": [
         {
@@ -25,11 +23,9 @@
           "target": "player",
           "amount": 1
         }
-      ]
+      ],
+      "cond_id": "thisAttacks"
     }
   ],
-  "color": "B",
-  "colors": [
-    "B"
-  ]
+  "type": "Creature"
 }

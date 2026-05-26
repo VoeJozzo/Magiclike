@@ -1,16 +1,12 @@
 {
-  "tplId": "bears",
-  "name": "Grizzly Bears",
-  "type": "Creature",
-  "sub": "Bear",
+  "card_id": "bears",
+  "art": "🐻",
   "cost": {
     "G": 1
   },
+  "name": "Grizzly Bears",
   "power": 2,
+  "sub": "Bear",
   "toughness": 2,
-  "art": "🐻",
-  "color": "G",
-  "colors": [
-    "G"
-  ]
+  "type": "Creature"
 }

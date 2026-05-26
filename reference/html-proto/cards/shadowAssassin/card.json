@@ -1,22 +1,18 @@
 {
-  "tplId": "shadowAssassin",
-  "name": "Shadow Assassin",
-  "type": "Creature",
-  "sub": "Human Assassin",
+  "card_id": "shadowAssassin",
+  "art": "🗡",
   "cost": {
     "B": 1,
     "C": 2
   },
-  "power": 2,
-  "toughness": 2,
-  "art": "🗡",
-  "text": "Deathtouch, Menace",
   "keywords": [
     "deathtouch",
     "menace"
   ],
-  "color": "B",
-  "colors": [
-    "B"
-  ]
+  "name": "Shadow Assassin",
+  "power": 2,
+  "sub": "Human Assassin",
+  "text": "Deathtouch, Menace",
+  "toughness": 2,
+  "type": "Creature"
 }

@@ -1,24 +1,22 @@
 {
-  "tplId": "nightmare",
-  "name": "Sengir Vampire",
-  "type": "Creature",
-  "sub": "Vampire",
+  "card_id": "nightmare",
+  "art": "🧛",
   "cost": {
     "B": 2,
     "C": 3
   },
-  "power": 4,
-  "toughness": 4,
-  "art": "🧛",
-  "text": "Whenever a creature dealt damage by this dies, put a +1/+1 counter on this.",
   "keywords": [
     "flying",
     "lifelink"
   ],
+  "name": "Sengir Vampire",
+  "power": 4,
+  "sub": "Vampire",
+  "text": "Whenever a creature dealt damage by this dies, put a +1/+1 counter on this.",
+  "toughness": 4,
   "triggers": [
     {
       "event": "cardDies",
-      "condId": "thisKillsCreature",
       "text": "A creature ~ damaged died — put a +1/+1 counter on ~.",
       "effects": [
         {
@@ -27,11 +25,9 @@
           "power": 1,
           "toughness": 1
         }
-      ]
+      ],
+      "cond_id": "thisKillsCreature"
     }
   ],
-  "color": "B",
-  "colors": [
-    "B"
-  ]
+  "type": "Creature"
 }

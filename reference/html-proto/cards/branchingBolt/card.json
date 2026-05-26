@@ -1,14 +1,10 @@
 {
-  "tplId": "branchingBolt",
-  "name": "Branching Bolt",
-  "type": "Instant",
+  "card_id": "branchingBolt",
+  "art": "⚡",
   "cost": {
     "R": 1,
     "C": 1
   },
-  "art": "⚡",
-  "multiTarget": true,
-  "text": "Branching Bolt deals 2 damage to target creature and 2 damage to target creature.",
   "effects": [
     {
       "kind": "damage",
@@ -22,8 +18,8 @@
       "targetSlot": 1
     }
   ],
-  "color": "R",
-  "colors": [
-    "R"
-  ]
+  "multiTarget": true,
+  "name": "Branching Bolt",
+  "text": "Branching Bolt deals 2 damage to target creature and 2 damage to target creature.",
+  "type": "Instant"
 }

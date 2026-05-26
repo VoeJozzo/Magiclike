@@ -1,12 +1,9 @@
 {
-  "tplId": "conflagrate",
-  "name": "Lava Spike",
-  "type": "Sorcery",
+  "card_id": "conflagrate",
+  "art": "cards/conflagrate/art.png",
   "cost": {
     "R": 1
   },
-  "art": "cards/conflagrate/art.png",
-  "text": "Deal 3 damage to target opponent.",
   "effects": [
     {
       "kind": "damage",
@@ -14,8 +11,7 @@
       "amount": 3
     }
   ],
-  "color": "R",
-  "colors": [
-    "R"
-  ]
+  "name": "Lava Spike",
+  "text": "Deal 3 damage to target opponent.",
+  "type": "Sorcery"
 }

@@ -1,20 +1,18 @@
 {
-  "tplId": "cultPriest",
-  "name": "Cult Priest",
-  "type": "Creature",
-  "sub": "Human Cleric",
+  "card_id": "cultPriest",
+  "art": "⛧",
   "cost": {
     "B": 1,
     "C": 1
   },
+  "name": "Cult Priest",
   "power": 2,
-  "toughness": 1,
-  "art": "⛧",
+  "sub": "Human Cleric",
   "text": "When this dies, target opponent loses 2 life.",
+  "toughness": 1,
   "triggers": [
     {
       "event": "cardDies",
-      "condId": "thisDies",
       "text": "When ~ dies, target opponent loses 2 life.",
       "effects": [
         {
@@ -22,11 +20,9 @@
           "target": "player",
           "amount": 2
         }
-      ]
+      ],
+      "cond_id": "thisDies"
     }
   ],
-  "color": "B",
-  "colors": [
-    "B"
-  ]
+  "type": "Creature"
 }

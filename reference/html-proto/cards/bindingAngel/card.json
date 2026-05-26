@@ -1,23 +1,21 @@
 {
-  "tplId": "bindingAngel",
-  "name": "Binding Angel",
-  "type": "Creature",
-  "sub": "Angel",
+  "card_id": "bindingAngel",
+  "art": "cards/bindingAngel/art.png",
   "cost": {
     "W": 2,
     "C": 4
   },
-  "power": 3,
-  "toughness": 4,
-  "art": "cards/bindingAngel/art.png",
   "keywords": [
     "flying"
   ],
+  "name": "Binding Angel",
+  "power": 3,
+  "sub": "Angel",
   "text": "Flying. When this enters, tap target creature.",
+  "toughness": 4,
   "triggers": [
     {
       "event": "cardEntersBattlefield",
-      "condId": "thisEnters",
       "text": "When ~ enters, tap target creature.",
       "effects": [
         {
@@ -25,11 +23,9 @@
           "severity": 1,
           "target": "creature"
         }
-      ]
+      ],
+      "cond_id": "thisEnters"
     }
   ],
-  "color": "W",
-  "colors": [
-    "W"
-  ]
+  "type": "Creature"
 }

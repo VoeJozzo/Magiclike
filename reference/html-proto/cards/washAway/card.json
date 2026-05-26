@@ -1,13 +1,10 @@
 {
-  "tplId": "washAway",
-  "name": "Wash Away",
-  "type": "Sorcery",
+  "card_id": "washAway",
+  "art": "🌊",
   "cost": {
     "U": 1,
     "C": 2
   },
-  "art": "🌊",
-  "text": "Return all creatures to their owners' hands.",
   "effects": [
     {
       "kind": "removeAll",
@@ -15,8 +12,7 @@
       "whose": "all"
     }
   ],
-  "color": "U",
-  "colors": [
-    "U"
-  ]
+  "name": "Wash Away",
+  "text": "Return all creatures to their owners' hands.",
+  "type": "Sorcery"
 }

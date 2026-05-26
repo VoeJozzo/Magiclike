@@ -34,8 +34,9 @@ Deferred work lives in `docs/BACKLOG.md` — read it when relevant, but don't op
 │   ├── engine_state.gd, player.gd, mana_pool.gd, stack.gd, phase_machine.gd
 │   ├── card_instance.gd, action.gd
 │   ├── ai/                     ai.gd, combat.gd, burn.gd, scoring.gd
-│   ├── effects/                effects.gd + per-kind handlers (damage, add_mana, pump, gain_life, counter_spell)
-│   └── predicates/predicates.gd  string-keyed condition registry + boot validation
+│   ├── effects/                effects.gd + per-kind handlers (damage, add_mana, pump, gain_life, counter)
+│   ├── predicates/predicates.gd  string-keyed condition registry + boot validation
+│   └── json_card_loader.gd     reads html-proto card.json files into CardResource instances
 ├── scenes/
 │   ├── card.gd / card.tscn     Card subclass (oracle text, legality glow, combat highlights)
 │   ├── json_card_factory.tscn
@@ -44,7 +45,9 @@ Deferred work lives in `docs/BACKLOG.md` — read it when relevant, but don't op
 ├── tests/                      one runnable .gd + .tscn per phase: 1, 2, 3, 4, 4.5a/b/c, 5a/b/c
 ├── docs/
 │   ├── godot-port-plan.md      forward-looking phase roadmap
-│   └── BACKLOG.md              deferred work, parking lot
+│   ├── BACKLOG.md              deferred work, parking lot
+│   ├── PROTOCOL.md             cross-engine canonical wire format spec
+│   └── STANDARDIZATION-PLAN.md html-proto ↔ Godot harmonization history
 └── reference/html-proto/       prototype mirror (its own CLAUDE.md + BACKLOG.md)
 ```
 
@@ -62,7 +65,8 @@ Deferred work lives in `docs/BACKLOG.md` — read it when relevant, but don't op
 | `engine/ai/burn.gd` | `face_damage_in_hand`, `has_lethal` — direct-damage lethal recognition. |
 | `engine/ai/scoring.gd` | `AIScoring.card_value(template, purpose)` — heuristic card scoring (stats minus cost + keyword bonuses). |
 | `engine/effects/effects.gd` | `HANDLERS` dispatch table. Per-kind handlers in sibling files. |
-| `engine/predicates/predicates.gd` | String-keyed `cond_*` predicates with `evaluate(name, state, source, event)`. Boot-time `validate_all_card_predicates()` checks all `condition_predicate` strings against the registry. |
+| `engine/predicates/predicates.gd` | String-keyed `cond_*` predicates with `evaluate(name, state, source, event)`. Boot-time `validate_all_card_predicates()` checks all `cond_id` strings against the registry. |
+| `engine/json_card_loader.gd` | Loads `reference/html-proto/cards/<folder>/card.json` files into `CardResource` instances. Translation tables map JS-isms (camelCase effect/event kinds, `"any"` target, single-string `sub`) to the snake_case shape Godot uses. Boot supportability scan reports how many of the 258 html-proto cards are fully playable today. See `docs/PROTOCOL.md` for the canonical wire format. |
 | `cards/templates/card_database.gd` | Programmatic `CardResource` definitions. Hand-authored; grow as new cards are added. |
 | `scenes/game/game_board.gd` | UI orchestrator. Reads `RulesEngine.state()`, paints zones, manages target-pick / trigger-target / block-decl modes, keybinds. ~1295 lines. |
 | `scenes/game/player_panel.gd` | Life total, mana pips, hand / library / graveyard counts, low-library warning glyph. |
@@ -75,7 +79,7 @@ Deferred work lives in `docs/BACKLOG.md` — read it when relevant, but don't op
 - **`engine/engine.gd` as autoload `RulesEngine`.** Closest fit to the JS prototype's IIFE singleton. Globally accessible via `RulesEngine.state()`. Named `RulesEngine` and not `Engine` because Godot already has a built-in `Engine` global.
 - **Logic in `RefCounted` classes**, not in the autoload itself. `Player`, `ManaPool`, `Stack`, `PhaseMachine`, `CardInstance`, `EngineState` are all RefCounted — instantiable in tests without autoload boilerplate.
 - **Action descriptor pattern.** All state mutations go through `RulesEngine.execute_action(action: Dictionary)` where action is `{kind: "cast_spell" | "activate_ability" | "play_land" | "pass_priority" | ..., source, targets, ...}`. Mirrors the JS `executeAction`.
-- **String-keyed trigger predicates with future-proof seams.** Card resources reference conditions by string name (`condition_predicate: "opp_lost_life_this_turn"`); the registry at `engine/predicates/predicates.gd` resolves the name to a function. Lets us swap predicate implementations or share them across cards without touching resource files.
+- **String-keyed trigger predicates with future-proof seams.** Card resources reference conditions by string name (`cond_id: "opp_lost_life_this_turn"`); the registry at `engine/predicates/predicates.gd` resolves the name to a function. Lets us swap predicate implementations or share them across cards without touching resource files.
 - **Real stack and priority from day one.** The stack is a real LIFO that holds spells AND triggers. Both resolve through `_resolve_*_entry`. Priority follows MTG rules where it matters: caster retains priority after casting (117.1c), mana pools empty at phase boundaries (106.4), defender declares blocks before priority opens at COMBAT_BLOCK (509.1a), triggers drain in APNAP order (603.3b). Pragmatic shortcuts exist (AI auto-passes opp's priority; player has Space/Enter pass-priority keybind; SBAs are checked in a single sweep, not strict 704.5 order) — these are agent/UX concerns, not rules cheats. Config for explicit stop-on-X priority holds is parked in `docs/BACKLOG.md`.
 - **Click-to-cast UI, not drag-to-cast.** Drag conflicts with card-framework's drag-to-move semantics. Click a spell in hand → enter target-picking mode → click a target → resolve.
 - **Data on `EngineState`, behavior on `RulesEngine`.** `EngineState` is a passive container (fields plus a few accessors like `player_by_key`, `find_instance`, `duplicate_deep`). All game-logic behavior — settling, action dispatch, priority opening, trigger drain, combat resolution — lives on `RulesEngine`. The dependency direction is one-way: `RulesEngine` reads/writes `EngineState`, never the reverse. Don't put helper functions that need `get_legal_actions` or `_dispatch_action` on `EngineState`; that would force a circular reference. New behavior goes on the autoload.
@@ -98,7 +102,7 @@ The html-proto is the reference, but its rules engine has known scars from organ
 - **Stack as `Array[StackEntry]`, not as a `CardContainer`.** Triggered abilities go on the stack but aren't cards. The engine model is `Array[StackEntry]`; the UI is a plain VBoxContainer observing `RulesEngine.stack_changed`.
 - **`@tool` annotation gotcha.** Existing `test.gd` is `@tool`-annotated, which triggers `_ready()` in the Godot editor. Game scenes must NOT be `@tool` — the editor will spam errors when the `RulesEngine` autoload isn't initialized.
 - **Card-framework drag conflict.** Drag is reserved for "move card between containers." Casting a spell with targets is conceptually different. Stick with click-to-cast.
-- **Predicate registry boot validation.** `engine.gd._ready()` walks all loaded `CardResource` instances, collects every `condition_predicate` string, and `push_error`s on any missing entry. Catches typos at startup, not at runtime.
+- **Predicate registry boot validation.** `engine.gd._ready()` walks all loaded `CardResource` instances, collects every `cond_id` string, and `push_error`s on any missing entry. Catches typos at startup, not at runtime. The same `_ready()` also calls `JsonCardLoader.supportability_report()` which scans the full 258-card html-proto pool and prints a one-line summary of how many cards are fully playable on the Godot side vs awaiting handlers.
 
 ## Testing
 

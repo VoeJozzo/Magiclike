@@ -1,23 +1,21 @@
 {
-  "tplId": "quickling",
-  "name": "Quickling",
-  "type": "Creature",
-  "sub": "Faerie",
+  "card_id": "quickling",
+  "art": "🧚‍♂",
   "cost": {
     "U": 2
   },
-  "power": 2,
-  "toughness": 1,
-  "art": "🧚‍♂",
   "keywords": [
     "flash",
     "flying"
   ],
+  "name": "Quickling",
+  "power": 2,
+  "sub": "Faerie",
   "text": "Flash, Flying. When this enters, return target creature to its owner's hand.",
+  "toughness": 1,
   "triggers": [
     {
       "event": "cardEntersBattlefield",
-      "condId": "thisEnters",
       "text": "When ~ enters, bounce target creature.",
       "effects": [
         {
@@ -25,11 +23,9 @@
           "severity": 2,
           "target": "creature"
         }
-      ]
+      ],
+      "cond_id": "thisEnters"
     }
   ],
-  "color": "U",
-  "colors": [
-    "U"
-  ]
+  "type": "Creature"
 }

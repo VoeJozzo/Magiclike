@@ -1,21 +1,17 @@
 {
-  "tplId": "spider",
-  "name": "Giant Spider",
-  "type": "Creature",
-  "sub": "Spider",
+  "card_id": "spider",
+  "art": "🕷",
   "cost": {
     "G": 1,
     "C": 2
   },
-  "power": 2,
-  "toughness": 4,
-  "art": "🕷",
-  "text": "Reach",
   "keywords": [
     "reach"
   ],
-  "color": "G",
-  "colors": [
-    "G"
-  ]
+  "name": "Giant Spider",
+  "power": 2,
+  "sub": "Spider",
+  "text": "Reach",
+  "toughness": 4,
+  "type": "Creature"
 }

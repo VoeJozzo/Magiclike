@@ -1,20 +1,18 @@
 {
-  "tplId": "plagueSower",
-  "name": "Plague Sower",
-  "type": "Creature",
-  "sub": "Human Cleric",
+  "card_id": "plagueSower",
+  "art": "cards/plagueSower/art.png",
   "cost": {
     "B": 1,
     "C": 2
   },
+  "name": "Plague Sower",
   "power": 2,
-  "toughness": 2,
-  "art": "cards/plagueSower/art.png",
+  "sub": "Human Cleric",
   "text": "When this enters, target creature gets -2/-2 EOT.",
+  "toughness": 2,
   "triggers": [
     {
       "event": "cardEntersBattlefield",
-      "condId": "thisEnters",
       "text": "When ~ enters, target creature gets -2/-2 EOT.",
       "effects": [
         {
@@ -23,11 +21,9 @@
           "power": 2,
           "toughness": 2
         }
-      ]
+      ],
+      "cond_id": "thisEnters"
     }
   ],
-  "color": "B",
-  "colors": [
-    "B"
-  ]
+  "type": "Creature"
 }

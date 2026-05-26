@@ -1,19 +1,15 @@
 {
-  "tplId": "knightCommander",
-  "name": "Knight Commander",
-  "type": "Creature",
-  "sub": "Human Knight",
+  "card_id": "knightCommander",
+  "art": "🏰",
   "cost": {
     "W": 1,
     "C": 3
   },
-  "power": 3,
-  "toughness": 3,
-  "art": "🏰",
   "keywords": [
     "vigilance"
   ],
-  "text": "Vigilance. Other Knights you control get +1/+1 and have vigilance.",
+  "name": "Knight Commander",
+  "power": 3,
   "staticBuffs": [
     {
       "filter": {
@@ -27,8 +23,8 @@
       ]
     }
   ],
-  "color": "W",
-  "colors": [
-    "W"
-  ]
+  "sub": "Human Knight",
+  "text": "Vigilance. Other Knights you control get +1/+1 and have vigilance.",
+  "toughness": 3,
+  "type": "Creature"
 }

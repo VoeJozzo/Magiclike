@@ -130,6 +130,8 @@ const EXPOSED = [
   // Public module objects (top of each .js file).
   'ENGINE', 'AI', 'RUN', 'DRAFT', 'CARDS', 'STICKERS',
   'CONTROLLER', 'PICKLOG', 'VERSION', 'Modal', 'RUN_MODIFIERS', 'SETTINGS',
+  // Card-load surface (cards.js, module-scope).
+  'ingestCard',
   // tplId rename plumbing — exposed for tplid_renames_test.
   'TPLID_RENAMES', 'renameTplId', 'MIGRATIONS', 'SAVE_VERSION', 'SAVE_KEY',
   // Trigger-generator surface (triggers.js + trigger-generator.js —
@@ -161,13 +163,19 @@ const EXPOSED = [
 // loadCards() uses fetch() — useless in Node. Tests instead populate
 // CARDS synchronously from disk via fs.readFileSync, much faster than
 // awaiting a fetch loop and gives identical data.
+//
+// Wire format is snake_case (docs/STANDARDIZATION-PLAN.md §4). We pipe each
+// card through cards.js's ingestCard() to rebind to the JS-internal camelCase
+// names (tplId, condId) and compute color/colors from cost — matching what
+// the browser-side loadCards() does.
 const CARDS_DIR = path.join(__dirname, '..', 'cards');
 function loadCardsFromDisk() {
   const manifest = JSON.parse(fs.readFileSync(path.join(CARDS_DIR, '_manifest.json'), 'utf8'));
   const out = {};
-  for (const tplId of manifest) {
-    const card = JSON.parse(fs.readFileSync(path.join(CARDS_DIR, tplId, 'card.json'), 'utf8'));
-    out[tplId] = card;
+  for (const folderId of manifest) {
+    const card = JSON.parse(fs.readFileSync(path.join(CARDS_DIR, folderId, 'card.json'), 'utf8'));
+    global.ingestCard(card);
+    out[card.tplId] = card;
   }
   return out;
 }

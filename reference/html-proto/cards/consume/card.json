@@ -1,13 +1,10 @@
 {
-  "tplId": "consume",
-  "name": "Consume Spirit",
-  "type": "Sorcery",
+  "card_id": "consume",
+  "art": "cards/consume/art.png",
   "cost": {
     "B": 1,
     "C": 3
   },
-  "art": "cards/consume/art.png",
-  "text": "Deal 4 damage to any target. You gain 4 life.",
   "effects": [
     {
       "kind": "damage",
@@ -20,8 +17,7 @@
       "amount": 4
     }
   ],
-  "color": "B",
-  "colors": [
-    "B"
-  ]
+  "name": "Consume Spirit",
+  "text": "Deal 4 damage to any target. You gain 4 life.",
+  "type": "Sorcery"
 }

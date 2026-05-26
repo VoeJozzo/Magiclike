@@ -1,13 +1,10 @@
 {
-  "tplId": "stormCharm",
-  "name": "Storm Charm",
-  "type": "Instant",
+  "card_id": "stormCharm",
+  "art": "🌩",
   "cost": {
     "R": 1,
     "C": 2
   },
-  "art": "🌩",
-  "text": "Choose one — Deal 3 damage to any target; or target creature gets +2/+0 and gains haste until end of turn; or deal 1 damage to each creature.",
   "effects": {
     "modeNames": [
       "Bolt (deal 3)",
@@ -44,8 +41,7 @@
       ]
     ]
   },
-  "color": "R",
-  "colors": [
-    "R"
-  ]
+  "name": "Storm Charm",
+  "text": "Choose one — Deal 3 damage to any target; or target creature gets +2/+0 and gains haste until end of turn; or deal 1 damage to each creature.",
+  "type": "Instant"
 }

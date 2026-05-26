@@ -1,20 +1,18 @@
 {
-  "tplId": "crusaderCaptain",
-  "name": "Crusader Captain",
-  "type": "Creature",
-  "sub": "Human Knight",
+  "card_id": "crusaderCaptain",
+  "art": "🛡",
   "cost": {
     "W": 2,
     "C": 2
   },
+  "name": "Crusader Captain",
   "power": 3,
-  "toughness": 3,
-  "art": "🛡",
+  "sub": "Human Knight",
   "text": "When this attacks, target creature you control gets +1/+1 EOT.",
+  "toughness": 3,
   "triggers": [
     {
       "event": "attacks",
-      "condId": "thisAttacks",
       "text": "When ~ attacks, target friendly creature gets +1/+1 EOT.",
       "effects": [
         {
@@ -26,11 +24,9 @@
             "controller": "self"
           }
         }
-      ]
+      ],
+      "cond_id": "thisAttacks"
     }
   ],
-  "color": "W",
-  "colors": [
-    "W"
-  ]
+  "type": "Creature"
 }

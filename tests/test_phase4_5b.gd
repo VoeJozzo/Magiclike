@@ -107,7 +107,7 @@ func _ready() -> void:
 	# spell resolution and exercises the auto-pick path without needing the
 	# opp to actually have mana + cast.
 	RulesEngine._fire_event({
-		"kind": "card_etb",
+		"kind": "card_enters_battlefield",
 		"subject_iid": opp_pyro.instance_id,
 		"subject_card": opp_pyro,
 	})

@@ -1,12 +1,9 @@
 {
-  "tplId": "strengthOfPack",
-  "name": "Strength of the Pack",
-  "type": "Instant",
+  "card_id": "strengthOfPack",
+  "art": "🐾",
   "cost": {
     "G": 1
   },
-  "art": "🐾",
-  "text": "Target creature gets +2/+2 and gains trample until end of turn.",
   "effects": [
     {
       "kind": "pump",
@@ -21,8 +18,7 @@
       "duration": "eot"
     }
   ],
-  "color": "G",
-  "colors": [
-    "G"
-  ]
+  "name": "Strength of the Pack",
+  "text": "Target creature gets +2/+2 and gains trample until end of turn.",
+  "type": "Instant"
 }

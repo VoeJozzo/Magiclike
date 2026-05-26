@@ -1,21 +1,17 @@
 {
-  "tplId": "paladinValor",
-  "name": "Paladin of Valor",
-  "type": "Creature",
-  "sub": "Human Knight",
+  "card_id": "paladinValor",
+  "art": "🛡",
   "cost": {
     "W": 1,
     "C": 3
   },
-  "power": 3,
-  "toughness": 4,
-  "art": "🛡",
-  "text": "Vigilance",
   "keywords": [
     "vigilance"
   ],
-  "color": "W",
-  "colors": [
-    "W"
-  ]
+  "name": "Paladin of Valor",
+  "power": 3,
+  "sub": "Human Knight",
+  "text": "Vigilance",
+  "toughness": 4,
+  "type": "Creature"
 }

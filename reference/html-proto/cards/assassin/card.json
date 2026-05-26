@@ -1,16 +1,5 @@
 {
-  "tplId": "assassin",
-  "name": "Royal Assassin",
-  "type": "Creature",
-  "sub": "Human Assassin",
-  "cost": {
-    "B": 1,
-    "C": 1
-  },
-  "power": 1,
-  "toughness": 1,
-  "art": "🥷",
-  "text": "T: Destroy target tapped creature.",
+  "card_id": "assassin",
   "abilities": [
     {
       "cost": {
@@ -28,8 +17,15 @@
       ]
     }
   ],
-  "color": "B",
-  "colors": [
-    "B"
-  ]
+  "art": "🥷",
+  "cost": {
+    "B": 1,
+    "C": 1
+  },
+  "name": "Royal Assassin",
+  "power": 1,
+  "sub": "Human Assassin",
+  "text": "T: Destroy target tapped creature.",
+  "toughness": 1,
+  "type": "Creature"
 }

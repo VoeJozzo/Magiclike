@@ -1,20 +1,18 @@
 {
-  "tplId": "pridemate",
-  "name": "Ajani's Pridemate",
-  "type": "Creature",
-  "sub": "Cat Soldier",
+  "card_id": "pridemate",
+  "art": "🦁",
   "cost": {
     "W": 1,
     "C": 1
   },
+  "name": "Ajani's Pridemate",
   "power": 2,
-  "toughness": 2,
-  "art": "🦁",
+  "sub": "Cat Soldier",
   "text": "Whenever you gain life, put a +1/+1 counter on this.",
+  "toughness": 2,
   "triggers": [
     {
       "event": "lifeGained",
-      "condId": "youGainLife",
       "text": "When you gain life, put a +1/+1 counter on ~.",
       "effects": [
         {
@@ -23,11 +21,9 @@
           "power": 1,
           "toughness": 1
         }
-      ]
+      ],
+      "cond_id": "youGainLife"
     }
   ],
-  "color": "W",
-  "colors": [
-    "W"
-  ]
+  "type": "Creature"
 }

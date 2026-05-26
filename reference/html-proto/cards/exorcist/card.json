@@ -1,20 +1,18 @@
 {
-  "tplId": "exorcist",
-  "name": "Exorcist",
-  "type": "Creature",
-  "sub": "Human Cleric",
+  "card_id": "exorcist",
+  "art": "✨",
   "cost": {
     "W": 2,
     "C": 2
   },
+  "name": "Exorcist",
   "power": 2,
-  "toughness": 3,
-  "art": "✨",
+  "sub": "Human Cleric",
   "text": "When this enters, exile target creature; its controller gains life equal to its power.",
+  "toughness": 3,
   "triggers": [
     {
       "event": "cardEntersBattlefield",
-      "condId": "thisEnters",
       "text": "When ~ enters, exile target creature.",
       "effects": [
         {
@@ -32,11 +30,9 @@
             "from": "targetPower"
           }
         }
-      ]
+      ],
+      "cond_id": "thisEnters"
     }
   ],
-  "color": "W",
-  "colors": [
-    "W"
-  ]
+  "type": "Creature"
 }

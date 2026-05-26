@@ -1,13 +1,10 @@
 {
-  "tplId": "naturalize",
-  "name": "Choking Vines",
-  "type": "Instant",
+  "card_id": "naturalize",
+  "art": "🌿",
   "cost": {
     "G": 1,
     "C": 1
   },
-  "art": "🌿",
-  "text": "Destroy target creature with flying.",
   "effects": [
     {
       "kind": "removeCreature",
@@ -19,8 +16,7 @@
       }
     }
   ],
-  "color": "G",
-  "colors": [
-    "G"
-  ]
+  "name": "Choking Vines",
+  "text": "Destroy target creature with flying.",
+  "type": "Instant"
 }

@@ -1,20 +1,18 @@
 {
-  "tplId": "stormCaller",
-  "name": "Storm Caller",
-  "type": "Creature",
-  "sub": "Human Shaman",
+  "card_id": "stormCaller",
+  "art": "⚡",
   "cost": {
     "R": 1,
     "C": 2
   },
+  "name": "Storm Caller",
   "power": 2,
-  "toughness": 2,
-  "art": "⚡",
+  "sub": "Human Shaman",
   "text": "Whenever you cast a spell, deal 1 damage to any target.",
+  "toughness": 2,
   "triggers": [
     {
       "event": "spellCast",
-      "condId": "youCastSpell",
       "text": "Spell cast — deal 1 to any target.",
       "effects": [
         {
@@ -22,11 +20,9 @@
           "target": "any",
           "amount": 1
         }
-      ]
+      ],
+      "cond_id": "youCastSpell"
     }
   ],
-  "color": "R",
-  "colors": [
-    "R"
-  ]
+  "type": "Creature"
 }

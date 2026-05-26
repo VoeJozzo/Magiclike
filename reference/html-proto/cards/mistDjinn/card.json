@@ -1,21 +1,17 @@
 {
-  "tplId": "mistDjinn",
-  "name": "Mist Djinn",
-  "type": "Creature",
-  "sub": "Djinn",
+  "card_id": "mistDjinn",
+  "art": "cards/mistDjinn/art.png",
   "cost": {
     "U": 1,
     "C": 3
   },
-  "power": 3,
-  "toughness": 4,
-  "art": "cards/mistDjinn/art.png",
-  "text": "Flying",
   "keywords": [
     "flying"
   ],
-  "color": "U",
-  "colors": [
-    "U"
-  ]
+  "name": "Mist Djinn",
+  "power": 3,
+  "sub": "Djinn",
+  "text": "Flying",
+  "toughness": 4,
+  "type": "Creature"
 }

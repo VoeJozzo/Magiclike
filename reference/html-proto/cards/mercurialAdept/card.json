@@ -1,16 +1,14 @@
 {
-  "tplId": "mercurialAdept",
-  "name": "The Mercurial Adept",
-  "type": "Creature",
-  "sub": "Human Wizard",
+  "card_id": "mercurialAdept",
+  "art": "🎭",
   "cost": {
     "C": 3
   },
+  "name": "The Mercurial Adept",
   "power": 2,
-  "toughness": 2,
-  "art": "🎭",
-  "triggerPoolSeed": "mercurial",
+  "sub": "Human Wizard",
   "text": "At the start of each game, ~ gains one of these abilities: deal 1 to opp on attack; +1/+0 EOT on spell cast; +1/+1 counter when an ally enters; draw on lifegain; return to hand on death; gain 1 life when an enemy creature dies.",
-  "color": null,
-  "colors": []
+  "toughness": 2,
+  "triggerPoolSeed": "mercurial",
+  "type": "Creature"
 }

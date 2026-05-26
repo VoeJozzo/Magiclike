@@ -1,17 +1,15 @@
 {
-  "tplId": "cityOfBrass",
-  "name": "City of Brass",
-  "type": "Land",
-  "sub": "Land",
+  "card_id": "cityOfBrass",
   "art": "cards/cityOfBrass/art.png",
-  "mana": "W",
   "extraManaColors": [
     "U",
     "B",
     "R",
     "G"
   ],
+  "mana": "W",
+  "name": "City of Brass",
+  "sub": "Land",
   "text": "Tap: Add one mana of any color.",
-  "color": null,
-  "colors": []
+  "type": "Land"
 }

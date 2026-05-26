@@ -11,7 +11,7 @@ card_types = Array[String](["instant"])
 mana_cost = {
 "W": 1
 }
-oracle_text = "You gain 3 life."
+text = "You gain 3 life."
 on_cast_effects = Array[Dictionary]([{
 "amount": 3,
 "kind": "gain_life"

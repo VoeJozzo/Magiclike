@@ -1,12 +1,9 @@
 {
-  "tplId": "sicken",
-  "name": "Sicken",
-  "type": "Instant",
+  "card_id": "sicken",
+  "art": "🤢",
   "cost": {
     "B": 1
   },
-  "art": "🤢",
-  "text": "Target creature gets -2/-2 EOT.",
   "effects": [
     {
       "kind": "weaken",
@@ -15,8 +12,7 @@
       "toughness": 2
     }
   ],
-  "color": "B",
-  "colors": [
-    "B"
-  ]
+  "name": "Sicken",
+  "text": "Target creature gets -2/-2 EOT.",
+  "type": "Instant"
 }

@@ -1,31 +1,27 @@
 {
-  "tplId": "martyredScholar",
-  "name": "Martyred Scholar",
-  "type": "Creature",
-  "sub": "Human Wizard",
+  "card_id": "martyredScholar",
+  "art": "🎓",
   "cost": {
     "U": 1,
     "C": 1
   },
+  "name": "Martyred Scholar",
   "power": 1,
-  "toughness": 1,
-  "art": "🎓",
+  "sub": "Human Wizard",
   "text": "When this dies, draw a card.",
+  "toughness": 1,
   "triggers": [
     {
       "event": "cardDies",
-      "condId": "thisDies",
       "text": "When ~ dies, draw a card.",
       "effects": [
         {
           "kind": "draw",
           "amount": 1
         }
-      ]
+      ],
+      "cond_id": "thisDies"
     }
   ],
-  "color": "U",
-  "colors": [
-    "U"
-  ]
+  "type": "Creature"
 }

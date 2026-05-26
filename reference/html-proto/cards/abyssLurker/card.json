@@ -1,21 +1,17 @@
 {
-  "tplId": "abyssLurker",
-  "name": "Abyss Lurker",
-  "type": "Creature",
-  "sub": "Horror",
+  "card_id": "abyssLurker",
+  "art": "👁",
   "cost": {
     "B": 2,
     "C": 3
   },
-  "power": 5,
-  "toughness": 3,
-  "art": "👁",
-  "text": "Flying",
   "keywords": [
     "flying"
   ],
-  "color": "B",
-  "colors": [
-    "B"
-  ]
+  "name": "Abyss Lurker",
+  "power": 5,
+  "sub": "Horror",
+  "text": "Flying",
+  "toughness": 3,
+  "type": "Creature"
 }

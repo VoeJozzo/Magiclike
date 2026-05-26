@@ -1,23 +1,21 @@
 {
-  "tplId": "spitefulImp",
-  "name": "Spiteful Imp",
-  "type": "Creature",
-  "sub": "Imp",
+  "card_id": "spitefulImp",
+  "art": "cards/spitefulImp/art.png",
   "cost": {
     "B": 1,
     "C": 1
   },
-  "power": 2,
-  "toughness": 1,
-  "art": "cards/spitefulImp/art.png",
   "keywords": [
     "flying"
   ],
+  "name": "Spiteful Imp",
+  "power": 2,
+  "sub": "Imp",
   "text": "Flying. When this dies, target opponent loses 1 life.",
+  "toughness": 1,
   "triggers": [
     {
       "event": "cardDies",
-      "condId": "thisDies",
       "text": "When ~ dies, opp loses 1 life.",
       "effects": [
         {
@@ -25,11 +23,9 @@
           "target": "player",
           "amount": 1
         }
-      ]
+      ],
+      "cond_id": "thisDies"
     }
   ],
-  "color": "B",
-  "colors": [
-    "B"
-  ]
+  "type": "Creature"
 }

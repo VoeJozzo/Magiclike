@@ -1,24 +1,20 @@
 {
-  "tplId": "cityGuardian",
-  "name": "City Guardian",
-  "type": "Creature",
-  "sub": "Human Soldier",
+  "card_id": "cityGuardian",
+  "art": "🛡",
   "cost": {
     "W": 1,
     "C": 1
   },
-  "power": 2,
-  "toughness": 1,
-  "art": "🛡",
-  "special": true,
-  "legendary": true,
   "keywords": [
     "first strike"
   ],
+  "legendary": true,
+  "name": "City Guardian",
+  "power": 2,
+  "special": true,
   "staticCostBump": 1,
+  "sub": "Human Soldier",
   "text": "Legendary, First Strike. All cards cost {1} more to cast.",
-  "color": "W",
-  "colors": [
-    "W"
-  ]
+  "toughness": 1,
+  "type": "Creature"
 }

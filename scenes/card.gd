@@ -190,7 +190,7 @@ func apply_card_text() -> void:
 		_type_label.text = _fmt_type_line(template)
 		_color_tint.color = _tint_for(template)
 		# Empty oracle hides the backer so placeholder art shows through.
-		var oracle: String = str(template.oracle_text)
+		var oracle: String = str(template.text)
 		_oracle_label.text = oracle
 		_oracle_bg.visible = oracle != ""
 		# Template P/T; apply_creature_state refreshes with live values + damage.

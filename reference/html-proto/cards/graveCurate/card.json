@@ -1,20 +1,18 @@
 {
-  "tplId": "graveCurate",
-  "name": "Grave Curate",
-  "type": "Creature",
-  "sub": "Human Cleric",
+  "card_id": "graveCurate",
+  "art": "⚱",
   "cost": {
     "B": 1,
     "C": 2
   },
+  "name": "Grave Curate",
   "power": 2,
-  "toughness": 2,
-  "art": "⚱",
+  "sub": "Human Cleric",
   "text": "When this dies, target opponent discards a card.",
+  "toughness": 2,
   "triggers": [
     {
       "event": "cardDies",
-      "condId": "thisDies",
       "text": "When ~ dies, target opp discards.",
       "effects": [
         {
@@ -22,11 +20,9 @@
           "target": "player",
           "amount": 1
         }
-      ]
+      ],
+      "cond_id": "thisDies"
     }
   ],
-  "color": "B",
-  "colors": [
-    "B"
-  ]
+  "type": "Creature"
 }
