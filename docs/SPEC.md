@@ -246,7 +246,7 @@ Precedence enforced in `_current_actor` (engine.gd around line 433). Only one aw
 
 | Field | Type | Purpose | Cleared by |
 |---|---|---|---|
-| `iid` | `int` | Globally unique instance id. | Never (assigned at creation). |
+| `instance_id` | `int` | Globally unique instance id. | Never (assigned at creation). |
 | `template` | `CardResource` | Pointer to the immutable definition. | Never. |
 | `owner_key` | `String` | `"you"` or `"opp"` — who started with the card. | Never. |
 | `controller_key` | `String` | Current controller (may differ via steal). | Reset on leave-play. |
@@ -269,7 +269,7 @@ Precedence enforced in `_current_actor` (engine.gd around line 433). Only one aw
 |---|---|---|
 | `you`, `opp` | `Player` | Per-player zones + life + mana. |
 | `active_player_key` | `String` | Whose turn it is. |
-| `priority_holder` | `String` | Whose turn it is to act. |
+| `priority_player_key` | `String` | Whose turn it is to act. |
 | `phase_machine` | `PhaseMachine` | Current phase + turn structure. |
 | `stack` | `Stack` | LIFO of `StackEntry`. |
 | `attackers` | `Array[int]` | Attacker iids declared this combat. |
@@ -279,7 +279,7 @@ Precedence enforced in `_current_actor` (engine.gd around line 433). Only one aw
 | `awaiting_block_declaration` | `String` | Defender key, or `""`. |
 | `awaiting_discard` | `Dictionary` | Cleanup-step discard state. |
 | `log` | `Array[String]` | Game log. |
-| `winner_key` | `String` | `""` until game ends. |
+| `winner` | `String` | `""` until game ends. (Note: the `game_over` signal's argument is named `winner_key`, but the `EngineState` field is `winner`.) |
 | `turn_number` | `int` | 1-indexed. |
 
 Every subclass has its own `duplicate_deep()` so AI snapshots don't share mutable references with the live state. This is the explicit answer to the JS prototype's City of Brass `extraManaColors` lost-on-instantiation bug.

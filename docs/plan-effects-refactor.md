@@ -24,7 +24,7 @@ This refactor is sequenced **after** `plan-zone-change-and-composable-predicates
 | `add_mana` | `engine/effects/add_mana.gd` | Add to `ctx.controller.mana`. | None (always controller). | `amounts: Dict` OR flat `R:1` shorthand |
 | `pump` | `engine/effects/pump.gd` | Boost creature P/T; `duration="eot"` → temp, else +1/+1 counters. | `chosen` (must be creature). | `amount_power, amount_toughness, duration, target` |
 | `gain_life` | `engine/effects/gain_life.gd` | Add life to controller; refuses non-positive. | None (always controller). | `amount: int` |
-| `counter_spell` | `engine/effects/counter_spell.gd` | Remove a stack entry via `RulesEngine.counter_stack_entry`. | `chosen` (must be `kind:"stack"`). | `target: "chosen"` (constant) |
+| `counter_spell` (canonical: `counter`) | `engine/effects/counter_spell.gd` (→ `counter.gd` on the standardization branch) | Remove a stack entry via `RulesEngine.counter_stack_entry`. | `chosen` (must be `kind:"stack"`). | `target: "chosen"` (constant) |
 
 ### Proto — 38 effect kinds (37 distinct names, 1 silent duplicate)
 
@@ -80,7 +80,7 @@ Lines are within `reference/html-proto/js/engine.js`.
 | `addMana` | `add_mana` | Both |
 | `pump` | `pump` | Both (Godot already merged `addCounter` via `duration`) |
 | `gainLife` | `gain_life` | Both |
-| `counter` | `counter_spell` | Both — note name divergence |
+| `counter` | `counter_spell` → `counter` | Both — divergence resolved: standardization renamed Godot to `counter` (canonical) |
 
 All 33 other proto kinds: proto-only. (The Godot side will gain everything below `gain_life` in the audit table when Phase 6 begins porting proto cards.)
 
@@ -160,7 +160,7 @@ For each of the 38 proto kinds, what happens. Final column shows the new home; "
 | 13 | `shuffleIntoLibrary` | unified (#10) | `move_card(battlefield, library, target, 1, {post: shuffle})` |
 | 14 | `steal` | unified (#11) | `change_control(target, transfer_ownership:true)` |
 | 15 | `returnFromGraveyard` | unified (#10) | `move_card(graveyard, hand, target_selector, 1)` |
-| 16 | `counter` | renamed | `counter_spell(target_filter: spell)` — matches Godot's name |
+| 16 | `counter` | kept | `counter(target_filter: spell)` — proto's name; the standardization branch renamed Godot `counter_spell`→`counter` to match, so `counter` is canonical |
 | 17 | `addMana` | renamed | `add_mana(amounts)` |
 | 18 | `gainLife` | renamed + flex (D3/D4) | `gain_life(amount, target)` — signed delta per D4, optional target per D3 |
 | 19 | `draw` | unified (#10) | `move_card(library, hand, controller, N)` |
@@ -418,7 +418,7 @@ Shorthand-style signature; parameters are descriptive, not exhaustive.
 - `gain_life(amount, target)` — kept; signed per D4, optional target per D3.
 
 **Counter / stack (1)**
-- `counter_spell(target_filter)` — renamed from proto's `counter`. Filter: `chosen_spell`.
+- `counter(target_filter)` — proto's name, kept canonical (the standardization branch renamed Godot's `counter_spell`→`counter` to match). Filter: `chosen_spell` / `spell`.
 
 **Tokens (1)**
 - `create_tokens(token_id, count, controller)` — kept.
