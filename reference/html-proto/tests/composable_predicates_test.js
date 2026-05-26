@@ -165,5 +165,43 @@ console.log('\n=== worked: Bloodlust Berserker condition ===');
     evaluateCondition(cond, { state: S(0, 2), source, event: otherDies, who: 'you' }) === false);
 })();
 
+// ── Boot validation ──────────────────────────────────────────────────────
+console.log('\n=== validateAllCardConditions ===');
+(() => {
+  // Synthetic card pool: good + bad conditions and event kinds.
+  const synthetic = [
+    { tplId: 'goodCard', triggers: [
+      { event: 'card_zone_change', condition: ['this_card', 'card_moves(battlefield, graveyard)'] },
+    ]},
+    { tplId: 'badAtomic', triggers: [
+      { event: 'card_zone_change', condition: ['this_card', 'not_a_real_predicate'] },
+    ]},
+    { tplId: 'badNested', triggers: [
+      { event: 'spell_cast', condition: { op: 'or', terms: ['controlled_by(you)', 'bogus_pred(x)'] } },
+    ]},
+    { tplId: 'badEvent', triggers: [
+      { event: 'totallyMadeUpEvent', condition: 'this_card' },
+    ]},
+    { tplId: 'legacyOk', triggers: [
+      { event: 'cardDies', condId: 'thisDies' },   // legacy kind accepted, condId not walked
+    ]},
+  ];
+  const r = validateAllCardConditions(synthetic);
+  check('detects unknown atomic in array', r.unknownAtomics.includes('badAtomic.not_a_real_predicate'));
+  check('detects unknown atomic in nested OR', r.unknownAtomics.includes('badNested.bogus_pred'));
+  check('does NOT flag good atomics', !r.unknownAtomics.some(u => u.startsWith('goodCard.')));
+  check('detects unknown event kind', r.unknownEvents.includes('badEvent.totallyMadeUpEvent'));
+  check('legacy cardDies event accepted', !r.unknownEvents.some(u => u.startsWith('legacyOk.')));
+  check('legacy condId not walked as atomic', !r.unknownAtomics.some(u => u.startsWith('legacyOk.')));
+
+  // The real shipped pool must validate clean (all legacy condId today; no
+  // composable `condition` field until step 6 migration).
+  const live = validateAllCardConditions(CARDS);
+  check('live CARDS pool: no unknown atomics', live.unknownAtomics.length === 0,
+    live.unknownAtomics.join(', '));
+  check('live CARDS pool: no unknown event kinds', live.unknownEvents.length === 0,
+    live.unknownEvents.join(', '));
+})();
+
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');
 process.exit(fail > 0 ? 1 : 0);

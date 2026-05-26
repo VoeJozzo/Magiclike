@@ -17,6 +17,9 @@ window.PICKLOG = PICKLOG;
 SETTINGS.applyFontsToRoot();
 
 loadCards().then(() => {
+  // Boot validation: surface typos in composable trigger conditions / event
+  // kinds at startup (Slice 2 / E2), not at runtime when a trigger fails.
+  validateAllCardConditions(CARDS);
   CONTROLLER.init();
 }).catch(e => {
   console.error('Failed to load card data:', e);

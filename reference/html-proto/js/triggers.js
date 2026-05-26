@@ -233,6 +233,63 @@ function evaluateCondition(expr, ctx) {
   return false;
 }
 
+// ─── Boot validation (Slice 2 / E2) ─────────────────────────────────────
+// Allowed trigger event kinds. New unified vocabulary + legacy kinds (the
+// latter accepted during the migration window; removed in step 8).
+const VALID_TRIGGER_EVENTS = new Set([
+  'card_zone_change', 'spell_cast', 'attacks', 'life_changed',
+  'cardEntersBattlefield', 'cardDies', 'cardLeavesBattlefield', 'lifeGained', 'spellCast',
+]);
+
+// Recursively collect unknown atomic-predicate names from a condition
+// expression (mirrors evaluateCondition's shape handling).
+function _collectUnknownAtomics(expr, out, cardId) {
+  if (expr == null || expr === '') return;
+  if (typeof expr === 'string') {
+    let name = expr;
+    const paren = expr.indexOf('(');
+    if (paren !== -1) name = expr.slice(0, paren).trim();
+    if (!ATOMIC_PREDICATES[name]) out.push(cardId + '.' + name);
+    return;
+  }
+  if (Array.isArray(expr)) {
+    for (const t of expr) _collectUnknownAtomics(t, out, cardId);
+    return;
+  }
+  if (typeof expr === 'object') {
+    if (expr.op) {
+      for (const t of (expr.terms || [])) _collectUnknownAtomics(t, out, cardId);
+    } else if (expr.name && !ATOMIC_PREDICATES[expr.name]) {
+      out.push(cardId + '.' + expr.name);
+    }
+  }
+}
+
+// Walk every card's triggers; flag unknown atomic predicates referenced in the
+// composable `condition` field and unexpected event kinds. Called at boot
+// after loadCards(). Returns {unknownAtomics, unknownEvents} for tests; warns
+// to console for the running app. Legacy condId triggers validate via their
+// own registry lookup at eval time, so they're not re-checked here.
+function validateAllCardConditions(cards) {
+  const unknownAtomics = [];
+  const unknownEvents = [];
+  const list = Array.isArray(cards) ? cards : Object.values(cards || {});
+  for (const card of list) {
+    const cardId = card.tplId || card.id || card.name || '?';
+    for (const trig of (card.triggers || [])) {
+      if (trig.event && !VALID_TRIGGER_EVENTS.has(trig.event)) {
+        unknownEvents.push(cardId + '.' + trig.event);
+      }
+      if (trig.condition != null && typeof trig.condition !== 'function') {
+        _collectUnknownAtomics(trig.condition, unknownAtomics, cardId);
+      }
+    }
+  }
+  if (unknownAtomics.length) console.warn('Unknown atomic predicate(s):', unknownAtomics.join(', '));
+  if (unknownEvents.length) console.warn('Unknown trigger event(s):', unknownEvents.join(', '));
+  return { unknownAtomics, unknownEvents };
+}
+
 // Resolve: composable condition → condId registry → legacy closure → fire unconditionally.
 function evalTriggerCondition(trig, self, evt, who) {
   // Codex-generated trigger guard: refuse to fire when source caused the event.
