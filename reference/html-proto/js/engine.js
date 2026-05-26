@@ -1359,6 +1359,7 @@ function applyDamageFrom(ctx, target, amt) {
     G[ctx.controller].life += amt;
     log(`${ctx.sourceName} (lifelink) — ${pname(ctx.controller)} gains ${amt} life.`, 'sp');
     emit({type: 'lifeGained', who: ctx.controller, amount: amt, sourceIid: ctx.sourceIid});
+    emit({type: 'life_changed', who: ctx.controller, delta: amt, source_iid: ctx.sourceIid});
   }
 }
 
@@ -1498,7 +1499,7 @@ const EFFECTS = {
       } else {
         log(`${ctx.sourceName} returns ${card.name} — token ceases to exist.`, 'sp');
       }
-      emitLeavesBattlefield(card, f.controller);
+      emitLeavesBattlefield(card, f.controller, 'hand');
       return;
     }
 
@@ -1527,7 +1528,7 @@ const EFFECTS = {
     } else {
       log(`${ctx.sourceName} exiles ${card.name} — token ceases to exist.`, 'sp');
     }
-    emitLeavesBattlefield(card, f.controller);
+    emitLeavesBattlefield(card, f.controller, 'exile');
   },
   // Destroy + apply sticker to slot (Scarification). Player-side persistent;
   // opp-side: in-game destroy only (opp slots regenerate). params.stickerId names it.
@@ -1602,7 +1603,7 @@ const EFFECTS = {
       resetInPlayState(f.card);
       G[owner].hand.push(f.card);
     }
-    emitLeavesBattlefield(f.card, f.controller);
+    emitLeavesBattlefield(f.card, f.controller, 'hand');
     log(`${ctx.sourceName} returns ${f.card.name} to ${pname(owner)}'s hand.`, 'sp');
     if (!f.card.isToken) {
       if (f.card.cost) f.card.cost.C = (f.card.cost.C || 0) + 1;
@@ -1633,7 +1634,7 @@ const EFFECTS = {
       resetInPlayState(f.card);
       G[owner].exile.push(f.card);
     }
-    emitLeavesBattlefield(f.card, f.controller);
+    emitLeavesBattlefield(f.card, f.controller, 'exile');
     log(`${ctx.sourceName} exiles ${f.card.name}.`, 'sp');
     if (owner === 'you' && typeof slotIdx === 'number'
         && typeof RUN !== 'undefined' && RUN.getSlots) {
@@ -1684,7 +1685,7 @@ const EFFECTS = {
     } else {
       log(`${ctx.sourceName} targets ${card.name} — token ceases to exist.`, 'sp');
     }
-    emitLeavesBattlefield(card, f.controller);
+    emitLeavesBattlefield(card, f.controller, 'library');
   },
   // Counter a stack spell OR take a battlefield permanent — adds slot to runState forever.
   // Spell path: removes from stack (no effects fire); spell ceases (not graveyard).
@@ -1715,7 +1716,10 @@ const EFFECTS = {
     if (r.kind === 'perm') {
       pluckFromBattlefield({ card: r.card, controller: r.controller });
       clearRestrictionsFromSource(r.card.iid);
-      emitLeavesBattlefield(r.card, r.controller);
+      // Steal = control change; the card stays a permanent (re-created on the
+      // thief's battlefield below). Mirrors the legacy cardLeavesBattlefield
+      // emission here — to_zone stays 'battlefield'.
+      emitLeavesBattlefield(r.card, r.controller, 'battlefield');
     } else {
       const stIdx = G.stack.indexOf(r.stackItem);
       if (stIdx >= 0) G.stack.splice(stIdx, 1);
@@ -1799,6 +1803,7 @@ const EFFECTS = {
     log(`${pname(who)} gains ${amount} life.`, 'sp');
     if (amount > 0) {
       emit({type: 'lifeGained', who, amount, sourceIid: ctx.sourceIid});
+      emit({type: 'life_changed', who, delta: amount, source_iid: ctx.sourceIid});
     }
   },
   draw(ctx, params) {
@@ -1839,6 +1844,7 @@ const EFFECTS = {
     shuffle(G[ctx.controller].library);
     log(`${pname(ctx.controller)} fetches ${land.name} (tapped).`, 'sp');
     emit({type: 'cardEntersBattlefield', card: land, controller: ctx.controller});
+    emitZoneChange(land, ctx.controller, 'library', 'battlefield');
   },
   searchCreature(ctx) {
     const lib = G[ctx.controller].library;
@@ -1952,6 +1958,7 @@ const EFFECTS = {
     // Per-token ETB. sourceIid lets self-cascade-guarded triggers skip own tokens.
     for (const tok of made) {
       emit({type:'cardEntersBattlefield', card: tok, controller: owner, sourceIid: ctx.sourceIid});
+      emitZoneChange(tok, owner, 'none', 'battlefield');
     }
   },
   // Force opp to sacrifice a creature (no targeting, so hexproof doesn't protect).
@@ -2071,7 +2078,7 @@ const EFFECTS = {
         const removed = bf.splice(idx, 1)[0];
         leavesPlayPreservingBuffs(removed);
         if (!removed.isToken) G[removed.owner || ctrl].hand.push(removed);
-        emitLeavesBattlefield(removed, ctrl);
+        emitLeavesBattlefield(removed, ctrl, 'hand');
       } else if (sev === 3) {
         if (card.keywords.includes('indestructible')) continue;
         card.killedBy = ctx.controller;
@@ -2089,7 +2096,7 @@ const EFFECTS = {
         leavesPlayPreservingBuffs(removed);
         if (!removed.isToken) G[removed.owner || ctrl].exile.push(removed);
         log(`${removed.name} is exiled.`, 'dmg');
-        emitLeavesBattlefield(removed, ctrl);
+        emitLeavesBattlefield(removed, ctrl, 'exile');
       }
     }
   },
@@ -2115,6 +2122,7 @@ const EFFECTS = {
     const returnTo = card.owner || f.controller;
     G[returnTo].battlefield.push(card);
     emit({type: 'cardEntersBattlefield', card, controller: returnTo, sourceIid: ctx.sourceIid});
+    emitZoneChange(card, returnTo, 'exile', 'battlefield');
   },
   // Otherworldly-Journey-shape: exile until end of turn via delayed trigger.
   // Tempo removal (1 turn off-board, dodge combat, re-fire your own ETB).
@@ -2158,7 +2166,7 @@ const EFFECTS = {
     if (!card) return;
     leavesPlayPreservingBuffs(card);
     log(`${ctx.sourceName} exiles ${card.name} until end of turn.`, 'sp');
-    emitLeavesBattlefield(card, f.controller);
+    emitLeavesBattlefield(card, f.controller, 'exile');
     // Hold card on delayed trigger (separate from exile zone, which handles permanent exile).
     G.delayedTriggers.push({
       fireAt: 'endStep',
@@ -2788,6 +2796,25 @@ function emit(evt, extraSources) {
   if (extraSources) {
     for (const src of extraSources) checkSource(src.card, src.controller);
   }
+}
+
+// Unified zone-change emission (Slice 2 / DIVERGENCE E2). Fires ALONGSIDE the
+// legacy cardEntersBattlefield / cardDies / cardLeavesBattlefield events during
+// the migration window: composable triggers (event: 'card_zone_change') match
+// on this; legacy condId triggers still match on the old events. No current
+// card listens, so this is a behavioral no-op until card migration (step 6).
+// extraSources lets a card that has already left a zone still see its own
+// zone-change trigger (parity with the cardDies/cardLeaves extraSources).
+function emitZoneChange(card, controller, fromZone, toZone, extraSources) {
+  if (!card) return;
+  emit({
+    type: 'card_zone_change',
+    subject_iid: card.iid,
+    subject_card: card,
+    controller,
+    from_zone: fromZone,
+    to_zone: toZone,
+  }, extraSources);
 }
 
 // Returns true if the trigger has no targeted effects (always queueable),
@@ -3550,11 +3577,18 @@ function leavesPlayPreservingBuffs(card) {
 // For creatures that fire BOTH this AND cardDies (on death), the leaves
 // event emits FIRST (before resetInPlayState/dies-emit). Cards that want
 // only one of the two should declare exactly one trigger.
-function emitLeavesBattlefield(card, controller) {
+function emitLeavesBattlefield(card, controller, destZone) {
   if (!card) return;
   // Tokens leaving play still emit — a future "when this token leaves
   // play" mechanic might want it. Costs nothing if no trigger listens.
   emit({type: 'cardLeavesBattlefield', card, controller}, [{card, controller}]);
+  // Unified zone-change mirror. destZone defaults to 'graveyard' (the death
+  // path — the most common caller); bounce/exile/shuffle/steal callers pass
+  // their actual destination so composable card_moves(battlefield, X) triggers
+  // distinguish dies from bounce. Explicit (not zone-detected) because a dead
+  // token never reaches the graveyard array, so post-move detection would
+  // mis-tag it.
+  emitZoneChange(card, controller, 'battlefield', destZone || 'graveyard', [{card, controller}]);
 }
 
 // Credit killer with the dying creature's keywords (runtime grants included).
@@ -3856,6 +3890,7 @@ function pushOnStack(item) {
   G.priorityHolder = opp(item.controller);
   if (item.card) {
     emit({type: 'spellCast', card: item.card, controller: item.controller});
+    emit({type: 'spell_cast', subject_iid: item.card.iid, subject_card: item.card, controller: item.controller});
     // Drain any spellCast-triggered abilities NOW so they go on the stack
     // ABOVE the spell that just caused them. MtG rule: triggers from casting
     // a spell go on the stack on top of that spell, resolving first. Without
@@ -3890,6 +3925,7 @@ function resolveTopOfStack() {
     G[item.controller].battlefield.push(card);
     log(`${card.name} enters the battlefield.`, 'sp');
     emit({type: 'cardEntersBattlefield', card, controller: item.controller});
+    emitZoneChange(card, item.controller, 'stack', 'battlefield');
   } else {
     const ctx = { controller: item.controller, sourceName: card.name, sourceIid: card.iid, sourceCard: card };
     // Snapshot the spell's target BEFORE any effect runs. Multi-effect spells
@@ -4035,6 +4071,7 @@ function dealCombatDamage(blocked, defender, dealsDamage) {
     // from a lifelink attacker — combat damage uses a different code path
     // than applyDamageFrom (which handles spell damage).
     emit({type: 'lifeGained', who: srcCtrl, amount: amt});
+    emit({type: 'life_changed', who: srcCtrl, delta: amt});
   };
   G.attackers.forEach(aIid => {
     const fa = findCard(aIid); if (!fa) return;
@@ -4173,6 +4210,7 @@ function doPlayLand(who, cardIid) {
   }
   log(`${p.name} plays ${card.name}.`);
   emit({type: 'cardEntersBattlefield', card, controller: who});
+  emitZoneChange(card, who, 'hand', 'battlefield');
 }
 function doTapLandForMana(who, cardIid, color, abilityIdx) {
   const f = findCard(cardIid); if (!f) return;
@@ -4327,7 +4365,10 @@ function doDeclareAttackers(who, cardIids) {
   // Done after the tap so triggers see the post-tap state.
   for (const iid of cardIids) {
     const f = findCard(iid); if (!f) continue;
-    emit({type: 'attacks', attacker: f.card, controller: who, defender: opp(who)});
+    // Single emission serves both vocabularies: legacy condId triggers read
+    // attacker/defender; composable triggers read subject_card/defender_key.
+    emit({type: 'attacks', attacker: f.card, controller: who, defender: opp(who),
+          subject_iid: f.card.iid, subject_card: f.card, defender_key: opp(who)});
   }
   // Phase advances via priority round (or skip-combat fast-path in step).
 }
@@ -5335,6 +5376,7 @@ function step() {
                   G[dt.exiledFrom].battlefield.push(dt.exiledCard);
                   log(`${dt.exiledCard.name} returns to the battlefield.`, 'sp');
                   emit({type: 'cardEntersBattlefield', card: dt.exiledCard, controller: dt.exiledFrom});
+                  emitZoneChange(dt.exiledCard, dt.exiledFrom, 'exile', 'battlefield');
                 }
               }
               // fired, don't keep
