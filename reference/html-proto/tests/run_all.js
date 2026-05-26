@@ -45,6 +45,8 @@ const CATEGORY_A = [
   'test_move_card.js',
   // Slice 3 — change_control unified control primitive.
   'test_change_control.js',
+  // Slice 3 — boot-time effect validation (step 4).
+  'test_effect_validation.js',
 ];
 
 const TESTS_DIR = __dirname;

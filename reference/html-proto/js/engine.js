@@ -2856,6 +2856,41 @@ function applyEffect(ctx, effect, target, targetSnap) {
 }
 function effectNeedsTarget(eff) { return !!eff.target && eff.target !== 'self'; }
 
+// Boot-time effect validation (Slice 3 step 4). Walks every card's effects
+// (on-cast — flat or modal — plus activated/triggered abilities) and flags
+// any effect `kind` not in the EFFECTS dispatch table, plus any target()/
+// chooses() filter outside the closed TARGET_FILTERS taxonomy. Surfaces typos
+// at boot rather than at resolution. Accepts both legacy and new kind names
+// (all live in EFFECTS during the cutover). Returns {unknownKinds,
+// unknownFilters} for tests; warns to console for the running app.
+function validateAllCardEffects(cards) {
+  const unknownKinds = [];
+  const unknownFilters = [];
+  const list = Array.isArray(cards) ? cards : Object.values(cards || {});
+  const checkList = (effs, cardId) => {
+    for (const e of (effs || [])) {
+      if (!e || typeof e !== 'object') continue;
+      if (e.kind && !EFFECTS[e.kind]) unknownKinds.push(cardId + '.' + e.kind);
+      if ((e.kind === 'chooses' || e.kind === 'target') && e.filter && !TARGET_FILTERS.has(e.filter)) {
+        unknownFilters.push(cardId + '.' + e.kind + '(' + e.filter + ')');
+      }
+    }
+  };
+  for (const card of list) {
+    const cardId = card.tplId || card.card_id || card.name || '?';
+    checkList(allCardEffects(card), cardId);
+    // New top-level target() step filter.
+    if (card.target && !TARGET_FILTERS.has(card.target)) {
+      unknownFilters.push(cardId + '.target(' + card.target + ')');
+    }
+    for (const ab of (card.abilities || [])) checkList(ab.effects, cardId);
+    for (const trig of (card.triggers || [])) checkList(trig.effects, cardId);
+  }
+  if (unknownKinds.length) console.warn('Unknown effect kind(s):', unknownKinds.join(', '));
+  if (unknownFilters.length) console.warn('Unknown target/chooses filter(s):', unknownFilters.join(', '));
+  return { unknownKinds, unknownFilters };
+}
+
 // Effect kinds that operate on a creature (vs player) — drives target:'self' meaning.
 // Add creature-operators here; damage/gainLife/draw/discard/addMana resolve self → controller.
 const CREATURE_EFFECT_KINDS = new Set([
@@ -5799,7 +5834,7 @@ return {
   matchFilter,
   // Effects seam exposed for tests (Slice 3).
   applyEffect, creaturesInScope, affectOneCreature,
-  targetsForFilter, TARGET_FILTERS,
+  targetsForFilter, TARGET_FILTERS, validateAllCardEffects,
   concede() {
     if (!G || G.gameOver) return;
     log('You concede.', 'imp');

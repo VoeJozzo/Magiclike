@@ -18,8 +18,10 @@ SETTINGS.applyFontsToRoot();
 
 loadCards().then(() => {
   // Boot validation: surface typos in composable trigger conditions / event
-  // kinds at startup (Slice 2 / E2), not at runtime when a trigger fails.
+  // kinds (Slice 2 / E2) and effect kinds / target filters (Slice 3) at
+  // startup, not at runtime when a trigger or effect fails.
   validateAllCardConditions(CARDS);
+  ENGINE.validateAllCardEffects(CARDS);
   CONTROLLER.init();
 }).catch(e => {
   console.error('Failed to load card data:', e);
