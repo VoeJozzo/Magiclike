@@ -23,6 +23,7 @@ Map of the documentation set. Each doc has a single, distinct job; this page is 
 | [`REFACTOR-NOTES.md`](REFACTOR-NOTES.md) | Structural **debt**, prioritized P0–P2. Advisory; pick up opportunistically. |
 | [`STANDARDIZATION-PLAN.md`](STANDARDIZATION-PLAN.md) | Cross-engine standardization rollout (Passes 1–4 shipped: snake_case wire, 258-card migration, JsonCardLoader; Pass 5/6 = future Godot-native wire shape, retire `.tres`, effect-kind porting). |
 | [`STANDARDIZATION-CONTEXT.md`](STANDARDIZATION-CONTEXT.md) | Handoff narrative + decision record from the standardization work (locked decisions, gotchas). History, not an active to-do. |
+| [`plan-card-data-unification.md`](plan-card-data-unification.md) | Retire Godot's `.tres`; make JSON the single card source (data-source half of standardization Pass 5). Sequenced **before** the effects/E1-E2 refactor's card migration so cards are touched once. |
 
 ## Refactor specs — "the big coordinated pass"
 
