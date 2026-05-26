@@ -4,7 +4,7 @@
 
 > **⚠ TARGETING MODEL SUPERSEDED — read §3.5 first.** The authoritative targeting model is now the **`target()` / `chooses()` decomposition** (§3.5): targeting is explicit leading steps, effects operate on the established target, and "is it targeted?" = "did it have a `target()` step?" (the old `is_targeted_filter` helper is retired). Several earlier sections — the §2/§3 decision tables (esp. the `force_sacrifice` rows #15/#26/#28), the §5–§6 worked examples (which show inline `target_filter`/`target: "chosen"` and a bundled `force_sacrifice`), §10 step 2, and a few §11/§12 rows — still use the **pre-decomposition wording**. Their *effect semantics are unchanged*; only how targeting/edicts are *expressed* shifts (per-effect `target: "chosen"` → a leading `target()` step; `force_sacrifice` → `target(player) → chooses(creature) → sacrifice`). Those sections get re-expressed during execution; §3.5/§4.2/§13 are canonical where they differ.
 
-**Pre-execution note:** `rip` is now a **one-verb difference from an edict** (§3.5/§13): edict = `target(player) → chooses(creature) → sacrifice`; rip-edict = the same but `annihilate` instead of `sacrifice`, plus a `rip` slot-strip. The kludge ships with `sacrifice` today (off-target: fires death/LTB triggers — knowingly accepted); the **decided long-term** swaps that one verb to `annihilate` (creature ceases to exist, no triggers). No open questions block execution.
+**Pre-execution note:** `rip` is a **broad, zone-agnostic** "tear up that card, gone from your deck forever" primitive (§13) — it strips a card's deck-slot regardless of zone and composes after any targeting/removal (`target(player)→chooses(creature)→annihilate→rip` for a creature; `target(spell)→counter→rip` for a spell). Current code is the narrow bundled `ripPermanent` (battlefield-only, fires triggers — the accepted kludge); the broad decomposed form is the decided target. For the creature/edict case specifically it's one verb off an edict (`sacrifice` kludge → `annihilate` target). No open questions block execution.
 **Cross-references:** `docs/DIVERGENCE.md` items D1 (target target-state semantics — see §3.6), D2 (`pump` duration → `addCounter`), D3 (`gain_life` flexibility), D4 (`gain_life` signed delta), B4 (delayed-trigger machinery — required for `exile_until_eot` decomposition), C5 (killer attribution — adjacent), E1/E2 (event vocabulary + composable predicates, prerequisite for the `move_card` effect's destination semantics). `docs/RULES.md` §703 (target legality), §704 (resolution + fizzle), §904 (hexproof). `docs/SPEC.md` §1.4 (effect descriptor schema).
 **Effort estimate:** **L** (~4.5–5.5 days end-to-end across both engines, ~64–69 hours, including card migration, tests, splice helper extraction, and registry consolidation; this is the largest of the three planned refactors because it touches all 258 proto cards, all 32 Godot templates, and rewrites the dispatch table itself).
 
@@ -442,7 +442,7 @@ Shorthand-style signature; parameters are descriptive, not exhaustive.
 - `apply_in_game_splice(target_pair)` — Stapler.
 
 **Run-layer primitives (1)**
-- `rip` — strips the chosen creature's slot from the run via `RUN.removeSlotByIdx`. Operates on the creature established by the preceding `chooses`/`target` step; does NOT itself remove the in-play card (a removal verb does). With the targeting decomposition, edict and rip-edict are now a clean **one-verb difference** (§13): edict = `target(player) → chooses(creature) → sacrifice`; rip-edict (target) = `target(player) → chooses(creature) → annihilate → rip`. **Current kludge** uses `sacrifice` (fires triggers — off-target but accepted); **decided long-term** swaps it for `annihilate` (no triggers). Phylactery's engine-internal path already calls `RUN.removeSlotByIdx`.
+- `rip` — a **broad, zone-agnostic** run-layer primitive: strip the targeted card's deck-slot from the run permanently (`RUN.removeSlotByIdx`). It doesn't care what zone the card is in — it composes after whatever targeting/removal preceded it. Creature: `target(player) → chooses(creature) → annihilate → rip`. Spell: `target(spell) → counter → rip`. Same `rip` step; the slot machinery keys off a `slotIdx` that any deck-originated card carries. **Current code is the narrow, bundled `ripPermanent`** (battlefield-permanents only, player-targeted, uses `sacrifice`-style removal that fires triggers — the kludge). The broad standalone `rip` is the decided target; see §13.
 
 | Category | Count |
 |---|---|
@@ -1048,28 +1048,40 @@ For each shorthand effect name, verify it desugars correctly to its canonical `m
 
 ---
 
-## 13. The `rip` effect — a one-verb difference from edict (clarified by the targeting decomposition)
+## 13. The `rip` effect — a broad, zone-agnostic "tear it up" primitive
 
-**Status: SHIP THE KLUDGE; LONG-TERM INTENT DECIDED.** Both halves are settled; nothing here blocks execution. The `target()`/`chooses()` decomposition (§3.5) makes rip and edict almost the same recipe, differing by a single verb.
+**Design intent.** `rip` is the digital interpretation of reaching across the table and tearing up your opponent's card — *it does not care what zone the card is in.* It's a small, broad run-layer primitive: take whatever card the preceding steps put in your sights, and **strip its deck-slot from the run permanently** (`RUN.removeSlotByIdx`). It composes after *any* targeting/removal, so the same `rip` step ends "rip that creature," "rip that spell," etc.
 
-### Edict vs rip-edict, side by side
+**Status:** ship the (battlefield-only) kludge now; the broad decomposed form is the decided target. Nothing here blocks execution.
+
+### `rip` composes across zones (the point)
 ```
-Diabolic Edict:        target(player) → chooses(creature) → sacrifice
-Rip-edict (TARGET):    target(player) → chooses(creature) → annihilate → rip
+Rip a creature (edict-style):  target(player) → chooses(creature) → annihilate → rip
+Rip a spell on the stack:      target(spell)  → counter            → rip
+```
+Same `rip` slot-strip at the end; the front half differs only in how the card got targeted and removed from its current zone. The slot machinery works on a `slotIdx`, which any deck-originated card carries regardless of zone — so `rip` is genuinely zone-agnostic by construction. (Other zones — a card in hand, in the graveyard — compose the same way: target/identify it, optionally remove it from that zone, then `rip` the slot.)
+
+### Why the edict case is "one verb off"
+For the creature case, edict and rip-edict are nearly identical recipes:
+```
+Diabolic Edict:           target(player) → chooses(creature) → sacrifice
+Rip-edict (TARGET):       target(player) → chooses(creature) → annihilate → rip
 Rip-edict (KLUDGE today): target(player) → chooses(creature) → sacrifice  → rip
 ```
-The first two steps are shared (the player is *targeted*; that player *chooses* one of their creatures — and because the creature is chosen, not targeted, hexproof doesn't protect it, exactly like a real edict, §3.5). The only differences:
-- **Removal verb:** `sacrifice` (→ graveyard, fires triggers) vs `annihilate` (ceases to exist, no triggers).
-- Rip adds the `rip` step (strip the run-slot).
+The first two steps are shared (the player is *targeted*; the creature is *chosen*, so hexproof doesn't protect it — §3.5). The only differences are the removal verb (`sacrifice` → graveyard + triggers, vs `annihilate` → ceases to exist, no triggers) and the trailing `rip`.
 
-### Current implementation — the deliberate kludge
-The kludge uses `sacrifice` (the verb that exists today). **This is off-target behavior happening right now, not hidden:** a ripped creature really does go to the graveyard and fire its death/LTB triggers, rather than ceasing to exist. We knowingly accept it for now — it ships the rip-card without building new removal machinery, and the divergence is tolerable in current play.
+### Current implementation — bundled and battlefield-only (the gap)
+Today `rip` is **not** the clean standalone slot-strip above. It's the monolithic `ripPermanent` (engine.js:1979), used only by Vile Edict: it targets a **player**, opens `pendingRipSelect` so that player picks one of **their battlefield permanents**, then removes it + strips the slot — all welded together. So today:
+- It only reaches **battlefield permanents** — there is no path to `rip` a spell, a hand card, or a graveyard card.
+- The slot-strip isn't separable from the target-player/choose-permanent flow.
+- It uses `sacrifice`-style removal → fires death/LTB triggers (**off-target, happening now, not hidden** — knowingly accepted as the kludge).
 
-### Long-term intent — annihilation (DECIDED, not yet implemented)
-Swap the one verb: `sacrifice` → `annihilate`. The chosen creature then **ceases to exist** — no zone change, no `cardDies`/`cardLeavesBattlefield` triggers, never reaches the graveyard; only the slot-loss remains. This matches proto's Phylactery (`ripSlotForPhylactery`) body, which plucks the card with no zone-change emit.
+### Decomposition target (DECIDED)
+Split `ripPermanent` into the composable steps: a standalone `rip` slot-strip + the targeting (`target`/`chooses`, §3.5) + the removal verb. Then:
+- The creature card swaps its removal verb `sacrifice` → `annihilate` (creature ceases to exist, no triggers — matches Phylactery's `ripSlotForPhylactery` body, which plucks with no zone-change emit).
+- A future "rip target spell" card is just `target(spell) → counter → rip` — no new rip machinery, because `rip` is zone-agnostic.
 
-### Migration path (when we do it)
-Add the `annihilate` removal verb (removes the in-play card with no zone-change emit / no triggers) and change the rip-card's third step from `sacrifice` to `annihilate`. Do it whenever the divergence stops being acceptable (e.g., it starts mattering for graveyard interactions or death-trigger combos) or we simply want the target behavior. Cheap and localized — one verb on one card; no targeting changes (the `target(player) → chooses(creature)` front half is already the shared, correct shape).
+Do the creature-verb swap whenever the trigger-firing divergence stops being acceptable; the broad `rip` decomposition lands with the targeting work (§3.5) since they share the same composable shape.
 
 ---
 
