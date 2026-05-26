@@ -2058,6 +2058,14 @@ const EFFECTS = {
     if (!f) return;
     sacrificeCard(f.card, f.controller);
   },
+  // No-trigger removal verb (effects-refactor §4.2). The creature ceases to
+  // exist: no graveyard, no death/leave triggers. Trailing step of rip-edict.
+  annihilate(ctx, params, target) {
+    if (!target) return;
+    const f = findCard(target.iid);
+    if (!f) return;
+    annihilateCard(f.card, f.controller);
+  },
   // Iconic red AOE: deal N damage to every creature on both battlefields.
   // Asymmetric — hits your own creatures too. Indestructible takes the damage
   // but doesn't die (handled by SBA). Hexproof doesn't protect (this isn't
@@ -3346,6 +3354,21 @@ function sacrificeCard(card, controller) {
   resetInPlayState(card, true);
   log(`${pname(controller)} sacrifices ${card.name}.`, 'dmg');
   emitLeavesBattlefield(card, controller);
+}
+
+// Annihilate: like sacrificeCard but the card CEASES TO EXIST — no graveyard
+// push, no cardDies / leaves-battlefield emit, so no death/LTB triggers fire.
+// Rip's no-trigger removal verb (effects-refactor §4.2 / review OBS 1). Used by
+// rip-edict (target(player) → chooses(creature) → annihilate → rip).
+function annihilateCard(card, controller) {
+  const bf = G[controller].battlefield;
+  const idx = bf.findIndex(c => c.iid === card.iid);
+  if (idx < 0) return;
+  bf.splice(idx, 1);
+  clearRestrictionsFromSource(card.iid);
+  resetInPlayState(card, true);
+  log(`${card.name} is annihilated.`, 'dmg');
+  // Deliberately silent: no graveyard, no emit, no triggers.
 }
 
 // Apply keyword grant. eot=false → grantedBy (revoked when source leaves

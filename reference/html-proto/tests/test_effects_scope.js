@@ -106,5 +106,29 @@ console.log('\n=== single-target path still works (no scope) ===');
   check('single-target damage still works', b.damage === 1, 'damage=' + b.damage);
 })();
 
+console.log('\n=== sacrifice vs annihilate (graveyard contract) ===');
+(() => {
+  function inZone(who, zone, iid) { return G[who][zone].some(c => c.iid === iid); }
+
+  // sacrifice → goes to graveyard, fires leave/death emits.
+  clearBoards();
+  const s = place('you');
+  const sIid = s.iid;
+  ENGINE.applyEffect(CTX, { kind: 'sacrifice' }, { kind: 'creature', iid: sIid });
+  check('sacrifice: off battlefield', !inZone('you', 'battlefield', sIid));
+  check('sacrifice: in graveyard', inZone('you', 'graveyard', sIid));
+
+  // annihilate → ceases to exist: not on battlefield, NOT in graveyard/exile.
+  clearBoards();
+  const a = place('you');
+  const aIid = a.iid;
+  const gyBefore = G.you.graveyard.length, exBefore = G.you.exile.length;
+  ENGINE.applyEffect(CTX, { kind: 'annihilate' }, { kind: 'creature', iid: aIid });
+  check('annihilate: off battlefield', !inZone('you', 'battlefield', aIid));
+  check('annihilate: NOT in graveyard', !inZone('you', 'graveyard', aIid) && G.you.graveyard.length === gyBefore);
+  check('annihilate: NOT in exile', !inZone('you', 'exile', aIid) && G.you.exile.length === exBefore);
+  check('annihilate: queued no triggers (silent)', (G.pendingTriggers || []).length === 0);
+})();
+
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');
 process.exit(fail > 0 ? 1 : 0);
