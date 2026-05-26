@@ -73,4 +73,36 @@ Run every `tests/test_phase*.tscn` plus `tests/test_priority_window.tscn`.
 
 ---
 
+## Slice 2 — Composable predicates (E1/E2)  ·  proto commits from c2029c9
+
+**Proto (JS) side is being built and validated here** (Node suite). The Godot
+side is **not started** — it must mirror what lands on proto. Track proto
+progress in `plan-zone-change-and-composable-predicates.md` §11; the Godot
+mirror of each step:
+
+- [ ] **Atomic predicate registry in `engine/predicates/predicates.gd`** — port
+  the 12 primitives + `evaluate()` walker + `_parse_call`/`_split_args`/
+  `_coerce_arg` (plan §5–§6 has GDScript pseudocode; proto impl in
+  `reference/html-proto/js/triggers.js` is the reference). Keep the existing
+  `opp_lost_life_this_turn` working in parallel until card migration.
+  - Note: proto atomics take `(ctx, args)` with `ctx.who` = source controller;
+    Godot's plan signature is `(state, source, event, args)` resolving the
+    player from `source.controller_key`. Same logic, per-engine signature.
+- [ ] **Emit `card_zone_change`** alongside `card_etb`/`card_dies` (plan §3 / §11
+  step 3) — `_run_sbas`, `_do_play_land`, `_resolve_spell_entry`. New unified
+  event shape: `{kind, subject_iid, subject_card, controller, from_zone, to_zone, killed_by_iid?}`.
+- [ ] **Boot-validator rewrite** — recursive walk over the new `condition` field
+  (plan §8). Mirror the proto validator added in step 4.
+- [ ] **Migrate Godot's 2 trigger cards** (`pyromaniac.tres`,
+  `bloodlust_berserker.tres`) to `event: card_zone_change` + composed
+  `condition` (plan §7 / §4.1). Run `test_phase4*` to confirm single-trigger
+  semantics (no double-fire during the both-events cutover window).
+- [ ] **Remove legacy** `self_only` / `condition_predicate` / `card_etb` /
+  `card_dies` from Godot once both engines are migrated (plan §11 step 8).
+
+**Proto reference for the Godot port:** atomics + evaluator + parser are in
+`reference/html-proto/js/triggers.js` (search `ATOMIC_PREDICATES`,
+`evaluateCondition`, `_parseCall`); unit tests in
+`tests/composable_predicates_test.js`.
+
 <!-- Append new slices' Godot items below as they're written. -->
