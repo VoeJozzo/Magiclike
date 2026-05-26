@@ -1,6 +1,6 @@
 # Refactor Plan: Unified Zone-Change Events + Composable Predicates
 
-**Status:** Plan complete, ready for review. Not yet executed.
+**Status:** **PROTO-SIDE COMPLETE** (steps 1–8 of §11 all shipped: atomics + evaluator + parser, unified `card_zone_change`/`spell_cast`/`life_changed` emission, boot validation, 97 card-trigger migration via `tools/migrate-triggers.js`, generator + mercurial-pool migration, and full legacy removal). Verified: suite 593/593 + selfplay 500 clean. **Godot side not started** — tracked in [`GODOT-QA-TODO.md`](GODOT-QA-TODO.md). A few §-level claims proved wrong in execution (noSelfCascade→another_card §7; anyCardDies decomposition §2 missing `card_is_creature`); see the QA doc's "gotchas" for the corrected reality.
 **Cross-references:** `docs/DIVERGENCE.md` items E1 (event-vocabulary / zone-change unification) and E2 (composable predicates). `docs/RULES.md` §1000–1002 (Triggered Abilities). Sequenced before Phase 6 card-pool expansion so new cards don't accumulate in the old monolithic style.
 **Effort estimate:** **L** (~2.5–3 days end-to-end across both engines, including card migration and tests).
 

@@ -110,14 +110,17 @@ mirror of each step:
 These weren't in the plan; the proto implementation surfaced them. The Godot
 mirror will hit the same ones.
 
-1. **`condId` had downstream consumers beyond trigger matching.** Removing it
-   from migrated cards broke (a) card-text trigger preambles and (b) AI
-   trigger-frequency valuation, both of which keyed off `condId`. Fix: a
-   single centralized `triggerArchetype(trig)` classifier (proto:
-   `js/triggers.js`) that recovers the archetype id from `event`+`condition`
-   and still honors a legacy `condId`. Godot has the analogous coupling —
-   `scenes/card.gd` oracle-text rendering and `engine/ai/scoring.gd`. Audit
-   for `condId`/`condition_predicate` reads before deleting the field.
+1. **`condId`/`event`-string had downstream consumers beyond trigger
+   matching.** Removing/changing them broke THREE systems: (a) card-text
+   trigger preambles, (b) AI trigger-frequency valuation (both keyed on
+   `condId`), and (c) AI ETB-detection heuristics that matched
+   `trig.event === 'cardEntersBattlefield'` (flicker / exileUntilEOT / flash
+   valuation). Fixes: a centralized `triggerArchetype(trig)` classifier and a
+   `triggerFiresOnEnter(trig)` helper (proto: `js/triggers.js`) that recover
+   the classification from `event`+`condition`. Godot has the analogous
+   coupling — `scenes/card.gd` oracle text, `engine/ai/scoring.gd`, and any
+   AI code that pattern-matches `card_etb`/`card_dies` event kinds. **Audit
+   every `condId`/`condition_predicate`/`event ==` read before deleting.**
 2. **The plan's "fold `noSelfCascade` into an `another_card` term" is WRONG.**
    `noSelfCascade` guards a generated trigger against re-firing on its OWN
    created tokens — keyed on the event's *causing source*, not the subject. A
@@ -137,5 +140,18 @@ mirror will hit the same ones.
 5. **Life-LOSS emission is deferred** — `is_life_loss` exists as a primitive
    but no `life_changed(delta<0)` is emitted yet (no current card needs it).
    Wire it when the first loss-trigger card appears.
+6. **`anyCardDies` (Blood Artist) is creature-only.** The plan's §2
+   decomposition (`[card_moves(battlefield, graveyard)]`) is wrong — the legacy
+   `cardDies` event was emitted creature-only, so the faithful condition is
+   `[card_is_creature, card_moves(battlefield, graveyard)]`, else it fires on
+   lands/artifacts dying. (`thisDies`/`anotherCreatureDies`/`thisKillsCreature`
+   are already creature-correct: `this_card` implies creature, and the other
+   two carry `card_is_creature`.)
+
+**Proto Slice 2 is fully shipped (steps 1–8).** The proto code in
+`reference/html-proto/js/{triggers,engine,cards,trigger-generator,card-text}.js`
++ `tools/migrate-triggers.js` is the reference implementation for the Godot
+mirror. Tests: `composable_predicates_test.js`, `trigger_migration_test.js`,
+`trigger_generator_test.js`.
 
 <!-- Append new slices' Godot items below as they're written. -->
