@@ -1436,6 +1436,26 @@ function affectOneCreature(ctx, f, sev) {
   emitLeavesBattlefield(card, f.controller, 'exile');
 }
 
+// Place a card ARRIVING on the battlefield (move_card to_zone=battlefield).
+// Mints a fresh iid (§3.7 iid-mint-on-arrival: a spell targeting the card's
+// old iid now fizzles — "flicker beats removal" for free), sets summoning
+// sickness unless hasted, applies post-actions, and emits the unified ETB
+// zone-change. The card must already be removed from its source zone.
+function placeCardOnBattlefield(ctx, card, fromZone, post) {
+  post = post || {};
+  card.iid = nextIid++;
+  const hasHaste = card.keywords.includes('haste') || !!post.grant_haste;
+  card.sick = !hasHaste;
+  if (post.grant_haste && !card.keywords.includes('haste')) applyGrant(card, 'haste', ctx.sourceIid, true);
+  const ctrl = ctx.controller;
+  G[ctrl].battlefield.push(card);
+  if (post.tap) card.tapped = true;
+  if (post.untap_on_arrive) card.tapped = false;
+  if (post.enter_via_etb !== false) {
+    emitZoneChange(card, ctrl, fromZone, 'battlefield', [{ card, controller: ctrl }], ctx.sourceIid);
+  }
+}
+
 const EFFECTS = {
   damage(ctx, params, target) {
     if (params.scope) {
@@ -1907,11 +1927,11 @@ const EFFECTS = {
         emitLeavesBattlefield(card, f.controller, to);
         continue;
       }
-      if (from === 'graveyard') {
-        const grave = G[ctx.controller].graveyard;
-        const idx = grave.findIndex(c => c.iid === t.iid);
+      if (from === 'graveyard' || from === 'exile') {
+        const zone = G[ctx.controller][from];
+        const idx = zone.findIndex(c => c.iid === t.iid);
         if (idx < 0) break;
-        const [card] = grave.splice(idx, 1);
+        const [card] = zone.splice(idx, 1);
         card.tapped = false; card.sick = false; card.damage = 0;
         card.tempPower = 0; card.tempTou = 0;
         if (card.damagedBySources instanceof Set) card.damagedBySources.clear();
@@ -1919,7 +1939,8 @@ const EFFECTS = {
         const dest = card.owner || ctx.controller;
         if (to === 'hand') G[dest].hand.push(card);
         else if (to === 'library') { G[dest].library.push(card); if (post.shuffle) shuffle(G[dest].library); }
-        else { console.warn('move_card: unsupported graveyard dest', to); break; }
+        else if (to === 'battlefield') placeCardOnBattlefield(ctx, card, from, post);  // reanimate / exile-return
+        else { console.warn('move_card: unsupported', from, 'dest', to); break; }
         continue;
       }
       console.warn('move_card: unsupported from_zone', from);

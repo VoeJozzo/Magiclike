@@ -92,5 +92,38 @@ console.log('\n=== uses ctx.chosen when no explicit target ===');
   check('bounced the ctx.chosen creature', !has(G.opp.battlefield, c.iid) && has(G.opp.hand, c.iid));
 })();
 
+console.log('\n=== reanimate: graveyard → battlefield (iid-mint §3.7) ===');
+(() => {
+  const c = ENGINE.makeCard(CREATURE_TPL);
+  const oldIid = c.iid;
+  G.you.graveyard.push(c);
+  ENGINE.applyEffect(CTX, { kind: 'move_card', from_zone: 'graveyard', to_zone: 'battlefield', selector: 'target', amount: 1 },
+    { kind: 'creature', iid: oldIid });
+  check('off graveyard', !has(G.you.graveyard, oldIid));
+  // After iid-mint, the card carries a NEW iid — find it on the battlefield.
+  const arrived = G.you.battlefield.find(x => x !== undefined && x.tplId === CREATURE_TPL && x.iid !== oldIid);
+  check('on battlefield with a FRESH iid (old iid is gone)',
+    !!arrived && !has(G.you.battlefield, oldIid), 'oldIid=' + oldIid);
+  check('arrives summoning-sick (no haste)', arrived && arrived.sick === true);
+})();
+
+console.log('\n=== iid-mint regression: exile → battlefield re-mints (§12.10) ===');
+(() => {
+  clearBoardsSafe();
+  const c = place('you');
+  const iid1 = c.iid;
+  // Exile it, then return from exile to the battlefield.
+  ENGINE.applyEffect(CTX, { kind: 'move_card', from_zone: 'battlefield', to_zone: 'exile', selector: 'target', amount: 1 },
+    { kind: 'creature', iid: iid1 });
+  const exiled = G.you.exile.find(x => x.iid === iid1);
+  check('exiled (same iid while in exile)', !!exiled);
+  ENGINE.applyEffect(CTX, { kind: 'move_card', from_zone: 'exile', to_zone: 'battlefield', selector: 'target', amount: 1 },
+    { kind: 'creature', iid: iid1 });
+  const back = G.you.battlefield.find(x => x.tplId === CREATURE_TPL);
+  check('returned to battlefield with a NEW iid (old iid would fizzle a spell)',
+    !!back && back.iid !== iid1, 'iid1=' + iid1 + ' new=' + (back && back.iid));
+})();
+
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');
+function clearBoardsSafe() { G.you.battlefield = []; G.opp.battlefield = []; G.you.exile = []; }
 process.exit(fail > 0 ? 1 : 0);
