@@ -87,7 +87,7 @@ Refactor items live here. Feature deferrals continue to live in [`BACKLOG.md`](B
 ### 1.7 [P2/M] `_stack_held_cards` is a band-aid
 **Where.** `engine/engine.gd` — `_stack_held_cards` buffer + `_find_card_anywhere` (~line 738) bridging hand → stack-held → graveyard transitions during spell resolution.
 
-**Smell.** Spells live in three zones during their lifetime: hand → stack-held (off-zone) → graveyard/battlefield. The buffer exists because the stack model is `Array[StackEntry]` not `CardContainer`. `_find_card_anywhere` has to consult it explicitly. `counter_spell.gd` reaches into the autoload to manipulate it.
+**Smell.** Spells live in three zones during their lifetime: hand → stack-held (off-zone) → graveyard/battlefield. The buffer exists because the stack model is `Array[StackEntry]` not `CardContainer`. `_find_card_anywhere` has to consult it explicitly. `counter.gd` reaches into the autoload to manipulate it.
 
 **Recommended.** Make stack entries first-class zone members so `find_instance` finds them naturally. Or, formalize a `Card.location` enum that includes `STACK` and route lookups through it.
 

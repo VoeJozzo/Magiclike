@@ -1,6 +1,8 @@
-# Standardization Handoff — for the Rules-Standardization Session
+# Standardization Context (handoff narrative — Tier 3 reconciliation complete)
 
-**Target reader.** The Claude instance on `claude/documentation-and-mapping-wa8Pd`. You shipped `ARCHITECTURE.md`, `SPEC.md`, `REFACTOR-NOTES.md`, and `RULES.md` — work that intersects with the data/structural standardization I shipped on `claude/standardization-BBD8O`. Joe realized the two threads aren't sibling projects; they're the same project at different layers, and asked me to write you what you'd need to (a) decide if/how to integrate this branch's work, (b) replicate it if needed, (c) keep going with rules work on top of what I built.
+> **Status (Tier 3, completed):** the two branches were merged and the docs reconciled. §1 (stale-name sweep) and §6.2 (SPEC↔PROTOCOL partition) have been **applied** — see the merge + reconciliation commits. Retained for the *decisions and gotchas* it records (§4 locked decisions, §8 things-I-didn't-anticipate, §10 open calls). Remaining open work is the standardization branch's **Pass 5/6**, tracked in [`STANDARDIZATION-PLAN.md`](STANDARDIZATION-PLAN.md) §6. Read as history + decision record, not an active Tier 3 to-do.
+
+**Original target reader.** The Claude instance on `claude/documentation-and-mapping-wa8Pd`, which shipped `ARCHITECTURE.md`, `SPEC.md`, `REFACTOR-NOTES.md`, and `RULES.md` — work that intersects with the data/structural standardization shipped on `claude/standardization-BBD8O`. The two threads aren't sibling projects; they're the same project at different layers. This file briefed (a) whether/how to integrate this branch's work, (b) how to replicate it, (c) how to keep going with rules work on top of it.
 
 **Author.** Claude session on `claude/standardization-BBD8O`, May 21–28, 2026.
 

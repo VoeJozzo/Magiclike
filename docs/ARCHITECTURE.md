@@ -66,8 +66,9 @@ GitHub Pages serves from `dev`, pointing at `reference/html-proto/magiclike_engi
 | `engine/card_instance.gd` | 131 | Per-card runtime state — tapped, damage_marked, temp_power/toughness, counters, summoning_sick, granted_keywords. | `current_power`, `current_toughness`, `effective_keywords`, `has_keyword`, `clear_eot_modifiers` |
 | `engine/action.gd` | 81 | Action constants (`KIND_*`) + factory functions. | All `make_*` helpers, `target_player`, `target_creature` |
 | `engine/effects/effects.gd` | 38 | Effect dispatcher. `HANDLERS` table maps `kind` → handler script. | `resolve_one(effect, ctx)`, `resolve_list(effects, ctx)` |
-| `engine/effects/{damage,add_mana,pump,gain_life,counter_spell}.gd` | 30–65 ea. | Per-kind handlers. Signature `execute(effect: Dictionary, ctx: Dictionary)`. | `execute` |
+| `engine/effects/{damage,add_mana,pump,gain_life,counter}.gd` | 30–65 ea. | Per-kind handlers. Signature `execute(effect: Dictionary, ctx: Dictionary)`. | `execute` |
 | `engine/predicates/predicates.gd` | 63 | String-keyed condition registry. Boot-time `validate_all_card_predicates`. | `evaluate(name, state, source, event)`, `validate_all_card_predicates(cards)` |
+| `engine/json_card_loader.gd` | 301 | Loads `reference/html-proto/cards/<id>/card.json` into `CardResource` instances; translation tables map JS-isms (camelCase kinds, `"any"` target, string `sub`) to Godot's snake_case shape. Boot supportability scan reports unsupported cards by missing effect/event/predicate kind. See [`PROTOCOL.md`](PROTOCOL.md). | `load_card`, `load_all`, `supportability_report` |
 | `engine/ai/ai.gd` | 283 | `AI.decide(state, player_key) -> Dictionary`. Hierarchical decision. | `decide` |
 | `engine/ai/combat.gd` | 200 | `decide_attackers`, `decide_blockers`, `simulate_combat` (deep-copy + reuse engine damage). | `decide_attackers`, `decide_blockers`, `simulate_combat` |
 | `engine/ai/burn.gd` | 57 | `face_damage_in_hand`, `has_lethal`. | Same |
@@ -121,7 +122,7 @@ GitHub Pages serves from `dev`, pointing at `reference/html-proto/magiclike_engi
 
 **Stack and priority.** The stack is `Array[StackEntry]`, holding both spell entries and triggered-ability entries. Both resolve via `_resolve_*_entry`. Priority follows MTG semantics where it matters (caster retains after casting; pools empty at phase boundaries; defender declares blocks before priority opens at COMBAT_BLOCK; triggers drain in APNAP order). Auto-passes (AI driver, unattended priority windows) are agent UX layered on top — the priority pass IS happening, it's just `execute_action(pass_priority)` called automatically.
 
-**Trigger drain.** Events emitted by `_fire_event` scan all battlefield creatures, match `event` + `condition_predicate`, and enqueue `TriggerEntry` objects to `pending_triggers`. `_drain_pending_triggers` orders by APNAP, resolves listeners with no target prompt, and pauses on `awaiting_target_for_trigger` for cards that need player input (Pyromaniac). Resumes on `KIND_PICK_TRIGGER_TARGET` action.
+**Trigger drain.** Events emitted by `_fire_event` scan all battlefield creatures, match `event` + `cond_id`, and enqueue `TriggerEntry` objects to `pending_triggers`. `_drain_pending_triggers` orders by APNAP, resolves listeners with no target prompt, and pauses on `awaiting_target_for_trigger` for cards that need player input (Pyromaniac). Resumes on `KIND_PICK_TRIGGER_TARGET` action.
 
 **Combat damage.** Two-pass (`_combat_damage_pass` called twice — first-strike layer, then normal layer). Inner loop iterates attacker → assigned blockers, applies trample / menace collapse / first-strike skip / lifelink / deathtouch. SBAs sweep after each pass.
 
@@ -130,15 +131,15 @@ GitHub Pages serves from `dev`, pointing at `reference/html-proto/magiclike_engi
 ### 2.4 Effects and predicates
 
 **Effects** (`engine/effects/`):
-- `effects.gd:14–20` declares `HANDLERS = { "damage", "add_mana", "pump", "gain_life", "counter_spell" }`.
+- `effects.gd:14–20` declares `HANDLERS = { "damage", "add_mana", "pump", "gain_life", "counter" }`.
 - Every handler has the same signature: `static func execute(effect: Dictionary, ctx: Dictionary)`.
-- `ctx` is built by the engine: `{controller, source, source_name, source_iid, state, targets, log}`. Handlers read `ctx.state` for cross-player lookups; they do NOT reach into the `RulesEngine` autoload (one documented exception: `counter_spell.gd:20` calls `RulesEngine.counter_stack_entry()` because the buffer for off-zone stack-held cards lives on the autoload).
+- `ctx` is built by the engine: `{controller, source, source_name, source_iid, state, targets, log}`. Handlers read `ctx.state` for cross-player lookups; they do NOT reach into the `RulesEngine` autoload (one documented exception: `counter.gd:20` calls `RulesEngine.counter_stack_entry()` because the buffer for off-zone stack-held cards lives on the autoload).
 - Fizzle behavior is per-handler: targets gone → log + return.
 
 **Predicates** (`engine/predicates/predicates.gd`):
 - Single registry: `_PRED_NAMES = ["opp_lost_life_this_turn"]`. One predicate implemented.
 - Calling convention: `cond_<name>(state: EngineState, source: CardInstance, event: Dictionary) -> bool`. State passed explicitly; no autoload reach.
-- Boot-time validation: `validate_all_card_predicates(card_resources)` walks every loaded `CardResource`, collects `condition_predicate` strings from `triggered_abilities`, `push_error`s on any unknown name. Runs from `engine.gd._ready()`.
+- Boot-time validation: `validate_all_card_predicates(card_resources)` walks every loaded `CardResource`, collects `cond_id` strings from `triggers`, `push_error`s on any unknown name. Runs from `engine.gd._ready()`.
 - Card-local predicate hook reserved (`_is_card_local_predicate`) but no callers yet.
 
 ### 2.5 AI module
@@ -177,11 +178,13 @@ AI.decide(state, player_key):
 
 ### 2.7 Card data
 
-Pure GDScript layer. Cards live one `.tres` per template in `cards/templates/`. `card_database.gd` does a directory walk on first access (lazy-cached), so adding a new card is "drop the `.tres` in the folder, restart." No `_manifest.json` needed.
+Two coexisting paths today:
+- **`.tres` templates** (`cards/templates/*.tres`) — the 23 hand-curated playable cards. `card_database.gd` does a lazy directory walk; adding one is "drop the `.tres` in, restart."
+- **JSON wire format** (`engine/json_card_loader.gd`) — reads the html-proto `card.json` files directly (the cross-engine wire format; see [`PROTOCOL.md`](PROTOCOL.md)) and materializes `CardResource` instances. A boot **supportability scan** reports how many of the 258 proto cards are fully playable (today: 258 loaded, 109 supported, 149 awaiting handlers). This makes Godot card-pool growth a *prioritization* problem (which effect kinds to implement next) rather than a *translation* problem.
 
-`CardResource` is the base; `CreatureResource`/`SpellResource`/`LandResource` add type-specific fields. Schema details in [`SPEC.md`](SPEC.md).
+`CardResource` is the base; `CreatureResource`/`SpellResource`/`LandResource` add type-specific fields. Runtime schema in [`SPEC.md`](SPEC.md); wire format in [`PROTOCOL.md`](PROTOCOL.md).
 
-**Note on vestigial JSON wiring.** `addons/card-framework` ships a `JsonCardFactory`; the Godot port wires a `TresCardFactory` that overrides it to load `.tres` instead. `cards/data/` is empty. The `CLAUDE.md` mention of JSON templates is historical — flagged for cleanup in `REFACTOR-NOTES.md`.
+**Note on `JsonCardFactory` (card-framework).** The vendored addon's `JsonCardFactory` is still unused by the *visual* layer (`TresCardFactory` does that). The *engine-side* JSON path is now live via `json_card_loader.gd` — no longer vestigial. Consolidating the visual layer onto JSON (and retiring `.tres`) is future work — standardization Pass 5 / `REFACTOR-NOTES.md`.
 
 ### 2.8 Test suite
 
@@ -313,11 +316,11 @@ node tests/selfplay_harness.js 500 bughunt  # AI vs AI, ~20s
 | Triggered abilities | ✓ Phase 4 | ✓ | Godot has 1 predicate, proto has 14. |
 | Triggered ability target picking | ✓ Phase 4.5b | ✓ | Pyromaniac in both. |
 | Library + draw + decking | ✓ Phase 4.5a | ✓ | Both implement 704.5b. |
-| Counterspell | ✓ Phase 4.5c | ✓ | Both via `counter_spell` effect. |
+| Counterspell | ✓ Phase 4.5c | ✓ | Both via `counter` effect. |
 | Combat keywords | ✓ Phase 5a (11) | ✓ | Both: trample/lifelink/deathtouch/first-strike/menace/flying/reach/vigilance/hexproof/indestructible/defender/haste/unblockable. |
 | Two-pass combat damage | ✓ Phase 5a | ✓ | Both. |
 | AI vs AI | ✓ Phase 5c | ✓ | Godot completes games at 200-turn cap. |
-| Card pool size | 23 | 258 | Phase 6 grows Godot to ~40. |
+| Card pool size | 23 (.tres playable) / 258 (JSON-loadable) | 258 | `json_card_loader.gd` reads proto's 258 directly; 109 fully supported today. Pool growth = implement effect kinds, not transcribe cards. |
 | Stickers | ✗ | ✓ | Phase 7. Seam in `CardInstance.effective_keywords()`. |
 | Draft | ✗ | ✓ | Phase 8. |
 | Roguelike meta (run/map/rewards) | ✗ | ✓ | Phase 9. |

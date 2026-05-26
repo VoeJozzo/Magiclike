@@ -21,11 +21,11 @@ The port ships in slices. Each slice has a corresponding `tests/test_phaseN.{gd,
 
 ## Phase 6 — Card pool expansion
 
-> **Sequencing note:** land the **E1/E2** (zone-change + composable predicates) and **effects** refactors *before* this phase — see [`plan-zone-change-and-composable-predicates.md`](plan-zone-change-and-composable-predicates.md) and [`plan-effects-refactor.md`](plan-effects-refactor.md). Both plans recommend this explicitly so new cards are authored in the atomic/composable style instead of accumulating in the old monolithic shape (which would then have to be migrated). The "no engine changes" below applies to the data-translation work itself, once those refactors are in place.
+> **Sequencing note:** land the **E1/E2** (zone-change + composable predicates) and **effects** refactors *before* this phase — see [`plan-zone-change-and-composable-predicates.md`](plan-zone-change-and-composable-predicates.md) and [`plan-effects-refactor.md`](plan-effects-refactor.md). Both plans recommend this so new cards are authored in the atomic/composable style instead of accumulating in the old monolithic shape.
 
-Pure data work, no engine changes. Grow the pool from 23 to ~40 cards across two or three colors (R/G/U) so draft has meaningful picks. Each color gets ~10 commons — vanilla curve fillers plus a couple of mechanic-bearing cards. Bulk-translate JS card templates from `reference/html-proto/cards/<tplId>/card.json` into `cards/templates/card_database.gd` entries.
+**Reframed by `json_card_loader.gd` (standardization Pass 4):** Godot now reads the html-proto `card.json` files directly (the cross-engine wire format — see [`PROTOCOL.md`](PROTOCOL.md)), and a boot supportability scan reports which of the 258 proto cards are fully playable (today: 109 supported, 149 awaiting handlers). So card-pool growth is **no longer a transcription problem** ("translate JS templates into `card_database.gd`") — it's a **prioritization problem**: implement the next-most-valuable missing effect/event/predicate kinds, and the cards that need them light up automatically. Grow the supported pool toward ~40 playable across two or three colors (R/G/U) for meaningful draft picks by picking which handlers to add next from the scan's missing-kind tally (top misses today: `remove_creature`, `draw`, `discard`, `grant_keyword`, events `attacks`/`spell_cast`).
 
-Verification: pick 10 cards at random, smoke-assert each instantiates, has correct cost, and casts + resolves.
+Verification: run the supportability scan; confirm the targeted cards move from "awaiting" to "supported"; smoke-assert each newly-supported card instantiates, has correct cost, and casts + resolves.
 
 ## Phase 7 — Stickers
 

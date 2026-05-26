@@ -86,7 +86,7 @@ This is purely a player-experience choice. MTG itself has no formal rule on take
 | D3 | `gain_life` flexibility | Always to `ctx.controller` | Can route via `params.who` or target descriptor | 🟡 | **godot:** extend `gain_life.gd` to accept `who`/`target` parameters per proto's pattern. Enables future "target opponent gains N life" cards. |
 | D4 | `gain_life` sign-based delta | Refuses non-positive amounts (warn+skip) | Silent apply (no event for negative direction) | 🟡 | **both:** redesign `gain_life` as a unified life-delta effect. Accept any integer amount; sign determines event direction. Positive → fire "life gained" event (for gain-life triggers). Negative → fire "life lost" event (for lose-life triggers). Zero → no event. Preserves the trigger-time distinction between gain and loss while making the card-authoring side a single effect, enabling runtime sign-flip mechanics. Lifelink unchanged (fires on damage-dealing, not life-gain). **Naming:** keep `gain_life` as the effect kind; card-text parser renders contextually based on sign (`amount: 3` → "gain 3 life", `amount: -1` → "lose 1 life"). Don't rename. |
 | D5 | `add_mana` shorthand | Accepts flat `{"R": 1}` OR canonical `{"amounts": {"R": 1}}` | Requires canonical form only | 🔵 | **convention:** all card authors write the canonical form `{"kind": "add_mana", "amounts": {...}}`. Both engines accept it. No code change in either engine. |
-| D6 | `counter_spell` refuses to counter triggered abilities | Yes (engine.gd:1272) | Yes (engine.js:1780) | ✅ Same | **already-aligned** |
+| D6 | `counter` refuses to counter triggered abilities | Yes (engine.gd:1272) | Yes (engine.js:1780) | ✅ Same | **already-aligned** |
 | D7 | Legendary uniqueness ("only one of each legendary tplId on the battlefield per player") | Not enforced | Enforced at cast-legality (engine.js:4721) | 🔴 (when Godot adds legendary cards) | **godot:** implement at the point Godot's pool gains its first legendary creature. |
 | D8 | Mana payment fast-path | Mana abilities skip the stack — `_do_activate_ability` (engine.gd:522-533) calls `Effects.resolve_one` directly when the source is a land, no stack push, controller retains priority. Currently only supports land mana abilities (non-mana activated abilities are Phase 6+). | Same fast-path. Mana abilities skip the stack and don't require priority (engine.js:4778-4783 with explicit comment "mana abilities don't require priority and don't use the stack"). Non-mana activations route through the stack normally. | ✅ Same | **already-aligned** for the fast-path itself. Separate concern: Godot has no non-mana activated abilities yet (Phase 6+ gap, tracked elsewhere as a feature, not a divergence). |
 
@@ -125,7 +125,7 @@ Both forms produce identical mana pool changes. Cards using `{"kind": "add_mana"
 
 | # | Area | Godot | Proto | Tag | TO-DO |
 |---|---|---|---|---|---|
-| E1 | Event vocabulary + zone-change unification | 2 emitted: `card_etb`, `card_dies` | 6+ emitted, with overlapping `cardDies`/`cardLeavesBattlefield` | 🔴 | **both:** full plan in [`docs/plan-zone-change-and-composable-predicates.md`](plan-zone-change-and-composable-predicates.md) (combined with E2). Unify into one `card_zone_change` event with `from_zone`/`to_zone` data; "dies" becomes a composable predicate over it. Keep specialized `attacks`/`spell_cast`/`life_changed` because their payloads don't fit zone-change shape. Effort: L (~34h combined with E2). |
+| E1 | Event vocabulary + zone-change unification | 2 emitted: `card_enters_battlefield`, `card_dies` | 6+ emitted, with overlapping `cardDies`/`cardLeavesBattlefield` | 🔴 | **both:** full plan in [`docs/plan-zone-change-and-composable-predicates.md`](plan-zone-change-and-composable-predicates.md) (combined with E2). Unify into one `card_zone_change` event with `from_zone`/`to_zone` data; "dies" becomes a composable predicate over it. Keep specialized `attacks`/`spell_cast`/`life_changed` because their payloads don't fit zone-change shape. Effort: L (~34h combined with E2). |
 | E2 | Predicate composability + registry size | 1 monolithic predicate (`opp_lost_life_this_turn`); registry is name→function | 14 monolithic predicates; registry is name→function | 🔴 | **both:** full plan in [`docs/plan-zone-change-and-composable-predicates.md`](plan-zone-change-and-composable-predicates.md) (combined with E1). Refactor to atomic predicates with expression composition (single name / list-AND / `{op, terms}` tree). 12 atomic primitives identified cover proto's 14 monolithic predicates. Boot validator walks expression trees. Pre-empts tech debt before Phase 6 expansion. |
 | E3 | Queue-and-drain pattern | Same | Same | ✅ Same | **already-aligned** |
 | E4 | APNAP drain order | Yes (engine.gd:1449) | Yes (engine.js:2820) | ✅ Same | **already-aligned** |
@@ -142,13 +142,13 @@ In our game, cards have triggered abilities like "When this creature dies, do X"
 2. **Predicates**: the criteria each card uses to decide "does this notice apply to me?" Bloodlust Berserker doesn't fire on every death — only its own death, and only when the opponent lost life this turn.
 
 **Godot's bulletin board** (current state):
-- `card_etb` — a card entered the battlefield
+- `card_enters_battlefield` — a card entered the battlefield
 - `card_dies` — a card died
 
 Godot's predicate registry: 1 entry, `opp_lost_life_this_turn`.
 
 **Proto's bulletin board:**
-- `cardEntersBattlefield` — same as Godot's card_etb
+- `cardEntersBattlefield` — same as Godot's card_enters_battlefield
 - `cardDies` — same as Godot's card_dies
 - `cardLeavesBattlefield` — broader than dying. Includes bouncing back to hand, exiling, etc.
 - `attacks` — a creature was declared as attacker
@@ -206,7 +206,7 @@ The rules engine handles hidden information correctly in both implementations (n
 
 The audit surfaced one claim that turned out to be wrong; logging it here so it doesn't get repeated:
 
-- **"Godot Phase 4 promises Mercurial Adept spellCast triggers but doesn't emit the event."** False. Mercurial Adept is a proto-only card. Godot's Phase 4 ships Pyromaniac (`card_etb`) and Bloodlust Berserker (`card_dies`) — both events are emitted. The audit confused proto's Phase 4 with Godot's Phase 4.
+- **"Godot Phase 4 promises Mercurial Adept spellCast triggers but doesn't emit the event."** False. Mercurial Adept is a proto-only card. Godot's Phase 4 ships Pyromaniac (`card_enters_battlefield`) and Bloodlust Berserker (`card_dies`) — both events are emitted. The audit confused proto's Phase 4 with Godot's Phase 4.
 
 ---
 

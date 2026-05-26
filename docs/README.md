@@ -8,8 +8,11 @@ Map of the documentation set. Each doc has a single, distinct job; this page is 
 |---|---|
 | [`RULES.md`](RULES.md) | **Canon.** How the game works, in plain English, independent of code. When doc and code disagree, this wins. |
 | [`ARCHITECTURE.md`](ARCHITECTURE.md) | Module map of both codebases — where each piece of behavior lives, with LOC and public surface. |
-| [`SPEC.md`](SPEC.md) | Data contracts — the in-memory shapes (actions, card schema, effects, triggers, save format). Current-state snapshot. |
+| [`PROTOCOL.md`](PROTOCOL.md) | **The cross-engine wire format** (between-engines contract): the `card.json` schema and the effect-kind / event-kind / predicate-id / target catalogs both engines must agree on. |
+| [`SPEC.md`](SPEC.md) | **Within-engine runtime contracts** (the other half of the partition): action descriptors, the effect-handler `ctx` shape, signals, awaiting states, CardInstance/EngineState runtime fields, save schema. Defers to PROTOCOL for the wire vocabulary. |
 | [`DIVERGENCE.md`](DIVERGENCE.md) | Where the Godot port and html-proto behave differently, each row tagged with severity + a to-do. RULES.md is the tie-breaker. |
+
+**Wire vs runtime:** `PROTOCOL.md` owns the format shared *between* engines; `SPEC.md` owns the shapes internal to *one* engine. When they touch, SPEC defers to PROTOCOL.
 
 ## Planning docs — "what to change"
 
@@ -18,6 +21,8 @@ Map of the documentation set. Each doc has a single, distinct job; this page is 
 | [`godot-port-plan.md`](godot-port-plan.md) | Forward phase roadmap for the Godot port (what ships next, in order). |
 | [`BACKLOG.md`](BACKLOG.md) | Deferred **features**, unsequenced parking lot (Godot side). Proto side: [`../reference/html-proto/BACKLOG.md`](../reference/html-proto/BACKLOG.md). |
 | [`REFACTOR-NOTES.md`](REFACTOR-NOTES.md) | Structural **debt**, prioritized P0–P2. Advisory; pick up opportunistically. |
+| [`STANDARDIZATION-PLAN.md`](STANDARDIZATION-PLAN.md) | Cross-engine standardization rollout (Passes 1–4 shipped: snake_case wire, 258-card migration, JsonCardLoader; Pass 5/6 = future Godot-native wire shape, retire `.tres`, effect-kind porting). |
+| [`STANDARDIZATION-CONTEXT.md`](STANDARDIZATION-CONTEXT.md) | Handoff narrative + decision record from the standardization work (locked decisions, gotchas). History, not an active to-do. |
 
 ## Refactor specs — "the big coordinated pass"
 

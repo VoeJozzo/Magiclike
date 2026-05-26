@@ -310,11 +310,11 @@ When a spell's stack entry reaches the top and both players have passed priority
 - The owner must have priority to activate, except mana abilities (which can be activated any time mana could be paid, even mid-cost-payment).
 
 ### 706. Counterspell
-A spell with the `counter_spell` effect targets another spell on the stack. When it resolves:
+A spell with the `counter` effect targets another spell on the stack. When it resolves:
 - If the target spell is still on the stack: remove it, send the card to its owner's graveyard (countered spells **never go to the battlefield**, even creatures).
 - If the target is gone: the counterspell fizzles cleanly.
 
-Triggered abilities cannot be countered by `counter_spell` (no Stifle equivalent in the pool).
+Triggered abilities cannot be countered by `counter` (no Stifle equivalent in the pool).
 
 ### Implementation status — Casting and Activating
 - 702.2 target choice currently happens at cast time and is locked in. There is no "choose target on resolution" pattern.
@@ -437,8 +437,8 @@ Keywords can be **granted at runtime** to a creature that doesn't have them on i
 A triggered ability is an ability declared on a card's template that fires in response to an **event** in the game, optionally gated by a **condition**.
 
 ```
-"event": "card_etb",
-"condition_predicate": "opp_lost_life_this_turn",
+"event": "card_enters_battlefield",
+"cond_id": "opp_lost_life_this_turn",
 "effects": [ ... ],
 "self_only": true,           # the trigger only fires from the source card's own events
 "target_filter": "creature_or_player"   # if effects use target: "chosen"
@@ -446,7 +446,7 @@ A triggered ability is an ability declared on a card's template that fires in re
 
 ### 1002. Event vocabulary
 The current event vocabulary is:
-- `card_etb` — a card enters the battlefield.
+- `card_enters_battlefield` — a card enters the battlefield.
 - `card_dies` — a creature on the battlefield moves to the graveyard.
 
 The engine can emit other event kinds, but no current card listens for them. Planned events for future cards include `card_attacks`, `spell_cast`, `card_drawn`, `damage_dealt`, `life_gained`.
@@ -474,7 +474,7 @@ When a trigger's stack entry reaches the top:
 
 ### 1007. Intervening "if" re-check
 *(MTG rule 603.4: "if" clauses in triggers are re-checked on resolution.)*
-Currently, the engine **only checks `condition_predicate` at queue time**, not at resolution. If a trigger's condition becomes false between queue and resolution, the trigger still resolves. Listed in `docs/BACKLOG.md` as a known deviation.
+Currently, the engine **only checks `cond_id` at queue time**, not at resolution. If a trigger's condition becomes false between queue and resolution, the trigger still resolves. Listed in `docs/BACKLOG.md` as a known deviation.
 
 ### 1008. Trigger chain depth
 The html-proto caps trigger-chain depth at 100 nested resolutions; exceeding it bails with a warning. The Godot port does not yet have this cap, but **will mirror proto's threshold** — an earlier "no cap needed if drain is correct" stance was reversed after real card design produced accidental infinite-loop combinations. See `docs/DIVERGENCE.md` E6 and the "Patterns to REPLICATE" note in the root `CLAUDE.md`.
