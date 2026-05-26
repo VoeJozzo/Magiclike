@@ -26,10 +26,17 @@ const KIND_CONFIRM_BLOCKS := "confirm_blocks"
 const KIND_PICK_TRIGGER_TARGET := "pick_trigger_target"
 # MTG 514.3 cleanup-step discard. Resolves one card while state.awaiting_discard is set.
 const KIND_DISCARD_CARD := "discard_card"
+# B7: active player declares "end my turn" — engine fast-forwards remaining
+# empty-stack priority windows to cleanup. See EngineState.end_turn_pending.
+const KIND_END_TURN := "end_turn"
 
 
 static func make_pass_priority() -> Dictionary:
 	return {"kind": KIND_PASS_PRIORITY}
+
+
+static func make_end_turn() -> Dictionary:
+	return {"kind": KIND_END_TURN}
 
 
 static func make_tap_land_for_mana(source_iid: int) -> Dictionary:

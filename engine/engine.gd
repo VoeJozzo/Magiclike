@@ -305,6 +305,8 @@ func get_legal_actions(player_key: String) -> Array[Dictionary]:
 		return actions
 	if _state.priority_player_key == player_key:
 		actions.append(Action.make_pass_priority())
+		if _legal_end_turn({}):
+			actions.append(Action.make_end_turn())
 	for card in _state.player_by_key(player_key).hand:
 		if card.is_land():
 			var play := Action.make_play_land(card.instance_id)
@@ -415,6 +417,8 @@ func is_legal_action(action: Dictionary) -> bool:
 			return _legal_pick_trigger_target(action)
 		Action.KIND_DISCARD_CARD:
 			return _legal_discard_card(action)
+		Action.KIND_END_TURN:
+			return _legal_end_turn(action)
 		_:
 			return false
 
@@ -429,6 +433,19 @@ func _settle_state() -> void:
 	while _state.winner == "" and safety > 0:
 		safety -= 1
 		var actor: String = _current_actor()
+		# B6/B7 (iterative, mirrors proto step()): auto-pass a dead priority
+		# window — no meaningful action, AP's empty-stack END step, or end-turn
+		# fast-forward — for whichever player holds priority. Guarded against the
+		# awaiting_* turn-based states (priority is "" then; the owing player must
+		# act, not pass). Each pass makes progress (priority flips, or the stack
+		# resolves / phase advances), so the loop can't spin.
+		if _state.priority_player_key == actor \
+				and not _state.awaiting_block_declaration \
+				and _state.awaiting_discard.is_empty() \
+				and _state.awaiting_target_for_trigger.is_empty() \
+				and _should_auto_pass(actor):
+			_dispatch_action(Action.make_pass_priority())
+			continue
 		if actor == "you":
 			break
 		var action: Dictionary = AI.decide(_state, "opp")
@@ -480,6 +497,12 @@ func _dispatch_action(action: Dictionary) -> bool:
 # execute_action but not here).
 func _do_action(action: Dictionary) -> bool:
 	var kind: String = action.get("kind", "")
+	# B7 re-engagement: any explicit non-pass/non-end-turn action by the active
+	# player (e.g. responding to a trigger that interrupted the fast-forward)
+	# cancels a pending end-turn (proto engine.js:5466).
+	if kind != Action.KIND_PASS_PRIORITY and kind != Action.KIND_END_TURN \
+			and _state.priority_player_key == _state.active_player_key:
+		_state.end_turn_pending = false
 	match kind:
 		Action.KIND_TAP_LAND_FOR_MANA:
 			return _do_tap_land_for_mana(action)
@@ -503,6 +526,8 @@ func _do_action(action: Dictionary) -> bool:
 			return _do_pick_trigger_target(action)
 		Action.KIND_DISCARD_CARD:
 			return _do_discard_card(action)
+		Action.KIND_END_TURN:
+			return _do_end_turn(action)
 	push_warning("_do_action: unknown kind '%s'" % kind)
 	return false
 
@@ -1167,6 +1192,7 @@ func _advance_phase() -> void:
 	match _state.phase_machine.current:
 		PhaseMachine.Phase.UNTAP:
 			_state.active_player().untap_step()
+			_state.end_turn_pending = false  # B7: new turn clears the fast-forward flag
 		PhaseMachine.Phase.DRAW:
 			# MTG 704.5b: empty-library draw = loss.
 			_do_draw_card(_state.active_player_key)
@@ -1234,8 +1260,87 @@ func _open_priority_window(player_key: String, fresh: bool = true) -> void:
 	_state.priority_player_key = player_key
 	if fresh:
 		_reset_priority_passes()
-	# Step 3 (auto-pass / end-turn fast-forward) is driven from _settle_state's
-	# loop, NOT recursively here — see plan deviation note.
+	# Auto-pass / end-turn fast-forward (B6/B7) is driven iteratively from
+	# _settle_state's loop (mirrors proto's step()), NOT recursively here — a
+	# recursive _dispatch_action(pass) tail would overflow the call stack during
+	# end-turn fast-forward and dead positions.
+
+
+# B6/B7: should the priority window just opened to `player_key` auto-pass?
+# Combines: AP's empty-stack END priority (proto skipApEndStep — they had MAIN2
+# for sorcery-speed plays), end-turn fast-forward (B7), and "no meaningful
+# action" (B6). Callers must ensure no awaiting_* turn-based state is active.
+func _should_auto_pass(player_key: String) -> bool:
+	var on_empty_stack: bool = player_key == _state.active_player_key and _state.stack.is_empty()
+	var ap_empty_stack_end: bool = on_empty_stack \
+			and _state.phase_machine.current == PhaseMachine.Phase.END
+	var end_turn_fast_forward: bool = on_empty_stack and _state.end_turn_pending
+	return ap_empty_stack_end or end_turn_fast_forward or _has_no_meaningful_action(player_key)
+
+
+# True iff `player_key` has nothing productive to do: no land to play, no
+# attacker/blocker to declare, no (non-mana) ability to activate, and no spell
+# castable even after tapping lands for mana. Pass / end-turn / mana-tap don't
+# count (mana-tap alone is dead motion). Mirrors proto's hasNoAction — and like
+# proto folds *potential* mana into cast legality, because Godot's
+# _legal_cast_spell only sees floated mana (so a player who must tap a land
+# first would otherwise be wrongly judged action-less). Errs toward "has action".
+func _has_no_meaningful_action(player_key: String) -> bool:
+	for a in get_legal_actions(player_key):
+		match a.get("kind", ""):
+			Action.KIND_PLAY_LAND, Action.KIND_ACTIVATE_ABILITY, \
+			Action.KIND_DECLARE_ATTACKER, Action.KIND_DECLARE_BLOCKER, \
+			Action.KIND_CAST_SPELL:
+				return false
+	var p: Player = _state.player_by_key(player_key)
+	var is_main: bool = _state.phase_machine.is_main_phase()
+	var is_active: bool = player_key == _state.active_player_key
+	var stack_empty: bool = _state.stack.is_empty()
+	for card in p.hand:
+		if card.template == null or card.is_land():
+			continue
+		var is_instant: bool = card.template.has_type("instant")
+		if not is_instant and not (is_active and is_main and stack_empty):
+			continue
+		if _can_pay_potential(player_key, card.template.mana_cost):
+			return false
+	return true
+
+
+# Proto parity (canPayPotential, engine.js:1198): can `player_key` afford `cost`
+# by tapping currently-untapped lands, on top of floated mana? Phase 1 lands are
+# mono-color; §3.9's land-as-ability model generalizes the multi-color choice case.
+func _can_pay_potential(player_key: String, cost: Dictionary) -> bool:
+	var p: Player = _state.player_by_key(player_key)
+	var potential: ManaPool = p.mana.duplicate_deep()
+	for c in p.battlefield:
+		if c.tapped or not c.is_land():
+			continue
+		if c.template is LandResource and not c.template.mana_produced.is_empty():
+			potential.add(c.template.mana_produced[0], 1)
+	return potential.can_pay(cost)
+
+
+# B7: legal only for the active player, empty stack, no cleanup discard, no winner.
+func _legal_end_turn(_action: Dictionary) -> bool:
+	if _state == null or _state.winner != "":
+		return false
+	if _state.priority_player_key != _state.active_player_key:
+		return false
+	if not _state.stack.is_empty():
+		return false
+	if not _state.awaiting_discard.is_empty():
+		return false
+	return true
+
+
+func _do_end_turn(_action: Dictionary) -> bool:
+	_state.end_turn_pending = true
+	_state.append_log("%s ends their turn." % _state.active_player().name)
+	# The fast-forward itself (including committing empty attackers at
+	# COMBAT_ATTACK — a pass there declares no attackers) is driven by the
+	# _settle_state auto-pass loop via _should_auto_pass's end_turn branch.
+	return true
 
 
 # ─── Helpers ───────────────────────────────────────────────────────────────
