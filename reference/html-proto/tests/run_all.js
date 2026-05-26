@@ -39,6 +39,8 @@ const CATEGORY_A = [
   'trigger_migration_test.js',
   // Slice 3 — mass scope groundwork (decision 2).
   'test_effects_scope.js',
+  // Slice 3 — target()/chooses() targeting + structural hexproof.
+  'test_targeting.js',
 ];
 
 const TESTS_DIR = __dirname;

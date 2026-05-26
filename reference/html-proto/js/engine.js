@@ -2053,18 +2053,44 @@ const EFFECTS = {
   // (this one) to deal 2 damage" — though we don't have such a card yet,
   // having the effect available makes that design space accessible).
   sacrifice(ctx, params, target) {
-    if (!target) return;
-    const f = findCard(target.iid);
+    // Falls back to ctx.chosen (the chooses() pick) for the edict chain.
+    const t = target || ctx.chosen;
+    if (!t) return;
+    const f = findCard(t.iid);
     if (!f) return;
     sacrificeCard(f.card, f.controller);
   },
   // No-trigger removal verb (effects-refactor §4.2). The creature ceases to
   // exist: no graveyard, no death/leave triggers. Trailing step of rip-edict.
+  // Falls back to ctx.chosen (the chooses() pick) when no explicit target.
   annihilate(ctx, params, target) {
-    if (!target) return;
-    const f = findCard(target.iid);
+    const t = target || ctx.chosen;
+    if (!t) return;
+    const f = findCard(t.iid);
     if (!f) return;
     annihilateCard(f.card, f.controller);
+  },
+  // The targeted player selects one of their own creatures (§3.5). This is
+  // NOT targeting — hexproof never applies. Reads the established player from
+  // the preceding target(player) step (the `target` param or ctx.allTargets),
+  // auto-picks the lowest sac-value creature (AI), and records ctx.chosen for
+  // the following effect (sacrifice/annihilate). The human choose-your-creature
+  // prompt is deferred (review GAP 2) — auto-pick covers AI players today.
+  chooses(ctx, params, target) {
+    const playerTgt = (target && target.kind === 'player')
+      ? target
+      : (ctx.allTargets || []).find(t => t && t.kind === 'player');
+    const who = playerTgt ? playerTgt.who : opp(ctx.controller);
+    const pool = G[who].battlefield.filter(c => c.type === 'Creature');
+    if (pool.length === 0) {
+      log(`${ctx.sourceName} — ${pname(who)} has no creature to choose.`, 'sp');
+      ctx.chosen = null;
+      return;
+    }
+    const sorted = pool.slice().sort((a, b) => sacValueOnBoard(a) - sacValueOnBoard(b));
+    const picked = sorted[0];
+    ctx.chosen = { kind: 'creature', iid: picked.iid, label: picked.name };
+    log(`${pname(who)} chooses ${picked.name}.`, 'sp');
   },
   // Iconic red AOE: deal N damage to every creature on both battlefields.
   // Asymmetric — hits your own creatures too. Indestructible takes the damage
@@ -3174,6 +3200,35 @@ function getValidTargets(effect, controller) {
       return perms.concat(spells);
     }
     default: return [];
+  }
+}
+
+// The closed legal-object taxonomy for the target()/chooses() steps (§3.5 of
+// plan-effects-refactor.md). Adding a filter means adding it here AND to
+// targetsForFilter below — there is no open tail.
+const TARGET_FILTERS = new Set([
+  'creature', 'player', 'creature_or_player', 'spell', 'permanent',
+  'your_creature', 'opp_creature', 'graveyard_creature',
+]);
+
+// Legal-target set for a target() step's filter (Slice 3 step 2 / §3.5). THIS
+// is the hexproof checkpoint: opp-controlled hexproof creatures are excluded,
+// the caster's own hexproof creatures are allowed. Maps the new closed
+// taxonomy onto the existing getValidTargets machinery. `creature_or_player`
+// is the canonical spelling of proto's legacy `"any"`.
+function targetsForFilter(filter, controller) {
+  switch (filter) {
+    case 'creature_or_player': return getValidTargets({ target: 'any' }, controller);
+    case 'player':             return getValidTargets({ target: 'player' }, controller);
+    case 'creature':           return getValidTargets({ target: 'creature' }, controller);
+    case 'permanent':          return getValidTargets({ target: 'permanent' }, controller);
+    case 'spell':              return getValidTargets({ target: 'spell' }, controller);
+    case 'graveyard_creature': return getValidTargets({ target: 'graveyardCreature' }, controller);
+    case 'your_creature':      return getValidTargets({ target: 'creature', filter: { controller: 'self' } }, controller);
+    case 'opp_creature':       return getValidTargets({ target: 'creature', filter: { controller: 'opp' } }, controller);
+    default:
+      console.warn('Unknown target() filter:', filter);
+      return [];
   }
 }
 
@@ -5647,6 +5702,7 @@ return {
   matchFilter,
   // Effects seam exposed for tests (Slice 3).
   applyEffect, creaturesInScope, affectOneCreature,
+  targetsForFilter, TARGET_FILTERS,
   concede() {
     if (!G || G.gameOver) return;
     log('You concede.', 'imp');
