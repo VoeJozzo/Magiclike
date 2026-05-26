@@ -185,11 +185,27 @@ exercised directly via an exposed `ENGINE.applyEffect` test seam):
     human-prompt/AI-pick infra).
 - **`change_control` (done):** control-change core (Mind Control/Threaten);
   `transfer_ownership` delegates to `steal`. `tests/test_change_control.js`.
+- **Step 4 (done):** `validateAllCardEffects` boot validation — unknown kinds,
+  out-of-taxonomy target/chooses filters, per-kind schema for the new atomics.
+  `tests/test_effect_validation.js`.
+- **Step 2 KEYSTONE (done — spells):** top-level `target` step wired end-to-end
+  through cast→resolution: **(A) resolution** (`resolveTopOfStack` threads a
+  `currentTarget` seeded from the target step; `chooses()` replaces it; bare
+  effects operate on it), **(B) legality** (`isLegalAction` enforces the
+  cast-time hexproof checkpoint via `targetsForFilter`), **(C) enumeration**
+  (`getLegalActions` emits one cast per legal target). Casting a synthetic Bolt
+  / edict / Pyroclasm through the real path passes. `tests/test_targeting_cast.js`.
+  All three inert for legacy cards (only fire when `card.target` is set).
 
-Still TODO proto: boot-validation rewrite (step 4), the migrate-effects.js
-script + card migration (steps 5/6), dead-code purge + AI-valuation lockstep
-(step 7/§8.1), `apply_sticker` + sticker pipeline (step 10), mana deep-clean
-(§3.9), flicker decomposition (step 8).
+Still TODO proto (migration prerequisites): top-level-`target` wiring for
+**triggered/activated abilities** (the keystone covered spells/`resolveTopOfStack`
+only; triggers/abilities + the staple `fireStackEffects` path still use
+per-effect targets) · **§8.1 AI-valuation lockstep** (burn.js lethal-recognition
++ scoring.gd must read the `target()` step / `scope` instead of `effect.target`,
+else collapsed cards mis-value — the silent-regression trap) · UI target-pick
+(part D, browser) · then the `migrate-effects.js` script + 258-card migration
+(steps 5/6) · `apply_sticker` + sticker pipeline (step 10) · mana deep-clean
+(§3.9) · flicker decomposition (step 8, now unblocked by move_card arrival).
 
 ### Godot mirror — major work items (per plan §10/§11)
 
