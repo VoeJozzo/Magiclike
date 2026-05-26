@@ -103,6 +103,39 @@ mirror of each step:
 **Proto reference for the Godot port:** atomics + evaluator + parser are in
 `reference/html-proto/js/triggers.js` (search `ATOMIC_PREDICATES`,
 `evaluateCondition`, `_parseCall`); unit tests in
-`tests/composable_predicates_test.js`.
+`tests/composable_predicates_test.js`, `tests/trigger_migration_test.js`.
+
+### Gotchas discovered during the proto build (replicate on the Godot side)
+
+These weren't in the plan; the proto implementation surfaced them. The Godot
+mirror will hit the same ones.
+
+1. **`condId` had downstream consumers beyond trigger matching.** Removing it
+   from migrated cards broke (a) card-text trigger preambles and (b) AI
+   trigger-frequency valuation, both of which keyed off `condId`. Fix: a
+   single centralized `triggerArchetype(trig)` classifier (proto:
+   `js/triggers.js`) that recovers the archetype id from `event`+`condition`
+   and still honors a legacy `condId`. Godot has the analogous coupling —
+   `scenes/card.gd` oracle-text rendering and `engine/ai/scoring.gd`. Audit
+   for `condId`/`condition_predicate` reads before deleting the field.
+2. **The plan's "fold `noSelfCascade` into an `another_card` term" is WRONG.**
+   `noSelfCascade` guards a generated trigger against re-firing on its OWN
+   created tokens — keyed on the event's *causing source*, not the subject. A
+   created token has a different iid, so `another_card` (subject check) does
+   NOT stop the cascade. Keep `noSelfCascade` as a field, and carry a
+   `source_iid` (the causing card) on the unified zone-change event so the
+   guard works. Proto: `emitZoneChange(..., sourceIid)` + the guard in
+   `evalTriggerCondition`. Self-play `runaway=0` is the regression signal.
+3. **`card_moves(battlefield, X)` needs the real destination zone.** A bounced
+   creature must emit `battlefield→hand`, not `→graveyard`, or migrated "dies"
+   triggers wrongly fire on bounce. Don't zone-detect after the move — a dead
+   token never reaches the graveyard array. Thread an explicit `destZone` from
+   each leave-site (proto: `emitLeavesBattlefield(card, ctrl, destZone)`).
+4. **Simultaneous mutual kills need the death-batch as extra-sources** on the
+   zone-change emit, or migrated `thisKillsCreature` (Sengir/Endomorph) misses
+   same-sweep kills (the other creature is already off the battlefield).
+5. **Life-LOSS emission is deferred** — `is_life_loss` exists as a primitive
+   but no `life_changed(delta<0)` is emitted yet (no current card needs it).
+   Wire it when the first loss-trigger card appears.
 
 <!-- Append new slices' Godot items below as they're written. -->
