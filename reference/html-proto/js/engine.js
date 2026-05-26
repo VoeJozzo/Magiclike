@@ -958,7 +958,7 @@ function getCardValue(card, purpose, ctx) {
     const effs = trig.effects || [];
     if (!effs.length) continue;
     const perFiring = abilityValue({ effects: effs });
-    v += perFiring * triggerFreq(trig.condId, purpose);
+    v += perFiring * triggerFreq(triggerArchetype(trig), purpose);
   }
 
   // Activated abilities — recurring threats while alive.
@@ -1054,8 +1054,9 @@ function sacValueOnBoard(card) {
     if (!trig.effects || !trig.effects.length) continue;
     const perFiring = abilityValue({ effects: trig.effects });
     let freq;
-    if (trig.condId === 'thisEnters') freq = 0.3;
-    else if (trig.condId === 'thisDies') freq = 1;
+    const arch = triggerArchetype(trig);
+    if (arch === 'thisEnters') freq = 0.3;
+    else if (arch === 'thisDies') freq = 1;
     else freq = 2;
     v += perFiring * freq;
   }

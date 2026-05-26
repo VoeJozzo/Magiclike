@@ -233,6 +233,57 @@ function evaluateCondition(expr, ctx) {
   return false;
 }
 
+// ─── Archetype classification (Slice 2 / E2) ────────────────────────────
+// condId used to be a runtime-readable label that other systems keyed off
+// (card-text preambles, AI trigger-frequency valuation). Post-migration the
+// classification is recovered from event+condition. This is the single
+// centralized inverse of the migration table — consumers call it instead of
+// scattering condition-shape checks. Legacy condId triggers (the still-
+// un-migrated mercurial / synthesized pool) short-circuit to their condId.
+function _condSignature(event, condition) {
+  if (!Array.isArray(condition)) return event + ' | <non-array>';
+  const terms = condition.map((t) => (typeof t === 'string'
+    ? t.replace(/card_has_subtype\([^)]*\)/, 'card_has_subtype(*)')
+    : JSON.stringify(t)));
+  return event + ' | ' + terms.join(', ');
+}
+
+const _ARCHETYPE_BY_SIG = {
+  'card_zone_change | this_card, card_moves(anywhere, battlefield)': 'thisEnters',
+  'card_zone_change | another_card, card_is_creature, controlled_by(you), card_moves(anywhere, battlefield)': 'anotherCreatureYouEntersStrict',
+  'card_zone_change | another_card, controlled_by(you), card_has_subtype(*), card_moves(anywhere, battlefield)': 'anotherCreatureYouEntersOfSubtype',
+  'attacks | this_card': 'thisAttacks',
+  'attacks | this_card, lost_life_this_turn(opp)': 'thisAttacksAfterOppLifeLoss',
+  'attacks | controlled_by(you), card_has_subtype(*)': 'creatureYouAttacksOfSubtype',
+  'card_zone_change | this_card, card_moves(battlefield, graveyard)': 'thisDies',
+  'card_zone_change | this_card, card_moves(battlefield, anywhere)': 'thisLeaves',
+  'card_zone_change | another_card, card_is_creature, card_moves(battlefield, graveyard)': 'anotherCreatureDies',
+  'card_zone_change | card_moves(battlefield, graveyard)': 'anyCardDies',
+  'card_zone_change | another_card, card_is_creature, card_moves(battlefield, graveyard), card_damaged_by_this': 'thisKillsCreature',
+  'life_changed | is_life_gain, affected_player_is(you)': 'youGainLife',
+  'spell_cast | another_card, controlled_by(you)': 'youCastSpell',
+  'spell_cast | another_card, controlled_by(you), card_has_effect(counter)': 'youCastCounterspell',
+};
+
+// Classify a trigger into its archetype id (the old condId vocabulary), from
+// either a legacy condId or a composable condition. Returns null if unknown.
+function triggerArchetype(trig) {
+  if (!trig) return null;
+  if (trig.condId) return trig.condId;
+  return _ARCHETYPE_BY_SIG[_condSignature(trig.event, trig.condition)] || null;
+}
+
+// Extract the subtype a trigger filters on (card_has_subtype(...) term, or a
+// legacy params.sub), for preamble phrasing. Null if none.
+function triggerSubtype(trig) {
+  for (const t of (trig && trig.condition || [])) {
+    if (typeof t === 'string' && t.startsWith('card_has_subtype(')) {
+      return t.slice('card_has_subtype('.length, -1).replace(/^"|"$/g, '');
+    }
+  }
+  return (trig && trig.params && trig.params.sub) || null;
+}
+
 // ─── Boot validation (Slice 2 / E2) ─────────────────────────────────────
 // Allowed trigger event kinds. New unified vocabulary + legacy kinds (the
 // latter accepted during the migration window; removed in step 8).

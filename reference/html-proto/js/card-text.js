@@ -363,17 +363,19 @@ function capitalizeSegs(segs) {
 // "When/Whenever ..." prefix from event+condId. Falls back to event-only phrasing.
 function triggerPreamble(trig) {
   const ev = trig.event;
-  const cid = trig.condId;
-  const params = trig.params || {};
+  // Classify from condId (legacy) or composable condition (Slice 2 / E2).
+  const cid = triggerArchetype(trig);
+  const sub = triggerSubtype(trig) || 'creature';
   if (cid === 'thisEnters')  return 'When this enters the battlefield,';
   if (cid === 'thisDies')    return 'When this dies,';
   if (cid === 'thisAttacks') return 'When this attacks,';
+  if (cid === 'thisLeaves')  return 'When this leaves the battlefield,';
   if (cid === 'thisKillsCreature') return 'Whenever a creature dealt damage by this dies,';
   if (cid === 'thisAttacksAfterOppLifeLoss') {
     return 'When this attacks, if an opponent has lost life this turn,';
   }
   if (cid === 'anotherCreatureYouEntersOfSubtype') {
-    return 'Whenever another ' + (params.sub || 'creature') + ' enters under your control,';
+    return 'Whenever another ' + sub + ' enters under your control,';
   }
   if (cid === 'anotherCreatureYouEntersStrict') {
     return 'Whenever another creature enters under your control,';
@@ -382,7 +384,7 @@ function triggerPreamble(trig) {
     return 'Whenever another creature dies,';
   }
   if (cid === 'creatureYouAttacksOfSubtype') {
-    return 'Whenever a ' + (params.sub || 'creature') + ' you control attacks,';
+    return 'Whenever a ' + sub + ' you control attacks,';
   }
   if (cid === 'anyCardDies')    return 'Whenever a creature dies,';
   if (cid === 'youCastSpell')   return 'Whenever you cast a spell,';

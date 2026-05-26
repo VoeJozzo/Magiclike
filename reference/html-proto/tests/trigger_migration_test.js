@@ -139,5 +139,42 @@ console.log('\n=== representative migrated cards fire correctly ===');
   } else check('anyCardDies card present', false);
 })();
 
+// ── 4. condId consumers recover via triggerArchetype ─────────────────────
+// card-text preambles and AI trigger-frequency valuation used to read condId;
+// post-migration they classify via triggerArchetype. Verify the classifier
+// and that no migrated card renders the generic "relevant event" fallback.
+console.log('\n=== triggerArchetype classification + preamble recovery ===');
+(() => {
+  // Composable trigger classifies back to its archetype id.
+  check('classifies composable thisDies',
+    triggerArchetype({ event: 'card_zone_change', condition: ['this_card', 'card_moves(battlefield, graveyard)'] }) === 'thisDies');
+  check('classifies composable subtype-attacks',
+    triggerArchetype({ event: 'attacks', condition: ['controlled_by(you)', 'card_has_subtype(Goblin)'] }) === 'creatureYouAttacksOfSubtype');
+  // Legacy condId still short-circuits (un-migrated mercurial/synthesized pool).
+  check('legacy condId short-circuits', triggerArchetype({ condId: 'thisEnters' }) === 'thisEnters');
+  check('triggerSubtype extracts subtype',
+    triggerSubtype({ condition: ['controlled_by(you)', 'card_has_subtype(Goblin)'] }) === 'Goblin');
+
+  // No migrated card falls through to the generic preamble.
+  const generic = [];
+  for (const card of Object.values(CARDS)) {
+    for (const trig of (card.triggers || [])) {
+      const pre = triggerPreamble(trig);
+      if (pre === 'Whenever a relevant event occurs,') generic.push(card.tplId);
+    }
+  }
+  check('no migrated card renders the generic preamble fallback', generic.length === 0, generic.join(', '));
+
+  // Spot-check a couple of real preambles.
+  function preambleOf(tplId) {
+    const c = CARDS[tplId]; if (!c || !c.triggers || !c.triggers[0]) return null;
+    return triggerPreamble(c.triggers[0]);
+  }
+  if (CARDS.drakelord) check('drakelord preamble names its subtype',
+    /another Drake enters under your control/.test(preambleOf('drakelord')), preambleOf('drakelord'));
+  if (CARDS.goblinChieftain) check('goblinChieftain preamble names its subtype',
+    /Goblin you control attacks/.test(preambleOf('goblinChieftain')), preambleOf('goblinChieftain'));
+})();
+
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');
 process.exit(fail > 0 ? 1 : 0);
