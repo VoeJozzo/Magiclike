@@ -37,6 +37,8 @@ const CATEGORY_A = [
   'composable_predicates_test.js',
   // Slice 2 / E2 — condId -> composable condition migration (golden).
   'trigger_migration_test.js',
+  // Slice 3 — mass scope groundwork (decision 2).
+  'test_effects_scope.js',
 ];
 
 const TESTS_DIR = __dirname;

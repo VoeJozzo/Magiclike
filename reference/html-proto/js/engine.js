@@ -1364,11 +1364,103 @@ function applyDamageFrom(ctx, target, amt) {
 }
 
 // EFFECTS TABLE — dispatch from {kind: 'foo', ...} to handler.
+
+// Creatures matching a mass `scope` (Slice 3 step 1 / decision 2), as a
+// pre-iteration snapshot of {kind, iid, controller}. all_creatures = both
+// sides; all_yours = controller's; all_opps = opponent's. Groundwork for the
+// single/mass unification: damage/pump/removeCreature gain a `scope` path
+// alongside the legacy damageAll/pumpAllYours/removeAll handlers.
+function creaturesInScope(ctx, scope) {
+  let sides;
+  if (scope === 'all_creatures') sides = ['you', 'opp'];
+  else if (scope === 'all_yours') sides = [ctx.controller];
+  else if (scope === 'all_opps') sides = [opp(ctx.controller)];
+  else return [];
+  const out = [];
+  for (const who of sides) {
+    for (const c of G[who].battlefield) {
+      if (c.type === 'Creature') out.push({ kind: 'creature', iid: c.iid, controller: who });
+    }
+  }
+  return out;
+}
+
+// Apply a removal severity (1=tap, 2=bounce, 3=destroy, 4=exile) to one
+// creature f={card, controller}. Extracted from removeCreature so the
+// single-target and mass-scope paths share one severity ladder (groundwork
+// for the affect_creature unification).
+function affectOneCreature(ctx, f, sev) {
+  if (!f || !f.card) return;
+  if (sev === 1) {
+    f.card.tapped = true;
+    log(`${ctx.sourceName} taps ${f.card.name}.`, 'sp');
+    return;
+  }
+  if (sev === 2) {
+    const card = pluckFromBattlefield(f);
+    if (!card) return;
+    // permanentEot creatures (Elystra) keep their EOT buffs through bounce.
+    leavesPlayPreservingBuffs(card);
+    if (!card.isToken) {
+      G[card.owner || f.controller].hand.push(card);
+      log(`${ctx.sourceName} returns ${card.name} to hand.`, 'sp');
+    } else {
+      log(`${ctx.sourceName} returns ${card.name} — token ceases to exist.`, 'sp');
+    }
+    emitLeavesBattlefield(card, f.controller, 'hand');
+    return;
+  }
+  if (sev === 3) {
+    if (f.card.keywords.includes('indestructible')) {
+      log(`${f.card.name} is indestructible — ${ctx.sourceName} fizzles.`, 'sp');
+      return;
+    }
+    f.card.killedBy = ctx.controller;
+    moveToGraveyard(f.card, f.controller);
+    log(`${ctx.sourceName} destroys ${f.card.name}.`, 'sp');
+    return;
+  }
+  // sev 4 exile: bypasses indestructible. Routes to exile zone.
+  const card = pluckFromBattlefield(f);
+  if (!card) return;
+  if (card.type === 'Creature' && f.controller !== ctx.controller) {
+    claimKeywordsFromKill(card, ctx.controller);
+  }
+  leavesPlayPreservingBuffs(card);
+  if (!card.isToken) {
+    G[card.owner || f.controller].exile.push(card);
+    log(`${ctx.sourceName} exiles ${card.name}.`, 'sp');
+  } else {
+    log(`${ctx.sourceName} exiles ${card.name} — token ceases to exist.`, 'sp');
+  }
+  emitLeavesBattlefield(card, f.controller, 'exile');
+}
+
 const EFFECTS = {
   damage(ctx, params, target) {
+    if (params.scope) {
+      const amt = params.amount || 0;
+      if (amt <= 0) return;
+      log(`${ctx.sourceName} deals ${amt} to each creature.`, 'sp');
+      for (const st of creaturesInScope(ctx, params.scope)) {
+        applyDamageFrom(ctx, { kind: 'creature', iid: st.iid }, amt);
+      }
+      return;
+    }
     applyDamageFrom(ctx, target, params.amount);
   },
   pump(ctx, params, target) {
+    if (params.scope) {
+      const p = params.power || 0, t = params.toughness || 0;
+      for (const st of creaturesInScope(ctx, params.scope)) {
+        const f = findCard(st.iid);
+        if (!f) continue;
+        f.card.tempPower += p;
+        f.card.tempTou += t;
+      }
+      log(`${ctx.sourceName} gives +${p}/+${t} EOT to each creature in scope.`, 'sp');
+      return;
+    }
     const f = resolveTarget(ctx, target);
     if (!f) return;
     f.card.tempPower += (params.power||0);
@@ -1475,60 +1567,16 @@ const EFFECTS = {
   // Unified removal. severity: 1=tap, 2=bounce, 3=destroy (indestructible blocks), 4=exile.
   // Severity sticker escalates one tier per stack.
   removeCreature(ctx, params, target) {
+    const sev = Math.max(1, Math.min(4, params.severity || 1));
+    if (params.scope) {
+      for (const st of creaturesInScope(ctx, params.scope)) {
+        affectOneCreature(ctx, findCard(st.iid), sev);
+      }
+      return;
+    }
     const f = resolveTarget(ctx, target);
     if (!f) return;
-    const sev = Math.max(1, Math.min(4, params.severity || 1));
-
-    if (sev === 1) {
-      f.card.tapped = true;
-      log(`${ctx.sourceName} taps ${f.card.name}.`, 'sp');
-      return;
-    }
-
-    if (sev === 2) {
-      // Bounce. Tokens cease to exist.
-      const card = pluckFromBattlefield(f);
-      if (!card) return;
-      // permanentEot creatures (Elystra) keep their EOT buffs through bounce —
-      // their flavor is "EOT effects last forever", and stripping would hard-counter her.
-      leavesPlayPreservingBuffs(card);
-      if (!card.isToken) {
-        // Owner-routed (steal returns to original owner, not thief).
-        G[card.owner || f.controller].hand.push(card);
-        log(`${ctx.sourceName} returns ${card.name} to hand.`, 'sp');
-      } else {
-        log(`${ctx.sourceName} returns ${card.name} — token ceases to exist.`, 'sp');
-      }
-      emitLeavesBattlefield(card, f.controller, 'hand');
-      return;
-    }
-
-    if (sev === 3) {
-      if (f.card.keywords.includes('indestructible')) {
-        log(`${f.card.name} is indestructible — ${ctx.sourceName} fizzles.`, 'sp');
-        return;
-      }
-      f.card.killedBy = ctx.controller;
-      moveToGraveyard(f.card, f.controller);
-      log(`${ctx.sourceName} destroys ${f.card.name}.`, 'sp');
-      return;
-    }
-
-    // sev=4 exile: bypasses indestructible. Routes to exile zone (not dropped) for UI/recursion.
-    const card = pluckFromBattlefield(f);
-    if (!card) return;
-    // Exile doesn't fire cardDies; claim keywords here for opp-creature kills.
-    if (card.type === 'Creature' && f.controller !== ctx.controller) {
-      claimKeywordsFromKill(card, ctx.controller);
-    }
-    leavesPlayPreservingBuffs(card);
-    if (!card.isToken) {
-      G[card.owner || f.controller].exile.push(card);
-      log(`${ctx.sourceName} exiles ${card.name}.`, 'sp');
-    } else {
-      log(`${ctx.sourceName} exiles ${card.name} — token ceases to exist.`, 'sp');
-    }
-    emitLeavesBattlefield(card, f.controller, 'exile');
+    affectOneCreature(ctx, f, sev);
   },
   // Destroy + apply sticker to slot (Scarification). Player-side persistent;
   // opp-side: in-game destroy only (opp slots regenerate). params.stickerId names it.
@@ -5574,6 +5622,8 @@ return {
   spellValueForEffects,
   pickBestTriggerTarget,
   matchFilter,
+  // Effects seam exposed for tests (Slice 3).
+  applyEffect, creaturesInScope, affectOneCreature,
   concede() {
     if (!G || G.gameOver) return;
     log('You concede.', 'imp');
