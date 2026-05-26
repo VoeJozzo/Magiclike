@@ -23,17 +23,18 @@ Map of the documentation set. Each doc has a single, distinct job; this page is 
 | [`REFACTOR-NOTES.md`](REFACTOR-NOTES.md) | Structural **debt**, prioritized P0–P2. Advisory; pick up opportunistically. |
 | [`STANDARDIZATION-PLAN.md`](STANDARDIZATION-PLAN.md) | Cross-engine standardization rollout (Passes 1–4 shipped: snake_case wire, 258-card migration, JsonCardLoader; Pass 5/6 = future Godot-native wire shape, retire `.tres`, effect-kind porting). |
 | [`STANDARDIZATION-CONTEXT.md`](STANDARDIZATION-CONTEXT.md) | Handoff narrative + decision record from the standardization work (locked decisions, gotchas). History, not an active to-do. |
-| [`plan-card-data-unification.md`](plan-card-data-unification.md) | Retire Godot's `.tres`; make JSON the single card source (data-source half of standardization Pass 5). Sequenced **before** the effects/E1-E2 refactor's card migration so cards are touched once. |
 
 ## Refactor specs — "the big coordinated pass"
 
-Three sequenced, cross-referencing refactor plans intended as one coordinated effort (not three branches). Recommended order: priority-window → E1/E2 → effects (the latter two before Phase 6 card expansion).
+One coordinated refactor pass, sequenced before Phase 6 card expansion. **Start here:** [`plan-coordinated-refactor.md`](plan-coordinated-refactor.md) is the **master sequencing doc** — the conductor that orders the four workstream plans below into slices with dependencies and verification gates. The four below are the detailed specs for each workstream.
 
 | Doc | Covers |
 |---|---|
+| [`plan-coordinated-refactor.md`](plan-coordinated-refactor.md) | **Master conductor** — slice order (priority-window → card-data single-source → E1/E2 → effects), dependency graph, per-engine sequencing, checkpoints. |
 | [`plan-priority-window-refactor.md`](plan-priority-window-refactor.md) | B6/B7 — centralize priority-window opening, auto-pass, end-turn fast-forward (Godot). |
+| [`plan-card-data-unification.md`](plan-card-data-unification.md) | Retire `.tres`; JSON as the single card source (Part 1; Part 2 folds into the effects refactor). |
 | [`plan-zone-change-and-composable-predicates.md`](plan-zone-change-and-composable-predicates.md) | E1/E2 — unified `card_zone_change` event + atomic composable predicates (both engines). |
-| [`plan-effects-refactor.md`](plan-effects-refactor.md) | 38→19 atomic effects + target-filter/hexproof model; also folds in the **sticker system** (§3.8), **mana-model deep clean** (§3.9), and **staple-synthesis cleanup** (§3.10). |
+| [`plan-effects-refactor.md`](plan-effects-refactor.md) | 38→19 atomic effects + `target()`/`chooses()` targeting; folds in the **sticker system** (§3.8), **mana-model deep clean** (§3.9), and **staple-synthesis cleanup** (§3.10). |
 
 ## How the trackers divide
 
