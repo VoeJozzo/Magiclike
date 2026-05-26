@@ -197,15 +197,22 @@ exercised directly via an exposed `ENGINE.applyEffect` test seam):
   / edict / Pyroclasm through the real path passes. `tests/test_targeting_cast.js`.
   All three inert for legacy cards (only fire when `card.target` is set).
 
-Still TODO proto (migration prerequisites): top-level-`target` wiring for
-**triggered/activated abilities** (the keystone covered spells/`resolveTopOfStack`
-only; triggers/abilities + the staple `fireStackEffects` path still use
-per-effect targets) · **§8.1 AI-valuation lockstep** (burn.js lethal-recognition
-+ scoring.gd must read the `target()` step / `scope` instead of `effect.target`,
-else collapsed cards mis-value — the silent-regression trap) · UI target-pick
-(part D, browser) · then the `migrate-effects.js` script + 258-card migration
-(steps 5/6) · `apply_sticker` + sticker pipeline (step 10) · mana deep-clean
-(§3.9) · flicker decomposition (step 8, now unblocked by move_card arrival).
+- **Step 2 KEYSTONE wiring COMPLETE across all 3 resolution paths (done):**
+  top-level `target` step is now wired through spells (`resolveTopOfStack`),
+  triggered abilities (`resolveTrigger` + `triggerHasAnyValidTarget` +
+  `pushTriggerOnStack`), and activated abilities (`doActivateAbility` +
+  `isLegalAction` + `getLegalActions`). Each: resolution `currentTarget`
+  threading (chooses replaces it), cast-time hexproof checkpoint, per-target
+  enumeration. All inert for legacy cards. `tests/test_targeting_cast.js`.
+
+Still TODO proto (migration prerequisites): **§8.1 AI-valuation lockstep**
+(burn.js lethal-recognition + scoring must read the `target()` step / `scope`
+instead of `effect.target`, else collapsed cards mis-value — the
+silent-regression trap) · UI target-pick (part D, browser) · the staple
+`fireStackEffects` path still per-effect (Stapler-only, low priority) · then
+the `migrate-effects.js` script + 258-card migration (steps 5/6) ·
+`apply_sticker` + sticker pipeline (step 10) · mana deep-clean (§3.9) · flicker
+decomposition (step 8, unblocked by move_card arrival).
 
 ### Godot mirror — major work items (per plan §10/§11)
 
