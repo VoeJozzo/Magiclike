@@ -43,7 +43,7 @@ D  effects refactor ────────────►  includes card-data 
 **Slice 0 — Priority-window (A).** Smallest, independent, Godot-only, touches no card data — a clean warm-up that de-risks the harness before the card-touching work. Mechanical migration of the 8 priority-assignment sites + `KIND_TAP_LAND_FOR_MANA` + `KIND_END_TURN`. *(Forward note already in the plan: when Godot later adopts the §3.9 land-as-ability model, generalize `KIND_TAP_LAND_FOR_MANA` to an `is_mana_ability` classification.)*
 **Gate:** all Godot phase smoke tests pass; new `test_priority_window` cases pass.
 
-**Slice 1 — Card-data single source (B / Part 1).** Retire `.tres`; point `CardDatabase.get_card` at `JsonCardLoader`; rebuild the visual factory; JSON-ify the 23 Godot cards. Lands **before** C and D so their card migrations run against one JSON source. Carries decision **Q1** (folder-name collision).
+**Slice 1 — Card-data single source (B / Part 1).** Retire `.tres`; point `CardDatabase.get_card` at `JsonCardLoader`; rebuild the visual factory; JSON-ify the 31 Godot card templates. Lands **before** C and D so their card migrations run against one JSON source. Carries decision **Q1** (folder-name collision).
 **Gate:** boot supportability scan loads all cards, counts unchanged; the 23 formerly-`.tres` cards still resolve + render; phase tests pass.
 
 **Slice 2 — E1/E2 (C).** Unified `card_zone_change` event + the 12 composable predicates; migrate trigger cards (both engines, on the single source). Prerequisite for D's `move_card`.

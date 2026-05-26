@@ -4,7 +4,7 @@ Magic: The Gathering-style roguelike. The repo holds two things: the in-progress
 
 The html-proto is a vanilla-JS rules engine — ~20k+ LOC across 13 modules under `js/` plus per-card JSONs under `cards/<tplId>/`. 250+ card templates, full priority/stack model, triggered abilities, draft, roguelike meta. Active on the `dev` branch; see `reference/html-proto/CLAUDE.md` for the current version and module map.
 
-The Godot port reimplements the engine natively. **Structurally similar, not 1:1** — the JS rendering layer doesn't translate, and several JS-specific patterns need rethinking (see "Patterns to NOT replicate" below). Current state: Phases 0–5c shipped (Lightning Bolt through real AI vs AI). 23 cards in `cards/templates/card_database.gd`, 10 phase smoke tests, AI plays complete games. Next: card pool expansion → stickers → draft → roguelike meta (see `docs/godot-port-plan.md` for the forward roadmap).
+The Godot port reimplements the engine natively. **Structurally similar, not 1:1** — the JS rendering layer doesn't translate, and several JS-specific patterns need rethinking (see "Patterns to NOT replicate" below). Current state: Phases 0–5c shipped (Lightning Bolt through real AI vs AI). 31 card templates in `cards/templates/` (26 cards + 5 basic lands), 10 phase smoke tests, AI plays complete games. Next: card pool expansion → stickers → draft → roguelike meta (see `docs/godot-port-plan.md` for the forward roadmap).
 
 Deferred work lives in `docs/BACKLOG.md` — read it when relevant, but don't open a session by attacking it. The user picks what to work on; if you finish a task and have idle attention, surface 1–2 backlog items as suggestions rather than just starting the next one.
 
@@ -26,7 +26,7 @@ Deferred work lives in `docs/BACKLOG.md` — read it when relevant, but don't op
 ├── cards/
 │   ├── data/                   empty — JsonCardFactory wiring is vestigial (cards load from templates/*.tres)
 │   ├── images/                 card art
-│   └── templates/card_database.gd  programmatic CardResource registry (23 cards)
+│   └── templates/         31 *.tres CardResources (26 cards + 5 lands); card_database.gd is a directory-scanning loader over them
 ├── data/                       engine-side resource base classes
 │   ├── card_resource.gd, creature_resource.gd, land_resource.gd, spell_resource.gd
 ├── engine/                     pure-data rules engine (no UI imports)

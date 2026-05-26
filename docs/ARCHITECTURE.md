@@ -18,7 +18,7 @@ A runtime structure map for both halves of the Magiclike repo: the Godot 4.6 por
 │   ├── fonts/Almendra/        SIL OFL 1.1
 │   └── mana/                  WUBRG SVGs + design source
 ├── cards/
-│   ├── templates/             *.tres CardResources (28 files = 23 cards + 5 lands)
+│   ├── templates/             *.tres CardResources (31 files = 26 cards + 5 lands)
 │   ├── images/                placeholder PNGs; 4 wired-in inserts (see BACKLOG)
 │   └── data/                  empty — JsonCardFactory wiring is vestigial
 ├── data/                      CardResource base + subclasses

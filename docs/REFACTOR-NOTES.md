@@ -313,7 +313,7 @@ Reference via `TUNING.X` in scorers.
 
 **Smell.** Renaming a field in `CardResource` (e.g., `mana_cost` → `cost`) silently breaks every saved `.tres`. Godot reports a parse warning, not an error.
 
-**Recommended.** Add a `@export var schema_version: int = 1` on `CardResource`; bump on schema changes; add a startup loader that pushes through migrations (mirrors html-proto's `RUN.MIGRATIONS` pattern). Low priority while the pool is 23 cards; rises with Phase 6 expansion.
+**Recommended.** Add a `@export var schema_version: int = 1` on `CardResource`; bump on schema changes; add a startup loader that pushes through migrations (mirrors html-proto's `RUN.MIGRATIONS` pattern). Low priority while the pool is 31 templates; rises with Phase 6 expansion.
 
 **Triggered by.** First schema change after Phase 6 ships.
 

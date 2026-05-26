@@ -8,7 +8,7 @@ canonical spec the passes converged on.
 
 Maximize interoperability between the two engines so that:
 
-1. **Card definitions can be authored once and consumed by both.** Today, a new card has to be written twice (JSON in `reference/html-proto/cards/<tplId>/card.json`, then a `.tres` or programmatic `CardResource` in `cards/templates/`). With 258 JS cards vs 23 Godot cards, the prototype is the source of truth — but every Godot port re-translates field names. That's pure friction.
+1. **Card definitions can be authored once and consumed by both.** Today, a new card has to be written twice (JSON in `reference/html-proto/cards/<tplId>/card.json`, then a `.tres` or programmatic `CardResource` in `cards/templates/`). With 258 JS cards vs 31 Godot templates, the prototype is the source of truth — but every Godot port re-translates field names. That's pure friction.
 2. **The action, event, and effect protocols line up conceptually.** A reader fluent in one engine should be able to read the other without a glossary. Naming should differ only by language convention.
 3. **Going-forward work doesn't drift.** When a new effect kind, event, or predicate is added on one side, the protocol document tells you what to call it and how to add it on the other.
 
@@ -193,7 +193,7 @@ JS currently lacks the exact `oppLostLifeThisTurn` because it expresses the same
 
 The single highest-leverage move in this whole plan.
 
-**Today**: 258 cards live as `reference/html-proto/cards/<tplId>/card.json`. The Godot port has 23 cards re-implemented as `.tres` files.
+**Today**: 258 cards live as `reference/html-proto/cards/<tplId>/card.json`. The Godot port has 31 card templates (26 cards + 5 basic lands) re-implemented as `.tres` files.
 
 **Target**: the Godot port reads `reference/html-proto/cards/<tplId>/card.json` directly (or a copy under `cards/data/`). The `.tres` form is retained only for tests that need a specific stub.
 

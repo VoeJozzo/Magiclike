@@ -13,7 +13,7 @@ The 258 proto cards are already JSON (standardization Pass 2). What remains is t
 
 Split Pass 5 into two parts and sequence them around the refactor:
 
-- **Part 1 — retire `.tres`, single JSON source (THIS plan; do before the refactor's card migration).** Bounded data-loading work: give the 23 Godot cards JSON forms, point `CardDatabase` at `JsonCardLoader`, rebuild the visual factory, delete the `.tres`. Does **not** require migrating any card's field/effect shape — the 23 cards are written in the *current* wire shape (what `JsonCardLoader` already reads via its remap tables).
+- **Part 1 — retire `.tres`, single JSON source (THIS plan; do before the refactor's card migration).** Bounded data-loading work: give the 31 Godot card templates (26 cards + 5 lands) JSON forms, point `CardDatabase` at `JsonCardLoader`, rebuild the visual factory, delete the `.tres`. Does **not** require migrating any card's field/effect shape — the templates are written in the *current* wire shape (what `JsonCardLoader` already reads via its remap tables).
 - **Part 2 — full Godot-native field + effect/trigger migration (FOLD INTO the refactor, NOT a separate pass).** The 258-card field renames (`name`→`display_name`, `effects`→`on_cast_effects`, type/sub array forms, …) AND the dispatch-key snake_case sweep AND the new effect/trigger shapes (`target()`/`chooses()`, `scope`, `condition`, `card_zone_change`) all touch every card. Do them as **one** card-data migration during the effects/E1-E2 refactor so cards are touched once. `JsonCardLoader`'s remap tables (`_EFFECT_KIND_REMAP`, `_EVENT_KIND_REMAP`, `_KEYWORD_REMAP`, `_TARGET_FILTER_REMAP`) survive through Part 1 and are deleted as part of Part 2 (the wire goes fully snake_case).
 
 This plan covers **Part 1 only**. Part 2's mechanics are tracked with the refactor plans.
@@ -53,5 +53,5 @@ Part 1 is independent of the refactor's design and can land first (it's pure dat
 - `cards/templates/card_database.gd` (repoint `get_card` to JsonCardLoader)
 - `engine/json_card_loader.gd` (the loader; remap tables stay until Part 2)
 - `scenes/card.tscn`, `scenes/tres_card_factory.gd` (visual factory rebuild → JSON-backed)
-- `cards/templates/*.tres` (deleted), `reference/html-proto/cards/<id>/card.json` + `cards/_manifest.json` (the 23 Godot cards added)
+- `cards/templates/*.tres` (deleted), `reference/html-proto/cards/<id>/card.json` + `cards/_manifest.json` (the 31 Godot card templates added)
 - Reference: `STANDARDIZATION-CONTEXT.md` §7, `STANDARDIZATION-PLAN.md` §6
