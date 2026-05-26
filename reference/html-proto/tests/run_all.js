@@ -33,6 +33,8 @@ const CATEGORY_A = [
   'draft_pool_lazy_test.js',
   'boon_art_derives_from_card_test.js',
   'tplid_renames_test.js',
+  // Slice 2 / E2 — composable atomic predicates + evaluator + parser.
+  'composable_predicates_test.js',
 ];
 
 const TESTS_DIR = __dirname;

@@ -138,6 +138,8 @@ const EXPOSED = [
   // no IIFE, all module-scope).
   'TRIGGER_CONDITIONS', 'GENERATOR_EFFECTS', 'GENERATOR_CONDITIONS',
   'evalTriggerCondition', 'generateRandomTrigger',
+  // Composable-predicate surface (triggers.js, module-scope — Slice 2 / E2).
+  'ATOMIC_PREDICATES', 'evaluateCondition', '_parseCall',
   'generateConditionOptions', 'generateEffectOptions', 'assembleTrigger',
   // Engine module-scope helpers (above the ENGINE IIFE).
   'deckColorsFromSlots', 'fakeTargetsForLegality',
