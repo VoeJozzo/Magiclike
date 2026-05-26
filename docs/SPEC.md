@@ -1,6 +1,8 @@
 # Data Contracts
 
-Schemas and contracts that the engine, AI, UI, and persistence layers depend on. The "what does X look like in memory" reference. Pairs with [`ARCHITECTURE.md`](ARCHITECTURE.md) (module map) and [`REFACTOR-NOTES.md`](REFACTOR-NOTES.md) (structural debt). State as of Godot Phase 5c / html-proto v1.0.188.
+Schemas and contracts that the engine, AI, UI, and persistence layers depend on. The "what does X look like in memory" reference. Pairs with [`ARCHITECTURE.md`](ARCHITECTURE.md) (module map) and [`REFACTOR-NOTES.md`](REFACTOR-NOTES.md) (structural debt). State as of Godot Phase 5c / html-proto v1.0.189.
+
+> **SPEC = within-engine runtime contracts** (action descriptors, the effect-handler `ctx` shape, engine signals, awaiting states, CardInstance/EngineState runtime fields, save schema). The **cross-engine wire format** — the `card.json` schema and the effect-kind / event-kind / predicate-id / target catalogs both engines must agree on — lives in [`PROTOCOL.md`](PROTOCOL.md). Where the two touch, SPEC defers to PROTOCOL for the wire vocabulary.
 
 ---
 
@@ -31,7 +33,7 @@ Targets passed inside an action's `"targets"` array follow this shape:
 ```gdscript
 {"kind": "player",   "who": "you" | "opp"}                    # via Action.target_player(who)
 {"kind": "creature", "iid": int}                              # via Action.target_creature(iid)
-{"kind": "stack",    "iid": int}                              # counter_spell target
+{"kind": "stack",    "iid": int}                              # counter target
 ```
 
 Some effect handlers accept an alternate non-descriptor form (a bare string like `"controller"` or `"opponent"`) when the effect dictionary itself specifies the target — see §1.4.
@@ -50,10 +52,10 @@ Base class at `data/card_resource.gd`. Subclasses extend with type-specific fiel
 | `card_types` | `Array[String]` | `[]` | E.g., `["creature"]`, `["instant"]`, `["land"]`. Multi-type allowed. |
 | `subtypes` | `Array[String]` | `[]` | E.g., `["human", "warrior"]`, `["plains"]`. |
 | `mana_cost` | `Dictionary` | `{}` | Keys: `W` `U` `B` `R` `G` `C` (generic). Values: positive integers. Empty for lands and free spells. |
-| `oracle_text` | `String` | `""` | Display text. Not parsed by the engine. |
+| `text` | `String` | `""` | Display text. Not parsed by the engine. |
 | `on_cast_effects` | `Array[Dictionary]` | `[]` | Effects that resolve when the spell resolves. See §1.4. |
 | `activated_abilities` | `Array[Dictionary]` | `[]` | Each `{"cost": {"tap": bool, "mana": {...}}, "effects": [...]}`. |
-| `triggered_abilities` | `Array[Dictionary]` | `[]` | See §1.5. |
+| `triggers` | `Array[Dictionary]` | `[]` | See §1.5. |
 
 **`CreatureResource` (extends, `data/creature_resource.gd`)**
 
@@ -91,9 +93,9 @@ display_name = "Bloodlust Berserker"
 card_types = Array[String](["creature"])
 subtypes = Array[String](["human", "warrior"])
 mana_cost = {"C": 1, "R": 2}
-oracle_text = "When Bloodlust Berserker dies, if the opponent lost life this turn, it deals 2 damage to the opponent."
-triggered_abilities = Array[Dictionary]([{
-    "condition_predicate": "opp_lost_life_this_turn",
+text = "When Bloodlust Berserker dies, if the opponent lost life this turn, it deals 2 damage to the opponent."
+triggers = Array[Dictionary]([{
+    "cond_id": "opp_lost_life_this_turn",
     "effects": [{"amount": 2, "kind": "damage", "target": "opponent"}],
     "event": "card_dies",
     "self_only": true
@@ -102,7 +104,7 @@ triggered_abilities = Array[Dictionary]([{
 
 ### 1.4 Effect descriptors
 
-Effects appear in `on_cast_effects`, in `activated_abilities[i].effects`, and in `triggered_abilities[i].effects`. Each effect is a `Dictionary` with `"kind"` plus per-kind fields. Resolved by `engine/effects/effects.gd:resolve_one(effect, ctx)`.
+Effects appear in `on_cast_effects`, in `activated_abilities[i].effects`, and in `triggers[i].effects`. Each effect is a `Dictionary` with `"kind"` plus per-kind fields. Resolved by `engine/effects/effects.gd:resolve_one(effect, ctx)`.
 
 **Common `ctx`** (assembled by engine, passed to handler):
 
@@ -138,14 +140,14 @@ Adds to `ctx.controller.mana`.
 ```gdscript
 {
     "kind": "pump",
-    "amount_power": int,
-    "amount_toughness": int,
+    "power": int,
+    "toughness": int,
     "target": "chosen",          # must be a creature target descriptor in ctx.targets[0]
     "duration": "eot" | "permanent"
 }
 ```
 - `"eot"` adds to `temp_power`/`temp_toughness` (cleared at end of turn).
-- `"permanent"` adds `+1/+1` counters (`counters["+1/+1"] += max(amount_power, amount_toughness)`).
+- `"permanent"` adds `+1/+1` counters (`counters["+1/+1"] += max(power, toughness)`).
 
 **`gain_life`** (`engine/effects/gain_life.gd`)
 ```gdscript
@@ -153,21 +155,21 @@ Adds to `ctx.controller.mana`.
 ```
 Always applies to `ctx.controller`. Non-positive amounts log a warning and skip.
 
-**`counter_spell`** (`engine/effects/counter_spell.gd`)
+**`counter`** (`engine/effects/counter.gd`)
 ```gdscript
-{"kind": "counter_spell", "target": "chosen"}
+{"kind": "counter", "target": "chosen"}
 # ctx.targets[0] must be {"kind": "stack", "iid": int}
 ```
 Routes through `RulesEngine.counter_stack_entry(iid)` (only effect that reaches into the autoload — needed for the off-zone `_stack_held_cards` buffer). Fizzles cleanly if target spell left the stack.
 
 ### 1.5 Triggered ability schema
 
-Each entry in `triggered_abilities` is a `Dictionary`:
+Each entry in `triggers` is a `Dictionary`:
 
 ```gdscript
 {
     "event": String,                  # see event vocabulary below
-    "condition_predicate": String,    # registry name, or "" for unconditional
+    "cond_id": String,    # registry name, or "" for unconditional
     "effects": Array[Dictionary],     # effect descriptors (§1.4)
     "self_only": bool,                # true → only fires from the source card's events
     "target_filter": String,          # required if any effect uses target: "chosen"
@@ -175,7 +177,7 @@ Each entry in `triggered_abilities` is a `Dictionary`:
 ```
 
 **Observed event values** (across all `.tres` templates):
-- `"card_etb"` — card enters the battlefield
+- `"card_enters_battlefield"` — card enters the battlefield
 - `"card_dies"` — card moves from battlefield to graveyard (damage or removal)
 
 **Target filter values** (used when `effects` contains `target: "chosen"`):
@@ -199,7 +201,7 @@ static func cond_<name>(state: EngineState, source: CardInstance, event: Diction
 - `state` passed explicitly. **No reads of `RulesEngine.state()` from inside a predicate** — testability rule, mirrors the JS prototype's worst pattern (cf. `triggers.js:39–41`).
 - `source` is the card whose ability triggered.
 - `event` is the dictionary published by `_fire_event` (shape depends on event kind).
-- Returns `bool`. Empty `condition_predicate` string is treated as always-true.
+- Returns `bool`. Empty `cond_id` string is treated as always-true.
 
 **Currently registered.**
 
@@ -212,7 +214,7 @@ static func cond_<name>(state: EngineState, source: CardInstance, event: Diction
 2. Append `"<name>"` to `_PRED_NAMES`.
 3. Add a `"<name>": cond_<name>(...)` branch to `evaluate`'s `match` statement.
 
-**Boot validation.** `engine.gd._ready()` calls `Predicates.validate_all_card_predicates(card_resources)`. Every `condition_predicate` string referenced in any `triggered_abilities` entry must resolve to a `_PRED_NAMES` entry; otherwise `push_error` at startup with a "Unknown condition_predicate(s): <card>.<predicate>" message.
+**Boot validation.** `engine.gd._ready()` calls `Predicates.validate_all_card_predicates(card_resources)`. Every `cond_id` string referenced in any `triggers` entry must resolve to a `_PRED_NAMES` entry; otherwise `push_error` at startup with a "Unknown cond_id(s): <card>.<predicate>" message.
 
 **Card-local hook.** `_is_card_local_predicate(card, pred)` is reserved for future card-local predicates (B1 pattern from `docs/godot-port-plan.md`). Currently returns `false` — no callers.
 
@@ -288,80 +290,13 @@ Every subclass has its own `duplicate_deep()` so AI snapshots don't share mutabl
 
 ## 2. html-proto
 
-### 2.1 Card JSON schema
+### 2.1 Card JSON schema → see [`PROTOCOL.md`](PROTOCOL.md)
 
-One file per template at `reference/html-proto/cards/<tplId>/card.json`. The folder name MUST match `tplId`. `cards/_manifest.json` lists every folder.
+The html-proto `card.json` **is the cross-engine wire format** — read by proto's `js/cards.js::ingestCard` and Godot's `engine/json_card_loader.gd`. Its canonical schema lives in **PROTOCOL.md §2–§6** (snake_case fields: `card_id` not `tplId`; `color`/`colors` dropped and recomputed from `cost` at ingest; the effect-kind / event-kind / predicate-id catalogs; the target taxonomy; a worked example). SPEC does not duplicate it — this is the *between-engines* contract, which is PROTOCOL's job.
 
-**Base fields** (every card)
+### 2.2 Triggered ability schema (wire) → see PROTOCOL.md §5
 
-| Field | Type | Purpose |
-|---|---|---|
-| `tplId` | string | Template id; must match folder. |
-| `name` | string | Display name. |
-| `type` | string | `"Creature"`, `"Sorcery"`, `"Instant"`, `"Land"`, `"Artifact"`. |
-| `sub` | string \| string[] (optional) | Subtypes. |
-| `art` | string | Emoji or relative path (e.g., `cards/ageOfDawn/art.png`). |
-| `text` | string | Oracle text. |
-| `cost` | object | Mana cost, e.g., `{"R": 1, "C": 2}`. Empty/omitted for lands. |
-| `mana` | string (lands only) | Producible mana letters concatenated, e.g., `"W"`, `"WU"`. |
-| `color` | string (optional) | Primary color letter. |
-| `colors` | string[] (optional) | All colors. |
-| `effects` | object[] | On-cast effects (or, for permanents, on-resolve effects). |
-| `triggers` | object[] (optional) | Triggered abilities — see §2.2. |
-| `abilities` | object[] (optional) | Activated abilities, each `{cost, effects}`. |
-| `keywords` | string[] (optional, creatures) | E.g., `["flying", "trample"]`. |
-| `power` | number (creatures) | Base power. |
-| `toughness` | number (creatures) | Base toughness. |
-| `staticBuffs` | object[] (optional) | Lord-style continuous effects (partial impl). |
-| `draftWeight` | number (optional) | Pack-roll weight; default 1.0. `0` excludes from packs. |
-| `chargesAtRunStart` | number (optional) | Stapler only. |
-| `special` | boolean (optional) | `true` excludes from the default draft pool. |
-| `modeNames` | string[] (optional) | Modal spells. |
-| `modes` | object[] (optional) | Per-mode effect arrays. |
-
-**Effect descriptor shape**
-```js
-{ "kind": "damage" | "draw" | "pump" | "weaken" | "removeCreature" | "fightTarget"
-        | "counter" | "createTokens" | "gainLife" | "edict" | "addMana"
-        | "endomorphAbsorb" | "embargo" | "bleach" | "steal" | ...,
-  "target": "any" | "creature" | "player" | "opp_creature" | ...,
-  "amount": number,
-  "targetSlot": number,        // multi-target spells; default 0 = shared target
-  /* per-kind fields */ }
-```
-~40 effect kinds total. Full list in `js/engine.js` `EFFECTS = {...}` (line 1366).
-
-**Worked example: `cards/bolt/card.json`**
-
-```json
-{
-  "tplId": "bolt",
-  "name": "Lightning Bolt",
-  "type": "Instant",
-  "cost": {"R": 1},
-  "art": "⚡",
-  "text": "Deal 3 damage to any target.",
-  "effects": [{"kind": "damage", "target": "any", "amount": 3}],
-  "color": "R",
-  "colors": ["R"]
-}
-```
-
-### 2.2 Triggered ability schema (html-proto)
-
-```js
-{
-  "event": "cardEntersBattlefield" | "cardLeavesBattlefield" | "attacks"
-         | "cardDies" | "spellCast" | "lifeGained" | ...,
-  "condId": "thisEnters" | "thisAttacksAfterOppLifeLoss" | "thisKillsCreature" | ...,
-  "params": { /* condId-specific */ },
-  "text": "When ~ enters, ...",            // ~ = card name (rendered post-load)
-  "effects": [ /* effect descriptors */ ],
-  "noSelfCascade": true                    // optional — guards against re-firing
-}
-```
-
-The condId registry (`triggers.js` `TRIGGER_CONDITIONS`) declares each condition's allowed events and `check(self, evt, who, params)` predicate. Some predicates close over `G` (the global state singleton) — flagged in `REFACTOR-NOTES.md`.
+Wire trigger shape (`event`, `cond_id`, `self_only`, `effects`, optional `text`) is PROTOCOL.md §5; the event-kind and predicate-id catalogs are PROTOCOL.md §3.3–§3.4. Some proto predicates close over `G` (the global state singleton) — flagged in `REFACTOR-NOTES.md`.
 
 ### 2.3 Runtime slot fields (RUN-tracked, beyond the template)
 
