@@ -42,11 +42,33 @@ console.log('=== synthetic cards: detection ===');
   check('does NOT flag valid target() step', !r.unknownFilters.some(u => u.startsWith('goodTargetStep.')));
 })();
 
+console.log('\n=== per-kind schema for the new atomics ===');
+(() => {
+  const bad = [
+    { tplId: 'mcNoZones', effects: [{ kind: 'move_card', amount: 1 }] },
+    { tplId: 'mcBadZone', effects: [{ kind: 'move_card', from_zone: 'library', to_zone: 'nowhere' }] },
+    { tplId: 'choosesNoFilter', effects: [{ kind: 'chooses' }] },
+    { tplId: 'sevBad', effects: [{ kind: 'affect_creature', severity: 'vaporize' }] },
+  ];
+  const good = [
+    { tplId: 'mcOk', effects: [{ kind: 'move_card', from_zone: 'library', to_zone: 'hand' }] },
+    { tplId: 'sevOk', effects: [{ kind: 'affect_creature', severity: 'destroy' }] },
+  ];
+  const r = ENGINE.validateAllCardEffects(bad.concat(good));
+  check('move_card missing zones flagged', r.schemaErrors.some(e => e.startsWith('mcNoZones:')));
+  check('move_card bad to_zone flagged', r.schemaErrors.some(e => e.startsWith('mcBadZone:')));
+  check('chooses missing filter flagged', r.schemaErrors.some(e => e.startsWith('choosesNoFilter:')));
+  check('affect_creature bad severity flagged', r.schemaErrors.some(e => e.startsWith('sevBad:')));
+  check('valid new-atomic effects NOT flagged',
+    !r.schemaErrors.some(e => e.startsWith('mcOk:') || e.startsWith('sevOk:')));
+})();
+
 console.log('\n=== live shipped pool validates clean ===');
 (() => {
   const r = ENGINE.validateAllCardEffects(CARDS);
   check('no unknown effect kinds in CARDS', r.unknownKinds.length === 0, r.unknownKinds.join(', '));
   check('no out-of-taxonomy filters in CARDS', r.unknownFilters.length === 0, r.unknownFilters.join(', '));
+  check('no schema errors in CARDS', r.schemaErrors.length === 0, r.schemaErrors.join('; '));
 })();
 
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');

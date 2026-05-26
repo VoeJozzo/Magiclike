@@ -2884,9 +2884,31 @@ function effectNeedsTarget(eff) { return !!eff.target && eff.target !== 'self'; 
 // at boot rather than at resolution. Accepts both legacy and new kind names
 // (all live in EFFECTS during the cutover). Returns {unknownKinds,
 // unknownFilters} for tests; warns to console for the running app.
+// Per-kind required-field schema for the NEW atomic effects (Slice 3). Only
+// the new kinds are checked — they aren't used by any card yet, so there's no
+// false-positive risk against the legacy pool; this guards the migration's
+// output. Each entry: kind → validator(effect) returning an error string or null.
+const EFFECT_SCHEMA = {
+  move_card: (e) => {
+    const ZONES = ['library', 'hand', 'graveyard', 'battlefield', 'exile'];
+    if (!ZONES.includes(e.from_zone)) return 'move_card bad/missing from_zone';
+    if (!ZONES.includes(e.to_zone)) return 'move_card bad/missing to_zone';
+    return null;
+  },
+  chooses: (e) => (e.filter ? null : 'chooses missing filter'),
+  affect_creature: (e) => {
+    const SEV = ['tap', 'bounce', 'destroy', 'exile'];
+    if (e.severity != null && !SEV.includes(e.severity) && !(e.severity >= 1 && e.severity <= 4)) {
+      return 'affect_creature bad severity (want tap|bounce|destroy|exile or 1-4)';
+    }
+    return null;
+  },
+};
+
 function validateAllCardEffects(cards) {
   const unknownKinds = [];
   const unknownFilters = [];
+  const schemaErrors = [];
   const list = Array.isArray(cards) ? cards : Object.values(cards || {});
   const checkList = (effs, cardId) => {
     for (const e of (effs || [])) {
@@ -2895,6 +2917,8 @@ function validateAllCardEffects(cards) {
       if ((e.kind === 'chooses' || e.kind === 'target') && e.filter && !TARGET_FILTERS.has(e.filter)) {
         unknownFilters.push(cardId + '.' + e.kind + '(' + e.filter + ')');
       }
+      const schema = EFFECT_SCHEMA[e.kind];
+      if (schema) { const err = schema(e); if (err) schemaErrors.push(cardId + ': ' + err); }
     }
   };
   for (const card of list) {
@@ -2909,7 +2933,8 @@ function validateAllCardEffects(cards) {
   }
   if (unknownKinds.length) console.warn('Unknown effect kind(s):', unknownKinds.join(', '));
   if (unknownFilters.length) console.warn('Unknown target/chooses filter(s):', unknownFilters.join(', '));
-  return { unknownKinds, unknownFilters };
+  if (schemaErrors.length) console.warn('Effect schema error(s):', schemaErrors.join('; '));
+  return { unknownKinds, unknownFilters, schemaErrors };
 }
 
 // Effect kinds that operate on a creature (vs player) — drives target:'self' meaning.
