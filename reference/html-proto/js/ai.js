@@ -989,7 +989,12 @@ function scoreMultiTargetSpell(state, who, card, targets, modeIdx) {
       slotsUsed.add(eff.targetSlot || 0);
     }
   }
-  if (slotsUsed.size === 0) return 0;
+  if (slotsUsed.size === 0) {
+    // New model (§3.5): a top-level `target` step (bare effects) is a single
+    // target — score it like the legacy single-target path.
+    if (card.target) return scoreSpellTargetForMode(state, who, card, targets[0], modeIdx);
+    return 0;
+  }
   if (slotsUsed.size === 1) {
     return scoreSpellTargetForMode(state, who, card, targets[0], modeIdx);
   }
@@ -1147,7 +1152,11 @@ function scoreSpellTarget(state, who, card, target) {
 function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
   const us = who, them = opp(who);
   const modeEffects = ENGINE.effectsForMode(card, modeIdx);
-  const eff = modeEffects.find(e => e.target);
+  // Legacy: the targeted effect carries its own `target`. New model (§3.5): a
+  // top-level `target` step on the card, with bare effects — value the first
+  // target-operating effect (skip chooses() and mass-scoped effects).
+  let eff = modeEffects.find(e => e.target);
+  if (!eff && card.target) eff = modeEffects.find(e => e.kind !== 'chooses' && e.scope == null);
   if (!eff) return 0;
   if (eff.kind === 'damage') {
     const amount = eff.amount;
