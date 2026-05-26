@@ -379,7 +379,7 @@ Net: ~3 behaviors keyed on staple-type, with permanent-vs-spell as the only seco
 
 ## 4. Final atomic effects registry (proposed)
 
-Target count: **19 atomic effects** down from proto's 38. Grouped by category. All take `(effect: Dictionary, ctx: Dictionary)` per the existing Godot `Effects.resolve_one` contract.
+Target count: **~22 atomic effects** down from proto's 38 (roughly half). The figure grew past the original "19" headline because the §3.5 targeting decomposition added two primitives (`target`/`chooses`) and `annihilate` is now built (review OBS 1) — the per-category table below is authoritative. Grouped by category. All take `(effect: Dictionary, ctx: Dictionary)` per the existing Godot `Effects.resolve_one` contract.
 
 ### 4.1 The OPEN QUESTION on `move_card` post-actions — RESOLVED
 
@@ -436,7 +436,7 @@ Shorthand-style signature; parameters are descriptive, not exhaustive.
 - `target(filter)` — caster aims at something at cast time (the hexproof checkpoint). Effects after it operate on "the target."
 - `chooses(filter)` — the targeted player selects one of their own permanents at resolution (NOT targeting; no hexproof).
 
-**Sacrifice / removal verbs (1, +1 pending)**
+**Sacrifice / removal verbs (2)**
 - `sacrifice` — the chosen/target creature is sacrificed by its controller (→ graveyard, fires death/LTB triggers). The edict (formerly the bundled `force_sacrifice`/`edict`) decomposes to `target(player) → chooses(creature) → sacrifice`; there is no longer a bundled `force_sacrifice` effect. (Targeted removal the *caster* aims — destroy/exile/bounce/tap — stays under `affect_creature`.)
 - `annihilate` — rip's no-trigger sibling: like `sacrifice` but the creature ceases to exist — no graveyard, no death/leave triggers. **Built this pass** (review OBS 1): it's `sacrificeCard` (engine.js:3258) minus the graveyard push and the `cardDies`/`emitLeavesBattlefield` emits (~10–15 lines, mirroring `ripSlotForPhylactery`'s pluck-with-no-emit body at engine.js:3652). Rip-edict uses `annihilate` — the `sacrifice` kludge is not shipped.
 
@@ -522,7 +522,7 @@ The `move_card` primitive is powerful but verbose for the common cases. To keep 
 - New shorthands are added only when a card-design pattern is common enough to warrant one AND has unambiguous default parameters. Don't preemptively add shorthand for one-off cases or ambiguous patterns (`return_from_graveyard` is the cautionary case).
 - The shorthand-to-canonical mapping lives in a single registry (boot-time parser), making it easy to evolve. Adding `target_player_mills(N)` later is a one-line entry.
 
-**Effect on registry size**: from a card-author perspective, the effective vocabulary is ~30 effects (19 canonical atomic + 10 shorthand names for movement). From an engine perspective, still 19 handlers. Best of both worlds.
+**Effect on registry size**: from a card-author perspective, the effective vocabulary is ~32 effects (~22 canonical atomic + ~10 shorthand names for movement). From an engine perspective, still ~22 handlers. Best of both worlds.
 
 **Boot validation**: validator accepts shorthand names AND canonical names. Card data is normalized to canonical form at parse time. Grep-ability is preserved on both sides.
 
@@ -981,7 +981,7 @@ Per-engine, per-step. S = an hour or two, M = half a day to a day, L = multi-day
 
 ## 12. Tests required
 
-### 12.1 Per-atomic unit tests (one block per effect; ~19 blocks)
+### 12.1 Per-atomic unit tests (one block per effect; ~22 blocks)
 
 For each atomic, a Godot `tests/test_effects_<kind>.gd` and a proto `tests/test_effects.js` block:
 - Resolves correctly on a normal target.

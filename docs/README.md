@@ -34,7 +34,7 @@ One coordinated refactor pass, sequenced before Phase 6 card expansion. **Start 
 | [`plan-priority-window-refactor.md`](plan-priority-window-refactor.md) | B6/B7 — centralize priority-window opening, auto-pass, end-turn fast-forward (Godot). |
 | [`plan-card-data-unification.md`](plan-card-data-unification.md) | Retire `.tres`; JSON as the single card source (Part 1; Part 2 folds into the effects refactor). |
 | [`plan-zone-change-and-composable-predicates.md`](plan-zone-change-and-composable-predicates.md) | E1/E2 — unified `card_zone_change` event + atomic composable predicates (both engines). |
-| [`plan-effects-refactor.md`](plan-effects-refactor.md) | 38→19 atomic effects + `target()`/`chooses()` targeting; folds in the **sticker system** (§3.8), **mana-model deep clean** (§3.9), and **staple-synthesis cleanup** (§3.10). |
+| [`plan-effects-refactor.md`](plan-effects-refactor.md) | 38→~22 atomic effects + `target()`/`chooses()` targeting; folds in the **sticker system** (§3.8), **mana-model deep clean** (§3.9, full-convergence Godot land-as-ability), and **staple-synthesis cleanup** (§3.10). |
 
 ## How the trackers divide
 
