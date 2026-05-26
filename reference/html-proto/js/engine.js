@@ -3081,6 +3081,8 @@ function emitZoneChange(card, controller, fromZone, toZone, extraSources, source
 // Returns true if the trigger has no targeted effects (always queueable),
 // OR if every targeted effect has at least one currently-valid target.
 function triggerHasAnyValidTarget(trig, controller) {
+  // New top-level target() step: the trigger needs a legal target of that filter.
+  if (trig.target && targetsForFilter(trig.target, controller).length === 0) return false;
   for (const eff of (trig.effects || [])) {
     if (!effectNeedsTarget(eff)) continue;
     const valid = getValidTargets(eff, controller);
@@ -3144,7 +3146,18 @@ function pushTriggerOnStack(p) {
   // v1: auto-pick via AI heuristic for both sides; player UI prompt is future work.
   const targetEff = (p.trig.effects || []).find(effectNeedsTarget);
   let chosenTarget = null;
-  if (targetEff) {
+  if (p.trig.target) {
+    // New top-level target() step: pick from the filter's legal set, valued by
+    // the first target-operating effect. (Human prompt deferred — auto-picks
+    // for both sides today, like the legacy per-effect path.)
+    const valid = targetsForFilter(p.trig.target, p.controller);
+    if (valid.length === 0) {
+      log(`${p.sourceName} trigger fizzles — no legal target.`, 'sp');
+      return;
+    }
+    const valueEff = (p.trig.effects || []).find(e => e.kind !== 'chooses') || (p.trig.effects || [])[0] || {};
+    chosenTarget = pickBestTriggerTarget(valueEff, valid, p.controller);
+  } else if (targetEff) {
     const valid = getValidTargets(targetEff, p.controller);
     if (valid.length === 0) {
       log(`${p.sourceName} trigger fizzles — no legal target.`, 'sp');
@@ -3287,7 +3300,19 @@ function resolveTrigger(item) {
     }
     return { tgt, snap: triggerSlotSnapshots.get(slot) };
   };
+  // New targeting model (§3.5): a top-level `target` step on the trigger means
+  // it picked one target (item.targets[0]); bare effects operate on it, and
+  // chooses() replaces it. Inert for legacy triggers (none set trig.target) —
+  // they use the per-effect target/slot branch below, unchanged.
+  const hasTargetStep = !!(item.trig && item.trig.target);
+  let curTgt = null, curSnap = null;
+  if (hasTargetStep) { const f0 = getTriggerTargetForSlot(0); curTgt = f0.tgt; curSnap = f0.snap; }
   for (const eff of (item.trig.effects || [])) {
+    if (eff.kind === 'chooses') {
+      applyEffect(ctx, eff, curTgt, curSnap);
+      if (ctx.chosen) { curTgt = ctx.chosen; curSnap = snapshotTarget(ctx.chosen); }
+      continue;
+    }
     if (effectNeedsTarget(eff)) {
       const slot = eff.targetSlot || 0;
       const { tgt, snap } = getTriggerTargetForSlot(slot);
@@ -3295,23 +3320,26 @@ function resolveTrigger(item) {
       // No re-validation: multi-effect triggers (Exorcist [exile, gainLife]) need
       // effect 1 to read pre-effect-0 snapshot. Each effect guards live-target itself.
       applyEffect(ctx, eff, tgt, snap);
-    } else {
-      // Untargeted or target:'self'. Self → source creature OR source's controller
-      // depending on effectOperatesOnCreature.
-      let selfTarget = null;
-      let selfSnap = null;
-      if (eff.target === 'self') {
-        if (effectOperatesOnCreature(eff)) {
-          selfTarget = { kind: 'creature', iid: item.sourceIid, label: item.sourceName };
-          selfSnap = snapshotTarget(selfTarget);
-        } else {
-          selfTarget = { kind: 'player', who: item.controller };
-          selfSnap = selfTarget;
-        }
+    } else if (eff.target === 'self') {
+      // Self → source creature OR source's controller depending on
+      // effectOperatesOnCreature.
+      let selfTarget = null, selfSnap = null;
+      if (effectOperatesOnCreature(eff)) {
+        selfTarget = { kind: 'creature', iid: item.sourceIid, label: item.sourceName };
+        selfSnap = snapshotTarget(selfTarget);
+      } else {
+        selfTarget = { kind: 'player', who: item.controller };
+        selfSnap = selfTarget;
       }
       applyEffect(ctx, eff, selfTarget, selfSnap);
+    } else if (hasTargetStep && eff.scope == null) {
+      // Bare effect after a target() step → operate on the established/chosen target.
+      applyEffect(ctx, eff, curTgt, curSnap);
+    } else {
+      applyEffect(ctx, eff, null, null);
     }
   }
+  ctx.chosen = null;
   afterEffectsApplied();
 }
 

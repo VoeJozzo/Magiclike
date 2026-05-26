@@ -21,6 +21,10 @@ function check(label, ok, info) {
 CARDS._testBolt  = { tplId: '_testBolt',  name: 'Test Bolt',  type: 'Instant', cost: { R: 1 }, color: 'R', colors: ['R'], target: 'creature_or_player', effects: [{ kind: 'damage', amount: 3 }] };
 CARDS._testEdict = { tplId: '_testEdict', name: 'Test Edict', type: 'Instant', cost: { B: 1 }, color: 'B', colors: ['B'], target: 'player', effects: [{ kind: 'chooses', filter: 'creature' }, { kind: 'sacrifice' }] };
 CARDS._testPyro  = { tplId: '_testPyro',  name: 'Test Pyro',  type: 'Sorcery', cost: { R: 1 }, color: 'R', colors: ['R'], effects: [{ kind: 'damage', amount: 2, scope: 'all_creatures' }] };
+// Creature with a top-level-target ETB trigger ("when this enters, deal 1 to
+// target creature") — exercises the trigger-path target() wiring.
+CARDS._testZapper = { tplId: '_testZapper', name: 'Test Zapper', type: 'Creature', cost: { R: 1 }, color: 'R', colors: ['R'], power: 1, toughness: 1,
+  triggers: [{ event: 'card_zone_change', condition: ['this_card', 'card_moves(anywhere, battlefield)'], target: 'creature', effects: [{ kind: 'damage', amount: 1 }] }] };
 
 const TOUGH_CREATURE = (() => {
   for (const [id, c] of Object.entries(CARDS)) {
@@ -54,6 +58,16 @@ function readyForCast(G, who) {
 function drainStack(G) {
   let safety = 20;
   while (G.stack.length > 0 && safety-- > 0) {
+    const w = ENGINE.expectedActor(); if (!w) break;
+    const a = AI.decide(G, w); if (!a) break;
+    ENGINE.executeAction(w, a);
+  }
+}
+// Like drainStack but also flushes pending triggers (ETB etc.) by passing
+// priority until both the stack AND the trigger queue are empty.
+function drainAll(G) {
+  let safety = 40;
+  while ((G.stack.length > 0 || (G.pendingTriggers || []).length > 0) && safety-- > 0) {
     const w = ENGINE.expectedActor(); if (!w) break;
     const a = AI.decide(G, w); if (!a) break;
     ENGINE.executeAction(w, a);
@@ -131,6 +145,24 @@ console.log('\n=== getLegalActions enumerates one cast per legal target (hexproo
   check('enumerates my own creature', tgtIids.includes(mine.iid));
   check('does NOT enumerate the opp hexproof creature', !tgtIids.includes(hex.iid));
   check('enumerates both players (creature_or_player)', players === 2);
+})();
+
+console.log('\n=== Triggered ability with a top-level target() step ===');
+(() => {
+  const G = newGame();
+  // 1-toughness opp creature → the clear best damage target (so the AI
+  // auto-pick targets it, not the 1/1 zapper itself).
+  const victim = mk(TOUGH_CREATURE, 'opp'); victim.toughness = 1; victim.power = 1;
+  G.opp.battlefield.push(victim);
+  const zapper = mk('_testZapper', 'you'); G.you.hand.push(zapper);
+  readyForCast(G, 'you');
+  // Cast the creature; its ETB trigger (target(creature) → damage(1)) picks the
+  // opp creature via the trigger-path target() wiring and kills it.
+  ENGINE.executeAction('you', { type: 'castSpell', cardIid: zapper.iid, targets: [] });
+  drainAll(G);
+  check('zapper resolved onto the battlefield', G.you.battlefield.some(c => c.tplId === '_testZapper'));
+  check('ETB trigger killed the opp creature (1 dmg to a 1-tough creature)',
+    !G.opp.battlefield.some(c => c.iid === victim.iid) && G.opp.graveyard.some(c => c.iid === victim.iid));
 })();
 
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');
