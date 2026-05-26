@@ -344,8 +344,10 @@ function validateAllCardConditions(cards) {
 // Resolve: composable condition → condId registry → legacy closure → fire unconditionally.
 function evalTriggerCondition(trig, self, evt, who) {
   // Codex-generated trigger guard: refuse to fire when source caused the event.
-  if (trig.noSelfCascade && evt && evt.sourceIid != null && evt.sourceIid === self.iid) {
-    return false;
+  // Reads sourceIid (legacy events) or source_iid (unified card_zone_change).
+  if (trig.noSelfCascade && evt) {
+    const sid = evt.sourceIid != null ? evt.sourceIid : evt.source_iid;
+    if (sid != null && sid === self.iid) return false;
   }
   // New composable `condition` (string / array / {op|name} dict). Distinguished
   // from the LEGACY `condition` FUNCTION (handled below) by type.

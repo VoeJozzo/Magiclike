@@ -1959,7 +1959,7 @@ const EFFECTS = {
     // Per-token ETB. sourceIid lets self-cascade-guarded triggers skip own tokens.
     for (const tok of made) {
       emit({type:'cardEntersBattlefield', card: tok, controller: owner, sourceIid: ctx.sourceIid});
-      emitZoneChange(tok, owner, 'none', 'battlefield');
+      emitZoneChange(tok, owner, 'none', 'battlefield', undefined, ctx.sourceIid);
     }
   },
   // Force opp to sacrifice a creature (no targeting, so hexproof doesn't protect).
@@ -2123,7 +2123,7 @@ const EFFECTS = {
     const returnTo = card.owner || f.controller;
     G[returnTo].battlefield.push(card);
     emit({type: 'cardEntersBattlefield', card, controller: returnTo, sourceIid: ctx.sourceIid});
-    emitZoneChange(card, returnTo, 'exile', 'battlefield');
+    emitZoneChange(card, returnTo, 'exile', 'battlefield', undefined, ctx.sourceIid);
   },
   // Otherworldly-Journey-shape: exile until end of turn via delayed trigger.
   // Tempo removal (1 turn off-board, dodge combat, re-fire your own ETB).
@@ -2806,7 +2806,7 @@ function emit(evt, extraSources) {
 // card listens, so this is a behavioral no-op until card migration (step 6).
 // extraSources lets a card that has already left a zone still see its own
 // zone-change trigger (parity with the cardDies/cardLeaves extraSources).
-function emitZoneChange(card, controller, fromZone, toZone, extraSources) {
+function emitZoneChange(card, controller, fromZone, toZone, extraSources, sourceIid) {
   if (!card) return;
   emit({
     type: 'card_zone_change',
@@ -2815,6 +2815,11 @@ function emitZoneChange(card, controller, fromZone, toZone, extraSources) {
     controller,
     from_zone: fromZone,
     to_zone: toZone,
+    // The card that CAUSED this move (e.g. the token-maker), when applicable.
+    // Distinct from subject_card. Feeds the noSelfCascade guard so a generated
+    // "another creature enters -> create tokens" trigger doesn't re-fire on its
+    // own tokens — parity with the legacy events' sourceIid.
+    source_iid: sourceIid,
   }, extraSources);
 }
 
