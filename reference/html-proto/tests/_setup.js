@@ -136,7 +136,7 @@ const EXPOSED = [
   'TPLID_RENAMES', 'renameTplId', 'MIGRATIONS', 'SAVE_VERSION', 'SAVE_KEY',
   // Trigger-generator surface (triggers.js + trigger-generator.js —
   // no IIFE, all module-scope).
-  'TRIGGER_CONDITIONS', 'GENERATOR_EFFECTS', 'GENERATOR_CONDITIONS',
+  'GENERATOR_EFFECTS', 'GENERATOR_CONDITIONS',
   'evalTriggerCondition', 'generateRandomTrigger',
   // Composable-predicate surface (triggers.js, module-scope — Slice 2 / E2).
   'ATOMIC_PREDICATES', 'evaluateCondition', '_parseCall',
@@ -170,7 +170,7 @@ const EXPOSED = [
 //
 // Wire format is snake_case (docs/STANDARDIZATION-PLAN.md §4). We pipe each
 // card through cards.js's ingestCard() to rebind to the JS-internal camelCase
-// names (tplId, condId) and compute color/colors from cost — matching what
+// names (tplId) and compute color/colors from cost — matching what
 // the browser-side loadCards() does.
 const CARDS_DIR = path.join(__dirname, '..', 'cards');
 function loadCardsFromDisk() {

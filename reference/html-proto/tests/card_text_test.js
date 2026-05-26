@@ -160,12 +160,12 @@ eqText(segsToText(describeAbility({ cost: { mana: { R: 1 }, tap: true },
        '{T}, {R}: deal 1 damage to target creature', '{T},{R} damage');
 
 console.log('\n=== describeTrigger ===');
-eqText(segsToText(describeTrigger({ event: 'cardEntersBattlefield',
-                                    condId: 'thisEnters',
+eqText(segsToText(describeTrigger({ event: 'card_zone_change',
+                                    condition: ['this_card', 'card_moves(anywhere, battlefield)'],
                                     effects: [{ kind: 'draw', amount: 1 }] })),
        'When this enters the battlefield, draw a card.', 'ETB → draw');
 eqText(segsToText(describeTrigger({ event: 'attacks',
-                                    condId: 'thisAttacks',
+                                    condition: ['this_card'],
                                     effects: [{ kind: 'damage', target: 'player', amount: 1 }] })),
        'When this attacks, deal 1 damage to target opponent.', 'attacks → damage');
 

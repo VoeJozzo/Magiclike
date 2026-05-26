@@ -27,7 +27,6 @@ const CARDS = {};
 //
 // Wire    →  JS-internal
 //   card_id  →  tplId
-//   cond_id  →  condId       (recursively in triggers)
 //   (derived) →  color, colors (computed from cost; not stored in JSON)
 function ingestCard(card) {
   if (card == null || typeof card !== 'object') return card;
@@ -35,7 +34,6 @@ function ingestCard(card) {
     card.tplId = card.card_id;
     delete card.card_id;
   }
-  if (Array.isArray(card.triggers)) _rebindCondIdRecursive(card.triggers);
   if (!Object.prototype.hasOwnProperty.call(card, 'color')
       || !Object.prototype.hasOwnProperty.call(card, 'colors')) {
     const colors = [];
@@ -48,21 +46,6 @@ function ingestCard(card) {
     if (!Object.prototype.hasOwnProperty.call(card, 'colors')) card.colors = colors;
   }
   return card;
-}
-
-function _rebindCondIdRecursive(obj) {
-  if (obj == null || typeof obj !== 'object') return;
-  if (Array.isArray(obj)) {
-    for (const item of obj) _rebindCondIdRecursive(item);
-    return;
-  }
-  if (Object.prototype.hasOwnProperty.call(obj, 'cond_id')) {
-    obj.condId = obj.cond_id;
-    delete obj.cond_id;
-  }
-  for (const v of Object.values(obj)) {
-    if (v && typeof v === 'object') _rebindCondIdRecursive(v);
-  }
 }
 
 async function loadCards() {

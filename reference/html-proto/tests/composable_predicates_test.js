@@ -182,8 +182,8 @@ console.log('\n=== validateAllCardConditions ===');
     { tplId: 'badEvent', triggers: [
       { event: 'totallyMadeUpEvent', condition: 'this_card' },
     ]},
-    { tplId: 'legacyOk', triggers: [
-      { event: 'cardDies', condId: 'thisDies' },   // legacy kind accepted, condId not walked
+    { tplId: 'goodEvent', triggers: [
+      { event: 'card_zone_change', condition: 'this_card' },
     ]},
   ];
   const r = validateAllCardConditions(synthetic);
@@ -191,11 +191,11 @@ console.log('\n=== validateAllCardConditions ===');
   check('detects unknown atomic in nested OR', r.unknownAtomics.includes('badNested.bogus_pred'));
   check('does NOT flag good atomics', !r.unknownAtomics.some(u => u.startsWith('goodCard.')));
   check('detects unknown event kind', r.unknownEvents.includes('badEvent.totallyMadeUpEvent'));
-  check('legacy cardDies event accepted', !r.unknownEvents.some(u => u.startsWith('legacyOk.')));
-  check('legacy condId not walked as atomic', !r.unknownAtomics.some(u => u.startsWith('legacyOk.')));
+  check('legacy event kinds now rejected (cardDies removed)',
+    validateAllCardConditions([{ tplId: 'legacyGone', triggers: [{ event: 'cardDies', condition: 'this_card' }] }]).unknownEvents.includes('legacyGone.cardDies'));
+  check('valid new event kind accepted', !r.unknownEvents.some(u => u.startsWith('goodEvent.')));
 
-  // The real shipped pool must validate clean (all legacy condId today; no
-  // composable `condition` field until step 6 migration).
+  // The real shipped pool (now fully composable) must validate clean.
   const live = validateAllCardConditions(CARDS);
   check('live CARDS pool: no unknown atomics', live.unknownAtomics.length === 0,
     live.unknownAtomics.join(', '));

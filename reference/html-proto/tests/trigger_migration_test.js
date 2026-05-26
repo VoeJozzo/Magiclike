@@ -154,8 +154,7 @@ console.log('\n=== triggerArchetype classification + preamble recovery ===');
     triggerArchetype({ event: 'card_zone_change', condition: ['this_card', 'card_moves(battlefield, graveyard)'] }) === 'thisDies');
   check('classifies composable subtype-attacks',
     triggerArchetype({ event: 'attacks', condition: ['controlled_by(you)', 'card_has_subtype(Goblin)'] }) === 'creatureYouAttacksOfSubtype');
-  // Legacy condId still short-circuits (un-migrated mercurial/synthesized pool).
-  check('legacy condId short-circuits', triggerArchetype({ condId: 'thisEnters' }) === 'thisEnters');
+  check('unknown shape classifies to null', triggerArchetype({ event: 'attacks', condition: ['bogus'] }) === null);
   check('triggerSubtype extracts subtype',
     triggerSubtype({ condition: ['controlled_by(you)', 'card_has_subtype(Goblin)'] }) === 'Goblin');
 

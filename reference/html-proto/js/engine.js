@@ -940,16 +940,16 @@ function getCardValue(card, purpose, ctx) {
   //   draft:  ETB×1, dies×1, multi×2
   //   kill:   ETB×0 (already fired), dies×1, multi×2 (denial)
   //   bounce: ETB×-1 (recast refires!), dies×0, multi×1
-  function triggerFreq(condId, purpose) {
-    const isOnce = condId === 'thisEnters' || condId === 'thisDies';
+  function triggerFreq(arch, purpose) {
+    const isOnce = arch === 'thisEnters' || arch === 'thisDies';
     if (purpose === 'kill') {
-      if (condId === 'thisEnters') return 0;
-      if (condId === 'thisDies')   return 1;
+      if (arch === 'thisEnters') return 0;
+      if (arch === 'thisDies')   return 1;
       return 2;
     }
     if (purpose === 'bounce') {
-      if (condId === 'thisEnters') return -1;
-      if (condId === 'thisDies')   return 0;
+      if (arch === 'thisEnters') return -1;
+      if (arch === 'thisDies')   return 0;
       return 1;
     }
     return isOnce ? 1 : 2;
@@ -1359,7 +1359,6 @@ function applyDamageFrom(ctx, target, amt) {
   if (hasLifelink) {
     G[ctx.controller].life += amt;
     log(`${ctx.sourceName} (lifelink) — ${pname(ctx.controller)} gains ${amt} life.`, 'sp');
-    emit({type: 'lifeGained', who: ctx.controller, amount: amt, sourceIid: ctx.sourceIid});
     emit({type: 'life_changed', who: ctx.controller, delta: amt, source_iid: ctx.sourceIid});
   }
 }
@@ -1803,7 +1802,6 @@ const EFFECTS = {
     G[who].life += amount;
     log(`${pname(who)} gains ${amount} life.`, 'sp');
     if (amount > 0) {
-      emit({type: 'lifeGained', who, amount, sourceIid: ctx.sourceIid});
       emit({type: 'life_changed', who, delta: amount, source_iid: ctx.sourceIid});
     }
   },
@@ -1844,7 +1842,6 @@ const EFFECTS = {
     G[ctx.controller].battlefield.push(land);
     shuffle(G[ctx.controller].library);
     log(`${pname(ctx.controller)} fetches ${land.name} (tapped).`, 'sp');
-    emit({type: 'cardEntersBattlefield', card: land, controller: ctx.controller});
     emitZoneChange(land, ctx.controller, 'library', 'battlefield');
   },
   searchCreature(ctx) {
@@ -1958,7 +1955,6 @@ const EFFECTS = {
     log(`${ctx.sourceName} creates ${count} ${tpl.power}/${tpl.toughness} ${tpl.name} token${plural}.`, 'sp');
     // Per-token ETB. sourceIid lets self-cascade-guarded triggers skip own tokens.
     for (const tok of made) {
-      emit({type:'cardEntersBattlefield', card: tok, controller: owner, sourceIid: ctx.sourceIid});
       emitZoneChange(tok, owner, 'none', 'battlefield', undefined, ctx.sourceIid);
     }
   },
@@ -2122,7 +2118,6 @@ const EFFECTS = {
     // Owner-routed (stolen + flickered → returns to original owner's bf).
     const returnTo = card.owner || f.controller;
     G[returnTo].battlefield.push(card);
-    emit({type: 'cardEntersBattlefield', card, controller: returnTo, sourceIid: ctx.sourceIid});
     emitZoneChange(card, returnTo, 'exile', 'battlefield', undefined, ctx.sourceIid);
   },
   // Otherworldly-Journey-shape: exile until end of turn via delayed trigger.
@@ -3267,13 +3262,6 @@ function moveToGraveyard(card, controller) {
   flushPermanentEotToPermaBuffs(card);
   clearRestrictionsFromSource(card.iid);
   resetInPlayState(card, true);   // preserve damagedBySources for dies-triggers
-  if (card.type === 'Creature') {
-    // Pass the dying card as an extra source so its own dies-trigger fires.
-    // Tokens fire dies-triggers normally — Sengir grows from killing tokens,
-    // Endomorph absorbs from killing tokens (though Endomorph itself can't be
-    // a token in v1).
-    emit({type: 'cardDies', card, controller}, [{card, controller}]);
-  }
   // Leaves-play emit covers all leave paths uniformly. Fires for any card
   // type (artifact, enchantment, land, creature) — useful for future
   // "when this leaves play" mechanics on non-creature permanents. Emitted
@@ -3309,9 +3297,6 @@ function sacrificeCard(card, controller) {
   clearRestrictionsFromSource(card.iid);
   resetInPlayState(card, true);
   log(`${pname(controller)} sacrifices ${card.name}.`, 'dmg');
-  if (card.type === 'Creature') {
-    emit({type: 'cardDies', card, controller}, [{card, controller}]);
-  }
   emitLeavesBattlefield(card, controller);
 }
 
@@ -3587,7 +3572,6 @@ function emitLeavesBattlefield(card, controller, destZone, extraSources) {
   if (!card) return;
   // Tokens leaving play still emit — a future "when this token leaves
   // play" mechanic might want it. Costs nothing if no trigger listens.
-  emit({type: 'cardLeavesBattlefield', card, controller}, [{card, controller}]);
   // Unified zone-change mirror. destZone defaults to 'graveyard' (the death
   // path — the most common caller); bounce/exile/shuffle/steal callers pass
   // their actual destination so composable card_moves(battlefield, X) triggers
@@ -3653,12 +3637,6 @@ function checkDeaths() {
       }
     }
     if (dying.length === 0) break;
-    // Emit cardDies for this batch; pass the full dying list as extraSources
-    // so mutual-kill dies-triggers (Sengir, Endomorph) fire on creatures that
-    // died in the same batch but aren't on bf anymore.
-    for (const entry of dying) {
-      emit({type: 'cardDies', card: entry.card, controller: entry.controller}, dying);
-    }
     // Leaves-play emit for each dying card, in the same batch order. Fires
     // after all cardDies emits so the standard dies-listener queue stays
     // consistent with prior versions.
@@ -3900,7 +3878,6 @@ function pushOnStack(item) {
   G.priority.passes.clear();
   G.priorityHolder = opp(item.controller);
   if (item.card) {
-    emit({type: 'spellCast', card: item.card, controller: item.controller});
     emit({type: 'spell_cast', subject_iid: item.card.iid, subject_card: item.card, controller: item.controller});
     // Drain any spellCast-triggered abilities NOW so they go on the stack
     // ABOVE the spell that just caused them. MtG rule: triggers from casting
@@ -3935,7 +3912,6 @@ function resolveTopOfStack() {
     card.sick = (card.type === 'Creature');
     G[item.controller].battlefield.push(card);
     log(`${card.name} enters the battlefield.`, 'sp');
-    emit({type: 'cardEntersBattlefield', card, controller: item.controller});
     emitZoneChange(card, item.controller, 'stack', 'battlefield');
   } else {
     const ctx = { controller: item.controller, sourceName: card.name, sourceIid: card.iid, sourceCard: card };
@@ -4081,7 +4057,6 @@ function dealCombatDamage(blocked, defender, dealsDamage) {
     // the gainLife effect. Without this, Ajani's Pridemate wouldn't trigger
     // from a lifelink attacker — combat damage uses a different code path
     // than applyDamageFrom (which handles spell damage).
-    emit({type: 'lifeGained', who: srcCtrl, amount: amt});
     emit({type: 'life_changed', who: srcCtrl, delta: amt});
   };
   G.attackers.forEach(aIid => {
@@ -4220,7 +4195,6 @@ function doPlayLand(who, cardIid) {
     p.playedSlotIdxs.add(card.slotIdx);
   }
   log(`${p.name} plays ${card.name}.`);
-  emit({type: 'cardEntersBattlefield', card, controller: who});
   emitZoneChange(card, who, 'hand', 'battlefield');
 }
 function doTapLandForMana(who, cardIid, color, abilityIdx) {
@@ -5386,7 +5360,6 @@ function step() {
                   dt.exiledCard.sick = !dt.exiledCard.keywords.includes('haste');
                   G[dt.exiledFrom].battlefield.push(dt.exiledCard);
                   log(`${dt.exiledCard.name} returns to the battlefield.`, 'sp');
-                  emit({type: 'cardEntersBattlefield', card: dt.exiledCard, controller: dt.exiledFrom});
                   emitZoneChange(dt.exiledCard, dt.exiledFrom, 'exile', 'battlefield');
                 }
               }

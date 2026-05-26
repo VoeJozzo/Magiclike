@@ -390,9 +390,7 @@ function triggerPreamble(trig) {
   if (cid === 'youCastSpell')   return 'Whenever you cast a spell,';
   if (cid === 'youCastCounterspell') return 'Whenever you counter a spell,';
   if (cid === 'youGainLife')    return 'Whenever you gain life,';
-  if (ev === 'cardEntersBattlefield') return 'When this enters the battlefield,';
-  if (ev === 'cardDies')              return 'When this dies,';
-  if (ev === 'attacks')               return 'When this attacks,';
+  if (ev === 'attacks') return 'When this attacks,';
   return 'Whenever a relevant event occurs,';
 }
 

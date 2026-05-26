@@ -23,8 +23,6 @@ check('GENERATOR_EFFECTS is a non-empty array',
   Array.isArray(GENERATOR_EFFECTS) && GENERATOR_EFFECTS.length > 0);
 check('GENERATOR_CONDITIONS is a non-empty array',
   Array.isArray(GENERATOR_CONDITIONS) && GENERATOR_CONDITIONS.length > 0);
-check('TRIGGER_CONDITIONS is an object',
-  TRIGGER_CONDITIONS && typeof TRIGGER_CONDITIONS === 'object');
 check('generateRandomTrigger is a function', typeof generateRandomTrigger === 'function');
 check('assembleTrigger is a function', typeof assembleTrigger === 'function');
 check('generateConditionOptions is a function', typeof generateConditionOptions === 'function');
