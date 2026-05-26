@@ -58,7 +58,7 @@ Per the sub-plans: run the additive groundwork (new events/predicates/effects re
 
 ## Open decisions carried into execution
 
-- **Q1 (Slice 1) — DECIDED:** keep Godot's snake_case names; rename the 16 colliding proto folders to match (also fixes the `hastyOgre`→Raging Goblin / `cloudGiant`→Cloud Pegasus mislabels); 10 Godot-only cards authored as new snake_case folders. Open sub-question: normalize the other ~237 proto ids too? → recommended as a separate backlog sweep, not Slice 1. See plan-card-data-unification.md Q1 for the full rename list.
+- **Q1 (Slice 1) — DECIDED:** keep Godot's snake_case names; rename the 16 colliding proto folders to match (also fixes the `hastyOgre`→Raging Goblin / `cloudGiant`→Cloud Pegasus mislabels); 10 Godot-only cards authored as new snake_case folders. Full snake_case normalization of the other ~237 proto ids is **backlogged**, gated to run before the Godot port consumes the full pool (Phase 6). See plan-card-data-unification.md Q1 for the full rename list + `docs/BACKLOG.md`.
 - **Q2 (Slice 1/3) — DECIDED: defer.** Godot-loader gap only (proto already plays modal cards); pick the shape when the active pool needs modal spells (Phase 6+).
 - **Q3 (Slice 3)** — `extraManaColors` representation — resolved *by* §3.9's mana deep-clean; don't lock it earlier.
 - **B4 timing (Slice 3)** — Godot's delayed-trigger queue; needed only for the `exile_until_eot` sub-step. `flicker` and everything else proceed without it.
