@@ -14,6 +14,7 @@
     {
       "event": "card_zone_change",
       "condition": [
+        "card_is_creature",
         "card_moves(battlefield, graveyard)"
       ],
       "text": "When a creature dies, opp loses 1, you gain 1.",

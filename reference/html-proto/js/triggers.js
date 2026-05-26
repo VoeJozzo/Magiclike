@@ -258,7 +258,7 @@ const _ARCHETYPE_BY_SIG = {
   'card_zone_change | this_card, card_moves(battlefield, graveyard)': 'thisDies',
   'card_zone_change | this_card, card_moves(battlefield, anywhere)': 'thisLeaves',
   'card_zone_change | another_card, card_is_creature, card_moves(battlefield, graveyard)': 'anotherCreatureDies',
-  'card_zone_change | card_moves(battlefield, graveyard)': 'anyCardDies',
+  'card_zone_change | card_is_creature, card_moves(battlefield, graveyard)': 'anyCardDies',
   'card_zone_change | another_card, card_is_creature, card_moves(battlefield, graveyard), card_damaged_by_this': 'thisKillsCreature',
   'life_changed | is_life_gain, affected_player_is(you)': 'youGainLife',
   'spell_cast | another_card, controlled_by(you)': 'youCastSpell',

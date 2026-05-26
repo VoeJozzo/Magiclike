@@ -27,7 +27,7 @@ const MIGRATION = {
   thisDies:                          { event: 'card_zone_change', cond: ['this_card', 'card_moves(battlefield, graveyard)'] },
   thisLeaves:                        { event: 'card_zone_change', cond: ['this_card', 'card_moves(battlefield, anywhere)'] },
   anotherCreatureDies:               { event: 'card_zone_change', cond: ['another_card', 'card_is_creature', 'card_moves(battlefield, graveyard)'] },
-  anyCardDies:                       { event: 'card_zone_change', cond: ['card_moves(battlefield, graveyard)'] },
+  anyCardDies:                       { event: 'card_zone_change', cond: ['card_is_creature', 'card_moves(battlefield, graveyard)'] },
   thisKillsCreature:                 { event: 'card_zone_change', cond: ['another_card', 'card_is_creature', 'card_moves(battlefield, graveyard)', 'card_damaged_by_this'] },
   youGainLife:                       { event: 'life_changed', cond: ['is_life_gain', 'affected_player_is(you)'] },
   youCastSpell:                      { event: 'spell_cast', cond: ['another_card', 'controlled_by(you)'] },

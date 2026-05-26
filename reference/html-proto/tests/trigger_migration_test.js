@@ -36,7 +36,7 @@ const EXPECTED = {
   'card_zone_change | this_card, card_moves(battlefield, graveyard)': ['thisDies', 16],
   'card_zone_change | this_card, card_moves(battlefield, anywhere)': ['thisLeaves', 1],
   'card_zone_change | another_card, card_is_creature, card_moves(battlefield, graveyard)': ['anotherCreatureDies', 2],
-  'card_zone_change | card_moves(battlefield, graveyard)': ['anyCardDies', 1],
+  'card_zone_change | card_is_creature, card_moves(battlefield, graveyard)': ['anyCardDies', 1],
   'card_zone_change | another_card, card_is_creature, card_moves(battlefield, graveyard), card_damaged_by_this': ['thisKillsCreature', 2],
   'life_changed | is_life_gain, affected_player_is(you)': ['youGainLife', 1],
   'spell_cast | another_card, controlled_by(you)': ['youCastSpell', 6],
@@ -129,13 +129,17 @@ console.log('\n=== representative migrated cards fire correctly ===');
     check(`${counter.card.tplId}: silent on your damage spell`, evalFor(counter, no, 'you') === false);
   } else check('youCastCounterspell card present', false);
 
-  // anyCardDies (Blood Artist shape): fires on ANY death incl. self.
-  const anyDies = cardWithSig('card_zone_change | card_moves(battlefield, graveyard)');
+  // anyCardDies (Blood Artist shape): fires on ANY creature death incl. self,
+  // but NOT on non-creature permanents (the legacy cardDies emit was
+  // creature-only -- a faithfulness fix over the plan's bare decomposition).
+  const anyDies = cardWithSig('card_zone_change | card_is_creature, card_moves(battlefield, graveyard)');
   if (anyDies) {
     const selfDeath = { subject_card: { iid: 1, type: 'Creature' }, from_zone: 'battlefield', to_zone: 'graveyard' };
     const otherDeath = { subject_card: { iid: 99, type: 'Creature' }, from_zone: 'battlefield', to_zone: 'graveyard' };
-    check(`${anyDies.card.tplId}: fires on own death`, evalFor(anyDies, selfDeath, 'you') === true);
-    check(`${anyDies.card.tplId}: fires on another's death`, evalFor(anyDies, otherDeath, 'you') === true);
+    const landDeath = { subject_card: { iid: 99, type: 'Land' }, from_zone: 'battlefield', to_zone: 'graveyard' };
+    check(`${anyDies.card.tplId}: fires on own creature death`, evalFor(anyDies, selfDeath, 'you') === true);
+    check(`${anyDies.card.tplId}: fires on another creature's death`, evalFor(anyDies, otherDeath, 'you') === true);
+    check(`${anyDies.card.tplId}: silent on a non-creature death`, evalFor(anyDies, landDeath, 'you') === false);
   } else check('anyCardDies card present', false);
 })();
 
