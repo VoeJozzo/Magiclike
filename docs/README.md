@@ -35,6 +35,7 @@ One coordinated refactor pass, sequenced before Phase 6 card expansion. **Start 
 | [`plan-card-data-unification.md`](plan-card-data-unification.md) | Retire `.tres`; JSON as the single card source (Part 1; Part 2 folds into the effects refactor). |
 | [`plan-zone-change-and-composable-predicates.md`](plan-zone-change-and-composable-predicates.md) | E1/E2 — unified `card_zone_change` event + atomic composable predicates (both engines). |
 | [`plan-effects-refactor.md`](plan-effects-refactor.md) | 38→~22 atomic effects + `target()`/`chooses()` targeting; folds in the **sticker system** (§3.8), **mana-model deep clean** (§3.9, full-convergence Godot land-as-ability), and **staple-synthesis cleanup** (§3.10). |
+| [`GODOT-QA-TODO.md`](GODOT-QA-TODO.md) | **Execution handoff** — the coordinated pass is being built in a container with no Godot binary, so Godot-side code is unverified. This is the checklist for a future Godot 4.6 session: what to run, what to reconcile, deviations to confirm. Proto (JS) work is validated as written. |
 
 ## How the trackers divide
 
