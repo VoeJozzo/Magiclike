@@ -4659,9 +4659,20 @@ function doActivateAbility(who, cardIid, abilityIdx, targets, sacIid) {
     }
     return { tgt, snap: abilitySlotSnapshots.get(slot) };
   };
+  // New targeting model (§3.5): a top-level `target` step on the ability means
+  // it picked one target (abilityTargets[0]); bare effects operate on it,
+  // chooses() replaces it. Inert for legacy abilities (none set ab.target).
+  const abHasTargetStep = !!ab.target;
+  let abCurTgt = null, abCurSnap = null;
+  if (abHasTargetStep) { const f0 = getAbilityTargetForSlot(0); abCurTgt = f0.tgt; abCurSnap = f0.snap; }
   for (const e of ab.effects) {
     let tgt = null;
     let snap = null;
+    if (e.kind === 'chooses') {
+      applyEffect(ctx, e, abCurTgt, abCurSnap);
+      if (ctx.chosen) { abCurTgt = ctx.chosen; abCurSnap = snapshotTarget(ctx.chosen); }
+      continue;
+    }
     if (e.target === 'self') {
       tgt = {kind:'creature', iid: card.iid, label: card.name};
       snap = snapshotTarget(tgt);
@@ -4670,9 +4681,13 @@ function doActivateAbility(who, cardIid, abilityIdx, targets, sacIid) {
       const fetched = getAbilityTargetForSlot(slot);
       tgt = fetched.tgt;
       snap = fetched.snap;
+    } else if (abHasTargetStep && e.scope == null) {
+      tgt = abCurTgt;
+      snap = abCurSnap;
     }
     applyEffect(ctx, e, tgt, snap);
   }
+  ctx.chosen = null;
   afterEffectsApplied();
   if (ab.effects[0].kind !== 'addMana') {
     log(`${G[who].name} activates ${card.name}${targets && targets[0] ? ' on ' + targets[0].label : ''}.`, who === 'you' ? 'sp' : 'ai');
@@ -5193,6 +5208,14 @@ function isLegalAction(who, action) {
           if (!valid.some(v => sameTarget(v, tgt))) return false;
         }
       }
+      // New targeting model (§3.5): a top-level `target` step on the ability is
+      // the cast-time hexproof checkpoint. Inert for legacy abilities.
+      if (ab.target) {
+        const valid = targetsForFilter(ab.target, who);
+        if (!valid.length) return false;
+        if (!action.targets || !action.targets[0]) return false;
+        if (!valid.some(v => sameTarget(v, action.targets[0]))) return false;
+      }
       return true;
     }
     case 'declareAttackers': {
@@ -5484,8 +5507,12 @@ function getLegalActions(who) {
       }
       if (ab.sorcerySpeed ? !isSorceryWindow(who) : !isInstantWindow(who)) continue;
       const targetedEff = ab.effects.find(effectNeedsTarget);
-      // Cross-product: (effect targets) × (sac options).
-      const effectTargets = targetedEff ? getValidTargets(targetedEff, who) : [null];
+      // Cross-product: (effect targets) × (sac options). A top-level `target`
+      // step (§3.5) enumerates from targetsForFilter (hexproof-excluded); empty
+      // → no actions (ability not activatable). Legacy per-effect targets fall
+      // back to getValidTargets; untargeted → [null].
+      const effectTargets = ab.target ? targetsForFilter(ab.target, who)
+        : (targetedEff ? getValidTargets(targetedEff, who) : [null]);
       const sacChoices = sacOptions || [null];
       for (const t of effectTargets) {
         for (const sacIid of sacChoices) {

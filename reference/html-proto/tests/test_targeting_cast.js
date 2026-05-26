@@ -25,6 +25,9 @@ CARDS._testPyro  = { tplId: '_testPyro',  name: 'Test Pyro',  type: 'Sorcery', c
 // target creature") — exercises the trigger-path target() wiring.
 CARDS._testZapper = { tplId: '_testZapper', name: 'Test Zapper', type: 'Creature', cost: { R: 1 }, color: 'R', colors: ['R'], power: 1, toughness: 1,
   triggers: [{ event: 'card_zone_change', condition: ['this_card', 'card_moves(anywhere, battlefield)'], target: 'creature', effects: [{ kind: 'damage', amount: 1 }] }] };
+// Creature with a top-level-target activated ability ("{T}: deal 1 to target creature").
+CARDS._testPinger = { tplId: '_testPinger', name: 'Test Pinger', type: 'Creature', cost: { R: 1 }, color: 'R', colors: ['R'], power: 0, toughness: 3,
+  abilities: [{ cost: { tap: true }, target: 'creature', effects: [{ kind: 'damage', amount: 1 }] }] };
 
 const TOUGH_CREATURE = (() => {
   for (const [id, c] of Object.entries(CARDS)) {
@@ -163,6 +166,29 @@ console.log('\n=== Triggered ability with a top-level target() step ===');
   check('zapper resolved onto the battlefield', G.you.battlefield.some(c => c.tplId === '_testZapper'));
   check('ETB trigger killed the opp creature (1 dmg to a 1-tough creature)',
     !G.opp.battlefield.some(c => c.iid === victim.iid) && G.opp.graveyard.some(c => c.iid === victim.iid));
+})();
+
+console.log('\n=== Activated ability with a top-level target() step ===');
+(() => {
+  const G = newGame();
+  const pinger = mk('_testPinger', 'you'); pinger.sick = false; G.you.battlefield.push(pinger);
+  const v1 = mk(TOUGH_CREATURE, 'opp'); v1.toughness = 1; v1.power = 1; G.opp.battlefield.push(v1);
+  const hex = mk(TOUGH_CREATURE, 'opp'); hex.toughness = 1; hex.keywords.push('hexproof'); G.opp.battlefield.push(hex);
+  readyForCast(G, 'you');
+
+  const acts = ENGINE.getLegalActions('you').filter(a => a.type === 'activateAbility' && a.cardIid === pinger.iid);
+  const tgtIids = acts.map(a => a.targets && a.targets[0] && a.targets[0].iid).filter(x => x != null);
+  check('ability enumerates the plain opp creature', tgtIids.includes(v1.iid));
+  check('ability does NOT enumerate the opp hexproof creature', !tgtIids.includes(hex.iid));
+
+  const act = acts.find(a => a.targets && a.targets[0] && a.targets[0].iid === v1.iid);
+  check('a targeting action exists', !!act);
+  if (act) {
+    ENGINE.executeAction('you', act);
+    drainAll(G);
+    check('ability killed the targeted opp creature', !G.opp.battlefield.some(c => c.iid === v1.iid));
+    check('pinger tapped to pay the cost', pinger.tapped === true);
+  }
 })();
 
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');
