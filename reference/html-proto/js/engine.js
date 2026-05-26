@@ -2365,6 +2365,34 @@ const EFFECTS = {
     }
     log(`${pname(ctx.controller)}'s ${n} creature(s) get +${params.power}/+${params.toughness} EOT.`, 'sp');
   },
+  // Unified control-change primitive (effects-refactor §4.2 / decision 11):
+  // replaces gainControl (both defs) + steal. transfer_ownership:true is the
+  // steal variant (permanent run-slot transfer) — delegated to the proven
+  // steal handler. Otherwise it's a control change (Mind Control / Threaten):
+  // pluck from the current controller, push to the caster, with optional
+  // untap_on_take / grant_haste / duration (eot). Accepts both the new
+  // snake_case param names and the legacy ones during cutover. Additive —
+  // gainControl/steal remain until card migration retires them.
+  change_control(ctx, params, target) {
+    if (params.transfer_ownership) { EFFECTS.steal(ctx, params, target); return; }
+    const f = resolveTarget(ctx, target);
+    if (!f) return;
+    const card = f.card, fromCtrl = f.controller, toCtrl = ctx.controller;
+    if (fromCtrl === toCtrl) {
+      log(`${ctx.sourceName} fizzles — ${card.name} is already under ${pname(toCtrl)}'s control.`, 'sp');
+      return;
+    }
+    const fromBf = G[fromCtrl].battlefield;
+    const idx = fromBf.findIndex(c => c.iid === card.iid);
+    if (idx < 0) return;
+    fromBf.splice(idx, 1);
+    G[toCtrl].battlefield.push(card);
+    if (params.untap_on_take || params.untap) card.tapped = false;
+    if (params.grant_haste || params.grantHaste) applyGrant(card, 'haste', ctx.sourceIid, true);
+    if (params.duration === 'eot') card.tempControlUntilEot = true;
+    log(`${ctx.sourceName} — ${pname(toCtrl)} gains control of ${card.name}` +
+        (params.duration === 'eot' ? ' until end of turn.' : '.'), 'sp');
+  },
   // Fight: target opp creature; our biggest creature fights it (each deals damage = power).
   // Tap status doesn't matter (Beast's Fury post-combat).
   fightTarget(ctx, params, target) {

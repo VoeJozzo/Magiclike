@@ -43,6 +43,8 @@ const CATEGORY_A = [
   'test_targeting.js',
   // Slice 3 — move_card unified card-movement primitive.
   'test_move_card.js',
+  // Slice 3 — change_control unified control primitive.
+  'test_change_control.js',
 ];
 
 const TESTS_DIR = __dirname;
