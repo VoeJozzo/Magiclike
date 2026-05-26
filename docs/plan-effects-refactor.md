@@ -4,7 +4,7 @@
 
 **Pre-execution note:** `rip` is a **broad, zone-agnostic** "tear up that card, gone from your deck forever" primitive (§13) — it strips a card's deck-slot regardless of zone and composes after any targeting/removal (`target(player)→chooses(creature)→annihilate→rip` for a creature; `target(spell)→counter→rip` for a spell). Current code is the narrow bundled `ripPermanent` (battlefield-only, fires triggers — the accepted kludge); the broad decomposed form is the decided target. For the creature/edict case specifically it's one verb off an edict (edict uses `sacrifice`; rip-edict uses `annihilate`, built this pass — §13, review OBS 1). No open questions block execution.
 **Cross-references:** `docs/DIVERGENCE.md` items D1 (target target-state semantics — see §3.6), D2 (`pump` duration → `addCounter`), D3 (`gain_life` flexibility), D4 (`gain_life` signed delta), B4 (delayed-trigger machinery — required for `exile_until_eot` decomposition), C5 (killer attribution — adjacent), E1/E2 (event vocabulary + composable predicates, prerequisite for the `move_card` effect's destination semantics). `docs/RULES.md` §703 (target legality), §704 (resolution + fizzle), §904 (hexproof). `docs/SPEC.md` §1.4 (effect descriptor schema).
-**Effort estimate:** **L** (~5.5–6 days end-to-end across both engines, ~80–85 hours, including card migration, the §3.9 mana deep-clean + full-convergence Godot land-as-ability adoption, the human `chooses()` prompt, tests, splice helper extraction, and registry consolidation; this is by far the largest of the planned refactors because it touches all 258 proto cards, all 31 Godot templates, and rewrites the dispatch table itself).
+**Effort estimate:** **L** (~6–6.5 days end-to-end across both engines, ~92–97 hours, including card migration, the §3.9 mana deep-clean + full-convergence Godot land-as-ability adoption, the §8.1 AI-valuation lockstep redesign + boot coverage assertion, the human `chooses()` prompt, tests, splice helper extraction, and registry consolidation; this is by far the largest of the planned refactors because it touches all 258 proto cards, all 31 Godot templates, and rewrites the dispatch table itself).
 
 Produced by an Explore/Plan pass against `reference/html-proto/js/engine.js` (EFFECTS table at line 1366, 38 handlers below it), `engine/effects/*.gd` (Godot's 5 handlers), `data/card_resource.gd`, and all 31 Godot templates plus 258 proto card JSONs. The goal is to land the long-term effects design (a small registry of atomic effects, parameterized target filters, decomposed compounds) before Phase 6 card-pool expansion makes mechanical migration expensive.
 
@@ -202,7 +202,11 @@ Under the targeting decomposition (§3.5), an edict is `target(player) → choos
 | `target(filter)` | The **caster aims** at something at cast time; locked in, re-validated at resolution (RULES §703/§704). | caster | **Yes — this is the hexproof checkpoint** |
 | `chooses(filter)` | A **targeted player selects** one of their own permanents at resolution. NOT targeting. | the targeted player | **No** |
 
-`filter` values are the legal-object taxonomy: `creature`, `player`, `creature_or_player`, `spell`, `permanent`, `your_creature`, `opp_creature`, `graveyard_creature`, …
+`filter` values are the **closed** legal-object taxonomy — this is the exact membership set the boot validator (§8) checks `target()`/`chooses()` filters against; there is no open tail. Adding a filter means adding it here **and** to the validator's set in the same change:
+
+`creature`, `player`, `creature_or_player`, `spell`, `permanent`, `your_creature`, `opp_creature`, `graveyard_creature`.
+
+(`creature_or_player` is the canonical spelling of proto's `"any"`; `chooses()` uses the same taxonomy but only the permanent-typed members are meaningful for it.)
 
 Effects after a targeting step operate on **"the target"** (or "the chosen") via the resolution context — no per-effect target field needed for the chosen case.
 
@@ -230,9 +234,21 @@ Only `target(player)` is a targeting step. The `chooses(creature)` step is selec
 | Mind Control | `target(creature)` | `change_control` |
 | Healing Salve | *(none)* | `gain_life(3, controller)` |
 
-**Multi-target spells** declare multiple `target()` steps (Twin Strike = two `target(creature)`). This is the `target_slots: N` mechanism from §1.2 — now expressed as N explicit targeting steps rather than a count plus per-effect `targetSlot` indices.
+**Multi-target spells: shared default for one target, explicit `target_slot` for two-plus.** The two rules compose; they are not alternatives:
+- **One `target()` step → shared default.** All effects operate on that single target; no per-effect field. This retires the `same_as_previous` / `target: "chosen"`-on-every-effect boilerplate the earlier design needed (and simplifies the §6.12 Scarification example).
+- **Two-plus `target()` steps → explicit `target_slot: N` binding** (the §1.2 mechanism). Each *targeted* effect declares which slot it consumes; effects that carry a `scope` or hit `self` carry no slot. The per-effect index does **not** go away for genuine multi-target — positional "effect *i* → target *i*" cannot express the real cards (see Drain Life below). Worth stating plainly because an earlier draft of this section claimed N `target()` steps *replace* the index; they don't — they replace it only in the one-target case.
 
-**Shared targets are the default.** A spell with one `target()` step and several effects: all effects use that one target. This retires the awkward `same_as_previous` / `target: "chosen"`-on-every-effect machinery the earlier design needed (and simplifies the §6.12 Scarification example).
+The five multi-target cards in the pool, worked (all currently use inline `target` + `targetSlot` + a `multiTarget` flag — verified against their `card.json`):
+
+| Card | Targeting steps | Effects (with slot binding) |
+|---|---|---|
+| Twin Strike | `target(creature)` ×2 | `pump(+1/+1, slot 0)`, `pump(+1/+1, slot 1)` |
+| Branching Bolt | `target(creature)` ×2 | `damage(2, slot 0)`, `damage(2, slot 1)` |
+| Roots and Branches | `target(creature)` ×2 | `affect_creature(tap, slot 0)`, `pump(+1/+1, slot 1)` |
+| Sword and Sorcery | `target(creature)` ×2 | `pump(+2/+2, slot 0)`, `affect_creature(tap, slot 1)` |
+| **Drain Life** | `target(creature)`, `target(player)` | `damage(2, slot 0)`, `damage(2, slot 1)`, `gain_life(4, self)` |
+
+Drain Life is the proof the index is mandatory: three effects, two targets of **different** filters (a creature and a player), and one untargeted effect (`gain_life(self)`). No positional scheme expresses it — the slots must be named, and the untargeted effect must opt out of slotting.
 
 **`chooses()` needs a human-facing prompt (scope — review GAP 2).** `chooses(creature)` = "the targeted player selects one of their own permanents." For the AI that's an auto-pick; for the **human** it needs a choose-your-creature prompt that does not exist for edicts today — the current `edict` handler (engine.js:1959) carries `// TODO: forced-sac UI` and **auto-selects even when the human is the sacrificing player**. The decomposition formalizes a pre-existing gap rather than creating one, but it must be closed for human edicts to play correctly. **Add an explicit implementation step:** build the human `chooses()` prompt by reusing the `ripPermanent` selection infra (`pendingRipSelect` / `doRipSelect`, engine.js), and fold its cost into the estimate (§11). Godot has no edict/chooses path yet, so it builds the prompt from scratch against the same contract.
 
@@ -853,7 +869,8 @@ static func _check_effect(effect, card_id: String, unknown: Array, malformed: Ar
             malformed.append("%s.%s.scope=%s" % [card_id, kind, sc])
         return
     # (Targeting steps `target(filter)` / `chooses(filter)` are validated
-    #  separately — their `filter` must be in the legal-object taxonomy.)
+    #  separately — their `filter` must be in the CLOSED legal-object
+    #  taxonomy enumerated in §3.5 — 8 members, no open tail.)
     malformed.append("%s.<non-dict-non-string effect>" % card_id)
 ```
 
@@ -873,6 +890,25 @@ Boot-validator additionally checks required keys are present. Catches card-autho
 **Parser** (the function-call shorthand). The predicate plan's `_parse_call` (predicates.gd) becomes `Effects._parse_effect_call`. Same lexer (whitespace tolerant, quoted strings, type coercion). Extension: keyword args. The arg list contains a mix of positional (`damage(3)`) and keyword (`damage(amount=3)`) — keyword form is the recommended style for any effect with 3+ params or any boolean param (positional bools are too ambiguous). The same parser handles the `target(...)` / `chooses(...)` steps.
 
 **Validation timing.** Both engines run validate-effects at boot, alongside the existing validate-predicates. In Godot: `engine.gd._ready()` calls both. In proto: `tests/_setup.js` calls both after `loadCards()`.
+
+### 8.1 AI valuation + decision is a lockstep migration site — the silent-regression class (review #1)
+
+**The class of bug.** The effect dispatch table (`EFFECTS` / `HANDLERS`) is the *owner* of the effect vocabulary and is obviously migrated. But every *other* site that reads an effect's `kind` / `target` / `whose` / `duration` as a raw string is a hidden consumer — and a string match that stops hitting doesn't error, it silently falls through to `default`/`0`. The rename+collapse touches the entire vocabulary, so all such consumers must move in lockstep. The plan already names one consumer cluster — card-text (`describeEffect` / oracle text). It did **not** name the AI, which is the larger one. This regression ships **green**: the gate is selfplay (crashes/legality) + the 482 rules assertions; neither asserts AI valuation quality. A pool that scores wrong plays dumber, not illegal.
+
+**The read-site map (traced both engines, excluding the dispatch tables):**
+
+| Cluster | Proto | Godot | In plan before? |
+|---|---|---|---|
+| AI spell/effect valuation | `spellValueForEffects`, `getCardValue`, `scoreMultiTargetSpell` (`ai.js` ~1035–1071), mode-select (`ai.js:150–153`), instant-response relevance (`ai.js:458–461`), self-damage discard (`ai.js:955`) | `scoring.gd:45` (`"damage"` flat), `burn.gd:21` (`kind != "damage"`) | **No — this is the gap** |
+| AI / UI target selection | `ai.js` target picking, `eff.targetSlot` (`ai.js:989`) | `ai.gd:221` (`match spell.target_filter`), `game_board.gd` target-pick mode (reads `target_filter`) | **No** |
+| Card text / oracle | `card-text.js` (24 reads) | `card.gd` oracle overlay | Yes (describeEffect row) |
+| Stickers, loader, render | `stickers.js`, `render.js`, `controller.js` | `json_card_loader.gd` | Touched by §3.8 / §3.9 anyway |
+
+**Why it's a redesign, not a rename.** The collapse *erases distinctions the AI priced*: `damage` (+6) vs `damageAll` (+8+amount×2); `removeCreature` vs `removeAll`; `gainControl`-eot/permanent vs `steal`. Post-collapse those are `damage`+`scope`, `affect_creature`+`scope`, `change_control`. So the AI must learn to **read `scope`** to recover the single-vs-mass valuation split — a mechanical rename of the branch keys would collapse Lightning Bolt and Pyroclasm to the same score. Separately, the §3.5 targeting decomposition **removes `effect.target` and relocates `target_filter` into a `target()` step** — so `burn.gd`'s face-damage test (which keys on `effect.target == "opponent"/"chosen"` + `spell.target_filter`) stops recognizing single-target burn *at all* and the AI stops finding burn lethals. Both engines' AI target/valuation reads must move to: "is there a `target()` step + what filter" and "what `scope` does the effect carry."
+
+**The generalizable defense — make the class loud, not silent.** Grepping the read sites fixes *this* migration; it doesn't stop the next renamed/added kind from silently scoring 0. So add a **coverage assertion** to boot validation: every kind registered in `HANDLERS` must also have (a) a valuation branch and (b) a card-text branch — a missing branch is a `push_error` at startup, not a runtime 0. This converts the entire "stringly-typed consumer drifted out of sync" class from silent to caught-at-boot, and is the real answer to "how do we find the next one." Implement as a static coverage set the AI/card-text modules register their handled kinds into, checked against `HANDLERS.keys()` at boot.
+
+**Scope.** Add (1) the scope-aware valuation redesign on both engines, (2) the AI target-read migration to the `target()`-step model, (3) the boot coverage assertion. Effort rows in §11; regression gate in §12.12.
 
 ---
 
@@ -929,7 +965,9 @@ Each step leaves both engines in a runnable, test-passing state. Recommend seque
 
 6. **Migrate proto cards via `migrate-effects.js`.** Run the script. Run `node tests/run_all.js` (the existing 482 assertions). Spot-check 20 cards across categories. Run `node tests/selfplay_harness.js 500 bughunt` for AI-vs-AI regression.
 
-7. **Delete dead/duplicate code.** Proto: delete the first `gainControl` definition (line 2123). Delete `weaken`, `addCounter`, `damageAll`, `removeAll`, `pumpAllYours`, `edict`, `sacrifice`, `restrict`, `shuffleIntoLibrary`, `returnFromGraveyard`, `searchLandTapped`, `searchCreature`, `discard`, `draw`, `noop` from the EFFECTS dispatch table (all callers now use the new atomics). Update `js/card-text.js` describe-effect helpers in lock-step. Run all tests.
+7. **Delete dead/duplicate code.** Proto: delete the first `gainControl` definition (line 2123). Delete `weaken`, `addCounter`, `damageAll`, `removeAll`, `pumpAllYours`, `edict`, `sacrifice`, `restrict`, `shuffleIntoLibrary`, `returnFromGraveyard`, `searchLandTapped`, `searchCreature`, `discard`, `draw`, `noop` from the EFFECTS dispatch table (all callers now use the new atomics). Update **all lock-step consumers** (§8.1): `js/card-text.js` describe-effect helpers, **and the AI valuation/target reads** — proto `spellValueForEffects`/`getCardValue`/`scoreMultiTargetSpell`, Godot `scoring.gd`/`burn.gd`/`ai.gd`. These must become scope-aware (read `scope` to keep the single-vs-mass valuation split) and `target()`-step-aware (burn's face-damage test moves off `effect.target`/`target_filter`). Run all tests.
+
+7b. **Add the boot coverage assertion (§8.1).** Every kind in `HANDLERS` must register a valuation branch and a card-text branch; a missing branch is a boot `push_error`. Turns the silent-regression class loud — this is what catches the *next* renamed/added kind, not just this migration.
 
 8. **Decompose `flicker` (no B4 dependency).** Replace the single `flicker` effect with `move_card(battlefield, exile)` + `move_card(exile, battlefield)` back-to-back. Test: Cloudshift still works.
 
@@ -968,6 +1006,9 @@ Per-engine, per-step. S = an hour or two, M = half a day to a day, L = multi-day
 | Hand-migrate Godot 6 templates with effects | Godot | S (~30min) |
 | `migrate-effects.js` script + manual verification on 258 proto cards | Proto | L (~8h) including golden-output testing and redundancy-cleanup pass |
 | Card-text helpers (`describeEffect`, etc.) updated for new kinds + signed pump | Proto | M (~4h) |
+| **§8.1 AI valuation redesign** — scope-aware single-vs-mass scoring + `target()`-step-aware face-damage/target reads (`spellValueForEffects`, `getCardValue`, `scoreMultiTargetSpell`, mode/instant-response sites) | Proto | M (~5h) — not a rename; the collapsed kinds need scope-reading to recover the valuation split |
+| **§8.1 AI valuation redesign** — `scoring.gd` scope-aware, `burn.gd` lethal-recognition off `target()`-step, `ai.gd` target_filter→target-step read | Godot | M (~4h) |
+| **§8.1 boot coverage assertion** — every `HANDLERS` kind must have a valuation + card-text branch, else boot error | both | S (~3h) — registration sets + boot check in `engine.gd._ready()` / `tests/_setup.js` |
 | Dead-code purge (duplicate gainControl, weaken, addCounter, etc.) | Proto | S (~2h) |
 | **§3.9 mana deep-clean** — `add_mana` color-choice form, migrate all land `card.json` to ability shape, collapse `doTapLandForMana`, update `landProducibleColors` consumers + staple-merge + tap UI | Proto | L (~8h) — foundational, every game turn one; heavy test coverage |
 | **§3.9 Godot land-as-ability adoption (option 3 — full convergence)** — `JsonCardLoader` emits the tap-ability onto `CardResource`, mana resolution runs the ability path, `KIND_TAP_LAND_FOR_MANA`→`is_mana_ability` (couples with priority-window plan) | Godot | M (~5h) |
@@ -977,7 +1018,7 @@ Per-engine, per-step. S = an hour or two, M = half a day to a day, L = multi-day
 | New unit tests for each atomic + hexproof regression suite + last-known-info regression + iid-mint regression + boot-validator tests | both | M (~7h) |
 | SPEC.md + DIVERGENCE.md updates (including D1 revision per §3.6) | doc | S (~2h) |
 
-**Total: ~80–85 hours = L** (~5.5–6 days, sliceable into the steps above). Up from the original ~64–69h: the §3.9 mana deep-clean was never line-itemed (+~8h proto), full-convergence option 3 adds Godot land-as-ability adoption (+~5h), and the human `chooses()` prompt (review GAP 2) adds ~3h. Biggest unknowns: `move_card`'s post-action plumbing (~3h estimated, could be more if zone-emit semantics in Godot diverge from proto's `cardEntersBattlefield` patterns), the `migrate-effects.js` script (~8h estimated, could blow up if the existing card data has format inconsistencies the audit missed), and last-known-info snapshot capture (~4h estimated, depends on how many "card property read" sites there are across effects).
+**Total: ~92–97 hours = L** (~6–6.5 days, sliceable into the steps above). Up from the original ~64–69h: the §3.9 mana deep-clean was never line-itemed (+~8h proto), full-convergence option 3 adds Godot land-as-ability adoption (+~5h), the human `chooses()` prompt (review GAP 2) adds ~3h, and the §8.1 AI-valuation lockstep redesign + boot coverage assertion (review #1) adds ~12h across both engines. Biggest unknowns: `move_card`'s post-action plumbing (~3h estimated, could be more if zone-emit semantics in Godot diverge from proto's `cardEntersBattlefield` patterns), the `migrate-effects.js` script (~8h estimated, could blow up if the existing card data has format inconsistencies the audit missed), and last-known-info snapshot capture (~4h estimated, depends on how many "card property read" sites there are across effects).
 
 ---
 
@@ -1063,6 +1104,16 @@ Tests that verify a returning creature is a fresh game object. **Both mechanics 
 ### 12.11 Shorthand parser tests (§5.2)
 
 For each shorthand effect name, verify it desugars correctly to its canonical `move_card` form. Plus verify malformed shorthand (e.g., `draw(N=oops)`) fails at boot.
+
+### 12.12 AI-valuation regression — the gate the existing one misses (§8.1, review #1)
+
+Selfplay + the rules assertions can't catch a silently-dumber AI, so this regression is mandatory on **both** engines:
+1. **Single ≠ mass.** A single-target damage spell (Lightning Bolt) and a mass one (Pyroclasm) must score **differently** — asserts the AI reads `scope` rather than valuing both as bare `damage`. Same for `affect_creature` single vs `all_creatures`, and `change_control` permanent vs the `steal`-equivalent.
+2. **Burn lethal still recognized.** With a known lethal burn line in hand (e.g. Bolt to the face at 3 life), `has_lethal` / `face_damage_in_hand` must return true **after** the targeting decomposition — guards the `burn.gd` regression where `effect.target` removal makes single-target burn invisible (the AI stops going for the kill). Must pass with the migrated `target()`-step card shape, not just the old inline-`target` shape.
+3. **Multi-target slot scoring.** `scoreMultiTargetSpell` over a migrated Drain Life / Branching Bolt picks distinct targets and prices both slots — guards `eff.targetSlot` (ai.js:989) against the §3.5 binding change.
+4. **Coverage assertion fires.** Register a throwaway `HANDLERS` kind with no valuation branch in a test build; assert boot `push_error`. Proves the §8.1 coverage net actually catches an unhandled kind.
+
+These should FAIL if the scope/target-aware reads are stubbed out, confirming they exercise the real surface.
 
 ---
 

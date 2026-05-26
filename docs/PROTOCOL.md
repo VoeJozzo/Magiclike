@@ -206,13 +206,17 @@ is registered at boot.
 | `youCastCounterspell`                | You cast a counterspell specifically.                                    | JS    |
 | `oppLostLifeThisTurn` (canonical) / `opp_lost_life_this_turn` (Godot today) | Opponent has `lifeLostThisTurn > 0`. | Godot |
 
-**Note on `self_only`.** The trigger dict can carry `self_only: true` as
-a structural flag instead of requiring a `thisEnters`/`thisDies` predicate.
-Godot adopts this form; JS currently uses inline `thisEnters`/`thisDies`
-predicates that compare `event.card.iid === source.iid`. New cards should
-prefer `self_only: true` + a non-self predicate (or empty predicate). The
-canonical predicate set will collapse `thisEnters`/`thisDies`/`thisLeaves`/
-`thisAttacks` into the `self_only` flag over time.
+**Note on `self_only` (superseded — direction reversed).** Earlier drafts
+folded `thisEnters`/`thisDies`/`thisAttacks` into a structural
+`self_only: true` flag. The composable-predicate refactor
+(`plan-zone-change-and-composable-predicates.md`) **reverses** this: the
+canonical form is the explicit atomic predicate **`this_card`** in the
+condition list (e.g. ETB = `[this_card, card_moves(anywhere, battlefield)]`),
+matching MTG's "this creature" phrasing and reading consistently with every
+other constraint. `self_only` is **retired** on both engines once that
+refactor lands; do not author new cards against it. The table above is
+likewise migrating to the `card_zone_change` + composable-predicate form
+(`thisEnters` → `[this_card, card_moves(anywhere, battlefield)]`, etc.).
 
 **Calling convention.** Predicates receive `(state, source, event)` and
 return bool. **Never reach into autoload state from inside a predicate

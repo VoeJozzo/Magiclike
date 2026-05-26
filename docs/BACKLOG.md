@@ -24,7 +24,7 @@ The following items live in `docs/DIVERGENCE.md` as their primary tracker. Liste
 **Major refactor plans** (own docs, multi-item):
 - **B6 + B7** — priority-window helper + auto-pass + end-turn fast-forward (godot). Plan: [`docs/plan-priority-window-refactor.md`](plan-priority-window-refactor.md). Effort: M (~8h).
 - **E1 + E2** — zone-change event unification + composable predicates (both). Plan: [`docs/plan-zone-change-and-composable-predicates.md`](plan-zone-change-and-composable-predicates.md). Effort: L (~34h).
-- **Effects refactor** (subsumes D2, D3, D4; touches every card with effects) — 38 proto effects → ~22 atomic registry, `target()`/`chooses()` targeting + hexproof model, compound decomposition. Now also folds in the sticker system, deep-clean mana model (full-convergence Godot land-as-ability), and staple-synthesis cleanup (plan §3.8–§3.10). Plan: [`docs/plan-effects-refactor.md`](plan-effects-refactor.md). Effort: L (~80–85h). Sequenced AFTER E1/E2.
+- **Effects refactor** (subsumes D2, D3, D4; touches every card with effects) — 38 proto effects → ~22 atomic registry, `target()`/`chooses()` targeting + hexproof model, compound decomposition. Now also folds in the sticker system, deep-clean mana model (full-convergence Godot land-as-ability), and staple-synthesis cleanup (plan §3.8–§3.10). Plan: [`docs/plan-effects-refactor.md`](plan-effects-refactor.md). Effort: L (~92–97h). Sequenced AFTER E1/E2.
 
 **Individual items:**
 
