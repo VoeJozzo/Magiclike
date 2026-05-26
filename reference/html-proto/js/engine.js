@@ -5341,6 +5341,17 @@ function getLegalActions(who) {
       const modeEffects = modes[mIdx];
       const targetedEffs = (modeEffects || []).filter(effectNeedsTarget);
       if (targetedEffs.length === 0) {
+        // New targeting model (§3.5): a top-level `target` step means one
+        // action per legal target of that filter (hexproof-excluded via
+        // targetsForFilter). No valid target → spell not castable.
+        if (card.target) {
+          for (const t of targetsForFilter(card.target, who)) {
+            const a = { type: 'castSpell', cardIid: card.iid, targets: [t] };
+            if (modes.length > 1) a.modeIdx = mIdx;
+            actions.push(a);
+          }
+          continue;
+        }
         // Untargeted (or untargeted mode of a modal card).
         const a = {type:'castSpell', cardIid: card.iid};
         if (modes.length > 1) a.modeIdx = mIdx;

@@ -115,5 +115,23 @@ console.log('\n=== Test Pyro: no target() step, mass scope hits hexproof ===');
   check('opp hexproof creature took 2 (no target step → no hexproof gate)', b.damage === 2, 'damage=' + b.damage);
 })();
 
+console.log('\n=== getLegalActions enumerates one cast per legal target (hexproof excluded) ===');
+(() => {
+  const G = newGame();
+  const plain = mk(TOUGH_CREATURE, 'opp'); G.opp.battlefield.push(plain);
+  const hex = mk(TOUGH_CREATURE, 'opp'); hex.keywords.push('hexproof'); G.opp.battlefield.push(hex);
+  const mine = mk(TOUGH_CREATURE, 'you'); G.you.battlefield.push(mine);
+  const bolt = mk('_testBolt', 'you'); G.you.hand.push(bolt);
+  readyForCast(G, 'you');
+
+  const acts = ENGINE.getLegalActions('you').filter(a => a.type === 'castSpell' && a.cardIid === bolt.iid);
+  const tgtIids = acts.map(a => a.targets && a.targets[0] && a.targets[0].iid).filter(x => x != null);
+  const players = acts.filter(a => a.targets && a.targets[0] && a.targets[0].kind === 'player').length;
+  check('enumerates the plain opp creature', tgtIids.includes(plain.iid));
+  check('enumerates my own creature', tgtIids.includes(mine.iid));
+  check('does NOT enumerate the opp hexproof creature', !tgtIids.includes(hex.iid));
+  check('enumerates both players (creature_or_player)', players === 2);
+})();
+
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');
 process.exit(fail > 0 ? 1 : 0);
