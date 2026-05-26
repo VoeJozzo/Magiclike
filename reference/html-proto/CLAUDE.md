@@ -62,7 +62,7 @@ The earlier in-code roadmap comment block has been removed as features shipped (
 Node-based regression suite under `tests/`. Run from `reference/html-proto/`:
 
 ```
-node tests/run_all.js                       # 362 assertions, ~2s
+node tests/run_all.js                       # 482 assertions, ~2s
 node tests/selfplay_harness.js 500 bughunt  # AI vs AI, ~20s
 ```
 

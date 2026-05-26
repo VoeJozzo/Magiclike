@@ -43,7 +43,7 @@ A runtime structure map for both halves of the Magiclike repo: the Godot 4.6 por
     ├── js/                    14 IIFE modules, ~16k LOC
     ├── cards/<tplId>/         258 per-card folders + art + _manifest.json
     ├── assets/                proto-specific assets
-    ├── tests/                 Node regression harness (362 assertions)
+    ├── tests/                 Node regression harness (482 assertions)
     └── CLAUDE.md              proto-specific onboarding (current VERSION)
 ```
 
@@ -301,7 +301,7 @@ Schema migrations live in `RUN` and run at load. Save version constant in `run.j
 
 Node-based regression harness under `reference/html-proto/tests/`:
 ```
-node tests/run_all.js                       # 362 assertions, ~2s
+node tests/run_all.js                       # 482 assertions, ~2s
 node tests/selfplay_harness.js 500 bughunt  # AI vs AI, ~20s
 ```
 `tests/_setup.js` stubs the DOM and concatenates JS modules in script-tag order. Engine-level coverage only — no DOM/UI tests.

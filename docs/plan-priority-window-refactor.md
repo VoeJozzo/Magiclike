@@ -14,14 +14,14 @@ There are **8** sites total. Six are "open a real priority window" calls that ro
 
 | Line | Function | Setting to | Purpose |
 |---|---|---|---|
-| 40, 60, 85, 121, 206 | `init_phase{1..4}`, `init_game` | `"you"` | Boot-time, **game start MAIN1**. Active player gets priority. These can route through the helper too (preserves the invariant; auto-pass is rare here since MAIN1 has playable lands). |
-| 640 | `_do_cast_spell` | `controller.key` | **Post-cast retain priority** (MTG 117.1c). Caster keeps priority on top of fresh stack entry. |
-| 654 | `_do_pass_priority` | `_state.active_player_key` | **Post-resolution.** Both passed → top resolved → AP gets priority on the (still-loaded or now-empty) stack. |
-| 660 | `_do_pass_priority` | `opponent_of(...)` | **Pass to other player.** Must call the helper to trigger the next-holder auto-pass check. |
-| 929 | `_do_confirm_blocks` | `_state.active_player_key` | **Post-block-declaration APNAP open** (MTG 117.1b). |
-| 1200, 1202 | `_advance_phase` | `""` or `_state.active_player_key` | **Phase entry.** Closes priority if `awaiting_block`/`awaiting_discard`, else opens to AP. The `""` branch is the close-priority sentinel. |
-| 1442 | `_do_discard_card` | `_state.active_player_key` | **Post-cleanup-discard.** Restores AP priority once excess hand is gone. |
-| 1503 | `_drain_continue` | `_state.active_player_key` | **Post-trigger-drain** (MTG 116.5). AP gets priority after pending triggers flush onto stack. |
+| 49, 69, 94, 130, 215 | `init_phase{1..4}`, `init_game` | `"you"` | Boot-time, **game start MAIN1**. Active player gets priority. These can route through the helper too (preserves the invariant; auto-pass is rare here since MAIN1 has playable lands). |
+| 649 | `_do_cast_spell` | `controller.key` | **Post-cast retain priority** (MTG 117.1c). Caster keeps priority on top of fresh stack entry. |
+| 663 | `_do_pass_priority` | `_state.active_player_key` | **Post-resolution.** Both passed → top resolved → AP gets priority on the (still-loaded or now-empty) stack. |
+| 669 | `_do_pass_priority` | `opponent_of(...)` | **Pass to other player.** Must call the helper to trigger the next-holder auto-pass check. |
+| 938 | `_do_confirm_blocks` | `_state.active_player_key` | **Post-block-declaration APNAP open** (MTG 117.1b). |
+| 1209, 1211 | `_advance_phase` | `""` or `_state.active_player_key` | **Phase entry.** Closes priority if `awaiting_block`/`awaiting_discard`, else opens to AP. The `""` branch is the close-priority sentinel. |
+| 1451 | `_do_discard_card` | `_state.active_player_key` | **Post-cleanup-discard.** Restores AP priority once excess hand is gone. |
+| 1512 | `_drain_continue` | `_state.active_player_key` | **Post-trigger-drain** (MTG 116.5). AP gets priority after pending triggers flush onto stack. |
 
 ## 2. Helper design
 

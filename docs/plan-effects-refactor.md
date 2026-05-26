@@ -2,7 +2,7 @@
 
 **Status:** Plan complete, ready for review. Not yet executed. (Targeting model: the `target()`/`chooses()` decomposition in §3.5 is canonical throughout; the §3 disposition table's `target_filter` signatures are read via the lens note at its head.)
 
-**Pre-execution note:** `rip` is a **broad, zone-agnostic** "tear up that card, gone from your deck forever" primitive (§13) — it strips a card's deck-slot regardless of zone and composes after any targeting/removal (`target(player)→chooses(creature)→annihilate→rip` for a creature; `target(spell)→counter→rip` for a spell). Current code is the narrow bundled `ripPermanent` (battlefield-only, fires triggers — the accepted kludge); the broad decomposed form is the decided target. For the creature/edict case specifically it's one verb off an edict (`sacrifice` kludge → `annihilate` target). No open questions block execution.
+**Pre-execution note:** `rip` is a **broad, zone-agnostic** "tear up that card, gone from your deck forever" primitive (§13) — it strips a card's deck-slot regardless of zone and composes after any targeting/removal (`target(player)→chooses(creature)→annihilate→rip` for a creature; `target(spell)→counter→rip` for a spell). Current code is the narrow bundled `ripPermanent` (battlefield-only, fires triggers — the accepted kludge); the broad decomposed form is the decided target. For the creature/edict case specifically it's one verb off an edict (edict uses `sacrifice`; rip-edict uses `annihilate`, built this pass — §13, review OBS 1). No open questions block execution.
 **Cross-references:** `docs/DIVERGENCE.md` items D1 (target target-state semantics — see §3.6), D2 (`pump` duration → `addCounter`), D3 (`gain_life` flexibility), D4 (`gain_life` signed delta), B4 (delayed-trigger machinery — required for `exile_until_eot` decomposition), C5 (killer attribution — adjacent), E1/E2 (event vocabulary + composable predicates, prerequisite for the `move_card` effect's destination semantics). `docs/RULES.md` §703 (target legality), §704 (resolution + fizzle), §904 (hexproof). `docs/SPEC.md` §1.4 (effect descriptor schema).
 **Effort estimate:** **L** (~4.5–5.5 days end-to-end across both engines, ~64–69 hours, including card migration, tests, splice helper extraction, and registry consolidation; this is the largest of the three planned refactors because it touches all 258 proto cards, all 32 Godot templates, and rewrites the dispatch table itself).
 
@@ -232,6 +232,8 @@ Only `target(player)` is a targeting step. The `chooses(creature)` step is selec
 
 **Shared targets are the default.** A spell with one `target()` step and several effects: all effects use that one target. This retires the awkward `same_as_previous` / `target: "chosen"`-on-every-effect machinery the earlier design needed (and simplifies the §6.12 Scarification example).
 
+**`chooses()` needs a human-facing prompt (scope — review GAP 2).** `chooses(creature)` = "the targeted player selects one of their own permanents." For the AI that's an auto-pick; for the **human** it needs a choose-your-creature prompt that does not exist for edicts today — the current `edict` handler (engine.js:1959) carries `// TODO: forced-sac UI` and **auto-selects even when the human is the sacrificing player**. The decomposition formalizes a pre-existing gap rather than creating one, but it must be closed for human edicts to play correctly. **Add an explicit implementation step:** build the human `chooses()` prompt by reusing the `ripPermanent` selection infra (`pendingRipSelect` / `doRipSelect`, engine.js), and fold its cost into the estimate (§11). Godot has no edict/chooses path yet, so it builds the prompt from scratch against the same contract.
+
 **Resolution-model change (scope note).** This moves both engines to "resolution first establishes targets/choices, then runs effects against them," rather than each effect independently reading `ctx.targets[i]`. It's a resolution-layer change — it touches the target-pick flow, hexproof gating, and every targeted card — not just a card-data rename. Worth it during this pass: targeting touches every targeted card, so doing it now means touching cards once, not twice.
 
 **Test obligation.** §12 includes: Pyroclasm hits hexproof creatures (no target step); Lightning Bolt cannot `target()` a hexproof opp creature; an edict (`target(player) → chooses(creature)`) sacrifices a hexproof creature (the creature is never targeted); multi-`target()` spells pick distinct targets.
@@ -273,7 +275,7 @@ The snapshot lifetime is "one spell's resolution scope." After the resolution co
 
 This is MTG-canonical and gives "flicker beats removal" without any special rule. The engine just mints a new iid every time `move_card(zone, battlefield, ...)` completes; targeting checks iid-existence at resolution per the existing fizzle mechanism.
 
-**Currently a bug in proto**: returning cards reuse the old iid, so Lightning Bolt would resolve on the returned creature. The refactor fixes this by ensuring every battlefield-arrival is a fresh game object.
+**The actual proto state (verified by reading the handlers — do not "fix" the wrong path).** `flicker` (engine.js:2098) **already mints a fresh iid** on return (`card.iid = nextIid++`, engine.js:2112, with an in-code comment calling it the defensive point of flicker), so the Cloudshift scenario above already works today. The divergent path is `exileUntilEOT` (engine.js:2154): it plucks the card and holds the **same object** on a delayed trigger (`G.delayedTriggers`, engine.js:2163), then returns it at end step (engine.js:5319–5345) **with its original iid** — no re-mint. The refactor's rule (mint on *every* battlefield-arrival, applied inside `move_card` for `to_zone=battlefield`) closes the `exileUntilEOT` path; flicker already complies. **Implication for the regression test:** point it at `exileUntilEOT` (Otherworldly Journey), not flicker — a flicker test would pass before the fix and never exercise it (§12.10).
 
 **Implementation**: in `move_card`, when `to_zone == "battlefield"`, allocate a new iid for the arriving card instance. The slot.iid mapping updates accordingly. Existing iid-lookup paths (e.g., `find_instance`) work unchanged because they find by current iid, not historical iid.
 
@@ -333,9 +335,9 @@ All three sticker kinds get `weight: 0` (never offered in random reward pools, l
 
 **Sequencing:** done as an **adjacent step within this same coordinated pass**, sequenced *after* the effects+sticker core is passing tests — so a mana regression has a clean diagnostic surface and can't be confused with an effect/sticker regression during bring-up. (Architectural detail; the "what" is settled, the exact step ordering is at the implementer's discretion.)
 
-**Godot coordination note.** This land-as-ability model is proto-side. When the Godot port adopts it, reconcile with the priority-window plan's `KIND_TAP_LAND_FOR_MANA`: generalize that land-named action kind to a structural `is_mana_ability` classification (produces mana, no target) so the auto-pass meaningfulness check and stack fast-path cover land taps *and* creature mana dorks uniformly. See `plan-priority-window-refactor.md` §3.
+**Godot coordination note — REQUIRED bridge (closes review GAP 1).** Card-data Slice 1 points Godot's `CardDatabase` at the shared proto land JSONs and reuses them; Godot's loader reads land mana from `json["mana"]`/`json["extraManaColors"]` (`engine/json_card_loader.gd:209–217`). The moment this section rewrites those JSONs to the ability shape and drops `extraManaColors`, that loader finds nothing → **every Godot basic taps for zero at turn one.** Card-data **Q3** hands the land-mana representation to §3.9, and §3.9 had deferred the Godot consumer — an unowned seam. Close it: §3.9 MUST, in the **same slice** that retires `extraManaColors`, add a land-ability→`mana_produced` translation to `JsonCardLoader` — read `abilities[].cost.tap` + `effects[].add_mana` (incl. the new `choose` form) into `mana_produced`. That keeps Godot's existing internal mana model working off the new shared shape *without* yet adopting the ability model internally — the minimum safe bridge (review fix **option 2**). Adopting land-as-ability *inside* the Godot engine (**option 3**, true convergence) is the larger follow-on that also reconciles with the priority-window plan's `KIND_TAP_LAND_FOR_MANA` → structural `is_mana_ability` classification (see `plan-priority-window-refactor.md` §3). Note that **without this bridge the pass ends the mana model *more* divergent** (proto on abilities, Godot still on `extraManaColors`) with a live break in between — contrary to the "cleaner integration" goal; the bridge (option 2) is the floor, option 3 the target.
 
-> **No open questions block execution.** (`rip` ships as the kludge composition with annihilation as the decided long-term intent — §13. The mana-model scope is decided — deep clean, above.)
+> **No open questions block execution.** (`rip`: `annihilate` is built this pass so rip-edict uses the correct no-trigger verb — no kludge — §13 / review OBS 1. The mana-model scope is decided — deep clean, above.)
 
 ### 3.10 Staple template-synthesis cleanup
 
@@ -431,7 +433,7 @@ Shorthand-style signature; parameters are descriptive, not exhaustive.
 
 **Sacrifice / removal verbs (1, +1 pending)**
 - `sacrifice` — the chosen/target creature is sacrificed by its controller (→ graveyard, fires death/LTB triggers). The edict (formerly the bundled `force_sacrifice`/`edict`) decomposes to `target(player) → chooses(creature) → sacrifice`; there is no longer a bundled `force_sacrifice` effect. (Targeted removal the *caster* aims — destroy/exile/bounce/tap — stays under `affect_creature`.)
-- `annihilate` *(pending — rip's no-trigger sibling, §13)* — like `sacrifice` but the creature ceases to exist: no zone change, no triggers. Not built yet; the rip kludge uses `sacrifice` today.
+- `annihilate` — rip's no-trigger sibling: like `sacrifice` but the creature ceases to exist — no graveyard, no death/leave triggers. **Built this pass** (review OBS 1): it's `sacrificeCard` (engine.js:3258) minus the graveyard push and the `cardDies`/`emitLeavesBattlefield` emits (~10–15 lines, mirroring `ripSlotForPhylactery`'s pluck-with-no-emit body at engine.js:3652). Rip-edict uses `annihilate` — the `sacrifice` kludge is not shipped.
 
 **Stickers (1)**
 - `apply_sticker(kind, target, ...params)` — the generic persistent-modification primitive. Carries a sticker `kind` (`stat_boost`, `cost_mod`, `set_color`, `grant_mana_ability`, `scarified`, keyword kinds, etc.) plus that kind's params. Replaces the `embargo`/`bleach`/`symmetricize` bespoke channel: each is now `[movement/choice effect] → apply_sticker(specific_kind)` and `applyBalancerOverrides` is deleted. Full design in §3.8.
@@ -457,11 +459,11 @@ Shorthand-style signature; parameters are descriptive, not exhaustive.
 | Mana / life | 2 |
 | Counter | 1 |
 | Tokens | 1 |
-| Sacrifice / removal verbs (`sacrifice`; `annihilate` pending) | 1 |
+| Sacrifice / removal verbs (`sacrifice`, `annihilate`) | 2 |
 | Stickers | 1 |
 | Specials (card-bespoke) | 5 |
 | Run-layer (`rip`) | 1 |
-| **Total** | **~21** |
+| **Total** | **~22** |
 
 Roughly half of proto's 38, now including the two targeting primitives. The headline "fewer, sharper primitives" holds; the targeting decomposition added two atoms while dissolving the bundled `force_sacrifice`/`edict`/per-effect-`target` shapes into composable steps.
 
@@ -891,8 +893,8 @@ exile_until_eot decomposition
 ### 9.2 What blocks what
 
 - **`move_card` effect needs E1 done.** The `move_card` effect's job is to emit a `card_zone_change` event. The predicate refactor introduces `card_zone_change` as the unified event vocabulary. If EFFECTS lands first, every `move_card` invocation has to emit BOTH the old per-kind events AND the new `card_zone_change` — temporary double-emission. If E1 lands first, `move_card` just emits `card_zone_change` once and listeners (already migrated to use the predicate-composition shape) receive it naturally. **Recommendation: E1 first.**
-- **`exile_until_eot` decomposition needs B4.** The "return at end of turn" half requires `schedule_delayed`, which IS the B4 machinery. Until B4 lands, this one effect stays as a primitive in both engines. The rest of the EFFECTS refactor proceeds.
-- **The sticker-system audit is complete (§3.8); decision 7 is resolved.** `embargo`/`bleach`/`symmetricize` decompose into `[movement/choice effect] → apply_sticker(specific_kind)`, `applyBalancerOverrides` is deleted, and the sticker pipeline (apply dedup, empower redesign, persistence decoupling, snake_case) is folded into this refactor. The boot validator accepts `apply_sticker` from day one. No items block execution: `rip` ships as the kludge with annihilation as the decided long-term intent (§13), and the mana-model unification scope is decided (deep clean, §3.9).
+- **`exile_until_eot` decomposition needs B4 — but the deferral is a conscious *symmetry* choice, not a proto-side technical block (review OBS 2).** The effect itself works fine and keeps working as a monolithic handler throughout; what's deferred is *re-expressing it in the shared atomic vocabulary* (`move_card` + `schedule_delayed`). That re-expression needs `schedule_delayed` to exist on **both** engines, because card definitions are a single shared JSON — you can only author a card in atomics both engines can execute. Godot has no delayed-trigger queue (B4, Phase 7+), so it can't run `schedule_delayed` yet. Proto, by contrast, *does* already have the raw mechanism — `G.delayedTriggers`, used by `exileUntilEOT` itself at engine.js:2163 — it just isn't generalized into a `schedule_delayed` *effect*. So proto **could** decompose alone, but doing so would make the same shared card decompose on proto and stay monolithic on Godot — re-introducing exactly the cross-engine divergence this refactor exists to kill. We therefore hold both engines at the monolithic form until B4 lands, then decompose once for both. **This is why `exile_until_eot` is different from the ordinary "proto has effect X, Godot doesn't" cases** (e.g. `destroyLand`): those are just un-ported monolithic handlers, not in scope for atomization; `exile_until_eot` *is* in scope, and its target atom is the single one Godot structurally can't run yet. The rest of the EFFECTS refactor proceeds.
+- **The sticker-system audit is complete (§3.8); decision 7 is resolved.** `embargo`/`bleach`/`symmetricize` decompose into `[movement/choice effect] → apply_sticker(specific_kind)`, `applyBalancerOverrides` is deleted, and the sticker pipeline (apply dedup, empower redesign, persistence decoupling, snake_case) is folded into this refactor. The boot validator accepts `apply_sticker` from day one. No items block execution: `rip` builds `annihilate` this pass so the rip-edict uses the correct no-trigger verb (§13 / review OBS 1), and the mana-model unification scope is decided (deep clean, §3.9).
 - **B6/B7 (priority-window) is independent.** Touches priority/auto-pass logic, not effect handlers. Land in parallel or earlier.
 
 ### 9.3 Adjacent items
@@ -912,13 +914,13 @@ Each step leaves both engines in a runnable, test-passing state. Recommend seque
 
 2. **Add `target()` / `chooses()` targeting steps and route hexproof through them (§3.5).** Both engines: introduce the leading targeting primitives. "Is it targeted?" becomes structural — a spell has a `target()` step or it doesn't — replacing the earlier `is_targeted_filter(value)` helper. Hexproof is checked at `target()` steps only; `chooses()` and mass/automatic-scoped effects (`all_creatures`, `controller`, …) never check it. Add hexproof regression tests (§12), including the edict case (`target(player) → chooses(creature)` sacrifices a hexproof creature).
 
-3. **Add new atomic effects alongside the legacy ones.** Both engines: register `move_card`, `change_control`, the `target`/`chooses` targeting steps, the `sacrifice` verb, `apply_sticker`, `pump` (signed/permanent extensions). Old kinds (`draw`, `discard`, `gainControl`, `edict`, `weaken`, etc.) still dispatch correctly. New atomics callable from card data once cards migrate.
+3. **Add new atomic effects alongside the legacy ones.** Both engines: register `move_card`, `change_control`, the `target`/`chooses` targeting steps, the `sacrifice` verb, `annihilate` (its no-trigger sibling — `sacrificeCard` minus graveyard/`cardDies`/`emitLeavesBattlefield`, ~10–15 lines, review OBS 1), `apply_sticker`, `pump` (signed/permanent extensions). Old kinds (`draw`, `discard`, `gainControl`, `edict`, `weaken`, etc.) still dispatch correctly. New atomics callable from card data once cards migrate.
 
 4. **Boot-validation rewrite.** Both engines: `validate_all_card_effects` walks all card data. Accepts both old kind names and new ones during cutover. Per-kind schema enforced for the new ones. Tests: malformed effect detected at boot.
 
 5. **Migrate Godot templates** (6 templates with effects: pyromaniac, bloodlust_berserker, giant_growth, healing_salve, lightning_bolt, counterspell — all already snake_case). Convert each effect's `target: "chosen"` into a leading `target()` step (and `counter_spell`→`counter`). ~15 minutes of mechanical .tres edits. Add per-template test passes.
 
-6. **Migrate proto cards via `migrate-effects.js`.** Run the script. Run `node tests/run_all.js` (the existing 362 assertions). Spot-check 20 cards across categories. Run `node tests/selfplay_harness.js 500 bughunt` for AI-vs-AI regression.
+6. **Migrate proto cards via `migrate-effects.js`.** Run the script. Run `node tests/run_all.js` (the existing 482 assertions). Spot-check 20 cards across categories. Run `node tests/selfplay_harness.js 500 bughunt` for AI-vs-AI regression.
 
 7. **Delete dead/duplicate code.** Proto: delete the first `gainControl` definition (line 2123). Delete `weaken`, `addCounter`, `damageAll`, `removeAll`, `pumpAllYours`, `edict`, `sacrifice`, `restrict`, `shuffleIntoLibrary`, `returnFromGraveyard`, `searchLandTapped`, `searchCreature`, `discard`, `draw`, `noop` from the EFFECTS dispatch table (all callers now use the new atomics). Update `js/card-text.js` describe-effect helpers in lock-step. Run all tests.
 
@@ -950,7 +952,8 @@ Per-engine, per-step. S = an hour or two, M = half a day to a day, L = multi-day
 | `target()`/`chooses()` steps + structural hexproof routing | Godot | S (~2h) |
 | `target()`/`chooses()` steps + structural hexproof routing | Proto | S (~3h) — multiple gate sites |
 | **§3.6 last-known-info snapshot machinery + per-effect resolution-time checks** | both | M (~4h) — one snapshot field, one capture site per zone-exit, one check site per property read |
-| **§3.7 iid-mint-on-arrival** in `move_card` for `to_zone=battlefield` | both | S (~2h) — including flicker-beats-removal regression test |
+| **§3.7 iid-mint-on-arrival** in `move_card` for `to_zone=battlefield` | both | S (~2h) — including the `exileUntilEOT` (exile-return) iid regression test |
+| **Human `chooses()` prompt** (review GAP 2) — choose-your-creature UI for edicts; reuse `pendingRipSelect`/`doRipSelect` (proto), build from scratch (Godot) | both | S (~3h) — proto reuses rip-select infra; Godot wires a new selection mode |
 | New atomic effects (`move_card`, `change_control`, `target`/`chooses`, `sacrifice`, `apply_sticker`) | Godot | L (~8h) — these are mostly new handlers from scratch; `move_card` alone is ~3h |
 | New atomic effects (same set, written to match proto's existing semantics) | Proto | M (~6h) — most logic exists, just refactored into the new entry points |
 | Shorthand parser extension (curated `draw`/`discard`/`flicker`/etc. names that desugar to `move_card`) | both | S (~3h) — extends the predicate parser |
@@ -1041,11 +1044,12 @@ Tests that verify the live/snapshot hybrid:
 
 ### 12.10 iid-mint-on-arrival regression (§3.7)
 
-Tests that verify flicker beats removal:
-1. **Lightning Bolt + Cloudshift** — cast Bolt targeting opp's Bear (iid=12). Opp casts Cloudshift in response. Bear exits to exile then returns with new iid (iid=17). Bolt resolves: fizzles (iid=12 no longer exists).
-2. **Targeted destruction beaten by flicker** — same pattern with `affect_creature(severity=destroy)` instead of damage.
-3. **iid sequence verification** — flicker a creature; assert the returning creature's iid is greater than (not equal to) the exited creature's iid.
-4. **Non-flicker zone bounces** — bounce-to-hand-then-replay also gets a fresh iid on re-arrival. Same rule, different mechanic.
+Tests that verify a returning creature is a fresh game object:
+1. **Otherworldly Journey (`exileUntilEOT`) — THE one that exercises the fix.** Cast Bolt targeting opp's Bear (iid=12). Opp exiles-until-EOT its own Bear in response. At end step the Bear returns; assert its iid is fresh (≠ 12), and that a spell/trigger still pointing at iid=12 fizzles. This is the path that reuses the iid today (engine.js:2154–2173 / 5319–5345), so this test must FAIL before the fix and PASS after.
+2. **Lightning Bolt + Cloudshift (flicker) — regression guard, already green.** Same pattern with Cloudshift. Note flicker already mints a fresh iid (engine.js:2112), so this passes before the fix too; it guards against a regression rather than exercising the fix.
+3. **Targeted destruction beaten by exile-return** — same pattern with `affect_creature(severity=destroy)` instead of damage.
+4. **iid sequence verification** — exile-and-return a creature; assert the returning creature's iid is greater than (not equal to) the exited creature's iid.
+5. **Non-flicker zone bounces** — bounce-to-hand-then-replay also gets a fresh iid on re-arrival. Same rule, different mechanic.
 
 ### 12.11 Shorthand parser tests (§5.2)
 
@@ -1057,7 +1061,7 @@ For each shorthand effect name, verify it desugars correctly to its canonical `m
 
 **Design intent.** `rip` is the digital interpretation of reaching across the table and tearing up your opponent's card — *it does not care what zone the card is in.* It's a small, broad run-layer primitive: take whatever card the preceding steps put in your sights, and **strip its deck-slot from the run permanently** (`RUN.removeSlotByIdx`). It composes after *any* targeting/removal, so the same `rip` step ends "rip that creature," "rip that spell," etc.
 
-**Status:** ship the (battlefield-only) kludge now; the broad decomposed form is the decided target. Nothing here blocks execution.
+**Status (updated per review OBS 1):** build `annihilate` and ship the correct removal verb this pass — **no kludge.** Confirmed cheap by reading the code: `annihilate` = `sacrificeCard` (engine.js:3258) minus the graveyard push, the `cardDies` emit, and the `emitLeavesBattlefield` emit (it mirrors `ripSlotForPhylactery`'s body at engine.js:3652, which plucks with no leave-play emit) — ~10–15 lines. Shipping `sacrifice` would knowingly fire wrong death/LTB triggers when the card should cease to exist; since we have the tools, we ship it right. Nothing here blocks execution.
 
 ### `rip` composes across zones (the point)
 ```
@@ -1071,7 +1075,7 @@ For the creature case, edict and rip-edict are nearly identical recipes:
 ```
 Diabolic Edict:           target(player) → chooses(creature) → sacrifice
 Rip-edict (TARGET):       target(player) → chooses(creature) → annihilate → rip
-Rip-edict (KLUDGE today): target(player) → chooses(creature) → sacrifice  → rip
+Rip-edict (OLD code, replaced): target(player) → chooses(creature) → sacrifice  → rip
 ```
 The first two steps are shared (the player is *targeted*; the creature is *chosen*, so hexproof doesn't protect it — §3.5). The only differences are the removal verb (`sacrifice` → graveyard + triggers, vs `annihilate` → ceases to exist, no triggers) and the trailing `rip`.
 
@@ -1079,14 +1083,14 @@ The first two steps are shared (the player is *targeted*; the creature is *chose
 Today `rip` is **not** the clean standalone slot-strip above. It's the monolithic `ripPermanent` (engine.js:1979), used only by Vile Edict: it targets a **player**, opens `pendingRipSelect` so that player picks one of **their battlefield permanents**, then removes it + strips the slot — all welded together. So today:
 - It only reaches **battlefield permanents** — there is no path to `rip` a spell, a hand card, or a graveyard card.
 - The slot-strip isn't separable from the target-player/choose-permanent flow.
-- It uses `sacrifice`-style removal → fires death/LTB triggers (**off-target, happening now, not hidden** — knowingly accepted as the kludge).
+- It uses `sacrifice`-style removal → fires death/LTB triggers (**off-target** — the wrong behavior this pass replaces by building `annihilate`, review OBS 1).
 
 ### Decomposition target (DECIDED)
 Split `ripPermanent` into the composable steps: a standalone `rip` slot-strip + the targeting (`target`/`chooses`, §3.5) + the removal verb. Then:
 - The creature card swaps its removal verb `sacrifice` → `annihilate` (creature ceases to exist, no triggers — matches Phylactery's `ripSlotForPhylactery` body, which plucks with no zone-change emit).
 - A future "rip target spell" card is just `target(spell) → counter → rip` — no new rip machinery, because `rip` is zone-agnostic.
 
-Do the creature-verb swap whenever the trigger-firing divergence stops being acceptable; the broad `rip` decomposition lands with the targeting work (§3.5) since they share the same composable shape.
+Do the creature-verb swap **this pass** (review OBS 1 — we have the tools; the ~10–15-line `annihilate` is cheap, and shipping `sacrifice` would knowingly fire wrong death/LTB triggers). The broad `rip` decomposition lands with the targeting work (§3.5) since they share the same composable shape; `annihilate` is the small addition that lets rip-edict use the correct verb from day one.
 
 ---
 
