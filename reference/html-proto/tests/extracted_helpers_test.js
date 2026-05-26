@@ -31,8 +31,8 @@ outerCheck('resolveTarget call sites = 19 (18 + 1 in helper comment)',
   resolveCalls === 19, 'actual=' + resolveCalls);
 
 const pluckCalls = (code.match(/pluckFromBattlefield\(/g) || []).length;
-outerCheck('pluckFromBattlefield call sites = 10 (incl. helper + comments)',
-  pluckCalls === 10, 'actual=' + pluckCalls);
+outerCheck('pluckFromBattlefield call sites = 11 (incl. helper + comments + move_card)',
+  pluckCalls === 11, 'actual=' + pluckCalls);
 
 const fizzleInCode = code.split('\n').filter(line =>
   /fizzles — target gone/.test(line) && !/^\s*\/\//.test(line.trim())

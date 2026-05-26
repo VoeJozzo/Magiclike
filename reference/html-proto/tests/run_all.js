@@ -41,6 +41,8 @@ const CATEGORY_A = [
   'test_effects_scope.js',
   // Slice 3 — target()/chooses() targeting + structural hexproof.
   'test_targeting.js',
+  // Slice 3 — move_card unified card-movement primitive.
+  'test_move_card.js',
 ];
 
 const TESTS_DIR = __dirname;

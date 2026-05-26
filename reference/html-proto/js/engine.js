@@ -1857,6 +1857,75 @@ const EFFECTS = {
     for (let i=0;i<params.amount;i++) drawCard(ctx.controller);
     log(`${pname(ctx.controller)} draws ${params.amount}.`, 'sp');
   },
+  // Unified card-movement primitive (effects-refactor §4.2 / decision 10).
+  // move_card(from_zone, to_zone, selector, amount, post?). This pass supports
+  // the DETERMINISTIC, no-battlefield-arrival moves: draw, mill, bounce,
+  // shuffle-into-library, exile, and graveyard→hand/library. Battlefield
+  // ARRIVAL (reanimate / flicker return — needs iid-mint §3.7 + ETB emit) and
+  // the prompt-driven selectors (controller_chosen discard, target_player,
+  // library_search — need the human-prompt/AI-pick infra) are deferred; those
+  // cards keep their legacy kinds until then. Additive — no card uses move_card
+  // yet.
+  move_card(ctx, params, target) {
+    const from = params.from_zone, to = params.to_zone;
+    const sel = params.selector || 'controller_top';
+    const amount = params.amount != null ? params.amount : 1;
+    const post = params.post || {};
+    for (let n = 0; n < amount; n++) {
+      // Draw: delegate to drawCard so deck-out / Phylactery semantics hold.
+      if (from === 'library' && to === 'hand' && sel === 'controller_top') {
+        drawCard(ctx.controller);
+        continue;
+      }
+      // Mill: top of controller's library → graveyard.
+      if (from === 'library' && to === 'graveyard' && sel === 'controller_top') {
+        const lib = G[ctx.controller].library;
+        if (!lib.length) break;
+        G[ctx.controller].graveyard.push(lib.shift());
+        continue;
+      }
+      const t = (sel === 'target') ? (target || ctx.chosen)
+              : (sel === 'self') ? { kind: 'creature', iid: ctx.sourceIid }
+              : null;
+      if (!t) { console.warn('move_card: unsupported selector', sel, from, '->', to); break; }
+
+      if (from === 'battlefield') {
+        const f = findCard(t.iid);
+        if (!f) break;
+        const card = pluckFromBattlefield(f);
+        if (!card) break;
+        if (post.keep_buffs) leavesPlayPreservingBuffs(card);
+        else { clearRestrictionsFromSource(card.iid); resetInPlayState(card); }
+        const dest = card.owner || f.controller;
+        if (!card.isToken) {
+          if (to === 'hand') G[dest].hand.push(card);
+          else if (to === 'library') { G[dest].library.push(card); if (post.shuffle) shuffle(G[dest].library); }
+          else if (to === 'exile') G[dest].exile.push(card);
+          else if (to === 'graveyard') G[dest].graveyard.push(card);
+          else console.warn('move_card: unsupported battlefield dest', to);
+        }
+        emitLeavesBattlefield(card, f.controller, to);
+        continue;
+      }
+      if (from === 'graveyard') {
+        const grave = G[ctx.controller].graveyard;
+        const idx = grave.findIndex(c => c.iid === t.iid);
+        if (idx < 0) break;
+        const [card] = grave.splice(idx, 1);
+        card.tapped = false; card.sick = false; card.damage = 0;
+        card.tempPower = 0; card.tempTou = 0;
+        if (card.damagedBySources instanceof Set) card.damagedBySources.clear();
+        card.dealtDeathtouch = false;
+        const dest = card.owner || ctx.controller;
+        if (to === 'hand') G[dest].hand.push(card);
+        else if (to === 'library') { G[dest].library.push(card); if (post.shuffle) shuffle(G[dest].library); }
+        else { console.warn('move_card: unsupported graveyard dest', to); break; }
+        continue;
+      }
+      console.warn('move_card: unsupported from_zone', from);
+      break;
+    }
+  },
   discard(ctx, params, target) {
     // Non-player targets default to caster.
     const who = (target && target.kind === 'player' && target.who)
