@@ -12,7 +12,11 @@
   "toughness": 2,
   "triggers": [
     {
-      "event": "cardEntersBattlefield",
+      "event": "card_zone_change",
+      "condition": [
+        "this_card",
+        "card_moves(anywhere, battlefield)"
+      ],
       "text": "When ~ enters, target creature gets -2/-2 EOT.",
       "effects": [
         {
@@ -21,8 +25,7 @@
           "power": 2,
           "toughness": 2
         }
-      ],
-      "cond_id": "thisEnters"
+      ]
     }
   ],
   "type": "Creature"

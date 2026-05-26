@@ -12,7 +12,11 @@
   "toughness": 1,
   "triggers": [
     {
-      "event": "cardDies",
+      "event": "card_zone_change",
+      "condition": [
+        "this_card",
+        "card_moves(battlefield, graveyard)"
+      ],
       "text": "When ~ dies, target opponent loses 2 life.",
       "effects": [
         {
@@ -20,8 +24,7 @@
           "target": "player",
           "amount": 2
         }
-      ],
-      "cond_id": "thisDies"
+      ]
     }
   ],
   "type": "Creature"

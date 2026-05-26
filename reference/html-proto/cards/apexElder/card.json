@@ -29,9 +29,10 @@
   "triggers": [
     {
       "event": "attacks",
-      "params": {
-        "sub": "Beast"
-      },
+      "condition": [
+        "controlled_by(you)",
+        "card_has_subtype(Beast)"
+      ],
       "text": "A Beast attacked — loot 1.",
       "effects": [
         {
@@ -43,8 +44,7 @@
           "target": "self",
           "amount": 1
         }
-      ],
-      "cond_id": "creatureYouAttacksOfSubtype"
+      ]
     }
   ],
   "type": "Creature"

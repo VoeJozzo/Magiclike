@@ -29,9 +29,10 @@
   "triggers": [
     {
       "event": "attacks",
-      "params": {
-        "sub": "Goblin"
-      },
+      "condition": [
+        "controlled_by(you)",
+        "card_has_subtype(Goblin)"
+      ],
       "text": "A Goblin attacked — opp loses 1 life.",
       "effects": [
         {
@@ -39,8 +40,7 @@
           "target": "player",
           "amount": 1
         }
-      ],
-      "cond_id": "creatureYouAttacksOfSubtype"
+      ]
     }
   ],
   "type": "Creature"

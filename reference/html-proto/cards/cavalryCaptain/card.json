@@ -16,6 +16,9 @@
   "triggers": [
     {
       "event": "attacks",
+      "condition": [
+        "this_card"
+      ],
       "text": "When ~ attacks, it gets +2/+0 EOT.",
       "effects": [
         {
@@ -24,8 +27,7 @@
           "power": 2,
           "toughness": 0
         }
-      ],
-      "cond_id": "thisAttacks"
+      ]
     }
   ],
   "type": "Creature"

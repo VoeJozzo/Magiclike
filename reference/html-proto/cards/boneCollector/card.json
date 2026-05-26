@@ -12,7 +12,12 @@
   "toughness": 3,
   "triggers": [
     {
-      "event": "cardDies",
+      "event": "card_zone_change",
+      "condition": [
+        "another_card",
+        "card_is_creature",
+        "card_moves(battlefield, graveyard)"
+      ],
       "text": "Another creature died — put a +1/+1 counter on ~.",
       "effects": [
         {
@@ -21,8 +26,7 @@
           "power": 1,
           "toughness": 1
         }
-      ],
-      "cond_id": "anotherCreatureDies"
+      ]
     }
   ],
   "type": "Creature"

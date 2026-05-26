@@ -35,6 +35,8 @@ const CATEGORY_A = [
   'tplid_renames_test.js',
   // Slice 2 / E2 — composable atomic predicates + evaluator + parser.
   'composable_predicates_test.js',
+  // Slice 2 / E2 — condId -> composable condition migration (golden).
+  'trigger_migration_test.js',
 ];
 
 const TESTS_DIR = __dirname;

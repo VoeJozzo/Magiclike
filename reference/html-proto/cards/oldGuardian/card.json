@@ -12,7 +12,11 @@
   "toughness": 5,
   "triggers": [
     {
-      "event": "cardDies",
+      "event": "card_zone_change",
+      "condition": [
+        "this_card",
+        "card_moves(battlefield, graveyard)"
+      ],
       "text": "When ~ dies, put two +1/+1 counters on target friendly creature.",
       "effects": [
         {
@@ -24,8 +28,7 @@
             "controller": "self"
           }
         }
-      ],
-      "cond_id": "thisDies"
+      ]
     }
   ],
   "type": "Creature"

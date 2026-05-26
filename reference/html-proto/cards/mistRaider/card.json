@@ -16,6 +16,9 @@
   "triggers": [
     {
       "event": "attacks",
+      "condition": [
+        "this_card"
+      ],
       "text": "When ~ attacks, bounce target creature.",
       "effects": [
         {
@@ -23,8 +26,7 @@
           "severity": 2,
           "target": "creature"
         }
-      ],
-      "cond_id": "thisAttacks"
+      ]
     }
   ],
   "type": "Creature"

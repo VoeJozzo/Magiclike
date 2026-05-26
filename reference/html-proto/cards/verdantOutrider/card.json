@@ -13,13 +13,15 @@
   "triggers": [
     {
       "event": "attacks",
+      "condition": [
+        "this_card"
+      ],
       "text": "When ~ attacks, fetch a land tapped.",
       "effects": [
         {
           "kind": "searchLandTapped"
         }
-      ],
-      "cond_id": "thisAttacks"
+      ]
     }
   ],
   "type": "Creature"

@@ -29,9 +29,10 @@
   "triggers": [
     {
       "event": "attacks",
-      "params": {
-        "sub": "Soldier"
-      },
+      "condition": [
+        "controlled_by(you)",
+        "card_has_subtype(Soldier)"
+      ],
       "text": "A Soldier attacked — you gain 1 life.",
       "effects": [
         {
@@ -39,8 +40,7 @@
           "target": "self",
           "amount": 1
         }
-      ],
-      "cond_id": "creatureYouAttacksOfSubtype"
+      ]
     }
   ],
   "type": "Creature"

@@ -15,6 +15,9 @@
   "triggers": [
     {
       "event": "attacks",
+      "condition": [
+        "this_card"
+      ],
       "text": "When ~ attacks, you gain 1 life.",
       "effects": [
         {
@@ -22,8 +25,7 @@
           "target": "self",
           "amount": 1
         }
-      ],
-      "cond_id": "thisAttacks"
+      ]
     }
   ],
   "type": "Creature"

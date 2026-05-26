@@ -12,7 +12,11 @@
   "toughness": 2,
   "triggers": [
     {
-      "event": "spellCast",
+      "event": "spell_cast",
+      "condition": [
+        "another_card",
+        "controlled_by(you)"
+      ],
       "text": "Spell cast — your creatures get +1/+0 EOT.",
       "effects": [
         {
@@ -20,8 +24,7 @@
           "power": 1,
           "toughness": 0
         }
-      ],
-      "cond_id": "youCastSpell"
+      ]
     }
   ],
   "type": "Creature"

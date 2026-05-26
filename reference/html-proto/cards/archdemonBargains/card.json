@@ -17,24 +17,30 @@
   "toughness": 5,
   "triggers": [
     {
-      "event": "cardEntersBattlefield",
+      "event": "card_zone_change",
+      "condition": [
+        "this_card",
+        "card_moves(anywhere, battlefield)"
+      ],
       "text": "When ~ enters, you choose 1-5: put that many stickers on permanents ~'s controller has.",
       "effects": [
         {
           "kind": "bargainStickerSelf"
         }
-      ],
-      "cond_id": "thisEnters"
+      ]
     },
     {
-      "event": "cardLeavesBattlefield",
+      "event": "card_zone_change",
+      "condition": [
+        "this_card",
+        "card_moves(battlefield, anywhere)"
+      ],
       "text": "When ~ leaves play, put N stickers on the opposing player's permanents (N = chosen number).",
       "effects": [
         {
           "kind": "bargainStickerOther"
         }
-      ],
-      "cond_id": "thisLeaves"
+      ]
     }
   ],
   "type": "Creature"

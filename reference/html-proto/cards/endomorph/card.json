@@ -12,15 +12,20 @@
   "toughness": 2,
   "triggers": [
     {
-      "event": "cardDies",
+      "event": "card_zone_change",
+      "condition": [
+        "another_card",
+        "card_is_creature",
+        "card_moves(battlefield, graveyard)",
+        "card_damaged_by_this"
+      ],
       "text": "~ kills {victim} — absorbs a keyword (or +1/+1).",
       "effects": [
         {
           "kind": "endomorphAbsorb",
           "target": "self"
         }
-      ],
-      "cond_id": "thisKillsCreature"
+      ]
     }
   ],
   "type": "Creature"

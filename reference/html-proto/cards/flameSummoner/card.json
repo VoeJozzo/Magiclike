@@ -12,7 +12,11 @@
   "toughness": 2,
   "triggers": [
     {
-      "event": "cardEntersBattlefield",
+      "event": "card_zone_change",
+      "condition": [
+        "this_card",
+        "card_moves(anywhere, battlefield)"
+      ],
       "text": "When ~ enters, deal 2 damage to any target.",
       "effects": [
         {
@@ -20,8 +24,7 @@
           "target": "any",
           "amount": 2
         }
-      ],
-      "cond_id": "thisEnters"
+      ]
     }
   ],
   "type": "Creature"

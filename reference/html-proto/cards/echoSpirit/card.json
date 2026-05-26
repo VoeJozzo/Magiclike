@@ -15,7 +15,11 @@
   "toughness": 2,
   "triggers": [
     {
-      "event": "cardDies",
+      "event": "card_zone_change",
+      "condition": [
+        "this_card",
+        "card_moves(battlefield, graveyard)"
+      ],
       "text": "When ~ dies, bounce target creature.",
       "effects": [
         {
@@ -23,8 +27,7 @@
           "severity": 2,
           "target": "creature"
         }
-      ],
-      "cond_id": "thisDies"
+      ]
     }
   ],
   "type": "Creature"

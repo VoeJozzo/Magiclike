@@ -16,6 +16,10 @@
   "triggers": [
     {
       "event": "attacks",
+      "condition": [
+        "this_card",
+        "lost_life_this_turn(opp)"
+      ],
       "text": "When ~ attacks (if opp lost life), it gets +1/+1 EOT.",
       "effects": [
         {
@@ -24,8 +28,7 @@
           "power": 1,
           "toughness": 1
         }
-      ],
-      "cond_id": "thisAttacksAfterOppLifeLoss"
+      ]
     }
   ],
   "type": "Creature"

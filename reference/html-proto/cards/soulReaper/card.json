@@ -15,7 +15,12 @@
   "toughness": 3,
   "triggers": [
     {
-      "event": "cardDies",
+      "event": "card_zone_change",
+      "condition": [
+        "another_card",
+        "card_is_creature",
+        "card_moves(battlefield, graveyard)"
+      ],
       "text": "Another creature died — you gain 1 life.",
       "effects": [
         {
@@ -23,8 +28,7 @@
           "target": "self",
           "amount": 1
         }
-      ],
-      "cond_id": "anotherCreatureDies"
+      ]
     }
   ],
   "type": "Creature"

@@ -29,10 +29,13 @@
   "toughness": 4,
   "triggers": [
     {
-      "event": "cardEntersBattlefield",
-      "params": {
-        "sub": "Drake"
-      },
+      "event": "card_zone_change",
+      "condition": [
+        "another_card",
+        "controlled_by(you)",
+        "card_has_subtype(Drake)",
+        "card_moves(anywhere, battlefield)"
+      ],
       "text": "Another Drake entered — deal 1 to any target.",
       "effects": [
         {
@@ -40,8 +43,7 @@
           "target": "any",
           "amount": 1
         }
-      ],
-      "cond_id": "anotherCreatureYouEntersOfSubtype"
+      ]
     }
   ],
   "type": "Creature"

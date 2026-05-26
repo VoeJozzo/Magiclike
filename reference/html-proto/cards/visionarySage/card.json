@@ -12,15 +12,18 @@
   "toughness": 2,
   "triggers": [
     {
-      "event": "cardEntersBattlefield",
+      "event": "card_zone_change",
+      "condition": [
+        "this_card",
+        "card_moves(anywhere, battlefield)"
+      ],
       "text": "When ~ enters, draw a card.",
       "effects": [
         {
           "kind": "draw",
           "amount": 1
         }
-      ],
-      "cond_id": "thisEnters"
+      ]
     }
   ],
   "type": "Creature"

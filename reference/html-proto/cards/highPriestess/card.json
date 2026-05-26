@@ -22,10 +22,13 @@
   "toughness": 3,
   "triggers": [
     {
-      "event": "cardEntersBattlefield",
-      "params": {
-        "sub": "Cleric"
-      },
+      "event": "card_zone_change",
+      "condition": [
+        "another_card",
+        "controlled_by(you)",
+        "card_has_subtype(Cleric)",
+        "card_moves(anywhere, battlefield)"
+      ],
       "text": "Another Cleric entered — gain 2 life.",
       "effects": [
         {
@@ -33,8 +36,7 @@
           "target": "self",
           "amount": 2
         }
-      ],
-      "cond_id": "anotherCreatureYouEntersOfSubtype"
+      ]
     }
   ],
   "type": "Creature"

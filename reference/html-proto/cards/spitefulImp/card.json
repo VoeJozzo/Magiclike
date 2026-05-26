@@ -15,7 +15,11 @@
   "toughness": 1,
   "triggers": [
     {
-      "event": "cardDies",
+      "event": "card_zone_change",
+      "condition": [
+        "this_card",
+        "card_moves(battlefield, graveyard)"
+      ],
       "text": "When ~ dies, opp loses 1 life.",
       "effects": [
         {
@@ -23,8 +27,7 @@
           "target": "player",
           "amount": 1
         }
-      ],
-      "cond_id": "thisDies"
+      ]
     }
   ],
   "type": "Creature"

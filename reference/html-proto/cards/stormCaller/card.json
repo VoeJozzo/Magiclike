@@ -12,7 +12,11 @@
   "toughness": 2,
   "triggers": [
     {
-      "event": "spellCast",
+      "event": "spell_cast",
+      "condition": [
+        "another_card",
+        "controlled_by(you)"
+      ],
       "text": "Spell cast — deal 1 to any target.",
       "effects": [
         {
@@ -20,8 +24,7 @@
           "target": "any",
           "amount": 1
         }
-      ],
-      "cond_id": "youCastSpell"
+      ]
     }
   ],
   "type": "Creature"

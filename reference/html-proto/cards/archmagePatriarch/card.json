@@ -22,7 +22,11 @@
   "toughness": 3,
   "triggers": [
     {
-      "event": "spellCast",
+      "event": "spell_cast",
+      "condition": [
+        "another_card",
+        "controlled_by(you)"
+      ],
       "text": "Spell cast — loot 1 (draw, then discard).",
       "effects": [
         {
@@ -34,8 +38,7 @@
           "target": "self",
           "amount": 1
         }
-      ],
-      "cond_id": "youCastSpell"
+      ]
     }
   ],
   "type": "Creature"

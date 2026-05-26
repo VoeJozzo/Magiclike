@@ -15,7 +15,11 @@
   "toughness": 4,
   "triggers": [
     {
-      "event": "cardEntersBattlefield",
+      "event": "card_zone_change",
+      "condition": [
+        "this_card",
+        "card_moves(anywhere, battlefield)"
+      ],
       "text": "When ~ enters, untap target friendly creature.",
       "effects": [
         {
@@ -25,8 +29,7 @@
             "controller": "self"
           }
         }
-      ],
-      "cond_id": "thisEnters"
+      ]
     }
   ],
   "type": "Creature"

@@ -29,7 +29,11 @@
   "toughness": 3,
   "triggers": [
     {
-      "event": "cardDies",
+      "event": "card_zone_change",
+      "condition": [
+        "this_card",
+        "card_moves(battlefield, graveyard)"
+      ],
       "text": "When ~ dies, return a Spirit creature from your graveyard to your hand.",
       "effects": [
         {
@@ -39,8 +43,7 @@
             "subtype": "Spirit"
           }
         }
-      ],
-      "cond_id": "thisDies"
+      ]
     }
   ],
   "type": "Creature"

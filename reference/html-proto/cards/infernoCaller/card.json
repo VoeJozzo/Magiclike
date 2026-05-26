@@ -13,6 +13,9 @@
   "triggers": [
     {
       "event": "attacks",
+      "condition": [
+        "this_card"
+      ],
       "text": "When ~ attacks, deal 2 to any target.",
       "effects": [
         {
@@ -20,8 +23,7 @@
           "target": "any",
           "amount": 2
         }
-      ],
-      "cond_id": "thisAttacks"
+      ]
     }
   ],
   "type": "Creature"

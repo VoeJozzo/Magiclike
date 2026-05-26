@@ -12,7 +12,11 @@
   "toughness": 2,
   "triggers": [
     {
-      "event": "cardDies",
+      "event": "card_zone_change",
+      "condition": [
+        "this_card",
+        "card_moves(battlefield, graveyard)"
+      ],
       "text": "When ~ dies, target opp discards.",
       "effects": [
         {
@@ -20,8 +24,7 @@
           "target": "player",
           "amount": 1
         }
-      ],
-      "cond_id": "thisDies"
+      ]
     }
   ],
   "type": "Creature"

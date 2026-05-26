@@ -12,6 +12,9 @@
   "triggers": [
     {
       "event": "attacks",
+      "condition": [
+        "this_card"
+      ],
       "text": "When ~ attacks, deal 1 to target opp.",
       "effects": [
         {
@@ -19,8 +22,7 @@
           "target": "player",
           "amount": 1
         }
-      ],
-      "cond_id": "thisAttacks"
+      ]
     }
   ],
   "type": "Creature"

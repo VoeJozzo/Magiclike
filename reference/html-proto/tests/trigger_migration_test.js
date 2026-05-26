@@ -1,0 +1,143 @@
+// Golden test for the condId -> composable `condition` migration (Slice 2 /
+// E2, step 6). Loads the migrated card pool and proves:
+//   1. Every trigger archetype is present in the EXACT count it had before
+//      migration (the pre-migration cond_id audit) -- so no card was dropped,
+//      mis-mapped, or double-counted.
+//   2. No legacy cond_id / params / self_only survives on any trigger.
+//   3. Representative real cards evaluate correctly (fire on the positive
+//      scenario, stay silent on the negative) via the composable evaluator.
+
+const setup = require('./_setup');
+setup.loadEngine();
+
+let pass = 0, fail = 0;
+function check(label, ok, info) {
+  console.log('  ' + (ok ? 'PASS' : 'FAIL') + ': ' + label + (info ? ' -- ' + info : ''));
+  if (ok) pass++; else fail++;
+}
+
+// Collapse a condition list to a comparable signature: card_has_subtype(X) ->
+// card_has_subtype(*) so the three subtype lords group regardless of subtype.
+function condSig(event, cond) {
+  if (!Array.isArray(cond)) return null;
+  const terms = cond.map((t) =>
+    (typeof t === 'string' ? t.replace(/card_has_subtype\([^)]*\)/, 'card_has_subtype(*)') : JSON.stringify(t)));
+  return event + ' | ' + terms.join(', ');
+}
+
+// Pre-migration audit counts (from `grep "cond_id"` over cards/*/card.json).
+const EXPECTED = {
+  'card_zone_change | this_card, card_moves(anywhere, battlefield)': ['thisEnters', 42],
+  'card_zone_change | another_card, card_is_creature, controlled_by(you), card_moves(anywhere, battlefield)': ['anotherCreatureYouEntersStrict', 2],
+  'card_zone_change | another_card, controlled_by(you), card_has_subtype(*), card_moves(anywhere, battlefield)': ['anotherCreatureYouEntersOfSubtype', 3],
+  'attacks | this_card': ['thisAttacks', 16],
+  'attacks | this_card, lost_life_this_turn(opp)': ['thisAttacksAfterOppLifeLoss', 1],
+  'attacks | controlled_by(you), card_has_subtype(*)': ['creatureYouAttacksOfSubtype', 3],
+  'card_zone_change | this_card, card_moves(battlefield, graveyard)': ['thisDies', 16],
+  'card_zone_change | this_card, card_moves(battlefield, anywhere)': ['thisLeaves', 1],
+  'card_zone_change | another_card, card_is_creature, card_moves(battlefield, graveyard)': ['anotherCreatureDies', 2],
+  'card_zone_change | card_moves(battlefield, graveyard)': ['anyCardDies', 1],
+  'card_zone_change | another_card, card_is_creature, card_moves(battlefield, graveyard), card_damaged_by_this': ['thisKillsCreature', 2],
+  'life_changed | is_life_gain, affected_player_is(you)': ['youGainLife', 1],
+  'spell_cast | another_card, controlled_by(you)': ['youCastSpell', 6],
+  'spell_cast | another_card, controlled_by(you), card_has_effect(counter)': ['youCastCounterspell', 1],
+};
+
+// ── 1. Archetype distribution matches the pre-migration audit ────────────
+console.log('=== migrated archetype counts match pre-migration audit ===');
+(() => {
+  const counts = {};
+  let unclassified = 0, totalTriggers = 0;
+  for (const card of Object.values(CARDS)) {
+    for (const trig of (card.triggers || [])) {
+      totalTriggers++;
+      const sig = condSig(trig.event, trig.condition);
+      if (sig && EXPECTED[sig]) counts[sig] = (counts[sig] || 0) + 1;
+      else { unclassified++; console.log('    unclassified trigger on', card.tplId, ':', sig); }
+    }
+  }
+  let grand = 0;
+  for (const [sig, [name, want]] of Object.entries(EXPECTED)) {
+    const got = counts[sig] || 0;
+    grand += got;
+    check(`${name}: ${want}`, got === want, `got ${got}`);
+  }
+  check('every migrated trigger classified (0 unclassified)', unclassified === 0, `${unclassified} unclassified`);
+  check('total migrated triggers = 97', grand === 97, `got ${grand}`);
+})();
+
+// ── 2. No legacy trigger fields survive ──────────────────────────────────
+console.log('\n=== no legacy cond_id / params / self_only on any trigger ===');
+(() => {
+  const offenders = [];
+  for (const card of Object.values(CARDS)) {
+    for (const trig of (card.triggers || [])) {
+      // ingestCard rebinds cond_id -> condId; both must be gone.
+      for (const legacy of ['cond_id', 'condId', 'params', 'self_only']) {
+        if (Object.prototype.hasOwnProperty.call(trig, legacy)) offenders.push(`${card.tplId}.${legacy}`);
+      }
+    }
+  }
+  check('no legacy fields remain', offenders.length === 0, offenders.join(', '));
+})();
+
+// ── 3. Representative real cards evaluate correctly ──────────────────────
+console.log('\n=== representative migrated cards fire correctly ===');
+(() => {
+  // Helper: find one card whose trigger matches a signature.
+  function cardWithSig(sig) {
+    for (const card of Object.values(CARDS)) {
+      for (const trig of (card.triggers || [])) {
+        if (condSig(trig.event, trig.condition) === sig) return { card, trig };
+      }
+    }
+    return null;
+  }
+  function evalFor(found, event, who) {
+    const source = { iid: 1, name: found.card.name };
+    return evaluateCondition(found.trig.condition, { state: S(), source, event, who });
+  }
+  function S() { return { you: { lifeLostThisTurn: 0 }, opp: { lifeLostThisTurn: 0 } }; }
+
+  // Subtype-enters lord (e.g. drakelord/Drake). Fires when another creature of
+  // its subtype enters under your control; not on a non-subtype creature.
+  const lord = cardWithSig('card_zone_change | another_card, controlled_by(you), card_has_subtype(*), card_moves(anywhere, battlefield)');
+  if (lord) {
+    const subTerm = lord.trig.condition.find((t) => typeof t === 'string' && t.startsWith('card_has_subtype('));
+    const sub = subTerm.slice('card_has_subtype('.length, -1).replace(/^"|"$/g, '');
+    const yesEvt = { subject_card: { iid: 2, type: 'Creature', sub: [sub] }, controller: 'you', from_zone: 'hand', to_zone: 'battlefield' };
+    const noEvt = { subject_card: { iid: 2, type: 'Creature', sub: ['SomethingElse'] }, controller: 'you', from_zone: 'hand', to_zone: 'battlefield' };
+    check(`${lord.card.tplId}: fires on ${sub} ETB`, evalFor(lord, yesEvt, 'you') === true);
+    check(`${lord.card.tplId}: silent on non-${sub} ETB`, evalFor(lord, noEvt, 'you') === false);
+  } else check('subtype-enters lord present', false);
+
+  // thisDies: fires when THIS card moves battlefield->graveyard; not on bounce.
+  const dies = cardWithSig('card_zone_change | this_card, card_moves(battlefield, graveyard)');
+  if (dies) {
+    const diesEvt = { subject_card: { iid: 1, type: 'Creature' }, from_zone: 'battlefield', to_zone: 'graveyard' };
+    const bounceEvt = { subject_card: { iid: 1, type: 'Creature' }, from_zone: 'battlefield', to_zone: 'hand' };
+    check(`${dies.card.tplId}: fires on own death`, evalFor(dies, diesEvt, 'you') === true);
+    check(`${dies.card.tplId}: silent on own bounce`, evalFor(dies, bounceEvt, 'you') === false);
+  } else check('thisDies card present', false);
+
+  // youCastCounterspell: another spell you control with a counter effect.
+  const counter = cardWithSig('spell_cast | another_card, controlled_by(you), card_has_effect(counter)');
+  if (counter) {
+    const yes = { subject_card: { iid: 2, effects: [{ kind: 'counter' }] }, controller: 'you' };
+    const no = { subject_card: { iid: 2, effects: [{ kind: 'damage' }] }, controller: 'you' };
+    check(`${counter.card.tplId}: fires on your counterspell`, evalFor(counter, yes, 'you') === true);
+    check(`${counter.card.tplId}: silent on your damage spell`, evalFor(counter, no, 'you') === false);
+  } else check('youCastCounterspell card present', false);
+
+  // anyCardDies (Blood Artist shape): fires on ANY death incl. self.
+  const anyDies = cardWithSig('card_zone_change | card_moves(battlefield, graveyard)');
+  if (anyDies) {
+    const selfDeath = { subject_card: { iid: 1, type: 'Creature' }, from_zone: 'battlefield', to_zone: 'graveyard' };
+    const otherDeath = { subject_card: { iid: 99, type: 'Creature' }, from_zone: 'battlefield', to_zone: 'graveyard' };
+    check(`${anyDies.card.tplId}: fires on own death`, evalFor(anyDies, selfDeath, 'you') === true);
+    check(`${anyDies.card.tplId}: fires on another's death`, evalFor(anyDies, otherDeath, 'you') === true);
+  } else check('anyCardDies card present', false);
+})();
+
+console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');
+process.exit(fail > 0 ? 1 : 0);

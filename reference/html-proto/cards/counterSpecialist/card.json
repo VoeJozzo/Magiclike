@@ -12,7 +12,12 @@
   "toughness": 4,
   "triggers": [
     {
-      "event": "spellCast",
+      "event": "spell_cast",
+      "condition": [
+        "another_card",
+        "controlled_by(you)",
+        "card_has_effect(counter)"
+      ],
       "text": "Counter cast — put a +1/+1 counter on ~.",
       "effects": [
         {
@@ -21,8 +26,7 @@
           "power": 1,
           "toughness": 1
         }
-      ],
-      "cond_id": "youCastCounterspell"
+      ]
     }
   ],
   "type": "Creature"

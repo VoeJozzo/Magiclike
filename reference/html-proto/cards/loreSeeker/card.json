@@ -12,15 +12,18 @@
   "toughness": 4,
   "triggers": [
     {
-      "event": "spellCast",
+      "event": "spell_cast",
+      "condition": [
+        "another_card",
+        "controlled_by(you)"
+      ],
       "text": "When you cast a spell, draw a card.",
       "effects": [
         {
           "kind": "draw",
           "amount": 1
         }
-      ],
-      "cond_id": "youCastSpell"
+      ]
     }
   ],
   "type": "Creature"
