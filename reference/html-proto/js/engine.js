@@ -3577,7 +3577,7 @@ function leavesPlayPreservingBuffs(card) {
 // For creatures that fire BOTH this AND cardDies (on death), the leaves
 // event emits FIRST (before resetInPlayState/dies-emit). Cards that want
 // only one of the two should declare exactly one trigger.
-function emitLeavesBattlefield(card, controller, destZone) {
+function emitLeavesBattlefield(card, controller, destZone, extraSources) {
   if (!card) return;
   // Tokens leaving play still emit — a future "when this token leaves
   // play" mechanic might want it. Costs nothing if no trigger listens.
@@ -3587,8 +3587,13 @@ function emitLeavesBattlefield(card, controller, destZone) {
   // their actual destination so composable card_moves(battlefield, X) triggers
   // distinguish dies from bounce. Explicit (not zone-detected) because a dead
   // token never reaches the graveyard array, so post-move detection would
-  // mis-tag it.
-  emitZoneChange(card, controller, 'battlefield', destZone || 'graveyard', [{card, controller}]);
+  // mis-tag it. extraSources defaults to the single leaving card, but the
+  // simultaneous-death batch path (checkDeaths) passes the whole `dying` set
+  // so a migrated thisKillsCreature (card_damaged_by_this) fires on creatures
+  // that died in the same SBA sweep — parity with the legacy cardDies emit,
+  // which passes the same batch.
+  emitZoneChange(card, controller, 'battlefield', destZone || 'graveyard',
+                 extraSources || [{card, controller}]);
 }
 
 // Credit killer with the dying creature's keywords (runtime grants included).
@@ -3652,7 +3657,7 @@ function checkDeaths() {
     // after all cardDies emits so the standard dies-listener queue stays
     // consistent with prior versions.
     for (const entry of dying) {
-      emitLeavesBattlefield(entry.card, entry.controller);
+      emitLeavesBattlefield(entry.card, entry.controller, 'graveyard', dying);
     }
     // Loop — buff sources just died, surviving creatures may now be lethal.
   }
