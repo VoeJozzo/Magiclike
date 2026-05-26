@@ -160,10 +160,36 @@ The big one (`plan-effects-refactor.md`, ~92h, touches every card + the
 dispatch table). Proto is being built step-by-step (plan §10). Godot mirror is
 **not started**. Proto progress so far:
 
-- **Step 1 (done, proto):** mass `scope` (`all_creatures`/`all_yours`/
-  `all_opps`) on `damage`/`pump`/`removeCreature` via `creaturesInScope()`;
-  `removeCreature`'s severity ladder factored into `affectOneCreature()`.
-  Additive no-op. Ref: `js/engine.js`, `tests/test_effects_scope.js`.
+All additive (legacy handlers untouched; no card uses the new shapes yet —
+exercised directly via an exposed `ENGINE.applyEffect` test seam):
+
+- **Step 1 (done):** mass `scope` (`all_creatures`/`all_yours`/`all_opps`) on
+  `damage`/`pump`/`removeCreature` via `creaturesInScope()`; `removeCreature`'s
+  severity ladder factored into `affectOneCreature()`. `tests/test_effects_scope.js`.
+- **`annihilate` verb (done):** rip's no-trigger removal sibling (cease-to-exist:
+  no graveyard, no death/leave triggers). `annihilateCard()`.
+- **Step 2 (done — primitives):** `targetsForFilter(filter, controller)` (the
+  `target()` step's hexproof-checked legal set over the closed `TARGET_FILTERS`
+  taxonomy) + the `chooses` effect (selection-by-targeted-player, no hexproof,
+  records `ctx.chosen`; `sacrifice`/`annihilate` fall back to it). Structural
+  hexproof proven: edict sacrifices a hexproof creature. `tests/test_targeting.js`.
+  - **DEFERRED:** wiring a top-level `target` field through the live cast →
+    resolution flow (so a migrated single-target card collects its target and
+    bare effects operate on it). Pairs with card migration (steps 5/6).
+- **`move_card` (done — deterministic subset):** draw/mill/bounce/shuffle-in/
+  exile/graveyard-return via selectors `controller_top`/`target`/`self`.
+  `tests/test_move_card.js`.
+  - **DEFERRED:** battlefield ARRIVAL (reanimate/flicker-return — needs iid-mint
+    §3.7 + ETB emit, pairs with flicker decomposition step 8) and prompt-driven
+    selectors (`controller_chosen`/`target_player`/`library_search` — need the
+    human-prompt/AI-pick infra).
+- **`change_control` (done):** control-change core (Mind Control/Threaten);
+  `transfer_ownership` delegates to `steal`. `tests/test_change_control.js`.
+
+Still TODO proto: boot-validation rewrite (step 4), the migrate-effects.js
+script + card migration (steps 5/6), dead-code purge + AI-valuation lockstep
+(step 7/§8.1), `apply_sticker` + sticker pipeline (step 10), mana deep-clean
+(§3.9), flicker decomposition (step 8).
 
 ### Godot mirror — major work items (per plan §10/§11)
 
