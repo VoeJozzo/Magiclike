@@ -5,6 +5,13 @@ extends RefCounted
 # Target descriptor: {"kind": "player"|"creature", "who": "you"|"opp"} or {"kind": "creature", "iid": int}.
 
 const KIND_PASS_PRIORITY := "pass_priority"
+# Tapping a land for mana. Its own kind (mirrors proto's tapLandForMana) so the
+# auto-pass meaningfulness check can structurally exclude mana abilities without
+# probing effect shapes. Phase 1 has only land mana abilities; §3.9 generalizes
+# this to a structural is_mana_ability classification when lands become abilities.
+const KIND_TAP_LAND_FOR_MANA := "tap_land_for_mana"
+# Reserved for Phase 6+ non-mana activated abilities. Unused in Phase 1 (the only
+# abilities today are land mana taps → KIND_TAP_LAND_FOR_MANA).
 const KIND_ACTIVATE_ABILITY := "activate_ability"
 const KIND_PLAY_LAND := "play_land"
 const KIND_CAST_SPELL := "cast_spell"
@@ -25,6 +32,11 @@ static func make_pass_priority() -> Dictionary:
 	return {"kind": KIND_PASS_PRIORITY}
 
 
+static func make_tap_land_for_mana(source_iid: int) -> Dictionary:
+	return {"kind": KIND_TAP_LAND_FOR_MANA, "source_iid": source_iid}
+
+
+# Reserved for Phase 6+ non-mana activated abilities.
 static func make_activate_ability(source_iid: int, ability_index: int = 0) -> Dictionary:
 	return {
 		"kind": KIND_ACTIVATE_ABILITY,

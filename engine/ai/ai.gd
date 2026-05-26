@@ -164,7 +164,7 @@ static func _find_mana_tap_for(state: EngineState, player_key: String, color: St
 		if c.tapped or not c.is_land():
 			continue
 		if c.template is LandResource and color in c.template.mana_produced:
-			return Action.make_activate_ability(c.instance_id)
+			return Action.make_tap_land_for_mana(c.instance_id)
 	return {}
 
 
@@ -192,7 +192,7 @@ static func _decide_main(state: EngineState, player_key: String) -> Dictionary:
 		if card.tapped:
 			continue
 		if _has_uncast_spell(state, player_key):
-			return Action.make_activate_ability(card.instance_id)
+			return Action.make_tap_land_for_mana(card.instance_id)
 	return {}
 
 

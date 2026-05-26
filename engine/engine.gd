@@ -311,9 +311,9 @@ func get_legal_actions(player_key: String) -> Array[Dictionary]:
 			if _legal_play_land(play):
 				actions.append(play)
 	for card in _state.player_by_key(player_key).battlefield:
-		var ability := Action.make_activate_ability(card.instance_id)
-		if _legal_activate_ability(ability):
-			actions.append(ability)
+		var tap := Action.make_tap_land_for_mana(card.instance_id)
+		if _legal_tap_land_for_mana(tap):
+			actions.append(tap)
 	for card in _state.player_by_key(player_key).hand:
 		if card.is_land():
 			continue
@@ -393,8 +393,10 @@ func is_legal_action(action: Dictionary) -> bool:
 			return _state != null and _state.winner == "" \
 				and _state.priority_player_key != "" \
 				and _state.awaiting_discard.is_empty()
+		Action.KIND_TAP_LAND_FOR_MANA:
+			return _legal_tap_land_for_mana(action)
 		Action.KIND_ACTIVATE_ABILITY:
-			return _legal_activate_ability(action)
+			return false  # Phase 6+: non-mana activated abilities. None in Phase 1.
 		Action.KIND_PLAY_LAND:
 			return _legal_play_land(action)
 		Action.KIND_CAST_SPELL:
@@ -479,8 +481,8 @@ func _dispatch_action(action: Dictionary) -> bool:
 func _do_action(action: Dictionary) -> bool:
 	var kind: String = action.get("kind", "")
 	match kind:
-		Action.KIND_ACTIVATE_ABILITY:
-			return _do_activate_ability(action)
+		Action.KIND_TAP_LAND_FOR_MANA:
+			return _do_tap_land_for_mana(action)
 		Action.KIND_PLAY_LAND:
 			return _do_play_land(action)
 		Action.KIND_CAST_SPELL:
@@ -506,7 +508,7 @@ func _do_action(action: Dictionary) -> bool:
 
 
 # Phase 1: only mana abilities (tap land).
-func _legal_activate_ability(action: Dictionary) -> bool:
+func _legal_tap_land_for_mana(action: Dictionary) -> bool:
 	if _state == null or _state.winner != "":
 		return false
 	var iid: int = action.get("source_iid", -1)
@@ -528,7 +530,7 @@ func _legal_activate_ability(action: Dictionary) -> bool:
 	return true
 
 
-func _do_activate_ability(action: Dictionary) -> bool:
+func _do_tap_land_for_mana(action: Dictionary) -> bool:
 	var iid: int = action.source_iid
 	var found = _state.find_instance(iid)
 	var card: CardInstance = found.card
@@ -646,8 +648,7 @@ func _do_cast_spell(action: Dictionary) -> bool:
 		"" if targets.is_empty() else " targeting " + _describe_targets(targets),
 	])
 	# MTG 117.1c: caster retains priority (not active player — would break opp instants).
-	_state.priority_player_key = controller.key
-	_reset_priority_passes()
+	_open_priority_window(controller.key)
 
 	# Held off-zone keyed by iid; routed to graveyard on resolution.
 	_stack_held_cards[card.instance_id] = card
@@ -660,13 +661,13 @@ func _do_pass_priority(_action: Dictionary) -> bool:
 	if _state.priority_passed["you"] and _state.priority_passed["opp"]:
 		if not _state.stack.is_empty():
 			_resolve_top_of_stack()
-			_state.priority_player_key = _state.active_player_key
-			_reset_priority_passes()
+			_open_priority_window(_state.active_player_key)
 		else:
 			_advance_phase()
 	else:
-		# Hand priority; _settle_state's AI driver picks it up on next iteration.
-		_state.priority_player_key = _state.opponent_of(_state.priority_player_key)
+		# Hand priority to the other player; fresh = false so the pass that just
+		# happened is remembered (else both-passed never triggers → loops).
+		_open_priority_window(_state.opponent_of(_state.priority_player_key), false)
 	return true
 
 
@@ -935,8 +936,7 @@ func _legal_confirm_blocks(_action: Dictionary) -> bool:
 func _do_confirm_blocks(_action: Dictionary) -> bool:
 	_state.awaiting_block_declaration = false
 	# MTG 117.1b: AP gets priority first.
-	_state.priority_player_key = _state.active_player_key
-	_reset_priority_passes()
+	_open_priority_window(_state.active_player_key)
 	_state.append_log("Blocks confirmed — %s gets priority" % _state.active_player().name)
 	return true
 
@@ -1205,16 +1205,37 @@ func _advance_phase() -> void:
 	# MTG 117.1b: AP priority on phase start. Exceptions: awaiting_block_declaration
 	# and awaiting_discard both close priority ("" sentinel) until the gating
 	# turn-based action completes.
-	if _state.awaiting_block_declaration or not _state.awaiting_discard.is_empty():
-		_state.priority_player_key = ""
-	else:
-		_state.priority_player_key = _state.active_player_key
-	_reset_priority_passes()
+	var next_priority: String = "" if (_state.awaiting_block_declaration \
+			or not _state.awaiting_discard.is_empty()) \
+			else _state.active_player_key
+	_open_priority_window(next_priority)
 	_state.append_log("Phase: %s" % _state.phase_machine.phase_name())
 
 
 func _reset_priority_passes() -> void:
 	_state.priority_passed = {"you": false, "opp": false}
+
+
+# Single structural entry point for opening a priority window. The dynamic
+# priority-assignment sites route through here so the auto-pass / end-turn
+# fast-forward checks (added in _should_auto_pass) apply uniformly.
+#
+# `fresh` = a NEW priority round (after a cast, resolution, phase change,
+# trigger drain, or cleanup discard) → reset the pass tracker. `fresh = false`
+# = CONTINUING the current round (passing priority to the other player) — the
+# prior pass MUST be remembered or both-passed never triggers and priority
+# loops forever. `player_key == ""` is the close-priority sentinel used during
+# awaiting_* turn-based states (block declaration / cleanup discard).
+func _open_priority_window(player_key: String, fresh: bool = true) -> void:
+	if player_key == "":
+		_state.priority_player_key = ""
+		_reset_priority_passes()
+		return
+	_state.priority_player_key = player_key
+	if fresh:
+		_reset_priority_passes()
+	# Step 3 (auto-pass / end-turn fast-forward) is driven from _settle_state's
+	# loop, NOT recursively here — see plan deviation note.
 
 
 # ─── Helpers ───────────────────────────────────────────────────────────────
@@ -1448,8 +1469,7 @@ func _do_discard_card(action: Dictionary) -> bool:
 		_state.awaiting_discard = {}
 		# Restore priority to the active player so the turn can advance to UNTAP
 		# on the next pass. (No window for instants — cleanup is over.)
-		_state.priority_player_key = _state.active_player_key
-		_reset_priority_passes()
+		_open_priority_window(_state.active_player_key)
 	else:
 		_state.awaiting_discard["count_remaining"] = remaining
 	return true
@@ -1509,8 +1529,7 @@ func _drain_continue() -> void:
 			_state.pending_triggers.pop_front()
 			_push_trigger_to_stack(trig)
 	# MTG 116.5: priority resets to AP after drain.
-	_state.priority_player_key = _state.active_player_key
-	_reset_priority_passes()
+	_open_priority_window(_state.active_player_key)
 
 
 # triggers[i].target_filter; "" if no target needed.

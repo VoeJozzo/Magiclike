@@ -53,7 +53,7 @@ func _test_get_legal_actions_main_phase() -> void:
 	# Tap all three Mountains for RRR
 	for c in s.you.battlefield:
 		if c.template.card_id == "mountain":
-			RulesEngine.execute_action(Action.make_activate_ability(c.instance_id))
+			RulesEngine.execute_action(Action.make_tap_land_for_mana(c.instance_id))
 	# Now: pass + Pyromaniac cast (no target) + Berserker cast (no target)
 	# + Lightning Bolt fan-out across legal targets.
 	# Berserker costs {R:2, C:1} = 3 mana total, and RRR is enough since the

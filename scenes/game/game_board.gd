@@ -739,7 +739,7 @@ func _on_your_battlefield_card_pressed(visual: Card) -> void:
 			return
 
 	# Default: activate ability (tap land for mana).
-	var action := Action.make_activate_ability(iid)
+	var action := Action.make_tap_land_for_mana(iid)
 	if RulesEngine.is_legal_action(action):
 		RulesEngine.execute_action(action)
 
@@ -813,7 +813,7 @@ func _execute_pending_cast_with_target(target: Dictionary) -> void:
 func _commit_taps_and_cast(spell_iid: int, targets: Array, lands_to_tap: Array) -> bool:
 	# Tap planned lands first (each is a normal mana ability).
 	for land in lands_to_tap:
-		RulesEngine.execute_action(Action.make_activate_ability(land.instance_id))
+		RulesEngine.execute_action(Action.make_tap_land_for_mana(land.instance_id))
 	# Confirm we can actually pay after the taps.
 	var s: EngineState = RulesEngine.state()
 	var found = s.find_instance(spell_iid)

@@ -197,7 +197,7 @@ func _test_hexproof() -> void:
 	var bear := _put_creature(s, "opp", "grizzly_bears")
 	bear.granted_keywords.append("hexproof")
 	# Tap Mountain for R.
-	RulesEngine.execute_action(Action.make_activate_ability(mtn.instance_id))
+	RulesEngine.execute_action(Action.make_tap_land_for_mana(mtn.instance_id))
 	# Try to cast Bolt at the hexproof Bear — should be illegal.
 	var cast := Action.make_cast_spell(
 		bolt.instance_id,

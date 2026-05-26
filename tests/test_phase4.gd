@@ -184,7 +184,7 @@ func _tap_for_color(s: EngineState, player_key: String, land_card_id: String, _e
 	var p: Player = s.player_by_key(player_key)
 	for c in p.battlefield:
 		if c.template.card_id == land_card_id and not c.tapped:
-			RulesEngine.execute_action(Action.make_activate_ability(c.instance_id))
+			RulesEngine.execute_action(Action.make_tap_land_for_mana(c.instance_id))
 			return
 	push_error("test: no untapped %s on %s's battlefield" % [land_card_id, player_key])
 
