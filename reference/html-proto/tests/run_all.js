@@ -47,6 +47,8 @@ const CATEGORY_A = [
   'test_change_control.js',
   // Slice 3 — boot-time effect validation (step 4).
   'test_effect_validation.js',
+  // Slice 3 — cast→resolution wiring for top-level target() (keystone).
+  'test_targeting_cast.js',
 ];
 
 const TESTS_DIR = __dirname;

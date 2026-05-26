@@ -4263,9 +4263,25 @@ function resolveTopOfStack() {
       }
       return { tgt, snap: slotSnapshots.get(slot) };
     };
+    // New targeting model (§3.5): a top-level `target` step on the card means
+    // the spell collected one target (item.targets[0]); bare effects operate
+    // on it by default. `chooses()` REPLACES the operative target with the
+    // targeted player's pick. `currentTarget` threads this through the loop.
+    // Inert for legacy cards (none set card.target) — they use the per-effect
+    // `eff.target`/`targetSlot` branch below, unchanged.
+    const hasTargetStep = !!card.target;
+    let curTgt = null, curSnap = null;
+    if (hasTargetStep) { const f0 = getTargetForSlot(0); curTgt = f0.tgt; curSnap = f0.snap; }
     for (const eff of activeEffects) {
       let tgt = null;
       let snap = null;
+      if (eff.kind === 'chooses') {
+        // Reads the established player (curTgt) and records ctx.chosen; the
+        // chosen permanent becomes the operative target for the next effect.
+        applyEffect(ctx, eff, curTgt, curSnap);
+        if (ctx.chosen) { curTgt = ctx.chosen; curSnap = snapshotTarget(ctx.chosen); }
+        continue;
+      }
       if (eff.target === 'self') {
         // Mirror the trigger resolver's branching: self resolves to the
         // SOURCE CREATURE for creature-operating effects, and to the
@@ -4287,9 +4303,14 @@ function resolveTopOfStack() {
         const fetched = getTargetForSlot(slot);
         tgt = fetched.tgt;
         snap = fetched.snap;
+      } else if (hasTargetStep && eff.scope == null) {
+        // Bare effect after a target() step → operate on the established/chosen target.
+        tgt = curTgt;
+        snap = curSnap;
       }
       applyEffect(ctx, eff, tgt, snap);
     }
+    ctx.chosen = null;
     // Rip-on-target check (Elystra). Uses the eligibility snapshot taken
     // before effects fired — see comment above the snapshot for why we
     // can't re-check here (Elystra may have just died from this very
@@ -5082,6 +5103,16 @@ function isLegalAction(who, action) {
           const valid = getValidTargets(eff, who);
           if (!valid.some(v => sameTarget(v, tgt))) return false;
         }
+      }
+      // New targeting model (§3.5): a top-level `target` step is the cast-time
+      // hexproof checkpoint. The spell needs one legal target of that filter;
+      // action.targets[0] must be among them (so an opp hexproof creature is
+      // not a legal target). Inert for legacy cards (none set card.target).
+      if (card.target) {
+        const valid = targetsForFilter(card.target, who);
+        if (!valid.length) return false;
+        if (!action.targets || !action.targets[0]) return false;
+        if (!valid.some(v => sameTarget(v, action.targets[0]))) return false;
       }
       return true;
     }
