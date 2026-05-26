@@ -154,4 +154,63 @@ mirror will hit the same ones.
 mirror. Tests: `composable_predicates_test.js`, `trigger_migration_test.js`,
 `trigger_generator_test.js`.
 
-<!-- Append new slices' Godot items below as they're written. -->
+## Slice 3 — Effects refactor (38→~22 atomics)  ·  proto in progress
+
+The big one (`plan-effects-refactor.md`, ~92h, touches every card + the
+dispatch table). Proto is being built step-by-step (plan §10). Godot mirror is
+**not started**. Proto progress so far:
+
+- **Step 1 (done, proto):** mass `scope` (`all_creatures`/`all_yours`/
+  `all_opps`) on `damage`/`pump`/`removeCreature` via `creaturesInScope()`;
+  `removeCreature`'s severity ladder factored into `affectOneCreature()`.
+  Additive no-op. Ref: `js/engine.js`, `tests/test_effects_scope.js`.
+
+### Godot mirror — major work items (per plan §10/§11)
+
+- [ ] **Mass `scope` on `damage.gd`/`pump.gd` + new `affect_creature.gd`**
+  (step 1). Godot already merged `add_counter` into `pump` via `duration`.
+- [ ] **`target()`/`chooses()` targeting steps + STRUCTURAL hexproof** (step 2,
+  plan §3.5). "Is it targeted?" becomes "does the spell have a `target()`
+  step?" — retire any `is_targeted_filter` value-lookup. Hexproof checked at
+  `target()` only; `chooses()` and mass `scope` never check it. **Godot has no
+  edict/`chooses` path at all** — build the human choose-your-creature prompt
+  from scratch (proto reuses its `pendingRipSelect` infra).
+- [ ] **New atomics** (step 3): `move_card`, `change_control`, `target`/
+  `chooses`, `sacrifice`, `annihilate` (no-trigger sibling), `apply_sticker`,
+  signed/`permanent` `pump`. Godot writes most from scratch (~8h). `move_card`
+  is the big one (replaces draw/discard/shuffle/return/search/flicker/etc.).
+- [ ] **§3.6 last-known-info** snapshot + **§3.7 iid-mint-on-arrival** (inside
+  `move_card` for `to_zone=battlefield`). Regression test points at the
+  exile-return path, NOT flicker (flicker already mints).
+- [ ] **§3.9 mana FULL CONVERGENCE** (decided — option 3): Godot adopts
+  land-as-ability *internally*. `JsonCardLoader` emits the tap-for-mana ability
+  onto `CardResource` (retire the `mana_produced`/`extraManaColors` read at
+  `json_card_loader.gd:209–217`); mana resolution runs the ability path;
+  `KIND_TAP_LAND_FOR_MANA` → structural `is_mana_ability`. **Couples with the
+  priority-window plan** (the Slice 0 `is_mana_ability` meaningfulness check).
+- [ ] **Build-from-scratch on Godot:** sticker system (§3.8), staple synthesis
+  (§3.10), splice. Godot has none of these yet — design from the proto
+  reference, don't port the proto scars.
+
+### Gotchas (the recurring lockstep trap — applies hard here)
+
+1. **§8.1 AI-valuation lockstep is THE silent-regression class** — and it's
+   the same trap that bit the Slice 2 migration three times. When kinds
+   collapse (`damageAll`→`damage(scope)`, `removeAll`→`affect_creature(scope)`,
+   `edict`→`target;chooses;sacrifice`), Godot's `engine/ai/scoring.gd`,
+   `burn.gd` (lethal recognition off `effect.target`/face-damage), and `ai.gd`
+   (target_filter reads) MUST become **scope-aware** and **`target()`-step-
+   aware**, or the AI silently mis-values the collapsed cards with no crash.
+   The plan's **§7b boot-coverage assertion** (every `HANDLERS` kind must
+   register a valuation branch AND a card-text branch, else boot `push_error`)
+   is the thing that turns this loud — implement it on the Godot side too
+   (`engine.gd._ready()`).
+2. **Effects need a booted game to test** (they mutate state, unlike the pure
+   predicates). Proto exposed an `applyEffect` seam on the ENGINE object for
+   tests; Godot's `Effects.resolve_one` is already callable, but tests need a
+   board fixture (place CardInstances on `EngineState`, build a `ctx`).
+3. **`counter_spell` → `counter`** rename is canonical (standardization branch
+   already did Godot); the targeting step is `target(spell)`.
+
+Proto reference for the Godot port lives in `reference/html-proto/js/engine.js`
+(`EFFECTS` table, `applyEffect`, `creaturesInScope`, `affectOneCreature`).
