@@ -1,8 +1,6 @@
 # Refactor Plan: Unified Effects Registry — Audit, Decompose, and Align
 
-**Status:** Plan complete, ready for review. Not yet executed.
-
-> **⚠ TARGETING MODEL SUPERSEDED — read §3.5 first.** The authoritative targeting model is now the **`target()` / `chooses()` decomposition** (§3.5): targeting is explicit leading steps, effects operate on the established target, and "is it targeted?" = "did it have a `target()` step?" (the old `is_targeted_filter` helper is retired). Several earlier sections — the §2/§3 decision tables (esp. the `force_sacrifice` rows #15/#26/#28), the §5–§6 worked examples (which show inline `target_filter`/`target: "chosen"` and a bundled `force_sacrifice`), §10 step 2, and a few §11/§12 rows — still use the **pre-decomposition wording**. Their *effect semantics are unchanged*; only how targeting/edicts are *expressed* shifts (per-effect `target: "chosen"` → a leading `target()` step; `force_sacrifice` → `target(player) → chooses(creature) → sacrifice`). Those sections get re-expressed during execution; §3.5/§4.2/§13 are canonical where they differ.
+**Status:** Plan complete, ready for review. Not yet executed. (Targeting model: the `target()`/`chooses()` decomposition in §3.5 is canonical throughout; the §3 disposition table's `target_filter` signatures are read via the lens note at its head.)
 
 **Pre-execution note:** `rip` is a **broad, zone-agnostic** "tear up that card, gone from your deck forever" primitive (§13) — it strips a card's deck-slot regardless of zone and composes after any targeting/removal (`target(player)→chooses(creature)→annihilate→rip` for a creature; `target(spell)→counter→rip` for a spell). Current code is the narrow bundled `ripPermanent` (battlefield-only, fires triggers — the accepted kludge); the broad decomposed form is the decided target. For the creature/edict case specifically it's one verb off an edict (`sacrifice` kludge → `annihilate` target). No open questions block execution.
 **Cross-references:** `docs/DIVERGENCE.md` items D1 (target target-state semantics — see §3.6), D2 (`pump` duration → `addCounter`), D3 (`gain_life` flexibility), D4 (`gain_life` signed delta), B4 (delayed-trigger machinery — required for `exile_until_eot` decomposition), C5 (killer attribution — adjacent), E1/E2 (event vocabulary + composable predicates, prerequisite for the `move_card` effect's destination semantics). `docs/RULES.md` §703 (target legality), §704 (resolution + fizzle), §904 (hexproof). `docs/SPEC.md` §1.4 (effect descriptor schema).
@@ -89,7 +87,7 @@ All 33 other proto kinds: proto-only. (The Godot side will gain everything below
 - **Duplicate `gainControl` (#32 / #34)**: real bug. JS object literals silently override. The first definition (line 2123) handles `params.haste` (string-additive), the second (line 2177) handles `params.grantHaste` (boolean → `applyGrant`). The two have subtly different semantics for the haste-grant path — the first puts the creature out of sickness manually, the second uses the proper grant infrastructure. Fixing this falls out of decision 11 (unify into `change_control`).
 - **`noop` (#38) usage** is structural, not semantic — `cards/stapler/card.json` uses `kind: "noop"` to mark the second target slot of the activated ability so the target-validation system requires two targets. The handler body is `{}`. Decision 17 said "investigate; if unused, delete." Audit verdict: it IS used, but not as an effect — it's a target-slot marker. **Recommendation: replace `noop` with a structural property on the ability** (`target_slots: 2`) so the effect-kind registry doesn't have to carry an empty-body marker. Pure handler-side cleanup, no semantic change. Flagged as a step in §10.
 - **`target_slots: N` generalization** — beyond Stapler, five other cards use multi-target patterns: `twinStrike`, `branchingBolt`, `drainLife`, `rootsAndBranches`, `swordAndSorcery`. They currently use ad-hoc `targetSlot` indexing per effect. The `target_slots: N` ability-schema field becomes the canonical declaration for ALL multi-target abilities, not just Stapler. Each effect in the array can declare `target_slot: 0` or `target_slot: 1` (etc.) to say which target it operates on. Replaces the `noop` Stapler hack AND unifies the ad-hoc indexing of the other 5 cards.
-- **`sacrifice` (#28)** is defined but no card uses `kind: "sacrifice"` as an EFFECT (Carrion Feeder uses `sacrifice: "creature"` as a COST, which is a separate code path in the cost-payment logic). Decision 15 unifies it with `edict`. Audit confirms `sacrifice` is effectively dead — only the unified `force_sacrifice` lives in the new registry.
+- **`sacrifice` (#28)** is defined but no card uses `kind: "sacrifice"` as an EFFECT (Carrion Feeder uses `sacrifice: "creature"` as a COST, which is a separate code path in the cost-payment logic). Decision 15: `sacrifice` becomes the atomic removal **verb**, and the edict decomposes to `target(player) → chooses(creature) → sacrifice` (§3.5) — there is no bundled `force_sacrifice` effect.
 - **Splice duplicate-pathway**: confirmed at `js/engine.js:124` ("Splice merge math — shared by RUN.applySplice and ENGINE.EFFECTS.applyInGameSplice") and `js/run.js:865`. The two paths share `canonicalSplicePair`, `isSpliceableBase`, `isCompatibleStaplePair`, `remapEmpowerRollForStaple` helpers, but each has its own ~200-line body for slot mutation, slotIdx index fixups, and merged-data assembly. Decision 8 flagged this; §7 makes it an investigation sub-task.
 - **`damageAll`'s hexproof note** at engine.js:2010-2014 already documents the correct rule ("Hexproof doesn't protect (this isn't a targeted effect)") and `edict` at engine.js:1957 has the matching note ("no targeting, so hexproof doesn't protect"). Decision 2's hexproof contract is already encoded in the proto behavior; this refactor is making it structural rather than per-kind tribal knowledge.
 - **`createTokens` vs `flicker` ETB emit**: both emit `cardEntersBattlefield` for the produced/returning card. After the E1 refactor lands, both will emit `card_zone_change(anywhere→battlefield)` — the `move_card` effect inherits this for free.
@@ -99,11 +97,11 @@ All 33 other proto kinds: proto-only. (The Godot side will gain everything below
 | Item | Where | Fate |
 |---|---|---|
 | Duplicate `gainControl` | engine.js:2123 (dead) | Deleted as part of decision 11. |
-| `sacrifice` effect | engine.js:2003 (no card uses it) | Subsumed by `force_sacrifice` (decision 15). |
+| `sacrifice` effect | engine.js:2003 (no card uses it) | Becomes the `sacrifice` removal verb; edicts decompose via `target()`/`chooses()` (decision 15, §3.5). |
 | `noop` as effect | engine.js:2241 (Stapler's slot marker) | Replaced by `target_slots: 2` on ability schema. |
-| `pumpAllYours` distinct from `pump` | engine.js:2203 | Folded into `pump` with target_filter (decision 2). |
-| `damageAll` distinct from `damage` | engine.js:2016 | Folded into `damage` with target_filter (decision 2). |
-| `removeAll` distinct from `removeCreature` | engine.js:2042 | Folded into single removal effect with target_filter (decision 2). |
+| `pumpAllYours` distinct from `pump` | engine.js:2203 | Folded into `pump` with mass `scope: all_yours` (decision 2, §3.5). |
+| `damageAll` distinct from `damage` | engine.js:2016 | Folded into `damage` with mass `scope: all_creatures` (decision 2, §3.5). |
+| `removeAll` distinct from `removeCreature` | engine.js:2042 | Folded into `affect_creature` with mass `scope` (decision 2, §3.5). |
 | `weaken` distinct from `pump` | engine.js:1378 | Folded into `pump` via signed delta (decision 3). |
 | `addCounter` distinct from `pump` | engine.js:1386 | Folded into `pump` via `duration` (decision 4). |
 | `flicker` + `exileUntilEOT` overlap | 2098 / 2154 | Both decompose into `move_card` + delayed-effect chain (decision 9). |
@@ -118,7 +116,7 @@ Every fixed decision from the prompt, traced to its kinds.
 | # | Decision | Affects | Outcome |
 |---|---|---|---|
 | 1 | snake_case | All 38 proto kinds | Renamed: `addMana`→`add_mana`, `gainLife`→`gain_life`, `addCounter`→`add_counter` (then collapsed), `removeCreature`→`remove_creature` (then renamed in #12), `damageAll`→ (collapses, no rename), `removeAll`→(collapses), `pumpAllYours`→(collapses), `endomorphAbsorb`→`endomorph_absorb`, `destroyAndStickerSlot`→`destroy_and_sticker_slot` (then decomposed), `shuffleIntoLibrary`→(collapses into `move_card`), `returnFromGraveyard`→(collapses), `searchLandTapped`→(collapses), `searchCreature`→(collapses), `fightTarget`→`fight_target`, `grantKeyword`→`grant_keyword`, `createTokens`→`create_tokens`, `ripPermanent`→`rip_permanent`, `exileUntilEOT`→(decomposes), `gainControl`→(unifies into `change_control`), `bargainStickerSelf`→`bargain_sticker_self`, `bargainStickerOther`→`bargain_sticker_other`, `applyInGameSplice`→`apply_in_game_splice`. |
-| 2 | Target-filter unification | `damage`+`damageAll`, `removeCreature`+`removeAll`, `pump`+`pumpAllYours` | Three pairs collapse to three single effects with a `target_filter` parameter. Untargeted filter values (`all_creatures`, `all_yours`, `all_opps`) bypass hexproof structurally — see §3.5. |
+| 2 | Single/mass unification | `damage`+`damageAll`, `removeCreature`+`removeAll`, `pump`+`pumpAllYours` | Three pairs collapse to three single effects. The single-target ("chosen") case is expressed by a leading `target()` step (§3.5); the mass case carries an automatic **scope** on the effect (`all_creatures`, `all_yours`, `all_opps`). Hexproof is structural — only effects behind a `target()` step check it; mass-scoped effects never do. |
 | 3 | Signed `pump` | `pump`+`weaken` | Single `pump(power, toughness, ...)` accepts negative deltas. `weaken` deleted. |
 | 4 | `add_counter` → `pump` | `pump`+`addCounter` | `pump` gains `duration` parameter (`eot`\|`permanent`). Godot's pump already had this; proto migrates. `add_counter` deleted. |
 | 5 | `fight_target` stays | `fightTarget` | Kept as a primitive. Self-as-source-and-target structure (each fighter is both target and damage source) doesn't decompose into chained damage primitives without bespoke chaining machinery. |
@@ -129,10 +127,10 @@ Every fixed decision from the prompt, traced to its kinds.
 | 10 | Card-movement unification → `move_card` | `draw`, `discard`, `shuffle_into_library`, `return_from_graveyard`, `search_land_tapped`, `search_creature`, `flicker`, `exile_until_eot` | All collapse to `move_card(from_zone, to_zone, selector, amount, [post_action])`. The post_action open question is resolved in §4.1 → **bundle** them as parameters of `move_card`. |
 | 11 | `gain_control` + `steal` → `change_control` | `gainControl` (both copies), `steal` | Unified into `change_control(target, duration, grant_haste, untap_on_take)`. `steal` is the variant that also flips ownership permanently (parameter: `transfer_ownership: bool`). The dead duplicate is dropped. |
 | 12 | Rename `remove_creature` | `removeCreature` (single + mass via #2) | **Recommendation: `affect_creature(severity)`** with severity values `tap, bounce, destroy, exile`. "Affect" rather than "act_on" because the latter is too generic for code-search. Tap-as-severity-1 stays as a single effect — splitting tap out as its own kind would lose the empower-bump-severity mechanic that Codex/Mercurial rolls produce (e.g., a tap that escalates to bounce via empower). The "affect" name lets severity=tap read naturally without implying destruction. |
-| 12b | Rename `ripPermanent` → `rip` | `ripPermanent` | Per-user-decision: drop the "Permanent" qualifier. Just `rip(target)`. **Behavior unchanged from current proto** — see §13 for why this is a kludge and what the final design should be. |
+| 12b | `ripPermanent` → `rip` (broadened) | `ripPermanent` | Drop the "Permanent" qualifier and broaden it: `rip` is a **zone-agnostic** slot-strip primitive (§13) that composes after any targeting/removal (`target(player)→chooses(creature)→annihilate→rip`; `target(spell)→counter→rip`). Current code is the narrow bundled `ripPermanent` (battlefield-only, fires triggers — kludge); the broad standalone `rip` is the decided target. |
 | 13 | `restrict` → `grant_keyword` | `restrict` | Deleted. `restrict(cantAttack: true)` → `grant_keyword(defender)`. `restrict(cantBlock: true)` → `grant_keyword(no_block)` where `no_block` is a new hidden internal keyword added to the keyword registry. `restrict(cantAttack: true, cantBlock: true)` → an array of two `grant_keyword` effects (the existing array-of-effects machinery handles compounds). |
 | 14 | `untap` stays | `untap` | Kept as its own primitive. Not on the severity ladder (it's the inverse of tap, not part of removal). |
-| 15 | `edict` + `sacrifice` → `force_sacrifice` | both | Unified. `force_sacrifice(player, count, filter)` where `player` is `controller`\|`opponent`. Existing `edict` is `force_sacrifice(opponent, 1, creature)`. Future "sacrifice X of your own" would be `force_sacrifice(controller, N, ...)`. `rip_permanent` is structurally similar but stays distinct because of the slot-loss permanence — see §3.4. |
+| 15 | `edict` + `sacrifice` → decomposed (§3.5) | both | The edict decomposes into `target(player) → chooses(creature) → sacrifice` — **no bundled `force_sacrifice` effect**. `sacrifice` is the atomic removal verb (the chosen creature → graveyard, fires triggers); `annihilate` is its no-trigger sibling (rip, §13). The standalone `sacrifice` effect (no card uses it today) is the same verb. `rip` stays a distinct trailing step because of the slot-loss permanence — see §3.4. |
 | 16 | `endomorph_absorb` stays | `endomorphAbsorb` | Kept as-is. Card-specific complex mechanic. |
 | 17 | `noop` | `noop` (Stapler's slot marker) | **Audit finding**: not unused. It's structural. Replaced by `target_slots: N` on the ability schema (see §1.2). `noop` effect kind deleted. |
 | 18 | Compound decomposition | `destroy_and_sticker_slot` (1 card: Scarification) | Becomes `[affect_creature(severity:destroy), apply_sticker(scarified)]`. Audit found no other compounds masquerading as monolithic kinds — Wizard Adept's `[draw, discard]` pattern is already array-based. So #18 is small in scope: one card. |
@@ -142,6 +140,8 @@ Every fixed decision from the prompt, traced to its kinds.
 ## 3. Unification + decomposition table (per-kind disposition)
 
 For each of the 38 proto kinds, what happens. Final column shows the new home; "kept" means stays as its own atomic.
+
+> **Targeting lens (§3.5):** where a signature below shows `target_filter`, the *chosen-target* case is now established by a leading **`target()` step**, not an inline per-effect filter; the parameter shown on the effect is the mass/automatic **scope** only (`all_creatures`, `all_yours`, `all_opps`). Read `target_filter` here as "scope when mass; otherwise a `target()` step supplies the target."
 
 | # | Old name | Disposition | New name / chain |
 |---|---|---|---|
@@ -170,9 +170,9 @@ For each of the 38 proto kinds, what happens. Final column shows the new home; "
 | 23 | `restrict` | removed (#13) | → `grant_keyword(defender)` and/or `grant_keyword(no_block)` |
 | 24 | `grantKeyword` | renamed + unified (#2) | `grant_keyword(keyword, duration, target_filter)` |
 | 25 | `createTokens` | renamed | `create_tokens(token_id, count, controller)` |
-| 26 | `edict` | unified (#15) | `force_sacrifice(opponent, 1, creature)` |
-| 27 | `ripPermanent` | renamed `rip(target)` | See §3.4 and §13. Engine action currently kludge (sacrifice + slot remove); pre-execution decision flagged. |
-| 28 | `sacrifice` | unified (#15) | `force_sacrifice(controller, 1, target_or_self)` (no current card uses it) |
+| 26 | `edict` | decomposed (#15, §3.5) | `target(player) → chooses(creature) → sacrifice` |
+| 27 | `ripPermanent` | broadened → `rip` | Zone-agnostic slot-strip (§13). Creature: `target(player) → chooses(creature) → annihilate → rip`. Current code is the narrow bundled kludge. |
+| 28 | `sacrifice` | verb (#15) | `sacrifice` (the chosen/target creature; no current card uses it standalone) |
 | 29 | `damageAll` | removed (#2) | → `damage(amount, target_filter: all_creatures)` |
 | 30 | `removeAll` | removed (#2) | → `affect_creature(severity, target_filter: all_creatures \| all_opps)` |
 | 31 | `flicker` | decomposed (#9) | `[move_card(battlefield, exile, target, 1), schedule_delayed(move_card(exile, battlefield), immediate)]` — but see §4.2 |
@@ -251,7 +251,7 @@ This supersedes DIVERGENCE D1, which previously said "align proto on Godot's liv
 
 **Worked example — Swords to Plowshares**: `[move_card(battlefield, exile, chosen_creature), gain_life(amount=??, target=controller_of_chosen)]`. The exile moves the creature out of battlefield; the gain_life references "its power" — which is no longer queryable from a live battlefield position. The engine reads last-known-info: power at the moment of zone-change. Without this, the second effect would either crash or return 0.
 
-**Worked example — Self-buff-then-damage**: `[pump(+2/+2, chosen), grant_keyword(lifelink, chosen), damage(amount=its_toughness, target=chosen)]`. The creature stays on battlefield throughout. Live state applies: damage = post-pump toughness. **Order matters**: if the spell text were "deal damage = toughness, then +2/+2 and lifelink," the damage uses pre-pump toughness because that's the live state at THAT effect's resolution.
+**Worked example — Self-buff-then-damage**: `target(creature)` then `[pump(+2/+2), grant_keyword(lifelink), damage(amount=its_toughness)]` — one target, three effects. The creature stays on battlefield throughout. Live state applies: damage = post-pump toughness. **Order matters**: if the spell text were "deal damage = toughness, then +2/+2 and lifelink," the damage uses pre-pump toughness because that's the live state at THAT effect's resolution.
 
 **Implementation**: each `CardInstance` (Godot) / `card` object (proto) gets a `last_known_info` snapshot field. When a card leaves a zone (`move_card` to non-original-zone, `sacrificeCard`, etc.), the engine snapshots `{power, toughness, controller, subtypes, granted_keywords, ...}` into that field BEFORE the zone-change completes. Subsequent references to the card's properties during the same spell's resolution check `last_known_info` if the card is no longer in its expected zone.
 
@@ -396,16 +396,18 @@ This keeps the dispatch flat and avoids the "what is `the card just moved`?" inf
 
 Shorthand-style signature; parameters are descriptive, not exhaustive.
 
+> All effects below operate on **"the target"** when behind a `target()` step (§3.5), or carry an optional mass **`scope`** (`all_creatures`/`all_yours`/`all_opps`/`controller`/`opponent`/`self`) for the automatic case. No per-effect `target_filter`.
+
 **Damage (1)**
-- `damage(amount, target_filter)` — replaces proto's `damage` + `damageAll`. Filters: `chosen`, `controller`, `opponent`, `all_creatures`.
+- `damage(amount, scope?)` — replaces proto's `damage` + `damageAll`. Targeted (`target(creature_or_player)` + `damage`) or mass (`scope: all_creatures`).
 
 **Stat-modify (3)**
-- `pump(power, toughness, duration, target_filter)` — replaces `pump` + `weaken` + `addCounter` + `pumpAllYours`. Signed deltas; `duration: eot|permanent`; filters: `chosen`, `self`, `all_yours`, `all_creatures`.
-- `grant_keyword(keyword, duration, target_filter)` — replaces `grantKeyword` + `restrict`. Hidden internal keyword `no_block` introduced for restrict's `cantBlock` path.
-- `untap(target_filter)` — kept primitive.
+- `pump(power, toughness, duration, scope?)` — replaces `pump` + `weaken` + `addCounter` + `pumpAllYours`. Signed deltas; `duration: eot|permanent`; targeted via `target()`, or mass via `scope: all_yours`/`all_creatures`.
+- `grant_keyword(keyword, duration, scope?)` — replaces `grantKeyword` + `restrict`. Hidden internal keyword `no_block` for restrict's `cantBlock` path.
+- `untap` — kept primitive (targeted via a `target()` step).
 
 **Removal (1)**
-- `affect_creature(severity, target_filter)` — replaces `removeCreature` + `removeAll`. Severity: `tap|bounce|destroy|exile`. Filters: `chosen`, `all_creatures`, `all_yours`, `all_opps`.
+- `affect_creature(severity, scope?)` — replaces `removeCreature` + `removeAll`. Severity: `tap|bounce|destroy|exile`. Targeted via `target(creature)`, or mass via `scope: all_creatures`/`all_opps`.
 
 **Card-movement (1)**
 - `move_card(from_zone, to_zone, selector, amount, post?)` — replaces `draw`, `discard`, `shuffle_into_library`, `return_from_graveyard`, `search_land_tapped`, `search_creature`, `flicker`*, `exile_until_eot`*. Selector vocab: `controller`, `target_player`, `chosen_creature`, `library_search(filter)`, `self`. (* See decision 9 — these need delayed-effect machinery for the return half; the OUTGOING move uses `move_card`.)
@@ -418,7 +420,7 @@ Shorthand-style signature; parameters are descriptive, not exhaustive.
 - `gain_life(amount, target)` — kept; signed per D4, optional target per D3.
 
 **Counter / stack (1)**
-- `counter(target_filter)` — proto's name, kept canonical (the standardization branch renamed Godot's `counter_spell`→`counter` to match). Filter: `chosen_spell` / `spell`.
+- `counter` — proto's name, kept canonical (the standardization branch renamed Godot's `counter_spell`→`counter` to match). Targeted via a `target(spell)` step.
 
 **Tokens (1)**
 - `create_tokens(token_id, count, controller)` — kept.
@@ -438,7 +440,7 @@ Shorthand-style signature; parameters are descriptive, not exhaustive.
 - `endomorph_absorb` — Endomorph.
 - `bargain_sticker_self` — Archdemon ETB.
 - `bargain_sticker_other` — Archdemon LTB.
-- `fight_target(target_filter)` — Beast's Fury.
+- `fight_target` — Beast's Fury (targeted via a `target(creature)` step).
 - `apply_in_game_splice(target_pair)` — Stapler.
 
 **Run-layer primitives (1)**
@@ -467,23 +469,23 @@ Roughly half of proto's 38, now including the two targeting primitives. The head
 
 ## 5. Card-data format
 
-Effects appear in card data three places: `on_cast_effects`, `activated_abilities[i].effects`, `triggered_abilities[i].effects`. Each effect is a `Dictionary` keyed by `"kind"` plus per-kind fields.
+A card with targeting declares a leading `target` (the `target()` step, §3.5); its `effects` then operate on "the target." Effects appear in three places: `on_cast_effects`, `activated_abilities[i].effects`, `triggered_abilities[i].effects`. Each effect is a `Dictionary` keyed by `"kind"` plus per-kind fields (plus an optional `scope` for mass/automatic effects).
 
 **Two surface shapes, matching the predicate plan's convention:**
 
 | Shape | Example | When to use |
 |---|---|---|
-| Canonical dict | `{"kind": "damage", "amount": 3, "target_filter": "chosen"}` | Always works in both engines. The evaluator's internal form. |
-| Function-call shorthand | `"damage(amount=3, target=chosen)"` (string) | Concise authoring; parses to the canonical dict. |
+| Canonical dict | `{"target": "creature_or_player", "effects": [{"kind": "damage", "amount": 3}]}` | Always works in both engines. The evaluator's internal form. |
+| Function-call shorthand | `target(creature_or_player); damage(3)` | Concise authoring; parses to the canonical dict. |
 
 The function-call shorthand is the same parser introduced in the predicate plan (§4.x of `plan-zone-change-and-composable-predicates.md`), generalized to keyword-style args. Parser rules:
 
-- Bare identifiers are positional and ordered (`damage(3, chosen)`); keyword args use `name=value` (`damage(amount=3, target=chosen)`). Mix is allowed: positional args precede keyword args.
+- Bare identifiers are positional and ordered (`damage(3)`); keyword args use `name=value` (`damage(amount=3)`). Mix is allowed: positional args precede keyword args.
 - Arg coercion: integer → int, float → float, `true`/`false` → bool, quoted string → string, bare identifier → string. Identical to the predicate parser.
 - Whitespace-tolerant.
-- Single-arg or no-arg works: `untap(chosen)`, `bargain_sticker_self()`.
+- Single-arg or no-arg works: `chooses(creature)`, `bargain_sticker_self()`.
 
-**`target_filter` replaces `target`.** The proto field name `target` was overloaded (it was both a target-shape selector AND a controller-relative hint like `"any"` or `"self"`). The new `target_filter` is unambiguously about which entities the effect operates on. Migration shim accepts `target` and aliases it to `target_filter` during cutover; final cleanup step removes the alias.
+**Targeting is a step, not a per-effect field (§3.5).** The proto field `target` was overloaded (a target-shape selector AND a controller-relative hint like `"any"`/`"self"`). It's replaced by: a leading `target(filter)` / `chooses(filter)` step for the chosen case, and an optional `scope` on the effect for the automatic/mass case. Migration maps the old per-effect `target` to whichever applies (`"any"`/`"creature"`/… → a `target()` step; `"controller"`/`"self"`/mass → an effect `scope`).
 
 **`severity` enum.** `affect_creature`'s `severity` field is one of `tap|bounce|destroy|exile` (was `1|2|3|4` in proto). String-typed for readability; the dispatcher maps to internal severity values. Empower-bump-severity remains supported (an empower sticker promotes `tap`→`bounce`→`destroy`→`exile`).
 
@@ -529,14 +531,12 @@ Twelve representative cards across categories. Each block shows the proto JSON b
 // Before (cards/bolt/card.json):
 { "effects": [ {"kind": "damage", "target": "any", "amount": 3} ] }
 
-// After (canonical):
-{ "effects": [ {"kind": "damage", "amount": 3, "target_filter": "chosen"} ] }
-
-// After (shorthand):
-{ "effects": [ "damage(amount=3, target_filter=chosen)" ] }
+// After (targeting decomposition — §3.5):
+{ "target": "creature_or_player", "effects": [ {"kind": "damage", "amount": 3} ] }
+// Shorthand: target(creature_or_player); damage(3)
 ```
 
-`"any"` (creature-or-player) is what `chosen` means by default; if the card needs a more restrictive filter, the ability schema's `target_filter: "creature_or_player"` (or `creature`, `player`) constrains it. Per-effect `target_filter` always says "chosen" when targeted — the ability-level filter is the one that controls cast-time selection legality.
+The leading `target()` step carries the legal-target filter (`creature_or_player`) and is the hexproof checkpoint; the `damage` effect just operates on "the target." No per-effect target field — targeting is its own step (§3.5).
 
 ### 6.2 Pyroclasm — mass damage (hexproof case)
 
@@ -544,12 +544,12 @@ Twelve representative cards across categories. Each block shows the proto JSON b
 // Before:
 { "effects": [ {"kind": "damageAll", "amount": 2} ] }
 
-// After:
-{ "effects": [ {"kind": "damage", "amount": 2, "target_filter": "all_creatures"} ] }
-// Shorthand: "damage(amount=2, target_filter=all_creatures)"
+// After (no target() step — mass scope on the effect):
+{ "effects": [ {"kind": "damage", "amount": 2, "scope": "all_creatures"} ] }
+// Shorthand: damage(2, scope=all_creatures)
 ```
 
-`is_targeted_filter("all_creatures")` returns false → no cast-time target prompt, no hexproof gate at resolution, hits every creature including hexproof ones. Behavior matches MTG canon.
+Pyroclasm has **no `target()` step** (its damage carries the mass scope `all_creatures`), so there's no cast-time prompt and no hexproof gate — it hits every creature including hexproof ones (§3.5). Behavior matches MTG canon.
 
 ### 6.3 Sicken — weaken via signed pump
 
@@ -557,9 +557,9 @@ Twelve representative cards across categories. Each block shows the proto JSON b
 // Before:
 { "effects": [ {"kind": "weaken", "target": "creature", "power": 2, "toughness": 2} ] }
 
-// After:
-{ "effects": [ {"kind": "pump", "power": -2, "toughness": -2, "duration": "eot", "target_filter": "chosen"} ] }
-// Shorthand: "pump(power=-2, toughness=-2, duration=eot, target_filter=chosen)"
+// After (targeting decomposition — §3.5):
+{ "target": "creature", "effects": [ {"kind": "pump", "power": -2, "toughness": -2, "duration": "eot"} ] }
+// Shorthand: target(creature); pump(power=-2, toughness=-2, duration=eot)
 ```
 
 `weaken` is dead. Signed deltas read naturally; card text rendering ("Target creature gets -2/-2 EOT") is a card-text helper that watches for negative values.
@@ -570,11 +570,12 @@ Twelve representative cards across categories. Each block shows the proto JSON b
 // Before:
 { "effects": [ {"kind": "addCounter", "target": "creature", "power": 1, "toughness": 1, "filter": {"controller": "self"}} ] }
 
-// After:
-{ "effects": [ {"kind": "pump", "power": 1, "toughness": 1, "duration": "permanent", "target_filter": "chosen"} ] }
+// After (targeting decomposition — §3.5):
+{ "target": "your_creature", "effects": [ {"kind": "pump", "power": 1, "toughness": 1, "duration": "permanent"} ] }
+// Shorthand: target(your_creature); pump(power=1, toughness=1, duration=permanent)
 ```
 
-Note the `filter: {controller: "self"}` becomes the ability-level `target_filter: "your_creature"` on the trigger — it's not a per-effect concern. Per-effect `target_filter: "chosen"` means "use the picked target."
+The old `filter: {controller: "self"}` becomes the `target()` step's filter (`your_creature`); the `pump` effect just operates on the target.
 
 ### 6.5 Horned Herald — pumpAllYours folds in
 
@@ -582,9 +583,9 @@ Note the `filter: {controller: "self"}` becomes the ability-level `target_filter
 // Before:
 { "effects": [ {"kind": "pumpAllYours", "power": 1, "toughness": 1} ] }
 
-// After:
-{ "effects": [ {"kind": "pump", "power": 1, "toughness": 1, "duration": "eot", "target_filter": "all_yours"} ] }
-// Shorthand: "pump(power=1, toughness=1, duration=eot, target_filter=all_yours)"
+// After (no target() step — mass scope on the effect):
+{ "effects": [ {"kind": "pump", "power": 1, "toughness": 1, "duration": "eot", "scope": "all_yours"} ] }
+// Shorthand: pump(power=1, toughness=1, duration=eot, scope=all_yours)
 ```
 
 ### 6.6 Pacifism — restrict decomposes into grant_keyword
@@ -593,22 +594,18 @@ Note the `filter: {controller: "self"}` becomes the ability-level `target_filter
 // Before:
 { "effects": [ {"kind": "restrict", "target": "creature", "cantAttack": true, "cantBlock": true} ] }
 
-// After (array of two grant_keyword effects — uses existing array machinery):
+// After (targeting decomposition — §3.5; one target() step, two effects share it):
 {
+  "target": "creature",
   "effects": [
-    {"kind": "grant_keyword", "keyword": "defender", "duration": "permanent", "target_filter": "chosen"},
-    {"kind": "grant_keyword", "keyword": "no_block",  "duration": "permanent", "target_filter": "chosen"}
+    {"kind": "grant_keyword", "keyword": "defender", "duration": "permanent"},
+    {"kind": "grant_keyword", "keyword": "no_block",  "duration": "permanent"}
   ]
 }
-// Shorthand (same target picked once at cast time, applied to both):
-{ "effects": [
-    "grant_keyword(keyword=defender, duration=permanent, target_filter=chosen)",
-    "grant_keyword(keyword=no_block, duration=permanent, target_filter=chosen)"
-  ]
-}
+// Shorthand: target(creature); grant_keyword(defender, permanent); grant_keyword(no_block, permanent)
 ```
 
-The "same target picked once at cast time and locked in" semantics already exist (Wizard Adept's `[draw, discard]` shares ctx). Two effects, one targeting prompt, both apply.
+One `target()` step, two effects — both apply to the one target (shared by default, §3.5). One prompt at cast time; no per-effect target field.
 
 ### 6.7 Wrath of God — removeAll folds in
 
@@ -616,9 +613,9 @@ The "same target picked once at cast time and locked in" semantics already exist
 // Before:
 { "effects": [ {"kind": "removeAll", "severity": 3} ] }
 
-// After:
-{ "effects": [ {"kind": "affect_creature", "severity": "destroy", "target_filter": "all_creatures"} ] }
-// Shorthand: "affect_creature(severity=destroy, target_filter=all_creatures)"
+// After (no target() step — mass scope):
+{ "effects": [ {"kind": "affect_creature", "severity": "destroy", "scope": "all_creatures"} ] }
+// Shorthand: affect_creature(severity=destroy, scope=all_creatures)
 ```
 
 ### 6.8 Diabolic Edict — decomposes into target → chooses → sacrifice (§3.5)
@@ -645,13 +642,13 @@ This is *why* an edict kills a hexproof creature: only `target(player)` is a tar
 ```js
 // Mind Control before:
 { "effects": [ {"kind": "gainControl", "target": "creature", "filter": {"controller": "opp"}} ] }
-// After:
-{ "effects": [ {"kind": "change_control", "target_filter": "chosen", "duration": "permanent"} ] }
+// After (targeting decomposition — §3.5):
+{ "target": "creature", "effects": [ {"kind": "change_control", "duration": "permanent"} ] }
 
 // Steal before:
 { "effects": [ {"kind": "steal", "target": "permanentOrSpell", "filter": {"notToken": true}} ] }
 // After:
-{ "effects": [ {"kind": "change_control", "target_filter": "chosen", "duration": "permanent",
+{ "target": "permanent", "effects": [ {"kind": "change_control", "duration": "permanent",
                 "transfer_ownership": true} ] }
 ```
 
@@ -663,14 +660,17 @@ This is *why* an edict kills a hexproof creature: only `target(player)` is a tar
 // Before:
 { "effects": [ {"kind": "shuffleIntoLibrary", "target": "creature"} ] }
 
-// After:
-{ "effects": [ {"kind": "move_card",
+// After (target() supplies the moved card — selector "target" §5.x):
+{ "target": "creature",
+  "effects": [ {"kind": "move_card",
                  "from_zone": "battlefield",
                  "to_zone": "library",
-                 "selector": "chosen_creature",
+                 "selector": "target",
                  "amount": 1,
                  "post": {"shuffle": true}} ] }
 ```
+
+When `move_card` acts on the *chosen* card, its `selector` is `"target"` — "the card the leading `target()`/`chooses()` step established." Non-targeted selectors (`controller_top`, `library_search(...)`, etc.) stay for the automatic cases.
 
 ### 6.11 Wizard Adept — already array-based, uses the shorthand
 
@@ -701,14 +701,15 @@ The "loot" idiom becomes two shorthand calls that desugar to `move_card` invocat
 // Before:
 { "effects": [ {"kind": "destroyAndStickerSlot", "target": "creature", "stickerId": "scarified"} ] }
 
-// After:
-{ "effects": [
-    {"kind": "affect_creature", "severity": "destroy", "target_filter": "chosen"},
-    {"kind": "apply_sticker", "sticker_id": "scarified", "target_filter": "same_as_previous"}
+// After (targeting decomposition — §3.5; one target, two effects share it):
+{ "target": "creature",
+  "effects": [
+    {"kind": "affect_creature", "severity": "destroy"},
+    {"kind": "apply_sticker", "sticker_id": "scarified"}
   ] }
 ```
 
-**RESOLVED by the targeting decomposition (§3.5).** Scarification is `target(creature) → [affect_creature(destroy), apply_sticker(scarified)]`. With one leading `target()` step, **all effects share that target by default** — both the destroy and the sticker operate on the one chosen creature, with no `same_as_previous` vocabulary needed. (It still works because the sticker applies to the slot, not the in-play card, so the destroy removing the body doesn't matter.) The earlier "shared via `ctx.targets[0]`" mechanism is subsumed: "the target" is whatever the `target()` step established.
+Both effects operate on the one targeted creature — no `same_as_previous` vocabulary needed (the shared-target default, §3.5). The sticker applies to the slot, so the destroy removing the body first doesn't matter. (This subsumes the old "shared via `ctx.targets[0]`" mechanism: "the target" is whatever the `target()` step established.)
 
 ### 6.13 Otherworldly Journey — exile_until_eot (needs B4)
 
@@ -717,9 +718,10 @@ The "loot" idiom becomes two shorthand calls that desugar to `move_card` invocat
 { "effects": [ {"kind": "exileUntilEOT", "target": "creature"} ] }
 
 // After (PENDING B4):
-{ "effects": [
+{ "target": "creature",
+  "effects": [
     {"kind": "move_card", "from_zone": "battlefield", "to_zone": "exile",
-     "selector": "chosen_creature", "amount": 1, "post": {"keep_buffs": true}},
+     "selector": "target", "amount": 1, "post": {"keep_buffs": true}},
     {"kind": "schedule_delayed",
      "trigger": "end_step",
      "effects": [
@@ -729,7 +731,7 @@ The "loot" idiom becomes two shorthand calls that desugar to `move_card` invocat
   ] }
 ```
 
-`schedule_delayed` is the B4 primitive (delayed-trigger machinery). The `previous_target` selector references the card the prior `move_card` operated on. Not the same as the `same_as_previous` / shared-cast-time-target mechanism (§6.12, also what StP uses) — `previous_target` chains to the *output of the immediately-prior effect*, which need not be a cast-time choice (e.g., "exile the top creature of your library, then return it" has no chosen target). Until B4 lands, `exile_until_eot` stays as its own primitive in both engines and migrates after B4.
+`schedule_delayed` is the B4 primitive (delayed-trigger machinery). The `previous_target` selector references the card the prior `move_card` operated on. Distinct from the **shared-target default** (where several effects use the one `target()` step, §3.5/§6.12, also what StP uses): `previous_target` chains to the *output of the immediately-prior effect*, which need not be a `target()` at all (e.g., "exile the top creature of your library, then return it" has no targeting). Until B4 lands, `exile_until_eot` stays as its own primitive in both engines and migrates after B4.
 
 **`previous_target` resolver spec** (the "small chaining mechanism"; one sensible shape — no open design choice). During a single spell/ability resolution, the effect loop carries one extra context field, `ctx.previous_subject_iid`. After each effect resolves, the resolver sets it to the iid of the card that effect acted on or produced (for `move_card`, the moved card's current iid — note that for a battlefield *arrival* this is the freshly-minted iid per §3.7, but for the exile-then-return chain the second move reads the still-current exile-zone iid set by the first move). The selector value `previous_target` resolves to `state.find_instance(ctx.previous_subject_iid)`. Scope is the immediately-prior effect only; the field resets at the start of each resolution. Multi-step back-references ("two effects ago") are out of scope until a card needs them. Naming (`previous_target` vs `previous_subject`, selector-string vs ctx-field) is implementer's discretion.
 
@@ -741,18 +743,19 @@ A canonical MTG card: "Exile target creature. Its controller gains life equal to
 
 ```js
 // After (illustrative — card not in proto today):
-{ "effects": [
-    "move_card(battlefield, exile, chosen_creature, 1)",
+{ "target": "creature",
+  "effects": [
+    "move_card(battlefield, exile, target, 1)",
     {"kind": "gain_life",
-     "amount": "<chosen_creature.power>",      // ← references the moved target
-     "target": "<controller_of_chosen_creature>"}
+     "amount": "<target.power>",                 // ← references the targeted creature
+     "target_player": "<controller_of_target>"}
   ] }
 ```
 
 **The mechanism at resolution time**:
-1. Cast time: `chosen_creature` locks onto iid=12 (Grizzly Bear, power=2, controlled by opp).
+1. Cast time: the `target(creature)` step locks onto iid=12 (Grizzly Bear, power=2, controlled by opp).
 2. First effect: `move_card` exiles iid=12. BEFORE removing from battlefield, engine snapshots `{power: 2, toughness: 2, controller: opp, ...}` into iid=12's `last_known_info` field.
-3. Second effect: `gain_life` reads `chosen_creature.power` and `controller_of_chosen_creature`. Engine checks: is iid=12 still on the battlefield? No (it's now in exile). Read from `last_known_info`: power=2, controller=opp. Opp gains 2 life.
+3. Second effect: `gain_life` reads `target.power` and `controller_of_target`. Engine checks: is iid=12 still on the battlefield? No (it's now in exile). Read from `last_known_info`: power=2, controller=opp. Opp gains 2 life.
 4. After the spell's resolution completes, the snapshot can be cleared.
 
 **Why this works**: the spell's targeting locked onto iid=12 at cast time. By the second effect, the in-play card is gone, but the snapshot preserves what the spell needs to know. Matches MTG's "last known information" rule.
@@ -768,18 +771,18 @@ A canonical MTG card: "Exile target creature. Its controller gains life equal to
 **Proto side:** `reference/html-proto/tools/migrate-effects.js`, modeled on the predicate-plan's `migrate-triggers.js`. Mechanically walks every `cards/*/card.json`, every `effects[]` and `triggers[].effects[]` and `abilities[].effects[]`, and rewrites:
 
 1. **Rename kinds** per the table in §3: `addMana`→`add_mana`, `gainLife`→`gain_life`, etc.
-2. **Parameterize target filters**: lift the per-card `target: "any"|"creature"|"creature_or_player"|...` field, map to `target_filter` values per the §3.5 classification.
+2. **Lift targeting into steps (§3.5)**: convert the per-card `target: "any"|"creature"|"creature_or_player"|...` field into a leading `target()`/`chooses()` step (chosen case) or an effect `scope` (automatic/mass case).
 3. **Decompose compounds**:
    - `destroyAndStickerSlot` → two-effect array.
    - `restrict` → one or two `grant_keyword` effects depending on flags.
 4. **Apply redundancy cleanup**:
    - Drop `weaken` in favor of negative `pump`.
    - Drop `addCounter` in favor of `pump` with `duration: permanent`.
-   - Drop `pumpAllYours` / `damageAll` / `removeAll` in favor of unified kinds with target_filter.
+   - Drop `pumpAllYours` / `damageAll` / `removeAll` in favor of unified kinds with a mass `scope`.
 5. **Rewrite mass-kinds**:
-   - `damageAll` → `damage(target_filter=all_creatures)`.
-   - `pumpAllYours` → `pump(target_filter=all_yours)`.
-   - `removeAll(severity=N, whose=W)` → `affect_creature(severity=<str>, target_filter=<filter>)` where severity ints map to strings and `whose: opp` → `all_opps`, `whose: all` → `all_creatures`.
+   - `damageAll` → `damage(scope=all_creatures)`.
+   - `pumpAllYours` → `pump(scope=all_yours)`.
+   - `removeAll(severity=N, whose=W)` → `affect_creature(severity=<str>, scope=<all_creatures|all_opps>)` where severity ints map to strings and `whose: opp` → `all_opps`, `whose: all` → `all_creatures`.
 6. **Handle the duplicate `gainControl`**: doesn't appear in card data (cards just say `kind: "gainControl"`), so no per-card change needed. Engine-side: just delete the dead first definition.
 7. **Strip `noop`**: rewrite Stapler's ability to declare `target_slots: 2` and remove the second-effect `noop` entry.
 
@@ -835,11 +838,13 @@ static func _check_effect(effect, card_id: String, unknown: Array, malformed: Ar
             return
         if not HANDLERS.has(kind):
             unknown.append("%s.%s" % [card_id, kind])
-        # Validate target_filter is a known value (against a static set).
-        var tf: String = effect.get("target_filter", "")
-        if tf != "" and not _is_valid_target_filter(tf):
-            malformed.append("%s.%s.target_filter=%s" % [card_id, kind, tf])
+        # Validate the mass `scope` value (if present) against a static set.
+        var sc: String = effect.get("scope", "")
+        if sc != "" and not _is_valid_scope(sc):
+            malformed.append("%s.%s.scope=%s" % [card_id, kind, sc])
         return
+    # (Targeting steps `target(filter)` / `chooses(filter)` are validated
+    #  separately — their `filter` must be in the legal-object taxonomy.)
     malformed.append("%s.<non-dict-non-string effect>" % card_id)
 ```
 
@@ -847,16 +852,16 @@ static func _check_effect(effect, card_id: String, unknown: Array, malformed: Ar
 
 ```gdscript
 const EFFECT_SCHEMA := {
-    "damage": {"required": ["amount", "target_filter"], "optional": []},
-    "pump":   {"required": ["target_filter"], "optional": ["power", "toughness", "duration"]},
+    "damage": {"required": ["amount"], "optional": ["scope"]},
+    "pump":   {"required": [], "optional": ["power", "toughness", "duration", "scope"]},
     "move_card": {"required": ["from_zone", "to_zone", "selector"], "optional": ["amount", "post"]},
-    # ... etc
+    # ... etc  (targeting lives in the leading target()/chooses() step, not on the effect)
 }
 ```
 
 Boot-validator additionally checks required keys are present. Catches card-author typos like `{"kind": "damage", "ammount": 3}` (missing `amount`, extra `ammount`).
 
-**Parser** (the function-call shorthand). The predicate plan's `_parse_call` (predicates.gd) becomes `Effects._parse_effect_call`. Same lexer (whitespace tolerant, quoted strings, type coercion). Extension: keyword args. The arg list contains a mix of positional (`damage(3, chosen)`) and keyword (`damage(amount=3, target_filter=chosen)`) — keyword form is the recommended style for any effect with 3+ params or any boolean param (positional bools are too ambiguous).
+**Parser** (the function-call shorthand). The predicate plan's `_parse_call` (predicates.gd) becomes `Effects._parse_effect_call`. Same lexer (whitespace tolerant, quoted strings, type coercion). Extension: keyword args. The arg list contains a mix of positional (`damage(3)`) and keyword (`damage(amount=3)`) — keyword form is the recommended style for any effect with 3+ params or any boolean param (positional bools are too ambiguous). The same parser handles the `target(...)` / `chooses(...)` steps.
 
 **Validation timing.** Both engines run validate-effects at boot, alongside the existing validate-predicates. In Godot: `engine.gd._ready()` calls both. In proto: `tests/_setup.js` calls both after `loadCards()`.
 
@@ -903,15 +908,15 @@ Each step leaves both engines in a runnable, test-passing state. Recommend seque
 
 0. **(Proto only) Extract `applySpliceCore(baseSlotIdx, stapleSlotIdx, opts)` helper.** The splice logic is currently duplicated across four sites (`js/engine.js:2246` `EFFECTS.applyInGameSplice`, `js/run.js:872` `RUN.applySplice`, `js/draft.js:239` and `js/run.js:584` pair-enumeration). Extract the shared body (slot mutation, slotIdx fixups, sticker/roll merging) into a single helper in `engine.js`. The Stapler path layers stack-spell-firing logic on top via `opts.fireSpellEffects: true`; reward-time path passes `opts.fireSpellEffects: false`. Unit test: splice the same two cards via Stapler's in-game path AND the reward path; assert identical end state. ~4 hours. Decouples from the refactor's later steps — could land independently if scheduled before the rest.
 
-1. **Add `target_filter` field to `affect_creature` and `pump` and `damage` in BOTH engines, alongside existing per-effect-kind shape.** This is the parameterized-target groundwork. New `target_filter` values (`all_creatures`, `all_yours`, etc.) work in the dispatcher; old per-kind code (`damageAll`, `pumpAllYours`, `removeAll`) still runs. Tests: existing tests pass; new tests for each filter value pass against synthetic effects. Semantic no-op overall.
+1. **Add the mass `scope` field to `affect_creature`/`pump`/`damage` in BOTH engines, alongside the existing per-kind shape.** This is the single/mass-unification groundwork (decision 2). New `scope` values (`all_creatures`, `all_yours`, `all_opps`) work in the dispatcher; old per-kind code (`damageAll`, `pumpAllYours`, `removeAll`) still runs. Tests: existing tests pass; new tests per scope value pass against synthetic effects. Semantic no-op overall. (The chosen-target case lands in step 2 via the `target()`/`chooses()` steps.)
 
 2. **Add `target()` / `chooses()` targeting steps and route hexproof through them (§3.5).** Both engines: introduce the leading targeting primitives. "Is it targeted?" becomes structural — a spell has a `target()` step or it doesn't — replacing the earlier `is_targeted_filter(value)` helper. Hexproof is checked at `target()` steps only; `chooses()` and mass/automatic-scoped effects (`all_creatures`, `controller`, …) never check it. Add hexproof regression tests (§12), including the edict case (`target(player) → chooses(creature)` sacrifices a hexproof creature).
 
-3. **Add new atomic effects alongside the legacy ones.** Both engines: register `move_card`, `change_control`, `force_sacrifice`, `apply_sticker`, `pump` (signed/permanent extensions). Old kinds (`draw`, `discard`, `gainControl`, `edict`, `weaken`, etc.) still dispatch correctly. New atomics callable from card data once cards migrate.
+3. **Add new atomic effects alongside the legacy ones.** Both engines: register `move_card`, `change_control`, the `target`/`chooses` targeting steps, the `sacrifice` verb, `apply_sticker`, `pump` (signed/permanent extensions). Old kinds (`draw`, `discard`, `gainControl`, `edict`, `weaken`, etc.) still dispatch correctly. New atomics callable from card data once cards migrate.
 
 4. **Boot-validation rewrite.** Both engines: `validate_all_card_effects` walks all card data. Accepts both old kind names and new ones during cutover. Per-kind schema enforced for the new ones. Tests: malformed effect detected at boot.
 
-5. **Migrate Godot templates** (6 templates with effects: pyromaniac, bloodlust_berserker, giant_growth, healing_salve, lightning_bolt, counterspell — all already use snake_case and `target: "chosen"` shape). The only field rename is `target` → `target_filter`. ~10 minutes of mechanical .tres edits. Add per-template test passes.
+5. **Migrate Godot templates** (6 templates with effects: pyromaniac, bloodlust_berserker, giant_growth, healing_salve, lightning_bolt, counterspell — all already snake_case). Convert each effect's `target: "chosen"` into a leading `target()` step (and `counter_spell`→`counter`). ~15 minutes of mechanical .tres edits. Add per-template test passes.
 
 6. **Migrate proto cards via `migrate-effects.js`.** Run the script. Run `node tests/run_all.js` (the existing 362 assertions). Spot-check 20 cards across categories. Run `node tests/selfplay_harness.js 500 bughunt` for AI-vs-AI regression.
 
@@ -927,7 +932,7 @@ Each step leaves both engines in a runnable, test-passing state. Recommend seque
 
 12. **Stapler's `noop` removal.** Replace with `target_slots: 2` on the activated ability schema. Delete `noop` from EFFECTS.
 
-13. **Update SPEC.md** to describe the new 19-effect registry, the `target_filter` classification, the function-call shorthand, the per-kind schema. Update DIVERGENCE.md rows D2 (closed by step 3+5), D3 (closed by step 3 if Godot extends `gain_life`), D4 (closed by step 3 across both).
+13. **Update SPEC.md** to describe the new registry, the `target()`/`chooses()` targeting model + mass `scope` (§3.5), the function-call shorthand, the per-kind schema. Update DIVERGENCE.md rows D2 (closed by step 3+5), D3 (closed by step 3 if Godot extends `gain_life`), D4 (closed by step 3 across both).
 
 **Which engine first?** Steps 1–4 in parallel across both engines (no card data touched yet). Step 5 (Godot) before step 6 (proto) — Godot's small pool is the low-stakes proving ground for the new dispatcher. Steps 7+ in proto first, then mirror into Godot's dispatcher.
 
@@ -940,13 +945,13 @@ Per-engine, per-step. S = an hour or two, M = half a day to a day, L = multi-day
 | Work | Engine | Effort |
 |---|---|---|
 | **Step 0**: Extract `applySpliceCore` helper from 4 duplicate sites | Proto | M (~4h) |
-| `target_filter` field on `damage`/`pump`/`affect_creature`; old kinds still work | Godot | M (~4h) — `damage.gd` and `pump.gd` extended; new `affect_creature.gd` created |
-| `target_filter` field on `damage`/`pump`/`removeCreature`; old kinds still work | Proto | M (~5h) — more handlers, more existing branches |
-| `is_targeted_filter` predicate + hexproof routing | Godot | S (~2h) |
-| `is_targeted_filter` predicate + hexproof routing | Proto | S (~3h) — multiple gate sites |
+| Mass `scope` field on `damage`/`pump`/`affect_creature`; old kinds still work | Godot | M (~4h) — `damage.gd` and `pump.gd` extended; new `affect_creature.gd` created |
+| Mass `scope` field on `damage`/`pump`/`removeCreature`; old kinds still work | Proto | M (~5h) — more handlers, more existing branches |
+| `target()`/`chooses()` steps + structural hexproof routing | Godot | S (~2h) |
+| `target()`/`chooses()` steps + structural hexproof routing | Proto | S (~3h) — multiple gate sites |
 | **§3.6 last-known-info snapshot machinery + per-effect resolution-time checks** | both | M (~4h) — one snapshot field, one capture site per zone-exit, one check site per property read |
 | **§3.7 iid-mint-on-arrival** in `move_card` for `to_zone=battlefield` | both | S (~2h) — including flicker-beats-removal regression test |
-| New atomic effects (`move_card`, `change_control`, `force_sacrifice`, `apply_sticker`) | Godot | L (~8h) — these are mostly new handlers from scratch; `move_card` alone is ~3h |
+| New atomic effects (`move_card`, `change_control`, `target`/`chooses`, `sacrifice`, `apply_sticker`) | Godot | L (~8h) — these are mostly new handlers from scratch; `move_card` alone is ~3h |
 | New atomic effects (same set, written to match proto's existing semantics) | Proto | M (~6h) — most logic exists, just refactored into the new entry points |
 | Shorthand parser extension (curated `draw`/`discard`/`flicker`/etc. names that desugar to `move_card`) | both | S (~3h) — extends the predicate parser |
 | Effect-kind boot validation + per-kind schema (accepts both canonical kind names and shorthand) | both | M (~4h) |
@@ -970,7 +975,7 @@ Per-engine, per-step. S = an hour or two, M = half a day to a day, L = multi-day
 
 For each atomic, a Godot `tests/test_effects_<kind>.gd` and a proto `tests/test_effects.js` block:
 - Resolves correctly on a normal target.
-- Resolves correctly on a `target_filter: chosen` target (where applicable).
+- Resolves correctly on a `target()`-chosen target (where applicable).
 - Resolves correctly on mass-filter values (where applicable: `all_creatures`, `all_yours`, `all_opps`).
 - Fizzles cleanly when target is gone (the existing fizzle pattern).
 - Logs the expected message.
@@ -981,11 +986,11 @@ A `tests/test_hexproof_targeting.gd` (Godot) and `tests/test_hexproof_targeting.
 1. Lightning Bolt at hexproof opp creature → no legal target at cast time (cast fails).
 2. Lightning Bolt at hexproof OWN creature → legal target, resolves.
 3. Pyroclasm with hexproof creatures on both sides → hits everyone.
-4. `affect_creature(severity=destroy, target_filter=all_creatures)` with hexproof creatures → destroys all (untargeted).
-5. `affect_creature(severity=destroy, target_filter=chosen)` against hexproof opp creature → no legal target.
-6. `force_sacrifice(opponent)` when opp's only creature is hexproof → still works (sac doesn't target).
-7. `grant_keyword(keyword=flying, target_filter=all_yours)` to your own hexproof creatures → applies normally (your own; not targeting).
-8. `damage(target_filter=opponent)` against the opp player with hexproof on creatures (irrelevant; the target is the player) → resolves.
+4. `affect_creature(severity=destroy, scope=all_creatures)` (no `target()` step) with hexproof creatures → destroys all.
+5. `target(creature)` + `affect_creature(severity=destroy)` aimed at a hexproof opp creature → no legal target.
+6. An edict (`target(player) → chooses(creature)`) when opp's only creature is hexproof → still sacrifices it (the creature is *chosen*, not targeted).
+7. `grant_keyword(keyword=flying, scope=all_yours)` to your own hexproof creatures → applies normally (no `target()` step).
+8. `damage(scope=opponent)` against the opp player with hexproof on creatures (irrelevant; no creature targeted) → resolves.
 
 ### 12.3 Compound-decomposition tests
 
@@ -998,7 +1003,7 @@ A `tests/test_hexproof_targeting.gd` (Godot) and `tests/test_hexproof_targeting.
 - `pump(power=-2, toughness=-2)` (Sicken) on a 2/2 — creature has 0/0 marked, dies at SBA.
 - `pump(power=-2, toughness=0)` (Frostbite Mage) on a 2/2 — creature is 0/2, survives.
 - `pump(power=1, toughness=1, duration=permanent)` (Awakener) — `counters["+1/+1"] += 1`.
-- `pump(power=1, toughness=1, duration=eot, target_filter=all_yours)` (Horned Herald) — every your-creature gets temp +1/+1.
+- `pump(power=1, toughness=1, duration=eot, scope=all_yours)` (Horned Herald) — every your-creature gets temp +1/+1.
 
 ### 12.5 `gainControl` dedup verification
 
@@ -1011,16 +1016,16 @@ A `tests/test_hexproof_targeting.gd` (Godot) and `tests/test_hexproof_targeting.
 
 - Add a card with `{"kind": "damagee", "amount": 3}` to a test fixture → boot fails with "Unknown effect kind: damagee".
 - Add a card with `{"kind": "damage", "ammount": 3}` (typo) → boot fails with "Malformed effect: damage missing required field 'amount'".
-- Add a card with `{"kind": "damage", "amount": 3, "target_filter": "alll_creatures"}` (typo) → boot fails with "Invalid target_filter: alll_creatures".
+- Add a card with `{"kind": "damage", "amount": 3, "scope": "alll_creatures"}` (typo) → boot fails with "Invalid scope: alll_creatures".
 
 ### 12.7 Function-call shorthand parser tests
 
 Subset of the predicate parser tests, extended for keyword args:
-- `"damage(amount=3, target_filter=chosen)"` parses to canonical dict.
+- `"damage(amount=3)"` parses to canonical dict (targeting is a separate `target()` step).
 - `"damage(3, chosen)"` (positional) parses with the first param interpreted by position.
-- `"pump(power=-2, toughness=-2, duration=eot, target_filter=chosen)"` — signed values, multi-arg.
-- `"force_sacrifice(player=opponent, count=1, filter=\"creature\")"` — quoted string arg.
-- Whitespace tolerance: `"  damage( amount = 3 , target_filter = chosen )  "` parses identically.
+- `"pump(power=-2, toughness=-2, duration=eot)"` — signed values, multi-arg.
+- `"chooses(filter=\"creature\")"` — quoted string arg.
+- Whitespace tolerance: `"  damage( amount = 3 )  "` parses identically.
 
 ### 12.8 Cross-engine semantic-equivalence tests (optional but recommended)
 
