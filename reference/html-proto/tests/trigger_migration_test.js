@@ -174,6 +174,23 @@ console.log('\n=== triggerArchetype classification + preamble recovery ===');
     /another Drake enters under your control/.test(preambleOf('drakelord')), preambleOf('drakelord'));
   if (CARDS.goblinChieftain) check('goblinChieftain preamble names its subtype',
     /Goblin you control attacks/.test(preambleOf('goblinChieftain')), preambleOf('goblinChieftain'));
+
+  // AI ETB-detection (flicker / flash valuation) must still recognize migrated
+  // ETB triggers, which now live on card_zone_change, not cardEntersBattlefield.
+  check('triggerFiresOnEnter: thisEnters (composable)',
+    triggerFiresOnEnter({ event: 'card_zone_change', condition: ['this_card', 'card_moves(anywhere, battlefield)'] }) === true);
+  check('triggerFiresOnEnter: subtype-enters lord',
+    triggerFiresOnEnter({ event: 'card_zone_change', condition: ['another_card', 'controlled_by(you)', 'card_has_subtype(Drake)', 'card_moves(anywhere, battlefield)'] }) === true);
+  check('triggerFiresOnEnter: dies is NOT an enter',
+    triggerFiresOnEnter({ event: 'card_zone_change', condition: ['this_card', 'card_moves(battlefield, graveyard)'] }) === false);
+  check('triggerFiresOnEnter: attacks is NOT an enter',
+    triggerFiresOnEnter({ event: 'attacks', condition: ['this_card'] }) === false);
+  // At least one real migrated card is detected as an ETB-trigger card.
+  let etbCards = 0;
+  for (const card of Object.values(CARDS)) {
+    if ((card.triggers || []).some(triggerFiresOnEnter)) etbCards++;
+  }
+  check('migrated pool: ETB-trigger cards detected (was 47 ETB triggers)', etbCards >= 40, `got ${etbCards}`);
 })();
 
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');

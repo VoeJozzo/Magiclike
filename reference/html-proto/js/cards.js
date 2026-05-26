@@ -351,8 +351,8 @@ STICKERS['scarified'] = {
   weight: 0,               // not in random pools
   kind: 'trigger',
   trigger: {
-    event: 'cardEntersBattlefield',
-    condId: 'thisEnters',
+    event: 'card_zone_change',
+    condition: ['this_card', 'card_moves(anywhere, battlefield)'],
     text: '~ enters: its controller loses 1 life.',
     // target:'self' for player-operating effects (damage/gainLife/discard/
     // draw) resolves to the source's controller at trigger time. Pushed

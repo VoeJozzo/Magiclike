@@ -5,42 +5,42 @@ const MERCURIAL_TRIGGER_POOL = [
   {
     label: 'Striker',
     event: 'attacks',
-    condId: 'thisAttacks',
+    condition: ['this_card'],
     text: '~ attacked — opp loses 1 life.',
     effects: [{kind: 'damage', target: 'player', amount: 1}],
   },
   {
     label: 'Spellsworn',
-    event: 'spellCast',
-    condId: 'youCastSpell',
+    event: 'spell_cast',
+    condition: ['another_card', 'controlled_by(you)'],
     text: 'Spell cast — ~ gets +1/+0 EOT.',
     effects: [{kind: 'pump', target: 'self', power: 1, toughness: 0}],
   },
   {
     label: 'Standard-bearer',
-    event: 'cardEntersBattlefield',
-    condId: 'anotherCreatureYouEntersStrict',
+    event: 'card_zone_change',
+    condition: ['another_card', 'card_is_creature', 'controlled_by(you)', 'card_moves(anywhere, battlefield)'],
     text: 'Ally entered — ~ gets a +1/+1 counter.',
     effects: [{kind: 'addCounter', target: 'self', power: 1, toughness: 1}],
   },
   {
     label: 'Bloodscholar',
-    event: 'lifeGained',
-    condId: 'youGainLife',
+    event: 'life_changed',
+    condition: ['is_life_gain', 'affected_player_is(you)'],
     text: 'Life gained — draw a card.',
     effects: [{kind: 'draw', target: 'self', amount: 1}],
   },
   {
     label: 'Reaper',
-    event: 'cardDies',
-    condId: 'anotherCreatureDies',
+    event: 'card_zone_change',
+    condition: ['another_card', 'card_is_creature', 'card_moves(battlefield, graveyard)'],
     text: 'Creature died — ~ gets +1/+0 EOT.',
     effects: [{kind: 'pump', target: 'self', power: 1, toughness: 0}],
   },
   {
     label: 'Hexweaver',
-    event: 'cardEntersBattlefield',
-    condId: 'thisEnters',
+    event: 'card_zone_change',
+    condition: ['this_card', 'card_moves(anywhere, battlefield)'],
     text: '~ entered — gain 2 life.',
     effects: [{kind: 'gainLife', target: 'self', amount: 2}],
   },
@@ -404,8 +404,8 @@ function mergeStapleInto(merged, stapleTpl) {
     const nextFreeSlot = computeNextFreeSlot(merged);
     const remapped = remapEffectSlots(stapleTpl.effects, nextFreeSlot);
     merged.triggers.push({
-      event: 'cardEntersBattlefield',
-      condId: 'thisEnters',
+      event: 'card_zone_change',
+      condition: ['this_card', 'card_moves(anywhere, battlefield)'],
       text: 'ETB: ' + (stapleTpl.text || stapleTpl.name),
       effects: Array.isArray(remapped) ? remapped : [],
     });
@@ -426,8 +426,8 @@ function mergeStapleInto(merged, stapleTpl) {
     const remapped = remapEffectSlots(stapleTpl.effects, nextFreeSlot);
     if (!Array.isArray(merged.triggers)) merged.triggers = [];
     merged.triggers.push({
-      event: 'cardEntersBattlefield',
-      condId: 'thisEnters',
+      event: 'card_zone_change',
+      condition: ['this_card', 'card_moves(anywhere, battlefield)'],
       text: 'ETB: ' + (stapleTpl.text || stapleTpl.name),
       effects: Array.isArray(remapped) ? remapped : [],
     });

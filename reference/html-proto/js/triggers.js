@@ -273,6 +273,21 @@ function triggerArchetype(trig) {
   return _ARCHETYPE_BY_SIG[_condSignature(trig.event, trig.condition)] || null;
 }
 
+// True if the trigger fires when a card ENTERS the battlefield (any ETB
+// archetype: thisEnters / anotherCreatureYouEnters*). Used by AI heuristics
+// (flicker / flash-fizzle valuation) that previously keyed on the legacy
+// `event === 'cardEntersBattlefield'`. Matches a card_moves(*, battlefield)
+// term under the unified event, plus the legacy event during transition.
+function triggerFiresOnEnter(trig) {
+  if (!trig) return false;
+  if (trig.event === 'cardEntersBattlefield') return true;
+  if (trig.event !== 'card_zone_change') return false;
+  for (const t of (trig.condition || [])) {
+    if (typeof t === 'string' && /card_moves\(\s*[^,]+,\s*battlefield\s*\)/.test(t)) return true;
+  }
+  return false;
+}
+
 // Extract the subtype a trigger filters on (card_has_subtype(...) term, or a
 // legacy params.sub), for preamble phrasing. Null if none.
 function triggerSubtype(trig) {

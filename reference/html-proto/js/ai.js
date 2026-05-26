@@ -254,7 +254,7 @@ function flashETBWouldFizzle(state, who, card) {
   const them = opp(who);
   const triggers = card.triggers || [];
   for (const trig of triggers) {
-    if (trig.event !== 'cardEntersBattlefield') continue;
+    if (!triggerFiresOnEnter(trig)) continue;
     const effects = trig.effects || [];
     for (const eff of effects) {
       if (eff.kind === 'removeCreature' && eff.target === 'creature') {
@@ -1374,7 +1374,7 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
     let score = 5;
     // Heavy bonus for ETB-trigger creatures.
     if (Array.isArray(c.card.triggers)) {
-      const etbTriggers = c.card.triggers.filter(t => t.event === 'cardEntersBattlefield');
+      const etbTriggers = c.card.triggers.filter(triggerFiresOnEnter);
       score += etbTriggers.length * 12;
     }
     // Damage-dodge bonus: if creature has marked damage, flicker is
@@ -1410,7 +1410,7 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
     // the re-ETB happens at EOT (delayed) rather than immediately.
     let score = 3;
     if (Array.isArray(c.card.triggers)) {
-      const etbTriggers = c.card.triggers.filter(t => t.event === 'cardEntersBattlefield');
+      const etbTriggers = c.card.triggers.filter(triggerFiresOnEnter);
       score += etbTriggers.length * 8;  // less than flicker's 12 since delayed
     }
     if (c.card.damage > 0) score += c.card.damage * 2;

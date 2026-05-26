@@ -141,7 +141,7 @@ const EXPOSED = [
   // Composable-predicate surface (triggers.js, module-scope — Slice 2 / E2).
   'ATOMIC_PREDICATES', 'evaluateCondition', '_parseCall',
   'validateAllCardConditions', 'VALID_TRIGGER_EVENTS',
-  'triggerArchetype', 'triggerSubtype',
+  'triggerArchetype', 'triggerSubtype', 'triggerFiresOnEnter',
   'generateConditionOptions', 'generateEffectOptions', 'assembleTrigger',
   // Engine module-scope helpers (above the ENGINE IIFE).
   'deckColorsFromSlots', 'fakeTargetsForLegality',
