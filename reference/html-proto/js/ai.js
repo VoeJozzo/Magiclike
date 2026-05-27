@@ -462,7 +462,8 @@ function shouldCounter(state, who) {
     (e.kind === 'removeCreature' && (e.severity || 1) >= 3)
   )) return true;
   if (card.type === 'Creature' && ENGINE.cardCost(card) >= 4) return true;
-  if (relevantEffects.some(e => e.kind === 'draw' || e.kind === 'discard')) return Math.random() < 0.5;
+  if (relevantEffects.some(e => e.kind === 'draw' || e.kind === 'discard'
+      || (e.kind === 'move_card' && e.from_zone === 'library' && e.to_zone === 'hand'))) return Math.random() < 0.5;
   return false;
 }
 
@@ -1484,7 +1485,8 @@ function pickBestActivation(state, who, abilityActs) {
       } else {
         score = 3 + (eff.power || 0) + (eff.toughness || 0);
       }
-    } else if (eff.kind === 'draw') {
+    } else if (eff.kind === 'draw'
+        || (eff.kind === 'move_card' && eff.from_zone === 'library' && eff.to_zone === 'hand')) {
       // Drawing is always positive (looter discard is filtered as net upside).
       score = 5 + (eff.amount || 1);
     } else if (eff.kind === 'discard') {

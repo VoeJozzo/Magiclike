@@ -1080,6 +1080,8 @@ function abilityValue(ab) {
     case 'pump':           return (eff.duration === 'permanent' ? 3 : 2) + (eff.power || 0) + (eff.toughness || 0);
     case 'addCounter':     return 3 + (eff.power || 0) + (eff.toughness || 0);
     case 'addMana':        return 3;
+    case 'move_card':      // collapsed draw (library→hand); other moves parity-default
+      return (eff.from_zone === 'library' && eff.to_zone === 'hand') ? 4 + (eff.amount || 1) - 1 : 2;
     case 'draw':           return 4 + (eff.amount || 1) - 1;
     case 'discard':        return 3 + (eff.amount || 1) - 1;
     case 'gainLife':       return 1 + (eff.amount || 0);
@@ -1128,9 +1130,10 @@ function spellValueForEffects(effects) {
     else if (e.kind === 'applyInGameSplice') v += 18;   // 2-for-1 with cross-game retention
     else if (e.kind === 'noop') v += 0;
     else if (e.kind === 'move_card') {
-      // Collapsed shuffleIntoLibrary (battlefield→library) / returnFromGraveyard
-      // (graveyard→hand) — valued at parity.
-      if (e.from_zone === 'battlefield' && e.to_zone === 'library') v += 5;
+      // Collapsed draw (library→hand) / shuffleIntoLibrary (battlefield→library)
+      // / returnFromGraveyard (graveyard→hand) — valued at parity.
+      if (e.from_zone === 'library' && e.to_zone === 'hand') v += (e.amount || 1) * 3;
+      else if (e.from_zone === 'battlefield' && e.to_zone === 'library') v += 5;
       else if (e.from_zone === 'graveyard' && e.to_zone === 'hand') v += 4;
       else v += 3;
     }

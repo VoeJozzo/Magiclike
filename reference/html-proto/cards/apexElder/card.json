@@ -36,7 +36,10 @@
       "text": "A Beast attacked — loot 1.",
       "effects": [
         {
-          "kind": "draw",
+          "kind": "move_card",
+          "from_zone": "library",
+          "to_zone": "hand",
+          "selector": "controller_top",
           "amount": 1
         },
         {

@@ -1667,9 +1667,10 @@ function clickBattlefield(iid) {
                             return n === 1 ? '{' + c + '}' : '{' + n + '}'.replace('C', '');
                           }).join('') :
                         (ab.cost && ab.cost.sacrifice) ? 'Sacrifice' : '';
+        const isDrawMove = eff.kind === 'move_card' && eff.from_zone === 'library' && eff.to_zone === 'hand';
         const effDesc = eff.kind === 'damage' ? 'Deal ' + (eff.amount || 1) + ' damage' :
                         eff.kind === 'pump' ? '+' + (eff.power || 0) + '/+' + (eff.toughness || 0) + ' EOT' :
-                        eff.kind === 'draw' ? 'Draw ' + (eff.amount || 1) :
+                        (eff.kind === 'draw' || isDrawMove) ? 'Draw ' + (eff.amount || 1) :
                         eff.kind === 'untap' ? 'Untap a creature' :
                         eff.kind === 'gainLife' ? 'Gain ' + (eff.amount || 1) + ' life' :
                         eff.kind === 'applyInGameSplice' ? 'Staple' :

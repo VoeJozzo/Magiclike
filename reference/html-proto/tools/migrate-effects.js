@@ -89,6 +89,12 @@ function collapseEffect(e) {
     const { kind, ...rest } = e;  // preserves target:permanentOrSpell + filter
     return Object.assign({ kind: 'change_control', transfer_ownership: true }, rest);
   }
+  if (e.kind === 'draw') {
+    // Every draw in the pool is a controller-draw (no targeted-player draw).
+    // → move_card(library → hand, controller_top). Drops target:'self' if present.
+    const { kind, target, ...rest } = e;
+    return Object.assign({ kind: 'move_card', from_zone: 'library', to_zone: 'hand', selector: 'controller_top' }, rest);
+  }
   if (e.kind === 'returnFromGraveyard') {
     const { kind, ...rest } = e;  // bare (target migrated to top-level graveyard_creature)
     return Object.assign({ kind: 'move_card', from_zone: 'graveyard', to_zone: 'hand', selector: 'target' }, rest);

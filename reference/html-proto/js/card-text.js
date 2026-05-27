@@ -242,6 +242,10 @@ function describeEffect(eff, tplEff) {
       // Generic card-movement primitive → English for the common collapsed
       // idioms (matches the legacy kinds' phrasing for parity).
       const fz = eff.from_zone, tz = eff.to_zone;
+      if (fz === 'library' && tz === 'hand') {  // collapsed draw
+        if (eff.amount === 1) return [plainSeg('draw a card')];
+        return [plainSeg('draw '), amtSeg, plainSeg(' cards')];
+      }
       if (fz === 'graveyard' && tz === 'hand') return [plainSeg('return ' + t + ' from your graveyard to your hand')];
       if (fz === 'battlefield' && tz === 'library') return [plainSeg('shuffle ' + t + " into its owner's library")];
       if (fz === 'battlefield' && tz === 'hand') return [plainSeg('return ' + t + " to its owner's hand")];
@@ -359,9 +363,10 @@ function describeEffectList(effects, cardName, tplEffects, stepTarget) {
       seg1, plainSeg(' damage to ' + t1 + '.'),
     ];
   }
-  // Loot pattern.
+  // Loot pattern (draw then discard). Draw is now the collapsed move_card form.
   if (effects.length === 2
-      && effects[0].kind === 'draw'
+      && effects[0].kind === 'move_card'
+      && effects[0].from_zone === 'library' && effects[0].to_zone === 'hand'
       && effects[1].kind === 'discard'
       && effects[1].target === 'self') {
     return capitalizeSegs(parts[0]).concat(plainSeg(', then ')).concat(parts[1]).concat(plainSeg('.'));

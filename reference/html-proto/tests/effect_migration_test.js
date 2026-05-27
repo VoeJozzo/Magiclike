@@ -89,8 +89,11 @@ console.log('\n=== skipped cards kept their non-taxonomy filters (no silent loss
 
 console.log('\n=== kind-collapse: legacy mass/weaken kinds gone from card data ===');
 (() => {
+  // 'draw' is gone from CARD DATA (collapsed to move_card). The runtime trigger
+  // generator (Mercurial pool) still emits draw, so the EFFECTS handler stays —
+  // GONE asserts the card templates, not the dispatch table.
   const GONE = ['damageAll', 'removeAll', 'pumpAllYours', 'weaken', 'gainControl', 'steal',
-                'returnFromGraveyard', 'shuffleIntoLibrary', 'addCounter', 'edict', 'restrict'];
+                'returnFromGraveyard', 'shuffleIntoLibrary', 'addCounter', 'edict', 'restrict', 'draw'];
   const seen = {};
   const allEffs = (card) => {
     const out = [];
@@ -129,15 +132,17 @@ console.log('\n=== kind-collapse: legacy mass/weaken kinds gone from card data =
   check('gainControl/steal collapsed to change_control (3)', changeControl === 3, 'got ' + changeControl);
   check('steal is the transfer_ownership variant (1)', stealVariant === 1, 'got ' + stealVariant);
 
-  let mcReturn = 0, mcShuffle = 0;
+  let mcReturn = 0, mcShuffle = 0, mcDraw = 0;
   for (const card of Object.values(CARDS)) {
     for (const e of allEffs(card)) {
       if (e && e.kind === 'move_card' && e.from_zone === 'graveyard' && e.to_zone === 'hand') mcReturn++;
       if (e && e.kind === 'move_card' && e.from_zone === 'battlefield' && e.to_zone === 'library') mcShuffle++;
+      if (e && e.kind === 'move_card' && e.from_zone === 'library' && e.to_zone === 'hand') mcDraw++;
     }
   }
   check('returnFromGraveyard collapsed to move_card graveyard→hand (3)', mcReturn === 3, 'got ' + mcReturn);
   check('shuffleIntoLibrary collapsed to move_card battlefield→library (1)', mcShuffle === 1, 'got ' + mcShuffle);
+  check('draw collapsed to move_card library→hand, controller_top (22)', mcDraw === 22, 'got ' + mcDraw);
 
   let permPump = 0;
   for (const card of Object.values(CARDS)) {
