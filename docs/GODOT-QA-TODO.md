@@ -205,14 +205,20 @@ exercised directly via an exposed `ENGINE.applyEffect` test seam):
   threading (chooses replaces it), cast-time hexproof checkpoint, per-target
   enumeration. All inert for legacy cards. `tests/test_targeting_cast.js`.
 
-Still TODO proto (migration prerequisites): **§8.1 AI-valuation lockstep**
-(burn.js lethal-recognition + scoring must read the `target()` step / `scope`
-instead of `effect.target`, else collapsed cards mis-value — the
-silent-regression trap) · UI target-pick (part D, browser) · the staple
-`fireStackEffects` path still per-effect (Stapler-only, low priority) · then
-the `migrate-effects.js` script + 258-card migration (steps 5/6) ·
-`apply_sticker` + sticker pipeline (step 10) · mana deep-clean (§3.9) · flicker
-decomposition (step 8, unblocked by move_card arrival).
+- **§8.1 AI-valuation lockstep (done, proto):** single-target spells (the AI
+  casts/burns migrated bare-effect spells correctly — scoreMultiTargetSpell +
+  scoreSpellTargetForMode recognize a top-level `card.target`; burn lethal
+  already worked) AND mass effects (massEffectInfo normalizes legacy
+  damageAll/removeAll/pumpAllYours vs new damage/affect_creature/pump+scope;
+  spellValueForEffects scope-aware). `tests/test_ai_targeting.js`. The Godot
+  mirror (`scoring.gd`/`burn.gd`/`ai.gd`) needs the SAME treatment — this is the
+  recurring silent-regression trap; the §7b boot-coverage assertion is the guard.
+
+Still TODO proto: selfDamageOf scope:controller (minor) · UI target-pick (part D,
+browser) · the staple `fireStackEffects` path still per-effect (Stapler-only) ·
+then **`migrate-effects.js` + the 258-card migration (steps 5/6) — the next big
+step** · `apply_sticker` + sticker pipeline (step 10) · mana deep-clean (§3.9) ·
+flicker decomposition (step 8, unblocked by move_card arrival).
 
 ### Godot mirror — major work items (per plan §10/§11)
 
