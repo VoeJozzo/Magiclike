@@ -1855,17 +1855,26 @@ const EFFECTS = {
     const txt = Object.entries(params.amounts).map(([c,n]) => `{${c}}`.repeat(n)).join('');
     log(`${pname(ctx.controller)} adds ${txt}.`, 'sp');
   },
+  // Unified signed life-delta (DIVERGENCE D4). amount > 0 gains life and fires a
+  // life_changed(delta>0) → is_life_gain; amount < 0 loses life, tracks
+  // lifeLostThisTurn, and fires life_changed(delta<0) → is_life_loss; 0 = no-op.
+  // Card-text renders the sign ("gain N" / "lose N"). Lifelink unchanged (fires
+  // on damage, not here).
   gainLife(ctx, params, target) {
     // Priority: params.who (resolved) > target.who (player target) > ctx.controller.
     const who = params.who
       || (target && target.kind === 'player' ? target.who : null)
       || ctx.controller;
     const amount = params.amount;
+    if (!amount) return;
     G[who].life += amount;
-    log(`${pname(who)} gains ${amount} life.`, 'sp');
     if (amount > 0) {
-      emit({type: 'life_changed', who, delta: amount, source_iid: ctx.sourceIid});
+      log(`${pname(who)} gains ${amount} life.`, 'sp');
+    } else {
+      G[who].lifeLostThisTurn = (G[who].lifeLostThisTurn || 0) + (-amount);
+      log(`${pname(who)} loses ${-amount} life.`, 'sp');
     }
+    emit({type: 'life_changed', who, delta: amount, source_iid: ctx.sourceIid});
   },
   draw(ctx, params) {
     for (let i=0;i<params.amount;i++) drawCard(ctx.controller);

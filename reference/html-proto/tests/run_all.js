@@ -61,6 +61,8 @@ const CATEGORY_A = [
   'test_balancer.js',
   // Slice 3 — §3.5 browser targeting (clickHand/ability honor the top-level target() step).
   'test_ui_targeting.js',
+  // DIVERGENCE D4 — signed gain_life (life loss + is_life_loss).
+  'test_signed_life.js',
   // Slice 3 — on-cast targeting migration (golden).
   'effect_migration_test.js',
 ];

@@ -143,6 +143,13 @@ function describeEffect(eff, tplEff) {
         const owner = (eff.who && eff.who.from === 'targetController') ? "its controller" : 'you';
         return [plainSeg(owner + ' gains life equal to ' + describeAmount(eff.amount))];
       }
+      // §D4: a negative amount is life loss — render the sign as "lose N life".
+      if (typeof eff.amount === 'number' && eff.amount < 0) {
+        const n = -eff.amount;
+        if (eff.target === 'self')   return [plainSeg('you lose ' + n + ' life')];
+        if (eff.target === 'player') return [plainSeg(t + ' loses ' + n + ' life')];
+        return [plainSeg('lose ' + n + ' life')];
+      }
       if (eff.target === 'self')   return [plainSeg('you gain '), amtSeg, plainSeg(' life')];
       if (eff.target === 'player') return [plainSeg(t + ' gains '), amtSeg, plainSeg(' life')];
       return [plainSeg('gain '), amtSeg, plainSeg(' life')];
