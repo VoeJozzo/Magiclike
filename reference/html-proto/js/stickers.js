@@ -25,11 +25,9 @@ function applyStickerKindEffect(card, s) {
     card.innate = true;
   } else if (s.kind === 'landColor') {
     addColorToManaAbility(card, s.color);
-  } else if (s.kind === 'costReduction') {
-    if (card.cost) card.cost.C = Math.max(0, (card.cost.C || 0) - (s.amount || 1));
   } else if (s.kind === 'cost_mod') {
-    // Signed additive cost change (§3.8): +N for embargo, -N for a future
-    // reduction reward. Generic floored at 0.
+    // Signed additive cost change (§3.8): +N for embargo, −1 for the reduction
+    // reward (unified from costReduction). Generic floored at 0.
     if (card.cost) card.cost.C = Math.max(0, (card.cost.C || 0) + (s.amount || 0));
   } else if (s.kind === 'set_color') {
     card.color = s.color;
@@ -339,11 +337,8 @@ function stickersForSlot(slot, deckColors) {
     if (s.kind === 'landColor') {
       addColorToManaAbility(view, s.color);  // §3.9: reflect on the view's tap-ability
     }
-    if (s.kind === 'costReduction' && view.cost) {
-      const generic = view.cost.C || 0;
-      view.cost.C = Math.max(0, generic - (s.amount || 1));
-    }
-    // §3.8 inline Balancer stickers, so re-offer eligibility sees the modified card.
+    // §3.8 cost_mod (unified costReduction −1 / embargo +1) — reflect on the
+    // view so re-offer eligibility sees the modified cost.
     if (s.kind === 'cost_mod' && view.cost) {
       view.cost.C = Math.max(0, (view.cost.C || 0) + (s.amount || 0));
     }

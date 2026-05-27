@@ -151,8 +151,9 @@ STICKERS['costMinus1'] = {
   },
   stackable: true,
   weight: 1,
-  kind: 'costReduction',
-  amount: 1,
+  // §3.8: unified onto the signed cost_mod kind (−1 reward / +1 embargo).
+  kind: 'cost_mod',
+  amount: -1,
 };
 
 // Empower bumps one buffable field per application. Roll recorded on slot.empowerRolls.
