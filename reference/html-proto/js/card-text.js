@@ -378,6 +378,51 @@ function segsToText(segs) {
 }
 
 // Join effects into a sentence. Special-case: 2 damage effects use shared-subject phrasing.
+// Subject key for buff coalescing — pump (scope/target) and grantKeyword
+// (whose/target) must map to the SAME key to share one clause.
+function buffSubjectKey(eff) {
+  if (eff.scope === 'all_yours' || eff.whose === 'allYours') return 'all_yours';
+  if (eff.scope === 'all_creatures' || eff.whose === 'all') return 'all_creatures';
+  if (eff.target === 'self') return 'self';
+  return 'tgt:' + (eff.target || '');
+}
+// Coalesce same-subject EOT buffs (pump + keyword grants) into one clause:
+// "X gets +A/+B and gains KW1 and KW2 until end of turn" — instead of repeating
+// the subject and "until end of turn" once per effect (overrun, strengthOfPack,
+// predatorsSpeed). Returns segments, or null when the shape doesn't apply.
+function coalesceEotBuffs(effects, tplOf) {
+  if (effects.length < 2) return null;
+  const pump = e => e.kind === 'pump' && e.duration !== 'permanent' && !('targetSlot' in e);
+  const grant = e => e.kind === 'grantKeyword' && e.duration === 'eot' && !('targetSlot' in e);
+  if (!effects.every(e => pump(e) || grant(e))) return null;
+  const key = buffSubjectKey(effects[0]);
+  if (!effects.every(e => buffSubjectKey(e) === key)) return null;
+  let subject, plural;
+  if (key === 'all_yours') { subject = 'creatures you control'; plural = true; }
+  else if (key === 'all_creatures') { subject = 'all creatures'; plural = true; }
+  else if (key === 'self') { subject = 'this creature'; plural = false; }
+  else { subject = targetPhrase({ target: key.slice(4) }); plural = false; }
+  const getV = plural ? 'get ' : 'gets ';
+  const gainV = plural ? 'gain ' : 'gains ';
+  const out = [plainSeg(subject + ' ')];
+  const clauses = [];
+  effects.filter(pump).forEach(e => {
+    const tpl = tplOf(effects.indexOf(e));
+    const neg = (e.power || 0) < 0 || (e.toughness || 0) < 0;
+    clauses.push({ verb: getV, segs: [signedStat('power', e, tpl, neg), plainSeg('/'), signedStat('toughness', e, tpl, neg)] });
+  });
+  const grants = effects.filter(grant);
+  if (grants.length) clauses.push({ verb: gainV, segs: [plainSeg(grants.map(e => e.keyword).join(' and '))] });
+  clauses.forEach((c, i) => {
+    if (i > 0) out.push(plainSeg(' and '));
+    out.push(plainSeg(c.verb), ...c.segs);
+  });
+  out.push(plainSeg(' until end of turn'));
+  // Trailing '.' as a SEPARATE seg so the modal joiner can strip it (mode bodies
+  // drop a standalone '.' before joining with "; or").
+  return capitalizeSegs(out).concat(plainSeg('.'));
+}
+
 function describeEffectList(effects, cardName, tplEffects, stepTarget, stepFilter) {
   if (!Array.isArray(effects) || effects.length === 0) return [];
   // New model (§3.5): a top-level target() step + bare effects. For rendering,
@@ -443,6 +488,9 @@ function describeEffectList(effects, cardName, tplEffects, stepTarget, stepFilte
       && effects[1].kind === 'schedule_delayed') {
     return capitalizeSegs(parts[0]).concat(plainSeg('; return it to the battlefield at end of turn.'));
   }
+  // Same-subject EOT buffs (pump + keyword grants) → one coalesced clause.
+  const coalesced = coalesceEotBuffs(effects, tplOf);
+  if (coalesced) return coalesced;
   // Drop effects that render to nothing (e.g. chooses() — its phrasing is
   // carried by the following sacrifice clause), so they don't leave stray ". ".
   const nonEmpty = parts.filter(p => Array.isArray(p) && p.some(s => s && s.text));

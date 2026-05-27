@@ -93,6 +93,26 @@ eqText(segsToText(describeEffect({ kind: 'grantKeyword', target: 'your_creature'
        'target creature you control gains hexproof as long as this is on the battlefield',
        'your_creature grant keeps the source-linked duration');
 
+console.log('\n=== same-subject EOT buffs coalesce into one clause ===');
+eqText(segsToText(describeEffectList(
+  [{ kind: 'pump', scope: 'all_yours', power: 3, toughness: 3 },
+   { kind: 'grantKeyword', whose: 'allYours', keyword: 'trample', duration: 'eot' }], null, null)),
+  'Creatures you control get +3/+3 and gain trample until end of turn.', 'overrun coalesce (mass)');
+eqText(segsToText(describeEffectList(
+  [{ kind: 'pump', power: 2, toughness: 2 },
+   { kind: 'grantKeyword', keyword: 'trample', duration: 'eot' }], null, null, 'creature')),
+  'Target creature gets +2/+2 and gains trample until end of turn.', 'strengthOfPack coalesce (single)');
+eqText(segsToText(describeEffectList(
+  [{ kind: 'grantKeyword', keyword: 'haste', duration: 'eot' },
+   { kind: 'grantKeyword', keyword: 'trample', duration: 'eot' }], null, null, 'creature')),
+  'Target creature gains haste and trample until end of turn.', 'predatorsSpeed coalesce (two grants)');
+// Multi-target (targetSlot) must NOT coalesce — they're distinct targets.
+eqText(segsToText(describeEffectList(
+  [{ kind: 'pump', target: 'creature', power: 1, toughness: 1 },
+   { kind: 'pump', target: 'creature', power: 1, toughness: 1, targetSlot: 1 }], null, null)),
+  'Target creature gets +1/+1 until end of turn. Target creature gets +1/+1 until end of turn.',
+  'twinStrike NOT coalesced (two slots)');
+
 console.log('\n=== describeEffect: removeCreature severity ladder ===');
 eqText(segsToText(describeEffect({ kind: 'removeCreature', target: 'creature', severity: 1 })),
        'tap target creature', 'sev 1 = tap');
