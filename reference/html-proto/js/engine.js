@@ -843,7 +843,7 @@ function getStats(card) {
   } else if (Array.isArray(card.stickers)) {
     for (const sId of card.stickers) {
       const s = STICKERS[sId];
-      if (s && s.kind === 'statBoost') {
+      if (s && s.kind === 'stat_boost') {
         p += (s.power || 0); t += (s.toughness || 0);
       }
     }
@@ -1635,7 +1635,7 @@ const EFFECTS = {
       log(`${ctx.sourceName} absorbs ${absorbed} from ${victim.name}.`, 'sp');
     } else {
       // Fallback +1/+1 via slot sticker (persists across games, unlike counter).
-      const stickerId = 'plus1plus1';
+      const stickerId = 'plus1_plus1';
       if (canPersist) RUN.applyStickerToSlot(slotIdx, stickerId);
       if (inGameTarget) {
         inGameTarget.modifiers.push({ power: 1, toughness: 1 });

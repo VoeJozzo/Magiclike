@@ -65,10 +65,10 @@ console.log('\n=== creature mana dork is summoning-sick the turn it enters ===')
 console.log('\n=== landColor sticker extends the tap-ability ===');
 (() => {
   const c = ENGINE.makeCard('plains', 'you', null);
-  // Apply a landColor_U sticker through the runtime sticker path (takes the id).
-  applyOneStickerToRuntimeCard(c, 'landColor_U');
+  // Apply a land_color_u sticker through the runtime sticker path (takes the id).
+  applyOneStickerToRuntimeCard(c, 'land_color_u');
   const prod = ENGINE.landProducibleColors(c).slice().sort();
-  check('plains + landColor_U produces W and U', JSON.stringify(prod) === JSON.stringify(['U', 'W']), JSON.stringify(prod));
+  check('plains + land_color_u produces W and U', JSON.stringify(prod) === JSON.stringify(['U', 'W']), JSON.stringify(prod));
   // Tapping it for the stickered color works.
   G.you.battlefield.push(c); resetMana('you');
   ENGINE.executeAction('you', { type: 'tapLandForMana', cardIid: c.iid, color: 'U' });

@@ -400,7 +400,7 @@ function applyOpponentStickers(slots, n) {
 // Heuristic sticker value per slot. Evasion keywords beat stat boosts;
 // land/cost/empower stickers vary with slot context.
 function scoreOpponentSticker(sticker, slot) {
-  if (sticker.kind === 'statBoost') {
+  if (sticker.kind === 'stat_boost') {
     return 8 + (sticker.power || 0) * 2 + (sticker.toughness || 0) * 2;
   }
   if (sticker.kind === 'keyword') {
@@ -411,7 +411,7 @@ function scoreOpponentSticker(sticker, slot) {
     return tier;
   }
   if (sticker.kind === 'innate') return 6;     // free opening-hand land
-  if (sticker.kind === 'landColor') return 7;
+  if (sticker.kind === 'land_color') return 7;
   if (sticker.kind === 'cost_mod') {
     // Bigger cards benefit more. For stapled slots, the merged cost is
     // higher than the base alone — a costMinus1 on a Lions+Bolt at WR

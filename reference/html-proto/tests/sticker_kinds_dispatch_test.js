@@ -41,7 +41,7 @@ function freshCard(tplId, stickers, opts) {
 console.log('=== applyStickersToCard: each kind mutates correctly ===');
 
 {
-  const card = freshCard('savannahLions', ['plus1plus1']);
+  const card = freshCard('savannahLions', ['plus1_plus1']);
   applyStickersToCard(card);
   check('statBoost adds modifier with power/toughness',
     card.modifiers.length === 1 && card.modifiers[0].power === 1 && card.modifiers[0].toughness === 1);
@@ -67,7 +67,7 @@ console.log('=== applyStickersToCard: each kind mutates correctly ===');
 }
 
 {
-  const card = freshCard('plains', ['landColor_R']);
+  const card = freshCard('plains', ['land_color_r']);
   applyStickersToCard(card);
   // §3.9: landColor extends the tap-ability; producible colors read from it.
   const prod = ENGINE.landProducibleColors(card);
@@ -76,14 +76,14 @@ console.log('=== applyStickersToCard: each kind mutates correctly ===');
 }
 
 {
-  const card = freshCard('plains', ['landColor_W']);
+  const card = freshCard('plains', ['land_color_w']);
   applyStickersToCard(card);
   // Adding the native color is a no-op — still just W (no duplicate / no choose).
   check("landColor: native 'W' stays single-color", JSON.stringify(ENGINE.landProducibleColors(card)) === JSON.stringify(['W']));
 }
 
 {
-  const card = freshCard('furnaceWhelp', ['costMinus1']);
+  const card = freshCard('furnaceWhelp', ['cost_minus_1']);
   const before = card.cost.C;
   applyStickersToCard(card);
   check('costReduction reduces card.cost.C by 1', card.cost.C === before - 1,
@@ -106,7 +106,7 @@ console.log('=== applyStickersToCard: each kind mutates correctly ===');
 }
 {
   // Mixed string + inline descriptors in one slot's sticker list.
-  const card = freshCard('furnaceWhelp', ['plus1plus1', { kind: 'cost_mod', amount: 1, stackable: true }]);
+  const card = freshCard('furnaceWhelp', ['plus1_plus1', { kind: 'cost_mod', amount: 1, stackable: true }]);
   const before = card.cost.C;
   applyStickersToCard(card);
   check('mixed string + inline stickers both apply',
@@ -140,9 +140,9 @@ console.log('=== applyStickersToCard: each kind mutates correctly ===');
 console.log('\n=== stickersForSlot: each kind reflects into view correctly ===');
 
 {
-  const slot = { tplId: 'savannahLions', stickers: ['plus1plus1'] };
+  const slot = { tplId: 'savannahLions', stickers: ['plus1_plus1'] };
   const result = stickersForSlot(slot, ['W']);
-  check('statBoost re-offerable (stackable)', result.some(s => s.id === 'plus1plus1'));
+  check('statBoost re-offerable (stackable)', result.some(s => s.id === 'plus1_plus1'));
 }
 
 {
@@ -159,18 +159,18 @@ console.log('\n=== stickersForSlot: each kind reflects into view correctly ===')
 }
 
 {
-  const slot = { tplId: 'plains', stickers: ['landColor_R'] };
+  const slot = { tplId: 'plains', stickers: ['land_color_r'] };
   const result = stickersForSlot(slot, ['W','R']);
-  const offeredColors = result.filter(s => s.kind === 'landColor').map(s => s.color);
-  check('landColor_R not re-offered', !offeredColors.includes('R'));
+  const offeredColors = result.filter(s => s.kind === 'land_color').map(s => s.color);
+  check('land_color_r not re-offered', !offeredColors.includes('R'));
   check('native W still suppressed', !offeredColors.includes('W'));
 }
 
 {
-  const slot = { tplId: 'furnaceWhelp', stickers: ['costMinus1', 'costMinus1'] };
+  const slot = { tplId: 'furnaceWhelp', stickers: ['cost_minus_1', 'cost_minus_1'] };
   const result = stickersForSlot(slot, ['R']);
   check('costMinus1 not offered when C already 0',
-    !result.some(s => s.id === 'costMinus1'),
+    !result.some(s => s.id === 'cost_minus_1'),
     '(after 2 reductions, generic is at floor)');
 }
 
@@ -189,7 +189,7 @@ console.log('\n=== stickersForSlot: each kind reflects into view correctly ===')
 console.log('\n=== stickerBadgesHtml: each kind renders correctly ===');
 
 {
-  const html = stickerBadgesHtml(['plus1plus1']);
+  const html = stickerBadgesHtml(['plus1_plus1']);
   check("statBoost badge contains '+1/+1'", html.includes('+1/+1'));
   check("statBoost badge has 'stat' class", html.includes('stk-badge stat'));
 }
@@ -210,13 +210,13 @@ console.log('\n=== stickerBadgesHtml: each kind renders correctly ===');
   // landColor badge now routes the {R} token through renderManaSymbols
   // so the pip icon shows instead of literal '+{R}' text. Check for the
   // resulting mana-R span plus the leading '+'.
-  const html = stickerBadgesHtml(['landColor_R']);
+  const html = stickerBadgesHtml(['land_color_r']);
   check('landColor badge contains a +<mana-R pip>', html.includes('+<span class="mana mana-R"'));
   check('landColor badge no longer contains literal +{R} text', !html.includes('+{R}'));
 }
 
 {
-  const html = stickerBadgesHtml(['costMinus1']);
+  const html = stickerBadgesHtml(['cost_minus_1']);
   check("costReduction badge contains '-1 cost'", html.includes('-1 cost'));
 }
 
@@ -232,12 +232,12 @@ console.log('\n=== stickerBadgesHtml: each kind renders correctly ===');
 }
 
 {
-  const html = stickerBadgesHtml(['plus1plus1', 'plus1plus1']);
+  const html = stickerBadgesHtml(['plus1_plus1', 'plus1_plus1']);
   check("statBoost stacking shows multiplier", html.includes('×2'));
 }
 
 {
-  const html = stickerBadgesHtml(['plus1plus1', 'innate', 'kw_flying']);
+  const html = stickerBadgesHtml(['plus1_plus1', 'innate', 'kw_flying']);
   const innateIdx = html.indexOf('Innate');
   const plusIdx = html.indexOf('+1/+1');
   check('innate badge renders before others',

@@ -59,7 +59,7 @@ console.log('\n=== v1->v2 save migration translates all tplId fields ===');
     version: 1,
     runState: {
       slots: [
-        { tplId: 'fireImp', stickers: ['plus1plus1'] },
+        { tplId: 'fireImp', stickers: ['plus1_plus1'] },
         { tplId: 'archmage', stickers: [] },
         // A slot with stapledTpls covering an old + new id mix.
         { tplId: 'zealot', stickers: [], stapledTpls: ['merfolk', 'savannahLions'] },

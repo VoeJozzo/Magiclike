@@ -71,6 +71,25 @@ console.log('\n=== embargo/bleach card.json are decomposed (no bespoke kinds) ==
     (Array.isArray(c.effects) ? c.effects : []).some(e => e && (e.kind === 'embargo' || e.kind === 'bleach'))));
 })();
 
+console.log('\n=== §3.8 snake_case: a save with legacy sticker ids loads renamed (no data loss) ===');
+(() => {
+  const blob = {
+    version: SAVE_VERSION,
+    runState: {
+      slots: [{ tplId: 'plains', stickers: ['plus1plus1', 'costMinus1', 'landColor_W'] }],
+    },
+  };
+  localStorage.setItem(SAVE_KEY, JSON.stringify(blob));
+  const ok = RUN.load();
+  check('save loaded', ok === true);
+  const stickers = RUN.getSlots()[0].stickers;
+  check('plus1plus1 → plus1_plus1', stickers.includes('plus1_plus1'));
+  check('costMinus1 → cost_minus_1', stickers.includes('cost_minus_1'));
+  check('landColor_W → land_color_w', stickers.includes('land_color_w'));
+  check('no legacy ids survive (would have been pruned as unknown)',
+    !stickers.some(s => s === 'plus1plus1' || s === 'costMinus1' || s === 'landColor_W'));
+})();
+
 console.log('\n=== §3.8: the applyBalancerOverrides channel is gone (one sticker pipeline) ===');
 (() => {
   const fs = require('fs');

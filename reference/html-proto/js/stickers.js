@@ -15,7 +15,7 @@ function resolveSticker(entry) {
 // Shared by the batch (applyStickersToCard) and incremental
 // (applyOneStickerToRuntimeCard) paths for the non-roll kinds.
 function applyStickerKindEffect(card, s) {
-  if (s.kind === 'statBoost' || s.kind === 'stat_boost') {
+  if (s.kind === 'stat_boost') {
     if (!Array.isArray(card.modifiers)) card.modifiers = [];
     card.modifiers.push({ power: s.power || 0, toughness: s.toughness || 0 });
   } else if (s.kind === 'keyword') {
@@ -23,7 +23,7 @@ function applyStickerKindEffect(card, s) {
     if (!card.keywords.includes(s.keyword)) card.keywords.push(s.keyword);
   } else if (s.kind === 'innate') {
     card.innate = true;
-  } else if (s.kind === 'landColor') {
+  } else if (s.kind === 'land_color') {
     addColorToManaAbility(card, s.color);
   } else if (s.kind === 'cost_mod') {
     // Signed additive cost change (§3.8): +N for embargo, −1 for the reduction
@@ -334,7 +334,7 @@ function stickersForSlot(slot, deckColors) {
         }
       }
     }
-    if (s.kind === 'landColor') {
+    if (s.kind === 'land_color') {
       addColorToManaAbility(view, s.color);  // §3.9: reflect on the view's tap-ability
     }
     // §3.8 cost_mod (unified costReduction −1 / embargo +1) — reflect on the
@@ -343,7 +343,7 @@ function stickersForSlot(slot, deckColors) {
       view.cost.C = Math.max(0, (view.cost.C || 0) + (s.amount || 0));
     }
     if (s.kind === 'set_color') view.color = s.color;
-    if ((s.kind === 'statBoost' || s.kind === 'stat_boost')) {
+    if (s.kind === 'stat_boost') {
       view.power = (view.power || 0) + (s.power || 0);
       view.toughness = (view.toughness || 0) + (s.toughness || 0);
     }

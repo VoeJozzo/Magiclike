@@ -936,17 +936,17 @@ function stickerBadgesHtml(stickers, big, empowerRolls, tplId, stapledTpls, subt
   for (const [sId, n] of counts) {
     const s = STICKERS[sId];
     if (!s) continue;
-    const cls = s.kind === 'statBoost' ? 'stat'
+    const cls = s.kind === 'stat_boost' ? 'stat'
               : s.kind === 'innate'    ? 'innate'
               : 'skw';
     let label;
-    if (s.kind === 'statBoost') label = '+1/+1';
+    if (s.kind === 'stat_boost') label = '+1/+1';
     else if (s.kind === 'innate') label = 'Innate';
     // landColor badge label is "+{W}"-style — route the brace token
     // through renderManaSymbols so it shows the color pip / future PNG
     // instead of literal {W} text. The label gets injected into
     // innerHTML below, so an HTML span is fine here.
-    else if (s.kind === 'landColor') label = '+' + renderManaSymbols('{' + s.color + '}');
+    else if (s.kind === 'land_color') label = '+' + renderManaSymbols('{' + s.color + '}');
     else if (s.kind === 'cost_mod') label = ((s.amount || 0) < 0 ? (s.amount || 0) : '+' + (s.amount || 0)) + ' cost';
     else if (s.kind === 'trigger') label = s.name || 'Trigger';
     else if (s.kind === 'keyword') label = s.keyword;

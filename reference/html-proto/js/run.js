@@ -56,6 +56,14 @@ function save() {
   }
 }
 
+// §3.8 snake_case rename map for sticker IDs stored in saved slots.
+const STICKER_ID_RENAMES = {
+  plus1plus1: 'plus1_plus1',
+  costMinus1: 'cost_minus_1',
+  landColor_W: 'land_color_w', landColor_U: 'land_color_u', landColor_B: 'land_color_b',
+  landColor_R: 'land_color_r', landColor_G: 'land_color_g',
+};
+
 function load() {
   try {
     const raw = localStorage.getItem(SAVE_KEY);
@@ -92,6 +100,8 @@ function load() {
             subtypeMigrated++;
             return 'subtype';
           }
+          // §3.8 snake_case sticker-id renames.
+          if (STICKER_ID_RENAMES[id]) return STICKER_ID_RENAMES[id];
           return id;
         });
         const before = slot.stickers.length;

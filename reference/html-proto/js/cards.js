@@ -96,13 +96,13 @@ const KEYWORDS = [
 
 // STICKERS — run-long card mods. Shape: {id, name, text, appliesTo, stackable, kind, weight, ...payload}.
 const STICKERS = {};
-STICKERS['plus1plus1'] = {
-  id: 'plus1plus1', name: '+1/+1',
+STICKERS['plus1_plus1'] = {
+  id: 'plus1_plus1', name: '+1/+1',
   text: '+1 power and +1 toughness.',
   appliesTo: (c) => c.type === 'Creature',
   stackable: true,
   weight: 20,
-  kind: 'statBoost', power: 1, toughness: 1,
+  kind: 'stat_boost', power: 1, toughness: 1,
 };
 STICKERS['innate'] = {
   id: 'innate', name: 'Innate',
@@ -114,7 +114,7 @@ STICKERS['innate'] = {
 };
 // landColor stickers — extra color on a basic. Gated by deck color (c.deckColors).
 for (const color of ['W','U','B','R','G']) {
-  const id = 'landColor_' + color;
+  const id = 'land_color_' + color.toLowerCase();
   const colorName = { W:'Plains', U:'Island', B:'Swamp', R:'Mountain', G:'Forest' }[color];
   const colorAdj = { W:'White', U:'Blue', B:'Black', R:'Red', G:'Green' }[color];
   STICKERS[id] = {
@@ -130,14 +130,14 @@ for (const color of ['W','U','B','R','G']) {
     },
     stackable: false,
     weight: 10,
-    kind: 'landColor',
+    kind: 'land_color',
     color,
     colorAdj,
   };
 }
 // Cost reduction — strips 1 generic; floors at total ≥ 2 (no free 1-drops).
-STICKERS['costMinus1'] = {
-  id: 'costMinus1', name: 'Costs 1 Less',
+STICKERS['cost_minus_1'] = {
+  id: 'cost_minus_1', name: 'Costs 1 Less',
   text: 'This costs {1} less to cast.',
   appliesTo: (c) => {
     if (c.type === 'Land') return false;
