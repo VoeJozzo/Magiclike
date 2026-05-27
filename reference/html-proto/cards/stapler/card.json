@@ -24,7 +24,7 @@
       ],
       "effects": [
         {
-          "kind": "applyInGameSplice"
+          "kind": "apply_in_game_splice"
         }
       ]
     }

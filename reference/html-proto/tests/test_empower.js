@@ -17,7 +17,7 @@ RUN.startNextGame();
 
 console.log('=== EMPOWER_FIELDS references only live effect kinds (no collapsed-away kinds) ===');
 (() => {
-  const DEAD = ['damageAll', 'pumpAllYours', 'removeAll', 'weaken', 'addCounter', 'draw', 'discard'];
+  const DEAD = ['damageAll', 'pumpAllYours', 'removeAll', 'weaken', 'add_counter', 'draw', 'discard'];
   const offenders = Object.keys(EMPOWER_FIELDS).filter(k => DEAD.includes(k));
   check('no collapsed-away kinds remain in EMPOWER_FIELDS', offenders.length === 0, offenders.join(','));
 })();
@@ -40,15 +40,15 @@ console.log('\n=== a real cantrip exposes its draw as an empower target (regress
   check('divin has an empowerable amount target (draw not silently dropped)', !!drawTarget, JSON.stringify(targets));
 })();
 
-console.log('\n=== mass effects empower on the collapsed shape (damage+scope / removeCreature+scope) ===');
+console.log('\n=== mass effects empower on the collapsed shape (damage+scope / remove_creature+scope) ===');
 (() => {
-  // A mass damage (damage+scope) still exposes amount; removeCreature severity capped at <4.
+  // A mass damage (damage+scope) still exposes amount; remove_creature severity capped at <4.
   check('damage+scope amount empowerable',
     isEmpowerableField({ kind: 'damage', scope: 'all_creatures', amount: 2 }, 'amount'));
-  check('removeCreature severity empowerable while < 4',
-    isEmpowerableField({ kind: 'removeCreature', severity: 2 }, 'severity'));
-  check('removeCreature severity NOT empowerable at 4 (max)',
-    !isEmpowerableField({ kind: 'removeCreature', severity: 4 }, 'severity'));
+  check('remove_creature severity empowerable while < 4',
+    isEmpowerableField({ kind: 'remove_creature', severity: 2 }, 'severity'));
+  check('remove_creature severity NOT empowerable at 4 (max)',
+    !isEmpowerableField({ kind: 'remove_creature', severity: 4 }, 'severity'));
 })();
 
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');

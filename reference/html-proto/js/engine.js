@@ -21,7 +21,7 @@ const MERCURIAL_TRIGGER_POOL = [
     event: 'card_zone_change',
     condition: ['another_card', 'card_is_creature', 'controlled_by(you)', 'card_moves(anywhere, battlefield)'],
     text: 'Ally entered — ~ gets a +1/+1 counter.',
-    effects: [{kind: 'addCounter', target: 'self', power: 1, toughness: 1}],
+    effects: [{kind: 'add_counter', target: 'self', power: 1, toughness: 1}],
   },
   {
     label: 'Bloodscholar',
@@ -42,7 +42,7 @@ const MERCURIAL_TRIGGER_POOL = [
     event: 'card_zone_change',
     condition: ['this_card', 'card_moves(anywhere, battlefield)'],
     text: '~ entered — gain 2 life.',
-    effects: [{kind: 'gainLife', target: 'self', amount: 2}],
+    effects: [{kind: 'gain_life', target: 'self', amount: 2}],
   },
 ];
 
@@ -81,7 +81,7 @@ function isSpliceableStaple(tplId) {
 // Splice compatibility:
 //   Base\Staple  Creature  Spell  Land
 //   Creature     ok(merge) ETB    tap-ability
-//   Spell        NO        concat addMana
+//   Spell        NO        concat add_mana
 //   Land         NO        ETB    mana-merge
 // Callers must canonicalize first (canonicalSplicePair).
 
@@ -111,7 +111,7 @@ function isCompatibleStaplePair(baseTplId, stapleTplId) {
   return true;
 }
 
-// Splice merge math — shared by RUN.applySplice and ENGINE.EFFECTS.applyInGameSplice.
+// Splice merge math — shared by RUN.applySplice and ENGINE.EFFECTS.apply_in_game_splice.
 function countEffects(tpl) {
   if (!tpl || !tpl.effects) return 0;
   if (Array.isArray(tpl.effects)) return tpl.effects.length;
@@ -149,7 +149,7 @@ function remapEmpowerRollForStaple(roll, baseIsCreature, stapleIsCreature,
 
 // Shared splice-merge core (plan-effects-refactor §7). The assembly logic that
 // was duplicated between RUN.applySplice (reward-time, slot data) and
-// EFFECTS.applyInGameSplice (in-game, runtime cards): given the base + staple's
+// EFFECTS.apply_in_game_splice (in-game, runtime cards): given the base + staple's
 // slot-shaped parts, compute the merged slot data. PURE — no state mutation, no
 // I/O; each caller applies the result its own way (RUN writes the slot + saves;
 // the Stapler path rebuilds the runtime card + mints a slot + transfers combat).
@@ -218,13 +218,13 @@ function writeMergedSpliceToSlot(slot, merged) {
 // ability as the single source of truth. Top-level (not IIFE-internal) so the
 // module-level splice helpers and stickers.js can share them.
 //
-// The tap-for-mana ability on a permanent (cost.tap + addMana), or null.
+// The tap-for-mana ability on a permanent (cost.tap + add_mana), or null.
 function manaAbilityOf(card) {
   if (!card || !Array.isArray(card.abilities)) return null;
   return card.abilities.find(ab => ab && ab.cost && ab.cost.tap
-    && ab.effects && ab.effects[0] && ab.effects[0].kind === 'addMana') || null;
+    && ab.effects && ab.effects[0] && ab.effects[0].kind === 'add_mana') || null;
 }
-// Colors an addMana effect can produce ({choose} or {amounts}).
+// Colors an add_mana effect can produce ({choose} or {amounts}).
 function manaEffectColors(eff) {
   if (!eff) return [];
   if (eff.choose) return eff.choose === 'any' ? ['W', 'U', 'B', 'R', 'G'] : eff.choose.slice();
@@ -234,8 +234,8 @@ function manaEffectColors(eff) {
 // several → choose. Used by the staple-merge (land staples).
 function manaAbilityForColors(colors) {
   const eff = (colors.length <= 1)
-    ? { kind: 'addMana', amounts: { [colors[0]]: 1 } }
-    : { kind: 'addMana', choose: colors.slice() };
+    ? { kind: 'add_mana', amounts: { [colors[0]]: 1 } }
+    : { kind: 'add_mana', choose: colors.slice() };
   return { cost: { tap: true }, effects: [eff] };
 }
 // §3.8 grant_mana_ability(color): give a permanent the ability to tap for one
@@ -882,7 +882,7 @@ function resolveTarget(ctx, target) {
 }
 
 // permanentOrSpell target → {kind:'perm'|'spell', card, controller, [stackItem]} or null.
-// Used by Stapler's applyInGameSplice and Steal. Spell path verifies stack item still present.
+// Used by Stapler's apply_in_game_splice and Steal. Spell path verifies stack item still present.
 function resolveStackOrPermanent(target) {
   if (!target) return null;
   if (target.kind === 'permanent' || target.kind === 'creature') {
@@ -1129,21 +1129,21 @@ function abilityValue(ab) {
   const eff = ab.effects[0];
   switch (eff.kind) {
     case 'damage':         return 6 + (eff.amount || 0);
-    case 'removeCreature': {
+    case 'remove_creature': {
       const sev = eff.severity || 1;
       return sev === 1 ? 4 : sev === 2 ? 5 : sev === 3 ? 8 : 9;
     }
     case 'pump':           return (eff.duration === 'permanent' ? 3 : 2) + (eff.power || 0) + (eff.toughness || 0);
-    case 'addCounter':     return 3 + (eff.power || 0) + (eff.toughness || 0);
-    case 'addMana':        return 3;
+    case 'add_counter':     return 3 + (eff.power || 0) + (eff.toughness || 0);
+    case 'add_mana':        return 3;
     case 'move_card':      // collapsed draw (library→hand); other moves parity-default
       return (eff.from_zone === 'library' && eff.to_zone === 'hand') ? 4 + (eff.amount || 1) - 1 : 2;
     case 'draw':           return 4 + (eff.amount || 1) - 1;
     case 'discard':        return 3 + (eff.amount || 1) - 1;
-    case 'gainLife':       return (eff.amount || 0) < 0
+    case 'gain_life':       return (eff.amount || 0) < 0
                                     ? 3 + Math.abs(eff.amount) * 2   // drain (life loss) — like damage
                                     : 1 + (eff.amount || 0);          // life gain
-    case 'createTokens':   return 3 + (eff.count || 1) * 2;
+    case 'create_tokens':   return 3 + (eff.count || 1) * 2;
     default:               return 2;
   }
 }
@@ -1162,7 +1162,7 @@ function spellValue(card) {
 function spellValueForEffects(effects) {
   let v = 0;
   for (const e of (effects || [])) {
-    if (e.kind === 'removeCreature' || e.kind === 'affect_creature') {
+    if (e.kind === 'remove_creature' || e.kind === 'affect_creature') {
       // tap < bounce < destroy < exile. Severity is numeric (legacy) or a
       // string name (new affect_creature). A mass `scope` values like removeAll.
       const sevName = { tap: 1, bounce: 2, destroy: 3, exile: 4 };
@@ -1185,7 +1185,7 @@ function spellValueForEffects(effects) {
       else if (e.duration === 'eot') v += 6;     // threaten
       else v += 14;                              // mind control
     }
-    else if (e.kind === 'applyInGameSplice') v += 18;   // 2-for-1 with cross-game retention
+    else if (e.kind === 'apply_in_game_splice') v += 18;   // 2-for-1 with cross-game retention
     else if (e.kind === 'move_card') {
       // Collapsed draw (library→hand controller_top) / searchCreature
       // (library→hand library_search) / searchLandTapped (library→battlefield) /
@@ -1210,15 +1210,15 @@ function spellValueForEffects(effects) {
       const k = e.sticker && e.sticker.kind;
       v += (k === 'set_color') ? 4 : (k === 'cost_mod') ? 2 : 3;
     }
-    else if (e.kind === 'ripPermanent') v += 14;        // destroy + run-permanent slot rip
-    else if (e.kind === 'destroyAndStickerSlot') v += 13;
+    else if (e.kind === 'rip_permanent') v += 14;        // destroy + run-permanent slot rip
+    else if (e.kind === 'destroy_and_sticker_slot') v += 13;
     else if (e.kind === 'symmetricize') v += 8;
     else if (e.kind === 'draw') v += (e.amount || 1) * 3;
     else if (e.kind === 'discard') v += 4;
-    else if (e.kind === 'gainLife') v += (e.amount || 0) < 0 ? (3 + Math.abs(e.amount) * 2) : 1;
+    else if (e.kind === 'gain_life') v += (e.amount || 0) < 0 ? (3 + Math.abs(e.amount) * 2) : 1;
     else if (e.kind === 'schedule_delayed') v += 1;  // exile_until_eot's return tail (the bf→exile half carries the value)
     else if (e.kind === 'pump') v += (e.power < 0 || e.toughness < 0) ? (3 + Math.abs(e.toughness || 0)) : 2;
-    else if (e.kind === 'grantKeyword') {
+    else if (e.kind === 'grant_keyword') {
       // mass-yours-eot Overrun-shape vs single-target permanent vs symmetric.
       const eot = e.duration === 'eot';
       const mass = e.whose === 'allYours' || e.whose === 'all';
@@ -1226,7 +1226,7 @@ function spellValueForEffects(effects) {
       else if (mass) v += eot ? 6 : 8;
       else v += eot ? 2 : 3;
     }
-    else if (e.kind === 'createTokens') {
+    else if (e.kind === 'create_tokens') {
       const tpl = TOKENS[e.tokenId];
       if (tpl) {
         const stat = (tpl.power || 0) + (tpl.toughness || 0);
@@ -1236,8 +1236,8 @@ function spellValueForEffects(effects) {
         v += (e.count || 1) * perToken;
       }
     }
-    else if (e.kind === 'addMana') v += 3;
-    else if (e.kind === 'fightTarget') v += 5;
+    else if (e.kind === 'add_mana') v += 3;
+    else if (e.kind === 'fight_target') v += 5;
   }
   return v;
 }
@@ -1250,19 +1250,19 @@ function spellValueForEffects(effects) {
 // (a test fails, a boot warning prints), instead of the AI silently valuing it 0.
 // Keep these two sets exhaustive + disjoint over Object.keys(EFFECTS).
 const VALUED_EFFECT_KINDS = new Set([
-  'damage', 'pump', 'addCounter', 'removeCreature', 'destroyAndStickerSlot',
-  'symmetricize', 'apply_sticker', 'counter', 'addMana', 'gainLife', 'draw',
-  'move_card', 'discard', 'grantKeyword', 'createTokens', 'ripPermanent',
-  'chooses', 'schedule_delayed', 'change_control', 'fightTarget',
-  'applyInGameSplice', 'sacrifice',
+  'damage', 'pump', 'add_counter', 'remove_creature', 'destroy_and_sticker_slot',
+  'symmetricize', 'apply_sticker', 'counter', 'add_mana', 'gain_life', 'draw',
+  'move_card', 'discard', 'grant_keyword', 'create_tokens', 'rip_permanent',
+  'chooses', 'schedule_delayed', 'change_control', 'fight_target',
+  'apply_in_game_splice', 'sacrifice',
 ]);
 const UNVALUED_EFFECT_KINDS = new Set([
   'steal',              // internal helper dispatched by change_control; not a card kind
-  'annihilate',         // trailing rip verb; value carried by the preceding ripPermanent/edict
-  'endomorphAbsorb',    // creature ability; value dominated by the body, not separately scored
+  'annihilate',         // trailing rip verb; value carried by the preceding rip_permanent/edict
+  'endomorph_absorb',    // creature ability; value dominated by the body, not separately scored
   'untap',              // minor utility on abilities; abilityValue default suffices
-  'bargainStickerSelf', // Archdemon of Bargains trigger mechanic; not separately scored
-  'bargainStickerOther',
+  'bargain_sticker_self', // Archdemon of Bargains trigger mechanic; not separately scored
+  'bargain_sticker_other',
 ]);
 
 // Card-text + valuation coverage over the dispatch table. Returns lists of
@@ -1492,7 +1492,7 @@ function applyDamageFrom(ctx, target, amt) {
 // Creatures matching a mass `scope` (Slice 3 step 1 / decision 2), as a
 // pre-iteration snapshot of {kind, iid, controller}. all_creatures = both
 // sides; all_yours = controller's; all_opps = opponent's. Groundwork for the
-// single/mass unification: damage/pump/removeCreature gain a `scope` path
+// single/mass unification: damage/pump/remove_creature gain a `scope` path
 // alongside the legacy damageAll/pumpAllYours/removeAll handlers.
 function creaturesInScope(ctx, scope) {
   let sides;
@@ -1510,7 +1510,7 @@ function creaturesInScope(ctx, scope) {
 }
 
 // Apply a removal severity (1=tap, 2=bounce, 3=destroy, 4=exile) to one
-// creature f={card, controller}. Extracted from removeCreature so the
+// creature f={card, controller}. Extracted from remove_creature so the
 // single-target and mass-scope paths share one severity ladder (groundwork
 // for the affect_creature unification).
 function affectOneCreature(ctx, f, sev) {
@@ -1671,7 +1671,7 @@ const EFFECTS = {
   },
   pump(ctx, params, target) {
     // duration:'permanent' → +1/+1 counters (permPower/permTou); default EOT
-    // temp (tempPower/tempTou). Lets pump absorb addCounter (decision 4).
+    // temp (tempPower/tempTou). Lets pump absorb add_counter (decision 4).
     const perm = params.duration === 'permanent';
     const applyTo = (card, p, t) => {
       if (perm) { card.permPower += p; card.permTou += t; }
@@ -1695,7 +1695,7 @@ const EFFECTS = {
     else log(`${f.card.name} gets +${p}/+${t} EOT.`, 'sp');
   },
   // +1/+1 counter (permPower/permTou stat sum; resets on leave-play).
-  addCounter(ctx, params, target) {
+  add_counter(ctx, params, target) {
     const f = resolveTarget(ctx, target);
     if (!f) return;
     const p = params.power || 0;
@@ -1710,7 +1710,7 @@ const EFFECTS = {
   },
   // Absorb a novel keyword from victim, else grow +1/+1. Persists via slot sticker.
   // Auto-picks highest-priority keyword; defender excluded (downside).
-  endomorphAbsorb(ctx, params, target) {
+  endomorph_absorb(ctx, params, target) {
     const KEYWORD_PRIORITY = {
       flying: 4, indestructible: 4,
       lifelink: 3, deathtouch: 3, hexproof: 3, trample: 3,
@@ -1785,7 +1785,7 @@ const EFFECTS = {
   },
   // Unified removal. severity: 1=tap, 2=bounce, 3=destroy (indestructible blocks), 4=exile.
   // Severity sticker escalates one tier per stack.
-  removeCreature(ctx, params, target) {
+  remove_creature(ctx, params, target) {
     const sev = Math.max(1, Math.min(4, params.severity || 1));
     if (params.scope) {
       for (const st of creaturesInScope(ctx, params.scope)) {
@@ -1799,7 +1799,7 @@ const EFFECTS = {
   },
   // Destroy + apply sticker to slot (Scarification). Player-side persistent;
   // opp-side: in-game destroy only (opp slots regenerate). params.stickerId names it.
-  destroyAndStickerSlot(ctx, params, target) {
+  destroy_and_sticker_slot(ctx, params, target) {
     const f = resolveTarget(ctx, target);
     if (!f) return;
     if (f.card.type !== 'Creature') {
@@ -1876,7 +1876,7 @@ const EFFECTS = {
   },
   // Archdemon Bargains ETB. Player picks 1-5, stashed on demon for dies trigger payoff.
   // Always prompts player even when boss casts (player is the dealmaker).
-  bargainStickerSelf(ctx, params) {
+  bargain_sticker_self(ctx, params) {
     const sourceCard = findCard(ctx.sourceIid);
     if (!sourceCard) return;
     G.pendingNumberChoice = {
@@ -1890,7 +1890,7 @@ const EFFECTS = {
     log(`${ctx.sourceName} — choose a number from 1 to 5.`, 'sp');
   },
   // Phase 2 (dies). Read bargainsNum stashed on dying card, sticker OTHER side as compensation.
-  bargainStickerOther(ctx) {
+  bargain_sticker_other(ctx) {
     const dyingCard = ctx.event && ctx.event.card;
     const n = (dyingCard && dyingCard.bargainsNum) || 1;
     const recipient = opp(ctx.controller);
@@ -1979,7 +1979,7 @@ const EFFECTS = {
     G[removed.controller].graveyard.push(removed.card);
     log(`${ctx.sourceName} counters ${removed.card.name}!`, 'sp');
   },
-  addMana(ctx, params) {
+  add_mana(ctx, params) {
     // Color-choice form (§3.9): {choose:'any'} or {choose:['W','U']} adds one
     // mana of a chosen color. params.color is the resolved pick (UI/AI); else
     // default to the first option.
@@ -1999,7 +1999,7 @@ const EFFECTS = {
   // lifeLostThisTurn, and fires life_changed(delta<0) → is_life_loss; 0 = no-op.
   // Card-text renders the sign ("gain N" / "lose N"). Lifelink unchanged (fires
   // on damage, not here).
-  gainLife(ctx, params, target) {
+  gain_life(ctx, params, target) {
     // Priority: params.who (resolved) > target.who (player target) > ctx.controller.
     const who = params.who
       || (target && target.kind === 'player' ? target.who : null)
@@ -2117,7 +2117,7 @@ const EFFECTS = {
   // Grant keyword. Axes: target (single), whose:'allYours'|'all' (mass), duration:'eot'|'permanent'.
   // Permanent → grantedBy (revoked on leave-play); EOT → eotGrants (revoked at end-turn).
   // Additive: a creature can have a kw from both systems at once.
-  grantKeyword(ctx, params, target) {
+  grant_keyword(ctx, params, target) {
     const kw = params.keyword;
     if (!kw) return;
     const eot = params.duration === 'eot';
@@ -2155,7 +2155,7 @@ const EFFECTS = {
     }
   },
   // Mint tokens. Params: tokenId (TOKENS key), count (default 1), controller ('self'|'opp').
-  createTokens(ctx, params) {
+  create_tokens(ctx, params) {
     let tokenId = params.tokenId;
     // Legacy save safety: older Codex outputs used bare-name ids ('goblin' etc.).
     const TOKEN_ALIAS = {
@@ -2190,7 +2190,7 @@ const EFFECTS = {
   // Targets any permanent type, not just creatures. Permanent run loss.
   // Resolution: pendingRipSelect prompt for targeted player. The
   // target chooses via UI (you) or AI (opp). Step machine waits.
-  ripPermanent(ctx, params, target) {
+  rip_permanent(ctx, params, target) {
     // Target should be a {kind:'player'} from the existing player-target
     // resolution. Defensive: if no target, fizzle.
     if (!target || target.kind !== 'player') {
@@ -2301,7 +2301,7 @@ const EFFECTS = {
   },
   // Fight: target opp creature; our biggest creature fights it (each deals damage = power).
   // Tap status doesn't matter (Beast's Fury post-combat).
-  fightTarget(ctx, params, target) {
+  fight_target(ctx, params, target) {
     const ours = G[ctx.controller].battlefield
       .filter(c => c.type === 'Creature');
     if (!ours.length) { log(`${ctx.sourceName} fizzles — no creature to fight.`, 'sp'); return; }
@@ -2329,7 +2329,7 @@ const EFFECTS = {
   // Stapler in-game splice. Merges target 1 onto target 0 using the reward-time
   // splice infra. Cross-owner: merged slot moves to caster's runState (removal/steal).
   // Targets validated: spliceable base/staple + isCompatibleStaplePair.
-  applyInGameSplice(ctx, params, target) {
+  apply_in_game_splice(ctx, params, target) {
     const all = ctx.allTargets;
     if (!Array.isArray(all) || all.length < 2) {
       log(`${ctx.sourceName} fizzles — needs two targets.`, 'sp');
@@ -2793,11 +2793,11 @@ function validateAllCardEffects(cards) {
 }
 
 // Effect kinds that operate on a creature (vs player) — drives target:'self' meaning.
-// Add creature-operators here; damage/gainLife/draw/discard/addMana resolve self → controller.
+// Add creature-operators here; damage/gain_life/draw/discard/add_mana resolve self → controller.
 const CREATURE_EFFECT_KINDS = new Set([
-  'pump', 'addCounter', 'untap', 'removeCreature',
-  'fightTarget', 'endomorphAbsorb',
-  'grantKeyword',
+  'pump', 'add_counter', 'untap', 'remove_creature',
+  'fight_target', 'endomorph_absorb',
+  'grant_keyword',
   'sacrifice', 'gainControl',
 ]);
 function effectOperatesOnCreature(eff) {
@@ -3077,7 +3077,7 @@ function pickBestTriggerTarget(eff, valid, controller) {
     const oppFace = valid.find(t => t.kind === 'player' && t.who === them);
     if (oppFace) return oppFace;
   }
-  const harmful = ['removeCreature', 'fightTarget'];
+  const harmful = ['remove_creature', 'fight_target'];
   if (harmful.includes(eff.kind)) {
     const oppC = valid.filter(t => t.kind === 'creature' && ctrlOf(t) === them);
     if (oppC.length) {
@@ -3090,7 +3090,7 @@ function pickBestTriggerTarget(eff, valid, controller) {
       return sorted[0];
     }
   }
-  if (['pump', 'addCounter', 'untap'].includes(eff.kind)) {
+  if (['pump', 'add_counter', 'untap'].includes(eff.kind)) {
     const ours = valid.filter(t => t.kind === 'creature' && ctrlOf(t) === controller);
     if (ours.length) {
       const sorted = ours.slice().sort((a, b) => {
@@ -3103,7 +3103,7 @@ function pickBestTriggerTarget(eff, valid, controller) {
     }
   }
   // defender = debuff (target opp's best); other keywords = buff (target our best).
-  if (eff.kind === 'grantKeyword') {
+  if (eff.kind === 'grant_keyword') {
     const isDebuff = (eff.keyword === 'defender');
     const wantedCtrl = isDebuff ? them : controller;
     const candidates = valid.filter(t => t.kind === 'creature' && ctrlOf(t) === wantedCtrl);
@@ -3132,7 +3132,7 @@ function pickBestTriggerTarget(eff, valid, controller) {
       .sort((a, b) => b.value - a.value);
     if (scored.length) return scored[0].t;
   }
-  if (eff.kind === 'gainLife') {
+  if (eff.kind === 'gain_life') {
     // Signed life: negative = drain (aim at the opponent), positive = gain (self).
     const wanted = (eff.amount || 0) < 0 ? them : controller;
     const face = valid.find(t => t.kind === 'player' && t.who === wanted);
@@ -3197,7 +3197,7 @@ function resolveTrigger(item) {
       const slot = eff.targetSlot || 0;
       const { tgt, snap } = getTriggerTargetForSlot(slot);
       if (!tgt) { log(`${item.sourceName} trigger fizzles — no target.`, 'sp'); continue; }
-      // No re-validation: multi-effect triggers (Exorcist [exile, gainLife]) need
+      // No re-validation: multi-effect triggers (Exorcist [exile, gain_life]) need
       // effect 1 to read pre-effect-0 snapshot. Each effect guards live-target itself.
       applyEffect(ctx, eff, tgt, snap);
     } else if (eff.target === 'self') {
@@ -3416,7 +3416,7 @@ function matchFilter(card, filter, controller, who) {
   // the helper.
   if (filter.spliceableStaple) {
     if (!isSpliceableStaple(card.tplId)) return false;
-    // "Already stapled" check — see the field-name note in applyInGameSplice.
+    // "Already stapled" check — see the field-name note in apply_in_game_splice.
     // In-game cards carry the chain at card.stapledFrom.stapledTpls; the
     // direct card.stapledTpls field is empty (it's a slot-level concept).
     // Reject if either populated form indicates a prior chain.
@@ -3497,7 +3497,7 @@ function moveToGraveyard(card, controller) {
   const dest = card.owner || controller;
   if (!card.isToken) G[dest].graveyard.push(card);
   // Keyword claim: same rule as checkDeaths. moveToGraveyard is called by
-  // direct destroy effects (removeCreature sev 3, removeAll sev 3) which
+  // direct destroy effects (remove_creature sev 3, removeAll sev 3) which
   // set killedBy upstream. Skip for self-controller kills (e.g., a future
   // self-sacrifice path invoking moveToGraveyard, though sacrificeCard is
   // the canonical sac path today).
@@ -3506,7 +3506,7 @@ function moveToGraveyard(card, controller) {
   }
   // Same flush as checkDeaths — capture permanentEot buffs before
   // resetInPlayState clears them. Used for direct-destroy paths
-  // (removeCreature sev 3, removeAll sev 3).
+  // (remove_creature sev 3, removeAll sev 3).
   flushPermanentEotToPermaBuffs(card);
   clearRestrictionsFromSource(card.iid);
   resetInPlayState(card, true);   // preserve damagedBySources for dies-triggers
@@ -4126,7 +4126,7 @@ function resolveTopOfStack() {
   } else {
     const ctx = { controller: item.controller, sourceName: card.name, sourceIid: card.iid, sourceCard: card };
     // Snapshot the spell's target BEFORE any effect runs. Multi-effect spells
-    // like decomposed Swords ([exile, gainLife]) need the second effect to
+    // like decomposed Swords ([exile, gain_life]) need the second effect to
     // read the target's pre-resolution power/controller, even though the
     // first effect already removed the card. This implements MtG's "last
     // known information" semantics.
@@ -4192,7 +4192,7 @@ function resolveTopOfStack() {
         // Mirror the trigger resolver's branching: self resolves to the
         // SOURCE CREATURE for creature-operating effects, and to the
         // SOURCE'S CONTROLLER (a player target) for player-operating
-        // effects (damage, gainLife, draw, discard, addMana). Without
+        // effects (damage, gain_life, draw, discard, add_mana). Without
         // this branch, a spell like Final Strike — "destroy creature,
         // you lose 2 life" — would route the damage to itself (the
         // sorcery card) instead of to the player, fizzling because the
@@ -4285,7 +4285,7 @@ function dealCombatDamage(blocked, defender, dealsDamage) {
     G[srcCtrl].life += amt;
     log(`${source.name} (lifelink) — ${pname(srcCtrl)} gains ${amt} life.`, 'sp');
     // Combat lifelink fires lifeGained, just like spell-source lifelink and
-    // the gainLife effect. Without this, Ajani's Pridemate wouldn't trigger
+    // the gain_life effect. Without this, Ajani's Pridemate wouldn't trigger
     // from a lifelink attacker — combat damage uses a different code path
     // than applyDamageFrom (which handles spell damage).
     emit({type: 'life_changed', who: srcCtrl, delta: amt});
@@ -4438,7 +4438,7 @@ function doTapLandForMana(who, cardIid, color, abilityIdx) {
   let manaAb = null;
   if (typeof abilityIdx === 'number') {
     manaAb = card.abilities && card.abilities[abilityIdx];
-    if (!manaAb || !manaAb.effects || !manaAb.effects[0] || manaAb.effects[0].kind !== 'addMana') return;
+    if (!manaAb || !manaAb.effects || !manaAb.effects[0] || manaAb.effects[0].kind !== 'add_mana') return;
   } else {
     manaAb = manaAbilityOf(card);
   }
@@ -4469,7 +4469,7 @@ function doCastSpell(who, cardIid, targets, modeIdx) {
   p.hand.splice(idx, 1);
   // Record this slot as played-this-game (see doPlayLand for rationale).
   // Token-cast paths don't go through doCastSpell — tokens enter via
-  // createTokens effects directly — so this naturally only records real
+  // create_tokens effects directly — so this naturally only records real
   // deck slots.
   if (typeof card.slotIdx === 'number' && p.playedSlotIdxs) {
     p.playedSlotIdxs.add(card.slotIdx);
@@ -4523,7 +4523,7 @@ function doActivateAbility(who, cardIid, abilityIdx, targets, sacIid) {
   // Multi-target dispatch (mirrors resolveTopOfStack/resolveTrigger). By
   // default, targeted effects share targets[0]. Effects can opt into a
   // distinct slot via `targetSlot: N`. allTargets is also threaded onto
-  // ctx so multi-target effects like applyInGameSplice (Stapler) can read
+  // ctx so multi-target effects like apply_in_game_splice (Stapler) can read
   // both inputs directly without relying on inter-effect coordination.
   const abilitySlotSnapshots = new Map();
   const abilityTargets = Array.isArray(targets) ? targets : [];
@@ -4564,7 +4564,7 @@ function doActivateAbility(who, cardIid, abilityIdx, targets, sacIid) {
   }
   ctx.chosen = null;
   afterEffectsApplied();
-  if (ab.effects[0].kind !== 'addMana') {
+  if (ab.effects[0].kind !== 'add_mana') {
     log(`${G[who].name} activates ${card.name}${targets && targets[0] ? ' on ' + targets[0].label : ''}.`, who === 'you' ? 'sp' : 'ai');
   }
   // Drain any triggers that fired during cost payment or effect resolution.
@@ -4941,10 +4941,10 @@ function isLegalAction(who, action) {
       let manaAb = null;
       if (abIdx >= 0) {
         manaAb = f.card.abilities[abIdx];
-        if (!manaAb || !manaAb.effects || manaAb.effects[0].kind !== 'addMana') return false;
+        if (!manaAb || !manaAb.effects || manaAb.effects[0].kind !== 'add_mana') return false;
       } else {
         // Backwards-compat: caller didn't specify, find the first mana ability.
-        manaAb = f.card.abilities.find(ab => ab.effects && ab.effects[0] && ab.effects[0].kind === 'addMana');
+        manaAb = f.card.abilities.find(ab => ab.effects && ab.effects[0] && ab.effects[0].kind === 'add_mana');
         if (!manaAb) return false;
       }
       if (f.card.sick) return false;
@@ -5028,7 +5028,7 @@ function isLegalAction(who, action) {
         if (!sacF || sacF.controller !== who) return false;
         if (sacF.card.type !== 'Creature') return false;
       }
-      const isMana = ab.effects[0].kind === 'addMana';
+      const isMana = ab.effects[0].kind === 'add_mana';
       if (isMana) {
         // Mana abilities are always available when source can be tapped, regardless of priority.
         // (Matches MtG: mana abilities don't require priority and don't use the stack.)
@@ -5222,7 +5222,7 @@ function getLegalActions(who) {
         // land stapled merges the mana ability is at index >= 1. If we find
         // one, emit a tapLandForMana action with the abilityIdx so the
         // engine knows which ability to use.
-        const manaAbIdx = card.abilities.findIndex(ab => ab.effects && ab.effects[0] && ab.effects[0].kind === 'addMana');
+        const manaAbIdx = card.abilities.findIndex(ab => ab.effects && ab.effects[0] && ab.effects[0].kind === 'add_mana');
         if (manaAbIdx >= 0) {
           actions.push({type:'tapLandForMana', cardIid: card.iid, abilityIdx: manaAbIdx});
         }
@@ -5344,7 +5344,7 @@ function getLegalActions(who) {
     if (!card.abilities) continue;
     for (let i=0; i<card.abilities.length; i++) {
       const ab = card.abilities[i];
-      const isMana = ab.effects[0].kind === 'addMana';
+      const isMana = ab.effects[0].kind === 'add_mana';
       if (isMana) continue;   // surfaced as tapLandForMana
       // Multi-target abilities (Stapler) are player-UI-driven; the AI doesn't
       // enumerate the 2-target cross-product. Skip so we don't emit always-

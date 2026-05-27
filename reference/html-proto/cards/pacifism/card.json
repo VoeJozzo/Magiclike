@@ -8,11 +8,11 @@
   "target": "creature",
   "effects": [
     {
-      "kind": "grantKeyword",
+      "kind": "grant_keyword",
       "keyword": "defender"
     },
     {
-      "kind": "grantKeyword",
+      "kind": "grant_keyword",
       "keyword": "no_block"
     }
   ],

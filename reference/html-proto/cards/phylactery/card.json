@@ -14,7 +14,7 @@
       },
       "effects": [
         {
-          "kind": "addMana",
+          "kind": "add_mana",
           "amounts": {
             "B": 1
           }

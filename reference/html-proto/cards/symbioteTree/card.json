@@ -29,7 +29,7 @@
           "toughness": 1
         },
         {
-          "kind": "grantKeyword",
+          "kind": "grant_keyword",
           "keyword": "reach"
         }
       ],

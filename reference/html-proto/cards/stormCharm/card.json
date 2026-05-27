@@ -27,7 +27,7 @@
           "toughness": 0
         },
         {
-          "kind": "grantKeyword",
+          "kind": "grant_keyword",
           "target": "creature",
           "keyword": "haste",
           "duration": "eot"

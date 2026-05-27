@@ -7,12 +7,12 @@
   "target": "creature",
   "effects": [
     {
-      "kind": "grantKeyword",
+      "kind": "grant_keyword",
       "keyword": "haste",
       "duration": "eot"
     },
     {
-      "kind": "grantKeyword",
+      "kind": "grant_keyword",
       "keyword": "trample",
       "duration": "eot"
     }

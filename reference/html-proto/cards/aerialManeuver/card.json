@@ -7,7 +7,7 @@
   },
   "effects": [
     {
-      "kind": "grantKeyword",
+      "kind": "grant_keyword",
       "whose": "allYours",
       "keyword": "flying",
       "duration": "eot"

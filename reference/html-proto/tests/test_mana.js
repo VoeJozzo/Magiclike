@@ -1,6 +1,6 @@
 // §3.9 mana deep-clean: lands and creature dorks both produce mana through a
 // tap-for-mana ability (the extraManaColors parallel model is retired). Covers
-// land/ability consistency, the addMana choose form (City of Brass), summoning-
+// land/ability consistency, the add_mana choose form (City of Brass), summoning-
 // sickness gating (lands vs dorks), the landColor sticker, payMana auto-tap, and
 // the land staple-merge.
 
@@ -100,7 +100,7 @@ console.log('\n=== staple: creature + land gains a tap-for-mana ability ===');
   // A vanilla creature + forest → gains a {T}: Add {G} ability.
   const cr = Object.values(CARDS).find(c => c.type === 'Creature' && !c.abilities && !c.special);
   const merged = ENGINE.synthesizeStapledTemplate(cr.tplId, ['forest']);
-  const manaAbs = (merged.abilities || []).filter(ab => ab.cost && ab.cost.tap && ab.effects && ab.effects[0] && ab.effects[0].kind === 'addMana');
+  const manaAbs = (merged.abilities || []).filter(ab => ab.cost && ab.cost.tap && ab.effects && ab.effects[0] && ab.effects[0].kind === 'add_mana');
   check('vanilla creature + forest gains a tap-for-mana ability', manaAbs.length === 1, 'count=' + manaAbs.length);
   check('the gained ability produces {G}', JSON.stringify(ENGINE.landProducibleColors({ type: 'Land', abilities: manaAbs })) === JSON.stringify(['G']));
   // §3.10: appendMergedText removed — card text is regenerated from the merged
@@ -114,7 +114,7 @@ console.log('\n=== staple: §3.10 multi-color land (City of Brass) is now a vali
   check('City of Brass onto a creature is now compatible (rejection lifted)',
     isCompatibleStaplePair(cr.tplId, 'cityOfBrass'));
   const merged = ENGINE.synthesizeStapledTemplate(cr.tplId, ['cityOfBrass']);
-  const manaAb = (merged.abilities || []).find(ab => ab.cost && ab.cost.tap && ab.effects[0] && ab.effects[0].kind === 'addMana');
+  const manaAb = (merged.abilities || []).find(ab => ab.cost && ab.cost.tap && ab.effects[0] && ab.effects[0].kind === 'add_mana');
   check('the gained ability taps for all 5 colors (choose form)',
     manaAb && JSON.stringify(manaEffectColors(manaAb.effects[0]).slice().sort()) === JSON.stringify(['B', 'G', 'R', 'U', 'W']),
     JSON.stringify(manaAb && manaAb.effects[0]));
@@ -125,7 +125,7 @@ console.log('\n=== staple: land + land merges colors into one choose ability ===
   const merged = ENGINE.synthesizeStapledTemplate('plains', ['island']);
   const colors = ENGINE.landProducibleColors(merged).slice().sort();
   check('plains + island taps for W or U', JSON.stringify(colors) === JSON.stringify(['U', 'W']), JSON.stringify(colors));
-  const manaAbs = (merged.abilities || []).filter(ab => ab.cost && ab.cost.tap && ab.effects[0] && ab.effects[0].kind === 'addMana');
+  const manaAbs = (merged.abilities || []).filter(ab => ab.cost && ab.cost.tap && ab.effects[0] && ab.effects[0].kind === 'add_mana');
   check('merged land has exactly one mana ability (merged, not duplicated)', manaAbs.length === 1, 'count=' + manaAbs.length);
 })();
 
@@ -134,7 +134,7 @@ console.log('\n=== §3.8 grant_mana_ability generalizes to any permanent ===');
   // A creature with no mana ability gains a {T}: Add {G} when granted one.
   const cr = Object.values(CARDS).find(c => c.type === 'Creature' && !c.abilities && !c.special);
   const c = ENGINE.makeCard(cr.tplId, [{ kind: 'grant_mana_ability', color: 'G', stackable: true }]);
-  const ab = (c.abilities || []).find(a => a.cost && a.cost.tap && a.effects && a.effects[0] && a.effects[0].kind === 'addMana');
+  const ab = (c.abilities || []).find(a => a.cost && a.cost.tap && a.effects && a.effects[0] && a.effects[0].kind === 'add_mana');
   check('creature gained a tap-for-mana ability (created, not just extended)', !!ab);
   check('the created ability produces {G}', ab && JSON.stringify(ab.effects[0].amounts) === JSON.stringify({ G: 1 }));
 })();

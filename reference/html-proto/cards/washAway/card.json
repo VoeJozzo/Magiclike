@@ -7,7 +7,7 @@
   },
   "effects": [
     {
-      "kind": "removeCreature",
+      "kind": "remove_creature",
       "scope": "all_creatures",
       "severity": 2
     }

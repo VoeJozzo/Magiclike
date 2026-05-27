@@ -96,7 +96,7 @@ console.log('\n=== kind-collapse: legacy mass/weaken kinds gone from card data =
   // EFFECTS handlers stay — GONE asserts the card templates, not the dispatch
   // table.
   const GONE = ['damageAll', 'removeAll', 'pumpAllYours', 'weaken', 'gainControl', 'steal',
-                'returnFromGraveyard', 'shuffleIntoLibrary', 'addCounter', 'edict', 'restrict', 'draw', 'flicker',
+                'returnFromGraveyard', 'shuffleIntoLibrary', 'add_counter', 'edict', 'restrict', 'draw', 'flicker',
                 'searchCreature', 'searchLandTapped', 'discard'];
   const seen = {};
   const allEffs = (card) => {
@@ -118,13 +118,13 @@ console.log('\n=== kind-collapse: legacy mass/weaken kinds gone from card data =
     for (const e of allEffs(card)) {
       if (e && e.kind === 'damage' && e.scope === 'all_creatures') massDmg++;
       if (e && e.kind === 'pump' && (e.scope === 'all_yours' || e.scope === 'all_creatures')) massPump++;
-      if (e && e.kind === 'removeCreature' && e.scope) massRemove++;
+      if (e && e.kind === 'remove_creature' && e.scope) massRemove++;
       if (e && e.kind === 'pump' && ((e.power || 0) < 0 || (e.toughness || 0) < 0)) signedPump++;
     }
   }
   check('damageAll collapsed to damage+scope (4)', massDmg === 4, 'got ' + massDmg);
   check('pumpAllYours collapsed to pump+scope (7)', massPump === 7, 'got ' + massPump);
-  check('removeAll collapsed to removeCreature+scope (3)', massRemove === 3, 'got ' + massRemove);
+  check('removeAll collapsed to remove_creature+scope (3)', massRemove === 3, 'got ' + massRemove);
   check('weaken collapsed to signed pump (3)', signedPump === 3, 'got ' + signedPump);
 
   let changeControl = 0, stealVariant = 0;
@@ -158,7 +158,7 @@ console.log('\n=== kind-collapse: legacy mass/weaken kinds gone from card data =
   for (const card of Object.values(CARDS)) {
     for (const e of allEffs(card)) if (e && e.kind === 'pump' && e.duration === 'permanent') permPump++;
   }
-  check('addCounter collapsed to permanent pump (9)', permPump === 9, 'got ' + permPump);
+  check('add_counter collapsed to permanent pump (9)', permPump === 9, 'got ' + permPump);
 
   // edict → target(player) + chooses(creature) + sacrifice.
   const edict = CARDS.diabolicEdict;
@@ -178,10 +178,10 @@ console.log('\n=== kind-collapse: legacy mass/weaken kinds gone from card data =
   // no_block is the hidden "can't block" half (defender supplies "can't attack").
   const pac = CARDS.pacifism;
   check('pacifism: target(creature)', pac.target === 'creature');
-  check('pacifism: grantKeyword(defender) + grantKeyword(no_block)',
+  check('pacifism: grant_keyword(defender) + grant_keyword(no_block)',
     pac.effects.length === 2
-    && pac.effects[0].kind === 'grantKeyword' && pac.effects[0].keyword === 'defender'
-    && pac.effects[1].kind === 'grantKeyword' && pac.effects[1].keyword === 'no_block');
+    && pac.effects[0].kind === 'grant_keyword' && pac.effects[0].keyword === 'defender'
+    && pac.effects[1].kind === 'grant_keyword' && pac.effects[1].keyword === 'no_block');
 })();
 
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');

@@ -20,7 +20,7 @@
       "text": "When ~ enters, fight target creature.",
       "effects": [
         {
-          "kind": "fightTarget"
+          "kind": "fight_target"
         }
       ],
       "target": "opp_creature"

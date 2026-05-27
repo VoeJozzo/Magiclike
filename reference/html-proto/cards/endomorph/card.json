@@ -22,7 +22,7 @@
       "text": "~ kills {victim} — absorbs a keyword (or +1/+1).",
       "effects": [
         {
-          "kind": "endomorphAbsorb",
+          "kind": "endomorph_absorb",
           "target": "self"
         }
       ]

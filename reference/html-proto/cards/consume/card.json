@@ -12,7 +12,7 @@
       "amount": 4
     },
     {
-      "kind": "gainLife",
+      "kind": "gain_life",
       "target": "self",
       "amount": 4
     }

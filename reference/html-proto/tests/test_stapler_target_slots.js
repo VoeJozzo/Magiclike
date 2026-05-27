@@ -53,7 +53,7 @@ console.log('=== ability schema: noop gone, targetSlots present ===');
   check('Stapler ability declares targetSlots (length 2)', Array.isArray(ab.targetSlots) && ab.targetSlots.length === 2,
     JSON.stringify(ab.targetSlots && ab.targetSlots.map(s => s.filter)));
   check('no effect uses kind noop', !ab.effects.some(e => e.kind === 'noop'));
-  check('single splice effect remains', ab.effects.length === 1 && ab.effects[0].kind === 'applyInGameSplice');
+  check('single splice effect remains', ab.effects.length === 1 && ab.effects[0].kind === 'apply_in_game_splice');
   check('noop is no longer a registered EFFECTS kind', !('noop' in (ENGINE.EFFECTS || {})) || typeof ENGINE.EFFECTS === 'undefined');
 })();
 

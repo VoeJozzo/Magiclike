@@ -7,7 +7,7 @@
   },
   "effects": [
     {
-      "kind": "createTokens",
+      "kind": "create_tokens",
       "tokenId": "soldier_w_1_1",
       "count": 2
     }

@@ -531,12 +531,12 @@ function drawTargetLines() {
 // (draw vs bounce; buff vs weaken) — classified by from/to and sign in
 // classifyValence, not by flat membership.
 const HARMFUL_KINDS = new Set([
-  'damage', 'removeCreature', 'destroyAndStickerSlot', 'change_control',
-  'counter', 'ripPermanent', 'symmetricize', 'fightTarget',
+  'damage', 'remove_creature', 'destroy_and_sticker_slot', 'change_control',
+  'counter', 'rip_permanent', 'symmetricize', 'fight_target',
   'sacrifice', 'chooses', 'apply_sticker', 'discard',
 ]);
 const BENEFICIAL_KINDS = new Set([
-  'grantKeyword', 'untap', 'gainLife',
+  'grant_keyword', 'untap', 'gain_life',
 ]);
 const VALENCE_PALETTE = {
   harm:    { color: '#ff5544', marker: 'tgt-arrow-red' },
@@ -785,7 +785,7 @@ function renderBf(id, bf, who) {
     }
     if (who === 'you' && card.type === 'Creature' && card.abilities && !card.tapped && !card.sick) {
       const hasAvail = card.abilities.some((ab, i) => {
-        if (ab.effects[0].kind === 'addMana') return true;
+        if (ab.effects[0].kind === 'add_mana') return true;
         const targetedEff = ab.effects.find(ENGINE.effectNeedsTarget);
         const probe = targetedEff
           ? {type:'activateAbility', cardIid: card.iid, abilityIdx: i,

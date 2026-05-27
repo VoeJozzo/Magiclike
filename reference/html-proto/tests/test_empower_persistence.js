@@ -72,7 +72,7 @@ console.log('\n=== remapEmpowerRollForStaple keeps a base roll on the base effec
 
   // Pinning the real intent: a 2-effect staple spliced before a base, the base's
   // 1st effect (effIdx 0) ends up at index 2 — exactly countEffects of the staple.
-  const stapleTpl = { effects: [{ kind: 'damage', amount: 1 }, { kind: 'gainLife', amount: 1 }] };
+  const stapleTpl = { effects: [{ kind: 'damage', amount: 1 }, { kind: 'gain_life', amount: 1 }] };
   const baseRoll = { location: 'effects', subIdx: null, effIdx: 0, field: 'amount' };
   const remapped = remapEmpowerRollForStaple(baseRoll, false, false, countEffects(stapleTpl), 0, 0);
   check('end-to-end: base effIdx 0 shifts by staple countEffects (2)', remapped.effIdx === 2, JSON.stringify(remapped));

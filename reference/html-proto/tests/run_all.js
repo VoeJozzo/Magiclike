@@ -67,7 +67,7 @@ const CATEGORY_A = [
   'test_target_restrictions.js',
   // Boss special-removal AI casting (scoreSpellTargetForMode branches for the boss kinds).
   'test_boss_removal_ai.js',
-  // Drain cards are life loss, not damage (signed gainLife migration + valuation).
+  // Drain cards are life loss, not damage (signed gain_life migration + valuation).
   'test_drain_lifeloss.js',
   // Slice 3 — §3.9 mana deep-clean (land-as-ability, choose form, sticker, staple).
   'test_mana.js',

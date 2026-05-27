@@ -8,11 +8,11 @@
   "target": "creature",
   "effects": [
     {
-      "kind": "removeCreature",
+      "kind": "remove_creature",
       "severity": 3
     },
     {
-      "kind": "gainLife",
+      "kind": "gain_life",
       "target": "self",
       "amount": -2
     }

@@ -646,6 +646,19 @@ Everything else below is the **Godot mirror** (separate Godot-equipped session).
 - [ ] **Build-from-scratch on Godot:** sticker system (§3.8), staple synthesis
   (§3.10), splice. Godot has none of these yet — design from the proto
   reference, don't port the proto scars.
+- [ ] **Effect-kind dispatch keys are now snake_case (DONE on proto).** The
+  card-data-Part-2 sweep renamed every camelCase effect kind in both card.json
+  and the JS `EFFECTS` table to snake_case (`gain_life`, `add_mana`,
+  `remove_creature`, `create_tokens`, `grant_keyword`, `fight_target`,
+  `rip_permanent`, `apply_in_game_splice`, `destroy_and_sticker_slot`,
+  `endomorph_absorb`, `bargain_sticker_self/other`, `add_counter`). The card.json
+  is now one snake_case wire both engines read directly. **Godot side:**
+  `Effects.HANDLERS` already uses snake_case, so it Just Works via passthrough —
+  but `JsonCardLoader._EFFECT_KIND_REMAP` (camelCase→snake) is now **dead for
+  these kinds** (input is already snake) and should be **deleted** per the plan
+  (`plan-card-data-unification.md` Part 2). Verify load + supportability scan
+  after deleting. (Event kinds + keyword remaps are a separate sweep — trigger
+  events in card data are already snake from Slice 2.)
 
 ### Gotchas (the recurring lockstep trap — applies hard here)
 

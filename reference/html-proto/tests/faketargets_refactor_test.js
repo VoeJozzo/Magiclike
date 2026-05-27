@@ -20,7 +20,7 @@ console.log('\n=== Test: fakeTargetsForLegality handles single-target ===');
   const r1 = fakeTargetsForLegality([], 'you');
   check('Empty effects yields empty array', Array.isArray(r1) && r1.length === 0);
 
-  const r2 = fakeTargetsForLegality([{kind: 'addMana', amount: 1}], 'you');
+  const r2 = fakeTargetsForLegality([{kind: 'add_mana', amount: 1}], 'you');
   check('Non-targeted effect yields empty array', Array.isArray(r2) && r2.length === 0);
 }
 

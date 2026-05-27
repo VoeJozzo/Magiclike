@@ -7,11 +7,11 @@
   "target": "creature",
   "effects": [
     {
-      "kind": "removeCreature",
+      "kind": "remove_creature",
       "severity": 4
     },
     {
-      "kind": "gainLife",
+      "kind": "gain_life",
       "who": {
         "from": "targetController"
       },

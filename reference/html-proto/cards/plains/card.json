@@ -12,7 +12,7 @@
       },
       "effects": [
         {
-          "kind": "addMana",
+          "kind": "add_mana",
           "amounts": {
             "W": 1
           }

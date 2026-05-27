@@ -20,7 +20,7 @@ const DRAIN = ['bloodArtist', 'bloodPriest', 'bloodthirstyStalker', 'cultPriest'
   'dreadKnightV2', 'dreadWraith', 'fallenChampion', 'goblinChieftain', 'graveCharm',
   'lifeForLife', 'spitefulImp', 'vexingOgre', 'wickedAcolyte'];
 
-console.log('=== no drain card deals damage to a player anymore (all signed gainLife) ===');
+console.log('=== no drain card deals damage to a player anymore (all signed gain_life) ===');
 (() => {
   let offenders = [];
   const walk = (effs, container) => (effs || []).forEach(e => {
@@ -106,8 +106,8 @@ console.log('\n=== Scarified sticker is life loss too ===');
 (() => {
   const trig = STICKERS.scarified.trigger;
   const eff = (trig.effects || [])[0];
-  check('scarified sticker uses gainLife (negative), not damage',
-    eff && eff.kind === 'gainLife' && eff.amount < 0, JSON.stringify(eff));
+  check('scarified sticker uses gain_life (negative), not damage',
+    eff && eff.kind === 'gain_life' && eff.amount < 0, JSON.stringify(eff));
 })();
 
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');

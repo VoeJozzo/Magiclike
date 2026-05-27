@@ -18,7 +18,7 @@ function check(label, ok, info) {
 }
 
 CARDS._ojEtb = { tplId: '_ojEtb', name: 'OJ ETB Gainer', type: 'Creature', cost: { W: 1 }, color: 'W', colors: ['W'], power: 1, toughness: 1,
-  triggers: [{ event: 'card_zone_change', condition: ['this_card', 'card_moves(anywhere, battlefield)'], effects: [{ kind: 'gainLife', target: 'self', amount: 2 }] }] };
+  triggers: [{ event: 'card_zone_change', condition: ['this_card', 'card_moves(anywhere, battlefield)'], effects: [{ kind: 'gain_life', target: 'self', amount: 2 }] }] };
 
 let nextIid = 9500;
 function mk(tplId, controller) {

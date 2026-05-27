@@ -8,7 +8,7 @@
   "target": "creature",
   "effects": [
     {
-      "kind": "destroyAndStickerSlot",
+      "kind": "destroy_and_sticker_slot",
       "stickerId": "scarified"
     }
   ],

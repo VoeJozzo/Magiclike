@@ -20,7 +20,7 @@
       ],
       [
         {
-          "kind": "removeCreature",
+          "kind": "remove_creature",
           "severity": 2,
           "target": "creature"
         }

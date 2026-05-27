@@ -23,7 +23,7 @@
       "text": "When ~ enters, you lose 2 life.",
       "effects": [
         {
-          "kind": "gainLife",
+          "kind": "gain_life",
           "target": "self",
           "amount": -2
         }

@@ -16,6 +16,10 @@ flow, castable highlight, and trigger prompt all route through. v2.0.3: decouple
 authored text from the `special` gameplay flag (now keyed on `customText` only),
 so 5 cards (vileEdict, symmetricize, endomorph, bleach, embargo) generate
 accurate text from their effects instead of hand-written text that can drift.
+v2.0.4: completed the card-data-Part-2 dispatch-key snake_case sweep — every
+effect kind is snake_case in both card.json and the JS `EFFECTS` table (one
+canonical wire both engines read; the Godot loader's `_EFFECT_KIND_REMAP` is now
+dead). Supersedes STANDARDIZATION-PLAN §4.6's "JS stays camelCase" for kinds.
 
 > **MUST UPDATE on every dev-branch push that touches code.** Bump `VERSION` in `js/main.js` AND the line above, in the same commit. GitHub Pages caches aggressively; the version string is the only reliable way to confirm a fresh build is live.
 

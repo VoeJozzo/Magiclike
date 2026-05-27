@@ -8,7 +8,7 @@
   "target": "opp_creature",
   "effects": [
     {
-      "kind": "fightTarget"
+      "kind": "fight_target"
     }
   ],
   "name": "Beast's Fury",

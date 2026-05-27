@@ -148,7 +148,7 @@ function applyRandomStickersToSide(state, side, n, sourceName, logFn) {
 
 // Player-friendly label for a rolled empower target. The roll stores a
 // `field` like 'amount' / 'power' / 'severity', but 'amount' is shared by
-// many effect kinds (damage, draw, discard, gainLife, etc.) — so when the
+// many effect kinds (damage, draw, discard, gain_life, etc.) — so when the
 // field is generic, we use the effect's KIND as the label instead. Faithless
 // Looting empowering "amount" on draw or discard shows up as "Empower (draw)"
 // or "Empower (discard)" rather than the ambiguous "Empower (amount)".
@@ -180,7 +180,7 @@ function empowerRollLabel(card, roll) {
       fieldLabel = t === 'self'   ? 'self damage'
                  : t === 'player' ? 'damage to opponent'
                  : 'damage';
-    } else if (eff.kind === 'gainLife') {
+    } else if (eff.kind === 'gain_life') {
       fieldLabel = 'life gain';
     } else if (eff.kind === 'damage' && eff.scope) {
       fieldLabel = 'damage to all';
@@ -222,7 +222,7 @@ function applyEmpowerRoll(card, roll, amount) {
   const v = e[field];
   if (typeof v === 'object' && v !== null && 'from' in v) return;
   const cur = (typeof v === 'number') ? v : 0;
-  if (e.kind === 'removeCreature' && field === 'severity') {
+  if (e.kind === 'remove_creature' && field === 'severity') {
     e[field] = Math.min(4, cur + amount);
   } else {
     e[field] = cur + amount;

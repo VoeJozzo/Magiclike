@@ -18,12 +18,12 @@ function check(label, ok, info) {
   if (ok) pass++; else fail++;
 }
 
-// Synthetic creatures with observable enter / leave triggers (gainLife, no
+// Synthetic creatures with observable enter / leave triggers (gain_life, no
 // targeting ambiguity) so we can prove the re-fire without a trigger target.
 CARDS._flickerEtb = { tplId: '_flickerEtb', name: 'ETB Gainer', type: 'Creature', cost: { W: 1 }, color: 'W', colors: ['W'], power: 1, toughness: 1,
-  triggers: [{ event: 'card_zone_change', condition: ['this_card', 'card_moves(anywhere, battlefield)'], effects: [{ kind: 'gainLife', target: 'self', amount: 2 }] }] };
+  triggers: [{ event: 'card_zone_change', condition: ['this_card', 'card_moves(anywhere, battlefield)'], effects: [{ kind: 'gain_life', target: 'self', amount: 2 }] }] };
 CARDS._flickerLtb = { tplId: '_flickerLtb', name: 'LTB Gainer', type: 'Creature', cost: { W: 1 }, color: 'W', colors: ['W'], power: 1, toughness: 1,
-  triggers: [{ event: 'card_zone_change', condition: ['this_card', 'card_moves(battlefield, anywhere)'], effects: [{ kind: 'gainLife', target: 'self', amount: 3 }] }] };
+  triggers: [{ event: 'card_zone_change', condition: ['this_card', 'card_moves(battlefield, anywhere)'], effects: [{ kind: 'gain_life', target: 'self', amount: 3 }] }] };
 
 let nextIid = 9000;
 function mk(tplId, controller) {

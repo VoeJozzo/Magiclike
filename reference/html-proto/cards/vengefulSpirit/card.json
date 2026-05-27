@@ -23,7 +23,7 @@
       "text": "When ~ dies, destroy target creature.",
       "effects": [
         {
-          "kind": "removeCreature",
+          "kind": "remove_creature",
           "severity": 3
         }
       ],

@@ -23,7 +23,7 @@
       "text": "When ~ enters, target friendly creature gains flying.",
       "effects": [
         {
-          "kind": "grantKeyword",
+          "kind": "grant_keyword",
           "keyword": "flying"
         }
       ],

@@ -21,14 +21,14 @@ const CTX = { controller: 'you', sourceName: 'X', sourceIid: -1 };
 console.log('=== positive gain_life unchanged ===');
 (() => {
   G.you.life = 20;
-  ENGINE.applyEffect(CTX, { kind: 'gainLife', target: 'self', amount: 4 }, null);
+  ENGINE.applyEffect(CTX, { kind: 'gain_life', target: 'self', amount: 4 }, null);
   check('gains 4 life', G.you.life === 24, 'life=' + G.you.life);
 })();
 
 console.log('\n=== negative gain_life loses life + tracks lifeLostThisTurn ===');
 (() => {
   G.you.life = 20; G.you.lifeLostThisTurn = 0;
-  ENGINE.applyEffect(CTX, { kind: 'gainLife', target: 'self', amount: -3 }, null);
+  ENGINE.applyEffect(CTX, { kind: 'gain_life', target: 'self', amount: -3 }, null);
   check('loses 3 life', G.you.life === 17, 'life=' + G.you.life);
   check('lifeLostThisTurn += 3', G.you.lifeLostThisTurn === 3, 'lost=' + G.you.lifeLostThisTurn);
 })();
@@ -36,7 +36,7 @@ console.log('\n=== negative gain_life loses life + tracks lifeLostThisTurn ===')
 console.log('\n=== zero is a no-op ===');
 (() => {
   G.you.life = 20; G.you.lifeLostThisTurn = 0;
-  ENGINE.applyEffect(CTX, { kind: 'gainLife', target: 'self', amount: 0 }, null);
+  ENGINE.applyEffect(CTX, { kind: 'gain_life', target: 'self', amount: 0 }, null);
   check('life unchanged at 0', G.you.life === 20);
   check('no loss tracked at 0', G.you.lifeLostThisTurn === 0);
 })();
@@ -50,8 +50,8 @@ console.log('\n=== life-loss fires is_life_loss; gain fires is_life_gain ===');
 
 console.log('\n=== card-text renders the sign ===');
 (() => {
-  const neg = describeEffect({ kind: 'gainLife', target: 'self', amount: -2 }).map(s => s.text).join('');
-  const pos = describeEffect({ kind: 'gainLife', target: 'self', amount: 2 }).map(s => s.text).join('');
+  const neg = describeEffect({ kind: 'gain_life', target: 'self', amount: -2 }).map(s => s.text).join('');
+  const pos = describeEffect({ kind: 'gain_life', target: 'self', amount: 2 }).map(s => s.text).join('');
   check('negative → "lose 2 life"', /lose 2 life/.test(neg), neg);
   check('positive → "gain 2 life"', /gain .*2.* life/.test(pos.replace(/\s+/g, ' ')), pos);
 })();

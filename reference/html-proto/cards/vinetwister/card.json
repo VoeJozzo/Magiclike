@@ -20,7 +20,7 @@
       "text": "When ~ enters, target creature gains trample.",
       "effects": [
         {
-          "kind": "grantKeyword",
+          "kind": "grant_keyword",
           "keyword": "trample"
         }
       ],

@@ -20,7 +20,7 @@
       "text": "When ~ enters, bounce target creature.",
       "effects": [
         {
-          "kind": "removeCreature",
+          "kind": "remove_creature",
           "severity": 2
         }
       ],

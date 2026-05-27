@@ -12,7 +12,7 @@
       "toughness": 2
     },
     {
-      "kind": "grantKeyword",
+      "kind": "grant_keyword",
       "keyword": "trample",
       "duration": "eot"
     }

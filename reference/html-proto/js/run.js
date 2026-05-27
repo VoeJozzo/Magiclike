@@ -1049,7 +1049,7 @@ return { start, startNextGame, recordResult, getStats, isActive,
          // Map navigation API.
          getMapState, pickMapNode,
          getPostDraftOffer, pickPostDraftOffer,
-         // save exposed so EFFECTS.applyInGameSplice (mutating slot fields)
+         // save exposed so EFFECTS.apply_in_game_splice (mutating slot fields)
          // can persist. Internal RUN paths already save() inline.
          save,
          load, clearSave, hasSave, rollbackForMidGameRestore };

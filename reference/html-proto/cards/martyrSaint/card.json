@@ -20,7 +20,7 @@
       "text": "When ~ dies, you gain 3 life.",
       "effects": [
         {
-          "kind": "gainLife",
+          "kind": "gain_life",
           "target": "self",
           "amount": 3
         }

@@ -141,14 +141,17 @@ runtime handlers — noted).
 | `draw` / `discard`    | `amount`                                        | JS (runtime only) | **Not used in card data** — kept as handlers because the trigger generator (Mercurial Adept) still emits them. Card data uses `move_card`. |
 | `noop`                | —                                               | JS          | Placeholder.                                                                         |
 
-**Naming rule.** Wire is snake_case (`gain_life`, `add_mana`, `remove_creature`).
-JS internal idiom is camelCase (`gainLife`, `addMana`, `removeCreature`).
-Today JS's `EFFECTS` table uses camelCase keys directly (`EFFECTS.gainLife`);
-Pass 2 left these unchanged because card JSONs author the wire form and JS
-ingest will rebind to either. When the Godot side adds an effect, it
-registers under the snake_case key in `Effects.HANDLERS` directly. JS may
-follow with a rebinder in `ingestCard` or rename its internal keys; both
-options work, and the catalog above lists wire keys.
+**Naming rule.** Effect-kind dispatch keys are **snake_case on both sides**
+(`gain_life`, `add_mana`, `remove_creature`, …) — one canonical wire spelling the
+proto JS and Godot both read directly. The Slice 3 / card-data-Part-2 sweep
+renamed the JS `EFFECTS` table keys and every card.json kind value to snake_case
+(the earlier "JS stays camelCase" rule in `STANDARDIZATION-PLAN.md` §4.6 is
+superseded for dispatch keys — it described the Pass 1–4 state). The catalog
+above lists the canonical keys. Godot's `Effects.HANDLERS` registers the same
+snake_case keys; its `JsonCardLoader._EFFECT_KIND_REMAP` (camelCase→snake) is now
+a no-op for these kinds and slated for deletion (see GODOT-QA-TODO).
+(Event kinds and predicate ids are a separate sweep — see §3.3/§3.4; trigger
+events in card data are already snake_case from Slice 2.)
 
 ### 3.3 Event kinds
 

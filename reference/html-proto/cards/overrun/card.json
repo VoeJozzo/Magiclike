@@ -13,7 +13,7 @@
       "toughness": 3
     },
     {
-      "kind": "grantKeyword",
+      "kind": "grant_keyword",
       "whose": "allYours",
       "keyword": "trample",
       "duration": "eot"

@@ -20,7 +20,7 @@
       "text": "When ~ dies, exile target creature.",
       "effects": [
         {
-          "kind": "removeCreature",
+          "kind": "remove_creature",
           "severity": 4
         }
       ],

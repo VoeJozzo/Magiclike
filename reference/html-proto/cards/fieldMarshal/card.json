@@ -36,7 +36,7 @@
       "text": "A Soldier attacked — you gain 1 life.",
       "effects": [
         {
-          "kind": "gainLife",
+          "kind": "gain_life",
           "target": "self",
           "amount": 1
         }

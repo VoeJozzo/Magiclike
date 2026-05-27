@@ -14,7 +14,7 @@
       "toughness": 2
     },
     {
-      "kind": "removeCreature",
+      "kind": "remove_creature",
       "severity": 1,
       "target": "creature",
       "targetSlot": 1

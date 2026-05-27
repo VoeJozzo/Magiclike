@@ -11,22 +11,22 @@
 // Declared at module scope (outside the AI IIFE) so the coverage report can read
 // them. Keep them in sync with the if-chain in scoreSpellTargetForMode.
 const TARGET_SCORED_KINDS = new Set([
-  'damage', 'removeCreature', 'pump', 'addCounter', 'gainLife', 'discard',
-  'grantKeyword', 'fightTarget', 'untap', 'move_card', 'sacrifice', 'annihilate',
-  'ripPermanent', 'symmetricize', 'destroyAndStickerSlot', 'change_control',
+  'damage', 'remove_creature', 'pump', 'add_counter', 'gain_life', 'discard',
+  'grant_keyword', 'fight_target', 'untap', 'move_card', 'sacrifice', 'annihilate',
+  'rip_permanent', 'symmetricize', 'destroy_and_sticker_slot', 'change_control',
 ]);
 const NOT_TARGET_SCORED_KINDS = new Set([
-  'createTokens',       // untargeted — mint tokens (scored via spellValueForEffects)
-  'addMana',            // untargeted ramp
+  'create_tokens',       // untargeted — mint tokens (scored via spellValueForEffects)
+  'add_mana',            // untargeted ramp
   'draw',               // untargeted (generator-emitted)
   'counter',            // scored via the instant-response counter path, not main-phase
   'apply_sticker',      // a rider on embargo/bleach — the move_card half is scored
   'schedule_delayed',   // a rider (exile_until_eot's return) — the move_card half is scored
   'chooses',            // edict's pick step — the sacrifice/rip verb is scored
   'steal',              // internal helper dispatched by change_control
-  'endomorphAbsorb',    // creature ability, not a cast spell
-  'bargainStickerSelf', 'bargainStickerOther', // Archdemon trigger mechanic
-  'applyInGameSplice',  // Stapler ability (player-UI-driven), not AI-scored
+  'endomorph_absorb',    // creature ability, not a cast spell
+  'bargain_sticker_self', 'bargain_sticker_other', // Archdemon trigger mechanic
+  'apply_in_game_splice',  // Stapler ability (player-UI-driven), not AI-scored
 ]);
 
 const AI = (function() {
@@ -287,7 +287,7 @@ function flashETBWouldFizzle(state, who, card) {
     if (!triggerFiresOnEnter(trig)) continue;
     const effects = trig.effects || [];
     for (const eff of effects) {
-      if (eff.kind === 'removeCreature' && eff.target === 'creature') {
+      if (eff.kind === 'remove_creature' && eff.target === 'creature') {
         const oppCreatures = state[them].battlefield.filter(c => c.type === 'Creature');
         if (oppCreatures.length === 0) return true;
       }
@@ -488,7 +488,7 @@ function shouldCounter(state, who) {
     e.kind === 'damage' ||
     e.kind === 'counter' ||
     (e.kind === 'change_control' && e.transfer_ownership) ||
-    (e.kind === 'removeCreature' && (e.severity || 1) >= 3)
+    (e.kind === 'remove_creature' && (e.severity || 1) >= 3)
   )) return true;
   if (card.type === 'Creature' && ENGINE.cardCost(card) >= 4) return true;
   if (relevantEffects.some(e => e.kind === 'draw' || e.kind === 'discard'
@@ -1044,7 +1044,7 @@ function scoreUntargetedSituation(state, who, effects) {
   const us = who, them = opp(who);
   let bonus = 0;
   for (const e of (effects || [])) {
-    if (e.kind === 'gainLife') {
+    if (e.kind === 'gain_life') {
       const myLife = state[us].life;
       const oppLife = state[them].life;
       const amount = e.amount || 0;
@@ -1063,18 +1063,18 @@ function scoreUntargetedSituation(state, who, effects) {
   return bonus;
 }
 
-// Severity name (new affect_creature) → numeric ladder (legacy removeCreature).
+// Severity name (new affect_creature) → numeric ladder (legacy remove_creature).
 function _sevNum(sev) {
   if (typeof sev === 'number') return sev;
   return { tap: 1, bounce: 2, destroy: 3, exile: 4 }[sev] || 3;
 }
-// Recognize a MASS effect (damage / removeCreature / affect_creature / pump +
+// Recognize a MASS effect (damage / remove_creature / affect_creature / pump +
 // a mass `scope`) and return a normalized descriptor, or null. Drives the AI's
 // mass-cast valuation.
 function massEffectInfo(e) {
   if (!e) return null;
   if (e.kind === 'damage' && e.scope === 'all_creatures') return { type: 'damage', amount: e.amount || 0 };
-  if ((e.kind === 'removeCreature' || e.kind === 'affect_creature') && e.scope) {
+  if ((e.kind === 'remove_creature' || e.kind === 'affect_creature') && e.scope) {
     return { type: 'remove', severity: _sevNum(e.severity), whose: e.scope === 'all_opps' ? 'opp' : 'all' };
   }
   if (e.kind === 'pump' && e.scope === 'all_yours') return { type: 'pump' };
@@ -1115,7 +1115,7 @@ function shouldCastUntargeted(state, who, card, modeIdx) {
     const ours = state[us].battlefield.filter(c => c.type === 'Creature').length;
     return ours >= 2;
   }
-  if (eff.kind === 'grantKeyword' && (eff.whose === 'allYours' || eff.whose === 'all')) {
+  if (eff.kind === 'grant_keyword' && (eff.whose === 'allYours' || eff.whose === 'all')) {
     const ours = state[us].battlefield.filter(c => c.type === 'Creature').length;
     if (eff.whose === 'all') {
       const theirs = state[them].battlefield.filter(c => c.type === 'Creature').length;
@@ -1216,7 +1216,7 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
       ENGINE.getCardValue(a, 'kill') - ENGINE.getCardValue(b, 'kill'))[0];
     return 10 + ENGINE.getCardValue(lowest, 'kill');
   }
-  if (eff.kind === 'ripPermanent') {
+  if (eff.kind === 'rip_permanent') {
     // Vile Edict-style: target(player) → that player chooses a permanent to RIP
     // (destroyed AND removed from their run deck — harsher than a sacrifice).
     // Aim at the opponent; valued by their lowest-value permanent (what they'd
@@ -1241,9 +1241,9 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
     // Bigger + more lopsided creatures are better targets (more to flatten).
     return 8 + Math.floor(Math.abs(pow - tou) / 2) + Math.floor((pow + tou) / 4);
   }
-  if (eff.kind === 'destroyAndStickerSlot') {
+  if (eff.kind === 'destroy_and_sticker_slot') {
     // Scarification: destroy the target creature AND scar its run slot. Hard
-    // removal — score like a destroy (removeCreature sev 3), no severity field.
+    // removal — score like a destroy (remove_creature sev 3), no severity field.
     if (target.kind !== 'creature') return -100;
     const c = ENGINE.findCard(target.iid);
     if (!c || c.controller === us) return -100;
@@ -1303,7 +1303,7 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
     }
     return 0;
   }
-  if (eff.kind === 'removeCreature') {
+  if (eff.kind === 'remove_creature') {
     if (target.kind !== 'creature') return -100;
     const c = ENGINE.findCard(target.iid);
     if (!c) return -100;
@@ -1331,9 +1331,9 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
     if (sev >= 2) score += laneOpeningBonus(state, us, target.iid);
     return score;
   }
-  if (eff.kind === 'pump' || eff.kind === 'addCounter') {
-    // pump/addCounter only fire when combat-relevant (combatBuffSwingValue).
-    // addCounter gets +3 baseline (permanent buff) so it can fire for stat development.
+  if (eff.kind === 'pump' || eff.kind === 'add_counter') {
+    // pump/add_counter only fire when combat-relevant (combatBuffSwingValue).
+    // add_counter gets +3 baseline (permanent buff) so it can fire for stat development.
     if (target.kind !== 'creature') return -100;
     const c = ENGINE.findCard(target.iid);
     if (!c) return -100;
@@ -1356,12 +1356,12 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
     }
     if (c.controller !== us) return -100;              // positive buff → own creatures
     const swing = combatBuffSwingValue(state, us, target.iid, buffPow, buffTou);
-    if (eff.kind === 'addCounter' || eff.duration === 'permanent') {
+    if (eff.kind === 'add_counter' || eff.duration === 'permanent') {
       return 3 + swing;
     }
     return swing;
   }
-  if (eff.kind === 'gainLife') {
+  if (eff.kind === 'gain_life') {
     const amount = eff.amount || 0;
     if (amount < 0) {
       // Life loss (drain). Good aimed at the opponent; never at ourselves.
@@ -1391,7 +1391,7 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
     const actualLoss = Math.min(amount, handSize);
     return actualLoss * 8 + 4;
   }
-  if (eff.kind === 'grantKeyword') {
+  if (eff.kind === 'grant_keyword') {
     if (target.kind !== 'creature') return -100;
     const c = ENGINE.findCard(target.iid);
     if (!c) return -100;
@@ -1415,7 +1415,7 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
     const [pow] = ENGINE.getStats(c.card);
     return 20 + pow;
   }
-  if (eff.kind === 'fightTarget') {
+  if (eff.kind === 'fight_target') {
     if (target.kind !== 'creature') return -100;
     const c = ENGINE.findCard(target.iid);
     if (!c) return -100;
@@ -1570,7 +1570,7 @@ function pickBestActivation(state, who, abilityActs) {
       } else if (t.kind === 'player') {
         score = t.who === opp(who) ? 15 : -100;
       }
-    } else if (eff.kind === 'gainLife') {
+    } else if (eff.kind === 'gain_life') {
       // Signed life on an ability. Negative = drain (Wicked Acolyte: tap, target
       // player loses 1) — good aimed at the opponent. Positive = lifegain to self.
       const amt = eff.amount || 0;
@@ -1585,7 +1585,7 @@ function pickBestActivation(state, who, abilityActs) {
     } else if (eff.kind === 'damage' && eff.target === 'player' && !act.targets) {
       // Drain-tax abilities (legacy damage-to-player shape).
       score = 8;
-    } else if (eff.kind === 'removeCreature' && act.targets) {
+    } else if (eff.kind === 'remove_creature' && act.targets) {
       const t = act.targets[0];
       if (t.kind === 'creature') {
         const c = ENGINE.findCard(t.iid);
@@ -1621,7 +1621,7 @@ function pickBestActivation(state, who, abilityActs) {
       // no current activated abilities have that shape.
       const isSelf = !eff.target || eff.target === 'self';
       score = isSelf ? -50 : 8;
-    } else if (eff.kind === 'gainLife') {
+    } else if (eff.kind === 'gain_life') {
       // Worth it only when low.
       const ourLife = state[who].life;
       score = ourLife <= 6 ? 6 : ourLife <= 12 ? 2 : 0;
@@ -1629,7 +1629,7 @@ function pickBestActivation(state, who, abilityActs) {
         && (eff.to_zone === 'battlefield' || (eff.to_zone === 'hand' && eff.selector === 'library_search'))) {
       // Tutoring / land-fetch is consistently strong (collapsed search*).
       score = 8;
-    } else if ((eff.kind === 'addCounter' || (eff.kind === 'pump' && eff.duration === 'permanent')) && eff.target === 'self') {
+    } else if ((eff.kind === 'add_counter' || (eff.kind === 'pump' && eff.duration === 'permanent')) && eff.target === 'self') {
       // Self-counter pump (Carrion Feeder-shape). The general principle:
       // sacrificing creatures just to grow a counter is wrong play. Real
       // sac decisions happen for one of two reasons:

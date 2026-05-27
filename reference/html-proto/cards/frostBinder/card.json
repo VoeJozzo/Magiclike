@@ -20,7 +20,7 @@
       "text": "When ~ enters, tap target creature.",
       "effects": [
         {
-          "kind": "removeCreature",
+          "kind": "remove_creature",
           "severity": 1
         }
       ],

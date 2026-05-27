@@ -8,7 +8,7 @@
   "target": "player",
   "effects": [
     {
-      "kind": "gainLife",
+      "kind": "gain_life",
       "amount": 5
     }
   ],

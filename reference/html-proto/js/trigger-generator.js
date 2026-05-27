@@ -32,7 +32,7 @@ const GENERATOR_EFFECTS = [
     weight: 3,
     needsLiveSource: false,
     // Lifegain less swingy than damage — gentler curve.
-    roll: () => [{kind: 'gainLife', target: 'self', amount: _genWeightedInt([4, 3, 2])}],
+    roll: () => [{kind: 'gain_life', target: 'self', amount: _genWeightedInt([4, 3, 2])}],
     describe: (eff) => `gain ${eff.amount} life`,
   },
   {
@@ -59,7 +59,7 @@ const GENERATOR_EFFECTS = [
     weight: 2,
     needsLiveSource: true,
     // Always +1/+1; counters are permanent — bigger would snowball.
-    roll: () => [{kind: 'addCounter', target: 'self', power: 1, toughness: 1}],
+    roll: () => [{kind: 'add_counter', target: 'self', power: 1, toughness: 1}],
     describe: () => `~ gets a +1/+1 counter`,
   },
   {
@@ -67,14 +67,14 @@ const GENERATOR_EFFECTS = [
     weight: 2,
     needsLiveSource: false,
     // TOKENS keyed by full descriptor; bare 'soldier' would fizzle.
-    roll: () => [{kind: 'createTokens', tokenId: 'soldier_w_1_1', count: _genWeightedInt([5, 2])}],
+    roll: () => [{kind: 'create_tokens', tokenId: 'soldier_w_1_1', count: _genWeightedInt([5, 2])}],
     describe: (eff) => eff.count === 1 ? `create a 1/1 Soldier token` : `create ${eff.count} 1/1 Soldier tokens`,
   },
   {
     id: 'createTokenGoblin',
     weight: 2,
     needsLiveSource: false,
-    roll: () => [{kind: 'createTokens', tokenId: 'goblin_r_1_1', count: _genWeightedInt([5, 2])}],
+    roll: () => [{kind: 'create_tokens', tokenId: 'goblin_r_1_1', count: _genWeightedInt([5, 2])}],
     // Goblin tokens have intrinsic haste — surface in description.
     describe: (eff) => eff.count === 1
       ? `create a 1/1 Goblin token with haste`
@@ -141,7 +141,7 @@ function generateRandomTrigger() {
     event: 'card_zone_change',
     condition: ['this_card', 'card_moves(anywhere, battlefield)'],
     text: 'When ~ enters, gain 1 life.',
-    effects: [{kind: 'gainLife', target: 'self', amount: 1}],
+    effects: [{kind: 'gain_life', target: 'self', amount: 1}],
     generated: true,
   };
 }

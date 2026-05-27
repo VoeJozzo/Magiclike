@@ -108,7 +108,7 @@ function stickerAppliesLabel(s) {
     case 'innate':        return 'lands';
     case 'grant_mana_ability':     return "lands that don't already produce {" + s.color + '} (deck must play ' + s.colorAdj + ')';
     case 'cost_mod':      return 'non-lands with at least one generic mana and total cost ≥ 2';
-    case 'empower':       return 'cards with numeric effects (damage, damageAll, pump, counters, pumpAllYours, gainLife, draw, discard, removeCreature)';
+    case 'empower':       return 'cards with numeric effects (damage, damageAll, pump, counters, pumpAllYours, gain_life, draw, discard, remove_creature)';
     case 'subtype':       return 'creatures (rolls a random subtype from your deck)';
     case 'keyword': {
       const kw = s.keyword;
@@ -1624,7 +1624,7 @@ function clickBattlefield(iid) {
     const options = [];
     for (let i = 0; i < card.abilities.length; i++) {
       const ab = card.abilities[i];
-      const isMana = ab.effects && ab.effects[0] && ab.effects[0].kind === 'addMana';
+      const isMana = ab.effects && ab.effects[0] && ab.effects[0].kind === 'add_mana';
       const abNeedsTarget = objNeedsTarget(ab, ab.effects);  // §3.5: top-level target() or per-effect
       const needsSac = ab.cost && ab.cost.sacrifice;
       // Probe legality. The probe action shape depends on cost/target shape;
@@ -1678,8 +1678,8 @@ function clickBattlefield(iid) {
                         eff.kind === 'pump' ? '+' + (eff.power || 0) + '/+' + (eff.toughness || 0) + ' EOT' :
                         (eff.kind === 'draw' || isDrawMove) ? 'Draw ' + (eff.amount || 1) :
                         eff.kind === 'untap' ? 'Untap a creature' :
-                        eff.kind === 'gainLife' ? 'Gain ' + (eff.amount || 1) + ' life' :
-                        eff.kind === 'applyInGameSplice' ? 'Staple' :
+                        eff.kind === 'gain_life' ? 'Gain ' + (eff.amount || 1) + ' life' :
+                        eff.kind === 'apply_in_game_splice' ? 'Staple' :
                         eff.kind;
         label = (costStr ? costStr + ': ' : '') + effDesc;
       }

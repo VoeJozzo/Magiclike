@@ -32,7 +32,7 @@
       "text": "Another Cleric entered — gain 2 life.",
       "effects": [
         {
-          "kind": "gainLife",
+          "kind": "gain_life",
           "target": "self",
           "amount": 2
         }

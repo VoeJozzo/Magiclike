@@ -1,6 +1,6 @@
 // Splice harmonization (plan-effects-refactor §7, steps 0+11): the merge math
 // that was duplicated between RUN.applySplice (reward-time, slot data) and
-// EFFECTS.applyInGameSplice (in-game Stapler, runtime cards) is now one shared
+// EFFECTS.apply_in_game_splice (in-game Stapler, runtime cards) is now one shared
 // `mergeSpliceData(base, staple)` core. This test:
 //   1. unit-checks the core (concat + empower-roll remap + bonus precedence), and
 //   2. proves the two pathways agree — splice the SAME two cards via the reward

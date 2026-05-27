@@ -34,11 +34,11 @@ function game() {
 
 console.log('=== objectNeedsTarget recognizes all three shapes (+ none) ===');
 (() => {
-  check('top-level target() step', ENGINE.objectNeedsTarget({ target: 'creature', effects: [{ kind: 'removeCreature' }] }));
-  check('ability-level targetSlots', ENGINE.objectNeedsTarget({ targetSlots: [{ target: 'creature' }], effects: [{ kind: 'applyInGameSplice' }] }));
+  check('top-level target() step', ENGINE.objectNeedsTarget({ target: 'creature', effects: [{ kind: 'remove_creature' }] }));
+  check('ability-level targetSlots', ENGINE.objectNeedsTarget({ targetSlots: [{ target: 'creature' }], effects: [{ kind: 'apply_in_game_splice' }] }));
   check('legacy per-effect target', ENGINE.objectNeedsTarget({ effects: [{ kind: 'damage', target: 'creature', amount: 2 }] }));
-  check('untargeted → false', !ENGINE.objectNeedsTarget({ effects: [{ kind: 'createTokens', count: 1 }] }));
-  check('self-only effect → false', !ENGINE.objectNeedsTarget({ effects: [{ kind: 'gainLife', target: 'self', amount: 3 }] }));
+  check('untargeted → false', !ENGINE.objectNeedsTarget({ effects: [{ kind: 'create_tokens', count: 1 }] }));
+  check('self-only effect → false', !ENGINE.objectNeedsTarget({ effects: [{ kind: 'gain_life', target: 'self', amount: 3 }] }));
   check('modal (effects.modes, not an array) → false (handled separately by UI)',
     !ENGINE.objectNeedsTarget({ effects: { modes: [[{ kind: 'damage', target: 'creature' }]] } }));
 })();

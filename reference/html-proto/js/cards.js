@@ -159,15 +159,15 @@ STICKERS['cost_minus_1'] = {
 // Empower bumps one buffable field per application. Roll recorded on slot.empowerRolls.
 // Single source of truth for empowerable params, post-collapse (§3.5/§3.8):
 // the mass kinds (damageAll/pumpAllYours/removeAll) folded into damage/pump/
-// removeCreature + scope; weaken/addCounter into signed/permanent pump; draw
+// remove_creature + scope; weaken/add_counter into signed/permanent pump; draw
 // into move_card(library→hand). `move_card` is empowerable ONLY in its draw
 // shape (gated in isEmpowerableField).
 const EMPOWER_FIELDS = {
   damage:         ['amount'],
   pump:           ['power', 'toughness'],
-  gainLife:       ['amount'],
-  removeCreature: ['severity'],
-  createTokens:   ['count'],
+  gain_life:       ['amount'],
+  remove_creature: ['severity'],
+  create_tokens:   ['count'],
   move_card:      ['amount'],
 };
 function isEmpowerableField(eff, field) {
@@ -177,7 +177,7 @@ function isEmpowerableField(eff, field) {
   // move_card is only empowerable as a draw (library→hand) — bumping a bounce/
   // mill/discard count isn't a meaningful "empower".
   if (eff.kind === 'move_card' && !(eff.from_zone === 'library' && eff.to_zone === 'hand')) return false;
-  if (eff.kind === 'removeCreature' && field === 'severity') {
+  if (eff.kind === 'remove_creature' && field === 'severity') {
     return (eff.severity || 1) < 4;
   }
   // Skip {from:...} expressions (can't bump without losing semantics).
@@ -341,11 +341,11 @@ STICKERS['scarified'] = {
     event: 'card_zone_change',
     condition: ['this_card', 'card_moves(anywhere, battlefield)'],
     text: '~ enters: its controller loses 1 life.',
-    // target:'self' for player-operating effects (damage/gainLife/discard/
+    // target:'self' for player-operating effects (damage/gain_life/discard/
     // draw) resolves to the source's controller at trigger time. Pushed
     // onto card.triggers when the sticker applies via the standard
     // sticker-trigger path at line 2705-2706.
-    effects: [{ kind: 'gainLife', target: 'self', amount: -1 }],
+    effects: [{ kind: 'gain_life', target: 'self', amount: -1 }],
   },
 };
 

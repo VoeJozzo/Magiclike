@@ -24,14 +24,14 @@ function formatTriggerText(template, cardName) {
   return (template || '').replace(/~/g, escapeHtml(cardName || ''));
 }
 
-// eff.target → noun phrase. 'player' = "target opponent" for damage/discard, "target player" for gainLife.
+// eff.target → noun phrase. 'player' = "target opponent" for damage/discard, "target player" for gain_life.
 function targetPhrase(eff) {
   const t = eff.target;
   if (t === 'self')     return 'you';
   if (t === 'player') {
-    // A drain (negative gainLife) is aimed at the opponent — read it that way;
-    // a positive gainLife to a player target is the ambiguous "target player".
-    if (eff.kind === 'gainLife') return (eff.amount || 0) < 0 ? 'target opponent' : 'target player';
+    // A drain (negative gain_life) is aimed at the opponent — read it that way;
+    // a positive gain_life to a player target is the ambiguous "target player".
+    if (eff.kind === 'gain_life') return (eff.amount || 0) < 0 ? 'target opponent' : 'target player';
     if (eff.kind === 'discard')  return 'target player';
     return 'target opponent';
   }
@@ -138,7 +138,7 @@ function signedStat(field, eff, tplEff, negZero) {
 //   annihilate    — the rip/edict chain renders the whole phrase
 //   bargainSticker* — Archdemon of Bargains uses authored card.text
 const TEXT_IDIOM_ONLY = new Set([
-  'apply_sticker', 'steal', 'annihilate', 'bargainStickerSelf', 'bargainStickerOther',
+  'apply_sticker', 'steal', 'annihilate', 'bargain_sticker_self', 'bargain_sticker_other',
 ]);
 
 // Render one effect to segments (lowercase-leading; caller capitalizes).
@@ -155,7 +155,7 @@ function describeEffect(eff, tplEff) {
       if (eff.target === 'self') return [plainSeg('you take '), amtSeg, plainSeg(' damage')];
       if (eff.scope === 'all_creatures') return [plainSeg('deal '), amtSeg, plainSeg(' damage to each creature')];
       return [plainSeg('deal '), amtSeg, plainSeg(' damage to ' + t)];
-    case 'gainLife':
+    case 'gain_life':
       if (typeof eff.amount === 'object' && eff.amount && eff.amount.from) {
         const owner = (eff.who && eff.who.from === 'targetController') ? "its controller" : 'you';
         return [plainSeg(owner + ' gains life equal to ' + describeAmount(eff.amount))];
@@ -185,7 +185,7 @@ function describeEffect(eff, tplEff) {
       if (eff.amount === 1) return [plainSeg('discard a card')];
       return [plainSeg('discard '), amtSeg, plainSeg(' cards')];
     case 'pump': {
-      // duration:permanent → +1/+1 counters (addCounter collapse). Counters
+      // duration:permanent → +1/+1 counters (add_counter collapse). Counters
       // come in +1/+1 units, so a uniform +N/+N is "N +1/+1 counters" (a +2/+2
       // pump = two +1/+1 counters), not "a +2/+2 counter".
       if (eff.duration === 'permanent') {
@@ -211,13 +211,13 @@ function describeEffect(eff, tplEff) {
       return [plainSeg(subj + verb), signedStat('power', eff, tplEff, negZero), plainSeg('/'),
               signedStat('toughness', eff, tplEff, negZero), plainSeg(' until end of turn')];
     }
-    case 'addCounter': {
+    case 'add_counter': {
       const pSeg = bumpedSeg('power', eff, tplEff, 1);
       const tSeg = bumpedSeg('toughness', eff, tplEff, 1);
       const tail = eff.target === 'self' ? ' counter on this' : ' counter on ' + t;
       return [plainSeg('put a +'), pSeg, plainSeg('/+'), tSeg, plainSeg(tail)];
     }
-    case 'grantKeyword': {
+    case 'grant_keyword': {
       // 'eot' → EOT text; targeted → "as long as on bf" (source-tied); self → no duration.
       let dur;
       if (eff.duration === 'eot') {
@@ -238,7 +238,7 @@ function describeEffect(eff, tplEff) {
       if (eff.target === 'self') return [plainSeg('this creature gains ' + eff.keyword + dur)];
       return [plainSeg(t + ' gains ' + eff.keyword + dur)];
     }
-    case 'removeCreature': {
+    case 'remove_creature': {
       // 1=tap, 2=return, 3=destroy, 4=exile. Verb highlights when severity bumped.
       const sev = eff.severity || 1;
       const verb = sev >= 4 ? 'exile' : sev >= 3 ? 'destroy'
@@ -257,7 +257,7 @@ function describeEffect(eff, tplEff) {
     }
     case 'counter':
       return [plainSeg('counter ' + t)];
-    case 'createTokens': {
+    case 'create_tokens': {
       const tok = eff.tokenId || 'creature';
       const tokTpl = (typeof TOKENS !== 'undefined' && TOKENS[tok]) || null;
       const niceName = tokTpl ? tokTpl.name : tok.replace(/_.*/, '').replace(/^./, c => c.toUpperCase());
@@ -308,15 +308,15 @@ function describeEffect(eff, tplEff) {
       const tNoTap = withFilter(targetPhrase(eff), filterMinusTapped ? Object.assign({}, eff, {filter: filterMinusTapped}) : eff);
       return [plainSeg('untap ' + tNoTap)];
     }
-    case 'applyInGameSplice':
+    case 'apply_in_game_splice':
       return [plainSeg('staple the second target permanent onto the first')];
-    case 'fightTarget':
+    case 'fight_target':
       return [plainSeg('your strongest creature fights ' + t)];
     case 'schedule_delayed':
       // Standalone fallback; the exile-until-eot pair is rendered as one phrase
       // by describeEffectList (below).
       return [plainSeg('return it to the battlefield at end of turn')];
-    case 'addMana': {
+    case 'add_mana': {
       if (eff.choose) {
         return [plainSeg(eff.choose === 'any'
           ? 'add one mana of any color'
@@ -357,11 +357,11 @@ function describeEffect(eff, tplEff) {
       }
       return segs;
     }
-    case 'endomorphAbsorb':
+    case 'endomorph_absorb':
       return [plainSeg('gain a keyword from the slain creature, or +1/+1 if none')];
-    case 'ripPermanent':
+    case 'rip_permanent':
       return [plainSeg(t + ' rips a permanent they control')];
-    case 'destroyAndStickerSlot':
+    case 'destroy_and_sticker_slot':
       return [plainSeg('destroy ' + t + ' and scar it')];
     case 'symmetricize':
       return [plainSeg(t + "'s controller equalizes its power, toughness, or cost")];
@@ -378,7 +378,7 @@ function segsToText(segs) {
 }
 
 // Join effects into a sentence. Special-case: 2 damage effects use shared-subject phrasing.
-// Subject key for buff coalescing — pump (scope/target) and grantKeyword
+// Subject key for buff coalescing — pump (scope/target) and grant_keyword
 // (whose/target) must map to the SAME key to share one clause.
 function buffSubjectKey(eff) {
   if (eff.scope === 'all_yours' || eff.whose === 'allYours') return 'all_yours';
@@ -393,7 +393,7 @@ function buffSubjectKey(eff) {
 function coalesceEotBuffs(effects, tplOf) {
   if (effects.length < 2) return null;
   const pump = e => e.kind === 'pump' && e.duration !== 'permanent' && !('targetSlot' in e);
-  const grant = e => e.kind === 'grantKeyword' && e.duration === 'eot' && !('targetSlot' in e);
+  const grant = e => e.kind === 'grant_keyword' && e.duration === 'eot' && !('targetSlot' in e);
   if (!effects.every(e => pump(e) || grant(e))) return null;
   const key = buffSubjectKey(effects[0]);
   if (!effects.every(e => buffSubjectKey(e) === key)) return null;
@@ -781,7 +781,7 @@ function describeCardSegments(card, opts) {
       // type line, not rules text) — suppress it so basics render empty. A
       // choose-form mana land (City of Brass / duals) keeps its ability text.
       if (card.type === 'Land' && ab.cost && ab.cost.tap
-          && ab.effects && ab.effects[0] && ab.effects[0].kind === 'addMana'
+          && ab.effects && ab.effects[0] && ab.effects[0].kind === 'add_mana'
           && ab.effects[0].amounts) {
         continue;
       }

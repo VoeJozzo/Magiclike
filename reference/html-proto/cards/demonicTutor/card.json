@@ -16,7 +16,7 @@
       }
     },
     {
-      "kind": "gainLife",
+      "kind": "gain_life",
       "target": "self",
       "amount": -2
     }

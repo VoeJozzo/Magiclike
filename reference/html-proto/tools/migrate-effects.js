@@ -71,7 +71,7 @@ function planBlock(effects, alreadyHasTarget) {
 // Kind-collapse: rewrite a redundant legacy kind into its atomic + scope/sign
 // form (the engine + AI valuation already support these). Returns the rewritten
 // effect, or the same object if nothing to do. Idempotent (collapsed shapes
-// aren't re-touched). addCounter is NOT collapsed yet (pump lacks `duration`).
+// aren't re-touched). add_counter is NOT collapsed yet (pump lacks `duration`).
 function collapseEffect(e) {
   if (!e || !e.kind) return e;
   if (e.kind === 'damageAll') return { kind: 'damage', scope: 'all_creatures', amount: e.amount || 0 };
@@ -79,13 +79,13 @@ function collapseEffect(e) {
   if (e.kind === 'removeAll') {
     const whose = e.whose;
     const scope = whose === 'opp' ? 'all_opps' : (whose === 'self' || whose === 'you') ? 'all_yours' : 'all_creatures';
-    return { kind: 'removeCreature', scope, severity: e.severity || 3 };
+    return { kind: 'remove_creature', scope, severity: e.severity || 3 };
   }
   if (e.kind === 'weaken') {
     const { kind, power, toughness, ...rest } = e;
     return Object.assign({ kind: 'pump', power: -(power || 0), toughness: -(toughness || 0) }, rest);
   }
-  if (e.kind === 'addCounter') {
+  if (e.kind === 'add_counter') {
     const { kind, ...rest } = e;  // +1/+1 counters → permanent pump (preserves target:self)
     return Object.assign({ kind: 'pump', duration: 'permanent' }, rest);
   }
@@ -148,7 +148,7 @@ function collapseEffect(e) {
 // Step 12 (§1.2): strip an ability's `noop` slot-marker. The per-effect
 // {targetSlot, target, filter} specs become an ability-level `targetSlots`
 // array; the noop is removed and the real effects shed their slot-targeting
-// (Stapler's applyInGameSplice reads ctx.allTargets directly). Idempotent —
+// (Stapler's apply_in_game_splice reads ctx.allTargets directly). Idempotent —
 // an ability with no noop is left untouched. Returns true if rewritten.
 function stripNoopSlots(ab) {
   if (!Array.isArray(ab.effects) || !ab.effects.some(e => e.kind === 'noop')) return false;

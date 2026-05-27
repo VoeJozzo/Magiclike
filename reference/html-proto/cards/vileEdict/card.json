@@ -7,7 +7,7 @@
   "target": "player",
   "effects": [
     {
-      "kind": "ripPermanent"
+      "kind": "rip_permanent"
     }
   ],
   "name": "Vile Edict",

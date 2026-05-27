@@ -20,7 +20,7 @@
       "text": "~ enters — target creature gains defender.",
       "effects": [
         {
-          "kind": "grantKeyword",
+          "kind": "grant_keyword",
           "keyword": "defender"
         }
       ],

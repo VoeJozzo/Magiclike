@@ -20,7 +20,7 @@
       "text": "When ~ dies, target opponent loses 2 life.",
       "effects": [
         {
-          "kind": "gainLife",
+          "kind": "gain_life",
           "amount": -2
         }
       ],

@@ -25,7 +25,7 @@
       "text": "When ~ enters, you choose 1-5: put that many stickers on permanents ~'s controller has.",
       "effects": [
         {
-          "kind": "bargainStickerSelf"
+          "kind": "bargain_sticker_self"
         }
       ]
     },
@@ -38,7 +38,7 @@
       "text": "When ~ leaves play, put N stickers on the opposing player's permanents (N = chosen number).",
       "effects": [
         {
-          "kind": "bargainStickerOther"
+          "kind": "bargain_sticker_other"
         }
       ]
     }

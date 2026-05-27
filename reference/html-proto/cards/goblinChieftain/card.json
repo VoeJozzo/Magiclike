@@ -36,7 +36,7 @@
       "text": "A Goblin attacked — opp loses 1 life.",
       "effects": [
         {
-          "kind": "gainLife",
+          "kind": "gain_life",
           "amount": -1
         }
       ],

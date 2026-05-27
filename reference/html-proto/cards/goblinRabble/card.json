@@ -7,7 +7,7 @@
   },
   "effects": [
     {
-      "kind": "createTokens",
+      "kind": "create_tokens",
       "tokenId": "goblin_r_1_1",
       "count": 3
     }
