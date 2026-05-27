@@ -405,6 +405,38 @@ cards can't be staple bases/staples). **Godot mirror:** Godot has no staple syst
 proto reference (staple-type dispatch + the §3.9 tap-ability merge), don't port
 the old order-dependent chain.
 
+**§3.8 sticker pipeline — SUBSTANCE DONE (proto).** "Decision 7 reversed": the
+parallel `applyBalancerOverrides` channel is deleted and every Balancer effect
+flows through one sticker pipeline.
+- **Parameterized stickers:** a slot/card sticker entry is now a registry id
+  (string) OR an inline `{kind,...params}` descriptor — `resolveSticker()`
+  normalizes both; run.js migration-prune keeps inline ones; `applyStickerToSlot`
+  accepts them. New kinds `cost_mod` (signed, generic-floored) + `set_color`.
+- **embargo/bleach → `[apply_sticker, move_card]`** via the new `apply_sticker`
+  effect (applies an inline sticker to the target's slot + runtime card). Their
+  dedicated handlers + inline `RUN.save` are gone — persistence is the sticker
+  API's job.
+- **symmetricize → additive snapshot:** `doSymmetricizeChoice` records the
+  deltas to reach N as `stat_boost` + `cost_mod` stickers (NOT a persistent
+  P=T=cost=N clamp). `symmetrizedTo` sentinel + the slot.symmetricized/
+  colorOverride/extraCost fields + the `slotMeta` makeCard param are all gone.
+- **Pipeline dedup:** both apply paths share `applyStickerKindEffect`.
+- **costReduction → signed `cost_mod`** unification (one cost-change kind).
+- **empower:** `EMPOWER_FIELDS` is the single source, aligned to the
+  post-collapse effect set (move_card-draw empowerability restored).
+- **DELIBERATE SKIP (documented):** the empower/subtype *addressing-shape* change
+  (positional → semantic-identity). Investigated: a global Nth-of-kind scheme has
+  the SAME staple-fragility as positional (inserting a staple trigger of kind-K
+  shifts the Nth of base *ability* effects of kind-K), so it's net-neutral and
+  positional + `remapEmpowerRollForStaple` is retained.
+- **Remaining §3.8 tail (cosmetic):** snake_case the remaining sticker IDs
+  (`plus1plus1`→`plus1_plus1`, `costMinus1`→`cost_minus_1`, `landColor_W`→
+  `land_color_w`) + kinds (`statBoost`→`stat_boost`, `landColor`→`land_color`) —
+  a sweeping rename + a save-migration map (best as a focused pass); and the
+  forward-looking `grant_mana_ability(color)` generalization of `landColor`.
+- **Godot mirror:** Godot has no sticker layer — build from this proto reference
+  (one pipeline, inline parameterized stickers, apply_sticker effect).
+
 Remaining collapse:
 - **exileUntilEOT → move_card decomp** (B4-deferred per §9.1; stays monolithic).
 
