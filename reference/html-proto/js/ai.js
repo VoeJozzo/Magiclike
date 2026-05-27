@@ -1167,20 +1167,56 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
   const modeEffects = ENGINE.effectsForMode(card, modeIdx);
   // Legacy: the targeted effect carries its own `target`. New model (§3.5): a
   // top-level `target` step on the card, with bare effects — value the first
-  // target-operating effect (skip chooses() and mass-scoped effects).
+  // target-operating effect (skip chooses(), mass-scoped effects, and the
+  // apply_sticker rider so embargo/bleach score their move_card removal half,
+  // not the persistent-tax sticker).
   let eff = modeEffects.find(e => e.target);
-  if (!eff && card.target) eff = modeEffects.find(e => e.kind !== 'chooses' && e.scope == null);
+  if (!eff && card.target) eff = modeEffects.find(e => e.kind !== 'chooses' && e.kind !== 'apply_sticker' && e.scope == null);
   if (!eff) return 0;
-  if (eff.kind === 'sacrifice') {
-    // Edict: target(player) → chooses → sacrifice. The targeted player loses
-    // their lowest-value creature; never edict ourselves. (Was the legacy
-    // untargeted `edict` valuation in shouldCastUntargeted.)
+  if (eff.kind === 'sacrifice' || eff.kind === 'annihilate') {
+    // Edict: target(player) → chooses → sacrifice/annihilate. The targeted
+    // player loses their lowest-value creature; never edict ourselves. (Was the
+    // legacy untargeted `edict` valuation in shouldCastUntargeted.)
     if (target.kind !== 'player' || target.who === us) return -100;
     const theirC = state[target.who].battlefield.filter(c => c.type === 'Creature');
     if (theirC.length === 0) return -100;
     const lowest = theirC.slice().sort((a, b) =>
       ENGINE.getCardValue(a, 'kill') - ENGINE.getCardValue(b, 'kill'))[0];
     return 10 + ENGINE.getCardValue(lowest, 'kill');
+  }
+  if (eff.kind === 'ripPermanent') {
+    // Vile Edict-style: target(player) → that player chooses a permanent to RIP
+    // (destroyed AND removed from their run deck — harsher than a sacrifice).
+    // Aim at the opponent; valued by their lowest-value permanent (what they'd
+    // give up) plus a premium for the permanent deck-loss.
+    if (target.kind !== 'player' || target.who === us) return -100;
+    const theirPerms = state[target.who].battlefield;
+    if (theirPerms.length === 0) return -100;
+    const lowest = theirPerms.slice().sort((a, b) =>
+      ENGINE.getCardValue(a, 'kill') - ENGINE.getCardValue(b, 'kill'))[0];
+    return 16 + ENGINE.getCardValue(lowest, 'kill');
+  }
+  if (eff.kind === 'symmetricize') {
+    // The Balancer's equalizer: the target's controller picks power/toughness/
+    // cost and the other two snap to it. The opponent minimizes harm, so it's a
+    // soft answer — only worth aiming at an opp creature whose stats are uneven
+    // enough that equalizing shrinks it. Value the likely shrink on their board.
+    if (target.kind !== 'creature') return -100;
+    const c = ENGINE.findCard(target.iid);
+    if (!c || c.controller === us) return -100;
+    if (c.card.keywords.includes('hexproof')) return -100;
+    const [pow, tou] = ENGINE.getStats(c.card);
+    // Bigger + more lopsided creatures are better targets (more to flatten).
+    return 8 + Math.floor(Math.abs(pow - tou) / 2) + Math.floor((pow + tou) / 4);
+  }
+  if (eff.kind === 'destroyAndStickerSlot') {
+    // Scarification: destroy the target creature AND scar its run slot. Hard
+    // removal — score like a destroy (removeCreature sev 3), no severity field.
+    if (target.kind !== 'creature') return -100;
+    const c = ENGINE.findCard(target.iid);
+    if (!c || c.controller === us) return -100;
+    if (c.card.keywords.includes('hexproof') || c.card.keywords.includes('indestructible')) return -100;
+    return 40 + ENGINE.getCardValue(c.card, 'kill') + laneOpeningBonus(state, us, target.iid);
   }
   if (eff.kind === 'damage') {
     const amount = eff.amount;
@@ -1411,6 +1447,30 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
       if (c.card.damage > 0) score += c.card.damage * 2;
       score -= (c.card.permPower || 0) + (c.card.permTou || 0);
       return score;
+    }
+    if (eff.from_zone === 'battlefield' && eff.to_zone === 'hand') {
+      // Bounce (embargo's removal half — the apply_sticker cost-tax rides
+      // along). Tempo removal on an opp creature; a bounced token ceases.
+      if (target.kind !== 'creature') return -100;
+      const c = ENGINE.findCard(target.iid);
+      if (!c || c.controller === us) return -100;
+      if (c.card.keywords.includes('hexproof')) return -100;
+      const [pow, tou] = ENGINE.getStats(c.card);
+      let score = 20 + pow + Math.floor(tou / 2);
+      if (c.card.isToken) score += 10;   // bounced token ceases to exist
+      return score + laneOpeningBonus(state, us, target.iid);
+    }
+    if (eff.from_zone === 'battlefield' && eff.to_zone === 'exile') {
+      // Plain exile with no return (bleach's removal half — the set_color
+      // sticker rides along; flicker + exile_until_eot returns were handled
+      // above and already returned). Hardest removal: permanent, dodges
+      // regeneration/death-trigger value. Token exile is still just removal.
+      if (target.kind !== 'creature') return -100;
+      const c = ENGINE.findCard(target.iid);
+      if (!c || c.controller === us) return -100;
+      if (c.card.keywords.includes('hexproof')) return -100;
+      const [pow, tou] = ENGINE.getStats(c.card);
+      return 45 + ENGINE.getCardValue(c.card, 'kill') + laneOpeningBonus(state, us, target.iid);
     }
     return 0;
   }
