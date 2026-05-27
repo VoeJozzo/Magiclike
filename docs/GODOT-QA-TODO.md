@@ -251,11 +251,23 @@ shuffleIntoLibrary, both gainControl defs incl. the decision-11 dead
 duplicate). steal handler kept (change_control delegates). Suite 744/744;
 selfplay 500 clean, no "Unknown effect" warnings.
 
-**Step 7 part 2 (follow-up, low-risk):** delete the now-dead card-text +
-spellValueForEffects + scoreSpellTargetForMode CASES for those kinds, the
-massEffectInfo legacy branches, and stale data-table refs (EMPOWER_FIELDS,
-draft weights, render kind-lists, CREATURE_EFFECT_KINDS). All unreachable —
-harmless but should be cleaned for consistency (no handler ↔ no case).
+**Step 7 part 2 DONE (proto):** removed the dead card-text (8) +
+spellValueForEffects (8) + scoreSpellTargetForMode (3) cases + the
+massEffectInfo legacy branches + the dead `steal` instant-response check.
+**This surfaced + fixed a latent §8.1 regression**: the weaken collapse
+(→ negative pump) had silently broken the AI's debuff valuation (negative pump
+hit the pump scoring case, which returns -100 for opp creatures), so the AI
+stopped casting sicken-style debuffs. Fixed: the pump scoring case routes
+negative deltas to the weaken (debuff-opp) valuation. **Lesson for the Godot
+mirror: verify scoreSpellValue/scoring parity, not just rendering, for every
+collapse.** Suite 742/742; selfplay 500 clean.
+
+**Step 7 leftover (minor, OPTIONAL):** the dead legacy kind names still appear
+in a few data tables as harmless no-ops (EMPOWER_FIELDS, draft FIELD_VALUE_BY_KIND
+weights, render kind-lists, CREATURE_EFFECT_KINDS). Removing them would subtly
+shift empower draft-weighting for the collapsed mass cards (damageAll weight 5 →
+damage weight 4) — a tiny §8.1 tail. Either leave them (harmless) or, for strict
+parity, teach draft.js's empower weighting to read `scope` first.
 
 Remaining collapses (each needs more than a rewrite):
 - **edict → target(player)+chooses+sacrifice** (1 card, structural: AI
