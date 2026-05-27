@@ -458,7 +458,6 @@ function shouldCounter(state, who) {
   if (relevantEffects.some(e =>
     e.kind === 'damage' ||
     e.kind === 'counter' ||
-    e.kind === 'steal' ||
     (e.kind === 'change_control' && e.transfer_ownership) ||
     (e.kind === 'removeCreature' && (e.severity || 1) >= 3)
   )) return true;
@@ -1038,19 +1037,15 @@ function _sevNum(sev) {
   if (typeof sev === 'number') return sev;
   return { tap: 1, bounce: 2, destroy: 3, exile: 4 }[sev] || 3;
 }
-// Recognize a MASS effect across the legacy shape (damageAll / removeAll /
-// pumpAllYours) and the new shape (damage / removeCreature / affect_creature /
-// pump + a mass `scope`). Returns a normalized descriptor or null. §8.1
-// lockstep so the AI values migrated mass cards like the legacy ones.
+// Recognize a MASS effect (damage / removeCreature / affect_creature / pump +
+// a mass `scope`) and return a normalized descriptor, or null. Drives the AI's
+// mass-cast valuation.
 function massEffectInfo(e) {
   if (!e) return null;
-  if (e.kind === 'damageAll') return { type: 'damage', amount: e.amount || 0 };
   if (e.kind === 'damage' && e.scope === 'all_creatures') return { type: 'damage', amount: e.amount || 0 };
-  if (e.kind === 'removeAll') return { type: 'remove', severity: e.severity || 3, whose: e.whose || 'all' };
   if ((e.kind === 'removeCreature' || e.kind === 'affect_creature') && e.scope) {
     return { type: 'remove', severity: _sevNum(e.severity), whose: e.scope === 'all_opps' ? 'opp' : 'all' };
   }
-  if (e.kind === 'pumpAllYours') return { type: 'pump' };
   if (e.kind === 'pump' && e.scope === 'all_yours') return { type: 'pump' };
   return null;
 }
@@ -1250,9 +1245,24 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
     if (target.kind !== 'creature') return -100;
     const c = ENGINE.findCard(target.iid);
     if (!c) return -100;
-    if (c.controller !== us) return -100;
     const buffPow = eff.power || 0;
     const buffTou = eff.toughness || 0;
+    // Negative deltas = weaken (debuff): target OPP creatures, not our own
+    // (collapsed from the legacy `weaken` kind, decision 3). buffTou is the
+    // signed delta (e.g. -2).
+    if (buffPow < 0 || buffTou < 0) {
+      if (c.controller === us) return -100;            // never weaken our own
+      if (c.card.keywords.includes('hexproof')) return -100;
+      const [pow, tou] = ENGINE.getStats(c.card);
+      const newTou = tou + buffTou;                    // buffTou negative
+      const wouldKill = newTou <= 0 || (newTou - c.card.damage) <= 0;
+      if (wouldKill) {
+        if (c.card.keywords.includes('indestructible')) return -50;
+        return 35 + ENGINE.getCardValue(c.card, 'kill') + laneOpeningBonus(state, us, target.iid);
+      }
+      return 5 + Math.max(0, pow + buffPow);            // buffPow negative
+    }
+    if (c.controller !== us) return -100;              // positive buff → own creatures
     const swing = combatBuffSwingValue(state, us, target.iid, buffPow, buffTou);
     if (eff.kind === 'addCounter' || eff.duration === 'permanent') {
       return 3 + swing;
@@ -1346,40 +1356,6 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
     const [pow] = ENGINE.getStats(c.card);
     return 10 + pow;
   }
-  if (eff.kind === 'weaken') {
-    // Black's -X/-X EOT. Lethal if effective toughness drops to 0 or less,
-    // otherwise just a debuff. Indestructibles survive (state-based death
-    // from t≤0 is gated by indestructible too).
-    if (target.kind !== 'creature') return -100;
-    const c = ENGINE.findCard(target.iid);
-    if (!c) return -100;
-    if (c.controller === us) return -100;            // never weaken our own
-    if (c.card.keywords.includes('hexproof')) return -100;
-    const [pow, tou] = ENGINE.getStats(c.card);
-    const newTou = tou - (eff.toughness || 0);
-    const wouldKill = newTou <= 0 || (newTou - c.card.damage) <= 0;
-    if (wouldKill) {
-      if (c.card.keywords.includes('indestructible')) return -50;
-      let score = 35 + ENGINE.getCardValue(c.card, 'kill');
-      score += laneOpeningBonus(state, us, target.iid);
-      return score;
-    }
-    // Non-lethal: just a debuff. Worth it on big threats we can't outright kill.
-    return 5 + Math.max(0, pow - (eff.power || 0));
-  }
-  if (eff.kind === 'shuffleIntoLibrary') {
-    // White's "shuffle into library" — like bounce but harder to recover from
-    // (random library position vs. immediate hand). Comparable to severity 2-3.
-    if (target.kind !== 'creature') return -100;
-    const c = ENGINE.findCard(target.iid);
-    if (!c) return -100;
-    if (c.controller === us) return -100;
-    if (c.card.keywords.includes('hexproof')) return -100;
-    const [pow, tou] = ENGINE.getStats(c.card);
-    let score = 30 + pow + Math.floor(tou / 2);
-    score += laneOpeningBonus(state, us, target.iid);
-    return score;
-  }
   if (eff.kind === 'move_card') {
     // Collapsed returnFromGraveyard / shuffleIntoLibrary — value at parity.
     if (eff.from_zone === 'graveyard' && eff.to_zone === 'hand') {
@@ -1399,16 +1375,6 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
       return 30 + pow + Math.floor(tou / 2) + laneOpeningBonus(state, us, target.iid);
     }
     return 0;
-  }
-  if (eff.kind === 'returnFromGraveyard') {
-    // Recursion target — looking up the card in our graveyard. Value scales
-    // with the recurred card's intrinsic strength: bringing back a Sengir
-    // Vampire is worth more than bringing back a 1/1.
-    if (target.kind !== 'graveyardCreature') return -100;
-    const grave = state[us].graveyard || [];
-    const card = grave.find(c => c.iid === target.iid);
-    if (!card) return -100;
-    return 10 + ENGINE.getCardValue(card, 'play');
   }
   if (eff.kind === 'flicker') {
     // Flickering only makes sense on our own creatures. Best targets:

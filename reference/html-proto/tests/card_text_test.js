@@ -54,8 +54,8 @@ eqText(segsToText(describeEffect({ kind: 'damage', target: 'self', amount: 2 }))
        'you take 2 damage', 'damage to self (life-loss phrasing)');
 eqText(segsToText(describeEffect({ kind: 'damage', target: 'player', amount: 3 })),
        'deal 3 damage to target opponent', 'damage to player → "opponent"');
-eqText(segsToText(describeEffect({ kind: 'damageAll', amount: 2 })),
-       'deal 2 damage to each creature', 'damageAll → "each creature"');
+eqText(segsToText(describeEffect({ kind: 'damage', amount: 2, scope: 'all_creatures' })),
+       'deal 2 damage to each creature', 'damage+scope → "each creature"');
 eqText(segsToText(describeEffect({ kind: 'gainLife', target: 'self', amount: 3 })),
        'you gain 3 life', 'gainLife self');
 eqText(segsToText(describeEffect({ kind: 'gainLife', amount: { from: 'targetPower' },
@@ -76,8 +76,8 @@ eqText(segsToText(describeEffect({ kind: 'pump', target: 'creature', power: 2, t
        'target creature gets +2/+2 until end of turn', 'pump generic');
 eqText(segsToText(describeEffect({ kind: 'pump', target: 'self', power: 3, toughness: 3 })),
        'this creature gets +3/+3 until end of turn', 'pump self');
-eqText(segsToText(describeEffect({ kind: 'weaken', target: 'creature', power: 2, toughness: 2 })),
-       'target creature gets -2/-2 until end of turn', 'weaken');
+eqText(segsToText(describeEffect({ kind: 'pump', target: 'creature', power: -2, toughness: -2 })),
+       'target creature gets -2/-2 until end of turn', 'signed pump (weaken)');
 eqText(segsToText(describeEffect({ kind: 'addCounter', target: 'self', power: 1, toughness: 1 })),
        'put a +1/+1 counter on this', 'counter on self');
 

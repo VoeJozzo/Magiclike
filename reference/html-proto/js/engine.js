@@ -1115,21 +1115,9 @@ function spellValueForEffects(effects) {
     }
     // damage with a mass scope values like the legacy damageAll.
     else if (e.kind === 'damage') v += (e.scope === 'all_creatures') ? (8 + (e.amount || 0) * 2) : (6 + (e.amount || 0));
-    else if (e.kind === 'damageAll') v += 8 + (e.amount || 0) * 2;
-    else if (e.kind === 'removeAll') {
-      const sev = e.severity || 3;
-      const sevVal = sev === 1 ? 4 : sev === 2 ? 8 : sev === 3 ? 10 : 14;
-      v += sevVal + ((e.whose === 'opp') ? 4 : 0);
-    }
     else if (e.kind === 'edict') v += 7;
     else if (e.kind === 'sacrifice') v += 0;
     else if (e.kind === 'counter') v += 8;
-    else if (e.kind === 'steal') v += 16;
-    else if (e.kind === 'gainControl') {
-      // Mind Control = destroy + cross-game-revertible gain. Threaten (eot) = tempo only.
-      if (e.duration === 'eot') v += 6;
-      else v += 14;
-    }
     else if (e.kind === 'change_control') {
       // Unified gainControl + steal valuation (parity).
       if (e.transfer_ownership) v += 16;        // steal
@@ -1138,7 +1126,6 @@ function spellValueForEffects(effects) {
     }
     else if (e.kind === 'applyInGameSplice') v += 18;   // 2-for-1 with cross-game retention
     else if (e.kind === 'noop') v += 0;
-    else if (e.kind === 'shuffleIntoLibrary') v += 5;
     else if (e.kind === 'move_card') {
       // Collapsed shuffleIntoLibrary (battlefield→library) / returnFromGraveyard
       // (graveyard→hand) — valued at parity.
@@ -1146,8 +1133,6 @@ function spellValueForEffects(effects) {
       else if (e.from_zone === 'graveyard' && e.to_zone === 'hand') v += 4;
       else v += 3;
     }
-    else if (e.kind === 'weaken') v += 3 + (e.toughness || 0);
-    else if (e.kind === 'returnFromGraveyard') v += 4;
     else if (e.kind === 'ripPermanent') v += 14;        // destroy + run-permanent slot rip
     else if (e.kind === 'destroyAndStickerSlot') v += 13;
     else if (e.kind === 'symmetricize') v += 8;
@@ -1158,8 +1143,7 @@ function spellValueForEffects(effects) {
     else if (e.kind === 'gainLife') v += 1;
     else if (e.kind === 'flicker') v += 4;
     else if (e.kind === 'exileUntilEOT') v += 5;
-    else if (e.kind === 'pump') v += 2;
-    else if (e.kind === 'pumpAllYours') v += 8;
+    else if (e.kind === 'pump') v += (e.power < 0 || e.toughness < 0) ? (3 + Math.abs(e.toughness || 0)) : 2;
     else if (e.kind === 'grantKeyword') {
       // mass-yours-eot Overrun-shape vs single-target permanent vs symmetric.
       const eot = e.duration === 'eot';

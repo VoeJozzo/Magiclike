@@ -73,13 +73,11 @@ console.log('\n=== AI does NOT bolt its own creature ===');
   check('AI never targets its own creature', !targetsOwn);
 })();
 
-// §8.1 mass-valuation PARITY: a migrated mass spell (damage + scope) must drive
-// the SAME AI decision as the legacy shape (damageAll). The right assertion is
-// behavioral equivalence, not an absolute cast/hold (the AI correctly holds a
-// sweeper on its own untptessured turn). Without the massEffectInfo fix the new
-// shape would slip past the mass gates and diverge from legacy.
+// §8.1 mass-valuation: a migrated mass spell (damage + scope) is recognized as
+// mass and held sensibly (the AI correctly holds a sweeper on its own
+// unpressured turn). The legacy damageAll kind has been removed (step 7), so
+// these now assert the new form's behavior + absolute values directly.
 CARDS._pyroNew = { tplId: '_pyroNew', name: 'Pyro New', type: 'Sorcery', cost: { R: 2 }, color: 'R', colors: ['R'], effects: [{ kind: 'damage', amount: 2, scope: 'all_creatures' }] };
-CARDS._pyroLeg = { tplId: '_pyroLeg', name: 'Pyro Leg', type: 'Sorcery', cost: { R: 2 }, color: 'R', colors: ['R'], effects: [{ kind: 'damageAll', amount: 2 }] };
 
 function decidesToCast(tpl, setup) {
   const G = newGame();
@@ -90,26 +88,22 @@ function decidesToCast(tpl, setup) {
   return !!(d && d.type === 'castSpell' && d.cardIid === sp.iid);
 }
 
-console.log('\n=== migrated mass-damage drives the SAME decision as legacy damageAll ===');
+console.log('\n=== migrated mass-damage held when it would wreck only own board ===');
 (() => {
-  // Scenario 1: enemy board, AI empty (defensive wipe value).
-  const s1 = (G) => { for (let i = 0; i < 5; i++) { const c = mk(TOUGH, 'you'); c.toughness = 2; c.power = 3; G.you.battlefield.push(c); } };
-  check('parity (enemy-board scenario)', decidesToCast('_pyroNew', s1) === decidesToCast('_pyroLeg', s1));
-  // Scenario 2: would wreck only the AI's own board → both must hold.
-  const s2 = (G) => { for (let i = 0; i < 3; i++) { const c = mk(TOUGH, 'opp'); c.toughness = 2; c.power = 2; G.opp.battlefield.push(c); } };
-  check('parity (own-board scenario)', decidesToCast('_pyroNew', s2) === decidesToCast('_pyroLeg', s2));
-  check('own-board scenario: both hold', decidesToCast('_pyroNew', s2) === false && decidesToCast('_pyroLeg', s2) === false);
+  // AI's own creatures would die, opponent has none → holding is correct.
+  const s = (G) => { for (let i = 0; i < 3; i++) { const c = mk(TOUGH, 'opp'); c.toughness = 2; c.power = 2; G.opp.battlefield.push(c); } };
+  check('migrated mass-damage held (would only kill own)', decidesToCast('_pyroNew', s) === false);
 })();
 
-console.log('\n=== spellValueForEffects: migrated mass shape values like legacy ===');
+console.log('\n=== spellValueForEffects: mass/severity forms carry the right value ===');
 (() => {
   const v = ENGINE.spellValueForEffects;
-  check('damage+scope(all_creatures) == damageAll',
-    v([{ kind: 'damage', amount: 2, scope: 'all_creatures' }]) === v([{ kind: 'damageAll', amount: 2 }]));
-  check('affect_creature(destroy, all_creatures) == removeAll(sev 3)',
-    v([{ kind: 'affect_creature', severity: 'destroy', scope: 'all_creatures' }]) === v([{ kind: 'removeAll', severity: 3 }]));
-  check('single affect_creature(destroy) == removeCreature(sev 3)',
-    v([{ kind: 'affect_creature', severity: 'destroy' }]) === v([{ kind: 'removeCreature', severity: 3 }]));
+  // damage+scope(all_creatures): 8 + amount*2.
+  check('damage+scope(all_creatures, 2) == 12', v([{ kind: 'damage', amount: 2, scope: 'all_creatures' }]) === 12);
+  // affect_creature(destroy, all_creatures): mass removal, sev 3 → 10.
+  check('affect_creature(destroy, all_creatures) == 10', v([{ kind: 'affect_creature', severity: 'destroy', scope: 'all_creatures' }]) === 10);
+  // single affect_creature(destroy): sev 3 → 12.
+  check('single affect_creature(destroy) == 12', v([{ kind: 'affect_creature', severity: 'destroy' }]) === 12);
 })();
 
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');

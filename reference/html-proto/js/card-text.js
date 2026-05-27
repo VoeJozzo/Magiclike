@@ -138,8 +138,6 @@ function describeEffect(eff, tplEff) {
       if (eff.target === 'self') return [plainSeg('you take '), amtSeg, plainSeg(' damage')];
       if (eff.scope === 'all_creatures') return [plainSeg('deal '), amtSeg, plainSeg(' damage to each creature')];
       return [plainSeg('deal '), amtSeg, plainSeg(' damage to ' + t)];
-    case 'damageAll':
-      return [plainSeg('deal '), amtSeg, plainSeg(' damage to each creature')];
     case 'gainLife':
       if (typeof eff.amount === 'object' && eff.amount && eff.amount.from) {
         const owner = (eff.who && eff.who.from === 'targetController') ? "its controller" : 'you';
@@ -178,11 +176,6 @@ function describeEffect(eff, tplEff) {
       else { subj = t; verb = ' gets '; }
       return [plainSeg(subj + verb), signedStat('power', eff, tplEff), plainSeg('/'),
               signedStat('toughness', eff, tplEff), plainSeg(' until end of turn')];
-    }
-    case 'pumpAllYours': {
-      const pSeg = bumpedSeg('power', eff, tplEff, 0);
-      const tSeg = bumpedSeg('toughness', eff, tplEff, 0);
-      return [plainSeg('creatures you control get +'), pSeg, plainSeg('/+'), tSeg, plainSeg(' until end of turn')];
     }
     case 'addCounter': {
       const pSeg = bumpedSeg('power', eff, tplEff, 1);
@@ -223,17 +216,6 @@ function describeEffect(eff, tplEff) {
       if (sev >= 2 && sev < 3) return [verbSeg, plainSeg(' ' + t + " to its owner's hand")];
       return [verbSeg, plainSeg(' ' + t)];
     }
-    case 'removeAll': {
-      const sev = eff.severity || 1;
-      const scope = eff.whose === 'opp' ? "all creatures an opponent controls"
-                  : eff.whose === 'self' || eff.whose === 'you' ? "all creatures you control"
-                  : 'all creatures';
-      const verb = sev >= 4 ? 'exile' : sev >= 3 ? 'destroy'
-                 : sev >= 2 ? 'return' : 'tap';
-      const verbSeg = bumpedDerived(verb, 'severity', eff, tplEff);
-      if (sev >= 2 && sev < 3) return [verbSeg, plainSeg(' ' + scope + " to their owners' hands")];
-      return [verbSeg, plainSeg(' ' + scope)];
-    }
     case 'counter':
       return [plainSeg('counter ' + t)];
     case 'createTokens': {
@@ -256,10 +238,6 @@ function describeEffect(eff, tplEff) {
       return [plainSeg('search your library for a creature card and put it into your hand')];
     case 'searchLandTapped':
       return [plainSeg('search your library for a basic land and put it onto the battlefield tapped')];
-    case 'returnFromGraveyard':
-      return [plainSeg('return ' + t + ' from your graveyard to your hand')];
-    case 'shuffleIntoLibrary':
-      return [plainSeg('shuffle ' + t + " into its owner's library")];
     case 'move_card': {
       // Generic card-movement primitive → English for the common collapsed
       // idioms (matches the legacy kinds' phrasing for parity).
@@ -288,19 +266,6 @@ function describeEffect(eff, tplEff) {
       return [plainSeg('exile ' + t + ', then return it to the battlefield')];
     case 'exileUntilEOT':
       return [plainSeg('exile ' + t + ' until end of turn')];
-    case 'gainControl': {
-      const parts = ['gain control of ' + t];
-      if (eff.duration === 'eot') parts.push(' until end of turn');
-      const segs = [plainSeg(parts.join(''))];
-      const riders = [];
-      if (eff.untap) riders.push('untap it');
-      if (eff.grantHaste) riders.push('it gains haste until end of turn');
-      if (riders.length > 0) {
-        const cap = riders.map(r => r.charAt(0).toUpperCase() + r.slice(1)).join('. ');
-        segs.push(plainSeg('. ' + cap));
-      }
-      return segs;
-    }
     case 'addMana': {
       if (eff.amounts) {
         let symbols = '';
@@ -313,13 +278,6 @@ function describeEffect(eff, tplEff) {
     }
     case 'edict':
       return [plainSeg(t + ' sacrifices a creature')];
-    case 'weaken': {
-      const pSeg = bumpedSeg('power', eff, tplEff, 1);
-      const tSeg = bumpedSeg('toughness', eff, tplEff, 1);
-      return [plainSeg(t + ' gets -'), pSeg, plainSeg('/-'), tSeg, plainSeg(' until end of turn')];
-    }
-    case 'steal':
-      return [plainSeg('shuffle ' + t + ' into your library')];
     case 'change_control': {
       // Unified gainControl + steal. transfer_ownership renders the steal
       // trophy flavor; otherwise the gain-control text (+ duration / riders).
