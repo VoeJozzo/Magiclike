@@ -355,6 +355,39 @@ their Godot equivalents) the legacy handlers used, so the UI completion path
 (the `discard`/`searchPick` actions + the search modal) is behaviorally
 unchanged — only what SETS the pending flag changes.
 
+**§3.9 mana deep-clean DONE (proto).** Lands now produce mana through a
+tap-for-mana ability (Llanowar-Elves model); the `extraManaColors` parallel
+model is fully retired. Every land's card.json carries
+`abilities:[{cost:{tap}, effects:[{addMana, …}]}]` — basics use fixed
+`amounts`, City of Brass uses the new `choose:'any'` form (a dual would use
+`choose:['W','U']`). The `mana` field is KEPT as the primary-color label
+(deck-color / draft / single-pip display); production reads from the ability via
+`landProducibleColors`. `doTapLandForMana`/`tapSourceProducing`/`canPayPotential`
+collapsed their land-vs-dork branch into one ability path (summoning sickness
+gates creature dorks only). Staple-merge builds/merges tap-abilities; landColor
+stickers extend the ability (`amounts`→`choose`) instead of `extraManaColors`;
+card-text suppresses a basic land's intrinsic tap-ability (empty rules) but
+renders City of Brass / duals. New top-level helpers `manaAbilityOf`,
+`manaEffectColors`, `manaAbilityForColors`, `addColorToManaAbility`,
+`landProducibleColors`. `test_mana.js` (14 checks).
+
+**Deliberate scope note:** the proto KEEPS the `mana` field as a derived/label
+field rather than fully deleting it from card.json (the plan's "rendering reads
+the ability's color set" is satisfied in spirit — production is ability-only;
+`mana` is just a color label, validated to be in the ability's colors by
+`test_mana.js`). Fully deleting `mana` is a mechanical ~15-site follow-up across
+draft/render/controller, deferred as low-value. The §3.10 multi-color staple
+rejection is also left in place (lift it there now that `choose` exists).
+
+**Godot mirror — §3.9 FULL CONVERGENCE (option 3, still TODO):** `JsonCardLoader`
+emits the tap-for-mana ability onto `CardResource` (retire the
+`mana_produced`/`extraManaColors` read at `json_card_loader.gd:209–217`); Godot's
+mana resolution runs the ability path (same as a dork); `KIND_TAP_LAND_FOR_MANA`
+→ a structural `is_mana_ability` classification (couples with the priority-window
+plan's auto-pass meaningfulness check). Add the `add_mana` choose form. The proto
+helpers above are the reference. Card data is already migrated (shared wire), so
+Godot just needs to consume the ability shape natively.
+
 Remaining collapse:
 - **exileUntilEOT → move_card decomp** (B4-deferred per §9.1; stays monolithic).
 
