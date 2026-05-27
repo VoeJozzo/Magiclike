@@ -59,6 +59,8 @@ const CATEGORY_A = [
   'test_empower.js',
   // Slice 3 — §3.8 Balancer decomposition (embargo/bleach → apply_sticker + move_card).
   'test_balancer.js',
+  // Slice 3 — §3.5 browser targeting (clickHand/ability honor the top-level target() step).
+  'test_ui_targeting.js',
   // Slice 3 — on-cast targeting migration (golden).
   'effect_migration_test.js',
 ];

@@ -826,8 +826,26 @@ function pendingTargetEffects(pt) {
   return [];
 }
 
-// Unique sorted targetSlot values; one user pick per slot.
+// §3.5: the top-level target() filter for the pending cast/ability, if any.
+function pendingTopTargetFilter(pt) {
+  if (!pt) return null;
+  const G = ENGINE.state();
+  if (pt.kind === 'cast') {
+    const card = G.you.hand.find(c => c.iid === pt.cardIid);
+    return (card && card.target) || null;
+  }
+  if (pt.kind === 'ability') {
+    const f = ENGINE.findCard(pt.cardIid);
+    const ab = f && f.card.abilities[pt.abilityIdx];
+    return (ab && ab.target) || null;
+  }
+  return null;
+}
+
+// Unique sorted targetSlot values; one user pick per slot. A top-level target()
+// step (§3.5) is a single slot [0]; otherwise read per-effect targetSlots.
 function slotsNeededForPending(pt) {
+  if (pendingTopTargetFilter(pt)) return [0];
   const effects = pendingTargetEffects(pt);
   const slots = new Set();
   for (const eff of effects) {
@@ -836,9 +854,12 @@ function slotsNeededForPending(pt) {
   return [...slots].sort((a, b) => a - b);
 }
 
-// Effect describing the CURRENT slot. Same-slot effects share target shape.
+// Effect describing the CURRENT slot — drives target highlighting + descriptor
+// kind. For a top-level target() step, a synthetic {target: filter} effect.
 function pendingTargetEffect(pt) {
   if (!pt) return null;
+  const top = pendingTopTargetFilter(pt);
+  if (top) return { target: top };
   const slots = slotsNeededForPending(pt);
   if (slots.length === 0) return null;
   const pickedCount = (pt.pickedSlots && pt.pickedSlots.length) || 0;

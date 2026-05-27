@@ -1390,6 +1390,21 @@ function onStateChange() {
 
 // ----- Player click handlers -----
 
+// §3.5 targeting: a spell/ability needs a target pick if it carries a top-level
+// `target()` step OR (legacy/multi-target) any per-effect targeted effect.
+// `probeTargetsFor` builds the fake target(s) used to legality-check before
+// entering target-picking mode, honoring whichever form applies.
+function objNeedsTarget(obj, effects) {
+  return !!(obj && obj.target) || (Array.isArray(effects) && effects.some(ENGINE.effectNeedsTarget));
+}
+function probeTargetsFor(obj, effects, who) {
+  if (obj && obj.target) {
+    const valid = ENGINE.targetsForFilter(obj.target, who);
+    return valid.length ? [valid[0]] : null;
+  }
+  return fakeTargetsForLegality(effects, who);
+}
+
 function clickHand(iid) {
   const G = ENGINE.state();
   // Defensive: G is null until ENGINE.init completes. If a click event
@@ -1454,14 +1469,12 @@ function clickHand(iid) {
     return;
   }
 
-  // Spell. Check if it needs a target. Multi-target spells (with effects
-  // marked targetSlot:N) need one pick per unique slot; this branch covers
-  // both the single-slot common case and the multi-slot case via the
-  // shared fakeTargetsForLegality helper.
-  const targetedEffs = (card.effects || []).filter(ENGINE.effectNeedsTarget);
-  if (targetedEffs.length > 0) {
-    const fakeTargets = fakeTargetsForLegality(card.effects, 'you');
-    if (!fakeTargets) return;   // some slot has no valid targets — uncastable
+  // Spell. Needs a target pick if it has a top-level target() step (§3.5) or a
+  // per-effect targeted effect (legacy/multi-target). probeTargetsFor builds the
+  // legality fake-targets for whichever form applies.
+  if (objNeedsTarget(card, card.effects)) {
+    const fakeTargets = probeTargetsFor(card, card.effects, 'you');
+    if (!fakeTargets) return;   // no valid target — uncastable
     if (!ENGINE.isLegalAction('you', {type:'castSpell', cardIid: iid, targets: fakeTargets})) {
       return;   // not castable right now
     }
@@ -1617,7 +1630,7 @@ function clickBattlefield(iid) {
     for (let i = 0; i < card.abilities.length; i++) {
       const ab = card.abilities[i];
       const isMana = ab.effects && ab.effects[0] && ab.effects[0].kind === 'addMana';
-      const targetedEff = (ab.effects || []).find(ENGINE.effectNeedsTarget);
+      const abNeedsTarget = objNeedsTarget(ab, ab.effects);  // §3.5: top-level target() or per-effect
       const needsSac = ab.cost && ab.cost.sacrifice;
       // Probe legality. The probe action shape depends on cost/target shape;
       // build the minimum that satisfies isLegalAction.
@@ -1628,14 +1641,14 @@ function clickBattlefield(iid) {
         const sacCandidates = G.you.battlefield.filter(c => c.type === 'Creature');
         if (sacCandidates.length === 0) continue;
         probe = {type:'activateAbility', cardIid: iid, abilityIdx: i, sacIid: sacCandidates[0].iid};
-        if (targetedEff) {
-          const fakeTargets = fakeTargetsForLegality(ab.effects, 'you');
-          if (fakeTargets === null) continue;
+        if (abNeedsTarget) {
+          const fakeTargets = probeTargetsFor(ab, ab.effects, 'you');
+          if (!fakeTargets) continue;
           probe.targets = fakeTargets;
         }
-      } else if (targetedEff) {
-        const fakeTargets = fakeTargetsForLegality(ab.effects, 'you');
-        if (fakeTargets === null) continue;
+      } else if (abNeedsTarget) {
+        const fakeTargets = probeTargetsFor(ab, ab.effects, 'you');
+        if (!fakeTargets) continue;
         probe = {type:'activateAbility', cardIid: iid, abilityIdx: i, targets: fakeTargets};
       } else {
         probe = {type:'activateAbility', cardIid: iid, abilityIdx: i};
@@ -1682,7 +1695,7 @@ function clickBattlefield(iid) {
         } else if (needsSac) {
           pendingTarget = {kind:'abilitySac', cardIid: iid, abilityIdx: i};
           render();
-        } else if (targetedEff) {
+        } else if (abNeedsTarget) {
           pendingTarget = {kind:'ability', cardIid: iid, abilityIdx: i, pickedSlots: []};
           render();
         } else {
