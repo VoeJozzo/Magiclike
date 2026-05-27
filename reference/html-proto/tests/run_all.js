@@ -67,6 +67,8 @@ const CATEGORY_A = [
   'test_target_restrictions.js',
   // Accurate player-target text: opp (opponent-only) vs player (choose-any) match legal targets.
   'test_target_player_opp.js',
+  // Filter parity: card text renders exactly the restrictions matchFilter enforces.
+  'test_filter_parity.js',
   // Boss special-removal AI casting (scoreSpellTargetForMode branches for the boss kinds).
   'test_boss_removal_ai.js',
   // Drain cards are life loss, not damage (signed gain_life migration + valuation).

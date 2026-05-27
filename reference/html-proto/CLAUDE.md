@@ -25,6 +25,10 @@ four Godot `JsonCardLoader` remap tables are now dead, slated for deletion.
 v2.0.6: split the overloaded `player` target into `opp` (opponent-only — drain/
 burn/discard/edict) vs `player` (free choice — heals), so generated text matches
 the actual legal targets instead of guessing "opponent" from the effect kind.
+v2.0.7: filter parity — the engine now enforces every restriction the card text
+renders (`minTough`/`maxPower`/`minPower`/`notKeyword` added to matchFilter) and
+the text renders every restriction the engine enforces (`notToken`); fixed
+counterSpecialist's preamble ("cast a counterspell", not "counter a spell").
 
 > **MUST UPDATE on every dev-branch push that touches code.** Bump `VERSION` in `js/main.js` AND the line above, in the same commit. GitHub Pages caches aggressively; the version string is the only reliable way to confirm a fresh build is live.
 

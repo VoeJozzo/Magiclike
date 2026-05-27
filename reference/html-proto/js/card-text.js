@@ -59,6 +59,7 @@ function withFilter(noun, eff) {
   if (f.subtype)          pre.push(f.subtype);
   if (f.hasKeyword)       post.push('with ' + f.hasKeyword);
   if (f.notKeyword)       post.push('without ' + f.notKeyword);
+  if (f.notToken)         post.push("that isn't a token");
   if (f.controller === 'you' || f.controller === 'self') post.push('you control');
   if (f.controller === 'opp') post.push('an opponent controls');
   if (typeof f.maxTough === 'number') post.push('with toughness ' + f.maxTough + ' or less');
@@ -570,7 +571,7 @@ function triggerPreamble(trig) {
   }
   if (cid === 'anyCardDies')    return 'Whenever a creature dies,';
   if (cid === 'youCastSpell')   return 'Whenever you cast a spell,';
-  if (cid === 'youCastCounterspell') return 'Whenever you counter a spell,';
+  if (cid === 'youCastCounterspell') return 'Whenever you cast a counterspell,';
   if (cid === 'youGainLife')    return 'Whenever you gain life,';
   if (ev === 'attacks') return 'When this attacks,';
   return 'Whenever a relevant event occurs,';

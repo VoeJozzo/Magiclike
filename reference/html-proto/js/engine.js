@@ -3389,6 +3389,23 @@ function matchFilter(card, filter, controller, who) {
     const [, t] = getStats(card);
     if (t > filter.maxTough) return false;
   }
+  // Power/toughness bounds — the siblings of maxTough. Enforced so the card-text
+  // (withFilter) that already renders "with toughness N or greater" / "power N or
+  // less" describes a restriction the engine actually applies (no fake limits).
+  if (filter.minTough !== undefined) {
+    const [, t] = getStats(card);
+    if (t < filter.minTough) return false;
+  }
+  if (filter.maxPower !== undefined) {
+    const [pw] = getStats(card);
+    if (pw > filter.maxPower) return false;
+  }
+  if (filter.minPower !== undefined) {
+    const [pw] = getStats(card);
+    if (pw < filter.minPower) return false;
+  }
+  // notKeyword: rejects creatures with the named keyword (sibling of hasKeyword).
+  if (filter.notKeyword && (card.keywords || []).includes(filter.notKeyword)) return false;
   // Subtype filter — used by tribal recursion (Spirit Shepherd's "return a
   // Spirit creature card") and any future "destroy target Goblin", "exile
   // target Wizard" style restrictions. Cards may have multi-subtype strings
