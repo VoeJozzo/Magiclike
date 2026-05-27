@@ -459,6 +459,7 @@ function shouldCounter(state, who) {
     e.kind === 'damage' ||
     e.kind === 'counter' ||
     e.kind === 'steal' ||
+    (e.kind === 'change_control' && e.transfer_ownership) ||
     (e.kind === 'removeCreature' && (e.severity || 1) >= 3)
   )) return true;
   if (card.type === 'Creature' && ENGINE.cardCost(card) >= 4) return true;

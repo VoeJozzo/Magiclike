@@ -1130,6 +1130,12 @@ function spellValueForEffects(effects) {
       if (e.duration === 'eot') v += 6;
       else v += 14;
     }
+    else if (e.kind === 'change_control') {
+      // Unified gainControl + steal valuation (parity).
+      if (e.transfer_ownership) v += 16;        // steal
+      else if (e.duration === 'eot') v += 6;     // threaten
+      else v += 14;                              // mind control
+    }
     else if (e.kind === 'applyInGameSplice') v += 18;   // 2-for-1 with cross-game retention
     else if (e.kind === 'noop') v += 0;
     else if (e.kind === 'shuffleIntoLibrary') v += 5;

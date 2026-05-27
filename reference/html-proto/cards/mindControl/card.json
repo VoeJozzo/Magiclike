@@ -8,7 +8,7 @@
   "target": "opp_creature",
   "effects": [
     {
-      "kind": "gainControl"
+      "kind": "change_control"
     }
   ],
   "name": "Mind Control",

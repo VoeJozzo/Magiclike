@@ -6,7 +6,8 @@
   },
   "effects": [
     {
-      "kind": "steal",
+      "kind": "change_control",
+      "transfer_ownership": true,
       "target": "permanentOrSpell",
       "filter": {
         "notToken": true

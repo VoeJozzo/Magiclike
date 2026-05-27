@@ -89,7 +89,7 @@ console.log('\n=== skipped cards kept their non-taxonomy filters (no silent loss
 
 console.log('\n=== kind-collapse: legacy mass/weaken kinds gone from card data ===');
 (() => {
-  const GONE = ['damageAll', 'removeAll', 'pumpAllYours', 'weaken'];
+  const GONE = ['damageAll', 'removeAll', 'pumpAllYours', 'weaken', 'gainControl', 'steal'];
   const seen = {};
   const allEffs = (card) => {
     const out = [];
@@ -118,6 +118,15 @@ console.log('\n=== kind-collapse: legacy mass/weaken kinds gone from card data =
   check('pumpAllYours collapsed to pump+scope (7)', massPump === 7, 'got ' + massPump);
   check('removeAll collapsed to removeCreature+scope (3)', massRemove === 3, 'got ' + massRemove);
   check('weaken collapsed to signed pump (3)', signedPump === 3, 'got ' + signedPump);
+
+  let changeControl = 0, stealVariant = 0;
+  for (const card of Object.values(CARDS)) {
+    for (const e of allEffs(card)) {
+      if (e && e.kind === 'change_control') { changeControl++; if (e.transfer_ownership) stealVariant++; }
+    }
+  }
+  check('gainControl/steal collapsed to change_control (3)', changeControl === 3, 'got ' + changeControl);
+  check('steal is the transfer_ownership variant (1)', stealVariant === 1, 'got ' + stealVariant);
 })();
 
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');

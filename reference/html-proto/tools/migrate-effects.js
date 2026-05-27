@@ -77,6 +77,14 @@ function collapseEffect(e) {
     const { kind, power, toughness, ...rest } = e;
     return Object.assign({ kind: 'pump', power: -(power || 0), toughness: -(toughness || 0) }, rest);
   }
+  if (e.kind === 'gainControl') {
+    const { kind, ...rest } = e;  // preserves duration/grantHaste/untap (+ target if not migrated)
+    return Object.assign({ kind: 'change_control' }, rest);
+  }
+  if (e.kind === 'steal') {
+    const { kind, ...rest } = e;  // preserves target:permanentOrSpell + filter
+    return Object.assign({ kind: 'change_control', transfer_ownership: true }, rest);
+  }
   return e;
 }
 // Apply collapseEffect to every effect in a card (on-cast flat/modal, trigger,

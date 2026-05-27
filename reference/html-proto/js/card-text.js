@@ -303,6 +303,22 @@ function describeEffect(eff, tplEff) {
     }
     case 'steal':
       return [plainSeg('shuffle ' + t + ' into your library')];
+    case 'change_control': {
+      // Unified gainControl + steal. transfer_ownership renders the steal
+      // trophy flavor; otherwise the gain-control text (+ duration / riders).
+      if (eff.transfer_ownership) return [plainSeg('shuffle ' + t + ' into your library')];
+      const parts = ['gain control of ' + t];
+      if (eff.duration === 'eot') parts.push(' until end of turn');
+      const segs = [plainSeg(parts.join(''))];
+      const riders = [];
+      if (eff.untap || eff.untap_on_take) riders.push('untap it');
+      if (eff.grantHaste || eff.grant_haste) riders.push('it gains haste until end of turn');
+      if (riders.length > 0) {
+        const cap = riders.map(r => r.charAt(0).toUpperCase() + r.slice(1)).join('. ');
+        segs.push(plainSeg('. ' + cap));
+      }
+      return segs;
+    }
     case 'endomorphAbsorb':
       return [plainSeg('gain a keyword from the slain creature, or +1/+1 if none')];
     case 'ripPermanent':
