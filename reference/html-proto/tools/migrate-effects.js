@@ -105,6 +105,10 @@ function collapseEffect(e) {
       { kind: 'move_card', from_zone: 'exile', to_zone: 'battlefield', selector: 'target' },
     ];
   }
+  if (e.kind === 'discard') {
+    const { kind, ...rest } = e;  // preserves target:'self' (controller) or bare (targeted player) + amount
+    return Object.assign({ kind: 'move_card', from_zone: 'hand', to_zone: 'graveyard' }, rest);
+  }
   if (e.kind === 'searchCreature') {
     const { kind, ...rest } = e;  // → prompt-driven library search to hand
     return Object.assign({ kind: 'move_card', from_zone: 'library', to_zone: 'hand', selector: 'library_search', filter: { type: 'Creature' } }, rest);

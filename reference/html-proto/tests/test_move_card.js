@@ -154,6 +154,27 @@ console.log('\n=== search: library → hand, human gets a prompt (searchCreature
   check('hand unchanged until the player picks', G.you.hand.length === h0);
 })();
 
+console.log('\n=== discard: hand → graveyard, AI auto-picks (targeted-player discard, e.g. Duress) ===');
+(() => {
+  // Seed opp's hand with two cards; an opponent-targeted discard makes the AI
+  // discard one (it auto-picks cheapest).
+  G.opp.hand = [ENGINE.makeCard(CREATURE_TPL), ENGINE.makeCard(CREATURE_TPL)];
+  const h0 = G.opp.hand.length;
+  ENGINE.applyEffect({ controller: 'you', sourceName: 'Duress', sourceIid: -1 },
+    { kind: 'move_card', from_zone: 'hand', to_zone: 'graveyard', amount: 1 }, { kind: 'player', who: 'opp' });
+  check('opp discarded one card (AI auto-pick)', G.opp.hand.length === h0 - 1);
+  check('no human prompt for an AI discard', !G.forcedDiscard);
+})();
+
+console.log('\n=== discard: hand → graveyard, controller (you) gets the forced-discard prompt ===');
+(() => {
+  G.you.hand = [ENGINE.makeCard(CREATURE_TPL), ENGINE.makeCard(CREATURE_TPL)];
+  const h0 = G.you.hand.length;
+  ENGINE.applyEffect(CTX, { kind: 'move_card', from_zone: 'hand', to_zone: 'graveyard', target: 'self', amount: 1 }, { kind: 'player', who: 'you' });
+  check('forcedDiscard prompt set for the human (async — resolved by doDiscard)', !!G.forcedDiscard && G.forcedDiscard.remaining === 1);
+  check('hand unchanged until the player picks', G.you.hand.length === h0);
+})();
+
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');
 function clearBoardsSafe() { G.you.battlefield = []; G.opp.battlefield = []; G.you.exile = []; }
 process.exit(fail > 0 ? 1 : 0);

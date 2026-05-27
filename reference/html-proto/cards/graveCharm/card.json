@@ -21,7 +21,9 @@
       ],
       [
         {
-          "kind": "discard",
+          "kind": "move_card",
+          "from_zone": "hand",
+          "to_zone": "graveyard",
           "target": "player",
           "amount": 2
         }

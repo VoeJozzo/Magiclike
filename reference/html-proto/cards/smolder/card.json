@@ -13,7 +13,9 @@
       "amount": 2
     },
     {
-      "kind": "discard",
+      "kind": "move_card",
+      "from_zone": "hand",
+      "to_zone": "graveyard",
       "target": "self",
       "amount": 2
     }

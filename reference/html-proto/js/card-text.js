@@ -248,6 +248,14 @@ function describeEffect(eff, tplEff) {
         if (eff.amount === 1) return [plainSeg('draw a card')];
         return [plainSeg('draw '), amtSeg, plainSeg(' cards')];
       }
+      if (fz === 'hand' && tz === 'graveyard') {  // collapsed discard
+        if (eff.target === 'player') {
+          if (eff.amount === 1) return [plainSeg('target player discards a card')];
+          return [plainSeg('target player discards '), amtSeg, plainSeg(' cards')];
+        }
+        if (eff.amount === 1) return [plainSeg('discard a card')];
+        return [plainSeg('discard '), amtSeg, plainSeg(' cards')];
+      }
       if (fz === 'graveyard' && tz === 'hand') return [plainSeg('return ' + t + ' from your graveyard to your hand')];
       if (fz === 'battlefield' && tz === 'library') return [plainSeg('shuffle ' + t + " into its owner's library")];
       if (fz === 'battlefield' && tz === 'hand') return [plainSeg('return ' + t + " to its owner's hand")];
@@ -364,11 +372,12 @@ function describeEffectList(effects, cardName, tplEffects, stepTarget) {
       seg1, plainSeg(' damage to ' + t1 + '.'),
     ];
   }
-  // Loot pattern (draw then discard). Draw is now the collapsed move_card form.
+  // Loot pattern (draw then discard) — both are now collapsed move_card forms.
   if (effects.length === 2
       && effects[0].kind === 'move_card'
       && effects[0].from_zone === 'library' && effects[0].to_zone === 'hand'
-      && effects[1].kind === 'discard'
+      && effects[1].kind === 'move_card'
+      && effects[1].from_zone === 'hand' && effects[1].to_zone === 'graveyard'
       && effects[1].target === 'self') {
     return capitalizeSegs(parts[0]).concat(plainSeg(', then ')).concat(parts[1]).concat(plainSeg('.'));
   }

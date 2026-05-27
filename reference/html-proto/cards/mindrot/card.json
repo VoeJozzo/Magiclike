@@ -8,7 +8,9 @@
   "target": "player",
   "effects": [
     {
-      "kind": "discard",
+      "kind": "move_card",
+      "from_zone": "hand",
+      "to_zone": "graveyard",
       "amount": 2
     }
   ],

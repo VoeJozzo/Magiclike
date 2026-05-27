@@ -463,7 +463,8 @@ function shouldCounter(state, who) {
   )) return true;
   if (card.type === 'Creature' && ENGINE.cardCost(card) >= 4) return true;
   if (relevantEffects.some(e => e.kind === 'draw' || e.kind === 'discard'
-      || (e.kind === 'move_card' && e.from_zone === 'library' && e.to_zone === 'hand'))) return Math.random() < 0.5;
+      || (e.kind === 'move_card' && e.from_zone === 'library' && e.to_zone === 'hand')
+      || (e.kind === 'move_card' && e.from_zone === 'hand' && e.to_zone === 'graveyard'))) return Math.random() < 0.5;
   return false;
 }
 
@@ -1342,6 +1343,14 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
     return 10 + pow;
   }
   if (eff.kind === 'move_card') {
+    // Collapsed discard (hand→graveyard) targeting a player — duress/mindrot.
+    // Only worth aiming at the opponent; value scales with cards stripped.
+    if (eff.from_zone === 'hand' && eff.to_zone === 'graveyard') {
+      if (target.kind !== 'player' || target.who !== them) return -100;
+      const handSize = state[them].hand.length;
+      if (handSize === 0) return -100;
+      return Math.min(eff.amount || 1, handSize) * 8 + 4;
+    }
     // Collapsed returnFromGraveyard / shuffleIntoLibrary — value at parity.
     if (eff.from_zone === 'graveyard' && eff.to_zone === 'hand') {
       if (target.kind !== 'graveyardCreature') return -100;
@@ -1483,7 +1492,8 @@ function pickBestActivation(state, who, abilityActs) {
         || (eff.kind === 'move_card' && eff.from_zone === 'library' && eff.to_zone === 'hand')) {
       // Drawing is always positive (looter discard is filtered as net upside).
       score = 5 + (eff.amount || 1);
-    } else if (eff.kind === 'discard') {
+    } else if (eff.kind === 'discard'
+        || (eff.kind === 'move_card' && eff.from_zone === 'hand' && eff.to_zone === 'graveyard')) {
       // Self-discard with no paired draw — skip. Opp-discard would score, but
       // no current activated abilities have that shape.
       const isSelf = !eff.target || eff.target === 'self';

@@ -22,7 +22,9 @@
       "text": "When ~ attacks, target opponent discards a card.",
       "effects": [
         {
-          "kind": "discard",
+          "kind": "move_card",
+          "from_zone": "hand",
+          "to_zone": "graveyard",
           "amount": 1
         }
       ],

@@ -89,12 +89,13 @@ console.log('\n=== skipped cards kept their non-taxonomy filters (no silent loss
 
 console.log('\n=== kind-collapse: legacy mass/weaken kinds gone from card data ===');
 (() => {
-  // 'draw' is gone from CARD DATA (collapsed to move_card). The runtime trigger
-  // generator (Mercurial pool) still emits draw, so the EFFECTS handler stays —
-  // GONE asserts the card templates, not the dispatch table.
+  // 'draw' and 'discard' are gone from CARD DATA (collapsed to move_card). The
+  // runtime trigger generator (Mercurial pool) still emits both, so their
+  // EFFECTS handlers stay — GONE asserts the card templates, not the dispatch
+  // table.
   const GONE = ['damageAll', 'removeAll', 'pumpAllYours', 'weaken', 'gainControl', 'steal',
                 'returnFromGraveyard', 'shuffleIntoLibrary', 'addCounter', 'edict', 'restrict', 'draw', 'flicker',
-                'searchCreature', 'searchLandTapped'];
+                'searchCreature', 'searchLandTapped', 'discard'];
   const seen = {};
   const allEffs = (card) => {
     const out = [];
@@ -133,7 +134,7 @@ console.log('\n=== kind-collapse: legacy mass/weaken kinds gone from card data =
   check('gainControl/steal collapsed to change_control (3)', changeControl === 3, 'got ' + changeControl);
   check('steal is the transfer_ownership variant (1)', stealVariant === 1, 'got ' + stealVariant);
 
-  let mcReturn = 0, mcShuffle = 0, mcDraw = 0, mcSearchCr = 0, mcFetchLand = 0;
+  let mcReturn = 0, mcShuffle = 0, mcDraw = 0, mcSearchCr = 0, mcFetchLand = 0, mcDiscard = 0;
   for (const card of Object.values(CARDS)) {
     for (const e of allEffs(card)) {
       if (e && e.kind === 'move_card' && e.from_zone === 'graveyard' && e.to_zone === 'hand') mcReturn++;
@@ -141,6 +142,7 @@ console.log('\n=== kind-collapse: legacy mass/weaken kinds gone from card data =
       if (e && e.kind === 'move_card' && e.from_zone === 'library' && e.to_zone === 'hand' && e.selector !== 'library_search') mcDraw++;
       if (e && e.kind === 'move_card' && e.from_zone === 'library' && e.to_zone === 'hand' && e.selector === 'library_search') mcSearchCr++;
       if (e && e.kind === 'move_card' && e.from_zone === 'library' && e.to_zone === 'battlefield') mcFetchLand++;
+      if (e && e.kind === 'move_card' && e.from_zone === 'hand' && e.to_zone === 'graveyard') mcDiscard++;
     }
   }
   check('returnFromGraveyard collapsed to move_card graveyard→hand (3)', mcReturn === 3, 'got ' + mcReturn);
@@ -148,6 +150,7 @@ console.log('\n=== kind-collapse: legacy mass/weaken kinds gone from card data =
   check('draw collapsed to move_card library→hand, controller_top (22)', mcDraw === 22, 'got ' + mcDraw);
   check('searchCreature collapsed to move_card library→hand, library_search (5)', mcSearchCr === 5, 'got ' + mcSearchCr);
   check('searchLandTapped collapsed to move_card library→battlefield (5)', mcFetchLand === 5, 'got ' + mcFetchLand);
+  check('discard collapsed to move_card hand→graveyard (14)', mcDiscard === 14, 'got ' + mcDiscard);
 
   let permPump = 0;
   for (const card of Object.values(CARDS)) {

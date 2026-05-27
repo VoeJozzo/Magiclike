@@ -1138,6 +1138,7 @@ function spellValueForEffects(effects) {
       // carries the flicker's whole value).
       if (e.from_zone === 'library' && e.to_zone === 'hand') v += (e.selector === 'library_search') ? 4 : (e.amount || 1) * 3;
       else if (e.from_zone === 'library' && e.to_zone === 'battlefield') v += 4;  // land fetch
+      else if (e.from_zone === 'hand' && e.to_zone === 'graveyard') v += 4;  // discard
       else if (e.from_zone === 'battlefield' && e.to_zone === 'library') v += 5;
       else if (e.from_zone === 'graveyard' && e.to_zone === 'hand') v += 4;
       else if (e.from_zone === 'battlefield' && e.to_zone === 'exile') v += 4;  // flicker outgoing
@@ -1504,6 +1505,31 @@ function searchLibraryToHand(ctx, filter) {
   shuffle(lib);
   log(`${pname(ctx.controller)} searches for ${card.name}.`, 'sp');
   tryBuildOnDraw(card, ctx.controller);
+}
+// Discard from a player's hand. Human → forcedDiscard prompt (resolved later by
+// doDiscard via the discard action). AI → picks cheapest (the discarder
+// optimizes for self, per MTG). Shared by the legacy `discard` kind (the
+// Mercurial generator still emits it) and the move_card(hand→graveyard) collapse.
+function discardFromHand(ctx, who, amount) {
+  const tp = G[who];
+  const n = Math.min(amount, tp.hand.length);
+  if (n === 0) { log(`${pname(who)} has no cards to discard.`, 'sp'); return; }
+  if (who === 'you') {
+    G.forcedDiscard = { who: 'you', remaining: n, source: ctx.sourceName };
+    log(`${ctx.sourceName} — choose ${n} card(s) to discard.`, 'sp');
+    return;
+  }
+  const sorted = tp.hand.slice().sort((a, b) => costTotalCard(a) - costTotalCard(b));
+  for (let i = 0; i < n; i++) {
+    const idx = tp.hand.findIndex(c => c.iid === sorted[i].iid);
+    if (idx >= 0) tp.graveyard.push(tp.hand.splice(idx, 1)[0]);
+  }
+  log(`${pname(who)} discards ${n}.`, 'sp');
+}
+// Resolve the discarding player for a hand→graveyard move / discard effect: an
+// explicit player target (edict-style targeted discard) else the controller.
+function discardWho(ctx, target) {
+  return (target && target.kind === 'player' && target.who) ? target.who : ctx.controller;
 }
 // Fetch library → battlefield (auto, filtered): the searchLandTapped idiom.
 // No human choice (any basic land is equivalent); first match, applies post
@@ -1928,6 +1954,11 @@ const EFFECTS = {
       fetchLibraryToBattlefield(ctx, params.filter || {}, post);
       return;
     }
+    // Hand → graveyard: collapsed discard (controller or a targeted player).
+    if (from === 'hand' && to === 'graveyard') {
+      discardFromHand(ctx, discardWho(ctx, target), amount);
+      return;
+    }
     for (let n = 0; n < amount; n++) {
       // Draw: delegate to drawCard so deck-out / Phylactery semantics hold.
       if (from === 'library' && to === 'hand' && sel === 'controller_top') {
@@ -1984,29 +2015,10 @@ const EFFECTS = {
       break;
     }
   },
+  // Legacy discard kind — still emitted by the Mercurial trigger generator
+  // (discardOpp). Card data uses move_card(hand→graveyard) post-collapse.
   discard(ctx, params, target) {
-    // Non-player targets default to caster.
-    const who = (target && target.kind === 'player' && target.who)
-      ? target.who : ctx.controller;
-    const tp = G[who];
-    const n = Math.min(params.amount, tp.hand.length);
-    if (n === 0) {
-      log(`${pname(who)} has no cards to discard.`, 'sp');
-      return;
-    }
-    if (who === 'you') {
-      G.forcedDiscard = { who: 'you', remaining: n, source: ctx.sourceName };
-      log(`${ctx.sourceName} — choose ${n} card(s) to discard.`, 'sp');
-    } else {
-      // AI picks cheapest from own hand (discarder optimizes for self, per MtG).
-      const sorted = tp.hand.slice().sort((a, b) => costTotalCard(a) - costTotalCard(b));
-      for (let i = 0; i < n; i++) {
-        const card = sorted[i];
-        const idx = tp.hand.findIndex(c => c.iid === card.iid);
-        if (idx >= 0) tp.graveyard.push(tp.hand.splice(idx, 1)[0]);
-      }
-      log(`${pname(who)} discards ${n}.`, 'sp');
-    }
+    discardFromHand(ctx, discardWho(ctx, target), params.amount);
   },
   // Grant keyword. Axes: target (single), whose:'allYours'|'all' (mass), duration:'eot'|'permanent'.
   // Permanent → grantedBy (revoked on leave-play); EOT → eotGrants (revoked at end-turn).
@@ -2983,7 +2995,8 @@ function pickBestTriggerTarget(eff, valid, controller) {
     const oppFace = valid.find(t => t.kind === 'player' && t.who === them);
     if (oppFace) return oppFace;
   }
-  if (eff.kind === 'discard') {
+  if (eff.kind === 'discard'
+      || (eff.kind === 'move_card' && eff.from_zone === 'hand' && eff.to_zone === 'graveyard')) {
     const oppFace = valid.find(t => t.kind === 'player' && t.who === them);
     if (oppFace) return oppFace;
   }
