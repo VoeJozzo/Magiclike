@@ -80,6 +80,18 @@ eqText(segsToText(describeEffect({ kind: 'pump', target: 'creature', power: -2, 
        'target creature gets -2/-2 until end of turn', 'signed pump (weaken)');
 eqText(segsToText(describeEffect({ kind: 'addCounter', target: 'self', power: 1, toughness: 1 })),
        'put a +1/+1 counter on this', 'counter on self');
+// permanent +N/+N pump → N +1/+1 counters (counters come in +1/+1 units).
+eqText(segsToText(describeEffect({ kind: 'pump', duration: 'permanent', target: 'self', power: 1, toughness: 1 })),
+       'put a +1/+1 counter on this', 'permanent +1/+1 → a counter');
+eqText(segsToText(describeEffect({ kind: 'pump', duration: 'permanent', target: 'creature', power: 2, toughness: 2 })),
+       'put two +1/+1 counters on target creature', 'permanent +2/+2 → two counters');
+// signed-zero takes the pump's direction: a debuff reads "-2/-0", not "-2/+0".
+eqText(segsToText(describeEffect({ kind: 'pump', target: 'creature', power: -2, toughness: 0 })),
+       'target creature gets -2/-0 until end of turn', 'debuff signed-zero (-0 not +0)');
+// non-eot keyword grant is source-linked for your_creature/opp_creature too.
+eqText(segsToText(describeEffect({ kind: 'grantKeyword', target: 'your_creature', keyword: 'hexproof' })),
+       'target creature you control gains hexproof as long as this is on the battlefield',
+       'your_creature grant keeps the source-linked duration');
 
 console.log('\n=== describeEffect: removeCreature severity ladder ===');
 eqText(segsToText(describeEffect({ kind: 'removeCreature', target: 'creature', severity: 1 })),

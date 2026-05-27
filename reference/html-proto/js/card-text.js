@@ -117,11 +117,14 @@ function plainSeg(text) {
 
 // Signed stat segment for pump (+N for buffs, -N for weaken/signed deltas),
 // preserving the empower-bump highlight. "+2"/"-2".
-function signedStat(field, eff, tplEff) {
+function signedStat(field, eff, tplEff, negZero) {
   const v = eff[field] || 0;
   const tplV = tplEff ? (tplEff[field] || 0) : undefined;
   const bumped = tplEff != null && typeof v === 'number' && typeof tplV === 'number' && v !== tplV;
-  return { text: (v < 0 ? '-' : '+') + Math.abs(v), highlight: bumped };
+  // A zero stat takes the pump's overall sign so a debuff reads "-2/-0", not
+  // "-2/+0" (negZero set by the caller when any stat is negative).
+  const sign = (v < 0 || (v === 0 && negZero)) ? '-' : '+';
+  return { text: sign + Math.abs(v), highlight: bumped };
 }
 
 // §7b coverage: effect kinds intentionally WITHOUT a standalone describeEffect
@@ -180,11 +183,20 @@ function describeEffect(eff, tplEff) {
       if (eff.amount === 1) return [plainSeg('discard a card')];
       return [plainSeg('discard '), amtSeg, plainSeg(' cards')];
     case 'pump': {
-      // duration:permanent → +1/+1 counter rendering (addCounter collapse).
+      // duration:permanent → +1/+1 counters (addCounter collapse). Counters
+      // come in +1/+1 units, so a uniform +N/+N is "N +1/+1 counters" (a +2/+2
+      // pump = two +1/+1 counters), not "a +2/+2 counter".
       if (eff.duration === 'permanent') {
+        const onWhom = eff.target === 'self' ? 'this' : t;
+        const p = eff.power || 0, tg = eff.toughness || 0;
+        if (p === tg && p >= 1) {
+          if (p === 1) return [plainSeg('put a +1/+1 counter on ' + onWhom)];
+          const countSeg = bumpedDerived(NUM_WORDS[p] || String(p), 'power', eff, tplEff);
+          return [plainSeg('put '), countSeg, plainSeg(' +1/+1 counters on ' + onWhom)];
+        }
+        // Non-uniform permanent pump (rare) — keep the explicit +X/+Y form.
         const pSeg = bumpedSeg('power', eff, tplEff, 0);
         const tSeg = bumpedSeg('toughness', eff, tplEff, 0);
-        const onWhom = eff.target === 'self' ? 'this' : t;
         return [plainSeg('put a +'), pSeg, plainSeg('/+'), tSeg, plainSeg(' counter on ' + onWhom)];
       }
       // Signed (weaken = negative deltas) + mass scope (pumpAllYours collapse).
@@ -193,8 +205,9 @@ function describeEffect(eff, tplEff) {
       else if (eff.scope === 'all_creatures') { subj = 'all creatures'; verb = ' get '; }
       else if (eff.target === 'self') { subj = 'this creature'; verb = ' gets '; }
       else { subj = t; verb = ' gets '; }
-      return [plainSeg(subj + verb), signedStat('power', eff, tplEff), plainSeg('/'),
-              signedStat('toughness', eff, tplEff), plainSeg(' until end of turn')];
+      const negZero = (eff.power || 0) < 0 || (eff.toughness || 0) < 0;
+      return [plainSeg(subj + verb), signedStat('power', eff, tplEff, negZero), plainSeg('/'),
+              signedStat('toughness', eff, tplEff, negZero), plainSeg(' until end of turn')];
     }
     case 'addCounter': {
       const pSeg = bumpedSeg('power', eff, tplEff, 1);
@@ -207,7 +220,12 @@ function describeEffect(eff, tplEff) {
       let dur;
       if (eff.duration === 'eot') {
         dur = ' until end of turn';
-      } else if (eff.target === 'creature' || eff.whose === 'allYours' || eff.whose === 'all') {
+      } else if (eff.target === 'creature' || eff.target === 'your_creature' || eff.target === 'opp_creature'
+                 || eff.whose === 'allYours' || eff.whose === 'all') {
+        // Non-eot grants are source-linked (applyGrant tracks the source iid;
+        // the keyword falls off when the source leaves play). The §3.5 migration
+        // renamed the target 'creature'→'your_creature'/'opp_creature', which
+        // had silently dropped this phrase.
         dur = ' as long as this is on the battlefield';
       } else {
         dur = '';
