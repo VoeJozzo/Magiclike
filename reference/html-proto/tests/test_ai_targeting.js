@@ -73,5 +73,44 @@ console.log('\n=== AI does NOT bolt its own creature ===');
   check('AI never targets its own creature', !targetsOwn);
 })();
 
+// §8.1 mass-valuation PARITY: a migrated mass spell (damage + scope) must drive
+// the SAME AI decision as the legacy shape (damageAll). The right assertion is
+// behavioral equivalence, not an absolute cast/hold (the AI correctly holds a
+// sweeper on its own untptessured turn). Without the massEffectInfo fix the new
+// shape would slip past the mass gates and diverge from legacy.
+CARDS._pyroNew = { tplId: '_pyroNew', name: 'Pyro New', type: 'Sorcery', cost: { R: 2 }, color: 'R', colors: ['R'], effects: [{ kind: 'damage', amount: 2, scope: 'all_creatures' }] };
+CARDS._pyroLeg = { tplId: '_pyroLeg', name: 'Pyro Leg', type: 'Sorcery', cost: { R: 2 }, color: 'R', colors: ['R'], effects: [{ kind: 'damageAll', amount: 2 }] };
+
+function decidesToCast(tpl, setup) {
+  const G = newGame();
+  setup(G);
+  const sp = mk(tpl, 'opp'); G.opp.hand = [sp];
+  aiMain(G, 'opp');
+  const d = AI.decide(G, 'opp');
+  return !!(d && d.type === 'castSpell' && d.cardIid === sp.iid);
+}
+
+console.log('\n=== migrated mass-damage drives the SAME decision as legacy damageAll ===');
+(() => {
+  // Scenario 1: enemy board, AI empty (defensive wipe value).
+  const s1 = (G) => { for (let i = 0; i < 5; i++) { const c = mk(TOUGH, 'you'); c.toughness = 2; c.power = 3; G.you.battlefield.push(c); } };
+  check('parity (enemy-board scenario)', decidesToCast('_pyroNew', s1) === decidesToCast('_pyroLeg', s1));
+  // Scenario 2: would wreck only the AI's own board → both must hold.
+  const s2 = (G) => { for (let i = 0; i < 3; i++) { const c = mk(TOUGH, 'opp'); c.toughness = 2; c.power = 2; G.opp.battlefield.push(c); } };
+  check('parity (own-board scenario)', decidesToCast('_pyroNew', s2) === decidesToCast('_pyroLeg', s2));
+  check('own-board scenario: both hold', decidesToCast('_pyroNew', s2) === false && decidesToCast('_pyroLeg', s2) === false);
+})();
+
+console.log('\n=== spellValueForEffects: migrated mass shape values like legacy ===');
+(() => {
+  const v = ENGINE.spellValueForEffects;
+  check('damage+scope(all_creatures) == damageAll',
+    v([{ kind: 'damage', amount: 2, scope: 'all_creatures' }]) === v([{ kind: 'damageAll', amount: 2 }]));
+  check('affect_creature(destroy, all_creatures) == removeAll(sev 3)',
+    v([{ kind: 'affect_creature', severity: 'destroy', scope: 'all_creatures' }]) === v([{ kind: 'removeAll', severity: 3 }]));
+  check('single affect_creature(destroy) == removeCreature(sev 3)',
+    v([{ kind: 'affect_creature', severity: 'destroy' }]) === v([{ kind: 'removeCreature', severity: 3 }]));
+})();
+
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');
 process.exit(fail > 0 ? 1 : 0);

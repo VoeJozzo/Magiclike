@@ -1098,12 +1098,20 @@ function spellValue(card) {
 function spellValueForEffects(effects) {
   let v = 0;
   for (const e of (effects || [])) {
-    if (e.kind === 'removeCreature') {
-      // tap < bounce < destroy < exile.
-      const sev = e.severity || 1;
-      v += sev === 1 ? 3 : sev === 2 ? 4 : sev === 3 ? 12 : 12;
+    if (e.kind === 'removeCreature' || e.kind === 'affect_creature') {
+      // tap < bounce < destroy < exile. Severity is numeric (legacy) or a
+      // string name (new affect_creature). A mass `scope` values like removeAll.
+      const sevName = { tap: 1, bounce: 2, destroy: 3, exile: 4 };
+      const sev = typeof e.severity === 'number' ? e.severity : (sevName[e.severity] || 1);
+      if (e.scope) {
+        const sevVal = sev === 1 ? 4 : sev === 2 ? 8 : sev === 3 ? 10 : 14;
+        v += sevVal + ((e.scope === 'all_opps') ? 4 : 0);
+      } else {
+        v += sev === 1 ? 3 : sev === 2 ? 4 : sev === 3 ? 12 : 12;
+      }
     }
-    else if (e.kind === 'damage') v += 6 + (e.amount || 0);
+    // damage with a mass scope values like the legacy damageAll.
+    else if (e.kind === 'damage') v += (e.scope === 'all_creatures') ? (8 + (e.amount || 0) * 2) : (6 + (e.amount || 0));
     else if (e.kind === 'damageAll') v += 8 + (e.amount || 0) * 2;
     else if (e.kind === 'removeAll') {
       const sev = e.severity || 3;

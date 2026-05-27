@@ -147,11 +147,12 @@ function decideOffTurnCombat(state, who, actions) {
     } else {
       const effs = ENGINE.effectsForMode(card, chosen.modeIdx);
       const eff0 = effs[0];
-      if (eff0 && eff0.kind === 'removeAll') {
-        const sev = eff0.severity || 3;
+      const mass0 = massEffectInfo(eff0);
+      if (mass0 && mass0.type === 'remove') {
+        const sev = mass0.severity;
         score = sev >= 3 ? 30 : sev === 2 ? 18 : 8;
-      } else if (eff0 && eff0.kind === 'damageAll') {
-        score = scoreDamageAll(state, who, eff0.amount || 0);
+      } else if (mass0 && mass0.type === 'damage') {
+        score = scoreDamageAll(state, who, mass0.amount);
       } else {
         score = 0;
       }
@@ -1031,18 +1032,41 @@ function scoreUntargetedSituation(state, who, effects) {
   return bonus;
 }
 
+// Severity name (new affect_creature) → numeric ladder (legacy removeCreature).
+function _sevNum(sev) {
+  if (typeof sev === 'number') return sev;
+  return { tap: 1, bounce: 2, destroy: 3, exile: 4 }[sev] || 3;
+}
+// Recognize a MASS effect across the legacy shape (damageAll / removeAll /
+// pumpAllYours) and the new shape (damage / removeCreature / affect_creature /
+// pump + a mass `scope`). Returns a normalized descriptor or null. §8.1
+// lockstep so the AI values migrated mass cards like the legacy ones.
+function massEffectInfo(e) {
+  if (!e) return null;
+  if (e.kind === 'damageAll') return { type: 'damage', amount: e.amount || 0 };
+  if (e.kind === 'damage' && e.scope === 'all_creatures') return { type: 'damage', amount: e.amount || 0 };
+  if (e.kind === 'removeAll') return { type: 'remove', severity: e.severity || 3, whose: e.whose || 'all' };
+  if ((e.kind === 'removeCreature' || e.kind === 'affect_creature') && e.scope) {
+    return { type: 'remove', severity: _sevNum(e.severity), whose: e.scope === 'all_opps' ? 'opp' : 'all' };
+  }
+  if (e.kind === 'pumpAllYours') return { type: 'pump' };
+  if (e.kind === 'pump' && e.scope === 'all_yours') return { type: 'pump' };
+  return null;
+}
+
 function shouldCastUntargeted(state, who, card, modeIdx) {
   const us = who, them = opp(who);
   // Read effects from the chosen mode (or flat list for non-modal cards).
   const modeEffects = ENGINE.effectsForMode(card, modeIdx || 0);
   const eff = modeEffects[0];
   if (!eff) return true;
-  if (eff.kind === 'damageAll') {
-    return scoreDamageAll(state, who, eff.amount || 0) >= 8;
+  const mass = massEffectInfo(eff);
+  if (mass && mass.type === 'damage') {
+    return scoreDamageAll(state, who, mass.amount) >= 8;
   }
-  if (eff.kind === 'removeAll') {
-    const sev = eff.severity || 3;
-    const whose = eff.whose || 'all';
+  if (mass && mass.type === 'remove') {
+    const sev = mass.severity;
+    const whose = mass.whose;
     if (whose === 'opp') {
       return scoreBounceAll(state, who, 'opp') >= 8;
     }
@@ -1069,7 +1093,7 @@ function shouldCastUntargeted(state, who, card, modeIdx) {
     const minWorthwhile = 3;  // 1/1 ~0, 2/2 ~2, real threat ≥4 by getCardValue
     return ENGINE.getCardValue(sortedByValue[0], 'kill') >= minWorthwhile;
   }
-  if (eff.kind === 'pumpAllYours') {
+  if (mass && mass.type === 'pump') {
     const ours = state[us].battlefield.filter(c => c.type === 'Creature').length;
     return ours >= 2;
   }
