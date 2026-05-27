@@ -1140,7 +1140,9 @@ function abilityValue(ab) {
       return (eff.from_zone === 'library' && eff.to_zone === 'hand') ? 4 + (eff.amount || 1) - 1 : 2;
     case 'draw':           return 4 + (eff.amount || 1) - 1;
     case 'discard':        return 3 + (eff.amount || 1) - 1;
-    case 'gainLife':       return 1 + (eff.amount || 0);
+    case 'gainLife':       return (eff.amount || 0) < 0
+                                    ? 3 + Math.abs(eff.amount) * 2   // drain (life loss) — like damage
+                                    : 1 + (eff.amount || 0);          // life gain
     case 'createTokens':   return 3 + (eff.count || 1) * 2;
     default:               return 2;
   }
@@ -1213,7 +1215,7 @@ function spellValueForEffects(effects) {
     else if (e.kind === 'symmetricize') v += 8;
     else if (e.kind === 'draw') v += (e.amount || 1) * 3;
     else if (e.kind === 'discard') v += 4;
-    else if (e.kind === 'gainLife') v += 1;
+    else if (e.kind === 'gainLife') v += (e.amount || 0) < 0 ? (3 + Math.abs(e.amount) * 2) : 1;
     else if (e.kind === 'schedule_delayed') v += 1;  // exile_until_eot's return tail (the bf→exile half carries the value)
     else if (e.kind === 'pump') v += (e.power < 0 || e.toughness < 0) ? (3 + Math.abs(e.toughness || 0)) : 2;
     else if (e.kind === 'grantKeyword') {
@@ -3130,6 +3132,12 @@ function pickBestTriggerTarget(eff, valid, controller) {
       })
       .sort((a, b) => b.value - a.value);
     if (scored.length) return scored[0].t;
+  }
+  if (eff.kind === 'gainLife') {
+    // Signed life: negative = drain (aim at the opponent), positive = gain (self).
+    const wanted = (eff.amount || 0) < 0 ? them : controller;
+    const face = valid.find(t => t.kind === 'player' && t.who === wanted);
+    if (face) return face;
   }
   // Last resort: first valid target.
   return valid[0];

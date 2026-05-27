@@ -1199,7 +1199,10 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
   // target-operating effect (skip chooses(), mass-scoped effects, and the
   // apply_sticker rider so embargo/bleach score their move_card removal half,
   // not the persistent-tax sticker).
-  let eff = modeEffects.find(e => e.target);
+  // Score the effect that consumes the CHOSEN target — skip target:'self'
+  // effects (they hit the source/controller, not the pick: e.g. Grave Charm's
+  // "you gain 4 life AND that opponent loses 2" — the drain is the targeted half).
+  let eff = modeEffects.find(e => e.target && e.target !== 'self');
   if (!eff && card.target) eff = modeEffects.find(e => e.kind !== 'chooses' && e.kind !== 'apply_sticker' && e.scope == null);
   if (!eff) return 0;
   if (eff.kind === 'sacrifice' || eff.kind === 'annihilate') {
@@ -1359,10 +1362,21 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
     return swing;
   }
   if (eff.kind === 'gainLife') {
-    if (target.who !== us) return -100;
+    const amount = eff.amount || 0;
+    if (amount < 0) {
+      // Life loss (drain). Good aimed at the opponent; never at ourselves.
+      if (target.who !== them) return -100;
+      const loss = -amount;
+      const oppLife = state[them].life;
+      if (loss >= oppLife) return 1000;            // lethal drain
+      let score = 18 + loss * 4;
+      if (oppLife - loss <= 4) score += 20;
+      if (oppLife <= 8) score += 10;
+      return score;
+    }
+    if (target.who !== us) return -100;            // life gain — to self
     const myLife = state[us].life;
     const oppLife = state[them].life;
-    const amount = eff.amount || 0;
     const losing = oppLife > myLife;
     if (myLife <= 4) return amount * (losing ? 18 : 12);
     if (myLife <= 8) return amount * (losing ? 8 : 5);
@@ -1556,9 +1570,20 @@ function pickBestActivation(state, who, abilityActs) {
       } else if (t.kind === 'player') {
         score = t.who === opp(who) ? 15 : -100;
       }
+    } else if (eff.kind === 'gainLife') {
+      // Signed life on an ability. Negative = drain (Wicked Acolyte: tap, target
+      // player loses 1) — good aimed at the opponent. Positive = lifegain to self.
+      const amt = eff.amount || 0;
+      const t = act.targets && act.targets[0];
+      if (amt < 0) {
+        if (!t) score = 8;                                  // implicit-opponent drain
+        else score = (t.kind === 'player' && t.who === opp(who)) ? 8 + (-amt) * 3 : -100;
+      } else {
+        const toSelf = !t || (t.kind === 'player' && t.who === who);
+        score = toSelf ? (state[who].life <= 10 ? 2 + amt : -2) : -100;
+      }
     } else if (eff.kind === 'damage' && eff.target === 'player' && !act.targets) {
-      // Drain-tax abilities (Wicked Acolyte: tap, target opp loses 1).
-      // 'player' target with no UI prompt — implicit-opponent.
+      // Drain-tax abilities (legacy damage-to-player shape).
       score = 8;
     } else if (eff.kind === 'removeCreature' && act.targets) {
       const t = act.targets[0];

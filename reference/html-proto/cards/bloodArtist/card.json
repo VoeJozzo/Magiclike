@@ -20,8 +20,8 @@
       "text": "When a creature dies, opp loses 1, you gain 1.",
       "effects": [
         {
-          "kind": "damage",
-          "amount": 1
+          "kind": "gainLife",
+          "amount": -1
         },
         {
           "kind": "gainLife",

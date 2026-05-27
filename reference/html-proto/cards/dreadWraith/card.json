@@ -23,8 +23,8 @@
       "text": "When ~ enters, opp loses 2 life.",
       "effects": [
         {
-          "kind": "damage",
-          "amount": 2
+          "kind": "gainLife",
+          "amount": -2
         }
       ],
       "target": "player"

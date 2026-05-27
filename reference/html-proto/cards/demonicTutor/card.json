@@ -16,9 +16,9 @@
       }
     },
     {
-      "kind": "damage",
+      "kind": "gainLife",
       "target": "self",
-      "amount": 2
+      "amount": -2
     }
   ],
   "name": "Demonic Tutor",

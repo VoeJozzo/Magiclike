@@ -345,7 +345,7 @@ STICKERS['scarified'] = {
     // draw) resolves to the source's controller at trigger time. Pushed
     // onto card.triggers when the sticker applies via the standard
     // sticker-trigger path at line 2705-2706.
-    effects: [{ kind: 'damage', target: 'self', amount: 1 }],
+    effects: [{ kind: 'gainLife', target: 'self', amount: -1 }],
   },
 };
 

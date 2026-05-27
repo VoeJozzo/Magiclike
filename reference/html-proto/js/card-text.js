@@ -29,7 +29,9 @@ function targetPhrase(eff) {
   const t = eff.target;
   if (t === 'self')     return 'you';
   if (t === 'player') {
-    if (eff.kind === 'gainLife') return 'target player';
+    // A drain (negative gainLife) is aimed at the opponent — read it that way;
+    // a positive gainLife to a player target is the ambiguous "target player".
+    if (eff.kind === 'gainLife') return (eff.amount || 0) < 0 ? 'target opponent' : 'target player';
     if (eff.kind === 'discard')  return 'target player';
     return 'target opponent';
   }

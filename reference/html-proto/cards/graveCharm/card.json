@@ -35,9 +35,9 @@
           "amount": 4
         },
         {
-          "kind": "damage",
+          "kind": "gainLife",
           "target": "player",
-          "amount": 2
+          "amount": -2
         }
       ]
     ]

@@ -23,9 +23,9 @@
       "text": "When ~ enters, you lose 2 life.",
       "effects": [
         {
-          "kind": "damage",
+          "kind": "gainLife",
           "target": "self",
-          "amount": 2
+          "amount": -2
         }
       ]
     }
