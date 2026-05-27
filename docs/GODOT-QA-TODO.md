@@ -214,11 +214,31 @@ exercised directly via an exposed `ENGINE.applyEffect` test seam):
   mirror (`scoring.gd`/`burn.gd`/`ai.gd`) needs the SAME treatment — this is the
   recurring silent-regression trap; the §7b boot-coverage assertion is the guard.
 
-Still TODO proto: selfDamageOf scope:controller (minor) · UI target-pick (part D,
-browser) · the staple `fireStackEffects` path still per-effect (Stapler-only) ·
-then **`migrate-effects.js` + the 258-card migration (steps 5/6) — the next big
-step** · `apply_sticker` + sticker pipeline (step 10) · mana deep-clean (§3.9) ·
-flicker decomposition (step 8, unblocked by move_card arrival).
+- **Card migration — TARGETING decomposition DONE (proto, step 6 part 1):**
+  `tools/migrate-effects.js` migrated **94 target() steps** across the real pool
+  — 42 on-cast (`card.target`), 48 triggered (`trig.target`), 4 activated
+  (`ab.target`). Conservative: skips multi-target/modal and any effect with a
+  non-controller filter (subtype/keyword/maxTough) the closed taxonomy can't
+  express (those kept their filters — no silent loss). Idempotent. Two
+  integration fixes it surfaced: makeCard must copy the top-level `target` to
+  the runtime instance (else resolution crashes — caught by selfplay), and
+  card-text threads the target() step into bare effects. Suite 724/724;
+  selfplay 500 clean. `tests/effect_migration_test.js`. **Godot mirror:** the
+  same migration over the 31 `.tres` templates, plus the makeCard-equivalent
+  (`JsonCardLoader`/`CardResource`) carrying the `target` field.
+
+Still TODO proto — the **kind-COLLAPSE phase** (step 6 part 2): damageAll →
+damage+scope, removeAll → removeCreature+scope, pumpAllYours → pump+scope,
+weaken → pump(signed), gainControl/steal → change_control, edict →
+target(player)+chooses+sacrifice, returnFromGraveyard/shuffleIntoLibrary →
+move_card. Engine + AI valuation already support these, BUT each needs a
+**card-text lockstep** (describeEffect renders the legacy kinds; the collapsed
+shapes — damage+scope "to each creature", pump negative "-N/-N", etc. — need
+rendering support). Then step 7 (delete the collapsed legacy handlers + the
+§8.1 dead-code purge), `apply_sticker` + sticker pipeline (step 10), mana
+deep-clean (§3.9), flicker decomposition (step 8). Also: selfDamageOf
+scope:controller (minor) · UI target-pick (part D, browser) · staple
+`fireStackEffects` path still per-effect (Stapler-only).
 
 ### Godot mirror — major work items (per plan §10/§11)
 
