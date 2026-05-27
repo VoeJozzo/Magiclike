@@ -130,7 +130,7 @@ for (const color of ['W','U','B','R','G']) {
     },
     stackable: false,
     weight: 10,
-    kind: 'land_color',
+    kind: 'grant_mana_ability',
     color,
     colorAdj,
   };

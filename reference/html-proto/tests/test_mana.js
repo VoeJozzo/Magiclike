@@ -129,5 +129,15 @@ console.log('\n=== staple: land + land merges colors into one choose ability ===
   check('merged land has exactly one mana ability (merged, not duplicated)', manaAbs.length === 1, 'count=' + manaAbs.length);
 })();
 
+console.log('\n=== §3.8 grant_mana_ability generalizes to any permanent ===');
+(() => {
+  // A creature with no mana ability gains a {T}: Add {G} when granted one.
+  const cr = Object.values(CARDS).find(c => c.type === 'Creature' && !c.abilities && !c.special);
+  const c = ENGINE.makeCard(cr.tplId, [{ kind: 'grant_mana_ability', color: 'G', stackable: true }]);
+  const ab = (c.abilities || []).find(a => a.cost && a.cost.tap && a.effects && a.effects[0] && a.effects[0].kind === 'addMana');
+  check('creature gained a tap-for-mana ability (created, not just extended)', !!ab);
+  check('the created ability produces {G}', ab && JSON.stringify(ab.effects[0].amounts) === JSON.stringify({ G: 1 }));
+})();
+
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');
 process.exit(fail > 0 ? 1 : 0);

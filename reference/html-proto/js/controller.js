@@ -106,7 +106,7 @@ function stickerAppliesLabel(s) {
   switch (s.kind) {
     case 'stat_boost':     return 'creatures';
     case 'innate':        return 'lands';
-    case 'land_color':     return "lands that don't already produce {" + s.color + '} (deck must play ' + s.colorAdj + ')';
+    case 'grant_mana_ability':     return "lands that don't already produce {" + s.color + '} (deck must play ' + s.colorAdj + ')';
     case 'cost_mod':      return 'non-lands with at least one generic mana and total cost ≥ 2';
     case 'empower':       return 'cards with numeric effects (damage, damageAll, pump, counters, pumpAllYours, gainLife, draw, discard, removeCreature)';
     case 'subtype':       return 'creatures (rolls a random subtype from your deck)';
@@ -141,7 +141,7 @@ function appendStickerSectionToBrowser(inner) {
     'Keyword grants':    [],
   };
   for (const s of allStickers) {
-    if (s.kind === 'innate' || s.kind === 'land_color') groups['Land mods'].push(s);
+    if (s.kind === 'innate' || s.kind === 'grant_mana_ability') groups['Land mods'].push(s);
     else if (s.kind === 'keyword')                     groups['Keyword grants'].push(s);
     else                                               groups['Card boosts'].push(s);
   }

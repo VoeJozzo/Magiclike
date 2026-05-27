@@ -23,8 +23,8 @@ function applyStickerKindEffect(card, s) {
     if (!card.keywords.includes(s.keyword)) card.keywords.push(s.keyword);
   } else if (s.kind === 'innate') {
     card.innate = true;
-  } else if (s.kind === 'land_color') {
-    addColorToManaAbility(card, s.color);
+  } else if (s.kind === 'grant_mana_ability') {
+    grantManaAbility(card, s.color);
   } else if (s.kind === 'cost_mod') {
     // Signed additive cost change (§3.8): +N for embargo, −1 for the reduction
     // reward (unified from costReduction). Generic floored at 0.
@@ -334,8 +334,8 @@ function stickersForSlot(slot, deckColors) {
         }
       }
     }
-    if (s.kind === 'land_color') {
-      addColorToManaAbility(view, s.color);  // §3.9: reflect on the view's tap-ability
+    if (s.kind === 'grant_mana_ability') {
+      grantManaAbility(view, s.color);  // §3.9: reflect on the view's tap-ability
     }
     // §3.8 cost_mod (unified costReduction −1 / embargo +1) — reflect on the
     // view so re-offer eligibility sees the modified cost.

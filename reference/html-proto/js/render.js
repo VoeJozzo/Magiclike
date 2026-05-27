@@ -975,7 +975,7 @@ function stickerBadgesHtml(stickers, big, empowerRolls, tplId, stapledTpls, subt
     // through renderManaSymbols so it shows the color pip / future PNG
     // instead of literal {W} text. The label gets injected into
     // innerHTML below, so an HTML span is fine here.
-    else if (s.kind === 'land_color') label = '+' + renderManaSymbols('{' + s.color + '}');
+    else if (s.kind === 'grant_mana_ability') label = '+' + renderManaSymbols('{' + s.color + '}');
     else if (s.kind === 'cost_mod') label = ((s.amount || 0) < 0 ? (s.amount || 0) : '+' + (s.amount || 0)) + ' cost';
     else if (s.kind === 'trigger') label = s.name || 'Trigger';
     else if (s.kind === 'keyword') label = s.keyword;

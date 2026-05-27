@@ -172,12 +172,19 @@ function manaAbilityForColors(colors) {
     : { kind: 'addMana', choose: colors.slice() };
   return { cost: { tap: true }, effects: [eff] };
 }
-// Add a producible color to a card's tap-ability (landColor sticker). Converts a
-// fixed amounts ability to the choose form; extends an existing choose; no-op for
-// choose:'any'. Mutates in place.
-function addColorToManaAbility(card, color) {
+// §3.8 grant_mana_ability(color): give a permanent the ability to tap for one
+// more color. Generalizes the old land-only landColor sticker — works on any
+// permanent. If the card already taps for mana, fold the color into that
+// ability (fixed→choose, extend an existing choose, no-op for choose:'any');
+// otherwise CREATE a {T}: add {color} ability (so a creature mana-dork sticker
+// needs no extra engine work). Mutates in place.
+function grantManaAbility(card, color) {
   const ab = manaAbilityOf(card);
-  if (!ab) return;
+  if (!ab) {
+    if (!Array.isArray(card.abilities)) card.abilities = [];
+    card.abilities.push(manaAbilityForColors([color]));
+    return;
+  }
   const eff = ab.effects[0];
   if (eff.choose === 'any') return;
   const cur = manaEffectColors(eff);
