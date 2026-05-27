@@ -57,6 +57,8 @@ const CATEGORY_A = [
   'test_mana.js',
   // Slice 3 — §3.8 empower system (single-source EMPOWER_FIELDS, post-collapse).
   'test_empower.js',
+  // Slice 3 — §3.8 Balancer decomposition (embargo/bleach → apply_sticker + move_card).
+  'test_balancer.js',
   // Slice 3 — on-cast targeting migration (golden).
   'effect_migration_test.js',
 ];

@@ -8,7 +8,18 @@
   "target": "creature",
   "effects": [
     {
-      "kind": "embargo"
+      "kind": "apply_sticker",
+      "sticker": {
+        "kind": "cost_mod",
+        "amount": 1,
+        "stackable": true
+      }
+    },
+    {
+      "kind": "move_card",
+      "from_zone": "battlefield",
+      "to_zone": "hand",
+      "selector": "target"
     }
   ],
   "name": "Embargo",

@@ -1127,17 +1127,23 @@ function spellValueForEffects(effects) {
       if (e.from_zone === 'library' && e.to_zone === 'hand') v += (e.selector === 'library_search') ? 4 : (e.amount || 1) * 3;
       else if (e.from_zone === 'library' && e.to_zone === 'battlefield') v += 4;  // land fetch
       else if (e.from_zone === 'hand' && e.to_zone === 'graveyard') v += 4;  // discard
+      else if (e.from_zone === 'battlefield' && e.to_zone === 'hand') v += 4;  // bounce (embargo half)
       else if (e.from_zone === 'battlefield' && e.to_zone === 'library') v += 5;
       else if (e.from_zone === 'graveyard' && e.to_zone === 'hand') v += 4;
-      else if (e.from_zone === 'battlefield' && e.to_zone === 'exile') v += 4;  // flicker outgoing
+      else if (e.from_zone === 'battlefield' && e.to_zone === 'exile') v += 4;  // flicker outgoing / exile removal (bleach)
       else if (e.from_zone === 'exile' && e.to_zone === 'battlefield') v += 0;  // flicker return
       else v += 3;
+    }
+    // §3.8: apply_sticker (cost_mod / set_color / stat_boost snapshot) — the
+    // Balancer family's persistent-tax half. Valued so embargo/bleach keep
+    // their pre-decomposition value alongside the move_card half.
+    else if (e.kind === 'apply_sticker') {
+      const k = e.sticker && e.sticker.kind;
+      v += (k === 'set_color') ? 4 : (k === 'cost_mod') ? 2 : 3;
     }
     else if (e.kind === 'ripPermanent') v += 14;        // destroy + run-permanent slot rip
     else if (e.kind === 'destroyAndStickerSlot') v += 13;
     else if (e.kind === 'symmetricize') v += 8;
-    else if (e.kind === 'embargo') v += 6;
-    else if (e.kind === 'bleach') v += 8;
     else if (e.kind === 'draw') v += (e.amount || 1) * 3;
     else if (e.kind === 'discard') v += 4;
     else if (e.kind === 'gainLife') v += 1;
@@ -1716,64 +1722,24 @@ const EFFECTS = {
     };
     log(`${ctx.sourceName}: ${pname(f.controller)} must pick power, toughness, or mana cost for ${f.card.name}.`, 'sp');
   },
-  // Bounce + slot.extraCost++ forever (stackable). Runtime cost also bumps for same-game recast.
-  embargo(ctx, params, target) {
+  // §3.8: generic persistent-modification primitive — applies an inline sticker
+  // descriptor {kind,...params} to the target's owning slot (persisted via the
+  // sticker pipeline) AND the runtime card (so a same-game recast reflects it).
+  // Replaces the embargo (cost_mod +1) / bleach (set_color 'C') bespoke
+  // applyBalancerOverrides channel — those cards now decompose to
+  // [apply_sticker, move_card]. Tokens have no slot → runtime-only (then vanish).
+  apply_sticker(ctx, params, target) {
     const f = resolveTarget(ctx, target);
     if (!f) return;
-    if (f.card.type !== 'Creature') {
-      log(`${ctx.sourceName} fizzles — target must be a creature.`, 'sp');
-      return;
-    }
+    const desc = params.sticker;
+    if (!desc || !desc.kind) return;
+    applyOneStickerToRuntimeCard(f.card, { ...desc });
     const owner = f.card.owner || f.controller;
     const slotIdx = (typeof f.card.slotIdx === 'number') ? f.card.slotIdx : null;
-    pluckFromBattlefield(f);
-    clearRestrictionsFromSource(f.card.iid);
-    if (!f.card.isToken) {
-      resetInPlayState(f.card);
-      G[owner].hand.push(f.card);
+    if (owner === 'you' && slotIdx != null && typeof RUN !== 'undefined' && RUN.applyStickerToSlot) {
+      RUN.applyStickerToSlot(slotIdx, { ...desc });
     }
-    emitLeavesBattlefield(f.card, f.controller, 'hand');
-    log(`${ctx.sourceName} returns ${f.card.name} to ${pname(owner)}'s hand.`, 'sp');
-    if (!f.card.isToken) {
-      if (f.card.cost) f.card.cost.C = (f.card.cost.C || 0) + 1;
-    }
-    if (owner === 'you' && typeof slotIdx === 'number'
-        && typeof RUN !== 'undefined' && RUN.getSlots) {
-      const slot = RUN.getSlots()[slotIdx];
-      if (slot) {
-        slot.extraCost = (slot.extraCost || 0) + 1;
-        if (typeof RUN.save === 'function') RUN.save();
-        log(`${f.card.name} costs {1} more for the rest of the run.`, 'sp');
-      }
-    }
-  },
-  // Exile + slot.colorOverride='C' forever. Bypasses indestructible.
-  bleach(ctx, params, target) {
-    const f = resolveTarget(ctx, target);
-    if (!f) return;
-    if (f.card.type !== 'Creature') {
-      log(`${ctx.sourceName} fizzles — target must be a creature.`, 'sp');
-      return;
-    }
-    const owner = f.card.owner || f.controller;
-    const slotIdx = (typeof f.card.slotIdx === 'number') ? f.card.slotIdx : null;
-    pluckFromBattlefield(f);
-    clearRestrictionsFromSource(f.card.iid);
-    if (!f.card.isToken) {
-      resetInPlayState(f.card);
-      G[owner].exile.push(f.card);
-    }
-    emitLeavesBattlefield(f.card, f.controller, 'exile');
-    log(`${ctx.sourceName} exiles ${f.card.name}.`, 'sp');
-    if (owner === 'you' && typeof slotIdx === 'number'
-        && typeof RUN !== 'undefined' && RUN.getSlots) {
-      const slot = RUN.getSlots()[slotIdx];
-      if (slot) {
-        slot.colorOverride = 'C';
-        if (typeof RUN.save === 'function') RUN.save();
-        log(`${f.card.name} is colorless for the rest of the run.`, 'sp');
-      }
-    }
+    log(`${ctx.sourceName} applies a lasting change to ${f.card.name}.`, 'sp');
   },
   // Archdemon Bargains ETB. Player picks 1-5, stashed on demon for dies trigger payoff.
   // Always prompts player even when boss casts (player is the dealmaker).
