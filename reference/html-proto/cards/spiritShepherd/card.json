@@ -40,13 +40,13 @@
           "kind": "move_card",
           "from_zone": "graveyard",
           "to_zone": "hand",
-          "selector": "target",
-          "target": "graveyardCreature",
-          "filter": {
-            "subtype": "Spirit"
-          }
+          "selector": "target"
         }
-      ]
+      ],
+      "target": "graveyard_creature",
+      "target_filter": {
+        "subtype": "Spirit"
+      }
     }
   ],
   "type": "Creature"

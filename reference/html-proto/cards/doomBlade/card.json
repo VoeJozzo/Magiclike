@@ -5,14 +5,14 @@
     "B": 1,
     "C": 1
   },
+  "target": "creature",
+  "target_filter": {
+    "notColor": "B"
+  },
   "effects": [
     {
       "kind": "removeCreature",
-      "severity": 3,
-      "target": "creature",
-      "filter": {
-        "notColor": "B"
-      }
+      "severity": 3
     }
   ],
   "name": "Doom Blade",

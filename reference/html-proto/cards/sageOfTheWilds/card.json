@@ -7,14 +7,13 @@
       },
       "effects": [
         {
-          "kind": "untap",
-          "target": "creature",
-          "filter": {
-            "controller": "self",
-            "tapped": true
-          }
+          "kind": "untap"
         }
-      ]
+      ],
+      "target": "your_creature",
+      "target_filter": {
+        "tapped": true
+      }
     }
   ],
   "art": "🦌",

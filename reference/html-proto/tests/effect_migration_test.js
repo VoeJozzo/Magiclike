@@ -28,7 +28,9 @@ console.log('=== migrated pool shape ===');
       if (e && e.target && e.target !== 'self') { residualTarget++; }
     }
   }
-  check('43 cards carry a top-level target() step (42 + diabolicEdict)', withStep === 43, 'got ' + withStep);
+  // 43 + 5 restricted cards now lifted to target()+target_filter (doomBlade,
+  // ravenousPlague, smite, vinestrangle, naturalize).
+  check('48 cards carry a top-level target() step', withStep === 48, 'got ' + withStep);
   check('every target() step is in the closed taxonomy', badFilter === 0);
   check('no migrated on-cast effect kept a per-effect target', residualTarget === 0, 'got ' + residualTarget);
 })();
@@ -50,8 +52,8 @@ console.log('\n=== triggered / activated ability target() steps ===');
       for (const e of (a.effects || [])) if (e && e.target && e.target !== 'self') residual++;
     }
   }
-  check('48 triggered abilities carry a target() step', trig === 48, 'got ' + trig);
-  check('4 activated abilities carry a target() step', ab === 4, 'got ' + ab);
+  check('51 triggered abilities carry a target() step', trig === 51, 'got ' + trig);
+  check('6 activated abilities carry a target() step', ab === 6, 'got ' + ab);
   check('all trigger/ability target() steps in taxonomy', bad === 0);
   check('no migrated trigger/ability effect kept a per-effect target', residual === 0, 'got ' + residual);
 })();

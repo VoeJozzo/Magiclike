@@ -8,13 +8,13 @@
       "effects": [
         {
           "kind": "removeCreature",
-          "severity": 3,
-          "target": "creature",
-          "filter": {
-            "tapped": true
-          }
+          "severity": 3
         }
-      ]
+      ],
+      "target": "creature",
+      "target_filter": {
+        "tapped": true
+      }
     }
   ],
   "art": "🥷",

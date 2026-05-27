@@ -5,15 +5,14 @@
     "G": 1,
     "C": 2
   },
+  "target": "opp_creature",
+  "target_filter": {
+    "hasKeyword": "flying"
+  },
   "effects": [
     {
       "kind": "damage",
-      "target": "creature",
-      "amount": 5,
-      "filter": {
-        "controller": "opp",
-        "hasKeyword": "flying"
-      }
+      "amount": 5
     }
   ],
   "name": "Vine Strangle",

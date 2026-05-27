@@ -158,6 +158,7 @@ const EXPOSED = [
   'rollSubtypeFromDeck', 'pushStickerWithRoll', 'stickersForSlot',
   // Render module-scope helpers (render.js has no IIFE).
   'stickerBadgesHtml', 'effectiveArt', 'renderManaSymbols', 'formatCostBraced',
+  'isValidTargetCreature',
   // Card-text module surface (card-text.js, all module-scope, no IIFE).
   'describeAmount', 'describeEffect', 'describeEffectList',
   'describeTrigger', 'describeAbility', 'describeStaticBuff',

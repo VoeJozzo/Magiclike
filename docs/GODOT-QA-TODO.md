@@ -229,17 +229,29 @@ exercised directly via an exposed `ENGINE.applyEffect` test seam):
   port BEFORE the Godot valuation/text migration, not after.
 
 - **Card migration — TARGETING decomposition DONE (proto, step 6 part 1):**
-  `tools/migrate-effects.js` migrated **94 target() steps** across the real pool
-  — 42 on-cast (`card.target`), 48 triggered (`trig.target`), 4 activated
-  (`ab.target`). Conservative: skips multi-target/modal and any effect with a
-  non-controller filter (subtype/keyword/maxTough) the closed taxonomy can't
-  express (those kept their filters — no silent loss). Idempotent. Two
-  integration fixes it surfaced: makeCard must copy the top-level `target` to
-  the runtime instance (else resolution crashes — caught by selfplay), and
-  card-text threads the target() step into bare effects. Suite 724/724;
-  selfplay 500 clean. `tests/effect_migration_test.js`. **Godot mirror:** the
-  same migration over the 31 `.tres` templates, plus the makeCard-equivalent
-  (`JsonCardLoader`/`CardResource`) carrying the `target` field.
+  `tools/migrate-effects.js` migrated the target() steps across the real pool —
+  on-cast (`card.target`), triggered (`trig.target`), activated (`ab.target`).
+  Idempotent. Two integration fixes it surfaced: makeCard must copy the top-level
+  `target` (and `target_filter`) to the runtime instance (else resolution crashes
+  — caught by selfplay), and card-text threads the target() step into bare
+  effects. `tests/effect_migration_test.js`. **Godot mirror:** the same migration
+  over the 31 `.tres` templates, plus the makeCard-equivalent
+  (`JsonCardLoader`/`CardResource`) carrying the `target` + `target_filter` fields.
+
+- **Top-level target() RESTRICTIONS DONE (proto, v2):** the closed taxonomy now
+  carries an optional **`target_filter`** beside `target` — the matchFilter keys
+  the taxonomy can't name (`notColor`, `hasKeyword`, `subtype`, `tapped`,
+  `maxTough`/`minTough`, `maxPower`/`minPower`, `notToken`). `targetsForFilter`
+  merges it into the cast-time enumeration (so the hexproof checkpoint honors it),
+  and render's `isValidTargetCreature` was rewritten to handle the full taxonomy
+  (`your_creature`/`opp_creature`/etc.) + route restrictions through
+  `matchFilter`, so highlight == cast legality. Five previously filter-carrying
+  cards now migrate (doomBlade, ravenousPlague, smite, vinestrangle, naturalize)
+  plus 3 triggers + 2 abilities. Only `steal` stays per-effect — its target is
+  `permanentOrSpell`, a target *kind* outside the taxonomy (like Stapler), not a
+  restriction. `tests/test_target_restrictions.js`. **Godot mirror:** thread a
+  `target_filter` Dictionary through `CardResource` + the targeting legality/
+  enumeration + highlight, mirroring `targetsForFilter(filter, who, restrict)`.
 
 - **Kind-COLLAPSE — mass + weaken DONE (proto, step 6 part 2a):** 17 effects
   collapsed via migrate-effects.js — damageAll → damage+scope(all_creatures),

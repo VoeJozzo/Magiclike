@@ -61,6 +61,8 @@ const CATEGORY_A = [
   'test_effect_coverage.js',
   // Slice 3 steps 0+11 — splice harmonization (shared mergeSpliceData; reward↔in-game parity).
   'test_splice_core.js',
+  // v2 targeting — top-level target() restrictions (target_filter) enforced at cast + highlight.
+  'test_target_restrictions.js',
   // Slice 3 — §3.9 mana deep-clean (land-as-ability, choose form, sticker, staple).
   'test_mana.js',
   // Slice 3 — §3.8 empower system (single-source EMPOWER_FIELDS, post-collapse).

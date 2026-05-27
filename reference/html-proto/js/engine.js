@@ -571,8 +571,10 @@ function makeCard(tplId, stickers, slotIdx, empowerRolls, permaBuffs, bonusTrigg
     slotIdx: (typeof slotIdx === 'number') ? slotIdx : null,
     name: tpl.name, type: tpl.type, sub: tpl.sub, art: tpl.art, text: tpl.text,
     // Top-level target() step (§3.5) — must carry to the runtime instance so
-    // cast legality / enumeration / resolution see the targeting step.
+    // cast legality / enumeration / resolution see the targeting step. The
+    // optional target_filter carries restrictions the closed taxonomy can't name.
     target: tpl.target,
+    target_filter: tpl.target_filter,
     // Legendary uniqueness enforced at cast time only (no SBA).
     legendary: !!tpl.legendary,
     // Deep-copy mutable fields for per-instance isolation (costReduction,
@@ -2921,7 +2923,7 @@ function emitZoneChange(card, controller, fromZone, toZone, extraSources, source
 // OR if every targeted effect has at least one currently-valid target.
 function triggerHasAnyValidTarget(trig, controller) {
   // New top-level target() step: the trigger needs a legal target of that filter.
-  if (trig.target && targetsForFilter(trig.target, controller).length === 0) return false;
+  if (trig.target && targetsForFilter(trig.target, controller, trig.target_filter).length === 0) return false;
   for (const eff of (trig.effects || [])) {
     if (!effectNeedsTarget(eff)) continue;
     const valid = getValidTargets(eff, controller);
@@ -2989,7 +2991,7 @@ function pushTriggerOnStack(p) {
     // New top-level target() step: pick from the filter's legal set, valued by
     // the first target-operating effect. (Human prompt deferred — auto-picks
     // for both sides today, like the legacy per-effect path.)
-    const valid = targetsForFilter(p.trig.target, p.controller);
+    const valid = targetsForFilter(p.trig.target, p.controller, p.trig.target_filter);
     if (valid.length === 0) {
       log(`${p.sourceName} trigger fizzles — no legal target.`, 'sp');
       return;
@@ -3262,16 +3264,21 @@ const TARGET_FILTERS = new Set([
 // the caster's own hexproof creatures are allowed. Maps the new closed
 // taxonomy onto the existing getValidTargets machinery. `creature_or_player`
 // is the canonical spelling of proto's legacy `"any"`.
-function targetsForFilter(filter, controller) {
+function targetsForFilter(filter, controller, restrict) {
+  // `restrict` (the optional top-level `target_filter`) carries extra matchFilter
+  // restrictions — notColor, hasKeyword, maxTough, tapped, notToken, etc. — that
+  // the closed taxonomy can't name on its own. Merge it into the getValidTargets
+  // filter so the cast-time enumeration (and hexproof checkpoint) honors it.
+  const merge = (f) => restrict ? Object.assign({}, f, restrict) : f;
   switch (filter) {
-    case 'creature_or_player': return getValidTargets({ target: 'any' }, controller);
-    case 'player':             return getValidTargets({ target: 'player' }, controller);
-    case 'creature':           return getValidTargets({ target: 'creature' }, controller);
-    case 'permanent':          return getValidTargets({ target: 'permanent' }, controller);
-    case 'spell':              return getValidTargets({ target: 'spell' }, controller);
-    case 'graveyard_creature': return getValidTargets({ target: 'graveyardCreature' }, controller);
-    case 'your_creature':      return getValidTargets({ target: 'creature', filter: { controller: 'self' } }, controller);
-    case 'opp_creature':       return getValidTargets({ target: 'creature', filter: { controller: 'opp' } }, controller);
+    case 'creature_or_player': return getValidTargets({ target: 'any', filter: restrict || undefined }, controller);
+    case 'player':             return getValidTargets({ target: 'player', filter: restrict || undefined }, controller);
+    case 'creature':           return getValidTargets({ target: 'creature', filter: restrict || undefined }, controller);
+    case 'permanent':          return getValidTargets({ target: 'permanent', filter: restrict || undefined }, controller);
+    case 'spell':              return getValidTargets({ target: 'spell', filter: restrict || undefined }, controller);
+    case 'graveyard_creature': return getValidTargets({ target: 'graveyardCreature', filter: restrict || undefined }, controller);
+    case 'your_creature':      return getValidTargets({ target: 'creature', filter: merge({ controller: 'self' }) }, controller);
+    case 'opp_creature':       return getValidTargets({ target: 'creature', filter: merge({ controller: 'opp' }) }, controller);
     default:
       console.warn('Unknown target() filter:', filter);
       return [];
@@ -4910,7 +4917,7 @@ function isLegalAction(who, action) {
       // action.targets[0] must be among them (so an opp hexproof creature is
       // not a legal target). Inert for legacy cards (none set card.target).
       if (card.target) {
-        const valid = targetsForFilter(card.target, who);
+        const valid = targetsForFilter(card.target, who, card.target_filter);
         if (!valid.length) return false;
         if (!action.targets || !action.targets[0]) return false;
         if (!valid.some(v => sameTarget(v, action.targets[0]))) return false;
@@ -4979,7 +4986,7 @@ function isLegalAction(who, action) {
       // New targeting model (§3.5): a top-level `target` step on the ability is
       // the cast-time hexproof checkpoint. Inert for legacy abilities.
       if (ab.target) {
-        const valid = targetsForFilter(ab.target, who);
+        const valid = targetsForFilter(ab.target, who, ab.target_filter);
         if (!valid.length) return false;
         if (!action.targets || !action.targets[0]) return false;
         if (!valid.some(v => sameTarget(v, action.targets[0]))) return false;
@@ -5164,7 +5171,7 @@ function getLegalActions(who) {
         // action per legal target of that filter (hexproof-excluded via
         // targetsForFilter). No valid target → spell not castable.
         if (card.target) {
-          for (const t of targetsForFilter(card.target, who)) {
+          for (const t of targetsForFilter(card.target, who, card.target_filter)) {
             const a = { type: 'castSpell', cardIid: card.iid, targets: [t] };
             if (modes.length > 1) a.modeIdx = mIdx;
             actions.push(a);
@@ -5283,7 +5290,7 @@ function getLegalActions(who) {
       // step (§3.5) enumerates from targetsForFilter (hexproof-excluded); empty
       // → no actions (ability not activatable). Legacy per-effect targets fall
       // back to getValidTargets; untargeted → [null].
-      const effectTargets = ab.target ? targetsForFilter(ab.target, who)
+      const effectTargets = ab.target ? targetsForFilter(ab.target, who, ab.target_filter)
         : (targetedEff ? getValidTargets(targetedEff, who) : [null]);
       const sacChoices = sacOptions || [null];
       for (const t of effectTargets) {

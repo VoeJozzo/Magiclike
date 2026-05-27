@@ -849,6 +849,22 @@ function pendingTopTargetFilter(pt) {
   }
   return null;
 }
+// The top-level step's optional restriction (target_filter) — drives target
+// highlighting so a restricted spell only lights up legal targets.
+function pendingTopTargetRestrict(pt) {
+  if (!pt) return null;
+  const G = ENGINE.state();
+  if (pt.kind === 'cast') {
+    const card = G.you.hand.find(c => c.iid === pt.cardIid);
+    return (card && card.target_filter) || null;
+  }
+  if (pt.kind === 'ability') {
+    const f = ENGINE.findCard(pt.cardIid);
+    const ab = f && f.card.abilities[pt.abilityIdx];
+    return (ab && ab.target_filter) || null;
+  }
+  return null;
+}
 
 // Ability-level slot specs (Stapler) — one pick per `targetSlots` entry.
 function pendingAbilityTargetSlots(pt) {
@@ -878,7 +894,10 @@ function slotsNeededForPending(pt) {
 function pendingTargetEffect(pt) {
   if (!pt) return null;
   const top = pendingTopTargetFilter(pt);
-  if (top) return { target: top };
+  if (top) {
+    const restrict = pendingTopTargetRestrict(pt);
+    return restrict ? { target: top, filter: restrict } : { target: top };
+  }
   const abSlots = pendingAbilityTargetSlots(pt);
   if (abSlots) {
     const pickedCount = (pt.pickedSlots && pt.pickedSlots.length) || 0;
@@ -894,35 +913,33 @@ function pendingTargetEffect(pt) {
 
 function isValidTargetCreature(eff, card) {
   if (!eff) return false;
-  // Determine eligible card types based on the effect's target shape.
-  //   creature/any        → creatures only
-  //   permanent           → creatures, lands, or artifacts (anything on the battlefield)
-  //   permanentOrSpell    → same as permanent for the battlefield-card check
-  //                         (stack spells are highlighted via a separate UI path
-  //                         in renderStack — they're not battlefield cards).
-  // Names retained as `isValidTargetCreature` for backwards-compat with the
-  // single existing caller; broader semantics now that lands can be targeted.
-  if (eff.target === 'creature' || eff.target === 'any') {
+  // Normalize the target() taxonomy to an eligible card-type + an implied
+  // controller restriction:
+  //   creature / your_creature / opp_creature / any / creature_or_player → creatures
+  //   permanent / permanentOrSpell → battlefield permanents (stack spells are
+  //     highlighted via a separate path in renderStack).
+  // (Player targets are highlighted elsewhere.) Name kept for its single caller.
+  const t = eff.target;
+  const CREATURE_KINDS = ['creature', 'your_creature', 'opp_creature', 'any', 'creature_or_player'];
+  const PERM_KINDS = ['permanent', 'permanentOrSpell'];
+  if (CREATURE_KINDS.includes(t)) {
     if (card.type !== 'Creature') return false;
-  } else if (eff.target === 'permanent' || eff.target === 'permanentOrSpell') {
+  } else if (PERM_KINDS.includes(t)) {
     if (card.type !== 'Creature' && card.type !== 'Land' && card.type !== 'Artifact') return false;
   } else {
     return false;
   }
-  if (eff.target === 'any') return true;
-  if (eff.filter) {
-    if (eff.filter.tapped !== undefined && card.tapped !== eff.filter.tapped) return false;
-    if (eff.filter.notColor && card.color === eff.filter.notColor) return false;
-    // Stapler's filters (spliceableBase / spliceableStaple) must apply at
-    // highlight time too — otherwise we'd highlight cards the click handler
-    // would reject (e.g., already-stapled creatures). Routes through the
-    // canonical matchFilter helper, accessed via ENGINE since matchFilter
-    // lives inside the engine IIFE.
-    if (eff.filter.spliceableBase || eff.filter.spliceableStaple) {
-      if (!ENGINE.matchFilter(card, eff.filter, null, null)) return false;
-    }
-  }
-  return true;
+  if (t === 'any' || t === 'creature_or_player') return true;
+  // Build the effective restriction: the taxonomy's implied controller plus the
+  // step's explicit target_filter (threaded onto eff.filter). Route the whole
+  // thing through the canonical matchFilter so every key (notColor, hasKeyword,
+  // maxTough, tapped, notToken, spliceable…) is honored at highlight time
+  // exactly as at cast — no more drifting between highlight and click legality.
+  const restrict = Object.assign({}, eff.filter || null);
+  if (t === 'your_creature') restrict.controller = 'self';
+  if (t === 'opp_creature') restrict.controller = 'opp';
+  if (Object.keys(restrict).length === 0) return true;
+  return ENGINE.matchFilter(card, restrict, card.controller, 'you');
 }
 
 // Render sticker badges. `big` = larger styling for the reward modal.

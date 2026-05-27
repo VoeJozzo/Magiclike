@@ -1401,7 +1401,7 @@ function objNeedsTarget(obj, effects) {
 }
 function probeTargetsFor(obj, effects, who) {
   if (obj && obj.target) {
-    const valid = ENGINE.targetsForFilter(obj.target, who);
+    const valid = ENGINE.targetsForFilter(obj.target, who, obj.target_filter);
     return valid.length ? [valid[0]] : null;
   }
   // Ability-level slots (Stapler): one fake target per slot spec; null if any

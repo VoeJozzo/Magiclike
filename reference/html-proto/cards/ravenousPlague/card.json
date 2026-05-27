@@ -5,14 +5,14 @@
     "B": 1,
     "C": 2
   },
+  "target": "creature",
+  "target_filter": {
+    "maxTough": 3
+  },
   "effects": [
     {
       "kind": "removeCreature",
-      "severity": 3,
-      "target": "creature",
-      "filter": {
-        "maxTough": 3
-      }
+      "severity": 3
     }
   ],
   "name": "Ravenous Plague",

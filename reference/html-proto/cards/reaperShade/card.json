@@ -21,13 +21,13 @@
       "effects": [
         {
           "kind": "removeCreature",
-          "severity": 3,
-          "target": "creature",
-          "filter": {
-            "maxTough": 2
-          }
+          "severity": 3
         }
-      ]
+      ],
+      "target": "creature",
+      "target_filter": {
+        "maxTough": 2
+      }
     }
   ],
   "type": "Creature"

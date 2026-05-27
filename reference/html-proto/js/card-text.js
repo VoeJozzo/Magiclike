@@ -358,14 +358,17 @@ function segsToText(segs) {
 }
 
 // Join effects into a sentence. Special-case: 2 damage effects use shared-subject phrasing.
-function describeEffectList(effects, cardName, tplEffects, stepTarget) {
+function describeEffectList(effects, cardName, tplEffects, stepTarget, stepFilter) {
   if (!Array.isArray(effects) || effects.length === 0) return [];
   // New model (§3.5): a top-level target() step + bare effects. For rendering,
-  // give each bare effect the step's target token so targetPhrase produces
-  // "...target creature" etc. — matching how resolution feeds it the target.
+  // give each bare effect the step's target token (and its optional restriction
+  // target_filter) so targetPhrase + withFilter produce "...target non-black
+  // creature" etc. — matching how resolution feeds it the target.
   if (stepTarget) {
     effects = effects.map(e =>
-      (e && !e.target && e.kind !== 'chooses' && e.scope == null) ? Object.assign({}, e, { target: stepTarget }) : e);
+      (e && !e.target && e.kind !== 'chooses' && e.scope == null)
+        ? Object.assign({}, e, stepFilter ? { target: stepTarget, filter: stepFilter } : { target: stepTarget })
+        : e);
   }
   const tplOf = i => (Array.isArray(tplEffects) ? tplEffects[i] : undefined);
   const parts = effects.map((e, i) => describeEffect(e, tplOf(i)));
@@ -488,7 +491,7 @@ function triggerPreamble(trig) {
 function describeTrigger(trig, tplTrig) {
   const preamble = triggerPreamble(trig);
   const tplEffs = tplTrig ? tplTrig.effects : undefined;
-  const body = describeEffectList(trig.effects || [], null, tplEffs, trig.target);
+  const body = describeEffectList(trig.effects || [], null, tplEffs, trig.target, trig.target_filter);
   const bodyLower = body.slice();
   for (let i = 0; i < bodyLower.length; i++) {
     if (bodyLower[i].text && bodyLower[i].text.length > 0) {
@@ -524,7 +527,7 @@ function abilityCostPhrase(cost) {
 function describeAbility(ab, tplAb) {
   const cost = abilityCostPhrase(ab.cost);
   const tplEffs = tplAb ? tplAb.effects : undefined;
-  let body = describeEffectList(ab.effects || [], null, tplEffs, ab.target);
+  let body = describeEffectList(ab.effects || [], null, tplEffs, ab.target, ab.target_filter);
   if (body.length > 0 && body[body.length - 1].text === '.') {
     body = body.slice(0, -1);
   }
@@ -658,7 +661,7 @@ function describeCardSegments(card, opts) {
     sections.push(describeModalSegs(card.effects.modes, tplBaseline.effects && tplBaseline.effects.modes));
   } else if (Array.isArray(card.effects) && card.effects.length > 0) {
     const tplEffs = Array.isArray(tplBaseline.effects) ? tplBaseline.effects : undefined;
-    sections.push(describeEffectList(card.effects, card.name || tpl.name, tplEffs, card.target || tpl.target));
+    sections.push(describeEffectList(card.effects, card.name || tpl.name, tplEffs, card.target || tpl.target, card.target_filter || tpl.target_filter));
   }
   if (Array.isArray(card.staticBuffs)) {
     for (const buff of card.staticBuffs) {

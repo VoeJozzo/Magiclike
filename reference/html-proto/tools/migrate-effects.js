@@ -31,11 +31,6 @@ function mapFilter(targetVal, controller) {
     default: return null;
   }
 }
-function filterIsControllerOnly(filter) {
-  if (!filter) return true;
-  const keys = Object.keys(filter);
-  return keys.length === 0 || (keys.length === 1 && keys[0] === 'controller');
-}
 
 // Compute the target() step for an effects array, or a skip reason. Pure.
 function planBlock(effects, alreadyHasTarget) {
@@ -48,16 +43,29 @@ function planBlock(effects, alreadyHasTarget) {
   if (vals.length !== 1) return { skip: 'mixed-target' };
   const tv = vals[0];
   if (tv === 'permanentOrSpell') return { skip: 'permanentOrSpell' };
-  if (targeted.some(e => !filterIsControllerOnly(e.filter))) return { skip: 'non-controller-filter' };
-  const ctrls = [...new Set(targeted.map(e => (e.filter && e.filter.controller) || null))];
-  if (ctrls.length !== 1) return { skip: 'mixed-controller' };
-  const top = mapFilter(tv, ctrls[0]);
+  // All targeted effects must share one filter so a single top-level step
+  // covers them (single-target cards trivially do).
+  const filterKeys = [...new Set(targeted.map(e => JSON.stringify(e.filter || null)))];
+  if (filterKeys.length !== 1) return { skip: 'mixed-filter' };
+  const filter = targeted[0].filter || null;
+  const ctrl = (filter && filter.controller) || null;
+  const top = mapFilter(tv, ctrl);
   if (!top) return { skip: 'unmappable' };
+  // Controller folds into the taxonomy kind (your_creature/opp_creature); any
+  // remaining restriction keys (notColor, hasKeyword, maxTough, tapped,
+  // notToken, …) lift to a top-level `target_filter`.
+  let targetFilter = null;
+  if (filter) {
+    const { controller, ...rest } = filter;
+    if (Object.keys(rest).length > 0) targetFilter = rest;
+  }
   const newEffects = effects.map(e => {
     if (e && e.target === tv) { const { target, filter, ...rest } = e; return rest; }
     return e;
   });
-  return { target: top, effects: newEffects };
+  const plan = { target: top, effects: newEffects };
+  if (targetFilter) plan.targetFilter = targetFilter;
+  return plan;
 }
 
 // Kind-collapse: rewrite a redundant legacy kind into its atomic + scope/sign
@@ -196,8 +204,12 @@ for (const folderId of manifest) {
     if (r.target) {
       const out = {};
       for (const [k, v] of Object.entries(card)) {
-        if (k === 'effects') { out.target = r.target; out.effects = r.effects; }
-        else if (k === 'target') { /* drop; re-added before effects */ }
+        if (k === 'effects') {
+          out.target = r.target;
+          if (r.targetFilter) out.target_filter = r.targetFilter;
+          out.effects = r.effects;
+        }
+        else if (k === 'target' || k === 'target_filter') { /* drop; re-added before effects */ }
         else out[k] = v;
       }
       Object.keys(card).forEach(k => delete card[k]);
@@ -209,16 +221,22 @@ for (const folderId of manifest) {
   // Triggered abilities.
   for (const trig of (card.triggers || [])) {
     const r = planBlock(trig.effects, !!trig.target);
-    if (r.target) { trig.target = r.target; trig.effects = r.effects; stats.trigger++; changed = true; }
-    else note(r);
+    if (r.target) {
+      trig.target = r.target;
+      if (r.targetFilter) trig.target_filter = r.targetFilter;
+      trig.effects = r.effects; stats.trigger++; changed = true;
+    } else note(r);
   }
 
   // Activated abilities.
   for (const ab of (card.abilities || [])) {
     if (stripNoopSlots(ab)) { stats.noopStripped = (stats.noopStripped || 0) + 1; changed = true; }
     const r = planBlock(ab.effects, !!ab.target);
-    if (r.target) { ab.target = r.target; ab.effects = r.effects; stats.ability++; changed = true; }
-    else note(r);
+    if (r.target) {
+      ab.target = r.target;
+      if (r.targetFilter) ab.target_filter = r.targetFilter;
+      ab.effects = r.effects; stats.ability++; changed = true;
+    } else note(r);
   }
 
   if (changed && !DRY) fs.writeFileSync(file, JSON.stringify(card, null, 2) + '\n');

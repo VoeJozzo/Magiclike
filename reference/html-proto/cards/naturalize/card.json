@@ -5,15 +5,14 @@
     "G": 1,
     "C": 1
   },
+  "target": "opp_creature",
+  "target_filter": {
+    "hasKeyword": "flying"
+  },
   "effects": [
     {
       "kind": "removeCreature",
-      "severity": 3,
-      "target": "creature",
-      "filter": {
-        "controller": "opp",
-        "hasKeyword": "flying"
-      }
+      "severity": 3
     }
   ],
   "name": "Choking Vines",

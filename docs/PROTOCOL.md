@@ -239,6 +239,16 @@ Closed target-filter taxonomy (`ENGINE.TARGET_FILTERS`):
 | `"spell"`              | a spell on the stack (counter targets)         |
 | `"graveyard_creature"` | a creature card in a graveyard (reanimation)   |
 
+Optional **`target_filter`** — a restriction the closed taxonomy can't name on
+its own (e.g. "non-black creature", "tapped creature", "flying creature you don't
+control"). It sits **beside** `target` on the same container (card / trigger /
+ability) and carries `matchFilter` keys: `notColor`, `color`, `hasKeyword`,
+`notKeyword`, `subtype`, `tapped`, `maxTough`/`minTough`, `maxPower`/`minPower`,
+`notToken`. The taxonomy kind covers the type + controller axis; `target_filter`
+covers everything else. Enforced at the same cast-time `target()` checkpoint
+(and at highlight). Examples: Doom Blade `target: "creature", target_filter: {notColor: "B"}`;
+Vine Strangle `target: "opp_creature", target_filter: {hasKeyword: "flying"}`.
+
 Related forms:
 - **`target: "self"`** on an *effect* still means the source itself (a creature
   for creature-operating effects; the controller for player-operating ones like
