@@ -325,10 +325,37 @@ real resolution path. **Two things the Godot mirror MUST replicate:**
 symmetry state; its delayed end-step return migrates to `move_card` +
 `schedule_delayed` only when B4 lands).
 
-Remaining collapses (each needs more than a rewrite):
-- **discard/search → move_card** (gated on prompt-driven selectors —
-  `controller_chosen`/`target_player`/`library_search`, the human-prompt/AI-pick
-  infra; not built).
+**search → move_card DONE (proto).** Both search kinds (10 cards) fully
+collapse (no generator emits them → handlers removed). New move_card branches:
+`library→hand` + `library_search` selector (prompt-driven creature tutor) and
+`library→battlefield` (auto land-fetch, `post.tap`). They delegate to extracted
+helpers (`searchLibraryToHand`, `fetchLibraryToBattlefield`) carrying the exact
+prior behavior — human → existing `pendingSearch` prompt (the `doSearchPick`/UI
+completion path is UNCHANGED), AI → auto-pick. **Godot mirror:** the
+`library_search` selector + filter; preserve the land-fetch-is-auto /
+creature-search-prompts split.
+
+**discard → move_card DONE (proto, partial).** All 14 card-data discards →
+`move_card(hand→graveyard)`. Controller discards keep `target:'self'`; targeted
+discards (duress/mindrot/graveCurate/hypnotic) stay bare under a top-level
+`player` target step. Shared `discardFromHand` helper (human → existing
+`forcedDiscard` prompt UNCHANGED; AI → cheapest) is called by both the move_card
+branch and the **retained** legacy `discard` handler — the Mercurial generator
+(`discardOpp`) still emits `discard`, same precedent as draw. §8.1 lockstep:
+card-text (discard idiom + the loot pattern is now move_card-draw/move_card-
+discard), `scoreSpellTargetForMode` (targeted-player discard), the AI
+instant-response + ability scoring, `spellValueForEffects`, and
+`pickBestTriggerTarget` (the dies/attacks discard triggers auto-target the
+opponent). **Godot mirror:** the `who`-resolution (`discardWho`: explicit player
+target else controller) + the same human-prompt/AI-pick split.
+
+**Key de-risking note for the Godot mirror of discard/search:** route move_card
+through the SAME pending-prompt mechanisms (`forcedDiscard`/`pendingSearch` or
+their Godot equivalents) the legacy handlers used, so the UI completion path
+(the `discard`/`searchPick` actions + the search modal) is behaviorally
+unchanged — only what SETS the pending flag changes.
+
+Remaining collapse:
 - **exileUntilEOT → move_card decomp** (B4-deferred per §9.1; stays monolithic).
 
 Then `apply_sticker` + sticker pipeline (step 10), mana deep-clean (§3.9),
