@@ -388,6 +388,23 @@ plan's auto-pass meaningfulness check). Add the `add_mana` choose form. The prot
 helpers above are the reference. Card data is already migrated (shared wire), so
 Godot just needs to consume the ability shape natively.
 
+**§3.10 staple-synthesis cleanup DONE (proto).** `mergeStapleInto` now dispatches
+on the STAPLE's type (leveraging the `canonicalSplicePair` hierarchy that picks
+the base) instead of an order-dependent 7-branch chain — three behaviors: staple
+Creature → body merge; staple Land → permanent base gains the land's tap-ability
+(Cr+Ld appends, Ld+Ld / mana-dork base merges colors); staple Spell → permanent
+base gets an ETB trigger (Cr+Sp and Ld+Sp were byte-identical, collapsed), spell
+base concats (Sp+Sp). Impossible pairs `throw` instead of degrading to Sp+Sp.
+Deleted the dead Sp+Ld branch; lifted the multi-color-land staple rejection (City
+of Brass is now a valid staple onto any base → choose ability); replaced the
+hand-maintained `merged` field-copy with a JSON deep clone (new schema fields
+carry automatically). **Deferred:** `appendMergedText` removal (the plan's "single
+source of truth via describeCardText" — UI-preview-coupled, browser-verify; kept
+because `describeCardText` already regenerates `merged.text` in makeCard so it's
+harmless). **Godot mirror:** Godot has no staple system yet — design from this
+proto reference (staple-type dispatch + the §3.9 tap-ability merge), don't port
+the old order-dependent chain.
+
 Remaining collapse:
 - **exileUntilEOT → move_card decomp** (B4-deferred per §9.1; stays monolithic).
 
