@@ -398,10 +398,10 @@ base concats (Sp+Sp). Impossible pairs `throw` instead of degrading to Sp+Sp.
 Deleted the dead Sp+Ld branch; lifted the multi-color-land staple rejection (City
 of Brass is now a valid staple onto any base → choose ability); replaced the
 hand-maintained `merged` field-copy with a JSON deep clone (new schema fields
-carry automatically). **Deferred:** `appendMergedText` removal (the plan's "single
-source of truth via describeCardText" — UI-preview-coupled, browser-verify; kept
-because `describeCardText` already regenerates `merged.text` in makeCard so it's
-harmless). **Godot mirror:** Godot has no staple system yet — design from this
+carry automatically). Removed `appendMergedText` — `describeCardText` is now the
+single source of card text (verified no consumer reads a synthesized template's
+`.text`: makeCard + the staple preview both regenerate, and special/customText
+cards can't be staple bases/staples). **Godot mirror:** Godot has no staple system yet — design from this
 proto reference (staple-type dispatch + the §3.9 tap-ability merge), don't port
 the old order-dependent chain.
 
