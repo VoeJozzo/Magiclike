@@ -2697,7 +2697,7 @@ function validateAllCardEffects(cards) {
 // Add creature-operators here; damage/gainLife/draw/discard/addMana resolve self → controller.
 const CREATURE_EFFECT_KINDS = new Set([
   'pump', 'weaken', 'addCounter', 'untap', 'removeCreature',
-  'fightTarget', 'endomorphAbsorb', 'flicker', 'exileUntilEOT',
+  'fightTarget', 'endomorphAbsorb',
   'grantKeyword',
   'sacrifice', 'gainControl',
 ]);
@@ -3595,7 +3595,7 @@ function leavesPlayPreservingBuffs(card) {
 
 // Emit cardLeavesBattlefield — unified event covering ALL leave-play paths:
 // death (moveToGraveyard, sacrificeCard, checkDeaths), bounce, exile,
-// shuffleIntoLibrary, exileUntilEOT. Lets cards like Archdemon of Bargains
+// shuffleIntoLibrary. Lets cards like Archdemon of Bargains
 // use a single 'thisLeaves' trigger instead of needing one trigger per
 // removal type. Caller passes the card and its controller-at-leave-time;
 // downstream trigger handlers reading ctx.event.card see the card object

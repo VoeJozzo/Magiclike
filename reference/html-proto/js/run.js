@@ -85,6 +85,10 @@ function load() {
     }
     runState = blob.runState;
     // Strip unknown sticker IDs (legacy saves), migrate legacy formats, backfill empowerRolls.
+    // `dirty` tracks any normalization that mutated runState — it MUST be
+    // persisted, or the (random) backfills re-roll on every load and a buffed
+    // stat flickers between sessions.
+    let dirty = false;
     let stalePruned = 0;
     let rollsBackfilled = 0;
     let subtypeMigrated = 0;
@@ -101,7 +105,7 @@ function load() {
             return 'subtype';
           }
           // §3.8 snake_case sticker-id renames.
-          if (STICKER_ID_RENAMES[id]) return STICKER_ID_RENAMES[id];
+          if (STICKER_ID_RENAMES[id]) { dirty = true; return STICKER_ID_RENAMES[id]; }
           return id;
         });
         const before = slot.stickers.length;
@@ -131,12 +135,14 @@ function load() {
       if (subtypeMigrated > 0) {
         console.log(`Migrated ${subtypeMigrated} legacy subtype sticker(s) to unified format.`);
       }
+      if (stalePruned > 0 || rollsBackfilled > 0 || subtypeMigrated > 0) dirty = true;
     }
     // Reroll pendingReward if it's not a current shape (legacy splice pre-rolls).
     if (runState.pendingReward) {
       const ph = runState.pendingReward.phase;
       if (ph !== 'mixed' && ph !== 'transformPick' && ph !== 'twoStickersReveal') {
         runState.pendingReward = generateRewardOffer();
+        dirty = true;
       }
     }
     // Map migrations: color/constructedId/boss-type backfill for legacy saves.
@@ -150,21 +156,23 @@ function load() {
           })
         : [];
       for (const n of runState.map.nodes) {
-        if (!('constructedId' in n)) n.constructedId = null;
+        if (!('constructedId' in n)) { n.constructedId = null; dirty = true; }
         const isExit = (n.level === maxLevel);
         if (isExit && n.type !== 'boss' && bossIds.length > 0) {
           n.type = 'boss';
           n.constructedId = bossIds[Math.floor(Math.random() * bossIds.length)];
+          dirty = true;
         }
         if ('color' in n) continue;
         const isEnd = (n.level === 0 || n.level === maxLevel);
-        if (isEnd) { n.color = null; continue; }
+        if (isEnd) { n.color = null; dirty = true; continue; }
         n.color = Math.random() < 0.6
           ? COLOR_KEYS[Math.floor(Math.random() * 5)]
           : null;
+        dirty = true;
       }
     }
-    if (stalePruned > 0) save();
+    if (dirty) save();
     return true;
   } catch (e) {
     console.warn('Load failed:', e);

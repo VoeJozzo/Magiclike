@@ -321,9 +321,20 @@ real resolution path. **Two things the Godot mirror MUST replicate:**
    (MTG-correct; the old monolith skipped them). Only Archdemon Bargains has
    such a trigger in the pool.
 
-`exileUntilEOT` STAYS monolithic (plan §9.1 — the conscious cross-engine
-symmetry state; its delayed end-step return migrates to `move_card` +
-`schedule_delayed` only when B4 lands).
+**exileUntilEOT → move_card + schedule_delayed DONE (proto).** Otherworldly
+Journey now resolves as a top-level `creature` target step plus
+`move_card(battlefield→exile)` and `schedule_delayed(when:end_step, effects:[
+move_card(exile→battlefield)])`. Proto's `schedule_delayed` registers a delayed
+trigger on `G.delayedTriggers` (`effect:'deferredEffects'`) that the CLEANUP
+processor fires at end step, applying the wrapped effects on the captured
+target. The end-step return re-enters via `placeCardOnBattlefield` (fresh iid,
+§3.7; re-fires ETB — the monolith skipped this) and routes opp-owned creatures
+to their OWNER's battlefield (`placeCardOnBattlefield` uses `card.owner`, and
+`move_card` searches both players' exile zones). `test_exile_until_eot.js`
+covers return-with-fresh-iid + ETB re-fire, token-ceases, and opp-owner routing.
+**Godot mirror needs B4** — a delayed-trigger queue on `EngineState` drained at
+the end step. Until B4 lands, Godot may keep a monolithic `exile_until_eot`
+handler; the cross-engine wire shape (`schedule_delayed`) is the target.
 
 **search → move_card DONE (proto).** Both search kinds (10 cards) fully
 collapse (no generator emits them → handlers removed). New move_card branches:
@@ -424,25 +435,37 @@ flows through one sticker pipeline.
 - **costReduction → signed `cost_mod`** unification (one cost-change kind).
 - **empower:** `EMPOWER_FIELDS` is the single source, aligned to the
   post-collapse effect set (move_card-draw empowerability restored).
-- **DELIBERATE SKIP (documented):** the empower/subtype *addressing-shape* change
-  (positional → semantic-identity). Investigated: a global Nth-of-kind scheme has
-  the SAME staple-fragility as positional (inserting a staple trigger of kind-K
-  shifts the Nth of base *ability* effects of kind-K), so it's net-neutral and
-  positional + `remapEmpowerRollForStaple` is retained.
+- **empower addressing-shape — RESOLVED (skip the rewrite, harden the seams):**
+  the positional → semantic-identity *addressing* change is a deliberate skip:
+  a global Nth-of-kind scheme has the SAME staple-fragility as positional
+  (inserting a staple trigger of kind-K shifts the Nth of base *ability* effects
+  of kind-K), so it's net-neutral and positional + `remapEmpowerRollForStaple`
+  is retained. The plan's *other two* empower asks ARE done: **additive deltas**
+  (`applyEmpowerRoll` is `cur + amount`) and **deterministic persistence** — and
+  the latter surfaced a real bug: `RUN.load()` backfilled missing `empowerRolls`
+  (and subtype/rename/map migrations) in memory but only re-saved when stale
+  stickers were pruned, so a buffed stat re-rolled (flickered) on every load.
+  Fixed with a `dirty` flag covering all load-time migrations.
+  `test_empower_persistence.js` locks both seams (backfill idempotency + the
+  staple remap).
 - **snake_case DONE:** sticker kinds (`statBoost`→`stat_boost`,
   `landColor`→`land_color`) + IDs (`plus1plus1`→`plus1_plus1`,
   `costMinus1`→`cost_minus_1`, `landColor_W`→`land_color_w`). A
   `STICKER_ID_RENAMES` map in `RUN.load()` migrates legacy save slots (no
   sticker loss); `test_balancer` covers it.
-- **Remaining §3.8 tail (forward-looking only):** the `grant_mana_ability(color)`
-  generalization of `land_color` (the engine already supports tap-for-mana on any
-  permanent post-§3.9, so this is a thin wrapper — defer until a card needs
-  "tap this creature for {C}").
+- **`grant_mana_ability(color)` — DONE:** generalizes the old land-only
+  `land_color` sticker to grant any permanent a `{T}: add {color}` ability
+  (folds into an existing tap-ability or creates one). `test_mana` covers it.
 - **Godot mirror:** Godot has no sticker layer — build from this proto reference
   (one pipeline, inline parameterized stickers, apply_sticker effect).
 
 Remaining collapse:
-- **exileUntilEOT → move_card decomp** (B4-deferred per §9.1; stays monolithic).
+- **exileUntilEOT → move_card decomp — DONE.** Otherworldly Journey resolves as
+  `target()` + `move_card(bf→exile)` + `schedule_delayed(end_step,
+  move_card(exile→bf))`. The end-step return re-mints a fresh iid (§3.7) and
+  re-fires ETB — which the old monolith skipped; opp-owned creatures route to
+  their owner. `test_exile_until_eot.js` covers it. (The Godot mirror needs the
+  B4 delayed-trigger queue — see the Godot section.)
 
 ### Proto side — COMPLETE (Slice 3)
 
@@ -464,12 +487,15 @@ resolved:
   step 13). **SPEC.md intentionally NOT updated** — it's the *Godot* runtime
   contract; it changes when the Godot mirror lands, not before.
 
-Remaining on the proto side (all deferred-by-design, none blocking):
-- `exile_until_eot` decomposition (B4 / Godot delayed-trigger queue).
-- empower/subtype addressing-shape (investigated → net-neutral, positional kept).
-- `grant_mana_ability` generalization of `land_color` (forward-looking).
-- D4 `gain_life` signed-delta redesign (both engines; separate effects-plan item).
-- staple `fireStackEffects` path is Stapler-only and already functions.
+Remaining on the proto side — NONE. The four previously-deferred items are all
+landed (test-gated):
+- `exile_until_eot` decomposition — DONE (`test_exile_until_eot.js`).
+- empower addressing-shape — RESOLVED (rewrite skipped as net-neutral; the
+  additive-delta + deterministic-persistence asks done, persistence bug fixed;
+  `test_empower_persistence.js`).
+- `grant_mana_ability` generalization of `land_color` — DONE (`test_mana.js`).
+- D4 `gain_life` signed-delta redesign — DONE (`test_signed_life.js`).
+- (Note) the staple `fireStackEffects` path is Stapler-only and already functions.
 
 Everything else below is the **Godot mirror** (separate Godot-equipped session).
 
