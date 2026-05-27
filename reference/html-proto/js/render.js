@@ -688,20 +688,13 @@ function canPlayFromUI(who, card) {
     }
     return false;
   }
-  // Top-level target() step (§3.5): probe with one legal target of the filter
-  // (honoring target_filter). Without this, every migrated single-target spell
-  // (bolt, doomBlade, terror, …) has bare effects, so the per-effect check below
-  // sees no target and probes a target-less cast — which isLegalAction rejects,
-  // leaving the card un-highlighted even though it's castable.
-  if (card.target) {
-    const valid = ENGINE.targetsForFilter(card.target, who, card.target_filter);
-    if (!valid.length) return false;
-    return ENGINE.isLegalAction(who, {type:'castSpell', cardIid: card.iid, targets: [valid[0]]});
-  }
-  const hasTarget = (card.effects || []).some(ENGINE.effectNeedsTarget);
-  if (hasTarget) {
-    const fakeTargets = fakeTargetsForLegality(card.effects, who);
-    if (fakeTargets === null) return false;
+  // Non-modal spell. Route through the engine's canonical targeting API so the
+  // highlight can't drift from the cast flow / trigger prompt (all three share
+  // objectNeedsTarget/probeTargetsForObject — covers top-level target(),
+  // ability-level targetSlots, and legacy per-effect targets).
+  if (ENGINE.objectNeedsTarget(card)) {
+    const fakeTargets = ENGINE.probeTargetsForObject(card, who);
+    if (!fakeTargets) return false;   // no legal target → not castable
     return ENGINE.isLegalAction(who, {type:'castSpell', cardIid: card.iid, targets: fakeTargets});
   }
   return ENGINE.isLegalAction(who, {type:'castSpell', cardIid: card.iid});

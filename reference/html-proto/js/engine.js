@@ -2963,17 +2963,16 @@ function triggerNeedsPlayerChoice(eff, controller) {
 // auto-picked instead of prompting (the "targets auto-selected on cast" bug).
 function triggerPlayerTargetPrompt(trig, controller) {
   if (controller !== 'you') return null;
-  if (trig.target) {
-    if (trig.target === 'self' || trig.target === 'player'
-        || trig.target === 'spell' || trig.target === 'opp') return null;
-    const valid = targetsForFilter(trig.target, controller, trig.target_filter);
-    if (valid.length <= 1) return null;   // 0 → fizzle/auto; 1 → no choice to make
-    // The effect used to value the choice (for the AI driver's pickBestTriggerTarget).
-    const promptEff = (trig.effects || []).find(e => e.kind !== 'chooses') || (trig.effects || [])[0] || {};
-    return { valid, promptEff };
-  }
-  const eff = (trig.effects || []).find(e => triggerNeedsPlayerChoice(e, controller));
-  return eff ? { valid: getValidTargets(eff, controller), promptEff: eff } : null;
+  // The target filter is the top-level step (§3.5) or the first per-effect
+  // target — primaryLegalTargets resolves either shape. Implicit-target filters
+  // (self/player/opp/spell) auto-pick: no choice to offer.
+  const filt = trig.target || ((trig.effects || []).find(effectNeedsTarget) || {}).target;
+  if (!filt || filt === 'self' || filt === 'player' || filt === 'opp' || filt === 'spell') return null;
+  const valid = primaryLegalTargets(trig, controller);
+  if (valid.length <= 1) return null;   // 0 → fizzle/auto; 1 → no choice to make
+  // The effect used to value the choice (for the AI driver's pickBestTriggerTarget).
+  const promptEff = (trig.effects || []).find(e => e.kind !== 'chooses') || (trig.effects || [])[0] || {};
+  return { valid, promptEff };
 }
 
 // Drain queued triggers to stack. Active player's first, then opp. Pauses on
@@ -3322,6 +3321,52 @@ function targetsForFilter(filter, controller, restrict) {
       console.warn('Unknown target() filter:', filter);
       return [];
   }
+}
+
+// ─── Canonical "does this need a target / what are its legal targets" ─────
+// ONE source of truth for an object's (card / activated ability / trigger)
+// targeting shape, so the question can't drift across consumers. The §3.5
+// migration added the top-level target() step, and three consumers
+// (clickHand, the trigger prompt, the castable-highlight) independently kept
+// checking only per-effect targets and silently broke. They all route here now.
+//
+// Three shapes: top-level `target` (+ optional `target_filter`); ability-level
+// `targetSlots` (Stapler-style multi-slot); legacy per-effect `target`/`targetSlot`.
+function objectNeedsTarget(obj) {
+  if (!obj) return false;
+  if (obj.target) return true;
+  if (Array.isArray(obj.targetSlots) && obj.targetSlots.length > 0) return true;
+  return Array.isArray(obj.effects) && obj.effects.some(effectNeedsTarget);
+}
+// Legal targets for the object's PRIMARY slot — for "is there any legal target?"
+// and the trigger >1-choice rule.
+function primaryLegalTargets(obj, who) {
+  if (!obj) return [];
+  if (obj.target) return targetsForFilter(obj.target, who, obj.target_filter);
+  if (Array.isArray(obj.targetSlots) && obj.targetSlots.length > 0) return getValidTargets(obj.targetSlots[0], who);
+  const eff = Array.isArray(obj.effects) ? obj.effects.find(effectNeedsTarget) : null;
+  return eff ? getValidTargets(eff, who) : [];
+}
+// Build the probe/fake targets array for a legality check on `obj`, covering all
+// three shapes. Returns targets[] (indexed by slot), or null if a required slot
+// has no legal target (→ not castable/activatable). The legality-only stand-in
+// the UI uses before entering target-picking, and the castable-highlight probe.
+function probeTargetsForObject(obj, who) {
+  if (!obj) return [];
+  if (obj.target) {
+    const valid = targetsForFilter(obj.target, who, obj.target_filter);
+    return valid.length ? [valid[0]] : null;
+  }
+  if (Array.isArray(obj.targetSlots) && obj.targetSlots.length > 0) {
+    const fakes = [];
+    for (const spec of obj.targetSlots) {
+      const valid = getValidTargets(spec, who);
+      if (!valid.length) return null;
+      fakes.push(valid[0]);
+    }
+    return fakes;
+  }
+  return fakeTargetsForLegality(obj.effects, who);
 }
 
 // Stack-item filter (stack items aren't on bf, so no tapped/controller/hexproof).
@@ -5792,6 +5837,8 @@ return {
   // Effects seam exposed for tests (Slice 3).
   applyEffect, creaturesInScope, affectOneCreature,
   targetsForFilter, TARGET_FILTERS, validateAllCardEffects,
+  // Canonical targeting-shape API (single source of truth across UI consumers).
+  objectNeedsTarget, primaryLegalTargets, probeTargetsForObject,
   // §7b coverage seam: the dispatch table + its valuation classification.
   EFFECTS, VALUED_EFFECT_KINDS, UNVALUED_EFFECT_KINDS, effectCoverageReport,
   concede() {

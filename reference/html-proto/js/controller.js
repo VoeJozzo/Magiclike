@@ -1394,29 +1394,11 @@ function onStateChange() {
 // `target()` step OR (legacy/multi-target) any per-effect targeted effect.
 // `probeTargetsFor` builds the fake target(s) used to legality-check before
 // entering target-picking mode, honoring whichever form applies.
-function objNeedsTarget(obj, effects) {
-  return !!(obj && obj.target)
-    || !!(obj && Array.isArray(obj.targetSlots) && obj.targetSlots.length > 0)
-    || (Array.isArray(effects) && effects.some(ENGINE.effectNeedsTarget));
-}
-function probeTargetsFor(obj, effects, who) {
-  if (obj && obj.target) {
-    const valid = ENGINE.targetsForFilter(obj.target, who, obj.target_filter);
-    return valid.length ? [valid[0]] : null;
-  }
-  // Ability-level slots (Stapler): one fake target per slot spec; null if any
-  // slot has no legal target (ability not activatable).
-  if (obj && Array.isArray(obj.targetSlots) && obj.targetSlots.length > 0) {
-    const fakes = [];
-    for (const spec of obj.targetSlots) {
-      const valid = ENGINE.getValidTargets(spec, who);
-      if (!valid.length) return null;
-      fakes.push(valid[0]);
-    }
-    return fakes;
-  }
-  return fakeTargetsForLegality(effects, who);
-}
+// Thin delegators to the engine's canonical targeting-shape API (single source
+// of truth — see engine.js objectNeedsTarget/probeTargetsForObject). Kept as
+// local names so the call sites below read naturally.
+function objNeedsTarget(obj) { return ENGINE.objectNeedsTarget(obj); }
+function probeTargetsFor(obj, effects, who) { return ENGINE.probeTargetsForObject(obj, who); }
 
 function clickHand(iid) {
   const G = ENGINE.state();
