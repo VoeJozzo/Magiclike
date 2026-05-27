@@ -429,11 +429,15 @@ flows through one sticker pipeline.
   the SAME staple-fragility as positional (inserting a staple trigger of kind-K
   shifts the Nth of base *ability* effects of kind-K), so it's net-neutral and
   positional + `remapEmpowerRollForStaple` is retained.
-- **Remaining §3.8 tail (cosmetic):** snake_case the remaining sticker IDs
-  (`plus1plus1`→`plus1_plus1`, `costMinus1`→`cost_minus_1`, `landColor_W`→
-  `land_color_w`) + kinds (`statBoost`→`stat_boost`, `landColor`→`land_color`) —
-  a sweeping rename + a save-migration map (best as a focused pass); and the
-  forward-looking `grant_mana_ability(color)` generalization of `landColor`.
+- **snake_case DONE:** sticker kinds (`statBoost`→`stat_boost`,
+  `landColor`→`land_color`) + IDs (`plus1plus1`→`plus1_plus1`,
+  `costMinus1`→`cost_minus_1`, `landColor_W`→`land_color_w`). A
+  `STICKER_ID_RENAMES` map in `RUN.load()` migrates legacy save slots (no
+  sticker loss); `test_balancer` covers it.
+- **Remaining §3.8 tail (forward-looking only):** the `grant_mana_ability(color)`
+  generalization of `land_color` (the engine already supports tap-for-mana on any
+  permanent post-§3.9, so this is a thin wrapper — defer until a card needs
+  "tap this creature for {C}").
 - **Godot mirror:** Godot has no sticker layer — build from this proto reference
   (one pipeline, inline parameterized stickers, apply_sticker effect).
 
