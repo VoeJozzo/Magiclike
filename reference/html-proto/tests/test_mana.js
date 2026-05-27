@@ -97,10 +97,33 @@ console.log('\n=== payMana prefers a fixed land over City of Brass for a needed 
 console.log('\n=== staple: creature + land gains a tap-for-mana ability ===');
 (() => {
   if (!ENGINE.synthesizeStapledTemplate) { check('synthesizeStapledTemplate available', false); return; }
-  // elves (Creature) + forest (Land) → elves keeps its ability AND gains a forest tap.
-  const merged = ENGINE.synthesizeStapledTemplate('elves', ['forest']);
+  // A vanilla creature + forest → gains a {T}: Add {G} ability.
+  const cr = Object.values(CARDS).find(c => c.type === 'Creature' && !c.abilities && !c.special);
+  const merged = ENGINE.synthesizeStapledTemplate(cr.tplId, ['forest']);
   const manaAbs = (merged.abilities || []).filter(ab => ab.cost && ab.cost.tap && ab.effects && ab.effects[0] && ab.effects[0].kind === 'addMana');
-  check('merged creature has >=1 tap-for-mana ability', manaAbs.length >= 1, 'count=' + manaAbs.length);
+  check('vanilla creature + forest gains a tap-for-mana ability', manaAbs.length === 1, 'count=' + manaAbs.length);
+  check('the gained ability produces {G}', JSON.stringify(ENGINE.landProducibleColors({ type: 'Land', abilities: manaAbs })) === JSON.stringify(['G']));
+})();
+
+console.log('\n=== staple: §3.10 multi-color land (City of Brass) is now a valid staple ===');
+(() => {
+  const cr = Object.values(CARDS).find(c => c.type === 'Creature' && !c.abilities && !c.special);
+  check('City of Brass onto a creature is now compatible (rejection lifted)',
+    isCompatibleStaplePair(cr.tplId, 'cityOfBrass'));
+  const merged = ENGINE.synthesizeStapledTemplate(cr.tplId, ['cityOfBrass']);
+  const manaAb = (merged.abilities || []).find(ab => ab.cost && ab.cost.tap && ab.effects[0] && ab.effects[0].kind === 'addMana');
+  check('the gained ability taps for all 5 colors (choose form)',
+    manaAb && JSON.stringify(manaEffectColors(manaAb.effects[0]).slice().sort()) === JSON.stringify(['B', 'G', 'R', 'U', 'W']),
+    JSON.stringify(manaAb && manaAb.effects[0]));
+})();
+
+console.log('\n=== staple: land + land merges colors into one choose ability ===');
+(() => {
+  const merged = ENGINE.synthesizeStapledTemplate('plains', ['island']);
+  const colors = ENGINE.landProducibleColors(merged).slice().sort();
+  check('plains + island taps for W or U', JSON.stringify(colors) === JSON.stringify(['U', 'W']), JSON.stringify(colors));
+  const manaAbs = (merged.abilities || []).filter(ab => ab.cost && ab.cost.tap && ab.effects[0] && ab.effects[0].kind === 'addMana');
+  check('merged land has exactly one mana ability (merged, not duplicated)', manaAbs.length === 1, 'count=' + manaAbs.length);
 })();
 
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');

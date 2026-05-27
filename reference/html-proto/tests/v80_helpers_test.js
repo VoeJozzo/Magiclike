@@ -23,8 +23,8 @@ check('leavesPlayPreservingBuffs calls (>=5 call sites + def + comments)',
   lppb >= 5, 'actual=' + lppb);
 
 const amt = (code.match(/appendMergedText\(/g) || []).length;
-check('appendMergedText calls (>=6 call sites + def + comments)',
-  amt >= 7, 'actual=' + amt);
+check('appendMergedText still wired (def + call sites; §3.10 collapsed the merge branches)',
+  amt >= 5, 'actual=' + amt);
 
 console.log('\n=== Source-level: old patterns gone ===');
 const oldLeavePattern = code.split('\n').filter(line =>

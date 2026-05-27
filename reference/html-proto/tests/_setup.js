@@ -145,6 +145,7 @@ const EXPOSED = [
   'generateConditionOptions', 'generateEffectOptions', 'assembleTrigger',
   // Engine module-scope helpers (above the ENGINE IIFE).
   'deckColorsFromSlots', 'fakeTargetsForLegality',
+  'isCompatibleStaplePair', 'manaAbilityOf', 'manaEffectColors',
   // Sticker module surface (stickers.js, all top-level).
   'weightedPick',
   'applyStickersToCard', 'applyOneStickerToRuntimeCard',

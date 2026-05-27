@@ -105,19 +105,9 @@ function canonicalSplicePair(tplA, tplB) {
 function isCompatibleStaplePair(baseTplId, stapleTplId) {
   if (!isSpliceableBase(baseTplId)) return false;
   if (!isSpliceableStaple(stapleTplId)) return false;
-  const baseTpl = CARDS[baseTplId];
-  const stapleTpl = CARDS[stapleTplId];
-  // Multi-color land restriction: creature+land/spell+land require single-color
-  // staple. (§3.10 will lift this now that addMana has a choose form; for §3.9
-  // keep the restriction, reading producible colors from the tap-ability.)
-  if (baseTpl.type === 'Creature' && stapleTpl.type === 'Land'
-      && landProducibleColors(stapleTpl).length > 1) {
-    return false;
-  }
-  if (baseTpl.type !== 'Creature' && baseTpl.type !== 'Land' && stapleTpl.type === 'Land'
-      && landProducibleColors(stapleTpl).length > 1) {
-    return false;
-  }
+  // §3.10: the multi-color-land restriction is lifted — the synthesized
+  // tap-ability now uses the add_mana choose form (§3.9), so a multi-color land
+  // (City of Brass) is a valid staple onto any base.
   return true;
 }
 
@@ -319,40 +309,18 @@ function synthesizeStapledTemplate(baseTplId, stapledTpls) {
   const baseTpl = CARDS[baseTplId];
   if (!baseTpl) throw new Error('Unknown card: ' + baseTplId);
   if (!stapledTpls || stapledTpls.length === 0) return baseTpl;
-  // Walk the staples and merge step by step. We mutate a working copy.
-  const merged = {
-    name: baseTpl.name,
-    type: baseTpl.type,
-    sub: baseTpl.sub,
-    art: baseTpl.art,
-    text: baseTpl.text,
-    cost: baseTpl.cost ? {...baseTpl.cost} : {},
-    color: baseTpl.color,
-    keywords: (baseTpl.keywords || []).slice(),
-    power: baseTpl.power,
-    toughness: baseTpl.toughness,
-    mana: baseTpl.mana,
-    effects: copyCardEffects(baseTpl.effects),
-    abilities: baseTpl.abilities ? baseTpl.abilities.map(ab => ({
-      ...ab,
-      cost: ab.cost ? {...ab.cost} : undefined,
-      effects: (ab.effects || []).map(e => ({...e})),
-    })) : undefined,
-    triggers: (baseTpl.triggers || []).map(t => ({
-      ...t,
-      effects: (t.effects || []).map(e => ({...e})),
-    })),
-    staticBuffs: baseTpl.staticBuffs ? baseTpl.staticBuffs.map(b => ({...b})) : undefined,
-    permanentEot: baseTpl.permanentEot,
-    triggerPoolSeed: baseTpl.triggerPoolSeed,
-    innate: baseTpl.innate,
-    special: baseTpl.special,
-    multiTarget: baseTpl.multiTarget,
-    stapleable: baseTpl.stapleable,
-    // Runtime synthesis marker, threaded via card.stapledFrom for downstream
-    // callers (empower target enumeration, sticker eligibility, etc.).
-    stapledFrom: { baseTplId, stapledTpls: stapledTpls.slice() },
-  };
+  // Walk the staples and merge step by step into a deep-cloned working copy.
+  // §3.10: a full deep clone (templates are pure JSON) instead of a
+  // hand-maintained field list — a new schema field is then carried
+  // automatically rather than silently dropped on every stapled card.
+  const merged = JSON.parse(JSON.stringify(baseTpl));
+  delete merged.tplId;   // synthetic template — not a real card id
+  merged.cost = merged.cost || {};
+  merged.keywords = merged.keywords || [];
+  merged.triggers = merged.triggers || [];
+  // Runtime synthesis marker, threaded via card.stapledFrom for downstream
+  // callers (empower target enumeration, sticker eligibility, etc.).
+  merged.stapledFrom = { baseTplId, stapledTpls: stapledTpls.slice() };
   for (const stapleTplId of stapledTpls) {
     const stapleTpl = CARDS[stapleTplId];
     if (!stapleTpl) continue;
@@ -373,19 +341,28 @@ function appendMergedText(merged, addition) {
   merged.text = (merged.text ? merged.text + ' ' : '') + (addition || '');
 }
 
-// Mutate `merged` to add the staple's contribution. Branch order matters.
-// Merge cases (Spell+Creature and Land+Creature are rejected upstream):
-//   Cr+Cr: body+ability merge.  Cr+Ld: land becomes {T}:addMana ability.
-//   Cr+Sp: spell becomes ETB.   Ld+Ld: mana production merges.
-//   Ld+Sp: spell becomes ETB.   Sp+Ld: spell gains addMana effect.
-//   Sp+Sp: effects concat with slot remap.
+// Mutate `merged` to add the staple's contribution. §3.10: dispatch on the
+// STAPLE's type (not base-type branch order), leveraging the canonicalization
+// hierarchy (Creature>Artifact>Land>Spell picks the base). Three behaviors:
+//   staple Creature → body merge (base is always Creature here).
+//   staple Land     → permanent base gains the land's tap-ability (Cr+Ld / Ld+Ld).
+//   staple Spell    → permanent base gets an ETB trigger (Cr+Sp / Ld+Sp, identical);
+//                     spell base concatenates effects (Sp+Sp, multiTarget).
+// Impossible pairs (a higher-priority staple that should have won the base slot)
+// throw rather than silently degrading to Sp+Sp.
 function mergeStapleInto(merged, stapleTpl) {
   if (stapleTpl.cost) {
     for (const [k, v] of Object.entries(stapleTpl.cost)) {
       merged.cost[k] = (merged.cost[k] || 0) + v;
     }
   }
-  if (merged.type === 'Creature' && stapleTpl.type === 'Creature') {
+  const basePermanent = merged.type === 'Creature' || merged.type === 'Land';
+  if (stapleTpl.type === 'Creature') {
+    // Body merge. Base is always a Creature here (canonicalization), else a
+    // creature staple would have won the base slot.
+    if (merged.type !== 'Creature') {
+      throw new Error('staple-merge: creature staple on non-creature base ' + merged.type);
+    }
     merged.power = (merged.power || 0) + (stapleTpl.power || 0);
     merged.toughness = (merged.toughness || 0) + (stapleTpl.toughness || 0);
     const stapleKws = stapleTpl.keywords || [];
@@ -432,56 +409,43 @@ function mergeStapleInto(merged, stapleTpl) {
     }
     if (stapleTpl.permanentEot) merged.permanentEot = true;
     appendMergedText(merged, stapleTpl.text);
-  } else if (merged.type === 'Creature' && stapleTpl.type === 'Land') {
-    // Llanowar-Elves shape: {T}: addMana matching the staple land's production
-    // (§3.9). Multi-color lands rejected by isCompatibleStaplePair (single-color).
-    if (!Array.isArray(merged.abilities)) merged.abilities = [];
-    const colors = landProducibleColors(stapleTpl);
-    merged.abilities.push(manaAbilityForColors(colors));
-    appendMergedText(merged, '{T}: Add {' + colors.join('}{') + '}.');
-  } else if (merged.type === 'Creature') {
-    // Creature + Spell: spell becomes ETB trigger.
-    const nextFreeSlot = computeNextFreeSlot(merged);
-    const remapped = remapEffectSlots(stapleTpl.effects, nextFreeSlot);
-    merged.triggers.push({
-      event: 'card_zone_change',
-      condition: ['this_card', 'card_moves(anywhere, battlefield)'],
-      text: 'ETB: ' + (stapleTpl.text || stapleTpl.name),
-      effects: Array.isArray(remapped) ? remapped : [],
-    });
-    appendMergedText(merged, 'When this enters, ' + (stapleTpl.text || stapleTpl.name) + '.');
-  } else if (merged.type === 'Land' && stapleTpl.type === 'Land') {
-    // Land + Land: both lands' production merges into one tap-ability (§3.9),
-    // dedup so Plains+Plains stays Plains.
-    const all = landProducibleColors(merged).slice();
-    for (const c of landProducibleColors(stapleTpl)) if (!all.includes(c)) all.push(c);
-    const oldAb = manaAbilityOf(merged);
-    merged.abilities = (merged.abilities || []).filter(ab => ab !== oldAb);
-    merged.abilities.push(manaAbilityForColors(all));
-    merged.text = all.length > 1 ? ('{T}: Add one of {' + all.join('}{') + '}.') : '';
-  } else if (merged.type === 'Land') {
-    // Land + Spell: spell becomes ETB. Lands emit cardEntersBattlefield on play.
-    const nextFreeSlot = computeNextFreeSlot(merged);
-    const remapped = remapEffectSlots(stapleTpl.effects, nextFreeSlot);
-    if (!Array.isArray(merged.triggers)) merged.triggers = [];
-    merged.triggers.push({
-      event: 'card_zone_change',
-      condition: ['this_card', 'card_moves(anywhere, battlefield)'],
-      text: 'ETB: ' + (stapleTpl.text || stapleTpl.name),
-      effects: Array.isArray(remapped) ? remapped : [],
-    });
-    appendMergedText(merged, 'When this enters, ' + (stapleTpl.text || stapleTpl.name) + '.');
   } else if (stapleTpl.type === 'Land') {
-    // Spell + Land: spell gains addMana on resolve, usable for later spells in window.
-    const colors = landProducibleColors(stapleTpl);
-    const eff = (colors.length <= 1)
-      ? { kind: 'addMana', amounts: { [colors[0]]: 1 }, target: 'self' }
-      : { kind: 'addMana', choose: colors.slice(), target: 'self' };
-    if (!Array.isArray(merged.effects)) merged.effects = [];
-    merged.effects.push(eff);
-    appendMergedText(merged, 'Add {' + colors.join('}{') + '} to your mana pool.');
+    // Permanent base gains the staple land's tap-ability (§3.9). Merge into an
+    // existing mana ability (Ld+Ld, or a creature that already taps for mana —
+    // one tap can only fire once, so merging to a choose-ability is equivalent
+    // to two single-color abilities and cleaner); else append a fresh one
+    // (vanilla Cr+Ld). Multi-color staples use the choose form (§3.9).
+    if (!basePermanent) {
+      throw new Error('staple-merge: land staple on spell base (canonicalization should make the land the base)');
+    }
+    const stapColors = landProducibleColors(stapleTpl);
+    const oldAb = manaAbilityOf(merged);
+    let allColors;
+    if (oldAb) {
+      allColors = manaEffectColors(oldAb.effects[0]).slice();
+      for (const c of stapColors) if (!allColors.includes(c)) allColors.push(c);
+      merged.abilities = merged.abilities.filter(ab => ab !== oldAb);
+    } else {
+      allColors = stapColors;
+      if (!Array.isArray(merged.abilities)) merged.abilities = [];
+    }
+    merged.abilities.push(manaAbilityForColors(allColors));
+    appendMergedText(merged, '{T}: Add ' + (allColors.length > 1
+      ? 'one of {' + allColors.join('}{') + '}' : '{' + allColors.join('}{') + '}') + '.');
+  } else if (basePermanent) {
+    // Spell staple on a permanent base → ETB trigger. Cr+Sp and Ld+Sp are
+    // byte-identical (same card_zone_change(anywhere→battlefield) trigger).
+    const nextFreeSlot = computeNextFreeSlot(merged);
+    const remapped = remapEffectSlots(stapleTpl.effects, nextFreeSlot);
+    merged.triggers.push({
+      event: 'card_zone_change',
+      condition: ['this_card', 'card_moves(anywhere, battlefield)'],
+      text: 'ETB: ' + (stapleTpl.text || stapleTpl.name),
+      effects: Array.isArray(remapped) ? remapped : [],
+    });
+    appendMergedText(merged, 'When this enters, ' + (stapleTpl.text || stapleTpl.name) + '.');
   } else {
-    // Spell + Spell: effects concat with slot remap.
+    // Spell base + spell staple: effects concat with slot remap (multiTarget).
     const nextFreeSlot = computeNextFreeSlot(merged);
     const remapped = remapEffectSlots(stapleTpl.effects, nextFreeSlot);
     if (!Array.isArray(merged.effects)) merged.effects = [];
