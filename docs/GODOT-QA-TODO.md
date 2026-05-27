@@ -234,19 +234,29 @@ exercised directly via an exposed `ENGINE.applyEffect` test seam):
   "to each creature" / "creatures you control get…"). 0 cards use the legacy
   mass/weaken kinds. Suite 732/732; selfplay 500 clean. `effect_migration_test.js`.
 
-Still TODO proto — **remaining collapses (step 6 part 2b)**, each needing a
-card-text + spellValueForEffects case for the compound target: gainControl/steal
-→ change_control (2 cards), returnFromGraveyard/shuffleIntoLibrary → move_card
-(4), edict → target(player)+chooses+sacrifice (1, structural). **Engine-GATED
-collapses** (need engine work first): addCounter → pump (needs pump `duration`),
-restrict → grant_keyword (needs hidden `no_block` kw), draw/discard → move_card
-(needs prompt-driven selectors), search* → move_card (library_search prompt),
-flicker/exileUntilEOT → move_card decomp (needs battlefield-arrival, partly
-done). Then **step 7** (delete the now-unused legacy EFFECTS handlers:
-damageAll/removeAll/pumpAllYours/weaken + the §8.1 dead-code purge),
-`apply_sticker` + sticker pipeline (step 10), mana deep-clean (§3.9). Also:
-selfDamageOf scope:controller (minor) · UI target-pick (part D, browser) ·
-staple `fireStackEffects` path still per-effect (Stapler-only).
+- **Kind-COLLAPSE — change_control + move_card DONE (proto, step 6 part 2b):**
+  gainControl/steal → change_control (3 cards), returnFromGraveyard/
+  shuffleIntoLibrary → move_card (4 cards). Each with strict before==after
+  parity (card-text, spellValueForEffects, scoreSpellTargetForMode). 0 cards
+  use the legacy kinds. Suite 740/740; selfplay 500 clean. **All
+  straightforward (non-structural, non-engine-gated) collapses are now done.**
+
+Still TODO proto:
+- **edict → target(player)+chooses+sacrifice** (1 card, structural — changes
+  the AI valuation path from shouldCastUntargeted to scoreSpellTargetForMode,
+  and the card-text chain needs a chooses+sacrifice rendering).
+- **Engine-GATED collapses** (need engine work first): addCounter → pump (add
+  pump `duration:permanent`/permPower), restrict → grant_keyword (add hidden
+  `no_block` kw), draw/discard → move_card (prompt-driven selectors), search* →
+  move_card (library_search prompt), flicker/exileUntilEOT → move_card decomp
+  (battlefield-arrival is built; needs the delayed-return half).
+- **Step 7**: delete the now-unused legacy EFFECTS handlers (damageAll,
+  removeAll, pumpAllYours, weaken, gainControl, steal, returnFromGraveyard,
+  shuffleIntoLibrary) + their card-text/valuation cases + the §8.1 dead-code
+  purge. (They're dead — no card uses them — but still present.)
+- `apply_sticker` + sticker pipeline (step 10), mana deep-clean (§3.9),
+  selfDamageOf scope:controller (minor), UI target-pick (part D, browser),
+  staple `fireStackEffects` path (Stapler-only).
 
 ### Godot mirror — major work items (per plan §10/§11)
 
