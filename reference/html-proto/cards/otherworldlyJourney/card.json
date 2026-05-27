@@ -8,7 +8,22 @@
   "target": "creature",
   "effects": [
     {
-      "kind": "exileUntilEOT"
+      "kind": "move_card",
+      "from_zone": "battlefield",
+      "to_zone": "exile",
+      "selector": "target"
+    },
+    {
+      "kind": "schedule_delayed",
+      "when": "end_step",
+      "effects": [
+        {
+          "kind": "move_card",
+          "from_zone": "exile",
+          "to_zone": "battlefield",
+          "selector": "target"
+        }
+      ]
     }
   ],
   "name": "Otherworldly Journey",

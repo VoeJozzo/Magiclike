@@ -1369,6 +1369,28 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
       return 30 + pow + Math.floor(tou / 2) + laneOpeningBonus(state, us, target.iid);
     }
     if (eff.from_zone === 'battlefield' && eff.to_zone === 'exile'
+        && modeEffects.some(e => e.kind === 'schedule_delayed')) {
+      // Collapsed exile_until_eot (exile now + a scheduled return at EOT).
+      //   1. Opp's creature → tempo removal (off the board for a turn).
+      //   2. Own creature → delayed flicker (re-fire ETB at EOT).
+      if (target.kind !== 'creature') return -100;
+      const c = ENGINE.findCard(target.iid);
+      if (!c) return -100;
+      if (c.card.isToken && c.controller === us) return -100;
+      if (c.controller !== us) {
+        let score = 8 + ENGINE.getCardValue(c.card, 'kill');
+        if (c.card.isToken) score += 4;  // token doesn't return — permanent removal
+        return score;
+      }
+      let score = 3;
+      if (Array.isArray(c.card.triggers)) {
+        score += c.card.triggers.filter(triggerFiresOnEnter).length * 8;  // less than flicker (delayed)
+      }
+      if (c.card.damage > 0) score += c.card.damage * 2;
+      score -= (c.card.permPower || 0) + (c.card.permTou || 0);
+      return score;
+    }
+    if (eff.from_zone === 'battlefield' && eff.to_zone === 'exile'
         && modeEffects.some(e => e.kind === 'move_card' && e.from_zone === 'exile' && e.to_zone === 'battlefield')) {
       // Collapsed flicker (exile + immediate return). Flickering only makes
       // sense on our own creatures. Best targets:
@@ -1391,39 +1413,6 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
       return score;
     }
     return 0;
-  }
-  if (eff.kind === 'exileUntilEOT') {
-    // Two valid targeting modes:
-    //   1. Own creature → re-fire ETB triggers when it returns at EOT,
-    //      dodge removal on the stack, reset damage. Same logic as flicker
-    //      but with a turn delay before the ETB re-fires.
-    //   2. Opp's creature → tempo removal. Take a threat off the board
-    //      for one turn — they can't attack with it, can't block with it,
-    //      can't tap it for an ability. Value scales with what we're
-    //      removing. Best on big threats, attackers, sac outlets.
-    if (target.kind !== 'creature') return -100;
-    const c = ENGINE.findCard(target.iid);
-    if (!c) return -100;
-    if (c.card.isToken && c.controller === us) return -100;  // would lose our own token
-    if (c.controller !== us) {
-      // Opp's creature. Tempo-removal valuation: scales with stats and
-      // keywords. Bigger bonus during their attack window (we're about to
-      // be hit) than during ours. Tokens removed PERMANENTLY (they cease
-      // to exist on EOT return) — extra value.
-      let score = 8 + ENGINE.getCardValue(c.card, 'kill');
-      if (c.card.isToken) score += 4;  // token doesn't return; permanent removal
-      return score;
-    }
-    // Own creature. Same logic as flicker but slightly less valuable since
-    // the re-ETB happens at EOT (delayed) rather than immediately.
-    let score = 3;
-    if (Array.isArray(c.card.triggers)) {
-      const etbTriggers = c.card.triggers.filter(triggerFiresOnEnter);
-      score += etbTriggers.length * 8;  // less than flicker's 12 since delayed
-    }
-    if (c.card.damage > 0) score += c.card.damage * 2;
-    score -= (c.card.permPower || 0) + (c.card.permTou || 0);
-    return score;
   }
   return 0;
 }

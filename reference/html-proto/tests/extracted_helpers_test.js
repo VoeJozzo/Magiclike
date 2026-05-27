@@ -27,12 +27,12 @@ outerCheck('resolveTarget defined', /function resolveTarget\(ctx, target\)/.test
 outerCheck('pluckFromBattlefield defined', /function pluckFromBattlefield\(f\)/.test(code));
 
 const resolveCalls = (code.match(/const f = resolveTarget\(ctx, target\)/g) || []).length;
-outerCheck('resolveTarget call sites = 13 (post embargo/bleach→apply_sticker+move_card)',
-  resolveCalls === 13, 'actual=' + resolveCalls);
+outerCheck('resolveTarget call sites = 12 (post exileUntilEOT→move_card+schedule_delayed)',
+  resolveCalls === 12, 'actual=' + resolveCalls);
 
 const pluckCalls = (code.match(/pluckFromBattlefield\(/g) || []).length;
-outerCheck('pluckFromBattlefield call sites = 7 (post embargo/bleach→apply_sticker+move_card)',
-  pluckCalls === 7, 'actual=' + pluckCalls);
+outerCheck('pluckFromBattlefield call sites = 6 (post exileUntilEOT→move_card+schedule_delayed)',
+  pluckCalls === 6, 'actual=' + pluckCalls);
 
 const fizzleInCode = code.split('\n').filter(line =>
   /fizzles — target gone/.test(line) && !/^\s*\/\//.test(line.trim())

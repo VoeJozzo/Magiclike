@@ -282,8 +282,10 @@ function describeEffect(eff, tplEff) {
       return [plainSeg('')];
     case 'fightTarget':
       return [plainSeg('your strongest creature fights ' + t)];
-    case 'exileUntilEOT':
-      return [plainSeg('exile ' + t + ' until end of turn')];
+    case 'schedule_delayed':
+      // Standalone fallback; the exile-until-eot pair is rendered as one phrase
+      // by describeEffectList (below).
+      return [plainSeg('return it to the battlefield at end of turn')];
     case 'addMana': {
       if (eff.choose) {
         return [plainSeg(eff.choose === 'any'
@@ -400,6 +402,13 @@ function describeEffectList(effects, cardName, tplEffects, stepTarget) {
       && effects[1].kind === 'move_card'
       && effects[1].from_zone === 'exile' && effects[1].to_zone === 'battlefield') {
     return capitalizeSegs(parts[0]).concat(plainSeg(', then ')).concat(parts[1]).concat(plainSeg('.'));
+  }
+  // Exile-until-eot pattern — move_card(bf→exile) + schedule_delayed(exile→bf).
+  if (effects.length === 2
+      && effects[0].kind === 'move_card'
+      && effects[0].from_zone === 'battlefield' && effects[0].to_zone === 'exile'
+      && effects[1].kind === 'schedule_delayed') {
+    return capitalizeSegs(parts[0]).concat(plainSeg('; return it to the battlefield at end of turn.'));
   }
   // Drop effects that render to nothing (e.g. chooses() — its phrasing is
   // carried by the following sacrifice clause), so they don't leave stray ". ".

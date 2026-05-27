@@ -532,7 +532,7 @@ function drawTargetLines() {
 // classifyValence, not by flat membership.
 const HARMFUL_KINDS = new Set([
   'damage', 'removeCreature', 'destroyAndStickerSlot', 'change_control',
-  'counter', 'exileUntilEOT', 'ripPermanent', 'symmetricize', 'fightTarget',
+  'counter', 'ripPermanent', 'symmetricize', 'fightTarget',
   'sacrifice', 'chooses', 'apply_sticker', 'discard',
 ]);
 const BENEFICIAL_KINDS = new Set([

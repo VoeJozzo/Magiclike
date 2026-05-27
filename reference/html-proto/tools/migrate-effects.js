@@ -95,6 +95,16 @@ function collapseEffect(e) {
     const { kind, target, ...rest } = e;
     return Object.assign({ kind: 'move_card', from_zone: 'library', to_zone: 'hand', selector: 'controller_top' }, rest);
   }
+  if (e.kind === 'exileUntilEOT') {
+    // Exile then return at end of turn (plan §9.1/D9): move_card(bf→exile) +
+    // schedule_delayed(move_card(exile→bf), end_step). Both on the top-level target.
+    const { kind, target, filter, ...rest } = e;
+    return [
+      Object.assign({ kind: 'move_card', from_zone: 'battlefield', to_zone: 'exile', selector: 'target' }, rest),
+      { kind: 'schedule_delayed', when: 'end_step',
+        effects: [{ kind: 'move_card', from_zone: 'exile', to_zone: 'battlefield', selector: 'target' }] },
+    ];
+  }
   if (e.kind === 'flicker') {
     // flicker = exile then immediately return (plan §4.1 / line 763: the
     // synchronous variant, two move_cards back-to-back, no schedule_delayed).

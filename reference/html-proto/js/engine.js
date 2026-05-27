@@ -1147,7 +1147,7 @@ function spellValueForEffects(effects) {
     else if (e.kind === 'draw') v += (e.amount || 1) * 3;
     else if (e.kind === 'discard') v += 4;
     else if (e.kind === 'gainLife') v += 1;
-    else if (e.kind === 'exileUntilEOT') v += 5;
+    else if (e.kind === 'schedule_delayed') v += 1;  // exile_until_eot's return tail (the bf→exile half carries the value)
     else if (e.kind === 'pump') v += (e.power < 0 || e.toughness < 0) ? (3 + Math.abs(e.toughness || 0)) : 2;
     else if (e.kind === 'grantKeyword') {
       // mass-yours-eot Overrun-shape vs single-target permanent vs symmetric.
@@ -1442,7 +1442,10 @@ function placeCardOnBattlefield(ctx, card, fromZone, post) {
   const hasHaste = card.keywords.includes('haste') || !!post.grant_haste;
   card.sick = !hasHaste;
   if (post.grant_haste && !card.keywords.includes('haste')) applyGrant(card, 'haste', ctx.sourceIid, true);
-  const ctrl = ctx.controller;
+  // Arrivals return under their OWNER's control (exile-until-eot / flicker of a
+  // stolen creature). owner == controller for the common cases (reanimate own
+  // graveyard, fetch own library, flicker own creature).
+  const ctrl = card.owner || ctx.controller;
   G[ctrl].battlefield.push(card);
   if (post.tap) card.tapped = true;
   if (post.untap_on_arrive) card.tapped = false;
@@ -1951,8 +1954,15 @@ const EFFECTS = {
         continue;
       }
       if (from === 'graveyard' || from === 'exile') {
-        const zone = G[ctx.controller][from];
-        const idx = zone.findIndex(c => c.iid === t.iid);
+        // Search the controller's zone first, then the opponent's — an
+        // exile-until-eot return retrieves an opp-owned card from the opp's
+        // exile (the card was routed to its owner's zone on the way out).
+        let zone = G[ctx.controller][from];
+        let idx = zone.findIndex(c => c.iid === t.iid);
+        if (idx < 0) {
+          zone = G[opp(ctx.controller)][from];
+          idx = zone.findIndex(c => c.iid === t.iid);
+        }
         if (idx < 0) break;
         const [card] = zone.splice(idx, 1);
         card.tapped = false; card.sick = false; card.damage = 0;
@@ -2115,26 +2125,21 @@ const EFFECTS = {
     ctx.chosen = { kind: 'creature', iid: picked.iid, label: picked.name };
     log(`${pname(who)} chooses ${picked.name}.`, 'sp');
   },
-  // Exile a creature until end of turn; returns at end step via delayedTriggers.
-  // Stays monolithic (not move_card-decomposed) until B4 lands — plan §9.1.
-  exileUntilEOT(ctx, params, target) {
-    const f = resolveTarget(ctx, target);
-    if (!f) return;
-    const card = pluckFromBattlefield(f);
-    if (!card) return;
-    leavesPlayPreservingBuffs(card);
-    log(`${ctx.sourceName} exiles ${card.name} until end of turn.`, 'sp');
-    emitLeavesBattlefield(card, f.controller, 'exile');
-    // Hold card on delayed trigger (separate from exile zone, which handles permanent exile).
+  // Register a delayed trigger that applies `effects` at `when` ('end_step'),
+  // operating on the same target the prior effect did (the §9.1/D9 delayed-effect
+  // atom). exile_until_eot decomposes to move_card(bf→exile) + schedule_delayed
+  // (move_card(exile→bf), end_step) — replacing the bespoke returnFromExile path.
+  schedule_delayed(ctx, params, target) {
+    if (!Array.isArray(G.delayedTriggers)) G.delayedTriggers = [];
     G.delayedTriggers.push({
-      fireAt: 'endStep',
+      fireAt: params.when === 'end_step' ? 'endStep' : params.when,
       fireFor: 'either',
-      effect: 'returnFromExile',
+      effect: 'deferredEffects',
+      effects: (params.effects || []).map(e => ({...e})),
+      target: target || ctx.chosen || null,
       controller: ctx.controller,
       sourceName: ctx.sourceName,
       sourceIid: ctx.sourceIid,
-      exiledCard: card,
-      exiledFrom: card.owner || f.controller,
     });
   },
   // Unified control-change primitive (effects-refactor §4.2 / decision 11):
@@ -5420,18 +5425,14 @@ function step() {
             // 'you', or 'opp'. Default to 'either' for v1 simplicity.
             const matchesPlayer = !dt.fireFor || dt.fireFor === 'either' || dt.fireFor === ap;
             if (dt.fireAt === 'endStep' && matchesPlayer) {
-              if (dt.effect === 'returnFromExile' && dt.exiledCard) {
-                // Tokens that exiled cease to exist — they don't return.
-                if (dt.exiledCard.isToken) {
-                  log(`${dt.exiledCard.name} ceases to exist.`, 'sp');
-                } else {
-                  // Return to battlefield. Sickness reset (haste keyword
-                  // overrides). resetInPlayState already cleared in-play
-                  // state when the card was exiled, so it returns clean.
-                  dt.exiledCard.sick = !dt.exiledCard.keywords.includes('haste');
-                  G[dt.exiledFrom].battlefield.push(dt.exiledCard);
-                  log(`${dt.exiledCard.name} returns to the battlefield.`, 'sp');
-                  emitZoneChange(dt.exiledCard, dt.exiledFrom, 'exile', 'battlefield');
+              if (dt.effect === 'deferredEffects' && Array.isArray(dt.effects)) {
+                // Apply the scheduled effects on the captured target (e.g.
+                // exile_until_eot's move_card(exile→battlefield)). Tokens that
+                // left play aren't in any zone, so the move_card no-ops and the
+                // token stays gone — matching "ceases to exist".
+                const dctx = { controller: dt.controller, sourceName: dt.sourceName, sourceIid: dt.sourceIid };
+                for (const eff of dt.effects) {
+                  applyEffect(dctx, eff, dt.target, snapshotTarget(dt.target));
                 }
               }
               // fired, don't keep
