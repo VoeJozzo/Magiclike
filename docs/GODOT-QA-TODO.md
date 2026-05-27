@@ -299,9 +299,37 @@ addCounter's pool retention). Golden test: 22-card collapse + draw in the
 card-data GONE list. **Godot mirror:** same migration over `.tres`/JSON + the
 `abilityValue`/`scoring.gd`/`burn.gd` draw reads must learn the move_card shape.
 
+**flicker → move_card DONE (proto).** Cloudshift (the only flicker card) is now
+two back-to-back move_cards — `move_card(battlefield→exile)` then
+`move_card(exile→battlefield)` — both on the top-level `your_creature` target
+step (plan §4.1 line 763: the synchronous variant, no `schedule_delayed`, no B4
+dependency). The flicker EFFECTS handler + its card-text/AI/spellValue cases are
+deleted; consumers recognize the bf→exile shape (card-text renders the
+one-sentence flicker idiom via a pattern like the loot pattern;
+`scoreSpellTargetForMode` routes the ETB-re-fire valuation when the effects also
+contain the exile→bf return). `test_flicker.js` casts cloudshift through the
+real resolution path. **Two things the Godot mirror MUST replicate:**
+1. **ETB double-fire fix in the arrival path.** Proto's `placeCardOnBattlefield`
+   pushed the card onto the battlefield AND passed it as `emitZoneChange`
+   extraSources, so `emit()`'s battlefield walk + the extraSources walk both
+   matched the arrival → the ETB trigger fired TWICE. Fixed by dropping the
+   redundant extraSources (arrivals are already on the battlefield; extraSources
+   is only for cards that have LEFT a zone — dies/leave). Godot's arrival emit
+   has the same shape; do NOT pass the arriving card as an extra source.
+2. **DELIBERATE behavior change (user-approved):** the bf→exile half emits
+   `emitLeavesBattlefield`, so "leaves play" triggers now fire on flicker
+   (MTG-correct; the old monolith skipped them). Only Archdemon Bargains has
+   such a trigger in the pool.
+
+`exileUntilEOT` STAYS monolithic (plan §9.1 — the conscious cross-engine
+symmetry state; its delayed end-step return migrates to `move_card` +
+`schedule_delayed` only when B4 lands).
+
 Remaining collapses (each needs more than a rewrite):
-- **discard/search → move_card** (gated on prompt-driven selectors).
-- **flicker/exileUntilEOT → move_card decomp** (needs the delayed-return half).
+- **discard/search → move_card** (gated on prompt-driven selectors —
+  `controller_chosen`/`target_player`/`library_search`, the human-prompt/AI-pick
+  infra; not built).
+- **exileUntilEOT → move_card decomp** (B4-deferred per §9.1; stays monolithic).
 
 Then `apply_sticker` + sticker pipeline (step 10), mana deep-clean (§3.9),
 selfDamageOf scope:controller (minor), UI target-pick (browser), staple
