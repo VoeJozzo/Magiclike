@@ -90,6 +90,29 @@ console.log('=== applyStickersToCard: each kind mutates correctly ===');
     'before=' + before + ' after=' + card.cost.C);
 }
 
+// §3.8: inline parameterized stickers ({kind,...} descriptors) — cost_mod /
+// set_color — flow through the batch (applyStickersToCard) path.
+{
+  const card = freshCard('furnaceWhelp', [{ kind: 'cost_mod', amount: 2, stackable: true }]);
+  const before = card.cost.C;
+  applyStickersToCard(card);
+  check('cost_mod +2 raises card.cost.C by 2', card.cost.C === before + 2,
+    'before=' + before + ' after=' + card.cost.C);
+}
+{
+  const card = freshCard('furnaceWhelp', [{ kind: 'set_color', color: 'C' }]);
+  applyStickersToCard(card);
+  check('set_color sets card.color to C', card.color === 'C', 'color=' + card.color);
+}
+{
+  // Mixed string + inline descriptors in one slot's sticker list.
+  const card = freshCard('furnaceWhelp', ['plus1plus1', { kind: 'cost_mod', amount: 1, stackable: true }]);
+  const before = card.cost.C;
+  applyStickersToCard(card);
+  check('mixed string + inline stickers both apply',
+    card.modifiers.some(m => m.power === 1) && card.cost.C === before + 1);
+}
+
 {
   const roll = { location: 'abilities', subIdx: 0, effIdx: 0, modeIdx: null, field: 'amount' };
   const card = freshCard('spitfireBastion', ['empower'], { empowerRolls: [roll] });

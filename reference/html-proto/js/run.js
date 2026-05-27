@@ -95,7 +95,10 @@ function load() {
           return id;
         });
         const before = slot.stickers.length;
-        slot.stickers = slot.stickers.filter(id => STICKERS[id]);
+        // Keep registry-id stickers AND inline {kind,...} descriptors (§3.8
+        // apply_sticker products: cost_mod / set_color / stat_boost snapshots).
+        slot.stickers = slot.stickers.filter(s =>
+          (s && typeof s === 'object' && s.kind) || STICKERS[s]);
         stalePruned += before - slot.stickers.length;
         // Backfill empowerRolls for empower stickers without recorded rolls.
         const empowerCount = slot.stickers.filter(id => id === 'empower').length;
@@ -1024,9 +1027,14 @@ function applyStickerToSlot(slotIdx, stickerId) {
   if (!runState || !runState.slots) return false;
   const slot = runState.slots[slotIdx];
   if (!slot) return false;
-  const sticker = STICKERS[stickerId];
-  if (!sticker) return false;
-  if (!sticker.stackable && slot.stickers.includes(stickerId)) return false;
+  // stickerId is a registry id (string) or an inline {kind,...} descriptor
+  // (§3.8 apply_sticker). Inline descriptors carry per-application params, so
+  // they bypass the id-based stackable dedup (cost_mod stacks; set_color is
+  // idempotent).
+  const isInline = stickerId && typeof stickerId === 'object';
+  const sticker = isInline ? stickerId : STICKERS[stickerId];
+  if (!sticker || !sticker.kind) return false;
+  if (!isInline && !sticker.stackable && slot.stickers.includes(stickerId)) return false;
   pushStickerWithRoll(slot, stickerId, runState.slots);
   save();
   return true;

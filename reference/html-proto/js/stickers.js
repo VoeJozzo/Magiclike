@@ -1,6 +1,44 @@
 // STICKERS — runtime application + deck-construction helpers (extracted from engine.js).
 // Late-binds ENGINE.synthesizeStapledTemplate and tplForSlot (both resolve at call time).
 
+// A sticker entry on a slot/card is either a registry id (string) or an inline
+// parameterized descriptor {kind, ...params} (§3.8) — the latter is produced by
+// the apply_sticker effect for the Balancer family (cost_mod / set_color /
+// stat_boost snapshots), which carry per-application values no fixed registry
+// entry can hold. Normalize either form to a descriptor with a `.kind`.
+function resolveSticker(entry) {
+  if (typeof entry === 'string') return STICKERS[entry] || null;
+  if (entry && typeof entry === 'object' && entry.kind) return entry;
+  return null;
+}
+// Apply one sticker's kind-effect to a card (no push/dedup — callers handle that).
+// Shared by the batch (applyStickersToCard) and incremental
+// (applyOneStickerToRuntimeCard) paths for the non-roll kinds.
+function applyStickerKindEffect(card, s) {
+  if (s.kind === 'statBoost' || s.kind === 'stat_boost') {
+    if (!Array.isArray(card.modifiers)) card.modifiers = [];
+    card.modifiers.push({ power: s.power || 0, toughness: s.toughness || 0 });
+  } else if (s.kind === 'keyword') {
+    if (!Array.isArray(card.keywords)) card.keywords = [];
+    if (!card.keywords.includes(s.keyword)) card.keywords.push(s.keyword);
+  } else if (s.kind === 'innate') {
+    card.innate = true;
+  } else if (s.kind === 'landColor') {
+    addColorToManaAbility(card, s.color);
+  } else if (s.kind === 'costReduction') {
+    if (card.cost) card.cost.C = Math.max(0, (card.cost.C || 0) - (s.amount || 1));
+  } else if (s.kind === 'cost_mod') {
+    // Signed additive cost change (§3.8): +N for embargo, -N for a future
+    // reduction reward. Generic floored at 0.
+    if (card.cost) card.cost.C = Math.max(0, (card.cost.C || 0) + (s.amount || 0));
+  } else if (s.kind === 'set_color') {
+    card.color = s.color;
+  } else if (s.kind === 'trigger') {
+    if (!Array.isArray(card.triggers)) card.triggers = [];
+    card.triggers.push({ ...s.trigger });
+  }
+}
+
 function weightedPick(stickers) {
   let total = 0;
   for (const s of stickers) total += (s.weight || 3);
@@ -20,25 +58,9 @@ function applyStickersToCard(card) {
   let empowerCursor = 0;
   let subtypeCursor = 0;
   for (const sId of card.stickers) {
-    const s = STICKERS[sId];
+    const s = resolveSticker(sId);
     if (!s) continue;
-    if (s.kind === 'statBoost') {
-      // Symmetricize boss flattens stats to N/N, overriding stat-boost stickers.
-      // Other sticker kinds still apply.
-      if (typeof card.symmetrizedTo === 'number') continue;
-      card.modifiers.push({ power: s.power || 0, toughness: s.toughness || 0 });
-    } else if (s.kind === 'keyword') {
-      if (!card.keywords.includes(s.keyword)) card.keywords.push(s.keyword);
-    } else if (s.kind === 'innate') {
-      card.innate = true;
-    } else if (s.kind === 'landColor') {
-      addColorToManaAbility(card, s.color);  // §3.9: extend the land's tap-ability
-    } else if (s.kind === 'costReduction') {
-      if (card.cost) {
-        const generic = card.cost.C || 0;
-        card.cost.C = Math.max(0, generic - (s.amount || 1));
-      }
-    } else if (s.kind === 'empower') {
+    if (s.kind === 'empower') {
       let roll = (card.empowerRolls || [])[empowerCursor];
       if (!roll) {
         // Stapled fallback: use merged tpl so roll can land on staple half's effects.
@@ -50,8 +72,6 @@ function applyStickersToCard(card) {
       }
       empowerCursor++;
       if (roll) applyEmpowerRoll(card, roll, s.amount || 1);
-    } else if (s.kind === 'trigger') {
-      card.triggers.push({...s.trigger});
     } else if (s.kind === 'subtype') {
       // Specific subtype stored on card.subtypeRolls (parallel to occurrences). Legacy
       // saves missing a roll skip — rolling needs deck context, deferred to next save.
@@ -63,39 +83,27 @@ function applyStickersToCard(card) {
         tokens.push(rolled);
         card.sub = tokens.join(' ');
       }
+    } else {
+      // Symmetricize boss flattens stats to N/N, overriding stat-boost stickers
+      // (symmetrizedTo sentinel; removed in §3.8 Balancer decomposition).
+      if ((s.kind === 'statBoost' || s.kind === 'stat_boost') && typeof card.symmetrizedTo === 'number') continue;
+      applyStickerKindEffect(card, s);
     }
   }
 }
 
-// Apply a SINGLE sticker to a runtime card incrementally (Archdemon of Bargains
-// adds a sticker mid-game without re-applying all the others). Skips empower/subtype
-// (they need rolls); bargain filters those out at the call site.
-function applyOneStickerToRuntimeCard(card, stickerId) {
+// Apply a SINGLE sticker to a runtime card incrementally — Archdemon of Bargains
+// (registry id) and the apply_sticker effect (inline {kind,...} descriptor).
+// Skips empower/subtype (they need rolls); callers don't pass those.
+function applyOneStickerToRuntimeCard(card, sticker) {
   if (!card) return;
-  const s = STICKERS[stickerId];
+  const s = resolveSticker(sticker);
   if (!s) return;
   if (!Array.isArray(card.stickers)) card.stickers = [];
-  if (!s.stackable && card.stickers.includes(stickerId)) return;
-  card.stickers.push(stickerId);
-  if (s.kind === 'statBoost') {
-    if (!Array.isArray(card.modifiers)) card.modifiers = [];
-    card.modifiers.push({ power: s.power || 0, toughness: s.toughness || 0 });
-  } else if (s.kind === 'keyword') {
-    if (!Array.isArray(card.keywords)) card.keywords = [];
-    if (!card.keywords.includes(s.keyword)) card.keywords.push(s.keyword);
-  } else if (s.kind === 'innate') {
-    card.innate = true;
-  } else if (s.kind === 'landColor') {
-    addColorToManaAbility(card, s.color);  // §3.9: extend the land's tap-ability
-  } else if (s.kind === 'costReduction') {
-    if (card.cost) {
-      const generic = card.cost.C || 0;
-      card.cost.C = Math.max(0, generic - (s.amount || 1));
-    }
-  } else if (s.kind === 'trigger') {
-    if (!Array.isArray(card.triggers)) card.triggers = [];
-    card.triggers.push({...s.trigger});
-  }
+  const isInline = typeof sticker === 'object';
+  if (!s.stackable && !isInline && card.stickers.includes(sticker)) return;
+  card.stickers.push(sticker);
+  applyStickerKindEffect(card, s);
 }
 
 // Apply N random stickers to permanents controlled by `side` (Archdemon of
@@ -315,7 +323,7 @@ function stickersForSlot(slot, deckColors) {
   };
   let subtypeCursor = 0;
   for (const sId of slot.stickers) {
-    const s = STICKERS[sId];
+    const s = resolveSticker(sId);
     if (!s) continue;
     if (s.kind === 'keyword' && !view.keywords.includes(s.keyword)) {
       view.keywords.push(s.keyword);
@@ -337,6 +345,15 @@ function stickersForSlot(slot, deckColors) {
     if (s.kind === 'costReduction' && view.cost) {
       const generic = view.cost.C || 0;
       view.cost.C = Math.max(0, generic - (s.amount || 1));
+    }
+    // §3.8 inline Balancer stickers, so re-offer eligibility sees the modified card.
+    if (s.kind === 'cost_mod' && view.cost) {
+      view.cost.C = Math.max(0, (view.cost.C || 0) + (s.amount || 0));
+    }
+    if (s.kind === 'set_color') view.color = s.color;
+    if ((s.kind === 'statBoost' || s.kind === 'stat_boost')) {
+      view.power = (view.power || 0) + (s.power || 0);
+      view.toughness = (view.toughness || 0) + (s.toughness || 0);
     }
   }
   return Object.values(STICKERS).filter(s => {
