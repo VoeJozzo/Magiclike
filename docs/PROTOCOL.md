@@ -62,9 +62,12 @@ to the manifest.
 | `effects`      | `object[]` or modal-object | opt | Spell on-cast effects. See §4 for descriptor shape. Modal cards use the modal-object form (§4.6). |
 | `triggers`     | `object[]`       | opt      | Triggered abilities. See §5.                                  |
 | `abilities`    | `object[]`       | opt      | Activated abilities (e.g. tap-to-mana). Same shape as triggers minus `event`/`cond_id`, plus a `cost` object. |
-| `mana`         | `string` (W/U/B/R/G) | land  | Single-color mana lands. Implicit tap-for-mana ability is auto-synthesized. |
-| `extraManaColors` | `string[]`    | opt      | City of Brass-style "any color" extras layered onto `mana`.   |
+| `mana`         | `string` (W/U/B/R/G) | land  | Land's **primary-color label** (deck-color/draft/pip display only). §3.9: mana **production** lives on the land's tap-ability (`abilities: [{cost:{tap}, effects:[{add_mana, ...}]}]`), exactly like a mana dork — not on `mana`. A multi-color land uses `add_mana: {choose: ...}`. |
 | `customText`   | `bool`           | opt      | If true, suppresses the `~` placeholder lint.                 |
+
+**Removed in §3.9 (Slice 3):** `extraManaColors`. Lands now produce mana through
+a tap-for-mana ability (the `add_mana` `choose` form covers City-of-Brass "any
+color"); the parallel `extraManaColors` field is retired.
 
 **Removed in v1.0.189 / Pass 2**: `color`, `colors`. These are now
 **computed from `cost`** at ingest, on both sides. Authors should not
@@ -102,50 +105,41 @@ unions template keywords + runtime grants from pump/stickers.
 
 ### 3.2 Effect kinds
 
-The full catalog (JS authoritative as of v1.0.189). Each kind dispatches
-through `EFFECTS[kind]` in JS and `Effects.HANDLERS[kind]` in Godot.
-Effects whose Godot implementation hasn't landed yet are flagged.
+The full catalog (JS authoritative, post-Slice-3 effects refactor). Each kind
+dispatches through `EFFECTS[kind]` in JS and `Effects.HANDLERS[kind]` in Godot.
+"implemented: JS" means the proto has it; the Godot mirror is tracked in
+`GODOT-QA-TODO.md`.
+
+**Slice 3 collapsed ~38 kinds into ~22 atomic ones.** Targeting moved to a
+top-level `target()` step (§3.5); mass variants became a `scope` field; the
+card-movement family unified into `move_card`; control effects into
+`change_control`; persistent per-slot modifications into `apply_sticker`. The
+legacy kinds below were **removed from card data** (a few survive only as
+runtime handlers — noted).
 
 | kind                  | params                                          | implemented | description                                                                          |
 |-----------------------|-------------------------------------------------|-------------|--------------------------------------------------------------------------------------|
-| `damage`              | `amount: int, target`                           | both        | Deal N damage to target (creature/player).                                           |
-| `pump`                | `power: int, toughness: int, target, duration?` | both        | +N/+M to target creature. `duration: "eot"` (default) or omitted/"permanent" for +1/+1 counters. |
-| `weaken`              | `power, toughness, target`                      | JS only     | Negative pump. (Godot reuses `pump` with negatives today.)                           |
-| `add_counter`         | `power, toughness, target`                      | JS only     | Put +1/+1 counters on target (persistent).                                           |
-| `add_mana`            | `colors: string[]` (or omitted for land's mana) | both        | Add mana to controller's pool.                                                       |
-| `gain_life`           | `amount, target`                                | both        | Controller gains N life (target=`self`) or target player gains.                      |
-| `counter`             | `target` (must be a stack spell)                | both        | Counter target spell. Renamed from `counter_spell` on the Godot side in Pass 1b.     |
-| `draw`                | `amount`                                        | JS only     | Controller draws N.                                                                  |
-| `discard`             | `amount, target`                                | JS only     | Target player discards N.                                                            |
-| `remove_creature`     | `severity: 1-4, target`                         | JS only     | 1=tap, 2=bounce, 3=destroy, 4=exile.                                                 |
-| `add_counter`         | (see above)                                     | JS only     |                                                                                      |
-| `create_tokens`       | `count, tplId`                                  | JS only     | Mint N tokens of the given template.                                                 |
-| `flicker`             | `target`                                        | JS only     | Exile, return to battlefield (re-trigger ETB).                                       |
-| `steal`               | `target`                                        | JS only     | Take control of target permanent.                                                    |
-| `grant_keyword`       | `keyword, duration, target`                     | JS only     | Grant keyword to target (eot / permanent).                                           |
-| `fight_target`        | `target`                                        | JS only     | Two creatures deal damage equal to power simultaneously.                             |
-| `restrict`            | `target`                                        | JS only     | Variant restrictions (tap-on-attack etc.).                                           |
-| `return_from_graveyard` | `target`                                      | JS only     | Reanimate target.                                                                    |
-| `shuffle_into_library`| `target`                                        | JS only     | Sweep target into owner's library.                                                   |
-| `sacrifice`           | `target`                                        | JS only     | Force sacrifice of controller's own permanent.                                       |
-| `untap`               | `target`                                        | JS only     | Untap target.                                                                        |
-| `damage_all`          | `amount, filter`                                | JS only     | Sweep damage.                                                                        |
-| `remove_all`          | `severity, filter`                              | JS only     | Sweep removal.                                                                       |
-| `gain_control`        | `target`                                        | JS only     | Permanent steal.                                                                     |
-| `exile_until_eot`     | `target`                                        | JS only     | Exile, return at end of turn.                                                        |
-| `pump_all_yours`      | `power, toughness`                              | JS only     | Sweep buff.                                                                          |
-| `rip_permanent`       | `target`                                        | JS only     | Card-specific rip mechanic.                                                          |
-| `edict`               | (no params)                                     | JS only     | "Target player sacrifices a creature."                                               |
-| `search_land_tapped`  | (no params)                                     | JS only     | Tutor.                                                                               |
-| `search_creature`     | (no params)                                     | JS only     | Tutor.                                                                               |
-| `symmetricize`        | (params per card)                               | JS only     | Card-specific power-symmetry.                                                        |
-| `embargo`             | (params per card)                               | JS only     | Card-specific deny-cast.                                                             |
-| `bleach`              | (params per card)                               | JS only     | Card-specific remove-color.                                                          |
-| `bargain_sticker_self`/`bargain_sticker_other` | (params per card)             | JS only     | Card-specific bargain mechanic.                                                      |
-| `destroy_and_sticker_slot` | (params per card)                          | JS only     | Card-specific.                                                                       |
-| `endomorph_absorb`    | (params per card)                               | JS only     | Card-specific.                                                                       |
-| `apply_in_game_splice`| (params per card)                               | JS only     | Card-specific.                                                                       |
-| `noop`                | —                                               | JS only     | Placeholder.                                                                         |
+| `damage`              | `amount: int, scope?`                           | JS          | Deal N to the target() (creature/player). `scope: "all_creatures"` = sweep (was `damage_all`). |
+| `pump`                | `power: int, toughness: int, duration?, scope?` | JS          | Buff the target() creature. `duration: "permanent"` = +1/+1 counters (was `add_counter`); negative power/toughness = weaken (was `weaken`); `scope: "all_yours"`/`"all_creatures"` = sweep (was `pump_all_yours`). |
+| `remove_creature`     | `severity: 1-4 \| "tap"\|"bounce"\|"destroy"\|"exile", scope?` | JS | Removal on the target() creature. `scope` = sweep (was `remove_all`).                |
+| `move_card`           | `from_zone, to_zone, selector, amount?, filter?, post?` | JS  | Unified card movement. Selector: `controller_top` (draw/mill), `target`, `self`, `library_search` (tutor). Subsumes `draw`, `discard`, `flicker` (bf→exile then exile→bf), `return_from_graveyard`, `shuffle_into_library`, `search_creature`, `search_land_tapped`. `post`: `{tap, shuffle, keep_buffs}`. |
+| `change_control`      | `duration?, transfer_ownership?, grant_haste?, untap_on_take?` | JS | Take control of the target() permanent (was `gain_control`/`steal`). `transfer_ownership` = permanent run-slot theft. |
+| `apply_sticker`       | `sticker: {kind, ...params}`                    | JS          | Apply a persistent per-slot sticker to the target() (cost_mod / set_color / stat_boost). Replaces `embargo`/`bleach`/`symmetricize`'s bespoke channel. |
+| `chooses`             | `filter`                                        | JS          | The target() player chooses a permanent matching `filter` (edict's first step; no hexproof). |
+| `sacrifice`           | (operates on the chosen/target creature)        | JS          | The chosen creature's controller sacrifices it (fires death triggers). Edict = `target(player) → chooses(creature) → sacrifice`. |
+| `annihilate`          | (operates on the chosen/target creature)        | JS          | No-trigger removal sibling of `sacrifice` (rip's verb — no graveyard, no death/leave triggers). |
+| `add_mana`            | `amounts: {W:1,...}` OR `choose: "any"\|[colors]` | JS        | Add mana. `choose` form added in §3.9 so a land/dork taps for a chosen color. Lands ARE a `{cost:{tap}, effects:[{add_mana}]}` ability now (no `mana`/`extraManaColors` production field). |
+| `gain_life`           | `amount, who?`                                  | JS          | Controller (or `who`/target) gains N life.                                          |
+| `counter`             | (target() must be a stack spell)                | JS          | Counter target spell.                                                                |
+| `grant_keyword`       | `keyword, duration?, whose?`                    | JS          | Grant keyword to the target() (eot/permanent); `whose: "allYours"`/"all" = mass.    |
+| `create_tokens`       | `count, tokenId`                                | JS          | Mint N tokens.                                                                       |
+| `untap`               | (target())                                      | JS          | Untap the target().                                                                  |
+| `fight_target`        | (target())                                      | JS          | Your strongest creature fights the target().                                         |
+| `exile_until_eot`     | (target())                                      | JS          | Exile, return at end of turn. **Kept monolithic** (B4-deferred — needs the delayed-trigger queue to decompose to `move_card`). |
+| `rip_permanent`       | (params per card)                               | JS          | Card-specific bundled rip (kludge; broad `rip` is the decided target — §13).         |
+| `destroy_and_sticker_slot` / `endomorph_absorb` / `apply_in_game_splice` / `symmetricize` / `bargain_sticker_self` / `bargain_sticker_other` | (per card) | JS | Card-specific (Scarification / Endomorph / Stapler / Symmetricize prompt / Archdemon). |
+| `draw` / `discard`    | `amount`                                        | JS (runtime only) | **Not used in card data** — kept as handlers because the trigger generator (Mercurial Adept) still emits them. Card data uses `move_card`. |
+| `noop`                | —                                               | JS          | Placeholder.                                                                         |
 
 **Naming rule.** Wire is snake_case (`gain_life`, `add_mana`, `remove_creature`).
 JS internal idiom is camelCase (`gainLife`, `addMana`, `removeCreature`).
@@ -223,37 +217,42 @@ return bool. **Never reach into autoload state from inside a predicate
 body** — pass everything through the args. (See `/CLAUDE.md` "Patterns
 to NOT replicate.")
 
-### 3.5 Target shapes
+### 3.5 Target shapes (Slice 3 §3.5 — landed)
 
-Today's wire format uses a single `target` string. The plan (Pass 5) is
-to split into `target_mode` + `target_filter`. Until that lands:
+Targeting is a **top-level `target` step**, not a per-effect field. A card,
+trigger, or activated ability that needs one target carries `"target": "<filter>"`
+from the **closed taxonomy** below; its effects are then **bare** and operate on
+the established target. Hexproof and target legality are checked **once, at the
+`target()` step** (cast time). This replaced the old per-effect `target` string
+on single-target cards.
 
-| `target` value      | meaning                                                       |
-|---------------------|---------------------------------------------------------------|
-| `"self"`            | The source itself (creature). `gainLife` reads as "controller". |
-| `"chosen"`          | Caster picks at cast time (Godot form).                       |
-| `"any"`             | Caster picks; legal targets = creatures or players (JS form). |
-| `"creature"`        | Caster picks any creature.                                    |
-| `"player"`          | Caster picks any player.                                      |
-| `"opponent"`        | Implicit — the controller's opponent.                         |
-| `"controller"`      | Implicit — the controller themselves.                         |
-| `"opp_creature"`    | Caster picks an opponent's creature.                          |
-| `"your_creature"`   | Caster picks one of your creatures.                           |
-| `"permanent"`       | Caster picks any permanent (JS).                              |
-| `"graveyard_creature"` | Caster picks a creature in any graveyard (JS).             |
-| `"spell"`           | Caster picks a spell on the stack (counter targets).          |
-| `"creature_or_player"`| Caster picks a creature or a player.                        |
+Closed target-filter taxonomy (`ENGINE.TARGET_FILTERS`):
 
-**Pass 5 will introduce** `target_mode: "chosen"|"controller"|"opponent"|"self"|"all_matching"|"none"`
-plus `target_filter: "<subtype-from-the-above-list>"` when mode is `chosen`
-or `all_matching`. Today's string values map cleanly:
+| filter                 | legal targets                                  |
+|------------------------|------------------------------------------------|
+| `"creature"`           | any creature                                   |
+| `"your_creature"`      | a creature you control                         |
+| `"opp_creature"`       | a creature an opponent controls                |
+| `"creature_or_player"` | any creature or player                         |
+| `"player"`             | any player                                     |
+| `"permanent"`          | any permanent                                  |
+| `"spell"`              | a spell on the stack (counter targets)         |
+| `"graveyard_creature"` | a creature card in a graveyard (reanimation)   |
 
-- `"chosen"` → `target_mode: "chosen"` (no filter — caller infers from effect)
-- `"creature"` → `target_mode: "chosen", target_filter: "creature"`
-- `"any"` → `target_mode: "chosen", target_filter: "creature_or_player"`
-- `"opponent"` → `target_mode: "opponent"`
-- `"controller"` / `"self"` → `target_mode: "controller"` (or `self` for source-itself)
-- `"spell"` → `target_mode: "chosen", target_filter: "spell"`
+Related forms:
+- **`target: "self"`** on an *effect* still means the source itself (a creature
+  for creature-operating effects; the controller for player-operating ones like
+  `gain_life`/`add_mana`). This is per-effect, distinct from the top-level step.
+- **`chooses(filter)`** — a separate effect, NOT a `target()` step: the
+  *targeted player* selects a permanent of `filter` (no hexproof check). Used by
+  edicts: `target("player") → chooses("creature") → sacrifice`.
+- **mass `scope`** — effects with `scope` (`"all_creatures"`/`"all_yours"`/
+  `"all_opps"`) take no target() and never check hexproof.
+- **Multi-target** (not migrated to the top-level step) keeps per-effect
+  `target` + `target_slot: N`; the UI collects one pick per slot.
+
+Hexproof model: only the `target()` step checks it; `chooses()` and mass `scope`
+bypass it (matching MTG — an edict isn't "targeted").
 
 ### 3.6 Phase enum
 
@@ -290,30 +289,35 @@ require an entry in §3.2.
 
 ```jsonc
 {
-  "event": "<see §3.3>",
-  "cond_id": "<see §3.4>",        // optional; empty/missing = always true
-  "self_only": true,               // optional; true → source must be event subject
+  "event": "<see §3.3>",           // e.g. "card_zone_change"
+  "condition": ["this_card", "card_moves(anywhere, battlefield)"],  // §3.4 composable predicates (Slice 2)
+  "target": "creature",            // optional top-level target() step (§3.5) — bare effects operate on it
   "text": "When ~ enters, ...",    // optional override of auto-synthesized oracle text
-  "effects": [ /* see §4 */ ],
-  "target_filter": "creature"      // optional; needed when an effect picks a chosen target
+  "effects": [ /* see §4 */ ]
 }
 ```
 
-Both engines drain pending triggers in APNAP order (MTG 603.3b). Targeted
+Slice 2 (E1/E2) replaced the old `cond_id` string + `self_only` bool with a
+`condition` array of composable predicate terms (§3.4); `this_card` is the
+self-subject term. Slice 3 (§3.5) moved targeting to the top-level `target`
+step. Both engines drain pending triggers in APNAP order (MTG 603.3b). Targeted
 triggers controlled by `you` pause for UI input; opp-controlled triggers
-auto-pick (full AI in Phase 5c+).
+auto-pick.
 
 ## 6. Activated ability shape
 
 ```jsonc
 {
   "cost": { "tap": true, "mana": {"C": 1, "R": 0} },
+  "target": "creature",            // optional top-level target() step (§3.5)
   "effects": [ /* see §4 */ ]
 }
 ```
 
-Cost components today: `tap` (bool), `mana` (cost dict). Future: `sacrifice`,
-`discard`, `pay_life`, custom costs.
+Cost components today: `tap` (bool), `mana` (cost dict), `sacrifice` (Carrion
+Feeder). Future: `discard`, `pay_life`, custom costs. A tap-for-mana ability
+(`{cost:{tap}, effects:[{add_mana, ...}]}`) is how **lands** produce mana too
+(§3.9) — not a `mana` field.
 
 ## 7. Open work (referenced from `STANDARDIZATION-PLAN.md`)
 

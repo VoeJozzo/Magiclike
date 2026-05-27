@@ -76,13 +76,26 @@ This is purely a player-experience choice. MTG itself has no formal rule on take
 
 ## D. Spells and effects
 
-**Full effects refactor plan**: [`docs/plan-effects-refactor.md`](plan-effects-refactor.md) — 19-effect registry, target-filter unification, hexproof model, compound decomposition. D2, D3, D4 below are subsumed by that plan; tracked here individually for status.
+**Full effects refactor plan**: [`docs/plan-effects-refactor.md`](plan-effects-refactor.md) — ~22-effect registry, target-filter unification, hexproof model, compound decomposition. D2, D3, D4 below are subsumed by that plan; tracked here individually for status.
+
+> **Slice 3 status (effects refactor): the PROTO side is complete.** Landed on
+> the JS proto: the top-level `target()`/`chooses()` model + closed taxonomy +
+> structural hexproof (§3.5); mass `scope`; the `move_card` unification
+> (draw/discard/mill/bounce/shuffle/exile/return/reanimate/search/flicker);
+> `change_control`; the `apply_sticker` sticker pipeline (embargo/bleach/
+> symmetricize, retiring `applyBalancerOverrides`); lands-as-tap-ability +
+> retired `extraManaColors` (§3.9); staple-synthesis cleanup (§3.10). This means
+> the proto now runs **ahead** of Godot on effect shapes — every row below whose
+> TO-DO names **godot** (or **both**) is now blocked only on the Godot mirror,
+> which is exhaustively specced in [`GODOT-QA-TODO.md`](GODOT-QA-TODO.md). Two
+> items stay open on BOTH engines by design: `exile_until_eot` decomposition
+> (B4-deferred) and the D4 `gain_life` signed-delta redesign.
 
 | # | Area | Godot | Proto | Tag | TO-DO |
 |---|---|---|---|---|---|
 | D0 | Stack resolution order | LIFO via `Stack.push` / `Stack.pop_top` (engine.gd:628, 669). Caster retains priority after cast (engine.gd:649 in `_do_cast_spell`). | LIFO via `G.stack.push` / `G.stack.pop` (engine.js:2867, 3874). Caster retains priority (MTG 117.1c). | ✅ Same | **already-aligned** |
 | D1 | Multi-effect target state | Live state read at each effect's resolution | Pre-resolution snapshot of all targets (engine.js:3900-3938) | 🔴 (when multi-effect spells are added) | **both:** revised per effects-plan §3.6. The correct MTG-canonical behavior is a HYBRID: live state by default for targets still in their original zone; **last-known-information snapshot for targets that have left their zone between effects**. Proto's "always snapshot pre-resolution" is the wrong granularity; Godot's "always live" misses the Swords-to-Plowshares case. Both engines add a `last_known_info` field on the CardInstance captured at zone-exit time. Implementation lives with the effects refactor (`docs/plan-effects-refactor.md` §3.6). |
-| D2 | `pump` effect duration | Parametrized via `duration: "eot"` / `"permanent"` | Two separate effects: `pump` (always EOT), `addCounter` (always permanent) | 🟡 | **proto:** consolidate to Godot's pattern — one `pump` effect with `duration` parameter, deprecate `addCounter` as a separate effect kind. |
+| D2 | `pump` effect duration | Parametrized via `duration: "eot"` / `"permanent"` | **DONE (proto):** one `pump` with `duration` — `addCounter` collapsed to `pump duration:"permanent"`; signed pump absorbs `weaken`; `scope` absorbs `pumpAllYours`. | ✅ Aligned | proto matches Godot's parametrized pattern; closed. |
 | D3 | `gain_life` flexibility | Always to `ctx.controller` | Can route via `params.who` or target descriptor | 🟡 | **godot:** extend `gain_life.gd` to accept `who`/`target` parameters per proto's pattern. Enables future "target opponent gains N life" cards. |
 | D4 | `gain_life` sign-based delta | Refuses non-positive amounts (warn+skip) | Silent apply (no event for negative direction) | 🟡 | **both:** redesign `gain_life` as a unified life-delta effect. Accept any integer amount; sign determines event direction. Positive → fire "life gained" event (for gain-life triggers). Negative → fire "life lost" event (for lose-life triggers). Zero → no event. Preserves the trigger-time distinction between gain and loss while making the card-authoring side a single effect, enabling runtime sign-flip mechanics. Lifelink unchanged (fires on damage-dealing, not life-gain). **Naming:** keep `gain_life` as the effect kind; card-text parser renders contextually based on sign (`amount: 3` → "gain 3 life", `amount: -1` → "lose 1 life"). Don't rename. |
 | D5 | `add_mana` shorthand | Accepts flat `{"R": 1}` OR canonical `{"amounts": {"R": 1}}` | Requires canonical form only | 🔵 | **convention:** all card authors write the canonical form `{"kind": "add_mana", "amounts": {...}}`. Both engines accept it. No code change in either engine. |
