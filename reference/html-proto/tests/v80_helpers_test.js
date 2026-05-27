@@ -20,7 +20,7 @@ check('appendMergedText defined',
 console.log('\n=== Source-level: call site counts ===');
 const lppb = (code.match(/leavesPlayPreservingBuffs\(/g) || []).length;
 check('leavesPlayPreservingBuffs calls (>=5 call sites + def + comments)',
-  lppb >= 6, 'actual=' + lppb);
+  lppb >= 5, 'actual=' + lppb);
 
 const amt = (code.match(/appendMergedText\(/g) || []).length;
 check('appendMergedText calls (>=6 call sites + def + comments)',

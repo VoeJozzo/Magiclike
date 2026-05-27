@@ -1518,14 +1518,6 @@ const EFFECTS = {
     if (perm) log(`Put +${p}/+${t} on ${f.card.name}.`, 'sp');
     else log(`${f.card.name} gets +${p}/+${t} EOT.`, 'sp');
   },
-  // Negative tempPower/tempTou — cleared at EOT. Toughness 0 = SBA death (unless indestructible).
-  weaken(ctx, params, target) {
-    const f = resolveTarget(ctx, target);
-    if (!f) return;
-    f.card.tempPower -= (params.power||0);
-    f.card.tempTou -= (params.toughness||0);
-    log(`${f.card.name} gets -${params.power}/-${params.toughness} EOT.`, 'sp');
-  },
   // +1/+1 counter (permPower/permTou stat sum; resets on leave-play).
   addCounter(ctx, params, target) {
     const f = resolveTarget(ctx, target);
@@ -1768,24 +1760,6 @@ const EFFECTS = {
     log(`${ctx.sourceName} — applying ${n} sticker(s) to ${pname(recipient)}'s permanents.`, 'sp');
     applyRandomStickersToSide(G, recipient, n, ctx.sourceName, log);
   },
-  // Oblation-style. Owner-routed (stolen creature returns to original owner's library).
-  shuffleIntoLibrary(ctx, params, target) {
-    const f = resolveTarget(ctx, target);
-    if (!f) return;
-    const card = pluckFromBattlefield(f);
-    if (!card) return;
-    clearRestrictionsFromSource(card.iid);
-    resetInPlayState(card);
-    if (!card.isToken) {
-      const dest = card.owner || f.controller;
-      G[dest].library.push(card);
-      shuffle(G[dest].library);
-      log(`${ctx.sourceName} shuffles ${card.name} into ${pname(dest)}'s library.`, 'sp');
-    } else {
-      log(`${ctx.sourceName} targets ${card.name} — token ceases to exist.`, 'sp');
-    }
-    emitLeavesBattlefield(card, f.controller, 'library');
-  },
   // Counter a stack spell OR take a battlefield permanent — adds slot to runState forever.
   // Spell path: removes from stack (no effects fire); spell ceases (not graveyard).
   // Slot identity preserved (tplId + stickers + rolls + permaBuffs + bonusTrigger + stapledTpls + charges).
@@ -1860,22 +1834,6 @@ const EFFECTS = {
     shuffle(G[ctx.controller].library);
     const verb = fromStack ? 'counters and shuffles' : 'shuffles';
     log(`${ctx.sourceName} ${verb} ${stolenCardName} into ${pname(ctx.controller)}'s library — yours forever.`, 'sp');
-  },
-  // Black's signature recursion: pull a creature card from the caster's
-  // graveyard back to hand. Mandatory in our engine (no "may" optional
-  // triggers yet) — if the graveyard has no creatures, the trigger doesn't
-  // queue (triggerHasAnyValidTarget filters it out).
-  returnFromGraveyard(ctx, params, target) {
-    const grave = G[ctx.controller].graveyard;
-    const idx = grave.findIndex(c => c.iid === target.iid);
-    if (idx < 0) { log(`${ctx.sourceName} fizzles — target gone.`, 'sp'); return; }
-    const [card] = grave.splice(idx, 1);
-    card.tapped = false; card.sick = false; card.damage = 0;
-    card.tempPower = 0; card.tempTou = 0;
-    if (card.damagedBySources instanceof Set) card.damagedBySources.clear();
-    card.dealtDeathtouch = false;
-    G[card.owner || ctx.controller].hand.push(card);
-    log(`${ctx.sourceName} returns ${card.name} from graveyard to ${pname(card.owner || ctx.controller)}'s hand.`, 'sp');
   },
   counter(ctx, params, target) {
     const idx = G.stack.indexOf(target.stackItem);
@@ -2213,93 +2171,6 @@ const EFFECTS = {
     ctx.chosen = { kind: 'creature', iid: picked.iid, label: picked.name };
     log(`${pname(who)} chooses ${picked.name}.`, 'sp');
   },
-  // Iconic red AOE: deal N damage to every creature on both battlefields.
-  // Asymmetric — hits your own creatures too. Indestructible takes the damage
-  // but doesn't die (handled by SBA). Hexproof doesn't protect (this isn't
-  // a targeted effect). Damage routes through applyDamageFrom so the dying
-  // creatures' damagedBySources sets are populated correctly — but since
-  // the source is a spell on the stack (not a permanent), no lifelink/
-  // deathtouch interactions apply (those need a creature source).
-  damageAll(ctx, params) {
-    const amt = params.amount || 0;
-    if (amt <= 0) return;
-    log(`${ctx.sourceName} deals ${amt} to each creature.`, 'sp');
-    // Snapshot the target list before iterating — applyDamageFrom doesn't
-    // mutate battlefield arrays (deaths happen at SBA time), but we'd want
-    // stable behavior even if a future change introduces mid-loop mutation.
-    const targets = [];
-    for (const who of ['you','opp']) {
-      for (const c of G[who].battlefield) {
-        if (c.type !== 'Creature') continue;
-        targets.push({iid: c.iid});
-      }
-    }
-    for (const t of targets) {
-      applyDamageFrom(ctx, {kind: 'creature', iid: t.iid}, amt);
-    }
-  },
-  // Unified mass-removal: applies the single-target removeCreature semantics
-  // to every creature in scope. severity 1-4 maps to tap/bounce/destroy/exile,
-  // matching single-target. whose: 'all' (both sides) or 'opp' (asymmetric).
-  // Empower bumps severity (capped at 4) just like single-target.
-  // - sev 1 (tap):     creatures tap; any already-tapped are skipped silently
-  // - sev 2 (bounce):  to owners' hands; tokens cease; ignores indestructible
-  // - sev 3 (destroy): to graveyard; indestructible survives
-  // - sev 4 (exile):   removed from game; indestructible does NOT save
-  removeAll(ctx, params) {
-    const sev = Math.max(1, Math.min(4, params.severity || 3));
-    const whose = params.whose || 'all';
-    const sides = whose === 'opp' ? [opp(ctx.controller)] : ['you', 'opp'];
-    // Snapshot before mutating battlefield arrays.
-    const targets = [];
-    for (const who of sides) {
-      for (const c of G[who].battlefield) {
-        if (c.type !== 'Creature') continue;
-        targets.push({iid: c.iid, controller: who});
-      }
-    }
-    if (targets.length === 0) {
-      log(`${ctx.sourceName} fizzles — no creatures.`, 'sp');
-      return;
-    }
-    const verb = sev === 1 ? 'taps' : sev === 2 ? 'bounces' : sev === 3 ? 'sweeps' : 'exiles';
-    log(`${ctx.sourceName} ${verb} the board.`, 'sp');
-    for (const t of targets) {
-      const f = findCard(t.iid);
-      if (!f) continue;
-      const card = f.card;
-      const ctrl = f.controller;
-      if (sev === 1) {
-        if (!card.tapped) card.tapped = true;
-      } else if (sev === 2) {
-        const bf = G[ctrl].battlefield;
-        const idx = bf.findIndex(c => c.iid === t.iid);
-        if (idx < 0) continue;
-        const removed = bf.splice(idx, 1)[0];
-        leavesPlayPreservingBuffs(removed);
-        if (!removed.isToken) G[removed.owner || ctrl].hand.push(removed);
-        emitLeavesBattlefield(removed, ctrl, 'hand');
-      } else if (sev === 3) {
-        if (card.keywords.includes('indestructible')) continue;
-        card.killedBy = ctx.controller;
-        moveToGraveyard(card, ctrl);
-        log(`${card.name} dies.`, 'dmg');
-      } else if (sev === 4) {
-        const bf = G[ctrl].battlefield;
-        const idx = bf.findIndex(c => c.iid === t.iid);
-        if (idx < 0) continue;
-        const removed = bf.splice(idx, 1)[0];
-        // Claim keywords BEFORE resetInPlayState clears grants.
-        if (removed.type === 'Creature' && ctrl !== ctx.controller) {
-          claimKeywordsFromKill(removed, ctx.controller);
-        }
-        leavesPlayPreservingBuffs(removed);
-        if (!removed.isToken) G[removed.owner || ctrl].exile.push(removed);
-        log(`${removed.name} is exiled.`, 'dmg');
-        emitLeavesBattlefield(removed, ctrl, 'exile');
-      }
-    }
-  },
   // Cloudshift-shape immediate flicker. Re-fires ETB; clears damage/counters/grants.
   // Stickers preserved (slot-level). Tokens cease to exist. EOT-flicker deferred.
   flicker(ctx, params, target) {
@@ -2323,41 +2194,6 @@ const EFFECTS = {
     G[returnTo].battlefield.push(card);
     emitZoneChange(card, returnTo, 'exile', 'battlefield', undefined, ctx.sourceIid);
   },
-  // Otherworldly-Journey-shape: exile until end of turn via delayed trigger.
-  // Tempo removal (1 turn off-board, dodge combat, re-fire your own ETB).
-  // Note: there's a second gainControl definition below — this one is older;
-  // the lower one is the one that runs. Threaten/Mind Control via params.duration.
-  gainControl(ctx, params, target) {
-    const f = resolveTarget(ctx, target);
-    if (!f) return;
-    if (f.controller === ctx.controller) {
-      log(`${ctx.sourceName} fizzles — already controlled.`, 'sp');
-      return;
-    }
-    const card = f.card;
-    const fromBf = G[f.controller].battlefield;
-    const idx = fromBf.findIndex(c => c.iid === card.iid);
-    if (idx < 0) return;
-    fromBf.splice(idx, 1);
-    G[ctx.controller].battlefield.push(card);
-    if (params && params.duration === 'eot') {
-      card.tempControlUntilEot = true;
-    }
-    if (params && params.haste) {
-      if (!Array.isArray(card.eotGrants)) card.eotGrants = [];
-      card.eotGrants.push('haste');
-      if (!card.keywords.includes('haste')) card.keywords.push('haste');
-      // canCreatureAttack checks sick before haste, so override here.
-      card.sick = false;
-    } else {
-      // Standard sickness — thief can't immediately attack (MtG: not yours since your turn started).
-      card.sick = true;
-    }
-    if (params && params.untap) {
-      card.tapped = false;
-    }
-    log(`${ctx.sourceName} — ${pname(ctx.controller)} takes control of ${card.name}${params && params.duration === 'eot' ? ' until end of turn' : ''}.`, 'sp');
-  },
   exileUntilEOT(ctx, params, target) {
     const f = resolveTarget(ctx, target);
     if (!f) return;
@@ -2377,45 +2213,6 @@ const EFFECTS = {
       exiledCard: card,
       exiledFrom: card.owner || f.controller,
     });
-  },
-  // Take control. duration:'eot' = Threaten (EOT revert via tempControlUntilEot); omitted = Mind Control.
-  // params: untap, grantHaste. Card.owner unmodified so death/bounce/EOT route home correctly.
-  // Known v1 cosmetic: opp's stale lord grants persist in grantedBy; favors thief, rare. Defer fix.
-  gainControl(ctx, params, target) {
-    const f = resolveTarget(ctx, target);
-    if (!f) return;
-    const card = f.card;
-    const fromCtrl = f.controller;
-    const toCtrl = ctx.controller;
-    if (fromCtrl === toCtrl) {
-      log(`${ctx.sourceName} fizzles — ${card.name} is already under ${pname(toCtrl)}'s control.`, 'sp');
-      return;
-    }
-    const fromBf = G[fromCtrl].battlefield;
-    const idx = fromBf.findIndex(c => c.iid === card.iid);
-    if (idx < 0) return;
-    fromBf.splice(idx, 1);
-    G[toCtrl].battlefield.push(card);
-    // Untap before haste so canCreatureAttack passes.
-    if (params && params.untap) card.tapped = false;
-    if (params && params.grantHaste) {
-      applyGrant(card, 'haste', ctx.sourceIid, true);
-    }
-    if (params && params.duration === 'eot') {
-      card.tempControlUntilEot = true;
-    }
-    log(`${ctx.sourceName} — ${pname(toCtrl)} gains control of ${card.name}` +
-        (params && params.duration === 'eot' ? ' until end of turn.' : '.'), 'sp');
-  },
-  pumpAllYours(ctx, params) {
-    let n = 0;
-    for (const c of G[ctx.controller].battlefield) {
-      if (c.type !== 'Creature') continue;
-      c.tempPower += (params.power || 0);
-      c.tempTou += (params.toughness || 0);
-      n++;
-    }
-    log(`${pname(ctx.controller)}'s ${n} creature(s) get +${params.power}/+${params.toughness} EOT.`, 'sp');
   },
   // Unified control-change primitive (effects-refactor §4.2 / decision 11):
   // replaces gainControl (both defs) + steal. transfer_ownership:true is the

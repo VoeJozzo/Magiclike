@@ -27,12 +27,12 @@ outerCheck('resolveTarget defined', /function resolveTarget\(ctx, target\)/.test
 outerCheck('pluckFromBattlefield defined', /function pluckFromBattlefield\(f\)/.test(code));
 
 const resolveCalls = (code.match(/const f = resolveTarget\(ctx, target\)/g) || []).length;
-outerCheck('resolveTarget call sites = 20 (incl. helper comment + change_control)',
-  resolveCalls === 20, 'actual=' + resolveCalls);
+outerCheck('resolveTarget call sites = 16 (post step-7 dead-handler removal)',
+  resolveCalls === 16, 'actual=' + resolveCalls);
 
 const pluckCalls = (code.match(/pluckFromBattlefield\(/g) || []).length;
-outerCheck('pluckFromBattlefield call sites = 11 (incl. helper + comments + move_card)',
-  pluckCalls === 11, 'actual=' + pluckCalls);
+outerCheck('pluckFromBattlefield call sites = 10 (post step-7 dead-handler removal)',
+  pluckCalls === 10, 'actual=' + pluckCalls);
 
 const fizzleInCode = code.split('\n').filter(line =>
   /fizzles — target gone/.test(line) && !/^\s*\/\//.test(line.trim())
