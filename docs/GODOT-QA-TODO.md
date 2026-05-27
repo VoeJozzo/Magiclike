@@ -245,22 +245,31 @@ exercised directly via an exposed `ENGINE.applyEffect` test seam):
   (permPower/permTou), collapsed 9 addCounter effects (8 cards), full card-text
   + valuation parity. addCounter handler kept (MERCURIAL_TRIGGER_POOL uses it).
 
-**All clean parity-preserving collapses are now done** (mass, weaken,
-change_control, move_card return/shuffle, addCounter). Remaining collapses each
-need more than a mechanical rewrite:
-- **edict → target(player)+chooses+sacrifice** (1 card, structural — flips the
-  AI valuation path from shouldCastUntargeted to scoreSpellTargetForMode, and
-  needs a chooses+sacrifice card-text rendering).
-- **restrict → grant_keyword** (1 card) — needs a hidden `no_block` keyword
-  built in the engine first.
-- **draw → move_card(library,hand,controller_top)** — engine supports it, BUT
-  `draw` is valued in many AI sites (burn reserve, instant-response, scoring);
-  collapsing needs every `eff.kind==='draw'` reader to also recognize the
-  move_card form (a broad §8.1-style lockstep — do carefully, not mechanically).
-- **discard/search → move_card** — gated on prompt-driven selectors
-  (controller_chosen / library_search) the engine doesn't have yet.
-- **flicker/exileUntilEOT → move_card decomp** — battlefield-arrival is built;
-  needs the delayed-return half (B4).
+**Step 7 part 1 DONE (proto):** deleted ~175 lines of dead EFFECTS handlers
+(damageAll, removeAll, pumpAllYours, weaken, returnFromGraveyard,
+shuffleIntoLibrary, both gainControl defs incl. the decision-11 dead
+duplicate). steal handler kept (change_control delegates). Suite 744/744;
+selfplay 500 clean, no "Unknown effect" warnings.
+
+**Step 7 part 2 (follow-up, low-risk):** delete the now-dead card-text +
+spellValueForEffects + scoreSpellTargetForMode CASES for those kinds, the
+massEffectInfo legacy branches, and stale data-table refs (EMPOWER_FIELDS,
+draft weights, render kind-lists, CREATURE_EFFECT_KINDS). All unreachable —
+harmless but should be cleaned for consistency (no handler ↔ no case).
+
+Remaining collapses (each needs more than a rewrite):
+- **edict → target(player)+chooses+sacrifice** (1 card, structural: AI
+  valuation path flips untargeted→targeted; chooses+sacrifice card-text).
+- **restrict → grant_keyword** (1 card; needs a hidden `no_block` keyword +
+  block-legality check + grant-revocation-on-source-leave parity).
+- **draw → move_card** (engine supports it; broad §8.1-style valuation lockstep
+  — `draw` is read at many AI sites).
+- **discard/search → move_card** (gated on prompt-driven selectors).
+- **flicker/exileUntilEOT → move_card decomp** (needs the delayed-return half).
+
+Then `apply_sticker` + sticker pipeline (step 10), mana deep-clean (§3.9),
+selfDamageOf scope:controller (minor), UI target-pick (browser), staple
+`fireStackEffects` path (Stapler-only).
 - **Step 7**: delete the now-unused legacy EFFECTS handlers (damageAll,
   removeAll, pumpAllYours, weaken, gainControl, steal, returnFromGraveyard,
   shuffleIntoLibrary) + their card-text/valuation cases + the §8.1 dead-code
