@@ -527,15 +527,16 @@ function drawTargetLines() {
 }
 
 // Valence → line color (red=harm, green=benefit, orange=neutral).
+// Post-collapse (§3.5/§3.8) live kinds. move_card and pump are shape-dependent
+// (draw vs bounce; buff vs weaken) — classified by from/to and sign in
+// classifyValence, not by flat membership.
 const HARMFUL_KINDS = new Set([
-  'damage', 'damageAll', 'removeCreature', 'removeAll', 'destroyAndStickerSlot',
-  'weaken', 'restrict', 'discard', 'edict', 'bleach', 'embargo',
-  'gainControl', 'steal', 'counter', 'shuffleIntoLibrary', 'exileUntilEOT',
-  'ripPermanent', 'symmetricize', 'fightTarget',
+  'damage', 'removeCreature', 'destroyAndStickerSlot', 'change_control',
+  'counter', 'exileUntilEOT', 'ripPermanent', 'symmetricize', 'fightTarget',
+  'sacrifice', 'chooses', 'apply_sticker', 'discard',
 ]);
 const BENEFICIAL_KINDS = new Set([
-  'pump', 'pumpAllYours', 'addCounter', 'grantKeyword', 'untap',
-  'flicker', 'returnFromGraveyard', 'gainLife',
+  'grantKeyword', 'untap', 'gainLife',
 ]);
 const VALENCE_PALETTE = {
   harm:    { color: '#ff5544', marker: 'tgt-arrow-red' },
@@ -558,7 +559,14 @@ const VALENCE_PALETTE = {
 function classifyValence(slotEffects, target, casterSide, G) {
   let hasHarm = false, hasBenefit = false;
   for (const e of slotEffects) {
-    if (HARMFUL_KINDS.has(e.kind)) hasHarm = true;
+    if (e.kind === 'move_card') {
+      // draw / graveyard-return = benefit; bounce / discard / shuffle / exile = harm.
+      const draw = e.from_zone === 'library' && e.to_zone === 'hand';
+      const ret = e.from_zone === 'graveyard' && e.to_zone === 'hand';
+      if (draw || ret) hasBenefit = true; else hasHarm = true;
+    } else if (e.kind === 'pump') {
+      if ((e.power || 0) < 0 || (e.toughness || 0) < 0) hasHarm = true; else hasBenefit = true;
+    } else if (HARMFUL_KINDS.has(e.kind)) hasHarm = true;
     else if (BENEFICIAL_KINDS.has(e.kind)) hasBenefit = true;
   }
   // Resolve target controller for self-vs-other check.
