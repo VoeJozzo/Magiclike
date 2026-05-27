@@ -278,6 +278,11 @@ function describeEffect(eff, tplEff) {
     case 'exileUntilEOT':
       return [plainSeg('exile ' + t + ' until end of turn')];
     case 'addMana': {
+      if (eff.choose) {
+        return [plainSeg(eff.choose === 'any'
+          ? 'add one mana of any color'
+          : 'add one mana of ' + eff.choose.map(c => '{' + c + '}').join(' or '))];
+      }
       if (eff.amounts) {
         let symbols = '';
         for (const [color, n] of Object.entries(eff.amounts)) {
@@ -647,6 +652,14 @@ function describeCardSegments(card, opts) {
     const tplAbilities = Array.isArray(tplBaseline.abilities) ? tplBaseline.abilities : [];
     for (let i = 0; i < card.abilities.length; i++) {
       const ab = card.abilities[i];
+      // A basic land's fixed tap-for-mana ability is intrinsic (shown via the
+      // type line, not rules text) — suppress it so basics render empty. A
+      // choose-form mana land (City of Brass / duals) keeps its ability text.
+      if (card.type === 'Land' && ab.cost && ab.cost.tap
+          && ab.effects && ab.effects[0] && ab.effects[0].kind === 'addMana'
+          && ab.effects[0].amounts) {
+        continue;
+      }
       const tplAb = tplAbilities[i];
       const abSegs = describeAbility(ab, tplAb);
       sections.push(abSegs.concat(plainSeg('.')));

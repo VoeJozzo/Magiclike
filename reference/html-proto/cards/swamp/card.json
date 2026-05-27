@@ -4,5 +4,20 @@
   "mana": "B",
   "name": "Swamp",
   "sub": "Basic Land",
-  "type": "Land"
+  "type": "Land",
+  "abilities": [
+    {
+      "cost": {
+        "tap": true
+      },
+      "effects": [
+        {
+          "kind": "addMana",
+          "amounts": {
+            "B": 1
+          }
+        }
+      ]
+    }
+  ]
 }

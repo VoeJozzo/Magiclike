@@ -122,8 +122,9 @@ for (const color of ['W','U','B','R','G']) {
     text: 'This land also produces {' + color + '}.',
     appliesTo: (c) => {
       if (c.type !== 'Land') return false;
-      if (c.mana === color) return false;
-      if ((c.extraManaColors || []).includes(color)) return false;
+      // Already produces this color (base or stickered)? Don't re-offer. §3.9:
+      // production lives on the tap-ability, read via landProducibleColors.
+      if (landProducibleColors(c).includes(color)) return false;
       if (c.deckColors && !c.deckColors.includes(color)) return false;
       return true;
     },

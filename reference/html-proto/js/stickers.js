@@ -32,10 +32,7 @@ function applyStickersToCard(card) {
     } else if (s.kind === 'innate') {
       card.innate = true;
     } else if (s.kind === 'landColor') {
-      if (!Array.isArray(card.extraManaColors)) card.extraManaColors = [];
-      if (!card.extraManaColors.includes(s.color) && card.mana !== s.color) {
-        card.extraManaColors.push(s.color);
-      }
+      addColorToManaAbility(card, s.color);  // §3.9: extend the land's tap-ability
     } else if (s.kind === 'costReduction') {
       if (card.cost) {
         const generic = card.cost.C || 0;
@@ -89,10 +86,7 @@ function applyOneStickerToRuntimeCard(card, stickerId) {
   } else if (s.kind === 'innate') {
     card.innate = true;
   } else if (s.kind === 'landColor') {
-    if (!Array.isArray(card.extraManaColors)) card.extraManaColors = [];
-    if (!card.extraManaColors.includes(s.color) && card.mana !== s.color) {
-      card.extraManaColors.push(s.color);
-    }
+    addColorToManaAbility(card, s.color);  // §3.9: extend the land's tap-ability
   } else if (s.kind === 'costReduction') {
     if (card.cost) {
       const generic = card.cost.C || 0;
@@ -313,7 +307,6 @@ function stickersForSlot(slot, deckColors) {
     keywords: (tpl.keywords || []).slice(),
     stickers: slot.stickers.slice(),
     mana: tpl.mana,
-    extraManaColors: [],
     deckColors: deckColors || [],
     cost: tpl.cost ? {...tpl.cost} : undefined,
     effects: copyTopEffects(tpl.effects),
@@ -338,8 +331,8 @@ function stickersForSlot(slot, deckColors) {
         }
       }
     }
-    if (s.kind === 'landColor' && !view.extraManaColors.includes(s.color)) {
-      view.extraManaColors.push(s.color);
+    if (s.kind === 'landColor') {
+      addColorToManaAbility(view, s.color);  // §3.9: reflect on the view's tap-ability
     }
     if (s.kind === 'costReduction' && view.cost) {
       const generic = view.cost.C || 0;

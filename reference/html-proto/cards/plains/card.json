@@ -4,5 +4,20 @@
   "mana": "W",
   "name": "Plains",
   "sub": "Basic Land",
-  "type": "Land"
+  "type": "Land",
+  "abilities": [
+    {
+      "cost": {
+        "tap": true
+      },
+      "effects": [
+        {
+          "kind": "addMana",
+          "amounts": {
+            "W": 1
+          }
+        }
+      ]
+    }
+  ]
 }

@@ -108,14 +108,14 @@ function isCompatibleStaplePair(baseTplId, stapleTplId) {
   const baseTpl = CARDS[baseTplId];
   const stapleTpl = CARDS[stapleTplId];
   // Multi-color land restriction: creature+land/spell+land require single-color
-  // staple, since synthesized addMana lacks "tap, choose one" semantics. Multi-color
-  // lands (City of Brass) only valid as land+land.
+  // staple. (§3.10 will lift this now that addMana has a choose form; for §3.9
+  // keep the restriction, reading producible colors from the tap-ability.)
   if (baseTpl.type === 'Creature' && stapleTpl.type === 'Land'
-      && Array.isArray(stapleTpl.extraManaColors) && stapleTpl.extraManaColors.length > 0) {
+      && landProducibleColors(stapleTpl).length > 1) {
     return false;
   }
   if (baseTpl.type !== 'Creature' && baseTpl.type !== 'Land' && stapleTpl.type === 'Land'
-      && Array.isArray(stapleTpl.extraManaColors) && stapleTpl.extraManaColors.length > 0) {
+      && landProducibleColors(stapleTpl).length > 1) {
     return false;
   }
   return true;
@@ -155,6 +155,52 @@ function remapEmpowerRollForStaple(roll, baseIsCreature, stapleIsCreature,
     ...roll,
     effIdx: roll.effIdx + priorMergedEffectCount,
   };
+}
+
+// §3.9: lands and creature dorks both produce mana via a tap-for-mana ability
+// (the `extraManaColors` parallel model is retired). These helpers read that
+// ability as the single source of truth. Top-level (not IIFE-internal) so the
+// module-level splice helpers and stickers.js can share them.
+//
+// The tap-for-mana ability on a permanent (cost.tap + addMana), or null.
+function manaAbilityOf(card) {
+  if (!card || !Array.isArray(card.abilities)) return null;
+  return card.abilities.find(ab => ab && ab.cost && ab.cost.tap
+    && ab.effects && ab.effects[0] && ab.effects[0].kind === 'addMana') || null;
+}
+// Colors an addMana effect can produce ({choose} or {amounts}).
+function manaEffectColors(eff) {
+  if (!eff) return [];
+  if (eff.choose) return eff.choose === 'any' ? ['W', 'U', 'B', 'R', 'G'] : eff.choose.slice();
+  return Object.keys(eff.amounts || {});
+}
+// Build a tap-for-mana ability for a color set: one color → fixed amounts,
+// several → choose. Used by the staple-merge (land staples).
+function manaAbilityForColors(colors) {
+  const eff = (colors.length <= 1)
+    ? { kind: 'addMana', amounts: { [colors[0]]: 1 } }
+    : { kind: 'addMana', choose: colors.slice() };
+  return { cost: { tap: true }, effects: [eff] };
+}
+// Add a producible color to a card's tap-ability (landColor sticker). Converts a
+// fixed amounts ability to the choose form; extends an existing choose; no-op for
+// choose:'any'. Mutates in place.
+function addColorToManaAbility(card, color) {
+  const ab = manaAbilityOf(card);
+  if (!ab) return;
+  const eff = ab.effects[0];
+  if (eff.choose === 'any') return;
+  const cur = manaEffectColors(eff);
+  if (cur.includes(color)) return;
+  delete eff.amounts;
+  eff.choose = cur.concat(color);
+}
+// Colors a land taps for, read from its tap-ability (§3.9). The `mana` field is
+// just the primary-color label. Shared by canPayPotential, tap action, AI.
+function landProducibleColors(card) {
+  if (!card || card.type !== 'Land') return [];
+  const ab = manaAbilityOf(card);
+  return ab ? manaEffectColors(ab.effects[0]) : [];
 }
 
 // Resolve slot → effective template (synthesized merge if stapled, else CARDS entry).
@@ -282,7 +328,6 @@ function synthesizeStapledTemplate(baseTplId, stapledTpls) {
     text: baseTpl.text,
     cost: baseTpl.cost ? {...baseTpl.cost} : {},
     color: baseTpl.color,
-    extraManaColors: (baseTpl.extraManaColors || []).slice(),
     keywords: (baseTpl.keywords || []).slice(),
     power: baseTpl.power,
     toughness: baseTpl.toughness,
@@ -388,16 +433,11 @@ function mergeStapleInto(merged, stapleTpl) {
     if (stapleTpl.permanentEot) merged.permanentEot = true;
     appendMergedText(merged, stapleTpl.text);
   } else if (merged.type === 'Creature' && stapleTpl.type === 'Land') {
-    // Llanowar-Elves shape: {T}: addMana matching land's production.
-    // Multi-color lands rejected by isCompatibleStaplePair (no "tap, choose one").
+    // Llanowar-Elves shape: {T}: addMana matching the staple land's production
+    // (§3.9). Multi-color lands rejected by isCompatibleStaplePair (single-color).
     if (!Array.isArray(merged.abilities)) merged.abilities = [];
-    const colors = [stapleTpl.mana].concat(stapleTpl.extraManaColors || []).filter(Boolean);
-    const amounts = {};
-    for (const c of colors) amounts[c] = (amounts[c] || 0) + 1;
-    merged.abilities.push({
-      cost: { tap: true },
-      effects: [{ kind: 'addMana', amounts }],
-    });
+    const colors = landProducibleColors(stapleTpl);
+    merged.abilities.push(manaAbilityForColors(colors));
     appendMergedText(merged, '{T}: Add {' + colors.join('}{') + '}.');
   } else if (merged.type === 'Creature') {
     // Creature + Spell: spell becomes ETB trigger.
@@ -411,15 +451,14 @@ function mergeStapleInto(merged, stapleTpl) {
     });
     appendMergedText(merged, 'When this enters, ' + (stapleTpl.text || stapleTpl.name) + '.');
   } else if (merged.type === 'Land' && stapleTpl.type === 'Land') {
-    // Land + Land: mana production merges, dedup so Plains+Plains stays Plains.
-    const staplerColors = [stapleTpl.mana].concat(stapleTpl.extraManaColors || []).filter(Boolean);
-    for (const c of staplerColors) {
-      if (c !== merged.mana && !merged.extraManaColors.includes(c)) {
-        merged.extraManaColors.push(c);
-      }
-    }
-    const allColors = [merged.mana].concat(merged.extraManaColors);
-    merged.text = '{T}: Add one of {' + allColors.join('}{') + '}.';
+    // Land + Land: both lands' production merges into one tap-ability (§3.9),
+    // dedup so Plains+Plains stays Plains.
+    const all = landProducibleColors(merged).slice();
+    for (const c of landProducibleColors(stapleTpl)) if (!all.includes(c)) all.push(c);
+    const oldAb = manaAbilityOf(merged);
+    merged.abilities = (merged.abilities || []).filter(ab => ab !== oldAb);
+    merged.abilities.push(manaAbilityForColors(all));
+    merged.text = all.length > 1 ? ('{T}: Add one of {' + all.join('}{') + '}.') : '';
   } else if (merged.type === 'Land') {
     // Land + Spell: spell becomes ETB. Lands emit cardEntersBattlefield on play.
     const nextFreeSlot = computeNextFreeSlot(merged);
@@ -434,11 +473,12 @@ function mergeStapleInto(merged, stapleTpl) {
     appendMergedText(merged, 'When this enters, ' + (stapleTpl.text || stapleTpl.name) + '.');
   } else if (stapleTpl.type === 'Land') {
     // Spell + Land: spell gains addMana on resolve, usable for later spells in window.
-    const colors = [stapleTpl.mana].concat(stapleTpl.extraManaColors || []).filter(Boolean);
-    const amounts = {};
-    for (const c of colors) amounts[c] = (amounts[c] || 0) + 1;
+    const colors = landProducibleColors(stapleTpl);
+    const eff = (colors.length <= 1)
+      ? { kind: 'addMana', amounts: { [colors[0]]: 1 }, target: 'self' }
+      : { kind: 'addMana', choose: colors.slice(), target: 'self' };
     if (!Array.isArray(merged.effects)) merged.effects = [];
-    merged.effects.push({ kind: 'addMana', amounts, target: 'self' });
+    merged.effects.push(eff);
     appendMergedText(merged, 'Add {' + colors.join('}{') + '} to your mana pool.');
   } else {
     // Spell + Spell: effects concat with slot remap.
@@ -504,10 +544,10 @@ function makeCard(tplId, stickers, slotIdx, empowerRolls, permaBuffs, bonusTrigg
     // Legendary uniqueness enforced at cast time only (no SBA).
     legendary: !!tpl.legendary,
     // Deep-copy mutable fields for per-instance isolation (costReduction,
-    // Severity, etc.). City of Brass pre-v0.99.44 leaked extraManaColors.
+    // Severity, etc.). Mana production lives on the tap-ability (abilities),
+    // which is deep-copied below — `mana` is just the primary-color label.
     cost: tpl.cost ? {...tpl.cost} : undefined,
     mana: tpl.mana, color: tpl.color,
-    extraManaColors: (tpl.extraManaColors || []).slice(),
     keywords: (tpl.keywords || []).slice(),
     power: tpl.power, toughness: tpl.toughness,
     effects: copyCardEffects(tpl.effects),
@@ -586,7 +626,6 @@ function makeToken(tokenTplId, controller) {
     name: tpl.name, type: tpl.type, sub: tpl.sub, art: tpl.art, text: tpl.text,
     cost: undefined,
     mana: undefined, color: tpl.color,
-    extraManaColors: [],
     keywords: (tpl.keywords || []).slice(),
     power: tpl.power, toughness: tpl.toughness,
     effects: undefined,
@@ -630,16 +669,6 @@ function intrinsicKeywords(card) {
   return kw;
 }
 
-
-// Colors a land taps for: [primary, ...extras]. Shared by canPayPotential, tap action, AI.
-function landProducibleColors(card) {
-  if (card.type !== 'Land' || !card.mana) return [];
-  const out = [card.mana];
-  for (const c of (card.extraManaColors || [])) {
-    if (!out.includes(c)) out.push(c);
-  }
-  return out;
-}
 
 // Single source of truth for attack eligibility — shared by engine, UI, AI.
 function canCreatureAttack(card) {
@@ -1216,29 +1245,26 @@ function effectiveCastCost(card) {
 function canPayPotential(who, cost) {
   if (!cost) return true;
   const pool = {...G[who].mana};
-  // Mono sources fold into pool; multi-color sources become choice points.
+  // §3.9: lands and creature dorks are one pool of tap-for-mana abilities.
+  // Single-color sources fold into the pool; multi-color (choose) sources
+  // become choice points. Fixed multi-mana abilities add all their mana.
   const choices = [];
   for (const c of G[who].battlefield) {
     if (c.tapped) continue;
-    let producible = null;
-    if (c.type === 'Land') {
-      producible = landProducibleColors(c);
-    } else if (c.abilities && !c.sick) {
-      const manaAb = c.abilities.find(ab => ab.effects && ab.effects[0] && ab.effects[0].kind === 'addMana');
-      if (!manaAb) continue;
-      const am = manaAb.effects[0].amounts;
-      const ks = Object.keys(am);
-      if (ks.length === 1 && am[ks[0]] === 1) {
-        producible = [ks[0]];
-      } else {
-        for (const k of ks) pool[k] = (pool[k] || 0) + am[k];
-        continue;
-      }
-    } else continue;
-    if (producible.length === 1) {
-      pool[producible[0]] = (pool[producible[0]] || 0) + 1;
+    if (c.type === 'Creature' && c.sick) continue;  // sick dork can't tap
+    const ab = manaAbilityOf(c);
+    if (!ab) continue;
+    const eff0 = ab.effects[0];
+    if (eff0.choose) {
+      choices.push(manaEffectColors(eff0));
+      continue;
+    }
+    const am = eff0.amounts;
+    const ks = Object.keys(am);
+    if (ks.length === 1 && am[ks[0]] === 1) {
+      pool[ks[0]] = (pool[ks[0]] || 0) + 1;
     } else {
-      choices.push(producible);
+      for (const k of ks) pool[k] = (pool[k] || 0) + am[k];
     }
   }
   function tryAssign(idx, p) {
@@ -1287,46 +1313,33 @@ function deductFromPool(pool, cost) {
     generic -= used;
   }
 }
-// Tap an untapped source producing `color` (or any if null).
-// Preference: mono-land > dual-land > creature mana ability.
+// Tap an untapped source producing `color` (or any if null). §3.9: lands and
+// creature dorks are one pool of mana abilities. Preference: FIXED-color sources
+// before CHOOSE (flexible) ones, so a basic land is spent before City of Brass.
+// Creatures gate on summoning sickness; lands don't.
 function tapSourceProducing(who, color) {
-  const lands = G[who].battlefield.filter(c => c.type === 'Land' && !c.tapped);
-  for (const c of lands) {
-    if ((c.extraManaColors || []).length === 0
-        && (color === null || c.mana === color)) {
-      c.tapped = true; G[who].mana[c.mana]++;
-      return true;
+  const usable = G[who].battlefield.filter(c =>
+    !c.tapped && (c.type !== 'Creature' || !c.sick) && manaAbilityOf(c));
+  const tap = (c, requested) => {
+    const eff = manaAbilityOf(c).effects[0];
+    c.tapped = true;
+    if (eff.choose) {
+      const opts = eff.choose === 'any' ? COLORS : eff.choose;
+      G[who].mana[requested && opts.includes(requested) ? requested : opts[0]]++;
+    } else {
+      for (const k of Object.keys(eff.amounts)) G[who].mana[k] += eff.amounts[k];
     }
-  }
+    return true;
+  };
+  const isFixed = (c) => !manaAbilityOf(c).effects[0].choose;
+  const makes = (c) => manaEffectColors(manaAbilityOf(c).effects[0]);
   if (color !== null) {
-    for (const c of lands) {
-      if ((c.extraManaColors || []).length > 0
-          && landProducibleColors(c).includes(color)) {
-        c.tapped = true; G[who].mana[color]++;
-        return true;
-      }
-    }
-  } else {
-    for (const c of lands) {
-      if ((c.extraManaColors || []).length > 0) {
-        c.tapped = true; G[who].mana[c.mana]++;
-        return true;
-      }
-    }
+    for (const c of usable) if (isFixed(c) && makes(c).includes(color)) return tap(c, color);
+    for (const c of usable) if (!isFixed(c) && makes(c).includes(color)) return tap(c, color);
+    return false;
   }
-  for (const c of G[who].battlefield) {
-    if (c.tapped) continue;
-    if (c.sick || !Array.isArray(c.abilities)) continue;
-    const manaAb = c.abilities.find(ab => ab.effects && ab.effects[0] && ab.effects[0].kind === 'addMana');
-    if (!manaAb) continue;
-    const am = manaAb.effects[0].amounts;
-    const produces = Object.keys(am)[0];
-    if (color === null || produces === color) {
-      c.tapped = true;
-      for (const k of Object.keys(am)) G[who].mana[k] += am[k];
-      return true;
-    }
-  }
+  for (const c of usable) if (isFixed(c)) return tap(c, null);
+  for (const c of usable) return tap(c, null);
   return false;
 }
 
@@ -4361,40 +4374,30 @@ function doTapLandForMana(who, cardIid, color, abilityIdx) {
   const f = findCard(cardIid); if (!f) return;
   const card = f.card;
   if (card.tapped) return;
-  if (card.type === 'Land') {
-    // Choose a producible color. If caller passed one and it's legal, use
-    // it. Otherwise default to primary (mono-color lands always end up here).
-    const producible = landProducibleColors(card);
-    const chosen = (color && producible.includes(color)) ? color : card.mana;
-    card.tapped = true;
-    G[who].mana[chosen]++;
-    log(`${G[who].name} taps ${card.name} for {${chosen}}.`);
-    return;
-  }
-  // Mana ability on a non-land (creature dork, or creature+land merge).
-  // v1.0.64: scan all abilities, not just [0]. Caller can specify which
-  // mana ability via abilityIdx; otherwise pick the first.
-  if (!Array.isArray(card.abilities)) return;
+  // §3.9: lands and creature dorks tap through the same mana-ability path.
+  // Summoning sickness gates creature dorks only; lands have no sickness.
+  if (card.type === 'Creature' && card.sick) return;
   let manaAb = null;
   if (typeof abilityIdx === 'number') {
-    manaAb = card.abilities[abilityIdx];
-    if (!manaAb || !manaAb.effects || manaAb.effects[0].kind !== 'addMana') return;
+    manaAb = card.abilities && card.abilities[abilityIdx];
+    if (!manaAb || !manaAb.effects || !manaAb.effects[0] || manaAb.effects[0].kind !== 'addMana') return;
   } else {
-    manaAb = card.abilities.find(ab => ab.effects && ab.effects[0] && ab.effects[0].kind === 'addMana');
+    manaAb = manaAbilityOf(card);
   }
   if (!manaAb) return;
-  if (card.sick) return;
   card.tapped = true;
   const eff0 = manaAb.effects[0];
   if (eff0.choose) {
     const opts = eff0.choose === 'any' ? COLORS : eff0.choose;
     const chosen = (color && opts.includes(color)) ? color : opts[0];
     G[who].mana[chosen]++;
+    log(`${G[who].name} taps ${card.name} for {${chosen}}.`);
   } else {
     const am = eff0.amounts;
     for (const k of Object.keys(am)) G[who].mana[k] += am[k];
+    const txt = Object.entries(am).map(([k, n]) => `{${k}}`.repeat(n)).join('');
+    log(`${G[who].name} taps ${card.name} for ${txt}.`);
   }
-  log(`${card.name} taps for mana.`, 'sp');
 }
 function doCastSpell(who, cardIid, targets, modeIdx) {
   const p = G[who];
@@ -5774,7 +5777,7 @@ return {
   init, state: () => G, expectedActor, getLegalActions, executeAction, isLegalAction,
   playerOwesDecision,
   subscribe, findCard, getStats, getCardValue, sacValueOnBoard, cardCost: costTotalCard,
-  landProducibleColors,
+  landProducibleColors, payMana,
   canCreatureAttack, canCreatureBlock,
   effectNeedsTarget, getValidTargets,
   effectiveCastCost,

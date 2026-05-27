@@ -4,5 +4,20 @@
   "mana": "R",
   "name": "Mountain",
   "sub": "Basic Land",
-  "type": "Land"
+  "type": "Land",
+  "abilities": [
+    {
+      "cost": {
+        "tap": true
+      },
+      "effects": [
+        {
+          "kind": "addMana",
+          "amounts": {
+            "R": 1
+          }
+        }
+      ]
+    }
+  ]
 }

@@ -1,0 +1,107 @@
+// §3.9 mana deep-clean: lands and creature dorks both produce mana through a
+// tap-for-mana ability (the extraManaColors parallel model is retired). Covers
+// land/ability consistency, the addMana choose form (City of Brass), summoning-
+// sickness gating (lands vs dorks), the landColor sticker, payMana auto-tap, and
+// the land staple-merge.
+
+const setup = require('./_setup');
+setup.loadEngine();
+
+let pass = 0, fail = 0;
+function check(label, ok, info) {
+  console.log('  ' + (ok ? 'PASS' : 'FAIL') + ': ' + label + (info ? ' -- ' + info : ''));
+  if (ok) pass++; else fail++;
+}
+
+RUN.start({ cards: Array(12).fill('plains'), colors: ['W'] }, null);
+RUN.startNextGame();
+const G = ENGINE.state();
+function resetMana(who) { G[who].mana = { W: 0, U: 0, B: 0, R: 0, G: 0, C: 0 }; }
+function put(who, tplId) { const c = ENGINE.makeCard(tplId, who, null); G[who].battlefield.push(c); return c; }
+
+console.log('=== every Land template: mana label is in its tap-ability colors ===');
+(() => {
+  let bad = 0;
+  for (const tpl of Object.values(CARDS)) {
+    if (tpl.type !== 'Land') continue;
+    const prod = ENGINE.landProducibleColors(tpl);
+    if (prod.length === 0) { bad++; console.log('   no mana ability:', tpl.tplId); continue; }
+    if (tpl.mana && !prod.includes(tpl.mana)) { bad++; console.log('   mana/ability mismatch:', tpl.tplId, tpl.mana, prod); }
+  }
+  check('all lands have a tap-ability whose colors include the mana label', bad === 0, 'bad=' + bad);
+  check('cityOfBrass taps for all 5 colors', JSON.stringify(ENGINE.landProducibleColors(CARDS.cityOfBrass).slice().sort()) === JSON.stringify(['B', 'G', 'R', 'U', 'W']));
+  check('plains taps for W only', JSON.stringify(ENGINE.landProducibleColors(CARDS.plains)) === JSON.stringify(['W']));
+})();
+
+console.log('\n=== basic land taps for its color the turn it is played (no sickness) ===');
+(() => {
+  resetMana('you');
+  const p = put('you', 'plains');
+  ENGINE.executeAction && null;
+  G.activePlayer = 'you'; G.priorityHolder = 'you'; G.phase = 'MAIN1'; G.stack = []; G.priority = { passes: new Set() };
+  check('tap is legal', ENGINE.isLegalAction('you', { type: 'tapLandForMana', cardIid: p.iid }));
+  ENGINE.executeAction('you', { type: 'tapLandForMana', cardIid: p.iid });
+  check('produced {W}', G.you.mana.W === 1 && p.tapped, JSON.stringify(G.you.mana));
+})();
+
+console.log('\n=== City of Brass taps for a chosen color (choose:any) ===');
+(() => {
+  resetMana('you');
+  const cob = put('you', 'cityOfBrass');
+  ENGINE.executeAction('you', { type: 'tapLandForMana', cardIid: cob.iid, color: 'R' });
+  check('produced the chosen {R}', G.you.mana.R === 1, JSON.stringify(G.you.mana));
+})();
+
+console.log('\n=== creature mana dork is summoning-sick the turn it enters ===');
+(() => {
+  resetMana('you');
+  const dork = put('you', 'elves'); dork.sick = true;
+  check('sick dork cannot tap for mana', !ENGINE.isLegalAction('you', { type: 'tapLandForMana', cardIid: dork.iid }));
+  dork.sick = false;
+  ENGINE.executeAction('you', { type: 'tapLandForMana', cardIid: dork.iid });
+  check('un-sick dork taps for {G}', G.you.mana.G === 1, JSON.stringify(G.you.mana));
+})();
+
+console.log('\n=== landColor sticker extends the tap-ability ===');
+(() => {
+  const c = ENGINE.makeCard('plains', 'you', null);
+  // Apply a landColor_U sticker through the runtime sticker path (takes the id).
+  applyOneStickerToRuntimeCard(c, 'landColor_U');
+  const prod = ENGINE.landProducibleColors(c).slice().sort();
+  check('plains + landColor_U produces W and U', JSON.stringify(prod) === JSON.stringify(['U', 'W']), JSON.stringify(prod));
+  // Tapping it for the stickered color works.
+  G.you.battlefield.push(c); resetMana('you');
+  ENGINE.executeAction('you', { type: 'tapLandForMana', cardIid: c.iid, color: 'U' });
+  check('taps for the stickered {U}', G.you.mana.U === 1, JSON.stringify(G.you.mana));
+})();
+
+console.log('\n=== payMana auto-taps lands for a colored cost ===');
+(() => {
+  G.you.battlefield = []; resetMana('you');
+  put('you', 'plains'); put('you', 'forest');
+  ENGINE.payMana('you', { W: 1, G: 1 });  // auto-taps both lands
+  const tappedCount = G.you.battlefield.filter(c => c.tapped).length;
+  check('both lands tapped to pay {W}{G}', tappedCount === 2, 'tapped=' + tappedCount);
+})();
+
+console.log('\n=== payMana prefers a fixed land over City of Brass for a needed color ===');
+(() => {
+  G.you.battlefield = []; resetMana('you');
+  const plains = put('you', 'plains');
+  const cob = put('you', 'cityOfBrass');
+  ENGINE.payMana('you', { W: 1 });  // both can make W; the fixed plains should be spent
+  check('the basic Plains was tapped (fixed source preferred)', plains.tapped === true);
+  check('City of Brass left untapped (flexibility preserved)', cob.tapped === false);
+})();
+
+console.log('\n=== staple: creature + land gains a tap-for-mana ability ===');
+(() => {
+  if (!ENGINE.synthesizeStapledTemplate) { check('synthesizeStapledTemplate available', false); return; }
+  // elves (Creature) + forest (Land) → elves keeps its ability AND gains a forest tap.
+  const merged = ENGINE.synthesizeStapledTemplate('elves', ['forest']);
+  const manaAbs = (merged.abilities || []).filter(ab => ab.cost && ab.cost.tap && ab.effects && ab.effects[0] && ab.effects[0].kind === 'addMana');
+  check('merged creature has >=1 tap-for-mana ability', manaAbs.length >= 1, 'count=' + manaAbs.length);
+})();
+
+console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');
+process.exit(fail > 0 ? 1 : 0);

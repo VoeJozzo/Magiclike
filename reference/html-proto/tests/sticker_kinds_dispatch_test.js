@@ -24,7 +24,6 @@ function freshCard(tplId, stickers, opts) {
     tplId,
     name: tpl.name, type: tpl.type, sub: tpl.sub || '',
     keywords: (tpl.keywords || []).slice(),
-    extraManaColors: (tpl.extraManaColors || []).slice(),
     cost: tpl.cost ? {...tpl.cost} : undefined,
     mana: tpl.mana,
     power: tpl.power, toughness: tpl.toughness,
@@ -70,14 +69,17 @@ console.log('=== applyStickersToCard: each kind mutates correctly ===');
 {
   const card = freshCard('plains', ['landColor_R']);
   applyStickersToCard(card);
-  check("landColor adds 'R' to extraManaColors", (card.extraManaColors || []).includes('R'));
+  // §3.9: landColor extends the tap-ability; producible colors read from it.
+  const prod = ENGINE.landProducibleColors(card);
+  check("landColor adds 'R' to the land's producible colors", prod.includes('R'));
+  check("landColor keeps the native 'W'", prod.includes('W'));
 }
 
 {
   const card = freshCard('plains', ['landColor_W']);
   applyStickersToCard(card);
-  check("landColor: doesn't add native 'W' to extraManaColors",
-    !(card.extraManaColors || []).includes('W'));
+  // Adding the native color is a no-op — still just W (no duplicate / no choose).
+  check("landColor: native 'W' stays single-color", JSON.stringify(ENGINE.landProducibleColors(card)) === JSON.stringify(['W']));
 }
 
 {

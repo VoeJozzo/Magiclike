@@ -1,15 +1,22 @@
 {
   "card_id": "cityOfBrass",
   "art": "cards/cityOfBrass/art.png",
-  "extraManaColors": [
-    "U",
-    "B",
-    "R",
-    "G"
-  ],
   "mana": "W",
   "name": "City of Brass",
   "sub": "Land",
   "text": "Tap: Add one mana of any color.",
-  "type": "Land"
+  "type": "Land",
+  "abilities": [
+    {
+      "cost": {
+        "tap": true
+      },
+      "effects": [
+        {
+          "kind": "addMana",
+          "choose": "any"
+        }
+      ]
+    }
+  ]
 }

@@ -4,5 +4,20 @@
   "mana": "G",
   "name": "Forest",
   "sub": "Basic Land",
-  "type": "Land"
+  "type": "Land",
+  "abilities": [
+    {
+      "cost": {
+        "tap": true
+      },
+      "effects": [
+        {
+          "kind": "addMana",
+          "amounts": {
+            "G": 1
+          }
+        }
+      ]
+    }
+  ]
 }

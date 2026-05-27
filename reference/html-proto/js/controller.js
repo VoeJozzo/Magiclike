@@ -1586,10 +1586,8 @@ function clickBattlefield(iid) {
   // duals). Creatures and artifacts go through the unified ability-picker
   // path below.
   if (f.controller === 'you' && !card.tapped && card.type === 'Land') {
-    if (Array.isArray(card.extraManaColors) && card.extraManaColors.length > 0) {
-      const producible = ENGINE.landProducibleColors
-        ? ENGINE.landProducibleColors(card)
-        : [card.mana, ...card.extraManaColors];
+    const producible = ENGINE.landProducibleColors(card);
+    if (producible.length > 1) {  // §3.9: multi-color land → color picker
       const legal = producible.filter(c =>
         ENGINE.isLegalAction('you', {type:'tapLandForMana', cardIid: iid, color: c}));
       if (legal.length === 0) return;

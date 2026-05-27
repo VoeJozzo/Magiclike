@@ -53,6 +53,8 @@ const CATEGORY_A = [
   'test_ai_targeting.js',
   // Slice 3 — flicker decomposition (two move_cards; ETB re-fire, LTB, token cease).
   'test_flicker.js',
+  // Slice 3 — §3.9 mana deep-clean (land-as-ability, choose form, sticker, staple).
+  'test_mana.js',
   // Slice 3 — on-cast targeting migration (golden).
   'effect_migration_test.js',
 ];
