@@ -90,7 +90,7 @@ console.log('\n=== skipped cards kept their non-taxonomy filters (no silent loss
 console.log('\n=== kind-collapse: legacy mass/weaken kinds gone from card data ===');
 (() => {
   const GONE = ['damageAll', 'removeAll', 'pumpAllYours', 'weaken', 'gainControl', 'steal',
-                'returnFromGraveyard', 'shuffleIntoLibrary', 'addCounter', 'edict'];
+                'returnFromGraveyard', 'shuffleIntoLibrary', 'addCounter', 'edict', 'restrict'];
   const seen = {};
   const allEffs = (card) => {
     const out = [];
@@ -150,6 +150,15 @@ console.log('\n=== kind-collapse: legacy mass/weaken kinds gone from card data =
   check('diabolicEdict: target(player)', edict.target === 'player');
   check('diabolicEdict: chooses(creature) + sacrifice',
     edict.effects.length === 2 && edict.effects[0].kind === 'chooses' && edict.effects[1].kind === 'sacrifice');
+
+  // restrict → target(creature) + grant_keyword(defender) + grant_keyword(no_block).
+  // no_block is the hidden "can't block" half (defender supplies "can't attack").
+  const pac = CARDS.pacifism;
+  check('pacifism: target(creature)', pac.target === 'creature');
+  check('pacifism: grantKeyword(defender) + grantKeyword(no_block)',
+    pac.effects.length === 2
+    && pac.effects[0].kind === 'grantKeyword' && pac.effects[0].keyword === 'defender'
+    && pac.effects[1].kind === 'grantKeyword' && pac.effects[1].keyword === 'no_block');
 })();
 
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');

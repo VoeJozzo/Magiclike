@@ -1290,23 +1290,6 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
     const actualLoss = Math.min(amount, handSize);
     return actualLoss * 8 + 4;
   }
-  if (eff.kind === 'restrict') {
-    if (target.kind !== 'creature') return -100;
-    const c = ENGINE.findCard(target.iid);
-    if (!c) return -100;
-    if (c.controller === us) return -100;
-    // Skip already-neutered (Bonds on top of Pacifism).
-    const cantAtk = c.card.cantAttack || c.card.keywords.includes('defender');
-    const cantBlk = c.card.cantBlock;
-    if (eff.cantAttack && eff.cantBlock && cantAtk && cantBlk) return -50;
-    if (eff.cantAttack && !eff.cantBlock && cantAtk) return -50;
-    const [pow, tou] = ENGINE.getStats(c.card);
-    // 0-power Pacifism is mostly wasted — only cantBlock half might matter.
-    if (pow === 0 && eff.cantAttack) {
-      return eff.cantBlock ? 8 : 2;
-    }
-    return 35 + pow + tou;
-  }
   if (eff.kind === 'grantKeyword') {
     if (target.kind !== 'creature') return -100;
     const c = ENGINE.findCard(target.iid);
@@ -1315,7 +1298,7 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
     // Positive keywords (flying, haste, etc) — only cast on our own.
     // For now Bindspeaker grants defender; broaden when we add others.
     const kw = eff.keyword;
-    const isDebuff = (kw === 'defender');
+    const isDebuff = (kw === 'defender' || kw === 'no_block');
     if (isDebuff && c.controller === us) return -100;
     if (!isDebuff && c.controller !== us) return -100;
     // Already has the keyword? Spell is wasted.
@@ -1324,8 +1307,7 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
       // Already locked down by other means? Skip.
       if (c.card.cantAttack) return -50;
       const [pow, tou] = ENGINE.getStats(c.card);
-      // Bigger threats = better lockdown targets. Mirrors restrict scoring
-      // but shifted slightly because this lasts past source death.
+      // Bigger threats = better lockdown targets.
       return 35 + pow * 2 + tou;
     }
     // Buff grant on our own creature — value scales with what we're adding.

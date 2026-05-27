@@ -1,6 +1,6 @@
 {
   "card_id": "pacifism",
-  "art": "🕊",
+  "art": "\ud83d\udd4a",
   "cost": {
     "W": 1,
     "C": 1
@@ -8,12 +8,16 @@
   "target": "creature",
   "effects": [
     {
-      "kind": "restrict",
-      "cantAttack": true,
-      "cantBlock": true
+      "kind": "grantKeyword",
+      "keyword": "defender"
+    },
+    {
+      "kind": "grantKeyword",
+      "keyword": "no_block"
     }
   ],
   "name": "Pacifism",
   "text": "Target creature can't attack or block.",
-  "type": "Sorcery"
+  "type": "Sorcery",
+  "customText": true
 }

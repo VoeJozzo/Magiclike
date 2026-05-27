@@ -1008,6 +1008,7 @@ function nativeKeywordBadgesHtml(card, big) {
   if (!entries.length) return '';
   const parts = [];
   for (const { kw, source, grantSources } of entries) {
+    if (kw === 'no_block') continue;  // hidden kw (restrict→grant_keyword)
     const label = KEYWORD_DISPLAY[kw] || (kw.charAt(0).toUpperCase() + kw.slice(1));
     // Defender = downside ability — render red like restrictions.
     let cls;

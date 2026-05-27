@@ -260,8 +260,6 @@ function describeEffect(eff, tplEff) {
       return [plainSeg('')];
     case 'fightTarget':
       return [plainSeg('your strongest creature fights ' + t)];
-    case 'restrict':
-      return [plainSeg(t + " can't attack or block")];
     case 'flicker':
       return [plainSeg('exile ' + t + ', then return it to the battlefield')];
     case 'exileUntilEOT':
@@ -526,6 +524,10 @@ function describeStaticBuff(buff) {
 // Keyword list as "Flying, Vigilance" prefix.
 function keywordPreamble(keywords) {
   if (!Array.isArray(keywords) || keywords.length === 0) return '';
+  // no_block is the hidden half of Pacifism's "can't attack or block" lockdown
+  // (paired with defender); never surfaced as a keyword in its own right.
+  keywords = keywords.filter(k => k !== 'no_block');
+  if (keywords.length === 0) return '';
   const display = {
     flying: 'Flying', vigilance: 'Vigilance', trample: 'Trample', haste: 'Haste',
     firstStrike: 'First strike', doubleStrike: 'Double strike', deathtouch: 'Deathtouch',
@@ -568,7 +570,7 @@ function describeCardSegments(card, opts) {
     const sections = [];
     if (!opts.skipKeywords && (card.type === 'Creature' || tpl.type === 'Creature')) {
       const intrinsic = new Set(tpl.keywords || []);
-      const granted = (card.keywords || []).filter(kw => !intrinsic.has(kw));
+      const granted = (card.keywords || []).filter(kw => !intrinsic.has(kw) && kw !== 'no_block');
       if (granted.length > 0) {
         const kw = keywordPreamble(granted);
         if (kw) sections.push([plainSeg(kw + '.')]);

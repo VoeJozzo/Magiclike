@@ -27,8 +27,8 @@ outerCheck('resolveTarget defined', /function resolveTarget\(ctx, target\)/.test
 outerCheck('pluckFromBattlefield defined', /function pluckFromBattlefield\(f\)/.test(code));
 
 const resolveCalls = (code.match(/const f = resolveTarget\(ctx, target\)/g) || []).length;
-outerCheck('resolveTarget call sites = 16 (post step-7 dead-handler removal)',
-  resolveCalls === 16, 'actual=' + resolveCalls);
+outerCheck('resolveTarget call sites = 15 (post restrict→grant_keyword collapse)',
+  resolveCalls === 15, 'actual=' + resolveCalls);
 
 const pluckCalls = (code.match(/pluckFromBattlefield\(/g) || []).length;
 outerCheck('pluckFromBattlefield call sites = 10 (post step-7 dead-handler removal)',

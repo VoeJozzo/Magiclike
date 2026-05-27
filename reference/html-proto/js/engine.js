@@ -655,6 +655,7 @@ function canCreatureBlock(card, attacker) {
   if (!card || card.type !== 'Creature') return false;
   if (card.tapped) return false;
   if (card.cantBlock) return false;
+  if ((card.keywords || []).includes('no_block')) return false;  // hidden kw (restrict→grant_keyword)
   if (!attacker) return true;
   if ((attacker.keywords || []).includes('unblockable')) return false;
   if ((attacker.keywords || []).includes('flying')
@@ -1164,7 +1165,6 @@ function spellValueForEffects(effects) {
     }
     else if (e.kind === 'addMana') v += 3;
     else if (e.kind === 'searchCreature' || e.kind === 'searchLandTapped') v += 4;
-    else if (e.kind === 'restrict') v += 6;
     else if (e.kind === 'fightTarget') v += 5;
   }
   return v;
@@ -1978,25 +1978,6 @@ const EFFECTS = {
       tryBuildOnDraw(card, ctx.controller);
     }
   },
-  restrict(ctx, params, target) {
-    // Persistent until source leaves play. Per-kind Set of source iids; clearRestrictionsFromSource cleans up.
-    const f = resolveTarget(ctx, target);
-    if (!f) return;
-    if (params.cantAttack) {
-      if (!(f.card.cantAttackBy instanceof Set)) f.card.cantAttackBy = new Set();
-      f.card.cantAttackBy.add(ctx.sourceIid);
-      f.card.cantAttack = true;
-    }
-    if (params.cantBlock) {
-      if (!(f.card.cantBlockBy instanceof Set)) f.card.cantBlockBy = new Set();
-      f.card.cantBlockBy.add(ctx.sourceIid);
-      f.card.cantBlock = true;
-    }
-    const parts = [];
-    if (params.cantAttack) parts.push("can't attack");
-    if (params.cantBlock) parts.push("can't block");
-    log(`${ctx.sourceName} binds ${f.card.name} (${parts.join(', ')}).`, 'sp');
-  },
   // Grant keyword. Axes: target (single), whose:'allYours'|'all' (mass), duration:'eot'|'permanent'.
   // Permanent → grantedBy (revoked on leave-play); EOT → eotGrants (revoked at end-turn).
   // Additive: a creature can have a kw from both systems at once.
@@ -2736,7 +2717,7 @@ function validateAllCardEffects(cards) {
 const CREATURE_EFFECT_KINDS = new Set([
   'pump', 'weaken', 'addCounter', 'untap', 'removeCreature',
   'fightTarget', 'endomorphAbsorb', 'flicker', 'exileUntilEOT',
-  'restrict', 'grantKeyword', 'shuffleIntoLibrary', 'steal',
+  'grantKeyword',
   'sacrifice', 'gainControl',
 ]);
 function effectOperatesOnCreature(eff) {
@@ -2997,7 +2978,7 @@ function pickBestTriggerTarget(eff, valid, controller) {
     const oppFace = valid.find(t => t.kind === 'player' && t.who === them);
     if (oppFace) return oppFace;
   }
-  const harmful = ['removeCreature', 'restrict', 'fightTarget'];
+  const harmful = ['removeCreature', 'fightTarget'];
   if (harmful.includes(eff.kind)) {
     const oppC = valid.filter(t => t.kind === 'creature' && ctrlOf(t) === them);
     if (oppC.length) {
