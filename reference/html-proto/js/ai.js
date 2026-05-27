@@ -1,5 +1,34 @@
 // AI — pure decision-maker. Swap by replacing `decide` with same signature.
 
+// §7b coverage (cast path): every EFFECTS kind must be classified for the AI's
+// per-target cast scorer (scoreSpellTargetForMode) — either it has a scoring
+// branch (TARGET_SCORED), or it is consciously NOT target-scored (untargeted, a
+// rider on a multi-effect spell, or scored via a different decision path).
+// effectCoverageReport() (engine.js) checks this partition is exhaustive +
+// disjoint over Object.keys(EFFECTS), the same way it checks valuation/card-text.
+// This is what turns "added a targeted effect kind, forgot the cast scorer"
+// (the bug that hid the bosses' removal + mind control) from silent to caught.
+// Declared at module scope (outside the AI IIFE) so the coverage report can read
+// them. Keep them in sync with the if-chain in scoreSpellTargetForMode.
+const TARGET_SCORED_KINDS = new Set([
+  'damage', 'removeCreature', 'pump', 'addCounter', 'gainLife', 'discard',
+  'grantKeyword', 'fightTarget', 'untap', 'move_card', 'sacrifice', 'annihilate',
+  'ripPermanent', 'symmetricize', 'destroyAndStickerSlot', 'change_control',
+]);
+const NOT_TARGET_SCORED_KINDS = new Set([
+  'createTokens',       // untargeted — mint tokens (scored via spellValueForEffects)
+  'addMana',            // untargeted ramp
+  'draw',               // untargeted (generator-emitted)
+  'counter',            // scored via the instant-response counter path, not main-phase
+  'apply_sticker',      // a rider on embargo/bleach — the move_card half is scored
+  'schedule_delayed',   // a rider (exile_until_eot's return) — the move_card half is scored
+  'chooses',            // edict's pick step — the sacrifice/rip verb is scored
+  'steal',              // internal helper dispatched by change_control
+  'endomorphAbsorb',    // creature ability, not a cast spell
+  'bargainStickerSelf', 'bargainStickerOther', // Archdemon trigger mechanic
+  'applyInGameSplice',  // Stapler ability (player-UI-driven), not AI-scored
+]);
+
 const AI = (function() {
 
 // Flag off → flash creatures cast sorcery-speed; flag on → also ambush + tempo end-step.
@@ -1217,6 +1246,26 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
     if (!c || c.controller === us) return -100;
     if (c.card.keywords.includes('hexproof') || c.card.keywords.includes('indestructible')) return -100;
     return 40 + ENGINE.getCardValue(c.card, 'kill') + laneOpeningBonus(state, us, target.iid);
+  }
+  if (eff.kind === 'change_control') {
+    // Mind Control (creature) / Threaten (creature, eot) / Steal (any permanent,
+    // surfaced as kind 'permanent'). Take control of an opp permanent.
+    if (target.kind !== 'creature' && target.kind !== 'permanent') return -100;
+    const c = ENGINE.findCard(target.iid);
+    if (!c || c.controller === us) return -100;        // already ours
+    if (c.card.keywords.includes('hexproof')) return -100;
+    if (eff.duration === 'eot') {
+      // Threaten: temporary control — value the alpha-strike/sac swing, not the
+      // body (it goes back at end of turn).
+      const [pow] = ENGINE.getStats(c.card);
+      return 8 + pow;
+    }
+    // Permanent control (mind control) or run-slot theft (steal): we BOTH remove
+    // it from their side AND gain it — strictly above a straight kill. Steal's
+    // permanent deck-theft is worth a touch more. Lane bonus only for creatures.
+    const base = eff.transfer_ownership ? 42 : 35;
+    const lane = (c.card.type === 'Creature') ? laneOpeningBonus(state, us, target.iid) : 0;
+    return base + ENGINE.getCardValue(c.card, 'kill') + lane;
   }
   if (eff.kind === 'damage') {
     const amount = eff.amount;

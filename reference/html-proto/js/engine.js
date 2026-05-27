@@ -1285,7 +1285,19 @@ function effectCoverageReport() {
     catch (e) { return true; }  // a throw is also a coverage failure
     return txt === '[' + k + ']';
   });
-  return { unclassifiedValuation, staleValuation, missingText };
+  // AI cast-path scorer (ai.js scoreSpellTargetForMode): every kind must be
+  // classified as target-scored or consciously not. This catches the silent
+  // class where a targeted effect kind scores 0 and the AI never casts it
+  // (the bosses' removal + mind control). Sets live in ai.js (loaded after this
+  // module) — read lazily; if absent (engine-only test boot), skip the check.
+  let unclassifiedCastScoring = [], staleCastScoring = [];
+  if (typeof TARGET_SCORED_KINDS !== 'undefined' && typeof NOT_TARGET_SCORED_KINDS !== 'undefined') {
+    const classifiedCast = new Set([...TARGET_SCORED_KINDS, ...NOT_TARGET_SCORED_KINDS]);
+    unclassifiedCastScoring = kinds.filter(k => !classifiedCast.has(k));
+    staleCastScoring = [...classifiedCast].filter(k => !EFFECTS[k]);
+  }
+  return { unclassifiedValuation, staleValuation, missingText,
+           unclassifiedCastScoring, staleCastScoring };
 }
 
 // ----- Mana -----

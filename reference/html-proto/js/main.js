@@ -26,7 +26,8 @@ loadCards().then(() => {
   // have card-text. A miss here means a future kind would silently score 0 / show
   // "[kind]" — warn loudly at boot (mirrors Godot's _ready() push_error).
   const cov = ENGINE.effectCoverageReport();
-  if (cov.unclassifiedValuation.length || cov.staleValuation.length || cov.missingText.length) {
+  if (cov.unclassifiedValuation.length || cov.staleValuation.length || cov.missingText.length
+      || cov.unclassifiedCastScoring.length || cov.staleCastScoring.length) {
     console.warn('Effect coverage gaps:', cov);
   }
   CONTROLLER.init();

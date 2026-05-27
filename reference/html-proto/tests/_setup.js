@@ -129,6 +129,8 @@ function installDomStubs() {
 const EXPOSED = [
   // Public module objects (top of each .js file).
   'ENGINE', 'AI', 'RUN', 'DRAFT', 'CARDS', 'STICKERS',
+  // §7b cast-path coverage sets (ai.js module scope).
+  'TARGET_SCORED_KINDS', 'NOT_TARGET_SCORED_KINDS',
   'CONTROLLER', 'PICKLOG', 'VERSION', 'Modal', 'RUN_MODIFIERS', 'SETTINGS',
   // Card-load surface (cards.js, module-scope).
   'ingestCard',

@@ -24,20 +24,26 @@ console.log('=== the live dispatch table is fully covered ===');
     cov.staleValuation.length === 0, cov.staleValuation.join(','));
   check('no kind renders the "[kind]" card-text sentinel', cov.missingText.length === 0,
     cov.missingText.join(','));
+  check('no kind is unclassified for the AI cast scorer', cov.unclassifiedCastScoring.length === 0,
+    cov.unclassifiedCastScoring.join(','));
+  check('no stale entry in the cast-scoring sets', cov.staleCastScoring.length === 0,
+    cov.staleCastScoring.join(','));
 })();
 
-console.log('\n=== the partition is exhaustive + disjoint over EFFECTS ===');
+console.log('\n=== both partitions are exhaustive + disjoint over EFFECTS ===');
 (() => {
   const kinds = new Set(Object.keys(ENGINE.EFFECTS));
-  const valued = ENGINE.VALUED_EFFECT_KINDS;
-  const unvalued = ENGINE.UNVALUED_EFFECT_KINDS;
-  const overlap = [...valued].filter(k => unvalued.has(k));
-  check('valued ∩ unvalued = ∅ (disjoint)', overlap.length === 0, overlap.join(','));
-  const union = new Set([...valued, ...unvalued]);
-  const uncovered = [...kinds].filter(k => !union.has(k));
-  const extra = [...union].filter(k => !kinds.has(k));
-  check('valued ∪ unvalued = EFFECTS keys (exhaustive)', uncovered.length === 0 && extra.length === 0,
-    'uncovered=[' + uncovered.join(',') + '] extra=[' + extra.join(',') + ']');
+  const partition = (label, a, b) => {
+    const overlap = [...a].filter(k => b.has(k));
+    check(label + ': sets disjoint', overlap.length === 0, overlap.join(','));
+    const union = new Set([...a, ...b]);
+    const uncovered = [...kinds].filter(k => !union.has(k));
+    const extra = [...union].filter(k => !kinds.has(k));
+    check(label + ': union = EFFECTS keys (exhaustive)', uncovered.length === 0 && extra.length === 0,
+      'uncovered=[' + uncovered.join(',') + '] extra=[' + extra.join(',') + ']');
+  };
+  partition('valuation', ENGINE.VALUED_EFFECT_KINDS, ENGINE.UNVALUED_EFFECT_KINDS);
+  partition('cast-scoring', TARGET_SCORED_KINDS, NOT_TARGET_SCORED_KINDS);
 })();
 
 console.log('\n=== §12.12 regression: an unhandled HANDLERS kind is CAUGHT ===');
@@ -51,13 +57,16 @@ console.log('\n=== §12.12 regression: an unhandled HANDLERS kind is CAUGHT ==='
       cov.unclassifiedValuation.join(','));
     check('missing card-text flags the fake kind', cov.missingText.includes(FAKE),
       cov.missingText.join(','));
+    check('unclassified cast-scoring flags the fake kind', cov.unclassifiedCastScoring.includes(FAKE),
+      cov.unclassifiedCastScoring.join(','));
   } finally {
     delete EFFECTS[FAKE];   // restore — don't leak into later test files
   }
   // Sanity: removing it restores a clean report.
   const after = ENGINE.effectCoverageReport();
   check('report is clean again after removing the probe',
-    after.unclassifiedValuation.length === 0 && after.missingText.length === 0);
+    after.unclassifiedValuation.length === 0 && after.missingText.length === 0
+      && after.unclassifiedCastScoring.length === 0);
 })();
 
 console.log('\n=== a stale valuation entry (registered kind with no handler) is CAUGHT ===');

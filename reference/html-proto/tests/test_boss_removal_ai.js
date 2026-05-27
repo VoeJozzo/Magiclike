@@ -53,6 +53,11 @@ check('symmetricize — AI casts it (equalize opp creature)', trial('symmetriciz
 check('embargo — AI casts it (bounce, scoring the move_card not the sticker)', trial('embargo', 'you'));
 check('bleach — AI casts it (exile, scoring the move_card not the sticker)', trial('bleach', 'you'));
 
+console.log('\n=== change_control family (same silent-uncast class) ===');
+check('mindControl — AI casts it (permanent steal of control)', trial('mindControl', 'you'));
+check('threaten — AI casts it (temporary control)', trial('threaten', 'you'));
+check('steal — AI casts it (permanentOrSpell target, run-slot theft)', trial('steal', 'you'));
+
 console.log('\n=== regressions: ordinary removal + flicker still cast ===');
 check('terror still cast (vanilla destroy)', trial('terror', 'you'));
 check('oblation still cast (shuffle-into-library)', trial('oblation', 'you'));
