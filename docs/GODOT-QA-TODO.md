@@ -444,16 +444,34 @@ flows through one sticker pipeline.
 Remaining collapse:
 - **exileUntilEOT → move_card decomp** (B4-deferred per §9.1; stays monolithic).
 
-Then `apply_sticker` + sticker pipeline (step 10), mana deep-clean (§3.9),
-selfDamageOf scope:controller (minor), UI target-pick (browser), staple
-`fireStackEffects` path (Stapler-only).
-- **Step 7**: delete the now-unused legacy EFFECTS handlers (damageAll,
-  removeAll, pumpAllYours, weaken, gainControl, steal, returnFromGraveyard,
-  shuffleIntoLibrary) + their card-text/valuation cases + the §8.1 dead-code
-  purge. (They're dead — no card uses them — but still present.)
-- `apply_sticker` + sticker pipeline (step 10), mana deep-clean (§3.9),
-  selfDamageOf scope:controller (minor), UI target-pick (part D, browser),
-  staple `fireStackEffects` path (Stapler-only).
+### Proto side — COMPLETE (Slice 3)
+
+The proto effects refactor is done. The earlier "still pending" list here is
+resolved:
+- **apply_sticker + sticker pipeline (§3.8), mana deep-clean (§3.9), staple
+  cleanup (§3.10)** — DONE (see the sections above).
+- **Step 7 dead-handler purge** — DONE (no legacy EFFECTS handler remains; the
+  empower/draft/render dead-kind tables were refreshed in §3.8 + the valence
+  cleanup).
+- **Browser target-pick (§3.5 part D)** — DONE. The human cast flow
+  (`clickHand` + the activated-ability picker) now honors the top-level
+  `target()` step via `objNeedsTarget`/`probeTargetsFor`, and the render slot
+  helpers via `pendingTopTargetFilter`. Covered by `test_ui_targeting.js` (drives
+  the real CONTROLLER handlers under the stubbed DOM).
+- **`selfDamageOf` scope** — verified a non-issue (self-damage is `target:'self'`
+  player recoil; mass `scope` hits creatures, not the caster).
+- **PROTOCOL.md / DIVERGENCE.md** — updated to the post-refactor reality (§10
+  step 13). **SPEC.md intentionally NOT updated** — it's the *Godot* runtime
+  contract; it changes when the Godot mirror lands, not before.
+
+Remaining on the proto side (all deferred-by-design, none blocking):
+- `exile_until_eot` decomposition (B4 / Godot delayed-trigger queue).
+- empower/subtype addressing-shape (investigated → net-neutral, positional kept).
+- `grant_mana_ability` generalization of `land_color` (forward-looking).
+- D4 `gain_life` signed-delta redesign (both engines; separate effects-plan item).
+- staple `fireStackEffects` path is Stapler-only and already functions.
+
+Everything else below is the **Godot mirror** (separate Godot-equipped session).
 
 ### Godot mirror — major work items (per plan §10/§11)
 
