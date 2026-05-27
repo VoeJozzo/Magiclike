@@ -137,7 +137,7 @@ runtime handlers — noted).
 | `fight_target`        | (target())                                      | JS          | Your strongest creature fights the target().                                         |
 | `exile_until_eot`     | (target())                                      | —           | **Decomposed in proto** to `move_card` (bf→exile) + `schedule_delayed` (end-step exile→bf return), since proto already has a delayed-trigger queue. No longer a distinct handler proto-side. Godot still needs its delayed-trigger queue (B4) before it can do the same. |
 | `rip_permanent`       | (params per card)                               | JS          | Card-specific bundled rip (kludge; broad `rip` is the decided target — §13).         |
-| `destroy_and_sticker_slot` / `endomorph_absorb` / `apply_in_game_splice` / `symmetricize` / `bargain_sticker_self` / `bargain_sticker_other` | (per card) | JS | Card-specific (Scarification / Endomorph / Stapler / Symmetricize prompt / Archdemon). |
+| `endomorph_absorb` / `apply_in_game_splice` / `symmetricize` / `bargain_sticker_self` / `bargain_sticker_other` | (per card) | JS | Card-specific (Endomorph / Stapler / Symmetricize prompt / Archdemon). (Scarification decomposed to `[apply_sticker(scarified), affect_creature(destroy)]` — `destroy_and_sticker_slot` retired.) |
 | `draw` / `discard`    | `amount`                                        | JS (runtime only) | **Not used in card data** — kept as handlers because the trigger generator (Mercurial Adept) still emits them. Card data uses `move_card`. |
 | `noop`                | —                                               | JS          | Placeholder.                                                                         |
 

@@ -90,6 +90,20 @@ console.log('\n=== §3.8 snake_case: a save with legacy sticker ids loads rename
     !stickers.some(s => s === 'plus1plus1' || s === 'costMinus1' || s === 'landColor_W'));
 })();
 
+console.log('\n=== scarification (#18): apply_sticker(scarified by id) + affect_creature(destroy) ===');
+(() => {
+  // Decomposed from the old destroy_and_sticker_slot monolith. Sticker-FIRST so
+  // the run-slot scar lands while the creature is still reachable; then destroy.
+  // Exercises apply_sticker's registry-id shape (stickerId → STICKERS lookup).
+  const { G, inst } = bootWithCreature();
+  const tgt = { kind: 'creature', iid: inst.iid };
+  ENGINE.applyEffect(CTX('Scarification'), { kind: 'apply_sticker', stickerId: 'scarified' }, tgt);
+  ENGINE.applyEffect(CTX('Scarification'), { kind: 'affect_creature', severity: 'destroy' }, tgt);
+  check('creature destroyed (→ graveyard)',
+    !G.you.battlefield.some(c => c.iid === inst.iid) && G.you.graveyard.some(c => c.iid === inst.iid));
+  check('scarified sticker persisted on the slot (by id)', RUN.getSlots()[0].stickers.includes('scarified'));
+})();
+
 console.log('\n=== §3.8: the applyBalancerOverrides channel is gone (one sticker pipeline) ===');
 (() => {
   const fs = require('fs');

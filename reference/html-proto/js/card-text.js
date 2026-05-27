@@ -362,8 +362,6 @@ function describeEffect(eff, tplEff) {
       return [plainSeg('gain a keyword from the slain creature, or +1/+1 if none')];
     case 'rip_permanent':
       return [plainSeg(t + ' rips a permanent they control')];
-    case 'destroy_and_sticker_slot':
-      return [plainSeg('destroy ' + t + ' and scar it')];
     case 'symmetricize':
       return [plainSeg(t + "'s controller equalizes its power, toughness, or cost")];
     case 'embargo':

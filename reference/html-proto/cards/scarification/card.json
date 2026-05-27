@@ -8,8 +8,12 @@
   "target": "creature",
   "effects": [
     {
-      "kind": "destroy_and_sticker_slot",
+      "kind": "apply_sticker",
       "stickerId": "scarified"
+    },
+    {
+      "kind": "affect_creature",
+      "severity": "destroy"
     }
   ],
   "name": "Scarification",

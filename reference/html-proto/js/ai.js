@@ -13,7 +13,7 @@
 const TARGET_SCORED_KINDS = new Set([
   'damage', 'affect_creature', 'pump', 'add_counter', 'gain_life', 'discard',
   'grant_keyword', 'fight_target', 'untap', 'move_card', 'sacrifice', 'annihilate',
-  'rip_permanent', 'symmetricize', 'destroy_and_sticker_slot', 'change_control',
+  'rip_permanent', 'symmetricize', 'change_control',
 ]);
 const NOT_TARGET_SCORED_KINDS = new Set([
   'create_tokens',       // untargeted — mint tokens (scored via spellValueForEffects)
@@ -1237,15 +1237,6 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
     const [pow, tou] = ENGINE.getStats(c.card);
     // Bigger + more lopsided creatures are better targets (more to flatten).
     return 8 + Math.floor(Math.abs(pow - tou) / 2) + Math.floor((pow + tou) / 4);
-  }
-  if (eff.kind === 'destroy_and_sticker_slot') {
-    // Scarification: destroy the target creature AND scar its run slot. Hard
-    // removal — score like a destroy (affect_creature destroy), no severity field.
-    if (target.kind !== 'creature') return -100;
-    const c = ENGINE.findCard(target.iid);
-    if (!c || c.controller === us) return -100;
-    if (c.card.keywords.includes('hexproof') || c.card.keywords.includes('indestructible')) return -100;
-    return 40 + ENGINE.getCardValue(c.card, 'kill') + laneOpeningBonus(state, us, target.iid);
   }
   if (eff.kind === 'change_control') {
     // Mind Control (creature) / Threaten (creature, eot) / Steal (any permanent,

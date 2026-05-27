@@ -65,6 +65,15 @@ severities (a `destroy` spell scored as `exile`; a `tap` ignored its already-tap
 guard). No crash, so tests/selfplay stayed green — the textbook §8.1 lockstep trap.
 Both now go through `_sevNum`; added a regression (AI won't `tap` an already-tapped
 creature).
+v2.0.14: review cleanup (slice 3/4) — decomposed Scarification (plan #18): the
+`destroy_and_sticker_slot` monolith → `[apply_sticker(scarified), affect_creature(
+destroy)]` (sticker-FIRST so the run-slot scar lands before the creature leaves;
+matches embargo's pattern). Extended `apply_sticker` to accept a registry
+`stickerId` (not just an inline descriptor) for complex registered stickers.
+Deleted the `destroy_and_sticker_slot` handler + all its classification/scoring/
+text sites. Behavior note: under atomic decomposition an indestructible target now
+gets scarred-but-not-destroyed (the monolith fizzled both halves) — an acceptable
+edge on a boss-targeted creature.
 
 > **MUST UPDATE on every dev-branch push that touches code.** Bump `VERSION` in `js/main.js` AND the line above, in the same commit. GitHub Pages caches aggressively; the version string is the only reliable way to confirm a fresh build is live.
 

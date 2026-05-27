@@ -27,8 +27,8 @@ outerCheck('resolveTarget defined', /function resolveTarget\(ctx, target\)/.test
 outerCheck('pluckFromBattlefield defined', /function pluckFromBattlefield\(f\)/.test(code));
 
 const resolveCalls = (code.match(/const f = resolveTarget\(ctx, target\)/g) || []).length;
-outerCheck('resolveTarget call sites = 12 (post exileUntilEOT→move_card+schedule_delayed)',
-  resolveCalls === 12, 'actual=' + resolveCalls);
+outerCheck('resolveTarget call sites = 11 (post Scarification decomposition removed destroy_and_sticker_slot)',
+  resolveCalls === 11, 'actual=' + resolveCalls);
 
 const pluckCalls = (code.match(/pluckFromBattlefield\(/g) || []).length;
 outerCheck('pluckFromBattlefield call sites = 6 (post exileUntilEOT→move_card+schedule_delayed)',

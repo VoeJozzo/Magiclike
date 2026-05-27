@@ -1209,7 +1209,6 @@ function spellValueForEffects(effects) {
       v += (k === 'set_color') ? 4 : (k === 'cost_mod') ? 2 : 3;
     }
     else if (e.kind === 'rip_permanent') v += 14;        // destroy + run-permanent slot rip
-    else if (e.kind === 'destroy_and_sticker_slot') v += 13;
     else if (e.kind === 'symmetricize') v += 8;
     else if (e.kind === 'draw') v += (e.amount || 1) * 3;
     else if (e.kind === 'discard') v += 4;
@@ -1247,7 +1246,7 @@ function spellValueForEffects(effects) {
 // (a test fails, a boot warning prints), instead of the AI silently valuing it 0.
 // Keep these two sets exhaustive + disjoint over Object.keys(EFFECTS).
 const VALUED_EFFECT_KINDS = new Set([
-  'damage', 'pump', 'add_counter', 'affect_creature', 'destroy_and_sticker_slot',
+  'damage', 'pump', 'add_counter', 'affect_creature',
   'symmetricize', 'apply_sticker', 'counter', 'add_mana', 'gain_life', 'draw',
   'move_card', 'discard', 'grant_keyword', 'create_tokens', 'rip_permanent',
   'chooses', 'schedule_delayed', 'change_control', 'fight_target',
@@ -1803,36 +1802,6 @@ const EFFECTS = {
     if (!f) return;
     affectOneCreature(ctx, f, sev);
   },
-  // Destroy + apply sticker to slot (Scarification). Player-side persistent;
-  // opp-side: in-game destroy only (opp slots regenerate). params.stickerId names it.
-  destroy_and_sticker_slot(ctx, params, target) {
-    const f = resolveTarget(ctx, target);
-    if (!f) return;
-    if (f.card.type !== 'Creature') {
-      log(`${ctx.sourceName} fizzles — target must be a creature.`, 'sp');
-      return;
-    }
-    // Indestructible blocks both halves (can't scar what you can't break).
-    if ((f.card.keywords || []).includes('indestructible')) {
-      log(`${f.card.name} is indestructible — ${ctx.sourceName} fizzles.`, 'sp');
-      return;
-    }
-    const slotIdx = f.card.slotIdx;
-    const slotController = f.controller;
-    f.card.killedBy = ctx.controller;
-    moveToGraveyard(f.card, f.controller);
-    log(`${ctx.sourceName} destroys ${f.card.name}.`, 'sp');
-    const stickerId = params.stickerId;
-    if (!stickerId) return;
-    if (slotController === 'you' && typeof slotIdx === 'number'
-        && typeof RUN !== 'undefined' && RUN.applyStickerToSlot) {
-      const applied = RUN.applyStickerToSlot(slotIdx, stickerId);
-      if (applied) {
-        const stk = STICKERS[stickerId];
-        log(`${f.card.name} is scarred — gains "${stk ? stk.text : stickerId}" for the rest of the run.`, 'sp');
-      }
-    }
-  },
   // ─── Balancer boss effects ─────────────────────────────────────────
   // Target's controller picks one of {power, toughness, cost-total}; all three
   // become that value. §3.8: the choice resolves (doSymmetricizeChoice) into an
@@ -1870,13 +1839,18 @@ const EFFECTS = {
   apply_sticker(ctx, params, target) {
     const f = resolveTarget(ctx, target);
     if (!f) return;
-    const desc = params.sticker;
+    // Two shapes: an inline descriptor (`sticker:{kind,...}` — embargo/bleach) or
+    // a registry id (`stickerId` — complex registered stickers like `scarified`).
+    // For the registry case we persist by id so RUN.applyStickerToSlot uses the
+    // STICKERS lookup + id-based dedup/storage, exactly as the old monolith did.
+    const desc = params.sticker || (params.stickerId ? STICKERS[params.stickerId] : null);
     if (!desc || !desc.kind) return;
+    const slotKey = params.sticker ? { ...desc } : params.stickerId;
     applyOneStickerToRuntimeCard(f.card, { ...desc });
     const owner = f.card.owner || f.controller;
     const slotIdx = (typeof f.card.slotIdx === 'number') ? f.card.slotIdx : null;
     if (owner === 'you' && slotIdx != null && typeof RUN !== 'undefined' && RUN.applyStickerToSlot) {
-      RUN.applyStickerToSlot(slotIdx, { ...desc });
+      RUN.applyStickerToSlot(slotIdx, slotKey);
     }
     log(`${ctx.sourceName} applies a lasting change to ${f.card.name}.`, 'sp');
   },

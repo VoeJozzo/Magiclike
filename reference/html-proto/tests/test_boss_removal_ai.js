@@ -2,7 +2,7 @@
 // Archdemon of Bargains (vileEdict, scarification) and The Balancer
 // (symmetricize, embargo, bleach) — never cast their signature removal because
 // the AI's per-target scorer (scoreSpellTargetForMode) had no branch for
-// rip_permanent / symmetricize / destroy_and_sticker_slot / move_card-bounce /
+// rip_permanent / symmetricize / scarification (apply_sticker+affect_creature) / move_card-bounce /
 // plain-exile, and picked the apply_sticker rider as embargo/bleach's primary
 // effect. All scored 0 → the AI passed. This pins that each now scores positive
 // and gets cast on a valid target (without breaking flicker, which shares the
