@@ -488,6 +488,30 @@ function describeEffectList(effects, cardName, tplEffects, stepTarget, stepFilte
       && effects[1].kind === 'schedule_delayed') {
     return capitalizeSegs(parts[0]).concat(plainSeg('; return it to the battlefield at end of turn.'));
   }
+  // Balancer-tax pattern: a move_card removal + an apply_sticker persistent rider
+  // (bleach: exile + set_color; embargo: bounce + cost_mod). Render the removal,
+  // then the rider with a pronoun so the target isn't repeated.
+  if (effects.length === 2) {
+    const mc = effects.find(e => e.kind === 'move_card' && e.from_zone === 'battlefield');
+    const ap = effects.find(e => e.kind === 'apply_sticker');
+    if (mc && ap) {
+      const sk = ap.sticker || {};
+      let rider = null;
+      if (sk.kind === 'set_color') {
+        const cn = sk.color === 'C' ? 'colorless' : (COLOR_NAMES[sk.color] || sk.color).toLowerCase();
+        rider = 'it becomes ' + cn + ' permanently';
+      } else if (sk.kind === 'cost_mod') {
+        const n = sk.amount || 0;
+        rider = 'it costs {' + Math.abs(n) + '} ' + (n < 0 ? 'less' : 'more') + ' permanently';
+      } else if (sk.kind === 'stat_boost') {
+        rider = 'it gets +' + (sk.power || 0) + '/+' + (sk.toughness || 0) + ' permanently';
+      }
+      if (rider) {
+        const mcSeg = Object.assign({}, mc, stepTarget && !mc.target ? { target: stepTarget } : {});
+        return capitalizeSegs(describeEffect(mcSeg)).concat(plainSeg('; ' + rider + '.'));
+      }
+    }
+  }
   // Same-subject EOT buffs (pump + keyword grants) → one coalesced clause.
   const coalesced = coalesceEotBuffs(effects, tplOf);
   if (coalesced) return coalesced;
@@ -676,7 +700,11 @@ function describeCardText(card) {
 function describeCardSegments(card, opts) {
   opts = opts || {};
   const tpl = CARDS[card.tplId] || card;
-  if (tpl.customText === true || tpl.special === true) {
+  // Authored text is keyed on `customText` ONLY — `special` is a gameplay flag
+  // (draft-excluded / unspliceable) and must NOT force hand-written text, else a
+  // special card whose effects ARE describable can silently drift from them.
+  // Special cards that genuinely need authored text carry `customText: true`.
+  if (tpl.customText === true) {
     // Hand-authored static text. Many special cards (City Guardian,
     // Archdemon Bargains) already mention their intrinsic keywords
     // inline, so we DON'T prepend the full keyword list -- that would

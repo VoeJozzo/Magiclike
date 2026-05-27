@@ -16,5 +16,6 @@
   "sub": "Human Soldier",
   "text": "Legendary, First Strike. All cards cost {1} more to cast.",
   "toughness": 1,
-  "type": "Creature"
+  "type": "Creature",
+  "customText": true
 }

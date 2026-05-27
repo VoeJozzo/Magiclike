@@ -12,7 +12,10 @@ special-removal + mind-control AI casting, the trigger/cast/highlight
 target-prompt regressions, the drain→life-loss migration, and card-text polish.
 v2.0.2: consolidated the targeting-shape question into one engine API
 (`objectNeedsTarget`/`primaryLegalTargets`/`probeTargetsForObject`) that the cast
-flow, castable highlight, and trigger prompt all route through.
+flow, castable highlight, and trigger prompt all route through. v2.0.3: decoupled
+authored text from the `special` gameplay flag (now keyed on `customText` only),
+so 5 cards (vileEdict, symmetricize, endomorph, bleach, embargo) generate
+accurate text from their effects instead of hand-written text that can drift.
 
 > **MUST UPDATE on every dev-branch push that touches code.** Bump `VERSION` in `js/main.js` AND the line above, in the same commit. GitHub Pages caches aggressively; the version string is the only reliable way to confirm a fresh build is live.
 

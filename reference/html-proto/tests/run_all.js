@@ -81,6 +81,8 @@ const CATEGORY_A = [
   'test_targeting_shape.js',
   // Castable-card highlight honors the top-level target() step.
   'test_castable_highlight.js',
+  // Authored text keyed on customText only (special decoupled); 5 cards now generate.
+  'test_generated_special_text.js',
   // Slice 3 — §3.5 browser targeting (clickHand/ability honor the top-level target() step).
   'test_ui_targeting.js',
   // DIVERGENCE D4 — signed gain_life (life loss + is_life_loss).

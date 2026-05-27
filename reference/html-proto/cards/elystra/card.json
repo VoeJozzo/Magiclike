@@ -26,5 +26,6 @@
   "sub": "Spirit",
   "text": "End-of-turn effects on Elystra last forever (buffs, granted keywords). Whenever a non-creature spell targets Elystra, rip it from its caster's deck after it resolves.",
   "toughness": 1,
-  "type": "Creature"
+  "type": "Creature",
+  "customText": true
 }

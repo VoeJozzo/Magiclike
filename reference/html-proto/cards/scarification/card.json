@@ -15,5 +15,6 @@
   "name": "Scarification",
   "special": true,
   "text": "Destroy target creature. Scar it: each time it enters the battlefield, its controller loses 1 life.",
-  "type": "Sorcery"
+  "type": "Sorcery",
+  "customText": true
 }
