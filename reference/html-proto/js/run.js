@@ -913,12 +913,7 @@ function applySplice(baseSlotIdx, stapleSlotIdx) {
     { tplId: stapleSlot.tplId, stickers: stapleSlot.stickers, empowerRolls: stapleSlot.empowerRolls,
       subtypeRolls: stapleSlot.subtypeRolls, permaBuffs: stapleSlot.permaBuffs,
       bonusTrigger: stapleSlot.bonusTrigger });
-  baseSlot.stapledTpls = merged.stapledTpls;
-  baseSlot.stickers = merged.stickers;
-  baseSlot.empowerRolls = merged.empowerRolls;
-  if (merged.subtypeRolls.length > 0) baseSlot.subtypeRolls = merged.subtypeRolls;
-  if (merged.permaBuffs.length > 0) baseSlot.permaBuffs = merged.permaBuffs;
-  if (merged.bonusTrigger) baseSlot.bonusTrigger = merged.bonusTrigger;
+  writeMergedSpliceToSlot(baseSlot, merged);
   // Remove the staple slot. If staple comes BEFORE base, removing it
   // shifts base's index down by 1 — but we don't read baseSlot's index
   // again, we already mutated baseSlot in place above, so the splice is

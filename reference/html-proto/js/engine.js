@@ -199,6 +199,20 @@ function mergeSpliceData(base, staple) {
   };
 }
 
+// Apply merged splice data onto a slot — the field-writes shared by the reward
+// path (RUN.applySplice) and both in-game mint paths (perm-base, spell-base).
+// Does NOT persist; callers control save() timing (RUN batches one save at the
+// end; the in-game paths save per-mint).
+function writeMergedSpliceToSlot(slot, merged) {
+  if (!slot) return;
+  slot.stapledTpls = merged.stapledTpls;
+  slot.stickers = merged.stickers;
+  slot.empowerRolls = merged.empowerRolls;
+  if (merged.subtypeRolls.length > 0) slot.subtypeRolls = merged.subtypeRolls;
+  if (merged.permaBuffs.length > 0) slot.permaBuffs = merged.permaBuffs;
+  if (merged.bonusTrigger) slot.bonusTrigger = merged.bonusTrigger;
+}
+
 // §3.9: lands and creature dorks both produce mana via a tap-for-mana ability
 // (the `extraManaColors` parallel model is retired). These helpers read that
 // ability as the single source of truth. Top-level (not IIFE-internal) so the
@@ -2435,12 +2449,7 @@ const EFFECTS = {
           const slots = RUN.getSlots();
           const slot = (typeof newSlotIdx === 'number') ? slots[newSlotIdx] : null;
           if (slot) {
-            slot.stapledTpls = newStapledTpls;
-            slot.stickers = mergedStickers;
-            slot.empowerRolls = mergedRolls;
-            if (mergedSubtypeRolls.length > 0) slot.subtypeRolls = mergedSubtypeRolls;
-            if (mergedPermaBuffs.length > 0) slot.permaBuffs = mergedPermaBuffs;
-            if (mergedBonus) slot.bonusTrigger = mergedBonus;
+            writeMergedSpliceToSlot(slot, merged);
             if (typeof RUN.save === 'function') RUN.save();
           }
         }
@@ -2586,12 +2595,7 @@ const EFFECTS = {
         const slots = RUN.getSlots();
         const slot = slots[newSlotIdx];
         if (slot) {
-          slot.stapledTpls = newStapledTpls;
-          slot.stickers = mergedStickers;
-          slot.empowerRolls = mergedRolls;
-          if (mergedSubtypeRolls.length > 0) slot.subtypeRolls = mergedSubtypeRolls;
-          if (mergedPermaBuffs.length > 0) slot.permaBuffs = mergedPermaBuffs;
-          if (mergedBonus) slot.bonusTrigger = mergedBonus;
+          writeMergedSpliceToSlot(slot, merged);
           if (typeof RUN.save === 'function') RUN.save();
         }
         log(`${ctx.sourceName} staples ${stapleCard.name} onto ${baseCard.name} — new spell added to your deck for next game.`, 'sp');
