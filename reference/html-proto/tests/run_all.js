@@ -55,6 +55,8 @@ const CATEGORY_A = [
   'test_flicker.js',
   // Slice 3 — §3.9 mana deep-clean (land-as-ability, choose form, sticker, staple).
   'test_mana.js',
+  // Slice 3 — §3.8 empower system (single-source EMPOWER_FIELDS, post-collapse).
+  'test_empower.js',
   // Slice 3 — on-cast targeting migration (golden).
   'effect_migration_test.js',
 ];

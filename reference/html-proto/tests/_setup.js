@@ -143,6 +143,9 @@ const EXPOSED = [
   'validateAllCardConditions', 'VALID_TRIGGER_EVENTS',
   'triggerArchetype', 'triggerSubtype', 'triggerFiresOnEnter',
   'generateConditionOptions', 'generateEffectOptions', 'assembleTrigger',
+  // Empower system (cards.js module-scope).
+  'EMPOWER_FIELDS', 'isEmpowerableField', 'enumerateEmpowerTargets',
+  'rollEmpowerTarget', 'hasEmpowerableEffect',
   // Engine module-scope helpers (above the ENGINE IIFE).
   'deckColorsFromSlots', 'fakeTargetsForLegality',
   'isCompatibleStaplePair', 'manaAbilityOf', 'manaEffectColors',

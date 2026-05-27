@@ -179,10 +179,10 @@ function empowerRollLabel(card, roll) {
                  : 'damage';
     } else if (eff.kind === 'gainLife') {
       fieldLabel = 'life gain';
-    } else if (eff.kind === 'damageAll') {
+    } else if (eff.kind === 'damage' && eff.scope) {
       fieldLabel = 'damage to all';
-    } else if (eff.kind === 'removeAll') {
-      fieldLabel = 'severity';
+    } else if (eff.kind === 'move_card' && eff.from_zone === 'library' && eff.to_zone === 'hand') {
+      fieldLabel = 'cards drawn';
     } else {
       fieldLabel = eff.kind;
     }
@@ -219,7 +219,7 @@ function applyEmpowerRoll(card, roll, amount) {
   const v = e[field];
   if (typeof v === 'object' && v !== null && 'from' in v) return;
   const cur = (typeof v === 'number') ? v : 0;
-  if ((e.kind === 'removeCreature' || e.kind === 'removeAll') && field === 'severity') {
+  if (e.kind === 'removeCreature' && field === 'severity') {
     e[field] = Math.min(4, cur + amount);
   } else {
     e[field] = cur + amount;
