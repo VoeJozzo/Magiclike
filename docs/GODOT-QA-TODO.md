@@ -269,13 +269,37 @@ shift empower draft-weighting for the collapsed mass cards (damageAll weight 5 �
 damage weight 4) — a tiny §8.1 tail. Either leave them (harmless) or, for strict
 parity, teach draft.js's empower weighting to read `scope` first.
 
+**edict → target(player)+chooses+sacrifice DONE (proto).** 1 card (diabolicEdict):
+`target:'player'` + `[chooses(creature), sacrifice]`. AI valuation moved into
+`scoreSpellTargetForMode`'s `sacrifice` case (target opp player, never self,
+value = 10 + lowest-creature kill-value). Golden test asserts the shape.
+
+**restrict → grant_keyword DONE (proto).** 1 card (pacifism): `target:'creature'`
++ `[grantKeyword(defender), grantKeyword(no_block)]`. New HIDDEN `no_block`
+keyword supplies the "can't block" half (defender = "can't attack");
+`canCreatureBlock` honors it, and `keywordPreamble` + the render pip loop hide
+it. Pacifism keeps `customText` (preserves authored text AND splice
+eligibility — `special:true` would disable splicing). AI values the defender
+grant as the lockdown debuff. **Godot mirror:** add a `no_block` keyword +
+block-legality check; grant-revocation-on-source-leave is N/A for a Sorcery
+(grants are permanent, like the legacy restrict).
+
+**draw → move_card DONE (proto).** All 22 draw effects (22 cards) are
+controller-draws (zero targeted-player draws in the pool), so all collapse to
+`move_card(library→hand, controller_top, amount)` via migrate-effects.js. §8.1
+lockstep across the broad surface: card-text (draw idiom + the `[draw,discard]`
+loot pattern), `spellValueForEffects` + `abilityValue` (parity), the AI
+instant-response heuristic, the activated-ability draw scoring, and the
+controller ability label — all recognize the library→hand shape inline (same
+style as the returnFromGraveyard/shuffleIntoLibrary branches). **The legacy
+`draw` EFFECTS handler + its card-text/valuation cases STAY** — the runtime
+trigger generator (Mercurial pool, `engine.js` `MERCURIAL_TRIGGER_POOL` +
+`trigger-generator.js` drawSelf) still emits `draw` (same precedent as
+addCounter's pool retention). Golden test: 22-card collapse + draw in the
+card-data GONE list. **Godot mirror:** same migration over `.tres`/JSON + the
+`abilityValue`/`scoring.gd`/`burn.gd` draw reads must learn the move_card shape.
+
 Remaining collapses (each needs more than a rewrite):
-- **edict → target(player)+chooses+sacrifice** (1 card, structural: AI
-  valuation path flips untargeted→targeted; chooses+sacrifice card-text).
-- **restrict → grant_keyword** (1 card; needs a hidden `no_block` keyword +
-  block-legality check + grant-revocation-on-source-leave parity).
-- **draw → move_card** (engine supports it; broad §8.1-style valuation lockstep
-  — `draw` is read at many AI sites).
 - **discard/search → move_card** (gated on prompt-driven selectors).
 - **flicker/exileUntilEOT → move_card decomp** (needs the delayed-return half).
 
