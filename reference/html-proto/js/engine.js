@@ -336,11 +336,6 @@ function synthesizeStapledTemplate(baseTplId, stapledTpls) {
   return merged;
 }
 
-// Append a clause to merged.text with a separating space.
-function appendMergedText(merged, addition) {
-  merged.text = (merged.text ? merged.text + ' ' : '') + (addition || '');
-}
-
 // Mutate `merged` to add the staple's contribution. §3.10: dispatch on the
 // STAPLE's type (not base-type branch order), leveraging the canonicalization
 // hierarchy (Creature>Artifact>Land>Spell picks the base). Three behaviors:
@@ -408,7 +403,6 @@ function mergeStapleInto(merged, stapleTpl) {
       }
     }
     if (stapleTpl.permanentEot) merged.permanentEot = true;
-    appendMergedText(merged, stapleTpl.text);
   } else if (stapleTpl.type === 'Land') {
     // Permanent base gains the staple land's tap-ability (§3.9). Merge into an
     // existing mana ability (Ld+Ld, or a creature that already taps for mana —
@@ -430,8 +424,6 @@ function mergeStapleInto(merged, stapleTpl) {
       if (!Array.isArray(merged.abilities)) merged.abilities = [];
     }
     merged.abilities.push(manaAbilityForColors(allColors));
-    appendMergedText(merged, '{T}: Add ' + (allColors.length > 1
-      ? 'one of {' + allColors.join('}{') + '}' : '{' + allColors.join('}{') + '}') + '.');
   } else if (basePermanent) {
     // Spell staple on a permanent base → ETB trigger. Cr+Sp and Ld+Sp are
     // byte-identical (same card_zone_change(anywhere→battlefield) trigger).
@@ -443,7 +435,6 @@ function mergeStapleInto(merged, stapleTpl) {
       text: 'ETB: ' + (stapleTpl.text || stapleTpl.name),
       effects: Array.isArray(remapped) ? remapped : [],
     });
-    appendMergedText(merged, 'When this enters, ' + (stapleTpl.text || stapleTpl.name) + '.');
   } else {
     // Spell base + spell staple: effects concat with slot remap (multiTarget).
     const nextFreeSlot = computeNextFreeSlot(merged);
@@ -452,9 +443,13 @@ function mergeStapleInto(merged, stapleTpl) {
     if (Array.isArray(remapped)) {
       merged.effects = merged.effects.concat(remapped);
     }
-    appendMergedText(merged, stapleTpl.text);
     merged.multiTarget = true;
   }
+  // No merged.text is built here — describeCardText regenerates it from the
+  // merged effects/triggers/abilities (in makeCard, and at render time via
+  // describeCardSegments). The merged `name` IS concatenated (names aren't
+  // regenerated). Special/customText cards can't be staple bases or staples
+  // (isSpliceableBase/Staple reject them), so regeneration always applies.
   merged.name = merged.name + ' + ' + stapleTpl.name;
   if (computeNextFreeSlot(merged) > 1) merged.multiTarget = true;
 }

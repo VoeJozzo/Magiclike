@@ -103,6 +103,9 @@ console.log('\n=== staple: creature + land gains a tap-for-mana ability ===');
   const manaAbs = (merged.abilities || []).filter(ab => ab.cost && ab.cost.tap && ab.effects && ab.effects[0] && ab.effects[0].kind === 'addMana');
   check('vanilla creature + forest gains a tap-for-mana ability', manaAbs.length === 1, 'count=' + manaAbs.length);
   check('the gained ability produces {G}', JSON.stringify(ENGINE.landProducibleColors({ type: 'Land', abilities: manaAbs })) === JSON.stringify(['G']));
+  // §3.10: appendMergedText removed — card text is regenerated from the merged
+  // abilities by describeCardText (not hand-concatenated).
+  check('describeCardText regenerates the gained mana ability text', /\{T\}.*add \{G\}/i.test(describeCardText(merged)), JSON.stringify(describeCardText(merged)));
 })();
 
 console.log('\n=== staple: §3.10 multi-color land (City of Brass) is now a valid staple ===');
