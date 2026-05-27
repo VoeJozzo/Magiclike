@@ -1131,10 +1131,14 @@ function spellValueForEffects(effects) {
     else if (e.kind === 'noop') v += 0;
     else if (e.kind === 'move_card') {
       // Collapsed draw (library→hand) / shuffleIntoLibrary (battlefield→library)
-      // / returnFromGraveyard (graveyard→hand) — valued at parity.
+      // / returnFromGraveyard (graveyard→hand) / flicker (battlefield→exile then
+      // exile→battlefield) — valued at parity. The flicker return half adds 0
+      // (the bf→exile half carries the flicker's whole value).
       if (e.from_zone === 'library' && e.to_zone === 'hand') v += (e.amount || 1) * 3;
       else if (e.from_zone === 'battlefield' && e.to_zone === 'library') v += 5;
       else if (e.from_zone === 'graveyard' && e.to_zone === 'hand') v += 4;
+      else if (e.from_zone === 'battlefield' && e.to_zone === 'exile') v += 4;  // flicker outgoing
+      else if (e.from_zone === 'exile' && e.to_zone === 'battlefield') v += 0;  // flicker return
       else v += 3;
     }
     else if (e.kind === 'ripPermanent') v += 14;        // destroy + run-permanent slot rip
@@ -1145,7 +1149,6 @@ function spellValueForEffects(effects) {
     else if (e.kind === 'draw') v += (e.amount || 1) * 3;
     else if (e.kind === 'discard') v += 4;
     else if (e.kind === 'gainLife') v += 1;
-    else if (e.kind === 'flicker') v += 4;
     else if (e.kind === 'exileUntilEOT') v += 5;
     else if (e.kind === 'pump') v += (e.power < 0 || e.toughness < 0) ? (3 + Math.abs(e.toughness || 0)) : 2;
     else if (e.kind === 'grantKeyword') {
@@ -1463,7 +1466,11 @@ function placeCardOnBattlefield(ctx, card, fromZone, post) {
   if (post.tap) card.tapped = true;
   if (post.untap_on_arrive) card.tapped = false;
   if (post.enter_via_etb !== false) {
-    emitZoneChange(card, ctrl, fromZone, 'battlefield', [{ card, controller: ctrl }], ctx.sourceIid);
+    // No extraSources: the card is already pushed onto the battlefield above, so
+    // emit()'s battlefield walk catches its own ETB. Passing it as an extraSource
+    // too would double-fire the trigger (extraSources is for cards that have
+    // LEFT a zone — dies/leave — not arrivals).
+    emitZoneChange(card, ctrl, fromZone, 'battlefield', undefined, ctx.sourceIid);
   }
 }
 
@@ -2121,29 +2128,8 @@ const EFFECTS = {
     ctx.chosen = { kind: 'creature', iid: picked.iid, label: picked.name };
     log(`${pname(who)} chooses ${picked.name}.`, 'sp');
   },
-  // Cloudshift-shape immediate flicker. Re-fires ETB; clears damage/counters/grants.
-  // Stickers preserved (slot-level). Tokens cease to exist. EOT-flicker deferred.
-  flicker(ctx, params, target) {
-    const f = resolveTarget(ctx, target);
-    if (!f) return;
-    const card = pluckFromBattlefield(f);
-    if (!card) return;
-    clearRestrictionsFromSource(card.iid);
-    resetInPlayState(card);
-    if (card.isToken) {
-      log(`${ctx.sourceName} flickers ${card.name} — token ceases to exist.`, 'sp');
-      return;
-    }
-    log(`${ctx.sourceName} flickers ${card.name}.`, 'sp');
-    // New iid: returns as "new object", so stack spells/triggers targeting old iid fizzle.
-    // This is the defensive value of flicker (without it, removal still hits).
-    card.iid = nextIid++;
-    card.sick = !card.keywords.includes('haste');
-    // Owner-routed (stolen + flickered → returns to original owner's bf).
-    const returnTo = card.owner || f.controller;
-    G[returnTo].battlefield.push(card);
-    emitZoneChange(card, returnTo, 'exile', 'battlefield', undefined, ctx.sourceIid);
-  },
+  // Exile a creature until end of turn; returns at end step via delayedTriggers.
+  // Stays monolithic (not move_card-decomposed) until B4 lands — plan §9.1.
   exileUntilEOT(ctx, params, target) {
     const f = resolveTarget(ctx, target);
     if (!f) return;

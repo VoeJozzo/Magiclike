@@ -93,7 +93,7 @@ console.log('\n=== kind-collapse: legacy mass/weaken kinds gone from card data =
   // generator (Mercurial pool) still emits draw, so the EFFECTS handler stays —
   // GONE asserts the card templates, not the dispatch table.
   const GONE = ['damageAll', 'removeAll', 'pumpAllYours', 'weaken', 'gainControl', 'steal',
-                'returnFromGraveyard', 'shuffleIntoLibrary', 'addCounter', 'edict', 'restrict', 'draw'];
+                'returnFromGraveyard', 'shuffleIntoLibrary', 'addCounter', 'edict', 'restrict', 'draw', 'flicker'];
   const seen = {};
   const allEffs = (card) => {
     const out = [];
@@ -155,6 +155,14 @@ console.log('\n=== kind-collapse: legacy mass/weaken kinds gone from card data =
   check('diabolicEdict: target(player)', edict.target === 'player');
   check('diabolicEdict: chooses(creature) + sacrifice',
     edict.effects.length === 2 && edict.effects[0].kind === 'chooses' && edict.effects[1].kind === 'sacrifice');
+
+  // flicker → target(creature) + [move_card(bf→exile), move_card(exile→bf)].
+  const cs = CARDS.cloudshift;
+  check('cloudshift: target(your_creature)', cs.target === 'your_creature');
+  check('cloudshift: move_card(bf→exile) + move_card(exile→bf)',
+    cs.effects.length === 2
+    && cs.effects[0].kind === 'move_card' && cs.effects[0].from_zone === 'battlefield' && cs.effects[0].to_zone === 'exile'
+    && cs.effects[1].kind === 'move_card' && cs.effects[1].from_zone === 'exile' && cs.effects[1].to_zone === 'battlefield');
 
   // restrict → target(creature) + grant_keyword(defender) + grant_keyword(no_block).
   // no_block is the hidden "can't block" half (defender supplies "can't attack").

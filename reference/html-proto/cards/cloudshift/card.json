@@ -7,7 +7,16 @@
   "target": "your_creature",
   "effects": [
     {
-      "kind": "flicker"
+      "kind": "move_card",
+      "from_zone": "battlefield",
+      "to_zone": "exile",
+      "selector": "target"
+    },
+    {
+      "kind": "move_card",
+      "from_zone": "exile",
+      "to_zone": "battlefield",
+      "selector": "target"
     }
   ],
   "name": "Cloudshift",

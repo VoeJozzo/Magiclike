@@ -95,6 +95,16 @@ function collapseEffect(e) {
     const { kind, target, ...rest } = e;
     return Object.assign({ kind: 'move_card', from_zone: 'library', to_zone: 'hand', selector: 'controller_top' }, rest);
   }
+  if (e.kind === 'flicker') {
+    // flicker = exile then immediately return (plan §4.1 / line 763: the
+    // synchronous variant, two move_cards back-to-back, no schedule_delayed).
+    // Both operate on the card's top-level target() step via selector:'target'.
+    const { kind, target, filter, ...rest } = e;
+    return [
+      Object.assign({ kind: 'move_card', from_zone: 'battlefield', to_zone: 'exile', selector: 'target' }, rest),
+      { kind: 'move_card', from_zone: 'exile', to_zone: 'battlefield', selector: 'target' },
+    ];
+  }
   if (e.kind === 'returnFromGraveyard') {
     const { kind, ...rest } = e;  // bare (target migrated to top-level graveyard_creature)
     return Object.assign({ kind: 'move_card', from_zone: 'graveyard', to_zone: 'hand', selector: 'target' }, rest);
@@ -109,7 +119,11 @@ function collapseEffect(e) {
 // ability). Returns count rewritten.
 function collapseAll(card) {
   let n = 0;
-  const mapArr = (arr) => arr.map(e => { const c = collapseEffect(e); if (c !== e) n++; return c; });
+  const mapArr = (arr) => arr.flatMap(e => {
+    const c = collapseEffect(e);
+    if (c !== e) n++;
+    return Array.isArray(c) ? c : [c];   // flicker expands one effect into two
+  });
   if (Array.isArray(card.effects)) card.effects = mapArr(card.effects);
   else if (card.effects && Array.isArray(card.effects.modes)) card.effects.modes = card.effects.modes.map(mapArr);
   for (const t of (card.triggers || [])) if (Array.isArray(t.effects)) t.effects = mapArr(t.effects);

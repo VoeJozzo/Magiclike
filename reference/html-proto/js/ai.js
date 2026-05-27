@@ -1359,35 +1359,29 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
       const [pow, tou] = ENGINE.getStats(c.card);
       return 30 + pow + Math.floor(tou / 2) + laneOpeningBonus(state, us, target.iid);
     }
-    return 0;
-  }
-  if (eff.kind === 'flicker') {
-    // Flickering only makes sense on our own creatures. Best targets:
-    //   1. ETB-trigger creatures we want to re-fire (Wall of Omens, Grave
-    //      Digger) — high value, the whole point of flicker.
-    //   2. Damaged creatures about to die — flicker resets damage.
-    //   3. Creatures targeted by a stack effect — flicker dodges removal.
-    //      We don't track "currently targeted" here; the AI rarely needs
-    //      that level of foresight in v1.
-    // Avoid flickering tokens (they cease to exist) and creatures that gain
-    // ongoing benefit from staying put (counters, attached stickers — though
-    // stickers persist through flicker, so that's fine).
-    if (target.kind !== 'creature') return -100;
-    const c = ENGINE.findCard(target.iid);
-    if (!c || c.controller !== us) return -100;
-    if (c.card.isToken) return -100;        // would cease to exist
-    let score = 5;
-    // Heavy bonus for ETB-trigger creatures.
-    if (Array.isArray(c.card.triggers)) {
-      const etbTriggers = c.card.triggers.filter(triggerFiresOnEnter);
-      score += etbTriggers.length * 12;
+    if (eff.from_zone === 'battlefield' && eff.to_zone === 'exile'
+        && modeEffects.some(e => e.kind === 'move_card' && e.from_zone === 'exile' && e.to_zone === 'battlefield')) {
+      // Collapsed flicker (exile + immediate return). Flickering only makes
+      // sense on our own creatures. Best targets:
+      //   1. ETB-trigger creatures we want to re-fire (Wall of Omens, Grave
+      //      Digger) — high value, the whole point of flicker.
+      //   2. Damaged creatures about to die — flicker resets damage.
+      // Avoid flickering tokens (they cease to exist) and creatures that lose
+      // ongoing benefit from staying put (counters).
+      if (target.kind !== 'creature') return -100;
+      const c = ENGINE.findCard(target.iid);
+      if (!c || c.controller !== us) return -100;
+      if (c.card.isToken) return -100;        // would cease to exist
+      let score = 5;
+      if (Array.isArray(c.card.triggers)) {
+        const etbTriggers = c.card.triggers.filter(triggerFiresOnEnter);
+        score += etbTriggers.length * 12;
+      }
+      if (c.card.damage > 0) score += c.card.damage * 2;
+      score -= (c.card.permPower || 0) + (c.card.permTou || 0);
+      return score;
     }
-    // Damage-dodge bonus: if creature has marked damage, flicker is
-    // basically a small heal that ALSO does whatever else flicker does.
-    if (c.card.damage > 0) score += c.card.damage * 2;
-    // Counters lost penalty: a creature with permanent counters loses them.
-    score -= (c.card.permPower || 0) + (c.card.permTou || 0);
-    return score;
+    return 0;
   }
   if (eff.kind === 'exileUntilEOT') {
     // Two valid targeting modes:

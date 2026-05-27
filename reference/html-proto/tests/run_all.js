@@ -51,6 +51,8 @@ const CATEGORY_A = [
   'test_targeting_cast.js',
   // Slice 3 — §8.1 AI-valuation lockstep for migrated targeted spells.
   'test_ai_targeting.js',
+  // Slice 3 — flicker decomposition (two move_cards; ETB re-fire, LTB, token cease).
+  'test_flicker.js',
   // Slice 3 — on-cast targeting migration (golden).
   'effect_migration_test.js',
 ];

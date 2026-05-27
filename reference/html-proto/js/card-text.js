@@ -249,7 +249,8 @@ function describeEffect(eff, tplEff) {
       if (fz === 'graveyard' && tz === 'hand') return [plainSeg('return ' + t + ' from your graveyard to your hand')];
       if (fz === 'battlefield' && tz === 'library') return [plainSeg('shuffle ' + t + " into its owner's library")];
       if (fz === 'battlefield' && tz === 'hand') return [plainSeg('return ' + t + " to its owner's hand")];
-      if (fz === 'battlefield' && tz === 'exile') return [plainSeg('exile ' + t)];
+      if (fz === 'battlefield' && tz === 'exile') return [plainSeg('exile ' + t)];          // flicker outgoing / exile removal
+      if (fz === 'exile' && tz === 'battlefield') return [plainSeg('return it to the battlefield')];  // flicker return
       return [plainSeg('move ' + t)];
     }
     case 'untap': {
@@ -264,8 +265,6 @@ function describeEffect(eff, tplEff) {
       return [plainSeg('')];
     case 'fightTarget':
       return [plainSeg('your strongest creature fights ' + t)];
-    case 'flicker':
-      return [plainSeg('exile ' + t + ', then return it to the battlefield')];
     case 'exileUntilEOT':
       return [plainSeg('exile ' + t + ' until end of turn')];
     case 'addMana': {
@@ -369,6 +368,14 @@ function describeEffectList(effects, cardName, tplEffects, stepTarget) {
       && effects[0].from_zone === 'library' && effects[0].to_zone === 'hand'
       && effects[1].kind === 'discard'
       && effects[1].target === 'self') {
+    return capitalizeSegs(parts[0]).concat(plainSeg(', then ')).concat(parts[1]).concat(plainSeg('.'));
+  }
+  // Flicker pattern (exile then return) — collapsed flicker, one sentence.
+  if (effects.length === 2
+      && effects[0].kind === 'move_card'
+      && effects[0].from_zone === 'battlefield' && effects[0].to_zone === 'exile'
+      && effects[1].kind === 'move_card'
+      && effects[1].from_zone === 'exile' && effects[1].to_zone === 'battlefield') {
     return capitalizeSegs(parts[0]).concat(plainSeg(', then ')).concat(parts[1]).concat(plainSeg('.'));
   }
   // Drop effects that render to nothing (e.g. chooses() — its phrasing is
