@@ -517,19 +517,27 @@ resolved:
   step 13). **SPEC.md intentionally NOT updated** — it's the *Godot* runtime
   contract; it changes when the Godot mirror lands, not before.
 
-Remaining on the proto side — only the explicitly-deferred splice follow-up.
-All Slice 3 step 0–13 items are landed and test-gated EXCEPT:
-- **Splice duplicate-pathway harmonization (steps 0 + 11) — DEFERRED BY DESIGN.**
-  The plan (`plan-effects-refactor.md` §7, line 823) schedules the full
-  `applySpliceCore(baseSlotIdx, stapleSlotIdx, opts)` extraction as a *separate
-  follow-up plan*, because the duplicated splice bodies live in `js/run.js` (the
-  roguelike layer) not `js/engine.js` (the effects registry) — it's a "consolidate
-  Stapler with run-state mutation" task, not an effects-registry one. Today the
-  merge MATH is already shared at module scope (`countEffects`,
-  `remapEmpowerRollForStaple`, `canonicalSplicePair`, `isSpliceableBase/Staple`);
-  the ~200-line slot-mutation bodies in `RUN.applySplice` and
-  `EFFECTS.applyInGameSplice` are not yet unified. Not blocking; pick up as its own
-  branch. (The `fireStackEffects` path is Stapler-only and functions.)
+Remaining on the proto side — NONE. All Slice 3 step 0–13 items are landed and
+test-gated, including the splice harmonization that was previously deferred:
+- **Splice duplicate-pathway harmonization (steps 0 + 11) — DONE.** The merge
+  math + assembly that was duplicated between `RUN.applySplice` (reward-time, slot
+  data) and `EFFECTS.applyInGameSplice` (in-game Stapler, runtime cards) is now one
+  shared pure core, `mergeSpliceData(base, staple)` in `engine.js` (module scope,
+  beside `remapEmpowerRollForStaple`). Each caller passes its slot-shaped parts
+  (the reward path from `slot.*`, the in-game path from `card.*` /
+  `card.stapledFrom.stapledTpls`) and applies the returned `{stapledTpls, stickers,
+  empowerRolls, subtypeRolls, permaBuffs, bonusTrigger}` its own way — the reward
+  path writes the slot + saves; the in-game path layers the runtime-card rebuild,
+  slot mint, and combat-state transfer on top. Rather than the plan's
+  `applySpliceCore(baseSlotIdx, stapleSlotIdx, opts)` sketch (which assumed both
+  paths key off slot indices — they don't; the in-game path operates on
+  battlefield cards), the shared unit is the pure data-merge, which is the part
+  that was actually duplicated. Side benefit: the reward path now preserves the
+  staple's `subtypeRolls` (it silently dropped them before). `test_splice_core.js`
+  unit-checks the core AND proves the two pathways produce identical merged slot
+  data for the same two cards. (The `fireStackEffects` path remains Stapler-only.)
+  **Godot mirror:** Godot has no splice/staple system yet — build from this
+  reference, with the merge math as one shared helper from the start.
 
 The previously-deferred four are all landed (test-gated):
 - `exile_until_eot` decomposition — DONE (`test_exile_until_eot.js`).

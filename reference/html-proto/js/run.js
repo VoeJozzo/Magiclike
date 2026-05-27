@@ -902,72 +902,23 @@ function applySplice(baseSlotIdx, stapleSlotIdx) {
   if (!isSpliceableBase(baseSlot.tplId)) return false;
   if (Array.isArray(stapleSlot.stapledTpls) && stapleSlot.stapledTpls.length > 0) return false;
   if (!isCompatibleStaplePair(baseSlot.tplId, stapleSlot.tplId)) return false;
-  // Merge stickers and empowerRolls from the staple into the base. Stickers
-  // are slot-scoped (costMinus1, kw_*, statBoost, innate) and apply to the
-  // merged slot the same way they applied to the original slot — they don't
-  // care which effect within the merged template they live on. Append the
-  // arrays. Empower rolls need remap because they reference effect indices
-  // that shift when effects concatenate (spell base) OR when effects move
-  // into a new ETB trigger (creature base).
-  const baseTpl = CARDS[baseSlot.tplId];
-  const baseEffectCount = countEffects(baseTpl);
-  const baseTriggerCount = (baseTpl.triggers || []).length;
-  const baseAbilityCount = (baseTpl.abilities || []).length;
-  const baseIsCreature = baseTpl.type === 'Creature';
-  const stapleIsCreature = stapleSlot && CARDS[stapleSlot.tplId] && CARDS[stapleSlot.tplId].type === 'Creature';
-  if (!Array.isArray(baseSlot.stapledTpls)) baseSlot.stapledTpls = [];
-  // Compute the merged template's effect/trigger/ability counts BEFORE this
-  // staple is added, so the remap accounts for any prior staples too. The
-  // shift depends on the merge case for each prior staple:
-  //   - Creature+Creature: prior staple's triggers, abilities concat into
-  //     the merged arrays. Effects don't matter (creatures have none).
-  //   - Creature base + Spell staple: prior staple becomes one new ETB
-  //     trigger (so triggers += 1), no effect/ability shift.
-  //   - Spell base + Spell staple: prior staple's effects concat (effects
-  //     += staple's effect count), no trigger/ability shift.
-  const priorStaples = baseSlot.stapledTpls.slice();
-  let priorMergedEffectCount = baseEffectCount;
-  let priorMergedTriggerCount = baseTriggerCount;
-  let priorMergedAbilityCount = baseAbilityCount;
-  for (const priorTplId of priorStaples) {
-    const priorTpl = CARDS[priorTplId];
-    if (!priorTpl) continue;
-    if (baseIsCreature && priorTpl.type === 'Creature') {
-      priorMergedTriggerCount += (priorTpl.triggers || []).length;
-      priorMergedAbilityCount += (priorTpl.abilities || []).length;
-    } else if (baseIsCreature) {
-      priorMergedTriggerCount += 1;
-    } else {
-      priorMergedEffectCount += countEffects(priorTpl);
-    }
-  }
-  // Now finalize: append the staple to the base.
-  baseSlot.stapledTpls.push(stapleSlot.tplId);
-  // Remap and append the staple's stickers and empower rolls.
-  const stapleStickers = (stapleSlot.stickers || []).slice();
-  const stapleRolls = (stapleSlot.empowerRolls || []).slice();
-  const remappedRolls = stapleRolls.map(roll =>
-    remapEmpowerRollForStaple(roll, baseIsCreature, stapleIsCreature,
-                              priorMergedEffectCount, priorMergedTriggerCount, priorMergedAbilityCount));
-  if (!Array.isArray(baseSlot.stickers)) baseSlot.stickers = [];
-  if (!Array.isArray(baseSlot.empowerRolls)) baseSlot.empowerRolls = [];
-  baseSlot.stickers = baseSlot.stickers.concat(stapleStickers);
-  baseSlot.empowerRolls = baseSlot.empowerRolls.concat(remappedRolls);
-  // permaBuffs: defensive merge. Today no spliceable card has permanentEot
-  // (Elystra is the only permanentEot card and is `special` so she can't
-  // splice). But if a future card combines the two, dropping the staple's
-  // permaBuffs would silently zero out accumulated run-persistent buffs.
-  const stapleBuffs = stapleSlot.permaBuffs;
-  if (Array.isArray(stapleBuffs) && stapleBuffs.length > 0) {
-    if (!Array.isArray(baseSlot.permaBuffs)) baseSlot.permaBuffs = [];
-    baseSlot.permaBuffs = baseSlot.permaBuffs.concat(stapleBuffs);
-  }
-  // bonusTrigger: today only Codex sets this (special card, can't splice),
-  // so this branch is dead in v1. Defensive: if the staple has one and the
-  // base doesn't, inherit it.
-  if (stapleSlot.bonusTrigger && !baseSlot.bonusTrigger) {
-    baseSlot.bonusTrigger = stapleSlot.bonusTrigger;
-  }
+  // Merge the staple's slot data into the base via the shared splice core
+  // (engine.js mergeSpliceData). Stickers are slot-scoped and just concat;
+  // empower rolls remap (effect indices shift when arrays concatenate / move
+  // into an ETB trigger); subtype/permaBuffs concat; bonusTrigger: base wins.
+  const merged = mergeSpliceData(
+    { tplId: baseSlot.tplId, stickers: baseSlot.stickers, empowerRolls: baseSlot.empowerRolls,
+      subtypeRolls: baseSlot.subtypeRolls, permaBuffs: baseSlot.permaBuffs,
+      bonusTrigger: baseSlot.bonusTrigger, priorStaples: baseSlot.stapledTpls },
+    { tplId: stapleSlot.tplId, stickers: stapleSlot.stickers, empowerRolls: stapleSlot.empowerRolls,
+      subtypeRolls: stapleSlot.subtypeRolls, permaBuffs: stapleSlot.permaBuffs,
+      bonusTrigger: stapleSlot.bonusTrigger });
+  baseSlot.stapledTpls = merged.stapledTpls;
+  baseSlot.stickers = merged.stickers;
+  baseSlot.empowerRolls = merged.empowerRolls;
+  if (merged.subtypeRolls.length > 0) baseSlot.subtypeRolls = merged.subtypeRolls;
+  if (merged.permaBuffs.length > 0) baseSlot.permaBuffs = merged.permaBuffs;
+  if (merged.bonusTrigger) baseSlot.bonusTrigger = merged.bonusTrigger;
   // Remove the staple slot. If staple comes BEFORE base, removing it
   // shifts base's index down by 1 — but we don't read baseSlot's index
   // again, we already mutated baseSlot in place above, so the splice is

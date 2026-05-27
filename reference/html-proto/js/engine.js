@@ -147,6 +147,58 @@ function remapEmpowerRollForStaple(roll, baseIsCreature, stapleIsCreature,
   };
 }
 
+// Shared splice-merge core (plan-effects-refactor §7). The assembly logic that
+// was duplicated between RUN.applySplice (reward-time, slot data) and
+// EFFECTS.applyInGameSplice (in-game, runtime cards): given the base + staple's
+// slot-shaped parts, compute the merged slot data. PURE — no state mutation, no
+// I/O; each caller applies the result its own way (RUN writes the slot + saves;
+// the Stapler path rebuilds the runtime card + mints a slot + transfers combat).
+//
+// `base.priorStaples` is the base's existing staple chain — `slot.stapledTpls`
+// for the reward path, `card.stapledFrom.stapledTpls` for the in-game path. The
+// empower-roll remap depends on it (concatenating effects/triggers shifts the
+// indices a roll points at). Callers pass whichever field holds their chain.
+function mergeSpliceData(base, staple) {
+  const baseTpl = CARDS[base.tplId];
+  const stapleTpl = CARDS[staple.tplId];
+  const baseIsCreature = baseTpl.type === 'Creature';
+  const stapleIsCreature = !!(stapleTpl && stapleTpl.type === 'Creature');
+  // Merged effect/trigger/ability counts BEFORE this staple — accounts for any
+  // prior staples, since each shifts the indices differently by merge case:
+  //   Creature+Creature → prior's triggers + abilities concat into the merged
+  //     arrays; Creature base + Spell staple → prior becomes one ETB trigger;
+  //     Spell base + Spell staple → prior's effects concat.
+  let priorMergedEffectCount = countEffects(baseTpl);
+  let priorMergedTriggerCount = (baseTpl.triggers || []).length;
+  let priorMergedAbilityCount = (baseTpl.abilities || []).length;
+  const priorStaples = (base.priorStaples || []).slice();
+  for (const priorTplId of priorStaples) {
+    const priorTpl = CARDS[priorTplId];
+    if (!priorTpl) continue;
+    if (baseIsCreature && priorTpl.type === 'Creature') {
+      priorMergedTriggerCount += (priorTpl.triggers || []).length;
+      priorMergedAbilityCount += (priorTpl.abilities || []).length;
+    } else if (baseIsCreature) {
+      priorMergedTriggerCount += 1;
+    } else {
+      priorMergedEffectCount += countEffects(priorTpl);
+    }
+  }
+  const remappedRolls = (staple.empowerRolls || []).map(roll =>
+    remapEmpowerRollForStaple(roll, baseIsCreature, stapleIsCreature,
+                              priorMergedEffectCount, priorMergedTriggerCount, priorMergedAbilityCount));
+  const baseBuffs = Array.isArray(base.permaBuffs) ? base.permaBuffs : [];
+  const stapleBuffs = Array.isArray(staple.permaBuffs) ? staple.permaBuffs : [];
+  return {
+    stapledTpls: priorStaples.concat([staple.tplId]),
+    stickers: (base.stickers || []).concat(staple.stickers || []),
+    empowerRolls: (base.empowerRolls || []).concat(remappedRolls),
+    subtypeRolls: (base.subtypeRolls || []).concat(staple.subtypeRolls || []),
+    permaBuffs: baseBuffs.concat(stapleBuffs),
+    bonusTrigger: base.bonusTrigger || staple.bonusTrigger || null,
+  };
+}
+
 // §3.9: lands and creature dorks both produce mana via a tap-for-mana ability
 // (the `extraManaColors` parallel model is retired). These helpers read that
 // ability as the single source of truth. Top-level (not IIFE-internal) so the
@@ -2322,45 +2374,28 @@ const EFFECTS = {
     };
     fireStackEffects(stapleR);
     if (baseR.kind === 'spell') fireStackEffects(baseR);
-    const baseTpl = CARDS[baseCard.tplId];
-    const baseEffectCount = countEffects(baseTpl);
-    const baseTriggerCount = (baseTpl.triggers || []).length;
-    const baseAbilityCount = (baseTpl.abilities || []).length;
-    const baseIsCreature = baseTpl.type === 'Creature';
-    const stapleIsCreature = CARDS[stapleCard.tplId] && CARDS[stapleCard.tplId].type === 'Creature';
-    // Same field-name trap as stapleStaples above — read via stapledFrom path.
+    // Prior in-game staple chain lives at card.stapledFrom.stapledTpls (NOT
+    // card.stapledTpls, which is slot-level). Reading the wrong field silently
+    // misses prior chains (same field-name trap as stapleStaples above).
     const priorStaples = (baseCard.stapledFrom && Array.isArray(baseCard.stapledFrom.stapledTpls))
       ? baseCard.stapledFrom.stapledTpls.slice()
       : (Array.isArray(baseCard.stapledTpls) ? baseCard.stapledTpls.slice() : []);
-    let priorMergedEffectCount = baseEffectCount;
-    let priorMergedTriggerCount = baseTriggerCount;
-    let priorMergedAbilityCount = baseAbilityCount;
-    for (const priorTplId of priorStaples) {
-      const priorTpl = CARDS[priorTplId];
-      if (!priorTpl) continue;
-      if (baseIsCreature && priorTpl.type === 'Creature') {
-        priorMergedTriggerCount += (priorTpl.triggers || []).length;
-        priorMergedAbilityCount += (priorTpl.abilities || []).length;
-      } else if (baseIsCreature) {
-        priorMergedTriggerCount += 1;
-      } else {
-        priorMergedEffectCount += countEffects(priorTpl);
-      }
-    }
-    const newStapledTpls = priorStaples.concat([stapleCard.tplId]);
-    const mergedStickers = (baseCard.stickers || []).concat(stapleCard.stickers || []);
-    const stapleRolls = (stapleCard.empowerRolls || []).slice();
-    const remappedRolls = stapleRolls.map(roll =>
-      remapEmpowerRollForStaple(roll, baseIsCreature, stapleIsCreature,
-                                priorMergedEffectCount, priorMergedTriggerCount, priorMergedAbilityCount));
-    const mergedRolls = (baseCard.empowerRolls || []).concat(remappedRolls);
-    // Subtype rolls: simple concat (tokens, not target-indexed).
-    const mergedSubtypeRolls = (baseCard.subtypeRolls || []).concat(stapleCard.subtypeRolls || []);
-    const mergedPermaBuffs = (Array.isArray(baseCard.permaBuffs) ? baseCard.permaBuffs.slice() : [])
-      .concat(Array.isArray(stapleCard.permaBuffs) ? stapleCard.permaBuffs : []);
-    const baseBonus = baseCard.bonusTrigger;
-    const stapleBonus = stapleCard.bonusTrigger;
-    const mergedBonus = baseBonus || stapleBonus || null;
+    // Merge slot data via the shared core — identical math to the reward-time
+    // RUN.applySplice path (the in-game path layers the runtime-card rebuild,
+    // slot mint, and combat-state transfer below on top of the same merge).
+    const merged = mergeSpliceData(
+      { tplId: baseCard.tplId, stickers: baseCard.stickers, empowerRolls: baseCard.empowerRolls,
+        subtypeRolls: baseCard.subtypeRolls, permaBuffs: baseCard.permaBuffs,
+        bonusTrigger: baseCard.bonusTrigger, priorStaples },
+      { tplId: stapleCard.tplId, stickers: stapleCard.stickers, empowerRolls: stapleCard.empowerRolls,
+        subtypeRolls: stapleCard.subtypeRolls, permaBuffs: stapleCard.permaBuffs,
+        bonusTrigger: stapleCard.bonusTrigger });
+    const newStapledTpls = merged.stapledTpls;
+    const mergedStickers = merged.stickers;
+    const mergedRolls = merged.empowerRolls;
+    const mergedSubtypeRolls = merged.subtypeRolls;
+    const mergedPermaBuffs = merged.permaBuffs;
+    const mergedBonus = merged.bonusTrigger;
     // Ownership: caster owns the merge IFF they contributed an input. Pure
     // opp+opp splices are attrition only (no slot mint, stays on base's bf).
     const callerContributes = (baseCard.owner === ctx.controller) || (stapleCard.owner === ctx.controller);

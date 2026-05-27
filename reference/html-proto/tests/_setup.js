@@ -149,7 +149,7 @@ const EXPOSED = [
   // Engine module-scope helpers (above the ENGINE IIFE).
   'deckColorsFromSlots', 'fakeTargetsForLegality',
   'isCompatibleStaplePair', 'manaAbilityOf', 'manaEffectColors',
-  'remapEmpowerRollForStaple', 'countEffects',
+  'remapEmpowerRollForStaple', 'countEffects', 'mergeSpliceData',
   'isSpliceableBase', 'isSpliceableStaple',
   // Sticker module surface (stickers.js, all top-level).
   'weightedPick',

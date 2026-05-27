@@ -59,6 +59,8 @@ const CATEGORY_A = [
   'test_stapler_target_slots.js',
   // Slice 3 step 7b — effect coverage assertion (HANDLERS↔valuation/card-text partition).
   'test_effect_coverage.js',
+  // Slice 3 steps 0+11 — splice harmonization (shared mergeSpliceData; reward↔in-game parity).
+  'test_splice_core.js',
   // Slice 3 — §3.9 mana deep-clean (land-as-ability, choose form, sticker, staple).
   'test_mana.js',
   // Slice 3 — §3.8 empower system (single-source EMPOWER_FIELDS, post-collapse).
