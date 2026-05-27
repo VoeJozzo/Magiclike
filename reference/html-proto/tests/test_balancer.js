@@ -71,5 +71,17 @@ console.log('\n=== embargo/bleach card.json are decomposed (no bespoke kinds) ==
     (Array.isArray(c.effects) ? c.effects : []).some(e => e && (e.kind === 'embargo' || e.kind === 'bleach'))));
 })();
 
+console.log('\n=== §3.8: the applyBalancerOverrides channel is gone (one sticker pipeline) ===');
+(() => {
+  const fs = require('fs');
+  const path = require('path');
+  const src = ['engine', 'stickers', 'run'].map(m =>
+    fs.readFileSync(path.join(__dirname, '..', 'js', m + '.js'), 'utf8')).join('\n');
+  check('applyBalancerOverrides function deleted', !/function applyBalancerOverrides/.test(src));
+  check('symmetrizedTo sentinel gone (no property reads/writes)', !/\.symmetrizedTo\b/.test(src));
+  // The slot-field write paths (slot.symmetricized/.colorOverride/.extraCost) are gone.
+  check('no slot.symmetricized / colorOverride / extraCost writes', !/\.symmetricized\s*=|\.colorOverride\s*=|\.extraCost\s*=/.test(src));
+})();
+
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');
 process.exit(fail > 0 ? 1 : 0);

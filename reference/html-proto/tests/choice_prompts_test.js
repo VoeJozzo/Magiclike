@@ -129,9 +129,11 @@ console.log('\n=== Submitting symmetricizeChoice collapses stats + persists to s
   });
   drainStack(G);
 
-  // Player picks 'toughness' (=3). After this, Watcher should be 3/3
-  // cost {C:3} — chosen because it differs from both the native power
-  // (1) and the native cost (2), so all three fields visibly change.
+  // Player picks 'toughness' (=3). §3.8 additive snapshot: effective
+  // power/toughness become 3/3 and total cost becomes 3 via stat_boost +
+  // cost_mod stickers (not a base-stat clamp). Watcher is 1/3 for {W}{1},
+  // so picking 3 raises power by +2 and total cost by +1.
+  const costTotal = (c) => c.cost ? ['W','U','B','R','G','C'].reduce((s,k)=>s+(c.cost[k]||0),0) : 0;
   const choiceAction = {type: 'symmetricizeChoice', which: 'toughness'};
   check("symmetricizeChoice is legal for the prompt's owner (you)",
     ENGINE.isLegalAction('you', choiceAction));
@@ -139,19 +141,17 @@ console.log('\n=== Submitting symmetricizeChoice collapses stats + persists to s
 
   check('pendingSymmetricizeChoice cleared after submit',
     G.pendingSymmetricizeChoice === null);
-  check('Watcher.power collapsed to 3', piercer.power === 3);
-  check('Watcher.toughness collapsed to 3', piercer.toughness === 3);
-  check('Watcher.cost.C = 3', piercer.cost && piercer.cost.C === 3);
-  check('Watcher.symmetrizedTo sentinel set to 3', piercer.symmetrizedTo === 3);
-  // tempPower / tempTou / permPower / permTou should be wiped.
-  check('Watcher.tempPower wiped', piercer.tempPower === 0);
-  check('Watcher.tempTou wiped', piercer.tempTou === 0);
-  check('Watcher.permPower wiped', !piercer.permPower);
-  check('Watcher.permTou wiped', !piercer.permTou);
-  // Slot persistence (player-side only).
+  const [ep, et] = ENGINE.getStats(piercer);
+  check('Watcher effective power == 3', ep === 3, 'power=' + ep);
+  check('Watcher effective toughness == 3', et === 3, 'toughness=' + et);
+  check('Watcher total cost == 3', costTotal(piercer) === 3, 'cost=' + JSON.stringify(piercer.cost));
+  check('no symmetrizedTo sentinel (additive, not a clamp)', piercer.symmetrizedTo === undefined);
+  // Slot persistence: stat_boost + cost_mod stickers recorded for the run.
   const slotAfter = RUN.getSlots()[piercerSlotIdx];
-  check('slot.symmetricized = 3 (persists for the run)',
-    slotAfter && slotAfter.symmetricized === 3);
+  check('slot gained a stat_boost sticker',
+    slotAfter && slotAfter.stickers.some(s => s && s.kind === 'stat_boost'));
+  check('slot gained a cost_mod sticker',
+    slotAfter && slotAfter.stickers.some(s => s && s.kind === 'cost_mod'));
 }
 
 console.log("\n=== Picking 'power' on Watcher (power=1) collapses to 1/1 cost {C:1} ===");
@@ -175,9 +175,13 @@ console.log("\n=== Picking 'power' on Watcher (power=1) collapses to 1/1 cost {C
   drainStack(G);
   ENGINE.executeAction('you', {type: 'symmetricizeChoice', which: 'power'});
 
-  check('power pick: power == 1', piercer.power === 1);
-  check('power pick: toughness == 1', piercer.toughness === 1);
-  check('power pick: cost.C == 1', piercer.cost.C === 1);
+  // Pick 'power' (=1): effective stats collapse to 1/1, total cost to 1
+  // (additive: toughness -2, cost -1).
+  const costTotal = (c) => c.cost ? ['W','U','B','R','G','C'].reduce((s,k)=>s+(c.cost[k]||0),0) : 0;
+  const [ep2, et2] = ENGINE.getStats(piercer);
+  check('power pick: effective power == 1', ep2 === 1, 'power=' + ep2);
+  check('power pick: effective toughness == 1', et2 === 1, 'toughness=' + et2);
+  check('power pick: total cost == 1', costTotal(piercer) === 1, 'cost=' + JSON.stringify(piercer.cost));
 }
 
 console.log('\n=== Out-of-set choices are rejected (validates whitelist) ===');

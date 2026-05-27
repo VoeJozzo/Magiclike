@@ -486,7 +486,7 @@ function remapEffectSlots(effects, offset) {
   });
 }
 
-function makeCard(tplId, stickers, slotIdx, empowerRolls, permaBuffs, bonusTrigger, stapledTpls, subtypeRolls, slotMeta) {
+function makeCard(tplId, stickers, slotIdx, empowerRolls, permaBuffs, bonusTrigger, stapledTpls, subtypeRolls) {
   const tpl = (stapledTpls && stapledTpls.length > 0)
     ? synthesizeStapledTemplate(tplId, stapledTpls)
     : CARDS[tplId];
@@ -548,9 +548,8 @@ function makeCard(tplId, stickers, slotIdx, empowerRolls, permaBuffs, bonusTrigg
     // Stapled metadata for empower-target enumeration, sticker eligibility, etc.
     stapledFrom: tpl.stapledFrom,
   };
-  // Order: balancer overrides → stickers → permaBuffs → bonusTrigger.
-  // Balancer overrides (Balancer boss): symmetricize, colorOverride, extraCost.
-  applyBalancerOverrides(card, slotMeta);
+  // Order: stickers → permaBuffs → bonusTrigger. (§3.8: the Balancer overrides
+  // channel is gone — symmetricize/embargo/bleach now flow through stickers.)
   applyStickersToCard(card);
   // permaBuffs: slot-persistent buffs from permanentEot creatures (Elystra).
   // Shared with resetInPlayState (bounce/flicker recast).
@@ -674,13 +673,7 @@ function makePlayer(name, deck, ownerSide) {
         effects: (pick.effects || []).map(e => ({...e})),
       };
     }
-    // Balancer-boss slot meta. Survives save/load alongside other slot fields.
-    const slotMeta = {
-      symmetricized: entry.symmetricized,
-      colorOverride: entry.colorOverride,
-      extraCost:     entry.extraCost,
-    };
-    return makeCard(entry.tplId, entry.stickers, i, entry.empowerRolls, entry.permaBuffs, bonus, entry.stapledTpls, entry.subtypeRolls, slotMeta);
+    return makeCard(entry.tplId, entry.stickers, i, entry.empowerRolls, entry.permaBuffs, bonus, entry.stapledTpls, entry.subtypeRolls);
   });
   for (const c of cards) c.owner = ownerSide;
   // Stamp live charges and rewrite "N charges" text from slot data (Stapler etc.).
@@ -1696,8 +1689,9 @@ const EFFECTS = {
     }
   },
   // ─── Balancer boss effects ─────────────────────────────────────────
-  // Target's controller picks one of {power, toughness, cost-total}; all three become that value.
-  // Persists via slot.symmetricized (player-side only).
+  // Target's controller picks one of {power, toughness, cost-total}; all three
+  // become that value. §3.8: the choice resolves (doSymmetricizeChoice) into an
+  // additive stat_boost + cost_mod snapshot through the sticker pipeline.
   symmetricize(ctx, params, target) {
     const f = resolveTarget(ctx, target);
     if (!f) return;
@@ -1816,9 +1810,6 @@ const EFFECTS = {
         bonusTrigger: stolenSlot.bonusTrigger,
         stapledTpls:  stolenSlot.stapledTpls,
         charges:      stolenSlot.charges,
-        symmetricized: stolenSlot.symmetricized,
-        colorOverride: stolenSlot.colorOverride,
-        extraCost:     stolenSlot.extraCost,
       };
     } else {
       stickers = (r.card.stickers || []).slice();
@@ -3521,10 +3512,9 @@ function endGame(winner) {
 // must strip first (resetInPlayState does this).
 function applyPermaBuffsToCard(card, permaBuffs) {
   if (!permaBuffs) return;
-  // Symmetricize beats stat permaBuffs (Elystra's accumulated power/tou),
-  // matching the +1/+1 sticker treatment. Keyword permaBuffs still apply.
-  const symmetrized = typeof card.symmetrizedTo === 'number';
-  if (!symmetrized && ((permaBuffs.power || 0) !== 0 || (permaBuffs.toughness || 0) !== 0)) {
+  // §3.8: symmetricize is now an additive snapshot (no symmetrizedTo sentinel),
+  // so permaBuffs (Elystra's accumulated power/tou) just stack normally.
+  if ((permaBuffs.power || 0) !== 0 || (permaBuffs.toughness || 0) !== 0) {
     if (!Array.isArray(card.modifiers)) card.modifiers = [];
     card.modifiers.push({
       power: permaBuffs.power || 0,
@@ -3539,58 +3529,6 @@ function applyPermaBuffsToCard(card, permaBuffs) {
       if (!card.grantedBy.has(kw)) card.grantedBy.set(kw, new Set());
       card.grantedBy.get(kw).add(-1);
     }
-  }
-}
-
-// Apply Balancer-boss-flavored run-persistent overrides to a card at
-// instantiation time. Three independent slot fields, each set by one
-// of the Balancer's spells:
-//
-//   - slot.symmetricized: integer N → power = N, toughness = N,
-//     cost = {C: N}. Set by Symmetricize. Replaces the BASELINE; other
-//     modifiers (stickers, permaBuffs, +1/+1 counters) stack on top.
-//     Order matters: apply symmetricized BEFORE permaBuffs/stickers
-//     so the baseline is replaced first, then buffs add on.
-//   - slot.colorOverride: 'C' (or any color string) → card.color = that
-//     value. Set by Bleach (always 'C'). Future spells could set other
-//     colors. Note: doesn't affect the cost's colored pips — only the
-//     card's intrinsic color identity (used by "is white" matchers,
-//     color-matters synergies).
-//   - slot.extraCost: integer N → card.cost.C += N. Set by Embargo.
-//     Stacks across multiple Embargos. Inverse of the 'costMinus1'
-//     sticker. Applied AFTER symmetricized so the bonus stays additive
-//     even if the cost was reset by symmetricize.
-//
-// Called from makeCard after the template is instantiated and before
-// permaBuffs/stickers run. Slot fields are passed in via the slot lookup
-// at the deck-construction boundary (instantiate path) and serialized
-// like other slot meta.
-function applyBalancerOverrides(card, slotMeta) {
-  if (!slotMeta) return;
-  // Symmetricize: replace power, toughness, and cost baseline. Sets a
-  // sentinel flag so applyStickersToCard / applyPermaBuffsToCard / the
-  // counters system skip stat-modifying additions (the +1/+1 sticker,
-  // Elystra's permaBuffs, +1/+1 counters from triggered abilities).
-  // Keyword stickers, costReduction, innate, landColor, trigger, and
-  // subtype stickers all continue to apply normally — symmetricize is
-  // ONLY about the three numeric values (power, toughness, cost).
-  if (typeof slotMeta.symmetricized === 'number') {
-    const n = slotMeta.symmetricized;
-    card.power = n;
-    card.toughness = n;
-    card.cost = { C: n };
-    card.symmetrizedTo = n;   // sentinel for downstream skip-stats
-  }
-  // Color override: set the card's intrinsic color. 'C' = colorless.
-  if (typeof slotMeta.colorOverride === 'string') {
-    card.color = slotMeta.colorOverride;
-  }
-  // Extra cost: add to generic. Applied AFTER symmetricize so it stacks
-  // on the new baseline. If symmetricize set cost = {C: 3} and extraCost
-  // is 2, final cost is {C: 5}.
-  if (typeof slotMeta.extraCost === 'number' && slotMeta.extraCost > 0) {
-    if (!card.cost) card.cost = {};
-    card.cost.C = (card.cost.C || 0) + slotMeta.extraCost;
   }
 }
 
@@ -4566,57 +4504,31 @@ function doRipSelect(who, target) {
   }
 }
 function doSymmetricizeChoice(who, which) {
-  // Player picks 'power' | 'toughness' | 'cost'. All three values become
-  // the picked one's value. Persists to slot.symmetricized for the target's
-  // owning side (only player-side has runState slots; opp-side is in-game
-  // only — opp's permanents regenerate from their constructed deck next
-  // game without the symmetricize effect).
+  // Player picks 'power' | 'toughness' | 'cost'; all three become that value.
+  // §3.8 additive snapshot: record the deltas needed to reach N *right now* as
+  // stat_boost + cost_mod stickers through the normal pipeline (runtime card +
+  // persisted slot) — NOT a persistent P=T=cost=N clamp. No symmetrizedTo
+  // sentinel; later buffs stack normally.
   if (!G.pendingSymmetricizeChoice || G.pendingSymmetricizeChoice.who !== who) return;
   const p = G.pendingSymmetricizeChoice;
   if (!['power','toughness','cost'].includes(which)) return;
   const n = p.values[which];
   G.pendingSymmetricizeChoice = null;
   log(`${pname(who)} chooses ${which} (${n}) for ${p.targetName} via ${p.source}.`, 'sp');
-  // Apply to the in-game card so this game reflects the change.
+  const dPow = n - (p.values.power || 0);
+  const dTou = n - (p.values.toughness || 0);
+  const dCost = n - (p.values.cost || 0);
   const f = findCard(p.targetIid);
-  if (f) {
-    // Symmetricize beats existing stat modifiers — wipe the slate so the
-    // chosen value really IS the card's stats. Stat-modifying sources we
-    // clear: card.modifiers (stat-boost stickers + permaBuffs entries),
-    // permPower/permTou (+1/+1 counters from triggered abilities and
-    // similar). Keyword stickers and grants remain. Sets the symmetrizedTo
-    // sentinel so future sticker re-applications (e.g., re-stickered slot
-    // on next game) also skip stat additions for this card.
-    f.card.power = n;
-    f.card.toughness = n;
-    f.card.cost = { C: n };
-    f.card.symmetrizedTo = n;
-    if (Array.isArray(f.card.modifiers)) {
-      f.card.modifiers = f.card.modifiers.filter(m => {
-        // Keep only zero-stat modifiers (defensive — none exist today,
-        // but if a future sticker is added that's stat-neutral, we
-        // shouldn't blow it away).
-        return (m.power || 0) === 0 && (m.toughness || 0) === 0;
-      });
+  const slotIdx = (p.targetIsYours && typeof p.targetSlotIdx === 'number') ? p.targetSlotIdx : null;
+  const apply = (desc) => {
+    if (f) applyOneStickerToRuntimeCard(f.card, { ...desc });
+    if (slotIdx != null && typeof RUN !== 'undefined' && RUN.applyStickerToSlot) {
+      RUN.applyStickerToSlot(slotIdx, { ...desc });
     }
-    f.card.permPower = 0;
-    f.card.permTou = 0;
-    // tempPower/tempTou (end-of-turn buffs) also fall under "stat changes."
-    // Wipe them too — the symmetrize is "now," and EOT buffs feel like
-    // stats to the player.
-    f.card.tempPower = 0;
-    f.card.tempTou = 0;
-  }
-  // Persist to slot.symmetricized for cross-game (player-side only).
-  if (p.targetIsYours && typeof p.targetSlotIdx === 'number'
-      && typeof RUN !== 'undefined' && RUN.getSlots) {
-    const slot = RUN.getSlots()[p.targetSlotIdx];
-    if (slot) {
-      slot.symmetricized = n;
-      if (typeof RUN.save === 'function') RUN.save();
-      log(`${p.targetName} is symmetricized at ${n}/${n} for {${n}} for the rest of the run.`, 'sp');
-    }
-  }
+  };
+  if (dPow !== 0 || dTou !== 0) apply({ kind: 'stat_boost', power: dPow, toughness: dTou, stackable: true });
+  if (dCost !== 0) apply({ kind: 'cost_mod', amount: dCost, stackable: true });
+  log(`${p.targetName} becomes ${n}/${n} for {${n}}.`, 'sp');
 }
 function doNumberChoice(who, number) {
   // Player picks an integer from a fixed range. Validates the prompt

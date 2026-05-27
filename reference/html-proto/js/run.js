@@ -1059,10 +1059,8 @@ function appendSlot(tplId, stickers, meta) {
     if (Array.isArray(meta.stapledTpls))  newSlot.stapledTpls  = meta.stapledTpls.slice();
     if (meta.bonusTrigger)                newSlot.bonusTrigger = meta.bonusTrigger;
     if (typeof meta.charges === 'number') newSlot.charges = meta.charges;
-    // Balancer-boss overrides: numeric/string fields, copy directly.
-    if (typeof meta.symmetricized === 'number') newSlot.symmetricized = meta.symmetricized;
-    if (typeof meta.colorOverride === 'string') newSlot.colorOverride = meta.colorOverride;
-    if (typeof meta.extraCost === 'number')     newSlot.extraCost     = meta.extraCost;
+    // §3.8: Balancer overrides (symmetricized/colorOverride/extraCost) are gone —
+    // those cards now persist via stickers (cost_mod / set_color / stat_boost).
   }
   runState.slots.push(newSlot);
   save();

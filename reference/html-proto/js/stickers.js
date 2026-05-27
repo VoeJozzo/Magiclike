@@ -84,9 +84,6 @@ function applyStickersToCard(card) {
         card.sub = tokens.join(' ');
       }
     } else {
-      // Symmetricize boss flattens stats to N/N, overriding stat-boost stickers
-      // (symmetrizedTo sentinel; removed in §3.8 Balancer decomposition).
-      if ((s.kind === 'statBoost' || s.kind === 'stat_boost') && typeof card.symmetrizedTo === 'number') continue;
       applyStickerKindEffect(card, s);
     }
   }
