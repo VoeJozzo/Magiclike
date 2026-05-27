@@ -1,5 +1,5 @@
 // Mass `scope` groundwork for the effects refactor (Slice 3 step 1 /
-// decision 2). damage/pump/remove_creature gain a `scope` path
+// decision 2). damage/pump/affect_creature gain a `scope` path
 // (all_creatures / all_yours / all_opps) alongside the legacy
 // damageAll/pumpAllYours/removeAll handlers. Additive + a semantic no-op for
 // existing cards (none use `scope` yet); this exercises the new path directly
@@ -76,20 +76,20 @@ console.log('\n=== pump(scope: all_yours) ===');
   check('opp creature NOT pumped', b.tempPower === 0 && b.tempTou === 0);
 })();
 
-console.log('\n=== remove_creature(severity:1 tap, scope: all_opps) ===');
+console.log('\n=== affect_creature(severity:tap, scope: all_opps) ===');
 (() => {
   clearBoards();
   const a = place('you'), b = place('opp');
-  ENGINE.applyEffect(CTX, { kind: 'remove_creature', severity: 1, scope: 'all_opps' }, null);
+  ENGINE.applyEffect(CTX, { kind: 'affect_creature', severity: 'tap', scope: 'all_opps' }, null);
   check('opp creature tapped', b.tapped === true);
   check('your creature NOT tapped', a.tapped === false);
 })();
 
-console.log('\n=== remove_creature(severity:3 destroy, scope: all_creatures) ===');
+console.log('\n=== affect_creature(severity:destroy, scope: all_creatures) ===');
 (() => {
   clearBoards();
   place('you'); place('opp'); place('opp');
-  ENGINE.applyEffect(CTX, { kind: 'remove_creature', severity: 3, scope: 'all_creatures' }, null);
+  ENGINE.applyEffect(CTX, { kind: 'affect_creature', severity: 'destroy', scope: 'all_creatures' }, null);
   check('all creatures destroyed (battlefields empty)',
     G.you.battlefield.length === 0 && G.opp.battlefield.length === 0,
     `you=${G.you.battlefield.length} opp=${G.opp.battlefield.length}`);
@@ -99,7 +99,7 @@ console.log('\n=== single-target path still works (no scope) ===');
 (() => {
   clearBoards();
   const a = place('you');
-  ENGINE.applyEffect(CTX, { kind: 'remove_creature', severity: 1 }, { kind: 'creature', iid: a.iid });
+  ENGINE.applyEffect(CTX, { kind: 'affect_creature', severity: 'tap' }, { kind: 'creature', iid: a.iid });
   check('single-target tap still works', a.tapped === true);
   const b = place('opp');
   ENGINE.applyEffect(CTX, { kind: 'damage', amount: 1 }, { kind: 'creature', iid: b.iid });

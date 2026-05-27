@@ -40,15 +40,15 @@ console.log('\n=== a real cantrip exposes its draw as an empower target (regress
   check('divin has an empowerable amount target (draw not silently dropped)', !!drawTarget, JSON.stringify(targets));
 })();
 
-console.log('\n=== mass effects empower on the collapsed shape (damage+scope / remove_creature+scope) ===');
+console.log('\n=== mass effects empower on the collapsed shape (damage+scope / affect_creature+scope) ===');
 (() => {
-  // A mass damage (damage+scope) still exposes amount; remove_creature severity capped at <4.
+  // A mass damage (damage+scope) still exposes amount; affect_creature severity capped below exile.
   check('damage+scope amount empowerable',
     isEmpowerableField({ kind: 'damage', scope: 'all_creatures', amount: 2 }, 'amount'));
-  check('remove_creature severity empowerable while < 4',
-    isEmpowerableField({ kind: 'remove_creature', severity: 2 }, 'severity'));
-  check('remove_creature severity NOT empowerable at 4 (max)',
-    !isEmpowerableField({ kind: 'remove_creature', severity: 4 }, 'severity'));
+  check('affect_creature severity empowerable below exile',
+    isEmpowerableField({ kind: 'affect_creature', severity: 'bounce' }, 'severity'));
+  check('affect_creature severity NOT empowerable at exile (max)',
+    !isEmpowerableField({ kind: 'affect_creature', severity: 'exile' }, 'severity'));
 })();
 
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');

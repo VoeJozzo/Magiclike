@@ -115,15 +115,15 @@ eqText(segsToText(describeEffectList(
   'Target creature gets +1/+1 until end of turn. Target creature gets +1/+1 until end of turn.',
   'twinStrike NOT coalesced (two slots)');
 
-console.log('\n=== describeEffect: remove_creature severity ladder ===');
-eqText(segsToText(describeEffect({ kind: 'remove_creature', target: 'creature', severity: 1 })),
-       'tap target creature', 'sev 1 = tap');
-eqText(segsToText(describeEffect({ kind: 'remove_creature', target: 'creature', severity: 2 })),
-       "return target creature to its owner's hand", 'sev 2 = return');
-eqText(segsToText(describeEffect({ kind: 'remove_creature', target: 'creature', severity: 3 })),
-       'destroy target creature', 'sev 3 = destroy');
-eqText(segsToText(describeEffect({ kind: 'remove_creature', target: 'creature', severity: 4 })),
-       'exile target creature', 'sev 4 = exile');
+console.log('\n=== describeEffect: affect_creature severity ladder ===');
+eqText(segsToText(describeEffect({ kind: 'affect_creature', target: 'creature', severity: 'tap' })),
+       'tap target creature', 'tap');
+eqText(segsToText(describeEffect({ kind: 'affect_creature', target: 'creature', severity: 'bounce' })),
+       "return target creature to its owner's hand", 'bounce = return');
+eqText(segsToText(describeEffect({ kind: 'affect_creature', target: 'creature', severity: 'destroy' })),
+       'destroy target creature', 'destroy');
+eqText(segsToText(describeEffect({ kind: 'affect_creature', target: 'creature', severity: 'exile' })),
+       'exile target creature', 'exile');
 
 console.log('\n=== describeEffect: add_mana / counter / fight_target ===');
 eqText(segsToText(describeEffect({ kind: 'add_mana', mana: '{R}{R}' })),

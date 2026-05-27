@@ -108,7 +108,7 @@ function stickerAppliesLabel(s) {
     case 'innate':        return 'lands';
     case 'grant_mana_ability':     return "lands that don't already produce {" + s.color + '} (deck must play ' + s.colorAdj + ')';
     case 'cost_mod':      return 'non-lands with at least one generic mana and total cost ≥ 2';
-    case 'empower':       return 'cards with numeric effects (damage, damageAll, pump, counters, pumpAllYours, gain_life, draw, discard, remove_creature)';
+    case 'empower':       return 'cards with numeric effects (damage, damageAll, pump, counters, pumpAllYours, gain_life, draw, discard, affect_creature)';
     case 'subtype':       return 'creatures (rolls a random subtype from your deck)';
     case 'keyword': {
       const kw = s.keyword;

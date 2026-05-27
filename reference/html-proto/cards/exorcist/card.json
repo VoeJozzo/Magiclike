@@ -20,8 +20,8 @@
       "text": "When ~ enters, exile target creature.",
       "effects": [
         {
-          "kind": "remove_creature",
-          "severity": 4
+          "kind": "affect_creature",
+          "severity": "exile"
         },
         {
           "kind": "gain_life",

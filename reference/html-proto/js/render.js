@@ -531,7 +531,7 @@ function drawTargetLines() {
 // (draw vs bounce; buff vs weaken) — classified by from/to and sign in
 // classifyValence, not by flat membership.
 const HARMFUL_KINDS = new Set([
-  'damage', 'remove_creature', 'destroy_and_sticker_slot', 'change_control',
+  'damage', 'affect_creature', 'destroy_and_sticker_slot', 'change_control',
   'counter', 'rip_permanent', 'symmetricize', 'fight_target',
   'sacrifice', 'chooses', 'apply_sticker', 'discard',
 ]);

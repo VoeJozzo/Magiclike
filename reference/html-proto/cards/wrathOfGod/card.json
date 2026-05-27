@@ -7,9 +7,9 @@
   },
   "effects": [
     {
-      "kind": "remove_creature",
+      "kind": "affect_creature",
       "scope": "all_creatures",
-      "severity": 3
+      "severity": "destroy"
     }
   ],
   "name": "Day of Reckoning",

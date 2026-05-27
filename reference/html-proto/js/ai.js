@@ -11,7 +11,7 @@
 // Declared at module scope (outside the AI IIFE) so the coverage report can read
 // them. Keep them in sync with the if-chain in scoreSpellTargetForMode.
 const TARGET_SCORED_KINDS = new Set([
-  'damage', 'remove_creature', 'pump', 'add_counter', 'gain_life', 'discard',
+  'damage', 'affect_creature', 'pump', 'add_counter', 'gain_life', 'discard',
   'grant_keyword', 'fight_target', 'untap', 'move_card', 'sacrifice', 'annihilate',
   'rip_permanent', 'symmetricize', 'destroy_and_sticker_slot', 'change_control',
 ]);
@@ -287,7 +287,7 @@ function flashETBWouldFizzle(state, who, card) {
     if (!triggerFiresOnEnter(trig)) continue;
     const effects = trig.effects || [];
     for (const eff of effects) {
-      if (eff.kind === 'remove_creature' && eff.target === 'creature') {
+      if (eff.kind === 'affect_creature' && eff.target === 'creature') {
         const oppCreatures = state[them].battlefield.filter(c => c.type === 'Creature');
         if (oppCreatures.length === 0) return true;
       }
@@ -488,7 +488,7 @@ function shouldCounter(state, who) {
     e.kind === 'damage' ||
     e.kind === 'counter' ||
     (e.kind === 'change_control' && e.transfer_ownership) ||
-    (e.kind === 'remove_creature' && (e.severity || 1) >= 3)
+    (e.kind === 'affect_creature' && _sevNum(e.severity) >= 3)
   )) return true;
   if (card.type === 'Creature' && ENGINE.cardCost(card) >= 4) return true;
   if (relevantEffects.some(e => e.kind === 'draw' || e.kind === 'discard'
@@ -1063,18 +1063,15 @@ function scoreUntargetedSituation(state, who, effects) {
   return bonus;
 }
 
-// Severity name (new affect_creature) → numeric ladder (legacy remove_creature).
-function _sevNum(sev) {
-  if (typeof sev === 'number') return sev;
-  return { tap: 1, bounce: 2, destroy: 3, exile: 4 }[sev] || 3;
-}
-// Recognize a MASS effect (damage / remove_creature / affect_creature / pump +
+// Severity string → numeric ladder (delegates to the engine's single source).
+function _sevNum(sev) { return ENGINE.sevToNum(sev); }
+// Recognize a MASS effect (damage / affect_creature / pump +
 // a mass `scope`) and return a normalized descriptor, or null. Drives the AI's
 // mass-cast valuation.
 function massEffectInfo(e) {
   if (!e) return null;
   if (e.kind === 'damage' && e.scope === 'all_creatures') return { type: 'damage', amount: e.amount || 0 };
-  if ((e.kind === 'remove_creature' || e.kind === 'affect_creature') && e.scope) {
+  if (e.kind === 'affect_creature' && e.scope) {
     return { type: 'remove', severity: _sevNum(e.severity), whose: e.scope === 'all_opps' ? 'opp' : 'all' };
   }
   if (e.kind === 'pump' && e.scope === 'all_yours') return { type: 'pump' };
@@ -1243,7 +1240,7 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
   }
   if (eff.kind === 'destroy_and_sticker_slot') {
     // Scarification: destroy the target creature AND scar its run slot. Hard
-    // removal — score like a destroy (remove_creature sev 3), no severity field.
+    // removal — score like a destroy (affect_creature destroy), no severity field.
     if (target.kind !== 'creature') return -100;
     const c = ENGINE.findCard(target.iid);
     if (!c || c.controller === us) return -100;
@@ -1303,7 +1300,7 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
     }
     return 0;
   }
-  if (eff.kind === 'remove_creature') {
+  if (eff.kind === 'affect_creature') {
     if (target.kind !== 'creature') return -100;
     const c = ENGINE.findCard(target.iid);
     if (!c) return -100;
@@ -1585,7 +1582,7 @@ function pickBestActivation(state, who, abilityActs) {
     } else if (eff.kind === 'damage' && eff.target === 'player' && !act.targets) {
       // Drain-tax abilities (legacy damage-to-player shape).
       score = 8;
-    } else if (eff.kind === 'remove_creature' && act.targets) {
+    } else if (eff.kind === 'affect_creature' && act.targets) {
       const t = act.targets[0];
       if (t.kind === 'creature') {
         const c = ENGINE.findCard(t.iid);

@@ -22,8 +22,8 @@
       "text": "When ~ attacks, bounce target creature.",
       "effects": [
         {
-          "kind": "remove_creature",
-          "severity": 2
+          "kind": "affect_creature",
+          "severity": "bounce"
         }
       ],
       "target": "creature"

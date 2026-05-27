@@ -440,7 +440,7 @@ function scoreOpponentSticker(sticker, slot) {
     const tpl = tplForSlot(slot);
     if (!tpl) return 4;
     const FIELD_VALUE_BY_KIND = {
-      damage: 4, pump: 2, gain_life: 1, remove_creature: 6, create_tokens: 3,
+      damage: 4, pump: 2, gain_life: 1, affect_creature: 6, create_tokens: 3,
       move_card: 3,   // draw shape (the only empowerable move_card)
     };
     const targets = enumerateEmpowerTargets(tpl);

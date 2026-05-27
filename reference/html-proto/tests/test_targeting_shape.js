@@ -34,7 +34,7 @@ function game() {
 
 console.log('=== objectNeedsTarget recognizes all three shapes (+ none) ===');
 (() => {
-  check('top-level target() step', ENGINE.objectNeedsTarget({ target: 'creature', effects: [{ kind: 'remove_creature' }] }));
+  check('top-level target() step', ENGINE.objectNeedsTarget({ target: 'creature', effects: [{ kind: 'affect_creature' }] }));
   check('ability-level targetSlots', ENGINE.objectNeedsTarget({ targetSlots: [{ target: 'creature' }], effects: [{ kind: 'apply_in_game_splice' }] }));
   check('legacy per-effect target', ENGINE.objectNeedsTarget({ effects: [{ kind: 'damage', target: 'creature', amount: 2 }] }));
   check('untargeted → false', !ENGINE.objectNeedsTarget({ effects: [{ kind: 'create_tokens', count: 1 }] }));

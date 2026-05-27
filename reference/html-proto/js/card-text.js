@@ -238,12 +238,13 @@ function describeEffect(eff, tplEff) {
       if (eff.target === 'self') return [plainSeg('this creature gains ' + eff.keyword + dur)];
       return [plainSeg(t + ' gains ' + eff.keyword + dur)];
     }
-    case 'remove_creature': {
-      // 1=tap, 2=return, 3=destroy, 4=exile. Verb highlights when severity bumped.
-      const sev = eff.severity || 1;
+    case 'affect_creature': {
+      // tap/bounce/destroy/exile. Verb highlights when severity is empower-bumped.
+      const sev = ENGINE.sevToNum(eff.severity);
       const verb = sev >= 4 ? 'exile' : sev >= 3 ? 'destroy'
                  : sev >= 2 ? 'return' : 'tap';
-      const verbSeg = bumpedDerived(verb, 'severity', eff, tplEff);
+      const bumped = tplEff != null && ENGINE.sevToNum(eff.severity) !== ENGINE.sevToNum(tplEff.severity);
+      const verbSeg = { text: verb, highlight: bumped };
       // Mass scope (removeAll collapse).
       if (eff.scope) {
         const scopeStr = eff.scope === 'all_opps' ? 'all creatures an opponent controls'

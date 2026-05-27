@@ -20,8 +20,8 @@
       "text": "When ~ enters, destroy target tapped creature.",
       "effects": [
         {
-          "kind": "remove_creature",
-          "severity": 3
+          "kind": "affect_creature",
+          "severity": "destroy"
         }
       ],
       "target": "creature",

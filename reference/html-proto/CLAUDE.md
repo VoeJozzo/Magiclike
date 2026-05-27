@@ -52,6 +52,13 @@ consumer read both) AND the lone camelCase wire-value violation. Deleted two dea
 branches (legacy `condition`-as-function + `params.sub` fallback in triggers.js) and
 fixed stale comments/docs (zone-change migration-window comment, CLAUDE.md trigger
 registry name, PROTOCOL exile_until_eot row).
+v2.0.12: review cleanup (slice 2/4) — finished the spec'd `remove_creature`→
+`affect_creature` rename (plan §6.7/decision 12) across the EFFECTS dispatch, all
+31 cards, and every consumer, AND converted `severity` from integers `1-4` to the
+string ladder `tap|bounce|destroy|exile` (plan §5). Centralized the int↔string
+mapping in one helper (`sevToNum`/`numToSev`); empower still promotes severity up
+the ladder. Resolves the half-wired `affect_creature` phantom the review flagged
+(name was referenced in schema/valuation but undispatchable).
 
 > **MUST UPDATE on every dev-branch push that touches code.** Bump `VERSION` in `js/main.js` AND the line above, in the same commit. GitHub Pages caches aggressively; the version string is the only reliable way to confirm a fresh build is live.
 

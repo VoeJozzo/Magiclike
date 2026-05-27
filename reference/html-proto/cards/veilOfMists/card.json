@@ -8,8 +8,8 @@
   "target": "creature",
   "effects": [
     {
-      "kind": "remove_creature",
-      "severity": 2
+      "kind": "affect_creature",
+      "severity": "bounce"
     }
   ],
   "name": "Veil of Mists",

@@ -118,13 +118,13 @@ console.log('\n=== kind-collapse: legacy mass/weaken kinds gone from card data =
     for (const e of allEffs(card)) {
       if (e && e.kind === 'damage' && e.scope === 'all_creatures') massDmg++;
       if (e && e.kind === 'pump' && (e.scope === 'all_yours' || e.scope === 'all_creatures')) massPump++;
-      if (e && e.kind === 'remove_creature' && e.scope) massRemove++;
+      if (e && e.kind === 'affect_creature' && e.scope) massRemove++;
       if (e && e.kind === 'pump' && ((e.power || 0) < 0 || (e.toughness || 0) < 0)) signedPump++;
     }
   }
   check('damageAll collapsed to damage+scope (4)', massDmg === 4, 'got ' + massDmg);
   check('pumpAllYours collapsed to pump+scope (7)', massPump === 7, 'got ' + massPump);
-  check('removeAll collapsed to remove_creature+scope (3)', massRemove === 3, 'got ' + massRemove);
+  check('removeAll collapsed to affect_creature+scope (3)', massRemove === 3, 'got ' + massRemove);
   check('weaken collapsed to signed pump (3)', signedPump === 3, 'got ' + signedPump);
 
   let changeControl = 0, stealVariant = 0;

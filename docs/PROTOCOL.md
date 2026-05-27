@@ -121,7 +121,7 @@ runtime handlers — noted).
 |-----------------------|-------------------------------------------------|-------------|--------------------------------------------------------------------------------------|
 | `damage`              | `amount: int, scope?`                           | JS          | Deal N to the target() (creature/player). `scope: "all_creatures"` = sweep (was `damage_all`). |
 | `pump`                | `power: int, toughness: int, duration?, scope?` | JS          | Buff the target() creature. `duration: "permanent"` = +1/+1 counters (was `add_counter`); negative power/toughness = weaken (was `weaken`); `scope: "all_yours"`/`"all_creatures"` = sweep (was `pump_all_yours`). |
-| `remove_creature`     | `severity: 1-4 \| "tap"\|"bounce"\|"destroy"\|"exile", scope?` | JS | Removal on the target() creature. `scope` = sweep (was `remove_all`).                |
+| `affect_creature`     | `severity: "tap"\|"bounce"\|"destroy"\|"exile", scope?` | JS | Removal on the target() creature. `scope` = sweep (was `remove_all`). Empower promotes severity up the ladder. (Renamed from `remove_creature`; integer severities `1-4` still accepted defensively by the dispatcher but card data uses the string names.) |
 | `move_card`           | `from_zone, to_zone, selector, amount?, filter?, post?` | JS  | Unified card movement. Selector: `controller_top` (draw/mill), `target`, `self`, `library_search` (tutor). Subsumes `draw`, `discard`, `flicker` (bf→exile then exile→bf), `return_from_graveyard`, `shuffle_into_library`, `search_creature`, `search_land_tapped`. `post`: `{tap, shuffle, keep_buffs}`. |
 | `change_control`      | `duration?, transfer_ownership?, grant_haste?, untap_on_take?` | JS | Take control of the target() permanent (was `gain_control`/`steal`). `transfer_ownership` = permanent run-slot theft. |
 | `apply_sticker`       | `sticker: {kind, ...params}`                    | JS          | Apply a persistent per-slot sticker to the target() (cost_mod / set_color / stat_boost). Replaces `embargo`/`bleach`/`symmetricize`'s bespoke channel. |
@@ -142,7 +142,7 @@ runtime handlers — noted).
 | `noop`                | —                                               | JS          | Placeholder.                                                                         |
 
 **Naming rule.** Effect-kind dispatch keys are **snake_case on both sides**
-(`gain_life`, `add_mana`, `remove_creature`, …) — one canonical wire spelling the
+(`gain_life`, `add_mana`, `affect_creature`, …) — one canonical wire spelling the
 proto JS and Godot both read directly. The Slice 3 / card-data-Part-2 sweep
 renamed the JS `EFFECTS` table keys and every card.json kind value to snake_case
 (the earlier "JS stays camelCase" rule in `STANDARDIZATION-PLAN.md` §4.6 is
@@ -293,7 +293,7 @@ abilities land.
   "power": 1,                       // for pump, add_counter, weaken
   "toughness": 1,
   "duration": "eot",                // for pump (default eot)
-  "severity": 2,                    // for remove_creature: 1=tap 2=bounce 3=destroy 4=exile
+  "severity": "bounce",             // for affect_creature: tap / bounce / destroy / exile
   "colors": ["R"],                  // for add_mana
   "targetSlot": 1                   // for multi-target spells (Pass 5+)
 }

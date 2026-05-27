@@ -1129,8 +1129,8 @@ function abilityValue(ab) {
   const eff = ab.effects[0];
   switch (eff.kind) {
     case 'damage':         return 6 + (eff.amount || 0);
-    case 'remove_creature': {
-      const sev = eff.severity || 1;
+    case 'affect_creature': {
+      const sev = sevToNum(eff.severity);
       return sev === 1 ? 4 : sev === 2 ? 5 : sev === 3 ? 8 : 9;
     }
     case 'pump':           return (eff.duration === 'permanent' ? 3 : 2) + (eff.power || 0) + (eff.toughness || 0);
@@ -1162,11 +1162,9 @@ function spellValue(card) {
 function spellValueForEffects(effects) {
   let v = 0;
   for (const e of (effects || [])) {
-    if (e.kind === 'remove_creature' || e.kind === 'affect_creature') {
-      // tap < bounce < destroy < exile. Severity is numeric (legacy) or a
-      // string name (new affect_creature). A mass `scope` values like removeAll.
-      const sevName = { tap: 1, bounce: 2, destroy: 3, exile: 4 };
-      const sev = typeof e.severity === 'number' ? e.severity : (sevName[e.severity] || 1);
+    if (e.kind === 'affect_creature') {
+      // tap < bounce < destroy < exile. `scope` = mass form.
+      const sev = sevToNum(e.severity);
       if (e.scope) {
         const sevVal = sev === 1 ? 4 : sev === 2 ? 8 : sev === 3 ? 10 : 14;
         v += sevVal + ((e.scope === 'all_opps') ? 4 : 0);
@@ -1249,7 +1247,7 @@ function spellValueForEffects(effects) {
 // (a test fails, a boot warning prints), instead of the AI silently valuing it 0.
 // Keep these two sets exhaustive + disjoint over Object.keys(EFFECTS).
 const VALUED_EFFECT_KINDS = new Set([
-  'damage', 'pump', 'add_counter', 'remove_creature', 'destroy_and_sticker_slot',
+  'damage', 'pump', 'add_counter', 'affect_creature', 'destroy_and_sticker_slot',
   'symmetricize', 'apply_sticker', 'counter', 'add_mana', 'gain_life', 'draw',
   'move_card', 'discard', 'grant_keyword', 'create_tokens', 'rip_permanent',
   'chooses', 'schedule_delayed', 'change_control', 'fight_target',
@@ -1491,7 +1489,7 @@ function applyDamageFrom(ctx, target, amt) {
 // Creatures matching a mass `scope` (Slice 3 step 1 / decision 2), as a
 // pre-iteration snapshot of {kind, iid, controller}. all_creatures = both
 // sides; all_yours = controller's; all_opps = opponent's. Groundwork for the
-// single/mass unification: damage/pump/remove_creature gain a `scope` path
+// single/mass unification: damage/pump/affect_creature gain a `scope` path
 // alongside the legacy damageAll/pumpAllYours/removeAll handlers.
 function creaturesInScope(ctx, scope) {
   let sides;
@@ -1509,11 +1507,20 @@ function creaturesInScope(ctx, scope) {
 }
 
 // Apply a removal severity (1=tap, 2=bounce, 3=destroy, 4=exile) to one
-// creature f={card, controller}. Extracted from remove_creature so the
-// single-target and mass-scope paths share one severity ladder (groundwork
-// for the affect_creature unification).
-function affectOneCreature(ctx, f, sev) {
+// creature f={card, controller}. Single-target and mass-scope paths share this
+// one severity ladder.
+// Removal severity ladder. Card data carries the string names; the engine maps
+// to the numeric ladder internally. Empower promotes a severity UP the ladder.
+const SEVERITY_LADDER = ['tap', 'bounce', 'destroy', 'exile'];
+function sevToNum(sev) {
+  if (typeof sev === 'number') return Math.max(1, Math.min(4, sev));
+  const i = SEVERITY_LADDER.indexOf(sev);
+  return i >= 0 ? i + 1 : 3;  // default destroy
+}
+function numToSev(n) { return SEVERITY_LADDER[Math.max(1, Math.min(4, n)) - 1]; }
+function affectOneCreature(ctx, f, sevArg) {
   if (!f || !f.card) return;
+  const sev = sevToNum(sevArg);
   if (sev === 1) {
     f.card.tapped = true;
     log(`${ctx.sourceName} taps ${f.card.name}.`, 'sp');
@@ -1784,8 +1791,8 @@ const EFFECTS = {
   },
   // Unified removal. severity: 1=tap, 2=bounce, 3=destroy (indestructible blocks), 4=exile.
   // Severity sticker escalates one tier per stack.
-  remove_creature(ctx, params, target) {
-    const sev = Math.max(1, Math.min(4, params.severity || 1));
+  affect_creature(ctx, params, target) {
+    const sev = params.severity;
     if (params.scope) {
       for (const st of creaturesInScope(ctx, params.scope)) {
         affectOneCreature(ctx, findCard(st.iid), sev);
@@ -2788,7 +2795,7 @@ function validateAllCardEffects(cards) {
 // Effect kinds that operate on a creature (vs player) — drives target:'self' meaning.
 // Add creature-operators here; damage/gain_life/draw/discard/add_mana resolve self → controller.
 const CREATURE_EFFECT_KINDS = new Set([
-  'pump', 'add_counter', 'untap', 'remove_creature',
+  'pump', 'add_counter', 'untap', 'affect_creature',
   'fight_target', 'endomorph_absorb',
   'grant_keyword',
   'sacrifice', 'gainControl',
@@ -3069,7 +3076,7 @@ function pickBestTriggerTarget(eff, valid, controller) {
     const oppFace = valid.find(t => t.kind === 'player' && t.who === them);
     if (oppFace) return oppFace;
   }
-  const harmful = ['remove_creature', 'fight_target'];
+  const harmful = ['affect_creature', 'fight_target'];
   if (harmful.includes(eff.kind)) {
     const oppC = valid.filter(t => t.kind === 'creature' && ctrlOf(t) === them);
     if (oppC.length) {
@@ -3507,7 +3514,7 @@ function moveToGraveyard(card, controller) {
   const dest = card.owner || controller;
   if (!card.isToken) G[dest].graveyard.push(card);
   // Keyword claim: same rule as checkDeaths. moveToGraveyard is called by
-  // direct destroy effects (remove_creature sev 3, removeAll sev 3) which
+  // direct destroy effects (affect_creature destroy, mass destroy) which
   // set killedBy upstream. Skip for self-controller kills (e.g., a future
   // self-sacrifice path invoking moveToGraveyard, though sacrificeCard is
   // the canonical sac path today).
@@ -3516,7 +3523,7 @@ function moveToGraveyard(card, controller) {
   }
   // Same flush as checkDeaths — capture permanentEot buffs before
   // resetInPlayState clears them. Used for direct-destroy paths
-  // (remove_creature sev 3, removeAll sev 3).
+  // (affect_creature destroy, mass destroy).
   flushPermanentEotToPermaBuffs(card);
   clearRestrictionsFromSource(card.iid);
   resetInPlayState(card, true);   // preserve damagedBySources for dies-triggers
@@ -5845,7 +5852,7 @@ return {
   pickBestTriggerTarget,
   matchFilter,
   // Effects seam exposed for tests (Slice 3).
-  applyEffect, creaturesInScope, affectOneCreature,
+  applyEffect, creaturesInScope, affectOneCreature, sevToNum, numToSev,
   targetsForFilter, TARGET_FILTERS, validateAllCardEffects,
   // Canonical targeting-shape API (single source of truth across UI consumers).
   objectNeedsTarget, primaryLegalTargets, probeTargetsForObject,

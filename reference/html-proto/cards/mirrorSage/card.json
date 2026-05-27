@@ -7,8 +7,8 @@
       },
       "effects": [
         {
-          "kind": "remove_creature",
-          "severity": 1
+          "kind": "affect_creature",
+          "severity": "tap"
         }
       ],
       "target": "creature"

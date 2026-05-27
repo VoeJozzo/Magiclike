@@ -221,12 +221,13 @@ function applyEmpowerRoll(card, roll, amount) {
   const e = effs[effIdx];
   const v = e[field];
   if (typeof v === 'object' && v !== null && 'from' in v) return;
-  const cur = (typeof v === 'number') ? v : 0;
-  if (e.kind === 'remove_creature' && field === 'severity') {
-    e[field] = Math.min(4, cur + amount);
-  } else {
-    e[field] = cur + amount;
+  if (e.kind === 'affect_creature' && field === 'severity') {
+    // Promote up the string ladder (tap→bounce→destroy→exile), capped at exile.
+    e[field] = ENGINE.numToSev(ENGINE.sevToNum(e.severity) + amount);
+    return;
   }
+  const cur = (typeof v === 'number') ? v : 0;
+  e[field] = cur + amount;
 }
 
 // Roll a creature subtype for targetSlotIdx, weighted by deck token frequency.

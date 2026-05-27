@@ -159,14 +159,14 @@ STICKERS['cost_minus_1'] = {
 // Empower bumps one buffable field per application. Roll recorded on slot.empowerRolls.
 // Single source of truth for empowerable params, post-collapse (§3.5/§3.8):
 // the mass kinds (damageAll/pumpAllYours/removeAll) folded into damage/pump/
-// remove_creature + scope; weaken/add_counter into signed/permanent pump; draw
+// affect_creature + scope; weaken/add_counter into signed/permanent pump; draw
 // into move_card(library→hand). `move_card` is empowerable ONLY in its draw
 // shape (gated in isEmpowerableField).
 const EMPOWER_FIELDS = {
   damage:         ['amount'],
   pump:           ['power', 'toughness'],
   gain_life:       ['amount'],
-  remove_creature: ['severity'],
+  affect_creature: ['severity'],
   create_tokens:   ['count'],
   move_card:      ['amount'],
 };
@@ -177,8 +177,8 @@ function isEmpowerableField(eff, field) {
   // move_card is only empowerable as a draw (library→hand) — bumping a bounce/
   // mill/discard count isn't a meaningful "empower".
   if (eff.kind === 'move_card' && !(eff.from_zone === 'library' && eff.to_zone === 'hand')) return false;
-  if (eff.kind === 'remove_creature' && field === 'severity') {
-    return (eff.severity || 1) < 4;
+  if (eff.kind === 'affect_creature' && field === 'severity') {
+    return ENGINE.sevToNum(eff.severity) < 4;  // can't escalate past exile
   }
   // Skip {from:...} expressions (can't bump without losing semantics).
   const v = eff[field];
