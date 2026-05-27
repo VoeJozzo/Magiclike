@@ -98,7 +98,7 @@ eqText(segsToText(describeEffect({ kind: 'grant_keyword', target: 'your_creature
 console.log('\n=== same-subject EOT buffs coalesce into one clause ===');
 eqText(segsToText(describeEffectList(
   [{ kind: 'pump', scope: 'all_yours', power: 3, toughness: 3 },
-   { kind: 'grant_keyword', whose: 'allYours', keyword: 'trample', duration: 'eot' }], null, null)),
+   { kind: 'grant_keyword', scope: 'all_yours', keyword: 'trample', duration: 'eot' }], null, null)),
   'Creatures you control get +3/+3 and gain trample until end of turn.', 'overrun coalesce (mass)');
 eqText(segsToText(describeEffectList(
   [{ kind: 'pump', power: 2, toughness: 2 },

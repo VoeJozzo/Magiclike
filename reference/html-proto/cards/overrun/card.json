@@ -14,7 +14,7 @@
     },
     {
       "kind": "grant_keyword",
-      "whose": "allYours",
+      "scope": "all_yours",
       "keyword": "trample",
       "duration": "eot"
     }

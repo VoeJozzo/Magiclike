@@ -178,7 +178,7 @@ function triggerSubtype(trig) {
       return t.slice('card_has_subtype('.length, -1).replace(/^"|"$/g, '');
     }
   }
-  return (trig && trig.params && trig.params.sub) || null;
+  return null;
 }
 
 // ─── Boot validation (Slice 2 / E2) ─────────────────────────────────────
@@ -244,15 +244,12 @@ function evalTriggerCondition(trig, self, evt, who) {
     const sid = evt.sourceIid != null ? evt.sourceIid : evt.source_iid;
     if (sid != null && sid === self.iid) return false;
   }
-  // New composable `condition` (string / array / {op|name} dict). Distinguished
-  // from the LEGACY `condition` FUNCTION (handled below) by type.
-  if (trig.condition != null && typeof trig.condition !== 'function') {
+  // Composable `condition` (string / array / {op|name} dict). JSON wire can't
+  // hold a function, so this is the only shape post-migration.
+  if (trig.condition != null) {
     return evaluateCondition(trig.condition, {
       state: ENGINE.state(), source: self, event: evt, who: who,
     });
-  }
-  if (typeof trig.condition === 'function') {
-    return trig.condition(self, evt, who);
   }
   return true;
 }

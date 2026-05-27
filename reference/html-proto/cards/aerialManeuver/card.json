@@ -8,7 +8,7 @@
   "effects": [
     {
       "kind": "grant_keyword",
-      "whose": "allYours",
+      "scope": "all_yours",
       "keyword": "flying",
       "duration": "eot"
     }

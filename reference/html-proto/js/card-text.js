@@ -220,7 +220,7 @@ function describeEffect(eff, tplEff) {
       if (eff.duration === 'eot') {
         dur = ' until end of turn';
       } else if (eff.target === 'creature' || eff.target === 'your_creature' || eff.target === 'opp_creature'
-                 || eff.whose === 'allYours' || eff.whose === 'all') {
+                 || eff.scope === 'all_yours' || eff.scope === 'all_creatures') {
         // Non-eot grants are source-linked (applyGrant tracks the source iid;
         // the keyword falls off when the source leaves play). The §3.5 migration
         // renamed the target 'creature'→'your_creature'/'opp_creature', which
@@ -229,8 +229,11 @@ function describeEffect(eff, tplEff) {
       } else {
         dur = '';
       }
-      if (eff.whose === 'allYours') {
+      if (eff.scope === 'all_yours') {
         return [plainSeg('creatures you control gain ' + eff.keyword + dur)];
+      }
+      if (eff.scope === 'all_creatures') {
+        return [plainSeg('each creature gains ' + eff.keyword + dur)];
       }
       if (eff.target === 'self') return [plainSeg('this creature gains ' + eff.keyword + dur)];
       return [plainSeg(t + ' gains ' + eff.keyword + dur)];
@@ -375,11 +378,11 @@ function segsToText(segs) {
 }
 
 // Join effects into a sentence. Special-case: 2 damage effects use shared-subject phrasing.
-// Subject key for buff coalescing — pump (scope/target) and grant_keyword
-// (whose/target) must map to the SAME key to share one clause.
+// Subject key for buff coalescing — pump and grant_keyword (both scope/target)
+// must map to the SAME key to share one clause.
 function buffSubjectKey(eff) {
-  if (eff.scope === 'all_yours' || eff.whose === 'allYours') return 'all_yours';
-  if (eff.scope === 'all_creatures' || eff.whose === 'all') return 'all_creatures';
+  if (eff.scope === 'all_yours') return 'all_yours';
+  if (eff.scope === 'all_creatures') return 'all_creatures';
   if (eff.target === 'self') return 'self';
   return 'tgt:' + (eff.target || '');
 }

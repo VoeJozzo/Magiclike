@@ -1115,9 +1115,9 @@ function shouldCastUntargeted(state, who, card, modeIdx) {
     const ours = state[us].battlefield.filter(c => c.type === 'Creature').length;
     return ours >= 2;
   }
-  if (eff.kind === 'grant_keyword' && (eff.whose === 'allYours' || eff.whose === 'all')) {
+  if (eff.kind === 'grant_keyword' && (eff.scope === 'all_yours' || eff.scope === 'all_creatures')) {
     const ours = state[us].battlefield.filter(c => c.type === 'Creature').length;
-    if (eff.whose === 'all') {
+    if (eff.scope === 'all_creatures') {
       const theirs = state[them].battlefield.filter(c => c.type === 'Creature').length;
       return ours >= 2 && ours > theirs;
     }

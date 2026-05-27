@@ -1221,9 +1221,8 @@ function spellValueForEffects(effects) {
     else if (e.kind === 'grant_keyword') {
       // mass-yours-eot Overrun-shape vs single-target permanent vs symmetric.
       const eot = e.duration === 'eot';
-      const mass = e.whose === 'allYours' || e.whose === 'all';
-      if (e.whose === 'all') v += 0;
-      else if (mass) v += eot ? 6 : 8;
+      if (e.scope === 'all_creatures') v += 0;
+      else if (e.scope === 'all_yours') v += eot ? 6 : 8;
       else v += eot ? 2 : 3;
     }
     else if (e.kind === 'create_tokens') {
@@ -2114,22 +2113,16 @@ const EFFECTS = {
   discard(ctx, params, target) {
     discardFromHand(ctx, discardWho(ctx, target), params.amount);
   },
-  // Grant keyword. Axes: target (single), whose:'allYours'|'all' (mass), duration:'eot'|'permanent'.
+  // Grant keyword. Axes: target (single), scope:'all_yours'|'all_creatures' (mass), duration:'eot'|'permanent'.
   // Permanent → grantedBy (revoked on leave-play); EOT → eotGrants (revoked at end-turn).
   // Additive: a creature can have a kw from both systems at once.
   grant_keyword(ctx, params, target) {
     const kw = params.keyword;
     if (!kw) return;
     const eot = params.duration === 'eot';
-    if (params.whose === 'allYours' || params.whose === 'all') {
-      const sides = params.whose === 'all' ? ['you', 'opp'] : [ctx.controller];
-      const recipients = [];
-      for (const who of sides) {
-        for (const c of G[who].battlefield) {
-          if (c.type !== 'Creature') continue;
-          recipients.push(c);
-        }
-      }
+    if (params.scope) {
+      const recipients = creaturesInScope(ctx, params.scope)
+        .map(st => findCard(st.iid)).filter(f => f && f.card);
       if (recipients.length === 0) {
         log(`${ctx.sourceName} fizzles — no creatures.`, 'sp');
         return;
@@ -2137,8 +2130,8 @@ const EFFECTS = {
       const display = (typeof KEYWORD_DISPLAY !== 'undefined' && KEYWORD_DISPLAY[kw]) || kw;
       const dur = eot ? ' until end of turn' : '';
       log(`${ctx.sourceName} — ${recipients.length} creature${recipients.length === 1 ? '' : 's'} gain${recipients.length === 1 ? 's' : ''} ${display}${dur}.`, 'sp');
-      for (const c of recipients) {
-        applyGrant(c, kw, ctx.sourceIid, eot);
+      for (const f of recipients) {
+        applyGrant(f.card, kw, ctx.sourceIid, eot);
       }
       return;
     }
@@ -2909,11 +2902,10 @@ function emit(evt, extraSources) {
   }
 }
 
-// Unified zone-change emission (Slice 2 / DIVERGENCE E2). Fires ALONGSIDE the
-// legacy cardEntersBattlefield / cardDies / cardLeavesBattlefield events during
-// the migration window: composable triggers (event: 'card_zone_change') match
-// on this; legacy condId triggers still match on the old events. No current
-// card listens, so this is a behavioral no-op until card migration (step 6).
+// Unified zone-change emission (Slice 2 / DIVERGENCE E2). The sole battlefield
+// enter/leave/death event now — composable triggers (event: 'card_zone_change')
+// match on this; the legacy cardEntersBattlefield / cardDies /
+// cardLeavesBattlefield events were retired once card migration completed.
 // extraSources lets a card that has already left a zone still see its own
 // zone-change trigger (parity with the cardDies/cardLeaves extraSources).
 function emitZoneChange(card, controller, fromZone, toZone, extraSources, sourceIid) {
