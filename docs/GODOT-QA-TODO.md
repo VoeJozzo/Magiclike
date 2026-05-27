@@ -241,15 +241,26 @@ exercised directly via an exposed `ENGINE.applyEffect` test seam):
   use the legacy kinds. Suite 740/740; selfplay 500 clean. **All
   straightforward (non-structural, non-engine-gated) collapses are now done.**
 
-Still TODO proto:
-- **edict → target(player)+chooses+sacrifice** (1 card, structural — changes
-  the AI valuation path from shouldCastUntargeted to scoreSpellTargetForMode,
-  and the card-text chain needs a chooses+sacrifice rendering).
-- **Engine-GATED collapses** (need engine work first): addCounter → pump (add
-  pump `duration:permanent`/permPower), restrict → grant_keyword (add hidden
-  `no_block` kw), draw/discard → move_card (prompt-driven selectors), search* →
-  move_card (library_search prompt), flicker/exileUntilEOT → move_card decomp
-  (battlefield-arrival is built; needs the delayed-return half).
+- **addCounter → permanent pump DONE (proto):** built pump `duration:permanent`
+  (permPower/permTou), collapsed 9 addCounter effects (8 cards), full card-text
+  + valuation parity. addCounter handler kept (MERCURIAL_TRIGGER_POOL uses it).
+
+**All clean parity-preserving collapses are now done** (mass, weaken,
+change_control, move_card return/shuffle, addCounter). Remaining collapses each
+need more than a mechanical rewrite:
+- **edict → target(player)+chooses+sacrifice** (1 card, structural — flips the
+  AI valuation path from shouldCastUntargeted to scoreSpellTargetForMode, and
+  needs a chooses+sacrifice card-text rendering).
+- **restrict → grant_keyword** (1 card) — needs a hidden `no_block` keyword
+  built in the engine first.
+- **draw → move_card(library,hand,controller_top)** — engine supports it, BUT
+  `draw` is valued in many AI sites (burn reserve, instant-response, scoring);
+  collapsing needs every `eff.kind==='draw'` reader to also recognize the
+  move_card form (a broad §8.1-style lockstep — do carefully, not mechanically).
+- **discard/search → move_card** — gated on prompt-driven selectors
+  (controller_chosen / library_search) the engine doesn't have yet.
+- **flicker/exileUntilEOT → move_card decomp** — battlefield-arrival is built;
+  needs the delayed-return half (B4).
 - **Step 7**: delete the now-unused legacy EFFECTS handlers (damageAll,
   removeAll, pumpAllYours, weaken, gainControl, steal, returnFromGraveyard,
   shuffleIntoLibrary) + their card-text/valuation cases + the §8.1 dead-code
