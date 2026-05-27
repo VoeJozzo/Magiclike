@@ -89,7 +89,7 @@ const TOKENS = {
 // SHARED CONSTANTS — new keywords here auto-become available stickers.
 const KEYWORDS = [
   'flying', 'vigilance', 'trample', 'haste',
-  'firstStrike', 'reach', 'defender', 'indestructible',
+  'first_strike', 'reach', 'defender', 'indestructible',
   'lifelink', 'deathtouch', 'menace', 'hexproof', 'flash',
   'unblockable',
 ];
@@ -246,7 +246,7 @@ STICKERS['empower'] = {
 // modern card-text formatting: "First strike", not "First Strike").
 const KEYWORD_DISPLAY = {
   flying: 'Flying', vigilance: 'Vigilance', trample: 'Trample', haste: 'Haste',
-  firstStrike: 'First strike', reach: 'Reach', defender: 'Defender',
+  first_strike: 'First strike', reach: 'Reach', defender: 'Defender',
   indestructible: 'Indestructible', lifelink: 'Lifelink', deathtouch: 'Deathtouch',
   menace: 'Menace', hexproof: 'Hexproof', flash: 'Flash',
   unblockable: 'Unblockable',

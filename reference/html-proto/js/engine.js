@@ -881,7 +881,7 @@ function resolveTarget(ctx, target) {
   return null;
 }
 
-// permanentOrSpell target → {kind:'perm'|'spell', card, controller, [stackItem]} or null.
+// permanent_or_spell target → {kind:'perm'|'spell', card, controller, [stackItem]} or null.
 // Used by Stapler's apply_in_game_splice and Steal. Spell path verifies stack item still present.
 function resolveStackOrPermanent(target) {
   if (!target) return null;
@@ -984,7 +984,7 @@ function getCardValue(card, purpose, ctx) {
   if (kw.includes('lifelink'))       v += pow * 0.6;
   if (kw.includes('vigilance'))      v += tou * 0.4;
   if (kw.includes('haste'))          v += pow * 0.5;
-  if (kw.includes('firstStrike'))    v += 2 + Math.max(0, (pow - tou) * 0.5);
+  if (kw.includes('first_strike'))    v += 2 + Math.max(0, (pow - tou) * 0.5);
   if (kw.includes('deathtouch'))     v += 1 + Math.max(0, 4 - pow);   // inverse-power
   if (kw.includes('indestructible')) v += 1 + Math.max(0, 5 - tou);   // inverse-toughness
   if (kw.includes('hexproof'))       v += 3;
@@ -1042,7 +1042,7 @@ function getCardValue(card, purpose, ctx) {
       case 'lifelink':       return p * 0.6;
       case 'vigilance':      return t * 0.4;
       case 'haste':          return p * 0.5;
-      case 'firstStrike':    return 2;
+      case 'first_strike':    return 2;
       case 'deathtouch':     return 1 + Math.max(0, 4 - p);
       case 'indestructible': return 1 + Math.max(0, 5 - t);
       case 'hexproof':       return 3;
@@ -1102,7 +1102,7 @@ function sacValueOnBoard(card) {
   if (kw.includes('lifelink'))       v += pow * 0.5;
   if (kw.includes('vigilance'))      v += tou * 0.3;
   if (kw.includes('haste'))          v += pow * 0.4;
-  if (kw.includes('firstStrike'))    v += 1 + Math.max(0, (pow - tou) * 0.4);
+  if (kw.includes('first_strike'))    v += 1 + Math.max(0, (pow - tou) * 0.4);
   if (kw.includes('deathtouch'))     v += 1 + Math.max(0, 3 - pow);
   if (kw.includes('indestructible')) v += 1 + Math.max(0, 4 - tou);
   if (kw.includes('hexproof'))       v += 2;
@@ -1714,7 +1714,7 @@ const EFFECTS = {
     const KEYWORD_PRIORITY = {
       flying: 4, indestructible: 4,
       lifelink: 3, deathtouch: 3, hexproof: 3, trample: 3,
-      haste: 2, vigilance: 2, firstStrike: 2, flash: 2,
+      haste: 2, vigilance: 2, first_strike: 2, flash: 2,
       reach: 1, menace: 1,
     };
     const f = findCard(target.iid);
@@ -3124,7 +3124,7 @@ function pickBestTriggerTarget(eff, valid, controller) {
   if (eff.kind === 'returnFromGraveyard') {
     const graveCards = G[controller].graveyard;
     const scored = valid
-      .filter(t => t.kind === 'graveyardCreature')
+      .filter(t => t.kind === 'graveyard_creature')
       .map(t => {
         const card = graveCards.find(c => c.iid === t.iid);
         return {t, value: card ? (cardValueOrZero(card)) : 0};
@@ -3259,17 +3259,17 @@ function getValidTargets(effect, controller) {
         .filter(x => !(x.card.keywords && x.card.keywords.includes('hexproof') && x.ctrl !== controller))
         .filter(x => matchFilter(x.card, effect.filter, x.ctrl, controller))
         .map(x => ({kind:'permanent', iid:x.card.iid, label:x.card.name}));
-    case 'graveyardCreature':
+    case 'graveyard_creature':
       // Caster's own graveyard; hexproof doesn't apply. Filter for tribal recursion.
       return G[controller].graveyard
         .filter(c => c.type === 'Creature')
         .filter(c => matchFilter(c, effect.filter, controller, controller))
-        .map(c => ({kind:'graveyardCreature', iid: c.iid, label: c.name, controller}));
+        .map(c => ({kind:'graveyard_creature', iid: c.iid, label: c.name, controller}));
     case 'spell':
       return G.stack
         .filter(s => s.kind !== 'trigger' && s.card)
         .map(s => ({kind:'stack', stackItem: s, label: s.card.name}));
-    case 'permanentOrSpell': {
+    case 'permanent_or_spell': {
       // Stapler target: perm OR spell. Each half uses its own match function.
       const perms = [
         ...G.you.battlefield.map(c => ({card: c, ctrl: 'you'})),
@@ -3314,7 +3314,7 @@ function targetsForFilter(filter, controller, restrict) {
     case 'creature':           return getValidTargets({ target: 'creature', filter: restrict || undefined }, controller);
     case 'permanent':          return getValidTargets({ target: 'permanent', filter: restrict || undefined }, controller);
     case 'spell':              return getValidTargets({ target: 'spell', filter: restrict || undefined }, controller);
-    case 'graveyard_creature': return getValidTargets({ target: 'graveyardCreature', filter: restrict || undefined }, controller);
+    case 'graveyard_creature': return getValidTargets({ target: 'graveyard_creature', filter: restrict || undefined }, controller);
     case 'your_creature':      return getValidTargets({ target: 'creature', filter: merge({ controller: 'self' }) }, controller);
     case 'opp_creature':       return getValidTargets({ target: 'creature', filter: merge({ controller: 'opp' }) }, controller);
     default:
@@ -3432,7 +3432,7 @@ function sameTarget(a, b) {
   if (a.kind === 'player') return a.who === b.who;
   if (a.kind === 'creature') return a.iid === b.iid;
   if (a.kind === 'permanent') return a.iid === b.iid;
-  if (a.kind === 'graveyardCreature') return a.iid === b.iid;
+  if (a.kind === 'graveyard_creature') return a.iid === b.iid;
   if (a.kind === 'stack') return a.stackItem === b.stackItem;
   return false;
 }
@@ -4260,15 +4260,15 @@ function resolveCombatDamage() {
   for (const [bIid] of G.blockers) {
     const fb = findCard(bIid); if (fb) allCombatants.push(fb.card);
   }
-  const hasFirstStrike = allCombatants.some(c => c.keywords.includes('firstStrike'));
+  const hasFirstStrike = allCombatants.some(c => c.keywords.includes('first_strike'));
 
   if (hasFirstStrike) {
     // First-strike step: only first-strikers deal damage.
-    dealCombatDamage(blocked, defender, c => c.keywords.includes('firstStrike'));
+    dealCombatDamage(blocked, defender, c => c.keywords.includes('first_strike'));
     afterEffectsApplied();
     if (G.gameOver) return;
     // Normal step: anyone still alive that DOESN'T have first strike.
-    dealCombatDamage(blocked, defender, c => !c.keywords.includes('firstStrike'));
+    dealCombatDamage(blocked, defender, c => !c.keywords.includes('first_strike'));
   } else {
     // No first strike — single pass, all combatants.
     dealCombatDamage(blocked, defender, () => true);

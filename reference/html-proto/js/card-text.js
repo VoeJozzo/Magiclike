@@ -41,7 +41,6 @@ function targetPhrase(eff) {
   if (t === 'your_creature') return 'target creature you control';
   if (t === 'opp_creature') return 'target creature an opponent controls';
   if (t === 'graveyard_creature') return 'target creature card';
-  if (t === 'graveyardCreature') return 'target creature card';
   if (t === 'permanent')return 'target permanent';
   if (t === 'spell')    return 'target spell';
   if (t === 'any')      return 'any target';
@@ -652,10 +651,10 @@ function describeStaticBuff(buff) {
   const stats = (buff.power || buff.toughness)
     ? 'get +' + (buff.power || 0) + '/+' + (buff.toughness || 0)
     : '';
-  // Lookup display names so "firstStrike" → "first strike", etc.
+  // Lookup display names so "first_strike" → "first strike", etc.
   const kwDisplay = {
     flying: 'flying', vigilance: 'vigilance', trample: 'trample', haste: 'haste',
-    firstStrike: 'first strike', doubleStrike: 'double strike', deathtouch: 'deathtouch',
+    first_strike: 'first strike', double_strike: 'double strike', deathtouch: 'deathtouch',
     lifelink: 'lifelink', reach: 'reach', menace: 'menace', defender: 'defender',
     flash: 'flash', hexproof: 'hexproof', indestructible: 'indestructible',
   };
@@ -679,7 +678,7 @@ function keywordPreamble(keywords) {
   if (keywords.length === 0) return '';
   const display = {
     flying: 'Flying', vigilance: 'Vigilance', trample: 'Trample', haste: 'Haste',
-    firstStrike: 'First strike', doubleStrike: 'Double strike', deathtouch: 'Deathtouch',
+    first_strike: 'First strike', double_strike: 'Double strike', deathtouch: 'Deathtouch',
     lifelink: 'Lifelink', reach: 'Reach', menace: 'Menace', defender: 'Defender',
     flash: 'Flash', hexproof: 'Hexproof', indestructible: 'Indestructible',
   };

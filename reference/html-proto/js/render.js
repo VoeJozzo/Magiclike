@@ -78,12 +78,12 @@ function render() {
       if (!pt || !ptCard) return false;
       if (pt.kind === 'cast') {
         const modeEffects = ENGINE.effectsForMode(ptCard, pt.modeIdx);
-        return modeEffects.some(e => e.target === 'spell' || e.target === 'permanentOrSpell');
+        return modeEffects.some(e => e.target === 'spell' || e.target === 'permanent_or_spell');
       }
       if (pt.kind === 'ability') {
         const ab = (ptCard.abilities || [])[pt.abilityIdx || 0];
         if (!ab) return false;
-        return (ab.effects || []).some(e => e.target === 'spell' || e.target === 'permanentOrSpell');
+        return (ab.effects || []).some(e => e.target === 'spell' || e.target === 'permanent_or_spell');
       }
       return false;
     })();
@@ -98,7 +98,7 @@ function render() {
         const ab = (ptCard.abilities || [])[pt.abilityIdx || 0];
         effects = (ab && ab.effects) || [];
       }
-      return effects.some(e => e.target === 'permanentOrSpell');
+      return effects.some(e => e.target === 'permanent_or_spell');
     })();
     bannerHint.textContent = isCounterTarget
       ? (isSpliceTargetMode ? '— click a spell or permanent to splice it' : '— click a spell to counter it')
@@ -452,11 +452,11 @@ function render() {
         && G.pendingTriggerTarget.controller === 'you'
         && G.pendingTriggerTarget.valid
         && G.pendingTriggerTarget.valid.length > 0
-        && G.pendingTriggerTarget.valid[0].kind === 'graveyardCreature') {
+        && G.pendingTriggerTarget.valid[0].kind === 'graveyard_creature') {
       graveTargets = G.pendingTriggerTarget.valid;
     } else if (pt) {
       const eff = pendingTargetEffect(pt);
-      if (eff && eff.target === 'graveyardCreature') {
+      if (eff && eff.target === 'graveyard_creature') {
         graveTargets = ENGINE.getValidTargets(eff, 'you');
       }
     }
@@ -495,7 +495,7 @@ function drawTargetLines() {
       if (!tgt) continue;
       // Player targets have no good DOM anchor — skip.
       let targetEl = null;
-      if (tgt.kind === 'creature' || tgt.kind === 'permanent' || tgt.kind === 'graveyardCreature') {
+      if (tgt.kind === 'creature' || tgt.kind === 'permanent' || tgt.kind === 'graveyard_creature') {
         if (typeof tgt.iid === 'number') {
           targetEl = document.querySelector(`[data-iid="${tgt.iid}"]`);
         }
@@ -625,7 +625,7 @@ function openZoneTargeting(who, zone, validTargets) {
 function submitGraveyardTarget(iid) {
   const G = ENGINE.state();
   const card = G.you.graveyard.find(c => c.iid === iid);
-  const target = {kind:'graveyardCreature', iid, label: card ? card.name : 'creature', controller: 'you'};
+  const target = {kind:'graveyard_creature', iid, label: card ? card.name : 'creature', controller: 'you'};
   if (CONTROLLER.submitTargetedAction(target)) {
     Modal.hide('zoneModal');
   }
@@ -919,12 +919,12 @@ function isValidTargetCreature(eff, card) {
   // Normalize the target() taxonomy to an eligible card-type + an implied
   // controller restriction:
   //   creature / your_creature / opp_creature / any / creature_or_player → creatures
-  //   permanent / permanentOrSpell → battlefield permanents (stack spells are
+  //   permanent / permanent_or_spell → battlefield permanents (stack spells are
   //     highlighted via a separate path in renderStack).
   // (Player targets are highlighted elsewhere.) Name kept for its single caller.
   const t = eff.target;
   const CREATURE_KINDS = ['creature', 'your_creature', 'opp_creature', 'any', 'creature_or_player'];
-  const PERM_KINDS = ['permanent', 'permanentOrSpell'];
+  const PERM_KINDS = ['permanent', 'permanent_or_spell'];
   if (CREATURE_KINDS.includes(t)) {
     if (card.type !== 'Creature') return false;
   } else if (PERM_KINDS.includes(t)) {

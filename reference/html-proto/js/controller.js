@@ -1525,14 +1525,14 @@ function clickBattlefield(iid) {
       return;
     }
     // Determine the right target descriptor kind. For effects targeting
-    // 'permanent' or 'permanentOrSpell' we emit kind:'permanent' (the click
+    // 'permanent' or 'permanent_or_spell' we emit kind:'permanent' (the click
     // is on a battlefield card; stack-spell targets are handled by a
     // separate stack-click path). Otherwise default to 'creature'. Without
     // this, clicking a land while casting Steal would emit a kind:'creature'
     // descriptor that fails sameTarget against the valid-target list (which
     // uses kind:'permanent').
     const eff = pendingTargetEffect(pendingTarget);
-    const targetKind = (eff && (eff.target === 'permanent' || eff.target === 'permanentOrSpell')) ? 'permanent' : 'creature';
+    const targetKind = (eff && (eff.target === 'permanent' || eff.target === 'permanent_or_spell')) ? 'permanent' : 'creature';
     const action = buildPendingActionWithTarget({kind: targetKind, iid: card.iid, label: card.name});
     if (action && action.pending) {
       // Multi-target spell: accumulated this pick, more slots remain. Re-render

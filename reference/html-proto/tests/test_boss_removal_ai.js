@@ -56,7 +56,7 @@ check('bleach — AI casts it (exile, scoring the move_card not the sticker)', t
 console.log('\n=== change_control family (same silent-uncast class) ===');
 check('mindControl — AI casts it (permanent steal of control)', trial('mindControl', 'you'));
 check('threaten — AI casts it (temporary control)', trial('threaten', 'you'));
-check('steal — AI casts it (permanentOrSpell target, run-slot theft)', trial('steal', 'you'));
+check('steal — AI casts it (permanent_or_spell target, run-slot theft)', trial('steal', 'you'));
 
 console.log('\n=== regressions: ordinary removal + flicker still cast ===');
 check('terror still cast (vanilla destroy)', trial('terror', 'you'));

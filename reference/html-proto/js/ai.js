@@ -541,7 +541,7 @@ function simulateCombat(state, attackerWho, attackerIids, blockMap) {
       const w = snap(bIid); if (w) allCombatants.push(w.card);
     }
   }
-  const hasFirstStrike = allCombatants.some(c => c.keywords.includes('firstStrike'));
+  const hasFirstStrike = allCombatants.some(c => c.keywords.includes('first_strike'));
 
   const isDead = (w) => {
     if (!w) return true;
@@ -624,8 +624,8 @@ function simulateCombat(state, attackerWho, attackerIids, blockMap) {
   };
 
   if (hasFirstStrike) {
-    oneStrike(c => c.keywords.includes('firstStrike'));
-    oneStrike(c => !c.keywords.includes('firstStrike'));
+    oneStrike(c => c.keywords.includes('first_strike'));
+    oneStrike(c => !c.keywords.includes('first_strike'));
   } else {
     oneStrike(() => true);
   }
@@ -1452,7 +1452,7 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
     }
     // Collapsed returnFromGraveyard / shuffleIntoLibrary — value at parity.
     if (eff.from_zone === 'graveyard' && eff.to_zone === 'hand') {
-      if (target.kind !== 'graveyardCreature') return -100;
+      if (target.kind !== 'graveyard_creature') return -100;
       const grave = state[us].graveyard || [];
       const card = grave.find(c => c.iid === target.iid);
       if (!card) return -100;

@@ -6,7 +6,7 @@
 // established target via the engine's resolution wiring.
 //
 // SKIPS (would lose information the closed target() taxonomy can't express):
-// multi-slot effects, mixed target values, permanentOrSpell, and any effect
+// multi-slot effects, mixed target values, permanent_or_spell, and any effect
 // carrying a non-controller filter (subtype/keyword/maxTough/…). Idempotent.
 //
 //   node tools/migrate-effects.js --dry   # report, write nothing
@@ -23,7 +23,7 @@ function mapFilter(targetVal, controller) {
     case 'player': return 'player';
     case 'spell': return 'spell';
     case 'permanent': return 'permanent';
-    case 'graveyardCreature': return 'graveyard_creature';
+    case 'graveyard_creature': return 'graveyard_creature';
     case 'creature':
       if (controller === 'self') return 'your_creature';
       if (controller === 'opp') return 'opp_creature';
@@ -42,7 +42,7 @@ function planBlock(effects, alreadyHasTarget) {
   const vals = [...new Set(targeted.map(e => e.target))];
   if (vals.length !== 1) return { skip: 'mixed-target' };
   const tv = vals[0];
-  if (tv === 'permanentOrSpell') return { skip: 'permanentOrSpell' };
+  if (tv === 'permanent_or_spell') return { skip: 'permanent_or_spell' };
   // All targeted effects must share one filter so a single top-level step
   // covers them (single-target cards trivially do).
   const filterKeys = [...new Set(targeted.map(e => JSON.stringify(e.filter || null)))];
@@ -94,7 +94,7 @@ function collapseEffect(e) {
     return Object.assign({ kind: 'change_control' }, rest);
   }
   if (e.kind === 'steal') {
-    const { kind, ...rest } = e;  // preserves target:permanentOrSpell + filter
+    const { kind, ...rest } = e;  // preserves target:permanent_or_spell + filter
     return Object.assign({ kind: 'change_control', transfer_ownership: true }, rest);
   }
   if (e.kind === 'draw') {

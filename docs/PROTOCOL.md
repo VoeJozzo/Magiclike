@@ -148,10 +148,14 @@ renamed the JS `EFFECTS` table keys and every card.json kind value to snake_case
 (the earlier "JS stays camelCase" rule in `STANDARDIZATION-PLAN.md` §4.6 is
 superseded for dispatch keys — it described the Pass 1–4 state). The catalog
 above lists the canonical keys. Godot's `Effects.HANDLERS` registers the same
-snake_case keys; its `JsonCardLoader._EFFECT_KIND_REMAP` (camelCase→snake) is now
-a no-op for these kinds and slated for deletion (see GODOT-QA-TODO).
-(Event kinds and predicate ids are a separate sweep — see §3.3/§3.4; trigger
-events in card data are already snake_case from Slice 2.)
+snake_case keys. The same sweep also snake_cased the other dispatch-key
+categories: **keywords** (`first_strike`, `double_strike`) and **target filters**
+(`permanent_or_spell`, `graveyard_creature`). Event kinds and predicate ids were
+already snake_case from Slice 2 (the proto fires the unified `card_zone_change`,
+`life_changed`, `spell_cast`, `attacks`; conditions are `card_moves(...)` etc.).
+So **all** of `JsonCardLoader`'s remap tables (`_EFFECT_KIND_REMAP`,
+`_EVENT_KIND_REMAP`, `_KEYWORD_REMAP`, `_TARGET_FILTER_REMAP`) are now no-ops for
+the live vocabulary and slated for deletion (see GODOT-QA-TODO).
 
 ### 3.3 Event kinds
 

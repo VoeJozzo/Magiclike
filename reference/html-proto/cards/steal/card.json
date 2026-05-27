@@ -8,7 +8,7 @@
     {
       "kind": "change_control",
       "transfer_ownership": true,
-      "target": "permanentOrSpell",
+      "target": "permanent_or_spell",
       "filter": {
         "notToken": true
       }

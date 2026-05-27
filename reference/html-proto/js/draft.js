@@ -406,7 +406,7 @@ function scoreOpponentSticker(sticker, slot) {
   if (sticker.kind === 'keyword') {
     const tier = {
       flying: 14, indestructible: 14, hexproof: 11, lifelink: 10, deathtouch: 10,
-      firstStrike: 8, vigilance: 7, haste: 7, trample: 6, menace: 5, reach: 4, flash: 3,
+      first_strike: 8, vigilance: 7, haste: 7, trample: 6, menace: 5, reach: 4, flash: 3,
     }[sticker.keyword] || 5;
     return tier;
   }

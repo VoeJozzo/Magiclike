@@ -652,13 +652,16 @@ Everything else below is the **Godot mirror** (separate Godot-equipped session).
   `remove_creature`, `create_tokens`, `grant_keyword`, `fight_target`,
   `rip_permanent`, `apply_in_game_splice`, `destroy_and_sticker_slot`,
   `endomorph_absorb`, `bargain_sticker_self/other`, `add_counter`). The card.json
-  is now one snake_case wire both engines read directly. **Godot side:**
-  `Effects.HANDLERS` already uses snake_case, so it Just Works via passthrough —
-  but `JsonCardLoader._EFFECT_KIND_REMAP` (camelCase→snake) is now **dead for
-  these kinds** (input is already snake) and should be **deleted** per the plan
-  (`plan-card-data-unification.md` Part 2). Verify load + supportability scan
-  after deleting. (Event kinds + keyword remaps are a separate sweep — trigger
-  events in card data are already snake from Slice 2.)
+  is now one snake_case wire both engines read directly. The same sweep also
+  snake_cased **keywords** (`first_strike`, `double_strike`) and **target
+  filters** (`permanent_or_spell`, `graveyard_creature`); events + predicate ids
+  were already snake from Slice 2. **Godot side:** `Effects.HANDLERS` already uses
+  snake_case, so it Just Works via passthrough — and **all four** remap tables
+  (`_EFFECT_KIND_REMAP`, `_EVENT_KIND_REMAP`, `_KEYWORD_REMAP`,
+  `_TARGET_FILTER_REMAP`) are now dead for the live vocabulary and should be
+  **deleted** per the plan (`plan-card-data-unification.md` Part 2);
+  `_build_resource()` becomes direct field assignment. Verify load +
+  supportability scan after deleting.
 
 ### Gotchas (the recurring lockstep trap — applies hard here)
 

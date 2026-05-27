@@ -10,13 +10,13 @@
       },
       "targetSlots": [
         {
-          "target": "permanentOrSpell",
+          "target": "permanent_or_spell",
           "filter": {
             "spliceableBase": true
           }
         },
         {
-          "target": "permanentOrSpell",
+          "target": "permanent_or_spell",
           "filter": {
             "spliceableStaple": true
           }
