@@ -1115,7 +1115,7 @@ function spellValueForEffects(effects) {
     }
     // damage with a mass scope values like the legacy damageAll.
     else if (e.kind === 'damage') v += (e.scope === 'all_creatures') ? (8 + (e.amount || 0) * 2) : (6 + (e.amount || 0));
-    else if (e.kind === 'edict') v += 7;
+    else if (e.kind === 'chooses') v += 6;   // edict idiom (target(player)→chooses→sacrifice)
     else if (e.kind === 'sacrifice') v += 0;
     else if (e.kind === 'counter') v += 8;
     else if (e.kind === 'change_control') {
@@ -2068,24 +2068,6 @@ const EFFECTS = {
     for (const tok of made) {
       emitZoneChange(tok, owner, 'none', 'battlefield', undefined, ctx.sourceIid);
     }
-  },
-  // Force opp to sacrifice a creature (no targeting, so hexproof doesn't protect).
-  // v1: only auto-resolves when chooser is AI; no opp-side edicts exist in card pool.
-  edict(ctx) {
-    const them = opp(ctx.controller);
-    const targets = G[them].battlefield.filter(c => c.type === 'Creature');
-    if (targets.length === 0) {
-      log(`${ctx.sourceName} fizzles — ${pname(them)} has no creatures.`, 'sp');
-      return;
-    }
-    if (them === 'you') {
-      // TODO: forced-sac UI for player-side edicts.
-      log(`${ctx.sourceName} — auto-selecting (forced-sac UI not implemented).`, 'sp');
-    }
-    targets.sort((a, b) => sacValueOnBoard(a) - sacValueOnBoard(b));
-    const victim = targets[0];
-    victim.killedBy = ctx.controller;
-    sacrificeCard(victim, them);
   },
   // Vile Edict: target player picks own permanent to RIP (destroy + slot removed from runState).
   // Targets any permanent type, not just creatures. Permanent run loss.

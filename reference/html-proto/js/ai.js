@@ -1080,15 +1080,6 @@ function shouldCastUntargeted(state, who, card, modeIdx) {
       .filter(c => c.type === 'Creature').reduce((s, c) => s + ENGINE.getStats(c)[0], 0);
     return theirPower > ourPower + 2;
   }
-  if (eff.kind === 'edict') {
-    // Opp picks lowest-value — cast iff their lowest is meaningful (≥3).
-    const oppC = state[them].battlefield.filter(c => c.type === 'Creature');
-    if (oppC.length === 0) return false;
-    const sortedByValue = oppC.slice().sort((a, b) =>
-      ENGINE.getCardValue(a, 'kill') - ENGINE.getCardValue(b, 'kill'));
-    const minWorthwhile = 3;  // 1/1 ~0, 2/2 ~2, real threat ≥4 by getCardValue
-    return ENGINE.getCardValue(sortedByValue[0], 'kill') >= minWorthwhile;
-  }
   if (mass && mass.type === 'pump') {
     const ours = state[us].battlefield.filter(c => c.type === 'Creature').length;
     return ours >= 2;
@@ -1178,6 +1169,17 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
   let eff = modeEffects.find(e => e.target);
   if (!eff && card.target) eff = modeEffects.find(e => e.kind !== 'chooses' && e.scope == null);
   if (!eff) return 0;
+  if (eff.kind === 'sacrifice') {
+    // Edict: target(player) → chooses → sacrifice. The targeted player loses
+    // their lowest-value creature; never edict ourselves. (Was the legacy
+    // untargeted `edict` valuation in shouldCastUntargeted.)
+    if (target.kind !== 'player' || target.who === us) return -100;
+    const theirC = state[target.who].battlefield.filter(c => c.type === 'Creature');
+    if (theirC.length === 0) return -100;
+    const lowest = theirC.slice().sort((a, b) =>
+      ENGINE.getCardValue(a, 'kill') - ENGINE.getCardValue(b, 'kill'))[0];
+    return 10 + ENGINE.getCardValue(lowest, 'kill');
+  }
   if (eff.kind === 'damage') {
     const amount = eff.amount;
     if (target.kind === 'creature') {

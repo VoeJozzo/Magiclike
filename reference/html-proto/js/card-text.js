@@ -276,8 +276,16 @@ function describeEffect(eff, tplEff) {
       }
       return [plainSeg('add ' + (eff.mana || '{C}'))];
     }
-    case 'edict':
-      return [plainSeg(t + ' sacrifices a creature')];
+    case 'chooses':
+      // The targeted player's selection is rendered by the following sacrifice
+      // clause (the edict idiom) — emit nothing here.
+      return [];
+    case 'sacrifice':
+      // Edict: under a target(player) step, reads "target player/opponent
+      // sacrifices a creature". Otherwise a self/own sacrifice.
+      if (eff.target === 'player' || eff.target === 'creature_or_player') return [plainSeg(t + ' sacrifices a creature')];
+      if (eff.target === 'self') return [plainSeg('sacrifice this creature')];
+      return [plainSeg('sacrifice ' + (t || 'it'))];
     case 'change_control': {
       // Unified gainControl + steal. transfer_ownership renders the steal
       // trophy flavor; otherwise the gain-control text (+ duration / riders).
@@ -360,10 +368,15 @@ function describeEffectList(effects, cardName, tplEffects, stepTarget) {
       && effects[1].target === 'self') {
     return capitalizeSegs(parts[0]).concat(plainSeg(', then ')).concat(parts[1]).concat(plainSeg('.'));
   }
+  // Drop effects that render to nothing (e.g. chooses() — its phrasing is
+  // carried by the following sacrifice clause), so they don't leave stray ". ".
+  const nonEmpty = parts.filter(p => Array.isArray(p) && p.some(s => s && s.text));
+  if (nonEmpty.length === 0) return [];
+  if (nonEmpty.length === 1) return capitalizeSegs(nonEmpty[0]).concat(plainSeg('.'));
   const out = [];
-  for (let i = 0; i < parts.length; i++) {
+  for (let i = 0; i < nonEmpty.length; i++) {
     if (i > 0) out.push(plainSeg('. '));
-    out.push(...capitalizeSegs(parts[i]));
+    out.push(...capitalizeSegs(nonEmpty[i]));
   }
   out.push(plainSeg('.'));
   return out;

@@ -1,16 +1,21 @@
 {
   "card_id": "diabolicEdict",
-  "art": "😈",
+  "art": "\ud83d\ude08",
   "cost": {
     "B": 1,
     "C": 1
   },
-  "effects": [
-    {
-      "kind": "edict"
-    }
-  ],
   "name": "Diabolic Edict",
   "text": "Target opponent sacrifices a creature.",
-  "type": "Instant"
+  "type": "Instant",
+  "target": "player",
+  "effects": [
+    {
+      "kind": "chooses",
+      "filter": "creature"
+    },
+    {
+      "kind": "sacrifice"
+    }
+  ]
 }

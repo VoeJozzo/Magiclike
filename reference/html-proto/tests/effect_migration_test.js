@@ -28,7 +28,7 @@ console.log('=== migrated pool shape ===');
       if (e && e.target && e.target !== 'self') { residualTarget++; }
     }
   }
-  check('42 cards carry a top-level target() step', withStep === 42, 'got ' + withStep);
+  check('43 cards carry a top-level target() step (42 + diabolicEdict)', withStep === 43, 'got ' + withStep);
   check('every target() step is in the closed taxonomy', badFilter === 0);
   check('no migrated on-cast effect kept a per-effect target', residualTarget === 0, 'got ' + residualTarget);
 })();
@@ -90,7 +90,7 @@ console.log('\n=== skipped cards kept their non-taxonomy filters (no silent loss
 console.log('\n=== kind-collapse: legacy mass/weaken kinds gone from card data ===');
 (() => {
   const GONE = ['damageAll', 'removeAll', 'pumpAllYours', 'weaken', 'gainControl', 'steal',
-                'returnFromGraveyard', 'shuffleIntoLibrary', 'addCounter'];
+                'returnFromGraveyard', 'shuffleIntoLibrary', 'addCounter', 'edict'];
   const seen = {};
   const allEffs = (card) => {
     const out = [];
@@ -144,6 +144,12 @@ console.log('\n=== kind-collapse: legacy mass/weaken kinds gone from card data =
     for (const e of allEffs(card)) if (e && e.kind === 'pump' && e.duration === 'permanent') permPump++;
   }
   check('addCounter collapsed to permanent pump (9)', permPump === 9, 'got ' + permPump);
+
+  // edict → target(player) + chooses(creature) + sacrifice.
+  const edict = CARDS.diabolicEdict;
+  check('diabolicEdict: target(player)', edict.target === 'player');
+  check('diabolicEdict: chooses(creature) + sacrifice',
+    edict.effects.length === 2 && edict.effects[0].kind === 'chooses' && edict.effects[1].kind === 'sacrifice');
 })();
 
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');
