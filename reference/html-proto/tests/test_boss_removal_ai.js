@@ -63,6 +63,34 @@ check('terror still cast (vanilla destroy)', trial('terror', 'you'));
 check('oblation still cast (shuffle-into-library)', trial('oblation', 'you'));
 check('cloudshift still cast on OWN creature (flicker, shares bf→exile)', trial('cloudshift', 'opp'));
 
+console.log('\n=== string-severity scoring (regression: severity read via _sevNum, not numeric) ===');
+(() => {
+  // A tap-severity spell must NOT fire when the only enemy creature is already
+  // tapped (the sev===1 → -50 guard). If severity were read as a raw string the
+  // branch would fall through to the exile path and the AI would wrongly cast.
+  const tapSpell = Object.keys(CARDS).find(k => {
+    const e = (CARDS[k].effects || [])[0];
+    return e && e.kind === 'affect_creature' && e.severity === 'tap' && CARDS[k].target === 'creature';
+  });
+  function trialTapped(spellTpl) {
+    RUN.start({ cards: Array(12).fill('plains'), colors: ['W'] }, null);
+    RUN.startNextGame();
+    const G = ENGINE.state();
+    G.activePlayer = 'opp'; G.priorityHolder = 'opp'; G.phase = 'MAIN1';
+    G.stack = []; G.gameOver = false; G.priority = { passes: new Set() };
+    G.opp.mana = { W: 9, U: 9, B: 9, R: 9, G: 9, C: 9 };
+    const ctpl = Object.keys(CARDS).find(k => CARDS[k].type === 'Creature');
+    const victim = mk(ctpl, 'you'); victim.tapped = true; G.you.battlefield.push(victim);
+    G.opp.hand.length = 0;
+    G.opp.hand.push(Object.assign(JSON.parse(JSON.stringify(CARDS[spellTpl])),
+      { iid: 9999, tplId: spellTpl, controller: 'opp', owner: 'opp' }));
+    const dec = AI.decide(G, 'opp');
+    return !!(dec && dec.type === 'castSpell' && dec.cardIid === 9999);
+  }
+  check('found a tap-severity creature spell to test', !!tapSpell, tapSpell);
+  if (tapSpell) check('AI does NOT tap an already-tapped creature (tap severity read correctly)', !trialTapped(tapSpell));
+})();
+
 console.log('\n=== negative: do NOT bleach/embargo your own creature ===');
 (() => {
   // targetSide=opp puts the only creature on the caster's side — removal must

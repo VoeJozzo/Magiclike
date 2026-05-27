@@ -59,6 +59,12 @@ string ladder `tap|bounce|destroy|exile` (plan §5). Centralized the int↔strin
 mapping in one helper (`sevToNum`/`numToSev`); empower still promotes severity up
 the ladder. Resolves the half-wired `affect_creature` phantom the review flagged
 (name was referenced in schema/valuation but undispatchable).
+v2.0.13: fixed two AI severity-scoring sites the v2.0.12 rename missed — they read
+`eff.severity` with numeric comparisons (`sev === 3`), silently mis-scoring string
+severities (a `destroy` spell scored as `exile`; a `tap` ignored its already-tapped
+guard). No crash, so tests/selfplay stayed green — the textbook §8.1 lockstep trap.
+Both now go through `_sevNum`; added a regression (AI won't `tap` an already-tapped
+creature).
 
 > **MUST UPDATE on every dev-branch push that touches code.** Bump `VERSION` in `js/main.js` AND the line above, in the same commit. GitHub Pages caches aggressively; the version string is the only reliable way to confirm a fresh build is live.
 

@@ -1306,7 +1306,7 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
     if (!c) return -100;
     if (c.controller === us) return -100;
     if (c.card.keywords.includes('hexproof')) return -100;
-    const sev = eff.severity || 1;
+    const sev = _sevNum(eff.severity);
     const [pow, tou] = ENGINE.getStats(c.card);
     let score;
     if (sev === 1) {
@@ -1587,7 +1587,7 @@ function pickBestActivation(state, who, abilityActs) {
       if (t.kind === 'creature') {
         const c = ENGINE.findCard(t.iid);
         if (c && c.controller !== who) {
-          const sev = eff.severity || 1;
+          const sev = _sevNum(eff.severity);
           if (sev >= 3 && c.card.keywords.includes('indestructible') && sev < 4) {
             score = -100;
           } else {
