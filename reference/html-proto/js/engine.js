@@ -1076,7 +1076,7 @@ function abilityValue(ab) {
       const sev = eff.severity || 1;
       return sev === 1 ? 4 : sev === 2 ? 5 : sev === 3 ? 8 : 9;
     }
-    case 'pump':           return 2 + (eff.power || 0) + (eff.toughness || 0);
+    case 'pump':           return (eff.duration === 'permanent' ? 3 : 2) + (eff.power || 0) + (eff.toughness || 0);
     case 'addCounter':     return 3 + (eff.power || 0) + (eff.toughness || 0);
     case 'addMana':        return 3;
     case 'draw':           return 4 + (eff.amount || 1) - 1;
@@ -1494,22 +1494,29 @@ const EFFECTS = {
     applyDamageFrom(ctx, target, params.amount);
   },
   pump(ctx, params, target) {
+    // duration:'permanent' → +1/+1 counters (permPower/permTou); default EOT
+    // temp (tempPower/tempTou). Lets pump absorb addCounter (decision 4).
+    const perm = params.duration === 'permanent';
+    const applyTo = (card, p, t) => {
+      if (perm) { card.permPower += p; card.permTou += t; }
+      else { card.tempPower += p; card.tempTou += t; }
+    };
     if (params.scope) {
       const p = params.power || 0, t = params.toughness || 0;
       for (const st of creaturesInScope(ctx, params.scope)) {
         const f = findCard(st.iid);
         if (!f) continue;
-        f.card.tempPower += p;
-        f.card.tempTou += t;
+        applyTo(f.card, p, t);
       }
-      log(`${ctx.sourceName} gives +${p}/+${t} EOT to each creature in scope.`, 'sp');
+      log(`${ctx.sourceName} gives +${p}/+${t}${perm ? '' : ' EOT'} to each creature in scope.`, 'sp');
       return;
     }
     const f = resolveTarget(ctx, target);
     if (!f) return;
-    f.card.tempPower += (params.power||0);
-    f.card.tempTou += (params.toughness||0);
-    log(`${f.card.name} gets +${params.power}/+${params.toughness} EOT.`, 'sp');
+    const p = params.power || 0, t = params.toughness || 0;
+    applyTo(f.card, p, t);
+    if (perm) log(`Put +${p}/+${t} on ${f.card.name}.`, 'sp');
+    else log(`${f.card.name} gets +${p}/+${t} EOT.`, 'sp');
   },
   // Negative tempPower/tempTou — cleared at EOT. Toughness 0 = SBA death (unless indestructible).
   weaken(ctx, params, target) {

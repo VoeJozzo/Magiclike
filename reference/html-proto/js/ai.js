@@ -1254,7 +1254,7 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
     const buffPow = eff.power || 0;
     const buffTou = eff.toughness || 0;
     const swing = combatBuffSwingValue(state, us, target.iid, buffPow, buffTou);
-    if (eff.kind === 'addCounter') {
+    if (eff.kind === 'addCounter' || eff.duration === 'permanent') {
       return 3 + swing;
     }
     return swing;
@@ -1549,7 +1549,7 @@ function pickBestActivation(state, who, abilityActs) {
     } else if (eff.kind === 'searchCreature' || eff.kind === 'searchLandTapped') {
       // Tutoring is consistently strong.
       score = 8;
-    } else if (eff.kind === 'addCounter' && eff.target === 'self') {
+    } else if ((eff.kind === 'addCounter' || (eff.kind === 'pump' && eff.duration === 'permanent')) && eff.target === 'self') {
       // Self-counter pump (Carrion Feeder-shape). The general principle:
       // sacrificing creatures just to grow a counter is wrong play. Real
       // sac decisions happen for one of two reasons:

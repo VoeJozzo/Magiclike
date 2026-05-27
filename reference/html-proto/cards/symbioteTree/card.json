@@ -23,7 +23,8 @@
       "text": "When ~ enters, put a +1/+1 counter on target friendly creature and it gains reach.",
       "effects": [
         {
-          "kind": "addCounter",
+          "kind": "pump",
+          "duration": "permanent",
           "power": 1,
           "toughness": 1
         },

@@ -22,7 +22,8 @@
       ],
       [
         {
-          "kind": "addCounter",
+          "kind": "pump",
+          "duration": "permanent",
           "target": "creature",
           "power": 1,
           "toughness": 1,

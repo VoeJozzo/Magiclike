@@ -163,6 +163,13 @@ function describeEffect(eff, tplEff) {
       if (eff.amount === 1) return [plainSeg('discard a card')];
       return [plainSeg('discard '), amtSeg, plainSeg(' cards')];
     case 'pump': {
+      // duration:permanent → +1/+1 counter rendering (addCounter collapse).
+      if (eff.duration === 'permanent') {
+        const pSeg = bumpedSeg('power', eff, tplEff, 0);
+        const tSeg = bumpedSeg('toughness', eff, tplEff, 0);
+        const onWhom = eff.target === 'self' ? 'this' : t;
+        return [plainSeg('put a +'), pSeg, plainSeg('/+'), tSeg, plainSeg(' counter on ' + onWhom)];
+      }
       // Signed (weaken = negative deltas) + mass scope (pumpAllYours collapse).
       let subj, verb;
       if (eff.scope === 'all_yours') { subj = 'creatures you control'; verb = ' get '; }

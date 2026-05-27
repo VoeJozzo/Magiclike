@@ -106,6 +106,19 @@ console.log('\n=== single-target path still works (no scope) ===');
   check('single-target damage still works', b.damage === 1, 'damage=' + b.damage);
 })();
 
+console.log('\n=== pump duration: eot (temp) vs permanent (counters) ===');
+(() => {
+  clearBoards();
+  const a = place('you');
+  ENGINE.applyEffect(CTX, { kind: 'pump', power: 1, toughness: 1 }, { kind: 'creature', iid: a.iid });
+  check('eot pump → tempPower/tempTou', a.tempPower === 1 && a.tempTou === 1 && a.permPower === 0);
+
+  clearBoards();
+  const b = place('you');
+  ENGINE.applyEffect(CTX, { kind: 'pump', power: 1, toughness: 1, duration: 'permanent' }, { kind: 'creature', iid: b.iid });
+  check('permanent pump → permPower/permTou (counters)', b.permPower === 1 && b.permTou === 1 && b.tempPower === 0);
+})();
+
 console.log('\n=== sacrifice vs annihilate (graveyard contract) ===');
 (() => {
   function inZone(who, zone, iid) { return G[who][zone].some(c => c.iid === iid); }

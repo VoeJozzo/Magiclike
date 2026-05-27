@@ -77,6 +77,10 @@ function collapseEffect(e) {
     const { kind, power, toughness, ...rest } = e;
     return Object.assign({ kind: 'pump', power: -(power || 0), toughness: -(toughness || 0) }, rest);
   }
+  if (e.kind === 'addCounter') {
+    const { kind, ...rest } = e;  // +1/+1 counters → permanent pump (preserves target:self)
+    return Object.assign({ kind: 'pump', duration: 'permanent' }, rest);
+  }
   if (e.kind === 'gainControl') {
     const { kind, ...rest } = e;  // preserves duration/grantHaste/untap (+ target if not migrated)
     return Object.assign({ kind: 'change_control' }, rest);

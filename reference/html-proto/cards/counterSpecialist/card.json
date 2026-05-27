@@ -21,7 +21,8 @@
       "text": "Counter cast — put a +1/+1 counter on ~.",
       "effects": [
         {
-          "kind": "addCounter",
+          "kind": "pump",
+          "duration": "permanent",
           "target": "self",
           "power": 1,
           "toughness": 1

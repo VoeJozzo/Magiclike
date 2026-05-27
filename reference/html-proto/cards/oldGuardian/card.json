@@ -20,7 +20,8 @@
       "text": "When ~ dies, put two +1/+1 counters on target friendly creature.",
       "effects": [
         {
-          "kind": "addCounter",
+          "kind": "pump",
+          "duration": "permanent",
           "power": 2,
           "toughness": 2
         }

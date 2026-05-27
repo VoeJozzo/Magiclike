@@ -90,7 +90,7 @@ console.log('\n=== skipped cards kept their non-taxonomy filters (no silent loss
 console.log('\n=== kind-collapse: legacy mass/weaken kinds gone from card data ===');
 (() => {
   const GONE = ['damageAll', 'removeAll', 'pumpAllYours', 'weaken', 'gainControl', 'steal',
-                'returnFromGraveyard', 'shuffleIntoLibrary'];
+                'returnFromGraveyard', 'shuffleIntoLibrary', 'addCounter'];
   const seen = {};
   const allEffs = (card) => {
     const out = [];
@@ -138,6 +138,12 @@ console.log('\n=== kind-collapse: legacy mass/weaken kinds gone from card data =
   }
   check('returnFromGraveyard collapsed to move_card graveyard→hand (3)', mcReturn === 3, 'got ' + mcReturn);
   check('shuffleIntoLibrary collapsed to move_card battlefield→library (1)', mcShuffle === 1, 'got ' + mcShuffle);
+
+  let permPump = 0;
+  for (const card of Object.values(CARDS)) {
+    for (const e of allEffs(card)) if (e && e.kind === 'pump' && e.duration === 'permanent') permPump++;
+  }
+  check('addCounter collapsed to permanent pump (9)', permPump === 9, 'got ' + permPump);
 })();
 
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');
