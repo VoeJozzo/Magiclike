@@ -19,7 +19,8 @@
       "text": "When ~ attacks, creatures you control get +1/+0 EOT.",
       "effects": [
         {
-          "kind": "pumpAllYours",
+          "kind": "pump",
+          "scope": "all_yours",
           "power": 1,
           "toughness": 0
         }

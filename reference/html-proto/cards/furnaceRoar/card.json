@@ -7,7 +7,8 @@
   },
   "effects": [
     {
-      "kind": "damageAll",
+      "kind": "damage",
+      "scope": "all_creatures",
       "amount": 5
     }
   ],

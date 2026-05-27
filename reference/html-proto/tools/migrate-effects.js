@@ -60,7 +60,38 @@ function planBlock(effects, alreadyHasTarget) {
   return { target: top, effects: newEffects };
 }
 
-const stats = { onCast: 0, trigger: 0, ability: 0 };
+// Kind-collapse: rewrite a redundant legacy kind into its atomic + scope/sign
+// form (the engine + AI valuation already support these). Returns the rewritten
+// effect, or the same object if nothing to do. Idempotent (collapsed shapes
+// aren't re-touched). addCounter is NOT collapsed yet (pump lacks `duration`).
+function collapseEffect(e) {
+  if (!e || !e.kind) return e;
+  if (e.kind === 'damageAll') return { kind: 'damage', scope: 'all_creatures', amount: e.amount || 0 };
+  if (e.kind === 'pumpAllYours') return { kind: 'pump', scope: 'all_yours', power: e.power || 0, toughness: e.toughness || 0 };
+  if (e.kind === 'removeAll') {
+    const whose = e.whose;
+    const scope = whose === 'opp' ? 'all_opps' : (whose === 'self' || whose === 'you') ? 'all_yours' : 'all_creatures';
+    return { kind: 'removeCreature', scope, severity: e.severity || 3 };
+  }
+  if (e.kind === 'weaken') {
+    const { kind, power, toughness, ...rest } = e;
+    return Object.assign({ kind: 'pump', power: -(power || 0), toughness: -(toughness || 0) }, rest);
+  }
+  return e;
+}
+// Apply collapseEffect to every effect in a card (on-cast flat/modal, trigger,
+// ability). Returns count rewritten.
+function collapseAll(card) {
+  let n = 0;
+  const mapArr = (arr) => arr.map(e => { const c = collapseEffect(e); if (c !== e) n++; return c; });
+  if (Array.isArray(card.effects)) card.effects = mapArr(card.effects);
+  else if (card.effects && Array.isArray(card.effects.modes)) card.effects.modes = card.effects.modes.map(mapArr);
+  for (const t of (card.triggers || [])) if (Array.isArray(t.effects)) t.effects = mapArr(t.effects);
+  for (const a of (card.abilities || [])) if (Array.isArray(a.effects)) a.effects = mapArr(a.effects);
+  return n;
+}
+
+const stats = { onCast: 0, trigger: 0, ability: 0, collapsed: 0 };
 const skips = {};
 function note(r) { if (r.skip) skips[r.skip] = (skips[r.skip] || 0) + 1; }
 
@@ -70,6 +101,10 @@ for (const folderId of manifest) {
   if (!fs.existsSync(file)) continue;
   const card = JSON.parse(fs.readFileSync(file, 'utf8'));
   let changed = false;
+
+  // Kind-collapse pass (damageAll/removeAll/pumpAllYours → scope; weaken → signed pump).
+  const collapsedN = collapseAll(card);
+  if (collapsedN) { stats.collapsed += collapsedN; changed = true; }
 
   // On-cast effects (skip whole-card multi-target spells). Rebuild so `target`
   // sits just before `effects`.
@@ -104,5 +139,5 @@ for (const folderId of manifest) {
 
   if (changed && !DRY) fs.writeFileSync(file, JSON.stringify(card, null, 2) + '\n');
 }
-console.log(`${DRY ? '[dry-run] ' : ''}Migrated target() steps — on-cast: ${stats.onCast}, trigger: ${stats.trigger}, ability: ${stats.ability}.`);
+console.log(`${DRY ? '[dry-run] ' : ''}Migrated target() steps — on-cast: ${stats.onCast}, trigger: ${stats.trigger}, ability: ${stats.ability}; collapsed kinds: ${stats.collapsed}.`);
 console.log('Skips:', JSON.stringify(skips));

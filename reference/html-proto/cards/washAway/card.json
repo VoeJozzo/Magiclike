@@ -7,9 +7,9 @@
   },
   "effects": [
     {
-      "kind": "removeAll",
-      "severity": 2,
-      "whose": "all"
+      "kind": "removeCreature",
+      "scope": "all_creatures",
+      "severity": 2
     }
   ],
   "name": "Wash Away",

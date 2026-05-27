@@ -7,9 +7,9 @@
   },
   "effects": [
     {
-      "kind": "removeAll",
-      "severity": 2,
-      "whose": "opp"
+      "kind": "removeCreature",
+      "scope": "all_opps",
+      "severity": 2
     }
   ],
   "name": "Devastation Tide",

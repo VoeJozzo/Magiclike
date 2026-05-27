@@ -115,6 +115,15 @@ function plainSeg(text) {
   return { text, highlight: false };
 }
 
+// Signed stat segment for pump (+N for buffs, -N for weaken/signed deltas),
+// preserving the empower-bump highlight. "+2"/"-2".
+function signedStat(field, eff, tplEff) {
+  const v = eff[field] || 0;
+  const tplV = tplEff ? (tplEff[field] || 0) : undefined;
+  const bumped = tplEff != null && typeof v === 'number' && typeof tplV === 'number' && v !== tplV;
+  return { text: (v < 0 ? '-' : '+') + Math.abs(v), highlight: bumped };
+}
+
 // Render one effect to segments (lowercase-leading; caller capitalizes).
 function describeEffect(eff, tplEff) {
   const t = withFilter(targetPhrase(eff), eff);
@@ -127,6 +136,7 @@ function describeEffect(eff, tplEff) {
   switch (eff.kind) {
     case 'damage':
       if (eff.target === 'self') return [plainSeg('you take '), amtSeg, plainSeg(' damage')];
+      if (eff.scope === 'all_creatures') return [plainSeg('deal '), amtSeg, plainSeg(' damage to each creature')];
       return [plainSeg('deal '), amtSeg, plainSeg(' damage to ' + t)];
     case 'damageAll':
       return [plainSeg('deal '), amtSeg, plainSeg(' damage to each creature')];
@@ -153,10 +163,14 @@ function describeEffect(eff, tplEff) {
       if (eff.amount === 1) return [plainSeg('discard a card')];
       return [plainSeg('discard '), amtSeg, plainSeg(' cards')];
     case 'pump': {
-      const pSeg = bumpedSeg('power', eff, tplEff, 0);
-      const tSeg = bumpedSeg('toughness', eff, tplEff, 0);
-      const subj = eff.target === 'self' ? 'this creature' : t;
-      return [plainSeg(subj + ' gets +'), pSeg, plainSeg('/+'), tSeg, plainSeg(' until end of turn')];
+      // Signed (weaken = negative deltas) + mass scope (pumpAllYours collapse).
+      let subj, verb;
+      if (eff.scope === 'all_yours') { subj = 'creatures you control'; verb = ' get '; }
+      else if (eff.scope === 'all_creatures') { subj = 'all creatures'; verb = ' get '; }
+      else if (eff.target === 'self') { subj = 'this creature'; verb = ' gets '; }
+      else { subj = t; verb = ' gets '; }
+      return [plainSeg(subj + verb), signedStat('power', eff, tplEff), plainSeg('/'),
+              signedStat('toughness', eff, tplEff), plainSeg(' until end of turn')];
     }
     case 'pumpAllYours': {
       const pSeg = bumpedSeg('power', eff, tplEff, 0);
@@ -191,6 +205,14 @@ function describeEffect(eff, tplEff) {
       const verb = sev >= 4 ? 'exile' : sev >= 3 ? 'destroy'
                  : sev >= 2 ? 'return' : 'tap';
       const verbSeg = bumpedDerived(verb, 'severity', eff, tplEff);
+      // Mass scope (removeAll collapse).
+      if (eff.scope) {
+        const scopeStr = eff.scope === 'all_opps' ? 'all creatures an opponent controls'
+                       : eff.scope === 'all_yours' ? 'all creatures you control'
+                       : 'all creatures';
+        if (sev >= 2 && sev < 3) return [verbSeg, plainSeg(' ' + scopeStr + " to their owners' hands")];
+        return [verbSeg, plainSeg(' ' + scopeStr)];
+      }
       if (sev >= 2 && sev < 3) return [verbSeg, plainSeg(' ' + t + " to its owner's hand")];
       return [verbSeg, plainSeg(' ' + t)];
     }

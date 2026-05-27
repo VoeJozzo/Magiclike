@@ -20,8 +20,8 @@
       "text": "When ~ enters, target creature gets -2/-0 EOT.",
       "effects": [
         {
-          "kind": "weaken",
-          "power": 2,
+          "kind": "pump",
+          "power": -2,
           "toughness": 0
         }
       ],

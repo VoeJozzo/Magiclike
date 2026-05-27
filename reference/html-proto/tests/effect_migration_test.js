@@ -87,5 +87,38 @@ console.log('\n=== skipped cards kept their non-taxonomy filters (no silent loss
   check('non-taxonomy-filter cards retained their filter (skipped, not lost)', preserved >= 1, 'count=' + preserved);
 })();
 
+console.log('\n=== kind-collapse: legacy mass/weaken kinds gone from card data ===');
+(() => {
+  const GONE = ['damageAll', 'removeAll', 'pumpAllYours', 'weaken'];
+  const seen = {};
+  const allEffs = (card) => {
+    const out = [];
+    if (Array.isArray(card.effects)) out.push(...card.effects);
+    else if (card.effects && Array.isArray(card.effects.modes)) for (const m of card.effects.modes) out.push(...m);
+    for (const t of (card.triggers || [])) out.push(...(t.effects || []));
+    for (const a of (card.abilities || [])) out.push(...(a.effects || []));
+    return out;
+  };
+  for (const card of Object.values(CARDS)) {
+    for (const e of allEffs(card)) if (e && GONE.includes(e.kind)) seen[e.kind] = (seen[e.kind] || 0) + 1;
+  }
+  for (const k of GONE) check('no card uses legacy ' + k, !seen[k], (seen[k] || 0) + ' remain');
+
+  // The collapsed forms are present.
+  let massDmg = 0, massPump = 0, massRemove = 0, signedPump = 0;
+  for (const card of Object.values(CARDS)) {
+    for (const e of allEffs(card)) {
+      if (e && e.kind === 'damage' && e.scope === 'all_creatures') massDmg++;
+      if (e && e.kind === 'pump' && (e.scope === 'all_yours' || e.scope === 'all_creatures')) massPump++;
+      if (e && e.kind === 'removeCreature' && e.scope) massRemove++;
+      if (e && e.kind === 'pump' && ((e.power || 0) < 0 || (e.toughness || 0) < 0)) signedPump++;
+    }
+  }
+  check('damageAll collapsed to damage+scope (4)', massDmg === 4, 'got ' + massDmg);
+  check('pumpAllYours collapsed to pump+scope (7)', massPump === 7, 'got ' + massPump);
+  check('removeAll collapsed to removeCreature+scope (3)', massRemove === 3, 'got ' + massRemove);
+  check('weaken collapsed to signed pump (3)', signedPump === 3, 'got ' + signedPump);
+})();
+
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');
 process.exit(fail > 0 ? 1 : 0);
