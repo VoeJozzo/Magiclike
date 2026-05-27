@@ -26,9 +26,12 @@ console.log('=== every Land template: mana label is in its tap-ability colors ==
     if (tpl.type !== 'Land') continue;
     const prod = ENGINE.landProducibleColors(tpl);
     if (prod.length === 0) { bad++; console.log('   no mana ability:', tpl.tplId); continue; }
-    if (tpl.mana && !prod.includes(tpl.mana)) { bad++; console.log('   mana/ability mismatch:', tpl.tplId, tpl.mana, prod); }
+    // 'C' is the colorless-IDENTITY label for an identity-less land (City of
+    // Brass taps for any color but has no color identity), so it need not be a
+    // produced color. Every other (WUBRG) label must be in the produced set.
+    if (tpl.mana && tpl.mana !== 'C' && !prod.includes(tpl.mana)) { bad++; console.log('   mana/ability mismatch:', tpl.tplId, tpl.mana, prod); }
   }
-  check('all lands have a tap-ability whose colors include the mana label', bad === 0, 'bad=' + bad);
+  check('all lands have a tap-ability whose colors include the mana label (C exempt)', bad === 0, 'bad=' + bad);
   check('cityOfBrass taps for all 5 colors', JSON.stringify(ENGINE.landProducibleColors(CARDS.cityOfBrass).slice().sort()) === JSON.stringify(['B', 'G', 'R', 'U', 'W']));
   check('plains taps for W only', JSON.stringify(ENGINE.landProducibleColors(CARDS.plains)) === JSON.stringify(['W']));
 })();

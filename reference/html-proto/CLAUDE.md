@@ -40,6 +40,11 @@ trigger-generator's damageAny roll) and dropped the v2.0.8 `any` alias — `any`
 no longer a target token anywhere in proto, so the Godot loader's
 `_TARGET_FILTER_REMAP["any"]` can finally die. (`choose:'any'` for mana color is a
 separate field and stays.)
+v2.0.10: City of Brass mana label `W`→`C` — it's an identity-less land (taps for
+any color via the §3.9 `add_mana choose:'any'` ability, but has no color identity),
+so it now renders a colorless frame and stops counting as a White source in
+deck-color/draft-pip display. `C` is the colorless-identity land label; the
+land-mana invariant test exempts it (production stays WUBRG).
 
 > **MUST UPDATE on every dev-branch push that touches code.** Bump `VERSION` in `js/main.js` AND the line above, in the same commit. GitHub Pages caches aggressively; the version string is the only reliable way to confirm a fresh build is live.
 

@@ -62,7 +62,7 @@ to the manifest.
 | `effects`      | `object[]` or modal-object | opt | Spell on-cast effects. See §4 for descriptor shape. Modal cards use the modal-object form (§4.6). |
 | `triggers`     | `object[]`       | opt      | Triggered abilities. See §5.                                  |
 | `abilities`    | `object[]`       | opt      | Activated abilities (e.g. tap-to-mana). Same shape as triggers minus `event`/`cond_id`, plus a `cost` object. |
-| `mana`         | `string` (W/U/B/R/G) | land  | Land's **primary-color label** (deck-color/draft/pip display only). §3.9: mana **production** lives on the land's tap-ability (`abilities: [{cost:{tap}, effects:[{add_mana, ...}]}]`), exactly like a mana dork — not on `mana`. A multi-color land uses `add_mana: {choose: ...}`. |
+| `mana`         | `string` (W/U/B/R/G/C) | land  | Land's **primary-color label** (deck-color/draft/pip display only). §3.9: mana **production** lives on the land's tap-ability (`abilities: [{cost:{tap}, effects:[{add_mana, ...}]}]`), exactly like a mana dork — not on `mana`. A multi-color land uses `add_mana: {choose: ...}`. Use `"C"` for an identity-less land (e.g. City of Brass taps for any color but has no color identity — colorless frame, contributes no WUBRG to deck colors/pips). |
 | `customText`   | `bool`           | opt      | If true, suppresses the `~` placeholder lint.                 |
 
 **Removed in §3.9 (Slice 3):** `extraManaColors`. Lands now produce mana through

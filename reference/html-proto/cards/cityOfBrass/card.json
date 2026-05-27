@@ -1,7 +1,7 @@
 {
   "card_id": "cityOfBrass",
   "art": "cards/cityOfBrass/art.png",
-  "mana": "W",
+  "mana": "C",
   "name": "City of Brass",
   "sub": "Land",
   "text": "Tap: Add one mana of any color.",
