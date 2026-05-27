@@ -20,10 +20,10 @@
       "text": "When ~ dies, return a creature from your graveyard.",
       "effects": [
         {
-          "kind": "returnFromGraveyard",
-          "target": "graveyardCreature"
+          "kind": "returnFromGraveyard"
         }
-      ]
+      ],
+      "target": "graveyard_creature"
     }
   ],
   "type": "Creature"

@@ -21,10 +21,10 @@
       "effects": [
         {
           "kind": "grantKeyword",
-          "target": "creature",
           "keyword": "defender"
         }
-      ]
+      ],
+      "target": "creature"
     }
   ],
   "type": "Creature"

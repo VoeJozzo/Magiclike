@@ -20,13 +20,10 @@
       "text": "When ~ enters, fight target creature.",
       "effects": [
         {
-          "kind": "fightTarget",
-          "target": "creature",
-          "filter": {
-            "controller": "opp"
-          }
+          "kind": "fightTarget"
         }
-      ]
+      ],
+      "target": "opp_creature"
     }
   ],
   "type": "Creature"

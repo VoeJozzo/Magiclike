@@ -21,14 +21,11 @@
       "effects": [
         {
           "kind": "addCounter",
-          "target": "creature",
           "power": 1,
-          "toughness": 1,
-          "filter": {
-            "controller": "self"
-          }
+          "toughness": 1
         }
-      ]
+      ],
+      "target": "your_creature"
     }
   ],
   "type": "Creature"

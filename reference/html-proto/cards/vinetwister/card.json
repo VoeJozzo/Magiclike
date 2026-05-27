@@ -21,13 +21,10 @@
       "effects": [
         {
           "kind": "grantKeyword",
-          "target": "creature",
-          "keyword": "trample",
-          "filter": {
-            "controller": "self"
-          }
+          "keyword": "trample"
         }
-      ]
+      ],
+      "target": "your_creature"
     }
   ],
   "type": "Creature"

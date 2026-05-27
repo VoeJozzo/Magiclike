@@ -24,13 +24,10 @@
       "effects": [
         {
           "kind": "grantKeyword",
-          "target": "creature",
-          "keyword": "hexproof",
-          "filter": {
-            "controller": "self"
-          }
+          "keyword": "hexproof"
         }
-      ]
+      ],
+      "target": "your_creature"
     }
   ],
   "type": "Creature"

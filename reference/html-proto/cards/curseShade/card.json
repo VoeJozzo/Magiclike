@@ -21,10 +21,10 @@
       "effects": [
         {
           "kind": "removeCreature",
-          "severity": 4,
-          "target": "creature"
+          "severity": 4
         }
-      ]
+      ],
+      "target": "creature"
     }
   ],
   "type": "Creature"

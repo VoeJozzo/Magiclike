@@ -24,10 +24,10 @@
       "effects": [
         {
           "kind": "damage",
-          "target": "player",
           "amount": 2
         }
-      ]
+      ],
+      "target": "player"
     }
   ],
   "type": "Creature"

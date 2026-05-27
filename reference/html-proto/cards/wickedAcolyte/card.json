@@ -8,10 +8,10 @@
       "effects": [
         {
           "kind": "damage",
-          "target": "player",
           "amount": 1
         }
-      ]
+      ],
+      "target": "player"
     }
   ],
   "art": "cards/wickedAcolyte/art.png",

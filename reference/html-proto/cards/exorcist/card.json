@@ -21,12 +21,10 @@
       "effects": [
         {
           "kind": "removeCreature",
-          "severity": 4,
-          "target": "creature"
+          "severity": 4
         },
         {
           "kind": "gainLife",
-          "target": "creature",
           "who": {
             "from": "targetController"
           },
@@ -34,7 +32,8 @@
             "from": "targetPower"
           }
         }
-      ]
+      ],
+      "target": "creature"
     }
   ],
   "type": "Creature"

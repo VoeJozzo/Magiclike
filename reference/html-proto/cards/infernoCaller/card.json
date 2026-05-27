@@ -20,10 +20,10 @@
       "effects": [
         {
           "kind": "damage",
-          "target": "any",
           "amount": 2
         }
-      ]
+      ],
+      "target": "creature_or_player"
     }
   ],
   "type": "Creature"

@@ -24,10 +24,10 @@
       "effects": [
         {
           "kind": "removeCreature",
-          "severity": 1,
-          "target": "creature"
+          "severity": 1
         }
-      ]
+      ],
+      "target": "creature"
     }
   ],
   "type": "Creature"

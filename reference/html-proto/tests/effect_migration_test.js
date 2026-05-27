@@ -33,6 +33,29 @@ console.log('=== migrated pool shape ===');
   check('no migrated on-cast effect kept a per-effect target', residualTarget === 0, 'got ' + residualTarget);
 })();
 
+console.log('\n=== triggered / activated ability target() steps ===');
+(() => {
+  let trig = 0, ab = 0, bad = 0, residual = 0;
+  for (const card of Object.values(CARDS)) {
+    for (const t of (card.triggers || [])) {
+      if (!t.target) continue;
+      trig++;
+      if (!ENGINE.TARGET_FILTERS.has(t.target)) bad++;
+      for (const e of (t.effects || [])) if (e && e.target && e.target !== 'self') residual++;
+    }
+    for (const a of (card.abilities || [])) {
+      if (!a.target) continue;
+      ab++;
+      if (!ENGINE.TARGET_FILTERS.has(a.target)) bad++;
+      for (const e of (a.effects || [])) if (e && e.target && e.target !== 'self') residual++;
+    }
+  }
+  check('48 triggered abilities carry a target() step', trig === 48, 'got ' + trig);
+  check('4 activated abilities carry a target() step', ab === 4, 'got ' + ab);
+  check('all trigger/ability target() steps in taxonomy', bad === 0);
+  check('no migrated trigger/ability effect kept a per-effect target', residual === 0, 'got ' + residual);
+})();
+
 console.log('\n=== representative cards ===');
 (() => {
   const bolt = CARDS.bolt;

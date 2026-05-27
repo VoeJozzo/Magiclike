@@ -21,10 +21,10 @@
       "effects": [
         {
           "kind": "damage",
-          "target": "creature",
           "amount": 2
         }
-      ]
+      ],
+      "target": "creature"
     }
   ],
   "type": "Creature"

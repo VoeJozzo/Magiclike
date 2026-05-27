@@ -24,13 +24,10 @@
       "effects": [
         {
           "kind": "grantKeyword",
-          "target": "creature",
-          "keyword": "flying",
-          "filter": {
-            "controller": "self"
-          }
+          "keyword": "flying"
         }
-      ]
+      ],
+      "target": "your_creature"
     }
   ],
   "type": "Creature"

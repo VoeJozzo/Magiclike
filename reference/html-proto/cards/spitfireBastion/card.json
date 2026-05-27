@@ -8,10 +8,10 @@
       "effects": [
         {
           "kind": "damage",
-          "target": "any",
           "amount": 1
         }
-      ]
+      ],
+      "target": "creature_or_player"
     }
   ],
   "art": "🏰",
