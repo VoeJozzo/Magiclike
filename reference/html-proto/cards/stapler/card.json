@@ -8,22 +8,23 @@
           "C": 3
         }
       },
-      "effects": [
+      "targetSlots": [
         {
-          "kind": "applyInGameSplice",
           "target": "permanentOrSpell",
-          "targetSlot": 0,
           "filter": {
             "spliceableBase": true
           }
         },
         {
-          "kind": "noop",
           "target": "permanentOrSpell",
-          "targetSlot": 1,
           "filter": {
             "spliceableStaple": true
           }
+        }
+      ],
+      "effects": [
+        {
+          "kind": "applyInGameSplice"
         }
       ]
     }

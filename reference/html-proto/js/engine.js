@@ -1116,7 +1116,6 @@ function spellValueForEffects(effects) {
       else v += 14;                              // mind control
     }
     else if (e.kind === 'applyInGameSplice') v += 18;   // 2-for-1 with cross-game retention
-    else if (e.kind === 'noop') v += 0;
     else if (e.kind === 'move_card') {
       // Collapsed draw (library→hand controller_top) / searchCreature
       // (library→hand library_search) / searchLandTapped (library→battlefield) /
@@ -1171,6 +1170,54 @@ function spellValueForEffects(effects) {
     else if (e.kind === 'fightTarget') v += 5;
   }
   return v;
+}
+
+// §7b coverage assertion (plan-effects-refactor §8.1): every kind in the
+// EFFECTS dispatch table must be CLASSIFIED for AI valuation — either it has a
+// real scoring branch (spellValueForEffects / abilityValue), or it is
+// consciously unscored. This partition makes the silent-regression class loud:
+// add an EFFECTS handler and forget to score it → effectCoverageReport flags it
+// (a test fails, a boot warning prints), instead of the AI silently valuing it 0.
+// Keep these two sets exhaustive + disjoint over Object.keys(EFFECTS).
+const VALUED_EFFECT_KINDS = new Set([
+  'damage', 'pump', 'addCounter', 'removeCreature', 'destroyAndStickerSlot',
+  'symmetricize', 'apply_sticker', 'counter', 'addMana', 'gainLife', 'draw',
+  'move_card', 'discard', 'grantKeyword', 'createTokens', 'ripPermanent',
+  'chooses', 'schedule_delayed', 'change_control', 'fightTarget',
+  'applyInGameSplice', 'sacrifice',
+]);
+const UNVALUED_EFFECT_KINDS = new Set([
+  'steal',              // internal helper dispatched by change_control; not a card kind
+  'annihilate',         // trailing rip verb; value carried by the preceding ripPermanent/edict
+  'endomorphAbsorb',    // creature ability; value dominated by the body, not separately scored
+  'untap',              // minor utility on abilities; abilityValue default suffices
+  'bargainStickerSelf', // Archdemon of Bargains trigger mechanic; not separately scored
+  'bargainStickerOther',
+]);
+
+// Card-text + valuation coverage over the dispatch table. Returns lists of
+// problems ({} of empty arrays = clean). `describeEffect`/`TEXT_IDIOM_ONLY`
+// live in card-text.js (loaded after this module); referenced lazily so the
+// late binding resolves at call time, not module-load.
+function effectCoverageReport() {
+  const kinds = Object.keys(EFFECTS);
+  const classified = new Set([...VALUED_EFFECT_KINDS, ...UNVALUED_EFFECT_KINDS]);
+  const unclassifiedValuation = kinds.filter(k => !classified.has(k));
+  const staleValuation = [...classified].filter(k => !EFFECTS[k]);
+  // Card-text: probe each kind; the describeEffect default returns a "[kind]"
+  // debug sentinel. A sentinel hit means no describe case — unless the kind is
+  // only ever rendered inside a multi-effect idiom (TEXT_IDIOM_ONLY).
+  const idiomOnly = (typeof TEXT_IDIOM_ONLY !== 'undefined') ? TEXT_IDIOM_ONLY : new Set();
+  const probe = { amount: 1, power: 1, toughness: 1, count: 1, severity: 1,
+    tokenId: 'soldier_w_1_1', keyword: 'flying', from_zone: 'library', to_zone: 'hand' };
+  const missingText = kinds.filter(k => {
+    if (idiomOnly.has(k)) return false;
+    let txt;
+    try { txt = (describeEffect({ ...probe, kind: k }) || []).map(s => s.text).join(''); }
+    catch (e) { return true; }  // a throw is also a coverage failure
+    return txt === '[' + k + ']';
+  });
+  return { unclassifiedValuation, staleValuation, missingText };
 }
 
 // ----- Mana -----
@@ -2197,9 +2244,6 @@ const EFFECTS = {
     log(`${ctx.sourceName} untaps ${f.card.name}.`, 'sp');
   },
 
-  // Marker — forces target-validation to require a slot. Stapler's second target.
-  noop() {},
-
   // Stapler in-game splice. Merges target 1 onto target 0 using the reward-time
   // splice infra. Cross-owner: merged slot moves to caster's runState (removal/steal).
   // Targets validated: spliceable base/staple + isCompatibleStaplePair.
@@ -2696,7 +2740,7 @@ function validateAllCardEffects(cards) {
 // Effect kinds that operate on a creature (vs player) — drives target:'self' meaning.
 // Add creature-operators here; damage/gainLife/draw/discard/addMana resolve self → controller.
 const CREATURE_EFFECT_KINDS = new Set([
-  'pump', 'weaken', 'addCounter', 'untap', 'removeCreature',
+  'pump', 'addCounter', 'untap', 'removeCreature',
   'fightTarget', 'endomorphAbsorb',
   'grantKeyword',
   'sacrifice', 'gainControl',
@@ -4866,13 +4910,23 @@ function isLegalAction(who, action) {
       } else {
         if (!isInstantWindow(who)) return false;
       }
+      // Ability-level multi-target slots (Stapler): one pick per `targetSlots`
+      // entry, each validated against its own {target, filter} spec. Replaces
+      // the old `noop` slot-marker effect — target specs belong on the ability,
+      // not masquerading as an empty-body effect kind.
+      if (Array.isArray(ab.targetSlots) && ab.targetSlots.length > 0) {
+        if (!action.targets || action.targets.length < ab.targetSlots.length) return false;
+        for (let s = 0; s < ab.targetSlots.length; s++) {
+          const tgt = action.targets[s];
+          if (!tgt) return false;
+          const valid = getValidTargets(ab.targetSlots[s], who);
+          if (!valid.some(v => sameTarget(v, tgt))) return false;
+        }
+      }
       const targetedEffs = ab.effects.filter(effectNeedsTarget);
       if (targetedEffs.length > 0) {
         // Multi-target ability validation: each effect's targetSlot picks
-        // its target from action.targets[slot]. Stapler uses slot 0 (base)
-        // and slot 1 (staple) with different eligibility filters; the
-        // single-target shared path used to mis-validate both filters
-        // against targets[0]. v1.0.60 fix.
+        // its target from action.targets[slot].
         const maxSlot = targetedEffs.reduce((m, e) => Math.max(m, e.targetSlot || 0), 0);
         if (!action.targets || action.targets.length < maxSlot + 1) return false;
         for (const eff of targetedEffs) {
@@ -5162,6 +5216,10 @@ function getLegalActions(who) {
       const ab = card.abilities[i];
       const isMana = ab.effects[0].kind === 'addMana';
       if (isMana) continue;   // surfaced as tapLandForMana
+      // Multi-target abilities (Stapler) are player-UI-driven; the AI doesn't
+      // enumerate the 2-target cross-product. Skip so we don't emit always-
+      // illegal single-target actions.
+      if (Array.isArray(ab.targetSlots) && ab.targetSlots.length > 1) continue;
       // Tap cost requirements.
       if (ab.cost && ab.cost.tap) {
         if (card.tapped) continue;
@@ -5649,6 +5707,8 @@ return {
   // Effects seam exposed for tests (Slice 3).
   applyEffect, creaturesInScope, affectOneCreature,
   targetsForFilter, TARGET_FILTERS, validateAllCardEffects,
+  // §7b coverage seam: the dispatch table + its valuation classification.
+  EFFECTS, VALUED_EFFECT_KINDS, UNVALUED_EFFECT_KINDS, effectCoverageReport,
   concede() {
     if (!G || G.gameOver) return;
     log('You concede.', 'imp');

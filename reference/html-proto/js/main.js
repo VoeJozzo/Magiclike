@@ -22,6 +22,13 @@ loadCards().then(() => {
   // startup, not at runtime when a trigger or effect fails.
   validateAllCardConditions(CARDS);
   ENGINE.validateAllCardEffects(CARDS);
+  // §7b coverage: every EFFECTS handler must be classified for AI valuation and
+  // have card-text. A miss here means a future kind would silently score 0 / show
+  // "[kind]" — warn loudly at boot (mirrors Godot's _ready() push_error).
+  const cov = ENGINE.effectCoverageReport();
+  if (cov.unclassifiedValuation.length || cov.staleValuation.length || cov.missingText.length) {
+    console.warn('Effect coverage gaps:', cov);
+  }
   CONTROLLER.init();
 }).catch(e => {
   console.error('Failed to load card data:', e);

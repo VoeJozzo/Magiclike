@@ -212,7 +212,21 @@ exercised directly via an exposed `ENGINE.applyEffect` test seam):
   damageAll/removeAll/pumpAllYours vs new damage/affect_creature/pump+scope;
   spellValueForEffects scope-aware). `tests/test_ai_targeting.js`. The Godot
   mirror (`scoring.gd`/`burn.gd`/`ai.gd`) needs the SAME treatment — this is the
-  recurring silent-regression trap; the §7b boot-coverage assertion is the guard.
+  recurring silent-regression trap; the §7b boot-coverage assertion (now built,
+  see below) is the guard.
+
+- **§7b boot-coverage assertion (done, proto):** `effectCoverageReport()`
+  (engine.js) partitions every `EFFECTS` (HANDLERS) kind into `VALUED_EFFECT_KINDS`
+  (has a real valuation branch) vs `UNVALUED_EFFECT_KINDS` (consciously unscored)
+  and probes card-text for the `[kind]` debug sentinel (`TEXT_IDIOM_ONLY` lists
+  the kinds rendered only inside multi-effect idioms). Add/rename/remove a handler
+  and forget the consumer → the partition breaks → `test_effect_coverage.js` fails
+  and `main.js` boot `console.warn`s. The §12.12 regression registers a throwaway
+  handler and asserts it's flagged. **Godot mirror:** build the equivalent in
+  `engine.gd._ready()` as a `push_error` — register the kinds `scoring.gd`/`burn.gd`
+  and `scenes/card.gd` (oracle text) handle into coverage sets, check against the
+  `HANDLERS`/`EFFECTS` keys at boot. This is the single most important guard to
+  port BEFORE the Godot valuation/text migration, not after.
 
 - **Card migration — TARGETING decomposition DONE (proto, step 6 part 1):**
   `tools/migrate-effects.js` migrated **94 target() steps** across the real pool
@@ -475,7 +489,23 @@ resolved:
   cleanup (§3.10)** — DONE (see the sections above).
 - **Step 7 dead-handler purge** — DONE (no legacy EFFECTS handler remains; the
   empower/draft/render dead-kind tables were refreshed in §3.8 + the valence
-  cleanup).
+  cleanup; the dead `weaken`/`flicker`/`exileUntilEOT` entries in
+  `CREATURE_EFFECT_KINDS` were also pruned).
+- **Step 7b coverage assertion** — DONE (see the §7b note above:
+  `effectCoverageReport()` + `test_effect_coverage.js`, the partition guard).
+- **Step 12 Stapler `noop`→`targetSlots`** — DONE. The `noop` slot-marker effect
+  is gone (handler + valuation + card-text case deleted). Stapler's ability now
+  declares `targetSlots: [{spliceableBase},{spliceableStaple}]` — an ability-level
+  array of per-slot target specs. Legality (`isLegalAction`), the controller pick
+  flow (`objNeedsTarget`/`probeTargetsFor`/`slotsNeededForPending`), and the AI
+  enumeration skip all read it; `applyInGameSplice` reads `ctx.allTargets[0/1]`
+  unchanged. `migrate-effects.js` gained an idempotent `stripNoopSlots` pass.
+  `test_stapler_target_slots.js` covers the 2-target requirement + per-slot filter
+  + resolution. The other 5 multi-target cards (twinStrike/branchingBolt/drainLife/
+  rootsAndBranches/swordAndSorcery) still use per-effect `targetSlot` — they work
+  and were left untouched; folding them onto ability-level `targetSlots` is an
+  optional unification, not a fix. **Godot mirror:** add a `target_slots` field to
+  the activated-ability schema (`data/card_resource.gd`) for Stapler-style abilities.
 - **Browser target-pick (§3.5 part D)** — DONE. The human cast flow
   (`clickHand` + the activated-ability picker) now honors the top-level
   `target()` step via `objNeedsTarget`/`probeTargetsFor`, and the render slot
@@ -487,15 +517,27 @@ resolved:
   step 13). **SPEC.md intentionally NOT updated** — it's the *Godot* runtime
   contract; it changes when the Godot mirror lands, not before.
 
-Remaining on the proto side — NONE. The four previously-deferred items are all
-landed (test-gated):
+Remaining on the proto side — only the explicitly-deferred splice follow-up.
+All Slice 3 step 0–13 items are landed and test-gated EXCEPT:
+- **Splice duplicate-pathway harmonization (steps 0 + 11) — DEFERRED BY DESIGN.**
+  The plan (`plan-effects-refactor.md` §7, line 823) schedules the full
+  `applySpliceCore(baseSlotIdx, stapleSlotIdx, opts)` extraction as a *separate
+  follow-up plan*, because the duplicated splice bodies live in `js/run.js` (the
+  roguelike layer) not `js/engine.js` (the effects registry) — it's a "consolidate
+  Stapler with run-state mutation" task, not an effects-registry one. Today the
+  merge MATH is already shared at module scope (`countEffects`,
+  `remapEmpowerRollForStaple`, `canonicalSplicePair`, `isSpliceableBase/Staple`);
+  the ~200-line slot-mutation bodies in `RUN.applySplice` and
+  `EFFECTS.applyInGameSplice` are not yet unified. Not blocking; pick up as its own
+  branch. (The `fireStackEffects` path is Stapler-only and functions.)
+
+The previously-deferred four are all landed (test-gated):
 - `exile_until_eot` decomposition — DONE (`test_exile_until_eot.js`).
 - empower addressing-shape — RESOLVED (rewrite skipped as net-neutral; the
   additive-delta + deterministic-persistence asks done, persistence bug fixed;
   `test_empower_persistence.js`).
 - `grant_mana_ability` generalization of `land_color` — DONE (`test_mana.js`).
 - D4 `gain_life` signed-delta redesign — DONE (`test_signed_life.js`).
-- (Note) the staple `fireStackEffects` path is Stapler-only and already functions.
 
 Everything else below is the **Godot mirror** (separate Godot-equipped session).
 
@@ -538,7 +580,9 @@ Everything else below is the **Godot mirror** (separate Godot-equipped session).
    The plan's **§7b boot-coverage assertion** (every `HANDLERS` kind must
    register a valuation branch AND a card-text branch, else boot `push_error`)
    is the thing that turns this loud — implement it on the Godot side too
-   (`engine.gd._ready()`).
+   (`engine.gd._ready()`). The proto reference is now built: model the Godot
+   version on `effectCoverageReport()` + the `VALUED_EFFECT_KINDS`/
+   `UNVALUED_EFFECT_KINDS` partition in `engine.js` and `test_effect_coverage.js`.
 2. **Effects need a booted game to test** (they mutate state, unlike the pure
    predicates). Proto exposed an `applyEffect` seam on the ENGINE object for
    tests; Godot's `Effects.resolve_one` is already callable, but tests need a

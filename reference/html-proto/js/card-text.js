@@ -124,6 +124,18 @@ function signedStat(field, eff, tplEff) {
   return { text: (v < 0 ? '-' : '+') + Math.abs(v), highlight: bumped };
 }
 
+// §7b coverage: effect kinds intentionally WITHOUT a standalone describeEffect
+// case — they only ever render inside a multi-effect idiom or via authored
+// card.text, never as a lone segment. effectCoverageReport (engine.js) skips
+// these when checking for the "[kind]" debug sentinel.
+//   apply_sticker — the embargo/bleach idiom is rendered at the list level
+//   steal         — internal; dispatched by change_control (which has text)
+//   annihilate    — the rip/edict chain renders the whole phrase
+//   bargainSticker* — Archdemon of Bargains uses authored card.text
+const TEXT_IDIOM_ONLY = new Set([
+  'apply_sticker', 'steal', 'annihilate', 'bargainStickerSelf', 'bargainStickerOther',
+]);
+
 // Render one effect to segments (lowercase-leading; caller capitalizes).
 function describeEffect(eff, tplEff) {
   const t = withFilter(targetPhrase(eff), eff);
@@ -278,8 +290,6 @@ function describeEffect(eff, tplEff) {
     }
     case 'applyInGameSplice':
       return [plainSeg('staple the second target permanent onto the first')];
-    case 'noop':
-      return [plainSeg('')];
     case 'fightTarget':
       return [plainSeg('your strongest creature fights ' + t)];
     case 'schedule_delayed':

@@ -137,6 +137,27 @@ function collapseEffect(e) {
   }
   return e;
 }
+// Step 12 (§1.2): strip an ability's `noop` slot-marker. The per-effect
+// {targetSlot, target, filter} specs become an ability-level `targetSlots`
+// array; the noop is removed and the real effects shed their slot-targeting
+// (Stapler's applyInGameSplice reads ctx.allTargets directly). Idempotent —
+// an ability with no noop is left untouched. Returns true if rewritten.
+function stripNoopSlots(ab) {
+  if (!Array.isArray(ab.effects) || !ab.effects.some(e => e.kind === 'noop')) return false;
+  const specs = [];
+  for (const e of ab.effects) {
+    if (typeof e.targetSlot === 'number' && e.target) {
+      const spec = { target: e.target };
+      if (e.filter) spec.filter = e.filter;
+      specs[e.targetSlot] = spec;
+    }
+  }
+  ab.targetSlots = specs;
+  ab.effects = ab.effects.filter(e => e.kind !== 'noop')
+    .map(e => { const { target, targetSlot, filter, ...rest } = e; return rest; });
+  return true;
+}
+
 // Apply collapseEffect to every effect in a card (on-cast flat/modal, trigger,
 // ability). Returns count rewritten.
 function collapseAll(card) {
@@ -194,6 +215,7 @@ for (const folderId of manifest) {
 
   // Activated abilities.
   for (const ab of (card.abilities || [])) {
+    if (stripNoopSlots(ab)) { stats.noopStripped = (stats.noopStripped || 0) + 1; changed = true; }
     const r = planBlock(ab.effects, !!ab.target);
     if (r.target) { ab.target = r.target; ab.effects = r.effects; stats.ability++; changed = true; }
     else note(r);

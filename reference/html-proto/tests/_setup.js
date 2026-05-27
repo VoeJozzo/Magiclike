@@ -150,6 +150,7 @@ const EXPOSED = [
   'deckColorsFromSlots', 'fakeTargetsForLegality',
   'isCompatibleStaplePair', 'manaAbilityOf', 'manaEffectColors',
   'remapEmpowerRollForStaple', 'countEffects',
+  'isSpliceableBase', 'isSpliceableStaple',
   // Sticker module surface (stickers.js, all top-level).
   'weightedPick',
   'applyStickersToCard', 'applyOneStickerToRuntimeCard',

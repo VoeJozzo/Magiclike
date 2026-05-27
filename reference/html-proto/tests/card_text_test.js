@@ -110,7 +110,6 @@ eqText(segsToText(describeEffect({ kind: 'createTokens', count: 2, tokenId: 'gob
        'create two 1/1 Goblin tokens', 'create N>1 uses word count');
 
 console.log('\n=== describeEffect: edge cases ===');
-eqText(segsToText(describeEffect({ kind: 'noop' })), '', 'noop renders empty');
 eqText(segsToText(describeEffect({ kind: 'totallyUnknownEffect' })),
        '[totallyUnknownEffect]', 'unknown kind → debug fallback');
 

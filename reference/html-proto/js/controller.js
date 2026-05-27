@@ -1395,12 +1395,25 @@ function onStateChange() {
 // `probeTargetsFor` builds the fake target(s) used to legality-check before
 // entering target-picking mode, honoring whichever form applies.
 function objNeedsTarget(obj, effects) {
-  return !!(obj && obj.target) || (Array.isArray(effects) && effects.some(ENGINE.effectNeedsTarget));
+  return !!(obj && obj.target)
+    || !!(obj && Array.isArray(obj.targetSlots) && obj.targetSlots.length > 0)
+    || (Array.isArray(effects) && effects.some(ENGINE.effectNeedsTarget));
 }
 function probeTargetsFor(obj, effects, who) {
   if (obj && obj.target) {
     const valid = ENGINE.targetsForFilter(obj.target, who);
     return valid.length ? [valid[0]] : null;
+  }
+  // Ability-level slots (Stapler): one fake target per slot spec; null if any
+  // slot has no legal target (ability not activatable).
+  if (obj && Array.isArray(obj.targetSlots) && obj.targetSlots.length > 0) {
+    const fakes = [];
+    for (const spec of obj.targetSlots) {
+      const valid = ENGINE.getValidTargets(spec, who);
+      if (!valid.length) return null;
+      fakes.push(valid[0]);
+    }
+    return fakes;
   }
   return fakeTargetsForLegality(effects, who);
 }

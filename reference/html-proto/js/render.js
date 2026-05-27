@@ -850,10 +850,21 @@ function pendingTopTargetFilter(pt) {
   return null;
 }
 
+// Ability-level slot specs (Stapler) — one pick per `targetSlots` entry.
+function pendingAbilityTargetSlots(pt) {
+  if (!pt || pt.kind !== 'ability') return null;
+  const f = ENGINE.findCard(pt.cardIid);
+  const ab = f && f.card.abilities[pt.abilityIdx];
+  return (ab && Array.isArray(ab.targetSlots) && ab.targetSlots.length > 0) ? ab.targetSlots : null;
+}
+
 // Unique sorted targetSlot values; one user pick per slot. A top-level target()
-// step (§3.5) is a single slot [0]; otherwise read per-effect targetSlots.
+// step (§3.5) is a single slot [0]; an ability's `targetSlots` array is one
+// pick per entry; otherwise read per-effect targetSlots.
 function slotsNeededForPending(pt) {
   if (pendingTopTargetFilter(pt)) return [0];
+  const abSlots = pendingAbilityTargetSlots(pt);
+  if (abSlots) return abSlots.map((_, i) => i);
   const effects = pendingTargetEffects(pt);
   const slots = new Set();
   for (const eff of effects) {
@@ -868,6 +879,11 @@ function pendingTargetEffect(pt) {
   if (!pt) return null;
   const top = pendingTopTargetFilter(pt);
   if (top) return { target: top };
+  const abSlots = pendingAbilityTargetSlots(pt);
+  if (abSlots) {
+    const pickedCount = (pt.pickedSlots && pt.pickedSlots.length) || 0;
+    return abSlots[pickedCount] || abSlots[0];
+  }
   const slots = slotsNeededForPending(pt);
   if (slots.length === 0) return null;
   const pickedCount = (pt.pickedSlots && pt.pickedSlots.length) || 0;
