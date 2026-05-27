@@ -159,12 +159,20 @@ console.log('\n=== Triggered ability with a top-level target() step ===');
   G.opp.battlefield.push(victim);
   const zapper = mk('_testZapper', 'you'); G.you.hand.push(zapper);
   readyForCast(G, 'you');
-  // Cast the creature; its ETB trigger (target(creature) → damage(1)) picks the
-  // opp creature via the trigger-path target() wiring and kills it.
+  // Cast the creature; its ETB trigger (target(creature) → damage(1)). With the
+  // zapper itself now on the board there are TWO legal creature targets, so a
+  // PLAYER-controlled trigger must PROMPT (it must not silently auto-pick — the
+  // regression that auto-selected migrated triggers' targets on cast).
   ENGINE.executeAction('you', { type: 'castSpell', cardIid: zapper.iid, targets: [] });
   drainAll(G);
   check('zapper resolved onto the battlefield', G.you.battlefield.some(c => c.tplId === '_testZapper'));
-  check('ETB trigger killed the opp creature (1 dmg to a 1-tough creature)',
+  check('player IS prompted for the ETB trigger target (not auto-picked)',
+    !!G.pendingTriggerTarget && G.pendingTriggerTarget.controller === 'you');
+  // Player chooses the opp creature; the trigger then resolves on it.
+  ENGINE.executeAction('you', { type: 'triggerTargetPick',
+    target: { kind: 'creature', iid: victim.iid, ctrl: 'opp', label: victim.name } });
+  drainAll(G);
+  check('ETB trigger killed the chosen opp creature (1 dmg to a 1-tough creature)',
     !G.opp.battlefield.some(c => c.iid === victim.iid) && G.opp.graveyard.some(c => c.iid === victim.iid));
 })();
 

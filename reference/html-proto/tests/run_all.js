@@ -49,6 +49,8 @@ const CATEGORY_A = [
   'test_effect_validation.js',
   // Slice 3 — cast→resolution wiring for top-level target() (keystone).
   'test_targeting_cast.js',
+  // Regression — migrated targeted triggers PROMPT the human (not auto-pick).
+  'test_trigger_target_prompt.js',
   // Slice 3 — §8.1 AI-valuation lockstep for migrated targeted spells.
   'test_ai_targeting.js',
   // Slice 3 — flicker decomposition (two move_cards; ETB re-fire, LTB, token cease).

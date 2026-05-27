@@ -2953,6 +2953,27 @@ function triggerNeedsPlayerChoice(eff, controller) {
   return valid.length > 1;
 }
 
+// Does a player-controlled trigger need the player to CHOOSE its target? Returns
+// { valid, promptEff } when there's a real choice (>1 legal target), else null.
+// Covers BOTH the top-level target() step (§3.5 — migrated triggers carry the
+// target on `trig.target` with bare effects) and the legacy per-effect target.
+// Without the top-level branch, every migrated targeted trigger silently
+// auto-picked instead of prompting (the "targets auto-selected on cast" bug).
+function triggerPlayerTargetPrompt(trig, controller) {
+  if (controller !== 'you') return null;
+  if (trig.target) {
+    if (trig.target === 'self' || trig.target === 'player'
+        || trig.target === 'spell' || trig.target === 'opp') return null;
+    const valid = targetsForFilter(trig.target, controller, trig.target_filter);
+    if (valid.length <= 1) return null;   // 0 → fizzle/auto; 1 → no choice to make
+    // The effect used to value the choice (for the AI driver's pickBestTriggerTarget).
+    const promptEff = (trig.effects || []).find(e => e.kind !== 'chooses') || (trig.effects || [])[0] || {};
+    return { valid, promptEff };
+  }
+  const eff = (trig.effects || []).find(e => triggerNeedsPlayerChoice(e, controller));
+  return eff ? { valid: getValidTargets(eff, controller), promptEff: eff } : null;
+}
+
 // Drain queued triggers to stack. Active player's first, then opp. Pauses on
 // pendingTriggerTarget prompt; remaining triggers drain post-prompt.
 function drainTriggers() {
@@ -2967,21 +2988,19 @@ function drainTriggers() {
   G.pendingTriggers = [];
   for (let i = 0; i < ordered.length; i++) {
     const p = ordered[i];
-    const promptEff = (p.controller === 'you')
-      ? (p.trig.effects || []).find(e => triggerNeedsPlayerChoice(e, p.controller))
+    const prompt = (p.controller === 'you')
+      ? triggerPlayerTargetPrompt(p.trig, p.controller)
       : null;
-    if (promptEff) {
+    if (prompt) {
       // Stop draining. Set the prompt; remaining triggers wait in queue.
       G.pendingTriggers = ordered.slice(i);   // includes the current one (its slot)
-      // Replace the current with itself + a marker that we're prompting on it.
-      const valid = getValidTargets(promptEff, p.controller);
       G.pendingTriggerTarget = {
         controller: p.controller,
         sourceIid: p.sourceIid,
         sourceName: p.sourceName,
         trig: p.trig,
-        promptEff,
-        valid,
+        promptEff: prompt.promptEff,
+        valid: prompt.valid,
       };
       // Drop the in-prompt trigger from pendingTriggers — it's now in
       // pendingTriggerTarget. After resolution we re-push from there.
