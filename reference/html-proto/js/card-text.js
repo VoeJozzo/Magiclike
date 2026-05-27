@@ -253,6 +253,16 @@ function describeEffect(eff, tplEff) {
       return [plainSeg('return ' + t + ' from your graveyard to your hand')];
     case 'shuffleIntoLibrary':
       return [plainSeg('shuffle ' + t + " into its owner's library")];
+    case 'move_card': {
+      // Generic card-movement primitive → English for the common collapsed
+      // idioms (matches the legacy kinds' phrasing for parity).
+      const fz = eff.from_zone, tz = eff.to_zone;
+      if (fz === 'graveyard' && tz === 'hand') return [plainSeg('return ' + t + ' from your graveyard to your hand')];
+      if (fz === 'battlefield' && tz === 'library') return [plainSeg('shuffle ' + t + " into its owner's library")];
+      if (fz === 'battlefield' && tz === 'hand') return [plainSeg('return ' + t + " to its owner's hand")];
+      if (fz === 'battlefield' && tz === 'exile') return [plainSeg('exile ' + t)];
+      return [plainSeg('move ' + t)];
+    }
     case 'untap': {
       if (eff.target === 'self') return [plainSeg('untap this creature')];
       const filterMinusTapped = eff.filter ? Object.assign({}, eff.filter, {tapped: undefined}) : null;

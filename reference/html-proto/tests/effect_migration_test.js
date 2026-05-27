@@ -89,7 +89,8 @@ console.log('\n=== skipped cards kept their non-taxonomy filters (no silent loss
 
 console.log('\n=== kind-collapse: legacy mass/weaken kinds gone from card data ===');
 (() => {
-  const GONE = ['damageAll', 'removeAll', 'pumpAllYours', 'weaken', 'gainControl', 'steal'];
+  const GONE = ['damageAll', 'removeAll', 'pumpAllYours', 'weaken', 'gainControl', 'steal',
+                'returnFromGraveyard', 'shuffleIntoLibrary'];
   const seen = {};
   const allEffs = (card) => {
     const out = [];
@@ -127,6 +128,16 @@ console.log('\n=== kind-collapse: legacy mass/weaken kinds gone from card data =
   }
   check('gainControl/steal collapsed to change_control (3)', changeControl === 3, 'got ' + changeControl);
   check('steal is the transfer_ownership variant (1)', stealVariant === 1, 'got ' + stealVariant);
+
+  let mcReturn = 0, mcShuffle = 0;
+  for (const card of Object.values(CARDS)) {
+    for (const e of allEffs(card)) {
+      if (e && e.kind === 'move_card' && e.from_zone === 'graveyard' && e.to_zone === 'hand') mcReturn++;
+      if (e && e.kind === 'move_card' && e.from_zone === 'battlefield' && e.to_zone === 'library') mcShuffle++;
+    }
+  }
+  check('returnFromGraveyard collapsed to move_card graveyard→hand (3)', mcReturn === 3, 'got ' + mcReturn);
+  check('shuffleIntoLibrary collapsed to move_card battlefield→library (1)', mcShuffle === 1, 'got ' + mcShuffle);
 })();
 
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');

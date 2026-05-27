@@ -37,7 +37,10 @@
       "text": "When ~ dies, return a Spirit creature from your graveyard to your hand.",
       "effects": [
         {
-          "kind": "returnFromGraveyard",
+          "kind": "move_card",
+          "from_zone": "graveyard",
+          "to_zone": "hand",
+          "selector": "target",
           "target": "graveyardCreature",
           "filter": {
             "subtype": "Spirit"

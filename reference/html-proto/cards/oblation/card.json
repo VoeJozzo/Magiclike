@@ -8,7 +8,13 @@
   "target": "creature",
   "effects": [
     {
-      "kind": "shuffleIntoLibrary"
+      "kind": "move_card",
+      "from_zone": "battlefield",
+      "to_zone": "library",
+      "selector": "target",
+      "post": {
+        "shuffle": true
+      }
     }
   ],
   "name": "Oblation",

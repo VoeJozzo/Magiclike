@@ -1380,6 +1380,26 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
     score += laneOpeningBonus(state, us, target.iid);
     return score;
   }
+  if (eff.kind === 'move_card') {
+    // Collapsed returnFromGraveyard / shuffleIntoLibrary — value at parity.
+    if (eff.from_zone === 'graveyard' && eff.to_zone === 'hand') {
+      if (target.kind !== 'graveyardCreature') return -100;
+      const grave = state[us].graveyard || [];
+      const card = grave.find(c => c.iid === target.iid);
+      if (!card) return -100;
+      return 10 + ENGINE.getCardValue(card, 'play');
+    }
+    if (eff.from_zone === 'battlefield' && eff.to_zone === 'library') {
+      if (target.kind !== 'creature') return -100;
+      const c = ENGINE.findCard(target.iid);
+      if (!c) return -100;
+      if (c.controller === us) return -100;
+      if (c.card.keywords.includes('hexproof')) return -100;
+      const [pow, tou] = ENGINE.getStats(c.card);
+      return 30 + pow + Math.floor(tou / 2) + laneOpeningBonus(state, us, target.iid);
+    }
+    return 0;
+  }
   if (eff.kind === 'returnFromGraveyard') {
     // Recursion target — looking up the card in our graveyard. Value scales
     // with the recurred card's intrinsic strength: bringing back a Sengir

@@ -85,6 +85,14 @@ function collapseEffect(e) {
     const { kind, ...rest } = e;  // preserves target:permanentOrSpell + filter
     return Object.assign({ kind: 'change_control', transfer_ownership: true }, rest);
   }
+  if (e.kind === 'returnFromGraveyard') {
+    const { kind, ...rest } = e;  // bare (target migrated to top-level graveyard_creature)
+    return Object.assign({ kind: 'move_card', from_zone: 'graveyard', to_zone: 'hand', selector: 'target' }, rest);
+  }
+  if (e.kind === 'shuffleIntoLibrary') {
+    const { kind, ...rest } = e;  // bare (target migrated to top-level creature)
+    return Object.assign({ kind: 'move_card', from_zone: 'battlefield', to_zone: 'library', selector: 'target', post: { shuffle: true } }, rest);
+  }
   return e;
 }
 // Apply collapseEffect to every effect in a card (on-cast flat/modal, trigger,

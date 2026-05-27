@@ -20,7 +20,10 @@
       "text": "When ~ dies, return a creature from your graveyard.",
       "effects": [
         {
-          "kind": "returnFromGraveyard"
+          "kind": "move_card",
+          "from_zone": "graveyard",
+          "to_zone": "hand",
+          "selector": "target"
         }
       ],
       "target": "graveyard_creature"

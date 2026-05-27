@@ -1139,6 +1139,13 @@ function spellValueForEffects(effects) {
     else if (e.kind === 'applyInGameSplice') v += 18;   // 2-for-1 with cross-game retention
     else if (e.kind === 'noop') v += 0;
     else if (e.kind === 'shuffleIntoLibrary') v += 5;
+    else if (e.kind === 'move_card') {
+      // Collapsed shuffleIntoLibrary (battlefield→library) / returnFromGraveyard
+      // (graveyard→hand) — valued at parity.
+      if (e.from_zone === 'battlefield' && e.to_zone === 'library') v += 5;
+      else if (e.from_zone === 'graveyard' && e.to_zone === 'hand') v += 4;
+      else v += 3;
+    }
     else if (e.kind === 'weaken') v += 3 + (e.toughness || 0);
     else if (e.kind === 'returnFromGraveyard') v += 4;
     else if (e.kind === 'ripPermanent') v += 14;        // destroy + run-permanent slot rip
