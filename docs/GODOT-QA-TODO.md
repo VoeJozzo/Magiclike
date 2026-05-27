@@ -662,6 +662,13 @@ Everything else below is the **Godot mirror** (separate Godot-equipped session).
   **deleted** per the plan (`plan-card-data-unification.md` Part 2);
   `_build_resource()` becomes direct field assignment. Verify load +
   supportability scan after deleting.
+  **(v2.0.9 update)** `_TARGET_FILTER_REMAP["any"] → "creature_or_player"` was the
+  last remap still doing real work — proto had 3 holdouts emitting the legacy
+  per-effect `target:"any"` (crusadersCharm/stormCharm modal modes + the
+  trigger-generator `damageAny` roll). v2.0.9 migrated all three to
+  `creature_or_player`, so proto now emits ZERO `any` target tokens and that remap
+  entry is genuinely safe to delete. (Note: `add_mana`'s `choose:"any"` is a
+  different field — "any color" — and is NOT a target token; leave it.)
 
 ### Gotchas (the recurring lockstep trap — applies hard here)
 

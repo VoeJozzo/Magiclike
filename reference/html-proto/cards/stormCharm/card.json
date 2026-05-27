@@ -15,7 +15,7 @@
       [
         {
           "kind": "damage",
-          "target": "any",
+          "target": "creature_or_player",
           "amount": 3
         }
       ],

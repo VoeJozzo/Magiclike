@@ -31,7 +31,7 @@ console.log('\n=== Test: fakeTargetsForLegality with real spell ===');
   ENGINE.init(RUN.getSlots(), ['mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain']);
   const G = ENGINE.state();
   const allCards = [...G.you.library, ...G.you.hand];
-  const damageSpell = allCards.find(c => c.type !== 'Creature' && c.type !== 'Land' && (c.effects||[]).some(e => e.target === 'creature' || e.target === 'any'));
+  const damageSpell = allCards.find(c => c.type !== 'Creature' && c.type !== 'Land' && (c.effects||[]).some(e => e.target === 'creature' || e.target === 'creature_or_player'));
   if (damageSpell) {
     const r = fakeTargetsForLegality(damageSpell.effects, 'you');
     console.log('  Probed spell:', damageSpell.name);
@@ -47,7 +47,7 @@ console.log('\n=== Test: fakeTargetsForLegality with real spell ===');
 
 console.log("\n=== Test: 'who' parameter actually used ===");
 {
-  const fakeEff = [{kind: 'dealDamage', target: 'any', amount: 1}];
+  const fakeEff = [{kind: 'dealDamage', target: 'creature_or_player', amount: 1}];
   const rYou = fakeTargetsForLegality(fakeEff, 'you');
   const rOpp = fakeTargetsForLegality(fakeEff, 'opp');
   console.log("  'you' result:", rYou);

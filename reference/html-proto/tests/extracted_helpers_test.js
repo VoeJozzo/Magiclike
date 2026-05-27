@@ -58,7 +58,7 @@ check('Player has library', G.you.library.length > 0);
 check('Opp has battlefield array', Array.isArray(G.opp.battlefield));
 
 const damageCard = [...G.you.library, ...G.you.hand].find(c =>
-  Array.isArray(c.effects) && c.effects.some(e => e.kind === 'damage' && (e.target === 'creature' || e.target === 'any'))
+  Array.isArray(c.effects) && c.effects.some(e => e.kind === 'damage' && (e.target === 'creature' || e.target === 'creature_or_player'))
 );
 if (damageCard) {
   check('game state intact after refactor', G.you.hand.length > 0 && G.opp.hand.length >= 0);

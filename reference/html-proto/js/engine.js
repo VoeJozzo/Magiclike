@@ -3231,8 +3231,7 @@ function getValidTargets(effect, controller) {
   ].filter(x => x.card.type === 'Creature')
    .filter(x => !(x.card.keywords.includes('hexproof') && x.ctrl !== controller));
   switch (effect.target) {
-    case 'any':                 // legacy spelling
-    case 'creature_or_player':  // canonical taxonomy spelling
+    case 'creature_or_player':  // "any target" — a creature or a player
       return [
         {kind:'player', who:'you', label: G.you.name},
         {kind:'player', who:'opp', label: G.opp.name},
@@ -3310,7 +3309,7 @@ function targetsForFilter(filter, controller, restrict) {
   // filter so the cast-time enumeration (and hexproof checkpoint) honors it.
   const merge = (f) => restrict ? Object.assign({}, f, restrict) : f;
   switch (filter) {
-    case 'creature_or_player': return getValidTargets({ target: 'any', filter: restrict || undefined }, controller);
+    case 'creature_or_player': return getValidTargets({ target: 'creature_or_player', filter: restrict || undefined }, controller);
     case 'player':             return getValidTargets({ target: 'player', filter: restrict || undefined }, controller);
     case 'opp':                return getValidTargets({ target: 'opp', filter: restrict || undefined }, controller);
     case 'creature':           return getValidTargets({ target: 'creature', filter: restrict || undefined }, controller);

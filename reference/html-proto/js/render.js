@@ -924,12 +924,12 @@ function isValidTargetCreature(eff, card) {
   if (!eff) return false;
   // Normalize the target() taxonomy to an eligible card-type + an implied
   // controller restriction:
-  //   creature / your_creature / opp_creature / any / creature_or_player → creatures
+  //   creature / your_creature / opp_creature / creature_or_player → creatures
   //   permanent / permanent_or_spell → battlefield permanents (stack spells are
   //     highlighted via a separate path in renderStack).
   // (Player targets are highlighted elsewhere.) Name kept for its single caller.
   const t = eff.target;
-  const CREATURE_KINDS = ['creature', 'your_creature', 'opp_creature', 'any', 'creature_or_player'];
+  const CREATURE_KINDS = ['creature', 'your_creature', 'opp_creature', 'creature_or_player'];
   const PERM_KINDS = ['permanent', 'permanent_or_spell'];
   if (CREATURE_KINDS.includes(t)) {
     if (card.type !== 'Creature') return false;
@@ -938,7 +938,7 @@ function isValidTargetCreature(eff, card) {
   } else {
     return false;
   }
-  if (t === 'any' || t === 'creature_or_player') return true;
+  if (t === 'creature_or_player') return true;
   // Build the effective restriction: the taxonomy's implied controller plus the
   // step's explicit target_filter (threaded onto eff.filter). Route the whole
   // thing through the canonical matchFilter so every key (notColor, hasKeyword,

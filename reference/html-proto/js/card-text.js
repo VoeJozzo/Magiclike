@@ -41,7 +41,6 @@ function targetPhrase(eff) {
   if (t === 'graveyard_creature') return 'target creature card';
   if (t === 'permanent')return 'target permanent';
   if (t === 'spell')    return 'target spell';
-  if (t === 'any')      return 'any target';
   if (t === 'card')     return 'target card';
   return t || '';
 }

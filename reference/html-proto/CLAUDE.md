@@ -33,6 +33,13 @@ v2.0.8: fixed the UI player-target button for "any target" spells — `getValidT
 now accepts the §3.5 taxonomy spelling `creature_or_player` (was legacy `any` only),
 and render drives the "→ Target <player>" button off real legality instead of a
 hardcoded target list (so `opp` correctly shows only the opponent's face).
+v2.0.9: unified the "creature or player" target token on the single canonical
+spelling `creature_or_player` (matches Godot's taxonomy + the docs). Migrated the
+last per-effect `target:'any'` holdouts (crusadersCharm/stormCharm modal modes +
+trigger-generator's damageAny roll) and dropped the v2.0.8 `any` alias — `any` is
+no longer a target token anywhere in proto, so the Godot loader's
+`_TARGET_FILTER_REMAP["any"]` can finally die. (`choose:'any'` for mana color is a
+separate field and stays.)
 
 > **MUST UPDATE on every dev-branch push that touches code.** Bump `VERSION` in `js/main.js` AND the line above, in the same commit. GitHub Pages caches aggressively; the version string is the only reliable way to confirm a fresh build is live.
 

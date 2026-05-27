@@ -24,7 +24,7 @@ const GENERATOR_EFFECTS = [
     id: 'damageAny',
     weight: 3,
     needsLiveSource: false,
-    roll: () => [{kind: 'damage', target: 'any', amount: _genWeightedInt([5, 3, 1])}],
+    roll: () => [{kind: 'damage', target: 'creature_or_player', amount: _genWeightedInt([5, 3, 1])}],
     describe: (eff) => `deal ${eff.amount} damage to any target`,
   },
   {
