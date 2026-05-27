@@ -16,7 +16,66 @@ Run every `tests/test_phase*.tscn` plus `tests/test_priority_window.tscn`.
 
 ---
 
-## Slice 0 — Priority-window (B6/B7)  ·  commits 6bae434 → 8a405fd
+## Traps we already hit on the proto side (don't re-discover them)
+
+The Godot mirror does the **same** Slice 3 migration. These are the failure
+modes that actually bit during the proto refactor — each cost a reactive
+fix-after-the-user-noticed cycle. Front-load them.
+
+1. **The top-level `target()` step is a distributed invariant.** Moving targets
+   off per-effect `target` onto a top-level step (with bare effects) broke
+   **every** reader that still asked `effects.some(needs_target)`: the cast flow,
+   the trigger-target prompt, the castable-card highlight, and (cousin) the AI
+   cast scorer. On proto these were found one at a time. **Before migrating, grep
+   every site that reads a card/ability/trigger's targeting and convert them
+   together.** Proto's fix of last resort was one canonical API —
+   `objectNeedsTarget` / `primaryLegalTargets` / `probeTargetsForObject` in
+   `engine.js` — that all consumers route through. Build the Godot equivalent
+   (one place that answers "does this need a target / what are its legal
+   targets," covering top-level `target`+`target_filter`, ability `target_slots`,
+   and legacy per-effect) **from the start**, and route the cast UI, the
+   playable-highlight, and the trigger prompt through it.
+
+2. **The AI-valuation lockstep (§8.1) is wider than one function, and coverage
+   checks membership not correctness.** Collapsing/renaming/retargeting effect
+   kinds silently zeroed the AI's value for them — boss removal (`ripPermanent`,
+   `symmetricize`, `destroyAndStickerSlot`, bounce/exile `move_card`), mind
+   control (`change_control`), and the drain cards all stopped being cast/scored.
+   Per-kind value lives in **several** scorers (proto: `spellValueForEffects`,
+   `abilityValue`, `scoreSpellTargetForMode`, `pickBestActivation`,
+   `pickBestTriggerTarget`, `scoreUntargetedSituation`) — Godot has the analogous
+   spread across `scoring.gd`/`burn.gd`/`ai.gd`. The §7b coverage assertion only
+   caught "kind has no branch in the ONE scorer I wired it to"; it did **not**
+   catch a kind missing from a *different* scorer, nor a branch that handled the
+   sign/shape wrong (signed `gain_life`). So: (a) when a kind changes, update
+   *every* scorer, and (b) treat a green coverage check as "membership in the
+   sets I declared," not "the AI values this correctly."
+
+3. **"Mechanism built" ≠ "migration done."** Signed `gain_life` shipped a full
+   version before any card used it; the drain cards stayed `damage`. Same with
+   the splice merge-math (shared) vs the slot-write (still duplicated), and the
+   `target_filter` taxonomy (added) vs the cards (unmigrated). A foundation with
+   no callers looks finished and isn't — when you build a mechanism, migrate the
+   cards onto it in the same pass or it rots.
+
+4. **Green Node tests say nothing about the UI/runtime layer.** Every
+   targeting-*UI* regression (auto-selected targets, missing castable glow)
+   sailed through a fully-green proto suite because the harness stubs the DOM.
+   Godot's headless tests have the same blind spot for anything that needs the
+   scene tree / input. Verify cast-targeting, highlights, and prompts **in a
+   running game**, not just via the phase tests.
+
+5. **A test can encode the bug.** Proto's `test_targeting_cast` asserted the
+   buggy auto-pick ("so the AI auto-pick targets it") as correct, and passed
+   happily. When porting tests, check that each one asserts *intended* behavior,
+   not whatever the code happened to do.
+
+6. **Output that looks wrong is often faithful to wrong data.** The drain cards
+   rendering "deal damage" was the card-text generator correctly describing a
+   `damage` effect — the bug was upstream in the card data. Trace
+   renderer-vs-data before "fixing the text."
+
+---
 
 **Status:** logic complete, **0% runtime-verified.**
 
