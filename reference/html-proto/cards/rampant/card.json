@@ -7,7 +7,15 @@
   },
   "effects": [
     {
-      "kind": "searchLandTapped"
+      "kind": "move_card",
+      "from_zone": "library",
+      "to_zone": "battlefield",
+      "filter": {
+        "type": "Land"
+      },
+      "post": {
+        "tap": true
+      }
     }
   ],
   "name": "Rampant Growth",

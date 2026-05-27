@@ -34,7 +34,13 @@
       ],
       [
         {
-          "kind": "searchCreature"
+          "kind": "move_card",
+          "from_zone": "library",
+          "to_zone": "hand",
+          "selector": "library_search",
+          "filter": {
+            "type": "Creature"
+          }
         }
       ]
     ]

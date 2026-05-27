@@ -105,6 +105,14 @@ function collapseEffect(e) {
       { kind: 'move_card', from_zone: 'exile', to_zone: 'battlefield', selector: 'target' },
     ];
   }
+  if (e.kind === 'searchCreature') {
+    const { kind, ...rest } = e;  // → prompt-driven library search to hand
+    return Object.assign({ kind: 'move_card', from_zone: 'library', to_zone: 'hand', selector: 'library_search', filter: { type: 'Creature' } }, rest);
+  }
+  if (e.kind === 'searchLandTapped') {
+    const { kind, ...rest } = e;  // → auto land-fetch onto the battlefield, tapped
+    return Object.assign({ kind: 'move_card', from_zone: 'library', to_zone: 'battlefield', filter: { type: 'Land' }, post: { tap: true } }, rest);
+  }
   if (e.kind === 'returnFromGraveyard') {
     const { kind, ...rest } = e;  // bare (target migrated to top-level graveyard_creature)
     return Object.assign({ kind: 'move_card', from_zone: 'graveyard', to_zone: 'hand', selector: 'target' }, rest);

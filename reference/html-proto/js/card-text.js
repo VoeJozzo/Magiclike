@@ -234,14 +234,16 @@ function describeEffect(eff, tplEff) {
       const countSeg = bumpedDerived(wordCount, 'count', eff, tplEff);
       return [plainSeg('create '), countSeg, plainSeg(' ' + colorWord + stats + ' ' + niceName + ' tokens' + kwSuffix)];
     }
-    case 'searchCreature':
-      return [plainSeg('search your library for a creature card and put it into your hand')];
-    case 'searchLandTapped':
-      return [plainSeg('search your library for a basic land and put it onto the battlefield tapped')];
     case 'move_card': {
       // Generic card-movement primitive → English for the common collapsed
       // idioms (matches the legacy kinds' phrasing for parity).
       const fz = eff.from_zone, tz = eff.to_zone;
+      if (fz === 'library' && tz === 'hand' && eff.selector === 'library_search') {  // collapsed searchCreature
+        return [plainSeg('search your library for a ' + ((eff.filter && eff.filter.type) ? eff.filter.type.toLowerCase() : 'card') + ' card and put it into your hand')];
+      }
+      if (fz === 'library' && tz === 'battlefield') {  // collapsed searchLandTapped (auto fetch)
+        return [plainSeg('search your library for a basic land and put it onto the battlefield' + ((eff.post && eff.post.tap) ? ' tapped' : ''))];
+      }
       if (fz === 'library' && tz === 'hand') {  // collapsed draw
         if (eff.amount === 1) return [plainSeg('draw a card')];
         return [plainSeg('draw '), amtSeg, plainSeg(' cards')];

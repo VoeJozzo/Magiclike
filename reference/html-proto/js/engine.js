@@ -1130,11 +1130,14 @@ function spellValueForEffects(effects) {
     else if (e.kind === 'applyInGameSplice') v += 18;   // 2-for-1 with cross-game retention
     else if (e.kind === 'noop') v += 0;
     else if (e.kind === 'move_card') {
-      // Collapsed draw (library→hand) / shuffleIntoLibrary (battlefield→library)
-      // / returnFromGraveyard (graveyard→hand) / flicker (battlefield→exile then
-      // exile→battlefield) — valued at parity. The flicker return half adds 0
-      // (the bf→exile half carries the flicker's whole value).
-      if (e.from_zone === 'library' && e.to_zone === 'hand') v += (e.amount || 1) * 3;
+      // Collapsed draw (library→hand controller_top) / searchCreature
+      // (library→hand library_search) / searchLandTapped (library→battlefield) /
+      // shuffleIntoLibrary (battlefield→library) / returnFromGraveyard
+      // (graveyard→hand) / flicker (battlefield→exile then exile→battlefield) —
+      // valued at parity. The flicker return half adds 0 (the bf→exile half
+      // carries the flicker's whole value).
+      if (e.from_zone === 'library' && e.to_zone === 'hand') v += (e.selector === 'library_search') ? 4 : (e.amount || 1) * 3;
+      else if (e.from_zone === 'library' && e.to_zone === 'battlefield') v += 4;  // land fetch
       else if (e.from_zone === 'battlefield' && e.to_zone === 'library') v += 5;
       else if (e.from_zone === 'graveyard' && e.to_zone === 'hand') v += 4;
       else if (e.from_zone === 'battlefield' && e.to_zone === 'exile') v += 4;  // flicker outgoing
@@ -1170,7 +1173,6 @@ function spellValueForEffects(effects) {
       }
     }
     else if (e.kind === 'addMana') v += 3;
-    else if (e.kind === 'searchCreature' || e.kind === 'searchLandTapped') v += 4;
     else if (e.kind === 'fightTarget') v += 5;
   }
   return v;
@@ -1472,6 +1474,50 @@ function placeCardOnBattlefield(ctx, card, fromZone, post) {
     // LEFT a zone — dies/leave — not arrivals).
     emitZoneChange(card, ctrl, fromZone, 'battlefield', undefined, ctx.sourceIid);
   }
+}
+
+// Library-search filter match. Filter shape mirrors pendingSearch.filter
+// ({type, sub}); empty filter matches anything.
+function matchesSearchFilter(card, filter) {
+  if (!filter) return true;
+  if (filter.type && card.type !== filter.type) return false;
+  if (filter.sub && !(new RegExp('\\b' + filter.sub + '\\b')).test(card.sub || '')) return false;
+  return true;
+}
+// Search library → hand (prompt-driven, filtered): the searchCreature idiom.
+// Human → pendingSearch prompt (resolved later by doSearchPick → hand); AI
+// auto-picks the highest-cost match. Shared by the move_card library_search
+// selector. (Was EFFECTS.searchCreature pre-collapse.)
+function searchLibraryToHand(ctx, filter) {
+  const lib = G[ctx.controller].library;
+  const matches = lib.filter(c => matchesSearchFilter(c, filter));
+  if (matches.length === 0) { log('No matching card in library.', 'sp'); shuffle(lib); return; }
+  if (ctx.controller === 'you') {
+    G.pendingSearch = { who: 'you', filter, source: ctx.sourceName };
+    log(`${ctx.sourceName} — choose a card from your library.`, 'sp');
+    return;
+  }
+  const card = matches.slice().sort((a, b) => costTotalCard(b) - costTotalCard(a))[0];
+  const idx = lib.findIndex(c => c.iid === card.iid);
+  lib.splice(idx, 1);
+  G[ctx.controller].hand.push(card);
+  shuffle(lib);
+  log(`${pname(ctx.controller)} searches for ${card.name}.`, 'sp');
+  tryBuildOnDraw(card, ctx.controller);
+}
+// Fetch library → battlefield (auto, filtered): the searchLandTapped idiom.
+// No human choice (any basic land is equivalent); first match, applies post
+// (tap), shuffles. (Was EFFECTS.searchLandTapped pre-collapse.)
+function fetchLibraryToBattlefield(ctx, filter, post) {
+  const lib = G[ctx.controller].library;
+  const idx = lib.findIndex(c => matchesSearchFilter(c, filter));
+  if (idx < 0) { log('No matching card in library.', 'sp'); return; }
+  const card = lib.splice(idx, 1)[0];
+  if (post && post.tap) card.tapped = true;
+  G[ctx.controller].battlefield.push(card);
+  shuffle(lib);
+  log(`${pname(ctx.controller)} fetches ${card.name}${post && post.tap ? ' (tapped)' : ''}.`, 'sp');
+  emitZoneChange(card, ctx.controller, 'library', 'battlefield');
 }
 
 const EFFECTS = {
@@ -1861,19 +1907,27 @@ const EFFECTS = {
     log(`${pname(ctx.controller)} draws ${params.amount}.`, 'sp');
   },
   // Unified card-movement primitive (effects-refactor §4.2 / decision 10).
-  // move_card(from_zone, to_zone, selector, amount, post?). This pass supports
-  // the DETERMINISTIC, no-battlefield-arrival moves: draw, mill, bounce,
-  // shuffle-into-library, exile, and graveyard→hand/library. Battlefield
-  // ARRIVAL (reanimate / flicker return — needs iid-mint §3.7 + ETB emit) and
-  // the prompt-driven selectors (controller_chosen discard, target_player,
-  // library_search — need the human-prompt/AI-pick infra) are deferred; those
-  // cards keep their legacy kinds until then. Additive — no card uses move_card
-  // yet.
+  // move_card(from_zone, to_zone, selector, amount, post?). Supports: draw
+  // (library→hand, controller_top), mill (library→graveyard), bounce/shuffle/
+  // exile (battlefield→…), graveyard/exile→hand/library/battlefield (return/
+  // reanimate/flicker), library search→hand (library_search, prompt-driven) and
+  // library fetch→battlefield (auto land-fetch). Still deferred: the
+  // target_player selector (a targeted player draws/discards).
   move_card(ctx, params, target) {
     const from = params.from_zone, to = params.to_zone;
     const sel = params.selector || 'controller_top';
     const amount = params.amount != null ? params.amount : 1;
     const post = params.post || {};
+    // Library search → hand (filtered, prompt-driven): collapsed searchCreature.
+    if (from === 'library' && to === 'hand' && sel === 'library_search') {
+      searchLibraryToHand(ctx, params.filter || {});
+      return;
+    }
+    // Library fetch → battlefield (filtered, auto): collapsed searchLandTapped.
+    if (from === 'library' && to === 'battlefield') {
+      fetchLibraryToBattlefield(ctx, params.filter || {}, post);
+      return;
+    }
     for (let n = 0; n < amount; n++) {
       // Draw: delegate to drawCard so deck-out / Phylactery semantics hold.
       if (from === 'library' && to === 'hand' && sel === 'controller_top') {
@@ -1952,40 +2006,6 @@ const EFFECTS = {
         if (idx >= 0) tp.graveyard.push(tp.hand.splice(idx, 1)[0]);
       }
       log(`${pname(who)} discards ${n}.`, 'sp');
-    }
-  },
-  searchLandTapped(ctx) {
-    const lib = G[ctx.controller].library;
-    const idx = lib.findIndex(c => c.type === 'Land');
-    if (idx < 0) { log('No basic land in library.'); return; }
-    const land = lib.splice(idx, 1)[0];
-    land.tapped = true;
-    G[ctx.controller].battlefield.push(land);
-    shuffle(G[ctx.controller].library);
-    log(`${pname(ctx.controller)} fetches ${land.name} (tapped).`, 'sp');
-    emitZoneChange(land, ctx.controller, 'library', 'battlefield');
-  },
-  searchCreature(ctx) {
-    const lib = G[ctx.controller].library;
-    const candidates = lib.filter(c => c.type === 'Creature');
-    if (candidates.length === 0) {
-      log(`No creature in library.`, 'sp');
-      shuffle(lib);
-      return;
-    }
-    if (ctx.controller === 'you') {
-      G.pendingSearch = { who: 'you', filter: {type: 'Creature'}, source: ctx.sourceName };
-      log(`${ctx.sourceName} — choose a creature from your library.`, 'sp');
-    } else {
-      // AI picks the highest-cost creature it can plausibly cast soon.
-      const sorted = candidates.slice().sort((a, b) => costTotalCard(b) - costTotalCard(a));
-      const card = sorted[0];
-      const idx = lib.findIndex(c => c.iid === card.iid);
-      lib.splice(idx, 1);
-      G[ctx.controller].hand.push(card);
-      shuffle(lib);
-      log(`${pname(ctx.controller)} searches for ${card.name}.`, 'sp');
-      tryBuildOnDraw(card, ctx.controller);
     }
   },
   // Grant keyword. Axes: target (single), whose:'allYours'|'all' (mass), duration:'eot'|'permanent'.

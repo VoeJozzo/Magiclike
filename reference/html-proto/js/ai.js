@@ -1492,8 +1492,9 @@ function pickBestActivation(state, who, abilityActs) {
       // Worth it only when low.
       const ourLife = state[who].life;
       score = ourLife <= 6 ? 6 : ourLife <= 12 ? 2 : 0;
-    } else if (eff.kind === 'searchCreature' || eff.kind === 'searchLandTapped') {
-      // Tutoring is consistently strong.
+    } else if (eff.kind === 'move_card' && eff.from_zone === 'library'
+        && (eff.to_zone === 'battlefield' || (eff.to_zone === 'hand' && eff.selector === 'library_search'))) {
+      // Tutoring / land-fetch is consistently strong (collapsed search*).
       score = 8;
     } else if ((eff.kind === 'addCounter' || (eff.kind === 'pump' && eff.duration === 'permanent')) && eff.target === 'self') {
       // Self-counter pump (Carrion Feeder-shape). The general principle:

@@ -124,6 +124,36 @@ console.log('\n=== iid-mint regression: exile → battlefield re-mints (§12.10)
     !!back && back.iid !== iid1, 'iid1=' + iid1 + ' new=' + (back && back.iid));
 })();
 
+console.log('\n=== search: library → battlefield, auto land-fetch tapped (searchLandTapped collapse) ===');
+(() => {
+  clearBoardsSafe();
+  const bf0 = G.you.battlefield.length;
+  ENGINE.applyEffect(CTX, { kind: 'move_card', from_zone: 'library', to_zone: 'battlefield', filter: { type: 'Land' }, post: { tap: true } }, null);
+  const fetched = G.you.battlefield[G.you.battlefield.length - 1];
+  check('a land arrived on the battlefield', G.you.battlefield.length === bf0 + 1 && fetched.type === 'Land');
+  check('it arrived tapped', fetched && fetched.tapped === true);
+})();
+
+console.log('\n=== search: library → hand, AI auto-picks (searchCreature collapse, opp) ===');
+(() => {
+  // Seed a creature into opp's library so there's something to fetch.
+  const cr = ENGINE.makeCard(CREATURE_TPL); G.opp.library.unshift(cr);
+  const h0 = G.opp.hand.length;
+  ENGINE.applyEffect({ controller: 'opp', sourceName: 'Tutor', sourceIid: -1 },
+    { kind: 'move_card', from_zone: 'library', to_zone: 'hand', selector: 'library_search', filter: { type: 'Creature' } }, null);
+  check('opp hand grew (AI auto-pick, synchronous)', G.opp.hand.length === h0 + 1);
+  check('no human prompt left dangling', !G.pendingSearch);
+})();
+
+console.log('\n=== search: library → hand, human gets a prompt (searchCreature collapse, you) ===');
+(() => {
+  const cr = ENGINE.makeCard(CREATURE_TPL); G.you.library.unshift(cr);
+  const h0 = G.you.hand.length;
+  ENGINE.applyEffect(CTX, { kind: 'move_card', from_zone: 'library', to_zone: 'hand', selector: 'library_search', filter: { type: 'Creature' } }, null);
+  check('pendingSearch set for the human (async — resolved by doSearchPick)', !!G.pendingSearch && G.pendingSearch.filter.type === 'Creature');
+  check('hand unchanged until the player picks', G.you.hand.length === h0);
+})();
+
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');
 function clearBoardsSafe() { G.you.battlefield = []; G.opp.battlefield = []; G.you.exile = []; }
 process.exit(fail > 0 ? 1 : 0);
