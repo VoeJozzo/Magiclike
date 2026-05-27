@@ -3231,7 +3231,8 @@ function getValidTargets(effect, controller) {
   ].filter(x => x.card.type === 'Creature')
    .filter(x => !(x.card.keywords.includes('hexproof') && x.ctrl !== controller));
   switch (effect.target) {
-    case 'any':
+    case 'any':                 // legacy spelling
+    case 'creature_or_player':  // canonical taxonomy spelling
       return [
         {kind:'player', who:'you', label: G.you.name},
         {kind:'player', who:'opp', label: G.opp.name},

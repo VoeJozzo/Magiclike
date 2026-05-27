@@ -59,6 +59,22 @@ console.log('\n=== the same spell can target a player (face click) ===');
   check('clicking the opponent face cast bolt at them (3 damage)', G.opp.life === life0 - 3, life0 + '→' + G.opp.life);
 })();
 
+console.log('\n=== getValidTargets accepts the taxonomy spelling (drives the player-target button) ===');
+(() => {
+  // render.js shows the "→ Target <player>" button when getValidTargets(eff)
+  // lists a player target. Before the §3.5 sweep getValidTargets only knew the
+  // legacy "any"; the canonical "creature_or_player" returned [] → no button →
+  // "any target" spells couldn't hit a face. Lock the enumeration both ways.
+  game();
+  const anyT = ENGINE.getValidTargets({ target: 'creature_or_player' }, 'you');
+  check('creature_or_player includes YOUR face', anyT.some(v => v.kind === 'player' && v.who === 'you'));
+  check('creature_or_player includes the OPP face', anyT.some(v => v.kind === 'player' && v.who === 'opp'));
+  const oppT = ENGINE.getValidTargets({ target: 'opp' }, 'you');
+  check('opp lists ONLY the opponent face', oppT.length === 1 && oppT[0].kind === 'player' && oppT[0].who === 'opp');
+  const crT = ENGINE.getValidTargets({ target: 'creature' }, 'you');
+  check('creature lists NO player face (no button)', !crT.some(v => v.kind === 'player'));
+})();
+
 console.log('\n=== an untargeted spell still casts immediately (no false targeting) ===');
 (() => {
   const G = game();

@@ -29,6 +29,10 @@ v2.0.7: filter parity — the engine now enforces every restriction the card tex
 renders (`minTough`/`maxPower`/`minPower`/`notKeyword` added to matchFilter) and
 the text renders every restriction the engine enforces (`notToken`); fixed
 counterSpecialist's preamble ("cast a counterspell", not "counter a spell").
+v2.0.8: fixed the UI player-target button for "any target" spells — `getValidTargets`
+now accepts the §3.5 taxonomy spelling `creature_or_player` (was legacy `any` only),
+and render drives the "→ Target <player>" button off real legality instead of a
+hardcoded target list (so `opp` correctly shows only the opponent's face).
 
 > **MUST UPDATE on every dev-branch push that touches code.** Bump `VERSION` in `js/main.js` AND the line above, in the same commit. GitHub Pages caches aggressively; the version string is the only reliable way to confirm a fresh build is live.
 

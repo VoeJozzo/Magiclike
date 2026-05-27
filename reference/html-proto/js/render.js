@@ -802,7 +802,13 @@ function renderBf(id, bf, who) {
   let showPlayerTargetButton = false;
   if (pt) {
     const eff = pendingTargetEffect(pt);
-    if (eff && (eff.target === 'any' || eff.target === 'player')) showPlayerTargetButton = true;
+    // Drive the player-target button off real legality, not a hardcoded target
+    // list — the §3.5 taxonomy spells "any target" as creature_or_player and
+    // opponent-only as opp, both of which the old literal check missed. This
+    // also gets the per-player gating right (opp → only the opponent's button).
+    if (eff && ENGINE.getValidTargets(eff, 'you').some(v => v.kind === 'player' && v.who === who)) {
+      showPlayerTargetButton = true;
+    }
   }
   if (G.pendingTriggerTarget && G.pendingTriggerTarget.controller === 'you') {
     const ptt = G.pendingTriggerTarget;
