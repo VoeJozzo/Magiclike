@@ -78,6 +78,7 @@ const CATEGORY_A = [
   // Slice 3 — §3.8 Balancer decomposition (embargo/bleach → apply_sticker + move_card).
   'test_balancer.js',
   // Slice 3 — §3.5 browser targeting (clickHand/ability honor the top-level target() step).
+  'test_castable_highlight.js',
   'test_ui_targeting.js',
   // DIVERGENCE D4 — signed gain_life (life loss + is_life_loss).
   'test_signed_life.js',

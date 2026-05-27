@@ -4,10 +4,12 @@ Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folde
 
 ## Version
 
-**Current: `v2.0.0`** — defined at `js/main.js` (`const VERSION`). Major bump: the
+**Current: `v2.0.1`** — defined at `js/main.js` (`const VERSION`). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
-pipeline, splice harmonization).
+pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
+special-removal + mind-control AI casting, the trigger/cast/highlight
+target-prompt regressions, the drain→life-loss migration, and card-text polish.
 
 > **MUST UPDATE on every dev-branch push that touches code.** Bump `VERSION` in `js/main.js` AND the line above, in the same commit. GitHub Pages caches aggressively; the version string is the only reliable way to confirm a fresh build is live.
 
