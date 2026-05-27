@@ -1,0 +1,68 @@
+// Golden test for the on-cast targeting migration (Slice 3 / effects-refactor
+// §3.5, migrate-effects.js). Verifies the migrated pool: every top-level
+// target() step is in the closed taxonomy, migrated on-cast effects are bare
+// (no per-effect target), skipped cards kept their non-taxonomy filters, and a
+// few representative cards have the exact expected shape.
+
+const setup = require('./_setup');
+setup.loadEngine();
+RUN.start({ cards: Array(12).fill('plains'), colors: ['W'] }, null);
+RUN.startNextGame();
+
+let pass = 0, fail = 0;
+function check(label, ok, info) {
+  console.log('  ' + (ok ? 'PASS' : 'FAIL') + ': ' + label + (info ? ' -- ' + info : ''));
+  if (ok) pass++; else fail++;
+}
+
+console.log('=== migrated pool shape ===');
+(() => {
+  let withStep = 0, badFilter = 0, residualTarget = 0;
+  for (const card of Object.values(CARDS)) {
+    if (!card.target) continue;
+    withStep++;
+    if (!ENGINE.TARGET_FILTERS.has(card.target)) { badFilter++; console.log('   out-of-taxonomy:', card.tplId, card.target); }
+    // The on-cast effects that operate on the step must be bare (no own target),
+    // except target:'self' effects which legitimately keep theirs.
+    for (const e of (Array.isArray(card.effects) ? card.effects : [])) {
+      if (e && e.target && e.target !== 'self') { residualTarget++; }
+    }
+  }
+  check('42 cards carry a top-level target() step', withStep === 42, 'got ' + withStep);
+  check('every target() step is in the closed taxonomy', badFilter === 0);
+  check('no migrated on-cast effect kept a per-effect target', residualTarget === 0, 'got ' + residualTarget);
+})();
+
+console.log('\n=== representative cards ===');
+(() => {
+  const bolt = CARDS.bolt;
+  check('bolt: target(creature_or_player)', bolt.target === 'creature_or_player');
+  check('bolt: bare damage(3)', bolt.effects[0].kind === 'damage' && bolt.effects[0].amount === 3 && !bolt.effects[0].target);
+
+  // Boot validation: the whole migrated pool is clean.
+  const r = ENGINE.validateAllCardEffects(CARDS);
+  check('boot validation: no unknown kinds', r.unknownKinds.length === 0, r.unknownKinds.join(','));
+  check('boot validation: no out-of-taxonomy filters', r.unknownFilters.length === 0, r.unknownFilters.join(','));
+})();
+
+console.log('\n=== skipped cards kept their non-taxonomy filters (no silent loss) ===');
+(() => {
+  // Cards whose targeted on-cast effect carries a subtype/keyword/maxTough
+  // filter were intentionally NOT migrated (the closed taxonomy can't express
+  // them). Verify at least one such card still has its filter and NO top-level
+  // target() step.
+  let preserved = 0;
+  for (const card of Object.values(CARDS)) {
+    if (card.target) continue;
+    for (const e of (Array.isArray(card.effects) ? card.effects : [])) {
+      if (e && e.target && e.target !== 'self' && e.filter) {
+        const keys = Object.keys(e.filter).filter(k => k !== 'controller');
+        if (keys.length > 0) preserved++;
+      }
+    }
+  }
+  check('non-taxonomy-filter cards retained their filter (skipped, not lost)', preserved >= 1, 'count=' + preserved);
+})();
+
+console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');
+process.exit(fail > 0 ? 1 : 0);

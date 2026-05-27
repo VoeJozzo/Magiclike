@@ -5,10 +5,10 @@
     "R": 2,
     "C": 2
   },
+  "target": "creature_or_player",
   "effects": [
     {
       "kind": "damage",
-      "target": "any",
       "amount": 5
     }
   ],

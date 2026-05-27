@@ -34,6 +34,11 @@ function targetPhrase(eff) {
     return 'target opponent';
   }
   if (t === 'creature') return 'target creature';
+  // New target() taxonomy (§3.5).
+  if (t === 'creature_or_player') return 'any target';
+  if (t === 'your_creature') return 'target creature you control';
+  if (t === 'opp_creature') return 'target creature an opponent controls';
+  if (t === 'graveyard_creature') return 'target creature card';
   if (t === 'graveyardCreature') return 'target creature card';
   if (t === 'permanent')return 'target permanent';
   if (t === 'spell')    return 'target spell';
@@ -297,8 +302,15 @@ function segsToText(segs) {
 }
 
 // Join effects into a sentence. Special-case: 2 damage effects use shared-subject phrasing.
-function describeEffectList(effects, cardName, tplEffects) {
+function describeEffectList(effects, cardName, tplEffects, stepTarget) {
   if (!Array.isArray(effects) || effects.length === 0) return [];
+  // New model (§3.5): a top-level target() step + bare effects. For rendering,
+  // give each bare effect the step's target token so targetPhrase produces
+  // "...target creature" etc. — matching how resolution feeds it the target.
+  if (stepTarget) {
+    effects = effects.map(e =>
+      (e && !e.target && e.kind !== 'chooses' && e.scope == null) ? Object.assign({}, e, { target: stepTarget }) : e);
+  }
   const tplOf = i => (Array.isArray(tplEffects) ? tplEffects[i] : undefined);
   const parts = effects.map((e, i) => describeEffect(e, tplOf(i)));
   if (parts.length === 1) {
@@ -398,7 +410,7 @@ function triggerPreamble(trig) {
 function describeTrigger(trig, tplTrig) {
   const preamble = triggerPreamble(trig);
   const tplEffs = tplTrig ? tplTrig.effects : undefined;
-  const body = describeEffectList(trig.effects || [], null, tplEffs);
+  const body = describeEffectList(trig.effects || [], null, tplEffs, trig.target);
   const bodyLower = body.slice();
   for (let i = 0; i < bodyLower.length; i++) {
     if (bodyLower[i].text && bodyLower[i].text.length > 0) {
@@ -434,7 +446,7 @@ function abilityCostPhrase(cost) {
 function describeAbility(ab, tplAb) {
   const cost = abilityCostPhrase(ab.cost);
   const tplEffs = tplAb ? tplAb.effects : undefined;
-  let body = describeEffectList(ab.effects || [], null, tplEffs);
+  let body = describeEffectList(ab.effects || [], null, tplEffs, ab.target);
   if (body.length > 0 && body[body.length - 1].text === '.') {
     body = body.slice(0, -1);
   }
@@ -564,7 +576,7 @@ function describeCardSegments(card, opts) {
     sections.push(describeModalSegs(card.effects.modes, tplBaseline.effects && tplBaseline.effects.modes));
   } else if (Array.isArray(card.effects) && card.effects.length > 0) {
     const tplEffs = Array.isArray(tplBaseline.effects) ? tplBaseline.effects : undefined;
-    sections.push(describeEffectList(card.effects, card.name || tpl.name, tplEffs));
+    sections.push(describeEffectList(card.effects, card.name || tpl.name, tplEffs, card.target || tpl.target));
   }
   if (Array.isArray(card.staticBuffs)) {
     for (const buff of card.staticBuffs) {

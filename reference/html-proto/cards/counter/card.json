@@ -4,10 +4,10 @@
   "cost": {
     "U": 2
   },
+  "target": "spell",
   "effects": [
     {
-      "kind": "counter",
-      "target": "spell"
+      "kind": "counter"
     }
   ],
   "name": "Counterspell",

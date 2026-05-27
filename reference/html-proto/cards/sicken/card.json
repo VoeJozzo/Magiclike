@@ -4,10 +4,10 @@
   "cost": {
     "B": 1
   },
+  "target": "creature",
   "effects": [
     {
       "kind": "weaken",
-      "target": "creature",
       "power": 2,
       "toughness": 2
     }

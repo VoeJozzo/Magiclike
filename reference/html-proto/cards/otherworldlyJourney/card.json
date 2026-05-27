@@ -5,10 +5,10 @@
     "W": 1,
     "C": 1
   },
+  "target": "creature",
   "effects": [
     {
-      "kind": "exileUntilEOT",
-      "target": "creature"
+      "kind": "exileUntilEOT"
     }
   ],
   "name": "Otherworldly Journey",

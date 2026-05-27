@@ -4,10 +4,10 @@
   "cost": {
     "B": 1
   },
+  "target": "player",
   "effects": [
     {
       "kind": "discard",
-      "target": "player",
       "amount": 1
     }
   ],

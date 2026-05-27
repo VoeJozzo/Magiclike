@@ -4,10 +4,10 @@
   "cost": {
     "R": 1
   },
+  "target": "player",
   "effects": [
     {
       "kind": "damage",
-      "target": "player",
       "amount": 3
     }
   ],

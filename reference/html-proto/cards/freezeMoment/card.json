@@ -4,11 +4,11 @@
   "cost": {
     "U": 1
   },
+  "target": "creature",
   "effects": [
     {
       "kind": "removeCreature",
-      "severity": 1,
-      "target": "creature"
+      "severity": 1
     }
   ],
   "name": "Freeze Moment",

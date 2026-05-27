@@ -5,10 +5,10 @@
     "W": 1,
     "C": 1
   },
+  "target": "player",
   "effects": [
     {
       "kind": "gainLife",
-      "target": "player",
       "amount": 5
     }
   ],

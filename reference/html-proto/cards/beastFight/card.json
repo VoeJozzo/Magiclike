@@ -5,13 +5,10 @@
     "G": 1,
     "C": 1
   },
+  "target": "opp_creature",
   "effects": [
     {
-      "kind": "fightTarget",
-      "target": "creature",
-      "filter": {
-        "controller": "opp"
-      }
+      "kind": "fightTarget"
     }
   ],
   "name": "Beast's Fury",

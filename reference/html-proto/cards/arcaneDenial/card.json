@@ -5,10 +5,10 @@
     "U": 1,
     "C": 2
   },
+  "target": "spell",
   "effects": [
     {
-      "kind": "counter",
-      "target": "spell"
+      "kind": "counter"
     },
     {
       "kind": "draw",

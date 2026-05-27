@@ -4,15 +4,14 @@
   "cost": {
     "W": 1
   },
+  "target": "creature",
   "effects": [
     {
       "kind": "removeCreature",
-      "severity": 4,
-      "target": "creature"
+      "severity": 4
     },
     {
       "kind": "gainLife",
-      "target": "creature",
       "who": {
         "from": "targetController"
       },

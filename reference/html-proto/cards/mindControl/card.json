@@ -5,13 +5,10 @@
     "U": 2,
     "C": 2
   },
+  "target": "opp_creature",
   "effects": [
     {
-      "kind": "gainControl",
-      "target": "creature",
-      "filter": {
-        "controller": "opp"
-      }
+      "kind": "gainControl"
     }
   ],
   "name": "Mind Control",

@@ -4,16 +4,15 @@
   "cost": {
     "G": 1
   },
+  "target": "creature",
   "effects": [
     {
       "kind": "grantKeyword",
-      "target": "creature",
       "keyword": "haste",
       "duration": "eot"
     },
     {
       "kind": "grantKeyword",
-      "target": "creature",
       "keyword": "trample",
       "duration": "eot"
     }

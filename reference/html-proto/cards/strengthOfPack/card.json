@@ -4,16 +4,15 @@
   "cost": {
     "G": 1
   },
+  "target": "creature",
   "effects": [
     {
       "kind": "pump",
-      "target": "creature",
       "power": 2,
       "toughness": 2
     },
     {
       "kind": "grantKeyword",
-      "target": "creature",
       "keyword": "trample",
       "duration": "eot"
     }

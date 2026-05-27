@@ -4,10 +4,10 @@
   "cost": {
     "B": 2
   },
+  "target": "player",
   "effects": [
     {
-      "kind": "ripPermanent",
-      "target": "player"
+      "kind": "ripPermanent"
     }
   ],
   "name": "Vile Edict",

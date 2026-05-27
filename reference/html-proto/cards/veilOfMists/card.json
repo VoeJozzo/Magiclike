@@ -5,11 +5,11 @@
     "U": 1,
     "C": 1
   },
+  "target": "creature",
   "effects": [
     {
       "kind": "removeCreature",
-      "severity": 2,
-      "target": "creature"
+      "severity": 2
     }
   ],
   "name": "Veil of Mists",

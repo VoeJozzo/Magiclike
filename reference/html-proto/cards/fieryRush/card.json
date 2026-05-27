@@ -4,10 +4,10 @@
   "cost": {
     "R": 1
   },
+  "target": "creature",
   "effects": [
     {
       "kind": "pump",
-      "target": "creature",
       "power": 2,
       "toughness": 0
     }

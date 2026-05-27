@@ -5,11 +5,11 @@
     "B": 1,
     "C": 2
   },
+  "target": "creature",
   "effects": [
     {
       "kind": "removeCreature",
-      "severity": 3,
-      "target": "creature"
+      "severity": 3
     },
     {
       "kind": "damage",

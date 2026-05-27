@@ -4,10 +4,10 @@
   "cost": {
     "W": 1
   },
+  "target": "player",
   "effects": [
     {
       "kind": "gainLife",
-      "target": "player",
       "amount": 3
     }
   ],

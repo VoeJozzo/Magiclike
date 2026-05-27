@@ -5,10 +5,10 @@
     "G": 1,
     "C": 1
   },
+  "target": "creature",
   "effects": [
     {
       "kind": "pump",
-      "target": "creature",
       "power": 4,
       "toughness": 4
     }

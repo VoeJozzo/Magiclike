@@ -4,13 +4,10 @@
   "cost": {
     "W": 1
   },
+  "target": "your_creature",
   "effects": [
     {
-      "kind": "flicker",
-      "target": "creature",
-      "filter": {
-        "controller": "self"
-      }
+      "kind": "flicker"
     }
   ],
   "name": "Cloudshift",

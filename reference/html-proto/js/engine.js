@@ -498,6 +498,9 @@ function makeCard(tplId, stickers, slotIdx, empowerRolls, permaBuffs, bonusTrigg
     // slotIdx: player → runState.slots index for run-persistent effects; opp → transient.
     slotIdx: (typeof slotIdx === 'number') ? slotIdx : null,
     name: tpl.name, type: tpl.type, sub: tpl.sub, art: tpl.art, text: tpl.text,
+    // Top-level target() step (§3.5) — must carry to the runtime instance so
+    // cast legality / enumeration / resolution see the targeting step.
+    target: tpl.target,
     // Legendary uniqueness enforced at cast time only (no SBA).
     legendary: !!tpl.legendary,
     // Deep-copy mutable fields for per-instance isolation (costReduction,

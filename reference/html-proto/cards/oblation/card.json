@@ -5,10 +5,10 @@
     "W": 1,
     "C": 2
   },
+  "target": "creature",
   "effects": [
     {
-      "kind": "shuffleIntoLibrary",
-      "target": "creature"
+      "kind": "shuffleIntoLibrary"
     }
   ],
   "name": "Oblation",
