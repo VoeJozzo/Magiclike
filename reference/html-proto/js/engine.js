@@ -1912,6 +1912,16 @@ const EFFECTS = {
     log(`${ctx.sourceName} counters ${removed.card.name}!`, 'sp');
   },
   addMana(ctx, params) {
+    // Color-choice form (§3.9): {choose:'any'} or {choose:['W','U']} adds one
+    // mana of a chosen color. params.color is the resolved pick (UI/AI); else
+    // default to the first option.
+    if (params.choose) {
+      const opts = params.choose === 'any' ? COLORS : params.choose;
+      const c = (params.color && opts.includes(params.color)) ? params.color : opts[0];
+      G[ctx.controller].mana[c]++;
+      log(`${pname(ctx.controller)} adds {${c}}.`, 'sp');
+      return;
+    }
     for (const c of Object.keys(params.amounts)) G[ctx.controller].mana[c] += params.amounts[c];
     const txt = Object.entries(params.amounts).map(([c,n]) => `{${c}}`.repeat(n)).join('');
     log(`${pname(ctx.controller)} adds ${txt}.`, 'sp');
@@ -4375,8 +4385,15 @@ function doTapLandForMana(who, cardIid, color, abilityIdx) {
   if (!manaAb) return;
   if (card.sick) return;
   card.tapped = true;
-  const am = manaAb.effects[0].amounts;
-  for (const k of Object.keys(am)) G[who].mana[k] += am[k];
+  const eff0 = manaAb.effects[0];
+  if (eff0.choose) {
+    const opts = eff0.choose === 'any' ? COLORS : eff0.choose;
+    const chosen = (color && opts.includes(color)) ? color : opts[0];
+    G[who].mana[chosen]++;
+  } else {
+    const am = eff0.amounts;
+    for (const k of Object.keys(am)) G[who].mana[k] += am[k];
+  }
   log(`${card.name} taps for mana.`, 'sp');
 }
 function doCastSpell(who, cardIid, targets, modeIdx) {
