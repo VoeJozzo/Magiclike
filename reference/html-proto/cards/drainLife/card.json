@@ -13,7 +13,7 @@
     },
     {
       "kind": "damage",
-      "target": "player",
+      "target": "opp",
       "amount": 2,
       "targetSlot": 1
     },

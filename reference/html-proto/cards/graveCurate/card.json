@@ -26,7 +26,7 @@
           "amount": 1
         }
       ],
-      "target": "player"
+      "target": "opp"
     }
   ],
   "type": "Creature"

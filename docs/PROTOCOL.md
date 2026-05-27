@@ -241,7 +241,8 @@ Closed target-filter taxonomy (`ENGINE.TARGET_FILTERS`):
 | `"your_creature"`      | a creature you control                         |
 | `"opp_creature"`       | a creature an opponent controls                |
 | `"creature_or_player"` | any creature or player                         |
-| `"player"`             | any player                                     |
+| `"player"`             | any player (free choice — heals, "target player gains N") |
+| `"opp"`                | the opponent only (harmful effects — drain / burn-to-face / discard / edict). Text reads "target opponent"; only the opponent is a legal target, so card text matches behavior. |
 | `"permanent"`          | any permanent                                  |
 | `"spell"`              | a spell on the stack (counter targets)         |
 | `"graveyard_creature"` | a creature card in a graveyard (reanimation)   |

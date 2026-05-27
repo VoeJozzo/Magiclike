@@ -52,8 +52,10 @@ eqText(segsToText(describeEffect({ kind: 'damage', target: 'creature', amount: 3
        'deal 3 damage to target creature', 'damage to creature');
 eqText(segsToText(describeEffect({ kind: 'damage', target: 'self', amount: 2 })),
        'you take 2 damage', 'damage to self (life-loss phrasing)');
+eqText(segsToText(describeEffect({ kind: 'damage', target: 'opp', amount: 3 })),
+       'deal 3 damage to target opponent', 'damage to opp → "target opponent"');
 eqText(segsToText(describeEffect({ kind: 'damage', target: 'player', amount: 3 })),
-       'deal 3 damage to target opponent', 'damage to player → "opponent"');
+       'deal 3 damage to target player', 'damage to player → "target player" (choose-any)');
 eqText(segsToText(describeEffect({ kind: 'damage', amount: 2, scope: 'all_creatures' })),
        'deal 2 damage to each creature', 'damage+scope → "each creature"');
 eqText(segsToText(describeEffect({ kind: 'gain_life', target: 'self', amount: 3 })),
@@ -148,10 +150,12 @@ eqText(segsToText(describeEffect({ kind: 'totallyUnknownEffect' })),
 // ─── withFilter / targetPhrase ────────────────────────────────────────
 console.log('\n=== targetPhrase + withFilter ===');
 eqText(targetPhrase({ target: 'creature' }), 'target creature', 'creature target');
-eqText(targetPhrase({ target: 'player', kind: 'gain_life' }), 'target player',
-       'player+gain_life → "player" not "opponent"');
-eqText(targetPhrase({ target: 'player', kind: 'damage' }), 'target opponent',
-       'player+damage → "opponent"');
+// Accurate, kind-independent mapping: 'opp' (opponent-only) → "target opponent";
+// 'player' (choose-any) → "target player". No more guessing from the effect kind.
+eqText(targetPhrase({ target: 'opp', kind: 'damage' }), 'target opponent', 'opp → "target opponent"');
+eqText(targetPhrase({ target: 'opp', kind: 'gain_life', amount: -2 }), 'target opponent', 'opp drain → "target opponent"');
+eqText(targetPhrase({ target: 'player', kind: 'gain_life' }), 'target player', 'player → "target player"');
+eqText(targetPhrase({ target: 'player', kind: 'damage' }), 'target player', 'player → "target player" (kind-independent)');
 eqText(withFilter('target creature', { filter: { color: 'R', controller: 'opp' } }),
        'target Red creature an opponent controls',
        'color + controller filter');
@@ -197,7 +201,7 @@ eqText(segsToText(describeTrigger({ event: 'card_zone_change',
        'When this enters the battlefield, draw a card.', 'ETB → draw');
 eqText(segsToText(describeTrigger({ event: 'attacks',
                                     condition: ['this_card'],
-                                    effects: [{ kind: 'damage', target: 'player', amount: 1 }] })),
+                                    effects: [{ kind: 'damage', target: 'opp', amount: 1 }] })),
        'When this attacks, deal 1 damage to target opponent.', 'attacks → damage');
 
 // ─── describeModalSegs ────────────────────────────────────────────────

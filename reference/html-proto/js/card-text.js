@@ -28,13 +28,11 @@ function formatTriggerText(template, cardName) {
 function targetPhrase(eff) {
   const t = eff.target;
   if (t === 'self')     return 'you';
-  if (t === 'player') {
-    // A drain (negative gain_life) is aimed at the opponent — read it that way;
-    // a positive gain_life to a player target is the ambiguous "target player".
-    if (eff.kind === 'gain_life') return (eff.amount || 0) < 0 ? 'target opponent' : 'target player';
-    if (eff.kind === 'discard')  return 'target player';
-    return 'target opponent';
-  }
+  // Accurate, structural mapping (no kind/sign guessing): 'opp' is opponent-only
+  // (what harmful effects target — text matches the one legal target); 'player'
+  // is a free choice of any player (heals etc.). Cards mean exactly one of these.
+  if (t === 'opp')    return 'target opponent';
+  if (t === 'player') return 'target player';
   if (t === 'creature') return 'target creature';
   // New target() taxonomy (§3.5).
   if (t === 'creature_or_player') return 'any target';
@@ -163,21 +161,21 @@ function describeEffect(eff, tplEff) {
       if (typeof eff.amount === 'number' && eff.amount < 0) {
         const n = -eff.amount;
         if (eff.target === 'self')   return [plainSeg('you lose ' + n + ' life')];
-        if (eff.target === 'player') return [plainSeg(t + ' loses ' + n + ' life')];
+        if (eff.target === 'player' || eff.target === 'opp') return [plainSeg(t + ' loses ' + n + ' life')];
         return [plainSeg('lose ' + n + ' life')];
       }
       if (eff.target === 'self')   return [plainSeg('you gain '), amtSeg, plainSeg(' life')];
-      if (eff.target === 'player') return [plainSeg(t + ' gains '), amtSeg, plainSeg(' life')];
+      if (eff.target === 'player' || eff.target === 'opp') return [plainSeg(t + ' gains '), amtSeg, plainSeg(' life')];
       return [plainSeg('gain '), amtSeg, plainSeg(' life')];
     case 'draw':
-      if (eff.target === 'player') {
+      if (eff.target === 'player' || eff.target === 'opp') {
         if (eff.amount === 1) return [plainSeg(t + ' draws a card')];
         return [plainSeg(t + ' draws '), amtSeg, plainSeg(' cards')];
       }
       if (eff.amount === 1) return [plainSeg('draw a card')];
       return [plainSeg('draw '), amtSeg, plainSeg(' cards')];
     case 'discard':
-      if (eff.target === 'player') {
+      if (eff.target === 'player' || eff.target === 'opp') {
         if (eff.amount === 1) return [plainSeg(t + ' discards a card')];
         return [plainSeg(t + ' discards '), amtSeg, plainSeg(' cards')];
       }
@@ -287,9 +285,9 @@ function describeEffect(eff, tplEff) {
         return [plainSeg('draw '), amtSeg, plainSeg(' cards')];
       }
       if (fz === 'hand' && tz === 'graveyard') {  // collapsed discard
-        if (eff.target === 'player') {
-          if (eff.amount === 1) return [plainSeg('target player discards a card')];
-          return [plainSeg('target player discards '), amtSeg, plainSeg(' cards')];
+        if (eff.target === 'player' || eff.target === 'opp') {
+          if (eff.amount === 1) return [plainSeg(t + ' discards a card')];
+          return [plainSeg(t + ' discards '), amtSeg, plainSeg(' cards')];
         }
         if (eff.amount === 1) return [plainSeg('discard a card')];
         return [plainSeg('discard '), amtSeg, plainSeg(' cards')];
@@ -337,7 +335,7 @@ function describeEffect(eff, tplEff) {
     case 'sacrifice':
       // Edict: under a target(player) step, reads "target player/opponent
       // sacrifices a creature". Otherwise a self/own sacrifice.
-      if (eff.target === 'player' || eff.target === 'creature_or_player') return [plainSeg(t + ' sacrifices a creature')];
+      if (eff.target === 'player' || eff.target === 'opp' || eff.target === 'creature_or_player') return [plainSeg(t + ' sacrifices a creature')];
       if (eff.target === 'self') return [plainSeg('sacrifice this creature')];
       return [plainSeg('sacrifice ' + (t || 'it'))];
     case 'change_control': {

@@ -4,7 +4,7 @@
   "cost": {
     "B": 2
   },
-  "target": "player",
+  "target": "opp",
   "effects": [
     {
       "kind": "rip_permanent"

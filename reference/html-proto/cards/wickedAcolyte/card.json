@@ -11,7 +11,7 @@
           "amount": -1
         }
       ],
-      "target": "player"
+      "target": "opp"
     }
   ],
   "art": "cards/wickedAcolyte/art.png",

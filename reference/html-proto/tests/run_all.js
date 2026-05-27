@@ -65,6 +65,8 @@ const CATEGORY_A = [
   'test_splice_core.js',
   // v2 targeting — top-level target() restrictions (target_filter) enforced at cast + highlight.
   'test_target_restrictions.js',
+  // Accurate player-target text: opp (opponent-only) vs player (choose-any) match legal targets.
+  'test_target_player_opp.js',
   // Boss special-removal AI casting (scoreSpellTargetForMode branches for the boss kinds).
   'test_boss_removal_ai.js',
   // Drain cards are life loss, not damage (signed gain_life migration + valuation).

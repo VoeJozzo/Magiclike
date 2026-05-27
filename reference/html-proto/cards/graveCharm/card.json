@@ -24,7 +24,7 @@
           "kind": "move_card",
           "from_zone": "hand",
           "to_zone": "graveyard",
-          "target": "player",
+          "target": "opp",
           "amount": 2
         }
       ],
@@ -36,7 +36,7 @@
         },
         {
           "kind": "gain_life",
-          "target": "player",
+          "target": "opp",
           "amount": -2
         }
       ]

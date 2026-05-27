@@ -160,9 +160,10 @@ console.log('\n=== kind-collapse: legacy mass/weaken kinds gone from card data =
   }
   check('add_counter collapsed to permanent pump (9)', permPump === 9, 'got ' + permPump);
 
-  // edict → target(player) + chooses(creature) + sacrifice.
+  // edict → target(opp) + chooses(creature) + sacrifice. (Opponent-only — the
+  // text + legal targets now agree it can't be aimed at yourself.)
   const edict = CARDS.diabolicEdict;
-  check('diabolicEdict: target(player)', edict.target === 'player');
+  check('diabolicEdict: target(opp)', edict.target === 'opp');
   check('diabolicEdict: chooses(creature) + sacrifice',
     edict.effects.length === 2 && edict.effects[0].kind === 'chooses' && edict.effects[1].kind === 'sacrifice');
 

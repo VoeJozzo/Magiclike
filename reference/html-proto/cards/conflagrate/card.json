@@ -4,7 +4,7 @@
   "cost": {
     "R": 1
   },
-  "target": "player",
+  "target": "opp",
   "effects": [
     {
       "kind": "damage",

@@ -5,7 +5,7 @@
     "B": 1,
     "C": 1
   },
-  "target": "player",
+  "target": "opp",
   "effects": [
     {
       "kind": "move_card",

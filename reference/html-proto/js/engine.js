@@ -3293,7 +3293,7 @@ function getValidTargets(effect, controller) {
 // plan-effects-refactor.md). Adding a filter means adding it here AND to
 // targetsForFilter below — there is no open tail.
 const TARGET_FILTERS = new Set([
-  'creature', 'player', 'creature_or_player', 'spell', 'permanent',
+  'creature', 'player', 'opp', 'creature_or_player', 'spell', 'permanent',
   'your_creature', 'opp_creature', 'graveyard_creature',
 ]);
 
@@ -3311,6 +3311,7 @@ function targetsForFilter(filter, controller, restrict) {
   switch (filter) {
     case 'creature_or_player': return getValidTargets({ target: 'any', filter: restrict || undefined }, controller);
     case 'player':             return getValidTargets({ target: 'player', filter: restrict || undefined }, controller);
+    case 'opp':                return getValidTargets({ target: 'opp', filter: restrict || undefined }, controller);
     case 'creature':           return getValidTargets({ target: 'creature', filter: restrict || undefined }, controller);
     case 'permanent':          return getValidTargets({ target: 'permanent', filter: restrict || undefined }, controller);
     case 'spell':              return getValidTargets({ target: 'spell', filter: restrict || undefined }, controller);

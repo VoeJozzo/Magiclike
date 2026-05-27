@@ -22,6 +22,9 @@ kinds (card.json + JS `EFFECTS` table). Supersedes STANDARDIZATION-PLAN §4.6's
 (`first_strike`, `double_strike`) and target filters (`permanent_or_spell`,
 `graveyard_creature`); events + predicate ids were already snake (Slice 2). All
 four Godot `JsonCardLoader` remap tables are now dead, slated for deletion.
+v2.0.6: split the overloaded `player` target into `opp` (opponent-only — drain/
+burn/discard/edict) vs `player` (free choice — heals), so generated text matches
+the actual legal targets instead of guessing "opponent" from the effect kind.
 
 > **MUST UPDATE on every dev-branch push that touches code.** Bump `VERSION` in `js/main.js` AND the line above, in the same commit. GitHub Pages caches aggressively; the version string is the only reliable way to confirm a fresh build is live.
 
