@@ -4,7 +4,7 @@ Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folde
 
 ## Version
 
-**Current: `v2.0.31`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.0.32`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -74,6 +74,27 @@ Deleted the `destroy_and_sticker_slot` handler + all its classification/scoring/
 text sites. Behavior note: under atomic decomposition an indestructible target now
 gets scarred-but-not-destroyed (the monolith fizzled both halves) — an acceptable
 edge on a boss-targeted creature.
+
+v2.0.32: three QA/devtools items (all browser-verify — DOM not covered by
+Node). (1) Minimap de-dup: the v2.0.30 "always show map" change left
+`continueFromMap` as a near-byte-identical twin of `pickMapNodeClick`'s tail;
+both now route through one `advanceFromMap()` (fork pick resolves the node
+choice first, Continue advances directly). Investigated the "multiple map GUIs"
+worry: it's ONE `renderMap()` + ONE `#mapModal` with a justified `hasChoice`
+conditional (fork = clickable nodes/no Continue; non-fork = Continue button) —
+not duplicate functions; all referenced DOM (`#mapContinue`/`#mapSubtitle`)
+exists, so no soft-lock. (2) New devtool toggle "Reveal AI opponent's hand"
+(Settings → Devtools, beside the font picker) — `revealAiHand` SETTINGS key;
+`renderOppHand` draws the AI's real cards face-up (read-only, no onclick)
+instead of cardbacks. Factored both devtools checkboxes through a shared
+`addDevtoolsToggle` helper. (3) Sandbox mode (start screen → "🔬 Sandbox"): a
+RUN-less throwaway game on basic-land decks with a floating panel to spawn any
+card into either player's hand/board and top up mana/life. `sandboxMode` guards
+`onStateChange`/`gameOverClick` so it never touches a saved run; the all-basics
+opp deck makes the AI naturally passive until you spawn onto its board. Static/
+passive-opponent control is a planned follow-up. New `test_sandbox_spawn.js`
+(18 checks: deck validity, RUN-less boot, spawning complete instances onto the
+battlefield, 30 AI plies without crash). 1161 green.
 
 v2.0.31: closed GAP 2 — the human-facing `chooses()` edict prompt. `chooses()`
 (Diabolic Edict / Vile Edict) always auto-picked the lowest-sac-value permanent,

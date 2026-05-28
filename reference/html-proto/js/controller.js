@@ -62,6 +62,8 @@ let aiScheduled = false;
 let aiThinking = false;
 let inDraft = false;
 let lastGameRecorded = false;
+let sandboxMode = false;              // true while a RUN-less card-test game is running
+let sandboxSpawnTarget = 'you-hand';  // '<side>-<zone>' for the spawn panel
 
 function updateThinkingUi() {
   if (aiThinking) {
@@ -349,9 +351,205 @@ function showStartScreen() {
   settings.style.cssText = 'padding:8px 20px;background:#1a1a2a;border:1px solid #444;color:#aaa;border-radius:4px;cursor:pointer;font-size:12px';
   settings.onclick = SETTINGS_PANEL.show;
   btns.appendChild(settings);
+
+  const sandbox = document.createElement('button');
+  sandbox.textContent = '🔬 Sandbox (test cards)';
+  sandbox.style.cssText = 'padding:8px 20px;background:#2a1a3a;border:1px solid #8855aa;color:#ddb3ff;border-radius:4px;cursor:pointer;font-size:12px';
+  sandbox.onclick = startSandbox;
+  btns.appendChild(sandbox);
+
   screen.style.display = 'flex';
 }
 
+// ===== Sandbox (card-interaction test mode) =====
+// A RUN-less, throwaway game for testing card interactions. Boots a real
+// engine game (vs the normal AI) on basic-land decks, then lets you spawn any
+// card into either player's hand or battlefield and top up mana/life via a
+// floating panel. Deliberately bypasses the run meta (no draft/map/rewards) —
+// gameOver and onStateChange are guarded by `sandboxMode` so it can't touch a
+// saved run. NOTE: a static/passive opponent is a planned follow-up; for now
+// the opponent is the normal AI (pair with Settings → Devtools → "Reveal AI
+// opponent's hand" to watch what it holds).
+function sandboxDeck() {
+  // Basic lands only → no deck-out and no random spells cluttering draws.
+  // You spawn the cards you want to test. Derived from CARDS so it can't drift.
+  const basics = Object.keys(CARDS).filter(id => {
+    const c = CARDS[id];
+    return c && c.type === 'Land' && /^(plains|island|swamp|mountain|forest)$/.test(id);
+  });
+  const pool = basics.length ? basics : Object.keys(CARDS).slice(0, 1);
+  const d = [];
+  for (let i = 0; i < 40; i++) d.push(pool[i % pool.length]);
+  return d;
+}
+
+function startSandbox() {
+  sandboxMode = true;
+  inDraft = false;
+  lastGameRecorded = true;   // suppress the run-recording path entirely
+  Modal.hide('gameover');
+  Modal.hide('rewardModal');
+  document.getElementById('startScreen').style.display = 'none';
+  ENGINE.init(sandboxDeck(), sandboxDeck());
+  sandboxRefillMana();       // also calls render()
+  renderSandboxPanel();
+}
+
+function exitSandbox() {
+  sandboxMode = false;
+  const panel = document.getElementById('sandboxPanel');
+  if (panel) panel.style.display = 'none';
+  Modal.hide('gameover');
+  showStartScreen();
+}
+
+function sandboxRefillMana() {
+  const G = ENGINE.state();
+  if (!G) return;
+  for (const side of ['you', 'opp']) {
+    G[side].mana = { W: 20, U: 20, B: 20, R: 20, G: 20, C: 20 };
+  }
+  render();
+}
+
+function sandboxBumpLife(side, delta) {
+  const G = ENGINE.state();
+  if (!G || !G[side]) return;
+  G[side].life += delta;
+  render();
+}
+
+function sandboxSpawn(tplId) {
+  if (!sandboxMode) return;
+  const G = ENGINE.state();
+  if (!G) return;
+  let card;
+  try { card = ENGINE.makeCard(tplId); }
+  catch (e) { console.warn('Sandbox spawn failed for', tplId, e); return; }
+  const dash = sandboxSpawnTarget.indexOf('-');
+  const side = sandboxSpawnTarget.slice(0, dash);   // 'you' | 'opp'
+  const zone = sandboxSpawnTarget.slice(dash + 1);  // 'hand' | 'board'
+  if (!G[side]) return;
+  card.owner = side;
+  card.controller = side;
+  const PERMANENT = /^(Creature|Land|Artifact|Enchantment)$/;
+  if (zone === 'board' && PERMANENT.test(card.type)) {
+    card.sick = false;  // ready to act immediately (sandbox convenience)
+    G[side].battlefield.push(card);
+  } else {
+    // Instants/sorceries can't sit on the battlefield — route to hand.
+    G[side].hand.push(card);
+  }
+  render();
+}
+
+// Build the floating sandbox toolbar once, then reuse it. Search filters the
+// full template list; clicking a row spawns it into the selected zone.
+function renderSandboxPanel() {
+  let panel = document.getElementById('sandboxPanel');
+  if (!panel) {
+    panel = document.createElement('div');
+    panel.id = 'sandboxPanel';
+    panel.style.cssText = 'position:fixed;right:8px;bottom:8px;width:240px;max-height:70vh;z-index:1200;'
+      + 'background:#140d1e;border:1px solid #8855aa;border-radius:8px;font-family:Georgia,serif;'
+      + 'color:#ddccff;font-size:12px;display:flex;flex-direction:column;box-shadow:0 0 18px rgba(136,85,170,.4)';
+    document.body.appendChild(panel);
+  }
+  panel.style.display = 'flex';
+  panel.innerHTML = '';
+
+  const header = document.createElement('div');
+  header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:6px 8px;border-bottom:1px solid #503070;background:#1c1230;border-radius:8px 8px 0 0';
+  header.innerHTML = '<span style="letter-spacing:.08em;color:#cba6ff">🔬 SANDBOX</span>';
+  const exitBtn = document.createElement('button');
+  exitBtn.textContent = '✕ Exit';
+  exitBtn.style.cssText = 'background:#3a1a2a;border:1px solid #885566;color:#ffbbcc;border-radius:3px;cursor:pointer;font-family:inherit;font-size:11px;padding:2px 8px';
+  exitBtn.onclick = exitSandbox;
+  header.appendChild(exitBtn);
+  panel.appendChild(header);
+
+  const body = document.createElement('div');
+  body.style.cssText = 'padding:8px;display:flex;flex-direction:column;gap:6px;overflow:hidden';
+  panel.appendChild(body);
+
+  // Spawn-target selector (2x2 of side × zone).
+  const targetWrap = document.createElement('div');
+  targetWrap.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:3px';
+  const TARGETS = [
+    ['you-hand', 'My hand'], ['you-board', 'My board'],
+    ['opp-hand', 'Opp hand'], ['opp-board', 'Opp board'],
+  ];
+  const targetBtns = {};
+  const paintTargets = () => {
+    for (const [val, btn] of Object.entries(targetBtns)) {
+      const on = val === sandboxSpawnTarget;
+      btn.style.background = on ? '#5a3a8a' : '#241830';
+      btn.style.color = on ? '#fff' : '#bba6d6';
+    }
+  };
+  for (const [val, label] of TARGETS) {
+    const b = document.createElement('button');
+    b.textContent = label;
+    b.style.cssText = 'border:1px solid #6a4a8a;border-radius:3px;cursor:pointer;font-family:inherit;font-size:11px;padding:3px 4px';
+    b.onclick = () => { sandboxSpawnTarget = val; paintTargets(); };
+    targetBtns[val] = b;
+    targetWrap.appendChild(b);
+  }
+  paintTargets();
+  body.appendChild(targetWrap);
+
+  // Resource buttons.
+  const resWrap = document.createElement('div');
+  resWrap.style.cssText = 'display:flex;gap:3px;flex-wrap:wrap';
+  const mkRes = (label, fn) => {
+    const b = document.createElement('button');
+    b.textContent = label;
+    b.style.cssText = 'flex:1;background:#241830;border:1px solid #6a4a8a;border-radius:3px;cursor:pointer;font-family:inherit;font-size:11px;padding:3px 4px;color:#bba6d6;white-space:nowrap';
+    b.onclick = fn;
+    resWrap.appendChild(b);
+  };
+  mkRes('💧 Mana', sandboxRefillMana);
+  mkRes('+5 me', () => sandboxBumpLife('you', 5));
+  mkRes('+5 opp', () => sandboxBumpLife('opp', 5));
+  mkRes('↻ New', startSandbox);
+  body.appendChild(resWrap);
+
+  // Search + scrollable card list.
+  const search = document.createElement('input');
+  search.type = 'text';
+  search.placeholder = 'Search cards…';
+  search.style.cssText = 'background:#0d0814;border:1px solid #6a4a8a;border-radius:3px;color:#eee;font-family:inherit;font-size:12px;padding:4px 6px';
+  body.appendChild(search);
+
+  const listEl = document.createElement('div');
+  listEl.style.cssText = 'overflow-y:auto;max-height:38vh;display:flex;flex-direction:column;gap:2px';
+  body.appendChild(listEl);
+
+  const allIds = Object.keys(CARDS).sort((a, b) => {
+    const na = (CARDS[a].name || a).toLowerCase(), nb = (CARDS[b].name || b).toLowerCase();
+    return na < nb ? -1 : na > nb ? 1 : 0;
+  });
+  const paintList = () => {
+    const q = search.value.trim().toLowerCase();
+    listEl.innerHTML = '';
+    let shown = 0;
+    for (const id of allIds) {
+      const tpl = CARDS[id];
+      const name = tpl.name || id;
+      if (q && !(name.toLowerCase().includes(q) || id.toLowerCase().includes(q)
+                 || (tpl.type || '').toLowerCase().includes(q))) continue;
+      if (shown++ > 120) break;  // cap rows for responsiveness
+      const row = document.createElement('button');
+      row.style.cssText = 'text-align:left;background:#1a1226;border:1px solid #3a2a4a;border-radius:3px;cursor:pointer;font-family:inherit;font-size:11px;padding:3px 6px;color:#cdbbe6';
+      const pt = (tpl.type === 'Creature') ? ` ${tpl.power}/${tpl.toughness}` : '';
+      row.innerHTML = `<span style="color:#fff">${name}</span> <span style="opacity:.6">${tpl.type || ''}${pt}</span>`;
+      row.onclick = () => sandboxSpawn(id);
+      listEl.appendChild(row);
+    }
+  };
+  search.oninput = paintList;
+  paintList();
+}
 
 function continueRun() {
   if (!RUN.load()) {
@@ -495,6 +693,8 @@ function nextGame() {
   startNextGameWithBossBanner();
 }
 function gameOverClick() {
+  // Sandbox: no run meta — just dismiss; the panel's ↻ New / ✕ Exit drive it.
+  if (sandboxMode) { Modal.hide('gameover'); return; }
   // Won → nextGame; lost → start screen (don't silently re-launch into draft).
   if (RUN.isActive()) {
     nextGame();
@@ -676,7 +876,7 @@ function renderMap() {
   const contBtn = document.getElementById('mapContinue');
   if (contBtn) {
     contBtn.style.display = hasChoice ? 'none' : 'block';
-    contBtn.onclick = hasChoice ? null : continueFromMap;
+    contBtn.onclick = hasChoice ? null : advanceFromMap;
   }
   const legal = new Set(hasChoice ? ms.pendingChoice.options : []);
   const visited = new Set(ms.visitedNodeIds);
@@ -816,16 +1016,15 @@ function renderMap() {
 
 function pickMapNodeClick(nodeId) {
   if (!RUN.pickMapNode(nodeId)) return;
-  Modal.hide('mapModal');
-  lastGameRecorded = false;
-  startNextGameWithBossBanner();
-  render();
+  advanceFromMap();
 }
 
-// Non-fork advance: the map was shown as a progress view (no choice to make).
-// startNextGame() auto-advances a single-successor node or drops into the next
-// sector's root, mirroring the no-choice path that used to skip the map.
-function continueFromMap() {
+// Leave the map and enter the next game. The fork path (pickMapNodeClick)
+// resolves the node choice first; the non-fork Continue button advances
+// directly — startNextGame() auto-advances a single successor or drops into
+// the next sector's root (mirroring the no-choice path that used to skip the
+// map). Both share this identical tail.
+function advanceFromMap() {
   Modal.hide('mapModal');
   lastGameRecorded = false;
   startNextGameWithBossBanner();
@@ -1272,7 +1471,8 @@ function onStateChange() {
   render();
   const G = ENGINE.state();
   // Game just ended — record result for the run (idempotent via flag).
-  if (G && G.gameOver && !lastGameRecorded) {
+  // Sandbox is RUN-less: never record (also guarded by lastGameRecorded=true).
+  if (G && G.gameOver && !lastGameRecorded && !sandboxMode) {
     lastGameRecorded = true;
     // Pass played-slots and claimed-keywords sets so RUN can snapshot
     // them before G is discarded. Both are consumed at sticker-reward

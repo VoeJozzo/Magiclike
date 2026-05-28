@@ -103,6 +103,9 @@ const CATEGORY_A = [
   // Regression — boss-node advance must not crash (DRAFT.getConstructedDeck) +
   // map state present at every transition (the "always show minimap" contract).
   'test_map_progression.js',
+  // Sandbox mode — RUN-less boot + spawning complete card instances onto the
+  // battlefield (engine-level; the floating panel DOM is browser-only).
+  'test_sandbox_spawn.js',
 ];
 
 const TESTS_DIR = __dirname;
