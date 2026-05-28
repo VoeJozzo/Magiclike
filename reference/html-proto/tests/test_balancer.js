@@ -104,6 +104,23 @@ console.log('\n=== scarification (#18): apply_sticker(scarified by id) + affect_
   check('scarified sticker persisted on the slot (by id)', RUN.getSlots()[0].stickers.includes('scarified'));
 })();
 
+console.log('\n=== vileEdict (#27): chooses(permanent) → annihilate → rip (zone-agnostic slot strip) ===');
+(() => {
+  // The targeted player's chosen permanent ceases to exist (annihilate — NO
+  // death triggers, NOT graveyard) AND its deck-slot is stripped from the run.
+  const { G, inst } = bootWithCreature();
+  const slotsBefore = RUN.getSlots().length;
+  // ctx-style: target is the player (you, the edict victim); chooses auto-picks.
+  const ctx = { controller: 'opp', sourceName: 'Vile Edict', sourceIid: -1, allTargets: [{ kind: 'player', who: 'you' }] };
+  ENGINE.applyEffect(ctx, { kind: 'chooses', filter: 'permanent' }, { kind: 'player', who: 'you' });
+  ENGINE.applyEffect(ctx, { kind: 'annihilate' }, null);
+  ENGINE.applyEffect(ctx, { kind: 'rip' }, null);
+  check('chosen permanent annihilated (gone, NOT in graveyard)',
+    !G.you.battlefield.some(c => c.iid === inst.iid) && !G.you.graveyard.some(c => c.iid === inst.iid));
+  check('its deck-slot stripped from the run', RUN.getSlots().length === slotsBefore - 1);
+  check('vileEdict generates accurate text', describeCardText(CARDS.vileEdict) === 'Target opponent rips a permanent they control.');
+})();
+
 console.log('\n=== §3.8: the applyBalancerOverrides channel is gone (one sticker pipeline) ===');
 (() => {
   const fs = require('fs');

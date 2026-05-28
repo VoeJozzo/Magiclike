@@ -2,7 +2,6 @@
 function passLabel(G, expectedActor) {
   if (expectedActor !== 'you') return 'Pass';
   if (G.pendingTriggerTarget && G.pendingTriggerTarget.controller === 'you') return 'Pick Target';
-  if (G.pendingRipSelect && G.pendingRipSelect.who === 'you') return 'Rip a Permanent';
   if (G.pendingNumberChoice && G.pendingNumberChoice.who === 'you') return 'Pick a Number';
   if (G.pendingSymmetricizeChoice && G.pendingSymmetricizeChoice.who === 'you') return 'Pick a Value';
   if (G.priority && G.stack.length > 0) return 'No Reaction';
@@ -158,7 +157,6 @@ function render() {
                   || (G.pendingSearch && G.pendingSearch.who === 'you')
                   || (G.pendingTriggerBuild && G.pendingTriggerBuild.who === 'you')
                   || (G.pendingTriggerTarget && G.pendingTriggerTarget.controller === 'you')
-                  || (G.pendingRipSelect && G.pendingRipSelect.who === 'you')
                   || (G.pendingNumberChoice && G.pendingNumberChoice.who === 'you')
                   || (G.pendingSymmetricizeChoice && G.pendingSymmetricizeChoice.who === 'you')
                   || expectedActor !== 'you';
@@ -409,8 +407,6 @@ function render() {
     }
   } else if (G.pendingTriggerTarget && G.pendingTriggerTarget.controller === 'you') {
     sb.textContent = `${G.pendingTriggerTarget.sourceName} triggered — choose a target. Click highlighted creatures or player buttons.`;
-  } else if (G.pendingRipSelect && G.pendingRipSelect.who === 'you') {
-    sb.textContent = `${G.pendingRipSelect.source} — choose a permanent of yours to rip. It will be destroyed AND removed from your deck for the rest of the run.`;
   } else if (G.pendingNumberChoice && G.pendingNumberChoice.who === 'you') {
     sb.textContent = `${G.pendingNumberChoice.source} — pick a number from ${G.pendingNumberChoice.min} to ${G.pendingNumberChoice.max}.`;
   } else if (G.pendingSymmetricizeChoice && G.pendingSymmetricizeChoice.who === 'you') {
@@ -532,7 +528,7 @@ function drawTargetLines() {
 // classifyValence, not by flat membership.
 const HARMFUL_KINDS = new Set([
   'damage', 'affect_creature', 'change_control',
-  'counter', 'rip_permanent', 'symmetricize', 'fight_target',
+  'counter', 'rip', 'symmetricize', 'fight_target',
   'sacrifice', 'chooses', 'apply_sticker', 'discard',
 ]);
 const BENEFICIAL_KINDS = new Set([
@@ -762,10 +758,6 @@ function renderBf(id, bf, who) {
       if (ptt.valid.some(v => v.kind === 'creature' && v.iid === card.iid)) {
         div.classList.add('targetable');
       }
-    }
-    // Rip-select: every player permanent is targetable.
-    if (G.pendingRipSelect && G.pendingRipSelect.who === 'you' && who === 'you') {
-      div.classList.add('targetable');
     }
     // Subtle ambient glow on untapped lands you control -- signals "this
     // can be tapped for mana" without the full .activatable intensity.

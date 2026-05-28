@@ -360,8 +360,13 @@ function describeEffect(eff, tplEff) {
     }
     case 'endomorph_absorb':
       return [plainSeg('gain a keyword from the slain creature, or +1/+1 if none')];
-    case 'rip_permanent':
-      return [plainSeg(t + ' rips a permanent they control')];
+    case 'annihilate':
+      // Rip-edict trailing chain — the whole phrase is carried by the `rip` clause.
+      return [];
+    case 'rip':
+      if (eff.target === 'player' || eff.target === 'opp' || eff.target === 'creature_or_player')
+        return [plainSeg(t + ' rips a permanent they control')];
+      return [plainSeg('rip ' + (t || 'it'))];
     case 'symmetricize':
       return [plainSeg(t + "'s controller equalizes its power, toughness, or cost")];
     case 'embargo':

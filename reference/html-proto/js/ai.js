@@ -13,7 +13,7 @@
 const TARGET_SCORED_KINDS = new Set([
   'damage', 'affect_creature', 'pump', 'add_counter', 'gain_life', 'discard',
   'grant_keyword', 'fight_target', 'untap', 'move_card', 'sacrifice', 'annihilate',
-  'rip_permanent', 'symmetricize', 'change_control',
+  'rip', 'symmetricize', 'change_control',
 ]);
 const NOT_TARGET_SCORED_KINDS = new Set([
   'create_tokens',       // untargeted — mint tokens (scored via spellValueForEffects)
@@ -56,21 +56,6 @@ function decide(state, who) {
   if (state.pendingTriggerBuild && state.pendingTriggerBuild.who === who) {
     const buildActs = actions.filter(a => a.type === 'triggerBuildPick');
     if (buildActs.length > 0) return buildActs[0];
-  }
-
-  // Vile Edict rip: pick lowest sacValueOnBoard (lands score 0 → ripped first).
-  if (state.pendingRipSelect && state.pendingRipSelect.who === who) {
-    const ripActs = actions.filter(a => a.type === 'ripSelect');
-    if (ripActs.length === 0) return {type:'pass'};
-    let best = ripActs[0], bestValue = Infinity;
-    for (const a of ripActs) {
-      const card = state[who].battlefield.find(c => c.iid === a.target.iid);
-      if (!card) continue;
-      let v = ENGINE.sacValueOnBoard(card);
-      if (card.type === 'Land' && card.tapped) v -= 1;
-      if (v < bestValue) { bestValue = v; best = a; }
-    }
-    return best;
   }
 
   // Bargain: sim-mode picks min (low variance — player gains disproportionately on demon death).
@@ -1203,27 +1188,21 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
   if (!eff && card.target) eff = modeEffects.find(e => e.kind !== 'chooses' && e.kind !== 'apply_sticker' && e.scope == null);
   if (!eff) return 0;
   if (eff.kind === 'sacrifice' || eff.kind === 'annihilate') {
-    // Edict: target(player) → chooses → sacrifice/annihilate. The targeted
-    // player loses their lowest-value creature; never edict ourselves. (Was the
-    // legacy untargeted `edict` valuation in shouldCastUntargeted.)
+    // Edict: target(player) → chooses → sacrifice/annihilate (→ rip). The targeted
+    // player loses their lowest-value creature; never edict ourselves. A trailing
+    // `rip` step (Vile Edict) also strips that card's deck-slot — harsher, so it
+    // earns a premium — and its chooses(permanent) lets it hit lands/artifacts too.
     if (target.kind !== 'player' || target.who === us) return -100;
-    const theirC = state[target.who].battlefield.filter(c => c.type === 'Creature');
-    if (theirC.length === 0) return -100;
-    const lowest = theirC.slice().sort((a, b) =>
+    const hasRip = modeEffects.some(e => e.kind === 'rip');
+    const choosesEff = modeEffects.find(e => e.kind === 'chooses');
+    const wantsPermanent = choosesEff && choosesEff.filter === 'permanent';
+    const pool = state[target.who].battlefield.filter(c => wantsPermanent
+      ? (c.type === 'Creature' || c.type === 'Land' || c.type === 'Artifact')
+      : c.type === 'Creature');
+    if (pool.length === 0) return -100;
+    const lowest = pool.slice().sort((a, b) =>
       ENGINE.getCardValue(a, 'kill') - ENGINE.getCardValue(b, 'kill'))[0];
-    return 10 + ENGINE.getCardValue(lowest, 'kill');
-  }
-  if (eff.kind === 'rip_permanent') {
-    // Vile Edict-style: target(player) → that player chooses a permanent to RIP
-    // (destroyed AND removed from their run deck — harsher than a sacrifice).
-    // Aim at the opponent; valued by their lowest-value permanent (what they'd
-    // give up) plus a premium for the permanent deck-loss.
-    if (target.kind !== 'player' || target.who === us) return -100;
-    const theirPerms = state[target.who].battlefield;
-    if (theirPerms.length === 0) return -100;
-    const lowest = theirPerms.slice().sort((a, b) =>
-      ENGINE.getCardValue(a, 'kill') - ENGINE.getCardValue(b, 'kill'))[0];
-    return 16 + ENGINE.getCardValue(lowest, 'kill');
+    return (hasRip ? 16 : 10) + ENGINE.getCardValue(lowest, 'kill');
   }
   if (eff.kind === 'symmetricize') {
     // The Balancer's equalizer: the target's controller picks power/toughness/

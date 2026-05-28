@@ -75,6 +75,18 @@ text sites. Behavior note: under atomic decomposition an indestructible target n
 gets scarred-but-not-destroyed (the monolith fizzled both halves) — an acceptable
 edge on a boss-targeted creature.
 
+v2.0.15: review cleanup (slice 4a/4) — broadened rip (plan #27/§13). Built the
+zone-agnostic `rip` primitive (run-layer slot-strip reading ctx.chosen's
+snapshotted slotIdx) and decomposed Vile Edict from the `rip_permanent` monolith →
+`target(opp) → chooses(permanent) → annihilate → rip`. Per user call, KEPT the
+"rip a permanent" breadth (generalized `chooses()` to honor a `permanent` filter,
+not just creatures). Deleted `rip_permanent` + the now-dead `pendingRipSelect`
+prompt machinery (engine + render + controller + AI). Note: rip-edict now uses
+`annihilate` (no death triggers, matches §13) and auto-picks the victim's permanent
+(human rip-pick prompt folds into the tracked GAP-2 human-chooses work, like
+Diabolic Edict). Browser-verify the rip UI removal (DOM not covered by Node tests).
+(#7 symmetricize: confirmed already in the decided end-state — no change.)
+
 > **MUST UPDATE on every dev-branch push that touches code.** Bump `VERSION` in `js/main.js` AND the line above, in the same commit. GitHub Pages caches aggressively; the version string is the only reliable way to confirm a fresh build is live.
 
 Always work on `dev` for html-proto changes.

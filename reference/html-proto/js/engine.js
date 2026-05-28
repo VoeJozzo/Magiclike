@@ -339,7 +339,6 @@ const PENDING_DECISIONS = [
   { field: 'pendingSearch',        who: d => d.who,        active: () => true },
   { field: 'pendingTriggerTarget', who: d => d.controller, active: () => true },
   { field: 'pendingTriggerBuild',  who: d => d.who,        active: () => true },
-  { field: 'pendingRipSelect',     who: d => d.who,        active: () => true },
   { field: 'pendingNumberChoice',  who: d => d.who,        active: () => true },
   { field: 'pendingSymmetricizeChoice', who: d => d.who,   active: () => true },
 ];
@@ -843,7 +842,6 @@ function makeState(playerDeck, oppDeck) {
     // Cleanup discard window.
     cleanupDiscarding: false,
     // Modal-prompt slots. Each gets PENDING_DECISIONS entry above; engine pauses while non-null.
-    pendingRipSelect: null,           // {who, source} — Vile Edict etc.
     pendingNumberChoice: null,        // {who, source, min, max, sourceIid, callback?} — Bargain
     pendingSymmetricizeChoice: null,  // {who, source, targetIid, ..., values:{power,toughness,cost}}
     forcedDiscard: null,              // {who, remaining}
@@ -1208,7 +1206,7 @@ function spellValueForEffects(effects) {
       const k = e.sticker && e.sticker.kind;
       v += (k === 'set_color') ? 4 : (k === 'cost_mod') ? 2 : 3;
     }
-    else if (e.kind === 'rip_permanent') v += 14;        // destroy + run-permanent slot rip
+    else if (e.kind === 'rip') v += 8;                  // run-permanent slot strip (rip-edict trailing step)
     else if (e.kind === 'symmetricize') v += 8;
     else if (e.kind === 'draw') v += (e.amount || 1) * 3;
     else if (e.kind === 'discard') v += 4;
@@ -1248,13 +1246,13 @@ function spellValueForEffects(effects) {
 const VALUED_EFFECT_KINDS = new Set([
   'damage', 'pump', 'add_counter', 'affect_creature',
   'symmetricize', 'apply_sticker', 'counter', 'add_mana', 'gain_life', 'draw',
-  'move_card', 'discard', 'grant_keyword', 'create_tokens', 'rip_permanent',
+  'move_card', 'discard', 'grant_keyword', 'create_tokens', 'rip',
   'chooses', 'schedule_delayed', 'change_control', 'fight_target',
   'apply_in_game_splice', 'sacrifice',
 ]);
 const UNVALUED_EFFECT_KINDS = new Set([
   'steal',              // internal helper dispatched by change_control; not a card kind
-  'annihilate',         // trailing rip verb; value carried by the preceding rip_permanent/edict
+  'annihilate',         // trailing edict verb; value carried by the edict scoring (sacrifice/annihilate branch)
   'endomorph_absorb',    // creature ability; value dominated by the body, not separately scored
   'untap',              // minor utility on abilities; abilityValue default suffices
   'bargain_sticker_self', // Archdemon of Bargains trigger mechanic; not separately scored
@@ -2160,28 +2158,6 @@ const EFFECTS = {
       emitZoneChange(tok, owner, 'none', 'battlefield', undefined, ctx.sourceIid);
     }
   },
-  // Vile Edict: target player picks own permanent to RIP (destroy + slot removed from runState).
-  // Targets any permanent type, not just creatures. Permanent run loss.
-  // Resolution: pendingRipSelect prompt for targeted player. The
-  // target chooses via UI (you) or AI (opp). Step machine waits.
-  rip_permanent(ctx, params, target) {
-    // Target should be a {kind:'player'} from the existing player-target
-    // resolution. Defensive: if no target, fizzle.
-    if (!target || target.kind !== 'player') {
-      log(`${ctx.sourceName} fizzles — no valid player target.`, 'sp');
-      return;
-    }
-    const who = target.who;
-    const permanents = G[who].battlefield;
-    if (permanents.length === 0) {
-      log(`${ctx.sourceName} fizzles — ${pname(who)} has no permanents.`, 'sp');
-      return;
-    }
-    // Open the rip-select prompt. The target player picks; engine validates
-    // and rips on selection.
-    G.pendingRipSelect = { who, source: ctx.sourceName, ripBy: ctx.controller };
-    log(`${ctx.sourceName} — ${pname(who)} must choose a permanent to rip.`, 'sp');
-  },
   // Sacrifice as an effect (rare — usually sacs are costs). "Sacrifice a
   // creature" with target:'self' resolves to the source itself; with no
   // target, the effect controller picks one of their own. v1: only target:'self'
@@ -2206,6 +2182,21 @@ const EFFECTS = {
     if (!f) return;
     annihilateCard(f.card, f.controller);
   },
+  // Zone-agnostic run-layer slot strip (§13). Reads ctx.chosen (the chooses()
+  // pick) — which snapshots slotIdx+controller at choose-time, so this still
+  // works after a preceding `annihilate` removed the card from play — or an
+  // explicit target. Player-side only: opp cards have no persistent run slot,
+  // so the in-game removal (annihilate/sacrifice) is their whole effect.
+  rip(ctx, params, target) {
+    const t = target || ctx.chosen;
+    if (!t) return;
+    const slotIdx = (typeof t.slotIdx === 'number') ? t.slotIdx : null;
+    if (t.controller === 'you' && slotIdx != null
+        && typeof RUN !== 'undefined' && RUN.removeSlotByIdx) {
+      RUN.removeSlotByIdx(slotIdx);
+      log(`${t.label || 'A card'} is gone from your deck for the rest of the run.`, 'sp');
+    }
+  },
   // The targeted player selects one of their own creatures (§3.5). This is
   // NOT targeting — hexproof never applies. Reads the established player from
   // the preceding target(player) step (the `target` param or ctx.allTargets),
@@ -2217,15 +2208,27 @@ const EFFECTS = {
       ? target
       : (ctx.allTargets || []).find(t => t && t.kind === 'player');
     const who = playerTgt ? playerTgt.who : opp(ctx.controller);
-    const pool = G[who].battlefield.filter(c => c.type === 'Creature');
+    // Honor the chooses() filter: 'creature' (edict) or 'permanent' (rip-edict —
+    // creatures/lands/artifacts). Defaults to creature.
+    const filter = params.filter || 'creature';
+    const pool = G[who].battlefield.filter(c =>
+      filter === 'permanent'
+        ? (c.type === 'Creature' || c.type === 'Land' || c.type === 'Artifact')
+        : c.type === 'Creature');
     if (pool.length === 0) {
-      log(`${ctx.sourceName} — ${pname(who)} has no creature to choose.`, 'sp');
+      const noun = filter === 'permanent' ? 'permanent' : 'creature';
+      log(`${ctx.sourceName} — ${pname(who)} has no ${noun} to choose.`, 'sp');
       ctx.chosen = null;
       return;
     }
     const sorted = pool.slice().sort((a, b) => sacValueOnBoard(a) - sacValueOnBoard(b));
     const picked = sorted[0];
-    ctx.chosen = { kind: 'creature', iid: picked.iid, label: picked.name };
+    // Snapshot slotIdx+controller so a trailing rip can strip the deck-slot even
+    // after an intervening annihilate removes the card from the battlefield.
+    ctx.chosen = { kind: picked.type === 'Creature' ? 'creature' : 'permanent',
+      iid: picked.iid, label: picked.name,
+      slotIdx: (typeof picked.slotIdx === 'number') ? picked.slotIdx : null,
+      controller: who };
     log(`${pname(who)} chooses ${picked.name}.`, 'sp');
   },
   // Register a delayed trigger that applies `effects` at `when` ('end_step'),
@@ -4657,38 +4660,6 @@ function doTriggerTargetPick(who, target) {
   // Resume draining the remaining queued triggers (if any).
   drainTriggers();
 }
-function doRipSelect(who, target) {
-  // Player submits a permanent to rip from the pendingRipSelect prompt.
-  // Validates: prompt is open for this player, target is a permanent
-  // they control. On valid select: destroy + rip the slot if persistent.
-  if (!G.pendingRipSelect || G.pendingRipSelect.who !== who) return;
-  if (!target || !target.iid) return;
-  const f = findCard(target.iid);
-  if (!f) return;
-  if (f.controller !== who) return;   // can only rip your own permanents
-  // Identify the slotIdx for run-state removal (only player-side cards
-  // have this — opp cards are regenerated each game, so opp rip has no
-  // run-state effect, only the in-game destroy).
-  const card = f.card;
-  const slotIdx = card.slotIdx;
-  const ripBy = G.pendingRipSelect.ripBy;
-  const sourceName = G.pendingRipSelect.source;
-  G.pendingRipSelect = null;
-  log(`${pname(who)} rips ${card.name} from the deck (${sourceName}).`, 'sp');
-  // Destroy in-game (route through sacrificeCard so death triggers and
-  // SBAs all fire normally). Credit the rip-caster for any kill credit.
-  card.killedBy = ripBy;
-  sacrificeCard(card, who);
-  // Persistent removal: only applies to player-side cards with a slot.
-  // Opp cards have no persistent slot — the in-game destroy IS the
-  // entire effect for them. For the player, removing the slot means the
-  // card is gone from the run permanently.
-  if (who === 'you' && typeof slotIdx === 'number'
-      && typeof RUN !== 'undefined' && RUN.removeSlotByIdx) {
-    RUN.removeSlotByIdx(slotIdx);
-    log(`${card.name} is gone from your deck for the rest of the run.`, 'sp');
-  }
-}
 function doSymmetricizeChoice(who, which) {
   // Player picks 'power' | 'toughness' | 'cost'; all three become that value.
   // §3.8 additive snapshot: record the deltas needed to reach N *right now* as
@@ -5127,15 +5098,6 @@ function isLegalAction(who, action) {
       if (!action.target) return false;
       return G.pendingTriggerTarget.valid.some(v => sameTarget(v, action.target));
     }
-    case 'ripSelect': {
-      // Legal only when a rip prompt is open for this player and the
-      // target is a permanent they control.
-      if (!G.pendingRipSelect || G.pendingRipSelect.who !== who) return false;
-      if (!action.target || !action.target.iid) return false;
-      const f = findCard(action.target.iid);
-      if (!f || f.controller !== who) return false;
-      return true;
-    }
     case 'numberChoice': {
       // Legal only when a number-choice prompt is open for this player
       // and the number is in the prompt's [min, max] range.
@@ -5406,16 +5368,6 @@ function getLegalActions(who) {
     for (const card of G[who].library) {
       if (filter.type && card.type !== filter.type) continue;
       actions.push({type:'searchPick', cardIid: card.iid});
-    }
-  }
-
-  // Rip-select picks — when this player owes a "choose a permanent of yours
-  // to rip" decision (Vile Edict and similar). One action per permanent on
-  // the player's battlefield. The player picks; engine validates ownership
-  // again at executeAction time.
-  if (G.pendingRipSelect && G.pendingRipSelect.who === who) {
-    for (const card of G[who].battlefield) {
-      actions.push({type:'ripSelect', target: {kind:'permanent', iid: card.iid}});
     }
   }
 
@@ -5754,7 +5706,6 @@ function executeAction(who, action) {
     case 'searchPick':        doSearchPick(who, action.cardIid); break;
     case 'triggerTargetPick': doTriggerTargetPick(who, action.target); break;
     case 'triggerBuildPick':  doTriggerBuildPick(who, action.choice); break;
-    case 'ripSelect':         doRipSelect(who, action.target); break;
     case 'numberChoice':      doNumberChoice(who, action.number); break;
     case 'symmetricizeChoice': doSymmetricizeChoice(who, action.which); break;
     case 'pass':             doPass(who); break;

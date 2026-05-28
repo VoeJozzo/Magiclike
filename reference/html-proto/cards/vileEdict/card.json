@@ -7,7 +7,14 @@
   "target": "opp",
   "effects": [
     {
-      "kind": "rip_permanent"
+      "kind": "chooses",
+      "filter": "permanent"
+    },
+    {
+      "kind": "annihilate"
+    },
+    {
+      "kind": "rip"
     }
   ],
   "name": "Vile Edict",

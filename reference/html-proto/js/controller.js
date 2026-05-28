@@ -1492,14 +1492,6 @@ function clickBattlefield(iid) {
   const f = ENGINE.findCard(iid); if (!f) return;
   const card = f.card;
 
-  // Rip prompt — clicking one of YOUR permanents commits the rip. Other
-  // permanents (opp's) are ignored.
-  if (G.pendingRipSelect && G.pendingRipSelect.who === 'you') {
-    if (f.controller !== 'you') return;
-    submit({type:'ripSelect', target: {kind:'permanent', iid: card.iid, label: card.name}});
-    return;
-  }
-
   // Trigger target prompt — clicking a creature submits it as the trigger target.
   if (G.pendingTriggerTarget && G.pendingTriggerTarget.controller === 'you') {
     const target = {kind:'creature', iid: card.iid, ctrl: f.controller, label: card.name};
