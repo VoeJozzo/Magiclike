@@ -221,5 +221,37 @@ console.log('\n=== Vile Edict (rip-edict): human pick → annihilate + run-slot 
     RUN.getSlots().length === slotCountBefore - 1, 'slots ' + slotCountBefore + ' -> ' + RUN.getSlots().length);
 }
 
+console.log('\n=== AI resolves its own pendingEdictChoice (selfplay path) → auto-picks lowest sac-value ===');
+{
+  // Mirrors selfplay: the prompt opens for a seat that the AI is driving (in
+  // a real game 'you' is the human, but AI.decide is seat-agnostic and IS what
+  // resolves this seat in AI-vs-AI). This is the ONLY deterministic coverage of
+  // ai.js's pendingEdictChoice branch — selfplay only hits it when an opp edict
+  // happens to resolve at the AI seat, so a regression there would otherwise
+  // stay green in the suite (the §8.1 lockstep trap).
+  const G = newGame();
+  const big = mk(VANILLA, 'you'); G.you.battlefield.push(big);
+  const small = mk(VANILLA, 'you'); G.you.battlefield.push(small);
+  big.tempPower = 5; big.tempTou = 5; // higher sac-value than the vanilla `small`
+  const edict = mk('diabolicEdict', 'opp'); G.opp.hand.push(edict);
+  readyForCast(G, 'opp');
+  ENGINE.executeAction('opp', { type: 'castSpell', cardIid: edict.iid, targets: [{ kind: 'player', who: 'you', label: 'You' }] });
+  drainStack(G);
+
+  check('prompt is open for the AI-driven seat', G.pendingEdictChoice && G.pendingEdictChoice.who === 'you');
+  const bigVal = ENGINE.sacValueOnBoard(big), smallVal = ENGINE.sacValueOnBoard(small);
+  const expected = (bigVal <= smallVal) ? big : small; // AI picks lowest sac-value
+  const aiAct = AI.decide(G, 'you');
+  check('AI.decide returns an edictChoice action', aiAct && aiAct.type === 'edictChoice');
+  check('AI auto-picks the lowest sac-value permanent', aiAct && aiAct.iid === expected.iid,
+    'picked ' + (aiAct && aiAct.iid) + ', expected ' + expected.iid);
+  // And it executes legally + leaves the higher-value creature alive.
+  ENGINE.executeAction('you', aiAct);
+  check('AI-chosen (lowest) creature was sacrificed', G.you.graveyard.some(c => c.iid === expected.iid));
+  const survivor = (expected === big) ? small : big;
+  check('higher-value creature survived the AI pick',
+    G.you.battlefield.some(c => c.iid === survivor.iid));
+}
+
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');
 process.exit(fail > 0 ? 1 : 0);
