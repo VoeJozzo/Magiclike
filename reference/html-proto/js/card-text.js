@@ -79,11 +79,11 @@ function describeAmount(amount) {
   if (typeof amount === 'number') return String(amount);
   if (amount && typeof amount === 'object' && amount.from) {
     const dynMap = {
-      targetPower:    "the target's power",
-      targetTough:    "the target's toughness",
-      sourcePower:    "this creature's power",
-      sourceToughness:"this creature's toughness",
-      manaSpent:      'mana spent on it',
+      target_power:     "the target's power",
+      target_toughness: "the target's toughness",
+      source_power:     "this creature's power",
+      source_toughness: "this creature's toughness",
+      mana_spent:       'mana spent on it',
     };
     return dynMap[amount.from] || ('X (' + amount.from + ')');
   }
@@ -154,7 +154,7 @@ function describeEffect(eff, tplEff) {
       return [plainSeg('deal '), amtSeg, plainSeg(' damage to ' + t)];
     case 'gain_life':
       if (typeof eff.amount === 'object' && eff.amount && eff.amount.from) {
-        const owner = (eff.who && eff.who.from === 'targetController') ? "its controller" : 'you';
+        const owner = (eff.who && eff.who.from === 'target_controller') ? "its controller" : 'you';
         return [plainSeg(owner + ' gains life equal to ' + describeAmount(eff.amount))];
       }
       // §D4: a negative amount is life loss — render the sign as "lose N life".

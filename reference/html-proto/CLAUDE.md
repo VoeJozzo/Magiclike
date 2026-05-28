@@ -75,6 +75,20 @@ text sites. Behavior note: under atomic decomposition an indestructible target n
 gets scarred-but-not-destroyed (the monolith fizzled both halves) — an acceptable
 edge on a boss-targeted creature.
 
+v2.0.23: snake_case the dynamic-value DSL (audit #4 — the one Godot-facing miss).
+The `{from:"..."}` computed-amount tokens were still camelCase (the #9 sweep did
+keys only): `targetPower`→`target_power`, `targetToughness`→`target_toughness`,
+`targetController`→`target_controller`, `sourcePower`→`source_power`,
+`sourceToughness`→`source_toughness`, `countCreaturesYou`→`count_creatures_you`,
+`countCreaturesOpp`→`count_creatures_opp`. Renamed the tokens in `resolveExpr`'s
+switch (engine.js), the card-text `describeAmount` dynMap + the `who.from`
+comparison (also fixed a pre-existing dynMap key bug: `targetTough` →
+`target_toughness`, matching the real token), and the 2 cards that use them
+(exorcist, swords). render.js's local `targetController` variable is NOT a token —
+left alone. Not an active break (Godot doesn't read computed values yet), but
+closes the latent wire-format trap before Godot ports those cards. 1096 green,
+200-game selfplay clean.
+
 v2.0.22: post-audit cleanups (4 verification agents). Dead-code prune + doc
 corrections. Deleted: dead card-text `case 'embargo'`/`'bleach'` (cards decomposed,
 no kind uses them); dead `triggerNeedsPlayerChoice` (superseded by

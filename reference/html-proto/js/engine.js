@@ -2567,27 +2567,27 @@ function resolveExpr(value, ctx, targetSnap) {
   if (value == null) return value;
   if (typeof value !== 'object' || !value.from) return value;
   switch (value.from) {
-    case 'targetPower':
+    case 'target_power':
       return (targetSnap && typeof targetSnap.power === 'number') ? targetSnap.power : 0;
-    case 'targetToughness':
+    case 'target_toughness':
       return (targetSnap && typeof targetSnap.toughness === 'number') ? targetSnap.toughness : 0;
-    case 'targetController':
+    case 'target_controller':
       return (targetSnap && targetSnap.controller) ? targetSnap.controller : ctx.controller;
-    case 'sourcePower': {
+    case 'source_power': {
       const sc = ctx.sourceCard;
       if (!sc) return 0;
       const [pow] = getStats(sc);
       return pow;
     }
-    case 'sourceToughness': {
+    case 'source_toughness': {
       const sc = ctx.sourceCard;
       if (!sc) return 0;
       const [, tou] = getStats(sc);
       return tou;
     }
-    case 'countCreaturesYou':
+    case 'count_creatures_you':
       return G[ctx.controller].battlefield.filter(c => c.type === 'Creature').length;
-    case 'countCreaturesOpp':
+    case 'count_creatures_opp':
       return G[opp(ctx.controller)].battlefield.filter(c => c.type === 'Creature').length;
     default:
       console.warn('Unknown expression:', value.from);

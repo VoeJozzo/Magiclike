@@ -26,10 +26,10 @@
         {
           "kind": "gain_life",
           "who": {
-            "from": "targetController"
+            "from": "target_controller"
           },
           "amount": {
-            "from": "targetPower"
+            "from": "target_power"
           }
         }
       ],

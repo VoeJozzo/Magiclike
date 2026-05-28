@@ -41,7 +41,7 @@ function eqText(actual, expected, label) {
 // ─── describeAmount ───────────────────────────────────────────────────
 console.log('=== describeAmount ===');
 eqText(describeAmount(3), '3', 'integer passes through');
-eqText(describeAmount({ from: 'targetPower' }), "the target's power",
+eqText(describeAmount({ from: 'target_power' }), "the target's power",
        'dynamic value maps to phrase');
 eqText(describeAmount({ from: 'unknownThing' }), 'X (unknownThing)',
        'unknown dynamic value falls back to "X (id)"');
@@ -60,7 +60,7 @@ eqText(segsToText(describeEffect({ kind: 'damage', amount: 2, scope: 'all_creatu
        'deal 2 damage to each creature', 'damage+scope → "each creature"');
 eqText(segsToText(describeEffect({ kind: 'gain_life', scope: 'self', amount: 3 })),
        'you gain 3 life', 'gain_life self');
-eqText(segsToText(describeEffect({ kind: 'gain_life', amount: { from: 'targetPower' },
+eqText(segsToText(describeEffect({ kind: 'gain_life', amount: { from: 'target_power' },
                                    target: 'creature' })),
        'you gains life equal to the target\'s power',
        'gain_life with dynamic amount and default owner');
