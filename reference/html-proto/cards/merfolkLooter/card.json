@@ -18,8 +18,8 @@
           "kind": "move_card",
           "from_zone": "hand",
           "to_zone": "graveyard",
-          "target": "self",
-          "amount": 1
+          "amount": 1,
+          "scope": "self"
         }
       ]
     }

@@ -344,11 +344,11 @@ STICKERS['scarified'] = {
     event: 'card_zone_change',
     condition: ['this_card', 'card_moves(anywhere, battlefield)'],
     text: '~ enters: its controller loses 1 life.',
-    // target:'self' for player-operating effects (damage/gain_life/discard/
+    // scope:'self' for player-operating effects (damage/gain_life/discard/
     // draw) resolves to the source's controller at trigger time. Pushed
     // onto card.triggers when the sticker applies via the standard
     // sticker-trigger path at line 2705-2706.
-    effects: [{ kind: 'gain_life', target: 'self', amount: -1 }],
+    effects: [{ kind: 'gain_life', scope: 'self', amount: -1 }],
   },
 };
 

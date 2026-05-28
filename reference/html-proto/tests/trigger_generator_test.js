@@ -115,7 +115,7 @@ console.log('\n=== Hard-break filter: needsLiveSource never pairs with !sourceLi
       // The same kind COULD appear from a different effect that's not
       // needsLiveSource — so we need to double-check by looking at the
       // effect target. needsLiveSource effects typically target 'self'.
-      if (t.effects[0].target === 'self') {
+      if (t.effects[0].scope === 'self') {
         violations++;
       }
     }

@@ -1089,7 +1089,7 @@ function decideCleanupDiscard(state, who, actions) {
 function pickBestTargetForSpell(state, who, card, options) {
   // Bail if non-modal self-damage would lethal us (modal: per-option below).
   const selfDamageOf = (effs) => (effs || []).reduce((sum, e) =>
-    sum + ((e.kind === 'damage' && e.target === 'self') ? (e.amount || 0) : 0), 0);
+    sum + ((e.kind === 'damage' && e.scope === 'self') ? (e.amount || 0) : 0), 0);
   if (!ENGINE.isModal(card)) {
     if (selfDamageOf(card.effects) >= state[who].life) return null;
   }
@@ -1689,7 +1689,7 @@ function pickBestActivation(state, who, abilityActs) {
           score = -100;
         }
       }
-    } else if (eff.kind === 'pump' && eff.target === 'self') {
+    } else if (eff.kind === 'pump' && eff.scope === 'self') {
       // Self-pump (firebreathing) — only useful pre-attack. MAIN2/END = waste.
       const validPhase = (state.phase === 'MAIN1' || state.phase === 'COMBAT_ATTACK')
                          && state.activePlayer === who;
@@ -1706,7 +1706,7 @@ function pickBestActivation(state, who, abilityActs) {
         || (eff.kind === 'move_card' && eff.from_zone === 'hand' && eff.to_zone === 'graveyard')) {
       // Self-discard with no paired draw — skip. Opp-discard would score, but
       // no current activated abilities have that shape.
-      const isSelf = !eff.target || eff.target === 'self';
+      const isSelf = !eff.target || eff.scope === 'self';
       score = isSelf ? -50 : 8;
     } else if (eff.kind === 'gain_life') {
       // Worth it only when low.
@@ -1716,7 +1716,7 @@ function pickBestActivation(state, who, abilityActs) {
         && (eff.to_zone === 'battlefield' || (eff.to_zone === 'hand' && eff.selector === 'library_search'))) {
       // Tutoring / land-fetch is consistently strong (collapsed search*).
       score = 8;
-    } else if ((eff.kind === 'add_counter' || (eff.kind === 'pump' && eff.duration === 'permanent')) && eff.target === 'self') {
+    } else if ((eff.kind === 'add_counter' || (eff.kind === 'pump' && eff.duration === 'permanent')) && eff.scope === 'self') {
       // Self-counter pump (Carrion Feeder-shape). The general principle:
       // sacrificing creatures just to grow a counter is wrong play. Real
       // sac decisions happen for one of two reasons:

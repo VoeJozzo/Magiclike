@@ -38,7 +38,7 @@ console.log('=== objectNeedsTarget recognizes all three shapes (+ none) ===');
   check('ability-level target_slots', ENGINE.objectNeedsTarget({ target_slots: [{ target: 'creature' }], effects: [{ kind: 'apply_in_game_splice' }] }));
   check('legacy per-effect target', ENGINE.objectNeedsTarget({ effects: [{ kind: 'damage', target: 'creature', amount: 2 }] }));
   check('untargeted → false', !ENGINE.objectNeedsTarget({ effects: [{ kind: 'create_tokens', count: 1 }] }));
-  check('self-only effect → false', !ENGINE.objectNeedsTarget({ effects: [{ kind: 'gain_life', target: 'self', amount: 3 }] }));
+  check('self-only effect → false', !ENGINE.objectNeedsTarget({ effects: [{ kind: 'gain_life', scope: 'self', amount: 3 }] }));
   check('modal (effects.modes, not an array) → false (handled separately by UI)',
     !ENGINE.objectNeedsTarget({ effects: { modes: [[{ kind: 'damage', target: 'creature' }]] } }));
 })();

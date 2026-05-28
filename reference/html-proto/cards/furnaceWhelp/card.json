@@ -10,9 +10,9 @@
       "effects": [
         {
           "kind": "pump",
-          "target": "self",
           "power": 1,
-          "toughness": 0
+          "toughness": 0,
+          "scope": "self"
         }
       ]
     }

@@ -13,8 +13,8 @@
     },
     {
       "kind": "damage",
-      "target": "self",
-      "amount": 1
+      "amount": 1,
+      "scope": "self"
     }
   ],
   "name": "Char",

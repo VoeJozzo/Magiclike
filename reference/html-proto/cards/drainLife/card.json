@@ -19,8 +19,8 @@
     },
     {
       "kind": "gain_life",
-      "target": "self",
-      "amount": 4
+      "amount": 4,
+      "scope": "self"
     }
   ],
   "multi_target": true,

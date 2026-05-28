@@ -22,9 +22,9 @@
         {
           "kind": "pump",
           "duration": "permanent",
-          "target": "self",
           "power": 1,
-          "toughness": 1
+          "toughness": 1,
+          "scope": "self"
         }
       ]
     }

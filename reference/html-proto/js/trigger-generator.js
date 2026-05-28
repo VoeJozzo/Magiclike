@@ -32,7 +32,7 @@ const GENERATOR_EFFECTS = [
     weight: 3,
     needsLiveSource: false,
     // Lifegain less swingy than damage — gentler curve.
-    roll: () => [{kind: 'gain_life', target: 'self', amount: _genWeightedInt([4, 3, 2])}],
+    roll: () => [{kind: 'gain_life', scope: 'self', amount: _genWeightedInt([4, 3, 2])}],
     describe: (eff) => `gain ${eff.amount} life`,
   },
   {
@@ -40,7 +40,7 @@ const GENERATOR_EFFECTS = [
     weight: 3,
     needsLiveSource: false,
     // Card draw snowballs; keep high-end rare.
-    roll: () => [{kind: 'draw', target: 'self', amount: _genWeightedInt([7, 1])}],
+    roll: () => [{kind: 'draw', scope: 'self', amount: _genWeightedInt([7, 1])}],
     describe: (eff) => eff.amount === 1 ? `draw a card` : `draw ${eff.amount} cards`,
   },
   {
@@ -50,7 +50,7 @@ const GENERATOR_EFFECTS = [
     roll: () => {
       const power = _genWeightedInt([4, 2]);
       const tou = _genWeightedInt([5, 3], 0);
-      return [{kind: 'pump', target: 'self', power, toughness: tou}];
+      return [{kind: 'pump', scope: 'self', power, toughness: tou}];
     },
     describe: (eff) => `~ gets +${eff.power}/+${eff.toughness} EOT`,
   },
@@ -59,7 +59,7 @@ const GENERATOR_EFFECTS = [
     weight: 2,
     needsLiveSource: true,
     // Always +1/+1; counters are permanent — bigger would snowball.
-    roll: () => [{kind: 'add_counter', target: 'self', power: 1, toughness: 1}],
+    roll: () => [{kind: 'add_counter', scope: 'self', power: 1, toughness: 1}],
     describe: () => `~ gets a +1/+1 counter`,
   },
   {
@@ -141,7 +141,7 @@ function generateRandomTrigger() {
     event: 'card_zone_change',
     condition: ['this_card', 'card_moves(anywhere, battlefield)'],
     text: 'When ~ enters, gain 1 life.',
-    effects: [{kind: 'gain_life', target: 'self', amount: 1}],
+    effects: [{kind: 'gain_life', scope: 'self', amount: 1}],
     generated: true,
   };
 }

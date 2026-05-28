@@ -30,8 +30,8 @@
       [
         {
           "kind": "gain_life",
-          "target": "self",
-          "amount": 3
+          "amount": 3,
+          "scope": "self"
         },
         {
           "kind": "move_card",

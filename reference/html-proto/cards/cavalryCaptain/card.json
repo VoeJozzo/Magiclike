@@ -23,9 +23,9 @@
       "effects": [
         {
           "kind": "pump",
-          "target": "self",
           "power": 2,
-          "toughness": 0
+          "toughness": 0,
+          "scope": "self"
         }
       ]
     }

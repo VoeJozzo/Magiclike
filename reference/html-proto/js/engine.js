@@ -14,35 +14,35 @@ const MERCURIAL_TRIGGER_POOL = [
     event: 'spell_cast',
     condition: ['another_card', 'controlled_by(you)'],
     text: 'Spell cast — ~ gets +1/+0 EOT.',
-    effects: [{kind: 'pump', target: 'self', power: 1, toughness: 0}],
+    effects: [{kind: 'pump', scope: 'self', power: 1, toughness: 0}],
   },
   {
     label: 'Standard-bearer',
     event: 'card_zone_change',
     condition: ['another_card', 'card_is_creature', 'controlled_by(you)', 'card_moves(anywhere, battlefield)'],
     text: 'Ally entered — ~ gets a +1/+1 counter.',
-    effects: [{kind: 'add_counter', target: 'self', power: 1, toughness: 1}],
+    effects: [{kind: 'add_counter', scope: 'self', power: 1, toughness: 1}],
   },
   {
     label: 'Bloodscholar',
     event: 'life_changed',
     condition: ['is_life_gain', 'affected_player_is(you)'],
     text: 'Life gained — draw a card.',
-    effects: [{kind: 'draw', target: 'self', amount: 1}],
+    effects: [{kind: 'draw', scope: 'self', amount: 1}],
   },
   {
     label: 'Reaper',
     event: 'card_zone_change',
     condition: ['another_card', 'card_is_creature', 'card_moves(battlefield, graveyard)'],
     text: 'Creature died — ~ gets +1/+0 EOT.',
-    effects: [{kind: 'pump', target: 'self', power: 1, toughness: 0}],
+    effects: [{kind: 'pump', scope: 'self', power: 1, toughness: 0}],
   },
   {
     label: 'Hexweaver',
     event: 'card_zone_change',
     condition: ['this_card', 'card_moves(anywhere, battlefield)'],
     text: '~ entered — gain 2 life.',
-    effects: [{kind: 'gain_life', target: 'self', amount: 2}],
+    effects: [{kind: 'gain_life', scope: 'self', amount: 2}],
   },
 ];
 
@@ -2063,8 +2063,8 @@ const EFFECTS = {
     }
   },
   // Sacrifice as an effect (rare — usually sacs are costs). "Sacrifice a
-  // creature" with target:'self' resolves to the source itself; with no
-  // target, the effect controller picks one of their own. v1: only target:'self'
+  // creature" with scope:'self' resolves to the source itself; with no
+  // target, the effect controller picks one of their own. v1: only scope:'self'
   // is wired (e.g., a creature with "When this attacks, sacrifice a creature
   // (this one) to deal 2 damage" — though we don't have such a card yet,
   // having the effect available makes that design space accessible).
@@ -2264,7 +2264,7 @@ const EFFECTS = {
       for (const eff of activeEffects) {
         let tgt = null;
         let snap = null;
-        if (eff.target === 'self') {
+        if (eff.scope === 'self') {
           if (effectOperatesOnCreature(eff)) {
             tgt = {kind:'creature', iid: spellCard.iid, label: spellCard.name};
             snap = snapshotTarget(tgt);
@@ -2673,7 +2673,7 @@ function validateAllCardEffects(cards) {
   return { unknownKinds, unknownFilters, schemaErrors };
 }
 
-// Effect kinds that operate on a creature (vs player) — drives target:'self' meaning.
+// Effect kinds that operate on a creature (vs player) — drives scope:'self' meaning.
 // Add creature-operators here; damage/gain_life/draw/discard/add_mana resolve self → controller.
 const CREATURE_EFFECT_KINDS = new Set([
   'pump', 'add_counter', 'untap', 'affect_creature',
@@ -3080,7 +3080,7 @@ function resolveTrigger(item) {
       // No re-validation: multi-effect triggers (Exorcist [exile, gain_life]) need
       // effect 1 to read pre-effect-0 snapshot. Each effect guards live-target itself.
       applyEffect(ctx, eff, tgt, snap);
-    } else if (eff.target === 'self') {
+    } else if (eff.scope === 'self') {
       // Self → source creature OR source's controller depending on
       // effectOperatesOnCreature.
       let selfTarget = null, selfSnap = null;
@@ -4086,7 +4086,7 @@ function resolveTopOfStack() {
         if (ctx.chosen) { curTgt = ctx.chosen; curSnap = snapshotTarget(ctx.chosen); }
         continue;
       }
-      if (eff.target === 'self') {
+      if (eff.scope === 'self') {
         // Mirror the trigger resolver's branching: self resolves to the
         // SOURCE CREATURE for creature-operating effects, and to the
         // SOURCE'S CONTROLLER (a player target) for player-operating
@@ -4409,7 +4409,7 @@ function doActivateAbility(who, cardIid, abilityIdx, targets, sacIid) {
   // dies (firing dies-triggers) before the ability does anything. This
   // matters for self-sac on creatures with dies-triggers — Carrion Feeder
   // sacing itself would resolve the +1/+1 onto a creature that no longer
-  // exists, but we just no-op gracefully (target:'self' resolves null).
+  // exists, but we just no-op gracefully (scope:'self' resolves null).
   if (ab.cost && ab.cost.sacrifice && sacIid != null) {
     const sacF = findCard(sacIid);
     if (sacF) sacrificeCard(sacF.card, sacF.controller);
@@ -4446,7 +4446,7 @@ function doActivateAbility(who, cardIid, abilityIdx, targets, sacIid) {
       if (ctx.chosen) { abCurTgt = ctx.chosen; abCurSnap = snapshotTarget(ctx.chosen); }
       continue;
     }
-    if (e.target === 'self') {
+    if (e.scope === 'self') {
       tgt = {kind:'creature', iid: card.iid, label: card.name};
       snap = snapshotTarget(tgt);
     } else if (effectNeedsTarget(e)) {

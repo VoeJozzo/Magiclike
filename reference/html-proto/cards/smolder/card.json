@@ -16,8 +16,8 @@
       "kind": "move_card",
       "from_zone": "hand",
       "to_zone": "graveyard",
-      "target": "self",
-      "amount": 2
+      "amount": 2,
+      "scope": "self"
     }
   ],
   "name": "Faithless Looting",

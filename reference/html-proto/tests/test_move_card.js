@@ -170,7 +170,7 @@ console.log('\n=== discard: hand → graveyard, controller (you) gets the forced
 (() => {
   G.you.hand = [ENGINE.makeCard(CREATURE_TPL), ENGINE.makeCard(CREATURE_TPL)];
   const h0 = G.you.hand.length;
-  ENGINE.applyEffect(CTX, { kind: 'move_card', from_zone: 'hand', to_zone: 'graveyard', target: 'self', amount: 1 }, { kind: 'player', who: 'you' });
+  ENGINE.applyEffect(CTX, { kind: 'move_card', from_zone: 'hand', to_zone: 'graveyard', scope: 'self', amount: 1 }, { kind: 'player', who: 'you' });
   check('forcedDiscard prompt set for the human (async — resolved by doDiscard)', !!G.forcedDiscard && G.forcedDiscard.remaining === 1);
   check('hand unchanged until the player picks', G.you.hand.length === h0);
 })();

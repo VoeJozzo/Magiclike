@@ -13,8 +13,8 @@
     },
     {
       "kind": "gain_life",
-      "target": "self",
-      "amount": -2
+      "amount": -2,
+      "scope": "self"
     }
   ],
   "name": "Final Strike",

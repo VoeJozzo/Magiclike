@@ -75,6 +75,26 @@ text sites. Behavior note: under atomic decomposition an indestructible target n
 gets scarred-but-not-destroyed (the monolith fizzled both halves) — an acceptable
 edge on a boss-targeted creature.
 
+v2.0.19: review cleanup (#5a) — self-direction `target:"self"` → `scope:"self"`.
+Per-effect `target: "self"` was the legacy way of saying "this half of the spell
+acts on the source/controller, not the picked target" — which conflated two
+distinct concerns under the `target` field. Migrated to `scope: "self"` (the §3.5
+canonical for self-direction): 44 cards (on-cast + triggers + activated abilities),
+all 4 engine dispatch sites (spell resolver + trigger resolver + two more), all
+card-text rendering sites (~10), 4 AI sites, trigger-generator's 5 template rolls
++ random-trigger card, the scarified-sticker payload (cards.js) + the 5 sticker
+effects defined at the top of engine.js, and the 5 test files that constructed
+synthetic effects with `target:"self"` inputs. Selfplay caught a real regression
+mid-migration: the engine dispatch was sed-switched ahead of all the producers,
+so triggers were briefly running `pump`/`gain_life` with null targets (152
+crashes in 500 games). Completing the producer migration (especially the trigger/
+ability effects in 44 cards — jq's first pass only walked on-cast effects) cleared
+the regression. 1083 green, 500-game selfplay clean. This is **5a** — the
+self-direction half of #5. The multi-target canonicalization (multi_target flag →
+ability-level target_slots on the 5 multi-target spells) is **5b**, deferred: it
+entangles with the staple-merge pipeline (engine.js:518/526 still sets
+multi_target=true on staple), and that's not session-tail work.
+
 v2.0.18: review cleanup (#9) — field-name snake_case sweep. Renamed 24 camelCase
 JSON keys across the card pool to snake_case to match the rest of the wire
 format: `customText`/`multiTarget`/`staticBuffs`/`permanentEot`/`staticCostBump`/

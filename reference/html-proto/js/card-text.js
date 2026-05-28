@@ -149,7 +149,7 @@ function describeEffect(eff, tplEff) {
   })();
   switch (eff.kind) {
     case 'damage':
-      if (eff.target === 'self') return [plainSeg('you take '), amtSeg, plainSeg(' damage')];
+      if (eff.scope === 'self') return [plainSeg('you take '), amtSeg, plainSeg(' damage')];
       if (eff.scope === 'all_creatures') return [plainSeg('deal '), amtSeg, plainSeg(' damage to each creature')];
       return [plainSeg('deal '), amtSeg, plainSeg(' damage to ' + t)];
     case 'gain_life':
@@ -160,11 +160,11 @@ function describeEffect(eff, tplEff) {
       // §D4: a negative amount is life loss — render the sign as "lose N life".
       if (typeof eff.amount === 'number' && eff.amount < 0) {
         const n = -eff.amount;
-        if (eff.target === 'self')   return [plainSeg('you lose ' + n + ' life')];
+        if (eff.scope === 'self')   return [plainSeg('you lose ' + n + ' life')];
         if (eff.target === 'player' || eff.target === 'opp') return [plainSeg(t + ' loses ' + n + ' life')];
         return [plainSeg('lose ' + n + ' life')];
       }
-      if (eff.target === 'self')   return [plainSeg('you gain '), amtSeg, plainSeg(' life')];
+      if (eff.scope === 'self')   return [plainSeg('you gain '), amtSeg, plainSeg(' life')];
       if (eff.target === 'player' || eff.target === 'opp') return [plainSeg(t + ' gains '), amtSeg, plainSeg(' life')];
       return [plainSeg('gain '), amtSeg, plainSeg(' life')];
     case 'draw':
@@ -186,7 +186,7 @@ function describeEffect(eff, tplEff) {
       // come in +1/+1 units, so a uniform +N/+N is "N +1/+1 counters" (a +2/+2
       // pump = two +1/+1 counters), not "a +2/+2 counter".
       if (eff.duration === 'permanent') {
-        const onWhom = eff.target === 'self' ? 'this' : t;
+        const onWhom = eff.scope === 'self' ? 'this' : t;
         const p = eff.power || 0, tg = eff.toughness || 0;
         if (p === tg && p >= 1) {
           if (p === 1) return [plainSeg('put a +1/+1 counter on ' + onWhom)];
@@ -202,7 +202,7 @@ function describeEffect(eff, tplEff) {
       let subj, verb;
       if (eff.scope === 'all_yours') { subj = 'creatures you control'; verb = ' get '; }
       else if (eff.scope === 'all_creatures') { subj = 'all creatures'; verb = ' get '; }
-      else if (eff.target === 'self') { subj = 'this creature'; verb = ' gets '; }
+      else if (eff.scope === 'self') { subj = 'this creature'; verb = ' gets '; }
       else { subj = t; verb = ' gets '; }
       const negZero = (eff.power || 0) < 0 || (eff.toughness || 0) < 0;
       return [plainSeg(subj + verb), signedStat('power', eff, tplEff, negZero), plainSeg('/'),
@@ -211,7 +211,7 @@ function describeEffect(eff, tplEff) {
     case 'add_counter': {
       const pSeg = bumpedSeg('power', eff, tplEff, 1);
       const tSeg = bumpedSeg('toughness', eff, tplEff, 1);
-      const tail = eff.target === 'self' ? ' counter on this' : ' counter on ' + t;
+      const tail = eff.scope === 'self' ? ' counter on this' : ' counter on ' + t;
       return [plainSeg('put a +'), pSeg, plainSeg('/+'), tSeg, plainSeg(tail)];
     }
     case 'grant_keyword': {
@@ -235,7 +235,7 @@ function describeEffect(eff, tplEff) {
       if (eff.scope === 'all_creatures') {
         return [plainSeg('each creature gains ' + eff.keyword + dur)];
       }
-      if (eff.target === 'self') return [plainSeg('this creature gains ' + eff.keyword + dur)];
+      if (eff.scope === 'self') return [plainSeg('this creature gains ' + eff.keyword + dur)];
       return [plainSeg(t + ' gains ' + eff.keyword + dur)];
     }
     case 'affect_creature': {
@@ -304,7 +304,7 @@ function describeEffect(eff, tplEff) {
       return [plainSeg('move ' + t)];
     }
     case 'untap': {
-      if (eff.target === 'self') return [plainSeg('untap this creature')];
+      if (eff.scope === 'self') return [plainSeg('untap this creature')];
       const filterMinusTapped = eff.filter ? Object.assign({}, eff.filter, {tapped: undefined}) : null;
       const tNoTap = withFilter(targetPhrase(eff), filterMinusTapped ? Object.assign({}, eff, {filter: filterMinusTapped}) : eff);
       return [plainSeg('untap ' + tNoTap)];
@@ -340,7 +340,7 @@ function describeEffect(eff, tplEff) {
       // Edict: under a target(player) step, reads "target player/opponent
       // sacrifices a creature". Otherwise a self/own sacrifice.
       if (eff.target === 'player' || eff.target === 'opp' || eff.target === 'creature_or_player') return [plainSeg(t + ' sacrifices a creature')];
-      if (eff.target === 'self') return [plainSeg('sacrifice this creature')];
+      if (eff.scope === 'self') return [plainSeg('sacrifice this creature')];
       return [plainSeg('sacrifice ' + (t || 'it'))];
     case 'change_control': {
       // Unified gainControl + steal. transfer_ownership renders the steal
@@ -387,7 +387,7 @@ function segsToText(segs) {
 function buffSubjectKey(eff) {
   if (eff.scope === 'all_yours') return 'all_yours';
   if (eff.scope === 'all_creatures') return 'all_creatures';
-  if (eff.target === 'self') return 'self';
+  if (eff.scope === 'self') return 'self';
   return 'tgt:' + (eff.target || '');
 }
 // Coalesce same-subject EOT buffs (pump + keyword grants) into one clause:
@@ -457,7 +457,7 @@ function describeEffectList(effects, cardName, tplEffects, stepTarget, stepFilte
     const seg1 = (typeof e1.amount === 'object' && e1.amount && e1.amount.from)
       ? plainSeg(describeAmount(e1.amount))
       : bumpedSeg('amount', e1, tpl1);
-    if (e1.target === 'self') {
+    if (e1.scope === 'self') {
       return [
         plainSeg(prefix + ' deals '), seg0, plainSeg(' damage to ' + t0 + ' and '),
         seg1, plainSeg(' damage to you.'),
@@ -474,7 +474,7 @@ function describeEffectList(effects, cardName, tplEffects, stepTarget, stepFilte
       && effects[0].from_zone === 'library' && effects[0].to_zone === 'hand'
       && effects[1].kind === 'move_card'
       && effects[1].from_zone === 'hand' && effects[1].to_zone === 'graveyard'
-      && effects[1].target === 'self') {
+      && effects[1].scope === 'self') {
     return capitalizeSegs(parts[0]).concat(plainSeg(', then ')).concat(parts[1]).concat(plainSeg('.'));
   }
   // Flicker pattern (exile then return) — collapsed flicker, one sentence.

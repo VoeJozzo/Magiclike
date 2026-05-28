@@ -23,7 +23,7 @@
       "effects": [
         {
           "kind": "endomorph_absorb",
-          "target": "self"
+          "scope": "self"
         }
       ]
     }
