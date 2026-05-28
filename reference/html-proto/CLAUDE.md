@@ -75,6 +75,19 @@ text sites. Behavior note: under atomic decomposition an indestructible target n
 gets scarred-but-not-destroyed (the monolith fizzled both halves) — an acceptable
 edge on a boss-targeted creature.
 
+v2.0.24: dedup (audit finding). Two extractions, both behavior-preserving:
+(1) `makeSlotTargetGetter(targets)` replaces FOUR byte-identical lazy per-slot
+target-getter closures (spell-resolve, resolveTopOfStack, trigger, ability — the
+audit found 3; there were 4). Each was a Map + closure snapshotting the slot
+target on first read (§3.6). (2) `validTargetsBySlot(card, targetedEffs, who)`
+unifies the slot-grouping + per-slot spec resolution shared by `isLegalAction`
+(cast-legality) and `getLegalActions` (AI enumeration) — the same logic whose
+`slotSpecs ? : eff` comment had already drifted (fixed in v2.0.22), exactly the
+kind of duplication this removes. isLegalAction now checks the given target
+against the slot's resolved set; getLegalActions builds its cross-product from
+the same Map. Equivalent (per-effect validation == per-slot intersection).
+1096 green, 35 multi-target cast regressions pass, 300-game selfplay clean.
+
 v2.0.23: snake_case the dynamic-value DSL (audit #4 — the one Godot-facing miss).
 The `{from:"..."}` computed-amount tokens were still camelCase (the #9 sweep did
 keys only): `targetPower`→`target_power`, `targetToughness`→`target_toughness`,

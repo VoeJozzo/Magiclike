@@ -2251,15 +2251,7 @@ const EFFECTS = {
       const item = r.stackItem;
       const spellCard = item.card;
       const spellCtx = { controller: item.controller, sourceName: spellCard.name, sourceIid: spellCard.iid, sourceCard: spellCard };
-      const slotSnapshots = new Map();
-      const itemTargets = Array.isArray(item.targets) ? item.targets : [];
-      const getTargetForSlot = (slot) => {
-        const tgt = itemTargets[slot] || null;
-        if (!slotSnapshots.has(slot)) {
-          slotSnapshots.set(slot, tgt ? snapshotTarget(tgt) : null);
-        }
-        return { tgt, snap: slotSnapshots.get(slot) };
-      };
+      const getTargetForSlot = makeSlotTargetGetter(Array.isArray(item.targets) ? item.targets : []);
       const activeEffects = effectsForMode(spellCard, item.modeIdx);
       for (const eff of activeEffects) {
         let tgt = null;
@@ -2560,6 +2552,19 @@ function snapshotTarget(target) {
     return { kind: 'player', who: target.who, label: target.label };
   }
   return target;
+}
+
+// Lazy per-slot target getter. Returns {tgt, snap} for a slot index, snapshotting
+// the target the first time that slot is read so multi-effect resolution sees a
+// stable last-known-info snapshot (§3.6). Shared by spell / trigger / ability
+// resolution — each binds its own targets array.
+function makeSlotTargetGetter(targets) {
+  const snapshots = new Map();
+  return (slot) => {
+    const tgt = targets[slot] || null;
+    if (!snapshots.has(slot)) snapshots.set(slot, tgt ? snapshotTarget(tgt) : null);
+    return { tgt, snap: snapshots.get(slot) };
+  };
 }
 
 // Resolve {from:'<name>'} from snapshot/ctx; literals pass through.
@@ -3049,15 +3054,7 @@ function resolveTrigger(item) {
     })(),
     event: item.event || null,
   };
-  const triggerSlotSnapshots = new Map();
-  const triggerTargets = Array.isArray(item.targets) ? item.targets : [];
-  const getTriggerTargetForSlot = (slot) => {
-    const tgt = triggerTargets[slot] || null;
-    if (!triggerSlotSnapshots.has(slot)) {
-      triggerSlotSnapshots.set(slot, tgt ? snapshotTarget(tgt) : null);
-    }
-    return { tgt, snap: triggerSlotSnapshots.get(slot) };
-  };
+  const getTriggerTargetForSlot = makeSlotTargetGetter(Array.isArray(item.targets) ? item.targets : []);
   // New targeting model (§3.5): a top-level `target` step on the trigger means
   // it picked one target (item.targets[0]); bare effects operate on it, and
   // chooses() replaces it. Inert for legacy triggers (none set trig.target) —
@@ -3200,6 +3197,34 @@ function targetsForFilter(filter, controller, restrict) {
       console.warn('Unknown target() filter:', filter);
       return [];
   }
+}
+
+// Per-slot legal targets for a multi-target object's targeted effects. Groups
+// effects by `target_slot`, then resolves each slot's legal set: the canonical
+// card-level `target_slots[slot]` spec (§5b) when present, else the intersection
+// of the per-effect filters sharing that slot (modal charm modes carry per-effect
+// target). Shared by the cast-legality check (isLegalAction) and the AI action
+// enumerator (getLegalActions) so the slot-spec resolution can't drift between
+// them. Returns Map<slot, targets[]>.
+function validTargetsBySlot(card, targetedEffs, who) {
+  const slotSpecs = Array.isArray(card.target_slots) ? card.target_slots : null;
+  const slotMap = new Map();
+  for (const eff of targetedEffs) {
+    const slot = eff.target_slot || 0;
+    if (!slotMap.has(slot)) slotMap.set(slot, []);
+    slotMap.get(slot).push(eff);
+  }
+  const out = new Map();
+  for (const [slot, effs] of slotMap) {
+    if (slotSpecs && slotSpecs[slot]) { out.set(slot, getValidTargets(slotSpecs[slot], who)); continue; }
+    let acc = getValidTargets(effs[0], who);
+    for (let i = 1; i < effs.length; i++) {
+      const next = getValidTargets(effs[i], who);
+      acc = acc.filter(a => next.some(n => sameTarget(a, n)));
+    }
+    out.set(slot, acc);
+  }
+  return out;
 }
 
 // ─── Canonical "does this need a target / what are its legal targets" ─────
@@ -4056,15 +4081,7 @@ function resolveTopOfStack() {
     // etc.). Effects that opt into a distinct target via `target_slot: N`
     // pull from item.targets[N]. Snapshots are computed per slot lazily
     // so each unique slot only snapshots once.
-    const slotSnapshots = new Map();
-    const itemTargets = Array.isArray(item.targets) ? item.targets : [];
-    const getTargetForSlot = (slot) => {
-      const tgt = itemTargets[slot] || null;
-      if (!slotSnapshots.has(slot)) {
-        slotSnapshots.set(slot, tgt ? snapshotTarget(tgt) : null);
-      }
-      return { tgt, snap: slotSnapshots.get(slot) };
-    };
+    const getTargetForSlot = makeSlotTargetGetter(Array.isArray(item.targets) ? item.targets : []);
     // New targeting model (§3.5): a top-level `target` step on the card means
     // the spell collected one target (item.targets[0]); bare effects operate
     // on it by default. `chooses()` REPLACES the operative target with the
@@ -4421,17 +4438,9 @@ function doActivateAbility(who, cardIid, abilityIdx, targets, sacIid) {
   // distinct slot via `target_slot: N`. allTargets is also threaded onto
   // ctx so multi-target effects like apply_in_game_splice (Stapler) can read
   // both inputs directly without relying on inter-effect coordination.
-  const abilitySlotSnapshots = new Map();
-  const abilityTargets = Array.isArray(targets) ? targets : [];
-  const getAbilityTargetForSlot = (slot) => {
-    const tgt = abilityTargets[slot] || null;
-    if (!abilitySlotSnapshots.has(slot)) {
-      abilitySlotSnapshots.set(slot, tgt ? snapshotTarget(tgt) : null);
-    }
-    return { tgt, snap: abilitySlotSnapshots.get(slot) };
-  };
+  const getAbilityTargetForSlot = makeSlotTargetGetter(Array.isArray(targets) ? targets : []);
   // New targeting model (§3.5): a top-level `target` step on the ability means
-  // it picked one target (abilityTargets[0]); bare effects operate on it,
+  // it picked one target (targets[0]); bare effects operate on it,
   // chooses() replaces it. Inert for legacy abilities (none set ab.target).
   const abHasTargetStep = !!ab.target;
   let abCurTgt = null, abCurSnap = null;
@@ -4852,18 +4861,12 @@ function isLegalAction(who, action) {
       if (targetedEffs.length > 0) {
         const maxSlot = targetedEffs.reduce((m, e) => Math.max(m, e.target_slot || 0), 0);
         if (!action.targets || action.targets.length < maxSlot + 1) return false;
-        const slotSpecs = Array.isArray(card.target_slots) ? card.target_slots : null;
+        const bySlot = validTargetsBySlot(card, targetedEffs, who);
         for (const eff of targetedEffs) {
           const slot = eff.target_slot || 0;
           const tgt = action.targets[slot];
           if (!tgt) return false;
-          // Canonical multi-target shape (§5b): the slot's filter is in
-          // card.target_slots[slot]; fall back to the effect's inline filter
-          // for modal cards (charm modes carry per-effect target, no card-level
-          // target_slots).
-          const spec = (slotSpecs && slotSpecs[slot]) ? slotSpecs[slot] : eff;
-          const valid = getValidTargets(spec, who);
-          if (!valid.some(v => sameTarget(v, tgt))) return false;
+          if (!(bySlot.get(slot) || []).some(v => sameTarget(v, tgt))) return false;
         }
       }
       // New targeting model (§3.5): a top-level `target` step is the cast-time
@@ -5129,35 +5132,12 @@ function getLegalActions(who) {
         actions.push(a);
         continue;
       }
-      // Group targeted effects by target_slot. Each unique slot needs one
-      // target. Effects with the same slot share that target — same
-      // legacy behavior as Strength of the Pack (both effects target slot 0).
-      const slotMap = new Map();
-      for (const eff of targetedEffs) {
-        const slot = eff.target_slot || 0;
-        if (!slotMap.has(slot)) slotMap.set(slot, []);
-        slotMap.get(slot).push(eff);
-      }
-      const slotKeys = [...slotMap.keys()].sort((a, b) => a - b);
-      // For each slot, collect valid targets. The valid set is the
-      // intersection of valid-targets across effects sharing the slot
-      // (a slot-0 target must satisfy every slot-0 effect's filter).
-      const slotSpecs = Array.isArray(card.target_slots) ? card.target_slots : null;
-      const validBySlot = slotKeys.map(slot => {
-        // Canonical multi-target shape (§5b): the slot's filter lives in
-        // card.target_slots[slot]. Fall back to per-effect filters for modal
-        // cards (charm modes carry per-effect target, no card-level target_slots).
-        if (slotSpecs && slotSpecs[slot]) return getValidTargets(slotSpecs[slot], who);
-        const effs = slotMap.get(slot);
-        if (effs.length === 1) return getValidTargets(effs[0], who);
-        // Multiple effects on same slot: intersect.
-        let acc = getValidTargets(effs[0], who);
-        for (let i = 1; i < effs.length; i++) {
-          const next = getValidTargets(effs[i], who);
-          acc = acc.filter(a => next.some(n => sameTarget(a, n)));
-        }
-        return acc;
-      });
+      // Per-slot legal targets (slot grouping + spec resolution shared with
+      // isLegalAction via validTargetsBySlot). Each unique slot needs one target;
+      // effects sharing a slot share that target (e.g. Strength of the Pack).
+      const bySlot = validTargetsBySlot(card, targetedEffs, who);
+      const slotKeys = [...bySlot.keys()].sort((a, b) => a - b);
+      const validBySlot = slotKeys.map(slot => bySlot.get(slot));
       // Bail if any slot has no valid targets — spell is uncastable.
       if (validBySlot.some(arr => arr.length === 0)) continue;
       // Build the cross-product of slot targets. For single-target spells
