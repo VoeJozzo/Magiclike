@@ -4,7 +4,7 @@ Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folde
 
 ## Version
 
-**Current: `v2.0.28`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.0.29`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -74,6 +74,22 @@ Deleted the `destroy_and_sticker_slot` handler + all its classification/scoring/
 text sites. Behavior note: under atomic decomposition an indestructible target now
 gets scarred-but-not-destroyed (the monolith fizzled both halves) — an acceptable
 edge on a boss-targeted creature.
+
+v2.0.29: bugfix — two faults behind "Patient Saint + High Priestess + Ajani's
+Pridemate didn't chain." (1) `card_has_subtype(X)` guarded on
+`Array.isArray(c.sub)`, but `sub` is a space-separated STRING everywhere (token
+cards, splice merge, matchFilter), so every subtype-ETB trigger (High Priestess
+"another Cleric entered → gain 2 life"; the subtype lords) silently never fired.
+Now a word-boundary string match (triggers.js), matching matchFilter. (2)
+`scope:'self'` creature effects were silently dropped: the pump/affect_creature/
+grant_keyword handlers route any `params.scope` through `creaturesInScope()`,
+which returns `[]` for `'self'` — so a self-pump applied to NOBODY (Ajani's
+Pridemate + ~13 self-pump cards + the Skirmisher/Reaper stickers; also Char's "1
+damage to you"). The four resolution paths already resolve `scope:'self'` into the
+`target` arg, so `resolveEffectParams` now strips `scope:'self'` and the handler
+operates on that target (engine.js). Neither bug crashed → tests/selfplay stayed
+green (the §8.1 lockstep trap). New `test_scope_self_and_subtype.js` asserts the
+observable effects (9 checks). 1105 green, 300-game selfplay clean.
 
 v2.0.28: dead-code prune — removed the unused `formatCost` helper (render.js).
 The plain-concat mana formatter (`{R:2}`→`"RR"`) was fully superseded by

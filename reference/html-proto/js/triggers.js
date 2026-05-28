@@ -27,7 +27,10 @@ const ATOMIC_PREDICATES = {
   },
   card_has_subtype: (ctx, args) => {
     const c = ctx.event.subject_card;
-    return !!c && Array.isArray(c.sub) && c.sub.indexOf(args[0]) !== -1;
+    // `sub` is a space-separated string everywhere (token cards, splice merge,
+    // matchFilter) — never an array. Word-boundary match mirrors matchFilter so
+    // "Human Cleric Wall" satisfies card_has_subtype(Cleric).
+    return !!c && typeof c.sub === 'string' && new RegExp('\\b' + args[0] + '\\b').test(c.sub);
   },
   card_damaged_by_this: (ctx) => {
     const c = ctx.event.subject_card;

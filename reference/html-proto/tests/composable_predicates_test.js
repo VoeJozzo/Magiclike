@@ -54,7 +54,7 @@ console.log('\n=== evaluateCondition shapes ===');
   const source = { iid: 1 };
   const etbEvt = {
     kind: 'card_zone_change', subject_iid: 2,
-    subject_card: { iid: 2, type: 'Creature', sub: ['Goblin'] },
+    subject_card: { iid: 2, type: 'Creature', sub: 'Goblin' },
     controller: 'you', from_zone: 'hand', to_zone: 'battlefield',
   };
   const ctx = { state: S(), source, event: etbEvt, who: 'you' };
@@ -114,7 +114,7 @@ console.log('\n=== atomic predicates ===');
   check('card_moves(anywhere, graveyard) true (wildcard from)', ATOMIC_PREDICATES.card_moves(ctxDies, ['anywhere', 'graveyard']) === true);
   check('card_moves(battlefield, hand) false', ATOMIC_PREDICATES.card_moves(ctxDies, ['battlefield', 'hand']) === false);
 
-  const gob = { subject_card: { iid: 11, sub: ['Goblin', 'Warrior'] } };
+  const gob = { subject_card: { iid: 11, sub: 'Goblin Warrior' } };
   const ctxGob = { state: S(), source, event: gob, who: 'you' };
   check('card_has_subtype(Goblin) true', ATOMIC_PREDICATES.card_has_subtype(ctxGob, ['Goblin']) === true);
   check('card_has_subtype(Elf) false', ATOMIC_PREDICATES.card_has_subtype(ctxGob, ['Elf']) === false);

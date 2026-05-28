@@ -105,8 +105,8 @@ console.log('\n=== representative migrated cards fire correctly ===');
   if (lord) {
     const subTerm = lord.trig.condition.find((t) => typeof t === 'string' && t.startsWith('card_has_subtype('));
     const sub = subTerm.slice('card_has_subtype('.length, -1).replace(/^"|"$/g, '');
-    const yesEvt = { subject_card: { iid: 2, type: 'Creature', sub: [sub] }, controller: 'you', from_zone: 'hand', to_zone: 'battlefield' };
-    const noEvt = { subject_card: { iid: 2, type: 'Creature', sub: ['SomethingElse'] }, controller: 'you', from_zone: 'hand', to_zone: 'battlefield' };
+    const yesEvt = { subject_card: { iid: 2, type: 'Creature', sub: sub }, controller: 'you', from_zone: 'hand', to_zone: 'battlefield' };
+    const noEvt = { subject_card: { iid: 2, type: 'Creature', sub: 'SomethingElse' }, controller: 'you', from_zone: 'hand', to_zone: 'battlefield' };
     check(`${lord.card.tplId}: fires on ${sub} ETB`, evalFor(lord, yesEvt, 'you') === true);
     check(`${lord.card.tplId}: silent on non-${sub} ETB`, evalFor(lord, noEvt, 'you') === false);
   } else check('subtype-enters lord present', false);

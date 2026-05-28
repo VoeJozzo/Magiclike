@@ -2606,6 +2606,13 @@ function resolveEffectParams(effect, ctx, targetSnap) {
   for (const key of Object.keys(effect)) {
     out[key] = resolveExpr(effect[key], ctx, targetSnap);
   }
+  // scope:'self' is already resolved by the caller into the `target` argument
+  // (the source creature for creature-effects; the controller for player
+  // effects). The handlers' `if (params.scope)` branch is MASS-scope expansion,
+  // and creaturesInScope() returns [] for 'self' — so a leftover scope:'self'
+  // would silently drop the effect (every self-pump card, Char's self-damage).
+  // Strip it so the handler operates on the resolved target.
+  if (out.scope === 'self') delete out.scope;
   return out;
 }
 

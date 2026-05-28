@@ -95,6 +95,9 @@ const CATEGORY_A = [
   'test_signed_life.js',
   // Slice 3 — on-cast targeting migration (golden).
   'effect_migration_test.js',
+  // Regression — card_has_subtype string match + scope:'self' effect application
+  // (subtype-ETB triggers like High Priestess; self-pump like Ajani's Pridemate).
+  'test_scope_self_and_subtype.js',
 ];
 
 const TESTS_DIR = __dirname;
