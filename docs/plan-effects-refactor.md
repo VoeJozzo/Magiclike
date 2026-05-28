@@ -1,6 +1,26 @@
 # Refactor Plan: Unified Effects Registry — Audit, Decompose, and Align
 
-**Status:** Plan complete, ready for review. Not yet executed. (Targeting model: the `target()`/`chooses()` decomposition in §3.5 is canonical throughout; the §3 disposition table's `target_filter` signatures are read via the lens note at its head.)
+**Status:** Plan complete. **Partially executed on proto** (Godot side untouched). The proto-side Slice 3 work + a follow-up review-cleanup pass have landed; the large cross-engine pieces (full §3.5 targeting decomposition, all-card field snake_case, the §3.9 mana deep-clean, Godot adoption) remain. (Targeting model: the `target()`/`chooses()` decomposition in §3.5 is canonical throughout; the §3 disposition table's `target_filter` signatures are read via the lens note at its head.)
+
+### Review-cleanup follow-up status (proto, as of v2.0.17)
+
+A post-Slice-3 review produced a numbered punch-list (#1–#9 + #18 + #27). Disposition — per-item detail lives in `reference/html-proto/CLAUDE.md`'s version log:
+
+| # | Item | Status |
+|---|---|---|
+| 1 | `whose` → `scope` rename + dead-branch kills | ✅ Done (v2.0.11) |
+| 2 | finish `remove_creature` → `affect_creature` + string severities | ✅ Done (v2.0.12); AI-severity bug caught + fixed (v2.0.13) |
+| 3 | dead-branch deletions | ✅ Done (v2.0.11) |
+| 4 | stale comments / docs | ✅ Done (across the pass) |
+| 5 | three targeting shapes → one `target()`/`chooses()` model | ⏸ **Deferred** — this *is* the master plan's §3.5 (L/multi-day, all-card + resolution-layer + both engines). Not a tail-cleanup; needs a dedicated session. |
+| 6 | relocate AI valuation engine.js → ai.js | ✅ Done **partially** (v2.0.16) — relocated the pure-AI spell scorer (`spellValue`/`spellValueForEffects`) + `VALUED`/`UNVALUED` sets. **Intentionally kept** `getCardValue`/`sacValueOnBoard`/`abilityValue` in engine.js: `dealCombatDamage`'s blocker damage-assignment order and the edict `chooses()` auto-pick genuinely consume them, so a full relocation would force a combat-behavior change (the engine's coarse `cardValueOrZero` exists for layering-pure picks, but switching combat onto it is out of scope). |
+| 7 | symmetricize decomposition | ✅ Confirmed already in the decided end-state (no change needed) |
+| 8 | function-call effect-shorthand parser | ✅ Done (v2.0.17) — §5.1 parser + §5.2 movement desugar → `move_card`. `flicker` omitted (needs an unimplemented `previous_target` selector). No card uses shorthand yet (forward seam). |
+| 9 | field-name snake_case sweep (`targetSlot`/`multiTarget`/etc.) | ⏸ **Deferred** — touches all 258 card JSONs **and** the wire format the Godot loader reads. Large mechanical migration with cross-engine blast radius; dedicated session. |
+| 18 | decompose `destroy_and_sticker_slot` (Scarification) | ✅ Done (v2.0.14) |
+| 27 | broaden `rip` + decompose Vile Edict | ✅ Done (v2.0.15) — kept "rip a permanent" breadth via `chooses(permanent)`; rip-edict uses `annihilate` (no-trigger), per §13. |
+
+Note: review #6's full §8.1 redesign (scope-aware *and* `target()`-step-aware valuation + boot coverage assertion) is broader than the v2.0.16 relocation — the coverage assertion (§7b) and scope-aware valuation already landed in Slice 3; the `target()`-step-aware reads are gated on #5/§3.5.
 
 **Pre-execution note:** `rip` is a **broad, zone-agnostic** "tear up that card, gone from your deck forever" primitive (§13) — it strips a card's deck-slot regardless of zone and composes after any targeting/removal (`target(player)→chooses(creature)→annihilate→rip` for a creature; `target(spell)→counter→rip` for a spell). Current code is the narrow bundled `ripPermanent` (battlefield-only, fires triggers — the accepted kludge); the broad decomposed form is the decided target. For the creature/edict case specifically it's one verb off an edict (edict uses `sacrifice`; rip-edict uses `annihilate`, built this pass — §13, review OBS 1). No open questions block execution.
 **Cross-references:** `docs/DIVERGENCE.md` items D1 (target target-state semantics — see §3.6), D2 (`pump` duration → `addCounter`), D3 (`gain_life` flexibility), D4 (`gain_life` signed delta), B4 (delayed-trigger machinery — required for `exile_until_eot` decomposition), C5 (killer attribution — adjacent), E1/E2 (event vocabulary + composable predicates, prerequisite for the `move_card` effect's destination semantics). `docs/RULES.md` §703 (target legality), §704 (resolution + fizzle), §904 (hexproof). `docs/SPEC.md` §1.4 (effect descriptor schema).
