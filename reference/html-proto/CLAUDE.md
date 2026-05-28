@@ -4,7 +4,7 @@ Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folde
 
 ## Version
 
-**Current: `v2.0.32`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.0.33`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -74,6 +74,26 @@ Deleted the `destroy_and_sticker_slot` handler + all its classification/scoring/
 text sites. Behavior note: under atomic decomposition an indestructible target now
 gets scarred-but-not-destroyed (the monolith fizzled both halves) — an acceptable
 edge on a boss-targeted creature.
+
+v2.0.33: modularization-review cleanups (behavior-preserving). A code-health
+sweep (3 parallel surveys, all findings verified against source before acting).
+(1) `change_control` haste rider checked `grant_haste || grant_haste` — the same
+field twice (copy-paste of the line above, which legitimately checks
+`untap_on_take || untap`). Threaten (the only steal-with-haste card) supplies
+`grant_haste`, so haste was always granted correctly — a redundant-clause
+landmine that *looked* like a bug, not an actual one. Collapsed to a single
+check at both sites (engine.js change_control handler + card-text.js rider
+text). (2) Fixed a stale line-number reference in cards.js (cited a line that no
+longer exists; now points at the function/module). Review notes (no code change
+needed): an audit flagged effect handlers writing `G.pending*` as "boundary
+violations" — but that's the prototype's by-design IIFE-state architecture (the
+"don't touch globals from handlers" rule is the *Godot port's* discipline, root
+CLAUDE.md "Patterns to NOT replicate"), and the `pending*` writes are consistent
+across all five modal prompts. Real (deferred) duplication worth a future pass:
+start-screen button construction + choice-modal button/hover styling repeat
+inline cssText; render()'s you/opp pairs *look* loopable but the element IDs
+aren't fully symmetric (`youHand2` vs `oppHand`) — a naive loop would break, so
+that one needs care. 1161 green.
 
 v2.0.32: three QA/devtools items (all browser-verify — DOM not covered by
 Node). (1) Minimap de-dup: the v2.0.30 "always show map" change left

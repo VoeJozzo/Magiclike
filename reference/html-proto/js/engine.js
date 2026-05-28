@@ -2192,7 +2192,7 @@ const EFFECTS = {
     fromBf.splice(idx, 1);
     G[toCtrl].battlefield.push(card);
     if (params.untap_on_take || params.untap) card.tapped = false;
-    if (params.grant_haste || params.grant_haste) applyGrant(card, 'haste', ctx.sourceIid, true);
+    if (params.grant_haste) applyGrant(card, 'haste', ctx.sourceIid, true);
     if (params.duration === 'eot') card.tempControlUntilEot = true;
     log(`${ctx.sourceName} — ${pname(toCtrl)} gains control of ${card.name}` +
         (params.duration === 'eot' ? ' until end of turn.' : '.'), 'sp');

@@ -351,7 +351,7 @@ function describeEffect(eff, tplEff) {
       const segs = [plainSeg(parts.join(''))];
       const riders = [];
       if (eff.untap || eff.untap_on_take) riders.push('untap it');
-      if (eff.grant_haste || eff.grant_haste) riders.push('it gains haste until end of turn');
+      if (eff.grant_haste) riders.push('it gains haste until end of turn');
       if (riders.length > 0) {
         const cap = riders.map(r => r.charAt(0).toUpperCase() + r.slice(1)).join('. ');
         segs.push(plainSeg('. ' + cap));

@@ -347,7 +347,7 @@ STICKERS['scarified'] = {
     // scope:'self' for player-operating effects (damage/gain_life/discard/
     // draw) resolves to the source's controller at trigger time. Pushed
     // onto card.triggers when the sticker applies via the standard
-    // sticker-trigger path at line 2705-2706.
+    // sticker-trigger path in stickers.js (the sticker-apply trigger push).
     effects: [{ kind: 'gain_life', scope: 'self', amount: -1 }],
   },
 };
