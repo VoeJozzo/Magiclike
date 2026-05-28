@@ -4,7 +4,7 @@ Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folde
 
 ## Version
 
-**Current: `v2.0.30`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.0.31`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -74,6 +74,29 @@ Deleted the `destroy_and_sticker_slot` handler + all its classification/scoring/
 text sites. Behavior note: under atomic decomposition an indestructible target now
 gets scarred-but-not-destroyed (the monolith fizzled both halves) — an acceptable
 edge on a boss-targeted creature.
+
+v2.0.31: closed GAP 2 — the human-facing `chooses()` edict prompt. `chooses()`
+(Diabolic Edict / Vile Edict) always auto-picked the lowest-sac-value permanent,
+even when the player forced to sacrifice was the HUMAN — so a human edict-victim
+had their creature chosen for them. Now, when the chooser is `'you'`,
+`resolveTopOfStack`'s chooses-branch defers: it stashes the chosen-dependent
+trailing effects (sacrifice/annihilate/rip) on a new `pendingEdictChoice` modal
+(registered in PENDING_DECISIONS, so `step()`/`anyoneOwesDecision` pauses for the
+pick) and `break`s — the spell still resolves to the graveyard. The human submits
+an `edictChoice` action; `doEdictChoice` rebuilds a minimal ctx with the pick as
+`ctx.chosen`, replays the trailing effects, and `drainTriggers()` (so a sacrificed
+creature's death triggers — Blood Artist — still fire). The AI path is UNCHANGED:
+the handler still auto-picks lowest sac-value for AI choosers, and `AI.decide`
+resolves its own `pendingEdictChoice` the same way (so selfplay, where the
+AI-driven `'you'` seat can be edicted, stays clean — caught a runaway regression
+mid-build that the AI-resolution block fixed). Extracted `choosesEligiblePool` /
+`choosesDescriptor` as the single source for auto-pick + prompt + enumeration.
+New `test_edict_human_choice.js` (27 checks: prompt opens + creature not
+auto-sac'd, the human's pick is honored over the AI's default, legality, the
+human-edicts-AI regression guard, Blood Artist death-trigger drain, and Vile
+Edict's annihilate+rip replay). DOM modal wired (`#edictChoiceModal`,
+mirroring the symmetricize modal) — **browser-verify** (DOM not covered by Node).
+1138 green, 200-game selfplay clean.
 
 v2.0.30: minimap always shows between levels + boss-advance crash fix. (1) The
 post-level map was only rendered when the current node forked (2+ paths); ~70% of

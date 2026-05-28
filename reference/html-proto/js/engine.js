@@ -341,6 +341,7 @@ const PENDING_DECISIONS = [
   { field: 'pendingTriggerBuild',  who: d => d.who,        active: () => true },
   { field: 'pendingNumberChoice',  who: d => d.who,        active: () => true },
   { field: 'pendingSymmetricizeChoice', who: d => d.who,   active: () => true },
+  { field: 'pendingEdictChoice',   who: d => d.who,        active: () => true },
 ];
 
 // True if `who` is owed a decision by any open modal.
@@ -844,6 +845,7 @@ function makeState(playerDeck, oppDeck) {
     // Modal-prompt slots. Each gets PENDING_DECISIONS entry above; engine pauses while non-null.
     pendingNumberChoice: null,        // {who, source, min, max, sourceIid, callback?} — Bargain
     pendingSymmetricizeChoice: null,  // {who, source, targetIid, ..., values:{power,toughness,cost}}
+    pendingEdictChoice: null,         // {who, source, sourceIid, controller, filter, pool, trailingEffects} — human forced-sacrifice (edict) prompt (GAP 2)
     forcedDiscard: null,              // {who, remaining}
     pendingSearch: null,              // {who, filter, source} — tutors
     pendingTriggerBuild: null,        // {who, cardIid, options, allowKeep} — Codex etc.
@@ -1083,6 +1085,29 @@ function getCardValue(card, purpose, ctx) {
   }
 
   return v;
+}
+
+// The set of permanents a `chooses()` step (edict) may select from `who`'s
+// battlefield. `filter`: 'creature' (edict) or 'permanent' (rip-edict —
+// creatures/lands/artifacts). Single source of truth for the auto-pick (AI),
+// the human-prompt setup, and the prompt's legal-action enumeration.
+function choosesEligiblePool(who, filter) {
+  return G[who].battlefield.filter(c =>
+    filter === 'permanent'
+      ? (c.type === 'Creature' || c.type === 'Land' || c.type === 'Artifact')
+      : c.type === 'Creature');
+}
+
+// The ctx.chosen-shaped descriptor for a picked permanent. Snapshots
+// slotIdx+controller so a trailing `rip` can strip the run-deck slot even
+// after an intervening `annihilate` removed the card from the battlefield.
+function choosesDescriptor(c, who) {
+  return {
+    kind: c.type === 'Creature' ? 'creature' : 'permanent',
+    iid: c.iid, label: c.name,
+    slotIdx: (typeof c.slotIdx === 'number') ? c.slotIdx : null,
+    controller: who,
+  };
 }
 
 // Sac/edict scoring — measures board-presence threat (cost sunk).
@@ -2115,10 +2140,7 @@ const EFFECTS = {
     // Honor the chooses() filter: 'creature' (edict) or 'permanent' (rip-edict —
     // creatures/lands/artifacts). Defaults to creature.
     const filter = params.filter || 'creature';
-    const pool = G[who].battlefield.filter(c =>
-      filter === 'permanent'
-        ? (c.type === 'Creature' || c.type === 'Land' || c.type === 'Artifact')
-        : c.type === 'Creature');
+    const pool = choosesEligiblePool(who, filter);
     if (pool.length === 0) {
       const noun = filter === 'permanent' ? 'permanent' : 'creature';
       log(`${ctx.sourceName} — ${pname(who)} has no ${noun} to choose.`, 'sp');
@@ -2127,12 +2149,7 @@ const EFFECTS = {
     }
     const sorted = pool.slice().sort((a, b) => sacValueOnBoard(a) - sacValueOnBoard(b));
     const picked = sorted[0];
-    // Snapshot slotIdx+controller so a trailing rip can strip the deck-slot even
-    // after an intervening annihilate removes the card from the battlefield.
-    ctx.chosen = { kind: picked.type === 'Creature' ? 'creature' : 'permanent',
-      iid: picked.iid, label: picked.name,
-      slotIdx: (typeof picked.slotIdx === 'number') ? picked.slotIdx : null,
-      controller: who };
+    ctx.chosen = choosesDescriptor(picked, who);
     log(`${pname(who)} chooses ${picked.name}.`, 'sp');
   },
   // Register a delayed trigger that applies `effects` at `when` ('end_step'),
@@ -4102,6 +4119,32 @@ function resolveTopOfStack() {
       let tgt = null;
       let snap = null;
       if (eff.kind === 'chooses') {
+        // Human-facing selection (GAP 2): when the player forced to choose is
+        // the human, pause and prompt instead of auto-picking. Stash the
+        // chosen-dependent trailing effects (sacrifice/annihilate/rip); they
+        // replay in doEdictChoice once the human picks. The AI path falls
+        // through to the handler's auto-pick (selfplay/tests unchanged).
+        const chooser = (curTgt && curTgt.kind === 'player') ? curTgt.who : opp(ctx.controller);
+        const choosesFilter = eff.filter || 'creature';
+        if (chooser === 'you') {
+          const pool = choosesEligiblePool(chooser, choosesFilter);
+          if (pool.length > 0) {
+            const idx = activeEffects.indexOf(eff);
+            G.pendingEdictChoice = {
+              who: chooser,
+              source: ctx.sourceName,
+              sourceIid: ctx.sourceIid,
+              controller: ctx.controller,
+              filter: choosesFilter,
+              pool: pool.map(c => choosesDescriptor(c, chooser)),
+              trailingEffects: activeEffects.slice(idx + 1).map(e => ({ ...e })),
+            };
+            const noun = choosesFilter === 'permanent' ? 'permanent' : 'creature';
+            log(`${ctx.sourceName}: ${pname(chooser)} must choose a ${noun} to lose.`, 'sp');
+            break; // defer; spell still moves to graveyard. doEdictChoice resumes.
+          }
+          // empty pool → fall through to the handler (logs "no creature to choose").
+        }
         // Reads the established player (curTgt) and records ctx.chosen; the
         // chosen permanent becomes the operative target for the next effect.
         applyEffect(ctx, eff, curTgt, curSnap);
@@ -4578,6 +4621,28 @@ function doTriggerTargetPick(who, target) {
   // Resume draining the remaining queued triggers (if any).
   drainTriggers();
 }
+// Resume a deferred edict (GAP 2) after the human picks which permanent to
+// lose. The chooses() step paused resolution and stashed the chosen-dependent
+// trailing effects; replay them now with ctx.chosen set, then drain any death
+// triggers (the spell itself already moved to the graveyard at resolution).
+// The trailing effects (sacrifice/annihilate/rip) read only ctx.chosen, so a
+// minimal ctx is sufficient — no live resolution context is held across the
+// pause (matches the plain-data shape of the other pending-choice modals).
+function doEdictChoice(who, iid) {
+  if (!G.pendingEdictChoice || G.pendingEdictChoice.who !== who) return;
+  const p = G.pendingEdictChoice;
+  const picked = p.pool.find(c => c.iid === iid);
+  if (!picked) return; // out-of-pool — guarded by isLegalAction
+  G.pendingEdictChoice = null;
+  const ctx = {
+    controller: p.controller, sourceName: p.source, sourceIid: p.sourceIid,
+    chosen: { kind: picked.kind, iid: picked.iid, label: picked.label,
+      slotIdx: picked.slotIdx, controller: who },
+  };
+  log(`${pname(who)} chooses ${picked.label}.`, 'sp');
+  for (const eff of p.trailingEffects) applyEffect(ctx, eff, null, null);
+  drainTriggers();
+}
 function doSymmetricizeChoice(who, which) {
   // Player picks 'power' | 'toughness' | 'cost'; all three become that value.
   // §3.8 additive snapshot: record the deltas needed to reach N *right now* as
@@ -5030,6 +5095,12 @@ function isLegalAction(who, action) {
       if (!G.pendingSymmetricizeChoice || G.pendingSymmetricizeChoice.who !== who) return false;
       return ['power','toughness','cost'].includes(action.which);
     }
+    case 'edictChoice': {
+      // Legal only when an edict selection prompt (GAP 2) is open for this
+      // player, and the chosen iid is one of the eligible permanents.
+      if (!G.pendingEdictChoice || G.pendingEdictChoice.who !== who) return false;
+      return G.pendingEdictChoice.pool.some(c => c.iid === action.iid);
+    }
     case 'triggerBuildPick': {
       if (!G.pendingTriggerBuild || G.pendingTriggerBuild.who !== who) return false;
       const ptb = G.pendingTriggerBuild;
@@ -5286,6 +5357,14 @@ function getLegalActions(who) {
     actions.push({type:'symmetricizeChoice', which: 'power'});
     actions.push({type:'symmetricizeChoice', which: 'toughness'});
     actions.push({type:'symmetricizeChoice', which: 'cost'});
+  }
+
+  // Edict choice (GAP 2) — one action per eligible permanent the choosing
+  // player controls (the forced-sacrifice selection).
+  if (G.pendingEdictChoice && G.pendingEdictChoice.who === who) {
+    for (const c of G.pendingEdictChoice.pool) {
+      actions.push({type:'edictChoice', iid: c.iid});
+    }
   }
 
   // Pass (always legal as a generic "I'm done")
@@ -5608,6 +5687,7 @@ function executeAction(who, action) {
     case 'triggerBuildPick':  doTriggerBuildPick(who, action.choice); break;
     case 'numberChoice':      doNumberChoice(who, action.number); break;
     case 'symmetricizeChoice': doSymmetricizeChoice(who, action.which); break;
+    case 'edictChoice':       doEdictChoice(who, action.iid); break;
     case 'pass':             doPass(who); break;
     case 'endTurn':          doEndTurn(who); break;
   }

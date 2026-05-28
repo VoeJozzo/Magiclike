@@ -2973,6 +2973,10 @@ function symmetricizeChoice(which) {
   submit({type: 'symmetricizeChoice', which});
 }
 
+function edictChoice(iid) {
+  submit({type: 'edictChoice', iid});
+}
+
 function submit(action) {
   ENGINE.executeAction('you', action);
 }
@@ -3012,7 +3016,7 @@ return {
   init, gameOverClick, clickHand, clickBattlefield, clickStackTarget, clickPlayerTarget,
   closeCardPopup, attachLongPress,
   openZone, closeZone,
-  cancelTarget, endTurn, passAction, doneDeclaring, concede, searchPick, triggerBuildPick, numberChoice, symmetricizeChoice, toggleLog,
+  cancelTarget, endTurn, passAction, doneDeclaring, concede, searchPick, triggerBuildPick, numberChoice, symmetricizeChoice, edictChoice, toggleLog,
   pickModalMode, cancelModalChoice,
   pendingModalChoice: () => pendingModalChoice,
   toggleStats, statsExport, statsClear,

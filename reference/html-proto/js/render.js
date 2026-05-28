@@ -4,6 +4,7 @@ function passLabel(G, expectedActor) {
   if (G.pendingTriggerTarget && G.pendingTriggerTarget.controller === 'you') return 'Pick Target';
   if (G.pendingNumberChoice && G.pendingNumberChoice.who === 'you') return 'Pick a Number';
   if (G.pendingSymmetricizeChoice && G.pendingSymmetricizeChoice.who === 'you') return 'Pick a Value';
+  if (G.pendingEdictChoice && G.pendingEdictChoice.who === 'you') return 'Choose';
   if (G.priority && G.stack.length > 0) return 'No Reaction';
   if (G.phase === 'COMBAT_ATTACK' && G.activePlayer === 'you' && !G.attackersDeclared) return 'Skip Combat';
   if (G.phase === 'COMBAT_BLOCK'  && G.activePlayer === 'opp' && !G.blockersDeclared) return 'No Blocks';
@@ -159,6 +160,7 @@ function render() {
                   || (G.pendingTriggerTarget && G.pendingTriggerTarget.controller === 'you')
                   || (G.pendingNumberChoice && G.pendingNumberChoice.who === 'you')
                   || (G.pendingSymmetricizeChoice && G.pendingSymmetricizeChoice.who === 'you')
+                  || (G.pendingEdictChoice && G.pendingEdictChoice.who === 'you')
                   || expectedActor !== 'you';
 
   document.getElementById('btnEnd').disabled =
@@ -331,6 +333,34 @@ function render() {
   } else {
     Modal.hide('symmetricizeChoiceModal');
   }
+  // Edict forced-sacrifice prompt (GAP 2). The targeted (human) player picks
+  // which of their permanents to lose; the engine replays the trailing
+  // sacrifice/annihilate/rip against the pick.
+  if (G.pendingEdictChoice && G.pendingEdictChoice.who === 'you') {
+    Modal.show('edictChoiceModal', { dismissible: false });
+    const p = G.pendingEdictChoice;
+    const noun = p.filter === 'permanent' ? 'permanent' : 'creature';
+    document.getElementById('edictChoiceSubtitle').innerHTML =
+      `${p.source} forces you to sacrifice a ${noun}.<br>` +
+      `<span style="color:#888;font-size:11px">Choose which one to lose.</span>`;
+    const btns = document.getElementById('edictChoiceButtons');
+    btns.innerHTML = '';
+    for (const c of p.pool) {
+      const live = G.you.battlefield.find(x => x.iid === c.iid);
+      let stats = '';
+      if (live && live.type === 'Creature') { const [pw, to] = ENGINE.getStats(live); stats = `${pw}/${to}`; }
+      const b = document.createElement('button');
+      b.innerHTML = `<div style="font-size:13px;font-weight:bold">${c.label}</div>`
+        + (stats ? `<div style="font-size:11px;opacity:0.7;margin-top:2px">${stats}</div>` : '');
+      b.style.cssText = 'background:#201515;border:2px solid #cc8888;color:#eecccc;padding:12px 20px;font-family:inherit;cursor:pointer;border-radius:6px;min-width:90px;transition:transform .1s,background .1s';
+      b.onmouseover = () => { b.style.background = '#2c1e1e'; b.style.transform = 'translateY(-2px)'; };
+      b.onmouseout  = () => { b.style.background = '#201515'; b.style.transform = 'translateY(0)'; };
+      b.onclick = () => CONTROLLER.edictChoice(c.iid);
+      btns.appendChild(b);
+    }
+  } else {
+    Modal.hide('edictChoiceModal');
+  }
   // Modal-spell mode picker — illegal modes disabled but rendered for visibility.
   const pmc = CONTROLLER.pendingModalChoice();
   if (pmc) {
@@ -411,6 +441,8 @@ function render() {
     sb.textContent = `${G.pendingNumberChoice.source} — pick a number from ${G.pendingNumberChoice.min} to ${G.pendingNumberChoice.max}.`;
   } else if (G.pendingSymmetricizeChoice && G.pendingSymmetricizeChoice.who === 'you') {
     sb.textContent = `${G.pendingSymmetricizeChoice.source} on ${G.pendingSymmetricizeChoice.targetName} — pick power, toughness, or cost.`;
+  } else if (G.pendingEdictChoice && G.pendingEdictChoice.who === 'you') {
+    sb.textContent = `${G.pendingEdictChoice.source} — choose a ${G.pendingEdictChoice.filter === 'permanent' ? 'permanent' : 'creature'} to sacrifice.`;
   } else if (G.forcedDiscard && G.forcedDiscard.who === 'you' && G.forcedDiscard.remaining > 0) {
     sb.textContent = `${G.forcedDiscard.source} — choose ${G.forcedDiscard.remaining} more card(s) to discard.`;
   } else if (G.cleanupDiscarding && G.activePlayer === 'you') {

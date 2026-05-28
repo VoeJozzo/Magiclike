@@ -190,6 +190,20 @@ function decide(state, who) {
     return {type:'symmetricizeChoice', which};
   }
 
+  // Edict forced-sacrifice (GAP 2): pick the lowest sac-value permanent —
+  // mirrors the engine's former auto-pick, so AI-vs-AI edicts resolve
+  // identically to before the human-prompt path existed.
+  if (state.pendingEdictChoice && state.pendingEdictChoice.who === who) {
+    const pool = state.pendingEdictChoice.pool;
+    let bestIid = pool.length ? pool[0].iid : null, bestVal = Infinity;
+    for (const d of pool) {
+      const f = ENGINE.findCard(d.iid);
+      const val = f ? ENGINE.sacValueOnBoard(f.card) : 0;
+      if (val < bestVal) { bestVal = val; bestIid = d.iid; }
+    }
+    return {type:'edictChoice', iid: bestIid};
+  }
+
   // Sim-mode forced discard (production routes 'you' through UI).
   // Discard lowest getCardValue (not cheapest-cost — a cheap removal beats expensive filler).
   if (state.forcedDiscard && state.forcedDiscard.who === who && state.forcedDiscard.remaining > 0) {
