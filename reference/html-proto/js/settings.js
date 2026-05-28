@@ -69,6 +69,10 @@ const DEFAULTS = {
   // picker UI. Off by default for the user-facing build; flipped on via
   // the "Devtools" section in the settings panel.
   showFontDevtools:     false,
+  // Devtools: when true, the AI opponent's hand renders face-up instead of
+  // as cardbacks — for judging whether AI decisions are reasonable given
+  // what it's actually holding. Off by default. Toggled in the same section.
+  revealAiHand:         false,
 };
 
 // Options for the popup text scale dropdown. Values < 1 dampen the text

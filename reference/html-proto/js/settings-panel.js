@@ -62,6 +62,22 @@ function makeSlotHeader(parent, text) {
   parent.appendChild(h);
 }
 
+// One labeled checkbox bound to a boolean SETTINGS key. onToggle(checked) runs
+// after the new value is persisted (e.g. to reveal a sub-panel or repaint the
+// board). Returns the <input> so callers can read/drive it.
+function addDevtoolsToggle(parent, labelText, key, onToggle) {
+  const label = document.createElement('label');
+  label.style.cssText = 'display:flex;align-items:center;gap:8px;color:#cce;font-size:12px;cursor:pointer;padding:2px 0';
+  const cb = document.createElement('input');
+  cb.type = 'checkbox';
+  cb.checked = !!SETTINGS.get(key);
+  label.appendChild(cb);
+  label.appendChild(document.createTextNode(labelText));
+  parent.appendChild(label);
+  cb.onchange = () => { SETTINGS.set(key, cb.checked); if (onToggle) onToggle(cb.checked); };
+  return cb;
+}
+
 // Devtools collapsible. Default-collapsed; if showFontDevtools is already
 // true from a prior session, start expanded so the toggle is reachable.
 // The font-picker UI lives in pickerArea (returned for the rest of render
@@ -85,24 +101,20 @@ function renderDevtoolsCollapsible(list) {
     devtoolsHeader.textContent = (visible ? '▸' : '▾') + ' Devtools';
   };
 
-  const fontPickerToggle = document.createElement('label');
-  fontPickerToggle.style.cssText = 'display:flex;align-items:center;gap:8px;color:#cce;font-size:12px;cursor:pointer;padding:2px 0';
-  const fontPickerCheckbox = document.createElement('input');
-  fontPickerCheckbox.type = 'checkbox';
-  fontPickerCheckbox.checked = !!SETTINGS.get('showFontDevtools');
-  fontPickerToggle.appendChild(fontPickerCheckbox);
-  fontPickerToggle.appendChild(document.createTextNode('Show font picker UI'));
-  devtoolsBody.appendChild(fontPickerToggle);
-
   const pickerArea = document.createElement('div');
   pickerArea.style.display = SETTINGS.get('showFontDevtools') ? '' : 'none';
+
+  addDevtoolsToggle(devtoolsBody, 'Show font picker UI', 'showFontDevtools', (on) => {
+    pickerArea.style.display = on ? '' : 'none';
+  });
+  // Reveal the AI's hand face-up (cardbacks → real cards) for judging AI play.
+  // Repaint immediately so the change shows without waiting for the next tick;
+  // render() reads ENGINE.state(), so guard for the not-in-game case.
+  addDevtoolsToggle(devtoolsBody, "Reveal AI opponent's hand", 'revealAiHand', () => {
+    if (typeof render === 'function') { try { render(); } catch (e) { /* not in a game */ } }
+  });
+
   list.appendChild(pickerArea);
-
-  fontPickerCheckbox.onchange = () => {
-    SETTINGS.set('showFontDevtools', fontPickerCheckbox.checked);
-    pickerArea.style.display = fontPickerCheckbox.checked ? '' : 'none';
-  };
-
   return pickerArea;
 }
 

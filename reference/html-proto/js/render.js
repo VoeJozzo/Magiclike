@@ -138,7 +138,7 @@ function render() {
   }
 
   renderHand('youHand', G.you.hand, 'you');
-  renderOppHandBacks(G.opp.hand.length);
+  renderOppHand(G.opp.hand);
   renderBf('youBf', G.you.battlefield, 'you');
   renderBf('oppBf', G.opp.battlefield, 'opp');
 
@@ -728,10 +728,21 @@ function canPlayFromUI(who, card) {
   return ENGINE.isLegalAction(who, {type:'castSpell', cardIid: card.iid});
 }
 
-function renderOppHandBacks(n) {
+function renderOppHand(hand) {
   const el = document.getElementById('oppHandView');
   el.innerHTML = '';
-  for (let i=0; i<n; i++) {
+  // Devtools (revealAiHand): show the AI's actual cards face-up for judging
+  // its decisions. Read-only — no onclick, since the player can't play them.
+  if (typeof SETTINGS !== 'undefined' && SETTINGS.get('revealAiHand')) {
+    for (const card of hand) {
+      const div = makeCardEl(card, { inHand: true });
+      div.style.setProperty('--scale', '0.5');
+      div.classList.add('ai-revealed');
+      el.appendChild(div);
+    }
+    return;
+  }
+  for (let i = 0; i < hand.length; i++) {
     // Cardback: just the C-color frame at small scale, inner elements
     // hidden by .frame-cardback CSS. No name / no art / no cost rendered.
     el.innerHTML += '<div class="card-frame col-C frame-cardback" style="--scale: 0.35"></div>';
