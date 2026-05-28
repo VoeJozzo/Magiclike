@@ -4,7 +4,7 @@ Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folde
 
 ## Version
 
-**Current: `v2.0.27`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.0.28`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -74,6 +74,15 @@ Deleted the `destroy_and_sticker_slot` handler + all its classification/scoring/
 text sites. Behavior note: under atomic decomposition an indestructible target now
 gets scarred-but-not-destroyed (the monolith fizzled both halves) — an acceptable
 edge on a boss-targeted creature.
+
+v2.0.28: dead-code prune — removed the unused `formatCost` helper (render.js).
+The plain-concat mana formatter (`{R:2}`→`"RR"`) was fully superseded by
+`formatCostBraced` (`"{R}{R}"`, the input to `renderManaSymbols`); it had zero
+callers across js/ + tests/ + the HTML shell. A conservative whole-corpus
+reference scan (raw `\bname\b` counts with strings INCLUDED, so `onclick=`
+handler refs are counted — stripping them is what makes naive dead-code scans
+lie) found it the only declared function appearing exactly once, confirming the
+v2.0.11→v2.0.27 cleanup arc left the engine clean. Behavioral no-op; 1096 green.
 
 v2.0.27: inlined the always-true FLASH_AI_ENABLED flag. With the A/B setter gone
 (v2.0.26), the flag was a `const true` gating 4 `if (FLASH_AI_ENABLED && …)` sites

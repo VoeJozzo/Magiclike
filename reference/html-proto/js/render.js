@@ -1319,13 +1319,6 @@ function makeSyntheticCard({ name, type, sub, text, art, color, cost, power, tou
   return el;
 }
 
-function formatCost(c) {
-  let s = '';
-  if (c.C) s += c.C;
-  for (const k of ['W','U','B','R','G']) s += k.repeat(c[k] || 0);
-  return s || '0';
-}
-
 // Mana-cost in MtG-canonical braced notation: {R:2, C:4} -> "{4}{R}{R}".
 // Plain text — caller pipes through renderManaSymbols() to get pip HTML.
 function formatCostBraced(c) {
