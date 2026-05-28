@@ -1781,7 +1781,7 @@ return {
   isFlashAIEnabled() { return FLASH_AI_ENABLED; },
   // Spell valuation relocated from engine.js (review #6) — exposed for tests
   // (test_ai_targeting, test_effect_coverage) and the engine coverage report.
-  spellValue, spellValueForEffects, VALUED_EFFECT_KINDS, UNVALUED_EFFECT_KINDS,
+  spellValueForEffects, VALUED_EFFECT_KINDS, UNVALUED_EFFECT_KINDS,
 };
 })();
 // END HEURISTIC AI

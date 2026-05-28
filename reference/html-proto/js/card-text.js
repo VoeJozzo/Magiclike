@@ -369,10 +369,6 @@ function describeEffect(eff, tplEff) {
       return [plainSeg('rip ' + (t || 'it'))];
     case 'symmetricize':
       return [plainSeg(t + "'s controller equalizes its power, toughness, or cost")];
-    case 'embargo':
-      return [plainSeg('return ' + t + ' to hand; it costs {1} more forever')];
-    case 'bleach':
-      return [plainSeg('exile ' + t + '; it is colorless forever')];
   }
   return [plainSeg('[' + eff.kind + ']')];
 }

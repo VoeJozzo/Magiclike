@@ -2833,15 +2833,6 @@ function triggerHasAnyValidTarget(trig, controller) {
   return true;
 }
 
-// Auto-pick: no target, or target='self'|'player'|'spell'|'opp'. Else prompt iff >1 valid.
-function triggerNeedsPlayerChoice(eff, controller) {
-  if (!effectNeedsTarget(eff)) return false;
-  const tgt = eff.target;
-  if (tgt === 'self' || tgt === 'player' || tgt === 'spell' || tgt === 'opp') return false;
-  const valid = getValidTargets(eff, controller);
-  return valid.length > 1;
-}
-
 // Does a player-controlled trigger need the player to CHOOSE its target? Returns
 // { valid, promptEff } when there's a real choice (>1 legal target), else null.
 // Covers BOTH the top-level target() step (§3.5 — migrated triggers carry the
@@ -4868,7 +4859,8 @@ function isLegalAction(who, action) {
           if (!tgt) return false;
           // Canonical multi-target shape (§5b): the slot's filter is in
           // card.target_slots[slot]; fall back to the effect's inline filter
-          // (staple-synth shape, which carries inline target on its effects).
+          // for modal cards (charm modes carry per-effect target, no card-level
+          // target_slots).
           const spec = (slotSpecs && slotSpecs[slot]) ? slotSpecs[slot] : eff;
           const valid = getValidTargets(spec, who);
           if (!valid.some(v => sameTarget(v, tgt))) return false;
@@ -5153,8 +5145,8 @@ function getLegalActions(who) {
       const slotSpecs = Array.isArray(card.target_slots) ? card.target_slots : null;
       const validBySlot = slotKeys.map(slot => {
         // Canonical multi-target shape (§5b): the slot's filter lives in
-        // card.target_slots[slot]. Fall back to per-effect filters for the
-        // staple-synthesized shape (which carries inline target on its effects).
+        // card.target_slots[slot]. Fall back to per-effect filters for modal
+        // cards (charm modes carry per-effect target, no card-level target_slots).
         if (slotSpecs && slotSpecs[slot]) return getValidTargets(slotSpecs[slot], who);
         const effs = slotMap.get(slot);
         if (effs.length === 1) return getValidTargets(effs[0], who);
@@ -5692,12 +5684,11 @@ return {
   getModes,
   isModal,
   effectsForMode,
-  allCardEffects,
   cardHasEffect,
   pickBestTriggerTarget,
   matchFilter,
   // Effects seam exposed for tests (Slice 3).
-  applyEffect, creaturesInScope, affectOneCreature, sevToNum, numToSev,
+  applyEffect, creaturesInScope, sevToNum, numToSev,
   targetsForFilter, TARGET_FILTERS, validateAllCardEffects,
   // Canonical targeting-shape API (single source of truth across UI consumers).
   objectNeedsTarget, primaryLegalTargets, probeTargetsForObject,

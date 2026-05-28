@@ -4,7 +4,7 @@ Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folde
 
 ## Version
 
-**Current: `v2.0.2`** — defined at `js/main.js` (`const VERSION`). v2.0.0 was the
+**Current: `v2.0.21`** — defined at `js/main.js` (`const VERSION`). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -74,6 +74,22 @@ Deleted the `destroy_and_sticker_slot` handler + all its classification/scoring/
 text sites. Behavior note: under atomic decomposition an indestructible target now
 gets scarred-but-not-destroyed (the monolith fizzled both halves) — an acceptable
 edge on a boss-targeted creature.
+
+v2.0.22: post-audit cleanups (4 verification agents). Dead-code prune + doc
+corrections. Deleted: dead card-text `case 'embargo'`/`'bleach'` (cards decomposed,
+no kind uses them); dead `triggerNeedsPlayerChoice` (superseded by
+`triggerPlayerTargetPrompt`); dead export entries `allCardEffects`,
+`affectOneCreature` (engine), `spellValue` (AI) — functions stay, only the unused
+export tokens removed. KEPT `EFFECTS.steal` — the audit agents flagged it dead
+("no card uses kind:steal") but `change_control` delegates to it at engine.js
+for the `transfer_ownership` case (Steal card); verified live before NOT deleting.
+Corrected the misleading per-effect-fallback comments (it serves MODAL charm
+cards — which carry per-effect target in their modes — NOT staple-synthesis, which
+the audit proved carries only card-level target). Fixed: stale version header
+(was v2.0.2); `cards/cityGuardian` keyword typo `"first strike"`→`"first_strike"`;
+ARCHITECTURE.md stale effect-dispatch list (removeCreature→affect_creature etc.).
+Corrected a FALSE status claim: #7 symmetricize was marked "already done" but is
+still a monolithic effect (decomposition pending — done next). 1096 green.
 
 v2.0.21: review cleanup (#5b phase 3 — COMPLETE) — target_slots is the single
 source of truth for the 5 multi-target spells. Dropped inline per-effect
