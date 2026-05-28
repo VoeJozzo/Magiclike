@@ -42,7 +42,7 @@ console.log('\n=== both partitions are exhaustive + disjoint over EFFECTS ===');
     check(label + ': union = EFFECTS keys (exhaustive)', uncovered.length === 0 && extra.length === 0,
       'uncovered=[' + uncovered.join(',') + '] extra=[' + extra.join(',') + ']');
   };
-  partition('valuation', ENGINE.VALUED_EFFECT_KINDS, ENGINE.UNVALUED_EFFECT_KINDS);
+  partition('valuation', AI.VALUED_EFFECT_KINDS, AI.UNVALUED_EFFECT_KINDS);
   partition('cast-scoring', TARGET_SCORED_KINDS, NOT_TARGET_SCORED_KINDS);
 })();
 
@@ -71,7 +71,7 @@ console.log('\n=== §12.12 regression: an unhandled HANDLERS kind is CAUGHT ==='
 
 console.log('\n=== a stale valuation entry (registered kind with no handler) is CAUGHT ===');
 (() => {
-  const valued = ENGINE.VALUED_EFFECT_KINDS;
+  const valued = AI.VALUED_EFFECT_KINDS;
   const GHOST = '__ghost_removed_handler__';
   valued.add(GHOST);   // simulate: handler deleted but its registration left behind
   try {

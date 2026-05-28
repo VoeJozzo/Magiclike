@@ -75,6 +75,20 @@ text sites. Behavior note: under atomic decomposition an indestructible target n
 gets scarred-but-not-destroyed (the monolith fizzled both halves) — an acceptable
 edge on a boss-targeted creature.
 
+v2.0.16: review cleanup (#6) — relocated AI spell valuation engine.js → ai.js.
+Moved `spellValue` / `spellValueForEffects` + the `VALUED`/`UNVALUED` effect-kind
+classification to ai.js module scope (exposed on `AI.*` for tests; the engine
+coverage report reads the sets lazily, like the cast-scoring sets). KEPT the
+engine-consumed creature-body heuristics (`getCardValue`, `sacValueOnBoard`,
+`abilityValue`) in engine.js — `dealCombatDamage`'s blocker damage-assignment
+order and the edict `chooses()` auto-pick genuinely depend on them, so a full
+relocation would force a combat-behavior change (the engine has its own coarse
+`cardValueOrZero` for layering-pure picks, but switching combat onto it is a
+behavioral change, out of scope here). No behavioral change; 1058 green, 500-game
+selfplay clean. (Engine internals live in the ENGINE IIFE — ai.js reaches the
+two shared helpers via `ENGINE.sevToNum` / `ENGINE.getModes`; `TOKENS` is a
+top-level global.)
+
 v2.0.15: review cleanup (slice 4a/4) — broadened rip (plan #27/§13). Built the
 zone-agnostic `rip` primitive (run-layer slot-strip reading ctx.chosen's
 snapshotted slotIdx) and decomposed Vile Edict from the `rip_permanent` monolith →

@@ -29,6 +29,126 @@ const NOT_TARGET_SCORED_KINDS = new Set([
   'apply_in_game_splice',  // Stapler ability (player-UI-driven), not AI-scored
 ]);
 
+// AI spell valuation — RELOCATED from engine.js (review #6 — engine/AI layering).
+// These read only shared/exported helpers (`ENGINE.sevToNum`, `TOKENS`,
+// `ENGINE.getModes`) and
+// are pure AI heuristics; the engine consumes none of them. Declared at module
+// scope (outside the AI IIFE) so effectCoverageReport (engine.js) can read the
+// classification sets lazily and tests can reach them via `AI.*`.
+
+// Score a sorcery/instant by best mode. Instants get a flexibility premium.
+function spellValue(card) {
+  const modes = ENGINE.getModes ? ENGINE.getModes(card) : [card.effects || []];
+  let bestModeValue = 0;
+  for (const modeEffects of modes) {
+    const v = spellValueForEffects(modeEffects);
+    if (v > bestModeValue) bestModeValue = v;
+  }
+  if (card.type === 'Instant') bestModeValue += 1;
+  return bestModeValue;
+}
+function spellValueForEffects(effects) {
+  let v = 0;
+  for (const e of (effects || [])) {
+    if (e.kind === 'affect_creature') {
+      // tap < bounce < destroy < exile. `scope` = mass form.
+      const sev = ENGINE.sevToNum(e.severity);
+      if (e.scope) {
+        const sevVal = sev === 1 ? 4 : sev === 2 ? 8 : sev === 3 ? 10 : 14;
+        v += sevVal + ((e.scope === 'all_opps') ? 4 : 0);
+      } else {
+        v += sev === 1 ? 3 : sev === 2 ? 4 : sev === 3 ? 12 : 12;
+      }
+    }
+    // damage with a mass scope values like the legacy damageAll.
+    else if (e.kind === 'damage') v += (e.scope === 'all_creatures') ? (8 + (e.amount || 0) * 2) : (6 + (e.amount || 0));
+    else if (e.kind === 'chooses') v += 6;   // edict idiom (target(player)→chooses→sacrifice)
+    else if (e.kind === 'sacrifice') v += 0;
+    else if (e.kind === 'counter') v += 8;
+    else if (e.kind === 'change_control') {
+      // Unified gainControl + steal valuation (parity).
+      if (e.transfer_ownership) v += 16;        // steal
+      else if (e.duration === 'eot') v += 6;     // threaten
+      else v += 14;                              // mind control
+    }
+    else if (e.kind === 'apply_in_game_splice') v += 18;   // 2-for-1 with cross-game retention
+    else if (e.kind === 'move_card') {
+      // Collapsed draw (library→hand controller_top) / searchCreature
+      // (library→hand library_search) / searchLandTapped (library→battlefield) /
+      // shuffleIntoLibrary (battlefield→library) / returnFromGraveyard
+      // (graveyard→hand) / flicker (battlefield→exile then exile→battlefield) —
+      // valued at parity. The flicker return half adds 0 (the bf→exile half
+      // carries the flicker's whole value).
+      if (e.from_zone === 'library' && e.to_zone === 'hand') v += (e.selector === 'library_search') ? 4 : (e.amount || 1) * 3;
+      else if (e.from_zone === 'library' && e.to_zone === 'battlefield') v += 4;  // land fetch
+      else if (e.from_zone === 'hand' && e.to_zone === 'graveyard') v += 4;  // discard
+      else if (e.from_zone === 'battlefield' && e.to_zone === 'hand') v += 4;  // bounce (embargo half)
+      else if (e.from_zone === 'battlefield' && e.to_zone === 'library') v += 5;
+      else if (e.from_zone === 'graveyard' && e.to_zone === 'hand') v += 4;
+      else if (e.from_zone === 'battlefield' && e.to_zone === 'exile') v += 4;  // flicker outgoing / exile removal (bleach)
+      else if (e.from_zone === 'exile' && e.to_zone === 'battlefield') v += 0;  // flicker return
+      else v += 3;
+    }
+    // §3.8: apply_sticker (cost_mod / set_color / stat_boost snapshot) — the
+    // Balancer family's persistent-tax half. Valued so embargo/bleach keep
+    // their pre-decomposition value alongside the move_card half.
+    else if (e.kind === 'apply_sticker') {
+      const k = e.sticker && e.sticker.kind;
+      v += (k === 'set_color') ? 4 : (k === 'cost_mod') ? 2 : 3;
+    }
+    else if (e.kind === 'rip') v += 8;                  // run-permanent slot strip (rip-edict trailing step)
+    else if (e.kind === 'symmetricize') v += 8;
+    else if (e.kind === 'draw') v += (e.amount || 1) * 3;
+    else if (e.kind === 'discard') v += 4;
+    else if (e.kind === 'gain_life') v += (e.amount || 0) < 0 ? (3 + Math.abs(e.amount) * 2) : 1;
+    else if (e.kind === 'schedule_delayed') v += 1;  // exile_until_eot's return tail (the bf→exile half carries the value)
+    else if (e.kind === 'pump') v += (e.power < 0 || e.toughness < 0) ? (3 + Math.abs(e.toughness || 0)) : 2;
+    else if (e.kind === 'grant_keyword') {
+      // mass-yours-eot Overrun-shape vs single-target permanent vs symmetric.
+      const eot = e.duration === 'eot';
+      if (e.scope === 'all_creatures') v += 0;
+      else if (e.scope === 'all_yours') v += eot ? 6 : 8;
+      else v += eot ? 2 : 3;
+    }
+    else if (e.kind === 'create_tokens') {
+      const tpl = TOKENS[e.tokenId];
+      if (tpl) {
+        const stat = (tpl.power || 0) + (tpl.toughness || 0);
+        const kwBonus = (tpl.keywords || []).reduce((s, k) => s +
+          ({flying: 2, haste: 2, lifelink: 2, deathtouch: 2, trample: 1, vigilance: 1, menace: 1, reach: 1}[k] || 0), 0);
+        const perToken = stat + kwBonus;
+        v += (e.count || 1) * perToken;
+      }
+    }
+    else if (e.kind === 'add_mana') v += 3;
+    else if (e.kind === 'fight_target') v += 5;
+  }
+  return v;
+}
+
+// §7b coverage assertion (plan-effects-refactor §8.1): every kind in the
+// EFFECTS dispatch table must be CLASSIFIED for AI valuation — either it has a
+// real scoring branch (spellValueForEffects / abilityValue), or it is
+// consciously unscored. This partition makes the silent-regression class loud:
+// add an EFFECTS handler and forget to score it → effectCoverageReport flags it
+// (a test fails, a boot warning prints), instead of the AI silently valuing it 0.
+// Keep these two sets exhaustive + disjoint over Object.keys(EFFECTS).
+const VALUED_EFFECT_KINDS = new Set([
+  'damage', 'pump', 'add_counter', 'affect_creature',
+  'symmetricize', 'apply_sticker', 'counter', 'add_mana', 'gain_life', 'draw',
+  'move_card', 'discard', 'grant_keyword', 'create_tokens', 'rip',
+  'chooses', 'schedule_delayed', 'change_control', 'fight_target',
+  'apply_in_game_splice', 'sacrifice',
+]);
+const UNVALUED_EFFECT_KINDS = new Set([
+  'steal',              // internal helper dispatched by change_control; not a card kind
+  'annihilate',         // trailing edict verb; value carried by the edict scoring (sacrifice/annihilate branch)
+  'endomorph_absorb',    // creature ability; value dominated by the body, not separately scored
+  'untap',              // minor utility on abilities; abilityValue default suffices
+  'bargain_sticker_self', // Archdemon of Bargains trigger mechanic; not separately scored
+  'bargain_sticker_other',
+]);
+
 const AI = (function() {
 
 // Flag off → flash creatures cast sorcery-speed; flag on → also ambush + tempo end-step.
@@ -984,7 +1104,7 @@ function pickBestTargetForSpell(state, who, card, options) {
       if (card.type === 'Creature') {
         return {opt, score: 100};
       }
-      let score = ENGINE.spellValueForEffects(modeEffects);
+      let score = spellValueForEffects(modeEffects);
       score += scoreUntargetedSituation(state, who, modeEffects);
       return {opt, score};
     }
@@ -1659,6 +1779,9 @@ return {
   // Test/A-B harness hook. Production always leaves this enabled.
   setFlashAIEnabled(v) { FLASH_AI_ENABLED = !!v; },
   isFlashAIEnabled() { return FLASH_AI_ENABLED; },
+  // Spell valuation relocated from engine.js (review #6) — exposed for tests
+  // (test_ai_targeting, test_effect_coverage) and the engine coverage report.
+  spellValue, spellValueForEffects, VALUED_EFFECT_KINDS, UNVALUED_EFFECT_KINDS,
 };
 })();
 // END HEURISTIC AI

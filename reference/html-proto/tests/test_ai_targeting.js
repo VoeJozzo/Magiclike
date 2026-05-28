@@ -97,7 +97,7 @@ console.log('\n=== migrated mass-damage held when it would wreck only own board 
 
 console.log('\n=== spellValueForEffects: mass/severity forms carry the right value ===');
 (() => {
-  const v = ENGINE.spellValueForEffects;
+  const v = AI.spellValueForEffects;
   // damage+scope(all_creatures): 8 + amount*2.
   check('damage+scope(all_creatures, 2) == 12', v([{ kind: 'damage', amount: 2, scope: 'all_creatures' }]) === 12);
   // affect_creature(destroy, all_creatures): mass removal, sev 3 → 10.
