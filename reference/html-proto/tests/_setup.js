@@ -142,6 +142,8 @@ const EXPOSED = [
   'evalTriggerCondition', 'generateRandomTrigger',
   // Composable-predicate surface (triggers.js, module-scope — Slice 2 / E2).
   'ATOMIC_PREDICATES', 'evaluateCondition', '_parseCall',
+  // Effect-shorthand parser (triggers.js, module-scope — §5.1/§5.2).
+  '_parseEffectCall', 'desugarEffectString', 'normalizeCardEffects',
   'validateAllCardConditions', 'VALID_TRIGGER_EVENTS',
   'triggerArchetype', 'triggerSubtype', 'triggerFiresOnEnter',
   'generateConditionOptions', 'generateEffectOptions', 'assembleTrigger',

@@ -75,6 +75,19 @@ text sites. Behavior note: under atomic decomposition an indestructible target n
 gets scarred-but-not-destroyed (the monolith fizzled both halves) — an acceptable
 edge on a boss-targeted creature.
 
+v2.0.17: review cleanup (#8) — effect-shorthand parser (§5.1/§5.2). Card effects
+may now be authored as function-call strings ("damage(3)", "draw(2)",
+"chooses(creature)") that ingestCard() normalizes to canonical dicts at load
+(triggers.js: `_parseEffectCall` + `desugarEffectString` + `normalizeCardEffects`,
+reusing the predicate lexer). The §5.2 curated movement shorthands (draw/discard/
+mill/bounce/search_for/search_land_tapped/shuffle_into_library/
+target_player_discards) desugar to canonical move_card — verified executable
+against the (already-generalized) move_card handler. `flicker` is intentionally
+omitted: its §5.2 desugar needs a `previous_target` move_card selector the engine
+doesn't implement. Dict-form effects pass through untouched, so the all-dict pool
+is a no-op; no card uses shorthand yet (forward-authoring seam). New
+test_effect_shorthand.js (25 checks incl. end-to-end execution). 1083 green.
+
 v2.0.16: review cleanup (#6) — relocated AI spell valuation engine.js → ai.js.
 Moved `spellValue` / `spellValueForEffects` + the `VALUED`/`UNVALUED` effect-kind
 classification to ai.js module scope (exposed on `AI.*` for tests; the engine

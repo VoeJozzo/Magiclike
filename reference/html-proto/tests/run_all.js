@@ -61,6 +61,8 @@ const CATEGORY_A = [
   'test_stapler_target_slots.js',
   // Slice 3 step 7b — effect coverage assertion (HANDLERS↔valuation/card-text partition).
   'test_effect_coverage.js',
+  // Review #8 — effect-shorthand parser (§5.1 call syntax + §5.2 movement desugar).
+  'test_effect_shorthand.js',
   // Slice 3 steps 0+11 — splice harmonization (shared mergeSpliceData; reward↔in-game parity).
   'test_splice_core.js',
   // v2 targeting — top-level target() restrictions (target_filter) enforced at cast + highlight.

@@ -85,6 +85,106 @@ function _parseCall(str) {
   return { name, args: _splitArgs(argsStr).map(_coerceArg) };
 }
 
+// ─── Effect-shorthand parser (plan-effects-refactor §5.1/§5.2) ──────────────
+// Card effects may be authored as canonical dicts OR as function-call strings
+// ("damage(3)", "draw(2)", "chooses(creature)"). ingestCard() runs
+// normalizeCardEffects() at load so the dispatcher only ever sees dicts;
+// dict-form effects pass through untouched (existing cards are a no-op).
+// `flicker` is intentionally NOT a shorthand: its §5.2 desugar needs a
+// `previous_target` move_card selector the engine doesn't implement yet.
+
+// Parse "kind(pos, key=value)" → {name, positional:[...], kwargs:{...}}. Reuses
+// the predicate lexer (_splitArgs / _coerceArg); adds keyword-arg support: an
+// arg shaped `ident=value` is a kwarg, everything else is positional (and
+// positional must precede kwargs, per §5.1).
+function _parseEffectCall(str) {
+  const open = str.indexOf('('), close = str.lastIndexOf(')');
+  if (open === -1 || close === -1 || close < open) {
+    return { name: str.trim(), positional: [], kwargs: {} };
+  }
+  const name = str.slice(0, open).trim();
+  const argsStr = str.slice(open + 1, close).trim();
+  const positional = [], kwargs = {};
+  if (argsStr !== '') {
+    for (const raw of _splitArgs(argsStr)) {
+      const m = raw.match(/^\s*([A-Za-z_]\w*)\s*=(.*)$/);
+      if (m) kwargs[m[1]] = _coerceArg(m[2]);
+      else positional.push(_coerceArg(raw));
+    }
+  }
+  return { name, positional, kwargs };
+}
+
+// Curated movement shorthands → canonical move_card dict (§5.2). One handler
+// (move_card) runs at execution time; this table is the only place the mapping
+// lives. Builders take the positional args; kwargs are merged on top after.
+const EFFECT_SHORTHAND_MOVE = {
+  draw:    (p) => ({ kind: 'move_card', from_zone: 'library', to_zone: 'hand',      selector: 'controller_top',   amount: p[0] != null ? p[0] : 1 }),
+  mill:    (p) => ({ kind: 'move_card', from_zone: 'library', to_zone: 'graveyard', selector: 'controller_top',   amount: p[0] != null ? p[0] : 1 }),
+  discard: (p) => ({ kind: 'move_card', from_zone: 'hand',    to_zone: 'graveyard', selector: 'controller_chosen', amount: p[0] != null ? p[0] : 1 }),
+  target_player_discards: (p) => ({ kind: 'move_card', from_zone: 'hand', to_zone: 'graveyard', selector: 'target_player_chosen', amount: p[0] != null ? p[0] : 1 }),
+  bounce:               () => ({ kind: 'move_card', from_zone: 'battlefield', to_zone: 'hand',    selector: 'target', amount: 1 }),
+  shuffle_into_library: () => ({ kind: 'move_card', from_zone: 'battlefield', to_zone: 'library', selector: 'target', amount: 1, post: { shuffle: true } }),
+  search_for:           (p) => ({ kind: 'move_card', from_zone: 'library', to_zone: 'hand',        selector: 'library_search', amount: 1, filter: p[0], post: { shuffle: true } }),
+  search_land_tapped:   () => ({ kind: 'move_card', from_zone: 'library', to_zone: 'battlefield', selector: 'library_search', amount: 1, filter: 'land', post: { tap: true, shuffle: true } }),
+};
+
+// Positional-arg field names per atomic effect kind (§5.1). Keyword args
+// (name=value) always work and override; this table just names the positional
+// slots so "damage(3)" === "damage(amount=3)".
+const EFFECT_POSITIONAL = {
+  damage: ['amount'], gain_life: ['amount'],
+  pump: ['power', 'toughness'], add_counter: ['power', 'toughness'],
+  chooses: ['filter'], affect_creature: ['severity'],
+  grant_keyword: ['keyword'], create_tokens: ['tokenId', 'count'],
+  fight_target: [], counter: [], untap: [], sacrifice: [], annihilate: [],
+  rip: [], symmetricize: [],
+};
+
+// Desugar one function-call string to its canonical effect dict.
+function desugarEffectString(str) {
+  const { name, positional, kwargs } = _parseEffectCall(str);
+  if (EFFECT_SHORTHAND_MOVE[name]) {
+    return Object.assign(EFFECT_SHORTHAND_MOVE[name](positional, kwargs), kwargs);
+  }
+  const dict = { kind: name };
+  const slots = EFFECT_POSITIONAL[name] || [];
+  positional.forEach((val, i) => { if (slots[i] != null) dict[slots[i]] = val; });
+  Object.assign(dict, kwargs);
+  return dict;
+}
+
+function _normalizeEffectArray(arr) {
+  if (!Array.isArray(arr)) return arr;
+  const out = [];
+  for (const e of arr) {
+    if (typeof e === 'string') {
+      const d = desugarEffectString(e);
+      if (Array.isArray(d)) out.push(...d); else out.push(d);
+    } else out.push(e);
+  }
+  return out;
+}
+
+// Normalize string-form effects → canonical dicts across every effect-bearing
+// field of a card (on-cast `effects` incl. `{modes}`, activated `abilities`,
+// `triggers`). Dict effects pass through untouched (idempotent for the current
+// all-dict card pool). Called from ingestCard() at load.
+function normalizeCardEffects(card) {
+  if (!card || typeof card !== 'object') return card;
+  if (Array.isArray(card.effects)) card.effects = _normalizeEffectArray(card.effects);
+  else if (card.effects && Array.isArray(card.effects.modes)) {
+    card.effects.modes = card.effects.modes.map(_normalizeEffectArray);
+  }
+  for (const ab of (card.abilities || [])) {
+    if (Array.isArray(ab.effects)) ab.effects = _normalizeEffectArray(ab.effects);
+  }
+  for (const tr of (card.triggers || [])) {
+    if (Array.isArray(tr.effects)) tr.effects = _normalizeEffectArray(tr.effects);
+  }
+  return card;
+}
+
 function _callAtomic(name, ctx, args) {
   const fn = ATOMIC_PREDICATES[name];
   if (!fn) { console.warn('Unknown atomic predicate:', name); return false; }

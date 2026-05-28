@@ -45,6 +45,9 @@ function ingestCard(card) {
     if (!Object.prototype.hasOwnProperty.call(card, 'color')) card.color = colors[0] || null;
     if (!Object.prototype.hasOwnProperty.call(card, 'colors')) card.colors = colors;
   }
+  // Normalize any function-call-shorthand effects to canonical dicts (§5.1/§5.2).
+  // No-op for dict-form effects, so the current all-dict pool is unaffected.
+  if (typeof normalizeCardEffects === 'function') normalizeCardEffects(card);
   return card;
 }
 
