@@ -373,7 +373,7 @@ function continueRun() {
         return;
       }
       const mapState = RUN.getMapState && RUN.getMapState();
-      if (mapState && mapState.pendingChoice) {
+      if (mapState) {
         renderMap();
       } else {
         startNextGameWithBossBanner();
@@ -485,14 +485,12 @@ function nextGame() {
   if (!RUN.isActive()) return;
   if (RUN.getReward()) return;
   const mapState = RUN.getMapState && RUN.getMapState();
-  if (mapState && mapState.pendingChoice) {
-    Modal.hide('gameover');
-    Modal.hide('rewardModal');
+  Modal.hide('gameover');
+  Modal.hide('rewardModal');
+  if (mapState) {
     renderMap();
     return;
   }
-  Modal.hide('gameover');
-  Modal.hide('rewardModal');
   lastGameRecorded = false;
   startNextGameWithBossBanner();
 }
@@ -660,17 +658,27 @@ function pickPostDraftOfferClick(tplId) {
 
 function renderMap() {
   const ms = RUN.getMapState();
-  if (!ms || !ms.pendingChoice) {
+  if (!ms) {
     Modal.hide('mapModal');
     return;
   }
+  // Always show the map between levels. A forking node (2+ paths) is an
+  // interactive choice; otherwise it's a "you are here" view with a Continue
+  // button that auto-advances (single path) or drops into the next sector.
+  const hasChoice = !!ms.pendingChoice;
   Modal.show('mapModal');
   const toRoman = n => {
     const r = ['', 'I','II','III','IV','V','VI','VII','VIII','IX','X'];
     return r[n] || String(n);
   };
-  setText('mapTitle', `Sector ${toRoman(ms.sectorNum)} — Choose Your Path`);
-  const legal = new Set(ms.pendingChoice.options);
+  setText('mapTitle', `Sector ${toRoman(ms.sectorNum)} — ${hasChoice ? 'Choose Your Path' : 'Your Path'}`);
+  setText('mapSubtitle', hasChoice ? 'Pick the next node to face.' : 'Your journey so far.');
+  const contBtn = document.getElementById('mapContinue');
+  if (contBtn) {
+    contBtn.style.display = hasChoice ? 'none' : 'block';
+    contBtn.onclick = hasChoice ? null : continueFromMap;
+  }
+  const legal = new Set(hasChoice ? ms.pendingChoice.options : []);
   const visited = new Set(ms.visitedNodeIds);
   const current = ms.currentNodeId;
 
@@ -808,6 +816,16 @@ function renderMap() {
 
 function pickMapNodeClick(nodeId) {
   if (!RUN.pickMapNode(nodeId)) return;
+  Modal.hide('mapModal');
+  lastGameRecorded = false;
+  startNextGameWithBossBanner();
+  render();
+}
+
+// Non-fork advance: the map was shown as a progress view (no choice to make).
+// startNextGame() auto-advances a single-successor node or drops into the next
+// sector's root, mirroring the no-choice path that used to skip the map.
+function continueFromMap() {
   Modal.hide('mapModal');
   lastGameRecorded = false;
   startNextGameWithBossBanner();

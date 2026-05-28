@@ -412,7 +412,7 @@ function startNextGame() {
   let bossName = null;
   let bossIcon = null;
   if (curNode && curNode.type === 'boss' && constructedId) {
-    const spec = getConstructedDeck(constructedId);
+    const spec = DRAFT.getConstructedDeck(constructedId);
     if (spec && spec.name) bossName = spec.name;
     if (spec && spec.icon) bossIcon = spec.icon;
   }

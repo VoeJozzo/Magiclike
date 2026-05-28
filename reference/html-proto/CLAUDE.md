@@ -4,7 +4,7 @@ Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folde
 
 ## Version
 
-**Current: `v2.0.29`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.0.30`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -74,6 +74,21 @@ Deleted the `destroy_and_sticker_slot` handler + all its classification/scoring/
 text sites. Behavior note: under atomic decomposition an indestructible target now
 gets scarred-but-not-destroyed (the monolith fizzled both halves) — an acceptable
 edge on a boss-targeted creature.
+
+v2.0.30: minimap always shows between levels + boss-advance crash fix. (1) The
+post-level map was only rendered when the current node forked (2+ paths); ~70% of
+nodes are single-path or dead-ends, so the map was usually skipped. Now the
+controller always renders it: interactive at forks (unchanged), and a "you are
+here" view with a Continue button on single-path nodes and at sector starts
+(`renderMap` no longer early-returns on no-choice; new `continueFromMap` advances
+via the same `startNextGame` path). UI-only — verify the modal/button in a
+browser. (2) BUG found while verifying: advancing into a boss node threw
+`ReferenceError: getConstructedDeck is not defined` — `startNextGame` (run.js)
+called the bare name, but it lives inside draft.js's DRAFT IIFE (every other site
+uses `DRAFT.getConstructedDeck`). Slipped in at the v1.0.135 meta.js→run.js split;
+fixed. The boss banner never worked before this (the crash preempted it). New
+`test_map_progression.js` walks a full sector (root→boss→next sector) asserting no
+throw + map state present every transition. 1111 green.
 
 v2.0.29: bugfix — two faults behind "Patient Saint + High Priestess + Ajani's
 Pridemate didn't chain." (1) `card_has_subtype(X)` guarded on

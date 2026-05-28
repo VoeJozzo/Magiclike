@@ -600,6 +600,8 @@ button:disabled{opacity:.4;cursor:not-allowed}
 .map-color-badge.col-R{background:#cc5544;color:#300000}
 .map-color-badge.col-G{background:#5a8844;color:#001a00}
 #mapEdges{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:1}
+#mapContinue{display:none;margin:14px auto 0;padding:10px 24px;background:#2a4a2a;border:1px solid #4a8a4a;color:#aaffaa;border-radius:4px;cursor:pointer;font-size:14px;letter-spacing:1px;font-family:Georgia,serif}
+#mapContinue:hover{background:#3a5a3a}
 #mapTooltip{position:absolute;display:none;background:#0a1218;border:1px solid #66ddaa;border-radius:4px;padding:6px 10px;color:#bbe;font-size:11px;letter-spacing:0.05em;text-transform:uppercase;font-family:Georgia,serif;pointer-events:none;z-index:10;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.6)}
 #mapTooltip.vis{display:block}
 #rewardBox{background:#181820;border:2px solid #ffd700;border-radius:10px;padding:24px 18px;max-width:760px;width:100%;text-align:center;box-shadow:0 0 30px rgba(255,215,0,.25);margin:auto}
@@ -883,6 +885,7 @@ body.ai-thinking #status{
       <div id="mapLevels"></div>
       <div id="mapTooltip"></div>
     </div>
+    <button id="mapContinue">Continue &#9654;</button>
   </div>
 </div>
 <div id="draftScreen">

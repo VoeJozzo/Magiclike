@@ -98,6 +98,9 @@ const CATEGORY_A = [
   // Regression — card_has_subtype string match + scope:'self' effect application
   // (subtype-ETB triggers like High Priestess; self-pump like Ajani's Pridemate).
   'test_scope_self_and_subtype.js',
+  // Regression — boss-node advance must not crash (DRAFT.getConstructedDeck) +
+  // map state present at every transition (the "always show minimap" contract).
+  'test_map_progression.js',
 ];
 
 const TESTS_DIR = __dirname;
