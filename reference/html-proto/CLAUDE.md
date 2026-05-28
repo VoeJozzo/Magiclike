@@ -4,7 +4,7 @@ Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folde
 
 ## Version
 
-**Current: `v2.0.21`** — defined at `js/main.js` (`const VERSION`). v2.0.0 was the
+**Current: `v2.0.25`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -74,6 +74,17 @@ Deleted the `destroy_and_sticker_slot` handler + all its classification/scoring/
 text sites. Behavior note: under atomic decomposition an indestructible target now
 gets scarred-but-not-destroyed (the monolith fizzled both halves) — an acceptable
 edge on a boss-targeted creature.
+
+v2.0.25 (docs): re-corrected the #7 symmetricize status. v2.0.22 claimed #7 was
+"NOT done (still monolithic)" — that was wrong, an over-correction from an audit
+agent's surface read. Verified by reading the handler + doSymmetricizeChoice
+against §3.8: symmetricize IS decomposed per spec — it stays a named effect with
+a player-choice prompt (§3.8 explicitly specifies "the effect computes its value
+via its player-choice prompt and calls the shared apply path") and emits
+stat_boost + cost_mod snapshot stickers via the shared pipeline (no bespoke slot
+field; applyBalancerOverrides/symmetrizedTo gone). No code change — the code was
+already correct; only the doc status was wrong. (The "decompose symmetricize"
+audit task resolved to: it's already done; nothing to build.)
 
 v2.0.24: dedup (audit finding). Two extractions, both behavior-preserving:
 (1) `makeSlotTargetGetter(targets)` replaces FOUR byte-identical lazy per-slot
