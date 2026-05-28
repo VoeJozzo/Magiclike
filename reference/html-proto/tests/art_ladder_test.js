@@ -1,4 +1,4 @@
-// effectiveArt(card) picks the right art from a card's artLadder based
+// effectiveArt(card) picks the right art from a card's art_ladder based
 // on its current power+toughness. Currently only Elystra uses this; the
 // mechanism is generic and any card.json can declare its own ladder.
 
@@ -11,7 +11,7 @@ function check(label, ok, info) {
   if (ok) pass++; else fail++;
 }
 
-console.log('=== effectiveArt: card with no artLadder returns card.art unchanged ===');
+console.log('=== effectiveArt: card with no art_ladder returns card.art unchanged ===');
 {
   const lions = ENGINE.makeCard('savannahLions');
   check('non-ladder card returns its base art', effectiveArt(lions) === lions.art,
@@ -73,26 +73,26 @@ console.log('\n=== effectiveArt: just-below-threshold boundaries ===');
     /art-2\.png$/.test(effectiveArt(elystra)));
 }
 
-console.log("\n=== effectiveArt: template's artLadder is in the card data ===");
+console.log("\n=== effectiveArt: template's art_ladder is in the card data ===");
 {
   const elystraTpl = CARDS['elystra'];
-  check('Elystra template has artLadder', Array.isArray(elystraTpl.artLadder));
-  check('artLadder has 3 rungs', elystraTpl.artLadder.length === 3);
-  check('rungs are ordered by minPT ascending',
-    elystraTpl.artLadder[0].minPT < elystraTpl.artLadder[1].minPT &&
-    elystraTpl.artLadder[1].minPT < elystraTpl.artLadder[2].minPT);
+  check('Elystra template has art_ladder', Array.isArray(elystraTpl.art_ladder));
+  check('art_ladder has 3 rungs', elystraTpl.art_ladder.length === 3);
+  check('rungs are ordered by min_pt ascending',
+    elystraTpl.art_ladder[0].min_pt < elystraTpl.art_ladder[1].min_pt &&
+    elystraTpl.art_ladder[1].min_pt < elystraTpl.art_ladder[2].min_pt);
   check('thresholds are 0 / 10 / 20',
-    elystraTpl.artLadder[0].minPT === 0 &&
-    elystraTpl.artLadder[1].minPT === 10 &&
-    elystraTpl.artLadder[2].minPT === 20);
+    elystraTpl.art_ladder[0].min_pt === 0 &&
+    elystraTpl.art_ladder[1].min_pt === 10 &&
+    elystraTpl.art_ladder[2].min_pt === 20);
 }
 
 console.log('\n=== effectiveArt: non-Creature with ladder ignored (defensive) ===');
 {
   // Fake non-creature with a ladder. The helper should return base art
   // since computing p+t doesn't make sense for non-creatures.
-  const fake = { type: 'Instant', art: 'base.png', artLadder: [
-    { minPT: 0, art: 'low.png' }, { minPT: 10, art: 'high.png' }
+  const fake = { type: 'Instant', art: 'base.png', art_ladder: [
+    { min_pt: 0, art: 'low.png' }, { min_pt: 10, art: 'high.png' }
   ]};
   check('Non-creature returns base art ignoring ladder',
     effectiveArt(fake) === 'base.png');

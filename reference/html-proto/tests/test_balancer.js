@@ -94,10 +94,10 @@ console.log('\n=== scarification (#18): apply_sticker(scarified by id) + affect_
 (() => {
   // Decomposed from the old destroy_and_sticker_slot monolith. Sticker-FIRST so
   // the run-slot scar lands while the creature is still reachable; then destroy.
-  // Exercises apply_sticker's registry-id shape (stickerId → STICKERS lookup).
+  // Exercises apply_sticker's registry-id shape (sticker_id → STICKERS lookup).
   const { G, inst } = bootWithCreature();
   const tgt = { kind: 'creature', iid: inst.iid };
-  ENGINE.applyEffect(CTX('Scarification'), { kind: 'apply_sticker', stickerId: 'scarified' }, tgt);
+  ENGINE.applyEffect(CTX('Scarification'), { kind: 'apply_sticker', sticker_id: 'scarified' }, tgt);
   ENGINE.applyEffect(CTX('Scarification'), { kind: 'affect_creature', severity: 'destroy' }, tgt);
   check('creature destroyed (→ graveyard)',
     !G.you.battlefield.some(c => c.iid === inst.iid) && G.you.graveyard.some(c => c.iid === inst.iid));

@@ -136,7 +136,7 @@ const EFFECT_POSITIONAL = {
   damage: ['amount'], gain_life: ['amount'],
   pump: ['power', 'toughness'], add_counter: ['power', 'toughness'],
   chooses: ['filter'], affect_creature: ['severity'],
-  grant_keyword: ['keyword'], create_tokens: ['tokenId', 'count'],
+  grant_keyword: ['keyword'], create_tokens: ['token_id', 'count'],
   fight_target: [], counter: [], untap: [], sacrifice: [], annihilate: [],
   rip: [], symmetricize: [],
 };

@@ -72,7 +72,7 @@ console.log('\n=== representative cards ===');
 
 console.log('\n=== skipped cards kept their non-taxonomy filters (no silent loss) ===');
 (() => {
-  // Cards whose targeted on-cast effect carries a subtype/keyword/maxTough
+  // Cards whose targeted on-cast effect carries a subtype/keyword/max_tough
   // filter were intentionally NOT migrated (the closed taxonomy can't express
   // them). Verify at least one such card still has its filter and NO top-level
   // target() step.

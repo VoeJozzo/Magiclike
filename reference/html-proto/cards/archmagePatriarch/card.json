@@ -7,7 +7,7 @@
   },
   "name": "Archmage Patriarch",
   "power": 2,
-  "staticBuffs": [
+  "static_buffs": [
     {
       "filter": {
         "controller": "self"

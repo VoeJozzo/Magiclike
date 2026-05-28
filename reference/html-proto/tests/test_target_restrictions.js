@@ -44,19 +44,19 @@ function canCast(G, tplId, targetCreature) {
     targets: [{ kind: 'creature', iid: targetCreature.iid, label: targetCreature.name }] });
 }
 
-console.log('=== Doom Blade: target_filter notColor B — cannot hit a black creature ===');
+console.log('=== Doom Blade: target_filter not_color B — cannot hit a black creature ===');
 (() => {
   const G = newGame();
   const black = mkCreature('opp', { color: 'B', colors: ['B'] });
   const white = mkCreature('opp', { color: 'W', colors: ['W'] });
   G.opp.battlefield.push(black, white);
   check('CARDS.doomBlade migrated to target+target_filter',
-    CARDS.doomBlade.target === 'creature' && CARDS.doomBlade.target_filter && CARDS.doomBlade.target_filter.notColor === 'B');
+    CARDS.doomBlade.target === 'creature' && CARDS.doomBlade.target_filter && CARDS.doomBlade.target_filter.not_color === 'B');
   check('illegal vs a black creature', !canCast(G, 'doomBlade', black));
   check('legal vs a non-black creature', canCast(G, 'doomBlade', white));
 })();
 
-console.log('\n=== Ravenous Plague: maxTough 3 — cannot hit a fat creature ===');
+console.log('\n=== Ravenous Plague: max_tough 3 — cannot hit a fat creature ===');
 (() => {
   const G = newGame();
   const small = mkCreature('opp', { toughness: 3 });
@@ -95,10 +95,10 @@ console.log('\n=== highlight path honors the restriction (render isValidTargetCr
   const G = newGame();
   const black = mkCreature('opp', { color: 'B', colors: ['B'] });
   const white = mkCreature('opp', { color: 'W', colors: ['W'] });
-  const eff = { target: 'creature', filter: { notColor: 'B' } };
+  const eff = { target: 'creature', filter: { not_color: 'B' } };
   check('highlight rejects black creature', !isValidTargetCreature(eff, black));
   check('highlight accepts non-black creature', isValidTargetCreature(eff, white));
-  const oppEff = { target: 'opp_creature', filter: { hasKeyword: 'flying' } };
+  const oppEff = { target: 'opp_creature', filter: { has_keyword: 'flying' } };
   const yourFlyer = mkCreature('you', { keywords: ['flying'] });
   const oppFlyer = mkCreature('opp', { keywords: ['flying'] });
   check('highlight rejects your own creature for opp_creature', !isValidTargetCreature(oppEff, yourFlyer));

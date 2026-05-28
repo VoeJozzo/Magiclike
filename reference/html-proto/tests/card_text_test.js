@@ -108,10 +108,10 @@ eqText(segsToText(describeEffectList(
   [{ kind: 'grant_keyword', keyword: 'haste', duration: 'eot' },
    { kind: 'grant_keyword', keyword: 'trample', duration: 'eot' }], null, null, 'creature')),
   'Target creature gains haste and trample until end of turn.', 'predatorsSpeed coalesce (two grants)');
-// Multi-target (targetSlot) must NOT coalesce — they're distinct targets.
+// Multi-target (target_slot) must NOT coalesce — they're distinct targets.
 eqText(segsToText(describeEffectList(
   [{ kind: 'pump', target: 'creature', power: 1, toughness: 1 },
-   { kind: 'pump', target: 'creature', power: 1, toughness: 1, targetSlot: 1 }], null, null)),
+   { kind: 'pump', target: 'creature', power: 1, toughness: 1, target_slot: 1 }], null, null)),
   'Target creature gets +1/+1 until end of turn. Target creature gets +1/+1 until end of turn.',
   'twinStrike NOT coalesced (two slots)');
 
@@ -138,9 +138,9 @@ eqText(segsToText(describeEffect({ kind: 'fight_target', target: 'creature' })),
 console.log('\n=== describeEffect: tokens (count-bumped wording) ===');
 // No TOKENS lookup → falls back to "1/1 creature" stats with a sensible
 // default niceName. Word count: "one", "two", ...
-eqText(segsToText(describeEffect({ kind: 'create_tokens', count: 1, tokenId: 'goblin' })),
+eqText(segsToText(describeEffect({ kind: 'create_tokens', count: 1, token_id: 'goblin' })),
        'create a 1/1 Goblin token', 'create 1 token uses "a"');
-eqText(segsToText(describeEffect({ kind: 'create_tokens', count: 2, tokenId: 'goblin' })),
+eqText(segsToText(describeEffect({ kind: 'create_tokens', count: 2, token_id: 'goblin' })),
        'create two 1/1 Goblin tokens', 'create N>1 uses word count');
 
 console.log('\n=== describeEffect: edge cases ===');
@@ -159,7 +159,7 @@ eqText(targetPhrase({ target: 'player', kind: 'damage' }), 'target player', 'pla
 eqText(withFilter('target creature', { filter: { color: 'R', controller: 'opp' } }),
        'target Red creature an opponent controls',
        'color + controller filter');
-eqText(withFilter('target creature', { filter: { minPower: 4 } }),
+eqText(withFilter('target creature', { filter: { min_power: 4 } }),
        'target creature with power 4 or greater', 'stat filter');
 
 // ─── bumpedSeg highlight detection ────────────────────────────────────
@@ -229,7 +229,7 @@ console.log('\n=== describeModalSegs ===');
 console.log('\n=== describeCardSegments end-to-end on real cards ===');
 {
   // Lightning Bolt — instant, damage:any-target,3. Auto-generated text
-  // (no customText flag) should structurally match the hand-authored
+  // (no custom_text flag) should structurally match the hand-authored
   // text "Deal 3 damage to any target."
   const bolt = CARDS.bolt;
   check('CARDS.bolt exists', !!bolt);

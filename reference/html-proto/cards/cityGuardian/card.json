@@ -12,10 +12,10 @@
   "name": "City Guardian",
   "power": 2,
   "special": true,
-  "staticCostBump": 1,
+  "static_cost_bump": 1,
   "sub": "Human Soldier",
   "text": "Legendary, First Strike. All cards cost {1} more to cast.",
   "toughness": 1,
   "type": "Creature",
-  "customText": true
+  "custom_text": true
 }

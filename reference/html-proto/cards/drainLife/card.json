@@ -15,7 +15,7 @@
       "kind": "damage",
       "target": "opp",
       "amount": 2,
-      "targetSlot": 1
+      "target_slot": 1
     },
     {
       "kind": "gain_life",
@@ -23,7 +23,7 @@
       "amount": 4
     }
   ],
-  "multiTarget": true,
+  "multi_target": true,
   "name": "Drain Life",
   "text": "Drain Life deals 2 damage to target creature and 2 damage to target player. You gain 4 life.",
   "type": "Sorcery"

@@ -8,17 +8,17 @@
           "C": 3
         }
       },
-      "targetSlots": [
+      "target_slots": [
         {
           "target": "permanent_or_spell",
           "filter": {
-            "spliceableBase": true
+            "spliceable_base": true
           }
         },
         {
           "target": "permanent_or_spell",
           "filter": {
-            "spliceableStaple": true
+            "spliceable_staple": true
           }
         }
       ],
@@ -30,7 +30,7 @@
     }
   ],
   "art": "cards/stapler/art.png",
-  "chargesAtRunStart": 3,
+  "charges_at_run_start": 3,
   "cost": {
     "C": 3
   },
@@ -38,5 +38,5 @@
   "special": true,
   "text": "3 charges (persist across runs). {3}, T: Choose two target permanents. Staple the second onto the first. When this is out of charges, rip it up.",
   "type": "Artifact",
-  "customText": true
+  "custom_text": true
 }

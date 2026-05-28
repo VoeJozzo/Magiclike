@@ -57,7 +57,7 @@ const CATEGORY_A = [
   'test_flicker.js',
   // Slice 3 — exile_until_eot decomposition (move_card + schedule_delayed; end-step return).
   'test_exile_until_eot.js',
-  // Slice 3 step 12 — Stapler noop→targetSlots (ability-level multi-target slots).
+  // Slice 3 step 12 — Stapler noop→target_slots (ability-level multi-target slots).
   'test_stapler_target_slots.js',
   // Slice 3 step 7b — effect coverage assertion (HANDLERS↔valuation/card-text partition).
   'test_effect_coverage.js',
@@ -87,7 +87,7 @@ const CATEGORY_A = [
   'test_targeting_shape.js',
   // Castable-card highlight honors the top-level target() step.
   'test_castable_highlight.js',
-  // Authored text keyed on customText only (special decoupled); 5 cards now generate.
+  // Authored text keyed on custom_text only (special decoupled); 5 cards now generate.
   'test_generated_special_text.js',
   // Slice 3 — §3.5 browser targeting (clickHand/ability honor the top-level target() step).
   'test_ui_targeting.js',

@@ -6,7 +6,7 @@
     "C": 1
   },
   "effects": {
-    "modeNames": [
+    "mode_names": [
       "Smite (deal 2)",
       "Embolden (+2/+2 EOT)",
       "Sanctuary (gain 3, draw 1)"

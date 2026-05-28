@@ -1004,7 +1004,7 @@ function renderReward() {
       div.appendChild(makeRewardCardEl(tpl, slot));
 
       if (cand.kind === 'sticker') {
-        const sticker = STICKERS[cand.stickerId];
+        const sticker = STICKERS[cand.sticker_id];
         if (!sticker) return;
         const connector = document.createElement('div');
         connector.className = 'rwd-pair-plus';
@@ -1016,7 +1016,7 @@ function renderReward() {
         // what number gets bumped before they accept. Format mirrors the
         // sticker badge: "Empower (damage)" or "Empower (power, mode 2)".
         let stickerName = sticker.name;
-        if (cand.stickerId === 'empower' && cand.empowerRoll) {
+        if (cand.sticker_id === 'empower' && cand.empowerRoll) {
           // Stapled-aware: the roll may target the staple-half's effect, so
           // resolve the label against the synthesized merged template
           // (matches stickerBadgesHtml's post-accept rendering). Without
@@ -1027,7 +1027,7 @@ function renderReward() {
           const labelTpl = tplForSlot(slot) || tpl;
           stickerName = `Empower (${empowerRollLabel(labelTpl, cand.empowerRoll)})`;
         }
-        if (cand.stickerId === 'subtype' && cand.subtypeRoll) {
+        if (cand.sticker_id === 'subtype' && cand.subtypeRoll) {
           // Show the rolled subtype so the player knows what they're getting.
           stickerName = `Subtype: ${cand.subtypeRoll}`;
         }
@@ -1923,7 +1923,7 @@ function attachLongPress(element, card) {
 // scale (320x448 actual) inside the existing #cardPopup dimmer overlay.
 
 // Helper: builds the "Repertoire" (Mercurial triggerPool) and "Built
-// Ability" (Codex buildOnDraw) HTML sections for a card's popup. Returns
+// Ability" (Codex build_on_draw) HTML sections for a card's popup. Returns
 // empty string if neither applies. Reads the SLOT (RUN.getSlots()[card.slotIdx]),
 // not the card, because the slot is the durable record across saves and
 // the slot's bonusTrigger may have updated more recently than the in-game
@@ -1954,7 +1954,7 @@ function buildPopupTriggerSections(card) {
   }
   // Codex-style built ability.
   const tpl = CARDS[card.tplId];
-  if (tpl && tpl.buildOnDraw) {
+  if (tpl && tpl.build_on_draw) {
     let body;
     if (slot.bonusTrigger) {
       const text = formatTriggerText(slot.bonusTrigger.text, card.name);

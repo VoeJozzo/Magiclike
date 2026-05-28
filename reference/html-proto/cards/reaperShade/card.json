@@ -26,7 +26,7 @@
       ],
       "target": "creature",
       "target_filter": {
-        "maxTough": 2
+        "max_tough": 2
       }
     }
   ],

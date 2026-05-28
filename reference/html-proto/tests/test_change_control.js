@@ -64,13 +64,13 @@ console.log('\n=== already-yours fizzles ===');
     && G.you.battlefield.length === before);
 })();
 
-console.log('\n=== legacy param names still honored (grantHaste/untap) ===');
+console.log('\n=== legacy param names still honored (grant_haste/untap) ===');
 (() => {
   clearBoards();
   const c = place('opp'); c.tapped = true;
-  ENGINE.applyEffect(CTX, { kind: 'change_control', grantHaste: true, untap: true }, { kind: 'creature', iid: c.iid });
+  ENGINE.applyEffect(CTX, { kind: 'change_control', grant_haste: true, untap: true }, { kind: 'creature', iid: c.iid });
   check('legacy untap honored', c.tapped === false);
-  check('legacy grantHaste honored', (c.keywords || []).includes('haste'));
+  check('legacy grant_haste honored', (c.keywords || []).includes('haste'));
 })();
 
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');

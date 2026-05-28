@@ -10,7 +10,7 @@
   ],
   "name": "Ancient Treant",
   "power": 4,
-  "staticBuffs": [
+  "static_buffs": [
     {
       "filter": {
         "controller": "self"

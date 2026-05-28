@@ -1,5 +1,5 @@
 // Step 12 (plan-effects-refactor §1.2 / §10): Stapler's `noop` slot-marker hack
-// is gone. The ability now declares `targetSlots: [{spliceableBase}, {spliceable
+// is gone. The ability now declares `target_slots: [{spliceable_base}, {spliceable
 // Staple}]` — two structural slot specs on the ability instead of a fake empty-
 // body effect. This test pins the contract `noop` used to provide: the ability
 // requires exactly two targets, each validated against its own slot filter, and
@@ -47,11 +47,11 @@ function newGame() {
   return G;
 }
 
-console.log('=== ability schema: noop gone, targetSlots present ===');
+console.log('=== ability schema: noop gone, target_slots present ===');
 (() => {
   const ab = CARDS.stapler.abilities[0];
-  check('Stapler ability declares targetSlots (length 2)', Array.isArray(ab.targetSlots) && ab.targetSlots.length === 2,
-    JSON.stringify(ab.targetSlots && ab.targetSlots.map(s => s.filter)));
+  check('Stapler ability declares target_slots (length 2)', Array.isArray(ab.target_slots) && ab.target_slots.length === 2,
+    JSON.stringify(ab.target_slots && ab.target_slots.map(s => s.filter)));
   check('no effect uses kind noop', !ab.effects.some(e => e.kind === 'noop'));
   check('single splice effect remains', ab.effects.length === 1 && ab.effects[0].kind === 'apply_in_game_splice');
   check('noop is no longer a registered EFFECTS kind', !('noop' in (ENGINE.EFFECTS || {})) || typeof ENGINE.EFFECTS === 'undefined');

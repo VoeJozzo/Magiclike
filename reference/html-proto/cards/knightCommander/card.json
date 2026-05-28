@@ -10,7 +10,7 @@
   ],
   "name": "Knight Commander",
   "power": 3,
-  "staticBuffs": [
+  "static_buffs": [
     {
       "filter": {
         "controller": "self"

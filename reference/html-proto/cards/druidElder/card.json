@@ -22,7 +22,7 @@
   },
   "name": "Elder of the Grove",
   "power": 1,
-  "staticBuffs": [
+  "static_buffs": [
     {
       "filter": {
         "controller": "self"

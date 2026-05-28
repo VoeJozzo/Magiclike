@@ -342,7 +342,7 @@ function render() {
       const list = document.getElementById('modalChoiceList');
       list.innerHTML = '';
       const modes = ENGINE.getModes(card);
-      const modeNames = (card.effects && card.effects.modeNames) || [];
+      const mode_names = (card.effects && card.effects.mode_names) || [];
       for (let mIdx = 0; mIdx < modes.length; mIdx++) {
         const modeEffects = modes[mIdx];
         const targetedEff = (modeEffects || []).find(ENGINE.effectNeedsTarget);
@@ -357,7 +357,7 @@ function render() {
         const legal = ENGINE.isLegalAction('you', fakeAction);
         const btn = document.createElement('button');
         btn.className = 'modal-choice' + (legal ? '' : ' disabled');
-        btn.textContent = modeNames[mIdx] || `Mode ${mIdx + 1}`;
+        btn.textContent = mode_names[mIdx] || `Mode ${mIdx + 1}`;
         if (legal) {
           btn.onclick = () => CONTROLLER.pickModalMode(mIdx);
         }
@@ -503,8 +503,8 @@ function drawTargetLines() {
       const tRect = targetEl.getBoundingClientRect();
       const tx = tRect.left + tRect.width / 2;
       const ty = tRect.top + tRect.height / 2;
-      // Effects share targets[0] by default; targetSlot:N picks targets[N].
-      const slotEffects = effects.filter(e => (e.targetSlot || 0) === ti);
+      // Effects share targets[0] by default; target_slot:N picks targets[N].
+      const slotEffects = effects.filter(e => (e.target_slot || 0) === ti);
       const valence = classifyValence(slotEffects, tgt, item.controller, G);
       const palette = VALENCE_PALETTE[valence];
       const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
@@ -665,7 +665,7 @@ function renderHand(id, hand, who) {
   }
 }
 function canPlayFromUI(who, card) {
-  // Probe legality with placeholder targets per targetSlot.
+  // Probe legality with placeholder targets per target_slot.
   if (card.type === 'Land') {
     return ENGINE.isLegalAction(who, {type:'playLand', cardIid: card.iid});
   }
@@ -687,7 +687,7 @@ function canPlayFromUI(who, card) {
   // Non-modal spell. Route through the engine's canonical targeting API so the
   // highlight can't drift from the cast flow / trigger prompt (all three share
   // objectNeedsTarget/probeTargetsForObject — covers top-level target(),
-  // ability-level targetSlots, and legacy per-effect targets).
+  // ability-level target_slots, and legacy per-effect targets).
   if (ENGINE.objectNeedsTarget(card)) {
     const fakeTargets = ENGINE.probeTargetsForObject(card, who);
     if (!fakeTargets) return false;   // no legal target → not castable
@@ -867,17 +867,17 @@ function pendingTopTargetRestrict(pt) {
   return null;
 }
 
-// Ability-level slot specs (Stapler) — one pick per `targetSlots` entry.
+// Ability-level slot specs (Stapler) — one pick per `target_slots` entry.
 function pendingAbilityTargetSlots(pt) {
   if (!pt || pt.kind !== 'ability') return null;
   const f = ENGINE.findCard(pt.cardIid);
   const ab = f && f.card.abilities[pt.abilityIdx];
-  return (ab && Array.isArray(ab.targetSlots) && ab.targetSlots.length > 0) ? ab.targetSlots : null;
+  return (ab && Array.isArray(ab.target_slots) && ab.target_slots.length > 0) ? ab.target_slots : null;
 }
 
-// Unique sorted targetSlot values; one user pick per slot. A top-level target()
-// step (§3.5) is a single slot [0]; an ability's `targetSlots` array is one
-// pick per entry; otherwise read per-effect targetSlots.
+// Unique sorted target_slot values; one user pick per slot. A top-level target()
+// step (§3.5) is a single slot [0]; an ability's `target_slots` array is one
+// pick per entry; otherwise read per-effect target_slots.
 function slotsNeededForPending(pt) {
   if (pendingTopTargetFilter(pt)) return [0];
   const abSlots = pendingAbilityTargetSlots(pt);
@@ -885,7 +885,7 @@ function slotsNeededForPending(pt) {
   const effects = pendingTargetEffects(pt);
   const slots = new Set();
   for (const eff of effects) {
-    if (ENGINE.effectNeedsTarget(eff)) slots.add(eff.targetSlot || 0);
+    if (ENGINE.effectNeedsTarget(eff)) slots.add(eff.target_slot || 0);
   }
   return [...slots].sort((a, b) => a - b);
 }
@@ -909,7 +909,7 @@ function pendingTargetEffect(pt) {
   const pickedCount = (pt.pickedSlots && pt.pickedSlots.length) || 0;
   const currentSlot = slots[pickedCount] !== undefined ? slots[pickedCount] : slots[0];
   const effects = pendingTargetEffects(pt);
-  return effects.find(e => ENGINE.effectNeedsTarget(e) && (e.targetSlot || 0) === currentSlot) || null;
+  return effects.find(e => ENGINE.effectNeedsTarget(e) && (e.target_slot || 0) === currentSlot) || null;
 }
 
 function isValidTargetCreature(eff, card) {
@@ -933,8 +933,8 @@ function isValidTargetCreature(eff, card) {
   if (t === 'creature_or_player') return true;
   // Build the effective restriction: the taxonomy's implied controller plus the
   // step's explicit target_filter (threaded onto eff.filter). Route the whole
-  // thing through the canonical matchFilter so every key (notColor, hasKeyword,
-  // maxTough, tapped, notToken, spliceable…) is honored at highlight time
+  // thing through the canonical matchFilter so every key (not_color, has_keyword,
+  // max_tough, tapped, not_token, spliceable…) is honored at highlight time
   // exactly as at cast — no more drifting between highlight and click legality.
   const restrict = Object.assign({}, eff.filter || null);
   if (t === 'your_creature') restrict.controller = 'self';
@@ -1097,13 +1097,13 @@ function nativeKeywordBadgesHtml(card, big) {
 // Pick the right art for a card based on its current power+toughness.
 //
 // Cards with a static art simply have an "art" string in their template
-// and return early. Cards with an `artLadder` array on their template
+// and return early. Cards with an `art_ladder` array on their template
 // (currently only Elystra) evolve their portrait as they grow — each
-// ladder entry is `{minPT, art}`, and we walk the ladder picking the
+// ladder entry is `{min_pt, art}`, and we walk the ladder picking the
 // highest threshold the card's current p+t meets.
 //
 // Stats come from ENGINE.getStats so live modifiers + sticker pumps +
-// staticBuffs + permanent EOT bumps all count. For non-Creatures (no
+// static_buffs + permanent EOT bumps all count. For non-Creatures (no
 // stats to compute), fall back to the base art unconditionally.
 //
 // Called by makeCardEl (hand/board) and openCardPopup (zoom). Draft,
@@ -1117,7 +1117,7 @@ function effectiveArt(card) {
   // look it up here. This is a render-only concern; the engine never
   // needs to know about art variants.
   const tpl = (typeof CARDS !== 'undefined') ? CARDS[card.tplId] : null;
-  const ladder = (tpl && Array.isArray(tpl.artLadder)) ? tpl.artLadder : card.artLadder;
+  const ladder = (tpl && Array.isArray(tpl.art_ladder)) ? tpl.art_ladder : card.art_ladder;
   if (!Array.isArray(ladder) || ladder.length === 0) return card.art;
   if (card.type !== 'Creature') return card.art;
   let p = 0, t = 0;
@@ -1130,7 +1130,7 @@ function effectiveArt(card) {
   const sum = (p || 0) + (t || 0);
   let pick = card.art;
   for (const rung of ladder) {
-    if (rung && sum >= (rung.minPT || 0)) pick = rung.art;
+    if (rung && sum >= (rung.min_pt || 0)) pick = rung.art;
   }
   return pick;
 }
@@ -1304,7 +1304,7 @@ function makeSyntheticCard({ name, type, sub, text, art, color, cost, power, tou
     cost: cost || null,
     power: power || 0,
     toughness: toughness || 0,
-    abilities: [], effects: [], triggers: [], staticBuffs: [],
+    abilities: [], effects: [], triggers: [], static_buffs: [],
     stickers: [], keywords: [], colors: [],
     iid: -1,
   };

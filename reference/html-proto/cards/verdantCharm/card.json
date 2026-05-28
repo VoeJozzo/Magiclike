@@ -6,7 +6,7 @@
     "C": 2
   },
   "effects": {
-    "modeNames": [
+    "mode_names": [
       "Wilds (+3/+3 EOT)",
       "Bloom (+1/+1 counter)",
       "Hunt (search creature)"

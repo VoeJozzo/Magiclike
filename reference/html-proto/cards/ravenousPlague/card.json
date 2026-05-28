@@ -7,7 +7,7 @@
   },
   "target": "creature",
   "target_filter": {
-    "maxTough": 3
+    "max_tough": 3
   },
   "effects": [
     {

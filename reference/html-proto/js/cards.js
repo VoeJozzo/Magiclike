@@ -67,8 +67,8 @@ async function loadCards() {
     if (typeof card.name === 'string' && card.name.includes('~')) {
       console.warn('Card name contains reserved ~ placeholder:', card.tplId, JSON.stringify(card.name));
     }
-    if (typeof card.text === 'string' && card.text.includes('~') && !card.customText) {
-      console.warn('Card text contains ~ outside customText flag:', card.tplId);
+    if (typeof card.text === 'string' && card.text.includes('~') && !card.custom_text) {
+      console.warn('Card text contains ~ outside custom_text flag:', card.tplId);
     }
   }
   // Defensive: warn if the loaded count doesn't match the manifest. A
@@ -428,7 +428,7 @@ RUN_MODIFIERS['stapler'] = {
   id: 'stapler',
   name: 'Stapler',
   text: "Begin your run with Stapler — a {3} Artifact with 3 per-run charges. {3}, T: choose two target permanents, staple the second onto the first. When out of charges, ripped from the run.",
-  // Charges initialize from CARDS.stapler.chargesAtRunStart (= 3) via the
+  // Charges initialize from CARDS.stapler.charges_at_run_start (= 3) via the
   // extras-loop in start(). Persist across games on slot.charges.
   // v1.0.68: unpinned. Was pinned during initial playtesting (v1.0.52) to
   // collect feedback on the in-game splice flow; mechanic is now stable

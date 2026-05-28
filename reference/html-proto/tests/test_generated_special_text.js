@@ -1,8 +1,8 @@
-// Authored text is keyed on `customText`, NOT `special`. `special` is a gameplay
+// Authored text is keyed on `custom_text`, NOT `special`. `special` is a gameplay
 // flag (draft-excluded / unspliceable); routing it to hand-written text let a
 // card's text drift from its effects. After decoupling, special cards whose
 // effects ARE describable generate their text (guaranteed accurate); only cards
-// whose mechanic can't be expressed carry `customText: true`. This locks the
+// whose mechanic can't be expressed carry `custom_text: true`. This locks the
 // split and the five cards that moved to generated text.
 
 const setup = require('./_setup');
@@ -18,9 +18,9 @@ function r(c) { return describeCardSegments(c, { skipKeywords: false }).map(x =>
 console.log('=== `special` alone no longer forces authored text ===');
 (() => {
   // vileEdict / symmetricize / endomorph / bleach / embargo are special:true but
-  // carry NO customText → they must generate from their effects.
+  // carry NO custom_text → they must generate from their effects.
   for (const id of ['vileEdict', 'symmetricize', 'endomorph', 'bleach', 'embargo']) {
-    check(id + ' is special but not customText', CARDS[id].special === true && CARDS[id].customText !== true);
+    check(id + ' is special but not custom_text', CARDS[id].special === true && CARDS[id].custom_text !== true);
   }
 })();
 
@@ -43,11 +43,11 @@ console.log('\n=== apply_sticker + move_card idiom is not a false-match on flick
   check('otherworldlyJourney (exile-until-eot) unchanged', /at end of turn/.test(r(CARDS.otherworldlyJourney)));
 })();
 
-console.log('\n=== cards that genuinely need authored text keep customText:true ===');
+console.log('\n=== cards that genuinely need authored text keep custom_text:true ===');
 (() => {
   for (const id of ['cityGuardian', 'phylactery', 'elystra', 'stapler', 'architectsCodex',
                     'archdemonBargains', 'steal', 'scarification', 'pacifism']) {
-    check(id + ' keeps customText:true', CARDS[id].customText === true);
+    check(id + ' keeps custom_text:true', CARDS[id].custom_text === true);
   }
 })();
 

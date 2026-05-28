@@ -10,7 +10,7 @@
     {
       "kind": "change_control",
       "duration": "eot",
-      "grantHaste": true,
+      "grant_haste": true,
       "untap": true
     }
   ],

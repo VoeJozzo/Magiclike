@@ -24,20 +24,20 @@ function baseCard() {
 const CASES = {
   tapped:     [true,        c => { c.tapped = false; }],
   color:      ['R',         c => { c.color = 'W'; }],
-  notColor:   ['W',         c => { c.color = 'W'; }],
+  not_color:   ['W',         c => { c.color = 'W'; }],
   subtype:    ['Goblin',    c => { c.sub = ''; }],
-  hasKeyword: ['flying',    c => { c.keywords = []; }],
-  notKeyword: ['flying',    c => { c.keywords = ['flying']; }],
-  notToken:   [true,        c => { c.isToken = true; }],
-  maxTough:   [1,           c => { c.toughness = 5; }],
-  minTough:   [6,           c => { c.toughness = 5; }],
-  maxPower:   [1,           c => { c.power = 2; }],
-  minPower:   [6,           c => { c.power = 2; }],
+  has_keyword: ['flying',    c => { c.keywords = []; }],
+  not_keyword: ['flying',    c => { c.keywords = ['flying']; }],
+  not_token:   [true,        c => { c.isToken = true; }],
+  max_tough:   [1,           c => { c.toughness = 5; }],
+  min_tough:   [6,           c => { c.toughness = 5; }],
+  max_power:   [1,           c => { c.power = 2; }],
+  min_power:   [6,           c => { c.power = 2; }],
 };
 
 console.log('=== every enforced filter key is ALSO rendered (no hidden restrictions) ===');
 for (const [key, [val]] of Object.entries(CASES)) {
-  const noun = (key === 'notToken') ? 'target permanent' : 'target creature';
+  const noun = (key === 'not_token') ? 'target permanent' : 'target creature';
   const rendered = withFilter(noun, { filter: { [key]: val } });
   check(key + ' is rendered in card text', rendered !== noun, rendered);
 }

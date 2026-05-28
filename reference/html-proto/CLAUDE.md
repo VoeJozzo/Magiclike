@@ -75,6 +75,21 @@ text sites. Behavior note: under atomic decomposition an indestructible target n
 gets scarred-but-not-destroyed (the monolith fizzled both halves) — an acceptable
 edge on a boss-targeted creature.
 
+v2.0.18: review cleanup (#9) — field-name snake_case sweep. Renamed 24 camelCase
+JSON keys across the card pool to snake_case to match the rest of the wire
+format: `customText`/`multiTarget`/`staticBuffs`/`permanentEot`/`staticCostBump`/
+`triggerPoolSeed`/`chargesAtRunStart`/`buildOnDraw`/`artLadder`/`ripOnTarget`/
+`targetSlot`/`targetSlots`/`tokenId`/`stickerId`/`grantHaste`/`notToken`/
+`modeNames`/`hasKeyword`/`maxTough`/`notColor`/`spliceableBase`/`spliceableStaple`/
+`minPT`/`sorcerySpeed` → snake_case equivalents (and the orphan filter-field
+reads `notKeyword`/`minTough`/`maxPower`/`minPower` in consumer code, for
+vocabulary consistency — no card uses them today). 63 card JSONs + ~12 JS modules
++ tests updated in one coordinated pass. Godot's `JsonCardLoader` doesn't read
+these fields (Phase 6 unstarted), so no Godot churn — the renamed JSON arrives
+already-snake_case when Godot starts porting these cards. 1083 green, 500-game
+selfplay clean. (`targetSlotIdx` is a JS-internal variable name, not a wire-format
+field — out of scope.)
+
 v2.0.17: review cleanup (#8) — effect-shorthand parser (§5.1/§5.2). Card effects
 may now be authored as function-call strings ("damage(3)", "draw(2)",
 "chooses(creature)") that ingestCard() normalizes to canonical dicts at load

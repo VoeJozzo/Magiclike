@@ -9,7 +9,7 @@
   "effects": [
     {
       "kind": "apply_sticker",
-      "stickerId": "scarified"
+      "sticker_id": "scarified"
     },
     {
       "kind": "affect_creature",
@@ -20,5 +20,5 @@
   "special": true,
   "text": "Destroy target creature. Scar it: each time it enters the battlefield, its controller loses 1 life.",
   "type": "Sorcery",
-  "customText": true
+  "custom_text": true
 }

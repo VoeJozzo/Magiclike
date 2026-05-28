@@ -7,7 +7,7 @@
   },
   "target": "creature",
   "target_filter": {
-    "notColor": "B"
+    "not_color": "B"
   },
   "effects": [
     {

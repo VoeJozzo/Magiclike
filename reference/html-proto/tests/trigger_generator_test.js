@@ -180,13 +180,13 @@ console.log('\n=== Two-step build flow: assembleTrigger output ===');
 console.log('\n=== Mercurial Adept template + deck-build integration ===');
 {
   // Mercurial Adept is the fixed-pool variant: card carries
-  // triggerPoolSeed='mercurial', and at deck-build time the engine rolls
+  // trigger_pool_seed='mercurial', and at deck-build time the engine rolls
   // one entry from MERCURIAL_TRIGGER_POOL into the card's bonusTrigger.
   const tpl = CARDS['mercurialAdept'];
   if (tpl) {
     check('Adept template exists', !!tpl);
-    check("Adept marked with triggerPoolSeed='mercurial'",
-      tpl.triggerPoolSeed === 'mercurial');
+    check("Adept marked with trigger_pool_seed='mercurial'",
+      tpl.trigger_pool_seed === 'mercurial');
 
     // Deck-build integration: construct a game with Adept in the deck
     // and verify the resulting card has a bonusTrigger.
@@ -216,15 +216,15 @@ console.log('\n=== Mercurial Adept template + deck-build integration ===');
   }
 }
 
-console.log("\n=== Architect's Codex template (buildOnDraw / procedural path) ===");
+console.log("\n=== Architect's Codex template (build_on_draw / procedural path) ===");
 {
-  // Codex is the procedural-generator variant: buildOnDraw triggers the
+  // Codex is the procedural-generator variant: build_on_draw triggers the
   // generateConditionOptions -> generateEffectOptions -> assembleTrigger
   // flow controller-side. Template should be tagged appropriately.
   const tpl = CARDS['architectsCodex'];
   if (tpl) {
     check('Codex template exists', !!tpl);
-    check('Codex has buildOnDraw flag', tpl.buildOnDraw === true);
+    check('Codex has build_on_draw flag', tpl.build_on_draw === true);
     check('Codex marked special', tpl.special === true);
   } else {
     console.log('  (architectsCodex not in CARDS -- skipping)');

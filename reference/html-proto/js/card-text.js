@@ -1,7 +1,7 @@
 // CARD TEXT — generates rules text from card data. Pure read-only.
 // Returns {text, highlight}[] segments — bumped values get highlight:true
 // (empower visual emphasis). describeCardText is the flat-string wrapper.
-// Cards with customText:true (Endomorph, Codex, Elystra) keep hand-authored text.
+// Cards with custom_text:true (Endomorph, Codex, Elystra) keep hand-authored text.
 // Sole ENGINE dependency: synthesizeStapledTemplate (guarded for load order).
 
 const COLOR_NAMES = { W: 'White', U: 'Blue', B: 'Black', R: 'Red', G: 'Green' };
@@ -54,17 +54,17 @@ function withFilter(noun, eff) {
   if (f.tapped === true)  pre.push('tapped');
   if (f.tapped === false) pre.push('untapped');
   if (f.color)            pre.push(COLOR_NAMES[f.color] || f.color);
-  if (f.notColor)         pre.push('non-' + (COLOR_NAMES[f.notColor] || f.notColor));
+  if (f.not_color)         pre.push('non-' + (COLOR_NAMES[f.not_color] || f.not_color));
   if (f.subtype)          pre.push(f.subtype);
-  if (f.hasKeyword)       post.push('with ' + f.hasKeyword);
-  if (f.notKeyword)       post.push('without ' + f.notKeyword);
-  if (f.notToken)         post.push("that isn't a token");
+  if (f.has_keyword)       post.push('with ' + f.has_keyword);
+  if (f.not_keyword)       post.push('without ' + f.not_keyword);
+  if (f.not_token)         post.push("that isn't a token");
   if (f.controller === 'you' || f.controller === 'self') post.push('you control');
   if (f.controller === 'opp') post.push('an opponent controls');
-  if (typeof f.maxTough === 'number') post.push('with toughness ' + f.maxTough + ' or less');
-  if (typeof f.minTough === 'number') post.push('with toughness ' + f.minTough + ' or greater');
-  if (typeof f.maxPower === 'number') post.push('with power ' + f.maxPower + ' or less');
-  if (typeof f.minPower === 'number') post.push('with power ' + f.minPower + ' or greater');
+  if (typeof f.max_tough === 'number') post.push('with toughness ' + f.max_tough + ' or less');
+  if (typeof f.min_tough === 'number') post.push('with toughness ' + f.min_tough + ' or greater');
+  if (typeof f.max_power === 'number') post.push('with power ' + f.max_power + ' or less');
+  if (typeof f.min_power === 'number') post.push('with power ' + f.min_power + ' or greater');
   let out = noun;
   if (pre.length) {
     out = out.replace('creature', pre.join(' ') + ' creature')
@@ -259,7 +259,7 @@ function describeEffect(eff, tplEff) {
     case 'counter':
       return [plainSeg('counter ' + t)];
     case 'create_tokens': {
-      const tok = eff.tokenId || 'creature';
+      const tok = eff.token_id || 'creature';
       const tokTpl = (typeof TOKENS !== 'undefined' && TOKENS[tok]) || null;
       const niceName = tokTpl ? tokTpl.name : tok.replace(/_.*/, '').replace(/^./, c => c.toUpperCase());
       const colorWord = tokTpl && tokTpl.color
@@ -351,7 +351,7 @@ function describeEffect(eff, tplEff) {
       const segs = [plainSeg(parts.join(''))];
       const riders = [];
       if (eff.untap || eff.untap_on_take) riders.push('untap it');
-      if (eff.grantHaste || eff.grant_haste) riders.push('it gains haste until end of turn');
+      if (eff.grant_haste || eff.grant_haste) riders.push('it gains haste until end of turn');
       if (riders.length > 0) {
         const cap = riders.map(r => r.charAt(0).toUpperCase() + r.slice(1)).join('. ');
         segs.push(plainSeg('. ' + cap));
@@ -396,8 +396,8 @@ function buffSubjectKey(eff) {
 // predatorsSpeed). Returns segments, or null when the shape doesn't apply.
 function coalesceEotBuffs(effects, tplOf) {
   if (effects.length < 2) return null;
-  const pump = e => e.kind === 'pump' && e.duration !== 'permanent' && !('targetSlot' in e);
-  const grant = e => e.kind === 'grant_keyword' && e.duration === 'eot' && !('targetSlot' in e);
+  const pump = e => e.kind === 'pump' && e.duration !== 'permanent' && !('target_slot' in e);
+  const grant = e => e.kind === 'grant_keyword' && e.duration === 'eot' && !('target_slot' in e);
   if (!effects.every(e => pump(e) || grant(e))) return null;
   const key = buffSubjectKey(effects[0]);
   if (!effects.every(e => buffSubjectKey(e) === key)) return null;
@@ -704,16 +704,16 @@ function describeCardText(card) {
 function describeCardSegments(card, opts) {
   opts = opts || {};
   const tpl = CARDS[card.tplId] || card;
-  // Authored text is keyed on `customText` ONLY — `special` is a gameplay flag
+  // Authored text is keyed on `custom_text` ONLY — `special` is a gameplay flag
   // (draft-excluded / unspliceable) and must NOT force hand-written text, else a
   // special card whose effects ARE describable can silently drift from them.
-  // Special cards that genuinely need authored text carry `customText: true`.
-  if (tpl.customText === true) {
+  // Special cards that genuinely need authored text carry `custom_text: true`.
+  if (tpl.custom_text === true) {
     // Hand-authored static text. Many special cards (City Guardian,
     // Archdemon Bargains) already mention their intrinsic keywords
     // inline, so we DON'T prepend the full keyword list -- that would
     // duplicate "First Strike" etc. But GRANTED keywords (from Elystra's
-    // permanentEot accumulator, Endomorph's absorb, runtime spell
+    // permanent_eot accumulator, Endomorph's absorb, runtime spell
     // effects) aren't in the static text and need to be surfaced. We
     // compute granted = card.keywords \ tpl.keywords and prepend just
     // those, mirroring how non-special cards inline their full preamble.
@@ -763,8 +763,8 @@ function describeCardSegments(card, opts) {
     const tplEffs = Array.isArray(tplBaseline.effects) ? tplBaseline.effects : undefined;
     sections.push(describeEffectList(card.effects, card.name || tpl.name, tplEffs, card.target || tpl.target, card.target_filter || tpl.target_filter));
   }
-  if (Array.isArray(card.staticBuffs)) {
-    for (const buff of card.staticBuffs) {
+  if (Array.isArray(card.static_buffs)) {
+    for (const buff of card.static_buffs) {
       const phrase = describeStaticBuff(buff);
       if (phrase) sections.push([plainSeg(phrase)]);
     }

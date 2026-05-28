@@ -191,12 +191,12 @@ function hasSave() {
 
 function start(playerDeck, modifierId) {
   // Deck → slots {tplId, stickers}. Lands are slots too (need innate sticker support).
-  // chargesAtRunStart templates (Stapler) get a charges counter.
+  // charges_at_run_start templates (Stapler) get a charges counter.
   const slots = playerDeck.cards.map(tplId => {
     const slot = { tplId, stickers: [] };
     const tpl = CARDS[tplId];
-    if (tpl && typeof tpl.chargesAtRunStart === 'number') {
-      slot.charges = tpl.chargesAtRunStart;
+    if (tpl && typeof tpl.charges_at_run_start === 'number') {
+      slot.charges = tpl.charges_at_run_start;
     }
     return slot;
   });
@@ -230,8 +230,8 @@ function start(playerDeck, modifierId) {
         if (e.empowerRolls) slot.empowerRolls = e.empowerRolls.slice();
         if (e.subtypeRolls) slot.subtypeRolls = e.subtypeRolls.slice();
         const extraTpl = CARDS[e.tplId];
-        if (extraTpl && typeof extraTpl.chargesAtRunStart === 'number') {
-          slot.charges = (typeof e.charges === 'number') ? e.charges : extraTpl.chargesAtRunStart;
+        if (extraTpl && typeof extraTpl.charges_at_run_start === 'number') {
+          slot.charges = (typeof e.charges === 'number') ? e.charges : extraTpl.charges_at_run_start;
         }
         slots.push(slot);
       }
@@ -556,7 +556,7 @@ function rollOneCandidate(type, alreadyOffered) {
       const dupKey = `sticker:${slotIdx}:${sticker.id}`;
       if (alreadyOffered.has(dupKey)) continue;
       alreadyOffered.add(dupKey);
-      const cand = { kind: 'sticker', slotIdx, stickerId: sticker.id };
+      const cand = { kind: 'sticker', slotIdx, sticker_id: sticker.id };
       // Pre-roll empower/subtype at offer time so the preview matches the commit.
       if (sticker.id === 'empower') {
         const tpl = tplForSlot(runState.slots[slotIdx]);
@@ -721,15 +721,15 @@ function pickRewardCandidate(idx) {
   if (!cand) return;
   if (cand.kind === 'sticker') {
     const slot = runState.slots[cand.slotIdx];
-    slot.stickers.push(cand.stickerId);
+    slot.stickers.push(cand.sticker_id);
     // Consume pre-rolled empower/subtype; fallback rolls only on legacy shapes.
-    if (cand.stickerId === 'empower') {
+    if (cand.sticker_id === 'empower') {
       const fallbackTpl = tplForSlot(slot);
       const roll = cand.empowerRoll || (fallbackTpl ? rollEmpowerTarget(fallbackTpl) : null);
       if (!Array.isArray(slot.empowerRolls)) slot.empowerRolls = [];
       slot.empowerRolls.push(roll);
     }
-    if (cand.stickerId === 'subtype') {
+    if (cand.sticker_id === 'subtype') {
       const roll = cand.subtypeRoll || rollSubtypeFromDeck(runState.slots, cand.slotIdx);
       if (!Array.isArray(slot.subtypeRolls)) slot.subtypeRolls = [];
       slot.subtypeRolls.push(roll);
@@ -987,19 +987,19 @@ function rollbackForMidGameRestore() {
 // (Endomorph's absorb). Non-stackable: silent no-op on duplicate.
 // Persists via save flow. Caller separately applies the in-game effect
 // (keyword grant, +1/+1) — this only mutates run-state.
-function applyStickerToSlot(slotIdx, stickerId) {
+function applyStickerToSlot(slotIdx, sticker_id) {
   if (!runState || !runState.slots) return false;
   const slot = runState.slots[slotIdx];
   if (!slot) return false;
-  // stickerId is a registry id (string) or an inline {kind,...} descriptor
+  // sticker_id is a registry id (string) or an inline {kind,...} descriptor
   // (§3.8 apply_sticker). Inline descriptors carry per-application params, so
   // they bypass the id-based stackable dedup (cost_mod stacks; set_color is
   // idempotent).
-  const isInline = stickerId && typeof stickerId === 'object';
-  const sticker = isInline ? stickerId : STICKERS[stickerId];
+  const isInline = sticker_id && typeof sticker_id === 'object';
+  const sticker = isInline ? sticker_id : STICKERS[sticker_id];
   if (!sticker || !sticker.kind) return false;
-  if (!isInline && !sticker.stackable && slot.stickers.includes(stickerId)) return false;
-  pushStickerWithRoll(slot, stickerId, runState.slots);
+  if (!isInline && !sticker.stackable && slot.stickers.includes(sticker_id)) return false;
+  pushStickerWithRoll(slot, sticker_id, runState.slots);
   save();
   return true;
 }

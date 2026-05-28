@@ -44,5 +44,5 @@
     }
   ],
   "type": "Creature",
-  "customText": true
+  "custom_text": true
 }

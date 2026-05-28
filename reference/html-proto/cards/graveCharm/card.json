@@ -6,7 +6,7 @@
     "C": 2
   },
   "effects": {
-    "modeNames": [
+    "mode_names": [
       "Slay (destroy)",
       "Wither (discard 2)",
       "Drain (gain 4, lose 2)"

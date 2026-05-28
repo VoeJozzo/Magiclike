@@ -17,10 +17,10 @@
       "kind": "affect_creature",
       "severity": "tap",
       "target": "creature",
-      "targetSlot": 1
+      "target_slot": 1
     }
   ],
-  "multiTarget": true,
+  "multi_target": true,
   "name": "Sword and Sorcery",
   "text": "Target creature gets +2/+2 until end of turn. Tap target creature.",
   "type": "Instant"

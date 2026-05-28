@@ -67,14 +67,14 @@ const GENERATOR_EFFECTS = [
     weight: 2,
     needsLiveSource: false,
     // TOKENS keyed by full descriptor; bare 'soldier' would fizzle.
-    roll: () => [{kind: 'create_tokens', tokenId: 'soldier_w_1_1', count: _genWeightedInt([5, 2])}],
+    roll: () => [{kind: 'create_tokens', token_id: 'soldier_w_1_1', count: _genWeightedInt([5, 2])}],
     describe: (eff) => eff.count === 1 ? `create a 1/1 Soldier token` : `create ${eff.count} 1/1 Soldier tokens`,
   },
   {
     id: 'createTokenGoblin',
     weight: 2,
     needsLiveSource: false,
-    roll: () => [{kind: 'create_tokens', tokenId: 'goblin_r_1_1', count: _genWeightedInt([5, 2])}],
+    roll: () => [{kind: 'create_tokens', token_id: 'goblin_r_1_1', count: _genWeightedInt([5, 2])}],
     // Goblin tokens have intrinsic haste — surface in description.
     describe: (eff) => eff.count === 1
       ? `create a 1/1 Goblin token with haste`

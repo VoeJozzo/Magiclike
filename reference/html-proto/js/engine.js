@@ -46,7 +46,7 @@ const MERCURIAL_TRIGGER_POOL = [
   },
 ];
 
-// Mercurial Adept now seeds her pool via triggerPoolSeed:'mercurial' (see makePlayer).
+// Mercurial Adept now seeds her pool via trigger_pool_seed:'mercurial' (see makePlayer).
 // Pre-v1.0.0 saves carried an embedded triggerPool on the slot — still works via the slot-level path.
 
 
@@ -299,13 +299,13 @@ function deckColorsFromSlots(slots) {
 // Build a placeholder target array for legality probing — "could this be
 // cast right now?" without committing to a real target. Returns null if
 // any slot has no valid target. Multi-target spells need one entry per
-// unique targetSlot.
+// unique target_slot.
 function fakeTargetsForLegality(effects, who) {
   const targetedEffs = (effects || []).filter(ENGINE.effectNeedsTarget);
   if (targetedEffs.length === 0) return [];
   const bySlot = new Map();
   for (const eff of targetedEffs) {
-    const slot = eff.targetSlot || 0;
+    const slot = eff.target_slot || 0;
     if (!bySlot.has(slot)) bySlot.set(slot, eff);
   }
   const targets = [];
@@ -363,20 +363,20 @@ function anyoneOwesDecision() {
 
 // ----- Construction -----
 // Deck entries: tplId string (opp) or {tplId, stickers:[...]} (player).
-// Deep-copy effects (flat array OR modal {modeNames, modes}). Per-instance
+// Deep-copy effects (flat array OR modal {mode_names, modes}). Per-instance
 // isolation matters because Severity mutates effect amounts in place.
 function copyCardEffects(effects) {
   if (!effects) return undefined;
   if (Array.isArray(effects)) return effects.map(e => ({...e}));
   // Modal shape.
   return {
-    modeNames: effects.modeNames ? effects.modeNames.slice() : undefined,
+    mode_names: effects.mode_names ? effects.mode_names.slice() : undefined,
     modes: (effects.modes || []).map(m => m.map(e => ({...e}))),
   };
 }
 
 // Stapling: combine cards via stapledTpls. Engine sees only the merged template.
-// Multi-target remap: staple's targeted effects get targetSlot += next-free-above-base.
+// Multi-target remap: staple's targeted effects get target_slot += next-free-above-base.
 function synthesizeStapledTemplate(baseTplId, stapledTpls) {
   const baseTpl = CARDS[baseTplId];
   if (!baseTpl) throw new Error('Unknown card: ' + baseTplId);
@@ -414,7 +414,7 @@ function synthesizeStapledTemplate(baseTplId, stapledTpls) {
 //   staple Creature → body merge (base is always Creature here).
 //   staple Land     → permanent base gains the land's tap-ability (Cr+Ld / Ld+Ld).
 //   staple Spell    → permanent base gets an ETB trigger (Cr+Sp / Ld+Sp, identical);
-//                     spell base concatenates effects (Sp+Sp, multiTarget).
+//                     spell base concatenates effects (Sp+Sp, multi_target).
 // Impossible pairs (a higher-priority staple that should have won the base slot)
 // throw rather than silently degrading to Sp+Sp.
 function mergeStapleInto(merged, stapleTpl) {
@@ -445,7 +445,7 @@ function mergeStapleInto(merged, stapleTpl) {
       if (!mergedTokens.includes(t)) mergedTokens.push(t);
     }
     merged.sub = mergedTokens.join(' ');
-    // Triggers/abilities/staticBuffs: concat with deep copy. Base's first.
+    // Triggers/abilities/static_buffs: concat with deep copy. Base's first.
     if (stapleTpl.triggers) {
       for (const t of stapleTpl.triggers) {
         merged.triggers.push({
@@ -464,17 +464,17 @@ function mergeStapleInto(merged, stapleTpl) {
         });
       }
     }
-    if (stapleTpl.staticBuffs) {
-      if (!Array.isArray(merged.staticBuffs)) merged.staticBuffs = [];
-      for (const b of stapleTpl.staticBuffs) {
-        merged.staticBuffs.push({
+    if (stapleTpl.static_buffs) {
+      if (!Array.isArray(merged.static_buffs)) merged.static_buffs = [];
+      for (const b of stapleTpl.static_buffs) {
+        merged.static_buffs.push({
           ...b,
           filter: b.filter ? {...b.filter} : undefined,
           keywords: b.keywords ? b.keywords.slice() : undefined,
         });
       }
     }
-    if (stapleTpl.permanentEot) merged.permanentEot = true;
+    if (stapleTpl.permanent_eot) merged.permanent_eot = true;
   } else if (stapleTpl.type === 'Land') {
     // Permanent base gains the staple land's tap-ability (§3.9). Merge into an
     // existing mana ability (Ld+Ld, or a creature that already taps for mana —
@@ -508,31 +508,31 @@ function mergeStapleInto(merged, stapleTpl) {
       effects: Array.isArray(remapped) ? remapped : [],
     });
   } else {
-    // Spell base + spell staple: effects concat with slot remap (multiTarget).
+    // Spell base + spell staple: effects concat with slot remap (multi_target).
     const nextFreeSlot = computeNextFreeSlot(merged);
     const remapped = remapEffectSlots(stapleTpl.effects, nextFreeSlot);
     if (!Array.isArray(merged.effects)) merged.effects = [];
     if (Array.isArray(remapped)) {
       merged.effects = merged.effects.concat(remapped);
     }
-    merged.multiTarget = true;
+    merged.multi_target = true;
   }
   // No merged.text is built here — describeCardText regenerates it from the
   // merged effects/triggers/abilities (in makeCard, and at render time via
   // describeCardSegments). The merged `name` IS concatenated (names aren't
-  // regenerated). Special/customText cards can't be staple bases or staples
+  // regenerated). Special/custom_text cards can't be staple bases or staples
   // (isSpliceableBase/Staple reject them), so regeneration always applies.
   merged.name = merged.name + ' + ' + stapleTpl.name;
-  if (computeNextFreeSlot(merged) > 1) merged.multiTarget = true;
+  if (computeNextFreeSlot(merged) > 1) merged.multi_target = true;
 }
 
-// Highest targetSlot in use + 1 (next free slot). 0 if untargeted.
+// Highest target_slot in use + 1 (next free slot). 0 if untargeted.
 function computeNextFreeSlot(merged) {
   let maxSlot = -1;
   function visit(eff) {
     if (!eff) return;
     if (eff.target && eff.target !== 'self') {
-      maxSlot = Math.max(maxSlot, eff.targetSlot || 0);
+      maxSlot = Math.max(maxSlot, eff.target_slot || 0);
     }
   }
   if (Array.isArray(merged.effects)) merged.effects.forEach(visit);
@@ -544,7 +544,7 @@ function computeNextFreeSlot(merged) {
   return maxSlot + 1;
 }
 
-// Deep-copy effects and offset each targetSlot. Same-slot grouping preserved.
+// Deep-copy effects and offset each target_slot. Same-slot grouping preserved.
 // Modal shape (object) returned unchanged — staple-as-modal unsupported.
 function remapEffectSlots(effects, offset) {
   if (!effects) return [];
@@ -552,7 +552,7 @@ function remapEffectSlots(effects, offset) {
   return effects.map(e => {
     const copy = {...e};
     if (copy.target && copy.target !== 'self') {
-      copy.targetSlot = (e.targetSlot || 0) + offset;
+      copy.target_slot = (e.target_slot || 0) + offset;
     }
     return copy;
   });
@@ -589,7 +589,7 @@ function makeCard(tplId, stickers, slotIdx, empowerRolls, permaBuffs, bonusTrigg
       cost: ab.cost ? {...ab.cost} : undefined,
       effects: (ab.effects || []).map(e => ({...e})),
     })) : undefined,
-    staticBuffs: tpl.staticBuffs ? tpl.staticBuffs.map(b => ({
+    static_buffs: tpl.static_buffs ? tpl.static_buffs.map(b => ({
       ...b,
       filter: b.filter ? {...b.filter} : undefined,
       keywords: b.keywords ? b.keywords.slice() : undefined,
@@ -625,7 +625,7 @@ function makeCard(tplId, stickers, slotIdx, empowerRolls, permaBuffs, bonusTrigg
   // Order: stickers → permaBuffs → bonusTrigger. (§3.8: the Balancer overrides
   // channel is gone — symmetricize/embargo/bleach now flow through stickers.)
   applyStickersToCard(card);
-  // permaBuffs: slot-persistent buffs from permanentEot creatures (Elystra).
+  // permaBuffs: slot-persistent buffs from permanent_eot creatures (Elystra).
   // Shared with resetInPlayState (bounce/flicker recast).
   if (permaBuffs) applyPermaBuffsToCard(card, permaBuffs);
   // bonusTrigger: slot-persistent trigger from boons (Watcher's Gift). Stored
@@ -638,7 +638,7 @@ function makeCard(tplId, stickers, slotIdx, empowerRolls, permaBuffs, bonusTrigg
     });
   }
   // Regenerate text from effects/triggers/abilities (post-empower mutation).
-  // customText:true cards keep hand-authored text (Endomorph, Codex, Elystra, Steal).
+  // custom_text:true cards keep hand-authored text (Endomorph, Codex, Elystra, Steal).
   card.text = describeCardText(card);
   return card;
 }
@@ -662,7 +662,7 @@ function makeToken(tokenTplId, controller) {
     power: tpl.power, toughness: tpl.toughness,
     effects: undefined,
     abilities: undefined,
-    staticBuffs: undefined,
+    static_buffs: undefined,
     tapped: false, sick: true, damage: 0,    // ETB sick; haste overrides
     tempPower: 0, tempTou: 0,
     permPower: 0, permTou: 0,
@@ -736,7 +736,7 @@ function makePlayer(name, deck, ownerSide) {
     let pool = Array.isArray(entry.triggerPool) ? entry.triggerPool : null;
     if (!pool && !bonus) {
       const tpl = CARDS[entry.tplId];
-      if (tpl && tpl.triggerPoolSeed === 'mercurial') {
+      if (tpl && tpl.trigger_pool_seed === 'mercurial') {
         pool = MERCURIAL_TRIGGER_POOL;
       }
     }
@@ -755,10 +755,10 @@ function makePlayer(name, deck, ownerSide) {
     const entry = deck[i];
     const tplId = (typeof entry === 'string') ? entry : entry.tplId;
     const tpl = CARDS[tplId];
-    if (!tpl || typeof tpl.chargesAtRunStart !== 'number') continue;
+    if (!tpl || typeof tpl.charges_at_run_start !== 'number') continue;
     const slotCharges = (typeof entry === 'object' && typeof entry.charges === 'number')
       ? entry.charges
-      : tpl.chargesAtRunStart;
+      : tpl.charges_at_run_start;
     const card = cards[i];
     card.chargesLeft = slotCharges;
     if (typeof card.text === 'string' && /^\d+ charges\b/.test(card.text)) {
@@ -922,7 +922,7 @@ function getStats(card) {
     }
   }
 
-  // Static lord buffs. Lords (creatures with staticBuffs) buff OTHER creatures
+  // Static lord buffs. Lords (creatures with static_buffs) buff OTHER creatures
   // matching filter while on battlefield. Synthetic shapes (no iid) skip this.
   if (card.iid != null && typeof G !== 'undefined' && G && G.you && G.you.battlefield) {
     const owner = findCard(card.iid);
@@ -932,8 +932,8 @@ function getStats(card) {
         ...G.opp.battlefield.map(c => ({ card: c, controller: 'opp' })),
       ];
       for (const { card: lord, controller: lordCtrl } of allCreatures) {
-        if (!lord.staticBuffs || lord.iid === card.iid) continue;
-        for (const buff of lord.staticBuffs) {
+        if (!lord.static_buffs || lord.iid === card.iid) continue;
+        for (const buff of lord.static_buffs) {
           // filter.controller:'self' = "creatures you control" (shares lord controller).
           if (!matchFilter(card, buff.filter, owner.controller, lordCtrl)) continue;
           if (buff.subtype) {
@@ -1047,7 +1047,7 @@ function getCardValue(card, purpose, ctx) {
       default:               return 0;
     }
   }
-  for (const buff of (card.staticBuffs || [])) {
+  for (const buff of (card.static_buffs || [])) {
     let perRecipient = (buff.power || 0) + (buff.toughness || 0);
     for (const gKw of (buff.keywords || [])) {
       perRecipient += keywordValueAtTypical(gKw);
@@ -1177,7 +1177,7 @@ function effectCoverageReport() {
   // only ever rendered inside a multi-effect idiom (TEXT_IDIOM_ONLY).
   const idiomOnly = (typeof TEXT_IDIOM_ONLY !== 'undefined') ? TEXT_IDIOM_ONLY : new Set();
   const probe = { amount: 1, power: 1, toughness: 1, count: 1, severity: 1,
-    tokenId: 'soldier_w_1_1', keyword: 'flying', from_zone: 'library', to_zone: 'hand' };
+    token_id: 'soldier_w_1_1', keyword: 'flying', from_zone: 'library', to_zone: 'hand' };
   const missingText = kinds.filter(k => {
     if (idiomOnly.has(k)) return false;
     let txt;
@@ -1208,15 +1208,15 @@ function canPayFromPool(pool, cost) {
   for (const c of COLORS) m[c] -= (cost[c]||0);
   return ((m.W||0)+(m.U||0)+(m.B||0)+(m.R||0)+(m.G||0)+(m.C||0)) >= (cost.C||0);
 }
-// Total staticCostBump from all battlefield permanents (City Guardian etc.).
+// Total static_cost_bump from all battlefield permanents (City Guardian etc.).
 // Global/symmetric. Returns int to add to cost.C.
 function totalStaticCostBump() {
   let bump = 0;
   for (const side of ['you', 'opp']) {
     for (const c of G[side].battlefield) {
       const tpl = CARDS[c.tplId];
-      if (tpl && typeof tpl.staticCostBump === 'number') {
-        bump += tpl.staticCostBump;
+      if (tpl && typeof tpl.static_cost_bump === 'number') {
+        bump += tpl.static_cost_bump;
       }
     }
   }
@@ -1430,7 +1430,7 @@ function affectOneCreature(ctx, f, sevArg) {
   if (sev === 2) {
     const card = pluckFromBattlefield(f);
     if (!card) return;
-    // permanentEot creatures (Elystra) keep their EOT buffs through bounce.
+    // permanent_eot creatures (Elystra) keep their EOT buffs through bounce.
     leavesPlayPreservingBuffs(card);
     if (!card.isToken) {
       G[card.owner || f.controller].hand.push(card);
@@ -1671,21 +1671,21 @@ const EFFECTS = {
       && (slotIdx != null)
       && (typeof RUN !== 'undefined' && RUN.applyStickerToSlot);
     if (absorbed) {
-      const stickerId = 'kw_' + absorbed;
-      if (canPersist) RUN.applyStickerToSlot(slotIdx, stickerId);
+      const sticker_id = 'kw_' + absorbed;
+      if (canPersist) RUN.applyStickerToSlot(slotIdx, sticker_id);
       // Mirror onto in-game instance so the keyword is active AND the sticker badge shows now.
       if (inGameTarget) {
         if (!inGameTarget.keywords.includes(absorbed)) inGameTarget.keywords.push(absorbed);
-        if (!inGameTarget.stickers.includes(stickerId)) inGameTarget.stickers.push(stickerId);
+        if (!inGameTarget.stickers.includes(sticker_id)) inGameTarget.stickers.push(sticker_id);
       }
       log(`${ctx.sourceName} absorbs ${absorbed} from ${victim.name}.`, 'sp');
     } else {
       // Fallback +1/+1 via slot sticker (persists across games, unlike counter).
-      const stickerId = 'plus1_plus1';
-      if (canPersist) RUN.applyStickerToSlot(slotIdx, stickerId);
+      const sticker_id = 'plus1_plus1';
+      if (canPersist) RUN.applyStickerToSlot(slotIdx, sticker_id);
       if (inGameTarget) {
         inGameTarget.modifiers.push({ power: 1, toughness: 1 });
-        inGameTarget.stickers.push(stickerId);
+        inGameTarget.stickers.push(sticker_id);
       }
       log(`${ctx.sourceName} eats ${victim.name} and grows +1/+1.`, 'sp');
     }
@@ -1742,12 +1742,12 @@ const EFFECTS = {
     const f = resolveTarget(ctx, target);
     if (!f) return;
     // Two shapes: an inline descriptor (`sticker:{kind,...}` — embargo/bleach) or
-    // a registry id (`stickerId` — complex registered stickers like `scarified`).
+    // a registry id (`sticker_id` — complex registered stickers like `scarified`).
     // For the registry case we persist by id so RUN.applyStickerToSlot uses the
     // STICKERS lookup + id-based dedup/storage, exactly as the old monolith did.
-    const desc = params.sticker || (params.stickerId ? STICKERS[params.stickerId] : null);
+    const desc = params.sticker || (params.sticker_id ? STICKERS[params.sticker_id] : null);
     if (!desc || !desc.kind) return;
-    const slotKey = params.sticker ? { ...desc } : params.stickerId;
+    const slotKey = params.sticker ? { ...desc } : params.sticker_id;
     applyOneStickerToRuntimeCard(f.card, { ...desc });
     const owner = f.card.owner || f.controller;
     const slotIdx = (typeof f.card.slotIdx === 'number') ? f.card.slotIdx : null;
@@ -2030,9 +2030,9 @@ const EFFECTS = {
       log(`${ctx.sourceName} — ${f.card.name} gains ${display}${dur}.`, 'sp');
     }
   },
-  // Mint tokens. Params: tokenId (TOKENS key), count (default 1), controller ('self'|'opp').
+  // Mint tokens. Params: token_id (TOKENS key), count (default 1), controller ('self'|'opp').
   create_tokens(ctx, params) {
-    let tokenId = params.tokenId;
+    let token_id = params.token_id;
     // Legacy save safety: older Codex outputs used bare-name ids ('goblin' etc.).
     const TOKEN_ALIAS = {
       goblin: 'goblin_r_1_1',
@@ -2041,17 +2041,17 @@ const EFFECTS = {
       bear: 'bear_g_2_2',
       saproling: 'saproling_g_1_1',
     };
-    if (tokenId && TOKEN_ALIAS[tokenId]) tokenId = TOKEN_ALIAS[tokenId];
-    if (!tokenId || !TOKENS[tokenId]) {
-      log(`${ctx.sourceName} fizzles — unknown token ${tokenId}.`, 'sp');
+    if (token_id && TOKEN_ALIAS[token_id]) token_id = TOKEN_ALIAS[token_id];
+    if (!token_id || !TOKENS[token_id]) {
+      log(`${ctx.sourceName} fizzles — unknown token ${token_id}.`, 'sp');
       return;
     }
     const count = params.count || 1;
     const owner = (params.controller === 'opp') ? opp(ctx.controller) : ctx.controller;
-    const tpl = TOKENS[tokenId];
+    const tpl = TOKENS[token_id];
     const made = [];
     for (let i = 0; i < count; i++) {
-      const tok = makeToken(tokenId, owner);
+      const tok = makeToken(token_id, owner);
       G[owner].battlefield.push(tok);
       made.push(tok);
     }
@@ -2175,7 +2175,7 @@ const EFFECTS = {
     fromBf.splice(idx, 1);
     G[toCtrl].battlefield.push(card);
     if (params.untap_on_take || params.untap) card.tapped = false;
-    if (params.grant_haste || params.grantHaste) applyGrant(card, 'haste', ctx.sourceIid, true);
+    if (params.grant_haste || params.grant_haste) applyGrant(card, 'haste', ctx.sourceIid, true);
     if (params.duration === 'eot') card.tempControlUntilEot = true;
     log(`${ctx.sourceName} — ${pname(toCtrl)} gains control of ${card.name}` +
         (params.duration === 'eot' ? ' until end of turn.' : '.'), 'sp');
@@ -2273,7 +2273,7 @@ const EFFECTS = {
             snap = tgt;
           }
         } else if (effectNeedsTarget(eff)) {
-          const slot = eff.targetSlot || 0;
+          const slot = eff.target_slot || 0;
           const fetched = getTargetForSlot(slot);
           tgt = fetched.tgt;
           snap = fetched.snap;
@@ -2739,8 +2739,8 @@ function applyStaticKeywordGrants() {
     ...G.opp.battlefield.map(c => ({ card: c, controller: 'opp' })),
   ];
   for (const { card: lord, controller: lordCtrl } of all) {
-    if (!lord.staticBuffs) continue;
-    for (const buff of lord.staticBuffs) {
+    if (!lord.static_buffs) continue;
+    for (const buff of lord.static_buffs) {
       if (!buff.keywords || !buff.keywords.length) continue;
       for (const { card: target, controller: tgtCtrl } of all) {
         if (target.iid === lord.iid) continue;
@@ -3074,7 +3074,7 @@ function resolveTrigger(item) {
       continue;
     }
     if (effectNeedsTarget(eff)) {
-      const slot = eff.targetSlot || 0;
+      const slot = eff.target_slot || 0;
       const { tgt, snap } = getTriggerTargetForSlot(slot);
       if (!tgt) { log(`${item.sourceName} trigger fizzles — no target.`, 'sp'); continue; }
       // No re-validation: multi-effect triggers (Exorcist [exile, gain_life]) need
@@ -3184,7 +3184,7 @@ const TARGET_FILTERS = new Set([
 // is the canonical spelling of proto's legacy `"any"`.
 function targetsForFilter(filter, controller, restrict) {
   // `restrict` (the optional top-level `target_filter`) carries extra matchFilter
-  // restrictions — notColor, hasKeyword, maxTough, tapped, notToken, etc. — that
+  // restrictions — not_color, has_keyword, max_tough, tapped, not_token, etc. — that
   // the closed taxonomy can't name on its own. Merge it into the getValidTargets
   // filter so the cast-time enumeration (and hexproof checkpoint) honors it.
   const merge = (f) => restrict ? Object.assign({}, f, restrict) : f;
@@ -3212,11 +3212,11 @@ function targetsForFilter(filter, controller, restrict) {
 // checking only per-effect targets and silently broke. They all route here now.
 //
 // Three shapes: top-level `target` (+ optional `target_filter`); ability-level
-// `targetSlots` (Stapler-style multi-slot); legacy per-effect `target`/`targetSlot`.
+// `target_slots` (Stapler-style multi-slot); legacy per-effect `target`/`target_slot`.
 function objectNeedsTarget(obj) {
   if (!obj) return false;
   if (obj.target) return true;
-  if (Array.isArray(obj.targetSlots) && obj.targetSlots.length > 0) return true;
+  if (Array.isArray(obj.target_slots) && obj.target_slots.length > 0) return true;
   return Array.isArray(obj.effects) && obj.effects.some(effectNeedsTarget);
 }
 // Legal targets for the object's PRIMARY slot — for "is there any legal target?"
@@ -3224,7 +3224,7 @@ function objectNeedsTarget(obj) {
 function primaryLegalTargets(obj, who) {
   if (!obj) return [];
   if (obj.target) return targetsForFilter(obj.target, who, obj.target_filter);
-  if (Array.isArray(obj.targetSlots) && obj.targetSlots.length > 0) return getValidTargets(obj.targetSlots[0], who);
+  if (Array.isArray(obj.target_slots) && obj.target_slots.length > 0) return getValidTargets(obj.target_slots[0], who);
   const eff = Array.isArray(obj.effects) ? obj.effects.find(effectNeedsTarget) : null;
   return eff ? getValidTargets(eff, who) : [];
 }
@@ -3238,9 +3238,9 @@ function probeTargetsForObject(obj, who) {
     const valid = targetsForFilter(obj.target, who, obj.target_filter);
     return valid.length ? [valid[0]] : null;
   }
-  if (Array.isArray(obj.targetSlots) && obj.targetSlots.length > 0) {
+  if (Array.isArray(obj.target_slots) && obj.target_slots.length > 0) {
     const fakes = [];
-    for (const spec of obj.targetSlots) {
+    for (const spec of obj.target_slots) {
       const valid = getValidTargets(spec, who);
       if (!valid.length) return null;
       fakes.push(valid[0]);
@@ -3253,39 +3253,39 @@ function probeTargetsForObject(obj, who) {
 // Stack-item filter (stack items aren't on bf, so no tapped/controller/hexproof).
 function matchFilterSpell(card, filter) {
   if (!filter) return true;
-  if (filter.spliceableBase && !isSpliceableBase(card.tplId)) return false;
-  if (filter.spliceableStaple && !isSpliceableStaple(card.tplId)) return false;
-  if (filter.notToken && card.isToken) return false;
+  if (filter.spliceable_base && !isSpliceableBase(card.tplId)) return false;
+  if (filter.spliceable_staple && !isSpliceableStaple(card.tplId)) return false;
+  if (filter.not_token && card.isToken) return false;
   return true;
 }
 function matchFilter(card, filter, controller, who) {
   if (!filter) return true;
   if (filter.tapped !== undefined && card.tapped !== filter.tapped) return false;
-  if (filter.notColor && card.color === filter.notColor) return false;
+  if (filter.not_color && card.color === filter.not_color) return false;
   if (filter.color && card.color !== filter.color) return false;
   if (filter.controller === 'self' && controller !== who) return false;
   if (filter.controller === 'opp'  && controller === who) return false;
-  if (filter.maxTough !== undefined) {
+  if (filter.max_tough !== undefined) {
     const [, t] = getStats(card);
-    if (t > filter.maxTough) return false;
+    if (t > filter.max_tough) return false;
   }
-  // Power/toughness bounds — the siblings of maxTough. Enforced so the card-text
+  // Power/toughness bounds — the siblings of max_tough. Enforced so the card-text
   // (withFilter) that already renders "with toughness N or greater" / "power N or
   // less" describes a restriction the engine actually applies (no fake limits).
-  if (filter.minTough !== undefined) {
+  if (filter.min_tough !== undefined) {
     const [, t] = getStats(card);
-    if (t < filter.minTough) return false;
+    if (t < filter.min_tough) return false;
   }
-  if (filter.maxPower !== undefined) {
+  if (filter.max_power !== undefined) {
     const [pw] = getStats(card);
-    if (pw > filter.maxPower) return false;
+    if (pw > filter.max_power) return false;
   }
-  if (filter.minPower !== undefined) {
+  if (filter.min_power !== undefined) {
     const [pw] = getStats(card);
-    if (pw < filter.minPower) return false;
+    if (pw < filter.min_power) return false;
   }
-  // notKeyword: rejects creatures with the named keyword (sibling of hasKeyword).
-  if (filter.notKeyword && (card.keywords || []).includes(filter.notKeyword)) return false;
+  // not_keyword: rejects creatures with the named keyword (sibling of has_keyword).
+  if (filter.not_keyword && (card.keywords || []).includes(filter.not_keyword)) return false;
   // Subtype filter — used by tribal recursion (Spirit Shepherd's "return a
   // Spirit creature card") and any future "destroy target Goblin", "exile
   // target Wizard" style restrictions. Cards may have multi-subtype strings
@@ -3295,24 +3295,24 @@ function matchFilter(card, filter, controller, who) {
   // Vine Strangle) to restrict targeting to flying creatures specifically.
   // Generic over keyword name so future "destroy target indestructible"
   // or "destroy target tapped creature with menace" cards can compose.
-  if (filter.hasKeyword && !(card.keywords || []).includes(filter.hasKeyword)) return false;
-  // notToken filter: rejects token permanents/spells. Used by Steal — you
+  if (filter.has_keyword && !(card.keywords || []).includes(filter.has_keyword)) return false;
+  // not_token filter: rejects token permanents/spells. Used by Steal — you
   // can't put a token into your library as a trophy because tokens have no
   // CARDS template to instantiate from on later games. Mirrors how the
   // Stapler filters tokens implicitly via isSpliceableBase/Staple's
   // CARDS[tplId] guard.
-  if (filter.notToken && card.isToken) return false;
+  if (filter.not_token && card.isToken) return false;
   // Spliceable-base filter (Stapler's first target). Must be a card that
   // can act as a base in the existing splice infrastructure: no Lands, no
   // special creatures (Elystra/Codex/Stapler itself), no tokens, no modal
   // cards. Routes through isSpliceableBase which is the canonical check.
-  if (filter.spliceableBase && !isSpliceableBase(card.tplId)) return false;
+  if (filter.spliceable_base && !isSpliceableBase(card.tplId)) return false;
   // Spliceable-staple filter (Stapler's second target). Must be a card
   // that can act as a staple-half: spliceable AND not already stapled
   // (the stapled-as-staple constraint). Tokens fail isSpliceableStaple's
   // template lookup since they live in TOKENS, not CARDS — handled inside
   // the helper.
-  if (filter.spliceableStaple) {
+  if (filter.spliceable_staple) {
     if (!isSpliceableStaple(card.tplId)) return false;
     // "Already stapled" check — see the field-name note in apply_in_game_splice.
     // In-game cards carry the chain at card.stapledFrom.stapledTpls; the
@@ -3366,14 +3366,14 @@ function resetInPlayState(card, preserveDeathState) {
   }
   if (needsKwReset) card.keywords = intrinsicKeywords(card);
   card.dealtDeathtouch = false;
-  // Re-apply permaBuffs from slot for permanentEot creatures (Elystra). Buffs
+  // Re-apply permaBuffs from slot for permanent_eot creatures (Elystra). Buffs
   // accumulate across the game on slot.permaBuffs; the card's modifier was
   // stale from makeCard time. Strip and re-apply with current slot state.
   if (Array.isArray(card.modifiers)) {
     card.modifiers = card.modifiers.filter(m => m.source !== 'permaBuffs');
   }
   const tpl = CARDS[card.tplId];
-  if (tpl && tpl.permanentEot && typeof card.slotIdx === 'number'
+  if (tpl && tpl.permanent_eot && typeof card.slotIdx === 'number'
       && typeof RUN !== 'undefined' && RUN.getSlots) {
     const slot = RUN.getSlots()[card.slotIdx];
     if (slot && slot.permaBuffs) applyPermaBuffsToCard(card, slot.permaBuffs);
@@ -3402,7 +3402,7 @@ function moveToGraveyard(card, controller) {
   if (card.killedBy && card.killedBy !== controller) {
     claimKeywordsFromKill(card, card.killedBy);
   }
-  // Same flush as checkDeaths — capture permanentEot buffs before
+  // Same flush as checkDeaths — capture permanent_eot buffs before
   // resetInPlayState clears them. Used for direct-destroy paths
   // (affect_creature destroy, mass destroy).
   flushPermanentEotToPermaBuffs(card);
@@ -3437,7 +3437,7 @@ function sacrificeCard(card, controller) {
   if (card.killedBy && card.killedBy !== controller) {
     claimKeywordsFromKill(card, card.killedBy);
   }
-  // Flush permanentEot — symmetric with checkDeaths and moveToGraveyard.
+  // Flush permanent_eot — symmetric with checkDeaths and moveToGraveyard.
   // Sacrifice-sourced deaths shouldn't lose Elystra's accumulated buffs.
   flushPermanentEotToPermaBuffs(card);
   clearRestrictionsFromSource(card.iid);
@@ -3532,7 +3532,7 @@ function drawCard(who) {
     log(`${p.name} can't draw — loses!`, 'dmg'); endGame(opp(who)); return null;
   }
   const c = p.library.shift(); p.hand.push(c);
-  // buildOnDraw hook fires when the card enters hand via drawing. Other
+  // build_on_draw hook fires when the card enters hand via drawing. Other
   // hand-entry paths (tutoring, opening-hand placement) call this helper
   // directly. Bouncing/recurring/flickering doesn't count — those are
   // re-entries, and `_builtThisGame` would already be set anyway.
@@ -3540,16 +3540,16 @@ function drawCard(who) {
   return c;
 }
 
-// Open the trigger-build prompt for a buildOnDraw card if eligible.
+// Open the trigger-build prompt for a build_on_draw card if eligible.
 // Centralizes the prompt-setup logic so every "card moves to hand" path
 // (drawCard, tutors, opening-hand scan) can call it without duplicating.
 // Returns true if the prompt was opened, false if skipped (wrong player,
-// not a buildOnDraw card, already built this game).
+// not a build_on_draw card, already built this game).
 function tryBuildOnDraw(card, who) {
   if (who !== 'you') return false;
   if (!card || card._builtThisGame) return false;
   const tpl = CARDS[card.tplId];
-  if (!tpl || !tpl.buildOnDraw) return false;
+  if (!tpl || !tpl.build_on_draw) return false;
   card._builtThisGame = true;
   // Two-step build: step 1 picks the condition (when), step 2 picks the
   // effect (what), step 3 (only if there's a current ability) chooses
@@ -3583,7 +3583,7 @@ function tryBuildOnDraw(card, who) {
   return true;
 }
 function endGame(winner) {
-  // Flush any pending permanentEot conversions BEFORE flipping the game-over
+  // Flush any pending permanent_eot conversions BEFORE flipping the game-over
   // flag. The normal path is EOT cleanup, which converts tempPower/tempTou
   // and eotGrants into slot.permaBuffs. But endGame can fire mid-turn
   // (lethal attack, lethal Bolt, mill-out) — in which case EOT cleanup
@@ -3625,11 +3625,11 @@ function applyPermaBuffsToCard(card, permaBuffs) {
   }
 }
 
-// Flush a permanentEot creature's (Elystra) temp buffs and EOT grants into
+// Flush a permanent_eot creature's (Elystra) temp buffs and EOT grants into
 // slot.permaBuffs. Idempotent. Caller resets temp values after.
 function flushPermanentEotToPermaBuffs(card) {
   const tpl = CARDS[card.tplId];
-  if (!tpl || !tpl.permanentEot) return;
+  if (!tpl || !tpl.permanent_eot) return;
   if (typeof card.slotIdx !== 'number') return;
   const slot = (typeof RUN !== 'undefined' && RUN.getSlots) ? RUN.getSlots()[card.slotIdx] : null;
   if (!slot) return;
@@ -4051,11 +4051,11 @@ function resolveTopOfStack() {
         const f = findCard(t.iid);
         if (!f) return false;
         const targetTpl = CARDS[f.card.tplId];
-        return targetTpl && targetTpl.ripOnTarget;
+        return targetTpl && targetTpl.rip_on_target;
       });
     // Multi-target dispatch: by default, all targeted effects share
     // item.targets[0] (legacy semantics for Swords, Strength of the Pack,
-    // etc.). Effects that opt into a distinct target via `targetSlot: N`
+    // etc.). Effects that opt into a distinct target via `target_slot: N`
     // pull from item.targets[N]. Snapshots are computed per slot lazily
     // so each unique slot only snapshots once.
     const slotSnapshots = new Map();
@@ -4072,7 +4072,7 @@ function resolveTopOfStack() {
     // on it by default. `chooses()` REPLACES the operative target with the
     // targeted player's pick. `currentTarget` threads this through the loop.
     // Inert for legacy cards (none set card.target) — they use the per-effect
-    // `eff.target`/`targetSlot` branch below, unchanged.
+    // `eff.target`/`target_slot` branch below, unchanged.
     const hasTargetStep = !!card.target;
     let curTgt = null, curSnap = null;
     if (hasTargetStep) { const f0 = getTargetForSlot(0); curTgt = f0.tgt; curSnap = f0.snap; }
@@ -4103,7 +4103,7 @@ function resolveTopOfStack() {
           snap = tgt;
         }
       } else if (effectNeedsTarget(eff)) {
-        const slot = eff.targetSlot || 0;
+        const slot = eff.target_slot || 0;
         const fetched = getTargetForSlot(slot);
         tgt = fetched.tgt;
         snap = fetched.snap;
@@ -4380,8 +4380,8 @@ function doCastSpell(who, cardIid, targets, modeIdx) {
   // log doesn't say just "casts X" for ambiguous modal cards.
   let modeLabel = '';
   if (isModal(card)) {
-    const modeNames = card.effects.modeNames || [];
-    if (modeNames[modeIdx || 0]) modeLabel = ` (${modeNames[modeIdx || 0]})`;
+    const mode_names = card.effects.mode_names || [];
+    if (mode_names[modeIdx || 0]) modeLabel = ` (${mode_names[modeIdx || 0]})`;
   }
   // Build the "on X" suffix for the log line. Single-target spells say
   // "casts Bolt on Goblin"; multi-target spells say "casts Branching Bolt
@@ -4420,7 +4420,7 @@ function doActivateAbility(who, cardIid, abilityIdx, targets, sacIid) {
   const ctx = { controller: who, sourceName: card.name, sourceIid: card.iid, sourceCard: card, allTargets: Array.isArray(targets) ? targets : [] };
   // Multi-target dispatch (mirrors resolveTopOfStack/resolveTrigger). By
   // default, targeted effects share targets[0]. Effects can opt into a
-  // distinct slot via `targetSlot: N`. allTargets is also threaded onto
+  // distinct slot via `target_slot: N`. allTargets is also threaded onto
   // ctx so multi-target effects like apply_in_game_splice (Stapler) can read
   // both inputs directly without relying on inter-effect coordination.
   const abilitySlotSnapshots = new Map();
@@ -4450,7 +4450,7 @@ function doActivateAbility(who, cardIid, abilityIdx, targets, sacIid) {
       tgt = {kind:'creature', iid: card.iid, label: card.name};
       snap = snapshotTarget(tgt);
     } else if (effectNeedsTarget(e)) {
-      const slot = e.targetSlot || 0;
+      const slot = e.target_slot || 0;
       const fetched = getAbilityTargetForSlot(slot);
       tgt = fetched.tgt;
       snap = fetched.snap;
@@ -4534,7 +4534,7 @@ function doSearchPick(who, cardIid) {
   shuffle(lib);
   log(`${G[who].name} fetches ${card.name}.`, 'sp');
   G.pendingSearch = null;
-  // Tutored cards trigger buildOnDraw the same as any other hand-entry.
+  // Tutored cards trigger build_on_draw the same as any other hand-entry.
   // The Codex doesn't currently appear in any tutor's filter, but if a
   // future "tutor any card" effect lands, this is where it'd matter.
   tryBuildOnDraw(card, who);
@@ -4841,21 +4841,21 @@ function isLegalAction(who, action) {
       // Validate targets if needed. By default, multi-effect spells share
       // a single target slot (targets[0]) — preserves the legacy behavior
       // for Swords, Strength of the Pack, Predator's Speed, etc. Effects
-      // can opt into a distinct slot via `targetSlot: N` (0-indexed); a
+      // can opt into a distinct slot via `target_slot: N` (0-indexed); a
       // multi-target spell like Branching Bolt has two effects, the second
-      // marked `targetSlot: 1`, so it pulls action.targets[1] instead of
+      // marked `target_slot: 1`, so it pulls action.targets[1] instead of
       // sharing targets[0]. The required targets-array length is one more
-      // than the highest targetSlot referenced.
+      // than the highest target_slot referenced.
       const modes = getModes(card);
       const modeIdx = action.modeIdx || 0;
       if (modeIdx < 0 || modeIdx >= modes.length) return false;
       const activeEffects = modes[modeIdx];
       const targetedEffs = (activeEffects || []).filter(effectNeedsTarget);
       if (targetedEffs.length > 0) {
-        const maxSlot = targetedEffs.reduce((m, e) => Math.max(m, e.targetSlot || 0), 0);
+        const maxSlot = targetedEffs.reduce((m, e) => Math.max(m, e.target_slot || 0), 0);
         if (!action.targets || action.targets.length < maxSlot + 1) return false;
         for (const eff of targetedEffs) {
-          const slot = eff.targetSlot || 0;
+          const slot = eff.target_slot || 0;
           const tgt = action.targets[slot];
           if (!tgt) return false;
           const valid = getValidTargets(eff, who);
@@ -4900,33 +4900,33 @@ function isLegalAction(who, action) {
         // (Matches MtG: mana abilities don't require priority and don't use the stack.)
         return true;
       }
-      // Non-mana ability: timing depends on sorcerySpeed flag.
-      if (ab.sorcerySpeed) {
+      // Non-mana ability: timing depends on sorcery_speed flag.
+      if (ab.sorcery_speed) {
         if (!isSorceryWindow(who)) return false;
       } else {
         if (!isInstantWindow(who)) return false;
       }
-      // Ability-level multi-target slots (Stapler): one pick per `targetSlots`
+      // Ability-level multi-target slots (Stapler): one pick per `target_slots`
       // entry, each validated against its own {target, filter} spec. Replaces
       // the old `noop` slot-marker effect — target specs belong on the ability,
       // not masquerading as an empty-body effect kind.
-      if (Array.isArray(ab.targetSlots) && ab.targetSlots.length > 0) {
-        if (!action.targets || action.targets.length < ab.targetSlots.length) return false;
-        for (let s = 0; s < ab.targetSlots.length; s++) {
+      if (Array.isArray(ab.target_slots) && ab.target_slots.length > 0) {
+        if (!action.targets || action.targets.length < ab.target_slots.length) return false;
+        for (let s = 0; s < ab.target_slots.length; s++) {
           const tgt = action.targets[s];
           if (!tgt) return false;
-          const valid = getValidTargets(ab.targetSlots[s], who);
+          const valid = getValidTargets(ab.target_slots[s], who);
           if (!valid.some(v => sameTarget(v, tgt))) return false;
         }
       }
       const targetedEffs = ab.effects.filter(effectNeedsTarget);
       if (targetedEffs.length > 0) {
-        // Multi-target ability validation: each effect's targetSlot picks
+        // Multi-target ability validation: each effect's target_slot picks
         // its target from action.targets[slot].
-        const maxSlot = targetedEffs.reduce((m, e) => Math.max(m, e.targetSlot || 0), 0);
+        const maxSlot = targetedEffs.reduce((m, e) => Math.max(m, e.target_slot || 0), 0);
         if (!action.targets || action.targets.length < maxSlot + 1) return false;
         for (const eff of targetedEffs) {
-          const slot = eff.targetSlot || 0;
+          const slot = eff.target_slot || 0;
           const tgt = action.targets[slot];
           if (!tgt) return false;
           const valid = getValidTargets(eff, who);
@@ -5125,12 +5125,12 @@ function getLegalActions(who) {
         actions.push(a);
         continue;
       }
-      // Group targeted effects by targetSlot. Each unique slot needs one
+      // Group targeted effects by target_slot. Each unique slot needs one
       // target. Effects with the same slot share that target — same
       // legacy behavior as Strength of the Pack (both effects target slot 0).
       const slotMap = new Map();
       for (const eff of targetedEffs) {
-        const slot = eff.targetSlot || 0;
+        const slot = eff.target_slot || 0;
         if (!slotMap.has(slot)) slotMap.set(slot, []);
         slotMap.get(slot).push(eff);
       }
@@ -5206,7 +5206,7 @@ function getLegalActions(who) {
       // Multi-target abilities (Stapler) are player-UI-driven; the AI doesn't
       // enumerate the 2-target cross-product. Skip so we don't emit always-
       // illegal single-target actions.
-      if (Array.isArray(ab.targetSlots) && ab.targetSlots.length > 1) continue;
+      if (Array.isArray(ab.target_slots) && ab.target_slots.length > 1) continue;
       // Tap cost requirements.
       if (ab.cost && ab.cost.tap) {
         if (card.tapped) continue;
@@ -5225,7 +5225,7 @@ function getLegalActions(who) {
           .map(c => c.iid);
         if (sacOptions.length === 0) continue;  // can't pay sac cost
       }
-      if (ab.sorcerySpeed ? !isSorceryWindow(who) : !isInstantWindow(who)) continue;
+      if (ab.sorcery_speed ? !isSorceryWindow(who) : !isInstantWindow(who)) continue;
       const targetedEff = ab.effects.find(effectNeedsTarget);
       // Cross-product: (effect targets) × (sac options). A top-level `target`
       // step (§3.5) enumerates from targetsForFilter (hexproof-excluded); empty
@@ -5483,7 +5483,7 @@ function step() {
         // its temporary toughness survive: the damage clears the same instant
         // the temp P/T does, so the death check that follows sees a clean board.
         [...G.you.battlefield, ...G.opp.battlefield].forEach(c => {
-          // permanentEot creatures (Elystra) — convert temp buffs and EOT
+          // permanent_eot creatures (Elystra) — convert temp buffs and EOT
           // grants to slot.permaBuffs before they get cleared. Helper is
           // shared with endGame, which also needs to flush pending buffs
           // when the game ends mid-turn (before EOT cleanup would fire).
@@ -5645,7 +5645,7 @@ function init(playerDeck, oppDeck) {
   // is worth more than the leak.)
   if (G.you.mulliganed) log(`${G.you.name} mulliganed (opening hand had too few or too many lands).`, 'sp');
   if (G.opp.mulliganed) log(`${G.opp.name} mulliganed (opening hand had too few or too many lands).`, 'sp');
-  // Opening-hand buildOnDraw scan. Cards in the opening hand bypass drawCard
+  // Opening-hand build_on_draw scan. Cards in the opening hand bypass drawCard
   // (they're placed directly during makePlayer), so the per-draw build hook
   // doesn't fire for them. Walk the player's hand once at game-start;
   // tryBuildOnDraw handles eligibility and the prompt setup. find() returns
@@ -5654,7 +5654,7 @@ function init(playerDeck, oppDeck) {
   // queued, this becomes a queue rather than a single setter.
   const handBuilder = G.you.hand.find(c => {
     const tpl = CARDS[c.tplId];
-    return tpl && tpl.buildOnDraw && !c._builtThisGame;
+    return tpl && tpl.build_on_draw && !c._builtThisGame;
   });
   if (handBuilder) tryBuildOnDraw(handBuilder, 'you');
   step();

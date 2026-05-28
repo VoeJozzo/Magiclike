@@ -15,10 +15,10 @@
       "kind": "damage",
       "target": "creature",
       "amount": 2,
-      "targetSlot": 1
+      "target_slot": 1
     }
   ],
-  "multiTarget": true,
+  "multi_target": true,
   "name": "Branching Bolt",
   "text": "Branching Bolt deals 2 damage to target creature and 2 damage to target creature.",
   "type": "Instant"

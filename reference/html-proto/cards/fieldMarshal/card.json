@@ -10,7 +10,7 @@
   ],
   "name": "Field Marshal",
   "power": 2,
-  "staticBuffs": [
+  "static_buffs": [
     {
       "filter": {
         "controller": "self"

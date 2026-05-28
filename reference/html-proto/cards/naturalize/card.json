@@ -7,7 +7,7 @@
   },
   "target": "opp_creature",
   "target_filter": {
-    "hasKeyword": "flying"
+    "has_keyword": "flying"
   },
   "effects": [
     {

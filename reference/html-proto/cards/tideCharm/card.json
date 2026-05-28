@@ -6,7 +6,7 @@
     "C": 2
   },
   "effects": {
-    "modeNames": [
+    "mode_names": [
       "Counter (target spell)",
       "Bounce (target creature)",
       "Foresee (draw 2)"

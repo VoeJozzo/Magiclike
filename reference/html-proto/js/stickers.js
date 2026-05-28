@@ -234,12 +234,12 @@ function applyEmpowerRoll(card, roll, amount) {
 // Excludes subtypes the target already has. Null if nothing eligible.
 function rollSubtypeFromDeck(slots, targetSlotIdx) {
   if (!Array.isArray(slots)) return null;
-  const targetSlot = slots[targetSlotIdx];
-  if (!targetSlot) return null;
-  const targetTpl = tplForSlot(targetSlot);
+  const target_slot = slots[targetSlotIdx];
+  if (!target_slot) return null;
+  const targetTpl = tplForSlot(target_slot);
   if (!targetTpl) return null;
   const targetTokens = new Set((targetTpl.sub || '').split(/\s+/).filter(Boolean));
-  for (const r of (targetSlot.subtypeRolls || [])) {
+  for (const r of (target_slot.subtypeRolls || [])) {
     if (r) targetTokens.add(r);
   }
   // Each (slot, token) pair contributes one count — Goblin Wizard adds 1 weight
@@ -268,15 +268,15 @@ function rollSubtypeFromDeck(slots, targetSlotIdx) {
 
 // Push a sticker onto a slot, recording an empower/subtype roll if needed.
 // `slotsForRoll` is the deck context for subtype rolling.
-function pushStickerWithRoll(slot, stickerId, slotsForRoll) {
-  slot.stickers.push(stickerId);
-  if (stickerId === 'empower') {
+function pushStickerWithRoll(slot, sticker_id, slotsForRoll) {
+  slot.stickers.push(sticker_id);
+  if (sticker_id === 'empower') {
     const tpl = tplForSlot(slot);
     const roll = tpl ? rollEmpowerTarget(tpl) : null;
     if (!Array.isArray(slot.empowerRolls)) slot.empowerRolls = [];
     slot.empowerRolls.push(roll);
   }
-  if (stickerId === 'subtype') {
+  if (sticker_id === 'subtype') {
     let roll = null;
     if (Array.isArray(slotsForRoll)) {
       const idx = slotsForRoll.indexOf(slot);
@@ -299,7 +299,7 @@ function stickersForSlot(slot, deckColors) {
     if (effs && Array.isArray(effs.modes)) {
       // Modal (charms): preserve shape.
       return {
-        modeNames: effs.modeNames ? effs.modeNames.slice() : undefined,
+        mode_names: effs.mode_names ? effs.mode_names.slice() : undefined,
         modes: effs.modes.map(modeEffs => modeEffs.map(e => ({...e}))),
       };
     }

@@ -7,7 +7,7 @@
   "effects": [
     {
       "kind": "create_tokens",
-      "tokenId": "spirit_w_1_1",
+      "token_id": "spirit_w_1_1",
       "count": 3
     }
   ],

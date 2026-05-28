@@ -111,7 +111,7 @@ function spellValueForEffects(effects) {
       else v += eot ? 2 : 3;
     }
     else if (e.kind === 'create_tokens') {
-      const tpl = TOKENS[e.tokenId];
+      const tpl = TOKENS[e.token_id];
       if (tpl) {
         const stat = (tpl.power || 0) + (tpl.toughness || 0);
         const kwBonus = (tpl.keywords || []).reduce((s, k) => s +
@@ -1123,7 +1123,7 @@ function scoreMultiTargetSpell(state, who, card, targets, modeIdx) {
   const slotsUsed = new Set();
   for (const eff of modeEffects) {
     if (ENGINE.effectNeedsTarget && ENGINE.effectNeedsTarget(eff)) {
-      slotsUsed.add(eff.targetSlot || 0);
+      slotsUsed.add(eff.target_slot || 0);
     }
   }
   if (slotsUsed.size === 0) {

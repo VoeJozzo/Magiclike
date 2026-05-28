@@ -6,7 +6,7 @@
     "C": 2
   },
   "effects": {
-    "modeNames": [
+    "mode_names": [
       "Bolt (deal 3)",
       "Frenzy (+2/+0 haste EOT)",
       "Sweep (1 to each)"

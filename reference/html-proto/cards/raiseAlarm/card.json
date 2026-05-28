@@ -8,7 +8,7 @@
   "effects": [
     {
       "kind": "create_tokens",
-      "tokenId": "soldier_w_1_1",
+      "token_id": "soldier_w_1_1",
       "count": 2
     }
   ],
