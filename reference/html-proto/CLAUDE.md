@@ -4,7 +4,7 @@ Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folde
 
 ## Version
 
-**Current: `v2.0.26`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.0.27`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -74,6 +74,15 @@ Deleted the `destroy_and_sticker_slot` handler + all its classification/scoring/
 text sites. Behavior note: under atomic decomposition an indestructible target now
 gets scarred-but-not-destroyed (the monolith fizzled both halves) — an acceptable
 edge on a boss-targeted creature.
+
+v2.0.27: inlined the always-true FLASH_AI_ENABLED flag. With the A/B setter gone
+(v2.0.26), the flag was a `const true` gating 4 `if (FLASH_AI_ENABLED && …)` sites
+— an always-true condition is a dead abstraction, so the flag is removed and the
+flash-AI heuristics (end-step tempo, ambush bonus, flash-hold deferral) now run
+unconditionally, which is exactly what they always did. Per-site comments already
+document the flash-AI intent, so no marker lost. Behavioral no-op; 1096 green,
+300-game selfplay clean. (Should've done this in v2.0.26 instead of demoting
+let→const — an always-true flag IS the cruft.)
 
 v2.0.26: removed the dead flash-AI A/B setter/getter. `setFlashAIEnabled`/
 `isFlashAIEnabled` had zero callers (confirmed across js/ + tests/) — deleted

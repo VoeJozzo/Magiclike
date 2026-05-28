@@ -151,10 +151,6 @@ const UNVALUED_EFFECT_KINDS = new Set([
 
 const AI = (function() {
 
-// Flash AI is permanently on: creatures with flash ambush + take tempo end-step
-// plays (vs. sorcery-speed-everything). The runtime A/B toggle was removed (its
-// setter had zero callers); flip this const to compare behaviors during tuning.
-const FLASH_AI_ENABLED = true;
 
 function decide(state, who) {
   if (!state || state.gameOver) return {type:'pass'};
@@ -235,7 +231,7 @@ function decide(state, who) {
       if (reactive) return reactive;
     }
     // Opp's end step: free tempo for flash creatures (ETBs sick on opp's turn, untaps for us).
-    if (FLASH_AI_ENABLED && state.phase === 'END' && who !== state.activePlayer) {
+    if (state.phase === 'END' && who !== state.activePlayer) {
       const tempo = decideEndStepFlash(state, who, actions);
       if (tempo) return tempo;
     }
@@ -295,7 +291,7 @@ function decideOffTurnCombat(state, who, actions) {
     }
     // Flash gets an ambush bonus — body persists post-combat, so small +score still beats waiting.
     if (isFlashCreature) {
-      if (FLASH_AI_ENABLED) score += scoreFlashAmbush(state, who, card);
+      score += scoreFlashAmbush(state, who, card);
       if (score > bestFlashScore) { bestFlashScore = score; bestFlash = chosen; }
     } else {
       if (score > bestInstScore) { bestInstScore = score; bestInst = chosen; }
@@ -425,24 +421,21 @@ function decideMain(state, who, actions) {
     if (reservedBurnIids && reservedBurnIids.has(a.cardIid)) continue;
     // Defer VANILLA flash to opp's turn — body-only value is preserved by ambush/end-step paths.
     // Trigger-flash (Quickling) wants to fire NOW (pre-combat bounce).
-    if (FLASH_AI_ENABLED) {
-      const card = state[who].hand.find(c => c.iid === a.cardIid);
-      if (card && card.type === 'Creature'
-          && card.keywords && card.keywords.includes('flash')
-          && (!card.triggers || card.triggers.length === 0)) {
-        continue;
-      }
+    const flashCard = state[who].hand.find(c => c.iid === a.cardIid);
+    if (flashCard && flashCard.type === 'Creature'
+        && flashCard.keywords && flashCard.keywords.includes('flash')
+        && (!flashCard.triggers || flashCard.triggers.length === 0)) {
+      continue;
     }
     if (!spellsByCard.has(a.cardIid)) spellsByCard.set(a.cardIid, []);
     spellsByCard.get(a.cardIid).push(a);
   }
   // Curve-up: biggest playable first. Flash-hold: vanilla flash bodies deferred to off-turn.
-  // FLASH_AI_ENABLED is the A/B flag against sorcery-speed-everything.
   const candidateCards = Array.from(spellsByCard.keys()).map(iid => ({
     iid, card: state[who].hand.find(c => c.iid === iid),
   })).filter(x => {
     if (!x.card) return false;
-    if (FLASH_AI_ENABLED && x.card.type === 'Creature' &&
+    if (x.card.type === 'Creature' &&
         x.card.keywords && x.card.keywords.includes('flash')) {
       return false;
     }
