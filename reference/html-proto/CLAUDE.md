@@ -4,7 +4,7 @@ Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folde
 
 ## Version
 
-**Current: `v2.0.25`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.0.26`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -74,6 +74,13 @@ Deleted the `destroy_and_sticker_slot` handler + all its classification/scoring/
 text sites. Behavior note: under atomic decomposition an indestructible target now
 gets scarred-but-not-destroyed (the monolith fizzled both halves) — an acceptable
 edge on a boss-targeted creature.
+
+v2.0.26: removed the dead flash-AI A/B setter/getter. `setFlashAIEnabled`/
+`isFlashAIEnabled` had zero callers (confirmed across js/ + tests/) — deleted
+them + their exports. Kept `FLASH_AI_ENABLED` (it's READ at 4 sites, so live) but
+demoted `let`→`const` since nothing reassigns it now; flip the const for tuning
+A/B. (Earlier I'd kept the setter/getter as a "deliberate seam" — wrong call; a
+comment claiming usefulness isn't a caller. Confirmed-dead → removed.) 1096 green.
 
 v2.0.25 (docs): re-corrected the #7 symmetricize status. v2.0.22 claimed #7 was
 "NOT done (still monolithic)" — that was wrong, an over-correction from an audit

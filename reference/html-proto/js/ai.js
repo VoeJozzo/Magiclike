@@ -151,8 +151,10 @@ const UNVALUED_EFFECT_KINDS = new Set([
 
 const AI = (function() {
 
-// Flag off → flash creatures cast sorcery-speed; flag on → also ambush + tempo end-step.
-let FLASH_AI_ENABLED = true;
+// Flash AI is permanently on: creatures with flash ambush + take tempo end-step
+// plays (vs. sorcery-speed-everything). The runtime A/B toggle was removed (its
+// setter had zero callers); flip this const to compare behaviors during tuning.
+const FLASH_AI_ENABLED = true;
 
 function decide(state, who) {
   if (!state || state.gameOver) return {type:'pass'};
@@ -1776,9 +1778,6 @@ function pickBestActivation(state, who, abilityActs) {
 
 return {
   decide,
-  // Test/A-B harness hook. Production always leaves this enabled.
-  setFlashAIEnabled(v) { FLASH_AI_ENABLED = !!v; },
-  isFlashAIEnabled() { return FLASH_AI_ENABLED; },
   // Spell valuation relocated from engine.js (review #6) — exposed for tests
   // (test_ai_targeting, test_effect_coverage) and the engine coverage report.
   spellValueForEffects, VALUED_EFFECT_KINDS, UNVALUED_EFFECT_KINDS,
