@@ -8,13 +8,11 @@
   "effects": [
     {
       "kind": "damage",
-      "target": "creature",
       "amount": 2,
       "target_slot": 0
     },
     {
       "kind": "damage",
-      "target": "creature",
       "amount": 2,
       "target_slot": 1
     }

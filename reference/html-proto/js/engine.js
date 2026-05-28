@@ -2611,7 +2611,14 @@ function applyEffect(ctx, effect, target, targetSnap) {
   const resolved = resolveEffectParams(effect, ctx, snap);
   fn(ctx, resolved, target);
 }
-function effectNeedsTarget(eff) { return !!eff.target && eff.target !== 'self'; }
+// An effect consumes a chosen target if it carries an inline target filter
+// (legacy/single shape) OR binds to a multi-target slot (`target_slot`, the
+// canonical multi-target shape — the slot's filter lives in the object's
+// `target_slots`). Scope/self effects carry neither and never reach here as
+// targeted.
+function effectNeedsTarget(eff) {
+  return (!!eff.target && eff.target !== 'self') || (eff.target_slot != null);
+}
 
 // Boot-time effect validation (Slice 3 step 4). Walks every card's effects
 // (on-cast — flat or modal — plus activated/triggered abilities) and flags
@@ -4854,11 +4861,16 @@ function isLegalAction(who, action) {
       if (targetedEffs.length > 0) {
         const maxSlot = targetedEffs.reduce((m, e) => Math.max(m, e.target_slot || 0), 0);
         if (!action.targets || action.targets.length < maxSlot + 1) return false;
+        const slotSpecs = Array.isArray(card.target_slots) ? card.target_slots : null;
         for (const eff of targetedEffs) {
           const slot = eff.target_slot || 0;
           const tgt = action.targets[slot];
           if (!tgt) return false;
-          const valid = getValidTargets(eff, who);
+          // Canonical multi-target shape (§5b): the slot's filter is in
+          // card.target_slots[slot]; fall back to the effect's inline filter
+          // (staple-synth shape, which carries inline target on its effects).
+          const spec = (slotSpecs && slotSpecs[slot]) ? slotSpecs[slot] : eff;
+          const valid = getValidTargets(spec, who);
           if (!valid.some(v => sameTarget(v, tgt))) return false;
         }
       }
@@ -5138,7 +5150,12 @@ function getLegalActions(who) {
       // For each slot, collect valid targets. The valid set is the
       // intersection of valid-targets across effects sharing the slot
       // (a slot-0 target must satisfy every slot-0 effect's filter).
+      const slotSpecs = Array.isArray(card.target_slots) ? card.target_slots : null;
       const validBySlot = slotKeys.map(slot => {
+        // Canonical multi-target shape (§5b): the slot's filter lives in
+        // card.target_slots[slot]. Fall back to per-effect filters for the
+        // staple-synthesized shape (which carries inline target on its effects).
+        if (slotSpecs && slotSpecs[slot]) return getValidTargets(slotSpecs[slot], who);
         const effs = slotMap.get(slot);
         if (effs.length === 1) return getValidTargets(effs[0], who);
         // Multiple effects on same slot: intersect.

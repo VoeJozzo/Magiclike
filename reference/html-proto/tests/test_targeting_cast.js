@@ -199,5 +199,61 @@ console.log('\n=== Activated ability with a top-level target() step ===');
   }
 })();
 
+console.log('\n=== #5b canonical multi-target: target_slots is the single source ===');
+(() => {
+  // The 5 multi-target spells carry a card-level target_slots array; their
+  // slot-bound effects bind via target_slot and carry NO inline target (the
+  // filter lives in the slot spec). Pin the shape so a regression can't
+  // silently reintroduce per-effect target.
+  for (const id of ['branchingBolt', 'twinStrike', 'drainLife', 'rootsAndBranches', 'swordAndSorcery']) {
+    const c = CARDS[id];
+    const slotsOk = Array.isArray(c.target_slots) && c.target_slots.length === 2;
+    const noInline = (c.effects || []).every(e => e.target_slot == null || e.target === undefined);
+    const noFlag = c.multi_target === undefined;
+    check(id + ': target_slots[2] + no inline target on slot effects + no multi_target flag',
+      slotsOk && noInline && noFlag);
+  }
+})();
+
+console.log('\n=== Branching Bolt: 2-target cross-product enumerates + both take 2 dmg ===');
+(() => {
+  const G = newGame();
+  const a = mk(TOUGH_CREATURE, 'opp'), b = mk(TOUGH_CREATURE, 'opp');
+  G.opp.battlefield.push(a, b);
+  const bb = mk('branchingBolt', 'you'); G.you.hand.push(bb);
+  readyForCast(G, 'you');
+  const casts = ENGINE.getLegalActions('you').filter(x => x.type === 'castSpell' && x.cardIid === bb.iid);
+  // 2 creatures × 2 slots = 4 combos (incl. same-target pairs).
+  check('enumerates the 2-slot cross-product (4 combos)', casts.length === 4, 'combos=' + casts.length);
+  const distinct = casts.find(x => x.targets[0].iid !== x.targets[1].iid);
+  check('a distinct-target combo exists', !!distinct);
+  check('distinct combo is legal', ENGINE.isLegalAction('you', distinct));
+  ENGINE.executeAction('you', distinct);
+  drainStack(G);
+  const fa = G.opp.battlefield.find(c => c.iid === distinct.targets[0].iid);
+  const fb = G.opp.battlefield.find(c => c.iid === distinct.targets[1].iid);
+  check('both targets took 2 damage', (fa && fa.damage === 2) && (fb && fb.damage === 2),
+    'a=' + (fa && fa.damage) + ' b=' + (fb && fb.damage));
+})();
+
+console.log('\n=== Drain Life: slot 0 = creature, slot 1 = player (mixed-filter slots) ===');
+(() => {
+  const G = newGame();
+  const cr = mk(TOUGH_CREATURE, 'opp'); G.opp.battlefield.push(cr);
+  const dl = mk('drainLife', 'you'); G.you.hand.push(dl);
+  readyForCast(G, 'you');
+  const youLife = G.you.life, oppLife = G.opp.life;
+  const cast = { type: 'castSpell', cardIid: dl.iid, targets: [
+    { kind: 'creature', iid: cr.iid, label: cr.name },   // slot 0 (creature)
+    { kind: 'player', who: 'opp', label: 'Opp' },         // slot 1 (opp player)
+  ] };
+  check('mixed-filter multi-target cast is legal', ENGINE.isLegalAction('you', cast));
+  ENGINE.executeAction('you', cast);
+  drainStack(G);
+  check('slot-0 creature took 2 damage', cr.damage === 2, 'dmg=' + cr.damage);
+  check('slot-1 opponent lost 2 life', G.opp.life === oppLife - 2, oppLife + '→' + G.opp.life);
+  check('caster gained 4 life (scope:self half)', G.you.life === youLife + 4, youLife + '→' + G.you.life);
+})();
+
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');
 process.exit(fail > 0 ? 1 : 0);

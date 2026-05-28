@@ -867,21 +867,27 @@ function pendingTopTargetRestrict(pt) {
   return null;
 }
 
-// Ability-level slot specs (Stapler) — one pick per `target_slots` entry.
-function pendingAbilityTargetSlots(pt) {
-  if (!pt || pt.kind !== 'ability') return null;
-  const f = ENGINE.findCard(pt.cardIid);
-  const ab = f && f.card.abilities[pt.abilityIdx];
-  return (ab && Array.isArray(ab.target_slots) && ab.target_slots.length > 0) ? ab.target_slots : null;
+// Object-level slot specs — one pick per `target_slots` entry. The canonical
+// multi-target shape (§5b), on a hand-cast card OR an activated ability
+// (Stapler). The slot's filter lives here, not on the effects.
+function pendingObjectTargetSlots(pt) {
+  if (!pt) return null;
+  let obj = null;
+  if (pt.kind === 'cast') obj = ENGINE.state().you.hand.find(c => c.iid === pt.cardIid);
+  else if (pt.kind === 'ability') {
+    const f = ENGINE.findCard(pt.cardIid);
+    obj = f && f.card.abilities[pt.abilityIdx];
+  }
+  return (obj && Array.isArray(obj.target_slots) && obj.target_slots.length > 0) ? obj.target_slots : null;
 }
 
-// Unique sorted target_slot values; one user pick per slot. A top-level target()
-// step (§3.5) is a single slot [0]; an ability's `target_slots` array is one
-// pick per entry; otherwise read per-effect target_slots.
+// Unique sorted slots; one user pick per slot. A top-level target() step (§3.5)
+// is a single slot [0]; an object's `target_slots` array is one pick per entry;
+// otherwise fall back to per-effect target_slot values (legacy/staple-synth).
 function slotsNeededForPending(pt) {
   if (pendingTopTargetFilter(pt)) return [0];
-  const abSlots = pendingAbilityTargetSlots(pt);
-  if (abSlots) return abSlots.map((_, i) => i);
+  const objSlots = pendingObjectTargetSlots(pt);
+  if (objSlots) return objSlots.map((_, i) => i);
   const effects = pendingTargetEffects(pt);
   const slots = new Set();
   for (const eff of effects) {
@@ -899,10 +905,10 @@ function pendingTargetEffect(pt) {
     const restrict = pendingTopTargetRestrict(pt);
     return restrict ? { target: top, filter: restrict } : { target: top };
   }
-  const abSlots = pendingAbilityTargetSlots(pt);
-  if (abSlots) {
+  const objSlots = pendingObjectTargetSlots(pt);
+  if (objSlots) {
     const pickedCount = (pt.pickedSlots && pt.pickedSlots.length) || 0;
-    return abSlots[pickedCount] || abSlots[0];
+    return objSlots[pickedCount] || objSlots[0];
   }
   const slots = slotsNeededForPending(pt);
   if (slots.length === 0) return null;

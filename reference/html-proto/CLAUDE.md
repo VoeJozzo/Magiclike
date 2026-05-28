@@ -75,6 +75,28 @@ text sites. Behavior note: under atomic decomposition an indestructible target n
 gets scarred-but-not-destroyed (the monolith fizzled both halves) — an acceptable
 edge on a boss-targeted creature.
 
+v2.0.21: review cleanup (#5b phase 3 — COMPLETE) — target_slots is the single
+source of truth for the 5 multi-target spells. Dropped inline per-effect
+`eff.target` from branchingBolt/twinStrike/drainLife/rootsAndBranches/
+swordAndSorcery; each slot-bound effect now carries only `target_slot:N`, and the
+filter lives in the card-level `target_slots[N]` spec. Consumers migrated to read
+the slot spec: `effectNeedsTarget` now recognizes slot-bound effects
+(target_slot != null); getLegalActions + isLegalAction prefer
+`card.target_slots[slot]` for per-slot validity/validation; card-text's
+describeEffectList resolves the synthetic per-effect target from the slot spec
+(extends the existing top-level-step mapping); render's slot machinery
+(pendingObjectTargetSlots, slotsNeededForPending, pendingTargetEffect)
+recognizes card-level target_slots, not just ability-level. New end-to-end cast
+regressions in test_targeting_cast.js (cross-product enumeration; both targets
+damaged; drainLife's mixed creature/player slots: creature dmg + opp life-loss +
+self life-gain). 1096 green, 500-game selfplay clean. The per-effect-target shape
+now survives ONLY as the staple-synthesis runtime fallback (a contained
+`slotSpecs ? : eff` branch in the two enumeration sites) — staple-merged spells
+are runtime synthesis, not authored wire format, and the canonical API handles
+them. Fully migrating synthesizeStapledTemplate to emit target_slots (to delete
+that fallback) is deferred: the staple/splice pipeline is complex and the value
+(removing a one-line fallback) doesn't justify the regression risk.
+
 v2.0.20: review cleanup (#5b phase 1/2) — canonical target_slots on multi-target
 cards + kill the dead multi_target flag. The 5 multi-target spells (branchingBolt,
 twinStrike, drainLife, rootsAndBranches, swordAndSorcery) now carry a card-level

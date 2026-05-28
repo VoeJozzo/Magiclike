@@ -7,14 +7,12 @@
   "effects": [
     {
       "kind": "pump",
-      "target": "creature",
       "power": 1,
       "toughness": 1,
       "target_slot": 0
     },
     {
       "kind": "pump",
-      "target": "creature",
       "power": 1,
       "toughness": 1,
       "target_slot": 1

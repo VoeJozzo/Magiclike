@@ -427,17 +427,23 @@ function coalesceEotBuffs(effects, tplOf) {
   return capitalizeSegs(out).concat(plainSeg('.'));
 }
 
-function describeEffectList(effects, cardName, tplEffects, stepTarget, stepFilter) {
+function describeEffectList(effects, cardName, tplEffects, stepTarget, stepFilter, slotSpecs) {
   if (!Array.isArray(effects) || effects.length === 0) return [];
-  // New model (§3.5): a top-level target() step + bare effects. For rendering,
-  // give each bare effect the step's target token (and its optional restriction
-  // target_filter) so targetPhrase + withFilter produce "...target non-black
-  // creature" etc. — matching how resolution feeds it the target.
-  if (stepTarget) {
-    effects = effects.map(e =>
-      (e && !e.target && e.kind !== 'chooses' && e.scope == null)
-        ? Object.assign({}, e, stepFilter ? { target: stepTarget, filter: stepFilter } : { target: stepTarget })
-        : e);
+  // Give each bare effect a synthetic `target` so targetPhrase + withFilter
+  // render "...target non-black creature" etc. Two sources, matching how
+  // resolution feeds the target: (1) multi-target — the effect's `target_slot`
+  // indexes into `slotSpecs` (the canonical `target_slots` array, §5b); (2)
+  // single — a top-level target() step (§3.5) shared by all bare effects.
+  if (stepTarget || (Array.isArray(slotSpecs) && slotSpecs.length)) {
+    effects = effects.map(e => {
+      if (!e || e.target || e.kind === 'chooses' || e.scope != null) return e;
+      if (Array.isArray(slotSpecs) && e.target_slot != null && slotSpecs[e.target_slot]) {
+        const spec = slotSpecs[e.target_slot];
+        return Object.assign({}, e, spec.filter ? { target: spec.target, filter: spec.filter } : { target: spec.target });
+      }
+      if (!stepTarget) return e;
+      return Object.assign({}, e, stepFilter ? { target: stepTarget, filter: stepFilter } : { target: stepTarget });
+    });
   }
   const tplOf = i => (Array.isArray(tplEffects) ? tplEffects[i] : undefined);
   const parts = effects.map((e, i) => describeEffect(e, tplOf(i)));
@@ -761,7 +767,7 @@ function describeCardSegments(card, opts) {
     sections.push(describeModalSegs(card.effects.modes, tplBaseline.effects && tplBaseline.effects.modes));
   } else if (Array.isArray(card.effects) && card.effects.length > 0) {
     const tplEffs = Array.isArray(tplBaseline.effects) ? tplBaseline.effects : undefined;
-    sections.push(describeEffectList(card.effects, card.name || tpl.name, tplEffs, card.target || tpl.target, card.target_filter || tpl.target_filter));
+    sections.push(describeEffectList(card.effects, card.name || tpl.name, tplEffs, card.target || tpl.target, card.target_filter || tpl.target_filter, card.target_slots || tpl.target_slots));
   }
   if (Array.isArray(card.static_buffs)) {
     for (const buff of card.static_buffs) {
