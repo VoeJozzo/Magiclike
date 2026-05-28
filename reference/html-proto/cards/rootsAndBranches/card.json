@@ -9,7 +9,8 @@
     {
       "kind": "affect_creature",
       "severity": "tap",
-      "target": "creature"
+      "target": "creature",
+      "target_slot": 0
     },
     {
       "kind": "pump",
@@ -19,8 +20,15 @@
       "target_slot": 1
     }
   ],
-  "multi_target": true,
   "name": "Roots and Branches",
   "text": "Tap target creature. Target creature gets +1/+1 until end of turn.",
-  "type": "Instant"
+  "type": "Instant",
+  "target_slots": [
+    {
+      "target": "creature"
+    },
+    {
+      "target": "creature"
+    }
+  ]
 }

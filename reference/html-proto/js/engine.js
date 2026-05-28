@@ -508,14 +508,15 @@ function mergeStapleInto(merged, stapleTpl) {
       effects: Array.isArray(remapped) ? remapped : [],
     });
   } else {
-    // Spell base + spell staple: effects concat with slot remap (multi_target).
+    // Spell base + spell staple: effects concat with slot remap. The merged
+    // spell is multi-target — recognized structurally via per-effect target_slot
+    // (slotsNeededForPending) and the canonical target API, not a flag.
     const nextFreeSlot = computeNextFreeSlot(merged);
     const remapped = remapEffectSlots(stapleTpl.effects, nextFreeSlot);
     if (!Array.isArray(merged.effects)) merged.effects = [];
     if (Array.isArray(remapped)) {
       merged.effects = merged.effects.concat(remapped);
     }
-    merged.multi_target = true;
   }
   // No merged.text is built here — describeCardText regenerates it from the
   // merged effects/triggers/abilities (in makeCard, and at render time via
@@ -523,7 +524,6 @@ function mergeStapleInto(merged, stapleTpl) {
   // regenerated). Special/custom_text cards can't be staple bases or staples
   // (isSpliceableBase/Staple reject them), so regeneration always applies.
   merged.name = merged.name + ' + ' + stapleTpl.name;
-  if (computeNextFreeSlot(merged) > 1) merged.multi_target = true;
 }
 
 // Highest target_slot in use + 1 (next free slot). 0 if untargeted.

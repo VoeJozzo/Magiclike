@@ -75,6 +75,21 @@ text sites. Behavior note: under atomic decomposition an indestructible target n
 gets scarred-but-not-destroyed (the monolith fizzled both halves) — an acceptable
 edge on a boss-targeted creature.
 
+v2.0.20: review cleanup (#5b phase 1/2) — canonical target_slots on multi-target
+cards + kill the dead multi_target flag. The 5 multi-target spells (branchingBolt,
+twinStrike, drainLife, rootsAndBranches, swordAndSorcery) now carry a card-level
+`target_slots: [{target:...}, ...]` array (the same shape Stapler's abilities use)
+and explicit `target_slot:0` on the first targeted effect. The `multi_target`
+boolean was a DEAD WRITE — set in synthesizeStapledTemplate (engine.js:518/526)
+and on the 5 cards, but READ nowhere (multi-target is recognized structurally via
+per-effect target_slot in slotsNeededForPending + the canonical target API).
+Removed all writes + the card-data flag. This phase is purely additive/dead-code:
+inline per-effect `eff.target` is still present and still what card-text/AI/the
+render slot-pick read; dropping it (so target_slots is the single source) is
+phase 3, which must also teach render's slot machinery to read card-level
+target_slots (today slotsNeededForPending only recognizes ability-level
+target_slots, not card-level). 1083 green, 300-game selfplay clean.
+
 v2.0.19: review cleanup (#5a) — self-direction `target:"self"` → `scope:"self"`.
 Per-effect `target: "self"` was the legacy way of saying "this half of the spell
 acts on the source/controller, not the picked target" — which conflated two
