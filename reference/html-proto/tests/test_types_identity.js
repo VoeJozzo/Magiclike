@@ -27,15 +27,17 @@ console.log('=== whole pool: accessors agree with legacy type/sub (all cards) ==
   const ids = Object.keys(CARDS);
   check('card pool loaded', ids.length > 200, ids.length + ' templates');
 
-  // A card has "dirty" legacy data if a type-tag word (e.g. "Land") leaks into
-  // its subtype string — the basic-land `sub: "Basic Land"` cruft. The canonical
-  // parser intentionally corrects those; everything else must reproduce legacy
-  // byte-for-byte.
+  // A card's typeLine legitimately diverges from the naive legacy concat in two
+  // cases the parser corrects: (a) basic-land `sub: "Basic Land"` cruft (a type
+  // word leaks into the subtype string), and (b) legendary cards, whose legacy
+  // render omitted the Legendary supertype. Every other card must reproduce
+  // legacy byte-for-byte.
   function subHasTypeTag(c) {
     return typeof c.sub === 'string' && c.sub.split(/\s+/).some(t => t && isCardTypeTag(t));
   }
+  function isCorrected(c) { return !!c.legendary || subHasTypeTag(c); }
 
-  let govMismatch = [], hasTypeMiss = [], subMiss = [], lineMismatch = [], dirty = [];
+  let govMismatch = [], hasTypeMiss = [], subMiss = [], lineMismatch = [], corrected = [];
   for (const id of ids) {
     const c = CARDS[id];
 
@@ -52,10 +54,9 @@ console.log('=== whole pool: accessors agree with legacy type/sub (all cards) ==
       }
     }
 
-    // typeLine reproduces the legacy render for clean-data cards. Dirty-data
-    // lands are tracked separately (asserted corrected below).
-    if (subHasTypeTag(c)) {
-      dirty.push(id);
+    // typeLine reproduces legacy for clean cards; corrected cards asserted below.
+    if (isCorrected(c)) {
+      corrected.push(id);
     } else if (typeLine(c) !== legacyTypeLine(c)) {
       lineMismatch.push(id + ' "' + typeLine(c) + '" != "' + legacyTypeLine(c) + '"');
     }
@@ -65,17 +66,19 @@ console.log('=== whole pool: accessors agree with legacy type/sub (all cards) ==
   check('hasType hits every subtype token', subMiss.length === 0, subMiss.slice(0, 5).join(', '));
   check('typeLine reproduces legacy "type — sub" (clean-data cards)', lineMismatch.length === 0, lineMismatch.slice(0, 5).join(', '));
 
-  // The known dirty-data set: basic lands + City of Brass, whose legacy `sub`
-  // repeats the type word "Land". The parser classifies "Basic" as a supertype
-  // and dedups the repeat → corrected MTG-style typelines.
-  check('all dirty-data cards are Lands (the basic-land sub cruft)',
-    dirty.length > 0 && dirty.every(id => CARDS[id].type === 'Land'), dirty.join(', '));
-  // Expected corrected output: "Basic Land" for the basics, "Land" for City of Brass.
+  // The known corrected set: basic lands + City of Brass (sub repeats "Land"),
+  // plus legendary cards (Legendary supertype now prepended). Expected outputs.
   const EXPECT = { forest: 'Basic Land', island: 'Basic Land', mountain: 'Basic Land',
-    plains: 'Basic Land', swamp: 'Basic Land', cityOfBrass: 'Land' };
-  const dirtyBad = dirty.filter(id => EXPECT[id] !== undefined && typeLine(CARDS[id]) !== EXPECT[id]);
-  check('parser corrects dirty land typelines to MTG-style (no duplicate "Land")',
-    dirtyBad.length === 0, dirtyBad.map(id => id + '="' + typeLine(CARDS[id]) + '" want "' + EXPECT[id] + '"').join(', '));
+    plains: 'Basic Land', swamp: 'Basic Land', cityOfBrass: 'Land',
+    cityGuardian: 'Legendary Creature — Human Soldier' };
+  const bad = corrected.filter(id => EXPECT[id] !== undefined && typeLine(CARDS[id]) !== EXPECT[id]);
+  check('parser corrects dirty-land + legendary typelines (Basic Land / Legendary prefix)',
+    bad.length === 0, bad.map(id => id + '="' + typeLine(CARDS[id]) + '" want "' + EXPECT[id] + '"').join(', '));
+  // Every legendary card hasType('Legendary') and renders the supertype first.
+  const legends = ids.filter(id => CARDS[id].legendary);
+  check('legendary cards: hasType("Legendary") and typeLine starts "Legendary "',
+    legends.length > 0 && legends.every(id => hasType(CARDS[id], 'Legendary') && typeLine(CARDS[id]).startsWith('Legendary ')),
+    legends.join(', '));
 })();
 
 console.log('\n=== negative: absent tags miss; nullish safe ===');
@@ -95,8 +98,8 @@ console.log('\n=== registry: type vs subtype classification ===');
     !isCardTypeTag('Instant') && typeCategory('Instant') === 'subtype');
   check('Goblin/Forest/Cleric are subtype tags',
     ['Goblin', 'Forest', 'Cleric'].every(t => typeCategory(t) === 'subtype' && !isCardTypeTag(t)));
-  check('Basic is a supertype tag (renders left, not a type-tag)',
-    typeCategory('Basic') === 'supertype' && !isCardTypeTag('Basic'));
+  check('Basic/Legendary are supertype tags (render left, not type-tags)',
+    ['Basic', 'Legendary'].every(t => typeCategory(t) === 'supertype' && !isCardTypeTag(t)));
   check('Creature/Land/Artifact/Enchantment are permanents',
     ['Creature', 'Land', 'Artifact', 'Enchantment'].every(t => isPermanent({ type: t })));
   check('Sorcery is not a permanent',
@@ -125,6 +128,27 @@ console.log('\n=== synthesized multi-type: accessors generalize (no such card to
     typeLine({ type: 'Creature', sub: 'Artifact Construct' }));
   check('robot hasType both Creature and Construct',
     hasType(robot, 'Creature') && hasType(robot, 'Construct'));
+})();
+
+console.log('\n=== explicit types[] hook: authoritative + carried through makeCard ===');
+(() => {
+  // typesOf honors an explicit types[] over the legacy type/sub derivation.
+  const explicit = { type: 'Creature', sub: 'Ignored', types: ['Artifact', 'Creature', 'Construct'] };
+  check('explicit types[] overrides derived type/sub',
+    JSON.stringify(typesOf(explicit)) === JSON.stringify(['Artifact', 'Creature', 'Construct']));
+  check('explicit Artifact+Creature → Creature governs, isPermanent',
+    governingType(explicit) === 'Creature' && isPermanent(explicit) && hasType(explicit, 'Artifact'));
+
+  // makeCard carries an explicit template types[] onto the runtime instance, so
+  // a future multi-type card behaves end-to-end (the Phase 4 readiness hook).
+  const baseId = Object.keys(CARDS).find(id => CARDS[id].type === 'Creature' && !CARDS[id].special && CARDS[id].cost);
+  CARDS.__robotProbe = Object.assign({}, CARDS[baseId], { name: 'Robot Probe', types: ['Artifact', 'Creature'] });
+  const inst = ENGINE.makeCard('__robotProbe', [], 0);
+  check('makeCard carries types[] onto the instance',
+    Array.isArray(inst.types) && hasType(inst, 'Artifact') && hasType(inst, 'Creature'));
+  check('instance governs as Creature + is a permanent (Robot)',
+    governingType(inst) === 'Creature' && isPermanent(inst));
+  delete CARDS.__robotProbe;
 })();
 
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');

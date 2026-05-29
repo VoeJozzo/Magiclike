@@ -579,12 +579,17 @@ function makeCard(tplId, stickers, slotIdx, empowerRolls, permaBuffs, bonusTrigg
     // slotIdx: player → runState.slots index for run-persistent effects; opp → transient.
     slotIdx: (typeof slotIdx === 'number') ? slotIdx : null,
     name: tpl.name, type: tpl.type, sub: tpl.sub, art: tpl.art, text: tpl.text,
+    // Explicit multi-type tag list (Phase 4+). Carried to the instance when the
+    // template declares it so typesOf/hasType see the full identity; single-type
+    // cards leave it undefined and derive from type/sub/legendary.
+    types: Array.isArray(tpl.types) ? tpl.types.slice() : undefined,
     // Top-level target() step (§3.5) — must carry to the runtime instance so
     // cast legality / enumeration / resolution see the targeting step. The
     // optional target_filter carries restrictions the closed taxonomy can't name.
     target: tpl.target,
     target_filter: tpl.target_filter,
-    // Legendary uniqueness enforced at cast time only (no SBA).
+    // Legendary uniqueness enforced at cast time only (no SBA); the Legendary
+    // supertype tag derives from this boolean via typesOf.
     legendary: !!tpl.legendary,
     // Deep-copy mutable fields for per-instance isolation (costReduction,
     // Severity, etc.). Mana production lives on the tap-ability (abilities),
@@ -4980,7 +4985,7 @@ function isLegalAction(who, action) {
       // double-City-Guardian is limited by exposing them serially: kill
       // the first to make room for the second. Per-controller (each side
       // can have one independently).
-      if (card.legendary && G[who].battlefield.some(c => c.tplId === card.tplId)) {
+      if (hasType(card, 'Legendary') && G[who].battlefield.some(c => c.tplId === card.tplId)) {
         return false;
       }
       if (card.keywords && card.keywords.includes('flash')) {

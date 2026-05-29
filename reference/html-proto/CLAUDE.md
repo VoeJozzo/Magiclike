@@ -4,7 +4,7 @@ Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folde
 
 ## Version
 
-**Current: `v2.0.47`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.0.48`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -137,6 +137,26 @@ flexibility premium" and off-turn-castable check now key on the flash keyword.
 (`isInstantWindow`/`isSorceryWindow` are timing-window names — unchanged.) The
 chosen direction (user): retire to "Sorcery", not keep an Instant display label.
 1223 green, lint clean, 300-game selfplay clean.
+
+v2.0.48: **unified type-system Phase 3b/3c** — completes the identity refactor.
+(b) **Legendary → supertype tag** (§9): `Legendary` registered as a supertype,
+derived from the existing `legendary` boolean in `typesOf` (boolean stays the
+authored field). The cast-time legend-rule check routes through
+`hasType(card,'Legendary')` — kept as named engine code, not a registry hook, per
+§4. `typeLine` renders the supertype first, so the one legendary card
+(`cityGuardian`) shows the MTG-correct "Legendary Creature — Human Soldier" (legacy
+render omitted it). (c) **Explicit `types[]` authoring hook** (Phase-4 readiness):
+`typesOf` honors an explicit `card.types` array over the legacy type/sub
+derivation, and `makeCard` carries a template's `types[]` onto the runtime
+instance — so a future multi-type card (a Robot = `["Artifact","Creature"]`) works
+end-to-end with no per-site changes. Subtype-fold was already complete (Phase 2:
+subtypes live in `typesOf`, `card_has_subtype` → `hasType`). **Parked as
+pull-by-need** (no consumer given "no new cards yet"): the `typeGrantedBy`
+type-modifier layer + `add_type`/`set_types` stickers (type-CHANGE effects:
+manlands, "becomes an artifact") and teaching staple synthesis to UNION same-class
+types — the splice machinery (engine.js ~88–516) still reads `tpl.type`/`tpl.sub`
+on authored templates, which is correct until a multi-type staple is authored.
+1227 green, lint clean, 300-game selfplay clean.
 
 v2.0.42: resolved three rules-infrastructure divergences (B2 / F2 / D4 — all now
 *PROTO: DONE* in DIVERGENCE). **B2** — unused mana now empties at *every* phase

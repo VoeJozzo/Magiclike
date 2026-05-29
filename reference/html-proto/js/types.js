@@ -23,20 +23,28 @@ const TYPE_REGISTRY = {
   Artifact:    { category: 'type', behaviorClass: 'permanent' },
   Enchantment: { category: 'type', behaviorClass: 'permanent' },
   Sorcery:     { category: 'type', behaviorClass: 'spell' },
-  // Supertypes render left of the type, carry no behavior-class. 'Basic' is the
-  // only one today (basic lands); 'Legendary' folds in here in Phase 3 (§9).
+  // Supertypes render left of the type, carry no behavior-class. 'Basic' (basic
+  // lands) and 'Legendary' (the legend rule — a cast-time uniqueness check, read
+  // via hasType, NOT a registry hook per §4) are the two today.
   Basic:       { category: 'supertype' },
+  Legendary:   { category: 'supertype' },
 };
 
 function typeRegistryEntry(tag) { return TYPE_REGISTRY[tag] || { category: 'subtype' }; }
 function typeCategory(tag) { return typeRegistryEntry(tag).category; }
 function isCardTypeTag(tag) { return typeCategory(tag) === 'type'; }
 
-// A card's tag list, derived from the legacy fields: the `type` string first,
-// then the `sub` subtypes (split on whitespace). Order matches the type line.
+// A card's tag list. An explicit `card.types` array (multi-type cards, Phase 4+)
+// is the authoritative source when present; otherwise the list is derived from
+// the legacy fields — the `Legendary` supertype (from the `legendary` boolean),
+// then the `type` string, then the `sub` subtypes (split on whitespace). Order
+// matches the type line (typeLine re-sorts by category, so order is cosmetic for
+// the derived path).
 function typesOf(card) {
   if (!card) return [];
+  if (Array.isArray(card.types)) return card.types.slice();
   const tags = [];
+  if (card.legendary) tags.push('Legendary');
   if (card.type) tags.push(card.type);
   if (typeof card.sub === 'string') {
     for (const s of card.sub.split(/\s+/)) if (s) tags.push(s);
