@@ -140,6 +140,41 @@ console.log('\n=== 6 artifact lands (WUBRG + C), in the draft pool ===');
     inPool('copperGolem') && inPool('awakenVault'));
 })();
 
+console.log('\n=== end-to-end: cast awakenVault through the real action flow ===');
+(() => {
+  // The type-change spells are the first cards to use a top-level target:'permanent'
+  // step — drive a full executeAction cast → resolve to prove that path works,
+  // not just the effect handler in isolation.
+  RUN.start({ cards: Array(12).fill('plains'), colors: ['W'] }, null);
+  RUN.startNextGame();
+  const G = ENGINE.state();
+  G.activePlayer = 'you'; G.priorityHolder = 'you'; G.phase = 'MAIN1';
+  G.stack = []; G.gameOver = false; G.priority = { passes: new Set() };
+  G.you.mana = { W: 9, U: 9, B: 9, R: 9, G: 9, C: 9 };
+  const land = ENGINE.makeCard('forest', [], 0);
+  land.controller = 'you'; land.owner = 'you'; land.sick = false; land.iid = 7001;
+  G.you.battlefield.push(land);
+  const spell = ENGINE.makeCard('awakenVault', [], 0);
+  spell.controller = 'you'; spell.owner = 'you'; spell.iid = 7002;
+  G.you.hand.push(spell);
+
+  const casts = ENGINE.getLegalActions('you').filter(a => a.type === 'castSpell' && a.cardIid === 7002);
+  check('exactly one cast action, target restricted to the land (target:permanent + filter:Land)',
+    casts.length === 1 && (casts[0].targets || []).length === 1 && casts[0].targets[0].iid === 7001,
+    'casts=' + casts.length);
+  if (casts.length) {
+    ENGINE.executeAction('you', casts[0]);
+    let g = 0;
+    while (G.stack.length > 0 && g++ < 20) {
+      const w = ENGINE.expectedActor(); if (!w) break;
+      const a = AI.decide(G, w); if (!a) break;
+      ENGINE.executeAction(w, a);
+    }
+    check('after cast+resolve: the land is a 3/3 creature',
+      hasType(land, 'Creature') && JSON.stringify(ENGINE.getStats(land)) === '[3,3]');
+  }
+})();
+
 console.log('\n=== boot validation clean (effects + card-text + coverage) ===');
 (() => {
   const v = ENGINE.validateAllCardEffects(CARDS);
