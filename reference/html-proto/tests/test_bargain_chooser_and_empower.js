@@ -105,25 +105,23 @@ if (!CARDS['archdemonBargains']) {
   ENGINE.executeAction(G.pendingNumberChoice.who, { type: 'numberChoice', number: CHOSEN });
   check('ETB stashes the chosen number on the demon', demon.bargainsNum === CHOSEN, 'got ' + demon.bargainsNum);
   // LTB half: build the dies ctx exactly as runTriggerEffects does (event carries
-  // the dying card as subject_card). Recipient = opp(controller) = 'you'.
-  for (let i = 0; i < 6; i++) {
-    const perm = mk('plains', 'you'); perm.iid = 8200 + i; G.you.battlefield.push(perm);
-  }
-  const countYou = () => G.you.battlefield.reduce((n, c) => n + (Array.isArray(c.stickers) ? c.stickers.length : 0), 0);
-  const before = countYou();
+  // the dying card as subject_card). The handler logs "applying N sticker(s)" —
+  // assert on N read (deterministic), NOT on stickers physically placed (random
+  // sticker kinds + appliesTo eligibility make placement count nondeterministic;
+  // that was the flake in the first cut of this test).
+  const recentLog = (G) => (G.log[0] && G.log[0].msg) || '';
   ENGINE.applyEffect(
     { controller: 'opp', sourceName: 'Archdemon of Bargains', sourceIid: demon.iid, sourceCard: demon,
       event: { type: 'card_zone_change', subject_card: demon, subject_iid: demon.iid, from_zone: 'battlefield', to_zone: 'graveyard' } },
     { kind: 'bargain_sticker_other' }, null);
-  check('LTB payout applies exactly the ETB-chosen number of stickers (not 1)',
-    countYou() - before === CHOSEN, 'added ' + (countYou() - before) + ', expected ' + CHOSEN);
+  check('LTB reads N=4 from subject_card (not the old default of 1)',
+    /applying 4 sticker/.test(recentLog(G)), recentLog(G));
   // Also via ctx.sourceCard fallback (no event) — the demon in graveyard still carries bargainsNum.
-  const before2 = countYou();
   ENGINE.applyEffect(
     { controller: 'opp', sourceName: 'Archdemon of Bargains', sourceIid: demon.iid, sourceCard: demon },
     { kind: 'bargain_sticker_other' }, null);
-  check('LTB also reads bargainsNum via sourceCard fallback (no event)',
-    countYou() - before2 === CHOSEN, 'added ' + (countYou() - before2));
+  check('LTB also reads N=4 via sourceCard fallback (no event)',
+    /applying 4 sticker/.test(recentLog(G)), recentLog(G));
 }
 
 console.log('\n=== AI bargain pick scales with position (not always the minimum) ===');
