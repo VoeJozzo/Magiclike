@@ -12,7 +12,6 @@ const path = require('path');
 
 const CATEGORY_A = [
   // Ported from prior-session bundle.
-  'v80_helpers_test.js',
   'subtype_v2_test.js',
   'subtype_rolls_complete_test.js',
   'three_stickers_subtype_test.js',
