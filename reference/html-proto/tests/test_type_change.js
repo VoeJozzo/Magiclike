@@ -210,6 +210,31 @@ console.log('\n=== #4: the AI has tooling — it casts a neutralize spell at an 
     dec && Array.isArray(dec.targets) && dec.targets.some(t => t.iid === 8101));
 })();
 
+console.log('\n=== staple same-class UNION: Artifact co-type rides along ===');
+(() => {
+  const vanilla = Object.keys(CARDS).find(id => CARDS[id].type === 'Creature' && !CARDS[id].special && CARDS[id].cost && !CARDS[id].types && !CARDS[id].triggers && !CARDS[id].abilities);
+  // Artifact creature as the STAPLE onto a vanilla creature base (the direction
+  // that used to drop Artifact — base had no types[]).
+  const syn = ENGINE.synthesizeStapledTemplate(vanilla, ['copperGolem']);
+  check('Cr base + artifact-Cr staple → merged is BOTH Artifact and Creature',
+    hasType(syn, 'Artifact') && hasType(syn, 'Creature') && governingType(syn) === 'Creature');
+  check('merged carries the staple’s subtype (Golem)', hasType(syn, 'Golem'), typeLine(syn));
+  // Land staple still COLLAPSES (no true land-creatures): a Cr+Ld staple stays a
+  // cast creature, NOT playable as a land.
+  const synLand = ENGINE.synthesizeStapledTemplate(vanilla, ['forest']);
+  check('Cr base + Land staple → Creature, NOT a Land (collapse preserved)',
+    hasType(synLand, 'Creature') && !hasType(synLand, 'Land'));
+  // Artifact LAND staple: Land collapses, but the Artifact co-type rides along.
+  const synArtLand = ENGINE.synthesizeStapledTemplate(vanilla, ['gildedSeat']);
+  check('Cr base + artifact-Land staple → Artifact rides, Land collapses',
+    hasType(synArtLand, 'Artifact') && hasType(synArtLand, 'Creature') && !hasType(synArtLand, 'Land'));
+  // Single-type staple is untouched (no spurious types[] forced).
+  const vanilla2 = Object.keys(CARDS).find(id => id !== vanilla && CARDS[id].type === 'Creature' && !CARDS[id].special && CARDS[id].cost && !CARDS[id].types && !CARDS[id].triggers && !CARDS[id].abilities);
+  const synPlain = ENGINE.synthesizeStapledTemplate(vanilla, [vanilla2]);
+  check('vanilla Cr + vanilla Cr staple → no explicit types[] forced (derives from type/sub)',
+    !Array.isArray(synPlain.types) && governingType(synPlain) === 'Creature' && !hasType(synPlain, 'Artifact'));
+})();
+
 console.log('\n=== boot validation clean (effects + card-text + coverage) ===');
 (() => {
   const v = ENGINE.validateAllCardEffects(CARDS);

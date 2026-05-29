@@ -407,6 +407,22 @@ function synthesizeStapledTemplate(baseTplId, stapledTpls) {
     merged.color = present[0] || baseTpl.color || null;
     merged.colors = present;
   }
+  // §5 staple type-union: Artifact/Enchantment are CO-TYPES that ride along — if
+  // any fused card carries one, the merged permanent keeps it (so a stapled
+  // artifact creature stays an Artifact Creature, dying to artifact removal and
+  // counting for artifact-matters). Creature/Land governance is deliberately NOT
+  // unioned — Land+Creature collapses to a cast creature (play-vs-cast gates key
+  // on hasType('Land'); a "true land-creature" is out of scope), and stapled
+  // spells already collapse to an ETB trigger. We only author an explicit
+  // types[] when a co-type is actually present; otherwise identity keeps
+  // deriving from merged.type/sub (single-type staples are untouched).
+  const involved = [baseTpl, ...stapledTpls.map(id => CARDS[id]).filter(Boolean)];
+  const coTypes = ['Artifact', 'Enchantment']
+    .filter(co => co !== merged.type && involved.some(t => hasType(t, co)));
+  if (coTypes.length) {
+    const subs = (merged.sub || '').split(/\s+/).filter(Boolean);
+    merged.types = [merged.type, ...coTypes, ...subs];
+  }
   return merged;
 }
 

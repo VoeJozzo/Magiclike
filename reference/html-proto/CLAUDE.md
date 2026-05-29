@@ -4,7 +4,7 @@ Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folde
 
 ## Version
 
-**Current: `v2.0.50`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.0.51`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -201,6 +201,20 @@ opponent's best creature — permanent base 20, eot base 8, +card value +lane �
 animate-add_type only at a permanent WE control (else it'd gift the opponent a
 body). Verified via `AI.decide`: the AI now casts Encase in Amber at an enemy
 creature. 1269 green, lint clean, 300-game selfplay clean.
+
+v2.0.51: **staple same-class UNION** — closes the type-system arc (the last
+parked item, now needed because Phase 4 made multi-type cards draftable AND
+stapleable). `synthesizeStapledTemplate` now unions the **Artifact/Enchantment
+co-types** onto the merged permanent: stapling an artifact creature keeps it an
+Artifact Creature (was silently dropping Artifact, since `mergeStapleInto` only
+touched `type`/`sub`). Deliberately NOT unioned: Creature/Land governance —
+Land+Creature still collapses to a cast creature (play-vs-cast gates on
+`hasType('Land')`; true land-creatures remain out of scope), and stapled spells
+still collapse to an ETB. An explicit `types[]` is authored on the merged card
+only when a co-type is present, so single-type staples are byte-identical. The
+union also carries merged subtypes (so a stapled "X Golem" reads "Artifact
+Creature — … Golem"). `test_type_change` +5 staple assertions. 1274 green, lint
+clean, 300-game selfplay clean.
 
 v2.0.42: resolved three rules-infrastructure divergences (B2 / F2 / D4 — all now
 *PROTO: DONE* in DIVERGENCE). **B2** — unused mana now empties at *every* phase
