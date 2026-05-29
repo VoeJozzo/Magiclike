@@ -1781,23 +1781,26 @@ const EFFECTS = {
     }
     log(`${ctx.sourceName} applies a lasting change to ${f.card.name}.`, 'sp');
   },
-  // Archdemon Bargains ETB. The CONTROLLER is the dealmaker: they pick 1-5,
-  // get that many stickers now, and the number is stashed on the demon so the
-  // dies trigger pays the OPPONENT that many. When the boss controls it the
-  // boss (AI) chooses — not the human. (Was hardcoded who:'you', which let the
-  // human choose even for the boss's own Archdemon.)
+  // Archdemon Bargains ETB. You make a bargain WITH the demon: its OPPONENT
+  // (the non-controller) chooses 1-5 — that many stickers go on the demon's
+  // controller now, and the chooser collects that many when they kill it (the
+  // dies trigger pays opp(controller), via the stashed bargainsNum). So the
+  // chooser is opp(controller): boss controls it → the human picks; the player
+  // controls it (drafted/stolen) → the AI picks. (Was who:'you' — correct only
+  // for the common boss-controlled case, wrong when the player controls it.)
   bargain_sticker_self(ctx, params) {
     const sourceCard = findCard(ctx.sourceIid);
     if (!sourceCard) return;
+    const chooser = opp(sourceCard.controller);
     G.pendingNumberChoice = {
-      who: sourceCard.controller,
+      who: chooser,
       source: ctx.sourceName,
       sourceIid: ctx.sourceIid,
       min: 1,
       max: 5,
       onChoose: 'bargainEtb',
     };
-    log(`${ctx.sourceName} — ${pname(sourceCard.controller)} chooses a number from 1 to 5.`, 'sp');
+    log(`${ctx.sourceName} — ${pname(chooser)} chooses a number from 1 to 5.`, 'sp');
   },
   // Phase 2 (dies). Read bargainsNum stashed on dying card, sticker OTHER side as compensation.
   bargain_sticker_other(ctx) {

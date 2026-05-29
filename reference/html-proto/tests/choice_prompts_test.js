@@ -234,10 +234,9 @@ console.log('\n=== Number choice: Archdemon ETB opens 1-5 prompt for the CONTROL
       G.pendingNumberChoice !== null && G.pendingNumberChoice !== undefined);
     if (G.pendingNumberChoice) {
       const p = G.pendingNumberChoice;
-      // The bargain prompt goes to the demon's CONTROLLER (the dealmaker) —
-      // here that's opp, since opp cast it. (Previously hardcoded to 'you',
-      // which wrongly prompted the human for the boss's own Archdemon.)
-      check("prompt who is the controller ('opp')", p.who === 'opp');
+      // You bargain WITH the demon: its non-controller picks. opp cast it, so
+      // the chooser is opp(opp) = 'you' (the human is the dealmaker here).
+      check("prompt who is the non-controller ('you')", p.who === 'you');
       check('prompt min is 1', p.min === 1);
       check('prompt max is 5', p.max === 5);
       check("prompt source is 'Archdemon of Bargains'",
@@ -262,11 +261,11 @@ console.log('\n=== Submitting numberChoice stashes N on source + clears the prom
     ENGINE.executeAction('opp', {type: 'castSpell', cardIid: demon.iid, targets: []});
     drainStack(G);
 
-    // Submit number 3 as the controller (opp), who owns the prompt.
+    // Submit number 3 as the non-controller (you), who owns the prompt.
     const choiceAction = {type: 'numberChoice', number: 3};
     check('numberChoice 3 is legal',
-      ENGINE.isLegalAction('opp', choiceAction));
-    ENGINE.executeAction('opp', choiceAction);
+      ENGINE.isLegalAction('you', choiceAction));
+    ENGINE.executeAction('you', choiceAction);
 
     check('pendingNumberChoice cleared after submit',
       G.pendingNumberChoice === null);
@@ -293,18 +292,18 @@ console.log('\n=== Out-of-range numbers are rejected ===');
     ENGINE.executeAction('opp', {type: 'castSpell', cardIid: demon.iid, targets: []});
     drainStack(G);
 
-    // Try numbers outside [1,5] as the controller (opp) who owns the prompt,
+    // Try numbers outside [1,5] as the non-controller (you) who owns the prompt,
     // so these exercise the range check rather than a who-mismatch.
     check('numberChoice 0 is NOT legal',
-      !ENGINE.isLegalAction('opp', {type: 'numberChoice', number: 0}));
+      !ENGINE.isLegalAction('you', {type: 'numberChoice', number: 0}));
     check('numberChoice 6 is NOT legal',
-      !ENGINE.isLegalAction('opp', {type: 'numberChoice', number: 6}));
+      !ENGINE.isLegalAction('you', {type: 'numberChoice', number: 6}));
     check('numberChoice -1 is NOT legal',
-      !ENGINE.isLegalAction('opp', {type: 'numberChoice', number: -1}));
+      !ENGINE.isLegalAction('you', {type: 'numberChoice', number: -1}));
     check('numberChoice 1 IS legal (min boundary)',
-      ENGINE.isLegalAction('opp', {type: 'numberChoice', number: 1}));
+      ENGINE.isLegalAction('you', {type: 'numberChoice', number: 1}));
     check('numberChoice 5 IS legal (max boundary)',
-      ENGINE.isLegalAction('opp', {type: 'numberChoice', number: 5}));
+      ENGINE.isLegalAction('you', {type: 'numberChoice', number: 5}));
   }
 }
 

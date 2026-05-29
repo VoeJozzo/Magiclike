@@ -155,6 +155,24 @@ const UNVALUED_EFFECT_KINDS = new Set([
 const AI = (function() {
 
 
+// Rough position read (life + board power, board weighted heavier) mapped to a
+// 1-5 Archdemon-of-Bargains pick. The AI is the demon's NON-controller: it picks
+// N stickers for the controller now and collects N when it kills the demon. So
+// pick high when ahead (the buff is affordable and the kill-reward extends the
+// lead) and low when behind (don't grow an opponent that's already pressuring).
+function bargainPick(state, who) {
+  const them = opp(who);
+  const boardPow = (w) => state[w].battlefield
+    .filter(c => c.type === 'Creature')
+    .reduce((s, c) => s + Math.max(0, ENGINE.getStats(c)[0]), 0);
+  const adv = (state[who].life - state[them].life) + (boardPow(who) - boardPow(them)) * 2;
+  if (adv >= 12) return 5;
+  if (adv >= 5)  return 4;
+  if (adv >= -4) return 3;
+  if (adv >= -11) return 2;
+  return 1;
+}
+
 function decide(state, who) {
   if (!state || state.gameOver) return {type:'pass'};
 
@@ -179,9 +197,12 @@ function decide(state, who) {
     if (buildActs.length > 0) return buildActs[0];
   }
 
-  // Bargain: sim-mode picks min (low variance — player gains disproportionately on demon death).
+  // Archdemon bargain: tie N to position (ahead → high, behind → low) instead
+  // of always picking the minimum. Other number-choices fall back to min.
   if (state.pendingNumberChoice && state.pendingNumberChoice.who === who) {
-    return {type:'numberChoice', number: state.pendingNumberChoice.min};
+    const p = state.pendingNumberChoice;
+    const n = (p.onChoose === 'bargainEtb') ? bargainPick(state, who) : p.min;
+    return {type: 'numberChoice', number: Math.max(p.min, Math.min(p.max, n))};
   }
 
   // Symmetricize: pick MAX of (power, toughness, cost). Yields the biggest body.

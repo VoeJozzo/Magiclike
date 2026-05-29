@@ -4,7 +4,7 @@ Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folde
 
 ## Version
 
-**Current: `v2.0.38`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.0.39`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -74,6 +74,23 @@ Deleted the `destroy_and_sticker_slot` handler + all its classification/scoring/
 text sites. Behavior note: under atomic decomposition an indestructible target now
 gets scarred-but-not-destroyed (the monolith fizzled both halves) — an acceptable
 edge on a boss-targeted creature.
+
+v2.0.39: corrected the Archdemon bargain chooser DIRECTION (v2.0.38 had it
+backwards) + made the AI's bargain pick position-aware. Clarified intent: you
+make a bargain WITH the demon — its NON-controller (opponent) picks 1-5; that
+many stickers go on the demon's controller now, and the chooser collects that
+many when they kill it. So the chooser is `opp(controller)`, not the controller.
+v2.0.38 set it to the controller (backwards — it broke the common boss case:
+boss-controlled should prompt the human, opp(boss)=you). Now correct both ways:
+boss controls → human picks; player controls (drafted/stolen) → AI picks. The
+original `who:'you'` was accidentally right for boss-control and only wrong when
+the player controls it. AI pick: new `bargainPick(state, who)` ties N to a rough
+life+board advantage (ahead → 5, behind → 1) instead of always the minimum —
+the AI collects N when it kills the demon, so it bargains high when it can
+afford the buff and expects the kill. choice_prompts_test reverted to the
+correct non-controller ('you' for an opp-controlled demon); new test covers both
+control directions + the position scaling. 1173 green, lint clean, 200-game
+selfplay clean.
 
 v2.0.38: two gameplay bug fixes (user-reported). (1) Archdemon of Bargains ETB
 number-choice was hardcoded `who: 'you'`, so when the BOSS controlled the demon

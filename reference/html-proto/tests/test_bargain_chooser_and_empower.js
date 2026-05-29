@@ -53,11 +53,12 @@ function driveUntilNumberChoice(G) {
   }
 }
 
-console.log('=== BUG 1: Archdemon ETB choice follows the CONTROLLER, not always the human ===');
+console.log('=== BUG 1: Archdemon ETB choice goes to the NON-controller (the dealmaker) ===');
 if (!CARDS['archdemonBargains']) {
   console.log('  (archdemonBargains not in CARDS -- skipping)');
 } else {
-  // Boss (opp) controls it → the boss is the dealmaker, so the prompt is opp's.
+  // You bargain WITH the demon: its OPPONENT picks. Boss (opp) controls it →
+  // opp(opp) = the human ('you') is the dealmaker.
   {
     const G = newGame();
     const demon = mk('archdemonBargains', 'opp'); G.opp.hand.push(demon);
@@ -67,21 +68,47 @@ if (!CARDS['archdemonBargains']) {
     ENGINE.executeAction('opp', cast);
     driveUntilNumberChoice(G);
     check('a number-choice opened from the ETB', G.pendingNumberChoice != null);
-    check("boss-controlled Archdemon prompts the CONTROLLER (opp), not the human",
-      G.pendingNumberChoice && G.pendingNumberChoice.who === 'opp',
+    check("boss-controlled Archdemon prompts the NON-controller (you)",
+      G.pendingNumberChoice && G.pendingNumberChoice.who === 'you',
       G.pendingNumberChoice && ('who=' + G.pendingNumberChoice.who));
   }
-  // Player controls it → the player chooses.
+  // Player controls it (drafted/stolen) → opp(you) = the AI ('opp') is the dealmaker.
   {
     const G = newGame();
     const demon = mk('archdemonBargains', 'you'); G.you.hand.push(demon);
     readyForCast(G, 'you');
     ENGINE.executeAction('you', { type: 'castSpell', cardIid: demon.iid });
     driveUntilNumberChoice(G);
-    check('player-controlled Archdemon prompts the player',
-      G.pendingNumberChoice && G.pendingNumberChoice.who === 'you',
+    check('player-controlled Archdemon prompts the opponent (opp)',
+      G.pendingNumberChoice && G.pendingNumberChoice.who === 'opp',
       G.pendingNumberChoice && ('who=' + G.pendingNumberChoice.who));
   }
+}
+
+console.log('\n=== AI bargain pick scales with position (not always the minimum) ===');
+{
+  const VANILLA = (() => {
+    for (const [id, c] of Object.entries(CARDS)) {
+      if (c.type === 'Creature' && !c.triggers && !c.abilities && !c.static_buffs) return id;
+    }
+    return null;
+  })();
+  // AI (opp) clearly ahead: more life + a big board → picks high.
+  const G = newGame();
+  G.opp.life = 30; G.you.life = 5;
+  const big = mk(VANILLA, 'opp'); big.tempPower = 8; big.tempTou = 8; G.opp.battlefield.push(big);
+  G.pendingNumberChoice = { who: 'opp', source: 'Archdemon of Bargains', sourceIid: big.iid, min: 1, max: 5, onChoose: 'bargainEtb' };
+  const ahead = AI.decide(G, 'opp');
+  check('ahead → AI picks high (>= 4)', ahead.type === 'numberChoice' && ahead.number >= 4, 'picked ' + ahead.number);
+
+  // AI clearly behind: low life + opponent has the big board → picks low.
+  const G2 = newGame();
+  G2.opp.life = 5; G2.you.life = 30;
+  const pbig = mk(VANILLA, 'you'); pbig.tempPower = 8; pbig.tempTou = 8; G2.you.battlefield.push(pbig);
+  G2.pendingNumberChoice = { who: 'opp', source: 'Archdemon of Bargains', sourceIid: pbig.iid, min: 1, max: 5, onChoose: 'bargainEtb' };
+  const behind = AI.decide(G2, 'opp');
+  check('behind → AI picks low (<= 2)', behind.type === 'numberChoice' && behind.number <= 2, 'picked ' + behind.number);
+  check('position changes the pick (not a constant)', ahead.number !== behind.number);
 }
 
 console.log('\n=== BUG 2: empower amplifies magnitude in the field\'s direction ===');
