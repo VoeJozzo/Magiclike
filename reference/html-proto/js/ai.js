@@ -13,7 +13,7 @@
 const TARGET_SCORED_KINDS = new Set([
   'damage', 'affect_creature', 'pump', 'add_counter', 'gain_life', 'discard',
   'grant_keyword', 'fight_target', 'untap', 'move_card', 'sacrifice', 'annihilate',
-  'rip', 'symmetricize', 'change_control',
+  'rip', 'symmetricize', 'change_control', 'add_type', 'set_types',
 ]);
 const NOT_TARGET_SCORED_KINDS = new Set([
   'create_tokens',       // untargeted — mint tokens (scored via spellValueForEffects)
@@ -27,7 +27,6 @@ const NOT_TARGET_SCORED_KINDS = new Set([
   'endomorph_absorb',    // creature ability, not a cast spell
   'bargain_sticker_self', 'bargain_sticker_other', // Archdemon trigger mechanic
   'apply_in_game_splice',  // Stapler ability (player-UI-driven), not AI-scored
-  'add_type', 'set_types', // type-change — player-castable, not AI-cast-scored yet (covered by a dedicated unit test)
 ]);
 
 // AI spell valuation — RELOCATED from engine.js (review #6 — engine/AI layering).
@@ -127,6 +126,12 @@ function spellValueForEffects(effects) {
     }
     else if (e.kind === 'add_mana') v += 3;
     else if (e.kind === 'fight_target') v += 5;
+    // Type-change (best-guess valuation). add_type that animates (carries P/T)
+    // is worth the body it makes; a bare add_type ("becomes an artifact") has no
+    // payoff today, so ~1. set_types strips a creature's types → neutralization:
+    // a permanent set is near-removal, an until-eot set is a tempo answer.
+    else if (e.kind === 'add_type') v += ((e.power || 0) + (e.toughness || 0)) || 1;
+    else if (e.kind === 'set_types') v += (e.duration === 'permanent') ? 11 : 5;
   }
   return v;
 }
@@ -143,7 +148,7 @@ const VALUED_EFFECT_KINDS = new Set([
   'symmetricize', 'apply_sticker', 'counter', 'add_mana', 'gain_life', 'draw',
   'move_card', 'discard', 'grant_keyword', 'create_tokens', 'rip',
   'chooses', 'schedule_delayed', 'change_control', 'fight_target',
-  'apply_in_game_splice', 'sacrifice',
+  'apply_in_game_splice', 'sacrifice', 'add_type', 'set_types',
 ]);
 const UNVALUED_EFFECT_KINDS = new Set([
   'steal',              // internal helper dispatched by change_control; not a card kind
@@ -152,8 +157,6 @@ const UNVALUED_EFFECT_KINDS = new Set([
   'untap',              // minor utility on abilities; abilityValue default suffices
   'bargain_sticker_self', // Archdemon of Bargains trigger mechanic; not separately scored
   'bargain_sticker_other',
-  'add_type',           // type-change (manland animate, "becomes an artifact") — situational; not heuristically scored yet
-  'set_types',
 ]);
 
 const AI = (function() {
@@ -1424,6 +1427,35 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
     const base = eff.transfer_ownership ? 42 : 35;
     const lane = (hasType(c.card, 'Creature')) ? laneOpeningBonus(state, us, target.iid) : 0;
     return base + ENGINE.getCardValue(c.card, 'kill') + lane;
+  }
+  if (eff.kind === 'set_types') {
+    // Neutralize: stripping a creature's card types stops it attacking/blocking
+    // (it’s no longer a creature). Aim at the opponent's best creature; never
+    // our own. A permanent set is near-removal; an until-eot set is a tempo
+    // answer. The creature stays on the board (not destroyed), so it's valued a
+    // notch below hard removal.
+    if (target.kind !== 'creature' && target.kind !== 'permanent') return -100;
+    const c = ENGINE.findCard(target.iid);
+    if (!c || c.controller === us) return -100;
+    if (c.card.keywords.includes('hexproof')) return -100;
+    if (!hasType(c.card, 'Creature')) return -100;        // only a creature is worth neutralizing
+    const base = (eff.duration === 'permanent') ? 20 : 8;
+    return base + ENGINE.getCardValue(c.card, 'kill') + laneOpeningBonus(state, us, target.iid);
+  }
+  if (eff.kind === 'add_type') {
+    const c = ENGINE.findCard(target.iid);
+    if (!c) return -100;
+    const animate = (eff.power || 0) || (eff.toughness || 0);
+    if (animate) {
+      // Animating a permanent (a land, per the cards' filter) into a creature is
+      // only good on one WE control — it becomes an attacker. Animating the
+      // opponent's permanent would just gift them a body.
+      if (c.controller !== us) return -100;
+      return (eff.power || 0) + (eff.toughness || 0);
+    }
+    // Bare add_type ("becomes an artifact"): no payoff today — castable but
+    // deprioritized, and only on our own permanent.
+    return (c.controller === us) ? 1 : -100;
   }
   if (eff.kind === 'damage') {
     const amount = eff.amount;

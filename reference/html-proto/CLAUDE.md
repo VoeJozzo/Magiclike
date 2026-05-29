@@ -4,7 +4,7 @@ Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folde
 
 ## Version
 
-**Current: `v2.0.49`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.0.50`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -187,6 +187,20 @@ multi-type cards. Pulls the parked Phase-3 capability now that cards need it.
   UNION (stapling a multi-type card won't yet union types — not exercised by these
   cards; the splice machinery still reads `tpl.type`/`tpl.sub`). 1261 green, lint
   clean, 300-game selfplay clean.
+
+v2.0.50: type-change card polish — auto-text + AI tooling. (1) `withFilter`
+(card-text) now narrows the generic noun by a `target_filter.type`: "target
+permanent" + `{type:'Land'}` → **"target land"** (the four land-animate spells
+now read correctly; only they use a typed top-level filter, so nothing else
+shifts). (2) `add_type`/`set_types` moved from UNVALUED/NOT_TARGET_SCORED →
+VALUED/TARGET_SCORED with best-guess heuristics, since the pool is shared (no
+player/AI split) and a spell with zero tooling is never cast: `spellValueForEffects`
+values an animating add_type at the body it makes (else ~1) and a set_types at
+11/5 (permanent/eot); `scoreSpellTargetForMode` aims set_types (neutralize) at the
+opponent's best creature — permanent base 20, eot base 8, +card value +lane — and
+animate-add_type only at a permanent WE control (else it'd gift the opponent a
+body). Verified via `AI.decide`: the AI now casts Encase in Amber at an enemy
+creature. 1269 green, lint clean, 300-game selfplay clean.
 
 v2.0.42: resolved three rules-infrastructure divergences (B2 / F2 / D4 — all now
 *PROTO: DONE* in DIVERGENCE). **B2** — unused mana now empties at *every* phase

@@ -175,6 +175,41 @@ console.log('\n=== end-to-end: cast awakenVault through the real action flow ===
   }
 })();
 
+console.log('\n=== #3: card text narrows "permanent" to the filtered type ===');
+(() => {
+  const aw = describeCardText(CARDS.awakenVault);
+  check('awakenVault says "target land" (not "target permanent")',
+    /target land/i.test(aw) && !/target permanent/i.test(aw), aw);
+  check('golemForge / livingLands / suddenVines also say "target land"',
+    ['golemForge', 'livingLands', 'suddenVines'].every(id => /target land/i.test(describeCardText(CARDS[id]))));
+  check('petrify (target:creature) still says "target creature"',
+    /target creature/i.test(describeCardText(CARDS.petrify)));
+  check('encaseInAmber (target:permanent, no type filter) still says "target permanent"',
+    /target permanent/i.test(describeCardText(CARDS.encaseInAmber)));
+})();
+
+console.log('\n=== #4: the AI has tooling — it casts a neutralize spell at an enemy creature ===');
+(() => {
+  RUN.start({ cards: Array(12).fill('plains'), colors: ['W'] }, null);
+  RUN.startNextGame();
+  const G = ENGINE.state();
+  G.activePlayer = 'you'; G.priorityHolder = 'you'; G.phase = 'MAIN1';
+  G.stack = []; G.gameOver = false; G.priority = { passes: new Set() };
+  G.you.mana = { W: 9, U: 9, B: 9, R: 9, G: 9, C: 9 };
+  G.you.hand = []; G.you.battlefield = []; G.opp.battlefield = [];
+  const enemy = ENGINE.makeCard('sentinelColossus', [], 0);  // a 6/6 worth answering
+  enemy.controller = 'opp'; enemy.owner = 'opp'; enemy.iid = 8101; enemy.sick = false;
+  G.opp.battlefield.push(enemy);
+  const spell = ENGINE.makeCard('encaseInAmber', [], 0);
+  spell.controller = 'you'; spell.owner = 'you'; spell.iid = 8102;
+  G.you.hand.push(spell);
+  const dec = AI.decide(G, 'you');
+  check('AI chooses to cast encaseInAmber (no longer zero-tooled)',
+    dec && dec.type === 'castSpell' && dec.cardIid === 8102, JSON.stringify(dec && { t: dec.type, iid: dec.cardIid }));
+  check('AI aims the neutralize at the enemy creature',
+    dec && Array.isArray(dec.targets) && dec.targets.some(t => t.iid === 8101));
+})();
+
 console.log('\n=== boot validation clean (effects + card-text + coverage) ===');
 (() => {
   const v = ENGINE.validateAllCardEffects(CARDS);

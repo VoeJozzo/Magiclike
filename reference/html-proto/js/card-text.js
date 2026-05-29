@@ -65,11 +65,14 @@ function withFilter(noun, eff) {
   if (typeof f.min_tough === 'number') post.push('with toughness ' + f.min_tough + ' or greater');
   if (typeof f.max_power === 'number') post.push('with power ' + f.max_power + ' or less');
   if (typeof f.min_power === 'number') post.push('with power ' + f.min_power + ' or greater');
+  // A card-type restriction narrows the generic noun to that type:
+  // "target permanent" + {type:'Land'} → "target land". The head noun is
+  // whichever of creature/permanent the phrase used (each phrase has one);
+  // pre-mods (color/tapped/…) then attach to that narrowed noun.
+  let head = /\bpermanent\b/.test(noun) ? 'permanent' : 'creature';
   let out = noun;
-  if (pre.length) {
-    out = out.replace('creature', pre.join(' ') + ' creature')
-             .replace('permanent', pre.join(' ') + ' permanent');
-  }
+  if (f.type) { out = out.replace(head, f.type.toLowerCase()); head = f.type.toLowerCase(); }
+  if (pre.length) out = out.replace(head, pre.join(' ') + ' ' + head);
   if (post.length) out += ' ' + post.join(' ');
   return out;
 }
