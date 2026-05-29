@@ -1,6 +1,6 @@
 {
   "card_id": "branchingBolt",
-  "art": "⚡",
+  "art": "cards/branchingBolt/art.png",
   "cost": {
     "R": 1,
     "C": 1
