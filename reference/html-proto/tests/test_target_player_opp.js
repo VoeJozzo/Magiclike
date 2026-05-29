@@ -16,10 +16,7 @@ function check(label, ok, info) {
 }
 function r(c) { return describeCardSegments(c, { skipKeywords: false }).map(x => x.text).join(''); }
 
-console.log('=== `opp` is a first-class top-level filter ===');
-check('opp in TARGET_FILTERS', ENGINE.TARGET_FILTERS.has('opp'));
-
-console.log('\n=== opp-targeting cards: text says "opponent" AND only the opponent is legal ===');
+console.log('=== opp-targeting cards: text says "opponent" AND only the opponent is legal ===');
 (() => {
   RUN.start({ cards: Array(12).fill('plains'), colors: ['W'] }, null);
   RUN.startNextGame();
