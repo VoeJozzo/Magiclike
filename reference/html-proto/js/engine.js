@@ -1832,9 +1832,14 @@ const EFFECTS = {
     };
     log(`${ctx.sourceName} — ${pname(chooser)} chooses a number from 1 to 5.`, 'sp');
   },
-  // Phase 2 (dies). Read bargainsNum stashed on dying card, sticker OTHER side as compensation.
+  // Phase 2 (dies). The bargain pays out the SAME number chosen at ETB — read
+  // bargainsNum back off the demon. Zone-change events carry the dying card as
+  // `subject_card` (NOT `card`), and ctx.sourceCard (findCard scans the
+  // graveyard, where the demon now sits; bargainsNum survives resetInPlayState)
+  // is the fallback. The old `ctx.event.card` was always undefined, so N
+  // silently defaulted to 1 — decoupling the payout from the bargain.
   bargain_sticker_other(ctx) {
-    const dyingCard = ctx.event && ctx.event.card;
+    const dyingCard = (ctx.event && ctx.event.subject_card) || ctx.sourceCard;
     const n = (dyingCard && dyingCard.bargainsNum) || 1;
     const recipient = opp(ctx.controller);
     log(`${ctx.sourceName} — applying ${n} sticker(s) to ${pname(recipient)}'s permanents.`, 'sp');
@@ -4362,8 +4367,7 @@ function resolveCombatDamage() {
     blocked[aIid].push(bIid);
   }
   // Determine if we need a first-strike step. We do if any creature
-  // involved in combat has first strike. (Double strike would also count,
-  // but we don't have it implemented.)
+  // involved in combat has first strike.
   const allCombatants = [];
   for (const aIid of G.attackers) {
     const fa = findCard(aIid); if (fa) allCombatants.push(fa.card);
@@ -4502,6 +4506,11 @@ function dealCombatDamage(blocked, defender, dealsDamage) {
         damagePlayer(defender, remaining, `${atk.name} (trample)`);
         applyLifelink(atk, atkCtrl, remaining);
       } else if (unsatisfied.length > 0) {
+        // No deathtouch tag here on purpose: with deathtouch every killable
+        // blocker needs only 1, so it goes "unsatisfied" only when remaining hits
+        // 0 — and the dump is guarded by remaining > 0. The sole way to reach
+        // this dump with a deathtouch attacker is an INDESTRUCTIBLE unsatisfied
+        // blocker, where deathtouch is moot anyway. So tagging would never matter.
         const dump = unsatisfied[0].card;
         dump.damage += remaining;
         if (!(dump.damagedBySources instanceof Set)) dump.damagedBySources = new Set();

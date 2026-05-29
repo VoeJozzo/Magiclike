@@ -85,6 +85,47 @@ if (!CARDS['archdemonBargains']) {
   }
 }
 
+console.log('\n=== BUG 3: the LTB payout uses the SAME number chosen at ETB ===');
+if (!CARDS['archdemonBargains']) {
+  console.log('  (archdemonBargains not in CARDS -- skipping)');
+} else {
+  // The bargain: choose N at ETB → N stickers to the controller now; N stickers
+  // to the OTHER side when it leaves. The dies handler used to read the wrong
+  // event field (ctx.event.card, always undefined) and silently defaulted N=1,
+  // decoupling the payout from the bargain. Drive both halves and assert N==N.
+  const CHOSEN = 4;
+  const G = newGame();
+  const demon = mk('archdemonBargains', 'opp');
+  demon.iid = 9100; G.opp.battlefield.push(demon);
+  // ETB half: open the prompt, then choose CHOSEN through the real action.
+  ENGINE.applyEffect(
+    { controller: 'opp', sourceName: 'Archdemon of Bargains', sourceIid: demon.iid, sourceCard: demon },
+    { kind: 'bargain_sticker_self' }, null);
+  check('ETB opened a number choice', G.pendingNumberChoice != null);
+  ENGINE.executeAction(G.pendingNumberChoice.who, { type: 'numberChoice', number: CHOSEN });
+  check('ETB stashes the chosen number on the demon', demon.bargainsNum === CHOSEN, 'got ' + demon.bargainsNum);
+  // LTB half: build the dies ctx exactly as runTriggerEffects does (event carries
+  // the dying card as subject_card). Recipient = opp(controller) = 'you'.
+  for (let i = 0; i < 6; i++) {
+    const perm = mk('plains', 'you'); perm.iid = 8200 + i; G.you.battlefield.push(perm);
+  }
+  const countYou = () => G.you.battlefield.reduce((n, c) => n + (Array.isArray(c.stickers) ? c.stickers.length : 0), 0);
+  const before = countYou();
+  ENGINE.applyEffect(
+    { controller: 'opp', sourceName: 'Archdemon of Bargains', sourceIid: demon.iid, sourceCard: demon,
+      event: { type: 'card_zone_change', subject_card: demon, subject_iid: demon.iid, from_zone: 'battlefield', to_zone: 'graveyard' } },
+    { kind: 'bargain_sticker_other' }, null);
+  check('LTB payout applies exactly the ETB-chosen number of stickers (not 1)',
+    countYou() - before === CHOSEN, 'added ' + (countYou() - before) + ', expected ' + CHOSEN);
+  // Also via ctx.sourceCard fallback (no event) — the demon in graveyard still carries bargainsNum.
+  const before2 = countYou();
+  ENGINE.applyEffect(
+    { controller: 'opp', sourceName: 'Archdemon of Bargains', sourceIid: demon.iid, sourceCard: demon },
+    { kind: 'bargain_sticker_other' }, null);
+  check('LTB also reads bargainsNum via sourceCard fallback (no event)',
+    countYou() - before2 === CHOSEN, 'added ' + (countYou() - before2));
+}
+
 console.log('\n=== AI bargain pick scales with position (not always the minimum) ===');
 {
   const VANILLA = (() => {

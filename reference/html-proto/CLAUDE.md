@@ -4,7 +4,7 @@ Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folde
 
 ## Version
 
-**Current: `v2.0.51`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.0.52`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -201,6 +201,18 @@ opponent's best creature — permanent base 20, eot base 8, +card value +lane �
 animate-add_type only at a permanent WE control (else it'd gift the opponent a
 body). Verified via `AI.decide`: the AI now casts Encase in Amber at an enemy
 creature. 1269 green, lint clean, 300-game selfplay clean.
+
+v2.0.52: **Archdemon of Bargains LTB bugfix** — the leaves-play payout now uses the
+SAME number chosen at ETB. `bargain_sticker_other` read `ctx.event.card` (always
+undefined — zone-change events carry the dying card as `subject_card`), so N
+silently defaulted to 1, decoupling the payout from the bargain. Fixed to
+`(ctx.event && ctx.event.subject_card) || ctx.sourceCard` (the demon in the
+graveyard still carries `bargainsNum`, which survives `resetInPlayState`).
+`test_bargain_chooser_and_empower` now drives both halves end-to-end and asserts
+N(payout) === N(chosen). Also removed two stale combat comments (an unimplemented
+double-strike "TODO" and a misleading deathtouch-dump note — replaced with a
+correctness rationale for why the leftover-damage dump intentionally skips the
+deathtouch tag). 1280 green, lint clean.
 
 v2.0.51: **staple same-class UNION** — closes the type-system arc (the last
 parked item, now needed because Phase 4 made multi-type cards draftable AND
