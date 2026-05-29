@@ -25,7 +25,10 @@ function legacyTypeLine(card) {
 console.log('=== whole pool: accessors agree with legacy type/sub (all cards) ===');
 (() => {
   const ids = Object.keys(CARDS);
-  check('card pool loaded', ids.length > 200, ids.length + ' templates');
+  // Guard against a VACUOUS pass: the whole-pool checks below assert "mismatch
+  // list is empty" over `ids` — if the pool failed to load, every list would be
+  // empty and all 20+ assertions would silently go green on zero cards.
+  check('card pool loaded (whole-pool checks are not vacuous)', ids.length > 200, ids.length + ' templates');
 
   // A card's typeLine legitimately diverges from the naive legacy concat in two
   // cases the parser corrects: (a) basic-land `sub: "Basic Land"` cruft (a type
