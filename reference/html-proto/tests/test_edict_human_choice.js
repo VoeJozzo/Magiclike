@@ -253,5 +253,26 @@ console.log('\n=== AI resolves its own pendingEdictChoice (selfplay path) → au
     G.you.battlefield.some(c => c.iid === survivor.iid));
 }
 
+console.log('\n=== In-place selection wiring (popup reverted to battlefield-click) ===');
+{
+  // The human edict no longer opens a dedicated modal; the player clicks one of
+  // their glowing eligible permanents. The browser-click feel needs a running
+  // game to verify, but the SOURCE wiring is asserted here so a regression
+  // (re-introducing the modal, or dropping the click route/glow) fails the suite.
+  const fs = require('fs');
+  const ctl = fs.readFileSync(__dirname + '/../js/controller.js', 'utf8');
+  const rnd = fs.readFileSync(__dirname + '/../js/render.js', 'utf8');
+  check('clickBattlefield routes an edict click to edictChoice',
+    /pendingEdictChoice && G\.pendingEdictChoice\.who === 'you'[\s\S]{0,160}?type:\s*'edictChoice'/.test(ctl));
+  check('eligible sac pool glows in-place (render adds .targetable from the edict pool)',
+    /pendingEdictChoice[\s\S]{0,200}pool\.some[\s\S]{0,80}targetable/.test(rnd));
+  check("no edict popup: Modal.show('edictChoiceModal') is gone",
+    !/Modal\.show\('edictChoiceModal'/.test(rnd));
+  check('a stale edict modal is still force-hidden',
+    /Modal\.hide\('edictChoiceModal'\)/.test(rnd));
+  check('status bar still announces the edict prompt',
+    /pendingEdictChoice[\s\S]{0,120}to sacrifice/.test(rnd));
+}
+
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');
 process.exit(fail > 0 ? 1 : 0);

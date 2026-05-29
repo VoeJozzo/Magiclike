@@ -1695,6 +1695,15 @@ function clickBattlefield(iid) {
     return;
   }
 
+  // Edict forced-sacrifice (Diabolic/Vile Edict) — in-place selection (no modal,
+  // reverted from the popup): click one of your glowing eligible permanents to
+  // sac it. Out-of-pool clicks are rejected engine-side (isLegalAction checks
+  // pendingEdictChoice.pool), so a stray click just no-ops.
+  if (G.pendingEdictChoice && G.pendingEdictChoice.who === 'you') {
+    submit({type:'edictChoice', iid: card.iid});
+    return;
+  }
+
   // Targeting mode — clicking a creature picks it as the target (or the sac).
   if (pendingTarget) {
     // abilitySac: clicking a creature picks it as the sacrifice target

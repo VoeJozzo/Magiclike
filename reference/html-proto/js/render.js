@@ -335,32 +335,12 @@ function render() {
   } else {
     Modal.hide('symmetricizeChoiceModal');
   }
-  // Edict forced-sacrifice prompt (GAP 2). The targeted (human) player picks
-  // which of their permanents to lose; the engine replays the trailing
-  // sacrifice/annihilate/rip against the pick.
-  if (G.pendingEdictChoice && G.pendingEdictChoice.who === 'you') {
-    Modal.show('edictChoiceModal', { dismissible: false });
-    const p = G.pendingEdictChoice;
-    const noun = p.filter === 'permanent' ? 'permanent' : 'creature';
-    document.getElementById('edictChoiceSubtitle').innerHTML =
-      `${p.source} forces you to sacrifice a ${noun}.<br>` +
-      `<span style="color:#888;font-size:11px">Choose which one to lose.</span>`;
-    const btns = document.getElementById('edictChoiceButtons');
-    btns.innerHTML = '';
-    for (const c of p.pool) {
-      const live = G.you.battlefield.find(x => x.iid === c.iid);
-      let stats = '';
-      if (live && hasType(live, 'Creature')) { const [pw, to] = ENGINE.getStats(live); stats = `${pw}/${to}`; }
-      const html = `<div style="font-size:13px;font-weight:bold">${c.label}</div>`
-        + (stats ? `<div style="font-size:11px;opacity:0.7;margin-top:2px">${stats}</div>` : '');
-      btns.appendChild(makeChoiceButton(html,
-        'border:2px solid #cc8888;color:#eecccc;padding:12px 20px;font-family:inherit;cursor:pointer;border-radius:6px;min-width:90px;transition:transform .1s,background .1s',
-        '#201515', '#2c1e1e',
-        () => CONTROLLER.edictChoice(c.iid)));
-    }
-  } else {
-    Modal.hide('edictChoiceModal');
-  }
+  // Edict forced-sacrifice (GAP 2): selection is now IN-PLACE — the eligible
+  // permanents glow on the battlefield (see the .targetable branch in the
+  // per-card render) and a click sacks one (clickBattlefield → edictChoice). The
+  // status bar shows the prompt (see the status-bar block below). No modal —
+  // simpler/clearer than the popup it replaced. Force-hide any stale modal.
+  Modal.hide('edictChoiceModal');
   // Optional-cost trigger (Land+Spell staple ETB). The controller may pay the
   // stapled spell's mana cost to use its effect, or decline.
   if (G.pendingOptionalCost && G.pendingOptionalCost.who === 'you') {
@@ -850,6 +830,12 @@ function renderBf(id, bf, who) {
       if (ptt.valid.some(v => v.kind === 'creature' && v.iid === card.iid)) {
         div.classList.add('targetable');
       }
+    }
+    // Edict forced-sacrifice: glow the eligible permanents the player may sac
+    // (in-place selection — no modal). Clicking one routes to edictChoice.
+    if (G.pendingEdictChoice && G.pendingEdictChoice.who === 'you'
+        && G.pendingEdictChoice.pool.some(c => c.iid === card.iid)) {
+      div.classList.add('targetable');
     }
     // Subtle ambient glow on untapped lands you control -- signals "this
     // can be tapped for mana" without the full .activatable intensity.

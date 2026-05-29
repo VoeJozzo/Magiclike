@@ -4,7 +4,7 @@ Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folde
 
 ## Version
 
-**Current: `v2.0.52`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.0.53`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -201,6 +201,22 @@ opponent's best creature — permanent base 20, eot base 8, +card value +lane �
 animate-add_type only at a permanent WE control (else it'd gift the opponent a
 body). Verified via `AI.decide`: the AI now casts Encase in Amber at an enemy
 creature. 1269 green, lint clean, 300-game selfplay clean.
+
+v2.0.53: **edicts revert to in-place battlefield selection (no popup).** The
+human-facing forced-sacrifice (Diabolic/Vile Edict) used a dedicated
+`edictChoiceModal`; it now reverts to the simpler/clearer original behavior — the
+player's eligible permanents glow on the battlefield (a new `pendingEdictChoice`
+branch in the per-card render adds `.targetable` from `pendingEdictChoice.pool`)
+and a click sacks one (`clickBattlefield` → `edictChoice`, alongside the existing
+trigger-target branch). The `Modal.show('edictChoiceModal')` block (and its
+button-building loop) is removed; a defensive `Modal.hide` remains, and the now-
+dormant modal DOM element is left in the HTML (hidden, harmless). The status bar
+already announces the prompt. Engine behavior — the `edictChoice` action,
+pause/replay, out-of-pool rejection, AI auto-pick — is unchanged; only the UI
+trigger moved. `test_edict_human_choice` adds source-wiring assertions (click
+routes to edictChoice; pool glows; no modal show; status bar text). **The in-
+browser click feel is NOT verified in this environment (no browser); user to
+confirm on dev.** 1283 green, lint clean.
 
 v2.0.52: **Archdemon of Bargains LTB bugfix** — the leaves-play payout now uses the
 SAME number chosen at ETB. `bargain_sticker_other` read `ctx.event.card` (always
