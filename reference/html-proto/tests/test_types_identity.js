@@ -35,7 +35,10 @@ console.log('=== whole pool: accessors agree with legacy type/sub (all cards) ==
   function subHasTypeTag(c) {
     return typeof c.sub === 'string' && c.sub.split(/\s+/).some(t => t && isCardTypeTag(t));
   }
-  function isCorrected(c) { return !!c.legendary || subHasTypeTag(c); }
+  // Explicit-types[] cards (the multi-type Phase-4 cards) intentionally render a
+  // typeLine that differs from the legacy type+sub concat — validated in
+  // test_type_change, so excluded from the legacy-equivalence check here.
+  function isCorrected(c) { return !!c.legendary || subHasTypeTag(c) || Array.isArray(c.types); }
 
   let govMismatch = [], hasTypeMiss = [], subMiss = [], lineMismatch = [], corrected = [];
   for (const id of ids) {
@@ -138,6 +141,11 @@ console.log('\n=== explicit types[] hook: authoritative + carried through makeCa
     JSON.stringify(typesOf(explicit)) === JSON.stringify(['Artifact', 'Creature', 'Construct']));
   check('explicit Artifact+Creature → Creature governs, isPermanent',
     governingType(explicit) === 'Creature' && isPermanent(explicit) && hasType(explicit, 'Artifact'));
+  // RISK #1 (QA): the Legendary supertype must survive an explicit types[] —
+  // else a legendary multi-type card silently loses the legend rule.
+  const legendRobot = { type: 'Creature', legendary: true, types: ['Artifact', 'Creature'] };
+  check('legendary + explicit types[]: Legendary tag NOT dropped',
+    hasType(legendRobot, 'Legendary') && typeLine(legendRobot).startsWith('Legendary '), typeLine(legendRobot));
 
   // makeCard carries an explicit template types[] onto the runtime instance, so
   // a future multi-type card behaves end-to-end (the Phase 4 readiness hook).

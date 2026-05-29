@@ -1,0 +1,21 @@
+{
+  "card_id": "encaseInAmber",
+  "name": "Encase in Amber",
+  "art": "🟠",
+  "cost": {
+    "U": 2,
+    "C": 1
+  },
+  "type": "Sorcery",
+  "target": "permanent",
+  "effects": [
+    {
+      "kind": "set_types",
+      "types": [
+        "Artifact"
+      ],
+      "duration": "permanent"
+    }
+  ],
+  "text": "Target permanent loses all card types and becomes an artifact."
+}

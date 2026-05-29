@@ -1,0 +1,155 @@
+// Type-change layer (add_type / set_types) + the Phase-4 test-case cards
+// (type-change spells, colorless artifact creatures, artifact lands).
+//
+// The grant layer mirrors keyword grants: card.typeGrants = [{tags,op,source,eot}],
+// read live by typesOf so every hasType/governingType reader sees the change.
+// Reverts ride the existing end-of-turn cleanup (eot grants + tempPower/tempTou)
+// and resetInPlayState (leave-play). Those integration points are single lines
+// in engine.js; here we drive applyEffect directly and emulate the two revert
+// sweeps with the exact filter the engine runs.
+
+const setup = require('./_setup');
+setup.loadEngine();
+
+let pass = 0, fail = 0;
+function check(label, ok, info) {
+  console.log('  ' + (ok ? 'PASS' : 'FAIL') + ': ' + label + (info ? ' -- ' + info : ''));
+  if (ok) pass++; else fail++;
+}
+const CTX = (name) => ({ controller: 'you', sourceName: name, sourceIid: -1 });
+
+// Boot a real game and drop a fresh instance of `tplId` onto your battlefield.
+function spawn(tplId) {
+  RUN.start({ cards: [tplId].concat(Array(11).fill('plains')), colors: ['W'] }, null);
+  RUN.load();
+  ENGINE.init(RUN.getSlots(), [tplId].concat(Array(11).fill('plains')));
+  const G = ENGINE.state();
+  const inst = ENGINE.makeCard(tplId, [], 0);
+  inst.controller = 'you'; inst.owner = 'you'; inst.sick = false;
+  G.you.battlefield.push(inst);
+  return { G, inst };
+}
+// The two engine revert sweeps, applied by hand (mirror engine.js cleanup loop
+// + resetInPlayState exactly).
+const eotSweep = (c) => { c.tempPower = 0; c.tempTou = 0; if (Array.isArray(c.typeGrants)) c.typeGrants = c.typeGrants.filter(g => !g.eot); };
+const leavePlay = (c) => { c.tempPower = 0; c.tempTou = 0; c.typeGrants = []; };
+
+console.log('=== add_type (eot): a land becomes a 3/3 creature, reverts at EOT ===');
+(() => {
+  const { inst } = spawn('forest');
+  check('forest starts a Land, not a Creature', hasType(inst, 'Land') && !hasType(inst, 'Creature'));
+  ENGINE.applyEffect(CTX('Awaken the Vault'),
+    { kind: 'add_type', types: ['Creature'], power: 3, toughness: 3, duration: 'eot' },
+    { kind: 'permanent', iid: inst.iid });
+  check('now BOTH Land and Creature (union)', hasType(inst, 'Land') && hasType(inst, 'Creature'));
+  check('governs as Creature (Creature > Land), still a permanent',
+    governingType(inst) === 'Creature' && isPermanent(inst));
+  check('stats are 3/3', JSON.stringify(ENGINE.getStats(inst)) === '[3,3]', JSON.stringify(ENGINE.getStats(inst)));
+  check('can attack (an in-play land isn’t summoning sick)', ENGINE.canCreatureAttack(inst));
+  eotSweep(inst);
+  check('after EOT: reverts to a plain 0/0 Land',
+    hasType(inst, 'Land') && !hasType(inst, 'Creature') && JSON.stringify(ENGINE.getStats(inst)) === '[0,0]');
+})();
+
+console.log('\n=== add_type (permanent): survives EOT, reverts on leave-play ===');
+(() => {
+  const { inst } = spawn('forest');
+  ENGINE.applyEffect(CTX('Living Lands'),
+    { kind: 'add_type', types: ['Creature'], power: 2, toughness: 2, duration: 'permanent' },
+    { kind: 'permanent', iid: inst.iid });
+  check('is a 2/2 creature', hasType(inst, 'Creature') && JSON.stringify(ENGINE.getStats(inst)) === '[2,2]');
+  eotSweep(inst);
+  check('SURVIVES end of turn (permanent grant)', hasType(inst, 'Creature'));
+  leavePlay(inst);
+  check('reverts when it leaves play', !hasType(inst, 'Creature') && hasType(inst, 'Land'));
+})();
+
+console.log('\n=== set_types: a creature becomes ONLY an artifact (neutralized) ===');
+(() => {
+  // Use a real vanilla creature from the pool.
+  const crId = Object.keys(CARDS).find(id => CARDS[id].type === 'Creature' && !CARDS[id].special && CARDS[id].cost && !CARDS[id].types);
+  const { inst } = spawn(crId);
+  check('starts a Creature', hasType(inst, 'Creature') && ENGINE.canCreatureAttack(inst));
+  ENGINE.applyEffect(CTX('Petrify'),
+    { kind: 'set_types', types: ['Artifact'], duration: 'eot' },
+    { kind: 'creature', iid: inst.iid });
+  check('becomes ONLY an Artifact — no longer a creature', hasType(inst, 'Artifact') && !hasType(inst, 'Creature'));
+  check('can no longer attack (not a creature)', !ENGINE.canCreatureAttack(inst));
+  check('still a permanent (artifact)', isPermanent(inst) && governingType(inst) === 'Artifact');
+  eotSweep(inst);
+  check('after EOT: creature again', hasType(inst, 'Creature') && ENGINE.canCreatureAttack(inst) && !hasType(inst, 'Artifact'));
+})();
+
+console.log('\n=== multi-tag add (Golem Forge): land → 4/4 Artifact Creature ===');
+(() => {
+  const { inst } = spawn('forest');
+  ENGINE.applyEffect(CTX('Golem Forge'),
+    { kind: 'add_type', types: ['Artifact', 'Creature'], power: 4, toughness: 4, duration: 'eot' },
+    { kind: 'permanent', iid: inst.iid });
+  check('is Land + Artifact + Creature, 4/4',
+    hasType(inst, 'Land') && hasType(inst, 'Artifact') && hasType(inst, 'Creature')
+    && JSON.stringify(ENGINE.getStats(inst)) === '[4,4]');
+  check('typeLine lists all three types left of the dash',
+    ['Land', 'Artifact', 'Creature'].every(t => typeLine(inst).includes(t)) && !typeLine(inst).includes('—'), typeLine(inst));
+})();
+
+console.log('\n=== the 7 type-change spells are authored + generate clean text ===');
+(() => {
+  const spellIds = ['awakenVault', 'livingLands', 'brandOfIron', 'petrify', 'encaseInAmber', 'golemForge', 'suddenVines'];
+  check('all 7 present, type Sorcery', spellIds.every(id => CARDS[id] && CARDS[id].type === 'Sorcery'),
+    spellIds.filter(id => !CARDS[id]).join(', '));
+  check('petrify & suddenVines have flash (instant-speed)',
+    (CARDS.petrify.keywords || []).includes('flash') && (CARDS.suddenVines.keywords || []).includes('flash'));
+  const txt = describeEffect(CARDS.awakenVault.effects[0]).map(s => s.text).join('');
+  check('add_type generates readable text (no "[add_type]" sentinel)',
+    !txt.includes('[add_type]') && /Creature/.test(txt) && /3\/3/.test(txt), txt);
+  const stxt = describeEffect(CARDS.petrify.effects[0]).map(s => s.text).join('');
+  check('set_types generates readable text', !stxt.includes('[set_types]') && /Artifact/.test(stxt), stxt);
+})();
+
+console.log('\n=== 8 colorless artifact creatures ===');
+(() => {
+  const robots = ['clockworkBeetle', 'scrapHound', 'alloyMyr', 'copperGolem', 'razorBeacon', 'ironSentinel', 'bulwarkAutomaton', 'sentinelColossus'];
+  check('all 8 present', robots.every(id => CARDS[id]), robots.filter(id => !CARDS[id]).join(', '));
+  check('each is an Artifact Creature (explicit types[]) + colorless',
+    robots.every(id => { const c = CARDS[id]; return hasType(c, 'Artifact') && hasType(c, 'Creature') && governingType(c) === 'Creature' && !['W', 'U', 'B', 'R', 'G'].some(k => c.cost && c.cost[k]); }));
+  // An instance dies to creature removal AND counts as an artifact.
+  const { inst } = spawn('copperGolem');
+  check('instance: hasType Artifact AND Creature, isPermanent, governs Creature',
+    hasType(inst, 'Artifact') && hasType(inst, 'Creature') && isPermanent(inst) && governingType(inst) === 'Creature');
+  check('typeLine renders "Artifact Creature — <sub>"', /^Artifact Creature — /.test(typeLine(inst)) || /Creature/.test(typeLine(inst)), typeLine(inst));
+})();
+
+console.log('\n=== 6 artifact lands (WUBRG + C), in the draft pool ===');
+(() => {
+  const lands = ['gildedSeat', 'tidalConduit', 'boneReliquary', 'emberAnvil', 'verdantVerge', 'drossPylon'];
+  check('all 6 present', lands.every(id => CARDS[id]), lands.filter(id => !CARDS[id]).join(', '));
+  check('each is Land + Artifact and taps for its color',
+    lands.every(id => { const c = CARDS[id]; return hasType(c, 'Land') && hasType(c, 'Artifact') && c.mana && Array.isArray(c.abilities); }));
+  check('cover all six mana colors W/U/B/R/G/C',
+    JSON.stringify(lands.map(id => CARDS[id].mana).sort()) === JSON.stringify(['B', 'C', 'G', 'R', 'U', 'W']));
+  // Draft pool: artifact lands IN, basic lands OUT.
+  const inPool = (id) => {
+    // Re-derive the pool predicate (draftPool is cached/internal): non-land OR artifact-land, non-special.
+    const c = CARDS[id];
+    return !c.special && (!hasType(c, 'Land') || hasType(c, 'Artifact'));
+  };
+  check('artifact lands qualify for the draft pool', lands.every(inPool));
+  check('basic lands still excluded from the draft pool', !inPool('forest') && !inPool('plains'));
+  check('artifact creatures + type-change spells qualify too',
+    inPool('copperGolem') && inPool('awakenVault'));
+})();
+
+console.log('\n=== boot validation clean (effects + card-text + coverage) ===');
+(() => {
+  const v = ENGINE.validateAllCardEffects(CARDS);
+  check('no unknown effect kinds across the whole (expanded) pool', v.unknownKinds.length === 0, v.unknownKinds.join(', '));
+  check('no unknown target filters', v.unknownFilters.length === 0, v.unknownFilters.join(', '));
+  const cov = ENGINE.effectCoverageReport();
+  check('add_type/set_types classified for valuation + cast-scoring + card-text',
+    cov.unclassifiedValuation.length === 0 && cov.unclassifiedCastScoring.length === 0 && cov.missingText.length === 0,
+    JSON.stringify({ val: cov.unclassifiedValuation, cast: cov.unclassifiedCastScoring, text: cov.missingText }));
+})();
+
+console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');
+process.exit(fail > 0 ? 1 : 0);

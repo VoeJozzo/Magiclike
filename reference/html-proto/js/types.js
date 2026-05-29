@@ -34,22 +34,36 @@ function typeRegistryEntry(tag) { return TYPE_REGISTRY[tag] || { category: 'subt
 function typeCategory(tag) { return typeRegistryEntry(tag).category; }
 function isCardTypeTag(tag) { return typeCategory(tag) === 'type'; }
 
-// A card's tag list. An explicit `card.types` array (multi-type cards, Phase 4+)
-// is the authoritative source when present; otherwise the list is derived from
-// the legacy fields — the `Legendary` supertype (from the `legendary` boolean),
-// then the `type` string, then the `sub` subtypes (split on whitespace). Order
-// matches the type line (typeLine re-sorts by category, so order is cosmetic for
-// the derived path).
+// A card's effective tag list. Base = an explicit `card.types` array (multi-type
+// cards, Phase 4+) when present, else derived from the legacy fields. The
+// `Legendary` supertype (from the `legendary` boolean) is unioned in on BOTH
+// paths — never dropped by an explicit types[] — so the legend rule keeps
+// firing for a legendary multi-type card. Then the live type-modifier layer
+// (`card.typeGrants`: add_type / set_types) is applied: a 'set' grant replaces
+// the working set, an 'add' grant unions tags in. Grants are applied in order;
+// eot grants clear at end of turn, leave-play grants clear in resetInPlayState.
 function typesOf(card) {
   if (!card) return [];
-  if (Array.isArray(card.types)) return card.types.slice();
-  const tags = [];
-  if (card.legendary) tags.push('Legendary');
-  if (card.type) tags.push(card.type);
-  if (typeof card.sub === 'string') {
-    for (const s of card.sub.split(/\s+/)) if (s) tags.push(s);
+  let base;
+  if (Array.isArray(card.types)) {
+    base = card.types.slice();
+    if (card.legendary && !base.includes('Legendary')) base.unshift('Legendary');
+  } else {
+    base = [];
+    if (card.legendary) base.push('Legendary');
+    if (card.type) base.push(card.type);
+    if (typeof card.sub === 'string') {
+      for (const s of card.sub.split(/\s+/)) if (s) base.push(s);
+    }
   }
-  return tags;
+  if (Array.isArray(card.typeGrants)) {
+    for (const g of card.typeGrants) {
+      if (!g || !Array.isArray(g.tags)) continue;
+      if (g.op === 'set') base = g.tags.slice();
+      else for (const t of g.tags) if (t && !base.includes(t)) base.push(t);
+    }
+  }
+  return base;
 }
 
 // Membership over the effective type set (word-exact — same intent as the legacy

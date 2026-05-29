@@ -820,7 +820,7 @@ function renderBf(id, bf, who) {
     return co + '|' + (card.name || '');
   };
   const sorted = bf.slice().sort((a, b) => {
-    const t = typeOrder(a.type) - typeOrder(b.type);
+    const t = typeOrder(governingType(a)) - typeOrder(governingType(b));
     if (t !== 0) return t;
     if (hasType(a, 'Land') && hasType(b, 'Land')) {
       const ka = landKey(a), kb = landKey(b);

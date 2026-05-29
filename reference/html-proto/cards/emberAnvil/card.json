@@ -1,0 +1,27 @@
+{
+  "card_id": "emberAnvil",
+  "name": "Ember Anvil",
+  "art": "🔥",
+  "type": "Land",
+  "types": [
+    "Artifact",
+    "Land"
+  ],
+  "mana": "R",
+  "text": "Tap: Add {R}.",
+  "abilities": [
+    {
+      "cost": {
+        "tap": true
+      },
+      "effects": [
+        {
+          "kind": "add_mana",
+          "amounts": {
+            "R": 1
+          }
+        }
+      ]
+    }
+  ]
+}

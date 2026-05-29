@@ -4,7 +4,7 @@ Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folde
 
 ## Version
 
-**Current: `v2.0.48`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.0.49`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -157,6 +157,36 @@ manlands, "becomes an artifact") and teaching staple synthesis to UNION same-cla
 types — the splice machinery (engine.js ~88–516) still reads `tpl.type`/`tpl.sub`
 on authored templates, which is correct until a multi-type staple is authored.
 1227 green, lint clean, 300-game selfplay clean.
+
+v2.0.49: **unified type-system Phase 4** — the type-change layer + the first
+multi-type cards. Pulls the parked Phase-3 capability now that cards need it.
+- **Type-modifier layer** (mirrors keyword grants): `card.typeGrants =
+  [{tags,op,source,eot}]`, read live by `typesOf` (a 'set' grant replaces the
+  working type set, an 'add' grant unions tags in) so every hasType/governingType
+  reader sees the change with no per-instance baking. New `add_type` / `set_types`
+  EFFECTS handlers (via `applyTypeChange`): optional `power/toughness` animate the
+  target through the EOT-clearing `tempPower/tempTou`. Reverts ride the existing
+  end-of-turn cleanup (eot grants + temp stats clear together) and
+  `resetInPlayState` (leave-play). Registered in valuation (UNVALUED), cast-scoring
+  (NOT_TARGET_SCORED — player-castable, covered by `test_type_change`), and
+  card-text (`describeEffect`).
+- **21 test cards** (auto-discovered; manifest rebuilt to 279): 7 type-change
+  spells (`awakenVault`/`livingLands`/`brandOfIron`/`petrify`/`encaseInAmber`/
+  `golemForge`/`suddenVines` — add_type & set_types, eot & permanent, two with
+  flash), 8 colorless artifact creatures (`copperGolem` etc. — `types:["Artifact",
+  "Creature",<sub>]`), 6 artifact lands (WUBRG + C: `gildedSeat`/`tidalConduit`/
+  `boneReliquary`/`emberAnvil`/`verdantVerge`/`drossPylon`). Cards carry `type`
+  (governing) + explicit `types[]` (full set). Art is emoji placeholders.
+- **Draft pool** widened: nonbasic artifact lands (Land + Artifact) are now
+  draftable; basic lands still excluded.
+- **QA fixes** (from the Phase-1–3 review): RISK #1 — `typesOf` now unions the
+  `Legendary` supertype even on the explicit-`types[]` path (a legendary multi-type
+  card was silently losing the legend rule); NIT #1 — the battlefield-sort
+  `typeOrder` reads `governingType` instead of raw `.type`.
+- New `test_type_change.js` (33 assertions). **Parked still**: staple same-class
+  UNION (stapling a multi-type card won't yet union types — not exercised by these
+  cards; the splice machinery still reads `tpl.type`/`tpl.sub`). 1261 green, lint
+  clean, 300-game selfplay clean.
 
 v2.0.42: resolved three rules-infrastructure divergences (B2 / F2 / D4 — all now
 *PROTO: DONE* in DIVERGENCE). **B2** — unused mana now empties at *every* phase

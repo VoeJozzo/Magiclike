@@ -1,0 +1,20 @@
+{
+  "card_id": "brandOfIron",
+  "name": "Brand of Iron",
+  "art": "🔨",
+  "cost": {
+    "R": 1
+  },
+  "type": "Sorcery",
+  "target": "creature",
+  "effects": [
+    {
+      "kind": "add_type",
+      "types": [
+        "Artifact"
+      ],
+      "duration": "permanent"
+    }
+  ],
+  "text": "Target creature becomes an artifact in addition to its other types."
+}

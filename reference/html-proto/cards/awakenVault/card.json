@@ -1,0 +1,26 @@
+{
+  "card_id": "awakenVault",
+  "name": "Awaken the Vault",
+  "art": "🗿",
+  "cost": {
+    "G": 1,
+    "C": 2
+  },
+  "type": "Sorcery",
+  "target": "permanent",
+  "target_filter": {
+    "type": "Land"
+  },
+  "effects": [
+    {
+      "kind": "add_type",
+      "types": [
+        "Creature"
+      ],
+      "power": 3,
+      "toughness": 3,
+      "duration": "eot"
+    }
+  ],
+  "text": "Target land becomes a 3/3 creature until end of turn. (It’s still a land.)"
+}

@@ -623,6 +623,7 @@ function makeCard(tplId, stickers, slotIdx, empowerRolls, permaBuffs, bonusTrigg
     damagedBySources: new Set(),
     grantedBy: new Map(),         // kw → Set of source iids
     eotGrants: [],                // cleared in EOT cleanup
+    typeGrants: [],               // add_type/set_types layer; {tags,op,source,eot}
     modifiers: [],
     stickers: (stickers || []).slice(),
     // Rolls parallel occurrences of 'empower'/'subtype' stickers. Rolled at
@@ -1647,6 +1648,12 @@ const EFFECTS = {
       log(`Put +${p}/+${t} counters on ${f.card.name}.`, 'sp');
     }
   },
+  // Type-change (§5): add_type unions tag(s) onto the target's effective type
+  // set; set_types replaces it. Both read live through typesOf, so the target
+  // immediately is/stops-being a creature/artifact/land for every rule. See
+  // applyTypeChange for duration + animate-stats handling.
+  add_type(ctx, params, target) { applyTypeChange(ctx, params, target, 'add'); },
+  set_types(ctx, params, target) { applyTypeChange(ctx, params, target, 'set'); },
   // Absorb a novel keyword from victim, else grow +1/+1. Persists via slot sticker.
   // Auto-picks highest-priority keyword; defender excluded (downside).
   endomorph_absorb(ctx, params, target) {
@@ -3454,6 +3461,9 @@ function resetInPlayState(card, preserveDeathState) {
   card.cantAttack = false; card.cantBlock = false;
   if (card.cantAttackBy instanceof Set) card.cantAttackBy.clear();
   if (card.cantBlockBy instanceof Set) card.cantBlockBy.clear();
+  // Type-change grants (add_type/set_types) revert on leave-play, so a bounced/
+  // recast animated land returns to its base types.
+  if (Array.isArray(card.typeGrants) && card.typeGrants.length) card.typeGrants = [];
   if (!preserveDeathState) {
     if (card.damagedBySources instanceof Set) card.damagedBySources.clear();
     card.killedBy = null;
@@ -3582,6 +3592,44 @@ function applyGrant(card, kw, sourceIid, eot) {
   if (!card.keywords.includes(kw)) card.keywords.push(kw);
 }
 
+// Apply a type-change grant (the type analogue of applyGrant). op:'add' unions
+// tags onto the card's effective type set; op:'set' replaces it. eot=true →
+// revoked in the end-of-turn cleanup; eot=false → revoked when the card leaves
+// play (resetInPlayState). typesOf reads these live, so every hasType/
+// governingType reader sees the change with no per-instance baking. sourceIid
+// is recorded for symmetry (one-shot spells pass null — they're not on the
+// battlefield to "leave").
+function applyTypeGrant(card, tags, op, sourceIid, eot) {
+  if (!Array.isArray(card.typeGrants)) card.typeGrants = [];
+  card.typeGrants.push({
+    tags: (Array.isArray(tags) ? tags : [tags]).filter(Boolean),
+    op: op === 'set' ? 'set' : 'add',
+    source: (sourceIid != null) ? sourceIid : null,
+    eot: !!eot,
+  });
+}
+
+// Shared resolver for the add_type / set_types effects. `tags` from params.types
+// (array) or params.type (string). duration:'permanent' → revoked on leave-play;
+// default → until end of turn. Optional power/toughness animate the target via
+// the EOT-clearing tempPower/tempTou (so "land becomes a 2/2" reverts stats AND
+// type together at cleanup). For an animated land already in play this is
+// correct — it isn't summoning sick (only creatures are set sick at ETB).
+function applyTypeChange(ctx, params, target, op) {
+  const f = resolveTarget(ctx, target);
+  if (!f) return;
+  const tags = Array.isArray(params.types) ? params.types : (params.type ? [params.type] : []);
+  if (!tags.length) return;
+  const eot = params.duration !== 'permanent';
+  applyTypeGrant(f.card, tags, op, null, eot);
+  const p = params.power || 0, t = params.toughness || 0;
+  if (p || t) { f.card.tempPower = (f.card.tempPower || 0) + p; f.card.tempTou = (f.card.tempTou || 0) + t; }
+  const dur = eot ? ' until end of turn' : '';
+  const stats = (p || t) ? ` (${p}/${t})` : '';
+  if (op === 'set') log(`${f.card.name} becomes ${tags.join(' ')}${stats}${dur}.`, 'sp');
+  else log(`${f.card.name} becomes ${tags.join(' ')} in addition to its other types${stats}${dur}.`, 'sp');
+}
+
 // When a card leaves the battlefield, any "until removed" restrictions it
 // placed on other creatures clear. Walk every creature on either battlefield
 // and remove sourceIid from their restriction sets; if a set goes empty the
@@ -3596,6 +3644,11 @@ function clearRestrictionsFromSource(sourceIid) {
       if (c.cantBlockBy instanceof Set && c.cantBlockBy.has(sourceIid)) {
         c.cantBlockBy.delete(sourceIid);
         if (c.cantBlockBy.size === 0) c.cantBlock = false;
+      }
+      // Type grants tied to this source (aura-style ongoing animators) clear too.
+      // One-shot spells pass source:null, so this never touches them.
+      if (Array.isArray(c.typeGrants) && c.typeGrants.length) {
+        c.typeGrants = c.typeGrants.filter(g => g.source !== sourceIid);
       }
       // Granted keywords: remove this source from each keyword's grant set.
       // If the set empties AND the keyword isn't intrinsic, strip it from
@@ -5654,6 +5707,12 @@ function step() {
           flushPermanentEotToPermaBuffs(c);
           c.tempPower = 0; c.tempTou = 0; c.damage = 0;
           c.dealtDeathtouch = false;
+          // Revoke until-end-of-turn type grants (add_type/set_types) — the
+          // animate's stats (tempPower/tempTou) clear in the same sweep, so an
+          // animated land reverts to a plain land cleanly.
+          if (Array.isArray(c.typeGrants) && c.typeGrants.length) {
+            c.typeGrants = c.typeGrants.filter(g => !g.eot);
+          }
           if (c.damagedBySources instanceof Set) c.damagedBySources.clear();
           // Revoke EOT keyword grants. Re-derive keywords from intrinsics +
           // permanent grants (grantedBy) so the EOT-granted ones drop off

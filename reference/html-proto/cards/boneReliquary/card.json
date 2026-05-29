@@ -1,0 +1,27 @@
+{
+  "card_id": "boneReliquary",
+  "name": "Bone Reliquary",
+  "art": "💀",
+  "type": "Land",
+  "types": [
+    "Artifact",
+    "Land"
+  ],
+  "mana": "B",
+  "text": "Tap: Add {B}.",
+  "abilities": [
+    {
+      "cost": {
+        "tap": true
+      },
+      "effects": [
+        {
+          "kind": "add_mana",
+          "amounts": {
+            "B": 1
+          }
+        }
+      ]
+    }
+  ]
+}

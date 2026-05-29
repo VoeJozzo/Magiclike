@@ -1,0 +1,27 @@
+{
+  "card_id": "verdantVerge",
+  "name": "Verdant Verge",
+  "art": "🍃",
+  "type": "Land",
+  "types": [
+    "Artifact",
+    "Land"
+  ],
+  "mana": "G",
+  "text": "Tap: Add {G}.",
+  "abilities": [
+    {
+      "cost": {
+        "tap": true
+      },
+      "effects": [
+        {
+          "kind": "add_mana",
+          "amounts": {
+            "G": 1
+          }
+        }
+      ]
+    }
+  ]
+}

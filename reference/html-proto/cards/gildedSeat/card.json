@@ -1,0 +1,27 @@
+{
+  "card_id": "gildedSeat",
+  "name": "Gilded Seat",
+  "art": "🪙",
+  "type": "Land",
+  "types": [
+    "Artifact",
+    "Land"
+  ],
+  "mana": "W",
+  "text": "Tap: Add {W}.",
+  "abilities": [
+    {
+      "cost": {
+        "tap": true
+      },
+      "effects": [
+        {
+          "kind": "add_mana",
+          "amounts": {
+            "W": 1
+          }
+        }
+      ]
+    }
+  ]
+}

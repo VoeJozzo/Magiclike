@@ -1,0 +1,24 @@
+{
+  "card_id": "petrify",
+  "name": "Petrify",
+  "art": "🪨",
+  "cost": {
+    "W": 1,
+    "C": 1
+  },
+  "type": "Sorcery",
+  "keywords": [
+    "flash"
+  ],
+  "target": "creature",
+  "effects": [
+    {
+      "kind": "set_types",
+      "types": [
+        "Artifact"
+      ],
+      "duration": "eot"
+    }
+  ],
+  "text": "Until end of turn, target creature loses all card types and becomes an artifact. (It can’t attack or block.)"
+}

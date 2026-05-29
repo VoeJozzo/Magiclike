@@ -1,0 +1,26 @@
+{
+  "card_id": "golemForge",
+  "name": "Golem Forge",
+  "art": "⚙️",
+  "cost": {
+    "C": 3
+  },
+  "type": "Sorcery",
+  "target": "permanent",
+  "target_filter": {
+    "type": "Land"
+  },
+  "effects": [
+    {
+      "kind": "add_type",
+      "types": [
+        "Artifact",
+        "Creature"
+      ],
+      "power": 4,
+      "toughness": 4,
+      "duration": "eot"
+    }
+  ],
+  "text": "Target land becomes a 4/4 artifact creature until end of turn. (It’s still a land.)"
+}

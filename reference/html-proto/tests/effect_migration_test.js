@@ -28,9 +28,11 @@ console.log('=== migrated pool shape ===');
       if (e && e.target && e.target !== 'self') { residualTarget++; }
     }
   }
-  // 43 + 5 restricted cards now lifted to target()+target_filter (doomBlade,
-  // ravenousPlague, smite, vinestrangle, naturalize).
-  check('48 cards carry a top-level target() step', withStep === 48, 'got ' + withStep);
+  // 43 + 5 restricted cards lifted to target()+target_filter (doomBlade,
+  // ravenousPlague, smite, vinestrangle, naturalize); + 7 type-change spells
+  // (awakenVault, livingLands, brandOfIron, petrify, encaseInAmber, golemForge,
+  // suddenVines) carry a top-level target() step.
+  check('55 cards carry a top-level target() step', withStep === 55, 'got ' + withStep);
   check('every target() step is in the closed taxonomy', badFilter === 0);
   check('no migrated on-cast effect kept a per-effect target', residualTarget === 0, 'got ' + residualTarget);
 })();

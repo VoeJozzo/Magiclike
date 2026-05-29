@@ -1,0 +1,27 @@
+{
+  "card_id": "tidalConduit",
+  "name": "Tidal Conduit",
+  "art": "🌀",
+  "type": "Land",
+  "types": [
+    "Artifact",
+    "Land"
+  ],
+  "mana": "U",
+  "text": "Tap: Add {U}.",
+  "abilities": [
+    {
+      "cost": {
+        "tap": true
+      },
+      "effects": [
+        {
+          "kind": "add_mana",
+          "amounts": {
+            "U": 1
+          }
+        }
+      ]
+    }
+  ]
+}

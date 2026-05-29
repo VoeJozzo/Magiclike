@@ -309,6 +309,14 @@ function describeEffect(eff, tplEff) {
       const tNoTap = withFilter(targetPhrase(eff), filterMinusTapped ? Object.assign({}, eff, {filter: filterMinusTapped}) : eff);
       return [plainSeg('untap ' + tNoTap)];
     }
+    case 'add_type':
+    case 'set_types': {
+      const tags = Array.isArray(eff.types) ? eff.types : (eff.type ? [eff.type] : []);
+      const dur = (eff.duration === 'permanent') ? '' : ' until end of turn';
+      const pt = (eff.power || eff.toughness) ? (eff.power || 0) + '/' + (eff.toughness || 0) + ' ' : '';
+      const body = pt + tags.join(' ');
+      return [plainSeg(t + (eff.kind === 'set_types' ? ' becomes ' : ' also becomes ') + body + dur)];
+    }
     case 'apply_in_game_splice':
       return [plainSeg('staple the second target permanent onto the first')];
     case 'fight_target':

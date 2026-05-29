@@ -27,6 +27,7 @@ const NOT_TARGET_SCORED_KINDS = new Set([
   'endomorph_absorb',    // creature ability, not a cast spell
   'bargain_sticker_self', 'bargain_sticker_other', // Archdemon trigger mechanic
   'apply_in_game_splice',  // Stapler ability (player-UI-driven), not AI-scored
+  'add_type', 'set_types', // type-change — player-castable, not AI-cast-scored yet (covered by a dedicated unit test)
 ]);
 
 // AI spell valuation — RELOCATED from engine.js (review #6 — engine/AI layering).
@@ -151,6 +152,8 @@ const UNVALUED_EFFECT_KINDS = new Set([
   'untap',              // minor utility on abilities; abilityValue default suffices
   'bargain_sticker_self', // Archdemon of Bargains trigger mechanic; not separately scored
   'bargain_sticker_other',
+  'add_type',           // type-change (manland animate, "becomes an artifact") — situational; not heuristically scored yet
+  'set_types',
 ]);
 
 const AI = (function() {

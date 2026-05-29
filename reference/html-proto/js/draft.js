@@ -15,7 +15,14 @@ const DESERT_CUBE_LAND_PROB = 1 / 3;
 let _draftPoolCache = null;
 function draftPool() {
   if (_draftPoolCache === null) {
-    _draftPoolCache = Object.keys(CARDS).filter(id => !hasType(CARDS[id], 'Land') && !CARDS[id].special);
+    // Spells + creatures are draftable; basic/utility lands are not — EXCEPT
+    // nonbasic artifact lands (Land + Artifact), which draft like other picks
+    // (matches MtG, where nonbasic lands appear in packs).
+    _draftPoolCache = Object.keys(CARDS).filter(id => {
+      const c = CARDS[id];
+      if (c.special) return false;
+      return !hasType(c, 'Land') || hasType(c, 'Artifact');
+    });
   }
   return _draftPoolCache;
 }
