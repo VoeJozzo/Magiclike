@@ -659,7 +659,7 @@ function rollOneCandidate(type, alreadyOffered) {
       .map((s, i) => ({s, i}))
       .filter(({s, i}) => {
         const tpl = CARDS[s.tplId];
-        if (!tpl || tpl.type !== 'Creature') return false;
+        if (!tpl || !hasType(tpl, 'Creature')) return false;
         return stickersFor(i).length > 0;
       });
     const playedEligible = filterByPlayed(eligibleSlots.map(e => e.i));
@@ -827,7 +827,7 @@ function pickRewardCandidate(idx) {
       .map((s, i) => ({s, i}))
       .filter(({s, i}) => {
         const tpl = CARDS[s.tplId];
-        if (!tpl || tpl.type !== 'Creature') return false;
+        if (!tpl || !hasType(tpl, 'Creature')) return false;
         return stickersFor(i).length > 0;
       });
     const playedFiltered = filterByPlayed(eligibleSlots.map(e => e.i));

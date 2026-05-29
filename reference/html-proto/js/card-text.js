@@ -763,7 +763,7 @@ function describeCardSegments(card, opts) {
     // objects, not array-of-arrays. The non-special branch below has
     // its own flatten loop; we mirror it.
     const sections = [];
-    if (!opts.skipKeywords && (card.type === 'Creature' || tpl.type === 'Creature')) {
+    if (!opts.skipKeywords && (hasType(card,'Creature') || hasType(tpl,'Creature'))) {
       const intrinsic = new Set(tpl.keywords || []);
       const granted = (card.keywords || []).filter(kw => !intrinsic.has(kw) && kw !== 'no_block');
       if (granted.length > 0) {
@@ -791,7 +791,7 @@ function describeCardSegments(card, opts) {
     }
   }
   const sections = [];
-  if (!opts.skipKeywords && (card.type === 'Creature' || tpl.type === 'Creature')) {
+  if (!opts.skipKeywords && (hasType(card,'Creature') || hasType(tpl,'Creature'))) {
     const kw = keywordPreamble(card.keywords || tpl.keywords || []);
     if (kw) sections.push([plainSeg(kw + '.')]);
   }
@@ -822,7 +822,7 @@ function describeCardSegments(card, opts) {
       // A basic land's fixed tap-for-mana ability is intrinsic (shown via the
       // type line, not rules text) — suppress it so basics render empty. A
       // choose-form mana land (City of Brass / duals) keeps its ability text.
-      if (card.type === 'Land' && ab.cost && ab.cost.tap
+      if (hasType(card,'Land') && ab.cost && ab.cost.tap
           && ab.effects && ab.effects[0] && ab.effects[0].kind === 'add_mana'
           && ab.effects[0].amounts) {
         continue;

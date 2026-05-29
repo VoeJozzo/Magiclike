@@ -24,6 +24,9 @@ const TYPE_REGISTRY = {
   Enchantment: { category: 'type', behaviorClass: 'permanent' },
   Sorcery:     { category: 'type', behaviorClass: 'spell' },
   Instant:     { category: 'type', behaviorClass: 'spell' },  // retired in Phase 3 (-> flash Sorcery)
+  // Supertypes render left of the type, carry no behavior-class. 'Basic' is the
+  // only one today (basic lands); 'Legendary' folds in here in Phase 3 (§9).
+  Basic:       { category: 'supertype' },
 };
 
 function typeRegistryEntry(tag) { return TYPE_REGISTRY[tag] || { category: 'subtype' }; }
@@ -70,18 +73,21 @@ function isPermanent(card) {
   return !!g && typeRegistryEntry(g).behaviorClass !== 'spell';
 }
 
-// The displayed type line: "<types> — <subtypes>", canonical order (type tags
-// left of the em-dash, subtype tags right), deduped. For today's single-type
-// cards this equals the legacy `card.type + (card.sub ? ' — ' + card.sub : '')`
-// (render.js:1322) — EXCEPT the handful of basic lands whose legacy `sub`
-// redundantly repeats the word "Land" (e.g. `sub: "Basic Land"` rendered as
-// "Land — Basic Land"); the parser hoists that type word left and dedups it to
-// "Land — Basic", which is the corrected form. Inert until Phase 2 swaps the
-// render site; the underlying basic-land data is cleaned in Phase 3.
+// The displayed type line: "<supertypes> <types> — <subtypes>", canonical order
+// (supertypes then types left of the em-dash, subtypes right), deduped. For
+// today's single-type cards this equals the legacy
+// `card.type + (card.sub ? ' — ' + card.sub : '')` (render.js) — EXCEPT the
+// basic lands, whose legacy `sub` redundantly repeats the type word "Land"
+// (`sub: "Basic Land"` rendered as "Land — Basic Land"). The parser classifies
+// "Basic" as a supertype and "Land" as the type, dedups the repeat, and renders
+// the corrected MTG-style "Basic Land" (City of Brass `sub: "Land"` → "Land").
 function typeLine(card) {
   const seen = new Set();
   const tags = typesOf(card).filter(t => { if (seen.has(t)) return false; seen.add(t); return true; });
-  const left = tags.filter(t => typeCategory(t) === 'type');     // (+ supertypes later)
+  const left = [
+    ...tags.filter(t => typeCategory(t) === 'supertype'),
+    ...tags.filter(t => typeCategory(t) === 'type'),
+  ];
   const right = tags.filter(t => typeCategory(t) === 'subtype');
   let s = left.join(' ');
   if (right.length) s += ' — ' + right.join(' ');

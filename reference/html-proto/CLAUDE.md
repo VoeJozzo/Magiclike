@@ -4,7 +4,7 @@ Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folde
 
 ## Version
 
-**Current: `v2.0.45`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.0.46`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -101,12 +101,28 @@ them, Phase 3 authors `types[]` directly + adds the type-modifier layer (manland
 "becomes an artifact") + retires Instant→flash-Sorcery, Phase 4 ships the first
 multi-type cards (Robots, artifact lands). `governingType` resolves the two-fork
 governance (permanent beats spell; Creature > Land among permanents; Artifact/
-Enchantment co-types). `typeLine` is a canonical parser (types left of em-dash,
-subtypes right, deduped) — equals today's render for every card except the basic
-lands whose legacy `sub` repeats the word "Land" ("Land — Basic Land"), which it
-corrects to "Land — Basic" (inert until Phase 2 swaps render.js; data cleaned in
-Phase 3). `test_types_identity.js` pins equivalence with legacy `type`/`sub` across
-all 258 cards + a synthesized multi-type case. 1221 green, lint clean, selfplay clean.
+Enchantment co-types). `typeLine` is a canonical parser (supertypes + types left
+of the em-dash, subtypes right, deduped). `test_types_identity.js` pins
+equivalence with legacy `type`/`sub` across all 258 cards + a synthesized
+multi-type case. 1221 green, lint clean, selfplay clean.
+
+v2.0.46: **unified type-system Phase 2** — converted every rule-evaluation read of
+`card.type`/`card.sub` across all modules onto the `hasType`/`governingType`/
+`isPermanent`/`typeLine` accessors (~150 sites: engine ~50, ai 24, the rest
+spread over render/controller/cards/draft/card-text/triggers/stickers/run). Each
+conversion is behavior-preserving — every card is single-type today, so
+`hasType(c,'X') === (c.type==='X')` exactly. The `Creature||Land||Artifact`
+permanent-triples collapse to `isPermanent()`; subtype word-boundary regexes
+collapse to `hasType(c, sub)`; the dead `PERMANENT` regex in controller.js is
+gone; display/search strings route through `governingType`. **LEFT for Phase 3**
+(type-representation machinery, not reads): the staple/splice synthesis
+(`canonicalSplicePair`/`mergeStapleInto`, engine.js ~88–516), the `type:`/`sub:`
+copy-writes, `card.legendary`, and the Instant→flash retirement. `render.js`'s
+typeline now calls `typeLine(card)`: a cosmetic improvement for the 6 basic-land
+cards whose legacy `sub` repeated "Land" — `forest`/etc. now render the
+MTG-correct **"Basic Land"** (via a new `Basic` supertype in the registry) and
+`cityOfBrass` renders **"Land"** (was "Land — Land"). Everything else renders
+identically. 1222 green (+1 supertype assertion), lint clean, 300-game selfplay clean.
 
 v2.0.42: resolved three rules-infrastructure divergences (B2 / F2 / D4 — all now
 *PROTO: DONE* in DIVERGENCE). **B2** — unused mana now empties at *every* phase

@@ -228,7 +228,7 @@ function showCardBrowser() {
   };
 
   for (const [tplId, tpl] of Object.entries(CARDS)) {
-    if (tpl.type === 'Land') groups.L.cards.push({ tplId, tpl });
+    if (hasType(tpl, 'Land')) groups.L.cards.push({ tplId, tpl });
     else if (tpl.color && groups[tpl.color]) groups[tpl.color].cards.push({ tplId, tpl });
     else groups.C.cards.push({ tplId, tpl });
   }
@@ -354,7 +354,7 @@ function sandboxDeck() {
   // You spawn the cards you want to test. Derived from CARDS so it can't drift.
   const basics = Object.keys(CARDS).filter(id => {
     const c = CARDS[id];
-    return c && c.type === 'Land' && /^(plains|island|swamp|mountain|forest)$/.test(id);
+    return c && hasType(c, 'Land') && /^(plains|island|swamp|mountain|forest)$/.test(id);
   });
   const pool = basics.length ? basics : Object.keys(CARDS).slice(0, 1);
   const d = [];
@@ -411,8 +411,7 @@ function sandboxSpawn(tplId) {
   if (!G[side]) return;
   card.owner = side;
   card.controller = side;
-  const PERMANENT = /^(Creature|Land|Artifact|Enchantment)$/;
-  if (zone === 'board' && PERMANENT.test(card.type)) {
+  if (zone === 'board' && isPermanent(card)) {
     card.sick = false;  // ready to act immediately (sandbox convenience)
     G[side].battlefield.push(card);
   } else {
@@ -516,12 +515,12 @@ function renderSandboxPanel() {
       const tpl = CARDS[id];
       const name = tpl.name || id;
       if (q && !(name.toLowerCase().includes(q) || id.toLowerCase().includes(q)
-                 || (tpl.type || '').toLowerCase().includes(q))) continue;
+                 || (governingType(tpl) || '').toLowerCase().includes(q))) continue;
       if (shown++ > 120) break;  // cap rows for responsiveness
       const row = document.createElement('button');
       row.style.cssText = 'text-align:left;background:#1a1226;border:1px solid #3a2a4a;border-radius:3px;cursor:pointer;font-family:inherit;font-size:11px;padding:3px 6px;color:#cdbbe6';
-      const pt = (tpl.type === 'Creature') ? ` ${tpl.power}/${tpl.toughness}` : '';
-      row.innerHTML = `<span style="color:#fff">${name}</span> <span style="opacity:.6">${tpl.type || ''}${pt}</span>`;
+      const pt = (hasType(tpl, 'Creature')) ? ` ${tpl.power}/${tpl.toughness}` : '';
+      row.innerHTML = `<span style="color:#fff">${name}</span> <span style="opacity:.6">${governingType(tpl) || ''}${pt}</span>`;
       row.onclick = () => sandboxSpawn(id);
       listEl.appendChild(row);
     }
@@ -1430,7 +1429,7 @@ function renderColorHud(elementId, tplIds) {
       for (const c of ['W','U','B','R','G']) {
         if ((tpl.cost[c] || 0) > 0) colorCounts[c]++;
       }
-    } else if (tpl.type === 'Land' && tpl.mana && colorCounts[tpl.mana] !== undefined) {
+    } else if (hasType(tpl, 'Land') && tpl.mana && colorCounts[tpl.mana] !== undefined) {
       colorCounts[tpl.mana]++;
     }
   }
@@ -1625,7 +1624,7 @@ function clickHand(iid) {
   const card = G.you.hand.find(c => c.iid === iid);
   if (!card) return;
 
-  if (card.type === 'Land') {
+  if (hasType(card, 'Land')) {
     submit({type:'playLand', cardIid: iid});
     return;
   }
@@ -1702,7 +1701,7 @@ function clickBattlefield(iid) {
     // for an ability with sacrifice cost (Carrion Feeder etc). Restrict
     // to the player's own creatures since sac costs target self-side only.
     if (pendingTarget.kind === 'abilitySac') {
-      if (f.controller !== 'you' || card.type !== 'Creature') return;
+      if (f.controller !== 'you' || !hasType(card, 'Creature')) return;
       const action = {type:'activateAbility',
                       cardIid: pendingTarget.cardIid,
                       abilityIdx: pendingTarget.abilityIdx,
@@ -1782,7 +1781,7 @@ function clickBattlefield(iid) {
   // Lands have their own simpler tap-for-mana path (with color picker for
   // duals). Creatures and artifacts go through the unified ability-picker
   // path below.
-  if (f.controller === 'you' && !card.tapped && card.type === 'Land') {
+  if (f.controller === 'you' && !card.tapped && hasType(card, 'Land')) {
     const producible = ENGINE.landProducibleColors(card);
     if (producible.length > 1) {  // §3.9: multi-color land → color picker
       const legal = producible.filter(c =>
@@ -1822,7 +1821,7 @@ function clickBattlefield(iid) {
       if (isMana) {
         probe = {type:'tapLandForMana', cardIid: iid, abilityIdx: i};
       } else if (needsSac) {
-        const sacCandidates = G.you.battlefield.filter(c => c.type === 'Creature');
+        const sacCandidates = G.you.battlefield.filter(c => hasType(c, 'Creature'));
         if (sacCandidates.length === 0) continue;
         probe = {type:'activateAbility', cardIid: iid, abilityIdx: i, sacIid: sacCandidates[0].iid};
         if (abNeedsTarget) {
@@ -2247,7 +2246,7 @@ function openZone(who, zone) {
       const btn = document.createElement('div');
       btn.className = 'zone-card';
       // Show card name with a small color/type hint.
-      const typeHint = card.type ? card.type.charAt(0) : '?';
+      const typeHint = governingType(card) ? governingType(card).charAt(0) : '?';
       const cost = card.cost ? renderManaSymbols(formatCostBraced(card.cost)) : '';
       btn.innerHTML = `<span style="opacity:0.6">[${typeHint}]</span> <span class="card-name"></span>${cost ? ' <span style="opacity:0.7;font-size:10px">' + cost + '</span>' : ''}`;
       btn.querySelector('.card-name').textContent = card.name;

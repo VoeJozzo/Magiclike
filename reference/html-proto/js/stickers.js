@@ -256,7 +256,7 @@ function rollSubtypeFromDeck(slots, targetSlotIdx) {
   const tokenCount = {};
   for (const slot of slots) {
     const tpl = tplForSlot(slot);
-    if (!tpl || tpl.type !== 'Creature') continue;
+    if (!tpl || !hasType(tpl, 'Creature')) continue;
     const tokens = (tpl.sub || '').split(/\s+/).filter(Boolean);
     for (const tok of tokens) {
       if (targetTokens.has(tok)) continue;

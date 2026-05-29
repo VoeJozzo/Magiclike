@@ -261,7 +261,7 @@ function grantManaAbility(card, color) {
 // Colors a land taps for, read from its tap-ability (§3.9). The `mana` field is
 // just the primary-color label. Shared by canPayPotential, tap action, AI.
 function landProducibleColors(card) {
-  if (!card || card.type !== 'Land') return [];
+  if (!card || !hasType(card, 'Land')) return [];
   const ab = manaAbilityOf(card);
   return ab ? manaEffectColors(ab.effects[0]) : [];
 }
@@ -286,7 +286,7 @@ function deckColorsFromSlots(slots) {
   for (const slot of slots) {
     const tpl = tplForSlot(slot);
     if (!tpl) continue;
-    if (tpl.type === 'Land' && tpl.mana) set.add(tpl.mana);
+    if (hasType(tpl, 'Land') && tpl.mana) set.add(tpl.mana);
     if (tpl.cost) {
       for (const c of ['W','U','B','R','G']) {
         if ((tpl.cost[c] || 0) > 0) set.add(c);
@@ -714,7 +714,7 @@ function intrinsicKeywords(card) {
 
 // Single source of truth for attack eligibility — shared by engine, UI, AI.
 function canCreatureAttack(card) {
-  if (!card || card.type !== 'Creature') return false;
+  if (!card || !hasType(card, 'Creature')) return false;
   if (card.tapped) return false;
   if (card.cantAttack) return false;
   if ((card.keywords || []).includes('defender')) return false;
@@ -723,7 +723,7 @@ function canCreatureAttack(card) {
 }
 // Block eligibility. `attacker` optional — when given, also checks flying/reach etc.
 function canCreatureBlock(card, attacker) {
-  if (!card || card.type !== 'Creature') return false;
+  if (!card || !hasType(card, 'Creature')) return false;
   if (card.tapped) return false;
   if (card.cantBlock) return false;
   if ((card.keywords || []).includes('no_block')) return false;  // hidden kw (restrict→grant_keyword)
@@ -787,7 +787,7 @@ function makePlayer(name, deck, ownerSide) {
   // Innates stay in hand; only the drawn portion reshuffles.
   const isLand = c => {
     const tpl = CARDS[c.tplId];
-    return tpl && tpl.type === 'Land';
+    return tpl && hasType(tpl, 'Land');
   };
   const landCount = h => h.filter(isLand).length;
   const lc = landCount(hand);
@@ -948,11 +948,7 @@ function getStats(card) {
         for (const buff of lord.static_buffs) {
           // filter.controller:'self' = "creatures you control" (shares lord controller).
           if (!matchFilter(card, buff.filter, owner.controller, lordCtrl)) continue;
-          if (buff.subtype) {
-            const sub = card.sub || '';
-            const re = new RegExp('\\b' + buff.subtype + '\\b');
-            if (!re.test(sub)) continue;
-          }
+          if (buff.subtype && !hasType(card, buff.subtype)) continue;
           p += (buff.power || 0);
           t += (buff.toughness || 0);
         }
@@ -971,8 +967,8 @@ function costTotalCard(card) {
 
 function getCardValue(card, purpose, ctx) {
   if (!card) return 0;
-  if (card.type === 'Sorcery' || card.type === 'Instant') return spellValue(card);
-  if (card.type !== 'Creature') return 0;
+  if (hasType(card, 'Sorcery') || hasType(card, 'Instant')) return spellValue(card);
+  if (!hasType(card, 'Creature')) return 0;
 
   // Auto-derive ctx for in-game instances so static-buff scoring sees real tribe counts.
   if (!ctx && card.iid != null && card.controller && typeof G !== 'undefined' && G[card.controller]) {
@@ -1071,10 +1067,8 @@ function getCardValue(card, purpose, ctx) {
       let tribeSoFar = 0;
       for (const pid of ctx.picksSoFar) {
         const pc = CARDS[pid];
-        if (!pc || pc.type !== 'Creature') continue;
-        if (buff.subtype) {
-          if (!pc.sub || pc.sub.indexOf(buff.subtype) === -1) continue;
-        }
+        if (!pc || !hasType(pc, 'Creature')) continue;
+        if (buff.subtype && !hasType(pc, buff.subtype)) continue;
         tribeSoFar++;
       }
       estCount = 0.5 * tribeSoFar + 0.1 * remaining;
@@ -1083,10 +1077,8 @@ function getCardValue(card, purpose, ctx) {
       let count = 0;
       for (const bc of ctx.friendlyBattlefield) {
         if (bc.iid === card.iid) continue;
-        if (bc.type !== 'Creature') continue;
-        if (buff.subtype) {
-          if (!bc.sub || bc.sub.indexOf(buff.subtype) === -1) continue;
-        }
+        if (!hasType(bc, 'Creature')) continue;
+        if (buff.subtype && !hasType(bc, buff.subtype)) continue;
         count++;
       }
       estCount = count + 1.0;
@@ -1104,8 +1096,8 @@ function getCardValue(card, purpose, ctx) {
 function choosesEligiblePool(who, filter) {
   return G[who].battlefield.filter(c =>
     filter === 'permanent'
-      ? (c.type === 'Creature' || c.type === 'Land' || c.type === 'Artifact')
-      : c.type === 'Creature');
+      ? isPermanent(c)
+      : hasType(c, 'Creature'));
 }
 
 // The ctx.chosen-shaped descriptor for a picked permanent. Snapshots
@@ -1113,7 +1105,7 @@ function choosesEligiblePool(who, filter) {
 // after an intervening `annihilate` removed the card from the battlefield.
 function choosesDescriptor(c, who) {
   return {
-    kind: c.type === 'Creature' ? 'creature' : 'permanent',
+    kind: hasType(c, 'Creature') ? 'creature' : 'permanent',
     iid: c.iid, label: c.name,
     slotIdx: (typeof c.slotIdx === 'number') ? c.slotIdx : null,
     controller: who,
@@ -1278,7 +1270,7 @@ function canPayPotential(who, cost) {
   const choices = [];
   for (const c of G[who].battlefield) {
     if (c.tapped) continue;
-    if (c.type === 'Creature' && c.sick) continue;  // sick dork can't tap
+    if (hasType(c, 'Creature') && c.sick) continue;  // sick dork can't tap
     const ab = manaAbilityOf(c);
     if (!ab) continue;
     const eff0 = ab.effects[0];
@@ -1346,7 +1338,7 @@ function deductFromPool(pool, cost) {
 // Creatures gate on summoning sickness; lands don't.
 function tapSourceProducing(who, color) {
   const usable = G[who].battlefield.filter(c =>
-    !c.tapped && (c.type !== 'Creature' || !c.sick) && manaAbilityOf(c));
+    !c.tapped && (!hasType(c, 'Creature') || !c.sick) && manaAbilityOf(c));
   const tap = (c, requested) => {
     const eff = manaAbilityOf(c).effects[0];
     c.tapped = true;
@@ -1404,7 +1396,7 @@ function applyDamageFrom(ctx, target, amt) {
     if (hasDeathtouch) f.card.dealtDeathtouch = true;
     f.card.killedBy = ctx.controller;
     // damagedBySources powers Sengir-style "dealt-damage-this-turn dies" triggers.
-    if (sourceCard && sourceCard.type === 'Creature') {
+    if (sourceCard && hasType(sourceCard, 'Creature')) {
       if (!(f.card.damagedBySources instanceof Set)) f.card.damagedBySources = new Set();
       f.card.damagedBySources.add(sourceCard.iid);
     }
@@ -1436,7 +1428,7 @@ function creaturesInScope(ctx, scope) {
   const out = [];
   for (const who of sides) {
     for (const c of G[who].battlefield) {
-      if (c.type === 'Creature') out.push({ kind: 'creature', iid: c.iid, controller: who });
+      if (hasType(c, 'Creature')) out.push({ kind: 'creature', iid: c.iid, controller: who });
     }
   }
   return out;
@@ -1489,7 +1481,7 @@ function affectOneCreature(ctx, f, sevArg) {
   // sev 4 exile: bypasses indestructible. Routes to exile zone.
   const card = pluckFromBattlefield(f);
   if (!card) return;
-  if (card.type === 'Creature' && f.controller !== ctx.controller) {
+  if (hasType(card, 'Creature') && f.controller !== ctx.controller) {
     claimKeywordsFromKill(card, ctx.controller);
   }
   leavesPlayPreservingBuffs(card);
@@ -1533,8 +1525,8 @@ function placeCardOnBattlefield(ctx, card, fromZone, post) {
 // ({type, sub}); empty filter matches anything.
 function matchesSearchFilter(card, filter) {
   if (!filter) return true;
-  if (filter.type && card.type !== filter.type) return false;
-  if (filter.sub && !(new RegExp('\\b' + filter.sub + '\\b')).test(card.sub || '')) return false;
+  if (filter.type && !hasType(card, filter.type)) return false;
+  if (filter.sub && !hasType(card, filter.sub)) return false;
   return true;
 }
 // Search library → hand (prompt-driven, filtered): the searchCreature idiom.
@@ -1746,7 +1738,7 @@ const EFFECTS = {
   symmetricize(ctx, params, target) {
     const f = resolveTarget(ctx, target);
     if (!f) return;
-    if (f.card.type !== 'Creature') {
+    if (!hasType(f.card, 'Creature')) {
       log(`${ctx.sourceName} fizzles — target must be a creature.`, 'sp');
       return;
     }
@@ -2217,7 +2209,7 @@ const EFFECTS = {
   // Tap status doesn't matter (Beast's Fury post-combat).
   fight_target(ctx, params, target) {
     const ours = G[ctx.controller].battlefield
-      .filter(c => c.type === 'Creature');
+      .filter(c => hasType(c, 'Creature'));
     if (!ours.length) { log(`${ctx.sourceName} fizzles — no creature to fight.`, 'sp'); return; }
     ours.sort((a, b) => getStats(b)[0] - getStats(a)[0]);
     const ourCreature = ours[0];
@@ -2624,9 +2616,9 @@ function resolveExpr(value, ctx, targetSnap) {
       return tou;
     }
     case 'count_creatures_you':
-      return G[ctx.controller].battlefield.filter(c => c.type === 'Creature').length;
+      return G[ctx.controller].battlefield.filter(c => hasType(c, 'Creature')).length;
     case 'count_creatures_opp':
-      return G[opp(ctx.controller)].battlefield.filter(c => c.type === 'Creature').length;
+      return G[opp(ctx.controller)].battlefield.filter(c => hasType(c, 'Creature')).length;
     default:
       console.warn('Unknown expression:', value.from);
       return 0;
@@ -2796,13 +2788,9 @@ function applyStaticKeywordGrants() {
       if (!buff.keywords || !buff.keywords.length) continue;
       for (const { card: target, controller: tgtCtrl } of all) {
         if (target.iid === lord.iid) continue;
-        if (target.type !== 'Creature') continue;
+        if (!hasType(target, 'Creature')) continue;
         if (!matchFilter(target, buff.filter, tgtCtrl, lordCtrl)) continue;
-        if (buff.subtype) {
-          const sub = target.sub || '';
-          const re = new RegExp('\\b' + buff.subtype + '\\b');
-          if (!re.test(sub)) continue;
-        }
+        if (buff.subtype && !hasType(target, buff.subtype)) continue;
         if (!(target.grantedBy instanceof Map)) target.grantedBy = new Map();
         for (const kw of buff.keywords) {
           if (!target.grantedBy.has(kw)) target.grantedBy.set(kw, new Set());
@@ -3069,7 +3057,7 @@ function pickBestTriggerTarget(eff, valid, controller) {
 function cardValueOrZero(card) {
   if (!card) return 0;
   const cost = costTotalCard(card);
-  if (card.type === 'Creature') {
+  if (hasType(card, 'Creature')) {
     const [pow, tou] = getStats(card);
     return pow + tou + cost * 2;
   }
@@ -3193,7 +3181,7 @@ function getValidTargets(effect, controller) {
   const allCreatures = [
     ...G.you.battlefield.map(c => ({card: c, ctrl: 'you'})),
     ...G.opp.battlefield.map(c => ({card: c, ctrl: 'opp'})),
-  ].filter(x => x.card.type === 'Creature')
+  ].filter(x => hasType(x.card, 'Creature'))
    .filter(x => !(x.card.keywords.includes('hexproof') && x.ctrl !== controller));
   switch (effect.target) {
     case 'creature_or_player':  // "any target" — a creature or a player
@@ -3220,14 +3208,14 @@ function getValidTargets(effect, controller) {
         ...G.you.battlefield.map(c => ({card: c, ctrl: 'you'})),
         ...G.opp.battlefield.map(c => ({card: c, ctrl: 'opp'})),
       ]
-        .filter(x => x.card.type === 'Creature' || x.card.type === 'Land' || x.card.type === 'Artifact')
+        .filter(x => isPermanent(x.card))
         .filter(x => !(x.card.keywords && x.card.keywords.includes('hexproof') && x.ctrl !== controller))
         .filter(x => matchFilter(x.card, effect.filter, x.ctrl, controller))
         .map(x => ({kind:'permanent', iid:x.card.iid, label:x.card.name}));
     case 'graveyard_creature':
       // Caster's own graveyard; hexproof doesn't apply. Filter for tribal recursion.
       return G[controller].graveyard
-        .filter(c => c.type === 'Creature')
+        .filter(c => hasType(c, 'Creature'))
         .filter(c => matchFilter(c, effect.filter, controller, controller))
         .map(c => ({kind:'graveyard_creature', iid: c.iid, label: c.name, controller}));
     case 'spell':
@@ -3240,7 +3228,7 @@ function getValidTargets(effect, controller) {
         ...G.you.battlefield.map(c => ({card: c, ctrl: 'you'})),
         ...G.opp.battlefield.map(c => ({card: c, ctrl: 'opp'})),
       ]
-        .filter(x => x.card.type === 'Creature' || x.card.type === 'Land' || x.card.type === 'Artifact')
+        .filter(x => isPermanent(x.card))
         .filter(x => !(x.card.keywords && x.card.keywords.includes('hexproof') && x.ctrl !== controller))
         .filter(x => matchFilter(x.card, effect.filter, x.ctrl, controller))
         .map(x => ({kind:'permanent', iid:x.card.iid, label:x.card.name}));
@@ -3403,7 +3391,7 @@ function matchFilter(card, filter, controller, who) {
   // Spirit creature card") and any future "destroy target Goblin", "exile
   // target Wizard" style restrictions. Cards may have multi-subtype strings
   // ("Wizard Artificer"), so we substring-match.
-  if (filter.subtype && (!card.sub || card.sub.indexOf(filter.subtype) === -1)) return false;
+  if (filter.subtype && !hasType(card, filter.subtype)) return false;
   // Keyword filter — used by green's anti-flying answers (Choking Vines,
   // Vine Strangle) to restrict targeting to flying creatures specifically.
   // Generic over keyword name so future "destroy target indestructible"
@@ -3810,7 +3798,7 @@ function emitLeavesBattlefield(card, controller, destZone, extraSources) {
 // Credit killer with the dying creature's keywords (runtime grants included).
 // Skips 'defender' (never offered as sticker reward).
 function claimKeywordsFromKill(card, killer) {
-  if (!card || card.type !== 'Creature') return;
+  if (!card || !hasType(card, 'Creature')) return;
   if (!killer || !G[killer]) return;
   if (!(G[killer].claimedKeywords instanceof Set)) {
     G[killer].claimedKeywords = new Set();
@@ -3834,7 +3822,7 @@ function checkDeaths() {
       const bf = G[who].battlefield;
       for (let i = bf.length - 1; i >= 0; i--) {
         const c = bf[i];
-        if (c.type !== 'Creature') continue;
+        if (!hasType(c, 'Creature')) continue;
         const [, t] = getStats(c);
         const lethalDamage = (c.damage >= t) || (t <= 0) || c.dealtDeathtouch;
         if (!lethalDamage) continue;
@@ -4143,14 +4131,14 @@ function resolveTopOfStack() {
   }
   const card = item.card;
   log(`Resolving ${card.name}.`, 'sp');
-  if (card.type === 'Creature' || card.type === 'Artifact') {
+  if (hasType(card, 'Creature') || hasType(card, 'Artifact')) {
     // Creatures enter sick (with intrinsic haste overriding). Artifacts
     // don't get sick (they can activate the turn they come down) — there's
     // no "summoning sick" concept for non-creature permanents in MtG, and
     // canActivate's sick check is gated on type === 'Creature' upstream
     // anyway, but set sick=false defensively so any future "sick if
     // creature" code paths see a clean value.
-    card.sick = (card.type === 'Creature');
+    card.sick = hasType(card, 'Creature');
     G[item.controller].battlefield.push(card);
     log(`${card.name} enters the battlefield.`, 'sp');
     emitZoneChange(card, item.controller, 'stack', 'battlefield');
@@ -4483,7 +4471,7 @@ function doTapLandForMana(who, cardIid, color, abilityIdx) {
   if (card.tapped) return;
   // §3.9: lands and creature dorks tap through the same mana-ability path.
   // Summoning sickness gates creature dorks only; lands have no sickness.
-  if (card.type === 'Creature' && card.sick) return;
+  if (hasType(card, 'Creature') && card.sick) return;
   let manaAb = null;
   if (typeof abilityIdx === 'number') {
     manaAb = card.abilities && card.abilities[abilityIdx];
@@ -4952,7 +4940,7 @@ function isLegalAction(who, action) {
   switch (action.type) {
     case 'playLand': {
       const card = G[who].hand.find(c => c.iid === action.cardIid);
-      if (!card || card.type !== 'Land') return false;
+      if (!card || !hasType(card, 'Land')) return false;
       if (G.activePlayer !== who) return false;
       if (G.phase !== 'MAIN1' && G.phase !== 'MAIN2') return false;
       if (G.stack.length > 0) return false;
@@ -4963,7 +4951,7 @@ function isLegalAction(who, action) {
       const f = findCard(action.cardIid);
       if (!f || f.controller !== who) return false;
       if (f.card.tapped) return false;
-      if (f.card.type === 'Land') return whoHasPriority(who) || isInstantWindow(who);
+      if (hasType(f.card, 'Land')) return whoHasPriority(who) || isInstantWindow(who);
       // Mana ability — scan all abilities (v1.0.64: was abilities[0] only,
       // which missed stapled creature+land merges where the mana ability is
       // appended at index >= 1).
@@ -4983,7 +4971,7 @@ function isLegalAction(who, action) {
     }
     case 'castSpell': {
       const card = G[who].hand.find(c => c.iid === action.cardIid);
-      if (!card || card.type === 'Land') return false;
+      if (!card || hasType(card, 'Land')) return false;
       if (!canPayPotential(who, effectiveCastCost(card))) return false;
       // Legendary uniqueness (rule 1a): you can't cast a legendary if you
       // already control one with the same tplId. This is a hard prohibition
@@ -4995,7 +4983,7 @@ function isLegalAction(who, action) {
       if (card.legendary && G[who].battlefield.some(c => c.tplId === card.tplId)) {
         return false;
       }
-      if (card.type === 'Instant') {
+      if (hasType(card, 'Instant')) {
         if (!isInstantWindow(who)) return false;
       } else if (card.keywords && card.keywords.includes('flash')) {
         // Flash: cast at instant speed.
@@ -5046,7 +5034,7 @@ function isLegalAction(who, action) {
       if (!ab) return false;
       if (ab.cost && ab.cost.tap) {
         if (f.card.tapped) return false;
-        if (f.card.sick && !f.card.keywords.includes('haste') && f.card.type === 'Creature') return false;
+        if (f.card.sick && !f.card.keywords.includes('haste') && hasType(f.card, 'Creature')) return false;
       }
       if (ab.cost && ab.cost.mana) {
         if (!canPayPotential(who, ab.cost.mana)) return false;
@@ -5057,7 +5045,7 @@ function isLegalAction(who, action) {
         if (action.sacIid == null) return false;
         const sacF = findCard(action.sacIid);
         if (!sacF || sacF.controller !== who) return false;
-        if (sacF.card.type !== 'Creature') return false;
+        if (!hasType(sacF.card, 'Creature')) return false;
       }
       const isMana = ab.effects[0].kind === 'add_mana';
       if (isMana) {
@@ -5159,7 +5147,7 @@ function isLegalAction(who, action) {
       const card = G[who].library.find(c => c.iid === action.cardIid);
       if (!card) return false;
       if (G.pendingSearch.filter && G.pendingSearch.filter.type
-          && card.type !== G.pendingSearch.filter.type) return false;
+          && !hasType(card, G.pendingSearch.filter.type)) return false;
       return true;
     }
     case 'triggerTargetPick': {
@@ -5236,7 +5224,7 @@ function getLegalActions(who) {
   if (who === G.activePlayer && (G.phase === 'MAIN1' || G.phase === 'MAIN2')
       && G.stack.length === 0 && !G[who].landPlayedThisTurn && !G.gameOver) {
     for (const card of G[who].hand) {
-      if (card.type === 'Land') actions.push({type:'playLand', cardIid: card.iid});
+      if (hasType(card, 'Land')) actions.push({type:'playLand', cardIid: card.iid});
     }
   }
 
@@ -5244,7 +5232,7 @@ function getLegalActions(who) {
   if (whoHasPriority(who) || isInstantWindow(who)) {
     for (const card of G[who].battlefield) {
       if (card.tapped) continue;
-      if (card.type === 'Land') {
+      if (hasType(card, 'Land')) {
         // For dual-typed lands (stickered duals), expose one action per
         // producible color so the AI can choose which to tap for.
         const colors = landProducibleColors(card);
@@ -5266,12 +5254,12 @@ function getLegalActions(who) {
 
   // Spells (one entry per (card, target) combination)
   for (const card of G[who].hand) {
-    if (card.type === 'Land') continue;
+    if (hasType(card, 'Land')) continue;
     if (!canPayPotential(who, effectiveCastCost(card))) continue;
     // Timing: Instants and flash creatures use instant window. Other
     // permanents/sorceries need sorcery window.
     const hasFlash = card.keywords && card.keywords.includes('flash');
-    if (card.type === 'Instant' || hasFlash) {
+    if (hasType(card, 'Instant') || hasFlash) {
       if (!isInstantWindow(who)) continue;
     } else {
       if (!isSorceryWindow(who)) continue;
@@ -5369,7 +5357,7 @@ function getLegalActions(who) {
       // Tap cost requirements.
       if (ab.cost && ab.cost.tap) {
         if (card.tapped) continue;
-        if (card.sick && !card.keywords.includes('haste') && card.type === 'Creature') continue;
+        if (card.sick && !card.keywords.includes('haste') && hasType(card, 'Creature')) continue;
       }
       // Mana cost requirements.
       if (ab.cost && ab.cost.mana && !canPayPotential(who, ab.cost.mana)) continue;
@@ -5380,7 +5368,7 @@ function getLegalActions(who) {
       let sacOptions = null;  // null = no sac cost; [] = required but none available; [a,b,...] = choices
       if (ab.cost && ab.cost.sacrifice) {
         sacOptions = G[who].battlefield
-          .filter(c => c.type === 'Creature')
+          .filter(c => hasType(c, 'Creature'))
           .map(c => c.iid);
         if (sacOptions.length === 0) continue;  // can't pay sac cost
       }
@@ -5429,7 +5417,7 @@ function getLegalActions(who) {
   if (G.pendingSearch && G.pendingSearch.who === who) {
     const filter = G.pendingSearch.filter || {};
     for (const card of G[who].library) {
-      if (filter.type && card.type !== filter.type) continue;
+      if (filter.type && !hasType(card, filter.type)) continue;
       actions.push({type:'searchPick', cardIid: card.iid});
     }
   }

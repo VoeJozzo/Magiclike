@@ -210,7 +210,7 @@ function render() {
     const list = document.getElementById('searchList');
     list.innerHTML = '';
     const filter = G.pendingSearch.filter || {};
-    const matches = G.you.library.filter(c => !filter.type || c.type === filter.type);
+    const matches = G.you.library.filter(c => !filter.type || hasType(c, filter.type));
     if (matches.length === 0) {
       list.innerHTML = '<div style="color:#888;font-size:11px">No matching cards.</div>';
     } else {
@@ -350,7 +350,7 @@ function render() {
     for (const c of p.pool) {
       const live = G.you.battlefield.find(x => x.iid === c.iid);
       let stats = '';
-      if (live && live.type === 'Creature') { const [pw, to] = ENGINE.getStats(live); stats = `${pw}/${to}`; }
+      if (live && hasType(live, 'Creature')) { const [pw, to] = ENGINE.getStats(live); stats = `${pw}/${to}`; }
       const html = `<div style="font-size:13px;font-weight:bold">${c.label}</div>`
         + (stats ? `<div style="font-size:11px;opacity:0.7;margin-top:2px">${stats}</div>` : '');
       btns.appendChild(makeChoiceButton(html,
@@ -747,7 +747,7 @@ function renderHand(id, hand, who) {
 }
 function canPlayFromUI(who, card) {
   // Probe legality with placeholder targets per target_slot.
-  if (card.type === 'Land') {
+  if (hasType(card, 'Land')) {
     return ENGINE.isLegalAction(who, {type:'playLand', cardIid: card.iid});
   }
   if (ENGINE.isModal(card)) {
@@ -822,7 +822,7 @@ function renderBf(id, bf, who) {
   const sorted = bf.slice().sort((a, b) => {
     const t = typeOrder(a.type) - typeOrder(b.type);
     if (t !== 0) return t;
-    if (a.type === 'Land' && b.type === 'Land') {
+    if (hasType(a, 'Land') && hasType(b, 'Land')) {
       const ka = landKey(a), kb = landKey(b);
       if (ka < kb) return -1;
       if (ka > kb) return 1;
@@ -853,7 +853,7 @@ function renderBf(id, bf, who) {
     }
     // Subtle ambient glow on untapped lands you control -- signals "this
     // can be tapped for mana" without the full .activatable intensity.
-    if (who === 'you' && card.type === 'Land' && !card.tapped) {
+    if (who === 'you' && hasType(card, 'Land') && !card.tapped) {
       div.classList.add('land-tappable');
     }
     // Eligibility glow for attackers/blockers during the declaration step.
@@ -867,7 +867,7 @@ function renderBf(id, bf, who) {
         && who === 'you' && ENGINE.canCreatureBlock(card)) {
       div.classList.add('could-blk');
     }
-    if (who === 'you' && card.type === 'Creature' && card.abilities && !card.tapped && !card.sick) {
+    if (who === 'you' && hasType(card, 'Creature') && card.abilities && !card.tapped && !card.sick) {
       const hasAvail = card.abilities.some((ab, i) => {
         if (ab.effects[0].kind === 'add_mana') return true;
         const targetedEff = ab.effects.find(ENGINE.effectNeedsTarget);
@@ -1022,9 +1022,9 @@ function isValidTargetCreature(eff, card) {
   const CREATURE_KINDS = ['creature', 'your_creature', 'opp_creature', 'creature_or_player'];
   const PERM_KINDS = ['permanent', 'permanent_or_spell'];
   if (CREATURE_KINDS.includes(t)) {
-    if (card.type !== 'Creature') return false;
+    if (!hasType(card, 'Creature')) return false;
   } else if (PERM_KINDS.includes(t)) {
-    if (card.type !== 'Creature' && card.type !== 'Land' && card.type !== 'Artifact') return false;
+    if (!isPermanent(card)) return false;
   } else {
     return false;
   }
@@ -1217,7 +1217,7 @@ function effectiveArt(card) {
   const tpl = (typeof CARDS !== 'undefined') ? CARDS[card.tplId] : null;
   const ladder = (tpl && Array.isArray(tpl.art_ladder)) ? tpl.art_ladder : card.art_ladder;
   if (!Array.isArray(ladder) || ladder.length === 0) return card.art;
-  if (card.type !== 'Creature') return card.art;
+  if (!hasType(card, 'Creature')) return card.art;
   let p = 0, t = 0;
   try {
     const stats = ENGINE.getStats(card);
@@ -1289,10 +1289,10 @@ function cardToViewModel(card, opts) {
   // dual-color frame design is a future tweak.
   const colorKey = (card.colors && card.colors[0])
     || card.color
-    || (card.type === 'Land' && card.mana)
+    || (hasType(card, 'Land') && card.mana)
     || 'C';
 
-  const isCreature = card.type === 'Creature';
+  const isCreature = hasType(card, 'Creature');
   const [pow, tou] = isCreature
     ? ENGINE.getStats(card)
     : [card.power || 0, card.toughness || 0];
@@ -1319,7 +1319,7 @@ function cardToViewModel(card, opts) {
     if (effC > baseC) bumpedMarker = '<span class="frame-bumped">↑</span>';
   }
 
-  const typeText = card.type + (card.sub ? ' — ' + card.sub : '');
+  const typeText = typeLine(card);
 
   let oracleHtml;
   if (overrideOracleText !== undefined) {

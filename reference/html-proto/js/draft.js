@@ -15,7 +15,7 @@ const DESERT_CUBE_LAND_PROB = 1 / 3;
 let _draftPoolCache = null;
 function draftPool() {
   if (_draftPoolCache === null) {
-    _draftPoolCache = Object.keys(CARDS).filter(id => CARDS[id].type !== 'Land' && !CARDS[id].special);
+    _draftPoolCache = Object.keys(CARDS).filter(id => !hasType(CARDS[id], 'Land') && !CARDS[id].special);
   }
   return _draftPoolCache;
 }
@@ -34,7 +34,7 @@ function rollPackForMode(pool, picksSoFar, mode) {
       for (let j = 0; j < pack.length; j++) {
         if (j === i) continue;
         const tpl = CARDS[pack[j]];
-        if (tpl && tpl.type === 'Land' && tpl.mana) usedLandTplIds.add(pack[j]);
+        if (tpl && hasType(tpl, 'Land') && tpl.mana) usedLandTplIds.add(pack[j]);
       }
       const availableColors = COLORS.filter(c => !usedLandTplIds.has(COLOR_TO_LAND[c]));
       if (availableColors.length === 0) continue;
@@ -213,7 +213,7 @@ function applyOpponentStaples(slots, n) {
   const deckColors = new Set();
   for (const slot of slots) {
     const tpl = CARDS[slot.tplId];
-    if (tpl && tpl.type === 'Land' && tpl.mana) deckColors.add(tpl.mana);
+    if (tpl && hasType(tpl, 'Land') && tpl.mana) deckColors.add(tpl.mana);
   }
   const COLOR_KEYS = ['W','U','B','R','G'];
   const isCastable = (baseTplId, stapleTplId) => {
@@ -245,7 +245,7 @@ function applyOpponentStaples(slots, n) {
         if (!isCompatibleStaplePair(slots[bi].tplId, stapleSlot.tplId)) continue;
         const baseTpl = CARDS[slots[bi].tplId];
         const stapleTpl = CARDS[slots[si].tplId];
-        const ccPair = (baseTpl.type === 'Creature' && stapleTpl.type === 'Creature');
+        const ccPair = (hasType(baseTpl, 'Creature') && hasType(stapleTpl, 'Creature'));
         let weight = ccPair ? 3 : 1;
         if (!isCastable(slots[bi].tplId, slots[si].tplId)) weight *= 0.1;
         pairs.push({bi, si, weight});
@@ -293,7 +293,7 @@ function applyOpponentClones(slots, n) {
     for (let i = 0; i < slots.length; i++) {
       if (clonedTplIds.has(slots[i].tplId)) continue;
       const tpl = tplForSlot(slots[i]);
-      if (!tpl || tpl.type === 'Land') continue;
+      if (!tpl || hasType(tpl, 'Land')) continue;
       const score = intrinsicCardValue(tpl);
       if (score > bestScore) { bestScore = score; bestIdx = i; }
     }
@@ -538,9 +538,9 @@ function scoreDraftCard(id, picksSoFar) {
   else if (gap < -1) score -= 5;     // already over-supplied at this cost
 
   // ----- 3. Creature density -----
-  const creatureCount = picksSoFar.filter(pid => CARDS[pid].type === 'Creature').length;
+  const creatureCount = picksSoFar.filter(pid => hasType(CARDS[pid], 'Creature')).length;
   const expectedCreatures = picksSoFar.length * (15 / 23);
-  if (card.type === 'Creature') {
+  if (hasType(card, 'Creature')) {
     if (creatureCount < expectedCreatures) score += 8;
   } else {
     if (creatureCount < expectedCreatures - 2) score -= 8;
@@ -610,7 +610,7 @@ function rollPack(pool, picksSoFar) {
     const c = CARDS[id];
     if (!c) continue;
     if (c.color) inDeckColors.add(c.color);
-    else if (c.type === 'Land' && c.mana) inDeckColors.add(c.mana);
+    else if (hasType(c, 'Land') && c.mana) inDeckColors.add(c.mana);
   }
 
   // Bucket the pool by color once; each slot pick is a uniform sample.
@@ -702,7 +702,7 @@ function countPips(tplIds) {
     if (!c) continue;
     if (c.cost) {
       for (const k of COLORS) pips[k] += (c.cost[k] || 0);
-    } else if (c.type === 'Land' && c.mana && pips[c.mana] !== undefined) {
+    } else if (hasType(c, 'Land') && c.mana && pips[c.mana] !== undefined) {
       pips[c.mana] += 1;
     }
   }

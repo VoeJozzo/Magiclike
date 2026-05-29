@@ -44,7 +44,7 @@ function spellValue(card) {
     const v = spellValueForEffects(modeEffects);
     if (v > bestModeValue) bestModeValue = v;
   }
-  if (card.type === 'Instant') bestModeValue += 1;
+  if (hasType(card, 'Instant')) bestModeValue += 1;
   return bestModeValue;
 }
 function spellValueForEffects(effects) {
@@ -163,7 +163,7 @@ const AI = (function() {
 function bargainPick(state, who) {
   const them = opp(who);
   const boardPow = (w) => state[w].battlefield
-    .filter(c => c.type === 'Creature')
+    .filter(c => hasType(c, 'Creature'))
     .reduce((s, c) => s + Math.max(0, ENGINE.getStats(c)[0]), 0);
   const adv = (state[who].life - state[them].life) + (boardPow(who) - boardPow(them)) * 2;
   if (adv >= 12) return 5;
@@ -294,7 +294,7 @@ function decideOffTurnCombat(state, who, actions) {
     if (a.type !== 'castSpell') continue;
     const card = state[who].hand.find(c => c.iid === a.cardIid);
     if (!card) continue;
-    if (card.type !== 'Instant' && !(card.keywords && card.keywords.includes('flash'))) continue;
+    if (!hasType(card, 'Instant') && !(card.keywords && card.keywords.includes('flash'))) continue;
     if (!spellsByCard.has(a.cardIid)) spellsByCard.set(a.cardIid, []);
     spellsByCard.get(a.cardIid).push(a);
   }
@@ -311,7 +311,7 @@ function decideOffTurnCombat(state, who, actions) {
     if (!card) continue;
     const chosen = pickBestTargetForSpell(state, who, card, options);
     if (!chosen) continue;
-    const isFlashCreature = card.type === 'Creature' && (card.keywords || []).includes('flash');
+    const isFlashCreature = hasType(card, 'Creature') && (card.keywords || []).includes('flash');
     const tgt = chosen.targets ? chosen.targets[0] : null;
     let score;
     if (tgt) {
@@ -396,7 +396,7 @@ function decideEndStepFlash(state, who, actions) {
     if (a.type !== 'castSpell') continue;
     const card = state[who].hand.find(c => c.iid === a.cardIid);
     if (!card) continue;
-    if (card.type !== 'Creature') continue;
+    if (!hasType(card, 'Creature')) continue;
     if (!(card.keywords && card.keywords.includes('flash'))) continue;
     // Skip flash creatures with mandatory ETB-bounce that would self-bounce
     // (Quickling with no valid bounce target) — net zero cast.
@@ -431,7 +431,7 @@ function flashETBWouldFizzle(state, who, card) {
     const effects = trig.effects || [];
     for (const eff of effects) {
       if (eff.kind === 'affect_creature' && eff.target === 'creature') {
-        const oppCreatures = state[them].battlefield.filter(c => c.type === 'Creature');
+        const oppCreatures = state[them].battlefield.filter(c => hasType(c, 'Creature'));
         if (oppCreatures.length === 0) return true;
       }
     }
@@ -462,7 +462,7 @@ function decideMain(state, who, actions) {
     // Defer VANILLA flash to opp's turn — body-only value is preserved by ambush/end-step paths.
     // Trigger-flash (Quickling) wants to fire NOW (pre-combat bounce).
     const flashCard = state[who].hand.find(c => c.iid === a.cardIid);
-    if (flashCard && flashCard.type === 'Creature'
+    if (flashCard && hasType(flashCard, 'Creature')
         && flashCard.keywords && flashCard.keywords.includes('flash')
         && (!flashCard.triggers || flashCard.triggers.length === 0)) {
       continue;
@@ -475,7 +475,7 @@ function decideMain(state, who, actions) {
     iid, card: state[who].hand.find(c => c.iid === iid),
   })).filter(x => {
     if (!x.card) return false;
-    if (x.card.type === 'Creature' &&
+    if (hasType(x.card, 'Creature') &&
         x.card.keywords && x.card.keywords.includes('flash')) {
       return false;
     }
@@ -590,7 +590,7 @@ function pickBestLand(state, who, landActs) {
   }
   const produces = {W:0, U:0, B:0, R:0, G:0};
   for (const c of p.battlefield) {
-    if (c.type !== 'Land') continue;
+    if (!hasType(c, 'Land')) continue;
     for (const k of ENGINE.landProducibleColors(c)) if (k in produces) produces[k]++;
   }
   let bestAct = landActs[0], bestScore = -Infinity;
@@ -638,7 +638,7 @@ function shouldCounter(state, who) {
     (e.kind === 'change_control' && e.transfer_ownership) ||
     (e.kind === 'affect_creature' && _sevNum(e.severity) >= 3)
   )) return true;
-  if (card.type === 'Creature' && ENGINE.cardCost(card) >= 4) return true;
+  if (hasType(card, 'Creature') && ENGINE.cardCost(card) >= 4) return true;
   if (relevantEffects.some(e => e.kind === 'draw' || e.kind === 'discard'
       || (e.kind === 'move_card' && e.from_zone === 'library' && e.to_zone === 'hand')
       || (e.kind === 'move_card' && e.from_zone === 'hand' && e.to_zone === 'graveyard'))) return Math.random() < 0.5;
@@ -920,10 +920,10 @@ function scoreCombatOutcome(state, attackerWho, outcome, attackerIids) {
   // Don't suicide-attack: subtract if opp could lethal next turn (incoming = survivingPow - ourTough).
   const attackerSet = new Set(attackerIids || []);
   const survivingOppPower = state[defenderWho].battlefield
-    .filter(c => c.type === 'Creature' && !outcome.deadBlockers.has(c.iid))
+    .filter(c => hasType(c, 'Creature') && !outcome.deadBlockers.has(c.iid))
     .reduce((s, c) => s + ENGINE.getStats(c)[0], 0);
   const ourDefensiveTough = state[attackerWho].battlefield
-    .filter(c => c.type === 'Creature')
+    .filter(c => hasType(c, 'Creature'))
     .filter(c => !outcome.deadAttackers.has(c.iid))
     .filter(c => !attackerSet.has(c.iid) || c.keywords.includes('vigilance'))
     .reduce((s, c) => s + ENGINE.getStats(c)[1], 0);
@@ -1146,7 +1146,7 @@ function bestSpellPlay(state, who, card, options) {
     if (!opt.targets) {
       const ok = shouldCastUntargeted(state, who, card, modeIdx);
       if (!ok) return {opt, score: -100};
-      if (card.type === 'Creature') {
+      if (hasType(card, 'Creature')) {
         return {opt, score: 100};
       }
       let score = spellValueForEffects(modeEffects);
@@ -1172,7 +1172,7 @@ function spellPlayValue(state, who, card, opt) {
   if (opt.targets && opt.targets.length) {
     return scoreMultiTargetSpell(state, who, card, opt.targets, opt.modeIdx || 0);
   }
-  if (card.type === 'Creature') {
+  if (hasType(card, 'Creature')) {
     return Math.max(1, ENGINE.getCardValue(card, 'play'));
   }
   const modeEffects = ENGINE.effectsForMode(card, opt.modeIdx || 0);
@@ -1266,25 +1266,25 @@ function shouldCastUntargeted(state, who, card, modeIdx) {
     // Symmetric — only worth it if we're losing the board.
     if (sev === 1) {
       const oppUntapped = state[them].battlefield
-        .filter(c => c.type === 'Creature' && !c.tapped).length;
+        .filter(c => hasType(c, 'Creature') && !c.tapped).length;
       const ourUntapped = state[us].battlefield
-        .filter(c => c.type === 'Creature' && !c.tapped).length;
+        .filter(c => hasType(c, 'Creature') && !c.tapped).length;
       return oppUntapped > ourUntapped + 1;
     }
     const ourPower = state[us].battlefield
-      .filter(c => c.type === 'Creature').reduce((s, c) => s + ENGINE.getStats(c)[0], 0);
+      .filter(c => hasType(c, 'Creature')).reduce((s, c) => s + ENGINE.getStats(c)[0], 0);
     const theirPower = state[them].battlefield
-      .filter(c => c.type === 'Creature').reduce((s, c) => s + ENGINE.getStats(c)[0], 0);
+      .filter(c => hasType(c, 'Creature')).reduce((s, c) => s + ENGINE.getStats(c)[0], 0);
     return theirPower > ourPower + 2;
   }
   if (mass && mass.type === 'pump') {
-    const ours = state[us].battlefield.filter(c => c.type === 'Creature').length;
+    const ours = state[us].battlefield.filter(c => hasType(c, 'Creature')).length;
     return ours >= 2;
   }
   if (eff.kind === 'grant_keyword' && (eff.scope === 'all_yours' || eff.scope === 'all_creatures')) {
-    const ours = state[us].battlefield.filter(c => c.type === 'Creature').length;
+    const ours = state[us].battlefield.filter(c => hasType(c, 'Creature')).length;
     if (eff.scope === 'all_creatures') {
-      const theirs = state[them].battlefield.filter(c => c.type === 'Creature').length;
+      const theirs = state[them].battlefield.filter(c => hasType(c, 'Creature')).length;
       return ours >= 2 && ours > theirs;
     }
     return ours >= 2;
@@ -1321,14 +1321,14 @@ function scoreDamageAll(state, who, amount) {
   const us = who, them = opp(who);
   let ourLoss = 0, theirLoss = 0;
   for (const c of state[us].battlefield) {
-    if (c.type !== 'Creature') continue;
+    if (!hasType(c, 'Creature')) continue;
     if (c.keywords.includes('indestructible')) continue;
     const [, tou] = ENGINE.getStats(c);
     const remaining = tou - c.damage;
     if (amount >= remaining) ourLoss += ENGINE.getCardValue(c, 'kill');
   }
   for (const c of state[them].battlefield) {
-    if (c.type !== 'Creature') continue;
+    if (!hasType(c, 'Creature')) continue;
     if (c.keywords.includes('indestructible')) continue;
     const [, tou] = ENGINE.getStats(c);
     const remaining = tou - c.damage;
@@ -1342,13 +1342,13 @@ function scoreBounceAll(state, who, whose) {
   const us = who, them = opp(who);
   let theirValue = 0;
   for (const c of state[them].battlefield) {
-    if (c.type !== 'Creature') continue;
+    if (!hasType(c, 'Creature')) continue;
     theirValue += ENGINE.getCardValue(c, 'bounce');
   }
   if (whose === 'opp') return theirValue;
   let ourValue = 0;
   for (const c of state[us].battlefield) {
-    if (c.type !== 'Creature') continue;
+    if (!hasType(c, 'Creature')) continue;
     ourValue += ENGINE.getCardValue(c, 'bounce');
   }
   return theirValue - ourValue * 0.6;
@@ -1381,8 +1381,8 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
     const choosesEff = modeEffects.find(e => e.kind === 'chooses');
     const wantsPermanent = choosesEff && choosesEff.filter === 'permanent';
     const pool = state[target.who].battlefield.filter(c => wantsPermanent
-      ? (c.type === 'Creature' || c.type === 'Land' || c.type === 'Artifact')
-      : c.type === 'Creature');
+      ? isPermanent(c)
+      : hasType(c, 'Creature'));
     if (pool.length === 0) return -100;
     const lowest = pool.slice().sort((a, b) =>
       ENGINE.getCardValue(a, 'kill') - ENGINE.getCardValue(b, 'kill'))[0];
@@ -1418,7 +1418,7 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
     // it from their side AND gain it — strictly above a straight kill. Steal's
     // permanent deck-theft is worth a touch more. Lane bonus only for creatures.
     const base = eff.transfer_ownership ? 42 : 35;
-    const lane = (c.card.type === 'Creature') ? laneOpeningBonus(state, us, target.iid) : 0;
+    const lane = (hasType(c.card, 'Creature')) ? laneOpeningBonus(state, us, target.iid) : 0;
     return base + ENGINE.getCardValue(c.card, 'kill') + lane;
   }
   if (eff.kind === 'damage') {
@@ -1573,7 +1573,7 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
     if (!c) return -100;
     if (c.controller === us) return -100;
     // Pick our biggest creature to estimate the fight result.
-    const ours = state[us].battlefield.filter(x => x.type === 'Creature' && !x.tapped);
+    const ours = state[us].battlefield.filter(x => hasType(x, 'Creature') && !x.tapped);
     if (!ours.length) return -100;
     ours.sort((a, b) => ENGINE.getStats(b)[0] - ENGINE.getStats(a)[0]);
     const ourBig = ours[0];

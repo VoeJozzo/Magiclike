@@ -102,7 +102,7 @@ const STICKERS = {};
 STICKERS['plus1_plus1'] = {
   id: 'plus1_plus1', name: '+1/+1',
   text: '+1 power and +1 toughness.',
-  appliesTo: (c) => c.type === 'Creature',
+  appliesTo: (c) => hasType(c, 'Creature'),
   stackable: true,
   weight: 20,
   kind: 'stat_boost', power: 1, toughness: 1,
@@ -110,7 +110,7 @@ STICKERS['plus1_plus1'] = {
 STICKERS['innate'] = {
   id: 'innate', name: 'Innate',
   text: 'Starts in your opening hand.',
-  appliesTo: (c) => c.type === 'Land',
+  appliesTo: (c) => hasType(c, 'Land'),
   stackable: false,
   weight: 10,
   kind: 'innate',
@@ -124,7 +124,7 @@ for (const color of ['W','U','B','R','G']) {
     id, name: 'Also a ' + colorName,
     text: 'This land also produces {' + color + '}.',
     appliesTo: (c) => {
-      if (c.type !== 'Land') return false;
+      if (!hasType(c, 'Land')) return false;
       // Already produces this color (base or stickered)? Don't re-offer. §3.9:
       // production lives on the tap-ability, read via landProducibleColors.
       if (landProducibleColors(c).includes(color)) return false;
@@ -143,7 +143,7 @@ STICKERS['cost_minus_1'] = {
   id: 'cost_minus_1', name: 'Costs 1 Less',
   text: 'This costs {1} less to cast.',
   appliesTo: (c) => {
-    if (c.type === 'Land') return false;
+    if (hasType(c, 'Land')) return false;
     if (!c.cost) return false;
     const generic = c.cost.C || 0;
     if (generic < 1) return false;
@@ -288,17 +288,17 @@ for (const kw of KEYWORDS) {
       //   - Flash: creatures, OR sorceries (instants are already instant-speed).
       //   - All other keywords: creatures only.
       if (kw === 'lifelink' || kw === 'deathtouch' || kw === 'trample') {
-        if (c.type === 'Creature') {
+        if (hasType(c, 'Creature')) {
           // OK
-        } else if ((c.type === 'Instant' || c.type === 'Sorcery') && spellDealsDamage(c)) {
+        } else if ((hasType(c, 'Instant') || hasType(c, 'Sorcery')) && spellDealsDamage(c)) {
           // OK
         } else {
           return false;
         }
       } else if (kw === 'flash') {
-        if (c.type !== 'Creature' && c.type !== 'Sorcery') return false;
+        if (!hasType(c, 'Creature') && !hasType(c, 'Sorcery')) return false;
       } else {
-        if (c.type !== 'Creature') return false;
+        if (!hasType(c, 'Creature')) return false;
       }
       // Reach is only useful as a defensive ground-blocker upgrade — fliers
       // already block fliers, so reach is strictly redundant on them.
@@ -322,7 +322,7 @@ for (const kw of KEYWORDS) {
 STICKERS['subtype'] = {
   id: 'subtype', name: 'Subtype',
   text: 'This creature gains a random creature subtype drawn from your deck.',
-  appliesTo: (c) => c.type === 'Creature',
+  appliesTo: (c) => hasType(c, 'Creature'),
   stackable: true,
   weight: 10,
   kind: 'subtype',
@@ -336,7 +336,7 @@ STICKERS['subtype'] = {
 STICKERS['scarified'] = {
   id: 'scarified', name: 'Scarred',
   text: 'When this enters the battlefield, its controller loses 1 life.',
-  appliesTo: (c) => c.type === 'Creature',
+  appliesTo: (c) => hasType(c, 'Creature'),
   stackable: true,         // multiple scarifications stack — each fires on ETB
   weight: 0,               // not in random pools
   kind: 'trigger',

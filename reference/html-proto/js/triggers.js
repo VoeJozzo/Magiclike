@@ -17,7 +17,7 @@ const ATOMIC_PREDICATES = {
   // Card predicates (events with a subject_card)
   this_card:        (ctx) => !!ctx.event.subject_card && ctx.event.subject_card.iid === ctx.source.iid,
   another_card:     (ctx) => !!ctx.event.subject_card && ctx.event.subject_card.iid !== ctx.source.iid,
-  card_is_creature: (ctx) => !!ctx.event.subject_card && ctx.event.subject_card.type === 'Creature',
+  card_is_creature: (ctx) => !!ctx.event.subject_card && hasType(ctx.event.subject_card, 'Creature'),
   controlled_by:    (ctx, args) => ctx.event.controller === _predResolvePlayer(args[0], ctx.who),
   card_moves:       (ctx, args) => {
     const from = args[0], to = args[1];
@@ -28,9 +28,9 @@ const ATOMIC_PREDICATES = {
   card_has_subtype: (ctx, args) => {
     const c = ctx.event.subject_card;
     // `sub` is a space-separated string everywhere (token cards, splice merge,
-    // matchFilter) — never an array. Word-boundary match mirrors matchFilter so
-    // "Human Cleric Wall" satisfies card_has_subtype(Cleric).
-    return !!c && typeof c.sub === 'string' && new RegExp('\\b' + args[0] + '\\b').test(c.sub);
+    // matchFilter) — never an array. Word-exact match (via hasType) mirrors
+    // matchFilter so "Human Cleric Wall" satisfies card_has_subtype(Cleric).
+    return hasType(c, args[0]);
   },
   card_damaged_by_this: (ctx) => {
     const c = ctx.event.subject_card;

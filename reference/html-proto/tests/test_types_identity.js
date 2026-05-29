@@ -66,13 +66,16 @@ console.log('=== whole pool: accessors agree with legacy type/sub (all cards) ==
   check('typeLine reproduces legacy "type — sub" (clean-data cards)', lineMismatch.length === 0, lineMismatch.slice(0, 5).join(', '));
 
   // The known dirty-data set: basic lands + City of Brass, whose legacy `sub`
-  // repeats the type word. The parser hoists "Land" left and dedups; no double
-  // "Land", and the line still begins with the governing type.
+  // repeats the type word "Land". The parser classifies "Basic" as a supertype
+  // and dedups the repeat → corrected MTG-style typelines.
   check('all dirty-data cards are Lands (the basic-land sub cruft)',
     dirty.length > 0 && dirty.every(id => CARDS[id].type === 'Land'), dirty.join(', '));
-  const dirtyBad = dirty.filter(id => /Land\s+Land/.test(typeLine(CARDS[id])) || !typeLine(CARDS[id]).startsWith('Land'));
-  check('parser corrects dirty land typelines (no "Land Land", governing type leads)',
-    dirtyBad.length === 0, dirtyBad.map(id => id + '="' + typeLine(CARDS[id]) + '"').join(', '));
+  // Expected corrected output: "Basic Land" for the basics, "Land" for City of Brass.
+  const EXPECT = { forest: 'Basic Land', island: 'Basic Land', mountain: 'Basic Land',
+    plains: 'Basic Land', swamp: 'Basic Land', cityOfBrass: 'Land' };
+  const dirtyBad = dirty.filter(id => EXPECT[id] !== undefined && typeLine(CARDS[id]) !== EXPECT[id]);
+  check('parser corrects dirty land typelines to MTG-style (no duplicate "Land")',
+    dirtyBad.length === 0, dirtyBad.map(id => id + '="' + typeLine(CARDS[id]) + '" want "' + EXPECT[id] + '"').join(', '));
 })();
 
 console.log('\n=== negative: absent tags miss; nullish safe ===');
@@ -90,6 +93,8 @@ console.log('\n=== registry: type vs subtype classification ===');
     ['Creature', 'Land', 'Artifact', 'Enchantment', 'Sorcery', 'Instant'].every(isCardTypeTag));
   check('Goblin/Forest/Cleric are subtype tags',
     ['Goblin', 'Forest', 'Cleric'].every(t => typeCategory(t) === 'subtype' && !isCardTypeTag(t)));
+  check('Basic is a supertype tag (renders left, not a type-tag)',
+    typeCategory('Basic') === 'supertype' && !isCardTypeTag('Basic'));
   check('Creature/Land/Artifact/Enchantment are permanents',
     ['Creature', 'Land', 'Artifact', 'Enchantment'].every(t => isPermanent({ type: t })));
   check('Sorcery/Instant are not permanents',
