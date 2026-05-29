@@ -4,7 +4,7 @@ Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folde
 
 ## Version
 
-**Current: `v2.0.53`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.0.54`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -201,6 +201,20 @@ opponent's best creature — permanent base 20, eot base 8, +card value +lane �
 animate-add_type only at a permanent WE control (else it'd gift the opponent a
 body). Verified via `AI.decide`: the AI now casts Encase in Amber at an enemy
 creature. 1269 green, lint clean, 300-game selfplay clean.
+
+v2.0.54: **bugfix found by a test-quality pass — permanent animate dies at EOT.**
+While de-brittling `test_type_change` (replacing a hand-emulated cleanup sweep
+with a REAL end-of-turn drive), the test caught a real Phase-4 bug:
+`applyTypeChange` stored a *permanent*-duration animate's power/toughness in the
+EOT-cleared `tempPower`/`tempTou`. So a "becomes a 2/2 creature permanently" land
+kept its Creature TYPE past end of turn (correct) but lost its STATS (wrong) →
+0/0 creature → died to SBA at the first cleanup. Fixed: a permanent animate now
+writes `permPower`/`permTou` (which survive EOT and reset only on leave-play,
+matching the type grant's lifetime); eot animates still use temp stats. The
+hand-copied sweep had masked it (it cleared stats + type together, so the test
+never saw a creature-with-zero-stats survive into SBA) — exactly the argument for
+driving the real path. The test now drives a real turn / real bounce. 1260 green,
+lint clean, 300-game selfplay clean.
 
 v2.0.53: **edicts revert to in-place battlefield selection (no popup).** The
 human-facing forced-sacrifice (Diabolic/Vile Edict) used a dedicated

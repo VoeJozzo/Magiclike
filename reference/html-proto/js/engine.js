@@ -3632,10 +3632,15 @@ function applyTypeGrant(card, tags, op, sourceIid, eot) {
 
 // Shared resolver for the add_type / set_types effects. `tags` from params.types
 // (array) or params.type (string). duration:'permanent' → revoked on leave-play;
-// default → until end of turn. Optional power/toughness animate the target via
-// the EOT-clearing tempPower/tempTou (so "land becomes a 2/2" reverts stats AND
-// type together at cleanup). For an animated land already in play this is
-// correct — it isn't summoning sick (only creatures are set sick at ETB).
+// default → until end of turn. Optional power/toughness animate the target. The
+// stats MUST share the type grant's lifetime: an eot animate writes the
+// EOT-clearing tempPower/tempTou (stats + type revert together at cleanup); a
+// PERMANENT animate writes permPower/permTou (which survive end-of-turn and only
+// reset on leave-play, like the Creature tag). Using tempP/T for a permanent
+// animate was a bug — the type persisted but the stats evaporated at the first
+// cleanup, leaving a 0/0 creature that died to SBA. For an animated land already
+// in play this is correct — it isn't summoning sick (only creatures are set sick
+// at ETB).
 function applyTypeChange(ctx, params, target, op) {
   const f = resolveTarget(ctx, target);
   if (!f) return;
@@ -3644,7 +3649,10 @@ function applyTypeChange(ctx, params, target, op) {
   const eot = params.duration !== 'permanent';
   applyTypeGrant(f.card, tags, op, null, eot);
   const p = params.power || 0, t = params.toughness || 0;
-  if (p || t) { f.card.tempPower = (f.card.tempPower || 0) + p; f.card.tempTou = (f.card.tempTou || 0) + t; }
+  if (p || t) {
+    if (eot) { f.card.tempPower = (f.card.tempPower || 0) + p; f.card.tempTou = (f.card.tempTou || 0) + t; }
+    else { f.card.permPower = (f.card.permPower || 0) + p; f.card.permTou = (f.card.permTou || 0) + t; }
+  }
   const dur = eot ? ' until end of turn' : '';
   const stats = (p || t) ? ` (${p}/${t})` : '';
   if (op === 'set') log(`${f.card.name} becomes ${tags.join(' ')}${stats}${dur}.`, 'sp');

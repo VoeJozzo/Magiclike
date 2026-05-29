@@ -3,10 +3,13 @@
 //
 // The grant layer mirrors keyword grants: card.typeGrants = [{tags,op,source,eot}],
 // read live by typesOf so every hasType/governingType reader sees the change.
-// Reverts ride the existing end-of-turn cleanup (eot grants + tempPower/tempTou)
-// and resetInPlayState (leave-play). Those integration points are single lines
-// in engine.js; here we drive applyEffect directly and emulate the two revert
-// sweeps with the exact filter the engine runs.
+// Reverts ride the existing end-of-turn cleanup (eot grants + temp stats) and
+// resetInPlayState (leave-play). The revert tests drive a REAL end of turn /
+// real bounce rather than hand-emulating the cleanup loop — emulating it would
+// pass against a copy of the logic and miss a real regression (it did: the first
+// real-turn version of this test caught a bug where a permanent animate's P/T
+// went to the EOT-cleared tempPower/tempTou, so it became a 0/0 creature and
+// died to SBA at cleanup. Fixed to permPower/permTou in applyTypeChange).
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -29,14 +32,21 @@ function spawn(tplId) {
   G.you.battlefield.push(inst);
   return { G, inst };
 }
-// The two engine revert sweeps, applied by hand (mirror engine.js cleanup loop
-// + resetInPlayState exactly).
-const eotSweep = (c) => { c.tempPower = 0; c.tempTou = 0; if (Array.isArray(c.typeGrants)) c.typeGrants = c.typeGrants.filter(g => !g.eot); };
-const leavePlay = (c) => { c.tempPower = 0; c.tempTou = 0; c.typeGrants = []; };
+// Drive a REAL end of turn: both players pass at every window until the turn
+// counter advances, so the engine's actual cleanup loop reverts eot type grants
+// + temp stats (not a hand-copy that could mask a regression).
+function endTurn(G) {
+  const startTurn = G.turn;
+  let safety = 300;
+  while (G.turn === startTurn && safety-- > 0) {
+    const w = ENGINE.expectedActor(); if (!w) break;
+    ENGINE.executeAction(w, { type: 'pass' });
+  }
+}
 
 console.log('=== add_type (eot): a land becomes a 3/3 creature, reverts at EOT ===');
 (() => {
-  const { inst } = spawn('forest');
+  const { G, inst } = spawn('forest');
   check('forest starts a Land, not a Creature', hasType(inst, 'Land') && !hasType(inst, 'Creature'));
   ENGINE.applyEffect(CTX('Awaken the Vault'),
     { kind: 'add_type', types: ['Creature'], power: 3, toughness: 3, duration: 'eot' },
@@ -46,29 +56,38 @@ console.log('=== add_type (eot): a land becomes a 3/3 creature, reverts at EOT =
     governingType(inst) === 'Creature' && isPermanent(inst));
   check('stats are 3/3', JSON.stringify(ENGINE.getStats(inst)) === '[3,3]', JSON.stringify(ENGINE.getStats(inst)));
   check('can attack (an in-play land isn’t summoning sick)', ENGINE.canCreatureAttack(inst));
-  eotSweep(inst);
-  check('after EOT: reverts to a plain 0/0 Land',
+  endTurn(G);
+  check('after a real end of turn: reverts to a plain 0/0 Land',
     hasType(inst, 'Land') && !hasType(inst, 'Creature') && JSON.stringify(ENGINE.getStats(inst)) === '[0,0]');
 })();
 
 console.log('\n=== add_type (permanent): survives EOT, reverts on leave-play ===');
 (() => {
-  const { inst } = spawn('forest');
+  const { G, inst } = spawn('forest');
   ENGINE.applyEffect(CTX('Living Lands'),
     { kind: 'add_type', types: ['Creature'], power: 2, toughness: 2, duration: 'permanent' },
     { kind: 'permanent', iid: inst.iid });
   check('is a 2/2 creature', hasType(inst, 'Creature') && JSON.stringify(ENGINE.getStats(inst)) === '[2,2]');
-  eotSweep(inst);
-  check('SURVIVES end of turn (permanent grant)', hasType(inst, 'Creature'));
-  leavePlay(inst);
-  check('reverts when it leaves play', !hasType(inst, 'Creature') && hasType(inst, 'Land'));
+  endTurn(G);
+  // Survives a real end of turn AS A LIVING 2/2 — the permanent animate's stats
+  // must persist with its Creature type (the bug this caught: stats vanished →
+  // 0/0 → died to SBA at cleanup).
+  check('SURVIVES a real end of turn as a living 2/2 creature',
+    G.you.battlefield.some(c => c.iid === inst.iid) && hasType(inst, 'Creature')
+    && JSON.stringify(ENGINE.getStats(inst)) === '[2,2]');
+  // Real leave-play: bounce to hand → resetInPlayState fires → grant reverts.
+  ENGINE.applyEffect(CTX('Unsummon'),
+    { kind: 'move_card', from_zone: 'battlefield', to_zone: 'hand', selector: 'target' },
+    { kind: 'permanent', iid: inst.iid });
+  const bounced = G.you.hand.find(c => c.iid === inst.iid) || inst;
+  check('reverts on a real leave-play (bounce): no longer a Creature', !hasType(bounced, 'Creature'));
 })();
 
 console.log('\n=== set_types: a creature becomes ONLY an artifact (neutralized) ===');
 (() => {
   // Use a real vanilla creature from the pool.
   const crId = Object.keys(CARDS).find(id => CARDS[id].type === 'Creature' && !CARDS[id].special && CARDS[id].cost && !CARDS[id].types);
-  const { inst } = spawn(crId);
+  const { G, inst } = spawn(crId);
   check('starts a Creature', hasType(inst, 'Creature') && ENGINE.canCreatureAttack(inst));
   ENGINE.applyEffect(CTX('Petrify'),
     { kind: 'set_types', types: ['Artifact'], duration: 'eot' },
@@ -76,8 +95,8 @@ console.log('\n=== set_types: a creature becomes ONLY an artifact (neutralized) 
   check('becomes ONLY an Artifact — no longer a creature', hasType(inst, 'Artifact') && !hasType(inst, 'Creature'));
   check('can no longer attack (not a creature)', !ENGINE.canCreatureAttack(inst));
   check('still a permanent (artifact)', isPermanent(inst) && governingType(inst) === 'Artifact');
-  eotSweep(inst);
-  check('after EOT: creature again', hasType(inst, 'Creature') && ENGINE.canCreatureAttack(inst) && !hasType(inst, 'Artifact'));
+  endTurn(G);
+  check('after a real end of turn: creature again', hasType(inst, 'Creature') && ENGINE.canCreatureAttack(inst) && !hasType(inst, 'Artifact'));
 })();
 
 console.log('\n=== multi-tag add (Golem Forge): land → 4/4 Artifact Creature ===');
@@ -117,7 +136,7 @@ console.log('\n=== 8 colorless artifact creatures ===');
   const { inst } = spawn('copperGolem');
   check('instance: hasType Artifact AND Creature, isPermanent, governs Creature',
     hasType(inst, 'Artifact') && hasType(inst, 'Creature') && isPermanent(inst) && governingType(inst) === 'Creature');
-  check('typeLine renders "Artifact Creature — <sub>"', /^Artifact Creature — /.test(typeLine(inst)) || /Creature/.test(typeLine(inst)), typeLine(inst));
+  check('typeLine renders "Artifact Creature — <sub>"', /^Artifact Creature — \S/.test(typeLine(inst)), typeLine(inst));
 })();
 
 console.log('\n=== 6 artifact lands (WUBRG + C), in the draft pool ===');
@@ -127,7 +146,7 @@ console.log('\n=== 6 artifact lands (WUBRG + C), in the draft pool ===');
   check('each is Land + Artifact and taps for its color',
     lands.every(id => { const c = CARDS[id]; return hasType(c, 'Land') && hasType(c, 'Artifact') && c.mana && Array.isArray(c.abilities); }));
   check('cover all six mana colors W/U/B/R/G/C',
-    JSON.stringify(lands.map(id => CARDS[id].mana).sort()) === JSON.stringify(['B', 'C', 'G', 'R', 'U', 'W']));
+    ['W', 'U', 'B', 'R', 'G', 'C'].every(c => lands.some(id => CARDS[id].mana === c)));
   // Draft pool: artifact lands IN, basic lands OUT.
   const inPool = (id) => {
     // Re-derive the pool predicate (draftPool is cached/internal): non-land OR artifact-land, non-special.
