@@ -3839,8 +3839,10 @@ function checkDeaths() {
         const lethalDamage = (c.damage >= t) || (t <= 0) || c.dealtDeathtouch;
         if (!lethalDamage) continue;
         if (c.keywords.includes('indestructible')) {
-          c.damage = 0;
-          c.dealtDeathtouch = false;
+          // F2: indestructible only skips the death check — it does NOT heal.
+          // Keep the marked damage (and the deathtouch flag): if indestructible
+          // is removed later this turn, the still-lethal damage kills it at the
+          // next SBA (MTG-correct). Both clear at end of turn with everything else.
           continue;
         }
         bf.splice(i, 1);
@@ -4007,6 +4009,11 @@ function damagePlayer(who, amount, sourceName) {
   const lifeLost = lifeBefore - G[who].life;
   if (lifeLost > 0) {
     G[who].lifeLostThisTurn = (G[who].lifeLostThisTurn || 0) + lifeLost;
+    // D4: damage IS life loss — fire the directional life_changed(delta<0) so
+    // "whenever you lose life" (is_life_loss) triggers fire from burn/combat,
+    // not only from gain_life(negative)/drain. (is_life_gain needs delta>0, so
+    // a negative delta can't mis-fire it.)
+    emit({type: 'life_changed', who, delta: -lifeLost});
   }
 }
 function afterEffectsApplied() { checkDeaths(); checkLifeTotals(); }
@@ -4064,6 +4071,19 @@ function passPriority(who) {
     G.priorityHolder = opp(who);
   }
 }
+// Set the current phase, emptying both mana pools on an actual change — MTG
+// 106.4: unused mana empties as each step/phase ends (DIVERGENCE B2). Every
+// phase progression routes through here; direct `G.phase = …` (test setup)
+// intentionally bypasses it, so a pre-loaded pool survives until real play
+// advances a phase.
+function setPhase(p) {
+  if (G.phase !== p) {
+    G.you.mana = { W: 0, U: 0, B: 0, R: 0, G: 0, C: 0 };
+    G.opp.mana = { W: 0, U: 0, B: 0, R: 0, G: 0, C: 0 };
+  }
+  G.phase = p;
+}
+
 function advancePhaseAfterPriority() {
   // Called when a priority round closes naturally (both passed, empty stack).
   // End-of-step death check: in MtG, state-based actions check continuously,
@@ -4074,19 +4094,19 @@ function advancePhaseAfterPriority() {
   if (G.gameOver) return;
   switch (G.phase) {
     case 'MAIN1':
-      G.phase = 'COMBAT_ATTACK';
+      setPhase('COMBAT_ATTACK');
       break;
     case 'COMBAT_ATTACK':
-      G.phase = (G.attackers.length > 0) ? 'COMBAT_BLOCK' : 'MAIN2';
+      setPhase((G.attackers.length > 0) ? 'COMBAT_BLOCK' : 'MAIN2');
       break;
     case 'COMBAT_BLOCK':
-      G.phase = 'COMBAT_DAMAGE';
+      setPhase('COMBAT_DAMAGE');
       break;
     case 'MAIN2':
-      G.phase = 'END';
+      setPhase('END');
       break;
     case 'END':
-      G.phase = 'CLEANUP';
+      setPhase('CLEANUP');
       break;
   }
 }
@@ -5539,7 +5559,7 @@ function step() {
         G.you.lifeLostThisTurn = 0;
         G.opp.lifeLostThisTurn = 0;
         log(`--- ${G[ap].name} Turn ${G.turn} ---`, 'imp');
-        G.phase = 'DRAW';
+        setPhase('DRAW');
         continue;
 
       case 'DRAW':
@@ -5551,7 +5571,7 @@ function step() {
           drawCard(ap);
           log(`${G[ap].name} draws.`);
         }
-        G.phase = 'MAIN1';
+        setPhase('MAIN1');
         continue;
 
       case 'MAIN1':
@@ -5566,7 +5586,7 @@ function step() {
         // Skip-combat fast path: no attackers committed.
         if (G.attackers.length === 0) {
           G.attackersDeclared = false;
-          G.phase = 'MAIN2';
+          setPhase('MAIN2');
           continue;
         }
         // Open the post-attackers priority round (the new (a.ii) window).
@@ -5575,7 +5595,7 @@ function step() {
 
       case 'COMBAT_BLOCK':
         if (G.attackers.length === 0) {
-          G.phase = 'COMBAT_DAMAGE';
+          setPhase('COMBAT_DAMAGE');
           continue;
         }
         // Blockers have been declared.
@@ -5588,7 +5608,7 @@ function step() {
         G.attackers = []; G.blockers = new Map();
         G.attackersDeclared = false;
         G.blockersDeclared = false;
-        G.phase = 'MAIN2';
+        setPhase('MAIN2');
         continue;
 
       case 'CLEANUP':
@@ -5696,8 +5716,7 @@ function step() {
           }
         }
         afterEffectsApplied();
-        G.you.mana = {W:0,U:0,B:0,R:0,G:0,C:0};
-        G.opp.mana = {W:0,U:0,B:0,R:0,G:0,C:0};
+        // (Mana pools are emptied by setPhase on every phase transition — B2.)
         G.activePlayer = opp(ap);
         // Turn counter increments when we cycle back to the first player
         // (i.e., a full round has completed). Hard-coding 'you' here would
@@ -5708,7 +5727,7 @@ function step() {
         G.attackersDeclared = false;
         G.blockersDeclared = false;
         G.endTurnPending = false;   // new turn — clear the auto-pass flag
-        G.phase = 'UNTAP';
+        setPhase('UNTAP');
         continue;
     }
   }

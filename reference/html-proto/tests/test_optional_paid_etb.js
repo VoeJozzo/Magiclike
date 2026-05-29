@@ -72,14 +72,14 @@ console.log('\n=== play the land → prompt opens for the controller; PAY → ef
     ENGINE.isLegalAction('you', { type: 'optionalCost', pay: true })
     && ENGINE.isLegalAction('you', { type: 'optionalCost', pay: false }));
 
-  const manaBefore = G.you.mana.R + G.you.mana.C;
   ENGINE.executeAction('you', { type: 'optionalCost', pay: true });
   check('prompt cleared after paying', G.pendingOptionalCost == null);
-  check('stapled effect resolved (goblin tokens entered)',
+  // The effect running IS the payment proof: doOptionalCost only calls
+  // runTriggerEffects after payMana succeeds (and the can't-pay case below
+  // confirms no-pay → no-effect). We don't assert a post-action mana delta —
+  // since B2, the settle advances MAIN1→COMBAT and empties the pool anyway.
+  check('stapled effect resolved (goblin tokens entered → cost was paid)',
     G.you.battlefield.filter(c => c.type === 'Creature').length > bfBefore);
-  check('mana was spent (R + C pool dropped by 3)',
-    (G.you.mana.R + G.you.mana.C) === manaBefore - 3,
-    'pool ' + manaBefore + ' -> ' + (G.you.mana.R + G.you.mana.C));
 }
 
 console.log('\n=== DECLINE → effect does not run ===');

@@ -113,6 +113,8 @@ const CATEGORY_A = [
   'test_ai_main_sequencing.js',
   // Optional paid ETB for Land+Spell staples (synthesis gate + pay/decline flow).
   'test_optional_paid_etb.js',
+  // Rules infra: B2 mana-at-phase-boundary, F2 indestructible keeps damage, D4 damage fires is_life_loss.
+  'test_rules_infra.js',
 ];
 
 const TESTS_DIR = __dirname;

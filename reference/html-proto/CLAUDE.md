@@ -4,7 +4,7 @@ Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folde
 
 ## Version
 
-**Current: `v2.0.41`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.0.42`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -74,6 +74,22 @@ Deleted the `destroy_and_sticker_slot` handler + all its classification/scoring/
 text sites. Behavior note: under atomic decomposition an indestructible target now
 gets scarred-but-not-destroyed (the monolith fizzled both halves) — an acceptable
 edge on a boss-targeted creature.
+
+v2.0.42: resolved three rules-infrastructure divergences (B2 / F2 / D4 — all now
+*PROTO: DONE* in DIVERGENCE). **B2** — unused mana now empties at *every* phase
+boundary (MTG 106.4), not only CLEANUP. New `setPhase(p)` helper empties both
+pools on an actual change; all 11 phase-progression assignments route through it,
+the redundant CLEANUP clear is gone. Direct `G.phase = …` (test setup) bypasses
+it, so pre-loaded pools survive until real play advances a phase. **F2** —
+indestructible creatures now KEEP their marked damage (SBA only skips the death
+check, doesn't heal); if indestructible is removed later the same turn, the
+retained lethal damage kills it at the next SBA (MTG-correct). Damage clears at
+end of turn with everything else. **D4** — `damagePlayer` now fires the
+directional `life_changed(delta<0)`, so "whenever you lose life" (`is_life_loss`)
+triggers fire from burn/combat too, not only from `gain_life(negative)`/drain.
+Safe: no card uses `is_life_loss` yet, and `is_life_gain` needs delta>0 so a
+negative delta can't mis-fire it. (gain_life's signed half was already done.) New
+test_rules_infra.js (7 checks). 1198 green, lint clean, 400-game selfplay clean.
 
 v2.0.41: optional paid ETB for Land+Spell staples (BACKLOG feature). A spell
 stapled onto a LAND used to give a FREE ETB trigger (a land is free to play, so
