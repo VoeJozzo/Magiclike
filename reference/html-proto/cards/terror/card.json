@@ -14,5 +14,8 @@
   ],
   "name": "Murder",
   "text": "Destroy target creature.",
-  "type": "Instant"
+  "type": "Sorcery",
+  "keywords": [
+    "flash"
+  ]
 }

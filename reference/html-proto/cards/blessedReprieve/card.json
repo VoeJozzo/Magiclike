@@ -14,5 +14,8 @@
   ],
   "name": "Healing Light",
   "text": "Target player gains 5 life.",
-  "type": "Instant"
+  "type": "Sorcery",
+  "keywords": [
+    "flash"
+  ]
 }

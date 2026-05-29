@@ -415,7 +415,7 @@ function sandboxSpawn(tplId) {
     card.sick = false;  // ready to act immediately (sandbox convenience)
     G[side].battlefield.push(card);
   } else {
-    // Instants/sorceries can't sit on the battlefield — route to hand.
+    // Sorceries (non-permanents) can't sit on the battlefield — route to hand.
     G[side].hand.push(card);
   }
   render();

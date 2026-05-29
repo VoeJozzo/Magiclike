@@ -4,7 +4,7 @@ Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folde
 
 ## Version
 
-**Current: `v2.0.46`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.0.47`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -123,6 +123,20 @@ cards whose legacy `sub` repeated "Land" — `forest`/etc. now render the
 MTG-correct **"Basic Land"** (via a new `Basic` supertype in the registry) and
 `cityOfBrass` renders **"Land"** (was "Land — Land"). Everything else renders
 identically. 1222 green (+1 supertype assertion), lint clean, 300-game selfplay clean.
+
+v2.0.47: **unified type-system Phase 3a** — retired the `Instant` type (spec §7). An
+old Instant is now a `Sorcery` with the `flash` keyword: mechanically identical
+(flash → instant-speed cast), and the keyword-render guard is creature-gated so
+the 42 migrated cards display as plain "Sorcery" with no "Flash" line. Data: all
+42 `"type":"Instant"` card.jsons rewritten to `Sorcery` + `flash` keyword
+(parse→serialize round-trip, zero formatting churn). Logic: the cast gates
+(`isLegalAction` castSpell, `getLegalActions` spells) drop the `Instant` branch
+and gate purely on `flash`; `Instant` removed from `TYPE_REGISTRY`; spell-value /
+damaging-spell-keyword checks key on `Sorcery` alone; the AI's "instant
+flexibility premium" and off-turn-castable check now key on the flash keyword.
+(`isInstantWindow`/`isSorceryWindow` are timing-window names — unchanged.) The
+chosen direction (user): retire to "Sorcery", not keep an Instant display label.
+1223 green, lint clean, 300-game selfplay clean.
 
 v2.0.42: resolved three rules-infrastructure divergences (B2 / F2 / D4 — all now
 *PROTO: DONE* in DIVERGENCE). **B2** — unused mana now empties at *every* phase

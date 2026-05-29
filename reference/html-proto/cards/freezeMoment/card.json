@@ -13,5 +13,8 @@
   ],
   "name": "Freeze Moment",
   "text": "Tap target creature.",
-  "type": "Instant"
+  "type": "Sorcery",
+  "keywords": [
+    "flash"
+  ]
 }

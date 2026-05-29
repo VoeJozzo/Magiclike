@@ -17,6 +17,9 @@
   "name": "Steal",
   "special": true,
   "text": "Counter target non-token spell or take target non-token permanent. The card becomes yours forever — shuffle it into your library.",
-  "type": "Instant",
-  "custom_text": true
+  "type": "Sorcery",
+  "custom_text": true,
+  "keywords": [
+    "flash"
+  ]
 }

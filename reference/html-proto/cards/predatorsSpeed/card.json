@@ -19,5 +19,8 @@
   ],
   "name": "Predator's Speed",
   "text": "Target creature gains haste and trample until end of turn.",
-  "type": "Instant"
+  "type": "Sorcery",
+  "keywords": [
+    "flash"
+  ]
 }

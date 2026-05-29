@@ -285,12 +285,12 @@ for (const kw of KEYWORDS) {
       if ((c.stickers || []).some(sId => STICKERS[sId] && STICKERS[sId].keyword === kw)) return false;
       // Type-based eligibility:
       //   - Lifelink/Deathtouch/Trample: creatures, OR damaging spells.
-      //   - Flash: creatures, OR sorceries (instants are already instant-speed).
+      //   - Flash: creatures, OR sorceries (gives a sorcery instant speed).
       //   - All other keywords: creatures only.
       if (kw === 'lifelink' || kw === 'deathtouch' || kw === 'trample') {
         if (hasType(c, 'Creature')) {
           // OK
-        } else if ((hasType(c, 'Instant') || hasType(c, 'Sorcery')) && spellDealsDamage(c)) {
+        } else if (hasType(c, 'Sorcery') && spellDealsDamage(c)) {
           // OK
         } else {
           return false;

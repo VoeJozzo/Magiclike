@@ -23,7 +23,6 @@ const TYPE_REGISTRY = {
   Artifact:    { category: 'type', behaviorClass: 'permanent' },
   Enchantment: { category: 'type', behaviorClass: 'permanent' },
   Sorcery:     { category: 'type', behaviorClass: 'spell' },
-  Instant:     { category: 'type', behaviorClass: 'spell' },  // retired in Phase 3 (-> flash Sorcery)
   // Supertypes render left of the type, carry no behavior-class. 'Basic' is the
   // only one today (basic lands); 'Legendary' folds in here in Phase 3 (§9).
   Basic:       { category: 'supertype' },

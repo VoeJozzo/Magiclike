@@ -17,5 +17,8 @@
   ],
   "name": "Doom Blade",
   "text": "Destroy target non-Black creature.",
-  "type": "Instant"
+  "type": "Sorcery",
+  "keywords": [
+    "flash"
+  ]
 }

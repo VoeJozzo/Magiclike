@@ -36,7 +36,8 @@ const NOT_TARGET_SCORED_KINDS = new Set([
 // scope (outside the AI IIFE) so effectCoverageReport (engine.js) can read the
 // classification sets lazily and tests can reach them via `AI.*`.
 
-// Score a sorcery/instant by best mode. Instants get a flexibility premium.
+// Score a sorcery by best mode. Flash spells (incl. retired-Instant cards) get
+// a flexibility premium — they can be held up for an instant-speed response.
 function spellValue(card) {
   const modes = ENGINE.getModes ? ENGINE.getModes(card) : [card.effects || []];
   let bestModeValue = 0;
@@ -44,7 +45,7 @@ function spellValue(card) {
     const v = spellValueForEffects(modeEffects);
     if (v > bestModeValue) bestModeValue = v;
   }
-  if (hasType(card, 'Instant')) bestModeValue += 1;
+  if (card.keywords && card.keywords.includes('flash')) bestModeValue += 1;
   return bestModeValue;
 }
 function spellValueForEffects(effects) {
@@ -294,7 +295,7 @@ function decideOffTurnCombat(state, who, actions) {
     if (a.type !== 'castSpell') continue;
     const card = state[who].hand.find(c => c.iid === a.cardIid);
     if (!card) continue;
-    if (!hasType(card, 'Instant') && !(card.keywords && card.keywords.includes('flash'))) continue;
+    if (!(card.keywords && card.keywords.includes('flash'))) continue;
     if (!spellsByCard.has(a.cardIid)) spellsByCard.set(a.cardIid, []);
     spellsByCard.get(a.cardIid).push(a);
   }

@@ -89,16 +89,18 @@ console.log('\n=== negative: absent tags miss; nullish safe ===');
 
 console.log('\n=== registry: type vs subtype classification ===');
 (() => {
-  check('Creature/Land/Artifact/Enchantment/Sorcery/Instant are type tags',
-    ['Creature', 'Land', 'Artifact', 'Enchantment', 'Sorcery', 'Instant'].every(isCardTypeTag));
+  check('Creature/Land/Artifact/Enchantment/Sorcery are type tags',
+    ['Creature', 'Land', 'Artifact', 'Enchantment', 'Sorcery'].every(isCardTypeTag));
+  check('Instant is retired (no longer a known type tag)',
+    !isCardTypeTag('Instant') && typeCategory('Instant') === 'subtype');
   check('Goblin/Forest/Cleric are subtype tags',
     ['Goblin', 'Forest', 'Cleric'].every(t => typeCategory(t) === 'subtype' && !isCardTypeTag(t)));
   check('Basic is a supertype tag (renders left, not a type-tag)',
     typeCategory('Basic') === 'supertype' && !isCardTypeTag('Basic'));
   check('Creature/Land/Artifact/Enchantment are permanents',
     ['Creature', 'Land', 'Artifact', 'Enchantment'].every(t => isPermanent({ type: t })));
-  check('Sorcery/Instant are not permanents',
-    !isPermanent({ type: 'Sorcery' }) && !isPermanent({ type: 'Instant' }));
+  check('Sorcery is not a permanent',
+    !isPermanent({ type: 'Sorcery' }));
 })();
 
 console.log('\n=== synthesized multi-type: accessors generalize (no such card today) ===');

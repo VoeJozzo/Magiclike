@@ -38,5 +38,8 @@
   },
   "name": "Tide Charm",
   "text": "Choose one — Counter target spell; or return target creature to its owner's hand; or draw 2 cards.",
-  "type": "Instant"
+  "type": "Sorcery",
+  "keywords": [
+    "flash"
+  ]
 }

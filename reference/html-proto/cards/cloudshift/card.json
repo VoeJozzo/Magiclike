@@ -21,5 +21,8 @@
   ],
   "name": "Cloudshift",
   "text": "Exile target creature you control, then return it to the battlefield.",
-  "type": "Instant"
+  "type": "Sorcery",
+  "keywords": [
+    "flash"
+  ]
 }

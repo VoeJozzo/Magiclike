@@ -14,5 +14,8 @@
   ],
   "name": "Giant Growth",
   "text": "Target creature gets +3/+3 EOT.",
-  "type": "Instant"
+  "type": "Sorcery",
+  "keywords": [
+    "flash"
+  ]
 }

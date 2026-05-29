@@ -12,5 +12,8 @@
   ],
   "name": "Counterspell",
   "text": "Counter target spell.",
-  "type": "Instant"
+  "type": "Sorcery",
+  "keywords": [
+    "flash"
+  ]
 }

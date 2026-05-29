@@ -23,5 +23,8 @@
   "name": "Bleach",
   "special": true,
   "text": "Exile target creature. It becomes colorless, including its mana cost, forever.",
-  "type": "Instant"
+  "type": "Sorcery",
+  "keywords": [
+    "flash"
+  ]
 }

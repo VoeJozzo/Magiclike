@@ -13,5 +13,8 @@
   ],
   "name": "Lightning Bolt",
   "text": "Deal 3 damage to any target.",
-  "type": "Instant"
+  "type": "Sorcery",
+  "keywords": [
+    "flash"
+  ]
 }

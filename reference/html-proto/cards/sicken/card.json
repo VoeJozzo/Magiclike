@@ -14,5 +14,8 @@
   ],
   "name": "Sicken",
   "text": "Target creature gets -2/-2 EOT.",
-  "type": "Instant"
+  "type": "Sorcery",
+  "keywords": [
+    "flash"
+  ]
 }

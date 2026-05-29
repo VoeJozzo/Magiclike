@@ -7,7 +7,7 @@
   },
   "name": "Diabolic Edict",
   "text": "Target opponent sacrifices a creature.",
-  "type": "Instant",
+  "type": "Sorcery",
   "target": "opp",
   "effects": [
     {
@@ -17,5 +17,8 @@
     {
       "kind": "sacrifice"
     }
+  ],
+  "keywords": [
+    "flash"
   ]
 }

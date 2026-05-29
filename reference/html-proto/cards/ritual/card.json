@@ -14,5 +14,8 @@
   ],
   "name": "Dark Ritual",
   "text": "Add {B}{B}{B}.",
-  "type": "Instant"
+  "type": "Sorcery",
+  "keywords": [
+    "flash"
+  ]
 }

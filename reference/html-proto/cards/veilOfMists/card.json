@@ -14,5 +14,8 @@
   ],
   "name": "Veil of Mists",
   "text": "Return target creature to its owner's hand.",
-  "type": "Instant"
+  "type": "Sorcery",
+  "keywords": [
+    "flash"
+  ]
 }

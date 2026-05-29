@@ -17,5 +17,8 @@
   ],
   "name": "Choking Vines",
   "text": "Destroy target creature with flying.",
-  "type": "Instant"
+  "type": "Sorcery",
+  "keywords": [
+    "flash"
+  ]
 }

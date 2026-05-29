@@ -12,5 +12,8 @@
   ],
   "name": "Awaken the Stone",
   "text": "Untap target creature.",
-  "type": "Instant"
+  "type": "Sorcery",
+  "keywords": [
+    "flash"
+  ]
 }

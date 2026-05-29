@@ -967,7 +967,7 @@ function costTotalCard(card) {
 
 function getCardValue(card, purpose, ctx) {
   if (!card) return 0;
-  if (hasType(card, 'Sorcery') || hasType(card, 'Instant')) return spellValue(card);
+  if (hasType(card, 'Sorcery')) return spellValue(card);
   if (!hasType(card, 'Creature')) return 0;
 
   // Auto-derive ctx for in-game instances so static-buff scoring sees real tribe counts.
@@ -4983,10 +4983,8 @@ function isLegalAction(who, action) {
       if (card.legendary && G[who].battlefield.some(c => c.tplId === card.tplId)) {
         return false;
       }
-      if (hasType(card, 'Instant')) {
-        if (!isInstantWindow(who)) return false;
-      } else if (card.keywords && card.keywords.includes('flash')) {
-        // Flash: cast at instant speed.
+      if (card.keywords && card.keywords.includes('flash')) {
+        // Flash (incl. retired-Instant spells): cast at instant speed.
         if (!isInstantWindow(who)) return false;
       } else {
         if (!isSorceryWindow(who)) return false;
@@ -5256,10 +5254,10 @@ function getLegalActions(who) {
   for (const card of G[who].hand) {
     if (hasType(card, 'Land')) continue;
     if (!canPayPotential(who, effectiveCastCost(card))) continue;
-    // Timing: Instants and flash creatures use instant window. Other
-    // permanents/sorceries need sorcery window.
+    // Timing: flash spells (incl. retired-Instant cards) and flash creatures
+    // use the instant window. Other permanents/sorceries need sorcery window.
     const hasFlash = card.keywords && card.keywords.includes('flash');
-    if (hasType(card, 'Instant') || hasFlash) {
+    if (hasFlash) {
       if (!isInstantWindow(who)) continue;
     } else {
       if (!isSorceryWindow(who)) continue;
