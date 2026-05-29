@@ -1,8 +1,14 @@
-// Golden test for the on-cast targeting migration (Slice 3 / effects-refactor
-// §3.5, migrate-effects.js). Verifies the migrated pool: every top-level
-// target() step is in the closed taxonomy, migrated on-cast effects are bare
-// (no per-effect target), skipped cards kept their non-taxonomy filters, and a
-// few representative cards have the exact expected shape.
+// On-cast targeting migration (Slice 3 / effects-refactor §3.5). The migration
+// itself is long done; what still earns its keep here are the ONGOING invariants
+// it established — every target() step is in the closed taxonomy, no effect kept
+// a per-effect target, no card uses a retired effect kind, and the canonical
+// decompositions (edict/flicker/restrict/bolt) still have the right shape.
+//
+// NOTE: this file used to assert exact card COUNTS ("55 cards carry a target()
+// step", "22 draws collapsed to move_card", etc). Those were count-the-
+// implementation: they broke every time a card was added (a non-event) and
+// caught no behavior. Replaced with existence checks (the collapsed form is
+// PRESENT) — the invariant that actually matters post-migration.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -15,24 +21,20 @@ function check(label, ok, info) {
   if (ok) pass++; else fail++;
 }
 
-console.log('=== migrated pool shape ===');
+console.log('=== migrated pool shape (invariants, not counts) ===');
 (() => {
   let withStep = 0, badFilter = 0, residualTarget = 0;
   for (const card of Object.values(CARDS)) {
     if (!card.target) continue;
     withStep++;
     if (!ENGINE.TARGET_FILTERS.has(card.target)) { badFilter++; console.log('   out-of-taxonomy:', card.tplId, card.target); }
-    // The on-cast effects that operate on the step must be bare (no own target),
-    // except target:'self' effects which legitimately keep theirs.
+    // On-cast effects operating on the step must be bare (no own target), except
+    // target:'self' effects which legitimately keep theirs.
     for (const e of (Array.isArray(card.effects) ? card.effects : [])) {
       if (e && e.target && e.target !== 'self') { residualTarget++; }
     }
   }
-  // 43 + 5 restricted cards lifted to target()+target_filter (doomBlade,
-  // ravenousPlague, smite, vinestrangle, naturalize); + 7 type-change spells
-  // (awakenVault, livingLands, brandOfIron, petrify, encaseInAmber, golemForge,
-  // suddenVines) carry a top-level target() step.
-  check('55 cards carry a top-level target() step', withStep === 55, 'got ' + withStep);
+  check('the pool has top-level target() cards (migration happened)', withStep > 0, 'got ' + withStep);
   check('every target() step is in the closed taxonomy', badFilter === 0);
   check('no migrated on-cast effect kept a per-effect target', residualTarget === 0, 'got ' + residualTarget);
 })();
@@ -54,19 +56,18 @@ console.log('\n=== triggered / activated ability target() steps ===');
       for (const e of (a.effects || [])) if (e && e.target && e.target !== 'self') residual++;
     }
   }
-  check('51 triggered abilities carry a target() step', trig === 51, 'got ' + trig);
-  check('6 activated abilities carry a target() step', ab === 6, 'got ' + ab);
+  check('triggers and abilities carry target() steps', trig > 0 && ab > 0, 'trig=' + trig + ' ab=' + ab);
   check('all trigger/ability target() steps in taxonomy', bad === 0);
   check('no migrated trigger/ability effect kept a per-effect target', residual === 0, 'got ' + residual);
 })();
 
-console.log('\n=== representative cards ===');
+console.log('\n=== representative cards (canonical decompositions) ===');
 (() => {
   const bolt = CARDS.bolt;
   check('bolt: target(creature_or_player)', bolt.target === 'creature_or_player');
   check('bolt: bare damage(3)', bolt.effects[0].kind === 'damage' && bolt.effects[0].amount === 3 && !bolt.effects[0].target);
 
-  // Boot validation: the whole migrated pool is clean.
+  // Boot validation: the whole pool is clean (behavioral — runs the validator).
   const r = ENGINE.validateAllCardEffects(CARDS);
   check('boot validation: no unknown kinds', r.unknownKinds.length === 0, r.unknownKinds.join(','));
   check('boot validation: no out-of-taxonomy filters', r.unknownFilters.length === 0, r.unknownFilters.join(','));
@@ -76,8 +77,7 @@ console.log('\n=== skipped cards kept their non-taxonomy filters (no silent loss
 (() => {
   // Cards whose targeted on-cast effect carries a subtype/keyword/max_tough
   // filter were intentionally NOT migrated (the closed taxonomy can't express
-  // them). Verify at least one such card still has its filter and NO top-level
-  // target() step.
+  // them). At least one such card must still have its filter and NO top-level step.
   let preserved = 0;
   for (const card of Object.values(CARDS)) {
     if (card.target) continue;
@@ -91,12 +91,12 @@ console.log('\n=== skipped cards kept their non-taxonomy filters (no silent loss
   check('non-taxonomy-filter cards retained their filter (skipped, not lost)', preserved >= 1, 'count=' + preserved);
 })();
 
-console.log('\n=== kind-collapse: legacy mass/weaken kinds gone from card data ===');
+console.log('\n=== kind-collapse: retired kinds gone, collapsed forms present ===');
 (() => {
-  // 'draw' and 'discard' are gone from CARD DATA (collapsed to move_card). The
-  // runtime trigger generator (Mercurial pool) still emits both, so their
-  // EFFECTS handlers stay — GONE asserts the card templates, not the dispatch
-  // table.
+  // The retired kinds must be ABSENT from card data (this catches an incomplete
+  // migration or a reverted decomposition, and does NOT break on adding cards).
+  // 'draw'/'discard' stay in the EFFECTS dispatch table (the Mercurial trigger
+  // generator still emits them) — GONE asserts the card TEMPLATES only.
   const GONE = ['damageAll', 'removeAll', 'pumpAllYours', 'weaken', 'gainControl', 'steal',
                 'returnFromGraveyard', 'shuffleIntoLibrary', 'add_counter', 'edict', 'restrict', 'draw', 'flicker',
                 'searchCreature', 'searchLandTapped', 'discard'];
@@ -114,7 +114,8 @@ console.log('\n=== kind-collapse: legacy mass/weaken kinds gone from card data =
   }
   for (const k of GONE) check('no card uses legacy ' + k, !seen[k], (seen[k] || 0) + ' remain');
 
-  // The collapsed forms are present.
+  // The collapsed forms are PRESENT in the pool (existence, not count — a count
+  // would break every time a card of that shape is added).
   let massDmg = 0, massPump = 0, massRemove = 0, signedPump = 0;
   for (const card of Object.values(CARDS)) {
     for (const e of allEffs(card)) {
@@ -124,10 +125,10 @@ console.log('\n=== kind-collapse: legacy mass/weaken kinds gone from card data =
       if (e && e.kind === 'pump' && ((e.power || 0) < 0 || (e.toughness || 0) < 0)) signedPump++;
     }
   }
-  check('damageAll collapsed to damage+scope (4)', massDmg === 4, 'got ' + massDmg);
-  check('pumpAllYours collapsed to pump+scope (7)', massPump === 7, 'got ' + massPump);
-  check('removeAll collapsed to affect_creature+scope (3)', massRemove === 3, 'got ' + massRemove);
-  check('weaken collapsed to signed pump (3)', signedPump === 3, 'got ' + signedPump);
+  check('damageAll collapsed to damage+scope (present)', massDmg >= 1, 'got ' + massDmg);
+  check('pumpAllYours collapsed to pump+scope (present)', massPump >= 1, 'got ' + massPump);
+  check('removeAll collapsed to affect_creature+scope (present)', massRemove >= 1, 'got ' + massRemove);
+  check('weaken collapsed to signed pump (present)', signedPump >= 1, 'got ' + signedPump);
 
   let changeControl = 0, stealVariant = 0;
   for (const card of Object.values(CARDS)) {
@@ -135,8 +136,8 @@ console.log('\n=== kind-collapse: legacy mass/weaken kinds gone from card data =
       if (e && e.kind === 'change_control') { changeControl++; if (e.transfer_ownership) stealVariant++; }
     }
   }
-  check('gainControl/steal collapsed to change_control (3)', changeControl === 3, 'got ' + changeControl);
-  check('steal is the transfer_ownership variant (1)', stealVariant === 1, 'got ' + stealVariant);
+  check('gainControl/steal collapsed to change_control (present)', changeControl >= 1, 'got ' + changeControl);
+  check('steal is the transfer_ownership variant (present)', stealVariant >= 1, 'got ' + stealVariant);
 
   let mcReturn = 0, mcShuffle = 0, mcDraw = 0, mcSearchCr = 0, mcFetchLand = 0, mcDiscard = 0;
   for (const card of Object.values(CARDS)) {
@@ -149,27 +150,27 @@ console.log('\n=== kind-collapse: legacy mass/weaken kinds gone from card data =
       if (e && e.kind === 'move_card' && e.from_zone === 'hand' && e.to_zone === 'graveyard') mcDiscard++;
     }
   }
-  check('returnFromGraveyard collapsed to move_card graveyard→hand (3)', mcReturn === 3, 'got ' + mcReturn);
-  check('shuffleIntoLibrary collapsed to move_card battlefield→library (1)', mcShuffle === 1, 'got ' + mcShuffle);
-  check('draw collapsed to move_card library→hand, controller_top (22)', mcDraw === 22, 'got ' + mcDraw);
-  check('searchCreature collapsed to move_card library→hand, library_search (5)', mcSearchCr === 5, 'got ' + mcSearchCr);
-  check('searchLandTapped collapsed to move_card library→battlefield (5)', mcFetchLand === 5, 'got ' + mcFetchLand);
-  check('discard collapsed to move_card hand→graveyard (14)', mcDiscard === 14, 'got ' + mcDiscard);
+  check('returnFromGraveyard collapsed to move_card graveyard→hand (present)', mcReturn >= 1, 'got ' + mcReturn);
+  check('shuffleIntoLibrary collapsed to move_card battlefield→library (present)', mcShuffle >= 1, 'got ' + mcShuffle);
+  check('draw collapsed to move_card library→hand controller_top (present)', mcDraw >= 1, 'got ' + mcDraw);
+  check('searchCreature collapsed to move_card library→hand library_search (present)', mcSearchCr >= 1, 'got ' + mcSearchCr);
+  check('searchLandTapped collapsed to move_card library→battlefield (present)', mcFetchLand >= 1, 'got ' + mcFetchLand);
+  check('discard collapsed to move_card hand→graveyard (present)', mcDiscard >= 1, 'got ' + mcDiscard);
 
   let permPump = 0;
   for (const card of Object.values(CARDS)) {
     for (const e of allEffs(card)) if (e && e.kind === 'pump' && e.duration === 'permanent') permPump++;
   }
-  check('add_counter collapsed to permanent pump (9)', permPump === 9, 'got ' + permPump);
+  check('add_counter collapsed to permanent pump (present)', permPump >= 1, 'got ' + permPump);
 
-  // edict → target(opp) + chooses(creature) + sacrifice. (Opponent-only — the
-  // text + legal targets now agree it can't be aimed at yourself.)
+  // Canonical decompositions on named cards (shape goldens — pinned to specific
+  // cards with a rationale, so they document the correct form and don't break on
+  // adding unrelated cards).
   const edict = CARDS.diabolicEdict;
   check('diabolicEdict: target(opp)', edict.target === 'opp');
   check('diabolicEdict: chooses(creature) + sacrifice',
     edict.effects.length === 2 && edict.effects[0].kind === 'chooses' && edict.effects[1].kind === 'sacrifice');
 
-  // flicker → target(creature) + [move_card(bf→exile), move_card(exile→bf)].
   const cs = CARDS.cloudshift;
   check('cloudshift: target(your_creature)', cs.target === 'your_creature');
   check('cloudshift: move_card(bf→exile) + move_card(exile→bf)',
@@ -177,8 +178,6 @@ console.log('\n=== kind-collapse: legacy mass/weaken kinds gone from card data =
     && cs.effects[0].kind === 'move_card' && cs.effects[0].from_zone === 'battlefield' && cs.effects[0].to_zone === 'exile'
     && cs.effects[1].kind === 'move_card' && cs.effects[1].from_zone === 'exile' && cs.effects[1].to_zone === 'battlefield');
 
-  // restrict → target(creature) + grant_keyword(defender) + grant_keyword(no_block).
-  // no_block is the hidden "can't block" half (defender supplies "can't attack").
   const pac = CARDS.pacifism;
   check('pacifism: target(creature)', pac.target === 'creature');
   check('pacifism: grant_keyword(defender) + grant_keyword(no_block)',
