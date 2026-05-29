@@ -4506,11 +4506,6 @@ function dealCombatDamage(blocked, defender, dealsDamage) {
         damagePlayer(defender, remaining, `${atk.name} (trample)`);
         applyLifelink(atk, atkCtrl, remaining);
       } else if (unsatisfied.length > 0) {
-        // No deathtouch tag here on purpose: with deathtouch every killable
-        // blocker needs only 1, so it goes "unsatisfied" only when remaining hits
-        // 0 — and the dump is guarded by remaining > 0. The sole way to reach
-        // this dump with a deathtouch attacker is an INDESTRUCTIBLE unsatisfied
-        // blocker, where deathtouch is moot anyway. So tagging would never matter.
         const dump = unsatisfied[0].card;
         dump.damage += remaining;
         if (!(dump.damagedBySources instanceof Set)) dump.damagedBySources = new Set();
