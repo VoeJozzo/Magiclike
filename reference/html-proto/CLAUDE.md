@@ -4,7 +4,7 @@ Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folde
 
 ## Version
 
-**Current: `v2.0.40`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.0.41`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -74,6 +74,24 @@ Deleted the `destroy_and_sticker_slot` handler + all its classification/scoring/
 text sites. Behavior note: under atomic decomposition an indestructible target now
 gets scarred-but-not-destroyed (the monolith fizzled both halves) — an acceptable
 edge on a boss-targeted creature.
+
+v2.0.41: optional paid ETB for Land+Spell staples (BACKLOG feature). A spell
+stapled onto a LAND used to give a FREE ETB trigger (a land is free to play, so
+that's pure value); it's now a "you may pay {the spell's mana cost}" trigger.
+Two new general primitives: (1) **optional triggers + cost-payment during
+resolution** — a trigger may carry `optional_cost`; at resolution `resolveTrigger`
+pauses on a new `pendingOptionalCost` decision (registered in PENDING_DECISIONS),
+and on pay `doOptionalCost` calls `payMana` (which auto-taps) then
+`runTriggerEffects` (split out of resolveTrigger so the pay path resumes it).
+Targets are already locked at queue time, so the order is target → may-pay →
+effect. Can't-afford auto-declines (no prompt). Gated at synthesis: only
+`merged.type === 'Land'` staples get `optional_cost`; Creature/artifact bases
+stay free (you paid the body). New action `optionalCost {pay}`, AI pays when
+`spellValueForEffects > 0`, card-text renders "...you may pay {cost}: <effect>",
+and a DOM modal (`#optionalCostModal`, mirrors the edict modal — browser-verify).
+These primitives are reusable for kicker-style "you may pay" effects. New
+test_optional_paid_etb.js (16 checks: synthesis gate, pay/decline/can't-pay flow,
+AI decision). 1192 green, lint clean, 200-game selfplay clean.
 
 v2.0.40: AI audit follow-ups. (1) `decideMain` now sequences main-phase casts by
 play VALUE, not raw mana cost — so cheap high-impact removal beats expensive

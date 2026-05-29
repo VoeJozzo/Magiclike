@@ -3156,6 +3156,10 @@ function edictChoice(iid) {
   submit({type: 'edictChoice', iid});
 }
 
+function optionalCost(pay) {
+  submit({type: 'optionalCost', pay});
+}
+
 function submit(action) {
   ENGINE.executeAction('you', action);
 }
@@ -3195,7 +3199,7 @@ return {
   init, gameOverClick, clickHand, clickBattlefield, clickStackTarget, clickPlayerTarget,
   closeCardPopup, attachLongPress,
   openZone, closeZone,
-  cancelTarget, endTurn, passAction, doneDeclaring, concede, searchPick, triggerBuildPick, numberChoice, symmetricizeChoice, edictChoice, toggleLog,
+  cancelTarget, endTurn, passAction, doneDeclaring, concede, searchPick, triggerBuildPick, numberChoice, symmetricizeChoice, edictChoice, optionalCost, toggleLog,
   pickModalMode, cancelModalChoice,
   pendingModalChoice: () => pendingModalChoice,
   toggleStats, statsExport, statsClear,

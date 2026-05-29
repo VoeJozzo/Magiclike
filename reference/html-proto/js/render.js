@@ -5,6 +5,7 @@ function passLabel(G, expectedActor) {
   if (G.pendingNumberChoice && G.pendingNumberChoice.who === 'you') return 'Pick a Number';
   if (G.pendingSymmetricizeChoice && G.pendingSymmetricizeChoice.who === 'you') return 'Pick a Value';
   if (G.pendingEdictChoice && G.pendingEdictChoice.who === 'you') return 'Choose';
+  if (G.pendingOptionalCost && G.pendingOptionalCost.who === 'you') return 'Pay?';
   if (G.priority && G.stack.length > 0) return 'No Reaction';
   if (G.phase === 'COMBAT_ATTACK' && G.activePlayer === 'you' && !G.attackersDeclared) return 'Skip Combat';
   if (G.phase === 'COMBAT_BLOCK'  && G.activePlayer === 'opp' && !G.blockersDeclared) return 'No Blocks';
@@ -166,6 +167,7 @@ function render() {
                   || (G.pendingNumberChoice && G.pendingNumberChoice.who === 'you')
                   || (G.pendingSymmetricizeChoice && G.pendingSymmetricizeChoice.who === 'you')
                   || (G.pendingEdictChoice && G.pendingEdictChoice.who === 'you')
+                  || (G.pendingOptionalCost && G.pendingOptionalCost.who === 'you')
                   || expectedActor !== 'you';
 
   document.getElementById('btnEnd').disabled =
@@ -359,6 +361,27 @@ function render() {
   } else {
     Modal.hide('edictChoiceModal');
   }
+  // Optional-cost trigger (Land+Spell staple ETB). The controller may pay the
+  // stapled spell's mana cost to use its effect, or decline.
+  if (G.pendingOptionalCost && G.pendingOptionalCost.who === 'you') {
+    Modal.show('optionalCostModal', { dismissible: false });
+    const p = G.pendingOptionalCost;
+    const costStr = renderManaSymbols(manaBraces(p.cost));
+    document.getElementById('optionalCostSubtitle').innerHTML =
+      `${p.source} entered.<br>Pay ${costStr} to use its stapled effect?`;
+    const btns = document.getElementById('optionalCostButtons');
+    btns.innerHTML = '';
+    btns.appendChild(makeChoiceButton(`Pay ${costStr}`,
+      'border:2px solid #66bb88;color:#bfe9cc;padding:12px 20px;font-family:inherit;cursor:pointer;border-radius:6px;min-width:90px;transition:transform .1s,background .1s',
+      '#15241a', '#1e3426',
+      () => CONTROLLER.optionalCost(true)));
+    btns.appendChild(makeChoiceButton('Decline',
+      'border:2px solid #886666;color:#e9cccc;padding:12px 20px;font-family:inherit;cursor:pointer;border-radius:6px;min-width:90px;transition:transform .1s,background .1s',
+      '#241515', '#341e1e',
+      () => CONTROLLER.optionalCost(false)));
+  } else {
+    Modal.hide('optionalCostModal');
+  }
   // Modal-spell mode picker — illegal modes disabled but rendered for visibility.
   const pmc = CONTROLLER.pendingModalChoice();
   if (pmc) {
@@ -441,6 +464,8 @@ function render() {
     sb.textContent = `${G.pendingSymmetricizeChoice.source} on ${G.pendingSymmetricizeChoice.targetName} — pick power, toughness, or cost.`;
   } else if (G.pendingEdictChoice && G.pendingEdictChoice.who === 'you') {
     sb.textContent = `${G.pendingEdictChoice.source} — choose a ${G.pendingEdictChoice.filter === 'permanent' ? 'permanent' : 'creature'} to sacrifice.`;
+  } else if (G.pendingOptionalCost && G.pendingOptionalCost.who === 'you') {
+    sb.textContent = `${G.pendingOptionalCost.source} — pay the cost to use its stapled effect, or decline.`;
   } else if (G.forcedDiscard && G.forcedDiscard.who === 'you' && G.forcedDiscard.remaining > 0) {
     sb.textContent = `${G.forcedDiscard.source} — choose ${G.forcedDiscard.remaining} more card(s) to discard.`;
   } else if (G.cleanupDiscarding && G.activePlayer === 'you') {
@@ -696,6 +721,16 @@ function makeChoiceButton(html, css, normalBg, hoverBg, onclick) {
   b.onmouseout  = () => { b.style.background = normalBg; b.style.transform = 'translateY(0)'; };
   b.onclick = onclick;
   return b;
+}
+
+// A {W,U,B,R,G,C} cost → brace string for renderManaSymbols (colors as pips,
+// generic as a single {N}): {R:1,C:2} → "{R}{2}".
+function manaBraces(cost) {
+  if (!cost) return '';
+  let s = '';
+  for (const c of ['W', 'U', 'B', 'R', 'G']) for (let i = 0; i < (cost[c] || 0); i++) s += '{' + c + '}';
+  if (cost.C) s += '{' + cost.C + '}';
+  return s;
 }
 
 function renderHand(id, hand, who) {

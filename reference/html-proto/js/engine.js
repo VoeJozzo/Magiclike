@@ -342,6 +342,7 @@ const PENDING_DECISIONS = [
   { field: 'pendingNumberChoice',  who: d => d.who,        active: () => true },
   { field: 'pendingSymmetricizeChoice', who: d => d.who,   active: () => true },
   { field: 'pendingEdictChoice',   who: d => d.who,        active: () => true },
+  { field: 'pendingOptionalCost',  who: d => d.who,        active: () => true },
 ];
 
 // True if `who` is owed a decision by any open modal.
@@ -499,15 +500,23 @@ function mergeStapleInto(merged, stapleTpl) {
     merged.abilities.push(manaAbilityForColors(allColors));
   } else if (basePermanent) {
     // Spell staple on a permanent base → ETB trigger. Cr+Sp and Ld+Sp are
-    // byte-identical (same card_zone_change(anywhere→battlefield) trigger).
+    // structurally the same trigger; they differ only in whether it's free.
     const nextFreeSlot = computeNextFreeSlot(merged);
     const remapped = remapEffectSlots(stapleTpl.effects, nextFreeSlot);
-    merged.triggers.push({
+    const trig = {
       event: 'card_zone_change',
       condition: ['this_card', 'card_moves(anywhere, battlefield)'],
       text: 'ETB: ' + (stapleTpl.text || stapleTpl.name),
       effects: Array.isArray(remapped) ? remapped : [],
-    });
+    };
+    // Land base → the ETB is OPTIONAL and costs the spell's mana cost. A land is
+    // free to play, so a free stapled spell is pure value; making it a "you may
+    // pay {cost}" trigger restores the bargain. Creature/artifact bases stay
+    // free — you already paid the base's full cost. (BACKLOG: optional paid ETB.)
+    if (merged.type === 'Land' && stapleTpl.cost && Object.keys(stapleTpl.cost).length > 0) {
+      trig.optional_cost = { ...stapleTpl.cost };
+    }
+    merged.triggers.push(trig);
   } else {
     // Spell base + spell staple: effects concat with slot remap. The merged
     // spell is multi-target — recognized structurally via per-effect target_slot
@@ -846,6 +855,7 @@ function makeState(playerDeck, oppDeck) {
     pendingNumberChoice: null,        // {who, source, min, max, sourceIid, callback?} — Bargain
     pendingSymmetricizeChoice: null,  // {who, source, targetIid, ..., values:{power,toughness,cost}}
     pendingEdictChoice: null,         // {who, source, sourceIid, controller, filter, pool, trailingEffects} — human forced-sacrifice (edict) prompt (GAP 2)
+    pendingOptionalCost: null,        // {who, cost, source, sourceIid, item} — "you may pay {cost}" trigger (Land+Spell staple ETB)
     forcedDiscard: null,              // {who, remaining}
     pendingSearch: null,              // {who, filter, source} — tutors
     pendingTriggerBuild: null,        // {who, cardIid, options, allowKeep} — Codex etc.
@@ -3073,6 +3083,32 @@ function resolveTrigger(item) {
     log(`Trigger chain too deep (${TRIGGER_DEPTH_CAP}) — bailing to prevent loop.`, 'imp');
     return;
   }
+  // Optional paid trigger (Land+Spell staple ETB): pause and let the controller
+  // choose whether to pay. Targets are already locked (chosen at queue time), so
+  // the order is target → may-pay → effect. Can't-afford auto-declines (no prompt).
+  if (item.trig && item.trig.optional_cost) {
+    const who = item.controller;
+    if (!canPayPotential(who, item.trig.optional_cost)) {
+      log(`${item.sourceName}: ${pname(who)} can't pay the optional cost — declined.`, 'sp');
+      afterEffectsApplied();
+      return;
+    }
+    G.pendingOptionalCost = {
+      who,
+      cost: { ...item.trig.optional_cost },
+      source: item.sourceName,
+      sourceIid: item.sourceIid,
+      item,
+    };
+    log(`${item.sourceName}: ${pname(who)} may pay to use the stapled effect.`, 'sp');
+    return;  // doOptionalCost resumes here (runs the effects on pay)
+  }
+  runTriggerEffects(item);
+}
+
+// Run a trigger's effects against its already-chosen targets. Split from
+// resolveTrigger so the optional-cost path can resume here after payment.
+function runTriggerEffects(item) {
   const ctx = {
     sourceIid: item.sourceIid,
     sourceName: item.sourceName,
@@ -3126,6 +3162,30 @@ function resolveTrigger(item) {
   }
   ctx.chosen = null;
   afterEffectsApplied();
+}
+
+// Resolve an optional-cost ("you may pay {cost}") trigger after the controller
+// chooses. Pay → deduct mana (auto-taps via payMana) and run the stashed
+// trigger's effects; decline → nothing. Death/etc. triggers drain afterward.
+function doOptionalCost(who, pay) {
+  if (!G.pendingOptionalCost || G.pendingOptionalCost.who !== who) return;
+  const p = G.pendingOptionalCost;
+  G.pendingOptionalCost = null;
+  if (!pay) {
+    log(`${pname(who)} declines ${p.source}'s optional cost.`, 'sp');
+    afterEffectsApplied();
+    return;
+  }
+  // Re-check affordability at resolution (board could have changed while paused).
+  if (!canPayPotential(who, p.cost)) {
+    log(`${pname(who)} can no longer pay ${p.source}'s cost — declined.`, 'sp');
+    afterEffectsApplied();
+    return;
+  }
+  payMana(who, p.cost);
+  log(`${pname(who)} pays for ${p.source}.`, 'sp');
+  runTriggerEffects(p.item);
+  drainTriggers();
 }
 
 // ----- Targeting -----
@@ -5107,6 +5167,12 @@ function isLegalAction(who, action) {
       if (!G.pendingEdictChoice || G.pendingEdictChoice.who !== who) return false;
       return G.pendingEdictChoice.pool.some(c => c.iid === action.iid);
     }
+    case 'optionalCost': {
+      // Legal only when a "you may pay {cost}" trigger prompt is open for this
+      // player. `pay` is a boolean (true = pay, false = decline).
+      if (!G.pendingOptionalCost || G.pendingOptionalCost.who !== who) return false;
+      return typeof action.pay === 'boolean';
+    }
     case 'triggerBuildPick': {
       if (!G.pendingTriggerBuild || G.pendingTriggerBuild.who !== who) return false;
       const ptb = G.pendingTriggerBuild;
@@ -5371,6 +5437,12 @@ function getLegalActions(who) {
     for (const c of G.pendingEdictChoice.pool) {
       actions.push({type:'edictChoice', iid: c.iid});
     }
+  }
+
+  // Optional-cost ("you may pay {cost}") trigger — pay or decline.
+  if (G.pendingOptionalCost && G.pendingOptionalCost.who === who) {
+    actions.push({type:'optionalCost', pay: true});
+    actions.push({type:'optionalCost', pay: false});
   }
 
   // Pass (always legal as a generic "I'm done")
@@ -5694,6 +5766,7 @@ function executeAction(who, action) {
     case 'numberChoice':      doNumberChoice(who, action.number); break;
     case 'symmetricizeChoice': doSymmetricizeChoice(who, action.which); break;
     case 'edictChoice':       doEdictChoice(who, action.iid); break;
+    case 'optionalCost':      doOptionalCost(who, action.pay); break;
     case 'pass':             doPass(who); break;
     case 'endTurn':          doEndTurn(who); break;
   }

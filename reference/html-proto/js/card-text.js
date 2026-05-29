@@ -586,6 +586,18 @@ function triggerPreamble(trig) {
 }
 
 // Full trigger clause as segments (lowercase body since preamble ends in comma).
+// A plain {W,U,B,R,G,C} cost → brace string: colors as individual pips, generic
+// as a single {N} (e.g. {R:1,C:2} → "{R}{2}"). renderManaSymbols draws them.
+function manaCostBraces(cost) {
+  if (!cost) return '';
+  let s = '';
+  for (const c of ['W', 'U', 'B', 'R', 'G']) {
+    for (let i = 0; i < (cost[c] || 0); i++) s += '{' + c + '}';
+  }
+  if (cost.C) s += '{' + cost.C + '}';
+  return s;
+}
+
 function describeTrigger(trig, tplTrig) {
   const preamble = triggerPreamble(trig);
   const tplEffs = tplTrig ? tplTrig.effects : undefined;
@@ -599,6 +611,10 @@ function describeTrigger(trig, tplTrig) {
       };
       break;
     }
+  }
+  // Optional paid trigger (Land+Spell staple ETB): "... you may pay {cost}: ...".
+  if (trig.optional_cost) {
+    return [plainSeg(preamble + ' you may pay ' + manaCostBraces(trig.optional_cost) + ': ')].concat(bodyLower);
   }
   return [plainSeg(preamble + ' ')].concat(bodyLower);
 }

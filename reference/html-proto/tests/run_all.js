@@ -111,6 +111,8 @@ const CATEGORY_A = [
   'test_bargain_chooser_and_empower.js',
   // decideMain sequences by play value (cheap removal beats expensive filler).
   'test_ai_main_sequencing.js',
+  // Optional paid ETB for Land+Spell staples (synthesis gate + pay/decline flow).
+  'test_optional_paid_etb.js',
 ];
 
 const TESTS_DIR = __dirname;

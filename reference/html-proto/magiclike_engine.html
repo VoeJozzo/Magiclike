@@ -575,6 +575,8 @@ button:disabled{opacity:.4;cursor:not-allowed}
 #symmetricizeChoiceModal.vis{display:flex}
 #edictChoiceModal{position:fixed;inset:0;background:rgba(0,0,0,.92);display:none;align-items:center;justify-content:center;z-index:1100;padding:20px;box-sizing:border-box}
 #edictChoiceModal.vis{display:flex}
+#optionalCostModal{position:fixed;inset:0;background:rgba(0,0,0,.92);display:none;align-items:center;justify-content:center;z-index:1100;padding:20px;box-sizing:border-box}
+#optionalCostModal.vis{display:flex}
 #mapBox{background:#101820;border:2px solid #66ddaa;border-radius:10px;padding:24px 18px;max-width:760px;width:100%;text-align:center;box-shadow:0 0 30px rgba(102,221,170,.2);margin:auto}
 #mapTitle{color:#66ddaa;font-size:18px;letter-spacing:2px;margin-bottom:6px;text-transform:uppercase}
 #mapSubtitle{color:#7aa;font-size:11px;margin-bottom:18px}
@@ -854,6 +856,13 @@ body.ai-thinking #status{
     <h2 style="color:#eeaaaa;font-size:18px;margin:0 0 8px 0;text-align:center;letter-spacing:0.1em">☠ FORCED SACRIFICE</h2>
     <div id="edictChoiceSubtitle" style="color:#aaa;font-size:12px;text-align:center;margin-bottom:18px;font-style:italic;line-height:1.5"></div>
     <div id="edictChoiceButtons" style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap"></div>
+  </div>
+</div>
+<div id="optionalCostModal">
+  <div id="optionalCostBox" style="background:#0a140e;border:2px solid #66bb88;border-radius:8px;padding:24px 20px;max-width:520px;width:100%;font-family:Georgia,serif;color:#ddd;box-shadow:0 0 30px rgba(102,187,136,.3)">
+    <h2 style="color:#9fdfb5;font-size:18px;margin:0 0 8px 0;text-align:center;letter-spacing:0.1em">✦ OPTIONAL COST</h2>
+    <div id="optionalCostSubtitle" style="color:#aaa;font-size:12px;text-align:center;margin-bottom:18px;font-style:italic;line-height:1.5"></div>
+    <div id="optionalCostButtons" style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap"></div>
   </div>
 </div>
 <div id="postDraftOfferModal">

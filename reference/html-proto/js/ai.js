@@ -228,6 +228,14 @@ function decide(state, who) {
     return {type:'edictChoice', iid: bestIid};
   }
 
+  // Optional-cost trigger (Land+Spell staple ETB): the prompt only opens when
+  // affordable, so pay whenever the stapled effect carries positive value.
+  if (state.pendingOptionalCost && state.pendingOptionalCost.who === who) {
+    const trig = state.pendingOptionalCost.item && state.pendingOptionalCost.item.trig;
+    const effs = (trig && trig.effects) || [];
+    return {type: 'optionalCost', pay: spellValueForEffects(effs) > 0};
+  }
+
   // Sim-mode forced discard (production routes 'you' through UI).
   // Discard lowest getCardValue (not cheapest-cost — a cheap removal beats expensive filler).
   if (state.forcedDiscard && state.forcedDiscard.who === who && state.forcedDiscard.remaining > 0) {
