@@ -109,6 +109,8 @@ const CATEGORY_A = [
   // Archdemon bargain chooser follows the controller + empower amplifies
   // magnitude in the field's direction (signed debuffs go more negative).
   'test_bargain_chooser_and_empower.js',
+  // decideMain sequences by play value (cheap removal beats expensive filler).
+  'test_ai_main_sequencing.js',
 ];
 
 const TESTS_DIR = __dirname;

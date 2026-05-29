@@ -4,7 +4,7 @@ Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folde
 
 ## Version
 
-**Current: `v2.0.39`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.0.40`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -74,6 +74,21 @@ Deleted the `destroy_and_sticker_slot` handler + all its classification/scoring/
 text sites. Behavior note: under atomic decomposition an indestructible target now
 gets scarred-but-not-destroyed (the monolith fizzled both halves) — an acceptable
 edge on a boss-targeted creature.
+
+v2.0.40: AI audit follow-ups. (1) `decideMain` now sequences main-phase casts by
+play VALUE, not raw mana cost — so cheap high-impact removal beats expensive
+filler (the audit's quality finding). Extracted `bestSpellPlay` (returns
+{opt, score}) from `pickBestTargetForSpell` (now a thin wrapper) + a new
+`spellPlayValue` cross-card scale (targeted → target score, creature →
+getCardValue, utility → effect value); cost-descending stays as the tiebreak so
+creatures still curve out biggest-first. All castable plays still get made
+across successive priority passes, just in value order. (2) Dropped the
+nonsensical `!flying` exemption in damage-vs-creature scoring (damage never
+destroys an indestructible creature, flying or not). (3) Removed a dead
+`bestAbilityScore` write in `decideOffTurnCombat` (the real gate is
+`pickBestActivation`'s `<= 0 → null`). Kept `is_life_loss` predicate (intentional
+pair with `is_life_gain`). New test_ai_main_sequencing.js (removal over filler).
+1176 green, lint clean, 300-game selfplay clean.
 
 v2.0.39: corrected the Archdemon bargain chooser DIRECTION (v2.0.38 had it
 backwards) + made the AI's bargain pick position-aware. Clarified intent: you

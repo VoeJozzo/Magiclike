@@ -292,14 +292,8 @@ function decideOffTurnCombat(state, who, actions) {
   }
   // Activated abilities also live here (Carrion Feeder sac, ping from creature, etc.).
   const abilityActs = actions.filter(a => a.type === 'activateAbility');
-  let bestAbility = null, bestAbilityScore = -Infinity;
-  if (abilityActs.length) {
-    const ab = pickBestActivation(state, who, abilityActs);
-    if (ab) {
-      bestAbility = ab;
-      bestAbilityScore = 5;   // placeholder — scorer's threshold is >0
-    }
-  }
+  // pickBestActivation returns null when nothing scores > 0.
+  const bestAbility = abilityActs.length ? pickBestActivation(state, who, abilityActs) : null;
   if (spellsByCard.size === 0 && !bestAbility) return null;
   // Track flash separately — lower threshold since body persists post-combat (not just ambush value).
   let bestInst = null, bestInstScore = -Infinity;
@@ -479,12 +473,20 @@ function decideMain(state, who, actions) {
     }
     return true;
   });
+  // Rank by play VALUE, not raw cost: a cheap, high-impact play (e.g. removal on
+  // a real threat, score ~40-50) should beat expensive filler (a vanilla body,
+  // getCardValue ~8). Cost-descending pre-sort is just the tiebreak among equal
+  // values (so creatures still curve out biggest-first). All castable plays
+  // still get made — across successive priority passes — just in value order.
   candidateCards.sort((a, b) => ENGINE.cardCost(b.card) - ENGINE.cardCost(a.card));
+  let bestPlay = null, bestVal = -Infinity;
   for (const {iid, card} of candidateCards) {
-    const options = spellsByCard.get(iid);
-    const chosen = pickBestTargetForSpell(state, who, card, options);
-    if (chosen) return chosen;
+    const play = bestSpellPlay(state, who, card, spellsByCard.get(iid));
+    if (!play) continue;
+    const val = spellPlayValue(state, who, card, play.opt);
+    if (val > bestVal) { bestVal = val; bestPlay = play.opt; }
   }
+  if (bestPlay) return bestPlay;
 
   // Activated abilities. Skip reserved-burn sources (part of the lethal line).
   let abilityActs = actions.filter(a => a.type === 'activateAbility');
@@ -1119,15 +1121,17 @@ function decideCleanupDiscard(state, who, actions) {
   return best;
 }
 
-function pickBestTargetForSpell(state, who, card, options) {
+// Pick the best (mode, target) option for casting `card` and return it WITH its
+// score: {opt, score} or null. The score is the cast-worthiness gate value
+// (creature=100 flat so a body always clears >0) — NOT a cross-card ranking
+// scale; decideMain uses spellPlayValue() for that.
+function bestSpellPlay(state, who, card, options) {
   // Bail if non-modal self-damage would lethal us (modal: per-option below).
   const selfDamageOf = (effs) => (effs || []).reduce((sum, e) =>
     sum + ((e.kind === 'damage' && e.scope === 'self') ? (e.amount || 0) : 0), 0);
   if (!ENGINE.isModal(card)) {
     if (selfDamageOf(card.effects) >= state[who].life) return null;
   }
-  // Score each (mode, target) option. Untargeted: shouldCastUntargeted gates;
-  // creature=100 (curve), spell=spellValueForEffects + situational bonus. Targeted: scoreMultiTargetSpell.
   const scored = options.map(opt => {
     const modeIdx = opt.modeIdx || 0;
     const modeEffects = ENGINE.effectsForMode(card, modeIdx);
@@ -1145,7 +1149,26 @@ function pickBestTargetForSpell(state, who, card, options) {
   });
   scored.sort((a, b) => b.score - a.score);
   if (scored[0].score <= 0) return null;
-  return scored[0].opt;
+  return scored[0];
+}
+
+function pickBestTargetForSpell(state, who, card, options) {
+  const best = bestSpellPlay(state, who, card, options);
+  return best ? best.opt : null;
+}
+
+// Cross-card play value for MAIN-phase sequencing — a shared scale so removal,
+// creature bodies, and utility spells compare sanely (vs raw mana cost). Used
+// only to ORDER casts; the worth-casting gate already lives in bestSpellPlay.
+function spellPlayValue(state, who, card, opt) {
+  if (opt.targets && opt.targets.length) {
+    return scoreMultiTargetSpell(state, who, card, opt.targets, opt.modeIdx || 0);
+  }
+  if (card.type === 'Creature') {
+    return Math.max(1, ENGINE.getCardValue(card, 'play'));
+  }
+  const modeEffects = ENGINE.effectsForMode(card, opt.modeIdx || 0);
+  return spellValueForEffects(modeEffects) + scoreUntargetedSituation(state, who, modeEffects);
 }
 
 // Score a multi-target spell by summing per-slot scores. Single-target
@@ -1396,8 +1419,9 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
       const c = ENGINE.findCard(target.iid);
       if (!c) return -100;
       if (c.controller === us) return -100;
-      if (c.card.keywords.includes('indestructible')
-          && !c.card.keywords.includes('flying')) {
+      // Damage never destroys an indestructible creature (flying is
+      // irrelevant) — burning one is wasted.
+      if (c.card.keywords.includes('indestructible')) {
         return -50;
       }
       const [pow, tou] = ENGINE.getStats(c.card);
