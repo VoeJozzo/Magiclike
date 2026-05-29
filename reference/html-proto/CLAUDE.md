@@ -4,7 +4,7 @@ Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folde
 
 ## Version
 
-**Current: `v2.0.33`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.0.34`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -74,6 +74,20 @@ Deleted the `destroy_and_sticker_slot` handler + all its classification/scoring/
 text sites. Behavior note: under atomic decomposition an indestructible target now
 gets scarred-but-not-destroyed (the monolith fizzled both halves) — an acceptable
 edge on a boss-targeted creature.
+
+v2.0.34: de-dup the two button-construction hotspots the v2.0.33 review flagged
+(behavior-preserving; pixel-identical output). (1) Start screen: ~7 buttons each
+hand-wrote their cssText + create/text/style/onclick/append boilerplate. Now a
+`START_BTN_STYLE` table (primary/cube/discard/secondary/sandbox) + a
+`makeStartBtn(parent, text, styleKey, onclick)` factory — showStartScreen
+creates 0 buttons inline. (2) Choice modals (pick-a-number / symmetricize /
+edict) each spelled out the same option-button create + lift-on-hover
+(background swap + translateY) + onclick three times; now one
+`makeChoiceButton(html, css, normalBg, hoverBg, onclick)` helper in render.js
+(background moved out of the css string to `style.background` so the hover swap
+can't drift from the base color). Browser-verify the start screen + the three
+modal prompts look unchanged. 1161 green. (Deferred from the review: render()'s
+you/opp pairs — blocked on the asymmetric `youHand2`/`oppHand` element IDs.)
 
 v2.0.33: modularization-review cleanups (behavior-preserving). A code-health
 sweep (3 parallel surveys, all findings verified against source before acting).

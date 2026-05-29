@@ -271,6 +271,24 @@ function showCardBrowser() {
   document.getElementById('cardBrowserModal').scrollTop = 0;
 }
 
+// Start-screen button styles, named so the factory below is the single place
+// button construction (create → text → style → onclick → append) lives.
+const START_BTN_STYLE = {
+  primary:   'padding:10px 20px;background:#2a4a2a;border:1px solid #4a8a4a;color:#aaffaa;border-radius:4px;cursor:pointer;font-size:14px',
+  cube:      'padding:10px 20px;background:#3a3a1a;border:1px solid #888844;color:#ddcc88;border-radius:4px;cursor:pointer;font-size:14px',
+  discard:   'padding:8px 20px;background:#2a2a2a;border:1px solid #555;color:#aaa;border-radius:4px;cursor:pointer;font-size:12px',
+  secondary: 'padding:8px 20px;background:#1a1a2a;border:1px solid #444;color:#aaa;border-radius:4px;cursor:pointer;font-size:12px',
+  sandbox:   'padding:8px 20px;background:#2a1a3a;border:1px solid #8855aa;color:#ddb3ff;border-radius:4px;cursor:pointer;font-size:12px',
+};
+function makeStartBtn(parent, text, styleKey, onclick) {
+  const b = document.createElement('button');
+  b.textContent = text;
+  b.style.cssText = START_BTN_STYLE[styleKey];
+  b.onclick = onclick;
+  parent.appendChild(b);
+  return b;
+}
+
 function showStartScreen() {
   const screen = document.getElementById('startScreen');
   // Fullscreen API needs a user gesture — capture-phase + once:true.
@@ -286,77 +304,38 @@ function showStartScreen() {
   btns.innerHTML = '';
   if (RUN.hasSave()) {
     sub.textContent = 'You have a run in progress.';
-    const cont = document.createElement('button');
-    cont.textContent = 'Continue Run';
-    cont.style.cssText = 'padding:10px 20px;background:#2a4a2a;border:1px solid #4a8a4a;color:#aaffaa;border-radius:4px;cursor:pointer;font-size:14px';
-    cont.onclick = continueRun;
-    btns.appendChild(cont);
-
-    const fresh = document.createElement('button');
-    fresh.textContent = 'New Run (discard save)';
-    fresh.style.cssText = 'padding:8px 20px;background:#2a2a2a;border:1px solid #555;color:#aaa;border-radius:4px;cursor:pointer;font-size:12px';
-    fresh.onclick = () => {
+    makeStartBtn(btns, 'Continue Run', 'primary', continueRun);
+    makeStartBtn(btns, 'New Run (discard save)', 'discard', () => {
       if (confirm('Discard your current run and start a new one?')) {
         RUN.clearSave();
         screen.style.display = 'none';
         newRun('classic');
       }
-    };
-    btns.appendChild(fresh);
-
-    const freshDC = document.createElement('button');
-    freshDC.textContent = 'New Desert Cube Run (discard save)';
-    freshDC.style.cssText = 'padding:8px 20px;background:#2a2a2a;border:1px solid #555;color:#aaa;border-radius:4px;cursor:pointer;font-size:12px';
-    freshDC.onclick = () => {
+    });
+    makeStartBtn(btns, 'New Desert Cube Run (discard save)', 'discard', () => {
       if (confirm('Discard your current run and start a new Desert Cube run?')) {
         RUN.clearSave();
         screen.style.display = 'none';
         newRun('desertCube');
       }
-    };
-    btns.appendChild(freshDC);
+    });
   } else {
     sub.textContent = 'A card roguelike';
-    const fresh = document.createElement('button');
-    fresh.textContent = 'New Run';
-    fresh.style.cssText = 'padding:10px 20px;background:#2a4a2a;border:1px solid #4a8a4a;color:#aaffaa;border-radius:4px;cursor:pointer;font-size:14px';
-    fresh.onclick = () => {
+    makeStartBtn(btns, 'New Run', 'primary', () => {
       screen.style.display = 'none';
       newRun('classic');
-    };
-    btns.appendChild(fresh);
-
+    });
     // Desert Cube: lands in packs 1/3 per slot, player drafts own manabase.
-    const freshDC = document.createElement('button');
-    freshDC.textContent = 'New Desert Cube Run';
-    freshDC.style.cssText = 'padding:10px 20px;background:#3a3a1a;border:1px solid #888844;color:#ddcc88;border-radius:4px;cursor:pointer;font-size:14px';
-    freshDC.onclick = () => {
+    makeStartBtn(btns, 'New Desert Cube Run', 'cube', () => {
       screen.style.display = 'none';
       newRun('desertCube');
-    };
-    btns.appendChild(freshDC);
+    });
   }
-  const stats = document.createElement('button');
-  stats.textContent = '📊 Stats';
-  stats.style.cssText = 'padding:8px 20px;background:#1a1a2a;border:1px solid #444;color:#aaa;border-radius:4px;cursor:pointer;font-size:12px;margin-top:6px';
-  stats.onclick = toggleStats;
-  btns.appendChild(stats);
-  const browser = document.createElement('button');
-  browser.textContent = '📖 Card Browser';
-  browser.style.cssText = 'padding:8px 20px;background:#1a1a2a;border:1px solid #444;color:#aaa;border-radius:4px;cursor:pointer;font-size:12px';
-  browser.onclick = showCardBrowser;
-  btns.appendChild(browser);
-  const settings = document.createElement('button');
-  settings.textContent = '⚙ Settings';
-  settings.style.cssText = 'padding:8px 20px;background:#1a1a2a;border:1px solid #444;color:#aaa;border-radius:4px;cursor:pointer;font-size:12px';
-  settings.onclick = SETTINGS_PANEL.show;
-  btns.appendChild(settings);
-
-  const sandbox = document.createElement('button');
-  sandbox.textContent = '🔬 Sandbox (test cards)';
-  sandbox.style.cssText = 'padding:8px 20px;background:#2a1a3a;border:1px solid #8855aa;color:#ddb3ff;border-radius:4px;cursor:pointer;font-size:12px';
-  sandbox.onclick = startSandbox;
-  btns.appendChild(sandbox);
+  // Stats keeps a little extra top gap from the run buttons above it.
+  makeStartBtn(btns, '📊 Stats', 'secondary', toggleStats).style.marginTop = '6px';
+  makeStartBtn(btns, '📖 Card Browser', 'secondary', showCardBrowser);
+  makeStartBtn(btns, '⚙ Settings', 'secondary', SETTINGS_PANEL.show);
+  makeStartBtn(btns, '🔬 Sandbox (test cards)', 'sandbox', startSandbox);
 
   screen.style.display = 'flex';
 }

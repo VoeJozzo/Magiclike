@@ -297,13 +297,10 @@ function render() {
     const btns = document.getElementById('numberChoiceButtons');
     btns.innerHTML = '';
     for (let n = p.min; n <= p.max; n++) {
-      const b = document.createElement('button');
-      b.textContent = n;
-      b.style.cssText = 'background:#3a1840;border:2px solid #cc44aa;color:#ee88cc;padding:14px 22px;font-family:inherit;font-size:24px;font-weight:bold;cursor:pointer;border-radius:6px;min-width:60px;transition:transform .1s,background .1s';
-      b.onmouseover = () => { b.style.background = '#5a2860'; b.style.transform = 'translateY(-2px)'; };
-      b.onmouseout  = () => { b.style.background = '#3a1840'; b.style.transform = 'translateY(0)'; };
-      b.onclick = () => CONTROLLER.numberChoice(n);
-      btns.appendChild(b);
+      btns.appendChild(makeChoiceButton(String(n),
+        'border:2px solid #cc44aa;color:#ee88cc;padding:14px 22px;font-family:inherit;font-size:24px;font-weight:bold;cursor:pointer;border-radius:6px;min-width:60px;transition:transform .1s,background .1s',
+        '#3a1840', '#5a2860',
+        () => CONTROLLER.numberChoice(n)));
     }
   } else {
     Modal.hide('numberChoiceModal');
@@ -322,13 +319,11 @@ function render() {
       { which: 'cost',      label: 'Cost',      value: p.values.cost },
     ];
     for (const entry of labels) {
-      const b = document.createElement('button');
-      b.innerHTML = `<div style="font-size:11px;opacity:0.7;letter-spacing:0.1em;text-transform:uppercase">${entry.label}</div><div style="font-size:24px;font-weight:bold;margin-top:4px">${entry.value}</div>`;
-      b.style.cssText = 'background:#152030;border:2px solid #88aacc;color:#aaccee;padding:12px 20px;font-family:inherit;cursor:pointer;border-radius:6px;min-width:90px;transition:transform .1s,background .1s';
-      b.onmouseover = () => { b.style.background = '#1e2c44'; b.style.transform = 'translateY(-2px)'; };
-      b.onmouseout  = () => { b.style.background = '#152030'; b.style.transform = 'translateY(0)'; };
-      b.onclick = () => CONTROLLER.symmetricizeChoice(entry.which);
-      btns.appendChild(b);
+      btns.appendChild(makeChoiceButton(
+        `<div style="font-size:11px;opacity:0.7;letter-spacing:0.1em;text-transform:uppercase">${entry.label}</div><div style="font-size:24px;font-weight:bold;margin-top:4px">${entry.value}</div>`,
+        'border:2px solid #88aacc;color:#aaccee;padding:12px 20px;font-family:inherit;cursor:pointer;border-radius:6px;min-width:90px;transition:transform .1s,background .1s',
+        '#152030', '#1e2c44',
+        () => CONTROLLER.symmetricizeChoice(entry.which)));
     }
   } else {
     Modal.hide('symmetricizeChoiceModal');
@@ -349,14 +344,12 @@ function render() {
       const live = G.you.battlefield.find(x => x.iid === c.iid);
       let stats = '';
       if (live && live.type === 'Creature') { const [pw, to] = ENGINE.getStats(live); stats = `${pw}/${to}`; }
-      const b = document.createElement('button');
-      b.innerHTML = `<div style="font-size:13px;font-weight:bold">${c.label}</div>`
+      const html = `<div style="font-size:13px;font-weight:bold">${c.label}</div>`
         + (stats ? `<div style="font-size:11px;opacity:0.7;margin-top:2px">${stats}</div>` : '');
-      b.style.cssText = 'background:#201515;border:2px solid #cc8888;color:#eecccc;padding:12px 20px;font-family:inherit;cursor:pointer;border-radius:6px;min-width:90px;transition:transform .1s,background .1s';
-      b.onmouseover = () => { b.style.background = '#2c1e1e'; b.style.transform = 'translateY(-2px)'; };
-      b.onmouseout  = () => { b.style.background = '#201515'; b.style.transform = 'translateY(0)'; };
-      b.onclick = () => CONTROLLER.edictChoice(c.iid);
-      btns.appendChild(b);
+      btns.appendChild(makeChoiceButton(html,
+        'border:2px solid #cc8888;color:#eecccc;padding:12px 20px;font-family:inherit;cursor:pointer;border-radius:6px;min-width:90px;transition:transform .1s,background .1s',
+        '#201515', '#2c1e1e',
+        () => CONTROLLER.edictChoice(c.iid)));
     }
   } else {
     Modal.hide('edictChoiceModal');
@@ -682,6 +675,22 @@ function renderManaPool(id, mana) {
   for (const c of ['W','U','B','R','G','C']) {
     for (let i=0; i<(mana[c]||0); i++) el.innerHTML += `<div class="mp mp${c}">${c}</div>`;
   }
+}
+
+// One option button for the choice-modal prompts (pick-a-number / symmetricize
+// / edict). Centralizes the create + lift-on-hover (background swap + translateY)
+// + onclick boilerplate the three prompts used to each spell out. `css` is the
+// per-modal layout/border/color (no background — that's set from normalBg so it
+// can't drift from the hover swap). `html` is trusted markup (our own data).
+function makeChoiceButton(html, css, normalBg, hoverBg, onclick) {
+  const b = document.createElement('button');
+  b.innerHTML = html;
+  b.style.cssText = css;
+  b.style.background = normalBg;
+  b.onmouseover = () => { b.style.background = hoverBg; b.style.transform = 'translateY(-2px)'; };
+  b.onmouseout  = () => { b.style.background = normalBg; b.style.transform = 'translateY(0)'; };
+  b.onclick = onclick;
+  return b;
 }
 
 function renderHand(id, hand, who) {
