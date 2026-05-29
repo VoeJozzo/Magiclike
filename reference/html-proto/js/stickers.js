@@ -31,6 +31,13 @@ function applyStickerKindEffect(card, s) {
     if (card.cost) card.cost.C = Math.max(0, (card.cost.C || 0) + (s.amount || 0));
   } else if (s.kind === 'set_color') {
     card.color = s.color;
+    // Colorless (Bleach) also bleaches the COST: colored pips fold into generic
+    // {C}, so the card becomes castable off any mana.
+    if (s.color === 'C' && card.cost) {
+      let colored = 0;
+      for (const k of ['W', 'U', 'B', 'R', 'G']) { colored += card.cost[k] || 0; card.cost[k] = 0; }
+      if (colored) card.cost.C = (card.cost.C || 0) + colored;
+    }
   } else if (s.kind === 'trigger') {
     if (!Array.isArray(card.triggers)) card.triggers = [];
     card.triggers.push({ ...s.trigger });
@@ -345,7 +352,14 @@ function stickersForSlot(slot, deckColors) {
     if (s.kind === 'cost_mod' && view.cost) {
       view.cost.C = Math.max(0, (view.cost.C || 0) + (s.amount || 0));
     }
-    if (s.kind === 'set_color') view.color = s.color;
+    if (s.kind === 'set_color') {
+      view.color = s.color;
+      if (s.color === 'C' && view.cost) {
+        let colored = 0;
+        for (const k of ['W', 'U', 'B', 'R', 'G']) { colored += view.cost[k] || 0; view.cost[k] = 0; }
+        if (colored) view.cost.C = (view.cost.C || 0) + colored;
+      }
+    }
     if (s.kind === 'stat_boost') {
       view.power = (view.power || 0) + (s.power || 0);
       view.toughness = (view.toughness || 0) + (s.toughness || 0);

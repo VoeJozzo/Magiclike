@@ -50,15 +50,19 @@ console.log('\n=== embargo persists across a fresh makeCard (next-game rebuild) 
   check('rebuilt card from the stickered slot costs {1} more', (rebuilt.cost.C || 0) === base + 1, 'base=' + base + ' rebuilt=' + rebuilt.cost.C);
 })();
 
-console.log('\n=== bleach: apply_sticker(set_color C) + move_card(bf→exile) ===');
+console.log('\n=== bleach: apply_sticker(set_color C) recolors color AND cost (no removal) ===');
 (() => {
   const { G, inst } = bootWithCreature();
+  inst.cost = { W: 1, B: 2, C: 1 };   // force a colored cost so the fold is exercised
   const tgt = { kind: 'creature', iid: inst.iid };
   ENGINE.applyEffect(CTX('Bleach'), { kind: 'apply_sticker', sticker: { kind: 'set_color', color: 'C' } }, tgt);
-  ENGINE.applyEffect(CTX('Bleach'), { kind: 'move_card', from_zone: 'battlefield', to_zone: 'exile', selector: 'target' }, tgt);
   check('runtime color set to C', inst.color === 'C', 'color=' + inst.color);
-  check('creature exiled', !G.you.battlefield.some(c => c.iid === inst.iid) && G.you.exile.some(c => c.iid === inst.iid));
-  check('set_color sticker persisted on the slot', RUN.getSlots()[0].stickers.some(s => s && s.kind === 'set_color'));
+  check('colored cost pips fold into generic {C} (W1 B2 C1 → C4)',
+    inst.cost.C === 4 && !inst.cost.W && !inst.cost.B, JSON.stringify(inst.cost));
+  check('creature NOT exiled — Bleach is a recolor, not removal',
+    G.you.battlefield.some(c => c.iid === inst.iid));
+  check('set_color sticker persisted on the slot (Forever)',
+    RUN.getSlots()[0].stickers.some(s => s && s.kind === 'set_color'));
 })();
 
 console.log('\n=== embargo/bleach card.json are decomposed (no bespoke kinds) ===');
@@ -66,7 +70,7 @@ console.log('\n=== embargo/bleach card.json are decomposed (no bespoke kinds) ==
   const embKinds = CARDS.embargo.effects.map(e => e.kind);
   const blKinds = CARDS.bleach.effects.map(e => e.kind);
   check('embargo = [apply_sticker, move_card]', JSON.stringify(embKinds) === JSON.stringify(['apply_sticker', 'move_card']));
-  check('bleach = [apply_sticker, move_card]', JSON.stringify(blKinds) === JSON.stringify(['apply_sticker', 'move_card']));
+  check('bleach = [apply_sticker] (recolor only; no longer exiles)', JSON.stringify(blKinds) === JSON.stringify(['apply_sticker']));
   check('no card uses the legacy embargo/bleach effect kinds', !Object.values(CARDS).some(c =>
     (Array.isArray(c.effects) ? c.effects : []).some(e => e && (e.kind === 'embargo' || e.kind === 'bleach'))));
 })();

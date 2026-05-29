@@ -4,7 +4,7 @@ Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folde
 
 ## Version
 
-**Current: `v2.0.42`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.0.43`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -74,6 +74,24 @@ Deleted the `destroy_and_sticker_slot` handler + all its classification/scoring/
 text sites. Behavior note: under atomic decomposition an indestructible target now
 gets scarred-but-not-destroyed (the monolith fizzled both halves) — an acceptable
 edge on a boss-targeted creature.
+
+v2.0.43: fixed Bleach — its signature effect was inert. It was `[apply_sticker
+set_color C, move_card exile]`: the exile removed the creature, so "It is
+colorless. Forever." did nothing (color is read only by target filters — just
+Doom Blade's `not_color` — and an exiled creature can't be targeted; opp
+creatures don't persist the slot sticker either). Per the user, Bleach's intent
+is to make a creature colorless **including its mana cost** — a recolor/cost-fix
+tool, not removal. Fix: (1) `set_color C` now also folds the target's colored
+cost pips into generic `{C}` (e.g. `{W}{B}{B}` → `{3}`), so the creature becomes
+castable off any mana; runtime card + persisted slot both update (the "Forever").
+(2) Dropped the `move_card` exile — Bleach is `[apply_sticker]` only now. (3)
+Added card-text for a standalone `apply_sticker(set_color)` →
+"Target creature becomes colorless, including its mana cost, permanently." Tests
+(test_balancer, test_generated_special_text, test_boss_removal_ai) updated off
+the old exile behavior. **NOTE:** Bleach is in The Balancer boss deck but is no
+longer removal — it's now effectively a dead card there (the AI won't cast a
+recolor on the player); consider swapping it for real removal. 1197 green, lint
+clean, 300-game selfplay clean.
 
 v2.0.42: resolved three rules-infrastructure divergences (B2 / F2 / D4 — all now
 *PROTO: DONE* in DIVERGENCE). **B2** — unused mana now empties at *every* phase

@@ -369,6 +369,25 @@ function describeEffect(eff, tplEff) {
       return [plainSeg('rip ' + (t || 'it'))];
     case 'symmetricize':
       return [plainSeg(t + "'s controller equalizes its power, toughness, or cost")];
+    case 'apply_sticker': {
+      // Standalone persistent rider (Bleach: set_color). The 2-effect balancer-
+      // tax pattern (move_card + apply_sticker) is rendered at the list level.
+      const sk = eff.sticker || {};
+      const subj = t || 'it';
+      if (sk.kind === 'set_color') {
+        if (sk.color === 'C') return [plainSeg(subj + ' becomes colorless, including its mana cost, permanently')];
+        const cn = (COLOR_NAMES[sk.color] || sk.color).toLowerCase();
+        return [plainSeg(subj + ' becomes ' + cn + ' permanently')];
+      }
+      if (sk.kind === 'cost_mod') {
+        const n = sk.amount || 0;
+        return [plainSeg(subj + ' costs {' + Math.abs(n) + '} ' + (n < 0 ? 'less' : 'more') + ' permanently')];
+      }
+      if (sk.kind === 'stat_boost') {
+        return [plainSeg(subj + ' gets +' + (sk.power || 0) + '/+' + (sk.toughness || 0) + ' permanently')];
+      }
+      return [plainSeg(subj + ' gets a lasting change')];
+    }
   }
   return [plainSeg('[' + eff.kind + ']')];
 }

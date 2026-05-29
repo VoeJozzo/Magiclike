@@ -12,16 +12,10 @@
         "kind": "set_color",
         "color": "C"
       }
-    },
-    {
-      "kind": "move_card",
-      "from_zone": "battlefield",
-      "to_zone": "exile",
-      "selector": "target"
     }
   ],
   "name": "Bleach",
   "special": true,
-  "text": "Exile target creature. It is colorless. Forever.",
+  "text": "Target creature becomes colorless — including its mana cost. Forever.",
   "type": "Instant"
 }
