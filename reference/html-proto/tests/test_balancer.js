@@ -132,17 +132,12 @@ console.log('\n=== vileEdict (#27): chooses(permanent) → annihilate → rip (z
   check('vileEdict generates accurate text', describeCardText(CARDS.vileEdict) === 'Target opponent rips a permanent they control.');
 })();
 
-console.log('\n=== §3.8: the applyBalancerOverrides channel is gone (one sticker pipeline) ===');
-(() => {
-  const fs = require('fs');
-  const path = require('path');
-  const src = ['engine', 'stickers', 'run'].map(m =>
-    fs.readFileSync(path.join(__dirname, '..', 'js', m + '.js'), 'utf8')).join('\n');
-  check('applyBalancerOverrides function deleted', !/function applyBalancerOverrides/.test(src));
-  check('symmetrizedTo sentinel gone (no property reads/writes)', !/\.symmetrizedTo\b/.test(src));
-  // The slot-field write paths (slot.symmetricized/.colorOverride/.extraCost) are gone.
-  check('no slot.symmetricized / colorOverride / extraCost writes', !/\.symmetricized\s*=|\.colorOverride\s*=|\.extraCost\s*=/.test(src));
-})();
+// NOTE: a prior version source-grepped engine/stickers/run.js to assert the old
+// applyBalancerOverrides channel "is deleted". Removed — a "function X stays
+// deleted" grep only fires when someone deliberately re-adds it (a decision, not
+// a regression), and the behavior blocks above already prove embargo/bleach
+// decompose through the one sticker pipeline (runtime cost + slot persistence):
+// if the legacy channel were the live one, those assertions would change.
 
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');
 process.exit(fail > 0 ? 1 : 0);
