@@ -95,15 +95,25 @@ console.log('\n=== migrated mass-damage held when it would wreck only own board 
   check('migrated mass-damage held (would only kill own)', decidesToCast('_pyroNew', s) === false);
 })();
 
-console.log('\n=== spellValueForEffects: mass/severity forms carry the right value ===');
+console.log('\n=== spellValueForEffects: mass/severity forms are valued sanely ===');
 (() => {
+  // Assert RELATIONSHIPS, not exact constants. The absolute values are AI tuning
+  // numbers that churn constantly (see the changelog) — pinning `=== 12` made
+  // this false-fail on every benign retune. What must hold is the ordering /
+  // sign / scaling, which is the actual behavior the AI relies on.
   const v = AI.spellValueForEffects;
-  // damage+scope(all_creatures): 8 + amount*2.
-  check('damage+scope(all_creatures, 2) == 12', v([{ kind: 'damage', amount: 2, scope: 'all_creatures' }]) === 12);
-  // affect_creature(destroy, all_creatures): mass removal, sev 3 → 10.
-  check('affect_creature(destroy, all_creatures) == 10', v([{ kind: 'affect_creature', severity: 'destroy', scope: 'all_creatures' }]) === 10);
-  // single affect_creature(destroy): sev 3 → 12.
-  check('single affect_creature(destroy) == 12', v([{ kind: 'affect_creature', severity: 'destroy' }]) === 12);
+  const massDmg2 = v([{ kind: 'damage', amount: 2, scope: 'all_creatures' }]);
+  const massDmg4 = v([{ kind: 'damage', amount: 4, scope: 'all_creatures' }]);
+  const massKill = v([{ kind: 'affect_creature', severity: 'destroy', scope: 'all_creatures' }]);
+  const singleKill = v([{ kind: 'affect_creature', severity: 'destroy' }]);
+  const singleTap = v([{ kind: 'affect_creature', severity: 'tap' }]);
+  const singleExile = v([{ kind: 'affect_creature', severity: 'exile' }]);
+  check('mass damage is positively valued', massDmg2 > 0);
+  check('mass damage scales with amount', massDmg4 > massDmg2);
+  check('mass removal is positively valued', massKill > 0);
+  check('single removal is positively valued', singleKill > 0);
+  check('removal severity orders tap < destroy <= exile',
+    singleTap < singleKill && singleKill <= singleExile, `tap=${singleTap} destroy=${singleKill} exile=${singleExile}`);
 })();
 
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');
