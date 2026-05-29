@@ -57,7 +57,10 @@ function spellValueForEffects(effects) {
         const sevVal = sev === 1 ? 4 : sev === 2 ? 8 : sev === 3 ? 10 : 14;
         v += sevVal + ((e.scope === 'all_opps') ? 4 : 0);
       } else {
-        v += sev === 1 ? 3 : sev === 2 ? 4 : sev === 3 ? 12 : 12;
+        // Single-target severity value. destroy (3) and exile (4) both score
+        // 12 — unlike the all_opps branch above (10 vs 14). Treated as
+        // intentional; revisit if exile should outvalue destroy here too.
+        v += sev === 1 ? 3 : sev === 2 ? 4 : 12;
       }
     }
     // damage with a mass scope values like the legacy damageAll.
@@ -1717,10 +1720,6 @@ function pickBestActivation(state, who, abilityActs) {
       // no current activated abilities have that shape.
       const isSelf = !eff.target || eff.scope === 'self';
       score = isSelf ? -50 : 8;
-    } else if (eff.kind === 'gain_life') {
-      // Worth it only when low.
-      const ourLife = state[who].life;
-      score = ourLife <= 6 ? 6 : ourLife <= 12 ? 2 : 0;
     } else if (eff.kind === 'move_card' && eff.from_zone === 'library'
         && (eff.to_zone === 'battlefield' || (eff.to_zone === 'hand' && eff.selector === 'library_search'))) {
       // Tutoring / land-fetch is consistently strong (collapsed search*).

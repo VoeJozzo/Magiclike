@@ -4,7 +4,7 @@ Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folde
 
 ## Version
 
-**Current: `v2.0.35`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.0.36`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -74,6 +74,31 @@ Deleted the `destroy_and_sticker_slot` handler + all its classification/scoring/
 text sites. Behavior note: under atomic decomposition an indestructible target now
 gets scarred-but-not-destroyed (the monolith fizzled both halves) — an acceptable
 edge on a boss-targeted creature.
+
+v2.0.36: added dev-only lint tooling + fixed the 5 bug-smells it immediately
+found. ESLint (flat config, `reference/html-proto/eslint.config.js`) +
+eslint-plugin-sonarjs, run via `npm run lint` from `reference/html-proto/`.
+Dev-only — NOT in the runtime (no build step; Pages serves raw files);
+`node_modules/` git-ignored, `package-lock.json` committed. Scope is narrow on
+purpose: high-signal BUG rules only (sonarjs/no-identical-expressions +
+no-identical-conditions + no-all-duplicated-branches, plus core no-dupe-else-if /
+no-self-compare / no-constant-binary-expression / no-unreachable / dupe-keys|args|
+case / etc.), no stylistic rules; `no-undef` off (plain <script>s share globals,
+no modules). The motivating `x || x` case (v2.0.33's grant_haste) is exactly what
+sonarjs/no-identical-expressions catches — verified. First run found 5 real
+issues, all fixed: (1) ai.js single-target severity had a dead `sev===3?12:12`
+ternary (collapsed to `12`, behavior-identical; left a note that destroy & exile
+both score 12 here vs 10/14 in the all_opps branch — flagged as a tuning
+question). (2) stickers.js had an unreachable `damage && scope` label branch
+after the general `damage` branch, so mass-damage stickers were mislabeled
+'damage' instead of 'damage to all' — folded the scope check into the damage
+branch (cosmetic fix). (3) ai.js had a DUPLICATE `else if (eff.kind ===
+'gain_life')` in the activated-ability scoring chain — the second (with a
+"valuable only when low" heuristic: `ourLife<=6?6:ourLife<=12?2:0`) was dead,
+since the first gain_life branch always caught it. Removed the dead branch
+(behavior-preserving); OPEN QUESTION for the user — was that low-life heuristic
+the intended scoring for gain_life abilities (in which case swap it in)? 1161
+green, lint clean.
 
 v2.0.35: unblocked + did the render() you/opp counter loop (review item #3,
 deferred from v2.0.34). The five mirror pairs (life/library/graveyard/exile/hand
@@ -443,7 +468,14 @@ Node-based regression suite under `tests/`. Run from `reference/html-proto/`:
 ```
 node tests/run_all.js                       # 482 assertions, ~2s
 node tests/selfplay_harness.js 500 bughunt  # AI vs AI, ~20s
+npm install   # one-time, pulls the dev-only lint deps (node_modules git-ignored)
+npm run lint                                 # ESLint + sonarjs bug-smell scan
 ```
+
+`npm run lint` is dev-only static analysis (not part of the runtime — no build
+step). Narrow, high-signal bug rules (`no-identical-expressions` = the `x || x`
+catcher, duplicate conditions/branches, unreachable code); see
+`eslint.config.js`. Treat a clean lint as part of "done" alongside green tests.
 
 `tests/_setup.js` boots the engine in Node by stubbing the DOM and concatenating the JS modules in script-tag order. Coverage is engine-level (card synthesis, sticker application, target legality, trigger generation, AI burn lethal, modal helper). See `tests/README.md` for the file-by-file breakdown.
 

@@ -177,13 +177,12 @@ function empowerRollLabel(card, roll) {
     // Disambiguate damage direction so self-recoil reads distinctly from spell payload.
     if (eff.kind === 'damage') {
       const t = eff.target;
-      fieldLabel = t === 'self'   ? 'self damage'
+      fieldLabel = eff.scope    ? 'damage to all'
+                 : t === 'self'   ? 'self damage'
                  : t === 'player' ? 'damage to opponent'
                  : 'damage';
     } else if (eff.kind === 'gain_life') {
       fieldLabel = 'life gain';
-    } else if (eff.kind === 'damage' && eff.scope) {
-      fieldLabel = 'damage to all';
     } else if (eff.kind === 'move_card' && eff.from_zone === 'library' && eff.to_zone === 'hand') {
       fieldLabel = 'cards drawn';
     } else {
