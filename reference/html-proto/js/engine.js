@@ -1781,20 +1781,23 @@ const EFFECTS = {
     }
     log(`${ctx.sourceName} applies a lasting change to ${f.card.name}.`, 'sp');
   },
-  // Archdemon Bargains ETB. Player picks 1-5, stashed on demon for dies trigger payoff.
-  // Always prompts player even when boss casts (player is the dealmaker).
+  // Archdemon Bargains ETB. The CONTROLLER is the dealmaker: they pick 1-5,
+  // get that many stickers now, and the number is stashed on the demon so the
+  // dies trigger pays the OPPONENT that many. When the boss controls it the
+  // boss (AI) chooses — not the human. (Was hardcoded who:'you', which let the
+  // human choose even for the boss's own Archdemon.)
   bargain_sticker_self(ctx, params) {
     const sourceCard = findCard(ctx.sourceIid);
     if (!sourceCard) return;
     G.pendingNumberChoice = {
-      who: 'you',
+      who: sourceCard.controller,
       source: ctx.sourceName,
       sourceIid: ctx.sourceIid,
       min: 1,
       max: 5,
       onChoose: 'bargainEtb',
     };
-    log(`${ctx.sourceName} — choose a number from 1 to 5.`, 'sp');
+    log(`${ctx.sourceName} — ${pname(sourceCard.controller)} chooses a number from 1 to 5.`, 'sp');
   },
   // Phase 2 (dies). Read bargainsNum stashed on dying card, sticker OTHER side as compensation.
   bargain_sticker_other(ctx) {

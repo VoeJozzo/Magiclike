@@ -4,7 +4,7 @@ Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folde
 
 ## Version
 
-**Current: `v2.0.37`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.0.38`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -74,6 +74,24 @@ Deleted the `destroy_and_sticker_slot` handler + all its classification/scoring/
 text sites. Behavior note: under atomic decomposition an indestructible target now
 gets scarred-but-not-destroyed (the monolith fizzled both halves) — an acceptable
 edge on a boss-targeted creature.
+
+v2.0.38: two gameplay bug fixes (user-reported). (1) Archdemon of Bargains ETB
+number-choice was hardcoded `who: 'you'`, so when the BOSS controlled the demon
+the HUMAN got the prompt — choosing the boss's ETB sticker count AND their own
+death payout. Now follows the demon's CONTROLLER (the dealmaker):
+`who: sourceCard.controller`. When the boss controls it the boss (AI) chooses;
+the human only chooses when they control it (cast/stolen). The ETB→controller /
+LTB→opponent recipients were already correct — only the chooser was wrong.
+(Note: the AI resolves its bargain pick at the min, 1 — a weak choice for a boss
+that wants a buffed board; AI-tuning follow-up, not a bug.) Updated
+choice_prompts_test, which had encoded the bug (opp-controlled demon yet expected
+`who === 'you'`). (2) Empower on signed values: `applyEmpowerRoll` did
+`field += amount`, so a -2 debuff (Sicken's pump) empowered to -1 (WEAKER), not
+-3. Now amplifies magnitude in the field's existing direction
+(`cur + (cur < 0 ? -amount : amount)`) — fixes pump debuffs and negative
+gain_life (drains); positive fields (damage, buffs, counts) unchanged. New
+test_bargain_chooser_and_empower.js (9 checks). 1170 green, lint clean,
+150-game selfplay clean.
 
 v2.0.37: AI scoring — single-target exile now outvalues destroy (user call).
 In `spellValueForEffects`, the single-target `affect_creature` severity value was

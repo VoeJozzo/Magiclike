@@ -106,6 +106,9 @@ const CATEGORY_A = [
   // Sandbox mode — RUN-less boot + spawning complete card instances onto the
   // battlefield (engine-level; the floating panel DOM is browser-only).
   'test_sandbox_spawn.js',
+  // Archdemon bargain chooser follows the controller + empower amplifies
+  // magnitude in the field's direction (signed debuffs go more negative).
+  'test_bargain_chooser_and_empower.js',
 ];
 
 const TESTS_DIR = __dirname;

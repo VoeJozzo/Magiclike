@@ -226,7 +226,10 @@ function applyEmpowerRoll(card, roll, amount) {
     return;
   }
   const cur = (typeof v === 'number') ? v : 0;
-  e[field] = cur + amount;
+  // Empower amplifies the field's MAGNITUDE in its existing direction: a +2 pump
+  // goes to +3, but a -2 debuff (Sicken) or a negative drain goes to -3, not -1.
+  // A flat `+= amount` would weaken every negative-valued field.
+  e[field] = cur + (cur < 0 ? -amount : amount);
 }
 
 // Roll a creature subtype for targetSlotIdx, weighted by deck token frequency.
