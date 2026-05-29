@@ -105,23 +105,30 @@ if (!CARDS['archdemonBargains']) {
   ENGINE.executeAction(G.pendingNumberChoice.who, { type: 'numberChoice', number: CHOSEN });
   check('ETB stashes the chosen number on the demon', demon.bargainsNum === CHOSEN, 'got ' + demon.bargainsNum);
   // LTB half: build the dies ctx exactly as runTriggerEffects does (event carries
-  // the dying card as subject_card). The handler logs "applying N sticker(s)" —
-  // assert on N read (deterministic), NOT on stickers physically placed (random
-  // sticker kinds + appliesTo eligibility make placement count nondeterministic;
-  // that was the flake in the first cut of this test).
-  const recentLog = (G) => (G.log[0] && G.log[0].msg) || '';
+  // the dying card as subject_card). Give the recipient ('you' = opp(controller))
+  // permanents so stickers have somewhere to land. Assert on N READ (the handler's
+  // "applying N sticker(s)" log line), NOT on stickers physically placed — random
+  // sticker kinds + appliesTo eligibility make the placed count nondeterministic
+  // (the flake in the first cut of this test). Scan the whole log because
+  // applyRandomStickersToSide appends per-sticker lines after the summary.
+  for (let i = 0; i < 6; i++) {
+    const perm = mk('plains', 'you'); perm.iid = 8200 + i; G.you.battlefield.push(perm);
+  }
+  const logSays = (re) => G.log.some(e => re.test(e.msg));
+  G.log.length = 0;   // isolate this effect's log lines
   ENGINE.applyEffect(
     { controller: 'opp', sourceName: 'Archdemon of Bargains', sourceIid: demon.iid, sourceCard: demon,
       event: { type: 'card_zone_change', subject_card: demon, subject_iid: demon.iid, from_zone: 'battlefield', to_zone: 'graveyard' } },
     { kind: 'bargain_sticker_other' }, null);
   check('LTB reads N=4 from subject_card (not the old default of 1)',
-    /applying 4 sticker/.test(recentLog(G)), recentLog(G));
+    logSays(/applying 4 sticker/), (G.log[0] || {}).msg);
   // Also via ctx.sourceCard fallback (no event) — the demon in graveyard still carries bargainsNum.
+  G.log.length = 0;
   ENGINE.applyEffect(
     { controller: 'opp', sourceName: 'Archdemon of Bargains', sourceIid: demon.iid, sourceCard: demon },
     { kind: 'bargain_sticker_other' }, null);
   check('LTB also reads N=4 via sourceCard fallback (no event)',
-    /applying 4 sticker/.test(recentLog(G)), recentLog(G));
+    logSays(/applying 4 sticker/), (G.log[0] || {}).msg);
 }
 
 console.log('\n=== AI bargain pick scales with position (not always the minimum) ===');
