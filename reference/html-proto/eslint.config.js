@@ -16,7 +16,7 @@ const sonarjs = require('eslint-plugin-sonarjs');
 
 module.exports = [
   {
-    files: ['js/**/*.js'],
+    files: ['js/**/*.js', 'tests/**/*.js'],
     plugins: { sonarjs },
     languageOptions: {
       ecmaVersion: 2022,

@@ -90,7 +90,6 @@ console.log('\n=== the two pathways agree on merged slot data (identical end sta
   igSlots.push({ tplId: stapleTpl, stickers: ['cost_minus_1'], empowerRolls: [], subtypeRolls: [] });
   let iid = 8800;
   const mkPerm = (tplId, slotIdx) => {
-    const c = ENGINE.makeToken ? null : null;
     const inst = JSON.parse(JSON.stringify(CARDS[tplId]));
     return Object.assign(inst, { iid: iid++, tplId, controller: 'you', owner: 'you', slotIdx,
       stickers: tplId === baseTpl ? ['plus1_plus1'] : ['cost_minus_1'], empowerRolls: [], subtypeRolls: [],

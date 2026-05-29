@@ -6,7 +6,7 @@
     "test": "tests"
   },
   "scripts": {
-    "lint": "eslint js/"
+    "lint": "eslint js/ tests/"
   },
   "keywords": [],
   "author": "",
