@@ -99,47 +99,13 @@ console.log('\n=== v1->v2 save migration translates all tplId fields ===');
     migrated.runState.oppDecks[1][1] === 'merfolkLooter');
 }
 
-console.log('\n=== PICKLOG load-time translation rewrites old tplIds ===');
-{
-  // Seed localStorage with a picklog blob carrying legacy tplIds, then
-  // make PICKLOG reload from scratch. The data we read back via
-  // exportData() should contain the new ids.
-  const stale = {
-    schemaVersion: 1,
-    drafts: [{
-      timestamp: 0,
-      colors: 'R',
-      picks: [
-        { picked: 'fireImp', offered: ['fireImp', 'bolt', 'archmage'] },
-        { picked: 'merfolk', offered: ['shock', 'merfolk', 'zealot'] },
-      ],
-    }],
-  };
-  localStorage.setItem('magiclike_picklog_v1', JSON.stringify(stale));
-  // Force a fresh load: the PICKLOG IIFE caches `data` in closure scope,
-  // and there's no public reset. Easiest path is to read via the public
-  // surface (exportData) AFTER the test seeds localStorage, but
-  // ensureLoaded() was already called during loadEngine. So we use the
-  // private translation logic directly: call renameTplId on each tplId
-  // in the seeded data and assert the mapping is what ensureLoaded
-  // would have produced. (An integration-style test would need a way to
-  // reset PICKLOG's closure; that's a separate cleanup.)
-  for (const draft of stale.drafts) {
-    for (const pick of draft.picks) {
-      pick.picked = renameTplId(pick.picked);
-      pick.offered = pick.offered.map(renameTplId);
-    }
-  }
-  const p = stale.drafts[0].picks;
-  check('picked fireImp -> cinderSprite', p[0].picked === 'cinderSprite');
-  check('offered translated (3 entries)',
-    p[0].offered[0] === 'cinderSprite' &&
-    p[0].offered[1] === 'bolt' &&
-    p[0].offered[2] === 'archmageOfVeils');
-  check('picked merfolk -> merfolkLooter', p[1].picked === 'merfolkLooter');
-  check('offered translated (zealot -> holyZealot)',
-    p[1].offered[2] === 'holyZealot');
-}
+// NOTE: a "PICKLOG load-time translation" section was deleted here. It seeded
+// localStorage with legacy tplIds but then never exercised PICKLOG's load path
+// (the IIFE had already cached `data` and has no public reset) — instead it
+// called renameTplId directly on its own seed data and asserted the result, i.e.
+// it re-tested renameTplId (already covered above) and asserted nothing about
+// PICKLOG. The comment admitted this. A real integration test would need a
+// PICKLOG closure reset; until then there's nothing genuine to assert.
 
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');
 process.exit(fail > 0 ? 1 : 0);
