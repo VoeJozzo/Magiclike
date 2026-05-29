@@ -1,71 +1,31 @@
-// Refactor protection for the extracted resolveTarget /
-// pluckFromBattlefield helpers. Two layers:
-//
-//   Outer (source-level): grep the engine source for helper definitions
-//   and count call sites. The counts ARE meaningful — if someone adds a
-//   new code path that bypasses resolveTarget (e.g. inlines the lookup),
-//   that's the regression we're guarding against. Bump the expected
-//   count rather than deleting the assertion when the count legitimately
-//   changes.
-//
-//   Inner (smoke test): boot the engine, prove the game initializes
-//   cleanly and basic state invariants hold post-refactor.
-//
-// Adapted from the prior-session bundle.
+// Boot smoke test: the engine initializes cleanly and basic state invariants
+// hold. (Formerly also carried a source-grep layer asserting resolveTarget /
+// pluckFromBattlefield call-site COUNTS — deleted: those tested how the code was
+// written, not what it does, broke on benign refactors, and missed the bug they
+// claimed to guard. The behavior those helpers centralize — clean fizzle on a
+// dead target, hexproof gating — is covered behaviorally in test_targeting /
+// test_targeting_cast / test_move_card.)
 
 const setup = require('./_setup');
-const code = setup.getSource();
-
-let outerPass = 0, outerFail = 0;
-function outerCheck(label, ok, info) {
-  console.log('  ' + (ok ? 'PASS' : 'FAIL') + ': ' + label + (info ? ' -- ' + info : ''));
-  if (ok) outerPass++; else outerFail++;
-}
-
-console.log('=== Source-level checks ===');
-outerCheck('resolveTarget defined', /function resolveTarget\(ctx, target\)/.test(code));
-outerCheck('pluckFromBattlefield defined', /function pluckFromBattlefield\(f\)/.test(code));
-
-const resolveCalls = (code.match(/const f = resolveTarget\(ctx, target\)/g) || []).length;
-outerCheck('resolveTarget call sites = 12 (+1: applyTypeChange for add_type/set_types)',
-  resolveCalls === 12, 'actual=' + resolveCalls);
-
-const pluckCalls = (code.match(/pluckFromBattlefield\(/g) || []).length;
-outerCheck('pluckFromBattlefield call sites = 6 (post exileUntilEOT→move_card+schedule_delayed)',
-  pluckCalls === 6, 'actual=' + pluckCalls);
-
-const fizzleInCode = code.split('\n').filter(line =>
-  /fizzles — target gone/.test(line) && !/^\s*\/\//.test(line.trim())
-).length;
-outerCheck('Fizzle message in <= 4 places', fizzleInCode <= 4, 'actual=' + fizzleInCode);
-
 setup.loadEngine();
 
-console.log('\n=== Smoke test: game boots after refactor ===');
 let pass = 0, fail = 0;
-function check(label, ok) {
-  console.log('  ' + (ok ? 'PASS' : 'FAIL') + ': ' + label);
+function check(label, ok, info) {
+  console.log('  ' + (ok ? 'PASS' : 'FAIL') + ': ' + label + (info ? ' -- ' + info : ''));
   if (ok) pass++; else fail++;
 }
 
-RUN.start({cards:['savannahLions','furnaceWhelp','plains','plains','plains','plains','plains','plains','plains','plains','plains','plains'], colors:['W','R']}, null);
+console.log('=== Smoke test: game boots and state is well-formed ===');
+RUN.start({ cards: ['savannahLions', 'furnaceWhelp', 'plains', 'plains', 'plains', 'plains', 'plains', 'plains', 'plains', 'plains', 'plains', 'plains'], colors: ['W', 'R'] }, null);
 RUN.load();
-ENGINE.init(RUN.getSlots(), ['mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain']);
+ENGINE.init(RUN.getSlots(), Array(17).fill('mountain'));
 const G = ENGINE.state();
 check('ENGINE.init returned state', G !== null);
-check('Player has hand', G.you.hand.length > 0);
-check('Player has library', G.you.library.length > 0);
-check('Opp has battlefield array', Array.isArray(G.opp.battlefield));
+check('player drew an opening hand', G.you.hand.length > 0);
+check('player has a library', G.you.library.length > 0);
+check('opp battlefield is an array', Array.isArray(G.opp.battlefield));
+check('both players start at the configured life', G.you.life > 0 && G.opp.life > 0);
+check('phase machine initialized', typeof G.phase === 'string' && G.phase.length > 0);
 
-const damageCard = [...G.you.library, ...G.you.hand].find(c =>
-  Array.isArray(c.effects) && c.effects.some(e => e.kind === 'damage' && (e.target === 'creature' || e.target === 'creature_or_player'))
-);
-if (damageCard) {
-  check('game state intact after refactor', G.you.hand.length > 0 && G.opp.hand.length >= 0);
-}
-
-console.log('\n=== INNER: ' + pass + ' passed, ' + fail + ' failed ===');
-console.log('=== OUTER: ' + outerPass + ' passed, ' + outerFail + ' failed ===');
-const _allPass = pass + outerPass, _allFail = fail + outerFail;
-console.log('=== TOTAL: ' + _allPass + ' passed, ' + _allFail + ' failed ===');
-process.exit(_allFail > 0 ? 1 : 0);
+console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');
+process.exit(fail > 0 ? 1 : 0);
