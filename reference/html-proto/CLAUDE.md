@@ -4,7 +4,7 @@ Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folde
 
 ## Version
 
-**Current: `v2.0.34`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.0.35`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -74,6 +74,17 @@ Deleted the `destroy_and_sticker_slot` handler + all its classification/scoring/
 text sites. Behavior note: under atomic decomposition an indestructible target now
 gets scarred-but-not-destroyed (the monolith fizzled both halves) — an acceptable
 edge on a boss-targeted creature.
+
+v2.0.35: unblocked + did the render() you/opp counter loop (review item #3,
+deferred from v2.0.34). The five mirror pairs (life/library/graveyard/exile/hand
+counts) collapsed into one `for (const w of ['you','opp'])` loop. The blocker
+was an asymmetric element ID: the player's hand-COUNT span was `youHand2` (the
+bare `youHand` id is the player's card *container*) while the opponent's was
+`oppHand` — so a naive `w+'Hand'` loop would have written the count into the
+card container and frozen the real count, a silent bug. Fixed by normalizing the
+two count spans to `youHandCount`/`oppHandCount` (HTML + render.js); the `youHand`
+container and `oppHandView` cardback area are untouched. Verified end-to-end (no
+CSS or other JS referenced the old ids), so no behavior change. 1161 green.
 
 v2.0.34: de-dup the two button-construction hotspots the v2.0.33 review flagged
 (behavior-preserving; pixel-identical output). (1) Start screen: ~7 buttons each

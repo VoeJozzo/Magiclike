@@ -40,11 +40,16 @@ function render() {
   CONTROLLER.clearUiOnPhaseChange();
   const pt = CONTROLLER.pendingTarget();
 
-  setText('youLife', G.you.life); setText('oppLife', G.opp.life);
-  setText('youLib', G.you.library.length); setText('oppLib', G.opp.library.length);
-  setText('youGv', G.you.graveyard.length); setText('oppGv', G.opp.graveyard.length);
-  setText('youEx', (G.you.exile || []).length); setText('oppEx', (G.opp.exile || []).length);
-  setText('youHand2', G.you.hand.length); setText('oppHand', G.opp.hand.length);
+  // Mirror counters for both seats. Element IDs follow `<side><Field>` — note
+  // the hand COUNT is `<side>HandCount` (the bare `youHand` id is the player's
+  // card container, not a count), so the two stay symmetric for this loop.
+  for (const w of ['you', 'opp']) {
+    setText(w + 'Life', G[w].life);
+    setText(w + 'Lib', G[w].library.length);
+    setText(w + 'Gv', G[w].graveyard.length);
+    setText(w + 'Ex', (G[w].exile || []).length);
+    setText(w + 'HandCount', G[w].hand.length);
+  }
   setText('youName', 'You' + (G.activePlayer === 'you' ? ' ◉' : ''));
   setText('oppName', 'Opponent' + (G.activePlayer === 'opp' ? ' ◉' : ''));
 
