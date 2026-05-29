@@ -1,11 +1,15 @@
-// Golden test for the condId -> composable `condition` migration (Slice 2 /
-// E2, step 6). Loads the migrated card pool and proves:
-//   1. Every trigger archetype is present in the EXACT count it had before
-//      migration (the pre-migration cond_id audit) -- so no card was dropped,
-//      mis-mapped, or double-counted.
+// condId -> composable `condition` migration (Slice 2 / E2, step 6). The
+// migration is long done; the ONGOING invariants it established are what earn
+// this test's keep:
+//   1. Every known trigger archetype is still PRESENT and classifiable, and no
+//      trigger is unclassified (catches a dropped/mis-mapped condition). The
+//      pre-migration EXACT counts were removed — they were a calcified snapshot
+//      that broke every time a triggered card was added, for no bug caught.
 //   2. No legacy cond_id / params / self_only survives on any trigger.
 //   3. Representative real cards evaluate correctly (fire on the positive
 //      scenario, stay silent on the negative) via the composable evaluator.
+//   4. condId consumers (card-text preambles, AI ETB-detection) recover via
+//      triggerArchetype.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -25,45 +29,43 @@ function condSig(event, cond) {
   return event + ' | ' + terms.join(', ');
 }
 
-// Pre-migration audit counts (from `grep "cond_id"` over cards/*/card.json).
-const EXPECTED = {
-  'card_zone_change | this_card, card_moves(anywhere, battlefield)': ['thisEnters', 42],
-  'card_zone_change | another_card, card_is_creature, controlled_by(you), card_moves(anywhere, battlefield)': ['anotherCreatureYouEntersStrict', 2],
-  'card_zone_change | another_card, controlled_by(you), card_has_subtype(*), card_moves(anywhere, battlefield)': ['anotherCreatureYouEntersOfSubtype', 3],
-  'attacks | this_card': ['thisAttacks', 16],
-  'attacks | this_card, lost_life_this_turn(opp)': ['thisAttacksAfterOppLifeLoss', 1],
-  'attacks | controlled_by(you), card_has_subtype(*)': ['creatureYouAttacksOfSubtype', 3],
-  'card_zone_change | this_card, card_moves(battlefield, graveyard)': ['thisDies', 16],
-  'card_zone_change | this_card, card_moves(battlefield, anywhere)': ['thisLeaves', 1],
-  'card_zone_change | another_card, card_is_creature, card_moves(battlefield, graveyard)': ['anotherCreatureDies', 2],
-  'card_zone_change | card_is_creature, card_moves(battlefield, graveyard)': ['anyCardDies', 1],
-  'card_zone_change | another_card, card_is_creature, card_moves(battlefield, graveyard), card_damaged_by_this': ['thisKillsCreature', 2],
-  'life_changed | is_life_gain, affected_player_is(you)': ['youGainLife', 1],
-  'spell_cast | another_card, controlled_by(you)': ['youCastSpell', 6],
-  'spell_cast | another_card, controlled_by(you), card_has_effect(counter)': ['youCastCounterspell', 1],
+// The known trigger archetypes (signature -> archetype name). Each must still be
+// PRESENT in the pool; the migration's real invariant is "no archetype was
+// dropped or mis-mapped, and nothing is unclassified" — NOT the exact per-
+// archetype card count (which moves every time a triggered card is added).
+const ARCHETYPES = {
+  'card_zone_change | this_card, card_moves(anywhere, battlefield)': 'thisEnters',
+  'card_zone_change | another_card, card_is_creature, controlled_by(you), card_moves(anywhere, battlefield)': 'anotherCreatureYouEntersStrict',
+  'card_zone_change | another_card, controlled_by(you), card_has_subtype(*), card_moves(anywhere, battlefield)': 'anotherCreatureYouEntersOfSubtype',
+  'attacks | this_card': 'thisAttacks',
+  'attacks | this_card, lost_life_this_turn(opp)': 'thisAttacksAfterOppLifeLoss',
+  'attacks | controlled_by(you), card_has_subtype(*)': 'creatureYouAttacksOfSubtype',
+  'card_zone_change | this_card, card_moves(battlefield, graveyard)': 'thisDies',
+  'card_zone_change | this_card, card_moves(battlefield, anywhere)': 'thisLeaves',
+  'card_zone_change | another_card, card_is_creature, card_moves(battlefield, graveyard)': 'anotherCreatureDies',
+  'card_zone_change | card_is_creature, card_moves(battlefield, graveyard)': 'anyCardDies',
+  'card_zone_change | another_card, card_is_creature, card_moves(battlefield, graveyard), card_damaged_by_this': 'thisKillsCreature',
+  'life_changed | is_life_gain, affected_player_is(you)': 'youGainLife',
+  'spell_cast | another_card, controlled_by(you)': 'youCastSpell',
+  'spell_cast | another_card, controlled_by(you), card_has_effect(counter)': 'youCastCounterspell',
 };
 
-// ── 1. Archetype distribution matches the pre-migration audit ────────────
-console.log('=== migrated archetype counts match pre-migration audit ===');
+// ── 1. Every archetype present + nothing unclassified ────────────────────
+console.log('=== every known archetype present, no trigger unclassified ===');
 (() => {
   const counts = {};
-  let unclassified = 0, totalTriggers = 0;
+  let unclassified = 0;
   for (const card of Object.values(CARDS)) {
     for (const trig of (card.triggers || [])) {
-      totalTriggers++;
       const sig = condSig(trig.event, trig.condition);
-      if (sig && EXPECTED[sig]) counts[sig] = (counts[sig] || 0) + 1;
+      if (sig && ARCHETYPES[sig]) counts[sig] = (counts[sig] || 0) + 1;
       else { unclassified++; console.log('    unclassified trigger on', card.tplId, ':', sig); }
     }
   }
-  let grand = 0;
-  for (const [sig, [name, want]] of Object.entries(EXPECTED)) {
-    const got = counts[sig] || 0;
-    grand += got;
-    check(`${name}: ${want}`, got === want, `got ${got}`);
+  for (const [sig, name] of Object.entries(ARCHETYPES)) {
+    check(`${name}: present`, (counts[sig] || 0) >= 1, `got ${counts[sig] || 0}`);
   }
-  check('every migrated trigger classified (0 unclassified)', unclassified === 0, `${unclassified} unclassified`);
-  check('total migrated triggers = 97', grand === 97, `got ${grand}`);
+  check('every trigger classifies to a known archetype (0 unclassified)', unclassified === 0, `${unclassified} unclassified`);
 })();
 
 // ── 2. No legacy trigger fields survive ──────────────────────────────────
