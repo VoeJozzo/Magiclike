@@ -15,25 +15,16 @@ This file is a parking lot for deferred work on the html-proto, not a session ag
 ## Open
 
 ### Divergence-tracked work
-The following items live in `docs/DIVERGENCE.md` as their primary tracker. Listed here so they're visible in the proto-side BACKLOG queue.
-
-**Major refactor plans** (own docs):
-- **E1 + E2** — zone-change event unification + composable predicates (both engines). Plan: [`../../docs/plan-zone-change-and-composable-predicates.md`](../../docs/plan-zone-change-and-composable-predicates.md).
-- **Effects refactor** — 38 proto effects → 19 atomic registry; fixes the duplicate `gainControl` bug (engine.js:2123 dead-code), unifies naming to snake_case, decomposes compounds. Plan: [`../../docs/plan-effects-refactor.md`](../../docs/plan-effects-refactor.md). Sequenced AFTER E1/E2.
-
-**Individual items:**
+The following items live in `docs/DIVERGENCE.md` as their primary tracker. Listed here so they're visible in the proto-side BACKLOG queue. The big proto-side refactors shipped in v2.0.x and are no longer open here — **D2** (`pump`/`add_counter` collapse), **E1** (zone-change event unification), and **E2** (composable predicates) are all marked *PROTO: DONE* in DIVERGENCE; their Godot halves remain (tracked in `docs/BACKLOG.md`). What's still open on the proto side:
 
 - **B2** — clear mana pool at every phase boundary, not just CLEANUP (MTG 106.4).
 - **B3** — CLEANUP step ordering harmonization.
-- **D1** — drop the multi-effect target-snapshot system; align on Godot's live-read approach (MTG canon).
-- **D2** — consolidate `pump` + `addCounter` into one `pump` effect with `duration` parameter.
-- **D4** — `gain_life` signed-delta with direction-based event emission (both engines).
-- **E1 + E2** — zone-change event unification + composable predicate refactor (both engines). Detailed plan: [`docs/plan-zone-change-and-composable-predicates.md`](../../docs/plan-zone-change-and-composable-predicates.md). Effort: L (~34h).
+- **D1** — drop the multi-effect target-snapshot system; align on the MTG-canonical hybrid (live-read + last-known-info at zone-exit). Effects-refactor §3.6 remnant.
+- **D4** — `gain_life` signed-delta with direction-based event emission (the value is already signed; the sign→event-direction half remains).
 - **F2** — preserve marked damage on indestructibles (don't clear `damage = 0` during SBA).
 
 ### Other
 
-- **Optional paid ETB for Land+Spell staples (rebalance + new machinery).** Today a spell stapled onto a land becomes a *free* ETB trigger (engine.js Ld+Sp branch) — strong, because you get the spell's effect for the price of a land. Design intent going forward: make it an *optional, paid* ETB — "when this land enters, you **may** pay {the spell's mana cost}; if you do, [spell effect]." This is **new design work, not part of the effects/staple refactor** (`docs/plan-effects-refactor.md` §3.10 only cleans up the existing free version). Requires two engine primitives that don't exist yet: (1) **optional ("may") triggers** — engine.js:1762 explicitly notes triggers are mandatory today; (2) **cost-payment during trigger resolution**. Both are reusable beyond this card (kicker, "you may pay" ETBs, costed triggers), so worth building as general machinery. Eventually a both-engines concern once Godot has a staple system. Rejected alternative: make the spell-half a repeatable `{cost}: effect` activated ability — zero new machinery but repeatable (different balance problem) and loses the ETB flavor.
 - **SVG disc for {C}/{T}/{X}/numeric mana pips** — the 5 WUBRG pips are SVG (`assets/mana/{W,U,B,R,G}.svg`); the rest still use CSS letter-on-disc. Design an SVG disc treatment to match the WUBRG family (number content stays — by design).
 - **Tighten remaining bare `catch (_) {}` blocks** — `controller.js` L40 (`entry.prevFocus.focus()`) and L279 (fullscreen `req.call(el).catch(()=>{})`) silently swallow errors. Tighten to `console.warn` when convenient. (The 7 `try { render(); } catch (_) {}` repeats in `renderSettings` were retired in v1.0.182 — `render()` now deep-guards `!G || !G.you || !G.opp || !G.phase`.)
 - **`step()` phase-handler refactor** (`engine.js:6322`) — user wants to examine the turn state machine more deeply before approving structural changes.
