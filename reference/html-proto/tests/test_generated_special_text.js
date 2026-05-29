@@ -29,7 +29,7 @@ console.log('\n=== the moved cards generate accurate text (not sentinel/empty) =
   const want = {
     vileEdict: 'Target opponent rips a permanent they control.',
     symmetricize: "Target creature's controller equalizes its power, toughness, or cost.",
-    bleach: 'Target creature becomes colorless, including its mana cost, permanently.',
+    bleach: 'Exile target creature; it becomes colorless, including its mana cost, permanently.',
     embargo: "Return target creature to its owner's hand; it costs {1} more permanently.",
   };
   for (const [id, exp] of Object.entries(want)) check(id + ' generates: "' + exp + '"', r(CARDS[id]) === exp, r(CARDS[id]));

@@ -1,13 +1,13 @@
 // Boss special-removal AI casting (longstanding bug): the two boss decks —
 // Archdemon of Bargains (vileEdict, scarification) and The Balancer
-// (symmetricize, embargo) — never cast their signature removal because
+// (symmetricize, embargo, bleach) — never cast their signature removal because
 // the AI's per-target scorer (scoreSpellTargetForMode) had no branch for
-// rip (Vile Edict: chooses+annihilate+rip) / symmetricize / scarification (apply_sticker+affect_creature) / move_card-bounce,
-// and picked the apply_sticker rider as embargo's primary effect. All scored
-// 0 → the AI passed. This pins that each now scores positive and gets cast on a
-// valid target (without breaking flicker, which shares the bf→exile shape).
-// (Bleach is intentionally NOT here: as of v2.0.43 it's a recolor/cost-fix, not
-// removal, so the AI shouldn't cast it on an opponent.)
+// rip (Vile Edict: chooses+annihilate+rip) / symmetricize / scarification (apply_sticker+affect_creature) / move_card-bounce /
+// plain-exile, and picked the apply_sticker rider as embargo/bleach's primary
+// effect. All scored 0 → the AI passed. This pins that each now scores positive
+// and gets cast on a valid target (without breaking flicker, which shares the
+// bf→exile shape). (Bleach exiles + bleaches the cost — the AI scores the
+// move_card exile, not the apply_sticker rider.)
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -52,6 +52,7 @@ check('scarification — AI casts it (destroy + scar slot)', trial('scarificatio
 console.log('\n=== The Balancer specials ===');
 check('symmetricize — AI casts it (equalize opp creature)', trial('symmetricize', 'you'));
 check('embargo — AI casts it (bounce, scoring the move_card not the sticker)', trial('embargo', 'you'));
+check('bleach — AI casts it (exile, scoring the move_card not the sticker)', trial('bleach', 'you'));
 
 console.log('\n=== change_control family (same silent-uncast class) ===');
 check('mindControl — AI casts it (permanent steal of control)', trial('mindControl', 'you'));
@@ -91,10 +92,11 @@ console.log('\n=== string-severity scoring (regression: severity read via _sevNu
   if (tapSpell) check('AI does NOT tap an already-tapped creature (tap severity read correctly)', !trialTapped(tapSpell));
 })();
 
-console.log('\n=== negative: do NOT embargo your own creature ===');
+console.log('\n=== negative: do NOT bleach/embargo your own creature ===');
 (() => {
   // targetSide=opp puts the only creature on the caster's side — removal must
   // not fire on it (no opp-controlled target). AI should pass / not cast it.
+  check('bleach does not target own creature', !trial('bleach', 'opp'));
   check('embargo does not target own creature', !trial('embargo', 'opp'));
 })();
 

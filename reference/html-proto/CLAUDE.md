@@ -4,7 +4,7 @@ Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folde
 
 ## Version
 
-**Current: `v2.0.43`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.0.44`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -75,23 +75,21 @@ text sites. Behavior note: under atomic decomposition an indestructible target n
 gets scarred-but-not-destroyed (the monolith fizzled both halves) — an acceptable
 edge on a boss-targeted creature.
 
-v2.0.43: fixed Bleach — its signature effect was inert. It was `[apply_sticker
-set_color C, move_card exile]`: the exile removed the creature, so "It is
-colorless. Forever." did nothing (color is read only by target filters — just
-Doom Blade's `not_color` — and an exiled creature can't be targeted; opp
-creatures don't persist the slot sticker either). Per the user, Bleach's intent
-is to make a creature colorless **including its mana cost** — a recolor/cost-fix
-tool, not removal. Fix: (1) `set_color C` now also folds the target's colored
-cost pips into generic `{C}` (e.g. `{W}{B}{B}` → `{3}`), so the creature becomes
-castable off any mana; runtime card + persisted slot both update (the "Forever").
-(2) Dropped the `move_card` exile — Bleach is `[apply_sticker]` only now. (3)
-Added card-text for a standalone `apply_sticker(set_color)` →
-"Target creature becomes colorless, including its mana cost, permanently." Tests
-(test_balancer, test_generated_special_text, test_boss_removal_ai) updated off
-the old exile behavior. **NOTE:** Bleach is in The Balancer boss deck but is no
-longer removal — it's now effectively a dead card there (the AI won't cast a
-recolor on the player); consider swapping it for real removal. 1197 green, lint
-clean, 300-game selfplay clean.
+v2.0.43–44: fixed Bleach's inert "bleaching." Bleach is `[apply_sticker
+set_color C, move_card exile]` — Swords/Path-rate exile removal whose UPSIDE is
+the bleach: the exiled creature's mana cost becomes permanently colorless, so
+(cast on your own creature) it returns color-flexible for the rest of the run.
+The bug: `set_color` only changed the frame color, not the COST, and color is
+read by almost nothing (only Doom Blade's `not_color` filter) — so the signature
+effect did nothing. Fix: `set_color C` now also folds the target's colored cost
+pips into generic `{C}` (e.g. `{W}{B}{B}` → `{3}`), updating the runtime card AND
+the persisted run-slot (the "Forever") — verified a rebuilt-from-slot card comes
+back colorless. Added card-text for the `set_color` rider ("…it becomes
+colorless, including its mana cost, permanently") + a standalone-`apply_sticker`
+case. (v2.0.43 briefly removed the exile on a misread of intent; v2.0.44 restored
+it — Bleach IS removal, the cost-bleach is the upside.) Tests updated:
+test_balancer asserts exile + cost-fold + slot persistence + rebuilt-colorless.
+1200 green, lint clean, 200-game selfplay clean.
 
 v2.0.42: resolved three rules-infrastructure divergences (B2 / F2 / D4 — all now
 *PROTO: DONE* in DIVERGENCE). **B2** — unused mana now empties at *every* phase

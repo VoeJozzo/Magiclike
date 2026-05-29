@@ -523,8 +523,9 @@ function describeEffectList(effects, cardName, tplEffects, stepTarget, stepFilte
       const sk = ap.sticker || {};
       let rider = null;
       if (sk.kind === 'set_color') {
-        const cn = sk.color === 'C' ? 'colorless' : (COLOR_NAMES[sk.color] || sk.color).toLowerCase();
-        rider = 'it becomes ' + cn + ' permanently';
+        rider = sk.color === 'C'
+          ? 'it becomes colorless, including its mana cost, permanently'
+          : 'it becomes ' + (COLOR_NAMES[sk.color] || sk.color).toLowerCase() + ' permanently';
       } else if (sk.kind === 'cost_mod') {
         const n = sk.amount || 0;
         rider = 'it costs {' + Math.abs(n) + '} ' + (n < 0 ? 'less' : 'more') + ' permanently';
