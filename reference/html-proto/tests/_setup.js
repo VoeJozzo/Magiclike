@@ -30,6 +30,7 @@ const JS_DIR = path.join(__dirname, '..', 'js');
 const ENGINE_FILES = [
   'settings.js',
   'cards.js',
+  'types.js',
   'engine.js',
   'card-text.js',
   'stickers.js',
@@ -172,6 +173,9 @@ const EXPOSED = [
   'targetPhrase', 'withFilter', 'plainSeg', 'bumpedSeg', 'bumpedDerived',
   'segsToText', 'capitalize', 'capitalizeSegs',
   'triggerPreamble', 'abilityCostPhrase', 'keywordPreamble',
+  // Unified type system (types.js, all module-scope, no IIFE — Phase 1).
+  'TYPE_REGISTRY', 'typeRegistryEntry', 'typeCategory', 'isCardTypeTag',
+  'typesOf', 'hasType', 'governingType', 'isPermanent', 'typeLine',
 ];
 
 // Card templates now live in cards/<tplId>/card.json. The browser-side

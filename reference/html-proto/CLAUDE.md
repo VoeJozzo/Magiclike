@@ -4,7 +4,7 @@ Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folde
 
 ## Version
 
-**Current: `v2.0.44`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.0.45`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -90,6 +90,23 @@ case. (v2.0.43 briefly removed the exile on a misread of intent; v2.0.44 restore
 it — Bleach IS removal, the cost-bleach is the upside.) Tests updated:
 test_balancer asserts exile + cost-fold + slot persistence + rebuilt-colorless.
 1200 green, lint clean, 200-game selfplay clean.
+
+v2.0.45: **unified type-system Phase 1** (design-of-record: `docs/plan-unified-type-system.md`).
+Additive foundation, ZERO behavior change: new `js/types.js` derives a card's type
+tags on-demand from the legacy `card.type` + `card.sub` fields and exposes the
+future single source of truth — `typesOf` / `hasType` / `governingType` /
+`isPermanent` / `typeLine` over a small `TYPE_REGISTRY`. Nothing in the engine
+reads these yet; Phase 2 migrates the ~50 `card.type === X` / `card.sub` reads onto
+them, Phase 3 authors `types[]` directly + adds the type-modifier layer (manlands,
+"becomes an artifact") + retires Instant→flash-Sorcery, Phase 4 ships the first
+multi-type cards (Robots, artifact lands). `governingType` resolves the two-fork
+governance (permanent beats spell; Creature > Land among permanents; Artifact/
+Enchantment co-types). `typeLine` is a canonical parser (types left of em-dash,
+subtypes right, deduped) — equals today's render for every card except the basic
+lands whose legacy `sub` repeats the word "Land" ("Land — Basic Land"), which it
+corrects to "Land — Basic" (inert until Phase 2 swaps render.js; data cleaned in
+Phase 3). `test_types_identity.js` pins equivalence with legacy `type`/`sub` across
+all 258 cards + a synthesized multi-type case. 1221 green, lint clean, selfplay clean.
 
 v2.0.42: resolved three rules-infrastructure divergences (B2 / F2 / D4 — all now
 *PROTO: DONE* in DIVERGENCE). **B2** — unused mana now empties at *every* phase
