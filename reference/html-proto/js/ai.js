@@ -57,10 +57,10 @@ function spellValueForEffects(effects) {
         const sevVal = sev === 1 ? 4 : sev === 2 ? 8 : sev === 3 ? 10 : 14;
         v += sevVal + ((e.scope === 'all_opps') ? 4 : 0);
       } else {
-        // Single-target severity value. destroy (3) and exile (4) both score
-        // 12 — unlike the all_opps branch above (10 vs 14). Treated as
-        // intentional; revisit if exile should outvalue destroy here too.
-        v += sev === 1 ? 3 : sev === 2 ? 4 : 12;
+        // Single-target: tap < bounce < destroy < exile. Exile edges destroy —
+        // same board result, but dodges death triggers / indestructible /
+        // recursion / regeneration.
+        v += sev === 1 ? 3 : sev === 2 ? 4 : sev === 3 ? 12 : 15;
       }
     }
     // damage with a mass scope values like the legacy damageAll.

@@ -4,7 +4,7 @@ Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folde
 
 ## Version
 
-**Current: `v2.0.36`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.0.37`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -74,6 +74,18 @@ Deleted the `destroy_and_sticker_slot` handler + all its classification/scoring/
 text sites. Behavior note: under atomic decomposition an indestructible target now
 gets scarred-but-not-destroyed (the monolith fizzled both halves) — an acceptable
 edge on a boss-targeted creature.
+
+v2.0.37: AI scoring — single-target exile now outvalues destroy (user call).
+In `spellValueForEffects`, the single-target `affect_creature` severity value was
+tap 3 / bounce 4 / destroy=exile 12 (the v2.0.36 collapse of the dead `?12:12`).
+Exile now scores 15 vs destroy's 12 — same board result, but it dodges death
+triggers / indestructible / recursion / regeneration. (The activated-ability
+path already ranked exile above destroy: 35 vs 30.) Also resolved the v2.0.36
+gain_life open question: the removed dead branch ("valuable only when low":
+ourLife<=6?6:…) was a cruder predecessor of the surviving signed-life branch in
+`pickBestActivation`, which is strictly better (drain- + target- + amount-aware,
+already low-life gated at ≤10). No swap — removal stands. 1161 green, lint clean,
+150-game selfplay clean.
 
 v2.0.36: added dev-only lint tooling + fixed the 5 bug-smells it immediately
 found. ESLint (flat config, `reference/html-proto/eslint.config.js`) +
