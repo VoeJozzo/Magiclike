@@ -4,8 +4,8 @@ extends RefCounted
 # Reads html-proto card.json files from res://reference/html-proto/cards/ and
 # materializes them as CardResource instances. The wire format is canonical
 # snake_case (docs/PROTOCOL.md §2); this loader is the ingest boundary that
-# translates JS-isms (camelCase effect/event kinds, "any" target, single-string
-# subtypes, "Creature"/"Sorcery" type strings) into the snake_case shape the
+# translates remaining JS-isms ("any" target, single-string subtypes,
+# "Creature"/"Sorcery" type strings) into the snake_case shape the
 # Godot engine expects.
 #
 # Two entry points:
@@ -30,52 +30,9 @@ extends RefCounted
 const _MANIFEST_PATH := "res://reference/html-proto/cards/_manifest.json"
 const _CARDS_DIR := "res://reference/html-proto/cards/"
 
-# camelCase wire → snake_case Godot. Mirrors the JS engine's EFFECTS table
-# (js/engine.js ~L1366). Add an entry when a new JS effect kind needs a
-# snake_case translation. Single-word kinds (damage, pump, draw, etc.) need
-# no entry — they're the same in both cases.
-const _EFFECT_KIND_REMAP := {
-	"gainLife": "gain_life",
-	"addMana": "add_mana",
-	"addCounter": "add_counter",
-	"removeCreature": "remove_creature",
-	"createTokens": "create_tokens",
-	"grantKeyword": "grant_keyword",
-	"destroyAndStickerSlot": "destroy_and_sticker_slot",
-	"bargainStickerSelf": "bargain_sticker_self",
-	"bargainStickerOther": "bargain_sticker_other",
-	"shuffleIntoLibrary": "shuffle_into_library",
-	"returnFromGraveyard": "return_from_graveyard",
-	"ripPermanent": "rip_permanent",
-	"damageAll": "damage_all",
-	"removeAll": "remove_all",
-	"gainControl": "gain_control",
-	"exileUntilEOT": "exile_until_eot",
-	"pumpAllYours": "pump_all_yours",
-	"fightTarget": "fight_target",
-	"searchLandTapped": "search_land_tapped",
-	"searchCreature": "search_creature",
-	"endomorphAbsorb": "endomorph_absorb",
-	"applyInGameSplice": "apply_in_game_splice",
-}
-
-# camelCase event names → snake_case. Mirrors the JS engine's event-firing
-# sites. The Godot engine fires `card_enters_battlefield`, `card_dies`, and
-# `card_discarded` today; the loader uses this map to translate JSON
-# triggers' `event` field.
-const _EVENT_KIND_REMAP := {
-	"cardEntersBattlefield": "card_enters_battlefield",
-	"cardDies": "card_dies",
-	"cardLeavesBattlefield": "card_leaves_battlefield",
-	"lifeGained": "life_gained",
-	"spellCast": "spell_cast",
-	"cardDiscarded": "card_discarded",
-}
-
-# camelCase keyword → snake_case. Only multi-word keywords need translation.
-const _KEYWORD_REMAP := {
-	"firstStrike": "first_strike",
-}
+# Card data is authored in canonical snake_case (docs/PROTOCOL.md §2), so the
+# loader passes effect kinds, event names, and keywords through verbatim. The
+# old camelCase→snake_case remap tables were dead and have been removed.
 
 # JS "target" string values → Godot's target_filter taxonomy. Used to compute
 # SpellResource.target_filter from the first targeted effect. The full
@@ -283,20 +240,15 @@ static func _build_resource(json: Dictionary) -> CardResource:
 static func _remap_effect(eff: Variant) -> Dictionary:
 	if not (eff is Dictionary):
 		return {}
-	var out: Dictionary = eff.duplicate(true)
-	var kind: String = String(out.get("kind", ""))
-	if _EFFECT_KIND_REMAP.has(kind):
-		out.kind = _EFFECT_KIND_REMAP[kind]
-	return out
+	# Card data is canonical snake_case; pass kinds through verbatim, deep-copying
+	# to decouple the resource from the raw parsed JSON.
+	return eff.duplicate(true)
 
 
 static func _remap_trigger(trig: Variant) -> Dictionary:
 	if not (trig is Dictionary):
 		return {}
 	var out: Dictionary = trig.duplicate(true)
-	var ev: String = String(out.get("event", ""))
-	if _EVENT_KIND_REMAP.has(ev):
-		out.event = _EVENT_KIND_REMAP[ev]
 	if out.get("effects") is Array:
 		var rem: Array[Dictionary] = []
 		for e in out.effects:
