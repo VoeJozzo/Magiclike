@@ -433,21 +433,30 @@ func _settle_state() -> void:
 	while _state.winner == "" and safety > 0:
 		safety -= 1
 		var actor: String = _current_actor()
-		# B6/B7 (iterative, mirrors proto step()): auto-pass a dead priority
-		# window — no meaningful action, AP's empty-stack END step, or end-turn
-		# fast-forward — for whichever player holds priority. Guarded against the
-		# awaiting_* turn-based states (priority is "" then; the owing player must
-		# act, not pass). Each pass makes progress (priority flips, or the stack
-		# resolves / phase advances), so the loop can't spin.
-		if _state.priority_player_key == actor \
+		# A priority window is "open for auto-pass" only when its holder actually
+		# holds priority and no turn-based action (block/discard/trigger-target)
+		# is owed — in those states priority is "" and the owing player must act.
+		var window_open: bool = _state.priority_player_key == actor \
 				and not _state.awaiting_block_declaration \
 				and _state.awaiting_discard.is_empty() \
-				and _state.awaiting_target_for_trigger.is_empty() \
-				and _should_auto_pass(actor):
+				and _state.awaiting_target_for_trigger.is_empty()
+		# The human ("you") keeps every priority window so the UI (and the phase
+		# tests) can observe and respond to it — e.g. the window they retain after
+		# casting a spell (117.1c). The ONLY time the settle loop passes on the
+		# human's behalf is an end-turn fast-forward they explicitly requested
+		# (B7: end_turn_pending). Auto-passing merely "dead" windows is an
+		# AI-driver convenience, not something we do to the human — doing so would
+		# swallow their post-cast / instant-response windows.
+		if actor == "you":
+			if window_open and _state.end_turn_pending and _should_auto_pass(actor):
+				_dispatch_action(Action.make_pass_priority())
+				continue
+			break
+		# opp is AI-driven; an unattended dead window (B6) or AP's empty-stack
+		# END / end-turn fast-forward (B7) auto-passes, otherwise the AI decides.
+		if window_open and _should_auto_pass(actor):
 			_dispatch_action(Action.make_pass_priority())
 			continue
-		if actor == "you":
-			break
 		var action: Dictionary = AI.decide(_state, "opp")
 		if action.is_empty():
 			action = Action.make_pass_priority()
