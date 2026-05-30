@@ -594,6 +594,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
 .map-node.legal{border-color:#66ddaa;background:#0e2820;color:#66ddaa;cursor:pointer}
 .map-node.legal:not(.col-W):not(.col-U):not(.col-B):not(.col-R):not(.col-G){box-shadow:0 0 10px rgba(102,221,170,.3)}
 .map-node.legal:hover{transform:scale(1.12);background:#1a4a3a}
+.map-node.legal.selected{background:#2a6a4a;color:#ccffe0;border-color:#9affcc;transform:scale(1.12);box-shadow:0 0 0 3px #9affcc, 0 0 16px rgba(154,255,204,.7)}
 .map-node.boss{width:72px;height:72px;font-size:30px;border-width:3px;animation:bossPulse 2.4s ease-in-out infinite}
 .map-node.boss.col-B{box-shadow:0 0 0 4px #9966bb, 0 0 18px rgba(153,102,187,.7)}
 @keyframes bossPulse{0%,100%{filter:brightness(1)}50%{filter:brightness(1.3)}}
@@ -605,7 +606,8 @@ button:disabled{opacity:.4;cursor:not-allowed}
 .map-color-badge.col-G{background:#5a8844;color:#001a00}
 #mapEdges{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:1}
 #mapContinue{display:none;margin:14px auto 0;padding:10px 24px;background:#2a4a2a;border:1px solid #4a8a4a;color:#aaffaa;border-radius:4px;cursor:pointer;font-size:14px;letter-spacing:1px;font-family:Georgia,serif}
-#mapContinue:hover{background:#3a5a3a}
+#mapContinue:hover:not(:disabled){background:#3a5a3a}
+#mapContinue:disabled{opacity:.4;cursor:not-allowed;color:#6a8a6a}
 #mapTooltip{position:absolute;display:none;background:#0a1218;border:1px solid #66ddaa;border-radius:4px;padding:6px 10px;color:#bbe;font-size:11px;letter-spacing:0.05em;text-transform:uppercase;font-family:Georgia,serif;pointer-events:none;z-index:10;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.6)}
 #mapTooltip.vis{display:block}
 #rewardBox{background:#181820;border:2px solid #ffd700;border-radius:10px;padding:24px 18px;max-width:760px;width:100%;text-align:center;box-shadow:0 0 30px rgba(255,215,0,.25);margin:auto}

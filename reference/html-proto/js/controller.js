@@ -55,6 +55,7 @@ const CONTROLLER = (function() {
 // In-flight UI selections.
 let pendingTarget = null;       // {kind:'cast'|'ability', cardIid, abilityIdx?, modeIdx?}
 let pendingModalChoice = null;  // {cardIid} — open mode picker
+let selectedMapNode = null;     // map node selected (highlighted) but not yet committed; Continue commits
 let uiAtk = [];                 // attacker selection
 let uiBlk = new Map();          // blocker → attacker
 let uiPickBlk = null;           // selected blocker awaiting attacker click
@@ -840,31 +841,36 @@ function renderMap() {
     Modal.hide('mapModal');
     return;
   }
-  // Always show the map between levels. Whenever there's a next node to enter
-  // (one path OR many), it's an interactive click-the-node choice — a single
-  // successor is just a one-option choice, no separate "Continue" button. The
-  // Continue button is only for the no-node-choice transitions: resuming the
-  // in-progress node, or dropping into a freshly-generated next sector.
+  // Universal two-step advance: SELECT a node (even when there's only one
+  // option), then confirm with the Continue button. The Continue button is
+  // always present; when there's a node choice it stays disabled until a legal
+  // node is selected. No-node-choice transitions (resuming the in-progress node,
+  // or a freshly-generated next sector) have nothing to select, so Continue is
+  // enabled immediately.
   const hasChoice = !!ms.pendingChoice;
-  const optionCount = hasChoice ? ms.pendingChoice.options.length : 0;
   Modal.show('mapModal');
   const toRoman = n => {
     const r = ['', 'I','II','III','IV','V','VI','VII','VIII','IX','X'];
     return r[n] || String(n);
   };
-  setText('mapTitle', `Sector ${toRoman(ms.sectorNum)} — ${optionCount > 1 ? 'Choose Your Path' : 'Your Path'}`);
-  setText('mapSubtitle',
-    optionCount > 1 ? 'Pick the next node to face.'
-    : optionCount === 1 ? 'Click the next node to continue.'
-    : 'Your journey so far.');
-  const contBtn = document.getElementById('mapContinue');
-  if (contBtn) {
-    contBtn.style.display = hasChoice ? 'none' : 'block';
-    contBtn.onclick = hasChoice ? null : advanceFromMap;
-  }
+  setText('mapTitle', `Sector ${toRoman(ms.sectorNum)} — ${hasChoice ? 'Choose Your Path' : 'Your Path'}`);
+  setText('mapSubtitle', hasChoice ? 'Pick the next node to face.' : 'Your journey so far.');
   const legal = new Set(hasChoice ? ms.pendingChoice.options : []);
   const visited = new Set(ms.visitedNodeIds);
   const current = ms.currentNodeId;
+  // Drop a stale selection that isn't a legal option for THIS choice.
+  if (selectedMapNode && !legal.has(selectedMapNode)) selectedMapNode = null;
+  const contBtn = document.getElementById('mapContinue');
+  if (contBtn) {
+    contBtn.style.display = 'block';
+    const ready = !hasChoice || !!selectedMapNode;   // a choice needs a selection first
+    contBtn.disabled = !ready;
+    contBtn.onclick = ready ? () => {
+      if (hasChoice && !RUN.pickMapNode(selectedMapNode)) return;
+      selectedMapNode = null;
+      advanceFromMap();
+    } : null;
+  }
 
   const byLevel = {};
   for (const n of ms.nodes) {
@@ -956,7 +962,8 @@ function renderMap() {
       const label = tooltipFor(n);
       if (legal.has(n.id)) {
         el.classList.add('legal');
-        el.onclick = () => pickMapNodeClick(n.id);
+        if (n.id === selectedMapNode) el.classList.add('selected');
+        el.onclick = () => selectMapNode(n.id);   // select; Continue commits
       } else {
         el.onclick = () => showMapTooltip(el, label);
       }
@@ -998,16 +1005,19 @@ function renderMap() {
   });
 }
 
-function pickMapNodeClick(nodeId) {
-  if (!RUN.pickMapNode(nodeId)) return;
-  advanceFromMap();
+// Select (highlight) a map node — does NOT commit. The Continue button commits
+// the selected node (RUN.pickMapNode) and advances. Two-step by design, applied
+// uniformly whether there's one option or many.
+function selectMapNode(nodeId) {
+  selectedMapNode = nodeId;
+  renderMap();
 }
 
-// Leave the map and enter the next game. The fork path (pickMapNodeClick)
-// resolves the node choice first; the non-fork Continue button advances
-// directly — startNextGame() auto-advances a single successor or drops into
-// the next sector's root (mirroring the no-choice path that used to skip the
-// map). Both share this identical tail.
+// Leave the map and enter the next game. When there was a node choice the
+// Continue handler has already committed the selected node (RUN.pickMapNode)
+// before calling this; the no-choice path (resume / fresh sector) advances
+// directly — startNextGame() drops into the current/root node. Both share this
+// identical tail.
 function advanceFromMap() {
   Modal.hide('mapModal');
   lastGameRecorded = false;
@@ -3217,8 +3227,8 @@ return {
   pickModalMode, cancelModalChoice,
   pendingModalChoice: () => pendingModalChoice,
   toggleStats, statsExport, statsClear,
-  // Map navigation click handler — used by the map modal's clickable nodes.
-  pickMapNodeClick,
+  // Map navigation: clicking a node selects it (Continue commits the selection).
+  selectMapNode,
   // Stats screen interactivity. Inline onclick handlers in the rendered
   // tables call these via CONTROLLER.* (functions live inside this IIFE
   // and aren't on window, so we have to expose them explicitly).

@@ -4,7 +4,7 @@ Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folde
 
 ## Version
 
-**Current: `v2.0.61`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.0.62`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -201,6 +201,18 @@ opponent's best creature — permanent base 20, eot base 8, +card value +lane �
 animate-add_type only at a permanent WE control (else it'd gift the opponent a
 body). Verified via `AI.decide`: the AI now casts Encase in Amber at an enemy
 creature. 1269 green, lint clean, 300-game selfplay clean.
+
+v2.0.62: **minimap advance is now a universal select-then-Continue flow.** Revises
+v2.0.61's interaction: instead of click-to-advance, clicking a legal node now
+SELECTS it (highlighted, not committed) and the always-present Continue button
+commits the selection. Applied uniformly — one option or many, you select then
+Continue. Continue stays disabled until a legal node is selected when there's a
+choice; for the no-node-choice transitions (resume in-progress node / fresh next
+sector) it's enabled immediately. Reverted v2.0.61's adaptive title/subtitle copy
+back to the simple `hasChoice` form ("Choose Your Path" / "Your Path"). The
+`recordResult` change from v2.0.61 (any next node — 1 or many — is offered as a
+pendingChoice) stays. `selectMapNode` replaces `pickMapNodeClick`; new
+`.map-node.selected` + `#mapContinue:disabled` styles. 1290 green, lint clean.
 
 v2.0.61: **unified the minimap advance UI — single successor is now click-the-node.**
 The map showed a fork (2+ paths) as clickable nodes but a single path as a
