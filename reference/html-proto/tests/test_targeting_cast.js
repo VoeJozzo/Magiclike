@@ -255,5 +255,29 @@ console.log('\n=== Drain Life: slot 0 = creature, slot 1 = player (mixed-filter 
   check('caster gained 4 life (scope:self half)', G.you.life === youLife + 4, youLife + '→' + G.you.life);
 })();
 
+console.log('\n=== target_slots survive REAL makeCard instantiation (not just deep-copy) ===');
+(() => {
+  // Regression: makeCard dropped target_slots, so multi-slot cards were
+  // uncastable in the real UI (probeTargetsForObject found no slots → null →
+  // not castable). The mk() helper above deep-copies the whole template, which
+  // MASKED this — so assert the engine's real instance carries the field, and
+  // that every authored multi-slot card is castable from a real instance.
+  for (const id of ['drainLife', 'branchingBolt', 'twinStrike', 'rootsAndBranches', 'swordAndSorcery']) {
+    const inst = ENGINE.makeCard(id, [], 0);
+    check(id + ': real instance carries target_slots',
+      Array.isArray(inst.target_slots) && inst.target_slots.length === (CARDS[id].target_slots || []).length,
+      JSON.stringify(inst.target_slots));
+  }
+  // End-to-end castability of a real makeCard instance (the bug's exact surface).
+  const G = newGame();
+  const cr = mk(TOUGH_CREATURE, 'opp'); G.opp.battlefield.push(cr);
+  const dl = ENGINE.makeCard('drainLife', [], 0); dl.controller = 'you'; dl.owner = 'you';
+  G.you.hand.push(dl);
+  readyForCast(G, 'you');
+  const probe = ENGINE.probeTargetsForObject(dl, 'you');
+  check('real drainLife instance probes to a full target set (castable)',
+    Array.isArray(probe) && probe.length === 2, JSON.stringify(probe));
+})();
+
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');
 process.exit(fail > 0 ? 1 : 0);

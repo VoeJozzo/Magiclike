@@ -604,6 +604,14 @@ function makeCard(tplId, stickers, slotIdx, empowerRolls, permaBuffs, bonusTrigg
     // optional target_filter carries restrictions the closed taxonomy can't name.
     target: tpl.target,
     target_filter: tpl.target_filter,
+    // Per-slot targeting (§5b multi-target: drainLife, branchingBolt, …). MUST be
+    // carried to the instance or probeTargetsForObject finds no slots, falls back
+    // to the per-effect path (which can't resolve the slot filters), and the card
+    // is uncastable in the real UI. Deep-copy each spec (incl. its optional
+    // target_filter) for per-instance isolation.
+    target_slots: Array.isArray(tpl.target_slots)
+      ? tpl.target_slots.map(s => ({...s, target_filter: s.target_filter ? {...s.target_filter} : undefined}))
+      : undefined,
     // Legendary uniqueness enforced at cast time only (no SBA); the Legendary
     // supertype tag derives from this boolean via typesOf.
     legendary: !!tpl.legendary,

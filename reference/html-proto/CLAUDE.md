@@ -4,7 +4,7 @@ Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folde
 
 ## Version
 
-**Current: `v2.0.56`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.0.57`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -201,6 +201,20 @@ opponent's best creature — permanent base 20, eot base 8, +card value +lane �
 animate-add_type only at a permanent WE control (else it'd gift the opponent a
 body). Verified via `AI.decide`: the AI now casts Encase in Amber at an enemy
 creature. 1269 green, lint clean, 300-game selfplay clean.
+
+v2.0.57: **fix: multi-slot (`target_slots`) cards were uncastable in the real UI.**
+`makeCard` copied `target`/`target_filter` to the instance but NOT `target_slots`,
+so every multi-target card (drainLife, branchingBolt, twinStrike,
+rootsAndBranches, swordAndSorcery) lost its slot specs on instantiation —
+`probeTargetsForObject` found no slots, fell back to the per-effect path (which
+can't resolve slot filters), returned null, and `canPlayFromUI` reported the card
+uncastable (even with valid targets on board). The whole test_targeting_cast
+suite MASKED it: its `mk()` helper does `JSON.parse(JSON.stringify(template))`,
+deep-copying everything including target_slots, so the cards "worked" in tests but
+not in real play. Fix: makeCard deep-copies `target_slots` (incl. each spec's
+optional target_filter) to the instance. Added a regression block that uses the
+REAL `ENGINE.makeCard` (not the deep-copy helper) to assert the field survives +
+the card probes castable. 1275 green, lint clean, 300-game selfplay clean.
 
 v2.0.56: **indefinite article in type-change text.** Petrify read "becomes
 Artifact" (missing article). Added an `indefiniteArticle(phrase)` helper in
