@@ -1,16 +1,13 @@
 extends Node
 
-# JsonCardLoader smoke test. Exercises:
-#   1. Loading a single card (bolt = Lightning Bolt equivalent) and
-#      verifying field translation: card_id, name, type, cost, effect kind
-#      remap (gainLife → gain_life, addMana → add_mana, etc).
-#   2. Loading a creature with keywords (camelCase firstStrike →
-#      first_strike remap).
-#   3. Loading a creature with a trigger (event remap, cond_id pass-through).
-#   4. Loading a land (mana_produced from JSON's mana string).
-#   5. Running load_all() against the full manifest and supportability_report
-#      — verifies that the loader doesn't crash on any manifest card, and
-#      that the count of supported-vs-unsupported is plausible (>0 each).
+# JsonCardLoader smoke test.
+#
+# Selects representative cards BY SHAPE from the loaded pool — never by a
+# hardcoded id. This mirrors the html-proto de-brittling convention
+# (tests/card_text_test.js's `pickByShape`): a card rename or stat retune can't
+# break the test, because it asserts the loader's TRANSLATION INVARIANTS (type
+# string → resource subclass, snake_case effect kinds, target inference, keyword
+# / trigger / mana passthrough), not the identity of any one card.
 #
 # Run headless:
 #   godot --headless --path . res://tests/test_json_card_loader.tscn
@@ -21,92 +18,102 @@ var failures: int = 0
 func _ready() -> void:
 	print("\n=== JsonCardLoader smoke test ===\n")
 
-	# ─── 1. Lightning-Bolt-equivalent (bolt) ────────────────────────────
-	var bolt: CardResource = JsonCardLoader.load_card("bolt")
-	_assert_true(bolt != null, "bolt loaded")
-	if bolt != null:
-		_assert_eq(bolt.card_id, "bolt", "bolt.card_id")
-		_assert_eq(bolt.display_name, "Lightning Bolt", "bolt.display_name")
-		_assert_true(bolt is SpellResource, "bolt is SpellResource")
-		_assert_eq(bolt.card_types, ["sorcery"], "bolt.card_types")
-		_assert_eq(bolt.mana_cost.get("R", 0), 1, "bolt.mana_cost.R")
-		_assert_eq(bolt.on_cast_effects.size(), 1, "bolt has one on_cast_effect")
-		var eff: Dictionary = bolt.on_cast_effects[0]
-		_assert_eq(eff.get("kind", ""), "damage", "bolt effect is damage")
-		_assert_eq(eff.get("amount", 0), 3, "bolt effect amount = 3")
-		# JS "any" target collapses to "creature_or_player" on the Godot side.
-		var spell: SpellResource = bolt
-		_assert_true(spell.requires_target, "bolt requires target")
-		_assert_eq(spell.target_filter, "creature_or_player", "bolt target_filter")
-
-	# ─── 2. Healing-Salve-equivalent (salve) — gainLife remap ────────────
-	var salve: CardResource = JsonCardLoader.load_card("salve")
-	_assert_true(salve != null, "salve loaded")
-	if salve != null and salve.on_cast_effects.size() > 0:
-		_assert_eq(salve.on_cast_effects[0].get("kind", ""),
-			"gain_life", "salve effect remapped gainLife → gain_life")
-
-	# ─── 3. Creature with keyword remap (any card with firstStrike) ──────
-	# whiteKnight is a vanilla white knight w/ firstStrike — pick it from
-	# the html-proto pool.
-	var knight: CardResource = JsonCardLoader.load_card("whiteKnight")
-	_assert_true(knight != null, "whiteKnight loaded")
-	if knight != null and knight is CreatureResource:
-		var c: CreatureResource = knight
-		_assert_true(c.power > 0, "knight has power")
-		_assert_true("first_strike" in c.keywords,
-			"knight has first_strike keyword")
-
-	# ─── 4. Creature with trigger (event remap path) ─────────────────────
-	# holyZealot: "When this attacks" → event="attacks" (single-word, no remap)
-	var zealot: CardResource = JsonCardLoader.load_card("holyZealot")
-	_assert_true(zealot != null, "holyZealot loaded")
-	if zealot != null:
-		_assert_true(zealot.triggers.size() >= 1, "zealot has a trigger")
-		if zealot.triggers.size() >= 1:
-			_assert_eq(zealot.triggers[0].get("event", ""), "attacks",
-				"zealot trigger event = attacks")
-			_assert_true(zealot.triggers[0].get("effects", []).size() >= 1,
-				"zealot trigger has an effect")
-			# gainLife → gain_life on the nested effect
-			var trig_eff: Dictionary = zealot.triggers[0].effects[0]
-			_assert_eq(trig_eff.get("kind", ""), "gain_life",
-				"zealot trigger effect remapped gainLife → gain_life")
-
-	# ─── 5. Land with mana_produced ──────────────────────────────────────
-	var forest: CardResource = JsonCardLoader.load_card("forest")
-	_assert_true(forest != null, "forest loaded")
-	if forest != null and forest is LandResource:
-		var l: LandResource = forest
-		_assert_true("G" in l.mana_produced, "forest produces G")
-
-	# ─── 6. City of Brass — `mana` shorthand only ────────────────────────
-	# The loader reads a land's colors from the top-level `mana` string (+ any
-	# `extraManaColors`). cityOfBrass's true 5-color output lives in an
-	# activated ability the loader doesn't parse yet, so today we get just its
-	# `mana: "C"` shorthand. Asserting current behavior, not the end goal.
-	var city: CardResource = JsonCardLoader.load_card("cityOfBrass")
-	_assert_true(city != null, "cityOfBrass loaded")
-	if city != null and city is LandResource:
-		var lc: LandResource = city
-		_assert_eq(lc.mana_produced.size(), 1, "cityOfBrass mana shorthand = 1 color")
-		_assert_true("C" in lc.mana_produced, "cityOfBrass produces C (mana shorthand)")
-
-	# ─── 7. Full manifest scan ───────────────────────────────────────────
-	print("\n--- Loading all cards from manifest ---")
 	var all_cards: Dictionary = JsonCardLoader.load_all()
+	# Guard against vacuous passes: every "find a card shaped like X" assertion
+	# below would silently go green on an empty pool, so anchor on a real count.
 	_assert_true(all_cards.size() >= 250,
 		"load_all returned ≥250 cards (got %d)" % all_cards.size())
+
+	# Field translation: every card carries a non-empty id + display name.
+	var any_card: CardResource = _pick(all_cards, func(_c): return true)
+	if _assert_true(any_card != null, "pool is non-empty (picks are not vacuous)"):
+		_assert_true(any_card.card_id != "" and any_card.display_name != "",
+			"loaded card has card_id + display_name")
+
+	# Type string → resource subclass. All three subclasses appear in the pool.
+	_assert_true(_pick(all_cards, func(c): return c is SpellResource) != null,
+		"a Sorcery/Instant loads as SpellResource")
+	_assert_true(_pick(all_cards, func(c): return c is CreatureResource) != null,
+		"a Creature loads as CreatureResource")
+	_assert_true(_pick(all_cards, func(c): return c is LandResource) != null,
+		"a Land loads as LandResource")
+
+	# 1. Targeted spell → requires_target + a target_filter, inferred from the
+	#    card-root "target" (bolt-shaped).
+	var targeted: CardResource = _pick(all_cards,
+		func(c): return c is SpellResource and (c as SpellResource).requires_target)
+	if _assert_true(targeted != null, "found a targeted spell"):
+		var s: SpellResource = targeted
+		_assert_true(s.target_filter != "",
+			"targeted spell has a target_filter (%s → %s)" % [s.card_id, s.target_filter])
+		_assert_true(s.card_types.size() == 1 and s.card_types[0] == s.card_types[0].to_lower(),
+			"spell card_types is one lowercased type (%s)" % str(s.card_types))
+
+	# 2. Burn spell (damage effect) → cost + effect fields translate.
+	var burn: CardResource = _pick(all_cards, func(c):
+		if not (c is SpellResource):
+			return false
+		for e in (c as CardResource).on_cast_effects:
+			if String(e.get("kind", "")) == "damage":
+				return true
+		return false)
+	if _assert_true(burn != null, "found a damage spell"):
+		_assert_true(burn.mana_cost is Dictionary and not burn.mana_cost.is_empty(),
+			"damage spell has a mana_cost dict (%s)" % str(burn.mana_cost))
+		var dmg: Dictionary = _first_effect(burn.on_cast_effects, "damage")
+		_assert_true(int(dmg.get("amount", 0)) > 0, "damage effect carries a positive amount")
+
+	# 3. Effect kinds load as canonical snake_case. The camelCase→snake_case
+	#    remap tables were deleted (card data is authored snake_case); a camelCase
+	#    leak here would mean the wire format drifted.
+	var with_eff: CardResource = _pick(all_cards,
+		func(c): return not (c as CardResource).on_cast_effects.is_empty())
+	if _assert_true(with_eff != null, "found a card with on_cast_effects"):
+		var all_snake := true
+		for e in with_eff.on_cast_effects:
+			var k: String = String(e.get("kind", ""))
+			if k != k.to_lower():
+				all_snake = false
+		_assert_true(all_snake, "effect kinds are snake_case (no camelCase leak)")
+
+	# 4. Creature keyword passthrough — first_strike (a canonical multi-word kw).
+	var fs_creature: CardResource = _pick(all_cards,
+		func(c): return c is CreatureResource and "first_strike" in (c as CreatureResource).keywords)
+	if _assert_true(fs_creature != null, "found a first_strike creature"):
+		_assert_true("first_strike" in (fs_creature as CreatureResource).keywords,
+			"keyword loads as snake_case first_strike")
+
+	# 5. Trigger passthrough — event + nested effects survive the load.
+	var trig_card: CardResource = _pick(all_cards,
+		func(c): return (c as CardResource).triggers.size() >= 1)
+	if _assert_true(trig_card != null, "found a card with a trigger"):
+		var t: Dictionary = trig_card.triggers[0]
+		_assert_true(String(t.get("event", "")) != "",
+			"trigger has an event (%s)" % str(t.get("event", "")))
+		_assert_true(t.get("effects", []) is Array, "trigger carries an effects array")
+
+	# 6. Land mana — mana_produced comes from the `mana` shorthand; entries are
+	#    valid single-letter color codes.
+	var land: CardResource = _pick(all_cards,
+		func(c): return c is LandResource and not (c as LandResource).mana_produced.is_empty())
+	if _assert_true(land != null, "found a mana-producing land"):
+		var valid := true
+		for col in (land as LandResource).mana_produced:
+			if not (col in ["W", "U", "B", "R", "G", "C"]):
+				valid = false
+		_assert_true(valid,
+			"land mana_produced are WUBRGC codes (%s)" % str((land as LandResource).mana_produced))
+
+	# 7. Supportability scan over the whole manifest.
+	print("\n--- Supportability report over the full manifest ---")
 	var report: Dictionary = JsonCardLoader.supportability_report(all_cards, true)
 	_assert_eq(report.total, all_cards.size(), "report.total matches load count")
 	_assert_true(report.supported > 0,
 		"some cards are fully supported (got %d)" % report.supported)
-	# Currently Godot implements ~5 effect kinds; most JS cards reference
-	# unimplemented ones (affect_creature, move_card, draw, etc.). So we
-	# expect MANY unsupported.
+	# Most JS cards reference effect kinds Godot hasn't implemented yet
+	# (affect_creature, move_card, draw, …), so expect many unsupported.
 	_assert_true(report.unsupported > 100,
 		"many cards are unsupported (got %d)" % report.unsupported)
-	# Sanity: missing_effects should include the most common JS-only kind.
 	_assert_true(report.missing_effects.has("affect_creature"),
 		"affect_creature is in missing_effects")
 
@@ -119,6 +126,23 @@ func _ready() -> void:
 	get_tree().quit(0 if failures == 0 else 1)
 
 
+# Pick the first loaded card matching `pred`, or null. Mirrors proto's
+# card_text_test.js `pickByShape` — select a representative by structure, never
+# by a hardcoded id that a rename would invalidate.
+func _pick(cards: Dictionary, pred: Callable) -> CardResource:
+	for id in cards:
+		if pred.call(cards[id]):
+			return cards[id]
+	return null
+
+
+func _first_effect(effects: Array, kind: String) -> Dictionary:
+	for e in effects:
+		if String(e.get("kind", "")) == kind:
+			return e
+	return {}
+
+
 func _assert_eq(actual, expected, name: String) -> void:
 	if actual == expected:
 		print("  ✓ %s = %s" % [name, str(actual)])
@@ -127,9 +151,10 @@ func _assert_eq(actual, expected, name: String) -> void:
 		failures += 1
 
 
-func _assert_true(condition: bool, name: String) -> void:
+func _assert_true(condition: bool, name: String) -> bool:
 	if condition:
 		print("  ✓ %s" % name)
 	else:
 		print("  ✗ %s (expected true)" % name)
 		failures += 1
+	return condition
