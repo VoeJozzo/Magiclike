@@ -4,7 +4,7 @@ Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folde
 
 ## Version
 
-**Current: `v2.0.60`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.0.61`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -201,6 +201,18 @@ opponent's best creature — permanent base 20, eot base 8, +card value +lane �
 animate-add_type only at a permanent WE control (else it'd gift the opponent a
 body). Verified via `AI.decide`: the AI now casts Encase in Amber at an enemy
 creature. 1269 green, lint clean, 300-game selfplay clean.
+
+v2.0.61: **unified the minimap advance UI — single successor is now click-the-node.**
+The map showed a fork (2+ paths) as clickable nodes but a single path as a
+separate "Continue" button (auto-advanced via startNextGame). Pointless
+divergence. Now `recordResult` offers ANY next node (1 or many) as a
+`pendingMapChoice` — a single successor is a one-option click, identical UI to a
+fork. The Continue button now only appears for the genuinely no-node-choice
+transitions: resuming the in-progress node, or dropping into a freshly-generated
+next sector. startNextGame keeps its single-successor auto-advance solely as a
+back-compat fallback for pre-2.0.61 saves (pendingChoice null + visited current).
+Map copy adapts: "Choose Your Path" only for true forks, "Your Path / click the
+next node" for one. 1290 green, lint clean.
 
 v2.0.60: **colorless cards are now offered in every draft slot.** `rollPack`
 buckets the pool by WUBRG `color`; colorless cards (`color:null` — robots,

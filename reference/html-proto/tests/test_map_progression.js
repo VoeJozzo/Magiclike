@@ -10,8 +10,10 @@
 //
 // 2. CONTRACT for the "always show the minimap" UI: getMapState() must be
 //    non-null at every between-game transition, so the controller can render the
-//    map every time (interactive at forks, "you are here" + Continue otherwise).
-//    Single-successor nodes still auto-advance inside startNextGame().
+//    map every time. Any next node — one path OR many — is offered as a
+//    click-the-node pendingChoice (a single successor is a one-option choice,
+//    same UI as a fork). startNextGame keeps a single-successor auto-advance
+//    only as a back-compat fallback for pre-2.0.61 saves with no pendingChoice.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -31,13 +33,15 @@ console.log('=== walk a full sector (root → boss → next sector) ===');
   let mapPresentEvery = true;
   let sawBossBanner = false;
   let reachedNewSector = false;
+  let sawSingleOptionChoice = false;            // a 1-successor advance is a 1-option choice
 
   try {
     for (let i = 0; i < 14; i++) {
       RUN.recordResult('you', [], []);          // win the current battle
       const ms = RUN.getMapState();
       if (!ms) { mapPresentEvery = false; break; }
-      if (ms.pendingChoice) {                    // fork → controller would let you pick
+      if (ms.pendingChoice) {                    // any next node (1 or many) → click-to-pick
+        if (ms.pendingChoice.options.length === 1) sawSingleOptionChoice = true;
         RUN.pickMapNode(ms.pendingChoice.options[0]);
       }
       const info = RUN.startNextGame();          // <- used to throw at the boss node
@@ -54,6 +58,8 @@ console.log('=== walk a full sector (root → boss → next sector) ===');
   check('boss banner resolved (DRAFT.getConstructedDeck reachable)', sawBossBanner);
   check('map state present at every between-game transition', mapPresentEvery);
   check('beating the boss rolls into a fresh sector', reachedNewSector);
+  check('a single successor is offered as a one-option choice (unified UI, no auto-advance)',
+    sawSingleOptionChoice);
 })();
 
 console.log('\n=== boss node carries a resolvable constructed deck ===');

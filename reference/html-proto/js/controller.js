@@ -840,17 +840,23 @@ function renderMap() {
     Modal.hide('mapModal');
     return;
   }
-  // Always show the map between levels. A forking node (2+ paths) is an
-  // interactive choice; otherwise it's a "you are here" view with a Continue
-  // button that auto-advances (single path) or drops into the next sector.
+  // Always show the map between levels. Whenever there's a next node to enter
+  // (one path OR many), it's an interactive click-the-node choice — a single
+  // successor is just a one-option choice, no separate "Continue" button. The
+  // Continue button is only for the no-node-choice transitions: resuming the
+  // in-progress node, or dropping into a freshly-generated next sector.
   const hasChoice = !!ms.pendingChoice;
+  const optionCount = hasChoice ? ms.pendingChoice.options.length : 0;
   Modal.show('mapModal');
   const toRoman = n => {
     const r = ['', 'I','II','III','IV','V','VI','VII','VIII','IX','X'];
     return r[n] || String(n);
   };
-  setText('mapTitle', `Sector ${toRoman(ms.sectorNum)} — ${hasChoice ? 'Choose Your Path' : 'Your Path'}`);
-  setText('mapSubtitle', hasChoice ? 'Pick the next node to face.' : 'Your journey so far.');
+  setText('mapTitle', `Sector ${toRoman(ms.sectorNum)} — ${optionCount > 1 ? 'Choose Your Path' : 'Your Path'}`);
+  setText('mapSubtitle',
+    optionCount > 1 ? 'Pick the next node to face.'
+    : optionCount === 1 ? 'Click the next node to continue.'
+    : 'Your journey so far.');
   const contBtn = document.getElementById('mapContinue');
   if (contBtn) {
     contBtn.style.display = hasChoice ? 'none' : 'block';

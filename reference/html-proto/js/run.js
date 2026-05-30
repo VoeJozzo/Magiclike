@@ -486,10 +486,14 @@ function recordResult(winner, playedSlotIdxs, claimedKeywords) {
         runState.map = generateMap();
         runState.map.currentNodeId = runState.map.rootId;
         runState.pendingMapChoice = null;
-      } else if (successors.length >= 2) {
+      } else {
+        // 1+ successors → a click-the-node choice. A SINGLE successor is a
+        // one-option choice (identical map UI to a fork), not a separate
+        // auto-advance behind a "Continue" button. (The startNextGame
+        // single-successor auto-advance is kept as a back-compat fallback for
+        // saves made before this — see startNextGame.)
         runState.pendingMapChoice = { options: successors };
       }
-      // 1 successor: pendingMapChoice stays null; startNextGame auto-advances.
     }
     save();
   } else {
