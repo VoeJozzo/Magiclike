@@ -643,7 +643,7 @@ function shouldCounter(state, who) {
     e.kind === 'damage' ||
     e.kind === 'counter' ||
     (e.kind === 'change_control' && e.transfer_ownership) ||
-    (e.kind === 'affect_creature' && _sevNum(e.severity) >= 3)
+    (e.kind === 'affect_creature' && ENGINE.sevToNum(e.severity) >= 3)
   )) return true;
   if (hasType(card, 'Creature') && ENGINE.cardCost(card) >= 4) return true;
   if (relevantEffects.some(e => e.kind === 'draw' || e.kind === 'discard'
@@ -1239,8 +1239,6 @@ function scoreUntargetedSituation(state, who, effects) {
   return bonus;
 }
 
-// Severity string → numeric ladder (delegates to the engine's single source).
-function _sevNum(sev) { return ENGINE.sevToNum(sev); }
 // Recognize a MASS effect (damage / affect_creature / pump +
 // a mass `scope`) and return a normalized descriptor, or null. Drives the AI's
 // mass-cast valuation.
@@ -1248,7 +1246,7 @@ function massEffectInfo(e) {
   if (!e) return null;
   if (e.kind === 'damage' && e.scope === 'all_creatures') return { type: 'damage', amount: e.amount || 0 };
   if (e.kind === 'affect_creature' && e.scope) {
-    return { type: 'remove', severity: _sevNum(e.severity), whose: e.scope === 'all_opps' ? 'opp' : 'all' };
+    return { type: 'remove', severity: ENGINE.sevToNum(e.severity), whose: e.scope === 'all_opps' ? 'opp' : 'all' };
   }
   if (e.kind === 'pump' && e.scope === 'all_yours') return { type: 'pump' };
   return null;
@@ -1497,7 +1495,7 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
     if (!c) return -100;
     if (c.controller === us) return -100;
     if (c.card.keywords.includes('hexproof')) return -100;
-    const sev = _sevNum(eff.severity);
+    const sev = ENGINE.sevToNum(eff.severity);
     const [pow, tou] = ENGINE.getStats(c.card);
     let score;
     if (sev === 1) {
@@ -1778,7 +1776,7 @@ function pickBestActivation(state, who, abilityActs) {
       if (t.kind === 'creature') {
         const c = ENGINE.findCard(t.iid);
         if (c && c.controller !== who) {
-          const sev = _sevNum(eff.severity);
+          const sev = ENGINE.sevToNum(eff.severity);
           if (sev >= 3 && c.card.keywords.includes('indestructible') && sev < 4) {
             score = -100;
           } else {

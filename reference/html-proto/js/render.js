@@ -346,7 +346,7 @@ function render() {
   if (G.pendingOptionalCost && G.pendingOptionalCost.who === 'you') {
     Modal.show('optionalCostModal', { dismissible: false });
     const p = G.pendingOptionalCost;
-    const costStr = renderManaSymbols(manaBraces(p.cost));
+    const costStr = renderManaSymbols(manaCostBraces(p.cost));
     document.getElementById('optionalCostSubtitle').innerHTML =
       `${p.source} entered.<br>Pay ${costStr} to use its stapled effect?`;
     const btns = document.getElementById('optionalCostButtons');
@@ -703,15 +703,6 @@ function makeChoiceButton(html, css, normalBg, hoverBg, onclick) {
   return b;
 }
 
-// A {W,U,B,R,G,C} cost → brace string for renderManaSymbols (colors as pips,
-// generic as a single {N}): {R:1,C:2} → "{R}{2}".
-function manaBraces(cost) {
-  if (!cost) return '';
-  let s = '';
-  for (const c of ['W', 'U', 'B', 'R', 'G']) for (let i = 0; i < (cost[c] || 0); i++) s += '{' + c + '}';
-  if (cost.C) s += '{' + cost.C + '}';
-  return s;
-}
 
 function renderHand(id, hand, who) {
   const el = document.getElementById(id);
