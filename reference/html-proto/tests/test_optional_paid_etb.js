@@ -130,5 +130,59 @@ console.log('\n=== AI pays for a worthwhile stapled effect, declines a worthless
   check('AI declines a zero-value effect', a2 && a2.type === 'optionalCost' && a2.pay === false, JSON.stringify(a2));
 }
 
+console.log('\n=== Land+TARGETED-spell ETB carries the target step + resolves (no null-target crash) ===');
+if (CARDS.bolt) {
+  // Regression: the synthesized ETB trigger copied the spell's effects but NOT
+  // its top-level target() step. A migrated targeted spell (bolt: target() + a
+  // BARE damage effect) thus ran a TARGETLESS damage on resolve → null-target
+  // crash in applyDamageFrom — an uncaught throw that froze the AI mid-turn
+  // ("AI hangs on a land+spell ETB"). The untargeted goblinRabble staple above
+  // never exercised this. Modeled on the AI path (the side that hung): the
+  // controller auto-picks the target (no human prompt), then the optional cost.
+  const G = newGame();
+  const etbTpl = ENGINE.makeCard('plains', undefined, 0, undefined, undefined, undefined, ['bolt']);
+  const etb = (etbTpl.triggers || []).find(t => t.event === 'card_zone_change');
+  check('stapled bolt ETB carries the target step (target + optional_cost)',
+    etb && etb.target === 'creature_or_player' && etb.optional_cost && etb.optional_cost.R === 1,
+    etb && JSON.stringify({ target: etb.target, cost: etb.optional_cost }));
+
+  const land = ENGINE.makeCard('plains', undefined, 0, undefined, undefined, undefined, ['bolt']);
+  land.iid = iidc++; land.controller = 'opp'; land.owner = 'opp';
+  G.opp.hand.push(land);
+  readyMain(G, 'opp');
+  G.opp.mana = { W: 0, U: 0, B: 0, R: 5, G: 0, C: 5 };
+  // A tough creature on the HUMAN's board (the AI's enemy) so the auto-picker
+  // has a creature to aim at and it survives the 3 (damage stays observable).
+  const victim = ENGINE.makeCard('savannahLions', undefined, 0);
+  victim.iid = iidc++; victim.controller = 'you'; victim.owner = 'you'; victim.sick = false;
+  victim.toughness = 9; victim.power = 0;
+  G.you.battlefield.push(victim);
+
+  const youLife0 = G.you.life;
+  ENGINE.executeAction('opp', { type: 'playLand', cardIid: land.iid });
+  // Drive the priority loop to resolution: pass / pay the optional cost / pick
+  // any trigger target, until nothing's owed. This is the path that hung — the
+  // ETB resolving used to throw (null target) inside executeAction.
+  let threw = null, guard = 0;
+  try {
+    while (guard++ < 60) {
+      const who = ENGINE.expectedActor();
+      if (!who) break;
+      if (G.pendingOptionalCost && G.pendingOptionalCost.who === who) {
+        ENGINE.executeAction(who, { type: 'optionalCost', pay: true });
+      } else if (G.pendingTriggerTarget && G.pendingTriggerTarget.controller === who) {
+        ENGINE.executeAction(who, { type: 'triggerTargetPick', target: G.pendingTriggerTarget.valid[0] });
+      } else {
+        ENGINE.executeAction(who, { type: 'pass' });
+      }
+    }
+  } catch (e) { threw = e.message || String(e); }
+  check('resolving the TARGETED staple ETB does not crash (was a null-target throw → AI hang)',
+    threw === null, threw || '');
+  check('the bolt dealt its 3 damage to a real target (your creature or face)',
+    victim.damage === 3 || G.you.life === youLife0 - 3,
+    'victim.damage=' + victim.damage + ' youLife=' + youLife0 + '→' + G.you.life);
+}
+
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');
 process.exit(fail > 0 ? 1 : 0);

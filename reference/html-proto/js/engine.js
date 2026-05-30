@@ -525,6 +525,21 @@ function mergeStapleInto(merged, stapleTpl) {
       text: 'ETB: ' + (stapleTpl.text || stapleTpl.name),
       effects: Array.isArray(remapped) ? remapped : [],
     };
+    // Carry the spell's targeting onto the trigger. A migrated targeted spell
+    // (bolt: top-level target() + a BARE damage effect) keeps its target on the
+    // card, not on the effect — without copying it, the ETB trigger would run a
+    // targetless damage and crash on a null target (which froze the AI mid-turn
+    // for any permanent+targeted-spell staple). Per-slot multi-target spells
+    // carry target_slots; their effects' target_slot indices were already
+    // remapped above.
+    if (stapleTpl.target) {
+      trig.target = stapleTpl.target;
+      if (stapleTpl.target_filter) trig.target_filter = stapleTpl.target_filter;
+    }
+    if (Array.isArray(stapleTpl.target_slots)) {
+      trig.target_slots = stapleTpl.target_slots.map(spec =>
+        Object.assign({}, spec, spec.target_filter ? { target_filter: { ...spec.target_filter } } : {}));
+    }
     // Land base → the ETB is OPTIONAL and costs the spell's mana cost. A land is
     // free to play, so a free stapled spell is pure value; making it a "you may
     // pay {cost}" trigger restores the bargain. Creature/artifact bases stay

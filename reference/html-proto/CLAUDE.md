@@ -4,7 +4,7 @@ Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folde
 
 ## Version
 
-**Current: `v2.0.63`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.0.64`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -201,6 +201,21 @@ opponent's best creature — permanent base 20, eot base 8, +card value +lane �
 animate-add_type only at a permanent WE control (else it'd gift the opponent a
 body). Verified via `AI.decide`: the AI now casts Encase in Amber at an enemy
 creature. 1269 green, lint clean, 300-game selfplay clean.
+
+v2.0.64: **fix: AI froze ("hung") on a land+spell ETB — staple dropped the spell's
+target step.** When a spell is stapled onto a permanent, the synthesized ETB
+trigger copied the spell's *effects* but NOT its top-level `target()` step. A
+migrated targeted spell (bolt = `target()` + a BARE `damage` effect) thus ran a
+TARGETLESS damage on resolve → null-target deref in `applyDamageFrom`. That
+uncaught throw fired inside `executeAction` during the AI's turn and froze the
+game (the reported "hang"). Surfaced on Land+Spell staples via the optional-paid
+ETB, but it's any permanent+targeted-spell staple. Fix: `synthesizeStapledTemplate`
+now carries `target`/`target_filter` (and `target_slots`, for multi-target spells)
+onto the ETB trigger, so the trigger picks a target (AI auto-picks; human gets the
+prompt) and the bare effects operate on it. The existing optional-ETB test only
+stapled an UNtargeted spell (goblinRabble), which is why it missed this — added a
+regression with a targeted staple (bolt) driven to resolution. 1296 green, lint
+clean, 400-game selfplay clean.
 
 v2.0.63: **Scarification text now reflects empower (was a frozen custom_text).**
 Scarification was `custom_text` with a hardcoded "Destroy target creature. Scar
