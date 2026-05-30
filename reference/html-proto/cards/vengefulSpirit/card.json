@@ -11,7 +11,6 @@
   "name": "Vengeful Spirit",
   "power": 2,
   "sub": "Spirit",
-  "text": "Flying. When this dies, destroy target creature.",
   "toughness": 2,
   "triggers": [
     {

@@ -8,7 +8,6 @@
   "name": "Blood Artist",
   "power": 0,
   "sub": "Vampire",
-  "text": "Whenever a creature dies, target opponent loses 1 life and you gain 1 life.",
   "toughness": 1,
   "triggers": [
     {

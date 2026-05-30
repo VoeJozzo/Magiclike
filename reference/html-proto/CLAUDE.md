@@ -4,7 +4,7 @@ Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folde
 
 ## Version
 
-**Current: `v2.0.54`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.0.55`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -201,6 +201,25 @@ opponent's best creature — permanent base 20, eot base 8, +card value +lane �
 animate-add_type only at a permanent WE control (else it'd gift the opponent a
 body). Verified via `AI.decide`: the AI now casts Encase in Amber at an enemy
 creature. 1269 green, lint clean, 300-game selfplay clean.
+
+v2.0.55: **strip the dead `text` field from card data (proto only).** Oracle text
+is GENERATED procedurally from each card's effects/triggers/abilities
+(`describeCardText`); the hand-written top-level `text` field in the JSON was
+*never read* on the render path for procedural cards — it was a vestige that could
+silently rot out of sync. Measured the render impact per-card (rendered text with
+vs without the stored field) and stripped it from the 245 cards where it provably
+changes nothing (239 procedural + 6 artifact lands, which now render empty rules
+text with mana on the frame, like every basic land). Kept it ONLY where it's
+load-bearing: the 9 `custom_text` authored cards, `mercurialAdept` (its per-game
+rolled ability can't be described statically — marked `custom_text: true` to make
+that explicit), and `squireOath` (a true vanilla creature whose `text` is genuine
+flavor). New `test_no_dead_text.js` guards against regression: a top-level `text`
+is allowed only when it actually affects rendered output (render-identical-without
+→ dead → fail). Zero rendered-text change (card_text goldens unchanged).
+**Cross-engine note:** the Godot port DISPLAYS `template.text` directly
+(`scenes/card.gd`) rather than generating it, so these cards now render blank
+oracle text in Godot until it grows its own procedural text-gen (user-approved
+tradeoff). 1264 green, lint clean, 300-game selfplay clean.
 
 v2.0.54: **bugfix found by a test-quality pass — permanent animate dies at EOT.**
 While de-brittling `test_type_change` (replacing a hand-emulated cleanup sweep

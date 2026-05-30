@@ -8,7 +8,6 @@
   "name": "Old Guardian",
   "power": 2,
   "sub": "Treefolk",
-  "text": "When this dies, put two +1/+1 counters on target creature you control.",
   "toughness": 5,
   "triggers": [
     {

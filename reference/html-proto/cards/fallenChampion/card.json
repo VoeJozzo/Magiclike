@@ -8,7 +8,6 @@
   "name": "Fallen Champion",
   "power": 3,
   "sub": "Human Warrior",
-  "text": "When this dies, target opponent loses 2 life.",
   "toughness": 2,
   "triggers": [
     {

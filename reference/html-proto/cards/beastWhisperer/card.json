@@ -8,7 +8,6 @@
   "name": "Beast Whisperer",
   "power": 2,
   "sub": "Elf Druid",
-  "text": "Whenever another creature enters under your control, draw a card.",
   "toughness": 4,
   "triggers": [
     {

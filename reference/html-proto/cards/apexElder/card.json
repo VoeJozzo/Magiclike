@@ -24,7 +24,6 @@
     }
   ],
   "sub": "Beast",
-  "text": "Trample. Other Beasts you control get +1/+1 and have trample. Whenever a Beast you control attacks, draw a card. Then discard a card.",
   "toughness": 4,
   "triggers": [
     {

@@ -8,7 +8,6 @@
   "name": "Reaper Shade",
   "power": 2,
   "sub": "Shade",
-  "text": "When this enters, destroy target creature with toughness 2 or less.",
   "toughness": 3,
   "triggers": [
     {

@@ -8,7 +8,6 @@
   "name": "Goblin Slinger",
   "power": 2,
   "sub": "Goblin Warrior",
-  "text": "When this attacks, deal 1 damage to any target.",
   "toughness": 2,
   "triggers": [
     {

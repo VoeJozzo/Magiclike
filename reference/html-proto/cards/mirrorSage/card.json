@@ -22,7 +22,6 @@
   "name": "Mirror Sage",
   "power": 1,
   "sub": "Human Wizard",
-  "text": "T: Tap target creature.",
   "toughness": 2,
   "type": "Creature"
 }

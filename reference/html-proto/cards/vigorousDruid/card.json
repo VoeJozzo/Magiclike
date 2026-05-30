@@ -23,7 +23,6 @@
   "name": "Vigorous Druid",
   "power": 2,
   "sub": "Elf Druid",
-  "text": "T: Add {G}{G}.",
   "toughness": 3,
   "type": "Creature"
 }

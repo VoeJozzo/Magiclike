@@ -20,7 +20,6 @@
     }
   ],
   "name": "Sword and Sorcery",
-  "text": "Target creature gets +2/+2 until end of turn. Tap target creature.",
   "type": "Sorcery",
   "target_slots": [
     {

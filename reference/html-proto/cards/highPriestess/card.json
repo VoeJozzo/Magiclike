@@ -18,7 +18,6 @@
     }
   ],
   "sub": "Human Cleric",
-  "text": "Other Clerics you control get +1/+1. Whenever another Cleric enters under your control, you gain 2 life.",
   "toughness": 3,
   "triggers": [
     {

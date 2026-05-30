@@ -21,7 +21,6 @@
     }
   ],
   "sub": "Treefolk",
-  "text": "Reach. Other Treefolk you control get +1/+1. When this enters, search your library for a Forest and put it onto the battlefield tapped.",
   "toughness": 5,
   "triggers": [
     {

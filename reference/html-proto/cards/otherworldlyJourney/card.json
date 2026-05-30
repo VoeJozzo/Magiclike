@@ -27,7 +27,6 @@
     }
   ],
   "name": "Otherworldly Journey",
-  "text": "Exile target creature; return it at end of turn.",
   "type": "Sorcery",
   "keywords": [
     "flash"

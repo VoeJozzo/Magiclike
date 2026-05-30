@@ -12,7 +12,6 @@
   "name": "Iron Statue",
   "power": 0,
   "sub": "Construct Wall",
-  "text": "Defender, Indestructible",
   "toughness": 5,
   "type": "Creature"
 }

@@ -8,7 +8,6 @@
   "name": "Verdant Outrider",
   "power": 3,
   "sub": "Beast",
-  "text": "When this attacks, search your library for a basic land card and put it onto the battlefield tapped.",
   "toughness": 2,
   "triggers": [
     {

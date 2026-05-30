@@ -8,7 +8,6 @@
   "name": "Apex Hunter",
   "power": 4,
   "sub": "Beast",
-  "text": "When this enters, your strongest creature fights target opponent's creature.",
   "toughness": 3,
   "triggers": [
     {

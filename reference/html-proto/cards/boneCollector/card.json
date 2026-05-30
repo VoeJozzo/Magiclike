@@ -8,7 +8,6 @@
   "name": "Bone Collector",
   "power": 2,
   "sub": "Zombie",
-  "text": "Whenever another creature dies, put a +1/+1 counter on this.",
   "toughness": 3,
   "triggers": [
     {

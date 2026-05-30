@@ -28,7 +28,6 @@
   "name": "Shivan Dragon",
   "power": 5,
   "sub": "Dragon",
-  "text": "Flying. {R}: this gets +1/+0 EOT.",
   "toughness": 5,
   "type": "Creature"
 }

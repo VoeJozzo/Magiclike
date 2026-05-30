@@ -8,7 +8,6 @@
   "name": "Grave Curate",
   "power": 2,
   "sub": "Human Cleric",
-  "text": "When this dies, target opponent discards a card.",
   "toughness": 2,
   "triggers": [
     {

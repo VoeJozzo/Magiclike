@@ -8,7 +8,6 @@
   "name": "Inspiring Herald",
   "power": 2,
   "sub": "Human Soldier",
-  "text": "When this enters, creatures you control get +1/+1 EOT.",
   "toughness": 3,
   "triggers": [
     {

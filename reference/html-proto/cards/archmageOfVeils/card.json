@@ -24,7 +24,6 @@
   "name": "Archmage of Veils",
   "power": 2,
   "sub": "Human Wizard",
-  "text": "T: Draw a card.",
   "toughness": 4,
   "type": "Creature"
 }

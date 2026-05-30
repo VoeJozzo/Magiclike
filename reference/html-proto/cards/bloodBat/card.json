@@ -10,7 +10,6 @@
   "name": "Vampire Bat",
   "power": 1,
   "sub": "Bat",
-  "text": "Flying",
   "toughness": 1,
   "type": "Creature"
 }

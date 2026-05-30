@@ -8,7 +8,6 @@
   "name": "Soulblade Captain",
   "power": 2,
   "sub": "Human Knight",
-  "text": "Whenever you cast a spell, creatures you control get +1/+0 EOT.",
   "toughness": 2,
   "triggers": [
     {

@@ -19,7 +19,6 @@
     }
   ],
   "name": "Arcane Denial",
-  "text": "Counter target spell. You draw a card.",
   "type": "Sorcery",
   "keywords": [
     "flash"

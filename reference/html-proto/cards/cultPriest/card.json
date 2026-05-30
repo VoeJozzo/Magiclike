@@ -8,7 +8,6 @@
   "name": "Cult Priest",
   "power": 2,
   "sub": "Human Cleric",
-  "text": "When this dies, target opponent loses 2 life.",
   "toughness": 1,
   "triggers": [
     {

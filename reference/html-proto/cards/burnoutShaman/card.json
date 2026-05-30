@@ -8,7 +8,6 @@
   "name": "Burnout Shaman",
   "power": 2,
   "sub": "Goblin Shaman",
-  "text": "When this dies, deal 2 damage to any target.",
   "toughness": 1,
   "triggers": [
     {

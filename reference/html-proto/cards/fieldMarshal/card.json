@@ -24,7 +24,6 @@
     }
   ],
   "sub": "Human Soldier",
-  "text": "Vigilance. Other Soldiers you control get +1/+1 and have vigilance. Whenever a Soldier you control attacks, you gain 1 life.",
   "toughness": 2,
   "triggers": [
     {

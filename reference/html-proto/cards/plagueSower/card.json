@@ -8,7 +8,6 @@
   "name": "Plague Sower",
   "power": 2,
   "sub": "Human Cleric",
-  "text": "When this enters, target creature gets -2/-2 EOT.",
   "toughness": 2,
   "triggers": [
     {

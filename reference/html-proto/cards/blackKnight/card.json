@@ -8,7 +8,6 @@
   "name": "Ravenous Chupacabra",
   "power": 2,
   "sub": "Beast",
-  "text": "When this enters, destroy target creature.",
   "toughness": 2,
   "triggers": [
     {

@@ -8,7 +8,6 @@
   "name": "Goblin War Drummer",
   "power": 2,
   "sub": "Goblin Shaman",
-  "text": "Whenever another Goblin enters under your control, deal 1 damage to any target.",
   "toughness": 1,
   "triggers": [
     {

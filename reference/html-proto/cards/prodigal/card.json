@@ -22,7 +22,6 @@
   "name": "Prodigal Sorcerer",
   "power": 1,
   "sub": "Human Wizard",
-  "text": "T: Deal 1 damage to any target.",
   "toughness": 1,
   "type": "Creature"
 }

@@ -18,7 +18,6 @@
     }
   ],
   "name": "Strength of the Pack",
-  "text": "Target creature gets +2/+2 and gains trample until end of turn.",
   "type": "Sorcery",
   "keywords": [
     "flash"

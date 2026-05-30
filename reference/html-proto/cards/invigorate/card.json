@@ -14,7 +14,6 @@
     }
   ],
   "name": "Invigorate",
-  "text": "Target creature gets +4/+4 EOT.",
   "type": "Sorcery",
   "keywords": [
     "flash"

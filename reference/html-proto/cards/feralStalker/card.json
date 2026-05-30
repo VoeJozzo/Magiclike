@@ -8,7 +8,6 @@
   "name": "Feral Stalker",
   "power": 2,
   "sub": "Cat",
-  "text": "When this attacks, it gets +2/+2 EOT.",
   "toughness": 2,
   "triggers": [
     {

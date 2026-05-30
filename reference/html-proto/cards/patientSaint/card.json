@@ -25,7 +25,6 @@
   "name": "Patient Saint",
   "power": 0,
   "sub": "Human Cleric Wall",
-  "text": "Defender. T: You gain 1 life.",
   "toughness": 4,
   "type": "Creature"
 }

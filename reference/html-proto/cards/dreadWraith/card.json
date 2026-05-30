@@ -11,7 +11,6 @@
   "name": "Dread Wraith",
   "power": 3,
   "sub": "Spirit",
-  "text": "Flying. When this enters, target opponent loses 2 life.",
   "toughness": 2,
   "triggers": [
     {

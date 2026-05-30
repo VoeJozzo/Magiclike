@@ -8,7 +8,6 @@
   "name": "Cloud Caller",
   "power": 1,
   "sub": "Human Wizard",
-  "text": "When this enters, return target creature to its owner's hand.",
   "toughness": 3,
   "triggers": [
     {

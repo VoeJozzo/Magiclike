@@ -8,7 +8,6 @@
   "name": "Bindspeaker",
   "power": 1,
   "sub": "Human Wizard",
-  "text": "When this enters, target creature gains defender until ~ dies.",
   "toughness": 3,
   "triggers": [
     {

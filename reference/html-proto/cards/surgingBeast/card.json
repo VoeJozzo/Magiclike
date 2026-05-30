@@ -11,7 +11,6 @@
   "name": "Surging Beast",
   "power": 3,
   "sub": "Beast",
-  "text": "Haste. When this enters, it gets +1/+1 EOT.",
   "toughness": 2,
   "triggers": [
     {

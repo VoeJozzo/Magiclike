@@ -8,7 +8,6 @@
   "name": "Last Druid",
   "power": 2,
   "sub": "Elf Druid",
-  "text": "When this dies, search your library for a creature card.",
   "toughness": 2,
   "triggers": [
     {

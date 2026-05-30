@@ -12,7 +12,6 @@
     }
   ],
   "name": "Shock",
-  "text": "Deal 2 damage to any target.",
   "type": "Sorcery",
   "keywords": [
     "flash"

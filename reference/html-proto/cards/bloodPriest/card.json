@@ -8,7 +8,6 @@
   "name": "Blood Priest",
   "power": 1,
   "sub": "Human Cleric",
-  "text": "When this enters, target opponent loses 2 life.",
   "toughness": 2,
   "triggers": [
     {

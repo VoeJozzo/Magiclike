@@ -25,7 +25,6 @@
     }
   ],
   "sub": "Drake",
-  "text": "Flying, First Strike. Other Drakes you control get +1/+1 and have first strike. Whenever another Drake enters under your control, deal 1 damage to any target.",
   "toughness": 4,
   "triggers": [
     {

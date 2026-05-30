@@ -8,7 +8,6 @@
   "name": "Inferno Lord",
   "power": 3,
   "sub": "Elemental",
-  "text": "When this enters, deal 3 damage to any target.",
   "toughness": 3,
   "triggers": [
     {

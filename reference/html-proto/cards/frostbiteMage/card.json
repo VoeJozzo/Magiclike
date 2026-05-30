@@ -8,7 +8,6 @@
   "name": "Frostbite Mage",
   "power": 1,
   "sub": "Human Wizard",
-  "text": "When this enters, target creature gets -2/-0 EOT.",
   "toughness": 2,
   "triggers": [
     {

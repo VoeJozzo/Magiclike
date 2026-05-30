@@ -25,7 +25,6 @@
     }
   ],
   "sub": "Spirit",
-  "text": "Flying, Hexproof. Other Spirits you control get +1/+1 and have hexproof. When this dies, return a Spirit creature card from your graveyard to your hand.",
   "toughness": 3,
   "triggers": [
     {

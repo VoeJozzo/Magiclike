@@ -12,7 +12,6 @@
     }
   ],
   "name": "Lightning Bolt",
-  "text": "Deal 3 damage to any target.",
   "type": "Sorcery",
   "keywords": [
     "flash"

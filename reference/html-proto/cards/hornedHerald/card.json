@@ -8,7 +8,6 @@
   "name": "Horned Herald",
   "power": 3,
   "sub": "Beast",
-  "text": "When this enters, creatures you control get +1/+1 EOT.",
   "toughness": 3,
   "triggers": [
     {

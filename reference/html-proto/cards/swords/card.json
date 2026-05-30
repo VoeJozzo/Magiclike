@@ -21,7 +21,6 @@
     }
   ],
   "name": "Swords to Plowshares",
-  "text": "Exile target creature; its controller gains life equal to its power.",
   "type": "Sorcery",
   "keywords": [
     "flash"

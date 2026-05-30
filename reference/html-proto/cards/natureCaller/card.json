@@ -8,7 +8,6 @@
   "name": "Nature Caller",
   "power": 1,
   "sub": "Elf Druid",
-  "text": "When this enters, search your library for a creature card.",
   "toughness": 3,
   "triggers": [
     {

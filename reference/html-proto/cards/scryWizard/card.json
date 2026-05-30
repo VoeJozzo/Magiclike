@@ -32,7 +32,6 @@
   "name": "Scrying Wizard",
   "power": 1,
   "sub": "Human Wizard",
-  "text": "T: Draw a card, then discard a card.",
   "toughness": 2,
   "type": "Creature"
 }

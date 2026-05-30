@@ -18,7 +18,6 @@
     }
   ],
   "name": "Oblation",
-  "text": "Shuffle target creature into its owner's library.",
   "type": "Sorcery",
   "keywords": [
     "flash"

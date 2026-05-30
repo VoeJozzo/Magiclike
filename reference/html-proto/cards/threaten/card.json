@@ -15,6 +15,5 @@
     }
   ],
   "name": "Threaten",
-  "text": "Gain control of target creature until end of turn. Untap it. It gains haste until end of turn.",
   "type": "Sorcery"
 }

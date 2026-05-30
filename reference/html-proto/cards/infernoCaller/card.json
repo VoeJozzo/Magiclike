@@ -8,7 +8,6 @@
   "name": "Inferno Caller",
   "power": 2,
   "sub": "Human Shaman",
-  "text": "When this attacks, deal 2 damage to any target.",
   "toughness": 3,
   "triggers": [
     {

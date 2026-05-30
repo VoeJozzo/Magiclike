@@ -8,7 +8,6 @@
   "name": "Ancestral Priest",
   "power": 1,
   "sub": "Human Cleric",
-  "text": "When this enters, you gain 2 life.",
   "toughness": 3,
   "triggers": [
     {

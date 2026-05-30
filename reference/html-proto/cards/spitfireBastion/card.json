@@ -25,7 +25,6 @@
   "name": "Spitfire Bastion",
   "power": 1,
   "sub": "Wall",
-  "text": "Defender. T: Deal 1 damage to any target.",
   "toughness": 3,
   "type": "Creature"
 }

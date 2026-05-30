@@ -8,7 +8,6 @@
   "name": "Crusader Captain",
   "power": 3,
   "sub": "Human Knight",
-  "text": "When this attacks, target creature you control gets +1/+1 EOT.",
   "toughness": 3,
   "triggers": [
     {

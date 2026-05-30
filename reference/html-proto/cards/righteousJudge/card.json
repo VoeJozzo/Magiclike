@@ -8,7 +8,6 @@
   "name": "Righteous Judge",
   "power": 3,
   "sub": "Human Knight",
-  "text": "When this enters, destroy target tapped creature.",
   "toughness": 3,
   "triggers": [
     {

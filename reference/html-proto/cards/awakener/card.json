@@ -8,7 +8,6 @@
   "name": "Awakener",
   "power": 2,
   "sub": "Elf Druid",
-  "text": "When this enters, put a +1/+1 counter on target creature you control.",
   "toughness": 3,
   "triggers": [
     {

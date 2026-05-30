@@ -11,7 +11,6 @@
   "name": "Dusk Rider",
   "power": 2,
   "sub": "Drake",
-  "text": "Flying. When this attacks, draw a card, then discard a card.",
   "toughness": 2,
   "triggers": [
     {

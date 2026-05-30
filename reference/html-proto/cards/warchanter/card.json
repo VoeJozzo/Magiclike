@@ -8,7 +8,6 @@
   "name": "Warchanter",
   "power": 2,
   "sub": "Goblin Shaman",
-  "text": "When this attacks, creatures you control get +1/+0 EOT.",
   "toughness": 3,
   "triggers": [
     {

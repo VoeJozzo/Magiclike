@@ -8,7 +8,6 @@
   "name": "Flame Summoner",
   "power": 2,
   "sub": "Human Shaman",
-  "text": "When this enters the battlefield, deal 2 damage to any target.",
   "toughness": 2,
   "triggers": [
     {

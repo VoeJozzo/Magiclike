@@ -13,7 +13,6 @@
   ],
   "name": "Symmetricize",
   "special": true,
-  "text": "Target creature's controller chooses its power, toughness, or mana cost. Each becomes the same value. Forever.",
   "type": "Sorcery",
   "keywords": [
     "flash"

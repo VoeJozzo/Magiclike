@@ -8,7 +8,6 @@
   "name": "Ember Herald",
   "power": 1,
   "sub": "Human Shaman",
-  "text": "When this enters, deal 1 damage to any target.",
   "toughness": 2,
   "triggers": [
     {

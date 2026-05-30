@@ -8,7 +8,6 @@
   "name": "Grave Digger",
   "power": 3,
   "sub": "Zombie",
-  "text": "When this enters the battlefield, return target creature card from your graveyard to your hand.",
   "toughness": 3,
   "triggers": [
     {

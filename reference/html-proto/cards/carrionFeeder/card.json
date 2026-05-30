@@ -23,7 +23,6 @@
   "name": "Carrion Feeder",
   "power": 1,
   "sub": "Zombie",
-  "text": "Sacrifice a creature: Put a +1/+1 counter on this.",
   "toughness": 1,
   "type": "Creature"
 }

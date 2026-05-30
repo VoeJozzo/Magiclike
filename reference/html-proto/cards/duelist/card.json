@@ -11,7 +11,6 @@
   "name": "Goblin Duelist",
   "power": 2,
   "sub": "Goblin Warrior",
-  "text": "First strike",
   "toughness": 1,
   "type": "Creature"
 }

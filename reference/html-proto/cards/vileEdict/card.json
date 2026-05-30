@@ -19,6 +19,5 @@
   ],
   "name": "Vile Edict",
   "special": true,
-  "text": "Target player rips a permanent they control.",
   "type": "Sorcery"
 }

@@ -118,6 +118,8 @@ const CATEGORY_A = [
   'test_types_identity.js',
   // Type-change layer (add_type/set_types) + Phase-4 test cards (type-change spells, artifact creatures, artifact lands).
   'test_type_change.js',
+  // Oracle text is generated from effects — no card may carry a dead (render-irrelevant) top-level text field.
+  'test_no_dead_text.js',
 ];
 
 const TESTS_DIR = __dirname;

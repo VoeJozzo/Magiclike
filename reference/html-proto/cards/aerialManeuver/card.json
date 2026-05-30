@@ -14,7 +14,6 @@
     }
   ],
   "name": "Aerial Maneuver",
-  "text": "Creatures you control gain flying until end of turn.",
   "type": "Sorcery",
   "keywords": [
     "flash"

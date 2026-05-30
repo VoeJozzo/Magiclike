@@ -43,7 +43,6 @@
     ]
   },
   "name": "Grave Charm",
-  "text": "Choose one — Destroy target creature; or target opponent discards 2 cards; or you gain 4 life and that opponent loses 2 life.",
   "type": "Sorcery",
   "keywords": [
     "flash"

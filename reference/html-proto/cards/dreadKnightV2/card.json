@@ -11,7 +11,6 @@
   "name": "Dread Knight",
   "power": 4,
   "sub": "Human Knight",
-  "text": "Menace. When this enters, you lose 2 life.",
   "toughness": 3,
   "triggers": [
     {

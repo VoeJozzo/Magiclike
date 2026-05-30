@@ -8,7 +8,6 @@
   "name": "Wizard Adept",
   "power": 1,
   "sub": "Human Wizard",
-  "text": "Whenever you cast a spell, draw a card, then discard a card.",
   "toughness": 3,
   "triggers": [
     {

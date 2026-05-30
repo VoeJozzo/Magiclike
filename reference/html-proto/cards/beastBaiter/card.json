@@ -8,7 +8,6 @@
   "name": "Furnace Brute",
   "power": 3,
   "sub": "Goblin Berserker",
-  "text": "When this enters, deal 3 damage to target creature.",
   "toughness": 3,
   "triggers": [
     {

@@ -8,7 +8,6 @@
   "name": "Wildfire Devil",
   "power": 3,
   "sub": "Devil",
-  "text": "When this dies, deal 3 damage to any target.",
   "toughness": 3,
   "triggers": [
     {

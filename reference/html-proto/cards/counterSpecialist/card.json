@@ -8,7 +8,6 @@
   "name": "Counter Specialist",
   "power": 1,
   "sub": "Human Wizard",
-  "text": "Whenever you cast a counterspell, put a +1/+1 counter on this.",
   "toughness": 4,
   "triggers": [
     {

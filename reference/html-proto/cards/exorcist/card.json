@@ -8,7 +8,6 @@
   "name": "Exorcist",
   "power": 2,
   "sub": "Human Cleric",
-  "text": "When this enters, exile target creature; its controller gains life equal to its power.",
   "toughness": 3,
   "triggers": [
     {

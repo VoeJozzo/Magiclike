@@ -6,7 +6,6 @@
     "C": 1
   },
   "name": "Diabolic Edict",
-  "text": "Target opponent sacrifices a creature.",
   "type": "Sorcery",
   "target": "opp",
   "effects": [

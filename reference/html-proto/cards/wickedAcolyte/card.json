@@ -22,7 +22,6 @@
   "name": "Wicked Acolyte",
   "power": 2,
   "sub": "Human Cleric",
-  "text": "T: Target player loses 1 life.",
   "toughness": 2,
   "type": "Creature"
 }

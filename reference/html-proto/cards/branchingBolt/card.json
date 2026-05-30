@@ -18,7 +18,6 @@
     }
   ],
   "name": "Branching Bolt",
-  "text": "Branching Bolt deals 2 damage to target creature and 2 damage to target creature.",
   "type": "Sorcery",
   "target_slots": [
     {

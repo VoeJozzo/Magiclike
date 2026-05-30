@@ -11,7 +11,6 @@
   "name": "Bloodthirsty Stalker",
   "power": 2,
   "sub": "Vampire",
-  "text": "Menace. When this attacks, target opponent loses 1 life.",
   "toughness": 2,
   "triggers": [
     {

@@ -8,7 +8,6 @@
   "name": "Ajani's Pridemate",
   "power": 2,
   "sub": "Cat Soldier",
-  "text": "Whenever you gain life, put a +1/+1 counter on this.",
   "toughness": 2,
   "triggers": [
     {

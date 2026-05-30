@@ -8,7 +8,6 @@
   "name": "Visionary Sage",
   "power": 2,
   "sub": "Human Wizard",
-  "text": "When this enters the battlefield, draw a card.",
   "toughness": 2,
   "triggers": [
     {

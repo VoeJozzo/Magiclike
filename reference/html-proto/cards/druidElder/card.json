@@ -33,7 +33,6 @@
     }
   ],
   "sub": "Elf Druid",
-  "text": "Other Druids you control get +1/+1. T: Add {G}{G}.",
   "toughness": 3,
   "type": "Creature"
 }

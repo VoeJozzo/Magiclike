@@ -8,7 +8,6 @@
   "name": "Anger Hound",
   "power": 2,
   "sub": "Hound",
-  "text": "Whenever you cast a spell, this gets +1/+0 EOT.",
   "toughness": 1,
   "triggers": [
     {

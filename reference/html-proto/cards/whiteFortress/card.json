@@ -12,7 +12,6 @@
   "name": "Steadfast Wall",
   "power": 0,
   "sub": "Wall",
-  "text": "Defender, Flying",
   "toughness": 5,
   "type": "Creature"
 }

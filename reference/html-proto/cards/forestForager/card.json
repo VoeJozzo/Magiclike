@@ -8,7 +8,6 @@
   "name": "Forest Forager",
   "power": 2,
   "sub": "Elf Druid",
-  "text": "When this enters the battlefield, search for a basic land and put it onto the battlefield tapped.",
   "toughness": 2,
   "triggers": [
     {

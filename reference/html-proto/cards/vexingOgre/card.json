@@ -8,7 +8,6 @@
   "name": "Vexing Ogre",
   "power": 4,
   "sub": "Ogre",
-  "text": "When this enters, you lose 1 life.",
   "toughness": 2,
   "triggers": [
     {

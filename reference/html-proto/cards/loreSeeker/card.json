@@ -8,7 +8,6 @@
   "name": "Lore Seeker",
   "power": 1,
   "sub": "Human Wizard",
-  "text": "When you cast a spell, draw a card.",
   "toughness": 4,
   "triggers": [
     {

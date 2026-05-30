@@ -24,7 +24,6 @@
   "name": "Sage of the Wilds",
   "power": 2,
   "sub": "Elf Druid",
-  "text": "T: Untap target creature you control.",
   "toughness": 3,
   "type": "Creature"
 }

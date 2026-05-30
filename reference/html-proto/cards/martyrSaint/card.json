@@ -8,7 +8,6 @@
   "name": "Martyr-Saint",
   "power": 1,
   "sub": "Human Cleric",
-  "text": "When this dies, you gain 3 life.",
   "toughness": 2,
   "triggers": [
     {

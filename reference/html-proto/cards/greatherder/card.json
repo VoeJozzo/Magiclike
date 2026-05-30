@@ -8,7 +8,6 @@
   "name": "Great Herder",
   "power": 3,
   "sub": "Elf Druid",
-  "text": "When this enters, search for a basic land and put it onto the battlefield tapped.",
   "toughness": 3,
   "triggers": [
     {

@@ -24,7 +24,6 @@
     }
   ],
   "sub": "Goblin",
-  "text": "Haste. Other Goblins you control get +1/+1 and have haste. Whenever a Goblin you control attacks, target opponent loses 1 life.",
   "toughness": 2,
   "triggers": [
     {

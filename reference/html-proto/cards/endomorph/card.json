@@ -8,7 +8,6 @@
   "power": 2,
   "special": true,
   "sub": "Shapeshifter",
-  "text": "When this kills a creature, it permanently gains one of that creature's keywords. If it gained no keyword, it gains +1/+1 permanently instead.",
   "toughness": 2,
   "triggers": [
     {

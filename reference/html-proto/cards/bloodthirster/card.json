@@ -12,7 +12,6 @@
   "name": "Bloodthirster",
   "power": 2,
   "sub": "Vampire",
-  "text": "Flying, Lifelink. When this attacks, deal 1 damage to any target.",
   "toughness": 2,
   "triggers": [
     {

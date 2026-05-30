@@ -13,7 +13,6 @@
     }
   ],
   "name": "Firebreathing",
-  "text": "Target creature gets +3/+0 EOT.",
   "type": "Sorcery",
   "keywords": [
     "flash"

@@ -23,7 +23,6 @@
     }
   ],
   "name": "Drain Life",
-  "text": "Drain Life deals 2 damage to target creature and 2 damage to target player. You gain 4 life.",
   "type": "Sorcery",
   "target_slots": [
     {

@@ -7,7 +7,6 @@
   "name": "Goblin Piercer",
   "power": 1,
   "sub": "Goblin Warrior",
-  "text": "When this attacks, deal 1 damage to target opponent.",
   "toughness": 1,
   "triggers": [
     {

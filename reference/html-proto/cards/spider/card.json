@@ -11,7 +11,6 @@
   "name": "Giant Spider",
   "power": 2,
   "sub": "Spider",
-  "text": "Reach",
   "toughness": 4,
   "type": "Creature"
 }

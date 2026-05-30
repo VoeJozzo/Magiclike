@@ -8,7 +8,6 @@
   "name": "Curse Shade",
   "power": 2,
   "sub": "Shade",
-  "text": "When this dies, exile target creature.",
   "toughness": 2,
   "triggers": [
     {

@@ -12,7 +12,6 @@
   "name": "Warrior Champion",
   "power": 3,
   "sub": "Human Warrior",
-  "text": "First strike, Haste",
   "toughness": 2,
   "type": "Creature"
 }

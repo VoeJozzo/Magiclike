@@ -8,7 +8,6 @@
     "Land"
   ],
   "mana": "G",
-  "text": "Tap: Add {G}.",
   "abilities": [
     {
       "cost": {

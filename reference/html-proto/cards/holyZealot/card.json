@@ -10,7 +10,6 @@
   "name": "Holy Zealot",
   "power": 1,
   "sub": "Human Cleric",
-  "text": "Haste. When this attacks, you gain 1 life.",
   "toughness": 1,
   "triggers": [
     {

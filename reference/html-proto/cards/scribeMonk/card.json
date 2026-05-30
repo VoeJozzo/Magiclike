@@ -11,7 +11,6 @@
   "name": "Wall of Omens",
   "power": 0,
   "sub": "Wall",
-  "text": "Defender. When this enters, draw a card.",
   "toughness": 4,
   "triggers": [
     {

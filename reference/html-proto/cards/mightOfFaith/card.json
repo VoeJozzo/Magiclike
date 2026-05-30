@@ -13,7 +13,6 @@
     }
   ],
   "name": "Might of Faith",
-  "text": "Target creature gets +2/+2 EOT.",
   "type": "Sorcery",
   "keywords": [
     "flash"

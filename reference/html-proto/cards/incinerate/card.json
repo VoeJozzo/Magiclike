@@ -18,7 +18,6 @@
     }
   ],
   "name": "Char",
-  "text": "Char deals 4 damage to any target and 1 damage to you.",
   "type": "Sorcery",
   "keywords": [
     "flash"

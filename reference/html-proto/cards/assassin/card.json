@@ -25,7 +25,6 @@
   "name": "Royal Assassin",
   "power": 1,
   "sub": "Human Assassin",
-  "text": "T: Destroy target tapped creature.",
   "toughness": 1,
   "type": "Creature"
 }

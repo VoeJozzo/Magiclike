@@ -12,7 +12,6 @@
     }
   ],
   "name": "Healing Salve",
-  "text": "Target player gains 3 life.",
   "type": "Sorcery",
   "keywords": [
     "flash"
