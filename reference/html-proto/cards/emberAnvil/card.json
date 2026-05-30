@@ -9,20 +9,5 @@
     "Mountain"
   ],
   "mana": "R",
-  "abilities": [
-    {
-      "cost": {
-        "tap": true
-      },
-      "effects": [
-        {
-          "kind": "add_mana",
-          "amounts": {
-            "R": 1
-          }
-        }
-      ]
-    }
-  ],
   "sub": "Mountain"
 }

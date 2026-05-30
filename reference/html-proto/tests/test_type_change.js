@@ -150,12 +150,32 @@ console.log('\n=== 8 colorless artifact creatures ===');
   check('typeLine renders "Artifact Creature — <sub>"', /^Artifact Creature — \S/.test(typeLine(inst)), typeLine(inst));
 })();
 
-console.log('\n=== 6 artifact lands (WUBRG + C), in the draft pool ===');
+console.log('\n=== 6 artifact lands (WUBRG + C), mana DERIVED from basic subtype ===');
 (() => {
   const lands = ['gildedSeat', 'tidalConduit', 'boneReliquary', 'emberAnvil', 'verdantVerge', 'drossPylon'];
   check('all 6 present', lands.every(id => CARDS[id]), lands.filter(id => !CARDS[id]).join(', '));
   check('each is Land + Artifact and taps for its color',
     lands.every(id => { const c = CARDS[id]; return hasType(c, 'Land') && hasType(c, 'Artifact') && c.mana && Array.isArray(c.abilities); }));
+  // The 5 colored lands carry a basic-land subtype and DERIVE their mana ability
+  // from it at ingest (no hand-authored ability in the JSON). Verify the derived
+  // ability produces exactly the matching color.
+  const SUBTYPE_COLOR = { gildedSeat: ['Plains', 'W'], tidalConduit: ['Island', 'U'], boneReliquary: ['Swamp', 'B'], emberAnvil: ['Mountain', 'R'], verdantVerge: ['Forest', 'G'] };
+  for (const [id, [sub, color]] of Object.entries(SUBTYPE_COLOR)) {
+    check(`${id}: has the ${sub} subtype`, hasType(CARDS[id], sub));
+    check(`${id}: subtype derives "{T}: Add {${color}}"`,
+      JSON.stringify(ENGINE.landProducibleColors(CARDS[id])) === JSON.stringify([color]),
+      JSON.stringify(ENGINE.landProducibleColors(CARDS[id])));
+  }
+  // End-to-end: a derived land actually taps for its color through the real action.
+  RUN.start({ cards: ['gildedSeat'].concat(Array(11).fill('plains')), colors: ['W'] }, null);
+  RUN.startNextGame();
+  const G = ENGINE.state(); G.activePlayer = 'you'; G.priorityHolder = 'you'; G.phase = 'MAIN1';
+  const gs = ENGINE.makeCard('gildedSeat', [], 0); gs.controller = 'you'; gs.owner = 'you'; gs.tapped = false; gs.sick = false;
+  G.you.battlefield.push(gs);
+  const w0 = G.you.mana.W;
+  check('derived land tap is legal', ENGINE.isLegalAction('you', { type: 'tapLandForMana', cardIid: gs.iid }));
+  ENGINE.executeAction('you', { type: 'tapLandForMana', cardIid: gs.iid });
+  check('derived land taps for {W} and becomes tapped', G.you.mana.W === w0 + 1 && gs.tapped);
   check('cover all six mana colors W/U/B/R/G/C',
     ['W', 'U', 'B', 'R', 'G', 'C'].every(c => lands.some(id => CARDS[id].mana === c)));
   // Draft pool: artifact lands IN, basic lands OUT.

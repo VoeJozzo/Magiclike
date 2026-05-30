@@ -4,7 +4,7 @@ Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folde
 
 ## Version
 
-**Current: `v2.0.58`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.0.59`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -201,6 +201,17 @@ opponent's best creature — permanent base 20, eot base 8, +card value +lane �
 animate-add_type only at a permanent WE control (else it'd gift the opponent a
 body). Verified via `AI.decide`: the AI now casts Encase in Amber at an enemy
 creature. 1269 green, lint clean, 300-game selfplay clean.
+
+v2.0.59: **basic-land subtypes autogrant their mana ability (MTG 305.6).** A Land
+with the Plains/Island/Swamp/Mountain/Forest subtype now DERIVES the matching
+"{T}: Add {C}" ability at ingest (`ingestCard`), unless it already produces that
+color. So the 5 colored artifact lands dropped their hand-authored tap ability —
+the subtype is now the single source (add the subtype, get the mana). drossPylon
+keeps its explicit {C} (colorless has no color subtype to derive from); basic
+lands carry sub "Basic Land" (not a color subtype) so they're unaffected and keep
+their explicit ability. Materialized onto the template at load, so every
+`card.abilities` consumer (tap legality, landProducibleColors, AI, render) works
+unchanged. Verified end-to-end (gildedSeat taps for {W}). 1287 green, lint clean.
 
 v2.0.58: **card tweaks — artifact-land subtypes + architectsCodex is an artifact.**
 Added basic land subtypes to the 5 colored artifact lands so they read "Artifact

@@ -9,20 +9,5 @@
     "Forest"
   ],
   "mana": "G",
-  "abilities": [
-    {
-      "cost": {
-        "tap": true
-      },
-      "effects": [
-        {
-          "kind": "add_mana",
-          "amounts": {
-            "G": 1
-          }
-        }
-      ]
-    }
-  ],
   "sub": "Forest"
 }

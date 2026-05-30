@@ -9,20 +9,5 @@
     "Plains"
   ],
   "mana": "W",
-  "abilities": [
-    {
-      "cost": {
-        "tap": true
-      },
-      "effects": [
-        {
-          "kind": "add_mana",
-          "amounts": {
-            "W": 1
-          }
-        }
-      ]
-    }
-  ],
   "sub": "Plains"
 }

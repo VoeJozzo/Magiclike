@@ -9,20 +9,5 @@
     "Island"
   ],
   "mana": "U",
-  "abilities": [
-    {
-      "cost": {
-        "tap": true
-      },
-      "effects": [
-        {
-          "kind": "add_mana",
-          "amounts": {
-            "U": 1
-          }
-        }
-      ]
-    }
-  ],
   "sub": "Island"
 }

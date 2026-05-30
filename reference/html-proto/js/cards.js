@@ -48,6 +48,31 @@ function ingestCard(card) {
   // Normalize any function-call-shorthand effects to canonical dicts (§5.1/§5.2).
   // No-op for dict-form effects, so the current all-dict pool is unaffected.
   if (typeof normalizeCardEffects === 'function') normalizeCardEffects(card);
+  // Intrinsic mana from a basic-land subtype (MTG 305.6): a Land with the
+  // Plains/Island/Swamp/Mountain/Forest subtype gets the matching "{T}: Add {C}"
+  // ability, unless it already produces that color. Lets artifact/nonbasic lands
+  // DERIVE their mana from the subtype instead of hand-authoring a tap ability —
+  // add the subtype, get the mana. (Basic lands carry sub "Basic Land", not a
+  // color subtype, so they keep their explicit ability and are unaffected.)
+  if (typeof typesOf === 'function' && typeof manaAbilityForColors === 'function' && hasType(card, 'Land')) {
+    const BASIC_LAND_MANA = { Plains: 'W', Island: 'U', Swamp: 'B', Mountain: 'R', Forest: 'G' };
+    const produced = new Set();
+    for (const ab of (card.abilities || [])) {
+      if (ab && ab.cost && ab.cost.tap && Array.isArray(ab.effects)) {
+        for (const e of ab.effects) {
+          if (e && e.kind === 'add_mana') for (const c of manaEffectColors(e)) produced.add(c);
+        }
+      }
+    }
+    for (const tag of typesOf(card)) {
+      const color = BASIC_LAND_MANA[tag];
+      if (color && !produced.has(color)) {
+        if (!Array.isArray(card.abilities)) card.abilities = [];
+        card.abilities.push(manaAbilityForColors([color]));
+        produced.add(color);
+      }
+    }
+  }
   return card;
 }
 

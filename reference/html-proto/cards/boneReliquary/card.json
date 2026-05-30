@@ -9,20 +9,5 @@
     "Swamp"
   ],
   "mana": "B",
-  "abilities": [
-    {
-      "cost": {
-        "tap": true
-      },
-      "effects": [
-        {
-          "kind": "add_mana",
-          "amounts": {
-            "B": 1
-          }
-        }
-      ]
-    }
-  ],
   "sub": "Swamp"
 }
