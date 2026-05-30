@@ -1,6 +1,6 @@
 {
   "card_id": "volcanic_hammer",
-  "art": "cards/fireball/art.png",
+  "art": "cards/volcanic_hammer/art.png",
   "cost": {
     "R": 1,
     "C": 2

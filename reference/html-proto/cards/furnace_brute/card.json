@@ -1,6 +1,6 @@
 {
   "card_id": "furnace_brute",
-  "art": "cards/beastBaiter/art.png",
+  "art": "cards/furnace_brute/art.png",
   "cost": {
     "R": 1,
     "C": 3

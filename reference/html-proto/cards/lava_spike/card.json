@@ -1,6 +1,6 @@
 {
   "card_id": "lava_spike",
-  "art": "cards/conflagrate/art.png",
+  "art": "cards/lava_spike/art.png",
   "cost": {
     "R": 1
   },

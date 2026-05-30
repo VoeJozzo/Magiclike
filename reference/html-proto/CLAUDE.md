@@ -4,7 +4,7 @@ Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folde
 
 ## Version
 
-**Current: `v2.0.67`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.0.68`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -201,6 +201,16 @@ opponent's best creature — permanent base 20, eot base 8, +card value +lane �
 animate-add_type only at a permanent WE control (else it'd gift the opponent a
 body). Verified via `AI.decide`: the AI now casts Encase in Amber at an enemy
 creature. 1269 green, lint clean, 300-game selfplay clean.
+
+v2.0.68: **fix broken art paths from the v2.0.67 id rename.** The rename sweep
+git-renamed each card's folder (carrying its `art.png` along) but did NOT update
+the hardcoded `"art": "cards/<oldId>/art.png"` STRING inside `card.json` — so 75
+image-art cards pointed at folders that no longer existed (broken art in-game).
+Rewrote each art path to its own (new) folder; the png was already sitting there
+from the folder rename. Elystra needed extra care: it has a multi-rung
+`art_ladder` (`art-1/2/3.png`, stat-driven) — fixed the base `art` AND all 3
+ladder rung paths. Final exhaustive recursive scan: all 87 `cards/...` path
+strings across every card JSON now resolve. 1303 green, lint clean.
 
 v2.0.67: **card-id normalization + types[] on every card (big mechanical sweep).**
 Two consistency passes, one commit: (1) Added an explicit `types[]` to all 264

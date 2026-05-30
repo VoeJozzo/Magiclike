@@ -1,6 +1,6 @@
 {
   "card_id": "goblin_rabble",
-  "art": "cards/goblinRabble/art.png",
+  "art": "cards/goblin_rabble/art.png",
   "cost": {
     "R": 1,
     "C": 2

@@ -1,6 +1,6 @@
 {
   "card_id": "mist_djinn",
-  "art": "cards/mistDjinn/art.png",
+  "art": "cards/mist_djinn/art.png",
   "cost": {
     "U": 1,
     "C": 3

@@ -1,6 +1,6 @@
 {
   "card_id": "soul_reaper",
-  "art": "cards/soulReaper/art.png",
+  "art": "cards/soul_reaper/art.png",
   "cost": {
     "B": 1,
     "C": 3

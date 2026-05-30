@@ -1,6 +1,6 @@
 {
   "card_id": "righteous_judge",
-  "art": "cards/righteousJudge/art.png",
+  "art": "cards/righteous_judge/art.png",
   "cost": {
     "W": 2,
     "C": 3

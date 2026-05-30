@@ -1,6 +1,6 @@
 {
   "card_id": "architects_codex",
-  "art": "cards/architectsCodex/art.png",
+  "art": "cards/architects_codex/art.png",
   "build_on_draw": true,
   "cost": {
     "C": 4

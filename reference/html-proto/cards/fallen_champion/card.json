@@ -1,6 +1,6 @@
 {
   "card_id": "fallen_champion",
-  "art": "cards/fallenChampion/art.png",
+  "art": "cards/fallen_champion/art.png",
   "cost": {
     "B": 1,
     "C": 2

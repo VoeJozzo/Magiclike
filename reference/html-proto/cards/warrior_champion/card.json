@@ -1,6 +1,6 @@
 {
   "card_id": "warrior_champion",
-  "art": "cards/warriorChamp/art.png",
+  "art": "cards/warrior_champion/art.png",
   "cost": {
     "R": 1,
     "C": 2

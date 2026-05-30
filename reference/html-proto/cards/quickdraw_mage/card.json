@@ -1,6 +1,6 @@
 {
   "card_id": "quickdraw_mage",
-  "art": "cards/flashMage/art.png",
+  "art": "cards/quickdraw_mage/art.png",
   "cost": {
     "U": 1,
     "C": 2

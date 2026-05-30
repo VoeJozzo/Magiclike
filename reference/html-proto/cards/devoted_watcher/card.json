@@ -1,6 +1,6 @@
 {
   "card_id": "devoted_watcher",
-  "art": "cards/ancestralGuard/art.png",
+  "art": "cards/devoted_watcher/art.png",
   "cost": {
     "W": 1,
     "C": 1

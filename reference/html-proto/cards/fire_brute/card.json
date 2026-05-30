@@ -1,6 +1,6 @@
 {
   "card_id": "fire_brute",
-  "art": "cards/fireBrute/art.png",
+  "art": "cards/fire_brute/art.png",
   "cost": {
     "R": 1,
     "C": 1

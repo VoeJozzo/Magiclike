@@ -1,6 +1,6 @@
 {
   "card_id": "goblin_duelist",
-  "art": "cards/duelist/art.png",
+  "art": "cards/goblin_duelist/art.png",
   "cost": {
     "R": 1,
     "C": 1

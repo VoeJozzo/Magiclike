@@ -1,6 +1,6 @@
 {
   "card_id": "field_marshal",
-  "art": "cards/fieldMarshal/art.png",
+  "art": "cards/field_marshal/art.png",
   "cost": {
     "W": 2,
     "C": 1

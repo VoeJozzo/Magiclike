@@ -1,6 +1,6 @@
 {
   "card_id": "doom_blade",
-  "art": "cards/doomBlade/art.png",
+  "art": "cards/doom_blade/art.png",
   "cost": {
     "B": 1,
     "C": 1

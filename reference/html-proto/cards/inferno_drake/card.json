@@ -1,6 +1,6 @@
 {
   "card_id": "inferno_drake",
-  "art": "cards/inferno/art.png",
+  "art": "cards/inferno_drake/art.png",
   "cost": {
     "R": 2,
     "C": 3

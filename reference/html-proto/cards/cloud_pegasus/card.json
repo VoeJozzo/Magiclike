@@ -1,6 +1,6 @@
 {
   "card_id": "cloud_pegasus",
-  "art": "cards/cloudGiant/art.png",
+  "art": "cards/cloud_pegasus/art.png",
   "cost": {
     "W": 1,
     "C": 2

@@ -1,6 +1,6 @@
 {
   "card_id": "lore_seeker",
-  "art": "cards/loreSeeker/art.png",
+  "art": "cards/lore_seeker/art.png",
   "cost": {
     "U": 2,
     "C": 3

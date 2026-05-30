@@ -1,6 +1,6 @@
 {
   "card_id": "char",
-  "art": "cards/incinerate/art.png",
+  "art": "cards/char/art.png",
   "cost": {
     "R": 1,
     "C": 1

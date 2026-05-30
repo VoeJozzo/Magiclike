@@ -1,6 +1,6 @@
 {
   "card_id": "goblin_chieftain",
-  "art": "cards/goblinChieftain/art.png",
+  "art": "cards/goblin_chieftain/art.png",
   "cost": {
     "R": 1,
     "C": 1

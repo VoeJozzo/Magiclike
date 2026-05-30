@@ -1,6 +1,6 @@
 {
   "card_id": "divination",
-  "art": "cards/divin/art.png",
+  "art": "cards/divination/art.png",
   "cost": {
     "U": 1,
     "C": 1
