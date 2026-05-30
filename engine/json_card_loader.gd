@@ -55,6 +55,15 @@ const _FIRED_EVENT_KINDS := [
 	"card_discarded",
 ]
 
+# types[] tag classification (v2.0.70 cutover: types[] is the sole type source —
+# the legacy `type`/`sub` fields are gone). Mirrors proto js/types.js: a tag is a
+# card-type, a supertype, or (by default) a subtype. Governing precedence drives
+# the resource subclass — a permanent type beats a spell; Creature > Land >
+# Artifact among permanents.
+const _CARD_TYPE_TAGS := ["Creature", "Land", "Artifact", "Sorcery", "Instant"]
+const _SUPERTYPE_TAGS := ["Basic", "Legendary"]
+const _GOVERNING_PRECEDENCE := ["Creature", "Land", "Artifact", "Sorcery", "Instant"]
+
 
 static func load_card(folder_id: String) -> CardResource:
 	var path: String = _CARDS_DIR + folder_id + "/card.json"
@@ -149,9 +158,26 @@ static func supportability_report(cards: Dictionary, print_summary: bool = true)
 # ── Internal ───────────────────────────────────────────────────────────────
 
 static func _build_resource(json: Dictionary) -> CardResource:
-	var type_string: String = String(json.get("type", "")).to_lower()
+	# Classify each types[] tag into card-type / subtype (supertypes are dropped —
+	# they carry no behavior and aren't part of card_types/subtypes).
+	var type_tags: Array[String] = []
+	var subtypes: Array[String] = []
+	for t in json.get("types", []):
+		var tag := String(t)
+		if tag in _CARD_TYPE_TAGS:
+			type_tags.append(tag.to_lower())
+		elif not (tag in _SUPERTYPE_TAGS):
+			subtypes.append(tag.to_lower())
+
+	# Governing type → resource subclass.
+	var governing := ""
+	for cand in _GOVERNING_PRECEDENCE:
+		if cand.to_lower() in type_tags:
+			governing = cand.to_lower()
+			break
+
 	var card: CardResource
-	if type_string == "creature":
+	if governing == "creature":
 		var c := CreatureResource.new()
 		c.power = int(json.get("power", 0))
 		c.toughness = int(json.get("toughness", 0))
@@ -160,7 +186,7 @@ static func _build_resource(json: Dictionary) -> CardResource:
 			kws.append(String(kw))
 		c.keywords = kws
 		card = c
-	elif type_string == "land":
+	elif governing == "land":
 		var l := LandResource.new()
 		var produced: Array[String] = []
 		if json.has("mana"):
@@ -170,7 +196,7 @@ static func _build_resource(json: Dictionary) -> CardResource:
 				produced.append(extra)
 		l.mana_produced = produced
 		card = l
-	elif type_string == "sorcery":
+	elif governing == "sorcery" or governing == "instant":
 		card = SpellResource.new()
 	else:
 		# artifact or unknown
@@ -181,15 +207,8 @@ static func _build_resource(json: Dictionary) -> CardResource:
 	card.text = String(json.get("text", ""))
 	var cost_raw = json.get("cost", null)
 	card.mana_cost = cost_raw if cost_raw is Dictionary else {}
-	if type_string != "":
-		card.card_types = [type_string]
-	var subs: Array[String] = []
-	var sub_raw: String = String(json.get("sub", ""))
-	if sub_raw != "":
-		for w in sub_raw.to_lower().split(" "):
-			if w != "":
-				subs.append(w)
-	card.subtypes = subs
+	card.card_types = type_tags
+	card.subtypes = subtypes
 
 	var effects: Array[Dictionary] = []
 	var eff_in = json.get("effects", null)
