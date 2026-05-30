@@ -1373,8 +1373,11 @@ function makeCardEl(card, opts) {
 function makeSyntheticCard({ name, type, sub, text, art, color, cost, power, toughness, scale }) {
   const fakeCard = {
     name: name || '',
-    type: type || '',
-    sub: sub || '',
+    // Synthetic display cards (trigger pills, the Mystery reward, the boon
+    // fallback) carry a decorative "type" label (Trigger / Reward / Boon) that
+    // isn't a real card type. Fold the caller's type/sub into the types[] the
+    // type-system reads, so typeLine renders it (it'd be blank otherwise).
+    types: [type, ...(sub ? String(sub).split(/\s+/) : [])].filter(Boolean),
     art: art || '',
     color: color || 'C',
     cost: cost || null,
@@ -1387,6 +1390,24 @@ function makeSyntheticCard({ name, type, sub, text, art, color, cost, power, tou
   const el = makeCardEl(fakeCard, { overrideOracleText: text || '' });
   if (scale !== undefined) el.style.setProperty('--scale', String(scale));
   return el;
+}
+
+// Shared "row of pickable cards" renderer — the one loop behind every card-pick
+// flow (draft pack, Neow boons, post-draft land offer). Each item is either
+// { card } (a real card instance → makeCardEl) or { synthetic } (a
+// makeSyntheticCard spec, for cards with no template backing like a boon
+// fallback), plus { value } passed to onPick when clicked. Centralizes the
+// showcase styling (2× scale, pointer, click) the three flows used to duplicate.
+function renderCardPicker(hostEl, items, onPick) {
+  if (!hostEl) return;
+  hostEl.innerHTML = '';
+  for (const item of items) {
+    const el = item.card ? makeCardEl(item.card) : makeSyntheticCard(item.synthetic);
+    el.style.setProperty('--scale', '2');
+    el.style.cursor = 'pointer';
+    el.onclick = () => onPick(item.value);
+    hostEl.appendChild(el);
+  }
 }
 
 // Mana-cost in MtG-canonical braced notation: {R:2, C:4} -> "{4}{R}{R}".

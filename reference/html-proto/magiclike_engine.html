@@ -553,18 +553,22 @@ button:disabled{opacity:.4;cursor:not-allowed}
 /* Neow choose screen — first thing the player sees on a new run, before
    draft. Visually styled close to rewardModal but with cooler colors to
    distinguish "blessing" vs "level-up reward". */
-#neowModal{position:fixed;inset:0;background:rgba(0,0,0,.94);display:none;align-items:flex-start;justify-content:center;z-index:1100;padding:20px;overflow-y:auto}
-#neowModal.vis{display:flex}
-#neowBox{background:#0e1828;border:2px solid #4a90c8;border-radius:10px;padding:24px 18px;max-width:760px;width:100%;text-align:center;box-shadow:0 0 30px rgba(74,144,200,.25);margin:auto}
-#neowTitle{color:#9bd0ff;font-size:18px;letter-spacing:2px;margin-bottom:6px;text-transform:uppercase}
-#neowSubtitle{color:#aaa;font-size:11px;margin-bottom:18px}
-#neowOptions{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+/* Unified card-picker modal — one component for the Neow boons AND the post-draft
+   land offer (which used to be two separate modals). Styled to match the draft,
+   the rich baseline; accent is tintable per flow via --picker-accent /
+   --picker-accent-text, and the colors row self-hides when empty. */
+.picker-overlay{position:fixed;inset:0;background:rgba(0,0,0,.94);display:none;align-items:flex-start;justify-content:center;z-index:1100;padding:20px;overflow-y:auto}
+.picker-overlay.vis{display:flex}
+.picker-box{background:#0e1424;border:2px solid var(--picker-accent,#5a4a20);border-radius:10px;padding:24px 18px;max-width:760px;width:100%;text-align:center;box-shadow:0 0 30px rgba(0,0,0,.35);margin:auto}
+.picker-title{color:var(--picker-accent-text,#ffd700);font-size:18px;letter-spacing:2px;margin-bottom:6px;text-transform:uppercase}
+.picker-subtitle{color:#aaa;font-size:11px;margin-bottom:14px;font-style:italic;line-height:1.5}
+.picker-colors{display:flex;gap:10px;justify-content:center;align-items:center;margin:6px 0 10px;flex-wrap:wrap}
+.picker-colors:empty{display:none}
+.picker-row{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
 #rewardModal{position:fixed;inset:0;background:rgba(0,0,0,.92);display:none;align-items:flex-start;justify-content:center;z-index:1100;padding:20px;overflow-y:auto}
 #rewardModal.vis{display:flex}
 #mapModal{position:fixed;inset:0;background:rgba(0,0,0,.92);display:none;align-items:flex-start;justify-content:center;z-index:1100;padding:20px;overflow-y:auto}
 #mapModal.vis{display:flex}
-#postDraftOfferModal{position:fixed;inset:0;background:rgba(0,0,0,.92);display:none;align-items:center;justify-content:center;z-index:1100;padding:20px;box-sizing:border-box}
-#postDraftOfferModal.vis{display:flex}
 #cardBrowserModal{position:fixed;inset:0;background:rgba(0,0,0,.96);z-index:1150;display:none;overflow-y:auto;padding:16px;box-sizing:border-box;font-family:inherit}
 #cardBrowserModal.vis{display:block}
 #triggerBuildModal{position:fixed;inset:0;background:rgba(0,0,0,.88);display:none;align-items:center;justify-content:center;z-index:1100;padding:20px;box-sizing:border-box}
@@ -867,25 +871,17 @@ body.ai-thinking #status{
     <div id="optionalCostButtons" style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap"></div>
   </div>
 </div>
-<div id="postDraftOfferModal">
-  <div style="background:#0e1c14;border:2px solid #66bb6a;border-radius:8px;padding:24px 20px;max-width:520px;width:100%;font-family:Georgia,serif;color:#ddd;box-shadow:0 0 30px rgba(102,187,106,.25)">
-    <h2 style="color:#9fdfa1;font-size:18px;margin:0 0 8px 0;text-align:center;letter-spacing:0.1em">🌱 A GIFT BEFORE THE JOURNEY</h2>
-    <div style="color:#aaa;font-size:12px;text-align:center;margin-bottom:18px;font-style:italic;line-height:1.5">
-      Choose one of your basic land types. One copy will start in your opening hand every game.
-    </div>
-    <div id="postDraftOfferButtons" style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap"></div>
-  </div>
-</div>
 <div id="modalChoiceModal"><div id="modalChoiceBox"><h2>CHOOSE A MODE</h2><div id="modalChoiceCardName"></div><div id="modalChoiceList"></div><button id="modalChoiceCancelBtn" onclick="CONTROLLER.cancelModalChoice()">Cancel</button></div></div>
 <div id="zoneModal" onclick="CONTROLLER.closeZone(event)"><div id="zoneBox" onclick="event.stopPropagation()"><h2 id="zoneTitle">ZONE</h2><div id="zoneList"></div><button id="zoneCloseBtn" onclick="CONTROLLER.closeZone()" style="margin-top:12px;padding:4px 14px;background:#332;border:1px solid #663;color:#ccc;font-family:inherit;cursor:pointer;border-radius:3px">Close</button></div></div>
 <div id="cardBrowserModal">
   <div id="cardBrowserInner" style="max-width:960px;margin:0 auto;color:#ccc"></div>
 </div>
-<div id="neowModal">
-  <div id="neowBox">
-    <div id="neowTitle">A Boon Awaits</div>
-    <div id="neowSubtitle">Choose a gift to shape your run.</div>
-    <div id="neowOptions"></div>
+<div id="cardPickModal" class="picker-overlay">
+  <div class="picker-box">
+    <div id="cardPickTitle" class="picker-title"></div>
+    <div id="cardPickSubtitle" class="picker-subtitle"></div>
+    <div id="cardPickColors" class="picker-colors"></div>
+    <div id="cardPickRow" class="picker-row"></div>
   </div>
 </div>
 <div id="rewardModal">

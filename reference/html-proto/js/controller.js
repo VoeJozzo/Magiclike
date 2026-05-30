@@ -2,7 +2,7 @@
 
 // Modal helper. Module-scope so render.js can call Modal.show/hide directly.
 // Escape-to-close, focus restore, aria-modal, LIFO stack. dismissible:false for
-// flow-gates (gameover/neow/postDraftOffer/reward) where Escape would softlock.
+// flow-gates (gameover/cardPick/reward) where Escape would softlock.
 const Modal = {
   _stack: [],
   _escapeBound: false,
@@ -598,42 +598,47 @@ function showNeowChoice() {
 
   const offered = [...alwaysIds, ...randomIds];
 
-  const optsEl = document.getElementById('neowOptions');
-  optsEl.innerHTML = '';
-  for (const id of offered) {
+  // Each boon renders AS the card it grants (every current RUN_MODIFIERS id is a
+  // real card tplId); a modifier with no card backing falls back to a synthetic
+  // "Boon" card. Routed through the shared card-pick modal.
+  const items = offered.map(id => {
     const m = RUN_MODIFIERS[id];
-    // Boon art is derived from the card the boon grants -- every current
-    // RUN_MODIFIERS entry's id matches the tplId of its granted card, so
-    // CARDS[m.id].art is the source of truth.
+    if (CARDS[m.id]) return { card: ENGINE.makeCard(m.id), value: id };
     const boonArt = m.art || (CARDS[m.id] && CARDS[m.id].art) || '✦';
-    let el;
-    // Render the boon AS the card it grants (matches the visual style of
-    // a draft pick). Falls back to a Boon-shaped placeholder for any
-    // modifier whose id doesn't resolve to a real card.
-    if (CARDS[m.id]) {
-      const card = ENGINE.makeCard(m.id);
-      el = makeCardEl(card);
-      el.style.setProperty('--scale', '2');
-    } else {
-      el = makeSyntheticCard({
-        name: m.name || '',
-        type: 'Boon',
-        text: m.text || '',
-        art: boonArt,
-        color: 'C',
-        scale: 2,
-      });
-    }
-    el.style.cursor = 'pointer';
-    el.onclick = () => pickNeow(id);
-    optsEl.appendChild(el);
+    return { synthetic: { name: m.name || '', type: 'Boon', text: m.text || '', art: boonArt, color: 'C', scale: 2 }, value: id };
+  });
+  showCardPickModal({
+    title: 'A Boon Awaits',
+    subtitle: 'Choose a gift to shape your run.',
+    items, onPick: pickNeow,
+    accent: '#4a90c8', accentText: '#9bd0ff',   // boon blue
+  });
+}
+
+// Unified card-pick modal — the one popup behind the Neow boons AND the post-draft
+// land offer (previously two separate modals). Fills the shared #cardPickModal
+// slots, routes the card row through renderCardPicker, and optionally shows a
+// drafted-color HUD (colorTpls). Modeled on the draft, the rich baseline.
+function showCardPickModal({ title, subtitle, items, onPick, colorTpls, accent, accentText }) {
+  const box = document.querySelector('#cardPickModal .picker-box');
+  if (box) {
+    box.style.setProperty('--picker-accent', accent || '#5a4a20');
+    box.style.setProperty('--picker-accent-text', accentText || '#ffd700');
   }
-  Modal.show('neowModal', { dismissible: false });
+  document.getElementById('cardPickTitle').textContent = title || '';
+  document.getElementById('cardPickSubtitle').textContent = subtitle || '';
+  // Color HUD only when the flow supplies one (boons happen pre-draft → none);
+  // an empty colors row self-hides via CSS :empty.
+  const colorsEl = document.getElementById('cardPickColors');
+  if (colorTpls && colorTpls.length) renderColorHud('cardPickColors', colorTpls);
+  else if (colorsEl) colorsEl.innerHTML = '';
+  renderCardPicker(document.getElementById('cardPickRow'), items, onPick);
+  Modal.show('cardPickModal', { dismissible: false });
 }
 
 function pickNeow(id) {
   pendingNeowModifier = id;
-  Modal.hide('neowModal');
+  Modal.hide('cardPickModal');
   DRAFT.startDraft(pendingDraftMode);
   inDraft = true;
   renderDraft();
@@ -806,30 +811,28 @@ function attachMapLongPress(el, label) {
 }
 
 // Post-draft Innate offer: pick a basic land type to guarantee in opening hands.
+// Same card-pick modal as the boons; here we also surface the drafted-deck color
+// HUD (now that the draft is done) so the land choice is informed by deck colors.
 function renderPostDraftOffer() {
   if (!RUN.getPostDraftOffer) return;
   const offer = RUN.getPostDraftOffer();
-  if (!offer) { Modal.hide('postDraftOfferModal'); return; }
-  Modal.show('postDraftOfferModal', { dismissible: false });
-  const btns = document.getElementById('postDraftOfferButtons');
-  btns.innerHTML = '';
-  for (const tplId of offer.basics) {
-    const tpl = CARDS[tplId];
-    if (!tpl) continue;
-    // Real basic-land card via makeCardEl. The land's color frame and
-    // type line communicate which basic this is.
-    const card = ENGINE.makeCard(tplId);
-    const el = makeCardEl(card);
-    el.style.setProperty('--scale', '2');
-    el.style.cursor = 'pointer';
-    el.onclick = () => pickPostDraftOfferClick(tplId);
-    btns.appendChild(el);
-  }
+  if (!offer) { Modal.hide('cardPickModal'); return; }
+  const items = offer.basics
+    .filter(tplId => CARDS[tplId])
+    .map(tplId => ({ card: ENGINE.makeCard(tplId), value: tplId }));
+  const picks = DRAFT._state() ? DRAFT._state().youPicks : [];
+  showCardPickModal({
+    title: '🌱 A Gift Before the Journey',
+    subtitle: 'Choose one of your basic land types. One copy will start in your opening hand every game.',
+    items, onPick: pickPostDraftOfferClick,
+    colorTpls: picks,                            // drafted-deck color HUD
+    accent: '#66bb6a', accentText: '#9fdfa1',    // land green
+  });
 }
 
 function pickPostDraftOfferClick(tplId) {
   if (!RUN.pickPostDraftOffer(tplId)) return;
-  Modal.hide('postDraftOfferModal');
+  Modal.hide('cardPickModal');
   lastGameRecorded = false;
   startNextGameWithBossBanner();
   render();
@@ -1383,24 +1386,16 @@ function renderDraft() {
       : 'Choose one card. Lands will be added automatically based on your colors.';
   }
   const pack = DRAFT.getPlayerPack();
-  const packEl = document.getElementById('draftPack');
-  packEl.innerHTML = '';
-  for (const tplId of pack) {
-    // Use makeCardEl (the same renderer that builds hand/board cards).
-    // Build a vanilla card instance from the template -- the draft pack
-    // isn't slot-bound yet, no stickers or runtime state.
-    const card = ENGINE.makeCard(tplId);
-    const el = makeCardEl(card);
-    // Showcase scale -- cards render at 2x (160x224) for the picker so
-    // the player can read them. --scale is a no-op on the classic .card
-    // (it's hardcoded 62x88); classic-mode draft picks render at hand
-    // size, which is a tolerable fallback.
-    el.style.setProperty('--scale', '2');
-    el.style.cursor = 'pointer';
-    el.onclick = () => pickDraft(tplId);
-    // Long-press is wired by makeCardEl already (via attachLongPress).
-    packEl.appendChild(el);
-  }
+  // Same shared card-picker loop as the boons + land offer. Build a vanilla
+  // instance per template (the pack isn't slot-bound yet — no stickers/runtime
+  // state). Cards render at 2× so they're readable; long-press is wired by
+  // makeCardEl. (--scale is a no-op on the classic 62×88 .card, a tolerable
+  // fallback for classic-mode picks.)
+  renderCardPicker(
+    document.getElementById('draftPack'),
+    pack.map(tplId => ({ card: ENGINE.makeCard(tplId), value: tplId })),
+    pickDraft,
+  );
   // Footer: list of picks so far. If the player picked a Neow boon, show
   // it as the first entry with a ✦ marker so it's visually distinct from
   // drafted picks — gives continuity with the deck the boon will join at

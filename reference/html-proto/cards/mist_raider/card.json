@@ -29,7 +29,7 @@
   ],
   "types": [
     "Creature",
-    "Human",
+    "Spirit",
     "Pirate"
   ]
 }
