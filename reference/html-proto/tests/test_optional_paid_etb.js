@@ -184,5 +184,40 @@ if (CARDS.bolt) {
     'victim.damage=' + victim.damage + ' youLife=' + youLife0 + '→' + G.you.life);
 }
 
+console.log('\n=== cost sticker reduces the optional ETB cost (not just the vestigial land cost) ===');
+if (CARDS.mindrot) {
+  // mindrot is {B}{1}; a "-1 cost" (cost_minus_1) sticker on the spell must
+  // reduce the ETB's optional_cost too — it used to only touch the vestigial
+  // (free-land) card.cost, leaving the "you may pay" cost unchanged.
+  const inst = ENGINE.makeCard('mountain', ['cost_minus_1'], 0, undefined, undefined, undefined, ['mindrot']);
+  const etb = (inst.triggers || []).find(t => t.event === 'card_zone_change');
+  check('mindrot base cost is {B}{1}', CARDS.mindrot.cost.B === 1 && CARDS.mindrot.cost.C === 1);
+  check('cost_minus_1 reduces the optional_cost to {B} (C: 1 → 0)',
+    etb && etb.optional_cost && etb.optional_cost.B === 1 && etb.optional_cost.C === 0,
+    etb && JSON.stringify(etb.optional_cost));
+}
+
+console.log('\n=== ETB trigger hits the stack immediately on play (not deferred to next action) ===');
+{
+  const G = newGame();
+  const land = stapleInstance('plains', 'you');   // plains + goblinRabble (untargeted)
+  G.you.hand.push(land);
+  readyMain(G, 'you');
+  G.you.mana = { W: 0, U: 0, B: 0, R: 5, G: 0, C: 5 };
+  // Give the human ANOTHER action so step() won't auto-pass-and-resolve — that's
+  // the condition under which the trigger used to sit queued until the next pass.
+  const extra = ENGINE.makeCard('bolt', undefined, 0);
+  extra.iid = iidc++; extra.controller = 'you'; extra.owner = 'you';
+  G.you.hand.push(extra);
+  const enemy = ENGINE.makeCard('savannahLions', undefined, 0);
+  enemy.iid = iidc++; enemy.controller = 'opp'; enemy.owner = 'opp'; enemy.sick = false;
+  G.opp.battlefield.push(enemy);
+
+  ENGINE.executeAction('you', { type: 'playLand', cardIid: land.iid });
+  check('the ETB is on the stack right after playing the land (drained, not left queued)',
+    G.stack.length === 1 && G.pendingTriggers.length === 0,
+    'stack=' + G.stack.length + ' pendingTriggers=' + G.pendingTriggers.length);
+}
+
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');
 process.exit(fail > 0 ? 1 : 0);

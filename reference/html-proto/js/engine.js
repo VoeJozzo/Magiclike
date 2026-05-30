@@ -5595,6 +5595,18 @@ function step() {
     // so adding modal types doesn't require updating step() (the omission of
     // pendingTriggerBuild here was the original Codex MAIN1-skip bug).
     if (anyoneOwesDecision()) return;
+    // Put any pending triggered abilities on the stack BEFORE anyone exercises
+    // priority (MTG 603.3b: triggers go on the stack the next time a player would
+    // receive priority). A special action like playing a land doesn't pass
+    // priority, so a trigger it queued (e.g. a Land+Spell staple ETB) used to sit
+    // in the queue until the player's NEXT pass — making the ETB appear to "fire
+    // the next time you do something" and never visibly hit the stack. Draining
+    // here surfaces it immediately. (drainTriggers no-ops on an empty queue and
+    // returns early if a target prompt is already open, so this can't loop.)
+    if (isPriorityOpen() && G.pendingTriggers.length > 0 && !G.pendingTriggerTarget) {
+      drainTriggers();
+      continue;
+    }
     // Auto-pass dead priority rounds. Skip AP's empty-stack END priority
     // (they had M2 for sorcery-speed plays).
     if (isPriorityOpen()) {

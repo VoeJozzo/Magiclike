@@ -4,7 +4,7 @@ Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folde
 
 ## Version
 
-**Current: `v2.0.64`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.0.65`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -201,6 +201,21 @@ opponent's best creature — permanent base 20, eot base 8, +card value +lane �
 animate-add_type only at a permanent WE control (else it'd gift the opponent a
 body). Verified via `AI.decide`: the AI now casts Encase in Amber at an enemy
 creature. 1269 green, lint clean, 300-game selfplay clean.
+
+v2.0.65: **two more Land+Spell staple ETB fixes (cost sticker + drain timing).**
+(1) A `cost_mod` sticker on the stapled spell now adjusts the ETB's
+`optional_cost`, not just the (vestigial, free-land) `card.cost` — a "−1 cost"
+Mind Rot staple now correctly reads "you may pay {B}" instead of "{B}{1}".
+(2) Pending triggered abilities now drain onto the stack in `step()` as soon as
+priority is open (MTG 603.3b) — a trigger queued by a special action like
+playing a land used to sit in the queue until the player's NEXT priority pass,
+so a staple ETB appeared to "fire the next time you do something" and never
+visibly hit the stack. Now it's on the stack immediately. (This also covers the
+"are these going on the stack?" question — yes, and now promptly.) The card-text
+fix for these (renders "target opponent discards 2 cards" + the reduced cost) was
+already in v2.0.64's target-step carry; the screenshots were from the deployed
+`dev` build, which is behind `Refactor`. 1299 green, lint clean, 500-game
+selfplay clean.
 
 v2.0.64: **fix: AI froze ("hung") on a land+spell ETB — staple dropped the spell's
 target step.** When a spell is stapled onto a permanent, the synthesized ETB

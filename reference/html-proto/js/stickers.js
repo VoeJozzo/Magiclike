@@ -29,6 +29,12 @@ function applyStickerKindEffect(card, s) {
     // Signed additive cost change (§3.8): +N for embargo, −1 for the reduction
     // reward (unified from costReduction). Generic floored at 0.
     if (card.cost) card.cost.C = Math.max(0, (card.cost.C || 0) + (s.amount || 0));
+    // A Land+Spell staple's REAL cost is the ETB trigger's optional_cost (the
+    // land's own cast cost is free/vestigial), so a cost sticker must adjust it
+    // too — otherwise "−1 cost" on the spell left the "you may pay" cost unchanged.
+    for (const t of (card.triggers || [])) {
+      if (t.optional_cost) t.optional_cost.C = Math.max(0, (t.optional_cost.C || 0) + (s.amount || 0));
+    }
   } else if (s.kind === 'set_color') {
     card.color = s.color;
     // Colorless (Bleach) also bleaches the COST: colored pips fold into generic
