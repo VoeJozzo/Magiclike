@@ -38,7 +38,7 @@ func is_land() -> bool:
 
 
 func is_spell() -> bool:
-	return has_type("instant") or has_type("sorcery")
+	return has_type("sorcery")
 
 
 func is_permanent() -> bool:

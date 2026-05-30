@@ -5,7 +5,7 @@ extends RefCounted
 # materializes them as CardResource instances. The wire format is canonical
 # snake_case (docs/PROTOCOL.md §2); this loader is the ingest boundary that
 # translates JS-isms (camelCase effect/event kinds, "any" target, single-string
-# subtypes, "Creature"/"Instant" type strings) into the snake_case shape the
+# subtypes, "Creature"/"Sorcery" type strings) into the snake_case shape the
 # Godot engine expects.
 #
 # Two entry points:
@@ -19,7 +19,7 @@ extends RefCounted
 # Resource subclass selection by JSON `type` field:
 #   "Creature"               → CreatureResource
 #   "Land"                   → LandResource
-#   "Instant" / "Sorcery"    → SpellResource (requires_target inferred from effects)
+#   "Sorcery"                → SpellResource (requires_target inferred from effects)
 #   "Artifact" / anything else → base CardResource
 #
 # Cards whose effects/triggers/predicates aren't implemented yet still LOAD —
@@ -219,7 +219,7 @@ static func _build_resource(json: Dictionary) -> CardResource:
 				produced.append(extra)
 		l.mana_produced = produced
 		card = l
-	elif type_string == "instant" or type_string == "sorcery":
+	elif type_string == "sorcery":
 		card = SpellResource.new()
 	else:
 		# artifact or unknown

@@ -9,7 +9,7 @@ extends Node
 #   3. Loading a creature with a trigger (event remap, cond_id pass-through).
 #   4. Loading a land (mana_produced from JSON's mana string).
 #   5. Running load_all() against the full manifest and supportability_report
-#      — verifies that the loader doesn't crash on any of the 258 JSONs, and
+#      — verifies that the loader doesn't crash on any manifest card, and
 #      that the count of supported-vs-unsupported is plausible (>0 each).
 #
 # Run headless:
@@ -93,7 +93,7 @@ func _ready() -> void:
 		_assert_true("C" in lc.mana_produced, "cityOfBrass produces C (mana shorthand)")
 
 	# ─── 7. Full manifest scan ───────────────────────────────────────────
-	print("\n--- Loading all 258 cards from manifest ---")
+	print("\n--- Loading all cards from manifest ---")
 	var all_cards: Dictionary = JsonCardLoader.load_all()
 	_assert_true(all_cards.size() >= 250,
 		"load_all returned ≥250 cards (got %d)" % all_cards.size())
