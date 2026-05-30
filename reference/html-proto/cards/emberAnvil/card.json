@@ -5,7 +5,8 @@
   "type": "Land",
   "types": [
     "Artifact",
-    "Land"
+    "Land",
+    "Mountain"
   ],
   "mana": "R",
   "abilities": [
@@ -22,5 +23,6 @@
         }
       ]
     }
-  ]
+  ],
+  "sub": "Mountain"
 }

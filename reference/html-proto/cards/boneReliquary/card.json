@@ -5,7 +5,8 @@
   "type": "Land",
   "types": [
     "Artifact",
-    "Land"
+    "Land",
+    "Swamp"
   ],
   "mana": "B",
   "abilities": [
@@ -22,5 +23,6 @@
         }
       ]
     }
-  ]
+  ],
+  "sub": "Swamp"
 }
