@@ -1,6 +1,6 @@
 {
   "card_id": "venomViper",
-  "art": "🐍",
+  "art": "cards/venomViper/art.png",
   "cost": {
     "B": 1,
     "C": 1
