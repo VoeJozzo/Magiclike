@@ -73,5 +73,47 @@ console.log('\n=== legacy param names still honored (grant_haste/untap) ===');
   check('legacy grant_haste honored', (c.keywords || []).includes('haste'));
 })();
 
+console.log('\n=== Steal on a STAPLED opp creature transfers the WHOLE staple (not just the base) ===');
+(() => {
+  // Regression: the steal capture only read stapledTpls from a player-side run
+  // SLOT. An opponent's creature has no slot, so the else-branch dropped the
+  // staple -- the thief got a bare base creature (savannahLions 2/1) instead of
+  // the merged savannahLions+furnaceWhelp (4/3 flying). The merged identity lives
+  // on the runtime card's stapledFrom; the fix copies it on the no-slot path.
+  clearBoards();
+  G.activePlayer = 'you'; G.priorityHolder = 'you'; G.phase = 'MAIN1';
+  G.stack = []; G.gameOver = false; G.priority = { passes: new Set() };
+  G.you.mana = { W: 0, U: 0, B: 0, R: 0, G: 0, C: 9 };
+
+  const stapled = ENGINE.makeCard('savannahLions', undefined, 0, undefined, undefined, undefined, ['furnaceWhelp']);
+  stapled.controller = 'opp'; stapled.owner = 'opp'; stapled.sick = false;
+  G.opp.battlefield.push(stapled);
+  check('opp stapled creature is the merged 4/3 flying (sanity)',
+    JSON.stringify(ENGINE.getStats(stapled)) === '[4,3]' && (stapled.keywords || []).includes('flying'),
+    JSON.stringify(ENGINE.getStats(stapled)) + ' kw=' + JSON.stringify(stapled.keywords));
+
+  const steal = ENGINE.makeCard('steal', undefined, 0);
+  steal.controller = 'you'; steal.owner = 'you';
+  G.you.hand.push(steal);
+  const cast = { type: 'castSpell', cardIid: steal.iid, targets: [{ kind: 'permanent', iid: stapled.iid, label: stapled.name }] };
+  check('steal on the stapled permanent is legal', ENGINE.isLegalAction('you', cast));
+  ENGINE.executeAction('you', cast);
+  let guard = 0;
+  while ((G.stack.length || G.pendingTriggers.length) && guard++ < 30) {
+    const w = ENGINE.expectedActor(); if (!w) break;
+    ENGINE.executeAction(w, { type: 'pass' });
+  }
+  const stolen = [...G.you.library, ...G.you.hand, ...G.you.battlefield]
+    .find(c => c.tplId === 'savannahLions' && c.owner === 'you');
+  check('the stolen card exists, owned by you', !!stolen);
+  check('the stolen card kept the WHOLE staple (4/3 flying + stapledTpls), not the bare 2/1 base',
+    !!stolen && JSON.stringify(ENGINE.getStats(stolen)) === '[4,3]'
+      && (stolen.keywords || []).includes('flying')
+      && stolen.stapledFrom && Array.isArray(stolen.stapledFrom.stapledTpls)
+      && stolen.stapledFrom.stapledTpls.includes('furnaceWhelp'),
+    stolen ? (JSON.stringify(ENGINE.getStats(stolen)) + ' kw=' + JSON.stringify(stolen.keywords)
+      + ' staple=' + JSON.stringify(stolen.stapledFrom && stolen.stapledFrom.stapledTpls)) : 'no stolen card');
+})();
+
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');
 process.exit(fail > 0 ? 1 : 0);

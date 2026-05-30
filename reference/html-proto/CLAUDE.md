@@ -4,7 +4,7 @@ Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folde
 
 ## Version
 
-**Current: `v2.0.65`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.0.66`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -201,6 +201,17 @@ opponent's best creature — permanent base 20, eot base 8, +card value +lane �
 animate-add_type only at a permanent WE control (else it'd gift the opponent a
 body). Verified via `AI.decide`: the AI now casts Encase in Amber at an enemy
 creature. 1269 green, lint clean, 300-game selfplay clean.
+
+v2.0.66: **fix: Steal on a STAPLED creature gave only the base, dropping the staple.**
+The steal capture (`EFFECTS.steal`) only read `stapledTpls` from a player-side run
+SLOT. An opponent's permanent has no slot, so the else-branch set `meta = undefined`
+and the card was rebuilt from its bare base `tplId` — stealing an opp's
+savannahLions+furnaceWhelp gave you a 2/1, not the merged 4/4 flying. The merged
+identity is on the runtime card's `stapledFrom`; the fix copies `stapledTpls` (and
+the instance's empower/subtype rolls) on the no-slot path so the thief gets the
+whole stapled card. Regression in test_change_control (steal an opp stapled
+creature → stolen card is 4/4 flying with stapledTpls). 1303 green, lint clean,
+400-game selfplay clean.
 
 v2.0.65: **two more Land+Spell staple ETB fixes (cost sticker + drain timing).**
 (1) A `cost_mod` sticker on the stapled spell now adjusts the ETB's

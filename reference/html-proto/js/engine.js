@@ -1923,7 +1923,17 @@ const EFFECTS = {
       };
     } else {
       stickers = (r.card.stickers || []).slice();
-      meta = undefined;
+      // No run slot (opponent's permanent / a stack spell), but the runtime card
+      // still carries its merged identity in stapledFrom — without copying it, a
+      // stolen STAPLED creature would be rebuilt from its bare base tplId and the
+      // staple half (extra body / ETB spell) would be silently lost. Pull the
+      // stapledTpls (and the parallel rolls cached on the instance) so the thief
+      // gets the whole stapled card.
+      const stapledTpls = (r.card.stapledFrom && Array.isArray(r.card.stapledFrom.stapledTpls))
+        ? r.card.stapledFrom.stapledTpls.slice() : undefined;
+      meta = (stapledTpls || r.card.empowerRolls || r.card.subtypeRolls)
+        ? { stapledTpls, empowerRolls: r.card.empowerRolls, subtypeRolls: r.card.subtypeRolls }
+        : undefined;
     }
     // ─── Append the new slot and shuffle a fresh instance into library ──
     const newSlotIdx = (typeof RUN !== 'undefined' && RUN.appendSlot)
