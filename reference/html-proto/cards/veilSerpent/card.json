@@ -1,6 +1,6 @@
 {
   "card_id": "veilSerpent",
-  "art": "🐍",
+  "art": "cards/veilSerpent/art.png",
   "cost": {
     "U": 1,
     "C": 2
