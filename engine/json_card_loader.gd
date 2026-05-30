@@ -20,7 +20,7 @@ extends RefCounted
 #   "Creature"               → CreatureResource
 #   "Land"                   → LandResource
 #   "Instant" / "Sorcery"    → SpellResource (requires_target inferred from effects)
-#   "Artifact" / "Enchantment" / anything else → base CardResource
+#   "Artifact" / anything else → base CardResource
 #
 # Cards whose effects/triggers/predicates aren't implemented yet still LOAD —
 # they're just flagged as unsupported in the report. No silent breakage; calling

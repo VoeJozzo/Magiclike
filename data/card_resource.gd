@@ -42,4 +42,4 @@ func is_spell() -> bool:
 
 
 func is_permanent() -> bool:
-	return has_type("creature") or has_type("land") or has_type("artifact") or has_type("enchantment")
+	return has_type("creature") or has_type("land") or has_type("artifact")
