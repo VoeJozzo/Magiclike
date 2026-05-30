@@ -163,7 +163,7 @@ static func _build_resource(json: Dictionary) -> CardResource:
 		c.toughness = int(json.get("toughness", 0))
 		var kws: Array[String] = []
 		for kw in json.get("keywords", []):
-			kws.append(_KEYWORD_REMAP.get(kw, kw))
+			kws.append(String(kw))
 		c.keywords = kws
 		card = c
 	elif type_string == "land":
