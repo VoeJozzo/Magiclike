@@ -34,21 +34,15 @@ const _CARDS_DIR := "res://reference/html-proto/cards/"
 # loader passes effect kinds, event names, and keywords through verbatim. The
 # old camelCase→snake_case remap tables were dead and have been removed.
 
-# JS "target" string values → Godot's target_filter taxonomy. Used to compute
-# SpellResource.target_filter from the first targeted effect. The full
-# target_mode / target_filter split is Pass 5; today we collapse to a single
-# filter string compatible with the existing target-pick UI.
-const _TARGET_FILTER_REMAP := {
-	"any": "creature_or_player",
-	"chosen": "any",  # legacy
-}
-
 # Target string values that mean "caster picks at cast time" — used to decide
-# whether SpellResource.requires_target is true.
+# whether SpellResource.requires_target is true. These are the snake_case target
+# tokens the live card data actually emits (verified across the pool). The old
+# camelCase / legacy entries ("chosen", "any", "permanentOrSpell", ...) were
+# dead, and the real values "opp", "permanent_or_spell", "graveyard_creature"
+# that were missing are now included.
 const _USER_PICKED_TARGETS := [
-	"chosen", "any", "creature", "player", "spell",
-	"opp_creature", "your_creature", "creature_or_player",
-	"permanent", "permanentOrSpell", "graveyardCreature",
+	"creature", "creature_or_player", "opp", "opp_creature", "your_creature",
+	"player", "permanent", "permanent_or_spell", "graveyard_creature", "spell",
 ]
 
 # Event kinds that the Godot engine actually fires today. The supportability
@@ -229,7 +223,7 @@ static func _build_resource(json: Dictionary) -> CardResource:
 		for tgt in target_candidates:
 			if tgt in _USER_PICKED_TARGETS:
 				rt = true
-				tf = _TARGET_FILTER_REMAP.get(tgt, tgt)
+				tf = tgt
 				break
 		spell.requires_target = rt
 		spell.target_filter = tf

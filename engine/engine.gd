@@ -1090,10 +1090,9 @@ func _combat_damage_pass(
 			continue
 		var attacker: CardInstance = atk_found.card
 		var atk_first_strike: bool = attacker.has_keyword("first_strike")
-		# Pass 1: first-strikers only. (Non-first-strike still process blockers below,
-		# since a first-strike BLOCKER could damage them in pass 1.)
-		if first_strike_only != atk_first_strike:
-			pass
+		# Per-pass gating lives on the `first_strike_only == atk_first_strike`
+		# guards below (a non-first-strike attacker can still be hit by a
+		# first-strike blocker in pass 1, so we don't skip the whole iteration).
 		var atk_pow: int = attacker.current_power()
 		var blockers: Array = attacker_blockers.get(atk_iid, [])
 
