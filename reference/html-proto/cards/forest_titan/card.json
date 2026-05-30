@@ -10,9 +10,7 @@
   ],
   "name": "Forest Titan",
   "power": 5,
-  "sub": "Giant",
   "toughness": 5,
-  "type": "Creature",
   "types": [
     "Creature",
     "Giant"

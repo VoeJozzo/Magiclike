@@ -10,7 +10,6 @@
   ],
   "name": "Surging Beast",
   "power": 3,
-  "sub": "Beast",
   "toughness": 2,
   "triggers": [
     {
@@ -30,7 +29,6 @@
       ]
     }
   ],
-  "type": "Creature",
   "types": [
     "Creature",
     "Beast"

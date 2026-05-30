@@ -7,7 +7,6 @@
   },
   "name": "Burnout Shaman",
   "power": 2,
-  "sub": "Goblin Shaman",
   "toughness": 1,
   "triggers": [
     {
@@ -26,7 +25,6 @@
       "target": "creature_or_player"
     }
   ],
-  "type": "Creature",
   "types": [
     "Creature",
     "Goblin",

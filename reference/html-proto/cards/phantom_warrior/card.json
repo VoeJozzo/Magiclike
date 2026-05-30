@@ -10,9 +10,7 @@
   ],
   "name": "Phantom Warrior",
   "power": 2,
-  "sub": "Spirit",
   "toughness": 2,
-  "type": "Creature",
   "types": [
     "Creature",
     "Spirit"

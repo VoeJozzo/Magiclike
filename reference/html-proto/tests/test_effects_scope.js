@@ -25,12 +25,12 @@ const G = ENGINE.state();
 // damage so we can assert marked damage rather than death).
 const CREATURE_TPL = (() => {
   for (const [id, c] of Object.entries(CARDS)) {
-    if (c.type === 'Creature' && (c.toughness || 0) >= 3
+    if (hasType(c, 'Creature') && (c.toughness || 0) >= 3
         && !c.triggers && !c.abilities) return id;
   }
   // Fallback: any creature with toughness >= 3.
   for (const [id, c] of Object.entries(CARDS)) {
-    if (c.type === 'Creature' && (c.toughness || 0) >= 3) return id;
+    if (hasType(c, 'Creature') && (c.toughness || 0) >= 3) return id;
   }
   return null;
 })();

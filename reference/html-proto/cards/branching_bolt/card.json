@@ -18,7 +18,6 @@
     }
   ],
   "name": "Branching Bolt",
-  "type": "Sorcery",
   "target_slots": [
     {
       "target": "creature"

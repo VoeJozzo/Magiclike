@@ -7,9 +7,7 @@
   },
   "name": "Great Stag",
   "power": 3,
-  "sub": "Beast",
   "toughness": 4,
-  "type": "Creature",
   "types": [
     "Creature",
     "Beast"

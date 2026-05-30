@@ -107,11 +107,11 @@ async function loadCards() {
 
 // TOKENS — minted by effects. Vanish on leave-play (dies-triggers still fire).
 const TOKENS = {
-  spirit_w_1_1:  {name:'Spirit',  type:'Creature', sub:'Spirit',  power:1, toughness:1, art:'👻', color:'W', text:'Flying', keywords:['flying']},
-  soldier_w_1_1: {name:'Soldier', type:'Creature', sub:'Human Soldier', power:1, toughness:1, art:'⚔', color:'W'},
-  goblin_r_1_1:  {name:'Goblin',  type:'Creature', sub:'Goblin',  power:1, toughness:1, art:'👺', color:'R', text:'Haste', keywords:['haste']},
-  saproling_g_1_1: {name:'Saproling', type:'Creature', sub:'Saproling', power:1, toughness:1, art:'🌱', color:'G'},
-  bear_g_2_2:    {name:'Bear',    type:'Creature', sub:'Bear',    power:2, toughness:2, art:'🐻', color:'G'},
+  spirit_w_1_1:  {name:'Spirit',  types:['Creature','Spirit'],  power:1, toughness:1, art:'👻', color:'W', text:'Flying', keywords:['flying']},
+  soldier_w_1_1: {name:'Soldier', types:['Creature','Human','Soldier'], power:1, toughness:1, art:'⚔', color:'W'},
+  goblin_r_1_1:  {name:'Goblin',  types:['Creature','Goblin'],  power:1, toughness:1, art:'👺', color:'R', text:'Haste', keywords:['haste']},
+  saproling_g_1_1: {name:'Saproling', types:['Creature','Saproling'], power:1, toughness:1, art:'🌱', color:'G'},
+  bear_g_2_2:    {name:'Bear',    types:['Creature','Bear'],    power:2, toughness:2, art:'🐻', color:'G'},
 };
 
 // SHARED CONSTANTS — new keywords here auto-become available stickers.

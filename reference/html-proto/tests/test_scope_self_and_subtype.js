@@ -56,7 +56,7 @@ function drain(G) {
 console.log('=== Bug 1: card_has_subtype matches a string `sub` (word-boundary) ===');
 (() => {
   const ctx = { state: ENGINE.state(), source: { iid: 1 }, who: 'you',
-    event: { subject_card: { iid: 2, type: 'Creature', sub: 'Human Cleric Wall' } } };
+    event: { subject_card: { iid: 2, types: ['Creature', 'Human', 'Cleric', 'Wall'] } } };
   check('card_has_subtype(Cleric) matches "Human Cleric Wall"',
     evaluateCondition('card_has_subtype(Cleric)', ctx) === true);
   check('card_has_subtype(Wall) matches the last token',

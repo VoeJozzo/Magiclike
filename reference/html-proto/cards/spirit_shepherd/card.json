@@ -24,7 +24,6 @@
       ]
     }
   ],
-  "sub": "Spirit",
   "toughness": 3,
   "triggers": [
     {
@@ -47,7 +46,6 @@
       }
     }
   ],
-  "type": "Creature",
   "types": [
     "Creature",
     "Spirit"

@@ -79,8 +79,8 @@ console.log('\n=== Test 4: Sticker application respects rolled subtype ===');
   check('Lions found', !!lions);
   if (lions) {
     console.log('  lions.sub:', lions.sub, '  subtypeRolls:', lions.subtypeRolls);
-    check("Lions sub contains 'Goblin'", lions.sub.includes('Goblin'));
-    check("Lions sub still contains 'Cat'", lions.sub.includes('Cat'));
+    check("Lions sub contains 'Goblin'", hasType(lions, 'Goblin'));
+    check("Lions sub still contains 'Cat'", hasType(lions, 'Cat'));
 
     const chieftain = [...G.you.library, ...G.you.hand].find(c => c.tplId === 'goblin_chieftain');
     if (chieftain) {
@@ -109,10 +109,10 @@ console.log('\n=== Test 5: Stacking applies multiple subtypes ===');
   const G = ENGINE.state();
   const lions = [...G.you.library, ...G.you.hand].find(c => c.tplId === 'savannah_lions');
   if (lions) {
-    console.log('  Lions sub with 2 subtype stickers:', lions.sub);
-    check('Lions sub contains Goblin', lions.sub.includes('Goblin'));
-    check('Lions sub contains Wizard', lions.sub.includes('Wizard'));
-    check('Lions sub still contains Cat', lions.sub.includes('Cat'));
+    console.log('  Lions subtypes with 2 subtype stickers:', subtypesOf(lions));
+    check('Lions sub contains Goblin', hasType(lions, 'Goblin'));
+    check('Lions sub contains Wizard', hasType(lions, 'Wizard'));
+    check('Lions sub still contains Cat', hasType(lions, 'Cat'));
   }
 }
 

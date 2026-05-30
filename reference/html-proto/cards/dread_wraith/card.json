@@ -10,7 +10,6 @@
   ],
   "name": "Dread Wraith",
   "power": 3,
-  "sub": "Spirit",
   "toughness": 2,
   "triggers": [
     {
@@ -29,7 +28,6 @@
       "target": "opp"
     }
   ],
-  "type": "Creature",
   "types": [
     "Creature",
     "Spirit"

@@ -10,7 +10,6 @@
   ],
   "name": "Wall of Omens",
   "power": 0,
-  "sub": "Wall",
   "toughness": 4,
   "triggers": [
     {
@@ -31,7 +30,6 @@
       ]
     }
   ],
-  "type": "Creature",
   "types": [
     "Creature",
     "Wall"

@@ -10,7 +10,6 @@
   ],
   "name": "Wolfbriar Elemental",
   "power": 4,
-  "sub": "Elemental",
   "toughness": 4,
   "triggers": [
     {
@@ -28,7 +27,6 @@
       "target": "your_creature"
     }
   ],
-  "type": "Creature",
   "types": [
     "Creature",
     "Elemental"

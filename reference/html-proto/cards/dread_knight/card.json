@@ -10,7 +10,6 @@
   ],
   "name": "Dread Knight",
   "power": 4,
-  "sub": "Human Knight",
   "toughness": 3,
   "triggers": [
     {
@@ -29,7 +28,6 @@
       ]
     }
   ],
-  "type": "Creature",
   "types": [
     "Creature",
     "Human",

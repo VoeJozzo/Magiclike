@@ -10,9 +10,7 @@
   ],
   "name": "Giant Spider",
   "power": 2,
-  "sub": "Spider",
   "toughness": 4,
-  "type": "Creature",
   "types": [
     "Creature",
     "Spider"

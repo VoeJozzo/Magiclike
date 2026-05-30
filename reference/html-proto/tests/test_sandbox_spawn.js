@@ -18,7 +18,7 @@ function check(label, ok, info) {
 function sandboxDeck() {
   const basics = Object.keys(CARDS).filter(id => {
     const c = CARDS[id];
-    return c && c.type === 'Land' && /^(plains|island|swamp|mountain|forest)$/.test(id);
+    return c && hasType(c, 'Land') && /^(plains|island|swamp|mountain|forest)$/.test(id);
   });
   const d = [];
   for (let i = 0; i < 40; i++) d.push(basics[i % basics.length]);
@@ -32,8 +32,7 @@ function spawn(G, tplId, target) {
   const side = target.slice(0, dash);
   const zone = target.slice(dash + 1);
   card.owner = side; card.controller = side;
-  const PERMANENT = /^(Creature|Land|Artifact)$/;
-  if (zone === 'board' && PERMANENT.test(card.type)) {
+  if (zone === 'board' && isPermanent(card)) {
     card.sick = false;
     G[side].battlefield.push(card);
   } else {
@@ -47,7 +46,7 @@ console.log('=== Sandbox deck builds from real basic-land tplIds ===');
   const deck = sandboxDeck();
   check('deck has 40 cards', deck.length === 40);
   check('every deck entry is a known card', deck.every(id => !!CARDS[id]));
-  check('every deck entry is a Land', deck.every(id => CARDS[id].type === 'Land'));
+  check('every deck entry is a Land', deck.every(id => hasType(CARDS[id], 'Land')));
 }
 
 console.log('\n=== RUN-less boot via ENGINE.init (both sides basic decks) ===');
@@ -64,7 +63,7 @@ let G;
 console.log('\n=== Spawn a spell into hand ===');
 {
   const before = G.you.hand.length;
-  const spellId = Object.keys(CARDS).find(id => /^(Instant|Sorcery)$/.test(CARDS[id].type));
+  const spellId = Object.keys(CARDS).find(id => governingType(CARDS[id]) === 'Sorcery');
   check('a spell template exists to spawn', !!spellId);
   if (spellId) {
     const c = spawn(G, spellId, 'you-hand');
@@ -76,7 +75,7 @@ console.log('\n=== Spawn a spell into hand ===');
 
 console.log('\n=== Spawn a creature onto each battlefield; combat/legality/stats survive it ===');
 {
-  const creatureId = Object.keys(CARDS).find(id => CARDS[id].type === 'Creature');
+  const creatureId = Object.keys(CARDS).find(id => hasType(CARDS[id], 'Creature'));
   check('a creature template exists', !!creatureId);
   const mine = spawn(G, creatureId, 'you-board');
   const theirs = spawn(G, creatureId, 'opp-board');

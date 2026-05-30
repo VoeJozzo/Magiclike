@@ -24,9 +24,7 @@
   ],
   "name": "Patient Saint",
   "power": 0,
-  "sub": "Human Cleric Wall",
   "toughness": 4,
-  "type": "Creature",
   "types": [
     "Creature",
     "Human",

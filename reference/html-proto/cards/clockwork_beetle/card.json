@@ -5,13 +5,11 @@
   "cost": {
     "C": 1
   },
-  "type": "Creature",
   "types": [
     "Artifact",
     "Creature",
     "Insect"
   ],
-  "sub": "Insect",
   "power": 1,
   "toughness": 1,
   "keywords": []

@@ -9,7 +9,6 @@
   ],
   "name": "Holy Zealot",
   "power": 1,
-  "sub": "Human Cleric",
   "toughness": 1,
   "triggers": [
     {
@@ -27,7 +26,6 @@
       ]
     }
   ],
-  "type": "Creature",
   "types": [
     "Creature",
     "Human",

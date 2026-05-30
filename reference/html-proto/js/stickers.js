@@ -89,18 +89,10 @@ function applyStickersToCard(card) {
       const rolled = (card.subtypeRolls || [])[subtypeCursor];
       subtypeCursor++;
       if (!rolled) continue;
-      const tokens = (card.sub || '').split(/\s+/).filter(Boolean);
-      if (!tokens.includes(rolled)) {
-        tokens.push(rolled);
-        card.sub = tokens.join(' ');
-        // If the card carries an explicit types[] (multi-type cards, and now all
-        // cards post-id-normalization), typesOf reads it and IGNORES card.sub —
-        // so the rolled subtype must be pushed onto types[] too, or the lord
-        // buffs that match on it (hasType) never see it.
-        if (Array.isArray(card.types) && !card.types.includes(rolled)) {
-          card.types.push(rolled);
-        }
-      }
+      // Append the rolled subtype to types[] — the sole type identity. Lord buffs
+      // that match on it read via hasType/subtypesOf.
+      if (!Array.isArray(card.types)) card.types = [];
+      if (!card.types.includes(rolled)) card.types.push(rolled);
     } else {
       applyStickerKindEffect(card, s);
     }
@@ -260,7 +252,7 @@ function rollSubtypeFromDeck(slots, targetSlotIdx) {
   if (!target_slot) return null;
   const targetTpl = tplForSlot(target_slot);
   if (!targetTpl) return null;
-  const targetTokens = new Set((targetTpl.sub || '').split(/\s+/).filter(Boolean));
+  const targetTokens = new Set(subtypesOf(targetTpl));
   for (const r of (target_slot.subtypeRolls || [])) {
     if (r) targetTokens.add(r);
   }
@@ -270,7 +262,7 @@ function rollSubtypeFromDeck(slots, targetSlotIdx) {
   for (const slot of slots) {
     const tpl = tplForSlot(slot);
     if (!tpl || !hasType(tpl, 'Creature')) continue;
-    const tokens = (tpl.sub || '').split(/\s+/).filter(Boolean);
+    const tokens = subtypesOf(tpl);
     for (const tok of tokens) {
       if (targetTokens.has(tok)) continue;
       tokenCount[tok] = (tokenCount[tok] || 0) + 1;
@@ -328,8 +320,7 @@ function stickersForSlot(slot, deckColors) {
     return [];
   };
   const view = {
-    type: tpl.type,
-    sub: tpl.sub || '',
+    types: Array.isArray(tpl.types) ? tpl.types.slice() : [],
     keywords: (tpl.keywords || []).slice(),
     stickers: slot.stickers.slice(),
     mana: tpl.mana,
@@ -349,13 +340,7 @@ function stickersForSlot(slot, deckColors) {
     if (s.kind === 'subtype') {
       const rolled = (slot.subtypeRolls || [])[subtypeCursor];
       subtypeCursor++;
-      if (rolled) {
-        const tokens = (view.sub || '').split(/\s+/).filter(Boolean);
-        if (!tokens.includes(rolled)) {
-          tokens.push(rolled);
-          view.sub = tokens.join(' ');
-        }
-      }
+      if (rolled && !view.types.includes(rolled)) view.types.push(rolled);
     }
     if (s.kind === 'grant_mana_ability') {
       grantManaAbility(view, s.color);  // §3.9: reflect on the view's tap-ability

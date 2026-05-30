@@ -10,9 +10,7 @@
   ],
   "name": "Craw Wurm",
   "power": 6,
-  "sub": "Wurm",
   "toughness": 4,
-  "type": "Creature",
   "types": [
     "Creature",
     "Wurm"

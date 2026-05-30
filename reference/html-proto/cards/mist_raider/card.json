@@ -10,7 +10,6 @@
   ],
   "name": "Mist Raider",
   "power": 2,
-  "sub": "Human Pirate",
   "toughness": 3,
   "triggers": [
     {
@@ -28,7 +27,6 @@
       "target": "creature"
     }
   ],
-  "type": "Creature",
   "types": [
     "Creature",
     "Human",

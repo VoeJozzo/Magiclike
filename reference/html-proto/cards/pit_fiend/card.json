@@ -11,9 +11,7 @@
   ],
   "name": "Pit Fiend",
   "power": 5,
-  "sub": "Demon",
   "toughness": 4,
-  "type": "Creature",
   "types": [
     "Creature",
     "Demon"

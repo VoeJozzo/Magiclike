@@ -10,7 +10,6 @@
   ],
   "name": "Spiteful Imp",
   "power": 2,
-  "sub": "Imp",
   "toughness": 1,
   "triggers": [
     {
@@ -29,7 +28,6 @@
       "target": "opp"
     }
   ],
-  "type": "Creature",
   "types": [
     "Creature",
     "Imp"

@@ -93,7 +93,7 @@ console.log('\n=== effectiveArt: non-Creature with ladder ignored (defensive) ==
 {
   // Fake non-creature with a ladder. The helper should return base art
   // since computing p+t doesn't make sense for non-creatures.
-  const fake = { type: 'Instant', art: 'base.png', art_ladder: [
+  const fake = { types: ['Instant'], art: 'base.png', art_ladder: [
     { min_pt: 0, art: 'low.png' }, { min_pt: 10, art: 'high.png' }
   ]};
   check('Non-creature returns base art ignoring ladder',

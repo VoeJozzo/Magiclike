@@ -107,8 +107,8 @@ console.log('\n=== representative migrated cards fire correctly ===');
   if (lord) {
     const subTerm = lord.trig.condition.find((t) => typeof t === 'string' && t.startsWith('card_has_subtype('));
     const sub = subTerm.slice('card_has_subtype('.length, -1).replace(/^"|"$/g, '');
-    const yesEvt = { subject_card: { iid: 2, type: 'Creature', sub: sub }, controller: 'you', from_zone: 'hand', to_zone: 'battlefield' };
-    const noEvt = { subject_card: { iid: 2, type: 'Creature', sub: 'SomethingElse' }, controller: 'you', from_zone: 'hand', to_zone: 'battlefield' };
+    const yesEvt = { subject_card: { iid: 2, types: ['Creature'].concat(String(sub||'').split(/\s+/).filter(Boolean)) }, controller: 'you', from_zone: 'hand', to_zone: 'battlefield' };
+    const noEvt = { subject_card: { iid: 2, types: ['Creature', 'SomethingElse'] }, controller: 'you', from_zone: 'hand', to_zone: 'battlefield' };
     check(`${lord.card.tplId}: fires on ${sub} ETB`, evalFor(lord, yesEvt, 'you') === true);
     check(`${lord.card.tplId}: silent on non-${sub} ETB`, evalFor(lord, noEvt, 'you') === false);
   } else check('subtype-enters lord present', false);
@@ -116,8 +116,8 @@ console.log('\n=== representative migrated cards fire correctly ===');
   // thisDies: fires when THIS card moves battlefield->graveyard; not on bounce.
   const dies = cardWithSig('card_zone_change | this_card, card_moves(battlefield, graveyard)');
   if (dies) {
-    const diesEvt = { subject_card: { iid: 1, type: 'Creature' }, from_zone: 'battlefield', to_zone: 'graveyard' };
-    const bounceEvt = { subject_card: { iid: 1, type: 'Creature' }, from_zone: 'battlefield', to_zone: 'hand' };
+    const diesEvt = { subject_card: { iid: 1, types: ['Creature'] }, from_zone: 'battlefield', to_zone: 'graveyard' };
+    const bounceEvt = { subject_card: { iid: 1, types: ['Creature'] }, from_zone: 'battlefield', to_zone: 'hand' };
     check(`${dies.card.tplId}: fires on own death`, evalFor(dies, diesEvt, 'you') === true);
     check(`${dies.card.tplId}: silent on own bounce`, evalFor(dies, bounceEvt, 'you') === false);
   } else check('thisDies card present', false);
@@ -136,9 +136,9 @@ console.log('\n=== representative migrated cards fire correctly ===');
   // creature-only -- a faithfulness fix over the plan's bare decomposition).
   const anyDies = cardWithSig('card_zone_change | card_is_creature, card_moves(battlefield, graveyard)');
   if (anyDies) {
-    const selfDeath = { subject_card: { iid: 1, type: 'Creature' }, from_zone: 'battlefield', to_zone: 'graveyard' };
-    const otherDeath = { subject_card: { iid: 99, type: 'Creature' }, from_zone: 'battlefield', to_zone: 'graveyard' };
-    const landDeath = { subject_card: { iid: 99, type: 'Land' }, from_zone: 'battlefield', to_zone: 'graveyard' };
+    const selfDeath = { subject_card: { iid: 1, types: ['Creature'] }, from_zone: 'battlefield', to_zone: 'graveyard' };
+    const otherDeath = { subject_card: { iid: 99, types: ['Creature'] }, from_zone: 'battlefield', to_zone: 'graveyard' };
+    const landDeath = { subject_card: { iid: 99, types: ['Land'] }, from_zone: 'battlefield', to_zone: 'graveyard' };
     check(`${anyDies.card.tplId}: fires on own creature death`, evalFor(anyDies, selfDeath, 'you') === true);
     check(`${anyDies.card.tplId}: fires on another creature's death`, evalFor(anyDies, otherDeath, 'you') === true);
     check(`${anyDies.card.tplId}: silent on a non-creature death`, evalFor(anyDies, landDeath, 'you') === false);

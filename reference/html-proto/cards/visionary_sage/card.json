@@ -7,7 +7,6 @@
   },
   "name": "Visionary Sage",
   "power": 2,
-  "sub": "Human Wizard",
   "toughness": 2,
   "triggers": [
     {
@@ -28,7 +27,6 @@
       ]
     }
   ],
-  "type": "Creature",
   "types": [
     "Creature",
     "Human",

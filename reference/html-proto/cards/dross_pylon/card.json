@@ -2,7 +2,6 @@
   "card_id": "dross_pylon",
   "name": "Dross Pylon",
   "art": "🗼",
-  "type": "Land",
   "types": [
     "Artifact",
     "Land"

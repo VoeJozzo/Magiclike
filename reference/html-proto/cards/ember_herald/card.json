@@ -7,7 +7,6 @@
   },
   "name": "Ember Herald",
   "power": 1,
-  "sub": "Human Shaman",
   "toughness": 2,
   "triggers": [
     {
@@ -26,7 +25,6 @@
       "target": "creature_or_player"
     }
   ],
-  "type": "Creature",
   "types": [
     "Creature",
     "Human",

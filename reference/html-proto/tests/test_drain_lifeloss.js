@@ -80,7 +80,7 @@ console.log('\n=== Demonic Tutor: the "you lose 2 life" is self life loss ===');
   const G = game('you');
   const myLife0 = G.you.life;
   // seed library with a creature so the search has something
-  G.you.library.push(mk(Object.keys(CARDS).find(k => CARDS[k].type === 'Creature' && !CARDS[k].special), 'you'));
+  G.you.library.push(mk(Object.keys(CARDS).find(k => hasType(CARDS[k], 'Creature') && !CARDS[k].special), 'you'));
   const dt = mk('demonic_tutor', 'you'); G.you.hand.push(dt);
   ENGINE.executeAction('you', { type: 'castSpell', cardIid: dt.iid });
   drain(G);

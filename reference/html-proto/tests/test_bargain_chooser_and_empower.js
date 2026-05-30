@@ -135,7 +135,7 @@ console.log('\n=== AI bargain pick scales with position (not always the minimum)
 {
   const VANILLA = (() => {
     for (const [id, c] of Object.entries(CARDS)) {
-      if (c.type === 'Creature' && !c.triggers && !c.abilities && !c.static_buffs) return id;
+      if (hasType(c, 'Creature') && !c.triggers && !c.abilities && !c.static_buffs) return id;
     }
     return null;
   })();

@@ -11,9 +11,7 @@
   ],
   "name": "Dawn Angel",
   "power": 3,
-  "sub": "Angel",
   "toughness": 4,
-  "type": "Creature",
   "types": [
     "Creature",
     "Angel"

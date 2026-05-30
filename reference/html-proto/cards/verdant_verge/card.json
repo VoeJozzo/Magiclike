@@ -2,12 +2,10 @@
   "card_id": "verdant_verge",
   "name": "Verdant Verge",
   "art": "🍃",
-  "type": "Land",
   "types": [
     "Artifact",
     "Land",
     "Forest"
   ],
-  "mana": "G",
-  "sub": "Forest"
+  "mana": "G"
 }

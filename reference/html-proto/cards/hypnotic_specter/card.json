@@ -10,7 +10,6 @@
   ],
   "name": "Hypnotic Specter",
   "power": 2,
-  "sub": "Specter",
   "toughness": 2,
   "triggers": [
     {
@@ -30,7 +29,6 @@
       "target": "opp"
     }
   ],
-  "type": "Creature",
   "types": [
     "Creature",
     "Specter"

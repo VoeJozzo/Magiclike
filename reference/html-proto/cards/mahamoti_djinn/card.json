@@ -10,9 +10,7 @@
   ],
   "name": "Mahamoti Djinn",
   "power": 5,
-  "sub": "Djinn",
   "toughness": 6,
-  "type": "Creature",
   "types": [
     "Creature",
     "Djinn"

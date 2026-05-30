@@ -7,7 +7,6 @@
   },
   "name": "Great Herder",
   "power": 3,
-  "sub": "Elf Druid",
   "toughness": 3,
   "triggers": [
     {
@@ -32,7 +31,6 @@
       ]
     }
   ],
-  "type": "Creature",
   "types": [
     "Creature",
     "Elf",

@@ -10,7 +10,6 @@
   ],
   "name": "Benevolent Angel",
   "power": 3,
-  "sub": "Angel",
   "toughness": 4,
   "triggers": [
     {
@@ -29,7 +28,6 @@
       ]
     }
   ],
-  "type": "Creature",
   "types": [
     "Creature",
     "Angel"

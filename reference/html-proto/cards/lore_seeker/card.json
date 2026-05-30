@@ -7,7 +7,6 @@
   },
   "name": "Lore Seeker",
   "power": 1,
-  "sub": "Human Wizard",
   "toughness": 4,
   "triggers": [
     {
@@ -28,7 +27,6 @@
       ]
     }
   ],
-  "type": "Creature",
   "types": [
     "Creature",
     "Human",

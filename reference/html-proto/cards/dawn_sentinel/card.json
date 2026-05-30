@@ -10,9 +10,7 @@
   ],
   "name": "Dawn Sentinel",
   "power": 2,
-  "sub": "Spirit",
   "toughness": 5,
-  "type": "Creature",
   "types": [
     "Creature",
     "Spirit"

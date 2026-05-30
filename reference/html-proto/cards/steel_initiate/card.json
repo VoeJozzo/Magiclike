@@ -6,7 +6,6 @@
   },
   "name": "Steel Initiate",
   "power": 2,
-  "sub": "Human Soldier",
   "toughness": 2,
   "triggers": [
     {
@@ -24,7 +23,6 @@
       ]
     }
   ],
-  "type": "Creature",
   "types": [
     "Creature",
     "Human",

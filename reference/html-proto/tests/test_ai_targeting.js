@@ -15,7 +15,7 @@ function check(label, ok, info) {
 }
 
 // Migrated Lightning Bolt: top-level target() + bare damage (no per-effect target).
-CARDS._testBolt = { tplId: '_testBolt', name: 'Test Bolt', type: 'Instant', cost: { R: 1 }, color: 'R', colors: ['R'], target: 'creature_or_player', effects: [{ kind: 'damage', amount: 3 }] };
+CARDS._testBolt = { tplId: '_testBolt', name: 'Test Bolt', types: ['Instant'], cost: { R: 1 }, color: 'R', colors: ['R'], target: 'creature_or_player', effects: [{ kind: 'damage', amount: 3 }] };
 
 // A keyword-free vanilla so the AI's combat sim isn't skewed by flying/etc. when
 // the test overrides power/toughness — keeps the decision deterministic across
@@ -23,9 +23,9 @@ CARDS._testBolt = { tplId: '_testBolt', name: 'Test Bolt', type: 'Instant', cost
 // alphabetical reorder exposed the latent dependency on "no keywords").
 const TOUGH = (() => {
   for (const [id, c] of Object.entries(CARDS)) {
-    if (c.type === 'Creature' && (c.toughness || 0) >= 4 && !c.triggers && !c.abilities && !(c.keywords && c.keywords.length)) return id;
+    if (hasType(c, 'Creature') && (c.toughness || 0) >= 4 && !c.triggers && !c.abilities && !(c.keywords && c.keywords.length)) return id;
   }
-  for (const [id, c] of Object.entries(CARDS)) if (c.type === 'Creature' && (c.toughness || 0) >= 4 && !(c.keywords && c.keywords.length)) return id;
+  for (const [id, c] of Object.entries(CARDS)) if (hasType(c, 'Creature') && (c.toughness || 0) >= 4 && !(c.keywords && c.keywords.length)) return id;
   return null;
 })();
 let nextIid = 9000;
@@ -81,7 +81,7 @@ console.log('\n=== AI does NOT bolt its own creature ===');
 // mass and held sensibly (the AI correctly holds a sweeper on its own
 // unpressured turn). The legacy damageAll kind has been removed (step 7), so
 // these now assert the new form's behavior + absolute values directly.
-CARDS._pyroNew = { tplId: '_pyroNew', name: 'Pyro New', type: 'Sorcery', cost: { R: 2 }, color: 'R', colors: ['R'], effects: [{ kind: 'damage', amount: 2, scope: 'all_creatures' }] };
+CARDS._pyroNew = { tplId: '_pyroNew', name: 'Pyro New', types: ['Sorcery'], cost: { R: 2 }, color: 'R', colors: ['R'], effects: [{ kind: 'damage', amount: 2, scope: 'all_creatures' }] };
 
 function decidesToCast(tpl, setup) {
   const G = newGame();

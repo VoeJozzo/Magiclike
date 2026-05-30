@@ -7,7 +7,6 @@
   },
   "name": "Blood Artist",
   "power": 0,
-  "sub": "Vampire",
   "toughness": 1,
   "triggers": [
     {
@@ -31,7 +30,6 @@
       "target": "opp"
     }
   ],
-  "type": "Creature",
   "types": [
     "Creature",
     "Vampire"

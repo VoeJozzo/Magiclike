@@ -19,7 +19,6 @@
     }
   ],
   "name": "Roots and Branches",
-  "type": "Sorcery",
   "target_slots": [
     {
       "target": "creature"

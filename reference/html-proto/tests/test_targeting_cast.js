@@ -18,22 +18,22 @@ function check(label, ok, info) {
 }
 
 // Synthetic top-level-target cards (added to CARDS so mk() can clone them).
-CARDS._testBolt  = { tplId: '_testBolt',  name: 'Test Bolt',  type: 'Instant', cost: { R: 1 }, color: 'R', colors: ['R'], target: 'creature_or_player', effects: [{ kind: 'damage', amount: 3 }] };
-CARDS._testEdict = { tplId: '_testEdict', name: 'Test Edict', type: 'Instant', cost: { B: 1 }, color: 'B', colors: ['B'], target: 'player', effects: [{ kind: 'chooses', filter: 'creature' }, { kind: 'sacrifice' }] };
-CARDS._testPyro  = { tplId: '_testPyro',  name: 'Test Pyro',  type: 'Sorcery', cost: { R: 1 }, color: 'R', colors: ['R'], effects: [{ kind: 'damage', amount: 2, scope: 'all_creatures' }] };
+CARDS._testBolt  = { tplId: '_testBolt',  name: 'Test Bolt',  types: ['Instant'], cost: { R: 1 }, color: 'R', colors: ['R'], target: 'creature_or_player', effects: [{ kind: 'damage', amount: 3 }] };
+CARDS._testEdict = { tplId: '_testEdict', name: 'Test Edict', types: ['Instant'], cost: { B: 1 }, color: 'B', colors: ['B'], target: 'player', effects: [{ kind: 'chooses', filter: 'creature' }, { kind: 'sacrifice' }] };
+CARDS._testPyro  = { tplId: '_testPyro',  name: 'Test Pyro',  types: ['Sorcery'], cost: { R: 1 }, color: 'R', colors: ['R'], effects: [{ kind: 'damage', amount: 2, scope: 'all_creatures' }] };
 // Creature with a top-level-target ETB trigger ("when this enters, deal 1 to
 // target creature") — exercises the trigger-path target() wiring.
-CARDS._testZapper = { tplId: '_testZapper', name: 'Test Zapper', type: 'Creature', cost: { R: 1 }, color: 'R', colors: ['R'], power: 1, toughness: 1,
+CARDS._testZapper = { tplId: '_testZapper', name: 'Test Zapper', types: ['Creature'], cost: { R: 1 }, color: 'R', colors: ['R'], power: 1, toughness: 1,
   triggers: [{ event: 'card_zone_change', condition: ['this_card', 'card_moves(anywhere, battlefield)'], target: 'creature', effects: [{ kind: 'damage', amount: 1 }] }] };
 // Creature with a top-level-target activated ability ("{T}: deal 1 to target creature").
-CARDS._testPinger = { tplId: '_testPinger', name: 'Test Pinger', type: 'Creature', cost: { R: 1 }, color: 'R', colors: ['R'], power: 0, toughness: 3,
+CARDS._testPinger = { tplId: '_testPinger', name: 'Test Pinger', types: ['Creature'], cost: { R: 1 }, color: 'R', colors: ['R'], power: 0, toughness: 3,
   abilities: [{ cost: { tap: true }, target: 'creature', effects: [{ kind: 'damage', amount: 1 }] }] };
 
 const TOUGH_CREATURE = (() => {
   for (const [id, c] of Object.entries(CARDS)) {
-    if (c.type === 'Creature' && (c.toughness || 0) >= 4 && !c.triggers && !c.abilities) return id;
+    if (hasType(c, 'Creature') && (c.toughness || 0) >= 4 && !c.triggers && !c.abilities) return id;
   }
-  for (const [id, c] of Object.entries(CARDS)) if (c.type === 'Creature' && (c.toughness || 0) >= 4) return id;
+  for (const [id, c] of Object.entries(CARDS)) if (hasType(c, 'Creature') && (c.toughness || 0) >= 4) return id;
   return null;
 })();
 

@@ -23,9 +23,7 @@
   },
   "name": "Sage of the Wilds",
   "power": 2,
-  "sub": "Elf Druid",
   "toughness": 3,
-  "type": "Creature",
   "types": [
     "Creature",
     "Elf",

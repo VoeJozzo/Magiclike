@@ -7,7 +7,6 @@
   },
   "name": "Storm Sage",
   "power": 2,
-  "sub": "Human Wizard",
   "toughness": 3,
   "triggers": [
     {
@@ -30,7 +29,6 @@
       ]
     }
   ],
-  "type": "Creature",
   "types": [
     "Creature",
     "Human",

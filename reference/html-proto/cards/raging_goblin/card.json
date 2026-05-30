@@ -9,9 +9,7 @@
   ],
   "name": "Raging Goblin",
   "power": 1,
-  "sub": "Goblin Berserker",
   "toughness": 1,
-  "type": "Creature",
   "types": [
     "Creature",
     "Goblin",

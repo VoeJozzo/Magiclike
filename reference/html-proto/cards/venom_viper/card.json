@@ -10,9 +10,7 @@
   ],
   "name": "Venom Viper",
   "power": 1,
-  "sub": "Snake",
   "toughness": 2,
-  "type": "Creature",
   "types": [
     "Creature",
     "Snake"

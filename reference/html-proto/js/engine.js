@@ -91,9 +91,9 @@ function canonicalSplicePair(tplA, tplB) {
   const priority = (tplId) => {
     const tpl = CARDS[tplId];
     if (!tpl) return 4;
-    if (tpl.type === 'Creature') return 0;
-    if (tpl.type === 'Artifact') return 1;
-    if (tpl.type === 'Land') return 2;
+    if (hasType(tpl, 'Creature')) return 0;
+    if (hasType(tpl, 'Artifact')) return 1;
+    if (hasType(tpl, 'Land')) return 2;
     return 3;
   };
   const pA = priority(tplA);
@@ -161,8 +161,8 @@ function remapEmpowerRollForStaple(roll, baseIsCreature, stapleIsCreature,
 function mergeSpliceData(base, staple) {
   const baseTpl = CARDS[base.tplId];
   const stapleTpl = CARDS[staple.tplId];
-  const baseIsCreature = baseTpl.type === 'Creature';
-  const stapleIsCreature = !!(stapleTpl && stapleTpl.type === 'Creature');
+  const baseIsCreature = hasType(baseTpl, 'Creature');
+  const stapleIsCreature = !!(stapleTpl && hasType(stapleTpl, 'Creature'));
   // Merged effect/trigger/ability counts BEFORE this staple — accounts for any
   // prior staples, since each shifts the indices differently by merge case:
   //   Creature+Creature → prior's triggers + abilities concat into the merged
@@ -175,7 +175,7 @@ function mergeSpliceData(base, staple) {
   for (const priorTplId of priorStaples) {
     const priorTpl = CARDS[priorTplId];
     if (!priorTpl) continue;
-    if (baseIsCreature && priorTpl.type === 'Creature') {
+    if (baseIsCreature && hasType(priorTpl, 'Creature')) {
       priorMergedTriggerCount += (priorTpl.triggers || []).length;
       priorMergedAbilityCount += (priorTpl.abilities || []).length;
     } else if (baseIsCreature) {
@@ -413,15 +413,14 @@ function synthesizeStapledTemplate(baseTplId, stapledTpls) {
   // counting for artifact-matters). Creature/Land governance is deliberately NOT
   // unioned — Land+Creature collapses to a cast creature (play-vs-cast gates key
   // on hasType('Land'); a "true land-creature" is out of scope), and stapled
-  // spells already collapse to an ETB trigger. We only author an explicit
-  // types[] when a co-type is actually present; otherwise identity keeps
-  // deriving from merged.type/sub (single-type staples are untouched).
+  // spells already collapse to an ETB trigger. merged.types is the source of
+  // truth (cloned from the base, then unioned with each staple's subtypes above);
+  // here we just union the Artifact co-type in if any fused card carried it.
   const involved = [baseTpl, ...stapledTpls.map(id => CARDS[id]).filter(Boolean)];
-  const coTypes = ['Artifact']
-    .filter(co => co !== merged.type && involved.some(t => hasType(t, co)));
-  if (coTypes.length) {
-    const subs = (merged.sub || '').split(/\s+/).filter(Boolean);
-    merged.types = [merged.type, ...coTypes, ...subs];
+  for (const co of ['Artifact']) {
+    if (involved.some(t => hasType(t, co)) && !merged.types.includes(co)) {
+      merged.types.push(co);
+    }
   }
   return merged;
 }
@@ -441,12 +440,12 @@ function mergeStapleInto(merged, stapleTpl) {
       merged.cost[k] = (merged.cost[k] || 0) + v;
     }
   }
-  const basePermanent = merged.type === 'Creature' || merged.type === 'Land';
-  if (stapleTpl.type === 'Creature') {
+  const basePermanent = hasType(merged, 'Creature') || hasType(merged, 'Land');
+  if (hasType(stapleTpl, 'Creature')) {
     // Body merge. Base is always a Creature here (canonicalization), else a
     // creature staple would have won the base slot.
-    if (merged.type !== 'Creature') {
-      throw new Error('staple-merge: creature staple on non-creature base ' + merged.type);
+    if (!hasType(merged, 'Creature')) {
+      throw new Error('staple-merge: creature staple on non-creature base ' + governingType(merged));
     }
     merged.power = (merged.power || 0) + (stapleTpl.power || 0);
     merged.toughness = (merged.toughness || 0) + (stapleTpl.toughness || 0);
@@ -454,15 +453,12 @@ function mergeStapleInto(merged, stapleTpl) {
     for (const kw of stapleKws) {
       if (!merged.keywords.includes(kw)) merged.keywords.push(kw);
     }
-    // Subtype: token-level dedup so Goblin+Goblin doesn't double; lord checks
-    // use substring match on card.sub.
-    const baseTokens = (merged.sub || '').split(/\s+/).filter(Boolean);
-    const stapleTokens = (stapleTpl.sub || '').split(/\s+/).filter(Boolean);
-    const mergedTokens = baseTokens.slice();
-    for (const t of stapleTokens) {
-      if (!mergedTokens.includes(t)) mergedTokens.push(t);
+    // Subtype union (token-level dedup so Goblin+Goblin doesn't double) into the
+    // merged type list — the single source of truth. Lord checks read subtypes
+    // via subtypesOf / hasType.
+    for (const st of subtypesOf(stapleTpl)) {
+      if (!merged.types.includes(st)) merged.types.push(st);
     }
-    merged.sub = mergedTokens.join(' ');
     // Triggers/abilities/static_buffs: concat with deep copy. Base's first.
     if (stapleTpl.triggers) {
       for (const t of stapleTpl.triggers) {
@@ -493,7 +489,7 @@ function mergeStapleInto(merged, stapleTpl) {
       }
     }
     if (stapleTpl.permanent_eot) merged.permanent_eot = true;
-  } else if (stapleTpl.type === 'Land') {
+  } else if (hasType(stapleTpl, 'Land')) {
     // Permanent base gains the staple land's tap-ability (§3.9). Merge into an
     // existing mana ability (Ld+Ld, or a creature that already taps for mana —
     // one tap can only fire once, so merging to a choose-ability is equivalent
@@ -544,7 +540,7 @@ function mergeStapleInto(merged, stapleTpl) {
     // free to play, so a free stapled spell is pure value; making it a "you may
     // pay {cost}" trigger restores the bargain. Creature/artifact bases stay
     // free — you already paid the base's full cost. (BACKLOG: optional paid ETB.)
-    if (merged.type === 'Land' && stapleTpl.cost && Object.keys(stapleTpl.cost).length > 0) {
+    if (hasType(merged, 'Land') && stapleTpl.cost && Object.keys(stapleTpl.cost).length > 0) {
       trig.optional_cost = { ...stapleTpl.cost };
     }
     merged.triggers.push(trig);
@@ -609,11 +605,11 @@ function makeCard(tplId, stickers, slotIdx, empowerRolls, permaBuffs, bonusTrigg
     tplId,
     // slotIdx: player → runState.slots index for run-persistent effects; opp → transient.
     slotIdx: (typeof slotIdx === 'number') ? slotIdx : null,
-    name: tpl.name, type: tpl.type, sub: tpl.sub, art: tpl.art, text: tpl.text,
-    // Explicit multi-type tag list (Phase 4+). Carried to the instance when the
-    // template declares it so typesOf/hasType see the full identity; single-type
-    // cards leave it undefined and derive from type/sub/legendary.
-    types: Array.isArray(tpl.types) ? tpl.types.slice() : undefined,
+    name: tpl.name, art: tpl.art, text: tpl.text,
+    // types[] is the card's sole type identity (no legacy type/sub). Carried to
+    // the instance so typesOf/hasType/governingType read the full tag list; the
+    // live typeGrants layer (add_type / set_types) rides on top.
+    types: Array.isArray(tpl.types) ? tpl.types.slice() : [],
     // Top-level target() step (§3.5) — must carry to the runtime instance so
     // cast legality / enumeration / resolution see the targeting step. The
     // optional target_filter carries restrictions the closed taxonomy can't name.
@@ -710,7 +706,8 @@ function makeToken(tokenTplId, controller) {
     isToken: true,
     owner: controller,
     slotIdx: null,
-    name: tpl.name, type: tpl.type, sub: tpl.sub, art: tpl.art, text: tpl.text,
+    name: tpl.name, art: tpl.art, text: tpl.text,
+    types: Array.isArray(tpl.types) ? tpl.types.slice() : [],
     cost: undefined,
     mana: undefined, color: tpl.color,
     keywords: (tpl.keywords || []).slice(),

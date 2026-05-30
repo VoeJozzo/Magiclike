@@ -2,12 +2,10 @@
   "card_id": "gilded_seat",
   "name": "Gilded Seat",
   "art": "🪙",
-  "type": "Land",
   "types": [
     "Artifact",
     "Land",
     "Plains"
   ],
-  "mana": "W",
-  "sub": "Plains"
+  "mana": "W"
 }

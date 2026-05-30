@@ -23,7 +23,6 @@
     }
   ],
   "name": "Drain Life",
-  "type": "Sorcery",
   "target_slots": [
     {
       "target": "creature"

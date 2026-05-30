@@ -35,7 +35,7 @@ function trial(spellTpl, targetSide) {
   G.activePlayer = 'opp'; G.priorityHolder = 'opp'; G.phase = 'MAIN1';
   G.stack = []; G.gameOver = false; G.priority = { passes: new Set() };
   G.opp.mana = { W: 9, U: 9, B: 9, R: 9, G: 9, C: 9 };
-  const ctpl = Object.keys(CARDS).find(k => CARDS[k].type === 'Creature');
+  const ctpl = Object.keys(CARDS).find(k => hasType(CARDS[k], 'Creature'));
   G[targetSide].battlefield.push(mk(ctpl, targetSide));
   G.opp.hand.length = 0;
   const spell = Object.assign(JSON.parse(JSON.stringify(CARDS[spellTpl])),
@@ -80,7 +80,7 @@ console.log('\n=== string-severity scoring (regression: severity read via _sevNu
     G.activePlayer = 'opp'; G.priorityHolder = 'opp'; G.phase = 'MAIN1';
     G.stack = []; G.gameOver = false; G.priority = { passes: new Set() };
     G.opp.mana = { W: 9, U: 9, B: 9, R: 9, G: 9, C: 9 };
-    const ctpl = Object.keys(CARDS).find(k => CARDS[k].type === 'Creature');
+    const ctpl = Object.keys(CARDS).find(k => hasType(CARDS[k], 'Creature'));
     const victim = mk(ctpl, 'you'); victim.tapped = true; G.you.battlefield.push(victim);
     G.opp.hand.length = 0;
     G.opp.hand.push(Object.assign(JSON.parse(JSON.stringify(CARDS[spellTpl])),

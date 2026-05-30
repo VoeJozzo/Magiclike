@@ -10,9 +10,7 @@
   ],
   "name": "Treefolk Guard",
   "power": 2,
-  "sub": "Treefolk",
   "toughness": 5,
-  "type": "Creature",
   "types": [
     "Creature",
     "Treefolk"

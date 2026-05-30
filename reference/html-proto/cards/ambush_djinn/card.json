@@ -11,9 +11,7 @@
   ],
   "name": "Ambush Djinn",
   "power": 4,
-  "sub": "Djinn",
   "toughness": 4,
-  "type": "Creature",
   "types": [
     "Creature",
     "Djinn"

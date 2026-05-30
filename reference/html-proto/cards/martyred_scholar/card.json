@@ -7,7 +7,6 @@
   },
   "name": "Martyred Scholar",
   "power": 1,
-  "sub": "Human Wizard",
   "toughness": 1,
   "triggers": [
     {
@@ -28,7 +27,6 @@
       ]
     }
   ],
-  "type": "Creature",
   "types": [
     "Creature",
     "Human",

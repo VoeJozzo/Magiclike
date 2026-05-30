@@ -7,7 +7,6 @@
   },
   "name": "Crusader Captain",
   "power": 3,
-  "sub": "Human Knight",
   "toughness": 3,
   "triggers": [
     {
@@ -26,7 +25,6 @@
       "target": "your_creature"
     }
   ],
-  "type": "Creature",
   "types": [
     "Creature",
     "Human",

@@ -5,13 +5,11 @@
   "cost": {
     "C": 5
   },
-  "type": "Creature",
   "types": [
     "Artifact",
     "Creature",
     "Wall"
   ],
-  "sub": "Wall",
   "power": 0,
   "toughness": 7,
   "keywords": [

@@ -7,7 +7,6 @@
   },
   "name": "Soulblade Captain",
   "power": 2,
-  "sub": "Human Knight",
   "toughness": 2,
   "triggers": [
     {
@@ -27,7 +26,6 @@
       ]
     }
   ],
-  "type": "Creature",
   "types": [
     "Creature",
     "Human",

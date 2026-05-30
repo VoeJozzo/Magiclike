@@ -21,9 +21,7 @@
   },
   "name": "Wicked Acolyte",
   "power": 2,
-  "sub": "Human Cleric",
   "toughness": 2,
-  "type": "Creature",
   "types": [
     "Creature",
     "Human",

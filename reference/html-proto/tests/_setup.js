@@ -175,7 +175,7 @@ const EXPOSED = [
   'triggerPreamble', 'abilityCostPhrase', 'keywordPreamble',
   // Unified type system (types.js, all module-scope, no IIFE — Phase 1).
   'TYPE_REGISTRY', 'typeRegistryEntry', 'typeCategory', 'isCardTypeTag',
-  'typesOf', 'hasType', 'governingType', 'isPermanent', 'typeLine',
+  'typesOf', 'hasType', 'subtypesOf', 'governingType', 'isPermanent', 'typeLine',
 ];
 
 // Card templates now live in cards/<tplId>/card.json. The browser-side

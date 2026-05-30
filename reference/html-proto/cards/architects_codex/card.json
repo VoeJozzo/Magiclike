@@ -8,7 +8,6 @@
   "name": "The Architect's Codex",
   "power": 2,
   "special": true,
-  "sub": "Wizard Artificer",
   "types": [
     "Artifact",
     "Creature",
@@ -17,6 +16,5 @@
   ],
   "text": "When you draw ~, build an ability: pick one of three randomly-generated triggers (or keep the current one). The chosen ability persists for the rest of the run. Built abilities don't trigger from ~'s own effects.",
   "toughness": 3,
-  "type": "Creature",
   "custom_text": true
 }

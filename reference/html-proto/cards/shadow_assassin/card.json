@@ -11,9 +11,7 @@
   ],
   "name": "Shadow Assassin",
   "power": 2,
-  "sub": "Human Assassin",
   "toughness": 2,
-  "type": "Creature",
   "types": [
     "Creature",
     "Human",

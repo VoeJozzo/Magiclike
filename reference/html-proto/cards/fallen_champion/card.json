@@ -7,7 +7,6 @@
   },
   "name": "Fallen Champion",
   "power": 3,
-  "sub": "Human Warrior",
   "toughness": 2,
   "triggers": [
     {
@@ -26,7 +25,6 @@
       "target": "opp"
     }
   ],
-  "type": "Creature",
   "types": [
     "Creature",
     "Human",

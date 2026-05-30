@@ -22,7 +22,7 @@ function freshCard(tplId, stickers, opts) {
   const tpl = CARDS[tplId];
   return {
     tplId,
-    name: tpl.name, type: tpl.type, sub: tpl.sub || '',
+    name: tpl.name, types: Array.isArray(tpl.types) ? tpl.types.slice() : [],
     keywords: (tpl.keywords || []).slice(),
     cost: tpl.cost ? {...tpl.cost} : undefined,
     mana: tpl.mana,
@@ -125,14 +125,14 @@ console.log('=== applyStickersToCard: each kind mutates correctly ===');
 {
   const card = freshCard('savannah_lions', ['subtype'], { subtypeRolls: ['Beast'] });
   applyStickersToCard(card);
-  check('subtype appends rolled subtype to card.sub', card.sub.includes('Beast'));
-  check('subtype preserves native Cat', card.sub.includes('Cat'));
+  check('subtype appends rolled subtype to types[]', hasType(card, 'Beast'));
+  check('subtype preserves native Cat', hasType(card, 'Cat'));
 }
 
 {
   const card = freshCard('savannah_lions', ['subtype'], { subtypeRolls: ['Cat'] });
   applyStickersToCard(card);
-  const tokens = card.sub.split(/\s+/).filter(Boolean);
+  const tokens = subtypesOf(card);
   const catCount = tokens.filter(t => t === 'Cat').length;
   check('subtype: dedup (no double-Cat)', catCount === 1);
 }

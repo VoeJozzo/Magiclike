@@ -3,8 +3,6 @@
   "art": "art.png",
   "mana": "C",
   "name": "City of Brass",
-  "sub": "Land",
-  "type": "Land",
   "abilities": [
     {
       "cost": {
@@ -19,7 +17,6 @@
     }
   ],
   "types": [
-    "Land",
     "Land"
   ]
 }

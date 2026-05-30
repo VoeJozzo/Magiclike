@@ -11,9 +11,7 @@
   ],
   "name": "Iron Statue",
   "power": 0,
-  "sub": "Construct Wall",
   "toughness": 5,
-  "type": "Creature",
   "types": [
     "Creature",
     "Construct",

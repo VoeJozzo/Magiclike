@@ -23,7 +23,6 @@
       ]
     }
   ],
-  "sub": "Goblin",
   "toughness": 2,
   "triggers": [
     {
@@ -42,7 +41,6 @@
       "target": "opp"
     }
   ],
-  "type": "Creature",
   "types": [
     "Creature",
     "Goblin"

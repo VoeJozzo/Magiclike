@@ -10,9 +10,7 @@
   ],
   "name": "Garruk's Companion",
   "power": 3,
-  "sub": "Beast",
   "toughness": 2,
-  "type": "Creature",
   "types": [
     "Creature",
     "Beast"

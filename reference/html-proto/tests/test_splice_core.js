@@ -17,8 +17,8 @@ function check(label, ok, info) {
 function eqArr(a, b) { return JSON.stringify(a || []) === JSON.stringify(b || []); }
 
 // Two vanilla spliceable creatures (creature+creature merge).
-const baseTpl = Object.keys(CARDS).find(k => CARDS[k].type === 'Creature' && isSpliceableBase(k));
-const stapleTpl = Object.keys(CARDS).find(k => k !== baseTpl && CARDS[k].type === 'Creature' && isSpliceableStaple(k));
+const baseTpl = Object.keys(CARDS).find(k => hasType(CARDS[k], 'Creature') && isSpliceableBase(k));
+const stapleTpl = Object.keys(CARDS).find(k => k !== baseTpl && hasType(CARDS[k], 'Creature') && isSpliceableStaple(k));
 
 console.log('=== mergeSpliceData core: concat + bonus precedence + chain ===');
 (() => {
@@ -47,7 +47,7 @@ console.log('\n=== empower-roll remap accounts for prior staple chain ===');
   // A creature base + a prior creature staple with 1 trigger: a staple empower
   // roll on a trigger must shift its subIdx by the prior staple's trigger count.
   const priorWithTrigger = Object.keys(CARDS).find(k =>
-    CARDS[k].type === 'Creature' && isSpliceableStaple(k) && (CARDS[k].triggers || []).length >= 1);
+    hasType(CARDS[k], 'Creature') && isSpliceableStaple(k) && (CARDS[k].triggers || []).length >= 1);
   if (!priorWithTrigger) { check('(skipped: no creature staple with a trigger in pool)', true); return; }
   const roll = { location: 'triggers', subIdx: 0, effIdx: 0, field: 'amount' };
   const baseTriggers = (CARDS[baseTpl].triggers || []).length;
@@ -56,7 +56,7 @@ console.log('\n=== empower-roll remap accounts for prior staple chain ===');
     { tplId: baseTpl, empowerRolls: [], priorStaples: [priorWithTrigger] },
     { tplId: stapleTpl, empowerRolls: [roll] });
   // Only meaningful when both base and staple are creatures (trigger-merge case).
-  if (CARDS[baseTpl].type === 'Creature' && CARDS[stapleTpl].type === 'Creature') {
+  if (hasType(CARDS[baseTpl], 'Creature') && hasType(CARDS[stapleTpl], 'Creature')) {
     const expected = baseTriggers + priorTriggers;
     check('staple trigger-roll subIdx shifted past base + prior triggers',
       merged.empowerRolls[0].subIdx === expected, 'got ' + merged.empowerRolls[0].subIdx + ' expected ' + expected);

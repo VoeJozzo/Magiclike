@@ -1,16 +1,14 @@
-// Unified type identity — Phase 1 of docs/plan-unified-type-system.md.
+// Unified type identity — the SOLE source of truth for a card's type line.
 //
-// ADDITIVE FOUNDATION, zero behavior change: this module derives a card's type
-// tags from the legacy `card.type` (single string) + `card.sub` (space-separated
-// subtypes) and exposes the future single source of truth — hasType /
-// governingType / typeLine. NOTHING in the engine reads these yet; Phase 2
-// migrates the ~50 `card.type === X` / `card.sub` reads onto them. For now they
-// run *alongside* the legacy fields and are proven equivalent by
-// tests/test_types_identity.js (all 258 cards).
+// Every card (data + runtime instance) carries a `types[]` tag array; the legacy
+// `card.type` (single string) + `card.sub` (space-separated subtypes) fields were
+// removed in the cutover, and ALL engine/render reads go through the accessors
+// here — hasType / subtypesOf / governingType / isPermanent / typeLine. There is
+// no parallel representation: a card's identity lives in one array.
 //
-// Derivation is ON-DEMAND (no stored `card.types` field) so it can never go
-// stale when a sticker mutates `sub`. The stored-array-as-source + the live
-// type-modifier layer arrive in Phase 3, when `types[]` is authored directly.
+// On top of the stored tags sits the live type-modifier layer (`card.typeGrants`:
+// add_type / set_types), applied per-read so animate/neutralize effects are
+// reflected everywhere without mutating the base array.
 
 // Registry: each known tag -> { category, behaviorClass? }.
 //   category      : 'type' (left of the em-dash) | 'subtype' (right). 'supertype'
@@ -33,28 +31,17 @@ function typeRegistryEntry(tag) { return TYPE_REGISTRY[tag] || { category: 'subt
 function typeCategory(tag) { return typeRegistryEntry(tag).category; }
 function isCardTypeTag(tag) { return typeCategory(tag) === 'type'; }
 
-// A card's effective tag list. Base = an explicit `card.types` array (multi-type
-// cards, Phase 4+) when present, else derived from the legacy fields. The
-// `Legendary` supertype (from the `legendary` boolean) is unioned in on BOTH
-// paths — never dropped by an explicit types[] — so the legend rule keeps
-// firing for a legendary multi-type card. Then the live type-modifier layer
+// A card's effective tag list. Base = the stored `card.types` array. The
+// `Legendary` supertype (from the `legendary` boolean) is unioned in — never
+// dropped — so the legend rule keeps firing for a legendary card. Then the live
+// type-modifier layer
 // (`card.typeGrants`: add_type / set_types) is applied: a 'set' grant replaces
 // the working set, an 'add' grant unions tags in. Grants are applied in order;
 // eot grants clear at end of turn, leave-play grants clear in resetInPlayState.
 function typesOf(card) {
   if (!card) return [];
-  let base;
-  if (Array.isArray(card.types)) {
-    base = card.types.slice();
-    if (card.legendary && !base.includes('Legendary')) base.unshift('Legendary');
-  } else {
-    base = [];
-    if (card.legendary) base.push('Legendary');
-    if (card.type) base.push(card.type);
-    if (typeof card.sub === 'string') {
-      for (const s of card.sub.split(/\s+/)) if (s) base.push(s);
-    }
-  }
+  let base = Array.isArray(card.types) ? card.types.slice() : [];
+  if (card.legendary && !base.includes('Legendary')) base.unshift('Legendary');
   if (Array.isArray(card.typeGrants)) {
     for (const g of card.typeGrants) {
       if (!g || !Array.isArray(g.tags)) continue;
@@ -69,6 +56,14 @@ function typesOf(card) {
 // `card_has_subtype` / matchFilter checks).
 function hasType(card, tag) {
   return !!card && !!tag && typesOf(card).includes(tag);
+}
+
+// The card's subtype tags only (the right-of-em-dash set) in declaration order.
+// The single replacement for the retired `card.sub.split(/\s+/)` idiom — subtype
+// rolls, staple-merge unions, and lord-buff matching all read subtypes through
+// this so there's one definition of "what are this card's subtypes."
+function subtypesOf(card) {
+  return typesOf(card).filter(t => typeCategory(t) === 'subtype');
 }
 
 // The single behavioral type that governs zone / cast / combat (see spec §3,

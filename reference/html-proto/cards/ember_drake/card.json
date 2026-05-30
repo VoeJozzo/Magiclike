@@ -11,9 +11,7 @@
   ],
   "name": "Ember Drake",
   "power": 2,
-  "sub": "Drake",
   "toughness": 2,
-  "type": "Creature",
   "types": [
     "Creature",
     "Drake"

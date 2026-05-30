@@ -7,7 +7,6 @@
   },
   "name": "Furnace Brute",
   "power": 3,
-  "sub": "Goblin Berserker",
   "toughness": 3,
   "triggers": [
     {
@@ -26,7 +25,6 @@
       "target": "creature"
     }
   ],
-  "type": "Creature",
   "types": [
     "Creature",
     "Goblin",

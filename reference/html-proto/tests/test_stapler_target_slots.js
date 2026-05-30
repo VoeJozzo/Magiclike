@@ -16,8 +16,8 @@ function check(label, ok, info) {
 
 // Two vanilla spliceable creatures (non-special, non-modal → spliceable as base
 // AND staple). Pick real ones from the pool.
-const baseTpl = Object.keys(CARDS).find(k => CARDS[k].type === 'Creature' && isSpliceableBase(k));
-const stapleTpl = Object.keys(CARDS).find(k => k !== baseTpl && CARDS[k].type === 'Creature' && isSpliceableStaple(k));
+const baseTpl = Object.keys(CARDS).find(k => hasType(CARDS[k], 'Creature') && isSpliceableBase(k));
+const stapleTpl = Object.keys(CARDS).find(k => k !== baseTpl && hasType(CARDS[k], 'Creature') && isSpliceableStaple(k));
 
 let nextIid = 7000;
 function mk(tplId, controller) {

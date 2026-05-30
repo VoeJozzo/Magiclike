@@ -10,9 +10,7 @@
   ],
   "name": "Veiled Serpent",
   "power": 2,
-  "sub": "Serpent",
   "toughness": 3,
-  "type": "Creature",
   "types": [
     "Creature",
     "Serpent"

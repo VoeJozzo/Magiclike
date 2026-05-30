@@ -5,13 +5,11 @@
   "cost": {
     "C": 3
   },
-  "type": "Creature",
   "types": [
     "Artifact",
     "Creature",
     "Golem"
   ],
-  "sub": "Golem",
   "power": 3,
   "toughness": 3,
   "keywords": []

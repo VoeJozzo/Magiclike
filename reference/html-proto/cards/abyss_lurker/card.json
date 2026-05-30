@@ -10,9 +10,7 @@
   ],
   "name": "Abyss Lurker",
   "power": 5,
-  "sub": "Horror",
   "toughness": 3,
-  "type": "Creature",
   "types": [
     "Creature",
     "Horror"

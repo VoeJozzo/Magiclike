@@ -10,9 +10,7 @@
   ],
   "name": "Air Elemental",
   "power": 4,
-  "sub": "Elemental",
   "toughness": 4,
-  "type": "Creature",
   "types": [
     "Creature",
     "Elemental"

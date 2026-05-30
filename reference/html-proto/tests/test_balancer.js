@@ -15,7 +15,7 @@ function check(label, ok, info) {
 
 // A real, non-special creature for slot 0.
 const CR = (() => {
-  for (const id in CARDS) { const c = CARDS[id]; if (c.type === 'Creature' && !c.special && c.cost) return id; }
+  for (const id in CARDS) { const c = CARDS[id]; if (hasType(c, 'Creature') && !c.special && c.cost) return id; }
   return null;
 })();
 function bootWithCreature() {

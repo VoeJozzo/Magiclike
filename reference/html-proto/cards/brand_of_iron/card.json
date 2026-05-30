@@ -5,7 +5,6 @@
   "cost": {
     "R": 1
   },
-  "type": "Sorcery",
   "target": "creature",
   "effects": [
     {

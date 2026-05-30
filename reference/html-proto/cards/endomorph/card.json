@@ -7,7 +7,6 @@
   "name": "Endomorph",
   "power": 2,
   "special": true,
-  "sub": "Shapeshifter",
   "toughness": 2,
   "triggers": [
     {
@@ -27,7 +26,6 @@
       ]
     }
   ],
-  "type": "Creature",
   "types": [
     "Creature",
     "Shapeshifter"

@@ -10,7 +10,6 @@
   ],
   "name": "Bloodthirsty Stalker",
   "power": 2,
-  "sub": "Vampire",
   "toughness": 2,
   "triggers": [
     {
@@ -28,7 +27,6 @@
       "target": "opp"
     }
   ],
-  "type": "Creature",
   "types": [
     "Creature",
     "Vampire"

@@ -11,9 +11,7 @@
   ],
   "name": "Forest Guardian",
   "power": 3,
-  "sub": "Treefolk",
   "toughness": 5,
-  "type": "Creature",
   "types": [
     "Creature",
     "Treefolk"

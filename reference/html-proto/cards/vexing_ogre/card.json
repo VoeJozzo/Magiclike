@@ -7,7 +7,6 @@
   },
   "name": "Vexing Ogre",
   "power": 4,
-  "sub": "Ogre",
   "toughness": 2,
   "triggers": [
     {
@@ -26,7 +25,6 @@
       ]
     }
   ],
-  "type": "Creature",
   "types": [
     "Creature",
     "Ogre"

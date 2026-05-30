@@ -7,7 +7,6 @@
   },
   "name": "Apex Hunter",
   "power": 4,
-  "sub": "Beast",
   "toughness": 3,
   "triggers": [
     {
@@ -25,7 +24,6 @@
       "target": "opp_creature"
     }
   ],
-  "type": "Creature",
   "types": [
     "Creature",
     "Beast"

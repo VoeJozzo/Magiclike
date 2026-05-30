@@ -17,15 +17,15 @@ function check(label, ok, info) {
 
 // A baseline creature, plus a per-key MUTATION that should make matchFilter reject.
 function baseCard() {
-  return { type: 'Creature', color: 'W', colors: ['W'], power: 2, toughness: 2,
-           tapped: false, keywords: [], sub: '', isToken: false };
+  return { types: ['Creature'], color: 'W', colors: ['W'], power: 2, toughness: 2,
+           tapped: false, keywords: [], isToken: false };
 }
 // {key: [filterValue, mutateCardToViolate]}
 const CASES = {
   tapped:     [true,        c => { c.tapped = false; }],
   color:      ['R',         c => { c.color = 'W'; }],
   not_color:   ['W',         c => { c.color = 'W'; }],
-  subtype:    ['Goblin',    c => { c.sub = ''; }],
+  subtype:    ['Goblin',    c => { c.types = c.types.filter(t => isCardTypeTag(t)); }],
   has_keyword: ['flying',    c => { c.keywords = []; }],
   not_keyword: ['flying',    c => { c.keywords = ['flying']; }],
   not_token:   [true,        c => { c.isToken = true; }],

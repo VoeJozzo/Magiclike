@@ -10,9 +10,7 @@
   ],
   "name": "Cloud Pegasus",
   "power": 2,
-  "sub": "Pegasus",
   "toughness": 2,
-  "type": "Creature",
   "types": [
     "Creature",
     "Pegasus"

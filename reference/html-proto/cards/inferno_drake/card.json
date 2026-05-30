@@ -10,9 +10,7 @@
   ],
   "name": "Inferno Drake",
   "power": 5,
-  "sub": "Drake",
   "toughness": 3,
-  "type": "Creature",
   "types": [
     "Creature",
     "Drake"

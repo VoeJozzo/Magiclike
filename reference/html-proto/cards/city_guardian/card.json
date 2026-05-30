@@ -13,10 +13,8 @@
   "power": 2,
   "special": true,
   "static_cost_bump": 1,
-  "sub": "Human Soldier",
   "text": "Legendary, First Strike. All cards cost {1} more to cast.",
   "toughness": 1,
-  "type": "Creature",
   "custom_text": true,
   "types": [
     "Legendary",

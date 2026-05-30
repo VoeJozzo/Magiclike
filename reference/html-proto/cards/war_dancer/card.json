@@ -10,7 +10,6 @@
   ],
   "name": "War Dancer",
   "power": 1,
-  "sub": "Human Warrior",
   "toughness": 2,
   "triggers": [
     {
@@ -30,7 +29,6 @@
       ]
     }
   ],
-  "type": "Creature",
   "types": [
     "Creature",
     "Human",

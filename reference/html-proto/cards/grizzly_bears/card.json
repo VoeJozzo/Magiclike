@@ -6,9 +6,7 @@
   },
   "name": "Grizzly Bears",
   "power": 2,
-  "sub": "Bear",
   "toughness": 2,
-  "type": "Creature",
   "types": [
     "Creature",
     "Bear"

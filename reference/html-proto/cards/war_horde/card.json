@@ -7,9 +7,7 @@
   },
   "name": "War Horde",
   "power": 4,
-  "sub": "Goblin Warrior",
   "toughness": 3,
-  "type": "Creature",
   "types": [
     "Creature",
     "Goblin",

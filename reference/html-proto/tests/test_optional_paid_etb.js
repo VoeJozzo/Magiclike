@@ -25,7 +25,7 @@ function readyMain(G, who) {
 }
 const VANILLA = (() => {
   for (const [id, c] of Object.entries(CARDS)) {
-    if (c.type === 'Creature' && !c.triggers && !c.abilities && !c.static_buffs) return id;
+    if (hasType(c, 'Creature') && !c.triggers && !c.abilities && !c.static_buffs) return id;
   }
   return null;
 })();
@@ -61,7 +61,7 @@ console.log('\n=== play the land → prompt opens for the controller; PAY → ef
   G.you.hand.push(land);
   readyMain(G, 'you');
   G.you.mana = { W: 0, U: 0, B: 0, R: 5, G: 0, C: 5 };   // can afford {R}{2}
-  const bfBefore = G.you.battlefield.filter(c => c.type === 'Creature').length;
+  const bfBefore = G.you.battlefield.filter(c => hasType(c, 'Creature')).length;
 
   ENGINE.executeAction('you', { type: 'playLand', cardIid: land.iid });
   check('land is on the battlefield', G.you.battlefield.some(c => c.iid === land.iid));
@@ -79,7 +79,7 @@ console.log('\n=== play the land → prompt opens for the controller; PAY → ef
   // confirms no-pay → no-effect). We don't assert a post-action mana delta —
   // since B2, the settle advances MAIN1→COMBAT and empties the pool anyway.
   check('stapled effect resolved (goblin tokens entered → cost was paid)',
-    G.you.battlefield.filter(c => c.type === 'Creature').length > bfBefore);
+    G.you.battlefield.filter(c => hasType(c, 'Creature')).length > bfBefore);
 }
 
 console.log('\n=== DECLINE → effect does not run ===');
@@ -93,12 +93,12 @@ console.log('\n=== DECLINE → effect does not run ===');
   G.you.hand.push(land);
   readyMain(G, 'you');
   G.you.mana = { W: 0, U: 0, B: 0, R: 5, G: 0, C: 5 };
-  const bfBefore = G.you.battlefield.filter(c => c.type === 'Creature').length;
+  const bfBefore = G.you.battlefield.filter(c => hasType(c, 'Creature')).length;
   ENGINE.executeAction('you', { type: 'playLand', cardIid: land.iid });
   ENGINE.executeAction('you', { type: 'optionalCost', pay: false });
   check('prompt cleared after declining', G.pendingOptionalCost == null);
   check('no tokens entered on decline (effect skipped)',
-    G.you.battlefield.filter(c => c.type === 'Creature').length === bfBefore);
+    G.you.battlefield.filter(c => hasType(c, 'Creature')).length === bfBefore);
 }
 
 console.log('\n=== CAN\'T pay (no R source) → auto-declines, no prompt ===');
@@ -108,11 +108,11 @@ console.log('\n=== CAN\'T pay (no R source) → auto-declines, no prompt ===');
   G.you.hand.push(land);
   readyMain(G, 'you');
   G.you.mana = { W: 0, U: 0, B: 0, R: 0, G: 0, C: 0 };   // a Plains can't make R
-  const bfBefore = G.you.battlefield.filter(c => c.type === 'Creature').length;
+  const bfBefore = G.you.battlefield.filter(c => hasType(c, 'Creature')).length;
   ENGINE.executeAction('you', { type: 'playLand', cardIid: land.iid });
   check('no prompt when the controller cannot pay', G.pendingOptionalCost == null);
   check('no tokens (effect skipped)',
-    G.you.battlefield.filter(c => c.type === 'Creature').length === bfBefore);
+    G.you.battlefield.filter(c => hasType(c, 'Creature')).length === bfBefore);
 }
 
 console.log('\n=== AI pays for a worthwhile stapled effect, declines a worthless one ===');

@@ -5,7 +5,6 @@
   "cost": {
     "C": 3
   },
-  "type": "Sorcery",
   "target": "permanent",
   "target_filter": {
     "type": "Land"

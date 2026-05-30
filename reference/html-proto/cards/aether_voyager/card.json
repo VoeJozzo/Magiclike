@@ -10,7 +10,6 @@
   ],
   "name": "Aether Voyager",
   "power": 2,
-  "sub": "Spirit",
   "toughness": 3,
   "triggers": [
     {
@@ -30,7 +29,6 @@
       ]
     }
   ],
-  "type": "Creature",
   "types": [
     "Creature",
     "Spirit"

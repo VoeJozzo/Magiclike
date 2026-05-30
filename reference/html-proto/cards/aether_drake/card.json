@@ -10,7 +10,6 @@
   ],
   "name": "Aether Drake",
   "power": 2,
-  "sub": "Drake",
   "toughness": 3,
   "triggers": [
     {
@@ -29,7 +28,6 @@
       "target": "your_creature"
     }
   ],
-  "type": "Creature",
   "types": [
     "Creature",
     "Drake"

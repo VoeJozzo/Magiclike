@@ -24,9 +24,7 @@
   ],
   "name": "Spitfire Bastion",
   "power": 1,
-  "sub": "Wall",
   "toughness": 3,
-  "type": "Creature",
   "types": [
     "Creature",
     "Wall"

@@ -7,7 +7,6 @@
   },
   "name": "Inspiring Herald",
   "power": 2,
-  "sub": "Human Soldier",
   "toughness": 3,
   "triggers": [
     {
@@ -27,7 +26,6 @@
       ]
     }
   ],
-  "type": "Creature",
   "types": [
     "Creature",
     "Human",

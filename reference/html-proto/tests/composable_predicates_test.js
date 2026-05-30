@@ -54,7 +54,7 @@ console.log('\n=== evaluateCondition shapes ===');
   const source = { iid: 1 };
   const etbEvt = {
     kind: 'card_zone_change', subject_iid: 2,
-    subject_card: { iid: 2, type: 'Creature', sub: 'Goblin' },
+    subject_card: { iid: 2, types: ['Creature', 'Goblin'] },
     controller: 'you', from_zone: 'hand', to_zone: 'battlefield',
   };
   const ctx = { state: S(), source, event: etbEvt, who: 'you' };
@@ -91,8 +91,8 @@ console.log('\n=== atomic predicates ===');
 (() => {
   const source = { iid: 10 };
 
-  const selfEvt = { subject_card: { iid: 10, type: 'Creature' } };
-  const otherEvt = { subject_card: { iid: 11, type: 'Creature' } };
+  const selfEvt = { subject_card: { iid: 10, types: ['Creature'] } };
+  const otherEvt = { subject_card: { iid: 11, types: ['Creature'] } };
   const ctxSelf = { state: S(), source, event: selfEvt, who: 'you' };
   const ctxOther = { state: S(), source, event: otherEvt, who: 'you' };
   check('this_card true on self', ATOMIC_PREDICATES.this_card(ctxSelf) === true);
@@ -114,7 +114,7 @@ console.log('\n=== atomic predicates ===');
   check('card_moves(anywhere, graveyard) true (wildcard from)', ATOMIC_PREDICATES.card_moves(ctxDies, ['anywhere', 'graveyard']) === true);
   check('card_moves(battlefield, hand) false', ATOMIC_PREDICATES.card_moves(ctxDies, ['battlefield', 'hand']) === false);
 
-  const gob = { subject_card: { iid: 11, sub: 'Goblin Warrior' } };
+  const gob = { subject_card: { iid: 11, types: ['Goblin', 'Warrior'] } };
   const ctxGob = { state: S(), source, event: gob, who: 'you' };
   check('card_has_subtype(Goblin) true', ATOMIC_PREDICATES.card_has_subtype(ctxGob, ['Goblin']) === true);
   check('card_has_subtype(Elf) false', ATOMIC_PREDICATES.card_has_subtype(ctxGob, ['Elf']) === false);
@@ -153,14 +153,14 @@ console.log('\n=== worked: Bloodlust Berserker condition ===');
 (() => {
   const cond = ['this_card', 'card_moves(battlefield, graveyard)', 'lost_life_this_turn(opp)'];
   const source = { iid: 20 };
-  const diesEvt = { subject_card: { iid: 20, type: 'Creature' }, from_zone: 'battlefield', to_zone: 'graveyard' };
+  const diesEvt = { subject_card: { iid: 20, types: ['Creature'] }, from_zone: 'battlefield', to_zone: 'graveyard' };
 
   check('fires: this dies + opp lost life',
     evaluateCondition(cond, { state: S(0, 2), source, event: diesEvt, who: 'you' }) === true);
   check('no fire: opp lost no life this turn',
     evaluateCondition(cond, { state: S(0, 0), source, event: diesEvt, who: 'you' }) === false);
 
-  const otherDies = { subject_card: { iid: 999, type: 'Creature' }, from_zone: 'battlefield', to_zone: 'graveyard' };
+  const otherDies = { subject_card: { iid: 999, types: ['Creature'] }, from_zone: 'battlefield', to_zone: 'graveyard' };
   check('no fire: another card dies',
     evaluateCondition(cond, { state: S(0, 2), source, event: otherDies, who: 'you' }) === false);
 })();

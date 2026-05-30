@@ -10,7 +10,6 @@
   ],
   "name": "Sky Champion",
   "power": 2,
-  "sub": "Spirit",
   "toughness": 2,
   "triggers": [
     {
@@ -29,7 +28,6 @@
       "target": "your_creature"
     }
   ],
-  "type": "Creature",
   "types": [
     "Creature",
     "Spirit"

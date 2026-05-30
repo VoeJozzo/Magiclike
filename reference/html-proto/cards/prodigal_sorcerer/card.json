@@ -21,9 +21,7 @@
   },
   "name": "Prodigal Sorcerer",
   "power": 1,
-  "sub": "Human Wizard",
   "toughness": 1,
-  "type": "Creature",
   "types": [
     "Creature",
     "Human",

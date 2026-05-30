@@ -6,7 +6,6 @@
     "G": 1,
     "C": 2
   },
-  "type": "Sorcery",
   "target": "permanent",
   "target_filter": {
     "type": "Land"

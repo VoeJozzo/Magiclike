@@ -10,7 +10,6 @@
   ],
   "name": "Echo Spirit",
   "power": 1,
-  "sub": "Spirit",
   "toughness": 2,
   "triggers": [
     {
@@ -29,7 +28,6 @@
       "target": "creature"
     }
   ],
-  "type": "Creature",
   "types": [
     "Creature",
     "Spirit"

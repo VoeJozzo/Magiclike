@@ -6,7 +6,6 @@
   },
   "name": "Goblin Piercer",
   "power": 1,
-  "sub": "Goblin Warrior",
   "toughness": 1,
   "triggers": [
     {
@@ -24,7 +23,6 @@
       "target": "opp"
     }
   ],
-  "type": "Creature",
   "types": [
     "Creature",
     "Goblin",

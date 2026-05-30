@@ -10,9 +10,7 @@
   ],
   "name": "Devoted Watcher",
   "power": 1,
-  "sub": "Human Soldier",
   "toughness": 3,
-  "type": "Creature",
   "types": [
     "Creature",
     "Human",

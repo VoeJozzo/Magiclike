@@ -24,7 +24,6 @@
       ]
     }
   ],
-  "sub": "Drake",
   "toughness": 4,
   "triggers": [
     {
@@ -45,7 +44,6 @@
       "target": "creature_or_player"
     }
   ],
-  "type": "Creature",
   "types": [
     "Creature",
     "Drake"

@@ -9,9 +9,7 @@
   ],
   "name": "Wind Dancer",
   "power": 1,
-  "sub": "Faerie",
   "toughness": 1,
-  "type": "Creature",
   "types": [
     "Creature",
     "Faerie"

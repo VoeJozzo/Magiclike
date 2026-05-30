@@ -7,7 +7,6 @@
   },
   "name": "Feral Stalker",
   "power": 2,
-  "sub": "Cat",
   "toughness": 2,
   "triggers": [
     {
@@ -26,7 +25,6 @@
       ]
     }
   ],
-  "type": "Creature",
   "types": [
     "Creature",
     "Cat"

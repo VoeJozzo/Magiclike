@@ -10,9 +10,7 @@
   ],
   "name": "Ancient Hydra",
   "power": 7,
-  "sub": "Hydra",
   "toughness": 7,
-  "type": "Creature",
   "types": [
     "Creature",
     "Hydra"

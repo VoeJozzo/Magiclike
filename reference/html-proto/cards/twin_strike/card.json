@@ -19,7 +19,6 @@
     }
   ],
   "name": "Twin Strike",
-  "type": "Sorcery",
   "target_slots": [
     {
       "target": "creature"

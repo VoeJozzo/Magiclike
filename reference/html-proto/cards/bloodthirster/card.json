@@ -11,7 +11,6 @@
   ],
   "name": "Bloodthirster",
   "power": 2,
-  "sub": "Vampire",
   "toughness": 2,
   "triggers": [
     {
@@ -29,7 +28,6 @@
       "target": "creature_or_player"
     }
   ],
-  "type": "Creature",
   "types": [
     "Creature",
     "Vampire"

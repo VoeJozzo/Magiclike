@@ -23,9 +23,7 @@
   },
   "name": "Archmage of Veils",
   "power": 2,
-  "sub": "Human Wizard",
   "toughness": 4,
-  "type": "Creature",
   "types": [
     "Creature",
     "Human",

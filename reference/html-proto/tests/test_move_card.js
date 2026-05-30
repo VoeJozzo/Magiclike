@@ -21,9 +21,9 @@ const G = ENGINE.state();
 
 const CREATURE_TPL = (() => {
   for (const [id, c] of Object.entries(CARDS)) {
-    if (c.type === 'Creature' && (c.toughness || 0) >= 3 && !c.triggers && !c.abilities) return id;
+    if (hasType(c, 'Creature') && (c.toughness || 0) >= 3 && !c.triggers && !c.abilities) return id;
   }
-  for (const [id, c] of Object.entries(CARDS)) if (c.type === 'Creature' && (c.toughness || 0) >= 3) return id;
+  for (const [id, c] of Object.entries(CARDS)) if (hasType(c, 'Creature') && (c.toughness || 0) >= 3) return id;
   return null;
 })();
 const CTX = { controller: 'you', sourceName: 'Test', sourceIid: -1 };
@@ -130,7 +130,7 @@ console.log('\n=== search: library → battlefield, auto land-fetch tapped (sear
   const bf0 = G.you.battlefield.length;
   ENGINE.applyEffect(CTX, { kind: 'move_card', from_zone: 'library', to_zone: 'battlefield', filter: { type: 'Land' }, post: { tap: true } }, null);
   const fetched = G.you.battlefield[G.you.battlefield.length - 1];
-  check('a land arrived on the battlefield', G.you.battlefield.length === bf0 + 1 && fetched.type === 'Land');
+  check('a land arrived on the battlefield', G.you.battlefield.length === bf0 + 1 && hasType(fetched, 'Land'));
   check('it arrived tapped', fetched && fetched.tapped === true);
 })();
 

@@ -11,9 +11,7 @@
   ],
   "name": "Oxen Herd",
   "power": 4,
-  "sub": "Beast",
   "toughness": 4,
-  "type": "Creature",
   "types": [
     "Creature",
     "Beast"

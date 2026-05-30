@@ -10,7 +10,6 @@
   ],
   "name": "Quickling",
   "power": 2,
-  "sub": "Faerie",
   "toughness": 1,
   "triggers": [
     {
@@ -29,7 +28,6 @@
       "target": "creature"
     }
   ],
-  "type": "Creature",
   "types": [
     "Creature",
     "Faerie"

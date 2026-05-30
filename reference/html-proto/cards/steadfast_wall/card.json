@@ -11,9 +11,7 @@
   ],
   "name": "Steadfast Wall",
   "power": 0,
-  "sub": "Wall",
   "toughness": 5,
-  "type": "Creature",
   "types": [
     "Creature",
     "Wall"

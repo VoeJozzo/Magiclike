@@ -7,7 +7,6 @@
   },
   "name": "Forest Forager",
   "power": 2,
-  "sub": "Elf Druid",
   "toughness": 2,
   "triggers": [
     {
@@ -32,7 +31,6 @@
       ]
     }
   ],
-  "type": "Creature",
   "types": [
     "Creature",
     "Elf",

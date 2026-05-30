@@ -10,7 +10,6 @@
   ],
   "name": "Dusk Rider",
   "power": 2,
-  "sub": "Drake",
   "toughness": 2,
   "triggers": [
     {
@@ -37,7 +36,6 @@
       ]
     }
   ],
-  "type": "Creature",
   "types": [
     "Creature",
     "Drake"

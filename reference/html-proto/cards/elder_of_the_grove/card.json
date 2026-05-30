@@ -32,9 +32,7 @@
       "toughness": 1
     }
   ],
-  "sub": "Elf Druid",
   "toughness": 3,
-  "type": "Creature",
   "types": [
     "Creature",
     "Elf",

@@ -21,9 +21,7 @@
   },
   "name": "Mirror Sage",
   "power": 1,
-  "sub": "Human Wizard",
   "toughness": 2,
-  "type": "Creature",
   "types": [
     "Creature",
     "Human",

@@ -24,7 +24,6 @@
   ],
   "name": "Embargo",
   "special": true,
-  "type": "Sorcery",
   "types": [
     "Sorcery"
   ]

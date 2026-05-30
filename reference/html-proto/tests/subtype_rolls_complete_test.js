@@ -48,11 +48,11 @@ console.log('\n=== Test: applyStickerToSlot followed by ENGINE.init produces car
   const lions = [...G.you.library, ...G.you.hand].find(c => c.tplId === 'savannah_lions');
   check('Lions card constructed', !!lions);
   if (lions) {
-    console.log('  lions.sub:', lions.sub);
+    console.log('  lions subtypes:', subtypesOf(lions));
     console.log('  lions.subtypeRolls:', lions.subtypeRolls);
     check('lions.subtypeRolls propagated to card', Array.isArray(lions.subtypeRolls) && lions.subtypeRolls[0] === rolledSubtype);
-    check('lions.sub contains rolled subtype', lions.sub.includes(rolledSubtype));
-    check('lions.sub still contains Cat', lions.sub.includes('Cat'));
+    check('lions has rolled subtype', hasType(lions, rolledSubtype));
+    check('lions still has Cat', hasType(lions, 'Cat'));
   }
 }
 

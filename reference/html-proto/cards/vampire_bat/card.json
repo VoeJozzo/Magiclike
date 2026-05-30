@@ -9,9 +9,7 @@
   ],
   "name": "Vampire Bat",
   "power": 1,
-  "sub": "Bat",
   "toughness": 1,
-  "type": "Creature",
   "types": [
     "Creature",
     "Bat"

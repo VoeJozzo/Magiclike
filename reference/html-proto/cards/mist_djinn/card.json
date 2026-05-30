@@ -10,9 +10,7 @@
   ],
   "name": "Mist Djinn",
   "power": 3,
-  "sub": "Djinn",
   "toughness": 4,
-  "type": "Creature",
   "types": [
     "Creature",
     "Djinn"

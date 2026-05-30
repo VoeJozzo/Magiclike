@@ -11,9 +11,7 @@
   ],
   "name": "Warrior Champion",
   "power": 3,
-  "sub": "Human Warrior",
   "toughness": 2,
-  "type": "Creature",
   "types": [
     "Creature",
     "Human",

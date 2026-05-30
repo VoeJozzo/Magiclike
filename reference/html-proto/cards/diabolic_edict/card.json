@@ -6,7 +6,6 @@
     "C": 1
   },
   "name": "Diabolic Edict",
-  "type": "Sorcery",
   "target": "opp",
   "effects": [
     {

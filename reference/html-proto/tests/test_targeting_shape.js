@@ -17,7 +17,7 @@ function check(label, ok, info) {
 let iid = 5000;
 function mkCreature(controller, props) {
   return Object.assign({
-    iid: iid++, tplId: '_d', name: 'Dummy', type: 'Creature', controller, owner: controller,
+    iid: iid++, tplId: '_d', name: 'Dummy', types: ['Creature'], controller, owner: controller,
     color: 'W', colors: ['W'], power: 2, toughness: 2, tapped: false, sick: false, damage: 0,
     tempPower: 0, tempTou: 0, permPower: 0, permTou: 0, keywords: [], damagedBySources: new Set(),
   }, props || {});

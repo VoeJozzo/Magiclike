@@ -7,7 +7,6 @@
   },
   "name": "Grave Digger",
   "power": 3,
-  "sub": "Zombie",
   "toughness": 3,
   "triggers": [
     {
@@ -28,7 +27,6 @@
       "target": "graveyard_creature"
     }
   ],
-  "type": "Creature",
   "types": [
     "Creature",
     "Zombie"

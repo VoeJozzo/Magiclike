@@ -23,7 +23,6 @@
       ]
     }
   ],
-  "sub": "Beast",
   "toughness": 4,
   "triggers": [
     {
@@ -51,7 +50,6 @@
       ]
     }
   ],
-  "type": "Creature",
   "types": [
     "Creature",
     "Beast"

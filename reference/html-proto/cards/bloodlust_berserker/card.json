@@ -10,7 +10,6 @@
   ],
   "name": "Bloodlust Berserker",
   "power": 3,
-  "sub": "Goblin Berserker",
   "toughness": 2,
   "triggers": [
     {
@@ -30,7 +29,6 @@
       ]
     }
   ],
-  "type": "Creature",
   "types": [
     "Creature",
     "Goblin",
