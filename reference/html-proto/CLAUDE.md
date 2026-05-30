@@ -4,7 +4,7 @@ Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folde
 
 ## Version
 
-**Current: `v2.0.59`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.0.60`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -201,6 +201,20 @@ opponent's best creature — permanent base 20, eot base 8, +card value +lane �
 animate-add_type only at a permanent WE control (else it'd gift the opponent a
 body). Verified via `AI.decide`: the AI now casts Encase in Amber at an enemy
 creature. 1269 green, lint clean, 300-game selfplay clean.
+
+v2.0.60: **colorless cards are now offered in every draft slot.** `rollPack`
+buckets the pool by WUBRG `color`; colorless cards (`color:null` — robots,
+colorless artifacts, artifact lands) landed in no bucket, so the color-rolled
+slots never picked them — colorless creatures appeared in 0% of packs. Fixed:
+colorless is a separate always-eligible pool added to EVERY slot's candidates
+(it fits any deck, so it isn't "a color the player isn't" and isn't subject to
+the off-color once-per-pack cap). Also fixed the off-color dedup to only drop the
+rolled color when the slot actually picked a card OF that color (a colorless pick
+no longer consumes it). Measured: colorless creatures ~14%/slot, ~37% of packs
+have one (was 0). draft_pool_lazy_test had two STALE assertions (`type !== 'Land'`
+excluded artifact lands, which only passed because they were never offered) —
+realigned to the true draftPool predicate + a regression that colorless creatures
+actually appear. 1289 green, lint clean, 300-game selfplay clean.
 
 v2.0.59: **basic-land subtypes autogrant their mana ability (MTG 305.6).** A Land
 with the Plains/Island/Swamp/Mountain/Forest subtype now DERIVES the matching

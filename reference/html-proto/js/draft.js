@@ -622,9 +622,16 @@ function rollPack(pool, picksSoFar) {
 
   // Bucket the pool by color once; each slot pick is a uniform sample.
   const byColor = {W:[], U:[], B:[], R:[], G:[]};
+  // Colorless cards (no color identity — robots, colorless artifacts, artifact
+  // lands) fit ANY deck, so they're not "a color the player isn't" and aren't
+  // subject to the off-color once-per-pack cap. They're eligible in EVERY slot:
+  // a slot's candidates are its rolled color's bucket PLUS the colorless pool.
+  // Without this they'd land in no bucket and (pre-2.0.60) were never offered.
+  const colorless = [];
   for (const id of pool) {
     const c = CARDS[id];
     if (c && c.color && byColor[c.color]) byColor[c.color].push(id);
+    else if (c && !c.color) colorless.push(id);
   }
 
   const out = [];
@@ -646,8 +653,10 @@ function rollPack(pool, picksSoFar) {
     // from the full pool. This matters for the modal-stress-test config
     // where most cards have weight 0 — color-rolled slots whose color has
     // no positive-weight cards would otherwise emit nothing.
+    // Candidates = the rolled color's bucket + the always-eligible colorless
+    // pool (colorless fits any deck, so it competes for every slot).
     const sub = byColor[color] || [];
-    const candidates = sub.filter(id => !used.has(id));
+    const candidates = sub.concat(colorless).filter(id => !used.has(id));
     let id = candidates.length > 0 ? weightedPick(candidates) : null;
     if (!id) {
       const anyUnused = pool.filter(id => !used.has(id) && weightOf(id) > 0);
@@ -658,10 +667,11 @@ function rollPack(pool, picksSoFar) {
     used.add(id);
     out.push(id);
 
-    // If this color is OFF-deck, drop it from the table for future slots.
-    // In-deck colors stay on the table and can repeat — that's how mono-/
-    // committed-color drafters get rewarded with concentrated packs.
-    if (!inDeckColors.has(color)) {
+    // If this color is OFF-deck, drop it from the table for future slots so it
+    // appears at most once. Only when we actually picked a card OF that color —
+    // a colorless pick in this slot doesn't "consume" the rolled color. In-deck
+    // colors stay on the table and can repeat (rewards committed drafters).
+    if (CARDS[id] && CARDS[id].color === color && !inDeckColors.has(color)) {
       colorTable = colorTable.filter(c => c !== color);
     }
   }
