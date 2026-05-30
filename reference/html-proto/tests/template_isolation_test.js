@@ -13,7 +13,7 @@ function check(label, ok, info) {
 
 console.log('=== Test: stickersForSlot does NOT share refs with template ===');
 {
-  const cards = ['spitfireBastion', 'goblinWarDrummer', 'savannahLions'];
+  const cards = ['spitfire_bastion', 'goblin_war_drummer', 'savannah_lions'];
   for (const tplId of cards) {
     const tpl = CARDS[tplId];
     if (!tpl) continue;
@@ -38,9 +38,9 @@ console.log('=== Test: stickersForSlot does NOT share refs with template ===');
 
 console.log("\n=== Test: deep-copy actually deep -- mutating view doesn't reach template ===");
 {
-  const tpl = CARDS['spitfireBastion'];
+  const tpl = CARDS['spitfire_bastion'];
   const originalAmount = tpl.abilities[0].effects[0].amount;
-  stickersForSlot({ tplId: 'spitfireBastion', stickers: [] }, ['R']);
+  stickersForSlot({ tplId: 'spitfire_bastion', stickers: [] }, ['R']);
   check('template ability effect amount unchanged after call',
     tpl.abilities[0].effects[0].amount === originalAmount);
 }

@@ -1,0 +1,37 @@
+{
+  "card_id": "goblin_war_drummer",
+  "art": "🥁",
+  "cost": {
+    "R": 1,
+    "C": 1
+  },
+  "name": "Goblin War Drummer",
+  "power": 2,
+  "sub": "Goblin Shaman",
+  "toughness": 1,
+  "triggers": [
+    {
+      "event": "card_zone_change",
+      "condition": [
+        "another_card",
+        "controlled_by(you)",
+        "card_has_subtype(Goblin)",
+        "card_moves(anywhere, battlefield)"
+      ],
+      "text": "Another Goblin entered — deal 1 to any target.",
+      "effects": [
+        {
+          "kind": "damage",
+          "amount": 1
+        }
+      ],
+      "target": "creature_or_player"
+    }
+  ],
+  "type": "Creature",
+  "types": [
+    "Creature",
+    "Goblin",
+    "Shaman"
+  ]
+}

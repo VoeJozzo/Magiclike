@@ -14,5 +14,8 @@
     }
   ],
   "name": "Duress",
-  "type": "Sorcery"
+  "type": "Sorcery",
+  "types": [
+    "Sorcery"
+  ]
 }

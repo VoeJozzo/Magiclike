@@ -1,0 +1,21 @@
+{
+  "card_id": "ambush_djinn",
+  "art": "cards/ambushDjinn/art.png",
+  "cost": {
+    "U": 2,
+    "C": 3
+  },
+  "keywords": [
+    "flash",
+    "flying"
+  ],
+  "name": "Ambush Djinn",
+  "power": 4,
+  "sub": "Djinn",
+  "toughness": 4,
+  "type": "Creature",
+  "types": [
+    "Creature",
+    "Djinn"
+  ]
+}

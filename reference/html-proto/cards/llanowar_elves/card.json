@@ -1,0 +1,32 @@
+{
+  "card_id": "llanowar_elves",
+  "abilities": [
+    {
+      "cost": {
+        "tap": true
+      },
+      "effects": [
+        {
+          "kind": "add_mana",
+          "amounts": {
+            "G": 1
+          }
+        }
+      ]
+    }
+  ],
+  "art": "🧝",
+  "cost": {
+    "G": 1
+  },
+  "name": "Llanowar Elves",
+  "power": 1,
+  "sub": "Elf Druid",
+  "toughness": 1,
+  "type": "Creature",
+  "types": [
+    "Creature",
+    "Elf",
+    "Druid"
+  ]
+}

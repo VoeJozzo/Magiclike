@@ -27,5 +27,9 @@
       ]
     }
   ],
-  "type": "Creature"
+  "type": "Creature",
+  "types": [
+    "Creature",
+    "Shapeshifter"
+  ]
 }

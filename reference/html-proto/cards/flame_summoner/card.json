@@ -1,0 +1,35 @@
+{
+  "card_id": "flame_summoner",
+  "art": "🔥",
+  "cost": {
+    "R": 1,
+    "C": 2
+  },
+  "name": "Flame Summoner",
+  "power": 2,
+  "sub": "Human Shaman",
+  "toughness": 2,
+  "triggers": [
+    {
+      "event": "card_zone_change",
+      "condition": [
+        "this_card",
+        "card_moves(anywhere, battlefield)"
+      ],
+      "text": "When ~ enters, deal 2 damage to any target.",
+      "effects": [
+        {
+          "kind": "damage",
+          "amount": 2
+        }
+      ],
+      "target": "creature_or_player"
+    }
+  ],
+  "type": "Creature",
+  "types": [
+    "Creature",
+    "Human",
+    "Shaman"
+  ]
+}

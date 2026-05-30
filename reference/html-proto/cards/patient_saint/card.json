@@ -1,0 +1,36 @@
+{
+  "card_id": "patient_saint",
+  "abilities": [
+    {
+      "cost": {
+        "tap": true
+      },
+      "effects": [
+        {
+          "kind": "gain_life",
+          "amount": 1,
+          "scope": "self"
+        }
+      ]
+    }
+  ],
+  "art": "🕯",
+  "cost": {
+    "W": 1,
+    "C": 1
+  },
+  "keywords": [
+    "defender"
+  ],
+  "name": "Patient Saint",
+  "power": 0,
+  "sub": "Human Cleric Wall",
+  "toughness": 4,
+  "type": "Creature",
+  "types": [
+    "Creature",
+    "Human",
+    "Cleric",
+    "Wall"
+  ]
+}

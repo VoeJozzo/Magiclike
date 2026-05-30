@@ -1,0 +1,36 @@
+{
+  "card_id": "morticians_assistant",
+  "art": "⚰",
+  "cost": {
+    "B": 1,
+    "C": 1
+  },
+  "name": "Mortician's Assistant",
+  "power": 1,
+  "sub": "Zombie",
+  "toughness": 3,
+  "triggers": [
+    {
+      "event": "card_zone_change",
+      "condition": [
+        "this_card",
+        "card_moves(battlefield, graveyard)"
+      ],
+      "text": "When ~ dies, return a creature from your graveyard.",
+      "effects": [
+        {
+          "kind": "move_card",
+          "from_zone": "graveyard",
+          "to_zone": "hand",
+          "selector": "target"
+        }
+      ],
+      "target": "graveyard_creature"
+    }
+  ],
+  "type": "Creature",
+  "types": [
+    "Creature",
+    "Zombie"
+  ]
+}

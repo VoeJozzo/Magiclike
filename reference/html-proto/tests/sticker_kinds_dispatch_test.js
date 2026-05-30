@@ -41,20 +41,20 @@ function freshCard(tplId, stickers, opts) {
 console.log('=== applyStickersToCard: each kind mutates correctly ===');
 
 {
-  const card = freshCard('savannahLions', ['plus1_plus1']);
+  const card = freshCard('savannah_lions', ['plus1_plus1']);
   applyStickersToCard(card);
   check('statBoost adds modifier with power/toughness',
     card.modifiers.length === 1 && card.modifiers[0].power === 1 && card.modifiers[0].toughness === 1);
 }
 
 {
-  const card = freshCard('savannahLions', ['kw_flying']);
+  const card = freshCard('savannah_lions', ['kw_flying']);
   applyStickersToCard(card);
   check("keyword adds 'flying' to card.keywords", card.keywords.includes('flying'));
 }
 
 {
-  const card = freshCard('furnaceWhelp', ['kw_flying']);
+  const card = freshCard('furnace_whelp', ['kw_flying']);
   applyStickersToCard(card);
   const flyingCount = card.keywords.filter(k => k === 'flying').length;
   check('keyword: dedup (no double-flying on Furnace Whelp)', flyingCount === 1);
@@ -83,7 +83,7 @@ console.log('=== applyStickersToCard: each kind mutates correctly ===');
 }
 
 {
-  const card = freshCard('furnaceWhelp', ['cost_minus_1']);
+  const card = freshCard('furnace_whelp', ['cost_minus_1']);
   const before = card.cost.C;
   applyStickersToCard(card);
   check('costReduction reduces card.cost.C by 1', card.cost.C === before - 1,
@@ -93,20 +93,20 @@ console.log('=== applyStickersToCard: each kind mutates correctly ===');
 // §3.8: inline parameterized stickers ({kind,...} descriptors) — cost_mod /
 // set_color — flow through the batch (applyStickersToCard) path.
 {
-  const card = freshCard('furnaceWhelp', [{ kind: 'cost_mod', amount: 2, stackable: true }]);
+  const card = freshCard('furnace_whelp', [{ kind: 'cost_mod', amount: 2, stackable: true }]);
   const before = card.cost.C;
   applyStickersToCard(card);
   check('cost_mod +2 raises card.cost.C by 2', card.cost.C === before + 2,
     'before=' + before + ' after=' + card.cost.C);
 }
 {
-  const card = freshCard('furnaceWhelp', [{ kind: 'set_color', color: 'C' }]);
+  const card = freshCard('furnace_whelp', [{ kind: 'set_color', color: 'C' }]);
   applyStickersToCard(card);
   check('set_color sets card.color to C', card.color === 'C', 'color=' + card.color);
 }
 {
   // Mixed string + inline descriptors in one slot's sticker list.
-  const card = freshCard('furnaceWhelp', ['plus1_plus1', { kind: 'cost_mod', amount: 1, stackable: true }]);
+  const card = freshCard('furnace_whelp', ['plus1_plus1', { kind: 'cost_mod', amount: 1, stackable: true }]);
   const before = card.cost.C;
   applyStickersToCard(card);
   check('mixed string + inline stickers both apply',
@@ -115,7 +115,7 @@ console.log('=== applyStickersToCard: each kind mutates correctly ===');
 
 {
   const roll = { location: 'abilities', subIdx: 0, effIdx: 0, modeIdx: null, field: 'amount' };
-  const card = freshCard('spitfireBastion', ['empower'], { empowerRolls: [roll] });
+  const card = freshCard('spitfire_bastion', ['empower'], { empowerRolls: [roll] });
   applyStickersToCard(card);
   const ability = card.abilities[0];
   const eff = ability.effects[0];
@@ -123,14 +123,14 @@ console.log('=== applyStickersToCard: each kind mutates correctly ===');
 }
 
 {
-  const card = freshCard('savannahLions', ['subtype'], { subtypeRolls: ['Beast'] });
+  const card = freshCard('savannah_lions', ['subtype'], { subtypeRolls: ['Beast'] });
   applyStickersToCard(card);
   check('subtype appends rolled subtype to card.sub', card.sub.includes('Beast'));
   check('subtype preserves native Cat', card.sub.includes('Cat'));
 }
 
 {
-  const card = freshCard('savannahLions', ['subtype'], { subtypeRolls: ['Cat'] });
+  const card = freshCard('savannah_lions', ['subtype'], { subtypeRolls: ['Cat'] });
   applyStickersToCard(card);
   const tokens = card.sub.split(/\s+/).filter(Boolean);
   const catCount = tokens.filter(t => t === 'Cat').length;
@@ -140,13 +140,13 @@ console.log('=== applyStickersToCard: each kind mutates correctly ===');
 console.log('\n=== stickersForSlot: each kind reflects into view correctly ===');
 
 {
-  const slot = { tplId: 'savannahLions', stickers: ['plus1_plus1'] };
+  const slot = { tplId: 'savannah_lions', stickers: ['plus1_plus1'] };
   const result = stickersForSlot(slot, ['W']);
   check('statBoost re-offerable (stackable)', result.some(s => s.id === 'plus1_plus1'));
 }
 
 {
-  const slot = { tplId: 'savannahLions', stickers: ['kw_flying'] };
+  const slot = { tplId: 'savannah_lions', stickers: ['kw_flying'] };
   const result = stickersForSlot(slot, ['W']);
   check('keyword kw_flying not re-offered', !result.some(s => s.id === 'kw_flying'));
   check('other keywords still offered (e.g., kw_lifelink)', result.some(s => s.id === 'kw_lifelink'));
@@ -167,7 +167,7 @@ console.log('\n=== stickersForSlot: each kind reflects into view correctly ===')
 }
 
 {
-  const slot = { tplId: 'furnaceWhelp', stickers: ['cost_minus_1', 'cost_minus_1'] };
+  const slot = { tplId: 'furnace_whelp', stickers: ['cost_minus_1', 'cost_minus_1'] };
   const result = stickersForSlot(slot, ['R']);
   check('costMinus1 not offered when C already 0',
     !result.some(s => s.id === 'cost_minus_1'),
@@ -175,13 +175,13 @@ console.log('\n=== stickersForSlot: each kind reflects into view correctly ===')
 }
 
 {
-  const slot = { tplId: 'spitfireBastion', stickers: ['empower'] };
+  const slot = { tplId: 'spitfire_bastion', stickers: ['empower'] };
   const result = stickersForSlot(slot, ['R']);
   check('empower stackable - still offered', result.some(s => s.id === 'empower'));
 }
 
 {
-  const slot = { tplId: 'savannahLions', stickers: ['subtype'], subtypeRolls: ['Beast'] };
+  const slot = { tplId: 'savannah_lions', stickers: ['subtype'], subtypeRolls: ['Beast'] };
   const result = stickersForSlot(slot, ['W','G']);
   check('subtype re-offerable (stackable)', result.some(s => s.id === 'subtype'));
 }
@@ -222,12 +222,12 @@ console.log('\n=== stickerBadgesHtml: each kind renders correctly ===');
 
 {
   const roll = { location: 'abilities', subIdx: 0, effIdx: 0, modeIdx: null, field: 'amount' };
-  const html = stickerBadgesHtml(['empower'], false, [roll], 'spitfireBastion');
+  const html = stickerBadgesHtml(['empower'], false, [roll], 'spitfire_bastion');
   check("empower badge contains 'Empower'", html.includes('Empower'));
 }
 
 {
-  const html = stickerBadgesHtml(['subtype'], false, [], 'savannahLions', null, ['Beast']);
+  const html = stickerBadgesHtml(['subtype'], false, [], 'savannah_lions', null, ['Beast']);
   check("subtype badge contains rolled type 'Beast'", html.includes('Beast'));
 }
 

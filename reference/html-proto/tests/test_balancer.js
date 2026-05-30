@@ -129,7 +129,7 @@ console.log('\n=== vileEdict (#27): chooses(permanent) → annihilate → rip (z
   check('chosen permanent annihilated (gone, NOT in graveyard)',
     !G.you.battlefield.some(c => c.iid === inst.iid) && !G.you.graveyard.some(c => c.iid === inst.iid));
   check('its deck-slot stripped from the run', RUN.getSlots().length === slotsBefore - 1);
-  check('vileEdict generates accurate text', describeCardText(CARDS.vileEdict) === 'Target opponent rips a permanent they control.');
+  check('vileEdict generates accurate text', describeCardText(CARDS.vile_edict) === 'Target opponent rips a permanent they control.');
 })();
 
 // NOTE: a prior version source-grepped engine/stickers/run.js to assert the old

@@ -26,7 +26,7 @@ console.log('\n=== Test: fakeTargetsForLegality handles single-target ===');
 
 console.log('\n=== Test: fakeTargetsForLegality with real spell ===');
 {
-  RUN.start({cards:['savannahLions','goblinChieftain','plains','plains','plains','plains','plains','plains','plains','plains','plains','plains'], colors:['W','R']}, null);
+  RUN.start({cards:['savannah_lions','goblin_chieftain','plains','plains','plains','plains','plains','plains','plains','plains','plains','plains'], colors:['W','R']}, null);
   RUN.load();
   ENGINE.init(RUN.getSlots(), ['mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain']);
   const G = ENGINE.state();

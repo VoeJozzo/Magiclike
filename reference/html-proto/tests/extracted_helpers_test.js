@@ -16,7 +16,7 @@ function check(label, ok, info) {
 }
 
 console.log('=== Smoke test: game boots and state is well-formed ===');
-RUN.start({ cards: ['savannahLions', 'furnaceWhelp', 'plains', 'plains', 'plains', 'plains', 'plains', 'plains', 'plains', 'plains', 'plains', 'plains'], colors: ['W', 'R'] }, null);
+RUN.start({ cards: ['savannah_lions', 'furnace_whelp', 'plains', 'plains', 'plains', 'plains', 'plains', 'plains', 'plains', 'plains', 'plains', 'plains'], colors: ['W', 'R'] }, null);
 RUN.load();
 ENGINE.init(RUN.getSlots(), Array(17).fill('mountain'));
 const G = ENGINE.state();

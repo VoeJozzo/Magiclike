@@ -1,0 +1,23 @@
+{
+  "card_id": "might_of_faith",
+  "art": "✋",
+  "cost": {
+    "W": 1
+  },
+  "target": "creature",
+  "effects": [
+    {
+      "kind": "pump",
+      "power": 2,
+      "toughness": 2
+    }
+  ],
+  "name": "Might of Faith",
+  "type": "Sorcery",
+  "keywords": [
+    "flash"
+  ],
+  "types": [
+    "Sorcery"
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "card_id": "forest_forager",
+  "art": "🌲",
+  "cost": {
+    "G": 1,
+    "C": 2
+  },
+  "name": "Forest Forager",
+  "power": 2,
+  "sub": "Elf Druid",
+  "toughness": 2,
+  "triggers": [
+    {
+      "event": "card_zone_change",
+      "condition": [
+        "this_card",
+        "card_moves(anywhere, battlefield)"
+      ],
+      "text": "When ~ enters, search for a land.",
+      "effects": [
+        {
+          "kind": "move_card",
+          "from_zone": "library",
+          "to_zone": "battlefield",
+          "filter": {
+            "type": "Land"
+          },
+          "post": {
+            "tap": true
+          }
+        }
+      ]
+    }
+  ],
+  "type": "Creature",
+  "types": [
+    "Creature",
+    "Elf",
+    "Druid"
+  ]
+}

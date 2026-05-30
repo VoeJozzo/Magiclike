@@ -18,10 +18,10 @@ function check(label, ok, info) {
 }
 
 const RENAMES = {
-  archmage: 'archmageOfVeils',
-  fireImp:  'cinderSprite',
-  zealot:   'holyZealot',
-  merfolk:  'merfolkLooter',
+  archmage: 'archmage_of_veils',
+  fireImp:  'cinder_sprite',
+  zealot:   'holy_zealot',
+  merfolk:  'merfolk_looter',
 };
 
 console.log('=== TPLID_RENAMES matches the canonical map ===');
@@ -31,7 +31,7 @@ for (const [oldId, newId] of Object.entries(RENAMES)) {
 }
 
 console.log('\n=== renameTplId passes through unknown ids ===');
-check('"savannahLions" -> "savannahLions"', renameTplId('savannahLions') === 'savannahLions');
+check('"savannah_lions" -> "savannah_lions"', renameTplId('savannah_lions') === 'savannah_lions');
 check('"" -> ""', renameTplId('') === '');
 check('null -> null', renameTplId(null) == null);  // == catches both null and undefined
 
@@ -62,10 +62,10 @@ console.log('\n=== v1->v2 save migration translates all tplId fields ===');
         { tplId: 'fireImp', stickers: ['plus1_plus1'] },
         { tplId: 'archmage', stickers: [] },
         // A slot with stapledTpls covering an old + new id mix.
-        { tplId: 'zealot', stickers: [], stapledTpls: ['merfolk', 'savannahLions'] },
+        { tplId: 'zealot', stickers: [], stapledTpls: ['merfolk', 'savannah_lions'] },
       ],
       pendingNeowModifier: 'phylactery',   // not in rename list -- unchanged
-      currentPack: ['fireImp', 'bolt', 'archmage'],
+      currentPack: ['fireImp', 'lightning_bolt', 'archmage'],
       youPicks: ['merfolk', 'shock'],
       oppDecks: [
         ['zealot', 'archmage', 'forest'],
@@ -76,27 +76,27 @@ console.log('\n=== v1->v2 save migration translates all tplId fields ===');
   const migrated = MIGRATIONS[1](v1Blob);
   check('version bumped to 2', migrated.version === 2);
   check('slot[0].tplId fireImp -> cinderSprite',
-    migrated.runState.slots[0].tplId === 'cinderSprite');
+    migrated.runState.slots[0].tplId === 'cinder_sprite');
   check('slot[1].tplId archmage -> archmageOfVeils',
-    migrated.runState.slots[1].tplId === 'archmageOfVeils');
+    migrated.runState.slots[1].tplId === 'archmage_of_veils');
   check('slot[2].tplId zealot -> holyZealot',
-    migrated.runState.slots[2].tplId === 'holyZealot');
+    migrated.runState.slots[2].tplId === 'holy_zealot');
   check('slot[2].stapledTpls[0] merfolk -> merfolkLooter',
-    migrated.runState.slots[2].stapledTpls[0] === 'merfolkLooter');
+    migrated.runState.slots[2].stapledTpls[0] === 'merfolk_looter');
   check('slot[2].stapledTpls[1] savannahLions unchanged',
-    migrated.runState.slots[2].stapledTpls[1] === 'savannahLions');
+    migrated.runState.slots[2].stapledTpls[1] === 'savannah_lions');
   check('pendingNeowModifier phylactery untouched',
     migrated.runState.pendingNeowModifier === 'phylactery');
   check('currentPack[0] fireImp -> cinderSprite',
-    migrated.runState.currentPack[0] === 'cinderSprite');
+    migrated.runState.currentPack[0] === 'cinder_sprite');
   check('currentPack[1] bolt unchanged',
-    migrated.runState.currentPack[1] === 'bolt');
+    migrated.runState.currentPack[1] === 'lightning_bolt');
   check('youPicks[0] merfolk -> merfolkLooter',
-    migrated.runState.youPicks[0] === 'merfolkLooter');
+    migrated.runState.youPicks[0] === 'merfolk_looter');
   check('oppDecks[0][0] zealot -> holyZealot',
-    migrated.runState.oppDecks[0][0] === 'holyZealot');
+    migrated.runState.oppDecks[0][0] === 'holy_zealot');
   check('oppDecks[1][1] merfolk -> merfolkLooter',
-    migrated.runState.oppDecks[1][1] === 'merfolkLooter');
+    migrated.runState.oppDecks[1][1] === 'merfolk_looter');
 }
 
 // NOTE: a "PICKLOG load-time translation" section was deleted here. It seeded

@@ -1,0 +1,35 @@
+{
+  "card_id": "royal_assassin",
+  "abilities": [
+    {
+      "cost": {
+        "tap": true
+      },
+      "effects": [
+        {
+          "kind": "affect_creature",
+          "severity": "destroy"
+        }
+      ],
+      "target": "creature",
+      "target_filter": {
+        "tapped": true
+      }
+    }
+  ],
+  "art": "🥷",
+  "cost": {
+    "B": 1,
+    "C": 1
+  },
+  "name": "Royal Assassin",
+  "power": 1,
+  "sub": "Human Assassin",
+  "toughness": 1,
+  "type": "Creature",
+  "types": [
+    "Creature",
+    "Human",
+    "Assassin"
+  ]
+}

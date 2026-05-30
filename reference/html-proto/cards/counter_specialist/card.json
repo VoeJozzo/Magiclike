@@ -1,0 +1,38 @@
+{
+  "card_id": "counter_specialist",
+  "art": "🚫",
+  "cost": {
+    "U": 1,
+    "C": 2
+  },
+  "name": "Counter Specialist",
+  "power": 1,
+  "sub": "Human Wizard",
+  "toughness": 4,
+  "triggers": [
+    {
+      "event": "spell_cast",
+      "condition": [
+        "another_card",
+        "controlled_by(you)",
+        "card_has_effect(counter)"
+      ],
+      "text": "Counter cast — put a +1/+1 counter on ~.",
+      "effects": [
+        {
+          "kind": "pump",
+          "duration": "permanent",
+          "power": 1,
+          "toughness": 1,
+          "scope": "self"
+        }
+      ]
+    }
+  ],
+  "type": "Creature",
+  "types": [
+    "Creature",
+    "Human",
+    "Wizard"
+  ]
+}

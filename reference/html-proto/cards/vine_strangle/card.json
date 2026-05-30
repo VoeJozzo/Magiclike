@@ -1,0 +1,23 @@
+{
+  "card_id": "vine_strangle",
+  "art": "cards/vinestrangle/art.png",
+  "cost": {
+    "G": 1,
+    "C": 2
+  },
+  "target": "opp_creature",
+  "target_filter": {
+    "has_keyword": "flying"
+  },
+  "effects": [
+    {
+      "kind": "damage",
+      "amount": 5
+    }
+  ],
+  "name": "Vine Strangle",
+  "type": "Sorcery",
+  "types": [
+    "Sorcery"
+  ]
+}

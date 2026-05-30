@@ -1,0 +1,43 @@
+{
+  "card_id": "elder_of_the_grove",
+  "abilities": [
+    {
+      "cost": {
+        "tap": true
+      },
+      "effects": [
+        {
+          "kind": "add_mana",
+          "amounts": {
+            "G": 2
+          }
+        }
+      ]
+    }
+  ],
+  "art": "🌿",
+  "cost": {
+    "G": 1,
+    "C": 2
+  },
+  "name": "Elder of the Grove",
+  "power": 1,
+  "static_buffs": [
+    {
+      "filter": {
+        "controller": "self"
+      },
+      "subtype": "Druid",
+      "power": 1,
+      "toughness": 1
+    }
+  ],
+  "sub": "Elf Druid",
+  "toughness": 3,
+  "type": "Creature",
+  "types": [
+    "Creature",
+    "Elf",
+    "Druid"
+  ]
+}

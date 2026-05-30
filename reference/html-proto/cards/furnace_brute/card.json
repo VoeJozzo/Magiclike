@@ -1,0 +1,35 @@
+{
+  "card_id": "furnace_brute",
+  "art": "cards/beastBaiter/art.png",
+  "cost": {
+    "R": 1,
+    "C": 3
+  },
+  "name": "Furnace Brute",
+  "power": 3,
+  "sub": "Goblin Berserker",
+  "toughness": 3,
+  "triggers": [
+    {
+      "event": "card_zone_change",
+      "condition": [
+        "this_card",
+        "card_moves(anywhere, battlefield)"
+      ],
+      "text": "When ~ enters, deal 3 to target creature.",
+      "effects": [
+        {
+          "kind": "damage",
+          "amount": 3
+        }
+      ],
+      "target": "creature"
+    }
+  ],
+  "type": "Creature",
+  "types": [
+    "Creature",
+    "Goblin",
+    "Berserker"
+  ]
+}

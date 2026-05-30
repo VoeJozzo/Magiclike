@@ -57,7 +57,7 @@ function readyForMain(G, who) {
 console.log('=== Single-spell lethal: AI casts Lightning Bolt at face ===');
 {
   const G = makeBaselineGame();
-  giveHand(G, 'opp', ['bolt']);
+  giveHand(G, 'opp', ['lightning_bolt']);
   setMana(G, 'opp', { R: 1 });
   G.you.life = 3;
   readyForMain(G, 'opp');
@@ -71,7 +71,7 @@ console.log('=== Single-spell lethal: AI casts Lightning Bolt at face ===');
       action.targets[0].who === 'you');
     // Verify it's specifically the Bolt (not some other random pick).
     const card = G.opp.hand.find(c => c.iid === action.cardIid);
-    check('Cast card is Lightning Bolt', card && card.tplId === 'bolt');
+    check('Cast card is Lightning Bolt', card && card.tplId === 'lightning_bolt');
   }
 }
 
@@ -96,7 +96,7 @@ console.log('\n=== Single-spell lethal: 2-damage Shock kills opp at 2 ===');
 console.log('\n=== No lethal: opp at 20, AI has Bolt but does NOT face-burn ===');
 {
   const G = makeBaselineGame();
-  giveHand(G, 'opp', ['bolt']);
+  giveHand(G, 'opp', ['lightning_bolt']);
   setMana(G, 'opp', { R: 1 });
   G.you.life = 20;
   readyForMain(G, 'opp');
@@ -162,7 +162,7 @@ console.log('\n=== Cost-aware lethal: AI prefers cheaper single-spell when both 
   // The relevant assertion is "AI casts SOMETHING that kills" — which
   // is the bare minimum guarantee. Cheapest-first is a nice-to-have.
   const G = makeBaselineGame();
-  giveHand(G, 'opp', ['bolt', 'fireball']);
+  giveHand(G, 'opp', ['lightning_bolt', 'volcanic_hammer']);
   setMana(G, 'opp', { R: 1, C: 2 });
   G.you.life = 3;
   readyForMain(G, 'opp');
@@ -172,7 +172,7 @@ console.log('\n=== Cost-aware lethal: AI prefers cheaper single-spell when both 
   if (action && action.type === 'castSpell') {
     const card = G.opp.hand.find(c => c.iid === action.cardIid);
     check('Cast is one of the burn options',
-      card && (card.tplId === 'bolt' || card.tplId === 'fireball'));
+      card && (card.tplId === 'lightning_bolt' || card.tplId === 'volcanic_hammer'));
     check('Target is face',
       action.targets[0] && action.targets[0].kind === 'player' &&
       action.targets[0].who === 'you');
@@ -184,9 +184,9 @@ console.log('\n=== Ability-based burn: tap-for-damage hits face ===');
   // Wicked Acolyte has T: deal 1 to player. Set opp at 1 life and the
   // Acolyte untapped on AI's battlefield. AI should activate the ability
   // for face for lethal.
-  if (CARDS['wickedAcolyte']) {
+  if (CARDS['wicked_acolyte']) {
     const G = makeBaselineGame();
-    G.opp.battlefield = [ENGINE.makeCard('wickedAcolyte')];
+    G.opp.battlefield = [ENGINE.makeCard('wicked_acolyte')];
     G.opp.battlefield[0].owner = 'opp';
     G.opp.battlefield[0].controller = 'opp';
     G.opp.battlefield[0].sick = false;

@@ -1,0 +1,16 @@
+{
+  "card_id": "sewer_rat",
+  "art": "cards/cryptRat/art.png",
+  "cost": {
+    "B": 1
+  },
+  "name": "Sewer Rat",
+  "power": 2,
+  "sub": "Rat",
+  "toughness": 1,
+  "type": "Creature",
+  "types": [
+    "Creature",
+    "Rat"
+  ]
+}

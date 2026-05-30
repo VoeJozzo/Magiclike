@@ -1,0 +1,21 @@
+{
+  "card_id": "forest_guardian",
+  "art": "🌳",
+  "cost": {
+    "G": 1,
+    "C": 3
+  },
+  "keywords": [
+    "reach",
+    "vigilance"
+  ],
+  "name": "Forest Guardian",
+  "power": 3,
+  "sub": "Treefolk",
+  "toughness": 5,
+  "type": "Creature",
+  "types": [
+    "Creature",
+    "Treefolk"
+  ]
+}

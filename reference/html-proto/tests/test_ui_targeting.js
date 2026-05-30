@@ -37,8 +37,8 @@ console.log('=== top-level target() spell enters targeting, then casts on a crea
 (() => {
   const G = game();
   const victim = mk(TOUGH, 'opp'); G.opp.battlefield.push(victim);
-  const bolt = mk('bolt', 'you'); G.you.hand.push(bolt);
-  check('bolt has a top-level target() step (migrated)', CARDS.bolt.target === 'creature_or_player');
+  const bolt = mk('lightning_bolt', 'you'); G.you.hand.push(bolt);
+  check('bolt has a top-level target() step (migrated)', CARDS.lightning_bolt.target === 'creature_or_player');
   CONTROLLER.clickHand(bolt.iid);
   check('clickHand entered target-picking (did NOT cast targetlessly)', !!CONTROLLER.pendingTarget());
   check('bolt still in hand awaiting a target', G.you.hand.some(c => c.iid === bolt.iid));
@@ -51,7 +51,7 @@ console.log('=== top-level target() spell enters targeting, then casts on a crea
 console.log('\n=== the same spell can target a player (face click) ===');
 (() => {
   const G = game();
-  const bolt = mk('bolt', 'you'); G.you.hand.push(bolt);
+  const bolt = mk('lightning_bolt', 'you'); G.you.hand.push(bolt);
   const life0 = G.opp.life;
   CONTROLLER.clickHand(bolt.iid);
   check('entered target-picking', !!CONTROLLER.pendingTarget());

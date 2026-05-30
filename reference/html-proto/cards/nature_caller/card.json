@@ -1,0 +1,39 @@
+{
+  "card_id": "nature_caller",
+  "art": "🦌",
+  "cost": {
+    "G": 2,
+    "C": 1
+  },
+  "name": "Nature Caller",
+  "power": 1,
+  "sub": "Elf Druid",
+  "toughness": 3,
+  "triggers": [
+    {
+      "event": "card_zone_change",
+      "condition": [
+        "this_card",
+        "card_moves(anywhere, battlefield)"
+      ],
+      "text": "When ~ enters, tutor a creature.",
+      "effects": [
+        {
+          "kind": "move_card",
+          "from_zone": "library",
+          "to_zone": "hand",
+          "selector": "library_search",
+          "filter": {
+            "type": "Creature"
+          }
+        }
+      ]
+    }
+  ],
+  "type": "Creature",
+  "types": [
+    "Creature",
+    "Elf",
+    "Druid"
+  ]
+}

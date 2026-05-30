@@ -1,0 +1,24 @@
+{
+  "card_id": "aerial_maneuver",
+  "art": "🕊",
+  "cost": {
+    "W": 2,
+    "C": 1
+  },
+  "effects": [
+    {
+      "kind": "grant_keyword",
+      "scope": "all_yours",
+      "keyword": "flying",
+      "duration": "eot"
+    }
+  ],
+  "name": "Aerial Maneuver",
+  "type": "Sorcery",
+  "keywords": [
+    "flash"
+  ],
+  "types": [
+    "Sorcery"
+  ]
+}

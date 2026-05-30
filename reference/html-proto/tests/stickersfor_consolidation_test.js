@@ -14,7 +14,7 @@ function check(label, ok, info) {
 
 console.log('=== Test: stickersForSlot returns sane set for a creature ===');
 {
-  const slot = { tplId: 'savannahLions', stickers: [] };
+  const slot = { tplId: 'savannah_lions', stickers: [] };
   const result = stickersForSlot(slot, ['W','R']);
   console.log('  count:', result.length);
   console.log('  ids:', result.map(s => s.id).slice(0, 10));
@@ -26,7 +26,7 @@ console.log('=== Test: stickersForSlot returns sane set for a creature ===');
 
 console.log('\n=== Test: stickersForSlot excludes non-stackable already-applied ===');
 {
-  const slot = { tplId: 'savannahLions', stickers: ['kw_flying'] };
+  const slot = { tplId: 'savannah_lions', stickers: ['kw_flying'] };
   const result = stickersForSlot(slot, ['W','R']);
   console.log('  has kw_flying after applying it?', result.some(s => s.id === 'kw_flying'));
   check('kw_flying not re-offered (non-stackable)', !result.some(s => s.id === 'kw_flying'));
@@ -47,14 +47,14 @@ console.log('\n=== Test: stickersForSlot land-color sticker behavior ===');
 
 console.log('\n=== Test: RUN.stickersFor wraps with keyword-claim gate ===');
 {
-  RUN.start({cards:['savannahLions','furnaceWhelp','plains','plains','plains','plains','plains','plains','plains','plains','plains','plains'], colors:['W','R']}, null);
+  RUN.start({cards:['savannah_lions','furnace_whelp','plains','plains','plains','plains','plains','plains','plains','plains','plains','plains'], colors:['W','R']}, null);
   RUN.load();
   check('RUN active', RUN.isActive());
 }
 
 console.log('\n=== Test: stickersForSlot for land vs creature filters by type ===');
 {
-  const creatureSlot = { tplId: 'savannahLions', stickers: [] };
+  const creatureSlot = { tplId: 'savannah_lions', stickers: [] };
   const landSlot = { tplId: 'forest', stickers: [] };
   const cResult = stickersForSlot(creatureSlot, ['W']);
   const lResult = stickersForSlot(landSlot, ['W']);
@@ -69,7 +69,7 @@ console.log('\n=== Test: deckColorsFromSlots correctly identifies colors ===');
   const slots = [
     { tplId: 'forest', stickers: [] },
     { tplId: 'plains', stickers: [] },
-    { tplId: 'savannahLions', stickers: [] },
+    { tplId: 'savannah_lions', stickers: [] },
   ];
   const colors = deckColorsFromSlots(slots);
   console.log('  detected colors:', colors);
@@ -80,7 +80,7 @@ console.log('\n=== Test: deckColorsFromSlots correctly identifies colors ===');
 
 console.log('\n=== Test: stickersForSlot on stapled slot uses merged template ===');
 {
-  const slot = { tplId: 'savannahLions', stickers: [], stapledTpls: ['spitfireBastion'] };
+  const slot = { tplId: 'savannah_lions', stickers: [], stapledTpls: ['spitfire_bastion'] };
   const result = stickersForSlot(slot, ['W','U']);
   check('Stapled creature offers plus1plus1', result.some(s => s.id === 'plus1_plus1'));
   check('Stapled slot offers empower (merged effects)', result.some(s => s.id === 'empower'));
@@ -88,7 +88,7 @@ console.log('\n=== Test: stickersForSlot on stapled slot uses merged template ==
 
 console.log('\n=== Test: subtype roll dedup works through view ===');
 {
-  const slot = { tplId: 'savannahLions', stickers: ['subtype'], subtypeRolls: ['Dragon'] };
+  const slot = { tplId: 'savannah_lions', stickers: ['subtype'], subtypeRolls: ['Dragon'] };
   const result = stickersForSlot(slot, ['W']);
   check('Subtype sticker stackable - re-offered', result.some(s => s.id === 'subtype'));
 }

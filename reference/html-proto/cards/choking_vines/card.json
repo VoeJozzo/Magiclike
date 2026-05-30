@@ -1,0 +1,26 @@
+{
+  "card_id": "choking_vines",
+  "art": "🌿",
+  "cost": {
+    "G": 1,
+    "C": 1
+  },
+  "target": "opp_creature",
+  "target_filter": {
+    "has_keyword": "flying"
+  },
+  "effects": [
+    {
+      "kind": "affect_creature",
+      "severity": "destroy"
+    }
+  ],
+  "name": "Choking Vines",
+  "type": "Sorcery",
+  "keywords": [
+    "flash"
+  ],
+  "types": [
+    "Sorcery"
+  ]
+}

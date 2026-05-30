@@ -48,23 +48,23 @@ function castETB(tplId, caster) {
 
 console.log('=== migrated targeted trigger PROMPTS the human (not auto-picked) ===');
 (() => {
-  // aetherDrake: ETB → target(your_creature) gains hexproof. With 2+ own
+  // aether_drake: ETB → target(your_creature) gains hexproof. With 2+ own
   // creatures the player must choose which.
-  const G = castETB('aetherDrake', 'you');
+  const G = castETB('aether_drake', 'you');
   check('player prompted for aetherDrake ETB target',
     !!G.pendingTriggerTarget && G.pendingTriggerTarget.controller === 'you',
     G.pendingTriggerTarget ? G.pendingTriggerTarget.valid.length + ' valid' : 'no prompt');
 })();
 (() => {
-  // blackKnight: ETB → destroy target(creature) — multiple legal creatures.
-  const G = castETB('blackKnight', 'you');
+  // ravenous_chupacabra: ETB → destroy target(creature) — multiple legal creatures.
+  const G = castETB('ravenous_chupacabra', 'you');
   check('player prompted for blackKnight ETB target',
     !!G.pendingTriggerTarget && G.pendingTriggerTarget.controller === 'you');
 })();
 
 console.log('\n=== the AI (opp) still auto-picks — no prompt ===');
 (() => {
-  const G = castETB('blackKnight', 'opp');
+  const G = castETB('ravenous_chupacabra', 'opp');
   check('opp ETB trigger does NOT raise a prompt (AI auto-picks)', !G.pendingTriggerTarget);
 })();
 
@@ -81,7 +81,7 @@ console.log('\n=== a single legal target still auto-picks (no needless prompt) =
   G.you.mana = { W: 9, U: 9, B: 9, R: 9, G: 9, C: 9 };
   // aetherDrake's your_creature trigger: with NO other own creature, only the
   // drake itself is a legal target → exactly 1 → auto-pick, no prompt.
-  const spell = mk('aetherDrake', 'you'); G.you.hand.push(spell);
+  const spell = mk('aether_drake', 'you'); G.you.hand.push(spell);
   ENGINE.executeAction('you', { type: 'castSpell', cardIid: spell.iid });
   let safety = 20;
   while ((G.stack.length || (G.pendingTriggers || []).length) && !G.pendingTriggerTarget && safety-- > 0) {

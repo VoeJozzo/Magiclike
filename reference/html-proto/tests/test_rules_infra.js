@@ -93,7 +93,7 @@ else {
 }
 
 console.log('\n=== D4: damage fires is_life_loss (life loss event from burn, not just drain) ===');
-if (!CARDS['bolt'] || !VANILLA) { console.log('  (bolt or vanilla unavailable -- skipping)'); }
+if (!CARDS['lightning_bolt'] || !VANILLA) { console.log('  (bolt or vanilla unavailable -- skipping)'); }
 else {
   const G = newGame();
   // A watcher: "whenever you lose life, gain 10 life." Fires only via is_life_loss.
@@ -104,7 +104,7 @@ else {
     effects: [{ kind: 'gain_life', scope: 'self', amount: 10 }],
   }];
   G.you.battlefield.push(watcher);
-  const bolt = mk('bolt', 'opp'); G.opp.hand.push(bolt);
+  const bolt = mk('lightning_bolt', 'opp'); G.opp.hand.push(bolt);
   readyMain(G, 'opp'); G.opp.mana = { W: 0, U: 0, B: 0, R: 5, G: 0, C: 5 };
   const lifeStart = G.you.life;
   ENGINE.executeAction('opp', { type: 'castSpell', cardIid: bolt.iid,

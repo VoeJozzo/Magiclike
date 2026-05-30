@@ -54,14 +54,14 @@ function driveUntilNumberChoice(G) {
 }
 
 console.log('=== BUG 1: Archdemon ETB choice goes to the NON-controller (the dealmaker) ===');
-if (!CARDS['archdemonBargains']) {
+if (!CARDS['archdemon_of_bargains']) {
   console.log('  (archdemonBargains not in CARDS -- skipping)');
 } else {
   // You bargain WITH the demon: its OPPONENT picks. Boss (opp) controls it →
   // opp(opp) = the human ('you') is the dealmaker.
   {
     const G = newGame();
-    const demon = mk('archdemonBargains', 'opp'); G.opp.hand.push(demon);
+    const demon = mk('archdemon_of_bargains', 'opp'); G.opp.hand.push(demon);
     readyForCast(G, 'opp');
     const cast = { type: 'castSpell', cardIid: demon.iid };
     check('opp can cast Archdemon', ENGINE.isLegalAction('opp', cast));
@@ -75,7 +75,7 @@ if (!CARDS['archdemonBargains']) {
   // Player controls it (drafted/stolen) → opp(you) = the AI ('opp') is the dealmaker.
   {
     const G = newGame();
-    const demon = mk('archdemonBargains', 'you'); G.you.hand.push(demon);
+    const demon = mk('archdemon_of_bargains', 'you'); G.you.hand.push(demon);
     readyForCast(G, 'you');
     ENGINE.executeAction('you', { type: 'castSpell', cardIid: demon.iid });
     driveUntilNumberChoice(G);
@@ -86,7 +86,7 @@ if (!CARDS['archdemonBargains']) {
 }
 
 console.log('\n=== BUG 3: the LTB payout uses the SAME number chosen at ETB ===');
-if (!CARDS['archdemonBargains']) {
+if (!CARDS['archdemon_of_bargains']) {
   console.log('  (archdemonBargains not in CARDS -- skipping)');
 } else {
   // The bargain: choose N at ETB → N stickers to the controller now; N stickers
@@ -95,7 +95,7 @@ if (!CARDS['archdemonBargains']) {
   // decoupling the payout from the bargain. Drive both halves and assert N==N.
   const CHOSEN = 4;
   const G = newGame();
-  const demon = mk('archdemonBargains', 'opp');
+  const demon = mk('archdemon_of_bargains', 'opp');
   demon.iid = 9100; G.opp.battlefield.push(demon);
   // ETB half: open the prompt, then choose CHOSEN through the real action.
   ENGINE.applyEffect(

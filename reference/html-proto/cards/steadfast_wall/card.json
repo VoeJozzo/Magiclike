@@ -1,0 +1,21 @@
+{
+  "card_id": "steadfast_wall",
+  "art": "🧱",
+  "cost": {
+    "W": 1,
+    "C": 1
+  },
+  "keywords": [
+    "defender",
+    "flying"
+  ],
+  "name": "Steadfast Wall",
+  "power": 0,
+  "sub": "Wall",
+  "toughness": 5,
+  "type": "Creature",
+  "types": [
+    "Creature",
+    "Wall"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "card_id": "squire_of_oaths",
+  "art": "⚜",
+  "cost": {
+    "W": 1,
+    "C": 1
+  },
+  "name": "Squire of Oaths",
+  "power": 2,
+  "sub": "Human Soldier",
+  "toughness": 3,
+  "type": "Creature",
+  "types": [
+    "Creature",
+    "Human",
+    "Soldier"
+  ]
+}

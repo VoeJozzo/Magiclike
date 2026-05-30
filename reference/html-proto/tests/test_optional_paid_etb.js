@@ -29,7 +29,7 @@ const VANILLA = (() => {
   }
   return null;
 })();
-const SPELL = 'goblinRabble';   // create_tokens, {R:1,C:2}, untargeted
+const SPELL = 'goblin_rabble';   // create_tokens, {R:1,C:2}, untargeted
 let iidc = 7000;
 function stapleInstance(baseTplId, controller) {
   const card = ENGINE.makeCard(baseTplId, undefined, 0, undefined, undefined, undefined, [SPELL]);
@@ -131,29 +131,29 @@ console.log('\n=== AI pays for a worthwhile stapled effect, declines a worthless
 }
 
 console.log('\n=== Land+TARGETED-spell ETB carries the target step + resolves (no null-target crash) ===');
-if (CARDS.bolt) {
+if (CARDS.lightning_bolt) {
   // Regression: the synthesized ETB trigger copied the spell's effects but NOT
-  // its top-level target() step. A migrated targeted spell (bolt: target() + a
+  // its top-level target() step. A migrated targeted spell (lightning_bolt: target() + a
   // BARE damage effect) thus ran a TARGETLESS damage on resolve → null-target
   // crash in applyDamageFrom — an uncaught throw that froze the AI mid-turn
   // ("AI hangs on a land+spell ETB"). The untargeted goblinRabble staple above
   // never exercised this. Modeled on the AI path (the side that hung): the
   // controller auto-picks the target (no human prompt), then the optional cost.
   const G = newGame();
-  const etbTpl = ENGINE.makeCard('plains', undefined, 0, undefined, undefined, undefined, ['bolt']);
+  const etbTpl = ENGINE.makeCard('plains', undefined, 0, undefined, undefined, undefined, ['lightning_bolt']);
   const etb = (etbTpl.triggers || []).find(t => t.event === 'card_zone_change');
   check('stapled bolt ETB carries the target step (target + optional_cost)',
     etb && etb.target === 'creature_or_player' && etb.optional_cost && etb.optional_cost.R === 1,
     etb && JSON.stringify({ target: etb.target, cost: etb.optional_cost }));
 
-  const land = ENGINE.makeCard('plains', undefined, 0, undefined, undefined, undefined, ['bolt']);
+  const land = ENGINE.makeCard('plains', undefined, 0, undefined, undefined, undefined, ['lightning_bolt']);
   land.iid = iidc++; land.controller = 'opp'; land.owner = 'opp';
   G.opp.hand.push(land);
   readyMain(G, 'opp');
   G.opp.mana = { W: 0, U: 0, B: 0, R: 5, G: 0, C: 5 };
   // A tough creature on the HUMAN's board (the AI's enemy) so the auto-picker
   // has a creature to aim at and it survives the 3 (damage stays observable).
-  const victim = ENGINE.makeCard('savannahLions', undefined, 0);
+  const victim = ENGINE.makeCard('savannah_lions', undefined, 0);
   victim.iid = iidc++; victim.controller = 'you'; victim.owner = 'you'; victim.sick = false;
   victim.toughness = 9; victim.power = 0;
   G.you.battlefield.push(victim);
@@ -185,13 +185,13 @@ if (CARDS.bolt) {
 }
 
 console.log('\n=== cost sticker reduces the optional ETB cost (not just the vestigial land cost) ===');
-if (CARDS.mindrot) {
+if (CARDS.mind_rot) {
   // mindrot is {B}{1}; a "-1 cost" (cost_minus_1) sticker on the spell must
   // reduce the ETB's optional_cost too — it used to only touch the vestigial
   // (free-land) card.cost, leaving the "you may pay" cost unchanged.
-  const inst = ENGINE.makeCard('mountain', ['cost_minus_1'], 0, undefined, undefined, undefined, ['mindrot']);
+  const inst = ENGINE.makeCard('mountain', ['cost_minus_1'], 0, undefined, undefined, undefined, ['mind_rot']);
   const etb = (inst.triggers || []).find(t => t.event === 'card_zone_change');
-  check('mindrot base cost is {B}{1}', CARDS.mindrot.cost.B === 1 && CARDS.mindrot.cost.C === 1);
+  check('mindrot base cost is {B}{1}', CARDS.mind_rot.cost.B === 1 && CARDS.mind_rot.cost.C === 1);
   check('cost_minus_1 reduces the optional_cost to {B} (C: 1 → 0)',
     etb && etb.optional_cost && etb.optional_cost.B === 1 && etb.optional_cost.C === 0,
     etb && JSON.stringify(etb.optional_cost));
@@ -206,10 +206,10 @@ console.log('\n=== ETB trigger hits the stack immediately on play (not deferred 
   G.you.mana = { W: 0, U: 0, B: 0, R: 5, G: 0, C: 5 };
   // Give the human ANOTHER action so step() won't auto-pass-and-resolve — that's
   // the condition under which the trigger used to sit queued until the next pass.
-  const extra = ENGINE.makeCard('bolt', undefined, 0);
+  const extra = ENGINE.makeCard('lightning_bolt', undefined, 0);
   extra.iid = iidc++; extra.controller = 'you'; extra.owner = 'you';
   G.you.hand.push(extra);
-  const enemy = ENGINE.makeCard('savannahLions', undefined, 0);
+  const enemy = ENGINE.makeCard('savannah_lions', undefined, 0);
   enemy.iid = iidc++; enemy.controller = 'opp'; enemy.owner = 'opp'; enemy.sick = false;
   G.opp.battlefield.push(enemy);
 

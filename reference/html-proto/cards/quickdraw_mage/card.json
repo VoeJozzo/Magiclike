@@ -1,0 +1,21 @@
+{
+  "card_id": "quickdraw_mage",
+  "art": "cards/flashMage/art.png",
+  "cost": {
+    "U": 1,
+    "C": 2
+  },
+  "keywords": [
+    "flash"
+  ],
+  "name": "Quickdraw Mage",
+  "power": 2,
+  "sub": "Human Wizard",
+  "toughness": 2,
+  "type": "Creature",
+  "types": [
+    "Creature",
+    "Human",
+    "Wizard"
+  ]
+}

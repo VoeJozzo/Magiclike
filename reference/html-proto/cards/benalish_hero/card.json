@@ -1,0 +1,20 @@
+{
+  "card_id": "benalish_hero",
+  "art": "cards/benalishHero/art.png",
+  "cost": {
+    "W": 1
+  },
+  "keywords": [
+    "vigilance"
+  ],
+  "name": "Benalish Hero",
+  "power": 1,
+  "sub": "Human Soldier",
+  "toughness": 1,
+  "type": "Creature",
+  "types": [
+    "Creature",
+    "Human",
+    "Soldier"
+  ]
+}

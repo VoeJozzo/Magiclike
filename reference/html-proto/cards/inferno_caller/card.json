@@ -1,0 +1,34 @@
+{
+  "card_id": "inferno_caller",
+  "art": "🔥",
+  "cost": {
+    "R": 1,
+    "C": 3
+  },
+  "name": "Inferno Caller",
+  "power": 2,
+  "sub": "Human Shaman",
+  "toughness": 3,
+  "triggers": [
+    {
+      "event": "attacks",
+      "condition": [
+        "this_card"
+      ],
+      "text": "When ~ attacks, deal 2 to any target.",
+      "effects": [
+        {
+          "kind": "damage",
+          "amount": 2
+        }
+      ],
+      "target": "creature_or_player"
+    }
+  ],
+  "type": "Creature",
+  "types": [
+    "Creature",
+    "Human",
+    "Shaman"
+  ]
+}

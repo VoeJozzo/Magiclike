@@ -26,5 +26,10 @@
       "target": "creature"
     }
   ],
-  "type": "Creature"
+  "type": "Creature",
+  "types": [
+    "Creature",
+    "Human",
+    "Wizard"
+  ]
 }

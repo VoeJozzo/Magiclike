@@ -1,0 +1,37 @@
+{
+  "card_id": "furnace_whelp",
+  "abilities": [
+    {
+      "cost": {
+        "mana": {
+          "R": 1
+        }
+      },
+      "effects": [
+        {
+          "kind": "pump",
+          "power": 1,
+          "toughness": 0,
+          "scope": "self"
+        }
+      ]
+    }
+  ],
+  "art": "cards/furnaceWhelp/art.png",
+  "cost": {
+    "R": 1,
+    "C": 2
+  },
+  "keywords": [
+    "flying"
+  ],
+  "name": "Furnace Whelp",
+  "power": 2,
+  "sub": "Dragon",
+  "toughness": 2,
+  "type": "Creature",
+  "types": [
+    "Creature",
+    "Dragon"
+  ]
+}

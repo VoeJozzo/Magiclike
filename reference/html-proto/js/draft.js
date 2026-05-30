@@ -70,12 +70,12 @@ const CONSTRUCTED_DECKS = {
     colors: ['R'],
     description: 'Cheap goblins, burn finishers',
     cards: [
-      'goblinPiercer', 'goblinPiercer', 'hastyOgre', 'hastyOgre',
-      'goblinRaider', 'goblinRaider', 'duelist', 'duelist',
-      'raidLeader', 'raidLeader', 'goblinWarDrummer', 'goblinWarDrummer',
-      'goblinChieftain', 'bloodlust', 'bloodlust',
-      'bolt', 'bolt', 'shock', 'shock',
-      'incinerate', 'fireball', 'goblinRabble', 'pyroclasm',
+      'goblin_piercer', 'goblin_piercer', 'raging_goblin', 'raging_goblin',
+      'goblin_raider', 'goblin_raider', 'goblin_duelist', 'goblin_duelist',
+      'goblin_slinger', 'goblin_slinger', 'goblin_war_drummer', 'goblin_war_drummer',
+      'goblin_chieftain', 'bloodlust_berserker', 'bloodlust_berserker',
+      'lightning_bolt', 'lightning_bolt', 'shock', 'shock',
+      'char', 'volcanic_hammer', 'goblin_rabble', 'pyroclasm',
     ],
   },
   spiritTribal: {
@@ -83,12 +83,12 @@ const CONSTRUCTED_DECKS = {
     colors: ['W'],
     description: 'Spirits, removal, evasion',
     cards: [
-      'savannahLions', 'whiteKnight', 'whiteKnight',
-      'ancestralGuard', 'ancestralGuard', 'phantomWarrior', 'phantomWarrior',
-      'vengefulSpirit', 'vengefulSpirit', 'echoSpirit', 'echoSpirit',
-      'spiritShepherd', 'spiritShepherd', 'cloudGiant', 'serra',
-      'salve', 'pacifism', 'pacifism', 'swords', 'swords',
-      'divineFavor', 'divineFavor', 'wrathOfGod',
+      'savannah_lions', 'white_knight', 'white_knight',
+      'devoted_watcher', 'devoted_watcher', 'phantom_warrior', 'phantom_warrior',
+      'vengeful_spirit', 'vengeful_spirit', 'echo_spirit', 'echo_spirit',
+      'spirit_shepherd', 'spirit_shepherd', 'cloud_pegasus', 'serra_angel',
+      'healing_salve', 'pacifism', 'pacifism', 'swords_to_plowshares', 'swords_to_plowshares',
+      'divine_favor', 'divine_favor', 'day_of_reckoning',
     ],
   },
   aristocrats: {
@@ -96,12 +96,12 @@ const CONSTRUCTED_DECKS = {
     colors: ['B', 'R'],
     description: 'Sacrifice synergies, drain effects',
     cards: [
-      'goblinPiercer', 'goblinRaider', 'bloodBat', 'bloodBat',
-      'rakdosCadet', 'rakdosCadet', 'cultPriest', 'cultPriest',
-      'bloodPriest', 'bloodPriest', 'bloodArtist', 'bloodArtist',
-      'carrionFeeder', 'carrionFeeder', 'bloodthirster',
-      'bolt', 'shock', 'doomBlade', 'doomBlade',
-      'drainLife', 'drainLife', 'mindrot', 'consume',
+      'goblin_piercer', 'goblin_raider', 'vampire_bat', 'vampire_bat',
+      'rakdos_cadet', 'rakdos_cadet', 'cult_priest', 'cult_priest',
+      'blood_priest', 'blood_priest', 'blood_artist', 'blood_artist',
+      'carrion_feeder', 'carrion_feeder', 'bloodthirster',
+      'lightning_bolt', 'shock', 'doom_blade', 'doom_blade',
+      'drain_life', 'drain_life', 'mind_rot', 'consume_spirit',
     ],
   },
   archdemonBoss: {
@@ -111,15 +111,15 @@ const CONSTRUCTED_DECKS = {
     description: 'Mono-black demonic toolbox: removal, drain, recursion',
     isBoss: true,
     cards: [
-      'archdemonBargains',
-      'bloodBat', 'rakdosCadet', 'rakdosCadet',
-      'cultPriest', 'cultPriest', 'bloodPriest', 'bloodPriest',
-      'bloodArtist', 'bloodArtist', 'hypnotic', 'hypnotic',
-      'nightmare', 'bloodthirster',
-      'vileEdict', 'vileEdict',
+      'archdemon_of_bargains',
+      'vampire_bat', 'rakdos_cadet', 'rakdos_cadet',
+      'cult_priest', 'cult_priest', 'blood_priest', 'blood_priest',
+      'blood_artist', 'blood_artist', 'hypnotic_specter', 'hypnotic_specter',
+      'sengir_vampire', 'bloodthirster',
+      'vile_edict', 'vile_edict',
       'scarification', 'scarification',
-      'doomBlade', 'doomBlade', 'terror', 'terror',
-      'drainLife',
+      'doom_blade', 'doom_blade', 'murder', 'murder',
+      'drain_life',
     ],
   },
   balancerBoss: {
@@ -129,18 +129,18 @@ const CONSTRUCTED_DECKS = {
     description: 'Mono-white control: taxation, exile, equalization',
     isBoss: true,
     cards: [
-      'cityGuardian', 'cityGuardian',
+      'city_guardian', 'city_guardian',
       'symmetricize', 'symmetricize',
       'embargo', 'embargo',
       'bleach',
-      'savannahLions', 'whiteKnight', 'ancestralGuard', 'ancestralGuard',
-      'benalishHero', 'squireOath', 'paladinValor',
-      'serra', 'ageOfDawn',
-      'swords', 'swords',
+      'savannah_lions', 'white_knight', 'devoted_watcher', 'devoted_watcher',
+      'benalish_hero', 'squire_of_oaths', 'paladin_of_valor',
+      'serra_angel', 'dawn_sentinel',
+      'swords_to_plowshares', 'swords_to_plowshares',
       'pacifism', 'pacifism',
       'oblation',
-      'wrathOfGod',
-      'salve',
+      'day_of_reckoning',
+      'healing_salve',
     ],
   },
 };
@@ -669,7 +669,7 @@ function rollPack(pool, picksSoFar) {
 
     // If this color is OFF-deck, drop it from the table for future slots so it
     // appears at most once. Only when we actually picked a card OF that color —
-    // a colorless pick in this slot doesn't "consume" the rolled color. In-deck
+    // a colorless pick in this slot doesn't "consume_spirit" the rolled color. In-deck
     // colors stay on the table and can repeat (rewards committed drafters).
     if (CARDS[id] && CARDS[id].color === color && !inDeckColors.has(color)) {
       colorTable = colorTable.filter(c => c !== color);

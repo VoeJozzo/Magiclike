@@ -44,7 +44,7 @@ console.log('=== migrated single-target spells highlight as castable ===');
 (() => {
   const G = game();
   G.opp.battlefield.push(mkCreature('opp', { color: 'W', colors: ['W'] }));   // a non-black creature
-  for (const t of ['bolt', 'doomBlade', 'terror', 'swords', 'mindControl']) {
+  for (const t of ['lightning_bolt', 'doom_blade', 'murder', 'swords_to_plowshares', 'mind_control']) {
     check(t + ' is castable-highlighted', canPlayFromUI('you', inHand(G, t)));
   }
 })();
@@ -55,19 +55,19 @@ console.log('\n=== gates still apply (no false highlight) ===');
   G.opp.battlefield.push(mkCreature('opp', { color: 'W', colors: ['W'] }));
   // No mana → not castable.
   G.you.mana = { W: 0, U: 0, B: 0, R: 0, G: 0, C: 0 };
-  check('doomBlade NOT highlighted with no mana', !canPlayFromUI('you', inHand(G, 'doomBlade')));
+  check('doomBlade NOT highlighted with no mana', !canPlayFromUI('you', inHand(G, 'doom_blade')));
 })();
 (() => {
   const G = game();
   // Only a BLACK creature on board → Doom Blade (non-black) has no legal target.
   G.opp.battlefield.push(mkCreature('opp', { color: 'B', colors: ['B'] }));
   check('doomBlade NOT highlighted when only a black creature exists (target_filter)',
-    !canPlayFromUI('you', inHand(G, 'doomBlade')));
+    !canPlayFromUI('you', inHand(G, 'doom_blade')));
 })();
 (() => {
   const G = game();
   // Empty board → a creature-only removal spell has no legal target.
-  check('terror NOT highlighted with no creatures on board', !canPlayFromUI('you', inHand(G, 'terror')));
+  check('terror NOT highlighted with no creatures on board', !canPlayFromUI('you', inHand(G, 'murder')));
 })();
 
 console.log('\n=== restricted target highlights only when a legal target exists ===');
@@ -75,9 +75,9 @@ console.log('\n=== restricted target highlights only when a legal target exists 
   const G = game();
   // Vine Strangle: opp creature WITH flying.
   G.opp.battlefield.push(mkCreature('opp', { keywords: [] }));            // ground only
-  check('vinestrangle NOT highlighted vs a ground opp creature', !canPlayFromUI('you', inHand(G, 'vinestrangle')));
+  check('vinestrangle NOT highlighted vs a ground opp creature', !canPlayFromUI('you', inHand(G, 'vine_strangle')));
   G.opp.battlefield.push(mkCreature('opp', { keywords: ['flying'] }));    // now a flyer exists
-  check('vinestrangle highlighted once an opp flyer exists', canPlayFromUI('you', inHand(G, 'vinestrangle')));
+  check('vinestrangle highlighted once an opp flyer exists', canPlayFromUI('you', inHand(G, 'vine_strangle')));
 })();
 
 console.log('\n=== untargeted + land still work ===');

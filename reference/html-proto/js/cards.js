@@ -390,16 +390,16 @@ const RUN_MODIFIERS = {};
 // it grants). A boon CAN set an explicit `art:` to override, but
 // shouldn't need to in normal cases — keeping the boon and the card
 // visually in sync as art changes is the whole point.
-RUN_MODIFIERS['architectsCodex'] = {
-  id: 'architectsCodex',
+RUN_MODIFIERS['architects_codex'] = {
+  id: 'architects_codex',
   name: "The Architect's Codex",
   text: "Begin your run with The Architect's Codex — a 4-mana 2/3. The first time you draw it each game, choose one of three procedurally-generated abilities (or keep the current one).",
   apply: () => ({
-    extras: [{ tplId: 'architectsCodex', stickers: [] }],
+    extras: [{ tplId: 'architects_codex', stickers: [] }],
   }),
 };
-RUN_MODIFIERS['cityOfBrass'] = {
-  id: 'cityOfBrass',
+RUN_MODIFIERS['city_of_brass'] = {
+  id: 'city_of_brass',
   name: 'Polychrome Pact',
   text: 'Begin your run with a City of Brass already in hand. Taps for any color.',
   // Pinned during early development to guarantee a universally-applicable
@@ -408,7 +408,7 @@ RUN_MODIFIERS['cityOfBrass'] = {
   // that the boon pool has grown disjoint enough that a stable fallback
   // is needed again.
   apply: () => ({
-    extras: [{ tplId: 'cityOfBrass', stickers: ['innate'] }],
+    extras: [{ tplId: 'city_of_brass', stickers: ['innate'] }],
   }),
 };
 RUN_MODIFIERS['endomorph'] = {
@@ -435,8 +435,8 @@ RUN_MODIFIERS['phylactery'] = {
     extras: [{ tplId: 'phylactery', stickers: ['innate'] }],
   }),
 };
-RUN_MODIFIERS['elystra'] = {
-  id: 'elystra',
+RUN_MODIFIERS['elystra_the_immortal'] = {
+  id: 'elystra_the_immortal',
   name: 'Elystra the Immortal',
   text: "Begin your run with Elystra in your deck — a 3-mana 1/1. End-of-turn effects on her last forever, but every spell that targets her is ripped from its caster's deck after it resolves.",
   // v1.0.48: unpinned. Was pinned because Elystra was the headline build-around
@@ -445,7 +445,7 @@ RUN_MODIFIERS['elystra'] = {
   // the other boons. Re-pin if the pool shrinks or Elystra-stacking runs
   // become so dominant that players regularly skip whatever boon got rolled.
   apply: () => ({
-    extras: [{ tplId: 'elystra', stickers: [] }],
+    extras: [{ tplId: 'elystra_the_immortal', stickers: [] }],
   }),
 };
 

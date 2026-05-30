@@ -1,0 +1,23 @@
+{
+  "card_id": "healing_light",
+  "art": "🌟",
+  "cost": {
+    "W": 1,
+    "C": 1
+  },
+  "target": "player",
+  "effects": [
+    {
+      "kind": "gain_life",
+      "amount": 5
+    }
+  ],
+  "name": "Healing Light",
+  "type": "Sorcery",
+  "keywords": [
+    "flash"
+  ],
+  "types": [
+    "Sorcery"
+  ]
+}

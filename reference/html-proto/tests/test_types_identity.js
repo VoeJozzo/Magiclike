@@ -75,8 +75,8 @@ console.log('=== whole pool: accessors agree with legacy type/sub (all cards) ==
   // The known corrected set: basic lands + City of Brass (sub repeats "Land"),
   // plus legendary cards (Legendary supertype now prepended). Expected outputs.
   const EXPECT = { forest: 'Basic Land', island: 'Basic Land', mountain: 'Basic Land',
-    plains: 'Basic Land', swamp: 'Basic Land', cityOfBrass: 'Land',
-    cityGuardian: 'Legendary Creature — Human Soldier' };
+    plains: 'Basic Land', swamp: 'Basic Land', city_of_brass: 'Land',
+    city_guardian: 'Legendary Creature — Human Soldier' };
   const bad = corrected.filter(id => EXPECT[id] !== undefined && typeLine(CARDS[id]) !== EXPECT[id]);
   check('parser corrects dirty-land + legendary typelines (Basic Land / Legendary prefix)',
     bad.length === 0, bad.map(id => id + '="' + typeLine(CARDS[id]) + '" want "' + EXPECT[id] + '"').join(', '));

@@ -81,8 +81,8 @@ console.log('\n=== all three consumers agree (one source of truth) ===');
   // castable highlight (canPlayFromUI) must agree it is castable with a target.
   const G = game();
   G.opp.battlefield.push(mkCreature('opp', { color: 'W', colors: ['W'] }));
-  const bolt = Object.assign(JSON.parse(JSON.stringify(CARDS.bolt)),
-    { iid: iid++, tplId: 'bolt', controller: 'you', owner: 'you' });
+  const bolt = Object.assign(JSON.parse(JSON.stringify(CARDS.lightning_bolt)),
+    { iid: iid++, tplId: 'lightning_bolt', controller: 'you', owner: 'you' });
   G.you.hand.push(bolt);
   check('objectNeedsTarget(bolt) is true (top-level step)', ENGINE.objectNeedsTarget(bolt));
   check('canPlayFromUI agrees bolt is castable', canPlayFromUI('you', bolt));

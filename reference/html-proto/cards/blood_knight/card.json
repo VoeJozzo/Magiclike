@@ -1,0 +1,22 @@
+{
+  "card_id": "blood_knight",
+  "art": "cards/bloodKnight/art.png",
+  "cost": {
+    "R": 1,
+    "C": 3
+  },
+  "keywords": [
+    "first_strike",
+    "trample"
+  ],
+  "name": "Blood Knight",
+  "power": 4,
+  "sub": "Human Knight",
+  "toughness": 3,
+  "type": "Creature",
+  "types": [
+    "Creature",
+    "Human",
+    "Knight"
+  ]
+}

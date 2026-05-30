@@ -1,0 +1,20 @@
+{
+  "card_id": "phantom_warrior",
+  "art": "👻",
+  "cost": {
+    "U": 1,
+    "C": 2
+  },
+  "keywords": [
+    "unblockable"
+  ],
+  "name": "Phantom Warrior",
+  "power": 2,
+  "sub": "Spirit",
+  "toughness": 2,
+  "type": "Creature",
+  "types": [
+    "Creature",
+    "Spirit"
+  ]
+}

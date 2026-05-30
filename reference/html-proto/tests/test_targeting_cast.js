@@ -205,7 +205,7 @@ console.log('\n=== #5b canonical multi-target: target_slots is the single source
   // slot-bound effects bind via target_slot and carry NO inline target (the
   // filter lives in the slot spec). Pin the shape so a regression can't
   // silently reintroduce per-effect target.
-  for (const id of ['branchingBolt', 'twinStrike', 'drainLife', 'rootsAndBranches', 'swordAndSorcery']) {
+  for (const id of ['branching_bolt', 'twin_strike', 'drain_life', 'roots_and_branches', 'sword_and_sorcery']) {
     const c = CARDS[id];
     const slotsOk = Array.isArray(c.target_slots) && c.target_slots.length === 2;
     const noInline = (c.effects || []).every(e => e.target_slot == null || e.target === undefined);
@@ -220,7 +220,7 @@ console.log('\n=== Branching Bolt: 2-target cross-product enumerates + both take
   const G = newGame();
   const a = mk(TOUGH_CREATURE, 'opp'), b = mk(TOUGH_CREATURE, 'opp');
   G.opp.battlefield.push(a, b);
-  const bb = mk('branchingBolt', 'you'); G.you.hand.push(bb);
+  const bb = mk('branching_bolt', 'you'); G.you.hand.push(bb);
   readyForCast(G, 'you');
   const casts = ENGINE.getLegalActions('you').filter(x => x.type === 'castSpell' && x.cardIid === bb.iid);
   // 2 creatures × 2 slots = 4 combos (incl. same-target pairs).
@@ -240,7 +240,7 @@ console.log('\n=== Drain Life: slot 0 = creature, slot 1 = player (mixed-filter 
 (() => {
   const G = newGame();
   const cr = mk(TOUGH_CREATURE, 'opp'); G.opp.battlefield.push(cr);
-  const dl = mk('drainLife', 'you'); G.you.hand.push(dl);
+  const dl = mk('drain_life', 'you'); G.you.hand.push(dl);
   readyForCast(G, 'you');
   const youLife = G.you.life, oppLife = G.opp.life;
   const cast = { type: 'castSpell', cardIid: dl.iid, targets: [
@@ -262,7 +262,7 @@ console.log('\n=== target_slots survive REAL makeCard instantiation (not just de
   // not castable). The mk() helper above deep-copies the whole template, which
   // MASKED this — so assert the engine's real instance carries the field, and
   // that every authored multi-slot card is castable from a real instance.
-  for (const id of ['drainLife', 'branchingBolt', 'twinStrike', 'rootsAndBranches', 'swordAndSorcery']) {
+  for (const id of ['drain_life', 'branching_bolt', 'twin_strike', 'roots_and_branches', 'sword_and_sorcery']) {
     const inst = ENGINE.makeCard(id, [], 0);
     check(id + ': real instance carries target_slots',
       Array.isArray(inst.target_slots) && inst.target_slots.length === (CARDS[id].target_slots || []).length,
@@ -271,7 +271,7 @@ console.log('\n=== target_slots survive REAL makeCard instantiation (not just de
   // End-to-end castability of a real makeCard instance (the bug's exact surface).
   const G = newGame();
   const cr = mk(TOUGH_CREATURE, 'opp'); G.opp.battlefield.push(cr);
-  const dl = ENGINE.makeCard('drainLife', [], 0); dl.controller = 'you'; dl.owner = 'you';
+  const dl = ENGINE.makeCard('drain_life', [], 0); dl.controller = 'you'; dl.owner = 'you';
   G.you.hand.push(dl);
   readyForCast(G, 'you');
   const probe = ENGINE.probeTargetsForObject(dl, 'you');

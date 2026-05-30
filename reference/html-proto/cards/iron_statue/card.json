@@ -1,0 +1,22 @@
+{
+  "card_id": "iron_statue",
+  "art": "🗿",
+  "cost": {
+    "W": 1,
+    "C": 2
+  },
+  "keywords": [
+    "defender",
+    "indestructible"
+  ],
+  "name": "Iron Statue",
+  "power": 0,
+  "sub": "Construct Wall",
+  "toughness": 5,
+  "type": "Creature",
+  "types": [
+    "Creature",
+    "Construct",
+    "Wall"
+  ]
+}

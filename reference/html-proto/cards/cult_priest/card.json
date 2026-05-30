@@ -1,0 +1,35 @@
+{
+  "card_id": "cult_priest",
+  "art": "⛧",
+  "cost": {
+    "B": 1,
+    "C": 1
+  },
+  "name": "Cult Priest",
+  "power": 2,
+  "sub": "Human Cleric",
+  "toughness": 1,
+  "triggers": [
+    {
+      "event": "card_zone_change",
+      "condition": [
+        "this_card",
+        "card_moves(battlefield, graveyard)"
+      ],
+      "text": "When ~ dies, target opponent loses 2 life.",
+      "effects": [
+        {
+          "kind": "gain_life",
+          "amount": -2
+        }
+      ],
+      "target": "opp"
+    }
+  ],
+  "type": "Creature",
+  "types": [
+    "Creature",
+    "Human",
+    "Cleric"
+  ]
+}

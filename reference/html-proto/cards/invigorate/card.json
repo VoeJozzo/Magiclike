@@ -17,5 +17,8 @@
   "type": "Sorcery",
   "keywords": [
     "flash"
+  ],
+  "types": [
+    "Sorcery"
   ]
 }

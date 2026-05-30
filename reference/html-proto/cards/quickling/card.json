@@ -29,5 +29,9 @@
       "target": "creature"
     }
   ],
-  "type": "Creature"
+  "type": "Creature",
+  "types": [
+    "Creature",
+    "Faerie"
+  ]
 }

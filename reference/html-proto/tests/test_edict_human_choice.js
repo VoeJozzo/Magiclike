@@ -81,7 +81,7 @@ console.log('=== Opp edicts the human: prompt opens, creature NOT auto-sacrifice
 {
   const G = newGame();
   const mine = mk(VANILLA, 'you'); G.you.battlefield.push(mine);
-  const edict = mk('diabolicEdict', 'opp'); G.opp.hand.push(edict);
+  const edict = mk('diabolic_edict', 'opp'); G.opp.hand.push(edict);
   readyForCast(G, 'opp');
 
   const cast = { type: 'castSpell', cardIid: edict.iid, targets: [{ kind: 'player', who: 'you', label: 'You' }] };
@@ -114,7 +114,7 @@ console.log("\n=== The human's choice is honored (not forced to the AI's lowest-
   const b = mk(VANILLA, 'you'); G.you.battlefield.push(b);
   // Force a sac-value gap so "lowest" is unambiguous.
   a.tempPower = 5; a.tempTou = 5; // a is the bigger body → higher sac value
-  const edict = mk('diabolicEdict', 'opp'); G.opp.hand.push(edict);
+  const edict = mk('diabolic_edict', 'opp'); G.opp.hand.push(edict);
   readyForCast(G, 'opp');
   ENGINE.executeAction('opp', { type: 'castSpell', cardIid: edict.iid, targets: [{ kind: 'player', who: 'you', label: 'You' }] });
   drainStack(G);
@@ -139,7 +139,7 @@ console.log('\n=== Legality: only in-pool iids, only the prompted player, only w
 {
   const G = newGame();
   const mine = mk(VANILLA, 'you'); G.you.battlefield.push(mine);
-  const edict = mk('diabolicEdict', 'opp'); G.opp.hand.push(edict);
+  const edict = mk('diabolic_edict', 'opp'); G.opp.hand.push(edict);
   readyForCast(G, 'opp');
   ENGINE.executeAction('opp', { type: 'castSpell', cardIid: edict.iid, targets: [{ kind: 'player', who: 'you', label: 'You' }] });
   drainStack(G);
@@ -160,7 +160,7 @@ console.log('\n=== Regression guard: human edicts the AI → AI auto-picks, no h
 {
   const G = newGame();
   const theirs = mk(VANILLA, 'opp'); G.opp.battlefield.push(theirs);
-  const edict = mk('diabolicEdict', 'you'); G.you.hand.push(edict);
+  const edict = mk('diabolic_edict', 'you'); G.you.hand.push(edict);
   readyForCast(G, 'you');
   ENGINE.executeAction('you', { type: 'castSpell', cardIid: edict.iid, targets: [{ kind: 'player', who: 'opp', label: 'Opp' }] });
   drainStack(G);
@@ -171,14 +171,14 @@ console.log('\n=== Regression guard: human edicts the AI → AI auto-picks, no h
 }
 
 console.log('\n=== Deferred death triggers still drain (Blood Artist sees the sacrifice) ===');
-if (!CARDS['bloodArtist']) {
+if (!CARDS['blood_artist']) {
   console.log('  (bloodArtist not in CARDS -- skipping)');
 } else {
   const G = newGame();
-  const artist = mk('bloodArtist', 'you'); G.you.battlefield.push(artist);
+  const artist = mk('blood_artist', 'you'); G.you.battlefield.push(artist);
   const victim = mk(VANILLA, 'you'); G.you.battlefield.push(victim);
   const lifeBefore = G.you.life, oppBefore = G.opp.life;
-  const edict = mk('diabolicEdict', 'opp'); G.opp.hand.push(edict);
+  const edict = mk('diabolic_edict', 'opp'); G.opp.hand.push(edict);
   readyForCast(G, 'opp');
   ENGINE.executeAction('opp', { type: 'castSpell', cardIid: edict.iid, targets: [{ kind: 'player', who: 'you', label: 'You' }] });
   drainStack(G);
@@ -204,7 +204,7 @@ console.log('\n=== Vile Edict (rip-edict): human pick → annihilate + run-slot 
   const slotIdx = slots.findIndex(s => s.tplId === VANILLA);
   const slotCountBefore = slots.length;
   const mine = mk(VANILLA, 'you'); mine.slotIdx = slotIdx; G.you.battlefield.push(mine);
-  const edict = mk('vileEdict', 'opp'); G.opp.hand.push(edict);
+  const edict = mk('vile_edict', 'opp'); G.opp.hand.push(edict);
   readyForCast(G, 'opp');
   ENGINE.executeAction('opp', { type: 'castSpell', cardIid: edict.iid, targets: [{ kind: 'player', who: 'you', label: 'You' }] });
   drainStack(G);
@@ -233,7 +233,7 @@ console.log('\n=== AI resolves its own pendingEdictChoice (selfplay path) → au
   const big = mk(VANILLA, 'you'); G.you.battlefield.push(big);
   const small = mk(VANILLA, 'you'); G.you.battlefield.push(small);
   big.tempPower = 5; big.tempTou = 5; // higher sac-value than the vanilla `small`
-  const edict = mk('diabolicEdict', 'opp'); G.opp.hand.push(edict);
+  const edict = mk('diabolic_edict', 'opp'); G.opp.hand.push(edict);
   readyForCast(G, 'opp');
   ENGINE.executeAction('opp', { type: 'castSpell', cardIid: edict.iid, targets: [{ kind: 'player', who: 'you', label: 'You' }] });
   drainStack(G);

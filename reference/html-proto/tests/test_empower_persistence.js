@@ -20,7 +20,7 @@ console.log('=== RUN.load backfills a missing empowerRoll once + idempotently ==
   // A save with an empower sticker but NO recorded roll (legacy shape).
   localStorage.setItem(SAVE_KEY, JSON.stringify({
     version: SAVE_VERSION,
-    runState: { slots: [{ tplId: 'divin', stickers: ['empower'] }], gameNum: 1, active: true },
+    runState: { slots: [{ tplId: 'divination', stickers: ['empower'] }], gameNum: 1, active: true },
   }));
   const ok = RUN.load();
   check('load succeeded', ok === true);

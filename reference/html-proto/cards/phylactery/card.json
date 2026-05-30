@@ -22,5 +22,9 @@
       ]
     }
   ],
-  "custom_text": true
+  "custom_text": true,
+  "types": [
+    "Land",
+    "Swamp"
+  ]
 }

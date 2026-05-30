@@ -1,0 +1,21 @@
+{
+  "card_id": "dawn_angel",
+  "art": "cards/angelOfDawn/art.png",
+  "cost": {
+    "W": 2,
+    "C": 3
+  },
+  "keywords": [
+    "flying",
+    "lifelink"
+  ],
+  "name": "Dawn Angel",
+  "power": 3,
+  "sub": "Angel",
+  "toughness": 4,
+  "type": "Creature",
+  "types": [
+    "Creature",
+    "Angel"
+  ]
+}

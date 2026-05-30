@@ -231,10 +231,10 @@ console.log('\n=== describeCardSegments end-to-end on real cards ===');
   // Lightning Bolt — instant, damage:any-target,3. Auto-generated text
   // (no custom_text flag) should structurally match the hand-authored
   // text "Deal 3 damage to any target."
-  const bolt = CARDS.bolt;
-  check('CARDS.bolt exists', !!bolt);
+  const bolt = CARDS.lightning_bolt;
+  check('CARDS.lightning_bolt exists', !!bolt);
   if (bolt) {
-    const card = ENGINE.makeCard('bolt');
+    const card = ENGINE.makeCard('lightning_bolt');
     const text = describeCardText(card);
     check('Bolt text contains "3" and "damage"',
           /\b3\b/.test(text) && /damage/.test(text),
@@ -264,9 +264,9 @@ console.log('\n=== describeCardSegments end-to-end on real cards ===');
 // highlighted segment.
 console.log('\n=== bumped value → highlight=true on the bumped segment ===');
 {
-  const bolt = CARDS.bolt;
+  const bolt = CARDS.lightning_bolt;
   if (bolt) {
-    const card = ENGINE.makeCard('bolt');
+    const card = ENGINE.makeCard('lightning_bolt');
     card.effects[0].amount = 4;  // simulate +1 empower bump (tpl is 3)
     const segs = describeCardSegments(card);
     const bumpedSegs = segs.filter(s => s.highlight === true);

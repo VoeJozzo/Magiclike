@@ -63,7 +63,7 @@ console.log('\n=== triggered / activated ability target() steps ===');
 
 console.log('\n=== representative cards (canonical decompositions) ===');
 (() => {
-  const bolt = CARDS.bolt;
+  const bolt = CARDS.lightning_bolt;
   check('bolt: target(creature_or_player)', bolt.target === 'creature_or_player');
   check('bolt: bare damage(3)', bolt.effects[0].kind === 'damage' && bolt.effects[0].amount === 3 && !bolt.effects[0].target);
 
@@ -166,7 +166,7 @@ console.log('\n=== kind-collapse: retired kinds gone, collapsed forms present ==
   // Canonical decompositions on named cards (shape goldens — pinned to specific
   // cards with a rationale, so they document the correct form and don't break on
   // adding unrelated cards).
-  const edict = CARDS.diabolicEdict;
+  const edict = CARDS.diabolic_edict;
   check('diabolicEdict: target(opp)', edict.target === 'opp');
   check('diabolicEdict: chooses(creature) + sacrifice',
     edict.effects.length === 2 && edict.effects[0].kind === 'chooses' && edict.effects[1].kind === 'sacrifice');

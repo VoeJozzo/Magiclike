@@ -1,0 +1,21 @@
+{
+  "card_id": "silver_paladin",
+  "art": "⚔",
+  "cost": {
+    "W": 1,
+    "C": 2
+  },
+  "keywords": [
+    "lifelink"
+  ],
+  "name": "Silver Paladin",
+  "power": 2,
+  "sub": "Human Knight",
+  "toughness": 2,
+  "type": "Creature",
+  "types": [
+    "Creature",
+    "Human",
+    "Knight"
+  ]
+}

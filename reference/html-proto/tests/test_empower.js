@@ -34,8 +34,8 @@ console.log('\n=== move_card draw is empowerable; other move_card shapes are not
 
 console.log('\n=== a real cantrip exposes its draw as an empower target (regression: draw collapse) ===');
 (() => {
-  // divin: on-cast draw 2 (now move_card library→hand). Must be enumerable.
-  const targets = enumerateEmpowerTargets(CARDS.divin);
+  // divination: on-cast draw 2 (now move_card library→hand). Must be enumerable.
+  const targets = enumerateEmpowerTargets(CARDS.divination);
   const drawTarget = targets.find(t => t.field === 'amount');
   check('divin has an empowerable amount target (draw not silently dropped)', !!drawTarget, JSON.stringify(targets));
 })();

@@ -1,0 +1,17 @@
+{
+  "card_id": "goblin_raider",
+  "art": "👺",
+  "cost": {
+    "R": 1
+  },
+  "name": "Goblin Raider",
+  "power": 2,
+  "sub": "Goblin Warrior",
+  "toughness": 1,
+  "type": "Creature",
+  "types": [
+    "Creature",
+    "Goblin",
+    "Warrior"
+  ]
+}

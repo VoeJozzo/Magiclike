@@ -26,5 +26,10 @@
       ]
     }
   ],
-  "type": "Creature"
+  "type": "Creature",
+  "types": [
+    "Creature",
+    "Goblin",
+    "Shaman"
+  ]
 }

@@ -1,0 +1,39 @@
+{
+  "card_id": "verdant_outrider",
+  "art": "cards/verdantOutrider/art.png",
+  "cost": {
+    "G": 1,
+    "C": 2
+  },
+  "name": "Verdant Outrider",
+  "power": 3,
+  "sub": "Beast",
+  "toughness": 2,
+  "triggers": [
+    {
+      "event": "attacks",
+      "condition": [
+        "this_card"
+      ],
+      "text": "When ~ attacks, fetch a land tapped.",
+      "effects": [
+        {
+          "kind": "move_card",
+          "from_zone": "library",
+          "to_zone": "battlefield",
+          "filter": {
+            "type": "Land"
+          },
+          "post": {
+            "tap": true
+          }
+        }
+      ]
+    }
+  ],
+  "type": "Creature",
+  "types": [
+    "Creature",
+    "Beast"
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "card_id": "prodigal_sorcerer",
+  "abilities": [
+    {
+      "cost": {
+        "tap": true
+      },
+      "effects": [
+        {
+          "kind": "damage",
+          "amount": 1
+        }
+      ],
+      "target": "creature_or_player"
+    }
+  ],
+  "art": "🧙",
+  "cost": {
+    "U": 1,
+    "C": 2
+  },
+  "name": "Prodigal Sorcerer",
+  "power": 1,
+  "sub": "Human Wizard",
+  "toughness": 1,
+  "type": "Creature",
+  "types": [
+    "Creature",
+    "Human",
+    "Wizard"
+  ]
+}

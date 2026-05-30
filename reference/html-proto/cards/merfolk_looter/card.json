@@ -1,0 +1,40 @@
+{
+  "card_id": "merfolk_looter",
+  "abilities": [
+    {
+      "cost": {
+        "tap": true
+      },
+      "sorcery_speed": false,
+      "effects": [
+        {
+          "kind": "move_card",
+          "from_zone": "library",
+          "to_zone": "hand",
+          "selector": "controller_top",
+          "amount": 1
+        },
+        {
+          "kind": "move_card",
+          "from_zone": "hand",
+          "to_zone": "graveyard",
+          "amount": 1,
+          "scope": "self"
+        }
+      ]
+    }
+  ],
+  "art": "cards/merfolkLooter/art.png",
+  "cost": {
+    "U": 1
+  },
+  "name": "Merfolk Looter",
+  "power": 1,
+  "sub": "Merfolk",
+  "toughness": 1,
+  "type": "Creature",
+  "types": [
+    "Creature",
+    "Merfolk"
+  ]
+}

@@ -68,9 +68,9 @@ console.log('=== Bug 1: card_has_subtype matches a string `sub` (word-boundary) 
 console.log('\n=== Bug 1 + 2 end-to-end: cast a Cleric → High Priestess gains life → Pridemate grows ===');
 (() => {
   const G = game('you');
-  const hp = mk('highPriestess', 'you'); G.you.battlefield.push(hp);
-  const pm = mk('pridemate', 'you'); G.you.battlefield.push(pm);
-  const saint = mk('patientSaint', 'you'); G.you.hand.push(saint);
+  const hp = mk('high_priestess', 'you'); G.you.battlefield.push(hp);
+  const pm = mk('ajanis_pridemate', 'you'); G.you.battlefield.push(pm);
+  const saint = mk('patient_saint', 'you'); G.you.hand.push(saint);
   const life0 = G.you.life;
   const pm0 = ENGINE.getStats(pm);
   ENGINE.executeAction('you', { type: 'castSpell', cardIid: saint.iid });
@@ -85,8 +85,8 @@ console.log('\n=== Bug 1 + 2 end-to-end: cast a Cleric → High Priestess gains 
 console.log('\n=== Bug 2: tapping Patient Saint for life triggers Pridemate (scope:self pump) ===');
 (() => {
   const G = game('you');
-  const pm = mk('pridemate', 'you'); G.you.battlefield.push(pm);
-  const saint = mk('patientSaint', 'you'); G.you.battlefield.push(saint);
+  const pm = mk('ajanis_pridemate', 'you'); G.you.battlefield.push(pm);
+  const saint = mk('patient_saint', 'you'); G.you.battlefield.push(saint);
   const life0 = G.you.life;
   const pm0 = ENGINE.getStats(pm);
   ENGINE.executeAction('you', { type: 'activateAbility', cardIid: saint.iid, abilityIdx: 0 });
@@ -100,7 +100,7 @@ console.log('\n=== Bug 2: tapping Patient Saint for life triggers Pridemate (sco
 console.log('\n=== Bug 2: Char (scope:self damage) deals its "1 damage to you" ===');
 (() => {
   const G = game('you');
-  const char = mk('incinerate', 'you'); G.you.hand.push(char);
+  const char = mk('char', 'you'); G.you.hand.push(char);
   const my0 = G.you.life, opp0 = G.opp.life;
   ENGINE.executeAction('you', { type: 'castSpell', cardIid: char.iid, targets: [{ kind: 'player', who: 'opp' }] });
   drain(G);

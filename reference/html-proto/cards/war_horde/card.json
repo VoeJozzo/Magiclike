@@ -1,0 +1,18 @@
+{
+  "card_id": "war_horde",
+  "art": "⚒",
+  "cost": {
+    "R": 2,
+    "C": 2
+  },
+  "name": "War Horde",
+  "power": 4,
+  "sub": "Goblin Warrior",
+  "toughness": 3,
+  "type": "Creature",
+  "types": [
+    "Creature",
+    "Goblin",
+    "Warrior"
+  ]
+}

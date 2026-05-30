@@ -1,0 +1,33 @@
+{
+  "card_id": "goblin_piercer",
+  "art": "cards/goblinPiercer/art.png",
+  "cost": {
+    "R": 1
+  },
+  "name": "Goblin Piercer",
+  "power": 1,
+  "sub": "Goblin Warrior",
+  "toughness": 1,
+  "triggers": [
+    {
+      "event": "attacks",
+      "condition": [
+        "this_card"
+      ],
+      "text": "When ~ attacks, deal 1 to target opp.",
+      "effects": [
+        {
+          "kind": "damage",
+          "amount": 1
+        }
+      ],
+      "target": "opp"
+    }
+  ],
+  "type": "Creature",
+  "types": [
+    "Creature",
+    "Goblin",
+    "Warrior"
+  ]
+}

@@ -175,10 +175,10 @@ console.log('\n=== triggerArchetype classification + preamble recovery ===');
     const c = CARDS[tplId]; if (!c || !c.triggers || !c.triggers[0]) return null;
     return triggerPreamble(c.triggers[0]);
   }
-  if (CARDS.drakelord) check('drakelord preamble names its subtype',
-    /another Drake enters under your control/.test(preambleOf('drakelord')), preambleOf('drakelord'));
-  if (CARDS.goblinChieftain) check('goblinChieftain preamble names its subtype',
-    /Goblin you control attacks/.test(preambleOf('goblinChieftain')), preambleOf('goblinChieftain'));
+  if (CARDS.skyfire_drakelord) check('drakelord preamble names its subtype',
+    /another Drake enters under your control/.test(preambleOf('skyfire_drakelord')), preambleOf('skyfire_drakelord'));
+  if (CARDS.goblin_chieftain) check('goblinChieftain preamble names its subtype',
+    /Goblin you control attacks/.test(preambleOf('goblin_chieftain')), preambleOf('goblin_chieftain'));
 
   // AI ETB-detection (flicker / flash valuation) must still recognize migrated
   // ETB triggers, which now live on card_zone_change, not cardEntersBattlefield.

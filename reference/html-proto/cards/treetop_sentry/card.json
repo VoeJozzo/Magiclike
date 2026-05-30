@@ -1,0 +1,37 @@
+{
+  "card_id": "treetop_sentry",
+  "art": "cards/treetopSentry/art.png",
+  "cost": {
+    "G": 1,
+    "C": 1
+  },
+  "keywords": [
+    "reach"
+  ],
+  "name": "Treetop Sentry",
+  "power": 2,
+  "sub": "Treefolk",
+  "toughness": 3,
+  "triggers": [
+    {
+      "event": "card_zone_change",
+      "condition": [
+        "this_card",
+        "card_moves(battlefield, graveyard)"
+      ],
+      "text": "When ~ dies, you gain 2 life.",
+      "effects": [
+        {
+          "kind": "gain_life",
+          "amount": 2,
+          "scope": "self"
+        }
+      ]
+    }
+  ],
+  "type": "Creature",
+  "types": [
+    "Creature",
+    "Treefolk"
+  ]
+}

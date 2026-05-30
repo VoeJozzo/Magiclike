@@ -12,5 +12,10 @@
   "power": 2,
   "sub": "Human Wizard",
   "toughness": 3,
-  "type": "Creature"
+  "type": "Creature",
+  "types": [
+    "Creature",
+    "Human",
+    "Wizard"
+  ]
 }

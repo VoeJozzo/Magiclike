@@ -1,0 +1,38 @@
+{
+  "card_id": "aether_voyager",
+  "art": "🌬",
+  "cost": {
+    "U": 1,
+    "C": 3
+  },
+  "keywords": [
+    "flying"
+  ],
+  "name": "Aether Voyager",
+  "power": 2,
+  "sub": "Spirit",
+  "toughness": 3,
+  "triggers": [
+    {
+      "event": "attacks",
+      "condition": [
+        "this_card"
+      ],
+      "text": "When ~ attacks, draw a card.",
+      "effects": [
+        {
+          "kind": "move_card",
+          "from_zone": "library",
+          "to_zone": "hand",
+          "selector": "controller_top",
+          "amount": 1
+        }
+      ]
+    }
+  ],
+  "type": "Creature",
+  "types": [
+    "Creature",
+    "Spirit"
+  ]
+}

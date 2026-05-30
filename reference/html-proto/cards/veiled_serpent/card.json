@@ -1,0 +1,20 @@
+{
+  "card_id": "veiled_serpent",
+  "art": "cards/veilSerpent/art.png",
+  "cost": {
+    "U": 1,
+    "C": 2
+  },
+  "keywords": [
+    "hexproof"
+  ],
+  "name": "Veiled Serpent",
+  "power": 2,
+  "sub": "Serpent",
+  "toughness": 3,
+  "type": "Creature",
+  "types": [
+    "Creature",
+    "Serpent"
+  ]
+}

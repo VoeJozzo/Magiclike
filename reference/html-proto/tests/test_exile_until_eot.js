@@ -61,7 +61,7 @@ function endTurn(G) {
   }
 }
 function castOJOn(G, creature) {
-  const oj = mk('otherworldlyJourney', 'you'); G.you.hand.push(oj);
+  const oj = mk('otherworldly_journey', 'you'); G.you.hand.push(oj);
   readyForCast(G, 'you');
   const cast = { type: 'castSpell', cardIid: oj.iid, targets: [{ kind: 'creature', iid: creature.iid, label: creature.name }] };
   const legal = ENGINE.isLegalAction('you', cast);

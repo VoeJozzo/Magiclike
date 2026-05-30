@@ -1,0 +1,22 @@
+{
+  "card_id": "warrior_champion",
+  "art": "cards/warriorChamp/art.png",
+  "cost": {
+    "R": 1,
+    "C": 2
+  },
+  "keywords": [
+    "first_strike",
+    "haste"
+  ],
+  "name": "Warrior Champion",
+  "power": 3,
+  "sub": "Human Warrior",
+  "toughness": 2,
+  "type": "Creature",
+  "types": [
+    "Creature",
+    "Human",
+    "Warrior"
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "card_id": "great_herder",
+  "art": "🌿",
+  "cost": {
+    "G": 2,
+    "C": 2
+  },
+  "name": "Great Herder",
+  "power": 3,
+  "sub": "Elf Druid",
+  "toughness": 3,
+  "triggers": [
+    {
+      "event": "card_zone_change",
+      "condition": [
+        "this_card",
+        "card_moves(anywhere, battlefield)"
+      ],
+      "text": "When ~ enters, fetch a land tapped.",
+      "effects": [
+        {
+          "kind": "move_card",
+          "from_zone": "library",
+          "to_zone": "battlefield",
+          "filter": {
+            "type": "Land"
+          },
+          "post": {
+            "tap": true
+          }
+        }
+      ]
+    }
+  ],
+  "type": "Creature",
+  "types": [
+    "Creature",
+    "Elf",
+    "Druid"
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "card_id": "counterspell",
+  "art": "🚫",
+  "cost": {
+    "U": 2
+  },
+  "target": "spell",
+  "effects": [
+    {
+      "kind": "counter"
+    }
+  ],
+  "name": "Counterspell",
+  "type": "Sorcery",
+  "keywords": [
+    "flash"
+  ],
+  "types": [
+    "Sorcery"
+  ]
+}

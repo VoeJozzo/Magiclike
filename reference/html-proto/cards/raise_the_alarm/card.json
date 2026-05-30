@@ -1,0 +1,23 @@
+{
+  "card_id": "raise_the_alarm",
+  "art": "🚨",
+  "cost": {
+    "W": 1,
+    "C": 1
+  },
+  "effects": [
+    {
+      "kind": "create_tokens",
+      "token_id": "soldier_w_1_1",
+      "count": 2
+    }
+  ],
+  "name": "Raise the Alarm",
+  "type": "Sorcery",
+  "keywords": [
+    "flash"
+  ],
+  "types": [
+    "Sorcery"
+  ]
+}

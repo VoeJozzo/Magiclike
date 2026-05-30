@@ -1,0 +1,18 @@
+{
+  "card_id": "righteous_cavalry",
+  "art": "🐴",
+  "cost": {
+    "W": 2,
+    "C": 2
+  },
+  "name": "Righteous Cavalry",
+  "power": 4,
+  "sub": "Human Knight",
+  "toughness": 3,
+  "type": "Creature",
+  "types": [
+    "Creature",
+    "Human",
+    "Knight"
+  ]
+}

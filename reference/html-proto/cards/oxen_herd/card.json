@@ -1,0 +1,21 @@
+{
+  "card_id": "oxen_herd",
+  "art": "🐂",
+  "cost": {
+    "G": 2,
+    "C": 2
+  },
+  "keywords": [
+    "trample",
+    "lifelink"
+  ],
+  "name": "Oxen Herd",
+  "power": 4,
+  "sub": "Beast",
+  "toughness": 4,
+  "type": "Creature",
+  "types": [
+    "Creature",
+    "Beast"
+  ]
+}

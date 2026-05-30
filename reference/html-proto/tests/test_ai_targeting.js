@@ -17,11 +17,15 @@ function check(label, ok, info) {
 // Migrated Lightning Bolt: top-level target() + bare damage (no per-effect target).
 CARDS._testBolt = { tplId: '_testBolt', name: 'Test Bolt', type: 'Instant', cost: { R: 1 }, color: 'R', colors: ['R'], target: 'creature_or_player', effects: [{ kind: 'damage', amount: 3 }] };
 
+// A keyword-free vanilla so the AI's combat sim isn't skewed by flying/etc. when
+// the test overrides power/toughness — keeps the decision deterministic across
+// pool order (pre-id-normalization this happened to land on a vanilla; the
+// alphabetical reorder exposed the latent dependency on "no keywords").
 const TOUGH = (() => {
   for (const [id, c] of Object.entries(CARDS)) {
-    if (c.type === 'Creature' && (c.toughness || 0) >= 4 && !c.triggers && !c.abilities) return id;
+    if (c.type === 'Creature' && (c.toughness || 0) >= 4 && !c.triggers && !c.abilities && !(c.keywords && c.keywords.length)) return id;
   }
-  for (const [id, c] of Object.entries(CARDS)) if (c.type === 'Creature' && (c.toughness || 0) >= 4) return id;
+  for (const [id, c] of Object.entries(CARDS)) if (c.type === 'Creature' && (c.toughness || 0) >= 4 && !(c.keywords && c.keywords.length)) return id;
   return null;
 })();
 let nextIid = 9000;

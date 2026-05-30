@@ -19,5 +19,10 @@
         }
       ]
     }
+  ],
+  "types": [
+    "Land",
+    "Basic",
+    "Land"
   ]
 }

@@ -1,0 +1,23 @@
+{
+  "card_id": "giant_growth",
+  "art": "💪",
+  "cost": {
+    "G": 1
+  },
+  "target": "creature",
+  "effects": [
+    {
+      "kind": "pump",
+      "power": 3,
+      "toughness": 3
+    }
+  ],
+  "name": "Giant Growth",
+  "type": "Sorcery",
+  "keywords": [
+    "flash"
+  ],
+  "types": [
+    "Sorcery"
+  ]
+}

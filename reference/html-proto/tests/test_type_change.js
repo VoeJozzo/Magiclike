@@ -85,8 +85,10 @@ console.log('\n=== add_type (permanent): survives EOT, reverts on leave-play ===
 
 console.log('\n=== set_types: a creature becomes ONLY an artifact (neutralized) ===');
 (() => {
-  // Use a real vanilla creature from the pool.
-  const crId = Object.keys(CARDS).find(id => CARDS[id].type === 'Creature' && !CARDS[id].special && CARDS[id].cost && !CARDS[id].types);
+  // Use a real single-type creature from the pool (not an explicit-multi-type
+  // robot — set_types should neutralize a plain creature, not a co-typed one).
+  const crId = Object.keys(CARDS).find(id => CARDS[id].type === 'Creature' && !CARDS[id].special && CARDS[id].cost
+    && !(Array.isArray(CARDS[id].types) && CARDS[id].types.filter(t => isCardTypeTag(t)).length > 1));
   const { G, inst } = spawn(crId);
   check('starts a Creature', hasType(inst, 'Creature') && ENGINE.canCreatureAttack(inst));
   ENGINE.applyEffect(CTX('Petrify'),
@@ -114,12 +116,12 @@ console.log('\n=== multi-tag add (Golem Forge): land → 4/4 Artifact Creature =
 
 console.log('\n=== the 7 type-change spells are authored + generate clean text ===');
 (() => {
-  const spellIds = ['awakenVault', 'livingLands', 'brandOfIron', 'petrify', 'encaseInAmber', 'golemForge', 'suddenVines'];
+  const spellIds = ['awaken_the_vault', 'living_lands', 'brand_of_iron', 'petrify', 'encase_in_amber', 'golem_forge', 'sudden_vines'];
   check('all 7 present, type Sorcery', spellIds.every(id => CARDS[id] && CARDS[id].type === 'Sorcery'),
     spellIds.filter(id => !CARDS[id]).join(', '));
   check('petrify & suddenVines have flash (instant-speed)',
-    (CARDS.petrify.keywords || []).includes('flash') && (CARDS.suddenVines.keywords || []).includes('flash'));
-  const txt = describeEffect(CARDS.awakenVault.effects[0]).map(s => s.text).join('');
+    (CARDS.petrify.keywords || []).includes('flash') && (CARDS.sudden_vines.keywords || []).includes('flash'));
+  const txt = describeEffect(CARDS.awaken_the_vault.effects[0]).map(s => s.text).join('');
   check('add_type generates readable text (no "[add_type]" sentinel)',
     !txt.includes('[add_type]') && /Creature/.test(txt) && /3\/3/.test(txt), txt);
   const stxt = describeEffect(CARDS.petrify.effects[0]).map(s => s.text).join('');
@@ -139,12 +141,12 @@ console.log('\n=== the 7 type-change spells are authored + generate clean text =
 
 console.log('\n=== 8 colorless artifact creatures ===');
 (() => {
-  const robots = ['clockworkBeetle', 'scrapHound', 'alloyMyr', 'copperGolem', 'razorBeacon', 'ironSentinel', 'bulwarkAutomaton', 'sentinelColossus'];
+  const robots = ['clockwork_beetle', 'scrap_hound', 'alloy_myr', 'copper_golem', 'razor_beacon', 'iron_sentinel', 'bulwark_automaton', 'sentinel_colossus'];
   check('all 8 present', robots.every(id => CARDS[id]), robots.filter(id => !CARDS[id]).join(', '));
   check('each is an Artifact Creature (explicit types[]) + colorless',
     robots.every(id => { const c = CARDS[id]; return hasType(c, 'Artifact') && hasType(c, 'Creature') && governingType(c) === 'Creature' && !['W', 'U', 'B', 'R', 'G'].some(k => c.cost && c.cost[k]); }));
   // An instance dies to creature removal AND counts as an artifact.
-  const { inst } = spawn('copperGolem');
+  const { inst } = spawn('copper_golem');
   check('instance: hasType Artifact AND Creature, isPermanent, governs Creature',
     hasType(inst, 'Artifact') && hasType(inst, 'Creature') && isPermanent(inst) && governingType(inst) === 'Creature');
   check('typeLine renders "Artifact Creature — <sub>"', /^Artifact Creature — \S/.test(typeLine(inst)), typeLine(inst));
@@ -152,14 +154,14 @@ console.log('\n=== 8 colorless artifact creatures ===');
 
 console.log('\n=== 6 artifact lands (WUBRG + C), mana DERIVED from basic subtype ===');
 (() => {
-  const lands = ['gildedSeat', 'tidalConduit', 'boneReliquary', 'emberAnvil', 'verdantVerge', 'drossPylon'];
+  const lands = ['gilded_seat', 'tidal_conduit', 'bone_reliquary', 'ember_anvil', 'verdant_verge', 'dross_pylon'];
   check('all 6 present', lands.every(id => CARDS[id]), lands.filter(id => !CARDS[id]).join(', '));
   check('each is Land + Artifact and taps for its color',
     lands.every(id => { const c = CARDS[id]; return hasType(c, 'Land') && hasType(c, 'Artifact') && c.mana && Array.isArray(c.abilities); }));
   // The 5 colored lands carry a basic-land subtype and DERIVE their mana ability
   // from it at ingest (no hand-authored ability in the JSON). Verify the derived
   // ability produces exactly the matching color.
-  const SUBTYPE_COLOR = { gildedSeat: ['Plains', 'W'], tidalConduit: ['Island', 'U'], boneReliquary: ['Swamp', 'B'], emberAnvil: ['Mountain', 'R'], verdantVerge: ['Forest', 'G'] };
+  const SUBTYPE_COLOR = { gilded_seat: ['Plains', 'W'], tidal_conduit: ['Island', 'U'], bone_reliquary: ['Swamp', 'B'], ember_anvil: ['Mountain', 'R'], verdant_verge: ['Forest', 'G'] };
   for (const [id, [sub, color]] of Object.entries(SUBTYPE_COLOR)) {
     check(`${id}: has the ${sub} subtype`, hasType(CARDS[id], sub));
     check(`${id}: subtype derives "{T}: Add {${color}}"`,
@@ -167,10 +169,10 @@ console.log('\n=== 6 artifact lands (WUBRG + C), mana DERIVED from basic subtype
       JSON.stringify(ENGINE.landProducibleColors(CARDS[id])));
   }
   // End-to-end: a derived land actually taps for its color through the real action.
-  RUN.start({ cards: ['gildedSeat'].concat(Array(11).fill('plains')), colors: ['W'] }, null);
+  RUN.start({ cards: ['gilded_seat'].concat(Array(11).fill('plains')), colors: ['W'] }, null);
   RUN.startNextGame();
   const G = ENGINE.state(); G.activePlayer = 'you'; G.priorityHolder = 'you'; G.phase = 'MAIN1';
-  const gs = ENGINE.makeCard('gildedSeat', [], 0); gs.controller = 'you'; gs.owner = 'you'; gs.tapped = false; gs.sick = false;
+  const gs = ENGINE.makeCard('gilded_seat', [], 0); gs.controller = 'you'; gs.owner = 'you'; gs.tapped = false; gs.sick = false;
   G.you.battlefield.push(gs);
   const w0 = G.you.mana.W;
   check('derived land tap is legal', ENGINE.isLegalAction('you', { type: 'tapLandForMana', cardIid: gs.iid }));
@@ -187,7 +189,7 @@ console.log('\n=== 6 artifact lands (WUBRG + C), mana DERIVED from basic subtype
   check('artifact lands qualify for the draft pool', lands.every(inPool));
   check('basic lands still excluded from the draft pool', !inPool('forest') && !inPool('plains'));
   check('artifact creatures + type-change spells qualify too',
-    inPool('copperGolem') && inPool('awakenVault'));
+    inPool('copper_golem') && inPool('awaken_the_vault'));
 })();
 
 console.log('\n=== end-to-end: cast awakenVault through the real action flow ===');
@@ -204,7 +206,7 @@ console.log('\n=== end-to-end: cast awakenVault through the real action flow ===
   const land = ENGINE.makeCard('forest', [], 0);
   land.controller = 'you'; land.owner = 'you'; land.sick = false; land.iid = 7001;
   G.you.battlefield.push(land);
-  const spell = ENGINE.makeCard('awakenVault', [], 0);
+  const spell = ENGINE.makeCard('awaken_the_vault', [], 0);
   spell.controller = 'you'; spell.owner = 'you'; spell.iid = 7002;
   G.you.hand.push(spell);
 
@@ -227,15 +229,15 @@ console.log('\n=== end-to-end: cast awakenVault through the real action flow ===
 
 console.log('\n=== #3: card text narrows "permanent" to the filtered type ===');
 (() => {
-  const aw = describeCardText(CARDS.awakenVault);
+  const aw = describeCardText(CARDS.awaken_the_vault);
   check('awakenVault says "target land" (not "target permanent")',
     /target land/i.test(aw) && !/target permanent/i.test(aw), aw);
   check('golemForge / livingLands / suddenVines also say "target land"',
-    ['golemForge', 'livingLands', 'suddenVines'].every(id => /target land/i.test(describeCardText(CARDS[id]))));
+    ['golem_forge', 'living_lands', 'sudden_vines'].every(id => /target land/i.test(describeCardText(CARDS[id]))));
   check('petrify (target:creature) still says "target creature"',
     /target creature/i.test(describeCardText(CARDS.petrify)));
   check('encaseInAmber (target:permanent, no type filter) still says "target permanent"',
-    /target permanent/i.test(describeCardText(CARDS.encaseInAmber)));
+    /target permanent/i.test(describeCardText(CARDS.encase_in_amber)));
 })();
 
 console.log('\n=== #4: the AI has tooling — it casts a neutralize spell at an enemy creature ===');
@@ -247,10 +249,10 @@ console.log('\n=== #4: the AI has tooling — it casts a neutralize spell at an 
   G.stack = []; G.gameOver = false; G.priority = { passes: new Set() };
   G.you.mana = { W: 9, U: 9, B: 9, R: 9, G: 9, C: 9 };
   G.you.hand = []; G.you.battlefield = []; G.opp.battlefield = [];
-  const enemy = ENGINE.makeCard('sentinelColossus', [], 0);  // a 6/6 worth answering
+  const enemy = ENGINE.makeCard('sentinel_colossus', [], 0);  // a 6/6 worth answering
   enemy.controller = 'opp'; enemy.owner = 'opp'; enemy.iid = 8101; enemy.sick = false;
   G.opp.battlefield.push(enemy);
-  const spell = ENGINE.makeCard('encaseInAmber', [], 0);
+  const spell = ENGINE.makeCard('encase_in_amber', [], 0);
   spell.controller = 'you'; spell.owner = 'you'; spell.iid = 8102;
   G.you.hand.push(spell);
   const dec = AI.decide(G, 'you');
@@ -262,10 +264,10 @@ console.log('\n=== #4: the AI has tooling — it casts a neutralize spell at an 
 
 console.log('\n=== staple same-class UNION: Artifact co-type rides along ===');
 (() => {
-  const vanilla = Object.keys(CARDS).find(id => CARDS[id].type === 'Creature' && !CARDS[id].special && CARDS[id].cost && !CARDS[id].types && !CARDS[id].triggers && !CARDS[id].abilities);
+  const vanilla = Object.keys(CARDS).find(id => CARDS[id].type === 'Creature' && !CARDS[id].special && CARDS[id].cost && !(Array.isArray(CARDS[id].types) && CARDS[id].types.filter(t => isCardTypeTag(t)).length > 1) && !CARDS[id].triggers && !CARDS[id].abilities);
   // Artifact creature as the STAPLE onto a vanilla creature base (the direction
   // that used to drop Artifact — base had no types[]).
-  const syn = ENGINE.synthesizeStapledTemplate(vanilla, ['copperGolem']);
+  const syn = ENGINE.synthesizeStapledTemplate(vanilla, ['copper_golem']);
   check('Cr base + artifact-Cr staple → merged is BOTH Artifact and Creature',
     hasType(syn, 'Artifact') && hasType(syn, 'Creature') && governingType(syn) === 'Creature');
   check('merged carries the staple’s subtype (Golem)', hasType(syn, 'Golem'), typeLine(syn));
@@ -275,14 +277,17 @@ console.log('\n=== staple same-class UNION: Artifact co-type rides along ===');
   check('Cr base + Land staple → Creature, NOT a Land (collapse preserved)',
     hasType(synLand, 'Creature') && !hasType(synLand, 'Land'));
   // Artifact LAND staple: Land collapses, but the Artifact co-type rides along.
-  const synArtLand = ENGINE.synthesizeStapledTemplate(vanilla, ['gildedSeat']);
+  const synArtLand = ENGINE.synthesizeStapledTemplate(vanilla, ['gilded_seat']);
   check('Cr base + artifact-Land staple → Artifact rides, Land collapses',
     hasType(synArtLand, 'Artifact') && hasType(synArtLand, 'Creature') && !hasType(synArtLand, 'Land'));
-  // Single-type staple is untouched (no spurious types[] forced).
-  const vanilla2 = Object.keys(CARDS).find(id => id !== vanilla && CARDS[id].type === 'Creature' && !CARDS[id].special && CARDS[id].cost && !CARDS[id].types && !CARDS[id].triggers && !CARDS[id].abilities);
+  // Vanilla Cr + vanilla Cr staple forces no spurious CO-TYPE (Artifact). Post
+  // id-normalization every card carries types[], so the merge legitimately has
+  // one too — the real invariant is that it stays a plain Creature with no
+  // Artifact/Enchantment co-type bolted on, governing as Creature.
+  const vanilla2 = Object.keys(CARDS).find(id => id !== vanilla && CARDS[id].type === 'Creature' && !CARDS[id].special && CARDS[id].cost && !(Array.isArray(CARDS[id].types) && CARDS[id].types.filter(t => isCardTypeTag(t)).length > 1) && !CARDS[id].triggers && !CARDS[id].abilities);
   const synPlain = ENGINE.synthesizeStapledTemplate(vanilla, [vanilla2]);
-  check('vanilla Cr + vanilla Cr staple → no explicit types[] forced (derives from type/sub)',
-    !Array.isArray(synPlain.types) && governingType(synPlain) === 'Creature' && !hasType(synPlain, 'Artifact'));
+  check('vanilla Cr + vanilla Cr staple → governs Creature, no spurious Artifact co-type',
+    governingType(synPlain) === 'Creature' && !hasType(synPlain, 'Artifact') && !hasType(synPlain, 'Enchantment'));
 })();
 
 console.log('\n=== boot validation clean (effects + card-text + coverage) ===');

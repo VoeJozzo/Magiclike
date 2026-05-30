@@ -19,5 +19,8 @@
   "name": "Pacifism",
   "text": "Target creature can't attack or block.",
   "type": "Sorcery",
-  "custom_text": true
+  "custom_text": true,
+  "types": [
+    "Sorcery"
+  ]
 }

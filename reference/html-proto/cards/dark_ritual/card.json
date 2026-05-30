@@ -1,0 +1,23 @@
+{
+  "card_id": "dark_ritual",
+  "art": "🕯",
+  "cost": {
+    "B": 1
+  },
+  "effects": [
+    {
+      "kind": "add_mana",
+      "amounts": {
+        "B": 3
+      }
+    }
+  ],
+  "name": "Dark Ritual",
+  "type": "Sorcery",
+  "keywords": [
+    "flash"
+  ],
+  "types": [
+    "Sorcery"
+  ]
+}

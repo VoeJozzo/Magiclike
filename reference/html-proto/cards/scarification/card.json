@@ -18,5 +18,8 @@
   ],
   "name": "Scarification",
   "special": true,
-  "type": "Sorcery"
+  "type": "Sorcery",
+  "types": [
+    "Sorcery"
+  ]
 }

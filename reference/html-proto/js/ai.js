@@ -1628,7 +1628,7 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
     return 10 + pow;
   }
   if (eff.kind === 'move_card') {
-    // Collapsed discard (hand→graveyard) targeting a player — duress/mindrot.
+    // Collapsed discard (hand→graveyard) targeting a player — duress/mind_rot.
     // Only worth aiming at the opponent; value scales with cards stripped.
     if (eff.from_zone === 'hand' && eff.to_zone === 'graveyard') {
       if (target.kind !== 'player' || target.who !== them) return -100;

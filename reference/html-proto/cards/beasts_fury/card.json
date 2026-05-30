@@ -1,0 +1,19 @@
+{
+  "card_id": "beasts_fury",
+  "art": "🐺",
+  "cost": {
+    "G": 1,
+    "C": 1
+  },
+  "target": "opp_creature",
+  "effects": [
+    {
+      "kind": "fight_target"
+    }
+  ],
+  "name": "Beast's Fury",
+  "type": "Sorcery",
+  "types": [
+    "Sorcery"
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "card_id": "anger_hound",
+  "art": "cards/angerHound/art.png",
+  "cost": {
+    "R": 1,
+    "C": 1
+  },
+  "name": "Anger Hound",
+  "power": 2,
+  "sub": "Hound",
+  "toughness": 1,
+  "triggers": [
+    {
+      "event": "spell_cast",
+      "condition": [
+        "another_card",
+        "controlled_by(you)"
+      ],
+      "text": "Spell cast — ~ gets +1/+0 EOT.",
+      "effects": [
+        {
+          "kind": "pump",
+          "power": 1,
+          "toughness": 0,
+          "scope": "self"
+        }
+      ]
+    }
+  ],
+  "type": "Creature",
+  "types": [
+    "Creature",
+    "Hound"
+  ]
+}

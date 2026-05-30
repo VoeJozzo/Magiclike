@@ -1,0 +1,37 @@
+{
+  "card_id": "lore_seeker",
+  "art": "cards/loreSeeker/art.png",
+  "cost": {
+    "U": 2,
+    "C": 3
+  },
+  "name": "Lore Seeker",
+  "power": 1,
+  "sub": "Human Wizard",
+  "toughness": 4,
+  "triggers": [
+    {
+      "event": "spell_cast",
+      "condition": [
+        "another_card",
+        "controlled_by(you)"
+      ],
+      "text": "When you cast a spell, draw a card.",
+      "effects": [
+        {
+          "kind": "move_card",
+          "from_zone": "library",
+          "to_zone": "hand",
+          "selector": "controller_top",
+          "amount": 1
+        }
+      ]
+    }
+  ],
+  "type": "Creature",
+  "types": [
+    "Creature",
+    "Human",
+    "Wizard"
+  ]
+}

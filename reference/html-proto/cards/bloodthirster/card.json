@@ -29,5 +29,9 @@
       "target": "creature_or_player"
     }
   ],
-  "type": "Creature"
+  "type": "Creature",
+  "types": [
+    "Creature",
+    "Vampire"
+  ]
 }

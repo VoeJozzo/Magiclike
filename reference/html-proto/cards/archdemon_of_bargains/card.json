@@ -1,0 +1,52 @@
+{
+  "card_id": "archdemon_of_bargains",
+  "art": "👹",
+  "cost": {
+    "B": 2,
+    "C": 3
+  },
+  "keywords": [
+    "flying",
+    "trample"
+  ],
+  "name": "Archdemon of Bargains",
+  "power": 5,
+  "special": true,
+  "sub": "Demon",
+  "text": "Flying, Trample. When this enters, you choose a number from 1 to 5; put that many stickers on permanents this controls. When this leaves play, put that many stickers on permanents you control.",
+  "toughness": 5,
+  "triggers": [
+    {
+      "event": "card_zone_change",
+      "condition": [
+        "this_card",
+        "card_moves(anywhere, battlefield)"
+      ],
+      "text": "When ~ enters, you choose 1-5: put that many stickers on permanents ~'s controller has.",
+      "effects": [
+        {
+          "kind": "bargain_sticker_self"
+        }
+      ]
+    },
+    {
+      "event": "card_zone_change",
+      "condition": [
+        "this_card",
+        "card_moves(battlefield, anywhere)"
+      ],
+      "text": "When ~ leaves play, put N stickers on the opposing player's permanents (N = chosen number).",
+      "effects": [
+        {
+          "kind": "bargain_sticker_other"
+        }
+      ]
+    }
+  ],
+  "type": "Creature",
+  "custom_text": true,
+  "types": [
+    "Creature",
+    "Demon"
+  ]
+}

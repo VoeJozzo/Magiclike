@@ -1,0 +1,20 @@
+{
+  "card_id": "abyss_lurker",
+  "art": "👁",
+  "cost": {
+    "B": 2,
+    "C": 3
+  },
+  "keywords": [
+    "flying"
+  ],
+  "name": "Abyss Lurker",
+  "power": 5,
+  "sub": "Horror",
+  "toughness": 3,
+  "type": "Creature",
+  "types": [
+    "Creature",
+    "Horror"
+  ]
+}

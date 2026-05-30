@@ -1,0 +1,20 @@
+{
+  "card_id": "volcanic_hammer",
+  "art": "cards/fireball/art.png",
+  "cost": {
+    "R": 1,
+    "C": 2
+  },
+  "target": "creature_or_player",
+  "effects": [
+    {
+      "kind": "damage",
+      "amount": 4
+    }
+  ],
+  "name": "Volcanic Hammer",
+  "type": "Sorcery",
+  "types": [
+    "Sorcery"
+  ]
+}

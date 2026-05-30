@@ -1,0 +1,33 @@
+{
+  "card_id": "apex_hunter",
+  "art": "🐯",
+  "cost": {
+    "G": 2,
+    "C": 2
+  },
+  "name": "Apex Hunter",
+  "power": 4,
+  "sub": "Beast",
+  "toughness": 3,
+  "triggers": [
+    {
+      "event": "card_zone_change",
+      "condition": [
+        "this_card",
+        "card_moves(anywhere, battlefield)"
+      ],
+      "text": "When ~ enters, fight target creature.",
+      "effects": [
+        {
+          "kind": "fight_target"
+        }
+      ],
+      "target": "opp_creature"
+    }
+  ],
+  "type": "Creature",
+  "types": [
+    "Creature",
+    "Beast"
+  ]
+}

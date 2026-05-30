@@ -1,0 +1,28 @@
+{
+  "card_id": "awaken_the_vault",
+  "name": "Awaken the Vault",
+  "art": "🗿",
+  "cost": {
+    "G": 1,
+    "C": 2
+  },
+  "type": "Sorcery",
+  "target": "permanent",
+  "target_filter": {
+    "type": "Land"
+  },
+  "effects": [
+    {
+      "kind": "add_type",
+      "types": [
+        "Creature"
+      ],
+      "power": 3,
+      "toughness": 3,
+      "duration": "eot"
+    }
+  ],
+  "types": [
+    "Sorcery"
+  ]
+}

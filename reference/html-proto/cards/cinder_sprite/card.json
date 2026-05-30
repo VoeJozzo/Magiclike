@@ -1,0 +1,21 @@
+{
+  "card_id": "cinder_sprite",
+  "art": "cards/cinderSprite/art.png",
+  "cost": {
+    "R": 1,
+    "C": 1
+  },
+  "keywords": [
+    "flying",
+    "haste"
+  ],
+  "name": "Cinder Sprite",
+  "power": 1,
+  "sub": "Imp",
+  "toughness": 1,
+  "type": "Creature",
+  "types": [
+    "Creature",
+    "Imp"
+  ]
+}

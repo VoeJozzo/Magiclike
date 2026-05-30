@@ -1,0 +1,37 @@
+{
+  "card_id": "grave_curate",
+  "art": "⚱",
+  "cost": {
+    "B": 1,
+    "C": 2
+  },
+  "name": "Grave Curate",
+  "power": 2,
+  "sub": "Human Cleric",
+  "toughness": 2,
+  "triggers": [
+    {
+      "event": "card_zone_change",
+      "condition": [
+        "this_card",
+        "card_moves(battlefield, graveyard)"
+      ],
+      "text": "When ~ dies, target opp discards.",
+      "effects": [
+        {
+          "kind": "move_card",
+          "from_zone": "hand",
+          "to_zone": "graveyard",
+          "amount": 1
+        }
+      ],
+      "target": "opp"
+    }
+  ],
+  "type": "Creature",
+  "types": [
+    "Creature",
+    "Human",
+    "Cleric"
+  ]
+}

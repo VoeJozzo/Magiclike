@@ -1,0 +1,34 @@
+{
+  "card_id": "feral_stalker",
+  "art": "cards/feralStalker/art.png",
+  "cost": {
+    "G": 1,
+    "C": 2
+  },
+  "name": "Feral Stalker",
+  "power": 2,
+  "sub": "Cat",
+  "toughness": 2,
+  "triggers": [
+    {
+      "event": "attacks",
+      "condition": [
+        "this_card"
+      ],
+      "text": "When ~ attacks, it gets +2/+2 EOT.",
+      "effects": [
+        {
+          "kind": "pump",
+          "power": 2,
+          "toughness": 2,
+          "scope": "self"
+        }
+      ]
+    }
+  ],
+  "type": "Creature",
+  "types": [
+    "Creature",
+    "Cat"
+  ]
+}

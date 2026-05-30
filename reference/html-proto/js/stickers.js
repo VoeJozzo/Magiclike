@@ -93,6 +93,13 @@ function applyStickersToCard(card) {
       if (!tokens.includes(rolled)) {
         tokens.push(rolled);
         card.sub = tokens.join(' ');
+        // If the card carries an explicit types[] (multi-type cards, and now all
+        // cards post-id-normalization), typesOf reads it and IGNORES card.sub —
+        // so the rolled subtype must be pushed onto types[] too, or the lord
+        // buffs that match on it (hasType) never see it.
+        if (Array.isArray(card.types) && !card.types.includes(rolled)) {
+          card.types.push(rolled);
+        }
       }
     } else {
       applyStickerKindEffect(card, s);

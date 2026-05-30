@@ -50,10 +50,10 @@ console.log('=== Doom Blade: target_filter not_color B — cannot hit a black cr
   const black = mkCreature('opp', { color: 'B', colors: ['B'] });
   const white = mkCreature('opp', { color: 'W', colors: ['W'] });
   G.opp.battlefield.push(black, white);
-  check('CARDS.doomBlade migrated to target+target_filter',
-    CARDS.doomBlade.target === 'creature' && CARDS.doomBlade.target_filter && CARDS.doomBlade.target_filter.not_color === 'B');
-  check('illegal vs a black creature', !canCast(G, 'doomBlade', black));
-  check('legal vs a non-black creature', canCast(G, 'doomBlade', white));
+  check('CARDS.doom_blade migrated to target+target_filter',
+    CARDS.doom_blade.target === 'creature' && CARDS.doom_blade.target_filter && CARDS.doom_blade.target_filter.not_color === 'B');
+  check('illegal vs a black creature', !canCast(G, 'doom_blade', black));
+  check('legal vs a non-black creature', canCast(G, 'doom_blade', white));
 })();
 
 console.log('\n=== Ravenous Plague: max_tough 3 — cannot hit a fat creature ===');
@@ -62,8 +62,8 @@ console.log('\n=== Ravenous Plague: max_tough 3 — cannot hit a fat creature ==
   const small = mkCreature('opp', { toughness: 3 });
   const fat = mkCreature('opp', { toughness: 5 });
   G.opp.battlefield.push(small, fat);
-  check('legal vs toughness 3', canCast(G, 'ravenousPlague', small));
-  check('illegal vs toughness 5', !canCast(G, 'ravenousPlague', fat));
+  check('legal vs toughness 3', canCast(G, 'ravenous_plague', small));
+  check('illegal vs toughness 5', !canCast(G, 'ravenous_plague', fat));
 })();
 
 console.log('\n=== Smite: tapped only ===');
@@ -72,8 +72,8 @@ console.log('\n=== Smite: tapped only ===');
   const tapped = mkCreature('opp', { tapped: true });
   const untapped = mkCreature('opp', { tapped: false });
   G.opp.battlefield.push(tapped, untapped);
-  check('legal vs a tapped creature', canCast(G, 'smite', tapped));
-  check('illegal vs an untapped creature', !canCast(G, 'smite', untapped));
+  check('legal vs a tapped creature', canCast(G, 'smite_the_wicked', tapped));
+  check('illegal vs an untapped creature', !canCast(G, 'smite_the_wicked', untapped));
 })();
 
 console.log('\n=== Vine Strangle: opp_creature + flying ===');
@@ -84,9 +84,9 @@ console.log('\n=== Vine Strangle: opp_creature + flying ===');
   const yourFlyer = mkCreature('you', { keywords: ['flying'] });
   G.opp.battlefield.push(oppFlyer, oppGround);
   G.you.battlefield.push(yourFlyer);
-  check('legal vs an opp flyer', canCast(G, 'vinestrangle', oppFlyer));
-  check('illegal vs an opp non-flyer', !canCast(G, 'vinestrangle', oppGround));
-  check('illegal vs YOUR flyer (opp_creature excludes your side)', !canCast(G, 'vinestrangle', yourFlyer));
+  check('legal vs an opp flyer', canCast(G, 'vine_strangle', oppFlyer));
+  check('illegal vs an opp non-flyer', !canCast(G, 'vine_strangle', oppGround));
+  check('illegal vs YOUR flyer (opp_creature excludes your side)', !canCast(G, 'vine_strangle', yourFlyer));
 })();
 
 console.log('\n=== highlight path honors the restriction (render isValidTargetCreature) ===');

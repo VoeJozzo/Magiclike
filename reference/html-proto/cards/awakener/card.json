@@ -28,5 +28,10 @@
       "target": "your_creature"
     }
   ],
-  "type": "Creature"
+  "type": "Creature",
+  "types": [
+    "Creature",
+    "Elf",
+    "Druid"
+  ]
 }

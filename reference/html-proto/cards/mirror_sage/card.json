@@ -1,0 +1,32 @@
+{
+  "card_id": "mirror_sage",
+  "abilities": [
+    {
+      "cost": {
+        "tap": true
+      },
+      "effects": [
+        {
+          "kind": "affect_creature",
+          "severity": "tap"
+        }
+      ],
+      "target": "creature"
+    }
+  ],
+  "art": "🪞",
+  "cost": {
+    "U": 1,
+    "C": 1
+  },
+  "name": "Mirror Sage",
+  "power": 1,
+  "sub": "Human Wizard",
+  "toughness": 2,
+  "type": "Creature",
+  "types": [
+    "Creature",
+    "Human",
+    "Wizard"
+  ]
+}

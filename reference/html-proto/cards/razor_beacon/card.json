@@ -1,0 +1,20 @@
+{
+  "card_id": "razor_beacon",
+  "name": "Razor Beacon",
+  "art": "🛸",
+  "cost": {
+    "C": 3
+  },
+  "type": "Creature",
+  "types": [
+    "Artifact",
+    "Creature",
+    "Drone"
+  ],
+  "sub": "Drone",
+  "power": 2,
+  "toughness": 2,
+  "keywords": [
+    "flying"
+  ]
+}

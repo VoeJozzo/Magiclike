@@ -1,0 +1,20 @@
+{
+  "card_id": "ancient_hydra",
+  "art": "🐲",
+  "cost": {
+    "G": 2,
+    "C": 5
+  },
+  "keywords": [
+    "trample"
+  ],
+  "name": "Ancient Hydra",
+  "power": 7,
+  "sub": "Hydra",
+  "toughness": 7,
+  "type": "Creature",
+  "types": [
+    "Creature",
+    "Hydra"
+  ]
+}

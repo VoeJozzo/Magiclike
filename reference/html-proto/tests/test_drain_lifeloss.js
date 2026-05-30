@@ -16,9 +16,9 @@ function check(label, ok, info) {
   if (ok) pass++; else fail++;
 }
 
-const DRAIN = ['bloodArtist', 'bloodPriest', 'bloodthirstyStalker', 'cultPriest', 'demonicTutor',
-  'dreadKnightV2', 'dreadWraith', 'fallenChampion', 'goblinChieftain', 'graveCharm',
-  'lifeForLife', 'spitefulImp', 'vexingOgre', 'wickedAcolyte'];
+const DRAIN = ['blood_artist', 'blood_priest', 'bloodthirsty_stalker', 'cult_priest', 'demonic_tutor',
+  'dread_knight', 'dread_wraith', 'fallen_champion', 'goblin_chieftain', 'grave_charm',
+  'final_strike', 'spiteful_imp', 'vexing_ogre', 'wicked_acolyte'];
 
 console.log('=== no drain card deals damage to a player anymore (all signed gain_life) ===');
 (() => {
@@ -67,7 +67,7 @@ console.log('\n=== Blood Priest drains the OPPONENT (and tracks life loss) ===')
 (() => {
   const G = game('opp');                 // opp casts → drains "you"
   const youLife0 = G.you.life;
-  const bp = mk('bloodPriest', 'opp'); G.opp.hand.push(bp);
+  const bp = mk('blood_priest', 'opp'); G.opp.hand.push(bp);
   ENGINE.executeAction('opp', { type: 'castSpell', cardIid: bp.iid });
   drain(G);
   check('opponent (you) lost 2 life', G.you.life === youLife0 - 2, youLife0 + '→' + G.you.life);
@@ -81,7 +81,7 @@ console.log('\n=== Demonic Tutor: the "you lose 2 life" is self life loss ===');
   const myLife0 = G.you.life;
   // seed library with a creature so the search has something
   G.you.library.push(mk(Object.keys(CARDS).find(k => CARDS[k].type === 'Creature' && !CARDS[k].special), 'you'));
-  const dt = mk('demonicTutor', 'you'); G.you.hand.push(dt);
+  const dt = mk('demonic_tutor', 'you'); G.you.hand.push(dt);
   ENGINE.executeAction('you', { type: 'castSpell', cardIid: dt.iid });
   drain(G);
   check('caster lost 2 life (self drain)', G.you.life === myLife0 - 2, myLife0 + '→' + G.you.life);
@@ -90,13 +90,13 @@ console.log('\n=== Demonic Tutor: the "you lose 2 life" is self life loss ===');
 console.log('\n=== AI still values + casts a drain creature (not undervalued) ===');
 (() => {
   // abilityValue must score the drain trigger positively; getCardValue reflects it.
-  const v = ENGINE.getCardValue(CARDS.bloodPriest, 'play');
+  const v = ENGINE.getCardValue(CARDS.blood_priest, 'play');
   check('bloodPriest has positive card value (drain trigger valued, not negative)', v > 0, 'value=' + v);
   // And the AI actually casts it when it's the only play (clear the dealt hand
   // so it doesn't prefer a land drop or another spell).
   const G = game('opp');
   G.opp.hand.length = 0;
-  const bp = mk('bloodPriest', 'opp'); G.opp.hand.push(bp);
+  const bp = mk('blood_priest', 'opp'); G.opp.hand.push(bp);
   const dec = AI.decide(G, 'opp');
   check('AI casts the drain creature', !!dec && dec.type === 'castSpell' && dec.cardIid === bp.iid,
     dec ? dec.type : 'null');

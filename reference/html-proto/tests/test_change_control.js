@@ -85,7 +85,7 @@ console.log('\n=== Steal on a STAPLED opp creature transfers the WHOLE staple (n
   G.stack = []; G.gameOver = false; G.priority = { passes: new Set() };
   G.you.mana = { W: 0, U: 0, B: 0, R: 0, G: 0, C: 9 };
 
-  const stapled = ENGINE.makeCard('savannahLions', undefined, 0, undefined, undefined, undefined, ['furnaceWhelp']);
+  const stapled = ENGINE.makeCard('savannah_lions', undefined, 0, undefined, undefined, undefined, ['furnace_whelp']);
   stapled.controller = 'opp'; stapled.owner = 'opp'; stapled.sick = false;
   G.opp.battlefield.push(stapled);
   check('opp stapled creature is the merged 4/3 flying (sanity)',
@@ -104,13 +104,13 @@ console.log('\n=== Steal on a STAPLED opp creature transfers the WHOLE staple (n
     ENGINE.executeAction(w, { type: 'pass' });
   }
   const stolen = [...G.you.library, ...G.you.hand, ...G.you.battlefield]
-    .find(c => c.tplId === 'savannahLions' && c.owner === 'you');
+    .find(c => c.tplId === 'savannah_lions' && c.owner === 'you');
   check('the stolen card exists, owned by you', !!stolen);
   check('the stolen card kept the WHOLE staple (4/3 flying + stapledTpls), not the bare 2/1 base',
     !!stolen && JSON.stringify(ENGINE.getStats(stolen)) === '[4,3]'
       && (stolen.keywords || []).includes('flying')
       && stolen.stapledFrom && Array.isArray(stolen.stapledFrom.stapledTpls)
-      && stolen.stapledFrom.stapledTpls.includes('furnaceWhelp'),
+      && stolen.stapledFrom.stapledTpls.includes('furnace_whelp'),
     stolen ? (JSON.stringify(ENGINE.getStats(stolen)) + ' kw=' + JSON.stringify(stolen.keywords)
       + ' staple=' + JSON.stringify(stolen.stapledFrom && stolen.stapledFrom.stapledTpls)) : 'no stolen card');
 })();

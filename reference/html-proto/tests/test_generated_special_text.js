@@ -19,7 +19,7 @@ console.log('=== `special` alone no longer forces authored text ===');
 (() => {
   // vileEdict / symmetricize / endomorph / bleach / embargo are special:true but
   // carry NO custom_text → they must generate from their effects.
-  for (const id of ['vileEdict', 'symmetricize', 'endomorph', 'bleach', 'embargo']) {
+  for (const id of ['vile_edict', 'symmetricize', 'endomorph', 'bleach', 'embargo']) {
     check(id + ' is special but not custom_text', CARDS[id].special === true && CARDS[id].custom_text !== true);
   }
 })();
@@ -27,7 +27,7 @@ console.log('=== `special` alone no longer forces authored text ===');
 console.log('\n=== the moved cards generate accurate text (not sentinel/empty) ===');
 (() => {
   const want = {
-    vileEdict: 'Target opponent rips a permanent they control.',
+    vile_edict: 'Target opponent rips a permanent they control.',
     symmetricize: "Target creature's controller equalizes its power, toughness, or cost.",
     bleach: 'Exile target creature; it becomes colorless, including its mana cost, permanently.',
     embargo: "Return target creature to its owner's hand; it costs {1} more permanently.",
@@ -40,13 +40,13 @@ console.log('\n=== the moved cards generate accurate text (not sentinel/empty) =
 console.log('\n=== apply_sticker + move_card idiom is not a false-match on flicker/exile-eot ===');
 (() => {
   check('cloudshift (flicker) still renders its idiom', /return it to the battlefield/.test(r(CARDS.cloudshift)));
-  check('otherworldlyJourney (exile-until-eot) unchanged', /at end of turn/.test(r(CARDS.otherworldlyJourney)));
+  check('otherworldlyJourney (exile-until-eot) unchanged', /at end of turn/.test(r(CARDS.otherworldly_journey)));
 })();
 
 console.log('\n=== cards that genuinely need authored text keep custom_text:true ===');
 (() => {
-  for (const id of ['cityGuardian', 'phylactery', 'elystra', 'stapler', 'architectsCodex',
-                    'archdemonBargains', 'steal', 'pacifism']) {
+  for (const id of ['city_guardian', 'phylactery', 'elystra_the_immortal', 'stapler', 'architects_codex',
+                    'archdemon_of_bargains', 'steal', 'pacifism']) {
     check(id + ' keeps custom_text:true', CARDS[id].custom_text === true);
   }
 })();

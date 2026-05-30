@@ -13,5 +13,8 @@
     }
   ],
   "name": "Pyroclasm",
-  "type": "Sorcery"
+  "type": "Sorcery",
+  "types": [
+    "Sorcery"
+  ]
 }

@@ -70,10 +70,10 @@ console.log('=== Symmetricize sets up pendingSymmetricizeChoice ===');
   // Use Devoted Watcher (ancestralGuard) — power=1, toughness=3,
   // cost=2 ({W:1,C:1}). All three values differ, so each choice
   // produces a visibly distinct outcome.
-  const G = makeBaselineGame(['ancestralGuard','plains','plains','plains','plains','plains','plains','plains','plains','plains','plains','plains']);
+  const G = makeBaselineGame(['devoted_watcher','plains','plains','plains','plains','plains','plains','plains','plains','plains','plains','plains']);
   const slots = RUN.getSlots();
-  const piercerSlotIdx = slots.findIndex(s => s.tplId === 'ancestralGuard');
-  const piercer = mk('ancestralGuard', 'you');
+  const piercerSlotIdx = slots.findIndex(s => s.tplId === 'devoted_watcher');
+  const piercer = mk('devoted_watcher', 'you');
   piercer.slotIdx = piercerSlotIdx;
   G.you.battlefield.push(piercer);
 
@@ -110,10 +110,10 @@ console.log('=== Symmetricize sets up pendingSymmetricizeChoice ===');
 
 console.log('\n=== Submitting symmetricizeChoice collapses stats + persists to slot ===');
 {
-  const G = makeBaselineGame(['ancestralGuard','plains','plains','plains','plains','plains','plains','plains','plains','plains','plains','plains']);
+  const G = makeBaselineGame(['devoted_watcher','plains','plains','plains','plains','plains','plains','plains','plains','plains','plains','plains']);
   const slots = RUN.getSlots();
-  const piercerSlotIdx = slots.findIndex(s => s.tplId === 'ancestralGuard');
-  const piercer = mk('ancestralGuard', 'you');
+  const piercerSlotIdx = slots.findIndex(s => s.tplId === 'devoted_watcher');
+  const piercer = mk('devoted_watcher', 'you');
   piercer.slotIdx = piercerSlotIdx;
   G.you.battlefield.push(piercer);
 
@@ -156,10 +156,10 @@ console.log('\n=== Submitting symmetricizeChoice collapses stats + persists to s
 
 console.log("\n=== Picking 'power' on Watcher (power=1) collapses to 1/1 cost {C:1} ===");
 {
-  const G = makeBaselineGame(['ancestralGuard','plains','plains','plains','plains','plains','plains','plains','plains','plains','plains','plains']);
+  const G = makeBaselineGame(['devoted_watcher','plains','plains','plains','plains','plains','plains','plains','plains','plains','plains','plains']);
   const slots = RUN.getSlots();
-  const piercerSlotIdx = slots.findIndex(s => s.tplId === 'ancestralGuard');
-  const piercer = mk('ancestralGuard', 'you');
+  const piercerSlotIdx = slots.findIndex(s => s.tplId === 'devoted_watcher');
+  const piercer = mk('devoted_watcher', 'you');
   piercer.slotIdx = piercerSlotIdx;
   G.you.battlefield.push(piercer);
 
@@ -186,10 +186,10 @@ console.log("\n=== Picking 'power' on Watcher (power=1) collapses to 1/1 cost {C
 
 console.log('\n=== Out-of-set choices are rejected (validates whitelist) ===');
 {
-  const G = makeBaselineGame(['ancestralGuard','plains','plains','plains','plains','plains','plains','plains','plains','plains','plains','plains']);
+  const G = makeBaselineGame(['devoted_watcher','plains','plains','plains','plains','plains','plains','plains','plains','plains','plains','plains']);
   const slots = RUN.getSlots();
-  const piercerSlotIdx = slots.findIndex(s => s.tplId === 'ancestralGuard');
-  const piercer = mk('ancestralGuard', 'you');
+  const piercerSlotIdx = slots.findIndex(s => s.tplId === 'devoted_watcher');
+  const piercer = mk('devoted_watcher', 'you');
   piercer.slotIdx = piercerSlotIdx;
   G.you.battlefield.push(piercer);
 
@@ -215,12 +215,12 @@ console.log('\n=== Out-of-set choices are rejected (validates whitelist) ===');
 
 console.log('\n=== Number choice: Archdemon ETB opens 1-5 prompt for the CONTROLLER ===');
 {
-  if (!CARDS['archdemonBargains']) {
+  if (!CARDS['archdemon_of_bargains']) {
     console.log('  (archdemonBargains not in CARDS -- skipping)');
   } else {
     const G = makeBaselineGame();
     // Put Archdemon in opp's hand with enough mana to cast.
-    const demon = mk('archdemonBargains', 'opp');
+    const demon = mk('archdemon_of_bargains', 'opp');
     G.opp.hand.push(demon);
     G.opp.mana.B = 2; G.opp.mana.C = 3;
     readyForCast(G, 'opp');
@@ -250,11 +250,11 @@ console.log('\n=== Number choice: Archdemon ETB opens 1-5 prompt for the CONTROL
 
 console.log('\n=== Submitting numberChoice stashes N on source + clears the prompt ===');
 {
-  if (!CARDS['archdemonBargains']) {
+  if (!CARDS['archdemon_of_bargains']) {
     console.log('  (archdemonBargains not in CARDS -- skipping)');
   } else {
     const G = makeBaselineGame();
-    const demon = mk('archdemonBargains', 'opp');
+    const demon = mk('archdemon_of_bargains', 'opp');
     G.opp.hand.push(demon);
     G.opp.mana.B = 2; G.opp.mana.C = 3;
     readyForCast(G, 'opp');
@@ -281,11 +281,11 @@ console.log('\n=== Submitting numberChoice stashes N on source + clears the prom
 
 console.log('\n=== Out-of-range numbers are rejected ===');
 {
-  if (!CARDS['archdemonBargains']) {
+  if (!CARDS['archdemon_of_bargains']) {
     console.log('  (archdemonBargains not in CARDS -- skipping)');
   } else {
     const G = makeBaselineGame();
-    const demon = mk('archdemonBargains', 'opp');
+    const demon = mk('archdemon_of_bargains', 'opp');
     G.opp.hand.push(demon);
     G.opp.mana.B = 2; G.opp.mana.C = 3;
     readyForCast(G, 'opp');

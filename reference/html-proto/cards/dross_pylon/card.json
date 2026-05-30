@@ -1,0 +1,26 @@
+{
+  "card_id": "dross_pylon",
+  "name": "Dross Pylon",
+  "art": "🗼",
+  "type": "Land",
+  "types": [
+    "Artifact",
+    "Land"
+  ],
+  "mana": "C",
+  "abilities": [
+    {
+      "cost": {
+        "tap": true
+      },
+      "effects": [
+        {
+          "kind": "add_mana",
+          "amounts": {
+            "C": 1
+          }
+        }
+      ]
+    }
+  ]
+}

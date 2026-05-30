@@ -1,0 +1,37 @@
+{
+  "card_id": "binding_angel",
+  "art": "cards/bindingAngel/art.png",
+  "cost": {
+    "W": 2,
+    "C": 4
+  },
+  "keywords": [
+    "flying"
+  ],
+  "name": "Binding Angel",
+  "power": 3,
+  "sub": "Angel",
+  "toughness": 4,
+  "triggers": [
+    {
+      "event": "card_zone_change",
+      "condition": [
+        "this_card",
+        "card_moves(anywhere, battlefield)"
+      ],
+      "text": "When ~ enters, tap target creature.",
+      "effects": [
+        {
+          "kind": "affect_creature",
+          "severity": "tap"
+        }
+      ],
+      "target": "creature"
+    }
+  ],
+  "type": "Creature",
+  "types": [
+    "Creature",
+    "Angel"
+  ]
+}

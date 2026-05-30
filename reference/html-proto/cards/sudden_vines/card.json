@@ -1,0 +1,30 @@
+{
+  "card_id": "sudden_vines",
+  "name": "Sudden Vines",
+  "art": "🌿",
+  "cost": {
+    "G": 1
+  },
+  "type": "Sorcery",
+  "keywords": [
+    "flash"
+  ],
+  "target": "permanent",
+  "target_filter": {
+    "type": "Land"
+  },
+  "effects": [
+    {
+      "kind": "add_type",
+      "types": [
+        "Creature"
+      ],
+      "power": 1,
+      "toughness": 1,
+      "duration": "eot"
+    }
+  ],
+  "types": [
+    "Sorcery"
+  ]
+}

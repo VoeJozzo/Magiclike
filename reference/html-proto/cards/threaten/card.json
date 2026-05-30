@@ -15,5 +15,8 @@
     }
   ],
   "name": "Threaten",
-  "type": "Sorcery"
+  "type": "Sorcery",
+  "types": [
+    "Sorcery"
+  ]
 }

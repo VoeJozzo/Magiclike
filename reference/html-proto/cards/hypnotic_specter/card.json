@@ -1,0 +1,38 @@
+{
+  "card_id": "hypnotic_specter",
+  "art": "😱",
+  "cost": {
+    "B": 2,
+    "C": 1
+  },
+  "keywords": [
+    "flying"
+  ],
+  "name": "Hypnotic Specter",
+  "power": 2,
+  "sub": "Specter",
+  "toughness": 2,
+  "triggers": [
+    {
+      "event": "attacks",
+      "condition": [
+        "this_card"
+      ],
+      "text": "When ~ attacks, target opponent discards a card.",
+      "effects": [
+        {
+          "kind": "move_card",
+          "from_zone": "hand",
+          "to_zone": "graveyard",
+          "amount": 1
+        }
+      ],
+      "target": "opp"
+    }
+  ],
+  "type": "Creature",
+  "types": [
+    "Creature",
+    "Specter"
+  ]
+}

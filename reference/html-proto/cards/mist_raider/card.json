@@ -1,0 +1,37 @@
+{
+  "card_id": "mist_raider",
+  "art": "⚓",
+  "cost": {
+    "U": 1,
+    "C": 3
+  },
+  "keywords": [
+    "flying"
+  ],
+  "name": "Mist Raider",
+  "power": 2,
+  "sub": "Human Pirate",
+  "toughness": 3,
+  "triggers": [
+    {
+      "event": "attacks",
+      "condition": [
+        "this_card"
+      ],
+      "text": "When ~ attacks, bounce target creature.",
+      "effects": [
+        {
+          "kind": "affect_creature",
+          "severity": "bounce"
+        }
+      ],
+      "target": "creature"
+    }
+  ],
+  "type": "Creature",
+  "types": [
+    "Creature",
+    "Human",
+    "Pirate"
+  ]
+}

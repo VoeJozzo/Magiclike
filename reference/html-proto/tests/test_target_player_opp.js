@@ -27,9 +27,9 @@ console.log('=== opp-targeting cards: text says "opponent" AND only the opponent
   // representative migrated cards
   const want = {
     duress: /target opponent discards/i,
-    bloodPriest: /target opponent loses 2 life/i,
-    diabolicEdict: /target opponent sacrifices/i,
-    goblinChieftain: /target opponent loses 1 life/i,
+    blood_priest: /target opponent loses 2 life/i,
+    diabolic_edict: /target opponent sacrifices/i,
+    goblin_chieftain: /target opponent loses 1 life/i,
   };
   for (const [id, re] of Object.entries(want)) {
     check(id + ' is target:opp', CARDS[id].target === 'opp' || (CARDS[id].triggers || []).some(t => t.target === 'opp')
@@ -44,7 +44,7 @@ console.log('\n=== choose-any heals: text says "target player" AND both players 
   RUN.startNextGame();
   const playerTargets = ENGINE.targetsForFilter('player', 'you');
   check('targetsForFilter(player) → both players', playerTargets.length === 2);
-  for (const id of ['blessedReprieve', 'salve']) {
+  for (const id of ['healing_light', 'healing_salve']) {
     check(id + ' stays target:player', CARDS[id].target === 'player');
     check(id + ' text reads "target player"', /target player gains/i.test(r(CARDS[id])), r(CARDS[id]));
   }

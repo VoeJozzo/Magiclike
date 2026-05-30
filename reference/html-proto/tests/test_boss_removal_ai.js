@@ -46,7 +46,7 @@ function trial(spellTpl, targetSide) {
 }
 
 console.log('=== Archdemon of Bargains specials ===');
-check('vileEdict — AI casts it (edict: opp rips a permanent)', trial('vileEdict', 'you'));
+check('vileEdict — AI casts it (edict: opp rips a permanent)', trial('vile_edict', 'you'));
 check('scarification — AI casts it (destroy + scar slot)', trial('scarification', 'you'));
 
 console.log('\n=== The Balancer specials ===');
@@ -55,12 +55,12 @@ check('embargo — AI casts it (bounce, scoring the move_card not the sticker)',
 check('bleach — AI casts it (exile, scoring the move_card not the sticker)', trial('bleach', 'you'));
 
 console.log('\n=== change_control family (same silent-uncast class) ===');
-check('mindControl — AI casts it (permanent steal of control)', trial('mindControl', 'you'));
+check('mindControl — AI casts it (permanent steal of control)', trial('mind_control', 'you'));
 check('threaten — AI casts it (temporary control)', trial('threaten', 'you'));
 check('steal — AI casts it (permanent_or_spell target, run-slot theft)', trial('steal', 'you'));
 
 console.log('\n=== regressions: ordinary removal + flicker still cast ===');
-check('terror still cast (vanilla destroy)', trial('terror', 'you'));
+check('terror still cast (vanilla destroy)', trial('murder', 'you'));
 check('oblation still cast (shuffle-into-library)', trial('oblation', 'you'));
 check('cloudshift still cast on OWN creature (flicker, shares bf→exile)', trial('cloudshift', 'opp'));
 

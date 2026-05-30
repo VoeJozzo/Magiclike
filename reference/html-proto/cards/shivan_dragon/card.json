@@ -1,0 +1,37 @@
+{
+  "card_id": "shivan_dragon",
+  "abilities": [
+    {
+      "cost": {
+        "mana": {
+          "R": 1
+        }
+      },
+      "effects": [
+        {
+          "kind": "pump",
+          "power": 1,
+          "toughness": 0,
+          "scope": "self"
+        }
+      ]
+    }
+  ],
+  "art": "cards/dragon/art.png",
+  "cost": {
+    "R": 2,
+    "C": 4
+  },
+  "keywords": [
+    "flying"
+  ],
+  "name": "Shivan Dragon",
+  "power": 5,
+  "sub": "Dragon",
+  "toughness": 5,
+  "type": "Creature",
+  "types": [
+    "Creature",
+    "Dragon"
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "card_id": "devoted_watcher",
+  "art": "cards/ancestralGuard/art.png",
+  "cost": {
+    "W": 1,
+    "C": 1
+  },
+  "keywords": [
+    "vigilance"
+  ],
+  "name": "Devoted Watcher",
+  "power": 1,
+  "sub": "Human Soldier",
+  "toughness": 3,
+  "type": "Creature",
+  "types": [
+    "Creature",
+    "Human",
+    "Soldier"
+  ]
+}

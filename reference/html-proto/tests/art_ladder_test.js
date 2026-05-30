@@ -13,14 +13,14 @@ function check(label, ok, info) {
 
 console.log('=== effectiveArt: card with no art_ladder returns card.art unchanged ===');
 {
-  const lions = ENGINE.makeCard('savannahLions');
+  const lions = ENGINE.makeCard('savannah_lions');
   check('non-ladder card returns its base art', effectiveArt(lions) === lions.art,
     'got=' + effectiveArt(lions));
 }
 
 console.log('\n=== effectiveArt: Elystra at base p+t=2 -> art-1 ===');
 {
-  const elystra = ENGINE.makeCard('elystra');
+  const elystra = ENGINE.makeCard('elystra_the_immortal');
   const art = effectiveArt(elystra);
   console.log('  base stats:', elystra.power, '/', elystra.toughness, '(p+t=' + (elystra.power+elystra.toughness) + ')');
   console.log('  picked art:', art);
@@ -30,7 +30,7 @@ console.log('\n=== effectiveArt: Elystra at base p+t=2 -> art-1 ===');
 console.log('\n=== effectiveArt: Elystra with p+t in [10, 19] -> art-2 ===');
 {
   // 5/5 -> sum 10 -> threshold 10 met
-  const elystra = ENGINE.makeCard('elystra');
+  const elystra = ENGINE.makeCard('elystra_the_immortal');
   elystra.modifiers = [{ power: 4, toughness: 4 }];   // 1+4=5, 1+4=5 -> 5/5
   // ENGINE.getStats walks modifiers; sum should be 10.
   const [p, t] = ENGINE.getStats(elystra);
@@ -47,7 +47,7 @@ console.log('\n=== effectiveArt: Elystra with p+t in [10, 19] -> art-2 ===');
 console.log('\n=== effectiveArt: Elystra with p+t >= 20 -> art-3 ===');
 {
   // 10/10 -> sum 20
-  const elystra = ENGINE.makeCard('elystra');
+  const elystra = ENGINE.makeCard('elystra_the_immortal');
   elystra.modifiers = [{ power: 9, toughness: 9 }];
   const [p, t] = ENGINE.getStats(elystra);
   console.log('  with +9/+9 modifier:', p, '/', t);
@@ -62,7 +62,7 @@ console.log('\n=== effectiveArt: Elystra with p+t >= 20 -> art-3 ===');
 
 console.log('\n=== effectiveArt: just-below-threshold boundaries ===');
 {
-  const elystra = ENGINE.makeCard('elystra');
+  const elystra = ENGINE.makeCard('elystra_the_immortal');
   // 4/4 -> sum 9 -> still art-1
   elystra.modifiers = [{ power: 3, toughness: 3 }];
   check('p+t = 9 still picks art-1 (one below threshold)',
@@ -75,7 +75,7 @@ console.log('\n=== effectiveArt: just-below-threshold boundaries ===');
 
 console.log("\n=== effectiveArt: template's art_ladder is in the card data ===");
 {
-  const elystraTpl = CARDS['elystra'];
+  const elystraTpl = CARDS['elystra_the_immortal'];
   check('Elystra template has art_ladder', Array.isArray(elystraTpl.art_ladder));
   check('art_ladder has 3 rungs', elystraTpl.art_ladder.length === 3);
   check('rungs are ordered by min_pt ascending',

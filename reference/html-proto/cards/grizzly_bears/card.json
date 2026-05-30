@@ -1,0 +1,16 @@
+{
+  "card_id": "grizzly_bears",
+  "art": "🐻",
+  "cost": {
+    "G": 1
+  },
+  "name": "Grizzly Bears",
+  "power": 2,
+  "sub": "Bear",
+  "toughness": 2,
+  "type": "Creature",
+  "types": [
+    "Creature",
+    "Bear"
+  ]
+}

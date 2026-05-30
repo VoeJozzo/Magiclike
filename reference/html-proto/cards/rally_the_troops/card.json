@@ -1,0 +1,21 @@
+{
+  "card_id": "rally_the_troops",
+  "art": "cards/rallyTroops/art.png",
+  "cost": {
+    "W": 1,
+    "C": 1
+  },
+  "effects": [
+    {
+      "kind": "pump",
+      "scope": "all_yours",
+      "power": 1,
+      "toughness": 1
+    }
+  ],
+  "name": "Rally the Troops",
+  "type": "Sorcery",
+  "types": [
+    "Sorcery"
+  ]
+}

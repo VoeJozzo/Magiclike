@@ -13,10 +13,10 @@ function check(label, ok, info) {
 
 console.log("=== Test: RUN.applyStickerToSlot('subtype') populates subtypeRolls ===");
 {
-  RUN.start({cards:['savannahLions','furnaceWhelp','goblinChieftain','plains','plains','plains','plains','plains','plains','plains','plains','plains'], colors:['R','W']}, null);
+  RUN.start({cards:['savannah_lions','furnace_whelp','goblin_chieftain','plains','plains','plains','plains','plains','plains','plains','plains','plains'], colors:['R','W']}, null);
   RUN.load();
   const slots = RUN.getSlots();
-  const lionsIdx = slots.findIndex(s => s.tplId === 'savannahLions');
+  const lionsIdx = slots.findIndex(s => s.tplId === 'savannah_lions');
   check('Lions slot exists', lionsIdx >= 0);
 
   const result = RUN.applyStickerToSlot(lionsIdx, 'subtype');
@@ -35,17 +35,17 @@ console.log("=== Test: RUN.applyStickerToSlot('subtype') populates subtypeRolls 
 
 console.log('\n=== Test: applyStickerToSlot followed by ENGINE.init produces card with correct sub ===');
 {
-  RUN.start({cards:['savannahLions','furnaceWhelp','goblinChieftain','plains','plains','plains','plains','plains','plains','plains','plains','plains'], colors:['R','W']}, null);
+  RUN.start({cards:['savannah_lions','furnace_whelp','goblin_chieftain','plains','plains','plains','plains','plains','plains','plains','plains','plains'], colors:['R','W']}, null);
   RUN.load();
   const slots = RUN.getSlots();
-  const lionsIdx = slots.findIndex(s => s.tplId === 'savannahLions');
+  const lionsIdx = slots.findIndex(s => s.tplId === 'savannah_lions');
   RUN.applyStickerToSlot(lionsIdx, 'subtype');
   const rolledSubtype = RUN.getSlots()[lionsIdx].subtypeRolls[0];
   console.log('  rolled subtype:', rolledSubtype);
 
   ENGINE.init(RUN.getSlots(), ['mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain']);
   const G = ENGINE.state();
-  const lions = [...G.you.library, ...G.you.hand].find(c => c.tplId === 'savannahLions');
+  const lions = [...G.you.library, ...G.you.hand].find(c => c.tplId === 'savannah_lions');
   check('Lions card constructed', !!lions);
   if (lions) {
     console.log('  lions.sub:', lions.sub);

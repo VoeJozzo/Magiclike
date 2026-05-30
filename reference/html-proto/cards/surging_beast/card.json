@@ -1,0 +1,38 @@
+{
+  "card_id": "surging_beast",
+  "art": "🐗",
+  "cost": {
+    "G": 1,
+    "C": 2
+  },
+  "keywords": [
+    "haste"
+  ],
+  "name": "Surging Beast",
+  "power": 3,
+  "sub": "Beast",
+  "toughness": 2,
+  "triggers": [
+    {
+      "event": "card_zone_change",
+      "condition": [
+        "this_card",
+        "card_moves(anywhere, battlefield)"
+      ],
+      "text": "When ~ enters, it gets +1/+1 EOT.",
+      "effects": [
+        {
+          "kind": "pump",
+          "power": 1,
+          "toughness": 1,
+          "scope": "self"
+        }
+      ]
+    }
+  ],
+  "type": "Creature",
+  "types": [
+    "Creature",
+    "Beast"
+  ]
+}

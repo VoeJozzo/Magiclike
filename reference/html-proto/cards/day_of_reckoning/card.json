@@ -1,0 +1,20 @@
+{
+  "card_id": "day_of_reckoning",
+  "art": "⛅",
+  "cost": {
+    "W": 2,
+    "C": 3
+  },
+  "effects": [
+    {
+      "kind": "affect_creature",
+      "scope": "all_creatures",
+      "severity": "destroy"
+    }
+  ],
+  "name": "Day of Reckoning",
+  "type": "Sorcery",
+  "types": [
+    "Sorcery"
+  ]
+}

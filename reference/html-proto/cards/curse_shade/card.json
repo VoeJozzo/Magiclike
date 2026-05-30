@@ -1,0 +1,34 @@
+{
+  "card_id": "curse_shade",
+  "art": "🌫",
+  "cost": {
+    "B": 1,
+    "C": 2
+  },
+  "name": "Curse Shade",
+  "power": 2,
+  "sub": "Shade",
+  "toughness": 2,
+  "triggers": [
+    {
+      "event": "card_zone_change",
+      "condition": [
+        "this_card",
+        "card_moves(battlefield, graveyard)"
+      ],
+      "text": "When ~ dies, exile target creature.",
+      "effects": [
+        {
+          "kind": "affect_creature",
+          "severity": "exile"
+        }
+      ],
+      "target": "creature"
+    }
+  ],
+  "type": "Creature",
+  "types": [
+    "Creature",
+    "Shade"
+  ]
+}
