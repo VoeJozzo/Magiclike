@@ -46,9 +46,24 @@ console.log('\n=== apply_sticker + move_card idiom is not a false-match on flick
 console.log('\n=== cards that genuinely need authored text keep custom_text:true ===');
 (() => {
   for (const id of ['cityGuardian', 'phylactery', 'elystra', 'stapler', 'architectsCodex',
-                    'archdemonBargains', 'steal', 'scarification', 'pacifism']) {
+                    'archdemonBargains', 'steal', 'pacifism']) {
     check(id + ' keeps custom_text:true', CARDS[id].custom_text === true);
   }
+})();
+
+console.log('\n=== scarification generates (no custom_text) so empower shows in the text ===');
+(() => {
+  // Was custom_text with a hardcoded "Destroy ..." — which froze the removal
+  // verb, so an empower(severity)-stickered Scarification still read "Destroy"
+  // even though it mechanically EXILES. Now generated: the verb tracks severity.
+  check('scarification is NOT custom_text', CARDS.scarification.custom_text !== true);
+  const base = describeCardText(ENGINE.makeCard('scarification', [], 0));
+  check('base reads "Destroy target creature."', /^Destroy target creature\. Scar it:/.test(base), base);
+  const roll = { location: 'effects', subIdx: null, effIdx: 1, modeIdx: null, field: 'severity' };
+  const empowered = describeCardText(ENGINE.makeCard('scarification', ['empower'], 0, [roll]));
+  check('empower(severity) promotes the text to "Exile target creature."',
+    /^Exile target creature\. Scar it:/.test(empowered), empowered);
+  check('scar rider is preserved in both', /Scar it: each time it enters the battlefield, its controller loses 1 life\.$/.test(base));
 })();
 
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');

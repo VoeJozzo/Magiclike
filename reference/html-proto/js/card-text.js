@@ -540,6 +540,21 @@ function describeEffectList(effects, cardName, tplEffects, stepTarget, stepFilte
       && effects[1].kind === 'schedule_delayed') {
     return capitalizeSegs(parts[0]).concat(plainSeg('; return it to the battlefield at end of turn.'));
   }
+  // Scarification idiom: an affect_creature removal + an apply_sticker(scarified)
+  // persistent rider. The removal verb is rendered DYNAMICALLY via describeEffect
+  // so an empower-promoted severity shows ("exile", not a frozen "destroy") and
+  // bump-highlights — the whole reason this card stopped being custom_text, which
+  // had hardcoded "Destroy" and hid the empower. (The scar rider prose is fixed —
+  // the scarified life-loss isn't an empower target — so it's a literal here,
+  // mirroring the balancer-tax idiom below.)
+  if (effects.length === 2) {
+    const acIdx = effects.findIndex(e => e.kind === 'affect_creature' && !e.scope);
+    const apIdx = effects.findIndex(e => e.kind === 'apply_sticker' && e.sticker_id === 'scarified');
+    if (acIdx >= 0 && apIdx >= 0) {
+      return capitalizeSegs(describeEffect(effects[acIdx], tplOf(acIdx)))
+        .concat(plainSeg('. Scar it: each time it enters the battlefield, its controller loses 1 life.'));
+    }
+  }
   // Balancer-tax pattern: a move_card removal + an apply_sticker persistent rider
   // (bleach: exile + set_color; embargo: bounce + cost_mod). Render the removal,
   // then the rider with a pronoun so the target isn't repeated.

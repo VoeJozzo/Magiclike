@@ -4,7 +4,7 @@ Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folde
 
 ## Version
 
-**Current: `v2.0.62`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.0.63`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -201,6 +201,21 @@ opponent's best creature — permanent base 20, eot base 8, +card value +lane �
 animate-add_type only at a permanent WE control (else it'd gift the opponent a
 body). Verified via `AI.decide`: the AI now casts Encase in Amber at an enemy
 creature. 1269 green, lint clean, 300-game selfplay clean.
+
+v2.0.63: **Scarification text now reflects empower (was a frozen custom_text).**
+Scarification was `custom_text` with a hardcoded "Destroy target creature. Scar
+it: ..." — so an empower(severity)-stickered copy still read "Destroy" even
+though it mechanically EXILES (the instance effect IS promoted; only the text was
+wrong). It's the ONLY custom_text card with an empowerable effect. Fix: dropped
+custom_text + the stored text, and taught `describeEffectList` the Scarification
+idiom (affect_creature + apply_sticker(scarified)) — the removal verb is now
+rendered via `describeEffect` (tracks the empower-promoted severity AND
+bump-highlights), with the scar rider as a literal (the life-loss isn't an
+empower target). Base text is byte-identical to the old authored string; an
+empowered copy now reads "Exile target creature. Scar it: ...". 1293 green, lint
+clean. (Also logged a Godot-side backlog item: Godot displays `template.text`
+directly, so port `describeCardText` there — the stripped cards render blank
+oracle text until then.)
 
 v2.0.62: **minimap advance is now a universal select-then-Continue flow.** Revises
 v2.0.61's interaction: instead of click-to-advance, clicking a legal node now
