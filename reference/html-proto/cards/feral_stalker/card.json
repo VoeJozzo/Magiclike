@@ -1,6 +1,6 @@
 {
   "card_id": "feral_stalker",
-  "art": "cards/feral_stalker/art.png",
+  "art": "art.png",
   "cost": {
     "G": 1,
     "C": 2

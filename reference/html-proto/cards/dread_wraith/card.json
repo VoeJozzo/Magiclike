@@ -1,6 +1,6 @@
 {
   "card_id": "dread_wraith",
-  "art": "cards/dread_wraith/art.png",
+  "art": "art.png",
   "cost": {
     "B": 1,
     "C": 2

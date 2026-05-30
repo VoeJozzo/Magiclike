@@ -1,6 +1,6 @@
 {
   "card_id": "devoted_watcher",
-  "art": "cards/devoted_watcher/art.png",
+  "art": "art.png",
   "cost": {
     "W": 1,
     "C": 1

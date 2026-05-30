@@ -1,6 +1,6 @@
 {
   "card_id": "vine_strangle",
-  "art": "cards/vine_strangle/art.png",
+  "art": "art.png",
   "cost": {
     "G": 1,
     "C": 2

@@ -1,6 +1,6 @@
 {
   "card_id": "otherworldly_journey",
-  "art": "cards/otherworldly_journey/art.png",
+  "art": "art.png",
   "cost": {
     "W": 1,
     "C": 1

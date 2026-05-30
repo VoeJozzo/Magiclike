@@ -1,6 +1,6 @@
 {
   "card_id": "flame_wisp",
-  "art": "cards/flame_wisp/art.png",
+  "art": "art.png",
   "cost": {
     "R": 1,
     "C": 2

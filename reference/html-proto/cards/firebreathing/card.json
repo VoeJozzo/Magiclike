@@ -1,6 +1,6 @@
 {
   "card_id": "firebreathing",
-  "art": "cards/firebreathing/art.png",
+  "art": "art.png",
   "cost": {
     "R": 1
   },

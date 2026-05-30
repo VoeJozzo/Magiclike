@@ -1,6 +1,6 @@
 {
   "card_id": "verdant_charm",
-  "art": "cards/verdant_charm/art.png",
+  "art": "art.png",
   "cost": {
     "G": 1,
     "C": 2

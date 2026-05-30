@@ -1,6 +1,6 @@
 {
   "card_id": "char",
-  "art": "cards/char/art.png",
+  "art": "art.png",
   "cost": {
     "R": 1,
     "C": 1

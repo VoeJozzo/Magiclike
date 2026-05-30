@@ -1,6 +1,6 @@
 {
   "card_id": "wolfbriar_elemental",
-  "art": "cards/wolfbriar_elemental/art.png",
+  "art": "art.png",
   "cost": {
     "G": 1,
     "C": 3

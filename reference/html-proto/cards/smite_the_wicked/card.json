@@ -1,6 +1,6 @@
 {
   "card_id": "smite_the_wicked",
-  "art": "cards/smite_the_wicked/art.png",
+  "art": "art.png",
   "cost": {
     "W": 1,
     "C": 2

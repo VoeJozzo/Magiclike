@@ -1,6 +1,6 @@
 {
   "card_id": "savannah_lions",
-  "art": "cards/savannah_lions/art.png",
+  "art": "art.png",
   "cost": {
     "W": 1
   },

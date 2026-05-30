@@ -1,6 +1,6 @@
 {
   "card_id": "plague_sower",
-  "art": "cards/plague_sower/art.png",
+  "art": "art.png",
   "cost": {
     "B": 1,
     "C": 2

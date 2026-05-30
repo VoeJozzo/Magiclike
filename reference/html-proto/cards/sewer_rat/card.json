@@ -1,6 +1,6 @@
 {
   "card_id": "sewer_rat",
-  "art": "cards/sewer_rat/art.png",
+  "art": "art.png",
   "cost": {
     "B": 1
   },

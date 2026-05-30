@@ -1,6 +1,6 @@
 {
   "card_id": "overrun",
-  "art": "cards/overrun/art.png",
+  "art": "art.png",
   "cost": {
     "G": 2,
     "C": 3

@@ -1,6 +1,6 @@
 {
   "card_id": "inspiring_herald",
-  "art": "cards/inspiring_herald/art.png",
+  "art": "art.png",
   "cost": {
     "W": 1,
     "C": 3

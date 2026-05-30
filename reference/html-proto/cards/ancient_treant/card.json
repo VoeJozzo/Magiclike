@@ -1,6 +1,6 @@
 {
   "card_id": "ancient_treant",
-  "art": "cards/ancient_treant/art.png",
+  "art": "art.png",
   "cost": {
     "G": 2,
     "C": 3

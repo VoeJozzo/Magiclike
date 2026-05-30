@@ -17,7 +17,7 @@
       ]
     }
   ],
-  "art": "cards/shivan_dragon/art.png",
+  "art": "art.png",
   "cost": {
     "R": 2,
     "C": 4

@@ -1,6 +1,6 @@
 {
   "card_id": "cinder_sprite",
-  "art": "cards/cinder_sprite/art.png",
+  "art": "art.png",
   "cost": {
     "R": 1,
     "C": 1

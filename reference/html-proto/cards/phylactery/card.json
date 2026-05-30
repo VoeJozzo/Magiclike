@@ -1,6 +1,6 @@
 {
   "card_id": "phylactery",
-  "art": "cards/phylactery/art.png",
+  "art": "art.png",
   "mana": "B",
   "name": "Phylactery",
   "special": true,

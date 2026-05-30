@@ -1,6 +1,6 @@
 {
   "card_id": "goblin_slinger",
-  "art": "cards/goblin_slinger/art.png",
+  "art": "art.png",
   "cost": {
     "R": 1,
     "C": 2

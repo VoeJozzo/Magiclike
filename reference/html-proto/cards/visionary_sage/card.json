@@ -1,6 +1,6 @@
 {
   "card_id": "visionary_sage",
-  "art": "cards/visionary_sage/art.png",
+  "art": "art.png",
   "cost": {
     "U": 1,
     "C": 2

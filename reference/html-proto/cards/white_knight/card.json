@@ -1,6 +1,6 @@
 {
   "card_id": "white_knight",
-  "art": "cards/white_knight/art.png",
+  "art": "art.png",
   "cost": {
     "W": 2
   },

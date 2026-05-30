@@ -1,6 +1,6 @@
 {
   "card_id": "binding_angel",
-  "art": "cards/binding_angel/art.png",
+  "art": "art.png",
   "cost": {
     "W": 2,
     "C": 4

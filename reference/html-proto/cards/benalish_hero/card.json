@@ -1,6 +1,6 @@
 {
   "card_id": "benalish_hero",
-  "art": "cards/benalish_hero/art.png",
+  "art": "art.png",
   "cost": {
     "W": 1
   },

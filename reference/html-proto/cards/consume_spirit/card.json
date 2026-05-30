@@ -1,6 +1,6 @@
 {
   "card_id": "consume_spirit",
-  "art": "cards/consume_spirit/art.png",
+  "art": "art.png",
   "cost": {
     "B": 1,
     "C": 3

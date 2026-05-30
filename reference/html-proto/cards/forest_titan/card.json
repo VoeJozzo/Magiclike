@@ -1,6 +1,6 @@
 {
   "card_id": "forest_titan",
-  "art": "cards/forest_titan/art.png",
+  "art": "art.png",
   "cost": {
     "G": 2,
     "C": 3

@@ -1185,6 +1185,21 @@ function nativeKeywordBadgesHtml(card, big) {
 // reward, and card-browser views work off templates and don't get
 // runtime stats, so they use the base `art` field directly — that's
 // the "show the early/base form" default for browse contexts.
+// A BARE art filename (no slash, image extension — e.g. "art.png", "art-2.png")
+// is resolved against the card's OWN folder: cards/<tplId>/<file>. Storing just
+// the filename means a folder rename can never stale the path — the v2.0.67 id
+// rename broke 75 baked-in "cards/<oldFolder>/art.png" strings; deriving the
+// folder from the (current) id structurally prevents a recurrence. Full paths,
+// data:/http URLs, and emoji pass through untouched (back-compat + non-images).
+function resolveArtPath(value, card) {
+  if (typeof value === 'string' && !value.includes('/') &&
+      /\.(png|jpe?g|gif|webp|svg)$/i.test(value)) {
+    const folder = card && (card.tplId || card.card_id);
+    if (folder) return 'cards/' + folder + '/' + value;
+  }
+  return value;
+}
+
 function effectiveArt(card) {
   if (!card) return '';
   // Ladder lives on the template, not the instance — makeCard doesn't
@@ -1193,8 +1208,8 @@ function effectiveArt(card) {
   // needs to know about art variants.
   const tpl = (typeof CARDS !== 'undefined') ? CARDS[card.tplId] : null;
   const ladder = (tpl && Array.isArray(tpl.art_ladder)) ? tpl.art_ladder : card.art_ladder;
-  if (!Array.isArray(ladder) || ladder.length === 0) return card.art;
-  if (!hasType(card, 'Creature')) return card.art;
+  if (!Array.isArray(ladder) || ladder.length === 0) return resolveArtPath(card.art, card);
+  if (!hasType(card, 'Creature')) return resolveArtPath(card.art, card);
   let p = 0, t = 0;
   try {
     const stats = ENGINE.getStats(card);
@@ -1207,11 +1222,11 @@ function effectiveArt(card) {
   for (const rung of ladder) {
     if (rung && sum >= (rung.min_pt || 0)) pick = rung.art;
   }
-  return pick;
+  return resolveArtPath(pick, card);
 }
 
 // Is this art value something the browser should resolve as an image
-// source? Used by artHtml (to decide between <img> and inline text) AND
+// source? Used by the main card render (to choose <img> vs inline text) AND
 // by the small inline-art callers (stack pill, library search, zone
 // modal) which substitute a generic 🎴 glyph rather than try to render
 // a real image inside a narrow text pill. Centralized here so a new
@@ -1219,8 +1234,8 @@ function effectiveArt(card) {
 // gets recognized in every site at once.
 //   - data:           — inline base64 (legacy embeds, e.g. the old dragon)
 //   - http            — full URL
-//   - ends in .png/.jpg/.jpeg/.gif/.webp/.svg — relative file path,
-//     resolved against magiclike_engine.html (cards/<tplId>/art.png)
+//   - ends in .png/.jpg/.jpeg/.gif/.webp/.svg — file path; a bare filename
+//     is resolved to cards/<tplId>/<file> by resolveArtPath (via effectiveArt)
 // Emoji are 1-4 chars and never match.
 function isArtUrl(art) {
   return typeof art === 'string' && (
@@ -1228,20 +1243,6 @@ function isArtUrl(art) {
     art.startsWith('http') ||
     /\.(png|jpe?g|gif|webp|svg)$/i.test(art)
   );
-}
-
-function artHtml(art, fallback) {
-  if (!art) return fallback || '';
-  if (isArtUrl(art)) {
-    // pixelated rendering preserves the chunky look of small pixel-art
-    // sources (the 64x32 native size is intentionally low-res). Per-
-    // context sizing (.cart img, .pop-art img, etc.) lives in CSS so
-    // each render site can integer-scale the source to suit its frame.
-    // alt="" because the card name is rendered separately — duplicating
-    // it in alt text creates noise for screen readers.
-    return `<img src="${art}" alt="">`;
-  }
-  return art;
 }
 
 // Pre-computed display values for a card, consumed by both makeCardEl

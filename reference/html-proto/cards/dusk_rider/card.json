@@ -1,6 +1,6 @@
 {
   "card_id": "dusk_rider",
-  "art": "cards/dusk_rider/art.png",
+  "art": "art.png",
   "cost": {
     "U": 1,
     "C": 2

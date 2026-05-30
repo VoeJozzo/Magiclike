@@ -1,18 +1,18 @@
 {
   "card_id": "elystra_the_immortal",
-  "art": "cards/elystra_the_immortal/art-1.png",
+  "art": "art-1.png",
   "art_ladder": [
     {
       "min_pt": 0,
-      "art": "cards/elystra_the_immortal/art-1.png"
+      "art": "art-1.png"
     },
     {
       "min_pt": 10,
-      "art": "cards/elystra_the_immortal/art-2.png"
+      "art": "art-2.png"
     },
     {
       "min_pt": 20,
-      "art": "cards/elystra_the_immortal/art-3.png"
+      "art": "art-3.png"
     }
   ],
   "cost": {

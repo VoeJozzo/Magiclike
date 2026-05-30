@@ -1,6 +1,6 @@
 {
   "card_id": "predators_speed",
-  "art": "cards/predators_speed/art.png",
+  "art": "art.png",
   "cost": {
     "G": 1
   },

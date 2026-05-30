@@ -1,6 +1,6 @@
 {
   "card_id": "dawn_sentinel",
-  "art": "cards/dawn_sentinel/art.png",
+  "art": "art.png",
   "cost": {
     "W": 2,
     "C": 2

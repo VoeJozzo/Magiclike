@@ -1,6 +1,6 @@
 {
   "card_id": "archivist",
-  "art": "cards/archivist/art.png",
+  "art": "art.png",
   "cost": {
     "U": 1,
     "C": 2

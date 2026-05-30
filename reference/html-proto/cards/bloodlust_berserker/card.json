@@ -1,6 +1,6 @@
 {
   "card_id": "bloodlust_berserker",
-  "art": "cards/bloodlust_berserker/art.png",
+  "art": "art.png",
   "cost": {
     "R": 1,
     "C": 2

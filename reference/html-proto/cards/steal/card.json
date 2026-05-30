@@ -1,6 +1,6 @@
 {
   "card_id": "steal",
-  "art": "cards/steal/art.png",
+  "art": "art.png",
   "cost": {
     "C": 5
   },

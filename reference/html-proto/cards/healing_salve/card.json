@@ -1,6 +1,6 @@
 {
   "card_id": "healing_salve",
-  "art": "cards/healing_salve/art.png",
+  "art": "art.png",
   "cost": {
     "W": 1
   },

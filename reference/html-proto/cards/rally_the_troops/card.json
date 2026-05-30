@@ -1,6 +1,6 @@
 {
   "card_id": "rally_the_troops",
-  "art": "cards/rally_the_troops/art.png",
+  "art": "art.png",
   "cost": {
     "W": 1,
     "C": 1

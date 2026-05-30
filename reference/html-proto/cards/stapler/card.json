@@ -29,7 +29,7 @@
       ]
     }
   ],
-  "art": "cards/stapler/art.png",
+  "art": "art.png",
   "charges_at_run_start": 3,
   "cost": {
     "C": 3

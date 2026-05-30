@@ -1,6 +1,6 @@
 {
   "card_id": "ambush_djinn",
-  "art": "cards/ambush_djinn/art.png",
+  "art": "art.png",
   "cost": {
     "U": 2,
     "C": 3

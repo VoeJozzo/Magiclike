@@ -1,6 +1,6 @@
 {
   "card_id": "shadowmage",
-  "art": "cards/shadowmage/art.png",
+  "art": "art.png",
   "cost": {
     "B": 1,
     "C": 2

@@ -1,6 +1,6 @@
 {
   "card_id": "holy_zealot",
-  "art": "cards/holy_zealot/art.png",
+  "art": "art.png",
   "cost": {
     "W": 1
   },

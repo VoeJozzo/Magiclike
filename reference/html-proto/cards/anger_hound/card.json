@@ -1,6 +1,6 @@
 {
   "card_id": "anger_hound",
-  "art": "cards/anger_hound/art.png",
+  "art": "art.png",
   "cost": {
     "R": 1,
     "C": 1

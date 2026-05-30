@@ -1,6 +1,6 @@
 {
   "card_id": "treefolk_guard",
-  "art": "cards/treefolk_guard/art.png",
+  "art": "art.png",
   "cost": {
     "G": 1,
     "C": 2

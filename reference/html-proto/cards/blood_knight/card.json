@@ -1,6 +1,6 @@
 {
   "card_id": "blood_knight",
-  "art": "cards/blood_knight/art.png",
+  "art": "art.png",
   "cost": {
     "R": 1,
     "C": 3

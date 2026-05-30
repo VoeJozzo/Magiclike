@@ -4,7 +4,7 @@ Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folde
 
 ## Version
 
-**Current: `v2.0.68`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.0.69`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -201,6 +201,23 @@ opponent's best creature — permanent base 20, eot base 8, +card value +lane �
 animate-add_type only at a permanent WE control (else it'd gift the opponent a
 body). Verified via `AI.decide`: the AI now casts Encase in Amber at an enemy
 creature. 1269 green, lint clean, 300-game selfplay clean.
+
+v2.0.69: **art paths are now relative/derived (rename-proof) + named the type/sub cutover.**
+Follow-up to the v2.0.68 art fix, addressing the structural root cause a review
+flagged: instead of storing a full `cards/<id>/art.png` (folder name baked in, so
+a rename stales it — the v2.0.67 break), image art is now stored as a BARE
+filename (`art.png`, Elystra's ladder `art-1/2/3.png`) and `effectiveArt` resolves
+it against the card's OWN folder via `resolveArtPath` (`cards/<tplId>/<file>`). A
+future folder rename can't reintroduce the bug — the path is derived from the
+current id, never stored. Migrated 84 base + 3 ladder paths to bare filenames
+(guarded: only when the path's folder matched the card's own id — 0 cross-folder).
+Emoji / data: / http / full-path values pass through untouched (back-compat).
+Deleted the now-dead `artHtml` helper (zero callers, and it built `<img>` from a
+bare string with no card context — a footgun on the new format). Locked the
+derivation with rename-proof tests. Also added a BACKLOG item naming the
+`type`/`sub` → `types[]` cutover (delete the legacy fields, migrate the ~50 direct
+readers to governingType()/hasType()) so the v2.0.67 dual-write window doesn't
+calcify. 1310 green, lint clean, 300-game selfplay clean.
 
 v2.0.68: **fix broken art paths from the v2.0.67 id rename.** The rename sweep
 git-renamed each card's folder (carrying its `art.png` along) but did NOT update

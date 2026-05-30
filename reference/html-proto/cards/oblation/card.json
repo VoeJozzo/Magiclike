@@ -1,6 +1,6 @@
 {
   "card_id": "oblation",
-  "art": "cards/oblation/art.png",
+  "art": "art.png",
   "cost": {
     "W": 1,
     "C": 2

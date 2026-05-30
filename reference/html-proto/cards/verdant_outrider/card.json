@@ -1,6 +1,6 @@
 {
   "card_id": "verdant_outrider",
-  "art": "cards/verdant_outrider/art.png",
+  "art": "art.png",
   "cost": {
     "G": 1,
     "C": 2

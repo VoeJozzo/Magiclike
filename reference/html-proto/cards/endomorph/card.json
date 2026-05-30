@@ -1,6 +1,6 @@
 {
   "card_id": "endomorph",
-  "art": "cards/endomorph/art.png",
+  "art": "art.png",
   "cost": {
     "C": 2
   },
