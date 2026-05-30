@@ -129,7 +129,7 @@ console.log('\n=== the 7 type-change spells are authored + generate clean text =
   check('set_types text reads "becomes an Artifact"', /becomes an Artifact/.test(stxt), stxt);
   check('add_type text reads "becomes a 3/3 Creature"', /becomes a 3\/3 Creature/.test(txt), txt);
   // Article picker handles letter + number pronunciation cases.
-  check('article: vowel-initial → an', indefiniteArticle('Artifact') === 'an' && indefiniteArticle('Enchantment') === 'an');
+  check('article: vowel-initial → an', indefiniteArticle('Artifact') === 'an');
   check('article: consonant-initial → a', indefiniteArticle('Creature') === 'a' && indefiniteArticle('Goblin') === 'a');
   check('article: numbers follow pronunciation (3→a, 8→an, 11/18→an, 10→a)',
     indefiniteArticle('3/3 Creature') === 'a' && indefiniteArticle('8/8 Creature') === 'an'

@@ -407,7 +407,7 @@ function synthesizeStapledTemplate(baseTplId, stapledTpls) {
     merged.color = present[0] || baseTpl.color || null;
     merged.colors = present;
   }
-  // §5 staple type-union: Artifact/Enchantment are CO-TYPES that ride along — if
+  // §5 staple type-union: Artifact is a CO-TYPE that rides along — if
   // any fused card carries one, the merged permanent keeps it (so a stapled
   // artifact creature stays an Artifact Creature, dying to artifact removal and
   // counting for artifact-matters). Creature/Land governance is deliberately NOT
@@ -417,7 +417,7 @@ function synthesizeStapledTemplate(baseTplId, stapledTpls) {
   // types[] when a co-type is actually present; otherwise identity keeps
   // deriving from merged.type/sub (single-type staples are untouched).
   const involved = [baseTpl, ...stapledTpls.map(id => CARDS[id]).filter(Boolean)];
-  const coTypes = ['Artifact', 'Enchantment']
+  const coTypes = ['Artifact']
     .filter(co => co !== merged.type && involved.some(t => hasType(t, co)));
   if (coTypes.length) {
     const subs = (merged.sub || '').split(/\s+/).filter(Boolean);
@@ -3569,7 +3569,7 @@ function moveToGraveyard(card, controller) {
   clearRestrictionsFromSource(card.iid);
   resetInPlayState(card, true);   // preserve damagedBySources for dies-triggers
   // Leaves-play emit covers all leave paths uniformly. Fires for any card
-  // type (artifact, enchantment, land, creature) — useful for future
+  // type (artifact, land, creature) — useful for future
   // "when this leaves play" mechanics on non-creature permanents. Emitted
   // AFTER cardDies so dies-listeners (Sengir, Endomorph) fire in their
   // original order; leaves-listeners (Archdemon of Bargains) fire after.

@@ -33,7 +33,6 @@
         "this_card",
         "card_moves(battlefield, graveyard)"
       ],
-      "text": "When ~ dies, return a Spirit creature from your graveyard to your hand.",
       "effects": [
         {
           "kind": "move_card",

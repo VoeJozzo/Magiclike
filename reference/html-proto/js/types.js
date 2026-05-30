@@ -21,7 +21,6 @@ const TYPE_REGISTRY = {
   Creature:    { category: 'type', behaviorClass: 'permanent' },
   Land:        { category: 'type', behaviorClass: 'land' },
   Artifact:    { category: 'type', behaviorClass: 'permanent' },
-  Enchantment: { category: 'type', behaviorClass: 'permanent' },
   Sorcery:     { category: 'type', behaviorClass: 'spell' },
   // Supertypes render left of the type, carry no behavior-class. 'Basic' (basic
   // lands) and 'Legendary' (the legend rule — a cast-time uniqueness check, read
@@ -74,9 +73,9 @@ function hasType(card, tag) {
 
 // The single behavioral type that governs zone / cast / combat (see spec §3,
 // "two forks"): a permanent type beats a spell type; among permanents,
-// Creature > Land > Artifact/Enchantment (the latter are co-types). For today's
+// Creature > Land > Artifact (Artifact is a co-type). For today's
 // single-type cards this is simply `card.type`.
-const PERMANENT_PRECEDENCE = ['Creature', 'Land', 'Artifact', 'Enchantment'];
+const PERMANENT_PRECEDENCE = ['Creature', 'Land', 'Artifact'];
 function governingType(card) {
   const tags = typesOf(card).filter(isCardTypeTag);
   for (const t of PERMANENT_PRECEDENCE) {       // permanents win the first fork

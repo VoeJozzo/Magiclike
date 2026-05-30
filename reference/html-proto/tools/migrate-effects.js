@@ -79,7 +79,7 @@ function collapseEffect(e) {
   if (e.kind === 'removeAll') {
     const whose = e.whose;
     const scope = whose === 'opp' ? 'all_opps' : (whose === 'self' || whose === 'you') ? 'all_yours' : 'all_creatures';
-    return { kind: 'remove_creature', scope, severity: e.severity || 3 };
+    return { kind: 'affect_creature', scope, severity: e.severity || 'destroy' };
   }
   if (e.kind === 'weaken') {
     const { kind, power, toughness, ...rest } = e;

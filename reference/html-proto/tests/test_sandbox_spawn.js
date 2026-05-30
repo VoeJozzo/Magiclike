@@ -32,7 +32,7 @@ function spawn(G, tplId, target) {
   const side = target.slice(0, dash);
   const zone = target.slice(dash + 1);
   card.owner = side; card.controller = side;
-  const PERMANENT = /^(Creature|Land|Artifact|Enchantment)$/;
+  const PERMANENT = /^(Creature|Land|Artifact)$/;
   if (zone === 'board' && PERMANENT.test(card.type)) {
     card.sick = false;
     G[side].battlefield.push(card);

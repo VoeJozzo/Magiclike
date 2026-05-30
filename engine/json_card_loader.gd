@@ -127,6 +127,9 @@ static func load_all() -> Dictionary:
 		push_error("JsonCardLoader: missing manifest %s" % _MANIFEST_PATH)
 		return {}
 	var f: FileAccess = FileAccess.open(_MANIFEST_PATH, FileAccess.READ)
+	if f == null:
+		push_error("JsonCardLoader: cannot open manifest %s" % _MANIFEST_PATH)
+		return {}
 	var manifest = JSON.parse_string(f.get_as_text())
 	if not (manifest is Array):
 		push_error("JsonCardLoader: invalid manifest (not array)")
@@ -219,7 +222,7 @@ static func _build_resource(json: Dictionary) -> CardResource:
 	elif type_string == "instant" or type_string == "sorcery":
 		card = SpellResource.new()
 	else:
-		# artifact, enchantment, or unknown
+		# artifact or unknown
 		card = CardResource.new()
 
 	card.card_id = String(json.get("card_id", ""))
@@ -255,8 +258,18 @@ static func _build_resource(json: Dictionary) -> CardResource:
 		var spell: SpellResource = card
 		var rt := false
 		var tf := ""
+		# The live wire format carries "target" at the card root (e.g. bolt);
+		# some cards instead scope it per-effect. Check the root first, then fall
+		# back to per-effect targets.
+		var target_candidates: Array[String] = []
+		var root_target: String = String(json.get("target", ""))
+		if root_target != "":
+			target_candidates.append(root_target)
 		for e in effects:
-			var tgt: String = String(e.get("target", ""))
+			var e_target: String = String(e.get("target", ""))
+			if e_target != "":
+				target_candidates.append(e_target)
+		for tgt in target_candidates:
 			if tgt in _USER_PICKED_TARGETS:
 				rt = true
 				tf = _TARGET_FILTER_REMAP.get(tgt, tgt)

@@ -98,16 +98,16 @@ console.log('\n=== negative: absent tags miss; nullish safe ===');
 
 console.log('\n=== registry: type vs subtype classification ===');
 (() => {
-  check('Creature/Land/Artifact/Enchantment/Sorcery are type tags',
-    ['Creature', 'Land', 'Artifact', 'Enchantment', 'Sorcery'].every(isCardTypeTag));
+  check('Creature/Land/Artifact/Sorcery are type tags',
+    ['Creature', 'Land', 'Artifact', 'Sorcery'].every(isCardTypeTag));
   check('Instant is retired (no longer a known type tag)',
     !isCardTypeTag('Instant') && typeCategory('Instant') === 'subtype');
   check('Goblin/Forest/Cleric are subtype tags',
     ['Goblin', 'Forest', 'Cleric'].every(t => typeCategory(t) === 'subtype' && !isCardTypeTag(t)));
   check('Basic/Legendary are supertype tags (render left, not type-tags)',
     ['Basic', 'Legendary'].every(t => typeCategory(t) === 'supertype' && !isCardTypeTag(t)));
-  check('Creature/Land/Artifact/Enchantment are permanents',
-    ['Creature', 'Land', 'Artifact', 'Enchantment'].every(t => isPermanent({ type: t })));
+  check('Creature/Land/Artifact are permanents',
+    ['Creature', 'Land', 'Artifact'].every(t => isPermanent({ type: t })));
   check('Sorcery is not a permanent',
     !isPermanent({ type: 'Sorcery' }));
 })();
