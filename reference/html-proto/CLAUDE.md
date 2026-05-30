@@ -4,7 +4,7 @@ Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folde
 
 ## Version
 
-**Current: `v2.0.55`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.0.56`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -201,6 +201,17 @@ opponent's best creature — permanent base 20, eot base 8, +card value +lane �
 animate-add_type only at a permanent WE control (else it'd gift the opponent a
 body). Verified via `AI.decide`: the AI now casts Encase in Amber at an enemy
 creature. 1269 green, lint clean, 300-game selfplay clean.
+
+v2.0.56: **indefinite article in type-change text.** Petrify read "becomes
+Artifact" (missing article). Added an `indefiniteArticle(phrase)` helper in
+card-text.js and threaded it through the one `add_type`/`set_types` phrase
+builder, so type-change spells now read "becomes an Artifact" / "also becomes a
+3/3 Creature". The picker is letter-based for words (vowel-initial → "an") and
+pronunciation-based for a leading number (P/T like "3/3" → "a three…", but
+"8/8"/"80" → "an eight…", teens "11"/"18" → "an"). Deliberately scoped to type
+lines — not a general English a/an solver (won't catch "a unicorn"/"an honor",
+which don't occur in generated text). First feedback on the Phase-4 cards.
+1269 green, lint clean.
 
 v2.0.55: **strip the dead `text` field from card data (proto only).** Oracle text
 is GENERATED procedurally from each card's effects/triggers/abilities

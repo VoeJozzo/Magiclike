@@ -170,7 +170,7 @@ const EXPOSED = [
   'describeCardText', 'describeCardSegments', 'describeModalSegs',
   // Card-text internal helpers — exposed so tests can target them
   // independently if a regression localizes to one.
-  'targetPhrase', 'withFilter', 'plainSeg', 'bumpedSeg', 'bumpedDerived',
+  'targetPhrase', 'withFilter', 'plainSeg', 'indefiniteArticle', 'bumpedSeg', 'bumpedDerived',
   'segsToText', 'capitalize', 'capitalizeSegs',
   'triggerPreamble', 'abilityCostPhrase', 'keywordPreamble',
   // Unified type system (types.js, all module-scope, no IIFE — Phase 1).

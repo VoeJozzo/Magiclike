@@ -117,6 +117,21 @@ function plainSeg(text) {
   return { text, highlight: false };
 }
 
+// Indefinite article ("a"/"an") for a noun phrase. Letter-initial words go by
+// the leading vowel (artifact → "an"); a leading number goes by how it's spoken
+// (a P/T like "3/3" → "a three…", but "8/8"/"80" → "an eight…", and the teens
+// "11"/"18" → "an"). Scoped to card type lines (types, creature types, small
+// P/T) — deliberately NOT a general English solver: it won't catch "a unicorn"
+// or "an honor", which don't occur in generated type text.
+function indefiniteArticle(phrase) {
+  const num = /^\s*(\d+)/.exec(phrase);
+  if (num) {
+    const s = num[1];
+    return (s[0] === '8' || s === '11' || s === '18') ? 'an' : 'a';
+  }
+  return /^\s*[aeiou]/i.test(phrase) ? 'an' : 'a';
+}
+
 // Signed stat segment for pump (+N for buffs, -N for weaken/signed deltas),
 // preserving the empower-bump highlight. "+2"/"-2".
 function signedStat(field, eff, tplEff, negZero) {
@@ -318,7 +333,8 @@ function describeEffect(eff, tplEff) {
       const dur = (eff.duration === 'permanent') ? '' : ' until end of turn';
       const pt = (eff.power || eff.toughness) ? (eff.power || 0) + '/' + (eff.toughness || 0) + ' ' : '';
       const body = pt + tags.join(' ');
-      return [plainSeg(t + (eff.kind === 'set_types' ? ' becomes ' : ' also becomes ') + body + dur)];
+      const verb = eff.kind === 'set_types' ? ' becomes ' : ' also becomes ';
+      return [plainSeg(t + verb + indefiniteArticle(body) + ' ' + body + dur)];
     }
     case 'apply_in_game_splice':
       return [plainSeg('staple the second target permanent onto the first')];
