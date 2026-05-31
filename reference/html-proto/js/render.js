@@ -207,20 +207,16 @@ function render() {
   if (G.pendingSearch && G.pendingSearch.who === 'you') {
     Modal.show('searchModal', { dismissible: false });
     setText('searchTitle', `${G.pendingSearch.source.toUpperCase()} — PICK A CARD`);
-    const list = document.getElementById('searchList');
-    list.innerHTML = '';
     const filter = G.pendingSearch.filter || {};
     const matches = G.you.library.filter(c => !filter.type || hasType(c, filter.type));
-    if (matches.length === 0) {
-      list.innerHTML = '<div style="color:#888;font-size:11px">No matching cards.</div>';
-    } else {
-      for (const card of matches) {
-        const btn = makeCardEl(card);
-        btn.style.cursor = 'pointer';
-        btn.onclick = () => CONTROLLER.searchPick(card.iid);
-        list.appendChild(btn);
-      }
-    }
+    // Native card size (scale null) — the search list can be long, so cards stay
+    // at hand size rather than the 2× showcase the meta pickers use.
+    renderCardPicker(
+      document.getElementById('searchList'),
+      matches.map(card => ({ card, value: card.iid })),
+      iid => CONTROLLER.searchPick(iid),
+      { scale: null, emptyHtml: '<div style="color:#888;font-size:11px">No matching cards.</div>' },
+    );
   } else {
     Modal.hide('searchModal');
   }
@@ -1393,17 +1389,21 @@ function makeSyntheticCard({ name, type, sub, text, art, color, cost, power, tou
 }
 
 // Shared "row of pickable cards" renderer — the one loop behind every card-pick
-// flow (draft pack, Neow boons, post-draft land offer). Each item is either
-// { card } (a real card instance → makeCardEl) or { synthetic } (a
-// makeSyntheticCard spec, for cards with no template backing like a boon
-// fallback), plus { value } passed to onPick when clicked. Centralizes the
-// showcase styling (2× scale, pointer, click) the three flows used to duplicate.
-function renderCardPicker(hostEl, items, onPick) {
+// flow (draft pack, Neow boons, post-draft land offer, in-game library search).
+// Each item is either { card } (a real card instance → makeCardEl) or
+// { synthetic } (a makeSyntheticCard spec, for cards with no template backing
+// like a boon fallback), plus { value } passed to onPick when clicked.
+// opts.scale: showcase scale, default 2 (pass null for native card size, e.g.
+// the search list). opts.emptyHtml: markup to show when there are no items.
+function renderCardPicker(hostEl, items, onPick, opts) {
   if (!hostEl) return;
+  opts = opts || {};
+  const scale = (opts.scale === undefined) ? 2 : opts.scale;
   hostEl.innerHTML = '';
+  if (!items.length && opts.emptyHtml) { hostEl.innerHTML = opts.emptyHtml; return; }
   for (const item of items) {
     const el = item.card ? makeCardEl(item.card) : makeSyntheticCard(item.synthetic);
-    el.style.setProperty('--scale', '2');
+    if (scale !== null) el.style.setProperty('--scale', String(scale));
     el.style.cursor = 'pointer';
     el.onclick = () => onPick(item.value);
     hostEl.appendChild(el);

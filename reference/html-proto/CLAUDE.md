@@ -4,7 +4,7 @@ Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folde
 
 ## Version
 
-**Current: `v2.0.71`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.0.72`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -201,6 +201,17 @@ opponent's best creature — permanent base 20, eot base 8, +card value +lane �
 animate-add_type only at a permanent WE control (else it'd gift the opponent a
 body). Verified via `AI.decide`: the AI now casts Encase in Amber at an enemy
 creature. 1269 green, lint clean, 300-game selfplay clean.
+
+v2.0.72: **route the in-game search modal through the shared card-picker too.**
+Follow-up to v2.0.71: `searchModal` (the library-search / tutor picker) had the
+same `makeCardEl → cursor → onclick → append` loop as the meta pickers, so it now
+calls `renderCardPicker`. Extended the helper with two opts (back-compat — the
+existing three callers pass none): `scale` (default 2; the search list passes
+`null` for native card size since it can be long) and `emptyHtml` (the "No
+matching cards." state). Four flows now share one render loop; the search *modal*
+stays its own container (in-game effect resolution, not a meta pick — correctly
+NOT merged). Browser-only path — verify by resolving a tutor (e.g. Demonic Tutor)
+in-game. Engine suite 1313 green (no engine change), lint clean.
 
 v2.0.71: **unify the card-pick modals + Mist Raider Spirit + fix synthetic-card type line.**
 Three changes. (1) Mist Raider is now a Spirit (was Human; Pirate kept). (2) Fixed
