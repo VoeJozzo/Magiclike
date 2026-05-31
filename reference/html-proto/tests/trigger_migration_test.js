@@ -36,7 +36,7 @@ function condSig(event, cond) {
 const ARCHETYPES = {
   'card_zone_change | this_card, card_moves(anywhere, battlefield)': 'thisEnters',
   'card_zone_change | another_card, card_is_creature, controlled_by(you), card_moves(anywhere, battlefield)': 'anotherCreatureYouEntersStrict',
-  'card_zone_change | another_card, controlled_by(you), card_has_subtype(*), card_moves(anywhere, battlefield)': 'anotherCreatureYouEntersOfSubtype',
+  'card_zone_change | another_card, card_is_creature, controlled_by(you), card_has_subtype(*), card_moves(anywhere, battlefield)': 'anotherCreatureYouEntersOfSubtype',
   'attacks | this_card': 'thisAttacks',
   'attacks | this_card, lost_life_this_turn(opp)': 'thisAttacksAfterOppLifeLoss',
   'attacks | controlled_by(you), card_has_subtype(*)': 'creatureYouAttacksOfSubtype',
@@ -103,7 +103,7 @@ console.log('\n=== representative migrated cards fire correctly ===');
 
   // Subtype-enters lord (e.g. drakelord/Drake). Fires when another creature of
   // its subtype enters under your control; not on a non-subtype creature.
-  const lord = cardWithSig('card_zone_change | another_card, controlled_by(you), card_has_subtype(*), card_moves(anywhere, battlefield)');
+  const lord = cardWithSig('card_zone_change | another_card, card_is_creature, controlled_by(you), card_has_subtype(*), card_moves(anywhere, battlefield)');
   if (lord) {
     const subTerm = lord.trig.condition.find((t) => typeof t === 'string' && t.startsWith('card_has_subtype('));
     const sub = subTerm.slice('card_has_subtype('.length, -1).replace(/^"|"$/g, '');

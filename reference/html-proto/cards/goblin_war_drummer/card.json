@@ -13,6 +13,7 @@
       "event": "card_zone_change",
       "condition": [
         "another_card",
+        "card_is_creature",
         "controlled_by(you)",
         "card_has_subtype(Goblin)",
         "card_moves(anywhere, battlefield)"

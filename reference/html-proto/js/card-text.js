@@ -782,6 +782,12 @@ function describeStaticBuff(buff) {
   return body + '.';
 }
 
+// Keywords meaningful on a non-creature spell. Today only `flash` (the
+// retired-Instant marker that grants instant-speed casting). Combat keywords
+// (flying/trample/...) never apply to a spell, so they're filtered out of a
+// spell's preamble — otherwise a sorcery could nonsensically read "Trample."
+const SPELL_LEGAL_KEYWORDS = new Set(['flash']);
+
 // Keyword list as "Flying, Vigilance" prefix.
 function keywordPreamble(keywords) {
   if (!Array.isArray(keywords) || keywords.length === 0) return '';
@@ -861,8 +867,13 @@ function describeCardSegments(card, opts) {
     }
   }
   const sections = [];
-  if (!opts.skipKeywords && (hasType(card,'Creature') || hasType(tpl,'Creature'))) {
-    const kw = keywordPreamble(card.keywords || tpl.keywords || []);
+  if (!opts.skipKeywords) {
+    // Creatures show their full keyword line; a non-creature spell surfaces only
+    // spell-legal keywords (flash) so "Flash" appears on a sorcery without
+    // leaking combat keywords onto it.
+    const isCreatureCard = hasType(card,'Creature') || hasType(tpl,'Creature');
+    const allKw = card.keywords || tpl.keywords || [];
+    const kw = keywordPreamble(isCreatureCard ? allKw : allKw.filter(k => SPELL_LEGAL_KEYWORDS.has(k)));
     if (kw) sections.push([plainSeg(kw + '.')]);
   }
   if (card.effects && card.effects.modes) {

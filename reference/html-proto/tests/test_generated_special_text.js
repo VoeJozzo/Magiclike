@@ -28,8 +28,11 @@ console.log('\n=== the moved cards generate accurate text (not sentinel/empty) =
 (() => {
   const want = {
     vile_edict: 'Target opponent rips a permanent they control.',
-    symmetricize: "Target creature's controller equalizes its power, toughness, or cost.",
-    bleach: 'Exile target creature; it becomes colorless, including its mana cost, permanently.',
+    // symmetricize + bleach are flash sorceries (retired Instants); the keyword
+    // preamble now surfaces "Flash." on non-creature spells too (r() renders
+    // with skipKeywords:false).
+    symmetricize: "Flash. Target creature's controller equalizes its power, toughness, or cost.",
+    bleach: 'Flash. Exile target creature; it becomes colorless, including its mana cost, permanently.',
     embargo: "Return target creature to its owner's hand; it costs {1} more permanently.",
   };
   for (const [id, exp] of Object.entries(want)) check(id + ' generates: "' + exp + '"', r(CARDS[id]) === exp, r(CARDS[id]));

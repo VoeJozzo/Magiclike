@@ -3455,6 +3455,11 @@ function matchFilter(card, filter, controller, who) {
   // target Wizard" style restrictions. Cards may have multi-subtype strings
   // ("Wizard Artificer"), so we substring-match.
   if (filter.subtype && !hasType(card, filter.subtype)) return false;
+  // Card-type filter — narrows "target <type>" spells (e.g. Living Lands'
+  // "target land") to the named card type. Sibling of the subtype filter;
+  // reads through hasType so animate / type-change effects are respected.
+  // Without this, a target_filter:{type:'Land'} silently accepts any permanent.
+  if (filter.type && !hasType(card, filter.type)) return false;
   // Keyword filter — used by green's anti-flying answers (Choking Vines,
   // Vine Strangle) to restrict targeting to flying creatures specifically.
   // Generic over keyword name so future "destroy target indestructible"
@@ -5148,7 +5153,7 @@ function isLegalAction(who, action) {
       if (!ab) return false;
       if (ab.cost && ab.cost.tap) {
         if (f.card.tapped) return false;
-        if (f.card.sick && !f.card.keywords.includes('haste') && hasType(f.card, 'Creature')) return false;
+        if (f.card.sick && !(f.card.keywords && f.card.keywords.includes('haste')) && hasType(f.card, 'Creature')) return false;
       }
       if (ab.cost && ab.cost.mana) {
         if (!canPayPotential(who, ab.cost.mana)) return false;
