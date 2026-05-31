@@ -1,0 +1,32 @@
+{
+  "card_id": "fallen_champion",
+  "art": "art.png",
+  "cost": {
+    "B": 1,
+    "C": 2
+  },
+  "name": "Fallen Champion",
+  "power": 3,
+  "toughness": 2,
+  "triggers": [
+    {
+      "event": "card_zone_change",
+      "condition": [
+        "this_card",
+        "card_moves(battlefield, graveyard)"
+      ],
+      "effects": [
+        {
+          "kind": "gain_life",
+          "amount": -2
+        }
+      ],
+      "target": "opp"
+    }
+  ],
+  "types": [
+    "Creature",
+    "Human",
+    "Warrior"
+  ]
+}

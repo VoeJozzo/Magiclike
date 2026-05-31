@@ -4,7 +4,7 @@ extends Node
 #   - Healing Salve (W instant: gain 3 life) — exercises the gain_life
 #     effect handler.
 #   - Counterspell (UU instant: counter target spell) — exercises the
-#     counter_spell effect, stack-as-target, and the engine's
+#     counter effect, stack-as-target, and the engine's
 #     counter_stack_entry helper.
 #   - Basic lands across all five colors (Plains/Island/Swamp added).
 #   - Vanilla creature curve (Bear Cub 1/1, Gray Ogre 2/2, Hill Giant 3/3)
@@ -30,7 +30,7 @@ func _ready() -> void:
 	s.you.hand.append(salve)
 
 	# Tap Plains for W
-	var ok = RulesEngine.execute_action(Action.make_activate_ability(plains.instance_id))
+	var ok = RulesEngine.execute_action(Action.make_tap_land_for_mana(plains.instance_id))
 	_assert_true(ok, "tap Plains for W")
 	_assert_eq(s.you.mana.pool["W"], 1, "have W in pool")
 
@@ -79,8 +79,8 @@ func _ready() -> void:
 	_assert_eq(s.stack.size(), 1, "opp's Bolt on stack (simulated)")
 
 	# Tap both Islands for UU
-	RulesEngine.execute_action(Action.make_activate_ability(s.you.battlefield[0].instance_id))
-	RulesEngine.execute_action(Action.make_activate_ability(s.you.battlefield[1].instance_id))
+	RulesEngine.execute_action(Action.make_tap_land_for_mana(s.you.battlefield[0].instance_id))
+	RulesEngine.execute_action(Action.make_tap_land_for_mana(s.you.battlefield[1].instance_id))
 	_assert_eq(s.you.mana.pool["U"], 2, "have UU for Counterspell")
 
 	# Cast Counterspell targeting opp's Bolt

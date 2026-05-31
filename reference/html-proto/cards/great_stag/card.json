@@ -1,0 +1,15 @@
+{
+  "card_id": "great_stag",
+  "art": "🦌",
+  "cost": {
+    "G": 1,
+    "C": 2
+  },
+  "name": "Great Stag",
+  "power": 3,
+  "toughness": 4,
+  "types": [
+    "Creature",
+    "Beast"
+  ]
+}

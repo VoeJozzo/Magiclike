@@ -1,0 +1,18 @@
+{
+  "card_id": "spectral_procession",
+  "art": "👻",
+  "cost": {
+    "W": 3
+  },
+  "effects": [
+    {
+      "kind": "create_tokens",
+      "token_id": "spirit_w_1_1",
+      "count": 3
+    }
+  ],
+  "name": "Spectral Procession",
+  "types": [
+    "Sorcery"
+  ]
+}

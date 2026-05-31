@@ -14,9 +14,9 @@ mana_cost = {
 "C": 1,
 "R": 2
 }
-oracle_text = "When Bloodlust Berserker dies, if the opponent lost life this turn, it deals 2 damage to the opponent."
-triggered_abilities = Array[Dictionary]([{
-"condition_predicate": "opp_lost_life_this_turn",
+text = "When Bloodlust Berserker dies, if the opponent lost life this turn, it deals 2 damage to the opponent."
+triggers = Array[Dictionary]([{
+"cond_id": "opp_lost_life_this_turn",
 "effects": [{
 "amount": 2,
 "kind": "damage",

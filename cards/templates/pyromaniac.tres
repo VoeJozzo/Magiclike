@@ -14,15 +14,15 @@ mana_cost = {
 "C": 1,
 "R": 1
 }
-oracle_text = "When Pyromaniac enters, it deals 1 damage to any target."
-triggered_abilities = Array[Dictionary]([{
-"condition_predicate": "",
+text = "When Pyromaniac enters, it deals 1 damage to any target."
+triggers = Array[Dictionary]([{
+"cond_id": "",
 "effects": [{
 "amount": 1,
 "kind": "damage",
 "target": "chosen"
 }],
-"event": "card_etb",
+"event": "card_enters_battlefield",
 "self_only": true,
 "target_filter": "creature_or_player"
 }])

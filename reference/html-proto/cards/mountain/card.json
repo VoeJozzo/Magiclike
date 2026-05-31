@@ -1,10 +1,25 @@
 {
-  "tplId": "mountain",
-  "name": "Mountain",
-  "type": "Land",
-  "sub": "Basic Land",
+  "card_id": "mountain",
   "art": "🌋",
   "mana": "R",
-  "color": null,
-  "colors": []
+  "name": "Mountain",
+  "abilities": [
+    {
+      "cost": {
+        "tap": true
+      },
+      "effects": [
+        {
+          "kind": "add_mana",
+          "amounts": {
+            "R": 1
+          }
+        }
+      ]
+    }
+  ],
+  "types": [
+    "Land",
+    "Basic"
+  ]
 }

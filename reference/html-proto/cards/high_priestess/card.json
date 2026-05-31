@@ -1,0 +1,44 @@
+{
+  "card_id": "high_priestess",
+  "art": "⛪",
+  "cost": {
+    "W": 1,
+    "C": 2
+  },
+  "name": "High Priestess",
+  "power": 2,
+  "static_buffs": [
+    {
+      "filter": {
+        "controller": "self"
+      },
+      "subtype": "Cleric",
+      "power": 1,
+      "toughness": 1
+    }
+  ],
+  "toughness": 3,
+  "triggers": [
+    {
+      "event": "card_zone_change",
+      "condition": [
+        "another_card",
+        "controlled_by(you)",
+        "card_has_subtype(Cleric)",
+        "card_moves(anywhere, battlefield)"
+      ],
+      "effects": [
+        {
+          "kind": "gain_life",
+          "amount": 2,
+          "scope": "self"
+        }
+      ]
+    }
+  ],
+  "types": [
+    "Creature",
+    "Human",
+    "Cleric"
+  ]
+}

@@ -1,0 +1,52 @@
+{
+  "card_id": "verdant_charm",
+  "art": "art.png",
+  "cost": {
+    "G": 1,
+    "C": 2
+  },
+  "effects": {
+    "mode_names": [
+      "Wilds (+3/+3 EOT)",
+      "Bloom (+1/+1 counter)",
+      "Hunt (search creature)"
+    ],
+    "modes": [
+      [
+        {
+          "kind": "pump",
+          "target": "creature",
+          "power": 3,
+          "toughness": 3
+        }
+      ],
+      [
+        {
+          "kind": "pump",
+          "duration": "permanent",
+          "target": "creature",
+          "power": 1,
+          "toughness": 1,
+          "filter": {
+            "controller": "self"
+          }
+        }
+      ],
+      [
+        {
+          "kind": "move_card",
+          "from_zone": "library",
+          "to_zone": "hand",
+          "selector": "library_search",
+          "filter": {
+            "type": "Creature"
+          }
+        }
+      ]
+    ]
+  },
+  "name": "Verdant Charm",
+  "types": [
+    "Sorcery"
+  ]
+}

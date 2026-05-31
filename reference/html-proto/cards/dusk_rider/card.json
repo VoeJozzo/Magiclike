@@ -1,0 +1,42 @@
+{
+  "card_id": "dusk_rider",
+  "art": "art.png",
+  "cost": {
+    "U": 1,
+    "C": 2
+  },
+  "keywords": [
+    "flying"
+  ],
+  "name": "Dusk Rider",
+  "power": 2,
+  "toughness": 2,
+  "triggers": [
+    {
+      "event": "attacks",
+      "condition": [
+        "this_card"
+      ],
+      "effects": [
+        {
+          "kind": "move_card",
+          "from_zone": "library",
+          "to_zone": "hand",
+          "selector": "controller_top",
+          "amount": 1
+        },
+        {
+          "kind": "move_card",
+          "from_zone": "hand",
+          "to_zone": "graveyard",
+          "amount": 1,
+          "scope": "self"
+        }
+      ]
+    }
+  ],
+  "types": [
+    "Creature",
+    "Drake"
+  ]
+}

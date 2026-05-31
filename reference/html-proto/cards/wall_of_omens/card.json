@@ -1,0 +1,36 @@
+{
+  "card_id": "wall_of_omens",
+  "art": "📜",
+  "cost": {
+    "W": 1,
+    "C": 1
+  },
+  "keywords": [
+    "defender"
+  ],
+  "name": "Wall of Omens",
+  "power": 0,
+  "toughness": 4,
+  "triggers": [
+    {
+      "event": "card_zone_change",
+      "condition": [
+        "this_card",
+        "card_moves(anywhere, battlefield)"
+      ],
+      "effects": [
+        {
+          "kind": "move_card",
+          "from_zone": "library",
+          "to_zone": "hand",
+          "selector": "controller_top",
+          "amount": 1
+        }
+      ]
+    }
+  ],
+  "types": [
+    "Creature",
+    "Wall"
+  ]
+}

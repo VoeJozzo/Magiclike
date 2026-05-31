@@ -1,0 +1,18 @@
+{
+  "card_id": "mahamoti_djinn",
+  "art": "🌀",
+  "cost": {
+    "U": 2,
+    "C": 4
+  },
+  "keywords": [
+    "flying"
+  ],
+  "name": "Mahamoti Djinn",
+  "power": 5,
+  "toughness": 6,
+  "types": [
+    "Creature",
+    "Djinn"
+  ]
+}

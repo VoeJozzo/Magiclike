@@ -1,0 +1,31 @@
+{
+  "card_id": "feral_stalker",
+  "art": "art.png",
+  "cost": {
+    "G": 1,
+    "C": 2
+  },
+  "name": "Feral Stalker",
+  "power": 2,
+  "toughness": 2,
+  "triggers": [
+    {
+      "event": "attacks",
+      "condition": [
+        "this_card"
+      ],
+      "effects": [
+        {
+          "kind": "pump",
+          "power": 2,
+          "toughness": 2,
+          "scope": "self"
+        }
+      ]
+    }
+  ],
+  "types": [
+    "Creature",
+    "Cat"
+  ]
+}

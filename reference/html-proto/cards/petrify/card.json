@@ -1,0 +1,25 @@
+{
+  "card_id": "petrify",
+  "name": "Petrify",
+  "art": "🪨",
+  "cost": {
+    "W": 1,
+    "C": 1
+  },
+  "keywords": [
+    "flash"
+  ],
+  "target": "creature",
+  "effects": [
+    {
+      "kind": "set_types",
+      "types": [
+        "Artifact"
+      ],
+      "duration": "eot"
+    }
+  ],
+  "types": [
+    "Sorcery"
+  ]
+}

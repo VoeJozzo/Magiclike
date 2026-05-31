@@ -1,0 +1,50 @@
+{
+  "card_id": "skyfire_drakelord",
+  "art": "art.png",
+  "cost": {
+    "U": 1,
+    "C": 4
+  },
+  "keywords": [
+    "flying",
+    "first_strike"
+  ],
+  "name": "Skyfire Drakelord",
+  "power": 3,
+  "static_buffs": [
+    {
+      "filter": {
+        "controller": "self"
+      },
+      "subtype": "Drake",
+      "power": 1,
+      "toughness": 1,
+      "keywords": [
+        "first_strike"
+      ]
+    }
+  ],
+  "toughness": 4,
+  "triggers": [
+    {
+      "event": "card_zone_change",
+      "condition": [
+        "another_card",
+        "controlled_by(you)",
+        "card_has_subtype(Drake)",
+        "card_moves(anywhere, battlefield)"
+      ],
+      "effects": [
+        {
+          "kind": "damage",
+          "amount": 1
+        }
+      ],
+      "target": "creature_or_player"
+    }
+  ],
+  "types": [
+    "Creature",
+    "Drake"
+  ]
+}

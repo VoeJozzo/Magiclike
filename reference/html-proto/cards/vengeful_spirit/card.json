@@ -1,0 +1,34 @@
+{
+  "card_id": "vengeful_spirit",
+  "art": "👻",
+  "cost": {
+    "W": 1,
+    "C": 2
+  },
+  "keywords": [
+    "flying"
+  ],
+  "name": "Vengeful Spirit",
+  "power": 2,
+  "toughness": 2,
+  "triggers": [
+    {
+      "event": "card_zone_change",
+      "condition": [
+        "this_card",
+        "card_moves(battlefield, graveyard)"
+      ],
+      "effects": [
+        {
+          "kind": "affect_creature",
+          "severity": "destroy"
+        }
+      ],
+      "target": "creature"
+    }
+  ],
+  "types": [
+    "Creature",
+    "Spirit"
+  ]
+}

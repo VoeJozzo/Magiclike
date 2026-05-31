@@ -1,0 +1,19 @@
+{
+  "card_id": "wash_away",
+  "art": "🌊",
+  "cost": {
+    "U": 1,
+    "C": 2
+  },
+  "effects": [
+    {
+      "kind": "affect_creature",
+      "scope": "all_creatures",
+      "severity": "bounce"
+    }
+  ],
+  "name": "Wash Away",
+  "types": [
+    "Sorcery"
+  ]
+}

@@ -24,7 +24,7 @@ const GENERATOR_EFFECTS = [
     id: 'damageAny',
     weight: 3,
     needsLiveSource: false,
-    roll: () => [{kind: 'damage', target: 'any', amount: _genWeightedInt([5, 3, 1])}],
+    roll: () => [{kind: 'damage', target: 'creature_or_player', amount: _genWeightedInt([5, 3, 1])}],
     describe: (eff) => `deal ${eff.amount} damage to any target`,
   },
   {
@@ -32,7 +32,7 @@ const GENERATOR_EFFECTS = [
     weight: 3,
     needsLiveSource: false,
     // Lifegain less swingy than damage — gentler curve.
-    roll: () => [{kind: 'gainLife', target: 'self', amount: _genWeightedInt([4, 3, 2])}],
+    roll: () => [{kind: 'gain_life', scope: 'self', amount: _genWeightedInt([4, 3, 2])}],
     describe: (eff) => `gain ${eff.amount} life`,
   },
   {
@@ -40,7 +40,7 @@ const GENERATOR_EFFECTS = [
     weight: 3,
     needsLiveSource: false,
     // Card draw snowballs; keep high-end rare.
-    roll: () => [{kind: 'draw', target: 'self', amount: _genWeightedInt([7, 1])}],
+    roll: () => [{kind: 'draw', scope: 'self', amount: _genWeightedInt([7, 1])}],
     describe: (eff) => eff.amount === 1 ? `draw a card` : `draw ${eff.amount} cards`,
   },
   {
@@ -50,7 +50,7 @@ const GENERATOR_EFFECTS = [
     roll: () => {
       const power = _genWeightedInt([4, 2]);
       const tou = _genWeightedInt([5, 3], 0);
-      return [{kind: 'pump', target: 'self', power, toughness: tou}];
+      return [{kind: 'pump', scope: 'self', power, toughness: tou}];
     },
     describe: (eff) => `~ gets +${eff.power}/+${eff.toughness} EOT`,
   },
@@ -59,7 +59,7 @@ const GENERATOR_EFFECTS = [
     weight: 2,
     needsLiveSource: true,
     // Always +1/+1; counters are permanent — bigger would snowball.
-    roll: () => [{kind: 'addCounter', target: 'self', power: 1, toughness: 1}],
+    roll: () => [{kind: 'add_counter', scope: 'self', power: 1, toughness: 1}],
     describe: () => `~ gets a +1/+1 counter`,
   },
   {
@@ -67,14 +67,14 @@ const GENERATOR_EFFECTS = [
     weight: 2,
     needsLiveSource: false,
     // TOKENS keyed by full descriptor; bare 'soldier' would fizzle.
-    roll: () => [{kind: 'createTokens', tokenId: 'soldier_w_1_1', count: _genWeightedInt([5, 2])}],
+    roll: () => [{kind: 'create_tokens', token_id: 'soldier_w_1_1', count: _genWeightedInt([5, 2])}],
     describe: (eff) => eff.count === 1 ? `create a 1/1 Soldier token` : `create ${eff.count} 1/1 Soldier tokens`,
   },
   {
     id: 'createTokenGoblin',
     weight: 2,
     needsLiveSource: false,
-    roll: () => [{kind: 'createTokens', tokenId: 'goblin_r_1_1', count: _genWeightedInt([5, 2])}],
+    roll: () => [{kind: 'create_tokens', token_id: 'goblin_r_1_1', count: _genWeightedInt([5, 2])}],
     // Goblin tokens have intrinsic haste — surface in description.
     describe: (eff) => eff.count === 1
       ? `create a 1/1 Goblin token with haste`
@@ -90,16 +90,25 @@ const GENERATOR_EFFECTS = [
 ];
 
 // Excludes parameterized conditions (no basis for picking subtype).
-// sourceLive gates needsLiveSource effects.
+// sourceLive gates needsLiveSource effects. Each entry carries the composable
+// {event, condition} shape directly (Slice 2 / E2) — no condId indirection.
 const GENERATOR_CONDITIONS = [
-  {condId: 'thisEnters',                 weight: 3, sourceLive: true,  text: '~ enters'},
-  {condId: 'thisAttacks',                weight: 3, sourceLive: true,  text: '~ attacks'},
-  {condId: 'thisDies',                   weight: 2, sourceLive: false, text: '~ dies'},
-  {condId: 'anotherCreatureYouEntersStrict', weight: 2, sourceLive: true, text: 'another creature enters under your control'},
-  {condId: 'anotherCreatureDies',        weight: 2, sourceLive: true,  text: 'another creature dies'},
-  {condId: 'anyCardDies',                weight: 1, sourceLive: false, text: 'any card dies'},
-  {condId: 'youGainLife',                weight: 2, sourceLive: true,  text: 'you gain life'},
-  {condId: 'youCastSpell',               weight: 3, sourceLive: true,  text: 'you cast a spell'},
+  {id: 'thisEnters',     weight: 3, sourceLive: true,  text: '~ enters',
+   event: 'card_zone_change', condition: ['this_card', 'card_moves(anywhere, battlefield)']},
+  {id: 'thisAttacks',    weight: 3, sourceLive: true,  text: '~ attacks',
+   event: 'attacks', condition: ['this_card']},
+  {id: 'thisDies',       weight: 2, sourceLive: false, text: '~ dies',
+   event: 'card_zone_change', condition: ['this_card', 'card_moves(battlefield, graveyard)']},
+  {id: 'anotherCreatureYouEntersStrict', weight: 2, sourceLive: true, text: 'another creature enters under your control',
+   event: 'card_zone_change', condition: ['another_card', 'card_is_creature', 'controlled_by(you)', 'card_moves(anywhere, battlefield)']},
+  {id: 'anotherCreatureDies', weight: 2, sourceLive: true,  text: 'another creature dies',
+   event: 'card_zone_change', condition: ['another_card', 'card_is_creature', 'card_moves(battlefield, graveyard)']},
+  {id: 'anyCardDies',    weight: 1, sourceLive: false, text: 'any creature dies',
+   event: 'card_zone_change', condition: ['card_is_creature', 'card_moves(battlefield, graveyard)']},
+  {id: 'youGainLife',    weight: 2, sourceLive: true,  text: 'you gain life',
+   event: 'life_changed', condition: ['is_life_gain', 'affected_player_is(you)']},
+  {id: 'youCastSpell',   weight: 3, sourceLive: true,  text: 'you cast a spell',
+   event: 'spell_cast', condition: ['another_card', 'controlled_by(you)']},
 ];
 
 function _genWeightedPick(entries) {
@@ -119,23 +128,20 @@ function generateRandomTrigger() {
     const eff = _genWeightedPick(GENERATOR_EFFECTS);
     if (eff.needsLiveSource && !cond.sourceLive) continue;
     const effects = eff.roll();
-    const condEntry = TRIGGER_CONDITIONS[cond.condId];
-    if (!condEntry || !condEntry.events || condEntry.events.length === 0) continue;
-    const event = condEntry.events[0];
     const text = `When ${cond.text}, ${eff.describe(effects[0])}.`;
     return {
-      event,
-      condId: cond.condId,
+      event: cond.event,
+      condition: cond.condition.slice(),
       text,
       effects,
       generated: true,
     };
   }
   return {
-    event: 'cardEntersBattlefield',
-    condId: 'thisEnters',
+    event: 'card_zone_change',
+    condition: ['this_card', 'card_moves(anywhere, battlefield)'],
     text: 'When ~ enters, gain 1 life.',
-    effects: [{kind: 'gainLife', target: 'self', amount: 1}],
+    effects: [{kind: 'gain_life', scope: 'self', amount: 1}],
     generated: true,
   };
 }
@@ -179,15 +185,15 @@ function generateEffectOptions(chosenCondition) {
 
 // Finalize (cond, eff) → trigger object, same shape as generateRandomTrigger.
 function assembleTrigger(chosenCondition, chosenEffect) {
-  const condEntry = TRIGGER_CONDITIONS[chosenCondition.condId];
-  const event = (condEntry && condEntry.events && condEntry.events[0]) || 'cardEntersBattlefield';
   return {
-    event,
-    condId: chosenCondition.condId,
+    event: chosenCondition.event,
+    condition: chosenCondition.condition.slice(),
     text: `When ${chosenCondition.text}, ${chosenEffect.describe}.`,
     effects: chosenEffect.effects.map(e => ({...e})),
     generated: true,
-    // Stops self-cascade loops (e.g. enter→create-tokens cascading via the tokens).
+    // Stops self-cascade loops (e.g. enter→create-tokens cascading via the
+    // tokens). The created tokens' card_zone_change carries source_iid = this
+    // trigger's source; evalTriggerCondition's noSelfCascade guard reads it.
     noSelfCascade: true,
   };
 }

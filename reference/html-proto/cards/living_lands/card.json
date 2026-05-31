@@ -1,0 +1,26 @@
+{
+  "card_id": "living_lands",
+  "name": "Living Lands",
+  "art": "🌱",
+  "cost": {
+    "G": 2
+  },
+  "target": "permanent",
+  "target_filter": {
+    "type": "Land"
+  },
+  "effects": [
+    {
+      "kind": "add_type",
+      "types": [
+        "Creature"
+      ],
+      "power": 2,
+      "toughness": 2,
+      "duration": "permanent"
+    }
+  ],
+  "types": [
+    "Sorcery"
+  ]
+}

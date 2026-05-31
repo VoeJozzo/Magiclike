@@ -46,7 +46,7 @@ func _ready() -> void:
 	_assert_true(s.you.land_played_this_turn, "land_played_this_turn flag set")
 
 	# Step 2: tap the existing mountain for R
-	ok = RulesEngine.execute_action(Action.make_activate_ability(existing_mtn.instance_id))
+	ok = RulesEngine.execute_action(Action.make_tap_land_for_mana(existing_mtn.instance_id))
 	_assert_true(ok, "tap mountain succeeded")
 	_assert_eq(s.you.mana.pool["R"], 1, "mana.R after tap")
 

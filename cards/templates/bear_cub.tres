@@ -13,4 +13,4 @@ subtypes = Array[String](["bear"])
 mana_cost = {
 "G": 1
 }
-oracle_text = "A vanilla 1/1 — no abilities."
+text = "A vanilla 1/1 — no abilities."

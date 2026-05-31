@@ -1,0 +1,50 @@
+{
+  "card_id": "ancient_treant",
+  "art": "art.png",
+  "cost": {
+    "G": 2,
+    "C": 3
+  },
+  "keywords": [
+    "reach"
+  ],
+  "name": "Ancient Treant",
+  "power": 4,
+  "static_buffs": [
+    {
+      "filter": {
+        "controller": "self"
+      },
+      "subtype": "Treefolk",
+      "power": 1,
+      "toughness": 1
+    }
+  ],
+  "toughness": 5,
+  "triggers": [
+    {
+      "event": "card_zone_change",
+      "condition": [
+        "this_card",
+        "card_moves(anywhere, battlefield)"
+      ],
+      "effects": [
+        {
+          "kind": "move_card",
+          "from_zone": "library",
+          "to_zone": "battlefield",
+          "filter": {
+            "type": "Land"
+          },
+          "post": {
+            "tap": true
+          }
+        }
+      ]
+    }
+  ],
+  "types": [
+    "Creature",
+    "Treefolk"
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "card_id": "ravenous_chupacabra",
+  "art": "art.png",
+  "cost": {
+    "B": 1,
+    "C": 3
+  },
+  "name": "Ravenous Chupacabra",
+  "power": 2,
+  "toughness": 2,
+  "triggers": [
+    {
+      "event": "card_zone_change",
+      "condition": [
+        "this_card",
+        "card_moves(anywhere, battlefield)"
+      ],
+      "effects": [
+        {
+          "kind": "affect_creature",
+          "severity": "destroy"
+        }
+      ],
+      "target": "creature"
+    }
+  ],
+  "types": [
+    "Creature",
+    "Beast"
+  ]
+}

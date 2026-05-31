@@ -1,7 +1,7 @@
 // Bootstrap + shared module-level helpers. Loaded last so all IIFEs
 // (ENGINE, AI, DRAFT, RUN, CONTROLLER, PICKLOG) are defined first.
 
-const VERSION = 'v1.0.188';
+const VERSION = 'v2.0.75';
 
 function opp(who) { return who === 'you' ? 'opp' : 'you'; }
 
@@ -17,6 +17,19 @@ window.PICKLOG = PICKLOG;
 SETTINGS.applyFontsToRoot();
 
 loadCards().then(() => {
+  // Boot validation: surface typos in composable trigger conditions / event
+  // kinds (Slice 2 / E2) and effect kinds / target filters (Slice 3) at
+  // startup, not at runtime when a trigger or effect fails.
+  validateAllCardConditions(CARDS);
+  ENGINE.validateAllCardEffects(CARDS);
+  // §7b coverage: every EFFECTS handler must be classified for AI valuation and
+  // have card-text. A miss here means a future kind would silently score 0 / show
+  // "[kind]" — warn loudly at boot (mirrors Godot's _ready() push_error).
+  const cov = ENGINE.effectCoverageReport();
+  if (cov.unclassifiedValuation.length || cov.staleValuation.length || cov.missingText.length
+      || cov.unclassifiedCastScoring.length || cov.staleCastScoring.length) {
+    console.warn('Effect coverage gaps:', cov);
+  }
   CONTROLLER.init();
 }).catch(e => {
   console.error('Failed to load card data:', e);

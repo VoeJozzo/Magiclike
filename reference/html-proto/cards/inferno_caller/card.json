@@ -1,0 +1,31 @@
+{
+  "card_id": "inferno_caller",
+  "art": "🔥",
+  "cost": {
+    "R": 1,
+    "C": 3
+  },
+  "name": "Inferno Caller",
+  "power": 2,
+  "toughness": 3,
+  "triggers": [
+    {
+      "event": "attacks",
+      "condition": [
+        "this_card"
+      ],
+      "effects": [
+        {
+          "kind": "damage",
+          "amount": 2
+        }
+      ],
+      "target": "creature_or_player"
+    }
+  ],
+  "types": [
+    "Creature",
+    "Human",
+    "Shaman"
+  ]
+}

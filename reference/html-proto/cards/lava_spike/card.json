@@ -1,0 +1,18 @@
+{
+  "card_id": "lava_spike",
+  "art": "art.png",
+  "cost": {
+    "R": 1
+  },
+  "target": "opp",
+  "effects": [
+    {
+      "kind": "damage",
+      "amount": 3
+    }
+  ],
+  "name": "Lava Spike",
+  "types": [
+    "Sorcery"
+  ]
+}

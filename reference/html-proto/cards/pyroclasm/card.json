@@ -1,21 +1,19 @@
 {
-  "tplId": "pyroclasm",
-  "name": "Pyroclasm",
-  "type": "Sorcery",
+  "card_id": "pyroclasm",
+  "art": "art.png",
   "cost": {
     "R": 1,
     "C": 1
   },
-  "art": "🌋",
-  "text": "Deal 2 damage to each creature.",
   "effects": [
     {
-      "kind": "damageAll",
+      "kind": "damage",
+      "scope": "all_creatures",
       "amount": 2
     }
   ],
-  "color": "R",
-  "colors": [
-    "R"
+  "name": "Pyroclasm",
+  "types": [
+    "Sorcery"
   ]
 }

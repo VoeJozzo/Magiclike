@@ -1,0 +1,14 @@
+{
+  "card_id": "savannah_lions",
+  "art": "art.png",
+  "cost": {
+    "W": 1
+  },
+  "name": "Savannah Lions",
+  "power": 2,
+  "toughness": 1,
+  "types": [
+    "Creature",
+    "Cat"
+  ]
+}

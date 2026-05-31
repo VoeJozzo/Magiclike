@@ -1,0 +1,22 @@
+{
+  "card_id": "smite_the_wicked",
+  "art": "art.png",
+  "cost": {
+    "W": 1,
+    "C": 2
+  },
+  "target": "creature",
+  "target_filter": {
+    "tapped": true
+  },
+  "effects": [
+    {
+      "kind": "affect_creature",
+      "severity": "destroy"
+    }
+  ],
+  "name": "Smite the Wicked",
+  "types": [
+    "Sorcery"
+  ]
+}

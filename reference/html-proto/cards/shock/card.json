@@ -1,21 +1,21 @@
 {
-  "tplId": "shock",
-  "name": "Shock",
-  "type": "Instant",
+  "card_id": "shock",
+  "art": "💥",
   "cost": {
     "R": 1
   },
-  "art": "💥",
-  "text": "Deal 2 damage to any target.",
+  "target": "creature_or_player",
   "effects": [
     {
       "kind": "damage",
-      "target": "any",
       "amount": 2
     }
   ],
-  "color": "R",
-  "colors": [
-    "R"
+  "name": "Shock",
+  "keywords": [
+    "flash"
+  ],
+  "types": [
+    "Sorcery"
   ]
 }

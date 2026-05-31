@@ -1,0 +1,18 @@
+{
+  "card_id": "forest_titan",
+  "art": "art.png",
+  "cost": {
+    "G": 2,
+    "C": 3
+  },
+  "keywords": [
+    "trample"
+  ],
+  "name": "Forest Titan",
+  "power": 5,
+  "toughness": 5,
+  "types": [
+    "Creature",
+    "Giant"
+  ]
+}

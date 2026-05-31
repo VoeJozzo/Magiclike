@@ -23,8 +23,6 @@ check('GENERATOR_EFFECTS is a non-empty array',
   Array.isArray(GENERATOR_EFFECTS) && GENERATOR_EFFECTS.length > 0);
 check('GENERATOR_CONDITIONS is a non-empty array',
   Array.isArray(GENERATOR_CONDITIONS) && GENERATOR_CONDITIONS.length > 0);
-check('TRIGGER_CONDITIONS is an object',
-  TRIGGER_CONDITIONS && typeof TRIGGER_CONDITIONS === 'object');
 check('generateRandomTrigger is a function', typeof generateRandomTrigger === 'function');
 check('assembleTrigger is a function', typeof assembleTrigger === 'function');
 check('generateConditionOptions is a function', typeof generateConditionOptions === 'function');
@@ -50,17 +48,20 @@ for (const eff of GENERATOR_EFFECTS) {
 
 console.log('\n=== GENERATOR_CONDITIONS entries are well-shaped ===');
 for (const cond of GENERATOR_CONDITIONS) {
-  const desc = cond.condId || '(no condId)';
-  check(desc + ': has condId', typeof cond.condId === 'string');
+  const desc = cond.id || '(no id)';
+  check(desc + ': has id', typeof cond.id === 'string');
   check(desc + ': has weight > 0',
     typeof cond.weight === 'number' && cond.weight > 0);
   check(desc + ': has sourceLive boolean',
     typeof cond.sourceLive === 'boolean');
   check(desc + ': has text', typeof cond.text === 'string' && cond.text.length > 0);
-  // Every condId must resolve via TRIGGER_CONDITIONS — otherwise the
-  // trigger fires but never matches an event.
-  check(desc + ': condId is registered in TRIGGER_CONDITIONS',
-    TRIGGER_CONDITIONS[cond.condId] !== undefined);
+  // Composable shape (Slice 2 / E2): valid event + a condition array that
+  // classifies back to its archetype id.
+  check(desc + ': event is a recognized trigger event',
+    VALID_TRIGGER_EVENTS.has(cond.event));
+  check(desc + ': condition is an array', Array.isArray(cond.condition));
+  check(desc + ': condition classifies back to its id',
+    triggerArchetype({event: cond.event, condition: cond.condition}) === cond.id);
 }
 
 console.log('\n=== generateRandomTrigger output shape (200 rolls) ===');
@@ -79,7 +80,7 @@ console.log('\n=== generateRandomTrigger output shape (200 rolls) ===');
         else VALID_KIND.add(e.kind);
       }
     }
-    if (typeof t.condId !== 'string') badShape++;
+    if (!Array.isArray(t.condition)) badShape++;
     if (t.generated !== true) badShape++;
   }
   check('all 200 rolls have well-shaped effects', badShape === 0,
@@ -98,7 +99,7 @@ console.log('\n=== Hard-break filter: needsLiveSource never pairs with !sourceLi
   // generator never produces a bad pairing across many rolls. Detect by
   // looking at (condId, effect.kind) tuples — any live-source effect kind
   // appearing with a dead-source condId is a regression.
-  const deadCondIds = new Set(GENERATOR_CONDITIONS.filter(c => !c.sourceLive).map(c => c.condId));
+  const deadCondIds = new Set(GENERATOR_CONDITIONS.filter(c => !c.sourceLive).map(c => c.id));
   // Build a "kind -> needsLiveSource?" map. Multiple effects share a kind
   // but with consistent flags within this generator.
   const liveKinds = new Set();
@@ -110,11 +111,11 @@ console.log('\n=== Hard-break filter: needsLiveSource never pairs with !sourceLi
   let violations = 0;
   for (let i = 0; i < 500; i++) {
     const t = generateRandomTrigger();
-    if (deadCondIds.has(t.condId) && t.effects[0] && liveKinds.has(t.effects[0].kind)) {
+    if (deadCondIds.has(triggerArchetype(t)) && t.effects[0] && liveKinds.has(t.effects[0].kind)) {
       // The same kind COULD appear from a different effect that's not
       // needsLiveSource — so we need to double-check by looking at the
       // effect target. needsLiveSource effects typically target 'self'.
-      if (t.effects[0].target === 'self') {
+      if (t.effects[0].scope === 'self') {
         violations++;
       }
     }
@@ -127,11 +128,11 @@ console.log('\n=== Two-step build flow: condition options ===');
 {
   const opts = generateConditionOptions();
   check('returns 3 condition options', opts.length === 3);
-  const ids = opts.map(o => o.condId);
+  const ids = opts.map(o => o.id);
   check('options are distinct', new Set(ids).size === 3);
   for (const o of opts) {
-    check(o.condId + ': has text', typeof o.text === 'string' && o.text.length > 0);
-    check(o.condId + ': has sourceLive', typeof o.sourceLive === 'boolean');
+    check(o.id + ': has text', typeof o.text === 'string' && o.text.length > 0);
+    check(o.id + ': has sourceLive', typeof o.sourceLive === 'boolean');
   }
 }
 
@@ -142,7 +143,7 @@ console.log('\n=== Two-step build flow: effect options (dead-source condition) =
     console.log('  (no dead-source condition in pool -- skipping)');
   } else {
     const effOpts = generateEffectOptions(deadCond);
-    check('returns 3 effect options for ' + deadCond.condId,
+    check('returns 3 effect options for ' + deadCond.id,
       effOpts.length === 3);
     // Every offered effect, when picked, must NOT be a needsLiveSource one
     // (since the chosen condition has sourceLive=false).
@@ -158,11 +159,11 @@ console.log('\n=== Two-step build flow: effect options (dead-source condition) =
 
 console.log('\n=== Two-step build flow: assembleTrigger output ===');
 {
-  const cond = GENERATOR_CONDITIONS.find(c => c.condId === 'thisEnters');
+  const cond = GENERATOR_CONDITIONS.find(c => c.id === 'thisEnters');
   const effOpts = generateEffectOptions(cond);
   const trig = assembleTrigger(cond, effOpts[0]);
   check('assembled trigger has event', typeof trig.event === 'string' && trig.event.length > 0);
-  check('assembled trigger has condId', trig.condId === cond.condId);
+  check('assembled trigger condition classifies to its id', triggerArchetype(trig) === cond.id);
   check('assembled trigger has text', typeof trig.text === 'string' && trig.text.length > 0);
   check('assembled trigger has effects array',
     Array.isArray(trig.effects) && trig.effects.length > 0);
@@ -179,21 +180,21 @@ console.log('\n=== Two-step build flow: assembleTrigger output ===');
 console.log('\n=== Mercurial Adept template + deck-build integration ===');
 {
   // Mercurial Adept is the fixed-pool variant: card carries
-  // triggerPoolSeed='mercurial', and at deck-build time the engine rolls
+  // trigger_pool_seed='mercurial', and at deck-build time the engine rolls
   // one entry from MERCURIAL_TRIGGER_POOL into the card's bonusTrigger.
-  const tpl = CARDS['mercurialAdept'];
+  const tpl = CARDS['mercurial_adept'];
   if (tpl) {
     check('Adept template exists', !!tpl);
-    check("Adept marked with triggerPoolSeed='mercurial'",
-      tpl.triggerPoolSeed === 'mercurial');
+    check("Adept marked with trigger_pool_seed='mercurial'",
+      tpl.trigger_pool_seed === 'mercurial');
 
     // Deck-build integration: construct a game with Adept in the deck
     // and verify the resulting card has a bonusTrigger.
-    RUN.start({cards:['mercurialAdept','plains','plains','plains','plains','plains','plains','plains','plains','plains','plains','plains'], colors:['U']}, null);
+    RUN.start({cards:['mercurial_adept','plains','plains','plains','plains','plains','plains','plains','plains','plains','plains','plains'], colors:['U']}, null);
     RUN.load();
     ENGINE.init(RUN.getSlots(), ['mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain']);
     const G = ENGINE.state();
-    const adept = [...G.you.library, ...G.you.hand].find(c => c.tplId === 'mercurialAdept');
+    const adept = [...G.you.library, ...G.you.hand].find(c => c.tplId === 'mercurial_adept');
     check('Adept appears in the player game state', !!adept);
     if (adept) {
       // The bonusTrigger is appended onto card.triggers at makeCard time
@@ -215,15 +216,15 @@ console.log('\n=== Mercurial Adept template + deck-build integration ===');
   }
 }
 
-console.log("\n=== Architect's Codex template (buildOnDraw / procedural path) ===");
+console.log("\n=== Architect's Codex template (build_on_draw / procedural path) ===");
 {
-  // Codex is the procedural-generator variant: buildOnDraw triggers the
+  // Codex is the procedural-generator variant: build_on_draw triggers the
   // generateConditionOptions -> generateEffectOptions -> assembleTrigger
   // flow controller-side. Template should be tagged appropriately.
-  const tpl = CARDS['architectsCodex'];
+  const tpl = CARDS['architects_codex'];
   if (tpl) {
     check('Codex template exists', !!tpl);
-    check('Codex has buildOnDraw flag', tpl.buildOnDraw === true);
+    check('Codex has build_on_draw flag', tpl.build_on_draw === true);
     check('Codex marked special', tpl.special === true);
   } else {
     console.log('  (architectsCodex not in CARDS -- skipping)');

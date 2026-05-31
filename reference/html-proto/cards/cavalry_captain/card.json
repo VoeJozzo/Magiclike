@@ -1,0 +1,35 @@
+{
+  "card_id": "cavalry_captain",
+  "art": "🐎",
+  "cost": {
+    "W": 1,
+    "C": 2
+  },
+  "keywords": [
+    "first_strike"
+  ],
+  "name": "Cavalry Captain",
+  "power": 2,
+  "toughness": 2,
+  "triggers": [
+    {
+      "event": "attacks",
+      "condition": [
+        "this_card"
+      ],
+      "effects": [
+        {
+          "kind": "pump",
+          "power": 2,
+          "toughness": 0,
+          "scope": "self"
+        }
+      ]
+    }
+  ],
+  "types": [
+    "Creature",
+    "Human",
+    "Knight"
+  ]
+}

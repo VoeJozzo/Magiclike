@@ -1,22 +1,22 @@
 {
-  "tplId": "firebreathing",
-  "name": "Firebreathing",
-  "type": "Instant",
+  "card_id": "firebreathing",
+  "art": "art.png",
   "cost": {
     "R": 1
   },
-  "art": "cards/firebreathing/art.png",
-  "text": "Target creature gets +3/+0 EOT.",
+  "target": "creature",
   "effects": [
     {
       "kind": "pump",
-      "target": "creature",
       "power": 3,
       "toughness": 0
     }
   ],
-  "color": "R",
-  "colors": [
-    "R"
+  "name": "Firebreathing",
+  "keywords": [
+    "flash"
+  ],
+  "types": [
+    "Sorcery"
   ]
 }

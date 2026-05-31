@@ -1,21 +1,21 @@
 {
-  "tplId": "unsummon",
-  "name": "Unsummon",
-  "type": "Instant",
+  "card_id": "unsummon",
+  "art": "↩",
   "cost": {
     "U": 1
   },
-  "art": "↩",
-  "text": "Return target creature to its owner's hand.",
+  "target": "creature",
   "effects": [
     {
-      "kind": "removeCreature",
-      "severity": 2,
-      "target": "creature"
+      "kind": "affect_creature",
+      "severity": "bounce"
     }
   ],
-  "color": "U",
-  "colors": [
-    "U"
+  "name": "Unsummon",
+  "keywords": [
+    "flash"
+  ],
+  "types": [
+    "Sorcery"
   ]
 }

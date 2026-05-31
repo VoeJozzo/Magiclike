@@ -1,0 +1,22 @@
+{
+  "card_id": "veil_of_mists",
+  "art": "💨",
+  "cost": {
+    "U": 1,
+    "C": 1
+  },
+  "target": "creature",
+  "effects": [
+    {
+      "kind": "affect_creature",
+      "severity": "bounce"
+    }
+  ],
+  "name": "Veil of Mists",
+  "keywords": [
+    "flash"
+  ],
+  "types": [
+    "Sorcery"
+  ]
+}

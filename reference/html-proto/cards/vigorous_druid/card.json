@@ -1,0 +1,31 @@
+{
+  "card_id": "vigorous_druid",
+  "abilities": [
+    {
+      "cost": {
+        "tap": true
+      },
+      "effects": [
+        {
+          "kind": "add_mana",
+          "amounts": {
+            "G": 2
+          }
+        }
+      ]
+    }
+  ],
+  "art": "🌱",
+  "cost": {
+    "G": 1,
+    "C": 2
+  },
+  "name": "Vigorous Druid",
+  "power": 2,
+  "toughness": 3,
+  "types": [
+    "Creature",
+    "Elf",
+    "Druid"
+  ]
+}

@@ -15,4 +15,4 @@ mana_cost = {
 "C": 2,
 "G": 1
 }
-oracle_text = "Reach. (This creature can block creatures with flying.)"
+text = "Reach. (This creature can block creatures with flying.)"

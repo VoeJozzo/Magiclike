@@ -1,0 +1,32 @@
+{
+  "card_id": "martyr_saint",
+  "art": "🕯",
+  "cost": {
+    "W": 1,
+    "C": 1
+  },
+  "name": "Martyr-Saint",
+  "power": 1,
+  "toughness": 2,
+  "triggers": [
+    {
+      "event": "card_zone_change",
+      "condition": [
+        "this_card",
+        "card_moves(battlefield, graveyard)"
+      ],
+      "effects": [
+        {
+          "kind": "gain_life",
+          "amount": 3,
+          "scope": "self"
+        }
+      ]
+    }
+  ],
+  "types": [
+    "Creature",
+    "Human",
+    "Cleric"
+  ]
+}

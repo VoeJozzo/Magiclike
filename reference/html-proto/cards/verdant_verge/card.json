@@ -1,0 +1,11 @@
+{
+  "card_id": "verdant_verge",
+  "name": "Verdant Verge",
+  "art": "🍃",
+  "types": [
+    "Artifact",
+    "Land",
+    "Forest"
+  ],
+  "mana": "G"
+}

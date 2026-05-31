@@ -1,21 +1,19 @@
 {
-  "tplId": "shadowmage",
-  "name": "Shadowmage",
-  "type": "Creature",
-  "sub": "Human Wizard",
+  "card_id": "shadowmage",
+  "art": "art.png",
   "cost": {
     "B": 1,
     "C": 2
   },
-  "power": 2,
-  "toughness": 3,
-  "art": "cards/shadowmage/art.png",
-  "text": "Flying",
   "keywords": [
     "flying"
   ],
-  "color": "B",
-  "colors": [
-    "B"
+  "name": "Shadowmage",
+  "power": 2,
+  "toughness": 3,
+  "types": [
+    "Creature",
+    "Human",
+    "Wizard"
   ]
 }

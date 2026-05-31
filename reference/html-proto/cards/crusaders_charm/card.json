@@ -1,0 +1,53 @@
+{
+  "card_id": "crusaders_charm",
+  "art": "✚",
+  "cost": {
+    "W": 2,
+    "C": 1
+  },
+  "effects": {
+    "mode_names": [
+      "Smite (deal 2)",
+      "Embolden (+2/+2 EOT)",
+      "Sanctuary (gain 3, draw 1)"
+    ],
+    "modes": [
+      [
+        {
+          "kind": "damage",
+          "target": "creature_or_player",
+          "amount": 2
+        }
+      ],
+      [
+        {
+          "kind": "pump",
+          "target": "creature",
+          "power": 2,
+          "toughness": 2
+        }
+      ],
+      [
+        {
+          "kind": "gain_life",
+          "amount": 3,
+          "scope": "self"
+        },
+        {
+          "kind": "move_card",
+          "from_zone": "library",
+          "to_zone": "hand",
+          "selector": "controller_top",
+          "amount": 1
+        }
+      ]
+    ]
+  },
+  "name": "Crusader's Charm",
+  "keywords": [
+    "flash"
+  ],
+  "types": [
+    "Sorcery"
+  ]
+}

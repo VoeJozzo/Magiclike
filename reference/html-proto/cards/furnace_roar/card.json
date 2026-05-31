@@ -1,0 +1,19 @@
+{
+  "card_id": "furnace_roar",
+  "art": "🔥",
+  "cost": {
+    "R": 2,
+    "C": 3
+  },
+  "effects": [
+    {
+      "kind": "damage",
+      "scope": "all_creatures",
+      "amount": 5
+    }
+  ],
+  "name": "Furnace Roar",
+  "types": [
+    "Sorcery"
+  ]
+}

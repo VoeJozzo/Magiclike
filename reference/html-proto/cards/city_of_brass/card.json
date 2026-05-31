@@ -1,0 +1,22 @@
+{
+  "card_id": "city_of_brass",
+  "art": "art.png",
+  "mana": "C",
+  "name": "City of Brass",
+  "abilities": [
+    {
+      "cost": {
+        "tap": true
+      },
+      "effects": [
+        {
+          "kind": "add_mana",
+          "choose": "any"
+        }
+      ]
+    }
+  ],
+  "types": [
+    "Land"
+  ]
+}

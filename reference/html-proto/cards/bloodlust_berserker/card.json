@@ -1,0 +1,36 @@
+{
+  "card_id": "bloodlust_berserker",
+  "art": "art.png",
+  "cost": {
+    "R": 1,
+    "C": 2
+  },
+  "keywords": [
+    "haste"
+  ],
+  "name": "Bloodlust Berserker",
+  "power": 3,
+  "toughness": 2,
+  "triggers": [
+    {
+      "event": "attacks",
+      "condition": [
+        "this_card",
+        "lost_life_this_turn(opp)"
+      ],
+      "effects": [
+        {
+          "kind": "pump",
+          "power": 1,
+          "toughness": 1,
+          "scope": "self"
+        }
+      ]
+    }
+  ],
+  "types": [
+    "Creature",
+    "Goblin",
+    "Berserker"
+  ]
+}

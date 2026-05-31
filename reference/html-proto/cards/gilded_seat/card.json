@@ -1,0 +1,11 @@
+{
+  "card_id": "gilded_seat",
+  "name": "Gilded Seat",
+  "art": "🪙",
+  "types": [
+    "Artifact",
+    "Land",
+    "Plains"
+  ],
+  "mana": "W"
+}

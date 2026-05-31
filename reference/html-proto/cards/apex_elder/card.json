@@ -1,0 +1,56 @@
+{
+  "card_id": "apex_elder",
+  "art": "art.png",
+  "cost": {
+    "G": 2,
+    "C": 3
+  },
+  "keywords": [
+    "trample"
+  ],
+  "name": "Apex Elder",
+  "power": 4,
+  "static_buffs": [
+    {
+      "filter": {
+        "controller": "self"
+      },
+      "subtype": "Beast",
+      "power": 1,
+      "toughness": 1,
+      "keywords": [
+        "trample"
+      ]
+    }
+  ],
+  "toughness": 4,
+  "triggers": [
+    {
+      "event": "attacks",
+      "condition": [
+        "controlled_by(you)",
+        "card_has_subtype(Beast)"
+      ],
+      "effects": [
+        {
+          "kind": "move_card",
+          "from_zone": "library",
+          "to_zone": "hand",
+          "selector": "controller_top",
+          "amount": 1
+        },
+        {
+          "kind": "move_card",
+          "from_zone": "hand",
+          "to_zone": "graveyard",
+          "amount": 1,
+          "scope": "self"
+        }
+      ]
+    }
+  ],
+  "types": [
+    "Creature",
+    "Beast"
+  ]
+}

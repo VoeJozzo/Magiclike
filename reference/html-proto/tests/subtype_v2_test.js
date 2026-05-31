@@ -26,11 +26,11 @@ console.log('=== Test 1: Only one subtype sticker exists in STICKERS ===');
 
 console.log('\n=== Test 2: rollSubtypeFromDeck weights by deck contents ===');
 {
-  RUN.start({cards:['savannahLions','goblinChieftain','goblinWarDrummer','prodigal','plains','plains','plains','plains','plains','plains','plains','plains'], colors:['W','R','U']}, null);
+  RUN.start({cards:['savannah_lions','goblin_chieftain','goblin_war_drummer','prodigal_sorcerer','plains','plains','plains','plains','plains','plains','plains','plains'], colors:['W','R','U']}, null);
   RUN.load();
   const slots = RUN.getSlots();
   console.log('  deck slot tplIds:', slots.map(s => s.tplId));
-  const targetIdx = slots.findIndex(s => s.tplId === 'savannahLions');
+  const targetIdx = slots.findIndex(s => s.tplId === 'savannah_lions');
   check('Lions slot exists', targetIdx >= 0);
 
   const counts = {};
@@ -47,10 +47,10 @@ console.log('\n=== Test 2: rollSubtypeFromDeck weights by deck contents ===');
 
 console.log("\n=== Test 3: rollSubtypeFromDeck excludes target's existing subtypes ===");
 {
-  RUN.start({cards:['goblinChieftain','goblinWarDrummer','plains','plains','plains','plains','plains','plains','plains','plains','plains','plains'], colors:['R','W']}, null);
+  RUN.start({cards:['goblin_chieftain','goblin_war_drummer','plains','plains','plains','plains','plains','plains','plains','plains','plains','plains'], colors:['R','W']}, null);
   RUN.load();
   const slots = RUN.getSlots();
-  const targetIdx = slots.findIndex(s => s.tplId === 'goblinChieftain');
+  const targetIdx = slots.findIndex(s => s.tplId === 'goblin_chieftain');
   let rolledGoblin = false;
   for (let i = 0; i < 200; i++) {
     if (rollSubtypeFromDeck(slots, targetIdx) === 'Goblin') { rolledGoblin = true; break; }
@@ -65,24 +65,24 @@ console.log("\n=== Test 3: rollSubtypeFromDeck excludes target's existing subtyp
 
 console.log('\n=== Test 4: Sticker application respects rolled subtype ===');
 {
-  RUN.start({cards:['savannahLions','goblinChieftain','plains','plains','plains','plains','plains','plains','plains','plains','plains','plains'], colors:['R','W']}, null);
+  RUN.start({cards:['savannah_lions','goblin_chieftain','plains','plains','plains','plains','plains','plains','plains','plains','plains','plains'], colors:['R','W']}, null);
   RUN.load();
   const slots = RUN.getSlots();
-  const lionsIdx = slots.findIndex(s => s.tplId === 'savannahLions');
+  const lionsIdx = slots.findIndex(s => s.tplId === 'savannah_lions');
   slots[lionsIdx].stickers = ['subtype'];
   slots[lionsIdx].subtypeRolls = ['Goblin'];
   RUN.save();
 
   ENGINE.init(RUN.getSlots(), ['mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain']);
   const G = ENGINE.state();
-  const lions = [...G.you.library, ...G.you.hand].find(c => c.tplId === 'savannahLions');
+  const lions = [...G.you.library, ...G.you.hand].find(c => c.tplId === 'savannah_lions');
   check('Lions found', !!lions);
   if (lions) {
     console.log('  lions.sub:', lions.sub, '  subtypeRolls:', lions.subtypeRolls);
-    check("Lions sub contains 'Goblin'", lions.sub.includes('Goblin'));
-    check("Lions sub still contains 'Cat'", lions.sub.includes('Cat'));
+    check("Lions sub contains 'Goblin'", hasType(lions, 'Goblin'));
+    check("Lions sub still contains 'Cat'", hasType(lions, 'Cat'));
 
-    const chieftain = [...G.you.library, ...G.you.hand].find(c => c.tplId === 'goblinChieftain');
+    const chieftain = [...G.you.library, ...G.you.hand].find(c => c.tplId === 'goblin_chieftain');
     if (chieftain) {
       G.you.library = G.you.library.filter(c => c !== lions && c !== chieftain);
       G.you.hand = G.you.hand.filter(c => c !== lions && c !== chieftain);
@@ -97,22 +97,22 @@ console.log('\n=== Test 4: Sticker application respects rolled subtype ===');
 
 console.log('\n=== Test 5: Stacking applies multiple subtypes ===');
 {
-  RUN.start({cards:['savannahLions','goblinChieftain','plains','plains','plains','plains','plains','plains','plains','plains','plains','plains'], colors:['R','W']}, null);
+  RUN.start({cards:['savannah_lions','goblin_chieftain','plains','plains','plains','plains','plains','plains','plains','plains','plains','plains'], colors:['R','W']}, null);
   RUN.load();
   const slots = RUN.getSlots();
-  const lionsIdx = slots.findIndex(s => s.tplId === 'savannahLions');
+  const lionsIdx = slots.findIndex(s => s.tplId === 'savannah_lions');
   slots[lionsIdx].stickers = ['subtype', 'subtype'];
   slots[lionsIdx].subtypeRolls = ['Goblin', 'Wizard'];
   RUN.save();
 
   ENGINE.init(RUN.getSlots(), ['mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain']);
   const G = ENGINE.state();
-  const lions = [...G.you.library, ...G.you.hand].find(c => c.tplId === 'savannahLions');
+  const lions = [...G.you.library, ...G.you.hand].find(c => c.tplId === 'savannah_lions');
   if (lions) {
-    console.log('  Lions sub with 2 subtype stickers:', lions.sub);
-    check('Lions sub contains Goblin', lions.sub.includes('Goblin'));
-    check('Lions sub contains Wizard', lions.sub.includes('Wizard'));
-    check('Lions sub still contains Cat', lions.sub.includes('Cat'));
+    console.log('  Lions subtypes with 2 subtype stickers:', subtypesOf(lions));
+    check('Lions sub contains Goblin', hasType(lions, 'Goblin'));
+    check('Lions sub contains Wizard', hasType(lions, 'Wizard'));
+    check('Lions sub still contains Cat', hasType(lions, 'Cat'));
   }
 }
 
@@ -122,7 +122,7 @@ console.log("\n=== Test 6: Save migration converts legacy subtype_goblin -> 'sub
     version: 1,
     runState: {
       slots: [
-        {tplId: 'savannahLions', stickers: ['subtype_goblin']},
+        {tplId: 'savannah_lions', stickers: ['subtype_goblin']},
         {tplId: 'plains', stickers: []},
       ],
       colors: ['W'],
@@ -136,7 +136,7 @@ console.log("\n=== Test 6: Save migration converts legacy subtype_goblin -> 'sub
   global.localStorage.setItem('claudeMagiclikeRunV1', legacySave);
   RUN.load();
   const slots = RUN.getSlots();
-  const lionsSlot = slots.find(s => s.tplId === 'savannahLions');
+  const lionsSlot = slots.find(s => s.tplId === 'savannah_lions');
   check('Lions slot still present after load', !!lionsSlot);
   if (lionsSlot) {
     console.log('  migrated stickers:', lionsSlot.stickers);

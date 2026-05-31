@@ -16,6 +16,15 @@ var _state: EngineState = null
 func _ready() -> void:
 	# Predicate validation at boot — catches typos in card resources.
 	Predicates.validate_all_card_predicates(CardDatabase.all_resources())
+	# Cross-engine supportability scan over the full html-proto card pool.
+	# Loads 258 JSONs and prints one line summarizing how many are fully
+	# playable today vs awaiting effect/event/predicate handlers. Skip in
+	# CI / headless tests that don't want the disk hit by setting the env
+	# var MAGICLIKE_SKIP_SUPPORTABILITY_SCAN=1.
+	if not OS.has_environment("MAGICLIKE_SKIP_SUPPORTABILITY_SCAN"):
+		var json_cards: Dictionary = JsonCardLoader.load_all()
+		if not json_cards.is_empty():
+			JsonCardLoader.supportability_report(json_cards, true)
 
 
 # Reentrancy guard for opp-turn auto-cycle (Phase 2 has no AI).
@@ -296,15 +305,17 @@ func get_legal_actions(player_key: String) -> Array[Dictionary]:
 		return actions
 	if _state.priority_player_key == player_key:
 		actions.append(Action.make_pass_priority())
+		if _legal_end_turn({}):
+			actions.append(Action.make_end_turn())
 	for card in _state.player_by_key(player_key).hand:
 		if card.is_land():
 			var play := Action.make_play_land(card.instance_id)
 			if _legal_play_land(play):
 				actions.append(play)
 	for card in _state.player_by_key(player_key).battlefield:
-		var ability := Action.make_activate_ability(card.instance_id)
-		if _legal_activate_ability(ability):
-			actions.append(ability)
+		var tap := Action.make_tap_land_for_mana(card.instance_id)
+		if _legal_tap_land_for_mana(tap):
+			actions.append(tap)
 	for card in _state.player_by_key(player_key).hand:
 		if card.is_land():
 			continue
@@ -384,8 +395,10 @@ func is_legal_action(action: Dictionary) -> bool:
 			return _state != null and _state.winner == "" \
 				and _state.priority_player_key != "" \
 				and _state.awaiting_discard.is_empty()
+		Action.KIND_TAP_LAND_FOR_MANA:
+			return _legal_tap_land_for_mana(action)
 		Action.KIND_ACTIVATE_ABILITY:
-			return _legal_activate_ability(action)
+			return false  # Phase 6+: non-mana activated abilities. None in Phase 1.
 		Action.KIND_PLAY_LAND:
 			return _legal_play_land(action)
 		Action.KIND_CAST_SPELL:
@@ -404,6 +417,8 @@ func is_legal_action(action: Dictionary) -> bool:
 			return _legal_pick_trigger_target(action)
 		Action.KIND_DISCARD_CARD:
 			return _legal_discard_card(action)
+		Action.KIND_END_TURN:
+			return _legal_end_turn(action)
 		_:
 			return false
 
@@ -418,8 +433,30 @@ func _settle_state() -> void:
 	while _state.winner == "" and safety > 0:
 		safety -= 1
 		var actor: String = _current_actor()
+		# A priority window is "open for auto-pass" only when its holder actually
+		# holds priority and no turn-based action (block/discard/trigger-target)
+		# is owed — in those states priority is "" and the owing player must act.
+		var window_open: bool = _state.priority_player_key == actor \
+				and not _state.awaiting_block_declaration \
+				and _state.awaiting_discard.is_empty() \
+				and _state.awaiting_target_for_trigger.is_empty()
+		# The human ("you") keeps every priority window so the UI (and the phase
+		# tests) can observe and respond to it — e.g. the window they retain after
+		# casting a spell (117.1c). The ONLY time the settle loop passes on the
+		# human's behalf is an end-turn fast-forward they explicitly requested
+		# (B7: end_turn_pending). Auto-passing merely "dead" windows is an
+		# AI-driver convenience, not something we do to the human — doing so would
+		# swallow their post-cast / instant-response windows.
 		if actor == "you":
+			if window_open and _state.end_turn_pending and _should_auto_pass(actor):
+				_dispatch_action(Action.make_pass_priority())
+				continue
 			break
+		# opp is AI-driven; an unattended dead window (B6) or AP's empty-stack
+		# END / end-turn fast-forward (B7) auto-passes, otherwise the AI decides.
+		if window_open and _should_auto_pass(actor):
+			_dispatch_action(Action.make_pass_priority())
+			continue
 		var action: Dictionary = AI.decide(_state, "opp")
 		if action.is_empty():
 			action = Action.make_pass_priority()
@@ -469,9 +506,15 @@ func _dispatch_action(action: Dictionary) -> bool:
 # execute_action but not here).
 func _do_action(action: Dictionary) -> bool:
 	var kind: String = action.get("kind", "")
+	# B7 re-engagement: any explicit non-pass/non-end-turn action by the active
+	# player (e.g. responding to a trigger that interrupted the fast-forward)
+	# cancels a pending end-turn (proto engine.js:5466).
+	if kind != Action.KIND_PASS_PRIORITY and kind != Action.KIND_END_TURN \
+			and _state.priority_player_key == _state.active_player_key:
+		_state.end_turn_pending = false
 	match kind:
-		Action.KIND_ACTIVATE_ABILITY:
-			return _do_activate_ability(action)
+		Action.KIND_TAP_LAND_FOR_MANA:
+			return _do_tap_land_for_mana(action)
 		Action.KIND_PLAY_LAND:
 			return _do_play_land(action)
 		Action.KIND_CAST_SPELL:
@@ -492,12 +535,14 @@ func _do_action(action: Dictionary) -> bool:
 			return _do_pick_trigger_target(action)
 		Action.KIND_DISCARD_CARD:
 			return _do_discard_card(action)
+		Action.KIND_END_TURN:
+			return _do_end_turn(action)
 	push_warning("_do_action: unknown kind '%s'" % kind)
 	return false
 
 
 # Phase 1: only mana abilities (tap land).
-func _legal_activate_ability(action: Dictionary) -> bool:
+func _legal_tap_land_for_mana(action: Dictionary) -> bool:
 	if _state == null or _state.winner != "":
 		return false
 	var iid: int = action.get("source_iid", -1)
@@ -519,7 +564,7 @@ func _legal_activate_ability(action: Dictionary) -> bool:
 	return true
 
 
-func _do_activate_ability(action: Dictionary) -> bool:
+func _do_tap_land_for_mana(action: Dictionary) -> bool:
 	var iid: int = action.source_iid
 	var found = _state.find_instance(iid)
 	var card: CardInstance = found.card
@@ -570,7 +615,7 @@ func _do_play_land(action: Dictionary) -> bool:
 	# Lands ETB fires triggers in Phase 4+. Lands themselves don't have
 	# triggered abilities yet, but a landfall card on the battlefield could
 	# react. Fire the event and drain in case anything matches.
-	_fire_event({"kind": "card_etb", "subject_iid": card.instance_id, "subject_card": card})
+	_fire_event({"kind": "card_enters_battlefield", "subject_iid": card.instance_id, "subject_card": card})
 	_drain_pending_triggers()
 	return true
 
@@ -637,8 +682,7 @@ func _do_cast_spell(action: Dictionary) -> bool:
 		"" if targets.is_empty() else " targeting " + _describe_targets(targets),
 	])
 	# MTG 117.1c: caster retains priority (not active player — would break opp instants).
-	_state.priority_player_key = controller.key
-	_reset_priority_passes()
+	_open_priority_window(controller.key)
 
 	# Held off-zone keyed by iid; routed to graveyard on resolution.
 	_stack_held_cards[card.instance_id] = card
@@ -651,13 +695,13 @@ func _do_pass_priority(_action: Dictionary) -> bool:
 	if _state.priority_passed["you"] and _state.priority_passed["opp"]:
 		if not _state.stack.is_empty():
 			_resolve_top_of_stack()
-			_state.priority_player_key = _state.active_player_key
-			_reset_priority_passes()
+			_open_priority_window(_state.active_player_key)
 		else:
 			_advance_phase()
 	else:
-		# Hand priority; _settle_state's AI driver picks it up on next iteration.
-		_state.priority_player_key = _state.opponent_of(_state.priority_player_key)
+		# Hand priority to the other player; fresh = false so the pass that just
+		# happened is remembered (else both-passed never triggers → loops).
+		_open_priority_window(_state.opponent_of(_state.priority_player_key), false)
 	return true
 
 
@@ -698,7 +742,7 @@ func _resolve_spell_entry(entry: Dictionary) -> void:
 			card.summoning_sick = false
 		_state.append_log("%s enters the battlefield under %s" % [card.name(), controller.name])
 		# Fire ETB event so triggered abilities can react.
-		_fire_event({"kind": "card_etb", "subject_iid": card.instance_id, "subject_card": card})
+		_fire_event({"kind": "card_enters_battlefield", "subject_iid": card.instance_id, "subject_card": card})
 	else:
 		var owner: Player = _state.player_by_key(card.owner_key)
 		owner.graveyard.append(card)
@@ -719,7 +763,7 @@ func _resolve_trigger_entry(entry: Dictionary) -> void:
 	if source == null or source.template == null:
 		_state.append_log("Trigger fizzles: source card missing")
 		return
-	var abilities: Array = source.template.triggered_abilities
+	var abilities: Array = source.template.triggers
 	if ability_index < 0 or ability_index >= abilities.size():
 		_state.append_log("Trigger fizzles: ability_index out of range")
 		return
@@ -926,8 +970,7 @@ func _legal_confirm_blocks(_action: Dictionary) -> bool:
 func _do_confirm_blocks(_action: Dictionary) -> bool:
 	_state.awaiting_block_declaration = false
 	# MTG 117.1b: AP gets priority first.
-	_state.priority_player_key = _state.active_player_key
-	_reset_priority_passes()
+	_open_priority_window(_state.active_player_key)
 	_state.append_log("Blocks confirmed — %s gets priority" % _state.active_player().name)
 	return true
 
@@ -1056,10 +1099,9 @@ func _combat_damage_pass(
 			continue
 		var attacker: CardInstance = atk_found.card
 		var atk_first_strike: bool = attacker.has_keyword("first_strike")
-		# Pass 1: first-strikers only. (Non-first-strike still process blockers below,
-		# since a first-strike BLOCKER could damage them in pass 1.)
-		if first_strike_only != atk_first_strike:
-			pass
+		# Per-pass gating lives on the `first_strike_only == atk_first_strike`
+		# guards below (a non-first-strike attacker can still be hit by a
+		# first-strike blocker in pass 1, so we don't skip the whole iteration).
 		var atk_pow: int = attacker.current_power()
 		var blockers: Array = attacker_blockers.get(atk_iid, [])
 
@@ -1158,6 +1200,7 @@ func _advance_phase() -> void:
 	match _state.phase_machine.current:
 		PhaseMachine.Phase.UNTAP:
 			_state.active_player().untap_step()
+			_state.end_turn_pending = false  # B7: new turn clears the fast-forward flag
 		PhaseMachine.Phase.DRAW:
 			# MTG 704.5b: empty-library draw = loss.
 			_do_draw_card(_state.active_player_key)
@@ -1196,16 +1239,116 @@ func _advance_phase() -> void:
 	# MTG 117.1b: AP priority on phase start. Exceptions: awaiting_block_declaration
 	# and awaiting_discard both close priority ("" sentinel) until the gating
 	# turn-based action completes.
-	if _state.awaiting_block_declaration or not _state.awaiting_discard.is_empty():
-		_state.priority_player_key = ""
-	else:
-		_state.priority_player_key = _state.active_player_key
-	_reset_priority_passes()
+	var next_priority: String = "" if (_state.awaiting_block_declaration \
+			or not _state.awaiting_discard.is_empty()) \
+			else _state.active_player_key
+	_open_priority_window(next_priority)
 	_state.append_log("Phase: %s" % _state.phase_machine.phase_name())
 
 
 func _reset_priority_passes() -> void:
 	_state.priority_passed = {"you": false, "opp": false}
+
+
+# Single structural entry point for opening a priority window. The dynamic
+# priority-assignment sites route through here so the auto-pass / end-turn
+# fast-forward checks (added in _should_auto_pass) apply uniformly.
+#
+# `fresh` = a NEW priority round (after a cast, resolution, phase change,
+# trigger drain, or cleanup discard) → reset the pass tracker. `fresh = false`
+# = CONTINUING the current round (passing priority to the other player) — the
+# prior pass MUST be remembered or both-passed never triggers and priority
+# loops forever. `player_key == ""` is the close-priority sentinel used during
+# awaiting_* turn-based states (block declaration / cleanup discard).
+func _open_priority_window(player_key: String, fresh: bool = true) -> void:
+	if player_key == "":
+		_state.priority_player_key = ""
+		_reset_priority_passes()
+		return
+	_state.priority_player_key = player_key
+	if fresh:
+		_reset_priority_passes()
+	# Auto-pass / end-turn fast-forward (B6/B7) is driven iteratively from
+	# _settle_state's loop (mirrors proto's step()), NOT recursively here — a
+	# recursive _dispatch_action(pass) tail would overflow the call stack during
+	# end-turn fast-forward and dead positions.
+
+
+# B6/B7: should the priority window just opened to `player_key` auto-pass?
+# Combines: AP's empty-stack END priority (proto skipApEndStep — they had MAIN2
+# for sorcery-speed plays), end-turn fast-forward (B7), and "no meaningful
+# action" (B6). Callers must ensure no awaiting_* turn-based state is active.
+func _should_auto_pass(player_key: String) -> bool:
+	var on_empty_stack: bool = player_key == _state.active_player_key and _state.stack.is_empty()
+	var ap_empty_stack_end: bool = on_empty_stack \
+			and _state.phase_machine.current == PhaseMachine.Phase.END
+	var end_turn_fast_forward: bool = on_empty_stack and _state.end_turn_pending
+	return ap_empty_stack_end or end_turn_fast_forward or _has_no_meaningful_action(player_key)
+
+
+# True iff `player_key` has nothing productive to do: no land to play, no
+# attacker/blocker to declare, no (non-mana) ability to activate, and no spell
+# castable even after tapping lands for mana. Pass / end-turn / mana-tap don't
+# count (mana-tap alone is dead motion). Mirrors proto's hasNoAction — and like
+# proto folds *potential* mana into cast legality, because Godot's
+# _legal_cast_spell only sees floated mana (so a player who must tap a land
+# first would otherwise be wrongly judged action-less). Errs toward "has action".
+func _has_no_meaningful_action(player_key: String) -> bool:
+	for a in get_legal_actions(player_key):
+		match a.get("kind", ""):
+			Action.KIND_PLAY_LAND, Action.KIND_ACTIVATE_ABILITY, \
+			Action.KIND_DECLARE_ATTACKER, Action.KIND_DECLARE_BLOCKER, \
+			Action.KIND_CAST_SPELL:
+				return false
+	var p: Player = _state.player_by_key(player_key)
+	var is_main: bool = _state.phase_machine.is_main_phase()
+	var is_active: bool = player_key == _state.active_player_key
+	var stack_empty: bool = _state.stack.is_empty()
+	for card in p.hand:
+		if card.template == null or card.is_land():
+			continue
+		var is_instant: bool = card.template.has_type("instant")
+		if not is_instant and not (is_active and is_main and stack_empty):
+			continue
+		if _can_pay_potential(player_key, card.template.mana_cost):
+			return false
+	return true
+
+
+# Proto parity (canPayPotential, engine.js:1198): can `player_key` afford `cost`
+# by tapping currently-untapped lands, on top of floated mana? Phase 1 lands are
+# mono-color; §3.9's land-as-ability model generalizes the multi-color choice case.
+func _can_pay_potential(player_key: String, cost: Dictionary) -> bool:
+	var p: Player = _state.player_by_key(player_key)
+	var potential: ManaPool = p.mana.duplicate_deep()
+	for c in p.battlefield:
+		if c.tapped or not c.is_land():
+			continue
+		if c.template is LandResource and not c.template.mana_produced.is_empty():
+			potential.add(c.template.mana_produced[0], 1)
+	return potential.can_pay(cost)
+
+
+# B7: legal only for the active player, empty stack, no cleanup discard, no winner.
+func _legal_end_turn(_action: Dictionary) -> bool:
+	if _state == null or _state.winner != "":
+		return false
+	if _state.priority_player_key != _state.active_player_key:
+		return false
+	if not _state.stack.is_empty():
+		return false
+	if not _state.awaiting_discard.is_empty():
+		return false
+	return true
+
+
+func _do_end_turn(_action: Dictionary) -> bool:
+	_state.end_turn_pending = true
+	_state.append_log("%s ends their turn." % _state.active_player().name)
+	# The fast-forward itself (including committing empty attackers at
+	# COMBAT_ATTACK — a pass there declares no attackers) is driven by the
+	# _settle_state auto-pass loop via _should_auto_pass's end_turn branch.
+	return true
 
 
 # ─── Helpers ───────────────────────────────────────────────────────────────
@@ -1258,7 +1401,7 @@ func _check_win_conditions() -> void:
 
 
 # Counter a stack spell → owner's graveyard. False if iid not on stack (target gone).
-# Public so counter_spell.gd can call; autoload owns _stack_held_cards.
+# Public so counter.gd can call; autoload owns _stack_held_cards.
 func counter_stack_entry(iid: int) -> bool:
 	var idx: int = -1
 	for i in range(_state.stack.entries.size()):
@@ -1323,7 +1466,7 @@ func _fire_event(event: Dictionary) -> void:
 	for source in listeners:
 		if source == null or source.template == null:
 			continue
-		var abilities: Array = source.template.triggered_abilities
+		var abilities: Array = source.template.triggers
 		for i in range(abilities.size()):
 			var trig: Dictionary = abilities[i]
 			if trig.get("event", "") != event_kind:
@@ -1331,7 +1474,7 @@ func _fire_event(event: Dictionary) -> void:
 			# self_only: source IS event subject ("When ~ enters/dies").
 			if trig.get("self_only", false) and source.instance_id != subject_iid:
 				continue
-			var pred: String = trig.get("condition_predicate", "")
+			var pred: String = trig.get("cond_id", "")
 			if not Predicates.evaluate(pred, _state, source, event):
 				_state.append_log("Trigger condition false for %s — skipping" % source.name())
 				continue
@@ -1432,15 +1575,14 @@ func _do_discard_card(action: Dictionary) -> bool:
 	player.move_card(card, player.hand, player.graveyard)
 	_state.append_log("%s discards %s." % [player.name, card.name()])
 	# Phase 4-style event hook for future "when X is discarded" triggers.
-	_fire_event({"name": "card_discarded", "card": card, "controller_key": player_key})
+	_fire_event({"kind": "card_discarded", "subject_card": card, "controller_key": player_key})
 	# Decrement count; clear awaiting state when satisfied.
 	var remaining: int = _state.awaiting_discard.get("count_remaining", 0) - 1
 	if remaining <= 0:
 		_state.awaiting_discard = {}
 		# Restore priority to the active player so the turn can advance to UNTAP
 		# on the next pass. (No window for instants — cleanup is over.)
-		_state.priority_player_key = _state.active_player_key
-		_reset_priority_passes()
+		_open_priority_window(_state.active_player_key)
 	else:
 		_state.awaiting_discard["count_remaining"] = remaining
 	return true
@@ -1500,16 +1642,15 @@ func _drain_continue() -> void:
 			_state.pending_triggers.pop_front()
 			_push_trigger_to_stack(trig)
 	# MTG 116.5: priority resets to AP after drain.
-	_state.priority_player_key = _state.active_player_key
-	_reset_priority_passes()
+	_open_priority_window(_state.active_player_key)
 
 
-# triggered_abilities[i].target_filter; "" if no target needed.
+# triggers[i].target_filter; "" if no target needed.
 func _trigger_target_filter(trig: Dictionary) -> String:
 	var source: CardInstance = _find_card_anywhere(trig.source_iid)
 	if source == null or source.template == null:
 		return ""
-	var abilities: Array = source.template.triggered_abilities
+	var abilities: Array = source.template.triggers
 	var idx: int = trig.ability_index
 	if idx < 0 or idx >= abilities.size():
 		return ""

@@ -1,0 +1,16 @@
+{
+  "card_id": "clockwork_beetle",
+  "name": "Clockwork Beetle",
+  "art": "🪲",
+  "cost": {
+    "C": 1
+  },
+  "types": [
+    "Artifact",
+    "Creature",
+    "Insect"
+  ],
+  "power": 1,
+  "toughness": 1,
+  "keywords": []
+}

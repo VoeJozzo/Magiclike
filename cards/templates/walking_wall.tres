@@ -13,4 +13,4 @@ subtypes = Array[String](["wall"])
 mana_cost = {
 "C": 2
 }
-oracle_text = "Defender. (This creature can't attack.)"
+text = "Defender. (This creature can't attack.)"

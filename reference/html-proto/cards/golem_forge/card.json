@@ -1,0 +1,27 @@
+{
+  "card_id": "golem_forge",
+  "name": "Golem Forge",
+  "art": "⚙️",
+  "cost": {
+    "C": 3
+  },
+  "target": "permanent",
+  "target_filter": {
+    "type": "Land"
+  },
+  "effects": [
+    {
+      "kind": "add_type",
+      "types": [
+        "Artifact",
+        "Creature"
+      ],
+      "power": 4,
+      "toughness": 4,
+      "duration": "eot"
+    }
+  ],
+  "types": [
+    "Sorcery"
+  ]
+}

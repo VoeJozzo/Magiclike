@@ -1,0 +1,48 @@
+{
+  "card_id": "field_marshal",
+  "art": "art.png",
+  "cost": {
+    "W": 2,
+    "C": 1
+  },
+  "keywords": [
+    "vigilance"
+  ],
+  "name": "Field Marshal",
+  "power": 2,
+  "static_buffs": [
+    {
+      "filter": {
+        "controller": "self"
+      },
+      "subtype": "Soldier",
+      "power": 1,
+      "toughness": 1,
+      "keywords": [
+        "vigilance"
+      ]
+    }
+  ],
+  "toughness": 2,
+  "triggers": [
+    {
+      "event": "attacks",
+      "condition": [
+        "controlled_by(you)",
+        "card_has_subtype(Soldier)"
+      ],
+      "effects": [
+        {
+          "kind": "gain_life",
+          "amount": 1,
+          "scope": "self"
+        }
+      ]
+    }
+  ],
+  "types": [
+    "Creature",
+    "Human",
+    "Soldier"
+  ]
+}

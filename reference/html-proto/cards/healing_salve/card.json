@@ -1,0 +1,21 @@
+{
+  "card_id": "healing_salve",
+  "art": "art.png",
+  "cost": {
+    "W": 1
+  },
+  "target": "player",
+  "effects": [
+    {
+      "kind": "gain_life",
+      "amount": 3
+    }
+  ],
+  "name": "Healing Salve",
+  "keywords": [
+    "flash"
+  ],
+  "types": [
+    "Sorcery"
+  ]
+}

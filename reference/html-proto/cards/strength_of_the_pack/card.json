@@ -1,0 +1,27 @@
+{
+  "card_id": "strength_of_the_pack",
+  "art": "🐾",
+  "cost": {
+    "G": 1
+  },
+  "target": "creature",
+  "effects": [
+    {
+      "kind": "pump",
+      "power": 2,
+      "toughness": 2
+    },
+    {
+      "kind": "grant_keyword",
+      "keyword": "trample",
+      "duration": "eot"
+    }
+  ],
+  "name": "Strength of the Pack",
+  "keywords": [
+    "flash"
+  ],
+  "types": [
+    "Sorcery"
+  ]
+}

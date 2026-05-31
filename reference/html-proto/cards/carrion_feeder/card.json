@@ -1,0 +1,30 @@
+{
+  "card_id": "carrion_feeder",
+  "abilities": [
+    {
+      "cost": {
+        "sacrifice": "creature"
+      },
+      "effects": [
+        {
+          "kind": "pump",
+          "duration": "permanent",
+          "power": 1,
+          "toughness": 1,
+          "scope": "self"
+        }
+      ]
+    }
+  ],
+  "art": "art.png",
+  "cost": {
+    "B": 1
+  },
+  "name": "Carrion Feeder",
+  "power": 1,
+  "toughness": 1,
+  "types": [
+    "Creature",
+    "Zombie"
+  ]
+}

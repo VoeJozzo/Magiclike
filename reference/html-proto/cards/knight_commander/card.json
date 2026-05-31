@@ -1,0 +1,32 @@
+{
+  "card_id": "knight_commander",
+  "art": "🏰",
+  "cost": {
+    "W": 1,
+    "C": 3
+  },
+  "keywords": [
+    "vigilance"
+  ],
+  "name": "Knight Commander",
+  "power": 3,
+  "static_buffs": [
+    {
+      "filter": {
+        "controller": "self"
+      },
+      "subtype": "Knight",
+      "power": 1,
+      "toughness": 1,
+      "keywords": [
+        "vigilance"
+      ]
+    }
+  ],
+  "toughness": 3,
+  "types": [
+    "Creature",
+    "Human",
+    "Knight"
+  ]
+}

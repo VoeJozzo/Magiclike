@@ -2,7 +2,7 @@
 
 // Modal helper. Module-scope so render.js can call Modal.show/hide directly.
 // Escape-to-close, focus restore, aria-modal, LIFO stack. dismissible:false for
-// flow-gates (gameover/neow/postDraftOffer/reward) where Escape would softlock.
+// flow-gates (gameover/cardPick/reward) where Escape would softlock.
 const Modal = {
   _stack: [],
   _escapeBound: false,
@@ -55,6 +55,7 @@ const CONTROLLER = (function() {
 // In-flight UI selections.
 let pendingTarget = null;       // {kind:'cast'|'ability', cardIid, abilityIdx?, modeIdx?}
 let pendingModalChoice = null;  // {cardIid} — open mode picker
+let selectedMapNode = null;     // map node selected (highlighted) but not yet committed; Continue commits
 let uiAtk = [];                 // attacker selection
 let uiBlk = new Map();          // blocker → attacker
 let uiPickBlk = null;           // selected blocker awaiting attacker click
@@ -62,6 +63,8 @@ let aiScheduled = false;
 let aiThinking = false;
 let inDraft = false;
 let lastGameRecorded = false;
+let sandboxMode = false;              // true while a RUN-less card-test game is running
+let sandboxSpawnTarget = 'you-hand';  // '<side>-<zone>' for the spawn panel
 
 function updateThinkingUi() {
   if (aiThinking) {
@@ -104,11 +107,11 @@ function init() {
 // Sticker.appliesTo → human label (predicates can't be introspected; keep in sync with sticker kinds).
 function stickerAppliesLabel(s) {
   switch (s.kind) {
-    case 'statBoost':     return 'creatures';
+    case 'stat_boost':     return 'creatures';
     case 'innate':        return 'lands';
-    case 'landColor':     return "lands that don't already produce {" + s.color + '} (deck must play ' + s.colorAdj + ')';
-    case 'costReduction': return 'non-lands with at least one generic mana and total cost ≥ 2';
-    case 'empower':       return 'cards with numeric effects (damage, damageAll, pump, counters, pumpAllYours, gainLife, draw, discard, removeCreature)';
+    case 'grant_mana_ability':     return "lands that don't already produce {" + s.color + '} (deck must play ' + s.colorAdj + ')';
+    case 'cost_mod':      return 'non-lands with at least one generic mana and total cost ≥ 2';
+    case 'empower':       return 'cards with numeric effects (damage, damageAll, pump, counters, pumpAllYours, gain_life, draw, discard, affect_creature)';
     case 'subtype':       return 'creatures (rolls a random subtype from your deck)';
     case 'keyword': {
       const kw = s.keyword;
@@ -141,7 +144,7 @@ function appendStickerSectionToBrowser(inner) {
     'Keyword grants':    [],
   };
   for (const s of allStickers) {
-    if (s.kind === 'innate' || s.kind === 'landColor') groups['Land mods'].push(s);
+    if (s.kind === 'innate' || s.kind === 'grant_mana_ability') groups['Land mods'].push(s);
     else if (s.kind === 'keyword')                     groups['Keyword grants'].push(s);
     else                                               groups['Card boosts'].push(s);
   }
@@ -226,7 +229,7 @@ function showCardBrowser() {
   };
 
   for (const [tplId, tpl] of Object.entries(CARDS)) {
-    if (tpl.type === 'Land') groups.L.cards.push({ tplId, tpl });
+    if (hasType(tpl, 'Land')) groups.L.cards.push({ tplId, tpl });
     else if (tpl.color && groups[tpl.color]) groups[tpl.color].cards.push({ tplId, tpl });
     else groups.C.cards.push({ tplId, tpl });
   }
@@ -269,6 +272,24 @@ function showCardBrowser() {
   document.getElementById('cardBrowserModal').scrollTop = 0;
 }
 
+// Start-screen button styles, named so the factory below is the single place
+// button construction (create → text → style → onclick → append) lives.
+const START_BTN_STYLE = {
+  primary:   'padding:10px 20px;background:#2a4a2a;border:1px solid #4a8a4a;color:#aaffaa;border-radius:4px;cursor:pointer;font-size:14px',
+  cube:      'padding:10px 20px;background:#3a3a1a;border:1px solid #888844;color:#ddcc88;border-radius:4px;cursor:pointer;font-size:14px',
+  discard:   'padding:8px 20px;background:#2a2a2a;border:1px solid #555;color:#aaa;border-radius:4px;cursor:pointer;font-size:12px',
+  secondary: 'padding:8px 20px;background:#1a1a2a;border:1px solid #444;color:#aaa;border-radius:4px;cursor:pointer;font-size:12px',
+  sandbox:   'padding:8px 20px;background:#2a1a3a;border:1px solid #8855aa;color:#ddb3ff;border-radius:4px;cursor:pointer;font-size:12px',
+};
+function makeStartBtn(parent, text, styleKey, onclick) {
+  const b = document.createElement('button');
+  b.textContent = text;
+  b.style.cssText = START_BTN_STYLE[styleKey];
+  b.onclick = onclick;
+  parent.appendChild(b);
+  return b;
+}
+
 function showStartScreen() {
   const screen = document.getElementById('startScreen');
   // Fullscreen API needs a user gesture — capture-phase + once:true.
@@ -284,74 +305,230 @@ function showStartScreen() {
   btns.innerHTML = '';
   if (RUN.hasSave()) {
     sub.textContent = 'You have a run in progress.';
-    const cont = document.createElement('button');
-    cont.textContent = 'Continue Run';
-    cont.style.cssText = 'padding:10px 20px;background:#2a4a2a;border:1px solid #4a8a4a;color:#aaffaa;border-radius:4px;cursor:pointer;font-size:14px';
-    cont.onclick = continueRun;
-    btns.appendChild(cont);
-
-    const fresh = document.createElement('button');
-    fresh.textContent = 'New Run (discard save)';
-    fresh.style.cssText = 'padding:8px 20px;background:#2a2a2a;border:1px solid #555;color:#aaa;border-radius:4px;cursor:pointer;font-size:12px';
-    fresh.onclick = () => {
+    makeStartBtn(btns, 'Continue Run', 'primary', continueRun);
+    makeStartBtn(btns, 'New Run (discard save)', 'discard', () => {
       if (confirm('Discard your current run and start a new one?')) {
         RUN.clearSave();
         screen.style.display = 'none';
         newRun('classic');
       }
-    };
-    btns.appendChild(fresh);
-
-    const freshDC = document.createElement('button');
-    freshDC.textContent = 'New Desert Cube Run (discard save)';
-    freshDC.style.cssText = 'padding:8px 20px;background:#2a2a2a;border:1px solid #555;color:#aaa;border-radius:4px;cursor:pointer;font-size:12px';
-    freshDC.onclick = () => {
+    });
+    makeStartBtn(btns, 'New Desert Cube Run (discard save)', 'discard', () => {
       if (confirm('Discard your current run and start a new Desert Cube run?')) {
         RUN.clearSave();
         screen.style.display = 'none';
         newRun('desertCube');
       }
-    };
-    btns.appendChild(freshDC);
+    });
   } else {
     sub.textContent = 'A card roguelike';
-    const fresh = document.createElement('button');
-    fresh.textContent = 'New Run';
-    fresh.style.cssText = 'padding:10px 20px;background:#2a4a2a;border:1px solid #4a8a4a;color:#aaffaa;border-radius:4px;cursor:pointer;font-size:14px';
-    fresh.onclick = () => {
+    makeStartBtn(btns, 'New Run', 'primary', () => {
       screen.style.display = 'none';
       newRun('classic');
-    };
-    btns.appendChild(fresh);
-
+    });
     // Desert Cube: lands in packs 1/3 per slot, player drafts own manabase.
-    const freshDC = document.createElement('button');
-    freshDC.textContent = 'New Desert Cube Run';
-    freshDC.style.cssText = 'padding:10px 20px;background:#3a3a1a;border:1px solid #888844;color:#ddcc88;border-radius:4px;cursor:pointer;font-size:14px';
-    freshDC.onclick = () => {
+    makeStartBtn(btns, 'New Desert Cube Run', 'cube', () => {
       screen.style.display = 'none';
       newRun('desertCube');
-    };
-    btns.appendChild(freshDC);
+    });
   }
-  const stats = document.createElement('button');
-  stats.textContent = '📊 Stats';
-  stats.style.cssText = 'padding:8px 20px;background:#1a1a2a;border:1px solid #444;color:#aaa;border-radius:4px;cursor:pointer;font-size:12px;margin-top:6px';
-  stats.onclick = toggleStats;
-  btns.appendChild(stats);
-  const browser = document.createElement('button');
-  browser.textContent = '📖 Card Browser';
-  browser.style.cssText = 'padding:8px 20px;background:#1a1a2a;border:1px solid #444;color:#aaa;border-radius:4px;cursor:pointer;font-size:12px';
-  browser.onclick = showCardBrowser;
-  btns.appendChild(browser);
-  const settings = document.createElement('button');
-  settings.textContent = '⚙ Settings';
-  settings.style.cssText = 'padding:8px 20px;background:#1a1a2a;border:1px solid #444;color:#aaa;border-radius:4px;cursor:pointer;font-size:12px';
-  settings.onclick = SETTINGS_PANEL.show;
-  btns.appendChild(settings);
+  // Stats keeps a little extra top gap from the run buttons above it.
+  makeStartBtn(btns, '📊 Stats', 'secondary', toggleStats).style.marginTop = '6px';
+  makeStartBtn(btns, '📖 Card Browser', 'secondary', showCardBrowser);
+  makeStartBtn(btns, '⚙ Settings', 'secondary', SETTINGS_PANEL.show);
+  makeStartBtn(btns, '🔬 Sandbox (test cards)', 'sandbox', startSandbox);
+
   screen.style.display = 'flex';
 }
 
+// ===== Sandbox (card-interaction test mode) =====
+// A RUN-less, throwaway game for testing card interactions. Boots a real
+// engine game (vs the normal AI) on basic-land decks, then lets you spawn any
+// card into either player's hand or battlefield and top up mana/life via a
+// floating panel. Deliberately bypasses the run meta (no draft/map/rewards) —
+// gameOver and onStateChange are guarded by `sandboxMode` so it can't touch a
+// saved run. NOTE: a static/passive opponent is a planned follow-up; for now
+// the opponent is the normal AI (pair with Settings → Devtools → "Reveal AI
+// opponent's hand" to watch what it holds).
+function sandboxDeck() {
+  // Basic lands only → no deck-out and no random spells cluttering draws.
+  // You spawn the cards you want to test. Derived from CARDS so it can't drift.
+  const basics = Object.keys(CARDS).filter(id => {
+    const c = CARDS[id];
+    return c && hasType(c, 'Land') && /^(plains|island|swamp|mountain|forest)$/.test(id);
+  });
+  const pool = basics.length ? basics : Object.keys(CARDS).slice(0, 1);
+  const d = [];
+  for (let i = 0; i < 40; i++) d.push(pool[i % pool.length]);
+  return d;
+}
+
+function startSandbox() {
+  sandboxMode = true;
+  inDraft = false;
+  lastGameRecorded = true;   // suppress the run-recording path entirely
+  Modal.hide('gameover');
+  Modal.hide('rewardModal');
+  document.getElementById('startScreen').style.display = 'none';
+  ENGINE.init(sandboxDeck(), sandboxDeck());
+  sandboxRefillMana();       // also calls render()
+  renderSandboxPanel();
+}
+
+function exitSandbox() {
+  sandboxMode = false;
+  const panel = document.getElementById('sandboxPanel');
+  if (panel) panel.style.display = 'none';
+  Modal.hide('gameover');
+  showStartScreen();
+}
+
+function sandboxRefillMana() {
+  const G = ENGINE.state();
+  if (!G) return;
+  for (const side of ['you', 'opp']) {
+    G[side].mana = { W: 20, U: 20, B: 20, R: 20, G: 20, C: 20 };
+  }
+  render();
+}
+
+function sandboxBumpLife(side, delta) {
+  const G = ENGINE.state();
+  if (!G || !G[side]) return;
+  G[side].life += delta;
+  render();
+}
+
+function sandboxSpawn(tplId) {
+  if (!sandboxMode) return;
+  const G = ENGINE.state();
+  if (!G) return;
+  let card;
+  try { card = ENGINE.makeCard(tplId); }
+  catch (e) { console.warn('Sandbox spawn failed for', tplId, e); return; }
+  const dash = sandboxSpawnTarget.indexOf('-');
+  const side = sandboxSpawnTarget.slice(0, dash);   // 'you' | 'opp'
+  const zone = sandboxSpawnTarget.slice(dash + 1);  // 'hand' | 'board'
+  if (!G[side]) return;
+  card.owner = side;
+  card.controller = side;
+  if (zone === 'board' && isPermanent(card)) {
+    card.sick = false;  // ready to act immediately (sandbox convenience)
+    G[side].battlefield.push(card);
+  } else {
+    // Sorceries (non-permanents) can't sit on the battlefield — route to hand.
+    G[side].hand.push(card);
+  }
+  render();
+}
+
+// Build the floating sandbox toolbar once, then reuse it. Search filters the
+// full template list; clicking a row spawns it into the selected zone.
+function renderSandboxPanel() {
+  let panel = document.getElementById('sandboxPanel');
+  if (!panel) {
+    panel = document.createElement('div');
+    panel.id = 'sandboxPanel';
+    panel.style.cssText = 'position:fixed;right:8px;bottom:8px;width:240px;max-height:70vh;z-index:1200;'
+      + 'background:#140d1e;border:1px solid #8855aa;border-radius:8px;font-family:Georgia,serif;'
+      + 'color:#ddccff;font-size:12px;display:flex;flex-direction:column;box-shadow:0 0 18px rgba(136,85,170,.4)';
+    document.body.appendChild(panel);
+  }
+  panel.style.display = 'flex';
+  panel.innerHTML = '';
+
+  const header = document.createElement('div');
+  header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:6px 8px;border-bottom:1px solid #503070;background:#1c1230;border-radius:8px 8px 0 0';
+  header.innerHTML = '<span style="letter-spacing:.08em;color:#cba6ff">🔬 SANDBOX</span>';
+  const exitBtn = document.createElement('button');
+  exitBtn.textContent = '✕ Exit';
+  exitBtn.style.cssText = 'background:#3a1a2a;border:1px solid #885566;color:#ffbbcc;border-radius:3px;cursor:pointer;font-family:inherit;font-size:11px;padding:2px 8px';
+  exitBtn.onclick = exitSandbox;
+  header.appendChild(exitBtn);
+  panel.appendChild(header);
+
+  const body = document.createElement('div');
+  body.style.cssText = 'padding:8px;display:flex;flex-direction:column;gap:6px;overflow:hidden';
+  panel.appendChild(body);
+
+  // Spawn-target selector (2x2 of side × zone).
+  const targetWrap = document.createElement('div');
+  targetWrap.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:3px';
+  const TARGETS = [
+    ['you-hand', 'My hand'], ['you-board', 'My board'],
+    ['opp-hand', 'Opp hand'], ['opp-board', 'Opp board'],
+  ];
+  const targetBtns = {};
+  const paintTargets = () => {
+    for (const [val, btn] of Object.entries(targetBtns)) {
+      const on = val === sandboxSpawnTarget;
+      btn.style.background = on ? '#5a3a8a' : '#241830';
+      btn.style.color = on ? '#fff' : '#bba6d6';
+    }
+  };
+  for (const [val, label] of TARGETS) {
+    const b = document.createElement('button');
+    b.textContent = label;
+    b.style.cssText = 'border:1px solid #6a4a8a;border-radius:3px;cursor:pointer;font-family:inherit;font-size:11px;padding:3px 4px';
+    b.onclick = () => { sandboxSpawnTarget = val; paintTargets(); };
+    targetBtns[val] = b;
+    targetWrap.appendChild(b);
+  }
+  paintTargets();
+  body.appendChild(targetWrap);
+
+  // Resource buttons.
+  const resWrap = document.createElement('div');
+  resWrap.style.cssText = 'display:flex;gap:3px;flex-wrap:wrap';
+  const mkRes = (label, fn) => {
+    const b = document.createElement('button');
+    b.textContent = label;
+    b.style.cssText = 'flex:1;background:#241830;border:1px solid #6a4a8a;border-radius:3px;cursor:pointer;font-family:inherit;font-size:11px;padding:3px 4px;color:#bba6d6;white-space:nowrap';
+    b.onclick = fn;
+    resWrap.appendChild(b);
+  };
+  mkRes('💧 Mana', sandboxRefillMana);
+  mkRes('+5 me', () => sandboxBumpLife('you', 5));
+  mkRes('+5 opp', () => sandboxBumpLife('opp', 5));
+  mkRes('↻ New', startSandbox);
+  body.appendChild(resWrap);
+
+  // Search + scrollable card list.
+  const search = document.createElement('input');
+  search.type = 'text';
+  search.placeholder = 'Search cards…';
+  search.style.cssText = 'background:#0d0814;border:1px solid #6a4a8a;border-radius:3px;color:#eee;font-family:inherit;font-size:12px;padding:4px 6px';
+  body.appendChild(search);
+
+  const listEl = document.createElement('div');
+  listEl.style.cssText = 'overflow-y:auto;max-height:38vh;display:flex;flex-direction:column;gap:2px';
+  body.appendChild(listEl);
+
+  const allIds = Object.keys(CARDS).sort((a, b) => {
+    const na = (CARDS[a].name || a).toLowerCase(), nb = (CARDS[b].name || b).toLowerCase();
+    return na < nb ? -1 : na > nb ? 1 : 0;
+  });
+  const paintList = () => {
+    const q = search.value.trim().toLowerCase();
+    listEl.innerHTML = '';
+    let shown = 0;
+    for (const id of allIds) {
+      const tpl = CARDS[id];
+      const name = tpl.name || id;
+      if (q && !(name.toLowerCase().includes(q) || id.toLowerCase().includes(q)
+                 || (governingType(tpl) || '').toLowerCase().includes(q))) continue;
+      if (shown++ > 120) break;  // cap rows for responsiveness
+      const row = document.createElement('button');
+      row.style.cssText = 'text-align:left;background:#1a1226;border:1px solid #3a2a4a;border-radius:3px;cursor:pointer;font-family:inherit;font-size:11px;padding:3px 6px;color:#cdbbe6';
+      const pt = (hasType(tpl, 'Creature')) ? ` ${tpl.power}/${tpl.toughness}` : '';
+      row.innerHTML = `<span style="color:#fff">${escapeHtml(name)}</span> <span style="opacity:.6">${governingType(tpl) || ''}${pt}</span>`;
+      row.onclick = () => sandboxSpawn(id);
+      listEl.appendChild(row);
+    }
+  };
+  search.oninput = paintList;
+  paintList();
+}
 
 function continueRun() {
   if (!RUN.load()) {
@@ -373,7 +550,7 @@ function continueRun() {
         return;
       }
       const mapState = RUN.getMapState && RUN.getMapState();
-      if (mapState && mapState.pendingChoice) {
+      if (mapState) {
         renderMap();
       } else {
         startNextGameWithBossBanner();
@@ -421,42 +598,47 @@ function showNeowChoice() {
 
   const offered = [...alwaysIds, ...randomIds];
 
-  const optsEl = document.getElementById('neowOptions');
-  optsEl.innerHTML = '';
-  for (const id of offered) {
+  // Each boon renders AS the card it grants (every current RUN_MODIFIERS id is a
+  // real card tplId); a modifier with no card backing falls back to a synthetic
+  // "Boon" card. Routed through the shared card-pick modal.
+  const items = offered.map(id => {
     const m = RUN_MODIFIERS[id];
-    // Boon art is derived from the card the boon grants -- every current
-    // RUN_MODIFIERS entry's id matches the tplId of its granted card, so
-    // CARDS[m.id].art is the source of truth.
+    if (CARDS[m.id]) return { card: ENGINE.makeCard(m.id), value: id };
     const boonArt = m.art || (CARDS[m.id] && CARDS[m.id].art) || '✦';
-    let el;
-    // Render the boon AS the card it grants (matches the visual style of
-    // a draft pick). Falls back to a Boon-shaped placeholder for any
-    // modifier whose id doesn't resolve to a real card.
-    if (CARDS[m.id]) {
-      const card = ENGINE.makeCard(m.id);
-      el = makeCardEl(card);
-      el.style.setProperty('--scale', '2');
-    } else {
-      el = makeSyntheticCard({
-        name: m.name || '',
-        type: 'Boon',
-        text: m.text || '',
-        art: boonArt,
-        color: 'C',
-        scale: 2,
-      });
-    }
-    el.style.cursor = 'pointer';
-    el.onclick = () => pickNeow(id);
-    optsEl.appendChild(el);
+    return { synthetic: { name: m.name || '', type: 'Boon', text: m.text || '', art: boonArt, color: 'C', scale: 2 }, value: id };
+  });
+  showCardPickModal({
+    title: 'A Boon Awaits',
+    subtitle: 'Choose a gift to shape your run.',
+    items, onPick: pickNeow,
+    accent: '#4a90c8', accentText: '#9bd0ff',   // boon blue
+  });
+}
+
+// Unified card-pick modal — the one popup behind the Neow boons AND the post-draft
+// land offer (previously two separate modals). Fills the shared #cardPickModal
+// slots, routes the card row through renderCardPicker, and optionally shows a
+// drafted-color HUD (colorTpls). Modeled on the draft, the rich baseline.
+function showCardPickModal({ title, subtitle, items, onPick, colorTpls, accent, accentText }) {
+  const box = document.querySelector('#cardPickModal .picker-box');
+  if (box) {
+    box.style.setProperty('--picker-accent', accent || '#5a4a20');
+    box.style.setProperty('--picker-accent-text', accentText || '#ffd700');
   }
-  Modal.show('neowModal', { dismissible: false });
+  document.getElementById('cardPickTitle').textContent = title || '';
+  document.getElementById('cardPickSubtitle').textContent = subtitle || '';
+  // Color HUD only when the flow supplies one (boons happen pre-draft → none);
+  // an empty colors row self-hides via CSS :empty.
+  const colorsEl = document.getElementById('cardPickColors');
+  if (colorTpls && colorTpls.length) renderColorHud('cardPickColors', colorTpls);
+  else if (colorsEl) colorsEl.innerHTML = '';
+  renderCardPicker(document.getElementById('cardPickRow'), items, onPick);
+  Modal.show('cardPickModal', { dismissible: false });
 }
 
 function pickNeow(id) {
   pendingNeowModifier = id;
-  Modal.hide('neowModal');
+  Modal.hide('cardPickModal');
   DRAFT.startDraft(pendingDraftMode);
   inDraft = true;
   renderDraft();
@@ -485,18 +667,18 @@ function nextGame() {
   if (!RUN.isActive()) return;
   if (RUN.getReward()) return;
   const mapState = RUN.getMapState && RUN.getMapState();
-  if (mapState && mapState.pendingChoice) {
-    Modal.hide('gameover');
-    Modal.hide('rewardModal');
+  Modal.hide('gameover');
+  Modal.hide('rewardModal');
+  if (mapState) {
     renderMap();
     return;
   }
-  Modal.hide('gameover');
-  Modal.hide('rewardModal');
   lastGameRecorded = false;
   startNextGameWithBossBanner();
 }
 function gameOverClick() {
+  // Sandbox: no run meta — just dismiss; the panel's ↻ New / ✕ Exit drive it.
+  if (sandboxMode) { Modal.hide('gameover'); return; }
   // Won → nextGame; lost → start screen (don't silently re-launch into draft).
   if (RUN.isActive()) {
     nextGame();
@@ -629,30 +811,28 @@ function attachMapLongPress(el, label) {
 }
 
 // Post-draft Innate offer: pick a basic land type to guarantee in opening hands.
+// Same card-pick modal as the boons; here we also surface the drafted-deck color
+// HUD (now that the draft is done) so the land choice is informed by deck colors.
 function renderPostDraftOffer() {
   if (!RUN.getPostDraftOffer) return;
   const offer = RUN.getPostDraftOffer();
-  if (!offer) { Modal.hide('postDraftOfferModal'); return; }
-  Modal.show('postDraftOfferModal', { dismissible: false });
-  const btns = document.getElementById('postDraftOfferButtons');
-  btns.innerHTML = '';
-  for (const tplId of offer.basics) {
-    const tpl = CARDS[tplId];
-    if (!tpl) continue;
-    // Real basic-land card via makeCardEl. The land's color frame and
-    // type line communicate which basic this is.
-    const card = ENGINE.makeCard(tplId);
-    const el = makeCardEl(card);
-    el.style.setProperty('--scale', '2');
-    el.style.cursor = 'pointer';
-    el.onclick = () => pickPostDraftOfferClick(tplId);
-    btns.appendChild(el);
-  }
+  if (!offer) { Modal.hide('cardPickModal'); return; }
+  const items = offer.basics
+    .filter(tplId => CARDS[tplId])
+    .map(tplId => ({ card: ENGINE.makeCard(tplId), value: tplId }));
+  const picks = DRAFT._state() ? DRAFT._state().youPicks : [];
+  showCardPickModal({
+    title: '🌱 A Gift Before the Journey',
+    subtitle: 'Choose one of your basic land types. One copy will start in your opening hand every game.',
+    items, onPick: pickPostDraftOfferClick,
+    colorTpls: picks,                            // drafted-deck color HUD
+    accent: '#66bb6a', accentText: '#9fdfa1',    // land green
+  });
 }
 
 function pickPostDraftOfferClick(tplId) {
   if (!RUN.pickPostDraftOffer(tplId)) return;
-  Modal.hide('postDraftOfferModal');
+  Modal.hide('cardPickModal');
   lastGameRecorded = false;
   startNextGameWithBossBanner();
   render();
@@ -660,19 +840,40 @@ function pickPostDraftOfferClick(tplId) {
 
 function renderMap() {
   const ms = RUN.getMapState();
-  if (!ms || !ms.pendingChoice) {
+  if (!ms) {
     Modal.hide('mapModal');
     return;
   }
+  // Universal two-step advance: SELECT a node (even when there's only one
+  // option), then confirm with the Continue button. The Continue button is
+  // always present; when there's a node choice it stays disabled until a legal
+  // node is selected. No-node-choice transitions (resuming the in-progress node,
+  // or a freshly-generated next sector) have nothing to select, so Continue is
+  // enabled immediately.
+  const hasChoice = !!ms.pendingChoice;
   Modal.show('mapModal');
   const toRoman = n => {
     const r = ['', 'I','II','III','IV','V','VI','VII','VIII','IX','X'];
     return r[n] || String(n);
   };
-  setText('mapTitle', `Sector ${toRoman(ms.sectorNum)} — Choose Your Path`);
-  const legal = new Set(ms.pendingChoice.options);
+  setText('mapTitle', `Sector ${toRoman(ms.sectorNum)} — ${hasChoice ? 'Choose Your Path' : 'Your Path'}`);
+  setText('mapSubtitle', hasChoice ? 'Pick the next node to face.' : 'Your journey so far.');
+  const legal = new Set(hasChoice ? ms.pendingChoice.options : []);
   const visited = new Set(ms.visitedNodeIds);
   const current = ms.currentNodeId;
+  // Drop a stale selection that isn't a legal option for THIS choice.
+  if (selectedMapNode && !legal.has(selectedMapNode)) selectedMapNode = null;
+  const contBtn = document.getElementById('mapContinue');
+  if (contBtn) {
+    contBtn.style.display = 'block';
+    const ready = !hasChoice || !!selectedMapNode;   // a choice needs a selection first
+    contBtn.disabled = !ready;
+    contBtn.onclick = ready ? () => {
+      if (hasChoice && !RUN.pickMapNode(selectedMapNode)) return;
+      selectedMapNode = null;
+      advanceFromMap();
+    } : null;
+  }
 
   const byLevel = {};
   for (const n of ms.nodes) {
@@ -764,7 +965,8 @@ function renderMap() {
       const label = tooltipFor(n);
       if (legal.has(n.id)) {
         el.classList.add('legal');
-        el.onclick = () => pickMapNodeClick(n.id);
+        if (n.id === selectedMapNode) el.classList.add('selected');
+        el.onclick = () => selectMapNode(n.id);   // select; Continue commits
       } else {
         el.onclick = () => showMapTooltip(el, label);
       }
@@ -806,8 +1008,20 @@ function renderMap() {
   });
 }
 
-function pickMapNodeClick(nodeId) {
-  if (!RUN.pickMapNode(nodeId)) return;
+// Select (highlight) a map node — does NOT commit. The Continue button commits
+// the selected node (RUN.pickMapNode) and advances. Two-step by design, applied
+// uniformly whether there's one option or many.
+function selectMapNode(nodeId) {
+  selectedMapNode = nodeId;
+  renderMap();
+}
+
+// Leave the map and enter the next game. When there was a node choice the
+// Continue handler has already committed the selected node (RUN.pickMapNode)
+// before calling this; the no-choice path (resume / fresh sector) advances
+// directly — startNextGame() drops into the current/root node. Both share this
+// identical tail.
+function advanceFromMap() {
   Modal.hide('mapModal');
   lastGameRecorded = false;
   startNextGameWithBossBanner();
@@ -1004,7 +1218,7 @@ function renderReward() {
       div.appendChild(makeRewardCardEl(tpl, slot));
 
       if (cand.kind === 'sticker') {
-        const sticker = STICKERS[cand.stickerId];
+        const sticker = STICKERS[cand.sticker_id];
         if (!sticker) return;
         const connector = document.createElement('div');
         connector.className = 'rwd-pair-plus';
@@ -1016,7 +1230,7 @@ function renderReward() {
         // what number gets bumped before they accept. Format mirrors the
         // sticker badge: "Empower (damage)" or "Empower (power, mode 2)".
         let stickerName = sticker.name;
-        if (cand.stickerId === 'empower' && cand.empowerRoll) {
+        if (cand.sticker_id === 'empower' && cand.empowerRoll) {
           // Stapled-aware: the roll may target the staple-half's effect, so
           // resolve the label against the synthesized merged template
           // (matches stickerBadgesHtml's post-accept rendering). Without
@@ -1027,7 +1241,7 @@ function renderReward() {
           const labelTpl = tplForSlot(slot) || tpl;
           stickerName = `Empower (${empowerRollLabel(labelTpl, cand.empowerRoll)})`;
         }
-        if (cand.stickerId === 'subtype' && cand.subtypeRoll) {
+        if (cand.sticker_id === 'subtype' && cand.subtypeRoll) {
           // Show the rolled subtype so the player knows what they're getting.
           stickerName = `Subtype: ${cand.subtypeRoll}`;
         }
@@ -1172,24 +1386,16 @@ function renderDraft() {
       : 'Choose one card. Lands will be added automatically based on your colors.';
   }
   const pack = DRAFT.getPlayerPack();
-  const packEl = document.getElementById('draftPack');
-  packEl.innerHTML = '';
-  for (const tplId of pack) {
-    // Use makeCardEl (the same renderer that builds hand/board cards).
-    // Build a vanilla card instance from the template -- the draft pack
-    // isn't slot-bound yet, no stickers or runtime state.
-    const card = ENGINE.makeCard(tplId);
-    const el = makeCardEl(card);
-    // Showcase scale -- cards render at 2x (160x224) for the picker so
-    // the player can read them. --scale is a no-op on the classic .card
-    // (it's hardcoded 62x88); classic-mode draft picks render at hand
-    // size, which is a tolerable fallback.
-    el.style.setProperty('--scale', '2');
-    el.style.cursor = 'pointer';
-    el.onclick = () => pickDraft(tplId);
-    // Long-press is wired by makeCardEl already (via attachLongPress).
-    packEl.appendChild(el);
-  }
+  // Same shared card-picker loop as the boons + land offer. Build a vanilla
+  // instance per template (the pack isn't slot-bound yet — no stickers/runtime
+  // state). Cards render at 2× so they're readable; long-press is wired by
+  // makeCardEl. (--scale is a no-op on the classic 62×88 .card, a tolerable
+  // fallback for classic-mode picks.)
+  renderCardPicker(
+    document.getElementById('draftPack'),
+    pack.map(tplId => ({ card: ENGINE.makeCard(tplId), value: tplId })),
+    pickDraft,
+  );
   // Footer: list of picks so far. If the player picked a Neow boon, show
   // it as the first entry with a ✦ marker so it's visually distinct from
   // drafted picks — gives continuity with the deck the boon will join at
@@ -1234,7 +1440,7 @@ function renderColorHud(elementId, tplIds) {
       for (const c of ['W','U','B','R','G']) {
         if ((tpl.cost[c] || 0) > 0) colorCounts[c]++;
       }
-    } else if (tpl.type === 'Land' && tpl.mana && colorCounts[tpl.mana] !== undefined) {
+    } else if (hasType(tpl, 'Land') && tpl.mana && colorCounts[tpl.mana] !== undefined) {
       colorCounts[tpl.mana]++;
     }
   }
@@ -1254,7 +1460,8 @@ function onStateChange() {
   render();
   const G = ENGINE.state();
   // Game just ended — record result for the run (idempotent via flag).
-  if (G && G.gameOver && !lastGameRecorded) {
+  // Sandbox is RUN-less: never record (also guarded by lastGameRecorded=true).
+  if (G && G.gameOver && !lastGameRecorded && !sandboxMode) {
     lastGameRecorded = true;
     // Pass played-slots and claimed-keywords sets so RUN can snapshot
     // them before G is discarded. Both are consumed at sticker-reward
@@ -1390,6 +1597,16 @@ function onStateChange() {
 
 // ----- Player click handlers -----
 
+// §3.5 targeting: a spell/ability needs a target pick if it carries a top-level
+// `target()` step OR (legacy/multi-target) any per-effect targeted effect.
+// `probeTargetsFor` builds the fake target(s) used to legality-check before
+// entering target-picking mode, honoring whichever form applies.
+// Thin delegators to the engine's canonical targeting-shape API (single source
+// of truth — see engine.js objectNeedsTarget/probeTargetsForObject). Kept as
+// local names so the call sites below read naturally.
+function objNeedsTarget(obj) { return ENGINE.objectNeedsTarget(obj); }
+function probeTargetsFor(obj, effects, who) { return ENGINE.probeTargetsForObject(obj, who); }
+
 function clickHand(iid) {
   const G = ENGINE.state();
   // Defensive: G is null until ENGINE.init completes. If a click event
@@ -1418,7 +1635,7 @@ function clickHand(iid) {
   const card = G.you.hand.find(c => c.iid === iid);
   if (!card) return;
 
-  if (card.type === 'Land') {
+  if (hasType(card, 'Land')) {
     submit({type:'playLand', cardIid: iid});
     return;
   }
@@ -1454,14 +1671,12 @@ function clickHand(iid) {
     return;
   }
 
-  // Spell. Check if it needs a target. Multi-target spells (with effects
-  // marked targetSlot:N) need one pick per unique slot; this branch covers
-  // both the single-slot common case and the multi-slot case via the
-  // shared fakeTargetsForLegality helper.
-  const targetedEffs = (card.effects || []).filter(ENGINE.effectNeedsTarget);
-  if (targetedEffs.length > 0) {
-    const fakeTargets = fakeTargetsForLegality(card.effects, 'you');
-    if (!fakeTargets) return;   // some slot has no valid targets — uncastable
+  // Spell. Needs a target pick if it has a top-level target() step (§3.5) or a
+  // per-effect targeted effect (legacy/multi-target). probeTargetsFor builds the
+  // legality fake-targets for whichever form applies.
+  if (objNeedsTarget(card, card.effects)) {
+    const fakeTargets = probeTargetsFor(card, card.effects, 'you');
+    if (!fakeTargets) return;   // no valid target — uncastable
     if (!ENGINE.isLegalAction('you', {type:'castSpell', cardIid: iid, targets: fakeTargets})) {
       return;   // not castable right now
     }
@@ -1484,18 +1699,19 @@ function clickBattlefield(iid) {
   const f = ENGINE.findCard(iid); if (!f) return;
   const card = f.card;
 
-  // Rip prompt — clicking one of YOUR permanents commits the rip. Other
-  // permanents (opp's) are ignored.
-  if (G.pendingRipSelect && G.pendingRipSelect.who === 'you') {
-    if (f.controller !== 'you') return;
-    submit({type:'ripSelect', target: {kind:'permanent', iid: card.iid, label: card.name}});
-    return;
-  }
-
   // Trigger target prompt — clicking a creature submits it as the trigger target.
   if (G.pendingTriggerTarget && G.pendingTriggerTarget.controller === 'you') {
     const target = {kind:'creature', iid: card.iid, ctrl: f.controller, label: card.name};
     submit({type:'triggerTargetPick', target});
+    return;
+  }
+
+  // Edict forced-sacrifice (Diabolic/Vile Edict) — in-place selection (no modal,
+  // reverted from the popup): click one of your glowing eligible permanents to
+  // sac it. Out-of-pool clicks are rejected engine-side (isLegalAction checks
+  // pendingEdictChoice.pool), so a stray click just no-ops.
+  if (G.pendingEdictChoice && G.pendingEdictChoice.who === 'you') {
+    submit({type:'edictChoice', iid: card.iid});
     return;
   }
 
@@ -1505,7 +1721,7 @@ function clickBattlefield(iid) {
     // for an ability with sacrifice cost (Carrion Feeder etc). Restrict
     // to the player's own creatures since sac costs target self-side only.
     if (pendingTarget.kind === 'abilitySac') {
-      if (f.controller !== 'you' || card.type !== 'Creature') return;
+      if (f.controller !== 'you' || !hasType(card, 'Creature')) return;
       const action = {type:'activateAbility',
                       cardIid: pendingTarget.cardIid,
                       abilityIdx: pendingTarget.abilityIdx,
@@ -1517,14 +1733,14 @@ function clickBattlefield(iid) {
       return;
     }
     // Determine the right target descriptor kind. For effects targeting
-    // 'permanent' or 'permanentOrSpell' we emit kind:'permanent' (the click
+    // 'permanent' or 'permanent_or_spell' we emit kind:'permanent' (the click
     // is on a battlefield card; stack-spell targets are handled by a
     // separate stack-click path). Otherwise default to 'creature'. Without
     // this, clicking a land while casting Steal would emit a kind:'creature'
     // descriptor that fails sameTarget against the valid-target list (which
     // uses kind:'permanent').
     const eff = pendingTargetEffect(pendingTarget);
-    const targetKind = (eff && (eff.target === 'permanent' || eff.target === 'permanentOrSpell')) ? 'permanent' : 'creature';
+    const targetKind = (eff && (eff.target === 'permanent' || eff.target === 'permanent_or_spell')) ? 'permanent' : 'creature';
     const action = buildPendingActionWithTarget({kind: targetKind, iid: card.iid, label: card.name});
     if (action && action.pending) {
       // Multi-target spell: accumulated this pick, more slots remain. Re-render
@@ -1585,11 +1801,9 @@ function clickBattlefield(iid) {
   // Lands have their own simpler tap-for-mana path (with color picker for
   // duals). Creatures and artifacts go through the unified ability-picker
   // path below.
-  if (f.controller === 'you' && !card.tapped && card.type === 'Land') {
-    if (Array.isArray(card.extraManaColors) && card.extraManaColors.length > 0) {
-      const producible = ENGINE.landProducibleColors
-        ? ENGINE.landProducibleColors(card)
-        : [card.mana, ...card.extraManaColors];
+  if (f.controller === 'you' && !card.tapped && hasType(card, 'Land')) {
+    const producible = ENGINE.landProducibleColors(card);
+    if (producible.length > 1) {  // §3.9: multi-color land → color picker
       const legal = producible.filter(c =>
         ENGINE.isLegalAction('you', {type:'tapLandForMana', cardIid: iid, color: c}));
       if (legal.length === 0) return;
@@ -1618,8 +1832,8 @@ function clickBattlefield(iid) {
     const options = [];
     for (let i = 0; i < card.abilities.length; i++) {
       const ab = card.abilities[i];
-      const isMana = ab.effects && ab.effects[0] && ab.effects[0].kind === 'addMana';
-      const targetedEff = (ab.effects || []).find(ENGINE.effectNeedsTarget);
+      const isMana = ab.effects && ab.effects[0] && ab.effects[0].kind === 'add_mana';
+      const abNeedsTarget = objNeedsTarget(ab, ab.effects);  // §3.5: top-level target() or per-effect
       const needsSac = ab.cost && ab.cost.sacrifice;
       // Probe legality. The probe action shape depends on cost/target shape;
       // build the minimum that satisfies isLegalAction.
@@ -1627,17 +1841,17 @@ function clickBattlefield(iid) {
       if (isMana) {
         probe = {type:'tapLandForMana', cardIid: iid, abilityIdx: i};
       } else if (needsSac) {
-        const sacCandidates = G.you.battlefield.filter(c => c.type === 'Creature');
+        const sacCandidates = G.you.battlefield.filter(c => hasType(c, 'Creature'));
         if (sacCandidates.length === 0) continue;
         probe = {type:'activateAbility', cardIid: iid, abilityIdx: i, sacIid: sacCandidates[0].iid};
-        if (targetedEff) {
-          const fakeTargets = fakeTargetsForLegality(ab.effects, 'you');
-          if (fakeTargets === null) continue;
+        if (abNeedsTarget) {
+          const fakeTargets = probeTargetsFor(ab, ab.effects, 'you');
+          if (!fakeTargets) continue;
           probe.targets = fakeTargets;
         }
-      } else if (targetedEff) {
-        const fakeTargets = fakeTargetsForLegality(ab.effects, 'you');
-        if (fakeTargets === null) continue;
+      } else if (abNeedsTarget) {
+        const fakeTargets = probeTargetsFor(ab, ab.effects, 'you');
+        if (!fakeTargets) continue;
         probe = {type:'activateAbility', cardIid: iid, abilityIdx: i, targets: fakeTargets};
       } else {
         probe = {type:'activateAbility', cardIid: iid, abilityIdx: i};
@@ -1667,12 +1881,13 @@ function clickBattlefield(iid) {
                             return n === 1 ? '{' + c + '}' : '{' + n + '}'.replace('C', '');
                           }).join('') :
                         (ab.cost && ab.cost.sacrifice) ? 'Sacrifice' : '';
+        const isDrawMove = eff.kind === 'move_card' && eff.from_zone === 'library' && eff.to_zone === 'hand';
         const effDesc = eff.kind === 'damage' ? 'Deal ' + (eff.amount || 1) + ' damage' :
                         eff.kind === 'pump' ? '+' + (eff.power || 0) + '/+' + (eff.toughness || 0) + ' EOT' :
-                        eff.kind === 'draw' ? 'Draw ' + (eff.amount || 1) :
+                        (eff.kind === 'draw' || isDrawMove) ? 'Draw ' + (eff.amount || 1) :
                         eff.kind === 'untap' ? 'Untap a creature' :
-                        eff.kind === 'gainLife' ? 'Gain ' + (eff.amount || 1) + ' life' :
-                        eff.kind === 'applyInGameSplice' ? 'Staple' :
+                        eff.kind === 'gain_life' ? 'Gain ' + (eff.amount || 1) + ' life' :
+                        eff.kind === 'apply_in_game_splice' ? 'Staple' :
                         eff.kind;
         label = (costStr ? costStr + ': ' : '') + effDesc;
       }
@@ -1683,7 +1898,7 @@ function clickBattlefield(iid) {
         } else if (needsSac) {
           pendingTarget = {kind:'abilitySac', cardIid: iid, abilityIdx: i};
           render();
-        } else if (targetedEff) {
+        } else if (abNeedsTarget) {
           pendingTarget = {kind:'ability', cardIid: iid, abilityIdx: i, pickedSlots: []};
           render();
         } else {
@@ -1924,7 +2139,7 @@ function attachLongPress(element, card) {
 // scale (320x448 actual) inside the existing #cardPopup dimmer overlay.
 
 // Helper: builds the "Repertoire" (Mercurial triggerPool) and "Built
-// Ability" (Codex buildOnDraw) HTML sections for a card's popup. Returns
+// Ability" (Codex build_on_draw) HTML sections for a card's popup. Returns
 // empty string if neither applies. Reads the SLOT (RUN.getSlots()[card.slotIdx]),
 // not the card, because the slot is the durable record across saves and
 // the slot's bonusTrigger may have updated more recently than the in-game
@@ -1955,7 +2170,7 @@ function buildPopupTriggerSections(card) {
   }
   // Codex-style built ability.
   const tpl = CARDS[card.tplId];
-  if (tpl && tpl.buildOnDraw) {
+  if (tpl && tpl.build_on_draw) {
     let body;
     if (slot.bonusTrigger) {
       const text = formatTriggerText(slot.bonusTrigger.text, card.name);
@@ -2051,7 +2266,7 @@ function openZone(who, zone) {
       const btn = document.createElement('div');
       btn.className = 'zone-card';
       // Show card name with a small color/type hint.
-      const typeHint = card.type ? card.type.charAt(0) : '?';
+      const typeHint = governingType(card) ? governingType(card).charAt(0) : '?';
       const cost = card.cost ? renderManaSymbols(formatCostBraced(card.cost)) : '';
       btn.innerHTML = `<span style="opacity:0.6">[${typeHint}]</span> <span class="card-name"></span>${cost ? ' <span style="opacity:0.7;font-size:10px">' + cost + '</span>' : ''}`;
       btn.querySelector('.card-name').textContent = card.name;
@@ -2956,6 +3171,14 @@ function symmetricizeChoice(which) {
   submit({type: 'symmetricizeChoice', which});
 }
 
+function edictChoice(iid) {
+  submit({type: 'edictChoice', iid});
+}
+
+function optionalCost(pay) {
+  submit({type: 'optionalCost', pay});
+}
+
 function submit(action) {
   ENGINE.executeAction('you', action);
 }
@@ -2995,12 +3218,12 @@ return {
   init, gameOverClick, clickHand, clickBattlefield, clickStackTarget, clickPlayerTarget,
   closeCardPopup, attachLongPress,
   openZone, closeZone,
-  cancelTarget, endTurn, passAction, doneDeclaring, concede, searchPick, triggerBuildPick, numberChoice, symmetricizeChoice, toggleLog,
+  cancelTarget, endTurn, passAction, doneDeclaring, concede, searchPick, triggerBuildPick, numberChoice, symmetricizeChoice, edictChoice, optionalCost, toggleLog,
   pickModalMode, cancelModalChoice,
   pendingModalChoice: () => pendingModalChoice,
   toggleStats, statsExport, statsClear,
-  // Map navigation click handler — used by the map modal's clickable nodes.
-  pickMapNodeClick,
+  // Map navigation: clicking a node selects it (Continue commits the selection).
+  selectMapNode,
   // Stats screen interactivity. Inline onclick handlers in the rendered
   // tables call these via CONTROLLER.* (functions live inside this IIFE
   // and aren't on window, so we have to expose them explicitly).

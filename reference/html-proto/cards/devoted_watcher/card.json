@@ -1,0 +1,19 @@
+{
+  "card_id": "devoted_watcher",
+  "art": "art.png",
+  "cost": {
+    "W": 1,
+    "C": 1
+  },
+  "keywords": [
+    "vigilance"
+  ],
+  "name": "Devoted Watcher",
+  "power": 1,
+  "toughness": 3,
+  "types": [
+    "Creature",
+    "Human",
+    "Soldier"
+  ]
+}

@@ -1,0 +1,53 @@
+{
+  "card_id": "spirit_shepherd",
+  "art": "👻",
+  "cost": {
+    "W": 1,
+    "C": 3
+  },
+  "keywords": [
+    "flying",
+    "hexproof"
+  ],
+  "name": "Spirit Shepherd",
+  "power": 2,
+  "static_buffs": [
+    {
+      "filter": {
+        "controller": "self"
+      },
+      "subtype": "Spirit",
+      "power": 1,
+      "toughness": 1,
+      "keywords": [
+        "hexproof"
+      ]
+    }
+  ],
+  "toughness": 3,
+  "triggers": [
+    {
+      "event": "card_zone_change",
+      "condition": [
+        "this_card",
+        "card_moves(battlefield, graveyard)"
+      ],
+      "effects": [
+        {
+          "kind": "move_card",
+          "from_zone": "graveyard",
+          "to_zone": "hand",
+          "selector": "target"
+        }
+      ],
+      "target": "graveyard_creature",
+      "target_filter": {
+        "subtype": "Spirit"
+      }
+    }
+  ],
+  "types": [
+    "Creature",
+    "Spirit"
+  ]
+}

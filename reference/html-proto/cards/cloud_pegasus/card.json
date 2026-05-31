@@ -1,0 +1,18 @@
+{
+  "card_id": "cloud_pegasus",
+  "art": "art.png",
+  "cost": {
+    "W": 1,
+    "C": 2
+  },
+  "keywords": [
+    "flying"
+  ],
+  "name": "Cloud Pegasus",
+  "power": 2,
+  "toughness": 2,
+  "types": [
+    "Creature",
+    "Pegasus"
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "card_id": "shadow_assassin",
+  "art": "🗡",
+  "cost": {
+    "B": 1,
+    "C": 2
+  },
+  "keywords": [
+    "deathtouch",
+    "menace"
+  ],
+  "name": "Shadow Assassin",
+  "power": 2,
+  "toughness": 2,
+  "types": [
+    "Creature",
+    "Human",
+    "Assassin"
+  ]
+}

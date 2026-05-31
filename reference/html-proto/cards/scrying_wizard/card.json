@@ -1,0 +1,40 @@
+{
+  "card_id": "scrying_wizard",
+  "abilities": [
+    {
+      "cost": {
+        "tap": true
+      },
+      "sorcery_speed": false,
+      "effects": [
+        {
+          "kind": "move_card",
+          "from_zone": "library",
+          "to_zone": "hand",
+          "selector": "controller_top",
+          "amount": 1
+        },
+        {
+          "kind": "move_card",
+          "from_zone": "hand",
+          "to_zone": "graveyard",
+          "amount": 1,
+          "scope": "self"
+        }
+      ]
+    }
+  ],
+  "art": "🔮",
+  "cost": {
+    "U": 1,
+    "C": 1
+  },
+  "name": "Scrying Wizard",
+  "power": 1,
+  "toughness": 2,
+  "types": [
+    "Creature",
+    "Human",
+    "Wizard"
+  ]
+}

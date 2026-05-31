@@ -1,28 +1,26 @@
 {
-  "tplId": "overrun",
-  "name": "Overrun",
-  "type": "Sorcery",
+  "card_id": "overrun",
+  "art": "art.png",
   "cost": {
     "G": 2,
     "C": 3
   },
-  "art": "cards/overrun/art.png",
-  "text": "Creatures you control get +3/+3 and gain trample until end of turn.",
   "effects": [
     {
-      "kind": "pumpAllYours",
+      "kind": "pump",
+      "scope": "all_yours",
       "power": 3,
       "toughness": 3
     },
     {
-      "kind": "grantKeyword",
-      "whose": "allYours",
+      "kind": "grant_keyword",
+      "scope": "all_yours",
       "keyword": "trample",
       "duration": "eot"
     }
   ],
-  "color": "G",
-  "colors": [
-    "G"
+  "name": "Overrun",
+  "types": [
+    "Sorcery"
   ]
 }

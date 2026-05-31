@@ -15,7 +15,14 @@ const DESERT_CUBE_LAND_PROB = 1 / 3;
 let _draftPoolCache = null;
 function draftPool() {
   if (_draftPoolCache === null) {
-    _draftPoolCache = Object.keys(CARDS).filter(id => CARDS[id].type !== 'Land' && !CARDS[id].special);
+    // Spells + creatures are draftable; basic/utility lands are not — EXCEPT
+    // nonbasic artifact lands (Land + Artifact), which draft like other picks
+    // (matches MtG, where nonbasic lands appear in packs).
+    _draftPoolCache = Object.keys(CARDS).filter(id => {
+      const c = CARDS[id];
+      if (c.special) return false;
+      return !hasType(c, 'Land') || hasType(c, 'Artifact');
+    });
   }
   return _draftPoolCache;
 }
@@ -34,7 +41,7 @@ function rollPackForMode(pool, picksSoFar, mode) {
       for (let j = 0; j < pack.length; j++) {
         if (j === i) continue;
         const tpl = CARDS[pack[j]];
-        if (tpl && tpl.type === 'Land' && tpl.mana) usedLandTplIds.add(pack[j]);
+        if (tpl && hasType(tpl, 'Land') && tpl.mana) usedLandTplIds.add(pack[j]);
       }
       const availableColors = COLORS.filter(c => !usedLandTplIds.has(COLOR_TO_LAND[c]));
       if (availableColors.length === 0) continue;
@@ -63,12 +70,12 @@ const CONSTRUCTED_DECKS = {
     colors: ['R'],
     description: 'Cheap goblins, burn finishers',
     cards: [
-      'goblinPiercer', 'goblinPiercer', 'hastyOgre', 'hastyOgre',
-      'goblinRaider', 'goblinRaider', 'duelist', 'duelist',
-      'raidLeader', 'raidLeader', 'goblinWarDrummer', 'goblinWarDrummer',
-      'goblinChieftain', 'bloodlust', 'bloodlust',
-      'bolt', 'bolt', 'shock', 'shock',
-      'incinerate', 'fireball', 'goblinRabble', 'pyroclasm',
+      'goblin_piercer', 'goblin_piercer', 'raging_goblin', 'raging_goblin',
+      'goblin_raider', 'goblin_raider', 'goblin_duelist', 'goblin_duelist',
+      'goblin_slinger', 'goblin_slinger', 'goblin_war_drummer', 'goblin_war_drummer',
+      'goblin_chieftain', 'bloodlust_berserker', 'bloodlust_berserker',
+      'lightning_bolt', 'lightning_bolt', 'shock', 'shock',
+      'char', 'volcanic_hammer', 'goblin_rabble', 'pyroclasm',
     ],
   },
   spiritTribal: {
@@ -76,12 +83,12 @@ const CONSTRUCTED_DECKS = {
     colors: ['W'],
     description: 'Spirits, removal, evasion',
     cards: [
-      'savannahLions', 'whiteKnight', 'whiteKnight',
-      'ancestralGuard', 'ancestralGuard', 'phantomWarrior', 'phantomWarrior',
-      'vengefulSpirit', 'vengefulSpirit', 'echoSpirit', 'echoSpirit',
-      'spiritShepherd', 'spiritShepherd', 'cloudGiant', 'serra',
-      'salve', 'pacifism', 'pacifism', 'swords', 'swords',
-      'divineFavor', 'divineFavor', 'wrathOfGod',
+      'savannah_lions', 'white_knight', 'white_knight',
+      'devoted_watcher', 'devoted_watcher', 'phantom_warrior', 'phantom_warrior',
+      'vengeful_spirit', 'vengeful_spirit', 'echo_spirit', 'echo_spirit',
+      'spirit_shepherd', 'spirit_shepherd', 'cloud_pegasus', 'serra_angel',
+      'healing_salve', 'pacifism', 'pacifism', 'swords_to_plowshares', 'swords_to_plowshares',
+      'divine_favor', 'divine_favor', 'day_of_reckoning',
     ],
   },
   aristocrats: {
@@ -89,12 +96,12 @@ const CONSTRUCTED_DECKS = {
     colors: ['B', 'R'],
     description: 'Sacrifice synergies, drain effects',
     cards: [
-      'goblinPiercer', 'goblinRaider', 'bloodBat', 'bloodBat',
-      'rakdosCadet', 'rakdosCadet', 'cultPriest', 'cultPriest',
-      'bloodPriest', 'bloodPriest', 'bloodArtist', 'bloodArtist',
-      'carrionFeeder', 'carrionFeeder', 'bloodthirster',
-      'bolt', 'shock', 'doomBlade', 'doomBlade',
-      'drainLife', 'drainLife', 'mindrot', 'consume',
+      'goblin_piercer', 'goblin_raider', 'vampire_bat', 'vampire_bat',
+      'rakdos_cadet', 'rakdos_cadet', 'cult_priest', 'cult_priest',
+      'blood_priest', 'blood_priest', 'blood_artist', 'blood_artist',
+      'carrion_feeder', 'carrion_feeder', 'bloodthirster',
+      'lightning_bolt', 'shock', 'doom_blade', 'doom_blade',
+      'drain_life', 'drain_life', 'mind_rot', 'consume_spirit',
     ],
   },
   archdemonBoss: {
@@ -104,15 +111,15 @@ const CONSTRUCTED_DECKS = {
     description: 'Mono-black demonic toolbox: removal, drain, recursion',
     isBoss: true,
     cards: [
-      'archdemonBargains',
-      'bloodBat', 'rakdosCadet', 'rakdosCadet',
-      'cultPriest', 'cultPriest', 'bloodPriest', 'bloodPriest',
-      'bloodArtist', 'bloodArtist', 'hypnotic', 'hypnotic',
-      'nightmare', 'bloodthirster',
-      'vileEdict', 'vileEdict',
+      'archdemon_of_bargains',
+      'vampire_bat', 'rakdos_cadet', 'rakdos_cadet',
+      'cult_priest', 'cult_priest', 'blood_priest', 'blood_priest',
+      'blood_artist', 'blood_artist', 'hypnotic_specter', 'hypnotic_specter',
+      'sengir_vampire', 'bloodthirster',
+      'vile_edict', 'vile_edict',
       'scarification', 'scarification',
-      'doomBlade', 'doomBlade', 'terror', 'terror',
-      'drainLife',
+      'doom_blade', 'doom_blade', 'murder', 'murder',
+      'drain_life',
     ],
   },
   balancerBoss: {
@@ -122,18 +129,18 @@ const CONSTRUCTED_DECKS = {
     description: 'Mono-white control: taxation, exile, equalization',
     isBoss: true,
     cards: [
-      'cityGuardian', 'cityGuardian',
+      'city_guardian', 'city_guardian',
       'symmetricize', 'symmetricize',
       'embargo', 'embargo',
       'bleach',
-      'savannahLions', 'whiteKnight', 'ancestralGuard', 'ancestralGuard',
-      'benalishHero', 'squireOath', 'paladinValor',
-      'serra', 'ageOfDawn',
-      'swords', 'swords',
+      'savannah_lions', 'white_knight', 'devoted_watcher', 'devoted_watcher',
+      'benalish_hero', 'squire_of_oaths', 'paladin_of_valor',
+      'serra_angel', 'dawn_sentinel',
+      'swords_to_plowshares', 'swords_to_plowshares',
       'pacifism', 'pacifism',
       'oblation',
-      'wrathOfGod',
-      'salve',
+      'day_of_reckoning',
+      'healing_salve',
     ],
   },
 };
@@ -213,7 +220,7 @@ function applyOpponentStaples(slots, n) {
   const deckColors = new Set();
   for (const slot of slots) {
     const tpl = CARDS[slot.tplId];
-    if (tpl && tpl.type === 'Land' && tpl.mana) deckColors.add(tpl.mana);
+    if (tpl && hasType(tpl, 'Land') && tpl.mana) deckColors.add(tpl.mana);
   }
   const COLOR_KEYS = ['W','U','B','R','G'];
   const isCastable = (baseTplId, stapleTplId) => {
@@ -245,7 +252,7 @@ function applyOpponentStaples(slots, n) {
         if (!isCompatibleStaplePair(slots[bi].tplId, stapleSlot.tplId)) continue;
         const baseTpl = CARDS[slots[bi].tplId];
         const stapleTpl = CARDS[slots[si].tplId];
-        const ccPair = (baseTpl.type === 'Creature' && stapleTpl.type === 'Creature');
+        const ccPair = (hasType(baseTpl, 'Creature') && hasType(stapleTpl, 'Creature'));
         let weight = ccPair ? 3 : 1;
         if (!isCastable(slots[bi].tplId, slots[si].tplId)) weight *= 0.1;
         pairs.push({bi, si, weight});
@@ -293,7 +300,7 @@ function applyOpponentClones(slots, n) {
     for (let i = 0; i < slots.length; i++) {
       if (clonedTplIds.has(slots[i].tplId)) continue;
       const tpl = tplForSlot(slots[i]);
-      if (!tpl || tpl.type === 'Land') continue;
+      if (!tpl || hasType(tpl, 'Land')) continue;
       const score = intrinsicCardValue(tpl);
       if (score > bestScore) { bestScore = score; bestIdx = i; }
     }
@@ -400,19 +407,19 @@ function applyOpponentStickers(slots, n) {
 // Heuristic sticker value per slot. Evasion keywords beat stat boosts;
 // land/cost/empower stickers vary with slot context.
 function scoreOpponentSticker(sticker, slot) {
-  if (sticker.kind === 'statBoost') {
+  if (sticker.kind === 'stat_boost') {
     return 8 + (sticker.power || 0) * 2 + (sticker.toughness || 0) * 2;
   }
   if (sticker.kind === 'keyword') {
     const tier = {
       flying: 14, indestructible: 14, hexproof: 11, lifelink: 10, deathtouch: 10,
-      firstStrike: 8, vigilance: 7, haste: 7, trample: 6, menace: 5, reach: 4, flash: 3,
+      first_strike: 8, vigilance: 7, haste: 7, trample: 6, menace: 5, reach: 4, flash: 3,
     }[sticker.keyword] || 5;
     return tier;
   }
   if (sticker.kind === 'innate') return 6;     // free opening-hand land
-  if (sticker.kind === 'landColor') return 7;
-  if (sticker.kind === 'costReduction') {
+  if (sticker.kind === 'grant_mana_ability') return 7;
+  if (sticker.kind === 'cost_mod') {
     // Bigger cards benefit more. For stapled slots, the merged cost is
     // higher than the base alone — a costMinus1 on a Lions+Bolt at WR
     // is worth slightly more than on Lions alone.
@@ -440,8 +447,8 @@ function scoreOpponentSticker(sticker, slot) {
     const tpl = tplForSlot(slot);
     if (!tpl) return 4;
     const FIELD_VALUE_BY_KIND = {
-      damage: 4, damageAll: 5, pump: 2, weaken: 2, addCounter: 3, pumpAllYours: 4,
-      gainLife: 1, draw: 3, discard: 3, removeCreature: 6, removeAll: 8, createTokens: 3,
+      damage: 4, pump: 2, gain_life: 1, affect_creature: 6, create_tokens: 3,
+      move_card: 3,   // draw shape (the only empowerable move_card)
     };
     const targets = enumerateEmpowerTargets(tpl);
     if (targets.length === 0) return 4;
@@ -538,9 +545,9 @@ function scoreDraftCard(id, picksSoFar) {
   else if (gap < -1) score -= 5;     // already over-supplied at this cost
 
   // ----- 3. Creature density -----
-  const creatureCount = picksSoFar.filter(pid => CARDS[pid].type === 'Creature').length;
+  const creatureCount = picksSoFar.filter(pid => hasType(CARDS[pid], 'Creature')).length;
   const expectedCreatures = picksSoFar.length * (15 / 23);
-  if (card.type === 'Creature') {
+  if (hasType(card, 'Creature')) {
     if (creatureCount < expectedCreatures) score += 8;
   } else {
     if (creatureCount < expectedCreatures - 2) score -= 8;
@@ -610,14 +617,21 @@ function rollPack(pool, picksSoFar) {
     const c = CARDS[id];
     if (!c) continue;
     if (c.color) inDeckColors.add(c.color);
-    else if (c.type === 'Land' && c.mana) inDeckColors.add(c.mana);
+    else if (hasType(c, 'Land') && c.mana) inDeckColors.add(c.mana);
   }
 
   // Bucket the pool by color once; each slot pick is a uniform sample.
   const byColor = {W:[], U:[], B:[], R:[], G:[]};
+  // Colorless cards (no color identity — robots, colorless artifacts, artifact
+  // lands) fit ANY deck, so they're not "a color the player isn't" and aren't
+  // subject to the off-color once-per-pack cap. They're eligible in EVERY slot:
+  // a slot's candidates are its rolled color's bucket PLUS the colorless pool.
+  // Without this they'd land in no bucket and (pre-2.0.60) were never offered.
+  const colorless = [];
   for (const id of pool) {
     const c = CARDS[id];
     if (c && c.color && byColor[c.color]) byColor[c.color].push(id);
+    else if (c && !c.color) colorless.push(id);
   }
 
   const out = [];
@@ -639,8 +653,10 @@ function rollPack(pool, picksSoFar) {
     // from the full pool. This matters for the modal-stress-test config
     // where most cards have weight 0 — color-rolled slots whose color has
     // no positive-weight cards would otherwise emit nothing.
+    // Candidates = the rolled color's bucket + the always-eligible colorless
+    // pool (colorless fits any deck, so it competes for every slot).
     const sub = byColor[color] || [];
-    const candidates = sub.filter(id => !used.has(id));
+    const candidates = sub.concat(colorless).filter(id => !used.has(id));
     let id = candidates.length > 0 ? weightedPick(candidates) : null;
     if (!id) {
       const anyUnused = pool.filter(id => !used.has(id) && weightOf(id) > 0);
@@ -651,10 +667,11 @@ function rollPack(pool, picksSoFar) {
     used.add(id);
     out.push(id);
 
-    // If this color is OFF-deck, drop it from the table for future slots.
-    // In-deck colors stay on the table and can repeat — that's how mono-/
-    // committed-color drafters get rewarded with concentrated packs.
-    if (!inDeckColors.has(color)) {
+    // If this color is OFF-deck, drop it from the table for future slots so it
+    // appears at most once. Only when we actually picked a card OF that color —
+    // a colorless pick in this slot doesn't "consume_spirit" the rolled color. In-deck
+    // colors stay on the table and can repeat (rewards committed drafters).
+    if (CARDS[id] && CARDS[id].color === color && !inDeckColors.has(color)) {
       colorTable = colorTable.filter(c => c !== color);
     }
   }
@@ -702,7 +719,7 @@ function countPips(tplIds) {
     if (!c) continue;
     if (c.cost) {
       for (const k of COLORS) pips[k] += (c.cost[k] || 0);
-    } else if (c.type === 'Land' && c.mana && pips[c.mana] !== undefined) {
+    } else if (hasType(c, 'Land') && c.mana && pips[c.mana] !== undefined) {
       pips[c.mana] += 1;
     }
   }

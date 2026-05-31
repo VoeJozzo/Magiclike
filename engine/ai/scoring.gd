@@ -45,13 +45,13 @@ static func card_value(template: CardResource, purpose: String = "draft") -> flo
 			match effect.get("kind", ""):
 				"damage":
 					score += 2.0 + float(effect.get("amount", 0))
-				"counter_spell":
+				"counter":
 					score += 6.0
 				"gain_life":
 					score += 1.0
 				"pump":
-					score += float(effect.get("amount_power", 0)) + float(effect.get("amount_toughness", 0))
-	if not template.triggered_abilities.is_empty():
+					score += float(effect.get("power", 0)) + float(effect.get("toughness", 0))
+	if not template.triggers.is_empty():
 		score += 2.0
 	return score
 

@@ -1,0 +1,15 @@
+{
+  "card_id": "rakdos_cadet",
+  "art": "art.png",
+  "cost": {
+    "B": 1,
+    "C": 1
+  },
+  "name": "Rakdos Cadet",
+  "power": 2,
+  "toughness": 2,
+  "types": [
+    "Creature",
+    "Imp"
+  ]
+}

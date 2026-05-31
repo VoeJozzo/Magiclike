@@ -1,0 +1,15 @@
+{
+  "card_id": "llanowar_sentry",
+  "art": "art.png",
+  "cost": {
+    "G": 1
+  },
+  "name": "Llanowar Sentry",
+  "power": 2,
+  "toughness": 1,
+  "types": [
+    "Creature",
+    "Elf",
+    "Warrior"
+  ]
+}

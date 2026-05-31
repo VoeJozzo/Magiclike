@@ -1,21 +1,27 @@
 {
-  "tplId": "oblation",
-  "name": "Oblation",
-  "type": "Instant",
+  "card_id": "oblation",
+  "art": "art.png",
   "cost": {
     "W": 1,
     "C": 2
   },
-  "art": "cards/oblation/art.png",
-  "text": "Shuffle target creature into its owner's library.",
+  "target": "creature",
   "effects": [
     {
-      "kind": "shuffleIntoLibrary",
-      "target": "creature"
+      "kind": "move_card",
+      "from_zone": "battlefield",
+      "to_zone": "library",
+      "selector": "target",
+      "post": {
+        "shuffle": true
+      }
     }
   ],
-  "color": "W",
-  "colors": [
-    "W"
+  "name": "Oblation",
+  "keywords": [
+    "flash"
+  ],
+  "types": [
+    "Sorcery"
   ]
 }

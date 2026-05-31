@@ -1,0 +1,18 @@
+{
+  "card_id": "raging_goblin",
+  "art": "art.png",
+  "cost": {
+    "R": 1
+  },
+  "keywords": [
+    "haste"
+  ],
+  "name": "Raging Goblin",
+  "power": 1,
+  "toughness": 1,
+  "types": [
+    "Creature",
+    "Goblin",
+    "Berserker"
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "card_id": "divination",
+  "art": "art.png",
+  "cost": {
+    "U": 1,
+    "C": 1
+  },
+  "effects": [
+    {
+      "kind": "move_card",
+      "from_zone": "library",
+      "to_zone": "hand",
+      "selector": "controller_top",
+      "amount": 2
+    }
+  ],
+  "name": "Divination",
+  "types": [
+    "Sorcery"
+  ]
+}

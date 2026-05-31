@@ -1,0 +1,22 @@
+{
+  "card_id": "encase_in_amber",
+  "name": "Encase in Amber",
+  "art": "🟠",
+  "cost": {
+    "U": 2,
+    "C": 1
+  },
+  "target": "permanent",
+  "effects": [
+    {
+      "kind": "set_types",
+      "types": [
+        "Artifact"
+      ],
+      "duration": "permanent"
+    }
+  ],
+  "types": [
+    "Sorcery"
+  ]
+}

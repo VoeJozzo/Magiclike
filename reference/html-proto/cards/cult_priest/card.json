@@ -1,0 +1,32 @@
+{
+  "card_id": "cult_priest",
+  "art": "⛧",
+  "cost": {
+    "B": 1,
+    "C": 1
+  },
+  "name": "Cult Priest",
+  "power": 2,
+  "toughness": 1,
+  "triggers": [
+    {
+      "event": "card_zone_change",
+      "condition": [
+        "this_card",
+        "card_moves(battlefield, graveyard)"
+      ],
+      "effects": [
+        {
+          "kind": "gain_life",
+          "amount": -2
+        }
+      ],
+      "target": "opp"
+    }
+  ],
+  "types": [
+    "Creature",
+    "Human",
+    "Cleric"
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "card_id": "lore_seeker",
+  "art": "art.png",
+  "cost": {
+    "U": 2,
+    "C": 3
+  },
+  "name": "Lore Seeker",
+  "power": 1,
+  "toughness": 4,
+  "triggers": [
+    {
+      "event": "spell_cast",
+      "condition": [
+        "another_card",
+        "controlled_by(you)"
+      ],
+      "effects": [
+        {
+          "kind": "move_card",
+          "from_zone": "library",
+          "to_zone": "hand",
+          "selector": "controller_top",
+          "amount": 1
+        }
+      ]
+    }
+  ],
+  "types": [
+    "Creature",
+    "Human",
+    "Wizard"
+  ]
+}

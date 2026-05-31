@@ -1,0 +1,34 @@
+{
+  "card_id": "bone_collector",
+  "art": "art.png",
+  "cost": {
+    "B": 2,
+    "C": 2
+  },
+  "name": "Bone Collector",
+  "power": 2,
+  "toughness": 3,
+  "triggers": [
+    {
+      "event": "card_zone_change",
+      "condition": [
+        "another_card",
+        "card_is_creature",
+        "card_moves(battlefield, graveyard)"
+      ],
+      "effects": [
+        {
+          "kind": "pump",
+          "duration": "permanent",
+          "power": 1,
+          "toughness": 1,
+          "scope": "self"
+        }
+      ]
+    }
+  ],
+  "types": [
+    "Creature",
+    "Zombie"
+  ]
+}

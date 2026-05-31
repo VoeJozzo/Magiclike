@@ -1,0 +1,18 @@
+{
+  "card_id": "illusion_drake",
+  "art": "🐉",
+  "cost": {
+    "U": 1,
+    "C": 2
+  },
+  "keywords": [
+    "flying"
+  ],
+  "name": "Illusion Drake",
+  "power": 3,
+  "toughness": 2,
+  "types": [
+    "Creature",
+    "Drake"
+  ]
+}

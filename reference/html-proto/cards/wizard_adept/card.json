@@ -1,0 +1,41 @@
+{
+  "card_id": "wizard_adept",
+  "art": "🧠",
+  "cost": {
+    "U": 1,
+    "C": 2
+  },
+  "name": "Wizard Adept",
+  "power": 1,
+  "toughness": 3,
+  "triggers": [
+    {
+      "event": "spell_cast",
+      "condition": [
+        "another_card",
+        "controlled_by(you)"
+      ],
+      "effects": [
+        {
+          "kind": "move_card",
+          "from_zone": "library",
+          "to_zone": "hand",
+          "selector": "controller_top",
+          "amount": 1
+        },
+        {
+          "kind": "move_card",
+          "from_zone": "hand",
+          "to_zone": "graveyard",
+          "amount": 1,
+          "scope": "self"
+        }
+      ]
+    }
+  ],
+  "types": [
+    "Creature",
+    "Human",
+    "Wizard"
+  ]
+}

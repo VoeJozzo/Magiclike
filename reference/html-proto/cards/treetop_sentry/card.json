@@ -1,0 +1,34 @@
+{
+  "card_id": "treetop_sentry",
+  "art": "art.png",
+  "cost": {
+    "G": 1,
+    "C": 1
+  },
+  "keywords": [
+    "reach"
+  ],
+  "name": "Treetop Sentry",
+  "power": 2,
+  "toughness": 3,
+  "triggers": [
+    {
+      "event": "card_zone_change",
+      "condition": [
+        "this_card",
+        "card_moves(battlefield, graveyard)"
+      ],
+      "effects": [
+        {
+          "kind": "gain_life",
+          "amount": 2,
+          "scope": "self"
+        }
+      ]
+    }
+  ],
+  "types": [
+    "Creature",
+    "Treefolk"
+  ]
+}

@@ -40,7 +40,7 @@ func _ready() -> void:
 	# Tap two Mountains for RR
 	for c in s.you.battlefield:
 		if c.template.card_id == "mountain" and not c.tapped:
-			RulesEngine.execute_action(Action.make_activate_ability(c.instance_id))
+			RulesEngine.execute_action(Action.make_tap_land_for_mana(c.instance_id))
 			if s.you.mana.pool["R"] >= 2:
 				break
 	_assert_eq(s.you.mana.pool["R"], 2, "tapped two Mountains for RR")
@@ -107,7 +107,7 @@ func _ready() -> void:
 	# spell resolution and exercises the auto-pick path without needing the
 	# opp to actually have mana + cast.
 	RulesEngine._fire_event({
-		"kind": "card_etb",
+		"kind": "card_enters_battlefield",
 		"subject_iid": opp_pyro.instance_id,
 		"subject_card": opp_pyro,
 	})

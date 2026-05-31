@@ -1,0 +1,33 @@
+{
+  "card_id": "inspiring_herald",
+  "art": "art.png",
+  "cost": {
+    "W": 1,
+    "C": 3
+  },
+  "name": "Inspiring Herald",
+  "power": 2,
+  "toughness": 3,
+  "triggers": [
+    {
+      "event": "card_zone_change",
+      "condition": [
+        "this_card",
+        "card_moves(anywhere, battlefield)"
+      ],
+      "effects": [
+        {
+          "kind": "pump",
+          "scope": "all_yours",
+          "power": 1,
+          "toughness": 1
+        }
+      ]
+    }
+  ],
+  "types": [
+    "Creature",
+    "Human",
+    "Soldier"
+  ]
+}

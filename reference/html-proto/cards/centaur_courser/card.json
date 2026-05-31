@@ -1,0 +1,15 @@
+{
+  "card_id": "centaur_courser",
+  "art": "🐎",
+  "cost": {
+    "G": 1,
+    "C": 2
+  },
+  "name": "Centaur Courser",
+  "power": 3,
+  "toughness": 3,
+  "types": [
+    "Creature",
+    "Centaur"
+  ]
+}

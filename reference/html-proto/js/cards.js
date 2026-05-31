@@ -20,6 +20,62 @@
 // tplId persists in saves/PICKLOG — renames need save migration.
 const CARDS = {};
 
+// Wire format is canonical snake_case (docs/STANDARDIZATION-PLAN.md §4). The
+// loader rebinds to the JS-internal camelCase names the engine has used since
+// day one, so engine code stays unchanged while the JSON files become the
+// cross-engine source of truth (Godot reads the same shape).
+//
+// Wire    →  JS-internal
+//   card_id  →  tplId
+//   (derived) →  color, colors (computed from cost; not stored in JSON)
+function ingestCard(card) {
+  if (card == null || typeof card !== 'object') return card;
+  if (Object.prototype.hasOwnProperty.call(card, 'card_id')) {
+    card.tplId = card.card_id;
+    delete card.card_id;
+  }
+  if (!Object.prototype.hasOwnProperty.call(card, 'color')
+      || !Object.prototype.hasOwnProperty.call(card, 'colors')) {
+    const colors = [];
+    if (card.cost) {
+      for (const c of ['W', 'U', 'B', 'R', 'G']) {
+        if ((card.cost[c] || 0) > 0) colors.push(c);
+      }
+    }
+    if (!Object.prototype.hasOwnProperty.call(card, 'color')) card.color = colors[0] || null;
+    if (!Object.prototype.hasOwnProperty.call(card, 'colors')) card.colors = colors;
+  }
+  // Normalize any function-call-shorthand effects to canonical dicts (§5.1/§5.2).
+  // No-op for dict-form effects, so the current all-dict pool is unaffected.
+  if (typeof normalizeCardEffects === 'function') normalizeCardEffects(card);
+  // Intrinsic mana from a basic-land subtype (MTG 305.6): a Land with the
+  // Plains/Island/Swamp/Mountain/Forest subtype gets the matching "{T}: Add {C}"
+  // ability, unless it already produces that color. Lets artifact/nonbasic lands
+  // DERIVE their mana from the subtype instead of hand-authoring a tap ability —
+  // add the subtype, get the mana. (Basic lands carry sub "Basic Land", not a
+  // color subtype, so they keep their explicit ability and are unaffected.)
+  if (typeof typesOf === 'function' && typeof manaAbilityForColors === 'function' && hasType(card, 'Land')) {
+    const BASIC_LAND_MANA = { Plains: 'W', Island: 'U', Swamp: 'B', Mountain: 'R', Forest: 'G' };
+    const produced = new Set();
+    for (const ab of (card.abilities || [])) {
+      if (ab && ab.cost && ab.cost.tap && Array.isArray(ab.effects)) {
+        for (const e of ab.effects) {
+          if (e && e.kind === 'add_mana') for (const c of manaEffectColors(e)) produced.add(c);
+        }
+      }
+    }
+    for (const tag of typesOf(card)) {
+      const color = BASIC_LAND_MANA[tag];
+      if (color && !produced.has(color)) {
+        if (!Array.isArray(card.abilities)) card.abilities = [];
+        card.abilities.push(manaAbilityForColors([color]));
+        produced.add(color);
+      }
+    }
+  }
+  return card;
+}
+
 async function loadCards() {
   const base = 'cards/';
   const manifest = await fetch(base + '_manifest.json').then(r => r.json());
@@ -27,6 +83,7 @@ async function loadCards() {
     manifest.map(id => fetch(base + id + '/card.json').then(r => r.json()))
   );
   for (const card of cards) {
+    ingestCard(card);
     CARDS[card.tplId] = card;
     // The ~ character is a reserved placeholder for the card's own name
     // in trigger / effect templates (formatTriggerText in card-text.js).
@@ -35,8 +92,8 @@ async function loadCards() {
     if (typeof card.name === 'string' && card.name.includes('~')) {
       console.warn('Card name contains reserved ~ placeholder:', card.tplId, JSON.stringify(card.name));
     }
-    if (typeof card.text === 'string' && card.text.includes('~') && !card.customText) {
-      console.warn('Card text contains ~ outside customText flag:', card.tplId);
+    if (typeof card.text === 'string' && card.text.includes('~') && !card.custom_text) {
+      console.warn('Card text contains ~ outside custom_text flag:', card.tplId);
     }
   }
   // Defensive: warn if the loaded count doesn't match the manifest. A
@@ -50,67 +107,68 @@ async function loadCards() {
 
 // TOKENS — minted by effects. Vanish on leave-play (dies-triggers still fire).
 const TOKENS = {
-  spirit_w_1_1:  {name:'Spirit',  type:'Creature', sub:'Spirit',  power:1, toughness:1, art:'👻', color:'W', text:'Flying', keywords:['flying']},
-  soldier_w_1_1: {name:'Soldier', type:'Creature', sub:'Human Soldier', power:1, toughness:1, art:'⚔', color:'W'},
-  goblin_r_1_1:  {name:'Goblin',  type:'Creature', sub:'Goblin',  power:1, toughness:1, art:'👺', color:'R', text:'Haste', keywords:['haste']},
-  saproling_g_1_1: {name:'Saproling', type:'Creature', sub:'Saproling', power:1, toughness:1, art:'🌱', color:'G'},
-  bear_g_2_2:    {name:'Bear',    type:'Creature', sub:'Bear',    power:2, toughness:2, art:'🐻', color:'G'},
+  spirit_w_1_1:  {name:'Spirit',  types:['Creature','Spirit'],  power:1, toughness:1, art:'👻', color:'W', text:'Flying', keywords:['flying']},
+  soldier_w_1_1: {name:'Soldier', types:['Creature','Human','Soldier'], power:1, toughness:1, art:'⚔', color:'W'},
+  goblin_r_1_1:  {name:'Goblin',  types:['Creature','Goblin'],  power:1, toughness:1, art:'👺', color:'R', text:'Haste', keywords:['haste']},
+  saproling_g_1_1: {name:'Saproling', types:['Creature','Saproling'], power:1, toughness:1, art:'🌱', color:'G'},
+  bear_g_2_2:    {name:'Bear',    types:['Creature','Bear'],    power:2, toughness:2, art:'🐻', color:'G'},
 };
 
 // SHARED CONSTANTS — new keywords here auto-become available stickers.
 const KEYWORDS = [
   'flying', 'vigilance', 'trample', 'haste',
-  'firstStrike', 'reach', 'defender', 'indestructible',
+  'first_strike', 'reach', 'defender', 'indestructible',
   'lifelink', 'deathtouch', 'menace', 'hexproof', 'flash',
   'unblockable',
 ];
 
 // STICKERS — run-long card mods. Shape: {id, name, text, appliesTo, stackable, kind, weight, ...payload}.
 const STICKERS = {};
-STICKERS['plus1plus1'] = {
-  id: 'plus1plus1', name: '+1/+1',
+STICKERS['plus1_plus1'] = {
+  id: 'plus1_plus1', name: '+1/+1',
   text: '+1 power and +1 toughness.',
-  appliesTo: (c) => c.type === 'Creature',
+  appliesTo: (c) => hasType(c, 'Creature'),
   stackable: true,
   weight: 20,
-  kind: 'statBoost', power: 1, toughness: 1,
+  kind: 'stat_boost', power: 1, toughness: 1,
 };
 STICKERS['innate'] = {
   id: 'innate', name: 'Innate',
   text: 'Starts in your opening hand.',
-  appliesTo: (c) => c.type === 'Land',
+  appliesTo: (c) => hasType(c, 'Land'),
   stackable: false,
   weight: 10,
   kind: 'innate',
 };
 // landColor stickers — extra color on a basic. Gated by deck color (c.deckColors).
 for (const color of ['W','U','B','R','G']) {
-  const id = 'landColor_' + color;
+  const id = 'land_color_' + color.toLowerCase();
   const colorName = { W:'Plains', U:'Island', B:'Swamp', R:'Mountain', G:'Forest' }[color];
   const colorAdj = { W:'White', U:'Blue', B:'Black', R:'Red', G:'Green' }[color];
   STICKERS[id] = {
     id, name: 'Also a ' + colorName,
     text: 'This land also produces {' + color + '}.',
     appliesTo: (c) => {
-      if (c.type !== 'Land') return false;
-      if (c.mana === color) return false;
-      if ((c.extraManaColors || []).includes(color)) return false;
+      if (!hasType(c, 'Land')) return false;
+      // Already produces this color (base or stickered)? Don't re-offer. §3.9:
+      // production lives on the tap-ability, read via landProducibleColors.
+      if (landProducibleColors(c).includes(color)) return false;
       if (c.deckColors && !c.deckColors.includes(color)) return false;
       return true;
     },
     stackable: false,
     weight: 10,
-    kind: 'landColor',
+    kind: 'grant_mana_ability',
     color,
     colorAdj,
   };
 }
 // Cost reduction — strips 1 generic; floors at total ≥ 2 (no free 1-drops).
-STICKERS['costMinus1'] = {
-  id: 'costMinus1', name: 'Costs 1 Less',
+STICKERS['cost_minus_1'] = {
+  id: 'cost_minus_1', name: 'Costs 1 Less',
   text: 'This costs {1} less to cast.',
   appliesTo: (c) => {
-    if (c.type === 'Land') return false;
+    if (hasType(c, 'Land')) return false;
     if (!c.cost) return false;
     const generic = c.cost.C || 0;
     if (generic < 1) return false;
@@ -121,31 +179,34 @@ STICKERS['costMinus1'] = {
   },
   stackable: true,
   weight: 1,
-  kind: 'costReduction',
-  amount: 1,
+  // §3.8: unified onto the signed cost_mod kind (−1 reward / +1 embargo).
+  kind: 'cost_mod',
+  amount: -1,
 };
 
 // Empower bumps one buffable field per application. Roll recorded on slot.empowerRolls.
+// Single source of truth for empowerable params, post-collapse (§3.5/§3.8):
+// the mass kinds (damageAll/pumpAllYours/removeAll) folded into damage/pump/
+// affect_creature + scope; weaken/add_counter into signed/permanent pump; draw
+// into move_card(library→hand). `move_card` is empowerable ONLY in its draw
+// shape (gated in isEmpowerableField).
 const EMPOWER_FIELDS = {
   damage:         ['amount'],
-  damageAll:      ['amount'],
   pump:           ['power', 'toughness'],
-  weaken:         ['power', 'toughness'],
-  addCounter:     ['power', 'toughness'],
-  pumpAllYours:   ['power', 'toughness'],
-  gainLife:       ['amount'],
-  draw:           ['amount'],
-  discard:        ['amount'],
-  removeCreature: ['severity'],
-  removeAll:      ['severity'],
-  createTokens:   ['count'],
+  gain_life:       ['amount'],
+  affect_creature: ['severity'],
+  create_tokens:   ['count'],
+  move_card:      ['amount'],
 };
 function isEmpowerableField(eff, field) {
   if (!eff || !eff.kind) return false;
   const fields = EMPOWER_FIELDS[eff.kind];
   if (!fields || !fields.includes(field)) return false;
-  if ((eff.kind === 'removeCreature' || eff.kind === 'removeAll') && field === 'severity') {
-    return (eff.severity || 1) < 4;
+  // move_card is only empowerable as a draw (library→hand) — bumping a bounce/
+  // mill/discard count isn't a meaningful "empower".
+  if (eff.kind === 'move_card' && !(eff.from_zone === 'library' && eff.to_zone === 'hand')) return false;
+  if (eff.kind === 'affect_creature' && field === 'severity') {
+    return ENGINE.sevToNum(eff.severity) < 4;  // can't escalate past exile
   }
   // Skip {from:...} expressions (can't bump without losing semantics).
   const v = eff[field];
@@ -213,7 +274,7 @@ STICKERS['empower'] = {
 // modern card-text formatting: "First strike", not "First Strike").
 const KEYWORD_DISPLAY = {
   flying: 'Flying', vigilance: 'Vigilance', trample: 'Trample', haste: 'Haste',
-  firstStrike: 'First strike', reach: 'Reach', defender: 'Defender',
+  first_strike: 'First strike', reach: 'Reach', defender: 'Defender',
   indestructible: 'Indestructible', lifelink: 'Lifelink', deathtouch: 'Deathtouch',
   menace: 'Menace', hexproof: 'Hexproof', flash: 'Flash',
   unblockable: 'Unblockable',
@@ -249,20 +310,20 @@ for (const kw of KEYWORDS) {
       if ((c.stickers || []).some(sId => STICKERS[sId] && STICKERS[sId].keyword === kw)) return false;
       // Type-based eligibility:
       //   - Lifelink/Deathtouch/Trample: creatures, OR damaging spells.
-      //   - Flash: creatures, OR sorceries (instants are already instant-speed).
+      //   - Flash: creatures, OR sorceries (gives a sorcery instant speed).
       //   - All other keywords: creatures only.
       if (kw === 'lifelink' || kw === 'deathtouch' || kw === 'trample') {
-        if (c.type === 'Creature') {
+        if (hasType(c, 'Creature')) {
           // OK
-        } else if ((c.type === 'Instant' || c.type === 'Sorcery') && spellDealsDamage(c)) {
+        } else if (hasType(c, 'Sorcery') && spellDealsDamage(c)) {
           // OK
         } else {
           return false;
         }
       } else if (kw === 'flash') {
-        if (c.type !== 'Creature' && c.type !== 'Sorcery') return false;
+        if (!hasType(c, 'Creature') && !hasType(c, 'Sorcery')) return false;
       } else {
-        if (c.type !== 'Creature') return false;
+        if (!hasType(c, 'Creature')) return false;
       }
       // Reach is only useful as a defensive ground-blocker upgrade — fliers
       // already block fliers, so reach is strictly redundant on them.
@@ -286,7 +347,7 @@ for (const kw of KEYWORDS) {
 STICKERS['subtype'] = {
   id: 'subtype', name: 'Subtype',
   text: 'This creature gains a random creature subtype drawn from your deck.',
-  appliesTo: (c) => c.type === 'Creature',
+  appliesTo: (c) => hasType(c, 'Creature'),
   stackable: true,
   weight: 10,
   kind: 'subtype',
@@ -300,19 +361,19 @@ STICKERS['subtype'] = {
 STICKERS['scarified'] = {
   id: 'scarified', name: 'Scarred',
   text: 'When this enters the battlefield, its controller loses 1 life.',
-  appliesTo: (c) => c.type === 'Creature',
+  appliesTo: (c) => hasType(c, 'Creature'),
   stackable: true,         // multiple scarifications stack — each fires on ETB
   weight: 0,               // not in random pools
   kind: 'trigger',
   trigger: {
-    event: 'cardEntersBattlefield',
-    condId: 'thisEnters',
+    event: 'card_zone_change',
+    condition: ['this_card', 'card_moves(anywhere, battlefield)'],
     text: '~ enters: its controller loses 1 life.',
-    // target:'self' for player-operating effects (damage/gainLife/discard/
+    // scope:'self' for player-operating effects (damage/gain_life/discard/
     // draw) resolves to the source's controller at trigger time. Pushed
     // onto card.triggers when the sticker applies via the standard
-    // sticker-trigger path at line 2705-2706.
-    effects: [{ kind: 'damage', target: 'self', amount: 1 }],
+    // sticker-trigger path in stickers.js (the sticker-apply trigger push).
+    effects: [{ kind: 'gain_life', scope: 'self', amount: -1 }],
   },
 };
 
@@ -329,16 +390,16 @@ const RUN_MODIFIERS = {};
 // it grants). A boon CAN set an explicit `art:` to override, but
 // shouldn't need to in normal cases — keeping the boon and the card
 // visually in sync as art changes is the whole point.
-RUN_MODIFIERS['architectsCodex'] = {
-  id: 'architectsCodex',
+RUN_MODIFIERS['architects_codex'] = {
+  id: 'architects_codex',
   name: "The Architect's Codex",
   text: "Begin your run with The Architect's Codex — a 4-mana 2/3. The first time you draw it each game, choose one of three procedurally-generated abilities (or keep the current one).",
   apply: () => ({
-    extras: [{ tplId: 'architectsCodex', stickers: [] }],
+    extras: [{ tplId: 'architects_codex', stickers: [] }],
   }),
 };
-RUN_MODIFIERS['cityOfBrass'] = {
-  id: 'cityOfBrass',
+RUN_MODIFIERS['city_of_brass'] = {
+  id: 'city_of_brass',
   name: 'Polychrome Pact',
   text: 'Begin your run with a City of Brass already in hand. Taps for any color.',
   // Pinned during early development to guarantee a universally-applicable
@@ -347,7 +408,7 @@ RUN_MODIFIERS['cityOfBrass'] = {
   // that the boon pool has grown disjoint enough that a stable fallback
   // is needed again.
   apply: () => ({
-    extras: [{ tplId: 'cityOfBrass', stickers: ['innate'] }],
+    extras: [{ tplId: 'city_of_brass', stickers: ['innate'] }],
   }),
 };
 RUN_MODIFIERS['endomorph'] = {
@@ -374,8 +435,8 @@ RUN_MODIFIERS['phylactery'] = {
     extras: [{ tplId: 'phylactery', stickers: ['innate'] }],
   }),
 };
-RUN_MODIFIERS['elystra'] = {
-  id: 'elystra',
+RUN_MODIFIERS['elystra_the_immortal'] = {
+  id: 'elystra_the_immortal',
   name: 'Elystra the Immortal',
   text: "Begin your run with Elystra in your deck — a 3-mana 1/1. End-of-turn effects on her last forever, but every spell that targets her is ripped from its caster's deck after it resolves.",
   // v1.0.48: unpinned. Was pinned because Elystra was the headline build-around
@@ -384,7 +445,7 @@ RUN_MODIFIERS['elystra'] = {
   // the other boons. Re-pin if the pool shrinks or Elystra-stacking runs
   // become so dominant that players regularly skip whatever boon got rolled.
   apply: () => ({
-    extras: [{ tplId: 'elystra', stickers: [] }],
+    extras: [{ tplId: 'elystra_the_immortal', stickers: [] }],
   }),
 };
 
@@ -392,7 +453,7 @@ RUN_MODIFIERS['stapler'] = {
   id: 'stapler',
   name: 'Stapler',
   text: "Begin your run with Stapler — a {3} Artifact with 3 per-run charges. {3}, T: choose two target permanents, staple the second onto the first. When out of charges, ripped from the run.",
-  // Charges initialize from CARDS.stapler.chargesAtRunStart (= 3) via the
+  // Charges initialize from CARDS.stapler.charges_at_run_start (= 3) via the
   // extras-loop in start(). Persist across games on slot.charges.
   // v1.0.68: unpinned. Was pinned during initial playtesting (v1.0.52) to
   // collect feedback on the in-game splice flow; mechanic is now stable
