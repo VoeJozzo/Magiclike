@@ -130,3 +130,10 @@ Shared assets (used by both the Godot port and the html-proto) live at `assets/`
 - Don't open PRs unless asked.
 - New work happens in a git worktree (see `~/.claude/worktrees/`). Parallel Claude sessions each need their own worktree — sharing one causes branch-switch clobbering.
 - No version-bump rule for the Godot side (the binary isn't browser-served; Pages serves html-proto only).
+
+## Verification discipline
+
+Two checkable rules. They exist because they are a recurring, costly failure mode (false-green commits; fabricated counts re-fixed two and three times) — not abstract caution.
+
+- **Confirm green before committing or claiming a pass.** Read the test runner's actual summary/total line — never a truncated `tail` that can hide the count. A commit that says "N green" must cite a number you saw this session, not an assumption.
+- **Copy facts; don't recall them.** Any number or identifier written into a commit message, PR body, or doc (diff counts, commit totals, SHAs, file paths) must be copied from verified tool output in this session, not typed from memory. When in doubt, re-query (`gh pr view`, `git rev-list --count`) and paste.
