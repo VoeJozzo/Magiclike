@@ -1,6 +1,9 @@
 # Plan: Unify Godot's card source on JSON (retire `.tres`)
 
-**Status:** Plan complete, ready for review. Not yet executed. Lives on `claude/tier3-reconcile`.
+**Status:** Plan complete, ready for review. Not yet executed. Lives on `claude/tier3-reconcile`. Backlogged for its own PR -- see `docs/BACKLOG.md` -> "Card data / wire format".
+
+> **Update (PR #37 / v2.0.70 -- sequencing has drifted ahead of this plan).** The plan below assumes Part 1 leaves `JsonCardLoader`'s remap tables in place and Part 2 (folded into the effects refactor) later takes the wire fully snake_case. That ordering no longer holds: the wire **already went snake_case** during standardization, so the four remap tables (`_EFFECT_KIND_REMAP` / `_EVENT_KIND_REMAP` / `_KEYWORD_REMAP` / `_TARGET_FILTER_REMAP`) are **already deleted** (PR #37), and the v2.0.70 type cutover removed the bare `type`/`sub` fields so `JsonCardLoader._build_resource` **already classifies cards off the `types[]` array**. Two specific notes below are now STALE: the "Part 2" paragraph's claim that the remap tables "survive through Part 1", and **step 6** ("leave the remap tables in place"). Net: Part 2's field-rename + snake_case sweep is largely done; what remains of this plan is the **data-source switch + visual-factory rebuild** (steps 1-5). Re-scope when picking this up.
+
 **Relationship to other docs:** this is the *data-source* half of the standardization branch's deferred "Pass 5" (see [`STANDARDIZATION-PLAN.md`](STANDARDIZATION-PLAN.md) §6 and [`STANDARDIZATION-CONTEXT.md`](STANDARDIZATION-CONTEXT.md) §7 for the original mechanical sketch). It supersedes that sketch's *sequencing* by splitting Pass 5 into two pieces and coordinating the second with the effects/E1-E2 refactor.
 
 ## Context
