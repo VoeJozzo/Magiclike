@@ -1,6 +1,6 @@
 {
   "card_id": "mist_raider",
-  "art": "⚓",
+  "art": "art.png",
   "cost": {
     "U": 1,
     "C": 3

@@ -1,6 +1,6 @@
 {
   "card_id": "skyfire_drakelord",
-  "art": "🐲",
+  "art": "art.png",
   "cost": {
     "U": 1,
     "C": 4
@@ -34,7 +34,7 @@
         "card_has_subtype(Drake)",
         "card_moves(anywhere, battlefield)"
       ],
-      "text": "Another Drake entered — deal 1 to any target.",
+      "text": "Another Drake entered \u2014 deal 1 to any target.",
       "effects": [
         {
           "kind": "damage",

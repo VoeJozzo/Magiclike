@@ -1,6 +1,6 @@
 {
   "card_id": "crusader_captain",
-  "art": "🛡",
+  "art": "art.png",
   "cost": {
     "W": 2,
     "C": 2
