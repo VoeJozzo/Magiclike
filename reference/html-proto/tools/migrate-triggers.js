@@ -19,6 +19,13 @@ const DRY = process.argv.includes('--dry') || process.argv.includes('--dry-run')
 // replaced with card_has_subtype(<params.sub>) at migration time.
 const MIGRATION = {
   thisEnters:                        { event: 'card_zone_change', cond: ['this_card', 'card_moves(anywhere, battlefield)'] },
+  // DELIBERATE ASYMMETRY (do not "fix" by adding card_is_creature to OfSubtype):
+  // kindred/tribal in this project is type-agnostic — an "Artifact - Goblin" IS a
+  // Goblin and SHOULD fire a "whenever a Goblin enters" trigger. The Strict
+  // variant has no subtype filter, so it needs card_is_creature to scope itself;
+  // the OfSubtype variant is already scoped by card_has_subtype(...), which is the
+  // intended gate. Narrowing it to creatures would silently break non-creature
+  // tribal cards.
   anotherCreatureYouEntersStrict:    { event: 'card_zone_change', cond: ['another_card', 'card_is_creature', 'controlled_by(you)', 'card_moves(anywhere, battlefield)'] },
   anotherCreatureYouEntersOfSubtype: { event: 'card_zone_change', cond: ['another_card', 'controlled_by(you)', '__SUBTYPE__', 'card_moves(anywhere, battlefield)'] },
   thisAttacks:                       { event: 'attacks', cond: ['this_card'] },

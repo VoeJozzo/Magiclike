@@ -238,6 +238,9 @@ function _condSignature(event, condition) {
 const _ARCHETYPE_BY_SIG = {
   'card_zone_change | this_card, card_moves(anywhere, battlefield)': 'thisEnters',
   'card_zone_change | another_card, card_is_creature, controlled_by(you), card_moves(anywhere, battlefield)': 'anotherCreatureYouEntersStrict',
+  // OfSubtype intentionally has NO card_is_creature term — tribal is type-agnostic
+  // (a non-creature with a creature subtype still counts). card_has_subtype is the
+  // gate. See migrate-triggers.js MIGRATION for the full rationale.
   'card_zone_change | another_card, controlled_by(you), card_has_subtype(*), card_moves(anywhere, battlefield)': 'anotherCreatureYouEntersOfSubtype',
   'attacks | this_card': 'thisAttacks',
   'attacks | this_card, lost_life_this_turn(opp)': 'thisAttacksAfterOppLifeLoss',
