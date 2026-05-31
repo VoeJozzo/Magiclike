@@ -28,7 +28,89 @@ This plan covers **Part 1 only**. Part 2's mechanics are tracked with the refact
 3. **Repoint `CardDatabase.get_card(card_id)`** (`cards/templates/card_database.gd`) to read from `JsonCardLoader.load_all()`'s map instead of `load("<card_id>.tres")`. Keep the same `get_card(card_id) -> CardResource` / `all_card_ids()` signatures so the engine, scenes, and tests are untouched. (They only call `CardDatabase.get_card(card_id)` today — `engine/engine.gd`, `tests/test_phase*.gd`.)
 4. **Rebuild the visual factory** to load card faces from the JSON-backed `CardResource` instead of `.tres` (STANDARDIZATION-CONTEXT §7.5): a frame + art-insert rebuild of `scenes/card.tscn` and replacing `scenes/tres_card_factory.gd` with a JSON-backed factory. This also unlocks loading html-proto card-art PNGs (already on `docs/BACKLOG.md`).
 5. **Delete the 23 `cards/templates/*.tres`** (and the now-unused `TresCardFactory`).
-6. **Leave `JsonCardLoader`'s remap tables in place** — they're removed in Part 2 with the dispatch-key snake_case sweep.
+6. **Leave `JsonCardLoader`'s remap tables in place** — they're removed in Part 2 with the dispatch-key snake_case sweep. *(Stale per the v2.0.70 update note above — the tables are already gone.)*
+
+## Part 1 blockers — loader / timing correctness bugs (PR #37 review)
+
+A second review pass (PR #37, post-card-structure changes) found six correctness
+bugs in `engine/json_card_loader.gd` and the `has_type("instant")` timing gates.
+They are **latent today**: `JsonCardLoader`'s output is never put into play (the
+loader runs only for the boot supportability diagnostic; the live game still
+materializes cards from `.tres` via `CardDatabase.get_card()`). Each becomes
+**correctness-critical the moment step 3 flips the data source to JSON**, so they
+are part of Part 1's definition of done. All confirmed against the code during
+the review.
+
+1. **Flash keyword dropped at ingest for every spell.**
+   `_build_resource` copies `json.keywords` ONLY in the `governing == "creature"`
+   branch. The `sorcery`/`instant` branch builds a bare `SpellResource`, which has
+   no `keywords` field at all — so `flash` is lost for every spell (e.g.
+   `lightning_bolt.json` = `types:["Sorcery"]`, `keywords:["flash"]`). Compounding
+   it, `card_instance.gd.effective_keywords()` only reads `template.keywords` when
+   `template is CreatureResource`. *Fix:* give `SpellResource` (or base
+   `CardResource`) a `keywords` field, copy it for all governing types, and have
+   `effective_keywords()` read it regardless of subclass. Without this, no JSON
+   spell can be cast at instant speed once the source flips.
+
+2. **Spell target tokens make cards uncastable.**
+   The loader writes raw tokens (`opp`, `opp_creature`, `your_creature`,
+   `permanent`, `permanent_or_spell`, `graveyard_creature`) into
+   `SpellResource.target_filter` and sets `requires_target = true`, but
+   `engine.gd`'s `_enumerate_filter_targets` / `_target_matches_filter` only
+   understand `creature_or_player`, `creature`, `player`, `spell`. Every other
+   token hits the `_:` default → empty target list / `false`, so
+   `_legal_cast_spell` rejects the cast and the card is uncastable. The loader
+   also stores only the bare token and **drops the structured `target_filter`
+   object** (e.g. living_lands' `{type:"Land"}`), so even handled tokens lose
+   their restriction. *Fix:* teach the engine's target enumerator/matcher the full
+   token set and thread the structured filter object through. (The Proto matcher
+   `matchFilter` is the reference — note its `filter.type` branch was just added
+   on the Proto side in this same PR.)
+
+3. **`has_type("instant")` timing gates never got the `is_spell()` bridge.**
+   `is_spell()` in `data/card_resource.gd` was bridged to accept BOTH `"instant"`
+   (`.tres`) and `"sorcery"` (JSON), but the instant-speed *timing* checks remain
+   raw `has_type("instant")` literals at 5 sites: `engine.gd:636`, `engine.gd:1310`,
+   `ai/ai.gd:261`, `game_board.gd:971`, `game_board.gd:1086`. These pass for
+   `.tres` cards but fail for JSON cards (`Sorcery`+`flash`), forcing every JSON
+   spell to sorcery speed. The Proto reference gates on the `flash` keyword, not a
+   type. *Fix (deeper altitude):* add one accessor —
+   `CardResource.is_instant_speed()` returning
+   `has_keyword("flash") or has_type("instant")` — and route all 5 sites through
+   it. Collapses the policy to one place and matches the flash model.
+
+4. **`supportability_report` keys are stale → false boot readiness signal.**
+   It reads `trig.get("cond_id")` (migrated triggers use a composable `condition`
+   array — `cond_id` never exists, so the predicate check silently passes
+   everything) and `_FIRED_EVENT_KINDS` lists only `card_enters_battlefield` /
+   `card_dies` / `card_discarded` while migrated cards use `card_zone_change`,
+   `attacks`, `life_changed`, `spell_cast` (so real events are miscounted as
+   "missing" and inflate the unsupported total). Verified against
+   `ravenous_chupacabra`, `sengir_vampire`, `warchanter`. *Fix:* read the
+   `condition` array, parse predicate ids out of it, and update
+   `_FIRED_EVENT_KINDS` to the real event names the engine fires.
+
+5. **Dead camelCase `extraManaColors` read; multi-color lands lose colors.**
+   The land branch reads `json.get("extraManaColors", [])` — a camelCase key no
+   card emits (the loader header itself declares camelCase remaps removed). Today
+   it's a dead no-op loop; the moment a dual land is authored in snake_case
+   (`extra_mana_colors`) its extra colors are silently dropped. Separately,
+   City-of-Brass-style "{T}: add any" lands carry mana in abilities, not a
+   top-level `mana` string, so they'd load producing only `["C"]`. *Fix:* derive
+   `mana_produced` from the card's tap-for-mana ability(ies) (mirroring Proto's
+   `landProducibleColors`), not a frozen field. (This is the same convergence Q3
+   already commits to — see Q3 below.)
+
+6. **Loader duplicates the type system; latent Enchantment drift.**
+   `_GOVERNING_PRECEDENCE` is byte-identical to `_CARD_TYPE_TAGS`, and both
+   hand-port the precedence logic that conceptually belongs to the type system
+   (Proto `types.js`). The loader's list also disagrees with
+   `data/card_resource.gd` (which already treats `enchantment` as a permanent) —
+   an Enchantment JSON card would classify its tag as a *subtype* and load as a
+   non-permanent base resource. *Fix:* collapse the two consts; longer-term, one
+   shared type registry that both the loader and `CardResource` consult, mirroring
+   `types.js`. (We are NOT implementing enchantments now — this is purely about not
+   re-encoding type precedence in three places that can drift.)
 
 ## Decisions
 
