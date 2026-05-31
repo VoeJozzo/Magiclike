@@ -32,12 +32,13 @@ A runtime structure map for both halves of the Magiclike repo: the Godot 4.6 por
 │   └── predicates/predicates.gd
 ├── scenes/
 │   ├── card.{gd,tscn}         Card subclass (475 LOC) — overlays, focus, glows
-│   ├── json_card_factory.tscn TresCardFactory wiring
+│   ├── tres_card_factory.tscn                TresCardFactory wiring
 │   ├── game/                  game_board, player_panel, combat_lines
 │   └── zones/battlefield_zone.gd
 ├── tests/                     test_phase{1,2,3,4,4_5a,4_5b,4_5c,5a,5b,5c}.{gd,tscn}
 ├── docs/                      this file + SPEC.md + REFACTOR-NOTES.md
 │                              + godot-port-plan.md + BACKLOG.md
+├── tools/                      Godot utility scripts
 └── reference/html-proto/      JS prototype (active on dev; serves GitHub Pages)
     ├── magiclike_engine.html  single-page entry (918 LOC, ~700 LOC inline CSS)
     ├── js/                    14 IIFE modules, ~16k LOC
@@ -57,29 +58,29 @@ GitHub Pages serves from `dev`, pointing at `reference/html-proto/magiclike_engi
 
 | File | LOC | Role | Public surface |
 |---|---:|---|---|
-| `engine/engine.gd` | 1551 | Autoload `RulesEngine`. State holder, action dispatch, settle loop, trigger drain, stack resolution, two-pass combat damage, SBAs, legal-action enumeration. | `execute_action`, `is_legal_action`, `get_legal_actions`, `state()`, `counter_stack_entry`, signals `state_changed`/`log_appended`/`game_over` |
-| `engine/engine_state.gd` | 121 | RefCounted state container. Players, stack, attackers, blockers, pending_triggers, awaiting states, log, winner. | Fields are mutated directly; `player_by_key`, `find_instance`, `make_instance`, `opponent_of`, `duplicate_deep` |
+| `engine/engine.gd` | 1692 | Autoload `RulesEngine`. State holder, action dispatch, settle loop, trigger drain, stack resolution, two-pass combat damage, SBAs, legal-action enumeration. | `execute_action`, `is_legal_action`, `get_legal_actions`, `state()`, `counter_stack_entry`, signals `state_changed`/`log_appended`/`game_over` |
+| `engine/engine_state.gd` | 128 | RefCounted state container. Players, stack, attackers, blockers, pending_triggers, awaiting states, log, winner. | Fields are mutated directly; `player_by_key`, `find_instance`, `make_instance`, `opponent_of`, `duplicate_deep` |
 | `engine/player.gd` | 80 | Per-player zones (hand, library, battlefield, graveyard, exile), life, mana, land-play flag, `life_lost_this_turn`. | `find_battlefield`, `find_hand`, `move_card`, `untap_step`, `duplicate_deep` |
 | `engine/mana_pool.gd` | 91 | Color + generic mana accounting (greedy saturation), pretty-printer. | `add_dict`, `pay`, `to_string_short` |
 | `engine/stack.gd` | 51 | LIFO of `StackEntry` (spells AND triggered abilities). | `push`, `pop`, `top`, `clear` |
 | `engine/phase_machine.gd` | 57 | Turn structure (UNTAP / UPKEEP / DRAW / MAIN1 / COMBAT_ATTACK / COMBAT_BLOCK / COMBAT_DAMAGE / MAIN2 / END / CLEANUP). | `current`, `advance`, `phase_name`, `is_main_phase`, `is_combat_phase` |
 | `engine/card_instance.gd` | 131 | Per-card runtime state — tapped, damage_marked, temp_power/toughness, counters, summoning_sick, granted_keywords. | `current_power`, `current_toughness`, `effective_keywords`, `has_keyword`, `clear_eot_modifiers` |
-| `engine/action.gd` | 81 | Action constants (`KIND_*`) + factory functions. | All `make_*` helpers, `target_player`, `target_creature` |
+| `engine/action.gd` | 100 | Action constants (`KIND_*`) + factory functions. | All `make_*` helpers, `target_player`, `target_creature` |
 | `engine/effects/effects.gd` | 38 | Effect dispatcher. `HANDLERS` table maps `kind` → handler script. | `resolve_one(effect, ctx)`, `resolve_list(effects, ctx)` |
 | `engine/effects/{damage,add_mana,pump,gain_life,counter}.gd` | 30–65 ea. | Per-kind handlers. Signature `execute(effect: Dictionary, ctx: Dictionary)`. | `execute` |
 | `engine/predicates/predicates.gd` | 63 | String-keyed condition registry. Boot-time `validate_all_card_predicates`. | `evaluate(name, state, source, event)`, `validate_all_card_predicates(cards)` |
-| `engine/json_card_loader.gd` | 301 | Loads `reference/html-proto/cards/<id>/card.json` into `CardResource` instances; translation tables map JS-isms (camelCase kinds, `"any"` target, string `sub`) to Godot's snake_case shape. Boot supportability scan reports unsupported cards by missing effect/event/predicate kind. See [`PROTOCOL.md`](PROTOCOL.md). | `load_card`, `load_all`, `supportability_report` |
+| `engine/json_card_loader.gd` | 278 | Loads `reference/html-proto/cards/<id>/card.json` into `CardResource` instances; translation tables map JS-isms (camelCase kinds, `"any"` target, string `sub`) to Godot's snake_case shape. Boot supportability scan reports unsupported cards by missing effect/event/predicate kind. See [`PROTOCOL.md`](PROTOCOL.md). | `load_card`, `load_all`, `supportability_report` |
 | `engine/ai/ai.gd` | 283 | `AI.decide(state, player_key) -> Dictionary`. Hierarchical decision. | `decide` |
 | `engine/ai/combat.gd` | 200 | `decide_attackers`, `decide_blockers`, `simulate_combat` (deep-copy + reuse engine damage). | `decide_attackers`, `decide_blockers`, `simulate_combat` |
 | `engine/ai/burn.gd` | 57 | `face_damage_in_hand`, `has_lethal`. | Same |
 | `engine/ai/scoring.gd` | 64 | `AIScoring.card_value(template, purpose)`. | `card_value` |
-| `cards/templates/card_database.gd` | 59 | Auto-discovering `.tres` registry; lazy-cached directory walk. | `get_card(card_id)`, `all_card_ids()` |
+| `cards/templates/card_database.gd` | 58 | Auto-discovering `.tres` registry; lazy-cached directory walk. | `get_card(card_id)`, `all_card_ids()` |
 | `data/card_resource.gd` + subclasses | 46 + 5–10 ea. | `CardResource` base; `CreatureResource`, `SpellResource`, `LandResource` subclasses. | Fields are `@export`-ed; helpers `has_type`, `is_land`, `is_spell`, `is_permanent` |
 | `scenes/game/game_board.gd` | 1295 | UI orchestrator. Builds the entire scene tree programmatically; binds engine signals; routes clicks to actions across 4+ interaction modes. | `_ready`, signal handlers, click routers |
-| `scenes/game/player_panel.gd` | 91 | Life, mana, zone counts, low-library warning. | `update_from_player`, signal `clicked` |
-| `scenes/game/combat_lines.gd` | 117 | Overlay drawing attacker→blocker + spell→target lines. | `_process`, `_draw` |
-| `scenes/card.gd` | 475 | Card subclass — oracle overlay, legality glow, combat highlight, right-click focus. Passive (state pushed by game_board). | `apply_card_text`, `apply_creature_state`, `set_combat_highlight`, `set_legality_glow`, `enter_focus`/`exit_focus` |
-| `scenes/zones/battlefield_zone.gd` | 259 | Two-row layout (creatures + lands), adaptive spacing, color-grouped lands, combat-aware reordering. | Overrides `_card_can_be_added`, `_update_target_positions` |
+| `scenes/game/player_panel.gd` | 90 | Life, mana, zone counts, low-library warning. | `update_from_player`, signal `clicked` |
+| `scenes/game/combat_lines.gd` | 116 | Overlay drawing attacker→blocker + spell→target lines. | `_process`, `_draw` |
+| `scenes/card.gd` | 474 | Card subclass — oracle overlay, legality glow, combat highlight, right-click focus. Passive (state pushed by game_board). | `apply_card_text`, `apply_creature_state`, `set_combat_highlight`, `set_legality_glow`, `enter_focus`/`exit_focus` |
+| `scenes/zones/battlefield_zone.gd` | 258 | Two-row layout (creatures + lands), adaptive spacing, color-grouped lands, combat-aware reordering. | Overrides `_card_can_be_added`, `_update_target_positions` |
 
 ### 2.2 Runtime data flow
 
@@ -211,26 +212,27 @@ No batch runner — each `.tscn` is invoked individually. Flagged in `REFACTOR-N
 
 ### 3.1 Module map
 
-Load order in `magiclike_engine.html` is fixed: `settings → cards → engine → card-text → stickers → ai → draft → run → picklog → controller → render → settings-panel → triggers → trigger-generator → main`. Each module is an IIFE exposing a single `const` global.
+Load order in `magiclike_engine.html` is fixed: `types → settings → cards → engine → card-text → stickers → ai → draft → run → picklog → controller → render → settings-panel → triggers → trigger-generator → main`. Each module is an IIFE exposing a single `const` global.
 
 | File | LOC | Role |
 |---|---:|---|
-| `magiclike_engine.html` | 918 | Single-page entry. DOM scaffolding (14 modal containers), ~700 LOC inline CSS, 14 `<script>` tags. |
-| `js/settings.js` | 279 | `SETTINGS` — display config (frame style, per-element fonts/sizes, popup scale, mana pip sizes, devtools flag). `localStorage` key `magiclike_settings_v1`. `applyFontsToRoot()` syncs `:root` CSS vars at boot. |
-| `js/cards.js` | 406 | `CARDS = {}` + `async loadCards()` (manifest-driven). Holds `TOKENS`, `KEYWORDS`, `STICKERS`, `EMPOWER_FIELDS`, `KEYWORD_DISPLAY`, `KEYWORD_STICKER_WEIGHTS`, `RUN_MODIFIERS`. |
-| `js/engine.js` | 5559 | The big one. `G` singleton (state), `step()` phase loop, EFFECTS dispatch (~40 kinds), pendingTriggers queue with `TRIGGER_DEPTH_CAP = 100`, modal pause states, combat damage, synthesize-stapled-template, mana abilities, `executeAction`, `isLegalAction`, `getLegalActions`. |
-| `js/card-text.js` | 632 | Pure data → English. `describeCardSegments`, `describeEffect`, `describeTrigger`, `describeAbility`, `describeStaticBuff`, plus modal-segment helpers. Reads `ENGINE.synthesizeStapledTemplate`. |
-| `js/stickers.js` | 356 | Sticker pipeline. `weightedPick`, `applyStickersToCard`, `applyOneStickerToRuntimeCard`, `applyRandomStickersToSide`, `empowerRollLabel`, `applyEmpowerRoll`, `rollSubtypeFromDeck`, `pushStickerWithRoll`, `stickersForSlot`. Late-binds ENGINE helpers. |
-| `js/ai.js` | 1564 | `AI` IIFE. Hierarchical decision (force resolution → combat → priority → pass). `simulateCombat`, `scoreCombatOutcome`, `scoreSpellTarget`, `findBurnLethal`, flash AI (vanilla flash deferred to opp end-step). 45+ heuristic constants. |
-| `js/draft.js` | 786 | `DRAFT` IIFE. Pack generation, color-aware sampling, 23-pick player draft, opp deck construction (incl. constructed-deck registry: Goblin Aggro, Spirit Tribal, Aristocrats, Archdemon Boss, Balancer Boss). |
-| `js/run.js` | 1086 | `RUN` IIFE. Roguelike meta — map (STS-style branching, DEPTH=5 WIDTH=3), rewards, slot mutations (sticker/splice/clone/ripUp/transform). `localStorage` key `magiclike_run_v1`, version 2, declarative `MIGRATIONS` per version. |
+| `magiclike_engine.html` | 938 | Single-page entry. DOM scaffolding (14 modal containers), ~700 LOC inline CSS, 14 `<script>` tags. |
+| `js/types.js` | 107 | Type definitions and constants. | |
+| `js/settings.js` | 283 | `SETTINGS` — display config (frame style, per-element fonts/sizes, popup scale, mana pip sizes, devtools flag). `localStorage` key `magiclike_settings_v1`. `applyFontsToRoot()` syncs `:root` CSS vars at boot. |
+| `js/cards.js` | 467 | `CARDS = {}` + `async loadCards()` (manifest-driven). Holds `TOKENS`, `KEYWORDS`, `STICKERS`, `EMPOWER_FIELDS`, `KEYWORD_DISPLAY`, `KEYWORD_STICKER_WEIGHTS`, `RUN_MODIFIERS`. |
+| `js/engine.js` | 5996 | The big one. `G` singleton (state), `step()` phase loop, EFFECTS dispatch (~40 kinds), pendingTriggers queue with `TRIGGER_DEPTH_CAP = 100`, modal pause states, combat damage, synthesize-stapled-template, mana abilities, `executeAction`, `isLegalAction`, `getLegalActions`. |
+| `js/card-text.js` | 956 | Pure data → English. `describeCardSegments`, `describeEffect`, `describeTrigger`, `describeAbility`, `describeStaticBuff`, plus modal-segment helpers. Reads `ENGINE.synthesizeStapledTemplate`. |
+| `js/stickers.js` | 373 | Sticker pipeline. `weightedPick`, `applyStickersToCard`, `applyOneStickerToRuntimeCard`, `applyRandomStickersToSide`, `empowerRollLabel`, `applyEmpowerRoll`, `rollSubtypeFromDeck`, `pushStickerWithRoll`, `stickersForSlot`. Late-binds ENGINE helpers. |
+| `js/ai.js` | 1880 | `AI` IIFE. Hierarchical decision (force resolution → combat → priority → pass). `simulateCombat`, `scoreCombatOutcome`, `scoreSpellTarget`, `findBurnLethal`, flash AI (vanilla flash deferred to opp end-step). 45+ heuristic constants. |
+| `js/draft.js` | 803 | `DRAFT` IIFE. Pack generation, color-aware sampling, 23-pick player draft, opp deck construction (incl. constructed-deck registry: Goblin Aggro, Spirit Tribal, Aristocrats, Archdemon Boss, Balancer Boss). |
+| `js/run.js` | 1304 | `RUN` IIFE. Roguelike meta — map (STS-style branching, DEPTH=5 WIDTH=3), rewards, slot mutations (sticker/splice/clone/ripUp/transform). `localStorage` key `magiclike_run_v1`, version 2, declarative `MIGRATIONS` per version. |
 | `js/picklog.js` | 178 | `PICKLOG` IIFE. Draft pick analytics, `localStorage` key `magiclike_picklog_v1`. Console hooks: `summarize`, `getCardStats`, `getPairsMatrix`. |
-| `js/controller.js` | 3017 | `CONTROLLER` IIFE. Input routing, modal lifecycle, AI scheduling (100ms debounce), state-machine management (draft → map → reward → game), long-press for inspect, meta-game render helpers (`renderMap`, `renderReward`, `renderDraft`, `renderStatsContent`). |
-| `js/render.js` | 1305 | `render()` main repaint, plus `renderHand`, `renderBf`, `renderManaPool`, `passLabel`, `makeCardEl`, `cardToViewModel`. In-game UI only. Render-on-every-state-change; no diffing. |
-| `js/settings-panel.js` | 325 | `SETTINGS_PANEL` IIFE. Settings modal render + show. Pulled out of controller.js in v1.0.185. |
-| `js/triggers.js` | 133 | `TRIGGER_CONDITIONS` registry (14 condIds). `evalTriggerCondition` resolver. |
-| `js/trigger-generator.js` | 193 | Mercurial Adept / Architect's Codex random-trigger rolling. `GENERATOR_EFFECTS`, `GENERATOR_CONDITIONS`, `generateRandomTrigger`, `generateConditionOptions`, `generateEffectOptions`, `assembleTrigger`. |
-| `js/main.js` | 28 | `VERSION` constant (must bump on every code-touching push to `dev`), `opp(who)` helper, bootstrap (awaits `loadCards()` → `CONTROLLER.init()`). |
+| `js/controller.js` | 3240 | `CONTROLLER` IIFE. Input routing, modal lifecycle, AI scheduling (100ms debounce), state-machine management (draft → map → reward → game), long-press for inspect, meta-game render helpers (`renderMap`, `renderReward`, `renderDraft`, `renderStatsContent`). |
+| `js/render.js` | 1459 | `render()` main repaint, plus `renderHand`, `renderBf`, `renderManaPool`, `passLabel`, `makeCardEl`, `cardToViewModel`. In-game UI only. Render-on-every-state-change; no diffing. |
+| `js/settings-panel.js` | 337 | `SETTINGS_PANEL` IIFE. Settings modal render + show. Pulled out of controller.js in v1.0.185. |
+| `js/triggers.js` | 370 | `TRIGGER_CONDITIONS` registry (14 condIds). `evalTriggerCondition` resolver. |
+| `js/trigger-generator.js` | 199 | Mercurial Adept / Architect's Codex random-trigger rolling. `GENERATOR_EFFECTS`, `GENERATOR_CONDITIONS`, `generateRandomTrigger`, `generateConditionOptions`, `generateEffectOptions`, `assembleTrigger`. |
+| `js/main.js` | 41 | `VERSION` constant (must bump on every code-touching push to `dev`), `opp(who)` helper, bootstrap (awaits `loadCards()` → `CONTROLLER.init()`). |
 
 ### 3.2 Engine core internals
 
