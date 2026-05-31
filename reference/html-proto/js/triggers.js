@@ -27,9 +27,11 @@ const ATOMIC_PREDICATES = {
   },
   card_has_subtype: (ctx, args) => {
     const c = ctx.event.subject_card;
-    // `sub` is a space-separated string everywhere (token cards, splice merge,
-    // matchFilter) — never an array. Word-exact match (via hasType) mirrors
-    // matchFilter so "Human Cleric Wall" satisfies card_has_subtype(Cleric).
+    // Word-exact subtype match via hasType, reading the unified types[] array.
+    // Mirrors matchFilter so a multi-subtype card ("Human Cleric Wall")
+    // satisfies card_has_subtype(Cleric). (Pre-v2.0.70 this matched against the
+    // legacy space-separated `sub` string; that field is gone -- types[] is now
+    // the sole source, and a tag like "Goblin" is one entry, not a substring.)
     return hasType(c, args[0]);
   },
   card_damaged_by_this: (ctx) => {
@@ -227,6 +229,13 @@ function evaluateCondition(expr, ctx) {
 // classification is recovered from event+condition. This is the single
 // centralized inverse of the migration table — consumers call it instead of
 // scattering condition-shape checks.
+// NOTE: term ORDER is load-bearing here. The signature is the condition terms
+// joined in array order, and _ARCHETYPE_BY_SIG keys on the exact string. A card
+// that authors semantically-identical predicates in a different order (or as a
+// non-array {op} tree) won't match and triggerArchetype returns null. That
+// degrades gracefully (consumers -- card-text preambles, AI valuation -- handle
+// null), but it's silent: no boot warning. Keep migrated conditions in the
+// canonical order the MIGRATION table emits, or normalize-sort before signing.
 function _condSignature(event, condition) {
   if (!Array.isArray(condition)) return event + ' | <non-array>';
   const terms = condition.map((t) => (typeof t === 'string'
