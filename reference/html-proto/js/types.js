@@ -68,8 +68,8 @@ function subtypesOf(card) {
 
 // The single behavioral type that governs zone / cast / combat (see spec §3,
 // "two forks"): a permanent type beats a spell type; among permanents,
-// Creature > Land > Artifact (Artifact is a co-type). For today's
-// single-type cards this is simply `card.type`.
+// Creature > Land > Artifact (Artifact is a co-type). Identity comes from the
+// `types[]` array; the legacy `card.type`/`card.sub` fields were removed in v2.0.70.
 const PERMANENT_PRECEDENCE = ['Creature', 'Land', 'Artifact'];
 function governingType(card) {
   const tags = typesOf(card).filter(isCardTypeTag);
@@ -90,12 +90,9 @@ function isPermanent(card) {
 
 // The displayed type line: "<supertypes> <types> — <subtypes>", canonical order
 // (supertypes then types left of the em-dash, subtypes right), deduped. For
-// today's single-type cards this equals the legacy
-// `card.type + (card.sub ? ' — ' + card.sub : '')` (render.js) — EXCEPT the
-// basic lands, whose legacy `sub` redundantly repeats the type word "Land"
-// (`sub: "Basic Land"` rendered as "Land — Basic Land"). The parser classifies
-// "Basic" as a supertype and "Land" as the type, dedups the repeat, and renders
-// the corrected MTG-style "Basic Land" (City of Brass `sub: "Land"` → "Land").
+// most cards this matches the old `type [— sub]` render — EXCEPT basics, whose
+// types[] carries both "Basic" (supertype) and "Land" (type): the parser keeps
+// "Basic" left of the dash, dedups, and renders the MTG-style "Basic Land".
 function typeLine(card) {
   const seen = new Set();
   const tags = typesOf(card).filter(t => { if (seen.has(t)) return false; seen.add(t); return true; });

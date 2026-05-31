@@ -4,9 +4,8 @@ extends RefCounted
 # Reads html-proto card.json files from res://reference/html-proto/cards/ and
 # materializes them as CardResource instances. The wire format is canonical
 # snake_case (docs/PROTOCOL.md §2); this loader is the ingest boundary that
-# translates remaining JS-isms ("any" target, single-string subtypes,
-# "Creature"/"Sorcery" type strings) into the snake_case shape the
-# Godot engine expects.
+# maps a card's `types[]` array to the right CardResource subclass and snake_case
+# fields the Godot engine expects.
 #
 # Two entry points:
 #   load_card(folder_id)   — single card by manifest folder name
