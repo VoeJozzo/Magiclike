@@ -1,6 +1,6 @@
 {
   "card_id": "storm_caller",
-  "art": "⚡",
+  "art": "art.png",
   "cost": {
     "R": 1,
     "C": 2
@@ -15,7 +15,7 @@
         "another_card",
         "controlled_by(you)"
       ],
-      "text": "Spell cast — deal 1 to any target.",
+      "text": "Spell cast \u2014 deal 1 to any target.",
       "effects": [
         {
           "kind": "damage",

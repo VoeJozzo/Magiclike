@@ -1,6 +1,6 @@
 {
   "card_id": "paladin_of_valor",
-  "art": "🛡",
+  "art": "art.png",
   "cost": {
     "W": 1,
     "C": 3

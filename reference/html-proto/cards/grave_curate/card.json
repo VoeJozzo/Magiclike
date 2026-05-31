@@ -1,6 +1,6 @@
 {
   "card_id": "grave_curate",
-  "art": "⚱",
+  "art": "art.png",
   "cost": {
     "B": 1,
     "C": 2

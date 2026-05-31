@@ -1,6 +1,6 @@
 {
   "card_id": "raise_the_alarm",
-  "art": "🚨",
+  "art": "art.png",
   "cost": {
     "W": 1,
     "C": 1
