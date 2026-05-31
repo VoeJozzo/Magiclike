@@ -15,7 +15,6 @@
         "this_card",
         "card_moves(anywhere, battlefield)"
       ],
-      "text": "~ enters — target creature gains defender.",
       "effects": [
         {
           "kind": "grant_keyword",

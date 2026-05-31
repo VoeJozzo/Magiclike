@@ -13,7 +13,6 @@
       "condition": [
         "this_card"
       ],
-      "text": "When ~ attacks, you gain 1 life.",
       "effects": [
         {
           "kind": "gain_life",

@@ -3022,7 +3022,7 @@ function pushTriggerOnStack(p) {
     // event → ctx.event for effects that read non-target data (Endomorph etc.).
     event: p.event || null,
   });
-  log(`${p.sourceName} triggers: ${p.trig.text || p.trig.event}.`, 'sp');
+  log(`${p.sourceName} triggers: ${triggerLogText(p.trig)}.`, 'sp');
   if (!G.priority) G.priority = { passes: new Set() };
   G.priority.passes.clear();
   G.priorityHolder = opp(p.controller);
@@ -4804,7 +4804,7 @@ function doTriggerTargetPick(who, target) {
     controller: p.controller,
     targets: [target],
   });
-  log(`${p.sourceName} triggers: ${p.trig.text || p.trig.event}.`, 'sp');
+  log(`${p.sourceName} triggers: ${triggerLogText(p.trig)}.`, 'sp');
   if (!G.priority) G.priority = { passes: new Set() };
   G.priority.passes.clear();
   G.priorityHolder = opp(p.controller);
@@ -4972,7 +4972,7 @@ function finalizeBuild(p, trigger) {
       effects: (trigger.effects || []).map(e => ({...e})),
     });
   }
-  log(`📜 Built ability: ${trigger.text}`, 'sp');
+  log(`📜 Built ability: ${triggerLogText(trigger)}`, 'sp');
   G.pendingTriggerBuild = null;
 }
 

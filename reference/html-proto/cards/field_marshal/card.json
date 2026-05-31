@@ -31,7 +31,6 @@
         "controlled_by(you)",
         "card_has_subtype(Soldier)"
       ],
-      "text": "A Soldier attacked — you gain 1 life.",
       "effects": [
         {
           "kind": "gain_life",

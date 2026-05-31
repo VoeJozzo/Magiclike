@@ -15,7 +15,6 @@
         "this_card",
         "card_moves(battlefield, graveyard)"
       ],
-      "text": "When ~ dies, exile target creature.",
       "effects": [
         {
           "kind": "affect_creature",

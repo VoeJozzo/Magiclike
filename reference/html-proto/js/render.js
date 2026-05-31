@@ -120,7 +120,7 @@ function render() {
         div = makeSyntheticCard({
           name: it.sourceName + ' triggers',
           type: 'Trigger',
-          text: (it.trig.text || it.trig.event) + tgtLabel,
+          text: triggerLogText(it.trig) + tgtLabel,
           art: '⚡',
           color: 'C',
           scale: 0.7,

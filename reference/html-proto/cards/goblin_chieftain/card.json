@@ -31,7 +31,6 @@
         "controlled_by(you)",
         "card_has_subtype(Goblin)"
       ],
-      "text": "A Goblin attacked — opp loses 1 life.",
       "effects": [
         {
           "kind": "gain_life",

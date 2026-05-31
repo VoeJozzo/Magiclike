@@ -15,7 +15,6 @@
         "this_card",
         "card_moves(battlefield, graveyard)"
       ],
-      "text": "When ~ dies, put two +1/+1 counters on target friendly creature.",
       "effects": [
         {
           "kind": "pump",

@@ -31,7 +31,6 @@
         "controlled_by(you)",
         "card_has_subtype(Beast)"
       ],
-      "text": "A Beast attacked — loot 1.",
       "effects": [
         {
           "kind": "move_card",

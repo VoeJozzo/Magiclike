@@ -15,7 +15,6 @@
         "this_card",
         "card_moves(anywhere, battlefield)"
       ],
-      "text": "When ~ enters, your creatures get +1/+1 EOT.",
       "effects": [
         {
           "kind": "pump",

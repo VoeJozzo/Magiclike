@@ -4,7 +4,7 @@ Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folde
 
 ## Version
 
-**Current: `v2.0.73`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.0.74`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -201,6 +201,8 @@ opponent's best creature — permanent base 20, eot base 8, +card value +lane �
 animate-add_type only at a permanent WE control (else it'd gift the opponent a
 body). Verified via `AI.decide`: the AI now casts Encase in Amber at an enemy
 creature. 1269 green, lint clean, 300-game selfplay clean.
+
+v2.0.74: **trigger labels are now generated, not hand-authored (log + stack pill).** Removed 93 hand-maintained trigger `text` labels from card.json; the game log and the stack pill now derive a trigger's one-line English from its effects via a new `triggerLogText()` seam (authored-if-present → generated → raw event name). Only `custom_text` cards keep authored labels — exactly `archdemon_of_bargains` (its bespoke bargain effects don't generate). The presence of a `text` field is now the opt-out signal; no runtime flag check. Verified the seam degrades NOWHERE post-strip (0 cards fall back to event name). This kills a class of drift bug (the old ancient_treant label said "fetch a Forest" — the card fetches any land). ARCHITECTURE: the engine calls `triggerLogText` (in card-text.js) to write its log — a proto-only coupling shortcut, documented as a Godot "do NOT replicate" divergence (Godot engine stays UI-free → emits a structured signal, presentation renders). Isolated behind ONE named call so the migration is a clean swap. 1313 green, 200-game selfplay clean (exercises the engine→text log path), lint clean.
 
 v2.0.73: **fix land-fetch text generation (was hardcoded "basic land").** The `move_card` library→battlefield describe branch in `card-text.js` hardcoded "search your library for a basic land", ignoring the effect filter — so all 5 land-fetch cards (ancient_treant, forest_forager, great_herder, rampant_growth, verdant_outrider, all `filter:{type:Land}`) read "basic land" when the filter is actually ANY land. Now derives the noun from the filter (subtype > type > "card"), mirroring the fetch-to-hand case → "a land". Surfaced while comparing authored trigger labels vs generated text: the authored ancient_treant label even said "a Forest" (just wrong) — a poster-child for why generated text that can't drift from the effect is the right direction. 1313 green, lint clean.
 

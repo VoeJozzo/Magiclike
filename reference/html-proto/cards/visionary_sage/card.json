@@ -15,7 +15,6 @@
         "this_card",
         "card_moves(anywhere, battlefield)"
       ],
-      "text": "When ~ enters, draw a card.",
       "effects": [
         {
           "kind": "move_card",

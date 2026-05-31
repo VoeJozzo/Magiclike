@@ -25,7 +25,6 @@
         "another_card",
         "controlled_by(you)"
       ],
-      "text": "Spell cast — loot 1 (draw, then discard).",
       "effects": [
         {
           "kind": "move_card",

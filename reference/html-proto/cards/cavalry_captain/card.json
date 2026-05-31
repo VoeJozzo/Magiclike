@@ -17,7 +17,6 @@
       "condition": [
         "this_card"
       ],
-      "text": "When ~ attacks, it gets +2/+0 EOT.",
       "effects": [
         {
           "kind": "pump",

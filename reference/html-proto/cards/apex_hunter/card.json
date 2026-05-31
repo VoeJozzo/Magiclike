@@ -15,7 +15,6 @@
         "this_card",
         "card_moves(anywhere, battlefield)"
       ],
-      "text": "When ~ enters, fight target creature.",
       "effects": [
         {
           "kind": "fight_target"

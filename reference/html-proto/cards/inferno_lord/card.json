@@ -15,7 +15,6 @@
         "this_card",
         "card_moves(anywhere, battlefield)"
       ],
-      "text": "When ~ enters, deal 3 to any target.",
       "effects": [
         {
           "kind": "damage",

@@ -15,7 +15,6 @@
         "this_card",
         "card_moves(anywhere, battlefield)"
       ],
-      "text": "When ~ enters, return a creature from your graveyard.",
       "effects": [
         {
           "kind": "move_card",

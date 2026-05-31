@@ -15,7 +15,6 @@
         "this_card",
         "card_moves(anywhere, battlefield)"
       ],
-      "text": "When ~ enters, fetch a land tapped.",
       "effects": [
         {
           "kind": "move_card",

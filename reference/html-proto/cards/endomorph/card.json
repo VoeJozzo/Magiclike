@@ -17,7 +17,6 @@
         "card_moves(battlefield, graveyard)",
         "card_damaged_by_this"
       ],
-      "text": "~ kills {victim} — absorbs a keyword (or +1/+1).",
       "effects": [
         {
           "kind": "endomorph_absorb",

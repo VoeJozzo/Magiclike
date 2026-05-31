@@ -14,7 +14,6 @@
       "condition": [
         "this_card"
       ],
-      "text": "When ~ attacks, creatures you control get +1/+0 EOT.",
       "effects": [
         {
           "kind": "pump",

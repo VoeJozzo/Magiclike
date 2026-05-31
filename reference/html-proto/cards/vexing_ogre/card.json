@@ -15,7 +15,6 @@
         "this_card",
         "card_moves(anywhere, battlefield)"
       ],
-      "text": "When ~ enters, you lose 1 life.",
       "effects": [
         {
           "kind": "gain_life",

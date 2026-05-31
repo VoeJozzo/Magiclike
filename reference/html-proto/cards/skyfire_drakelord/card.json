@@ -34,7 +34,6 @@
         "card_has_subtype(Drake)",
         "card_moves(anywhere, battlefield)"
       ],
-      "text": "Another Drake entered \u2014 deal 1 to any target.",
       "effects": [
         {
           "kind": "damage",

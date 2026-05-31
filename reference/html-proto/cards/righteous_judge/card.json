@@ -15,7 +15,6 @@
         "this_card",
         "card_moves(anywhere, battlefield)"
       ],
-      "text": "When ~ enters, destroy target tapped creature.",
       "effects": [
         {
           "kind": "affect_creature",

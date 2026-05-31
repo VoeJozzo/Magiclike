@@ -15,7 +15,6 @@
         "another_card",
         "controlled_by(you)"
       ],
-      "text": "When you cast a spell, draw a card.",
       "effects": [
         {
           "kind": "move_card",

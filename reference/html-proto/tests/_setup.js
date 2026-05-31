@@ -166,7 +166,7 @@ const EXPOSED = [
   'isValidTargetCreature', 'canPlayFromUI',
   // Card-text module surface (card-text.js, all module-scope, no IIFE).
   'describeAmount', 'describeEffect', 'describeEffectList',
-  'describeTrigger', 'describeAbility', 'describeStaticBuff',
+  'describeTrigger', 'triggerLogText', 'describeAbility', 'describeStaticBuff',
   'describeCardText', 'describeCardSegments', 'describeModalSegs',
   // Card-text internal helpers — exposed so tests can target them
   // independently if a regression localizes to one.

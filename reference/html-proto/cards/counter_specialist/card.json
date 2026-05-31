@@ -16,7 +16,6 @@
         "controlled_by(you)",
         "card_has_effect(counter)"
       ],
-      "text": "Counter cast — put a +1/+1 counter on ~.",
       "effects": [
         {
           "kind": "pump",

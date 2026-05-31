@@ -15,7 +15,6 @@
         "this_card",
         "card_moves(battlefield, graveyard)"
       ],
-      "text": "When ~ dies, tutor a creature.",
       "effects": [
         {
           "kind": "move_card",

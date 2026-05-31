@@ -17,7 +17,6 @@
       "condition": [
         "this_card"
       ],
-      "text": "When ~ attacks, target opponent discards a card.",
       "effects": [
         {
           "kind": "move_card",

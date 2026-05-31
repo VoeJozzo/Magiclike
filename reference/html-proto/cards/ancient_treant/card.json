@@ -28,7 +28,6 @@
         "this_card",
         "card_moves(anywhere, battlefield)"
       ],
-      "text": "When ~ enters, fetch a Forest tapped.",
       "effects": [
         {
           "kind": "move_card",

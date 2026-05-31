@@ -17,7 +17,6 @@
       "condition": [
         "this_card"
       ],
-      "text": "When ~ attacks, bounce target creature.",
       "effects": [
         {
           "kind": "affect_creature",

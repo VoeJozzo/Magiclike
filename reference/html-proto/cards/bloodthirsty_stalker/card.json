@@ -17,7 +17,6 @@
       "condition": [
         "this_card"
       ],
-      "text": "When ~ attacks, opp loses 1 life.",
       "effects": [
         {
           "kind": "gain_life",

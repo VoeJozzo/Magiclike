@@ -14,7 +14,6 @@
       "condition": [
         "this_card"
       ],
-      "text": "When ~ attacks, deal 1 to any target.",
       "effects": [
         {
           "kind": "damage",

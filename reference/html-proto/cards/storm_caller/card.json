@@ -15,7 +15,6 @@
         "another_card",
         "controlled_by(you)"
       ],
-      "text": "Spell cast \u2014 deal 1 to any target.",
       "effects": [
         {
           "kind": "damage",

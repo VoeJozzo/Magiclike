@@ -19,7 +19,6 @@
         "card_is_creature",
         "card_moves(battlefield, graveyard)"
       ],
-      "text": "Another creature died — you gain 1 life.",
       "effects": [
         {
           "kind": "gain_life",

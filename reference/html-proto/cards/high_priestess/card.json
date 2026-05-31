@@ -27,7 +27,6 @@
         "card_has_subtype(Cleric)",
         "card_moves(anywhere, battlefield)"
       ],
-      "text": "Another Cleric entered — gain 2 life.",
       "effects": [
         {
           "kind": "gain_life",

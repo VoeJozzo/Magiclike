@@ -18,7 +18,6 @@
         "this_card",
         "lost_life_this_turn(opp)"
       ],
-      "text": "When ~ attacks (if opp lost life), it gets +1/+1 EOT.",
       "effects": [
         {
           "kind": "pump",

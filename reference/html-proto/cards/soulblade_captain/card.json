@@ -15,7 +15,6 @@
         "another_card",
         "controlled_by(you)"
       ],
-      "text": "Spell cast — your creatures get +1/+0 EOT.",
       "effects": [
         {
           "kind": "pump",

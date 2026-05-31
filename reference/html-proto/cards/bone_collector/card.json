@@ -16,7 +16,6 @@
         "card_is_creature",
         "card_moves(battlefield, graveyard)"
       ],
-      "text": "Another creature died \u2014 put a +1/+1 counter on ~.",
       "effects": [
         {
           "kind": "pump",

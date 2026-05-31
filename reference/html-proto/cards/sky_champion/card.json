@@ -18,7 +18,6 @@
         "this_card",
         "card_moves(anywhere, battlefield)"
       ],
-      "text": "When ~ enters, target friendly creature gains flying.",
       "effects": [
         {
           "kind": "grant_keyword",

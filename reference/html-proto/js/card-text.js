@@ -687,6 +687,28 @@ function describeTrigger(trig, tplTrig) {
   return [plainSeg(preamble + ' ')].concat(bodyLower);
 }
 
+// Single seam for a trigger's one-line LOG / stack-pill label. Returns the
+// AUTHORED label if the trigger carries one — post-cutover only custom_text cards
+// do (e.g. Archdemon's bespoke bargain effects that don't generate cleanly) — else
+// the generated reminder text, with the raw event name as a last resort.
+//
+// PROTO-ONLY SHORTCUT / GODOT DIVERGENCE: the rules engine (engine.js) calls this
+// to write its log, which couples the engine to the text layer. That's fine for
+// this loose single-bundle prototype, but the Godot port keeps its engine UI-free
+// (engine/, "no UI imports") — there the engine emits a structured "trigger fired"
+// signal and the presentation layer renders the label. Do NOT replicate an
+// engine→text call inside the Godot engine. Kept as ONE named call here so the
+// migration is a clean swap (replace the call with a signal emit). See the
+// "Patterns to NOT replicate" note in CLAUDE.md.
+function triggerLogText(trig) {
+  if (!trig) return '';
+  if (typeof trig.text === 'string' && trig.text) return trig.text;
+  let gen = '';
+  try { gen = segsToText(describeTrigger(trig, trig)); } catch (_) { gen = ''; }
+  if (gen && gen.trim() && !/\[[a-z_]+\]/.test(gen)) return gen;
+  return trig.event || '';
+}
+
 // cost → "{T}: " / "{R}: " / "Sacrifice this: " prefix.
 function abilityCostPhrase(cost) {
   if (!cost) return '';

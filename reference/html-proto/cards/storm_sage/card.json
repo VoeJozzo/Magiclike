@@ -17,7 +17,6 @@
         "controlled_by(you)",
         "card_moves(anywhere, battlefield)"
       ],
-      "text": "Another creature entered — draw a card.",
       "effects": [
         {
           "kind": "move_card",

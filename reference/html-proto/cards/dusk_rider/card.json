@@ -17,7 +17,6 @@
       "condition": [
         "this_card"
       ],
-      "text": "When ~ attacks, loot 1.",
       "effects": [
         {
           "kind": "move_card",

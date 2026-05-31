@@ -21,7 +21,6 @@
         "card_moves(battlefield, graveyard)",
         "card_damaged_by_this"
       ],
-      "text": "A creature ~ damaged died — put a +1/+1 counter on ~.",
       "effects": [
         {
           "kind": "pump",
