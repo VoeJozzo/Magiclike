@@ -78,6 +78,10 @@ the review.
    `CardResource.is_instant_speed()` returning
    `has_keyword("flash") or has_type("instant")` — and route all 5 sites through
    it. Collapses the policy to one place and matches the flash model.
+   *Note:* `engine/card_instance.gd` already delegates its `is_land` / `is_spell`
+   / `is_permanent` to `template.is_*()` (good — no duplication there), so the new
+   `is_instant_speed()` just needs a matching one-line delegator on `CardInstance`
+   alongside the `CardResource` method.
 
 4. **`supportability_report` keys are stale → false boot readiness signal.**
    It reads `trig.get("cond_id")` (migrated triggers use a composable `condition`
