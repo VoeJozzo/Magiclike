@@ -238,7 +238,7 @@ function _condSignature(event, condition) {
 const _ARCHETYPE_BY_SIG = {
   'card_zone_change | this_card, card_moves(anywhere, battlefield)': 'thisEnters',
   'card_zone_change | another_card, card_is_creature, controlled_by(you), card_moves(anywhere, battlefield)': 'anotherCreatureYouEntersStrict',
-  'card_zone_change | another_card, card_is_creature, controlled_by(you), card_has_subtype(*), card_moves(anywhere, battlefield)': 'anotherCreatureYouEntersOfSubtype',
+  'card_zone_change | another_card, controlled_by(you), card_has_subtype(*), card_moves(anywhere, battlefield)': 'anotherCreatureYouEntersOfSubtype',
   'attacks | this_card': 'thisAttacks',
   'attacks | this_card, lost_life_this_turn(opp)': 'thisAttacksAfterOppLifeLoss',
   'attacks | controlled_by(you), card_has_subtype(*)': 'creatureYouAttacksOfSubtype',

@@ -20,7 +20,7 @@ const DRY = process.argv.includes('--dry') || process.argv.includes('--dry-run')
 const MIGRATION = {
   thisEnters:                        { event: 'card_zone_change', cond: ['this_card', 'card_moves(anywhere, battlefield)'] },
   anotherCreatureYouEntersStrict:    { event: 'card_zone_change', cond: ['another_card', 'card_is_creature', 'controlled_by(you)', 'card_moves(anywhere, battlefield)'] },
-  anotherCreatureYouEntersOfSubtype: { event: 'card_zone_change', cond: ['another_card', 'card_is_creature', 'controlled_by(you)', '__SUBTYPE__', 'card_moves(anywhere, battlefield)'] },
+  anotherCreatureYouEntersOfSubtype: { event: 'card_zone_change', cond: ['another_card', 'controlled_by(you)', '__SUBTYPE__', 'card_moves(anywhere, battlefield)'] },
   thisAttacks:                       { event: 'attacks', cond: ['this_card'] },
   thisAttacksAfterOppLifeLoss:       { event: 'attacks', cond: ['this_card', 'lost_life_this_turn(opp)'] },
   creatureYouAttacksOfSubtype:       { event: 'attacks', cond: ['controlled_by(you)', '__SUBTYPE__'] },
