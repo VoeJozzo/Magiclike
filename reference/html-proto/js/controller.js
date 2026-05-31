@@ -521,7 +521,7 @@ function renderSandboxPanel() {
       const row = document.createElement('button');
       row.style.cssText = 'text-align:left;background:#1a1226;border:1px solid #3a2a4a;border-radius:3px;cursor:pointer;font-family:inherit;font-size:11px;padding:3px 6px;color:#cdbbe6';
       const pt = (hasType(tpl, 'Creature')) ? ` ${tpl.power}/${tpl.toughness}` : '';
-      row.innerHTML = `<span style="color:#fff">${name}</span> <span style="opacity:.6">${governingType(tpl) || ''}${pt}</span>`;
+      row.innerHTML = `<span style="color:#fff">${escapeHtml(name)}</span> <span style="opacity:.6">${governingType(tpl) || ''}${pt}</span>`;
       row.onclick = () => sandboxSpawn(id);
       listEl.appendChild(row);
     }
