@@ -300,7 +300,13 @@ function describeEffect(eff, tplEff) {
         return [plainSeg('search your library for a ' + ((eff.filter && eff.filter.type) ? eff.filter.type.toLowerCase() : 'card') + ' card and put it into your hand')];
       }
       if (fz === 'library' && tz === 'battlefield') {  // collapsed searchLandTapped (auto fetch)
-        return [plainSeg('search your library for a basic land and put it onto the battlefield' + ((eff.post && eff.post.tap) ? ' tapped' : ''))];
+        // Derive the fetched-card noun from the filter (subtype > type > "card"),
+        // mirroring the fetch-to-hand case above — a {type:'Land'} filter is "a
+        // land", not the old hardcoded "basic land" (which was narrower than the
+        // filter and drifted from what the card actually does).
+        const ff = eff.filter || {};
+        const noun = ff.subtype ? ff.subtype : (ff.type ? ff.type.toLowerCase() : 'card');
+        return [plainSeg('search your library for a ' + noun + ' and put it onto the battlefield' + ((eff.post && eff.post.tap) ? ' tapped' : ''))];
       }
       if (fz === 'library' && tz === 'hand') {  // collapsed draw
         if (eff.amount === 1) return [plainSeg('draw a card')];

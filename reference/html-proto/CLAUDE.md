@@ -4,7 +4,7 @@ Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folde
 
 ## Version
 
-**Current: `v2.0.72`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.0.73`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -201,6 +201,8 @@ opponent's best creature — permanent base 20, eot base 8, +card value +lane �
 animate-add_type only at a permanent WE control (else it'd gift the opponent a
 body). Verified via `AI.decide`: the AI now casts Encase in Amber at an enemy
 creature. 1269 green, lint clean, 300-game selfplay clean.
+
+v2.0.73: **fix land-fetch text generation (was hardcoded "basic land").** The `move_card` library→battlefield describe branch in `card-text.js` hardcoded "search your library for a basic land", ignoring the effect filter — so all 5 land-fetch cards (ancient_treant, forest_forager, great_herder, rampant_growth, verdant_outrider, all `filter:{type:Land}`) read "basic land" when the filter is actually ANY land. Now derives the noun from the filter (subtype > type > "card"), mirroring the fetch-to-hand case → "a land". Surfaced while comparing authored trigger labels vs generated text: the authored ancient_treant label even said "a Forest" (just wrong) — a poster-child for why generated text that can't drift from the effect is the right direction. 1313 green, lint clean.
 
 v2.0.72: **route the in-game search modal through the shared card-picker too.**
 Follow-up to v2.0.71: `searchModal` (the library-search / tutor picker) had the
