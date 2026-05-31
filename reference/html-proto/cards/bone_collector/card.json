@@ -1,6 +1,6 @@
 {
   "card_id": "bone_collector",
-  "art": "💀",
+  "art": "art.png",
   "cost": {
     "B": 2,
     "C": 2
@@ -16,7 +16,7 @@
         "card_is_creature",
         "card_moves(battlefield, graveyard)"
       ],
-      "text": "Another creature died — put a +1/+1 counter on ~.",
+      "text": "Another creature died \u2014 put a +1/+1 counter on ~.",
       "effects": [
         {
           "kind": "pump",
