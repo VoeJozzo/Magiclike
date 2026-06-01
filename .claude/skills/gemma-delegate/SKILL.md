@@ -118,11 +118,14 @@ JSON parse) is NOT Gemma's job — see "What is actually Gemma's job" below. Del
   a version-attribution task (judgment) was run on a plain model and it fabricated
   version numbers. Counts→Gemma; "which version / is this true"→Flash.
 - **Gemma's GitHub identity** for delegated commits: bot account `Thaumaturge-Gemma`,
-  email `ThaumaturgeDev@gmail.com` (a low-privilege scratchpad). Author each commit with
-  `git -c user.name="Thaumaturge-Gemma" -c user.email="ThaumaturgeDev@gmail.com" commit …`
+  email **`ThaumaturgeDevs@gmail.com`** (note the **`s`** — a typo'd `ThaumaturgeDev@gmail.com`
+  was used for several early commits and left them showing as UNLINKED on GitHub, because the
+  email must EXACTLY match a verified address on the bot account to link). Author each commit with
+  `git -c user.name="Thaumaturge-Gemma" -c user.email="ThaumaturgeDevs@gmail.com" commit …`
   (no secret needed). Push using `GH_PAT_GEMMA`. **Never set this globally** or your own
-  commits get mislabeled. Full branch→push→PR recipe in the "Delegated git workflow"
-  section below.
+  commits get mislabeled. If a commit shows UNLINKED, the email doesn't match the bot's verified
+  one — re-author (`commit --amend --author=...`) + force-push the branch; GitHub re-links live.
+  Full branch→push→PR recipe in the "Delegated git workflow" section below.
 
 ## Call Gemma
 
@@ -255,7 +258,7 @@ curl -s -X POST -H "$AUTH" "https://api.github.com/repos/$UP/forks" >/dev/null
 git fetch origin && git checkout -B <task-branch> origin/dev
 
 # 2. Apply Gemma's output to files, then commit AS the bot
-git -c user.name="$BOT" -c user.email="ThaumaturgeDev@gmail.com" commit -am "<summary>"
+git -c user.name="$BOT" -c user.email="ThaumaturgeDevs@gmail.com" commit -am "<summary>"
 
 # 3. Push to the BOT'S FORK (never upstream — that 403s)
 git push "https://$BOT:$GH_PAT_GEMMA@github.com/$BOT/Magiclike.git" HEAD:<task-branch>
