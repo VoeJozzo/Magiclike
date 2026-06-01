@@ -13,6 +13,11 @@ For html-proto deferred work, see [`reference/html-proto/BACKLOG.md`](../referen
 
 ## Open
 
+### Discuss / decide (top of queue)
+- **Discuss: Secrets** — review the `~/.config/magiclike/secrets.env` setup (Gemini key + `GH_PAT_GEMMA`), rotation, multi-machine handling, and whether anything should change.
+- **Discuss: Gemma usage** — when to delegate vs. do it directly, model routing (Gemma 4 vs. Gemini Flash, RPD limits), bare-API vs. OpenCode-agent paths, and the verify-after discipline. See the `gemma-delegate` skill.
+- **Discuss: GitHub accounts / access best practices** — the `Thaumaturge-Gemma` bot account, classic-vs-fine-grained PAT scope, fork/cross-PR flow, commit-email linking, and credential-manager (GCM) handling on Windows.
+
 ### Rules-engine correctness
 - **Trigger chain depth cap** — Godot to mirror proto's 100-depth threshold in `_drain_pending_triggers`. See `docs/DIVERGENCE.md` E6.
 - **"Intervening if" predicate re-check at trigger resolution** — both engines deviate from MTG 603.4 (predicate checked only at queue time, not at resolution). See `docs/DIVERGENCE.md` E5.
