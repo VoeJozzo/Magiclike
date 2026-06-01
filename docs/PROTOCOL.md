@@ -136,10 +136,12 @@ runtime handlers — noted).
 | `untap`               | (target())                                      | JS          | Untap the target().                                                                  |
 | `fight_target`        | (target())                                      | JS          | Your strongest creature fights the target().                                         |
 | `exile_until_eot`     | (target())                                      | —           | **Decomposed in proto** to `move_card` (bf→exile) + `schedule_delayed` (end-step exile→bf return), since proto already has a delayed-trigger queue. No longer a distinct handler proto-side. Godot still needs its delayed-trigger queue (B4) before it can do the same. |
+| `add_type`            | `types, power?, toughness?, duration?` | JS          | Add types to the target(). `duration: "permanent"` = permanent. |
+| `set_types`            | `types, power?, toughness?, duration?` | JS          | Replace types of the target(). `duration: "permanent"` = permanent. |
+| `schedule_delayed`     | `when, effects`                         | JS          | Queue effects to fire at a future point (e.g. `end_step`). |
 | `rip`                 | (no params; reads ctx.chosen)                   | JS          | Zone-agnostic run-layer slot-strip (§13). Trailing step of a rip-edict: `target(opp) → chooses(permanent) → annihilate → rip`. Strips the chosen card's deck-slot (player-side only). Replaces the bundled `rip_permanent` kludge. |
 | `endomorph_absorb` / `apply_in_game_splice` / `symmetricize` / `bargain_sticker_self` / `bargain_sticker_other` | (per card) | JS | Card-specific (Endomorph / Stapler / Symmetricize prompt / Archdemon). (Scarification decomposed to `[apply_sticker(scarified), affect_creature(destroy)]` — `destroy_and_sticker_slot` retired.) |
 | `draw` / `discard`    | `amount`                                        | JS (runtime only) | **Not used in card data** — kept as handlers because the trigger generator (Mercurial Adept) still emits them. Card data uses `move_card`. |
-| `noop`                | —                                               | JS          | Placeholder.                                                                         |
 
 **Naming rule.** Effect-kind dispatch keys are **snake_case on both sides**
 (`gain_life`, `add_mana`, `affect_creature`, …) — one canonical wire spelling the
@@ -164,13 +166,10 @@ snake_case; JS internal kinds are camelCase per the conversion rule.
 
 | wire (canonical)         | JS internal        | Godot          | payload                              |
 |--------------------------|--------------------|----------------|--------------------------------------|
-| `card_enters_battlefield`| `cardEntersBattlefield` | `card_enters_battlefield` (Pass 1c) | `{subject_iid, subject_card}` |
-| `card_dies`              | `cardDies`         | `card_dies`    | `{subject_iid, subject_card}`        |
-| `card_leaves_battlefield`| `cardLeavesBattlefield` | (pending)  | `{subject_iid, subject_card}` (non-death leaves) |
+| `card_zone_change`       | `card_zone_change` | `card_zone_change` | `{subject_iid, subject_card, controller, from_zone, to_zone, source_iid}` |
 | `attacks`                | `attacks`          | (pending)      | `{subject_iid}` (this attacks)       |
-| `life_gained`            | `lifeGained`       | (pending)      | `{player_key, amount}`               |
-| `spell_cast`             | `spellCast`        | (pending)      | `{source_iid, controller_key}`       |
-| `card_discarded`         | `cardDiscarded`    | `card_discarded` | `{card, controller_key}`           |
+| `life_changed`           | `life_changed`     | (pending)      | `{who, delta, source_iid}`            |
+| `spell_cast`             | `spell_cast`       | (pending)      | `{source_iid, controller_key}`       |
 
 Both engines' trigger dispatch reads the canonical name. Adding a new
 event kind requires (a) firing it in both engines from the matching
@@ -180,44 +179,28 @@ state-change point and (b) updating this table.
 
 Trigger conditions referenced by name in `triggers[].cond_id`. Each is a
 function `(state, source, event) → bool`. JS-side registry:
-`js/triggers.js::TRIGGER_CONDITIONS`. Godot-side registry:
+`js/triggers.js::ATOMIC_PREDICATES`. Godot-side registry:
 `engine/predicates/predicates.gd::_PRED_NAMES`.
 
-Canonical IDs are camelCase (matches JS source today; Godot reads them
-via wire as `cond_id` snake-case strings, but the values themselves are
-the camelCase ids). Both engines validate that every ID a card references
+Canonical IDs are snake_case (matches JS source today; Godot reads them
+via wire as `cond_id` snake-case strings). Both engines validate that every ID a card references
 is registered at boot.
 
 | id                                   | description                                                              | both? |
 |--------------------------------------|--------------------------------------------------------------------------|-------|
 | (empty string `""`)                  | Always true. Use for unconditional triggers.                             | both  |
-| `thisEnters`                         | Source = event subject (ETB self-only).                                  | JS    |
-| `thisDies`                           | Source = event subject (dies self-only).                                 | JS    |
-| `thisLeaves`                         | Source = event subject (leaves non-death).                               | JS    |
-| `thisAttacks`                        | Source = attacker.                                                       | JS    |
-| `thisAttacksAfterOppLifeLoss`        | Source attacks AND opponent's `lifeLostThisTurn > 0`.                    | JS    |
-| `thisKillsCreature`                  | Combat-damage trigger when source kills its blocker/attacker.            | JS    |
-| `anotherCreatureYouEntersStrict`     | Another creature you control entered (not the source itself).            | JS    |
-| `anotherCreatureYouEntersOfSubtype`  | Variant with subtype filter.                                             | JS    |
-| `creatureYouAttacksOfSubtype`        | One of your creatures with subtype X attacked.                           | JS    |
-| `anotherCreatureDies`                | Any other creature died.                                                 | JS    |
-| `anyCardDies`                        | Any card died (creature or otherwise).                                   | JS    |
-| `youGainLife`                        | You gained life this turn.                                               | JS    |
-| `youCastSpell`                       | You cast any spell.                                                      | JS    |
-| `youCastCounterspell`                | You cast a counterspell specifically.                                    | JS    |
-| `oppLostLifeThisTurn` (canonical) / `opp_lost_life_this_turn` (Godot today) | Opponent has `lifeLostThisTurn > 0`. | Godot |
-
-**Note on `self_only` (superseded — direction reversed).** Earlier drafts
-folded `thisEnters`/`thisDies`/`thisAttacks` into a structural
-`self_only: true` flag. The composable-predicate refactor
-(`plan-zone-change-and-composable-predicates.md`) **reverses** this: the
-canonical form is the explicit atomic predicate **`this_card`** in the
-condition list (e.g. ETB = `[this_card, card_moves(anywhere, battlefield)]`),
-matching MTG's "this creature" phrasing and reading consistently with every
-other constraint. `self_only` is **retired** on both engines once that
-refactor lands; do not author new cards against it. The table above is
-likewise migrating to the `card_zone_change` + composable-predicate form
-(`thisEnters` → `[this_card, card_moves(anywhere, battlefield)]`, etc.).
+| `this_card`                          | Subject is the source.                                                   | JS    |
+| `another_card`                       | Subject is not the source.                                               | JS    |
+| `card_is_creature`                   | Subject is a creature.                                                   | JS    |
+| `controlled_by`                      | Subject is controlled by a specific player.                               | JS    |
+| `card_moves`                         | Subject moves from zone A to zone B.                                      | JS    |
+| `card_has_subtype`                   | Subject has a specific subtype.                                          | JS    |
+| `card_damaged_by_this`               | Subject was damaged by the source.                                       | JS    |
+| `card_has_effect`                    | Subject has a specific effect kind.                                       | JS    |
+| `affected_player_is`                 | The affected player is a specific player.                                 | JS    |
+| `is_life_gain`                       | Life delta is positive.                                                  | JS    |
+| `is_life_loss`                       | Life delta is negative.                                                  | JS    |
+| `lost_life_this_turn`                | Opponent has `lifeLostThisTurn > 0`.                                      | Godot |
 
 **Calling convention.** Predicates receive `(state, source, event)` and
 return bool. **Never reach into autoload state from inside a predicate
