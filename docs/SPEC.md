@@ -216,7 +216,7 @@ static func cond_<name>(state: EngineState, source: CardInstance, event: Diction
 
 **Boot validation.** `engine.gd._ready()` calls `Predicates.validate_all_card_predicates(card_resources)`. Every `cond_id` string referenced in any `triggers` entry must resolve to a `_PRED_NAMES` entry; otherwise `push_error` at startup with a "Unknown cond_id(s): <card>.<predicate>" message.
 
-**Card-local hook.** `_is_card_local_predicate(card, pred)` is reserved for future card-local predicates (B1 pattern from `docs/godot-port-plan.md`). Currently returns `false` — no callers.
+**Card-local hook.** `_is_card_local_predicate(card, pred)` is reserved for future card-local predicates (B1 pattern from `docs/plans/godot-port-plan.md`). Currently returns `false` — no callers.
 
 ### 1.7 Engine signals
 
@@ -261,7 +261,7 @@ Precedence enforced in `_current_actor` (engine.gd around line 433). Only one aw
 | `summoning_sick` | `bool` | True until the controller's next untap. | Untap step. |
 | `lethal_marked` | `bool` | SBA flag — destroy-pending. | Resolution of SBA sweep. |
 
-`effective_keywords()` unions template keywords + `granted_keywords` (+ future sticker contributions — seam reserved per `docs/godot-port-plan.md` Phase 7).
+`effective_keywords()` unions template keywords + `granted_keywords` (+ future sticker contributions — seam reserved per `docs/plans/godot-port-plan.md` Phase 7).
 
 ### 1.10 EngineState snapshot
 

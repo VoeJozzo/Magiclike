@@ -1,6 +1,6 @@
 # Standardization Context (handoff narrative — Tier 3 reconciliation complete)
 
-> **Status (Tier 3, completed):** the two branches were merged and the docs reconciled. §1 (stale-name sweep) and §6.2 (SPEC↔PROTOCOL partition) have been **applied** — see the merge + reconciliation commits. Retained for the *decisions and gotchas* it records (§4 locked decisions, §8 things-I-didn't-anticipate, §10 open calls). Remaining open work is the standardization branch's **Pass 5/6**, tracked in [`STANDARDIZATION-PLAN.md`](STANDARDIZATION-PLAN.md) §6. Read as history + decision record, not an active Tier 3 to-do.
+> **Status (Tier 3, completed):** the two branches were merged and the docs reconciled. §1 (stale-name sweep) and §6.2 (SPEC↔PROTOCOL partition) have been **applied** — see the merge + reconciliation commits. Retained for the *decisions and gotchas* it records (§4 locked decisions, §8 things-I-didn't-anticipate, §10 open calls). Remaining open work is the standardization branch's **Pass 5/6**, tracked in [`STANDARDIZATION-PLAN.md`](../STANDARDIZATION-PLAN.md) §6. Read as history + decision record, not an active Tier 3 to-do.
 
 **Original target reader.** The Claude instance on `claude/documentation-and-mapping-wa8Pd`, which shipped `ARCHITECTURE.md`, `SPEC.md`, `REFACTOR-NOTES.md`, and `RULES.md` — work that intersects with the data/structural standardization shipped on `claude/standardization-BBD8O`. The two threads aren't sibling projects; they're the same project at different layers. This file briefed (a) whether/how to integrate this branch's work, (b) how to replicate it, (c) how to keep going with rules work on top of it.
 
@@ -235,7 +235,7 @@ Both branches forked from `b070f1a`. Neither has been merged. The conflict is do
 | `docs/REFACTOR-NOTES.md` | (none) | Keep REFACTOR-NOTES.md. Apply §2 above (resurrect §4.1, no other code changes needed). |
 | `docs/RULES.md` | (none) | Keep RULES.md. Apply the stale-name corrections in §1 above. |
 | `docs/STANDARDIZATION-PLAN.md` | (same file, my version) | Mine has Pass 1-4 shipping notes that yours doesn't. Take mine. |
-| `docs/STANDARDIZATION-HANDOFF.md` | (this file) | This file exists only on `claude/standardization-BBD8O`. Keep or rename to `docs/STANDARDIZATION-CONTEXT.md` once read. |
+| `docs/STANDARDIZATION-HANDOFF.md` | (this file) | This file exists only on `claude/standardization-BBD8O`. Keep or rename to `docs/archive/STANDARDIZATION-CONTEXT.md` once read. |
 | `docs/PROTOCOL.md` | (mine only) | Keep mine. Reconcile with SPEC.md per §6.2. |
 
 ### 6.2 SPEC.md vs PROTOCOL.md
