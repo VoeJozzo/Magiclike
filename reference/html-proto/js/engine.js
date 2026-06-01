@@ -1136,10 +1136,14 @@ function getCardValue(card, purpose, ctx) {
 // creatures/lands/artifacts). Single source of truth for the auto-pick (AI),
 // the human-prompt setup, and the prompt's legal-action enumeration.
 function choosesEligiblePool(who, filter) {
-  return G[who].battlefield.filter(c =>
-    filter === 'permanent'
-      ? isPermanent(c)
-      : hasType(c, 'Creature'));
+  return G[who].battlefield.filter(c => {
+    if (filter === 'permanent') return isPermanent(c);   // cross-type alias
+    // Otherwise the filter names a card type — 'creature' → Creature, 'land' →
+    // Land. A chooses() filter IS a type, so every type narrows identically
+    // (no per-type special-casing): capitalize the tag and match via hasType.
+    const tag = filter ? filter[0].toUpperCase() + filter.slice(1) : 'Creature';
+    return hasType(c, tag);
+  });
 }
 
 // The ctx.chosen-shaped descriptor for a picked permanent. Snapshots
@@ -2213,7 +2217,7 @@ const EFFECTS = {
     const filter = params.filter || 'creature';
     const pool = choosesEligiblePool(who, filter);
     if (pool.length === 0) {
-      const noun = filter === 'permanent' ? 'permanent' : 'creature';
+      const noun = filter;   // 'creature' | 'permanent' | 'land' — the type chosen
       log(`${ctx.sourceName} — ${pname(who)} has no ${noun} to choose.`, 'sp');
       ctx.chosen = null;
       return;
@@ -3309,7 +3313,7 @@ function getValidTargets(effect, controller) {
 // plan-effects-refactor.md). Adding a filter means adding it here AND to
 // targetsForFilter below — there is no open tail.
 const TARGET_FILTERS = new Set([
-  'creature', 'player', 'opp', 'creature_or_player', 'spell', 'permanent',
+  'creature', 'player', 'opp', 'creature_or_player', 'spell', 'permanent', 'land',
   'your_creature', 'opp_creature', 'graveyard_creature',
 ]);
 
@@ -4335,7 +4339,7 @@ function resolveTopOfStack() {
               pool: pool.map(c => choosesDescriptor(c, chooser)),
               trailingEffects: activeEffects.slice(idx + 1).map(e => ({ ...e })),
             };
-            const noun = choosesFilter === 'permanent' ? 'permanent' : 'creature';
+            const noun = choosesFilter;   // 'creature' | 'permanent' | 'land'
             log(`${ctx.sourceName}: ${pname(chooser)} must choose a ${noun} to lose.`, 'sp');
             break; // defer; spell still moves to graveyard. doEdictChoice resumes.
           }
