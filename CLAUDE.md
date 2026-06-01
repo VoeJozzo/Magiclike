@@ -39,7 +39,7 @@ Deferred work lives in `docs/BACKLOG.md` — read it when relevant, but don't op
 │   └── json_card_loader.gd     reads html-proto card.json files into CardResource instances
 ├── scenes/
 │   ├── card.gd / card.tscn     Card subclass (oracle text, legality glow, combat highlights)
-│   ├── json_card_factory.tscn
+│   ├── tres_card_factory.tscn
 │   ├── game/                   game_board.gd/.tscn, player_panel.gd, combat_lines.gd
 │   └── zones/battlefield_zone.gd  two-row creature/land layout
 ├── tests/                      one runnable .gd + .tscn per phase: 1, 2, 3, 4, 4.5a/b/c, 5a/b/c
@@ -55,7 +55,7 @@ Deferred work lives in `docs/BACKLOG.md` — read it when relevant, but don't op
 
 | File | Role |
 |---|---|
-| `engine/engine.gd` | Autoload `RulesEngine`. State holder, `execute_action`, settle loop, `_fire_event`, `_drain_pending_triggers`, `_resolve_*_entry`, `_run_sbas`, two-pass combat damage, `get_legal_actions`. ~1551 lines. |
+| `engine/engine.gd` | Autoload `RulesEngine`. State holder, `execute_action`, settle loop, `_fire_event`, `_drain_pending_triggers`, `_resolve_*_entry`, `_run_sbas`, two-pass combat damage, `get_legal_actions`. ~1692 lines. |
 | `engine/engine_state.gd` | RefCounted state container: players, stack, attackers, blockers, `pending_triggers`, `awaiting_target_for_trigger`, `awaiting_block_declaration`, `duplicate_deep()`. |
 | `engine/player.gd`, `mana_pool.gd`, `stack.gd`, `phase_machine.gd` | RefCounted state subclasses. Each has a `duplicate_deep()` for AI snapshots. |
 | `engine/card_instance.gd` | Per-card runtime state — tapped, damage, summoning_sick, granted_keywords, lethal_marked. `effective_keywords()` unions template + grants + (future) stickers. |
