@@ -324,7 +324,10 @@ function describeEffect(eff, tplEff) {
       if (fz === 'battlefield' && tz === 'library') return [plainSeg('shuffle ' + t + " into its owner's library")];
       if (fz === 'battlefield' && tz === 'hand') return [plainSeg('return ' + t + " to its owner's hand")];
       if (fz === 'battlefield' && tz === 'exile') return [plainSeg('exile ' + t)];          // flicker outgoing / exile removal
-      if (fz === 'exile' && tz === 'battlefield') return [plainSeg('return it to the battlefield')];  // flicker return
+      if (fz === 'exile' && tz === 'battlefield') {
+        if (eff.selector === 'copy_source') return [plainSeg("return the exiled card to the battlefield under its owner's control")];
+        return [plainSeg('return it to the battlefield')];  // flicker return
+      }
       return [plainSeg('move ' + t)];
     }
     case 'untap': {
@@ -402,6 +405,14 @@ function describeEffect(eff, tplEff) {
       if (eff.target === 'player' || eff.target === 'opp' || eff.target === 'creature_or_player')
         return [plainSeg(t + ' rips a permanent they control')];
       return [plainSeg('rip ' + (t || 'it'))];
+    case 'become_copy_of': {
+      // The False Witness doppelganger. Refers back to the just-exiled creature
+      // ("that creature"); keep_subtypes renders the "except it's also …" rider.
+      const keep = (Array.isArray(eff.keep_subtypes) && eff.keep_subtypes.length)
+        ? eff.keep_subtypes.join(' ') : '';
+      const rider = keep ? (", except it's also " + indefiniteArticle(keep) + ' ' + keep) : '';
+      return [plainSeg('this becomes a copy of that creature' + rider)];
+    }
     case 'symmetricize':
       return [plainSeg(t + "'s controller equalizes its power, toughness, or cost")];
     case 'apply_sticker': {

@@ -4,7 +4,7 @@ Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folde
 
 ## Version
 
-**Current: `v2.0.75`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.0.76`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -201,6 +201,34 @@ opponent's best creature — permanent base 20, eot base 8, +card value +lane �
 animate-add_type only at a permanent WE control (else it'd gift the opponent a
 body). Verified via `AI.decide`: the AI now casts Encase in Amber at an enemy
 creature. 1269 green, lint clean, 300-game selfplay clean.
+
+v2.0.76: **two cards landed from PRs #30/#31 (rebuilt on the v2.0 model) + their
+small engine seams.** Both PRs predated the v2.0 refactor by ~292 commits and no
+longer applied; reimplemented in their *ambitious* designs (from the prior
+instance's handoff notes), not the simplified versions that were committed.
+(1) **Heir to the Burnt House** — {3}{B} 3/3, "When this dies, target opponent
+sacrifices a land." The only engine work was making the `chooses()` edict filter
+**type-symmetric**: `choosesEligiblePool` now treats the filter as a type name, so
+`'land'` narrows via `hasType` exactly like `'creature'`/`'permanent'` (a chooses
+filter IS a type — no bespoke land primitive; PR #30's obsolete `destroyLand` is
+gone). Added `'land'` to `TARGET_FILTERS`; the empty-pool/human-prompt nouns and
+the card-text sacrifice clause derive from the filter ("sacrifices a land").
+(2) **The False Witness** — {2}{U}{U} **0/1** Flash Insect Shapeshifter doppelganger.
+Decomposed onto primitives: ETB `move_card`(bf→exile) + the one new effect
+**`become_copy_of`**; leave `move_card`(exile→bf) via a new `copy_source` selector
+(exile→bf already returns under the owner's control). `become_copy_of` reuses the
+engine's materialize-then-re-derive pattern (like keyword/type grants): it writes
+the copied creature's printed characteristics onto the instance and rides the
+auto-reverting `typeGrants` layer for types (+ kept Insect/Shapeshifter);
+`resetInPlayState` re-derives the base on **every** leave path *before* the leave
+event fires, so the revert is free and the witness's own leave-return trigger is
+never clobbered by the copied triggers (the load-bearing subtlety — a copy effect
+only applies on the battlefield, like MTG). AI: `abilityValue` scores the copy
+package strongly (so the AI casts/drafts it); `pickBestTriggerTarget` copies the
+opponent's biggest threat (by `sacValueOnBoard`, not cost-adjusted value);
+`flashETBWouldFizzle` won't flash it into an empty board. New `heir_edict_test.js`
+(11) + `false_witness_test.js` (23). 1347 green, lint clean, 800-game selfplay
+clean (0 crashes/violations/stuck/runaways).
 
 v2.0.74: **trigger labels are now generated, not hand-authored (log + stack pill).** Removed 93 hand-maintained trigger `text` labels from card.json; the game log and the stack pill now derive a trigger's one-line English from its effects via a new `triggerLogText()` seam (authored-if-present → generated → raw event name). Only `custom_text` cards keep authored labels — exactly `archdemon_of_bargains` (its bespoke bargain effects don't generate). The presence of a `text` field is now the opt-out signal; no runtime flag check. Verified the seam degrades NOWHERE post-strip (0 cards fall back to event name). This kills a class of drift bug (the old ancient_treant label said "fetch a Forest" — the card fetches any land). ARCHITECTURE: the engine calls `triggerLogText` (in card-text.js) to write its log — a proto-only coupling shortcut, documented as a Godot "do NOT replicate" divergence (Godot engine stays UI-free → emits a structured signal, presentation renders). Isolated behind ONE named call so the migration is a clean swap. 1313 green, 200-game selfplay clean (exercises the engine→text log path), lint clean.
 

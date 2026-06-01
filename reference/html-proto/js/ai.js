@@ -23,6 +23,7 @@ const NOT_TARGET_SCORED_KINDS = new Set([
   'apply_sticker',      // a rider on embargo/bleach — the move_card half is scored
   'schedule_delayed',   // a rider (exile_until_eot's return) — the move_card half is scored
   'chooses',            // edict's pick step — the sacrifice/rip verb is scored
+  'become_copy_of',      // False Witness ETB doppelganger — trigger mechanic, value dominated by the body
   'steal',              // internal helper dispatched by change_control
   'endomorph_absorb',    // creature ability, not a cast spell
   'bargain_sticker_self', 'bargain_sticker_other', // Archdemon trigger mechanic
@@ -157,6 +158,7 @@ const UNVALUED_EFFECT_KINDS = new Set([
   'untap',              // minor utility on abilities; abilityValue default suffices
   'bargain_sticker_self', // Archdemon of Bargains trigger mechanic; not separately scored
   'bargain_sticker_other',
+  'become_copy_of',      // False Witness ETB doppelganger trigger; value dominated by the witness body
 ]);
 
 const AI = (function() {
@@ -433,13 +435,20 @@ function decideEndStepFlash(state, who, actions) {
 function flashETBWouldFizzle(state, who, card) {
   const them = opp(who);
   const triggers = card.triggers || [];
+  const creaturesOf = w => state[w].battlefield.filter(c => hasType(c, 'Creature'));
   for (const trig of triggers) {
     if (!triggerFiresOnEnter(trig)) continue;
+    // Trigger-level target step (The False Witness: opp_creature) — if the ETB
+    // needs a creature that isn't on the board, flashing it in just wastes the
+    // body. Mirror the per-effect affect_creature check below.
+    if (trig.target === 'opp_creature' && creaturesOf(them).length === 0) return true;
+    if (trig.target === 'your_creature' && creaturesOf(who).length === 0) return true;
+    if (trig.target === 'creature'
+        && creaturesOf(who).length === 0 && creaturesOf(them).length === 0) return true;
     const effects = trig.effects || [];
     for (const eff of effects) {
       if (eff.kind === 'affect_creature' && eff.target === 'creature') {
-        const oppCreatures = state[them].battlefield.filter(c => hasType(c, 'Creature'));
-        if (oppCreatures.length === 0) return true;
+        if (creaturesOf(them).length === 0) return true;
       }
     }
   }
