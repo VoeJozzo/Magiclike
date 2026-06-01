@@ -1,22 +1,19 @@
 ---
 name: opencode-delegation
 description: >-
-  Decide when to delegate work to a cheap non-Claude model (Google's Gemma /
-  Gemini Flash via the OpenCode harness) instead of doing it yourself, AND how
-  to actually invoke it. TWO access paths: the bare API (text-in/text-out, you
-  apply the output) and the OpenCode CLI (`opencode run`, a full tool-using
-  agent that reads/edits/greps/commits in the repo itself). Triggers on phrases
-  like "have Gemma do X", "send to Gemini", "delegate this", "ship this to
-  OpenCode", "cheap model could handle this", "digest this file first", "tag in
-  bulk", "second opinion on", "audit parity between", "before I read all this",
-  "this is going to use a lot of tokens", or "is this worth doing myself".
-  Fires PROACTIVELY when a task matches the rubric — large-file ingestion (over
-  ~500 lines), bulk classification or tagging, parity audits, mechanical
-  refactors, manifest regeneration, find/replace sweeps. Use for LOC/count
-  audits, doc sweeps, boilerplate expansion, art-prompt drafting,
-  comment/changelog condensing. Do NOT use for rules/engine-logic correctness,
-  cross-file architectural judgment, or any task where verifying the output is
-  as hard as producing it.
+  Read this before delegating work to Gemma or OpenCode — it's the judgment
+  layer that decides if and how to delegate, not just the how. Use whenever:
+  "have Gemma do X", "delegate this", "send to Gemini", "ship to OpenCode",
+  "cheap model could handle this", "digest this file first", "tag in bulk",
+  "second opinion on", "audit parity between", "this is going to use a lot of
+  tokens", or "is this worth doing myself". Fires PROACTIVELY on large-file
+  ingestion (over ~500 lines), bulk classification or tagging, parity audits,
+  mechanical refactors, manifest regeneration, find/replace sweeps. Contains
+  the six-criterion rubric, tier-to-job routing (counts→Gemma,
+  judgment→Flash), two access paths (bare API vs OpenCode CLI), and four
+  workflow patterns. Do NOT use for rules/engine-logic correctness, cross-file
+  architectural judgment, or any task where verifying the output is as hard as
+  producing it.
 ---
 
 # OpenCode delegation
@@ -76,7 +73,7 @@ Reach DOWN before reaching UP. If `grep` works, use `grep`.
 
 | Rung | When |
 |---|---|
-| **Opus 4.7** (you) | Synthesis, final calls, subtle correctness, verifier of last resort |
+| **Claude** (you) | Synthesis, final calls, subtle correctness, verifier of last resort |
 | **Gemini Flash** (`gemini-3.5-flash`, `gemini-3-flash`, `gemini-2.5-flash`) | **Judgment tasks** — anything needing reasoning/attribution ("is this Done, and at which version?"). ~20 RPD per model, ~60 total. Scarce. |
 | **Gemma 4** (`gemma-4-31b-it` default, `gemma-4-26b-a4b-it` lighter alt) | **DEFAULT.** All bulk/mechanical work — counts, sweeps, reformatting, expansion. ~1500 RPD, effectively unmetered. |
 | **Deterministic scripts** (grep, sed, tests, type-checker) | No LLM judgment needed. Cheapest, most reliable. |
