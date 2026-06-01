@@ -1,11 +1,13 @@
 ---
 name: gemma-delegate
 description: >-
-  Delegate bounded, mechanical, cheaply-verifiable grunt work to Gemma 4 (Google
-  Generative Language API) to save Claude tokens — the "manager / intern" pattern.
-  Use for LOC/count audits, manifest regeneration, doc sweeps, find/replace,
-  boilerplate or template expansion, art-prompt drafting, comment/changelog
-  condensing. Claude scopes the task and VERIFIES the result; Gemma drafts it.
+  Delegate grunt work to a free Google model (Gemma 4 / Gemini) to save Claude
+  tokens — the "manager / intern" pattern. TWO access paths (see "Two ways to
+  reach Gemma"): the bare API (text-in/text-out, for generation you then apply)
+  and the OpenCode CLI (`opencode run`, a FULL TOOL-USING AGENT that reads/edits/
+  greps/commits itself). Use for LOC/count audits, manifest regeneration, doc
+  sweeps, find/replace, reorg, boilerplate/template expansion, art-prompt drafting,
+  comment/changelog condensing. Claude scopes + VERIFIES; Gemma executes.
   Do NOT use for rules/engine-logic correctness, cross-file architecture, or any
   task where verifying the output is as hard as producing it.
 ---
@@ -19,6 +21,47 @@ A cheap model (Gemma 4, free tier) does the grunt work; Claude orchestrates and
 
 If checking Gemma's output costs about as much as doing the task yourself, there's
 no leverage — keep it.
+
+## Two ways to reach Gemma (this is the most important section)
+
+There are **two distinct access paths**, and they have very different power. A claim
+true for one is often false for the other — do not conflate them (an earlier version of
+this skill did, and was wrong for two turns).
+
+1. **Bare API** (`curl` to `generativelanguage.googleapis.com`). Text-in / text-out, NO
+   tools. The model can only *generate text*; YOU apply it to files and do all the
+   git/search/verify. Good for "generate this prose, I'll place it." This is the path the
+   "Call Gemma" / "Delegated git workflow" sections below describe.
+
+2. **OpenCode CLI** (`opencode run`). A **full tool-using agent** — it reads, greps,
+   edits, and runs git *itself*, in the repo, autonomously. Installed at
+   `C:/Users/Joe/AppData/Roaming/npm/opencode` (v1.15+; `npm i -g opencode-ai`). It
+   **shares the same Google auth** (`~/.local/share/opencode/auth.json`) — no separate key.
+   This is the path that makes Gemma a real *worker*, not just a text generator.
+
+   ```bash
+   # headless agentic run — Gemma edits the repo herself
+   opencode run --model google/gemma-4-31b-it "Use your tools to <task>. Commit on a
+     branch as Thaumaturge-Gemma and open a PR." 2>&1
+   # models: opencode models | grep google ;  auth: opencode auth list
+   ```
+
+   **VERIFIED (2026-06-01):** `gemma-4-31b-it` via `opencode run` called the `read` tool
+   on a file and returned the correct contents — it IS agentic, despite being the free
+   ~1500/day tier. (Gemini Flash models are also agentic but ~20/day each.) Do NOT claim a
+   model "can't use tools" from one timeout — Gemma is SLOW (~3–4 min/agentic run); give it
+   180–240s+ before concluding anything. Capability claims need the same evidence discipline
+   as numeric claims: verify, don't infer from a single negative.
+
+   **Output channel = git/PR, NOT stdout.** OpenCode's final answer does NOT pipe cleanly
+   to stdout on this Windows shell. That's fine and BY DESIGN: real work comes back as a
+   **Gemma-authored commit + PR** (read via `gh`/`git`), which is exactly why Thaumaturge-
+   Gemma has a GitHub identity. For the rare time you need her raw text reply, read it back
+   via `opencode export <session-id>` (find the id with `opencode session list`), not the pipe.
+
+**Which path for what:** generation-only work you'll apply yourself → bare API. Anything
+where Gemma should *do the work in the repo* (sweeps, reorg, multi-file edits, "open a PR
+that does X") → OpenCode CLI (the agent). When in doubt, the CLI is the more capable tool.
 
 **Reality check — does delegation actually pay HERE?** Spinning up a Gemma call has
 real overhead (write a script, round-trip the API, parse, debug the Windows transport
@@ -136,24 +179,30 @@ prefer not to echo the raw unicode line at all.
    silent no-op (script crashed before applying, or matched nothing) otherwise sails through
    as a fake "success." This guard caught a real zero-change run this session.
 
-## What is actually Gemma's job (search vs. generate)
+## What is actually Gemma's job (depends on the access path)
 
-The instinct "Claude searches, Gemma places" is **wrong**. The searching/verifying is
-**deterministic tooling** (`grep`, `wc -l`, JSON parse) — it should be done by *tools*, by
-whoever orchestrates, and it's not LLM work for *either* model. An LLM only earns its keep
-on the part that **can't be computed**: generating natural language.
+The split differs by path — this is where conflating the two paths bites:
 
-- ✅ **Delegate to Gemma:** producing text at volume — rewriting N oracle blurbs, drafting
-  N art prompts, summarizing/condensing, reformatting prose. The *generation* is the bulk.
-- ⚙️ **Do with tools (not an LLM):** finding stale values, counting LOC, locating refs,
-  reconciling counts. `grep`/`wc -l` are exact and free; an LLM here just risks fabrication.
-- 🧠 **Keep for the orchestrator (judgment):** deciding *which* value is canonical when
-  sources disagree (this session: card count was 258 in ARCHITECTURE.md vs 279 in the
-  manifest — the right move was to NOT pin a number, not to have any model guess one).
+**Bare-API Gemma (text-only):** it canNOT run `grep`/`wc -l`, so asking it to *source* facts
+("is this accurate? at which version?") makes it FABRICATE (that's what broke PR #40). On
+this path: tools find + verify (done by the orchestrator), Gemma only *generates* the prose,
+you apply it. A pure number-swap needs bare-API Gemma for nothing — tools find, `Edit` places.
 
-So a pure number-swap needs Gemma for *nothing* — tools find, `Edit` places. Reach for the
-delegate when the deliverable is **lots of generated prose**, and feed it tool-verified
-facts so it never has to source them itself.
+**OpenCode-CLI Gemma (agentic):** it CAN grep/read/verify itself, so "find the stale refs and
+fix them, opening a PR" is a legitimate task — it sources from the real repo, not from memory.
+This is the path for in-repo execution at volume.
+
+Either way, two things stay with the **orchestrator (you)**:
+- 🧠 **Canonical-source judgment** — when sources disagree, decide *which* wins (this session:
+  card count was 258 in ARCHITECTURE.md vs 279 in the manifest; the right move was to NOT pin a
+  number, not to have any model guess). Don't delegate "which of these conflicting facts is true."
+- 🔎 **Verification of the result** — always assert the PR/diff is what you intended (next section).
+
+**Find vs. flag (safe even on a weak/cautious model):** asking Gemma to *flag* candidates
+("which of these look stale/redundant?") is safe — a missed flag leaves things as-is, and you
+verify each hit cheaply. Asking it to *produce a specific value it must source* ("mark this Done
+at version X") is the dangerous shape — it fabricates rather than hedge. Flag = safe; produce-
+the-sourced-value = trap.
 
 ## Verify like a manager — assert, don't read
 
@@ -221,6 +270,21 @@ Then a human reviews and merges. Notes:
 - The PAT only ever lives in `$GH_PAT_GEMMA`; never echo it or put it in a tracked file.
 - Authorship (`user.name`/`user.email`) is per-command — **never** `git config --global` it,
   or your own commits get mislabeled as the bot.
+
+**Push-hang gotcha (Windows Git Credential Manager).** A `git push` to a `https://...github.com`
+remote can hang forever: the Windows GCM (`git-credential-manager.exe`) pops an *interactive*
+prompt the headless shell can't answer. Made worse now that `gh auth` holds TWO accounts
+(VoeJozzo + Thaumaturge-Gemma), so the helper can pick the wrong one. Fix when a push wedges:
+```bash
+taskkill //F //IM git-credential-manager.exe   # kill the stuck prompt
+# then push with GCM disabled + gh helper forced:
+git -c credential.helper= -c credential.helper='!gh auth git-credential' \
+    -c credential.https://github.com.helper='!gh auth git-credential' \
+    push -u origin <branch>
+# PR via gh with prompts disabled: GH_PROMPT_DISABLED=1 gh pr create ...
+```
+For Claude's *own* pushes (not the bot), the same `gh auth git-credential` helper override uses
+YOUR token cleanly.
 
 ## Safety
 
