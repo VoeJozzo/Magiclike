@@ -22,15 +22,48 @@ no leverage — keep it.
 
 ## Setup (already wired in this repo)
 
-- **Secrets:** `~/.config/magiclike/secrets.env` (outside the repo, perms `600`) holds
-  `GEMINI_API_KEY` and `GH_PAT_GEMMA`. `source` it; reference the env vars. **Never
-  print the values, never write them into a tracked file, never commit them.**
-- **Provider:** Google Generative Language API (the key is a valid `AQ.`-prefixed
-  AI Studio key — it authenticates via the `?key=` query param, no OAuth).
-- **Models on the key:**
-  - `gemma-4-31b-it` — primary delegate (the "Gemma 4 31B IT" used in PR #39).
-  - `gemma-4-26b-a4b-it` — lighter/faster alt.
-  - `gemini-2.5-flash` — smarter fallback; follows "output only X" more cleanly.
+- **Secrets — where to find what you need.** Everything lives in ONE file, outside
+  the repo so it can never be committed:
+  `~/.config/magiclike/secrets.env` (Windows: `C:/Users/Joe/.config/magiclike/secrets.env`), perms `600`.
+  It defines exactly two env vars:
+  - `GEMINI_API_KEY` — the Google AI Studio key (`AQ.`-prefixed). Authenticates the
+    model calls via the `?key=` query param (no OAuth).
+  - `GH_PAT_GEMMA` — a **classic** GitHub PAT (`ghp_`-prefixed, `repo` scope) for the
+    `Thaumaturge-Gemma` bot. Used only for fork/push/PR.
+
+  To use them: `source ~/.config/magiclike/secrets.env`, then reference `$GEMINI_API_KEY`
+  / `$GH_PAT_GEMMA`. **Never print the values, never write them into a tracked file,
+  never commit them.** When a command must echo (e.g. a push URL), pipe it through
+  `sed "s#$GH_PAT_GEMMA#***#g"` first.
+
+  **If `secrets.env` is missing (fresh machine):** keys do NOT travel via git — that's
+  intentional (the repo is public). Recreate the file by hand:
+  ```bash
+  mkdir -p ~/.config/magiclike && umask 077
+  cat > ~/.config/magiclike/secrets.env <<'EOF'
+  export GEMINI_API_KEY='<paste AI Studio key>'
+  export GH_PAT_GEMMA='<paste classic repo-scoped PAT>'
+  EOF
+  chmod 600 ~/.config/magiclike/secrets.env
+  ```
+  Source the keys from a password manager or paste them out-of-band — not from any
+  repo file or chat log. (For CI/Codespaces instead of local, use encrypted GitHub
+  Actions/Codespaces secrets, not this file.)
+- **Models on the key + routing policy.** Free tier; the binding limit is **RPD
+  (requests/day)**. Route by it:
+  | Model id | RPD | Use for |
+  |---|---:|---|
+  | `gemma-4-31b-it` | ~1500 | **DEFAULT.** All bulk/mechanical work — counts, sweeps, reformatting, expansion. Effectively unmetered. |
+  | `gemma-4-26b-a4b-it` | ~1500 | Lighter/faster alt of the default. |
+  | `gemini-3.5-flash` | ~20 | **Judgment tasks** — anything needing reasoning/attribution (e.g. "is this Done, and at which version?"). |
+  | `gemini-3-flash` | ~20 | Judgment alt. |
+  | `gemini-2.5-flash` | ~20 | Judgment alt; follows "output only X" cleanly. |
+
+  The ~20 RPD is **per Flash model** (≈60 judgment reqs/day total), not shared.
+  **Rule:** default to Gemma 4 31B; escalate to a Gemini-Flash ONLY when the task
+  needs judgment, not just transformation. Mis-routing is what made PR #40 bad:
+  a version-attribution task (judgment) was run on a plain model and it fabricated
+  version numbers. Counts→Gemma; "which version / is this true"→Flash.
 - **Gemma's GitHub identity** for delegated commits: bot account `Thaumaturge-Gemma`,
   email `ThaumaturgeDev@gmail.com` (a low-privilege scratchpad). Author each commit with
   `git -c user.name="Thaumaturge-Gemma" -c user.email="ThaumaturgeDev@gmail.com" commit …`
