@@ -1,6 +1,6 @@
 # Godot port — phase roadmap
 
-Forward-looking roadmap for the Godot port. State of the engine and architectural decisions live in [`/CLAUDE.md`](../CLAUDE.md); deferred work lives in [`BACKLOG.md`](BACKLOG.md).
+Forward-looking roadmap for the Godot port. State of the engine and architectural decisions live in [`/CLAUDE.md`](../../CLAUDE.md); deferred work lives in [`BACKLOG.md`](../BACKLOG.md).
 
 The port ships in slices. Each slice has a corresponding `tests/test_phaseN.{gd,tscn}` smoke test (see `/CLAUDE.md` for the invocation pattern). A slice is "done" when its new test passes and all prior phase tests still pass.
 
@@ -23,7 +23,7 @@ The port ships in slices. Each slice has a corresponding `tests/test_phaseN.{gd,
 
 > **Sequencing note:** land the **E1/E2** (zone-change + composable predicates) and **effects** refactors *before* this phase — see [`plan-zone-change-and-composable-predicates.md`](plan-zone-change-and-composable-predicates.md) and [`plan-effects-refactor.md`](plan-effects-refactor.md). Both plans recommend this so new cards are authored in the atomic/composable style instead of accumulating in the old monolithic shape.
 
-**Reframed by `json_card_loader.gd` (standardization Pass 4):** Godot now reads the html-proto `card.json` files directly (the cross-engine wire format — see [`PROTOCOL.md`](PROTOCOL.md)), and a boot supportability scan reports which of the 258 proto cards are fully playable (today: 109 supported, 149 awaiting handlers). So card-pool growth is **no longer a transcription problem** ("translate JS templates into `card_database.gd`") — it's a **prioritization problem**: implement the next-most-valuable missing effect/event/predicate kinds, and the cards that need them light up automatically. Grow the supported pool toward ~40 playable across two or three colors (R/G/U) for meaningful draft picks by picking which handlers to add next from the scan's missing-kind tally (top misses today: `remove_creature`, `draw`, `discard`, `grant_keyword`, events `attacks`/`spell_cast`).
+**Reframed by `json_card_loader.gd` (standardization Pass 4):** Godot now reads the html-proto `card.json` files directly (the cross-engine wire format — see [`PROTOCOL.md`](../PROTOCOL.md)), and a boot supportability scan reports which of the 258 proto cards are fully playable (today: 109 supported, 149 awaiting handlers). So card-pool growth is **no longer a transcription problem** ("translate JS templates into `card_database.gd`") — it's a **prioritization problem**: implement the next-most-valuable missing effect/event/predicate kinds, and the cards that need them light up automatically. Grow the supported pool toward ~40 playable across two or three colors (R/G/U) for meaningful draft picks by picking which handlers to add next from the scan's missing-kind tally (top misses today: `remove_creature`, `draw`, `discard`, `grant_keyword`, events `attacks`/`spell_cast`).
 
 Verification: run the supportability scan; confirm the targeted cards move from "awaiting" to "supported"; smoke-assert each newly-supported card instantiates, has correct cost, and casts + resolves.
 

@@ -4,7 +4,7 @@ Magic: The Gathering-style roguelike. The repo holds two things: the in-progress
 
 The html-proto is a vanilla-JS rules engine — ~20k+ LOC across 13 modules under `js/` plus per-card JSONs under `cards/<tplId>/`. 250+ card templates, full priority/stack model, triggered abilities, draft, roguelike meta. Active on the `dev` branch; see `reference/html-proto/CLAUDE.md` for the current version and module map.
 
-The Godot port reimplements the engine natively. **Structurally similar, not 1:1** — the JS rendering layer doesn't translate, and several JS-specific patterns need rethinking (see "Patterns to NOT replicate" below). Current state: Phases 0–5c shipped (Lightning Bolt through real AI vs AI). 31 card templates in `cards/templates/` (26 cards + 5 basic lands), 10 phase smoke tests, AI plays complete games. Next: card pool expansion → stickers → draft → roguelike meta (see `docs/godot-port-plan.md` for the forward roadmap).
+The Godot port reimplements the engine natively. **Structurally similar, not 1:1** — the JS rendering layer doesn't translate, and several JS-specific patterns need rethinking (see "Patterns to NOT replicate" below). Current state: Phases 0–5c shipped (Lightning Bolt through real AI vs AI). 31 card templates in `cards/templates/` (26 cards + 5 basic lands), 10 phase smoke tests, AI plays complete games. Next: card pool expansion → stickers → draft → roguelike meta (see `docs/plans/godot-port-plan.md` for the forward roadmap).
 
 Deferred work lives in `docs/BACKLOG.md` — read it when relevant, but don't open a session by attacking it. The user picks what to work on; if you finish a task and have idle attention, surface 1–2 backlog items as suggestions rather than just starting the next one.
 
@@ -43,11 +43,12 @@ Deferred work lives in `docs/BACKLOG.md` — read it when relevant, but don't op
 │   ├── game/                   game_board.gd/.tscn, player_panel.gd, combat_lines.gd
 │   └── zones/battlefield_zone.gd  two-row creature/land layout
 ├── tests/                      one runnable .gd + .tscn per phase: 1, 2, 3, 4, 4.5a/b/c, 5a/b/c
-├── docs/
-│   ├── godot-port-plan.md      forward-looking phase roadmap
+├── docs/                       reference + planning docs (see docs/README.md index)
 │   ├── BACKLOG.md              deferred work, parking lot
 │   ├── PROTOCOL.md             cross-engine canonical wire format spec
-│   └── STANDARDIZATION-PLAN.md html-proto ↔ Godot harmonization history
+│   ├── STANDARDIZATION-PLAN.md html-proto ↔ Godot harmonization history
+│   ├── plans/                  forward-looking plan specs (godot-port-plan, plan-*)
+│   └── archive/                superseded handoff narratives (history, not active)
 └── reference/html-proto/       prototype mirror (its own CLAUDE.md + BACKLOG.md)
 ```
 

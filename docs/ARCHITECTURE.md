@@ -330,4 +330,4 @@ node tests/selfplay_harness.js 500 bughunt  # AI vs AI, ~20s
 | Static lords (stat buffs) | ✗ | partial | Buffs work in proto; keyword grants don't yet. |
 | Render diffing | n/a (Godot retained-mode) | ✗ | Proto repaints on every event. |
 
-Phase 6–10 of `docs/godot-port-plan.md` covers most of the deferred items in order.
+Phase 6–10 of `docs/plans/godot-port-plan.md` covers most of the deferred items in order.
