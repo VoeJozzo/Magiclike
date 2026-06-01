@@ -1,0 +1,36 @@
+{
+  "card_id": "otherworldly_journey",
+  "art": "art.png",
+  "cost": {
+    "W": 1,
+    "C": 1
+  },
+  "target": "creature",
+  "effects": [
+    {
+      "kind": "move_card",
+      "from_zone": "battlefield",
+      "to_zone": "exile",
+      "selector": "target"
+    },
+    {
+      "kind": "schedule_delayed",
+      "when": "end_step",
+      "effects": [
+        {
+          "kind": "move_card",
+          "from_zone": "exile",
+          "to_zone": "battlefield",
+          "selector": "target"
+        }
+      ]
+    }
+  ],
+  "name": "Otherworldly Journey",
+  "keywords": [
+    "flash"
+  ],
+  "types": [
+    "Sorcery"
+  ]
+}

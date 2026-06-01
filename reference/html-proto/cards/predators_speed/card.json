@@ -1,0 +1,27 @@
+{
+  "card_id": "predators_speed",
+  "art": "art.png",
+  "cost": {
+    "G": 1
+  },
+  "target": "creature",
+  "effects": [
+    {
+      "kind": "grant_keyword",
+      "keyword": "haste",
+      "duration": "eot"
+    },
+    {
+      "kind": "grant_keyword",
+      "keyword": "trample",
+      "duration": "eot"
+    }
+  ],
+  "name": "Predator's Speed",
+  "keywords": [
+    "flash"
+  ],
+  "types": [
+    "Sorcery"
+  ]
+}

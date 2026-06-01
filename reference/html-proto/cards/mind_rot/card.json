@@ -1,0 +1,21 @@
+{
+  "card_id": "mind_rot",
+  "art": "🧠",
+  "cost": {
+    "B": 1,
+    "C": 1
+  },
+  "target": "opp",
+  "effects": [
+    {
+      "kind": "move_card",
+      "from_zone": "hand",
+      "to_zone": "graveyard",
+      "amount": 2
+    }
+  ],
+  "name": "Mind Rot",
+  "types": [
+    "Sorcery"
+  ]
+}

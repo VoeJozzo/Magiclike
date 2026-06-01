@@ -1,10 +1,25 @@
 {
-  "tplId": "forest",
-  "name": "Forest",
-  "type": "Land",
-  "sub": "Basic Land",
+  "card_id": "forest",
   "art": "🌲",
   "mana": "G",
-  "color": null,
-  "colors": []
+  "name": "Forest",
+  "abilities": [
+    {
+      "cost": {
+        "tap": true
+      },
+      "effects": [
+        {
+          "kind": "add_mana",
+          "amounts": {
+            "G": 1
+          }
+        }
+      ]
+    }
+  ],
+  "types": [
+    "Land",
+    "Basic"
+  ]
 }

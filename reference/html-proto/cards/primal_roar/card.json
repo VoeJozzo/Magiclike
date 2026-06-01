@@ -1,0 +1,20 @@
+{
+  "card_id": "primal_roar",
+  "art": "🦁",
+  "cost": {
+    "G": 1,
+    "C": 2
+  },
+  "effects": [
+    {
+      "kind": "pump",
+      "scope": "all_yours",
+      "power": 2,
+      "toughness": 2
+    }
+  ],
+  "name": "Primal Roar",
+  "types": [
+    "Sorcery"
+  ]
+}

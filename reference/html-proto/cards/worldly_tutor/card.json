@@ -1,0 +1,22 @@
+{
+  "card_id": "worldly_tutor",
+  "art": "🔍",
+  "cost": {
+    "G": 1
+  },
+  "effects": [
+    {
+      "kind": "move_card",
+      "from_zone": "library",
+      "to_zone": "hand",
+      "selector": "library_search",
+      "filter": {
+        "type": "Creature"
+      }
+    }
+  ],
+  "name": "Worldly Tutor",
+  "types": [
+    "Sorcery"
+  ]
+}

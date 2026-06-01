@@ -1,0 +1,36 @@
+{
+  "card_id": "storm_sage",
+  "art": "⛈",
+  "cost": {
+    "U": 2,
+    "C": 2
+  },
+  "name": "Storm Sage",
+  "power": 2,
+  "toughness": 3,
+  "triggers": [
+    {
+      "event": "card_zone_change",
+      "condition": [
+        "another_card",
+        "card_is_creature",
+        "controlled_by(you)",
+        "card_moves(anywhere, battlefield)"
+      ],
+      "effects": [
+        {
+          "kind": "move_card",
+          "from_zone": "library",
+          "to_zone": "hand",
+          "selector": "controller_top",
+          "amount": 1
+        }
+      ]
+    }
+  ],
+  "types": [
+    "Creature",
+    "Human",
+    "Wizard"
+  ]
+}

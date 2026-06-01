@@ -1,0 +1,19 @@
+{
+  "card_id": "fire_brute",
+  "art": "art.png",
+  "cost": {
+    "R": 1,
+    "C": 1
+  },
+  "keywords": [
+    "haste"
+  ],
+  "name": "Fire Brute",
+  "power": 3,
+  "toughness": 1,
+  "types": [
+    "Creature",
+    "Goblin",
+    "Berserker"
+  ]
+}

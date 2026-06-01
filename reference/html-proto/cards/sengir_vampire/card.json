@@ -1,0 +1,39 @@
+{
+  "card_id": "sengir_vampire",
+  "art": "🧛",
+  "cost": {
+    "B": 2,
+    "C": 3
+  },
+  "keywords": [
+    "flying",
+    "lifelink"
+  ],
+  "name": "Sengir Vampire",
+  "power": 4,
+  "toughness": 4,
+  "triggers": [
+    {
+      "event": "card_zone_change",
+      "condition": [
+        "another_card",
+        "card_is_creature",
+        "card_moves(battlefield, graveyard)",
+        "card_damaged_by_this"
+      ],
+      "effects": [
+        {
+          "kind": "pump",
+          "duration": "permanent",
+          "power": 1,
+          "toughness": 1,
+          "scope": "self"
+        }
+      ]
+    }
+  ],
+  "types": [
+    "Creature",
+    "Vampire"
+  ]
+}

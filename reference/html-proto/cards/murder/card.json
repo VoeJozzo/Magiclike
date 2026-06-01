@@ -1,0 +1,22 @@
+{
+  "card_id": "murder",
+  "art": "🗡",
+  "cost": {
+    "B": 1,
+    "C": 2
+  },
+  "target": "creature",
+  "effects": [
+    {
+      "kind": "affect_creature",
+      "severity": "destroy"
+    }
+  ],
+  "name": "Murder",
+  "keywords": [
+    "flash"
+  ],
+  "types": [
+    "Sorcery"
+  ]
+}

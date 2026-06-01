@@ -1,0 +1,34 @@
+{
+  "card_id": "mist_raider",
+  "art": "art.png",
+  "cost": {
+    "U": 1,
+    "C": 3
+  },
+  "keywords": [
+    "flying"
+  ],
+  "name": "Mist Raider",
+  "power": 2,
+  "toughness": 3,
+  "triggers": [
+    {
+      "event": "attacks",
+      "condition": [
+        "this_card"
+      ],
+      "effects": [
+        {
+          "kind": "affect_creature",
+          "severity": "bounce"
+        }
+      ],
+      "target": "creature"
+    }
+  ],
+  "types": [
+    "Creature",
+    "Spirit",
+    "Pirate"
+  ]
+}

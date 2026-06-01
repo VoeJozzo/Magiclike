@@ -1,0 +1,46 @@
+{
+  "card_id": "tide_charm",
+  "art": "🌊",
+  "cost": {
+    "U": 1,
+    "C": 2
+  },
+  "effects": {
+    "mode_names": [
+      "Counter (target spell)",
+      "Bounce (target creature)",
+      "Foresee (draw 2)"
+    ],
+    "modes": [
+      [
+        {
+          "kind": "counter",
+          "target": "spell"
+        }
+      ],
+      [
+        {
+          "kind": "affect_creature",
+          "severity": "bounce",
+          "target": "creature"
+        }
+      ],
+      [
+        {
+          "kind": "move_card",
+          "from_zone": "library",
+          "to_zone": "hand",
+          "selector": "controller_top",
+          "amount": 2
+        }
+      ]
+    ]
+  },
+  "name": "Tide Charm",
+  "keywords": [
+    "flash"
+  ],
+  "types": [
+    "Sorcery"
+  ]
+}

@@ -1,10 +1,25 @@
 {
-  "tplId": "swamp",
-  "name": "Swamp",
-  "type": "Land",
-  "sub": "Basic Land",
+  "card_id": "swamp",
   "art": "☠",
   "mana": "B",
-  "color": null,
-  "colors": []
+  "name": "Swamp",
+  "abilities": [
+    {
+      "cost": {
+        "tap": true
+      },
+      "effects": [
+        {
+          "kind": "add_mana",
+          "amounts": {
+            "B": 1
+          }
+        }
+      ]
+    }
+  ],
+  "types": [
+    "Land",
+    "Basic"
+  ]
 }

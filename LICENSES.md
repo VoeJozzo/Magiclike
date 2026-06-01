@@ -25,6 +25,14 @@ schema later.
 - **Source:** https://godotengine.org
 - **Note:** runtime dependency only — the engine binary isn't checked in, but `.tres` / `.tscn` / `.gd` files are Godot-format.
 
+### ESLint + eslint-plugin-sonarjs (dev tooling)
+
+- **Location in tree:** `reference/html-proto/` (`package.json` devDependencies; `node_modules/` is git-ignored, `package-lock.json` pins versions)
+- **License:** ESLint — MIT; eslint-plugin-sonarjs — LGPL-3.0-only
+- **Source:** https://eslint.org · https://github.com/SonarSource/SonarJS
+- **Used for:** dev-only static analysis of the html-proto JS (`npm run lint`) — high-signal bug smells (`no-identical-expressions`, duplicate conditions, unreachable code, etc.).
+- **Note:** NOT part of the runtime — the engine has no build step and Pages serves the raw `.js` files. sonarjs's LGPL copyleft has no reach into the project's own code: it's never linked into or distributed with the shipped engine, only run as a local analyzer.
+
 ---
 
 ## Visual assets

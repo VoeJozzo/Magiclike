@@ -1,0 +1,60 @@
+{
+  "card_id": "false_witness",
+  "name": "The False Witness",
+  "art": "art.png",
+  "cost": {
+    "U": 2,
+    "C": 2
+  },
+  "power": 0,
+  "toughness": 1,
+  "keywords": [
+    "flash"
+  ],
+  "types": [
+    "Creature",
+    "Insect",
+    "Shapeshifter"
+  ],
+  "triggers": [
+    {
+      "event": "card_zone_change",
+      "condition": [
+        "this_card",
+        "card_moves(anywhere, battlefield)"
+      ],
+      "target": "opp_creature",
+      "effects": [
+        {
+          "kind": "move_card",
+          "from_zone": "battlefield",
+          "to_zone": "exile",
+          "selector": "target"
+        },
+        {
+          "kind": "become_copy_of",
+          "selector": "target",
+          "keep_subtypes": [
+            "Insect",
+            "Shapeshifter"
+          ]
+        }
+      ]
+    },
+    {
+      "event": "card_zone_change",
+      "condition": [
+        "this_card",
+        "card_moves(battlefield, anywhere)"
+      ],
+      "effects": [
+        {
+          "kind": "move_card",
+          "from_zone": "exile",
+          "to_zone": "battlefield",
+          "selector": "copy_source"
+        }
+      ]
+    }
+  ]
+}

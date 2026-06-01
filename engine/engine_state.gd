@@ -41,6 +41,12 @@ var log: Array[String] = []
 var winner: String = ""  # "" | "you" | "opp"
 var _next_iid: int = 1
 
+# B7 end-turn fast-forward (MTG-shortcut). Set by KIND_END_TURN; the active
+# player's priority windows then auto-pass on an empty stack until the turn
+# ends. Cleared on UNTAP of the next turn, or mid-turn if the active player
+# re-engages (takes any non-pass/non-end-turn action).
+var end_turn_pending: bool = false
+
 
 func _init() -> void:
 	you = Player.new("You", "you")
@@ -118,4 +124,5 @@ func duplicate_deep() -> EngineState:
 	copy.log = log.duplicate()
 	copy.winner = winner
 	copy._next_iid = _next_iid
+	copy.end_turn_pending = end_turn_pending
 	return copy

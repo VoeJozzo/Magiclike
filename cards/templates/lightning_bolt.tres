@@ -11,7 +11,7 @@ card_types = Array[String](["instant"])
 mana_cost = {
 "R": 1
 }
-oracle_text = "Lightning Bolt deals 3 damage to any target."
+text = "Lightning Bolt deals 3 damage to any target."
 on_cast_effects = Array[Dictionary]([{
 "amount": 3,
 "kind": "damage",

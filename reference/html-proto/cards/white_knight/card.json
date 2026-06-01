@@ -1,0 +1,18 @@
+{
+  "card_id": "white_knight",
+  "art": "art.png",
+  "cost": {
+    "W": 2
+  },
+  "keywords": [
+    "first_strike"
+  ],
+  "name": "White Knight",
+  "power": 2,
+  "toughness": 2,
+  "types": [
+    "Creature",
+    "Human",
+    "Knight"
+  ]
+}

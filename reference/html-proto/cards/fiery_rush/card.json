@@ -1,0 +1,22 @@
+{
+  "card_id": "fiery_rush",
+  "art": "art.png",
+  "cost": {
+    "R": 1
+  },
+  "target": "creature",
+  "effects": [
+    {
+      "kind": "pump",
+      "power": 2,
+      "toughness": 0
+    }
+  ],
+  "name": "Fiery Rush",
+  "keywords": [
+    "flash"
+  ],
+  "types": [
+    "Sorcery"
+  ]
+}

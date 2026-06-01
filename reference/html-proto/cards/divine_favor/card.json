@@ -1,0 +1,23 @@
+{
+  "card_id": "divine_favor",
+  "art": "☀",
+  "cost": {
+    "W": 1,
+    "C": 1
+  },
+  "target": "creature",
+  "effects": [
+    {
+      "kind": "pump",
+      "power": 1,
+      "toughness": 3
+    }
+  ],
+  "name": "Divine Favor",
+  "keywords": [
+    "flash"
+  ],
+  "types": [
+    "Sorcery"
+  ]
+}

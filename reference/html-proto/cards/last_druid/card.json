@@ -1,0 +1,36 @@
+{
+  "card_id": "last_druid",
+  "art": "🍃",
+  "cost": {
+    "G": 1,
+    "C": 2
+  },
+  "name": "Last Druid",
+  "power": 2,
+  "toughness": 2,
+  "triggers": [
+    {
+      "event": "card_zone_change",
+      "condition": [
+        "this_card",
+        "card_moves(battlefield, graveyard)"
+      ],
+      "effects": [
+        {
+          "kind": "move_card",
+          "from_zone": "library",
+          "to_zone": "hand",
+          "selector": "library_search",
+          "filter": {
+            "type": "Creature"
+          }
+        }
+      ]
+    }
+  ],
+  "types": [
+    "Creature",
+    "Elf",
+    "Druid"
+  ]
+}

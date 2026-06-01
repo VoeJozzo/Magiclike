@@ -12,10 +12,10 @@ function check(label, ok, info) {
 
 console.log('=== Test: pushStickerWithRoll reachable from RUN context ===');
 {
-  RUN.start({cards:['savannahLions','furnaceWhelp','goblinChieftain','plains','plains','plains','plains','plains','plains','plains','plains','plains'], colors:['R','W']}, null);
+  RUN.start({cards:['savannah_lions','furnace_whelp','goblin_chieftain','plains','plains','plains','plains','plains','plains','plains','plains','plains'], colors:['R','W']}, null);
   RUN.load();
   const slots = RUN.getSlots();
-  const lionsIdx = slots.findIndex(s => s.tplId === 'savannahLions');
+  const lionsIdx = slots.findIndex(s => s.tplId === 'savannah_lions');
   const ok = RUN.applyStickerToSlot(lionsIdx, 'subtype');
   check('applyStickerToSlot succeeded', ok === true);
   const slotsAfter = RUN.getSlots();
@@ -28,8 +28,8 @@ console.log('=== Test: pushStickerWithRoll reachable from RUN context ===');
 console.log('\n=== Test: pushStickerWithRoll with explicit slots array (opp-AI shape) ===');
 {
   const oppSlots = [
-    { tplId: 'goblinChieftain', stickers: [] },
-    { tplId: 'savannahLions', stickers: [] },
+    { tplId: 'goblin_chieftain', stickers: [] },
+    { tplId: 'savannah_lions', stickers: [] },
     { tplId: 'plains', stickers: [] },
   ];
   pushStickerWithRoll(oppSlots[0], 'subtype', oppSlots);

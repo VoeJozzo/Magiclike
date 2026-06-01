@@ -1,0 +1,18 @@
+{
+  "name": "html-proto",
+  "version": "1.0.0",
+  "description": "Magiclike html-proto — dev tooling (lint). Runtime has no build step.",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "lint": "eslint js/ tests/"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "eslint": "^10.4.0",
+    "eslint-plugin-sonarjs": "^4.0.3"
+  }
+}

@@ -1,21 +1,31 @@
 {
-  "tplId": "bleach",
-  "name": "Bleach",
-  "type": "Instant",
+  "card_id": "bleach",
+  "art": "🧴",
   "cost": {
     "W": 1
   },
-  "art": "🧴",
-  "special": true,
-  "text": "Exile target creature. It is colorless. Forever.",
+  "target": "creature",
   "effects": [
     {
-      "kind": "bleach",
-      "target": "creature"
+      "kind": "apply_sticker",
+      "sticker": {
+        "kind": "set_color",
+        "color": "C"
+      }
+    },
+    {
+      "kind": "move_card",
+      "from_zone": "battlefield",
+      "to_zone": "exile",
+      "selector": "target"
     }
   ],
-  "color": "W",
-  "colors": [
-    "W"
+  "name": "Bleach",
+  "special": true,
+  "keywords": [
+    "flash"
+  ],
+  "types": [
+    "Sorcery"
   ]
 }

@@ -1,14 +1,5 @@
 {
-  "tplId": "stapler",
-  "name": "Stapler",
-  "type": "Artifact",
-  "cost": {
-    "C": 3
-  },
-  "art": "cards/stapler/art.png",
-  "special": true,
-  "chargesAtRunStart": 3,
-  "text": "3 charges (persist across runs). {3}, T: Choose two target permanents. Staple the second onto the first. When this is out of charges, rip it up.",
+  "card_id": "stapler",
   "abilities": [
     {
       "cost": {
@@ -17,26 +8,37 @@
           "C": 3
         }
       },
-      "effects": [
+      "target_slots": [
         {
-          "kind": "applyInGameSplice",
-          "target": "permanentOrSpell",
-          "targetSlot": 0,
+          "target": "permanent_or_spell",
           "filter": {
-            "spliceableBase": true
+            "spliceable_base": true
           }
         },
         {
-          "kind": "noop",
-          "target": "permanentOrSpell",
-          "targetSlot": 1,
+          "target": "permanent_or_spell",
           "filter": {
-            "spliceableStaple": true
+            "spliceable_staple": true
           }
+        }
+      ],
+      "effects": [
+        {
+          "kind": "apply_in_game_splice"
         }
       ]
     }
   ],
-  "color": null,
-  "colors": []
+  "art": "art.png",
+  "charges_at_run_start": 3,
+  "cost": {
+    "C": 3
+  },
+  "name": "Stapler",
+  "special": true,
+  "text": "3 charges (persist across runs). {3}, T: Choose two target permanents. Staple the second onto the first. When this is out of charges, rip it up.",
+  "custom_text": true,
+  "types": [
+    "Artifact"
+  ]
 }

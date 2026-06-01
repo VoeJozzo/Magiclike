@@ -1,0 +1,31 @@
+{
+  "card_id": "vexing_ogre",
+  "art": "👹",
+  "cost": {
+    "R": 1,
+    "C": 2
+  },
+  "name": "Vexing Ogre",
+  "power": 4,
+  "toughness": 2,
+  "triggers": [
+    {
+      "event": "card_zone_change",
+      "condition": [
+        "this_card",
+        "card_moves(anywhere, battlefield)"
+      ],
+      "effects": [
+        {
+          "kind": "gain_life",
+          "amount": -1,
+          "scope": "self"
+        }
+      ]
+    }
+  ],
+  "types": [
+    "Creature",
+    "Ogre"
+  ]
+}

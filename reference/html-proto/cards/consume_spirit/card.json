@@ -1,0 +1,24 @@
+{
+  "card_id": "consume_spirit",
+  "art": "art.png",
+  "cost": {
+    "B": 1,
+    "C": 3
+  },
+  "target": "creature_or_player",
+  "effects": [
+    {
+      "kind": "damage",
+      "amount": 4
+    },
+    {
+      "kind": "gain_life",
+      "amount": 4,
+      "scope": "self"
+    }
+  ],
+  "name": "Consume Spirit",
+  "types": [
+    "Sorcery"
+  ]
+}

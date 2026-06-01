@@ -1,0 +1,19 @@
+{
+  "card_id": "searing_blast",
+  "art": "☄",
+  "cost": {
+    "R": 2,
+    "C": 2
+  },
+  "target": "creature_or_player",
+  "effects": [
+    {
+      "kind": "damage",
+      "amount": 5
+    }
+  ],
+  "name": "Searing Blast",
+  "types": [
+    "Sorcery"
+  ]
+}

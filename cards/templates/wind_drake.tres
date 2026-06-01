@@ -15,4 +15,4 @@ mana_cost = {
 "C": 1,
 "U": 1
 }
-oracle_text = "Flying."
+text = "Flying."

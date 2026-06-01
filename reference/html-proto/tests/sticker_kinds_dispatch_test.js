@@ -22,9 +22,8 @@ function freshCard(tplId, stickers, opts) {
   const tpl = CARDS[tplId];
   return {
     tplId,
-    name: tpl.name, type: tpl.type, sub: tpl.sub || '',
+    name: tpl.name, types: Array.isArray(tpl.types) ? tpl.types.slice() : [],
     keywords: (tpl.keywords || []).slice(),
-    extraManaColors: (tpl.extraManaColors || []).slice(),
     cost: tpl.cost ? {...tpl.cost} : undefined,
     mana: tpl.mana,
     power: tpl.power, toughness: tpl.toughness,
@@ -42,20 +41,20 @@ function freshCard(tplId, stickers, opts) {
 console.log('=== applyStickersToCard: each kind mutates correctly ===');
 
 {
-  const card = freshCard('savannahLions', ['plus1plus1']);
+  const card = freshCard('savannah_lions', ['plus1_plus1']);
   applyStickersToCard(card);
   check('statBoost adds modifier with power/toughness',
     card.modifiers.length === 1 && card.modifiers[0].power === 1 && card.modifiers[0].toughness === 1);
 }
 
 {
-  const card = freshCard('savannahLions', ['kw_flying']);
+  const card = freshCard('savannah_lions', ['kw_flying']);
   applyStickersToCard(card);
   check("keyword adds 'flying' to card.keywords", card.keywords.includes('flying'));
 }
 
 {
-  const card = freshCard('furnaceWhelp', ['kw_flying']);
+  const card = freshCard('furnace_whelp', ['kw_flying']);
   applyStickersToCard(card);
   const flyingCount = card.keywords.filter(k => k === 'flying').length;
   check('keyword: dedup (no double-flying on Furnace Whelp)', flyingCount === 1);
@@ -68,29 +67,55 @@ console.log('=== applyStickersToCard: each kind mutates correctly ===');
 }
 
 {
-  const card = freshCard('plains', ['landColor_R']);
+  const card = freshCard('plains', ['land_color_r']);
   applyStickersToCard(card);
-  check("landColor adds 'R' to extraManaColors", (card.extraManaColors || []).includes('R'));
+  // §3.9: landColor extends the tap-ability; producible colors read from it.
+  const prod = ENGINE.landProducibleColors(card);
+  check("landColor adds 'R' to the land's producible colors", prod.includes('R'));
+  check("landColor keeps the native 'W'", prod.includes('W'));
 }
 
 {
-  const card = freshCard('plains', ['landColor_W']);
+  const card = freshCard('plains', ['land_color_w']);
   applyStickersToCard(card);
-  check("landColor: doesn't add native 'W' to extraManaColors",
-    !(card.extraManaColors || []).includes('W'));
+  // Adding the native color is a no-op — still just W (no duplicate / no choose).
+  check("landColor: native 'W' stays single-color", JSON.stringify(ENGINE.landProducibleColors(card)) === JSON.stringify(['W']));
 }
 
 {
-  const card = freshCard('furnaceWhelp', ['costMinus1']);
+  const card = freshCard('furnace_whelp', ['cost_minus_1']);
   const before = card.cost.C;
   applyStickersToCard(card);
   check('costReduction reduces card.cost.C by 1', card.cost.C === before - 1,
     'before=' + before + ' after=' + card.cost.C);
 }
 
+// §3.8: inline parameterized stickers ({kind,...} descriptors) — cost_mod /
+// set_color — flow through the batch (applyStickersToCard) path.
+{
+  const card = freshCard('furnace_whelp', [{ kind: 'cost_mod', amount: 2, stackable: true }]);
+  const before = card.cost.C;
+  applyStickersToCard(card);
+  check('cost_mod +2 raises card.cost.C by 2', card.cost.C === before + 2,
+    'before=' + before + ' after=' + card.cost.C);
+}
+{
+  const card = freshCard('furnace_whelp', [{ kind: 'set_color', color: 'C' }]);
+  applyStickersToCard(card);
+  check('set_color sets card.color to C', card.color === 'C', 'color=' + card.color);
+}
+{
+  // Mixed string + inline descriptors in one slot's sticker list.
+  const card = freshCard('furnace_whelp', ['plus1_plus1', { kind: 'cost_mod', amount: 1, stackable: true }]);
+  const before = card.cost.C;
+  applyStickersToCard(card);
+  check('mixed string + inline stickers both apply',
+    card.modifiers.some(m => m.power === 1) && card.cost.C === before + 1);
+}
+
 {
   const roll = { location: 'abilities', subIdx: 0, effIdx: 0, modeIdx: null, field: 'amount' };
-  const card = freshCard('spitfireBastion', ['empower'], { empowerRolls: [roll] });
+  const card = freshCard('spitfire_bastion', ['empower'], { empowerRolls: [roll] });
   applyStickersToCard(card);
   const ability = card.abilities[0];
   const eff = ability.effects[0];
@@ -98,16 +123,16 @@ console.log('=== applyStickersToCard: each kind mutates correctly ===');
 }
 
 {
-  const card = freshCard('savannahLions', ['subtype'], { subtypeRolls: ['Beast'] });
+  const card = freshCard('savannah_lions', ['subtype'], { subtypeRolls: ['Beast'] });
   applyStickersToCard(card);
-  check('subtype appends rolled subtype to card.sub', card.sub.includes('Beast'));
-  check('subtype preserves native Cat', card.sub.includes('Cat'));
+  check('subtype appends rolled subtype to types[]', hasType(card, 'Beast'));
+  check('subtype preserves native Cat', hasType(card, 'Cat'));
 }
 
 {
-  const card = freshCard('savannahLions', ['subtype'], { subtypeRolls: ['Cat'] });
+  const card = freshCard('savannah_lions', ['subtype'], { subtypeRolls: ['Cat'] });
   applyStickersToCard(card);
-  const tokens = card.sub.split(/\s+/).filter(Boolean);
+  const tokens = subtypesOf(card);
   const catCount = tokens.filter(t => t === 'Cat').length;
   check('subtype: dedup (no double-Cat)', catCount === 1);
 }
@@ -115,13 +140,13 @@ console.log('=== applyStickersToCard: each kind mutates correctly ===');
 console.log('\n=== stickersForSlot: each kind reflects into view correctly ===');
 
 {
-  const slot = { tplId: 'savannahLions', stickers: ['plus1plus1'] };
+  const slot = { tplId: 'savannah_lions', stickers: ['plus1_plus1'] };
   const result = stickersForSlot(slot, ['W']);
-  check('statBoost re-offerable (stackable)', result.some(s => s.id === 'plus1plus1'));
+  check('statBoost re-offerable (stackable)', result.some(s => s.id === 'plus1_plus1'));
 }
 
 {
-  const slot = { tplId: 'savannahLions', stickers: ['kw_flying'] };
+  const slot = { tplId: 'savannah_lions', stickers: ['kw_flying'] };
   const result = stickersForSlot(slot, ['W']);
   check('keyword kw_flying not re-offered', !result.some(s => s.id === 'kw_flying'));
   check('other keywords still offered (e.g., kw_lifelink)', result.some(s => s.id === 'kw_lifelink'));
@@ -134,29 +159,29 @@ console.log('\n=== stickersForSlot: each kind reflects into view correctly ===')
 }
 
 {
-  const slot = { tplId: 'plains', stickers: ['landColor_R'] };
+  const slot = { tplId: 'plains', stickers: ['land_color_r'] };
   const result = stickersForSlot(slot, ['W','R']);
-  const offeredColors = result.filter(s => s.kind === 'landColor').map(s => s.color);
-  check('landColor_R not re-offered', !offeredColors.includes('R'));
+  const offeredColors = result.filter(s => s.kind === 'land_color').map(s => s.color);
+  check('land_color_r not re-offered', !offeredColors.includes('R'));
   check('native W still suppressed', !offeredColors.includes('W'));
 }
 
 {
-  const slot = { tplId: 'furnaceWhelp', stickers: ['costMinus1', 'costMinus1'] };
+  const slot = { tplId: 'furnace_whelp', stickers: ['cost_minus_1', 'cost_minus_1'] };
   const result = stickersForSlot(slot, ['R']);
   check('costMinus1 not offered when C already 0',
-    !result.some(s => s.id === 'costMinus1'),
+    !result.some(s => s.id === 'cost_minus_1'),
     '(after 2 reductions, generic is at floor)');
 }
 
 {
-  const slot = { tplId: 'spitfireBastion', stickers: ['empower'] };
+  const slot = { tplId: 'spitfire_bastion', stickers: ['empower'] };
   const result = stickersForSlot(slot, ['R']);
   check('empower stackable - still offered', result.some(s => s.id === 'empower'));
 }
 
 {
-  const slot = { tplId: 'savannahLions', stickers: ['subtype'], subtypeRolls: ['Beast'] };
+  const slot = { tplId: 'savannah_lions', stickers: ['subtype'], subtypeRolls: ['Beast'] };
   const result = stickersForSlot(slot, ['W','G']);
   check('subtype re-offerable (stackable)', result.some(s => s.id === 'subtype'));
 }
@@ -164,7 +189,7 @@ console.log('\n=== stickersForSlot: each kind reflects into view correctly ===')
 console.log('\n=== stickerBadgesHtml: each kind renders correctly ===');
 
 {
-  const html = stickerBadgesHtml(['plus1plus1']);
+  const html = stickerBadgesHtml(['plus1_plus1']);
   check("statBoost badge contains '+1/+1'", html.includes('+1/+1'));
   check("statBoost badge has 'stat' class", html.includes('stk-badge stat'));
 }
@@ -185,34 +210,34 @@ console.log('\n=== stickerBadgesHtml: each kind renders correctly ===');
   // landColor badge now routes the {R} token through renderManaSymbols
   // so the pip icon shows instead of literal '+{R}' text. Check for the
   // resulting mana-R span plus the leading '+'.
-  const html = stickerBadgesHtml(['landColor_R']);
+  const html = stickerBadgesHtml(['land_color_r']);
   check('landColor badge contains a +<mana-R pip>', html.includes('+<span class="mana mana-R"'));
   check('landColor badge no longer contains literal +{R} text', !html.includes('+{R}'));
 }
 
 {
-  const html = stickerBadgesHtml(['costMinus1']);
+  const html = stickerBadgesHtml(['cost_minus_1']);
   check("costReduction badge contains '-1 cost'", html.includes('-1 cost'));
 }
 
 {
   const roll = { location: 'abilities', subIdx: 0, effIdx: 0, modeIdx: null, field: 'amount' };
-  const html = stickerBadgesHtml(['empower'], false, [roll], 'spitfireBastion');
+  const html = stickerBadgesHtml(['empower'], false, [roll], 'spitfire_bastion');
   check("empower badge contains 'Empower'", html.includes('Empower'));
 }
 
 {
-  const html = stickerBadgesHtml(['subtype'], false, [], 'savannahLions', null, ['Beast']);
+  const html = stickerBadgesHtml(['subtype'], false, [], 'savannah_lions', null, ['Beast']);
   check("subtype badge contains rolled type 'Beast'", html.includes('Beast'));
 }
 
 {
-  const html = stickerBadgesHtml(['plus1plus1', 'plus1plus1']);
+  const html = stickerBadgesHtml(['plus1_plus1', 'plus1_plus1']);
   check("statBoost stacking shows multiplier", html.includes('×2'));
 }
 
 {
-  const html = stickerBadgesHtml(['plus1plus1', 'innate', 'kw_flying']);
+  const html = stickerBadgesHtml(['plus1_plus1', 'innate', 'kw_flying']);
   const innateIdx = html.indexOf('Innate');
   const plusIdx = html.indexOf('+1/+1');
   check('innate badge renders before others',

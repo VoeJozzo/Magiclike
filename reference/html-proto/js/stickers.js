@@ -1,6 +1,55 @@
 // STICKERS — runtime application + deck-construction helpers (extracted from engine.js).
 // Late-binds ENGINE.synthesizeStapledTemplate and tplForSlot (both resolve at call time).
 
+// A sticker entry on a slot/card is either a registry id (string) or an inline
+// parameterized descriptor {kind, ...params} (§3.8) — the latter is produced by
+// the apply_sticker effect for the Balancer family (cost_mod / set_color /
+// stat_boost snapshots), which carry per-application values no fixed registry
+// entry can hold. Normalize either form to a descriptor with a `.kind`.
+function resolveSticker(entry) {
+  if (typeof entry === 'string') return STICKERS[entry] || null;
+  if (entry && typeof entry === 'object' && entry.kind) return entry;
+  return null;
+}
+// Apply one sticker's kind-effect to a card (no push/dedup — callers handle that).
+// Shared by the batch (applyStickersToCard) and incremental
+// (applyOneStickerToRuntimeCard) paths for the non-roll kinds.
+function applyStickerKindEffect(card, s) {
+  if (s.kind === 'stat_boost') {
+    if (!Array.isArray(card.modifiers)) card.modifiers = [];
+    card.modifiers.push({ power: s.power || 0, toughness: s.toughness || 0 });
+  } else if (s.kind === 'keyword') {
+    if (!Array.isArray(card.keywords)) card.keywords = [];
+    if (!card.keywords.includes(s.keyword)) card.keywords.push(s.keyword);
+  } else if (s.kind === 'innate') {
+    card.innate = true;
+  } else if (s.kind === 'grant_mana_ability') {
+    grantManaAbility(card, s.color);
+  } else if (s.kind === 'cost_mod') {
+    // Signed additive cost change (§3.8): +N for embargo, −1 for the reduction
+    // reward (unified from costReduction). Generic floored at 0.
+    if (card.cost) card.cost.C = Math.max(0, (card.cost.C || 0) + (s.amount || 0));
+    // A Land+Spell staple's REAL cost is the ETB trigger's optional_cost (the
+    // land's own cast cost is free/vestigial), so a cost sticker must adjust it
+    // too — otherwise "−1 cost" on the spell left the "you may pay" cost unchanged.
+    for (const t of (card.triggers || [])) {
+      if (t.optional_cost) t.optional_cost.C = Math.max(0, (t.optional_cost.C || 0) + (s.amount || 0));
+    }
+  } else if (s.kind === 'set_color') {
+    card.color = s.color;
+    // Colorless (Bleach) also bleaches the COST: colored pips fold into generic
+    // {C}, so the card becomes castable off any mana.
+    if (s.color === 'C' && card.cost) {
+      let colored = 0;
+      for (const k of ['W', 'U', 'B', 'R', 'G']) { colored += card.cost[k] || 0; card.cost[k] = 0; }
+      if (colored) card.cost.C = (card.cost.C || 0) + colored;
+    }
+  } else if (s.kind === 'trigger') {
+    if (!Array.isArray(card.triggers)) card.triggers = [];
+    card.triggers.push({ ...s.trigger });
+  }
+}
+
 function weightedPick(stickers) {
   let total = 0;
   for (const s of stickers) total += (s.weight || 3);
@@ -20,28 +69,9 @@ function applyStickersToCard(card) {
   let empowerCursor = 0;
   let subtypeCursor = 0;
   for (const sId of card.stickers) {
-    const s = STICKERS[sId];
+    const s = resolveSticker(sId);
     if (!s) continue;
-    if (s.kind === 'statBoost') {
-      // Symmetricize boss flattens stats to N/N, overriding stat-boost stickers.
-      // Other sticker kinds still apply.
-      if (typeof card.symmetrizedTo === 'number') continue;
-      card.modifiers.push({ power: s.power || 0, toughness: s.toughness || 0 });
-    } else if (s.kind === 'keyword') {
-      if (!card.keywords.includes(s.keyword)) card.keywords.push(s.keyword);
-    } else if (s.kind === 'innate') {
-      card.innate = true;
-    } else if (s.kind === 'landColor') {
-      if (!Array.isArray(card.extraManaColors)) card.extraManaColors = [];
-      if (!card.extraManaColors.includes(s.color) && card.mana !== s.color) {
-        card.extraManaColors.push(s.color);
-      }
-    } else if (s.kind === 'costReduction') {
-      if (card.cost) {
-        const generic = card.cost.C || 0;
-        card.cost.C = Math.max(0, generic - (s.amount || 1));
-      }
-    } else if (s.kind === 'empower') {
+    if (s.kind === 'empower') {
       let roll = (card.empowerRolls || [])[empowerCursor];
       if (!roll) {
         // Stapled fallback: use merged tpl so roll can land on staple half's effects.
@@ -53,55 +83,34 @@ function applyStickersToCard(card) {
       }
       empowerCursor++;
       if (roll) applyEmpowerRoll(card, roll, s.amount || 1);
-    } else if (s.kind === 'trigger') {
-      card.triggers.push({...s.trigger});
     } else if (s.kind === 'subtype') {
       // Specific subtype stored on card.subtypeRolls (parallel to occurrences). Legacy
       // saves missing a roll skip — rolling needs deck context, deferred to next save.
       const rolled = (card.subtypeRolls || [])[subtypeCursor];
       subtypeCursor++;
       if (!rolled) continue;
-      const tokens = (card.sub || '').split(/\s+/).filter(Boolean);
-      if (!tokens.includes(rolled)) {
-        tokens.push(rolled);
-        card.sub = tokens.join(' ');
-      }
+      // Append the rolled subtype to types[] — the sole type identity. Lord buffs
+      // that match on it read via hasType/subtypesOf.
+      if (!Array.isArray(card.types)) card.types = [];
+      if (!card.types.includes(rolled)) card.types.push(rolled);
+    } else {
+      applyStickerKindEffect(card, s);
     }
   }
 }
 
-// Apply a SINGLE sticker to a runtime card incrementally (Archdemon of Bargains
-// adds a sticker mid-game without re-applying all the others). Skips empower/subtype
-// (they need rolls); bargain filters those out at the call site.
-function applyOneStickerToRuntimeCard(card, stickerId) {
+// Apply a SINGLE sticker to a runtime card incrementally — Archdemon of Bargains
+// (registry id) and the apply_sticker effect (inline {kind,...} descriptor).
+// Skips empower/subtype (they need rolls); callers don't pass those.
+function applyOneStickerToRuntimeCard(card, sticker) {
   if (!card) return;
-  const s = STICKERS[stickerId];
+  const s = resolveSticker(sticker);
   if (!s) return;
   if (!Array.isArray(card.stickers)) card.stickers = [];
-  if (!s.stackable && card.stickers.includes(stickerId)) return;
-  card.stickers.push(stickerId);
-  if (s.kind === 'statBoost') {
-    if (!Array.isArray(card.modifiers)) card.modifiers = [];
-    card.modifiers.push({ power: s.power || 0, toughness: s.toughness || 0 });
-  } else if (s.kind === 'keyword') {
-    if (!Array.isArray(card.keywords)) card.keywords = [];
-    if (!card.keywords.includes(s.keyword)) card.keywords.push(s.keyword);
-  } else if (s.kind === 'innate') {
-    card.innate = true;
-  } else if (s.kind === 'landColor') {
-    if (!Array.isArray(card.extraManaColors)) card.extraManaColors = [];
-    if (!card.extraManaColors.includes(s.color) && card.mana !== s.color) {
-      card.extraManaColors.push(s.color);
-    }
-  } else if (s.kind === 'costReduction') {
-    if (card.cost) {
-      const generic = card.cost.C || 0;
-      card.cost.C = Math.max(0, generic - (s.amount || 1));
-    }
-  } else if (s.kind === 'trigger') {
-    if (!Array.isArray(card.triggers)) card.triggers = [];
-    card.triggers.push({...s.trigger});
-  }
+  const isInline = typeof sticker === 'object';
+  if (!s.stackable && !isInline && card.stickers.includes(sticker)) return;
+  card.stickers.push(sticker);
+  applyStickerKindEffect(card, s);
 }
 
 // Apply N random stickers to permanents controlled by `side` (Archdemon of
@@ -151,7 +160,7 @@ function applyRandomStickersToSide(state, side, n, sourceName, logFn) {
 
 // Player-friendly label for a rolled empower target. The roll stores a
 // `field` like 'amount' / 'power' / 'severity', but 'amount' is shared by
-// many effect kinds (damage, draw, discard, gainLife, etc.) — so when the
+// many effect kinds (damage, draw, discard, gain_life, etc.) — so when the
 // field is generic, we use the effect's KIND as the label instead. Faithless
 // Looting empowering "amount" on draw or discard shows up as "Empower (draw)"
 // or "Empower (discard)" rather than the ambiguous "Empower (amount)".
@@ -180,15 +189,14 @@ function empowerRollLabel(card, roll) {
     // Disambiguate damage direction so self-recoil reads distinctly from spell payload.
     if (eff.kind === 'damage') {
       const t = eff.target;
-      fieldLabel = t === 'self'   ? 'self damage'
+      fieldLabel = eff.scope    ? 'damage to all'
+                 : t === 'self'   ? 'self damage'
                  : t === 'player' ? 'damage to opponent'
                  : 'damage';
-    } else if (eff.kind === 'gainLife') {
+    } else if (eff.kind === 'gain_life') {
       fieldLabel = 'life gain';
-    } else if (eff.kind === 'damageAll') {
-      fieldLabel = 'damage to all';
-    } else if (eff.kind === 'removeAll') {
-      fieldLabel = 'severity';
+    } else if (eff.kind === 'move_card' && eff.from_zone === 'library' && eff.to_zone === 'hand') {
+      fieldLabel = 'cards drawn';
     } else {
       fieldLabel = eff.kind;
     }
@@ -224,24 +232,28 @@ function applyEmpowerRoll(card, roll, amount) {
   const e = effs[effIdx];
   const v = e[field];
   if (typeof v === 'object' && v !== null && 'from' in v) return;
-  const cur = (typeof v === 'number') ? v : 0;
-  if ((e.kind === 'removeCreature' || e.kind === 'removeAll') && field === 'severity') {
-    e[field] = Math.min(4, cur + amount);
-  } else {
-    e[field] = cur + amount;
+  if (e.kind === 'affect_creature' && field === 'severity') {
+    // Promote up the string ladder (tap→bounce→destroy→exile), capped at exile.
+    e[field] = ENGINE.numToSev(ENGINE.sevToNum(e.severity) + amount);
+    return;
   }
+  const cur = (typeof v === 'number') ? v : 0;
+  // Empower amplifies the field's MAGNITUDE in its existing direction: a +2 pump
+  // goes to +3, but a -2 debuff (Sicken) or a negative drain goes to -3, not -1.
+  // A flat `+= amount` would weaken every negative-valued field.
+  e[field] = cur + (cur < 0 ? -amount : amount);
 }
 
 // Roll a creature subtype for targetSlotIdx, weighted by deck token frequency.
 // Excludes subtypes the target already has. Null if nothing eligible.
 function rollSubtypeFromDeck(slots, targetSlotIdx) {
   if (!Array.isArray(slots)) return null;
-  const targetSlot = slots[targetSlotIdx];
-  if (!targetSlot) return null;
-  const targetTpl = tplForSlot(targetSlot);
+  const target_slot = slots[targetSlotIdx];
+  if (!target_slot) return null;
+  const targetTpl = tplForSlot(target_slot);
   if (!targetTpl) return null;
-  const targetTokens = new Set((targetTpl.sub || '').split(/\s+/).filter(Boolean));
-  for (const r of (targetSlot.subtypeRolls || [])) {
+  const targetTokens = new Set(subtypesOf(targetTpl));
+  for (const r of (target_slot.subtypeRolls || [])) {
     if (r) targetTokens.add(r);
   }
   // Each (slot, token) pair contributes one count — Goblin Wizard adds 1 weight
@@ -249,8 +261,8 @@ function rollSubtypeFromDeck(slots, targetSlotIdx) {
   const tokenCount = {};
   for (const slot of slots) {
     const tpl = tplForSlot(slot);
-    if (!tpl || tpl.type !== 'Creature') continue;
-    const tokens = (tpl.sub || '').split(/\s+/).filter(Boolean);
+    if (!tpl || !hasType(tpl, 'Creature')) continue;
+    const tokens = subtypesOf(tpl);
     for (const tok of tokens) {
       if (targetTokens.has(tok)) continue;
       tokenCount[tok] = (tokenCount[tok] || 0) + 1;
@@ -270,15 +282,15 @@ function rollSubtypeFromDeck(slots, targetSlotIdx) {
 
 // Push a sticker onto a slot, recording an empower/subtype roll if needed.
 // `slotsForRoll` is the deck context for subtype rolling.
-function pushStickerWithRoll(slot, stickerId, slotsForRoll) {
-  slot.stickers.push(stickerId);
-  if (stickerId === 'empower') {
+function pushStickerWithRoll(slot, sticker_id, slotsForRoll) {
+  slot.stickers.push(sticker_id);
+  if (sticker_id === 'empower') {
     const tpl = tplForSlot(slot);
     const roll = tpl ? rollEmpowerTarget(tpl) : null;
     if (!Array.isArray(slot.empowerRolls)) slot.empowerRolls = [];
     slot.empowerRolls.push(roll);
   }
-  if (stickerId === 'subtype') {
+  if (sticker_id === 'subtype') {
     let roll = null;
     if (Array.isArray(slotsForRoll)) {
       const idx = slotsForRoll.indexOf(slot);
@@ -301,19 +313,17 @@ function stickersForSlot(slot, deckColors) {
     if (effs && Array.isArray(effs.modes)) {
       // Modal (charms): preserve shape.
       return {
-        modeNames: effs.modeNames ? effs.modeNames.slice() : undefined,
+        mode_names: effs.mode_names ? effs.mode_names.slice() : undefined,
         modes: effs.modes.map(modeEffs => modeEffs.map(e => ({...e}))),
       };
     }
     return [];
   };
   const view = {
-    type: tpl.type,
-    sub: tpl.sub || '',
+    types: Array.isArray(tpl.types) ? tpl.types.slice() : [],
     keywords: (tpl.keywords || []).slice(),
     stickers: slot.stickers.slice(),
     mana: tpl.mana,
-    extraManaColors: [],
     deckColors: deckColors || [],
     cost: tpl.cost ? {...tpl.cost} : undefined,
     effects: copyTopEffects(tpl.effects),
@@ -322,7 +332,7 @@ function stickersForSlot(slot, deckColors) {
   };
   let subtypeCursor = 0;
   for (const sId of slot.stickers) {
-    const s = STICKERS[sId];
+    const s = resolveSticker(sId);
     if (!s) continue;
     if (s.kind === 'keyword' && !view.keywords.includes(s.keyword)) {
       view.keywords.push(s.keyword);
@@ -330,20 +340,27 @@ function stickersForSlot(slot, deckColors) {
     if (s.kind === 'subtype') {
       const rolled = (slot.subtypeRolls || [])[subtypeCursor];
       subtypeCursor++;
-      if (rolled) {
-        const tokens = (view.sub || '').split(/\s+/).filter(Boolean);
-        if (!tokens.includes(rolled)) {
-          tokens.push(rolled);
-          view.sub = tokens.join(' ');
-        }
+      if (rolled && !view.types.includes(rolled)) view.types.push(rolled);
+    }
+    if (s.kind === 'grant_mana_ability') {
+      grantManaAbility(view, s.color);  // §3.9: reflect on the view's tap-ability
+    }
+    // §3.8 cost_mod (unified costReduction −1 / embargo +1) — reflect on the
+    // view so re-offer eligibility sees the modified cost.
+    if (s.kind === 'cost_mod' && view.cost) {
+      view.cost.C = Math.max(0, (view.cost.C || 0) + (s.amount || 0));
+    }
+    if (s.kind === 'set_color') {
+      view.color = s.color;
+      if (s.color === 'C' && view.cost) {
+        let colored = 0;
+        for (const k of ['W', 'U', 'B', 'R', 'G']) { colored += view.cost[k] || 0; view.cost[k] = 0; }
+        if (colored) view.cost.C = (view.cost.C || 0) + colored;
       }
     }
-    if (s.kind === 'landColor' && !view.extraManaColors.includes(s.color)) {
-      view.extraManaColors.push(s.color);
-    }
-    if (s.kind === 'costReduction' && view.cost) {
-      const generic = view.cost.C || 0;
-      view.cost.C = Math.max(0, generic - (s.amount || 1));
+    if (s.kind === 'stat_boost') {
+      view.power = (view.power || 0) + (s.power || 0);
+      view.toughness = (view.toughness || 0) + (s.toughness || 0);
     }
   }
   return Object.values(STICKERS).filter(s => {

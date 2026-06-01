@@ -30,6 +30,7 @@ const JS_DIR = path.join(__dirname, '..', 'js');
 const ENGINE_FILES = [
   'settings.js',
   'cards.js',
+  'types.js',
   'engine.js',
   'card-text.js',
   'stickers.js',
@@ -129,16 +130,32 @@ function installDomStubs() {
 const EXPOSED = [
   // Public module objects (top of each .js file).
   'ENGINE', 'AI', 'RUN', 'DRAFT', 'CARDS', 'STICKERS',
+  // §7b cast-path coverage sets (ai.js module scope).
+  'TARGET_SCORED_KINDS', 'NOT_TARGET_SCORED_KINDS',
   'CONTROLLER', 'PICKLOG', 'VERSION', 'Modal', 'RUN_MODIFIERS', 'SETTINGS',
+  // Card-load surface (cards.js, module-scope).
+  'ingestCard',
   // tplId rename plumbing — exposed for tplid_renames_test.
   'TPLID_RENAMES', 'renameTplId', 'MIGRATIONS', 'SAVE_VERSION', 'SAVE_KEY',
   // Trigger-generator surface (triggers.js + trigger-generator.js —
   // no IIFE, all module-scope).
-  'TRIGGER_CONDITIONS', 'GENERATOR_EFFECTS', 'GENERATOR_CONDITIONS',
+  'GENERATOR_EFFECTS', 'GENERATOR_CONDITIONS',
   'evalTriggerCondition', 'generateRandomTrigger',
+  // Composable-predicate surface (triggers.js, module-scope — Slice 2 / E2).
+  'ATOMIC_PREDICATES', 'evaluateCondition', '_parseCall',
+  // Effect-shorthand parser (triggers.js, module-scope — §5.1/§5.2).
+  '_parseEffectCall', 'desugarEffectString', 'normalizeCardEffects',
+  'validateAllCardConditions', 'VALID_TRIGGER_EVENTS',
+  'triggerArchetype', 'triggerSubtype', 'triggerFiresOnEnter',
   'generateConditionOptions', 'generateEffectOptions', 'assembleTrigger',
+  // Empower system (cards.js module-scope).
+  'EMPOWER_FIELDS', 'isEmpowerableField', 'enumerateEmpowerTargets',
+  'rollEmpowerTarget', 'hasEmpowerableEffect',
   // Engine module-scope helpers (above the ENGINE IIFE).
   'deckColorsFromSlots', 'fakeTargetsForLegality',
+  'isCompatibleStaplePair', 'manaAbilityOf', 'manaEffectColors',
+  'remapEmpowerRollForStaple', 'countEffects', 'mergeSpliceData',
+  'isSpliceableBase', 'isSpliceableStaple',
   // Sticker module surface (stickers.js, all top-level).
   'weightedPick',
   'applyStickersToCard', 'applyOneStickerToRuntimeCard',
@@ -146,28 +163,38 @@ const EXPOSED = [
   'rollSubtypeFromDeck', 'pushStickerWithRoll', 'stickersForSlot',
   // Render module-scope helpers (render.js has no IIFE).
   'stickerBadgesHtml', 'effectiveArt', 'renderManaSymbols', 'formatCostBraced',
+  'isValidTargetCreature', 'canPlayFromUI',
   // Card-text module surface (card-text.js, all module-scope, no IIFE).
   'describeAmount', 'describeEffect', 'describeEffectList',
-  'describeTrigger', 'describeAbility', 'describeStaticBuff',
+  'describeTrigger', 'triggerLogText', 'describeAbility', 'describeStaticBuff',
   'describeCardText', 'describeCardSegments', 'describeModalSegs',
   // Card-text internal helpers — exposed so tests can target them
   // independently if a regression localizes to one.
-  'targetPhrase', 'withFilter', 'plainSeg', 'bumpedSeg', 'bumpedDerived',
+  'targetPhrase', 'withFilter', 'plainSeg', 'indefiniteArticle', 'bumpedSeg', 'bumpedDerived',
   'segsToText', 'capitalize', 'capitalizeSegs',
   'triggerPreamble', 'abilityCostPhrase', 'keywordPreamble',
+  // Unified type system (types.js, all module-scope, no IIFE — Phase 1).
+  'TYPE_REGISTRY', 'typeRegistryEntry', 'typeCategory', 'isCardTypeTag',
+  'typesOf', 'hasType', 'subtypesOf', 'governingType', 'isPermanent', 'typeLine',
 ];
 
 // Card templates now live in cards/<tplId>/card.json. The browser-side
 // loadCards() uses fetch() — useless in Node. Tests instead populate
 // CARDS synchronously from disk via fs.readFileSync, much faster than
 // awaiting a fetch loop and gives identical data.
+//
+// Wire format is snake_case (docs/STANDARDIZATION-PLAN.md §4). We pipe each
+// card through cards.js's ingestCard() to rebind to the JS-internal camelCase
+// names (tplId) and compute color/colors from cost — matching what
+// the browser-side loadCards() does.
 const CARDS_DIR = path.join(__dirname, '..', 'cards');
 function loadCardsFromDisk() {
   const manifest = JSON.parse(fs.readFileSync(path.join(CARDS_DIR, '_manifest.json'), 'utf8'));
   const out = {};
-  for (const tplId of manifest) {
-    const card = JSON.parse(fs.readFileSync(path.join(CARDS_DIR, tplId, 'card.json'), 'utf8'));
-    out[tplId] = card;
+  for (const folderId of manifest) {
+    const card = JSON.parse(fs.readFileSync(path.join(CARDS_DIR, folderId, 'card.json'), 'utf8'));
+    global.ingestCard(card);
+    out[card.tplId] = card;
   }
   return out;
 }

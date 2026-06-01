@@ -1,0 +1,11 @@
+{
+  "card_id": "ember_anvil",
+  "name": "Ember Anvil",
+  "art": "🔥",
+  "types": [
+    "Artifact",
+    "Land",
+    "Mountain"
+  ],
+  "mana": "R"
+}

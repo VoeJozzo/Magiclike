@@ -13,6 +13,17 @@ The user is the art director. You are doing prompt drafting and API calls. Brain
 
 ---
 
+## Reference docs
+
+For anything not covered in this skill — new endpoints, parameter additions, unfamiliar errors — fetch from:
+
+- **API spec (machine-readable):** `https://api.pixellab.ai/v2/llms.txt` — every v2 endpoint, params, ranges, output shapes
+- **Marketing/docs page:** `https://www.pixellab.ai/pixellab-api` — less complete but readable
+
+Don't guess at signatures. WebFetch and verify.
+
+---
+
 ## The single most important principle: mechanic-in-art
 
 **The card's rules text and its art are in dialogue. The art should *enact* the mechanic, not just decorate the theme.**
@@ -208,6 +219,7 @@ Then offer:
   - Un-ignore from `.git/info/exclude` so it becomes committable
   - Log the approved prompt to `references/claude-prompts.txt` in the format `<Card Display Name>: <prompt>`. The corpus of approved prompts is how future-Claude learns what works.
   - If the keeper came from a variance batch (parallel rolls of the same prompt), move the rejected candidates to `~/Desktop/Magiclike Rejected Art/` (Windows: `%USERPROFILE%\Desktop\Magiclike Rejected Art\`), renamed `<Card Display Name> N.png` (1-indexed sequential, ignoring the picked one). **Ensure the destination exists first** — `mkdir -p ~/Desktop/"Magiclike Rejected Art"` on Linux/Mac (`-p` creates parent dirs as needed and doesn't error if the folder already exists; the Desktop folder may be absent on a headless or fresh machine), or on Windows `if not exist "%USERPROFILE%\Desktop\Magiclike Rejected Art" mkdir "%USERPROFILE%\Desktop\Magiclike Rejected Art"`. They live there for later review; the user deletes them manually when no longer wanted. Do not keep rejected candidates inside the repo.
+  - **High-Value candidates:** if the user marks a rejected candidate as notably good but still not the keeper (e.g., "this one is high-value" or "save that one specifically"), move *that* one to a `High-Value/` subfolder inside Rejected Art instead: `~/Desktop/Magiclike Rejected Art/High-Value/<Card Display Name> N.png`. Independent 1-indexed numbering from the regular rejects. Ensure the subfolder exists first (`mkdir -p` on Linux/Mac, equivalent on Windows). These are candidates worth revisiting in future iterations.
 - **Reroll same prompt** — same call, different result; cheap when the prompt is right but the dice didn't land
 - **Tweak prompt** — propose a specific edit (add a detail, swap a material, intensify the light source). Show the diff before regenerating.
 - **Change direction entirely** — back to phase 3, with what we learned

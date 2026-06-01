@@ -1,11 +1,11 @@
 extends RefCounted
 
-# {"kind": "pump", "amount_power": int, "amount_toughness": int, "target": "chosen", "duration": "eot"}.
+# {"kind": "pump", "power": int, "toughness": int, "target": "chosen", "duration": "eot"}.
 # duration != "eot" → permanent +1/+1 counters (using max of dp/dt).
 
 static func execute(effect: Dictionary, ctx: Dictionary) -> void:
-	var dp: int = effect.get("amount_power", 0)
-	var dt: int = effect.get("amount_toughness", 0)
+	var dp: int = effect.get("power", 0)
+	var dt: int = effect.get("toughness", 0)
 	var duration: String = effect.get("duration", "eot")
 
 	if ctx.targets.is_empty():

@@ -1,0 +1,25 @@
+{
+  "card_id": "diabolic_edict",
+  "art": "😈",
+  "cost": {
+    "B": 1,
+    "C": 1
+  },
+  "name": "Diabolic Edict",
+  "target": "opp",
+  "effects": [
+    {
+      "kind": "chooses",
+      "filter": "creature"
+    },
+    {
+      "kind": "sacrifice"
+    }
+  ],
+  "keywords": [
+    "flash"
+  ],
+  "types": [
+    "Sorcery"
+  ]
+}

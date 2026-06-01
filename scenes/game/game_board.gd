@@ -474,7 +474,7 @@ func _trigger_oracle_text(entry: Dictionary) -> String:
 	var s: EngineState = RulesEngine.state()
 	var found = s.find_instance(iid)
 	if found != null and found.card != null and found.card.template != null:
-		var oracle: String = str(found.card.template.oracle_text)
+		var oracle: String = str(found.card.template.text)
 		if oracle != "":
 			return oracle
 	return "(triggered ability)"
@@ -489,8 +489,8 @@ func _spell_oracle_text(iid: int) -> String:
 		var card_id: String = str(visual.card_info.get("card_id", ""))
 		if card_id != "":
 			var template: CardResource = CardDatabase.get_card(card_id)
-			if template != null and template.oracle_text != "":
-				return str(template.oracle_text)
+			if template != null and template.text != "":
+				return str(template.text)
 	return ""
 
 
@@ -739,7 +739,7 @@ func _on_your_battlefield_card_pressed(visual: Card) -> void:
 			return
 
 	# Default: activate ability (tap land for mana).
-	var action := Action.make_activate_ability(iid)
+	var action := Action.make_tap_land_for_mana(iid)
 	if RulesEngine.is_legal_action(action):
 		RulesEngine.execute_action(action)
 
@@ -813,7 +813,7 @@ func _execute_pending_cast_with_target(target: Dictionary) -> void:
 func _commit_taps_and_cast(spell_iid: int, targets: Array, lands_to_tap: Array) -> bool:
 	# Tap planned lands first (each is a normal mana ability).
 	for land in lands_to_tap:
-		RulesEngine.execute_action(Action.make_activate_ability(land.instance_id))
+		RulesEngine.execute_action(Action.make_tap_land_for_mana(land.instance_id))
 	# Confirm we can actually pay after the taps.
 	var s: EngineState = RulesEngine.state()
 	var found = s.find_instance(spell_iid)

@@ -1,0 +1,33 @@
+{
+  "card_id": "frostbite_mage",
+  "art": "❄",
+  "cost": {
+    "U": 1,
+    "C": 1
+  },
+  "name": "Frostbite Mage",
+  "power": 1,
+  "toughness": 2,
+  "triggers": [
+    {
+      "event": "card_zone_change",
+      "condition": [
+        "this_card",
+        "card_moves(anywhere, battlefield)"
+      ],
+      "effects": [
+        {
+          "kind": "pump",
+          "power": -2,
+          "toughness": 0
+        }
+      ],
+      "target": "creature"
+    }
+  ],
+  "types": [
+    "Creature",
+    "Human",
+    "Wizard"
+  ]
+}

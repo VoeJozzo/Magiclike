@@ -1,0 +1,31 @@
+{
+  "card_id": "wildfire_devil",
+  "art": "😈",
+  "cost": {
+    "R": 2,
+    "C": 3
+  },
+  "name": "Wildfire Devil",
+  "power": 3,
+  "toughness": 3,
+  "triggers": [
+    {
+      "event": "card_zone_change",
+      "condition": [
+        "this_card",
+        "card_moves(battlefield, graveyard)"
+      ],
+      "effects": [
+        {
+          "kind": "damage",
+          "amount": 3
+        }
+      ],
+      "target": "creature_or_player"
+    }
+  ],
+  "types": [
+    "Creature",
+    "Devil"
+  ]
+}

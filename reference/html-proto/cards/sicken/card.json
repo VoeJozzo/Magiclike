@@ -1,22 +1,22 @@
 {
-  "tplId": "sicken",
-  "name": "Sicken",
-  "type": "Instant",
+  "card_id": "sicken",
+  "art": "🤢",
   "cost": {
     "B": 1
   },
-  "art": "🤢",
-  "text": "Target creature gets -2/-2 EOT.",
+  "target": "creature",
   "effects": [
     {
-      "kind": "weaken",
-      "target": "creature",
-      "power": 2,
-      "toughness": 2
+      "kind": "pump",
+      "power": -2,
+      "toughness": -2
     }
   ],
-  "color": "B",
-  "colors": [
-    "B"
+  "name": "Sicken",
+  "keywords": [
+    "flash"
+  ],
+  "types": [
+    "Sorcery"
   ]
 }

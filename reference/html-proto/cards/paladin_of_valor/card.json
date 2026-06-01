@@ -1,0 +1,19 @@
+{
+  "card_id": "paladin_of_valor",
+  "art": "art.png",
+  "cost": {
+    "W": 1,
+    "C": 3
+  },
+  "keywords": [
+    "vigilance"
+  ],
+  "name": "Paladin of Valor",
+  "power": 3,
+  "toughness": 4,
+  "types": [
+    "Creature",
+    "Human",
+    "Knight"
+  ]
+}

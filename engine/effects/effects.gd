@@ -9,14 +9,14 @@ const _Damage := preload("res://engine/effects/damage.gd")
 const _AddMana := preload("res://engine/effects/add_mana.gd")
 const _Pump := preload("res://engine/effects/pump.gd")
 const _GainLife := preload("res://engine/effects/gain_life.gd")
-const _CounterSpell := preload("res://engine/effects/counter_spell.gd")
+const _Counter := preload("res://engine/effects/counter.gd")
 
 const HANDLERS := {
 	"damage": _Damage,
 	"add_mana": _AddMana,
 	"pump": _Pump,
 	"gain_life": _GainLife,
-	"counter_spell": _CounterSpell,
+	"counter": _Counter,
 }
 
 

@@ -1,0 +1,52 @@
+{
+  "card_id": "storm_charm",
+  "art": "🌩",
+  "cost": {
+    "R": 1,
+    "C": 2
+  },
+  "effects": {
+    "mode_names": [
+      "Bolt (deal 3)",
+      "Frenzy (+2/+0 haste EOT)",
+      "Sweep (1 to each)"
+    ],
+    "modes": [
+      [
+        {
+          "kind": "damage",
+          "target": "creature_or_player",
+          "amount": 3
+        }
+      ],
+      [
+        {
+          "kind": "pump",
+          "target": "creature",
+          "power": 2,
+          "toughness": 0
+        },
+        {
+          "kind": "grant_keyword",
+          "target": "creature",
+          "keyword": "haste",
+          "duration": "eot"
+        }
+      ],
+      [
+        {
+          "kind": "damage",
+          "scope": "all_creatures",
+          "amount": 1
+        }
+      ]
+    ]
+  },
+  "name": "Storm Charm",
+  "keywords": [
+    "flash"
+  ],
+  "types": [
+    "Sorcery"
+  ]
+}

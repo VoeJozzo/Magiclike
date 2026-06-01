@@ -1,32 +1,32 @@
 {
-  "tplId": "warchanter",
-  "name": "Warchanter",
-  "type": "Creature",
-  "sub": "Goblin Shaman",
+  "card_id": "warchanter",
+  "art": "art.png",
   "cost": {
     "R": 2,
     "C": 2
   },
+  "name": "Warchanter",
   "power": 2,
   "toughness": 3,
-  "art": "🥁",
-  "text": "When this attacks, creatures you control get +1/+0 EOT.",
   "triggers": [
     {
       "event": "attacks",
-      "condId": "thisAttacks",
-      "text": "When ~ attacks, creatures you control get +1/+0 EOT.",
+      "condition": [
+        "this_card"
+      ],
       "effects": [
         {
-          "kind": "pumpAllYours",
+          "kind": "pump",
+          "scope": "all_yours",
           "power": 1,
           "toughness": 0
         }
       ]
     }
   ],
-  "color": "R",
-  "colors": [
-    "R"
+  "types": [
+    "Creature",
+    "Goblin",
+    "Shaman"
   ]
 }

@@ -1,0 +1,32 @@
+{
+  "card_id": "archmage_of_veils",
+  "abilities": [
+    {
+      "cost": {
+        "tap": true
+      },
+      "effects": [
+        {
+          "kind": "move_card",
+          "from_zone": "library",
+          "to_zone": "hand",
+          "selector": "controller_top",
+          "amount": 1
+        }
+      ]
+    }
+  ],
+  "art": "art.png",
+  "cost": {
+    "U": 2,
+    "C": 2
+  },
+  "name": "Archmage of Veils",
+  "power": 2,
+  "toughness": 4,
+  "types": [
+    "Creature",
+    "Human",
+    "Wizard"
+  ]
+}

@@ -1,22 +1,30 @@
 {
-  "tplId": "embargo",
-  "name": "Embargo",
-  "type": "Sorcery",
+  "card_id": "embargo",
+  "art": "🚫",
   "cost": {
     "W": 1,
     "C": 1
   },
-  "art": "🚫",
-  "special": true,
-  "text": "Return target creature to its owner's hand. It costs {1} more, forever.",
+  "target": "creature",
   "effects": [
     {
-      "kind": "embargo",
-      "target": "creature"
+      "kind": "apply_sticker",
+      "sticker": {
+        "kind": "cost_mod",
+        "amount": 1,
+        "stackable": true
+      }
+    },
+    {
+      "kind": "move_card",
+      "from_zone": "battlefield",
+      "to_zone": "hand",
+      "selector": "target"
     }
   ],
-  "color": "W",
-  "colors": [
-    "W"
+  "name": "Embargo",
+  "special": true,
+  "types": [
+    "Sorcery"
   ]
 }

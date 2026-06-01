@@ -18,10 +18,10 @@ function check(label, ok, info) {
 }
 
 const RENAMES = {
-  archmage: 'archmageOfVeils',
-  fireImp:  'cinderSprite',
-  zealot:   'holyZealot',
-  merfolk:  'merfolkLooter',
+  archmage: 'archmage_of_veils',
+  fireImp:  'cinder_sprite',
+  zealot:   'holy_zealot',
+  merfolk:  'merfolk_looter',
 };
 
 console.log('=== TPLID_RENAMES matches the canonical map ===');
@@ -31,7 +31,7 @@ for (const [oldId, newId] of Object.entries(RENAMES)) {
 }
 
 console.log('\n=== renameTplId passes through unknown ids ===');
-check('"savannahLions" -> "savannahLions"', renameTplId('savannahLions') === 'savannahLions');
+check('"savannah_lions" -> "savannah_lions"', renameTplId('savannah_lions') === 'savannah_lions');
 check('"" -> ""', renameTplId('') === '');
 check('null -> null', renameTplId(null) == null);  // == catches both null and undefined
 
@@ -59,13 +59,13 @@ console.log('\n=== v1->v2 save migration translates all tplId fields ===');
     version: 1,
     runState: {
       slots: [
-        { tplId: 'fireImp', stickers: ['plus1plus1'] },
+        { tplId: 'fireImp', stickers: ['plus1_plus1'] },
         { tplId: 'archmage', stickers: [] },
         // A slot with stapledTpls covering an old + new id mix.
-        { tplId: 'zealot', stickers: [], stapledTpls: ['merfolk', 'savannahLions'] },
+        { tplId: 'zealot', stickers: [], stapledTpls: ['merfolk', 'savannah_lions'] },
       ],
       pendingNeowModifier: 'phylactery',   // not in rename list -- unchanged
-      currentPack: ['fireImp', 'bolt', 'archmage'],
+      currentPack: ['fireImp', 'lightning_bolt', 'archmage'],
       youPicks: ['merfolk', 'shock'],
       oppDecks: [
         ['zealot', 'archmage', 'forest'],
@@ -76,70 +76,36 @@ console.log('\n=== v1->v2 save migration translates all tplId fields ===');
   const migrated = MIGRATIONS[1](v1Blob);
   check('version bumped to 2', migrated.version === 2);
   check('slot[0].tplId fireImp -> cinderSprite',
-    migrated.runState.slots[0].tplId === 'cinderSprite');
+    migrated.runState.slots[0].tplId === 'cinder_sprite');
   check('slot[1].tplId archmage -> archmageOfVeils',
-    migrated.runState.slots[1].tplId === 'archmageOfVeils');
+    migrated.runState.slots[1].tplId === 'archmage_of_veils');
   check('slot[2].tplId zealot -> holyZealot',
-    migrated.runState.slots[2].tplId === 'holyZealot');
+    migrated.runState.slots[2].tplId === 'holy_zealot');
   check('slot[2].stapledTpls[0] merfolk -> merfolkLooter',
-    migrated.runState.slots[2].stapledTpls[0] === 'merfolkLooter');
+    migrated.runState.slots[2].stapledTpls[0] === 'merfolk_looter');
   check('slot[2].stapledTpls[1] savannahLions unchanged',
-    migrated.runState.slots[2].stapledTpls[1] === 'savannahLions');
+    migrated.runState.slots[2].stapledTpls[1] === 'savannah_lions');
   check('pendingNeowModifier phylactery untouched',
     migrated.runState.pendingNeowModifier === 'phylactery');
   check('currentPack[0] fireImp -> cinderSprite',
-    migrated.runState.currentPack[0] === 'cinderSprite');
+    migrated.runState.currentPack[0] === 'cinder_sprite');
   check('currentPack[1] bolt unchanged',
-    migrated.runState.currentPack[1] === 'bolt');
+    migrated.runState.currentPack[1] === 'lightning_bolt');
   check('youPicks[0] merfolk -> merfolkLooter',
-    migrated.runState.youPicks[0] === 'merfolkLooter');
+    migrated.runState.youPicks[0] === 'merfolk_looter');
   check('oppDecks[0][0] zealot -> holyZealot',
-    migrated.runState.oppDecks[0][0] === 'holyZealot');
+    migrated.runState.oppDecks[0][0] === 'holy_zealot');
   check('oppDecks[1][1] merfolk -> merfolkLooter',
-    migrated.runState.oppDecks[1][1] === 'merfolkLooter');
+    migrated.runState.oppDecks[1][1] === 'merfolk_looter');
 }
 
-console.log('\n=== PICKLOG load-time translation rewrites old tplIds ===');
-{
-  // Seed localStorage with a picklog blob carrying legacy tplIds, then
-  // make PICKLOG reload from scratch. The data we read back via
-  // exportData() should contain the new ids.
-  const stale = {
-    schemaVersion: 1,
-    drafts: [{
-      timestamp: 0,
-      colors: 'R',
-      picks: [
-        { picked: 'fireImp', offered: ['fireImp', 'bolt', 'archmage'] },
-        { picked: 'merfolk', offered: ['shock', 'merfolk', 'zealot'] },
-      ],
-    }],
-  };
-  localStorage.setItem('magiclike_picklog_v1', JSON.stringify(stale));
-  // Force a fresh load: the PICKLOG IIFE caches `data` in closure scope,
-  // and there's no public reset. Easiest path is to read via the public
-  // surface (exportData) AFTER the test seeds localStorage, but
-  // ensureLoaded() was already called during loadEngine. So we use the
-  // private translation logic directly: call renameTplId on each tplId
-  // in the seeded data and assert the mapping is what ensureLoaded
-  // would have produced. (An integration-style test would need a way to
-  // reset PICKLOG's closure; that's a separate cleanup.)
-  for (const draft of stale.drafts) {
-    for (const pick of draft.picks) {
-      pick.picked = renameTplId(pick.picked);
-      pick.offered = pick.offered.map(renameTplId);
-    }
-  }
-  const p = stale.drafts[0].picks;
-  check('picked fireImp -> cinderSprite', p[0].picked === 'cinderSprite');
-  check('offered translated (3 entries)',
-    p[0].offered[0] === 'cinderSprite' &&
-    p[0].offered[1] === 'bolt' &&
-    p[0].offered[2] === 'archmageOfVeils');
-  check('picked merfolk -> merfolkLooter', p[1].picked === 'merfolkLooter');
-  check('offered translated (zealot -> holyZealot)',
-    p[1].offered[2] === 'holyZealot');
-}
+// NOTE: a "PICKLOG load-time translation" section was deleted here. It seeded
+// localStorage with legacy tplIds but then never exercised PICKLOG's load path
+// (the IIFE had already cached `data` and has no public reset) — instead it
+// called renameTplId directly on its own seed data and asserted the result, i.e.
+// it re-tested renameTplId (already covered above) and asserted nothing about
+// PICKLOG. The comment admitted this. A real integration test would need a
+// PICKLOG closure reset; until then there's nothing genuine to assert.
 
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');
 process.exit(fail > 0 ? 1 : 0);

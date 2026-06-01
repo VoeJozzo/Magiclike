@@ -1,0 +1,37 @@
+{
+  "card_id": "drain_life",
+  "art": "🩸",
+  "cost": {
+    "B": 1,
+    "C": 2
+  },
+  "effects": [
+    {
+      "kind": "damage",
+      "amount": 2,
+      "target_slot": 0
+    },
+    {
+      "kind": "damage",
+      "amount": 2,
+      "target_slot": 1
+    },
+    {
+      "kind": "gain_life",
+      "amount": 4,
+      "scope": "self"
+    }
+  ],
+  "name": "Drain Life",
+  "target_slots": [
+    {
+      "target": "creature"
+    },
+    {
+      "target": "opp"
+    }
+  ],
+  "types": [
+    "Sorcery"
+  ]
+}

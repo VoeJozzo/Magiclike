@@ -1,0 +1,35 @@
+{
+  "card_id": "soul_reaper",
+  "art": "art.png",
+  "cost": {
+    "B": 1,
+    "C": 3
+  },
+  "keywords": [
+    "flying"
+  ],
+  "name": "Soul Reaper",
+  "power": 3,
+  "toughness": 3,
+  "triggers": [
+    {
+      "event": "card_zone_change",
+      "condition": [
+        "another_card",
+        "card_is_creature",
+        "card_moves(battlefield, graveyard)"
+      ],
+      "effects": [
+        {
+          "kind": "gain_life",
+          "amount": 1,
+          "scope": "self"
+        }
+      ]
+    }
+  ],
+  "types": [
+    "Creature",
+    "Demon"
+  ]
+}

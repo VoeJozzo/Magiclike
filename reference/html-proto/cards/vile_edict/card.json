@@ -1,0 +1,25 @@
+{
+  "card_id": "vile_edict",
+  "art": "🩸",
+  "cost": {
+    "B": 2
+  },
+  "target": "opp",
+  "effects": [
+    {
+      "kind": "chooses",
+      "filter": "permanent"
+    },
+    {
+      "kind": "annihilate"
+    },
+    {
+      "kind": "rip"
+    }
+  ],
+  "name": "Vile Edict",
+  "special": true,
+  "types": [
+    "Sorcery"
+  ]
+}

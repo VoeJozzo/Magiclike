@@ -38,13 +38,13 @@ func _ready() -> void:
 	var bolt: CardInstance = s.you.hand[0]
 
 	# Step 1: tap Mountain 0
-	var ok = RulesEngine.execute_action(Action.make_activate_ability(mtn0.instance_id))
+	var ok = RulesEngine.execute_action(Action.make_tap_land_for_mana(mtn0.instance_id))
 	_assert_true(ok, "tap mtn0 succeeded")
 	_assert_true(mtn0.tapped, "mtn0 is now tapped")
 	_assert_eq(s.you.mana.pool["R"], 1, "mana.R after first tap")
 
 	# Step 2: tap Mountain 1
-	ok = RulesEngine.execute_action(Action.make_activate_ability(mtn1.instance_id))
+	ok = RulesEngine.execute_action(Action.make_tap_land_for_mana(mtn1.instance_id))
 	_assert_true(ok, "tap mtn1 succeeded")
 	_assert_true(mtn1.tapped, "mtn1 is now tapped")
 	_assert_eq(s.you.mana.pool["R"], 2, "mana.R after second tap")

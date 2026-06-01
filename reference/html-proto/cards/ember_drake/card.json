@@ -1,0 +1,19 @@
+{
+  "card_id": "ember_drake",
+  "art": "art.png",
+  "cost": {
+    "R": 1,
+    "C": 2
+  },
+  "keywords": [
+    "flying",
+    "haste"
+  ],
+  "name": "Ember Drake",
+  "power": 2,
+  "toughness": 2,
+  "types": [
+    "Creature",
+    "Drake"
+  ]
+}

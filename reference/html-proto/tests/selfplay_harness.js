@@ -88,9 +88,14 @@ const INVARIANTS = [
   function bfCreaturesHaveStats(G) {
     for (const who of ['you','opp']) {
       for (const c of G[who].battlefield) {
-        if (c.type !== 'Creature') continue;
-        if (typeof c.power !== 'number') return `${c.name} on ${who}.bf: power not a number`;
-        if (typeof c.toughness !== 'number') return `${c.name} on ${who}.bf: toughness not a number`;
+        if (!hasType(c, 'Creature')) continue;
+        // Validate EFFECTIVE stats via getStats — an animated land (add_type with
+        // P/T) legitimately carries no raw base power/toughness; its stats live in
+        // the grant layer (permPower/tempPower) so the revert can zero them. The
+        // sibling bfCreaturesAlive reads getStats for the same reason.
+        const [p, t] = ENGINE.getStats(c);
+        if (typeof p !== 'number') return `${c.name} on ${who}.bf: effective power not a number`;
+        if (typeof t !== 'number') return `${c.name} on ${who}.bf: effective toughness not a number`;
         if (typeof c.damage !== 'number') return `${c.name} on ${who}.bf: damage not a number`;
       }
     }
@@ -100,7 +105,7 @@ const INVARIANTS = [
   function bfCreaturesAlive(G) {
     for (const who of ['you','opp']) {
       for (const c of G[who].battlefield) {
-        if (c.type !== 'Creature') continue;
+        if (!hasType(c, 'Creature')) continue;
         const hasIndestructible = c.keywords && c.keywords.includes('indestructible');
         if (hasIndestructible) continue;
         const [, tou] = ENGINE.getStats(c);
@@ -231,7 +236,7 @@ function runOneGame(gameIdx) {
         const pips = { W:0, U:0, B:0, R:0, G:0 };
         const allCards = [...initG[who].library, ...initG[who].hand];
         for (const card of allCards) {
-          if (card.type === 'Land') continue;
+          if (hasType(card, 'Land')) continue;
           if (!card.cost) continue;
           for (const c of COLORS) {
             if (card.cost[c]) pips[c] += card.cost[c];
@@ -288,10 +293,10 @@ function runOneGame(gameIdx) {
       const ap = G.activePlayer;
       result.lifeByTurn[ap].push(G[ap].life);
       result.creaturesByTurn[ap].push(
-        G[ap].battlefield.filter(c => c.type === 'Creature').length
+        G[ap].battlefield.filter(c => hasType(c, 'Creature')).length
       );
       result.manaSpentByTurn[ap].push(
-        G[ap].battlefield.filter(c => c.type === 'Land').length
+        G[ap].battlefield.filter(c => hasType(c, 'Land')).length
       );
     }
 

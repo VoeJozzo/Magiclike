@@ -32,8 +32,8 @@ console.log('=== draftPool: rollTransformPack returns a non-empty pack ===');
     check('pack entries are valid tplIds present in CARDS',
       pack.every(id => CARDS[id]),
       'first entry: ' + JSON.stringify(pack[0]));
-    check('no Land cards in the draft pool (filter intact)',
-      pack.every(id => CARDS[id].type !== 'Land'));
+    check('no BASIC lands in the draft pool (artifact lands are allowed)',
+      pack.every(id => !hasType(CARDS[id], 'Land') || hasType(CARDS[id], 'Artifact')));
     check('no special cards in the draft pool (filter intact)',
       pack.every(id => !CARDS[id].special));
   }
@@ -41,8 +41,15 @@ console.log('=== draftPool: rollTransformPack returns a non-empty pack ===');
 
 console.log('\n=== draftPool: matches the documented filter ===');
 {
-  // Re-derive the expected pool here and compare counts.
-  const expected = Object.keys(CARDS).filter(id => CARDS[id].type !== 'Land' && !CARDS[id].special);
+  // Re-derive the expected pool here and compare counts. Must match draftPool()'s
+  // real predicate: non-special, and either non-land OR an artifact land (nonbasic
+  // artifact lands draft like other picks). NOT `type !== 'Land'` — that stale
+  // form excluded artifact lands, which pass now that colorless cards (incl.
+  // artifact lands) are offered every slot (v2.0.60).
+  const expected = Object.keys(CARDS).filter(id => {
+    const c = CARDS[id];
+    return !c.special && (!hasType(c, 'Land') || hasType(c, 'Artifact'));
+  });
   // Pull pack multiple times and union the unique tplIds — should be a
   // subset of expected, and over many rolls should cover most of it.
   const seen = new Set();
@@ -55,6 +62,24 @@ console.log('\n=== draftPool: matches the documented filter ===');
   check('200 rolls cover most of the pool (lazy compute is sane, not frozen mid-load)',
     seen.size > expected.length * 0.5,
     'covered ' + seen.size + ' of ' + expected.length);
+}
+
+console.log('\n=== colorless cards are offered every slot (not bucketed away) ===');
+{
+  // Regression (v2.0.60): colorless cards (color:null) landed in no WUBRG color
+  // bucket, so the color-rolled slots never offered them — colorless creatures
+  // appeared in 0% of packs. They now compete in every slot.
+  const colorlessCreatures = new Set(Object.keys(CARDS).filter(id => {
+    const c = CARDS[id];
+    return hasType(c, 'Creature') && !c.special && !c.color;
+  }));
+  check('there ARE colorless creatures to offer', colorlessCreatures.size > 0, colorlessCreatures.size + ' cards');
+  let seen = 0;
+  for (let i = 0; i < 300; i++) {
+    for (const id of DRAFT.rollTransformPack([])) if (colorlessCreatures.has(id)) seen++;
+  }
+  check('colorless creatures actually appear across 300 packs (was 0 before the fix)',
+    seen > 0, 'appearances=' + seen);
 }
 
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');

@@ -1,0 +1,32 @@
+{
+  "card_id": "sage_of_the_wilds",
+  "abilities": [
+    {
+      "cost": {
+        "tap": true
+      },
+      "effects": [
+        {
+          "kind": "untap"
+        }
+      ],
+      "target": "your_creature",
+      "target_filter": {
+        "tapped": true
+      }
+    }
+  ],
+  "art": "🦌",
+  "cost": {
+    "G": 1,
+    "C": 2
+  },
+  "name": "Sage of the Wilds",
+  "power": 2,
+  "toughness": 3,
+  "types": [
+    "Creature",
+    "Elf",
+    "Druid"
+  ]
+}

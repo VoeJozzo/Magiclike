@@ -1,0 +1,19 @@
+{
+  "card_id": "serra_angel",
+  "art": "😇",
+  "cost": {
+    "W": 2,
+    "C": 3
+  },
+  "keywords": [
+    "flying",
+    "vigilance"
+  ],
+  "name": "Serra Angel",
+  "power": 4,
+  "toughness": 4,
+  "types": [
+    "Creature",
+    "Angel"
+  ]
+}

@@ -1,10 +1,25 @@
 {
-  "tplId": "island",
-  "name": "Island",
-  "type": "Land",
-  "sub": "Basic Land",
+  "card_id": "island",
   "art": "🌊",
   "mana": "U",
-  "color": null,
-  "colors": []
+  "name": "Island",
+  "abilities": [
+    {
+      "cost": {
+        "tap": true
+      },
+      "effects": [
+        {
+          "kind": "add_mana",
+          "amounts": {
+            "U": 1
+          }
+        }
+      ]
+    }
+  ],
+  "types": [
+    "Land",
+    "Basic"
+  ]
 }

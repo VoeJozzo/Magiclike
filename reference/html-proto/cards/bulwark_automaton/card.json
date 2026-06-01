@@ -1,0 +1,19 @@
+{
+  "card_id": "bulwark_automaton",
+  "name": "Bulwark Automaton",
+  "art": "art.png",
+  "cost": {
+    "C": 5
+  },
+  "types": [
+    "Artifact",
+    "Creature",
+    "Wall"
+  ],
+  "power": 0,
+  "toughness": 7,
+  "keywords": [
+    "defender",
+    "reach"
+  ]
+}

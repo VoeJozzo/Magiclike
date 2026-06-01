@@ -1,0 +1,19 @@
+{
+  "card_id": "goblin_rabble",
+  "art": "art.png",
+  "cost": {
+    "R": 1,
+    "C": 2
+  },
+  "effects": [
+    {
+      "kind": "create_tokens",
+      "token_id": "goblin_r_1_1",
+      "count": 3
+    }
+  ],
+  "name": "Goblin Rabble",
+  "types": [
+    "Sorcery"
+  ]
+}

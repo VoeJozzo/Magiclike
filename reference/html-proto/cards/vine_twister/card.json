@@ -1,0 +1,31 @@
+{
+  "card_id": "vine_twister",
+  "art": "🌿",
+  "cost": {
+    "G": 2,
+    "C": 1
+  },
+  "name": "Vine Twister",
+  "power": 2,
+  "toughness": 2,
+  "triggers": [
+    {
+      "event": "card_zone_change",
+      "condition": [
+        "this_card",
+        "card_moves(anywhere, battlefield)"
+      ],
+      "effects": [
+        {
+          "kind": "grant_keyword",
+          "keyword": "trample"
+        }
+      ],
+      "target": "your_creature"
+    }
+  ],
+  "types": [
+    "Creature",
+    "Treefolk"
+  ]
+}

@@ -1,36 +1,41 @@
 {
-  "tplId": "archivist",
-  "name": "Archivist",
-  "type": "Creature",
-  "sub": "Human Wizard",
+  "card_id": "archivist",
+  "art": "art.png",
   "cost": {
     "U": 1,
     "C": 2
   },
+  "name": "Archivist",
   "power": 1,
   "toughness": 2,
-  "art": "cards/archivist/art.png",
-  "text": "When this enters, draw 2 cards, then discard 1 card.",
   "triggers": [
     {
-      "event": "cardEntersBattlefield",
-      "condId": "thisEnters",
-      "text": "When ~ enters, draw 2, discard 1.",
+      "event": "card_zone_change",
+      "condition": [
+        "this_card",
+        "card_moves(anywhere, battlefield)"
+      ],
       "effects": [
         {
-          "kind": "draw",
+          "kind": "move_card",
+          "from_zone": "library",
+          "to_zone": "hand",
+          "selector": "controller_top",
           "amount": 2
         },
         {
-          "kind": "discard",
-          "target": "self",
-          "amount": 1
+          "kind": "move_card",
+          "from_zone": "hand",
+          "to_zone": "graveyard",
+          "amount": 1,
+          "scope": "self"
         }
       ]
     }
   ],
-  "color": "U",
-  "colors": [
-    "U"
+  "types": [
+    "Creature",
+    "Human",
+    "Wizard"
   ]
 }

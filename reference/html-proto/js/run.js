@@ -6,10 +6,254 @@ const SAVE_VERSION = 2;
 // tplId renames — old → new. Used by run-save migration AND picklog translation.
 // v1.0.134.16: four cards' tplIds didn't match display names from earlier renames.
 const TPLID_RENAMES = {
-  archmage: 'archmageOfVeils',
-  fireImp:  'cinderSprite',
-  zealot:   'holyZealot',
-  merfolk:  'merfolkLooter',
+  "abyssLurker":         "abyss_lurker",
+  "aerialManeuver":      "aerial_maneuver",
+  "aetherDrake":         "aether_drake",
+  "aetherVoyager":       "aether_voyager",
+  "ageOfDawn":           "dawn_sentinel",
+  "airel":               "air_elemental",
+  "alloyMyr":            "alloy_myr",
+  "ambushDjinn":         "ambush_djinn",
+  "ancestralGuard":      "devoted_watcher",
+  "ancestralPriest":     "ancestral_priest",
+  "ancientHydra":        "ancient_hydra",
+  "ancientTreant":       "ancient_treant",
+  "angelOfDawn":         "dawn_angel",
+  "angerHound":          "anger_hound",
+  "angerOfGods":         "anger_of_the_gods",
+  "apexElder":           "apex_elder",
+  "apexHunter":          "apex_hunter",
+  "arcaneDenial":        "arcane_denial",
+  "archdemonBargains":   "archdemon_of_bargains",
+  "architectsCodex":     "architects_codex",
+  "archmage":            "archmage_of_veils",
+  "archmageOfVeils":     "archmage_of_veils",
+  "archmagePatriarch":   "archmage_patriarch",
+  "assassin":            "royal_assassin",
+  "awakenStone":         "awaken_the_stone",
+  "awakenVault":         "awaken_the_vault",
+  "bears":               "grizzly_bears",
+  "beastBaiter":         "furnace_brute",
+  "beastFight":          "beasts_fury",
+  "beastWhisperer":      "beast_whisperer",
+  "benalishHero":        "benalish_hero",
+  "benevolentAngel":     "benevolent_angel",
+  "bindingAngel":        "binding_angel",
+  "blackKnight":         "ravenous_chupacabra",
+  "blessedReprieve":     "healing_light",
+  "bloodArtist":         "blood_artist",
+  "bloodBat":            "vampire_bat",
+  "bloodKnight":         "blood_knight",
+  "bloodPriest":         "blood_priest",
+  "bloodlust":           "bloodlust_berserker",
+  "bloodthirstyStalker": "bloodthirsty_stalker",
+  "bolt":                "lightning_bolt",
+  "boneCollector":       "bone_collector",
+  "boneReliquary":       "bone_reliquary",
+  "branchingBolt":       "branching_bolt",
+  "brandOfIron":         "brand_of_iron",
+  "bulwarkAutomaton":    "bulwark_automaton",
+  "burnoutShaman":       "burnout_shaman",
+  "carrionFeeder":       "carrion_feeder",
+  "cavalryCaptain":      "cavalry_captain",
+  "cinderSprite":        "cinder_sprite",
+  "cityGuardian":        "city_guardian",
+  "cityOfBrass":         "city_of_brass",
+  "clockworkBeetle":     "clockwork_beetle",
+  "cloudCaller":         "cloud_caller",
+  "cloudGiant":          "cloud_pegasus",
+  "conflagrate":         "lava_spike",
+  "consume":             "consume_spirit",
+  "copperGolem":         "copper_golem",
+  "counter":             "counterspell",
+  "counterSpecialist":   "counter_specialist",
+  "crusaderCaptain":     "crusader_captain",
+  "crusadersCharm":      "crusaders_charm",
+  "cryptRat":            "sewer_rat",
+  "cultPriest":          "cult_priest",
+  "curseShade":          "curse_shade",
+  "demonicTutor":        "demonic_tutor",
+  "devastationTide":     "devastation_tide",
+  "diabolicEdict":       "diabolic_edict",
+  "divin":               "divination",
+  "divineFavor":         "divine_favor",
+  "doomBlade":           "doom_blade",
+  "dragon":              "shivan_dragon",
+  "drainLife":           "drain_life",
+  "drakelord":           "skyfire_drakelord",
+  "dreadKnightV2":       "dread_knight",
+  "dreadWraith":         "dread_wraith",
+  "drossPylon":          "dross_pylon",
+  "druidElder":          "elder_of_the_grove",
+  "duelist":             "goblin_duelist",
+  "duskRider":           "dusk_rider",
+  "echoSpirit":          "echo_spirit",
+  "elves":               "llanowar_elves",
+  "elystra":             "elystra_the_immortal",
+  "emberAnvil":          "ember_anvil",
+  "emberDrake":          "ember_drake",
+  "emberHerald":         "ember_herald",
+  "encaseInAmber":       "encase_in_amber",
+  "fallenChampion":      "fallen_champion",
+  "feralStalker":        "feral_stalker",
+  "fieldMarshal":        "field_marshal",
+  "fieryRush":           "fiery_rush",
+  "fireBrute":           "fire_brute",
+  "fireImp":             "cinder_sprite",
+  "fireball":            "volcanic_hammer",
+  "flameSummoner":       "flame_summoner",
+  "flameWisp":           "flame_wisp",
+  "flamewave":           "flame_lash",
+  "flashMage":           "quickdraw_mage",
+  "forestForager":       "forest_forager",
+  "forestGuard":         "forest_guardian",
+  "forestTitan":         "forest_titan",
+  "freezeMoment":        "freeze_moment",
+  "frostBinder":         "frost_binder",
+  "frostbiteMage":       "frostbite_mage",
+  "furnaceRoar":         "furnace_roar",
+  "furnaceWhelp":        "furnace_whelp",
+  "garruksCompanion":    "garruks_companion",
+  "gildedSeat":          "gilded_seat",
+  "goblinChieftain":     "goblin_chieftain",
+  "goblinPiercer":       "goblin_piercer",
+  "goblinRabble":        "goblin_rabble",
+  "goblinRaider":        "goblin_raider",
+  "goblinWarDrummer":    "goblin_war_drummer",
+  "golemForge":          "golem_forge",
+  "graveCharm":          "grave_charm",
+  "graveCurate":         "grave_curate",
+  "graveDigger":         "grave_digger",
+  "greatStag":           "great_stag",
+  "greatherder":         "great_herder",
+  "growth":              "giant_growth",
+  "hastyOgre":           "raging_goblin",
+  "highPriestess":       "high_priestess",
+  "holyZealot":          "holy_zealot",
+  "hornedHerald":        "horned_herald",
+  "hypnotic":            "hypnotic_specter",
+  "illusionDrake":       "illusion_drake",
+  "incinerate":          "char",
+  "inferno":             "inferno_drake",
+  "infernoCaller":       "inferno_caller",
+  "inspiringHerald":     "inspiring_herald",
+  "ironSentinel":        "iron_sentinel",
+  "ironStatue":          "iron_statue",
+  "knightCommander":     "knight_commander",
+  "lastDruid":           "last_druid",
+  "lifeForLife":         "final_strike",
+  "livingLands":         "living_lands",
+  "llanowarSentry":      "llanowar_sentry",
+  "loreSeeker":          "lore_seeker",
+  "mahamoti":            "mahamoti_djinn",
+  "martyrSaint":         "martyr_saint",
+  "martyredScholar":     "martyred_scholar",
+  "mercurialAdept":      "mercurial_adept",
+  "merfolk":             "merfolk_looter",
+  "merfolkLooter":       "merfolk_looter",
+  "mightOfFaith":        "might_of_faith",
+  "mindControl":         "mind_control",
+  "mindrot":             "mind_rot",
+  "mirrorSage":          "mirror_sage",
+  "mistDjinn":           "mist_djinn",
+  "mistRaider":          "mist_raider",
+  "morticianAssistant":  "morticians_assistant",
+  "naturalize":          "choking_vines",
+  "natureCaller":        "nature_caller",
+  "nightmare":           "sengir_vampire",
+  "oldGuardian":         "old_guardian",
+  "otherworldlyJourney": "otherworldly_journey",
+  "oxenHerd":            "oxen_herd",
+  "paladinValor":        "paladin_of_valor",
+  "patientSaint":        "patient_saint",
+  "phantomWarrior":      "phantom_warrior",
+  "pitFiend":            "pit_fiend",
+  "plagueSower":         "plague_sower",
+  "predatorsSpeed":      "predators_speed",
+  "preorder":            "preordain",
+  "pridemate":           "ajanis_pridemate",
+  "primalRoar":          "primal_roar",
+  "prodigal":            "prodigal_sorcerer",
+  "raidLeader":          "goblin_slinger",
+  "raiseAlarm":          "raise_the_alarm",
+  "rakdosCadet":         "rakdos_cadet",
+  "rallyTroops":         "rally_the_troops",
+  "rampant":             "rampant_growth",
+  "ravenousPlague":      "ravenous_plague",
+  "razorBeacon":         "razor_beacon",
+  "reaperShade":         "reaper_shade",
+  "rhox":                "centaur_courser",
+  "righteousCavalry":    "righteous_cavalry",
+  "righteousJudge":      "righteous_judge",
+  "ritual":              "dark_ritual",
+  "rootsAndBranches":    "roots_and_branches",
+  "sageOfTheWilds":      "sage_of_the_wilds",
+  "salve":               "healing_salve",
+  "savannahLions":       "savannah_lions",
+  "scrapHound":          "scrap_hound",
+  "scribeMonk":          "wall_of_omens",
+  "scryWizard":          "scrying_wizard",
+  "searingBlast":        "searing_blast",
+  "sentinelColossus":    "sentinel_colossus",
+  "serra":               "serra_angel",
+  "shadowAssassin":      "shadow_assassin",
+  "silverPaladin":       "silver_paladin",
+  "skyChampion":         "sky_champion",
+  "smite":               "smite_the_wicked",
+  "smolder":             "faithless_looting",
+  "soulReaper":          "soul_reaper",
+  "soulbladeCaptain":    "soulblade_captain",
+  "spectralProcession":  "spectral_procession",
+  "spider":              "giant_spider",
+  "spiritShepherd":      "spirit_shepherd",
+  "spitefulImp":         "spiteful_imp",
+  "spitfireBastion":     "spitfire_bastion",
+  "squireOath":          "squire_of_oaths",
+  "steelInitiate":       "steel_initiate",
+  "stormCaller":         "storm_caller",
+  "stormCharm":          "storm_charm",
+  "stormSage":           "storm_sage",
+  "strengthOfPack":      "strength_of_the_pack",
+  "studiousResearch":    "studious_research",
+  "suddenVines":         "sudden_vines",
+  "surgingBeast":        "surging_beast",
+  "swordAndSorcery":     "sword_and_sorcery",
+  "swords":              "swords_to_plowshares",
+  "symbioteTree":        "symbiote_tree",
+  "terror":              "murder",
+  "tidalConduit":        "tidal_conduit",
+  "tideCharm":           "tide_charm",
+  "treefolk":            "treefolk_guard",
+  "treetopSentry":       "treetop_sentry",
+  "tutor":               "worldly_tutor",
+  "twinStrike":          "twin_strike",
+  "veilOfMists":         "veil_of_mists",
+  "veilSerpent":         "veiled_serpent",
+  "vengefulSpirit":      "vengeful_spirit",
+  "venomViper":          "venom_viper",
+  "verdantCharm":        "verdant_charm",
+  "verdantOutrider":     "verdant_outrider",
+  "verdantVerge":        "verdant_verge",
+  "vexingOgre":          "vexing_ogre",
+  "vigorousDruid":       "vigorous_druid",
+  "vileEdict":           "vile_edict",
+  "vinestrangle":        "vine_strangle",
+  "vinetwister":         "vine_twister",
+  "visionarySage":       "visionary_sage",
+  "warDancer":           "war_dancer",
+  "warHorde":            "war_horde",
+  "warriorChamp":        "warrior_champion",
+  "washAway":            "wash_away",
+  "whiteFortress":       "steadfast_wall",
+  "whiteKnight":         "white_knight",
+  "wickedAcolyte":       "wicked_acolyte",
+  "wildfireDevil":       "wildfire_devil",
+  "windDancer":          "wind_dancer",
+  "wizardAdept":         "wizard_adept",
+  "wolfbriarElemental":  "wolfbriar_elemental",
+  "wrathOfGod":          "day_of_reckoning",
+  "wurm":                "craw_wurm",
+  "zealot":              "holy_zealot",
 };
 function renameTplId(id) { return TPLID_RENAMES[id] || id; }
 
@@ -56,6 +300,14 @@ function save() {
   }
 }
 
+// §3.8 snake_case rename map for sticker IDs stored in saved slots.
+const STICKER_ID_RENAMES = {
+  plus1plus1: 'plus1_plus1',
+  costMinus1: 'cost_minus_1',
+  landColor_W: 'land_color_w', landColor_U: 'land_color_u', landColor_B: 'land_color_b',
+  landColor_R: 'land_color_r', landColor_G: 'land_color_g',
+};
+
 function load() {
   try {
     const raw = localStorage.getItem(SAVE_KEY);
@@ -77,6 +329,10 @@ function load() {
     }
     runState = blob.runState;
     // Strip unknown sticker IDs (legacy saves), migrate legacy formats, backfill empowerRolls.
+    // `dirty` tracks any normalization that mutated runState — it MUST be
+    // persisted, or the (random) backfills re-roll on every load and a buffed
+    // stat flickers between sessions.
+    let dirty = false;
     let stalePruned = 0;
     let rollsBackfilled = 0;
     let subtypeMigrated = 0;
@@ -92,10 +348,15 @@ function load() {
             subtypeMigrated++;
             return 'subtype';
           }
+          // §3.8 snake_case sticker-id renames.
+          if (STICKER_ID_RENAMES[id]) { dirty = true; return STICKER_ID_RENAMES[id]; }
           return id;
         });
         const before = slot.stickers.length;
-        slot.stickers = slot.stickers.filter(id => STICKERS[id]);
+        // Keep registry-id stickers AND inline {kind,...} descriptors (§3.8
+        // apply_sticker products: cost_mod / set_color / stat_boost snapshots).
+        slot.stickers = slot.stickers.filter(s =>
+          (s && typeof s === 'object' && s.kind) || STICKERS[s]);
         stalePruned += before - slot.stickers.length;
         // Backfill empowerRolls for empower stickers without recorded rolls.
         const empowerCount = slot.stickers.filter(id => id === 'empower').length;
@@ -118,12 +379,14 @@ function load() {
       if (subtypeMigrated > 0) {
         console.log(`Migrated ${subtypeMigrated} legacy subtype sticker(s) to unified format.`);
       }
+      if (stalePruned > 0 || rollsBackfilled > 0 || subtypeMigrated > 0) dirty = true;
     }
     // Reroll pendingReward if it's not a current shape (legacy splice pre-rolls).
     if (runState.pendingReward) {
       const ph = runState.pendingReward.phase;
       if (ph !== 'mixed' && ph !== 'transformPick' && ph !== 'twoStickersReveal') {
         runState.pendingReward = generateRewardOffer();
+        dirty = true;
       }
     }
     // Map migrations: color/constructedId/boss-type backfill for legacy saves.
@@ -137,21 +400,23 @@ function load() {
           })
         : [];
       for (const n of runState.map.nodes) {
-        if (!('constructedId' in n)) n.constructedId = null;
+        if (!('constructedId' in n)) { n.constructedId = null; dirty = true; }
         const isExit = (n.level === maxLevel);
         if (isExit && n.type !== 'boss' && bossIds.length > 0) {
           n.type = 'boss';
           n.constructedId = bossIds[Math.floor(Math.random() * bossIds.length)];
+          dirty = true;
         }
         if ('color' in n) continue;
         const isEnd = (n.level === 0 || n.level === maxLevel);
-        if (isEnd) { n.color = null; continue; }
+        if (isEnd) { n.color = null; dirty = true; continue; }
         n.color = Math.random() < 0.6
           ? COLOR_KEYS[Math.floor(Math.random() * 5)]
           : null;
+        dirty = true;
       }
     }
-    if (stalePruned > 0) save();
+    if (dirty) save();
     return true;
   } catch (e) {
     console.warn('Load failed:', e);
@@ -170,12 +435,12 @@ function hasSave() {
 
 function start(playerDeck, modifierId) {
   // Deck → slots {tplId, stickers}. Lands are slots too (need innate sticker support).
-  // chargesAtRunStart templates (Stapler) get a charges counter.
+  // charges_at_run_start templates (Stapler) get a charges counter.
   const slots = playerDeck.cards.map(tplId => {
     const slot = { tplId, stickers: [] };
     const tpl = CARDS[tplId];
-    if (tpl && typeof tpl.chargesAtRunStart === 'number') {
-      slot.charges = tpl.chargesAtRunStart;
+    if (tpl && typeof tpl.charges_at_run_start === 'number') {
+      slot.charges = tpl.charges_at_run_start;
     }
     return slot;
   });
@@ -209,8 +474,8 @@ function start(playerDeck, modifierId) {
         if (e.empowerRolls) slot.empowerRolls = e.empowerRolls.slice();
         if (e.subtypeRolls) slot.subtypeRolls = e.subtypeRolls.slice();
         const extraTpl = CARDS[e.tplId];
-        if (extraTpl && typeof extraTpl.chargesAtRunStart === 'number') {
-          slot.charges = (typeof e.charges === 'number') ? e.charges : extraTpl.chargesAtRunStart;
+        if (extraTpl && typeof extraTpl.charges_at_run_start === 'number') {
+          slot.charges = (typeof e.charges === 'number') ? e.charges : extraTpl.charges_at_run_start;
         }
         slots.push(slot);
       }
@@ -391,7 +656,7 @@ function startNextGame() {
   let bossName = null;
   let bossIcon = null;
   if (curNode && curNode.type === 'boss' && constructedId) {
-    const spec = getConstructedDeck(constructedId);
+    const spec = DRAFT.getConstructedDeck(constructedId);
     if (spec && spec.name) bossName = spec.name;
     if (spec && spec.icon) bossIcon = spec.icon;
   }
@@ -465,10 +730,14 @@ function recordResult(winner, playedSlotIdxs, claimedKeywords) {
         runState.map = generateMap();
         runState.map.currentNodeId = runState.map.rootId;
         runState.pendingMapChoice = null;
-      } else if (successors.length >= 2) {
+      } else {
+        // 1+ successors → a click-the-node choice. A SINGLE successor is a
+        // one-option choice (identical map UI to a fork), not a separate
+        // auto-advance behind a "Continue" button. (The startNextGame
+        // single-successor auto-advance is kept as a back-compat fallback for
+        // saves made before this — see startNextGame.)
         runState.pendingMapChoice = { options: successors };
       }
-      // 1 successor: pendingMapChoice stays null; startNextGame auto-advances.
     }
     save();
   } else {
@@ -535,7 +804,7 @@ function rollOneCandidate(type, alreadyOffered) {
       const dupKey = `sticker:${slotIdx}:${sticker.id}`;
       if (alreadyOffered.has(dupKey)) continue;
       alreadyOffered.add(dupKey);
-      const cand = { kind: 'sticker', slotIdx, stickerId: sticker.id };
+      const cand = { kind: 'sticker', slotIdx, sticker_id: sticker.id };
       // Pre-roll empower/subtype at offer time so the preview matches the commit.
       if (sticker.id === 'empower') {
         const tpl = tplForSlot(runState.slots[slotIdx]);
@@ -638,7 +907,7 @@ function rollOneCandidate(type, alreadyOffered) {
       .map((s, i) => ({s, i}))
       .filter(({s, i}) => {
         const tpl = CARDS[s.tplId];
-        if (!tpl || tpl.type !== 'Creature') return false;
+        if (!tpl || !hasType(tpl, 'Creature')) return false;
         return stickersFor(i).length > 0;
       });
     const playedEligible = filterByPlayed(eligibleSlots.map(e => e.i));
@@ -700,15 +969,15 @@ function pickRewardCandidate(idx) {
   if (!cand) return;
   if (cand.kind === 'sticker') {
     const slot = runState.slots[cand.slotIdx];
-    slot.stickers.push(cand.stickerId);
+    slot.stickers.push(cand.sticker_id);
     // Consume pre-rolled empower/subtype; fallback rolls only on legacy shapes.
-    if (cand.stickerId === 'empower') {
+    if (cand.sticker_id === 'empower') {
       const fallbackTpl = tplForSlot(slot);
       const roll = cand.empowerRoll || (fallbackTpl ? rollEmpowerTarget(fallbackTpl) : null);
       if (!Array.isArray(slot.empowerRolls)) slot.empowerRolls = [];
       slot.empowerRolls.push(roll);
     }
-    if (cand.stickerId === 'subtype') {
+    if (cand.sticker_id === 'subtype') {
       const roll = cand.subtypeRoll || rollSubtypeFromDeck(runState.slots, cand.slotIdx);
       if (!Array.isArray(slot.subtypeRolls)) slot.subtypeRolls = [];
       slot.subtypeRolls.push(roll);
@@ -806,7 +1075,7 @@ function pickRewardCandidate(idx) {
       .map((s, i) => ({s, i}))
       .filter(({s, i}) => {
         const tpl = CARDS[s.tplId];
-        if (!tpl || tpl.type !== 'Creature') return false;
+        if (!tpl || !hasType(tpl, 'Creature')) return false;
         return stickersFor(i).length > 0;
       });
     const playedFiltered = filterByPlayed(eligibleSlots.map(e => e.i));
@@ -881,72 +1150,18 @@ function applySplice(baseSlotIdx, stapleSlotIdx) {
   if (!isSpliceableBase(baseSlot.tplId)) return false;
   if (Array.isArray(stapleSlot.stapledTpls) && stapleSlot.stapledTpls.length > 0) return false;
   if (!isCompatibleStaplePair(baseSlot.tplId, stapleSlot.tplId)) return false;
-  // Merge stickers and empowerRolls from the staple into the base. Stickers
-  // are slot-scoped (costMinus1, kw_*, statBoost, innate) and apply to the
-  // merged slot the same way they applied to the original slot — they don't
-  // care which effect within the merged template they live on. Append the
-  // arrays. Empower rolls need remap because they reference effect indices
-  // that shift when effects concatenate (spell base) OR when effects move
-  // into a new ETB trigger (creature base).
-  const baseTpl = CARDS[baseSlot.tplId];
-  const baseEffectCount = countEffects(baseTpl);
-  const baseTriggerCount = (baseTpl.triggers || []).length;
-  const baseAbilityCount = (baseTpl.abilities || []).length;
-  const baseIsCreature = baseTpl.type === 'Creature';
-  const stapleIsCreature = stapleSlot && CARDS[stapleSlot.tplId] && CARDS[stapleSlot.tplId].type === 'Creature';
-  if (!Array.isArray(baseSlot.stapledTpls)) baseSlot.stapledTpls = [];
-  // Compute the merged template's effect/trigger/ability counts BEFORE this
-  // staple is added, so the remap accounts for any prior staples too. The
-  // shift depends on the merge case for each prior staple:
-  //   - Creature+Creature: prior staple's triggers, abilities concat into
-  //     the merged arrays. Effects don't matter (creatures have none).
-  //   - Creature base + Spell staple: prior staple becomes one new ETB
-  //     trigger (so triggers += 1), no effect/ability shift.
-  //   - Spell base + Spell staple: prior staple's effects concat (effects
-  //     += staple's effect count), no trigger/ability shift.
-  const priorStaples = baseSlot.stapledTpls.slice();
-  let priorMergedEffectCount = baseEffectCount;
-  let priorMergedTriggerCount = baseTriggerCount;
-  let priorMergedAbilityCount = baseAbilityCount;
-  for (const priorTplId of priorStaples) {
-    const priorTpl = CARDS[priorTplId];
-    if (!priorTpl) continue;
-    if (baseIsCreature && priorTpl.type === 'Creature') {
-      priorMergedTriggerCount += (priorTpl.triggers || []).length;
-      priorMergedAbilityCount += (priorTpl.abilities || []).length;
-    } else if (baseIsCreature) {
-      priorMergedTriggerCount += 1;
-    } else {
-      priorMergedEffectCount += countEffects(priorTpl);
-    }
-  }
-  // Now finalize: append the staple to the base.
-  baseSlot.stapledTpls.push(stapleSlot.tplId);
-  // Remap and append the staple's stickers and empower rolls.
-  const stapleStickers = (stapleSlot.stickers || []).slice();
-  const stapleRolls = (stapleSlot.empowerRolls || []).slice();
-  const remappedRolls = stapleRolls.map(roll =>
-    remapEmpowerRollForStaple(roll, baseIsCreature, stapleIsCreature,
-                              priorMergedEffectCount, priorMergedTriggerCount, priorMergedAbilityCount));
-  if (!Array.isArray(baseSlot.stickers)) baseSlot.stickers = [];
-  if (!Array.isArray(baseSlot.empowerRolls)) baseSlot.empowerRolls = [];
-  baseSlot.stickers = baseSlot.stickers.concat(stapleStickers);
-  baseSlot.empowerRolls = baseSlot.empowerRolls.concat(remappedRolls);
-  // permaBuffs: defensive merge. Today no spliceable card has permanentEot
-  // (Elystra is the only permanentEot card and is `special` so she can't
-  // splice). But if a future card combines the two, dropping the staple's
-  // permaBuffs would silently zero out accumulated run-persistent buffs.
-  const stapleBuffs = stapleSlot.permaBuffs;
-  if (Array.isArray(stapleBuffs) && stapleBuffs.length > 0) {
-    if (!Array.isArray(baseSlot.permaBuffs)) baseSlot.permaBuffs = [];
-    baseSlot.permaBuffs = baseSlot.permaBuffs.concat(stapleBuffs);
-  }
-  // bonusTrigger: today only Codex sets this (special card, can't splice),
-  // so this branch is dead in v1. Defensive: if the staple has one and the
-  // base doesn't, inherit it.
-  if (stapleSlot.bonusTrigger && !baseSlot.bonusTrigger) {
-    baseSlot.bonusTrigger = stapleSlot.bonusTrigger;
-  }
+  // Merge the staple's slot data into the base via the shared splice core
+  // (engine.js mergeSpliceData). Stickers are slot-scoped and just concat;
+  // empower rolls remap (effect indices shift when arrays concatenate / move
+  // into an ETB trigger); subtype/permaBuffs concat; bonusTrigger: base wins.
+  const merged = mergeSpliceData(
+    { tplId: baseSlot.tplId, stickers: baseSlot.stickers, empowerRolls: baseSlot.empowerRolls,
+      subtypeRolls: baseSlot.subtypeRolls, permaBuffs: baseSlot.permaBuffs,
+      bonusTrigger: baseSlot.bonusTrigger, priorStaples: baseSlot.stapledTpls },
+    { tplId: stapleSlot.tplId, stickers: stapleSlot.stickers, empowerRolls: stapleSlot.empowerRolls,
+      subtypeRolls: stapleSlot.subtypeRolls, permaBuffs: stapleSlot.permaBuffs,
+      bonusTrigger: stapleSlot.bonusTrigger });
+  writeMergedSpliceToSlot(baseSlot, merged);
   // Remove the staple slot. If staple comes BEFORE base, removing it
   // shifts base's index down by 1 — but we don't read baseSlot's index
   // again, we already mutated baseSlot in place above, so the splice is
@@ -1020,14 +1235,19 @@ function rollbackForMidGameRestore() {
 // (Endomorph's absorb). Non-stackable: silent no-op on duplicate.
 // Persists via save flow. Caller separately applies the in-game effect
 // (keyword grant, +1/+1) — this only mutates run-state.
-function applyStickerToSlot(slotIdx, stickerId) {
+function applyStickerToSlot(slotIdx, sticker_id) {
   if (!runState || !runState.slots) return false;
   const slot = runState.slots[slotIdx];
   if (!slot) return false;
-  const sticker = STICKERS[stickerId];
-  if (!sticker) return false;
-  if (!sticker.stackable && slot.stickers.includes(stickerId)) return false;
-  pushStickerWithRoll(slot, stickerId, runState.slots);
+  // sticker_id is a registry id (string) or an inline {kind,...} descriptor
+  // (§3.8 apply_sticker). Inline descriptors carry per-application params, so
+  // they bypass the id-based stackable dedup (cost_mod stacks; set_color is
+  // idempotent).
+  const isInline = sticker_id && typeof sticker_id === 'object';
+  const sticker = isInline ? sticker_id : STICKERS[sticker_id];
+  if (!sticker || !sticker.kind) return false;
+  if (!isInline && !sticker.stackable && slot.stickers.includes(sticker_id)) return false;
+  pushStickerWithRoll(slot, sticker_id, runState.slots);
   save();
   return true;
 }
@@ -1051,10 +1271,8 @@ function appendSlot(tplId, stickers, meta) {
     if (Array.isArray(meta.stapledTpls))  newSlot.stapledTpls  = meta.stapledTpls.slice();
     if (meta.bonusTrigger)                newSlot.bonusTrigger = meta.bonusTrigger;
     if (typeof meta.charges === 'number') newSlot.charges = meta.charges;
-    // Balancer-boss overrides: numeric/string fields, copy directly.
-    if (typeof meta.symmetricized === 'number') newSlot.symmetricized = meta.symmetricized;
-    if (typeof meta.colorOverride === 'string') newSlot.colorOverride = meta.colorOverride;
-    if (typeof meta.extraCost === 'number')     newSlot.extraCost     = meta.extraCost;
+    // §3.8: Balancer overrides (symmetricized/colorOverride/extraCost) are gone —
+    // those cards now persist via stickers (cost_mod / set_color / stat_boost).
   }
   runState.slots.push(newSlot);
   save();
@@ -1079,7 +1297,7 @@ return { start, startNextGame, recordResult, getStats, isActive,
          // Map navigation API.
          getMapState, pickMapNode,
          getPostDraftOffer, pickPostDraftOffer,
-         // save exposed so EFFECTS.applyInGameSplice (mutating slot fields)
+         // save exposed so EFFECTS.apply_in_game_splice (mutating slot fields)
          // can persist. Internal RUN paths already save() inline.
          save,
          load, clearSave, hasSave, rollbackForMidGameRestore };

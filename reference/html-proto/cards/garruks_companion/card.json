@@ -1,0 +1,18 @@
+{
+  "card_id": "garruks_companion",
+  "art": "🐺",
+  "cost": {
+    "G": 1,
+    "C": 1
+  },
+  "keywords": [
+    "trample"
+  ],
+  "name": "Garruk's Companion",
+  "power": 3,
+  "toughness": 2,
+  "types": [
+    "Creature",
+    "Beast"
+  ]
+}

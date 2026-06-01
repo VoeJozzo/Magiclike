@@ -1,0 +1,35 @@
+{
+  "card_id": "branching_bolt",
+  "art": "art.png",
+  "cost": {
+    "R": 1,
+    "C": 1
+  },
+  "effects": [
+    {
+      "kind": "damage",
+      "amount": 2,
+      "target_slot": 0
+    },
+    {
+      "kind": "damage",
+      "amount": 2,
+      "target_slot": 1
+    }
+  ],
+  "name": "Branching Bolt",
+  "target_slots": [
+    {
+      "target": "creature"
+    },
+    {
+      "target": "creature"
+    }
+  ],
+  "keywords": [
+    "flash"
+  ],
+  "types": [
+    "Sorcery"
+  ]
+}

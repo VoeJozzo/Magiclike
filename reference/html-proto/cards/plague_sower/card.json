@@ -1,0 +1,33 @@
+{
+  "card_id": "plague_sower",
+  "art": "art.png",
+  "cost": {
+    "B": 1,
+    "C": 2
+  },
+  "name": "Plague Sower",
+  "power": 2,
+  "toughness": 2,
+  "triggers": [
+    {
+      "event": "card_zone_change",
+      "condition": [
+        "this_card",
+        "card_moves(anywhere, battlefield)"
+      ],
+      "effects": [
+        {
+          "kind": "pump",
+          "power": -2,
+          "toughness": -2
+        }
+      ],
+      "target": "creature"
+    }
+  ],
+  "types": [
+    "Creature",
+    "Human",
+    "Cleric"
+  ]
+}

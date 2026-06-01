@@ -1,0 +1,11 @@
+{
+  "card_id": "bone_reliquary",
+  "name": "Bone Reliquary",
+  "art": "💀",
+  "types": [
+    "Artifact",
+    "Land",
+    "Swamp"
+  ],
+  "mana": "B"
+}

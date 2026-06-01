@@ -1,0 +1,21 @@
+{
+  "card_id": "freeze_moment",
+  "art": "❄",
+  "cost": {
+    "U": 1
+  },
+  "target": "creature",
+  "effects": [
+    {
+      "kind": "affect_creature",
+      "severity": "tap"
+    }
+  ],
+  "name": "Freeze Moment",
+  "keywords": [
+    "flash"
+  ],
+  "types": [
+    "Sorcery"
+  ]
+}

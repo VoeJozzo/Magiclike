@@ -1,0 +1,16 @@
+{
+  "card_id": "alloy_myr",
+  "name": "Alloy Myr",
+  "art": "🤖",
+  "cost": {
+    "C": 2
+  },
+  "types": [
+    "Artifact",
+    "Creature",
+    "Myr"
+  ],
+  "power": 2,
+  "toughness": 2,
+  "keywords": []
+}

@@ -1,0 +1,33 @@
+{
+  "card_id": "wolfbriar_elemental",
+  "art": "art.png",
+  "cost": {
+    "G": 1,
+    "C": 3
+  },
+  "keywords": [
+    "trample"
+  ],
+  "name": "Wolfbriar Elemental",
+  "power": 4,
+  "toughness": 4,
+  "triggers": [
+    {
+      "event": "card_zone_change",
+      "condition": [
+        "this_card",
+        "card_moves(anywhere, battlefield)"
+      ],
+      "effects": [
+        {
+          "kind": "untap"
+        }
+      ],
+      "target": "your_creature"
+    }
+  ],
+  "types": [
+    "Creature",
+    "Elemental"
+  ]
+}

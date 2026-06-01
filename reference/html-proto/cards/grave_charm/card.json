@@ -1,0 +1,52 @@
+{
+  "card_id": "grave_charm",
+  "art": "💀",
+  "cost": {
+    "B": 1,
+    "C": 2
+  },
+  "effects": {
+    "mode_names": [
+      "Slay (destroy)",
+      "Wither (discard 2)",
+      "Drain (gain 4, lose 2)"
+    ],
+    "modes": [
+      [
+        {
+          "kind": "affect_creature",
+          "severity": "destroy",
+          "target": "creature"
+        }
+      ],
+      [
+        {
+          "kind": "move_card",
+          "from_zone": "hand",
+          "to_zone": "graveyard",
+          "target": "opp",
+          "amount": 2
+        }
+      ],
+      [
+        {
+          "kind": "gain_life",
+          "amount": 4,
+          "scope": "self"
+        },
+        {
+          "kind": "gain_life",
+          "target": "opp",
+          "amount": -2
+        }
+      ]
+    ]
+  },
+  "name": "Grave Charm",
+  "keywords": [
+    "flash"
+  ],
+  "types": [
+    "Sorcery"
+  ]
+}

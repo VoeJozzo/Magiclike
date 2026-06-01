@@ -1,0 +1,25 @@
+{
+  "card_id": "doom_blade",
+  "art": "art.png",
+  "cost": {
+    "B": 1,
+    "C": 1
+  },
+  "target": "creature",
+  "target_filter": {
+    "not_color": "B"
+  },
+  "effects": [
+    {
+      "kind": "affect_creature",
+      "severity": "destroy"
+    }
+  ],
+  "name": "Doom Blade",
+  "keywords": [
+    "flash"
+  ],
+  "types": [
+    "Sorcery"
+  ]
+}

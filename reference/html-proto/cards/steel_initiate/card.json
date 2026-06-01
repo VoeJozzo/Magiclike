@@ -1,0 +1,30 @@
+{
+  "card_id": "steel_initiate",
+  "art": "⚔",
+  "cost": {
+    "W": 1
+  },
+  "name": "Steel Initiate",
+  "power": 2,
+  "toughness": 2,
+  "triggers": [
+    {
+      "event": "attacks",
+      "condition": [
+        "this_card"
+      ],
+      "effects": [
+        {
+          "kind": "gain_life",
+          "amount": 1,
+          "scope": "self"
+        }
+      ]
+    }
+  ],
+  "types": [
+    "Creature",
+    "Human",
+    "Soldier"
+  ]
+}

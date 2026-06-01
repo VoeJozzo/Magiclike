@@ -1,0 +1,33 @@
+{
+  "card_id": "soulblade_captain",
+  "art": "🏇",
+  "cost": {
+    "W": 1,
+    "C": 2
+  },
+  "name": "Soulblade Captain",
+  "power": 2,
+  "toughness": 2,
+  "triggers": [
+    {
+      "event": "spell_cast",
+      "condition": [
+        "another_card",
+        "controlled_by(you)"
+      ],
+      "effects": [
+        {
+          "kind": "pump",
+          "scope": "all_yours",
+          "power": 1,
+          "toughness": 0
+        }
+      ]
+    }
+  ],
+  "types": [
+    "Creature",
+    "Human",
+    "Knight"
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "card_id": "ravenous_plague",
+  "art": "art.png",
+  "cost": {
+    "B": 1,
+    "C": 2
+  },
+  "target": "creature",
+  "target_filter": {
+    "max_tough": 3
+  },
+  "effects": [
+    {
+      "kind": "affect_creature",
+      "severity": "destroy"
+    }
+  ],
+  "name": "Ravenous Plague",
+  "types": [
+    "Sorcery"
+  ]
+}

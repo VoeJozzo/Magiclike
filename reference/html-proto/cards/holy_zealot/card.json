@@ -1,0 +1,33 @@
+{
+  "card_id": "holy_zealot",
+  "art": "art.png",
+  "cost": {
+    "W": 1
+  },
+  "keywords": [
+    "haste"
+  ],
+  "name": "Holy Zealot",
+  "power": 1,
+  "toughness": 1,
+  "triggers": [
+    {
+      "event": "attacks",
+      "condition": [
+        "this_card"
+      ],
+      "effects": [
+        {
+          "kind": "gain_life",
+          "amount": 1,
+          "scope": "self"
+        }
+      ]
+    }
+  ],
+  "types": [
+    "Creature",
+    "Human",
+    "Cleric"
+  ]
+}

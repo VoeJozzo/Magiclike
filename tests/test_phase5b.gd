@@ -37,12 +37,13 @@ func _test_get_legal_actions_main_phase() -> void:
 	# (Pyromaniac, Bloodlust Berserker, Lightning Bolt). At MAIN1 with no
 	# mana yet, legal actions should be:
 	#   - pass priority (1)
+	#   - end turn (1, active player on an empty stack)
 	#   - tap each Mountain (3 mana abilities)
 	#   - Pyromaniac, Berserker = sorcery-speed, but no mana yet → not legal
 	#   - Lightning Bolt = needs target AND no R → not legal yet
-	# So the count is exactly 4.
+	# So the count is exactly 5.
 	var actions := RulesEngine.get_legal_actions("you")
-	_assert_eq(actions.size(), 4, "MAIN1 with no mana: 1 pass + 3 land taps")
+	_assert_eq(actions.size(), 5, "MAIN1 with no mana: 1 pass + 1 end-turn + 3 land taps")
 	# Check pass is present
 	var has_pass := false
 	for a in actions:
@@ -53,15 +54,15 @@ func _test_get_legal_actions_main_phase() -> void:
 	# Tap all three Mountains for RRR
 	for c in s.you.battlefield:
 		if c.template.card_id == "mountain":
-			RulesEngine.execute_action(Action.make_activate_ability(c.instance_id))
+			RulesEngine.execute_action(Action.make_tap_land_for_mana(c.instance_id))
 	# Now: pass + Pyromaniac cast (no target) + Berserker cast (no target)
 	# + Lightning Bolt fan-out across legal targets.
 	# Berserker costs {R:2, C:1} = 3 mana total, and RRR is enough since the
 	# generic pip can be paid with red. So Berserker IS castable.
 	# Legal Bolt targets: you, opp, plus opp's Grizzly Bears = 3 targets.
-	# Final: 1 pass + 1 Pyromaniac + 1 Berserker + 3 Bolt targets = 6.
+	# Final: 1 pass + 1 end-turn + 1 Pyromaniac + 1 Berserker + 3 Bolt targets = 7.
 	actions = RulesEngine.get_legal_actions("you")
-	_assert_eq(actions.size(), 6, "MAIN1 with RRR: 1 pass + 1 Pyromaniac + 1 Berserker + 3 Bolt targets")
+	_assert_eq(actions.size(), 7, "MAIN1 with RRR: 1 pass + 1 end-turn + 1 Pyromaniac + 1 Berserker + 3 Bolt targets")
 
 
 func _test_get_legal_actions_combat_attack() -> void:

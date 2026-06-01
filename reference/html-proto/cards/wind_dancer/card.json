@@ -1,0 +1,17 @@
+{
+  "card_id": "wind_dancer",
+  "art": "🧚",
+  "cost": {
+    "U": 1
+  },
+  "keywords": [
+    "flying"
+  ],
+  "name": "Wind Dancer",
+  "power": 1,
+  "toughness": 1,
+  "types": [
+    "Creature",
+    "Faerie"
+  ]
+}

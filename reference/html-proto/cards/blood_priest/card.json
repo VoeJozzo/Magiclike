@@ -1,0 +1,32 @@
+{
+  "card_id": "blood_priest",
+  "art": "🩸",
+  "cost": {
+    "B": 1,
+    "C": 1
+  },
+  "name": "Blood Priest",
+  "power": 1,
+  "toughness": 2,
+  "triggers": [
+    {
+      "event": "card_zone_change",
+      "condition": [
+        "this_card",
+        "card_moves(anywhere, battlefield)"
+      ],
+      "effects": [
+        {
+          "kind": "gain_life",
+          "amount": -2
+        }
+      ],
+      "target": "opp"
+    }
+  ],
+  "types": [
+    "Creature",
+    "Human",
+    "Cleric"
+  ]
+}

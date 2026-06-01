@@ -1,0 +1,18 @@
+{
+  "card_id": "giant_spider",
+  "art": "🕷",
+  "cost": {
+    "G": 1,
+    "C": 2
+  },
+  "keywords": [
+    "reach"
+  ],
+  "name": "Giant Spider",
+  "power": 2,
+  "toughness": 4,
+  "types": [
+    "Creature",
+    "Spider"
+  ]
+}

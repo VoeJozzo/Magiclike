@@ -1,0 +1,32 @@
+{
+  "card_id": "crusader_captain",
+  "art": "art.png",
+  "cost": {
+    "W": 2,
+    "C": 2
+  },
+  "name": "Crusader Captain",
+  "power": 3,
+  "toughness": 3,
+  "triggers": [
+    {
+      "event": "attacks",
+      "condition": [
+        "this_card"
+      ],
+      "effects": [
+        {
+          "kind": "pump",
+          "power": 1,
+          "toughness": 1
+        }
+      ],
+      "target": "your_creature"
+    }
+  ],
+  "types": [
+    "Creature",
+    "Human",
+    "Knight"
+  ]
+}

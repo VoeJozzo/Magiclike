@@ -1,23 +1,25 @@
 {
-  "tplId": "pacifism",
-  "name": "Pacifism",
-  "type": "Sorcery",
+  "card_id": "pacifism",
+  "art": "art.png",
   "cost": {
     "W": 1,
     "C": 1
   },
-  "art": "🕊",
-  "text": "Target creature can't attack or block.",
+  "target": "creature",
   "effects": [
     {
-      "kind": "restrict",
-      "target": "creature",
-      "cantAttack": true,
-      "cantBlock": true
+      "kind": "grant_keyword",
+      "keyword": "defender"
+    },
+    {
+      "kind": "grant_keyword",
+      "keyword": "no_block"
     }
   ],
-  "color": "W",
-  "colors": [
-    "W"
+  "name": "Pacifism",
+  "text": "Target creature can't attack or block.",
+  "custom_text": true,
+  "types": [
+    "Sorcery"
   ]
 }

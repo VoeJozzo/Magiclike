@@ -2,9 +2,10 @@
 function passLabel(G, expectedActor) {
   if (expectedActor !== 'you') return 'Pass';
   if (G.pendingTriggerTarget && G.pendingTriggerTarget.controller === 'you') return 'Pick Target';
-  if (G.pendingRipSelect && G.pendingRipSelect.who === 'you') return 'Rip a Permanent';
   if (G.pendingNumberChoice && G.pendingNumberChoice.who === 'you') return 'Pick a Number';
   if (G.pendingSymmetricizeChoice && G.pendingSymmetricizeChoice.who === 'you') return 'Pick a Value';
+  if (G.pendingEdictChoice && G.pendingEdictChoice.who === 'you') return 'Choose';
+  if (G.pendingOptionalCost && G.pendingOptionalCost.who === 'you') return 'Pay?';
   if (G.priority && G.stack.length > 0) return 'No Reaction';
   if (G.phase === 'COMBAT_ATTACK' && G.activePlayer === 'you' && !G.attackersDeclared) return 'Skip Combat';
   if (G.phase === 'COMBAT_BLOCK'  && G.activePlayer === 'opp' && !G.blockersDeclared) return 'No Blocks';
@@ -40,11 +41,16 @@ function render() {
   CONTROLLER.clearUiOnPhaseChange();
   const pt = CONTROLLER.pendingTarget();
 
-  setText('youLife', G.you.life); setText('oppLife', G.opp.life);
-  setText('youLib', G.you.library.length); setText('oppLib', G.opp.library.length);
-  setText('youGv', G.you.graveyard.length); setText('oppGv', G.opp.graveyard.length);
-  setText('youEx', (G.you.exile || []).length); setText('oppEx', (G.opp.exile || []).length);
-  setText('youHand2', G.you.hand.length); setText('oppHand', G.opp.hand.length);
+  // Mirror counters for both seats. Element IDs follow `<side><Field>` — note
+  // the hand COUNT is `<side>HandCount` (the bare `youHand` id is the player's
+  // card container, not a count), so the two stay symmetric for this loop.
+  for (const w of ['you', 'opp']) {
+    setText(w + 'Life', G[w].life);
+    setText(w + 'Lib', G[w].library.length);
+    setText(w + 'Gv', G[w].graveyard.length);
+    setText(w + 'Ex', (G[w].exile || []).length);
+    setText(w + 'HandCount', G[w].hand.length);
+  }
   setText('youName', 'You' + (G.activePlayer === 'you' ? ' ◉' : ''));
   setText('oppName', 'Opponent' + (G.activePlayer === 'opp' ? ' ◉' : ''));
 
@@ -78,12 +84,12 @@ function render() {
       if (!pt || !ptCard) return false;
       if (pt.kind === 'cast') {
         const modeEffects = ENGINE.effectsForMode(ptCard, pt.modeIdx);
-        return modeEffects.some(e => e.target === 'spell' || e.target === 'permanentOrSpell');
+        return modeEffects.some(e => e.target === 'spell' || e.target === 'permanent_or_spell');
       }
       if (pt.kind === 'ability') {
         const ab = (ptCard.abilities || [])[pt.abilityIdx || 0];
         if (!ab) return false;
-        return (ab.effects || []).some(e => e.target === 'spell' || e.target === 'permanentOrSpell');
+        return (ab.effects || []).some(e => e.target === 'spell' || e.target === 'permanent_or_spell');
       }
       return false;
     })();
@@ -98,7 +104,7 @@ function render() {
         const ab = (ptCard.abilities || [])[pt.abilityIdx || 0];
         effects = (ab && ab.effects) || [];
       }
-      return effects.some(e => e.target === 'permanentOrSpell');
+      return effects.some(e => e.target === 'permanent_or_spell');
     })();
     bannerHint.textContent = isCounterTarget
       ? (isSpliceTargetMode ? '— click a spell or permanent to splice it' : '— click a spell to counter it')
@@ -114,7 +120,7 @@ function render() {
         div = makeSyntheticCard({
           name: it.sourceName + ' triggers',
           type: 'Trigger',
-          text: (it.trig.text || it.trig.event) + tgtLabel,
+          text: triggerLogText(it.trig) + tgtLabel,
           art: '⚡',
           color: 'C',
           scale: 0.7,
@@ -138,7 +144,7 @@ function render() {
   }
 
   renderHand('youHand', G.you.hand, 'you');
-  renderOppHandBacks(G.opp.hand.length);
+  renderOppHand(G.opp.hand);
   renderBf('youBf', G.you.battlefield, 'you');
   renderBf('oppBf', G.opp.battlefield, 'opp');
 
@@ -158,9 +164,10 @@ function render() {
                   || (G.pendingSearch && G.pendingSearch.who === 'you')
                   || (G.pendingTriggerBuild && G.pendingTriggerBuild.who === 'you')
                   || (G.pendingTriggerTarget && G.pendingTriggerTarget.controller === 'you')
-                  || (G.pendingRipSelect && G.pendingRipSelect.who === 'you')
                   || (G.pendingNumberChoice && G.pendingNumberChoice.who === 'you')
                   || (G.pendingSymmetricizeChoice && G.pendingSymmetricizeChoice.who === 'you')
+                  || (G.pendingEdictChoice && G.pendingEdictChoice.who === 'you')
+                  || (G.pendingOptionalCost && G.pendingOptionalCost.who === 'you')
                   || expectedActor !== 'you';
 
   document.getElementById('btnEnd').disabled =
@@ -200,20 +207,16 @@ function render() {
   if (G.pendingSearch && G.pendingSearch.who === 'you') {
     Modal.show('searchModal', { dismissible: false });
     setText('searchTitle', `${G.pendingSearch.source.toUpperCase()} — PICK A CARD`);
-    const list = document.getElementById('searchList');
-    list.innerHTML = '';
     const filter = G.pendingSearch.filter || {};
-    const matches = G.you.library.filter(c => !filter.type || c.type === filter.type);
-    if (matches.length === 0) {
-      list.innerHTML = '<div style="color:#888;font-size:11px">No matching cards.</div>';
-    } else {
-      for (const card of matches) {
-        const btn = makeCardEl(card);
-        btn.style.cursor = 'pointer';
-        btn.onclick = () => CONTROLLER.searchPick(card.iid);
-        list.appendChild(btn);
-      }
-    }
+    const matches = G.you.library.filter(c => !filter.type || hasType(c, filter.type));
+    // Native card size (scale null) — the search list can be long, so cards stay
+    // at hand size rather than the 2× showcase the meta pickers use.
+    renderCardPicker(
+      document.getElementById('searchList'),
+      matches.map(card => ({ card, value: card.iid })),
+      iid => CONTROLLER.searchPick(iid),
+      { scale: null, emptyHtml: '<div style="color:#888;font-size:11px">No matching cards.</div>' },
+    );
   } else {
     Modal.hide('searchModal');
   }
@@ -297,13 +300,10 @@ function render() {
     const btns = document.getElementById('numberChoiceButtons');
     btns.innerHTML = '';
     for (let n = p.min; n <= p.max; n++) {
-      const b = document.createElement('button');
-      b.textContent = n;
-      b.style.cssText = 'background:#3a1840;border:2px solid #cc44aa;color:#ee88cc;padding:14px 22px;font-family:inherit;font-size:24px;font-weight:bold;cursor:pointer;border-radius:6px;min-width:60px;transition:transform .1s,background .1s';
-      b.onmouseover = () => { b.style.background = '#5a2860'; b.style.transform = 'translateY(-2px)'; };
-      b.onmouseout  = () => { b.style.background = '#3a1840'; b.style.transform = 'translateY(0)'; };
-      b.onclick = () => CONTROLLER.numberChoice(n);
-      btns.appendChild(b);
+      btns.appendChild(makeChoiceButton(String(n),
+        'border:2px solid #cc44aa;color:#ee88cc;padding:14px 22px;font-family:inherit;font-size:24px;font-weight:bold;cursor:pointer;border-radius:6px;min-width:60px;transition:transform .1s,background .1s',
+        '#3a1840', '#5a2860',
+        () => CONTROLLER.numberChoice(n)));
     }
   } else {
     Modal.hide('numberChoiceModal');
@@ -322,16 +322,41 @@ function render() {
       { which: 'cost',      label: 'Cost',      value: p.values.cost },
     ];
     for (const entry of labels) {
-      const b = document.createElement('button');
-      b.innerHTML = `<div style="font-size:11px;opacity:0.7;letter-spacing:0.1em;text-transform:uppercase">${entry.label}</div><div style="font-size:24px;font-weight:bold;margin-top:4px">${entry.value}</div>`;
-      b.style.cssText = 'background:#152030;border:2px solid #88aacc;color:#aaccee;padding:12px 20px;font-family:inherit;cursor:pointer;border-radius:6px;min-width:90px;transition:transform .1s,background .1s';
-      b.onmouseover = () => { b.style.background = '#1e2c44'; b.style.transform = 'translateY(-2px)'; };
-      b.onmouseout  = () => { b.style.background = '#152030'; b.style.transform = 'translateY(0)'; };
-      b.onclick = () => CONTROLLER.symmetricizeChoice(entry.which);
-      btns.appendChild(b);
+      btns.appendChild(makeChoiceButton(
+        `<div style="font-size:11px;opacity:0.7;letter-spacing:0.1em;text-transform:uppercase">${entry.label}</div><div style="font-size:24px;font-weight:bold;margin-top:4px">${entry.value}</div>`,
+        'border:2px solid #88aacc;color:#aaccee;padding:12px 20px;font-family:inherit;cursor:pointer;border-radius:6px;min-width:90px;transition:transform .1s,background .1s',
+        '#152030', '#1e2c44',
+        () => CONTROLLER.symmetricizeChoice(entry.which)));
     }
   } else {
     Modal.hide('symmetricizeChoiceModal');
+  }
+  // Edict forced-sacrifice (GAP 2): selection is now IN-PLACE — the eligible
+  // permanents glow on the battlefield (see the .targetable branch in the
+  // per-card render) and a click sacks one (clickBattlefield → edictChoice). The
+  // status bar shows the prompt (see the status-bar block below). No modal —
+  // simpler/clearer than the popup it replaced. Force-hide any stale modal.
+  Modal.hide('edictChoiceModal');
+  // Optional-cost trigger (Land+Spell staple ETB). The controller may pay the
+  // stapled spell's mana cost to use its effect, or decline.
+  if (G.pendingOptionalCost && G.pendingOptionalCost.who === 'you') {
+    Modal.show('optionalCostModal', { dismissible: false });
+    const p = G.pendingOptionalCost;
+    const costStr = renderManaSymbols(manaCostBraces(p.cost));
+    document.getElementById('optionalCostSubtitle').innerHTML =
+      `${p.source} entered.<br>Pay ${costStr} to use its stapled effect?`;
+    const btns = document.getElementById('optionalCostButtons');
+    btns.innerHTML = '';
+    btns.appendChild(makeChoiceButton(`Pay ${costStr}`,
+      'border:2px solid #66bb88;color:#bfe9cc;padding:12px 20px;font-family:inherit;cursor:pointer;border-radius:6px;min-width:90px;transition:transform .1s,background .1s',
+      '#15241a', '#1e3426',
+      () => CONTROLLER.optionalCost(true)));
+    btns.appendChild(makeChoiceButton('Decline',
+      'border:2px solid #886666;color:#e9cccc;padding:12px 20px;font-family:inherit;cursor:pointer;border-radius:6px;min-width:90px;transition:transform .1s,background .1s',
+      '#241515', '#341e1e',
+      () => CONTROLLER.optionalCost(false)));
+  } else {
+    Modal.hide('optionalCostModal');
   }
   // Modal-spell mode picker — illegal modes disabled but rendered for visibility.
   const pmc = CONTROLLER.pendingModalChoice();
@@ -344,7 +369,7 @@ function render() {
       const list = document.getElementById('modalChoiceList');
       list.innerHTML = '';
       const modes = ENGINE.getModes(card);
-      const modeNames = (card.effects && card.effects.modeNames) || [];
+      const mode_names = (card.effects && card.effects.mode_names) || [];
       for (let mIdx = 0; mIdx < modes.length; mIdx++) {
         const modeEffects = modes[mIdx];
         const targetedEff = (modeEffects || []).find(ENGINE.effectNeedsTarget);
@@ -359,7 +384,7 @@ function render() {
         const legal = ENGINE.isLegalAction('you', fakeAction);
         const btn = document.createElement('button');
         btn.className = 'modal-choice' + (legal ? '' : ' disabled');
-        btn.textContent = modeNames[mIdx] || `Mode ${mIdx + 1}`;
+        btn.textContent = mode_names[mIdx] || `Mode ${mIdx + 1}`;
         if (legal) {
           btn.onclick = () => CONTROLLER.pickModalMode(mIdx);
         }
@@ -409,12 +434,14 @@ function render() {
     }
   } else if (G.pendingTriggerTarget && G.pendingTriggerTarget.controller === 'you') {
     sb.textContent = `${G.pendingTriggerTarget.sourceName} triggered — choose a target. Click highlighted creatures or player buttons.`;
-  } else if (G.pendingRipSelect && G.pendingRipSelect.who === 'you') {
-    sb.textContent = `${G.pendingRipSelect.source} — choose a permanent of yours to rip. It will be destroyed AND removed from your deck for the rest of the run.`;
   } else if (G.pendingNumberChoice && G.pendingNumberChoice.who === 'you') {
     sb.textContent = `${G.pendingNumberChoice.source} — pick a number from ${G.pendingNumberChoice.min} to ${G.pendingNumberChoice.max}.`;
   } else if (G.pendingSymmetricizeChoice && G.pendingSymmetricizeChoice.who === 'you') {
     sb.textContent = `${G.pendingSymmetricizeChoice.source} on ${G.pendingSymmetricizeChoice.targetName} — pick power, toughness, or cost.`;
+  } else if (G.pendingEdictChoice && G.pendingEdictChoice.who === 'you') {
+    sb.textContent = `${G.pendingEdictChoice.source} — choose a ${G.pendingEdictChoice.filter === 'permanent' ? 'permanent' : 'creature'} to sacrifice.`;
+  } else if (G.pendingOptionalCost && G.pendingOptionalCost.who === 'you') {
+    sb.textContent = `${G.pendingOptionalCost.source} — pay the cost to use its stapled effect, or decline.`;
   } else if (G.forcedDiscard && G.forcedDiscard.who === 'you' && G.forcedDiscard.remaining > 0) {
     sb.textContent = `${G.forcedDiscard.source} — choose ${G.forcedDiscard.remaining} more card(s) to discard.`;
   } else if (G.cleanupDiscarding && G.activePlayer === 'you') {
@@ -452,11 +479,11 @@ function render() {
         && G.pendingTriggerTarget.controller === 'you'
         && G.pendingTriggerTarget.valid
         && G.pendingTriggerTarget.valid.length > 0
-        && G.pendingTriggerTarget.valid[0].kind === 'graveyardCreature') {
+        && G.pendingTriggerTarget.valid[0].kind === 'graveyard_creature') {
       graveTargets = G.pendingTriggerTarget.valid;
     } else if (pt) {
       const eff = pendingTargetEffect(pt);
-      if (eff && eff.target === 'graveyardCreature') {
+      if (eff && eff.target === 'graveyard_creature') {
         graveTargets = ENGINE.getValidTargets(eff, 'you');
       }
     }
@@ -495,7 +522,7 @@ function drawTargetLines() {
       if (!tgt) continue;
       // Player targets have no good DOM anchor — skip.
       let targetEl = null;
-      if (tgt.kind === 'creature' || tgt.kind === 'permanent' || tgt.kind === 'graveyardCreature') {
+      if (tgt.kind === 'creature' || tgt.kind === 'permanent' || tgt.kind === 'graveyard_creature') {
         if (typeof tgt.iid === 'number') {
           targetEl = document.querySelector(`[data-iid="${tgt.iid}"]`);
         }
@@ -507,8 +534,8 @@ function drawTargetLines() {
       const tRect = targetEl.getBoundingClientRect();
       const tx = tRect.left + tRect.width / 2;
       const ty = tRect.top + tRect.height / 2;
-      // Effects share targets[0] by default; targetSlot:N picks targets[N].
-      const slotEffects = effects.filter(e => (e.targetSlot || 0) === ti);
+      // Effects share targets[0] by default; target_slot:N picks targets[N].
+      const slotEffects = effects.filter(e => (e.target_slot || 0) === ti);
       const valence = classifyValence(slotEffects, tgt, item.controller, G);
       const palette = VALENCE_PALETTE[valence];
       const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
@@ -527,15 +554,16 @@ function drawTargetLines() {
 }
 
 // Valence → line color (red=harm, green=benefit, orange=neutral).
+// Post-collapse (§3.5/§3.8) live kinds. move_card and pump are shape-dependent
+// (draw vs bounce; buff vs weaken) — classified by from/to and sign in
+// classifyValence, not by flat membership.
 const HARMFUL_KINDS = new Set([
-  'damage', 'damageAll', 'removeCreature', 'removeAll', 'destroyAndStickerSlot',
-  'weaken', 'restrict', 'discard', 'edict', 'bleach', 'embargo',
-  'gainControl', 'steal', 'counter', 'shuffleIntoLibrary', 'exileUntilEOT',
-  'ripPermanent', 'symmetricize', 'fightTarget',
+  'damage', 'affect_creature', 'change_control',
+  'counter', 'rip', 'symmetricize', 'fight_target',
+  'sacrifice', 'chooses', 'apply_sticker', 'discard',
 ]);
 const BENEFICIAL_KINDS = new Set([
-  'pump', 'pumpAllYours', 'addCounter', 'grantKeyword', 'untap',
-  'flicker', 'returnFromGraveyard', 'gainLife',
+  'grant_keyword', 'untap', 'gain_life',
 ]);
 const VALENCE_PALETTE = {
   harm:    { color: '#ff5544', marker: 'tgt-arrow-red' },
@@ -558,7 +586,14 @@ const VALENCE_PALETTE = {
 function classifyValence(slotEffects, target, casterSide, G) {
   let hasHarm = false, hasBenefit = false;
   for (const e of slotEffects) {
-    if (HARMFUL_KINDS.has(e.kind)) hasHarm = true;
+    if (e.kind === 'move_card') {
+      // draw / graveyard-return = benefit; bounce / discard / shuffle / exile = harm.
+      const draw = e.from_zone === 'library' && e.to_zone === 'hand';
+      const ret = e.from_zone === 'graveyard' && e.to_zone === 'hand';
+      if (draw || ret) hasBenefit = true; else hasHarm = true;
+    } else if (e.kind === 'pump') {
+      if ((e.power || 0) < 0 || (e.toughness || 0) < 0) hasHarm = true; else hasBenefit = true;
+    } else if (HARMFUL_KINDS.has(e.kind)) hasHarm = true;
     else if (BENEFICIAL_KINDS.has(e.kind)) hasBenefit = true;
   }
   // Resolve target controller for self-vs-other check.
@@ -617,7 +652,7 @@ function openZoneTargeting(who, zone, validTargets) {
 function submitGraveyardTarget(iid) {
   const G = ENGINE.state();
   const card = G.you.graveyard.find(c => c.iid === iid);
-  const target = {kind:'graveyardCreature', iid, label: card ? card.name : 'creature', controller: 'you'};
+  const target = {kind:'graveyard_creature', iid, label: card ? card.name : 'creature', controller: 'you'};
   if (CONTROLLER.submitTargetedAction(target)) {
     Modal.hide('zoneModal');
   }
@@ -648,6 +683,23 @@ function renderManaPool(id, mana) {
   }
 }
 
+// One option button for the choice-modal prompts (pick-a-number / symmetricize
+// / edict). Centralizes the create + lift-on-hover (background swap + translateY)
+// + onclick boilerplate the three prompts used to each spell out. `css` is the
+// per-modal layout/border/color (no background — that's set from normalBg so it
+// can't drift from the hover swap). `html` is trusted markup (our own data).
+function makeChoiceButton(html, css, normalBg, hoverBg, onclick) {
+  const b = document.createElement('button');
+  b.innerHTML = html;
+  b.style.cssText = css;
+  b.style.background = normalBg;
+  b.onmouseover = () => { b.style.background = hoverBg; b.style.transform = 'translateY(-2px)'; };
+  b.onmouseout  = () => { b.style.background = normalBg; b.style.transform = 'translateY(0)'; };
+  b.onclick = onclick;
+  return b;
+}
+
+
 function renderHand(id, hand, who) {
   const el = document.getElementById(id);
   el.innerHTML = '';
@@ -661,8 +713,8 @@ function renderHand(id, hand, who) {
   }
 }
 function canPlayFromUI(who, card) {
-  // Probe legality with placeholder targets per targetSlot.
-  if (card.type === 'Land') {
+  // Probe legality with placeholder targets per target_slot.
+  if (hasType(card, 'Land')) {
     return ENGINE.isLegalAction(who, {type:'playLand', cardIid: card.iid});
   }
   if (ENGINE.isModal(card)) {
@@ -680,19 +732,33 @@ function canPlayFromUI(who, card) {
     }
     return false;
   }
-  const hasTarget = (card.effects || []).some(ENGINE.effectNeedsTarget);
-  if (hasTarget) {
-    const fakeTargets = fakeTargetsForLegality(card.effects, who);
-    if (fakeTargets === null) return false;
+  // Non-modal spell. Route through the engine's canonical targeting API so the
+  // highlight can't drift from the cast flow / trigger prompt (all three share
+  // objectNeedsTarget/probeTargetsForObject — covers top-level target(),
+  // ability-level target_slots, and legacy per-effect targets).
+  if (ENGINE.objectNeedsTarget(card)) {
+    const fakeTargets = ENGINE.probeTargetsForObject(card, who);
+    if (!fakeTargets) return false;   // no legal target → not castable
     return ENGINE.isLegalAction(who, {type:'castSpell', cardIid: card.iid, targets: fakeTargets});
   }
   return ENGINE.isLegalAction(who, {type:'castSpell', cardIid: card.iid});
 }
 
-function renderOppHandBacks(n) {
+function renderOppHand(hand) {
   const el = document.getElementById('oppHandView');
   el.innerHTML = '';
-  for (let i=0; i<n; i++) {
+  // Devtools (revealAiHand): show the AI's actual cards face-up for judging
+  // its decisions. Read-only — no onclick, since the player can't play them.
+  if (typeof SETTINGS !== 'undefined' && SETTINGS.get('revealAiHand')) {
+    for (const card of hand) {
+      const div = makeCardEl(card, { inHand: true });
+      div.style.setProperty('--scale', '0.5');
+      div.classList.add('ai-revealed');
+      el.appendChild(div);
+    }
+    return;
+  }
+  for (let i = 0; i < hand.length; i++) {
     // Cardback: just the C-color frame at small scale, inner elements
     // hidden by .frame-cardback CSS. No name / no art / no cost rendered.
     el.innerHTML += '<div class="card-frame col-C frame-cardback" style="--scale: 0.35"></div>';
@@ -721,9 +787,9 @@ function renderBf(id, bf, who) {
     return co + '|' + (card.name || '');
   };
   const sorted = bf.slice().sort((a, b) => {
-    const t = typeOrder(a.type) - typeOrder(b.type);
+    const t = typeOrder(governingType(a)) - typeOrder(governingType(b));
     if (t !== 0) return t;
-    if (a.type === 'Land' && b.type === 'Land') {
+    if (hasType(a, 'Land') && hasType(b, 'Land')) {
       const ka = landKey(a), kb = landKey(b);
       if (ka < kb) return -1;
       if (ka > kb) return 1;
@@ -752,13 +818,15 @@ function renderBf(id, bf, who) {
         div.classList.add('targetable');
       }
     }
-    // Rip-select: every player permanent is targetable.
-    if (G.pendingRipSelect && G.pendingRipSelect.who === 'you' && who === 'you') {
+    // Edict forced-sacrifice: glow the eligible permanents the player may sac
+    // (in-place selection — no modal). Clicking one routes to edictChoice.
+    if (G.pendingEdictChoice && G.pendingEdictChoice.who === 'you'
+        && G.pendingEdictChoice.pool.some(c => c.iid === card.iid)) {
       div.classList.add('targetable');
     }
     // Subtle ambient glow on untapped lands you control -- signals "this
     // can be tapped for mana" without the full .activatable intensity.
-    if (who === 'you' && card.type === 'Land' && !card.tapped) {
+    if (who === 'you' && hasType(card, 'Land') && !card.tapped) {
       div.classList.add('land-tappable');
     }
     // Eligibility glow for attackers/blockers during the declaration step.
@@ -772,9 +840,9 @@ function renderBf(id, bf, who) {
         && who === 'you' && ENGINE.canCreatureBlock(card)) {
       div.classList.add('could-blk');
     }
-    if (who === 'you' && card.type === 'Creature' && card.abilities && !card.tapped && !card.sick) {
+    if (who === 'you' && hasType(card, 'Creature') && card.abilities && !card.tapped && !card.sick) {
       const hasAvail = card.abilities.some((ab, i) => {
-        if (ab.effects[0].kind === 'addMana') return true;
+        if (ab.effects[0].kind === 'add_mana') return true;
         const targetedEff = ab.effects.find(ENGINE.effectNeedsTarget);
         const probe = targetedEff
           ? {type:'activateAbility', cardIid: card.iid, abilityIdx: i,
@@ -791,7 +859,13 @@ function renderBf(id, bf, who) {
   let showPlayerTargetButton = false;
   if (pt) {
     const eff = pendingTargetEffect(pt);
-    if (eff && (eff.target === 'any' || eff.target === 'player')) showPlayerTargetButton = true;
+    // Drive the player-target button off real legality, not a hardcoded target
+    // list — the §3.5 taxonomy spells "any target" as creature_or_player and
+    // opponent-only as opp, both of which the old literal check missed. This
+    // also gets the per-player gating right (opp → only the opponent's button).
+    if (eff && ENGINE.getValidTargets(eff, 'you').some(v => v.kind === 'player' && v.who === who)) {
+      showPlayerTargetButton = true;
+    }
   }
   if (G.pendingTriggerTarget && G.pendingTriggerTarget.controller === 'you') {
     const ptt = G.pendingTriggerTarget;
@@ -826,58 +900,118 @@ function pendingTargetEffects(pt) {
   return [];
 }
 
-// Unique sorted targetSlot values; one user pick per slot.
+// §3.5: the top-level target() filter for the pending cast/ability, if any.
+function pendingTopTargetFilter(pt) {
+  if (!pt) return null;
+  const G = ENGINE.state();
+  if (pt.kind === 'cast') {
+    const card = G.you.hand.find(c => c.iid === pt.cardIid);
+    return (card && card.target) || null;
+  }
+  if (pt.kind === 'ability') {
+    const f = ENGINE.findCard(pt.cardIid);
+    const ab = f && f.card.abilities[pt.abilityIdx];
+    return (ab && ab.target) || null;
+  }
+  return null;
+}
+// The top-level step's optional restriction (target_filter) — drives target
+// highlighting so a restricted spell only lights up legal targets.
+function pendingTopTargetRestrict(pt) {
+  if (!pt) return null;
+  const G = ENGINE.state();
+  if (pt.kind === 'cast') {
+    const card = G.you.hand.find(c => c.iid === pt.cardIid);
+    return (card && card.target_filter) || null;
+  }
+  if (pt.kind === 'ability') {
+    const f = ENGINE.findCard(pt.cardIid);
+    const ab = f && f.card.abilities[pt.abilityIdx];
+    return (ab && ab.target_filter) || null;
+  }
+  return null;
+}
+
+// Object-level slot specs — one pick per `target_slots` entry. The canonical
+// multi-target shape (§5b), on a hand-cast card OR an activated ability
+// (Stapler). The slot's filter lives here, not on the effects.
+function pendingObjectTargetSlots(pt) {
+  if (!pt) return null;
+  let obj = null;
+  if (pt.kind === 'cast') obj = ENGINE.state().you.hand.find(c => c.iid === pt.cardIid);
+  else if (pt.kind === 'ability') {
+    const f = ENGINE.findCard(pt.cardIid);
+    obj = f && f.card.abilities[pt.abilityIdx];
+  }
+  return (obj && Array.isArray(obj.target_slots) && obj.target_slots.length > 0) ? obj.target_slots : null;
+}
+
+// Unique sorted slots; one user pick per slot. A top-level target() step (§3.5)
+// is a single slot [0]; an object's `target_slots` array is one pick per entry;
+// otherwise fall back to per-effect target_slot values (legacy/staple-synth).
 function slotsNeededForPending(pt) {
+  if (pendingTopTargetFilter(pt)) return [0];
+  const objSlots = pendingObjectTargetSlots(pt);
+  if (objSlots) return objSlots.map((_, i) => i);
   const effects = pendingTargetEffects(pt);
   const slots = new Set();
   for (const eff of effects) {
-    if (ENGINE.effectNeedsTarget(eff)) slots.add(eff.targetSlot || 0);
+    if (ENGINE.effectNeedsTarget(eff)) slots.add(eff.target_slot || 0);
   }
   return [...slots].sort((a, b) => a - b);
 }
 
-// Effect describing the CURRENT slot. Same-slot effects share target shape.
+// Effect describing the CURRENT slot — drives target highlighting + descriptor
+// kind. For a top-level target() step, a synthetic {target: filter} effect.
 function pendingTargetEffect(pt) {
   if (!pt) return null;
+  const top = pendingTopTargetFilter(pt);
+  if (top) {
+    const restrict = pendingTopTargetRestrict(pt);
+    return restrict ? { target: top, filter: restrict } : { target: top };
+  }
+  const objSlots = pendingObjectTargetSlots(pt);
+  if (objSlots) {
+    const pickedCount = (pt.pickedSlots && pt.pickedSlots.length) || 0;
+    return objSlots[pickedCount] || objSlots[0];
+  }
   const slots = slotsNeededForPending(pt);
   if (slots.length === 0) return null;
   const pickedCount = (pt.pickedSlots && pt.pickedSlots.length) || 0;
   const currentSlot = slots[pickedCount] !== undefined ? slots[pickedCount] : slots[0];
   const effects = pendingTargetEffects(pt);
-  return effects.find(e => ENGINE.effectNeedsTarget(e) && (e.targetSlot || 0) === currentSlot) || null;
+  return effects.find(e => ENGINE.effectNeedsTarget(e) && (e.target_slot || 0) === currentSlot) || null;
 }
 
 function isValidTargetCreature(eff, card) {
   if (!eff) return false;
-  // Determine eligible card types based on the effect's target shape.
-  //   creature/any        → creatures only
-  //   permanent           → creatures, lands, or artifacts (anything on the battlefield)
-  //   permanentOrSpell    → same as permanent for the battlefield-card check
-  //                         (stack spells are highlighted via a separate UI path
-  //                         in renderStack — they're not battlefield cards).
-  // Names retained as `isValidTargetCreature` for backwards-compat with the
-  // single existing caller; broader semantics now that lands can be targeted.
-  if (eff.target === 'creature' || eff.target === 'any') {
-    if (card.type !== 'Creature') return false;
-  } else if (eff.target === 'permanent' || eff.target === 'permanentOrSpell') {
-    if (card.type !== 'Creature' && card.type !== 'Land' && card.type !== 'Artifact') return false;
+  // Normalize the target() taxonomy to an eligible card-type + an implied
+  // controller restriction:
+  //   creature / your_creature / opp_creature / creature_or_player → creatures
+  //   permanent / permanent_or_spell → battlefield permanents (stack spells are
+  //     highlighted via a separate path in renderStack).
+  // (Player targets are highlighted elsewhere.) Name kept for its single caller.
+  const t = eff.target;
+  const CREATURE_KINDS = ['creature', 'your_creature', 'opp_creature', 'creature_or_player'];
+  const PERM_KINDS = ['permanent', 'permanent_or_spell'];
+  if (CREATURE_KINDS.includes(t)) {
+    if (!hasType(card, 'Creature')) return false;
+  } else if (PERM_KINDS.includes(t)) {
+    if (!isPermanent(card)) return false;
   } else {
     return false;
   }
-  if (eff.target === 'any') return true;
-  if (eff.filter) {
-    if (eff.filter.tapped !== undefined && card.tapped !== eff.filter.tapped) return false;
-    if (eff.filter.notColor && card.color === eff.filter.notColor) return false;
-    // Stapler's filters (spliceableBase / spliceableStaple) must apply at
-    // highlight time too — otherwise we'd highlight cards the click handler
-    // would reject (e.g., already-stapled creatures). Routes through the
-    // canonical matchFilter helper, accessed via ENGINE since matchFilter
-    // lives inside the engine IIFE.
-    if (eff.filter.spliceableBase || eff.filter.spliceableStaple) {
-      if (!ENGINE.matchFilter(card, eff.filter, null, null)) return false;
-    }
-  }
-  return true;
+  if (t === 'creature_or_player') return true;
+  // Build the effective restriction: the taxonomy's implied controller plus the
+  // step's explicit target_filter (threaded onto eff.filter). Route the whole
+  // thing through the canonical matchFilter so every key (not_color, has_keyword,
+  // max_tough, tapped, not_token, spliceable…) is honored at highlight time
+  // exactly as at cast — no more drifting between highlight and click legality.
+  const restrict = Object.assign({}, eff.filter || null);
+  if (t === 'your_creature') restrict.controller = 'self';
+  if (t === 'opp_creature') restrict.controller = 'opp';
+  if (Object.keys(restrict).length === 0) return true;
+  return ENGINE.matchFilter(card, restrict, card.controller, 'you');
 }
 
 // Render sticker badges. `big` = larger styling for the reward modal.
@@ -936,18 +1070,18 @@ function stickerBadgesHtml(stickers, big, empowerRolls, tplId, stapledTpls, subt
   for (const [sId, n] of counts) {
     const s = STICKERS[sId];
     if (!s) continue;
-    const cls = s.kind === 'statBoost' ? 'stat'
+    const cls = s.kind === 'stat_boost' ? 'stat'
               : s.kind === 'innate'    ? 'innate'
               : 'skw';
     let label;
-    if (s.kind === 'statBoost') label = '+1/+1';
+    if (s.kind === 'stat_boost') label = '+1/+1';
     else if (s.kind === 'innate') label = 'Innate';
     // landColor badge label is "+{W}"-style — route the brace token
     // through renderManaSymbols so it shows the color pip / future PNG
     // instead of literal {W} text. The label gets injected into
     // innerHTML below, so an HTML span is fine here.
-    else if (s.kind === 'landColor') label = '+' + renderManaSymbols('{' + s.color + '}');
-    else if (s.kind === 'costReduction') label = '-' + (s.amount || 1) + ' cost';
+    else if (s.kind === 'grant_mana_ability') label = '+' + renderManaSymbols('{' + s.color + '}');
+    else if (s.kind === 'cost_mod') label = ((s.amount || 0) < 0 ? (s.amount || 0) : '+' + (s.amount || 0)) + ' cost';
     else if (s.kind === 'trigger') label = s.name || 'Trigger';
     else if (s.kind === 'keyword') label = s.keyword;
     else label = s.name || s.kind;   // defensive — never render 'undefined'
@@ -1008,6 +1142,7 @@ function nativeKeywordBadgesHtml(card, big) {
   if (!entries.length) return '';
   const parts = [];
   for (const { kw, source, grantSources } of entries) {
+    if (kw === 'no_block') continue;  // hidden kw (restrict→grant_keyword)
     const label = KEYWORD_DISPLAY[kw] || (kw.charAt(0).toUpperCase() + kw.slice(1));
     // Defender = downside ability — render red like restrictions.
     let cls;
@@ -1033,19 +1168,34 @@ function nativeKeywordBadgesHtml(card, big) {
 // Pick the right art for a card based on its current power+toughness.
 //
 // Cards with a static art simply have an "art" string in their template
-// and return early. Cards with an `artLadder` array on their template
+// and return early. Cards with an `art_ladder` array on their template
 // (currently only Elystra) evolve their portrait as they grow — each
-// ladder entry is `{minPT, art}`, and we walk the ladder picking the
+// ladder entry is `{min_pt, art}`, and we walk the ladder picking the
 // highest threshold the card's current p+t meets.
 //
 // Stats come from ENGINE.getStats so live modifiers + sticker pumps +
-// staticBuffs + permanent EOT bumps all count. For non-Creatures (no
+// static_buffs + permanent EOT bumps all count. For non-Creatures (no
 // stats to compute), fall back to the base art unconditionally.
 //
 // Called by makeCardEl (hand/board) and openCardPopup (zoom). Draft,
 // reward, and card-browser views work off templates and don't get
 // runtime stats, so they use the base `art` field directly — that's
 // the "show the early/base form" default for browse contexts.
+// A BARE art filename (no slash, image extension — e.g. "art.png", "art-2.png")
+// is resolved against the card's OWN folder: cards/<tplId>/<file>. Storing just
+// the filename means a folder rename can never stale the path — the v2.0.67 id
+// rename broke 75 baked-in "cards/<oldFolder>/art.png" strings; deriving the
+// folder from the (current) id structurally prevents a recurrence. Full paths,
+// data:/http URLs, and emoji pass through untouched (back-compat + non-images).
+function resolveArtPath(value, card) {
+  if (typeof value === 'string' && !value.includes('/') &&
+      /\.(png|jpe?g|gif|webp|svg)$/i.test(value)) {
+    const folder = card && (card.tplId || card.card_id);
+    if (folder) return 'cards/' + folder + '/' + value;
+  }
+  return value;
+}
+
 function effectiveArt(card) {
   if (!card) return '';
   // Ladder lives on the template, not the instance — makeCard doesn't
@@ -1053,9 +1203,9 @@ function effectiveArt(card) {
   // look it up here. This is a render-only concern; the engine never
   // needs to know about art variants.
   const tpl = (typeof CARDS !== 'undefined') ? CARDS[card.tplId] : null;
-  const ladder = (tpl && Array.isArray(tpl.artLadder)) ? tpl.artLadder : card.artLadder;
-  if (!Array.isArray(ladder) || ladder.length === 0) return card.art;
-  if (card.type !== 'Creature') return card.art;
+  const ladder = (tpl && Array.isArray(tpl.art_ladder)) ? tpl.art_ladder : card.art_ladder;
+  if (!Array.isArray(ladder) || ladder.length === 0) return resolveArtPath(card.art, card);
+  if (!hasType(card, 'Creature')) return resolveArtPath(card.art, card);
   let p = 0, t = 0;
   try {
     const stats = ENGINE.getStats(card);
@@ -1066,13 +1216,13 @@ function effectiveArt(card) {
   const sum = (p || 0) + (t || 0);
   let pick = card.art;
   for (const rung of ladder) {
-    if (rung && sum >= (rung.minPT || 0)) pick = rung.art;
+    if (rung && sum >= (rung.min_pt || 0)) pick = rung.art;
   }
-  return pick;
+  return resolveArtPath(pick, card);
 }
 
 // Is this art value something the browser should resolve as an image
-// source? Used by artHtml (to decide between <img> and inline text) AND
+// source? Used by the main card render (to choose <img> vs inline text) AND
 // by the small inline-art callers (stack pill, library search, zone
 // modal) which substitute a generic 🎴 glyph rather than try to render
 // a real image inside a narrow text pill. Centralized here so a new
@@ -1080,8 +1230,8 @@ function effectiveArt(card) {
 // gets recognized in every site at once.
 //   - data:           — inline base64 (legacy embeds, e.g. the old dragon)
 //   - http            — full URL
-//   - ends in .png/.jpg/.jpeg/.gif/.webp/.svg — relative file path,
-//     resolved against magiclike_engine.html (cards/<tplId>/art.png)
+//   - ends in .png/.jpg/.jpeg/.gif/.webp/.svg — file path; a bare filename
+//     is resolved to cards/<tplId>/<file> by resolveArtPath (via effectiveArt)
 // Emoji are 1-4 chars and never match.
 function isArtUrl(art) {
   return typeof art === 'string' && (
@@ -1089,20 +1239,6 @@ function isArtUrl(art) {
     art.startsWith('http') ||
     /\.(png|jpe?g|gif|webp|svg)$/i.test(art)
   );
-}
-
-function artHtml(art, fallback) {
-  if (!art) return fallback || '';
-  if (isArtUrl(art)) {
-    // pixelated rendering preserves the chunky look of small pixel-art
-    // sources (the 64x32 native size is intentionally low-res). Per-
-    // context sizing (.cart img, .pop-art img, etc.) lives in CSS so
-    // each render site can integer-scale the source to suit its frame.
-    // alt="" because the card name is rendered separately — duplicating
-    // it in alt text creates noise for screen readers.
-    return `<img src="${art}" alt="">`;
-  }
-  return art;
 }
 
 // Pre-computed display values for a card, consumed by both makeCardEl
@@ -1127,10 +1263,10 @@ function cardToViewModel(card, opts) {
   // dual-color frame design is a future tweak.
   const colorKey = (card.colors && card.colors[0])
     || card.color
-    || (card.type === 'Land' && card.mana)
+    || (hasType(card, 'Land') && card.mana)
     || 'C';
 
-  const isCreature = card.type === 'Creature';
+  const isCreature = hasType(card, 'Creature');
   const [pow, tou] = isCreature
     ? ENGINE.getStats(card)
     : [card.power || 0, card.toughness || 0];
@@ -1157,7 +1293,7 @@ function cardToViewModel(card, opts) {
     if (effC > baseC) bumpedMarker = '<span class="frame-bumped">↑</span>';
   }
 
-  const typeText = card.type + (card.sub ? ' — ' + card.sub : '');
+  const typeText = typeLine(card);
 
   let oracleHtml;
   if (overrideOracleText !== undefined) {
@@ -1233,14 +1369,17 @@ function makeCardEl(card, opts) {
 function makeSyntheticCard({ name, type, sub, text, art, color, cost, power, toughness, scale }) {
   const fakeCard = {
     name: name || '',
-    type: type || '',
-    sub: sub || '',
+    // Synthetic display cards (trigger pills, the Mystery reward, the boon
+    // fallback) carry a decorative "type" label (Trigger / Reward / Boon) that
+    // isn't a real card type. Fold the caller's type/sub into the types[] the
+    // type-system reads, so typeLine renders it (it'd be blank otherwise).
+    types: [type, ...(sub ? String(sub).split(/\s+/) : [])].filter(Boolean),
     art: art || '',
     color: color || 'C',
     cost: cost || null,
     power: power || 0,
     toughness: toughness || 0,
-    abilities: [], effects: [], triggers: [], staticBuffs: [],
+    abilities: [], effects: [], triggers: [], static_buffs: [],
     stickers: [], keywords: [], colors: [],
     iid: -1,
   };
@@ -1249,11 +1388,26 @@ function makeSyntheticCard({ name, type, sub, text, art, color, cost, power, tou
   return el;
 }
 
-function formatCost(c) {
-  let s = '';
-  if (c.C) s += c.C;
-  for (const k of ['W','U','B','R','G']) s += k.repeat(c[k] || 0);
-  return s || '0';
+// Shared "row of pickable cards" renderer — the one loop behind every card-pick
+// flow (draft pack, Neow boons, post-draft land offer, in-game library search).
+// Each item is either { card } (a real card instance → makeCardEl) or
+// { synthetic } (a makeSyntheticCard spec, for cards with no template backing
+// like a boon fallback), plus { value } passed to onPick when clicked.
+// opts.scale: showcase scale, default 2 (pass null for native card size, e.g.
+// the search list). opts.emptyHtml: markup to show when there are no items.
+function renderCardPicker(hostEl, items, onPick, opts) {
+  if (!hostEl) return;
+  opts = opts || {};
+  const scale = (opts.scale === undefined) ? 2 : opts.scale;
+  hostEl.innerHTML = '';
+  if (!items.length && opts.emptyHtml) { hostEl.innerHTML = opts.emptyHtml; return; }
+  for (const item of items) {
+    const el = item.card ? makeCardEl(item.card) : makeSyntheticCard(item.synthetic);
+    if (scale !== null) el.style.setProperty('--scale', String(scale));
+    el.style.cursor = 'pointer';
+    el.onclick = () => onPick(item.value);
+    hostEl.appendChild(el);
+  }
 }
 
 // Mana-cost in MtG-canonical braced notation: {R:2, C:4} -> "{4}{R}{R}".

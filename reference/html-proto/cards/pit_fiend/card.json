@@ -1,0 +1,19 @@
+{
+  "card_id": "pit_fiend",
+  "art": "😈",
+  "cost": {
+    "B": 2,
+    "C": 3
+  },
+  "keywords": [
+    "menace",
+    "flying"
+  ],
+  "name": "Pit Fiend",
+  "power": 5,
+  "toughness": 4,
+  "types": [
+    "Creature",
+    "Demon"
+  ]
+}

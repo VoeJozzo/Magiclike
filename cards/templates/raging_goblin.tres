@@ -14,4 +14,4 @@ subtypes = Array[String](["goblin"])
 mana_cost = {
 "R": 1
 }
-oracle_text = "Haste."
+text = "Haste."

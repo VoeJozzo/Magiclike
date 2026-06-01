@@ -1,29 +1,32 @@
 {
-  "tplId": "endomorph",
-  "name": "Endomorph",
-  "type": "Creature",
-  "sub": "Shapeshifter",
+  "card_id": "endomorph",
+  "art": "art.png",
   "cost": {
     "C": 2
   },
+  "name": "Endomorph",
   "power": 2,
-  "toughness": 2,
-  "art": "cards/endomorph/art.png",
   "special": true,
-  "text": "When this kills a creature, it permanently gains one of that creature's keywords. If it gained no keyword, it gains +1/+1 permanently instead.",
+  "toughness": 2,
   "triggers": [
     {
-      "event": "cardDies",
-      "condId": "thisKillsCreature",
-      "text": "~ kills {victim} — absorbs a keyword (or +1/+1).",
+      "event": "card_zone_change",
+      "condition": [
+        "another_card",
+        "card_is_creature",
+        "card_moves(battlefield, graveyard)",
+        "card_damaged_by_this"
+      ],
       "effects": [
         {
-          "kind": "endomorphAbsorb",
-          "target": "self"
+          "kind": "endomorph_absorb",
+          "scope": "self"
         }
       ]
     }
   ],
-  "color": null,
-  "colors": []
+  "types": [
+    "Creature",
+    "Shapeshifter"
+  ]
 }

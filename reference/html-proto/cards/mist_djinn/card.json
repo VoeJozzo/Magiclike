@@ -1,0 +1,18 @@
+{
+  "card_id": "mist_djinn",
+  "art": "art.png",
+  "cost": {
+    "U": 1,
+    "C": 3
+  },
+  "keywords": [
+    "flying"
+  ],
+  "name": "Mist Djinn",
+  "power": 3,
+  "toughness": 4,
+  "types": [
+    "Creature",
+    "Djinn"
+  ]
+}

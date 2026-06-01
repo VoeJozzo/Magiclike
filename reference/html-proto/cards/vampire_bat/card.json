@@ -1,0 +1,17 @@
+{
+  "card_id": "vampire_bat",
+  "art": "🦇",
+  "cost": {
+    "B": 1
+  },
+  "keywords": [
+    "flying"
+  ],
+  "name": "Vampire Bat",
+  "power": 1,
+  "toughness": 1,
+  "types": [
+    "Creature",
+    "Bat"
+  ]
+}

@@ -48,7 +48,7 @@ func _ready() -> void:
 	assert(your_mountain != null and opp_bear != null and bolt != null)
 
 	# Step 1: tap Mountain for R
-	var ok = RulesEngine.execute_action(Action.make_activate_ability(your_mountain.instance_id))
+	var ok = RulesEngine.execute_action(Action.make_tap_land_for_mana(your_mountain.instance_id))
 	_assert_true(ok, "tap mountain for R")
 	_assert_eq(s.you.mana.pool["R"], 1, "R mana available")
 

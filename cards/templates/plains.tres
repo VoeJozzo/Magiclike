@@ -9,4 +9,4 @@ card_id = "plains"
 display_name = "Plains"
 card_types = Array[String](["land"])
 subtypes = Array[String](["plains"])
-oracle_text = "{T}: Add {W}."
+text = "{T}: Add {W}."
