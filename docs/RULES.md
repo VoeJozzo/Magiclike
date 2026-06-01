@@ -650,16 +650,16 @@ At the start of a run, the player may choose a **modifier** (e.g., City of Brass
 ## A1. Glossary
 
 - **Active player (AP)** — the player whose turn it is.
-- **Non-active player (NAP)** — the other player.
 - **APNAP order** — Active Player's effects queued/declared first, then Non-Active Player's. On the stack, this means NAP's effects end up on top (resolve first under LIFO).
 - **Card** — a template definition. Distinct from an instance.
-- **Instance** — a runtime copy of a card with its own state (tapped, damaged, etc.).
-- **SBA** — state-based action. See [1100](#1100-state-based-actions).
-- **Stack** — see [601](#601-the-stack).
-- **Permanent** — a card on the battlefield (land, creature, artifact, enchantment).
-- **Source** — the card whose ability or effect is causing something to happen.
 - **Controller** — the player making decisions for a permanent. Usually the same as the owner; can differ via "steal" effects.
+- **Instance** — a runtime copy of a card with its own state (tapped, damaged, etc.).
+- **Non-active player (NAP)** — the other player.
 - **Owner** — the player who started with the card in their deck.
+- **Permanent** — a card on the battlefield (land, creature, artifact, enchantment).
+- **SBA** — state-based action. See [1100](#1100-state-based-actions).
+- **Source** — the card whose ability or effect is causing something to happen.
+- **Stack** — see [601](#601-the-stack).
 
 ## A2. Authoritative behaviors checklist
 
