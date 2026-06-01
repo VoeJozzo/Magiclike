@@ -42,16 +42,34 @@ no leverage — keep it.
 
 ```bash
 source ~/.config/magiclike/secrets.env
-curl -s --max-time 60 \
+curl -s -o C:/Users/Joe/gemma_resp.json -w '%{http_code}' --max-time 90 \
   "https://generativelanguage.googleapis.com/v1beta/models/gemma-4-31b-it:generateContent?key=$GEMINI_API_KEY" \
   -H 'Content-Type: application/json' \
   -d '{"contents":[{"parts":[{"text":"<PROMPT>"}]}],"generationConfig":{"temperature":0}}'
 ```
 
-Parse the **last** text part, not the first:
-`jq -r '.candidates[0].content.parts[-1].text'`. Gemma 4 emits a reasoning preamble
-before its answer (the first part is its thinking), so grabbing the first `text`
-gives you `"The user wants a specific response: …"` instead of the result.
+**Windows/git-bash transport rules (learned the hard way — do not deviate):**
+- Pass the JSON body **inline with `-d '{...}'`**. `-d @file` and `--data-binary @-`
+  both FAIL: the native `curl.exe` can't resolve git-bash's msys `/tmp` paths and sends
+  an empty body (`http_code=000` / 0-byte response).
+- Single-quote the inline payload. Safe as long as the text has no single quotes; if it
+  might, build the JSON with python (`miniconda3/python`) writing to a `C:/...` path,
+  then inline it — still never `@file`.
+- Write the response to a **`C:/Users/...` path**, not `/tmp` (native tools resolve `/tmp`
+  as `C:\tmp`, which doesn't exist). Read/parse it with `miniconda3/python` (there is no
+  `jq` here).
+- Python `urllib`/`requests` to the API has timed out in this shell — prefer `curl` for
+  the network call, python only for build + parse.
+
+Parse the **last** text part, not the first — Gemma 4 emits a reasoning preamble
+(part 0 is its thinking), so the first `text` is `"The user wants a specific response: …"`:
+
+```bash
+C:/Users/Joe/miniconda3/python - <<'PY'
+import json; d=json.load(open(r"C:/Users/Joe/gemma_resp.json",encoding="utf-8"))
+print(d["candidates"][0]["content"]["parts"][-1]["text"].strip())
+PY
+```
 
 ## Prompt rules (make output cheap to verify)
 
@@ -90,16 +108,22 @@ anything where verifying ≈ redoing.
 
 ## Delegated git workflow (fork → cross-fork PR)
 
-`Thaumaturge-Gemma` has **read-only** access to `VoeJozzo/Magiclike` (verified:
-`push:false`, `pull:true`) — it **cannot** push branches to the upstream repo. So it
-contributes the standard way: push to its **own fork**, open a **cross-fork PR** into
-`VoeJozzo:dev`, and you or Joe review + merge.
+`Thaumaturge-Gemma` is **not a collaborator** on `VoeJozzo/Magiclike` (`push:false` on
+upstream) but its PAT is a **classic token with `repo` scope**, so it CAN fork, push to
+its own fork, and open cross-fork PRs. It contributes the standard outside-contributor
+way: push to its **own fork**, open a **cross-fork PR** into `VoeJozzo:dev`, and you or
+Joe review + merge. (A *fine-grained* PAT on this non-collaborator account canNOT do this
+— it 403s on fork/PR. Use the classic `repo`-scoped token in `GH_PAT_GEMMA`.)
+
+Validated end-to-end: fork `Thaumaturge-Gemma/Magiclike` created, branch pushed, and
+PR #41 opened into `dev` — all under the bot.
 
 ```bash
 source ~/.config/magiclike/secrets.env
 BOT=Thaumaturge-Gemma; UP=VoeJozzo/Magiclike; AUTH="Authorization: Bearer $GH_PAT_GEMMA"
 
-# 0. One-time: create the fork (idempotent — 202 if new, 200/exists otherwise)
+# 0. One-time: create the fork (ASYNC — poll GET .../repos/$BOT/Magiclike until it 200s
+#    before pushing; first push may need a few seconds after the POST returns)
 curl -s -X POST -H "$AUTH" "https://api.github.com/repos/$UP/forks" >/dev/null
 
 # 1. Branch off the latest UPSTREAM dev (not the fork, which may lag)
