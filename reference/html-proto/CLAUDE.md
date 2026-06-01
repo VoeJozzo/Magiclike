@@ -211,8 +211,10 @@ sacrifices a land." The only engine work was making the `chooses()` edict filter
 **type-symmetric**: `choosesEligiblePool` now treats the filter as a type name, so
 `'land'` narrows via `hasType` exactly like `'creature'`/`'permanent'` (a chooses
 filter IS a type — no bespoke land primitive; PR #30's obsolete `destroyLand` is
-gone). Added `'land'` to `TARGET_FILTERS`; the empty-pool/human-prompt nouns and
-the card-text sacrifice clause derive from the filter ("sacrifices a land").
+gone). Added `'land'` to `TARGET_FILTERS` **and** a backing `case 'land'` in
+`targetsForFilter` (→ `permanent` + `{type:'Land'}`, honoring the §3.5
+add-it-in-both-places invariant); the empty-pool/human-prompt nouns and the
+card-text sacrifice clause derive from the filter ("sacrifices a land").
 (2) **The False Witness** — {2}{U}{U} **0/1** Flash Insect Shapeshifter doppelganger.
 Decomposed onto primitives: ETB `move_card`(bf→exile) + the one new effect
 **`become_copy_of`**; leave `move_card`(exile→bf) via a new `copy_source` selector

@@ -78,6 +78,12 @@ console.log('\n=== end-to-end: the Heir dies → opponent sacrifices a LAND ==='
   const oppCreature = mk(VANILLA, 'opp'); G.opp.battlefield.push(oppCreature);
   const bolt = mk('lightning_bolt', 'you'); G.you.hand.push(bolt);
 
+  // targetsForFilter must back 'land' (the §3.5 invariant: a filter in
+  // TARGET_FILTERS resolves here too) — narrows to lands only, never the creature.
+  const landTargets = ENGINE.targetsForFilter('land', 'you');
+  check("targetsForFilter('land') resolves the land", landTargets.some(t => t.iid === oppLand.iid));
+  check("targetsForFilter('land') excludes the creature", !landTargets.some(t => t.iid === oppCreature.iid));
+
   // Bolt the Heir (3 dmg kills the 3/3) → its dies-trigger edicts the opponent.
   ENGINE.executeAction('you', { type: 'castSpell', cardIid: bolt.iid,
     targets: [{ kind: 'creature', iid: heir.iid }] });

@@ -3439,6 +3439,7 @@ function targetsForFilter(filter, controller, restrict) {
     case 'opp':                return getValidTargets({ target: 'opp', filter: restrict || undefined }, controller);
     case 'creature':           return getValidTargets({ target: 'creature', filter: restrict || undefined }, controller);
     case 'permanent':          return getValidTargets({ target: 'permanent', filter: restrict || undefined }, controller);
+    case 'land':               return getValidTargets({ target: 'permanent', filter: merge({ type: 'Land' }) }, controller);
     case 'spell':              return getValidTargets({ target: 'spell', filter: restrict || undefined }, controller);
     case 'graveyard_creature': return getValidTargets({ target: 'graveyard_creature', filter: restrict || undefined }, controller);
     case 'your_creature':      return getValidTargets({ target: 'creature', filter: merge({ controller: 'self' }) }, controller);
