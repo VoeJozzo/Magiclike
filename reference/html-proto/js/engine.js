@@ -923,6 +923,31 @@ function findCard(iid) {
   return null;
 }
 
+// Like findCard but searches every zone (battlefield/exile/graveyard/hand) —
+// needed by the copy primitive, whose target has just been moved to exile.
+function findCardAnyZone(iid) {
+  for (const who of ['you','opp']) {
+    for (const z of ['battlefield','exile','graveyard','hand','library']) {
+      const arr = G[who][z];
+      const c = Array.isArray(arr) ? arr.find(x => x.iid === iid) : null;
+      if (c) return { card: c, controller: who, zone: z };
+    }
+  }
+  return null;
+}
+
+// The creature this source (The False Witness) is/was copying — its
+// `copySourceIid` link. On leave-play the witness has left the battlefield, so
+// read the link off the zone-change event's subject_card (the leaving witness,
+// which retains the link through resetInPlayState); fall back to a live lookup.
+function copySourceRef(ctx) {
+  const w = (ctx.event && ctx.event.subject_card)
+    || ctx.sourceCard
+    || (ctx.sourceIid != null ? (findCard(ctx.sourceIid) || {}).card : null);
+  const iid = w && w.copySourceIid;
+  return (iid != null) ? { kind: 'creature', iid } : null;
+}
+
 // Standard fizzle-on-missing-target preamble for EFFECTS handlers.
 //   const f = resolveTarget(ctx, target);
 //   if (!f) return;
@@ -1136,10 +1161,14 @@ function getCardValue(card, purpose, ctx) {
 // creatures/lands/artifacts). Single source of truth for the auto-pick (AI),
 // the human-prompt setup, and the prompt's legal-action enumeration.
 function choosesEligiblePool(who, filter) {
-  return G[who].battlefield.filter(c =>
-    filter === 'permanent'
-      ? isPermanent(c)
-      : hasType(c, 'Creature'));
+  return G[who].battlefield.filter(c => {
+    if (filter === 'permanent') return isPermanent(c);   // cross-type alias
+    // Otherwise the filter names a card type — 'creature' → Creature, 'land' →
+    // Land. A chooses() filter IS a type, so every type narrows identically
+    // (no per-type special-casing): capitalize the tag and match via hasType.
+    const tag = filter ? filter[0].toUpperCase() + filter.slice(1) : 'Creature';
+    return hasType(c, tag);
+  });
 }
 
 // The ctx.chosen-shaped descriptor for a picked permanent. Snapshots
@@ -1193,6 +1222,11 @@ function sacValueOnBoard(card) {
 // Score one activated ability.
 function abilityValue(ab) {
   if (!ab || !ab.effects || !ab.effects.length) return 0;
+  // The False Witness doppelganger ETB (exile + become a copy) is a two-for-one:
+  // it removes an opponent's creature AND turns this 0/1 into a copy of it (a
+  // real body, at flash speed). Value the whole package strongly — scanning all
+  // effects, not just effects[0] — so the AI actually casts and drafts it.
+  if (ab.effects.some(e => e && e.kind === 'become_copy_of')) return 16;
   const eff = ab.effects[0];
   switch (eff.kind) {
     case 'damage':         return 6 + (eff.amount || 0);
@@ -2039,8 +2073,14 @@ const EFFECTS = {
       }
       const t = (sel === 'target') ? (target || ctx.chosen)
               : (sel === 'self') ? { kind: 'creature', iid: ctx.sourceIid }
+              : (sel === 'copy_source') ? copySourceRef(ctx)
               : null;
-      if (!t) { console.warn('move_card: unsupported selector', sel, from, '->', to); break; }
+      if (!t) {
+        // copy_source legitimately resolves to nothing when a False Witness left
+        // without ever copying (entered with no creature to copy) — a quiet no-op.
+        if (sel !== 'copy_source') console.warn('move_card: unsupported selector', sel, from, '->', to);
+        break;
+      }
 
       if (from === 'battlefield') {
         const f = findCard(t.iid);
@@ -2213,7 +2253,7 @@ const EFFECTS = {
     const filter = params.filter || 'creature';
     const pool = choosesEligiblePool(who, filter);
     if (pool.length === 0) {
-      const noun = filter === 'permanent' ? 'permanent' : 'creature';
+      const noun = filter;   // 'creature' | 'permanent' | 'land' — the type chosen
       log(`${ctx.sourceName} — ${pname(who)} has no ${noun} to choose.`, 'sp');
       ctx.chosen = null;
       return;
@@ -2222,6 +2262,56 @@ const EFFECTS = {
     const picked = sorted[0];
     ctx.chosen = choosesDescriptor(picked, who);
     log(`${pname(who)} chooses ${picked.name}.`, 'sp');
+  },
+  // The False Witness doppelganger. The witness (this trigger's source) becomes
+  // a copy of the chosen creature, taking its copiable (printed) characteristics
+  // — name, stats, types, keywords, abilities, triggers — plus the kept subtypes
+  // (Insect, Shapeshifter). Implemented exactly like the keyword/type grant
+  // layers: the copied values are MATERIALIZED onto the instance, and
+  // resetInPlayState re-derives the false_witness base on leave-play. So the
+  // copy reverts for free, and the witness's own leave trigger (which lives on
+  // the base identity) is never clobbered by the copied creature's triggers.
+  become_copy_of(ctx, params, target) {
+    const witness = ctx.sourceCard
+      || (ctx.sourceIid != null ? (findCard(ctx.sourceIid) || {}).card : null);
+    if (!witness) return;
+    const pick = target || ctx.chosen;
+    const found = (pick && pick.iid != null) ? findCardAnyZone(pick.iid) : null;
+    const srcTpl = found ? CARDS[found.card.tplId] : null;
+    if (!srcTpl) { log(`${ctx.sourceName} finds nothing to copy.`, 'sp'); return; }
+
+    // The link the leave trigger reads to return the exiled original, and the
+    // revert flag resetInPlayState keys on.
+    witness.copyOf = found.card.tplId;
+    witness.copySourceIid = pick.iid;
+    // Copiable printed characteristics (the base template — not modified runtime
+    // stats/damage), materialized onto the instance fields the engine reads.
+    witness.name = srcTpl.name;
+    witness.power = srcTpl.power;
+    witness.toughness = srcTpl.toughness;
+    witness.keywords = (srcTpl.keywords || []).slice();
+    witness.abilities = srcTpl.abilities
+      ? srcTpl.abilities.map(ab => ({ ...ab, cost: ab.cost ? { ...ab.cost } : undefined,
+          effects: (ab.effects || []).map(e => ({ ...e })) }))
+      : undefined;
+    witness.static_buffs = srcTpl.static_buffs
+      ? srcTpl.static_buffs.map(b => ({ ...b, filter: b.filter ? { ...b.filter } : undefined,
+          keywords: b.keywords ? b.keywords.slice() : undefined }))
+      : undefined;
+    // Triggers: the witness keeps its OWN triggers (its base ETB + leave-return)
+    // and ADDS the copied creature's — so the un-exile leave trigger survives.
+    const baseTpl = CARDS[witness.tplId] || {};
+    const cloneTrig = t => ({ ...t, effects: (t.effects || []).map(e => ({ ...e })) });
+    witness.triggers = [
+      ...(baseTpl.triggers || []).map(cloneTrig),
+      ...(srcTpl.triggers || []).map(cloneTrig),
+    ];
+    // Types: set to the copied creature's types plus the kept subtypes — rides
+    // the auto-reverting typeGrants layer (cleared on leave like every grant).
+    const keep = Array.isArray(params.keep_subtypes) ? params.keep_subtypes : [];
+    applyTypeGrant(witness, [...(srcTpl.types || []), ...keep], 'set', null, false);
+    witness.text = describeCardText(witness);
+    log(`${ctx.sourceName} becomes a copy of ${srcTpl.name}.`, 'sp');
   },
   // Register a delayed trigger that applies `effects` at `when` ('end_step'),
   // operating on the same target the prior effect did (the §9.1/D9 delayed-effect
@@ -2945,7 +3035,8 @@ function triggerPlayerTargetPrompt(trig, controller) {
   const valid = primaryLegalTargets(trig, controller);
   if (valid.length <= 1) return null;   // 0 → fizzle/auto; 1 → no choice to make
   // The effect used to value the choice (for the AI driver's pickBestTriggerTarget).
-  const promptEff = (trig.effects || []).find(e => e.kind !== 'chooses') || (trig.effects || [])[0] || {};
+  const promptEff = (trig.effects || []).find(e => e.kind === 'become_copy_of')
+    || (trig.effects || []).find(e => e.kind !== 'chooses') || (trig.effects || [])[0] || {};
   return { valid, promptEff };
 }
 
@@ -3002,7 +3093,11 @@ function pushTriggerOnStack(p) {
       log(`${p.sourceName} trigger fizzles — no legal target.`, 'sp');
       return;
     }
-    const valueEff = (p.trig.effects || []).find(e => e.kind !== 'chooses') || (p.trig.effects || [])[0] || {};
+    // Value the choice by the trigger's intent-defining effect: prefer
+    // become_copy_of (The False Witness — copy their best), else the first
+    // non-chooses effect.
+    const valueEff = (p.trig.effects || []).find(e => e.kind === 'become_copy_of')
+      || (p.trig.effects || []).find(e => e.kind !== 'chooses') || (p.trig.effects || [])[0] || {};
     chosenTarget = pickBestTriggerTarget(valueEff, valid, p.controller);
   } else if (targetEff) {
     const valid = getValidTargets(targetEff, p.controller);
@@ -3050,6 +3145,20 @@ function pickBestTriggerTarget(eff, valid, controller) {
       || (eff.kind === 'move_card' && eff.from_zone === 'hand' && eff.to_zone === 'graveyard')) {
     const oppFace = valid.find(t => t.kind === 'player' && t.who === them);
     if (oppFace) return oppFace;
+  }
+  // The False Witness: copy (and exile) the opponent's biggest board threat —
+  // both their best body removed and the best body we gain. Rank by
+  // sacValueOnBoard (board presence, NOT cost-adjusted getCardValue — we don't
+  // pay the copy's cost, so a fat 4/4 flyer beats an efficient 2/2).
+  if (eff.kind === 'become_copy_of') {
+    const oppC = valid.filter(t => t.kind === 'creature' && ctrlOf(t) === them);
+    if (oppC.length) {
+      const sorted = oppC.slice().sort((a, b) => {
+        const fa = findCard(a.iid), fb = findCard(b.iid);
+        return (fb ? sacValueOnBoard(fb.card) : 0) - (fa ? sacValueOnBoard(fa.card) : 0);
+      });
+      return sorted[0];
+    }
   }
   const harmful = ['affect_creature', 'fight_target'];
   if (harmful.includes(eff.kind)) {
@@ -3309,7 +3418,7 @@ function getValidTargets(effect, controller) {
 // plan-effects-refactor.md). Adding a filter means adding it here AND to
 // targetsForFilter below — there is no open tail.
 const TARGET_FILTERS = new Set([
-  'creature', 'player', 'opp', 'creature_or_player', 'spell', 'permanent',
+  'creature', 'player', 'opp', 'creature_or_player', 'spell', 'permanent', 'land',
   'your_creature', 'opp_creature', 'graveyard_creature',
 ]);
 
@@ -3330,6 +3439,7 @@ function targetsForFilter(filter, controller, restrict) {
     case 'opp':                return getValidTargets({ target: 'opp', filter: restrict || undefined }, controller);
     case 'creature':           return getValidTargets({ target: 'creature', filter: restrict || undefined }, controller);
     case 'permanent':          return getValidTargets({ target: 'permanent', filter: restrict || undefined }, controller);
+    case 'land':               return getValidTargets({ target: 'permanent', filter: merge({ type: 'Land' }) }, controller);
     case 'spell':              return getValidTargets({ target: 'spell', filter: restrict || undefined }, controller);
     case 'graveyard_creature': return getValidTargets({ target: 'graveyard_creature', filter: restrict || undefined }, controller);
     case 'your_creature':      return getValidTargets({ target: 'creature', filter: merge({ controller: 'self' }) }, controller);
@@ -3537,6 +3647,33 @@ function resetInPlayState(card, preserveDeathState) {
     needsKwReset = true;
   }
   if (needsKwReset) card.keywords = intrinsicKeywords(card);
+  // Copy revert (The False Witness): a card that became a copy re-derives its
+  // printed identity from its base template on leave-play — the same
+  // materialize-then-re-derive pattern keywords/type-grants use. typeGrants are
+  // already cleared above, so types revert too. copySourceIid is deliberately
+  // RETAINED: the leave trigger fired by this very departure still needs it to
+  // return the exiled original (read off the event's subject_card).
+  if (card.copyOf) {
+    const baseTpl = CARDS[card.tplId];
+    if (baseTpl) {
+      card.name = baseTpl.name;
+      card.power = baseTpl.power;
+      card.toughness = baseTpl.toughness;
+      card.abilities = baseTpl.abilities
+        ? baseTpl.abilities.map(ab => ({ ...ab, cost: ab.cost ? { ...ab.cost } : undefined,
+            effects: (ab.effects || []).map(e => ({ ...e })) }))
+        : undefined;
+      card.static_buffs = baseTpl.static_buffs
+        ? baseTpl.static_buffs.map(b => ({ ...b, filter: b.filter ? { ...b.filter } : undefined,
+            keywords: b.keywords ? b.keywords.slice() : undefined }))
+        : undefined;
+      card.triggers = (baseTpl.triggers || []).map(t => ({ ...t,
+        effects: (t.effects || []).map(e => ({ ...e })) }));
+      card.keywords = intrinsicKeywords(card);
+      card.text = describeCardText(card);
+    }
+    card.copyOf = null;
+  }
   card.dealtDeathtouch = false;
   // Re-apply permaBuffs from slot for permanent_eot creatures (Elystra). Buffs
   // accumulate across the game on slot.permaBuffs; the card's modifier was
@@ -4335,7 +4472,7 @@ function resolveTopOfStack() {
               pool: pool.map(c => choosesDescriptor(c, chooser)),
               trailingEffects: activeEffects.slice(idx + 1).map(e => ({ ...e })),
             };
-            const noun = choosesFilter === 'permanent' ? 'permanent' : 'creature';
+            const noun = choosesFilter;   // 'creature' | 'permanent' | 'land'
             log(`${ctx.sourceName}: ${pname(chooser)} must choose a ${noun} to lose.`, 'sp');
             break; // defer; spell still moves to graveyard. doEdictChoice resumes.
           }

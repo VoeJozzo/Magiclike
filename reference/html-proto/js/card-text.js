@@ -324,7 +324,10 @@ function describeEffect(eff, tplEff) {
       if (fz === 'battlefield' && tz === 'library') return [plainSeg('shuffle ' + t + " into its owner's library")];
       if (fz === 'battlefield' && tz === 'hand') return [plainSeg('return ' + t + " to its owner's hand")];
       if (fz === 'battlefield' && tz === 'exile') return [plainSeg('exile ' + t)];          // flicker outgoing / exile removal
-      if (fz === 'exile' && tz === 'battlefield') return [plainSeg('return it to the battlefield')];  // flicker return
+      if (fz === 'exile' && tz === 'battlefield') {
+        if (eff.selector === 'copy_source') return [plainSeg("return the exiled card to the battlefield under its owner's control")];
+        return [plainSeg('return it to the battlefield')];  // flicker return
+      }
       return [plainSeg('move ' + t)];
     }
     case 'untap': {
@@ -371,8 +374,10 @@ function describeEffect(eff, tplEff) {
       return [];
     case 'sacrifice':
       // Edict: under a target(player) step, reads "target player/opponent
-      // sacrifices a creature". Otherwise a self/own sacrifice.
-      if (eff.target === 'player' || eff.target === 'opp' || eff.target === 'creature_or_player') return [plainSeg(t + ' sacrifices a creature')];
+      // sacrifices a <noun>". The noun comes from the chooses() filter carried
+      // here as edictFilter ('creature' | 'permanent' | 'land'); default creature.
+      if (eff.target === 'player' || eff.target === 'opp' || eff.target === 'creature_or_player')
+        return [plainSeg(t + ' sacrifices a ' + (eff.edictFilter || 'creature'))];
       if (eff.scope === 'self') return [plainSeg('sacrifice this creature')];
       return [plainSeg('sacrifice ' + (t || 'it'))];
     case 'change_control': {
@@ -400,6 +405,14 @@ function describeEffect(eff, tplEff) {
       if (eff.target === 'player' || eff.target === 'opp' || eff.target === 'creature_or_player')
         return [plainSeg(t + ' rips a permanent they control')];
       return [plainSeg('rip ' + (t || 'it'))];
+    case 'become_copy_of': {
+      // The False Witness doppelganger. Refers back to the just-exiled creature
+      // ("that creature"); keep_subtypes renders the "except it's also …" rider.
+      const keep = (Array.isArray(eff.keep_subtypes) && eff.keep_subtypes.length)
+        ? eff.keep_subtypes.join(' ') : '';
+      const rider = keep ? (", except it's also " + indefiniteArticle(keep) + ' ' + keep) : '';
+      return [plainSeg('this becomes a copy of that creature' + rider)];
+    }
     case 'symmetricize':
       return [plainSeg(t + "'s controller equalizes its power, toughness, or cost")];
     case 'apply_sticker': {
@@ -475,6 +488,9 @@ function coalesceEotBuffs(effects, tplOf) {
   return capitalizeSegs(out).concat(plainSeg('.'));
 }
 
+// Effects whose rendered noun is governed by a preceding chooses() filter.
+const EDICT_CHAIN_KINDS = new Set(['sacrifice', 'annihilate', 'rip']);
+
 function describeEffectList(effects, cardName, tplEffects, stepTarget, stepFilter, slotSpecs) {
   if (!Array.isArray(effects) || effects.length === 0) return [];
   // Give each bare effect a synthetic `target` so targetPhrase + withFilter
@@ -482,6 +498,10 @@ function describeEffectList(effects, cardName, tplEffects, stepTarget, stepFilte
   // resolution feeds the target: (1) multi-target — the effect's `target_slot`
   // indexes into `slotSpecs` (the canonical `target_slots` array, §5b); (2)
   // single — a top-level target() step (§3.5) shared by all bare effects.
+  // The edict idiom: a chooses() step names the type the forced player loses
+  // ('creature' | 'permanent' | 'land'); the noun is rendered by the trailing
+  // sacrifice/annihilate/rip clause, so carry the chooses filter onto it.
+  const edictFilter = (effects.find(e => e && e.kind === 'chooses') || {}).filter;
   if (stepTarget || (Array.isArray(slotSpecs) && slotSpecs.length)) {
     effects = effects.map(e => {
       if (!e || e.target || e.kind === 'chooses' || e.scope != null) return e;
@@ -490,7 +510,10 @@ function describeEffectList(effects, cardName, tplEffects, stepTarget, stepFilte
         return Object.assign({}, e, spec.filter ? { target: spec.target, filter: spec.filter } : { target: spec.target });
       }
       if (!stepTarget) return e;
-      return Object.assign({}, e, stepFilter ? { target: stepTarget, filter: stepFilter } : { target: stepTarget });
+      const inj = { target: stepTarget };
+      if (stepFilter) inj.filter = stepFilter;
+      else if (typeof edictFilter === 'string' && EDICT_CHAIN_KINDS.has(e.kind)) inj.edictFilter = edictFilter;
+      return Object.assign({}, e, inj);
     });
   }
   const tplOf = i => (Array.isArray(tplEffects) ? tplEffects[i] : undefined);

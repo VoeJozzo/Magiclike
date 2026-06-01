@@ -50,6 +50,10 @@ const CATEGORY_A = [
   'test_targeting_cast.js',
   // GAP 2 — human-facing edict chooses() prompt (pause/replay; AI auto-pick unchanged).
   'test_edict_human_choice.js',
+  // Heir to the Burnt House — type-symmetric chooses() filter (land edict).
+  'heir_edict_test.js',
+  // The False Witness — become_copy_of doppelganger (copy/exile/return/revert + AI).
+  'false_witness_test.js',
   // Regression — migrated targeted triggers PROMPT the human (not auto-pick).
   'test_trigger_target_prompt.js',
   // Slice 3 — §8.1 AI-valuation lockstep for migrated targeted spells.

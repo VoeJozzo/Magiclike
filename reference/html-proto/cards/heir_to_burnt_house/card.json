@@ -1,0 +1,35 @@
+{
+  "card_id": "heir_to_burnt_house",
+  "name": "Heir to the Burnt House",
+  "art": "art.png",
+  "cost": {
+    "B": 1,
+    "C": 3
+  },
+  "power": 3,
+  "toughness": 3,
+  "types": [
+    "Creature",
+    "Human",
+    "Noble"
+  ],
+  "triggers": [
+    {
+      "event": "card_zone_change",
+      "condition": [
+        "this_card",
+        "card_moves(battlefield, graveyard)"
+      ],
+      "target": "opp",
+      "effects": [
+        {
+          "kind": "chooses",
+          "filter": "land"
+        },
+        {
+          "kind": "sacrifice"
+        }
+      ]
+    }
+  ]
+}
