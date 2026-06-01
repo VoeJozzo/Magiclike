@@ -20,6 +20,16 @@ A cheap model (Gemma 4, free tier) does the grunt work; Claude orchestrates and
 If checking Gemma's output costs about as much as doing the task yourself, there's
 no leverage — keep it.
 
+**Reality check — does delegation actually pay HERE?** Spinning up a Gemma call has
+real overhead (write a script, round-trip the API, parse, debug the Windows transport
+quirks below). It only nets out when the task is **voluminous** (dozens of files/edits)
+or needs **natural-language generation at volume** (rewrite N oracle blurbs, draft N art
+prompts). For a handful of trivial edits — e.g. swapping 3 numbers — just use `Edit`
+directly; delegating is *net more work* (measured: a 3-line CLAUDE.md fix took far longer
+via Gemma than 3 Edits would have). And note: deterministic find/verify (`grep`, `wc -l`,
+JSON parse) is NOT Gemma's job — see "What is actually Gemma's job" below. Delegate the
+**generation**, not the **search**.
+
 ## Setup (already wired in this repo)
 
 - **Secrets — where to find what you need.** Everything lives in ONE file, outside
@@ -95,14 +105,24 @@ curl -s -o C:/Users/Joe/gemma_resp.json -w '%{http_code}' --max-time 90 \
   the network call, python only for build + parse.
 
 Parse the **last** text part, not the first — Gemma 4 emits a reasoning preamble
-(part 0 is its thinking), so the first `text` is `"The user wants a specific response: …"`:
+(part 0 is its thinking), so the first `text` is `"The user wants a specific response: …"`.
+Also **capture `usageMetadata`** every call — it's how you know what the delegate cost
+(otherwise you're advocating a cost-saving pattern while blind to the cost):
 
 ```bash
 C:/Users/Joe/miniconda3/python - <<'PY'
+import sys; sys.stdout.reconfigure(encoding="utf-8")   # see UTF-8 rule below
 import json; d=json.load(open(r"C:/Users/Joe/gemma_resp.json",encoding="utf-8"))
 print(d["candidates"][0]["content"]["parts"][-1]["text"].strip())
+print("TOKENS:", d.get("usageMetadata"))   # promptTokenCount / candidatesTokenCount / totalTokenCount
 PY
 ```
+
+**Windows console encoding (learned the hard way):** the git-bash console is cp1252, so
+any python `print()` of unicode (box-drawing `│├─`, em-dashes, etc.) throws
+`UnicodeEncodeError` and kills the script *before* it applies the edit. ALWAYS start the
+python with `sys.stdout.reconfigure(encoding="utf-8")` (or run with `PYTHONUTF8=1`), and
+prefer not to echo the raw unicode line at all.
 
 ## Prompt rules (make output cheap to verify)
 
@@ -111,6 +131,29 @@ PY
 3. **"Re-derive every value; do not trust existing numbers."** (Its PR #39 misses were on lines it left untouched.)
 4. **Few-shot it** — one concrete before/after beats abstract instructions for a small model.
 5. **temperature 0** for deterministic mechanical work.
+6. **Apply-step guard** — after writing Gemma's output back to the file, assert the diff is
+   exactly what you expected (e.g. `git diff --numstat` == the line count you intended). A
+   silent no-op (script crashed before applying, or matched nothing) otherwise sails through
+   as a fake "success." This guard caught a real zero-change run this session.
+
+## What is actually Gemma's job (search vs. generate)
+
+The instinct "Claude searches, Gemma places" is **wrong**. The searching/verifying is
+**deterministic tooling** (`grep`, `wc -l`, JSON parse) — it should be done by *tools*, by
+whoever orchestrates, and it's not LLM work for *either* model. An LLM only earns its keep
+on the part that **can't be computed**: generating natural language.
+
+- ✅ **Delegate to Gemma:** producing text at volume — rewriting N oracle blurbs, drafting
+  N art prompts, summarizing/condensing, reformatting prose. The *generation* is the bulk.
+- ⚙️ **Do with tools (not an LLM):** finding stale values, counting LOC, locating refs,
+  reconciling counts. `grep`/`wc -l` are exact and free; an LLM here just risks fabrication.
+- 🧠 **Keep for the orchestrator (judgment):** deciding *which* value is canonical when
+  sources disagree (this session: card count was 258 in ARCHITECTURE.md vs 279 in the
+  manifest — the right move was to NOT pin a number, not to have any model guess one).
+
+So a pure number-swap needs Gemma for *nothing* — tools find, `Edit` places. Reach for the
+delegate when the deliverable is **lots of generated prose**, and feed it tool-verified
+facts so it never has to source them itself.
 
 ## Verify like a manager — assert, don't read
 
