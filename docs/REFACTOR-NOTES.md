@@ -332,14 +332,10 @@ Reference via `TUNING.X` in scorers.
 
 ---
 
-### 5.2 [P1/S] Cover non-self triggered abilities
+### 5.2 [obsolete] Cover non-self triggered abilities
 **Where.** `engine/engine.gd:_fire_event` supports `self_only: false` listeners, but no current card uses it. `tests/test_phase4.gd` only exercises `self_only: true`.
 
-**Smell.** Untested code path. Already on `docs/BACKLOG.md` — duplicate-listed here for visibility.
-
-**Recommended.** Author a test fixture card with a non-self trigger (e.g., "When another creature you control enters, draw a card") and add it to `test_phase4.gd`. Or create `test_phase4_5d` if better isolated.
-
-**Triggered by.** Phase 6 — likely some new card needs this anyway.
+**Status: dropped.** The E1+E2 refactor ([`plan-zone-change-and-composable-predicates.md`](plans/plan-zone-change-and-composable-predicates.md)) removes the `self_only` flag entirely, replacing it with an explicit `this_card` predicate in a composable list. Since the listener path is being rebuilt anyway (and the current Godot path is unexercised/unverified), there's no point adding a test against the flag that's about to be deleted. The non-self / board-watching coverage gets written fresh against the new `this_card`-vs-absence model when E1+E2 lands in Godot. Removed from `docs/BACKLOG.md`.
 
 ---
 
