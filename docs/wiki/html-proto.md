@@ -12,7 +12,7 @@ The **html-proto** is [[magiclike]]'s original implementation: a vanilla-JavaScr
 
 It remains the **reference implementation and the source of truth for card definitions** (see [[cross-engine-port]] for its relationship to the [[godot]] port). It is served live via GitHub Pages for play-testing.
 
-Its own onboarding doc — the current version, the module-by-module map, and the changelog — lives in the repo at [`reference/html-proto/CLAUDE.md`](../../reference/html-proto/CLAUDE.md), the authoritative living reference. This node intentionally stays thin and status-free.
+Its own onboarding doc — the current version, the module-by-module map, and the changelog — lives in the repo at `reference/html-proto/CLAUDE.md`, the authoritative living reference. This node intentionally stays thin and status-free.
 
 ## See also
 

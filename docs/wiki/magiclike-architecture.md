@@ -8,7 +8,7 @@ sources: ["magiclike repo: CLAUDE.md (Architecture decisions; Patterns to NOT/RE
 
 # Magiclike — engine architecture
 
-The durable shape and rationale of [[magiclike]]'s rules engine — the *why* behind the design, which changes only by deliberate redesign. (Current module inventory and runtime contracts — modules, action/effect/`ctx` shapes — live in the repo at [`ARCHITECTURE.md`](../ARCHITECTURE.md) and the root `CLAUDE.md`. Live status lives in the repo, not here.)
+The durable shape and rationale of [[magiclike]]'s rules engine — the *why* behind the design, which changes only by deliberate redesign. (Current module inventory and runtime contracts — modules, action/effect/`ctx` shapes — live in the repo at `ARCHITECTURE.md` and the root `CLAUDE.md`. Live status lives in the repo, not here.)
 
 ## The core stance
 
@@ -22,9 +22,9 @@ The engine is a **pure-data rules engine with no UI imports**, reimplemented nat
 
 ## Real stack and priority from day one
 
-The stack is a real LIFO that holds **spells *and* triggered abilities**; both resolve through the same machinery. Priority follows MTG rules where it matters — the caster retains priority after casting (MTG 117.1c), mana empties at phase boundaries (106.4), the defender declares blocks before priority opens at the block step (509.1a), and triggers drain in APNAP order (603.3b). (Canon, in the project's own numbering: [`RULES.md`](../RULES.md) §600 *Priority and the Stack* and §1000 *Triggered Abilities*.)
+The stack is a real LIFO that holds **spells *and* triggered abilities**; both resolve through the same machinery. Priority follows MTG rules where it matters — the caster retains priority after casting (MTG 117.1c), mana empties at phase boundaries (106.4), the defender declares blocks before priority opens at the block step (509.1a), and triggers drain in APNAP order (603.3b). (Canon, in the project's own numbering: `RULES.md` §600 *Priority and the Stack* and §1000 *Triggered Abilities*.)
 
-This was a deliberate "no shortcuts" choice — a full priority/stack model up front rather than a resolve-immediately loop that would have to be ripped out later. The pragmatic auto-passes that exist (the AI driver auto-passing, the player's pass-priority keybind, SBAs swept in a single pass rather than strict 704.5 order) are **agent/UX conveniences, not rules cheats**: the priority pass genuinely happens — the `_settle_state` loop is just calling `execute_action(pass_priority)` for the AI or an unattended window ([`RULES.md`](../RULES.md) §606). Config for explicit stop-on-X priority holds is parked in [`BACKLOG.md`](../BACKLOG.md).
+This was a deliberate "no shortcuts" choice — a full priority/stack model up front rather than a resolve-immediately loop that would have to be ripped out later. The pragmatic auto-passes that exist (the AI driver auto-passing, the player's pass-priority keybind, SBAs swept in a single pass rather than strict 704.5 order) are **agent/UX conveniences, not rules cheats**: the priority pass genuinely happens — the `_settle_state` loop is just calling `execute_action(pass_priority)` for the AI or an unattended window (`RULES.md` §606). Config for explicit stop-on-X priority holds is parked in `BACKLOG.md`.
 
 ## Design discipline (ported from the prototype's scars)
 
@@ -33,7 +33,7 @@ The prototype is the behavioral reference, but its engine carries known scars fr
 - **No autoload reach from predicates or effect handlers** — they take explicit arguments and resolve without reading global state. The rationale and the prototype's cautionary closure pattern live in [[predicate-registry]].
 - **No per-instance state as dynamically-attached dictionary fields.** Use typed properties on `CardInstance` / `Player`. The prototype's City of Brass `extraManaColors` — silently lost on instantiation — is the cautionary tale; the `duplicate_deep()` overrides exist precisely to prevent that class of bug.
 - **The engine stays UI-free.** It emits a structured "trigger fired" signal and lets the presentation layer render the log/text; it never calls the text generator itself. (The prototype's lone `triggerLogText()` call from engine into card-text is the deliberate exception, isolated so the Godot port is a clean "swap the call for a signal emit" — see [[cross-engine-port]].)
-- **Trigger-chain depth cap.** Mirror the prototype's hardcoded cap on nested trigger resolutions — real card design produces accidental infinite loops, and the cap costs essentially nothing. (Status and gate: [`DIVERGENCE.md`](../DIVERGENCE.md) E6.)
+- **Trigger-chain depth cap.** Mirror the prototype's hardcoded cap on nested trigger resolutions — real card design produces accidental infinite loops, and the cap costs essentially nothing. (Status and gate: `DIVERGENCE.md` E6.)
 
 ## See also
 
