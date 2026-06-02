@@ -32,4 +32,4 @@ This layer **complements** the repo docs and never copies them — it links out:
 
 ## Conventions
 
-Kebab-case filenames; dense `[[wikilinks]]` between concept pages; relative markdown links out to the specs (`../RULES.md`); light dated frontmatter (`type` / `tags` / `created` / `updated` / `sources`); encyclopedic, concise voice; **durable-only** — nothing a commit would falsify. Git history is this folder's changelog.
+Kebab-case filenames; dense `[[wikilinks]]` between concept pages; **inline-code path refs** out to the repo docs (e.g. `docs/RULES.md`) — *not* relative `../` links, which break when clicked in the junctioned Obsidian vault (only `docs/wiki/` is mounted, so `../` escapes it); light dated frontmatter (`type` / `tags` / `created` / `updated` / `sources`); encyclopedic, concise voice; **durable-only** — nothing a commit would falsify. Git history is this folder's changelog.
