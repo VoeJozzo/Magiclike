@@ -2,6 +2,7 @@
   "card_id": "equatorial_engine",
   "name": "Equatorial Engine",
   "art": "[]",
+  "special": true,
   "types": [
     "Artifact",
     "Land"

@@ -1777,20 +1777,6 @@ const EFFECTS = {
   // applyTypeChange for duration + animate-stats handling.
   add_type(ctx, params, target) { applyTypeChange(ctx, params, target, 'add'); },
   set_types(ctx, params, target) { applyTypeChange(ctx, params, target, 'set'); },
-  grant_activated_ability(ctx, params, target) {
-    const f = resolveTarget(ctx, target);
-    if (!f || !params.ability) return;
-    if (!Array.isArray(f.card.abilities)) f.card.abilities = [];
-    const ab = {
-      ...params.ability,
-      cost: params.ability.cost ? {...params.ability.cost} : undefined,
-      effects: (params.ability.effects || []).map(e => ({...e})),
-      _granted: true,
-    };
-    f.card.abilities.push(ab);
-    f.card.text = describeCardText(f.card);
-    log(`${f.card.name} gains an activated ability.`, 'sp');
-  },
   // Absorb a novel keyword from victim, else grow +1/+1. Persists via slot sticker.
   // Auto-picks highest-priority keyword; defender excluded (downside).
   endomorph_absorb(ctx, params, target) {
@@ -1925,6 +1911,7 @@ const EFFECTS = {
     if (!desc || !desc.kind) return;
     const slotKey = params.sticker ? { ...desc } : params.sticker_id;
     applyOneStickerToRuntimeCard(f.card, { ...desc });
+    f.card.text = describeCardText(f.card);
     const owner = f.card.owner || f.controller;
     const slotIdx = (typeof f.card.slotIdx === 'number') ? f.card.slotIdx : null;
     if (owner === 'you' && slotIdx != null && typeof RUN !== 'undefined' && RUN.applyStickerToSlot) {
@@ -3694,9 +3681,6 @@ function resetInPlayState(card, preserveDeathState) {
   card.cantAttack = false; card.cantBlock = false;
   if (card.cantAttackBy instanceof Set) card.cantAttackBy.clear();
   if (card.cantBlockBy instanceof Set) card.cantBlockBy.clear();
-  if (Array.isArray(card.abilities) && card.abilities.some(ab => ab && ab._granted)) {
-    card.abilities = card.abilities.filter(ab => !(ab && ab._granted));
-  }
   // Type-change grants (add_type/set_types) revert on leave-play, so a bounced/
   // recast animated land returns to its base types.
   if (Array.isArray(card.typeGrants) && card.typeGrants.length) card.typeGrants = [];

@@ -22,7 +22,6 @@ const NOT_TARGET_SCORED_KINDS = new Set([
   'counter',            // scored via the instant-response counter path, not main-phase
   'apply_sticker',      // a rider on embargo/bleach — the move_card half is scored
   'schedule_delayed',   // a rider (exile_until_eot's return) — the move_card half is scored
-  'grant_activated_ability', // a rider on Artifice Triumphant — set_types scores the target
   'chooses',            // edict's pick step — the sacrifice/rip verb is scored
   'become_copy_of',      // False Witness ETB doppelganger — trigger mechanic, value dominated by the body
   'steal',              // internal helper dispatched by change_control
@@ -134,7 +133,6 @@ function spellValueForEffects(effects) {
     // a permanent set is near-removal, an until-eot set is a tempo answer.
     else if (e.kind === 'add_type') v += ((e.power || 0) + (e.toughness || 0)) || 1;
     else if (e.kind === 'set_types') v += (e.duration === 'permanent') ? 11 : 5;
-    else if (e.kind === 'grant_activated_ability') v += 3;
   }
   return v;
 }
@@ -152,7 +150,6 @@ const VALUED_EFFECT_KINDS = new Set([
   'move_card', 'discard', 'grant_keyword', 'create_tokens', 'rip',
   'chooses', 'schedule_delayed', 'change_control', 'fight_target',
   'apply_in_game_splice', 'sacrifice', 'add_type', 'set_types',
-  'grant_activated_ability',
 ]);
 const UNVALUED_EFFECT_KINDS = new Set([
   'steal',              // internal helper dispatched by change_control; not a card kind
@@ -1387,6 +1384,11 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
   // "you gain 4 life AND that opponent loses 2" — the drain is the targeted half).
   let eff = modeEffects.find(e => e.target && e.target !== 'self');
   if (!eff && card.target) eff = modeEffects.find(e => e.kind !== 'chooses' && e.kind !== 'apply_sticker' && e.scope == null);
+  if (!eff && card.target) {
+    const stickerSetTypes = modeEffects.find(e => e.kind === 'apply_sticker'
+      && e.sticker && e.sticker.kind === 'set_types');
+    if (stickerSetTypes) eff = { ...stickerSetTypes.sticker, kind: 'set_types' };
+  }
   if (!eff) return 0;
   if (eff.kind === 'sacrifice' || eff.kind === 'annihilate') {
     // Edict: target(player) → chooses → sacrifice/annihilate (→ rip). The targeted
@@ -1452,7 +1454,8 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
     // Artifice Triumphant grants "pay one mana of each of this card's colors:
     // become a creature until EOT." On an originally colorless creature that
     // costs zero, so neutralizing it is pointless.
-    if (modeEffects.some(e => e.kind === 'grant_activated_ability')
+    if (modeEffects.some(e => e.kind === 'apply_sticker'
+          && e.sticker && e.sticker.kind === 'grant_activated_ability')
         && (!Array.isArray(c.card.colors) || c.card.colors.length === 0)) return -100;
     const base = (eff.duration === 'permanent') ? 20 : 8;
     return base + ENGINE.getCardValue(c.card, 'kill') + laneOpeningBonus(state, us, target.iid);

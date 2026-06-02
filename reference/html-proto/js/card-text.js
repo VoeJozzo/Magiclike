@@ -345,10 +345,6 @@ function describeEffect(eff, tplEff) {
       const verb = eff.kind === 'set_types' ? ' becomes ' : ' also becomes ';
       return [plainSeg(t + verb + indefiniteArticle(body) + ' ' + body + dur)];
     }
-    case 'grant_activated_ability': {
-      if (!eff.ability) return [plainSeg(t + ' gains an activated ability')];
-      return [plainSeg(t + ' gains "' + segsToText(describeAbility(eff.ability)) + '"')];
-    }
     case 'apply_in_game_splice':
       return [plainSeg('staple the second target permanent onto the first')];
     case 'fight_target':
@@ -435,6 +431,14 @@ function describeEffect(eff, tplEff) {
       }
       if (sk.kind === 'stat_boost') {
         return [plainSeg(subj + ' gets +' + (sk.power || 0) + '/+' + (sk.toughness || 0) + ' permanently')];
+      }
+      if (sk.kind === 'set_types') {
+        const tags = Array.isArray(sk.types) ? sk.types : (sk.type ? [sk.type] : []);
+        const body = tags.join(' ');
+        return [plainSeg(subj + ' becomes ' + indefiniteArticle(body) + ' ' + body + ' permanently')];
+      }
+      if (sk.kind === 'grant_activated_ability' && sk.ability) {
+        return [plainSeg(subj + ' gains "' + segsToText(describeAbility(sk.ability)) + '" permanently')];
       }
       return [plainSeg(subj + ' gets a lasting change')];
     }

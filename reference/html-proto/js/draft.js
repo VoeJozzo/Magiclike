@@ -167,8 +167,7 @@ const CONSTRUCTED_DECKS = {
     lands: [
       'equatorial_engine', 'equatorial_engine', 'equatorial_engine', 'equatorial_engine',
       'equatorial_engine', 'equatorial_engine', 'equatorial_engine', 'equatorial_engine',
-      'dross_pylon', 'dross_pylon', 'dross_pylon', 'dross_pylon', 'dross_pylon',
-      'dross_pylon', 'dross_pylon', 'dross_pylon', 'dross_pylon',
+      'equatorial_engine', 'equatorial_engine',
     ],
   },
 };

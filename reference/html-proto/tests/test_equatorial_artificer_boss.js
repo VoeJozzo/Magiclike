@@ -32,6 +32,8 @@ console.log('=== colorless boss card data + constructed registry ===');
 (() => {
   const ids = ['equatorial_engine', 'artifice_triumphant', 'ingenuity_unbounded'];
   check('all three special cards load', ids.every(id => CARDS[id]), ids.filter(id => !CARDS[id]).join(', '));
+  check('all three cards are boss-only specials, excluded from normal draft offers',
+    ids.every(id => CARDS[id].special === true));
   check('Equatorial Engine is an Artifact Land that taps for {C}{C}',
     hasType(CARDS.equatorial_engine, 'Artifact')
     && hasType(CARDS.equatorial_engine, 'Land')
@@ -49,10 +51,9 @@ console.log('=== colorless boss card data + constructed registry ===');
   const built = DRAFT.buildOpponentDeck(0, 0, 0, null, 'equatorialArtificerBoss');
   check('built boss keeps colorless identity',
     built && Array.isArray(built.colors) && built.colors.length === 0);
-  check('built boss uses the explicit artifact mana base (no default Forests)',
-    built.cards.filter(s => s.tplId === 'equatorial_engine').length === 8
-    && built.cards.filter(s => s.tplId === 'dross_pylon').length === 9
-    && !built.cards.some(s => s.tplId === 'forest'));
+  check('built boss uses exactly 10 Equatorial Engines and no other lands',
+    built.cards.filter(s => s.tplId === 'equatorial_engine').length === 10
+    && built.cards.filter(s => hasType(CARDS[s.tplId], 'Land')).length === 10);
 })();
 
 console.log('\n=== Artifice Triumphant neutralizes permanently and grants reanimation ability ===');
@@ -74,7 +75,7 @@ console.log('\n=== Artifice Triumphant neutralizes permanently and grants reanim
 
   check('target becomes only an Artifact, permanently',
     hasType(knight, 'Artifact') && !hasType(knight, 'Creature') && isPermanent(knight));
-  const abilityIdx = (knight.abilities || []).findIndex(ab => ab._granted);
+  const abilityIdx = (knight.abilities || []).findIndex(ab => ab._sticker_ability_id === 'artifice_triumphant_reanimate');
   check('target gains the color-cost activated ability',
     abilityIdx >= 0 && knight.abilities[abilityIdx].cost.mana.colors_of_source === true);
   check('generated text mentions the granted ability',
@@ -86,6 +87,15 @@ console.log('\n=== Artifice Triumphant neutralizes permanently and grants reanim
     equator.tapped && G.you.mana.C === 1);
   check('target is a creature again until end of turn',
     hasType(knight, 'Artifact') && hasType(knight, 'Creature'));
+  const slot = RUN.getSlots()[0];
+  check('both transformations persist on the player run slot',
+    slot.stickers.some(s => s && s.kind === 'set_types')
+    && slot.stickers.some(s => s && s.kind === 'grant_activated_ability'));
+  const rebuilt = ENGINE.makeCard('white_knight', slot.stickers, 0);
+  check('next-fight rebuild is still an Artifact, not naturally a Creature',
+    hasType(rebuilt, 'Artifact') && !hasType(rebuilt, 'Creature'));
+  check('next-fight rebuild still has the color-cost activation',
+    (rebuilt.abilities || []).some(ab => ab._sticker_ability_id === 'artifice_triumphant_reanimate'));
 })();
 
 console.log('\n=== Artifice Triumphant AI avoids free reactivation targets ===');

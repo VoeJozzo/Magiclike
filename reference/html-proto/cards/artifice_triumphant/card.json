@@ -2,36 +2,43 @@
   "card_id": "artifice_triumphant",
   "name": "Artifice Triumphant",
   "art": "/\\",
+  "special": true,
   "cost": {
     "C": 3
   },
   "target": "creature",
   "effects": [
     {
-      "kind": "set_types",
-      "types": [
-        "Artifact"
-      ],
-      "duration": "permanent"
+      "kind": "apply_sticker",
+      "sticker": {
+        "kind": "set_types",
+        "types": [
+          "Artifact"
+        ]
+      }
     },
     {
-      "kind": "grant_activated_ability",
-      "ability": {
-        "cost": {
-          "mana": {
-            "colors_of_source": true
-          }
-        },
-        "effects": [
-          {
-            "kind": "add_type",
-            "scope": "self",
-            "types": [
-              "Creature"
-            ],
-            "duration": "eot"
-          }
-        ]
+      "kind": "apply_sticker",
+      "sticker": {
+        "kind": "grant_activated_ability",
+        "ability_id": "artifice_triumphant_reanimate",
+        "ability": {
+          "cost": {
+            "mana": {
+              "colors_of_source": true
+            }
+          },
+          "effects": [
+            {
+              "kind": "add_type",
+              "scope": "self",
+              "types": [
+                "Creature"
+              ],
+              "duration": "eot"
+            }
+          ]
+        }
       }
     }
   ],

@@ -208,10 +208,11 @@ Artifice Triumphant ({3} flash Sorcery that permanently turns a creature into an
 Artifact and grants it a color-cost activation to become a Creature until EOT),
 and Ingenuity Unbounded ({1} innate Artifact with hexproof, indestructible, and
 "spend mana as any color"). Small engine seams: intrinsic `innate` card data,
-`spend_mana_as_any_color`, dynamic `colors_of_source` activation costs, and the
-data-driven `grant_activated_ability` effect. Added
-`test_equatorial_artificer_boss.js`; the boss uses an explicit colorless artifact
-mana base so Ingenuity unlocks a suite of demanding colored spells.
+`spend_mana_as_any_color`, dynamic `colors_of_source` activation costs, and
+run-persistent `set_types` / `grant_activated_ability` stickers composed through
+the existing `apply_sticker` primitive. Added `test_equatorial_artificer_boss.js`;
+the boss uses 10 Equatorial Engines and no other lands, so Ingenuity unlocks a
+suite of demanding colored spells.
 
 v2.0.76: **two cards landed from PRs #30/#31 (rebuilt on the v2.0 model) + their
 small engine seams.** Both PRs predated the v2.0 refactor by ~292 commits and no

@@ -122,7 +122,7 @@ const CATEGORY_A = [
   'test_types_identity.js',
   // Type-change layer (add_type/set_types) + Phase-4 test cards (type-change spells, artifact creatures, artifact lands).
   'test_type_change.js',
-  // Colorless artifact boss special cards (Equatorial Artifice / Artifice Triumphant / Ingenuity Unbounded).
+  // Colorless artifact boss special cards (Equatorial Engine / Artifice Triumphant / Ingenuity Unbounded).
   'test_equatorial_artificer_boss.js',
   // Oracle text is generated from effects — no card may carry a dead (render-irrelevant) top-level text field.
   'test_no_dead_text.js',

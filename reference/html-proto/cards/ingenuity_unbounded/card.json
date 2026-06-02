@@ -2,6 +2,7 @@
   "card_id": "ingenuity_unbounded",
   "name": "Ingenuity Unbounded",
   "art": "oo",
+  "special": true,
   "cost": {
     "C": 1
   },
