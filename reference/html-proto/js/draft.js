@@ -147,20 +147,28 @@ const CONSTRUCTED_DECKS = {
     name: 'Equatorial Artificer',
     icon: 'C',
     colors: [],
-    description: 'Colorless artifact boss: fast artifact mana, neutralization, resilient fixing',
+    description: 'Colorless artifact boss: fast artifact mana unlocks demanding colored spells',
     isBoss: true,
     cards: [
       'ingenuity_unbounded',
-      'equatorial_artifice', 'equatorial_artifice', 'equatorial_artifice', 'equatorial_artifice',
       'artifice_triumphant', 'artifice_triumphant', 'artifice_triumphant',
-      'alloy_myr', 'alloy_myr',
-      'copper_golem', 'copper_golem',
       'clockwork_beetle', 'clockwork_beetle',
       'scrap_hound', 'scrap_hound',
-      'iron_sentinel', 'iron_sentinel',
-      'bulwark_automaton', 'bulwark_automaton',
-      'sentinel_colossus',
-      'razor_beacon', 'razor_beacon',
+      'alloy_myr', 'alloy_myr',
+      'counterspell', 'counterspell',
+      'anger_of_the_gods', 'anger_of_the_gods',
+      'mind_control', 'mind_control',
+      'day_of_reckoning',
+      'spectral_procession', 'spectral_procession',
+      'vile_edict', 'vile_edict',
+      'overrun',
+      'shivan_dragon',
+    ],
+    lands: [
+      'equatorial_engine', 'equatorial_engine', 'equatorial_engine', 'equatorial_engine',
+      'equatorial_engine', 'equatorial_engine', 'equatorial_engine', 'equatorial_engine',
+      'dross_pylon', 'dross_pylon', 'dross_pylon', 'dross_pylon', 'dross_pylon',
+      'dross_pylon', 'dross_pylon', 'dross_pylon', 'dross_pylon',
     ],
   },
 };
@@ -227,7 +235,9 @@ function buildOpponentDeck(numStickers, numStaples, numClones, colorAffinity, co
     }
   }
   const pips = countPips(picks);
-  const lands = allocLands(pips);
+  const lands = (constructed && Array.isArray(constructed.lands))
+    ? constructed.lands.slice()
+    : allocLands(pips);
   const slots = [...picks, ...lands].map(tplId => ({ tplId, stickers: [] }));
   // Order: staples first (consume slots), then stickers, then clones (photocopy modified slots).
   if (numStaples > 0)  applyOpponentStaples(slots, numStaples);

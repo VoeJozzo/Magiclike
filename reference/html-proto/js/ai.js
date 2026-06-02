@@ -1449,6 +1449,11 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
     if (!c || c.controller === us) return -100;
     if (c.card.keywords.includes('hexproof')) return -100;
     if (!hasType(c.card, 'Creature')) return -100;        // only a creature is worth neutralizing
+    // Artifice Triumphant grants "pay one mana of each of this card's colors:
+    // become a creature until EOT." On an originally colorless creature that
+    // costs zero, so neutralizing it is pointless.
+    if (modeEffects.some(e => e.kind === 'grant_activated_ability')
+        && (!Array.isArray(c.card.colors) || c.card.colors.length === 0)) return -100;
     const base = (eff.duration === 'permanent') ? 20 : 8;
     return base + ENGINE.getCardValue(c.card, 'kill') + laneOpeningBonus(state, us, target.iid);
   }

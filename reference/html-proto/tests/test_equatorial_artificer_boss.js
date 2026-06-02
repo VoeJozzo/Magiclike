@@ -30,12 +30,12 @@ function boot() {
 
 console.log('=== colorless boss card data + constructed registry ===');
 (() => {
-  const ids = ['equatorial_artifice', 'artifice_triumphant', 'ingenuity_unbounded'];
+  const ids = ['equatorial_engine', 'artifice_triumphant', 'ingenuity_unbounded'];
   check('all three special cards load', ids.every(id => CARDS[id]), ids.filter(id => !CARDS[id]).join(', '));
-  check('Equatorial Artifice is an Artifact Land that taps for {C}{C}',
-    hasType(CARDS.equatorial_artifice, 'Artifact')
-    && hasType(CARDS.equatorial_artifice, 'Land')
-    && CARDS.equatorial_artifice.abilities[0].effects[0].amounts.C === 2);
+  check('Equatorial Engine is an Artifact Land that taps for {C}{C}',
+    hasType(CARDS.equatorial_engine, 'Artifact')
+    && hasType(CARDS.equatorial_engine, 'Land')
+    && CARDS.equatorial_engine.abilities[0].effects[0].amounts.C === 2);
   check('Ingenuity is innate, hexproof, indestructible, and fixes mana',
     CARDS.ingenuity_unbounded.innate === true
     && (CARDS.ingenuity_unbounded.keywords || []).includes('hexproof')
@@ -49,6 +49,10 @@ console.log('=== colorless boss card data + constructed registry ===');
   const built = DRAFT.buildOpponentDeck(0, 0, 0, null, 'equatorialArtificerBoss');
   check('built boss keeps colorless identity',
     built && Array.isArray(built.colors) && built.colors.length === 0);
+  check('built boss uses the explicit artifact mana base (no default Forests)',
+    built.cards.filter(s => s.tplId === 'equatorial_engine').length === 8
+    && built.cards.filter(s => s.tplId === 'dross_pylon').length === 9
+    && !built.cards.some(s => s.tplId === 'forest'));
 })();
 
 console.log('\n=== Artifice Triumphant neutralizes permanently and grants reanimation ability ===');
@@ -56,7 +60,7 @@ console.log('\n=== Artifice Triumphant neutralizes permanently and grants reanim
   const G = boot();
   const knight = ENGINE.makeCard('white_knight', [], 0);
   knight.controller = 'you'; knight.owner = 'you'; knight.sick = false; knight.iid = 9101;
-  const equator = ENGINE.makeCard('equatorial_artifice', [], 1);
+  const equator = ENGINE.makeCard('equatorial_engine', [], 1);
   equator.controller = 'you'; equator.owner = 'you'; equator.sick = false; equator.iid = 9102;
   const ingenuity = ENGINE.makeCard('ingenuity_unbounded', [], 2);
   ingenuity.controller = 'you'; ingenuity.owner = 'you'; ingenuity.sick = false; ingenuity.iid = 9103;
@@ -82,6 +86,25 @@ console.log('\n=== Artifice Triumphant neutralizes permanently and grants reanim
     equator.tapped && G.you.mana.C === 1);
   check('target is a creature again until end of turn',
     hasType(knight, 'Artifact') && hasType(knight, 'Creature'));
+})();
+
+console.log('\n=== Artifice Triumphant AI avoids free reactivation targets ===');
+(() => {
+  const G = boot();
+  G.you.mana.C = 9;
+  const spell = ENGINE.makeCard('artifice_triumphant', [], 0);
+  spell.controller = 'you'; spell.owner = 'you'; spell.iid = 9201;
+  const colored = ENGINE.makeCard('white_knight', [], 1);
+  colored.controller = 'opp'; colored.owner = 'opp'; colored.sick = false; colored.iid = 9202;
+  const colorless = ENGINE.makeCard('sentinel_colossus', [], 2);
+  colorless.controller = 'opp'; colorless.owner = 'opp'; colorless.sick = false; colorless.iid = 9203;
+  G.you.hand.push(spell);
+  G.opp.battlefield = [colored, colorless];
+  const dec = AI.decide(G, 'you');
+  check('AI casts Artifice Triumphant at the colored creature, not the free-reactivation colorless one',
+    dec && dec.type === 'castSpell' && dec.cardIid === spell.iid
+    && dec.targets && dec.targets[0] && dec.targets[0].iid === colored.iid,
+    JSON.stringify(dec));
 })();
 
 console.log('\n=== validation coverage ===');
