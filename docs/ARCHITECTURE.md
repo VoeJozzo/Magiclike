@@ -327,7 +327,7 @@ node tests/selfplay_harness.js 500 bughunt  # AI vs AI, ~20s
 | Modal trigger building (Mercurial / Codex) | ✗ | ✓ | Out of current scope. |
 | Modal spells | ✗ | ✓ | Out of current scope. |
 | Tokens | ✗ | ✓ | Out of current scope. |
-| Static lords (stat buffs) | ✗ | partial | Buffs work in proto; keyword grants don't yet. |
+| Static lords (stat + keyword buffs) | ✗ | ✓ | Proto grants both stat buffs (`getStats`) and keywords (`applyStaticKeywordGrants`, called from `emit()`; 6 lord cards). Godot: not yet. |
 | Render diffing | n/a (Godot retained-mode) | ✗ | Proto repaints on every event. |
 
 Phase 6–10 of `docs/plans/godot-port-plan.md` covers most of the deferred items in order.

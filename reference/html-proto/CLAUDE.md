@@ -1042,7 +1042,7 @@ Schema migrations live in the `RUN` module and run on load.
 
 ## Design backlog
 
-The earlier in-code roadmap comment block has been removed as features shipped (tokens, modal spells, etc. are now implemented). Static Lords remain partially implemented: lords grant `staticBuffs` (stat changes) but not keywords — grep `cards/*/card.json` for `staticBuffs` to find them. Ask the user about current priorities before assuming what's next.
+The earlier in-code roadmap comment block has been removed as features shipped (tokens, modal spells, etc. are now implemented). Static Lords are fully implemented: lords grant both stat changes (via `getStats`) AND keywords (via `applyStaticKeywordGrants`, called from `emit()` with `grantedBy`-Map leave-play cleanup) — grep `cards/*/card.json` for `static_buffs` to find them (6 grant keywords: goblin_chieftain/haste, field_marshal & knight_commander/vigilance, spirit_shepherd/hexproof, apex_elder/trample, skyfire_drakelord/first_strike). Note: the keyword-grant path has no dedicated unit test yet (only selfplay coverage). Ask the user about current priorities before assuming what's next.
 
 ## Testing
 
