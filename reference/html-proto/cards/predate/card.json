@@ -29,10 +29,10 @@
     },
     {
       "kind": "fight",
-      "target_slot": 1,
-      "fighter": {
-        "slot": 0
-      }
+      "operands": [
+        { "slot": 0 },
+        { "slot": 1 }
+      ]
     }
   ],
   "types": [

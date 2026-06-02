@@ -1,9 +1,9 @@
 // Predate ({1}{G} Sorcery: target creature you control gets +1/+1 until end of
 // turn, then it fights target creature an opponent controls) and the machinery
 // it exercises:
-//   1. the `fight` effect's two operands — the targeted creature plus a `fighter`
-//      selector (a {slot} reference for Predate, a {select} computed pick for the
-//      one-sided fight cards).
+//   1. the `fight` effect's symmetric operands — each a {slot} reference (Predate /
+//      Prey Upon) or a {select} computed pick (the one-sided fight cards), fed by
+//      card-level target_slots that the enumerator now treats as authoritative.
 //   2. The D1 live-read hybrid (DIVERGENCE §3.6): a {from:'target_*'} expression
 //      reads LIVE state while the target is on the battlefield (so Predate's pump
 //      counts in the fight) and falls back to last-known-info once the target has
@@ -42,23 +42,25 @@ console.log('=== Predate: the fight uses the POST-pump power (D1 live-read) ==='
   const theirs = place('opp', 'goblin_raider', 3, 3);  // their 3/3 target
   const ctx = { controller: 'you', sourceName: 'Predate', sourceIid: -1,
                 allTargets: [tgt(mine), tgt(theirs)] };
-  // Effect order matches resolveTopOfStack's loop: pump slot 0, then fight.
+  // Effect order matches resolveTopOfStack's loop: pump slot 0, then fight reads
+  // both creatures from its operands (slots 0 and 1 in ctx.allTargets).
   ENGINE.applyEffect(ctx, { kind: 'pump', power: 1, toughness: 1, target_slot: 0 }, tgt(mine));
   check('our creature pumped to 3/3', ENGINE.getStats(mine)[0] === 3 && ENGINE.getStats(mine)[1] === 3);
-  ENGINE.applyEffect(ctx, { kind: 'fight', target_slot: 1, fighter: { slot: 0 } }, tgt(theirs));
+  ENGINE.applyEffect(ctx, { kind: 'fight', operands: [{ slot: 0 }, { slot: 1 }] }, null);
   check('boosted fighter dealt 3 (would be 2 if it read the pre-pump snapshot)', theirs.damage === 3,
     'damage=' + theirs.damage);
   check('the 3/3 dealt its 3 back to our creature', mine.damage === 3, 'damage=' + mine.damage);
 })();
 
-console.log('\n=== fight with a {select} fighter auto-picks our biggest (Beast\'s Fury) ===');
+console.log('\n=== fight with a {select} operand auto-picks our biggest (Beast\'s Fury) ===');
 (() => {
   clearBoards();
   const small  = place('you', 'goblin_raider', 1, 1);
   const big    = place('you', 'goblin_raider', 5, 5);
   const theirs = place('opp', 'goblin_raider', 4, 4);
-  const ctx = { controller: 'you', sourceName: "Beast's Fury", sourceIid: -1 };
-  ENGINE.applyEffect(ctx, { kind: 'fight', fighter: { select: 'highest_power_yours' } }, tgt(theirs));
+  // Victim is slot 0 (the spell's lone target); the fighter operand is computed.
+  const ctx = { controller: 'you', sourceName: "Beast's Fury", sourceIid: -1, allTargets: [tgt(theirs)] };
+  ENGINE.applyEffect(ctx, { kind: 'fight', operands: [{ select: 'highest_power_yours' }, { slot: 0 }] }, null);
   check('auto-picked the 5/5 → dealt 5 to target', theirs.damage === 5, 'damage=' + theirs.damage);
   check('target dealt 4 back to the 5/5, not the 1/1', big.damage === 4 && small.damage === 0);
 })();
@@ -155,6 +157,44 @@ console.log('\n=== Predate cast END-TO-END through the real stack (AI resolves) 
   check('the 1/5 dealt only 1 back to our creature', mine.damage === 1, 'our dmg=' + mine.damage);
   check('both creatures survived (no SBA death)',
     g.you.battlefield.some(c => c.iid === mine.iid) && g.opp.battlefield.some(c => c.iid === theirs.iid));
+})();
+
+console.log('\n=== Prey Upon: fight-only, BOTH slots enumerated + AI casts when favorable ===');
+(() => {
+  // The card that motivated symmetric operands: a single `fight` effect with two
+  // slot operands and no other effect claiming slot 0. Pre-fix the AI couldn't
+  // enumerate slot 0 (it derived slots from effect target_slots). Now card-level
+  // target_slots is authoritative.
+  RUN.start({ cards: Array(12).fill('forest'), colors: ['G'] }, null);
+  RUN.startNextGame();
+  const g = ENGINE.state();
+  g.activePlayer = 'you'; g.priorityHolder = 'you'; g.phase = 'MAIN1';
+  g.stack = []; g.gameOver = false; g.priority = { passes: new Set() };
+  g.you.mana = { W: 9, U: 9, B: 9, R: 9, G: 9, C: 9 };
+  g.you.battlefield = []; g.opp.battlefield = [];
+  const mk2 = (who, tpl, p, t) => { const c = ENGINE.makeCard(tpl); c.sick = false; if (p != null) c.power = p; if (t != null) c.toughness = t; g[who].battlefield.push(c); return c; };
+  const big   = mk2('you', 'goblin_raider', 5, 5);   // our fighter
+  const small = mk2('opp', 'goblin_raider', 2, 2);   // their victim
+  const pu = ENGINE.makeCard('prey_upon'); g.you.hand = [pu];
+  const acts = ENGINE.getLegalActions('you').filter(a => a.type === 'castSpell' && a.cardIid === pu.iid);
+  check('enumerated exactly one cast with BOTH slots filled',
+    acts.length === 1 && acts[0].targets.length === 2
+    && acts[0].targets[0].iid === big.iid && acts[0].targets[1].iid === small.iid,
+    JSON.stringify(acts.map(a => a.targets.map(t => t.iid))));
+  const dec = AI.decide(g, 'you');
+  check('AI chooses to cast Prey Upon (our 5/5 vs their 2/2)',
+    !!dec && dec.type === 'castSpell' && dec.cardIid === pu.iid);
+  // resolve it and confirm the exchange
+  ENGINE.executeAction('you', acts[0]);
+  let safety = 40;
+  while ((g.stack.length || (g.pendingTriggers || []).length || g.pendingTriggerTarget) && safety-- > 0) {
+    const w = ENGINE.expectedActor(); if (!w) break;
+    const a = AI.decide(g, w); if (!a) break;
+    ENGINE.executeAction(w, a);
+  }
+  check('our 5/5 killed their 2/2 (off the battlefield, in the graveyard)',
+    !g.opp.battlefield.some(c => c.iid === small.iid) && g.opp.graveyard.some(c => c.iid === small.iid));
+  check('their 2/2 dealt 2 back to our 5/5, which survives', big.damage === 2 && g.you.battlefield.some(c => c.iid === big.iid));
 })();
 
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');

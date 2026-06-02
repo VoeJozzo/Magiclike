@@ -9,9 +9,10 @@
   "effects": [
     {
       "kind": "fight",
-      "fighter": {
-        "select": "highest_power_yours"
-      }
+      "operands": [
+        { "select": "highest_power_yours" },
+        { "slot": 0 }
+      ]
     }
   ],
   "name": "Beast's Fury",

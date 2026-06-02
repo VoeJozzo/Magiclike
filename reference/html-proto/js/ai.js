@@ -1195,27 +1195,79 @@ function spellPlayValue(state, who, card, opt) {
   return spellValueForEffects(modeEffects) + scoreUntargetedSituation(state, who, modeEffects);
 }
 
+// Score a `fight` as ONE combatant-vs-combatant exchange off its operands (not
+// per-slot — a fighter slot is our own creature, which the per-target scorer would
+// reject). Mirrors the fight handler's operand resolution against `state` (slots
+// from the action targets, {select} = our biggest). Uses base stats — a pending
+// same-turn pump isn't modelled, so the estimate is conservative.
+function scoreFightExchange(state, who, fightEff, targets) {
+  const us = who;
+  const find = (iid) => {
+    for (const w of ['you', 'opp']) {
+      const c = state[w].battlefield.find(x => x.iid === iid);
+      if (c) return { card: c, controller: w };
+    }
+    return null;
+  };
+  const ops = Array.isArray(fightEff.operands) ? fightEff.operands : [];
+  const out = new Array(ops.length).fill(null);
+  const used = new Set();
+  ops.forEach((op, i) => {
+    if (op && op.slot != null) {
+      const t = targets && targets[op.slot];
+      const r = (t && t.kind === 'creature') ? find(t.iid) : null;
+      out[i] = r; if (r) used.add(r.card.iid);
+    }
+  });
+  ops.forEach((op, i) => {
+    if (out[i]) return;
+    const ours = state[us].battlefield.filter(c => hasType(c, 'Creature') && !used.has(c.iid));
+    if (!ours.length) return;
+    ours.sort((a, b) => ENGINE.getStats(b)[0] - ENGINE.getStats(a)[0]);
+    out[i] = { card: ours[0], controller: us }; used.add(ours[0].iid);
+  });
+  const [r0, r1] = out;
+  if (!r0 || !r1) return -100;
+  const ourC = r0.controller === us ? r0.card : r1.card;
+  const theirC = r0.controller === us ? r1.card : r0.card;
+  const [ourPow, ourTou] = ENGINE.getStats(ourC);
+  const [theirPow, theirTou] = ENGINE.getStats(theirC);
+  let score = 0;
+  if (ourPow >= theirTou) score += 30 + theirPow + theirTou;   // we kill
+  if (theirPow >= ourTou) score -= 25 + ourPow + ourTou;       // we die
+  return score;
+}
+
 // Score a multi-target spell by summing per-slot scores. Single-target
 // collapses to scoreSpellTargetForMode. Approximate when effects interact.
 function scoreMultiTargetSpell(state, who, card, targets, modeIdx) {
   if (!Array.isArray(targets) || targets.length === 0) return 0;
   const modeEffects = ENGINE.effectsForMode(card, modeIdx);
+  // fight scores as a single exchange off its operands (additive — 0 if absent).
+  let fightScore = 0, hasFight = false;
+  for (const eff of modeEffects) {
+    if (eff && eff.kind === 'fight' && Array.isArray(eff.operands)) {
+      hasFight = true; fightScore += scoreFightExchange(state, who, eff, targets);
+    }
+  }
   const slotsUsed = new Set();
   for (const eff of modeEffects) {
+    if (eff && eff.kind === 'fight') continue;   // scored above, not per-slot
     if (ENGINE.effectNeedsTarget && ENGINE.effectNeedsTarget(eff)) {
       slotsUsed.add(eff.target_slot || 0);
     }
   }
   if (slotsUsed.size === 0) {
+    if (hasFight) return fightScore;
     // New model (§3.5): a top-level `target` step (bare effects) is a single
     // target — score it like the legacy single-target path.
     if (card.target) return scoreSpellTargetForMode(state, who, card, targets[0], modeIdx);
     return 0;
   }
-  if (slotsUsed.size === 1) {
+  if (slotsUsed.size === 1 && !hasFight) {
     return scoreSpellTargetForMode(state, who, card, targets[0], modeIdx);
   }
-  let total = 0;
+  let total = fightScore;
   for (const slot of slotsUsed) {
     const t = targets[slot];
     if (!t) continue;
