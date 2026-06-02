@@ -12,7 +12,7 @@
 // them. Keep them in sync with the if-chain in scoreSpellTargetForMode.
 const TARGET_SCORED_KINDS = new Set([
   'damage', 'affect_creature', 'pump', 'add_counter', 'gain_life', 'discard',
-  'grant_keyword', 'fight_target', 'untap', 'move_card', 'sacrifice', 'annihilate',
+  'grant_keyword', 'fight', 'untap', 'move_card', 'sacrifice', 'annihilate',
   'rip', 'symmetricize', 'change_control', 'add_type', 'set_types',
 ]);
 const NOT_TARGET_SCORED_KINDS = new Set([
@@ -126,7 +126,7 @@ function spellValueForEffects(effects) {
       }
     }
     else if (e.kind === 'add_mana') v += 3;
-    else if (e.kind === 'fight_target') v += 5;
+    else if (e.kind === 'fight') v += 5;
     // Type-change (best-guess valuation). add_type that animates (carries P/T)
     // is worth the body it makes; a bare add_type ("becomes an artifact") has no
     // payoff today, so ~1. set_types strips a creature's types → neutralization:
@@ -148,7 +148,7 @@ const VALUED_EFFECT_KINDS = new Set([
   'damage', 'pump', 'add_counter', 'affect_creature',
   'symmetricize', 'apply_sticker', 'counter', 'add_mana', 'gain_life', 'draw',
   'move_card', 'discard', 'grant_keyword', 'create_tokens', 'rip',
-  'chooses', 'schedule_delayed', 'change_control', 'fight_target',
+  'chooses', 'schedule_delayed', 'change_control', 'fight',
   'apply_in_game_splice', 'sacrifice', 'add_type', 'set_types',
 ]);
 const UNVALUED_EFFECT_KINDS = new Set([
@@ -1610,7 +1610,7 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
     const [pow] = ENGINE.getStats(c.card);
     return 20 + pow;
   }
-  if (eff.kind === 'fight_target') {
+  if (eff.kind === 'fight') {
     if (target.kind !== 'creature') return -100;
     const c = ENGINE.findCard(target.iid);
     if (!c) return -100;

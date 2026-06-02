@@ -4,7 +4,7 @@ Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folde
 
 ## Version
 
-**Current: `v2.0.77`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.0.78`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -201,6 +201,28 @@ opponent's best creature — permanent base 20, eot base 8, +card value +lane �
 animate-add_type only at a permanent WE control (else it'd gift the opponent a
 body). Verified via `AI.decide`: the AI now casts Encase in Amber at an enemy
 creature. 1269 green, lint clean, 300-game selfplay clean.
+
+v2.0.78: **decompose `fight_target` → a `fight` primitive with two operands**
+(supersedes v2.0.77's `fighter_slot` bolt-on, now that Predate gives a second,
+differently-shaped fight card — the real threshold for the abstraction). The
+mechanic (two creatures deal LIVE power to each other, simultaneously) is now
+separated from the fighter-selection policy: `fight` deals with the **targeted**
+creature (`target`, the standard target machinery) and a **fighter** named by a
+uniform `fighter` selector — `{slot:N}` (an explicitly-targeted creature, read
+from `ctx.allTargets`; Predate's buffed creature) or `{select:'highest_power_yours'}`
+(our biggest, the one-sided fight cards' auto-pick, now **explicit in card data**
+instead of hard-coded in the handler). New `resolveFighter` helper. The asymmetry
+(B is "the target," A is a selector) is the engine's grain: legality/enumeration
+are effect-driven via `target_slot` (isLegalAction/`validTargetsBySlot`), so every
+player-chosen target must be claimed by an effect's slot — a second off-slot operand
+would break enumeration. Re-authored all three fight cards onto it (Predate +
+Beast's Fury + Apex Hunter); renamed the kind across the 8 consumer sites (AI
+valuation/cast-scoring/classification sets, card-text, the creature-effect +
+harmful-kind lists, the generator param map). Card-text renders "it fights …"
+(slot fighter, named in a prior clause) vs "your strongest creature fights …"
+(select). `test_predate_fight_d1.js` grew an end-to-end cast (AI resolves Predate
+through the real stack, fight uses the boosted power). 1369 green, lint clean,
+300-game selfplay clean (0 crashes/violations/stuck).
 
 v2.0.77: **Predate (new card) + the D1 live-read hybrid it forces + a static-lord
 keyword-grant regression test.** (1) **Predate** — {1}{G} Sorcery: "Target creature

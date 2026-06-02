@@ -1488,6 +1488,24 @@ function applyDamageFrom(ctx, target, amt) {
   }
 }
 
+// Resolve the FIGHTER operand of a `fight` effect — the creature on the caster's
+// side that exchanges damage with the targeted creature. A `{slot:N}` spec names
+// an explicitly-targeted creature (read from ctx.allTargets, like
+// apply_in_game_splice — Predate's buffed creature); `{select:'highest_power_yours'}`
+// (or no spec) computes our biggest creature — the one-sided fight cards'
+// auto-pick. Excludes `excludeIid` so a creature can't be made to fight itself.
+// Returns {card, controller} or null.
+function resolveFighter(ctx, spec, excludeIid) {
+  if (spec && spec.slot != null && Array.isArray(ctx.allTargets)) {
+    return resolveTarget(ctx, ctx.allTargets[spec.slot]);
+  }
+  const ours = G[ctx.controller].battlefield
+    .filter(c => hasType(c, 'Creature') && c.iid !== excludeIid);
+  if (!ours.length) return null;
+  ours.sort((a, b) => getStats(b)[0] - getStats(a)[0]);
+  return { card: ours[0], controller: ctx.controller };
+}
+
 // EFFECTS TABLE — dispatch from {kind: 'foo', ...} to handler.
 
 // Creatures matching a mass `scope` (Slice 3 step 1 / decision 2), as a
@@ -2358,32 +2376,22 @@ const EFFECTS = {
     log(`${ctx.sourceName} — ${pname(toCtrl)} gains control of ${card.name}` +
         (params.duration === 'eot' ? ' until end of turn.' : '.'), 'sp');
   },
-  // Fight: `target` is the opponent's creature. Our fighter is normally auto-
-  // picked (our biggest creature); a card may instead NAME an explicit fighter
-  // via `fighter_slot`, read from ctx.allTargets like apply_in_game_splice
-  // (Predate: the creature you targeted and buffed). Each deals damage equal to
-  // its LIVE power — so a pump applied earlier in the same resolution counts
-  // (the D1 live-read; see DIVERGENCE §3.6). Tap status doesn't matter (Beast's
-  // Fury post-combat).
-  fight_target(ctx, params, target) {
+  // `fight`: the targeted creature (`target`) and the FIGHTER (params.fighter,
+  // resolved by resolveFighter) each deal damage equal to their LIVE power to the
+  // other, simultaneously — so a pump applied earlier in the same resolution
+  // counts (the D1 live-read; see DIVERGENCE §3.6). Per-fighter ctx so
+  // deathtouch/lifelink ride the fighting creature, not the spell. Tap status
+  // doesn't matter (Beast's Fury post-combat).
+  fight(ctx, params, target) {
     const f = resolveTarget(ctx, target);
     if (!f) return;
     const them = f.card;
-    let ourCreature, ourController;
-    if (params.fighter_slot != null && Array.isArray(ctx.allTargets)) {
-      const ff = resolveTarget(ctx, ctx.allTargets[params.fighter_slot]);
-      if (!ff) { log(`${ctx.sourceName} fizzles — your creature is gone.`, 'sp'); return; }
-      ourCreature = ff.card; ourController = ff.controller;
-    } else {
-      const ours = G[ctx.controller].battlefield.filter(c => hasType(c, 'Creature'));
-      if (!ours.length) { log(`${ctx.sourceName} fizzles — no creature to fight.`, 'sp'); return; }
-      ours.sort((a, b) => getStats(b)[0] - getStats(a)[0]);
-      ourCreature = ours[0]; ourController = ctx.controller;
-    }
+    const ff = resolveFighter(ctx, params.fighter, them.iid);
+    if (!ff) { log(`${ctx.sourceName} fizzles — no creature to fight.`, 'sp'); return; }
+    const ourCreature = ff.card, ourController = ff.controller;
     const [ourPow] = getStats(ourCreature);
     const [theirPow] = getStats(them);
     log(`${ourCreature.name} (${ourPow}) fights ${them.name} (${theirPow}).`, 'cb');
-    // Per-fighter ctx so deathtouch/lifelink apply on the fighter, not the spell.
     const ourCtx   = { controller: ourController, sourceName: ourCreature.name, sourceIid: ourCreature.iid };
     const theirCtx = { controller: f.controller,  sourceName: them.name,        sourceIid: them.iid };
     applyDamageFrom(ourCtx,   {kind:'creature', iid: them.iid},        ourPow);
@@ -2907,7 +2915,7 @@ function validateAllCardEffects(cards) {
 // Add creature-operators here; damage/gain_life/draw/discard/add_mana resolve self → controller.
 const CREATURE_EFFECT_KINDS = new Set([
   'pump', 'add_counter', 'untap', 'affect_creature',
-  'fight_target', 'endomorph_absorb',
+  'fight', 'endomorph_absorb',
   'grant_keyword',
   'sacrifice', 'gainControl',
 ]);
@@ -3193,7 +3201,7 @@ function pickBestTriggerTarget(eff, valid, controller) {
       return sorted[0];
     }
   }
-  const harmful = ['affect_creature', 'fight_target'];
+  const harmful = ['affect_creature', 'fight'];
   if (harmful.includes(eff.kind)) {
     const oppC = valid.filter(t => t.kind === 'creature' && ctrlOf(t) === them);
     if (oppC.length) {

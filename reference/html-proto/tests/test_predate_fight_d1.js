@@ -1,8 +1,9 @@
 // Predate ({1}{G} Sorcery: target creature you control gets +1/+1 until end of
 // turn, then it fights target creature an opponent controls) and the machinery
 // it exercises:
-//   1. fight_target's new explicit-fighter path (fighter_slot) alongside the
-//      existing auto-pick-biggest path.
+//   1. the `fight` effect's two operands — the targeted creature plus a `fighter`
+//      selector (a {slot} reference for Predate, a {select} computed pick for the
+//      one-sided fight cards).
 //   2. The D1 live-read hybrid (DIVERGENCE §3.6): a {from:'target_*'} expression
 //      reads LIVE state while the target is on the battlefield (so Predate's pump
 //      counts in the fight) and falls back to last-known-info once the target has
@@ -44,20 +45,20 @@ console.log('=== Predate: the fight uses the POST-pump power (D1 live-read) ==='
   // Effect order matches resolveTopOfStack's loop: pump slot 0, then fight.
   ENGINE.applyEffect(ctx, { kind: 'pump', power: 1, toughness: 1, target_slot: 0 }, tgt(mine));
   check('our creature pumped to 3/3', ENGINE.getStats(mine)[0] === 3 && ENGINE.getStats(mine)[1] === 3);
-  ENGINE.applyEffect(ctx, { kind: 'fight_target', target_slot: 1, fighter_slot: 0 }, tgt(theirs));
+  ENGINE.applyEffect(ctx, { kind: 'fight', target_slot: 1, fighter: { slot: 0 } }, tgt(theirs));
   check('boosted fighter dealt 3 (would be 2 if it read the pre-pump snapshot)', theirs.damage === 3,
     'damage=' + theirs.damage);
   check('the 3/3 dealt its 3 back to our creature', mine.damage === 3, 'damage=' + mine.damage);
 })();
 
-console.log('\n=== fight_target WITHOUT fighter_slot still auto-picks our biggest ===');
+console.log('\n=== fight with a {select} fighter auto-picks our biggest (Beast\'s Fury) ===');
 (() => {
   clearBoards();
   const small  = place('you', 'goblin_raider', 1, 1);
   const big    = place('you', 'goblin_raider', 5, 5);
   const theirs = place('opp', 'goblin_raider', 4, 4);
   const ctx = { controller: 'you', sourceName: "Beast's Fury", sourceIid: -1 };
-  ENGINE.applyEffect(ctx, { kind: 'fight_target' }, tgt(theirs));
+  ENGINE.applyEffect(ctx, { kind: 'fight', fighter: { select: 'highest_power_yours' } }, tgt(theirs));
   check('auto-picked the 5/5 → dealt 5 to target', theirs.damage === 5, 'damage=' + theirs.damage);
   check('target dealt 4 back to the 5/5, not the 1/1', big.damage === 4 && small.damage === 0);
 })();
@@ -120,6 +121,40 @@ console.log('\n=== Static lord grants its keyword to fellow tribe, clears on lea
   check('non-Goblin gets nothing (' + NON_GOBLIN + ')', !(outsider.keywords || []).includes('haste'));
   ENGINE.clearRestrictionsFromSource(chief.iid);   // lord leaves play
   check('granted haste cleared when the lord leaves', !(goblin.keywords || []).includes('haste'));
+})();
+
+// Runs LAST: this rebuilds the game via RUN.startNextGame, which swaps the
+// engine's G — so it must come after every section that uses the module-level G.
+console.log('\n=== Predate cast END-TO-END through the real stack (AI resolves) ===');
+(() => {
+  // Real turn machinery (mirrors test_drain_lifeloss's harness) so the cast goes
+  // on the stack, the caster passes, and resolution runs the loop that wires
+  // ctx.allTargets + applies pump-before-fight. Stats chosen so both creatures
+  // SURVIVE (no SBA death → .damage isn't reset), letting us read the exchange.
+  RUN.start({ cards: Array(12).fill('forest'), colors: ['G'] }, null);
+  RUN.startNextGame();
+  const g = ENGINE.state();
+  g.activePlayer = 'you'; g.priorityHolder = 'you'; g.phase = 'MAIN1';
+  g.stack = []; g.gameOver = false; g.priority = { passes: new Set() };
+  g.you.mana = { W: 9, U: 9, B: 9, R: 9, G: 9, C: 9 };
+  g.you.battlefield = []; g.opp.battlefield = [];
+  const mk2 = (who, tpl, p, t) => { const c = ENGINE.makeCard(tpl); c.sick = false; if (p != null) c.power = p; if (t != null) c.toughness = t; g[who].battlefield.push(c); return c; };
+  const mine   = mk2('you', 'goblin_raider', 2, 2);   // → 3/3 after the pump
+  const theirs = mk2('opp', 'goblin_raider', 1, 5);   // 1/5: survives 3 dmg, deals only 1 back
+  const pred = ENGINE.makeCard('predate'); g.you.hand.push(pred);
+  ENGINE.executeAction('you', { type: 'castSpell', cardIid: pred.iid,
+    targets: [{ kind: 'creature', iid: mine.iid }, { kind: 'creature', iid: theirs.iid }] });
+  let safety = 40;
+  while ((g.stack.length || (g.pendingTriggers || []).length || g.pendingTriggerTarget) && safety-- > 0) {
+    const w = ENGINE.expectedActor(); if (!w) break;
+    const a = AI.decide(g, w); if (!a) break;
+    ENGINE.executeAction(w, a);
+  }
+  check('cast resolved (stack drained)', g.stack.length === 0);
+  check('buffed fighter dealt 3 to the 1/5 (boosted; would be 2 pre-pump)', theirs.damage === 3, 'their dmg=' + theirs.damage);
+  check('the 1/5 dealt only 1 back to our creature', mine.damage === 1, 'our dmg=' + mine.damage);
+  check('both creatures survived (no SBA death)',
+    g.you.battlefield.some(c => c.iid === mine.iid) && g.opp.battlefield.some(c => c.iid === theirs.iid));
 })();
 
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');

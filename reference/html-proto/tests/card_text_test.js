@@ -125,15 +125,19 @@ eqText(segsToText(describeEffect({ kind: 'affect_creature', target: 'creature', 
 eqText(segsToText(describeEffect({ kind: 'affect_creature', target: 'creature', severity: 'exile' })),
        'exile target creature', 'exile');
 
-console.log('\n=== describeEffect: add_mana / counter / fight_target ===');
+console.log('\n=== describeEffect: add_mana / counter / fight ===');
 eqText(segsToText(describeEffect({ kind: 'add_mana', mana: '{R}{R}' })),
        'add {R}{R}', 'add_mana with literal symbols');
 eqText(segsToText(describeEffect({ kind: 'add_mana', amounts: { R: 2, G: 1 } })),
        'add {R}{R}{G}', 'add_mana with color-counts dict');
 eqText(segsToText(describeEffect({ kind: 'counter', target: 'spell' })),
        'counter target spell', 'counterspell');
-eqText(segsToText(describeEffect({ kind: 'fight_target', target: 'creature' })),
-       'your strongest creature fights target creature', 'fight_target');
+eqText(segsToText(describeEffect({ kind: 'fight', target: 'creature' })),
+       'your strongest creature fights target creature', 'fight (default → auto-pick)');
+eqText(segsToText(describeEffect({ kind: 'fight', target: 'creature', fighter: { select: 'highest_power_yours' } })),
+       'your strongest creature fights target creature', 'fight (explicit select)');
+eqText(segsToText(describeEffect({ kind: 'fight', target: 'creature', fighter: { slot: 0 } })),
+       'it fights target creature', 'fight (slot fighter → pronoun)');
 
 console.log('\n=== describeEffect: tokens (count-bumped wording) ===');
 // No TOKENS lookup → falls back to "1/1 creature" stats with a sensible
