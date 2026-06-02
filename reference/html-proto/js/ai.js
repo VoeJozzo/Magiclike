@@ -22,6 +22,7 @@ const NOT_TARGET_SCORED_KINDS = new Set([
   'counter',            // scored via the instant-response counter path, not main-phase
   'apply_sticker',      // a rider on embargo/bleach — the move_card half is scored
   'schedule_delayed',   // a rider (exile_until_eot's return) — the move_card half is scored
+  'grant_activated_ability', // a rider on Artifice Triumphant — set_types scores the target
   'chooses',            // edict's pick step — the sacrifice/rip verb is scored
   'become_copy_of',      // False Witness ETB doppelganger — trigger mechanic, value dominated by the body
   'steal',              // internal helper dispatched by change_control
@@ -133,6 +134,7 @@ function spellValueForEffects(effects) {
     // a permanent set is near-removal, an until-eot set is a tempo answer.
     else if (e.kind === 'add_type') v += ((e.power || 0) + (e.toughness || 0)) || 1;
     else if (e.kind === 'set_types') v += (e.duration === 'permanent') ? 11 : 5;
+    else if (e.kind === 'grant_activated_ability') v += 3;
   }
   return v;
 }
@@ -150,6 +152,7 @@ const VALUED_EFFECT_KINDS = new Set([
   'move_card', 'discard', 'grant_keyword', 'create_tokens', 'rip',
   'chooses', 'schedule_delayed', 'change_control', 'fight_target',
   'apply_in_game_splice', 'sacrifice', 'add_type', 'set_types',
+  'grant_activated_ability',
 ]);
 const UNVALUED_EFFECT_KINDS = new Set([
   'steal',              // internal helper dispatched by change_control; not a card kind
@@ -1886,4 +1889,3 @@ return {
 };
 })();
 // END HEURISTIC AI
-

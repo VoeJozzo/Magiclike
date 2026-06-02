@@ -1,0 +1,44 @@
+{
+  "card_id": "artifice_triumphant",
+  "name": "Artifice Triumphant",
+  "art": "/\\",
+  "cost": {
+    "C": 3
+  },
+  "target": "creature",
+  "effects": [
+    {
+      "kind": "set_types",
+      "types": [
+        "Artifact"
+      ],
+      "duration": "permanent"
+    },
+    {
+      "kind": "grant_activated_ability",
+      "ability": {
+        "cost": {
+          "mana": {
+            "colors_of_source": true
+          }
+        },
+        "effects": [
+          {
+            "kind": "add_type",
+            "scope": "self",
+            "types": [
+              "Creature"
+            ],
+            "duration": "eot"
+          }
+        ]
+      }
+    }
+  ],
+  "keywords": [
+    "flash"
+  ],
+  "types": [
+    "Sorcery"
+  ]
+}

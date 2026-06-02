@@ -1,0 +1,25 @@
+{
+  "card_id": "equatorial_artifice",
+  "name": "Equatorial Artifice",
+  "art": "[]",
+  "types": [
+    "Artifact",
+    "Land"
+  ],
+  "mana": "C",
+  "abilities": [
+    {
+      "cost": {
+        "tap": true
+      },
+      "effects": [
+        {
+          "kind": "add_mana",
+          "amounts": {
+            "C": 2
+          }
+        }
+      ]
+    }
+  ]
+}

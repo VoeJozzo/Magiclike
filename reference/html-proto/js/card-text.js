@@ -345,6 +345,10 @@ function describeEffect(eff, tplEff) {
       const verb = eff.kind === 'set_types' ? ' becomes ' : ' also becomes ';
       return [plainSeg(t + verb + indefiniteArticle(body) + ' ' + body + dur)];
     }
+    case 'grant_activated_ability': {
+      if (!eff.ability) return [plainSeg(t + ' gains an activated ability')];
+      return [plainSeg(t + ' gains "' + segsToText(describeAbility(eff.ability)) + '"')];
+    }
     case 'apply_in_game_splice':
       return [plainSeg('staple the second target permanent onto the first')];
     case 'fight_target':
@@ -738,6 +742,10 @@ function abilityCostPhrase(cost) {
   const parts = [];
   if (cost.tap) parts.push('{T}');
   if (cost.mana) {
+    if (cost.mana.colors_of_source) {
+      parts.push('one mana of each of this card\'s colors');
+      return parts.join(', ');
+    }
     let s = '';
     for (const [color, n] of Object.entries(cost.mana)) {
       for (let i = 0; i < n; i++) s += '{' + color + '}';
@@ -910,6 +918,12 @@ function describeCardSegments(card, opts) {
       const phrase = describeStaticBuff(buff);
       if (phrase) sections.push([plainSeg(phrase)]);
     }
+  }
+  if (card.spend_mana_as_any_color || tpl.spend_mana_as_any_color) {
+    sections.push([plainSeg('You may spend mana as though it were mana of any color.')]);
+  }
+  if (card.innate || tpl.innate) {
+    sections.push([plainSeg('Innate.')]);
   }
   if (Array.isArray(card.triggers)) {
     const tplTriggers = Array.isArray(tplBaseline.triggers) ? tplBaseline.triggers : [];

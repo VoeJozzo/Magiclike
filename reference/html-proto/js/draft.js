@@ -143,6 +143,26 @@ const CONSTRUCTED_DECKS = {
       'healing_salve',
     ],
   },
+  equatorialArtificerBoss: {
+    name: 'Equatorial Artificer',
+    icon: 'C',
+    colors: [],
+    description: 'Colorless artifact boss: fast artifact mana, neutralization, resilient fixing',
+    isBoss: true,
+    cards: [
+      'ingenuity_unbounded',
+      'equatorial_artifice', 'equatorial_artifice', 'equatorial_artifice', 'equatorial_artifice',
+      'artifice_triumphant', 'artifice_triumphant', 'artifice_triumphant',
+      'alloy_myr', 'alloy_myr',
+      'copper_golem', 'copper_golem',
+      'clockwork_beetle', 'clockwork_beetle',
+      'scrap_hound', 'scrap_hound',
+      'iron_sentinel', 'iron_sentinel',
+      'bulwark_automaton', 'bulwark_automaton',
+      'sentinel_colossus',
+      'razor_beacon', 'razor_beacon',
+    ],
+  },
 };
 
 function getConstructedDeck(id) {
@@ -193,7 +213,7 @@ function buildOpponentDeck(numStickers, numStaples, numClones, colorAffinity, co
   }
   // Constructed: prefer declared colors (avoid filler-padding noise for mono builds).
   let oppColors;
-  if (constructed && Array.isArray(constructed.colors) && constructed.colors.length > 0) {
+  if (constructed && Array.isArray(constructed.colors)) {
     oppColors = constructed.colors.slice(0, 2);
   } else {
     const pips0 = countPips(picks);

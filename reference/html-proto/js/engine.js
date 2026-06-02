@@ -631,6 +631,8 @@ function makeCard(tplId, stickers, slotIdx, empowerRolls, permaBuffs, bonusTrigg
     // which is deep-copied below — `mana` is just the primary-color label.
     cost: tpl.cost ? {...tpl.cost} : undefined,
     mana: tpl.mana, color: tpl.color,
+    colors: Array.isArray(tpl.colors) ? tpl.colors.slice() : [],
+    spend_mana_as_any_color: !!tpl.spend_mana_as_any_color,
     keywords: (tpl.keywords || []).slice(),
     power: tpl.power, toughness: tpl.toughness,
     effects: copyCardEffects(tpl.effects),
@@ -665,7 +667,7 @@ function makeCard(tplId, stickers, slotIdx, empowerRolls, permaBuffs, bonusTrigg
     // sticker-apply time so the choice is fixed for the run. Saved/loaded.
     empowerRolls: (empowerRolls || []).slice(),
     subtypeRolls: (subtypeRolls || []).slice(),
-    innate: false,
+    innate: !!tpl.innate,
     triggers: (tpl.triggers || []).map(t => ({
       ...t,
       effects: (t.effects || []).map(e => ({...e})),
@@ -1307,9 +1309,37 @@ function effectCoverageReport() {
 function canPayFromPool(pool, cost) {
   if (!cost) return true;
   const m = {...pool};
+  if (cost.spend_as_any_color) {
+    let needed = cost.C || 0;
+    for (const c of COLORS) needed += cost[c] || 0;
+    const available = (m.W||0)+(m.U||0)+(m.B||0)+(m.R||0)+(m.G||0)+(m.C||0);
+    return available >= needed;
+  }
   for (const c of COLORS) if ((cost[c]||0) > (m[c]||0)) return false;
   for (const c of COLORS) m[c] -= (cost[c]||0);
   return ((m.W||0)+(m.U||0)+(m.B||0)+(m.R||0)+(m.G||0)+(m.C||0)) >= (cost.C||0);
+}
+function hasSpendManaAsAnyColor(who) {
+  return G[who].battlefield.some(c => c.spend_mana_as_any_color);
+}
+function colorsOfCard(card) {
+  if (!card) return [];
+  if (Array.isArray(card.colors)) return card.colors.filter(c => COLORS.includes(c));
+  const colors = [];
+  if (card.cost) {
+    for (const c of COLORS) if ((card.cost[c] || 0) > 0) colors.push(c);
+  }
+  return colors;
+}
+function resolvedManaCost(rawCost, sourceCard, who) {
+  if (!rawCost) return rawCost;
+  const cost = {...rawCost};
+  if (cost.colors_of_source) {
+    delete cost.colors_of_source;
+    for (const c of colorsOfCard(sourceCard)) cost[c] = (cost[c] || 0) + 1;
+  }
+  if (who && hasSpendManaAsAnyColor(who)) cost.spend_as_any_color = true;
+  return cost;
 }
 // Total static_cost_bump from all battlefield permanents (City Guardian etc.).
 // Global/symmetric. Returns int to add to cost.C.
@@ -1339,6 +1369,7 @@ function effectiveCastCost(card) {
 // Can `who` pay `cost` from pool + untapped sources? Backtracks over dual-land choices.
 function canPayPotential(who, cost) {
   if (!cost) return true;
+  cost = resolvedManaCost(cost, null, who);
   const pool = {...G[who].mana};
   // §3.9: lands and creature dorks are one pool of tap-for-mana abilities.
   // Single-color sources fold into the pool; multi-color (choose) sources
@@ -1376,8 +1407,19 @@ function canPayPotential(who, cost) {
 // Pay from pool first; if short, auto-tap sources. Color costs first, then generic.
 function payMana(who, cost) {
   if (!cost) return;
+  cost = resolvedManaCost(cost, null, who);
   const p = G[who];
   if (canPayFromPool(p.mana, cost)) { deductFromPool(p.mana, cost); return; }
+  if (cost.spend_as_any_color) {
+    let needed = cost.C || 0;
+    for (const c of COLORS) needed += cost[c] || 0;
+    const poolTotal = () => (p.mana.W||0)+(p.mana.U||0)+(p.mana.B||0)+(p.mana.R||0)+(p.mana.G||0)+(p.mana.C||0);
+    while (poolTotal() < needed) {
+      if (!tapSourceProducing(who, null)) throw new Error('Mana payment failed (any-color)');
+    }
+    deductFromPool(p.mana, cost);
+    return;
+  }
   const need = {...cost};
   for (const c of COLORS) {
     while ((need[c]||0) > 0) {
@@ -1399,6 +1441,17 @@ function payMana(who, cost) {
   }
 }
 function deductFromPool(pool, cost) {
+  if (cost && cost.spend_as_any_color) {
+    let needed = cost.C || 0;
+    for (const c of COLORS) needed += cost[c] || 0;
+    for (const c of ['C', ...COLORS]) {
+      if (!needed) break;
+      const used = Math.min(needed, pool[c] || 0);
+      pool[c] -= used;
+      needed -= used;
+    }
+    return;
+  }
   for (const c of COLORS) pool[c] -= (cost[c]||0);
   let generic = cost.C || 0;
   for (const c of ['C', ...COLORS]) {
@@ -1724,6 +1777,20 @@ const EFFECTS = {
   // applyTypeChange for duration + animate-stats handling.
   add_type(ctx, params, target) { applyTypeChange(ctx, params, target, 'add'); },
   set_types(ctx, params, target) { applyTypeChange(ctx, params, target, 'set'); },
+  grant_activated_ability(ctx, params, target) {
+    const f = resolveTarget(ctx, target);
+    if (!f || !params.ability) return;
+    if (!Array.isArray(f.card.abilities)) f.card.abilities = [];
+    const ab = {
+      ...params.ability,
+      cost: params.ability.cost ? {...params.ability.cost} : undefined,
+      effects: (params.ability.effects || []).map(e => ({...e})),
+      _granted: true,
+    };
+    f.card.abilities.push(ab);
+    f.card.text = describeCardText(f.card);
+    log(`${f.card.name} gains an activated ability.`, 'sp');
+  },
   // Absorb a novel keyword from victim, else grow +1/+1. Persists via slot sticker.
   // Auto-picks highest-priority keyword; defender excluded (downside).
   endomorph_absorb(ctx, params, target) {
@@ -3627,6 +3694,9 @@ function resetInPlayState(card, preserveDeathState) {
   card.cantAttack = false; card.cantBlock = false;
   if (card.cantAttackBy instanceof Set) card.cantAttackBy.clear();
   if (card.cantBlockBy instanceof Set) card.cantBlockBy.clear();
+  if (Array.isArray(card.abilities) && card.abilities.some(ab => ab && ab._granted)) {
+    card.abilities = card.abilities.filter(ab => !(ab && ab._granted));
+  }
   // Type-change grants (add_type/set_types) revert on leave-play, so a bounced/
   // recast animated land returns to its base types.
   if (Array.isArray(card.typeGrants) && card.typeGrants.length) card.typeGrants = [];
@@ -4801,7 +4871,7 @@ function doActivateAbility(who, cardIid, abilityIdx, targets, sacIid) {
   const ab = card.abilities[abilityIdx];
   // Pay costs.
   if (ab.cost.tap) card.tapped = true;
-  if (ab.cost.mana) payMana(who, ab.cost.mana);
+  if (ab.cost.mana) payMana(who, resolvedManaCost(ab.cost.mana, card, who));
   // Sac cost is paid BEFORE the effect resolves. The sacrificed creature
   // dies (firing dies-triggers) before the ability does anything. This
   // matters for self-sac on creatures with dies-triggers — Carrion Feeder
@@ -5293,7 +5363,7 @@ function isLegalAction(who, action) {
         if (f.card.sick && !(f.card.keywords && f.card.keywords.includes('haste')) && hasType(f.card, 'Creature')) return false;
       }
       if (ab.cost && ab.cost.mana) {
-        if (!canPayPotential(who, ab.cost.mana)) return false;
+        if (!canPayPotential(who, resolvedManaCost(ab.cost.mana, f.card, who))) return false;
       }
       // Sac cost: action must include sacIid pointing to one of the
       // controller's own creatures. Self-sac (sourcing the ability) is legal.
@@ -5616,7 +5686,7 @@ function getLegalActions(who) {
         if (card.sick && !card.keywords.includes('haste') && hasType(card, 'Creature')) continue;
       }
       // Mana cost requirements.
-      if (ab.cost && ab.cost.mana && !canPayPotential(who, ab.cost.mana)) continue;
+      if (ab.cost && ab.cost.mana && !canPayPotential(who, resolvedManaCost(ab.cost.mana, card, who))) continue;
       // Sacrifice cost: enumerate one entry per legal sac target. 'creature'
       // means any of your own creatures. Note: in MtG you CAN sacrifice the
       // source itself if it's a creature and the cost says "sacrifice a
@@ -6130,4 +6200,3 @@ return {
   },
 };
 })();
-
