@@ -4,7 +4,7 @@ Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folde
 
 ## Version
 
-**Current: `v2.0.76`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.0.77`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -201,6 +201,29 @@ opponent's best creature — permanent base 20, eot base 8, +card value +lane �
 animate-add_type only at a permanent WE control (else it'd gift the opponent a
 body). Verified via `AI.decide`: the AI now casts Encase in Amber at an enemy
 creature. 1269 green, lint clean, 300-game selfplay clean.
+
+v2.0.77: **Predate (new card) + the D1 live-read hybrid it forces + a static-lord
+keyword-grant regression test.** (1) **Predate** — {1}{G} Sorcery: "Target creature
+you control gets +1/+1 until end of turn, then it fights target creature an
+opponent controls." Reuses the already-existing `fight_target` effect, extended
+with an optional `fighter_slot`: with it, the fighter is the explicitly-targeted
+(and buffed) creature read from `ctx.allTargets` (mirroring `apply_in_game_splice`)
+instead of the auto-picked biggest; without it, the existing Beast's Fury/Apex
+Hunter auto-pick path is byte-unchanged. `ctx.allTargets` is now threaded onto the
+spell and trigger resolution ctx (the ability ctx already had it). Card-text renders
+"…then it fights …" via a buff-then-fight idiom + a pronoun render of `fight_target`
+when `fighter_slot` is set. (2) **D1 hybrid (DIVERGENCE §3.6), now closed.** A
+`{from:'target_*'}` expression reads LIVE state while the target is still on the
+battlefield (so Predate's pump counts in the fight), and falls back to the
+last-known-info snapshot once the target has left its zone (Swords/Exorcist: exile,
+then gain life = its power). `liveTargetView` keys off `findCard` (battlefield-only =
+"still in its expected zone"). Behavior-preserving for the only two current
+expression users (both exile-then-read → departed → snapshot, unchanged). (3) New
+`test_predate_fight_d1.js` (14) covering both fight paths, both halves of the hybrid,
+and — filling a real gap — the **static-lord keyword grant** (`applyStaticKeywordGrants`,
+exposed for tests alongside `clearRestrictionsFromSource`): Goblin Chieftain grants a
+fellow Goblin haste, not itself, not a non-Goblin, and the grant clears on leave-play.
+1363 green, lint clean, 300-game selfplay clean (0 crashes/violations/stuck).
 
 v2.0.76: **two cards landed from PRs #30/#31 (rebuilt on the v2.0 model) + their
 small engine seams.** Both PRs predated the v2.0 refactor by ~292 commits and no

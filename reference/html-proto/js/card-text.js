@@ -348,6 +348,10 @@ function describeEffect(eff, tplEff) {
     case 'apply_in_game_splice':
       return [plainSeg('staple the second target permanent onto the first')];
     case 'fight_target':
+      // With a named fighter (Predate), the buffed creature named in the prior
+      // clause is the one that fights → "it fights X". Without one, the engine
+      // auto-picks our biggest → "your strongest creature fights X".
+      if (eff.fighter_slot != null) return [plainSeg('it fights ' + t)];
       return [plainSeg('your strongest creature fights ' + t)];
     case 'schedule_delayed':
       // Standalone fallback; the exile-until-eot pair is rendered as one phrase
@@ -608,6 +612,13 @@ function describeEffectList(effects, cardName, tplEffects, stepTarget, stepFilte
         return capitalizeSegs(describeEffect(mcSeg)).concat(plainSeg('; ' + rider + '.'));
       }
     }
+  }
+  // Buff-then-fight idiom (Predate): pump the named fighter, then IT fights the
+  // other target. One sentence joined with ", then" so the pronoun in the fight
+  // clause ("it fights …") refers back to the buffed creature.
+  if (effects.length === 2 && effects[1].kind === 'fight_target' && effects[1].fighter_slot != null
+      && effects[0].kind !== 'chooses') {
+    return capitalizeSegs(parts[0]).concat(plainSeg(', then ')).concat(parts[1]).concat(plainSeg('.'));
   }
   // Same-subject EOT buffs (pump + keyword grants) → one coalesced clause.
   const coalesced = coalesceEotBuffs(effects, tplOf);

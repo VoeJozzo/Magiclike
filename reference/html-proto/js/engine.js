@@ -2358,23 +2358,34 @@ const EFFECTS = {
     log(`${ctx.sourceName} — ${pname(toCtrl)} gains control of ${card.name}` +
         (params.duration === 'eot' ? ' until end of turn.' : '.'), 'sp');
   },
-  // Fight: target opp creature; our biggest creature fights it (each deals damage = power).
-  // Tap status doesn't matter (Beast's Fury post-combat).
+  // Fight: `target` is the opponent's creature. Our fighter is normally auto-
+  // picked (our biggest creature); a card may instead NAME an explicit fighter
+  // via `fighter_slot`, read from ctx.allTargets like apply_in_game_splice
+  // (Predate: the creature you targeted and buffed). Each deals damage equal to
+  // its LIVE power — so a pump applied earlier in the same resolution counts
+  // (the D1 live-read; see DIVERGENCE §3.6). Tap status doesn't matter (Beast's
+  // Fury post-combat).
   fight_target(ctx, params, target) {
-    const ours = G[ctx.controller].battlefield
-      .filter(c => hasType(c, 'Creature'));
-    if (!ours.length) { log(`${ctx.sourceName} fizzles — no creature to fight.`, 'sp'); return; }
-    ours.sort((a, b) => getStats(b)[0] - getStats(a)[0]);
-    const ourCreature = ours[0];
     const f = resolveTarget(ctx, target);
     if (!f) return;
     const them = f.card;
+    let ourCreature, ourController;
+    if (params.fighter_slot != null && Array.isArray(ctx.allTargets)) {
+      const ff = resolveTarget(ctx, ctx.allTargets[params.fighter_slot]);
+      if (!ff) { log(`${ctx.sourceName} fizzles — your creature is gone.`, 'sp'); return; }
+      ourCreature = ff.card; ourController = ff.controller;
+    } else {
+      const ours = G[ctx.controller].battlefield.filter(c => hasType(c, 'Creature'));
+      if (!ours.length) { log(`${ctx.sourceName} fizzles — no creature to fight.`, 'sp'); return; }
+      ours.sort((a, b) => getStats(b)[0] - getStats(a)[0]);
+      ourCreature = ours[0]; ourController = ctx.controller;
+    }
     const [ourPow] = getStats(ourCreature);
     const [theirPow] = getStats(them);
     log(`${ourCreature.name} (${ourPow}) fights ${them.name} (${theirPow}).`, 'cb');
     // Per-fighter ctx so deathtouch/lifelink apply on the fighter, not the spell.
-    const ourCtx   = { controller: ctx.controller, sourceName: ourCreature.name, sourceIid: ourCreature.iid };
-    const theirCtx = { controller: f.controller,   sourceName: them.name,        sourceIid: them.iid };
+    const ourCtx   = { controller: ourController, sourceName: ourCreature.name, sourceIid: ourCreature.iid };
+    const theirCtx = { controller: f.controller,  sourceName: them.name,        sourceIid: them.iid };
     applyDamageFrom(ourCtx,   {kind:'creature', iid: them.iid},        ourPow);
     applyDamageFrom(theirCtx, {kind:'creature', iid: ourCreature.iid}, theirPow);
   },
@@ -2745,17 +2756,39 @@ function makeSlotTargetGetter(targets) {
   };
 }
 
-// Resolve {from:'<name>'} from snapshot/ctx; literals pass through.
+// D1 hybrid (DIVERGENCE §3.6): a {from:'target_*'} expression reads LIVE state
+// while the target is still on the battlefield — so a +X/+X applied earlier in
+// the same resolution counts (Predate's pump-then-fight) — and falls back to the
+// last-known-info snapshot once the target has left its zone (Swords-to-
+// Plowshares: exile, THEN gain life equal to its power). findCard is
+// battlefield-only, which is exactly "still in its expected zone" for a creature.
+function liveTargetView(targetSnap) {
+  if (targetSnap && targetSnap.kind === 'creature' && targetSnap.iid != null) {
+    const f = findCard(targetSnap.iid);
+    if (f) {
+      const [power, toughness] = getStats(f.card);
+      return { power, toughness, controller: f.controller };
+    }
+  }
+  return targetSnap || {};
+}
+// Resolve {from:'<name>'} from live-or-snapshot/ctx; literals pass through.
 function resolveExpr(value, ctx, targetSnap) {
   if (value == null) return value;
   if (typeof value !== 'object' || !value.from) return value;
   switch (value.from) {
-    case 'target_power':
-      return (targetSnap && typeof targetSnap.power === 'number') ? targetSnap.power : 0;
-    case 'target_toughness':
-      return (targetSnap && typeof targetSnap.toughness === 'number') ? targetSnap.toughness : 0;
-    case 'target_controller':
-      return (targetSnap && targetSnap.controller) ? targetSnap.controller : ctx.controller;
+    case 'target_power': {
+      const v = liveTargetView(targetSnap);
+      return (typeof v.power === 'number') ? v.power : 0;
+    }
+    case 'target_toughness': {
+      const v = liveTargetView(targetSnap);
+      return (typeof v.toughness === 'number') ? v.toughness : 0;
+    }
+    case 'target_controller': {
+      const v = liveTargetView(targetSnap);
+      return v.controller ? v.controller : ctx.controller;
+    }
     case 'source_power': {
       const sc = ctx.sourceCard;
       if (!sc) return 0;
@@ -3279,6 +3312,7 @@ function runTriggerEffects(item) {
       return f ? f.card : null;
     })(),
     event: item.event || null,
+    allTargets: Array.isArray(item.targets) ? item.targets : [],
   };
   const getTriggerTargetForSlot = makeSlotTargetGetter(Array.isArray(item.targets) ? item.targets : []);
   // New targeting model (§3.5): a top-level `target` step on the trigger means
@@ -4402,7 +4436,8 @@ function resolveTopOfStack() {
     log(`${card.name} enters the battlefield.`, 'sp');
     emitZoneChange(card, item.controller, 'stack', 'battlefield');
   } else {
-    const ctx = { controller: item.controller, sourceName: card.name, sourceIid: card.iid, sourceCard: card };
+    const ctx = { controller: item.controller, sourceName: card.name, sourceIid: card.iid, sourceCard: card,
+                  allTargets: Array.isArray(item.targets) ? item.targets : [] };
     // Snapshot the spell's target BEFORE any effect runs. Multi-effect spells
     // like decomposed Swords ([exile, gain_life]) need the second effect to
     // read the target's pre-resolution power/controller, even though the
@@ -6116,6 +6151,8 @@ return {
   matchFilter,
   // Effects seam exposed for tests (Slice 3).
   applyEffect, creaturesInScope, sevToNum, numToSev,
+  // Static-lord keyword-grant seam + its leave-play cleanup, exposed for tests.
+  applyStaticKeywordGrants, clearRestrictionsFromSource,
   targetsForFilter, TARGET_FILTERS, validateAllCardEffects,
   // Canonical targeting-shape API (single source of truth across UI consumers).
   objectNeedsTarget, primaryLegalTargets, probeTargetsForObject,
