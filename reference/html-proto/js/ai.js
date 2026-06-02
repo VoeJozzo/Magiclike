@@ -1453,10 +1453,12 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
     if (!hasType(c.card, 'Creature')) return -100;        // only a creature is worth neutralizing
     // Artifice Triumphant grants "pay one mana of each of this card's colors:
     // become a creature until EOT." On an originally colorless creature that
-    // costs zero, so neutralizing it is pointless.
+    // costs zero, so neutralizing it is usually a mistake. Keep a score floor
+    // of 1: the boss prefers colored targets, but can still give the player the
+    // amusing free-reactivation mutation when no better target is available.
     if (modeEffects.some(e => e.kind === 'apply_sticker'
           && e.sticker && e.sticker.kind === 'grant_activated_ability')
-        && (!Array.isArray(c.card.colors) || c.card.colors.length === 0)) return -100;
+        && (!Array.isArray(c.card.colors) || c.card.colors.length === 0)) return 1;
     const base = (eff.duration === 'permanent') ? 20 : 8;
     return base + ENGINE.getCardValue(c.card, 'kill') + laneOpeningBonus(state, us, target.iid);
   }

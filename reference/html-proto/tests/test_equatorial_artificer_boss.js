@@ -98,7 +98,27 @@ console.log('\n=== Artifice Triumphant neutralizes permanently and grants reanim
     (rebuilt.abilities || []).some(ab => ab._sticker_ability_id === 'artifice_triumphant_reanimate'));
 })();
 
-console.log('\n=== Artifice Triumphant AI avoids free reactivation targets ===');
+console.log('\n=== Artifice Triumphant colorless activation is intentionally free ===');
+(() => {
+  const G = boot();
+  const colossus = ENGINE.makeCard('sentinel_colossus', [], 0);
+  colossus.controller = 'you'; colossus.owner = 'you'; colossus.sick = false; colossus.iid = 9151;
+  G.you.battlefield.push(colossus);
+
+  for (const eff of CARDS.artifice_triumphant.effects) {
+    ENGINE.applyEffect({ controller: 'you', sourceName: 'Artifice Triumphant', sourceIid: -1 },
+      eff, { kind: 'creature', iid: colossus.iid, label: colossus.name });
+  }
+
+  const abilityIdx = (colossus.abilities || []).findIndex(ab => ab._sticker_ability_id === 'artifice_triumphant_reanimate');
+  check('colorless target can reactivate with no mana available',
+    ENGINE.isLegalAction('you', { type: 'activateAbility', cardIid: colossus.iid, abilityIdx }));
+  ENGINE.executeAction('you', { type: 'activateAbility', cardIid: colossus.iid, abilityIdx });
+  check('free activation makes the colorless target a creature until end of turn',
+    hasType(colossus, 'Artifact') && hasType(colossus, 'Creature'));
+})();
+
+console.log('\n=== Artifice Triumphant AI prefers colored targets but permits colorless ===');
 (() => {
   const G = boot();
   G.you.mana.C = 9;
@@ -114,6 +134,22 @@ console.log('\n=== Artifice Triumphant AI avoids free reactivation targets ===')
   check('AI casts Artifice Triumphant at the colored creature, not the free-reactivation colorless one',
     dec && dec.type === 'castSpell' && dec.cardIid === spell.iid
     && dec.targets && dec.targets[0] && dec.targets[0].iid === colored.iid,
+    JSON.stringify(dec));
+})();
+
+(() => {
+  const G = boot();
+  G.you.mana.C = 9;
+  const spell = ENGINE.makeCard('artifice_triumphant', [], 0);
+  spell.controller = 'you'; spell.owner = 'you'; spell.iid = 9251;
+  const colorless = ENGINE.makeCard('sentinel_colossus', [], 1);
+  colorless.controller = 'opp'; colorless.owner = 'opp'; colorless.sick = false; colorless.iid = 9252;
+  G.you.hand.push(spell);
+  G.opp.battlefield = [colorless];
+  const dec = AI.decide(G, 'you');
+  check('AI may cast Artifice Triumphant at a colorless creature when it is the only target',
+    dec && dec.type === 'castSpell' && dec.cardIid === spell.iid
+    && dec.targets && dec.targets[0] && dec.targets[0].iid === colorless.iid,
     JSON.stringify(dec));
 })();
 
