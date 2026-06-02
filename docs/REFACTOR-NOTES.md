@@ -332,14 +332,7 @@ Reference via `TUNING.X` in scorers.
 
 ---
 
-### 5.2 [obsolete] Cover non-self triggered abilities
-**Where.** `engine/engine.gd:_fire_event` supports `self_only: false` listeners, but no current card uses it. `tests/test_phase4.gd` only exercises `self_only: true`.
-
-**Status: dropped.** The E1+E2 refactor ([`plan-zone-change-and-composable-predicates.md`](plans/plan-zone-change-and-composable-predicates.md)) removes the `self_only` flag entirely, replacing it with an explicit `this_card` predicate in a composable list. Since the listener path is being rebuilt anyway (and the current Godot path is unexercised/unverified), there's no point adding a test against the flag that's about to be deleted. The non-self / board-watching coverage gets written fresh against the new `this_card`-vs-absence model when E1+E2 lands in Godot. Removed from `docs/BACKLOG.md`.
-
----
-
-### 5.3 [P2/S] Illegal-action rejection paths
+### 5.2 [P2/S] Illegal-action rejection paths
 **Where.** `tests/` — no test exercises `is_legal_action` returning false for an out-of-phase / unaffordable / illegal-target action.
 
 **Smell.** The engine's defensive guards aren't pinned down by tests. Could regress silently.
@@ -399,6 +392,5 @@ Reference via `TUNING.X` in scorers.
 | 4.1 | Cards — vestigial JSON | P2 | S | Anytime (doc part done; dir-delete remains) |
 | 4.2 | Cards — .tres versioning | P2 | M | Post-Phase-6 schema change |
 | 5.1 | Tests — batch runner | P1 | S | First missed regression |
-| 5.2 | Tests — non-self triggers | P1 | S | Phase 6 |
-| 5.3 | Tests — illegality paths | P2 | S | Co-schedule w/ 1.3 |
+| 5.2 | Tests — illegality paths | P2 | S | Co-schedule w/ 1.3 |
 | 6.1 | CLAUDE.md drift | — | — | DONE (LOC corrected) |
