@@ -1,6 +1,6 @@
 # Refactor Plan: Unified Effects Registry — Audit, Decompose, and Align
 
-**Status:** Plan complete. **Partially executed on proto** (Godot side untouched). The proto-side Slice 3 work + a follow-up review-cleanup pass have landed; the large cross-engine pieces (full §3.5 targeting decomposition, all-card field snake_case, the §3.9 mana deep-clean, Godot adoption) remain. (Targeting model: the `target()`/`chooses()` decomposition in §3.5 is canonical throughout; the §3 disposition table's `target_filter` signatures are read via the lens note at its head.)
+**Status (2026-06-02):** Plan complete. **Partially executed on proto** (Godot side untouched). The proto-side Slice 3 work + a follow-up review-cleanup pass have landed; the large cross-engine pieces (full §3.5 targeting decomposition, all-card field snake_case, the §3.9 mana deep-clean, Godot adoption) remain. (Targeting model: the `target()`/`chooses()` decomposition in §3.5 is canonical throughout; the §3 disposition table's `target_filter` signatures are read via the lens note at its head.)
 
 ### Review-cleanup follow-up status (proto, as of v2.0.17)
 
