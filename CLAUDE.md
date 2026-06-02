@@ -4,9 +4,13 @@ Magic: The Gathering-style roguelike. The repo holds two things: the in-progress
 
 The html-proto is a vanilla-JS rules engine — ~20k+ LOC across 13 modules under `js/` plus per-card JSONs under `cards/<tplId>/`. 250+ card templates, full priority/stack model, triggered abilities, draft, roguelike meta. Active on the `dev` branch; see `reference/html-proto/CLAUDE.md` for the current version and module map.
 
-The Godot port reimplements the engine natively. **Structurally similar, not 1:1** — the JS rendering layer doesn't translate, and several JS-specific patterns need rethinking (see "Patterns to NOT replicate" below). Current state: Phases 0–5c shipped (Lightning Bolt through real AI vs AI). 31 card templates in `cards/templates/` (26 cards + 5 basic lands), 10 phase smoke tests, AI plays complete games. Next: card pool expansion → stickers → draft → roguelike meta (see `docs/plans/godot-port-plan.md` for the forward roadmap).
+The Godot port reimplements the engine natively. **Structurally similar, not 1:1** — the JS rendering layer doesn't translate, and several JS-specific patterns need rethinking (see "Patterns to NOT replicate" below). Current state: Phases 0–5c shipped (Lightning Bolt through real AI vs AI) — a curated set of card templates in `cards/templates/`, a per-phase smoke-test suite, AI plays complete games. Next: card pool expansion → stickers → draft → roguelike meta (see `docs/plans/godot-port-plan.md` for the forward roadmap).
 
 Deferred work lives in `docs/BACKLOG.md` — read it when relevant, but don't open a session by attacking it. The user picks what to work on; if you finish a task and have idle attention, surface 1–2 backlog items as suggestions rather than just starting the next one.
+
+## Finding things in the docs
+
+Start at [`docs/README.md`](docs/README.md) — the **doc router** (which doc owns which question) plus a **Find by topic** map that routes cross-cutting subjects (priority, combat, effects, stickers, mana, card data…) to their facets across the reference docs. The durable *why* (architecture rationale, design discipline, the cross-engine relationship) lives in [`docs/wiki/`](docs/wiki/README.md) (see below).
 
 ## Working branches & GitHub Pages
 
@@ -26,7 +30,7 @@ Deferred work lives in `docs/BACKLOG.md` — read it when relevant, but don't op
 ├── cards/
 │   ├── data/                   empty — JsonCardFactory wiring is vestigial (cards load from templates/*.tres)
 │   ├── images/                 card art
-│   └── templates/         31 *.tres CardResources (26 cards + 5 lands); card_database.gd is a directory-scanning loader over them
+│   └── templates/         *.tres CardResources; card_database.gd is a directory-scanning loader over them
 ├── data/                       engine-side resource base classes
 │   ├── card_resource.gd, creature_resource.gd, land_resource.gd, spell_resource.gd
 ├── engine/                     pure-data rules engine (no UI imports)
@@ -57,7 +61,7 @@ Deferred work lives in `docs/BACKLOG.md` — read it when relevant, but don't op
 
 | File | Role |
 |---|---|
-| `engine/engine.gd` | Autoload `RulesEngine`. State holder, `execute_action`, settle loop, `_fire_event`, `_drain_pending_triggers`, `_resolve_*_entry`, `_run_sbas`, two-pass combat damage, `get_legal_actions`. ~1551 lines. |
+| `engine/engine.gd` | Autoload `RulesEngine`. State holder, `execute_action`, settle loop, `_fire_event`, `_drain_pending_triggers`, `_resolve_*_entry`, `_run_sbas`, two-pass combat damage, `get_legal_actions`. |
 | `engine/engine_state.gd` | RefCounted state container: players, stack, attackers, blockers, `pending_triggers`, `awaiting_target_for_trigger`, `awaiting_block_declaration`, `duplicate_deep()`. |
 | `engine/player.gd`, `mana_pool.gd`, `stack.gd`, `phase_machine.gd` | RefCounted state subclasses. Each has a `duplicate_deep()` for AI snapshots. |
 | `engine/card_instance.gd` | Per-card runtime state — tapped, damage, summoning_sick, granted_keywords, lethal_marked. `effective_keywords()` unions template + grants + (future) stickers. |
@@ -68,9 +72,9 @@ Deferred work lives in `docs/BACKLOG.md` — read it when relevant, but don't op
 | `engine/ai/scoring.gd` | `AIScoring.card_value(template, purpose)` — heuristic card scoring (stats minus cost + keyword bonuses). |
 | `engine/effects/effects.gd` | `HANDLERS` dispatch table. Per-kind handlers in sibling files. |
 | `engine/predicates/predicates.gd` | String-keyed `cond_*` predicates with `evaluate(name, state, source, event)`. Boot-time `validate_all_card_predicates()` checks all `cond_id` strings against the registry. |
-| `engine/json_card_loader.gd` | Loads `reference/html-proto/cards/<folder>/card.json` files into `CardResource` instances. Translation tables map JS-isms (camelCase effect/event kinds, `"any"` target, single-string `sub`) to the snake_case shape Godot uses. Boot supportability scan reports how many of the 258 html-proto cards are fully playable today. See `docs/PROTOCOL.md` for the canonical wire format. |
+| `engine/json_card_loader.gd` | Loads `reference/html-proto/cards/<folder>/card.json` files into `CardResource` instances. Translation tables map JS-isms (camelCase effect/event kinds, `"any"` target, single-string `sub`) to the snake_case shape Godot uses. Boot supportability scan reports how many html-proto cards are fully playable today. See `docs/PROTOCOL.md` for the canonical wire format. |
 | `cards/templates/card_database.gd` | Programmatic `CardResource` definitions. Hand-authored; grow as new cards are added. |
-| `scenes/game/game_board.gd` | UI orchestrator. Reads `RulesEngine.state()`, paints zones, manages target-pick / trigger-target / block-decl modes, keybinds. ~1295 lines. |
+| `scenes/game/game_board.gd` | UI orchestrator. Reads `RulesEngine.state()`, paints zones, manages target-pick / trigger-target / block-decl modes, keybinds. |
 | `scenes/game/player_panel.gd` | Life total, mana pips, hand / library / graveyard counts, low-library warning glyph. |
 | `scenes/game/combat_lines.gd` | Overlay drawing the attacker → blocker lines during COMBAT_BLOCK / COMBAT_DAMAGE. |
 | `scenes/card.gd` | Card visual subclass — oracle text overlay, legality glow, combat highlight states. |
@@ -131,7 +135,7 @@ Each test prints assertion results and exits with code 0 (pass) / 1 (fail). Roug
 
 **Any time a new outside resource is added to the project — code library, asset pack, AI-art batch, font, sound, tool, anything — log it in `LICENSES.md` at the repo root.** That file is the canonical record of what we depend on, what license each dependency is under, and what we owe attribution-wise. Add the entry in the same commit that pulls the resource in.
 
-Current entries (as of v1.0.180): chun92's Godot Card Framework (MIT), Godot Engine 4.6, pixellab AI art, Claude (this assistant), Almendra fantasy serif font (Google Fonts, SIL OFL 1.1), Claude-authored mana symbol SVGs. See `LICENSES.md` for the full list.
+Current entries: chun92's Godot Card Framework (MIT), Godot Engine 4.6, pixellab AI art, Claude (this assistant), Almendra fantasy serif font (Google Fonts, SIL OFL 1.1), Claude-authored mana symbol SVGs. See `LICENSES.md` for the full list.
 
 Shared assets (used by both the Godot port and the html-proto) live at `assets/` at repo root. Currently: `assets/fonts/Almendra/` and `assets/mana/` (WUBRG SVGs + design source). Html-proto-specific assets live at `reference/html-proto/assets/`.
 

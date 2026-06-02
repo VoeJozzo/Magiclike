@@ -16,6 +16,20 @@ Map of the documentation set. Each doc has a single, distinct job; this page is 
 
 **Wire vs runtime:** `PROTOCOL.md` owns the format shared *between* engines; `ARCHITECTURE.md` owns the shapes internal to the Godot engine. When they touch, ARCHITECTURE defers to PROTOCOL.
 
+## Find by topic
+
+The reference docs are partitioned by **job**; most real questions are **topics** that span several. Where each topic's facets live — canon · wire · engine · gap · active plan:
+
+- **Priority & the stack** — [RULES](RULES.md) §600 · [ARCHITECTURE](ARCHITECTURE.md) §2.4 · [DIVERGENCE](DIVERGENCE.md) B6/E6 · plan: [priority-window](plans/plan-priority-window-refactor.md)
+- **Combat** — [RULES](RULES.md) §800 · [ARCHITECTURE](ARCHITECTURE.md) §2.4 · [DIVERGENCE](DIVERGENCE.md) C
+- **Triggered abilities** — [RULES](RULES.md) §1000 · [PROTOCOL](PROTOCOL.md) §3.3–§3.5 / §5 · [ARCHITECTURE](ARCHITECTURE.md) §2.6 · [DIVERGENCE](DIVERGENCE.md) E · plan: [zone-change + composable predicates](plans/plan-zone-change-and-composable-predicates.md)
+- **Effects** — [PROTOCOL](PROTOCOL.md) §3.2 / §4 · [ARCHITECTURE](ARCHITECTURE.md) §2.5 · [DIVERGENCE](DIVERGENCE.md) D · plan: [effects-refactor](plans/plan-effects-refactor.md)
+- **Stickers** — [RULES](RULES.md) §1300 · [PROTOCOL](PROTOCOL.md) §3.2 (`apply_sticker`) · [DIVERGENCE](DIVERGENCE.md) D · plan: [effects-refactor §3.8](plans/plan-effects-refactor.md) · (Godot: Phase 7)
+- **Mana** — [PROTOCOL](PROTOCOL.md) §3.2 (`add_mana`) · [ARCHITECTURE](ARCHITECTURE.md) §2.5 · [DIVERGENCE](DIVERGENCE.md) D5 · plan: [effects-refactor §3.9](plans/plan-effects-refactor.md)
+- **Card data & types** — [PROTOCOL](PROTOCOL.md) §2 · [ARCHITECTURE](ARCHITECTURE.md) §2.7 · plan: [card-data-unification](plans/plan-card-data-unification.md) · (the `types[]` system shipped on proto → [archived](archive/plan-unified-type-system.md))
+- **AI** — [ARCHITECTURE](ARCHITECTURE.md) §2.8
+- **The "why"** (architecture rationale, design discipline, the cross-engine relationship) — [`wiki/`](wiki/)
+
 ## Planning docs — "what to change"
 
 | Doc | Scope |
