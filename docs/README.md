@@ -2,7 +2,7 @@
 
 Map of the documentation set. Each doc has a single, distinct job; this page is the entry point that says which is which and how they relate. (Onboarding + architecture *decisions* live in the root [`/CLAUDE.md`](../CLAUDE.md); the html-proto has its own [`reference/html-proto/CLAUDE.md`](../reference/html-proto/CLAUDE.md).)
 
-**Layout:** reference docs live at `docs/` root; forward-looking plan specs live in [`plans/`](plans/); superseded handoff narratives are kept for history in [`archive/`](archive/).
+**Layout:** reference docs live at `docs/` root; durable concept pages (the conceptual *why* layer) live in [`wiki/`](wiki/); forward-looking plan specs live in [`plans/`](plans/); superseded handoff narratives are kept for history in [`archive/`](archive/).
 
 ## Reference docs — "how things are"
 
@@ -13,6 +13,7 @@ Map of the documentation set. Each doc has a single, distinct job; this page is 
 | [`PROTOCOL.md`](PROTOCOL.md) | **The cross-engine wire format** (between-engines contract): the `card.json` schema and the effect-kind / event-kind / predicate-id / target catalogs both engines must agree on. |
 | [`SPEC.md`](SPEC.md) | **Within-engine runtime contracts** (the other half of the partition): action descriptors, the effect-handler `ctx` shape, signals, awaiting states, CardInstance/EngineState runtime fields, save schema. Defers to PROTOCOL for the wire vocabulary. |
 | [`DIVERGENCE.md`](DIVERGENCE.md) | Where the Godot port and html-proto behave differently, each row tagged with severity + a to-do. RULES.md is the tie-breaker. |
+| [`wiki/`](wiki/) | **Durable concepts** — the conceptual *why* layer: engine architecture rationale, design discipline, the cross-engine relationship. Obsidian-style pages, co-located with the code. |
 
 **Wire vs runtime:** `PROTOCOL.md` owns the format shared *between* engines; `SPEC.md` owns the shapes internal to *one* engine. When they touch, SPEC defers to PROTOCOL.
 

@@ -98,7 +98,7 @@ Refactor items live here. Feature deferrals continue to live in [`BACKLOG.md`](B
 ### 1.8 [P2/L] Engine god-object split
 **Where.** `engine/engine.gd` — 1551 LOC.
 
-**Smell.** Phase advancement, trigger queue management, combat damage, SBAs, legal-action enumeration, mana-cost validation, and signal emission all in one file. CLAUDE.md acknowledges this as "closest fit to the JS prototype's IIFE singleton" — pragmatic at Phase 5c, expensive at Phase 9.
+**Smell.** Phase advancement, trigger queue management, combat damage, SBAs, legal-action enumeration, mana-cost validation, and signal emission all in one file. The architecture notes call the autoload the "closest Godot fit to the prototype's single IIFE singleton" ([`wiki/magiclike-architecture.md`](wiki/magiclike-architecture.md)) — pragmatic at Phase 5c, expensive at Phase 9.
 
 **Recommended.** Extract:
 - `engine/phases.gd` — phase advancement, untap/draw/cleanup steps
