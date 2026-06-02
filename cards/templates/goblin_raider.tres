@@ -13,4 +13,5 @@ subtypes = Array[String](["goblin"])
 mana_cost = {
 "R": 1
 }
+front_image_path = "goblin_raider.png"
 text = "A vanilla 2/1 — no abilities."
