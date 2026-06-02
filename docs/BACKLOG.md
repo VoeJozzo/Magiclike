@@ -20,7 +20,6 @@ For html-proto deferred work, see [`reference/html-proto/BACKLOG.md`](../referen
 
 ### Rules-engine correctness
 - **Trigger chain depth cap** — Godot to mirror proto's 100-depth threshold in `_drain_pending_triggers`. See `docs/DIVERGENCE.md` E6.
-- **"Intervening if" predicate re-check at trigger resolution** — both engines deviate from MTG 603.4 (predicate checked only at queue time, not at resolution). See `docs/DIVERGENCE.md` E5.
 
 ### Divergence-tracked work
 The following items live in `docs/DIVERGENCE.md` as their primary tracker. Listed here so they're visible in the BACKLOG queue. Look up each by its ID for full context and TO-DO details.
