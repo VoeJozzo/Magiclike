@@ -1,6 +1,14 @@
-# Architecture Map
+# Engine Reference — Architecture & Data Contracts
 
-A runtime structure map for both halves of the Magiclike repo: the Godot 4.6 port at the root and the html-proto reference implementation under `reference/html-proto/`. Pairs with [`SPEC.md`](SPEC.md) (data contracts) and [`REFACTOR-NOTES.md`](REFACTOR-NOTES.md) (structural debt). State as of Godot Phase 5c / html-proto v1.0.188.
+How the **Godot port** is built: where each piece of behavior lives (modules) **and** what its data looks like at runtime (contracts), organized by subsystem so both sit together. This is one engine's *internals*.
+
+**Boundary with the other reference docs:**
+- [`RULES.md`](RULES.md) — what the game does, in plain English (canon, implementation-independent).
+- [`PROTOCOL.md`](PROTOCOL.md) — the **cross-engine wire contract** both engines obey: the `card.json` schema and the effect-kind / event-kind / predicate-id / target catalogs. When this doc and PROTOCOL touch (card/effect/trigger shapes), **PROTOCOL owns the wire vocabulary**; this doc owns the Godot in-memory shapes that consume it.
+- [`DIVERGENCE.md`](DIVERGENCE.md) — where the Godot port and html-proto behave differently.
+- The html-proto's own internals live in its onboarding doc, [`reference/html-proto/CLAUDE.md`](../reference/html-proto/CLAUDE.md) (module map) + [`CHANGELOG.md`](../reference/html-proto/CHANGELOG.md) — not restated here (§3).
+
+*(For durable architecture rationale — the "why" — see [`docs/wiki/`](wiki/README.md). Live counts (LOC, card totals) are deliberately omitted here; read the code.)*
 
 ---
 
@@ -8,85 +16,84 @@ A runtime structure map for both halves of the Magiclike repo: the Godot 4.6 por
 
 ```
 /                              Godot project root, working tree on `dev`
-├── CLAUDE.md                  onboarding doc (architecture decisions, gotchas)
+├── CLAUDE.md                  onboarding (architecture decisions, gotchas, doc map)
 ├── LICENSES.md                canonical record of outside resources
 ├── project.godot              autoload: RulesEngine = res://engine/engine.gd
 ├── index.html                 redirect → reference/html-proto/ (Pages entry)
 ├── .nojekyll                  disables Jekyll on Pages
-├── addons/card-framework/     vendored chun92 framework (MIT, v1.3.2; do not modify)
+├── addons/card-framework/     vendored chun92 framework (MIT; do not modify)
 ├── assets/                    shared between Godot port and html-proto
 │   ├── fonts/Almendra/        SIL OFL 1.1
 │   └── mana/                  WUBRG SVGs + design source
 ├── cards/
-│   ├── templates/             *.tres CardResources (31 files = 26 cards + 5 lands)
-│   ├── images/                placeholder PNGs; 4 wired-in inserts (see BACKLOG)
+│   ├── templates/             *.tres CardResources (hand-curated playable set)
+│   ├── images/                placeholder PNGs; a few wired-in inserts
 │   └── data/                  empty — JsonCardFactory wiring is vestigial
 ├── data/                      CardResource base + subclasses
 ├── engine/                    pure-data rules engine
-│   ├── engine.gd              autoload (1551 LOC)
-│   ├── engine_state.gd        EngineState container (121 LOC)
+│   ├── engine.gd              autoload (state holder + dispatcher)
+│   ├── engine_state.gd        EngineState container
 │   ├── player.gd, mana_pool.gd, stack.gd, phase_machine.gd, card_instance.gd
 │   ├── action.gd              action constants + factories
 │   ├── ai/                    ai.gd, combat.gd, burn.gd, scoring.gd
-│   ├── effects/               effects.gd + 5 per-kind handlers
+│   ├── effects/               effects.gd + per-kind handlers
 │   └── predicates/predicates.gd
 ├── scenes/
-│   ├── card.{gd,tscn}         Card subclass (475 LOC) — overlays, focus, glows
+│   ├── card.{gd,tscn}         Card subclass — overlays, focus, glows
 │   ├── json_card_factory.tscn TresCardFactory wiring
 │   ├── game/                  game_board, player_panel, combat_lines
 │   └── zones/battlefield_zone.gd
-├── tests/                     test_phase{1,2,3,4,4_5a,4_5b,4_5c,5a,5b,5c}.{gd,tscn}
-├── docs/                      this file + SPEC.md + REFACTOR-NOTES.md
-│                              + godot-port-plan.md + BACKLOG.md
+├── tests/                     test_phase{...}.{gd,tscn}, one per shipped slice
+├── docs/                      this file + RULES/PROTOCOL/DIVERGENCE + REFACTOR-NOTES
+│                              + plans/ + wiki/ + archive/
 └── reference/html-proto/      JS prototype (active on dev; serves GitHub Pages)
-    ├── magiclike_engine.html  single-page entry (918 LOC, ~700 LOC inline CSS)
-    ├── js/                    14 IIFE modules, ~16k LOC
-    ├── cards/<tplId>/         258 per-card folders + art + _manifest.json
-    ├── assets/                proto-specific assets
-    ├── tests/                 Node regression harness (482 assertions)
-    └── CLAUDE.md              proto-specific onboarding (current VERSION)
+    ├── magiclike_engine.html  single-page entry (DOM + inline CSS + script tags)
+    ├── js/                    IIFE modules (load-ordered)
+    ├── cards/<tplId>/         per-card folders + art + _manifest.json
+    ├── tests/                 Node regression harness
+    ├── CLAUDE.md              proto onboarding (module map, current VERSION)
+    └── CHANGELOG.md           proto version history
 ```
 
 GitHub Pages serves from `dev`, pointing at `reference/html-proto/magiclike_engine.html`. Pushing to `dev` makes html-proto changes live; Godot changes don't affect Pages but share the branch.
 
 ---
 
-## 2. Godot port
+## 2. Godot engine (by subsystem)
 
 ### 2.1 Module map
 
-| File | LOC | Role | Public surface |
-|---|---:|---|---|
-| `engine/engine.gd` | 1551 | Autoload `RulesEngine`. State holder, action dispatch, settle loop, trigger drain, stack resolution, two-pass combat damage, SBAs, legal-action enumeration. | `execute_action`, `is_legal_action`, `get_legal_actions`, `state()`, `counter_stack_entry`, signals `state_changed`/`log_appended`/`game_over` |
-| `engine/engine_state.gd` | 121 | RefCounted state container. Players, stack, attackers, blockers, pending_triggers, awaiting states, log, winner. | Fields are mutated directly; `player_by_key`, `find_instance`, `make_instance`, `opponent_of`, `duplicate_deep` |
-| `engine/player.gd` | 80 | Per-player zones (hand, library, battlefield, graveyard, exile), life, mana, land-play flag, `life_lost_this_turn`. | `find_battlefield`, `find_hand`, `move_card`, `untap_step`, `duplicate_deep` |
-| `engine/mana_pool.gd` | 91 | Color + generic mana accounting (greedy saturation), pretty-printer. | `add_dict`, `pay`, `to_string_short` |
-| `engine/stack.gd` | 51 | LIFO of `StackEntry` (spells AND triggered abilities). | `push`, `pop`, `top`, `clear` |
-| `engine/phase_machine.gd` | 57 | Turn structure (UNTAP / UPKEEP / DRAW / MAIN1 / COMBAT_ATTACK / COMBAT_BLOCK / COMBAT_DAMAGE / MAIN2 / END / CLEANUP). | `current`, `advance`, `phase_name`, `is_main_phase`, `is_combat_phase` |
-| `engine/card_instance.gd` | 131 | Per-card runtime state — tapped, damage_marked, temp_power/toughness, counters, summoning_sick, granted_keywords. | `current_power`, `current_toughness`, `effective_keywords`, `has_keyword`, `clear_eot_modifiers` |
-| `engine/action.gd` | 81 | Action constants (`KIND_*`) + factory functions. | All `make_*` helpers, `target_player`, `target_creature` |
-| `engine/effects/effects.gd` | 38 | Effect dispatcher. `HANDLERS` table maps `kind` → handler script. | `resolve_one(effect, ctx)`, `resolve_list(effects, ctx)` |
-| `engine/effects/{damage,add_mana,pump,gain_life,counter}.gd` | 30–65 ea. | Per-kind handlers. Signature `execute(effect: Dictionary, ctx: Dictionary)`. | `execute` |
-| `engine/predicates/predicates.gd` | 63 | String-keyed condition registry. Boot-time `validate_all_card_predicates`. | `evaluate(name, state, source, event)`, `validate_all_card_predicates(cards)` |
-| `engine/json_card_loader.gd` | 301 | Loads `reference/html-proto/cards/<id>/card.json` into `CardResource` instances; translation tables map JS-isms (camelCase kinds, `"any"` target, string `sub`) to Godot's snake_case shape. Boot supportability scan reports unsupported cards by missing effect/event/predicate kind. See [`PROTOCOL.md`](PROTOCOL.md). | `load_card`, `load_all`, `supportability_report` |
-| `engine/ai/ai.gd` | 283 | `AI.decide(state, player_key) -> Dictionary`. Hierarchical decision. | `decide` |
-| `engine/ai/combat.gd` | 200 | `decide_attackers`, `decide_blockers`, `simulate_combat` (deep-copy + reuse engine damage). | `decide_attackers`, `decide_blockers`, `simulate_combat` |
-| `engine/ai/burn.gd` | 57 | `face_damage_in_hand`, `has_lethal`. | Same |
-| `engine/ai/scoring.gd` | 64 | `AIScoring.card_value(template, purpose)`. | `card_value` |
-| `cards/templates/card_database.gd` | 59 | Auto-discovering `.tres` registry; lazy-cached directory walk. | `get_card(card_id)`, `all_card_ids()` |
-| `data/card_resource.gd` + subclasses | 46 + 5–10 ea. | `CardResource` base; `CreatureResource`, `SpellResource`, `LandResource` subclasses. | Fields are `@export`-ed; helpers `has_type`, `is_land`, `is_spell`, `is_permanent` |
-| `scenes/game/game_board.gd` | 1295 | UI orchestrator. Builds the entire scene tree programmatically; binds engine signals; routes clicks to actions across 4+ interaction modes. | `_ready`, signal handlers, click routers |
-| `scenes/game/player_panel.gd` | 91 | Life, mana, zone counts, low-library warning. | `update_from_player`, signal `clicked` |
-| `scenes/game/combat_lines.gd` | 117 | Overlay drawing attacker→blocker + spell→target lines. | `_process`, `_draw` |
-| `scenes/card.gd` | 475 | Card subclass — oracle overlay, legality glow, combat highlight, right-click focus. Passive (state pushed by game_board). | `apply_card_text`, `apply_creature_state`, `set_combat_highlight`, `set_legality_glow`, `enter_focus`/`exit_focus` |
-| `scenes/zones/battlefield_zone.gd` | 259 | Two-row layout (creatures + lands), adaptive spacing, color-grouped lands, combat-aware reordering. | Overrides `_card_can_be_added`, `_update_target_positions` |
+| File | Role | Public surface |
+|---|---|---|
+| `engine/engine.gd` | Autoload `RulesEngine`. State holder, action dispatch, settle loop, trigger drain, stack resolution, two-pass combat damage, SBAs, legal-action enumeration. | `execute_action`, `is_legal_action`, `get_legal_actions`, `state()`, `counter_stack_entry`, signals `state_changed`/`log_appended`/`game_over` |
+| `engine/engine_state.gd` | RefCounted state container. Players, stack, attackers, blockers, pending_triggers, awaiting states, log, winner. | direct field access; `player_by_key`, `find_instance`, `make_instance`, `opponent_of`, `duplicate_deep` |
+| `engine/player.gd` | Per-player zones (hand, library, battlefield, graveyard, exile), life, mana, land-play flag, `life_lost_this_turn`. | `find_battlefield`, `find_hand`, `move_card`, `untap_step`, `duplicate_deep` |
+| `engine/mana_pool.gd` | Color + generic mana accounting (greedy saturation), pretty-printer. | `add_dict`, `pay`, `to_string_short` |
+| `engine/stack.gd` | LIFO of `StackEntry` (spells AND triggered abilities). | `push`, `pop`, `top`, `clear` |
+| `engine/phase_machine.gd` | Turn structure (UNTAP / UPKEEP / DRAW / MAIN1 / COMBAT_ATTACK / COMBAT_BLOCK / COMBAT_DAMAGE / MAIN2 / END / CLEANUP). | `current`, `advance`, `phase_name`, `is_main_phase`, `is_combat_phase` |
+| `engine/card_instance.gd` | Per-card runtime state (see §2.7). | `current_power`, `current_toughness`, `effective_keywords`, `has_keyword`, `clear_eot_modifiers` |
+| `engine/action.gd` | Action constants (`KIND_*`) + factory functions. | `make_*` helpers, `target_player`, `target_creature` |
+| `engine/effects/effects.gd` | Effect dispatcher. `HANDLERS` table maps `kind` → handler. | `resolve_one(effect, ctx)`, `resolve_list(effects, ctx)` |
+| `engine/effects/{damage,add_mana,pump,gain_life,counter}.gd` | Per-kind handlers. Signature `execute(effect, ctx)`. | `execute` |
+| `engine/predicates/predicates.gd` | String-keyed condition registry. Boot-time `validate_all_card_predicates`. | `evaluate(name, state, source, event)`, `validate_all_card_predicates(cards)` |
+| `engine/json_card_loader.gd` | Loads the html-proto `card.json` files into `CardResource` instances (the cross-engine wire format; see [`PROTOCOL.md`](PROTOCOL.md)). Translation tables map JS-isms to Godot's snake_case shape. Boot supportability scan reports unsupported cards by missing kind. | `load_card`, `load_all`, `supportability_report` |
+| `engine/ai/ai.gd` | `AI.decide(state, player_key) -> Dictionary`. Hierarchical decision (§2.8). | `decide` |
+| `engine/ai/combat.gd` | `decide_attackers`, `decide_blockers`, `simulate_combat` (deep-copy + reuse engine damage). | same |
+| `engine/ai/burn.gd` | `face_damage_in_hand`, `has_lethal`. | same |
+| `engine/ai/scoring.gd` | `AIScoring.card_value(template, purpose)`. | `card_value` |
+| `cards/templates/card_database.gd` | Auto-discovering `.tres` registry; lazy-cached directory walk. | `get_card(card_id)`, `all_card_ids()` |
+| `data/card_resource.gd` + subclasses | `CardResource` base; `CreatureResource`/`SpellResource`/`LandResource` (§2.7). | `@export` fields; `has_type`, `is_land`, `is_spell`, `is_permanent` |
+| `scenes/game/game_board.gd` | UI orchestrator. Builds the scene tree programmatically; binds engine signals; routes clicks to actions across interaction modes. | `_ready`, signal handlers, click routers |
+| `scenes/game/player_panel.gd` | Life, mana, zone counts, low-library warning. | `update_from_player`, signal `clicked` |
+| `scenes/game/combat_lines.gd` | Overlay drawing attacker→blocker + spell→target lines. | `_process`, `_draw` |
+| `scenes/card.gd` | Card subclass — oracle overlay, legality glow, combat highlight, right-click focus. Passive. | `apply_card_text`, `apply_creature_state`, `set_combat_highlight`, `set_legality_glow`, `enter_focus`/`exit_focus` |
+| `scenes/zones/battlefield_zone.gd` | Two-row layout (creatures + lands), adaptive spacing, combat-aware reordering. | overrides `_card_can_be_added`, `_update_target_positions` |
 
 ### 2.2 Runtime data flow
 
 ```
                 ┌───────────────────────────────────────────┐
                 │  RulesEngine (autoload, engine/engine.gd) │
-                │                                           │
    click ───→   │    execute_action(action) ──┐             │
                 │                             ▼             │
                 │     _do_action  ──→  state mutations      │
@@ -96,99 +103,195 @@ GitHub Pages serves from `dev`, pointing at `reference/html-proto/magiclike_engi
                 │       _resolve_*_entry (stack)            │
                 │       _run_sbas                           │
                 │       _advance_phase                      │
-                │                                           │
                 │    signals: state_changed, log_appended,  │
                 │             game_over                     │
                 └────────────┬──────────────────────────────┘
-                             │
                              ▼
                 ┌───────────────────────────────────────────┐
                 │  game_board (scenes/game/game_board.gd)   │
-                │    on state_changed →                     │
-                │      _refresh_ui →                        │
-                │        _sync_card_visuals                 │
-                │        _refresh_stack_display             │
-                │        _apply_legality_glows              │
-                │        _apply_combat_highlights           │
-                │        player panels, phase label, log    │
+                │    on state_changed → _refresh_ui →       │
+                │      sync visuals / stack / glows /       │
+                │      combat highlights / panels / log     │
                 └───────────────────────────────────────────┘
 ```
 
-`state_changed` fires only after the settle loop fully drains (engine.gd:262). The UI sees one consistent post-settlement state per `execute_action` call. Mid-state pauses (awaiting trigger target, awaiting block declaration, awaiting discard) are expressed as fields on `EngineState`; UI reads them on the next refresh.
+`state_changed` fires only after the settle loop fully drains — the UI sees one consistent post-settlement state per `execute_action`. Mid-state pauses (awaiting trigger target / block declaration / discard) are expressed as fields on `EngineState` (§2.3) and read on the next refresh.
 
-### 2.3 Engine core internals
+### 2.3 Action dispatch & state
 
-**Action dispatch.** Every state mutation routes through `execute_action(action: Dictionary)`. Action kind drives a switch into a `_do_*` function; legality is pre-checked by a parallel `_legal_*`. The same kinds are enumerated in `get_legal_actions` for AI consumption. (Three-way split is flagged in REFACTOR-NOTES.md.)
+**Every state mutation routes through `RulesEngine.execute_action(action: Dictionary)`.** Action kind drives a switch into a `_do_*` function; legality is pre-checked by a parallel `_legal_*`; the same kinds are enumerated in `get_legal_actions` for the AI. (The three-way split is flagged in [`REFACTOR-NOTES.md`](REFACTOR-NOTES.md).)
 
-**Stack and priority.** The stack is `Array[StackEntry]`, holding both spell entries and triggered-ability entries. Both resolve via `_resolve_*_entry`. Priority follows MTG semantics where it matters (caster retains after casting; pools empty at phase boundaries; defender declares blocks before priority opens at COMBAT_BLOCK; triggers drain in APNAP order). Auto-passes (AI driver, unattended priority windows) are agent UX layered on top — the priority pass IS happening, it's just `execute_action(pass_priority)` called automatically.
+**Action descriptors** — untyped `Dictionary` keyed by `"kind"`; constants + factories in `engine/action.gd`:
 
-**Trigger drain.** Events emitted by `_fire_event` scan all battlefield creatures, match `event` + `cond_id`, and enqueue `TriggerEntry` objects to `pending_triggers`. `_drain_pending_triggers` orders by APNAP, resolves listeners with no target prompt, and pauses on `awaiting_target_for_trigger` for cards that need player input (Pyromaniac). Resumes on `KIND_PICK_TRIGGER_TARGET` action.
+| Kind | Constructor | Required fields | Notes |
+|---|---|---|---|
+| `"pass_priority"` | `make_pass_priority()` | — | The default tick. |
+| `"play_land"` | `make_play_land(source_iid)` | `source_iid` | Player must have a land-play remaining. |
+| `"cast_spell"` | `make_cast_spell(source_iid, targets)` | `source_iid`, `targets: Array` | `targets` empty when `requires_target = false`. |
+| `"activate_ability"` | `make_activate_ability(source_iid, ability_index)` | `source_iid`, `ability_index` | Lands' tap-for-mana goes through here. |
+| `"declare_attacker"` | `make_declare_attacker(source_iid)` | `source_iid` | Per attacker during COMBAT_ATTACK. |
+| `"declare_blocker"` | `make_declare_blocker(blocker_iid, attacker_iid)` | `source_iid` (blocker), `attacker_iid` | One per block assignment. |
+| `"undeclare_attacker"` / `"undeclare_blocker"` | `make_undeclare_*` | `source_iid` | Untaps / clears the link. |
+| `"confirm_blocks"` | `make_confirm_blocks()` | — | Defender commits; opens APNAP priority window. |
+| `"pick_trigger_target"` | `make_pick_trigger_target(target)` | `target: Dictionary` | Required when `awaiting_target_for_trigger` is set. |
+| `"discard_card"` | `make_discard_card(source_iid)` | `source_iid` | Cleanup-step discard (MTG 514.3). |
 
-**Combat damage.** Two-pass (`_combat_damage_pass` called twice — first-strike layer, then normal layer). Inner loop iterates attacker → assigned blockers, applies trample / menace collapse / first-strike skip / lifelink / deathtouch. SBAs sweep after each pass.
-
-**State-based actions.** `_run_sbas` checks lethal damage (damage_marked ≥ toughness OR deathtouch hit), 0-life loss, decking out (empty library on draw). Single sweep — not strict 704.5 ordering. Cleared in the same settle iteration.
-
-### 2.4 Effects and predicates
-
-**Effects** (`engine/effects/`):
-- `effects.gd:14–20` declares `HANDLERS = { "damage", "add_mana", "pump", "gain_life", "counter" }`.
-- Every handler has the same signature: `static func execute(effect: Dictionary, ctx: Dictionary)`.
-- `ctx` is built by the engine: `{controller, source, source_name, source_iid, state, targets, log}`. Handlers read `ctx.state` for cross-player lookups; they do NOT reach into the `RulesEngine` autoload (one documented exception: `counter.gd:20` calls `RulesEngine.counter_stack_entry()` because the buffer for off-zone stack-held cards lives on the autoload).
-- Fizzle behavior is per-handler: targets gone → log + return.
-
-**Predicates** (`engine/predicates/predicates.gd`):
-- Single registry: `_PRED_NAMES = ["opp_lost_life_this_turn"]`. One predicate implemented.
-- Calling convention: `cond_<name>(state: EngineState, source: CardInstance, event: Dictionary) -> bool`. State passed explicitly; no autoload reach.
-- Boot-time validation: `validate_all_card_predicates(card_resources)` walks every loaded `CardResource`, collects `cond_id` strings from `triggers`, `push_error`s on any unknown name. Runs from `engine.gd._ready()`.
-- Card-local predicate hook reserved (`_is_card_local_predicate`) but no callers yet.
-
-### 2.5 AI module
-
+**Target descriptors** — passed inside an action's `"targets"` array:
+```gdscript
+{"kind": "player",   "who": "you" | "opp"}      # Action.target_player(who)
+{"kind": "creature", "iid": int}                # Action.target_creature(iid)
+{"kind": "stack",    "iid": int}                # counter target
 ```
-AI.decide(state, player_key):
-    if awaiting_target_for_trigger ──→ pick_trigger_target
-    if awaiting_discard            ──→ discard_card
-    if awaiting_block_declaration  ──→ decide_blockers → confirm_blocks
-    if combat_attack && active     ──→ decide_attackers
-    if stack non-empty             ──→ instant response (counter / burn / pass)
-    if main && active && priority  ──→ main play (land → biggest spell → ability)
-    else                            ──→ pass_priority
+Some effect handlers accept an alternate bare-string form (e.g. `"controller"`, `"opponent"`) when the effect dict itself names the target — see §2.5.
+
+**EngineState** (`engine/engine_state.gd`) — passive container, direct field access, `duplicate_deep()` for AI snapshots:
+
+| Field | Type | Notes |
+|---|---|---|
+| `you`, `opp` | `Player` | Per-player zones + life + mana. |
+| `active_player_key` / `priority_player_key` | `String` | Whose turn / whose priority. |
+| `phase_machine` | `PhaseMachine` | Current phase + turn structure. |
+| `stack` | `Stack` | LIFO of `StackEntry`. |
+| `attackers` | `Array[int]` | Attacker iids this combat. |
+| `blockers` | `Dictionary` | `{blocker_iid: attacker_iid}`. |
+| `pending_triggers` | `Array` | Queued triggers, draining APNAP. |
+| `awaiting_target_for_trigger` / `awaiting_block_declaration` / `awaiting_discard` | see below | Mid-state pauses. |
+| `log` | `Array[String]` | Game log. |
+| `winner` | `String` | `""` until game ends (the `game_over` signal arg is named `winner_key`). |
+| `turn_number` | `int` | 1-indexed. |
+
+**Awaiting states** — fields that pause the settle loop until a specific action arrives; only one active at a time, enforced in `_current_actor`:
+
+| Field | Shape when active | Cleared by | Precedence |
+|---|---|---|---|
+| `awaiting_target_for_trigger` | `{controller_key, source_iid, trigger_index, target_filter, valid_targets}` | `pick_trigger_target` with a matching target | Highest — before priority assignment. |
+| `awaiting_block_declaration` | `String` (defender key) | `confirm_blocks` (+ any declare/undeclare first) | Holds priority closed at COMBAT_BLOCK (MTG 509.1a). |
+| `awaiting_discard` | `{controller_key, remaining}` | `discard_card` (`remaining` decrements) | Cleanup-step only. |
+
+**Engine signals** (on the autoload; UI binds in `game_board._ready`):
+
+| Signal | Args | Emitted | UI response |
+|---|---|---|---|
+| `state_changed` | — | After the settle loop fully drains (+ on init). | `_refresh_ui` — visuals, stack/log, glows, combat highlights, phase label. |
+| `log_appended` | `message: String` | On `append_log` (UI currently reads `state.log` on `state_changed`). | Log re-renders on `state_changed`. |
+| `game_over` | `winner_key: String` | Once a win condition fires and SBAs settle. | Game-over dialog. |
+
+### 2.4 Stack, priority, combat, SBAs
+
+**Stack and priority.** The stack is `Array[StackEntry]`, holding both spell entries and triggered-ability entries; both resolve via `_resolve_*_entry`. Priority follows MTG semantics where it matters (caster retains after casting; pools empty at phase boundaries; defender declares blocks before priority opens at COMBAT_BLOCK; triggers drain APNAP). Auto-passes (AI driver, unattended windows) are agent UX on top — the priority pass IS happening, it's just `execute_action(pass_priority)` called automatically. (Rule numbers + the design rationale: [`RULES.md`](RULES.md) §600 and [`docs/wiki/magiclike-architecture.md`](wiki/magiclike-architecture.md).)
+
+**Combat damage.** Two-pass (`_combat_damage_pass` called twice — first-strike layer, then normal). Inner loop iterates attacker → assigned blockers, applies trample / menace collapse / first-strike skip / lifelink / deathtouch. SBAs sweep after each pass.
+
+**State-based actions.** `_run_sbas` checks lethal damage (`damage_marked ≥ toughness` or deathtouch hit), 0-life, and decking out (empty library on draw). Single sweep — not strict 704.5 ordering — cleared in the same settle iteration.
+
+### 2.5 Effects
+
+`engine/effects/` — `effects.gd` declares `HANDLERS` (`damage`, `add_mana`, `pump`, `gain_life`, `counter`). Every handler is `static func execute(effect: Dictionary, ctx: Dictionary)`. Fizzle is per-handler (targets gone → log + return).
+
+The **canonical effect-kind catalog** (cross-engine) is [`PROTOCOL.md`](PROTOCOL.md) §3.2; the shapes below are the **Godot** per-kind descriptors + the `ctx` the engine assembles.
+
+**`ctx`** (built by the engine, passed to every handler):
+```gdscript
+{
+    "controller": Player, "source": CardInstance,   # source null for off-zone spell effects
+    "source_name": String, "source_iid": int,        # -1 if no source
+    "state": EngineState,                             # explicit state — no autoload reach
+    "targets": Array[Dictionary],                     # locked-in target descriptors
+    "log": Array[String]
+}
+```
+Handlers read `ctx.state` for cross-player lookups; they do **not** reach into the `RulesEngine` autoload — one documented exception: `counter.gd` calls `RulesEngine.counter_stack_entry()` because the off-zone stack-held-cards buffer lives on the autoload.
+
+```gdscript
+{"kind": "damage", "amount": int, "target": "chosen" | "controller" | "opponent"}
+  # "chosen" reads ctx.targets[0] (player or creature); damage to creatures sets damage_marked.
+{"kind": "add_mana", "amounts": {"W":1,"R":2,...}}   # OR flat shorthand {"kind":"add_mana","R":1}
+{"kind": "pump", "power": int, "toughness": int, "target": "chosen", "duration": "eot" | "permanent"}
+  # "eot" → temp_power/temp_toughness; "permanent" → +1/+1 counters.
+{"kind": "gain_life", "amount": int}                 # always ctx.controller; non-positive logs+skips.
+{"kind": "counter", "target": "chosen"}              # ctx.targets[0] = {"kind":"stack","iid":int}
 ```
 
-`combat.gd:simulate_combat` calls `state.duplicate_deep()` and then **reuses `RulesEngine._resolve_combat_damage()` on the snapshot** — first-strike/lifelink/trample/deathtouch logic stays in one place, AI gets honest simulation.
+### 2.6 Triggers & predicates
 
-`scoring.gd:card_value(template, purpose)` is a heuristic — power+toughness minus a cost factor, plus a `KEYWORD_VALUES` table. Purpose toggles draft (`p + t − 2*cost`) vs in-hand keep (`p + t − 0.5*cost`). Comment warns "DO NOT round" — values were playtested.
+**Trigger drain.** `_fire_event` scans battlefield creatures, matches `event` + `cond_id`, enqueues `TriggerEntry` to `pending_triggers`. `_drain_pending_triggers` orders APNAP, resolves listeners with no target prompt, and pauses on `awaiting_target_for_trigger` for cards needing input (Pyromaniac). Resumes on `pick_trigger_target`.
 
-### 2.6 UI layer
-
-**`game_board.gd`** is a 1295-line orchestrator. It owns:
-- Scene tree construction (8 zones + 2 player panels + combat overlay + stack/log + action button), all built programmatically in `_build_ui`.
-- The `_iid_to_visual` map binding engine instance ids to card-framework `Card` nodes.
-- 4+ interaction modes via flag fields (`_pending_cast_iid` + `_pending_target_filter` + `_pending_cast_tap_plan` for casting; `_pending_block_blocker_iid` for blocking; `_picking_trigger_target` derived from `state.awaiting_target_for_trigger`; `_picking_discard` derived from `state.awaiting_discard`).
-- Auto-tap mana planning (`_plan_lands_to_tap`) — pure rules logic temporarily living in UI.
-- Legality glows: per refresh, calls `RulesEngine.get_legal_actions()` and decorates visuals.
-
-**`scenes/card.gd`** is passive. game_board pushes state into it (`apply_card_text`, `apply_creature_state`, `set_combat_highlight`, `set_legality_glow`). Adds a right-click focus mode that briefly bypasses card-framework's HOVERING/IDLE state machine; guarded reentry through `_enter_state`/`_exit_state` overrides.
-
-**Click-to-cast enforcement.** card-framework reserves drag for "move card between containers." Hand-card clicks are routed via `gui_input` directly to `_on_hand_card_gui_input` (game_board.gd:840–960), bypassing the addon's drag system entirely.
-
-**`combat_lines.gd`** overlays attacker→blocker and stack-spell→target lines. Reads `RulesEngine.state()` plus `game_board._iid_to_visual` via a `set("game_board", self)` string-key injection (game_board.gd:161).
-
-**`battlefield_zone.gd`** subclasses card-framework's `CardContainer`. Two-row split (creatures + lands). Persists `_creature_iid_order` across refreshes so post-combat layout doesn't snap back. Reads engine state to combat-sort during attack/block phases.
+**Predicate contract** (`engine/predicates/predicates.gd`). Card conditions are referenced by string `cond_id`; the registry resolves name → function. (Design rationale: [`docs/wiki/predicate-registry.md`](wiki/predicate-registry.md).)
+```gdscript
+static func cond_<name>(state: EngineState, source: CardInstance, event: Dictionary) -> bool
+```
+- `state` passed explicitly — **no `RulesEngine.state()` reads inside a predicate** (testability rule). Empty `cond_id` = always-true.
+- **Adding one:** add `cond_<name>`, append to `_PRED_NAMES`, add a branch to `evaluate`'s `match`.
+- **Boot validation:** `validate_all_card_predicates` walks every loaded `CardResource`, collects `cond_id`s from `triggers`, `push_error`s on any unknown name (runs from `engine.gd._ready()`). A card-local hook (`_is_card_local_predicate`) is reserved, no callers yet.
 
 ### 2.7 Card data
 
-Two coexisting paths today:
-- **`.tres` templates** (`cards/templates/*.tres`) — the 23 hand-curated playable cards. `card_database.gd` does a lazy directory walk; adding one is "drop the `.tres` in, restart."
-- **JSON wire format** (`engine/json_card_loader.gd`) — reads the html-proto `card.json` files directly (the cross-engine wire format; see [`PROTOCOL.md`](PROTOCOL.md)) and materializes `CardResource` instances. A boot **supportability scan** reports how many of the 258 proto cards are fully playable (today: 258 loaded, 109 supported, 149 awaiting handlers). This makes Godot card-pool growth a *prioritization* problem (which effect kinds to implement next) rather than a *translation* problem.
+Two coexisting paths today: the **`.tres` templates** (`cards/templates/*.tres`, the hand-curated playable set; `card_database.gd` lazily directory-walks them) and the **JSON wire path** (`engine/json_card_loader.gd` reads the html-proto `card.json` directly — the cross-engine wire format, [`PROTOCOL.md`](PROTOCOL.md) — and materializes `CardResource` instances). A boot **supportability scan** reports how many proto cards are fully playable (the rest await effect-kind handlers), making pool growth a *prioritization* problem, not a *translation* one. Consolidating the visual layer onto JSON (retiring `.tres`) is [`plans/plan-card-data-unification.md`](plans/plan-card-data-unification.md).
 
-`CardResource` is the base; `CreatureResource`/`SpellResource`/`LandResource` add type-specific fields. Runtime schema in [`SPEC.md`](SPEC.md); wire format in [`PROTOCOL.md`](PROTOCOL.md).
+**`CardResource` schema** (`data/card_resource.gd`; the Godot in-memory class — mirrors the [`PROTOCOL.md`](PROTOCOL.md) §2 wire schema plus Godot-only fields). One `.tres` per template under `cards/templates/<card_id>.tres`.
 
-**Note on `JsonCardFactory` (card-framework).** The vendored addon's `JsonCardFactory` is still unused by the *visual* layer (`TresCardFactory` does that). The *engine-side* JSON path is now live via `json_card_loader.gd` — no longer vestigial. Consolidating the visual layer onto JSON (and retiring `.tres`) is future work — standardization Pass 5 / `REFACTOR-NOTES.md`.
+| Field (base) | Type | Notes |
+|---|---|---|
+| `card_id` | `String` | Unique; matches filename stem. |
+| `display_name` | `String` | UI. |
+| `front_image_path` | `String` | Relative to `cards/images/`. |
+| `card_types` | `Array[String]` | e.g. `["creature"]`, `["land"]`. Multi-type allowed. |
+| `subtypes` | `Array[String]` | e.g. `["human","warrior"]`. |
+| `mana_cost` | `Dictionary` | Keys `W U B R G C(generic)` → positive ints. Empty for lands/free spells. |
+| `text` | `String` | Display only; not parsed by the engine. |
+| `on_cast_effects` | `Array[Dictionary]` | Effects on resolution (§2.5). |
+| `activated_abilities` | `Array[Dictionary]` | `{"cost":{"tap":bool,"mana":{...}}, "effects":[...]}`. |
+| `triggers` | `Array[Dictionary]` | see below. |
 
-### 2.8 Test suite
+Subclasses: **`CreatureResource`** (`power`, `toughness`, `keywords`) · **`SpellResource`** (`requires_target`, `target_filter`) · **`LandResource`** (`mana_produced` — tap-for-mana ability auto-constructed; do not populate `activated_abilities`).
 
-10 runnable scenes under `tests/`, one per shipped slice (1, 2, 3, 4, 4.5a, 4.5b, 4.5c, 5a, 5b, 5c). Each test is headless-executable via the Godot CLI (invocation in `CLAUDE.md`), prints assertion results, exits 0/1.
+**Triggered-ability schema** — each `triggers` entry:
+```gdscript
+{"event": String, "cond_id": String, "effects": Array[Dictionary],
+ "self_only": bool, "target_filter": String}   # target_filter required if any effect uses target:"chosen"
+```
+Observed events (`.tres` set): `"card_enters_battlefield"`, `"card_dies"`. Target-filter values: `"creature_or_player"` (any target), `"creature"`, `"player"`, `"opp_creature"`, `"your_creature"`, `"spell"`, `"any"`. *(These are the current Godot Phase-5c values; the converged wire vocabulary is PROTOCOL §3.3–§3.5 — Godot adopts it with the effects/zone-change refactors.)*
+
+**`CardInstance` runtime state** (`engine/card_instance.gd`; per-card mutable, separate from the immutable template):
+
+| Field | Purpose | Cleared by |
+|---|---|---|
+| `instance_id` | Globally unique id. | never |
+| `template` | Pointer to the `CardResource`. | never |
+| `owner_key` / `controller_key` | Started-with / current controller (steal). | controller resets on leave-play |
+| `tapped` | Tap state. | untap step |
+| `damage_marked` | Damage this turn. | cleanup |
+| `temp_power` / `temp_toughness` | EOT buffs. | cleanup (`clear_eot_modifiers`) |
+| `counters` | `{"+1/+1": int}`. | leave-play |
+| `granted_keywords` | Runtime keyword grants. | leave-play (eot subset at EOT) |
+| `summoning_sick` | Until controller's next untap. | untap step |
+| `lethal_marked` | SBA destroy-pending flag. | SBA sweep |
+
+`effective_keywords()` unions template keywords + `granted_keywords` (+ a reserved sticker seam, Phase 7).
+
+### 2.8 AI
+
+```
+AI.decide(state, player_key):
+    awaiting_target_for_trigger ──→ pick_trigger_target
+    awaiting_discard            ──→ discard_card
+    awaiting_block_declaration  ──→ decide_blockers → confirm_blocks
+    combat_attack && active     ──→ decide_attackers
+    stack non-empty             ──→ instant response (counter / burn / pass)
+    main && active && priority  ──→ main play (land → biggest spell → ability)
+    else                        ──→ pass_priority
+```
+`combat.gd:simulate_combat` calls `state.duplicate_deep()` then **reuses `RulesEngine._resolve_combat_damage()` on the snapshot** — first-strike/lifelink/trample/deathtouch logic stays in one place, AI gets honest simulation. `scoring.gd:card_value(template, purpose)` is a playtested heuristic (power+toughness minus a cost factor + a keyword table); purpose toggles draft vs in-hand-keep.
+
+### 2.9 UI
+
+**`game_board.gd`** is the orchestrator: programmatic scene-tree construction (zones + panels + combat overlay + stack/log + action button); the `_iid_to_visual` map binding engine instance ids to card-framework `Card` nodes; interaction modes via flag fields (casting / blocking / trigger-target / discard); auto-tap mana planning (`_plan_lands_to_tap` — pure rules logic temporarily in UI); legality glows (per refresh, calls `get_legal_actions` and decorates visuals).
+
+**`scenes/card.gd`** is passive — game_board pushes state in. Adds a right-click focus mode that briefly bypasses card-framework's hover state machine (guarded reentry). **Click-to-cast** is enforced by routing hand-card clicks via `gui_input` directly, bypassing the addon's drag system (drag is reserved for move-between-containers). **`combat_lines.gd`** overlays attacker→blocker + stack-spell→target lines. **`battlefield_zone.gd`** subclasses `CardContainer` with a two-row split and persists creature order across refreshes so post-combat layout doesn't snap back.
+
+### 2.10 Test suite
+
+Runnable scenes under `tests/`, one per shipped slice (Phases 1 … 5c), each headless-executable via the Godot CLI (invocation in `CLAUDE.md`), printing assertion results and exiting 0/1.
 
 | Phase | Coverage |
 |---|---|
@@ -196,138 +299,52 @@ Two coexisting paths today:
 | 2 | Play land, cast creature, summoning sickness, untap, attack, damage |
 | 3 | Blockers, instant-speed response, pump, two-spell stack |
 | 4 | ETB trigger, death trigger, predicate gating, APNAP drain |
-| 4.5a | Library draw, hand size, decking out |
-| 4.5b | Interactive trigger target picker (Pyromaniac), you- vs opp-controlled drain |
-| 4.5c | Counterspell, gain_life, 5-color basics, vanilla creature curve |
-| 5a | 11 combat keywords, two-pass damage |
-| 5b | `get_legal_actions`, `duplicate_deep`, `AIScoring.card_value` |
-| 5c | `AI.decide` correctness, full AI vs AI game to a winner (200-turn cap) |
+| 4.5a/b/c | Library/draw/decking · interactive trigger target picker · counterspell, gain_life, basics, vanilla curve |
+| 5a/b/c | Combat keywords + two-pass damage · `get_legal_actions`/`duplicate_deep`/`card_value` · `AI.decide` + full AI-vs-AI game |
 
-No batch runner — each `.tscn` is invoked individually. Flagged in `REFACTOR-NOTES.md`.
+No batch runner — each `.tscn` is invoked individually (flagged in [`REFACTOR-NOTES.md`](REFACTOR-NOTES.md)).
 
 ---
 
 ## 3. html-proto
 
-### 3.1 Module map
-
-Load order in `magiclike_engine.html` is fixed: `settings → cards → engine → card-text → stickers → ai → draft → run → picklog → controller → render → settings-panel → triggers → trigger-generator → main`. Each module is an IIFE exposing a single `const` global.
-
-| File | LOC | Role |
-|---|---:|---|
-| `magiclike_engine.html` | 918 | Single-page entry. DOM scaffolding (14 modal containers), ~700 LOC inline CSS, 14 `<script>` tags. |
-| `js/settings.js` | 279 | `SETTINGS` — display config (frame style, per-element fonts/sizes, popup scale, mana pip sizes, devtools flag). `localStorage` key `magiclike_settings_v1`. `applyFontsToRoot()` syncs `:root` CSS vars at boot. |
-| `js/cards.js` | 406 | `CARDS = {}` + `async loadCards()` (manifest-driven). Holds `TOKENS`, `KEYWORDS`, `STICKERS`, `EMPOWER_FIELDS`, `KEYWORD_DISPLAY`, `KEYWORD_STICKER_WEIGHTS`, `RUN_MODIFIERS`. |
-| `js/engine.js` | 5559 | The big one. `G` singleton (state), `step()` phase loop, EFFECTS dispatch (~40 kinds), pendingTriggers queue with `TRIGGER_DEPTH_CAP = 100`, modal pause states, combat damage, synthesize-stapled-template, mana abilities, `executeAction`, `isLegalAction`, `getLegalActions`. |
-| `js/card-text.js` | 632 | Pure data → English. `describeCardSegments`, `describeEffect`, `describeTrigger`, `describeAbility`, `describeStaticBuff`, plus modal-segment helpers. Reads `ENGINE.synthesizeStapledTemplate`. |
-| `js/stickers.js` | 356 | Sticker pipeline. `weightedPick`, `applyStickersToCard`, `applyOneStickerToRuntimeCard`, `applyRandomStickersToSide`, `empowerRollLabel`, `applyEmpowerRoll`, `rollSubtypeFromDeck`, `pushStickerWithRoll`, `stickersForSlot`. Late-binds ENGINE helpers. |
-| `js/ai.js` | 1564 | `AI` IIFE. Hierarchical decision (force resolution → combat → priority → pass). `simulateCombat`, `scoreCombatOutcome`, `scoreSpellTarget`, `findBurnLethal`, flash AI (vanilla flash deferred to opp end-step). 45+ heuristic constants. |
-| `js/draft.js` | 786 | `DRAFT` IIFE. Pack generation, color-aware sampling, 23-pick player draft, opp deck construction (incl. constructed-deck registry: Goblin Aggro, Spirit Tribal, Aristocrats, Archdemon Boss, Balancer Boss). |
-| `js/run.js` | 1086 | `RUN` IIFE. Roguelike meta — map (STS-style branching, DEPTH=5 WIDTH=3), rewards, slot mutations (sticker/splice/clone/ripUp/transform). `localStorage` key `magiclike_run_v1`, version 2, declarative `MIGRATIONS` per version. |
-| `js/picklog.js` | 178 | `PICKLOG` IIFE. Draft pick analytics, `localStorage` key `magiclike_picklog_v1`. Console hooks: `summarize`, `getCardStats`, `getPairsMatrix`. |
-| `js/controller.js` | 3017 | `CONTROLLER` IIFE. Input routing, modal lifecycle, AI scheduling (100ms debounce), state-machine management (draft → map → reward → game), long-press for inspect, meta-game render helpers (`renderMap`, `renderReward`, `renderDraft`, `renderStatsContent`). |
-| `js/render.js` | 1305 | `render()` main repaint, plus `renderHand`, `renderBf`, `renderManaPool`, `passLabel`, `makeCardEl`, `cardToViewModel`. In-game UI only. Render-on-every-state-change; no diffing. |
-| `js/settings-panel.js` | 325 | `SETTINGS_PANEL` IIFE. Settings modal render + show. Pulled out of controller.js in v1.0.185. |
-| `js/triggers.js` | 133 | `TRIGGER_CONDITIONS` registry (14 condIds). `evalTriggerCondition` resolver. |
-| `js/trigger-generator.js` | 193 | Mercurial Adept / Architect's Codex random-trigger rolling. `GENERATOR_EFFECTS`, `GENERATOR_CONDITIONS`, `generateRandomTrigger`, `generateConditionOptions`, `generateEffectOptions`, `assembleTrigger`. |
-| `js/main.js` | 28 | `VERSION` constant (must bump on every code-touching push to `dev`), `opp(who)` helper, bootstrap (awaits `loadCards()` → `CONTROLLER.init()`). |
-
-### 3.2 Engine core internals
-
-**G singleton.** All engine state lives on a closure-captured `G` object: phase, stack, priority, turn, activePlayer, attackers, blockers, pendingTriggers, triggerChainDepth, delayedTriggers, plus modal pause states (`pendingSearch`, `pendingTriggerTarget`, `pendingTriggerBuild`, `pendingSymmetricizeChoice`, `pendingNumberChoice`, `forcedDiscard`), plus per-player zones.
-
-**`step()` loop** (engine.js:5186, 243 LOC). Infinite `while(true)` — checks for pauses (modals, declarations, legal priorities), auto-resolves skippable phases (UNTAP, DRAW, COMBAT_DAMAGE), opens priority windows in others. Phase dispatch via switch on `G.phase`.
-
-**Action dispatch.** `executeAction(who, action)` (engine.js:5457). Validates with `isLegalAction` (engine.js:4676, 246 LOC — monolithic switch over 17 action types). Mutates state. Calls `notify()` (subscription emission).
-
-**Effect dispatch.** ~25 handler kinds keyed off `effect.kind` (snake_case). Handler signature `(ctx, params, target) => void`. Notable handlers:
-- `damage` — `applyDamageFrom` tracks `damagedBySources`, checks indestructible
-- `affect_creature` — severity-tiered (string `tap|bounce|destroy|exile`); bounce preserves `permaBuffs`
-- `endomorph_absorb` — reads victim keywords, applies sticker to controller's slot via `RUN.applyStickerToSlot()`
-- `embargo`/`bleach`/`steal` — **decomposed** (post-§3.8): embargo/bleach are `move_card` + `apply_sticker(cost_mod/set_color)`; steal is `change_control(transfer_ownership)` which delegates to the internal `steal` verb
-
-**Triggers.** `emit({type, ...})` queues to `G.pendingTriggers`. `drainPendingTriggers()` processes active-player triggers first, then opponent. `G.triggerChainDepth` increments per drain call, **bailout at `TRIGGER_DEPTH_CAP = 100`** (engine.js:2731) — historical safety net for past infinite-loop bugs. Resets to 0 when stack empties.
-
-`triggers.js` holds the predicate registry. Each entry: `{events: [...], paramSchema?, check: (self, evt, who, params) => bool}`. Some predicates close over `G` directly (e.g., `thisAttacksAfterOppLifeLoss` reaches `G[them].lifeLostThisTurn` at triggers.js:39–41) — flagged in `REFACTOR-NOTES.md`.
-
-**Combat damage.** `dealCombatDamage(blocked, defender, dealsDamage)` (engine.js:4028, 128 LOC). Sorts blockers (indestructibles last), assigns lethal damage in priority order, handles trample/menace/deathtouch/first-strike, emits `lifeGained` for lifelink-chained triggers.
-
-### 3.3 AI
-
-`AI.decide` decision hierarchy (mirrors Godot port):
-
-```
-1. Force resolutions (pendingTriggerTarget, pendingSearch, pendingTriggerBuild,
-                      pendingSymmetricizeChoice, pendingNumberChoice, forcedDiscard)
-2. Combat declarations
-   - attack phase: decideAttackers (enumerate subsets ≤2^N, sim opp blocks)
-   - block phase: decideBlockers (greedy: biggest attacker first)
-3. Priority resolution
-   - stack non-empty → decideReaction (counter / pump / removal / pass)
-   - main + active → decideMain (burn-lethal → land → biggest spell → ability)
-   - off-turn combat → decideOffTurnCombat (defensive instants ≥ 15 / flash ≥ 5)
-   - end step → decideEndStepFlash (ambush flash creatures)
-4. Pass
-```
-
-Scoring constants live as 45+ inline magic numbers in `ai.js`. `getCardValue` is latched to `ENGINE` (every lookup is an `ENGINE.getCardValue(card, purpose, ctx)` call); no local override. Flash AI gated by a console-mutable `FLASH_AI_ENABLED` global.
-
-### 3.4 Render + controller
-
-**Render loop.** `ENGINE.subscribe(onStateChange)` registers `controller.js:onStateChange`. Every state mutation triggers `render()`, which clears containers and rebuilds child elements from scratch. No diffing. Acceptable for 23-card hands; will bottleneck at larger pools.
-
-**State-as-CSS-class.** UI affordances are CSS classes applied dynamically: `.castable`, `.activatable`, `.targetable`, `.atk`/`.blk`/`.pblk`, `.sick`, `.discardable`, `.land-tappable`, `.could-atk`/`.could-blk`. The class names couple JS and CSS — renaming requires grepping both.
-
-**Modal stack.** Static HTML shells (`searchModal`, `triggerTargetModal`, `triggerBuildModal`, `modalChoiceModal`, etc.). `Modal.show(id)` pushes to a LIFO `_stack`, adds `.vis` class, sets `aria-modal`. Each modal's content is rebuilt on every `render()`.
-
-**Input routing.** `clickHand(iid)` and `clickBattlefield(iid)` are large switches over phase + card type + UI selection state. `clickBattlefield` is ~225 LOC (controller.js:1477–1701) — flagged in `REFACTOR-NOTES.md`. Inline event handlers attached per card (no event delegation).
-
-### 3.5 Draft + run meta
-
-**Draft** (`draft.js`). Player drafts 23 cards from packs of 3 (color-aware sampling biased toward in-deck colors). Pick scorer integrates color commitment, curve, creature density, intrinsic value (`ENGINE.getCardValue(card, 'draft', ctx)`), duplication penalty. Opp deck built via heuristic draft sim OR hand-curated constructed archetype.
-
-**Run** (`run.js`). STS-style map (DEPTH=5, WIDTH=3; mid nodes colored or colorless with 60%/25% odds; exit nodes get a constructed boss deck). Reward types weighted: sticker(12) > twoStickers(3) ≈ transform(2) ≈ clone(2) ≈ splice(2) > ripUp(1) ≈ threeStickersBlind(1). Slots carry `stickers`, `stapledTpls`, `empowerRolls`, `subtypeRolls`, `permaBuffs`, `bonusTrigger`, `charges`. Save schema versioned at 2; `MIGRATIONS` table walks old saves forward declaratively. Mid-game snapshot taken at game start (`midGameSlotsSnapshot`) so a mid-game crash restores prior state on load — prevents reward-farming by quitting.
-
-### 3.6 Persistence
-
-`localStorage` is the only persistence:
-- `magiclike_run_v1` — current roguelike run state (deck, stickers, wins/losses, map, pendingReward)
-- `magiclike_picklog_v1` — draft history analytics
-- `magiclike_settings_v1` — display preferences
-
-Schema migrations live in `RUN` and run at load. Save version constant in `run.js:4`. Schema details in [`SPEC.md`](SPEC.md).
-
-### 3.7 Testing
-
-Node-based regression harness under `reference/html-proto/tests/`:
-```
-node tests/run_all.js                       # 482 assertions, ~2s
-node tests/selfplay_harness.js 500 bughunt  # AI vs AI, ~20s
-```
-`tests/_setup.js` stubs the DOM and concatenates JS modules in script-tag order. Engine-level coverage only — no DOM/UI tests.
+The html-proto's own internals — module map, `G` singleton, `step()` loop, effect dispatch, draft/run/persistence — are documented in its onboarding doc, **[`reference/html-proto/CLAUDE.md`](../reference/html-proto/CLAUDE.md)** (with version history in **[`CHANGELOG.md`](../reference/html-proto/CHANGELOG.md)**). They are not restated here — that's the home, and restating them is what made this section rot. For the **relationship** between the two engines, see §4 and [`docs/wiki/cross-engine-port.md`](wiki/cross-engine-port.md); for the wire contract they share, [`PROTOCOL.md`](PROTOCOL.md).
 
 ---
 
-## 4. Cross-reference: ported vs deferred
+## 4. Cross-engine: ported vs deferred
 
 | Concern | Godot port | html-proto | Notes |
 |---|---|---|---|
-| Stack + priority | ✓ Phase 1 | ✓ | Both use real LIFO with APNAP ordering. |
-| Triggered abilities | ✓ Phase 4 | ✓ | Godot has 1 predicate, proto has 14. |
-| Triggered ability target picking | ✓ Phase 4.5b | ✓ | Pyromaniac in both. |
-| Library + draw + decking | ✓ Phase 4.5a | ✓ | Both implement 704.5b. |
-| Counterspell | ✓ Phase 4.5c | ✓ | Both via `counter` effect. |
-| Combat keywords | ✓ Phase 5a (11) | ✓ | Both: trample/lifelink/deathtouch/first-strike/menace/flying/reach/vigilance/hexproof/indestructible/defender/haste/unblockable. |
-| Two-pass combat damage | ✓ Phase 5a | ✓ | Both. |
-| AI vs AI | ✓ Phase 5c | ✓ | Godot completes games at 200-turn cap. |
-| Card pool size | 23 (.tres playable) / 258 (JSON-loadable) | 258 | `json_card_loader.gd` reads proto's 258 directly; 109 fully supported today. Pool growth = implement effect kinds, not transcribe cards. |
-| Stickers | ✗ | ✓ | Phase 7. Seam in `CardInstance.effective_keywords()`. |
-| Draft | ✗ | ✓ | Phase 8. |
-| Roguelike meta (run/map/rewards) | ✗ | ✓ | Phase 9. |
-| Modal trigger building (Mercurial / Codex) | ✗ | ✓ | Out of current scope. |
-| Modal spells | ✗ | ✓ | Out of current scope. |
-| Tokens | ✗ | ✓ | Out of current scope. |
-| Static lords (stat buffs) | ✗ | partial | Buffs work in proto; keyword grants don't yet. |
-| Render diffing | n/a (Godot retained-mode) | ✗ | Proto repaints on every event. |
+| Stack + priority | ✓ | ✓ | Both real LIFO with APNAP. |
+| Triggered abilities | ✓ | ✓ | Godot has fewer predicates (one registered); proto has the full set. |
+| Trigger target picking | ✓ | ✓ | Pyromaniac in both. |
+| Library + draw + decking | ✓ | ✓ | Both implement 704.5b. |
+| Counterspell | ✓ | ✓ | Both via `counter`. |
+| Combat keywords + two-pass damage | ✓ | ✓ | trample/lifelink/deathtouch/first-strike/menace/flying/reach/vigilance/hexproof/indestructible/defender/haste/unblockable. |
+| AI vs AI | ✓ | ✓ | Godot completes games to a winner. |
+| Card pool | the curated `.tres` set; the proto's full pool is JSON-loadable, growing as effect-kinds are implemented | the full pool | `json_card_loader.gd` reads the proto cards directly. |
+| Stickers / Draft / Roguelike meta | ✗ | ✓ | Godot Phases 7–9 (seam reserved in `CardInstance.effective_keywords()`). |
+| Modal trigger building / modal spells / tokens | ✗ | ✓ | Out of current Godot scope. |
+| Static lords (stat buffs) | partial | partial | Buffs work in proto; keyword grants pending on Godot. |
 
-Phase 6–10 of `docs/plans/godot-port-plan.md` covers most of the deferred items in order.
+Forward roadmap: [`plans/godot-port-plan.md`](plans/godot-port-plan.md).
+
+---
+
+## 5. Asset conventions
+
+| Asset | Location | Used by |
+|---|---|---|
+| Almendra font | `assets/fonts/Almendra/` | Both — html-proto via `@font-face`; Godot via project import. |
+| Mana SVGs (`{W,U,B,R,G}.svg`) | `assets/mana/` | Both. |
+| Mana source (`source/…`) | `assets/mana/source/` | Design source; not loaded at runtime. |
+| Godot card images / templates | `cards/images/` · `cards/templates/<card_id>.tres` | `TresCardFactory` · `CardDatabase.get_card`. |
+| html-proto card art / frames | `reference/html-proto/cards/<tplId>/art.png` · `reference/html-proto/assets/frames/` | `effectiveArt` · CSS background. |
+
+When a new outside resource is added, log it in [`LICENSES.md`](../LICENSES.md) per the rule in the root `CLAUDE.md`.
+
+---
+
+## See also
+Persistence / save schema is an html-proto runtime concern documented in its onboarding doc ([`reference/html-proto/CLAUDE.md`](../reference/html-proto/CLAUDE.md) → Persistence); the Godot port has no save layer yet (Phase 9). Structural debt: [`REFACTOR-NOTES.md`](REFACTOR-NOTES.md).

@@ -24,7 +24,7 @@ It is **docs-as-code, in wiki form** — co-located with the code (so it's versi
 This layer **complements** the repo docs and never copies them — it links out:
 
 - **Canonical rules** (how the game works) → [`docs/RULES.md`](../RULES.md).
-- **Wire format · module map · runtime contracts** → [`docs/PROTOCOL.md`](../PROTOCOL.md) · [`docs/ARCHITECTURE.md`](../ARCHITECTURE.md) · [`docs/SPEC.md`](../SPEC.md).
+- **Wire format · engine reference (modules + contracts)** → [`docs/PROTOCOL.md`](../PROTOCOL.md) · [`docs/ARCHITECTURE.md`](../ARCHITECTURE.md).
 - **Cross-engine gaps** → [`docs/DIVERGENCE.md`](../DIVERGENCE.md).
 - **Live status** (current phase, card counts, roadmap) → the repo root `CLAUDE.md` + [`docs/plans/`](../plans/). **Status lives in the repo, never here.**
 

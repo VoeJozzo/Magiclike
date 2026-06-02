@@ -188,7 +188,7 @@ Grouped by what kind of predicate it is, NOT by which event it's typically used 
 | `card_moves(from, to)` | Zone-change event from `from` to `to`. Either arg can be `anywhere` to mean "don't care about this endpoint." Examples: `card_moves(anywhere, battlefield)` for ETB, `card_moves(battlefield, graveyard)` for dies. |
 | `card_has_subtype(subtype)` | Event's card template has the named subtype. Subtype name is a bare identifier (or quoted if it contains spaces). |
 | `card_damaged_by_this` | Event's card has the trigger source in its `damaged_by_sources` set. Composes with `card_moves(battlefield, graveyard)` to express MTG's "killed credit" semantics — "this card killed it." (Requires combat-credit tracking; gated on DIVERGENCE C5 implementation.) |
-| `card_has_effect(kind)` | Event's card template has an `on_cast_effects` entry with matching `kind`. `kind` is one of the effect-kind names from SPEC.md (`damage`, `gain_life`, `counter_spell`, `pump`, `add_mana`). Used for "whenever you cast a counterspell / damage spell / etc." triggers. |
+| `card_has_effect(kind)` | Event's card template has an `on_cast_effects` entry with matching `kind`. `kind` is one of the effect-kind names from PROTOCOL.md (`damage`, `gain_life`, `counter_spell`, `pump`, `add_mana`). Used for "whenever you cast a counterspell / damage spell / etc." triggers. |
 
 ### Event-meta predicates (1) — for events with a player subject (no card subject)
 

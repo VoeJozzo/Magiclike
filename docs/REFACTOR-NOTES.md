@@ -1,6 +1,6 @@
 # Refactor Notes
 
-Prioritized structural debt across both halves of the repo. Items here are **advisory** — recorded so they can be picked up opportunistically when the surrounding area is already being touched, or scheduled deliberately when the listed triggering event arrives. Pairs with [`ARCHITECTURE.md`](ARCHITECTURE.md) (module map) and [`SPEC.md`](SPEC.md) (data contracts).
+Prioritized structural debt across both halves of the repo. Items here are **advisory** — recorded so they can be picked up opportunistically when the surrounding area is already being touched, or scheduled deliberately when the listed triggering event arrives. Pairs with [`ARCHITECTURE.md`](ARCHITECTURE.md) (the engine reference — modules + data contracts).
 
 Refactor items live here. Feature deferrals continue to live in [`BACKLOG.md`](BACKLOG.md).
 

@@ -9,13 +9,12 @@ Map of the documentation set. Each doc has a single, distinct job; this page is 
 | Doc | Answers |
 |---|---|
 | [`RULES.md`](RULES.md) | **Canon.** How the game works, in plain English, independent of code. When doc and code disagree, this wins. |
-| [`ARCHITECTURE.md`](ARCHITECTURE.md) | Module map of both codebases — where each piece of behavior lives, with LOC and public surface. |
+| [`ARCHITECTURE.md`](ARCHITECTURE.md) | **Engine reference** — where Godot behavior lives (modules) **and** its runtime data contracts (action descriptors, the effect-handler `ctx`, signals, awaiting states, `CardInstance`/`EngineState` shapes), by subsystem. Defers to PROTOCOL for the wire vocabulary; the html-proto's internals live in its own `CLAUDE.md`. |
 | [`PROTOCOL.md`](PROTOCOL.md) | **The cross-engine wire format** (between-engines contract): the `card.json` schema and the effect-kind / event-kind / predicate-id / target catalogs both engines must agree on. |
-| [`SPEC.md`](SPEC.md) | **Within-engine runtime contracts** (the other half of the partition): action descriptors, the effect-handler `ctx` shape, signals, awaiting states, CardInstance/EngineState runtime fields, save schema. Defers to PROTOCOL for the wire vocabulary. |
 | [`DIVERGENCE.md`](DIVERGENCE.md) | Where the Godot port and html-proto behave differently, each row tagged with severity + a to-do. RULES.md is the tie-breaker. |
 | [`wiki/`](wiki/) | **Durable concepts** — the conceptual *why* layer: engine architecture rationale, design discipline, the cross-engine relationship. Obsidian-style pages, co-located with the code. |
 
-**Wire vs runtime:** `PROTOCOL.md` owns the format shared *between* engines; `SPEC.md` owns the shapes internal to *one* engine. When they touch, SPEC defers to PROTOCOL.
+**Wire vs runtime:** `PROTOCOL.md` owns the format shared *between* engines; `ARCHITECTURE.md` owns the shapes internal to the Godot engine. When they touch, ARCHITECTURE defers to PROTOCOL.
 
 ## Planning docs — "what to change"
 

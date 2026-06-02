@@ -3,7 +3,7 @@ type: concept
 tags: [magiclike, architecture, gamedev]
 created: 2026-06-02
 updated: 2026-06-02
-sources: ["magiclike repo: CLAUDE.md (Architecture decisions)", "docs/SPEC.md"]
+sources: ["magiclike repo: CLAUDE.md (Architecture decisions)", "docs/ARCHITECTURE.md"]
 ---
 
 # Action-descriptor pattern
@@ -22,7 +22,7 @@ Factory helpers in `engine/action.gd` build the descriptors (`make_cast_spell`, 
 - **Uniform** — legality (`get_legal_actions`), dispatch, and AI move-enumeration all speak the same vocabulary, so the AI plays exactly the moves a human can.
 - **UI-agnostic** — the engine never knows whether a click, a keybind, or the AI driver produced the action; this is what lets the engine stay UI-free (see [[magiclike-architecture]]).
 
-The exact descriptor shapes, the effect-handler `ctx`, and the awaiting-state fields are the engine's runtime contract — see [`SPEC.md`](../SPEC.md) (which defers to [`PROTOCOL.md`](../PROTOCOL.md) for the cross-engine wire vocabulary).
+The exact descriptor shapes, the effect-handler `ctx`, and the awaiting-state fields are the engine's runtime contract — see [`ARCHITECTURE.md`](../ARCHITECTURE.md) (which defers to [`PROTOCOL.md`](../PROTOCOL.md) for the cross-engine wire vocabulary).
 
 ## See also
 

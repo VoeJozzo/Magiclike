@@ -3,12 +3,12 @@ type: concept
 tags: [magiclike, architecture, gamedev]
 created: 2026-06-02
 updated: 2026-06-02
-sources: ["magiclike repo: CLAUDE.md (Architecture decisions; Patterns to NOT/REPLICATE)", "docs/ARCHITECTURE.md", "docs/SPEC.md", "docs/RULES.md"]
+sources: ["magiclike repo: CLAUDE.md (Architecture decisions; Patterns to NOT/REPLICATE)", "docs/ARCHITECTURE.md", "docs/RULES.md"]
 ---
 
 # Magiclike — engine architecture
 
-The durable shape and rationale of [[magiclike]]'s rules engine — the *why* behind the design, which changes only by deliberate redesign. (Current module inventory, LOC, and file map live in the repo at [`ARCHITECTURE.md`](../ARCHITECTURE.md) and the root `CLAUDE.md`; runtime contracts — action/effect/`ctx` shapes — in [`SPEC.md`](../SPEC.md). Live status lives in the repo, not here.)
+The durable shape and rationale of [[magiclike]]'s rules engine — the *why* behind the design, which changes only by deliberate redesign. (Current module inventory and runtime contracts — modules, action/effect/`ctx` shapes — live in the repo at [`ARCHITECTURE.md`](../ARCHITECTURE.md) and the root `CLAUDE.md`. Live status lives in the repo, not here.)
 
 ## The core stance
 
