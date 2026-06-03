@@ -1335,6 +1335,9 @@ function resolvedManaCost(rawCost, sourceCard, who) {
   if (!rawCost) return rawCost;
   const cost = {...rawCost};
   if (cost.colors_of_source) {
+    if (!sourceCard) {
+      throw new Error('colors_of_source mana cost must be resolved against a source card');
+    }
     delete cost.colors_of_source;
     for (const c of colorsOfCard(sourceCard)) cost[c] = (cost[c] || 0) + 1;
   }
@@ -1407,6 +1410,7 @@ function canPayPotential(who, cost) {
 // Pay from pool first; if short, auto-tap sources. Color costs first, then generic.
 function payMana(who, cost) {
   if (!cost) return;
+  // Invariant: colors_of_source costs must already be source-resolved by the caller.
   cost = resolvedManaCost(cost, null, who);
   const p = G[who];
   if (canPayFromPool(p.mana, cost)) { deductFromPool(p.mana, cost); return; }

@@ -116,6 +116,15 @@ console.log('\n=== Artifice Triumphant colorless activation is intentionally fre
   ENGINE.executeAction('you', { type: 'activateAbility', cardIid: colossus.iid, abilityIdx });
   check('free activation makes the colorless target a creature until end of turn',
     hasType(colossus, 'Artifact') && hasType(colossus, 'Creature'));
+  check('colors_of_source cannot be paid without a source-card resolution',
+    (() => {
+      try {
+        ENGINE.payMana('you', { colors_of_source: true });
+        return false;
+      } catch (err) {
+        return /colors_of_source/.test(String(err && err.message));
+      }
+    })());
 })();
 
 console.log('\n=== Artifice Triumphant AI prefers colored targets but permits colorless ===');

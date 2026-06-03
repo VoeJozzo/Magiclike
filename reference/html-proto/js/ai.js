@@ -1387,6 +1387,9 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
   if (!eff && card.target) {
     const stickerSetTypes = modeEffects.find(e => e.kind === 'apply_sticker'
       && e.sticker && e.sticker.kind === 'set_types');
+    // Artifice Triumphant's sticker looks permanent at the run layer, but the
+    // granted reactivation ability makes it a soft tempo neutralize in-game.
+    // Leave duration absent so the set_types scorer uses its tempo base.
     if (stickerSetTypes) eff = { ...stickerSetTypes.sticker, kind: 'set_types' };
   }
   if (!eff) return 0;

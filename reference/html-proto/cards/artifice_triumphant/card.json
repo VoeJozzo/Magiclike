@@ -1,7 +1,7 @@
 {
   "card_id": "artifice_triumphant",
   "name": "Artifice Triumphant",
-  "art": "/\\",
+  "art": "art.png",
   "special": true,
   "cost": {
     "C": 3

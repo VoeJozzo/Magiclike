@@ -1,7 +1,7 @@
 {
   "card_id": "ingenuity_unbounded",
   "name": "Ingenuity Unbounded",
-  "art": "oo",
+  "art": "art.png",
   "special": true,
   "cost": {
     "C": 1

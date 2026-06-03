@@ -4,7 +4,7 @@ Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folde
 
 ## Version
 
-**Current: `v2.0.78`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.0.79`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -201,6 +201,13 @@ opponent's best creature — permanent base 20, eot base 8, +card value +lane �
 animate-add_type only at a permanent WE control (else it'd gift the opponent a
 body). Verified via `AI.decide`: the AI now casts Encase in Amber at an enemy
 creature. 1269 green, lint clean, 300-game selfplay clean.
+
+v2.0.79: **Equatorial Artificer review cleanup + keeper art.** Guarded
+`colors_of_source` so future callers cannot accidentally pay it without a source
+card, pinned Artifice Triumphant's AI valuation as intentionally tempo-like, and
+documented `innate`, `spend_mana_as_any_color`, `colors_of_source`, and
+`grant_activated_ability` in `docs/PROTOCOL.md`. Added selected PixelLab art for
+Equatorial Engine, Artifice Triumphant, and Ingenuity Unbounded.
 
 v2.0.78: **Artifice Triumphant's intentionally dubious colorless target.** The
 AI still strongly prefers to neutralize a colored creature, but now assigns a
