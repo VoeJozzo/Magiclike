@@ -1384,6 +1384,14 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
   // "you gain 4 life AND that opponent loses 2" — the drain is the targeted half).
   let eff = modeEffects.find(e => e.target && e.target !== 'self');
   if (!eff && card.target) eff = modeEffects.find(e => e.kind !== 'chooses' && e.kind !== 'apply_sticker' && e.scope == null);
+  if (!eff && card.target) {
+    const stickerSetTypes = modeEffects.find(e => e.kind === 'apply_sticker'
+      && e.sticker && e.sticker.kind === 'set_types');
+    // Artifice Triumphant's sticker looks permanent at the run layer, but the
+    // granted reactivation ability makes it a soft tempo neutralize in-game.
+    // Leave duration absent so the set_types scorer uses its tempo base.
+    if (stickerSetTypes) eff = { ...stickerSetTypes.sticker, kind: 'set_types' };
+  }
   if (!eff) return 0;
   if (eff.kind === 'sacrifice' || eff.kind === 'annihilate') {
     // Edict: target(player) → chooses → sacrifice/annihilate (→ rip). The targeted
@@ -1446,6 +1454,14 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
     if (!c || c.controller === us) return -100;
     if (c.card.keywords.includes('hexproof')) return -100;
     if (!hasType(c.card, 'Creature')) return -100;        // only a creature is worth neutralizing
+    // Artifice Triumphant grants "pay one mana of each of this card's colors:
+    // become a creature until EOT." On an originally colorless creature that
+    // costs zero, so neutralizing it is usually a mistake. Keep a score floor
+    // of 1: the boss prefers colored targets, but can still give the player the
+    // amusing free-reactivation mutation when no better target is available.
+    if (modeEffects.some(e => e.kind === 'apply_sticker'
+          && e.sticker && e.sticker.kind === 'grant_activated_ability')
+        && (!Array.isArray(c.card.colors) || c.card.colors.length === 0)) return 1;
     const base = (eff.duration === 'permanent') ? 20 : 8;
     return base + ENGINE.getCardValue(c.card, 'kill') + laneOpeningBonus(state, us, target.iid);
   }
@@ -1886,4 +1902,3 @@ return {
 };
 })();
 // END HEURISTIC AI
-
