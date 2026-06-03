@@ -86,7 +86,7 @@ A wiki-style folder of **durable, interlinked concept pages** — the engine's a
 
 - **It owns the "why."** Architecture-decision rationale and the "patterns to NOT/REPLICATE" reasoning live there; the sections below keep only the terse directives + a pointer.
 - **It is not a content home** for canonical rules ([`docs/RULES.md`](docs/RULES.md)), the wire format / module map ([`docs/PROTOCOL.md`](docs/PROTOCOL.md), [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)), cross-engine gaps ([`docs/DIVERGENCE.md`](docs/DIVERGENCE.md)), or live status — it links those.
-- **Mirror new durable decisions there** when you make them, and keep this file lean.
+- **Mirror new durable decisions there** when you make them, and keep this file lean. To reconcile the wiki against recent repo activity on request ("sync the wiki"), follow [`docs/wiki/README.md`](docs/wiki/README.md) → *Keeping it current*.
 
 ## Architecture decisions
 

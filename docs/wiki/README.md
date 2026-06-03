@@ -33,3 +33,14 @@ This layer **complements** the repo docs and never copies them — it links out:
 ## Conventions
 
 Kebab-case filenames; dense `[[wikilinks]]` between concept pages; **inline-code path refs** out to the repo docs (e.g. `docs/RULES.md`) — *not* relative `../` links, which break when clicked in the junctioned Obsidian vault (only `docs/wiki/` is mounted, so `../` escapes it); light dated frontmatter (`type` / `tags` / `created` / `updated` / `sources`); encyclopedic, concise voice; **durable-only** — nothing a commit would falsify. Git history is this folder's changelog.
+
+## Keeping it current (sync from repo activity)
+
+Primary mechanism: **proactive capture** — mirror a durable decision here in the same commit that makes it. This is the **periodic backstop**, run on request ("sync the wiki with recent commits") — the wiki's *ingest + lint*, sourced from git:
+
+1. **Window.** `git log --stat` since the last commit that touched `docs/wiki/` (self-tracking: "what changed since the wiki was last reconciled"), across the branches that matter (`dev` for the html-proto, the active Godot branch). Read the substantive diffs.
+2. **Triage — most commits are *not* wiki-worthy.** Keep only **durable** changes: a design/architecture *decision* + its rationale, a new durable *concept*, a shift in the cross-engine *relationship*. Skip bug fixes, card additions, status/version bumps, and refactors that introduce no new durable idea.
+3. **Reconcile.** Update or create the **one home** for each durable change (one home per fact; dense `[[wikilinks]]`; bump `updated`; inline-code refs per Conventions). Then **lint** the existing pages against current reality — does anything now contradict shipped code (e.g., a landed refactor)? Fix or flag.
+4. **Report + curate.** Summarize what changed **and what was considered and skipped**. The git diff is the curation gate — Joe reviews and prunes; nothing is auto-blessed.
+
+The bar is high and the wiki is slow-changing, so a sync often (correctly) yields little. **Empty is a valid result.**
