@@ -4,7 +4,7 @@ Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folde
 
 ## Version
 
-**Current: `v2.0.79`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.0.80`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -201,6 +201,16 @@ opponent's best creature — permanent base 20, eot base 8, +card value +lane �
 animate-add_type only at a permanent WE control (else it'd gift the opponent a
 body). Verified via `AI.decide`: the AI now casts Encase in Amber at an enemy
 creature. 1269 green, lint clean, 300-game selfplay clean.
+
+v2.0.80: **AI scores a buff-then-fight WITH the buff (PR #57 review fix).**
+`scoreFightExchange` used base stats, so the AI passed on cleanly-favorable Predate
+casts where the +1/+1 is exactly what wins the fight (repro: our 2/4 vs their 3/3 —
+post-pump 3/5 kills the 3/3 and survives, but the scorer saw pre-pump 2 power → score
+0 → `<=0` pass). `scoreMultiTargetSpell` now folds same-spell `pump`/`add_counter`
+boosts that land on a fight combatant's slot into the exchange estimate (`statBySlot`).
+Hopeless fights still pass (1/1 vs 5/5 dies even pumped); Prey Upon (no buff) unchanged.
+Regression added to `test_predate_fight_d1`. 1373 green, lint clean, 300-game selfplay
+clean.
 
 v2.0.79: **`fight` becomes a symmetric two-operand primitive + card-level
 `target_slots` is now authoritative for enumeration (fixes a latent AI bug).** The

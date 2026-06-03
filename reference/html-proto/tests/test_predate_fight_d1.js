@@ -197,5 +197,31 @@ console.log('\n=== Prey Upon: fight-only, BOTH slots enumerated + AI casts when 
   check('their 2/2 dealt 2 back to our 5/5, which survives', big.damage === 2 && g.you.battlefield.some(c => c.iid === big.iid));
 })();
 
+console.log('\n=== AI scores Predate WITH its pump (PR #57 review repro) ===');
+(() => {
+  // The +1/+1 is what makes the fight good, so the scorer must fold it in.
+  const mk3 = (g, who, p, t) => { const c = ENGINE.makeCard('goblin_raider'); c.sick = false; c.power = p; c.toughness = t; g[who].battlefield.push(c); return c; };
+  const setup = () => {
+    RUN.start({ cards: Array(12).fill('forest'), colors: ['G'] }, null); RUN.startNextGame();
+    const g = ENGINE.state();
+    g.activePlayer = 'you'; g.priorityHolder = 'you'; g.phase = 'MAIN1';
+    g.stack = []; g.gameOver = false; g.priority = { passes: new Set() };
+    g.you.mana = { W: 9, U: 9, B: 9, R: 9, G: 9, C: 9 }; g.you.battlefield = []; g.opp.battlefield = [];
+    return g;
+  };
+  // 2/4 vs 3/3: pre-pump the exchange scores 0 (no kill, no death) → old AI passed.
+  // Post-pump (3/5) it kills the 3/3 and survives → must cast.
+  let g = setup(); mk3(g, 'you', 2, 4); mk3(g, 'opp', 3, 3);
+  let pred = ENGINE.makeCard('predate'); g.you.hand = [pred];
+  let dec = AI.decide(g, 'you');
+  check('casts the buff-favorable Predate (2/4 vs 3/3)', !!dec && dec.type === 'castSpell' && dec.cardIid === pred.iid,
+    dec ? dec.type : 'null');
+  // 1/1 vs 5/5: even pumped to 2/2 it dies and kills nothing → still a pass.
+  g = setup(); mk3(g, 'you', 1, 1); mk3(g, 'opp', 5, 5);
+  pred = ENGINE.makeCard('predate'); g.you.hand = [pred];
+  dec = AI.decide(g, 'you');
+  check('still passes a hopeless Predate (1/1 vs 5/5)', !(dec && dec.type === 'castSpell'));
+})();
+
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');
 process.exit(fail > 0 ? 1 : 0);

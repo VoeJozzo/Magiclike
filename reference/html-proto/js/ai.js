@@ -1198,9 +1198,10 @@ function spellPlayValue(state, who, card, opt) {
 // Score a `fight` as ONE combatant-vs-combatant exchange off its operands (not
 // per-slot — a fighter slot is our own creature, which the per-target scorer would
 // reject). Mirrors the fight handler's operand resolution against `state` (slots
-// from the action targets, {select} = our biggest). Uses base stats — a pending
-// same-turn pump isn't modelled, so the estimate is conservative.
-function scoreFightExchange(state, who, fightEff, targets) {
+// from the action targets, {select} = our biggest). `statBySlot` folds in any
+// same-spell stat boost landing on a combatant's slot (Predate's pump), so the
+// AI scores the fight WITH the buff it's about to apply.
+function scoreFightExchange(state, who, fightEff, targets, statBySlot) {
   const us = who;
   const find = (iid) => {
     for (const w of ['you', 'opp']) {
@@ -1216,6 +1217,7 @@ function scoreFightExchange(state, who, fightEff, targets) {
     if (op && op.slot != null) {
       const t = targets && targets[op.slot];
       const r = (t && t.kind === 'creature') ? find(t.iid) : null;
+      if (r) r.bonus = (statBySlot && statBySlot[op.slot]) || null;   // same-spell pump on this slot
       out[i] = r; if (r) used.add(r.card.iid);
     }
   });
@@ -1228,10 +1230,14 @@ function scoreFightExchange(state, who, fightEff, targets) {
   });
   const [r0, r1] = out;
   if (!r0 || !r1) return -100;
-  const ourC = r0.controller === us ? r0.card : r1.card;
-  const theirC = r0.controller === us ? r1.card : r0.card;
-  const [ourPow, ourTou] = ENGINE.getStats(ourC);
-  const [theirPow, theirTou] = ENGINE.getStats(theirC);
+  const ourR = r0.controller === us ? r0 : r1;
+  const theirR = r0.controller === us ? r1 : r0;
+  const stats = (r) => {
+    const [p, t] = ENGINE.getStats(r.card);
+    return [p + (r.bonus ? r.bonus.power : 0), t + (r.bonus ? r.bonus.toughness : 0)];
+  };
+  const [ourPow, ourTou] = stats(ourR);
+  const [theirPow, theirTou] = stats(theirR);
   let score = 0;
   if (ourPow >= theirTou) score += 30 + theirPow + theirTou;   // we kill
   if (theirPow >= ourTou) score -= 25 + ourPow + ourTou;       // we die
@@ -1243,11 +1249,22 @@ function scoreFightExchange(state, who, fightEff, targets) {
 function scoreMultiTargetSpell(state, who, card, targets, modeIdx) {
   if (!Array.isArray(targets) || targets.length === 0) return 0;
   const modeEffects = ENGINE.effectsForMode(card, modeIdx);
+  // Same-spell stat boosts (pump / add_counter) that land on a slot — folded into
+  // the fight estimate so a buff-then-fight (Predate) is scored post-buff.
+  const statBySlot = {};
+  for (const eff of modeEffects) {
+    if (eff && (eff.kind === 'pump' || eff.kind === 'add_counter')
+        && eff.target_slot != null && !eff.scope) {
+      const s = statBySlot[eff.target_slot] || { power: 0, toughness: 0 };
+      s.power += eff.power || 0; s.toughness += eff.toughness || 0;
+      statBySlot[eff.target_slot] = s;
+    }
+  }
   // fight scores as a single exchange off its operands (additive — 0 if absent).
   let fightScore = 0, hasFight = false;
   for (const eff of modeEffects) {
     if (eff && eff.kind === 'fight' && Array.isArray(eff.operands)) {
-      hasFight = true; fightScore += scoreFightExchange(state, who, eff, targets);
+      hasFight = true; fightScore += scoreFightExchange(state, who, eff, targets, statBySlot);
     }
   }
   const slotsUsed = new Set();
