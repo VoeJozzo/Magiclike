@@ -1,0 +1,18 @@
+{
+  "card_id": "ingenuity_unbounded",
+  "name": "Ingenuity Unbounded",
+  "art": "art.png",
+  "special": true,
+  "cost": {
+    "C": 1
+  },
+  "types": [
+    "Artifact"
+  ],
+  "keywords": [
+    "hexproof",
+    "indestructible"
+  ],
+  "innate": true,
+  "spend_mana_as_any_color": true
+}

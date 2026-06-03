@@ -44,6 +44,18 @@ function applyStickerKindEffect(card, s) {
       for (const k of ['W', 'U', 'B', 'R', 'G']) { colored += card.cost[k] || 0; card.cost[k] = 0; }
       if (colored) card.cost.C = (card.cost.C || 0) + colored;
     }
+  } else if (s.kind === 'set_types') {
+    card.types = (Array.isArray(s.types) ? s.types : [s.type]).filter(Boolean);
+  } else if (s.kind === 'grant_activated_ability') {
+    if (!s.ability) return;
+    if (!Array.isArray(card.abilities)) card.abilities = [];
+    if (s.ability_id && card.abilities.some(ab => ab && ab._sticker_ability_id === s.ability_id)) return;
+    card.abilities.push({
+      ...s.ability,
+      cost: s.ability.cost ? {...s.ability.cost} : undefined,
+      effects: (s.ability.effects || []).map(e => ({...e})),
+      _sticker_ability_id: s.ability_id || null,
+    });
   } else if (s.kind === 'trigger') {
     if (!Array.isArray(card.triggers)) card.triggers = [];
     card.triggers.push({ ...s.trigger });
