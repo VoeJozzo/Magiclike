@@ -474,7 +474,7 @@ When a trigger's stack entry reaches the top:
 
 ### 1007. Intervening "if" re-check
 *(MTG rule 603.4: "if" clauses in triggers are re-checked on resolution.)*
-Currently, the engine **only checks `cond_id` at queue time**, not at resolution. If a trigger's condition becomes false between queue and resolution, the trigger still resolves. Listed in `docs/BACKLOG.md` as a known deviation.
+Currently, the engine **only checks `cond_id` at queue time**, not at resolution. If a trigger's condition becomes false between queue and resolution, the trigger still resolves. Tracked in `docs/DIVERGENCE.md` E5.
 
 ### 1008. Trigger chain depth
 The html-proto caps trigger-chain depth at 100 nested resolutions; exceeding it bails with a warning. The Godot port does not yet have this cap, but **will mirror proto's threshold** — an earlier "no cap needed if drain is correct" stance was reversed after real card design produced accidental infinite-loop combinations. See `docs/DIVERGENCE.md` E6 and the "Patterns to REPLICATE" note in the root `CLAUDE.md`.
