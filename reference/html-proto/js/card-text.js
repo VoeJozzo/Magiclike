@@ -77,6 +77,21 @@ function withFilter(noun, eff) {
   return out;
 }
 
+// Phrase for one `fight` operand: {select} → "your strongest creature"; {slot:N}
+// → the noun for that target slot (from the card's target_slots spec, or a
+// top-level target() step). Used by describeEffectList's fight block.
+function fightOperandPhrase(op, slotSpecs, stepTarget, stepFilter) {
+  if (op && op.select) return 'your strongest creature';
+  if (op && op.slot != null) {
+    if (Array.isArray(slotSpecs) && slotSpecs[op.slot]) {
+      const sp = slotSpecs[op.slot];
+      return withFilter(targetPhrase({ target: sp.target }), sp.filter ? { filter: sp.filter } : {});
+    }
+    if (stepTarget) return withFilter(targetPhrase({ target: stepTarget }), stepFilter ? { filter: stepFilter } : {});
+  }
+  return 'a creature';
+}
+
 // Numeric passthrough; {from:'<x>'} → player-readable phrase via dynMap.
 function describeAmount(amount) {
   if (typeof amount === 'number') return String(amount);
@@ -347,8 +362,15 @@ function describeEffect(eff, tplEff) {
     }
     case 'apply_in_game_splice':
       return [plainSeg('staple the second target permanent onto the first')];
-    case 'fight_target':
-      return [plainSeg('your strongest creature fights ' + t)];
+    case 'fight': {
+      // Fallback for bare describeEffect calls (no slot context). describeEffectList
+      // renders the rich form (operand phrases from the card's slots) — see its
+      // dedicated fight block. Here we can only spell a {select} operand.
+      const ops = Array.isArray(eff.operands) ? eff.operands : [];
+      const subj = ops[0] && ops[0].select ? 'your strongest creature' : (t || 'a creature');
+      const obj = ops[1] && ops[1].select ? 'your strongest creature' : (t || 'a creature');
+      return [plainSeg(subj + ' fights ' + obj)];
+    }
     case 'schedule_delayed':
       // Standalone fallback; the exile-until-eot pair is rendered as one phrase
       // by describeEffectList (below).
@@ -526,6 +548,32 @@ function describeEffectList(effects, cardName, tplEffects, stepTarget, stepFilte
   }
   const tplOf = i => (Array.isArray(tplEffects) ? tplEffects[i] : undefined);
   const parts = effects.map((e, i) => describeEffect(e, tplOf(i)));
+  // fight idiom: "<A> fights <B>", A/B = operand phrases (from the card's slots
+  // or a {select} pick). When a PRIOR effect already named A's creature (Predate:
+  // pump on the same slot), A becomes "it" and the two clauses join with ", then".
+  // A standalone fight (Prey Upon / Beast's Fury) spells A out. Handled here,
+  // before the single-effect early return, so a fight-only card is covered too.
+  const fi = effects.findIndex(e => e && e.kind === 'fight' && Array.isArray(e.operands));
+  if (fi >= 0) {
+    const fe = effects[fi];
+    const op0 = fe.operands[0], op1 = fe.operands[1];
+    const objPhrase = fightOperandPhrase(op1, slotSpecs, stepTarget, stepFilter);
+    const op0NamedBefore = op0 && op0.slot != null
+      && effects.slice(0, fi).some(pe => pe && pe.target_slot === op0.slot);
+    const subjPhrase = op0NamedBefore ? 'it' : fightOperandPhrase(op0, slotSpecs, stepTarget, stepFilter);
+    const fightSeg = plainSeg(subjPhrase + ' fights ' + objPhrase);
+    const others = effects.filter((e, i) => i !== fi && e
+      && describeEffect(e, tplOf(i)).some(seg => seg && seg.text));
+    if (others.length === 0) {
+      return capitalizeSegs([fightSeg]).concat(plainSeg('.'));
+    }
+    if (others.length === 1) {
+      const oi = effects.indexOf(others[0]);
+      return capitalizeSegs(describeEffect(others[0], tplOf(oi)))
+        .concat(plainSeg(', then ')).concat([fightSeg]).concat(plainSeg('.'));
+    }
+    // >1 other effects (not exercised today) falls through to the generic joiner.
+  }
   if (parts.length === 1) {
     return capitalizeSegs(parts[0]).concat(plainSeg('.'));
   }

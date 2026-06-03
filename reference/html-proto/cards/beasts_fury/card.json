@@ -8,7 +8,11 @@
   "target": "opp_creature",
   "effects": [
     {
-      "kind": "fight_target"
+      "kind": "fight",
+      "operands": [
+        { "select": "highest_power_yours" },
+        { "slot": 0 }
+      ]
     }
   ],
   "name": "Beast's Fury",

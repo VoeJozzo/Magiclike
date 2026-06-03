@@ -1545,6 +1545,35 @@ function applyDamageFrom(ctx, target, amt) {
   }
 }
 
+// Resolve the two combatants of a `fight` from its `operands`. Each operand is a
+// {slot:N} reference (the creature chosen for that target slot, read from
+// ctx.allTargets like apply_in_game_splice) or {select:'highest_power_yours'} (a
+// computed pick — our biggest creature, the auto-pick the one-sided fight cards
+// use). Slot operands resolve first so a {select} avoids picking the other
+// combatant. Returns an array of {card, controller} (or null) aligned to operands.
+function resolveFightOperands(ctx, operands) {
+  const ops = Array.isArray(operands) ? operands : [];
+  const out = new Array(ops.length).fill(null);
+  const used = new Set();
+  ops.forEach((op, i) => {
+    if (op && op.slot != null && Array.isArray(ctx.allTargets)) {
+      const r = resolveTarget(ctx, ctx.allTargets[op.slot]);
+      out[i] = r;
+      if (r) used.add(r.card.iid);
+    }
+  });
+  ops.forEach((op, i) => {
+    if (out[i]) return;
+    const ours = G[ctx.controller].battlefield
+      .filter(c => hasType(c, 'Creature') && !used.has(c.iid));
+    if (!ours.length) return;
+    ours.sort((a, b) => getStats(b)[0] - getStats(a)[0]);
+    out[i] = { card: ours[0], controller: ctx.controller };
+    used.add(ours[0].iid);
+  });
+  return out;
+}
+
 // EFFECTS TABLE — dispatch from {kind: 'foo', ...} to handler.
 
 // Creatures matching a mass `scope` (Slice 3 step 1 / decision 2), as a
@@ -2416,25 +2445,24 @@ const EFFECTS = {
     log(`${ctx.sourceName} — ${pname(toCtrl)} gains control of ${card.name}` +
         (params.duration === 'eot' ? ' until end of turn.' : '.'), 'sp');
   },
-  // Fight: target opp creature; our biggest creature fights it (each deals damage = power).
-  // Tap status doesn't matter (Beast's Fury post-combat).
-  fight_target(ctx, params, target) {
-    const ours = G[ctx.controller].battlefield
-      .filter(c => hasType(c, 'Creature'));
-    if (!ours.length) { log(`${ctx.sourceName} fizzles — no creature to fight.`, 'sp'); return; }
-    ours.sort((a, b) => getStats(b)[0] - getStats(a)[0]);
-    const ourCreature = ours[0];
-    const f = resolveTarget(ctx, target);
-    if (!f) return;
-    const them = f.card;
-    const [ourPow] = getStats(ourCreature);
-    const [theirPow] = getStats(them);
-    log(`${ourCreature.name} (${ourPow}) fights ${them.name} (${theirPow}).`, 'cb');
-    // Per-fighter ctx so deathtouch/lifelink apply on the fighter, not the spell.
-    const ourCtx   = { controller: ctx.controller, sourceName: ourCreature.name, sourceIid: ourCreature.iid };
-    const theirCtx = { controller: f.controller,   sourceName: them.name,        sourceIid: them.iid };
-    applyDamageFrom(ourCtx,   {kind:'creature', iid: them.iid},        ourPow);
-    applyDamageFrom(theirCtx, {kind:'creature', iid: ourCreature.iid}, theirPow);
+  // `fight`: two creatures named by `operands` ({slot:N} | {select:...}) each deal
+  // damage equal to their LIVE power to the other, simultaneously — so a pump
+  // applied earlier in the same resolution counts (the D1 live-read; see
+  // DIVERGENCE §3.6). Per-combatant ctx so deathtouch/lifelink ride the fighting
+  // creature, not the spell. Tap status doesn't matter (Beast's Fury post-combat).
+  fight(ctx, params, _target) {
+    const [a, b] = resolveFightOperands(ctx, params.operands);
+    if (!a || !b || a.card.iid === b.card.iid) {
+      log(`${ctx.sourceName} fizzles — needs two creatures to fight.`, 'sp');
+      return;
+    }
+    const [aPow] = getStats(a.card);
+    const [bPow] = getStats(b.card);
+    log(`${a.card.name} (${aPow}) fights ${b.card.name} (${bPow}).`, 'cb');
+    const aCtx = { controller: a.controller, sourceName: a.card.name, sourceIid: a.card.iid };
+    const bCtx = { controller: b.controller, sourceName: b.card.name, sourceIid: b.card.iid };
+    applyDamageFrom(aCtx, {kind:'creature', iid: b.card.iid}, aPow);
+    applyDamageFrom(bCtx, {kind:'creature', iid: a.card.iid}, bPow);
   },
   untap(ctx, params, target) {
     const f = resolveTarget(ctx, target);
@@ -2803,17 +2831,39 @@ function makeSlotTargetGetter(targets) {
   };
 }
 
-// Resolve {from:'<name>'} from snapshot/ctx; literals pass through.
+// D1 hybrid (DIVERGENCE §3.6): a {from:'target_*'} expression reads LIVE state
+// while the target is still on the battlefield — so a +X/+X applied earlier in
+// the same resolution counts (Predate's pump-then-fight) — and falls back to the
+// last-known-info snapshot once the target has left its zone (Swords-to-
+// Plowshares: exile, THEN gain life equal to its power). findCard is
+// battlefield-only, which is exactly "still in its expected zone" for a creature.
+function liveTargetView(targetSnap) {
+  if (targetSnap && targetSnap.kind === 'creature' && targetSnap.iid != null) {
+    const f = findCard(targetSnap.iid);
+    if (f) {
+      const [power, toughness] = getStats(f.card);
+      return { power, toughness, controller: f.controller };
+    }
+  }
+  return targetSnap || {};
+}
+// Resolve {from:'<name>'} from live-or-snapshot/ctx; literals pass through.
 function resolveExpr(value, ctx, targetSnap) {
   if (value == null) return value;
   if (typeof value !== 'object' || !value.from) return value;
   switch (value.from) {
-    case 'target_power':
-      return (targetSnap && typeof targetSnap.power === 'number') ? targetSnap.power : 0;
-    case 'target_toughness':
-      return (targetSnap && typeof targetSnap.toughness === 'number') ? targetSnap.toughness : 0;
-    case 'target_controller':
-      return (targetSnap && targetSnap.controller) ? targetSnap.controller : ctx.controller;
+    case 'target_power': {
+      const v = liveTargetView(targetSnap);
+      return (typeof v.power === 'number') ? v.power : 0;
+    }
+    case 'target_toughness': {
+      const v = liveTargetView(targetSnap);
+      return (typeof v.toughness === 'number') ? v.toughness : 0;
+    }
+    case 'target_controller': {
+      const v = liveTargetView(targetSnap);
+      return v.controller ? v.controller : ctx.controller;
+    }
     case 'source_power': {
       const sc = ctx.sourceCard;
       if (!sc) return 0;
@@ -2932,7 +2982,7 @@ function validateAllCardEffects(cards) {
 // Add creature-operators here; damage/gain_life/draw/discard/add_mana resolve self → controller.
 const CREATURE_EFFECT_KINDS = new Set([
   'pump', 'add_counter', 'untap', 'affect_creature',
-  'fight_target', 'endomorph_absorb',
+  'fight', 'endomorph_absorb',
   'grant_keyword',
   'sacrifice', 'gainControl',
 ]);
@@ -3218,7 +3268,7 @@ function pickBestTriggerTarget(eff, valid, controller) {
       return sorted[0];
     }
   }
-  const harmful = ['affect_creature', 'fight_target'];
+  const harmful = ['affect_creature', 'fight'];
   if (harmful.includes(eff.kind)) {
     const oppC = valid.filter(t => t.kind === 'creature' && ctrlOf(t) === them);
     if (oppC.length) {
@@ -3337,6 +3387,7 @@ function runTriggerEffects(item) {
       return f ? f.card : null;
     })(),
     event: item.event || null,
+    allTargets: Array.isArray(item.targets) ? item.targets : [],
   };
   const getTriggerTargetForSlot = makeSlotTargetGetter(Array.isArray(item.targets) ? item.targets : []);
   // New targeting model (§3.5): a top-level `target` step on the trigger means
@@ -3508,24 +3559,32 @@ function targetsForFilter(filter, controller, restrict) {
   }
 }
 
-// Per-slot legal targets for a multi-target object's targeted effects. Groups
-// effects by `target_slot`, then resolves each slot's legal set: the canonical
-// card-level `target_slots[slot]` spec (§5b) when present, else the intersection
-// of the per-effect filters sharing that slot (modal charm modes carry per-effect
-// target). Shared by the cast-legality check (isLegalAction) and the AI action
-// enumerator (getLegalActions) so the slot-spec resolution can't drift between
-// them. Returns Map<slot, targets[]>.
+// Per-slot legal targets for a multi-target object's targeted effects. When the
+// object declares card-level `target_slots` (§5b) that array is AUTHORITATIVE:
+// every declared slot is enumerated, whether or not a specific effect carries
+// its `target_slot` — so one effect (e.g. `fight`) can reference multiple slots
+// via operands without each needing its own scalar `target_slot`. This matches
+// what probeTargetsForObject/objectNeedsTarget already read. Modal charms (no
+// card-level slots) fall back to per-effect grouping: the intersection of the
+// filters of the effects sharing each slot. Shared by the cast-legality check
+// (isLegalAction) and the AI action enumerator (getLegalActions) so the slot
+// resolution can't drift between them. Returns Map<slot, targets[]>.
 function validTargetsBySlot(card, targetedEffs, who) {
   const slotSpecs = Array.isArray(card.target_slots) ? card.target_slots : null;
+  const out = new Map();
+  if (slotSpecs) {
+    for (let slot = 0; slot < slotSpecs.length; slot++) {
+      out.set(slot, getValidTargets(slotSpecs[slot], who));
+    }
+    return out;
+  }
   const slotMap = new Map();
   for (const eff of targetedEffs) {
     const slot = eff.target_slot || 0;
     if (!slotMap.has(slot)) slotMap.set(slot, []);
     slotMap.get(slot).push(eff);
   }
-  const out = new Map();
   for (const [slot, effs] of slotMap) {
-    if (slotSpecs && slotSpecs[slot]) { out.set(slot, getValidTargets(slotSpecs[slot], who)); continue; }
     let acc = getValidTargets(effs[0], who);
     for (let i = 1; i < effs.length; i++) {
       const next = getValidTargets(effs[i], who);
@@ -4460,7 +4519,8 @@ function resolveTopOfStack() {
     log(`${card.name} enters the battlefield.`, 'sp');
     emitZoneChange(card, item.controller, 'stack', 'battlefield');
   } else {
-    const ctx = { controller: item.controller, sourceName: card.name, sourceIid: card.iid, sourceCard: card };
+    const ctx = { controller: item.controller, sourceName: card.name, sourceIid: card.iid, sourceCard: card,
+                  allTargets: Array.isArray(item.targets) ? item.targets : [] };
     // Snapshot the spell's target BEFORE any effect runs. Multi-effect spells
     // like decomposed Swords ([exile, gain_life]) need the second effect to
     // read the target's pre-resolution power/controller, even though the
@@ -5318,7 +5378,18 @@ function isLegalAction(who, action) {
       if (modeIdx < 0 || modeIdx >= modes.length) return false;
       const activeEffects = modes[modeIdx];
       const targetedEffs = (activeEffects || []).filter(effectNeedsTarget);
-      if (targetedEffs.length > 0) {
+      const slotSpecsLA = Array.isArray(card.target_slots) ? card.target_slots : null;
+      if (slotSpecsLA) {
+        // Card-level target_slots authoritative: every declared slot needs a
+        // legal target, whether or not an effect carries its target_slot (fight
+        // references its slots via operands, not a scalar target_slot).
+        const bySlot = validTargetsBySlot(card, targetedEffs, who);
+        for (let slot = 0; slot < slotSpecsLA.length; slot++) {
+          const tgt = action.targets && action.targets[slot];
+          if (!tgt) return false;
+          if (!(bySlot.get(slot) || []).some(v => sameTarget(v, tgt))) return false;
+        }
+      } else if (targetedEffs.length > 0) {
         const maxSlot = targetedEffs.reduce((m, e) => Math.max(m, e.target_slot || 0), 0);
         if (!action.targets || action.targets.length < maxSlot + 1) return false;
         const bySlot = validTargetsBySlot(card, targetedEffs, who);
@@ -5586,7 +5657,8 @@ function getLegalActions(who) {
     for (let mIdx = 0; mIdx < modes.length; mIdx++) {
       const modeEffects = modes[mIdx];
       const targetedEffs = (modeEffects || []).filter(effectNeedsTarget);
-      if (targetedEffs.length === 0) {
+      const hasSlotSpecs = Array.isArray(card.target_slots) && card.target_slots.length > 0;
+      if (targetedEffs.length === 0 && !hasSlotSpecs) {
         // New targeting model (§3.5): a top-level `target` step means one
         // action per legal target of that filter (hexproof-excluded via
         // targetsForFilter). No valid target → spell not castable.
@@ -6174,6 +6246,8 @@ return {
   matchFilter,
   // Effects seam exposed for tests (Slice 3).
   applyEffect, creaturesInScope, sevToNum, numToSev,
+  // Static-lord keyword-grant seam + its leave-play cleanup, exposed for tests.
+  applyStaticKeywordGrants, clearRestrictionsFromSource,
   targetsForFilter, TARGET_FILTERS, validateAllCardEffects,
   // Canonical targeting-shape API (single source of truth across UI consumers).
   objectNeedsTarget, primaryLegalTargets, probeTargetsForObject,

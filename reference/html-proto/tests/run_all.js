@@ -126,6 +126,8 @@ const CATEGORY_A = [
   'test_equatorial_artificer_boss.js',
   // Oracle text is generated from effects — no card may carry a dead (render-irrelevant) top-level text field.
   'test_no_dead_text.js',
+  // Predate (buff-then-fight) + the D1 live-read hybrid it forces + static-lord keyword grants.
+  'test_predate_fight_d1.js',
 ];
 
 const TESTS_DIR = __dirname;
