@@ -7,15 +7,25 @@ updated: 2026-06-02
 
 # Magiclike — durable concepts wiki
 
-This folder is the **durable conceptual layer** for [[magiclike]] (a [[godot]] *Magic: The Gathering*–style roguelike): the architecture rationale, the engine's design discipline, and the cross-engine relationship — the *why* that changes only by deliberate redesign.
+This folder is the **durable conceptual layer** for [[magiclike]] (a [[godot]] *Magic: The Gathering*–style roguelike): the architecture rationale, the engine's design discipline, the game's durable systems (predicates, stickers, draft, the run), and the cross-engine relationship — the *why* that changes only by deliberate redesign.
 
 It is **docs-as-code, in wiki form** — co-located with the code (so it's versioned, reviewed, and backed up alongside it), authored in Obsidian-style `[[wikilinks]]`, and mounted into a personal Obsidian vault via a directory junction. The wiki is portable plaintext; Obsidian is just the renderer.
 
 ## What's here
 
-- [magiclike-architecture.md](magiclike-architecture.md) — the engine's durable shape + rationale (autoload + `RefCounted` state, real stack/priority, the design discipline).
+**Engine architecture & design**
+- [magiclike-architecture.md](magiclike-architecture.md) — the engine's durable shape + rationale (autoload + `RefCounted` state, real stack/priority, atomic effects, the design discipline).
 - [action-descriptor-pattern.md](action-descriptor-pattern.md) — all state mutation through one `execute_action` entry point.
 - [predicate-registry.md](predicate-registry.md) — string-keyed conditions + the "no autoload reach" purity rule.
+- [composable-predicates.md](composable-predicates.md) — atomic predicates composed into trigger conditions (the proto's richer model).
+- [procedural-card-text.md](procedural-card-text.md) — oracle text generated from a card's effects, never hand-authored.
+
+**Game systems (the meta layer)**
+- [sticker-system.md](sticker-system.md) — persistent per-run-slot modifiers via one `apply_sticker` pipeline.
+- [staple-synthesis.md](staple-synthesis.md) — merging two deck slots into one synthesized card.
+- [roguelike-meta.md](roguelike-meta.md) — the draft + branching-run structure.
+
+**Cross-engine**
 - [cross-engine-port.md](cross-engine-port.md) — the durable Godot ↔ html-proto relationship.
 - [html-proto.md](html-proto.md) — the reference implementation, in brief.
 

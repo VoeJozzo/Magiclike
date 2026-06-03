@@ -23,4 +23,4 @@ This is the single most important thing **not** to replicate from the [[html-pro
 
 ## See also
 
-[[magiclike-architecture]] · [[action-descriptor-pattern]] · [[cross-engine-port]] · [[magiclike]]
+[[magiclike-architecture]] · [[action-descriptor-pattern]] · [[composable-predicates]] · [[cross-engine-port]] · [[magiclike]]

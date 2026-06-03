@@ -38,7 +38,7 @@ The prototype is the behavioral reference, but its engine carries known scars fr
 
 - **No autoload reach from predicates or effect handlers** — they take explicit arguments and resolve without reading global state. The rationale and the prototype's cautionary closure pattern live in [[predicate-registry]].
 - **No per-instance state as dynamically-attached dictionary fields.** Use typed properties on `CardInstance` / `Player`. The prototype's City of Brass `extraManaColors` — silently lost on instantiation — is the cautionary tale; the `duplicate_deep()` overrides exist precisely to prevent that class of bug.
-- **The engine stays UI-free.** It emits a structured "trigger fired" signal and lets the presentation layer render the log/text; it never calls the text generator itself. (The prototype's lone `triggerLogText()` call from engine into card-text is the deliberate exception, isolated so the Godot port is a clean "swap the call for a signal emit" — see [[cross-engine-port]].)
+- **The engine stays UI-free.** It emits a structured "trigger fired" signal and lets the presentation layer render the log/text; it never calls the text generator itself. (The prototype's lone `triggerLogText()` call from engine into card-text is the deliberate exception, isolated so the Godot port is a clean "swap the call for a signal emit" — see [[procedural-card-text]] and [[cross-engine-port]].)
 - **Trigger-chain depth cap.** Mirror the prototype's hardcoded cap on nested trigger resolutions — real card design produces accidental infinite loops, and the cap costs essentially nothing. (Status and gate: `DIVERGENCE.md` E6.)
 
 ## See also
