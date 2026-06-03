@@ -26,6 +26,12 @@ The stack is a real LIFO that holds **spells *and* triggered abilities**; both r
 
 This was a deliberate "no shortcuts" choice — a full priority/stack model up front rather than a resolve-immediately loop that would have to be ripped out later. The pragmatic auto-passes that exist (the AI driver auto-passing, the player's pass-priority keybind, SBAs swept in a single pass rather than strict 704.5 order) are **agent/UX conveniences, not rules cheats**: the priority pass genuinely happens — the `_settle_state` loop is just calling `execute_action(pass_priority)` for the AI or an unattended window (`RULES.md` §606). Config for explicit stop-on-X priority holds is parked in `BACKLOG.md`.
 
+## Atomic, composable effects
+
+Effects are small, **composable primitives**, not monolithic handlers. A monolith like `fight_target` decomposes into a `fight` primitive with operands; `embargo` / `bleach` into `move_card` + `apply_sticker`. The prototype's effects refactor collapsed ~38 effect kinds into ~22 atomic ones, and it keeps atomizing as new mechanics land (e.g. the `fight` primitive). The payoff: card-text generation, AI valuation, and new-card authoring all operate over **one uniform vocabulary** instead of special-casing each monolith — a new card is usually a *composition* of existing primitives, not new engine code.
+
+The canonical catalog of effect kinds is the cross-engine wire contract (`PROTOCOL.md` §3.2). This principle is realized in the [[html-proto]] — the primary development surface right now — and the [[godot]] port mirrors it via the effects refactor (`docs/plans/plan-effects-refactor.md`).
+
 ## Design discipline (ported from the prototype's scars)
 
 The prototype is the behavioral reference, but its engine carries known scars from organic growth. The standing rule is **port the behavior, not the implementation shape** (see [[cross-engine-port]]). Concretely:
