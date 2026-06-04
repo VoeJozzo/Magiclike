@@ -21,6 +21,12 @@ It is **docs-as-code, in wiki form** — co-located with the code (so it's versi
 - [composable-predicates.md](composable-predicates.md) — atomic predicates composed into trigger conditions (the proto's richer model).
 - [procedural-card-text.md](procedural-card-text.md) — oracle text generated from a card's effects, never hand-authored.
 
+**Engine resolution core**
+- [atomic-effects.md](atomic-effects.md) — card behavior as a closed registry of composable primitives.
+- [targeting-and-hexproof.md](targeting-and-hexproof.md) — targeting as a layer separate from effects; hexproof enforced structurally.
+- [mana-model.md](mana-model.md) — lands-as-abilities, phase-boundary emptying, the mana-ability fast-path.
+- [trigger-resolution.md](trigger-resolution.md) — the queue → drain → resolve orchestration (APNAP, settle loop, depth cap).
+
 **Game systems (the meta layer)**
 - [sticker-system.md](sticker-system.md) — persistent per-run-slot modifiers via one `apply_sticker` pipeline.
 - [staple-synthesis.md](staple-synthesis.md) — merging two deck slots into one synthesized card.
@@ -37,7 +43,7 @@ It is **docs-as-code, in wiki form** — co-located with the code (so it's versi
 
 This layer **complements** the repo docs and never copies them — it links out:
 
-- **Canonical rules** now live *here* too — [[rulebook|`rules/`]] (the old `docs/RULES.md` is a redirect stub). Kept distinct from the *why* pages by `type: rules` frontmatter.
+- **Canonical rules** now live *here* too — [[rulebook|`rules/`]] (decomposed from the old `docs/RULES.md` monolith). Kept distinct from the *why* pages by `type: rules` frontmatter.
 - **Wire format · engine reference (modules + contracts)** → `docs/PROTOCOL.md` · `docs/ARCHITECTURE.md`.
 - **Cross-engine gaps** → `docs/DIVERGENCE.md`.
 - **Live status** (current phase, card counts, roadmap) → the repo root `CLAUDE.md` + `docs/plans/`. **Status lives in the repo, never here.**

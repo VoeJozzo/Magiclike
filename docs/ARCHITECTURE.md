@@ -3,7 +3,7 @@
 How the **Godot port** is built: where each piece of behavior lives (modules) **and** what its data looks like at runtime (contracts), organized by subsystem so both sit together. This is one engine's *internals*.
 
 **Boundary with the other reference docs:**
-- [`RULES.md`](RULES.md) — what the game does, in plain English (canon, implementation-independent).
+- [`wiki/rules/`](wiki/rules/README.md) — what the game does, in plain English (canon, implementation-independent).
 - [`PROTOCOL.md`](PROTOCOL.md) — the **cross-engine wire contract** both engines obey: the `card.json` schema and the effect-kind / event-kind / predicate-id / target catalogs. When this doc and PROTOCOL touch (card/effect/trigger shapes), **PROTOCOL owns the wire vocabulary**; this doc owns the Godot in-memory shapes that consume it.
 - [`DIVERGENCE.md`](DIVERGENCE.md) — where the Godot port and html-proto behave differently.
 - The html-proto's own internals live in its onboarding doc, [`reference/html-proto/CLAUDE.md`](../reference/html-proto/CLAUDE.md) (module map) + [`CHANGELOG.md`](../reference/html-proto/CHANGELOG.md) — not restated here (§3).
@@ -178,7 +178,7 @@ Some effect handlers accept an alternate bare-string form (e.g. `"controller"`, 
 
 ### 2.4 Stack, priority, combat, SBAs
 
-**Stack and priority.** The stack is `Array[StackEntry]`, holding both spell entries and triggered-ability entries; both resolve via `_resolve_*_entry`. Priority follows MTG semantics where it matters (caster retains after casting; pools empty at phase boundaries; defender declares blocks before priority opens at COMBAT_BLOCK; triggers drain APNAP). Auto-passes (AI driver, unattended windows) are agent UX on top — the priority pass IS happening, it's just `execute_action(pass_priority)` called automatically. (Rule numbers + the design rationale: [`RULES.md`](RULES.md) §600 and [`docs/wiki/magiclike-architecture.md`](wiki/magiclike-architecture.md).)
+**Stack and priority.** The stack is `Array[StackEntry]`, holding both spell entries and triggered-ability entries; both resolve via `_resolve_*_entry`. Priority follows MTG semantics where it matters (caster retains after casting; pools empty at phase boundaries; defender declares blocks before priority opens at COMBAT_BLOCK; triggers drain APNAP). Auto-passes (AI driver, unattended windows) are agent UX on top — the priority pass IS happening, it's just `execute_action(pass_priority)` called automatically. (Rule numbers + the design rationale: [§600](wiki/rules/600-priority-and-the-stack.md) and [`docs/wiki/magiclike-architecture.md`](wiki/magiclike-architecture.md).)
 
 **Combat damage.** Two-pass (`_combat_damage_pass` called twice — first-strike layer, then normal). Inner loop iterates attacker → assigned blockers, applies trample / menace collapse / first-strike skip / lifelink / deathtouch. SBAs sweep after each pass.
 

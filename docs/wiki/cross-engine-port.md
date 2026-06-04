@@ -3,7 +3,7 @@ type: concept
 tags: [magiclike, architecture, gamedev, prototype]
 created: 2026-06-02
 updated: 2026-06-02
-sources: ["docs/DIVERGENCE.md", "docs/PROTOCOL.md", "docs/RULES.md", "magiclike repo: CLAUDE.md", "reference/html-proto/CLAUDE.md"]
+sources: ["docs/DIVERGENCE.md", "docs/PROTOCOL.md", "docs/wiki/rules/", "magiclike repo: CLAUDE.md", "reference/html-proto/CLAUDE.md"]
 ---
 
 # Cross-engine port (Godot ↔ html-proto)

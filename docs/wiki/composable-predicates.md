@@ -3,7 +3,7 @@ type: concept
 tags: [magiclike, architecture, gamedev]
 created: 2026-06-02
 updated: 2026-06-02
-sources: ["docs/plans/plan-zone-change-and-composable-predicates.md", "docs/PROTOCOL.md", "docs/RULES.md"]
+sources: ["docs/plans/plan-zone-change-and-composable-predicates.md", "docs/PROTOCOL.md", "docs/wiki/rules/"]
 ---
 
 # Composable trigger predicates
@@ -27,7 +27,7 @@ Representative atomics: card identity (`this_card`, `another_card`), traits (`ca
 
 ## Drain, ordering, self-vs-global
 
-Matching triggers **queue**, then **drain to the stack in APNAP order** before priority opens; a trigger-chain depth cap guards against accidental infinite loops (see [[magiclike-architecture]]). `self_only` (the default) fires only when the source card is the event's subject; the rarer global form fires on any matching event.
+Matching triggers **queue**, then **drain to the stack in APNAP order** before priority opens; a trigger-chain depth cap guards against accidental infinite loops — that orchestration side has its own home, [[trigger-resolution]]. `self_only` (the default) fires only when the source card is the event's subject; the rarer global form fires on any matching event.
 
 ## Why composable
 
@@ -35,4 +35,4 @@ Reuse (no new registry entry per card — "another creature you control enters" 
 
 ## See also
 
-[[predicate-registry]] · [[magiclike-architecture]] · [[html-proto]] · [[cross-engine-port]] · [[magiclike]]
+[[predicate-registry]] · [[trigger-resolution]] · [[magiclike-architecture]] · [[html-proto]] · [[cross-engine-port]] · [[magiclike]]

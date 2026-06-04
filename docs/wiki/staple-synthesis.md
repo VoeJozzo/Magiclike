@@ -3,7 +3,7 @@ type: concept
 tags: [magiclike, gamedev, meta]
 created: 2026-06-02
 updated: 2026-06-02
-sources: ["docs/RULES.md", "docs/plans/plan-effects-refactor.md"]
+sources: ["docs/wiki/rules/", "docs/plans/plan-effects-refactor.md"]
 ---
 
 # Staple / synthesis

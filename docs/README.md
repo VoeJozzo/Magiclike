@@ -8,7 +8,7 @@ Map of the documentation set. Each doc has a single, distinct job; this page is 
 
 | Doc | Answers |
 |---|---|
-| [`wiki/rules/`](wiki/rules/README.md) | **Canon.** How the game works, in plain English, independent of code. When doc and code disagree, this wins. The rulebook — one page per §; the old `RULES.md` path is now a redirect stub. |
+| [`wiki/rules/`](wiki/rules/README.md) | **Canon.** How the game works, in plain English, independent of code. When doc and code disagree, this wins. The rulebook — one page per §. |
 | [`ARCHITECTURE.md`](ARCHITECTURE.md) | **Engine reference** — where Godot behavior lives (modules) **and** its runtime data contracts (action descriptors, the effect-handler `ctx`, signals, awaiting states, `CardInstance`/`EngineState` shapes), by subsystem. Defers to PROTOCOL for the wire vocabulary; the html-proto's internals live in its own `CLAUDE.md`. |
 | [`PROTOCOL.md`](PROTOCOL.md) | **The cross-engine wire format** (between-engines contract): the `card.json` schema and the effect-kind / event-kind / predicate-id / target catalogs both engines must agree on. |
 | [`DIVERGENCE.md`](DIVERGENCE.md) | Where the Godot port and html-proto behave differently, each row tagged with severity + a to-do. The rulebook (`wiki/rules/`) is the tie-breaker. |

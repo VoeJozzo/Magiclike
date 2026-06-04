@@ -1,8 +1,8 @@
 # Implementation Divergence — Godot ↔ html-proto
 
-A living catalog of behavioral differences between the Godot port (at the repo root) and the html-proto reference implementation (`reference/html-proto/`). Pairs with [`RULES.md`](RULES.md) (the canonical spec) and [`ARCHITECTURE.md`](ARCHITECTURE.md) (the module map).
+A living catalog of behavioral differences between the Godot port (at the repo root) and the html-proto reference implementation (`reference/html-proto/`). Pairs with [`wiki/rules/`](wiki/rules/README.md) (the canonical spec) and [`ARCHITECTURE.md`](ARCHITECTURE.md) (the module map).
 
-When the two implementations disagree, **`RULES.md` is the tie-breaker** — the implementation that doesn't match the canonical rule is wrong and is the one with a to-do.
+When the two implementations disagree, **the rulebook ([`wiki/rules/`](wiki/rules/README.md)) is the tie-breaker** — the implementation that doesn't match the canonical rule is wrong and is the one with a to-do.
 
 ## Severity tags
 
@@ -33,7 +33,7 @@ The TO-DO column describes the action; the tag describes who needs to do it.
 | A2 | First-turn draw skip | Not implemented — first player draws on turn 1 | Implemented (engine.js:5258) | 🔴 | **godot:** implement first-player draw-skip rule per RULES 100.5 |
 | A3 | Starting life / hand / max hand | 20 / 7 / 7 | 20 / 7 / 7 | ✅ Same | **already-aligned** |
 | A4 | Forced mulligan on extreme land counts | Not implemented | Implemented (engine.js:717-732). If opening hand has 0/1 or 6/7 lands, the drawn portion is reshuffled into library and re-drawn. One-shot, no player choice, no recursion. | 🔴 (different opening-hand distribution) | **godot:** *(DEFERRED — site of active experimentation in proto; do not align until the proto rule stabilizes)*. When the time comes: implement the same forced single-mulligan. Affects opening-hand distribution; without it Godot players see screwed/flooded hands more often. |
-| A5 | Concede action | Not implemented | Implemented as `ENGINE.concede()` (engine.js:5551). Sets `G.gameOver = true; G.winner = opp`. | 🟡 (UX gap; game-affecting in that the player can resign) | **godot:** add `KIND_CONCEDE` action and engine handler. Mirrors proto: sets `state.winner` to opponent, emits `game_over`. RULES.md §100.6 already mentions concede as a loss condition; it's just unimplemented. |
+| A5 | Concede action | Not implemented | Implemented as `ENGINE.concede()` (engine.js:5551). Sets `G.gameOver = true; G.winner = opp`. | 🟡 (UX gap; game-affecting in that the player can resign) | **godot:** add `KIND_CONCEDE` action and engine handler. Mirrors proto: sets `state.winner` to opponent, emits `game_over`. the rulebook §100.6 already mentions concede as a loss condition; it's just unimplemented. |
 
 A1 + A2 together: in proto the first player gets a tempo advantage offset by drawing one fewer card; in Godot, whoever is "you" goes first AND draws on turn 1 — a real fairness gap.
 
@@ -57,7 +57,7 @@ A1 + A2 together: in proto the first player gets a tempo advantage offset by dra
 
 | # | Area | Godot | Proto | Tag | TO-DO |
 |---|---|---|---|---|---|
-| C1 | **Multi-blocker damage assignment** | Dumps all damage on `blockers[0]` (engine.gd:1080) | Smart distribution — sorts blockers by kill-value, indestructibles last, assigns minimum lethal to each in order (engine.js:4062-4153) | 🔴 BIG | **godot:** harmonize to proto's smart-distribution algorithm (RULES.md §803). |
+| C1 | **Multi-blocker damage assignment** | Dumps all damage on `blockers[0]` (engine.gd:1080) | Smart distribution — sorts blockers by kill-value, indestructibles last, assigns minimum lethal to each in order (engine.js:4062-4153) | 🔴 BIG | **godot:** harmonize to proto's smart-distribution algorithm (rules §803). |
 | C2 | Deathtouch + multi-block | Marks first blocker lethal; subsequent take 0 damage from attacker | Uses "lethal = 1" against killable blockers; can kill multiple in one combat | 🔴 | **godot:** falls out of C1 fix automatically — implementing smart-distribution requires the deathtouch-reduces-threshold logic. |
 | C3 | Menace single-blocker handling | Legal at declaration; collapses to unblocked at damage time (engine.gd:1008) | Illegal at declaration (engine.js:4842) | 🟡 (same outcome, different UX) | **either-fine:** pick one. Defer-collapse is more permissive; reject-at-declaration is more decisive. Pure UX call. |
 | C4 | Attacker/blocker declaration undo | `undeclare_attacker` / `undeclare_blocker` actions exist (engine.gd) | No undo — declarations atomic; pre-commit state lives in UI selection | 🟡 | **godot:** align on proto's UI-tracked model. Build attacker/blocker selection as UI state in `game_board.gd`; engine receives one `declare_attackers([list])` / `declare_blockers({map})` action on commit; remove `undeclare_*` actions from `Action`. Smaller engine API, cleaner state, UI bugs no longer corrupt engine. |
@@ -226,5 +226,5 @@ The audit surfaced one claim that turned out to be wrong; logging it here so it 
 ## Maintaining this file
 
 - When an item is fixed in one implementation, update the affected row and either delete the row or move it to a "Recently aligned" section with a date.
-- When a new divergence is discovered, add a row with a stable ID. Don't renumber existing rows — IDs are referenced from RULES.md and elsewhere.
+- When a new divergence is discovered, add a row with a stable ID. Don't renumber existing rows — IDs are referenced from the rulebook and elsewhere.
 - The TO-DO column is part of the row, not a separate tracker. When work begins on a TO-DO, no need to migrate it elsewhere; just check status here.

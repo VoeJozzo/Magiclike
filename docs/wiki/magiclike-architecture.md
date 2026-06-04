@@ -3,7 +3,7 @@ type: concept
 tags: [magiclike, architecture, gamedev]
 created: 2026-06-02
 updated: 2026-06-02
-sources: ["magiclike repo: CLAUDE.md (Architecture decisions; Patterns to NOT/REPLICATE)", "docs/ARCHITECTURE.md", "docs/RULES.md"]
+sources: ["magiclike repo: CLAUDE.md (Architecture decisions; Patterns to NOT/REPLICATE)", "docs/ARCHITECTURE.md", "docs/wiki/rules/"]
 ---
 
 # Magiclike — engine architecture
@@ -28,9 +28,7 @@ This was a deliberate "no shortcuts" choice — a full priority/stack model up f
 
 ## Atomic, composable effects
 
-Effects are small, **composable primitives**, not monolithic handlers. A monolith like `fight_target` decomposes into a `fight` primitive with operands; `embargo` / `bleach` into `move_card` + `apply_sticker`. The prototype's effects refactor collapsed ~38 effect kinds into ~22 atomic ones, and it keeps atomizing as new mechanics land (e.g. the `fight` primitive). The payoff: card-text generation, AI valuation, and new-card authoring all operate over **one uniform vocabulary** instead of special-casing each monolith — a new card is usually a *composition* of existing primitives, not new engine code.
-
-The canonical catalog of effect kinds is the cross-engine wire contract (`PROTOCOL.md` §3.2). This principle is realized in the [[html-proto]] — the primary development surface right now — and the [[godot]] port mirrors it via the effects refactor (`docs/plans/plan-effects-refactor.md`).
+Effects are small, **composable primitives**, not monolithic handlers — a new card is usually a *composition* of existing atoms, not new engine code. Targeting is a separate layer, breadth comes from parameters rather than variants, and one vocabulary serves card-text, AI valuation, and authoring alike. This has its own home: [[atomic-effects]] (with [[targeting-and-hexproof]] and [[mana-model]] for the targeting and mana facets).
 
 ## Design discipline (ported from the prototype's scars)
 

@@ -3,7 +3,7 @@ type: concept
 tags: [magiclike, gamedev, meta]
 created: 2026-06-02
 updated: 2026-06-02
-sources: ["docs/RULES.md", "reference/html-proto/CLAUDE.md"]
+sources: ["docs/wiki/rules/", "reference/html-proto/CLAUDE.md"]
 ---
 
 # Roguelike meta (draft + run)
