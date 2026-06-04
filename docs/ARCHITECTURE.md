@@ -3,7 +3,7 @@
 How the **Godot port** is built: where each piece of behavior lives (modules) **and** what its data looks like at runtime (contracts), organized by subsystem so both sit together. This is one engine's *internals*.
 
 **Boundary with the other reference docs:**
-- [`wiki/rules/`](wiki/rules/README.md) — what the game does, in plain English (canon, implementation-independent).
+- [`wiki/rules/`](wiki/rules/rulebook.md) — what the game does, in plain English (canon, implementation-independent).
 - [`PROTOCOL.md`](PROTOCOL.md) — the **cross-engine wire contract** both engines obey: the `card.json` schema and the effect-kind / event-kind / predicate-id / target catalogs. When this doc and PROTOCOL touch (card/effect/trigger shapes), **PROTOCOL owns the wire vocabulary**; this doc owns the Godot in-memory shapes that consume it.
 - [`DIVERGENCE.md`](DIVERGENCE.md) — where the Godot port and html-proto behave differently.
 - The html-proto's own internals live in its onboarding doc, [`reference/html-proto/CLAUDE.md`](../reference/html-proto/CLAUDE.md) (module map) + [`CHANGELOG.md`](../reference/html-proto/CHANGELOG.md) — not restated here (§3).

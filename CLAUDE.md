@@ -85,7 +85,7 @@ Start at [`docs/README.md`](docs/README.md) — the **doc router** (which doc ow
 A wiki-style folder of **durable, interlinked concept pages** — the engine's architecture rationale, its design discipline, and the cross-engine relationship: the conceptual *why* layer. Authored in Obsidian-style `[[wikilinks]]`, co-located here so it versions with the code, mounted into a personal Obsidian vault via a junction (it's portable plaintext — Obsidian is just the renderer). Entry point: [`docs/wiki/README.md`](docs/wiki/README.md).
 
 - **It owns the "why."** Architecture-decision rationale and the "patterns to NOT/REPLICATE" reasoning live there; the sections below keep only the terse directives + a pointer.
-- **It is not a content home** for the wire format / module map ([`docs/PROTOCOL.md`](docs/PROTOCOL.md), [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)), cross-engine gaps ([`docs/DIVERGENCE.md`](docs/DIVERGENCE.md)), or live status — it links those. (The canonical rulebook is the exception: it now lives here too, decomposed one-page-per-§ in [`docs/wiki/rules/`](docs/wiki/rules/README.md).)
+- **It is not a content home** for the wire format / module map ([`docs/PROTOCOL.md`](docs/PROTOCOL.md), [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)), cross-engine gaps ([`docs/DIVERGENCE.md`](docs/DIVERGENCE.md)), or live status — it links those. (The canonical rulebook is the exception: it now lives here too, decomposed one-page-per-§ in [`docs/wiki/rules/`](docs/wiki/rules/rulebook.md).)
 - **Mirror new durable decisions there** when you make them, and keep this file lean. To reconcile the wiki against recent repo activity on request ("sync the wiki"), follow [`docs/wiki/README.md`](docs/wiki/README.md) → *Keeping it current*.
 
 ## Architecture decisions

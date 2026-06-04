@@ -37,7 +37,7 @@ It is **docs-as-code, in wiki form** — co-located with the code (so it's versi
 - [html-proto.md](html-proto.md) — the reference implementation, in brief.
 
 **Canon (the rulebook)**
-- [rules/](rules/README.md) — the **Comprehensive Rules**, decomposed one page per § ([[rulebook|index]]). The canonical *what*; the pages above are the *why*, and the two cross-link.
+- [rules/](rules/rulebook.md) — the **Comprehensive Rules**, decomposed one page per § ([[rulebook|index]]). The canonical *what*; the pages above are the *why*, and the two cross-link.
 
 ## What's *not* here (one home per fact)
 

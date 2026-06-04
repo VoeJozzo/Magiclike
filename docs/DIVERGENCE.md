@@ -1,8 +1,8 @@
 # Implementation Divergence — Godot ↔ html-proto
 
-A living catalog of behavioral differences between the Godot port (at the repo root) and the html-proto reference implementation (`reference/html-proto/`). Pairs with [`wiki/rules/`](wiki/rules/README.md) (the canonical spec) and [`ARCHITECTURE.md`](ARCHITECTURE.md) (the module map).
+A living catalog of behavioral differences between the Godot port (at the repo root) and the html-proto reference implementation (`reference/html-proto/`). Pairs with [`wiki/rules/`](wiki/rules/rulebook.md) (the canonical spec) and [`ARCHITECTURE.md`](ARCHITECTURE.md) (the module map).
 
-When the two implementations disagree, **the rulebook ([`wiki/rules/`](wiki/rules/README.md)) is the tie-breaker** — the implementation that doesn't match the canonical rule is wrong and is the one with a to-do.
+When the two implementations disagree, **the rulebook ([`wiki/rules/`](wiki/rules/rulebook.md)) is the tie-breaker** — the implementation that doesn't match the canonical rule is wrong and is the one with a to-do.
 
 ## Severity tags
 
