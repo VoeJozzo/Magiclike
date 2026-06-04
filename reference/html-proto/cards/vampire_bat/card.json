@@ -1,6 +1,6 @@
 {
   "card_id": "vampire_bat",
-  "art": "🦇",
+  "art": "art.png",
   "cost": {
     "B": 1
   },
