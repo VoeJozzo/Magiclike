@@ -21,15 +21,8 @@ function passLabel(G, expectedActor) {
   return 'Pass';
 }
 
-function playerForcedPrompt(G, who) {
-  return !!((G.forcedDiscard && G.forcedDiscard.who === who && G.forcedDiscard.remaining > 0)
-    || (G.pendingSearch && G.pendingSearch.who === who)
-    || (G.pendingTriggerBuild && G.pendingTriggerBuild.who === who)
-    || (G.pendingTriggerTarget && G.pendingTriggerTarget.controller === who)
-    || (G.pendingNumberChoice && G.pendingNumberChoice.who === who)
-    || (G.pendingSymmetricizeChoice && G.pendingSymmetricizeChoice.who === who)
-    || (G.pendingEdictChoice && G.pendingEdictChoice.who === who)
-    || (G.pendingOptionalCost && G.pendingOptionalCost.who === who));
+function playerForcedPrompt(_G, who) {
+  return ENGINE.playerOwesDecision(who);
 }
 
 function anyForcedPrompt(G) {

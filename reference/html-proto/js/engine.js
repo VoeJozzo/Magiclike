@@ -5832,6 +5832,35 @@ function getLegalActions(who) {
     }
   }
 
+  // Trigger-target picks — one action per valid target in the prompt.
+  // Production human UI clicks directly through the controller, but sim/selfplay
+  // uses this list to avoid stalling on a forced trigger-target prompt.
+  if (G.pendingTriggerTarget && G.pendingTriggerTarget.controller === who
+      && Array.isArray(G.pendingTriggerTarget.valid)) {
+    for (const target of G.pendingTriggerTarget.valid) {
+      actions.push({type:'triggerTargetPick', target});
+    }
+  }
+
+  // Trigger-build picks — Architect's Codex build moments are human-facing in
+  // production, but AI-vs-AI/selfplay can drive the human seat. Enumerate each
+  // current-step choice so AI.decide can answer the forced prompt.
+  if (G.pendingTriggerBuild && G.pendingTriggerBuild.who === who) {
+    const p = G.pendingTriggerBuild;
+    if (p.step === 'condition' && Array.isArray(p.conditionOptions)) {
+      for (let i = 0; i < p.conditionOptions.length; i++) {
+        actions.push({type:'triggerBuildPick', choice: i});
+      }
+    } else if (p.step === 'effect' && Array.isArray(p.effectOptions)) {
+      for (let i = 0; i < p.effectOptions.length; i++) {
+        actions.push({type:'triggerBuildPick', choice: i});
+      }
+    } else if (p.step === 'compare') {
+      actions.push({type:'triggerBuildPick', choice: 'new'});
+      actions.push({type:'triggerBuildPick', choice: 'keep'});
+    }
+  }
+
   // Number-choice picks — when this player owes a "pick a number from
   // [min, max]" decision (Archdemon of Bargains). One action per integer
   // in the range.

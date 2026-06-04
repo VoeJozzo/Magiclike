@@ -93,6 +93,8 @@ function checkPromptLock(label, setupPrompt) {
   check(label + ': regular actions are omitted from getLegalActions',
     !types.includes('pass') && !types.includes('endTurn') && !types.includes('playLand'),
     'actions=' + types.join(','));
+  check(label + ': the prompt response is exposed by getLegalActions',
+    types.includes(response.type), 'actions=' + types.join(','));
   check(label + ': the prompt response remains legal',
     ENGINE.isLegalAction('you', response));
   check(label + ': render helper recognizes the human prompt',
@@ -173,9 +175,17 @@ else {
     G.pendingTriggerTarget = { controller: 'you', sourceName: 'Test', valid: [target] };
     return { type: 'triggerTargetPick', target };
   });
-  checkPromptLock('trigger build', G => {
+  checkPromptLock('trigger build condition', G => {
     G.pendingTriggerBuild = { who: 'you', step: 'condition', conditionOptions: ['always'], effectOptions: [] };
     return { type: 'triggerBuildPick', choice: 0 };
+  });
+  checkPromptLock('trigger build effect', G => {
+    G.pendingTriggerBuild = { who: 'you', step: 'effect', conditionOptions: [], effectOptions: [{ kind: 'draw', amount: 1 }] };
+    return { type: 'triggerBuildPick', choice: 0 };
+  });
+  checkPromptLock('trigger build compare', G => {
+    G.pendingTriggerBuild = { who: 'you', step: 'compare', conditionOptions: [], effectOptions: [] };
+    return { type: 'triggerBuildPick', choice: 'new' };
   });
   checkPromptLock('number choice', G => {
     G.pendingNumberChoice = { who: 'you', source: 'Test', min: 1, max: 2 };
