@@ -2,7 +2,7 @@
 type: concept
 tags: [magiclike, architecture, gamedev]
 created: 2026-06-02
-updated: 2026-06-02
+updated: 2026-06-04
 sources: ["magiclike repo: CLAUDE.md (Architecture decisions; Patterns to NOT replicate)", "engine/predicates/predicates.gd"]
 ---
 

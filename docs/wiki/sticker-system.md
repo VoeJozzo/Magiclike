@@ -2,7 +2,7 @@
 type: concept
 tags: [magiclike, gamedev, meta]
 created: 2026-06-02
-updated: 2026-06-02
+updated: 2026-06-04
 sources: ["docs/wiki/rules/", "docs/plans/plan-effects-refactor.md", "docs/PROTOCOL.md"]
 ---
 
