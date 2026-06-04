@@ -4,7 +4,7 @@ Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folde
 
 ## Version
 
-**Current: `v2.0.83`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.0.84`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -201,6 +201,22 @@ opponent's best creature — permanent base 20, eot base 8, +card value +lane �
 animate-add_type only at a permanent WE control (else it'd gift the opponent a
 body). Verified via `AI.decide`: the AI now casts Encase in Amber at an enemy
 creature. 1269 green, lint clean, 300-game selfplay clean.
+
+v2.0.84: **single `addType` write helper for type identity (consistency refactor).**
+Four sites hand-rolled `if (!x.types.includes(t)) x.types.push(t)` to append a tag
+to a card's stored `types[]` — the two sticker subtype-roll sites (`stickers.js`) and
+the two staple-merge unions (`engine.js`) — reaching past the `types.js` accessor layer
+that the v2.0.70 refactor made the sole source of truth. New `types.js` `addType(card,
+tag)` is the one write counterpart to `hasType`; all four sites route through it.
+**Behavior-identical** (not a bug fix): dedup stays against the STORED base, NOT the
+effective set — a permanently-rolled subtype must be stored even while a temporary
+`typeGrants` modifier happens to provide it, or it would vanish when the grant clears
+(an effective-set dedup would have introduced exactly that regression). The win is one
+write path, so the next sticker/subtype touch can't re-copy the raw idiom. New
+`test_add_type.js` (10) pins add/dedup, empty-input guards, and the permanent-base-
+storage semantics; the sticker/staple end-to-end paths stay covered by the existing
+subtype tests. Surfaced in the PR #37 review. 1410 green, lint clean, 300-game selfplay
+clean.
 
 v2.0.83: **AI scores a buff-then-fight WITH the buff (PR #57 review fix).**
 `scoreFightExchange` used base stats, so the AI passed on cleanly-favorable Predate
