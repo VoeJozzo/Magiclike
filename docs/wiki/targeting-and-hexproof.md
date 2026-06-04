@@ -17,6 +17,7 @@ Targeting is its **own layer**, separate from effects: a spell or ability declar
 - **`target()` vs `chooses()`.** A *targeted* pick (hexproof applies) is distinct from a *chosen* one made by the affected player (hexproof doesn't). Edicts prove the split: `target(player) → chooses(creature) → sacrifice` — only the player is targeted, so a hexproof creature can still be sacrificed. A flat "targets a creature" model would get this wrong.
 - **Mass effects skip the layer.** A `scope`-based effect (e.g. `damage(all_creatures)`) carries no `target()` step, so it never checks hexproof — automatically correct, no special case.
 - **Illegal at resolution → fizzle.** If a locked target is gone (left play, flickered), the spell fizzles ([[700-casting-and-activating|§704]]) — the re-check is structural, not per-effect.
+- **Mid-resolution departure → last-known information, not fizzle.** Fizzle covers a target that's *already* gone when the spell starts resolving. But when a multi-effect spell's target leaves *between* its effects (e.g. *exile target creature, then its controller gains life equal to its power*), the later effects don't fizzle — they read a **last-known-information snapshot** taken at the instant the target left its zone; while it's still in its zone they read live state. (The "D1" hybrid — `docs/DIVERGENCE.md` §3.6; realized in the [[html-proto]], [[godot]]-pending.)
 
 ## Realized vs. planned
 
