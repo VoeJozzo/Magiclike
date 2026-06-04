@@ -23,7 +23,7 @@ A recursive evaluator walks the form, invoking each atomic through one uniform s
 
 ## Atomic primitives over a closed event set
 
-Representative atomics: card identity (`this_card`, `another_card`), traits (`card_is_creature`, `card_has_subtype(x)`), zone transitions (`card_moves(from, to)`), control (`controlled_by(you|opp)`), life history (`is_life_gain` / `is_life_loss`). They hang off a **small, unified event vocabulary** — notably `card_zone_change` (one event for enters / dies / bounces, narrowed by a `card_moves(...)` constraint) plus `spell_cast`, `attacks`, and `life_changed` (a signed delta). One event + a zone constraint replaces a whole family of per-zone event kinds. (Canon: `docs/RULES.md` §1000–§1008; catalogs: `docs/PROTOCOL.md` §3.3–§3.4.)
+Representative atomics: card identity (`this_card`, `another_card`), traits (`card_is_creature`, `card_has_subtype(x)`), zone transitions (`card_moves(from, to)`), control (`controlled_by(you|opp)`), life history (`is_life_gain` / `is_life_loss`). They hang off a **small, unified event vocabulary** — notably `card_zone_change` (one event for enters / dies / bounces, narrowed by a `card_moves(...)` constraint) plus `spell_cast`, `attacks`, and `life_changed` (a signed delta). One event + a zone constraint replaces a whole family of per-zone event kinds. (Canon: [[1000-triggered-abilities]]; catalogs: `docs/PROTOCOL.md` §3.3–§3.4.)
 
 ## Drain, ordering, self-vs-global
 

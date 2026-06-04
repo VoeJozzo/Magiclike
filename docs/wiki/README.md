@@ -1,13 +1,14 @@
 ---
 type: index
 tags: [magiclike, wiki]
+aliases: [magiclike-wiki, "Concept wiki hub"]
 created: 2026-06-02
-updated: 2026-06-02
+updated: 2026-06-04
 ---
 
 # Magiclike — durable concepts wiki
 
-This folder is the **durable conceptual layer** for [[magiclike]] (a [[godot]] *Magic: The Gathering*–style roguelike): the architecture rationale, the engine's design discipline, the game's durable systems (predicates, stickers, draft, the run), and the cross-engine relationship — the *why* that changes only by deliberate redesign.
+This folder is the **durable conceptual layer** for [[magiclike]] (a [[godot]] *Magic: The Gathering*–style roguelike): the architecture rationale, the engine's design discipline, the game's durable systems (predicates, stickers, draft, the run), and the cross-engine relationship — the *why* that changes only by deliberate redesign. It now also houses the **canonical rulebook** (the *what*), decomposed one-page-per-§ under [[rulebook|`rules/`]].
 
 It is **docs-as-code, in wiki form** — co-located with the code (so it's versioned, reviewed, and backed up alongside it), authored in Obsidian-style `[[wikilinks]]`, and mounted into a personal Obsidian vault via a directory junction. The wiki is portable plaintext; Obsidian is just the renderer.
 
@@ -29,11 +30,14 @@ It is **docs-as-code, in wiki form** — co-located with the code (so it's versi
 - [cross-engine-port.md](cross-engine-port.md) — the durable Godot ↔ html-proto relationship.
 - [html-proto.md](html-proto.md) — the reference implementation, in brief.
 
+**Canon (the rulebook)**
+- [rules/](rules/README.md) — the **Comprehensive Rules**, decomposed one page per § ([[rulebook|index]]). The canonical *what*; the pages above are the *why*, and the two cross-link.
+
 ## What's *not* here (one home per fact)
 
 This layer **complements** the repo docs and never copies them — it links out:
 
-- **Canonical rules** (how the game works) → `docs/RULES.md`.
+- **Canonical rules** now live *here* too — [[rulebook|`rules/`]] (the old `docs/RULES.md` is a redirect stub). Kept distinct from the *why* pages by `type: rules` frontmatter.
 - **Wire format · engine reference (modules + contracts)** → `docs/PROTOCOL.md` · `docs/ARCHITECTURE.md`.
 - **Cross-engine gaps** → `docs/DIVERGENCE.md`.
 - **Live status** (current phase, card counts, roadmap) → the repo root `CLAUDE.md` + `docs/plans/`. **Status lives in the repo, never here.**
@@ -42,7 +46,7 @@ This layer **complements** the repo docs and never copies them — it links out:
 
 ## Conventions
 
-Kebab-case filenames; dense `[[wikilinks]]` between concept pages; **inline-code path refs** out to the repo docs (e.g. `docs/RULES.md`) — *not* relative `../` links, which break when clicked in the junctioned Obsidian vault (only `docs/wiki/` is mounted, so `../` escapes it); light dated frontmatter (`type` / `tags` / `created` / `updated` / `sources`); encyclopedic, concise voice; **durable-only** — nothing a commit would falsify. Git history is this folder's changelog.
+Kebab-case filenames; dense `[[wikilinks]]` between concept pages; **inline-code path refs** out to repo docs *outside* the junction (e.g. `docs/DIVERGENCE.md`, `docs/PROTOCOL.md`) — *not* relative `../` links, which break when clicked in the vault (only `docs/wiki/` is mounted, so `../` escapes it); in-vault targets, including the [[rulebook|rules cluster]], use `[[wikilinks]]`; light dated frontmatter (`type` / `tags` / `created` / `updated` / `sources`); encyclopedic, concise voice; **durable-only** — nothing a commit would falsify. Git history is this folder's changelog.
 
 ## Keeping it current (sync from repo activity)
 

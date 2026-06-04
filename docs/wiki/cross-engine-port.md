@@ -20,7 +20,7 @@ Cards are authored once, in the prototype, as per-card JSON; the Godot side **co
 
 ## Divergences are parked with gates
 
-Where the two engines behave differently, the gap is **tracked, not hidden**: each is catalogued in `DIVERGENCE.md` with a severity tag and a to-do, and `RULES.md` is the tie-breaker on what *correct* means. Many gaps are deliberately deferred behind a **gate** — "implement on both sides when the first card that needs it lands" — rather than built speculatively. The specific open gaps and their status live in `DIVERGENCE.md`; this page never enumerates them.
+Where the two engines behave differently, the gap is **tracked, not hidden**: each is catalogued in `DIVERGENCE.md` with a severity tag and a to-do, and the [[rulebook]] is the tie-breaker on what *correct* means. Many gaps are deliberately deferred behind a **gate** — "implement on both sides when the first card that needs it lands" — rather than built speculatively. The specific open gaps and their status live in `DIVERGENCE.md`; this page never enumerates them.
 
 ## See also
 

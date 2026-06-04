@@ -8,7 +8,7 @@ sources: ["docs/RULES.md", "docs/plans/plan-effects-refactor.md"]
 
 # Staple / synthesis
 
-Stapling (splicing) **merges two deck slots into one synthesized card** (`synthesizeStapledTemplate`), which then persists in the slot for the rest of a run. It's a reward option (`docs/RULES.md` §1500 — "Splice") and a vivid case of *composition over special-casing*.
+Stapling (splicing) **merges two deck slots into one synthesized card** (`synthesizeStapledTemplate`), which then persists in the slot for the rest of a run. It's a reward option ([[1500-the-run|§1500]] — "Splice") and a vivid case of *composition over special-casing*.
 
 ## Type-canonical merge
 

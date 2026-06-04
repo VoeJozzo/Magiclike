@@ -8,7 +8,7 @@ sources: ["docs/RULES.md", "docs/plans/plan-effects-refactor.md", "docs/PROTOCOL
 
 # Sticker system
 
-Stickers are **persistent per-run-slot modifiers** — the roguelike run's main reward currency (see [[roguelike-meta]]). A sticker attaches to a **deck slot** (a template + position that persists across the run), *not* to an in-play card instance, and re-applies to every instance drawn from that slot in later games. (Canon: `docs/RULES.md` §1300.)
+Stickers are **persistent per-run-slot modifiers** — the roguelike run's main reward currency (see [[roguelike-meta]]). A sticker attaches to a **deck slot** (a template + position that persists across the run), *not* to an in-play card instance, and re-applies to every instance drawn from that slot in later games. (Canon: [[1300-stickers]].)
 
 ## One pipeline (`apply_sticker`)
 
@@ -18,7 +18,7 @@ All persistent per-slot changes flow through a single overlay mechanism — the 
 
 Empower and subtype **rolls resolve at application time** and are stored in the sticker (then applied additively at effect resolution), so there's no cross-instance leakage from shared mutation. A sticker persists across leave-play and re-ETB within a run — unlike an end-of-turn keyword grant — and clears when the run ends.
 
-This is realized in the [[html-proto]]; the [[godot]] port hasn't built it yet (a reserved seam exists in `CardInstance.effective_keywords()` — see [[cross-engine-port]]). The concrete sticker types, weights, and legality rules live in `docs/RULES.md` §1300–§1305.
+This is realized in the [[html-proto]]; the [[godot]] port hasn't built it yet (a reserved seam exists in `CardInstance.effective_keywords()` — see [[cross-engine-port]]). The concrete sticker types, weights, and legality rules live in [[1300-stickers]] (§1301–§1305).
 
 ## See also
 
