@@ -4,7 +4,7 @@ Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folde
 
 ## Version
 
-**Current: `v2.0.83`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.0.84`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.84: real pixel art added for 22 cards (emoji placeholders → `art.png`: abyss_lurker, aerial_maneuver, aether_drake, aether_voyager, ancestral_priest, awakener, beast_whisperer, beasts_fury, benevolent_angel, blood_artist, bloodthirster, bloodthirsty_stalker, cavalry_captain, cloud_caller, crusader_captain [replaced prior art], cult_priest, demonic_tutor, divine_favor, mind_rot, pit_fiend, reaper_shade, vampire_bat) + three typeline fixes (Bindspeaker → Merfolk Wizard, Bloodthirster → Vampire Bat, Illusion Drake → Illusion Drake). Data/art only; no engine change. v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
