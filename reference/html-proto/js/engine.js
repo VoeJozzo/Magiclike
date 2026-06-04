@@ -5281,6 +5281,18 @@ function doEndTurn(who) {
 function isWaitingForForcedAction() {
   return anyoneOwesDecision();
 }
+function isForcedActionResponse(action) {
+  if (!action) return false;
+  if (G.forcedDiscard && G.forcedDiscard.remaining > 0) return action.type === 'discard';
+  if (G.pendingSearch) return action.type === 'searchPick';
+  if (G.pendingTriggerTarget) return action.type === 'triggerTargetPick';
+  if (G.pendingTriggerBuild) return action.type === 'triggerBuildPick';
+  if (G.pendingNumberChoice) return action.type === 'numberChoice';
+  if (G.pendingSymmetricizeChoice) return action.type === 'symmetricizeChoice';
+  if (G.pendingEdictChoice) return action.type === 'edictChoice';
+  if (G.pendingOptionalCost) return action.type === 'optionalCost';
+  return false;
+}
 function whoHasPriority(who) {
   if (G.gameOver) return false;
   if (isWaitingForForcedAction()) return false;
@@ -5321,6 +5333,7 @@ function isSorceryWindow(who) {
 
 function isLegalAction(who, action) {
   if (G.gameOver) return false;
+  if (isWaitingForForcedAction() && !isForcedActionResponse(action)) return false;
   switch (action.type) {
     case 'playLand': {
       const card = G[who].hand.find(c => c.iid === action.cardIid);
@@ -5602,6 +5615,7 @@ function isLegalAction(who, action) {
       if (isWaitingForForcedAction()) return false;
       return true;
     case 'endTurn':
+      if (isWaitingForForcedAction()) return false;
       return who === G.activePlayer && G.stack.length === 0 && !G.cleanupDiscarding;
     default: return false;
   }
@@ -5612,9 +5626,11 @@ function isLegalAction(who, action) {
 // =========================================================================
 function getLegalActions(who) {
   const actions = [];
+  const waitingForForcedAction = isWaitingForForcedAction();
 
   // Land plays
-  if (who === G.activePlayer && (G.phase === 'MAIN1' || G.phase === 'MAIN2')
+  if (!waitingForForcedAction
+      && who === G.activePlayer && (G.phase === 'MAIN1' || G.phase === 'MAIN2')
       && G.stack.length === 0 && !G[who].landPlayedThisTurn && !G.gameOver) {
     for (const card of G[who].hand) {
       if (hasType(card, 'Land')) actions.push({type:'playLand', cardIid: card.iid});
@@ -5847,15 +5863,18 @@ function getLegalActions(who) {
     actions.push({type:'optionalCost', pay: false});
   }
 
-  // Pass (always legal as a generic "I'm done")
-  actions.push({type:'pass'});
+  // Pass / End Turn are priority actions, not answers to forced prompts.
+  if (!waitingForForcedAction) actions.push({type:'pass'});
 
   // End turn
-  if (who === G.activePlayer && G.stack.length === 0 && !G.cleanupDiscarding) {
+  if (!waitingForForcedAction
+      && who === G.activePlayer && G.stack.length === 0 && !G.cleanupDiscarding) {
     actions.push({type:'endTurn'});
   }
 
-  return actions;
+  return waitingForForcedAction
+    ? actions.filter(a => isLegalAction(who, a))
+    : actions;
 }
 
 // True iff the player has nothing productive to do right now — no spell to

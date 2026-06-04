@@ -21,6 +21,27 @@ function passLabel(G, expectedActor) {
   return 'Pass';
 }
 
+function playerForcedPrompt(G, who) {
+  return !!((G.forcedDiscard && G.forcedDiscard.who === who && G.forcedDiscard.remaining > 0)
+    || (G.pendingSearch && G.pendingSearch.who === who)
+    || (G.pendingTriggerBuild && G.pendingTriggerBuild.who === who)
+    || (G.pendingTriggerTarget && G.pendingTriggerTarget.controller === who)
+    || (G.pendingNumberChoice && G.pendingNumberChoice.who === who)
+    || (G.pendingSymmetricizeChoice && G.pendingSymmetricizeChoice.who === who)
+    || (G.pendingEdictChoice && G.pendingEdictChoice.who === who)
+    || (G.pendingOptionalCost && G.pendingOptionalCost.who === who));
+}
+
+function anyForcedPrompt(G) {
+  return playerForcedPrompt(G, 'you') || playerForcedPrompt(G, 'opp');
+}
+
+function edictChoiceNoun(filter) {
+  if (filter === 'land') return 'land';
+  if (filter === 'permanent') return 'permanent';
+  return 'creature';
+}
+
 // Codex-style trigger-build modal button (condition + effect steps).
 function makeTriggerBuildOptionBtn(innerHtml, onClick) {
   const btn = document.createElement('button');
@@ -156,26 +177,18 @@ function render() {
 
   const expectedActor = ENGINE.expectedActor();
   const inReaction = !!(G.priority && G.stack.length > 0);
+  const humanForcedPrompt = playerForcedPrompt(G, 'you');
+  const forcedPromptOpen = anyForcedPrompt(G);
 
   const passBtn = document.getElementById('btnPass');
   passBtn.textContent = passLabel(G, expectedActor);
   passBtn.disabled = G.gameOver || !!pt || G.cleanupDiscarding
-                  || (G.forcedDiscard && G.forcedDiscard.who === 'you')
-                  || (G.pendingSearch && G.pendingSearch.who === 'you')
-                  || (G.pendingTriggerBuild && G.pendingTriggerBuild.who === 'you')
-                  || (G.pendingTriggerTarget && G.pendingTriggerTarget.controller === 'you')
-                  || (G.pendingNumberChoice && G.pendingNumberChoice.who === 'you')
-                  || (G.pendingSymmetricizeChoice && G.pendingSymmetricizeChoice.who === 'you')
-                  || (G.pendingEdictChoice && G.pendingEdictChoice.who === 'you')
-                  || (G.pendingOptionalCost && G.pendingOptionalCost.who === 'you')
+                  || humanForcedPrompt
                   || expectedActor !== 'you';
 
   document.getElementById('btnEnd').disabled =
     G.gameOver || !!pt || G.activePlayer !== 'you' || G.stack.length > 0
-    || inReaction || G.cleanupDiscarding
-    || (G.forcedDiscard && G.forcedDiscard.who === 'you')
-    || (G.pendingSearch && G.pendingSearch.who === 'you')
-    || (G.pendingTriggerBuild && G.pendingTriggerBuild.who === 'you');
+    || inReaction || G.cleanupDiscarding || forcedPromptOpen || expectedActor !== 'you';
 
   const tb = document.getElementById('tgtbar');
   const ptt = G.pendingTriggerTarget;
@@ -439,7 +452,7 @@ function render() {
   } else if (G.pendingSymmetricizeChoice && G.pendingSymmetricizeChoice.who === 'you') {
     sb.textContent = `${G.pendingSymmetricizeChoice.source} on ${G.pendingSymmetricizeChoice.targetName} — pick power, toughness, or cost.`;
   } else if (G.pendingEdictChoice && G.pendingEdictChoice.who === 'you') {
-    sb.textContent = `${G.pendingEdictChoice.source} — choose a ${G.pendingEdictChoice.filter === 'permanent' ? 'permanent' : 'creature'} to sacrifice.`;
+    sb.textContent = `${G.pendingEdictChoice.source} — choose a ${edictChoiceNoun(G.pendingEdictChoice.filter)} to sacrifice.`;
   } else if (G.pendingOptionalCost && G.pendingOptionalCost.who === 'you') {
     sb.textContent = `${G.pendingOptionalCost.source} — pay the cost to use its stapled effect, or decline.`;
   } else if (G.forcedDiscard && G.forcedDiscard.who === 'you' && G.forcedDiscard.remaining > 0) {
