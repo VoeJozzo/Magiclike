@@ -1,7 +1,7 @@
 ---
 type: index
 tags: [magiclike, rules]
-aliases: [rulebook, "Rules index"]
+aliases: ["Rules index"]
 created: 2026-06-04
 updated: 2026-06-04
 ---
@@ -10,7 +10,7 @@ updated: 2026-06-04
 
 The **canon**: how the game works, in plain English, independent of any implementation. When the doc and the code disagree, **the doc wins** — the code is the patient.
 
-This is the rulebook as an interlinked cluster — one page per top-level `§`, co-located with the code in `docs/wiki/rules/` and mounted into the Obsidian vault. It is the **what**; the durable design *why* lives one level up in the concept wiki ([[magiclike-wiki|hub]]). Rules are numbered hierarchically (`100.1`, `100.1a`), borrowing MTG's Comprehensive Rules scheme with our own ranges, so other docs and code comments can cite stable `§` handles.
+This is the rulebook as an interlinked cluster — one page per top-level `§`, co-located with the code in `docs/wiki/rules/` and mounted into the Obsidian vault. It is the **what**; the durable design *why* lives one level up in the concept wiki (start at [[magiclike-architecture]]). Rules are numbered hierarchically (`100.1`, `100.1a`), borrowing MTG's Comprehensive Rules scheme with our own ranges, so other docs and code comments can cite stable `§` handles.
 
 ## Core rules
 - [[100-game-concepts]] — players, life, deck, opening hand, win/loss, information.

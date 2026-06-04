@@ -1,7 +1,7 @@
 ---
 type: index
 tags: [magiclike, wiki]
-aliases: [magiclike-wiki, "Concept wiki hub"]
+aliases: ["Concept wiki hub"]
 created: 2026-06-02
 updated: 2026-06-04
 ---
