@@ -66,6 +66,22 @@ let lastGameRecorded = false;
 let sandboxMode = false;              // true while a RUN-less card-test game is running
 let sandboxSpawnTarget = 'you-hand';  // '<side>-<zone>' for the spawn panel
 
+function clearTransientGameUi() {
+  pendingTarget = null;
+  pendingModalChoice = null;
+  selectedMapNode = null;
+  uiAtk = [];
+  uiBlk = new Map();
+  uiPickBlk = null;
+  Modal.hide('modalChoiceModal');
+  const tgtbar = document.getElementById('tgtbar');
+  if (tgtbar) tgtbar.classList.remove('vis');
+  const statusCancelBtn = document.getElementById('statusCancelBtn');
+  if (statusCancelBtn) statusCancelBtn.style.display = 'none';
+  const bannerCancel = document.getElementById('stackBannerCancelBtn');
+  if (bannerCancel) bannerCancel.style.display = 'none';
+}
+
 function updateThinkingUi() {
   if (aiThinking) {
     document.body.classList.add('ai-thinking');
@@ -291,6 +307,7 @@ function makeStartBtn(parent, text, styleKey, onclick) {
 }
 
 function showStartScreen() {
+  clearTransientGameUi();
   const screen = document.getElementById('startScreen');
   // Fullscreen API needs a user gesture — capture-phase + once:true.
   screen.addEventListener('click', () => {
@@ -364,6 +381,7 @@ function sandboxDeck() {
 }
 
 function startSandbox() {
+  clearTransientGameUi();
   sandboxMode = true;
   inDraft = false;
   lastGameRecorded = true;   // suppress the run-recording path entirely
@@ -376,6 +394,7 @@ function startSandbox() {
 }
 
 function exitSandbox() {
+  clearTransientGameUi();
   sandboxMode = false;
   const panel = document.getElementById('sandboxPanel');
   if (panel) panel.style.display = 'none';
@@ -531,6 +550,7 @@ function renderSandboxPanel() {
 }
 
 function continueRun() {
+  clearTransientGameUi();
   if (!RUN.load()) {
     document.getElementById('startScreen').style.display = 'none';
     newRun();
@@ -568,6 +588,7 @@ let pendingNeowModifier = null;
 let pendingDraftMode = 'classic';
 
 function newRun(mode) {
+  clearTransientGameUi();
   // Desert Cube skips Neow (cube+boon interaction not designed).
   Modal.hide('gameover');
   pendingNeowModifier = null;
