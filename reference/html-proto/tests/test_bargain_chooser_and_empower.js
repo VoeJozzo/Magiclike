@@ -82,6 +82,17 @@ if (!CARDS['archdemon_of_bargains']) {
     check('player-controlled Archdemon prompts the opponent (opp)',
       G.pendingNumberChoice && G.pendingNumberChoice.who === 'opp',
       G.pendingNumberChoice && ('who=' + G.pendingNumberChoice.who));
+    check('AI-owned number prompt makes expectedActor return opp',
+      ENGINE.expectedActor() === 'opp',
+      'actor=' + ENGINE.expectedActor());
+    check('human cannot pass while opponent owes the number prompt',
+      !ENGINE.isLegalAction('you', { type: 'pass' }));
+    const aiPick = AI.decide(G, 'opp');
+    check('AI can answer its number prompt',
+      aiPick && aiPick.type === 'numberChoice' && ENGINE.isLegalAction('opp', aiPick),
+      aiPick && JSON.stringify(aiPick));
+    ENGINE.executeAction('opp', aiPick);
+    check('AI answer clears the number prompt', G.pendingNumberChoice == null);
   }
 }
 

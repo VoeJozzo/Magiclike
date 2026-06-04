@@ -354,6 +354,14 @@ function playerOwesDecision(who) {
   return false;
 }
 
+function pendingDecisionActor() {
+  for (const d of PENDING_DECISIONS) {
+    const obj = G[d.field];
+    if (obj && d.active(obj)) return d.who(obj);
+  }
+  return null;
+}
+
 // True if any modal is open. Phase machine pauses while a decision is outstanding.
 function anyoneOwesDecision() {
   for (const d of PENDING_DECISIONS) {
@@ -5271,7 +5279,7 @@ function doEndTurn(who) {
 // target/build prompt). Routes through PENDING_DECISIONS — adding a new
 // modal type to that registry automatically extends this check.
 function isWaitingForForcedAction() {
-  return playerOwesDecision('you');
+  return anyoneOwesDecision();
 }
 function whoHasPriority(who) {
   if (G.gameOver) return false;
@@ -6138,7 +6146,8 @@ function expectedActor() {
   // list here missed pendingTriggerBuild — expectedActor returned null when
   // a build modal was the only thing blocking, breaking AI dispatch checks
   // and pass-button labeling.)
-  if (playerOwesDecision('you')) return 'you';
+  const pendingActor = pendingDecisionActor();
+  if (pendingActor) return pendingActor;
   if (isPriorityOpen()) return G.priorityHolder;
   if (G.cleanupDiscarding) return G.activePlayer;
   if (G.phase === 'COMBAT_ATTACK' && !G.attackersDeclared) return G.activePlayer;
