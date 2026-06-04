@@ -2,7 +2,7 @@
 type: concept
 tags: [magiclike, architecture, gamedev]
 created: 2026-06-02
-updated: 2026-06-02
+updated: 2026-06-04
 sources: ["docs/plans/plan-zone-change-and-composable-predicates.md", "docs/PROTOCOL.md", "docs/wiki/rules/"]
 ---
 
@@ -23,7 +23,15 @@ A recursive evaluator walks the form, invoking each atomic through one uniform s
 
 ## Atomic primitives over a closed event set
 
-Representative atomics: card identity (`this_card`, `another_card`), traits (`card_is_creature`, `card_has_subtype(x)`), zone transitions (`card_moves(from, to)`), control (`controlled_by(you|opp)`), life history (`is_life_gain` / `is_life_loss`). They hang off a **small, unified event vocabulary** — notably `card_zone_change` (one event for enters / dies / bounces, narrowed by a `card_moves(...)` constraint) plus `spell_cast`, `attacks`, and `life_changed` (a signed delta). One event + a zone constraint replaces a whole family of per-zone event kinds. (Canon: [[1000-triggered-abilities]]; catalogs: `docs/PROTOCOL.md` §3.3–§3.4.)
+Representative atomics: card identity (`this_card`, `another_card`), traits (`card_is_creature`, `card_has_subtype(x)`), zone transitions (`card_moves(from, to)`), control (`controlled_by(you|opp)`), life history (`is_life_gain` / `is_life_loss`). They hang off a **small, unified event vocabulary** — notably `card_zone_change` (one event for enters / dies / bounces, narrowed by a `card_moves(...)` constraint) plus `spell_cast`, `attacks`, and `life_changed` (a signed delta). (Canon: [[1000-triggered-abilities]]; catalogs: `docs/PROTOCOL.md` §3.3–§3.4.)
+
+## The zone-change unification
+
+The event set is deliberately **coarse where predicates can narrow, specialized where they can't**. A single `card_zone_change` (carrying `from_zone` / `to_zone`) absorbs what would otherwise be a whole family of per-transition events: *dies* is `card_moves(battlefield, graveyard)`, *bounce* is `card_moves(battlefield, hand)`, *exile* is `card_moves(anywhere, exile)`, *discard* is `card_moves(hand, graveyard)`. The trigger expresses the transition as a composable constraint, so a **new transition needs no new event kind or emission site** — it's just another `card_moves(...)`.
+
+The specialized events stay separate precisely because they *don't* fit that schema: `spell_cast`, `attacks`, and `life_changed` carry no `from_zone` / `to_zone` and a different subject (an attacker is on the battlefield, not changing zones). The rule of thumb — **unify at the coarsest event the predicates can still narrow; split only when the payload genuinely differs.**
+
+Realized in the [[html-proto]]; the [[godot]] port still emits the older split events (`card_dies` / ETB), and the canonical vocabulary in [[1000-triggered-abilities|§1002]] is pending the same update (see [[cross-engine-port]] and `docs/DIVERGENCE.md` E1).
 
 ## Drain, ordering, self-vs-global
 
