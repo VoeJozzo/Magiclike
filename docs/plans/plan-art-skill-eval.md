@@ -16,9 +16,9 @@ We can't improve pixflux itself, and absolute "is this art good" scoring is nois
 |---|---|
 | Eval target | **Output art quality** — measured *through* the prompt-writing step, the skill's actual locus of control. |
 | Method | **Prompt-level pairwise A/B.** Same card, two prompt-writing approaches, generate both, judge which art is better. Pairwise > absolute scoring (more reliable for humans and LLM judges). |
-| Prompt-writer | **Automated API call**, skill text as system prompt. Reproducible, scales, isolates the variable, and becomes a re-runnable harness for every future skill edit (the flywheel). |
+| Prompt-writer | **A single stateless API call** (one `messages.create`: system = skill text, user = card.json, output = the pixflux description). *Not an agent* — no tools, no loop — deliberately inert so the only A↔B difference is the system prompt. Reproducible, and a re-runnable harness for every future skill edit (the flywheel). |
 | First experiment | **Skill-on vs skill-off baseline.** Does the skill beat a naive prompt at all? Anchors every later comparison. |
-| Judge | **LLM vision judge, calibrated against the user's own pairwise calls** before being trusted at scale. |
+| Judge | **The user is the primary judge** — every image is surfaced every run; their pairwise calls are the gold standard. An optional LLM vision judge is calibrated against those calls *in parallel*, only for scaling past hand-eyeballing later. |
 | Spend | **Whatever it takes** — pixflux generations are in budget. |
 
 ## 3. The core insight (why prompt-level A/B is the right primitive)
@@ -29,8 +29,8 @@ We can't improve pixflux itself, and absolute "is this art good" scoring is nois
 
 ## 4. The three traps and how we clear each
 
-1. **The judge is the crux.** An LLM judging 64×32 pixel art has to (a) read tiny art — vision models are weak at this, so we 8×-upscale (nearest-neighbor) exactly as the skill already does, and (b) understand the card's mechanic to score mechanic-enactment. *Mitigation:* a **calibration set** — the user makes ~30–40 pairwise calls, we measure the LLM judge's agreement, and only run automated at scale where agreement clears a bar (target ≥80%). This is standard LLM-as-judge validation and directly answers "can we trust the robot's taste."
-2. **Seed variance contaminates a single A-vs-B.** Same prompt + different seed = different image, so one generation per arm conflates prompt quality with dice. *Mitigation:* generate **k images per arm** (k=3–4) using the **same fixed seed set across both arms** (paired by seed) so the only difference is the prompt. Respect pixflux's 5-concurrent cap.
+1. **At small scale, the user judges directly; the LLM judge is a later, optional scale-extender.** For the first ~10-card run that's ~40 images — eyeball-able in minutes, so the user makes every call and no robot taste is on the critical path. The judge problem only bites when we want to scale past hand-judging: an LLM judging 64×32 pixel art has to (a) read tiny art — vision models are weak at this, so we 8×-upscale (nearest-neighbor) exactly as the skill already does, and (b) understand the card's mechanic to score mechanic-enactment. *Mitigation when we get there:* a **calibration set** — the user's own pairwise calls become gold labels, we measure the LLM judge's agreement, and only let it run solo where agreement clears a bar (target ≥80%, per-axis). Standard LLM-as-judge validation; directly answers "can we trust the robot's taste."
+2. **Seed variance contaminates a single A-vs-B.** Same prompt + different seed = different image, so one generation per arm conflates prompt quality with dice. *Mitigation:* pick **two seeds {S1, S2}** and render all four — `skill@S1, skill@S2, baseline@S1, baseline@S2`. Two images per arm (the dice vary between rounds), but the *same* two seeds in both arms (the dice are held fixed across arms), so the only A↔B difference is still the prompt. pixflux is deterministic on `(prompt, seed, settings)`, so the two seeds **must differ** or the arm's two renders are byte-identical. 4 images/card; respect pixflux's 5-concurrent cap.
 3. **Leakage.** The skill's few-shot examples must not be in the test set. *Mitigation:* the held-out set is the **138 cards that have `card.json` but no `art.png`** (verified 2026-06-05; 148 of 286 cards are arted). Genuinely unseen, and every experiment generates real candidate art for unarted cards as a side benefit.
 
 ## 5. Architecture
@@ -43,11 +43,12 @@ card.json
    │        user message  = card.json
    │        output        = pixflux description (only)
    │
-   ├─► [pixflux ×k seeds]  64×32, no_background:false, fixed seed set, ≤5 concurrent
+   ├─► [pixflux ×2 paired seeds]  64×32, no_background:false, {S1,S2} shared across arms, ≤5 concurrent
    │
-   ├─► [8× nearest-neighbor upscale]  for judge + human eyes
+   ├─► [8× nearest-neighbor upscale]  for the user's eyes (+ LLM judge later)
    │
-   └─► [judge: pairwise vision call]  A-set vs B-set, position-randomized,
+   └─► [judge]  PRIMARY: surface all images, user makes the pairwise call.
+            LATER/OPTIONAL: pairwise vision call, position-randomized,
             forced choice + reason against the rubric criteria
    │
    └─► [aggregate]  win-rate skill-on vs skill-off, sliced by criterion / color / type
@@ -66,12 +67,11 @@ card.json
 
 ## 6. Build order
 
-1. **Harness skeleton (no judging yet).** A script that: reads a card.json, calls the prompt-writer for both arms, fires pixflux ×k with a fixed seed set, saves + upscales all images into a run directory with a manifest (card, arm, seed, prompt, settings). *Smoke-test on 2–3 cards by eye to confirm the loop produces sane output before scaling.*
+1. **Harness skeleton.** A script that: reads a card.json, calls the prompt-writer for both arms, fires pixflux on 2 paired seeds, saves + upscales all images into a run directory with a manifest (card, arm, seed, prompt, settings). *Smoke-test on 2–3 cards by eye to confirm the loop produces sane output before scaling.*
 2. **Naive baseline arm.** Write the skill-off system prompt (minimal: "write an image-gen prompt for this fantasy card"). The skill-on arm loads `SKILL.md`.
-3. **Calibration set.** Run the harness on ~15 cards (covers ~30–40 pairings), present the user pairwise comparisons, record their calls as gold labels.
-4. **Judge + validation.** Implement the pairwise vision judge; measure agreement against the gold labels. Iterate the judge prompt until agreement clears the bar, or scope the judge to only the criteria where it agrees with the user.
-5. **Run the baseline experiment.** Skill-on vs skill-off across a held-out sample (start ~20–30 cards spanning all five colors + creatures/instants/sorceries). Report win-rate overall and per criterion.
-6. **Package as flywheel.** Config-drive the two arms so re-running on `skill-v1 vs skill-v2` is one command. Document how to run it in the skill folder or a `docs/` note.
+3. **First experiment — ~10 cards, the user judges.** Skill-on vs skill-off across ~10 cards sampled from the held-out pool (spanning the five colors + creatures/instants/sorceries), 2 paired seeds each. Surface all ~40 upscaled images; the user makes the pairwise calls. **This is the deliverable:** does the skill beat naive, and on which criteria. Record the calls — they double as the future judge's gold labels.
+4. **Package as flywheel.** Config-drive the two arms so re-running on `skill-v1 vs skill-v2` is one command. Document how to run it in the skill folder or a `docs/` note.
+5. **(Optional, later) LLM judge for scale.** Only if we want to run past what's fun to hand-judge: implement the pairwise vision judge, validate it against the accumulated gold labels to ≥80% per-axis agreement, scope it to the axes it passes on, then scale to larger card sets.
 
 ## 7. What success looks like
 
@@ -88,4 +88,4 @@ card.json
 
 ## 9. Cost
 
-pixflux is ~3–5s synchronous per generation, 5 concurrent. A baseline run of 30 cards × 2 arms × 4 seeds = 240 generations. Plus prompt-writer + judge API calls (cheap relative to image gen). Budget is approved; we'll log actual usage from API responses.
+pixflux is ~3–5s synchronous per generation, 5 concurrent. The first run is tiny: 10 cards × 2 arms × 2 seeds = **40 generations** (~a minute of wall-clock at 5 concurrent), plus 20 prompt-writer calls (cheap). We scale generation count only after the loop is proven and the user has seen it work. Budget is approved; we'll log actual usage from API responses.
