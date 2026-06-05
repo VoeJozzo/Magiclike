@@ -1,6 +1,6 @@
 {
   "card_id": "silver_paladin",
-  "art": "⚔",
+  "art": "art.png",
   "cost": {
     "W": 1,
     "C": 2

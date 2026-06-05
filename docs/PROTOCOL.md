@@ -59,6 +59,8 @@ to the manifest.
 | `art`          | `string`         | opt      | Emoji (`"⚡"`) or relative PNG path (`"cards/<folder>/art.png"`). |
 | `text`         | `string`         | opt      | Oracle text. `~` placeholder substitutes the card's own name. |
 | `keywords`     | `string[]`       | opt      | See §3.1 for the keyword vocabulary.                          |
+| `innate`       | `bool`           | opt      | If true, the card starts in its owner's opening hand before the normal draw-to-seven fill. The card is not free unless its own cost says so. |
+| `spend_mana_as_any_color` | `bool` | opt      | Static permission while the card is on the battlefield: its controller may spend mana as though it were mana of any color. |
 | `effects`      | `object[]` or modal-object | opt | Spell on-cast effects. See §4 for descriptor shape. Modal cards use the modal-object form (§4.6). |
 | `triggers`     | `object[]`       | opt      | Triggered abilities. See §5.                                  |
 | `abilities`    | `object[]`       | opt      | Activated abilities (e.g. tap-to-mana). Same shape as triggers minus `event`/`cond_id`, plus a `cost` object. |
@@ -124,7 +126,7 @@ runtime handlers — noted).
 | `affect_creature`     | `severity: "tap"\|"bounce"\|"destroy"\|"exile", scope?` | JS | Removal on the target() creature. `scope` = sweep (was `remove_all`). Empower promotes severity up the ladder. (Renamed from `remove_creature`; integer severities `1-4` still accepted defensively by the dispatcher but card data uses the string names.) |
 | `move_card`           | `from_zone, to_zone, selector, amount?, filter?, post?` | JS  | Unified card movement. Selector: `controller_top` (draw/mill), `target`, `self`, `library_search` (tutor). Subsumes `draw`, `discard`, `flicker` (bf→exile then exile→bf), `return_from_graveyard`, `shuffle_into_library`, `search_creature`, `search_land_tapped`. `post`: `{tap, shuffle, keep_buffs}`. |
 | `change_control`      | `duration?, transfer_ownership?, grant_haste?, untap_on_take?` | JS | Take control of the target() permanent (was `gain_control`/`steal`). `transfer_ownership` = permanent run-slot theft. |
-| `apply_sticker`       | `sticker: {kind, ...params}`                    | JS          | Apply a persistent per-slot sticker to the target() (cost_mod / set_color / stat_boost). Replaces `embargo`/`bleach`/`symmetricize`'s bespoke channel. |
+| `apply_sticker`       | `sticker: {kind, ...params}`                    | JS          | Apply a persistent per-slot sticker to the target() (`cost_mod` / `set_color` / `stat_boost` / `set_types` / `grant_activated_ability`). Replaces `embargo`/`bleach`/`symmetricize`'s bespoke channel. |
 | `chooses`             | `filter`                                        | JS          | The target() player chooses a permanent matching `filter` (edict's first step; no hexproof). |
 | `sacrifice`           | (operates on the chosen/target creature)        | JS          | The chosen creature's controller sacrifices it (fires death triggers). Edict = `target(player) → chooses(creature) → sacrifice`. |
 | `annihilate`          | (operates on the chosen/target creature)        | JS          | No-trigger removal sibling of `sacrifice` (rip's verb — no graveyard, no death/leave triggers). |
@@ -142,6 +144,14 @@ runtime handlers — noted).
 | `rip`                 | (no params; reads ctx.chosen)                   | JS          | Zone-agnostic run-layer slot-strip (§13). Trailing step of a rip-edict: `target(opp) → chooses(permanent) → annihilate → rip`. Strips the chosen card's deck-slot (player-side only). Replaces the bundled `rip_permanent` kludge. |
 | `endomorph_absorb` / `apply_in_game_splice` / `symmetricize` / `bargain_sticker_self` / `bargain_sticker_other` | (per card) | JS | Card-specific (Endomorph / Stapler / Symmetricize prompt / Archdemon). (Scarification decomposed to `[apply_sticker(scarified), affect_creature(destroy)]` — `destroy_and_sticker_slot` retired.) |
 | `draw` / `discard`    | `amount`                                        | JS (runtime only) | **Not used in card data** — kept as handlers because the trigger generator (Mercurial Adept) still emits them. Card data uses `move_card`. |
+
+`apply_sticker` inline sticker descriptors currently include:
+
+- `cost_mod`: `{kind:"cost_mod", amount:int, stackable?:bool}` changes the run-slot/card cost.
+- `set_color`: `{kind:"set_color", color:"W"|"U"|"B"|"R"|"G"|"C"}` changes color identity and, for `C`, folds colored cost pips into generic cost.
+- `stat_boost`: `{kind:"stat_boost", power:int, toughness:int}` persists a stat bonus.
+- `set_types`: `{kind:"set_types", types:string[]}` replaces the card's intrinsic type tags persistently.
+- `grant_activated_ability`: `{kind:"grant_activated_ability", ability_id?:string, ability:{cost,effects,target?,target_filter?}}` persistently grants an activated ability. The nested `ability` uses the normal activated ability shape (§6). `ability_id` is optional but recommended so repeated sticker application can dedupe the granted ability.
 
 **Naming rule.** Effect-kind dispatch keys are **snake_case on both sides**
 (`gain_life`, `add_mana`, `affect_creature`, …) — one canonical wire spelling the
@@ -316,9 +326,14 @@ auto-pick.
 ```
 
 Cost components today: `tap` (bool), `mana` (cost dict), `sacrifice` (Carrion
-Feeder). Future: `discard`, `pay_life`, custom costs. A tap-for-mana ability
-(`{cost:{tap}, effects:[{add_mana, ...}]}`) is how **lands** produce mana too
-(§3.9) — not a `mana` field.
+Feeder). `cost.mana` is normally a `{W,U,B,R,G,C}` cost dict, but it may also use
+`{colors_of_source:true}` to mean "one mana of each of this ability source's
+WUBRG colors." If the source is colorless, that expands to no colored pips and
+the mana cost is zero. Engines must resolve `colors_of_source` against the source
+card before pay/check-pay paths; treating it as a raw cost is invalid. Future:
+`discard`, `pay_life`, custom costs. A tap-for-mana ability (`{cost:{tap},
+effects:[{add_mana, ...}]}`) is how **lands** produce mana too (§3.9) — not a
+`mana` field.
 
 ## 7. Open work (referenced from `STANDARDIZATION-PLAN.md`)
 

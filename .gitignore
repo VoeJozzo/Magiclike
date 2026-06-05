@@ -6,6 +6,10 @@
 /export/
 export_presets.cfg.bak
 
+# Local npm cache (used when global cache is unavailable in sandboxed sessions)
+.npm-cache/
+reference/html-proto/.npm-cache/
+
 # Editor / OS noise
 *.tmp
 *.import.bak

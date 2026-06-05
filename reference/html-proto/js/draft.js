@@ -143,6 +143,33 @@ const CONSTRUCTED_DECKS = {
       'healing_salve',
     ],
   },
+  equatorialArtificerBoss: {
+    name: 'Equatorial Artificer',
+    icon: 'C',
+    colors: [],
+    description: 'Colorless artifact boss: fast artifact mana unlocks demanding colored spells',
+    isBoss: true,
+    cards: [
+      'ingenuity_unbounded',
+      'artifice_triumphant', 'artifice_triumphant', 'artifice_triumphant',
+      'clockwork_beetle', 'clockwork_beetle',
+      'scrap_hound', 'scrap_hound',
+      'alloy_myr', 'alloy_myr',
+      'counterspell', 'counterspell',
+      'anger_of_the_gods', 'anger_of_the_gods',
+      'mind_control', 'mind_control',
+      'day_of_reckoning',
+      'spectral_procession', 'spectral_procession',
+      'vile_edict', 'vile_edict',
+      'overrun',
+      'shivan_dragon',
+    ],
+    lands: [
+      'equatorial_engine', 'equatorial_engine', 'equatorial_engine', 'equatorial_engine',
+      'equatorial_engine', 'equatorial_engine', 'equatorial_engine', 'equatorial_engine',
+      'equatorial_engine', 'equatorial_engine',
+    ],
+  },
 };
 
 function getConstructedDeck(id) {
@@ -193,7 +220,7 @@ function buildOpponentDeck(numStickers, numStaples, numClones, colorAffinity, co
   }
   // Constructed: prefer declared colors (avoid filler-padding noise for mono builds).
   let oppColors;
-  if (constructed && Array.isArray(constructed.colors) && constructed.colors.length > 0) {
+  if (constructed && Array.isArray(constructed.colors)) {
     oppColors = constructed.colors.slice(0, 2);
   } else {
     const pips0 = countPips(picks);
@@ -207,7 +234,9 @@ function buildOpponentDeck(numStickers, numStaples, numClones, colorAffinity, co
     }
   }
   const pips = countPips(picks);
-  const lands = allocLands(pips);
+  const lands = (constructed && Array.isArray(constructed.lands))
+    ? constructed.lands.slice()
+    : allocLands(pips);
   const slots = [...picks, ...lands].map(tplId => ({ tplId, stickers: [] }));
   // Order: staples first (consume slots), then stickers, then clones (photocopy modified slots).
   if (numStaples > 0)  applyOpponentStaples(slots, numStaples);

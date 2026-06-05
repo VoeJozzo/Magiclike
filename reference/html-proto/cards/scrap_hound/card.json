@@ -1,7 +1,7 @@
 {
   "card_id": "scrap_hound",
   "name": "Scrap Hound",
-  "art": "🐕",
+  "art": "art.png",
   "cost": {
     "C": 2
   },

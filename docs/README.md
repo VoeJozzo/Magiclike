@@ -30,6 +30,12 @@ The reference docs are partitioned by **job**; most real questions are **topics*
 - **AI** — [ARCHITECTURE](ARCHITECTURE.md) §2.8
 - **The "why"** (architecture rationale, design discipline, the cross-engine relationship) — [`wiki/`](wiki/)
 
+## Operations — "how the project runs"
+
+| Doc | Answers |
+|---|---|
+| [`IDENTITIES.md`](IDENTITIES.md) | The GitHub accounts behind the repo (owner + the AI bot accounts): who's who, which credential each uses and where it's stored, the push/PR flow, and the live branch-protection ruleset. Non-secret — points at credentials, never contains them. |
+
 ## Planning docs — "what to change"
 
 | Doc | Scope |

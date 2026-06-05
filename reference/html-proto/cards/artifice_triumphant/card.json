@@ -1,0 +1,51 @@
+{
+  "card_id": "artifice_triumphant",
+  "name": "Artifice Triumphant",
+  "art": "art.png",
+  "special": true,
+  "cost": {
+    "C": 3
+  },
+  "target": "creature",
+  "effects": [
+    {
+      "kind": "apply_sticker",
+      "sticker": {
+        "kind": "set_types",
+        "types": [
+          "Artifact"
+        ]
+      }
+    },
+    {
+      "kind": "apply_sticker",
+      "sticker": {
+        "kind": "grant_activated_ability",
+        "ability_id": "artifice_triumphant_reanimate",
+        "ability": {
+          "cost": {
+            "mana": {
+              "colors_of_source": true
+            }
+          },
+          "effects": [
+            {
+              "kind": "add_type",
+              "scope": "self",
+              "types": [
+                "Creature"
+              ],
+              "duration": "eot"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "keywords": [
+    "flash"
+  ],
+  "types": [
+    "Sorcery"
+  ]
+}
