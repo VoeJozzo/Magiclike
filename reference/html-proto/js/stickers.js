@@ -62,7 +62,7 @@ function applyStickerKindEffect(card, s) {
   }
 }
 
-function weightedPick(stickers) {
+function pickWeightedSticker(stickers) {
   let total = 0;
   for (const s of stickers) total += (s.weight || 3);
   if (total <= 0) return stickers[Math.floor(Math.random() * stickers.length)];

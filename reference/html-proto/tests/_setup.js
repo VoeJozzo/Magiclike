@@ -157,7 +157,7 @@ const EXPOSED = [
   'remapEmpowerRollForStaple', 'countEffects', 'mergeSpliceData',
   'isSpliceableBase', 'isSpliceableStaple',
   // Sticker module surface (stickers.js, all top-level).
-  'weightedPick',
+  'pickWeightedSticker',
   'applyStickersToCard', 'applyOneStickerToRuntimeCard',
   'applyRandomStickersToSide', 'empowerRollLabel', 'applyEmpowerRoll',
   'rollSubtypeFromDeck', 'pushStickerWithRoll', 'stickersForSlot',

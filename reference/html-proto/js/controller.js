@@ -2419,6 +2419,10 @@ const STATS_UI = {
   expanded: {},
 };
 
+function escapeStatsAttribute(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+}
+
 // Table metadata for tables that support copy + show-all. Each entry:
 //   id      — unique stable id used for STATS_UI.expanded keying and DOM ids
 //   defaultN — how many rows to show when collapsed (top-N)
@@ -2462,8 +2466,7 @@ function renderTableWithToolbar(opts) {
   // HTML-escape the TSV before putting it in the textarea value attribute.
   // (Less critical since textarea content isn't parsed as HTML, but the
   // attribute does need escaping for &, <, >, ", '.)
-  const escapeAttr = s => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
-  html += `<textarea id="statsTsv-${id}" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" aria-hidden="true">${escapeAttr(tsv)}</textarea>`;
+  html += `<textarea id="statsTsv-${id}" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" aria-hidden="true">${escapeStatsAttribute(tsv)}</textarea>`;
 
   // The actual visible table.
   const gridCols = columns.map(c => c.width || '1fr').join(' ');
@@ -2827,13 +2830,12 @@ function insightsHtml(drafts, perCardRows) {
     const maxCount = Math.max(...Object.values(lossDist));
     // TSV form for the copy button.
     const lossTsv = ['GAME\tLOSSES', ...games.map(g => `${g}\t${lossDist[g]}`)].join('\n');
-    const escapeAttr = s => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
     html += `<div style="display:flex;align-items:center;justify-content:space-between;margin:14px 0 4px;gap:8px;flex-wrap:wrap">`;
     html += `<div style="color:#ff8888;font-size:10px;font-weight:bold;letter-spacing:.1em">LOSSES BY GAME #</div>`;
     html += `<button onclick="CONTROLLER.copyTableAsTsv('lossHist')" style="background:#1a2a3a;border:1px solid #335;color:#88ccff;font-size:9px;padding:3px 8px;border-radius:3px;cursor:pointer;font-family:inherit">copy</button>`;
     html += `</div>`;
     html += `<div style="color:#666;font-size:9px;margin-bottom:4px;font-style:italic">When did losses happen? Avg loss at game ${avgLossGame} (${totalLosses} loss${totalLosses === 1 ? '' : 'es'} total).</div>`;
-    html += `<textarea id="statsTsv-lossHist" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" aria-hidden="true">${escapeAttr(lossTsv)}</textarea>`;
+    html += `<textarea id="statsTsv-lossHist" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" aria-hidden="true">${escapeStatsAttribute(lossTsv)}</textarea>`;
     html += '<div style="background:#0a0a14;border-radius:3px;padding:6px 8px;display:flex;flex-direction:column;gap:3px">';
     for (const g of games) {
       const count = lossDist[g];

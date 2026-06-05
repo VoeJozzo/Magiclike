@@ -54,7 +54,7 @@ const MERCURIAL_TRIGGER_POOL = [
 // Public API: init, state, expectedActor, getLegalActions, executeAction, subscribe, findCard, getStats.
 
 // Sticker pipeline moved to js/stickers.js — see that file for
-// weightedPick, applyStickersToCard, applyOneStickerToRuntimeCard,
+// pickWeightedSticker, applyStickersToCard, applyOneStickerToRuntimeCard,
 // applyRandomStickersToSide, empowerRollLabel, applyEmpowerRoll
 // (this range), and rollSubtypeFromDeck, pushStickerWithRoll,
 // stickersForSlot (further below). They remain in global scope.
