@@ -182,3 +182,5 @@ User-gold scorecard: searing=C1 | shock=control | unsummon=mixed | murder=tie | 
 
 ### Recommendation
 DO NOT merge C1 into SKILL.md. Keep this documented record + its one situational use (subjectless effect spells) + the variety side-effect. Remove the temp variant SKILL-c1-variant.md to close the cycle.
+
+_C1 cycle CLOSED: SKILL-c1-variant.md removed; live SKILL.md untouched. First full flywheel cycle = documented negative result._
