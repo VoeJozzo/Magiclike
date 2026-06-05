@@ -6,6 +6,7 @@
 
 const setup = require('./_setup');
 setup.loadEngine();
+const SRC = setup.getSource();
 
 let pass = 0, fail = 0;
 function check(label, ok, info) {
@@ -82,6 +83,14 @@ console.log('\n=== an untargeted spell still casts immediately (no false targeti
   CONTROLLER.clickHand(cr.iid);
   check('no targeting mode for an untargeted card', !CONTROLLER.pendingTarget());
   check('untargeted card resolved immediately (left hand)', !G.you.hand.some(c => c.iid === cr.iid));
+})();
+
+console.log('\n=== blocker UI delegates attacker-specific legality to the engine ===');
+(() => {
+  check('controller uses ENGINE.canCreatureBlock(blocker, attacker) when assigning blocks',
+    /ENGINE\.canCreatureBlock\(blkCard,\s*card\)/.test(SRC));
+  check('controller does not duplicate flying/reach blocking logic in the click path',
+    !/card\.keywords\.includes\('flying'\)[\s\S]{0,160}blkCard\.keywords\.includes\('reach'\)/.test(SRC));
 })();
 
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');

@@ -1809,9 +1809,7 @@ function clickBattlefield(iid) {
       uiBlk.delete(uiPickBlk);
     } else {
       const blkCard = ENGINE.findCard(uiPickBlk).card;
-      if (card.keywords.includes('flying')
-          && !blkCard.keywords.includes('flying')
-          && !blkCard.keywords.includes('reach')) return;
+      if (!ENGINE.canCreatureBlock(blkCard, card)) return;
       uiBlk.set(uiPickBlk, iid);
     }
     uiPickBlk = null;

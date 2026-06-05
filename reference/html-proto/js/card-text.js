@@ -77,10 +77,6 @@ function withFilter(noun, eff) {
   return out;
 }
 
-function articleFor(noun) {
-  return /^[aeiou]/i.test(noun) ? 'an' : 'a';
-}
-
 function searchFilterNoun(filter, includeCard) {
   const suffix = includeCard === false ? '' : ' card';
   if (!filter) return 'card';
@@ -327,7 +323,7 @@ function describeEffect(eff, tplEff) {
       const fz = eff.from_zone, tz = eff.to_zone;
       if (fz === 'library' && tz === 'hand' && eff.selector === 'library_search') {  // collapsed searchCreature
         const noun = searchFilterNoun(eff.filter, true);
-        return [plainSeg('search your library for ' + articleFor(noun) + ' ' + noun + ' and put it into your hand')];
+        return [plainSeg('search your library for ' + indefiniteArticle(noun) + ' ' + noun + ' and put it into your hand')];
       }
       if (fz === 'library' && tz === 'battlefield') {  // collapsed searchLandTapped (auto fetch)
         // Derive the fetched-card noun from the filter (subtype > type > "card"),
@@ -335,7 +331,7 @@ function describeEffect(eff, tplEff) {
         // land", not the old hardcoded "basic land" (which was narrower than the
         // filter and drifted from what the card actually does).
         const noun = searchFilterNoun(eff.filter, false);
-        return [plainSeg('search your library for ' + articleFor(noun) + ' ' + noun + ' and put it onto the battlefield' + ((eff.post && eff.post.tap) ? ' tapped' : ''))];
+        return [plainSeg('search your library for ' + indefiniteArticle(noun) + ' ' + noun + ' and put it onto the battlefield' + ((eff.post && eff.post.tap) ? ' tapped' : ''))];
       }
       if (fz === 'library' && tz === 'hand') {  // collapsed draw
         if (eff.amount === 1) return [plainSeg('draw a card')];
