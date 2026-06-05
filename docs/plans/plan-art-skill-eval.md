@@ -1,6 +1,6 @@
 # Plan: Evaluate & improve the `magiclike-card-art` skill
 
-**Status (2026-06-05):** Plan drafted on branch `Art-Skill-Eval`. Not yet executed. Design decisions below are locked with the user; build order in §6 is the proposed path.
+**Status (2026-06-05):** Plan locked; **harness validated by 3 smoke-test cards** (Mahamoti Djinn, Mirror Sage, Scarification) — the agent→pixflux→iterate→nominate→blind-judge→contact-sheet loop works end-to-end, seed discipline holds, and early calibration is accumulating (see §5b). Real ~10-card run not yet kicked off. Build order in §6 is the path.
 
 ## 1. The question we're answering
 
@@ -20,7 +20,7 @@ We can't improve pixflux itself, and absolute "is this art good" scoring is nois
 | The A/B control | **Same agent harness on both arms; the only difference is whether `SKILL.md` is loaded.** The agent's own taste/judgment is therefore a held-constant variable, not a confound. |
 | Fairness control | **Shared seed *pool* + equal budget.** Each card gets a fixed **array of ~10 seeds, identical for both arms** — both face the same "deck" of dice, so neither can draw luckier seeds. Each arm gets the same ~10-call budget drawing from it. Only *how well each arm spends its swings* differs. |
 | First experiment | **Skill-on vs skill-off baseline.** Does the skill beat a naive agent at all? Anchors every later comparison. |
-| Judging | **User is the gold judge** — every image surfaced every run. **Claude blind-pre-labels** each pair (with reasons) *before* the user looks; the pre-label vs user-call divergence is itself a finding and accumulates calibration data. |
+| Judging | **User is the gold judge** — every image surfaced every run (as a per-card contact sheet, `pool.gen` shorthand). **Claude blind-pre-labels** each pair *before* the user looks; pre-label vs user-call divergence is itself a finding + calibration data. **Measure two metrics per card** (decided after smoke tests, see §5b): *best-vs-best* (each arm's single nominee — the end-to-end "as used" score) AND *full-pool* (best image available in each arm's whole candidate pool — isolates generation quality from the agent's self-selection). |
 | Scale | **~10 cards** for the first run, not the full 138-card pool. |
 | Spend | **Whatever it takes** — pixflux generations are in budget. |
 
@@ -76,6 +76,16 @@ For each of ~10 held-out cards:
 - **External calls:** pixflux only (PixelLab token at `.claude/skills/magiclike-card-art/pixellab-token`). No Anthropic API.
 - **Card-data note:** card folders are snake_case (`storm_sage`), not the camelCase tplIds (`doomBlade`) the skill doc still references — a stale-path finding to fix in the skill separately.
 
+## 5b. Smoke-test findings (3 cards, 2026-06-05)
+
+Ran the full loop on 3 random unarted cards before scaling. Full record in `art-eval/CALIBRATION.md` (gitignored local).
+
+- **Harness works end-to-end.** Both arms iterate (reroll, seed-lock tweak, subject-swap), stay on the shared seed array, respect budget; blind judge + contact-sheet pipeline solid.
+- **Early calibration (n=3, noisy):** user's eye favored the **skill** arm on all 3 cards; the blind judge favored skill on 2 of 3 (it chose naive on the vanilla-flying Djinn, where there's no mechanic to enact). So the LLM judge ≠ the user yet — keep the human as gold.
+- **Key finding → drove the dual-metric decision.** On both cards with real candidate spread, the image the *user* liked was a skill-arm roll the skill *agent did not nominate* (it discarded the user's favorite and crowned a different one). So the skill's **generation** looks strong while its **self-selection** lags — and a pure best-vs-best comparison would *undersell* the skill. Hence §2's two-metric judging.
+- **Agents confabulate process history.** All 3 cards' agents narrated phantom "prior runs" of their own early rolls; on-disk timestamps + seeds always proved a single clean run. Harmless misreporting, not a breach — but don't trust an agent's self-report of its own run; verify on disk (as the harness does).
+- **Throttle for the real run.** Parallel arms can collectively exceed pixflux's 5-concurrent cap (naive arm hit empty-body responses under load). Add an orchestrator-side concurrency limit when running multiple cards × 2 arms.
+
 ## 6. Build order
 
 1. **Agent harness + smoke test.** Define the per-arm agent prompt (arm A: "read `SKILL.md`, produce art for this card autonomously, **≤~10 image-gen calls drawing seeds from this shared array**, iterate per the skill, nominate your best, save to the run dir"; arm B: naive equivalent with the bare pixflux mechanics only). Run it on **1 card** end-to-end and eyeball that both arms iterate, nominate a best, and emit upscaled images + a manifest (card, arm, seed array, per-call seed+prompt, nominated best). Confirm pixflux + inpaint + save + upscale all work before scaling.
@@ -86,7 +96,7 @@ For each of ~10 held-out cards:
 
 ## 7. What success looks like
 
-- **First experiment:** a defensible statement — e.g. "skill-on art wins X of 10 pairwise calls, strongest on mechanic-enactment and color-identity," plus where Claude's blind picks agreed/disagreed with the user. If the skill *doesn't* beat naive, that's the most valuable finding.
+- **First experiment:** a defensible statement on **both** metrics — e.g. "skill-on wins X of 10 *best-vs-best* and Y of 10 *full-pool*, strongest on mechanic-enactment," plus where Claude's blind picks agreed/disagreed with the user. A gap between the two metrics is itself a result (generation strong, self-selection weak, per the smoke tests). If the skill *doesn't* beat naive on either, that's the most valuable finding.
 - **The flywheel:** any future `SKILL.md` edit can be run through the harness and kept/reverted on evidence.
 - **Side artifacts:** real candidate art for some of the 138 unarted cards; a list of concrete skill-doc fixes surfaced along the way (e.g. broken reproducibility logging — seeds recorded in ~1 of ~60 corpus entries despite the skill mandating it; stale camelCase paths).
 
