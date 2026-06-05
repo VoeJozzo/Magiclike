@@ -94,3 +94,16 @@ implement and its target to be visibly **linked by the action**:
 - Blind judges **SPLIT**: best-vs-best → CONTROL (medium); full-pool → TREATMENT (medium — "treatment pool repeatedly enacts un-summon across multiple images; control mostly creatures standing, only one true enactment").
 - User: neither batch captures unsummon. **Closest = 1.02 = TREATMENT/C1** (but flawed — no background). Good slush = **2.05, 2.06 = CONTROL** (2.05 = control nominee).
 - Read (n=1, soft card): **MIXED / inconclusive.** Closest single image + full-pool consistency lean C1; control's nominee + user slush lean control. Bounce is a gentle causal action — C1 was written for blast/damage. Re-run searing_blast (the motivating case) for a sharp test.
+
+## C1 A/B #2 — searing_blast (RED burn, 5 dmg; the MOTIVATING card) — skill-v1 vs skill-v1+C1
+- Control = arm_a (skill-v1); Treatment = arm_b (skill+C1). Sheet: Pool 1 = TREATMENT, Pool 2 = CONTROL.
+- Blind judges BOTH → **TREATMENT/C1**: best-vs-best **HIGH** ("comet slams into a recoiling silhouette" vs control's "beam streaks past the figure without a legible connecting strike"); full-pool medium, consistency note: C1 pool "more consistently depicts a directed trail actually striking a figure," control "more frequently shows ambient fire merely coexisting with a bystander."
+- User: **1.07 = TREATMENT/C1 = "the one"** — FIRST genuine keeper across the whole eval (cleared the absolute bar). Slush 1.09 = also TREATMENT/C1. (Both non-nominated; treatment nominated 1.01 — generation > self-selection again.)
+- Read (n=1, the RIGHT card): **STRONG C1 WIN.** User gold + both blind judges converged on C1; control's failure described as "ambient fire coexisting with a bystander" = the user's original "a guy and a fireball" complaint. C1 fixes the exact failure it targets.
+
+## C1 verdict so far
+| C1 A/B | card | kind | result |
+|---|---|---|---|
+| #1 | unsummon | bounce (soft) | MIXED/inconclusive |
+| #2 | searing_blast | burn/damage (sharp) | **STRONG WIN** (user + both judges) |
+Promising. Test 1–2 more damage/targeted cards; if C1 holds, merge the C1 block into live SKILL.md.
