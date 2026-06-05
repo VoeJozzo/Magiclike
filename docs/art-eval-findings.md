@@ -136,3 +136,5 @@ FIX: future C1 cards use a NEUTRAL judge prompt (generic "which is better card a
 
 ## Candidate C2 — "favor ambition/detail; the good kind of bad" (surfaced: murder)
 User principle: a detailed, ambitious roll WITH a visible error beats a vague safe roll, because the error is legible (a human can see and fix it) and PixelLab iteration is cheap. Don't penalize detail/ambition for producing visible flaws; prefer specificity that makes mistakes diagnosable. (Hypothesis to A/B later.)
+
+_Correction (typo): the "good kind of bad" detailed image is **1.06 = CONTROL** nominee (not 2.06). Reinforces C2: the more-detailed control arm produced the diagnosable-flaw image the user values._
