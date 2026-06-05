@@ -248,7 +248,7 @@ Two axes: **your own reluctance to delegate** (Claude defaults) and **Gemma's fa
 
   The ~20 RPD is **per Flash model** (≈60 judgment reqs/day total), not shared. **Rule:** default to Gemma 4 31B; escalate to a Gemini-Flash ONLY when the task needs judgment, not just transformation.
 
-- **Gemma's GitHub identity** for delegated commits: bot account `Thaumaturge-Gemma`, author email **`289474964+Thaumaturge-Gemma@users.noreply.github.com`** (its GitHub noreply — links to the account automatically and never exposes a real address; all three bots now use the `<id>+<login>@users.noreply.github.com` form). Author each commit with `git -c user.name="Thaumaturge-Gemma" -c user.email="289474964+Thaumaturge-Gemma@users.noreply.github.com" commit …` (no secret needed). Push using `GH_PAT_GEMMA`. **Never set this globally** or your own commits get mislabeled. Full branch→push→PR recipe in the "Delegated git workflow" section below.
+- **Gemma's GitHub identity** for delegated commits: bot account `Thaumaturge-Gemma`, author email **`289474964+Thaumaturge-Gemma@users.noreply.github.com`** (its GitHub noreply — links commits to the account automatically; all three bots now use the `<id>+<login>@users.noreply.github.com` form). Author each commit with `git -c user.name="Thaumaturge-Gemma" -c user.email="289474964+Thaumaturge-Gemma@users.noreply.github.com" commit …` (no secret needed). Push using `GH_PAT_GEMMA`. **Never set this globally** or your own commits get mislabeled. Full branch→push→PR recipe in the "Delegated git workflow" section below.
 
 ---
 

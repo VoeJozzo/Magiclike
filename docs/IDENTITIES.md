@@ -13,7 +13,7 @@
 
 The bots exist purely for **attribution** (tracking which AI did what). They're low-privilege by design — write collaborators on a public repo, gated by branch protection (below). A leaked bot credential's worst case is "open a PR the owner must approve."
 
-**Commit-identity rule:** set `user.name` / `user.email` to the noreply above **per-worktree or per-command — never `git config --global`** (that mislabels other work). Never author with the real `ThaumaturgeDevs@gmail.com`.
+**Commit-identity rule:** author with the noreply above, set **per-worktree or per-command — never `git config --global`** (that mislabels other work). The noreply is preferred because it links commits to the GitHub account cleanly — not for secrecy: the bot accounts' shared `ThaumaturgeDevs@gmail.com` isn't sensitive.
 
 ## Credentials — what lives where
 
