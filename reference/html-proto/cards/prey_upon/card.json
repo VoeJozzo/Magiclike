@@ -1,0 +1,30 @@
+{
+  "card_id": "prey_upon",
+  "art": "🐅",
+  "cost": {
+    "G": 1
+  },
+  "name": "Prey Upon",
+  "target_slots": [
+    {
+      "target": "creature",
+      "filter": { "controller": "self" }
+    },
+    {
+      "target": "creature",
+      "filter": { "controller": "opp" }
+    }
+  ],
+  "effects": [
+    {
+      "kind": "fight",
+      "operands": [
+        { "slot": 0 },
+        { "slot": 1 }
+      ]
+    }
+  ],
+  "types": [
+    "Sorcery"
+  ]
+}

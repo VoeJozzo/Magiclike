@@ -1,6 +1,6 @@
 {
   "card_id": "bloodthirster",
-  "art": "🦇",
+  "art": "art.png",
   "cost": {
     "B": 1,
     "C": 2
@@ -29,6 +29,7 @@
   ],
   "types": [
     "Creature",
-    "Vampire"
+    "Vampire",
+    "Bat"
   ]
 }

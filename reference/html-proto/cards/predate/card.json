@@ -1,0 +1,41 @@
+{
+  "card_id": "predate",
+  "art": "🐊",
+  "cost": {
+    "G": 1,
+    "C": 1
+  },
+  "name": "Predate",
+  "target_slots": [
+    {
+      "target": "creature",
+      "filter": {
+        "controller": "self"
+      }
+    },
+    {
+      "target": "creature",
+      "filter": {
+        "controller": "opp"
+      }
+    }
+  ],
+  "effects": [
+    {
+      "kind": "pump",
+      "power": 1,
+      "toughness": 1,
+      "target_slot": 0
+    },
+    {
+      "kind": "fight",
+      "operands": [
+        { "slot": 0 },
+        { "slot": 1 }
+      ]
+    }
+  ],
+  "types": [
+    "Sorcery"
+  ]
+}

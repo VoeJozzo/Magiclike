@@ -1,6 +1,6 @@
 # Refactor Notes
 
-Prioritized structural debt across both halves of the repo. Items here are **advisory** — recorded so they can be picked up opportunistically when the surrounding area is already being touched, or scheduled deliberately when the listed triggering event arrives. Pairs with [`ARCHITECTURE.md`](ARCHITECTURE.md) (module map) and [`SPEC.md`](SPEC.md) (data contracts).
+Prioritized structural debt across both halves of the repo. Items here are **advisory** — recorded so they can be picked up opportunistically when the surrounding area is already being touched, or scheduled deliberately when the listed triggering event arrives. Pairs with [`ARCHITECTURE.md`](ARCHITECTURE.md) (the engine reference — modules + data contracts).
 
 Refactor items live here. Feature deferrals continue to live in [`BACKLOG.md`](BACKLOG.md).
 
@@ -98,7 +98,7 @@ Refactor items live here. Feature deferrals continue to live in [`BACKLOG.md`](B
 ### 1.8 [P2/L] Engine god-object split
 **Where.** `engine/engine.gd` — 1551 LOC.
 
-**Smell.** Phase advancement, trigger queue management, combat damage, SBAs, legal-action enumeration, mana-cost validation, and signal emission all in one file. CLAUDE.md acknowledges this as "closest fit to the JS prototype's IIFE singleton" — pragmatic at Phase 5c, expensive at Phase 9.
+**Smell.** Phase advancement, trigger queue management, combat damage, SBAs, legal-action enumeration, mana-cost validation, and signal emission all in one file. The architecture notes call the autoload the "closest Godot fit to the prototype's single IIFE singleton" ([`wiki/magiclike-architecture.md`](wiki/magiclike-architecture.md)) — pragmatic at Phase 5c, expensive at Phase 9.
 
 **Recommended.** Extract:
 - `engine/phases.gd` — phase advancement, untap/draw/cleanup steps
@@ -332,18 +332,7 @@ Reference via `TUNING.X` in scorers.
 
 ---
 
-### 5.2 [P1/S] Cover non-self triggered abilities
-**Where.** `engine/engine.gd:_fire_event` supports `self_only: false` listeners, but no current card uses it. `tests/test_phase4.gd` only exercises `self_only: true`.
-
-**Smell.** Untested code path. Already on `docs/BACKLOG.md` — duplicate-listed here for visibility.
-
-**Recommended.** Author a test fixture card with a non-self trigger (e.g., "When another creature you control enters, draw a card") and add it to `test_phase4.gd`. Or create `test_phase4_5d` if better isolated.
-
-**Triggered by.** Phase 6 — likely some new card needs this anyway.
-
----
-
-### 5.3 [P2/S] Illegal-action rejection paths
+### 5.2 [P2/S] Illegal-action rejection paths
 **Where.** `tests/` — no test exercises `is_legal_action` returning false for an out-of-phase / unaffordable / illegal-target action.
 
 **Smell.** The engine's defensive guards aren't pinned down by tests. Could regress silently.
@@ -403,6 +392,5 @@ Reference via `TUNING.X` in scorers.
 | 4.1 | Cards — vestigial JSON | P2 | S | Anytime (doc part done; dir-delete remains) |
 | 4.2 | Cards — .tres versioning | P2 | M | Post-Phase-6 schema change |
 | 5.1 | Tests — batch runner | P1 | S | First missed regression |
-| 5.2 | Tests — non-self triggers | P1 | S | Phase 6 |
-| 5.3 | Tests — illegality paths | P2 | S | Co-schedule w/ 1.3 |
+| 5.2 | Tests — illegality paths | P2 | S | Co-schedule w/ 1.3 |
 | 6.1 | CLAUDE.md drift | — | — | DONE (LOC corrected) |

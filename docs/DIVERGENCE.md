@@ -1,8 +1,8 @@
 # Implementation Divergence — Godot ↔ html-proto
 
-A living catalog of behavioral differences between the Godot port (at the repo root) and the html-proto reference implementation (`reference/html-proto/`). Pairs with [`RULES.md`](RULES.md) (the canonical spec) and [`ARCHITECTURE.md`](ARCHITECTURE.md) (the module map).
+A living catalog of behavioral differences between the Godot port (at the repo root) and the html-proto reference implementation (`reference/html-proto/`). Pairs with [`wiki/rules/`](wiki/rules/rulebook.md) (the canonical spec) and [`ARCHITECTURE.md`](ARCHITECTURE.md) (the module map).
 
-When the two implementations disagree, **`RULES.md` is the tie-breaker** — the implementation that doesn't match the canonical rule is wrong and is the one with a to-do.
+When the two implementations disagree, **the rulebook ([`wiki/rules/`](wiki/rules/rulebook.md)) is the tie-breaker** — the implementation that doesn't match the canonical rule is wrong and is the one with a to-do.
 
 ## Severity tags
 
@@ -33,7 +33,7 @@ The TO-DO column describes the action; the tag describes who needs to do it.
 | A2 | First-turn draw skip | Not implemented — first player draws on turn 1 | Implemented (engine.js:5258) | 🔴 | **godot:** implement first-player draw-skip rule per RULES 100.5 |
 | A3 | Starting life / hand / max hand | 20 / 7 / 7 | 20 / 7 / 7 | ✅ Same | **already-aligned** |
 | A4 | Forced mulligan on extreme land counts | Not implemented | Implemented (engine.js:717-732). If opening hand has 0/1 or 6/7 lands, the drawn portion is reshuffled into library and re-drawn. One-shot, no player choice, no recursion. | 🔴 (different opening-hand distribution) | **godot:** *(DEFERRED — site of active experimentation in proto; do not align until the proto rule stabilizes)*. When the time comes: implement the same forced single-mulligan. Affects opening-hand distribution; without it Godot players see screwed/flooded hands more often. |
-| A5 | Concede action | Not implemented | Implemented as `ENGINE.concede()` (engine.js:5551). Sets `G.gameOver = true; G.winner = opp`. | 🟡 (UX gap; game-affecting in that the player can resign) | **godot:** add `KIND_CONCEDE` action and engine handler. Mirrors proto: sets `state.winner` to opponent, emits `game_over`. RULES.md §100.6 already mentions concede as a loss condition; it's just unimplemented. |
+| A5 | Concede action | Not implemented | Implemented as `ENGINE.concede()` (engine.js:5551). Sets `G.gameOver = true; G.winner = opp`. | 🟡 (UX gap; game-affecting in that the player can resign) | **godot:** add `KIND_CONCEDE` action and engine handler. Mirrors proto: sets `state.winner` to opponent, emits `game_over`. the rulebook §100.6 already mentions concede as a loss condition; it's just unimplemented. |
 
 A1 + A2 together: in proto the first player gets a tempo advantage offset by drawing one fewer card; in Godot, whoever is "you" goes first AND draws on turn 1 — a real fairness gap.
 
@@ -57,7 +57,7 @@ A1 + A2 together: in proto the first player gets a tempo advantage offset by dra
 
 | # | Area | Godot | Proto | Tag | TO-DO |
 |---|---|---|---|---|---|
-| C1 | **Multi-blocker damage assignment** | Dumps all damage on `blockers[0]` (engine.gd:1080) | Smart distribution — sorts blockers by kill-value, indestructibles last, assigns minimum lethal to each in order (engine.js:4062-4153) | 🔴 BIG | **godot:** harmonize to proto's smart-distribution algorithm (RULES.md §803). |
+| C1 | **Multi-blocker damage assignment** | Dumps all damage on `blockers[0]` (engine.gd:1080) | Smart distribution — sorts blockers by kill-value, indestructibles last, assigns minimum lethal to each in order (engine.js:4062-4153) | 🔴 BIG | **godot:** harmonize to proto's smart-distribution algorithm (rules §803). |
 | C2 | Deathtouch + multi-block | Marks first blocker lethal; subsequent take 0 damage from attacker | Uses "lethal = 1" against killable blockers; can kill multiple in one combat | 🔴 | **godot:** falls out of C1 fix automatically — implementing smart-distribution requires the deathtouch-reduces-threshold logic. |
 | C3 | Menace single-blocker handling | Legal at declaration; collapses to unblocked at damage time (engine.gd:1008) | Illegal at declaration (engine.js:4842) | 🟡 (same outcome, different UX) | **either-fine:** pick one. Defer-collapse is more permissive; reject-at-declaration is more decisive. Pure UX call. |
 | C4 | Attacker/blocker declaration undo | `undeclare_attacker` / `undeclare_blocker` actions exist (engine.gd) | No undo — declarations atomic; pre-commit state lives in UI selection | 🟡 | **godot:** align on proto's UI-tracked model. Build attacker/blocker selection as UI state in `game_board.gd`; engine receives one `declare_attackers([list])` / `declare_blockers({map})` action on commit; remove `undeclare_*` actions from `Action`. Smaller engine API, cleaner state, UI bugs no longer corrupt engine. |
@@ -94,7 +94,7 @@ This is purely a player-experience choice. MTG itself has no formal rule on take
 | # | Area | Godot | Proto | Tag | TO-DO |
 |---|---|---|---|---|---|
 | D0 | Stack resolution order | LIFO via `Stack.push` / `Stack.pop_top` (engine.gd:628, 669). Caster retains priority after cast (engine.gd:649 in `_do_cast_spell`). | LIFO via `G.stack.push` / `G.stack.pop` (engine.js:2867, 3874). Caster retains priority (MTG 117.1c). | ✅ Same | **already-aligned** |
-| D1 | Multi-effect target state | Live state read at each effect's resolution | Pre-resolution snapshot of all targets (engine.js:3900-3938) | 🔴 (when multi-effect spells are added) | **both:** revised per effects-plan §3.6. The correct MTG-canonical behavior is a HYBRID: live state by default for targets still in their original zone; **last-known-information snapshot for targets that have left their zone between effects**. Proto's "always snapshot pre-resolution" is the wrong granularity; Godot's "always live" misses the Swords-to-Plowshares case. Both engines add a `last_known_info` field on the CardInstance captured at zone-exit time. Implementation lives with the effects refactor (`docs/plans/plan-effects-refactor.md` §3.6). |
+| D1 | Multi-effect target state | Live state read at each effect's resolution | **Hybrid (§3.6):** `{from:'target_*'}` reads LIVE state while the target is on the battlefield, falls back to the last-known-info snapshot once it has left its zone (`liveTargetView` in `resolveExpr`, engine.js). | ✅ (proto) / 🔴 godot | **PROTO: DONE (v2.0.77)** — the MTG-canonical HYBRID: live state by default for targets still in their original zone (Predate: pump-then-fight uses the boosted power); **last-known-information for targets that have left their zone between effects** (Swords/Exorcist: exile, then gain life = its power). `findCard` is battlefield-only, which is exactly "still in its expected zone." Forced into existence by Predate — the first card whose effects buff-then-read the same target. **GODOT: pending** — adopt the same hybrid when Godot grows multi-effect target-reading spells. |
 | D2 | `pump` effect duration | Parametrized via `duration: "eot"` / `"permanent"` | **DONE (proto):** one `pump` with `duration` — `addCounter` collapsed to `pump duration:"permanent"`; signed pump absorbs `weaken`; `scope` absorbs `pumpAllYours`. | ✅ Aligned | proto matches Godot's parametrized pattern; closed. |
 | D3 | `gain_life` flexibility | Always to `ctx.controller` | Can route via `params.who` or target descriptor | 🟡 | **godot:** extend `gain_life.gd` to accept `who`/`target` parameters per proto's pattern. Enables future "target opponent gains N life" cards. |
 | D4 | `gain_life` sign-based delta | Refuses non-positive amounts (warn+skip) | Unified signed life-delta: any integer; sign → event direction. `gain_life` AND `damagePlayer` fire `life_changed(delta)`; `is_life_gain`(delta>0)/`is_life_loss`(delta<0) branch on it. | ✅ (proto) | **PROTO: DONE** — gain_life signed half landed earlier (`test_signed_life`); v2.0.42 closed the gap where damage (burn/combat) didn't fire the directional event, so `is_life_loss` now fires from all life-loss sources. Card-text renders sign ("gain N"/"lose N"). **GODOT: pending** — adopt the unified life-delta effect. |
@@ -119,7 +119,7 @@ Real MTG card (not in proto today): *Swords to Plowshares — "Exile target crea
 - Pure live state (Godot's current default) would fail here — the target's power isn't queryable from a removed-from-zone card.
 - Proto's pre-resolution snapshot accidentally handles this case but for the wrong reason (it snapshots ALL targets, not just departed ones).
 
-**The hybrid (what we're aligning on)**: live state by default; last-known-information snapshot only when a target has left its expected zone. Both engines need updating; the implementation lives with the effects refactor.
+**The hybrid (what we're aligning on)**: live state by default; last-known-information snapshot only when a target has left its expected zone. **Proto implements this as of v2.0.77** (`liveTargetView` in `resolveExpr`: live `getStats` while `findCard` locates the target on the battlefield, else the snapshot — Predate exercises Scenario A, Swords/Exorcist exercise Scenario B). Godot still needs the same hybrid when it grows multi-effect target-reading spells.
 
 ### D4 detail — non-positive life gain
 
@@ -142,7 +142,7 @@ Both forms produce identical mana pool changes. Cards using `{"kind": "add_mana"
 | E2 | Predicate composability + registry size | 1 monolithic predicate (`opp_lost_life_this_turn`); registry is name→function | 14 monolithic predicates; registry is name→function | 🔴 | **both:** full plan in [`docs/plans/plan-zone-change-and-composable-predicates.md`](plans/plan-zone-change-and-composable-predicates.md) (combined with E1). Refactor to atomic predicates with expression composition (single name / list-AND / `{op, terms}` tree). 12 atomic primitives identified cover proto's 14 monolithic predicates. Boot validator walks expression trees. Pre-empts tech debt before Phase 6 expansion. **PROTO: DONE** — 12 atomics + evaluator + parser live; all 97 card triggers + generator + mercurial pool migrated; legacy `TRIGGER_CONDITIONS` removed. **GODOT: pending** — see [`docs/archive/GODOT-QA-TODO.md`](archive/GODOT-QA-TODO.md). |
 | E3 | Queue-and-drain pattern | Same | Same | ✅ Same | **already-aligned** |
 | E4 | APNAP drain order | Yes (engine.gd:1449) | Yes (engine.js:2820) | ✅ Same | **already-aligned** |
-| E5 | Intervening-"if" re-check on resolution | Not implemented | Not implemented | ✅ Same (mutual deviation from MTG 603.4) | **either-fine:** implement on both sides if any card needs it. Already in Godot's BACKLOG. |
+| E5 | Intervening-"if" re-check on resolution | Not implemented | Not implemented | ✅ Same (mutual deviation from MTG 603.4) | **either-fine:** implement on both sides if any card needs it. |
 | E6 | Trigger chain depth cap | None | 100 (engine.js:2731) | 🟡 | **godot:** add the cap. The "bet on drain correctness" stance from CLAUDE.md doesn't survive contact with real card design — the user has already accidentally produced infinite-loop card combinations on proto. The cap costs one counter + one comparison; the defensive value (preventing a hung session, surfacing the bug at the right place) is high. Mirror proto's 100-depth threshold. CLAUDE.md "Patterns to NOT replicate" entry to be removed in the same commit. |
 | E7 | Auto-pick trigger target (AI) | Greedy: face damage first → first creature | Effect-aware scoring (damage prefers killable, pump prefers own best) | 🟡 | **godot:** upgrade AI auto-pick to effect-aware scoring as the AI iterates (Phase 6+ AI work). |
 | E8 | Death triggers fire from graveyard | Yes — `subject_card` in event payload | Yes — `extraSources` in emit call | ✅ Same | **already-aligned** |
@@ -226,5 +226,5 @@ The audit surfaced one claim that turned out to be wrong; logging it here so it 
 ## Maintaining this file
 
 - When an item is fixed in one implementation, update the affected row and either delete the row or move it to a "Recently aligned" section with a date.
-- When a new divergence is discovered, add a row with a stable ID. Don't renumber existing rows — IDs are referenced from RULES.md and elsewhere.
+- When a new divergence is discovered, add a row with a stable ID. Don't renumber existing rows — IDs are referenced from the rulebook and elsewhere.
 - The TO-DO column is part of the row, not a separate tracker. When work begins on a TO-DO, no need to migrate it elsewhere; just check status here.

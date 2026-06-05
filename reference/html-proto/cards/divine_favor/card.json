@@ -1,6 +1,6 @@
 {
   "card_id": "divine_favor",
-  "art": "☀",
+  "art": "art.png",
   "cost": {
     "W": 1,
     "C": 1

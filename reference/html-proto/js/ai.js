@@ -12,7 +12,7 @@
 // them. Keep them in sync with the if-chain in scoreSpellTargetForMode.
 const TARGET_SCORED_KINDS = new Set([
   'damage', 'affect_creature', 'pump', 'add_counter', 'gain_life', 'discard',
-  'grant_keyword', 'fight_target', 'untap', 'move_card', 'sacrifice', 'annihilate',
+  'grant_keyword', 'fight', 'untap', 'move_card', 'sacrifice', 'annihilate',
   'rip', 'symmetricize', 'change_control', 'add_type', 'set_types',
 ]);
 const NOT_TARGET_SCORED_KINDS = new Set([
@@ -126,7 +126,7 @@ function spellValueForEffects(effects) {
       }
     }
     else if (e.kind === 'add_mana') v += 3;
-    else if (e.kind === 'fight_target') v += 5;
+    else if (e.kind === 'fight') v += 5;
     // Type-change (best-guess valuation). add_type that animates (carries P/T)
     // is worth the body it makes; a bare add_type ("becomes an artifact") has no
     // payoff today, so ~1. set_types strips a creature's types → neutralization:
@@ -148,7 +148,7 @@ const VALUED_EFFECT_KINDS = new Set([
   'damage', 'pump', 'add_counter', 'affect_creature',
   'symmetricize', 'apply_sticker', 'counter', 'add_mana', 'gain_life', 'draw',
   'move_card', 'discard', 'grant_keyword', 'create_tokens', 'rip',
-  'chooses', 'schedule_delayed', 'change_control', 'fight_target',
+  'chooses', 'schedule_delayed', 'change_control', 'fight',
   'apply_in_game_splice', 'sacrifice', 'add_type', 'set_types',
 ]);
 const UNVALUED_EFFECT_KINDS = new Set([
@@ -1195,27 +1195,96 @@ function spellPlayValue(state, who, card, opt) {
   return spellValueForEffects(modeEffects) + scoreUntargetedSituation(state, who, modeEffects);
 }
 
+// Score a `fight` as ONE combatant-vs-combatant exchange off its operands (not
+// per-slot — a fighter slot is our own creature, which the per-target scorer would
+// reject). Mirrors the fight handler's operand resolution against `state` (slots
+// from the action targets, {select} = our biggest). `statBySlot` folds in any
+// same-spell stat boost landing on a combatant's slot (Predate's pump), so the
+// AI scores the fight WITH the buff it's about to apply.
+function scoreFightExchange(state, who, fightEff, targets, statBySlot) {
+  const us = who;
+  const find = (iid) => {
+    for (const w of ['you', 'opp']) {
+      const c = state[w].battlefield.find(x => x.iid === iid);
+      if (c) return { card: c, controller: w };
+    }
+    return null;
+  };
+  const ops = Array.isArray(fightEff.operands) ? fightEff.operands : [];
+  const out = new Array(ops.length).fill(null);
+  const used = new Set();
+  ops.forEach((op, i) => {
+    if (op && op.slot != null) {
+      const t = targets && targets[op.slot];
+      const r = (t && t.kind === 'creature') ? find(t.iid) : null;
+      if (r) r.bonus = (statBySlot && statBySlot[op.slot]) || null;   // same-spell pump on this slot
+      out[i] = r; if (r) used.add(r.card.iid);
+    }
+  });
+  ops.forEach((op, i) => {
+    if (out[i]) return;
+    const ours = state[us].battlefield.filter(c => hasType(c, 'Creature') && !used.has(c.iid));
+    if (!ours.length) return;
+    ours.sort((a, b) => ENGINE.getStats(b)[0] - ENGINE.getStats(a)[0]);
+    out[i] = { card: ours[0], controller: us }; used.add(ours[0].iid);
+  });
+  const [r0, r1] = out;
+  if (!r0 || !r1) return -100;
+  const ourR = r0.controller === us ? r0 : r1;
+  const theirR = r0.controller === us ? r1 : r0;
+  const stats = (r) => {
+    const [p, t] = ENGINE.getStats(r.card);
+    return [p + (r.bonus ? r.bonus.power : 0), t + (r.bonus ? r.bonus.toughness : 0)];
+  };
+  const [ourPow, ourTou] = stats(ourR);
+  const [theirPow, theirTou] = stats(theirR);
+  let score = 0;
+  if (ourPow >= theirTou) score += 30 + theirPow + theirTou;   // we kill
+  if (theirPow >= ourTou) score -= 25 + ourPow + ourTou;       // we die
+  return score;
+}
+
 // Score a multi-target spell by summing per-slot scores. Single-target
 // collapses to scoreSpellTargetForMode. Approximate when effects interact.
 function scoreMultiTargetSpell(state, who, card, targets, modeIdx) {
   if (!Array.isArray(targets) || targets.length === 0) return 0;
   const modeEffects = ENGINE.effectsForMode(card, modeIdx);
+  // Same-spell stat boosts (pump / add_counter) that land on a slot — folded into
+  // the fight estimate so a buff-then-fight (Predate) is scored post-buff.
+  const statBySlot = {};
+  for (const eff of modeEffects) {
+    if (eff && (eff.kind === 'pump' || eff.kind === 'add_counter')
+        && eff.target_slot != null && !eff.scope) {
+      const s = statBySlot[eff.target_slot] || { power: 0, toughness: 0 };
+      s.power += eff.power || 0; s.toughness += eff.toughness || 0;
+      statBySlot[eff.target_slot] = s;
+    }
+  }
+  // fight scores as a single exchange off its operands (additive — 0 if absent).
+  let fightScore = 0, hasFight = false;
+  for (const eff of modeEffects) {
+    if (eff && eff.kind === 'fight' && Array.isArray(eff.operands)) {
+      hasFight = true; fightScore += scoreFightExchange(state, who, eff, targets, statBySlot);
+    }
+  }
   const slotsUsed = new Set();
   for (const eff of modeEffects) {
+    if (eff && eff.kind === 'fight') continue;   // scored above, not per-slot
     if (ENGINE.effectNeedsTarget && ENGINE.effectNeedsTarget(eff)) {
       slotsUsed.add(eff.target_slot || 0);
     }
   }
   if (slotsUsed.size === 0) {
+    if (hasFight) return fightScore;
     // New model (§3.5): a top-level `target` step (bare effects) is a single
     // target — score it like the legacy single-target path.
     if (card.target) return scoreSpellTargetForMode(state, who, card, targets[0], modeIdx);
     return 0;
   }
-  if (slotsUsed.size === 1) {
+  if (slotsUsed.size === 1 && !hasFight) {
     return scoreSpellTargetForMode(state, who, card, targets[0], modeIdx);
   }
-  let total = 0;
+  let total = fightScore;
   for (const slot of slotsUsed) {
     const t = targets[slot];
     if (!t) continue;
@@ -1384,6 +1453,14 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
   // "you gain 4 life AND that opponent loses 2" — the drain is the targeted half).
   let eff = modeEffects.find(e => e.target && e.target !== 'self');
   if (!eff && card.target) eff = modeEffects.find(e => e.kind !== 'chooses' && e.kind !== 'apply_sticker' && e.scope == null);
+  if (!eff && card.target) {
+    const stickerSetTypes = modeEffects.find(e => e.kind === 'apply_sticker'
+      && e.sticker && e.sticker.kind === 'set_types');
+    // Artifice Triumphant's sticker looks permanent at the run layer, but the
+    // granted reactivation ability makes it a soft tempo neutralize in-game.
+    // Leave duration absent so the set_types scorer uses its tempo base.
+    if (stickerSetTypes) eff = { ...stickerSetTypes.sticker, kind: 'set_types' };
+  }
   if (!eff) return 0;
   if (eff.kind === 'sacrifice' || eff.kind === 'annihilate') {
     // Edict: target(player) → chooses → sacrifice/annihilate (→ rip). The targeted
@@ -1446,6 +1523,14 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
     if (!c || c.controller === us) return -100;
     if (c.card.keywords.includes('hexproof')) return -100;
     if (!hasType(c.card, 'Creature')) return -100;        // only a creature is worth neutralizing
+    // Artifice Triumphant grants "pay one mana of each of this card's colors:
+    // become a creature until EOT." On an originally colorless creature that
+    // costs zero, so neutralizing it is usually a mistake. Keep a score floor
+    // of 1: the boss prefers colored targets, but can still give the player the
+    // amusing free-reactivation mutation when no better target is available.
+    if (modeEffects.some(e => e.kind === 'apply_sticker'
+          && e.sticker && e.sticker.kind === 'grant_activated_ability')
+        && (!Array.isArray(c.card.colors) || c.card.colors.length === 0)) return 1;
     const base = (eff.duration === 'permanent') ? 20 : 8;
     return base + ENGINE.getCardValue(c.card, 'kill') + laneOpeningBonus(state, us, target.iid);
   }
@@ -1610,7 +1695,7 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
     const [pow] = ENGINE.getStats(c.card);
     return 20 + pow;
   }
-  if (eff.kind === 'fight_target') {
+  if (eff.kind === 'fight') {
     if (target.kind !== 'creature') return -100;
     const c = ENGINE.findCard(target.iid);
     if (!c) return -100;
@@ -1886,4 +1971,3 @@ return {
 };
 })();
 // END HEURISTIC AI
-
