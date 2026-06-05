@@ -213,8 +213,7 @@ function render() {
   if (G.pendingSearch && G.pendingSearch.who === 'you') {
     Modal.show('searchModal', { dismissible: false });
     setText('searchTitle', `${G.pendingSearch.source.toUpperCase()} — PICK A CARD`);
-    const filter = G.pendingSearch.filter || {};
-    const matches = G.you.library.filter(c => !filter.type || hasType(c, filter.type));
+    const matches = G.you.library.filter(c => ENGINE.matchesSearchFilter(c, G.pendingSearch.filter));
     // Native card size (scale null) — the search list can be long, so cards stay
     // at hand size rather than the 2× showcase the meta pickers use.
     renderCardPicker(

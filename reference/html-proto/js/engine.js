@@ -1691,12 +1691,21 @@ function placeCardOnBattlefield(ctx, card, fromZone, post) {
   }
 }
 
-// Library-search filter match. Filter shape mirrors pendingSearch.filter
-// ({type, sub}); empty filter matches anything.
+// Library-search filter match. Shorthands emit string filters ('creature',
+// 'land') while hand-authored effects may carry object filters ({type, sub}).
+// Normalize both shapes so engine, UI, and legal-action enumeration agree.
+function normalizeSearchFilter(filter) {
+  if (!filter) return {};
+  if (typeof filter === 'string') {
+    return { type: filter[0].toUpperCase() + filter.slice(1).toLowerCase() };
+  }
+  return filter;
+}
 function matchesSearchFilter(card, filter) {
-  if (!filter) return true;
+  filter = normalizeSearchFilter(filter);
   if (filter.type && !hasType(card, filter.type)) return false;
   if (filter.sub && !hasType(card, filter.sub)) return false;
+  if (filter.subtype && !hasType(card, filter.subtype)) return false;
   return true;
 }
 // Search library → hand (prompt-driven, filtered): the searchCreature idiom.
@@ -5044,6 +5053,7 @@ function doSearchPick(who, cardIid) {
   const lib = G[who].library;
   const idx = lib.findIndex(c => c.iid === cardIid);
   if (idx < 0) return;
+  if (!matchesSearchFilter(lib[idx], G.pendingSearch.filter)) return;
   const card = lib.splice(idx, 1)[0];
   G[who].hand.push(card);
   shuffle(lib);
@@ -5552,9 +5562,7 @@ function isLegalAction(who, action) {
       if (!G.pendingSearch || G.pendingSearch.who !== who) return false;
       const card = G[who].library.find(c => c.iid === action.cardIid);
       if (!card) return false;
-      if (G.pendingSearch.filter && G.pendingSearch.filter.type
-          && !hasType(card, G.pendingSearch.filter.type)) return false;
-      return true;
+      return matchesSearchFilter(card, G.pendingSearch.filter);
     }
     case 'triggerTargetPick': {
       if (!G.pendingTriggerTarget || G.pendingTriggerTarget.controller !== who) return false;
@@ -5825,9 +5833,8 @@ function getLegalActions(who) {
   }
   // Library search picks
   if (G.pendingSearch && G.pendingSearch.who === who) {
-    const filter = G.pendingSearch.filter || {};
     for (const card of G[who].library) {
-      if (filter.type && !hasType(card, filter.type)) continue;
+      if (!matchesSearchFilter(card, G.pendingSearch.filter)) continue;
       actions.push({type:'searchPick', cardIid: card.iid});
     }
   }
@@ -6301,6 +6308,7 @@ return {
   cardHasEffect,
   pickBestTriggerTarget,
   matchFilter,
+  matchesSearchFilter,
   // Effects seam exposed for tests (Slice 3).
   applyEffect, creaturesInScope, sevToNum, numToSev,
   // Static-lord keyword-grant seam + its leave-play cleanup, exposed for tests.
