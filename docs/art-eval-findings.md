@@ -148,3 +148,13 @@ _Correction (typo): the "good kind of bad" detailed image is **1.06 = CONTROL** 
 ## C1 SCORECARD (n=5, USER GOLD)
 searing(blast)=C1 | shock(blast)=CONTROL | unsummon(bounce)=mixed | murder(kill)=tie | apex(creature)=CONTROL
 = **1 C1 win / 2 control wins / 1 mixed / 1 tie.** C1 is NOT improving on the user's eye (trending negative). The ONE consistent, replicated C1 effect is BEHAVIORAL: wider/more-adventurous composition exploration ("different, not better"). DO NOT merge C1. Recommend concluding the C1 test after ~1 more card.
+
+## C1 A/B #6 — swamp (BASIC LAND; C1 INERT by design) — skill-v1 vs skill-v1+C1
+- Both arms nominated gen_06 @ the SAME seed 883506938 (different prompts).
+- Both neutral judges → TREATMENT (medium) — but **C1 is definitionally inert on a land** (no target/effect); the treatment's edge is prompt-craft VARIANCE (tighter black palette), NOT C1. NOT a C1 data point.
+- ✅ **NO OVERREACH:** C1 forced no spurious subject/victim/action into the landscape — it correctly stayed out of the way. C1 is harmless where irrelevant.
+- User gold: **2.04 = CONTROL** — a NON-nominated warm-amber-dusk roll that the agent AND both judges rejected on color identity, but the user loves on pure feel ("je ne sais quoi"). Purest human-taste-vs-robot divergence of the run.
+- Keeper: 2.04 (control).
+
+## META-FINDING reinforced
+Human aesthetic judgment repeatedly diverges from BOTH the LLM judges AND the agents' self-selection (swamp 2.04, searing 1.07, mirror 2.03, scarif 2.06). Validates "user is gold" + the generation > self-selection finding. An automated judge would systematically miss these.
