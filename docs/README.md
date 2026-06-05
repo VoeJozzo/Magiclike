@@ -2,19 +2,33 @@
 
 Map of the documentation set. Each doc has a single, distinct job; this page is the entry point that says which is which and how they relate. (Onboarding + architecture *decisions* live in the root [`/CLAUDE.md`](../CLAUDE.md); the html-proto has its own [`reference/html-proto/CLAUDE.md`](../reference/html-proto/CLAUDE.md).)
 
-**Layout:** reference docs live at `docs/` root; forward-looking plan specs live in [`plans/`](plans/); superseded handoff narratives are kept for history in [`archive/`](archive/).
+**Layout:** reference docs live at `docs/` root; durable concept pages (the conceptual *why* layer) and the **canonical rulebook** (`wiki/rules/`) live in [`wiki/`](wiki/); forward-looking plan specs live in [`plans/`](plans/); superseded handoff narratives are kept for history in [`archive/`](archive/).
 
 ## Reference docs — "how things are"
 
 | Doc | Answers |
 |---|---|
-| [`RULES.md`](RULES.md) | **Canon.** How the game works, in plain English, independent of code. When doc and code disagree, this wins. |
-| [`ARCHITECTURE.md`](ARCHITECTURE.md) | Module map of both codebases — where each piece of behavior lives, with LOC and public surface. |
+| [`wiki/rules/`](wiki/rules/rulebook.md) | **Canon.** How the game works, in plain English, independent of code. When doc and code disagree, this wins. The rulebook — one page per §. |
+| [`ARCHITECTURE.md`](ARCHITECTURE.md) | **Engine reference** — where Godot behavior lives (modules) **and** its runtime data contracts (action descriptors, the effect-handler `ctx`, signals, awaiting states, `CardInstance`/`EngineState` shapes), by subsystem. Defers to PROTOCOL for the wire vocabulary; the html-proto's internals live in its own `CLAUDE.md`. |
 | [`PROTOCOL.md`](PROTOCOL.md) | **The cross-engine wire format** (between-engines contract): the `card.json` schema and the effect-kind / event-kind / predicate-id / target catalogs both engines must agree on. |
-| [`SPEC.md`](SPEC.md) | **Within-engine runtime contracts** (the other half of the partition): action descriptors, the effect-handler `ctx` shape, signals, awaiting states, CardInstance/EngineState runtime fields, save schema. Defers to PROTOCOL for the wire vocabulary. |
-| [`DIVERGENCE.md`](DIVERGENCE.md) | Where the Godot port and html-proto behave differently, each row tagged with severity + a to-do. RULES.md is the tie-breaker. |
+| [`DIVERGENCE.md`](DIVERGENCE.md) | Where the Godot port and html-proto behave differently, each row tagged with severity + a to-do. The rulebook (`wiki/rules/`) is the tie-breaker. |
+| [`wiki/`](wiki/) | **Durable concepts** — the conceptual *why* layer: engine architecture rationale, design discipline, the cross-engine relationship. Also home to the **canonical rulebook**, decomposed one-page-per-§ into [`wiki/rules/`](wiki/rules/). Obsidian-style pages, co-located with the code. |
 
-**Wire vs runtime:** `PROTOCOL.md` owns the format shared *between* engines; `SPEC.md` owns the shapes internal to *one* engine. When they touch, SPEC defers to PROTOCOL.
+**Wire vs runtime:** `PROTOCOL.md` owns the format shared *between* engines; `ARCHITECTURE.md` owns the shapes internal to the Godot engine. When they touch, ARCHITECTURE defers to PROTOCOL.
+
+## Find by topic
+
+The reference docs are partitioned by **job**; most real questions are **topics** that span several. Where each topic's facets live — canon · wire · engine · gap · active plan:
+
+- **Priority & the stack** — [RULES §600](wiki/rules/600-priority-and-the-stack.md) · [ARCHITECTURE](ARCHITECTURE.md) §2.4 · [DIVERGENCE](DIVERGENCE.md) B6/E6 · plan: [priority-window](plans/plan-priority-window-refactor.md)
+- **Combat** — [RULES §800](wiki/rules/800-combat.md) · [ARCHITECTURE](ARCHITECTURE.md) §2.4 · [DIVERGENCE](DIVERGENCE.md) C
+- **Triggered abilities** — [RULES §1000](wiki/rules/1000-triggered-abilities.md) · [PROTOCOL](PROTOCOL.md) §3.3–§3.5 / §5 · [ARCHITECTURE](ARCHITECTURE.md) §2.6 · [DIVERGENCE](DIVERGENCE.md) E · plan: [zone-change + composable predicates](plans/plan-zone-change-and-composable-predicates.md)
+- **Effects** — [PROTOCOL](PROTOCOL.md) §3.2 / §4 · [ARCHITECTURE](ARCHITECTURE.md) §2.5 · [DIVERGENCE](DIVERGENCE.md) D · plan: [effects-refactor](plans/plan-effects-refactor.md)
+- **Stickers** — [RULES §1300](wiki/rules/1300-stickers.md) · [PROTOCOL](PROTOCOL.md) §3.2 (`apply_sticker`) · [DIVERGENCE](DIVERGENCE.md) D · plan: [effects-refactor §3.8](plans/plan-effects-refactor.md) · (Godot: Phase 7)
+- **Mana** — [PROTOCOL](PROTOCOL.md) §3.2 (`add_mana`) · [ARCHITECTURE](ARCHITECTURE.md) §2.5 · [DIVERGENCE](DIVERGENCE.md) D5 · plan: [effects-refactor §3.9](plans/plan-effects-refactor.md)
+- **Card data & types** — [PROTOCOL](PROTOCOL.md) §2 · [ARCHITECTURE](ARCHITECTURE.md) §2.7 · plan: [card-data-unification](plans/plan-card-data-unification.md) · (the `types[]` system shipped on proto → [archived](archive/plan-unified-type-system.md))
+- **AI** — [ARCHITECTURE](ARCHITECTURE.md) §2.8
+- **The "why"** (architecture rationale, design discipline, the cross-engine relationship) — [`wiki/`](wiki/)
 
 ## Operations — "how the project runs"
 

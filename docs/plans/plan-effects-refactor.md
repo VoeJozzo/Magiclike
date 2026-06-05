@@ -1,6 +1,6 @@
 # Refactor Plan: Unified Effects Registry — Audit, Decompose, and Align
 
-**Status:** Plan complete. **Partially executed on proto** (Godot side untouched). The proto-side Slice 3 work + a follow-up review-cleanup pass have landed; the large cross-engine pieces (full §3.5 targeting decomposition, all-card field snake_case, the §3.9 mana deep-clean, Godot adoption) remain. (Targeting model: the `target()`/`chooses()` decomposition in §3.5 is canonical throughout; the §3 disposition table's `target_filter` signatures are read via the lens note at its head.)
+**Status (2026-06-02):** Plan complete. **Partially executed on proto** (Godot side untouched). The proto-side Slice 3 work + a follow-up review-cleanup pass have landed; the large cross-engine pieces (full §3.5 targeting decomposition, all-card field snake_case, the §3.9 mana deep-clean, Godot adoption) remain. (Targeting model: the `target()`/`chooses()` decomposition in §3.5 is canonical throughout; the §3 disposition table's `target_filter` signatures are read via the lens note at its head.)
 
 ### Review-cleanup follow-up status (proto, as of v2.0.17)
 
@@ -23,7 +23,7 @@ A post-Slice-3 review produced a numbered punch-list (#1–#9 + #18 + #27). Disp
 Note: review #6's full §8.1 redesign (scope-aware *and* `target()`-step-aware valuation + boot coverage assertion) is broader than the v2.0.16 relocation — the coverage assertion (§7b) and scope-aware valuation already landed in Slice 3; the `target()`-step-aware reads are gated on #5/§3.5.
 
 **Pre-execution note:** `rip` is a **broad, zone-agnostic** "tear up that card, gone from your deck forever" primitive (§13) — it strips a card's deck-slot regardless of zone and composes after any targeting/removal (`target(player)→chooses(creature)→annihilate→rip` for a creature; `target(spell)→counter→rip` for a spell). Current code is the narrow bundled `ripPermanent` (battlefield-only, fires triggers — the accepted kludge); the broad decomposed form is the decided target. For the creature/edict case specifically it's one verb off an edict (edict uses `sacrifice`; rip-edict uses `annihilate`, built this pass — §13, review OBS 1). No open questions block execution.
-**Cross-references:** `docs/DIVERGENCE.md` items D1 (target target-state semantics — see §3.6), D2 (`pump` duration → `addCounter`), D3 (`gain_life` flexibility), D4 (`gain_life` signed delta), B4 (delayed-trigger machinery — required for `exile_until_eot` decomposition), C5 (killer attribution — adjacent), E1/E2 (event vocabulary + composable predicates, prerequisite for the `move_card` effect's destination semantics). `docs/RULES.md` §703 (target legality), §704 (resolution + fizzle), §904 (hexproof). `docs/SPEC.md` §1.4 (effect descriptor schema).
+**Cross-references:** `docs/DIVERGENCE.md` items D1 (target target-state semantics — see §3.6), D2 (`pump` duration → `addCounter`), D3 (`gain_life` flexibility), D4 (`gain_life` signed delta), B4 (delayed-trigger machinery — required for `exile_until_eot` decomposition), C5 (killer attribution — adjacent), E1/E2 (event vocabulary + composable predicates, prerequisite for the `move_card` effect's destination semantics). `docs/wiki/rules/700-casting-and-activating.md` §703–§704 (target legality, resolution + fizzle), `docs/wiki/rules/900-keywords.md` §904 (hexproof). `docs/ARCHITECTURE.md` §1.4 (effect descriptor schema).
 **Effort estimate:** **L** (~6–6.5 days end-to-end across both engines, ~92–97 hours, including card migration, the §3.9 mana deep-clean + full-convergence Godot land-as-ability adoption, the §8.1 AI-valuation lockstep redesign + boot coverage assertion, the human `chooses()` prompt, tests, splice helper extraction, and registry consolidation; this is by far the largest of the planned refactors because it touches all 258 proto cards, all 31 Godot templates, and rewrites the dispatch table itself).
 
 Produced by an Explore/Plan pass against `reference/html-proto/js/engine.js` (EFFECTS table at line 1366, 38 handlers below it), `engine/effects/*.gd` (Godot's 5 handlers), `data/card_resource.gd`, and all 31 Godot templates plus 258 proto card JSONs. The goal is to land the long-term effects design (a small registry of atomic effects, parameterized target filters, decomposed compounds) before Phase 6 card-pool expansion makes mechanical migration expensive.
@@ -963,7 +963,7 @@ exile_until_eot decomposition
 ### 9.3 Adjacent items
 
 - **C5 (killer attribution) is adjacent, not a blocker.** `endomorph_absorb` reads `ctx.event.card` (the dying victim) and `endomorph` itself as the killer. The "killer" identity comes from `card.killedBy = ctx.controller` set inside `removeCreature`/`removeAll`/`destroyAndStickerSlot`. The unified `affect_creature` effect must preserve this — flagged as a step in §10. Godot's port of `affect_creature` will need C5 to work for absorb mechanics, but the effect itself can land before C5 lands as long as `killedBy` is plumbed.
-- **D1 (multi-effect target snapshot) is adjacent.** When a single spell has multiple effects all referencing the same target (Scarification post-decomposition is exactly this case), do they all see the same snapshot or live state? Decision: live state per effect (matches Godot's existing behavior, matches MTG canon per D1). Document in SPEC.md.
+- **D1 (multi-effect target snapshot) is adjacent.** When a single spell has multiple effects all referencing the same target (Scarification post-decomposition is exactly this case), do they all see the same snapshot or live state? Decision: live state per effect (matches Godot's existing behavior, matches MTG canon per D1). Document in ARCHITECTURE.md.
 
 ---
 
@@ -999,7 +999,7 @@ Each step leaves both engines in a runnable, test-passing state. Recommend seque
 
 12. **Stapler's `noop` removal.** Replace with `target_slots: 2` on the activated ability schema. Delete `noop` from EFFECTS.
 
-13. **Update SPEC.md** to describe the new registry, the `target()`/`chooses()` targeting model + mass `scope` (§3.5), the function-call shorthand, the per-kind schema. Update DIVERGENCE.md rows D2 (closed by step 3+5), D3 (closed by step 3 if Godot extends `gain_life`), D4 (closed by step 3 across both).
+13. **Update ARCHITECTURE.md** to describe the new registry, the `target()`/`chooses()` targeting model + mass `scope` (§3.5), the function-call shorthand, the per-kind schema. Update DIVERGENCE.md rows D2 (closed by step 3+5), D3 (closed by step 3 if Godot extends `gain_life`), D4 (closed by step 3 across both).
 
 **Which engine first?** Steps 1–4 in parallel across both engines (no card data touched yet). Step 5 (Godot) before step 6 (proto) — Godot's small pool is the low-stakes proving ground for the new dispatcher. Steps 7+ in proto first, then mirror into Godot's dispatcher.
 
@@ -1036,7 +1036,7 @@ Per-engine, per-step. S = an hour or two, M = half a day to a day, L = multi-day
 | `exile_until_eot` decomposition (gated on B4) | both | S (~2h) AFTER B4 lands |
 | Stapler's `noop` removal + `target_slots: N` ability schema generalized to 6 cards | both | S (~3h) — covers `stapler`, `twinStrike`, `branchingBolt`, `drainLife`, `rootsAndBranches`, `swordAndSorcery` |
 | New unit tests for each atomic + hexproof regression suite + last-known-info regression + iid-mint regression + boot-validator tests | both | M (~7h) |
-| SPEC.md + DIVERGENCE.md updates (including D1 revision per §3.6) | doc | S (~2h) |
+| ARCHITECTURE.md + DIVERGENCE.md updates (including D1 revision per §3.6) | doc | S (~2h) |
 
 **Total: ~92–97 hours = L** (~6–6.5 days, sliceable into the steps above). Up from the original ~64–69h: the §3.9 mana deep-clean was never line-itemed (+~8h proto), full-convergence option 3 adds Godot land-as-ability adoption (+~5h), the human `chooses()` prompt (review GAP 2) adds ~3h, and the §8.1 AI-valuation lockstep redesign + boot coverage assertion (review #1) adds ~12h across both engines. Biggest unknowns: `move_card`'s post-action plumbing (~3h estimated, could be more if zone-emit semantics in Godot diverge from proto's `cardEntersBattlefield` patterns), the `migrate-effects.js` script (~8h estimated, could blow up if the existing card data has format inconsistencies the audit missed), and last-known-info snapshot capture (~4h estimated, depends on how many "card property read" sites there are across effects).
 
@@ -1180,4 +1180,4 @@ Do the creature-verb swap **this pass** (review OBS 1 — we have the tools; the
 - `/home/user/Magiclike/reference/html-proto/js/engine.js` (the EFFECTS table at line 1366; receives all dispatch changes, dead-code deletions, and the parameterization work)
 - `/home/user/Magiclike/data/card_resource.gd` (the `triggered_abilities` / `on_cast_effects` / `activated_abilities` schema fields; gains `target_slots` for Stapler-style multi-target abilities)
 - `/home/user/Magiclike/reference/html-proto/tools/migrate-effects.js` (new — the proto card-data migration script, modeled on the predicate plan's `migrate-triggers.js`)
-- `/home/user/Magiclike/docs/SPEC.md` §1.4 (effect descriptor schema; rewritten to document the 19-effect registry and the shorthand)
+- `/home/user/Magiclike/docs/ARCHITECTURE.md` §1.4 (effect descriptor schema; rewritten to document the 19-effect registry and the shorthand)
