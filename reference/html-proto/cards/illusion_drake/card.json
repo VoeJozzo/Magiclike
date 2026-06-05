@@ -1,6 +1,6 @@
 {
   "card_id": "illusion_drake",
-  "art": "🐉",
+  "art": "art.png",
   "cost": {
     "U": 1,
     "C": 2
@@ -13,6 +13,7 @@
   "toughness": 2,
   "types": [
     "Creature",
+    "Illusion",
     "Drake"
   ]
 }
