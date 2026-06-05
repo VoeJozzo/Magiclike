@@ -32,12 +32,11 @@ The bots exist purely for **attribution** (tracking which AI did what). They're 
 
 `~/.config/magiclike/secrets.env` (perms `600`, outside the repo):
 - `GEMINI_API_KEY` — Google AI Studio key (Gemma / Gemini model calls).
-- `GH_PAT_GEMMA` — **to be derived at runtime** from the keyring (`gh auth token --user Thaumaturge-Gemma`) rather than kept as a stored second copy *(being wired)*.
+- `GH_PAT_GEMMA` — **derived at runtime** from the keyring; `secrets.env` holds `export GH_PAT_GEMMA="$(gh auth token --user Thaumaturge-Gemma)"`, not a stored copy.
 
 ## Push / PR flow
 
-- **Push transport:** the gh credential-helper —
-  `git config credential.https://github.com.helper '!gh auth git-credential'`, username-pinned per worktree. Bypasses Git Credential Manager (which is what pops the desktop prompt). *Active for all four accounts — each is in the gh keyring.*
+- **Push transport:** bots push *as themselves* using their keyring token (the delegation skill embeds it in the push URL), so the `require_last_push_approval` rule lets the owner approve. A promptless upgrade — the **gh credential-helper** (`git config credential.https://github.com.helper '!gh auth git-credential'`, username-pinned per worktree, bypassing Git Credential Manager) — is **not yet wired**; all four accounts are keyring-ready for it, but it's only worth it if GCM starts prompting.
 - **Open a PR as a bot** (no global account switch):
   ```bash
   GH_TOKEN="$(gh auth token --user <bot>)" gh pr create --base dev --title "…" --body "…"
