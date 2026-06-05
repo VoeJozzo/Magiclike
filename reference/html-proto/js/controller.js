@@ -734,9 +734,9 @@ function applyTileColorFromTpl(div, tpl) {
   const step = 100 / colors.length;
   for (let i = 0; i < colors.length; i++) {
     const hex = TILE_COLOR_HEX[colors[i]] || '#888';
-    const start = (i * step).toFixed(1);
-    const end = ((i + 1) * step).toFixed(1);
-    stops.push(`${hex} ${start}%`, `${hex} ${end}%`);
+    const stopStart = (i * step).toFixed(1);
+    const stopEnd = ((i + 1) * step).toFixed(1);
+    stops.push(`${hex} ${stopStart}%`, `${hex} ${stopEnd}%`);
   }
   div.style.borderImage = `linear-gradient(45deg, ${stops.join(', ')}) 1`;
   div.style.borderImageSlice = '1';
@@ -805,7 +805,7 @@ function showMapTooltip(nodeEl, label) {
 function attachMapLongPress(el, label) {
   let pressTimer = null;
   let startX = 0, startY = 0;
-  const start = (x, y) => {
+  const beginMapLongPress = (x, y) => {
     startX = x; startY = y;
     pressTimer = setTimeout(() => {
       showMapTooltip(el, label);
@@ -821,11 +821,11 @@ function attachMapLongPress(el, label) {
   const cancel = () => {
     if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
   };
-  el.addEventListener('touchstart', (e) => start(e.touches[0].clientX, e.touches[0].clientY), { passive: true });
+  el.addEventListener('touchstart', (e) => beginMapLongPress(e.touches[0].clientX, e.touches[0].clientY), { passive: true });
   el.addEventListener('touchmove',  (e) => move(e.touches[0].clientX, e.touches[0].clientY), { passive: true });
   el.addEventListener('touchend',   cancel);
   el.addEventListener('touchcancel',cancel);
-  el.addEventListener('mousedown',  (e) => start(e.clientX, e.clientY));
+  el.addEventListener('mousedown',  (e) => beginMapLongPress(e.clientX, e.clientY));
   el.addEventListener('mousemove',  (e) => move(e.clientX, e.clientY));
   el.addEventListener('mouseup',    cancel);
   el.addEventListener('mouseleave', cancel);
