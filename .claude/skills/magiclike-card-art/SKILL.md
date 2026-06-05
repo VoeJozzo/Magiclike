@@ -163,6 +163,8 @@ The discipline isn't to ban them outright — the working Branching Bolt prompt 
 
 Red cards have red things. Blue has blue. Green has nature. Multicolor cards (like Verdant Charm) should visibly carry *all* their colors, meaningfully — not as a neutral wash. Map the card's mana cost to what the eye sees.
 
+**Drained or dead flesh is a color trap.** "Bone-white" and "waxy" render as literal, inhuman white. For a corpse or pallid skin, reach for "greyish, drained, but still human flesh," and give it explicit **contrast** against its surroundings — a pale human body beside a green zombie — so it reads as *a different thing*, not more of the same. *(Mortician's Assistant's corpse read as a second zombie until that contrast was forced.)*
+
 #### Describe what you want, not what you don't
 
 State the scene positively. Naming an unwanted element even to negate it — *"the sword is **not** planted in the ground"* — still puts that noun in front of the model, and text encoders handle negation poorly, so the named thing may show up anyway. Describe the thing you *do* want (*"the sword is buried in the victim's chest"*) and omit the rest. **Honesty flag:** how strongly negation backfires is **unconfirmed** — we noticed it anecdotally and never ran a controlled count, and it may be closer to a coin-flip than a rule. But describing positively is free and sidesteps the question entirely, so default to it. (If you want empty negative space, that's the `no_background` flag plus scene wording, not a "no X" clause.)
@@ -229,6 +231,8 @@ grep -vxF 'reference/html-proto/cards/<tplId>/art.png' .git/info/exclude > .git/
 
 A small inline preview is genuinely hard to evaluate for a 64×32 image. If the user can't tell what's going on, that's expected — open it in their image viewer for real assessment, don't fight the preview size.
 
+**Upscale to evaluate — for your own eyes, not just theirs.** A 64×32 PNG is nearly unreadable inline, for *you* as much as the user. Before you judge a roll or present it, nearest-neighbor-upscale it ~8× (to ~512×256) and Read *that* (`System.Drawing`, `InterpolationMode = NearestNeighbor`). And judge the **whole** image at size — *does it read as the thing?* — not merely whether the parts are present. The gestalt is exactly what the upscale reveals and the postage-stamp hides; it's also where the user's eye will out-see yours, so trust their read.
+
 **Surface every generation to the user — never silently bench a roll.** When you fire a batch (variance sampling, seed-lock tests, single-variable A/Bs), show the user *all* the results, not just the one you'd pick. Taste is the director's, not yours: a frame you'd discard may be exactly what they want, or perfect for a different card — and they paid for every generation. Send results as files (they render at real size, unlike the cramped inline preview) so the user can judge the full spread, not your edit of it.
 
 Then offer:
@@ -285,6 +289,8 @@ Sycophancy isn't humility, it's abdication. Folding on every pushback makes you 
 
 These are real prompts from the user's set. Look at *what each is doing*, not just the words. Six annotated below; the **full corpus** of ~60 prompts lives at `references/exemplar-prompts.txt` in this skill folder — read it on demand when hunting for an example of a specific mechanic, color, or move you don't see here.
 
+**Reuse what already worked, verbatim.** When a phrase nails an element, lift it word-for-word onto the next card instead of re-deriving it — it's pre-validated vocabulary, and re-inventing it just rolls the dice again. *(Mortician's Assistant's legible body — "its head lolls back, one pale arm and both bare feet dangle, and a paper toe-tag hangs from one big toe" — was reused wholesale the moment it landed.)*
+
 **Char** — mechanic-in-art for a "deals damage to you" spell:
 
 > "A powerful battlemage in red robes, destroying a bandit who unwisely attempted to ambush him on a medieval highway through a dense, old-growth forest. The battlemage has cast a fiery spell to finish the fight, obliterating the bandit, burning them to ash and bone, as the bandit burns to death and drops his club. A few wisps of flame turn back on the battlemage, searing his robes."
@@ -323,9 +329,24 @@ Not "a shadow battlemage." A specific moment: hovering, peering, jealous. The ch
 
 ---
 
-## Inpainting (when relevant)
+## Inpainting, compositing & editing
 
-If the user gets a result they mostly like but wants to *tweak one element* (change the background, replace a creature in the scene, recolor a part), pixflux supports `/v2/inpaint`. Same auth, takes the existing image + a mask + a description. Don't reach for it on the first iteration — only when the user explicitly wants surgical edits rather than a fresh roll.
+Pixflux generates whole images; `/v2/inpaint` *edits* them — and this is where the loop stops being one-shot generation and becomes real collaboration, up to and including the user painting pixels themselves. Reach for it when a result is mostly right and you want to surgically change, extend, or add to one region.
+
+**How to drive it.** POST `https://api.pixellab.ai/v2/inpaint` (same `Bearer` auth). Body: `description`, `image_size` (the working size, ≤ 200×200), `inpainting_image`, `mask_image`. Pass each image as **raw base64** — `{"type":"base64","base64":"<raw>"}`, with no `data:image/png;base64,` prefix. The **mask is white = regenerate, black = preserve**. The returned `image.base64` may itself come back as a data-URI — strip any prefix before you decode. Synchronous, ~3–5s.
+
+**Local prompts only.** The `description` names *what belongs in the masked patch* — `"stone wall"`, `"grass"`, `"deep shadow"` — never the whole scene. Inpaint repaints only the masked pixels; feed it the entire scene and it crams the whole thing into the hole. (PixelLab's own docs say the same: "describe what to generate in those areas.")
+
+**To add a new subject, give inpaint something real to blend.** Its gift is *blending and extending* — closing a background, recoloring a region, dissolving a seam, growing more of a texture. So the way to add a subject is to composite a real one in and let inpaint harmonize it:
+
+- **Composite + razor-blend.** Paste a real element into the scene — chopped from another roll (`DrawImage` with a source rect) or *hand-drawn by the user* — then mask a **razor-thin strip over only the mismatched seams** and inpaint with a local blend prompt. Surgical, not a flood-fill: the good paste stays put; only the joins dissolve. *(How Royal Assassin's killer got into the scene.)*
+- **Camera-pan / outpaint.** Subject jammed against an edge with no room beside it? Crop a strip off one side, slide everything over, pad the freed strip, mask it, and inpaint the new space — you've panned the camera and opened room to work. *(How we cleared space behind the passed-out noble.)*
+
+**White-canvas-as-mask.** Let the user leave (or paint yourself) a blank region to fill, then build the mask by **detecting near-white pixels** instead of hand-authoring it. Use a *tight* threshold (≈ R,G,B ≥ 242) so it grabs blank canvas but not a hand-drawn silver blade or a pale highlight — and always *view* the generated mask (and sanity-check its white pixel-count) before firing, so you never paint over the user's handiwork.
+
+**The user edits pixels too.** The loop is collaborative in both directions: the user may clean up artifacts, recolor, reposition, or draw an element *between* your AI steps. When they hand back an edited file, your job is to plumb it through — downscale it to working size, rebuild the mask, re-inpaint — and carry their detail forward. (Royal Assassin is a thing neither of you could have made alone: their camera-pan, their cleanup, their hand-drawn knife, your API plumbing.)
+
+**Levers worth reaching for** (in PixelLab's tool docs): **guidance weight** (prompt-adherence strength — raise it when an element keeps getting ignored), **negative description** (name what to *avoid*), **`forced_palette`** (lock the fill to the scene's colors for a seamless blend), **seed** (reproducibility), **crop-to-mask** (focus generation on the masked region). For higher-res or higher-quality edits there's **`/inpaint-v3`** — fetch its spec when you reach for it.
 
 ---
 
