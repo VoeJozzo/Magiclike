@@ -220,7 +220,7 @@ Two axes: **your own reluctance to delegate** (Claude defaults) and **Gemma's fa
 
 - **Secrets — where to find what you need.** Everything lives in ONE file, outside the repo so it can never be committed: `~/.config/magiclike/secrets.env` (Windows: `C:/Users/Joe/.config/magiclike/secrets.env`), perms `600`. It defines exactly two env vars:
   - `GEMINI_API_KEY` — the Google AI Studio key (`AQ.`-prefixed). Authenticates the model calls via the `?key=` query param (no OAuth).
-  - `GH_PAT_GEMMA` — a **classic** GitHub PAT (`ghp_`-prefixed, `repo` scope) for the `Thaumaturge-Gemma` bot. Used only for fork/push/PR.
+  - `GH_PAT_GEMMA` — the `Thaumaturge-Gemma` bot's **classic** GitHub PAT (`ghp_`-prefixed, `repo` + `read:org` scopes). All three bots' tokens now live in the **gh keyring** (`gh auth status`); `secrets.env` *derives* this one rather than storing a copy (see below). Used for push/PR.
 
   To use them: `source ~/.config/magiclike/secrets.env`, then reference `$GEMINI_API_KEY` / `$GH_PAT_GEMMA`. **Never print the values, never write them into a tracked file, never commit them.** When a command must echo (e.g. a push URL), pipe it through `sed "s#$GH_PAT_GEMMA#***#g"` first.
 
@@ -229,7 +229,8 @@ Two axes: **your own reluctance to delegate** (Claude defaults) and **Gemma's fa
   mkdir -p ~/.config/magiclike && umask 077
   cat > ~/.config/magiclike/secrets.env <<'EOF'
   export GEMINI_API_KEY='<paste AI Studio key>'
-  export GH_PAT_GEMMA='<paste classic repo-scoped PAT>'
+  # GH tokens live in the gh keyring now — `gh auth login` each bot first (classic PAT, repo+read:org), then derive it:
+  export GH_PAT_GEMMA="$(gh auth token --user Thaumaturge-Gemma)"
   EOF
   chmod 600 ~/.config/magiclike/secrets.env
   ```
@@ -247,7 +248,7 @@ Two axes: **your own reluctance to delegate** (Claude defaults) and **Gemma's fa
 
   The ~20 RPD is **per Flash model** (≈60 judgment reqs/day total), not shared. **Rule:** default to Gemma 4 31B; escalate to a Gemini-Flash ONLY when the task needs judgment, not just transformation.
 
-- **Gemma's GitHub identity** for delegated commits: bot account `Thaumaturge-Gemma`, email **`ThaumaturgeDevs@gmail.com`** (note the **`s`** — a typo'd `ThaumaturgeDev@gmail.com` was used for several early commits and left them showing as UNLINKED on GitHub, because the email must EXACTLY match a verified address on the bot account to link). Author each commit with `git -c user.name="Thaumaturge-Gemma" -c user.email="ThaumaturgeDevs@gmail.com" commit …` (no secret needed). Push using `GH_PAT_GEMMA`. **Never set this globally** or your own commits get mislabeled. If a commit shows UNLINKED, the email doesn't match the bot's verified one — re-author (`commit --amend --author=...`) + force-push the branch; GitHub re-links live. Full branch→push→PR recipe in the "Delegated git workflow" section below.
+- **Gemma's GitHub identity** for delegated commits: bot account `Thaumaturge-Gemma`, author email **`289474964+Thaumaturge-Gemma@users.noreply.github.com`** (its GitHub noreply — links to the account automatically and never exposes a real address; all three bots now use the `<id>+<login>@users.noreply.github.com` form). Author each commit with `git -c user.name="Thaumaturge-Gemma" -c user.email="289474964+Thaumaturge-Gemma@users.noreply.github.com" commit …` (no secret needed). Push using `GH_PAT_GEMMA`. **Never set this globally** or your own commits get mislabeled. Full branch→push→PR recipe in the "Delegated git workflow" section below.
 
 ---
 
@@ -311,40 +312,37 @@ opencode run --model google/gemma-4-31b-it "Use your tools to <task>. \
 
 ---
 
-## Delegated git workflow (fork → cross-fork PR)
+## Delegated git workflow (same-repo PR)
 
-`Thaumaturge-Gemma` is **not a collaborator** on `VoeJozzo/Magiclike` (`push:false` on upstream) but its PAT is a **classic token with `repo` scope**, so it CAN fork, push to its own fork, and open cross-fork PRs. It contributes the standard outside-contributor way: push to its **own fork**, open a **cross-fork PR** into `VoeJozzo:dev`, and you or Joe review + merge. (A *fine-grained* PAT on this non-collaborator account canNOT do this — it 403s on fork/PR. Use the classic `repo`-scoped token in `GH_PAT_GEMMA`.)
+`Thaumaturge-Gemma` is now a **write collaborator** on `VoeJozzo/Magiclike` (same as `Thaumaturge-Claude` and `Thaumaturge-ChatGPT`), so it pushes a branch **straight to the upstream repo** and opens a **same-repo PR** into `dev` — no fork. This unified all three bots onto one flow; the old fork → cross-fork dance is retired, and the `Thaumaturge-Gemma/Magiclike` fork is now vestigial. (The classic `repo`+`read:org` token in `GH_PAT_GEMMA` is what makes collaborator push/PR work — a *fine-grained* token can't contribute to a personal repo you don't own.)
 
-Validated end-to-end: fork `Thaumaturge-Gemma/Magiclike` created, branch pushed, and PR #41 opened into `dev` — all under the bot.
+Because the **bot** is the pusher, VoeJozzo (the CODEOWNER) can approve the PR cleanly — which is exactly what the branch-protection gate on `dev` requires.
 
 ```bash
-source ~/.config/magiclike/secrets.env
-BOT=Thaumaturge-Gemma; UP=VoeJozzo/Magiclike; AUTH="Authorization: Bearer $GH_PAT_GEMMA"
+source ~/.config/magiclike/secrets.env          # GH_PAT_GEMMA derives from the gh keyring
+BOT=Thaumaturge-Gemma; UP=VoeJozzo/Magiclike
+EMAIL=289474964+Thaumaturge-Gemma@users.noreply.github.com
 
-# 0. One-time: create the fork (ASYNC — poll GET .../repos/$BOT/Magiclike until it 200s
-#    before pushing; first push may need a few seconds after the POST returns)
-curl -s -X POST -H "$AUTH" "https://api.github.com/repos/$UP/forks" >/dev/null
-
-# 1. Branch off the latest UPSTREAM dev (not the fork, which may lag)
+# 1. Branch off the latest upstream dev
 git fetch origin && git checkout -B <task-branch> origin/dev
 
-# 2. Apply Gemma's output to files, then commit AS the bot
-git -c user.name="$BOT" -c user.email="ThaumaturgeDevs@gmail.com" commit -am "<summary>"
+# 2. Apply Gemma's output to files, then commit AS the bot (noreply email, per-command)
+git -c user.name="$BOT" -c user.email="$EMAIL" commit -am "<summary>"
 
-# 3. Push to the BOT'S FORK (never upstream — that 403s)
-git push "https://$BOT:$GH_PAT_GEMMA@github.com/$BOT/Magiclike.git" HEAD:<task-branch>
+# 3. Push the branch straight to UPSTREAM (collaborator access — no fork)
+git push "https://$BOT:$GH_PAT_GEMMA@github.com/$UP.git" HEAD:<task-branch>
 
-# 4. Open the cross-fork PR into VoeJozzo:dev
-curl -s -X POST -H "$AUTH" "https://api.github.com/repos/$UP/pulls" \
-  -d '{"title":"<title>","head":"'"$BOT"':<task-branch>","base":"dev","body":"<body>"}'
+# 4. Open the same-repo PR into dev
+GH_TOKEN="$GH_PAT_GEMMA" gh pr create --repo "$UP" --base dev \
+  --head <task-branch> --title "<title>" --body "<body>"
 ```
 
-Then a human reviews and merges. Notes:
-- Push uploads the branch's commits to the fork even if the fork's `dev` lags — fine.
-- The PAT only ever lives in `$GH_PAT_GEMMA`; never echo it or put it in a tracked file.
+Then VoeJozzo reviews and merges (branch protection requires the CODEOWNER's approval — the bot can't self-merge). Notes:
+- The branch goes straight into the upstream repo; the same-repo PR's `head` is just the branch name (no `owner:branch` fork prefix).
+- `GH_PAT_GEMMA` is sourced from the gh keyring; never echo it or put it in a tracked file.
 - Authorship (`user.name`/`user.email`) is per-command — **never** `git config --global` it, or your own commits get mislabeled as the bot.
 
-**Push-hang gotcha (Windows Git Credential Manager).** A `git push` to a `https://...github.com` remote can hang forever: the Windows GCM (`git-credential-manager.exe`) pops an *interactive* prompt the headless shell can't answer. Made worse now that `gh auth` holds TWO accounts (VoeJozzo + Thaumaturge-Gemma), so the helper can pick the wrong one. Fix when a push wedges:
+**Push-hang gotcha (Windows Git Credential Manager).** A `git push` to a `https://...github.com` remote can hang forever: the Windows GCM (`git-credential-manager.exe`) pops an *interactive* prompt the headless shell can't answer. Made worse now that `gh auth` holds **four** accounts (VoeJozzo + the three bots), so the helper can pick the wrong one. Fix when a push wedges:
 ```bash
 taskkill //F //IM git-credential-manager.exe   # kill the stuck prompt
 # then push with GCM disabled + gh helper forced:
