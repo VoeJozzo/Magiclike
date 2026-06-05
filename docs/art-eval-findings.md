@@ -158,3 +158,27 @@ searing(blast)=C1 | shock(blast)=CONTROL | unsummon(bounce)=mixed | murder(kill)
 
 ## META-FINDING reinforced
 Human aesthetic judgment repeatedly diverges from BOTH the LLM judges AND the agents' self-selection (swamp 2.04, searing 1.07, mirror 2.03, scarif 2.06). Validates "user is gold" + the generation > self-selection finding. An automated judge would systematically miss these.
+
+## C1 A/B #7 — invigorate (GREEN +4/+4 pump; empowerment; NEUTRAL judge) — skill-v1 vs skill-v1+C1
+- Both arms nominated gen_03 @ SAME seed 152152058 (wolf + green surge). Control already enacted the buff causally via existing mechanic-in-art.
+- Both neutral judges → TREATMENT (medium), on genuine mechanic-enactment grounds this time (surge-into vs glow-decoration) — NOT a confound.
+- User gold: **2.x = CONTROL** ("much more dynamism"); likes 2.06 (control, "subtlety"). User ↔ judges DIVERGE again.
+- Keeper: 2.06 (control).
+
+## ===== FINAL C1 VERDICT (7 cards) — DO NOT MERGE =====
+User-gold scorecard: searing=C1 | shock=control | unsummon=mixed | murder=tie | apex=control | swamp=control | invigorate=control
+= **1 C1 win / 4 control wins / 1 mixed / 1 tie.** C1 does NOT improve the art.
+
+1. **Redundant.** On any card with an obvious subject (kill/fight/buff), the plain skill already produced the causal composition — the skill already preaches mechanic-in-art / show-it-on-the-victim / multi-subject headcount. C1 restates it.
+2. **Lone win (searing_blast) is a narrow niche** (near-subjectless effect where the skill defaults to "just a comet") and doesn't generalize (shock, also a blast, went control). At most a situational trick.
+3. **No overreach** — C1 stays inert on lands/non-effects (swamp). Harmless, just not helpful.
+4. **Behavioral side-effect:** C1 makes the agent explore wider / more adventurous compositions (noted by user 3×). "Different, not better"; user usually didn't pick the more-varied treatment output.
+
+### The bigger finding (worth more than C1): systematic JUDGE ↔ USER divergence
+- LLM judges preferred C1/treatment on ~5 cards; user preferred CONTROL on most.
+- C1 optimizes for EXPLICIT/LITERAL/LEGIBLE causality (what a judge can verify); the user repeatedly preferred SUBTLER, more DYNAMIC, more ARTFUL control rolls (what a human finds beautiful). "More correct" != "better art."
+- Persisted even with a NEUTRAL judge prompt → not a prompt bug; explicit-legibility and beauty are different objectives. **The automated LLM judge cannot stand in for the user, esp. on aesthetics. User-gold is permanently load-bearing.**
+- Process note: the evaluator (Claude) got over-excited after searing and even unconsciously RIGGED a judge prompt toward C1; user-gold + neutral re-judge + more-cards discipline caught and overruled it. The flywheel can kill a bad idea including the evaluator's own.
+
+### Recommendation
+DO NOT merge C1 into SKILL.md. Keep this documented record + its one situational use (subjectless effect spells) + the variety side-effect. Remove the temp variant SKILL-c1-variant.md to close the cycle.
