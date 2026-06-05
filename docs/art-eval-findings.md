@@ -88,3 +88,9 @@ implement and its target to be visibly **linked by the action**:
 
 **Validate via:** harness A/B, skill-current vs skill+C1, on damage/targeted-effect cards
 (searing_blast, lava_spike, doom_blade-likes); win = higher user keep-worthy / mechanic-enactment.
+
+## C1 A/B #1 — unsummon (bounce; SOFT C1 test) — skill-v1 vs skill-v1+C1
+- Control = arm_a (skill-v1); Treatment = arm_b (skill+C1). Sheet: Pool 1 = TREATMENT, Pool 2 = CONTROL.
+- Blind judges **SPLIT**: best-vs-best → CONTROL (medium); full-pool → TREATMENT (medium — "treatment pool repeatedly enacts un-summon across multiple images; control mostly creatures standing, only one true enactment").
+- User: neither batch captures unsummon. **Closest = 1.02 = TREATMENT/C1** (but flawed — no background). Good slush = **2.05, 2.06 = CONTROL** (2.05 = control nominee).
+- Read (n=1, soft card): **MIXED / inconclusive.** Closest single image + full-pool consistency lean C1; control's nominee + user slush lean control. Bounce is a gentle causal action — C1 was written for blast/damage. Re-run searing_blast (the motivating case) for a sharp test.
