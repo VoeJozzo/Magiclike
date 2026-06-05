@@ -426,9 +426,7 @@ function synthesizeStapledTemplate(baseTplId, stapledTpls) {
   // here we just union the Artifact co-type in if any fused card carried it.
   const involved = [baseTpl, ...stapledTpls.map(id => CARDS[id]).filter(Boolean)];
   for (const co of ['Artifact']) {
-    if (involved.some(t => hasType(t, co)) && !merged.types.includes(co)) {
-      merged.types.push(co);
-    }
+    if (involved.some(t => hasType(t, co))) addTypeTag(merged, co);
   }
   return merged;
 }
@@ -465,7 +463,7 @@ function mergeStapleInto(merged, stapleTpl) {
     // merged type list — the single source of truth. Lord checks read subtypes
     // via subtypesOf / hasType.
     for (const st of subtypesOf(stapleTpl)) {
-      if (!merged.types.includes(st)) merged.types.push(st);
+      addTypeTag(merged, st);
     }
     // Triggers/abilities/static_buffs: concat with deep copy. Base's first.
     if (stapleTpl.triggers) {

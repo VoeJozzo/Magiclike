@@ -81,6 +81,20 @@ console.log('\n=== negative: absent tags miss; nullish safe ===');
   check('subtypesOf(null) === []', JSON.stringify(subtypesOf(null)) === '[]');
 })();
 
+console.log('\n=== stored type mutation helper: addTypeTag ===');
+(() => {
+  const c = { types: ['Creature', 'Cat'] };
+  addTypeTag(c, 'Beast');
+  addTypeTag(c, 'Cat');
+  check('addTypeTag appends a new tag and dedups an existing tag',
+    JSON.stringify(c.types) === '["Creature","Cat","Beast"]', JSON.stringify(c.types));
+
+  const blank = {};
+  addTypeTag(blank, 'Artifact');
+  check('addTypeTag initializes a missing types[] array',
+    JSON.stringify(blank.types) === '["Artifact"]', JSON.stringify(blank.types));
+})();
+
 console.log('\n=== registry: type vs subtype classification ===');
 (() => {
   check('Creature/Land/Artifact/Sorcery are type tags',
