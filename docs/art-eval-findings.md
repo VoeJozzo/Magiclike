@@ -107,3 +107,14 @@ implement and its target to be visibly **linked by the action**:
 | #1 | unsummon | bounce (soft) | MIXED/inconclusive |
 | #2 | searing_blast | burn/damage (sharp) | **STRONG WIN** (user + both judges) |
 Promising. Test 1–2 more damage/targeted cards; if C1 holds, merge the C1 block into live SKILL.md.
+
+## C1 A/B #3 — shock (RED, 2 dmg; GENERALIZATION test) — skill-v1 vs skill-v1+C1
+- Control=arm_a, Treatment=arm_b(+C1). Sheet: Pool 1=TREATMENT, Pool 2=CONTROL.
+- Blind judges BOTH → TREATMENT/C1 (bvb medium; full-pool medium, "control repeatedly defaults to a caster firing a beam with no struck target").
+- **User gold: 2.10 = CONTROL** (and almost-pick 2.07 = control). User OVERRODE the judges — 2.10 is the very image the bvb judge dismissed as "a caster channeling, not a victim."
+- ⚠️ **JUDGE-PROMPT BIAS (methodological error, found here):** the C1-run judge prompts EMPHASIZE "victim struck vs caster firing" = the C1 thesis itself, so the LLM judges were PRIMED to reward C1. Their C1 preference is partly circular, NOT independent evidence. Discount it; weight the user's holistic gold call.
+
+## C1 VERDICT (corrected) — INCONCLUSIVE, do NOT merge yet
+On USER GOLD only (the unbiased signal): searing_blast → C1; shock → CONTROL; unsummon → mixed. = 1–1 + mixed.
+The earlier "C1 keeps winning" read was inflated by the rigged judge prompt.
+FIX: future C1 cards use a NEUTRAL judge prompt (generic "which is better card art for this card," like the early per-card judges — no causal-strike priming). Need more cards before any merge decision.
