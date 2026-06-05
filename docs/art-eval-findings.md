@@ -118,3 +118,21 @@ Promising. Test 1–2 more damage/targeted cards; if C1 holds, merge the C1 bloc
 On USER GOLD only (the unbiased signal): searing_blast → C1; shock → CONTROL; unsummon → mixed. = 1–1 + mixed.
 The earlier "C1 keeps winning" read was inflated by the rigged judge prompt.
 FIX: future C1 cards use a NEUTRAL judge prompt (generic "which is better card art for this card," like the early per-card judges — no causal-strike priming). Need more cards before any merge decision.
+
+## C1 A/B #4 — murder (BLACK destroy-creature; NEUTRAL judge) — skill-v1 vs skill-v1+C1
+- Control=arm_a, Treatment=arm_b(+C1). Sheet: Pool 1=CONTROL, Pool 2=TREATMENT.
+- Neutral judges SPLIT on the SAME two nominees: bvb → TREATMENT (high); full-pool → CONTROL (medium). Two fair judges disagreeing on the same pair = arms ~tied.
+- User gold: **neither clears Murder's (high) bar** ("none are special in the way I want Murder to be" — Murder is a special card wanting great art). Both have merits: **1.x (CONTROL) = more detail/artistry; 2.x (C1) = more adventurous, more variation.** Stylistic difference, not a quality gap; no clear winner.
+- Keeper: **1.01 (CONTROL) → good slush.**
+
+## C1 VERDICT (updated, n=4 on USER GOLD)
+| card | kind | user gold |
+|---|---|---|
+| searing_blast | blast | **C1** ("the one") |
+| shock | blast | CONTROL |
+| unsummon | bounce | mixed |
+| murder | kill | tie (stylistic split; neither great) |
+= 1 C1 win / 1 control win / 2 ties. **C1 is NOT a reliable improvement; do NOT merge the C1 block as-is.** The skill's existing mechanic-in-art + multi-subject guidance already covers most cases. Narrow unproven effect: C1 may nudge toward more dynamic/varied compositions (murder 2.x "adventurous").
+
+## Candidate C2 — "favor ambition/detail; the good kind of bad" (surfaced: murder)
+User principle: a detailed, ambitious roll WITH a visible error beats a vague safe roll, because the error is legible (a human can see and fix it) and PixelLab iteration is cheap. Don't penalize detail/ambition for producing visible flaws; prefer specificity that makes mistakes diagnosable. (Hypothesis to A/B later.)
