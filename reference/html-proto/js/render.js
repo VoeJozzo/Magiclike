@@ -347,7 +347,7 @@ function render() {
   if (G.pendingOptionalCost && G.pendingOptionalCost.who === 'you') {
     Modal.show('optionalCostModal', { dismissible: false });
     const p = G.pendingOptionalCost;
-    const costStr = renderManaSymbols(manaCostBraces(p.cost));
+    const costStr = renderManaSymbols(manaCostBraces(p.cost, {empty: '{0}'}));
     document.getElementById('optionalCostSubtitle').innerHTML =
       `${p.source} entered.<br>Pay ${costStr} to use its stapled effect?`;
     const btns = document.getElementById('optionalCostButtons');
@@ -1418,11 +1418,7 @@ function renderCardPicker(hostEl, items, onPick, opts) {
 // Mana-cost in MtG-canonical braced notation: {R:2, C:4} -> "{4}{R}{R}".
 // Plain text — caller pipes through renderManaSymbols() to get pip HTML.
 function formatCostBraced(c) {
-  if (!c) return '';
-  let s = '';
-  if (c.C) s += '{' + c.C + '}';
-  for (const k of ['W','U','B','R','G']) s += ('{' + k + '}').repeat(c[k] || 0);
-  return s || '{0}';
+  return manaCostBraces(c, {empty: '{0}'});
 }
 
 // Convert `{X}` patterns embedded in card text or formatCostBraced output

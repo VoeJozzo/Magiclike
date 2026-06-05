@@ -779,7 +779,30 @@ function makeRewardCardEl(tpl, slot) {
   return el;
 }
 
-// Map node tooltip — tap shows briefly, long-press shows while held (mobile-friendly).
+function appendRewardConnector(parent, symbol, extraClass) {
+  const connector = document.createElement('div');
+  connector.className = 'rwd-pair-plus' + (extraClass ? ' ' + extraClass : '');
+  connector.textContent = symbol;
+  parent.appendChild(connector);
+  return connector;
+}
+
+function appendRewardFlavor(parent, name, text, extraClass) {
+  const flavor = document.createElement('div');
+  flavor.className = 'rwd-pair-sticker' + (extraClass ? ' ' + extraClass : '');
+  const nameEl = document.createElement('div');
+  nameEl.className = 'name';
+  nameEl.textContent = name;
+  const textEl = document.createElement('div');
+  textEl.className = 'text';
+  textEl.textContent = text;
+  flavor.appendChild(nameEl);
+  flavor.appendChild(textEl);
+  parent.appendChild(flavor);
+  return flavor;
+}
+
+// Map node tooltip -- tap shows briefly, long-press shows while held (mobile-friendly).
 let mapTooltipHideTimer = null;
 function showMapTooltip(nodeEl, label) {
   const tt = document.getElementById('mapTooltip');
@@ -1143,16 +1166,9 @@ function renderReward() {
           scale: 2,
         });
         div.appendChild(mystery);
-        const connector = document.createElement('div');
-        connector.className = 'rwd-pair-plus';
-        connector.textContent = '+++';
-        div.appendChild(connector);
-        const flavor = document.createElement('div');
-        flavor.className = 'rwd-pair-sticker';
-        flavor.innerHTML =
-          `<div class="name">3 Random Stickers</div>` +
-          `<div class="text">Three surprise stickers on a random creature — slot and stickers both rolled when you pick.</div>`;
-        div.appendChild(flavor);
+        appendRewardConnector(div, '+++');
+        appendRewardFlavor(div, '3 Random Stickers',
+          'Three surprise stickers on a random creature — slot and stickers both rolled when you pick.');
         div.onclick = () => pickRewardCandidateClick(idx);
         optionsEl.appendChild(div);
         return;
@@ -1193,17 +1209,11 @@ function renderReward() {
         // Base card (left).
         div.appendChild(makeRewardCardEl(baseTpl, baseSlot));
         // Connector: plus between inputs.
-        const plus = document.createElement('div');
-        plus.className = 'rwd-pair-plus';
-        plus.textContent = '+';
-        div.appendChild(plus);
+        appendRewardConnector(div, '+');
         // Staple card (middle).
         div.appendChild(makeRewardCardEl(stapleTpl, stapleSlot));
         // Connector: arrow to result.
-        const arrow = document.createElement('div');
-        arrow.className = 'rwd-pair-plus';
-        arrow.textContent = '→';
-        div.appendChild(arrow);
+        appendRewardConnector(div, '→');
         // Merged preview (right). Render via makeCardEl directly with the
         // pre-built mergedCard (which already has stapled mechanics baked
         // in). Sticker badges from the inputs don't show on the preview;
@@ -1241,10 +1251,7 @@ function renderReward() {
       if (cand.kind === 'sticker') {
         const sticker = STICKERS[cand.sticker_id];
         if (!sticker) return;
-        const connector = document.createElement('div');
-        connector.className = 'rwd-pair-plus';
-        connector.textContent = '+';
-        div.appendChild(connector);
+        appendRewardConnector(div, '+');
         const stickerEl = document.createElement('div');
         stickerEl.className = 'rwd-pair-sticker';
         // For Empower, show the pre-rolled target so the player knows exactly
@@ -1271,49 +1278,24 @@ function renderReward() {
           `<div class="text">${renderManaSymbols(escapeHtml(sticker.text || ''))}</div>`;
         div.appendChild(stickerEl);
       } else if (cand.kind === 'twoStickers') {
-        const connector = document.createElement('div');
-        connector.className = 'rwd-pair-plus';
-        connector.textContent = '++';
-        div.appendChild(connector);
-        const flavor = document.createElement('div');
-        flavor.className = 'rwd-pair-sticker';
-        flavor.innerHTML =
-          `<div class="name">2 Random Stickers</div>` +
-          `<div class="text">Two surprise stickers — rolled when you pick this.</div>`;
-        div.appendChild(flavor);
+        appendRewardConnector(div, '++');
+        appendRewardFlavor(div, '2 Random Stickers',
+          'Two surprise stickers — rolled when you pick this.');
       } else if (cand.kind === 'transform') {
-        const arrow = document.createElement('div');
-        arrow.className = 'rwd-pair-plus rwd-pair-arrow';
-        arrow.textContent = '↺';
-        div.appendChild(arrow);
-        const flavor = document.createElement('div');
-        flavor.className = 'rwd-pair-sticker rwd-pair-flavor';
-        flavor.innerHTML =
-          `<div class="name">Transform</div>` +
-          `<div class="text">Replace this card with one of three new options.</div>`;
-        div.appendChild(flavor);
+        appendRewardConnector(div, '↺', 'rwd-pair-arrow');
+        appendRewardFlavor(div, 'Transform',
+          'Replace this card with one of three new options.',
+          'rwd-pair-flavor');
       } else if (cand.kind === 'clone') {
-        const arrow = document.createElement('div');
-        arrow.className = 'rwd-pair-plus rwd-pair-clone';
-        arrow.textContent = '⧉';
-        div.appendChild(arrow);
-        const flavor = document.createElement('div');
-        flavor.className = 'rwd-pair-sticker rwd-pair-flavor rwd-pair-clone-flavor';
-        flavor.innerHTML =
-          `<div class="name">Clone</div>` +
-          `<div class="text">Add a fresh copy of this card to your deck.</div>`;
-        div.appendChild(flavor);
+        appendRewardConnector(div, '⧉', 'rwd-pair-clone');
+        appendRewardFlavor(div, 'Clone',
+          'Add a fresh copy of this card to your deck.',
+          'rwd-pair-flavor rwd-pair-clone-flavor');
       } else if (cand.kind === 'ripUp') {
-        const arrow = document.createElement('div');
-        arrow.className = 'rwd-pair-plus rwd-pair-rip';
-        arrow.textContent = '✗';
-        div.appendChild(arrow);
-        const flavor = document.createElement('div');
-        flavor.className = 'rwd-pair-sticker rwd-pair-flavor rwd-pair-rip-flavor';
-        flavor.innerHTML =
-          `<div class="name">Rip Up</div>` +
-          `<div class="text">Permanently remove this card from your deck.</div>`;
-        div.appendChild(flavor);
+        appendRewardConnector(div, '✗', 'rwd-pair-rip');
+        appendRewardFlavor(div, 'Rip Up',
+          'Permanently remove this card from your deck.',
+          'rwd-pair-flavor rwd-pair-rip-flavor');
       }
       div.onclick = () => pickRewardCandidateClick(idx);
       optionsEl.appendChild(div);

@@ -211,6 +211,24 @@ eqText(segsToText(describeTrigger({ event: 'card_zone_change',
                                     condition: ['this_card', 'card_moves(anywhere, battlefield)'],
                                     effects: [{ kind: 'draw', amount: 1 }] })),
        'When this enters the battlefield, draw a card.', 'ETB → draw');
+eqText(manaCostBraces({ C: 2, R: 1 }),
+       '{2}{R}', 'manaCostBraces: generic before colored pips');
+eqText(formatCostBraced({ C: 2, R: 1 }),
+       '{2}{R}', 'formatCostBraced delegates to canonical cost order');
+eqText(manaCostBraces({ C: 0 }, { empty: '{0}' }),
+       '{0}', 'manaCostBraces: explicit empty fallback for displayed zero costs');
+eqText(segsToText(describeTrigger({ event: 'card_zone_change',
+                                    condition: ['this_card', 'card_moves(anywhere, battlefield)'],
+                                    optional_cost: { C: 2, R: 1 },
+                                    effects: [{ kind: 'draw', amount: 1 }] })),
+       'When this enters the battlefield, you may pay {2}{R}: draw a card.',
+       'optional-cost trigger uses canonical mana order');
+eqText(segsToText(describeTrigger({ event: 'card_zone_change',
+                                    condition: ['this_card', 'card_moves(anywhere, battlefield)'],
+                                    optional_cost: { C: 0 },
+                                    effects: [{ kind: 'draw', amount: 1 }] })),
+       'When this enters the battlefield, you may pay {0}: draw a card.',
+       'optional-cost trigger renders zero-cost fallback');
 eqText(segsToText(describeTrigger({ event: 'attacks',
                                     condition: ['this_card'],
                                     effects: [{ kind: 'damage', target: 'opp', amount: 1 }] })),
