@@ -1,6 +1,6 @@
 {
   "card_id": "aerial_maneuver",
-  "art": "🕊",
+  "art": "art.png",
   "cost": {
     "W": 2,
     "C": 1

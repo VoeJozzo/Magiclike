@@ -125,15 +125,27 @@ eqText(segsToText(describeEffect({ kind: 'affect_creature', target: 'creature', 
 eqText(segsToText(describeEffect({ kind: 'affect_creature', target: 'creature', severity: 'exile' })),
        'exile target creature', 'exile');
 
-console.log('\n=== describeEffect: add_mana / counter / fight_target ===');
+console.log('\n=== describeEffect: add_mana / counter / fight ===');
 eqText(segsToText(describeEffect({ kind: 'add_mana', mana: '{R}{R}' })),
        'add {R}{R}', 'add_mana with literal symbols');
 eqText(segsToText(describeEffect({ kind: 'add_mana', amounts: { R: 2, G: 1 } })),
        'add {R}{R}{G}', 'add_mana with color-counts dict');
 eqText(segsToText(describeEffect({ kind: 'counter', target: 'spell' })),
        'counter target spell', 'counterspell');
-eqText(segsToText(describeEffect({ kind: 'fight_target', target: 'creature' })),
-       'your strongest creature fights target creature', 'fight_target');
+// fight renders "<A> fights <B>" from operands — the rich path is in describeEffectList.
+eqText(segsToText(describeEffectList(
+  [{ kind: 'fight', operands: [{ slot: 0 }, { slot: 1 }] }], null, null, null, null,
+  [{ target: 'creature', filter: { controller: 'self' } }, { target: 'creature', filter: { controller: 'opp' } }])),
+  'Target creature you control fights target creature an opponent controls.', 'fight: two slot operands (Prey Upon)');
+eqText(segsToText(describeEffectList(
+  [{ kind: 'fight', operands: [{ select: 'highest_power_yours' }, { slot: 0 }] }], null, null, 'opp_creature', null, null)),
+  'Your strongest creature fights target creature an opponent controls.', "fight: select + slot (Beast's Fury)");
+eqText(segsToText(describeEffectList(
+  [{ kind: 'pump', power: 1, toughness: 1, target_slot: 0 }, { kind: 'fight', operands: [{ slot: 0 }, { slot: 1 }] }],
+  null, null, null, null,
+  [{ target: 'creature', filter: { controller: 'self' } }, { target: 'creature', filter: { controller: 'opp' } }])),
+  'Target creature you control gets +1/+1 until end of turn, then it fights target creature an opponent controls.',
+  'fight: buff-then-fight pronoun (Predate)');
 
 console.log('\n=== describeEffect: tokens (count-bumped wording) ===');
 // No TOKENS lookup → falls back to "1/1 creature" stats with a sensible

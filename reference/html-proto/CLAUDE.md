@@ -4,7 +4,7 @@ Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folde
 
 ## Version
 
-**Current: `v2.0.76`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.0.84`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.84: real pixel art added for 22 cards (emoji placeholders → `art.png`: abyss_lurker, aerial_maneuver, aether_drake, aether_voyager, ancestral_priest, awakener, beast_whisperer, beasts_fury, benevolent_angel, blood_artist, bloodthirster, bloodthirsty_stalker, cavalry_captain, cloud_caller, crusader_captain [replaced prior art], cult_priest, demonic_tutor, divine_favor, mind_rot, pit_fiend, reaper_shade, vampire_bat) + three typeline fixes (Bindspeaker → Merfolk Wizard, Bloodthirster → Vampire Bat, Illusion Drake → Illusion Drake). Data/art only; no engine change. v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -201,6 +201,111 @@ opponent's best creature — permanent base 20, eot base 8, +card value +lane �
 animate-add_type only at a permanent WE control (else it'd gift the opponent a
 body). Verified via `AI.decide`: the AI now casts Encase in Amber at an enemy
 creature. 1269 green, lint clean, 300-game selfplay clean.
+
+v2.0.83: **AI scores a buff-then-fight WITH the buff (PR #57 review fix).**
+`scoreFightExchange` used base stats, so the AI passed on cleanly-favorable Predate
+casts where the +1/+1 is exactly what wins the fight (repro: our 2/4 vs their 3/3 —
+post-pump 3/5 kills the 3/3 and survives, but the scorer saw pre-pump 2 power → score
+0 → `<=0` pass). `scoreMultiTargetSpell` now folds same-spell `pump`/`add_counter`
+boosts that land on a fight combatant's slot into the exchange estimate (`statBySlot`).
+Hopeless fights still pass (1/1 vs 5/5 dies even pumped); Prey Upon (no buff) unchanged.
+Regression added to `test_predate_fight_d1`. 1373 green, lint clean, 300-game selfplay
+clean.
+
+v2.0.82: **`fight` becomes a symmetric two-operand primitive + card-level
+`target_slots` is now authoritative for enumeration (fixes a latent AI bug).** The
+v2.0.81 `fight` kept an asymmetric `target_slot:1` + `fighter:{slot:0}` shape — a
+workaround for the engine's one-`target_slot`-per-effect rule. Root-caused to ONE
+inconsistency: the UI/probe path (`probeTargetsForObject`/`objectNeedsTarget`) reads
+`card.target_slots` directly, but the AI path (`validTargetsBySlot` + `isLegalAction`
++ `getLegalActions`) derived slots from which effects carry a `target_slot`. Made all
+three AI sites treat declared `card.target_slots` as authoritative (behavior-identical
+for every existing multi-target card — they all claim every slot via an effect; only
+modal charms, which declare no card-level slots, keep the per-effect grouping). Now a
+single effect can reference multiple slots: `fight` carries
+`operands:[{slot:0},{slot:1}]` (Predate / **Prey Upon**) or `[{select:'highest_power_yours'},
+{slot:0}]` (the auto-pick cards), reading both combatants from `ctx.allTargets`; no
+`fighter`/`target_slot`. New **Prey Upon** ({G} Sorcery, "target creature you control
+fights target creature an opponent controls") — a fight-only card that was *impossible*
+to author before (its fighter slot went unenumerated). **Bug fixed:** v2.0.80/81 Predate
+was AI-uncastable — a targeted cast scores purely via `scoreMultiTargetSpell`, which
+returned 0 for a slot-only card (no `e.target`/`card.target`), so the `<=0 → don't cast`
+gate dropped it; new `scoreFightExchange` scores the combatant exchange off operands, so
+the AI now casts Predate/Prey Upon when favorable and declines bad trades (verified via
+`AI.decide`). Card-text renders "<A> fights <B>" from operands, pronoun "it" when a prior
+clause named A (Predate). Re-authored all 3 fight cards + added prey_upon (283 cards).
+1373 green, lint clean, 500-game selfplay clean (0 crashes/violations/stuck).
+
+v2.0.81: **decompose `fight_target` → a `fight` primitive with two operands**
+(supersedes v2.0.80's `fighter_slot` bolt-on, now that Predate gives a second,
+differently-shaped fight card — the real threshold for the abstraction). The
+mechanic (two creatures deal LIVE power to each other, simultaneously) is now
+separated from the fighter-selection policy: `fight` deals with the **targeted**
+creature (`target`, the standard target machinery) and a **fighter** named by a
+uniform `fighter` selector — `{slot:N}` (an explicitly-targeted creature, read
+from `ctx.allTargets`; Predate's buffed creature) or `{select:'highest_power_yours'}`
+(our biggest, the one-sided fight cards' auto-pick, now **explicit in card data**
+instead of hard-coded in the handler). New `resolveFighter` helper. The asymmetry
+(B is "the target," A is a selector) is the engine's grain: legality/enumeration
+are effect-driven via `target_slot` (isLegalAction/`validTargetsBySlot`), so every
+player-chosen target must be claimed by an effect's slot — a second off-slot operand
+would break enumeration. Re-authored all three fight cards onto it (Predate +
+Beast's Fury + Apex Hunter); renamed the kind across the 8 consumer sites (AI
+valuation/cast-scoring/classification sets, card-text, the creature-effect +
+harmful-kind lists, the generator param map). Card-text renders "it fights …"
+(slot fighter, named in a prior clause) vs "your strongest creature fights …"
+(select). `test_predate_fight_d1.js` grew an end-to-end cast (AI resolves Predate
+through the real stack, fight uses the boosted power). 1369 green, lint clean,
+300-game selfplay clean (0 crashes/violations/stuck).
+
+v2.0.80: **Predate (new card) + the D1 live-read hybrid it forces + a static-lord
+keyword-grant regression test.** (1) **Predate** — {1}{G} Sorcery: "Target creature
+you control gets +1/+1 until end of turn, then it fights target creature an
+opponent controls." Reuses the already-existing `fight_target` effect, extended
+with an optional `fighter_slot`: with it, the fighter is the explicitly-targeted
+(and buffed) creature read from `ctx.allTargets` (mirroring `apply_in_game_splice`)
+instead of the auto-picked biggest; without it, the existing Beast's Fury/Apex
+Hunter auto-pick path is byte-unchanged. `ctx.allTargets` is now threaded onto the
+spell and trigger resolution ctx (the ability ctx already had it). Card-text renders
+"…then it fights …" via a buff-then-fight idiom + a pronoun render of `fight_target`
+when `fighter_slot` is set. (2) **D1 hybrid (DIVERGENCE §3.6), now closed.** A
+`{from:'target_*'}` expression reads LIVE state while the target is still on the
+battlefield (so Predate's pump counts in the fight), and falls back to the
+last-known-info snapshot once the target has left its zone (Swords/Exorcist: exile,
+then gain life = its power). `liveTargetView` keys off `findCard` (battlefield-only =
+"still in its expected zone"). Behavior-preserving for the only two current
+expression users (both exile-then-read → departed → snapshot, unchanged). (3) New
+`test_predate_fight_d1.js` (14) covering both fight paths, both halves of the hybrid,
+and — filling a real gap — the **static-lord keyword grant** (`applyStaticKeywordGrants`,
+exposed for tests alongside `clearRestrictionsFromSource`): Goblin Chieftain grants a
+fellow Goblin haste, not itself, not a non-Goblin, and the grant clears on leave-play.
+1363 green, lint clean, 300-game selfplay clean (0 crashes/violations/stuck).
+
+v2.0.79: **Equatorial Artificer review cleanup + keeper art.** Guarded
+`colors_of_source` so future callers cannot accidentally pay it without a source
+card, pinned Artifice Triumphant's AI valuation as intentionally tempo-like, and
+documented `innate`, `spend_mana_as_any_color`, `colors_of_source`, and
+`grant_activated_ability` in `docs/PROTOCOL.md`. Added selected PixelLab art for
+Equatorial Engine, Artifice Triumphant, and Ingenuity Unbounded.
+
+v2.0.78: **Artifice Triumphant's intentionally dubious colorless target.** The
+AI still strongly prefers to neutralize a colored creature, but now assigns a
+colorless creature a score floor of 1 instead of rejecting it. If that is the
+only available target, the boss may grant the player the amusing zero-mana
+reactivation mutation. The activation's rules are unchanged: its cost remains
+one mana of each of the creature's colors, which is zero for a colorless card.
+
+v2.0.77: **Equatorial Artificer colorless boss.** Added the boss deck and its
+three special cards: Equatorial Engine (Artifact Land, `{T}: Add {C}{C}`),
+Artifice Triumphant ({3} flash Sorcery that permanently turns a creature into an
+Artifact and grants it a color-cost activation to become a Creature until EOT),
+and Ingenuity Unbounded ({1} innate Artifact with hexproof, indestructible, and
+"spend mana as any color"). Small engine seams: intrinsic `innate` card data,
+`spend_mana_as_any_color`, dynamic `colors_of_source` activation costs, and
+run-persistent `set_types` / `grant_activated_ability` stickers composed through
+the existing `apply_sticker` primitive. Added `test_equatorial_artificer_boss.js`;
+the boss uses 10 Equatorial Engines and no other lands, so Ingenuity unlocks a
+suite of demanding colored spells.
 
 v2.0.76: **two cards landed from PRs #30/#31 (rebuilt on the v2.0 model) + their
 small engine seams.** Both PRs predated the v2.0 refactor by ~292 commits and no
@@ -1042,7 +1147,7 @@ Schema migrations live in the `RUN` module and run on load.
 
 ## Design backlog
 
-The earlier in-code roadmap comment block has been removed as features shipped (tokens, modal spells, etc. are now implemented). Static Lords remain partially implemented: lords grant `staticBuffs` (stat changes) but not keywords — grep `cards/*/card.json` for `staticBuffs` to find them. Ask the user about current priorities before assuming what's next.
+The earlier in-code roadmap comment block has been removed as features shipped (tokens, modal spells, etc. are now implemented). Static Lords are fully implemented: lords grant both stat changes (via `getStats`) AND keywords (via `applyStaticKeywordGrants`, called from `emit()` with `grantedBy`-Map leave-play cleanup) — grep `cards/*/card.json` for `static_buffs` to find them (6 grant keywords: goblin_chieftain/haste, field_marshal & knight_commander/vigilance, spirit_shepherd/hexproof, apex_elder/trample, skyfire_drakelord/first_strike). Note: the keyword-grant path has no dedicated unit test yet (only selfplay coverage). Ask the user about current priorities before assuming what's next.
 
 ## Testing
 

@@ -15,10 +15,9 @@ This file is a parking lot for deferred work on the html-proto, not a session ag
 ## Open
 
 ### Divergence-tracked work
-The following items live in `docs/DIVERGENCE.md` as their primary tracker. Listed here so they're visible in the proto-side BACKLOG queue. Most have shipped on proto and are marked *PROTO: DONE* in DIVERGENCE (their Godot halves remain, tracked in `docs/BACKLOG.md`): **D2** (`pump`/`add_counter` collapse), **E1** (zone-change events), **E2** (composable predicates), **B2** (mana clears at every phase boundary, v2.0.42), **F2** (indestructible keeps marked damage, v2.0.42), **D4** (signed `gain_life` + damage fires `is_life_loss`, v2.0.42). What's still open on the proto side:
+The following items live in `docs/DIVERGENCE.md` as their primary tracker. Listed here so they're visible in the proto-side BACKLOG queue. Most have shipped on proto and are marked *PROTO: DONE* in DIVERGENCE (their Godot halves remain): **D1** (multi-effect target-state hybrid — live in-zone, last-known-info on departure, v2.0.80), **D2** (`pump`/`add_counter` collapse), **E1** (zone-change events), **E2** (composable predicates), **B2** (mana clears at every phase boundary, v2.0.42), **F2** (indestructible keeps marked damage, v2.0.42), **D4** (signed `gain_life` + damage fires `is_life_loss`, v2.0.42). What's still open on the proto side:
 
 - **B3** — CLEANUP step ordering harmonization.
-- **D1** — drop the multi-effect target-snapshot system; align on the MTG-canonical hybrid (live-read + last-known-info at zone-exit). Effects-refactor §3.6 remnant.
 
 ### Other
 

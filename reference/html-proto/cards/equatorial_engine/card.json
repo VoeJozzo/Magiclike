@@ -1,0 +1,26 @@
+{
+  "card_id": "equatorial_engine",
+  "name": "Equatorial Engine",
+  "art": "art.png",
+  "special": true,
+  "types": [
+    "Artifact",
+    "Land"
+  ],
+  "mana": "C",
+  "abilities": [
+    {
+      "cost": {
+        "tap": true
+      },
+      "effects": [
+        {
+          "kind": "add_mana",
+          "amounts": {
+            "C": 2
+          }
+        }
+      ]
+    }
+  ]
+}

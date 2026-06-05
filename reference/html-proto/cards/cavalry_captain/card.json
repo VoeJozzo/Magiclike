@@ -1,6 +1,6 @@
 {
   "card_id": "cavalry_captain",
-  "art": "🐎",
+  "art": "art.png",
   "cost": {
     "W": 1,
     "C": 2

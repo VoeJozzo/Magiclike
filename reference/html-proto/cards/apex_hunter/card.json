@@ -17,7 +17,11 @@
       ],
       "effects": [
         {
-          "kind": "fight_target"
+          "kind": "fight",
+          "operands": [
+            { "select": "highest_power_yours" },
+            { "slot": 0 }
+          ]
         }
       ],
       "target": "opp_creature"
