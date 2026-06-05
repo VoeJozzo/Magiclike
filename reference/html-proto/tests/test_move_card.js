@@ -192,9 +192,13 @@ console.log('\n=== search: string creature filter constrains human picks and leg
     !ENGINE.isLegalAction('you', { type: 'searchPick', cardIid: land.iid }));
   const h0 = G.you.hand.length;
   const oldWarn = console.warn;
+  let rejected;
   console.warn = () => {};
-  const rejected = ENGINE.executeAction('you', { type: 'searchPick', cardIid: land.iid });
-  console.warn = oldWarn;
+  try {
+    rejected = ENGINE.executeAction('you', { type: 'searchPick', cardIid: land.iid });
+  } finally {
+    console.warn = oldWarn;
+  }
   check('executeAction rejects the nonmatching search pick',
     rejected === false && G.pendingSearch && G.you.hand.length === h0 && has(G.you.library, land.iid));
   const accepted = ENGINE.executeAction('you', { type: 'searchPick', cardIid: cr.iid });
