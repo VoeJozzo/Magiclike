@@ -77,6 +77,20 @@ function withFilter(noun, eff) {
   return out;
 }
 
+function articleFor(noun) {
+  return /^[aeiou]/i.test(noun) ? 'an' : 'a';
+}
+
+function searchFilterNoun(filter, includeCard) {
+  const suffix = includeCard === false ? '' : ' card';
+  if (!filter) return 'card';
+  if (typeof filter === 'string') return filter.toLowerCase() + suffix;
+  if (filter.subtype) return filter.subtype.toLowerCase() + suffix;
+  if (filter.sub) return filter.sub.toLowerCase() + suffix;
+  if (filter.type) return filter.type.toLowerCase() + suffix;
+  return 'card';
+}
+
 // Phrase for one `fight` operand: {select} → "your strongest creature"; {slot:N}
 // → the noun for that target slot (from the card's target_slots spec, or a
 // top-level target() step). Used by describeEffectList's fight block.
@@ -312,16 +326,16 @@ function describeEffect(eff, tplEff) {
       // idioms (matches the legacy kinds' phrasing for parity).
       const fz = eff.from_zone, tz = eff.to_zone;
       if (fz === 'library' && tz === 'hand' && eff.selector === 'library_search') {  // collapsed searchCreature
-        return [plainSeg('search your library for a ' + ((eff.filter && eff.filter.type) ? eff.filter.type.toLowerCase() : 'card') + ' card and put it into your hand')];
+        const noun = searchFilterNoun(eff.filter, true);
+        return [plainSeg('search your library for ' + articleFor(noun) + ' ' + noun + ' and put it into your hand')];
       }
       if (fz === 'library' && tz === 'battlefield') {  // collapsed searchLandTapped (auto fetch)
         // Derive the fetched-card noun from the filter (subtype > type > "card"),
         // mirroring the fetch-to-hand case above — a {type:'Land'} filter is "a
         // land", not the old hardcoded "basic land" (which was narrower than the
         // filter and drifted from what the card actually does).
-        const ff = eff.filter || {};
-        const noun = ff.subtype ? ff.subtype : (ff.type ? ff.type.toLowerCase() : 'card');
-        return [plainSeg('search your library for a ' + noun + ' and put it onto the battlefield' + ((eff.post && eff.post.tap) ? ' tapped' : ''))];
+        const noun = searchFilterNoun(eff.filter, false);
+        return [plainSeg('search your library for ' + articleFor(noun) + ' ' + noun + ' and put it onto the battlefield' + ((eff.post && eff.post.tap) ? ' tapped' : ''))];
       }
       if (fz === 'library' && tz === 'hand') {  // collapsed draw
         if (eff.amount === 1) return [plainSeg('draw a card')];
