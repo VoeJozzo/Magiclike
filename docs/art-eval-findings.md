@@ -138,3 +138,13 @@ FIX: future C1 cards use a NEUTRAL judge prompt (generic "which is better card a
 User principle: a detailed, ambitious roll WITH a visible error beats a vague safe roll, because the error is legible (a human can see and fix it) and PixelLab iteration is cheap. Don't penalize detail/ambition for producing visible flaws; prefer specificity that makes mistakes diagnosable. (Hypothesis to A/B later.)
 
 _Correction (typo): the "good kind of bad" detailed image is **1.06 = CONTROL** nominee (not 2.06). Reinforces C2: the more-detailed control arm produced the diagnosable-flaw image the user values._
+
+## C1 A/B #5 — apex_hunter (GREEN 4/3 fight-creature; NEUTRAL judge) — skill-v1 vs skill-v1+C1
+- Control=arm_a, Treatment=arm_b(+C1). Sheet: Pool 1=TREATMENT, Pool 2=CONTROL.
+- Both neutral judges → TREATMENT (medium) BUT on a **COLOR CONFOUND**: treatment independently chose a green-scaled/saurian beast (carries GREEN); control chose a tawny tiger (GREEN only via background). One judge gave mechanic-enactment to the CONTROL. The judge "win" is palette, not C1's causal composition → discount it.
+- User gold: **2.04 = CONTROL** ("super cool stylization"). User again noticed treatment = "tried to make a dinosaur," varied bests (1.01/1.02/1.03) = the recurring C1 = more-variety/adventurous effect. Still picked CONTROL.
+- Keeper: 2.04 (control) = user's pick.
+
+## C1 SCORECARD (n=5, USER GOLD)
+searing(blast)=C1 | shock(blast)=CONTROL | unsummon(bounce)=mixed | murder(kill)=tie | apex(creature)=CONTROL
+= **1 C1 win / 2 control wins / 1 mixed / 1 tie.** C1 is NOT improving on the user's eye (trending negative). The ONE consistent, replicated C1 effect is BEHAVIORAL: wider/more-adventurous composition exploration ("different, not better"). DO NOT merge C1. Recommend concluding the C1 test after ~1 more card.
