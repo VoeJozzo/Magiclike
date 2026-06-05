@@ -16,9 +16,9 @@ We can't improve pixflux itself, and absolute "is this art good" scoring is nois
 |---|---|
 | Eval target | **Output art quality**, measured pairwise (skill-on art vs skill-off art for the same card). Pairwise > absolute scoring — more reliable for both human and LLM judges. |
 | Execution unit | **Agents, not metered API calls.** The user is on a Claude **subscription**, so the Anthropic API (`messages.create`) is off the table — it bills what they don't use. Each arm is a **Claude Code (sub)agent** (Agent tool, or headless `claude -p`), which runs on the subscription. **PixelLab/pixflux is the only external paid call**, and it's in budget. |
-| Agent scope | **Full end-to-end, fixed render budget.** Each arm runs the skill's full creative process — brainstorm → write prompt → generate → look → revise prompt → generate — but rendering is pinned to **exactly 2 pixflux calls, both at the card's shared seed**. So the skill's *prompt-crafting* discipline runs fully; free reroll-at-new-seed and inpaint are out of scope for this run (keeps the comparison apples-to-apples). |
+| Agent scope | **Full end-to-end.** Each arm runs the skill's full loop — brainstorm → prompt → generate → look → reroll/tweak/inpaint — within an equal budget of **~10 image-gen calls, drawing seeds from a shared per-card seed array**, then nominates its single best image. The skill's iteration discipline (reroll-on-bad-dice, seed-locked tweaking, inpaint fixes) is in scope — it's a big part of the skill's value. |
 | The A/B control | **Same agent harness on both arms; the only difference is whether `SKILL.md` is loaded.** The agent's own taste/judgment is therefore a held-constant variable, not a confound. |
-| Fairness control | **Seed-pairing + equal render budget, stacked.** Each card gets one fixed seed used by *both* arms (paired dice — not byte-identical at a fixed seed, but close enough to "sample the noise"), and each arm makes **exactly 2** pixflux calls at that seed (samples the noise twice *and* caps generation so neither arm out-swings the other). |
+| Fairness control | **Shared seed *pool* + equal budget.** Each card gets a fixed **array of ~10 seeds, identical for both arms** — both face the same "deck" of dice, so neither can draw luckier seeds. Each arm gets the same ~10-call budget drawing from it. Only *how well each arm spends its swings* differs. |
 | First experiment | **Skill-on vs skill-off baseline.** Does the skill beat a naive agent at all? Anchors every later comparison. |
 | Judging | **User is the gold judge** — every image surfaced every run. **Claude blind-pre-labels** each pair (with reasons) *before* the user looks; the pre-label vs user-call divergence is itself a finding and accumulates calibration data. |
 | Scale | **~10 cards** for the first run, not the full 138-card pool. |
@@ -31,17 +31,18 @@ We can't improve pixflux itself, and absolute "is this art good" scoring is nois
 3. **Clean A/B despite the autonomy.** Both arms are the *same* agent harness; only `SKILL.md` presence differs. So "the agent has good taste" helps both arms equally and cancels out — what's left is the skill's contribution.
 4. **Still a flywheel.** Re-running on `skill-v1 vs skill-v2` is the same orchestration with a different skill file in arm A. Wrap it as a `claude -p` loop or a slash-command later.
 
-### On seeds and determinism
+### On seeds, determinism, and iteration
 
-pixflux is **not** byte-for-byte deterministic at a fixed seed — same prompt + same seed gives *near-identical* output (residual noise). That's close enough to treat a shared seed as "the same dice roll, sampled twice," so we **do** use seed-pairing:
-- Each card gets one fixed seed **S**, used by *both* arms — paired dice across arms, so a quality gap can't be a lucky-seed artifact.
-- Each arm makes **exactly 2** pixflux calls at S (sampling the residual noise twice) — an equal, capped render budget, so neither arm wins by taking more swings.
-- The agent's iteration is limited to **prompt revision** between the two renders (generate at S → look → revise prompt → generate at S). Free reroll-at-new-seed and inpaint (extra calls) are out of scope for this first run.
+pixflux is **not** byte-for-byte deterministic at a fixed seed — same prompt + seed gives *near-identical* output (residual noise; judge sameness by eye, not pixel-diff). The skill is also genuinely **iterative** — its workflow is explore-at-random-seeds → lock the best → tweak one element (seed-locked refinement) → inpaint surgical fixes, with documented multi-reroll wins (Branching Bolt, Royal Assassin). Testing only an opening prompt would test maybe half the skill. To honor the iteration *and* keep the dice fair across arms, we pair seeds **at the pool level**:
+- Each card gets a fixed **array of ~10 seeds**, identical for both arms. Both face the same deck — neither can draw luckier seeds.
+- Each arm gets an **equal budget of ~10 image-gen calls**, every generation drawing a seed from that shared array (reuse allowed, so seed-locked tweaking works: same seed, changed prompt). Inpaint calls count against the budget.
+- Within that, each arm runs the skill's full loop — explore across seeds, lock onto its best, refine, inpaint — then **nominates its single best** image (candidates retained as artifacts).
+- *Open detail to settle at run time:* whether the budget is exactly 10 or "up to 10," and whether the same seed array is reused across all cards or drawn fresh per card (both arms always share it either way).
 
 ## 4. The traps and how we clear each
 
 1. **Judge trust — but the human is primary, so it's not on the critical path at first.** A ~10-card run is ~20+ images; the user judges them directly. *Claude pre-labels blind, before the user sees them* — recorded with reasons. Comparing Claude's picks to the user's reveals where the robot's taste diverges (the useful signal) and builds a gold-labelled set. An automated LLM judge only matters when we scale past hand-judging; then we validate it against the accumulated labels (target ≥80% per-axis agreement) and scope it to the axes it passes on. LLM judging of 64×32 needs the 8× nearest-neighbor upscale the skill already uses.
-2. **Variance.** pixflux noise + agent self-direction. *Mitigation:* shared seed per card (paired dice across arms) + exactly 2 calls per arm (equal budget) + multiple cards; report n with every result.
+2. **Variance.** pixflux noise + agent self-direction. *Mitigation:* shared seed *pool* per card (both arms draw the same deck) + equal ~10-call budget per arm + multiple cards; report n with every result.
 3. **Leakage.** The skill's few-shot examples must not be in the test set. *Mitigation:* the held-out pool is the **138 cards that have `card.json` but no `art.png`** (verified 2026-06-05; 148 of 286 cards are arted). Genuinely unseen, and every run produces real candidate art for unarted cards as a side benefit. First run samples ~10 from this pool.
 
 **Comparison axes** (from the skill's own principles; used as pairwise axes, not absolute scores): mechanic-enactment, silhouette legibility at 64×32, color-identity match to mana cost, scene-not-sprite, overall preference.
@@ -51,22 +52,22 @@ pixflux is **not** byte-for-byte deterministic at a fixed seed — same prompt +
 ```
 For each of ~10 held-out cards:
 
-  card.json  +  one shared seed S
+  card.json  +  shared seed array [s1..s10]
      │
      ├─► ARM A: end-to-end agent  [SKILL.md loaded]
-     │     brainstorm → prompt → pixflux@S → view → (revise prompt) →
-     │     pixflux@S   (exactly 2 calls) → A1.png, A2.png
+     │     full skill loop, ~10-call budget, seeds from the shared array:
+     │     explore → lock → tweak/inpaint → nominate best → A_best.png (+candidates)
      │
      ├─► ARM B: end-to-end agent  [no skill, naive instruction]
-     │     same harness, same seed S, exactly 2 calls → B1.png, B2.png
+     │     same harness, same array, same budget → B_best.png (+candidates)
      │
-     ├─► [8× nearest-neighbor upscale]  A1, A2, B1, B2
+     ├─► [8× nearest-neighbor upscale]  A_best, B_best
      │
-     ├─► [Claude blind pre-label]  position-randomized arm-A pair vs arm-B pair,
+     ├─► [Claude blind pre-label]  position-randomized A_best vs B_best,
      │     forced pick + per-axis reasons, recorded BEFORE user sees
      │
-     └─► [User judges]  all 4 images surfaced; user's pairwise call = gold
-            → diff vs Claude's pre-label = divergence finding
+     └─► [User judges]  best-vs-best surfaced (candidates available);
+            user's pairwise call = gold → diff vs Claude's pre-label = finding
 
   Aggregate: skill-on win-rate (user), per axis; Claude-vs-user agreement.
 ```
@@ -77,8 +78,8 @@ For each of ~10 held-out cards:
 
 ## 6. Build order
 
-1. **Agent harness + smoke test.** Define the per-arm agent prompt (arm A: "read `SKILL.md`, produce art for this card autonomously, **exactly 2 pixflux calls both at seed S**, save to the run dir"; arm B: naive equivalent with the bare pixflux mechanics only). Run it on **1 card** end-to-end and eyeball that both arms produce the 2 saved + upscaled images and a manifest (card, arm, seed, prompts). Confirm pixflux + save + upscale all work before scaling.
-2. **First experiment — ~10 cards.** Run both arms across ~10 cards sampled from the held-out pool (spanning the five colors + creatures/instants/sorceries); one shared seed per card, exactly 2 calls per arm.
+1. **Agent harness + smoke test.** Define the per-arm agent prompt (arm A: "read `SKILL.md`, produce art for this card autonomously, **≤~10 image-gen calls drawing seeds from this shared array**, iterate per the skill, nominate your best, save to the run dir"; arm B: naive equivalent with the bare pixflux mechanics only). Run it on **1 card** end-to-end and eyeball that both arms iterate, nominate a best, and emit upscaled images + a manifest (card, arm, seed array, per-call seed+prompt, nominated best). Confirm pixflux + inpaint + save + upscale all work before scaling.
+2. **First experiment — ~10 cards.** Run both arms across ~10 cards sampled from the held-out pool (spanning the five colors + creatures/instants/sorceries); one shared ~10-seed array per card, equal ~10-call budget per arm.
 3. **Blind pre-label + user judging.** Claude pre-labels every pair (recorded); user then judges all of it. Report: skill-on win-rate overall and per axis, plus Claude-vs-user agreement. **This is the deliverable** — does the skill beat naive, where, and how well does Claude's taste track yours.
 4. **Package as flywheel.** Make the two arms config-driven (swap the skill file in arm A) so `skill-v1 vs skill-v2` is one repeatable run; document it in `art-eval/` or the skill folder.
 5. **(Optional, later) Automated LLM judge for scale.** Only if we want to run past hand-judging: validate a vision judge against the accumulated gold labels, scope to passing axes, scale to larger card sets.
@@ -98,4 +99,4 @@ For each of ~10 held-out cards:
 
 ## 9. Cost
 
-Anthropic side: **$0 metered** — everything runs on the subscription via agents. PixelLab side: each arm makes exactly 2 pixflux calls (~3–5s each, 5 concurrent), so 10 cards × 2 arms × 2 = **40 generations** — the only spend, and it's in budget. We'll log actual pixflux usage from the API responses.
+Anthropic side: **$0 metered** — everything runs on the subscription via agents. PixelLab side: each arm draws up to ~10 image-gen calls from its shared seed array (~3–5s each, 5 concurrent), so the ceiling is 10 cards × 2 arms × ~10 ≈ **~200 generations** — often fewer, since an agent needn't spend its full budget. The only spend, and it's in budget. We'll log actual pixflux usage from the API responses.
