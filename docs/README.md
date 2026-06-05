@@ -16,6 +16,12 @@ Map of the documentation set. Each doc has a single, distinct job; this page is 
 
 **Wire vs runtime:** `PROTOCOL.md` owns the format shared *between* engines; `SPEC.md` owns the shapes internal to *one* engine. When they touch, SPEC defers to PROTOCOL.
 
+## Operations — "how the project runs"
+
+| Doc | Answers |
+|---|---|
+| [`IDENTITIES.md`](IDENTITIES.md) | The GitHub accounts behind the repo (owner + the AI bot accounts): who's who, which credential each uses and where it's stored, the push/PR flow, and the live branch-protection ruleset. Non-secret — points at credentials, never contains them. |
+
 ## Planning docs — "what to change"
 
 | Doc | Scope |
