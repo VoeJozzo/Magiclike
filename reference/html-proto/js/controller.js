@@ -734,9 +734,9 @@ function applyTileColorFromTpl(div, tpl) {
   const step = 100 / colors.length;
   for (let i = 0; i < colors.length; i++) {
     const hex = TILE_COLOR_HEX[colors[i]] || '#888';
-    const stopStart = (i * step).toFixed(1);
-    const stopEnd = ((i + 1) * step).toFixed(1);
-    stops.push(`${hex} ${stopStart}%`, `${hex} ${stopEnd}%`);
+    const segmentStartPct = (i * step).toFixed(1);
+    const segmentEndPct = ((i + 1) * step).toFixed(1);
+    stops.push(`${hex} ${segmentStartPct}%`, `${hex} ${segmentEndPct}%`);
   }
   div.style.borderImage = `linear-gradient(45deg, ${stops.join(', ')}) 1`;
   div.style.borderImageSlice = '1';
