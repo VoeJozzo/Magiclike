@@ -22,3 +22,9 @@ Thumbs.db
 
 # Claude Code worktrees (each holds a full repo copy — never commit).
 .claude/worktrees/
+
+# Art-skill-eval working dir: generated candidate PNGs, upscales, per-run logs.
+# WIP art is kept local (same convention as card art.png); the experiment
+# record reaches the user via image attachments. Curated results can be
+# committed selectively later if we decide to keep them in-repo.
+art-eval/
