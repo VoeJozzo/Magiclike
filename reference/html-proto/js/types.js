@@ -58,15 +58,6 @@ function hasType(card, tag) {
   return !!card && !!tag && typesOf(card).includes(tag);
 }
 
-// Mutate the stored base type list by adding one tag once. Live type grants
-// still read through typesOf(); this helper is only for permanent identity
-// changes such as sticker subtype rolls and staple-merge subtype unions.
-function addTypeTag(card, tag) {
-  if (!card || !tag) return;
-  if (!Array.isArray(card.types)) card.types = [];
-  if (!card.types.includes(tag)) card.types.push(tag);
-}
-
 // The card's subtype tags only (the right-of-em-dash set) in declaration order.
 // The single replacement for the retired `card.sub.split(/\s+/)` idiom — subtype
 // rolls, staple-merge unions, and lord-buff matching all read subtypes through

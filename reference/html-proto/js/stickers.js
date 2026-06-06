@@ -103,7 +103,8 @@ function applyStickersToCard(card) {
       if (!rolled) continue;
       // Append the rolled subtype to types[] — the sole type identity. Lord buffs
       // that match on it read via hasType/subtypesOf.
-      addTypeTag(card, rolled);
+      if (!Array.isArray(card.types)) card.types = [];
+      if (!card.types.includes(rolled)) card.types.push(rolled);
     } else {
       applyStickerKindEffect(card, s);
     }
@@ -351,7 +352,7 @@ function stickersForSlot(slot, deckColors) {
     if (s.kind === 'subtype') {
       const rolled = (slot.subtypeRolls || [])[subtypeCursor];
       subtypeCursor++;
-      addTypeTag(view, rolled);
+      if (rolled && !view.types.includes(rolled)) view.types.push(rolled);
     }
     if (s.kind === 'grant_mana_ability') {
       grantManaAbility(view, s.color);  // §3.9: reflect on the view's tap-ability

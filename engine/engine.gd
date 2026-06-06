@@ -1091,6 +1091,8 @@ func _resolve_combat_damage() -> void:
 			continue
 		var attacker: CardInstance = atk_found.card
 		if attacker.has_keyword("menace") and attacker_blockers[atk_iid].size() < 2:
+			# Confirm-time legality rejects lone menace blockers in normal play;
+			# keep this damage-time guard for imported or otherwise stale states.
 			if attacker_blockers[atk_iid].size() == 1:
 				_state.append_log("%s has menace — single blocker is illegal, ignored" % attacker.name())
 			attacker_blockers[atk_iid] = []
