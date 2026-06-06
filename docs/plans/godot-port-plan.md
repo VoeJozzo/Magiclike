@@ -1,5 +1,7 @@
 # Godot port — phase roadmap
 
+> **Status (2026-06-02):** Phases 0–5c shipped; Phase 6+ (card-pool expansion, stickers, draft, roguelike meta) is gated on the coordinated refactor — see [`plan-coordinated-refactor.md`](plan-coordinated-refactor.md). Live engine state: [`/CLAUDE.md`](../../CLAUDE.md).
+
 Forward-looking roadmap for the Godot port. State of the engine and architectural decisions live in [`/CLAUDE.md`](../../CLAUDE.md); deferred work lives in [`BACKLOG.md`](../BACKLOG.md).
 
 The port ships in slices. Each slice has a corresponding `tests/test_phaseN.{gd,tscn}` smoke test (see `/CLAUDE.md` for the invocation pattern). A slice is "done" when its new test passes and all prior phase tests still pass.

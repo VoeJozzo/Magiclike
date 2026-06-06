@@ -1,6 +1,6 @@
 # Coordinated Refactor — Master Sequencing
 
-**Status:** Conductor for the one coordinated refactor pass. The detailed specs live in the four sub-plans; this doc says **what lands when, in what order, on which engine, and how each slice is verified.** Lives on `claude/tier3-reconcile`.
+**Status (2026-06-02):** Conductor for the one coordinated refactor pass. The detailed specs live in the four sub-plans; this doc says **what lands when, in what order, on which engine, and how each slice is verified.** Lives on `claude/tier3-reconcile`.
 
 ## Context
 

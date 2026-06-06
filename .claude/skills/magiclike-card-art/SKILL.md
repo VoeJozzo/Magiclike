@@ -55,12 +55,16 @@ The practical rule: **when describing a shape, form, or specific phenomenon, sea
 - *"Bifurcated"* beats *"split into two"*.
 - *"Silhouette"* beats *"dark shape against a lighter background"*.
 - *"Crepuscular rays"* beats *"sunbeams angling down through gaps in clouds"*.
+- *"Sword"* (or the exact weapon) beats *"blade"* — bare *"blade"* drifts long and spear-like; name the weapon you mean.
+- *"Crimson blood"* beats *"blood"* — pair the precise color noun with the substance (same family as cerulean over blue).
 
 The corollary — the actual rule to run: **when you find yourself writing a compositional description of a shape or phenomenon, treat that as a flag to stop and search for the right noun.** A few seconds of word-hunting beats burning a generation on a prompt the model can't decode.
 
 Why this works (with appropriate uncertainty — I am an LLM speculating about how a different category of model works): text-to-image models route prompts through text encoders into an embedding space the diffusion model has learned to associate with visual patterns. The strength of that association depends heavily on how frequently the model saw similar phrasings in training. Common specific terms have strong, stable mappings; novel compositions have weak ones. The model defaults to its strongest nearby association — which for an unusual compositional description might just be the most common simple term in your phrase, ignoring the modifier you cared about. This is the same mechanism behind well-documented "binding failure" cases (e.g., *"a blue apple on a red table"* producing the colors swapped).
 
 **Case study this principle was learned from — Branching Bolt.** Multiple rerolls tried to get a forked bolt by describing the shape compositionally — *"Y-shape filling the upper half of the frame"*, *"two distinct prongs"*, *"bifurcated cloud-to-ground lightning with two distinct ground-strike points"*. Bumping `text_guidance_scale` from 8 to 15 didn't fix it; the model kept rendering single strikes. The working prompt used **"caret or circumflex shape"** and **"Lichtenberg figures"** — narrow precise nouns the model has rich training associations for. Vocabulary did what no amount of compositional elaboration or guidance-scale tuning could.
+
+**Subject-prior dominance — the blunt end of the same lever.** The vocabulary lesson above is the *fine* end of one lever. This is the *blunt* end: same diagnosis (the model defaults to its strongest training association and fights your intent), bigger fix. When a subject has one overwhelmingly common caption — a *deer* is captioned "deer standing in a forest" ten thousand times — a novel or violent composition built on that subject loses to the prior no matter how you word it. Precise vocabulary often isn't enough here; the fix is coarser: **swap the subject for one whose canonical associations already contain the action you want.** Case: a card wanted a deer goring/trampling a victim, and no phrasing got the placid deer to do it; changing the subject to a *woodsman* (a human, freely posable in the model's prior) cracked it instantly. Note the swap is a *larger* change than retuning a few words — it's a heavier tool, not a subtler one. So work the ladder of levers from fine to blunt: **precise vocabulary → recompose / change the camera → swap the subject.** Reach for the cheap fine lever first; escalate only when the subject's prior is too strong to move with words.
 
 ---
 
@@ -136,6 +140,8 @@ A prompt typically has these four beats, in this order:
 
 Length flexes. Some prompts are two sentences; some are a paragraph. The rule is *enough specificity for the concept*, not enough adjectives to hit a word count.
 
+**On "profile" and other camera words.** pixflux takes orientation cues *literally* — "side profile," "facing south-west," "three-quarter view" are obeyed closely. That's a feature when you want a crisp, readable orientation (Doom Blade's clean side-on bisection leans on "side profile"), and a trap when you don't. Use them on purpose: reach for "profile" when a clean side-on silhouette is the goal, and leave camera words vaguer when you want the model free to find the framing. If a pose keeps coming out rigidly side-on that you didn't ask for, check whether a camera word is forcing it.
+
 #### Vocabulary to reach for
 
 - **Materials/textures**: leather, brass, obsidian, marble, soot-stained, weathered, moss-slicked, tattered, polished, lichen-covered, oxidized, verdigris
@@ -156,6 +162,12 @@ The discipline isn't to ban them outright — the working Branching Bolt prompt 
 #### Color-identity discipline
 
 Red cards have red things. Blue has blue. Green has nature. Multicolor cards (like Verdant Charm) should visibly carry *all* their colors, meaningfully — not as a neutral wash. Map the card's mana cost to what the eye sees.
+
+**Drained or dead flesh is a color trap.** "Bone-white" and "waxy" render as literal, inhuman white. For a corpse or pallid skin, reach for "greyish, drained, but still human flesh," and give it explicit **contrast** against its surroundings — a pale human body beside a green zombie — so it reads as *a different thing*, not more of the same. *(Mortician's Assistant's corpse read as a second zombie until that contrast was forced.)*
+
+#### Describe what you want, not what you don't
+
+State the scene positively. Naming an unwanted element even to negate it — *"the sword is **not** planted in the ground"* — still puts that noun in front of the model, and text encoders handle negation poorly, so the named thing may show up anyway. Describe the thing you *do* want (*"the sword is buried in the victim's chest"*) and omit the rest. **Honesty flag:** how strongly negation backfires is **unconfirmed** — we noticed it anecdotally and never ran a controlled count, and it may be closer to a coin-flip than a rule. But describing positively is free and sidesteps the question entirely, so default to it. (If you want empty negative space, that's the `no_background` flag plus scene wording, not a "no X" clause.)
 
 ### 6. Generate via pixflux
 
@@ -179,12 +191,18 @@ curl -sS -X POST https://api.pixellab.ai/v2/create-image-pixflux \
 
 **PixelLab is sprite-biased.** It's a great tool for our purposes, but its primary use is sprite generation, so the model has a moderate pull toward compositions with no background — even when `no_background: false`. The flag is necessary but not sufficient: the *prompt itself* has to describe a **scene**, not a sprite on negative space. If a draft prompt reads like "a wizard casting a spell" (single subject, no surroundings), the model will likely deliver a wizard floating on transparency despite the flag. The fix is to name what's behind/around the subject — the background clause, the light source, what the periphery contains.
 
+**Multi-subject scenes need an explicit headcount.** When a scene requires two or more distinct figures, name the count and demand each be visible — *"**two** armored men, both fully visible head to knee, the same size."* Otherwise the model tends to drop or merge subjects, or let one dominant effect swallow another: a blood-spray effect ate the second figure entirely until we forced "both fully visible." If a subject keeps vanishing, foreground it explicitly, and make sure no single effect is described so heavily that it occupies the whole frame.
+
 **Other parameters worth knowing:**
 - `no_background: false` (default) → opaque background. Use `true` only for transparent sprites; you almost never want this for card art.
-- `text_guidance_scale` — 1.0–20.0, default 8. Higher = more literal adherence; lower = more model interpretation. **Before bumping it: if rerolls keep ignoring a key element of the prompt, first try replacing the description of that element with a more precise noun (see the vocabulary-precision section).** Vocabulary is a scalpel; guidance-scale is a hammer that can flatten the rest of the prompt's nuance. Empirical case: pushing `text_guidance_scale` from 8 to 15 didn't fix Branching Bolt's fork-rendering; switching from compositional descriptions to "caret or circumflex" and "Lichtenberg figures" did.
-- `seed` — pass a fixed integer if you want reproducibility across rerolls.
+- `text_guidance_scale` — 1.0–20.0, default 8. Higher = tighter adherence to the prompt; lower = more model interpretation. **It amplifies whatever the model is already inclined to do with your prompt — it does not force a composition the model is resisting.** On a prompt the model cooperates with, raising it sharpens intent (it genuinely helped on a deer/woodsman scene). On a composition the model fights — an impalement it kept refusing to render — cranking it to 11/14/18 just amplified the generic-atmosphere fallback: vaguer, not closer. So: raise it when you're on-track and want the prompt followed harder; **suspect** it when you're fighting the model, and fix the *words* instead. **Before bumping it: if rerolls keep ignoring a key element, first try replacing that element's description with a more precise noun (see vocabulary-precision).** Vocabulary is a scalpel; guidance is a volume knob — it makes the model louder, not smarter. Empirical case: pushing 8→15 didn't fix Branching Bolt's fork; switching to "caret or circumflex" and "Lichtenberg figures" did.
+- `seed` — controls reproducibility. A fixed **nonzero integer** reproduces a generation near-exactly across calls — only faint dither noise differs, so judge sameness **by eye, not by byte-hash or pixel-diff** (near-identical frames still differ in raw bytes; an automated diff will call them "different" when a human sees twins). `seed: 0` or omitting it = random each call. Must be a strict integer — negatives and large magnitudes are fine; strings or floats → HTTP 422. **The API response does not echo the seed back**, so a result is only reproducible if you recorded the seed you sent — log it with the prompt (phase 7). How *tightly* a seed locks varies by seed/prompt combo: some hold a composition hard across rerolls, others drift noticeably, for reasons we don't fully understand.
 
-**Concurrent-job cap.** Pixflux only permits 5 concurrent jobs. If firing multiple generations in parallel (e.g., for variance sampling on a stubborn prompt), keep the batch at ≤5.
+**Seed-locked iteration — surgical prompt refinement.** Once a seed produces a composition you like, you can refine it almost surgically: hold the seed fixed and change **one** element of the prompt — the overall composition holds and mostly just that element moves (proven by swapping an armor color and getting the same scene in the new color). It's the cleanest way to A/B a single variable. Two caveats:
+1. **Try** to converge on the wording before you commit to a seed — but it's chicken-and-egg, since you often can't tell the wording is right until a seed renders it. In practice: iterate wording at random seeds until the *concept* clicks, then lock a seed you like and make small tweaks from there.
+2. A seed's good composition is **bound to its prompt.** Large late wording edits drift the composition away from the frame you fell in love with — every edit nudges it off. Edit small, and stop editing once it's "!".
+
+**Concurrent-job cap.** Pixflux only permits 5 concurrent jobs. If firing multiple generations in parallel (e.g., for variance sampling on a stubborn prompt, or a seed-lock batch), keep the batch at ≤5.
 
 Response shape: `{"usage": {...}, "image": {"type": "base64", "base64": "..."}}`. Generation is **synchronous** (~3–5 seconds), unlike the MCP's async object/character tools.
 
@@ -213,11 +231,15 @@ grep -vxF 'reference/html-proto/cards/<tplId>/art.png' .git/info/exclude > .git/
 
 A small inline preview is genuinely hard to evaluate for a 64×32 image. If the user can't tell what's going on, that's expected — open it in their image viewer for real assessment, don't fight the preview size.
 
+**Upscale to evaluate — for your own eyes, not just theirs.** A 64×32 PNG is nearly unreadable inline, for *you* as much as the user. Before you judge a roll or present it, nearest-neighbor-upscale it ~8× (to ~512×256) and Read *that* (`System.Drawing`, `InterpolationMode = NearestNeighbor`). And judge the **whole** image at size — *does it read as the thing?* — not merely whether the parts are present. The gestalt is exactly what the upscale reveals and the postage-stamp hides; it's also where the user's eye will out-see yours, so trust their read.
+
+**Surface every generation to the user — never silently bench a roll.** When you fire a batch (variance sampling, seed-lock tests, single-variable A/Bs), show the user *all* the results, not just the one you'd pick. Taste is the director's, not yours: a frame you'd discard may be exactly what they want, or perfect for a different card — and they paid for every generation. Send results as files (they render at real size, unlike the cramped inline preview) so the user can judge the full spread, not your edit of it.
+
 Then offer:
 
 - **Keep** — promote and finalize the approved art:
   - Un-ignore from `.git/info/exclude` so it becomes committable
-  - Log the approved prompt to `references/claude-prompts.txt` in the format `<Card Display Name>: <prompt>`. The corpus of approved prompts is how future-Claude learns what works.
+  - Log the approved prompt to `references/claude-prompts.txt` in the format `<Card Display Name>: <prompt>  [seed: <n>, text_guidance_scale: <n>, no_background: <bool>, image_size: 64x32]`. **Record every setting, including the defaults** — a logged `text_guidance_scale: 8` is unambiguous, whereas a missing one can't be told apart from "never set." Always include the **seed** (the response won't hand it to you — it's the value *you* sent), so an approved frame stays reproducible. The corpus of approved prompts is how future-Claude learns what works.
   - If the keeper came from a variance batch (parallel rolls of the same prompt), move the rejected candidates to `~/Desktop/Magiclike Rejected Art/` (Windows: `%USERPROFILE%\Desktop\Magiclike Rejected Art\`), renamed `<Card Display Name> N.png` (1-indexed sequential, ignoring the picked one). **Ensure the destination exists first** — `mkdir -p ~/Desktop/"Magiclike Rejected Art"` on Linux/Mac (`-p` creates parent dirs as needed and doesn't error if the folder already exists; the Desktop folder may be absent on a headless or fresh machine), or on Windows `if not exist "%USERPROFILE%\Desktop\Magiclike Rejected Art" mkdir "%USERPROFILE%\Desktop\Magiclike Rejected Art"`. They live there for later review; the user deletes them manually when no longer wanted. Do not keep rejected candidates inside the repo.
   - **High-Value candidates:** if the user marks a rejected candidate as notably good but still not the keeper (e.g., "this one is high-value" or "save that one specifically"), move *that* one to a `High-Value/` subfolder inside Rejected Art instead: `~/Desktop/Magiclike Rejected Art/High-Value/<Card Display Name> N.png`. Independent 1-indexed numbering from the regular rejects. Ensure the subfolder exists first (`mkdir -p` on Linux/Mac, equivalent on Windows). These are candidates worth revisiting in future iterations.
 - **Reroll same prompt** — same call, different result; cheap when the prompt is right but the dice didn't land
@@ -267,6 +289,8 @@ Sycophancy isn't humility, it's abdication. Folding on every pushback makes you 
 
 These are real prompts from the user's set. Look at *what each is doing*, not just the words. Six annotated below; the **full corpus** of ~60 prompts lives at `references/exemplar-prompts.txt` in this skill folder — read it on demand when hunting for an example of a specific mechanic, color, or move you don't see here.
 
+**Reuse what already worked, verbatim.** When a phrase nails an element, lift it word-for-word onto the next card instead of re-deriving it — it's pre-validated vocabulary, and re-inventing it just rolls the dice again. *(Mortician's Assistant's legible body — "its head lolls back, one pale arm and both bare feet dangle, and a paper toe-tag hangs from one big toe" — was reused wholesale the moment it landed.)*
+
 **Char** — mechanic-in-art for a "deals damage to you" spell:
 
 > "A powerful battlemage in red robes, destroying a bandit who unwisely attempted to ambush him on a medieval highway through a dense, old-growth forest. The battlemage has cast a fiery spell to finish the fight, obliterating the bandit, burning them to ash and bone, as the bandit burns to death and drops his club. A few wisps of flame turn back on the battlemage, searing his robes."
@@ -305,9 +329,24 @@ Not "a shadow battlemage." A specific moment: hovering, peering, jealous. The ch
 
 ---
 
-## Inpainting (when relevant)
+## Inpainting, compositing & editing
 
-If the user gets a result they mostly like but wants to *tweak one element* (change the background, replace a creature in the scene, recolor a part), pixflux supports `/v2/inpaint`. Same auth, takes the existing image + a mask + a description. Don't reach for it on the first iteration — only when the user explicitly wants surgical edits rather than a fresh roll.
+Pixflux generates whole images; `/v2/inpaint` *edits* them — and this is where the loop stops being one-shot generation and becomes real collaboration, up to and including the user painting pixels themselves. Reach for it when a result is mostly right and you want to surgically change, extend, or add to one region.
+
+**How to drive it.** POST `https://api.pixellab.ai/v2/inpaint` (same `Bearer` auth). Body: `description`, `image_size` (the working size, ≤ 200×200), `inpainting_image`, `mask_image`. Pass each image as **raw base64** — `{"type":"base64","base64":"<raw>"}`, with no `data:image/png;base64,` prefix. The **mask is white = regenerate, black = preserve**. The returned `image.base64` may itself come back as a data-URI — strip any prefix before you decode. Synchronous, ~3–5s.
+
+**Local prompts only.** The `description` names *what belongs in the masked patch* — `"stone wall"`, `"grass"`, `"deep shadow"` — never the whole scene. Inpaint repaints only the masked pixels; feed it the entire scene and it crams the whole thing into the hole. (PixelLab's own docs say the same: "describe what to generate in those areas.")
+
+**To add a new subject, give inpaint something real to blend.** Its gift is *blending and extending* — closing a background, recoloring a region, dissolving a seam, growing more of a texture. So the way to add a subject is to composite a real one in and let inpaint harmonize it:
+
+- **Composite + razor-blend.** Paste a real element into the scene — chopped from another roll (`DrawImage` with a source rect) or *hand-drawn by the user* — then mask a **razor-thin strip over only the mismatched seams** and inpaint with a local blend prompt. Surgical, not a flood-fill: the good paste stays put; only the joins dissolve. *(How Royal Assassin's killer got into the scene.)*
+- **Camera-pan / outpaint.** Subject jammed against an edge with no room beside it? Crop a strip off one side, slide everything over, pad the freed strip, mask it, and inpaint the new space — you've panned the camera and opened room to work. *(How we cleared space behind the passed-out noble.)*
+
+**White-canvas-as-mask.** Let the user leave (or paint yourself) a blank region to fill, then build the mask by **detecting near-white pixels** instead of hand-authoring it. Use a *tight* threshold (≈ R,G,B ≥ 242) so it grabs blank canvas but not a hand-drawn silver blade or a pale highlight — and always *view* the generated mask (and sanity-check its white pixel-count) before firing, so you never paint over the user's handiwork.
+
+**The user edits pixels too.** The loop is collaborative in both directions: the user may clean up artifacts, recolor, reposition, or draw an element *between* your AI steps. When they hand back an edited file, your job is to plumb it through — downscale it to working size, rebuild the mask, re-inpaint — and carry their detail forward. (Royal Assassin is a thing neither of you could have made alone: their camera-pan, their cleanup, their hand-drawn knife, your API plumbing.)
+
+**Levers worth reaching for** (in PixelLab's tool docs): **guidance weight** (prompt-adherence strength — raise it when an element keeps getting ignored), **negative description** (name what to *avoid*), **`forced_palette`** (lock the fill to the scene's colors for a seamless blend), **seed** (reproducibility), **crop-to-mask** (focus generation on the masked region). For higher-res or higher-quality edits there's **`/inpaint-v3`** — fetch its spec when you reach for it.
 
 ---
 
