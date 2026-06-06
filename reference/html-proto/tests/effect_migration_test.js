@@ -98,7 +98,7 @@ console.log('\n=== kind-collapse: retired kinds gone, collapsed forms present ==
   // 'draw'/'discard' stay in the EFFECTS dispatch table (the Mercurial trigger
   // generator still emits them) — GONE asserts the card TEMPLATES only.
   const GONE = ['damageAll', 'removeAll', 'pumpAllYours', 'weaken', 'gainControl', 'steal',
-                'returnFromGraveyard', 'shuffleIntoLibrary', 'add_counter', 'edict', 'restrict', 'draw', 'flicker',
+                'returnFromGraveyard', 'shuffleIntoLibrary', 'edict', 'restrict', 'draw', 'flicker',
                 'searchCreature', 'searchLandTapped', 'discard'];
   const seen = {};
   const allEffs = (card) => {
@@ -113,6 +113,16 @@ console.log('\n=== kind-collapse: retired kinds gone, collapsed forms present ==
     for (const e of allEffs(card)) if (e && GONE.includes(e.kind)) seen[e.kind] = (seen[e.kind] || 0) + 1;
   }
   for (const k of GONE) check('no card uses legacy ' + k, !seen[k], (seen[k] || 0) + ' remain');
+
+  // add_counter's +1/+1 form was collapsed to pump duration:permanent. The kind
+  // survives for NAMED counters (verse etc.) — a bare resource that does NOT
+  // change P/T, which pump cannot express. So the invariant is narrower than
+  // "gone": no card may use the legacy +1/+1 (counter-less) form.
+  let legacyPtCounter = 0;
+  for (const card of Object.values(CARDS)) {
+    for (const e of allEffs(card)) if (e && e.kind === 'add_counter' && !e.counter) legacyPtCounter++;
+  }
+  check('no card uses legacy +1/+1 add_counter (use pump duration:permanent)', legacyPtCounter === 0, legacyPtCounter + ' remain');
 
   // The collapsed forms are PRESENT in the pool (existence, not count — a count
   // would break every time a card of that shape is added).
