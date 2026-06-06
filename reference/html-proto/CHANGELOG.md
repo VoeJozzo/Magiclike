@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.0.84`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.0.85`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -199,6 +199,24 @@ opponent's best creature — permanent base 20, eot base 8, +card value +lane �
 animate-add_type only at a permanent WE control (else it'd gift the opponent a
 body). Verified via `AI.decide`: the AI now casts Encase in Amber at an enemy
 creature. 1269 green, lint clean, 300-game selfplay clean.
+
+v2.0.85: **single `addType` write helper for type identity (consistency refactor).**
+(Renumbered from v2.0.84 on the rebase onto `dev` — that number went to the card-art
+pack below.) Four sites hand-rolled `if (!x.types.includes(t)) x.types.push(t)` to
+append a tag to a card's stored `types[]` — the two sticker subtype-roll sites
+(`stickers.js`) and the two staple-merge unions (`engine.js`) — reaching past the
+`types.js` accessor layer that the v2.0.70 refactor made the sole source of truth. New
+`types.js` `addType(card, tag)` is the one write counterpart to `hasType`; all four
+sites route through it. **Behavior-identical** (not a bug fix): dedup stays against the
+STORED base, NOT the effective set — a permanently-rolled subtype must be stored even
+while a temporary `typeGrants` modifier happens to provide it, or it would vanish when
+the grant clears (an effective-set dedup would have introduced exactly that regression).
+The win is one write path, so the next sticker/subtype touch can't re-copy the raw
+idiom. New `test_add_type.js` (10) pins add/dedup, empty-input guards, and the
+permanent-base-storage semantics; the sticker/staple end-to-end paths stay covered by
+the existing subtype tests. Surfaced in the PR #37 review (coordinated with PR #66,
+which dropped its duplicate `addTypeTag` so this owns the item). 1410 green, lint clean,
+300-game selfplay clean.
 
 v2.0.84: **real pixel art for 22 cards** (emoji placeholders → `art.png`: abyss_lurker, aerial_maneuver, aether_drake, aether_voyager, ancestral_priest, awakener, beast_whisperer, beasts_fury, benevolent_angel, blood_artist, bloodthirster, bloodthirsty_stalker, cavalry_captain, cloud_caller, crusader_captain [replaced prior art], cult_priest, demonic_tutor, divine_favor, mind_rot, pit_fiend, reaper_shade, vampire_bat) + three typeline fixes (Bindspeaker → Merfolk Wizard, Bloodthirster → Vampire Bat, Illusion Drake → Illusion Drake). Data/art only; no engine change.
 

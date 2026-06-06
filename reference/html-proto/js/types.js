@@ -58,6 +58,20 @@ function hasType(card, tag) {
   return !!card && !!tag && typesOf(card).includes(tag);
 }
 
+// Append a tag to a card's PERMANENT stored `types[]`, deduped against the
+// stored base. The single write helper for type identity, so callers (sticker
+// subtype rolls, staple-merge unions) don't reach past the accessor layer with a
+// raw `types.push` idiom. Dedup is against `card.types`, NOT the effective set
+// (typesOf): the store is the card's permanent identity, so a tag that's only
+// *temporarily* present via a `typeGrants` add/set must still be stored — else it
+// would vanish when the grant clears. Returns the card for chaining.
+function addType(card, tag) {
+  if (!card || !tag) return card;
+  if (!Array.isArray(card.types)) card.types = [];
+  if (!card.types.includes(tag)) card.types.push(tag);
+  return card;
+}
+
 // The card's subtype tags only (the right-of-em-dash set) in declaration order.
 // The single replacement for the retired `card.sub.split(/\s+/)` idiom — subtype
 // rolls, staple-merge unions, and lord-buff matching all read subtypes through
