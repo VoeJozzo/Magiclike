@@ -1,0 +1,21 @@
+{
+  "card_id": "lightning_bolt",
+  "art": "⚡",
+  "cost": {
+    "R": 1
+  },
+  "target": "creature_or_player",
+  "effects": [
+    {
+      "kind": "damage",
+      "amount": 3
+    }
+  ],
+  "name": "Lightning Bolt",
+  "keywords": [
+    "flash"
+  ],
+  "types": [
+    "Sorcery"
+  ]
+}

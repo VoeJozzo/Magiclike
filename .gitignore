@@ -27,4 +27,5 @@ Thumbs.db
 # WIP art is kept local (same convention as card art.png); the experiment
 # record reaches the user via image attachments. Curated results can be
 # committed selectively later if we decide to keep them in-repo.
-art-eval/
+art-eval/**/judge/
+art-eval/**/_meta/

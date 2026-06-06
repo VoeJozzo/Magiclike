@@ -282,3 +282,13 @@ IMPLICATION: the LLM judge is usable as a COARSE pre-filter (cull obvious losers
   4. Fresh eyes, no sunk-cost attachment.
 - C5 (different LAYER — a self-EVALUATION phase, not prompt content): after generating, have the artist switch into evaluator-mode — re-examine its own rolls "as if it didn't make them, judging only what's on the canvas, against [explicit axes]" — BEFORE selecting/iterating. Bottle the judge's fresh-eyes / output-not-intent / rubric stance into the artist's own loop.
 - Targets TWO measured gaps at once: generation > self-selection (pick the better roll) AND artist-misses-own-flaws (iterate on the real flaw). Test via harness (skill vs skill+C5). Queued.
+
+## C2 A/B #6 — old_guardian (GREEN treefolk, death->buff; JUDGE-FREE protocol)
+- Control = treefolk PORTRAIT (legacy implicit); C2 = enacted the DEATH-LEGACY (dying elder streaming green life-force into a sapling-successor). C2 reached for the harder mechanic.
+- **User gold: 2.07 = TREATMENT/C2.** C2's 4th STRAIGHT user-gold win.
+- C2 tally on user gold (n=6): dark_ritual=inconclusive | lightning_bolt=control | horned_herald=C2 | knight_commander=C2 | bindspeaker=C2 | old_guardian=**C2** = 4 C2 / 1 control / 1 inconclusive. C2 strongly leaning positive on the user's eye. n=6; need >=7 for a verdict floor (one more clean card).
+
+## Candidate C6 — "lead with the base form for hybrid 'X-folk' creatures" (surfaced: old_guardian)
+- User observation: PixelLab renders treefolk as "humanoids made of wood" (biped + arms + defensive stance + bearded face, wood-textured) rather than "trees that are folk." The cells that read RIGHT (1.01/2.01/2.03 — pre-existing UNLOGGED rolls) showed a TREE/TRUNK with a face/character emerging; the agents' deliberate logged batches prompted a HUMANOID ("body made of bark, two thick root-like arms, stands in a sturdy defensive stance, craggy face with a long mossy beard") -> wood-men.
+- Hypothesis: for hybrid X-folk (treefolk, elementals, etc.), prompt the BASE FORM FIRST — e.g. "an ancient gnarled tree whose trunk forms a weathered face, roots for feet" — NOT "a humanoid figure made of X." The humanoid framing + the model's strong humanoid prior yields "X-textured people."
+- Caveat: the flagged good cells' exact prompts weren't logged (inferred from visuals + contrast with the logged humanoid-framed batches). Queued (behind C2 run, C4, C5).

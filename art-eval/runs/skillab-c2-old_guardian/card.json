@@ -1,0 +1,33 @@
+{
+  "card_id": "old_guardian",
+  "art": "🌳",
+  "cost": {
+    "G": 1,
+    "C": 3
+  },
+  "name": "Old Guardian",
+  "power": 2,
+  "toughness": 5,
+  "triggers": [
+    {
+      "event": "card_zone_change",
+      "condition": [
+        "this_card",
+        "card_moves(battlefield, graveyard)"
+      ],
+      "effects": [
+        {
+          "kind": "pump",
+          "duration": "permanent",
+          "power": 2,
+          "toughness": 2
+        }
+      ],
+      "target": "your_creature"
+    }
+  ],
+  "types": [
+    "Creature",
+    "Treefolk"
+  ]
+}
