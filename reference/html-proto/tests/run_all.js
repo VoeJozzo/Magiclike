@@ -120,6 +120,8 @@ const CATEGORY_A = [
   'test_rules_infra.js',
   // Unified type system Phase 1 — typesOf/hasType/governingType/typeLine equivalence with legacy type/sub.
   'test_types_identity.js',
+  // addType write helper — single source of truth for permanent type-identity writes.
+  'test_add_type.js',
   // Type-change layer (add_type/set_types) + Phase-4 test cards (type-change spells, artifact creatures, artifact lands).
   'test_type_change.js',
   // Colorless artifact boss special cards (Equatorial Engine / Artifice Triumphant / Ingenuity Unbounded).
