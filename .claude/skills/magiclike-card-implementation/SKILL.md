@@ -16,11 +16,10 @@ real, playable, tested, merged card in the engine — usually the html-proto
 phases with their own skills: **card-pitch-generator** (what should exist) and
 **magiclike-card-art** (its portrait). This is the "make it run, correctly" phase.
 
-It front-loads the traps that bit (or nearly bit) on the first implementation pass —
-logged in the wiki's mistakes log, not a universal law, just the rakes underfoot:
-half-wiring an invariant across parallel paths, trusting stale line numbers after a
-branch moved, reusing a retired effect kind, shipping a version-number collision, and
-claiming green without reading the real summary. Step around them.
+The recurring *lessons* this work tends to teach — re-anchoring against code that
+moved, dodging version collisions, confirming green before claiming it — live in the
+wiki's mistakes log; this skill doesn't re-carry them. What follows is the *procedure*
+plus the magiclike-specific gotchas.
 
 ## The core move: build from existing primitives
 
@@ -38,19 +37,17 @@ missing primitive is something you *add*, not a reason to drop the card. Prefer
 general, reusable primitives over bespoke one-card handlers (it's how the engine is
 built), but "we don't have a primitive for this" is a to-do, not a stop sign.
 
-## Traps & invariants (the rakes)
+## Engine gotchas
 
-- **Re-anchor against LIVE code.** Never trust line numbers from memory, a summary, or
-  a sub-agent — `dev` moves between and within sessions. Grep/read the current file
-  before editing.
-- **Parallel validation paths.** A rule is sometimes enforced in more than one place —
-  e.g. `isLegalAction` (validates a given action) AND `getLegalActions` (enumerates the
-  AI's legal actions). When that's the case, gate the new rule in **all** of them, or
-  the AI acts illegally and corrupts state in selfplay. **But flag it to the user** —
-  the same rule-logic living in two paths is usually a refactor candidate (extract one
-  shared check both call), and they may prefer to unify the paths rather than entrench
-  the duplication. Often there *shouldn't* be parallel paths; surface it, don't just
-  silently feed both.
+*(General implementation lessons — code that moved under you, version collisions,
+confirming green — live in the wiki's mistakes log. These are the magiclike-specific
+ones the lessons don't cover.)*
+
+- **Parallel validation paths.** This engine enforces some rules in more than one place —
+  e.g. a cost is checked in both `isLegalAction` and `getLegalActions` (the AI's
+  enumerator); gate a new rule in **all** of them. **And flag the duplication to the
+  user** — parallel rule-logic is usually a refactor candidate (often there shouldn't
+  *be* two paths); surface it rather than silently entrench it.
 - **Retired effect kinds.** The v2.0 migration retired *a handful* of legacy kinds from
   card data (e.g. +1/+1 `add_counter` → permanent `pump`; `edict`/`draw`/`discard`
   collapsed into primitives) — the engine still has plenty of kinds, just not those.
