@@ -268,3 +268,17 @@ Decomposed:
 - FINE/aesthetic calls (skill vs skill+variant, neutral judges): judge agreed ~1/5 (lightning-nofig only) — at/below chance, and SYSTEMATIC: judge rewards legible/clean/literal/color-correct; user rewards dynamic/ambitious/stylish/feel.
 - Plus 5 subtle cards where the TWO judges couldn't agree with EACH OTHER (unsummon, murder, lightning-figure, knight_commander, bindspeaker) — internal inconsistency on fine calls.
 IMPLICATION: the LLM judge is usable as a COARSE pre-filter (cull obvious losers) but is unreliable-to-anticorrelated as a FINE aesthetic arbiter. It would NOT clear the plan's ≥80% calibration gate. User-gold is permanently load-bearing on the aesthetic call. (Caveats: small n; 2 rigged C1 cards; some user calls were relative/reject-all.)
+
+## ===== PROTOCOL CHANGE (user decision): CUT the LLM judges =====
+- Remove the blind LLM judges (best-vs-best + full-pool) from the test protocol. Rationale (per concordance analysis): ~chance on fine aesthetic calls, internally inconsistent, occasionally misleading, save the user no work, and risk biasing the user's blind call. Their one realized value (the calibration finding) is banked.
+- NEW per-card protocol: pick card → run both arms (control vs variant) → build BLIND marker-free contact sheet → USER judges (full-pool gold) → log. NO LLM judge step. Agents still nominate internally (recorded), but no judge compares them.
+
+## Candidate C5 — "self-critique with the judge's stance" (surfaced by user)
+- Observation: the JUDGE's per-axis reasoning is often a sharp DESCRIBER ("ambient fire coexisting with a bystander" ≈ user's "guy and a fireball") even when its overall verdict is a bad DECIDER. The artist agent, by contrast, repeatedly fails to catch its own flaws.
+- WHY the judge out-EVALUATES the artist (the hypothesis's engine):
+  1. The judge is told "you do NOT know how it was made; judge ONLY what you see" → it assesses the OUTPUT. The artist can't un-know its INTENT — it "sees" the fireball-striking-the-guy it MEANT, not the "guy and a fireball" it rendered.
+  2. Explicit per-axis rubric forces systematic critique; the artist generates holistically with no checklist.
+  3. Critical forced-choice stance surfaces relative flaws; the artist is in affirmative create-mode.
+  4. Fresh eyes, no sunk-cost attachment.
+- C5 (different LAYER — a self-EVALUATION phase, not prompt content): after generating, have the artist switch into evaluator-mode — re-examine its own rolls "as if it didn't make them, judging only what's on the canvas, against [explicit axes]" — BEFORE selecting/iterating. Bottle the judge's fresh-eyes / output-not-intent / rubric stance into the artist's own loop.
+- Targets TWO measured gaps at once: generation > self-selection (pick the better roll) AND artist-misses-own-flaws (iterate on the real flaw). Test via harness (skill vs skill+C5). Queued.
