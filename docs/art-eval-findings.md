@@ -225,3 +225,12 @@ _Infra note: container regressed local git HEAD + wiped gitignored art-eval/ sev
 - Observation: lightning hits TALL things (trees, spires, masts), never flat open ground; the flat-ground strikes are physically implausible. Neither the agents (reliably) nor the LLM judges weighted real-world naturalism — only the user's domain knowledge caught it. (Another judge↔user / human-domain-knowledge divergence.)
 - Proposed (different LAYER from C1/C2/C3 — PRE-generation grounding, not composition/color): "Before prompting, briefly ground the subject in how it actually looks/behaves in reality — what it interacts with, its scale, its physics — and bake that specificity in. Lightning strikes the tallest thing; a greatsword is two-handed; a longbow is taller than its archer; a castle has crenellations." Adjacent to vocabulary-precision; adds physical/behavioral accuracy.
 - Honest priors: promising, concrete, targets a real observed failure, different in kind from prior candidates. BUT 0-for-3 on principle-additions winning the user's eye; agents partly do it already; may be a human-feedback-loop gap more than a skill win. Ideal first test = Lightning Bolt (does C4 put the bolt on a tall thing unprompted?).
+
+## C2 A/B #3 — horned_herald (GREEN rally-beast; NEUTRAL judge)
+- Both arms made "horned leader + rallying herd" (control via base skill — redundant composition). Treatment beast greener (color on subject); control browner.
+- Both neutral judges → CONTROL (medium): clearer dominant silhouette + scene depth; full-pool judge AGAIN called the CONTROL the more *ambitious* pool (2nd time control out-ambitioned C2 — undercuts C2's premise). Treatment won color + mechanic-staging.
+- **User gold: 2.05 = TREATMENT/C2** ("definitely the winner") — C2's first clear user-gold WIN, diverging from BOTH judges (who picked control). Saved as keeper.
+- C2 tally on user gold (n=3): dark_ritual=inconclusive | lightning_bolt=control | horned_herald=**C2**. Mixed (1 C2 / 1 control / 1 inconclusive). C2 alive, not dominant.
+
+## METHODOLOGY change (user request): drop the *BEST nominee marker from user contact sheets
+- Flagging each arm's nominee on the sheet leaks structure and can bias the blind read. From here: user sheets show only `pool.gen` labels (no markers); user gives FULL-POOL gold only (their overall favorite). Best-vs-best remains an LLM-judge-only metric (nominees recorded internally, not shown to the user).
