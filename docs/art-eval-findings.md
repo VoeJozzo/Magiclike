@@ -184,3 +184,19 @@ User-gold scorecard: searing=C1 | shock=control | unsummon=mixed | murder=tie | 
 DO NOT merge C1 into SKILL.md. Keep this documented record + its one situational use (subjectless effect spells) + the variety side-effect. Remove the temp variant SKILL-c1-variant.md to close the cycle.
 
 _C1 cycle CLOSED: SKILL-c1-variant.md removed; live SKILL.md untouched. First full flywheel cycle = documented negative result._
+
+## C2 A/B — dark_ritual (n=1) — skill-v1 vs skill-v1+C2 ("reach, don't hedge")
+- Both arms made detailed occult-ritual scenes. Treatment (C2) added a cultist+sigil (more populated); control kept an altar + three distinct mana columns. Both neutral judges → treatment (medium) on atmosphere/enactment; control won legibility.
+- **User gold: "both are half a card."** Treatment's added ambition (the cultist) came at the COST of the mechanic (dropped the clear 3-mana read); control kept the 3-mana read but lacked an actor. C2's "reach harder" *traded* one essential for another — not a better COMPLETE card.
+- C2 verdict (n=1, inconclusive→negative): ambition that drops the mechanic isn't an improvement. Variant removed; C2 text preserved below for any future re-test.
+
+### C2 text (for re-test)
+> **Reach, don't hedge — the diagnosable-flaw principle.** Generations are cheap, so prompt for the *ambitious, specific, detailed* version of a scene, not the safe one. A roll packed with enough specific detail to have a *visible, nameable* flaw beats a clean-but-generic roll that hides its emptiness. Commit to specific materials, poses, light, and props even at the risk of an awkward frame; and when choosing among rolls, **don't down-rank a frame for a fixable visible error if it's reaching for something real — down-rank the timid, generic, under-described one.** Specificity that risks being wrong beats safety that settles for bland.
+
+## Dark Ritual — human-feedback synthesis (the skill's REAL loop, not an A/B)
+User pivoted from *evaluating* to *making* the card. No resume-agent in this harness, so each round of feedback = a fresh agent handed full context (same effect).
+- **Round 1** — "both half-cards; synthesize cultist-enacting-the-rite + three mana streams." Landed via a real compositional insight: cultist to the SIDE *framing* the three columns (not overlapping) — solving "too much for 64×32." User liked gen_01's layout but flagged "no background" (the sprite-on-void trap the skill warns about).
+- **Round 2** — "keep gen_01's layout, add a real crypt background," ×5. All 5 got populated backgrounds (prompt-side fix per the skill's sprite-bias note). **User chose gen_03** (moody blue-violet crypt) → `keepers/dark_ritual_CHOSEN_gen03_*`.
+- **META:** the best final card came from HUMAN-IN-THE-LOOP feedback steering the agents, not autonomous one-shot — agents generate well; human judgment makes it *great*.
+
+_Infra note: container regressed local git HEAD + wiped gitignored art-eval/ several times this session; recovered each time from origin (everything durable lives in git). gen_03 itself was recovered by cropping the committed round-2 sheet._
