@@ -252,6 +252,11 @@ function describeEffect(eff, tplEff) {
               signedStat('toughness', eff, tplEff, negZero), plainSeg(' until end of turn')];
     }
     case 'add_counter': {
+      if (eff.counter) {
+        const n = eff.amount || 1;
+        const noun = n === 1 ? 'a ' + eff.counter + ' counter' : numWord(n) + ' ' + eff.counter + ' counters';
+        return [plainSeg('put ' + noun + ' on ' + (eff.scope === 'self' ? 'this' : t))];
+      }
       const pSeg = bumpedSeg('power', eff, tplEff, 1);
       const tSeg = bumpedSeg('toughness', eff, tplEff, 1);
       const tail = eff.scope === 'self' ? ' counter on this' : ' counter on ' + t;
@@ -800,6 +805,12 @@ function triggerLogText(trig) {
   return trig.event || '';
 }
 
+// Small number words for generated rules text ("Remove three verse counters").
+function numWord(n) {
+  const words = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
+  return (n >= 0 && n <= 10) ? words[n] : String(n);
+}
+
 // cost → "{T}: " / "{R}: " / "Sacrifice this: " prefix.
 function abilityCostPhrase(cost) {
   if (!cost) return '';
@@ -818,6 +829,11 @@ function abilityCostPhrase(cost) {
   }
   if (cost.sacrifice) {
     parts.push('Sacrifice ' + (cost.sacrifice === 'self' ? 'this' : 'a ' + cost.sacrifice));
+  }
+  if (cost.remove_counters) {
+    for (const [name, n] of Object.entries(cost.remove_counters)) {
+      parts.push('Remove ' + numWord(n) + ' ' + name + ' counter' + (n === 1 ? '' : 's'));
+    }
   }
   return parts.join(', ');
 }

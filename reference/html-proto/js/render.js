@@ -1348,6 +1348,14 @@ function makeCardEl(card, opts) {
 
   const ptInner = vm.isCreature ? '<div class="frame-pt">' + vm.pow + '/' + vm.tou + '</div>' : '';
   const damageInner = card.damage ? '<div class="frame-damage">' + card.damage + '</div>' : '';
+  // Named counters (e.g. verse) are a bare resource that doesn't change P/T, so
+  // they need their own badge — otherwise they'd be invisible. Generic over any
+  // counter name; top-left overlay, clear of P/T and the damage badge.
+  const counterEntries = card.counters ? Object.entries(card.counters).filter(([, n]) => n > 0) : [];
+  const counterInner = counterEntries.length
+    ? '<div class="frame-counters">' + counterEntries.map(([name, n]) =>
+        '<span class="frame-counter">' + n + ' ' + escapeHtml(name) + '</span>').join('') + '</div>'
+    : '';
 
   div.innerHTML =
     '<div class="frame-title">' +
@@ -1360,7 +1368,7 @@ function makeCardEl(card, opts) {
       '<div class="frame-oracle">' + vm.oracleHtml + '</div>' +
       stickerSection +
     '</div>' +
-    ptInner + damageInner;
+    ptInner + damageInner + counterInner;
 
   CONTROLLER.attachLongPress(div, card);
   return div;

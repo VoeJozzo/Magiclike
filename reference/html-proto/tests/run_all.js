@@ -130,6 +130,9 @@ const CATEGORY_A = [
   'test_no_dead_text.js',
   // Predate (buff-then-fight) + the D1 live-read hybrid it forces + static-lord keyword grants.
   'test_predate_fight_d1.js',
+  // Hymnwright — verse counters (first named-counter card): accrual on death,
+  // remove_counters cost gated in both legality paths, end-to-end recall, leave-play clear.
+  'verse_counter_test.js',
 ];
 
 const TESTS_DIR = __dirname;

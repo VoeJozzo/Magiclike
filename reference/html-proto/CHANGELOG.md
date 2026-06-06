@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.0.85`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.0.86`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -199,6 +199,8 @@ opponent's best creature — permanent base 20, eot base 8, +card value +lane �
 animate-add_type only at a permanent WE control (else it'd gift the opponent a
 body). Verified via `AI.decide`: the AI now casts Encase in Amber at an enemy
 creature. 1269 green, lint clean, 300-game selfplay clean.
+
+v2.0.86: **Hymnwright + named ("verse") counters — the first counter that isn't +1/+1.** New 1{W} Human Cleric 1/3: "Whenever another creature dies, put a verse counter on Hymnwright. {T}, Remove three verse counters: Return target creature card from your graveyard to your hand." Her death-trigger is the Soul Reaper archetype verbatim and her recall is Grave Digger's `move_card` graveyard→hand on a *targeted activated ability* (proven shape — Royal Assassin et al.), so the only new primitive is a **named-counter** layer: the v2.0 migration sent +1/+1 `add_counter` to permanent `pump` (a +1/+1 counter IS a stat boost), and verse counters are a bare resource that never touches P/T. Engine: a `counters:{}` map on every instance (`makeCard`/`makeToken`), cleared in `resetInPlayState` on leave-play (MTG 122.1g); `add_counter` honors a `counter` name (else the legacy +1/+1 path); a new `remove_counters` activation cost gated in BOTH `isLegalAction` AND `getLegalActions` (the add-it-in-both-places invariant) and paid in `doActivateAbility`; generated cost text ("Remove three verse counters") + accrual clause ("put a verse counter on this"); a cyan verse-count badge on the card frame (browser-only — verify in-page); and an AI `pickBestActivation` branch so it recalls a graveyard creature once it has the verses. `effect_migration`'s "add_counter is gone" guard narrowed to its true intent (no card may use the +1/+1 counter-less form; the named form is legitimate). New `verse_counter_test.js` (22). 1432 green, lint clean, 300-game selfplay clean (0 crashes/violations/stuck/runaway).
 
 v2.0.85: **single `addType` write helper for type identity (consistency refactor).**
 (Renumbered from v2.0.84 on the rebase onto `dev` — that number went to the card-art

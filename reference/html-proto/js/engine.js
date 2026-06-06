@@ -655,6 +655,7 @@ function makeCard(tplId, stickers, slotIdx, empowerRolls, permaBuffs, bonusTrigg
     tapped: false, sick: false, damage: 0,
     tempPower: 0, tempTou: 0,    // EOT — cleared at end of turn
     permPower: 0, permTou: 0,    // counters — reset on leave-play (death/bounce/exile)
+    counters: {},                // named counters (verse, etc.) — bare resource, reset on leave-play
     dealtDeathtouch: false,
     // Last-writer-wins approximation of "killer". Cleared by resetInPlayState
     // when a card returns fresh. Credits killer for G[killer].claimedKeywords.
@@ -726,6 +727,7 @@ function makeToken(tokenTplId, controller) {
     tapped: false, sick: true, damage: 0,    // ETB sick; haste overrides
     tempPower: 0, tempTou: 0,
     permPower: 0, permTou: 0,
+    counters: {},
     dealtDeathtouch: false,
     killedBy: null,
     cantAttack: false, cantBlock: false,
@@ -1805,10 +1807,20 @@ const EFFECTS = {
     if (perm) log(`Put +${p}/+${t} on ${f.card.name}.`, 'sp');
     else log(`${f.card.name} gets +${p}/+${t} EOT.`, 'sp');
   },
-  // +1/+1 counter (permPower/permTou stat sum; resets on leave-play).
+  // Counters. A named `counter` (e.g. "verse") is a bare resource stored in
+  // card.counters; it does NOT change P/T. Otherwise power/toughness add a
+  // +1/+1 counter (permPower/permTou stat sum). Both reset on leave-play.
   add_counter(ctx, params, target) {
     const f = resolveTarget(ctx, target);
     if (!f) return;
+    if (params.counter) {
+      const n = params.amount || 1;
+      if (!f.card.counters) f.card.counters = {};
+      f.card.counters[params.counter] = (f.card.counters[params.counter] || 0) + n;
+      const noun = n === 1 ? `a ${params.counter} counter` : `${n} ${params.counter} counters`;
+      log(`Put ${noun} on ${f.card.name}.`, 'sp');
+      return;
+    }
     const p = params.power || 0;
     const t = params.toughness || 0;
     f.card.permPower += p;
@@ -3756,6 +3768,7 @@ function resetInPlayState(card, preserveDeathState) {
   card.tapped = false; card.sick = false; card.damage = 0;
   card.tempPower = 0; card.tempTou = 0;
   card.permPower = 0; card.permTou = 0;
+  card.counters = {};   // named counters vanish when the permanent leaves play (MTG 122.1g)
   card.cantAttack = false; card.cantBlock = false;
   if (card.cantAttackBy instanceof Set) card.cantAttackBy.clear();
   if (card.cantBlockBy instanceof Set) card.cantBlockBy.clear();
@@ -4944,6 +4957,14 @@ function doActivateAbility(who, cardIid, abilityIdx, targets, sacIid) {
     const sacF = findCard(sacIid);
     if (sacF) sacrificeCard(sacF.card, sacF.controller);
   }
+  // Counter-removal cost (e.g. "Remove three verse counters"). Decrement the
+  // named counters on the source; legality already guaranteed sufficiency.
+  if (ab.cost && ab.cost.remove_counters) {
+    if (!card.counters) card.counters = {};
+    for (const name in ab.cost.remove_counters) {
+      card.counters[name] = (card.counters[name] || 0) - ab.cost.remove_counters[name];
+    }
+  }
   // Mana abilities don't go on the stack; resolve immediately.
   // Other activated abilities also resolve immediately in this prototype
   // (a simplification — real MtG would put them on the stack).
@@ -5461,6 +5482,12 @@ function isLegalAction(who, action) {
         if (!sacF || sacF.controller !== who) return false;
         if (!hasType(sacF.card, 'Creature')) return false;
       }
+      // Counter-removal cost: the source must carry enough of each named counter.
+      if (ab.cost && ab.cost.remove_counters) {
+        for (const name in ab.cost.remove_counters) {
+          if (((f.card.counters && f.card.counters[name]) || 0) < ab.cost.remove_counters[name]) return false;
+        }
+      }
       const isMana = ab.effects[0].kind === 'add_mana';
       if (isMana) {
         // Mana abilities are always available when source can be tapped, regardless of priority.
@@ -5787,6 +5814,14 @@ function getLegalActions(who) {
           .filter(c => hasType(c, 'Creature'))
           .map(c => c.iid);
         if (sacOptions.length === 0) continue;  // can't pay sac cost
+      }
+      // Counter-removal cost: skip if the source lacks enough of any named counter.
+      if (ab.cost && ab.cost.remove_counters) {
+        let canPay = true;
+        for (const name in ab.cost.remove_counters) {
+          if (((card.counters && card.counters[name]) || 0) < ab.cost.remove_counters[name]) { canPay = false; break; }
+        }
+        if (!canPay) continue;
       }
       if (ab.sorcery_speed ? !isSorceryWindow(who) : !isInstantWindow(who)) continue;
       const targetedEff = ab.effects.find(effectNeedsTarget);

@@ -1905,6 +1905,13 @@ function pickBestActivation(state, who, abilityActs) {
         && (eff.to_zone === 'battlefield' || (eff.to_zone === 'hand' && eff.selector === 'library_search'))) {
       // Tutoring / land-fetch is consistently strong (collapsed search*).
       score = 8;
+    } else if (eff.kind === 'move_card' && eff.from_zone === 'graveyard' && eff.to_zone === 'hand') {
+      // Recall a creature card from our graveyard to hand (Hymnwright's verse
+      // ability). Value the returned body at parity — mirrors the spell scorer.
+      const t = act.targets && act.targets[0];
+      const grave = state[who].graveyard || [];
+      const recalled = t && grave.find(c => c.iid === t.iid);
+      score = recalled ? 10 + ENGINE.getCardValue(recalled, 'play') : -100;
     } else if ((eff.kind === 'add_counter' || (eff.kind === 'pump' && eff.duration === 'permanent')) && eff.scope === 'self') {
       // Self-counter pump (Carrion Feeder-shape). The general principle:
       // sacrificing creatures just to grow a counter is wrong play. Real

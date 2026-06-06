@@ -377,6 +377,26 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
   text-shadow:0 0 calc(2px * var(--scale)) #000;
 }
 
+/* Counter badge: named counters (e.g. verse) that don't change P/T, so they get
+   their own overlay. Top-left over the art, clear of P/T (bottom-right) and the
+   damage badge (bottom-left). Cyan echoes the verse/soul theme. */
+.card-frame .frame-counters{
+  position:absolute;
+  left:calc(4px * var(--scale));
+  top:calc(20px * var(--scale));
+  display:flex;
+  flex-direction:column;
+  gap:calc(1px * var(--scale));
+}
+.card-frame .frame-counter{
+  font-family:var(--card-font-damage);
+  font-size:calc(4px * var(--scale) * var(--card-text-scale));
+  color:#8fe0e0;
+  line-height:1;
+  text-shadow:0 0 calc(2px * var(--scale)) #000;
+  white-space:nowrap;
+}
+
 /* Cardback variant: face-down card frame for opponent-hand placeholders.
    Strips all the inner element layouts down to just the frame PNG so the
    small (--scale ~0.3) face-down look reads cleanly. */
