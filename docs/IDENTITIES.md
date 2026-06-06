@@ -42,6 +42,7 @@ The bots exist purely for **attribution** (tracking which AI did what). They're 
   GH_TOKEN="$(gh auth token --user <bot>)" gh pr create --base dev --title "…" --body "…"
   ```
 - All bot work targets **`dev`** via PR; the owner reviews/approves. `main` receives `dev` by periodic forward-merge.
+- **Watching:** the bot that opens a PR is auto-subscribed to it *as the author* — that's how an AI tracks its own PRs across sessions. So "subscribe to the PR for updates" means **the bot** watches; don't subscribe the owner (already notified as the CODEOWNER reviewer). *(An explicit `updateSubscription` GraphQL call needs the `notifications` token scope the PATs lack — but it's unnecessary given author auto-subscribe.)*
 
 ## Branch protection
 

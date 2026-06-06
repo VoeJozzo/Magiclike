@@ -346,7 +346,7 @@ Pixflux generates whole images; `/v2/inpaint` *edits* them — and this is where
 
 **The user edits pixels too.** The loop is collaborative in both directions: the user may clean up artifacts, recolor, reposition, or draw an element *between* your AI steps. When they hand back an edited file, your job is to plumb it through — downscale it to working size, rebuild the mask, re-inpaint — and carry their detail forward. (Royal Assassin is a thing neither of you could have made alone: their camera-pan, their cleanup, their hand-drawn knife, your API plumbing.)
 
-**Levers worth reaching for** (in PixelLab's tool docs): **guidance weight** (prompt-adherence strength — raise it when an element keeps getting ignored), **negative description** (name what to *avoid*), **`forced_palette`** (lock the fill to the scene's colors for a seamless blend), **seed** (reproducibility), **crop-to-mask** (focus generation on the masked region). For higher-res or higher-quality edits there's **`/inpaint-v3`** — fetch its spec when you reach for it.
+**Levers worth reaching for** (in PixelLab's tool docs): **guidance weight** (prompt-adherence strength — raise it when an element keeps getting ignored), **negative description** (name what to *avoid*), **`forced_palette`** (lock the fill to the scene's colors for a seamless blend), **seed** (reproducibility), **crop-to-mask** (focus generation on the masked region). For higher-res or higher-quality edits there's **`/inpaint-v3`** — but it takes a **hosted image URL, not base64** (base64 inputs 422 out), so reach for it only when the working image already lives at a URL; from local base64, stay on `/v2/inpaint`. Fetch its spec when you do.
 
 ---
 
