@@ -234,3 +234,9 @@ _Infra note: container regressed local git HEAD + wiped gitignored art-eval/ sev
 
 ## METHODOLOGY change (user request): drop the *BEST nominee marker from user contact sheets
 - Flagging each arm's nominee on the sheet leaks structure and can bias the blind read. From here: user sheets show only `pool.gen` labels (no markers); user gives FULL-POOL gold only (their overall favorite). Best-vs-best remains an LLM-judge-only metric (nominees recorded internally, not shown to the user).
+
+## C2 A/B #4 — knight_commander (WHITE Knight lord; NEUTRAL judge)
+- Both arms: commander leading knights. Treatment (C2) MORE ambitious/atmospheric (denser ranks, golden-dawn backlighting) BUT off-white reds (crimson cape/banners) + busier crowds; control cleaner-white + crisper.
+- Judges SPLIT: bvb → TREATMENT/C2 (drama); full-pool → CONTROL (clean color + legibility). Both noted C2 = more ambitious but at cost of WHITE identity + 64×32 legibility.
+- **User gold: 1.x = TREATMENT/C2 "clearly the better branch," 1.02 best.** C2's 2nd straight user-gold WIN on a character card, again DIVERGING from the judges.
+- C2 tally on user gold (n=4): dark_ritual=inconclusive | lightning_bolt=control | horned_herald=C2 | knight_commander=**C2** = 2 C2 / 1 control / 1 inconclusive. **C2 LEANING POSITIVE on the user's eye** — winning on the ambition axis the JUDGES penalize (INVERSE of C1's judge-favored/user-rejected pattern). Emerging read: C2 may genuinely suit the user's taste (dynamism/ambition > clean-but-tame), even though an automated judge rejects it.
