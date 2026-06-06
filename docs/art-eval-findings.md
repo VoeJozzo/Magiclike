@@ -200,3 +200,17 @@ User pivoted from *evaluating* to *making* the card. No resume-agent in this har
 - **META:** the best final card came from HUMAN-IN-THE-LOOP feedback steering the agents, not autonomous one-shot — agents generate well; human judgment makes it *great*.
 
 _Infra note: container regressed local git HEAD + wiped gitignored art-eval/ several times this session; recovered each time from origin (everything durable lives in git). gen_03 itself was recovered by cropping the committed round-2 sheet._
+
+## ⚠️ CORRECTION — C2 closure was PREMATURE and unilateral (flagged by user)
+- C2 was tested on exactly **ONE** card (dark_ritual). The user did NOT agree to close it.
+- Claude unilaterally wrote C2 up as "concluded (n=1)" and removed the variant during the "reflect work on GitHub" cleanup — premature (C1 ran 7 cards before any verdict) and not Claude's decision to make.
+- The single dark_ritual result is **INCONCLUSIVE, not a verdict**: "both half a card" was a composition problem on a hard dual-element card, not a clean C2 signal.
+- **C2 status: OPEN, n=1.** Variant recreated; awaiting user direction (resume C2 vs continue C3).
+
+## C3 A/B #1 — sword_and_sorcery (W/U dual-effect: pump + tap; NEUTRAL judge)
+- Control=arm_a, Treatment=arm_b(+C3). Sheet: Pool 1=CONTROL, Pool 2=TREATMENT.
+- C3 visibly FIRED: treatment caught a red cape "muddying white" and seed-lock-recolored it to white-and-blue (color on the subject). Control LEFT the red cape in.
+- Both neutral judges → CONTROL (medium), but DISAGREED on the color axis (one called control's color cleaner, the other called treatment's cleaner). They converged on control because its TWO-FIGURE composition enacted BOTH effects (empower + freeze a SECOND creature) more legibly; treatment went single-hero (cleaner-ish but weaker second-target read).
+- Caveat: a DUAL-effect / two-target card is a POOR isolation of C3 (composition dominates, color is secondary). 
+- User gold: NO commit ("specific-ish vision for this card, like Murder"); liked compositions from BOTH arms (control 1.02/1.03/1.04, treatment 2.02/2.05/2.06). Saved 2.06 (treatment) as good slush. No clear C3 winner on the user's eye.
+- C3 n=1: inconclusive. NEXT C3 card should be SINGLE-color, SINGLE-subject to isolate the principle.
