@@ -490,6 +490,7 @@ func _drive_ai_block_declarations(defender_key: String) -> void:
 			_do_declare_blocker(action)
 		else:
 			break
+	_prune_single_menace_blocks()
 
 
 # Like execute_action but skips settle (caller is already settling).
@@ -871,7 +872,7 @@ func _legal_declare_blocker(action: Dictionary) -> bool:
 			and not blocker.has_keyword("flying") \
 			and not blocker.has_keyword("reach"):
 		return false
-	# Menace's ≥2 requirement is validated at damage resolution (single blocker → unblocked).
+	# Let the first blocker be declared; confirm rejects a lone blocker on menace.
 	return true
 
 
@@ -956,6 +957,45 @@ func _do_undeclare_blocker(action: Dictionary) -> bool:
 	return true
 
 
+func _blockers_for_attacker(attacker_iid: int) -> Array:
+	var result: Array = []
+	for blocker_iid in _state.blockers.keys():
+		if int(_state.blockers[blocker_iid]) == attacker_iid:
+			result.append(int(blocker_iid))
+	return result
+
+
+func _menace_blocks_are_legal() -> bool:
+	for attacker_iid in _state.attackers:
+		var found = _state.find_instance(attacker_iid)
+		if found == null or found.card == null:
+			continue
+		var attacker: CardInstance = found.card
+		if attacker.has_keyword("menace") and _blockers_for_attacker(attacker_iid).size() == 1:
+			return false
+	return true
+
+
+func _prune_single_menace_blocks() -> void:
+	for attacker_iid in _state.attackers:
+		var found = _state.find_instance(attacker_iid)
+		if found == null or found.card == null:
+			continue
+		var attacker: CardInstance = found.card
+		if not attacker.has_keyword("menace"):
+			continue
+		var blockers: Array = _blockers_for_attacker(attacker_iid)
+		if blockers.size() != 1:
+			continue
+		var blocker_iid: int = int(blockers[0])
+		_state.blockers.erase(blocker_iid)
+		var blocker_found = _state.find_instance(blocker_iid)
+		if blocker_found != null and blocker_found.card != null:
+			var blocker: CardInstance = blocker_found.card
+			blocker.blocking_iid = -1
+			_state.append_log("%s cannot block %s alone because it has menace" % [blocker.name(), attacker.name()])
+
+
 # Defender signals "done blocking" → opens APNAP priority (active player first).
 func _legal_confirm_blocks(_action: Dictionary) -> bool:
 	if _state == null or _state.winner != "":
@@ -963,6 +1003,8 @@ func _legal_confirm_blocks(_action: Dictionary) -> bool:
 	if not _state.awaiting_block_declaration:
 		return false
 	if _state.phase_machine.current != PhaseMachine.Phase.COMBAT_BLOCK:
+		return false
+	if not _menace_blocks_are_legal():
 		return false
 	return true
 
@@ -1049,6 +1091,8 @@ func _resolve_combat_damage() -> void:
 			continue
 		var attacker: CardInstance = atk_found.card
 		if attacker.has_keyword("menace") and attacker_blockers[atk_iid].size() < 2:
+			# Confirm-time legality rejects lone menace blockers in normal play;
+			# keep this damage-time guard for imported or otherwise stale states.
 			if attacker_blockers[atk_iid].size() == 1:
 				_state.append_log("%s has menace — single blocker is illegal, ignored" % attacker.name())
 			attacker_blockers[atk_iid] = []

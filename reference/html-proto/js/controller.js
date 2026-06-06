@@ -66,6 +66,22 @@ let lastGameRecorded = false;
 let sandboxMode = false;              // true while a RUN-less card-test game is running
 let sandboxSpawnTarget = 'you-hand';  // '<side>-<zone>' for the spawn panel
 
+function clearTransientGameUi() {
+  pendingTarget = null;
+  pendingModalChoice = null;
+  selectedMapNode = null;
+  uiAtk = [];
+  uiBlk = new Map();
+  uiPickBlk = null;
+  Modal.hide('modalChoiceModal');
+  const tgtbar = document.getElementById('tgtbar');
+  if (tgtbar) tgtbar.classList.remove('vis');
+  const statusCancelBtn = document.getElementById('statusCancelBtn');
+  if (statusCancelBtn) statusCancelBtn.style.display = 'none';
+  const bannerCancel = document.getElementById('stackBannerCancelBtn');
+  if (bannerCancel) bannerCancel.style.display = 'none';
+}
+
 function updateThinkingUi() {
   if (aiThinking) {
     document.body.classList.add('ai-thinking');
@@ -291,6 +307,7 @@ function makeStartBtn(parent, text, styleKey, onclick) {
 }
 
 function showStartScreen() {
+  clearTransientGameUi();
   const screen = document.getElementById('startScreen');
   // Fullscreen API needs a user gesture — capture-phase + once:true.
   screen.addEventListener('click', () => {
@@ -364,6 +381,7 @@ function sandboxDeck() {
 }
 
 function startSandbox() {
+  clearTransientGameUi();
   sandboxMode = true;
   inDraft = false;
   lastGameRecorded = true;   // suppress the run-recording path entirely
@@ -376,6 +394,7 @@ function startSandbox() {
 }
 
 function exitSandbox() {
+  clearTransientGameUi();
   sandboxMode = false;
   const panel = document.getElementById('sandboxPanel');
   if (panel) panel.style.display = 'none';
@@ -531,6 +550,7 @@ function renderSandboxPanel() {
 }
 
 function continueRun() {
+  clearTransientGameUi();
   if (!RUN.load()) {
     document.getElementById('startScreen').style.display = 'none';
     newRun();
@@ -568,6 +588,7 @@ let pendingNeowModifier = null;
 let pendingDraftMode = 'classic';
 
 function newRun(mode) {
+  clearTransientGameUi();
   // Desert Cube skips Neow (cube+boon interaction not designed).
   Modal.hide('gameover');
   pendingNeowModifier = null;
@@ -713,9 +734,9 @@ function applyTileColorFromTpl(div, tpl) {
   const step = 100 / colors.length;
   for (let i = 0; i < colors.length; i++) {
     const hex = TILE_COLOR_HEX[colors[i]] || '#888';
-    const start = (i * step).toFixed(1);
-    const end = ((i + 1) * step).toFixed(1);
-    stops.push(`${hex} ${start}%`, `${hex} ${end}%`);
+    const segmentStartPct = (i * step).toFixed(1);
+    const segmentEndPct = ((i + 1) * step).toFixed(1);
+    stops.push(`${hex} ${segmentStartPct}%`, `${hex} ${segmentEndPct}%`);
   }
   div.style.borderImage = `linear-gradient(45deg, ${stops.join(', ')}) 1`;
   div.style.borderImageSlice = '1';
@@ -758,7 +779,30 @@ function makeRewardCardEl(tpl, slot) {
   return el;
 }
 
-// Map node tooltip — tap shows briefly, long-press shows while held (mobile-friendly).
+function appendRewardConnector(parent, symbol, extraClass) {
+  const connector = document.createElement('div');
+  connector.className = 'rwd-pair-plus' + (extraClass ? ' ' + extraClass : '');
+  connector.textContent = symbol;
+  parent.appendChild(connector);
+  return connector;
+}
+
+function appendRewardFlavor(parent, name, text, extraClass) {
+  const flavor = document.createElement('div');
+  flavor.className = 'rwd-pair-sticker' + (extraClass ? ' ' + extraClass : '');
+  const nameEl = document.createElement('div');
+  nameEl.className = 'name';
+  nameEl.textContent = name;
+  const textEl = document.createElement('div');
+  textEl.className = 'text';
+  textEl.textContent = text;
+  flavor.appendChild(nameEl);
+  flavor.appendChild(textEl);
+  parent.appendChild(flavor);
+  return flavor;
+}
+
+// Map node tooltip -- tap shows briefly, long-press shows while held (mobile-friendly).
 let mapTooltipHideTimer = null;
 function showMapTooltip(nodeEl, label) {
   const tt = document.getElementById('mapTooltip');
@@ -784,7 +828,7 @@ function showMapTooltip(nodeEl, label) {
 function attachMapLongPress(el, label) {
   let pressTimer = null;
   let startX = 0, startY = 0;
-  const start = (x, y) => {
+  const beginMapLongPress = (x, y) => {
     startX = x; startY = y;
     pressTimer = setTimeout(() => {
       showMapTooltip(el, label);
@@ -800,11 +844,11 @@ function attachMapLongPress(el, label) {
   const cancel = () => {
     if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
   };
-  el.addEventListener('touchstart', (e) => start(e.touches[0].clientX, e.touches[0].clientY), { passive: true });
+  el.addEventListener('touchstart', (e) => beginMapLongPress(e.touches[0].clientX, e.touches[0].clientY), { passive: true });
   el.addEventListener('touchmove',  (e) => move(e.touches[0].clientX, e.touches[0].clientY), { passive: true });
   el.addEventListener('touchend',   cancel);
   el.addEventListener('touchcancel',cancel);
-  el.addEventListener('mousedown',  (e) => start(e.clientX, e.clientY));
+  el.addEventListener('mousedown',  (e) => beginMapLongPress(e.clientX, e.clientY));
   el.addEventListener('mousemove',  (e) => move(e.clientX, e.clientY));
   el.addEventListener('mouseup',    cancel);
   el.addEventListener('mouseleave', cancel);
@@ -1122,16 +1166,9 @@ function renderReward() {
           scale: 2,
         });
         div.appendChild(mystery);
-        const connector = document.createElement('div');
-        connector.className = 'rwd-pair-plus';
-        connector.textContent = '+++';
-        div.appendChild(connector);
-        const flavor = document.createElement('div');
-        flavor.className = 'rwd-pair-sticker';
-        flavor.innerHTML =
-          `<div class="name">3 Random Stickers</div>` +
-          `<div class="text">Three surprise stickers on a random creature — slot and stickers both rolled when you pick.</div>`;
-        div.appendChild(flavor);
+        appendRewardConnector(div, '+++');
+        appendRewardFlavor(div, '3 Random Stickers',
+          'Three surprise stickers on a random creature — slot and stickers both rolled when you pick.');
         div.onclick = () => pickRewardCandidateClick(idx);
         optionsEl.appendChild(div);
         return;
@@ -1172,17 +1209,11 @@ function renderReward() {
         // Base card (left).
         div.appendChild(makeRewardCardEl(baseTpl, baseSlot));
         // Connector: plus between inputs.
-        const plus = document.createElement('div');
-        plus.className = 'rwd-pair-plus';
-        plus.textContent = '+';
-        div.appendChild(plus);
+        appendRewardConnector(div, '+');
         // Staple card (middle).
         div.appendChild(makeRewardCardEl(stapleTpl, stapleSlot));
         // Connector: arrow to result.
-        const arrow = document.createElement('div');
-        arrow.className = 'rwd-pair-plus';
-        arrow.textContent = '→';
-        div.appendChild(arrow);
+        appendRewardConnector(div, '→');
         // Merged preview (right). Render via makeCardEl directly with the
         // pre-built mergedCard (which already has stapled mechanics baked
         // in). Sticker badges from the inputs don't show on the preview;
@@ -1220,10 +1251,7 @@ function renderReward() {
       if (cand.kind === 'sticker') {
         const sticker = STICKERS[cand.sticker_id];
         if (!sticker) return;
-        const connector = document.createElement('div');
-        connector.className = 'rwd-pair-plus';
-        connector.textContent = '+';
-        div.appendChild(connector);
+        appendRewardConnector(div, '+');
         const stickerEl = document.createElement('div');
         stickerEl.className = 'rwd-pair-sticker';
         // For Empower, show the pre-rolled target so the player knows exactly
@@ -1250,49 +1278,24 @@ function renderReward() {
           `<div class="text">${renderManaSymbols(escapeHtml(sticker.text || ''))}</div>`;
         div.appendChild(stickerEl);
       } else if (cand.kind === 'twoStickers') {
-        const connector = document.createElement('div');
-        connector.className = 'rwd-pair-plus';
-        connector.textContent = '++';
-        div.appendChild(connector);
-        const flavor = document.createElement('div');
-        flavor.className = 'rwd-pair-sticker';
-        flavor.innerHTML =
-          `<div class="name">2 Random Stickers</div>` +
-          `<div class="text">Two surprise stickers — rolled when you pick this.</div>`;
-        div.appendChild(flavor);
+        appendRewardConnector(div, '++');
+        appendRewardFlavor(div, '2 Random Stickers',
+          'Two surprise stickers — rolled when you pick this.');
       } else if (cand.kind === 'transform') {
-        const arrow = document.createElement('div');
-        arrow.className = 'rwd-pair-plus rwd-pair-arrow';
-        arrow.textContent = '↺';
-        div.appendChild(arrow);
-        const flavor = document.createElement('div');
-        flavor.className = 'rwd-pair-sticker rwd-pair-flavor';
-        flavor.innerHTML =
-          `<div class="name">Transform</div>` +
-          `<div class="text">Replace this card with one of three new options.</div>`;
-        div.appendChild(flavor);
+        appendRewardConnector(div, '↺', 'rwd-pair-arrow');
+        appendRewardFlavor(div, 'Transform',
+          'Replace this card with one of three new options.',
+          'rwd-pair-flavor');
       } else if (cand.kind === 'clone') {
-        const arrow = document.createElement('div');
-        arrow.className = 'rwd-pair-plus rwd-pair-clone';
-        arrow.textContent = '⧉';
-        div.appendChild(arrow);
-        const flavor = document.createElement('div');
-        flavor.className = 'rwd-pair-sticker rwd-pair-flavor rwd-pair-clone-flavor';
-        flavor.innerHTML =
-          `<div class="name">Clone</div>` +
-          `<div class="text">Add a fresh copy of this card to your deck.</div>`;
-        div.appendChild(flavor);
+        appendRewardConnector(div, '⧉', 'rwd-pair-clone');
+        appendRewardFlavor(div, 'Clone',
+          'Add a fresh copy of this card to your deck.',
+          'rwd-pair-flavor rwd-pair-clone-flavor');
       } else if (cand.kind === 'ripUp') {
-        const arrow = document.createElement('div');
-        arrow.className = 'rwd-pair-plus rwd-pair-rip';
-        arrow.textContent = '✗';
-        div.appendChild(arrow);
-        const flavor = document.createElement('div');
-        flavor.className = 'rwd-pair-sticker rwd-pair-flavor rwd-pair-rip-flavor';
-        flavor.innerHTML =
-          `<div class="name">Rip Up</div>` +
-          `<div class="text">Permanently remove this card from your deck.</div>`;
-        div.appendChild(flavor);
+        appendRewardConnector(div, '✗', 'rwd-pair-rip');
+        appendRewardFlavor(div, 'Rip Up',
+          'Permanently remove this card from your deck.',
+          'rwd-pair-flavor rwd-pair-rip-flavor');
       }
       div.onclick = () => pickRewardCandidateClick(idx);
       optionsEl.appendChild(div);
@@ -1788,9 +1791,7 @@ function clickBattlefield(iid) {
       uiBlk.delete(uiPickBlk);
     } else {
       const blkCard = ENGINE.findCard(uiPickBlk).card;
-      if (card.keywords.includes('flying')
-          && !blkCard.keywords.includes('flying')
-          && !blkCard.keywords.includes('reach')) return;
+      if (!ENGINE.canCreatureBlock(blkCard, card)) return;
       uiBlk.set(uiPickBlk, iid);
     }
     uiPickBlk = null;
@@ -2400,6 +2401,10 @@ const STATS_UI = {
   expanded: {},
 };
 
+function escapeStatsAttribute(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+}
+
 // Table metadata for tables that support copy + show-all. Each entry:
 //   id      — unique stable id used for STATS_UI.expanded keying and DOM ids
 //   defaultN — how many rows to show when collapsed (top-N)
@@ -2443,8 +2448,7 @@ function renderTableWithToolbar(opts) {
   // HTML-escape the TSV before putting it in the textarea value attribute.
   // (Less critical since textarea content isn't parsed as HTML, but the
   // attribute does need escaping for &, <, >, ", '.)
-  const escapeAttr = s => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
-  html += `<textarea id="statsTsv-${id}" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" aria-hidden="true">${escapeAttr(tsv)}</textarea>`;
+  html += `<textarea id="statsTsv-${id}" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" aria-hidden="true">${escapeStatsAttribute(tsv)}</textarea>`;
 
   // The actual visible table.
   const gridCols = columns.map(c => c.width || '1fr').join(' ');
@@ -2808,13 +2812,12 @@ function insightsHtml(drafts, perCardRows) {
     const maxCount = Math.max(...Object.values(lossDist));
     // TSV form for the copy button.
     const lossTsv = ['GAME\tLOSSES', ...games.map(g => `${g}\t${lossDist[g]}`)].join('\n');
-    const escapeAttr = s => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
     html += `<div style="display:flex;align-items:center;justify-content:space-between;margin:14px 0 4px;gap:8px;flex-wrap:wrap">`;
     html += `<div style="color:#ff8888;font-size:10px;font-weight:bold;letter-spacing:.1em">LOSSES BY GAME #</div>`;
     html += `<button onclick="CONTROLLER.copyTableAsTsv('lossHist')" style="background:#1a2a3a;border:1px solid #335;color:#88ccff;font-size:9px;padding:3px 8px;border-radius:3px;cursor:pointer;font-family:inherit">copy</button>`;
     html += `</div>`;
     html += `<div style="color:#666;font-size:9px;margin-bottom:4px;font-style:italic">When did losses happen? Avg loss at game ${avgLossGame} (${totalLosses} loss${totalLosses === 1 ? '' : 'es'} total).</div>`;
-    html += `<textarea id="statsTsv-lossHist" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" aria-hidden="true">${escapeAttr(lossTsv)}</textarea>`;
+    html += `<textarea id="statsTsv-lossHist" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" aria-hidden="true">${escapeStatsAttribute(lossTsv)}</textarea>`;
     html += '<div style="background:#0a0a14;border-radius:3px;padding:6px 8px;display:flex;flex-direction:column;gap:3px">';
     for (const g of games) {
       const count = lossDist[g];

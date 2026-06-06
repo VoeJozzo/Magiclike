@@ -134,6 +134,18 @@ console.log('\n=== search: library → battlefield, auto land-fetch tapped (sear
   check('it arrived tapped', fetched && fetched.tapped === true);
 })();
 
+console.log('\n=== search: string land filter narrows library fetch ===');
+(() => {
+  clearBoardsSafe();
+  const cr = ENGINE.makeCard(CREATURE_TPL);
+  const land = ENGINE.makeCard('plains');
+  G.you.library = [cr, land];
+  ENGINE.applyEffect(CTX, { kind: 'move_card', from_zone: 'library', to_zone: 'battlefield', filter: 'land', post: { tap: true } }, null);
+  const fetched = G.you.battlefield[G.you.battlefield.length - 1];
+  check('string land filter skips the creature and fetches the land', fetched && fetched.iid === land.iid);
+  check('the nonmatching creature stays in the library', has(G.you.library, cr.iid));
+})();
+
 console.log('\n=== search: library → hand, AI auto-picks (searchCreature collapse, opp) ===');
 (() => {
   // Seed a creature into opp's library so there's something to fetch.
@@ -145,6 +157,19 @@ console.log('\n=== search: library → hand, AI auto-picks (searchCreature colla
   check('no human prompt left dangling', !G.pendingSearch);
 })();
 
+console.log('\n=== search: string creature filter narrows AI tutor choices ===');
+(() => {
+  const land = ENGINE.makeCard('plains');
+  const cr = ENGINE.makeCard(CREATURE_TPL);
+  G.opp.library = [land, cr];
+  const h0 = G.opp.hand.length;
+  ENGINE.applyEffect({ controller: 'opp', sourceName: 'Tutor', sourceIid: -1 },
+    { kind: 'move_card', from_zone: 'library', to_zone: 'hand', selector: 'library_search', filter: 'creature' }, null);
+  check('AI fetched the creature, not the first library card',
+    G.opp.hand.length === h0 + 1 && G.opp.hand[G.opp.hand.length - 1].iid === cr.iid);
+  check('the nonmatching land stays in the library', has(G.opp.library, land.iid));
+})();
+
 console.log('\n=== search: library → hand, human gets a prompt (searchCreature collapse, you) ===');
 (() => {
   const cr = ENGINE.makeCard(CREATURE_TPL); G.you.library.unshift(cr);
@@ -152,6 +177,33 @@ console.log('\n=== search: library → hand, human gets a prompt (searchCreature
   ENGINE.applyEffect(CTX, { kind: 'move_card', from_zone: 'library', to_zone: 'hand', selector: 'library_search', filter: { type: 'Creature' } }, null);
   check('pendingSearch set for the human (async — resolved by doSearchPick)', !!G.pendingSearch && G.pendingSearch.filter.type === 'Creature');
   check('hand unchanged until the player picks', G.you.hand.length === h0);
+})();
+
+console.log('\n=== search: string creature filter constrains human picks and legal actions ===');
+(() => {
+  const land = ENGINE.makeCard('plains');
+  const cr = ENGINE.makeCard(CREATURE_TPL);
+  G.you.library = [land, cr];
+  G.pendingSearch = { who: 'you', source: 'Tutor', filter: 'creature' };
+  const legal = ENGINE.getLegalActions('you').filter(a => a.type === 'searchPick');
+  check('getLegalActions only exposes matching searchPick actions',
+    legal.length === 1 && legal[0].cardIid === cr.iid);
+  check('nonmatching human search pick is illegal',
+    !ENGINE.isLegalAction('you', { type: 'searchPick', cardIid: land.iid }));
+  const h0 = G.you.hand.length;
+  const oldWarn = console.warn;
+  let rejected;
+  console.warn = () => {};
+  try {
+    rejected = ENGINE.executeAction('you', { type: 'searchPick', cardIid: land.iid });
+  } finally {
+    console.warn = oldWarn;
+  }
+  check('executeAction rejects the nonmatching search pick',
+    rejected === false && G.pendingSearch && G.you.hand.length === h0 && has(G.you.library, land.iid));
+  const accepted = ENGINE.executeAction('you', { type: 'searchPick', cardIid: cr.iid });
+  check('matching human search pick resolves',
+    accepted === true && !G.pendingSearch && has(G.you.hand, cr.iid));
 })();
 
 console.log('\n=== discard: hand → graveyard, AI auto-picks (targeted-player discard, e.g. Duress) ===');

@@ -157,25 +157,28 @@ const EXPOSED = [
   'remapEmpowerRollForStaple', 'countEffects', 'mergeSpliceData',
   'isSpliceableBase', 'isSpliceableStaple',
   // Sticker module surface (stickers.js, all top-level).
-  'weightedPick',
+  'pickWeightedSticker',
   'applyStickersToCard', 'applyOneStickerToRuntimeCard',
   'applyRandomStickersToSide', 'empowerRollLabel', 'applyEmpowerRoll',
   'rollSubtypeFromDeck', 'pushStickerWithRoll', 'stickersForSlot',
   // Render module-scope helpers (render.js has no IIFE).
   'stickerBadgesHtml', 'effectiveArt', 'renderManaSymbols', 'formatCostBraced',
-  'isValidTargetCreature', 'canPlayFromUI',
+  'isValidTargetCreature', 'canPlayFromUI', 'playerForcedPrompt', 'anyForcedPrompt',
+  'edictChoiceNoun',
   // Card-text module surface (card-text.js, all module-scope, no IIFE).
   'describeAmount', 'describeEffect', 'describeEffectList',
   'describeTrigger', 'triggerLogText', 'describeAbility', 'describeStaticBuff',
   'describeCardText', 'describeCardSegments', 'describeModalSegs',
   // Card-text internal helpers — exposed so tests can target them
   // independently if a regression localizes to one.
-  'targetPhrase', 'withFilter', 'plainSeg', 'indefiniteArticle', 'bumpedSeg', 'bumpedDerived',
+  'targetPhrase', 'withFilter', 'plainSeg', 'indefiniteArticle', 'manaCostBraces',
+  'bumpedSeg', 'bumpedDerived',
   'segsToText', 'capitalize', 'capitalizeSegs',
   'triggerPreamble', 'abilityCostPhrase', 'keywordPreamble',
   // Unified type system (types.js, all module-scope, no IIFE — Phase 1).
   'TYPE_REGISTRY', 'typeRegistryEntry', 'typeCategory', 'isCardTypeTag',
-  'typesOf', 'hasType', 'addType', 'subtypesOf', 'governingType', 'isPermanent', 'typeLine',
+  'typesOf', 'hasType', 'addType', 'subtypesOf', 'governingType',
+  'isPermanent', 'typeLine',
 ];
 
 // Card templates now live in cards/<tplId>/card.json. The browser-side

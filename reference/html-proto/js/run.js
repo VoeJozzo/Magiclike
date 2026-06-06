@@ -800,7 +800,7 @@ function rollOneCandidate(type, alreadyOffered) {
       const slotIdx = eligibleSlots[Math.floor(Math.random() * eligibleSlots.length)];
       const stickerOpts = stickersFor(slotIdx);
       if (stickerOpts.length === 0) continue;
-      const sticker = weightedPick(stickerOpts);
+      const sticker = pickWeightedSticker(stickerOpts);
       const dupKey = `sticker:${slotIdx}:${sticker.id}`;
       if (alreadyOffered.has(dupKey)) continue;
       alreadyOffered.add(dupKey);
@@ -1056,7 +1056,7 @@ function pickRewardCandidate(idx) {
     for (let i = 0; i < 2; i++) {
       const opts = stickersFor(slotIdx);
       if (opts.length === 0) break;
-      const sticker = weightedPick(opts);
+      const sticker = pickWeightedSticker(opts);
       const slot = runState.slots[slotIdx];
       pushStickerWithRoll(slot, sticker.id, runState.slots);
       applied.push(sticker.id);
@@ -1091,7 +1091,7 @@ function pickRewardCandidate(idx) {
     for (let i = 0; i < 3; i++) {
       const opts = stickersFor(slotIdx);
       if (opts.length === 0) break;
-      const sticker = weightedPick(opts);
+      const sticker = pickWeightedSticker(opts);
       const slot = runState.slots[slotIdx];
       pushStickerWithRoll(slot, sticker.id, runState.slots);
       applied.push(sticker.id);
@@ -1193,7 +1193,7 @@ function getSlots() {
   return runState ? runState.slots : null;
 }
 
-function getStats() {
+function getRunStats() {
   if (!runState) return null;
   return {
     gameNum: runState.gameNum,
@@ -1290,7 +1290,7 @@ function removeSlotByIdx(idx) {
   return removed;
 }
 
-return { start, startNextGame, recordResult, getStats, isActive,
+return { start, startNextGame, recordResult, getStats: getRunStats, isActive,
          pickRewardCandidate, pickTransformReplacement, dismissReveal, getReward, getSlots,
          applySplice,
          applyStickerToSlot, appendSlot, removeSlotByIdx,

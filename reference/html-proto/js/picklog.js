@@ -9,7 +9,7 @@ const SCHEMA_VERSION = 1;
 let data = null;
 let currentDraft = null;
 
-function ensureLoaded() {
+function ensurePicklogLoaded() {
   if (data !== null) return;
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -48,8 +48,8 @@ function persist() {
   }
 }
 
-function startDraft() {
-  ensureLoaded();
+function beginPicklogDraft() {
+  ensurePicklogLoaded();
   currentDraft = {
     timestamp: Date.now(),
     colors: null,
@@ -60,28 +60,28 @@ function startDraft() {
 }
 
 function logPick(picked, offered) {
-  if (!currentDraft) startDraft();
+  if (!currentDraft) beginPicklogDraft();
   currentDraft.picks.push({ picked, offered: offered.slice() });
 }
 
 function finishDraft(colors) {
   if (!currentDraft) return;
   currentDraft.colors = colors ? colors.slice() : null;
-  ensureLoaded();
+  ensurePicklogLoaded();
   data.drafts.push(currentDraft);
   currentDraft = null;
   persist();
 }
 
 function recordGamePlayed() {
-  ensureLoaded();
+  ensurePicklogLoaded();
   if (!data.drafts.length) return;
   data.drafts[data.drafts.length - 1].gamesPlayed++;
   persist();
 }
 
 function recordRunResult(result) {
-  ensureLoaded();
+  ensurePicklogLoaded();
   if (!data.drafts.length) return;
   data.drafts[data.drafts.length - 1].result = result;
   persist();
@@ -89,7 +89,7 @@ function recordRunResult(result) {
 
 // pairs[winner][loser].wins for every (picked, unpicked) pair.
 function getPairsMatrix() {
-  ensureLoaded();
+  ensurePicklogLoaded();
   const pairs = {};
   for (const draft of data.drafts) {
     for (const pick of draft.picks) {
@@ -109,7 +109,7 @@ function getPairsMatrix() {
 function getCardStats() {
   const pairs = getPairsMatrix();
   const stats = {};
-  ensureLoaded();
+  ensurePicklogLoaded();
   for (const draft of data.drafts) {
     for (const pick of draft.picks) {
       for (const card of pick.offered) {
@@ -149,7 +149,7 @@ function summarize(n) {
       winRate: s.winRate,
     }))
     .sort((a, b) => (b.winRate || 0) - (a.winRate || 0));
-  ensureLoaded();
+  ensurePicklogLoaded();
   console.log(`%c=== Picklog summary — ${data.drafts.length} drafts ===`, 'color:#ffd700;font-weight:bold');
   console.log(`Top ${N} by win rate:`);
   console.table(rows.slice(0, N));
@@ -165,12 +165,12 @@ function clearAll() {
 }
 
 function exportData() {
-  ensureLoaded();
+  ensurePicklogLoaded();
   return JSON.parse(JSON.stringify(data));
 }
 
 return {
-  startDraft, logPick, finishDraft,
+  startDraft: beginPicklogDraft, logPick, finishDraft,
   recordGamePlayed, recordRunResult,
   getPairsMatrix, getCardStats, summarize,
   clearAll, exportData,

@@ -21,6 +21,20 @@ function passLabel(G, expectedActor) {
   return 'Pass';
 }
 
+function playerForcedPrompt(_G, who) {
+  return ENGINE.playerOwesDecision(who);
+}
+
+function anyForcedPrompt(G) {
+  return playerForcedPrompt(G, 'you') || playerForcedPrompt(G, 'opp');
+}
+
+function edictChoiceNoun(filter) {
+  if (filter === 'land') return 'land';
+  if (filter === 'permanent') return 'permanent';
+  return 'creature';
+}
+
 // Codex-style trigger-build modal button (condition + effect steps).
 function makeTriggerBuildOptionBtn(innerHtml, onClick) {
   const btn = document.createElement('button');
@@ -156,26 +170,18 @@ function render() {
 
   const expectedActor = ENGINE.expectedActor();
   const inReaction = !!(G.priority && G.stack.length > 0);
+  const humanForcedPrompt = playerForcedPrompt(G, 'you');
+  const forcedPromptOpen = anyForcedPrompt(G);
 
   const passBtn = document.getElementById('btnPass');
   passBtn.textContent = passLabel(G, expectedActor);
   passBtn.disabled = G.gameOver || !!pt || G.cleanupDiscarding
-                  || (G.forcedDiscard && G.forcedDiscard.who === 'you')
-                  || (G.pendingSearch && G.pendingSearch.who === 'you')
-                  || (G.pendingTriggerBuild && G.pendingTriggerBuild.who === 'you')
-                  || (G.pendingTriggerTarget && G.pendingTriggerTarget.controller === 'you')
-                  || (G.pendingNumberChoice && G.pendingNumberChoice.who === 'you')
-                  || (G.pendingSymmetricizeChoice && G.pendingSymmetricizeChoice.who === 'you')
-                  || (G.pendingEdictChoice && G.pendingEdictChoice.who === 'you')
-                  || (G.pendingOptionalCost && G.pendingOptionalCost.who === 'you')
+                  || humanForcedPrompt
                   || expectedActor !== 'you';
 
   document.getElementById('btnEnd').disabled =
     G.gameOver || !!pt || G.activePlayer !== 'you' || G.stack.length > 0
-    || inReaction || G.cleanupDiscarding
-    || (G.forcedDiscard && G.forcedDiscard.who === 'you')
-    || (G.pendingSearch && G.pendingSearch.who === 'you')
-    || (G.pendingTriggerBuild && G.pendingTriggerBuild.who === 'you');
+    || inReaction || G.cleanupDiscarding || forcedPromptOpen || expectedActor !== 'you';
 
   const tb = document.getElementById('tgtbar');
   const ptt = G.pendingTriggerTarget;
@@ -207,8 +213,7 @@ function render() {
   if (G.pendingSearch && G.pendingSearch.who === 'you') {
     Modal.show('searchModal', { dismissible: false });
     setText('searchTitle', `${G.pendingSearch.source.toUpperCase()} — PICK A CARD`);
-    const filter = G.pendingSearch.filter || {};
-    const matches = G.you.library.filter(c => !filter.type || hasType(c, filter.type));
+    const matches = G.you.library.filter(c => ENGINE.matchesSearchFilter(c, G.pendingSearch.filter));
     // Native card size (scale null) — the search list can be long, so cards stay
     // at hand size rather than the 2× showcase the meta pickers use.
     renderCardPicker(
@@ -342,7 +347,7 @@ function render() {
   if (G.pendingOptionalCost && G.pendingOptionalCost.who === 'you') {
     Modal.show('optionalCostModal', { dismissible: false });
     const p = G.pendingOptionalCost;
-    const costStr = renderManaSymbols(manaCostBraces(p.cost));
+    const costStr = renderManaSymbols(manaCostBraces(p.cost, {empty: '{0}'}));
     document.getElementById('optionalCostSubtitle').innerHTML =
       `${p.source} entered.<br>Pay ${costStr} to use its stapled effect?`;
     const btns = document.getElementById('optionalCostButtons');
@@ -439,7 +444,7 @@ function render() {
   } else if (G.pendingSymmetricizeChoice && G.pendingSymmetricizeChoice.who === 'you') {
     sb.textContent = `${G.pendingSymmetricizeChoice.source} on ${G.pendingSymmetricizeChoice.targetName} — pick power, toughness, or cost.`;
   } else if (G.pendingEdictChoice && G.pendingEdictChoice.who === 'you') {
-    sb.textContent = `${G.pendingEdictChoice.source} — choose a ${G.pendingEdictChoice.filter === 'permanent' ? 'permanent' : 'creature'} to sacrifice.`;
+    sb.textContent = `${G.pendingEdictChoice.source} — choose a ${edictChoiceNoun(G.pendingEdictChoice.filter)} to sacrifice.`;
   } else if (G.pendingOptionalCost && G.pendingOptionalCost.who === 'you') {
     sb.textContent = `${G.pendingOptionalCost.source} — pay the cost to use its stapled effect, or decline.`;
   } else if (G.forcedDiscard && G.forcedDiscard.who === 'you' && G.forcedDiscard.remaining > 0) {
@@ -1413,11 +1418,7 @@ function renderCardPicker(hostEl, items, onPick, opts) {
 // Mana-cost in MtG-canonical braced notation: {R:2, C:4} -> "{4}{R}{R}".
 // Plain text — caller pipes through renderManaSymbols() to get pip HTML.
 function formatCostBraced(c) {
-  if (!c) return '';
-  let s = '';
-  if (c.C) s += '{' + c.C + '}';
-  for (const k of ['W','U','B','R','G']) s += ('{' + k + '}').repeat(c[k] || 0);
-  return s || '{0}';
+  return manaCostBraces(c, {empty: '{0}'});
 }
 
 // Convert `{X}` patterns embedded in card text or formatCostBraced output

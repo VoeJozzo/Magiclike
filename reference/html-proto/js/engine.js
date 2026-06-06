@@ -54,7 +54,7 @@ const MERCURIAL_TRIGGER_POOL = [
 // Public API: init, state, expectedActor, getLegalActions, executeAction, subscribe, findCard, getStats.
 
 // Sticker pipeline moved to js/stickers.js — see that file for
-// weightedPick, applyStickersToCard, applyOneStickerToRuntimeCard,
+// pickWeightedSticker, applyStickersToCard, applyOneStickerToRuntimeCard,
 // applyRandomStickersToSide, empowerRollLabel, applyEmpowerRoll
 // (this range), and rollSubtypeFromDeck, pushStickerWithRoll,
 // stickersForSlot (further below). They remain in global scope.
@@ -352,6 +352,14 @@ function playerOwesDecision(who) {
     if (obj && d.active(obj) && d.who(obj) === who) return true;
   }
   return false;
+}
+
+function pendingDecisionActor() {
+  for (const d of PENDING_DECISIONS) {
+    const obj = G[d.field];
+    if (obj && d.active(obj)) return d.who(obj);
+  }
+  return null;
 }
 
 // True if any modal is open. Phase machine pauses while a decision is outstanding.
@@ -1681,12 +1689,21 @@ function placeCardOnBattlefield(ctx, card, fromZone, post) {
   }
 }
 
-// Library-search filter match. Filter shape mirrors pendingSearch.filter
-// ({type, sub}); empty filter matches anything.
+// Library-search filter match. Shorthands emit string filters ('creature',
+// 'land') while hand-authored effects may carry object filters ({type, sub}).
+// Normalize both shapes so engine, UI, and legal-action enumeration agree.
+function normalizeSearchFilter(filter) {
+  if (!filter) return {};
+  if (typeof filter === 'string') {
+    return { type: filter[0].toUpperCase() + filter.slice(1).toLowerCase() };
+  }
+  return filter;
+}
 function matchesSearchFilter(card, filter) {
-  if (!filter) return true;
+  filter = normalizeSearchFilter(filter);
   if (filter.type && !hasType(card, filter.type)) return false;
   if (filter.sub && !hasType(card, filter.sub)) return false;
+  if (filter.subtype && !hasType(card, filter.subtype)) return false;
   return true;
 }
 // Search library → hand (prompt-driven, filtered): the searchCreature idiom.
@@ -5034,6 +5051,7 @@ function doSearchPick(who, cardIid) {
   const lib = G[who].library;
   const idx = lib.findIndex(c => c.iid === cardIid);
   if (idx < 0) return;
+  if (!matchesSearchFilter(lib[idx], G.pendingSearch.filter)) return;
   const card = lib.splice(idx, 1)[0];
   G[who].hand.push(card);
   shuffle(lib);
@@ -5269,7 +5287,19 @@ function doEndTurn(who) {
 // target/build prompt). Routes through PENDING_DECISIONS — adding a new
 // modal type to that registry automatically extends this check.
 function isWaitingForForcedAction() {
-  return playerOwesDecision('you');
+  return anyoneOwesDecision();
+}
+function isForcedActionResponse(action) {
+  if (!action) return false;
+  if (G.forcedDiscard && G.forcedDiscard.remaining > 0) return action.type === 'discard';
+  if (G.pendingSearch) return action.type === 'searchPick';
+  if (G.pendingTriggerTarget) return action.type === 'triggerTargetPick';
+  if (G.pendingTriggerBuild) return action.type === 'triggerBuildPick';
+  if (G.pendingNumberChoice) return action.type === 'numberChoice';
+  if (G.pendingSymmetricizeChoice) return action.type === 'symmetricizeChoice';
+  if (G.pendingEdictChoice) return action.type === 'edictChoice';
+  if (G.pendingOptionalCost) return action.type === 'optionalCost';
+  return false;
 }
 function whoHasPriority(who) {
   if (G.gameOver) return false;
@@ -5311,6 +5341,7 @@ function isSorceryWindow(who) {
 
 function isLegalAction(who, action) {
   if (G.gameOver) return false;
+  if (isWaitingForForcedAction() && !isForcedActionResponse(action)) return false;
   switch (action.type) {
     case 'playLand': {
       const card = G[who].hand.find(c => c.iid === action.cardIid);
@@ -5529,9 +5560,7 @@ function isLegalAction(who, action) {
       if (!G.pendingSearch || G.pendingSearch.who !== who) return false;
       const card = G[who].library.find(c => c.iid === action.cardIid);
       if (!card) return false;
-      if (G.pendingSearch.filter && G.pendingSearch.filter.type
-          && !hasType(card, G.pendingSearch.filter.type)) return false;
-      return true;
+      return matchesSearchFilter(card, G.pendingSearch.filter);
     }
     case 'triggerTargetPick': {
       if (!G.pendingTriggerTarget || G.pendingTriggerTarget.controller !== who) return false;
@@ -5592,6 +5621,7 @@ function isLegalAction(who, action) {
       if (isWaitingForForcedAction()) return false;
       return true;
     case 'endTurn':
+      if (isWaitingForForcedAction()) return false;
       return who === G.activePlayer && G.stack.length === 0 && !G.cleanupDiscarding;
     default: return false;
   }
@@ -5602,9 +5632,11 @@ function isLegalAction(who, action) {
 // =========================================================================
 function getLegalActions(who) {
   const actions = [];
+  const waitingForForcedAction = isWaitingForForcedAction();
 
   // Land plays
-  if (who === G.activePlayer && (G.phase === 'MAIN1' || G.phase === 'MAIN2')
+  if (!waitingForForcedAction
+      && who === G.activePlayer && (G.phase === 'MAIN1' || G.phase === 'MAIN2')
       && G.stack.length === 0 && !G[who].landPlayedThisTurn && !G.gameOver) {
     for (const card of G[who].hand) {
       if (hasType(card, 'Land')) actions.push({type:'playLand', cardIid: card.iid});
@@ -5799,10 +5831,38 @@ function getLegalActions(who) {
   }
   // Library search picks
   if (G.pendingSearch && G.pendingSearch.who === who) {
-    const filter = G.pendingSearch.filter || {};
     for (const card of G[who].library) {
-      if (filter.type && !hasType(card, filter.type)) continue;
+      if (!matchesSearchFilter(card, G.pendingSearch.filter)) continue;
       actions.push({type:'searchPick', cardIid: card.iid});
+    }
+  }
+
+  // Trigger-target picks — one action per valid target in the prompt.
+  // Production human UI clicks directly through the controller, but sim/selfplay
+  // uses this list to avoid stalling on a forced trigger-target prompt.
+  if (G.pendingTriggerTarget && G.pendingTriggerTarget.controller === who
+      && Array.isArray(G.pendingTriggerTarget.valid)) {
+    for (const target of G.pendingTriggerTarget.valid) {
+      actions.push({type:'triggerTargetPick', target});
+    }
+  }
+
+  // Trigger-build picks — Architect's Codex build moments are human-facing in
+  // production, but AI-vs-AI/selfplay can drive the human seat. Enumerate each
+  // current-step choice so AI.decide can answer the forced prompt.
+  if (G.pendingTriggerBuild && G.pendingTriggerBuild.who === who) {
+    const p = G.pendingTriggerBuild;
+    if (p.step === 'condition' && Array.isArray(p.conditionOptions)) {
+      for (let i = 0; i < p.conditionOptions.length; i++) {
+        actions.push({type:'triggerBuildPick', choice: i});
+      }
+    } else if (p.step === 'effect' && Array.isArray(p.effectOptions)) {
+      for (let i = 0; i < p.effectOptions.length; i++) {
+        actions.push({type:'triggerBuildPick', choice: i});
+      }
+    } else if (p.step === 'compare') {
+      actions.push({type:'triggerBuildPick', choice: 'new'});
+      actions.push({type:'triggerBuildPick', choice: 'keep'});
     }
   }
 
@@ -5837,15 +5897,18 @@ function getLegalActions(who) {
     actions.push({type:'optionalCost', pay: false});
   }
 
-  // Pass (always legal as a generic "I'm done")
-  actions.push({type:'pass'});
+  // Pass / End Turn are priority actions, not answers to forced prompts.
+  if (!waitingForForcedAction) actions.push({type:'pass'});
 
   // End turn
-  if (who === G.activePlayer && G.stack.length === 0 && !G.cleanupDiscarding) {
+  if (!waitingForForcedAction
+      && who === G.activePlayer && G.stack.length === 0 && !G.cleanupDiscarding) {
     actions.push({type:'endTurn'});
   }
 
-  return actions;
+  return waitingForForcedAction
+    ? actions.filter(a => isLegalAction(who, a))
+    : actions;
 }
 
 // True iff the player has nothing productive to do right now — no spell to
@@ -6136,7 +6199,8 @@ function expectedActor() {
   // list here missed pendingTriggerBuild — expectedActor returned null when
   // a build modal was the only thing blocking, breaking AI dispatch checks
   // and pass-button labeling.)
-  if (playerOwesDecision('you')) return 'you';
+  const pendingActor = pendingDecisionActor();
+  if (pendingActor) return pendingActor;
   if (isPriorityOpen()) return G.priorityHolder;
   if (G.cleanupDiscarding) return G.activePlayer;
   if (G.phase === 'COMBAT_ATTACK' && !G.attackersDeclared) return G.activePlayer;
@@ -6242,6 +6306,7 @@ return {
   cardHasEffect,
   pickBestTriggerTarget,
   matchFilter,
+  matchesSearchFilter,
   // Effects seam exposed for tests (Slice 3).
   applyEffect, creaturesInScope, sevToNum, numToSev,
   // Static-lord keyword-grant seam + its leave-play cleanup, exposed for tests.

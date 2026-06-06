@@ -211,6 +211,24 @@ eqText(segsToText(describeTrigger({ event: 'card_zone_change',
                                     condition: ['this_card', 'card_moves(anywhere, battlefield)'],
                                     effects: [{ kind: 'draw', amount: 1 }] })),
        'When this enters the battlefield, draw a card.', 'ETB → draw');
+eqText(manaCostBraces({ C: 2, R: 1 }),
+       '{2}{R}', 'manaCostBraces: generic before colored pips');
+eqText(formatCostBraced({ C: 2, R: 1 }),
+       '{2}{R}', 'formatCostBraced delegates to canonical cost order');
+eqText(manaCostBraces({ C: 0 }, { empty: '{0}' }),
+       '{0}', 'manaCostBraces: explicit empty fallback for displayed zero costs');
+eqText(segsToText(describeTrigger({ event: 'card_zone_change',
+                                    condition: ['this_card', 'card_moves(anywhere, battlefield)'],
+                                    optional_cost: { C: 2, R: 1 },
+                                    effects: [{ kind: 'draw', amount: 1 }] })),
+       'When this enters the battlefield, you may pay {2}{R}: draw a card.',
+       'optional-cost trigger uses canonical mana order');
+eqText(segsToText(describeTrigger({ event: 'card_zone_change',
+                                    condition: ['this_card', 'card_moves(anywhere, battlefield)'],
+                                    optional_cost: { C: 0 },
+                                    effects: [{ kind: 'draw', amount: 1 }] })),
+       'When this enters the battlefield, you may pay {0}: draw a card.',
+       'optional-cost trigger renders zero-cost fallback');
 eqText(segsToText(describeTrigger({ event: 'attacks',
                                     condition: ['this_card'],
                                     effects: [{ kind: 'damage', target: 'opp', amount: 1 }] })),
@@ -238,6 +256,20 @@ console.log('\n=== describeModalSegs ===');
 }
 
 // ─── End-to-end: real card from CARDS ─────────────────────────────────
+console.log('\n=== describeEffect: move_card library search text ===');
+eqText(segsToText(describeEffect({ kind: 'move_card', from_zone: 'library', to_zone: 'hand', selector: 'library_search', filter: 'creature' })),
+       'search your library for a creature card and put it into your hand',
+       'string creature filter renders as creature card');
+eqText(segsToText(describeEffect({ kind: 'move_card', from_zone: 'library', to_zone: 'hand', selector: 'library_search', filter: { type: 'Artifact' } })),
+       'search your library for an artifact card and put it into your hand',
+       'object artifact filter renders with article');
+eqText(segsToText(describeEffect({ kind: 'move_card', from_zone: 'library', to_zone: 'hand', selector: 'library_search' })),
+       'search your library for a card and put it into your hand',
+       'unfiltered library search renders as a card');
+eqText(segsToText(describeEffect({ kind: 'move_card', from_zone: 'library', to_zone: 'battlefield', selector: 'library_search', filter: 'land', post: { tap: true } })),
+       'search your library for a land and put it onto the battlefield tapped',
+       'string land battlefield fetch renders as land');
+
 console.log('\n=== describeCardSegments end-to-end on real cards ===');
 {
   // Lightning Bolt — instant, damage:any-target,3. Auto-generated text

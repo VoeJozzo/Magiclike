@@ -77,6 +77,16 @@ function withFilter(noun, eff) {
   return out;
 }
 
+function searchFilterNoun(filter, includeCard) {
+  const suffix = includeCard === false ? '' : ' card';
+  if (!filter) return 'card';
+  if (typeof filter === 'string') return filter.toLowerCase() + suffix;
+  if (filter.subtype) return filter.subtype.toLowerCase() + suffix;
+  if (filter.sub) return filter.sub.toLowerCase() + suffix;
+  if (filter.type) return filter.type.toLowerCase() + suffix;
+  return 'card';
+}
+
 // Phrase for one `fight` operand: {select} → "your strongest creature"; {slot:N}
 // → the noun for that target slot (from the card's target_slots spec, or a
 // top-level target() step). Used by describeEffectList's fight block.
@@ -312,16 +322,16 @@ function describeEffect(eff, tplEff) {
       // idioms (matches the legacy kinds' phrasing for parity).
       const fz = eff.from_zone, tz = eff.to_zone;
       if (fz === 'library' && tz === 'hand' && eff.selector === 'library_search') {  // collapsed searchCreature
-        return [plainSeg('search your library for a ' + ((eff.filter && eff.filter.type) ? eff.filter.type.toLowerCase() : 'card') + ' card and put it into your hand')];
+        const noun = searchFilterNoun(eff.filter, true);
+        return [plainSeg('search your library for ' + indefiniteArticle(noun) + ' ' + noun + ' and put it into your hand')];
       }
       if (fz === 'library' && tz === 'battlefield') {  // collapsed searchLandTapped (auto fetch)
         // Derive the fetched-card noun from the filter (subtype > type > "card"),
         // mirroring the fetch-to-hand case above — a {type:'Land'} filter is "a
         // land", not the old hardcoded "basic land" (which was narrower than the
         // filter and drifted from what the card actually does).
-        const ff = eff.filter || {};
-        const noun = ff.subtype ? ff.subtype : (ff.type ? ff.type.toLowerCase() : 'card');
-        return [plainSeg('search your library for a ' + noun + ' and put it onto the battlefield' + ((eff.post && eff.post.tap) ? ' tapped' : ''))];
+        const noun = searchFilterNoun(eff.filter, false);
+        return [plainSeg('search your library for ' + indefiniteArticle(noun) + ' ' + noun + ' and put it onto the battlefield' + ((eff.post && eff.post.tap) ? ' tapped' : ''))];
       }
       if (fz === 'library' && tz === 'hand') {  // collapsed draw
         if (eff.amount === 1) return [plainSeg('draw a card')];
@@ -733,16 +743,18 @@ function triggerPreamble(trig) {
 }
 
 // Full trigger clause as segments (lowercase body since preamble ends in comma).
-// A plain {W,U,B,R,G,C} cost → brace string: colors as individual pips, generic
-// as a single {N} (e.g. {R:1,C:2} → "{R}{2}"). renderManaSymbols draws them.
-function manaCostBraces(cost) {
+// A plain {W,U,B,R,G,C} cost -> brace string: generic first, then color pips
+// (e.g. {R:1,C:2} -> "{2}{R}"). renderManaSymbols draws them.
+function manaCostBraces(cost, opts) {
+  opts = opts || {};
+  const empty = opts.empty || '';
   if (!cost) return '';
   let s = '';
+  if (cost.C) s += '{' + cost.C + '}';
   for (const c of ['W', 'U', 'B', 'R', 'G']) {
     for (let i = 0; i < (cost[c] || 0); i++) s += '{' + c + '}';
   }
-  if (cost.C) s += '{' + cost.C + '}';
-  return s;
+  return s || empty;
 }
 
 function describeTrigger(trig, tplTrig) {
@@ -761,7 +773,7 @@ function describeTrigger(trig, tplTrig) {
   }
   // Optional paid trigger (Land+Spell staple ETB): "... you may pay {cost}: ...".
   if (trig.optional_cost) {
-    return [plainSeg(preamble + ' you may pay ' + manaCostBraces(trig.optional_cost) + ': ')].concat(bodyLower);
+    return [plainSeg(preamble + ' you may pay ' + manaCostBraces(trig.optional_cost, {empty: '{0}'}) + ': ')].concat(bodyLower);
   }
   return [plainSeg(preamble + ' ')].concat(bodyLower);
 }
