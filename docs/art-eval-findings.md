@@ -214,3 +214,14 @@ _Infra note: container regressed local git HEAD + wiped gitignored art-eval/ sev
 - Caveat: a DUAL-effect / two-target card is a POOR isolation of C3 (composition dominates, color is secondary). 
 - User gold: NO commit ("specific-ish vision for this card, like Murder"); liked compositions from BOTH arms (control 1.02/1.03/1.04, treatment 2.02/2.05/2.06). Saved 2.06 (treatment) as good slush. No clear C3 winner on the user's eye.
 - C3 n=1: inconclusive. NEXT C3 card should be SINGLE-color, SINGLE-subject to isolate the principle.
+
+## C2 A/B #2 — lightning_bolt (ran TWICE: with-figure, then no-figure)
+- With-figure: both arms made "victim struck on a ridge." Judges split (bvb→treatment, full-pool→control). User: 2.06 (CONTROL) best overall + 1.05 (treatment); 2.06 saved to slush. THEN user flagged Lightning Bolt shouldn't have a figure at all (force of nature).
+- No-figure rerun (both arms, new direction): crimson bolt striking landscape. Both neutral judges → CONTROL (bvb HIGH, full-pool medium); full-pool judge found the CONTROL pool MORE ambitious here (reversing C2's usual effect); C2 pool had minor figure-leakage in non-nominees. User: no 'best' (all good); "2.x [CONTROL] a smidge better than 1.x [C2]."
+- **C2 positive:** the C2 (no-figure) agent used INPAINT for the first time this session — kept its most ambitious roll and surgically removed a diagnosable figure-flaw → its nominee. That's C2's "commit to the ambitious roll, fix the diagnosable flaw" working as designed.
+- C2 tally on user gold (n=2): dark_ritual = both-half-cards (inconclusive); lightning_bolt = CONTROL-leaning. Not winning the user's eye yet, but the inpaint behavior is a real positive.
+
+## Candidate C4 — "Ground the subject in reality" (surfaced by user, lightning_bolt)
+- Observation: lightning hits TALL things (trees, spires, masts), never flat open ground; the flat-ground strikes are physically implausible. Neither the agents (reliably) nor the LLM judges weighted real-world naturalism — only the user's domain knowledge caught it. (Another judge↔user / human-domain-knowledge divergence.)
+- Proposed (different LAYER from C1/C2/C3 — PRE-generation grounding, not composition/color): "Before prompting, briefly ground the subject in how it actually looks/behaves in reality — what it interacts with, its scale, its physics — and bake that specificity in. Lightning strikes the tallest thing; a greatsword is two-handed; a longbow is taller than its archer; a castle has crenellations." Adjacent to vocabulary-precision; adds physical/behavioral accuracy.
+- Honest priors: promising, concrete, targets a real observed failure, different in kind from prior candidates. BUT 0-for-3 on principle-additions winning the user's eye; agents partly do it already; may be a human-feedback-loop gap more than a skill win. Ideal first test = Lightning Bolt (does C4 put the bolt on a tall thing unprompted?).
