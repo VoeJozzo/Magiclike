@@ -1,6 +1,6 @@
 {
   "card_id": "cult_priest",
-  "art": "⛧",
+  "art": "art.png",
   "cost": {
     "B": 1,
     "C": 1

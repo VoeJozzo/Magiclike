@@ -1,6 +1,6 @@
 # Refactor Plan: Centralize Priority-Window Opening
 
-**Status:** Plan complete, ready for review. Not yet executed.
+**Status (2026-06-02):** Plan complete; Godot side not yet executed/verified on the main line (a container-written draft is tracked in [`GODOT-QA-TODO.md`](../archive/GODOT-QA-TODO.md)).
 **Cross-references:** `docs/DIVERGENCE.md` items B6 (auto-pass when no legal action) and B7 (end-turn fast-forward). `docs/BACKLOG.md` lists this in the rules-engine queue.
 **Effort estimate:** M (half a day to a day, ~8 hours total).
 
