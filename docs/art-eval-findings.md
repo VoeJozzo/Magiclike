@@ -246,3 +246,25 @@ _Infra note: container regressed local git HEAD + wiped gitignored art-eval/ sev
 - **User gold: 2.06 = TREATMENT/C2** ("the best, not particularly close"). C2's 3rd STRAIGHT user-gold win.
 - C2 tally on user gold (n=5): dark_ritual=inconclusive | lightning_bolt=control | horned_herald=C2 | knight_commander=C2 | bindspeaker=**C2** = 3 C2 / 1 control / 1 inconclusive.
 - NOTE (user guidance): NOT a merge case — need n>=7 AND clear data (C1 earned its verdict on 7 + an exceptionally clean signal). C2 trending positive on the user's eye; keep testing.
+
+## ===== CONCORDANCE ANALYSIS — automated judges vs user gold (whole run) =====
+Clear-call cards (judges reached a consensus AND user made a clear pick); * = rigged judge prompt (C1 searing/shock).
+| Card | Phase | Judge consensus | User gold | Agree |
+|---|---|---|---|---|
+| mahamoti_djinn | skill-v-naive | naive | skill | ✗ |
+| mirror_sage | skill-v-naive | skill | skill | ✓ |
+| scarification | skill-v-naive | skill | skill | ✓ |
+| searing_blast | skill-v-naive | skill | skill | ✓ |
+| searing_blast | C1* | C1* | C1 | ✓* |
+| shock | C1* | C1* | control | ✗* |
+| apex_hunter | C1 | treatment | control | ✗ |
+| swamp | C1 | treatment | control | ✗ |
+| invigorate | C1 | treatment | control | ✗ |
+| lightning_bolt(no-fig) | C2 | control | control | ✓ |
+| horned_herald | C2 | control | C2 | ✗ |
+Raw: 5/11 agree (~45%, ≈ coin flip).
+Decomposed:
+- COARSE calls (skill vs naive, big quality gap): judge agreed 3/4 (only miss = vanilla Djinn, a defensible "no mechanic" call). Judge is a fine GOOD-vs-BAD discriminator.
+- FINE/aesthetic calls (skill vs skill+variant, neutral judges): judge agreed ~1/5 (lightning-nofig only) — at/below chance, and SYSTEMATIC: judge rewards legible/clean/literal/color-correct; user rewards dynamic/ambitious/stylish/feel.
+- Plus 5 subtle cards where the TWO judges couldn't agree with EACH OTHER (unsummon, murder, lightning-figure, knight_commander, bindspeaker) — internal inconsistency on fine calls.
+IMPLICATION: the LLM judge is usable as a COARSE pre-filter (cull obvious losers) but is unreliable-to-anticorrelated as a FINE aesthetic arbiter. It would NOT clear the plan's ≥80% calibration gate. User-gold is permanently load-bearing on the aesthetic call. (Caveats: small n; 2 rigged C1 cards; some user calls were relative/reject-all.)
