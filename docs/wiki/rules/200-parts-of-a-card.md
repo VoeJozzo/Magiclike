@@ -21,11 +21,11 @@ The cost paid to cast the card. Composed of:
 Lands have no mana cost. Some spells may have no mana cost (free spells).
 
 ## 200.2a Total mana cost
-A card's **total mana cost** is the total amount of mana in its mana cost — its generic requirement plus all its colored pips, added together. (Example: `{2}{R}{R}` has a total mana cost of 4.) Lands and other costless cards have a total mana cost of 0.
+A card's **total mana cost** is the total amount of mana in its mana cost: its generic requirement plus all its colored pips, added together. (Example: `{2}{R}{R}` has a total mana cost of 4.) Lands and other costless cards have a total mana cost of 0.
 
 **Terminology (canonical).** "Total mana cost" is Magiclike's name for this quantity. We deliberately do **not** adopt Magic's "mana value" or "converted mana cost / CMC." Card text, docs, and any effect that selects on this quantity (e.g. "the creature card with the greatest total mana cost") all use this exact phrase. The cross-engine vocabulary note is pinned in `PROTOCOL.md` §1. First card to read it: **Deepseam Quarry**.
 
-**Counting `{X}`.** Everywhere **except the stack** — in hand, library, graveyard, battlefield, or exile — a cost's `{X}` counts as **0** for total mana cost (so an `{X}{R}` card sitting in a graveyard has a total mana cost of 1). While a spell is **on the stack**, its `{X}` counts as the value chosen for it when it was cast. This is the standard ruling; it's stated explicitly only because "total mana cost" is our own term. No card in the pool uses `{X}` yet — and Deepseam Quarry reads from graveyards, where X is 0 regardless.
+**Counting `{X}`.** Everywhere **except the stack** — in hand, library, graveyard, battlefield, or exile — a cost's `{X}` counts as **0** for total mana cost (so an `{X}{R}` card sitting in a graveyard has a total mana cost of 1). While a spell is **on the stack**, each `{X}` in its mana cost counts as the value chosen for X when that spell was cast. This is the standard ruling; it is stated explicitly because "total mana cost" is Magiclike's own term. No card in the pool uses `{X}` yet, and Deepseam Quarry reads from graveyards, where X is always 0.
 
 ## 200.3 Type line
 - **Card types**: `land`, `creature`, `instant`, `sorcery`, `artifact`, `enchantment`.
