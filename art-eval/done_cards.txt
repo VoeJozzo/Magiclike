@@ -27,3 +27,4 @@ giant_spider
 great_stag
 nature_caller
 clockwork_beetle
+veil_of_mists
