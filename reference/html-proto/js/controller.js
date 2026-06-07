@@ -1607,6 +1607,19 @@ function onStateChange() {
 function objNeedsTarget(obj) { return ENGINE.objectNeedsTarget(obj); }
 function probeTargetsFor(obj, effects, who) { return ENGINE.probeTargetsForObject(obj, who); }
 
+function permittedZoneCard(iid) {
+  const G = ENGINE.state();
+  if (!G || !Array.isArray(G.castPermissions)) return null;
+  if (!G.castPermissions.some(p => p.controller === 'you' && p.cardIid === iid)) return null;
+  for (const who of ['you', 'opp']) {
+    for (const zone of ['exile']) {
+      const found = (G[who][zone] || []).find(c => c.iid === iid);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
 function clickHand(iid) {
   const G = ENGINE.state();
   // Defensive: G is null until ENGINE.init completes. If a click event
@@ -1632,7 +1645,7 @@ function clickHand(iid) {
 
   if (pendingTarget) return;  // ignore hand clicks while picking a target
 
-  const card = G.you.hand.find(c => c.iid === iid);
+  const card = G.you.hand.find(c => c.iid === iid) || permittedZoneCard(iid);
   if (!card) return;
 
   if (hasType(card, 'Land')) {
@@ -2270,7 +2283,17 @@ function openZone(who, zone) {
       const cost = card.cost ? renderManaSymbols(formatCostBraced(card.cost)) : '';
       btn.innerHTML = `<span style="opacity:0.6">[${typeHint}]</span> <span class="card-name"></span>${cost ? ' <span style="opacity:0.7;font-size:10px">' + cost + '</span>' : ''}`;
       btn.querySelector('.card-name').textContent = card.name;
-      btn.onclick = () => openCardPopup(card);
+      const zoneCastable = zone === 'exile'
+        && typeof canPlayFromUI === 'function'
+        && canPlayFromUI('you', card);
+      if (zoneCastable) {
+        btn.style.borderColor = '#44cc44';
+        btn.style.color = '#dfffdc';
+        btn.title = 'Cast this card';
+        btn.onclick = () => { Modal.hide('zoneModal'); clickHand(card.iid); };
+      } else {
+        btn.onclick = () => openCardPopup(card);
+      }
       listEl.appendChild(btn);
     }
   }

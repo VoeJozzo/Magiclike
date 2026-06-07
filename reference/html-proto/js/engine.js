@@ -907,6 +907,9 @@ function makeState(playerDeck, oppDeck) {
     triggerChainDepth: 0,
     // Delayed triggers fire at scheduled events (endStep). Otherworldly Journey etc.
     delayedTriggers: [],
+    // Temporary permissions to cast cards from public zones (Seal-Thief Courier).
+    // Shape: {controller, cardIid, from_zone, duration, spend_as_any_color}.
+    castPermissions: [],
     endTurnPending: false,
   };
 }
@@ -1227,6 +1230,7 @@ function abilityValue(ab) {
   // real body, at flash speed). Value the whole package strongly — scanning all
   // effects, not just effects[0] — so the AI actually casts and drafts it.
   if (ab.effects.some(e => e && e.kind === 'become_copy_of')) return 16;
+  if (ab.effects.some(e => e && e.kind === 'grant_cast_permission')) return 6;
   const eff = ab.effects[0];
   switch (eff.kind) {
     case 'damage':         return 6 + (eff.amount || 0);
@@ -1365,6 +1369,47 @@ function effectiveCastCost(card) {
   const cost = {...card.cost};
   cost.C = (cost.C || 0) + bump;
   return cost;
+}
+
+function effectiveCastCostWithPermission(card, permission) {
+  const cost = effectiveCastCost(card);
+  if (!cost || !permission || !permission.spend_as_any_color) return cost;
+  return Object.assign({}, cost, { spend_as_any_color: true });
+}
+
+function findCastableSpell(who, cardIid) {
+  const handIdx = G[who].hand.findIndex(c => c.iid === cardIid);
+  if (handIdx >= 0) {
+    return { card: G[who].hand[handIdx], zone: 'hand', zoneOwner: who, index: handIdx, permission: null };
+  }
+  for (const perm of (G.castPermissions || [])) {
+    if (perm.controller !== who || perm.cardIid !== cardIid) continue;
+    const zoneName = perm.from_zone || 'exile';
+    for (const owner of ['you', 'opp']) {
+      const zone = G[owner][zoneName];
+      if (!Array.isArray(zone)) continue;
+      const idx = zone.findIndex(c => c.iid === cardIid);
+      if (idx >= 0) {
+        return { card: zone[idx], zone: zoneName, zoneOwner: owner, index: idx, permission: perm };
+      }
+    }
+  }
+  return null;
+}
+
+function castableSpellEntries(who) {
+  const out = G[who].hand.map((card, index) =>
+    ({ card, zone: 'hand', zoneOwner: who, index, permission: null }));
+  const seen = new Set(out.map(e => e.card.iid));
+  for (const perm of (G.castPermissions || [])) {
+    if (perm.controller !== who || seen.has(perm.cardIid)) continue;
+    const found = findCastableSpell(who, perm.cardIid);
+    if (found) {
+      out.push(found);
+      seen.add(found.card.iid);
+    }
+  }
+  return out;
 }
 
 // Can `who` pay `cost` from pool + untapped sources? Backtracks over dual-land choices.
@@ -2205,12 +2250,38 @@ const EFFECTS = {
         if (to === 'hand') G[dest].hand.push(card);
         else if (to === 'library') { G[dest].library.push(card); if (post.shuffle) shuffle(G[dest].library); }
         else if (to === 'battlefield') placeCardOnBattlefield(ctx, card, from, post);  // reanimate / exile-return
+        else if (to === 'exile' && from === 'graveyard') G[dest].exile.push(card);
         else { console.warn('move_card: unsupported', from, 'dest', to); break; }
         continue;
       }
       console.warn('move_card: unsupported from_zone', from);
       break;
     }
+  },
+  grant_cast_permission(ctx, params, target) {
+    const t = target || ctx.chosen;
+    if (!t || t.iid == null) {
+      console.warn('grant_cast_permission: missing target');
+      return;
+    }
+    const from = params.from_zone || 'exile';
+    const f = findCardAnyZone(t.iid);
+    if (!f || f.zone !== from) {
+      log(`${ctx.sourceName} fizzles - card is no longer in ${from}.`, 'sp');
+      return;
+    }
+    if (!Array.isArray(G.castPermissions)) G.castPermissions = [];
+    G.castPermissions = G.castPermissions.filter(p =>
+      !(p.controller === ctx.controller && p.cardIid === t.iid && p.from_zone === from));
+    G.castPermissions.push({
+      controller: ctx.controller,
+      cardIid: t.iid,
+      from_zone: from,
+      duration: params.duration || 'eot',
+      spend_as_any_color: !!params.spend_as_any_color,
+      sourceIid: ctx.sourceIid,
+    });
+    log(`${pname(ctx.controller)} may cast ${f.card.name} from ${from} this turn.`, 'sp');
   },
   // Legacy discard kind — still emitted by the Mercurial trigger generator
   // (discardOpp). Card data uses move_card(hand→graveyard) post-collapse.
@@ -2927,11 +2998,27 @@ function effectNeedsTarget(eff) {
 // the new kinds are checked — they aren't used by any card yet, so there's no
 // false-positive risk against the legacy pool; this guards the migration's
 // output. Each entry: kind → validator(effect) returning an error string or null.
+function isSupportedMoveCardPair(from, to) {
+  if (from === 'library') return to === 'hand' || to === 'graveyard' || to === 'battlefield';
+  if (from === 'hand') return to === 'graveyard';
+  if (from === 'battlefield') return to === 'hand' || to === 'library' || to === 'exile' || to === 'graveyard';
+  if (from === 'graveyard') return to === 'hand' || to === 'library' || to === 'battlefield' || to === 'exile';
+  if (from === 'exile') return to === 'hand' || to === 'library' || to === 'battlefield';
+  return false;
+}
+
 const EFFECT_SCHEMA = {
   move_card: (e) => {
     const ZONES = ['library', 'hand', 'graveyard', 'battlefield', 'exile'];
     if (!ZONES.includes(e.from_zone)) return 'move_card bad/missing from_zone';
     if (!ZONES.includes(e.to_zone)) return 'move_card bad/missing to_zone';
+    if (!isSupportedMoveCardPair(e.from_zone, e.to_zone)) return 'move_card unsupported zone pair';
+    return null;
+  },
+  grant_cast_permission: (e) => {
+    const ZONES = ['exile'];
+    if (!ZONES.includes(e.from_zone)) return 'grant_cast_permission bad/missing from_zone';
+    if (e.duration !== 'eot') return 'grant_cast_permission bad/missing duration';
     return null;
   },
   chooses: (e) => (e.filter ? null : 'chooses missing filter'),
@@ -3142,6 +3229,7 @@ function triggerPlayerTargetPrompt(trig, controller) {
   if (valid.length <= 1) return null;   // 0 → fizzle/auto; 1 → no choice to make
   // The effect used to value the choice (for the AI driver's pickBestTriggerTarget).
   const promptEff = (trig.effects || []).find(e => e.kind === 'become_copy_of')
+    || (trig.effects || []).find(e => e.kind === 'grant_cast_permission')
     || (trig.effects || []).find(e => e.kind !== 'chooses') || (trig.effects || [])[0] || {};
   return { valid, promptEff };
 }
@@ -3203,6 +3291,7 @@ function pushTriggerOnStack(p) {
     // become_copy_of (The False Witness — copy their best), else the first
     // non-chooses effect.
     const valueEff = (p.trig.effects || []).find(e => e.kind === 'become_copy_of')
+      || (p.trig.effects || []).find(e => e.kind === 'grant_cast_permission')
       || (p.trig.effects || []).find(e => e.kind !== 'chooses') || (p.trig.effects || [])[0] || {};
     chosenTarget = pickBestTriggerTarget(valueEff, valid, p.controller);
   } else if (targetEff) {
@@ -3310,10 +3399,11 @@ function pickBestTriggerTarget(eff, valid, controller) {
       return sorted[0];
     }
   }
-  if (eff.kind === 'returnFromGraveyard') {
-    const graveCards = G[controller].graveyard;
+  if (eff.kind === 'returnFromGraveyard' || eff.kind === 'grant_cast_permission') {
+    const graveOwner = eff.kind === 'grant_cast_permission' ? opp(controller) : controller;
+    const graveCards = G[graveOwner].graveyard;
     const scored = valid
-      .filter(t => t.kind === 'graveyard_creature')
+      .filter(t => t.kind === 'graveyard_creature' || t.kind === 'graveyard_card')
       .map(t => {
         const card = graveCards.find(c => c.iid === t.iid);
         return {t, value: card ? (cardValueOrZero(card)) : 0};
@@ -3497,6 +3587,12 @@ function getValidTargets(effect, controller) {
         .filter(c => hasType(c, 'Creature'))
         .filter(c => matchFilter(c, effect.filter, controller, controller))
         .map(c => ({kind:'graveyard_creature', iid: c.iid, label: c.name, controller}));
+    case 'opp_graveyard_card': {
+      const graveOwner = opp(controller);
+      return G[graveOwner].graveyard
+        .filter(c => matchFilter(c, effect.filter, graveOwner, controller))
+        .map(c => ({kind:'graveyard_card', iid: c.iid, label: c.name, controller: graveOwner}));
+    }
     case 'spell':
       return G.stack
         .filter(s => s.kind !== 'trigger' && s.card)
@@ -3526,7 +3622,7 @@ function getValidTargets(effect, controller) {
 // targetsForFilter below — there is no open tail.
 const TARGET_FILTERS = new Set([
   'creature', 'player', 'opp', 'creature_or_player', 'spell', 'permanent', 'land',
-  'your_creature', 'opp_creature', 'graveyard_creature',
+  'your_creature', 'opp_creature', 'graveyard_creature', 'opp_graveyard_card',
 ]);
 
 // Legal-target set for a target() step's filter (Slice 3 step 2 / §3.5). THIS
@@ -3549,6 +3645,7 @@ function targetsForFilter(filter, controller, restrict) {
     case 'land':               return getValidTargets({ target: 'permanent', filter: merge({ type: 'Land' }) }, controller);
     case 'spell':              return getValidTargets({ target: 'spell', filter: restrict || undefined }, controller);
     case 'graveyard_creature': return getValidTargets({ target: 'graveyard_creature', filter: restrict || undefined }, controller);
+    case 'opp_graveyard_card': return getValidTargets({ target: 'opp_graveyard_card', filter: restrict || undefined }, controller);
     case 'your_creature':      return getValidTargets({ target: 'creature', filter: merge({ controller: 'self' }) }, controller);
     case 'opp_creature':       return getValidTargets({ target: 'creature', filter: merge({ controller: 'opp' }) }, controller);
     default:
@@ -3685,6 +3782,7 @@ function matchFilter(card, filter, controller, who) {
   // reads through hasType so animate / type-change effects are respected.
   // Without this, a target_filter:{type:'Land'} silently accepts any permanent.
   if (filter.type && !hasType(card, filter.type)) return false;
+  if (filter.not_type && hasType(card, filter.not_type)) return false;
   // Keyword filter — used by green's anti-flying answers (Choking Vines,
   // Vine Strangle) to restrict targeting to flying creatures specifically.
   // Generic over keyword name so future "destroy target indestructible"
@@ -3725,6 +3823,7 @@ function sameTarget(a, b) {
   if (a.kind === 'creature') return a.iid === b.iid;
   if (a.kind === 'permanent') return a.iid === b.iid;
   if (a.kind === 'graveyard_creature') return a.iid === b.iid;
+  if (a.kind === 'graveyard_card') return a.iid === b.iid;
   if (a.kind === 'stack') return a.stackItem === b.stackItem;
   return false;
 }
@@ -4378,6 +4477,17 @@ function damagePlayer(who, amount, sourceName) {
     emit({type: 'life_changed', who, delta: -lifeLost});
   }
 }
+function emitCombatDamageToPlayer(source, controller, who, amount) {
+  if (!source || amount <= 0) return;
+  emit({
+    type: 'combat_damage',
+    who,
+    amount,
+    subject_iid: source.iid,
+    subject_card: source,
+    controller,
+  });
+}
 function afterEffectsApplied() { checkDeaths(); checkLifeTotals(); }
 
 // =========================================================================
@@ -4641,12 +4751,12 @@ function resolveTopOfStack() {
       // Push card to graveyard first so the rip-up sweep finds and removes
       // it (otherwise the spell card is in limbo). The rip helper then
       // discards that pile entry along with the slot.
-      G[item.controller].graveyard.push(card);
+      G[card.owner || item.controller].graveyard.push(card);
       ripSlotByIdx(item.controller, card.slotIdx, `Elystra binds ${card.name}`);
       afterEffectsApplied();
       return;
     }
-    G[item.controller].graveyard.push(card);
+    G[card.owner || item.controller].graveyard.push(card);
   }
   afterEffectsApplied();
 }
@@ -4713,6 +4823,7 @@ function dealCombatDamage(blocked, defender, dealsDamage) {
     if (!wasBlocked) {
       if (atkDeals && aPow > 0) {
         damagePlayer(defender, aPow, atk.name);
+        emitCombatDamageToPlayer(atk, atkCtrl, defender, aPow);
         applyLifelink(atk, atkCtrl, aPow);
       }
       return;
@@ -4720,6 +4831,7 @@ function dealCombatDamage(blocked, defender, dealsDamage) {
     if (livingBlockers.length === 0) {
       if (atkDeals && atk.keywords.includes('trample') && aPow > 0) {
         damagePlayer(defender, aPow, `${atk.name} (trample)`);
+        emitCombatDamageToPlayer(atk, atkCtrl, defender, aPow);
         applyLifelink(atk, atkCtrl, aPow);
       }
       return;
@@ -4800,6 +4912,7 @@ function dealCombatDamage(blocked, defender, dealsDamage) {
     if (atkDeals && remaining > 0) {
       if (unsatisfied.length === 0 && atk.keywords.includes('trample')) {
         damagePlayer(defender, remaining, `${atk.name} (trample)`);
+        emitCombatDamageToPlayer(atk, atkCtrl, defender, remaining);
         applyLifelink(atk, atkCtrl, remaining);
       } else if (unsatisfied.length > 0) {
         const dump = unsatisfied[0].card;
@@ -4870,14 +4983,18 @@ function doTapLandForMana(who, cardIid, color, abilityIdx) {
 }
 function doCastSpell(who, cardIid, targets, modeIdx) {
   const p = G[who];
-  const idx = p.hand.findIndex(c => c.iid === cardIid);
-  if (idx < 0) {
-    console.warn('doCastSpell: card not in hand', cardIid);
+  const castable = findCastableSpell(who, cardIid);
+  if (!castable) {
+    console.warn('doCastSpell: card not castable', cardIid);
     return;
   }
-  const card = p.hand[idx];
-  payMana(who, effectiveCastCost(card));
-  p.hand.splice(idx, 1);
+  const card = castable.card;
+  payMana(who, effectiveCastCostWithPermission(card, castable.permission));
+  G[castable.zoneOwner][castable.zone].splice(castable.index, 1);
+  if (castable.permission) {
+    G.castPermissions = (G.castPermissions || []).filter(perm =>
+      !(perm.controller === who && perm.cardIid === card.iid && perm.from_zone === castable.zone));
+  }
   // Record this slot as played-this-game (see doPlayLand for rationale).
   // Token-cast paths don't go through doCastSpell — tokens enter via
   // create_tokens effects directly — so this naturally only records real
@@ -5344,9 +5461,10 @@ function isLegalAction(who, action) {
       return whoHasPriority(who) || isInstantWindow(who);
     }
     case 'castSpell': {
-      const card = G[who].hand.find(c => c.iid === action.cardIid);
+      const castable = findCastableSpell(who, action.cardIid);
+      const card = castable && castable.card;
       if (!card || hasType(card, 'Land')) return false;
-      if (!canPayPotential(who, effectiveCastCost(card))) return false;
+      if (!canPayPotential(who, effectiveCastCostWithPermission(card, castable.permission))) return false;
       // Legendary uniqueness (rule 1a): you can't cast a legendary if you
       // already control one with the same tplId. This is a hard prohibition
       // at cast time — not the classic "both die" legend rule (1b) or the
@@ -5636,9 +5754,10 @@ function getLegalActions(who) {
   }
 
   // Spells (one entry per (card, target) combination)
-  for (const card of G[who].hand) {
+  for (const castable of castableSpellEntries(who)) {
+    const card = castable.card;
     if (hasType(card, 'Land')) continue;
-    if (!canPayPotential(who, effectiveCastCost(card))) continue;
+    if (!canPayPotential(who, effectiveCastCostWithPermission(card, castable.permission))) continue;
     // Timing: flash spells (incl. retired-Instant cards) and flash creatures
     // use the instant window. Other permanents/sorceries need sorcery window.
     const hasFlash = card.keywords && card.keywords.includes('flash');
@@ -6104,6 +6223,9 @@ function step() {
             G[c.owner].battlefield.push(c);
             log(`${c.name} returns to ${pname(c.owner)}'s control.`, 'sp');
           }
+        }
+        if (Array.isArray(G.castPermissions)) {
+          G.castPermissions = G.castPermissions.filter(p => p.duration !== 'eot');
         }
         afterEffectsApplied();
         // (Mana pools are emptied by setPhase on every phase transition — B2.)
