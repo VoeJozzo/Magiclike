@@ -359,3 +359,8 @@ VERDICT: do NOT bake C2 in yet (clears n>=7 floor but not significance; user rul
 - Mechanic read well in BOTH arms (druid beckoning + stag answering). Both nominated the same seed internally (gen_06).
 - **User gold: "2.10."** Decode: label 2 = arm_a = **CONTROL**. => control win (3rd decisive control win; breaks C2's 4-win streak). Keeper saved `nature_caller_2.10_USERPICK-CONTROL_*` (seed 1032912504).
 - C2 tally (user gold): decisive = **8 C2** / **3 control** (lightning_bolt-nofig, centaur_courser, nature_caller); marginal C2 = gilded_seat; inconclusive = dark_ritual, vile_edict. Sign test decisive 8/11 -> two-tailed p~=0.23 (one-tailed ~0.11); +marginal 9/12 -> two-tailed p~=0.15. The added control win pulled significance back. Direction still C2 (8 vs 3) but the gap is not widening monotonically.
+
+## C2 A/B #15 — clockwork_beetle (1/1 Artifact Creature, colorless) [harness-driven, preflight PASS]
+- First artifact/colorless card; both arms held metallic-neutral identity (no WUBRG wash), brass beetle w/ gears + wind-up key.
+- **User gold: "2.01, easily!"** Decode: label 2 = arm_b = **TREATMENT (C2)**. => C2 win (9th decisive, emphatic). Agent's own BEST nominee = same gen (gen_01). Keeper saved `clockwork_beetle_2.01_USERPICK-C2_*` (seed 1211370075).
+- C2 tally (user gold): decisive = **9 C2** / **3 control** (lightning_bolt-nofig, centaur_courser, nature_caller); marginal C2 = gilded_seat; inconclusive = dark_ritual, vile_edict. Sign test decisive 9/12 -> two-tailed p~=0.146 (one-tailed ~0.073); +marginal 10/13 -> two-tailed p~=0.092. Direction firmly C2; significance hovering ~0.07-0.15.
