@@ -103,8 +103,8 @@ console.log('\n=== remove_counters cost gated in BOTH legality paths ===');
   const G = freshGame();
   const hymn = place(G, 'hymnwright', 'you');
   const dead = ENGINE.makeCard(VICTIM); dead.owner = 'you'; dead.controller = 'you'; G.you.graveyard.push(dead);
-  const tgt = ENGINE.targetsForFilter('graveyard_creature', 'you').find(t => t.iid === dead.iid);
-  check('graveyard_creature target resolves the dead creature', !!tgt);
+  const tgt = ENGINE.targetsForFilter('graveyard_card', 'you', { type: 'Creature' }).find(t => t.iid === dead.iid);
+  check('graveyard_card target resolves the dead creature', !!tgt);
   const recall = { type: 'activateAbility', cardIid: hymn.iid, abilityIdx: 0, targets: [tgt] };
   const enumerated = () => ENGINE.getLegalActions('you').some(a => a.type === 'activateAbility' && a.cardIid === hymn.iid);
 
@@ -127,7 +127,7 @@ console.log('\n=== end-to-end activation: {T} + spend exactly 3 + return to hand
   const hymn = place(G, 'hymnwright', 'you');
   hymn.counters.verse = 4;   // spend 3, leave 1
   const dead = ENGINE.makeCard(VICTIM); dead.owner = 'you'; dead.controller = 'you'; G.you.graveyard.push(dead);
-  const tgt = ENGINE.targetsForFilter('graveyard_creature', 'you').find(t => t.iid === dead.iid);
+  const tgt = ENGINE.targetsForFilter('graveyard_card', 'you', { type: 'Creature' }).find(t => t.iid === dead.iid);
   ENGINE.executeAction('you', { type: 'activateAbility', cardIid: hymn.iid, abilityIdx: 0, targets: [tgt] });
   drain(G);
   check('Hymnwright is tapped', hymn.tapped === true);
