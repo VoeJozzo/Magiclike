@@ -35,7 +35,10 @@ new mechanic" into "X's trigger + Y's effect + assembly."
 blocker. A card may need zero new primitives (pure assembly), one, or several; a
 missing primitive is something you *add*, not a reason to drop the card. Prefer
 general, reusable primitives over bespoke one-card handlers (it's how the engine is
-built), but "we don't have a primitive for this" is a to-do, not a stop sign.
+built), but "we don't have a primitive for this" is a to-do, not a stop sign. Build
+the one edge the card needs, not the whole matrix on spec — a handler for zone pairs
+or events no card uses is the speculative over-engineering the engine's style notes
+warn against.
 
 ## Engine gotchas
 
@@ -57,6 +60,11 @@ ones the lessons don't cover.)*
   bare filename (`art.png`), resolved against the card's own folder; append the folder
   name to `cards/_manifest.json`; put a `target` at the trigger/ability *top level*,
   not inside the effect.
+- **Generated card text is a surface, not an afterthought.** Oracle text is *generated*
+  from effects/triggers (`card-text.js`), so a new target family, effect kind, or
+  trigger preamble that skips it renders dead or wrong text — the card resolves
+  correctly and still isn't done. Unlike the browser-only pieces below, this one *is*
+  node-tested (`card_text_test.js`) — add coverage there.
 - **Browser-only pieces.** Anything in `render.js` / the HTML / CSS (a badge, an
   overlay) is NOT covered by the node suite — verify it in-page.
 - **AI usage.** A *player-usable* mechanic needs AI valuation (e.g. a `pickBestActivation`
@@ -77,11 +85,11 @@ In order:
    entry + the `CLAUDE.md` "Current" line, all to the same number. **Check `dev`'s
    *current* VERSION right before bumping** (`git show origin/dev:.../main.js`) —
    parallel branches collide here constantly; renumber to the next free one.
-6. **Branch & PR.** Branch off the **current** `origin/dev` (fetch first). Commit
-   authored as the bot. Push + open the PR as **Thaumaturge-Claude** (`gh auth switch`),
-   then restore VoeJozzo; the bot auto-subscribes as author. (Full identity/PR mechanics:
-   `docs/IDENTITIES.md`.) Use `git commit -F <file>` / `--body-file` for multi-line
-   messages on Windows — here-strings mangle into pathspecs.
+6. **Branch & PR.** Branch from the requested base — default `dev` when none is given;
+   fetch first. Commit and open the PR **as your own bot identity** (never the repo
+   owner's account) — see `docs/IDENTITIES.md` for the PR-as-bot mechanics; the
+   authoring bot auto-subscribes. Use `git commit -F <file>` / `--body-file` for
+   multi-line messages on Windows — here-strings mangle into pathspecs.
 
 ## See also
 
