@@ -1,6 +1,6 @@
 {
   "card_id": "knight_commander",
-  "art": "🏰",
+  "art": "art.png",
   "cost": {
     "W": 1,
     "C": 3

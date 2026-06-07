@@ -14,7 +14,7 @@
       "target": "creature"
     }
   ],
-  "art": "🪞",
+  "art": "art.png",
   "cost": {
     "U": 1,
     "C": 1
