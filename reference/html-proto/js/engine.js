@@ -6510,6 +6510,10 @@ return {
   canCreatureAttack, canCreatureBlock,
   effectNeedsTarget, getValidTargets,
   effectiveCastCost,
+  // Resolve a castable card by iid — hand first, then a public zone the
+  // controller has cast permission for (Seal-Thief Courier). Single source of
+  // truth for the human cast UI's zone-agnostic card lookup.
+  findCastableSpell,
   makeCard,
   synthesizeStapledTemplate,
   makeToken,

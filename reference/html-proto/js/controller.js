@@ -1611,15 +1611,12 @@ function objNeedsTarget(obj) { return ENGINE.objectNeedsTarget(obj); }
 function probeTargetsFor(obj, effects, who) { return ENGINE.probeTargetsForObject(obj, who); }
 
 function permittedZoneCard(iid) {
-  const G = ENGINE.state();
-  if (!G || !Array.isArray(G.castPermissions)) return null;
-  if (!G.castPermissions.some(p => p.controller === 'you' && p.cardIid === iid)) return null;
-  for (const who of ['you', 'opp']) {
-    for (const zone of ['exile']) {
-      const found = (G[who][zone] || []).find(c => c.iid === iid);
-      if (found) return found;
-    }
-  }
+  // A card 'you' may cast from a non-hand public zone (Seal-Thief Courier's
+  // cast-from-exile grant). Backed by the engine's findCastableSpell so the
+  // permission/zone logic has one source of truth; returns null for hand cards
+  // (callers OR this with their own hand lookup).
+  const c = ENGINE.findCastableSpell('you', iid);
+  if (c && c.zone !== 'hand') return c.card;
   return null;
 }
 
@@ -2062,7 +2059,9 @@ function pickModalMode(modeIdx) {
   if (!pendingModalChoice) return;
   const cardIid = pendingModalChoice.cardIid;
   const G = ENGINE.state();
-  const card = G.you.hand.find(c => c.iid === cardIid);
+  // Hand OR a permitted public zone (a modal spell cast from exile via a
+  // Seal-Thief Courier grant resolves its mode the same way).
+  const card = G.you.hand.find(c => c.iid === cardIid) || permittedZoneCard(cardIid);
   if (!card) { pendingModalChoice = null; render(); return; }
   const modes = ENGINE.getModes(card);
   if (modeIdx < 0 || modeIdx >= modes.length) { pendingModalChoice = null; render(); return; }

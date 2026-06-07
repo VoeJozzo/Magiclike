@@ -171,7 +171,7 @@ superseded for dispatch keys — it described the Pass 1–4 state). The catalog
 above lists the canonical keys. Godot's `Effects.HANDLERS` registers the same
 snake_case keys. The same sweep also snake_cased the other dispatch-key
 categories: **keywords** (`first_strike`, `double_strike`) and **target filters**
-(`permanent_or_spell`, `graveyard_creature`). Event kinds and predicate ids were
+(`permanent_or_spell`, `graveyard_card`). Event kinds and predicate ids were
 already snake_case from Slice 2 (the proto fires the unified `card_zone_change`,
 `life_changed`, `spell_cast`, `attacks`; conditions are `card_moves(...)` etc.).
 So **all** of `JsonCardLoader`'s remap tables (`_EFFECT_KIND_REMAP`,
@@ -247,15 +247,29 @@ Closed target-filter taxonomy (`ENGINE.TARGET_FILTERS`):
 | `"opp"`                | the opponent only (harmful effects — drain / burn-to-face / discard / edict). Text reads "target opponent"; only the opponent is a legal target, so card text matches behavior. |
 | `"permanent"`          | any permanent                                  |
 | `"spell"`              | a spell on the stack (counter targets)         |
-| `"graveyard_creature"` | a creature card in a graveyard (reanimation)   |
+| `"graveyard_card"`     | a card in one or more graveyards — reanimation, own-yard recursion, exile-and-cast. Composable via `target_filter` axes (below): `graveyards`, type/`not_type`, and an optional `select` superlative. |
 
 Optional **`target_filter`** — a restriction the closed taxonomy can't name on
 its own (e.g. "non-black creature", "tapped creature", "flying creature you don't
 control"). It sits **beside** `target` on the same container (card / trigger /
 ability) and carries `matchFilter` keys: `notColor`, `color`, `hasKeyword`,
 `notKeyword`, `subtype`, `tapped`, `maxTough`/`minTough`, `maxPower`/`minPower`,
-`notToken`. The taxonomy kind covers the type + controller axis; `target_filter`
-covers everything else. Enforced at the same cast-time `target()` checkpoint
+`notToken`, `type`/`not_type`. The taxonomy kind covers the type + controller
+axis; `target_filter` covers everything else.
+
+**`graveyard_card` filter axes.** This kind reads its whole shape from
+`target_filter`:
+- **`graveyards`** — array of controller-relative yard tokens `"self"` / `"opp"`;
+  default `["self"]` (own-yard recursion, e.g. Grave Digger). Seal-Thief Courier
+  uses `["opp"]`; Deepseam Quarry uses `["self", "opp"]`.
+- **type / `not_type` / subtype / …** — per-card `matchFilter` restrictions
+  (Seal-Thief Courier: `not_type: "Land"`; omit `type` to allow any card).
+- **`select`** — an optional set-relative superlative `{by, extreme}` applied
+  **after** filtering (`by: "total_mana_cost"`, `extreme: "greatest"|"least"`).
+  Distinct from a `matchFilter` threshold (a per-card test): a superlative needs
+  the whole candidate set, and ties stay legal so the chooser picks among equals
+  (Deepseam Quarry: greatest total mana cost among all graveyards). Supersedes the
+  retired `graveyard_creature` / `opp_graveyard_card` one-off kinds. Enforced at the same cast-time `target()` checkpoint
 (and at highlight). Examples: Doom Blade `target: "creature", target_filter: {notColor: "B"}`;
 Vine Strangle `target: "opp_creature", target_filter: {hasKeyword: "flying"}`.
 
