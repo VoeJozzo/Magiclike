@@ -1,0 +1,21 @@
+# Cards already run through the art-skill eval (do not re-pick).
+# One card id per line. Includes invalid/excluded rounds so they aren't repeated.
+mahamoti_djinn
+mirror_sage
+scarification
+searing_blast
+unsummon
+shock
+murder
+apex_hunter
+swamp
+invigorate
+dark_ritual
+sword_and_sorcery
+lightning_bolt
+horned_herald
+knight_commander
+bindspeaker
+old_guardian
+prodigal_sorcerer
+vile_edict

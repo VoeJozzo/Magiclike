@@ -297,3 +297,21 @@ IMPLICATION: the LLM judge is usable as a COARSE pre-filter (cull obvious losers
 - **Card-selection error:** I shuffled the html-proto card list without filtering on art presence; prodigal_sorcerer **already has `art.png`**. The harness pool is supposed to be *unarted* cards only. The done-set cards (horned_herald, old_guardian, bindspeaker, knight_commander, mirror_sage, apex_hunter, …) all have NO `art.png` — that IS the selection criterion. **FIX (binding): only draw cards from `reference/html-proto/cards/<c>/` that lack an `art.png` file** (121 such cards remain, minus the done set). Built the corrected pool.
 - Round still ran (control SKILL.md vs C2-variant, shared 10-seed pool, blind sheet `prodigal_sorcerer_c2ab_sheet.png`). **User read: disliked ALL; slight lean to 2.x.** Decoding the blind map: label 2 = arm_a = **control**. So a faint anti-treatment lean — but on a disqualified card, so **NOT counted** toward the C2 n>=7 tally.
 - Art kept committed (downloadable) under `art-eval/runs/skillab-c2-prodigal_sorcerer/`. C2 tally stands at n=6 (4 C2 / 1 control / 1 inconclusive). Re-rolling a genuinely-unarted card (vile_edict) as the real #7.
+
+## ===== TECH-STACK AUDIT (user-requested "take a beat") =====
+Trigger: recurring file loss (C2 variant wiped; seed pool churn) + a card picked that already had art.
+**Root cause (single):** the execution container restores from a snapshot pinned near commit `9923e7a`. Each restore rewinds the working tree and DELETES anything not committed-and-pushed, and resets `.git/info/exclude`. Harness inputs parked in gitignored spots vanished mid-session:
+- `SKILL-c2-variant.md` (gitignored in skill dir) -> wiped -> a treatment agent silently fell back to control (control-vs-control). FIXED: committed under `art-eval/variants/{SKILL-control.md,SKILL-c2-variant.md}`.
+- shared `seeds.json` placed under gitignored `_meta/` for prodigal+vile_edict (older runs correctly used run-ROOT). FIXED: migrated to run-root (committed); harness writes seeds at run-root.
+- card selection didn't filter on `art.png`. FIXED: harness `pool`/`init` REFUSE arted or done cards.
+**Verification this session (all green):**
+- Live pixflux smoke test: 200, base64 -> 64x32 RGBA PNG. API+token+decode path healthy.
+- `harness.py selftest`: PASS (variant = control + C2 paragraph; token format OK; 120 eligible cards).
+- `harness.py preflight skillab-c2-vile_edict`: PASS (both arms 10 gens, seeds match pool, **0 byte-identical cross-arm pairs** => genuinely treatment-vs-control).
+- No active processes (jobs empty; no python/curl procs). The "3 processes" the user saw = completed background-agent task cards in the UI; nothing computing.
+**New durable harness** `art-eval/harness.py` (committed): unarted-pool/pick/init/preflight/sheet/decode/selftest. Seeds + blind labels are DETERMINISTIC from card name (recomputable after any reset). Labeling standardized (deterministic) — replaces the old inline random labeler that could desync sheet vs decode.
+
+## C2 A/B #7 (real) — vile_edict (2B Sorcery; forced sacrifice -> grave)
+- Valid round (preflight PASS). Control = robed-sorcerer-claims-victim framing; C2 = skeletal-hands-drag-victim-into-grave framing.
+- **User gold: reject-all; "none in line with what I want," both branches "roughly similar quality."** => INCONCLUSIVE (no C2 advantage detected on this card). NOTE: subject-prior dominance fought the mechanic in BOTH arms (the "dragged down" beat rarely resolved; rolls collapsed to a creature merely standing in a graveyard).
+- C2 tally on user gold (n=7 clean): horned_herald, knight_commander, bindspeaker, old_guardian = **4 C2**; lightning_bolt = **1 control**; dark_ritual, vile_edict = **2 inconclusive**. Hit the n>=7 floor; trend = C2-positive (4 wins, 0 losses to control among decisive cards) but with 2 nulls.
