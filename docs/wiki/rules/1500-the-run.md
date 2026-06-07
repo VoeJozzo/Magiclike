@@ -4,7 +4,6 @@ tags: [magiclike, rules, meta-game]
 section: "1500"
 created: 2026-06-04
 updated: 2026-06-04
-source: docs/RULES.md §1500
 ---
 
 # 1500. The Run (Roguelike Meta)

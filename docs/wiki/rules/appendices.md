@@ -4,7 +4,6 @@ tags: [magiclike, rules]
 section: appendices
 created: 2026-06-04
 updated: 2026-06-04
-source: docs/RULES.md Appendices (A1–A3)
 ---
 
 # Appendices
@@ -47,7 +46,6 @@ Rolling list of places where the implementation knowingly diverges from this doc
 
 - **Godot multi-blocker damage assignment** dumps all damage on the first blocker (proto matches the canonical rule). See `docs/DIVERGENCE.md` C1.
 - **No first-player draw-skip in Godot** (proto implements it). See `docs/DIVERGENCE.md` A2.
-- **Proto only clears mana at CLEANUP**, not at every phase boundary (Godot matches the canonical rule). See `docs/DIVERGENCE.md` B2.
 - [[1000-triggered-abilities|§1007]]: "intervening if" not re-checked on resolution (both implementations).
 - [[500-turn-structure|§502]] Upkeep step: phase exists in Godot but no triggers fire there yet; proto does not implement upkeep at all.
 - [[500-turn-structure|§509]] End step: phase exists but no triggers fire there yet (both).

@@ -4,7 +4,6 @@ tags: [magiclike, rules]
 section: "1000"
 created: 2026-06-04
 updated: 2026-06-04
-source: docs/RULES.md §1000
 ---
 
 # 1000. Triggered Abilities

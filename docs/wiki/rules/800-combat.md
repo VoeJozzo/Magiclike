@@ -4,7 +4,6 @@ tags: [magiclike, rules]
 section: "800"
 created: 2026-06-04
 updated: 2026-06-04
-source: docs/RULES.md §800
 ---
 
 # 800. Combat
@@ -24,7 +23,7 @@ A blocker assignment is legal if:
 - The blocker has not been declared as another block.
 - The attacker does **not** have [[900-keywords|unblockable]].
 - The attacker does not have [[900-keywords|flying]] (or, if it does, the blocker also has flying or [[900-keywords|reach]]).
-- If the attacker has [[900-keywords|menace]], the defending player must assign **at least 2 blockers** to it (or it remains unblocked). A single blocker assigned to a menace creature is collapsed back to unblocked at the start of combat damage resolution.
+- If the attacker has [[900-keywords|menace]], the defending player must assign **at least 2 blockers** to it. A block assignment that leaves a menace attacker with exactly one blocker is **illegal**: the engine rejects it when blocks are confirmed, so the defender cannot finalize a lone block on a menace attacker. (A damage-time fallback that treats a lone-blocked menace attacker as unblocked is retained as a safety net for imported or otherwise stale states.)
 
 ## 803. Combat damage resolution
 Combat damage is resolved in **up to two passes**:
@@ -47,6 +46,7 @@ When a creature deals damage and its source has [[900-keywords|lifelink]], the s
 [[900-keywords|Indestructible]] creatures do not die from damage (lethal-marked or otherwise). They die only when their toughness becomes 0 or less.
 
 ## Implementation status — Combat
-- **Multi-blocker damage assignment** is currently split between the two implementations and the divergence is gameplay-affecting. See `docs/DIVERGENCE.md` items C1, C2, C3 for details. Briefly: html-proto matches the canonical rule above (smart distribution, deathtouch reduces threshold to 1). Godot **dumps all attacker damage on the first assigned blocker** — three 1/1 chumps blocking a 5/5 result in 1 death (Godot) vs. 3 deaths (proto). Harmonization to Godot is on the to-do list.
+- **Multi-blocker damage assignment** is currently split between the two implementations and the divergence is gameplay-affecting. See `docs/DIVERGENCE.md` items C1, C2 for details. Briefly: html-proto matches the canonical rule above (smart distribution, deathtouch reduces threshold to 1). Godot **dumps all attacker damage on the first assigned blocker** — three 1/1 chumps blocking a 5/5 result in 1 death (Godot) vs. 3 deaths (proto). Harmonization to Godot is on the to-do list.
+- **Menace single-blocker enforcement** is now aligned (`docs/DIVERGENCE.md` C3): both engines reject a lone block on a menace attacker at declaration/confirmation. Godot enforces it in `_legal_confirm_blocks` (via `_menace_blocks_are_legal`/`_prune_single_menace_blocks`) and keeps the damage-time collapse only as a guard for imported/stale states; proto rejects at declaration.
 - **First-strike interaction with double-strike**: double-strike is not implemented in either. A first-strike creature surviving pass 1 contributes no damage in pass 2.
 - **Damage assignment by attacker**: in MTG the attacker chooses the blocker order at declare-blockers step (508.6). Currently the order is fixed at block declaration time (the order the defender declared them in) in both implementations.
