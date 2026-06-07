@@ -2287,8 +2287,6 @@ const EFFECTS = {
       break;
     }
   },
-  // Legacy discard kind — still emitted by the Mercurial trigger generator
-  // (discardOpp). Card data uses move_card(hand→graveyard) post-collapse.
   grant_cast_permission(ctx, params, target) {
     const t = target || ctx.chosen;
     if (!t || t.iid == null) {
@@ -2314,6 +2312,8 @@ const EFFECTS = {
     });
     log(`${pname(ctx.controller)} may cast ${f.card.name} from ${from} this turn.`, 'sp');
   },
+  // Legacy discard kind — still emitted by the Mercurial trigger generator
+  // (discardOpp). Card data uses move_card(hand→graveyard) post-collapse.
   discard(ctx, params, target) {
     discardFromHand(ctx, discardWho(ctx, target), params.amount);
   },
