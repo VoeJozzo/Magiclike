@@ -1,5 +1,0 @@
-# Prey Upon — arm_b BEST
-
-**BEST: `gen_10_seed1599731972.png`** (prompt P2, seed 1599731972, text_guidance_scale 8).
-
-Prey Upon's mechanic is *Fight* — two creatures dealing damage to **each other simultaneously**, a mutual clash. Gen_10 is the only frame in the batch that depicts actual *contact*: two big cats reared up chest-to-chest, paws interlocked and jaws clashing at dead center with a red impact-burst between them. Every P1 wolf-vs-boar frame (gen_01/04/07 are the cleanest) is excellent and legible but reads as a tense *face-off / staredown* — snouts apart, the moment before the fight — rather than the fight itself. Since the experiment's load-bearing criterion is mechanic-enactment (the art must read as one creature attacking another in a mutual clash), the grappling-contact frame wins over the cleaner-but-tamer standoffs, per the skill's "reach, don't hedge" principle: gen_10 has a minor, nameable flaw (left cat's anatomy slightly off) but it is unambiguously enacting the Fight, not decorating its theme.
