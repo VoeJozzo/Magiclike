@@ -92,6 +92,8 @@ const CATEGORY_A = [
   'test_targeting_shape.js',
   // Castable-card highlight honors the top-level target() step.
   'test_castable_highlight.js',
+  // Seal-Thief Courier: combat-damage theft from graveyard into castable exile.
+  'test_seal_thief_courier.js',
   // Authored text keyed on custom_text only (special decoupled); 5 cards now generate.
   'test_generated_special_text.js',
   // Slice 3 — §3.5 browser targeting (clickHand/ability honor the top-level target() step).
