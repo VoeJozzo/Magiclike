@@ -5,7 +5,6 @@
       "cost": {
         "tap": true
       },
-      "main_phase_only": false,
       "effects": [
         {
           "kind": "move_card",
