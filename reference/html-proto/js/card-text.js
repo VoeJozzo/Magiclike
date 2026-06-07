@@ -39,6 +39,7 @@ function targetPhrase(eff) {
   if (t === 'your_creature') return 'target creature you control';
   if (t === 'opp_creature') return 'target creature an opponent controls';
   if (t === 'graveyard_creature') return 'target creature card';
+  if (t === 'opp_graveyard_card') return "target card from an opponent's graveyard";
   if (t === 'permanent')return 'target permanent';
   if (t === 'spell')    return 'target spell';
   if (t === 'card')     return 'target card';
@@ -69,9 +70,10 @@ function withFilter(noun, eff) {
   // "target permanent" + {type:'Land'} → "target land". The head noun is
   // whichever of creature/permanent the phrase used (each phrase has one);
   // pre-mods (color/tapped/…) then attach to that narrowed noun.
-  let head = /\bpermanent\b/.test(noun) ? 'permanent' : 'creature';
+  let head = /\bpermanent\b/.test(noun) ? 'permanent' : (/\bcard\b/.test(noun) ? 'card' : 'creature');
   let out = noun;
   if (f.type) { out = out.replace(head, f.type.toLowerCase()); head = f.type.toLowerCase(); }
+  if (f.not_type) { out = out.replace(head, 'non' + f.not_type.toLowerCase() + ' ' + head); }
   if (pre.length) out = out.replace(head, pre.join(' ') + ' ' + head);
   if (post.length) out += ' ' + post.join(' ');
   return out;
@@ -336,6 +338,7 @@ function describeEffect(eff, tplEff) {
         return [plainSeg('discard '), amtSeg, plainSeg(' cards')];
       }
       if (fz === 'graveyard' && tz === 'hand') return [plainSeg('return ' + t + ' from your graveyard to your hand')];
+      if (fz === 'graveyard' && tz === 'exile') return [plainSeg('exile ' + t)];
       if (fz === 'battlefield' && tz === 'library') return [plainSeg('shuffle ' + t + " into its owner's library")];
       if (fz === 'battlefield' && tz === 'hand') return [plainSeg('return ' + t + " to its owner's hand")];
       if (fz === 'battlefield' && tz === 'exile') return [plainSeg('exile ' + t)];          // flicker outgoing / exile removal
@@ -375,6 +378,13 @@ function describeEffect(eff, tplEff) {
       // Standalone fallback; the exile-until-eot pair is rendered as one phrase
       // by describeEffectList (below).
       return [plainSeg('return it to the battlefield at end of turn')];
+    case 'grant_cast_permission': {
+      const dur = eff.duration === 'eot' ? 'until end of turn, ' : '';
+      const mana = eff.spend_as_any_color
+        ? ', and you may spend mana as though it were mana of any color to cast it'
+        : '';
+      return [plainSeg(dur + 'you may cast that card' + mana)];
+    }
     case 'add_mana': {
       if (eff.choose) {
         return [plainSeg(eff.choose === 'any'
@@ -707,6 +717,7 @@ function triggerPreamble(trig) {
   if (cid === 'thisEnters')  return 'When this enters the battlefield,';
   if (cid === 'thisDies')    return 'When this dies,';
   if (cid === 'thisAttacks') return 'When this attacks,';
+  if (cid === 'thisDealsCombatDamageToOpp') return 'Whenever this deals combat damage to an opponent,';
   if (cid === 'thisLeaves')  return 'When this leaves the battlefield,';
   if (cid === 'thisKillsCreature') return 'Whenever a creature dealt damage by this dies,';
   if (cid === 'thisAttacksAfterOppLifeLoss') {

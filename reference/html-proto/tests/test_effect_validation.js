@@ -47,20 +47,29 @@ console.log('\n=== per-kind schema for the new atomics ===');
   const bad = [
     { tplId: 'mcNoZones', effects: [{ kind: 'move_card', amount: 1 }] },
     { tplId: 'mcBadZone', effects: [{ kind: 'move_card', from_zone: 'library', to_zone: 'nowhere' }] },
+    { tplId: 'mcUnsupportedPair', effects: [{ kind: 'move_card', from_zone: 'graveyard', to_zone: 'graveyard' }] },
+    { tplId: 'gcpBadZone', effects: [{ kind: 'grant_cast_permission', from_zone: 'graveyard', duration: 'eot' }] },
+    { tplId: 'gcpBadDuration', effects: [{ kind: 'grant_cast_permission', from_zone: 'exile', duration: 'forever' }] },
     { tplId: 'choosesNoFilter', effects: [{ kind: 'chooses' }] },
     { tplId: 'sevBad', effects: [{ kind: 'affect_creature', severity: 'vaporize' }] },
   ];
   const good = [
     { tplId: 'mcOk', effects: [{ kind: 'move_card', from_zone: 'library', to_zone: 'hand' }] },
+    { tplId: 'mcGraveyardToExileOk', effects: [{ kind: 'move_card', from_zone: 'graveyard', to_zone: 'exile' }] },
+    { tplId: 'gcpOk', effects: [{ kind: 'grant_cast_permission', from_zone: 'exile', duration: 'eot' }] },
     { tplId: 'sevOk', effects: [{ kind: 'affect_creature', severity: 'destroy' }] },
   ];
   const r = ENGINE.validateAllCardEffects(bad.concat(good));
   check('move_card missing zones flagged', r.schemaErrors.some(e => e.startsWith('mcNoZones:')));
   check('move_card bad to_zone flagged', r.schemaErrors.some(e => e.startsWith('mcBadZone:')));
+  check('move_card unsupported pair flagged', r.schemaErrors.some(e => e.startsWith('mcUnsupportedPair:')));
+  check('grant_cast_permission bad from_zone flagged', r.schemaErrors.some(e => e.startsWith('gcpBadZone:')));
+  check('grant_cast_permission bad duration flagged', r.schemaErrors.some(e => e.startsWith('gcpBadDuration:')));
   check('chooses missing filter flagged', r.schemaErrors.some(e => e.startsWith('choosesNoFilter:')));
   check('affect_creature bad severity flagged', r.schemaErrors.some(e => e.startsWith('sevBad:')));
   check('valid new-atomic effects NOT flagged',
-    !r.schemaErrors.some(e => e.startsWith('mcOk:') || e.startsWith('sevOk:')));
+    !r.schemaErrors.some(e => e.startsWith('mcOk:') || e.startsWith('mcGraveyardToExileOk:')
+      || e.startsWith('gcpOk:') || e.startsWith('sevOk:')));
 })();
 
 console.log('\n=== live shipped pool validates clean ===');
