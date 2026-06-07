@@ -492,8 +492,17 @@ function render() {
         graveTargets = ENGINE.getValidTargets(eff, 'you');
       }
     }
-    if (graveTargets) {
-      openZoneTargeting('you', 'graveyard', graveTargets);
+    if (graveTargets && graveTargets.length > 0) {
+      // If any legal target sits in the OPPONENT's graveyard (Deepseam Quarry pulls
+      // from any yard, including cross-yard ties), show a flat picker of just the
+      // qualifying creatures — regardless of which graveyard they're in. Own-yard
+      // recursion (Grave Digger) keeps the familiar your-graveyard highlight.
+      const involvesOppYard = graveTargets.some(t => (t.controller || 'you') !== 'you');
+      if (involvesOppYard) {
+        openGraveyardTargetPicker(graveTargets);
+      } else {
+        openZoneTargeting('you', 'graveyard', graveTargets);
+      }
     }
   }
   requestAnimationFrame(drawTargetLines);
@@ -656,11 +665,52 @@ function openZoneTargeting(who, zone, validTargets) {
 
 function submitGraveyardTarget(iid) {
   const G = ENGINE.state();
-  const card = G.you.graveyard.find(c => c.iid === iid);
-  const target = {kind:'graveyard_creature', iid, label: card ? card.name : 'creature', controller: 'you'};
+  // The card may be in either graveyard (Deepseam Quarry pulls from any yard).
+  // Only the iid drives legality/resolution (move_card scans both yards); the
+  // controller tag just records which yard it sat in.
+  const inOpp = G.opp.graveyard.some(c => c.iid === iid);
+  const card = (inOpp ? G.opp.graveyard : G.you.graveyard).find(c => c.iid === iid);
+  const target = {kind:'graveyard_creature', iid, label: card ? card.name : 'creature', controller: inOpp ? 'opp' : 'you'};
   if (CONTROLLER.submitTargetedAction(target)) {
     Modal.hide('zoneModal');
   }
+}
+
+// Flat picker of ONLY the qualifying graveyard creatures, regardless of which
+// graveyard they sit in. Used when a legal target lives in the opponent's yard
+// (Deepseam Quarry's "greatest total mana cost among all graveyards", including
+// cross-yard ties) — the player just sees the legal creatures and picks one.
+function openGraveyardTargetPicker(validTargets) {
+  if (document.getElementById('graveTargetPicker')) return;  // already open (re-render guard)
+  const G = ENGINE.state();
+  const items = validTargets.map(t => {
+    const inOpp = G.opp.graveyard.some(c => c.iid === t.iid);
+    const card = (inOpp ? G.opp.graveyard : G.you.graveyard).find(c => c.iid === t.iid);
+    return card ? { card, value: t.iid } : null;
+  }).filter(Boolean);
+  if (!items.length) return;
+  const dimmer = document.createElement('div');
+  dimmer.id = 'graveTargetPicker';
+  dimmer.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.72);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:1300;padding:24px;gap:12px';
+  const title = document.createElement('div');
+  title.style.cssText = 'color:#ffe7a0;font-size:15px;font-weight:bold;font-family:Georgia,serif;text-align:center';
+  title.textContent = 'Return a creature card';
+  const sub = document.createElement('div');
+  sub.style.cssText = 'color:#aaa;font-size:11px;font-style:italic;font-family:Georgia,serif';
+  sub.textContent = 'Choose from any graveyard.';
+  const host = document.createElement('div');
+  host.style.cssText = 'display:flex;flex-wrap:wrap;gap:10px;justify-content:center;align-items:flex-start;max-width:90vw;max-height:62vh;overflow:auto';
+  const close = () => dimmer.remove();
+  renderCardPicker(host, items, (iid) => { close(); submitGraveyardTarget(iid); });
+  const cancel = document.createElement('button');
+  cancel.textContent = 'Cancel';
+  cancel.style.cssText = 'background:#2a2a36;color:#ddd;border:1px solid #555;border-radius:5px;padding:8px 16px;font-size:12px;cursor:pointer;font-family:Georgia,serif';
+  cancel.onclick = () => { close(); CONTROLLER.cancelTarget(); render(); };
+  dimmer.appendChild(title);
+  dimmer.appendChild(sub);
+  dimmer.appendChild(host);
+  dimmer.appendChild(cancel);
+  document.body.appendChild(dimmer);
 }
 
 function setText(id, v) { document.getElementById(id).textContent = v; }

@@ -32,8 +32,8 @@ console.log('=== draftPool: rollTransformPack returns a non-empty pack ===');
     check('pack entries are valid tplIds present in CARDS',
       pack.every(id => CARDS[id]),
       'first entry: ' + JSON.stringify(pack[0]));
-    check('no BASIC lands in the draft pool (artifact lands are allowed)',
-      pack.every(id => !hasType(CARDS[id], 'Land') || hasType(CARDS[id], 'Artifact')));
+    check('no BASIC lands in the draft pool (all nonbasic lands are allowed)',
+      pack.every(id => !hasType(CARDS[id], 'Basic')));
     check('no special cards in the draft pool (filter intact)',
       pack.every(id => !CARDS[id].special));
   }
@@ -42,13 +42,13 @@ console.log('=== draftPool: rollTransformPack returns a non-empty pack ===');
 console.log('\n=== draftPool: matches the documented filter ===');
 {
   // Re-derive the expected pool here and compare counts. Must match draftPool()'s
-  // real predicate: non-special, and either non-land OR an artifact land (nonbasic
-  // artifact lands draft like other picks). NOT `type !== 'Land'` — that stale
-  // form excluded artifact lands, which pass now that colorless cards (incl.
-  // artifact lands) are offered every slot (v2.0.60).
+  // real predicate: non-special, and either non-land OR a NONBASIC land. Only
+  // BASIC lands are excluded — they're auto-allocated after the draft; every
+  // nonbasic land (artifact lands, utility lands like Deepseam Quarry) drafts
+  // like any other pick.
   const expected = Object.keys(CARDS).filter(id => {
     const c = CARDS[id];
-    return !c.special && (!hasType(c, 'Land') || hasType(c, 'Artifact'));
+    return !c.special && !hasType(c, 'Basic');
   });
   // Pull pack multiple times and union the unique tplIds — should be a
   // subset of expected, and over many rolls should cover most of it.

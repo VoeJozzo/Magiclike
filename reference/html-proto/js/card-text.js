@@ -352,6 +352,21 @@ function describeEffect(eff, tplEff) {
         if (eff.amount === 1) return [plainSeg('discard a card')];
         return [plainSeg('discard '), amtSeg, plainSeg(' cards')];
       }
+      if (fz === 'graveyard' && tz === 'battlefield') {  // reanimate
+        // The superlative + cross-zone restriction (Deepseam Quarry's "greatest
+        // total mana cost among all graveyards") and the take_control rider are
+        // rendered here — withFilter can't name a superlative or span both yards.
+        const gf = eff.filter || {};
+        let noun;
+        if (gf.greatest_total_cost) {
+          noun = 'the creature card with the greatest total mana cost among '
+            + (gf.all_graveyards ? 'all graveyards' : 'your graveyard');
+        } else {
+          noun = t + ' from ' + (gf.all_graveyards ? 'a graveyard' : 'your graveyard');
+        }
+        const ctrlRider = (eff.post && eff.post.take_control) ? ' under your control' : '';
+        return [plainSeg('return ' + noun + ' to the battlefield' + ctrlRider)];
+      }
       if (fz === 'graveyard' && tz === 'hand') return [plainSeg('return ' + t + ' from your graveyard to your hand')];
       if (fz === 'graveyard' && tz === 'exile') return [plainSeg('exile ' + t)];
       if (fz === 'battlefield' && tz === 'library') return [plainSeg('shuffle ' + t + " into its owner's library")];
@@ -857,7 +872,13 @@ function describeAbility(ab, tplAb) {
   if (body.length > 0 && body[body.length - 1].text === '.') {
     body = body.slice(0, -1);
   }
-  if (!cost) return body;
+  // The `main_phase_only` flag restricts an activated ability to the controller's
+  // main phase (empty stack) — the non-default timing. Magiclike has no "sorcery"
+  // timing concept (the Flash refactor made instant-speed = the `flash` keyword),
+  // so the reminder reads "during your main phase", not "as a sorcery". Rendered
+  // as a second sentence; the caller appends the final period.
+  const speedClause = ab.main_phase_only ? [plainSeg('. Activate only during your main phase')] : [];
+  if (!cost) return body.concat(speedClause);
   if (body.length > 0) {
     for (let i = 0; i < body.length; i++) {
       if (body[i].text && body[i].text.length > 0) {
@@ -869,7 +890,7 @@ function describeAbility(ab, tplAb) {
       }
     }
   }
-  return [plainSeg(cost + ': ')].concat(body);
+  return [plainSeg(cost + ': ')].concat(body).concat(speedClause);
 }
 
 // Lord buff: "Other <subtype>s you control get +P/+T and have <kw>."

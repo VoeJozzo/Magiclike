@@ -135,6 +135,9 @@ const CATEGORY_A = [
   // Hymnwright — verse counters (first named-counter card): accrual on death,
   // remove_counters cost gated in both legality paths, end-to-end recall, leave-play clear.
   'verse_counter_test.js',
+  // Deepseam Quarry — reanimation land: enters-tapped, all-graveyards + greatest-
+  // total-mana-cost targeting, self-sac activation cost, reanimate-under-your-control.
+  'test_deepseam_quarry.js',
 ];
 
 const TESTS_DIR = __dirname;
