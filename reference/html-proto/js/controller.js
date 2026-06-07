@@ -126,7 +126,7 @@ function stickerAppliesLabel(s) {
     case 'stat_boost':     return 'creatures';
     case 'innate':        return 'lands';
     case 'grant_mana_ability':     return "lands that don't already produce {" + s.color + '} (deck must play ' + s.colorAdj + ')';
-    case 'cost_mod':      return 'non-lands with at least one generic mana and total cost ≥ 2';
+    case 'cost_mod':      return 'non-lands with at least one generic mana and total mana cost ≥ 2';
     case 'empower':       return 'cards with numeric effects (damage, damageAll, pump, counters, pumpAllYours, gain_life, draw, discard, affect_creature)';
     case 'subtype':       return 'creatures (rolls a random subtype from your deck)';
     case 'keyword': {
@@ -1610,6 +1610,16 @@ function onStateChange() {
 function objNeedsTarget(obj) { return ENGINE.objectNeedsTarget(obj); }
 function probeTargetsFor(obj, effects, who) { return ENGINE.probeTargetsForObject(obj, who); }
 
+function permittedZoneCard(iid) {
+  // A card 'you' may cast from a non-hand public zone (Seal-Thief Courier's
+  // cast-from-exile grant). Backed by the engine's findCastableSpell so the
+  // permission/zone logic has one source of truth; returns null for hand cards
+  // (callers OR this with their own hand lookup).
+  const c = ENGINE.findCastableSpell('you', iid);
+  if (c && c.zone !== 'hand') return c.card;
+  return null;
+}
+
 function clickHand(iid) {
   const G = ENGINE.state();
   // Defensive: G is null until ENGINE.init completes. If a click event
@@ -1635,7 +1645,7 @@ function clickHand(iid) {
 
   if (pendingTarget) return;  // ignore hand clicks while picking a target
 
-  const card = G.you.hand.find(c => c.iid === iid);
+  const card = G.you.hand.find(c => c.iid === iid) || permittedZoneCard(iid);
   if (!card) return;
 
   if (hasType(card, 'Land')) {
@@ -1799,10 +1809,13 @@ function clickBattlefield(iid) {
     return;
   }
 
-  // Lands have their own simpler tap-for-mana path (with color picker for
-  // duals). Creatures and artifacts go through the unified ability-picker
-  // path below.
-  if (f.controller === 'you' && !card.tapped && hasType(card, 'Land')) {
+  // Lands with ONLY mana abilities use the simpler tap-for-mana path (with a
+  // color picker for duals). A land that ALSO has a non-mana activated ability
+  // (e.g. Deepseam Quarry's reanimate) falls through to the unified ability
+  // picker below, so the player can choose tap-for-mana OR the other ability.
+  const landOnlyTapsForMana = hasType(card, 'Land') && (!Array.isArray(card.abilities)
+    || card.abilities.every(ab => ab.effects && ab.effects[0] && ab.effects[0].kind === 'add_mana'));
+  if (f.controller === 'you' && !card.tapped && landOnlyTapsForMana) {
     const producible = ENGINE.landProducibleColors(card);
     if (producible.length > 1) {  // §3.9: multi-color land → color picker
       const legal = producible.filter(c =>
@@ -1836,11 +1849,21 @@ function clickBattlefield(iid) {
       const isMana = ab.effects && ab.effects[0] && ab.effects[0].kind === 'add_mana';
       const abNeedsTarget = objNeedsTarget(ab, ab.effects);  // §3.5: top-level target() or per-effect
       const needsSac = ab.cost && ab.cost.sacrifice;
+      const selfSac = needsSac && ab.cost.sacrifice === 'self';
       // Probe legality. The probe action shape depends on cost/target shape;
       // build the minimum that satisfies isLegalAction.
       let probe;
       if (isMana) {
         probe = {type:'tapLandForMana', cardIid: iid, abilityIdx: i};
+      } else if (selfSac) {
+        // Self-sacrifice (Deepseam Quarry): the source itself is the cost — no
+        // creature to choose, so sacIid is the source's own iid.
+        probe = {type:'activateAbility', cardIid: iid, abilityIdx: i, sacIid: iid};
+        if (abNeedsTarget) {
+          const fakeTargets = probeTargetsFor(ab, ab.effects, 'you');
+          if (!fakeTargets) continue;
+          probe.targets = fakeTargets;
+        }
       } else if (needsSac) {
         const sacCandidates = G.you.battlefield.filter(c => hasType(c, 'Creature'));
         if (sacCandidates.length === 0) continue;
@@ -1883,9 +1906,11 @@ function clickBattlefield(iid) {
                           }).join('') :
                         (ab.cost && ab.cost.sacrifice) ? 'Sacrifice' : '';
         const isDrawMove = eff.kind === 'move_card' && eff.from_zone === 'library' && eff.to_zone === 'hand';
+        const isReanimate = eff.kind === 'move_card' && eff.from_zone === 'graveyard' && eff.to_zone === 'battlefield';
         const effDesc = eff.kind === 'damage' ? 'Deal ' + (eff.amount || 1) + ' damage' :
                         eff.kind === 'pump' ? '+' + (eff.power || 0) + '/+' + (eff.toughness || 0) + ' EOT' :
                         (eff.kind === 'draw' || isDrawMove) ? 'Draw ' + (eff.amount || 1) :
+                        isReanimate ? 'Reanimate' :
                         eff.kind === 'untap' ? 'Untap a creature' :
                         eff.kind === 'gain_life' ? 'Gain ' + (eff.amount || 1) + ' life' :
                         eff.kind === 'apply_in_game_splice' ? 'Staple' :
@@ -1896,6 +1921,15 @@ function clickBattlefield(iid) {
       const fireAbility = () => {
         if (isMana) {
           submit({type:'tapLandForMana', cardIid: iid, abilityIdx: i});
+        } else if (selfSac) {
+          // Source is the sacrifice — no sac-pick step. Carry sacIid into the
+          // target step (graveyard pick) or fire immediately if untargeted.
+          if (abNeedsTarget) {
+            pendingTarget = {kind:'ability', cardIid: iid, abilityIdx: i, pickedSlots: [], sacIid: iid};
+            render();
+          } else {
+            submit({type:'activateAbility', cardIid: iid, abilityIdx: i, sacIid: iid});
+          }
         } else if (needsSac) {
           pendingTarget = {kind:'abilitySac', cardIid: iid, abilityIdx: i};
           render();
@@ -2004,9 +2038,12 @@ function buildPendingActionWithTarget(target) {
     return action;
   }
   if (pendingTarget.kind === 'ability') {
-    return {type:'activateAbility', cardIid: pendingTarget.cardIid,
+    const action = {type:'activateAbility', cardIid: pendingTarget.cardIid,
             abilityIdx: pendingTarget.abilityIdx, targets};
+    if (pendingTarget.sacIid != null) action.sacIid = pendingTarget.sacIid;
+    return action;
   }
+
   return null;
 }
 
@@ -2022,7 +2059,9 @@ function pickModalMode(modeIdx) {
   if (!pendingModalChoice) return;
   const cardIid = pendingModalChoice.cardIid;
   const G = ENGINE.state();
-  const card = G.you.hand.find(c => c.iid === cardIid);
+  // Hand OR a permitted public zone (a modal spell cast from exile via a
+  // Seal-Thief Courier grant resolves its mode the same way).
+  const card = G.you.hand.find(c => c.iid === cardIid) || permittedZoneCard(cardIid);
   if (!card) { pendingModalChoice = null; render(); return; }
   const modes = ENGINE.getModes(card);
   if (modeIdx < 0 || modeIdx >= modes.length) { pendingModalChoice = null; render(); return; }
@@ -2271,7 +2310,17 @@ function openZone(who, zone) {
       const cost = card.cost ? renderManaSymbols(formatCostBraced(card.cost)) : '';
       btn.innerHTML = `<span style="opacity:0.6">[${typeHint}]</span> <span class="card-name"></span>${cost ? ' <span style="opacity:0.7;font-size:10px">' + cost + '</span>' : ''}`;
       btn.querySelector('.card-name').textContent = card.name;
-      btn.onclick = () => openCardPopup(card);
+      const zoneCastable = zone === 'exile'
+        && typeof canPlayFromUI === 'function'
+        && canPlayFromUI('you', card);
+      if (zoneCastable) {
+        btn.style.borderColor = '#44cc44';
+        btn.style.color = '#dfffdc';
+        btn.title = 'Cast this card';
+        btn.onclick = () => { Modal.hide('zoneModal'); clickHand(card.iid); };
+      } else {
+        btn.onclick = () => openCardPopup(card);
+      }
       listEl.appendChild(btn);
     }
   }

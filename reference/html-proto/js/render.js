@@ -88,9 +88,9 @@ function render() {
   if (!G.stack.length) {
     banner.classList.remove('vis');
   } else {
-    // pt.cardIid: cast → hand; ability → battlefield.
+    // pt.cardIid: cast → hand or a permitted public zone; ability → battlefield.
     const ptCard = pt && (
-      G.you.hand.find(c => c.iid === pt.cardIid) ||
+      castCardByIid(pt.cardIid) ||
       G.you.battlefield.find(c => c.iid === pt.cardIid)
     );
     // Effects via pt.modeIdx — counterspell check needs the chosen mode.
@@ -192,7 +192,7 @@ function render() {
     tb.classList.add('vis');
     tgtCancelBtn.style.display = '';
     statusCancelBtn.style.display = '';
-    const card = G.you.hand.find(c => c.iid === pt.cardIid)
+    const card = castCardByIid(pt.cardIid)
               || (ENGINE.findCard(pt.cardIid) || {}).card;
     if (pt.kind === 'abilitySac' && card) {
       setText('tgtname', `Sacrifice a creature for ${card.name}`);
@@ -366,7 +366,7 @@ function render() {
   // Modal-spell mode picker — illegal modes disabled but rendered for visibility.
   const pmc = CONTROLLER.pendingModalChoice();
   if (pmc) {
-    const card = G.you.hand.find(c => c.iid === pmc.cardIid);
+    const card = castCardByIid(pmc.cardIid);
     if (card) {
       Modal.show('modalChoiceModal', { onClose: () => CONTROLLER.cancelModalChoice() });
       const inlineArt = isArtUrl(card.art) ? '🎴' : (card.art || '');
@@ -479,21 +479,35 @@ function render() {
 
   // Auto-open graveyard modal when a graveyard target is needed.
   if (!G.gameOver) {
-    let graveTargets = null;
+    let graveTargets = null, graveFilter = null, graveEffects = null;
     if (G.pendingTriggerTarget
         && G.pendingTriggerTarget.controller === 'you'
         && G.pendingTriggerTarget.valid
         && G.pendingTriggerTarget.valid.length > 0
-        && G.pendingTriggerTarget.valid[0].kind === 'graveyard_creature') {
+        && G.pendingTriggerTarget.valid[0].kind === 'graveyard_card') {
       graveTargets = G.pendingTriggerTarget.valid;
+      const trig = G.pendingTriggerTarget.trig || {};
+      graveFilter = trig.target_filter || null;
+      graveEffects = trig.effects || null;
     } else if (pt) {
       const eff = pendingTargetEffect(pt);
-      if (eff && eff.target === 'graveyard_creature') {
+      if (eff && eff.target === 'graveyard_card') {
         graveTargets = ENGINE.getValidTargets(eff, 'you');
+        graveFilter = eff.filter || null;
+        graveEffects = pendingTargetEffects(pt);
       }
     }
-    if (graveTargets) {
-      openZoneTargeting('you', 'graveyard', graveTargets);
+    if (graveTargets && graveTargets.length > 0) {
+      // If any legal target sits in the OPPONENT's graveyard (Deepseam Quarry pulls
+      // from any yard, including cross-yard ties), show a flat picker of just the
+      // qualifying creatures — regardless of which graveyard they're in. Own-yard
+      // recursion (Grave Digger) keeps the familiar your-graveyard highlight.
+      const involvesOppYard = graveTargets.some(t => (t.controller || 'you') !== 'you');
+      if (involvesOppYard) {
+        openGraveyardTargetPicker(graveTargets, graveyardPickerPrompt(graveFilter, graveEffects, graveTargets));
+      } else {
+        openZoneTargeting('you', 'graveyard', graveTargets);
+      }
     }
   }
   requestAnimationFrame(drawTargetLines);
@@ -527,7 +541,7 @@ function drawTargetLines() {
       if (!tgt) continue;
       // Player targets have no good DOM anchor — skip.
       let targetEl = null;
-      if (tgt.kind === 'creature' || tgt.kind === 'permanent' || tgt.kind === 'graveyard_creature') {
+      if (tgt.kind === 'creature' || tgt.kind === 'permanent' || tgt.kind === 'graveyard_card') {
         if (typeof tgt.iid === 'number') {
           targetEl = document.querySelector(`[data-iid="${tgt.iid}"]`);
         }
@@ -656,11 +670,75 @@ function openZoneTargeting(who, zone, validTargets) {
 
 function submitGraveyardTarget(iid) {
   const G = ENGINE.state();
-  const card = G.you.graveyard.find(c => c.iid === iid);
-  const target = {kind:'graveyard_creature', iid, label: card ? card.name : 'creature', controller: 'you'};
+  // The card may be in either graveyard (Deepseam Quarry pulls from any yard).
+  // Only the iid drives legality/resolution (move_card scans both yards); the
+  // controller tag just records which yard it sat in.
+  const inOpp = G.opp.graveyard.some(c => c.iid === iid);
+  const card = (inOpp ? G.opp.graveyard : G.you.graveyard).find(c => c.iid === iid);
+  const target = {kind:'graveyard_card', iid, label: card ? card.name : 'creature', controller: inOpp ? 'opp' : 'you'};
   if (CONTROLLER.submitTargetedAction(target)) {
     Modal.hide('zoneModal');
   }
+}
+
+// Flat picker of ONLY the qualifying graveyard creatures, regardless of which
+// graveyard they sit in. Used when a legal target lives in the opponent's yard
+// (Deepseam Quarry's "greatest total mana cost among all graveyards", including
+// cross-yard ties) — the player just sees the legal creatures and picks one.
+// Title/subtitle for the cross-yard picker, derived (not hardcoded) so it reads
+// right for every card that opens it: the noun from the target filter
+// (type → "creature card", not_type → "nonland card"), the verb from the move
+// effect (battlefield → Return / exile → Exile / hand → Return), and the pool
+// from which yards the legal targets sit in. Deepseam Quarry → "Return a creature
+// card / from any graveyard"; Seal-Thief Courier → "Exile a nonland card / from
+// an opponent's graveyard".
+function graveyardPickerPrompt(filter, effects, validTargets) {
+  filter = filter || {};
+  let noun = 'card';
+  if (filter.type) noun = filter.type.toLowerCase() + ' card';
+  else if (filter.not_type) noun = 'non' + filter.not_type.toLowerCase() + ' card';
+  const move = (effects || []).find(e => e && e.kind === 'move_card');
+  const tz = move && move.to_zone;
+  const verb = tz === 'exile' ? 'Exile' : (tz === 'battlefield' || tz === 'hand') ? 'Return' : 'Choose';
+  const anyYou = validTargets.some(t => (t.controller || 'you') === 'you');
+  const anyOpp = validTargets.some(t => (t.controller || 'you') === 'opp');
+  const subtitle = (anyYou && anyOpp) ? 'Choose from any graveyard.'
+    : anyOpp ? "Choose from an opponent's graveyard."
+    : 'Choose from your graveyard.';
+  return { title: verb + ' a ' + noun, subtitle };
+}
+function openGraveyardTargetPicker(validTargets, prompt) {
+  if (document.getElementById('graveTargetPicker')) return;  // already open (re-render guard)
+  prompt = prompt || {};
+  const G = ENGINE.state();
+  const items = validTargets.map(t => {
+    const inOpp = G.opp.graveyard.some(c => c.iid === t.iid);
+    const card = (inOpp ? G.opp.graveyard : G.you.graveyard).find(c => c.iid === t.iid);
+    return card ? { card, value: t.iid } : null;
+  }).filter(Boolean);
+  if (!items.length) return;
+  const dimmer = document.createElement('div');
+  dimmer.id = 'graveTargetPicker';
+  dimmer.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.72);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:1300;padding:24px;gap:12px';
+  const title = document.createElement('div');
+  title.style.cssText = 'color:#ffe7a0;font-size:15px;font-weight:bold;font-family:Georgia,serif;text-align:center';
+  title.textContent = prompt.title || 'Choose a card';
+  const sub = document.createElement('div');
+  sub.style.cssText = 'color:#aaa;font-size:11px;font-style:italic;font-family:Georgia,serif';
+  sub.textContent = prompt.subtitle || 'Choose from any graveyard.';
+  const host = document.createElement('div');
+  host.style.cssText = 'display:flex;flex-wrap:wrap;gap:10px;justify-content:center;align-items:flex-start;max-width:90vw;max-height:62vh;overflow:auto';
+  const close = () => dimmer.remove();
+  renderCardPicker(host, items, (iid) => { close(); submitGraveyardTarget(iid); });
+  const cancel = document.createElement('button');
+  cancel.textContent = 'Cancel';
+  cancel.style.cssText = 'background:#2a2a36;color:#ddd;border:1px solid #555;border-radius:5px;padding:8px 16px;font-size:12px;cursor:pointer;font-family:Georgia,serif';
+  cancel.onclick = () => { close(); CONTROLLER.cancelTarget(); render(); };
+  dimmer.appendChild(title);
+  dimmer.appendChild(sub);
+  dimmer.appendChild(host);
+  dimmer.appendChild(cancel);
+  document.body.appendChild(dimmer);
 }
 
 function setText(id, v) { document.getElementById(id).textContent = v; }
@@ -888,11 +966,22 @@ function renderBf(id, bf, who) {
 }
 
 // Effects for the pending pick: chosen mode (cast) or ability (activate).
+// Resolve a pending-cast card by iid — hand first, then a public zone the
+// player has cast permission for (Seal-Thief Courier's cast-from-exile grant).
+// The human target/modal UI must treat a permitted exile card exactly like a
+// hand card; without this, casting a *targeted or modal* stolen spell finds no
+// card → empty slot set → empty targets array → the action is rejected and the
+// stack stays empty. Backed by the engine's findCastableSpell (one source of
+// truth, shared with the legality and resolution paths).
+function castCardByIid(iid) {
+  const c = ENGINE.findCastableSpell('you', iid);
+  return c ? c.card : null;
+}
+
 function pendingTargetEffects(pt) {
   if (!pt) return [];
-  const G = ENGINE.state();
   if (pt.kind === 'cast') {
-    const card = G.you.hand.find(c => c.iid === pt.cardIid);
+    const card = castCardByIid(pt.cardIid);
     if (!card) return [];
     return ENGINE.effectsForMode(card, pt.modeIdx) || [];
   }
@@ -908,9 +997,8 @@ function pendingTargetEffects(pt) {
 // §3.5: the top-level target() filter for the pending cast/ability, if any.
 function pendingTopTargetFilter(pt) {
   if (!pt) return null;
-  const G = ENGINE.state();
   if (pt.kind === 'cast') {
-    const card = G.you.hand.find(c => c.iid === pt.cardIid);
+    const card = castCardByIid(pt.cardIid);
     return (card && card.target) || null;
   }
   if (pt.kind === 'ability') {
@@ -924,9 +1012,8 @@ function pendingTopTargetFilter(pt) {
 // highlighting so a restricted spell only lights up legal targets.
 function pendingTopTargetRestrict(pt) {
   if (!pt) return null;
-  const G = ENGINE.state();
   if (pt.kind === 'cast') {
-    const card = G.you.hand.find(c => c.iid === pt.cardIid);
+    const card = castCardByIid(pt.cardIid);
     return (card && card.target_filter) || null;
   }
   if (pt.kind === 'ability') {
@@ -943,7 +1030,7 @@ function pendingTopTargetRestrict(pt) {
 function pendingObjectTargetSlots(pt) {
   if (!pt) return null;
   let obj = null;
-  if (pt.kind === 'cast') obj = ENGINE.state().you.hand.find(c => c.iid === pt.cardIid);
+  if (pt.kind === 'cast') obj = castCardByIid(pt.cardIid);
   else if (pt.kind === 'ability') {
     const f = ENGINE.findCard(pt.cardIid);
     obj = f && f.card.abilities[pt.abilityIdx];

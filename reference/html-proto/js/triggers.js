@@ -5,6 +5,7 @@
 //   spell_cast       {kind, subject_iid, subject_card, controller}
 //   attacks          {kind, subject_iid, subject_card, controller, defender_key}
 //   life_changed     {kind, who, delta, source_iid?}
+//   combat_damage    {kind, subject_iid, subject_card, controller, who, amount}
 // Each atomic takes (ctx, args); ctx = {state, source, event, who} where `who`
 // is the trigger source's controller (Godot resolves the same from
 // source.controller_key — the per-engine signature detail; the evaluator
@@ -252,6 +253,7 @@ const _ARCHETYPE_BY_SIG = {
   // gate. See migrate-triggers.js MIGRATION for the full rationale.
   'card_zone_change | another_card, controlled_by(you), card_has_subtype(*), card_moves(anywhere, battlefield)': 'anotherCreatureYouEntersOfSubtype',
   'attacks | this_card': 'thisAttacks',
+  'combat_damage | this_card, affected_player_is(opp)': 'thisDealsCombatDamageToOpp',
   'attacks | this_card, lost_life_this_turn(opp)': 'thisAttacksAfterOppLifeLoss',
   'attacks | controlled_by(you), card_has_subtype(*)': 'creatureYouAttacksOfSubtype',
   'card_zone_change | this_card, card_moves(battlefield, graveyard)': 'thisDies',
@@ -300,7 +302,7 @@ function triggerSubtype(trig) {
 // Allowed trigger event kinds. New unified vocabulary + legacy kinds (the
 // latter accepted during the migration window; removed in step 8).
 const VALID_TRIGGER_EVENTS = new Set([
-  'card_zone_change', 'spell_cast', 'attacks', 'life_changed',
+  'card_zone_change', 'spell_cast', 'attacks', 'life_changed', 'combat_damage',
 ]);
 
 // Recursively collect unknown atomic-predicate names from a condition

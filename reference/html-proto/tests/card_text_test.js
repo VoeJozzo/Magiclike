@@ -147,6 +147,12 @@ eqText(segsToText(describeEffectList(
   'Target creature you control gets +1/+1 until end of turn, then it fights target creature an opponent controls.',
   'fight: buff-then-fight pronoun (Predate)');
 
+console.log('\n=== describeEffect: cast permission ===');
+eqText(segsToText(describeEffect({ kind: 'grant_cast_permission', from_zone: 'exile',
+                                   duration: 'eot', spend_as_any_color: true })),
+       'until end of turn, you may cast that card, and you may spend mana as though it were mana of any color to cast it',
+       'grant_cast_permission from exile through EOT');
+
 console.log('\n=== describeEffect: tokens (count-bumped wording) ===');
 // No TOKENS lookup → falls back to "1/1 creature" stats with a sensible
 // default niceName. Word count: "one", "two", ...
@@ -173,6 +179,9 @@ eqText(withFilter('target creature', { filter: { color: 'R', controller: 'opp' }
        'color + controller filter');
 eqText(withFilter('target creature', { filter: { min_power: 4 } }),
        'target creature with power 4 or greater', 'stat filter');
+eqText(withFilter(targetPhrase({ target: 'graveyard_card' }), { target: 'graveyard_card', filter: { not_type: 'Land', graveyards: ['opp'] } }),
+       "target nonland card from an opponent's graveyard",
+       'graveyard_card + nonland + opp graveyard');
 
 // ─── bumpedSeg highlight detection ────────────────────────────────────
 console.log('\n=== bumpedSeg highlight flag ===');
@@ -235,6 +244,18 @@ eqText(segsToText(describeTrigger({ event: 'attacks',
        'When this attacks, deal 1 damage to target opponent.', 'attacks → damage');
 
 // ─── describeModalSegs ────────────────────────────────────────────────
+eqText(segsToText(describeTrigger({ event: 'combat_damage',
+                                    condition: ['this_card', 'affected_player_is(opp)'],
+                                    target: 'graveyard_card',
+                                    target_filter: { not_type: 'Land', graveyards: ['opp'] },
+                                    effects: [
+                                      { kind: 'move_card', from_zone: 'graveyard', to_zone: 'exile', selector: 'target' },
+                                      { kind: 'grant_cast_permission', from_zone: 'exile', selector: 'target',
+                                        duration: 'eot', spend_as_any_color: true },
+                                    ] })),
+       "Whenever this deals combat damage to an opponent, exile target nonland card from an opponent's graveyard. Until end of turn, you may cast that card, and you may spend mana as though it were mana of any color to cast it.",
+       'combat damage theft trigger');
+
 console.log('\n=== describeModalSegs ===');
 {
   const modes = [

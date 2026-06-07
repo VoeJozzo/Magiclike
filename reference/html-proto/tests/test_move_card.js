@@ -84,6 +84,17 @@ console.log('\n=== return: graveyard → hand (target) ===');
   check('in hand', has(G.you.hand, c.iid));
 })();
 
+console.log('\n=== steal setup: graveyard -> exile (target, opponent-owned card) ===');
+(() => {
+  const c = ENGINE.makeCard('lightning_bolt');
+  c.owner = 'opp'; c.controller = 'opp';
+  G.opp.graveyard.push(c);
+  ENGINE.applyEffect(CTX, { kind: 'move_card', from_zone: 'graveyard', to_zone: 'exile', selector: 'target', amount: 1 },
+    { kind: 'graveyard_card', iid: c.iid });
+  check('off opponent graveyard', !has(G.opp.graveyard, c.iid));
+  check('in owner exile', has(G.opp.exile, c.iid));
+})();
+
 console.log('\n=== uses ctx.chosen when no explicit target ===');
 (() => {
   const c = place('opp');

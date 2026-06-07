@@ -15,13 +15,17 @@ const DESERT_CUBE_LAND_PROB = 1 / 3;
 let _draftPoolCache = null;
 function draftPool() {
   if (_draftPoolCache === null) {
-    // Spells + creatures are draftable; basic/utility lands are not — EXCEPT
-    // nonbasic artifact lands (Land + Artifact), which draft like other picks
-    // (matches MtG, where nonbasic lands appear in packs).
+    // Exclude BASIC lands (they're auto-allocated after the draft) and `special`
+    // cards (boss/run-only — including run-boon lands like City of Brass, which
+    // arrive via the "Polychrome Pact" modifier, not packs). Everything else —
+    // spells, creatures, and every other nonbasic land (artifact lands, utility
+    // lands like Deepseam Quarry) — drafts like any other pick, matching MtG
+    // where nonbasic lands appear in packs. `Basic` is a land-only supertype, so
+    // excluding it (plus the special carve-out) is the whole land rule.
     _draftPoolCache = Object.keys(CARDS).filter(id => {
       const c = CARDS[id];
       if (c.special) return false;
-      return !hasType(c, 'Land') || hasType(c, 'Artifact');
+      return !hasType(c, 'Basic');
     });
   }
   return _draftPoolCache;

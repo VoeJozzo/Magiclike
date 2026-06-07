@@ -92,6 +92,11 @@ const CATEGORY_A = [
   'test_targeting_shape.js',
   // Castable-card highlight honors the top-level target() step.
   'test_castable_highlight.js',
+  // Seal-Thief Courier: combat-damage theft from graveyard into castable exile.
+  'test_seal_thief_courier.js',
+  // Human cast-from-exile UI: a targeted/modal stolen spell resolves its target
+  // through the full click flow (not just the initial click) + picker prompt text.
+  'test_cast_from_exile_ui.js',
   // Authored text keyed on custom_text only (special decoupled); 5 cards now generate.
   'test_generated_special_text.js',
   // Slice 3 — §3.5 browser targeting (clickHand/ability honor the top-level target() step).
@@ -133,6 +138,9 @@ const CATEGORY_A = [
   // Hymnwright — verse counters (first named-counter card): accrual on death,
   // remove_counters cost gated in both legality paths, end-to-end recall, leave-play clear.
   'verse_counter_test.js',
+  // Deepseam Quarry — reanimation land: enters-tapped, all-graveyards + greatest-
+  // total-mana-cost targeting, self-sac activation cost, reanimate-under-your-control.
+  'test_deepseam_quarry.js',
 ];
 
 const TESTS_DIR = __dirname;

@@ -106,8 +106,10 @@ function isCompatibleStaplePair(baseTplId, stapleTplId) {
   if (!isSpliceableBase(baseTplId)) return false;
   if (!isSpliceableStaple(stapleTplId)) return false;
   // §3.10: the multi-color-land restriction is lifted — the synthesized
-  // tap-ability now uses the add_mana choose form (§3.9), so a multi-color land
-  // (City of Brass) is a valid staple onto any base.
+  // tap-ability uses the add_mana choose form (§3.9), so a multi-color land is a
+  // valid staple onto any base. (City of Brass, the only such land today, is
+  // `special` — run-boon only — so it's excluded above; the capability stands
+  // for any future non-special multi-color land.)
   return true;
 }
 
@@ -675,6 +677,8 @@ function makeCard(tplId, stickers, slotIdx, empowerRolls, permaBuffs, bonusTrigg
     empowerRolls: (empowerRolls || []).slice(),
     subtypeRolls: (subtypeRolls || []).slice(),
     innate: !!tpl.innate,
+    // Comes-into-play-tapped lands (Deepseam Quarry). Honored in doPlayLand.
+    enters_tapped: !!tpl.enters_tapped,
     triggers: (tpl.triggers || []).map(t => ({
       ...t,
       effects: (t.effects || []).map(e => ({...e})),
@@ -917,6 +921,9 @@ function makeState(playerDeck, oppDeck) {
     triggerChainDepth: 0,
     // Delayed triggers fire at scheduled events (endStep). Otherworldly Journey etc.
     delayedTriggers: [],
+    // Temporary permissions to cast cards from public zones (Seal-Thief Courier).
+    // Shape: {controller, cardIid, from_zone, duration, spend_as_any_color}.
+    castPermissions: [],
     endTurnPending: false,
   };
 }
@@ -1237,6 +1244,7 @@ function abilityValue(ab) {
   // real body, at flash speed). Value the whole package strongly — scanning all
   // effects, not just effects[0] — so the AI actually casts and drafts it.
   if (ab.effects.some(e => e && e.kind === 'become_copy_of')) return 16;
+  if (ab.effects.some(e => e && e.kind === 'grant_cast_permission')) return 6;
   const eff = ab.effects[0];
   switch (eff.kind) {
     case 'damage':         return 6 + (eff.amount || 0);
@@ -1377,8 +1385,49 @@ function effectiveCastCost(card) {
   return cost;
 }
 
+function effectiveCastCostWithPermission(card, permission) {
+  const cost = effectiveCastCost(card);
+  if (!cost || !permission || !permission.spend_as_any_color) return cost;
+  return Object.assign({}, cost, { spend_as_any_color: true });
+}
+
+function findCastableSpell(who, cardIid) {
+  const handIdx = G[who].hand.findIndex(c => c.iid === cardIid);
+  if (handIdx >= 0) {
+    return { card: G[who].hand[handIdx], zone: 'hand', zoneOwner: who, index: handIdx, permission: null };
+  }
+  for (const perm of (G.castPermissions || [])) {
+    if (perm.controller !== who || perm.cardIid !== cardIid) continue;
+    const zoneName = perm.from_zone || 'exile';
+    for (const owner of ['you', 'opp']) {
+      const zone = G[owner][zoneName];
+      if (!Array.isArray(zone)) continue;
+      const idx = zone.findIndex(c => c.iid === cardIid);
+      if (idx >= 0) {
+        return { card: zone[idx], zone: zoneName, zoneOwner: owner, index: idx, permission: perm };
+      }
+    }
+  }
+  return null;
+}
+
+function castableSpellEntries(who) {
+  const out = G[who].hand.map((card, index) =>
+    ({ card, zone: 'hand', zoneOwner: who, index, permission: null }));
+  const seen = new Set(out.map(e => e.card.iid));
+  for (const perm of (G.castPermissions || [])) {
+    if (perm.controller !== who || seen.has(perm.cardIid)) continue;
+    const found = findCastableSpell(who, perm.cardIid);
+    if (found) {
+      out.push(found);
+      seen.add(found.card.iid);
+    }
+  }
+  return out;
+}
+
 // Can `who` pay `cost` from pool + untapped sources? Backtracks over dual-land choices.
-function canPayPotential(who, cost) {
+function canPayPotential(who, cost, excludeIid) {
   if (!cost) return true;
   cost = resolvedManaCost(cost, null, who);
   const pool = {...G[who].mana};
@@ -1388,6 +1437,9 @@ function canPayPotential(who, cost) {
   const choices = [];
   for (const c of G[who].battlefield) {
     if (c.tapped) continue;
+    // A source tapped as the ability's own {T} cost can't also pay its mana cost
+    // (Deepseam Quarry's reanimate ability taps itself, so it doesn't fund {2}).
+    if (excludeIid != null && c.iid === excludeIid) continue;
     if (hasType(c, 'Creature') && c.sick) continue;  // sick dork can't tap
     const ab = manaAbilityOf(c);
     if (!ab) continue;
@@ -1678,7 +1730,10 @@ function placeCardOnBattlefield(ctx, card, fromZone, post) {
   // Arrivals return under their OWNER's control (exile-until-eot / flicker of a
   // stolen creature). owner == controller for the common cases (reanimate own
   // graveyard, fetch own library, flicker own creature).
-  const ctrl = card.owner || ctx.controller;
+  // `take_control` (Deepseam Quarry): the reanimator takes control even when the
+  // card's owner is the opponent. Control ≠ ownership — owner is preserved, so the
+  // card still returns to the opp's graveyard when it next leaves play.
+  const ctrl = post.take_control ? ctx.controller : (card.owner || ctx.controller);
   G[ctrl].battlefield.push(card);
   if (post.tap) card.tapped = true;
   if (post.untap_on_arrive) card.tapped = false;
@@ -2234,12 +2289,38 @@ const EFFECTS = {
         if (to === 'hand') G[dest].hand.push(card);
         else if (to === 'library') { G[dest].library.push(card); if (post.shuffle) shuffle(G[dest].library); }
         else if (to === 'battlefield') placeCardOnBattlefield(ctx, card, from, post);  // reanimate / exile-return
+        else if (to === 'exile' && from === 'graveyard') G[dest].exile.push(card);
         else { console.warn('move_card: unsupported', from, 'dest', to); break; }
         continue;
       }
       console.warn('move_card: unsupported from_zone', from);
       break;
     }
+  },
+  grant_cast_permission(ctx, params, target) {
+    const t = target || ctx.chosen;
+    if (!t || t.iid == null) {
+      console.warn('grant_cast_permission: missing target');
+      return;
+    }
+    const from = params.from_zone || 'exile';
+    const f = findCardAnyZone(t.iid);
+    if (!f || f.zone !== from) {
+      log(`${ctx.sourceName} fizzles - card is no longer in ${from}.`, 'sp');
+      return;
+    }
+    if (!Array.isArray(G.castPermissions)) G.castPermissions = [];
+    G.castPermissions = G.castPermissions.filter(p =>
+      !(p.controller === ctx.controller && p.cardIid === t.iid && p.from_zone === from));
+    G.castPermissions.push({
+      controller: ctx.controller,
+      cardIid: t.iid,
+      from_zone: from,
+      duration: params.duration || 'eot',
+      spend_as_any_color: !!params.spend_as_any_color,
+      sourceIid: ctx.sourceIid,
+    });
+    log(`${pname(ctx.controller)} may cast ${f.card.name} from ${from} this turn.`, 'sp');
   },
   // Legacy discard kind — still emitted by the Mercurial trigger generator
   // (discardOpp). Card data uses move_card(hand→graveyard) post-collapse.
@@ -2956,11 +3037,27 @@ function effectNeedsTarget(eff) {
 // the new kinds are checked — they aren't used by any card yet, so there's no
 // false-positive risk against the legacy pool; this guards the migration's
 // output. Each entry: kind → validator(effect) returning an error string or null.
+function isSupportedMoveCardPair(from, to) {
+  if (from === 'library') return to === 'hand' || to === 'graveyard' || to === 'battlefield';
+  if (from === 'hand') return to === 'graveyard';
+  if (from === 'battlefield') return to === 'hand' || to === 'library' || to === 'exile' || to === 'graveyard';
+  if (from === 'graveyard') return to === 'hand' || to === 'library' || to === 'battlefield' || to === 'exile';
+  if (from === 'exile') return to === 'hand' || to === 'library' || to === 'battlefield';
+  return false;
+}
+
 const EFFECT_SCHEMA = {
   move_card: (e) => {
     const ZONES = ['library', 'hand', 'graveyard', 'battlefield', 'exile'];
     if (!ZONES.includes(e.from_zone)) return 'move_card bad/missing from_zone';
     if (!ZONES.includes(e.to_zone)) return 'move_card bad/missing to_zone';
+    if (!isSupportedMoveCardPair(e.from_zone, e.to_zone)) return 'move_card unsupported zone pair';
+    return null;
+  },
+  grant_cast_permission: (e) => {
+    const ZONES = ['exile'];
+    if (!ZONES.includes(e.from_zone)) return 'grant_cast_permission bad/missing from_zone';
+    if (e.duration !== 'eot') return 'grant_cast_permission bad/missing duration';
     return null;
   },
   chooses: (e) => (e.filter ? null : 'chooses missing filter'),
@@ -3171,6 +3268,7 @@ function triggerPlayerTargetPrompt(trig, controller) {
   if (valid.length <= 1) return null;   // 0 → fizzle/auto; 1 → no choice to make
   // The effect used to value the choice (for the AI driver's pickBestTriggerTarget).
   const promptEff = (trig.effects || []).find(e => e.kind === 'become_copy_of')
+    || (trig.effects || []).find(e => e.kind === 'grant_cast_permission')
     || (trig.effects || []).find(e => e.kind !== 'chooses') || (trig.effects || [])[0] || {};
   return { valid, promptEff };
 }
@@ -3232,6 +3330,7 @@ function pushTriggerOnStack(p) {
     // become_copy_of (The False Witness — copy their best), else the first
     // non-chooses effect.
     const valueEff = (p.trig.effects || []).find(e => e.kind === 'become_copy_of')
+      || (p.trig.effects || []).find(e => e.kind === 'grant_cast_permission')
       || (p.trig.effects || []).find(e => e.kind !== 'chooses') || (p.trig.effects || [])[0] || {};
     chosenTarget = pickBestTriggerTarget(valueEff, valid, p.controller);
   } else if (targetEff) {
@@ -3339,10 +3438,11 @@ function pickBestTriggerTarget(eff, valid, controller) {
       return sorted[0];
     }
   }
-  if (eff.kind === 'returnFromGraveyard') {
-    const graveCards = G[controller].graveyard;
+  if (eff.kind === 'returnFromGraveyard' || eff.kind === 'grant_cast_permission') {
+    const graveOwner = eff.kind === 'grant_cast_permission' ? opp(controller) : controller;
+    const graveCards = G[graveOwner].graveyard;
     const scored = valid
-      .filter(t => t.kind === 'graveyard_creature')
+      .filter(t => t.kind === 'graveyard_card')
       .map(t => {
         const card = graveCards.find(c => c.iid === t.iid);
         return {t, value: card ? (cardValueOrZero(card)) : 0};
@@ -3485,6 +3585,22 @@ function doOptionalCost(who, pay) {
 }
 
 // ----- Targeting -----
+// Set-relative superlative selection (the targeting `select` step). Given
+// graveyard candidates [{c, k}], returns those tied for the extreme of a stat.
+// Distinct from a matchFilter threshold (a per-card test) — a superlative needs
+// the whole candidate set, so it runs after filtering.
+function selectStat(card, by) {
+  switch (by) {
+    case 'total_mana_cost': return costTotalCard(card);
+    // extend here: 'power' / 'toughness' via getStats, etc.
+    default: console.warn('select: unknown stat', by); return 0;
+  }
+}
+function applySelect(cands, select) {
+  const vals = cands.map(x => selectStat(x.c, select && select.by));
+  const want = (select && select.extreme === 'least') ? Math.min(...vals) : Math.max(...vals);
+  return cands.filter((_, i) => vals[i] === want);
+}
 function getValidTargets(effect, controller) {
   const allCreatures = [
     ...G.you.battlefield.map(c => ({card: c, ctrl: 'you'})),
@@ -3520,12 +3636,34 @@ function getValidTargets(effect, controller) {
         .filter(x => !(x.card.keywords && x.card.keywords.includes('hexproof') && x.ctrl !== controller))
         .filter(x => matchFilter(x.card, effect.filter, x.ctrl, controller))
         .map(x => ({kind:'permanent', iid:x.card.iid, label:x.card.name}));
-    case 'graveyard_creature':
-      // Caster's own graveyard; hexproof doesn't apply. Filter for tribal recursion.
-      return G[controller].graveyard
-        .filter(c => hasType(c, 'Creature'))
-        .filter(c => matchFilter(c, effect.filter, controller, controller))
-        .map(c => ({kind:'graveyard_creature', iid: c.iid, label: c.name, controller}));
+    case 'graveyard_card': {
+      // Cards in one or more graveyards, via composable filter axes:
+      //   graveyards: which yards to search, as controller-relative tokens
+      //     'self' / 'opp'. Default ['self'] — own yard (Grave Digger recursion).
+      //   type / not_type / color / …: per-card restrictions via matchFilter
+      //     (omit type = any card; Seal-Thief Courier uses not_type:'Land').
+      //   select: an optional superlative pick (greatest/least by a stat),
+      //     applied AFTER filtering (Deepseam Quarry: greatest total mana cost).
+      // Hexproof doesn't apply to cards in a graveyard.
+      const gf = effect.filter || {};
+      const yardKey = { self: controller, opp: opp(controller) };
+      const tokens = (Array.isArray(gf.graveyards) && gf.graveyards.length) ? gf.graveyards : ['self'];
+      const keys = tokens.map(t => yardKey[t] || t);
+      let cands = [];
+      for (const k of keys) {
+        for (const c of G[k].graveyard) {
+          if (!matchFilter(c, gf, k, controller)) continue;
+          cands.push({c, k});
+        }
+      }
+      // `select` is a set-relative superlative, so it runs AFTER matchFilter
+      // narrows the set ("the greatest" can't be a per-card test). Ties stay
+      // legal so the chooser picks among equals.
+      if (gf.select && cands.length) cands = applySelect(cands, gf.select);
+      // controller tags which yard each card sits in (so the UI routes the pick);
+      // move_card locates it by iid across both yards.
+      return cands.map(x => ({kind:'graveyard_card', iid: x.c.iid, label: x.c.name, controller: x.k}));
+    }
     case 'spell':
       return G.stack
         .filter(s => s.kind !== 'trigger' && s.card)
@@ -3555,7 +3693,7 @@ function getValidTargets(effect, controller) {
 // targetsForFilter below — there is no open tail.
 const TARGET_FILTERS = new Set([
   'creature', 'player', 'opp', 'creature_or_player', 'spell', 'permanent', 'land',
-  'your_creature', 'opp_creature', 'graveyard_creature',
+  'your_creature', 'opp_creature', 'graveyard_card',
 ]);
 
 // Legal-target set for a target() step's filter (Slice 3 step 2 / §3.5). THIS
@@ -3577,7 +3715,7 @@ function targetsForFilter(filter, controller, restrict) {
     case 'permanent':          return getValidTargets({ target: 'permanent', filter: restrict || undefined }, controller);
     case 'land':               return getValidTargets({ target: 'permanent', filter: merge({ type: 'Land' }) }, controller);
     case 'spell':              return getValidTargets({ target: 'spell', filter: restrict || undefined }, controller);
-    case 'graveyard_creature': return getValidTargets({ target: 'graveyard_creature', filter: restrict || undefined }, controller);
+    case 'graveyard_card':     return getValidTargets({ target: 'graveyard_card', filter: restrict || undefined }, controller);
     case 'your_creature':      return getValidTargets({ target: 'creature', filter: merge({ controller: 'self' }) }, controller);
     case 'opp_creature':       return getValidTargets({ target: 'creature', filter: merge({ controller: 'opp' }) }, controller);
     default:
@@ -3714,6 +3852,7 @@ function matchFilter(card, filter, controller, who) {
   // reads through hasType so animate / type-change effects are respected.
   // Without this, a target_filter:{type:'Land'} silently accepts any permanent.
   if (filter.type && !hasType(card, filter.type)) return false;
+  if (filter.not_type && hasType(card, filter.not_type)) return false;
   // Keyword filter — used by green's anti-flying answers (Choking Vines,
   // Vine Strangle) to restrict targeting to flying creatures specifically.
   // Generic over keyword name so future "destroy target indestructible"
@@ -3753,7 +3892,7 @@ function sameTarget(a, b) {
   if (a.kind === 'player') return a.who === b.who;
   if (a.kind === 'creature') return a.iid === b.iid;
   if (a.kind === 'permanent') return a.iid === b.iid;
-  if (a.kind === 'graveyard_creature') return a.iid === b.iid;
+  if (a.kind === 'graveyard_card') return a.iid === b.iid;
   if (a.kind === 'stack') return a.stackItem === b.stackItem;
   return false;
 }
@@ -4408,6 +4547,17 @@ function damagePlayer(who, amount, sourceName) {
     emit({type: 'life_changed', who, delta: -lifeLost});
   }
 }
+function emitCombatDamageToPlayer(source, controller, who, amount) {
+  if (!source || amount <= 0) return;
+  emit({
+    type: 'combat_damage',
+    who,
+    amount,
+    subject_iid: source.iid,
+    subject_card: source,
+    controller,
+  });
+}
 function afterEffectsApplied() { checkDeaths(); checkLifeTotals(); }
 
 // =========================================================================
@@ -4506,7 +4656,7 @@ function advancePhaseAfterPriority() {
 function pushOnStack(item) {
   G.stack.push(item);
   // pushOnStack is only reached from doCastSpell, which is gated by
-  // isLegalAction → isInstantWindow / isSorceryWindow — both of which
+  // isLegalAction → isInstantWindow / isMainPhaseWindow — both of which
   // require a priority round to already be open. So we can rely on it.
   G.priority.passes.clear();
   G.priorityHolder = opp(item.controller);
@@ -4671,12 +4821,12 @@ function resolveTopOfStack() {
       // Push card to graveyard first so the rip-up sweep finds and removes
       // it (otherwise the spell card is in limbo). The rip helper then
       // discards that pile entry along with the slot.
-      G[item.controller].graveyard.push(card);
+      G[card.owner || item.controller].graveyard.push(card);
       ripSlotByIdx(item.controller, card.slotIdx, `Elystra binds ${card.name}`);
       afterEffectsApplied();
       return;
     }
-    G[item.controller].graveyard.push(card);
+    G[card.owner || item.controller].graveyard.push(card);
   }
   afterEffectsApplied();
 }
@@ -4743,6 +4893,7 @@ function dealCombatDamage(blocked, defender, dealsDamage) {
     if (!wasBlocked) {
       if (atkDeals && aPow > 0) {
         damagePlayer(defender, aPow, atk.name);
+        emitCombatDamageToPlayer(atk, atkCtrl, defender, aPow);
         applyLifelink(atk, atkCtrl, aPow);
       }
       return;
@@ -4750,6 +4901,7 @@ function dealCombatDamage(blocked, defender, dealsDamage) {
     if (livingBlockers.length === 0) {
       if (atkDeals && atk.keywords.includes('trample') && aPow > 0) {
         damagePlayer(defender, aPow, `${atk.name} (trample)`);
+        emitCombatDamageToPlayer(atk, atkCtrl, defender, aPow);
         applyLifelink(atk, atkCtrl, aPow);
       }
       return;
@@ -4830,6 +4982,7 @@ function dealCombatDamage(blocked, defender, dealsDamage) {
     if (atkDeals && remaining > 0) {
       if (unsatisfied.length === 0 && atk.keywords.includes('trample')) {
         damagePlayer(defender, remaining, `${atk.name} (trample)`);
+        emitCombatDamageToPlayer(atk, atkCtrl, defender, remaining);
         applyLifelink(atk, atkCtrl, remaining);
       } else if (unsatisfied.length > 0) {
         const dump = unsatisfied[0].card;
@@ -4859,6 +5012,9 @@ function doPlayLand(who, cardIid) {
   const idx = p.hand.findIndex(c => c.iid === cardIid);
   const card = p.hand.splice(idx, 1)[0];
   p.battlefield.push(card);
+  // Comes-into-play tapped (Deepseam Quarry): unavailable for mana this turn;
+  // untaps on the controller's next untap step like any tapland.
+  if (card.enters_tapped) card.tapped = true;
   p.landPlayedThisTurn = true;
   // Record this slot as played-this-game. Used at game-end to filter the
   // sticker reward pool to cards that actually saw use. Token cards have
@@ -4900,14 +5056,18 @@ function doTapLandForMana(who, cardIid, color, abilityIdx) {
 }
 function doCastSpell(who, cardIid, targets, modeIdx) {
   const p = G[who];
-  const idx = p.hand.findIndex(c => c.iid === cardIid);
-  if (idx < 0) {
-    console.warn('doCastSpell: card not in hand', cardIid);
+  const castable = findCastableSpell(who, cardIid);
+  if (!castable) {
+    console.warn('doCastSpell: card not castable', cardIid);
     return;
   }
-  const card = p.hand[idx];
-  payMana(who, effectiveCastCost(card));
-  p.hand.splice(idx, 1);
+  const card = castable.card;
+  payMana(who, effectiveCastCostWithPermission(card, castable.permission));
+  G[castable.zoneOwner][castable.zone].splice(castable.index, 1);
+  if (castable.permission) {
+    G.castPermissions = (G.castPermissions || []).filter(perm =>
+      !(perm.controller === who && perm.cardIid === card.iid && perm.from_zone === castable.zone));
+  }
   // Record this slot as played-this-game (see doPlayLand for rationale).
   // Token-cast paths don't go through doCastSpell — tokens enter via
   // create_tokens effects directly — so this naturally only records real
@@ -5345,7 +5505,7 @@ function isInstantWindow(who) {
   if (isPriorityOpen()) return G.priorityHolder === who;
   return false;
 }
-function isSorceryWindow(who) {
+function isMainPhaseWindow(who) {
   // Sorcery speed: active player's main phase, empty stack, no priority round
   // currently open with stack items pending (an open round on empty stack is
   // fine — that's normal main-phase priority).
@@ -5396,9 +5556,10 @@ function isLegalAction(who, action) {
       return whoHasPriority(who) || isInstantWindow(who);
     }
     case 'castSpell': {
-      const card = G[who].hand.find(c => c.iid === action.cardIid);
+      const castable = findCastableSpell(who, action.cardIid);
+      const card = castable && castable.card;
       if (!card || hasType(card, 'Land')) return false;
-      if (!canPayPotential(who, effectiveCastCost(card))) return false;
+      if (!canPayPotential(who, effectiveCastCostWithPermission(card, castable.permission))) return false;
       // Legendary uniqueness (rule 1a): you can't cast a legendary if you
       // already control one with the same tplId. This is a hard prohibition
       // at cast time — not the classic "both die" legend rule (1b) or the
@@ -5413,7 +5574,7 @@ function isLegalAction(who, action) {
         // Flash (incl. retired-Instant spells): cast at instant speed.
         if (!isInstantWindow(who)) return false;
       } else {
-        if (!isSorceryWindow(who)) return false;
+        if (!isMainPhaseWindow(who)) return false;
       }
       // Validate targets if needed. By default, multi-effect spells share
       // a single target slot (targets[0]) — preserves the legacy behavior
@@ -5472,15 +5633,23 @@ function isLegalAction(who, action) {
         if (f.card.sick && !(f.card.keywords && f.card.keywords.includes('haste')) && hasType(f.card, 'Creature')) return false;
       }
       if (ab.cost && ab.cost.mana) {
-        if (!canPayPotential(who, resolvedManaCost(ab.cost.mana, f.card, who))) return false;
+        // Exclude the source from the payable mana when {T} is also a cost — it
+        // can't tap for both the cost and the mana.
+        if (!canPayPotential(who, resolvedManaCost(ab.cost.mana, f.card, who), ab.cost.tap ? f.card.iid : null)) return false;
       }
-      // Sac cost: action must include sacIid pointing to one of the
-      // controller's own creatures. Self-sac (sourcing the ability) is legal.
+      // Sac cost: action must include sacIid pointing to one of the controller's
+      // own permanents. `sacrifice:'self'` sacrifices the ability's own source
+      // (Deepseam Quarry sacs itself — a Land, not a creature), so it skips the
+      // creature gate and the source is the only legal sacIid.
       if (ab.cost && ab.cost.sacrifice) {
         if (action.sacIid == null) return false;
         const sacF = findCard(action.sacIid);
         if (!sacF || sacF.controller !== who) return false;
-        if (!hasType(sacF.card, 'Creature')) return false;
+        if (ab.cost.sacrifice === 'self') {
+          if (action.sacIid !== f.card.iid) return false;
+        } else if (!hasType(sacF.card, 'Creature')) {
+          return false;
+        }
       }
       // Counter-removal cost: the source must carry enough of each named counter.
       if (ab.cost && ab.cost.remove_counters) {
@@ -5494,9 +5663,9 @@ function isLegalAction(who, action) {
         // (Matches MtG: mana abilities don't require priority and don't use the stack.)
         return true;
       }
-      // Non-mana ability: timing depends on sorcery_speed flag.
-      if (ab.sorcery_speed) {
-        if (!isSorceryWindow(who)) return false;
+      // Non-mana ability: timing depends on main_phase_only flag.
+      if (ab.main_phase_only) {
+        if (!isMainPhaseWindow(who)) return false;
       } else {
         if (!isInstantWindow(who)) return false;
       }
@@ -5695,16 +5864,17 @@ function getLegalActions(who) {
   }
 
   // Spells (one entry per (card, target) combination)
-  for (const card of G[who].hand) {
+  for (const castable of castableSpellEntries(who)) {
+    const card = castable.card;
     if (hasType(card, 'Land')) continue;
-    if (!canPayPotential(who, effectiveCastCost(card))) continue;
+    if (!canPayPotential(who, effectiveCastCostWithPermission(card, castable.permission))) continue;
     // Timing: flash spells (incl. retired-Instant cards) and flash creatures
     // use the instant window. Other permanents/sorceries need sorcery window.
     const hasFlash = card.keywords && card.keywords.includes('flash');
     if (hasFlash) {
       if (!isInstantWindow(who)) continue;
     } else {
-      if (!isSorceryWindow(who)) continue;
+      if (!isMainPhaseWindow(who)) continue;
     }
     // Enumerate one action per (mode, target combination). Non-modal
     // single-target cards collapse to the simple "one action per target"
@@ -5802,18 +5972,23 @@ function getLegalActions(who) {
         if (card.tapped) continue;
         if (card.sick && !card.keywords.includes('haste') && hasType(card, 'Creature')) continue;
       }
-      // Mana cost requirements.
-      if (ab.cost && ab.cost.mana && !canPayPotential(who, resolvedManaCost(ab.cost.mana, card, who))) continue;
+      // Mana cost requirements. Exclude the source when {T} is also a cost (it
+      // can't tap for both the cost and the mana).
+      if (ab.cost && ab.cost.mana && !canPayPotential(who, resolvedManaCost(ab.cost.mana, card, who), ab.cost.tap ? card.iid : null)) continue;
       // Sacrifice cost: enumerate one entry per legal sac target. 'creature'
       // means any of your own creatures. Note: in MtG you CAN sacrifice the
       // source itself if it's a creature and the cost says "sacrifice a
       // creature." Carrion Feeder sacing itself is wasted but legal.
       let sacOptions = null;  // null = no sac cost; [] = required but none available; [a,b,...] = choices
       if (ab.cost && ab.cost.sacrifice) {
-        sacOptions = G[who].battlefield
-          .filter(c => hasType(c, 'Creature'))
-          .map(c => c.iid);
-        if (sacOptions.length === 0) continue;  // can't pay sac cost
+        if (ab.cost.sacrifice === 'self') {
+          sacOptions = [card.iid];  // the ability's own source is the sacrifice
+        } else {
+          sacOptions = G[who].battlefield
+            .filter(c => hasType(c, 'Creature'))
+            .map(c => c.iid);
+          if (sacOptions.length === 0) continue;  // can't pay sac cost
+        }
       }
       // Counter-removal cost: skip if the source lacks enough of any named counter.
       if (ab.cost && ab.cost.remove_counters) {
@@ -5823,7 +5998,7 @@ function getLegalActions(who) {
         }
         if (!canPay) continue;
       }
-      if (ab.sorcery_speed ? !isSorceryWindow(who) : !isInstantWindow(who)) continue;
+      if (ab.main_phase_only ? !isMainPhaseWindow(who) : !isInstantWindow(who)) continue;
       const targetedEff = ab.effects.find(effectNeedsTarget);
       // Cross-product: (effect targets) × (sac options). A top-level `target`
       // step (§3.5) enumerates from targetsForFilter (hexproof-excluded); empty
@@ -6203,6 +6378,9 @@ function step() {
             log(`${c.name} returns to ${pname(c.owner)}'s control.`, 'sp');
           }
         }
+        if (Array.isArray(G.castPermissions)) {
+          G.castPermissions = G.castPermissions.filter(p => p.duration !== 'eot');
+        }
         afterEffectsApplied();
         // (Mana pools are emptied by setPhase on every phase transition — B2.)
         G.activePlayer = opp(ap);
@@ -6332,6 +6510,10 @@ return {
   canCreatureAttack, canCreatureBlock,
   effectNeedsTarget, getValidTargets,
   effectiveCastCost,
+  // Resolve a castable card by iid — hand first, then a public zone the
+  // controller has cast permission for (Seal-Thief Courier). Single source of
+  // truth for the human cast UI's zone-agnostic card lookup.
+  findCastableSpell,
   makeCard,
   synthesizeStapledTemplate,
   makeToken,

@@ -5,7 +5,6 @@
       "cost": {
         "tap": true
       },
-      "sorcery_speed": false,
       "effects": [
         {
           "kind": "move_card",
