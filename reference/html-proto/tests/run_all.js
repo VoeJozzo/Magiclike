@@ -132,6 +132,9 @@ const CATEGORY_A = [
   'test_no_dead_text.js',
   // Predate (buff-then-fight) + the D1 live-read hybrid it forces + static-lord keyword grants.
   'test_predate_fight_d1.js',
+  // Deepseam Quarry — reanimation land: enters-tapped, all-graveyards + greatest-
+  // total-mana-cost targeting, self-sac activation cost, reanimate-under-your-control.
+  'test_deepseam_quarry.js',
 ];
 
 const TESTS_DIR = __dirname;

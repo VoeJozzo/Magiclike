@@ -666,6 +666,8 @@ function makeCard(tplId, stickers, slotIdx, empowerRolls, permaBuffs, bonusTrigg
     empowerRolls: (empowerRolls || []).slice(),
     subtypeRolls: (subtypeRolls || []).slice(),
     innate: !!tpl.innate,
+    // Comes-into-play-tapped lands (Deepseam Quarry). Honored in doPlayLand.
+    enters_tapped: !!tpl.enters_tapped,
     triggers: (tpl.triggers || []).map(t => ({
       ...t,
       effects: (t.effects || []).map(e => ({...e})),
@@ -1413,7 +1415,7 @@ function castableSpellEntries(who) {
 }
 
 // Can `who` pay `cost` from pool + untapped sources? Backtracks over dual-land choices.
-function canPayPotential(who, cost) {
+function canPayPotential(who, cost, excludeIid) {
   if (!cost) return true;
   cost = resolvedManaCost(cost, null, who);
   const pool = {...G[who].mana};
@@ -1423,6 +1425,9 @@ function canPayPotential(who, cost) {
   const choices = [];
   for (const c of G[who].battlefield) {
     if (c.tapped) continue;
+    // A source tapped as the ability's own {T} cost can't also pay its mana cost
+    // (Deepseam Quarry's reanimate ability taps itself, so it doesn't fund {2}).
+    if (excludeIid != null && c.iid === excludeIid) continue;
     if (hasType(c, 'Creature') && c.sick) continue;  // sick dork can't tap
     const ab = manaAbilityOf(c);
     if (!ab) continue;
@@ -1713,7 +1718,10 @@ function placeCardOnBattlefield(ctx, card, fromZone, post) {
   // Arrivals return under their OWNER's control (exile-until-eot / flicker of a
   // stolen creature). owner == controller for the common cases (reanimate own
   // graveyard, fetch own library, flicker own creature).
-  const ctrl = card.owner || ctx.controller;
+  // `take_control` (Deepseam Quarry): the reanimator takes control even when the
+  // card's owner is the opponent. Control ≠ ownership — owner is preserved, so the
+  // card still returns to the opp's graveyard when it next leaves play.
+  const ctrl = post.take_control ? ctx.controller : (card.owner || ctx.controller);
   G[ctrl].battlefield.push(card);
   if (post.tap) card.tapped = true;
   if (post.untap_on_arrive) card.tapped = false;
@@ -3581,12 +3589,32 @@ function getValidTargets(effect, controller) {
         .filter(x => !(x.card.keywords && x.card.keywords.includes('hexproof') && x.ctrl !== controller))
         .filter(x => matchFilter(x.card, effect.filter, x.ctrl, controller))
         .map(x => ({kind:'permanent', iid:x.card.iid, label:x.card.name}));
-    case 'graveyard_creature':
-      // Caster's own graveyard; hexproof doesn't apply. Filter for tribal recursion.
-      return G[controller].graveyard
-        .filter(c => hasType(c, 'Creature'))
-        .filter(c => matchFilter(c, effect.filter, controller, controller))
-        .map(c => ({kind:'graveyard_creature', iid: c.iid, label: c.name, controller}));
+    case 'graveyard_creature': {
+      // Default: caster's own graveyard (tribal recursion — Grave Digger).
+      // `all_graveyards` spans both players' yards (Deepseam Quarry reanimates
+      // from any graveyard). Hexproof doesn't apply to cards in a graveyard.
+      const gf = effect.filter || {};
+      const keys = gf.all_graveyards ? ['you', 'opp'] : [controller];
+      let cands = [];
+      for (const k of keys) {
+        for (const c of G[k].graveyard) {
+          if (!hasType(c, 'Creature')) continue;
+          if (!matchFilter(c, gf, k, controller)) continue;
+          cands.push({c, k});
+        }
+      }
+      // `greatest_total_cost`: narrow to the card(s) tied for the greatest total
+      // mana cost among the candidates — Deepseam Quarry's "deepest stratum".
+      // Ties stay legal so the chooser picks among equals.
+      if (gf.greatest_total_cost && cands.length) {
+        let max = -1;
+        for (const x of cands) max = Math.max(max, costTotalCard(x.c));
+        cands = cands.filter(x => costTotalCard(x.c) === max);
+      }
+      // controller field tags which graveyard the card sits in (own vs opp), so
+      // the UI can route the pick; move_card locates it by iid across both yards.
+      return cands.map(x => ({kind:'graveyard_creature', iid: x.c.iid, label: x.c.name, controller: x.k}));
+    }
     case 'opp_graveyard_card': {
       const graveOwner = opp(controller);
       return G[graveOwner].graveyard
@@ -4586,7 +4614,7 @@ function advancePhaseAfterPriority() {
 function pushOnStack(item) {
   G.stack.push(item);
   // pushOnStack is only reached from doCastSpell, which is gated by
-  // isLegalAction → isInstantWindow / isSorceryWindow — both of which
+  // isLegalAction → isInstantWindow / isMainPhaseWindow — both of which
   // require a priority round to already be open. So we can rely on it.
   G.priority.passes.clear();
   G.priorityHolder = opp(item.controller);
@@ -4942,6 +4970,9 @@ function doPlayLand(who, cardIid) {
   const idx = p.hand.findIndex(c => c.iid === cardIid);
   const card = p.hand.splice(idx, 1)[0];
   p.battlefield.push(card);
+  // Comes-into-play tapped (Deepseam Quarry): unavailable for mana this turn;
+  // untaps on the controller's next untap step like any tapland.
+  if (card.enters_tapped) card.tapped = true;
   p.landPlayedThisTurn = true;
   // Record this slot as played-this-game. Used at game-end to filter the
   // sticker reward pool to cards that actually saw use. Token cards have
@@ -5411,7 +5442,7 @@ function isInstantWindow(who) {
   if (isPriorityOpen()) return G.priorityHolder === who;
   return false;
 }
-function isSorceryWindow(who) {
+function isMainPhaseWindow(who) {
   // Sorcery speed: active player's main phase, empty stack, no priority round
   // currently open with stack items pending (an open round on empty stack is
   // fine — that's normal main-phase priority).
@@ -5479,7 +5510,7 @@ function isLegalAction(who, action) {
         // Flash (incl. retired-Instant spells): cast at instant speed.
         if (!isInstantWindow(who)) return false;
       } else {
-        if (!isSorceryWindow(who)) return false;
+        if (!isMainPhaseWindow(who)) return false;
       }
       // Validate targets if needed. By default, multi-effect spells share
       // a single target slot (targets[0]) — preserves the legacy behavior
@@ -5538,15 +5569,23 @@ function isLegalAction(who, action) {
         if (f.card.sick && !(f.card.keywords && f.card.keywords.includes('haste')) && hasType(f.card, 'Creature')) return false;
       }
       if (ab.cost && ab.cost.mana) {
-        if (!canPayPotential(who, resolvedManaCost(ab.cost.mana, f.card, who))) return false;
+        // Exclude the source from the payable mana when {T} is also a cost — it
+        // can't tap for both the cost and the mana.
+        if (!canPayPotential(who, resolvedManaCost(ab.cost.mana, f.card, who), ab.cost.tap ? f.card.iid : null)) return false;
       }
-      // Sac cost: action must include sacIid pointing to one of the
-      // controller's own creatures. Self-sac (sourcing the ability) is legal.
+      // Sac cost: action must include sacIid pointing to one of the controller's
+      // own permanents. `sacrifice:'self'` sacrifices the ability's own source
+      // (Deepseam Quarry sacs itself — a Land, not a creature), so it skips the
+      // creature gate and the source is the only legal sacIid.
       if (ab.cost && ab.cost.sacrifice) {
         if (action.sacIid == null) return false;
         const sacF = findCard(action.sacIid);
         if (!sacF || sacF.controller !== who) return false;
-        if (!hasType(sacF.card, 'Creature')) return false;
+        if (ab.cost.sacrifice === 'self') {
+          if (action.sacIid !== f.card.iid) return false;
+        } else if (!hasType(sacF.card, 'Creature')) {
+          return false;
+        }
       }
       const isMana = ab.effects[0].kind === 'add_mana';
       if (isMana) {
@@ -5554,9 +5593,9 @@ function isLegalAction(who, action) {
         // (Matches MtG: mana abilities don't require priority and don't use the stack.)
         return true;
       }
-      // Non-mana ability: timing depends on sorcery_speed flag.
-      if (ab.sorcery_speed) {
-        if (!isSorceryWindow(who)) return false;
+      // Non-mana ability: timing depends on main_phase_only flag.
+      if (ab.main_phase_only) {
+        if (!isMainPhaseWindow(who)) return false;
       } else {
         if (!isInstantWindow(who)) return false;
       }
@@ -5764,7 +5803,7 @@ function getLegalActions(who) {
     if (hasFlash) {
       if (!isInstantWindow(who)) continue;
     } else {
-      if (!isSorceryWindow(who)) continue;
+      if (!isMainPhaseWindow(who)) continue;
     }
     // Enumerate one action per (mode, target combination). Non-modal
     // single-target cards collapse to the simple "one action per target"
@@ -5862,20 +5901,25 @@ function getLegalActions(who) {
         if (card.tapped) continue;
         if (card.sick && !card.keywords.includes('haste') && hasType(card, 'Creature')) continue;
       }
-      // Mana cost requirements.
-      if (ab.cost && ab.cost.mana && !canPayPotential(who, resolvedManaCost(ab.cost.mana, card, who))) continue;
+      // Mana cost requirements. Exclude the source when {T} is also a cost (it
+      // can't tap for both the cost and the mana).
+      if (ab.cost && ab.cost.mana && !canPayPotential(who, resolvedManaCost(ab.cost.mana, card, who), ab.cost.tap ? card.iid : null)) continue;
       // Sacrifice cost: enumerate one entry per legal sac target. 'creature'
       // means any of your own creatures. Note: in MtG you CAN sacrifice the
       // source itself if it's a creature and the cost says "sacrifice a
       // creature." Carrion Feeder sacing itself is wasted but legal.
       let sacOptions = null;  // null = no sac cost; [] = required but none available; [a,b,...] = choices
       if (ab.cost && ab.cost.sacrifice) {
-        sacOptions = G[who].battlefield
-          .filter(c => hasType(c, 'Creature'))
-          .map(c => c.iid);
-        if (sacOptions.length === 0) continue;  // can't pay sac cost
+        if (ab.cost.sacrifice === 'self') {
+          sacOptions = [card.iid];  // the ability's own source is the sacrifice
+        } else {
+          sacOptions = G[who].battlefield
+            .filter(c => hasType(c, 'Creature'))
+            .map(c => c.iid);
+          if (sacOptions.length === 0) continue;  // can't pay sac cost
+        }
       }
-      if (ab.sorcery_speed ? !isSorceryWindow(who) : !isInstantWindow(who)) continue;
+      if (ab.main_phase_only ? !isMainPhaseWindow(who) : !isInstantWindow(who)) continue;
       const targetedEff = ab.effects.find(effectNeedsTarget);
       // Cross-product: (effect targets) × (sac options). A top-level `target`
       // step (§3.5) enumerates from targetsForFilter (hexproof-excluded); empty

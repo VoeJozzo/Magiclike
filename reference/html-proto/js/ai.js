@@ -1914,6 +1914,19 @@ function pickBestActivation(state, who, abilityActs) {
         && (eff.to_zone === 'battlefield' || (eff.to_zone === 'hand' && eff.selector === 'library_search'))) {
       // Tutoring / land-fetch is consistently strong (collapsed search*).
       score = 8;
+    } else if (eff.kind === 'move_card' && eff.from_zone === 'graveyard' && eff.to_zone === 'battlefield') {
+      // Reanimate a creature straight onto the battlefield (Deepseam Quarry). The
+      // target may sit in either graveyard (all_graveyards), so search both. The
+      // sac/mana cost is folded in by the generic sac-penalty block below.
+      const t = act.targets && act.targets[0];
+      let reanimated = null;
+      if (t) {
+        for (const g of [state.you.graveyard || [], state.opp.graveyard || []]) {
+          const f = g.find(c => c.iid === t.iid);
+          if (f) { reanimated = f; break; }
+        }
+      }
+      score = reanimated ? 12 + ENGINE.getCardValue(reanimated, 'play') : -100;
     } else if ((eff.kind === 'add_counter' || (eff.kind === 'pump' && eff.duration === 'permanent')) && eff.scope === 'self') {
       // Self-counter pump (Carrion Feeder-shape). The general principle:
       // sacrificing creatures just to grow a counter is wrong play. Real
@@ -1958,10 +1971,13 @@ function pickBestActivation(state, who, abilityActs) {
         if (isCreatureDoomedInCombat(state, who, act.sacIid)) {
           sacValue *= 0.1;
         }
-        // Self-sac is strictly worse than sacing a chump — losing the
-        // ability source gains us nothing future, and the +1/+1 from
-        // Carrion Feeder fizzles if we sac Carrion Feeder itself.
-        if (sacF.card.iid === act.cardIid) score -= 30;
+        // Self-sac is strictly worse than sacing a chump WHEN it's accidental —
+        // losing the source gains nothing and Carrion Feeder's +1/+1 fizzles if
+        // it eats itself. But a `sacrifice:'self'` cost is the ability's intended
+        // price (Deepseam Quarry sacs itself to reanimate), so charge only the
+        // body's board value, not the anti-waste penalty.
+        const selfSacByDesign = ab.cost && ab.cost.sacrifice === 'self';
+        if (sacF.card.iid === act.cardIid && !selfSacByDesign) score -= 30;
         else score -= sacValue;
       }
     }
