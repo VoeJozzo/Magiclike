@@ -41,6 +41,7 @@ The bots exist purely for **attribution** (tracking which AI did what). They're 
   ```bash
   GH_TOKEN="$(gh auth token --user <bot>)" gh pr create --base dev --title "…" --body "…"
   ```
+- **The same rule covers *all* API writes — comments, reviews, edits — not just `pr create`.** `gh pr comment` / `gh pr review` / `gh api` post as gh's **active** account (by default the owner, *not* the bot), and the body text is cosmetic — signing a comment "— Bot" does **not** change the recorded author. Prefix the same per-command token: `GH_TOKEN="$(gh auth token --user <bot>)" gh pr comment …`. When identity matters, verify it: `gh api repos/OWNER/REPO/issues/comments/<id> --jq .user.login`.
 - All bot work targets **`dev`** via PR; the owner reviews/approves. `main` receives `dev` by periodic forward-merge.
 
 ## Branch protection
