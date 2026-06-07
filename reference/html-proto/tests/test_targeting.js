@@ -40,7 +40,7 @@ function ids(list) { return list.filter(t => t.kind === 'creature').map(t => t.i
 console.log('=== TARGET_FILTERS closed taxonomy ===');
 (() => {
   for (const f of ['creature', 'player', 'creature_or_player', 'spell', 'permanent',
-                   'your_creature', 'opp_creature', 'graveyard_creature', 'opp_graveyard_card']) {
+                   'your_creature', 'opp_creature', 'graveyard_card']) {
     check('taxonomy has ' + f, ENGINE.TARGET_FILTERS.has(f));
   }
   check('unknown filter → empty target set', ENGINE.targetsForFilter('bogus', 'you').length === 0);
@@ -114,7 +114,7 @@ console.log('\n=== mass scope ignores hexproof (no target step) ===');
   check('Pyroclasm damaged the hexproof creature', oppHex.damage === 2, 'damage=' + oppHex.damage);
 })();
 
-console.log('\n=== opp_graveyard_card filter sees opponent graveyard and honors nonland ===');
+console.log("\n=== graveyard_card graveyards:['opp'] sees opponent graveyard and honors nonland ===");
 (() => {
   G.you.graveyard = [];
   G.opp.graveyard = [];
@@ -124,7 +124,7 @@ console.log('\n=== opp_graveyard_card filter sees opponent graveyard and honors 
   G.opp.graveyard.push(spell, land);
   G.you.graveyard.push(mine);
 
-  const valid = ENGINE.targetsForFilter('opp_graveyard_card', 'you', { not_type: 'Land' });
+  const valid = ENGINE.targetsForFilter('graveyard_card', 'you', { not_type: 'Land', graveyards: ['opp'] });
   check('finds the opponent nonland card', valid.some(t => t.kind === 'graveyard_card' && t.iid === spell.iid));
   check('excludes opponent land card', !valid.some(t => t.iid === land.iid));
   check('excludes your graveyard card', !valid.some(t => t.iid === mine.iid));

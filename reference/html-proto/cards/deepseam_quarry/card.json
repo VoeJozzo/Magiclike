@@ -30,10 +30,14 @@
         "sacrifice": "self"
       },
       "main_phase_only": true,
-      "target": "graveyard_creature",
+      "target": "graveyard_card",
       "target_filter": {
-        "all_graveyards": true,
-        "greatest_total_cost": true
+        "type": "Creature",
+        "graveyards": ["self", "opp"],
+        "select": {
+          "by": "total_mana_cost",
+          "extreme": "greatest"
+        }
       },
       "effects": [
         {

@@ -54,7 +54,7 @@ function grdCreature(owner, total) {
   c.cost = { C: total };
   return c;
 }
-const REANIMATE_F = { all_graveyards: true, greatest_total_cost: true };
+const REANIMATE_F = { type: 'Creature', graveyards: ['self', 'opp'], select: { by: 'total_mana_cost', extreme: 'greatest' } };
 
 console.log('=== card loads ===');
 check('deepseam_quarry template present in CARDS', !!CARDS['deepseam_quarry']);
@@ -95,20 +95,20 @@ console.log('\n=== greatest total mana cost among all graveyards ===');
   const big = grdCreature('opp', 7);  // unique greatest
   G.you.graveyard.push(cheap);
   G.opp.graveyard.push(mid, big);
-  const tg = ENGINE.getValidTargets({ target: 'graveyard_creature', filter: REANIMATE_F }, 'you');
+  const tg = ENGINE.getValidTargets({ target: 'graveyard_card', filter: REANIMATE_F }, 'you');
   check('exactly one legal target (unique greatest)', tg.length === 1, 'got ' + tg.length);
   check('it is the total-7 creature', tg[0] && tg[0].iid === big.iid);
   check('target tags the opp graveyard it sits in', tg[0] && tg[0].controller === 'opp');
   const tie = grdCreature('you', 7);  // a second total-7, in your yard
   G.you.graveyard.push(tie);
-  const tg2 = ENGINE.getValidTargets({ target: 'graveyard_creature', filter: REANIMATE_F }, 'you');
+  const tg2 = ENGINE.getValidTargets({ target: 'graveyard_card', filter: REANIMATE_F }, 'you');
   check('ties stay legal (two at total 7)',
     tg2.length === 2 && has(tg2, big.iid) && has(tg2, tie.iid), 'got ' + tg2.length);
-  const own = ENGINE.getValidTargets({ target: 'graveyard_creature', filter: { greatest_total_cost: true } }, 'you');
+  const own = ENGINE.getValidTargets({ target: 'graveyard_card', filter: { type: 'Creature', select: { by: 'total_mana_cost', extreme: 'greatest' } } }, 'you');
   check('own-yard-only ignores opp graveyard', own.length === 1 && own[0].iid === tie.iid);
   G.you.graveyard = []; G.opp.graveyard = [];
   check('empty graveyards → no legal target',
-    ENGINE.getValidTargets({ target: 'graveyard_creature', filter: REANIMATE_F }, 'you').length === 0);
+    ENGINE.getValidTargets({ target: 'graveyard_card', filter: REANIMATE_F }, 'you').length === 0);
 })();
 
 console.log('\n=== reanimate under your control (take_control) ===');
@@ -120,7 +120,7 @@ console.log('\n=== reanimate under your control (take_control) ===');
   ENGINE.applyEffect(
     { controller: 'you', sourceName: 'Quarry', sourceIid: -1 },
     { kind: 'move_card', from_zone: 'graveyard', to_zone: 'battlefield', selector: 'target', post: { take_control: true } },
-    { kind: 'graveyard_creature', iid: oldIid });
+    { kind: 'graveyard_card', iid: oldIid });
   check('left the opp graveyard', !has(G.opp.graveyard, oldIid));
   const arrived = G.you.battlefield.find(c => c.tplId === CREATURE);
   check('arrived under YOUR control', !!arrived && G.opp.battlefield.length === 0);
@@ -133,7 +133,7 @@ console.log('\n=== reanimate under your control (take_control) ===');
   ENGINE.applyEffect(
     { controller: 'you', sourceName: 'X', sourceIid: -1 },
     { kind: 'move_card', from_zone: 'graveyard', to_zone: 'battlefield', selector: 'target' },
-    { kind: 'graveyard_creature', iid: oppC2.iid });
+    { kind: 'graveyard_card', iid: oppC2.iid });
   check('default (no take_control): opp-owned returns to OPP battlefield',
     G.opp.battlefield.length === 1 && G.you.battlefield.length === 0);
 })();
