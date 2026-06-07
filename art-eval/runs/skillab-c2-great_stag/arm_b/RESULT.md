@@ -1,0 +1,5 @@
+# Result — Great Stag, arm_b
+
+**BEST: `gen_08_seed1742647739.png`** (copied byte-identical to `BEST.png`).
+
+gen_08 is the strongest enactment of a vanilla 3/4 Beast, where the body itself is the mechanic-in-art: a broad, heavily-muscled bull elk stands in a clean side profile with its head raised proudly, all four legs grounded, and a full branching rack of antlers crowning the top of the frame — it reads instantly as a sturdy, commanding bruiser rather than a delicate deer, which is exactly the "strength and wild nobility" the 3/4 wants. It also nails the single-green color identity and the "real forest, not a sprite on void" requirement: the stag is framed between two deep-brown trunks over a fern-strewn floor, a pale moon behind it lighting an emerald old-growth backdrop edge-to-edge, harmonizing with the `forest_titan` / `feral_stalker` anchors. Its antlers are the most legible and impressive of the batch and its body mass is the most imposing, making it the clearest majestic-stag read at 64x32.
