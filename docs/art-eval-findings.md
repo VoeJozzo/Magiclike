@@ -325,3 +325,15 @@ Trigger: recurring file loss (C2 variant wiped; seed pool churn) + a card picked
 - Low-variance round: both arms converged on "empty gilded throne in a sunlit marble temple, white+gold" (a land's flavor is narrow; both even nominated the same seed). More a feel/quality compare than a mechanic-legibility one.
 - **User gold: likes 2.04 "but it's all pretty marginal."** Decode: label 2 = arm_b = **TREATMENT (C2)**. => weak/marginal C2 lean (not decisive).
 - C2 tally on user gold: decisive = 5 C2 (horned_herald, knight_commander, bindspeaker, old_guardian, prey_upon) / 1 control (lightning_bolt); marginal C2 lean = gilded_seat; inconclusive = dark_ritual, vile_edict. Trend holds C2-positive. NOTE: still no NEW keeper since old_guardian — the last several cards produced branch-reads but nothing the user would actually ship.
+
+## C2 A/B #10 — centaur_courser (vanilla 3/3) [harness-driven, preflight PASS]
+- Interesting shared failure: BOTH arms lost to the "rider-on-a-horse" subject-prior (most cells = human riding a horse, not a fused centaur; a couple = riderless horse). Not a C2-vs-control axis — a skill-content/pixellab gap (cf. C6 base-form-first for hybrids).
+- **User gold: "1.05 best, 1.x better overall; no keeper, but that's pixellab's model, not the skill."** Decode: label 1 = arm_a = **CONTROL**. => control win (2nd decisive control win).
+
+## ===== C2 STATS ANALYSIS (n=10, user-gold, judge-free) =====
+Tally: C2 decisive=5 (horned_herald, knight_commander, bindspeaker, old_guardian, prey_upon) | C2 marginal=1 (gilded_seat) | control=2 (lightning_bolt-nofig, centaur_courser) | inconclusive=2 (dark_ritual, vile_edict).
+SIGN TEST (binomial, null p=0.5): strict decisive 5/7 -> two-tailed p~=0.45; lenient (marginal as C2) 6/8 -> p~=0.29. **Not significant.** Direction favors C2; count alone doesn't prove it. For sign-test p<0.05 need ~8/8, 9/10, 11/13 (~20-25 decisive cards at observed ~70% rate).
+QUALITATIVE (stronger than the count):
+1. C2 owns ALL the emphatic verdicts ("the one", "clearly better", "not close", "2.07 is the call") + all keeper-grade results. Control's 2 wins are DEFENSIVE wins on DEGENERATE cards: the deliberately-stripped no-figure Lightning Bolt, and the vanilla Centaur where BOTH arms failed the same prior (control merely less-bad). Control has never won a card where C2 had room to reach.
+2. Effect appears CONDITIONAL on card richness: C2 ("reach, don't hedge") wins cluster on scene-rich/mechanic-heavy cards; control wins + nulls + marginal cluster on NARROW cards (single icon, vanilla body, land) where there's nothing to reach for and ambition adds clutter. Coherent mechanism.
+VERDICT: do NOT bake C2 in yet (clears n>=7 floor but not significance; user rule = "clear data"). Qualitative case good + pointed. Recommended next: test the conditional hypothesis directly by weighting future rolls toward MECHANIC-RICH cards; if C2 keeps winning those, justifies a SCOPED merge (adopt reach-principle, possibly gated to rich cards) over a blanket one. Keeper drought is orthogonal (pixellab ceiling, per user).
