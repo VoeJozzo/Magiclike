@@ -4,7 +4,6 @@ tags: [magiclike, rules]
 section: "100"
 created: 2026-06-04
 updated: 2026-06-04
-source: docs/RULES.md §100
 ---
 
 # 100. Game Concepts

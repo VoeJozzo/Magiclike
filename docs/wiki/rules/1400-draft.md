@@ -4,7 +4,6 @@ tags: [magiclike, rules, meta-game]
 section: "1400"
 created: 2026-06-04
 updated: 2026-06-04
-source: docs/RULES.md §1400
 ---
 
 # 1400. Draft

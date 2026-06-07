@@ -4,7 +4,6 @@ tags: [magiclike, rules]
 section: "900"
 created: 2026-06-04
 updated: 2026-06-04
-source: docs/RULES.md §900
 ---
 
 # 900. Keywords

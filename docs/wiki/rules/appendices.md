@@ -4,7 +4,6 @@ tags: [magiclike, rules]
 section: appendices
 created: 2026-06-04
 updated: 2026-06-04
-source: docs/RULES.md Appendices (A1–A3)
 ---
 
 # Appendices

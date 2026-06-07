@@ -4,7 +4,6 @@ tags: [magiclike, rules]
 section: "1200"
 created: 2026-06-04
 updated: 2026-06-04
-source: docs/RULES.md §1200
 ---
 
 # 1200. Ending the Game
