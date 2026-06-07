@@ -19,12 +19,8 @@
         {
           "kind": "fight",
           "operands": [
-            {
-              "select": "highest_power_yours"
-            },
-            {
-              "slot": 0
-            }
+            { "select": "highest_power_yours" },
+            { "slot": 0 }
           ]
         }
       ],
