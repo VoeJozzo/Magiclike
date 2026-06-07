@@ -38,3 +38,4 @@ source: docs/RULES.md §300
 ## Implementation status — Card Types
 - 305 is reserved; no cards of these types exist.
 - 301 mana abilities are auto-constructed from `mana_produced` — do NOT populate `activated_abilities` on a land template.
+- **Engine model (how a card's type line is represented and read):** see [[type-identity]] — one `types[]` array behind one accessor layer, the governing-type fork, and the live `typeGrants` modifier layer.

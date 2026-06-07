@@ -3,7 +3,7 @@ type: index
 tags: [magiclike, wiki]
 aliases: ["Concept wiki hub"]
 created: 2026-06-02
-updated: 2026-06-04
+updated: 2026-06-06
 ---
 
 # Magiclike — durable concepts wiki
@@ -19,6 +19,7 @@ It is **docs-as-code, in wiki form** — co-located with the code (so it's versi
 - [action-descriptor-pattern.md](action-descriptor-pattern.md) — all state mutation through one `execute_action` entry point.
 - [predicate-registry.md](predicate-registry.md) — string-keyed conditions + the "no autoload reach" purity rule.
 - [composable-predicates.md](composable-predicates.md) — atomic predicates composed into trigger conditions (the proto's richer model).
+- [type-identity.md](type-identity.md) — a card's type line as one `types[]` array behind one accessor layer (governing-type fork, live `typeGrants`, `addType`).
 - [procedural-card-text.md](procedural-card-text.md) — oracle text generated from a card's effects, never hand-authored.
 
 **Engine resolution core**

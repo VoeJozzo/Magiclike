@@ -27,4 +27,4 @@ The canonical **effect-kind catalog** and dispatch contract are the cross-engine
 
 ## See also
 
-[[composable-predicates]] · [[targeting-and-hexproof]] · [[mana-model]] · [[sticker-system]] · [[procedural-card-text]] · [[magiclike-architecture]] · [[html-proto]]
+[[composable-predicates]] · [[targeting-and-hexproof]] · [[mana-model]] · [[sticker-system]] · [[type-identity]] · [[procedural-card-text]] · [[magiclike-architecture]] · [[html-proto]]
