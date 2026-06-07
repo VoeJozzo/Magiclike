@@ -179,9 +179,9 @@ eqText(withFilter('target creature', { filter: { color: 'R', controller: 'opp' }
        'color + controller filter');
 eqText(withFilter('target creature', { filter: { min_power: 4 } }),
        'target creature with power 4 or greater', 'stat filter');
-eqText(withFilter(targetPhrase({ target: 'opp_graveyard_card' }), { filter: { not_type: 'Land' } }),
+eqText(withFilter(targetPhrase({ target: 'graveyard_card' }), { target: 'graveyard_card', filter: { not_type: 'Land', graveyards: ['opp'] } }),
        "target nonland card from an opponent's graveyard",
-       'opp_graveyard_card + nonland filter');
+       'graveyard_card + nonland + opp graveyard');
 
 // ─── bumpedSeg highlight detection ────────────────────────────────────
 console.log('\n=== bumpedSeg highlight flag ===');
@@ -246,8 +246,8 @@ eqText(segsToText(describeTrigger({ event: 'attacks',
 // ─── describeModalSegs ────────────────────────────────────────────────
 eqText(segsToText(describeTrigger({ event: 'combat_damage',
                                     condition: ['this_card', 'affected_player_is(opp)'],
-                                    target: 'opp_graveyard_card',
-                                    target_filter: { not_type: 'Land' },
+                                    target: 'graveyard_card',
+                                    target_filter: { not_type: 'Land', graveyards: ['opp'] },
                                     effects: [
                                       { kind: 'move_card', from_zone: 'graveyard', to_zone: 'exile', selector: 'target' },
                                       { kind: 'grant_cast_permission', from_zone: 'exile', selector: 'target',

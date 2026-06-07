@@ -63,9 +63,11 @@ console.log('=== card data and generated text ===');
   check('Seal-Thief Courier exists', !!tpl);
   check('uses combat_damage trigger', tpl && tpl.triggers && tpl.triggers[0].event === 'combat_damage');
   check('targets nonland opponent graveyard card',
-    tpl && tpl.triggers[0].target === 'opp_graveyard_card'
+    tpl && tpl.triggers[0].target === 'graveyard_card'
       && tpl.triggers[0].target_filter
-      && tpl.triggers[0].target_filter.not_type === 'Land');
+      && tpl.triggers[0].target_filter.not_type === 'Land'
+      && Array.isArray(tpl.triggers[0].target_filter.graveyards)
+      && tpl.triggers[0].target_filter.graveyards[0] === 'opp');
   const text = describeCardText(ENGINE.makeCard('seal_thief_courier'));
   check('generated text names combat damage to an opponent',
     /deals combat damage to an opponent/.test(text), text);

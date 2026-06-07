@@ -25,6 +25,33 @@ function formatTriggerText(template, cardName) {
 }
 
 // eff.target → noun phrase. 'player' = "target opponent" for damage/discard, "target player" for gain_life.
+const STAT_PHRASE = { total_mana_cost: 'total mana cost' };
+// Compose the English for a `graveyard_card` target from its filter axes:
+// type/not_type/subtype (adjectives on "card"), `select` (a superlative clause),
+// and `graveyards` (which yards). A superlative names its comparison pool with
+// "among …"; a plain restriction names a location with "from …". Always "target":
+// even a superlative leaves a choice when several cards tie for the extreme.
+function graveyardCardPhrase(filter) {
+  filter = filter || {};
+  let core = 'card';
+  if (filter.type) core = filter.type.toLowerCase() + ' ' + core;
+  else if (filter.not_type) core = 'non' + filter.not_type.toLowerCase() + ' ' + core;
+  if (filter.subtype) core = filter.subtype + ' ' + core;
+  const g = Array.isArray(filter.graveyards) ? filter.graveyards : ['self'];
+  const both = g.includes('self') && g.includes('opp');
+  if (filter.select) {
+    const stat = STAT_PHRASE[filter.select.by] || filter.select.by;
+    const extreme = filter.select.extreme === 'least' ? 'least' : 'greatest';
+    const scope = both ? 'all graveyards'
+      : g.includes('opp') ? "cards in an opponent's graveyard"
+      : 'cards in your graveyard';
+    return 'target ' + core + ' with the ' + extreme + ' ' + stat + ' among ' + scope;
+  }
+  const yards = both ? 'any graveyard'
+    : g.includes('opp') ? "an opponent's graveyard"
+    : 'your graveyard';
+  return 'target ' + core + ' from ' + yards;
+}
 function targetPhrase(eff) {
   const t = eff.target;
   if (t === 'self')     return 'you';
@@ -38,8 +65,7 @@ function targetPhrase(eff) {
   if (t === 'creature_or_player') return 'any target';
   if (t === 'your_creature') return 'target creature you control';
   if (t === 'opp_creature') return 'target creature an opponent controls';
-  if (t === 'graveyard_creature') return 'target creature card';
-  if (t === 'opp_graveyard_card') return "target card from an opponent's graveyard";
+  if (t === 'graveyard_card') return 'target card';  // detail composed by graveyardCardPhrase (see withFilter)
   if (t === 'permanent')return 'target permanent';
   if (t === 'spell')    return 'target spell';
   if (t === 'card')     return 'target card';
@@ -48,6 +74,8 @@ function targetPhrase(eff) {
 
 // Apply eff.filter to noun phrase. Pre-mods (color/tapped/subtype) inserted before noun; post-mods after.
 function withFilter(noun, eff) {
+  // Graveyard-card targets compose their whole phrase from the filter axes.
+  if (eff.target === 'graveyard_card') return graveyardCardPhrase(eff.filter);
   if (!eff.filter) return noun;
   const f = eff.filter;
   const pre = [];
@@ -353,21 +381,13 @@ function describeEffect(eff, tplEff) {
         return [plainSeg('discard '), amtSeg, plainSeg(' cards')];
       }
       if (fz === 'graveyard' && tz === 'battlefield') {  // reanimate
-        // The superlative + cross-zone restriction (Deepseam Quarry's "greatest
-        // total mana cost among all graveyards") and the take_control rider are
-        // rendered here — withFilter can't name a superlative or span both yards.
-        const gf = eff.filter || {};
-        let noun;
-        if (gf.greatest_total_cost) {
-          noun = 'the creature card with the greatest total mana cost among '
-            + (gf.all_graveyards ? 'all graveyards' : 'your graveyard');
-        } else {
-          noun = t + ' from ' + (gf.all_graveyards ? 'a graveyard' : 'your graveyard');
-        }
+        // `t` (graveyardCardPhrase) already carries the type/select/graveyards
+        // detail, e.g. "target creature card with the greatest total mana cost
+        // among all graveyards". The take_control rider is the only movement bit.
         const ctrlRider = (eff.post && eff.post.take_control) ? ' under your control' : '';
-        return [plainSeg('return ' + noun + ' to the battlefield' + ctrlRider)];
+        return [plainSeg('return ' + t + ' to the battlefield' + ctrlRider)];
       }
-      if (fz === 'graveyard' && tz === 'hand') return [plainSeg('return ' + t + ' from your graveyard to your hand')];
+      if (fz === 'graveyard' && tz === 'hand') return [plainSeg('return ' + t + ' to your hand')];
       if (fz === 'graveyard' && tz === 'exile') return [plainSeg('exile ' + t)];
       if (fz === 'battlefield' && tz === 'library') return [plainSeg('shuffle ' + t + " into its owner's library")];
       if (fz === 'battlefield' && tz === 'hand') return [plainSeg('return ' + t + " to its owner's hand")];

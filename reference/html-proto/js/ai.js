@@ -1723,7 +1723,7 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
     return 10 + pow;
   }
   if (eff.kind === 'grant_cast_permission') {
-    if (target.kind !== 'graveyard_card' && target.kind !== 'graveyard_creature') return -100;
+    if (target.kind !== 'graveyard_card') return -100;
     const graveOwner = target.controller || them;
     const grave = state[graveOwner].graveyard || [];
     const card = grave.find(c => c.iid === target.iid);
@@ -1741,8 +1741,8 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
     }
     // Collapsed returnFromGraveyard / shuffleIntoLibrary — value at parity.
     if (eff.from_zone === 'graveyard' && eff.to_zone === 'hand') {
-      if (target.kind !== 'graveyard_creature') return -100;
-      const grave = state[us].graveyard || [];
+      if (target.kind !== 'graveyard_card') return -100;
+      const grave = state[target.controller || us].graveyard || [];
       const card = grave.find(c => c.iid === target.iid);
       if (!card) return -100;
       return 10 + ENGINE.getCardValue(card, 'play');
@@ -1923,8 +1923,8 @@ function pickBestActivation(state, who, abilityActs) {
       score = recalled ? 10 + ENGINE.getCardValue(recalled, 'play') : -100;
     } else if (eff.kind === 'move_card' && eff.from_zone === 'graveyard' && eff.to_zone === 'battlefield') {
       // Reanimate a creature straight onto the battlefield (Deepseam Quarry). The
-      // target may sit in either graveyard (all_graveyards), so search both. The
-      // sac/mana cost is folded in by the generic sac-penalty block below.
+      // target may sit in either graveyard (graveyards: ['self','opp']), so search
+      // both. The sac/mana cost is folded in by the generic sac-penalty block below.
       const t = act.targets && act.targets[0];
       let reanimated = null;
       if (t) {

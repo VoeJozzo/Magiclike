@@ -21,9 +21,10 @@
         "this_card",
         "affected_player_is(opp)"
       ],
-      "target": "opp_graveyard_card",
+      "target": "graveyard_card",
       "target_filter": {
-        "not_type": "Land"
+        "not_type": "Land",
+        "graveyards": ["opp"]
       },
       "effects": [
         {

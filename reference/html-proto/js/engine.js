@@ -3440,7 +3440,7 @@ function pickBestTriggerTarget(eff, valid, controller) {
     const graveOwner = eff.kind === 'grant_cast_permission' ? opp(controller) : controller;
     const graveCards = G[graveOwner].graveyard;
     const scored = valid
-      .filter(t => t.kind === 'graveyard_creature' || t.kind === 'graveyard_card')
+      .filter(t => t.kind === 'graveyard_card')
       .map(t => {
         const card = graveCards.find(c => c.iid === t.iid);
         return {t, value: card ? (cardValueOrZero(card)) : 0};
@@ -3583,6 +3583,22 @@ function doOptionalCost(who, pay) {
 }
 
 // ----- Targeting -----
+// Set-relative superlative selection (the targeting `select` step). Given
+// graveyard candidates [{c, k}], returns those tied for the extreme of a stat.
+// Distinct from a matchFilter threshold (a per-card test) — a superlative needs
+// the whole candidate set, so it runs after filtering.
+function selectStat(card, by) {
+  switch (by) {
+    case 'total_mana_cost': return costTotalCard(card);
+    // extend here: 'power' / 'toughness' via getStats, etc.
+    default: console.warn('select: unknown stat', by); return 0;
+  }
+}
+function applySelect(cands, select) {
+  const vals = cands.map(x => selectStat(x.c, select && select.by));
+  const want = (select && select.extreme === 'least') ? Math.min(...vals) : Math.max(...vals);
+  return cands.filter((_, i) => vals[i] === want);
+}
 function getValidTargets(effect, controller) {
   const allCreatures = [
     ...G.you.battlefield.map(c => ({card: c, ctrl: 'you'})),
@@ -3618,37 +3634,33 @@ function getValidTargets(effect, controller) {
         .filter(x => !(x.card.keywords && x.card.keywords.includes('hexproof') && x.ctrl !== controller))
         .filter(x => matchFilter(x.card, effect.filter, x.ctrl, controller))
         .map(x => ({kind:'permanent', iid:x.card.iid, label:x.card.name}));
-    case 'graveyard_creature': {
-      // Default: caster's own graveyard (tribal recursion — Grave Digger).
-      // `all_graveyards` spans both players' yards (Deepseam Quarry reanimates
-      // from any graveyard). Hexproof doesn't apply to cards in a graveyard.
+    case 'graveyard_card': {
+      // Cards in one or more graveyards, via composable filter axes:
+      //   graveyards: which yards to search, as controller-relative tokens
+      //     'self' / 'opp'. Default ['self'] — own yard (Grave Digger recursion).
+      //   type / not_type / color / …: per-card restrictions via matchFilter
+      //     (omit type = any card; Seal-Thief Courier uses not_type:'Land').
+      //   select: an optional superlative pick (greatest/least by a stat),
+      //     applied AFTER filtering (Deepseam Quarry: greatest total mana cost).
+      // Hexproof doesn't apply to cards in a graveyard.
       const gf = effect.filter || {};
-      const keys = gf.all_graveyards ? ['you', 'opp'] : [controller];
+      const yardKey = { self: controller, opp: opp(controller) };
+      const tokens = (Array.isArray(gf.graveyards) && gf.graveyards.length) ? gf.graveyards : ['self'];
+      const keys = tokens.map(t => yardKey[t] || t);
       let cands = [];
       for (const k of keys) {
         for (const c of G[k].graveyard) {
-          if (!hasType(c, 'Creature')) continue;
           if (!matchFilter(c, gf, k, controller)) continue;
           cands.push({c, k});
         }
       }
-      // `greatest_total_cost`: narrow to the card(s) tied for the greatest total
-      // mana cost among the candidates — Deepseam Quarry's "deepest stratum".
-      // Ties stay legal so the chooser picks among equals.
-      if (gf.greatest_total_cost && cands.length) {
-        let max = -1;
-        for (const x of cands) max = Math.max(max, costTotalCard(x.c));
-        cands = cands.filter(x => costTotalCard(x.c) === max);
-      }
-      // controller field tags which graveyard the card sits in (own vs opp), so
-      // the UI can route the pick; move_card locates it by iid across both yards.
-      return cands.map(x => ({kind:'graveyard_creature', iid: x.c.iid, label: x.c.name, controller: x.k}));
-    }
-    case 'opp_graveyard_card': {
-      const graveOwner = opp(controller);
-      return G[graveOwner].graveyard
-        .filter(c => matchFilter(c, effect.filter, graveOwner, controller))
-        .map(c => ({kind:'graveyard_card', iid: c.iid, label: c.name, controller: graveOwner}));
+      // `select` is a set-relative superlative, so it runs AFTER matchFilter
+      // narrows the set ("the greatest" can't be a per-card test). Ties stay
+      // legal so the chooser picks among equals.
+      if (gf.select && cands.length) cands = applySelect(cands, gf.select);
+      // controller tags which yard each card sits in (so the UI routes the pick);
+      // move_card locates it by iid across both yards.
+      return cands.map(x => ({kind:'graveyard_card', iid: x.c.iid, label: x.c.name, controller: x.k}));
     }
     case 'spell':
       return G.stack
@@ -3679,7 +3691,7 @@ function getValidTargets(effect, controller) {
 // targetsForFilter below — there is no open tail.
 const TARGET_FILTERS = new Set([
   'creature', 'player', 'opp', 'creature_or_player', 'spell', 'permanent', 'land',
-  'your_creature', 'opp_creature', 'graveyard_creature', 'opp_graveyard_card',
+  'your_creature', 'opp_creature', 'graveyard_card',
 ]);
 
 // Legal-target set for a target() step's filter (Slice 3 step 2 / §3.5). THIS
@@ -3701,8 +3713,7 @@ function targetsForFilter(filter, controller, restrict) {
     case 'permanent':          return getValidTargets({ target: 'permanent', filter: restrict || undefined }, controller);
     case 'land':               return getValidTargets({ target: 'permanent', filter: merge({ type: 'Land' }) }, controller);
     case 'spell':              return getValidTargets({ target: 'spell', filter: restrict || undefined }, controller);
-    case 'graveyard_creature': return getValidTargets({ target: 'graveyard_creature', filter: restrict || undefined }, controller);
-    case 'opp_graveyard_card': return getValidTargets({ target: 'opp_graveyard_card', filter: restrict || undefined }, controller);
+    case 'graveyard_card':     return getValidTargets({ target: 'graveyard_card', filter: restrict || undefined }, controller);
     case 'your_creature':      return getValidTargets({ target: 'creature', filter: merge({ controller: 'self' }) }, controller);
     case 'opp_creature':       return getValidTargets({ target: 'creature', filter: merge({ controller: 'opp' }) }, controller);
     default:
@@ -3879,7 +3890,6 @@ function sameTarget(a, b) {
   if (a.kind === 'player') return a.who === b.who;
   if (a.kind === 'creature') return a.iid === b.iid;
   if (a.kind === 'permanent') return a.iid === b.iid;
-  if (a.kind === 'graveyard_creature') return a.iid === b.iid;
   if (a.kind === 'graveyard_card') return a.iid === b.iid;
   if (a.kind === 'stack') return a.stackItem === b.stackItem;
   return false;

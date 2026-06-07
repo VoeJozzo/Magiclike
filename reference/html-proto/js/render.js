@@ -484,11 +484,11 @@ function render() {
         && G.pendingTriggerTarget.controller === 'you'
         && G.pendingTriggerTarget.valid
         && G.pendingTriggerTarget.valid.length > 0
-        && G.pendingTriggerTarget.valid[0].kind === 'graveyard_creature') {
+        && G.pendingTriggerTarget.valid[0].kind === 'graveyard_card') {
       graveTargets = G.pendingTriggerTarget.valid;
     } else if (pt) {
       const eff = pendingTargetEffect(pt);
-      if (eff && eff.target === 'graveyard_creature') {
+      if (eff && eff.target === 'graveyard_card') {
         graveTargets = ENGINE.getValidTargets(eff, 'you');
       }
     }
@@ -536,7 +536,7 @@ function drawTargetLines() {
       if (!tgt) continue;
       // Player targets have no good DOM anchor — skip.
       let targetEl = null;
-      if (tgt.kind === 'creature' || tgt.kind === 'permanent' || tgt.kind === 'graveyard_creature') {
+      if (tgt.kind === 'creature' || tgt.kind === 'permanent' || tgt.kind === 'graveyard_card') {
         if (typeof tgt.iid === 'number') {
           targetEl = document.querySelector(`[data-iid="${tgt.iid}"]`);
         }
@@ -670,7 +670,7 @@ function submitGraveyardTarget(iid) {
   // controller tag just records which yard it sat in.
   const inOpp = G.opp.graveyard.some(c => c.iid === iid);
   const card = (inOpp ? G.opp.graveyard : G.you.graveyard).find(c => c.iid === iid);
-  const target = {kind:'graveyard_creature', iid, label: card ? card.name : 'creature', controller: inOpp ? 'opp' : 'you'};
+  const target = {kind:'graveyard_card', iid, label: card ? card.name : 'creature', controller: inOpp ? 'opp' : 'you'};
   if (CONTROLLER.submitTargetedAction(target)) {
     Modal.hide('zoneModal');
   }
