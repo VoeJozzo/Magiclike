@@ -320,3 +320,8 @@ Trigger: recurring file loss (C2 variant wiped; seed pool churn) + a card picked
 - Both arms enacted the fight well (two beasts clashing in forest); the subject-prior trap was largely avoided here by choosing inherently-aggressive subjects (wolf/boar, big cats).
 - **User gold: "1.x is better. No keeper, though."** Decode: label 1 = arm_b = **TREATMENT (C2)**. => C2 win (5th decisive), but nothing cleared the keeper bar.
 - C2 tally on user gold (decisive-eligible n=8): horned_herald, knight_commander, bindspeaker, old_guardian, prey_upon = **5 C2**; lightning_bolt = **1 control**; dark_ritual, vile_edict = **2 inconclusive**. C2 leads 5-1 among decisive cards, 2 nulls. Past the n>=7 floor; trend clearly C2-positive on the user's eye.
+
+## C2 A/B #9 — gilded_seat (Artifact Land—Plains, taps W) [harness-driven, preflight PASS]
+- Low-variance round: both arms converged on "empty gilded throne in a sunlit marble temple, white+gold" (a land's flavor is narrow; both even nominated the same seed). More a feel/quality compare than a mechanic-legibility one.
+- **User gold: likes 2.04 "but it's all pretty marginal."** Decode: label 2 = arm_b = **TREATMENT (C2)**. => weak/marginal C2 lean (not decisive).
+- C2 tally on user gold: decisive = 5 C2 (horned_herald, knight_commander, bindspeaker, old_guardian, prey_upon) / 1 control (lightning_bolt); marginal C2 lean = gilded_seat; inconclusive = dark_ritual, vile_edict. Trend holds C2-positive. NOTE: still no NEW keeper since old_guardian — the last several cards produced branch-reads but nothing the user would actually ship.
