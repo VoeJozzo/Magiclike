@@ -354,3 +354,8 @@ VERDICT: do NOT bake C2 in yet (clears n>=7 floor but not significance; user rul
 - Consistent quality both arms (majestic elk/stag in green old-growth). Both even nominated the same seed internally.
 - **User gold: "2.10."** Decode: label 2 = arm_b = **TREATMENT (C2)**. => C2 win (8th decisive). Keeper saved `great_stag_2.10_USERPICK-C2_*` (seed 2073324191). 3rd keeper in a row, all C2.
 - C2 tally (user gold): decisive = **8 C2** (horned_herald, knight_commander, bindspeaker, old_guardian, prey_upon, grave_charm, giant_spider, great_stag) / **2 control** (lightning_bolt-nofig, centaur_courser); marginal C2 = gilded_seat; inconclusive = dark_ritual, vile_edict. Sign test decisive 8/10 -> two-tailed p~=0.109 (one-tailed ~0.055); +marginal 9/11 -> two-tailed p~=0.065. Closing on significance; direction firmly C2.
+
+## C2 A/B #14 — nature_caller (Elf Druid, ETB tutor = call a wild ally) [harness-driven, preflight PASS]
+- Mechanic read well in BOTH arms (druid beckoning + stag answering). Both nominated the same seed internally (gen_06).
+- **User gold: "2.10."** Decode: label 2 = arm_a = **CONTROL**. => control win (3rd decisive control win; breaks C2's 4-win streak). Keeper saved `nature_caller_2.10_USERPICK-CONTROL_*` (seed 1032912504).
+- C2 tally (user gold): decisive = **8 C2** / **3 control** (lightning_bolt-nofig, centaur_courser, nature_caller); marginal C2 = gilded_seat; inconclusive = dark_ritual, vile_edict. Sign test decisive 8/11 -> two-tailed p~=0.23 (one-tailed ~0.11); +marginal 9/12 -> two-tailed p~=0.15. The added control win pulled significance back. Direction still C2 (8 vs 3) but the gap is not widening monotonically.
