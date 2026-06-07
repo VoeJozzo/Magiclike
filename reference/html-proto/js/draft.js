@@ -16,10 +16,12 @@ let _draftPoolCache = null;
 function draftPool() {
   if (_draftPoolCache === null) {
     // Exclude BASIC lands (they're auto-allocated after the draft) and `special`
-    // cards (boss/run-only). Everything else — spells, creatures, and every
-    // nonbasic land (artifact lands, utility lands like Deepseam Quarry) — drafts
-    // like any other pick, matching MtG where nonbasic lands appear in packs.
-    // `Basic` is a land-only supertype, so excluding it is the whole land rule.
+    // cards (boss/run-only — including run-boon lands like City of Brass, which
+    // arrive via the "Polychrome Pact" modifier, not packs). Everything else —
+    // spells, creatures, and every other nonbasic land (artifact lands, utility
+    // lands like Deepseam Quarry) — drafts like any other pick, matching MtG
+    // where nonbasic lands appear in packs. `Basic` is a land-only supertype, so
+    // excluding it (plus the special carve-out) is the whole land rule.
     _draftPoolCache = Object.keys(CARDS).filter(id => {
       const c = CARDS[id];
       if (c.special) return false;

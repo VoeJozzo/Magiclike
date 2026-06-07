@@ -3,6 +3,7 @@
   "art": "art.png",
   "mana": "C",
   "name": "City of Brass",
+  "special": true,
   "abilities": [
     {
       "cost": {
