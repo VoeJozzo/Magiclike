@@ -24,7 +24,7 @@ source: docs/RULES.md Appendices (A1–A3)
 - **Source** — the card whose ability or effect is causing something to happen.
 - **Controller** — the player making decisions for a permanent. Usually the same as the owner; can differ via "steal" effects.
 - **Owner** — the player who started with the card in their deck.
-- **Total mana cost** — the total mana in a card's mana cost (generic + colored pips); `{X}` counts as 0 except on the stack, where it's the chosen value (standard ruling). Magiclike's canonical term for what Magic calls "mana value" / "CMC". See [[200-parts-of-a-card|§200.2a]].
+- **Total mana cost** — the total amount of mana in a card's mana cost: generic mana plus colored pips. `{X}` counts as 0 everywhere except on the stack, where each `{X}` counts as the value chosen for that spell. Magiclike's canonical term for what Magic calls "mana value" / "CMC". See [[200-parts-of-a-card|§200.2a]].
 
 ## A2. Authoritative behaviors checklist
 
