@@ -23,7 +23,10 @@ function mapFilter(targetVal, controller) {
     case 'player': return 'player';
     case 'spell': return 'spell';
     case 'permanent': return 'permanent';
-    case 'graveyard_creature': return 'graveyard_creature';
+    // The legacy `graveyard_creature` kind collapsed into the composable
+    // `graveyard_card` target; its implicit "Creature" restriction is injected as
+    // an explicit type filter in planBlock (the kind itself no longer carries it).
+    case 'graveyard_creature': return 'graveyard_card';
     case 'creature':
       if (controller === 'self') return 'your_creature';
       if (controller === 'opp') return 'opp_creature';
@@ -58,6 +61,12 @@ function planBlock(effects, alreadyHasTarget) {
   if (filter) {
     const { controller, ...rest } = filter;
     if (Object.keys(rest).length > 0) targetFilter = rest;
+  }
+  // `graveyard_creature` implied a Creature restriction that the generic
+  // `graveyard_card` kind doesn't; make it explicit (merged with any subtype the
+  // card already carried, e.g. Spirit). Own-yard default is `graveyards: ['self']`.
+  if (tv === 'graveyard_creature') {
+    targetFilter = Object.assign({ type: 'Creature' }, targetFilter || {});
   }
   const newEffects = effects.map(e => {
     if (e && e.target === tv) { const { target, filter, ...rest } = e; return rest; }
@@ -136,7 +145,7 @@ function collapseEffect(e) {
     return Object.assign({ kind: 'move_card', from_zone: 'library', to_zone: 'battlefield', filter: { type: 'Land' }, post: { tap: true } }, rest);
   }
   if (e.kind === 'returnFromGraveyard') {
-    const { kind, ...rest } = e;  // bare (target migrated to top-level graveyard_creature)
+    const { kind, ...rest } = e;  // bare (target migrated to top-level graveyard_card)
     return Object.assign({ kind: 'move_card', from_zone: 'graveyard', to_zone: 'hand', selector: 'target' }, rest);
   }
   if (e.kind === 'shuffleIntoLibrary') {

@@ -111,16 +111,19 @@ console.log('\n=== staple: creature + land gains a tap-for-mana ability ===');
   check('describeCardText regenerates the gained mana ability text', /\{T\}.*add \{G\}/i.test(describeCardText(merged)), JSON.stringify(describeCardText(merged)));
 })();
 
-console.log('\n=== staple: §3.10 multi-color land (City of Brass) is now a valid staple ===');
+console.log('\n=== City of Brass is run-boon-only (special): out of draft, not a splice staple ===');
 (() => {
+  // City of Brass is acquired via the "Polychrome Pact" run modifier, not draft,
+  // so it carries `special`. That also makes it ineligible as a splice staple —
+  // an accepted trade for keeping the run-only land out of packs without a
+  // dedicated draft-exclusion flag. The §3.10 choose-form merge in
+  // synthesizeStapledTemplate stays a real capability for any future
+  // non-special multi-color land; it just isn't exercised by a card in the pool
+  // today.
+  check('City of Brass is flagged special', !!(CARDS.city_of_brass && CARDS.city_of_brass.special));
   const cr = Object.values(CARDS).find(c => hasType(c, 'Creature') && !c.abilities && !c.special);
-  check('City of Brass onto a creature is now compatible (rejection lifted)',
-    isCompatibleStaplePair(cr.tplId, 'city_of_brass'));
-  const merged = ENGINE.synthesizeStapledTemplate(cr.tplId, ['city_of_brass']);
-  const manaAb = (merged.abilities || []).find(ab => ab.cost && ab.cost.tap && ab.effects[0] && ab.effects[0].kind === 'add_mana');
-  check('the gained ability taps for all 5 colors (choose form)',
-    manaAb && JSON.stringify(manaEffectColors(manaAb.effects[0]).slice().sort()) === JSON.stringify(['B', 'G', 'R', 'U', 'W']),
-    JSON.stringify(manaAb && manaAb.effects[0]));
+  check('a special card is rejected as a splice staple',
+    !isCompatibleStaplePair(cr.tplId, 'city_of_brass'));
 })();
 
 console.log('\n=== staple: land + land merges colors into one choose ability ===');

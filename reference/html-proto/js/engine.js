@@ -106,8 +106,10 @@ function isCompatibleStaplePair(baseTplId, stapleTplId) {
   if (!isSpliceableBase(baseTplId)) return false;
   if (!isSpliceableStaple(stapleTplId)) return false;
   // §3.10: the multi-color-land restriction is lifted — the synthesized
-  // tap-ability now uses the add_mana choose form (§3.9), so a multi-color land
-  // (City of Brass) is a valid staple onto any base.
+  // tap-ability uses the add_mana choose form (§3.9), so a multi-color land is a
+  // valid staple onto any base. (City of Brass, the only such land today, is
+  // `special` — run-boon only — so it's excluded above; the capability stands
+  // for any future non-special multi-color land.)
   return true;
 }
 
