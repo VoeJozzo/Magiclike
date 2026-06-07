@@ -1,7 +1,7 @@
 {
   "card_id": "clockwork_beetle",
   "name": "Clockwork Beetle",
-  "art": "🪲",
+  "art": "art.png",
   "cost": {
     "C": 1
   },

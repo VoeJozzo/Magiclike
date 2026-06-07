@@ -42,6 +42,8 @@ The brainstorm gate, before any direction is proposed:
 
 If a proposed direction doesn't answer that question, kill it.
 
+**Reach, don't hedge — the diagnosable-flaw principle.** Generations are cheap, so prompt for the *ambitious, specific, detailed* version of a scene, not the safe one. A roll packed with enough specific detail to have a *visible, nameable* flaw ("the off-hand reads wrong," "the blade clips the shoulder") beats a clean-but-generic roll that hides its emptiness — the named flaw is exactly what the next iteration targets, while vagueness gives you nothing to push against. Commit to specific materials, poses, light, and props even at the risk of an awkward frame; and when choosing among rolls, **don't down-rank a frame for a fixable visible error if it's reaching for something real — down-rank the timid, generic, under-described one.** Specificity that risks being wrong beats safety that settles for bland.
+
 ---
 
 ## Vocabulary precision: specific nouns over compositional description

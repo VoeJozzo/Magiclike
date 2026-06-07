@@ -1,6 +1,6 @@
 {
   "card_id": "nature_caller",
-  "art": "🦌",
+  "art": "art.png",
   "cost": {
     "G": 2,
     "C": 1

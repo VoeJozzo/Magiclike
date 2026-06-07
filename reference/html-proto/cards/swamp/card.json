@@ -1,6 +1,6 @@
 {
   "card_id": "swamp",
-  "art": "☠",
+  "art": "art.png",
   "mana": "B",
   "name": "Swamp",
   "abilities": [
