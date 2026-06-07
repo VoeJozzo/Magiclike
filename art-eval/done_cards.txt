@@ -25,3 +25,4 @@ centaur_courser
 grave_charm
 giant_spider
 great_stag
+nature_caller
