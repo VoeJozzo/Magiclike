@@ -315,3 +315,8 @@ Trigger: recurring file loss (C2 variant wiped; seed pool churn) + a card picked
 - Valid round (preflight PASS). Control = robed-sorcerer-claims-victim framing; C2 = skeletal-hands-drag-victim-into-grave framing.
 - **User gold: reject-all; "none in line with what I want," both branches "roughly similar quality."** => INCONCLUSIVE (no C2 advantage detected on this card). NOTE: subject-prior dominance fought the mechanic in BOTH arms (the "dragged down" beat rarely resolved; rolls collapsed to a creature merely standing in a graveyard).
 - C2 tally on user gold (n=7 clean): horned_herald, knight_commander, bindspeaker, old_guardian = **4 C2**; lightning_bolt = **1 control**; dark_ritual, vile_edict = **2 inconclusive**. Hit the n>=7 floor; trend = C2-positive (4 wins, 0 losses to control among decisive cards) but with 2 nulls.
+
+## C2 A/B #8 — prey_upon (1G Sorcery; Fight) [harness-driven, preflight PASS]
+- Both arms enacted the fight well (two beasts clashing in forest); the subject-prior trap was largely avoided here by choosing inherently-aggressive subjects (wolf/boar, big cats).
+- **User gold: "1.x is better. No keeper, though."** Decode: label 1 = arm_b = **TREATMENT (C2)**. => C2 win (5th decisive), but nothing cleared the keeper bar.
+- C2 tally on user gold (decisive-eligible n=8): horned_herald, knight_commander, bindspeaker, old_guardian, prey_upon = **5 C2**; lightning_bolt = **1 control**; dark_ritual, vile_edict = **2 inconclusive**. C2 leads 5-1 among decisive cards, 2 nulls. Past the n>=7 floor; trend clearly C2-positive on the user's eye.
