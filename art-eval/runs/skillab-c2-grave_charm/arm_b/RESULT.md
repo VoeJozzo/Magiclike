@@ -1,0 +1,5 @@
+# Result — arm_b
+
+**BEST: gen_06_seed1910232362.png**
+
+gen_06 is the only frame that fully enacts the card's mechanic rather than merely decorating its theme. Grave Charm is a modal *black charm* — a versatile one-shot grave spell whose three modes (Slay / Wither / Drain) all share a single death-magic identity, so the right subject is the charm object itself channeling necrotic power, not any one mode. gen_06 delivers exactly that: a skull-faced talisman hung on a chain/spine, ringed by a radiant halo of sickly green-black necrotic energy that reads unmistakably as grave-magic *being unleashed* (the spell going off), with glowing yellow-green eye sockets. The competing frames (gen_07, gen_10) are cleaner skulls but read as "a held skull" rather than a charm/amulet being invoked, so they capture the theme without enacting the mechanic. gen_06 carries a flawless single-BLACK color identity (bone, shadow, necrotic green), passes the 64×32 silhouette test with a strong central circular shape, and sits in a real foggy-graveyard scene rather than a sprite on void — making it the strongest mechanic-in-art match for this modal grave charm.
