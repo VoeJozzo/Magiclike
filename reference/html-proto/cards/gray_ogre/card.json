@@ -1,0 +1,15 @@
+{
+  "card_id": "gray_ogre",
+  "art": "\ud83d\udc79",
+  "cost": {
+    "R": 1,
+    "C": 1
+  },
+  "name": "Gray Ogre",
+  "power": 2,
+  "toughness": 2,
+  "types": [
+    "Creature",
+    "Ogre"
+  ]
+}
