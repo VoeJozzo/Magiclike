@@ -117,16 +117,13 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
 /* Mana-symbol pips. The `<span class="mana mana-X">` markup is emitted
    by renderManaSymbols() (js/render.js) — used for cost displays AND
    for parsing {R}/{T}/{1} tokens inside card text.
-   Current fallback for W/U/B/R/G is a Unicode circle emoji (⚪🔵⚫🔴🟢)
-   injected as the span's text content. The emoji is already a colored
-   circle, so .mana-W/.mana-U/etc. don't apply a background-color — the
-   emoji IS the visual.
-   For T/X/colorless/numeric pips there's no recognized emoji match, so
-   those keep the letter-in-colored-circle look.
-   PATHWAY for PNG mana art: drop W.png/U.png/etc. into assets/mana/
-   then uncomment the matching override block below. The override sets
-   background-image + color:transparent (hides the emoji glyph) so only
-   the PNG shows. */
+   W/U/B/R/G render the shared SVG art (assets/mana/X.svg) via the
+   .mana-W/.mana-U/etc. background-image overrides below; those set
+   color:transparent so the Unicode circle emoji (⚪🔵⚫🔴🟢) injected as
+   the span's text content is hidden and acts only as a load-failure
+   fallback.
+   For T/X/colorless/numeric pips there's no SVG yet, so those keep the
+   letter-in-colored-circle look. */
 .mana{display:inline-block;
   min-width:calc(1.2em * var(--card-mana-text-size));
   height:calc(1.2em * var(--card-mana-text-size));

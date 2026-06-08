@@ -1521,22 +1521,23 @@ function formatCostBraced(c) {
 //   card text "{R}: gets +1/+0" -> escapeHtml -> renderManaSymbols
 //   cost {R:2,C:4} -> formatCostBraced -> renderManaSymbols
 //
-// CSS in magiclike_engine.html defines a default colored-circle look for
-// .mana / .mana-W / .mana-R / etc. The pathway is set up so a future
-// `.mana-R { background-image: url('assets/mana/R.png'); color:
-// transparent; }` swap will replace text pips with PNG art globally.
+// CSS in magiclike_engine.html drives the visual: the WUBRG color pips
+// render the shared SVG art (`.mana-R { background-image:
+// url('../../assets/mana/R.svg'); color: transparent }`), which hides the
+// emoji glyph below and shows the symbol. C/T/X/numeric pips have no SVG
+// yet and keep the letter-in-colored-disc look.
 //
 // Recognized symbols: WUBRGC (color/colorless pips), T (tap), X (variable
 // cost), and any pure-number sequence (generic mana). Unrecognized braces
 // are returned untouched so existing text like "{1.5}" or "{foo}" can't
 // break rendering.
-// Per-color glyph used as the FALLBACK rendering (no PNG art yet). The
-// five Unicode circle emoji are coincidentally the right shape and color
-// for mana symbols, so they look recognizable without shipping any image
-// files. When real PNGs land in assets/mana/, the .mana-W / .mana-U / ...
-// CSS overrides will hide the emoji via color:transparent and show the
-// art instead. C (colorless) has no canonical emoji match — keep it
-// as a letter pip until art ships.
+// Per-color glyph kept as the FALLBACK under the SVG art (used if the SVG
+// fails to load, or for C which has no SVG). The five Unicode circle emoji
+// are coincidentally the right shape and color for mana symbols, so they
+// stay recognizable even when art is unavailable. The .mana-W / .mana-U /
+// ... CSS overrides hide the emoji via color:transparent wherever an SVG
+// ships. C (colorless) has no canonical emoji match — keep it as a letter
+// pip until art ships.
 const MANA_GLYPH = { W: '⚪', U: '🔵', B: '⚫', R: '🔴', G: '🟢', C: 'C' };
 
 function renderManaSymbols(text) {
