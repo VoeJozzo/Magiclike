@@ -79,6 +79,36 @@ console.log('\n=== legality: same creature in both slots ===');
   }
 })();
 
+console.log('\n=== real instantiation path: ENGINE.makeCard carries the flag (cast-enforcement regression) ===');
+(() => {
+  // The legality section above clones via JSON.parse(JSON.stringify(...)), which
+  // preserves every field. The REAL game builds cards through ENGINE.makeCard — a
+  // whitelist copy — so that is the path a live cast runs through. A prior bug
+  // omitted distinct_targets from that whitelist, so the instance had no flag and
+  // the forbidden same-target cast was ALLOWED in the actual game, while these
+  // clone-based tests stayed green. This pins the real path.
+  for (const id of ['roots_and_branches', 'sword_and_sorcery']) {
+    const made = ENGINE.makeCard(id, [], 0);
+    check(id + ' makeCard instance carries distinct_targets',
+      made.distinct_targets === true, JSON.stringify(made.distinct_targets));
+
+    const G = newGame();
+    const spell = Object.assign(made, {
+      controller: 'you', owner: 'you',
+      tapped: false, sick: false, damage: 0, tempPower: 0, tempTou: 0,
+      permPower: 0, permTou: 0, damagedBySources: new Set(),
+    });
+    G.you.hand.push(spell);
+    const a = mk('savannah_lions', 'you'); const b = mk('savannah_lions', 'you');
+    G.you.battlefield.push(a, b);
+    const base = { type: 'castSpell', cardIid: spell.iid };
+    const same = ENGINE.isLegalAction('you', { ...base, targets: [t(a), t(a)] });
+    const diff = ENGINE.isLegalAction('you', { ...base, targets: [t(a), t(b)] });
+    check(id + ' (makeCard) distinct two-target cast is legal', diff === true, 'diff=' + diff);
+    check(id + ' (makeCard) same-target cast is REJECTED', same === false, 'same=' + same);
+  }
+})();
+
 console.log('\n=== getLegalActions emits no same-target combo for a flagged card ===');
 (() => {
   for (const id of ['roots_and_branches', 'twin_strike']) {

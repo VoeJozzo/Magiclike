@@ -636,6 +636,13 @@ function makeCard(tplId, stickers, slotIdx, empowerRolls, permaBuffs, bonusTrigg
     target_slots: Array.isArray(tpl.target_slots)
       ? tpl.target_slots.map(s => ({...s, target_filter: s.target_filter ? {...s.target_filter} : undefined}))
       : undefined,
+    // Cross-slot distinctness (Roots and Branches / Sword and Sorcery — "another
+    // target creature"). MUST be carried alongside target_slots, or cast legality
+    // (tsIsLegalSet / isLegalAction) and the render highlight-drop read it off the
+    // instance as undefined and silently skip the check — the same-target cast the
+    // card forbids gets through. The stapled ETB path is unaffected (the flag rides
+    // the synthesized trigger via mergeStapleInto, not this whitelist).
+    distinct_targets: !!tpl.distinct_targets,
     // Legendary uniqueness enforced at cast time only (no SBA); the Legendary
     // supertype tag derives from this boolean via typesOf.
     legendary: !!tpl.legendary,
