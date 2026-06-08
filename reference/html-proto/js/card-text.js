@@ -590,16 +590,21 @@ const EDICT_CHAIN_KINDS = new Set(['sacrifice', 'annihilate', 'rip']);
 
 function describeEffectList(effects, cardName, tplEffects, stepTarget, stepFilter, slotSpecs, distinctTargets) {
   if (!Array.isArray(effects) || effects.length === 0) return [];
-  // distinct_targets: find the slot indices whose (target+filter) repeats an
-  // earlier slot — those read "another ..." (the engine guarantees they differ).
+  // distinct_targets: a later slot reads "another ..." when an earlier slot targets
+  // the same OBJECT TYPE. The engine forbids one object filling two slots by
+  // IDENTITY (sameTarget), independent of each slot's filter — so key on the slot's
+  // `target` type, NOT a JSON.stringify(filter) signature. The old signature key
+  // broke two ways: it depended on filter key-insertion order (JSON.stringify isn't
+  // canonical), and two same-type slots with DIFFERENT filters (e.g. "creature" vs
+  // "creature you control") still can't reuse an object in the engine but wouldn't
+  // read "another." Type-repetition matches the engine's actual collision domain.
   const anotherSlots = new Set();
   if (distinctTargets && Array.isArray(slotSpecs)) {
-    const seenSig = new Set();
+    const seenTargets = new Set();
     for (let s = 0; s < slotSpecs.length; s++) {
       const sp = slotSpecs[s];
-      if (!sp) continue;
-      const sig = (sp.target || '') + '|' + JSON.stringify(sp.filter || null);
-      if (seenSig.has(sig)) anotherSlots.add(s); else seenSig.add(sig);
+      if (!sp || !sp.target) continue;
+      if (seenTargets.has(sp.target)) anotherSlots.add(s); else seenTargets.add(sp.target);
     }
   }
   // Give each bare effect a synthetic `target` so targetPhrase + withFilter
