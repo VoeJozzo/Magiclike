@@ -10,7 +10,7 @@ keywords = Array[String](["flying", "haste"])
 card_id = "ember_drake"
 display_name = "Ember Drake"
 card_types = Array[String](["creature"])
-subtypes = Array[String](["drake"])
+subtypes = Array[String](["dragon"])
 mana_cost = {
 "C": 2,
 "R": 1
