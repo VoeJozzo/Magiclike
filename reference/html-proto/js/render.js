@@ -1196,7 +1196,7 @@ function stickerBadgesHtml(stickers, big, empowerRolls, tplId, stapledTpls, subt
     else if (s.kind === 'grant_mana_ability') label = '+' + renderManaSymbols('{' + s.color + '}');
     else if (s.kind === 'cost_mod') label = ((s.amount || 0) < 0 ? (s.amount || 0) : '+' + (s.amount || 0)) + ' cost';
     else if (s.kind === 'trigger') label = s.name || 'Trigger';
-    else if (s.kind === 'keyword') label = s.keyword;
+    else if (s.kind === 'keyword') label = KEYWORD_DISPLAY[s.keyword] || (s.keyword.charAt(0).toUpperCase() + s.keyword.slice(1));
     else label = s.name || s.kind;   // defensive — never render 'undefined'
     if (n > 1) label += ` ×${n}`;
     const html = `<span class="stk-badge ${cls}" title="${s.text}">${label}</span>`;

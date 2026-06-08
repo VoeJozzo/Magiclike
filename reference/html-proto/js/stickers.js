@@ -205,7 +205,9 @@ function empowerRollLabel(card, roll) {
                  : t === 'player' ? 'damage to opponent'
                  : 'damage';
     } else if (eff.kind === 'gain_life') {
-      fieldLabel = 'life gain';
+      // gain_life with a negative amount IS life loss (Spiteful Imp, Blood
+      // Priest, …) — the label must track the sign, not assume the positive.
+      fieldLabel = (eff.amount < 0) ? 'life loss' : 'life gain';
     } else if (eff.kind === 'move_card' && eff.from_zone === 'library' && eff.to_zone === 'hand') {
       fieldLabel = 'cards drawn';
     } else {

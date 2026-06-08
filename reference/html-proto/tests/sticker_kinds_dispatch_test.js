@@ -196,7 +196,9 @@ console.log('\n=== stickerBadgesHtml: each kind renders correctly ===');
 
 {
   const html = stickerBadgesHtml(['kw_flying']);
-  check("keyword badge contains 'flying'", html.includes('flying'));
+  // Badge shows the display name, not the raw keyword id (so 'kw_first_strike'
+  // reads "First strike", not "first_strike").
+  check("keyword badge contains 'Flying'", html.includes('Flying'));
   check("keyword badge has 'skw' class", html.includes('stk-badge skw'));
 }
 
