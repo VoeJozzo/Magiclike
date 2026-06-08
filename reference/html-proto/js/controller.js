@@ -2121,35 +2121,53 @@ function doneDeclaring() {
 }
 function concede() { ENGINE.concede(); }
 
-// Space / Enter → contextual primary action. Both keys map to the exact same
-// behavior: if a combat declaration is open, confirm it (Done Attacking /
-// Done Blocking); otherwise press Pass when it's legal. We dispatch through the
-// on-screen buttons rather than calling the actions directly, so the keys
-// inherit every enable/disable gate render() computes (game over, target-pick
-// mode, cleanup discard, forced prompts, "not your turn") — they're inert
-// exactly when the buttons are.
-function primaryActionButton() {
-  // Done Attacking/Blocking takes precedence: when a declaration is open the
-  // intent is "I'm finished declaring," not "skip the step."
-  const doneBtn = document.getElementById('btnDone');
-  if (doneBtn && doneBtn.style.display !== 'none') return doneBtn;
-  const passBtn = document.getElementById('btnPass');
-  if (passBtn && !passBtn.disabled) return passBtn;
-  return null;
+// ----- Primary action (Space / Enter) -----
+// The keyboard is a peer of the on-screen buttons, not a layer on top of them:
+// these helpers read engine state and call the same controller actions, so the
+// keys feed the engine the same action descriptors the buttons do. render()
+// drives the Pass / Done buttons from the very same predicates, so the two
+// input paths agree by construction rather than by one scraping the other.
+
+// True when the human owes a combat declaration — attackers on their own turn,
+// blockers on the opponent's. Pure function of engine state.
+function humanOwesDeclaration() {
+  const G = ENGINE.state();
+  if (!G) return false;
+  return (G.phase === 'COMBAT_ATTACK' && G.activePlayer === 'you' && !G.attackersDeclared)
+      || (G.phase === 'COMBAT_BLOCK'  && G.activePlayer === 'opp' && !G.blockersDeclared);
 }
+
+// Whether a plain priority pass is the human's to give right now. Mixes engine
+// state (whose turn, cleanup, forced prompts) with one UI-only fact the engine
+// can't see — pendingTarget, a half-built cast — so it lives in the controller.
+function canPass() {
+  const G = ENGINE.state();
+  if (!G) return false;
+  return !(G.gameOver || pendingTarget || G.cleanupDiscarding
+        || ENGINE.playerOwesDecision('you')
+        || ENGINE.expectedActor() !== 'you');
+}
+
+// The single "primary action" Space/Enter drive: confirm a pending combat
+// declaration if one is open (intent: "I'm done declaring," not "skip"),
+// otherwise pass priority. Both branches go through the existing button
+// handlers — same path to the engine, no DOM round-trip.
+function primaryAction() {
+  if (humanOwesDeclaration()) { doneDeclaring(); return; }
+  if (canPass()) passAction();
+}
+
 function onPrimaryActionKey(e) {
   if (e.key !== 'Enter' && e.key !== ' ' && e.code !== 'Space') return;
-  // Never hijack typing (card-browser search, settings textareas) or in-modal
-  // confirms — those want the literal keystroke, not a priority pass.
+  // Let the browser have keys aimed at a focused control: typing in the card
+  // search / settings fields, or re-activating an already-focused button
+  // (whose native handler would otherwise double-fire with primaryAction).
   const t = e.target;
-  if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
-  if (Modal._stack.length) return;
-  const btn = primaryActionButton();
-  // If the target button already holds focus, let the browser's native
-  // activation fire it so we don't double-pass.
-  if (!btn || document.activeElement === btn) return;
-  e.preventDefault();
-  btn.click();
+  if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA'
+            || t.tagName === 'BUTTON' || t.isContentEditable)) return;
+  if (Modal._stack.length) return;   // settings / popup / reward / draft gate
+  e.preventDefault();                // stop Space from scrolling the page
+  primaryAction();
 }
 
 // =========================================================================
@@ -3306,6 +3324,7 @@ return {
   closeCardPopup, attachLongPress,
   openZone, closeZone,
   cancelTarget, endTurn, passAction, doneDeclaring, concede, searchPick, triggerBuildPick, numberChoice, symmetricizeChoice, edictChoice, optionalCost, toggleLog,
+  canPass, humanOwesDeclaration,
   pickModalMode, cancelModalChoice,
   pendingModalChoice: () => pendingModalChoice,
   toggleStats, statsExport, statsClear,

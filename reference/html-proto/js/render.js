@@ -162,22 +162,20 @@ function render() {
   renderBf('youBf', G.you.battlefield, 'you');
   renderBf('oppBf', G.opp.battlefield, 'opp');
 
-  const showDone = (G.activePlayer === 'you' && G.phase === 'COMBAT_ATTACK' && !G.attackersDeclared)
-                || (G.activePlayer === 'opp' && G.phase === 'COMBAT_BLOCK' && !G.blockersDeclared);
+  // Shared with the Space/Enter keyboard path — see CONTROLLER.humanOwesDeclaration.
+  const showDone = CONTROLLER.humanOwesDeclaration();
   const btnDone = document.getElementById('btnDone');
   btnDone.style.display = showDone ? 'block' : 'none';
   btnDone.textContent = G.phase === 'COMBAT_ATTACK' ? 'Done Attacking' : 'Done Blocking';
 
   const expectedActor = ENGINE.expectedActor();
   const inReaction = !!(G.priority && G.stack.length > 0);
-  const humanForcedPrompt = playerForcedPrompt(G, 'you');
   const forcedPromptOpen = anyForcedPrompt(G);
 
   const passBtn = document.getElementById('btnPass');
   passBtn.textContent = passLabel(G, expectedActor);
-  passBtn.disabled = G.gameOver || !!pt || G.cleanupDiscarding
-                  || humanForcedPrompt
-                  || expectedActor !== 'you';
+  // Same predicate the Space/Enter primary action consults (CONTROLLER.canPass).
+  passBtn.disabled = !CONTROLLER.canPass();
 
   document.getElementById('btnEnd').disabled =
     G.gameOver || !!pt || G.activePlayer !== 'you' || G.stack.length > 0
