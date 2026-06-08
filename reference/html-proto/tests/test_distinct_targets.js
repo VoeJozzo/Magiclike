@@ -154,5 +154,30 @@ console.log('\n=== stapled distinct card carries its rule onto the ETB (Slice 5)
   check('stapled card text reads "another target creature"', /another target creature/i.test(txt), txt);
 })();
 
+console.log('\n=== regression guard: makeCard preserves EVERY card-level targeting flag for ALL templates ===');
+(() => {
+  // The cast-enforcement bug existed because makeCard copies card-level fields
+  // through an explicit whitelist, and a newly-added flag (distinct_targets) was
+  // left off it — silently dropped on the real game path while clone-based tests
+  // (JSON.parse(JSON.stringify(...))) stayed green. Guard the whole CLASS, not
+  // just the two cards: every template that declares one of these card-level
+  // targeting flags must have it survive ENGINE.makeCard. When you add a NEW
+  // card-level targeting flag, add it to makeCard's instance whitelist AND here.
+  const TARGETING_FLAGS = ['target', 'target_filter', 'target_slots', 'distinct_targets'];
+  const present = v => Array.isArray(v) ? v.length > 0 : (v !== undefined && v !== null && v !== false && v !== '');
+  const dropped = [];
+  for (const id of Object.keys(CARDS)) {
+    let made;
+    try { made = ENGINE.makeCard(id); }
+    catch (e) { dropped.push(id + ': makeCard threw (' + e.message + ')'); continue; }
+    for (const f of TARGETING_FLAGS) {
+      if (present(CARDS[id][f]) && !present(made[f])) dropped.push(id + '.' + f);
+    }
+  }
+  check('makeCard preserves all declared card-level targeting flags across every template',
+    dropped.length === 0,
+    dropped.length ? dropped.slice(0, 10).join(', ') : 'all ' + Object.keys(CARDS).length + ' templates OK');
+})();
+
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');
 process.exit(fail > 0 ? 1 : 0);

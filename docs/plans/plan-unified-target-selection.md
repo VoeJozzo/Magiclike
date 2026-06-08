@@ -7,10 +7,13 @@ the runtime-editable JS engine, then port to Godot). Discovered while fixing the
 refactor closed the structural debt it exposed. Stapled multi-target ETBs (which fizzled entirely)
 now fire and resolve every slot, the AI enumerates multi-target abilities, and the human gets a
 multi-slot trigger prompt. One `TargetSelection` component (engine.js) now owns the selection layer
-for all three callers (cast / ability / trigger). 1636 assertions green, lint clean, selfplay clean.
+for all three callers (cast / ability / trigger). 1664 assertions green, lint clean, selfplay clean.
 
-> **Pending at merge:** bump `js/main.js` VERSION + add a CHANGELOG entry (this branch isn't merged
-> to `dev` yet; the version bump is a merge-time action since Pages serves `dev`).
+> **Done (v2.1.7, PR #86 review follow-ups):** the four review passes found that `distinct_targets`
+> *cast* enforcement was inert for real cards (`makeCard` whitelist dropped the flag); fixed at the
+> real surface + regression-tested, plus the distinct trigger-gate, card-text "another" derivation,
+> render-highlight unification, and the `/simplify` cleanup. `js/main.js` VERSION bumped to `v2.1.7`
+> and a CHANGELOG entry added. Still on `bug-investigation`, not yet merged to `dev`.
 
 ## 1. Motivation
 
