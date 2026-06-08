@@ -3320,6 +3320,13 @@ function pushTriggerOnStack(p) {
 // legal target) and implicit (opp/player/self/spell) slots, stopping at the
 // first slot that's a genuine choice. Returns 'prompt' (pause for the human),
 // 'done' (every slot assigned → finalize), or 'fizzle' (a slot lost its target).
+// Steps the human trigger prompt slot-by-slot, committing each pick before the
+// next. GREEDY, no backtracking: for a distinct_targets trigger with asymmetric
+// per-slot legal sets, an early pick could strand a later slot ('fizzle') even
+// though a different early pick would have yielded a legal full set. Correct only
+// because every current distinct card is 2-slot with the SAME filter on both slots
+// (so with ≥2 creatures there's always an escape; with exactly 2 the second slot
+// auto-fills). Revisit for the first 3+-slot or asymmetric-per-slot distinct card.
 function advanceTriggerTargetPrompt(pt) {
   const bySlot = tsLegalBySlot(pt.trig, pt.controller);
   for (const slot of pt.slotKeys) {
@@ -3862,6 +3869,10 @@ function tsSlotKeys(obj, who) {
 // Fill sparse holes in a slot-indexed targets[] with the first slot's pick, so
 // resolution (makeSlotTargetGetter) always finds an entry. Defensive for the
 // theoretical sparse-slot case (target_slots are dense 0..n-1 today → a no-op).
+// CAUTION for distinct_targets: a future SPARSE-slot card (e.g. slots [0,2]) would
+// have index 1 written with slot 0's pick, bypassing the per-slot distinct filter
+// and injecting a DUPLICATE into a set that was meant to be distinct. Harmless
+// today (all cards dense [0,1]); guard this if a sparse distinct card is added.
 function fillSparseHoles(targets, firstSlotKey) {
   for (let i = 0; i < targets.length; i++) if (!targets[i]) targets[i] = targets[firstSlotKey];
 }
