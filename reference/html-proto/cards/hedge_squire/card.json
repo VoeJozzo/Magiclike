@@ -1,15 +1,16 @@
 {
-  "card_id": "centaur_courser",
-  "art": "🐎",
+  "card_id": "hedge_squire",
+  "art": "art.png",
   "cost": {
     "G": 1,
     "C": 2
   },
-  "name": "Centaur Courser",
+  "name": "Hedge Squire",
   "power": 3,
   "toughness": 3,
   "types": [
     "Creature",
-    "Centaur"
+    "Human",
+    "Knight"
   ]
 }
