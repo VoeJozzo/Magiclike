@@ -390,7 +390,10 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
 }
 .card-frame .frame-counter{
   font-family:var(--card-font-damage);
-  font-size:calc(4px * var(--scale) * var(--card-text-scale));
+  /* Sized off the card's rules text (same base + --card-fsize-text multiplier as
+     .frame-text) so counter badges stay legible and track the text-size setting,
+     rather than being pinned to a tiny fixed 4px. */
+  font-size:calc(6px * var(--scale) * var(--card-fsize-text) * var(--card-text-scale));
   color:#8fe0e0;
   line-height:1;
   text-shadow:0 0 calc(2px * var(--scale)) #000;
