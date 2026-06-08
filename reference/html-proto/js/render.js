@@ -848,6 +848,40 @@ function renderOppHand(hand) {
   }
 }
 
+// True if `who` has a legal, non-redundant activated ability on this permanent
+// — the gate for the green ".activatable" glow. Applies to ANY non-land
+// permanent the player controls, not just creatures: an artifact with a granted
+// ability (e.g. an Artifice Triumphant target, or a mana rock like Alloy Myr)
+// must glow too. Lands advertise their tap-for-mana via the dimmer
+// .land-tappable glow instead, so they're excluded here.
+//
+// A reanimate-style add_type ability is skipped once the card already has every
+// type it would grant: the Artifice'd artifact glows while it's a bare artifact
+// (activating re-animates it) and STOPS glowing once it's already a creature
+// this turn (re-activating is a no-op). That inversion was the bug — the old
+// gate keyed on hasType(card,'Creature'), so the glow appeared only AFTER
+// activation (when it does nothing) and never before (when it matters).
+function activationGlowAvailable(card, who) {
+  if (who !== 'you') return false;
+  if (!isPermanent(card) || hasType(card, 'Land')) return false;
+  if (!card.abilities || !card.abilities.length) return false;
+  if (card.tapped || card.sick) return false;
+  return card.abilities.some((ab, i) => {
+    if (!ab.effects || !ab.effects.length) return false;
+    // No-op reanimate: every effect is an add_type whose types the card already
+    // has → activating changes nothing, so don't advertise it.
+    if (ab.effects.every(e => e.kind === 'add_type'
+        && (e.types || []).every(t => hasType(card, t)))) return false;
+    if (ab.effects[0].kind === 'add_mana') return true;
+    const targetedEff = ab.effects.find(ENGINE.effectNeedsTarget);
+    const probe = targetedEff
+      ? {type:'activateAbility', cardIid: card.iid, abilityIdx: i,
+         targets:[(ENGINE.getValidTargets(targetedEff, 'you')[0] || {kind:'player', who:'you', label:'You'})]}
+      : {type:'activateAbility', cardIid: card.iid, abilityIdx: i};
+    return ENGINE.isLegalAction('you', probe);
+  });
+}
+
 function renderBf(id, bf, who) {
   const el = document.getElementById(id);
   el.innerHTML = '';
@@ -923,18 +957,7 @@ function renderBf(id, bf, who) {
         && who === 'you' && ENGINE.canCreatureBlock(card)) {
       div.classList.add('could-blk');
     }
-    if (who === 'you' && hasType(card, 'Creature') && card.abilities && !card.tapped && !card.sick) {
-      const hasAvail = card.abilities.some((ab, i) => {
-        if (ab.effects[0].kind === 'add_mana') return true;
-        const targetedEff = ab.effects.find(ENGINE.effectNeedsTarget);
-        const probe = targetedEff
-          ? {type:'activateAbility', cardIid: card.iid, abilityIdx: i,
-             targets:[(ENGINE.getValidTargets(targetedEff, 'you')[0] || {kind:'player', who:'you', label:'You'})]}
-          : {type:'activateAbility', cardIid: card.iid, abilityIdx: i};
-        return ENGINE.isLegalAction('you', probe);
-      });
-      if (hasAvail) div.classList.add('activatable');
-    }
+    if (activationGlowAvailable(card, who)) div.classList.add('activatable');
     div.onclick = () => CONTROLLER.clickBattlefield(card.iid);
     el.appendChild(div);
   }
