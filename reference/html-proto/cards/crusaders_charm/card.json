@@ -22,7 +22,7 @@
       [
         {
           "kind": "pump",
-          "target": "creature",
+          "target": "your_creature",
           "power": 2,
           "toughness": 2
         }

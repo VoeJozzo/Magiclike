@@ -22,13 +22,13 @@
       [
         {
           "kind": "pump",
-          "target": "creature",
+          "target": "your_creature",
           "power": 2,
           "toughness": 0
         },
         {
           "kind": "grant_keyword",
-          "target": "creature",
+          "target": "your_creature",
           "keyword": "haste",
           "duration": "eot"
         }
