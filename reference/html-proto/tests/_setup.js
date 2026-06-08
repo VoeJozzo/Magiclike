@@ -152,7 +152,7 @@ const EXPOSED = [
   'EMPOWER_FIELDS', 'isEmpowerableField', 'enumerateEmpowerTargets',
   'rollEmpowerTarget', 'hasEmpowerableEffect',
   // Engine module-scope helpers (above the ENGINE IIFE).
-  'deckColorsFromSlots', 'fakeTargetsForLegality',
+  'deckColorsFromSlots', 'fakeTargetsForLegality', 'landProducibleColors',
   'isCompatibleStaplePair', 'manaAbilityOf', 'manaEffectColors',
   'remapEmpowerRollForStaple', 'countEffects', 'mergeSpliceData',
   'isSpliceableBase', 'isSpliceableStaple',
@@ -162,7 +162,7 @@ const EXPOSED = [
   'applyRandomStickersToSide', 'empowerRollLabel', 'applyEmpowerRoll',
   'rollSubtypeFromDeck', 'pushStickerWithRoll', 'stickersForSlot',
   // Render module-scope helpers (render.js has no IIFE).
-  'stickerBadgesHtml', 'effectiveArt', 'renderManaSymbols', 'formatCostBraced',
+  'stickerBadgesHtml', 'segmentsToHtml', 'effectiveArt', 'renderManaSymbols', 'formatCostBraced',
   'isValidTargetCreature', 'canPlayFromUI', 'playerForcedPrompt', 'anyForcedPrompt',
   'activationGlowAvailable',
   'edictChoiceNoun', 'graveyardPickerPrompt', 'castCardByIid',

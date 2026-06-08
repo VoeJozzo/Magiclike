@@ -38,8 +38,8 @@ console.log('\n=== Test: stickersForSlot land-color sticker behavior ===');
 {
   const slot = { tplId: 'forest', stickers: [] };
   const result = stickersForSlot(slot, ['G','W']);
-  console.log('  forest land-color stickers:', result.filter(s => s.kind === 'grant_mana_ability').map(s => s.color));
-  const offered = result.filter(s => s.kind === 'grant_mana_ability').map(s => s.color);
+  console.log('  forest land-color stickers:', result.filter(s => s.kind === 'add_type').map(s => s.color));
+  const offered = result.filter(s => s.kind === 'add_type').map(s => s.color);
   check("Doesn't offer 'Also a G' on Forest", !offered.includes('G'));
   check("Offers 'Also a W' on Forest in WG deck", offered.includes('W'));
   check("Doesn't offer 'Also a U' (deck doesn't play U)", !offered.includes('U'));
@@ -60,8 +60,8 @@ console.log('\n=== Test: stickersForSlot for land vs creature filters by type ==
   const lResult = stickersForSlot(landSlot, ['W']);
   check('Creature offers plus1plus1', cResult.some(s => s.id === 'plus1_plus1'));
   check('Land does NOT offer plus1plus1', !lResult.some(s => s.id === 'plus1_plus1'));
-  check('Land offers landColor', lResult.some(s => s.kind === 'grant_mana_ability'));
-  check('Creature does NOT offer landColor', !cResult.some(s => s.kind === 'grant_mana_ability'));
+  check('Land offers landColor', lResult.some(s => s.kind === 'add_type'));
+  check('Creature does NOT offer landColor', !cResult.some(s => s.kind === 'add_type'));
 }
 
 console.log('\n=== Test: deckColorsFromSlots correctly identifies colors ===');

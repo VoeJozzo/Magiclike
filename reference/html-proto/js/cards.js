@@ -48,32 +48,28 @@ function ingestCard(card) {
   // Normalize any function-call-shorthand effects to canonical dicts (§5.1/§5.2).
   // No-op for dict-form effects, so the current all-dict pool is unaffected.
   if (typeof normalizeCardEffects === 'function') normalizeCardEffects(card);
-  // Intrinsic mana from a basic-land subtype (MTG 305.6): a Land with the
-  // Plains/Island/Swamp/Mountain/Forest subtype gets the matching "{T}: Add {C}"
-  // ability, unless it already produces that color. Lets artifact/nonbasic lands
-  // DERIVE their mana from the subtype instead of hand-authoring a tap ability —
-  // add the subtype, get the mana. (Basic lands carry sub "Basic Land", not a
-  // color subtype, so they keep their explicit ability and are unaffected.)
-  if (typeof typesOf === 'function' && typeof manaAbilityForColors === 'function' && hasType(card, 'Land')) {
-    const BASIC_LAND_MANA = { Plains: 'W', Island: 'U', Swamp: 'B', Mountain: 'R', Forest: 'G' };
-    const produced = new Set();
-    for (const ab of (card.abilities || [])) {
-      if (ab && ab.cost && ab.cost.tap && Array.isArray(ab.effects)) {
-        for (const e of ab.effects) {
-          if (e && e.kind === 'add_mana') for (const c of manaEffectColors(e)) produced.add(c);
-        }
-      }
-    }
-    for (const tag of typesOf(card)) {
-      const color = BASIC_LAND_MANA[tag];
-      if (color && !produced.has(color)) {
-        if (!Array.isArray(card.abilities)) card.abilities = [];
-        card.abilities.push(manaAbilityForColors([color]));
-        produced.add(color);
-      }
-    }
-  }
+  grantBasicLandMana(card);
   return card;
+}
+
+// Intrinsic mana from a basic-land subtype (MTG 305.6): a Land with the
+// Plains/Island/Swamp/Mountain/Forest subtype produces the matching color. Lets
+// artifact/nonbasic lands — AND runtime land-type STICKERS ("Also a Mountain") —
+// DERIVE their mana from the subtype instead of hand-authoring a tap ability:
+// add the subtype, get the mana. Routed through grantManaAbility so a land with
+// MORE than one mana source folds into a single "{T}: Add one of …" choose-
+// ability (the shape landProducibleColors and the tap action expect) rather than
+// several competing {T} abilities — that's what makes a stickered dual land tap
+// for both colors. grantManaAbility no-ops when the color is already produced, so
+// re-running after a sticker adds a land type is safe. (Basic lands carry sub
+// "Basic", not a color subtype, so they keep their explicit ability untouched.)
+function grantBasicLandMana(card) {
+  if (!(typeof typesOf === 'function' && typeof grantManaAbility === 'function' && hasType(card, 'Land'))) return;
+  const BASIC_LAND_MANA = { Plains: 'W', Island: 'U', Swamp: 'B', Mountain: 'R', Forest: 'G' };
+  for (const tag of typesOf(card)) {
+    const color = BASIC_LAND_MANA[tag];
+    if (color) grantManaAbility(card, color);
+  }
 }
 
 async function loadCards() {
@@ -140,25 +136,31 @@ STICKERS['innate'] = {
   weight: 10,
   kind: 'innate',
 };
-// landColor stickers — extra color on a basic. Gated by deck color (c.deckColors).
+// landColor stickers — add a basic-land subtype (so the name "Also a Mountain"
+// is literally true), and the matching mana falls out of the §305.6 autogrant
+// (grantBasicLandMana). The land becomes a real typed Plains/Mountain/etc., so
+// it also answers type-matters effects ("search for a Mountain"). Gated by deck
+// color (c.deckColors).
 for (const color of ['W','U','B','R','G']) {
   const id = 'land_color_' + color.toLowerCase();
   const colorName = { W:'Plains', U:'Island', B:'Swamp', R:'Mountain', G:'Forest' }[color];
   const colorAdj = { W:'White', U:'Blue', B:'Black', R:'Red', G:'Green' }[color];
   STICKERS[id] = {
     id, name: 'Also a ' + colorName,
-    text: 'This land also produces {' + color + '}.',
+    text: 'This land is also a ' + colorName + ' (it also produces {' + color + '}).',
     appliesTo: (c) => {
       if (!hasType(c, 'Land')) return false;
-      // Already produces this color (base or stickered)? Don't re-offer. §3.9:
-      // production lives on the tap-ability, read via landProducibleColors.
+      // Already produces this color (native, autogranted, or via a prior
+      // land-type sticker)? Don't re-offer. Production is read via
+      // landProducibleColors off the (auto)granted tap-ability.
       if (landProducibleColors(c).includes(color)) return false;
       if (c.deckColors && !c.deckColors.includes(color)) return false;
       return true;
     },
     stackable: false,
     weight: 10,
-    kind: 'grant_mana_ability',
+    kind: 'add_type',
+    type: colorName,   // the basic-land subtype to add; grantBasicLandMana yields the mana
     color,
     colorAdj,
   };
@@ -336,6 +338,20 @@ for (const kw of KEYWORDS) {
     keyword: kw,
   };
 }
+// Lose Defender — the one keyword-REMOVAL sticker. Defender is pure downside
+// (a creature that can't attack), so stripping it is a clean upgrade. Offered
+// only on creatures that actually have defender (native). Mirror of the keyword
+// add-stickers above, routed through the 'remove_keyword' kind. Defender is the
+// only keyword worth a removal sticker today; generalize if that changes.
+STICKERS['lose_defender'] = {
+  id: 'lose_defender', name: 'Loses Defender',
+  text: 'This creature loses Defender (it can attack).',
+  appliesTo: (c) => hasType(c, 'Creature') && (c.keywords || []).includes('defender'),
+  stackable: false,
+  weight: 10,
+  kind: 'remove_keyword',
+  keyword: 'defender',
+};
 // Subtype sticker — adds a creature subtype rolled from the player's deck,
 // weighted by token frequency. Roll excludes subtypes the target already
 // has, so it can't be inert. Storage mirrors Empower: rolls live on
