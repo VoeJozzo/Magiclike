@@ -336,6 +336,20 @@ for (const kw of KEYWORDS) {
     keyword: kw,
   };
 }
+// Lose Defender — the one keyword-REMOVAL sticker. Defender is pure downside
+// (a creature that can't attack), so stripping it is a clean upgrade. Offered
+// only on creatures that actually have defender (native). Mirror of the keyword
+// add-stickers above, routed through the 'remove_keyword' kind. Defender is the
+// only keyword worth a removal sticker today; generalize if that changes.
+STICKERS['lose_defender'] = {
+  id: 'lose_defender', name: 'Loses Defender',
+  text: 'This creature loses Defender (it can attack).',
+  appliesTo: (c) => hasType(c, 'Creature') && (c.keywords || []).includes('defender'),
+  stackable: false,
+  weight: 10,
+  kind: 'remove_keyword',
+  keyword: 'defender',
+};
 // Subtype sticker — adds a creature subtype rolled from the player's deck,
 // weighted by token frequency. Roll excludes subtypes the target already
 // has, so it can't be inert. Storage mirrors Empower: rolls live on

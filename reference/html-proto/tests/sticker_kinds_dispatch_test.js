@@ -61,6 +61,18 @@ console.log('=== applyStickersToCard: each kind mutates correctly ===');
 }
 
 {
+  // remove_keyword: lose_defender strips native defender so the creature can attack.
+  const card = freshCard('wall_of_omens', ['lose_defender']);
+  check('lose_defender precondition: wall_of_omens has defender natively',
+    card.keywords.includes('defender'));
+  applyStickersToCard(card);
+  check("remove_keyword strips 'defender' from card.keywords",
+    !card.keywords.includes('defender'));
+  check('canCreatureAttack true once defender removed (untapped, not sick)',
+    ENGINE.canCreatureAttack({...card, tapped: false, sick: false}));
+}
+
+{
   const card = freshCard('plains', ['innate']);
   applyStickersToCard(card);
   check('innate sets card.innate = true', card.innate === true);
@@ -186,6 +198,17 @@ console.log('\n=== stickersForSlot: each kind reflects into view correctly ===')
   check('subtype re-offerable (stackable)', result.some(s => s.id === 'subtype'));
 }
 
+{
+  // lose_defender: offered on a defender creature, gated off non-defenders, and
+  // not re-offered once applied (view reflects the removal).
+  const wall = stickersForSlot({ tplId: 'wall_of_omens', stickers: [] }, ['W']);
+  check('lose_defender offered on a defender creature', wall.some(s => s.id === 'lose_defender'));
+  const lion = stickersForSlot({ tplId: 'savannah_lions', stickers: [] }, ['W']);
+  check('lose_defender NOT offered on a non-defender creature', !lion.some(s => s.id === 'lose_defender'));
+  const applied = stickersForSlot({ tplId: 'wall_of_omens', stickers: ['lose_defender'] }, ['W']);
+  check('lose_defender NOT re-offered once applied', !applied.some(s => s.id === 'lose_defender'));
+}
+
 console.log('\n=== stickerBadgesHtml: each kind renders correctly ===');
 
 {
@@ -206,6 +229,13 @@ console.log('\n=== stickerBadgesHtml: each kind renders correctly ===');
   const html = stickerBadgesHtml(['innate']);
   check("innate badge contains 'Innate'", html.includes('Innate'));
   check("innate badge has 'innate' class", html.includes('stk-badge innate'));
+}
+
+{
+  // remove_keyword has no bespoke badge branch — it falls through to the
+  // sticker's name, so the badge reads "Loses Defender".
+  const html = stickerBadgesHtml(['lose_defender']);
+  check("lose_defender badge contains 'Loses Defender'", html.includes('Loses Defender'));
 }
 
 {

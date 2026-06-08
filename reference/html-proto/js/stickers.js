@@ -21,6 +21,14 @@ function applyStickerKindEffect(card, s) {
   } else if (s.kind === 'keyword') {
     if (!Array.isArray(card.keywords)) card.keywords = [];
     if (!card.keywords.includes(s.keyword)) card.keywords.push(s.keyword);
+  } else if (s.kind === 'remove_keyword') {
+    // Inverse of 'keyword': strip a keyword the card has natively (today only
+    // 'defender' — the lone pure-downside keyword worth removing). Everything
+    // downstream reads card.keywords, so dropping it here is sufficient (e.g.
+    // canCreatureAttack stops gating, the badge stops showing it).
+    if (Array.isArray(card.keywords)) {
+      card.keywords = card.keywords.filter(k => k !== s.keyword);
+    }
   } else if (s.kind === 'innate') {
     card.innate = true;
   } else if (s.kind === 'grant_mana_ability') {
@@ -133,7 +141,10 @@ function applyRandomStickersToSide(state, side, n, sourceName, logFn) {
   // Exclude scarified (boss-only), subtype/empower (need rolls). Yields a mix of
   // statBoost and keyword stickers from the normal reward pool.
   const eligibleStickerIds = Object.keys(STICKERS).filter(id => {
-    if (id === 'scarified' || id === 'subtype' || id === 'empower') return false;
+    // lose_defender excluded: this path stickers BOTH sides at random, and
+    // removing defender from an opponent's wall hands them an attacker — a
+    // strict help to whoever controls the creature. Keep it a player reward.
+    if (id === 'scarified' || id === 'subtype' || id === 'empower' || id === 'lose_defender') return false;
     const s = STICKERS[id];
     if (!s) return false;
     if (s.weight === 0) return false;
@@ -349,6 +360,9 @@ function stickersForSlot(slot, deckColors) {
     if (!s) continue;
     if (s.kind === 'keyword' && !view.keywords.includes(s.keyword)) {
       view.keywords.push(s.keyword);
+    }
+    if (s.kind === 'remove_keyword') {
+      view.keywords = view.keywords.filter(k => k !== s.keyword);  // so lose_defender isn't re-offered
     }
     if (s.kind === 'subtype') {
       const rolled = (slot.subtypeRolls || [])[subtypeCursor];
