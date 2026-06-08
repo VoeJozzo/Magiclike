@@ -117,6 +117,10 @@ function init() {
   if (settingsBtnPersistent) {
     settingsBtnPersistent.onclick = SETTINGS_PANEL.show;
   }
+  // Keyboard pass / confirm: Space and Enter both trigger the contextual
+  // primary action (Done Attacking/Blocking during a combat declaration,
+  // otherwise Pass). See onPrimaryActionKey for the gating.
+  document.addEventListener('keydown', onPrimaryActionKey);
   showStartScreen();
 }
 
@@ -2116,6 +2120,37 @@ function doneDeclaring() {
   }
 }
 function concede() { ENGINE.concede(); }
+
+// Space / Enter → contextual primary action. Both keys map to the exact same
+// behavior: if a combat declaration is open, confirm it (Done Attacking /
+// Done Blocking); otherwise press Pass when it's legal. We dispatch through the
+// on-screen buttons rather than calling the actions directly, so the keys
+// inherit every enable/disable gate render() computes (game over, target-pick
+// mode, cleanup discard, forced prompts, "not your turn") — they're inert
+// exactly when the buttons are.
+function primaryActionButton() {
+  // Done Attacking/Blocking takes precedence: when a declaration is open the
+  // intent is "I'm finished declaring," not "skip the step."
+  const doneBtn = document.getElementById('btnDone');
+  if (doneBtn && doneBtn.style.display !== 'none') return doneBtn;
+  const passBtn = document.getElementById('btnPass');
+  if (passBtn && !passBtn.disabled) return passBtn;
+  return null;
+}
+function onPrimaryActionKey(e) {
+  if (e.key !== 'Enter' && e.key !== ' ' && e.code !== 'Space') return;
+  // Never hijack typing (card-browser search, settings textareas) or in-modal
+  // confirms — those want the literal keystroke, not a priority pass.
+  const t = e.target;
+  if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+  if (Modal._stack.length) return;
+  const btn = primaryActionButton();
+  // If the target button already holds focus, let the browser's native
+  // activation fire it so we don't double-pass.
+  if (!btn || document.activeElement === btn) return;
+  e.preventDefault();
+  btn.click();
+}
 
 // =========================================================================
 // Long-press → card popup. Implemented here so all card-render sites can
