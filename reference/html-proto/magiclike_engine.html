@@ -66,6 +66,12 @@
   --card-mana-pip-size:       3;     /* 12px from 4px baseline */
   --card-mana-pip-popup-size: 1.5;   /* 6px-at-1x = 24px in 4x popup */
   --card-mana-text-size:      1;
+  /* Master card-size multiplier for the in-hand / on-board frame (the
+     --scale 1 = 80x112px baseline). Scales the whole frame — art, text,
+     pips — uniformly. User-controlled via settings ("Card size"). The
+     fixed-scale contexts (draft 2x, popup 4x, stack / opp-hand previews)
+     set --scale inline and so are unaffected by this knob. */
+  --card-size-scale:          1;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;display:flex;flex-direction:column;overflow:hidden;font-size:12px}
@@ -173,7 +179,7 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
 /* type / oracle / flavour / stickers / P+T).                                */
 
 .card-frame{
-  --scale: 1;
+  --scale: var(--card-size-scale, 1);
   position: relative;
   width: calc(80px * var(--scale));
   height: calc(112px * var(--scale));
