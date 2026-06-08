@@ -603,6 +603,17 @@ function remapEffectSlots(effects, offset) {
   });
 }
 
+// Keywords implied by creature subtype — card data need not repeat these.
+const SUBTYPE_KEYWORDS = { Dragon: ['flying'], Wall: ['defender'] };
+
+function applySubtypeKeywords(card) {
+  for (const st of subtypesOf(card)) {
+    for (const kw of (SUBTYPE_KEYWORDS[st] || [])) {
+      if (!card.keywords.includes(kw)) card.keywords.push(kw);
+    }
+  }
+}
+
 function makeCard(tplId, stickers, slotIdx, empowerRolls, permaBuffs, bonusTrigger, stapledTpls, subtypeRolls) {
   const tpl = (stapledTpls && stapledTpls.length > 0)
     ? synthesizeStapledTemplate(tplId, stapledTpls)
@@ -686,8 +697,8 @@ function makeCard(tplId, stickers, slotIdx, empowerRolls, permaBuffs, bonusTrigg
     // Stapled metadata for empower-target enumeration, sticker eligibility, etc.
     stapledFrom: tpl.stapledFrom,
   };
-  // Order: stickers → permaBuffs → bonusTrigger. (§3.8: the Balancer overrides
-  // channel is gone — symmetricize/embargo/bleach now flow through stickers.)
+  // Order: subtype-implied → stickers → permaBuffs → bonusTrigger.
+  applySubtypeKeywords(card);
   applyStickersToCard(card);
   // permaBuffs: slot-persistent buffs from permanent_eot creatures (Elystra).
   // Shared with resetInPlayState (bounce/flicker recast).

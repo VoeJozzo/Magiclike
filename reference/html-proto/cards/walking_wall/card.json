@@ -7,9 +7,7 @@
   "name": "Walking Wall",
   "power": 0,
   "toughness": 4,
-  "keywords": [
-    "defender"
-  ],
+  "keywords": [],
   "types": [
     "Creature",
     "Wall"

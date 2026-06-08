@@ -14,14 +14,12 @@
       "target": "creature_or_player"
     }
   ],
-  "art": "🏰",
+  "art": "\ud83c\udff0",
   "cost": {
     "R": 1,
     "C": 1
   },
-  "keywords": [
-    "defender"
-  ],
+  "keywords": [],
   "name": "Spitfire Bastion",
   "power": 1,
   "toughness": 3,

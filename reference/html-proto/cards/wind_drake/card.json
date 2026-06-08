@@ -8,9 +8,7 @@
   "name": "Wind Drake",
   "power": 2,
   "toughness": 2,
-  "keywords": [
-    "flying"
-  ],
+  "keywords": [],
   "types": [
     "Creature",
     "Dragon"

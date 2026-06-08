@@ -141,7 +141,7 @@ console.log('\n=== the 7 type-change spells are authored + generate clean text =
 
 console.log('\n=== 8 colorless artifact creatures ===');
 (() => {
-  const robots = ['clockwork_beetle', 'scrap_hound', 'alloy_myr', 'copper_golem', 'razor_beacon', 'iron_sentinel', 'bulwark_automaton', 'sentinel_colossus'];
+  const robots = ['clockwork_beetle', 'scrap_hound', 'alloy_construct', 'copper_golem', 'razor_beacon', 'iron_sentinel', 'bulwark_automaton', 'sentinel_colossus'];
   check('all 8 present', robots.every(id => CARDS[id]), robots.filter(id => !CARDS[id]).join(', '));
   check('each is an Artifact Creature (explicit types[]) + colorless',
     robots.every(id => { const c = CARDS[id]; return hasType(c, 'Artifact') && hasType(c, 'Creature') && governingType(c) === 'Creature' && !['W', 'U', 'B', 'R', 'G'].some(k => c.cost && c.cost[k]); }));
@@ -270,7 +270,7 @@ console.log('\n=== staple same-class UNION: Artifact co-type rides along ===');
   const syn = ENGINE.synthesizeStapledTemplate(vanilla, ['copper_golem']);
   check('Cr base + artifact-Cr staple → merged is BOTH Artifact and Creature',
     hasType(syn, 'Artifact') && hasType(syn, 'Creature') && governingType(syn) === 'Creature');
-  check('merged carries the staple’s subtype (Golem)', hasType(syn, 'Golem'), typeLine(syn));
+  check('merged carries the staple subtype (Construct)', hasType(syn, 'Construct'), typeLine(syn));
   // Land staple still COLLAPSES (no true land-creatures): a Cr+Ld staple stays a
   // cast creature, NOT playable as a land.
   const synLand = ENGINE.synthesizeStapledTemplate(vanilla, ['forest']);
