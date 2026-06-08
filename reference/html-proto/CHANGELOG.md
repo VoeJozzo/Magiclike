@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.1.5`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.1.6`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -199,6 +199,8 @@ opponent's best creature — permanent base 20, eot base 8, +card value +lane �
 animate-add_type only at a permanent WE control (else it'd gift the opponent a
 body). Verified via `AI.decide`: the AI now casts Encase in Amber at an enemy
 creature. 1269 green, lint clean, 300-game selfplay clean.
+
+v2.1.6: **Unified multi-slot target selection + stapled multi-target ETB fix (`bug-investigation` branch).** Started from a garbled stapled-card popup — *Clockwork Beetle + Twin Strike* read "…,  gets +1/+1 …  gets +1/+1 …" with empty subjects: `describeTrigger` forwarded `trig.target` but not `trig.target_slots`, so a stapled multi-target spell's ETB lost its target nouns. Fixing that one-liner surfaced a deeper structural bug — the multi-slot *selection* layer was triplicated across the cast / activated-ability / trigger callers, and the trigger path was single-slot, so **stapled `target_slots` cards (Twin Strike, Roots and Branches, Branching Bolt, …) fizzled ENTIRELY when stapled onto a permanent**: `triggerHasAnyValidTarget` (the queue gate) and `pushTriggerOnStack` called `getValidTargets` on a bare `target_slot` effect → `[]` → the ETB was never queued. Extracted ONE `TargetSelection` component (`tsLegalBySlot` / `tsLegalForSlot` / `tsEnumerate` / `tsIsLegalSet` / `tsAutoPick` + the human step-loop) that all three callers route through (the legality atom — hexproof — and the resolution fetch `makeSlotTargetGetter` were already shared). Now: stapled multi-target ETBs fire and resolve every slot; the AI enumerates multi-target activated abilities (the old "skip the Stapler" guard is gone); and the human gets a multi-slot trigger prompt that steps through each genuine choice (forced/implicit slots auto-fill) instead of auto-picking. Added a `distinct_targets` opt-in (Roots and Branches / Sword and Sorcery require two *different* creatures → "another target creature"), enforced through the same component on cast AND the stapled ETB. Plan + rationale: `docs/plans/plan-unified-target-selection.md` (proto Slices 0–5; Godot Slice 6 deferred). 1654 green, lint clean, 500-game selfplay clean. Browser-verified the multi-slot trigger-prompt UI (per-slot highlight, click-to-advance, distinct picks honored).
 
 v2.1.5: **sticker-changes follow-ups — gold = "from a sticker", land-type mana stickers, badge dead-code cut (`sticker-changes` branch).** Three threads:
 - **Sticker-granted text is now gold** — `.sticker-granted` shares empower's `.bumped` gold, so a single color consistently means "added/modified by a sticker" (empower bumps and granted keywords/triggers read alike). (v2.1.4 briefly used teal; nothing shipped between.)
