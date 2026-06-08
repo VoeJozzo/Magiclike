@@ -141,6 +141,10 @@ const CATEGORY_A = [
   // Deepseam Quarry — reanimation land: enters-tapped, all-graveyards + greatest-
   // total-mana-cost targeting, self-sac activation cost, reanimate-under-your-control.
   'test_deepseam_quarry.js',
+  // distinct_targets opt-in (Roots and Branches / Sword and Sorcery): two-creature
+  // spells whose slots must differ — "another target creature" text + same-target
+  // legality rejection + no same-target combo + needs two creatures to cast.
+  'test_distinct_targets.js',
 ];
 
 const TESTS_DIR = __dirname;

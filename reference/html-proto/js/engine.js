@@ -3760,6 +3760,21 @@ function validTargetsBySlot(card, targetedEffs, who) {
   return out;
 }
 
+// `distinct_targets` cards (Roots and Branches, Sword and Sorcery) require their
+// slots to name DIFFERENT objects — the text reads "...another target creature",
+// which is only honest if one creature can't fill both slots. True iff the chosen
+// per-slot targets are pairwise distinct. Only the present entries are compared
+// (sparse-fill placeholders are skipped by the callers, which pass the real picks).
+function slotTargetsAreDistinct(targetsArr) {
+  const seen = [];
+  for (const t of targetsArr) {
+    if (!t) continue;
+    if (seen.some(s => sameTarget(s, t))) return false;
+    seen.push(t);
+  }
+  return true;
+}
+
 // ─── Canonical "does this need a target / what are its legal targets" ─────
 // ONE source of truth for an object's (card / activated ability / trigger)
 // targeting shape, so the question can't drift across consumers. The §3.5
@@ -3798,8 +3813,13 @@ function probeTargetsForObject(obj, who) {
     const fakes = [];
     for (const spec of obj.target_slots) {
       const valid = getValidTargets(spec, who);
-      if (!valid.length) return null;
-      fakes.push(valid[0]);
+      // distinct_targets: each slot's stand-in must differ from earlier picks, so
+      // the castable-glow greys the spell out unless two distinct targets exist.
+      const pick = obj.distinct_targets
+        ? valid.find(v => !fakes.some(f => sameTarget(f, v)))
+        : valid[0];
+      if (!pick) return null;
+      fakes.push(pick);
     }
     return fakes;
   }
@@ -5600,6 +5620,12 @@ function isLegalAction(who, action) {
           if (!tgt) return false;
           if (!(bySlot.get(slot) || []).some(v => sameTarget(v, tgt))) return false;
         }
+        // distinct_targets: the declared slots must name different objects.
+        if (card.distinct_targets) {
+          const picks = [];
+          for (let slot = 0; slot < slotSpecsLA.length; slot++) picks.push(action.targets[slot]);
+          if (!slotTargetsAreDistinct(picks)) return false;
+        }
       } else if (targetedEffs.length > 0) {
         const maxSlot = targetedEffs.reduce((m, e) => Math.max(m, e.target_slot || 0), 0);
         if (!action.targets || action.targets.length < maxSlot + 1) return false;
@@ -5938,6 +5964,9 @@ function getLegalActions(who) {
       // Defensive: if a card uses sparse slots (0, 2 — skipping 1), fill
       // gaps so action.targets[N] is always present for the highest slot.
       for (const combo of combos) {
+        // distinct_targets: drop combos that aim two slots at one object, so the
+        // AI never considers (and the player is never offered) a same-target cast.
+        if (card.distinct_targets && !slotTargetsAreDistinct(combo)) continue;
         const targets = [];
         for (let i = 0; i < slotKeys.length; i++) {
           targets[slotKeys[i]] = combo[i];

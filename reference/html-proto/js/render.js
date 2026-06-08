@@ -893,7 +893,13 @@ function renderBf(id, bf, who) {
 
     if (pt) {
       const eff = pendingTargetEffect(pt);
-      if (eff && isValidTargetCreature(eff, card)) div.classList.add('targetable');
+      if (eff && isValidTargetCreature(eff, card)) {
+        // distinct_targets: a creature already picked for an earlier slot is not a
+        // legal pick for the next slot, so drop its highlight (the two must differ).
+        const dt = pt.kind === 'cast' && (castCardByIid(pt.cardIid) || {}).distinct_targets;
+        const already = dt && (pt.pickedSlots || []).some(s => s && s.iid === card.iid);
+        if (!already) div.classList.add('targetable');
+      }
     }
     if (G.pendingTriggerTarget && G.pendingTriggerTarget.controller === 'you') {
       const ptt = G.pendingTriggerTarget;

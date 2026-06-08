@@ -53,6 +53,13 @@ function graveyardCardPhrase(filter) {
   return 'target ' + core + ' from ' + yards;
 }
 function targetPhrase(eff) {
+  const base = targetNoun(eff);
+  // distinct_targets: a later slot that repeats an earlier slot's type is marked
+  // `_another` (in describeEffectList) and reads "another target creature" — only
+  // honest because the engine forbids one object filling both slots.
+  return (eff && eff._another && /^target /.test(base)) ? 'another ' + base : base;
+}
+function targetNoun(eff) {
   const t = eff.target;
   if (t === 'self')     return 'you';
   // Accurate, structural mapping (no kind/sign guessing): 'opp' is opponent-only
@@ -581,8 +588,20 @@ function coalesceEotBuffs(effects, tplOf) {
 // Effects whose rendered noun is governed by a preceding chooses() filter.
 const EDICT_CHAIN_KINDS = new Set(['sacrifice', 'annihilate', 'rip']);
 
-function describeEffectList(effects, cardName, tplEffects, stepTarget, stepFilter, slotSpecs) {
+function describeEffectList(effects, cardName, tplEffects, stepTarget, stepFilter, slotSpecs, distinctTargets) {
   if (!Array.isArray(effects) || effects.length === 0) return [];
+  // distinct_targets: find the slot indices whose (target+filter) repeats an
+  // earlier slot — those read "another ..." (the engine guarantees they differ).
+  const anotherSlots = new Set();
+  if (distinctTargets && Array.isArray(slotSpecs)) {
+    const seenSig = new Set();
+    for (let s = 0; s < slotSpecs.length; s++) {
+      const sp = slotSpecs[s];
+      if (!sp) continue;
+      const sig = (sp.target || '') + '|' + JSON.stringify(sp.filter || null);
+      if (seenSig.has(sig)) anotherSlots.add(s); else seenSig.add(sig);
+    }
+  }
   // Give each bare effect a synthetic `target` so targetPhrase + withFilter
   // render "...target non-black creature" etc. Two sources, matching how
   // resolution feeds the target: (1) multi-target — the effect's `target_slot`
@@ -597,7 +616,9 @@ function describeEffectList(effects, cardName, tplEffects, stepTarget, stepFilte
       if (!e || e.target || e.kind === 'chooses' || e.scope != null) return e;
       if (Array.isArray(slotSpecs) && e.target_slot != null && slotSpecs[e.target_slot]) {
         const spec = slotSpecs[e.target_slot];
-        return Object.assign({}, e, spec.filter ? { target: spec.target, filter: spec.filter } : { target: spec.target });
+        const inj = spec.filter ? { target: spec.target, filter: spec.filter } : { target: spec.target };
+        if (anotherSlots.has(e.target_slot)) inj._another = true;
+        return Object.assign({}, e, inj);
       }
       if (!stepTarget) return e;
       const inj = { target: stepTarget };
@@ -811,7 +832,7 @@ function manaCostBraces(cost, opts) {
 function describeTrigger(trig, tplTrig) {
   const preamble = triggerPreamble(trig);
   const tplEffs = tplTrig ? tplTrig.effects : undefined;
-  const body = describeEffectList(trig.effects || [], null, tplEffs, trig.target, trig.target_filter);
+  const body = describeEffectList(trig.effects || [], null, tplEffs, trig.target, trig.target_filter, trig.target_slots);
   const bodyLower = body.slice();
   for (let i = 0; i < bodyLower.length; i++) {
     if (bodyLower[i].text && bodyLower[i].text.length > 0) {
@@ -1043,7 +1064,7 @@ function describeCardSegments(card, opts) {
     sections.push(describeModalSegs(card.effects.modes, tplBaseline.effects && tplBaseline.effects.modes));
   } else if (Array.isArray(card.effects) && card.effects.length > 0) {
     const tplEffs = Array.isArray(tplBaseline.effects) ? tplBaseline.effects : undefined;
-    sections.push(describeEffectList(card.effects, card.name || tpl.name, tplEffs, card.target || tpl.target, card.target_filter || tpl.target_filter, card.target_slots || tpl.target_slots));
+    sections.push(describeEffectList(card.effects, card.name || tpl.name, tplEffs, card.target || tpl.target, card.target_filter || tpl.target_filter, card.target_slots || tpl.target_slots, card.distinct_targets || tpl.distinct_targets));
   }
   if (Array.isArray(card.static_buffs)) {
     for (const buff of card.static_buffs) {
