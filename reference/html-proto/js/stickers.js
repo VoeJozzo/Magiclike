@@ -139,12 +139,11 @@ function applyOneStickerToRuntimeCard(card, sticker) {
 function applyRandomStickersToSide(state, side, n, sourceName, logFn) {
   if (n <= 0) return;
   // Exclude scarified (boss-only), subtype/empower (need rolls). Yields a mix of
-  // statBoost and keyword stickers from the normal reward pool.
+  // statBoost and keyword stickers from the normal reward pool. lose_defender IS
+  // eligible here: on an opponent's wall it hands them an attacker, which is
+  // exactly Archdemon's intended downside (the "bargain" stickers both sides).
   const eligibleStickerIds = Object.keys(STICKERS).filter(id => {
-    // lose_defender excluded: this path stickers BOTH sides at random, and
-    // removing defender from an opponent's wall hands them an attacker — a
-    // strict help to whoever controls the creature. Keep it a player reward.
-    if (id === 'scarified' || id === 'subtype' || id === 'empower' || id === 'lose_defender') return false;
+    if (id === 'scarified' || id === 'subtype' || id === 'empower') return false;
     const s = STICKERS[id];
     if (!s) return false;
     if (s.weight === 0) return false;
