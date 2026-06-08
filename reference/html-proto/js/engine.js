@@ -3241,12 +3241,14 @@ function emitZoneChange(card, controller, fromZone, toZone, extraSources, source
 // Returns true if the trigger has no targeted effects (always queueable),
 // OR if every targeted effect has at least one currently-valid target.
 function triggerHasAnyValidTarget(trig, controller) {
-  // New top-level target() step: the trigger needs a legal target of that filter.
-  if (trig.target && targetsForFilter(trig.target, controller, trig.target_filter).length === 0) return false;
-  for (const eff of (trig.effects || [])) {
-    if (!effectNeedsTarget(eff)) continue;
-    const valid = getValidTargets(eff, controller);
-    if (valid.length === 0) return false;
+  // A targeted trigger only goes on the stack if every slot it needs has a legal
+  // target (rule 603.3c). Routed through TargetSelection so it understands all
+  // shapes — top-level target(), per-effect, AND multi-slot target_slots (the old
+  // per-effect-only check gated stapled multi-target ETBs out of the queue, since
+  // a bare target_slot effect has no `target` for getValidTargets to resolve).
+  if (!objectNeedsTarget(trig)) return true;
+  for (const list of tsLegalBySlot(trig, controller).values()) {
+    if (!list.length) return false;
   }
   return true;
 }
@@ -3313,33 +3315,21 @@ function drainTriggers() {
 }
 
 function pushTriggerOnStack(p) {
-  // Triggers go on the stack like spells. Target chosen now (MtG rules).
-  // v1: auto-pick via AI heuristic for both sides; player UI prompt is future work.
-  const targetEff = (p.trig.effects || []).find(effectNeedsTarget);
-  let chosenTarget = null;
-  if (p.trig.target) {
-    // New top-level target() step: pick from the filter's legal set, valued by
-    // the first target-operating effect. (Human prompt deferred — auto-picks
-    // for both sides today, like the legacy per-effect path.)
-    const valid = targetsForFilter(p.trig.target, p.controller, p.trig.target_filter);
-    if (valid.length === 0) {
+  // Triggers go on the stack like spells; targets are chosen now (MtG rules).
+  // TargetSelection.tsAutoPick handles EVERY target shape — top-level target(),
+  // per-effect, and multi-slot target_slots — picking one legal target per slot.
+  // The old single-pick logic had no target_slots branch, so stapled multi-target
+  // ETBs fizzled entirely; this resolves all their slots. Human target CHOICE is
+  // claimed upstream by drainTriggers/triggerPlayerTargetPrompt; this is the
+  // auto-pick path (AI/opponent triggers + any the prompt doesn't claim).
+  let targets = [];
+  if (objectNeedsTarget(p.trig)) {
+    const picked = tsAutoPick(p.trig, p.controller);
+    if (!picked) {
       log(`${p.sourceName} trigger fizzles — no legal target.`, 'sp');
       return;
     }
-    // Value the choice by the trigger's intent-defining effect: prefer
-    // become_copy_of (The False Witness — copy their best), else the first
-    // non-chooses effect.
-    const valueEff = (p.trig.effects || []).find(e => e.kind === 'become_copy_of')
-      || (p.trig.effects || []).find(e => e.kind === 'grant_cast_permission')
-      || (p.trig.effects || []).find(e => e.kind !== 'chooses') || (p.trig.effects || [])[0] || {};
-    chosenTarget = pickBestTriggerTarget(valueEff, valid, p.controller);
-  } else if (targetEff) {
-    const valid = getValidTargets(targetEff, p.controller);
-    if (valid.length === 0) {
-      log(`${p.sourceName} trigger fizzles — no legal target.`, 'sp');
-      return;
-    }
-    chosenTarget = pickBestTriggerTarget(targetEff, valid, p.controller);
+    targets = picked;
   }
   G.stack.push({
     kind: 'trigger',
@@ -3347,7 +3337,7 @@ function pushTriggerOnStack(p) {
     sourceIid: p.sourceIid,
     sourceName: p.sourceName,
     controller: p.controller,
-    targets: chosenTarget ? [chosenTarget] : [],
+    targets,
     // event → ctx.event for effects that read non-target data (Endomorph etc.).
     event: p.event || null,
   });
@@ -3874,12 +3864,18 @@ function tsIsLegalSet(obj, who, targets) {
 // single-target trigger auto-pick to N slots. Returns null if any slot has no
 // legal target (→ the caller fizzles the trigger).
 function tsAutoPick(obj, who) {
-  const effs = (obj.effects || []).filter(effectNeedsTarget);
-  // Mirror pushTriggerOnStack's valuation preference for the single-target case.
-  const valueEffFor = slot => effs.find(e => (e.target_slot || 0) === slot)
-    || effs.find(e => e.kind === 'become_copy_of')
-    || effs.find(e => e.kind === 'grant_cast_permission')
-    || effs.find(e => e.kind !== 'chooses') || effs[0] || {};
+  const allEffs = obj.effects || [];
+  const targetedEffs = allEffs.filter(effectNeedsTarget);
+  // The effect that VALUES each slot's pick. Multi-slot: the slot's own effect.
+  // Top-level target() triggers have bare effects (not individually targeted), so
+  // fall back to pushTriggerOnStack's preference over ALL effects (become_copy_of
+  // → grant_cast_permission → first non-chooses).
+  const valueEffFor = slot =>
+    targetedEffs.find(e => (e.target_slot || 0) === slot)
+    || allEffs.find(e => e.kind === 'become_copy_of')
+    || allEffs.find(e => e.kind === 'grant_cast_permission')
+    || allEffs.find(e => e.kind !== 'chooses')
+    || allEffs[0] || {};
   const bySlot = tsLegalBySlot(obj, who);
   const slotKeys = [...bySlot.keys()].sort((a, b) => a - b);
   const picks = [];
@@ -5770,41 +5766,11 @@ function isLegalAction(who, action) {
       } else {
         if (!isInstantWindow(who)) return false;
       }
-      // Ability-level multi-target slots (Stapler): one pick per `target_slots`
-      // entry, each validated against its own {target, filter} spec. Replaces
-      // the old `noop` slot-marker effect — target specs belong on the ability,
-      // not masquerading as an empty-body effect kind.
-      if (Array.isArray(ab.target_slots) && ab.target_slots.length > 0) {
-        if (!action.targets || action.targets.length < ab.target_slots.length) return false;
-        for (let s = 0; s < ab.target_slots.length; s++) {
-          const tgt = action.targets[s];
-          if (!tgt) return false;
-          const valid = getValidTargets(ab.target_slots[s], who);
-          if (!valid.some(v => sameTarget(v, tgt))) return false;
-        }
-      }
-      const targetedEffs = ab.effects.filter(effectNeedsTarget);
-      if (targetedEffs.length > 0) {
-        // Multi-target ability validation: each effect's target_slot picks
-        // its target from action.targets[slot].
-        const maxSlot = targetedEffs.reduce((m, e) => Math.max(m, e.target_slot || 0), 0);
-        if (!action.targets || action.targets.length < maxSlot + 1) return false;
-        for (const eff of targetedEffs) {
-          const slot = eff.target_slot || 0;
-          const tgt = action.targets[slot];
-          if (!tgt) return false;
-          const valid = getValidTargets(eff, who);
-          if (!valid.some(v => sameTarget(v, tgt))) return false;
-        }
-      }
-      // New targeting model (§3.5): a top-level `target` step on the ability is
-      // the cast-time hexproof checkpoint. Inert for legacy abilities.
-      if (ab.target) {
-        const valid = targetsForFilter(ab.target, who, ab.target_filter);
-        if (!valid.length) return false;
-        if (!action.targets || !action.targets[0]) return false;
-        if (!valid.some(v => sameTarget(v, action.targets[0]))) return false;
-      }
+      // Validate the chosen targets through TargetSelection (the same component
+      // the cast path uses): ability-level target_slots (Stapler), per-effect
+      // targets, and the top-level target() hexproof checkpoint all resolve
+      // through one path. Untargeted abilities pass trivially.
+      if (!tsIsLegalSet(ab, who, action.targets)) return false;
       return true;
     }
     case 'declareAttackers': {
@@ -6006,10 +5972,6 @@ function getLegalActions(who) {
       const ab = card.abilities[i];
       const isMana = ab.effects[0].kind === 'add_mana';
       if (isMana) continue;   // surfaced as tapLandForMana
-      // Multi-target abilities (Stapler) are player-UI-driven; the AI doesn't
-      // enumerate the 2-target cross-product. Skip so we don't emit always-
-      // illegal single-target actions.
-      if (Array.isArray(ab.target_slots) && ab.target_slots.length > 1) continue;
       // Tap cost requirements.
       if (ab.cost && ab.cost.tap) {
         if (card.tapped) continue;
@@ -6042,18 +6004,17 @@ function getLegalActions(who) {
         if (!canPay) continue;
       }
       if (ab.main_phase_only ? !isMainPhaseWindow(who) : !isInstantWindow(who)) continue;
-      const targetedEff = ab.effects.find(effectNeedsTarget);
-      // Cross-product: (effect targets) × (sac options). A top-level `target`
-      // step (§3.5) enumerates from targetsForFilter (hexproof-excluded); empty
-      // → no actions (ability not activatable). Legacy per-effect targets fall
-      // back to getValidTargets; untargeted → [null].
-      const effectTargets = ab.target ? targetsForFilter(ab.target, who, ab.target_filter)
-        : (targetedEff ? getValidTargets(targetedEff, who) : [null]);
+      // Cross-product: (legal target sets) × (sac options). TargetSelection
+      // enumerates the target sets — single-target abilities yield one-element
+      // sets; multi-slot abilities (Stapler) yield the per-slot cross-product
+      // (previously skipped for the AI). Untargeted → [null]; a targeted ability
+      // with no legal set → no actions (not activatable).
+      const targetSets = objectNeedsTarget(ab) ? tsEnumerate(ab, who) : [null];
       const sacChoices = sacOptions || [null];
-      for (const t of effectTargets) {
+      for (const targets of targetSets) {
         for (const sacIid of sacChoices) {
           const action = {type:'activateAbility', cardIid: card.iid, abilityIdx: i};
-          if (t) action.targets = [t];
+          if (targets) action.targets = targets;
           if (sacIid != null) action.sacIid = sacIid;
           actions.push(action);
         }

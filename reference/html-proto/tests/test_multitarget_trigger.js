@@ -49,11 +49,11 @@ const VANILLA = Object.keys(CARDS).find(k =>
   hasType(CARDS[k], 'Creature') && !CARDS[k].triggers && !CARDS[k].abilities
   && !CARDS[k].static_buffs && isSpliceableBase(k));
 
-console.log('=== CHAR 1: AI does not enumerate a multi-target ACTIVATED ability ===');
+console.log('=== Slice 2: a multi-target ACTIVATED ability is enumerated via the component ===');
 (() => {
-  // getLegalActions skips abilities with target_slots.length > 1 (engine.js:5969),
-  // so the AI never offers the Stapler's two-target cross-product.
-  // → FLIPS (Slice 2): the AI enumerates the multi-target ability via the component.
+  // getLegalActions used to skip abilities with target_slots.length > 1, so the
+  // AI never offered the Stapler's two-target cross-product. Now it routes through
+  // tsEnumerate like the cast path: one action per (base, staple) target set.
   const G = newGame();
   const stapler = mkStapler('opp'); G.opp.battlefield.push(stapler);
   const base = mk(VANILLA, 'opp'); const stap = mk(VANILLA, 'opp');
@@ -61,19 +61,20 @@ console.log('=== CHAR 1: AI does not enumerate a multi-target ACTIVATED ability 
   G.opp.battlefield.push(base, stap);
   const acts = ENGINE.getLegalActions('opp')
     .filter(a => a.type === 'activateAbility' && a.cardIid === stapler.iid);
-  check('CHAR: multi-target Stapler ability is NOT AI-enumerated (→ flips to >0 in Slice 2)',
-    acts.length === 0, 'activateAbility actions=' + acts.length);
+  check('multi-target Stapler ability is enumerated as 2-target sets',
+    acts.length > 0 && acts.every(a => a.targets && a.targets.length === 2),
+    'activateAbility actions=' + acts.length);
 })();
 
-console.log('\n=== CHAR 2: a stapled MULTI-target spell ETB resolves only its first slot ===');
+console.log('\n=== Slice 3: a stapled MULTI-target spell ETB resolves ALL its slots ===');
 (() => {
   // Twin Strike (two pump slots) stapled onto a creature → an ETB trigger with
-  // target_slots:[creature, creature] and BARE pump effects (the target spec lives
-  // in trig.target_slots, not on the effects). pushTriggerOnStack (engine.js:3318)
-  // reads only trig.target / per-effect `target` — it has no target_slots branch —
-  // so getValidTargets on the bare slot-0 pump returns [], the trigger fizzles at
-  // push (engine.js:3338) and never reaches the stack. The WHOLE ETB does nothing.
-  // → FLIPS (Slice 3): both slots resolve; sum of tempPower 0 → 2.
+  // target_slots:[creature, creature] and BARE pump effects. pushTriggerOnStack
+  // now routes through TargetSelection.tsAutoPick, which understands target_slots
+  // and picks a legal target for EACH slot (the old single-pick logic had no
+  // target_slots branch, so the trigger fizzled entirely). Both pumps resolve:
+  // two +1/+1 land on the board (sum of tempPower = 2; the auto-picker, lacking a
+  // distinct constraint, may stack both on the controller's best creature).
   const G = newGame();
   const staple = ENGINE.makeCard(VANILLA, undefined, 0, undefined, undefined, undefined, ['twin_strike']);
   staple.iid = iid++; staple.controller = 'opp'; staple.owner = 'opp';
@@ -105,8 +106,8 @@ console.log('\n=== CHAR 2: a stapled MULTI-target spell ETB resolves only its fi
   }
   const sumTemp = [...G.you.battlefield, ...G.opp.battlefield]
     .reduce((s, c) => s + (c.tempPower || 0), 0);
-  check('CHAR: stapled twin_strike ETB fizzles entirely — pumps NOTHING (→ flips to 2 in Slice 3)',
-    sumTemp === 0, 'sum tempPower across board=' + sumTemp);
+  check('stapled twin_strike ETB resolves both slots — two +1/+1 land (sum 2)',
+    sumTemp === 2, 'sum tempPower across board=' + sumTemp);
 })();
 
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');
