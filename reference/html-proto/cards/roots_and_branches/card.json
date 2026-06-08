@@ -21,10 +21,12 @@
   "name": "Roots and Branches",
   "target_slots": [
     {
-      "target": "opp_creature"
+      "target": "creature",
+      "filter": { "controller": "opp" }
     },
     {
-      "target": "your_creature"
+      "target": "creature",
+      "filter": { "controller": "self" }
     }
   ],
   "keywords": [
