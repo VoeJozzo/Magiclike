@@ -1,7 +1,7 @@
 // Bootstrap + shared module-level helpers. Loaded last so all IIFEs
 // (ENGINE, AI, DRAFT, RUN, CONTROLLER, PICKLOG) are defined first.
 
-const VERSION = 'v2.1.1';
+const VERSION = 'v2.1.2';
 
 function opp(who) { return who === 'you' ? 'opp' : 'you'; }
 
