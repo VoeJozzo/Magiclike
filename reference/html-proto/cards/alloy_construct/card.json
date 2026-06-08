@@ -1,14 +1,14 @@
 {
-  "card_id": "alloy_myr",
-  "name": "Alloy Myr",
-  "art": "🤖",
+  "card_id": "alloy_construct",
+  "name": "Alloy Construct",
+  "art": "\ud83e\udd16",
   "cost": {
     "C": 2
   },
   "types": [
     "Artifact",
     "Creature",
-    "Myr"
+    "Construct"
   ],
   "power": 2,
   "toughness": 2,
