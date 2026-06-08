@@ -52,6 +52,11 @@ function applyStickerKindEffect(card, s) {
       for (const k of ['W', 'U', 'B', 'R', 'G']) { colored += card.cost[k] || 0; card.cost[k] = 0; }
       if (colored) card.cost.C = (card.cost.C || 0) + colored;
     }
+  } else if (s.kind === 'add_type') {
+    // Add one type tag (land-color stickers add a basic-land subtype). For land
+    // subtypes the §305.6 autogrant then yields the matching mana ability.
+    addType(card, s.type);
+    grantBasicLandMana(card);
   } else if (s.kind === 'set_types') {
     card.types = (Array.isArray(s.types) ? s.types : [s.type]).filter(Boolean);
   } else if (s.kind === 'grant_activated_ability') {
@@ -372,6 +377,10 @@ function stickersForSlot(slot, deckColors) {
     }
     if (s.kind === 'grant_mana_ability') {
       grantManaAbility(view, s.color);  // §3.9: reflect on the view's tap-ability
+    }
+    if (s.kind === 'add_type') {
+      addType(view, s.type);
+      grantBasicLandMana(view);  // reflect §305.6 mana so landProducibleColors re-offer dedup sees it
     }
     // §3.8 cost_mod (unified costReduction −1 / embargo +1) — reflect on the
     // view so re-offer eligibility sees the modified cost.

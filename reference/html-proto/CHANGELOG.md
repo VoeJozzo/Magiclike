@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.1.4`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.1.5`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -200,8 +200,15 @@ animate-add_type only at a permanent WE control (else it'd gift the opponent a
 body). Verified via `AI.decide`: the AI now casts Encase in Amber at an enemy
 creature. 1269 green, lint clean, 300-game selfplay clean.
 
+v2.1.5: **sticker-changes follow-ups — gold = "from a sticker", land-type mana stickers, badge dead-code cut (`sticker-changes` branch).** Three threads:
+- **Sticker-granted text is now gold** — `.sticker-granted` shares empower's `.bumped` gold, so a single color consistently means "added/modified by a sticker" (empower bumps and granted keywords/triggers read alike). (v2.1.4 briefly used teal; nothing shipped between.)
+- **Land-color stickers now add a real land type** (new `add_type` kind) instead of grafting a bare mana ability. "Also a Mountain" makes the land an actual typed Mountain (so it answers type-matters effects — "search for a Mountain", etc.), and the §305.6 autogrant (`grantBasicLandMana`, extracted from `ingestCard` and now routed through `grantManaAbility`) folds the new color into a single `{T}: Add one of …` choose-ability — the shape `landProducibleColors` and the tap action expect, so a stickered Plains taps for W **or** R off one ability rather than two competing `{T}`s. Composes with v2.1.1's basic-land identity symbol: a stickered basic now has tap-text, so the big mana glyph yields to the normal "{T}: Add {W} or {R}." layout. No existing land changes (none carry multiple basic subtypes; Phylactery's explicit {B} is a no-op merge). The land-type badge is suppressed (the type line shows it). Updated the reward description + grouping (`controller.js`) and draft valuation (`draft.js`) for the new kind; `grant_mana_ability` stays as a valid kind for inline/boss descriptors.
+- **Cut the now-dead `stickerBadgesHtml` branches** that Q2's suppression made unreachable — the stat_boost/innate/keyword/cost_mod/subtype label paths, the innate-first `unshift`, and the unused `subtypeRolls` param + cursor. The loop now only builds the kept kinds (empower, grant_mana_ability, remove_keyword).
+
+1619 green, lint clean, 200-game selfplay clean. Browser-verify the gold text and a stickered dual land's tap (DOM/CSS not covered by Node).
+
 v2.1.4: **sticker card-text polish — granted text is colored, redundant badges dropped (`sticker-changes` branch).** Two paired display changes:
-- **Sticker-granted text now renders in a distinct color** — teal (`.sticker-granted`), matching the "granted" badge theme and distinct from empower's gold (`.bumped`). Card text is a `{text, highlight, sticker}[]` segment array; a new `keywordPreambleSegs` flags sticker-granted keywords (vs intrinsic/lord-granted, which stay uncolored), and the triggers loop flags sticker-granted triggers (Scarified, marked `_from_sticker` at application time — display metadata, reset every `makeCard`). `segmentsToHtml` maps the flag to a span class. Only registry keyword stickers grant keywords, so inline-descriptor stickers don't color.
+- **Sticker-granted text now renders in a distinct color** — teal (`.sticker-granted`); v2.1.5 finalized it to gold (so gold = "from a sticker"). Card text is a `{text, highlight, sticker}[]` segment array; a new `keywordPreambleSegs` flags sticker-granted keywords (vs intrinsic/lord-granted, which stay uncolored), and the triggers loop flags sticker-granted triggers (Scarified, marked `_from_sticker` at application time — display metadata, reset every `makeCard`). `segmentsToHtml` maps the flag to a span class. Only registry keyword stickers grant keywords, so inline-descriptor stickers don't color.
 - **Badges whose info the frame already shows are suppressed** (`FRAME_REDUNDANT_STICKER_KINDS`): keyword + trigger (now in the colored oracle text), subtype (the type line), innate ("Innate." in text), stat_boost (the P/T box), cost_mod (the cost pips). Kept: empower, grant_mana_ability, remove_keyword — those carry info no other frame element surfaces. `stickerBadgesHtml` returns `''` when every sticker was suppressed (no empty badge row).
 
 Rewrote the badge tests for the new keep/drop policy and added Q1 segment-flag coverage (exposed `segmentsToHtml` to the test harness). 1614 green, lint clean, 150-game selfplay clean. Browser-verify the actual colors — DOM/CSS isn't covered by the Node suite.

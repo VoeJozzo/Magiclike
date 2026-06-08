@@ -1136,19 +1136,19 @@ function isValidTargetCreature(eff, card) {
 // segmentsToHtml's .sticker-granted); subtype → the type line; innate → "Innate."
 // in the oracle text; stat_boost → the P/T box; cost_mod → the cost pips. Kept
 // (not listed): empower, grant_mana_ability, remove_keyword — those carry info no
-// other frame element surfaces.
+// other frame element surfaces. (subtype + add_type both show in the type line.)
 const FRAME_REDUNDANT_STICKER_KINDS = new Set(
-  ['keyword', 'trigger', 'subtype', 'innate', 'stat_boost', 'cost_mod']);
+  ['keyword', 'trigger', 'subtype', 'add_type', 'innate', 'stat_boost', 'cost_mod']);
 
 // Render sticker badges. `big` = larger styling for the reward modal.
 // empowerRolls/tplId/stapledTpls let individual Empower badges be labeled
-// with the rolled field. subtypeRolls lets subtype badges show rolled type.
-function stickerBadgesHtml(stickers, big, empowerRolls, tplId, stapledTpls, subtypeRolls) {
+// with the rolled field. (Suppressed kinds — keyword/subtype/etc. — are shown
+// elsewhere on the frame; see FRAME_REDUNDANT_STICKER_KINDS.)
+function stickerBadgesHtml(stickers, big, empowerRolls, tplId, stapledTpls) {
   if (!stickers || !stickers.length) return '';
   const parts = [];
   const counts = new Map();
   let empowerIdx = 0;
-  let subtypeIdx = 0;
   // For empower-roll labeling, use the synthesized template if the slot is
   // stapled. Without this, a roll that targets the staple half's effect (e.g.
   // location='triggers' on an ETB-Bolt) would have its field looked up against
@@ -1184,42 +1184,21 @@ function stickerBadgesHtml(stickers, big, empowerRolls, tplId, stapledTpls, subt
       parts.push(`<span class="stk-badge ${cls}" title="${s.text}">${label}</span>`);
       continue;
     }
-    if (s.kind === 'subtype') {
-      // Each subtype sticker carries an individual rolled subtype on the
-      // parallel subtypeRolls array. Unlike statBoost (which counts up),
-      // subtype rolls can each be a different value, so we render one
-      // badge per roll.
-      const rolled = subtypeRolls ? subtypeRolls[subtypeIdx] : null;
-      subtypeIdx++;
-      const label = rolled || 'Subtype';
-      parts.push(`<span class="stk-badge skw" title="${s.text}">${label}</span>`);
-      continue;
-    }
     counts.set(sId, (counts.get(sId) || 0) + 1);
   }
+  // Only the KEPT kinds reach here (the rest were skipped above): today that's
+  // grant_mana_ability (a "+{R}" pip) and remove_keyword / other inline kinds
+  // (rendered by name). All use the generic 'skw' badge style.
   for (const [sId, n] of counts) {
     const s = STICKERS[sId];
     if (!s) continue;
-    const cls = s.kind === 'stat_boost' ? 'stat'
-              : s.kind === 'innate'    ? 'innate'
-              : 'skw';
-    let label;
-    if (s.kind === 'stat_boost') label = '+1/+1';
-    else if (s.kind === 'innate') label = 'Innate';
-    // landColor badge label is "+{W}"-style — route the brace token
-    // through renderManaSymbols so it shows the color pip / future PNG
-    // instead of literal {W} text. The label gets injected into
-    // innerHTML below, so an HTML span is fine here.
-    else if (s.kind === 'grant_mana_ability') label = '+' + renderManaSymbols('{' + s.color + '}');
-    else if (s.kind === 'cost_mod') label = ((s.amount || 0) < 0 ? (s.amount || 0) : '+' + (s.amount || 0)) + ' cost';
-    else if (s.kind === 'trigger') label = s.name || 'Trigger';
-    else if (s.kind === 'keyword') label = KEYWORD_DISPLAY[s.keyword] || (s.keyword.charAt(0).toUpperCase() + s.keyword.slice(1));
-    else label = s.name || s.kind;   // defensive — never render 'undefined'
+    // landColor-style label routes the brace token through renderManaSymbols so
+    // it shows the color pip instead of literal {W} text (injected as innerHTML).
+    let label = (s.kind === 'grant_mana_ability')
+      ? '+' + renderManaSymbols('{' + s.color + '}')
+      : (s.name || s.kind);   // remove_keyword ("Loses Defender"), set_color, …
     if (n > 1) label += ` ×${n}`;
-    const html = `<span class="stk-badge ${cls}" title="${s.text}">${label}</span>`;
-    // Innate is a status marker — surface first so it's scannable.
-    if (s.kind === 'innate') parts.unshift(html);
-    else                     parts.push(html);
+    parts.push(`<span class="stk-badge skw" title="${s.text}">${label}</span>`);
   }
   if (parts.length === 0) return '';   // all stickers were redundant — no empty row
   return `<div class="stickers-row${big ? '-big' : ''}">${parts.join('')}</div>`;
@@ -1458,7 +1437,7 @@ function cardToViewModel(card, opts) {
     : escapeHtml(artVal || '');
 
   const stickersInner = (card.stickers && card.stickers.length)
-    ? stickerBadgesHtml(card.stickers, false, card.empowerRolls, card.tplId, card.stapledFrom && card.stapledFrom.stapledTpls, card.subtypeRolls)
+    ? stickerBadgesHtml(card.stickers, false, card.empowerRolls, card.tplId, card.stapledFrom && card.stapledFrom.stapledTpls)
     : '';
 
   return {

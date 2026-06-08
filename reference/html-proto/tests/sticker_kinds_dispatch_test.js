@@ -211,16 +211,13 @@ console.log('\n=== stickersForSlot: each kind reflects into view correctly ===')
 
 console.log('\n=== stickerBadgesHtml: only non-redundant kinds render (Q2) ===');
 
-// KEPT — info no other frame element surfaces.
+// KEPT — info no other frame element surfaces. (grant_mana_ability is also a
+// kept kind, but no registry sticker uses it post-Q3 — land stickers are now
+// add_type — so it's exercised only by inline/boss descriptors, not here.)
 {
   const roll = { location: 'abilities', subIdx: 0, effIdx: 0, modeIdx: null, field: 'amount' };
   const html = stickerBadgesHtml(['empower'], false, [roll], 'spitfire_bastion');
   check('empower badge still renders', html.includes('Empower'));
-}
-{
-  // grant_mana_ability routes {R} through renderManaSymbols → pip icon.
-  const html = stickerBadgesHtml(['land_color_r']);
-  check('grant_mana_ability badge still renders (+<mana-R pip>)', html.includes('+<span class="mana mana-R"'));
 }
 {
   // remove_keyword (lose_defender) — its effect (absence of Defender) isn't
@@ -237,6 +234,8 @@ console.log('\n=== stickerBadgesHtml: only non-redundant kinds render (Q2) ===')
   check('costReduction badge suppressed (shown in cost box)', stickerBadgesHtml(['cost_minus_1']) === '');
   check('subtype badge suppressed (shown in type line)',
     stickerBadgesHtml(['subtype'], false, [], 'savannah_lions', null, ['Beast']) === '');
+  check('land-type (add_type) badge suppressed (shown in type line)',
+    stickerBadgesHtml(['land_color_r']) === '');
 }
 {
   // Mixed: dropped kinds vanish, kept kinds remain.
@@ -278,6 +277,26 @@ console.log('\n=== Q1: sticker-granted text is flagged for coloring ===');
   check('segmentsToHtml emits .sticker-granted span', flagged.includes('class="sticker-granted"'));
   const plain = segmentsToHtml([plainSeg('Flying')]);
   check('segmentsToHtml leaves unflagged text unwrapped', !plain.includes('<span'));
+}
+
+console.log('\n=== Q3: land-color stickers add a land type (mana autogranted) ===');
+
+{
+  // 'Also a Mountain' adds the Mountain subtype to a Plains; the §305.6 autogrant
+  // then yields red mana. The native white production is preserved.
+  const card = freshCard('plains', ['land_color_r']);
+  applyStickersToCard(card);
+  check('land_color_r adds the Mountain land type', hasType(card, 'Mountain'));
+  check('land_color_r autogrants red mana (305.6)', landProducibleColors(card).includes('R'));
+  check('native white mana preserved', landProducibleColors(card).includes('W'));
+}
+{
+  // Re-offer gating runs through the same add_type + autogrant on the slot view.
+  const fresh = stickersForSlot({ tplId: 'plains', stickers: [] }, ['W', 'R']);
+  check('land_color_r offered on a Plains in a red deck', fresh.some(s => s.id === 'land_color_r'));
+  const after = stickersForSlot({ tplId: 'plains', stickers: ['land_color_r'] }, ['W', 'R']);
+  check('land_color_r NOT re-offered once applied (view sees the autogranted R)',
+    !after.some(s => s.id === 'land_color_r'));
 }
 
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');
