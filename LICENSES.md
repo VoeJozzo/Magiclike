@@ -59,6 +59,14 @@ schema later.
 - **License:** project-owned (commissioned art, no external license)
 - **Concepts:** White = tipping scales, Blue = open book, Green = leaf, Red = fissure, Black = eclipse (sun + moon)
 
+### Keyword ability symbol SVGs (Claude-authored, "keywordiconsship" spec)
+
+- **Location in tree:** `assets/keywords/<key>.svg` (15 symbols) + design source at `assets/keywords/source/keywordiconsship.jsx`
+- **Used for:** keyword-ability icons (flying, reach, lifelink, menace, vigilance, haste, trample, deathtouch, defender, indestructible, hexproof, first_strike, flash, plus innate/tap extras) — same 40×40 coin shell as the mana symbols; rendering wiring TBD
+- **Source:** authored by Claude (in a separate session) per a "keywordiconsship" JSX/React design spec the user provided; converted from JSX components to standalone SVGs in the shipping lake-gray palette
+- **License:** project-owned (commissioned art, no external license)
+- **Coverage note:** 13 of 14 engine keywords covered (`unblockable` has no symbol); file names match the engine `KEYWORDS` keys
+
 ---
 
 ## AI assistance
