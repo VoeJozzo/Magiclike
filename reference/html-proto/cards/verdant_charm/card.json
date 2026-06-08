@@ -15,7 +15,8 @@
       [
         {
           "kind": "pump",
-          "target": "your_creature",
+          "target": "creature",
+          "filter": { "controller": "self" },
           "power": 3,
           "toughness": 3
         }

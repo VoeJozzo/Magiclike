@@ -22,13 +22,15 @@
       [
         {
           "kind": "pump",
-          "target": "your_creature",
+          "target": "creature",
+          "filter": { "controller": "self" },
           "power": 2,
           "toughness": 0
         },
         {
           "kind": "grant_keyword",
-          "target": "your_creature",
+          "target": "creature",
+          "filter": { "controller": "self" },
           "keyword": "haste",
           "duration": "eot"
         }

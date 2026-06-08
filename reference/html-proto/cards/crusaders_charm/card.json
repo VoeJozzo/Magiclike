@@ -22,7 +22,8 @@
       [
         {
           "kind": "pump",
-          "target": "your_creature",
+          "target": "creature",
+          "filter": { "controller": "self" },
           "power": 2,
           "toughness": 2
         }
