@@ -31,18 +31,22 @@ invisible to the ability and trigger paths.
 ### The defect this exposes (not cosmetic)
 
 A multi-target spell **stapled onto a permanent** is rewritten into an ETB trigger carrying
-`target_slots` (`mergeStapleInto`, engine.js:521). But `pushTriggerOnStack` (engine.js:3318,3350)
-finds only the **first** targeted effect and stores a **single-element** `targets:[chosenTarget]`;
-`makeSlotTargetGetter` returns `null` for every slot ≥ 1, and `resolveTrigger` (engine.js:3536)
-logs *"trigger fizzles — no target"* and skips that effect. Concretely, today:
+`target_slots` and **bare** effects — each effect's spec lives in `trig.target_slots[slot]`, not on
+the effect (`mergeStapleInto`, engine.js:521). But `pushTriggerOnStack` (engine.js:3318) reads only
+`trig.target` (the top-level single-target step) or a per-effect `target`; it has **no
+`target_slots` branch**. So it calls `getValidTargets` on the bare slot-0 effect (which has no
+`target`), gets `[]`, logs *"fizzles — no legal target"*, and `return`s without ever pushing the
+trigger to the stack (engine.js:3338). **Verified empirically** (`tests/test_multitarget_trigger.js`):
 
-- **Clockwork Beetle + Twin Strike** ETB pumps **one** creature; the second +1/+1 silently fizzles.
-- **anything + Roots and Branches** taps a creature but **never pumps** the second.
+- **Clockwork Beetle + Twin Strike** ETB pumps **nothing** — the whole trigger fizzles at push.
+- **anything + Roots and Branches** / Branching Bolt / Drain Life / etc. — same: the ETB is inert.
 
-The card under-delivers half its text. (The text fix in this branch made the popup *read* both
-clauses with their targets — which makes the text↔engine mismatch on the stapled variant *more*
-convincing, not less. That mismatch is the strongest argument for doing this refactor rather than
-papering over it.)
+So **all seven `target_slots` cards are completely non-functional when stapled onto a permanent**
+(single-target staples via the top-level `target()` step — e.g. Lightning Bolt — work fine, because
+`pushTriggerOnStack` *does* handle `trig.target`). The text fix in this branch made the popup *read*
+both clauses with their targets, which makes the text↔engine mismatch on the stapled variant
+*starker* — the card claims an effect it never performs. That's the strongest argument for doing
+this refactor rather than papering over it.
 
 ## 2. Principle / target architecture
 
@@ -66,7 +70,7 @@ primitives.
 |---|---|---|---|---|
 | **Spell cast** | `getLegalActions` combo cross-product (engine.js:5919–5955) + human `pickedSlots` (controller.js `buildPendingActionWithTarget`) | ✅ enumerates, scored by `scoreMultiTargetSpell` | ✅ `distinct_targets` (isLegalAction:5624 + combo filter:5966) | `resolveTopOfStack` → `makeSlotTargetGetter` |
 | **Activated ability** | human `pickedSlots` only | ❌ `getLegalActions` skips multi-slot abilities (engine.js:5969) | ❌ | `applyActivatedAbility` → `makeSlotTargetGetter` (engine.js:5137) |
-| **Triggered ability** | **single slot** — `pushTriggerOnStack` picks 1 (engine.js:3318); human prompt `triggerPlayerTargetPrompt` reads `target_slots[0]` only (engine.js:3267) | ❌ single auto-pick (`pickBestTriggerTarget`) | ❌ | `resolveTrigger` → `makeSlotTargetGetter`; slot ≥ 1 = `null` → fizzle (engine.js:3536) |
+| **Triggered ability** | **no `target_slots` branch** — `pushTriggerOnStack` reads only `trig.target`/per-effect `target`; on a bare slot-0 effect `getValidTargets`=[] → whole trigger fizzles at push (engine.js:3318/3338). Human prompt `triggerPlayerTargetPrompt` is also slot-0 only (engine.js:3267). | ❌ single auto-pick (`pickBestTriggerTarget`) | ❌ | `resolveTrigger` → `makeSlotTargetGetter` (engine.js:3536) — fine once `targets[]` is populated, but for `target_slots` cards it never is |
 
 Shared by all three already: `getValidTargets`/`targetsForFilter`/`validTargetsBySlot` (atom),
 `makeSlotTargetGetter` (resolution).
