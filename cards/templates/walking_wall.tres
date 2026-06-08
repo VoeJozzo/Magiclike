@@ -5,7 +5,7 @@
 [resource]
 script = ExtResource("1_t78w0")
 toughness = 4
-keywords = Array[String](["defender"])
+keywords = Array[String]([])
 card_id = "walking_wall"
 display_name = "Walking Wall"
 card_types = Array[String](["creature"])
