@@ -604,7 +604,7 @@ function remapEffectSlots(effects, offset) {
 }
 
 // Keywords implied by creature subtype — card data need not repeat these.
-const SUBTYPE_KEYWORDS = { Dragon: ['flying'], Wall: ['defender'] };
+const SUBTYPE_KEYWORDS = { Angel: ['flying'], Dragon: ['flying'], Treefolk: ['reach'], Wall: ['defender'] };
 
 function applySubtypeKeywords(card) {
   for (const st of subtypesOf(card)) {

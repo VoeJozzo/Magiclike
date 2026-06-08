@@ -112,7 +112,9 @@ func duplicate_deep() -> CardInstance:
 
 # Keywords implied by creature subtype — card data need not repeat these.
 const SUBTYPE_KEYWORDS: Dictionary = {
+	"angel": ["flying"],
 	"dragon": ["flying"],
+	"treefolk": ["reach"],
 	"wall": ["defender"],
 }
 
