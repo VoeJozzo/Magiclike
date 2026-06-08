@@ -154,5 +154,55 @@ console.log('\n=== Slice 4: a human-controlled multi-target ETB prompts for EACH
     a.tempPower === 1 && b.tempPower === 1, 'a.tempPower=' + a.tempPower + ' b.tempPower=' + b.tempPower);
 })();
 
+console.log('\n=== Slice 5: a stapled distinct_targets ETB resolves onto TWO DIFFERENT creatures ===');
+(() => {
+  // Roots and Branches (distinct_targets, slots = [tap creature][pump creature])
+  // stapled onto a creature → an ETB trigger that carries distinct_targets via
+  // mergeStapleInto. The opponent path AUTO-picks (tsAutoPick), which must honor
+  // the cross-slot rule and choose a DIFFERENT creature per slot. With distinctness
+  // ignored, the auto-picker would tap+pump the SAME creature (valid[0] twice).
+  // This is the headline cross-slot-on-TRIGGER behavior the cast-path tests can't
+  // reach (the existing Slice 3/4 use Twin Strike, deliberately permissive).
+  const G = newGame();
+  const staple = ENGINE.makeCard(VANILLA, undefined, 0, undefined, undefined, undefined, ['roots_and_branches']);
+  staple.iid = iid++; staple.controller = 'opp'; staple.owner = 'opp';
+  G.opp.hand.push(staple);
+  // Two more creatures so the board has ≥2 (the staple enters as the 3rd) and a
+  // distinct set always exists.
+  const c1 = mk('savannah_lions', 'opp'); const c2 = mk('benalish_hero', 'opp');
+  c1.sick = false; c2.sick = false;
+  G.opp.battlefield.push(c1, c2);
+
+  const etb = (staple.triggers || []).find(t => t.event === 'card_zone_change');
+  check('precondition: stapled distinct ETB carries distinct_targets + two slots',
+    !!etb && etb.distinct_targets === true && Array.isArray(etb.target_slots) && etb.target_slots.length === 2,
+    etb && JSON.stringify([etb.distinct_targets, etb.target_slots && etb.target_slots.length]));
+
+  ENGINE.executeAction('opp', { type: 'castSpell', cardIid: staple.iid });
+  let guard = 0;
+  while (guard++ < 50) {
+    const onBf = G.opp.battlefield.some(c => c.iid === staple.iid);
+    const settled = G.stack.length === 0 && !G.pendingTriggers.length
+      && !G.pendingTriggerTarget && !G.pendingOptionalCost;
+    if (onBf && settled) break;
+    const who = ENGINE.expectedActor();
+    if (!who) break;
+    if (G.pendingTriggerTarget && G.pendingTriggerTarget.controller === who) {
+      ENGINE.executeAction(who, { type: 'triggerTargetPick', target: G.pendingTriggerTarget.valid[0] });
+    } else {
+      ENGINE.executeAction(who, { type: 'pass' });
+    }
+  }
+  const bf = G.opp.battlefield;
+  const tapped = bf.filter(c => c.tapped);
+  const pumped = bf.filter(c => (c.tempPower || 0) === 1);
+  check('distinct ETB tapped exactly one creature and pumped exactly one',
+    tapped.length === 1 && pumped.length === 1,
+    'tapped=' + tapped.length + ' pumped=' + pumped.length);
+  check('distinct ETB resolved on two DIFFERENT creatures (cross-slot honored at resolution)',
+    !!(tapped[0] && pumped[0]) && tapped[0].iid !== pumped[0].iid,
+    'tappedIid=' + (tapped[0] && tapped[0].iid) + ' pumpedIid=' + (pumped[0] && pumped[0].iid));
+})();
+
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');
 process.exit(fail > 0 ? 1 : 0);

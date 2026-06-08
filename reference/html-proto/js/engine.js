@@ -3259,6 +3259,12 @@ function triggerHasAnyValidTarget(trig, controller) {
   // per-effect-only check gated stapled multi-target ETBs out of the queue, since
   // a bare target_slot effect has no `target` for getValidTargets to resolve).
   if (!objectNeedsTarget(trig)) return true;
+  // distinct_targets needs a full legal SET, not just per-slot non-emptiness: with
+  // one legal creature on board, a 2-distinct-slot trigger reports both slots
+  // length-1 (the same creature) and the per-slot loop would pass it, only to
+  // fizzle at tsAutoPick (which returns null when no distinct set exists). Gate on
+  // the side-effect-free auto-picker so the queue matches resolution exactly.
+  if (trig.distinct_targets) return tsAutoPick(trig, controller) != null;
   for (const list of tsLegalBySlot(trig, controller).values()) {
     if (!list.length) return false;
   }

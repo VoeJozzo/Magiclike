@@ -145,9 +145,10 @@ const CATEGORY_A = [
   // spells whose slots must differ — "another target creature" text + same-target
   // legality rejection + no same-target combo + needs two creatures to cast.
   'test_distinct_targets.js',
-  // CHARACTERIZATION (plan-unified-target-selection.md Slice 0): pins current
-  // multi-slot selection gaps — AI skips multi-target abilities; stapled
-  // target_slots ETBs fizzle entirely. Assertions flip as the refactor lands.
+  // Unified multi-slot selection, end-to-end: the AI enumerates multi-target
+  // activated abilities (Stapler), a stapled multi-target spell's ETB resolves
+  // every slot, a human-controlled multi-target ETB prompts per choosable slot,
+  // and a distinct_targets ETB resolves onto two DIFFERENT creatures.
   'test_multitarget_trigger.js',
 ];
 
