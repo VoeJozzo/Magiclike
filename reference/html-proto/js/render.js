@@ -742,7 +742,9 @@ function openGraveyardTargetPicker(validTargets, prompt) {
 function setText(id, v) { document.getElementById(id).textContent = v; }
 // escapeHtml + formatTriggerText live in card-text.js (loads before this file).
 
-// {text, highlight}[] → HTML, with .bumped spans for empower-emphasized values.
+// {text, highlight, sticker}[] → HTML. .bumped spans color empower-emphasized
+// values; .sticker-granted spans color text granted by a sticker (keywords,
+// scarified triggers). A segment can carry both flags.
 function segmentsToHtml(segs) {
   if (!Array.isArray(segs)) return '';
   return segs.map(s => {
@@ -752,7 +754,9 @@ function segmentsToHtml(segs) {
     // so the order is correct.
     const safe = escapeHtml(s.text || '');
     const withPips = renderManaSymbols(safe);
-    return s.highlight ? `<span class="bumped">${withPips}</span>` : withPips;
+    const cls = (s.highlight ? 'bumped ' : '') + (s.sticker ? 'sticker-granted' : '');
+    const trimmed = cls.trim();
+    return trimmed ? `<span class="${trimmed}">${withPips}</span>` : withPips;
   }).join('');
 }
 
@@ -1127,6 +1131,15 @@ function isValidTargetCreature(eff, card) {
   return ENGINE.matchFilter(card, restrict, card.controller, 'you');
 }
 
+// Sticker kinds whose effect is ALREADY communicated elsewhere on the frame, so
+// a badge would be redundant: keyword/trigger → colored in the oracle text (see
+// segmentsToHtml's .sticker-granted); subtype → the type line; innate → "Innate."
+// in the oracle text; stat_boost → the P/T box; cost_mod → the cost pips. Kept
+// (not listed): empower, grant_mana_ability, remove_keyword — those carry info no
+// other frame element surfaces.
+const FRAME_REDUNDANT_STICKER_KINDS = new Set(
+  ['keyword', 'trigger', 'subtype', 'innate', 'stat_boost', 'cost_mod']);
+
 // Render sticker badges. `big` = larger styling for the reward modal.
 // empowerRolls/tplId/stapledTpls let individual Empower badges be labeled
 // with the rolled field. subtypeRolls lets subtype badges show rolled type.
@@ -1149,6 +1162,10 @@ function stickerBadgesHtml(stickers, big, empowerRolls, tplId, stapledTpls, subt
   for (const sId of stickers) {
     const s = STICKERS[sId];
     if (!s) continue;
+    // Skip badges whose info the frame already shows (oracle text / type line /
+    // P-T / cost). Only empower consumes a parallel-rolls cursor among the kept
+    // kinds, so skipping these doesn't desync anything.
+    if (FRAME_REDUNDANT_STICKER_KINDS.has(s.kind)) continue;
     if (s.kind === 'empower') {
       const cls = 'skw';
       const roll = empowerRolls ? empowerRolls[empowerIdx] : null;
@@ -1204,6 +1221,7 @@ function stickerBadgesHtml(stickers, big, empowerRolls, tplId, stapledTpls, subt
     if (s.kind === 'innate') parts.unshift(html);
     else                     parts.push(html);
   }
+  if (parts.length === 0) return '';   // all stickers were redundant — no empty row
   return `<div class="stickers-row${big ? '-big' : ''}">${parts.join('')}</div>`;
 }
 

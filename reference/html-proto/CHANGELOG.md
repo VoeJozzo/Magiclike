@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.1.3`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.1.4`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -199,6 +199,12 @@ opponent's best creature — permanent base 20, eot base 8, +card value +lane �
 animate-add_type only at a permanent WE control (else it'd gift the opponent a
 body). Verified via `AI.decide`: the AI now casts Encase in Amber at an enemy
 creature. 1269 green, lint clean, 300-game selfplay clean.
+
+v2.1.4: **sticker card-text polish — granted text is colored, redundant badges dropped (`sticker-changes` branch).** Two paired display changes:
+- **Sticker-granted text now renders in a distinct color** — teal (`.sticker-granted`), matching the "granted" badge theme and distinct from empower's gold (`.bumped`). Card text is a `{text, highlight, sticker}[]` segment array; a new `keywordPreambleSegs` flags sticker-granted keywords (vs intrinsic/lord-granted, which stay uncolored), and the triggers loop flags sticker-granted triggers (Scarified, marked `_from_sticker` at application time — display metadata, reset every `makeCard`). `segmentsToHtml` maps the flag to a span class. Only registry keyword stickers grant keywords, so inline-descriptor stickers don't color.
+- **Badges whose info the frame already shows are suppressed** (`FRAME_REDUNDANT_STICKER_KINDS`): keyword + trigger (now in the colored oracle text), subtype (the type line), innate ("Innate." in text), stat_boost (the P/T box), cost_mod (the cost pips). Kept: empower, grant_mana_ability, remove_keyword — those carry info no other frame element surfaces. `stickerBadgesHtml` returns `''` when every sticker was suppressed (no empty badge row).
+
+Rewrote the badge tests for the new keep/drop policy and added Q1 segment-flag coverage (exposed `segmentsToHtml` to the test harness). 1614 green, lint clean, 150-game selfplay clean. Browser-verify the actual colors — DOM/CSS isn't covered by the Node suite.
 
 v2.1.3: **sticker fixes + the first keyword-removal sticker (`sticker-changes` branch).** Three threads:
 - **Keyword sticker badge showed the raw keyword id** — a "Has First strike" sticker rendered its on-card badge as `first_strike` (underscored, lowercased) because `stickerBadgesHtml` printed `s.keyword` directly. Now routed through `KEYWORD_DISPLAY` (the map already used by the keyword-preamble and native-keyword badge), so it reads "First strike". Affected every keyword sticker; first strike was just the most visibly wrong.

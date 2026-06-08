@@ -951,20 +951,53 @@ function describeStaticBuff(buff) {
 // spell's preamble — otherwise a sorcery could nonsensically read "Trample."
 const SPELL_LEGAL_KEYWORDS = new Set(['flash']);
 
-// Keyword list as "Flying, Vigilance" prefix.
-function keywordPreamble(keywords) {
-  if (!Array.isArray(keywords) || keywords.length === 0) return '';
+const KW_PREAMBLE_DISPLAY = {
+  flying: 'Flying', vigilance: 'Vigilance', trample: 'Trample', haste: 'Haste',
+  first_strike: 'First strike', double_strike: 'Double strike', deathtouch: 'Deathtouch',
+  lifelink: 'Lifelink', reach: 'Reach', menace: 'Menace', defender: 'Defender',
+  flash: 'Flash', hexproof: 'Hexproof', indestructible: 'Indestructible',
+};
+
+// Which keywords on a card were granted by a sticker (vs intrinsic / lord-granted).
+// Read so the keyword preamble can color them distinctly (sticker-granted text).
+// Only registry-id keyword stickers grant keywords; inline descriptors don't.
+function stickerGrantedKeywords(card) {
+  const set = new Set();
+  for (const sId of (card.stickers || [])) {
+    const s = (typeof sId === 'string' && typeof STICKERS !== 'undefined') ? STICKERS[sId] : null;
+    if (s && s.kind === 'keyword' && s.keyword) set.add(s.keyword);
+  }
+  return set;
+}
+
+// Tag every segment of a section as sticker-granted (preserving any empower
+// highlight) so the renderer colors the whole granted line distinctly.
+function markStickerSegs(segs) {
+  return (segs || []).map(s => ({ ...s, sticker: true }));
+}
+
+// Keyword preamble as segments — "Flying, Vigilance". Sticker-granted keywords
+// (in stickerKws) carry sticker:true so they render in the sticker color.
+// Returns [] when nothing to show; the period is appended by the caller.
+function keywordPreambleSegs(keywords, stickerKws) {
+  if (!Array.isArray(keywords) || keywords.length === 0) return [];
   // no_block is the hidden half of Pacifism's "can't attack or block" lockdown
   // (paired with defender); never surfaced as a keyword in its own right.
   keywords = keywords.filter(k => k !== 'no_block');
-  if (keywords.length === 0) return '';
-  const display = {
-    flying: 'Flying', vigilance: 'Vigilance', trample: 'Trample', haste: 'Haste',
-    first_strike: 'First strike', double_strike: 'Double strike', deathtouch: 'Deathtouch',
-    lifelink: 'Lifelink', reach: 'Reach', menace: 'Menace', defender: 'Defender',
-    flash: 'Flash', hexproof: 'Hexproof', indestructible: 'Indestructible',
-  };
-  return keywords.map(k => display[k] || (k[0].toUpperCase() + k.slice(1))).join(', ');
+  if (keywords.length === 0) return [];
+  const segs = [];
+  keywords.forEach((k, i) => {
+    if (i > 0) segs.push(plainSeg(', '));
+    const name = KW_PREAMBLE_DISPLAY[k] || (k[0].toUpperCase() + k.slice(1));
+    segs.push((stickerKws && stickerKws.has(k)) ? { text: name, highlight: false, sticker: true } : plainSeg(name));
+  });
+  return segs;
+}
+
+// Keyword list as a flat "Flying, Vigilance" string (no period). Delegates to
+// the segment version so there's one source of truth for display names/filtering.
+function keywordPreamble(keywords) {
+  return keywordPreambleSegs(keywords).map(s => s.text).join('');
 }
 
 // Flat string for storage/logging. UI uses describeCardSegments for highlights.
@@ -1019,10 +1052,10 @@ function describeCardSegments(card, opts) {
         // duplication risk since custom spell text doesn't write "Flash" inline.
         prepend = (card.keywords || tpl.keywords || []).filter(kw => SPELL_LEGAL_KEYWORDS.has(kw));
       }
-      if (prepend.length > 0) {
-        const kw = keywordPreamble(prepend);
-        if (kw) sections.push([plainSeg(kw + '.')]);
-      }
+      // Render as segments so sticker-granted keywords color (gold); the prepend
+      // logic above (granted-on-creatures / spell-legal-on-spells) is preserved.
+      const kwSegs = keywordPreambleSegs(prepend, stickerGrantedKeywords(card));
+      if (kwSegs.length) { kwSegs.push(plainSeg('.')); sections.push(kwSegs); }
     }
     const staticText = card.text || tpl.text || '';
     if (staticText) sections.push([plainSeg(staticText)]);
@@ -1050,8 +1083,9 @@ function describeCardSegments(card, opts) {
     // leaking combat keywords onto it.
     const isCreatureCard = hasType(card,'Creature') || hasType(tpl,'Creature');
     const allKw = card.keywords || tpl.keywords || [];
-    const kw = keywordPreamble(isCreatureCard ? allKw : allKw.filter(k => SPELL_LEGAL_KEYWORDS.has(k)));
-    if (kw) sections.push([plainSeg(kw + '.')]);
+    const kwList = isCreatureCard ? allKw : allKw.filter(k => SPELL_LEGAL_KEYWORDS.has(k));
+    const kwSegs = keywordPreambleSegs(kwList, stickerGrantedKeywords(card));
+    if (kwSegs.length) { kwSegs.push(plainSeg('.')); sections.push(kwSegs); }
   }
   if (card.effects && card.effects.modes) {
     sections.push(describeModalSegs(card.effects.modes, tplBaseline.effects && tplBaseline.effects.modes));
@@ -1076,7 +1110,10 @@ function describeCardSegments(card, opts) {
     for (let i = 0; i < card.triggers.length; i++) {
       const trig = card.triggers[i];
       const tplTrig = tplTriggers[i];
-      sections.push(describeTrigger(trig, tplTrig));
+      let trigSegs = describeTrigger(trig, tplTrig);
+      // Sticker-granted triggers (e.g. Scarified) render in the sticker color.
+      if (trig && trig._from_sticker) trigSegs = markStickerSegs(trigSegs);
+      sections.push(trigSegs);
     }
   }
   if (Array.isArray(card.abilities)) {

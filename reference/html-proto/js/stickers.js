@@ -66,7 +66,9 @@ function applyStickerKindEffect(card, s) {
     });
   } else if (s.kind === 'trigger') {
     if (!Array.isArray(card.triggers)) card.triggers = [];
-    card.triggers.push({ ...s.trigger });
+    // _from_sticker lets the card-text layer color this granted line distinctly
+    // (it's reset every makeCard, so it's display metadata, not persisted state).
+    card.triggers.push({ ...s.trigger, _from_sticker: true });
   }
 }
 

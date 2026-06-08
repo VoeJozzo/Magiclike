@@ -162,7 +162,7 @@ const EXPOSED = [
   'applyRandomStickersToSide', 'empowerRollLabel', 'applyEmpowerRoll',
   'rollSubtypeFromDeck', 'pushStickerWithRoll', 'stickersForSlot',
   // Render module-scope helpers (render.js has no IIFE).
-  'stickerBadgesHtml', 'effectiveArt', 'renderManaSymbols', 'formatCostBraced',
+  'stickerBadgesHtml', 'segmentsToHtml', 'effectiveArt', 'renderManaSymbols', 'formatCostBraced',
   'isValidTargetCreature', 'canPlayFromUI', 'playerForcedPrompt', 'anyForcedPrompt',
   'activationGlowAvailable',
   'edictChoiceNoun', 'graveyardPickerPrompt', 'castCardByIid',
