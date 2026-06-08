@@ -832,7 +832,7 @@ function manaCostBraces(cost, opts) {
 function describeTrigger(trig, tplTrig) {
   const preamble = triggerPreamble(trig);
   const tplEffs = tplTrig ? tplTrig.effects : undefined;
-  const body = describeEffectList(trig.effects || [], null, tplEffs, trig.target, trig.target_filter, trig.target_slots);
+  const body = describeEffectList(trig.effects || [], null, tplEffs, trig.target, trig.target_filter, trig.target_slots, trig.distinct_targets);
   const bodyLower = body.slice();
   for (let i = 0; i < bodyLower.length; i++) {
     if (bodyLower[i].text && bodyLower[i].text.length > 0) {

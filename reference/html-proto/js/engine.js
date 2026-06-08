@@ -544,6 +544,11 @@ function mergeStapleInto(merged, stapleTpl) {
       trig.target_slots = stapleTpl.target_slots.map(spec =>
         Object.assign({}, spec, spec.target_filter ? { target_filter: { ...spec.target_filter } } : {}));
     }
+    // Carry the spell's distinct-targets rule onto the ETB. Now that the trigger
+    // path enforces cross-slot constraints (tsAutoPick / advanceTriggerTargetPrompt),
+    // a stapled Roots and Branches / Sword and Sorcery keeps its "another target
+    // creature" semantics instead of silently going permissive.
+    if (stapleTpl.distinct_targets) trig.distinct_targets = true;
     // Land base → the ETB is OPTIONAL and costs the spell's mana cost. A land is
     // free to play, so a free stapled spell is pure value; making it a "you may
     // pay {cost}" trigger restores the bargain. Creature/artifact bases stay
