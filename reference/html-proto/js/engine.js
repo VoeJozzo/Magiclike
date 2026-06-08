@@ -6577,6 +6577,10 @@ return {
   // truth for the human cast UI's zone-agnostic card lookup.
   findCastableSpell,
   makeCard,
+  // The one cross-slot distinct_targets rule, exposed so the render layer's cast
+  // highlight drops already-picked creatures through the SAME filter the trigger
+  // pick-loop uses (no second copy of the rule in the UI).
+  tsExcludePicked,
   synthesizeStapledTemplate,
   makeToken,
   getModes,
