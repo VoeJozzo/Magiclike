@@ -57,10 +57,16 @@ console.log('\n=== oracle text renders the land noun ===');
 const txt = describeCardText(CARDS['heir_to_burnt_house']);
 check('Heir reads "sacrifices a land"', /sacrifices a land/.test(txt), txt);
 check('Heir does NOT read "sacrifices a creature"', !/sacrifices a creature/.test(txt), txt);
+check('prototype status helper names land edicts as land',
+  edictChoiceNoun('land') === 'land', edictChoiceNoun('land'));
 check('diabolic_edict still reads "sacrifices a creature"',
   /sacrifices a creature/.test(describeCardText(CARDS['diabolic_edict'])));
+check('prototype status helper names creature edicts as creature',
+  edictChoiceNoun('creature') === 'creature', edictChoiceNoun('creature'));
 check('vile_edict still reads "rips a permanent"',
   /rips a permanent/.test(describeCardText(CARDS['vile_edict'])));
+check('prototype status helper names permanent edicts as permanent',
+  edictChoiceNoun('permanent') === 'permanent', edictChoiceNoun('permanent'));
 
 console.log('\n=== end-to-end: the Heir dies → opponent sacrifices a LAND ===');
 (() => {

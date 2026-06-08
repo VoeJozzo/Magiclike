@@ -13,7 +13,7 @@
 const TARGET_SCORED_KINDS = new Set([
   'damage', 'affect_creature', 'pump', 'add_counter', 'gain_life', 'discard',
   'grant_keyword', 'fight', 'untap', 'move_card', 'sacrifice', 'annihilate',
-  'rip', 'symmetricize', 'change_control', 'add_type', 'set_types',
+  'rip', 'symmetricize', 'change_control', 'add_type', 'set_types', 'grant_cast_permission',
 ]);
 const NOT_TARGET_SCORED_KINDS = new Set([
   'create_tokens',       // untargeted — mint tokens (scored via spellValueForEffects)
@@ -103,6 +103,7 @@ function spellValueForEffects(effects) {
     }
     else if (e.kind === 'rip') v += 8;                  // run-permanent slot strip (rip-edict trailing step)
     else if (e.kind === 'symmetricize') v += 8;
+    else if (e.kind === 'grant_cast_permission') v += 4;
     else if (e.kind === 'draw') v += (e.amount || 1) * 3;
     else if (e.kind === 'discard') v += 4;
     else if (e.kind === 'gain_life') v += (e.amount || 0) < 0 ? (3 + Math.abs(e.amount) * 2) : 1;
@@ -149,7 +150,7 @@ const VALUED_EFFECT_KINDS = new Set([
   'symmetricize', 'apply_sticker', 'counter', 'add_mana', 'gain_life', 'draw',
   'move_card', 'discard', 'grant_keyword', 'create_tokens', 'rip',
   'chooses', 'schedule_delayed', 'change_control', 'fight',
-  'apply_in_game_splice', 'sacrifice', 'add_type', 'set_types',
+  'apply_in_game_splice', 'sacrifice', 'add_type', 'set_types', 'grant_cast_permission',
 ]);
 const UNVALUED_EFFECT_KINDS = new Set([
   'steal',              // internal helper dispatched by change_control; not a card kind
@@ -1721,6 +1722,14 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
     const [pow] = ENGINE.getStats(c.card);
     return 10 + pow;
   }
+  if (eff.kind === 'grant_cast_permission') {
+    if (target.kind !== 'graveyard_card') return -100;
+    const graveOwner = target.controller || them;
+    const grave = state[graveOwner].graveyard || [];
+    const card = grave.find(c => c.iid === target.iid);
+    if (!card) return -100;
+    return 8 + ENGINE.getCardValue(card, 'play');
+  }
   if (eff.kind === 'move_card') {
     // Collapsed discard (hand→graveyard) targeting a player — duress/mind_rot.
     // Only worth aiming at the opponent; value scales with cards stripped.
@@ -1732,8 +1741,8 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
     }
     // Collapsed returnFromGraveyard / shuffleIntoLibrary — value at parity.
     if (eff.from_zone === 'graveyard' && eff.to_zone === 'hand') {
-      if (target.kind !== 'graveyard_creature') return -100;
-      const grave = state[us].graveyard || [];
+      if (target.kind !== 'graveyard_card') return -100;
+      const grave = state[target.controller || us].graveyard || [];
       const card = grave.find(c => c.iid === target.iid);
       if (!card) return -100;
       return 10 + ENGINE.getCardValue(card, 'play');
@@ -1905,6 +1914,26 @@ function pickBestActivation(state, who, abilityActs) {
         && (eff.to_zone === 'battlefield' || (eff.to_zone === 'hand' && eff.selector === 'library_search'))) {
       // Tutoring / land-fetch is consistently strong (collapsed search*).
       score = 8;
+    } else if (eff.kind === 'move_card' && eff.from_zone === 'graveyard' && eff.to_zone === 'hand') {
+      // Recall a creature card from our graveyard to hand (Hymnwright's verse
+      // ability). Value the returned body at parity — mirrors the spell scorer.
+      const t = act.targets && act.targets[0];
+      const grave = state[who].graveyard || [];
+      const recalled = t && grave.find(c => c.iid === t.iid);
+      score = recalled ? 10 + ENGINE.getCardValue(recalled, 'play') : -100;
+    } else if (eff.kind === 'move_card' && eff.from_zone === 'graveyard' && eff.to_zone === 'battlefield') {
+      // Reanimate a creature straight onto the battlefield (Deepseam Quarry). The
+      // target may sit in either graveyard (graveyards: ['self','opp']), so search
+      // both. The sac/mana cost is folded in by the generic sac-penalty block below.
+      const t = act.targets && act.targets[0];
+      let reanimated = null;
+      if (t) {
+        for (const g of [state.you.graveyard || [], state.opp.graveyard || []]) {
+          const f = g.find(c => c.iid === t.iid);
+          if (f) { reanimated = f; break; }
+        }
+      }
+      score = reanimated ? 12 + ENGINE.getCardValue(reanimated, 'play') : -100;
     } else if ((eff.kind === 'add_counter' || (eff.kind === 'pump' && eff.duration === 'permanent')) && eff.scope === 'self') {
       // Self-counter pump (Carrion Feeder-shape). The general principle:
       // sacrificing creatures just to grow a counter is wrong play. Real
@@ -1949,10 +1978,13 @@ function pickBestActivation(state, who, abilityActs) {
         if (isCreatureDoomedInCombat(state, who, act.sacIid)) {
           sacValue *= 0.1;
         }
-        // Self-sac is strictly worse than sacing a chump — losing the
-        // ability source gains us nothing future, and the +1/+1 from
-        // Carrion Feeder fizzles if we sac Carrion Feeder itself.
-        if (sacF.card.iid === act.cardIid) score -= 30;
+        // Self-sac is strictly worse than sacing a chump WHEN it's accidental —
+        // losing the source gains nothing and Carrion Feeder's +1/+1 fizzles if
+        // it eats itself. But a `sacrifice:'self'` cost is the ability's intended
+        // price (Deepseam Quarry sacs itself to reanimate), so charge only the
+        // body's board value, not the anti-waste penalty.
+        const selfSacByDesign = ab.cost && ab.cost.sacrifice === 'self';
+        if (sacF.card.iid === act.cardIid && !selfSacByDesign) score -= 30;
         else score -= sacValue;
       }
     }

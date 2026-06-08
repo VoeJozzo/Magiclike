@@ -15,13 +15,17 @@ const DESERT_CUBE_LAND_PROB = 1 / 3;
 let _draftPoolCache = null;
 function draftPool() {
   if (_draftPoolCache === null) {
-    // Spells + creatures are draftable; basic/utility lands are not — EXCEPT
-    // nonbasic artifact lands (Land + Artifact), which draft like other picks
-    // (matches MtG, where nonbasic lands appear in packs).
+    // Exclude BASIC lands (they're auto-allocated after the draft) and `special`
+    // cards (boss/run-only — including run-boon lands like City of Brass, which
+    // arrive via the "Polychrome Pact" modifier, not packs). Everything else —
+    // spells, creatures, and every other nonbasic land (artifact lands, utility
+    // lands like Deepseam Quarry) — drafts like any other pick, matching MtG
+    // where nonbasic lands appear in packs. `Basic` is a land-only supertype, so
+    // excluding it (plus the special carve-out) is the whole land rule.
     _draftPoolCache = Object.keys(CARDS).filter(id => {
       const c = CARDS[id];
       if (c.special) return false;
-      return !hasType(c, 'Land') || hasType(c, 'Artifact');
+      return !hasType(c, 'Basic');
     });
   }
   return _draftPoolCache;
@@ -417,7 +421,7 @@ function applyOpponentStickers(slots, n) {
       const stickerOffer = [];
       const stickerPool = stickerCandidates.slice();
       while (stickerOffer.length < 3 && stickerPool.length > 0) {
-        const picked = weightedPick(stickerPool);
+        const picked = pickWeightedSticker(stickerPool);
         const idx = stickerPool.indexOf(picked);
         stickerOffer.push(stickerPool.splice(idx, 1)[0]);
       }
@@ -624,7 +628,7 @@ function rollPack(pool, picksSoFar) {
     const w = c.draftWeight;
     return (typeof w === 'number' && w >= 0) ? w : 1;
   };
-  const weightedPick = (ids) => {
+  const pickWeightedDraftCard = (ids) => {
     if (ids.length === 0) return null;
     const total = ids.reduce((s, id) => s + weightOf(id), 0);
     if (total <= 0) return null;
@@ -677,7 +681,7 @@ function rollPack(pool, picksSoFar) {
     const color = colorTable[Math.floor(Math.random() * colorTable.length)];
 
     // Pick a card of that color, avoiding duplicates already in the pack.
-    // weightedPick returns null when no candidate has positive weight; in
+    // pickWeightedDraftCard returns null when no candidate has positive weight; in
     // that case we fall through to "any unused card with positive weight"
     // from the full pool. This matters for the modal-stress-test config
     // where most cards have weight 0 — color-rolled slots whose color has
@@ -686,11 +690,11 @@ function rollPack(pool, picksSoFar) {
     // pool (colorless fits any deck, so it competes for every slot).
     const sub = byColor[color] || [];
     const candidates = sub.concat(colorless).filter(id => !used.has(id));
-    let id = candidates.length > 0 ? weightedPick(candidates) : null;
+    let id = candidates.length > 0 ? pickWeightedDraftCard(candidates) : null;
     if (!id) {
       const anyUnused = pool.filter(id => !used.has(id) && weightOf(id) > 0);
       if (anyUnused.length === 0) break;
-      id = weightedPick(anyUnused);
+      id = pickWeightedDraftCard(anyUnused);
       if (!id) break;
     }
     used.add(id);

@@ -140,6 +140,10 @@ console.log('\n=== atomic predicates ===');
   check('affected_player_is(you) matches who=you', ATOMIC_PREDICATES.affected_player_is({ event: gain, who: 'you' }, ['you']) === true);
   check('affected_player_is(opp) when source=you, event.who=opp',
     ATOMIC_PREDICATES.affected_player_is({ event: loss, who: 'you' }, ['opp']) === true);
+  const combatHit = { subject_card: { iid: 10, types: ['Creature'] }, who: 'opp', controller: 'you', amount: 2 };
+  check('combat_damage shape supports this_card + affected_player_is(opp)',
+    evaluateCondition(['this_card', 'affected_player_is(opp)'],
+      { state: S(), source, event: combatHit, who: 'you' }) === true);
 
   // lost_life_this_turn reads state[player].lifeLostThisTurn (synthetic state).
   check('lost_life_this_turn(opp) true when opp lost life',
@@ -185,6 +189,9 @@ console.log('\n=== validateAllCardConditions ===');
     { tplId: 'goodEvent', triggers: [
       { event: 'card_zone_change', condition: 'this_card' },
     ]},
+    { tplId: 'goodCombatEvent', triggers: [
+      { event: 'combat_damage', condition: ['this_card', 'affected_player_is(opp)'] },
+    ]},
   ];
   const r = validateAllCardConditions(synthetic);
   check('detects unknown atomic in array', r.unknownAtomics.includes('badAtomic.not_a_real_predicate'));
@@ -194,6 +201,7 @@ console.log('\n=== validateAllCardConditions ===');
   check('legacy event kinds now rejected (cardDies removed)',
     validateAllCardConditions([{ tplId: 'legacyGone', triggers: [{ event: 'cardDies', condition: 'this_card' }] }]).unknownEvents.includes('legacyGone.cardDies'));
   check('valid new event kind accepted', !r.unknownEvents.some(u => u.startsWith('goodEvent.')));
+  check('valid combat_damage event kind accepted', !r.unknownEvents.some(u => u.startsWith('goodCombatEvent.')));
 
   // The real shipped pool (now fully composable) must validate clean.
   const live = validateAllCardConditions(CARDS);

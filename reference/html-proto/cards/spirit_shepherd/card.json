@@ -40,8 +40,9 @@
           "selector": "target"
         }
       ],
-      "target": "graveyard_creature",
+      "target": "graveyard_card",
       "target_filter": {
+        "type": "Creature",
         "subtype": "Spirit"
       }
     }

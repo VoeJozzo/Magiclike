@@ -1,0 +1,56 @@
+{
+  "card_id": "hymnwright",
+  "abilities": [
+    {
+      "cost": {
+        "tap": true,
+        "remove_counters": {
+          "verse": 3
+        }
+      },
+      "effects": [
+        {
+          "kind": "move_card",
+          "from_zone": "graveyard",
+          "to_zone": "hand",
+          "selector": "target"
+        }
+      ],
+      "target": "graveyard_card",
+      "target_filter": {
+        "type": "Creature"
+      }
+    }
+  ],
+  "art": "art.png",
+  "cost": {
+    "W": 1,
+    "C": 1
+  },
+  "name": "Hymnwright",
+  "power": 1,
+  "toughness": 3,
+  "triggers": [
+    {
+      "event": "card_zone_change",
+      "condition": [
+        "another_card",
+        "card_is_creature",
+        "card_moves(battlefield, graveyard)"
+      ],
+      "effects": [
+        {
+          "kind": "add_counter",
+          "scope": "self",
+          "counter": "verse",
+          "amount": 1
+        }
+      ]
+    }
+  ],
+  "types": [
+    "Creature",
+    "Human",
+    "Cleric"
+  ]
+}

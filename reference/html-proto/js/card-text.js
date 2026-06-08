@@ -25,6 +25,33 @@ function formatTriggerText(template, cardName) {
 }
 
 // eff.target → noun phrase. 'player' = "target opponent" for damage/discard, "target player" for gain_life.
+const STAT_PHRASE = { total_mana_cost: 'total mana cost' };
+// Compose the English for a `graveyard_card` target from its filter axes:
+// type/not_type/subtype (adjectives on "card"), `select` (a superlative clause),
+// and `graveyards` (which yards). A superlative names its comparison pool with
+// "among …"; a plain restriction names a location with "from …". Always "target":
+// even a superlative leaves a choice when several cards tie for the extreme.
+function graveyardCardPhrase(filter) {
+  filter = filter || {};
+  let core = 'card';
+  if (filter.type) core = filter.type.toLowerCase() + ' ' + core;
+  else if (filter.not_type) core = 'non' + filter.not_type.toLowerCase() + ' ' + core;
+  if (filter.subtype) core = filter.subtype + ' ' + core;
+  const g = Array.isArray(filter.graveyards) ? filter.graveyards : ['self'];
+  const both = g.includes('self') && g.includes('opp');
+  if (filter.select) {
+    const stat = STAT_PHRASE[filter.select.by] || filter.select.by;
+    const extreme = filter.select.extreme === 'least' ? 'least' : 'greatest';
+    const scope = both ? 'all graveyards'
+      : g.includes('opp') ? "cards in an opponent's graveyard"
+      : 'cards in your graveyard';
+    return 'target ' + core + ' with the ' + extreme + ' ' + stat + ' among ' + scope;
+  }
+  const yards = both ? 'any graveyard'
+    : g.includes('opp') ? "an opponent's graveyard"
+    : 'your graveyard';
+  return 'target ' + core + ' from ' + yards;
+}
 function targetPhrase(eff) {
   const t = eff.target;
   if (t === 'self')     return 'you';
@@ -38,7 +65,7 @@ function targetPhrase(eff) {
   if (t === 'creature_or_player') return 'any target';
   if (t === 'your_creature') return 'target creature you control';
   if (t === 'opp_creature') return 'target creature an opponent controls';
-  if (t === 'graveyard_creature') return 'target creature card';
+  if (t === 'graveyard_card') return 'target card';  // detail composed by graveyardCardPhrase (see withFilter)
   if (t === 'permanent')return 'target permanent';
   if (t === 'spell')    return 'target spell';
   if (t === 'card')     return 'target card';
@@ -47,6 +74,8 @@ function targetPhrase(eff) {
 
 // Apply eff.filter to noun phrase. Pre-mods (color/tapped/subtype) inserted before noun; post-mods after.
 function withFilter(noun, eff) {
+  // Graveyard-card targets compose their whole phrase from the filter axes.
+  if (eff.target === 'graveyard_card') return graveyardCardPhrase(eff.filter);
   if (!eff.filter) return noun;
   const f = eff.filter;
   const pre = [];
@@ -69,12 +98,23 @@ function withFilter(noun, eff) {
   // "target permanent" + {type:'Land'} → "target land". The head noun is
   // whichever of creature/permanent the phrase used (each phrase has one);
   // pre-mods (color/tapped/…) then attach to that narrowed noun.
-  let head = /\bpermanent\b/.test(noun) ? 'permanent' : 'creature';
+  let head = /\bpermanent\b/.test(noun) ? 'permanent' : (/\bcard\b/.test(noun) ? 'card' : 'creature');
   let out = noun;
   if (f.type) { out = out.replace(head, f.type.toLowerCase()); head = f.type.toLowerCase(); }
+  if (f.not_type) { out = out.replace(head, 'non' + f.not_type.toLowerCase() + ' ' + head); }
   if (pre.length) out = out.replace(head, pre.join(' ') + ' ' + head);
   if (post.length) out += ' ' + post.join(' ');
   return out;
+}
+
+function searchFilterNoun(filter, includeCard) {
+  const suffix = includeCard === false ? '' : ' card';
+  if (!filter) return 'card';
+  if (typeof filter === 'string') return filter.toLowerCase() + suffix;
+  if (filter.subtype) return filter.subtype.toLowerCase() + suffix;
+  if (filter.sub) return filter.sub.toLowerCase() + suffix;
+  if (filter.type) return filter.type.toLowerCase() + suffix;
+  return 'card';
 }
 
 // Phrase for one `fight` operand: {select} → "your strongest creature"; {slot:N}
@@ -242,6 +282,11 @@ function describeEffect(eff, tplEff) {
               signedStat('toughness', eff, tplEff, negZero), plainSeg(' until end of turn')];
     }
     case 'add_counter': {
+      if (eff.counter) {
+        const n = eff.amount || 1;
+        const noun = n === 1 ? 'a ' + eff.counter + ' counter' : numWord(n) + ' ' + eff.counter + ' counters';
+        return [plainSeg('put ' + noun + ' on ' + (eff.scope === 'self' ? 'this' : t))];
+      }
       const pSeg = bumpedSeg('power', eff, tplEff, 1);
       const tSeg = bumpedSeg('toughness', eff, tplEff, 1);
       const tail = eff.scope === 'self' ? ' counter on this' : ' counter on ' + t;
@@ -312,16 +357,16 @@ function describeEffect(eff, tplEff) {
       // idioms (matches the legacy kinds' phrasing for parity).
       const fz = eff.from_zone, tz = eff.to_zone;
       if (fz === 'library' && tz === 'hand' && eff.selector === 'library_search') {  // collapsed searchCreature
-        return [plainSeg('search your library for a ' + ((eff.filter && eff.filter.type) ? eff.filter.type.toLowerCase() : 'card') + ' card and put it into your hand')];
+        const noun = searchFilterNoun(eff.filter, true);
+        return [plainSeg('search your library for ' + indefiniteArticle(noun) + ' ' + noun + ' and put it into your hand')];
       }
       if (fz === 'library' && tz === 'battlefield') {  // collapsed searchLandTapped (auto fetch)
         // Derive the fetched-card noun from the filter (subtype > type > "card"),
         // mirroring the fetch-to-hand case above — a {type:'Land'} filter is "a
         // land", not the old hardcoded "basic land" (which was narrower than the
         // filter and drifted from what the card actually does).
-        const ff = eff.filter || {};
-        const noun = ff.subtype ? ff.subtype : (ff.type ? ff.type.toLowerCase() : 'card');
-        return [plainSeg('search your library for a ' + noun + ' and put it onto the battlefield' + ((eff.post && eff.post.tap) ? ' tapped' : ''))];
+        const noun = searchFilterNoun(eff.filter, false);
+        return [plainSeg('search your library for ' + indefiniteArticle(noun) + ' ' + noun + ' and put it onto the battlefield' + ((eff.post && eff.post.tap) ? ' tapped' : ''))];
       }
       if (fz === 'library' && tz === 'hand') {  // collapsed draw
         if (eff.amount === 1) return [plainSeg('draw a card')];
@@ -335,7 +380,15 @@ function describeEffect(eff, tplEff) {
         if (eff.amount === 1) return [plainSeg('discard a card')];
         return [plainSeg('discard '), amtSeg, plainSeg(' cards')];
       }
-      if (fz === 'graveyard' && tz === 'hand') return [plainSeg('return ' + t + ' from your graveyard to your hand')];
+      if (fz === 'graveyard' && tz === 'battlefield') {  // reanimate
+        // `t` (graveyardCardPhrase) already carries the type/select/graveyards
+        // detail, e.g. "target creature card with the greatest total mana cost
+        // among all graveyards". The take_control rider is the only movement bit.
+        const ctrlRider = (eff.post && eff.post.take_control) ? ' under your control' : '';
+        return [plainSeg('return ' + t + ' to the battlefield' + ctrlRider)];
+      }
+      if (fz === 'graveyard' && tz === 'hand') return [plainSeg('return ' + t + ' to your hand')];
+      if (fz === 'graveyard' && tz === 'exile') return [plainSeg('exile ' + t)];
       if (fz === 'battlefield' && tz === 'library') return [plainSeg('shuffle ' + t + " into its owner's library")];
       if (fz === 'battlefield' && tz === 'hand') return [plainSeg('return ' + t + " to its owner's hand")];
       if (fz === 'battlefield' && tz === 'exile') return [plainSeg('exile ' + t)];          // flicker outgoing / exile removal
@@ -375,6 +428,13 @@ function describeEffect(eff, tplEff) {
       // Standalone fallback; the exile-until-eot pair is rendered as one phrase
       // by describeEffectList (below).
       return [plainSeg('return it to the battlefield at end of turn')];
+    case 'grant_cast_permission': {
+      const dur = eff.duration === 'eot' ? 'until end of turn, ' : '';
+      const mana = eff.spend_as_any_color
+        ? ', and you may spend mana as though it were mana of any color to cast it'
+        : '';
+      return [plainSeg(dur + 'you may cast that card' + mana)];
+    }
     case 'add_mana': {
       if (eff.choose) {
         return [plainSeg(eff.choose === 'any'
@@ -707,6 +767,7 @@ function triggerPreamble(trig) {
   if (cid === 'thisEnters')  return 'When this enters the battlefield,';
   if (cid === 'thisDies')    return 'When this dies,';
   if (cid === 'thisAttacks') return 'When this attacks,';
+  if (cid === 'thisDealsCombatDamageToOpp') return 'Whenever this deals combat damage to an opponent,';
   if (cid === 'thisLeaves')  return 'When this leaves the battlefield,';
   if (cid === 'thisKillsCreature') return 'Whenever a creature dealt damage by this dies,';
   if (cid === 'thisAttacksAfterOppLifeLoss') {
@@ -733,16 +794,18 @@ function triggerPreamble(trig) {
 }
 
 // Full trigger clause as segments (lowercase body since preamble ends in comma).
-// A plain {W,U,B,R,G,C} cost → brace string: colors as individual pips, generic
-// as a single {N} (e.g. {R:1,C:2} → "{R}{2}"). renderManaSymbols draws them.
-function manaCostBraces(cost) {
+// A plain {W,U,B,R,G,C} cost -> brace string: generic first, then color pips
+// (e.g. {R:1,C:2} -> "{2}{R}"). renderManaSymbols draws them.
+function manaCostBraces(cost, opts) {
+  opts = opts || {};
+  const empty = opts.empty || '';
   if (!cost) return '';
   let s = '';
+  if (cost.C) s += '{' + cost.C + '}';
   for (const c of ['W', 'U', 'B', 'R', 'G']) {
     for (let i = 0; i < (cost[c] || 0); i++) s += '{' + c + '}';
   }
-  if (cost.C) s += '{' + cost.C + '}';
-  return s;
+  return s || empty;
 }
 
 function describeTrigger(trig, tplTrig) {
@@ -761,7 +824,7 @@ function describeTrigger(trig, tplTrig) {
   }
   // Optional paid trigger (Land+Spell staple ETB): "... you may pay {cost}: ...".
   if (trig.optional_cost) {
-    return [plainSeg(preamble + ' you may pay ' + manaCostBraces(trig.optional_cost) + ': ')].concat(bodyLower);
+    return [plainSeg(preamble + ' you may pay ' + manaCostBraces(trig.optional_cost, {empty: '{0}'}) + ': ')].concat(bodyLower);
   }
   return [plainSeg(preamble + ' ')].concat(bodyLower);
 }
@@ -788,6 +851,12 @@ function triggerLogText(trig) {
   return trig.event || '';
 }
 
+// Small number words for generated rules text ("Remove three verse counters").
+function numWord(n) {
+  const words = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
+  return (n >= 0 && n <= 10) ? words[n] : String(n);
+}
+
 // cost → "{T}: " / "{R}: " / "Sacrifice this: " prefix.
 function abilityCostPhrase(cost) {
   if (!cost) return '';
@@ -807,6 +876,11 @@ function abilityCostPhrase(cost) {
   if (cost.sacrifice) {
     parts.push('Sacrifice ' + (cost.sacrifice === 'self' ? 'this' : 'a ' + cost.sacrifice));
   }
+  if (cost.remove_counters) {
+    for (const [name, n] of Object.entries(cost.remove_counters)) {
+      parts.push('Remove ' + numWord(n) + ' ' + name + ' counter' + (n === 1 ? '' : 's'));
+    }
+  }
   return parts.join(', ');
 }
 
@@ -818,7 +892,13 @@ function describeAbility(ab, tplAb) {
   if (body.length > 0 && body[body.length - 1].text === '.') {
     body = body.slice(0, -1);
   }
-  if (!cost) return body;
+  // The `main_phase_only` flag restricts an activated ability to the controller's
+  // main phase (empty stack) — the non-default timing. Magiclike has no "sorcery"
+  // timing concept (the Flash refactor made instant-speed = the `flash` keyword),
+  // so the reminder reads "during your main phase", not "as a sorcery". Rendered
+  // as a second sentence; the caller appends the final period.
+  const speedClause = ab.main_phase_only ? [plainSeg('. Activate only during your main phase')] : [];
+  if (!cost) return body.concat(speedClause);
   if (body.length > 0) {
     for (let i = 0; i < body.length; i++) {
       if (body[i].text && body[i].text.length > 0) {
@@ -830,7 +910,7 @@ function describeAbility(ab, tplAb) {
       }
     }
   }
-  return [plainSeg(cost + ': ')].concat(body);
+  return [plainSeg(cost + ': ')].concat(body).concat(speedClause);
 }
 
 // Lord buff: "Other <subtype>s you control get +P/+T and have <kw>."

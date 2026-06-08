@@ -1,0 +1,55 @@
+{
+  "card_id": "deepseam_quarry",
+  "name": "Deepseam Quarry",
+  "art": "⛏",
+  "types": [
+    "Land"
+  ],
+  "mana": "C",
+  "enters_tapped": true,
+  "abilities": [
+    {
+      "cost": {
+        "tap": true
+      },
+      "effects": [
+        {
+          "kind": "add_mana",
+          "amounts": {
+            "C": 1
+          }
+        }
+      ]
+    },
+    {
+      "cost": {
+        "tap": true,
+        "mana": {
+          "C": 2
+        },
+        "sacrifice": "self"
+      },
+      "main_phase_only": true,
+      "target": "graveyard_card",
+      "target_filter": {
+        "type": "Creature",
+        "graveyards": ["self", "opp"],
+        "select": {
+          "by": "total_mana_cost",
+          "extreme": "greatest"
+        }
+      },
+      "effects": [
+        {
+          "kind": "move_card",
+          "from_zone": "graveyard",
+          "to_zone": "battlefield",
+          "selector": "target",
+          "post": {
+            "take_control": true
+          }
+        }
+      ]
+    }
+  ]
+}

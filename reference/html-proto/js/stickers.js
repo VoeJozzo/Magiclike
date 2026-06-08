@@ -62,7 +62,7 @@ function applyStickerKindEffect(card, s) {
   }
 }
 
-function weightedPick(stickers) {
+function pickWeightedSticker(stickers) {
   let total = 0;
   for (const s of stickers) total += (s.weight || 3);
   if (total <= 0) return stickers[Math.floor(Math.random() * stickers.length)];
@@ -101,10 +101,9 @@ function applyStickersToCard(card) {
       const rolled = (card.subtypeRolls || [])[subtypeCursor];
       subtypeCursor++;
       if (!rolled) continue;
-      // Append the rolled subtype to types[] — the sole type identity. Lord buffs
-      // that match on it read via hasType/subtypesOf.
-      if (!Array.isArray(card.types)) card.types = [];
-      if (!card.types.includes(rolled)) card.types.push(rolled);
+      // Append the rolled subtype to types[] via the accessor layer — the sole
+      // type identity. Lord buffs that match on it read via hasType/subtypesOf.
+      addType(card, rolled);
     } else {
       applyStickerKindEffect(card, s);
     }
@@ -352,7 +351,7 @@ function stickersForSlot(slot, deckColors) {
     if (s.kind === 'subtype') {
       const rolled = (slot.subtypeRolls || [])[subtypeCursor];
       subtypeCursor++;
-      if (rolled && !view.types.includes(rolled)) view.types.push(rolled);
+      if (rolled) addType(view, rolled);
     }
     if (s.kind === 'grant_mana_ability') {
       grantManaAbility(view, s.color);  // §3.9: reflect on the view's tap-ability

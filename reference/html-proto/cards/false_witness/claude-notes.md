@@ -36,7 +36,7 @@ Both subtypes preserve through the copy via the *"except it's also an Insect Sha
 
 ## On the cost
 
-`{2}{U}{U}` = 4 CMC is the **floor**, not the ceiling. Clone is 4 mana in MTG for *just* the copy with no removal. We're getting Clone + Banisher-Priest-removal + Flash. If playtest reveals the card is breaking games, the cost goes *up* before any other lever moves.
+`{2}{U}{U}` = total mana cost 4 is the **floor**, not the ceiling. Clone is 4 mana in MTG for *just* the copy with no removal. We're getting Clone + Banisher-Priest-removal + Flash. If playtest reveals the card is breaking games, the cost goes *up* before any other lever moves.
 
 ## On the art
 

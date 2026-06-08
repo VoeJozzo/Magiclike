@@ -147,6 +147,12 @@ eqText(segsToText(describeEffectList(
   'Target creature you control gets +1/+1 until end of turn, then it fights target creature an opponent controls.',
   'fight: buff-then-fight pronoun (Predate)');
 
+console.log('\n=== describeEffect: cast permission ===');
+eqText(segsToText(describeEffect({ kind: 'grant_cast_permission', from_zone: 'exile',
+                                   duration: 'eot', spend_as_any_color: true })),
+       'until end of turn, you may cast that card, and you may spend mana as though it were mana of any color to cast it',
+       'grant_cast_permission from exile through EOT');
+
 console.log('\n=== describeEffect: tokens (count-bumped wording) ===');
 // No TOKENS lookup → falls back to "1/1 creature" stats with a sensible
 // default niceName. Word count: "one", "two", ...
@@ -173,6 +179,9 @@ eqText(withFilter('target creature', { filter: { color: 'R', controller: 'opp' }
        'color + controller filter');
 eqText(withFilter('target creature', { filter: { min_power: 4 } }),
        'target creature with power 4 or greater', 'stat filter');
+eqText(withFilter(targetPhrase({ target: 'graveyard_card' }), { target: 'graveyard_card', filter: { not_type: 'Land', graveyards: ['opp'] } }),
+       "target nonland card from an opponent's graveyard",
+       'graveyard_card + nonland + opp graveyard');
 
 // ─── bumpedSeg highlight detection ────────────────────────────────────
 console.log('\n=== bumpedSeg highlight flag ===');
@@ -211,12 +220,42 @@ eqText(segsToText(describeTrigger({ event: 'card_zone_change',
                                     condition: ['this_card', 'card_moves(anywhere, battlefield)'],
                                     effects: [{ kind: 'draw', amount: 1 }] })),
        'When this enters the battlefield, draw a card.', 'ETB → draw');
+eqText(manaCostBraces({ C: 2, R: 1 }),
+       '{2}{R}', 'manaCostBraces: generic before colored pips');
+eqText(formatCostBraced({ C: 2, R: 1 }),
+       '{2}{R}', 'formatCostBraced delegates to canonical cost order');
+eqText(manaCostBraces({ C: 0 }, { empty: '{0}' }),
+       '{0}', 'manaCostBraces: explicit empty fallback for displayed zero costs');
+eqText(segsToText(describeTrigger({ event: 'card_zone_change',
+                                    condition: ['this_card', 'card_moves(anywhere, battlefield)'],
+                                    optional_cost: { C: 2, R: 1 },
+                                    effects: [{ kind: 'draw', amount: 1 }] })),
+       'When this enters the battlefield, you may pay {2}{R}: draw a card.',
+       'optional-cost trigger uses canonical mana order');
+eqText(segsToText(describeTrigger({ event: 'card_zone_change',
+                                    condition: ['this_card', 'card_moves(anywhere, battlefield)'],
+                                    optional_cost: { C: 0 },
+                                    effects: [{ kind: 'draw', amount: 1 }] })),
+       'When this enters the battlefield, you may pay {0}: draw a card.',
+       'optional-cost trigger renders zero-cost fallback');
 eqText(segsToText(describeTrigger({ event: 'attacks',
                                     condition: ['this_card'],
                                     effects: [{ kind: 'damage', target: 'opp', amount: 1 }] })),
        'When this attacks, deal 1 damage to target opponent.', 'attacks → damage');
 
 // ─── describeModalSegs ────────────────────────────────────────────────
+eqText(segsToText(describeTrigger({ event: 'combat_damage',
+                                    condition: ['this_card', 'affected_player_is(opp)'],
+                                    target: 'graveyard_card',
+                                    target_filter: { not_type: 'Land', graveyards: ['opp'] },
+                                    effects: [
+                                      { kind: 'move_card', from_zone: 'graveyard', to_zone: 'exile', selector: 'target' },
+                                      { kind: 'grant_cast_permission', from_zone: 'exile', selector: 'target',
+                                        duration: 'eot', spend_as_any_color: true },
+                                    ] })),
+       "Whenever this deals combat damage to an opponent, exile target nonland card from an opponent's graveyard. Until end of turn, you may cast that card, and you may spend mana as though it were mana of any color to cast it.",
+       'combat damage theft trigger');
+
 console.log('\n=== describeModalSegs ===');
 {
   const modes = [
@@ -238,6 +277,20 @@ console.log('\n=== describeModalSegs ===');
 }
 
 // ─── End-to-end: real card from CARDS ─────────────────────────────────
+console.log('\n=== describeEffect: move_card library search text ===');
+eqText(segsToText(describeEffect({ kind: 'move_card', from_zone: 'library', to_zone: 'hand', selector: 'library_search', filter: 'creature' })),
+       'search your library for a creature card and put it into your hand',
+       'string creature filter renders as creature card');
+eqText(segsToText(describeEffect({ kind: 'move_card', from_zone: 'library', to_zone: 'hand', selector: 'library_search', filter: { type: 'Artifact' } })),
+       'search your library for an artifact card and put it into your hand',
+       'object artifact filter renders with article');
+eqText(segsToText(describeEffect({ kind: 'move_card', from_zone: 'library', to_zone: 'hand', selector: 'library_search' })),
+       'search your library for a card and put it into your hand',
+       'unfiltered library search renders as a card');
+eqText(segsToText(describeEffect({ kind: 'move_card', from_zone: 'library', to_zone: 'battlefield', selector: 'library_search', filter: 'land', post: { tap: true } })),
+       'search your library for a land and put it onto the battlefield tapped',
+       'string land battlefield fetch renders as land');
+
 console.log('\n=== describeCardSegments end-to-end on real cards ===');
 {
   // Lightning Bolt — instant, damage:any-target,3. Auto-generated text

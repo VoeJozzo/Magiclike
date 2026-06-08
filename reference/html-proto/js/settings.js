@@ -176,7 +176,7 @@ function settingsKeyFsize(elementKey) { return `cardFontSize${elementKey.charAt(
 
 let data = null;
 
-function ensureLoaded() {
+function ensureSettingsLoaded() {
   if (data !== null) return;
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -215,7 +215,7 @@ function migrateLegacySlotKeys(blob) {
 }
 
 function get(key) {
-  ensureLoaded();
+  ensureSettingsLoaded();
   return data[key];
 }
 
@@ -233,7 +233,7 @@ const CSS_VAR_BINDINGS = {
 };
 
 function set(key, value) {
-  ensureLoaded();
+  ensureSettingsLoaded();
   data[key] = value;
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
@@ -251,12 +251,12 @@ function set(key, value) {
 }
 
 function getAll() {
-  ensureLoaded();
+  ensureSettingsLoaded();
   return { ...data };
 }
 
 function applyFontsToRoot() {
-  ensureLoaded();
+  ensureSettingsLoaded();
   if (typeof document === 'undefined' || !document.documentElement) return;
   const root = document.documentElement.style;
   for (const el of CARD_FONT_ELEMENTS) {

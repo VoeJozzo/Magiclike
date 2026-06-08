@@ -40,6 +40,7 @@ const ARCHETYPES = {
   'attacks | this_card': 'thisAttacks',
   'attacks | this_card, lost_life_this_turn(opp)': 'thisAttacksAfterOppLifeLoss',
   'attacks | controlled_by(you), card_has_subtype(*)': 'creatureYouAttacksOfSubtype',
+  'combat_damage | this_card, affected_player_is(opp)': 'thisDealsCombatDamageToOpp',
   'card_zone_change | this_card, card_moves(battlefield, graveyard)': 'thisDies',
   'card_zone_change | this_card, card_moves(battlefield, anywhere)': 'thisLeaves',
   'card_zone_change | another_card, card_is_creature, card_moves(battlefield, graveyard)': 'anotherCreatureDies',

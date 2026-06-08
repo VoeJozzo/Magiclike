@@ -330,7 +330,9 @@ func enter_focus() -> void:
 	# parent CardContainer's offset is. card_size is the base size; the
 	# rendered footprint is card_size * _FOCUS_SCALE, so subtract half of
 	# the SCALED size to center the visible card on the viewport center.
-	var viewport_center := Vector2(960, 540)
+	# Read viewport size live (not a 960×540 hardcode) so focus stays centered
+	# at any window resolution/aspect under canvas_items stretch.
+	var viewport_center := get_viewport_rect().size * 0.5
 	global_position = viewport_center - (card_size * _FOCUS_SCALE * 0.5)
 
 
