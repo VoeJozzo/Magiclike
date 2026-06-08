@@ -1,10 +1,16 @@
 # Refactor Plan: Unified Multi-Slot Target Selection
 
-**Status (2026-06-08):** Plan drafted, not executed. Proto-first (per the "prototype is the
-debt lab" principle — work the clean architecture out in the runtime-editable JS engine,
-then port to Godot). Discovered while fixing the *Clockwork Beetle + Twin Strike* garbled-text
-bug (branch `bug-investigation`); the text bug is fixed, this plan addresses the structural
-debt it exposed.
+**Status (2026-06-08):** **Proto execution COMPLETE (Slices 0–5).** Godot (Slice 6) deferred.
+Proto-first (per the "prototype is the debt lab" principle — work the clean architecture out in
+the runtime-editable JS engine, then port to Godot). Discovered while fixing the *Clockwork Beetle
++ Twin Strike* garbled-text bug (branch `bug-investigation`); the text bug is fixed, and this plan's
+refactor closed the structural debt it exposed. Stapled multi-target ETBs (which fizzled entirely)
+now fire and resolve every slot, the AI enumerates multi-target abilities, and the human gets a
+multi-slot trigger prompt. One `TargetSelection` component (engine.js) now owns the selection layer
+for all three callers (cast / ability / trigger). 1636 assertions green, lint clean, selfplay clean.
+
+> **Pending at merge:** bump `js/main.js` VERSION + add a CHANGELOG entry (this branch isn't merged
+> to `dev` yet; the version bump is a merge-time action since Pages serves `dev`).
 
 ## 1. Motivation
 
