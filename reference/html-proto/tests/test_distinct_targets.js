@@ -140,7 +140,7 @@ console.log('\n=== castability: a flagged card needs two distinct creatures ==='
   }
 })();
 
-console.log('\n=== stapled distinct card carries its rule onto the ETB (Slice 5) ===');
+console.log('\n=== stapled distinct card carries its rule onto the ETB ===');
 (() => {
   // Stapling a distinct_targets spell onto a permanent turns it into an ETB
   // trigger; the rule now rides along (the trigger path enforces cross-slot

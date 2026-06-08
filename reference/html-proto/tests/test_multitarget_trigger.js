@@ -1,11 +1,9 @@
-// CHARACTERIZATION — Slice 0 of docs/plans/plan-unified-target-selection.md.
-//
-// Pins the CURRENT (incomplete) multi-slot SELECTION behavior so the refactor's
-// progress is measurable and regressions are loud. The multi-slot selection
-// layer is triplicated: the spell-cast path is complete, but the activated-
-// ability path skips AI enumeration and the trigger path is single-slot. Each
-// assertion below documents a CURRENT gap and the value it FLIPS to once the
-// unified TargetSelection component lands (the slice that flips it is named).
+// Verifies the unified multi-slot target selection end-to-end via the shared
+// TargetSelection component: the AI enumerates multi-target activated abilities
+// (Stapler); a stapled multi-target spell's ETB resolves every slot; a human-
+// controlled multi-target ETB prompts per choosable slot (forced/implicit slots
+// auto-fill); and a stapled distinct_targets ETB resolves onto two DIFFERENT
+// creatures.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -49,7 +47,7 @@ const VANILLA = Object.keys(CARDS).find(k =>
   hasType(CARDS[k], 'Creature') && !CARDS[k].triggers && !CARDS[k].abilities
   && !CARDS[k].static_buffs && isSpliceableBase(k));
 
-console.log('=== Slice 2: a multi-target ACTIVATED ability is enumerated via the component ===');
+console.log('=== a multi-target ACTIVATED ability is enumerated via the component ===');
 (() => {
   // getLegalActions used to skip abilities with target_slots.length > 1, so the
   // AI never offered the Stapler's two-target cross-product. Now it routes through
@@ -66,7 +64,7 @@ console.log('=== Slice 2: a multi-target ACTIVATED ability is enumerated via the
     'activateAbility actions=' + acts.length);
 })();
 
-console.log('\n=== Slice 3: a stapled MULTI-target spell ETB resolves ALL its slots ===');
+console.log('\n=== a stapled MULTI-target spell ETB resolves ALL its slots ===');
 (() => {
   // Twin Strike (two pump slots) stapled onto a creature → an ETB trigger with
   // target_slots:[creature, creature] and BARE pump effects. pushTriggerOnStack
@@ -110,7 +108,7 @@ console.log('\n=== Slice 3: a stapled MULTI-target spell ETB resolves ALL its sl
     sumTemp === 2, 'sum tempPower across board=' + sumTemp);
 })();
 
-console.log('\n=== Slice 4: a human-controlled multi-target ETB prompts for EACH slot ===');
+console.log('\n=== a human-controlled multi-target ETB prompts for EACH slot ===');
 (() => {
   // The human builds stapled cards (plays the Stapler on their own creature), so
   // they should CHOOSE the ETB's targets, not have them auto-picked. The trigger
@@ -154,7 +152,7 @@ console.log('\n=== Slice 4: a human-controlled multi-target ETB prompts for EACH
     a.tempPower === 1 && b.tempPower === 1, 'a.tempPower=' + a.tempPower + ' b.tempPower=' + b.tempPower);
 })();
 
-console.log('\n=== Slice 5: a stapled distinct_targets ETB resolves onto TWO DIFFERENT creatures ===');
+console.log('\n=== a stapled distinct_targets ETB resolves onto TWO DIFFERENT creatures ===');
 (() => {
   // Roots and Branches (distinct_targets, slots = [tap creature][pump creature])
   // stapled onto a creature → an ETB trigger that carries distinct_targets via
@@ -162,7 +160,7 @@ console.log('\n=== Slice 5: a stapled distinct_targets ETB resolves onto TWO DIF
   // the cross-slot rule and choose a DIFFERENT creature per slot. With distinctness
   // ignored, the auto-picker would tap+pump the SAME creature (valid[0] twice).
   // This is the headline cross-slot-on-TRIGGER behavior the cast-path tests can't
-  // reach (the existing Slice 3/4 use Twin Strike, deliberately permissive).
+  // reach (the existing Twin Strike cases above are deliberately permissive).
   const G = newGame();
   const staple = ENGINE.makeCard(VANILLA, undefined, 0, undefined, undefined, undefined, ['roots_and_branches']);
   staple.iid = iid++; staple.controller = 'opp'; staple.owner = 'opp';

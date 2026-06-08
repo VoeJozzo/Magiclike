@@ -3818,8 +3818,8 @@ function slotTargetsAreDistinct(targetsArr) {
 // (distinct_targets today). The legality ATOM (getValidTargets / targetsForFilter
 // / validTargetsBySlot — hexproof enforced once) and the resolution-time fetch
 // (makeSlotTargetGetter) are already shared; this is the selection layer that sat
-// triplicated across the spell-cast, activated-ability, and trigger callers (see
-// docs/plans/plan-unified-target-selection.md). `obj` is any target-bearing thing
+// triplicated across the spell-cast, activated-ability, and trigger callers.
+// `obj` is any target-bearing thing
 // — a card, an activated ability, or a trigger — all carrying the same shape:
 // top-level `target`(+`target_filter`), canonical `target_slots`, or legacy
 // per-effect `target_slot` on `effects`.
