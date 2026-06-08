@@ -66,6 +66,12 @@
   --card-mana-pip-size:       3;     /* 12px from 4px baseline */
   --card-mana-pip-popup-size: 1.5;   /* 6px-at-1x = 24px in 4x popup */
   --card-mana-text-size:      1;
+  /* Master card-size multiplier for the in-hand / on-board frame (the
+     --scale 1 = 80x112px baseline). Scales the whole frame — art, text,
+     pips — uniformly. User-controlled via settings ("Card size"). The
+     fixed-scale contexts (draft 2x, popup 4x, stack / opp-hand previews)
+     set --scale inline and so are unaffected by this knob. */
+  --card-size-scale:          1;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;display:flex;flex-direction:column;overflow:hidden;font-size:12px}
@@ -113,6 +119,8 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
 }
 @keyframes tpulse{from{box-shadow:0 0 4px #ff0}to{box-shadow:0 0 14px #ff0}}
 .bumped{color:#ffd700;font-weight:bold}
+/* Same gold as .bumped (empower): gold consistently signals "added/modified by a sticker". */
+.sticker-granted{color:#ffd700;font-weight:bold}
 
 /* Mana-symbol pips. The `<span class="mana mana-X">` markup is emitted
    by renderManaSymbols() (js/render.js) — used for cost displays AND
@@ -173,7 +181,7 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
 /* type / oracle / flavour / stickers / P+T).                                */
 
 .card-frame{
-  --scale: 1;
+  --scale: var(--card-size-scale, 1);
   position: relative;
   width: calc(80px * var(--scale));
   height: calc(112px * var(--scale));
@@ -309,6 +317,37 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
 .card-frame .frame-oracle{
   /* No special treatment -- inherits frame-text styling. */
 }
+/* Basic-land identity symbol: a large mana glyph centered in the otherwise-empty
+   text box, echoing paper basic lands. Emitted via oracleHtml (so it shows on the
+   frame AND the popup) only when a basic land has no other rules text; any added
+   text reverts to the normal layout. Reuses the cost-pip mana SVGs at large size.
+   Height matches the text box's content area (51px box - 3px padding x2 = 45px). */
+.card-frame .frame-bigmana{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: calc(4px * var(--scale));
+  height: calc(45px * var(--scale));
+}
+.card-frame .frame-bigmana .bigsym{
+  width: calc(28px * var(--scale));
+  height: calc(28px * var(--scale));
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  flex-shrink: 0;
+}
+.card-frame .frame-bigmana .bigsym.col-W{background-image:url('../../assets/mana/W.svg')}
+.card-frame .frame-bigmana .bigsym.col-U{background-image:url('../../assets/mana/U.svg')}
+.card-frame .frame-bigmana .bigsym.col-B{background-image:url('../../assets/mana/B.svg')}
+.card-frame .frame-bigmana .bigsym.col-R{background-image:url('../../assets/mana/R.svg')}
+.card-frame .frame-bigmana .bigsym.col-G{background-image:url('../../assets/mana/G.svg')}
+.card-frame .frame-bigmana .bigsym.col-C{
+  background:#aaa; color:#222; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  font-family: var(--card-font-pip);
+  font-size: calc(16px * var(--scale));
+  line-height:1;
+}
 .card-frame .frame-flavor{
   margin-top: calc(2px * var(--scale));
   padding-top: calc(2px * var(--scale));
@@ -390,7 +429,10 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
 }
 .card-frame .frame-counter{
   font-family:var(--card-font-damage);
-  font-size:calc(4px * var(--scale) * var(--card-text-scale));
+  /* Sized off the card's rules text (same base + --card-fsize-text multiplier as
+     .frame-text) so counter badges stay legible and track the text-size setting,
+     rather than being pinned to a tiny fixed 4px. */
+  font-size:calc(6px * var(--scale) * var(--card-fsize-text) * var(--card-text-scale));
   color:#8fe0e0;
   line-height:1;
   text-shadow:0 0 calc(2px * var(--scale)) #000;

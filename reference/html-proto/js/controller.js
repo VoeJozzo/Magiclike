@@ -117,6 +117,10 @@ function init() {
   if (settingsBtnPersistent) {
     settingsBtnPersistent.onclick = SETTINGS_PANEL.show;
   }
+  // Keyboard pass / confirm: Space and Enter both trigger the contextual
+  // primary action (Done Attacking/Blocking during a combat declaration,
+  // otherwise Pass). See onPrimaryActionKey for the gating.
+  document.addEventListener('keydown', onPrimaryActionKey);
   showStartScreen();
 }
 
@@ -126,6 +130,9 @@ function stickerAppliesLabel(s) {
     case 'stat_boost':     return 'creatures';
     case 'innate':        return 'lands';
     case 'grant_mana_ability':     return "lands that don't already produce {" + s.color + '} (deck must play ' + s.colorAdj + ')';
+    case 'add_type':      return s.color
+      ? "lands that don't already produce {" + s.color + '} (deck must play ' + s.colorAdj + ')'
+      : 'permanents (adds the ' + s.type + ' type)';
     case 'cost_mod':      return 'non-lands with at least one generic mana and total mana cost ≥ 2';
     case 'empower':       return 'cards with numeric effects (damage, damageAll, pump, counters, pumpAllYours, gain_life, draw, discard, affect_creature)';
     case 'subtype':       return 'creatures (rolls a random subtype from your deck)';
@@ -153,14 +160,15 @@ function appendStickerSectionToBrowser(inner) {
   heading.style.cssText = 'color:#e0b060;font-size:13px;letter-spacing:.1em;margin:0 0 8px;border-left:3px solid #e0b060;padding:2px 0 2px 8px;text-transform:uppercase';
   wrap.appendChild(heading);
 
-  // Card boosts = stat/cost/empower; Land mods = innate+landColor; Keyword grants = kw_*.
+  // Card boosts = stat/cost/empower; Land mods = innate+landColor (add_type);
+  // Keyword grants = kw_*.
   const groups = {
     'Card boosts':       [],
     'Land mods':         [],
     'Keyword grants':    [],
   };
   for (const s of allStickers) {
-    if (s.kind === 'innate' || s.kind === 'grant_mana_ability') groups['Land mods'].push(s);
+    if (s.kind === 'innate' || s.kind === 'grant_mana_ability' || s.kind === 'add_type') groups['Land mods'].push(s);
     else if (s.kind === 'keyword')                     groups['Keyword grants'].push(s);
     else                                               groups['Card boosts'].push(s);
   }
@@ -2117,6 +2125,55 @@ function doneDeclaring() {
 }
 function concede() { ENGINE.concede(); }
 
+// ----- Primary action (Space / Enter) -----
+// The keyboard is a peer of the on-screen buttons, not a layer on top of them:
+// these helpers read engine state and call the same controller actions, so the
+// keys feed the engine the same action descriptors the buttons do. render()
+// drives the Pass / Done buttons from the very same predicates, so the two
+// input paths agree by construction rather than by one scraping the other.
+
+// True when the human owes a combat declaration — attackers on their own turn,
+// blockers on the opponent's. Pure function of engine state.
+function humanOwesDeclaration() {
+  const G = ENGINE.state();
+  if (!G) return false;
+  return (G.phase === 'COMBAT_ATTACK' && G.activePlayer === 'you' && !G.attackersDeclared)
+      || (G.phase === 'COMBAT_BLOCK'  && G.activePlayer === 'opp' && !G.blockersDeclared);
+}
+
+// Whether a plain priority pass is the human's to give right now. Mixes engine
+// state (whose turn, cleanup, forced prompts) with one UI-only fact the engine
+// can't see — pendingTarget, a half-built cast — so it lives in the controller.
+function canPass() {
+  const G = ENGINE.state();
+  if (!G) return false;
+  return !(G.gameOver || pendingTarget || G.cleanupDiscarding
+        || ENGINE.playerOwesDecision('you')
+        || ENGINE.expectedActor() !== 'you');
+}
+
+// The single "primary action" Space/Enter drive: confirm a pending combat
+// declaration if one is open (intent: "I'm done declaring," not "skip"),
+// otherwise pass priority. Both branches go through the existing button
+// handlers — same path to the engine, no DOM round-trip.
+function primaryAction() {
+  if (humanOwesDeclaration()) { doneDeclaring(); return; }
+  if (canPass()) passAction();
+}
+
+function onPrimaryActionKey(e) {
+  if (e.key !== 'Enter' && e.key !== ' ' && e.code !== 'Space') return;
+  // Let the browser have keys aimed at a focused control: typing in the card
+  // search / settings fields, or re-activating an already-focused button
+  // (whose native handler would otherwise double-fire with primaryAction).
+  const t = e.target;
+  if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA'
+            || t.tagName === 'BUTTON' || t.isContentEditable)) return;
+  if (Modal._stack.length) return;   // settings / popup / reward / draft gate
+  e.preventDefault();                // stop Space from scrolling the page
+  primaryAction();
+}
+
 // =========================================================================
 // Long-press → card popup. Implemented here so all card-render sites can
 // share the same gesture wiring.
@@ -3271,6 +3328,7 @@ return {
   closeCardPopup, attachLongPress,
   openZone, closeZone,
   cancelTarget, endTurn, passAction, doneDeclaring, concede, searchPick, triggerBuildPick, numberChoice, symmetricizeChoice, edictChoice, optionalCost, toggleLog,
+  canPass, humanOwesDeclaration,
   pickModalMode, cancelModalChoice,
   pendingModalChoice: () => pendingModalChoice,
   toggleStats, statsExport, statsClear,

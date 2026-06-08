@@ -162,22 +162,20 @@ function render() {
   renderBf('youBf', G.you.battlefield, 'you');
   renderBf('oppBf', G.opp.battlefield, 'opp');
 
-  const showDone = (G.activePlayer === 'you' && G.phase === 'COMBAT_ATTACK' && !G.attackersDeclared)
-                || (G.activePlayer === 'opp' && G.phase === 'COMBAT_BLOCK' && !G.blockersDeclared);
+  // Shared with the Space/Enter keyboard path — see CONTROLLER.humanOwesDeclaration.
+  const showDone = CONTROLLER.humanOwesDeclaration();
   const btnDone = document.getElementById('btnDone');
   btnDone.style.display = showDone ? 'block' : 'none';
   btnDone.textContent = G.phase === 'COMBAT_ATTACK' ? 'Done Attacking' : 'Done Blocking';
 
   const expectedActor = ENGINE.expectedActor();
   const inReaction = !!(G.priority && G.stack.length > 0);
-  const humanForcedPrompt = playerForcedPrompt(G, 'you');
   const forcedPromptOpen = anyForcedPrompt(G);
 
   const passBtn = document.getElementById('btnPass');
   passBtn.textContent = passLabel(G, expectedActor);
-  passBtn.disabled = G.gameOver || !!pt || G.cleanupDiscarding
-                  || humanForcedPrompt
-                  || expectedActor !== 'you';
+  // Same predicate the Space/Enter primary action consults (CONTROLLER.canPass).
+  passBtn.disabled = !CONTROLLER.canPass();
 
   document.getElementById('btnEnd').disabled =
     G.gameOver || !!pt || G.activePlayer !== 'you' || G.stack.length > 0
@@ -744,7 +742,9 @@ function openGraveyardTargetPicker(validTargets, prompt) {
 function setText(id, v) { document.getElementById(id).textContent = v; }
 // escapeHtml + formatTriggerText live in card-text.js (loads before this file).
 
-// {text, highlight}[] → HTML, with .bumped spans for empower-emphasized values.
+// {text, highlight, sticker}[] → HTML. .bumped spans color empower-emphasized
+// values; .sticker-granted spans color text granted by a sticker (keywords,
+// scarified triggers). A segment can carry both flags.
 function segmentsToHtml(segs) {
   if (!Array.isArray(segs)) return '';
   return segs.map(s => {
@@ -754,7 +754,9 @@ function segmentsToHtml(segs) {
     // so the order is correct.
     const safe = escapeHtml(s.text || '');
     const withPips = renderManaSymbols(safe);
-    return s.highlight ? `<span class="bumped">${withPips}</span>` : withPips;
+    const cls = (s.highlight ? 'bumped ' : '') + (s.sticker ? 'sticker-granted' : '');
+    const trimmed = cls.trim();
+    return trimmed ? `<span class="${trimmed}">${withPips}</span>` : withPips;
   }).join('');
 }
 
@@ -848,6 +850,40 @@ function renderOppHand(hand) {
   }
 }
 
+// True if `who` has a legal, non-redundant activated ability on this permanent
+// — the gate for the green ".activatable" glow. Applies to ANY non-land
+// permanent the player controls, not just creatures: an artifact with a granted
+// ability (e.g. an Artifice Triumphant target, or a mana rock like Alloy Myr)
+// must glow too. Lands advertise their tap-for-mana via the dimmer
+// .land-tappable glow instead, so they're excluded here.
+//
+// A reanimate-style add_type ability is skipped once the card already has every
+// type it would grant: the Artifice'd artifact glows while it's a bare artifact
+// (activating re-animates it) and STOPS glowing once it's already a creature
+// this turn (re-activating is a no-op). That inversion was the bug — the old
+// gate keyed on hasType(card,'Creature'), so the glow appeared only AFTER
+// activation (when it does nothing) and never before (when it matters).
+function activationGlowAvailable(card, who) {
+  if (who !== 'you') return false;
+  if (!isPermanent(card) || hasType(card, 'Land')) return false;
+  if (!card.abilities || !card.abilities.length) return false;
+  if (card.tapped || card.sick) return false;
+  return card.abilities.some((ab, i) => {
+    if (!ab.effects || !ab.effects.length) return false;
+    // No-op reanimate: every effect is an add_type whose types the card already
+    // has → activating changes nothing, so don't advertise it.
+    if (ab.effects.every(e => e.kind === 'add_type'
+        && (e.types || []).every(t => hasType(card, t)))) return false;
+    if (ab.effects[0].kind === 'add_mana') return true;
+    const targetedEff = ab.effects.find(ENGINE.effectNeedsTarget);
+    const probe = targetedEff
+      ? {type:'activateAbility', cardIid: card.iid, abilityIdx: i,
+         targets:[(ENGINE.getValidTargets(targetedEff, 'you')[0] || {kind:'player', who:'you', label:'You'})]}
+      : {type:'activateAbility', cardIid: card.iid, abilityIdx: i};
+    return ENGINE.isLegalAction('you', probe);
+  });
+}
+
 function renderBf(id, bf, who) {
   const el = document.getElementById(id);
   el.innerHTML = '';
@@ -929,18 +965,7 @@ function renderBf(id, bf, who) {
         && who === 'you' && ENGINE.canCreatureBlock(card)) {
       div.classList.add('could-blk');
     }
-    if (who === 'you' && hasType(card, 'Creature') && card.abilities && !card.tapped && !card.sick) {
-      const hasAvail = card.abilities.some((ab, i) => {
-        if (ab.effects[0].kind === 'add_mana') return true;
-        const targetedEff = ab.effects.find(ENGINE.effectNeedsTarget);
-        const probe = targetedEff
-          ? {type:'activateAbility', cardIid: card.iid, abilityIdx: i,
-             targets:[(ENGINE.getValidTargets(targetedEff, 'you')[0] || {kind:'player', who:'you', label:'You'})]}
-          : {type:'activateAbility', cardIid: card.iid, abilityIdx: i};
-        return ENGINE.isLegalAction('you', probe);
-      });
-      if (hasAvail) div.classList.add('activatable');
-    }
+    if (activationGlowAvailable(card, who)) div.classList.add('activatable');
     div.onclick = () => CONTROLLER.clickBattlefield(card.iid);
     el.appendChild(div);
   }
@@ -1112,15 +1137,24 @@ function isValidTargetCreature(eff, card) {
   return ENGINE.matchFilter(card, restrict, card.controller, 'you');
 }
 
+// Sticker kinds whose effect is ALREADY communicated elsewhere on the frame, so
+// a badge would be redundant: keyword/trigger → colored in the oracle text (see
+// segmentsToHtml's .sticker-granted); subtype → the type line; innate → "Innate."
+// in the oracle text; stat_boost → the P/T box; cost_mod → the cost pips. Kept
+// (not listed): empower, grant_mana_ability, remove_keyword — those carry info no
+// other frame element surfaces. (subtype + add_type both show in the type line.)
+const FRAME_REDUNDANT_STICKER_KINDS = new Set(
+  ['keyword', 'trigger', 'subtype', 'add_type', 'innate', 'stat_boost', 'cost_mod']);
+
 // Render sticker badges. `big` = larger styling for the reward modal.
 // empowerRolls/tplId/stapledTpls let individual Empower badges be labeled
-// with the rolled field. subtypeRolls lets subtype badges show rolled type.
-function stickerBadgesHtml(stickers, big, empowerRolls, tplId, stapledTpls, subtypeRolls) {
+// with the rolled field. (Suppressed kinds — keyword/subtype/etc. — are shown
+// elsewhere on the frame; see FRAME_REDUNDANT_STICKER_KINDS.)
+function stickerBadgesHtml(stickers, big, empowerRolls, tplId, stapledTpls) {
   if (!stickers || !stickers.length) return '';
   const parts = [];
   const counts = new Map();
   let empowerIdx = 0;
-  let subtypeIdx = 0;
   // For empower-roll labeling, use the synthesized template if the slot is
   // stapled. Without this, a roll that targets the staple half's effect (e.g.
   // location='triggers' on an ETB-Bolt) would have its field looked up against
@@ -1134,6 +1168,10 @@ function stickerBadgesHtml(stickers, big, empowerRolls, tplId, stapledTpls, subt
   for (const sId of stickers) {
     const s = STICKERS[sId];
     if (!s) continue;
+    // Skip badges whose info the frame already shows (oracle text / type line /
+    // P-T / cost). Only empower consumes a parallel-rolls cursor among the kept
+    // kinds, so skipping these doesn't desync anything.
+    if (FRAME_REDUNDANT_STICKER_KINDS.has(s.kind)) continue;
     if (s.kind === 'empower') {
       const cls = 'skw';
       const roll = empowerRolls ? empowerRolls[empowerIdx] : null;
@@ -1152,43 +1190,23 @@ function stickerBadgesHtml(stickers, big, empowerRolls, tplId, stapledTpls, subt
       parts.push(`<span class="stk-badge ${cls}" title="${s.text}">${label}</span>`);
       continue;
     }
-    if (s.kind === 'subtype') {
-      // Each subtype sticker carries an individual rolled subtype on the
-      // parallel subtypeRolls array. Unlike statBoost (which counts up),
-      // subtype rolls can each be a different value, so we render one
-      // badge per roll.
-      const rolled = subtypeRolls ? subtypeRolls[subtypeIdx] : null;
-      subtypeIdx++;
-      const label = rolled || 'Subtype';
-      parts.push(`<span class="stk-badge skw" title="${s.text}">${label}</span>`);
-      continue;
-    }
     counts.set(sId, (counts.get(sId) || 0) + 1);
   }
+  // Only the KEPT kinds reach here (the rest were skipped above): today that's
+  // grant_mana_ability (a "+{R}" pip) and remove_keyword / other inline kinds
+  // (rendered by name). All use the generic 'skw' badge style.
   for (const [sId, n] of counts) {
     const s = STICKERS[sId];
     if (!s) continue;
-    const cls = s.kind === 'stat_boost' ? 'stat'
-              : s.kind === 'innate'    ? 'innate'
-              : 'skw';
-    let label;
-    if (s.kind === 'stat_boost') label = '+1/+1';
-    else if (s.kind === 'innate') label = 'Innate';
-    // landColor badge label is "+{W}"-style — route the brace token
-    // through renderManaSymbols so it shows the color pip / future PNG
-    // instead of literal {W} text. The label gets injected into
-    // innerHTML below, so an HTML span is fine here.
-    else if (s.kind === 'grant_mana_ability') label = '+' + renderManaSymbols('{' + s.color + '}');
-    else if (s.kind === 'cost_mod') label = ((s.amount || 0) < 0 ? (s.amount || 0) : '+' + (s.amount || 0)) + ' cost';
-    else if (s.kind === 'trigger') label = s.name || 'Trigger';
-    else if (s.kind === 'keyword') label = s.keyword;
-    else label = s.name || s.kind;   // defensive — never render 'undefined'
+    // landColor-style label routes the brace token through renderManaSymbols so
+    // it shows the color pip instead of literal {W} text (injected as innerHTML).
+    let label = (s.kind === 'grant_mana_ability')
+      ? '+' + renderManaSymbols('{' + s.color + '}')
+      : (s.name || s.kind);   // remove_keyword ("Loses Defender"), set_color, …
     if (n > 1) label += ` ×${n}`;
-    const html = `<span class="stk-badge ${cls}" title="${s.text}">${label}</span>`;
-    // Innate is a status marker — surface first so it's scannable.
-    if (s.kind === 'innate') parts.unshift(html);
-    else                     parts.push(html);
+    parts.push(`<span class="stk-badge skw" title="${s.text}">${label}</span>`);
   }
+  if (parts.length === 0) return '';   // all stickers were redundant — no empty row
   return `<div class="stickers-row${big ? '-big' : ''}">${parts.join('')}</div>`;
 }
 
@@ -1401,13 +1419,31 @@ function cardToViewModel(card, opts) {
     oracleHtml = segmentsToHtml(segs);
   }
 
+  // Paper-basic look: a basic Land with NO other rules text shows a large mana
+  // symbol centered in the otherwise-empty text box, read from what it actually
+  // taps for (landProducibleColors, not the `mana` label). The moment it gains
+  // text — a land-color sticker turns the fixed tap-ability into a choose-form
+  // that renders ("add {U} or {B}"), an `innate` sticker adds "Innate." —
+  // oracleHtml is non-empty and the normal text layout takes over. Skipped for
+  // synthetic cards (overrideOracleText), which aren't engine lands.
+  if (overrideOracleText === undefined && !oracleHtml
+      && hasType(card, 'Land') && hasType(card, 'Basic')) {
+    const colors = ENGINE.landProducibleColors(card);
+    if (colors.length) {
+      oracleHtml = '<div class="frame-bigmana">'
+        + colors.map(c => '<span class="bigsym col-' + c + '">'
+            + (c === 'C' ? 'C' : '') + '</span>').join('')
+        + '</div>';
+    }
+  }
+
   const artVal = effectiveArt(card);
   const artInner = isArtUrl(artVal)
     ? '<img src="' + artVal + '" alt="">'
     : escapeHtml(artVal || '');
 
   const stickersInner = (card.stickers && card.stickers.length)
-    ? stickerBadgesHtml(card.stickers, false, card.empowerRolls, card.tplId, card.stapledFrom && card.stapledFrom.stapledTpls, card.subtypeRolls)
+    ? stickerBadgesHtml(card.stickers, false, card.empowerRolls, card.tplId, card.stapledFrom && card.stapledFrom.stapledTpls)
     : '';
 
   return {
