@@ -3255,82 +3255,17 @@ function triggerHasAnyValidTarget(trig, controller) {
 
 // Does a player-controlled trigger need the player to CHOOSE its target? Returns
 // { valid, promptEff } when there's a real choice (>1 legal target), else null.
-// Covers BOTH the top-level target() step (§3.5 — migrated triggers carry the
-// target on `trig.target` with bare effects) and the legacy per-effect target.
-// Without the top-level branch, every migrated targeted trigger silently
-// auto-picked instead of prompting (the "targets auto-selected on cast" bug).
-function triggerPlayerTargetPrompt(trig, controller) {
-  if (controller !== 'you') return null;
-  // The target filter is the top-level step (§3.5) or the first per-effect
-  // target — primaryLegalTargets resolves either shape. Implicit-target filters
-  // (self/player/opp/spell) auto-pick: no choice to offer.
-  const filt = trig.target || ((trig.effects || []).find(effectNeedsTarget) || {}).target;
-  if (!filt || filt === 'self' || filt === 'player' || filt === 'opp' || filt === 'spell') return null;
-  const valid = primaryLegalTargets(trig, controller);
-  if (valid.length <= 1) return null;   // 0 → fizzle/auto; 1 → no choice to make
-  // The effect used to value the choice (for the AI driver's pickBestTriggerTarget).
-  const promptEff = (trig.effects || []).find(e => e.kind === 'become_copy_of')
-    || (trig.effects || []).find(e => e.kind === 'grant_cast_permission')
-    || (trig.effects || []).find(e => e.kind !== 'chooses') || (trig.effects || [])[0] || {};
-  return { valid, promptEff };
-}
+// ── Trigger target selection ───────────────────────────────────────────────
+// Targets are chosen as a trigger goes on the stack (MtG rules). All paths route
+// through TargetSelection, so they handle every shape including multi-slot
+// target_slots: pushTriggerOnStack AUTO-picks (AI / opponent, and any human
+// trigger with no genuine choice); the human gets a step-through PROMPT for the
+// slots that are a real choice — forced (one legal target) and implicit
+// (opp/player/self/spell) slots auto-fill.
 
-// Drain queued triggers to stack. Active player's first, then opp. Pauses on
-// pendingTriggerTarget prompt; remaining triggers drain post-prompt.
-function drainTriggers() {
-  if (G.gameOver) return false;
-  if (G.pendingTriggerTarget) return false;
-  if (G.pendingTriggers.length === 0) return false;
-  const active = G.activePlayer;
-  const ordered = [
-    ...G.pendingTriggers.filter(p => p.controller === active),
-    ...G.pendingTriggers.filter(p => p.controller !== active),
-  ];
-  G.pendingTriggers = [];
-  for (let i = 0; i < ordered.length; i++) {
-    const p = ordered[i];
-    const prompt = (p.controller === 'you')
-      ? triggerPlayerTargetPrompt(p.trig, p.controller)
-      : null;
-    if (prompt) {
-      // Stop draining. Set the prompt; remaining triggers wait in queue.
-      G.pendingTriggers = ordered.slice(i);   // includes the current one (its slot)
-      G.pendingTriggerTarget = {
-        controller: p.controller,
-        sourceIid: p.sourceIid,
-        sourceName: p.sourceName,
-        trig: p.trig,
-        promptEff: prompt.promptEff,
-        valid: prompt.valid,
-      };
-      // Drop the in-prompt trigger from pendingTriggers — it's now in
-      // pendingTriggerTarget. After resolution we re-push from there.
-      G.pendingTriggers.shift();
-      log(`${p.sourceName} triggered — choose a target.`, 'sp');
-      return true;
-    }
-    pushTriggerOnStack(p);
-  }
-  return true;
-}
-
-function pushTriggerOnStack(p) {
-  // Triggers go on the stack like spells; targets are chosen now (MtG rules).
-  // TargetSelection.tsAutoPick handles EVERY target shape — top-level target(),
-  // per-effect, and multi-slot target_slots — picking one legal target per slot.
-  // The old single-pick logic had no target_slots branch, so stapled multi-target
-  // ETBs fizzled entirely; this resolves all their slots. Human target CHOICE is
-  // claimed upstream by drainTriggers/triggerPlayerTargetPrompt; this is the
-  // auto-pick path (AI/opponent triggers + any the prompt doesn't claim).
-  let targets = [];
-  if (objectNeedsTarget(p.trig)) {
-    const picked = tsAutoPick(p.trig, p.controller);
-    if (!picked) {
-      log(`${p.sourceName} trigger fizzles — no legal target.`, 'sp');
-      return;
-    }
-    targets = picked;
-  }
+// Shared stack-push for a resolved trigger entry. (Also resets the priority round
+// so the opponent can respond, like a spell going on the stack.)
+function pushTriggerEntry(p, targets) {
   G.stack.push({
     kind: 'trigger',
     trig: p.trig,
@@ -3345,6 +3280,95 @@ function pushTriggerOnStack(p) {
   if (!G.priority) G.priority = { passes: new Set() };
   G.priority.passes.clear();
   G.priorityHolder = opp(p.controller);
+}
+
+// Auto-pick path: one legal target per slot via tsAutoPick (handles top-level
+// target(), per-effect, AND multi-slot target_slots — the old single-pick logic
+// had no slot branch, so stapled multi-target ETBs fizzled entirely).
+function pushTriggerOnStack(p) {
+  let targets = [];
+  if (objectNeedsTarget(p.trig)) {
+    const picked = tsAutoPick(p.trig, p.controller);
+    if (!picked) {
+      log(`${p.sourceName} trigger fizzles — no legal target.`, 'sp');
+      return;
+    }
+    targets = picked;
+  }
+  pushTriggerEntry(p, targets);
+}
+
+// Step a human-controlled trigger's pending prompt: auto-fill forced (single
+// legal target) and implicit (opp/player/self/spell) slots, stopping at the
+// first slot that's a genuine choice. Returns 'prompt' (pause for the human),
+// 'done' (every slot assigned → finalize), or 'fizzle' (a slot lost its target).
+function advanceTriggerTargetPrompt(pt) {
+  const bySlot = tsLegalBySlot(pt.trig, pt.controller);
+  for (const slot of pt.slotKeys) {
+    if (pt.pickedSlots[slot] != null) continue;
+    let valid = bySlot.get(slot) || [];
+    if (pt.trig.distinct_targets) valid = valid.filter(t => !pt.pickedSlots.some(pk => pk && sameTarget(pk, t)));
+    if (!valid.length) return 'fizzle';
+    if (tsIsImplicitTargetType(tsSlotTargetType(pt.trig, slot)) || valid.length === 1) {
+      pt.pickedSlots[slot] = valid.length === 1 ? valid[0]
+        : pickBestTriggerTarget(tsSlotValueEff(pt.trig, slot), valid, pt.controller);
+      continue;
+    }
+    pt.currentSlot = slot;
+    pt.valid = valid;
+    pt.promptEff = tsSlotValueEff(pt.trig, slot);
+    return 'prompt';
+  }
+  return 'done';
+}
+
+// Build the human step-through prompt for a queued trigger, or null when there's
+// no genuine choice (every slot auto-fills → pushTriggerOnStack handles it).
+function triggerPlayerTargetPrompt(p) {
+  if (p.controller !== 'you' || !objectNeedsTarget(p.trig)) return null;
+  const pt = {
+    controller: p.controller, sourceIid: p.sourceIid, sourceName: p.sourceName,
+    trig: p.trig, event: p.event || null,
+    slotKeys: tsSlotKeys(p.trig, p.controller),
+    pickedSlots: [], currentSlot: -1, valid: null, promptEff: null,
+  };
+  return advanceTriggerTargetPrompt(pt) === 'prompt' ? pt : null;
+}
+
+// Finalize a fully-picked human prompt: assemble the slot-indexed targets and
+// push. (Auto-pick uses pushTriggerOnStack; this preserves the human's choices.)
+function finalizeTriggerTarget(pt) {
+  const targets = [];
+  for (const slot of pt.slotKeys) targets[slot] = pt.pickedSlots[slot];
+  for (let i = 0; i < targets.length; i++) if (!targets[i]) targets[i] = targets[pt.slotKeys[0]];
+  pushTriggerEntry(pt, targets);
+}
+
+// Drain queued triggers to the stack. Active player's first, then opp. Pauses on
+// a human prompt; remaining triggers drain post-prompt.
+function drainTriggers() {
+  if (G.gameOver) return false;
+  if (G.pendingTriggerTarget) return false;
+  if (G.pendingTriggers.length === 0) return false;
+  const active = G.activePlayer;
+  const ordered = [
+    ...G.pendingTriggers.filter(p => p.controller === active),
+    ...G.pendingTriggers.filter(p => p.controller !== active),
+  ];
+  G.pendingTriggers = [];
+  for (let i = 0; i < ordered.length; i++) {
+    const p = ordered[i];
+    const pt = triggerPlayerTargetPrompt(p);
+    if (pt) {
+      // A human choice remains — pause. The remaining triggers wait in queue.
+      G.pendingTriggers = ordered.slice(i + 1);
+      G.pendingTriggerTarget = pt;
+      log(`${p.sourceName} triggered — choose a target.`, 'sp');
+      return true;
+    }
+    pushTriggerOnStack(p);
+  }
+  return true;
 }
 
 // Auto-pick best trigger target. v1 used for both sides.
@@ -3859,23 +3883,38 @@ function tsIsLegalSet(obj, who, targets) {
   return true;
 }
 
+// The effect that VALUES a slot's pick (for the AI / auto-picker). Multi-slot:
+// the slot's own effect. A top-level target() trigger has bare effects (not
+// individually targeted), so fall back to the trigger's intent-defining effect
+// (become_copy_of → grant_cast_permission → first non-chooses).
+function tsSlotValueEff(obj, slot) {
+  const allEffs = obj.effects || [];
+  return allEffs.filter(effectNeedsTarget).find(e => (e.target_slot || 0) === slot)
+    || allEffs.find(e => e.kind === 'become_copy_of')
+    || allEffs.find(e => e.kind === 'grant_cast_permission')
+    || allEffs.find(e => e.kind !== 'chooses')
+    || allEffs[0] || {};
+}
+
+// The target filter TYPE for a slot (creature / opp / player / spell / …).
+function tsSlotTargetType(obj, slot) {
+  if (obj.target && !(Array.isArray(obj.target_slots) && obj.target_slots.length > 0)) return obj.target;
+  if (Array.isArray(obj.target_slots) && obj.target_slots[slot]) return obj.target_slots[slot].target;
+  const eff = (obj.effects || []).filter(effectNeedsTarget).find(e => (e.target_slot || 0) === slot);
+  return eff ? eff.target : null;
+}
+
+// Implicit target types resolve automatically — no human choice to offer: the
+// lone opponent, a free player choice, the source itself, a stack spell.
+function tsIsImplicitTargetType(type) {
+  return !type || type === 'self' || type === 'player' || type === 'opp' || type === 'spell';
+}
+
 // AI / auto pick: a full slot-indexed target set, one legal target per slot,
 // valued by pickBestTriggerTarget and honoring distinct. Generalizes the
 // single-target trigger auto-pick to N slots. Returns null if any slot has no
 // legal target (→ the caller fizzles the trigger).
 function tsAutoPick(obj, who) {
-  const allEffs = obj.effects || [];
-  const targetedEffs = allEffs.filter(effectNeedsTarget);
-  // The effect that VALUES each slot's pick. Multi-slot: the slot's own effect.
-  // Top-level target() triggers have bare effects (not individually targeted), so
-  // fall back to pushTriggerOnStack's preference over ALL effects (become_copy_of
-  // → grant_cast_permission → first non-chooses).
-  const valueEffFor = slot =>
-    targetedEffs.find(e => (e.target_slot || 0) === slot)
-    || allEffs.find(e => e.kind === 'become_copy_of')
-    || allEffs.find(e => e.kind === 'grant_cast_permission')
-    || allEffs.find(e => e.kind !== 'chooses')
-    || allEffs[0] || {};
   const bySlot = tsLegalBySlot(obj, who);
   const slotKeys = [...bySlot.keys()].sort((a, b) => a - b);
   const picks = [];
@@ -3883,7 +3922,7 @@ function tsAutoPick(obj, who) {
     let valid = bySlot.get(slot) || [];
     if (obj.distinct_targets) valid = valid.filter(t => !picks.some(p => p && sameTarget(p, t)));
     if (!valid.length) return null;
-    picks[slot] = pickBestTriggerTarget(valueEffFor(slot), valid, who);
+    picks[slot] = pickBestTriggerTarget(tsSlotValueEff(obj, slot), valid, who);
   }
   for (let i = 0; i < picks.length; i++) if (!picks[i]) picks[i] = picks[slotKeys[0]];
   return picks;
@@ -5378,29 +5417,20 @@ function doSearchPick(who, cardIid) {
   tryBuildOnDraw(card, who);
 }
 function doTriggerTargetPick(who, target) {
-  // Player submits a target for the pending trigger prompt. Push the
-  // trigger onto the stack with the chosen target, then resume draining
-  // any remaining queued triggers.
+  // Player submits a target for the CURRENT slot of the pending trigger prompt.
+  // Record it, then advance: if more slots need a choice, stay paused for the
+  // next; once every slot is assigned, push the trigger and resume draining.
   if (!G.pendingTriggerTarget || G.pendingTriggerTarget.controller !== who) return;
-  const p = G.pendingTriggerTarget;
-  // Sanity-validate the target is in the valid list.
-  if (!p.valid.some(v => sameTarget(v, target))) return;
+  const pt = G.pendingTriggerTarget;
+  // Sanity-validate the target is in the current slot's valid list.
+  if (!pt.valid.some(v => sameTarget(v, target))) return;
+  pt.pickedSlots[pt.currentSlot] = target;
+  const r = advanceTriggerTargetPrompt(pt);
+  if (r === 'prompt') return;   // more slots to choose — stay paused; UI re-renders
   G.pendingTriggerTarget = null;
-  // Push trigger onto stack with the chosen target.
-  G.stack.push({
-    kind: 'trigger',
-    trig: p.trig,
-    sourceIid: p.sourceIid,
-    sourceName: p.sourceName,
-    controller: p.controller,
-    targets: [target],
-  });
-  log(`${p.sourceName} triggers: ${triggerLogText(p.trig)}.`, 'sp');
-  if (!G.priority) G.priority = { passes: new Set() };
-  G.priority.passes.clear();
-  G.priorityHolder = opp(p.controller);
-  // Resume draining the remaining queued triggers (if any).
-  drainTriggers();
+  if (r === 'done') finalizeTriggerTarget(pt);
+  // r === 'fizzle' → a later slot lost its only legal target; drop the trigger.
+  drainTriggers();   // resume the remaining queued triggers
 }
 // Resume a deferred edict (GAP 2) after the human picks which permanent to
 // lose. The chooses() step paused resolution and stashed the chosen-dependent

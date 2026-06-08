@@ -110,5 +110,49 @@ console.log('\n=== Slice 3: a stapled MULTI-target spell ETB resolves ALL its sl
     sumTemp === 2, 'sum tempPower across board=' + sumTemp);
 })();
 
+console.log('\n=== Slice 4: a human-controlled multi-target ETB prompts for EACH slot ===');
+(() => {
+  // The human builds stapled cards (plays the Stapler on their own creature), so
+  // they should CHOOSE the ETB's targets, not have them auto-picked. The trigger
+  // prompt now steps through every choosable slot. Distinguishing assertion: the
+  // human picks two DIFFERENT creatures (a, b) — auto-pick would instead stack
+  // both pumps on the single best creature (a.tempPower=2, b=0).
+  RUN.clearSave && RUN.clearSave();
+  RUN.start({ cards: Array(12).fill('plains'), colors: ['W'] }, null);
+  RUN.startNextGame();
+  const G = ENGINE.state();
+  G.activePlayer = 'you'; G.priorityHolder = 'you'; G.phase = 'MAIN1';
+  G.stack = []; G.gameOver = false; G.priority = { passes: new Set() };
+  G.you.mana = { W: 9, U: 9, B: 9, R: 9, G: 9, C: 9 };
+  G.you.battlefield = []; G.opp.battlefield = [];
+  const staple = ENGINE.makeCard(VANILLA, undefined, 0, undefined, undefined, undefined, ['twin_strike']);
+  staple.iid = iid++; staple.controller = 'you'; staple.owner = 'you';
+  G.you.hand.push(staple);
+  const a = mk('savannah_lions', 'you'); const b = mk('benalish_hero', 'you');
+  a.sick = false; b.sick = false;
+  G.you.battlefield.push(a, b);
+
+  ENGINE.executeAction('you', { type: 'castSpell', cardIid: staple.iid });
+  const picks = [a, b]; let pickIdx = 0, promptedSlots = 0, guard = 0;
+  while (guard++ < 60) {
+    const onBf = G.you.battlefield.some(c => c.iid === staple.iid);
+    const settled = G.stack.length === 0 && !G.pendingTriggers.length
+      && !G.pendingTriggerTarget && !G.pendingOptionalCost;
+    if (onBf && settled) break;
+    if (G.pendingTriggerTarget && G.pendingTriggerTarget.controller === 'you') {
+      promptedSlots++;
+      const pick = picks[pickIdx++] || picks[0];
+      ENGINE.executeAction('you', { type: 'triggerTargetPick',
+        target: { kind: 'creature', iid: pick.iid, label: pick.name } });
+      continue;
+    }
+    const who = ENGINE.expectedActor(); if (!who) break;
+    ENGINE.executeAction(who, { type: 'pass' });
+  }
+  check('human is prompted for BOTH target slots', promptedSlots === 2, 'prompts=' + promptedSlots);
+  check('each human-chosen creature got exactly +1/+1 (choices honored, not auto-picked)',
+    a.tempPower === 1 && b.tempPower === 1, 'a.tempPower=' + a.tempPower + ' b.tempPower=' + b.tempPower);
+})();
+
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');
 process.exit(fail > 0 ? 1 : 0);
