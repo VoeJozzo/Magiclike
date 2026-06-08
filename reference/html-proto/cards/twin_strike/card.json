@@ -21,10 +21,10 @@
   "name": "Twin Strike",
   "target_slots": [
     {
-      "target": "creature"
+      "target": "your_creature"
     },
     {
-      "target": "creature"
+      "target": "your_creature"
     }
   ],
   "keywords": [

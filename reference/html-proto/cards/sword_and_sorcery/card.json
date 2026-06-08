@@ -22,10 +22,10 @@
   "name": "Sword and Sorcery",
   "target_slots": [
     {
-      "target": "creature"
+      "target": "your_creature"
     },
     {
-      "target": "creature"
+      "target": "opp_creature"
     }
   ],
   "keywords": [

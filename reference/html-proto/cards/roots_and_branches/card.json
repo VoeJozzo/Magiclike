@@ -21,10 +21,10 @@
   "name": "Roots and Branches",
   "target_slots": [
     {
-      "target": "creature"
+      "target": "opp_creature"
     },
     {
-      "target": "creature"
+      "target": "your_creature"
     }
   ],
   "keywords": [
