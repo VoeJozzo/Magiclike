@@ -867,10 +867,10 @@ function abilityCostPhrase(cost) {
       parts.push('one mana of each of this card\'s colors');
       return parts.join(', ');
     }
-    let s = '';
-    for (const [color, n] of Object.entries(cost.mana)) {
-      for (let i = 0; i < n; i++) s += '{' + color + '}';
-    }
+    // Generic mana renders as a single number ({2}), not repeated colorless pips
+    // ({C}{C}), matching the card-frame cost and manaCostBraces. C is generic in a
+    // cost; only colored pips repeat. (Deepseam Quarry: {C:2} -> "{2}", not "CC".)
+    const s = manaCostBraces(cost.mana);
     if (s) parts.push(s);
   }
   if (cost.sacrifice) {
@@ -1002,11 +1002,25 @@ function describeCardSegments(card, opts) {
     // objects, not array-of-arrays. The non-special branch below has
     // its own flatten loop; we mirror it.
     const sections = [];
-    if (!opts.skipKeywords && (hasType(card,'Creature') || hasType(tpl,'Creature'))) {
-      const intrinsic = new Set(tpl.keywords || []);
-      const granted = (card.keywords || []).filter(kw => !intrinsic.has(kw) && kw !== 'no_block');
-      if (granted.length > 0) {
-        const kw = keywordPreamble(granted);
+    if (!opts.skipKeywords) {
+      const isCreatureCard = hasType(card,'Creature') || hasType(tpl,'Creature');
+      let prepend;
+      if (isCreatureCard) {
+        // Authored creature text inlines its intrinsic keywords (City Guardian
+        // "First Strike.", Archdemon "Flying, Trample."), so prepending the full
+        // list would duplicate — surface only GRANTED keywords (Elystra/Endomorph/
+        // runtime grants), which the static text can't know about.
+        const intrinsic = new Set(tpl.keywords || []);
+        prepend = (card.keywords || []).filter(kw => !intrinsic.has(kw) && kw !== 'no_block');
+      } else {
+        // A non-creature spell's authored text describes its effect, never its
+        // casting-timing keyword, so Flash would otherwise vanish (Steal). Surface
+        // spell-legal keywords (flash) the same way the generated branch does — no
+        // duplication risk since custom spell text doesn't write "Flash" inline.
+        prepend = (card.keywords || tpl.keywords || []).filter(kw => SPELL_LEGAL_KEYWORDS.has(kw));
+      }
+      if (prepend.length > 0) {
+        const kw = keywordPreamble(prepend);
         if (kw) sections.push([plainSeg(kw + '.')]);
       }
     }
@@ -1069,10 +1083,13 @@ function describeCardSegments(card, opts) {
     const tplAbilities = Array.isArray(tplBaseline.abilities) ? tplBaseline.abilities : [];
     for (let i = 0; i < card.abilities.length; i++) {
       const ab = card.abilities[i];
-      // A basic land's fixed tap-for-mana ability is intrinsic (shown via the
-      // type line, not rules text) — suppress it so basics render empty. A
-      // choose-form mana land (City of Brass / duals) keeps its ability text.
-      if (hasType(card,'Land') && ab.cost && ab.cost.tap
+      // A BASIC land's fixed tap-for-mana ability is intrinsic and conveyed by the
+      // "Basic Land — Plains" type line, so suppress it (basics render empty). All
+      // other lands DO show their mana ability: a non-basic land's type line says
+      // nothing about what it taps for (Deepseam Quarry, Equatorial Engine), so the
+      // ability would otherwise be invisible. (Choose-form lands like City of Brass
+      // already fall through — they have no `amounts`.)
+      if (hasType(card,'Land') && hasType(card,'Basic') && ab.cost && ab.cost.tap
           && ab.effects && ab.effects[0] && ab.effects[0].kind === 'add_mana'
           && ab.effects[0].amounts) {
         continue;

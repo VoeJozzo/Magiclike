@@ -1418,6 +1418,24 @@ function cardToViewModel(card, opts) {
     oracleHtml = segmentsToHtml(segs);
   }
 
+  // Paper-basic look: a basic Land with NO other rules text shows a large mana
+  // symbol centered in the otherwise-empty text box, read from what it actually
+  // taps for (landProducibleColors, not the `mana` label). The moment it gains
+  // text — a land-color sticker turns the fixed tap-ability into a choose-form
+  // that renders ("add {U} or {B}"), an `innate` sticker adds "Innate." —
+  // oracleHtml is non-empty and the normal text layout takes over. Skipped for
+  // synthetic cards (overrideOracleText), which aren't engine lands.
+  if (overrideOracleText === undefined && !oracleHtml
+      && hasType(card, 'Land') && hasType(card, 'Basic')) {
+    const colors = ENGINE.landProducibleColors(card);
+    if (colors.length) {
+      oracleHtml = '<div class="frame-bigmana">'
+        + colors.map(c => '<span class="bigsym col-' + c + '">'
+            + (c === 'C' ? 'C' : '') + '</span>').join('')
+        + '</div>';
+    }
+  }
+
   const artVal = effectiveArt(card);
   const artInner = isArtUrl(artVal)
     ? '<img src="' + artVal + '" alt="">'
