@@ -3775,6 +3775,124 @@ function slotTargetsAreDistinct(targetsArr) {
   return true;
 }
 
+// ─── Multi-slot target SELECTION component ─────────────────────────────────
+// ONE place for "pick one legal target per slot, honoring cross-slot rules"
+// (distinct_targets today). The legality ATOM (getValidTargets / targetsForFilter
+// / validTargetsBySlot — hexproof enforced once) and the resolution-time fetch
+// (makeSlotTargetGetter) are already shared; this is the selection layer that sat
+// triplicated across the spell-cast, activated-ability, and trigger callers (see
+// docs/plans/plan-unified-target-selection.md). `obj` is any target-bearing thing
+// — a card, an activated ability, or a trigger — all carrying the same shape:
+// top-level `target`(+`target_filter`), canonical `target_slots`, or legacy
+// per-effect `target_slot` on `effects`.
+const TS_COMBO_CAP = 200;
+
+// Per-mode view of a card. Modal cards declare their targets via the chosen
+// mode's effects; `target_slots` / top-level `target` stay card-level. Non-modal
+// callers pass the card's own effects.
+function tsModeObj(card, effects) {
+  return {
+    target: card.target, target_filter: card.target_filter,
+    target_slots: card.target_slots, distinct_targets: card.distinct_targets,
+    effects,
+  };
+}
+
+// Map<slotIdx, legalTargets[]> across all three target shapes.
+function tsLegalBySlot(obj, who) {
+  if (obj.target && !(Array.isArray(obj.target_slots) && obj.target_slots.length > 0)) {
+    return new Map([[0, targetsForFilter(obj.target, who, obj.target_filter)]]);
+  }
+  const targetedEffs = (obj.effects || []).filter(effectNeedsTarget);
+  return validTargetsBySlot(obj, targetedEffs, who);
+}
+
+// Legal targets for ONE slot, excluding earlier picks when the object requires
+// distinct targets. The single home for a cross-slot constraint.
+function tsLegalForSlot(obj, who, slotIdx, picksSoFar) {
+  const all = tsLegalBySlot(obj, who).get(slotIdx) || [];
+  if (!obj.distinct_targets || !Array.isArray(picksSoFar) || !picksSoFar.length) return all;
+  return all.filter(t => !picksSoFar.some(p => p && sameTarget(p, t)));
+}
+
+// Sorted slot indices this object needs a target for.
+function tsSlotKeys(obj, who) {
+  return [...tsLegalBySlot(obj, who).keys()].sort((a, b) => a - b);
+}
+
+// Dense per-slotKey combo → a slot-INDEXED targets[] (sparse holes filled with
+// slot 0's pick, matching the legacy resolution indexing makeSlotTargetGetter uses).
+function tsComboToTargets(combo, slotKeys) {
+  const targets = [];
+  for (let i = 0; i < slotKeys.length; i++) targets[slotKeys[i]] = combo[i];
+  for (let i = 0; i < targets.length; i++) if (!targets[i]) targets[i] = combo[0];
+  return targets;
+}
+
+// Every legal full target set (each a slot-indexed targets[]). Replaces the
+// bespoke cross-product in getLegalActions; honors distinct + the combo cap.
+// Empty → a required slot has no legal target (uncastable) OR the object is
+// untargeted (callers gate on objectNeedsTarget to tell those apart).
+function tsEnumerate(obj, who) {
+  const bySlot = tsLegalBySlot(obj, who);
+  const slotKeys = [...bySlot.keys()].sort((a, b) => a - b);
+  if (!slotKeys.length) return [];
+  const validBySlot = slotKeys.map(s => bySlot.get(s));
+  if (validBySlot.some(arr => !arr.length)) return [];
+  let combos = [[]];
+  for (const validList of validBySlot) {
+    const next = [];
+    for (const partial of combos) {
+      for (const t of validList) {
+        if (obj.distinct_targets && partial.some(p => sameTarget(p, t))) continue;
+        next.push(partial.concat([t]));
+        if (next.length >= TS_COMBO_CAP) break;
+      }
+      if (next.length >= TS_COMBO_CAP) break;
+    }
+    combos = next;
+    if (combos.length >= TS_COMBO_CAP) break;
+  }
+  return combos.map(combo => tsComboToTargets(combo, slotKeys));
+}
+
+// Validate a fully chosen target set: every slot legal + cross-slot constraint.
+function tsIsLegalSet(obj, who, targets) {
+  const bySlot = tsLegalBySlot(obj, who);
+  const slotKeys = [...bySlot.keys()];
+  for (const slot of slotKeys) {
+    const tgt = targets && targets[slot];
+    if (!tgt) return false;
+    if (!(bySlot.get(slot) || []).some(v => sameTarget(v, tgt))) return false;
+  }
+  if (obj.distinct_targets && !slotTargetsAreDistinct(slotKeys.map(s => targets[s]))) return false;
+  return true;
+}
+
+// AI / auto pick: a full slot-indexed target set, one legal target per slot,
+// valued by pickBestTriggerTarget and honoring distinct. Generalizes the
+// single-target trigger auto-pick to N slots. Returns null if any slot has no
+// legal target (→ the caller fizzles the trigger).
+function tsAutoPick(obj, who) {
+  const effs = (obj.effects || []).filter(effectNeedsTarget);
+  // Mirror pushTriggerOnStack's valuation preference for the single-target case.
+  const valueEffFor = slot => effs.find(e => (e.target_slot || 0) === slot)
+    || effs.find(e => e.kind === 'become_copy_of')
+    || effs.find(e => e.kind === 'grant_cast_permission')
+    || effs.find(e => e.kind !== 'chooses') || effs[0] || {};
+  const bySlot = tsLegalBySlot(obj, who);
+  const slotKeys = [...bySlot.keys()].sort((a, b) => a - b);
+  const picks = [];
+  for (const slot of slotKeys) {
+    let valid = bySlot.get(slot) || [];
+    if (obj.distinct_targets) valid = valid.filter(t => !picks.some(p => p && sameTarget(p, t)));
+    if (!valid.length) return null;
+    picks[slot] = pickBestTriggerTarget(valueEffFor(slot), valid, who);
+  }
+  for (let i = 0; i < picks.length; i++) if (!picks[i]) picks[i] = picks[slotKeys[0]];
+  return picks;
+}
+
 // ─── Canonical "does this need a target / what are its legal targets" ─────
 // ONE source of truth for an object's (card / activated ability / trigger)
 // targeting shape, so the question can't drift across consumers. The §3.5
@@ -5596,57 +5714,14 @@ function isLegalAction(who, action) {
       } else {
         if (!isMainPhaseWindow(who)) return false;
       }
-      // Validate targets if needed. By default, multi-effect spells share
-      // a single target slot (targets[0]) — preserves the legacy behavior
-      // for Swords, Strength of the Pack, Predator's Speed, etc. Effects
-      // can opt into a distinct slot via `target_slot: N` (0-indexed); a
-      // multi-target spell like Branching Bolt has two effects, the second
-      // marked `target_slot: 1`, so it pulls action.targets[1] instead of
-      // sharing targets[0]. The required targets-array length is one more
-      // than the highest target_slot referenced.
+      // Validate the chosen targets through TargetSelection: every declared slot
+      // must hold a legal target and any cross-slot rule (distinct) must hold. The
+      // top-level target() step is the cast-time hexproof checkpoint — folded in
+      // (tsLegalBySlot resolves it to slot 0). Untargeted spells pass trivially.
       const modes = getModes(card);
       const modeIdx = action.modeIdx || 0;
       if (modeIdx < 0 || modeIdx >= modes.length) return false;
-      const activeEffects = modes[modeIdx];
-      const targetedEffs = (activeEffects || []).filter(effectNeedsTarget);
-      const slotSpecsLA = Array.isArray(card.target_slots) ? card.target_slots : null;
-      if (slotSpecsLA) {
-        // Card-level target_slots authoritative: every declared slot needs a
-        // legal target, whether or not an effect carries its target_slot (fight
-        // references its slots via operands, not a scalar target_slot).
-        const bySlot = validTargetsBySlot(card, targetedEffs, who);
-        for (let slot = 0; slot < slotSpecsLA.length; slot++) {
-          const tgt = action.targets && action.targets[slot];
-          if (!tgt) return false;
-          if (!(bySlot.get(slot) || []).some(v => sameTarget(v, tgt))) return false;
-        }
-        // distinct_targets: the declared slots must name different objects.
-        if (card.distinct_targets) {
-          const picks = [];
-          for (let slot = 0; slot < slotSpecsLA.length; slot++) picks.push(action.targets[slot]);
-          if (!slotTargetsAreDistinct(picks)) return false;
-        }
-      } else if (targetedEffs.length > 0) {
-        const maxSlot = targetedEffs.reduce((m, e) => Math.max(m, e.target_slot || 0), 0);
-        if (!action.targets || action.targets.length < maxSlot + 1) return false;
-        const bySlot = validTargetsBySlot(card, targetedEffs, who);
-        for (const eff of targetedEffs) {
-          const slot = eff.target_slot || 0;
-          const tgt = action.targets[slot];
-          if (!tgt) return false;
-          if (!(bySlot.get(slot) || []).some(v => sameTarget(v, tgt))) return false;
-        }
-      }
-      // New targeting model (§3.5): a top-level `target` step is the cast-time
-      // hexproof checkpoint. The spell needs one legal target of that filter;
-      // action.targets[0] must be among them (so an opp hexproof creature is
-      // not a legal target). Inert for legacy cards (none set card.target).
-      if (card.target) {
-        const valid = targetsForFilter(card.target, who, card.target_filter);
-        if (!valid.length) return false;
-        if (!action.targets || !action.targets[0]) return false;
-        if (!valid.some(v => sameTarget(v, action.targets[0]))) return false;
-      }
+      if (!tsIsLegalSet(tsModeObj(card, modes[modeIdx]), who, action.targets)) return false;
       return true;
     }
     case 'activateAbility': {
@@ -5902,83 +5977,22 @@ function getLegalActions(who) {
     } else {
       if (!isMainPhaseWindow(who)) continue;
     }
-    // Enumerate one action per (mode, target combination). Non-modal
-    // single-target cards collapse to the simple "one action per target"
-    // case. Modal cards branch per mode. Multi-target cards generate one
-    // action per cross-product of their target slots.
+    // One castSpell action per (mode, legal target set). TargetSelection
+    // enumerates the per-slot cross-product (distinct-aware, capped); an
+    // untargeted mode emits a single targetless action. Non-modal cards are the
+    // single-mode case; a modal card branches per mode (each mode's targets live
+    // on its effects, so build a per-mode view).
     const modes = getModes(card);
     for (let mIdx = 0; mIdx < modes.length; mIdx++) {
-      const modeEffects = modes[mIdx];
-      const targetedEffs = (modeEffects || []).filter(effectNeedsTarget);
-      const hasSlotSpecs = Array.isArray(card.target_slots) && card.target_slots.length > 0;
-      if (targetedEffs.length === 0 && !hasSlotSpecs) {
-        // New targeting model (§3.5): a top-level `target` step means one
-        // action per legal target of that filter (hexproof-excluded via
-        // targetsForFilter). No valid target → spell not castable.
-        if (card.target) {
-          for (const t of targetsForFilter(card.target, who, card.target_filter)) {
-            const a = { type: 'castSpell', cardIid: card.iid, targets: [t] };
-            if (modes.length > 1) a.modeIdx = mIdx;
-            actions.push(a);
-          }
-          continue;
-        }
-        // Untargeted (or untargeted mode of a modal card).
-        const a = {type:'castSpell', cardIid: card.iid};
+      const modeObj = tsModeObj(card, modes[mIdx]);
+      if (!objectNeedsTarget(modeObj)) {
+        const a = { type: 'castSpell', cardIid: card.iid };
         if (modes.length > 1) a.modeIdx = mIdx;
         actions.push(a);
         continue;
       }
-      // Per-slot legal targets (slot grouping + spec resolution shared with
-      // isLegalAction via validTargetsBySlot). Each unique slot needs one target;
-      // effects sharing a slot share that target (e.g. Strength of the Pack).
-      const bySlot = validTargetsBySlot(card, targetedEffs, who);
-      const slotKeys = [...bySlot.keys()].sort((a, b) => a - b);
-      const validBySlot = slotKeys.map(slot => bySlot.get(slot));
-      // Bail if any slot has no valid targets — spell is uncastable.
-      if (validBySlot.some(arr => arr.length === 0)) continue;
-      // Build the cross-product of slot targets. For single-target spells
-      // (one slot) this is just the target list. For multi-target spells
-      // it grows multiplicatively, bounded by per-slot validity counts.
-      // Cap at 200 combos defensively — beyond that the AI cost outweighs
-      // the benefit of exhaustive search and we'd want a smarter sampler.
-      const combos = [[]];
-      const COMBO_CAP = 200;
-      for (const validList of validBySlot) {
-        const next = [];
-        for (const partial of combos) {
-          for (const t of validList) {
-            next.push([...partial, t]);
-            if (next.length >= COMBO_CAP) break;
-          }
-          if (next.length >= COMBO_CAP) break;
-        }
-        combos.length = 0;
-        combos.push(...next);
-        if (combos.length >= COMBO_CAP) break;
-      }
-      // Assemble one action per combo. action.targets is indexed by slot
-      // value (slot 0 → targets[0], slot 1 → targets[1]); since we sorted
-      // slotKeys ascending and slots are typically dense (0, 1, 2...),
-      // combo[i] aligns with slotKeys[i] which equals i in the common case.
-      // Defensive: if a card uses sparse slots (0, 2 — skipping 1), fill
-      // gaps so action.targets[N] is always present for the highest slot.
-      for (const combo of combos) {
-        // distinct_targets: drop combos that aim two slots at one object, so the
-        // AI never considers (and the player is never offered) a same-target cast.
-        if (card.distinct_targets && !slotTargetsAreDistinct(combo)) continue;
-        const targets = [];
-        for (let i = 0; i < slotKeys.length; i++) {
-          targets[slotKeys[i]] = combo[i];
-        }
-        // Fill any sparse holes with a placeholder copy of slot 0 — the
-        // validator will reject these unless they happen to be valid for
-        // the higher-slot effect, which means the engine is effectively
-        // robust to either dense or sparse slot numbering.
-        for (let i = 0; i < targets.length; i++) {
-          if (!targets[i]) targets[i] = combo[0];
-        }
-        const a = {type:'castSpell', cardIid: card.iid, targets};
+      for (const targets of tsEnumerate(modeObj, who)) {
+        const a = { type: 'castSpell', cardIid: card.iid, targets };
         if (modes.length > 1) a.modeIdx = mIdx;
         actions.push(a);
       }
