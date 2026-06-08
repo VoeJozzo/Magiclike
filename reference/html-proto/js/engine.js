@@ -3311,8 +3311,7 @@ function advanceTriggerTargetPrompt(pt) {
   const bySlot = tsLegalBySlot(pt.trig, pt.controller);
   for (const slot of pt.slotKeys) {
     if (pt.pickedSlots[slot] != null) continue;
-    let valid = bySlot.get(slot) || [];
-    if (pt.trig.distinct_targets) valid = valid.filter(t => !pt.pickedSlots.some(pk => pk && sameTarget(pk, t)));
+    const valid = tsExcludePicked(pt.trig, bySlot.get(slot) || [], pt.pickedSlots);
     if (!valid.length) return 'fizzle';
     if (tsIsImplicitTargetType(tsSlotTargetType(pt.trig, slot)) || valid.length === 1) {
       pt.pickedSlots[slot] = valid.length === 1 ? valid[0]
@@ -3345,7 +3344,7 @@ function triggerPlayerTargetPrompt(p) {
 function finalizeTriggerTarget(pt) {
   const targets = [];
   for (const slot of pt.slotKeys) targets[slot] = pt.pickedSlots[slot];
-  for (let i = 0; i < targets.length; i++) if (!targets[i]) targets[i] = targets[pt.slotKeys[0]];
+  fillSparseHoles(targets, pt.slotKeys[0]);
   pushTriggerEntry(pt, targets);
 }
 
@@ -3817,21 +3816,29 @@ function tsModeObj(card, effects) {
   };
 }
 
+// True when the object targets via the top-level target() step (the §3.5 hexproof
+// checkpoint) rather than multi-slot target_slots — i.e. one canonical slot 0.
+function tsHasTopLevelTarget(obj) {
+  return !!obj.target && !(Array.isArray(obj.target_slots) && obj.target_slots.length > 0);
+}
+
 // Map<slotIdx, legalTargets[]> across all three target shapes.
 function tsLegalBySlot(obj, who) {
-  if (obj.target && !(Array.isArray(obj.target_slots) && obj.target_slots.length > 0)) {
+  if (tsHasTopLevelTarget(obj)) {
     return new Map([[0, targetsForFilter(obj.target, who, obj.target_filter)]]);
   }
   const targetedEffs = (obj.effects || []).filter(effectNeedsTarget);
   return validTargetsBySlot(obj, targetedEffs, who);
 }
 
-// Legal targets for ONE slot, excluding earlier picks when the object requires
-// distinct targets. The single home for a cross-slot constraint.
-function tsLegalForSlot(obj, who, slotIdx, picksSoFar) {
-  const all = tsLegalBySlot(obj, who).get(slotIdx) || [];
-  if (!obj.distinct_targets || !Array.isArray(picksSoFar) || !picksSoFar.length) return all;
-  return all.filter(t => !picksSoFar.some(p => p && sameTarget(p, t)));
+// Cross-slot exclusion: drop targets already chosen for earlier slots when the
+// object requires distinct picks. THE single home for the distinct_targets rule —
+// every selection path (enumerate / auto-pick / human prompt / castable probe)
+// filters through here, so "another target creature" can't drift between them.
+// Operates on an already-fetched list so callers keep their one tsLegalBySlot call.
+function tsExcludePicked(obj, list, picksSoFar) {
+  if (!obj.distinct_targets || !Array.isArray(picksSoFar) || !picksSoFar.length) return list;
+  return list.filter(t => !picksSoFar.some(p => p && sameTarget(p, t)));
 }
 
 // Sorted slot indices this object needs a target for.
@@ -3839,12 +3846,19 @@ function tsSlotKeys(obj, who) {
   return [...tsLegalBySlot(obj, who).keys()].sort((a, b) => a - b);
 }
 
+// Fill sparse holes in a slot-indexed targets[] with the first slot's pick, so
+// resolution (makeSlotTargetGetter) always finds an entry. Defensive for the
+// theoretical sparse-slot case (target_slots are dense 0..n-1 today → a no-op).
+function fillSparseHoles(targets, firstSlotKey) {
+  for (let i = 0; i < targets.length; i++) if (!targets[i]) targets[i] = targets[firstSlotKey];
+}
+
 // Dense per-slotKey combo → a slot-INDEXED targets[] (sparse holes filled with
 // slot 0's pick, matching the legacy resolution indexing makeSlotTargetGetter uses).
 function tsComboToTargets(combo, slotKeys) {
   const targets = [];
   for (let i = 0; i < slotKeys.length; i++) targets[slotKeys[i]] = combo[i];
-  for (let i = 0; i < targets.length; i++) if (!targets[i]) targets[i] = combo[0];
+  fillSparseHoles(targets, slotKeys[0]);
   return targets;
 }
 
@@ -3862,8 +3876,7 @@ function tsEnumerate(obj, who) {
   for (const validList of validBySlot) {
     const next = [];
     for (const partial of combos) {
-      for (const t of validList) {
-        if (obj.distinct_targets && partial.some(p => sameTarget(p, t))) continue;
+      for (const t of tsExcludePicked(obj, validList, partial)) {
         next.push(partial.concat([t]));
         if (next.length >= TS_COMBO_CAP) break;
       }
@@ -3903,7 +3916,7 @@ function tsSlotValueEff(obj, slot) {
 
 // The target filter TYPE for a slot (creature / opp / player / spell / …).
 function tsSlotTargetType(obj, slot) {
-  if (obj.target && !(Array.isArray(obj.target_slots) && obj.target_slots.length > 0)) return obj.target;
+  if (tsHasTopLevelTarget(obj)) return obj.target;
   if (Array.isArray(obj.target_slots) && obj.target_slots[slot]) return obj.target_slots[slot].target;
   const eff = (obj.effects || []).filter(effectNeedsTarget).find(e => (e.target_slot || 0) === slot);
   return eff ? eff.target : null;
@@ -3924,12 +3937,11 @@ function tsAutoPick(obj, who) {
   const slotKeys = [...bySlot.keys()].sort((a, b) => a - b);
   const picks = [];
   for (const slot of slotKeys) {
-    let valid = bySlot.get(slot) || [];
-    if (obj.distinct_targets) valid = valid.filter(t => !picks.some(p => p && sameTarget(p, t)));
+    const valid = tsExcludePicked(obj, bySlot.get(slot) || [], picks);
     if (!valid.length) return null;
     picks[slot] = pickBestTriggerTarget(tsSlotValueEff(obj, slot), valid, who);
   }
-  for (let i = 0; i < picks.length; i++) if (!picks[i]) picks[i] = picks[slotKeys[0]];
+  fillSparseHoles(picks, slotKeys[0]);
   return picks;
 }
 
@@ -3970,12 +3982,10 @@ function probeTargetsForObject(obj, who) {
   if (Array.isArray(obj.target_slots) && obj.target_slots.length > 0) {
     const fakes = [];
     for (const spec of obj.target_slots) {
-      const valid = getValidTargets(spec, who);
-      // distinct_targets: each slot's stand-in must differ from earlier picks, so
-      // the castable-glow greys the spell out unless two distinct targets exist.
-      const pick = obj.distinct_targets
-        ? valid.find(v => !fakes.some(f => sameTarget(f, v)))
-        : valid[0];
+      // distinct_targets: each slot's stand-in must differ from earlier picks (via
+      // tsExcludePicked, the shared cross-slot rule), so the castable-glow greys the
+      // spell out unless two distinct targets exist.
+      const pick = tsExcludePicked(obj, getValidTargets(spec, who), fakes)[0];
       if (!pick) return null;
       fakes.push(pick);
     }
