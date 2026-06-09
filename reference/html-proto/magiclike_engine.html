@@ -336,13 +336,14 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
   height: 100%;
   display: block;
 }
-/* Source palette — glyph (color/currentColor) + disc + inner rim + outer ring.
-   The outer ring (--kw-rim2) is the bright "highlight" color so each coin shows
-   two distinct border rings (mid inner, bright outer). Sticker = gold, granted
-   = teal (mirrors .stk-badge.skw / .kw-granted). Native is set inline per the
-   card's own color (nativeKeywordStyle); the values here are just a fallback. */
+/* Source palette — glyph (color/currentColor) + disc + inner rim + outer ring,
+   each coin showing two distinct border rings. Native is set inline per the
+   card's own color (nativeKeywordStyle: card-color glyph + inner ring, cream
+   disc + outer ring) — the values here are only a fallback. Sticker = gold,
+   granted = teal (mirrors .stk-badge.skw / .kw-granted), with a bright outer
+   highlight ring. */
 .card-frame .frame-keywords .kw-native{
-  color: #6b7280; --kw-disc: #d8d4c8; --kw-rim: #3a3e44; --kw-rim2: #6b7280;
+  color: #6b7280; --kw-disc: #d8d4c8; --kw-rim: #6b7280; --kw-rim2: #d8d4c8;
 }
 .card-frame .frame-keywords .kw-sticker{
   color: #ffd700; --kw-disc: #2a2200; --kw-rim: #cc9900; --kw-rim2: #ffd700;

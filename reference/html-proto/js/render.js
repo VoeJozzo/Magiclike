@@ -1269,18 +1269,21 @@ function keywordSourceClass(kw, card, templateKw) {
   return 'kw-native';
 }
 
-// Native keyword coins wear the card's own color identity: glyph + outer
-// highlight ring = the card's color; disc = the card's text ink (cream, or
-// dark #1a1a1a on the light white frame); inner ring = a darkened shade for a
-// two-ring bezel. Keyed by frame colorKey. (Sticker/granted ignore this — they
-// use the fixed gold/teal classes.)
+// Native keyword coins wear the card's own color identity. White is a special
+// case (its frame is light): dark text-ink glyph on its gold identity disc.
+// The other colors put the card-color glyph + card-color INNER ring on a cream
+// disc with a cream OUTER ring — so the border reads card-color (inner) then
+// cream (outer), the legible two-color rim the other UI icons have. Keyed by
+// frame colorKey. (Sticker/granted ignore this — they use the gold/teal classes.)
+//   { ink: glyph,   disc,      rim: inner-ring, rim2: outer-ring }
+const CREAM = '#d8d4c8';
 const KW_NATIVE_COLORS = {
-  W: { ink: '#DEC96A', disc: '#1a1a1a', rim: '#8a6d18', rim2: '#DEC96A' },
-  U: { ink: '#2C5AA8', disc: '#d8d4c8', rim: '#18345f', rim2: '#2C5AA8' },
-  B: { ink: '#15151f', disc: '#d8d4c8', rim: '#000000', rim2: '#15151f' },
-  R: { ink: '#A52222', disc: '#d8d4c8', rim: '#5e1414', rim2: '#A52222' },
-  G: { ink: '#1E7A38', disc: '#d8d4c8', rim: '#103f1d', rim2: '#1E7A38' },
-  C: { ink: '#6b7280', disc: '#d8d4c8', rim: '#3a3e44', rim2: '#6b7280' },
+  W: { ink: '#1a1a1a', disc: '#DEC96A', rim: '#1a1a1a', rim2: '#DEC96A' },
+  U: { ink: '#2C5AA8', disc: CREAM, rim: '#2C5AA8', rim2: CREAM },
+  B: { ink: '#15151f', disc: CREAM, rim: '#15151f', rim2: CREAM },
+  R: { ink: '#A52222', disc: CREAM, rim: '#A52222', rim2: CREAM },
+  G: { ink: '#1E7A38', disc: CREAM, rim: '#1E7A38', rim2: CREAM },
+  C: { ink: '#6b7280', disc: CREAM, rim: '#6b7280', rim2: CREAM },
 };
 
 // Inline CSS vars for a native coin, from the card's frame color. Mirrors

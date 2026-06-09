@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.4.0`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.4.1`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -1184,6 +1184,14 @@ nativeKeywordBadgesHtml (dead code) only ever described — previously only the
 gold sticker badges were live. keyword_icons_test.js grew to 14 assertions (incl.
 source-class + per-card-color). Full suite green (1620), lint clean. DOM
 colors/rings need a browser eyeball.
+
+v2.4.1: native keyword-coin border tuning (final palette from the playtest
+loop). Native coins now read as: card-color glyph + card-color INNER ring on a
+cream (#d8d4c8) disc, with a cream OUTER ring — so the rim is a legible two-color
+border (card-color inner, cream outer) like the other UI icons, rather than the
+single-color/highlight rim of v2.4.0. White is special-cased (its frame is
+light): dark ink glyph on its gold identity disc. Sticker (gold) / granted (teal)
+unchanged. KW_NATIVE_COLORS in render.js holds the values. Tests/lint green (1620).
 
 > **MUST UPDATE on every dev-branch push that touches code.** Bump `VERSION` in `js/main.js` AND the line above, in the same commit. GitHub Pages caches aggressively; the version string is the only reliable way to confirm a fresh build is live.
 
