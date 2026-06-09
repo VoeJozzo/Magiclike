@@ -152,29 +152,69 @@ console.log('\n=== a human-controlled multi-target ETB prompts for EACH slot ===
     a.tempPower === 1 && b.tempPower === 1, 'a.tempPower=' + a.tempPower + ' b.tempPower=' + b.tempPower);
 })();
 
-console.log('\n=== a stapled distinct_targets ETB resolves onto TWO DIFFERENT creatures ===');
+console.log('\n=== a stapled controller-gated multi-target ETB resolves BOTH slots (tap opp, pump self) ===');
 (() => {
-  // Roots and Branches (distinct_targets, slots = [tap creature][pump creature])
-  // stapled onto a creature → an ETB trigger that carries distinct_targets via
-  // mergeStapleInto. The opponent path AUTO-picks (tsAutoPick), which must honor
-  // the cross-slot rule and choose a DIFFERENT creature per slot. With distinctness
-  // ignored, the auto-picker would tap+pump the SAME creature (valid[0] twice).
-  // This is the headline cross-slot-on-TRIGGER behavior the cast-path tests can't
-  // reach (the existing Twin Strike cases above are deliberately permissive).
+  // Roots and Branches (slots = [tap an opponent's creature][pump your own]) stapled
+  // onto a creature → an ETB trigger carrying the slots + distinct_targets via
+  // mergeStapleInto. Controlled by 'opp', so slot0 (controller:opp) targets a 'you'
+  // creature and slot1 (controller:self) an 'opp' creature. The opponent path
+  // AUTO-picks (tsAutoPick) and must fill each slot from the correct side.
   const G = newGame();
   const staple = ENGINE.makeCard(VANILLA, undefined, 0, undefined, undefined, undefined, ['roots_and_branches']);
   staple.iid = iid++; staple.controller = 'opp'; staple.owner = 'opp';
   G.opp.hand.push(staple);
-  // Two more creatures so the board has ≥2 (the staple enters as the 3rd) and a
-  // distinct set always exists.
+  const mine = mk('savannah_lions', 'you');   // slot0 tap target (opponent-of-staple)
+  const theirs = mk('benalish_hero', 'opp');  // slot1 pump target (staple's own side)
+  mine.sick = false; theirs.sick = false;
+  G.you.battlefield.push(mine); G.opp.battlefield.push(theirs);
+
+  const etb = (staple.triggers || []).find(t => t.event === 'card_zone_change');
+  check('precondition: stapled ETB carries distinct_targets + two slots',
+    !!etb && etb.distinct_targets === true && Array.isArray(etb.target_slots) && etb.target_slots.length === 2,
+    etb && JSON.stringify([etb.distinct_targets, etb.target_slots && etb.target_slots.length]));
+
+  ENGINE.executeAction('opp', { type: 'castSpell', cardIid: staple.iid });
+  let guard = 0;
+  while (guard++ < 50) {
+    const onBf = G.opp.battlefield.some(c => c.iid === staple.iid);
+    const settled = G.stack.length === 0 && !G.pendingTriggers.length
+      && !G.pendingTriggerTarget && !G.pendingOptionalCost;
+    if (onBf && settled) break;
+    const who = ENGINE.expectedActor();
+    if (!who) break;
+    if (G.pendingTriggerTarget && G.pendingTriggerTarget.controller === who) {
+      ENGINE.executeAction(who, { type: 'triggerTargetPick', target: G.pendingTriggerTarget.valid[0] });
+    } else {
+      ENGINE.executeAction(who, { type: 'pass' });
+    }
+  }
+  const allBf = G.you.battlefield.concat(G.opp.battlefield);
+  const tapped = allBf.filter(c => c.tapped);
+  const pumped = allBf.filter(c => (c.tempPower || 0) === 1);
+  check('stapled ETB tapped exactly one creature and pumped exactly one',
+    tapped.length === 1 && pumped.length === 1,
+    'tapped=' + tapped.length + ' pumped=' + pumped.length);
+  check('tap hit the opponent-of-staple side, pump hit the staple side (slots honored)',
+    !!(tapped[0] && pumped[0]) && tapped[0].controller === 'you' && pumped[0].controller === 'opp',
+    'tapCtrl=' + (tapped[0] && tapped[0].controller) + ' pumpCtrl=' + (pumped[0] && pumped[0].controller));
+})();
+
+console.log('\n=== distinct_targets on the TRIGGER auto-pick path, in isolation (same-controller slots) ===');
+(() => {
+  // The cross-slot distinct rule on the auto-pick path, where controller can't
+  // co-enforce it: re-point a stapled Roots and Branches ETB to TWO self slots and
+  // keep the flag (the "tap/pump two DIFFERENT creatures you control" shape). The
+  // auto-picker must choose a DIFFERENT creature per slot — not valid[0] twice.
+  const G = newGame();
+  const staple = ENGINE.makeCard(VANILLA, undefined, 0, undefined, undefined, undefined, ['roots_and_branches']);
+  staple.iid = iid++; staple.controller = 'opp'; staple.owner = 'opp';
+  G.opp.hand.push(staple);
+  const etb = (staple.triggers || []).find(t => t.event === 'card_zone_change');
+  etb.target_slots = [{ target: 'creature', filter: { controller: 'self' } },
+                      { target: 'creature', filter: { controller: 'self' } }];
   const c1 = mk('savannah_lions', 'opp'); const c2 = mk('benalish_hero', 'opp');
   c1.sick = false; c2.sick = false;
   G.opp.battlefield.push(c1, c2);
-
-  const etb = (staple.triggers || []).find(t => t.event === 'card_zone_change');
-  check('precondition: stapled distinct ETB carries distinct_targets + two slots',
-    !!etb && etb.distinct_targets === true && Array.isArray(etb.target_slots) && etb.target_slots.length === 2,
-    etb && JSON.stringify([etb.distinct_targets, etb.target_slots && etb.target_slots.length]));
 
   ENGINE.executeAction('opp', { type: 'castSpell', cardIid: staple.iid });
   let guard = 0;
@@ -194,10 +234,9 @@ console.log('\n=== a stapled distinct_targets ETB resolves onto TWO DIFFERENT cr
   const bf = G.opp.battlefield;
   const tapped = bf.filter(c => c.tapped);
   const pumped = bf.filter(c => (c.tempPower || 0) === 1);
-  check('distinct ETB tapped exactly one creature and pumped exactly one',
-    tapped.length === 1 && pumped.length === 1,
-    'tapped=' + tapped.length + ' pumped=' + pumped.length);
-  check('distinct ETB resolved on two DIFFERENT creatures (cross-slot honored at resolution)',
+  check('same-controller distinct ETB tapped one and pumped one',
+    tapped.length === 1 && pumped.length === 1, 'tapped=' + tapped.length + ' pumped=' + pumped.length);
+  check('distinct rule forced two DIFFERENT creatures (not valid[0] twice)',
     !!(tapped[0] && pumped[0]) && tapped[0].iid !== pumped[0].iid,
     'tappedIid=' + (tapped[0] && tapped[0].iid) + ' pumpedIid=' + (pumped[0] && pumped[0].iid));
 })();

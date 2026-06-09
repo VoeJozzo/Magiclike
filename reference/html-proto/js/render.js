@@ -1114,33 +1114,18 @@ function pendingTargetEffect(pt) {
 
 function isValidTargetCreature(eff, card) {
   if (!eff) return false;
-  // Normalize the target() taxonomy to an eligible card-type + an implied
-  // controller restriction:
-  //   creature / your_creature / opp_creature / creature_or_player → creatures
-  //   permanent / permanent_or_spell → battlefield permanents (stack spells are
-  //     highlighted via a separate path in renderStack).
-  // (Player targets are highlighted elsewhere.) Name kept for its single caller.
   const t = eff.target;
   const CREATURE_KINDS = ['creature', 'your_creature', 'opp_creature', 'creature_or_player'];
   const PERM_KINDS = ['permanent', 'permanent_or_spell'];
-  if (CREATURE_KINDS.includes(t)) {
-    if (!hasType(card, 'Creature')) return false;
-  } else if (PERM_KINDS.includes(t)) {
-    if (!isPermanent(card)) return false;
-  } else {
-    return false;
-  }
-  if (t === 'creature_or_player') return true;
-  // Build the effective restriction: the taxonomy's implied controller plus the
-  // step's explicit target_filter (threaded onto eff.filter). Route the whole
-  // thing through the canonical matchFilter so every key (not_color, has_keyword,
-  // max_tough, tapped, not_token, spliceable…) is honored at highlight time
-  // exactly as at cast — no more drifting between highlight and click legality.
-  const restrict = Object.assign({}, eff.filter || null);
-  if (t === 'your_creature') restrict.controller = 'self';
-  if (t === 'opp_creature') restrict.controller = 'opp';
-  if (Object.keys(restrict).length === 0) return true;
-  return ENGINE.matchFilter(card, restrict, card.controller, 'you');
+  if (!CREATURE_KINDS.includes(t) && !PERM_KINDS.includes(t)) return false;
+  // Sole caller passes pendingTargetEffect(pt) output, which normalizes a
+  // top-level target_filter into .filter — so .filter is the only key that ever
+  // arrives here.
+  const filter = eff.filter;
+  const valid = CREATURE_KINDS.includes(t)
+    ? ENGINE.targetsForFilter(t, 'you', filter)
+    : ENGINE.getValidTargets({ target: t, filter }, 'you');
+  return valid.some(v => v.iid === card.iid);
 }
 
 // Sticker kinds whose effect is ALREADY communicated elsewhere on the frame, so
