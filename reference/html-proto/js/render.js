@@ -1275,6 +1275,12 @@ function nativeKeywordBadgesHtml(card, big) {
 function keywordSourceClass(kw, card, templateKw) {
   if (templateKw.includes(kw)) return 'kw-native';
   if ((card.stickers || []).includes('kw_' + kw)) return 'kw-sticker';
+  // The innate sticker is stored under its bare id ('innate', not 'kw_innate'),
+  // so the kw_-prefixed check above misses it — a stickered innate coin (the
+  // common case: post-draft basic-land Innate) should read gold like any
+  // sticker-granted keyword. Intrinsic innate (e.g. Ingenuity Unbounded) still
+  // hits the templateKw native branch above.
+  if (kw === 'innate' && (card.stickers || []).includes('innate')) return 'kw-sticker';
   if (card.grantedBy instanceof Map) {
     const srcs = card.grantedBy.get(kw);
     if (srcs && srcs.size > 0) return 'kw-granted';
@@ -1333,14 +1339,15 @@ function nativeKeywordStyle(card, colorKey) {
 // #iconTip popup (Almendra, palette-matched — see CONTROLLER tooltip wiring),
 // not the browser's native title tooltip. Selection mirrors keywordPreamble:
 // creatures show every keyword; non-creatures show only spell-legal ones
-// (flash). no_block is hidden; innate has its own status line, so both excluded.
+// (flash) plus innate (a land/status keyword — its coin shows on lands). no_block
+// stays hidden (it's the silent half of Pacifism).
 function keywordIconsHtml(card, colorKey) {
   const tpl = (card.isToken ? TOKENS : CARDS)[card.tplId];
   const isCreatureCard = hasType(card, 'Creature') || (tpl && hasType(tpl, 'Creature'));
   const templateKw = (tpl && tpl.keywords) || [];
   const allKw = (card.keywords && card.keywords.length) ? card.keywords : templateKw;
-  const shown = (isCreatureCard ? allKw : allKw.filter(k => SPELL_LEGAL_KEYWORDS.has(k)))
-    .filter(k => k !== 'no_block' && k !== 'innate');
+  const shown = (isCreatureCard ? allKw : allKw.filter(k => SPELL_LEGAL_KEYWORDS.has(k) || k === 'innate'))
+    .filter(k => k !== 'no_block');
   if (!shown.length) return '';
   // Native coins are colored by the card's own identity (computed once); sticker
   // and granted coins use their fixed class palette.
@@ -1515,14 +1522,16 @@ function cardToViewModel(card, opts) {
   }
   const kwIconsHtml = keywordsAsIcons ? keywordIconsHtml(card, colorKey) : '';
 
-  // Paper-basic look: a basic Land with NO other rules text shows a large mana
-  // symbol centered in the otherwise-empty text box, read from what it actually
-  // taps for (landProducibleColors, not the `mana` label). The moment it gains
-  // text — a land-color sticker turns the fixed tap-ability into a choose-form
-  // that renders ("add {U} or {B}"), an `innate` sticker adds "Innate." —
-  // oracleHtml is non-empty and the normal text layout takes over. Skipped for
+  // Paper-basic look: a basic Land with NO other rules text and no keyword coin
+  // shows a large mana symbol centered in the otherwise-empty text box, read from
+  // what it actually taps for (landProducibleColors, not the `mana` label). The
+  // moment it gains text — a land-color sticker turns the fixed tap-ability into a
+  // choose-form that renders ("add {U} or {B}") — oracleHtml is non-empty and the
+  // normal layout takes over. An innate basic land surfaces its innate coin
+  // (kwIconsHtml) in place of the old "Innate." text, so suppress the big symbol
+  // there too (the 10px coin + 45px glyph won't co-fit the text box). Skipped for
   // synthetic cards (overrideOracleText), which aren't engine lands.
-  if (overrideOracleText === undefined && !oracleHtml
+  if (overrideOracleText === undefined && !oracleHtml && !kwIconsHtml
       && hasType(card, 'Land') && hasType(card, 'Basic')) {
     const colors = ENGINE.landProducibleColors(card);
     if (colors.length) {

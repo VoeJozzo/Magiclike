@@ -2,7 +2,8 @@
 // frame (in place of the keyword text line; the blow-up popup keeps the words).
 // Covers: inline coin SVG emission + reminder tooltip, the per-source recolor
 // class (native/sticker/granted), the unblockable text fallback, the
-// creature-vs-spell keyword selection, and the no_block/innate exclusions.
+// creature-vs-spell keyword selection, the no_block exclusion, and innate
+// inclusion (its coin shows on lands, gold when sticker-granted).
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -71,11 +72,21 @@ console.log('=== keywordIconsHtml: inline coins + source colors + tooltips ===')
 }
 
 {
-  // innate is a status keyword — excluded from the combat icon row.
+  // innate now surfaces its own coin alongside other keywords (flying + innate = 2).
   const card = { tplId: 'x', types: ['Creature'], keywords: ['flying', 'innate'] };
   const html = keywordIconsHtml(card);
   const svgCount = (html.match(/<svg/g) || []).length;
-  check('innate is excluded from the icon row', svgCount === 1);
+  check('innate renders a coin in the icon row', svgCount === 2, svgCount + ' svgs');
+}
+
+{
+  // Real case: a basic land with the innate sticker shows just the innate coin,
+  // styled gold (sticker source — the sticker is stored under the bare id 'innate',
+  // not 'kw_innate').
+  const card = { tplId: 'forest', types: ['Land', 'Basic'], keywords: ['innate'], stickers: ['innate'] };
+  const html = keywordIconsHtml(card, 'C');
+  check('innate land shows a coin', html.includes('<svg') && html.includes('class="frame-keywords"'));
+  check('stickered innate coin is gold (kw-sticker)', html.includes('kw-icon kw-sticker'));
 }
 
 {

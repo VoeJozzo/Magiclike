@@ -335,8 +335,9 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
   line-height: 0;
 }
 .card-frame .frame-keywords .kw-icon{
-  width: calc(10px * var(--scale));
-  height: calc(10px * var(--scale));
+  /* 10px baseline at 1x; --card-kw-icon-size (Devtools › Ability icons) scales it. */
+  width: calc(10px * var(--scale) * var(--card-kw-icon-size, 1));
+  height: calc(10px * var(--scale) * var(--card-kw-icon-size, 1));
   display: inline-block;
   vertical-align: middle;
   line-height: 0;
@@ -368,7 +369,7 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
   /* inherits the source ink color set by the .kw-native/.kw-sticker/.kw-granted
      class it also carries. */
   display: inline-block;
-  font-size: calc(5px * var(--scale) * var(--card-text-scale));
+  font-size: calc(5px * var(--scale) * var(--card-text-scale) * var(--card-kw-icon-size, 1));
   font-weight: bold;
   border: 1px solid currentColor;
   border-radius: calc(2px * var(--scale));

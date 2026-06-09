@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.2.0`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.2.1`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -1212,6 +1212,24 @@ outer ring) per "batch the tap symbol in with the keyword ability symbols."
 `keyword_icons_test` updated (`title`→`data-tip`); 1693 green, lint clean.
 Browser-verified (tap pip + tooltip + cream disc + darkened glyph; pixel-sampled
 the recolored tap coin).
+
+v2.2.1: ability-icon follow-ups (continues the v2.2.0 polish). (1) The innate
+keyword now renders its coin (innate.svg, inlined into KEYWORD_ICON_SVG with the
+var-driven palette + currentColor glyph stroke) in the in-play frame's keyword
+row instead of only the word "Innate." — sticker-granted innate (the common
+case: post-draft basic lands, City of Brass, Phylactery) reads gold like other
+sticker keywords; intrinsic innate (Ingenuity Unbounded) stays native cream. The
+redundant "Innate." word is dropped on the frame (`describeCardSegments` gates it
+on `!skipKeywords`, so the popup keeps it), and a basic innate land suppresses
+its big mana glyph (`!kwIconsHtml`) so the 10px coin doesn't collide with the
+45px symbol. `keywordSourceClass` now recognizes the bare `innate` sticker id
+(not just `kw_innate`). (2) New Devtools setting — "Ability icons → Keyword coin
+(hand / board)" (`--card-kw-icon-size`, 6–20px) scales the keyword coins,
+mirroring the mana-pip size knobs (default + CSS-var binding + applyFontsToRoot +
+options array, no new branch in `set()`). keyword_icons_test gains innate-coin
+coverage; 1695 green, lint clean. Browser-verified (innate Forest coin gold +
+"Innate: …" tooltip, big mana suppressed, popup keeps the word; size knob
+10→20→6px live via the CSS var).
 
 > **MUST UPDATE on every dev-branch push that touches code.** Bump `VERSION` in `js/main.js` AND the line above, in the same commit. GitHub Pages caches aggressively; the version string is the only reliable way to confirm a fresh build is live.
 

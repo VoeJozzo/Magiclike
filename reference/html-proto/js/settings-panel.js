@@ -284,6 +284,20 @@ function renderManaTextScaleRow(pickerArea) {
   pickerArea.appendChild(manaTextRow);
 }
 
+// Ability (keyword) icon size: the coins in the in-play frame's keyword row
+// (flying, vigilance, innate, …). --card-kw-icon-size is pushed live by
+// SETTINGS.set, so the coins resize immediately; render() just refreshes layout.
+function renderKwIconSizeRow(pickerArea) {
+  makeSlotHeader(pickerArea, 'Ability icons');
+  const kwRow = makeRow('Keyword coin (hand / board)');
+  kwRow.appendChild(makeSelect(
+    SETTINGS.KW_ICON_SIZE_OPTIONS,
+    SETTINGS.get('cardKwIconSize'),
+    (val) => { SETTINGS.set('cardKwIconSize', Number(val)); render(); }
+  ));
+  pickerArea.appendChild(kwRow);
+}
+
 // Export-current-settings button. Dumps SETTINGS.getAll() to clipboard so
 // a tuning session can be baked into DEFAULTS. Falls back to an inline
 // textarea on browsers that refuse clipboard.writeText.
@@ -342,6 +356,7 @@ function renderPanel() {
   renderPopupTextScaleRow(pickerArea);
   renderManaPipSizeRows(pickerArea);
   renderManaTextScaleRow(pickerArea);
+  renderKwIconSizeRow(pickerArea);
   renderExportButton(pickerArea);
 }
 

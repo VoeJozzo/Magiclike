@@ -1130,7 +1130,10 @@ function describeCardSegments(card, opts) {
   if (card.spend_mana_as_any_color || tpl.spend_mana_as_any_color) {
     sections.push([plainSeg('You may spend mana as though it were mana of any color.')]);
   }
-  if ((card.keywords || []).includes('innate') || (tpl.keywords || []).includes('innate')) {
+  // On the in-play frame (skipKeywords) the innate coin in the icon row conveys
+  // this, so suppress the redundant word; the popup (words mode) keeps "Innate."
+  if (!opts.skipKeywords
+      && ((card.keywords || []).includes('innate') || (tpl.keywords || []).includes('innate'))) {
     sections.push([plainSeg('Innate.')]);
   }
   if (Array.isArray(card.triggers)) {
