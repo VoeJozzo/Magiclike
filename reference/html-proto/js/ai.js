@@ -437,10 +437,14 @@ function flashETBWouldFizzle(state, who, card) {
   const triggers = card.triggers || [];
   for (const trig of triggers) {
     if (!triggerFiresOnEnter(trig)) continue;
-    const targetKind = trig.target
-      || ((trig.effects || []).find(e => e.target && e.target !== 'self') || {}).target;
-    const targetFilter = trig.target_filter
-      || ((trig.effects || []).find(e => e.target && e.target !== 'self') || {}).filter;
+    // A trigger declares its target at one of two levels: the trigger-level
+    // target() step (trig.target + trig.target_filter) OR a per-effect target
+    // (eff.target + eff.filter). Source the kind and filter from the SAME level
+    // so they can't desync (a trigger-level kind paired with a stray effect
+    // filter would mis-resolve).
+    const targetingEff = (trig.effects || []).find(e => e.target && e.target !== 'self');
+    const targetKind = trig.target || (targetingEff && targetingEff.target);
+    const targetFilter = trig.target ? trig.target_filter : (targetingEff && targetingEff.filter);
     if (targetKind && ENGINE.targetsForFilter(targetKind, who, targetFilter).length === 0) return true;
   }
   return false;

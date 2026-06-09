@@ -1081,7 +1081,10 @@ function isValidTargetCreature(eff, card) {
   const CREATURE_KINDS = ['creature', 'your_creature', 'opp_creature', 'creature_or_player'];
   const PERM_KINDS = ['permanent', 'permanent_or_spell'];
   if (!CREATURE_KINDS.includes(t) && !PERM_KINDS.includes(t)) return false;
-  const filter = eff.filter || eff.target_filter;
+  // Sole caller passes pendingTargetEffect(pt) output, which normalizes a
+  // top-level target_filter into .filter — so .filter is the only key that ever
+  // arrives here.
+  const filter = eff.filter;
   const valid = CREATURE_KINDS.includes(t)
     ? ENGINE.targetsForFilter(t, 'you', filter)
     : ENGINE.getValidTargets({ target: t, filter }, 'you');
