@@ -121,6 +121,10 @@ function init() {
   // primary action (Done Attacking/Blocking during a combat declaration,
   // otherwise Pass). See onPrimaryActionKey for the gating.
   document.addEventListener('keydown', onPrimaryActionKey);
+  // Ability-icon hover tooltip (keyword coins). Delegated on document so it
+  // covers the cards rebuilt on every repaint without re-binding per element.
+  document.addEventListener('mouseover', onIconTipOver);
+  document.addEventListener('mouseout', onIconTipOut);
   showStartScreen();
 }
 
@@ -862,6 +866,73 @@ function attachMapLongPress(el, label) {
   el.addEventListener('mousemove',  (e) => move(e.clientX, e.clientY));
   el.addEventListener('mouseup',    cancel);
   el.addEventListener('mouseleave', cancel);
+}
+
+// Ability-icon hover tooltip. Keyword coins on the in-play frame carry a
+// data-tip string ("Flying: <reminder>"); #iconTip renders it in Almendra,
+// palette-matched (see CSS). Delegated on document so it survives the full
+// re-render each repaint, and reads the [data-tip] ancestor of whatever child
+// (e.g. the inner <svg>) the pointer actually entered.
+let _iconTipEl = null;
+function iconTip() {
+  if (!_iconTipEl) _iconTipEl = document.getElementById('iconTip');
+  return _iconTipEl;
+}
+function onIconTipOver(e) {
+  const host = e.target.closest && e.target.closest('[data-tip]');
+  if (!host) return;
+  const tip = iconTip();
+  if (!tip) return;
+  const raw = host.getAttribute('data-tip') || '';
+  // Bold the keyword name (text before the first ": "); textContent on each
+  // part keeps it injection-safe (data-tip is already attribute-decoded).
+  tip.textContent = '';
+  const sep = raw.indexOf(': ');
+  if (sep > 0) {
+    const name = document.createElement('span');
+    name.className = 'tip-name';
+    name.textContent = raw.slice(0, sep);
+    tip.appendChild(name);
+    tip.appendChild(document.createTextNode(raw.slice(sep)));
+  } else {
+    tip.textContent = raw;
+  }
+  tip.classList.add('vis');
+  positionIconTip(tip, host);
+}
+function onIconTipOut(e) {
+  const host = e.target.closest && e.target.closest('[data-tip]');
+  if (!host) return;
+  // Ignore moves between children of the same icon (relatedTarget still inside).
+  if (e.relatedTarget && host.contains(e.relatedTarget)) return;
+  hideIconTip();
+}
+// Force-hide the tooltip, called by render() on every repaint. A repaint
+// rebuilds the hand/board innerHTML, so the hovered coin is removed out from
+// under the pointer — the browser fires no mouseout for a node deleted beneath
+// the cursor, which would otherwise leave #iconTip stuck visible until the
+// pointer next enters and leaves another coin. Mirrors how #mapTooltip is
+// cleared on repaint. (If the pointer is still over a freshly-rebuilt coin, the
+// tip stays hidden until the pointer moves — same as the map tooltip.)
+function hideIconTip() {
+  const tip = iconTip();
+  if (tip) tip.classList.remove('vis');
+}
+function positionIconTip(tip, host) {
+  const r = host.getBoundingClientRect();
+  // Measure at origin, then place centered above the icon, clamped to the
+  // viewport; flip below if there isn't room above.
+  tip.style.left = '0px';
+  tip.style.top = '0px';
+  const tr = tip.getBoundingClientRect();
+  const vw = window.innerWidth, vh = window.innerHeight;
+  let left = r.left + r.width / 2 - tr.width / 2;
+  left = Math.max(4, Math.min(left, vw - tr.width - 4));
+  let top = r.top - tr.height - 6;
+  if (top < 4) top = r.bottom + 6;
+  top = Math.max(4, Math.min(top, vh - tr.height - 4));
+  tip.style.left = left + 'px';
+  tip.style.top = top + 'px';
 }
 
 // Post-draft Innate offer: pick a basic land type to guarantee in opening hands.
@@ -3348,5 +3419,8 @@ return {
   uiBlk: () => uiBlk,
   uiPickBlk: () => uiPickBlk,
   clearUiOnPhaseChange,
+  // Hide the ability-icon tooltip; render() calls this each repaint so a coin
+  // destroyed under the pointer doesn't leave the tip stranded.
+  hideIconTip,
 };
 })();

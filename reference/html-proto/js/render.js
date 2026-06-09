@@ -48,6 +48,10 @@ function makeTriggerBuildOptionBtn(innerHtml, onClick) {
 
 function render() {
   const G = ENGINE.state();
+  // Clear the ability-icon hover tooltip before the rebuild below replaces the
+  // hovered coin (no mouseout fires for a node removed under the pointer, so it
+  // would otherwise linger). See CONTROLLER.hideIconTip.
+  CONTROLLER.hideIconTip();
   // Deep guard: any of these missing means we're not in-game (start
   // screen, post-game, settings panel before first draft, etc.). Callers
   // can fire-and-forget render() without needing to wrap in try/catch.
@@ -1275,6 +1279,12 @@ function nativeKeywordBadgesHtml(card, big) {
 function keywordSourceClass(kw, card, templateKw) {
   if (templateKw.includes(kw)) return 'kw-native';
   if ((card.stickers || []).includes('kw_' + kw)) return 'kw-sticker';
+  // The innate sticker is stored under its bare id ('innate', not 'kw_innate'),
+  // so the kw_-prefixed check above misses it — a stickered innate coin (the
+  // common case: post-draft basic-land Innate) should read gold like any
+  // sticker-granted keyword. Intrinsic innate (e.g. Ingenuity Unbounded) still
+  // hits the templateKw native branch above.
+  if (kw === 'innate' && (card.stickers || []).includes('innate')) return 'kw-sticker';
   if (card.grantedBy instanceof Map) {
     const srcs = card.grantedBy.get(kw);
     if (srcs && srcs.size > 0) return 'kw-granted';
@@ -1289,14 +1299,22 @@ function keywordSourceClass(kw, card, templateKw) {
 // cream (outer), the legible two-color rim the other UI icons have. Keyed by
 // frame colorKey. (Sticker/granted ignore this — they use the gold/teal classes.)
 //   { ink: glyph,   disc,      rim: inner-ring, rim2: outer-ring }
-const CREAM = '#d8d4c8';
+// Warm parchment cream for the UBRGC native coin disc + outer ring. The old
+// #d8d4c8 was a near-neutral warm-gray that read "silvery"; this is pulled
+// toward the frame-name cream (#f0e6c8) for a clearly creamy disc that still
+// contrasts the dark card-color glyph and stays distinct from W's gold disc.
+// If the CSS .kw-native fallback (--kw-disc/--kw-rim2) changes, keep it in sync.
+const CREAM = '#ece0be';
 const KW_NATIVE_COLORS = {
   W: { ink: '#1a1a1a', disc: '#DEC96A', rim: '#1a1a1a', rim2: '#DEC96A' },
   U: { ink: '#2C5AA8', disc: CREAM, rim: '#2C5AA8', rim2: CREAM },
   B: { ink: '#15151f', disc: CREAM, rim: '#15151f', rim2: CREAM },
   R: { ink: '#A52222', disc: CREAM, rim: '#A52222', rim2: CREAM },
   G: { ink: '#1E7A38', disc: CREAM, rim: '#1E7A38', rim2: CREAM },
-  C: { ink: '#6b7280', disc: CREAM, rim: '#6b7280', rim2: CREAM },
+  // Colorless glyph + inner ring darkened to a deep slate (was #6b7280, which
+  // washed out on the cream disc) for legibility; still reads gray/colorless, not
+  // B's black. Glyph and inner ring share the tone, as every other color's do.
+  C: { ink: '#3a3f47', disc: CREAM, rim: '#3a3f47', rim2: CREAM },
 };
 
 // A card's frame color identity: cost/card color > land's produced color >
@@ -1321,16 +1339,21 @@ function nativeKeywordStyle(card, colorKey) {
 // inlined from KEYWORD_ICON_SVG so CSS can recolor them: a per-keyword source
 // class (native/sticker/granted) tints the glyph (currentColor) and disc/rim
 // (CSS vars) to match the keyword-badge palette. Each icon carries a
-// "Display: reminder" title tooltip. Selection mirrors keywordPreamble:
+// "Display: reminder" string in data-tip, rendered on hover by the custom
+// #iconTip popup (Almendra, palette-matched — see CONTROLLER tooltip wiring),
+// not the browser's native title tooltip. Selection mirrors keywordPreamble:
 // creatures show every keyword; non-creatures show only spell-legal ones
-// (flash). no_block is hidden; innate has its own status line, so both excluded.
+// (flash) plus innate. innate is included on both branches — it reads as a coin
+// like any other keyword wherever it lands (a creature that somehow gains innate
+// shows it too; the common case is a basic land). no_block stays hidden (it's
+// the silent half of Pacifism).
 function keywordIconsHtml(card, colorKey) {
   const tpl = (card.isToken ? TOKENS : CARDS)[card.tplId];
   const isCreatureCard = hasType(card, 'Creature') || (tpl && hasType(tpl, 'Creature'));
   const templateKw = (tpl && tpl.keywords) || [];
   const allKw = (card.keywords && card.keywords.length) ? card.keywords : templateKw;
-  const shown = (isCreatureCard ? allKw : allKw.filter(k => SPELL_LEGAL_KEYWORDS.has(k)))
-    .filter(k => k !== 'no_block' && k !== 'innate');
+  const shown = (isCreatureCard ? allKw : allKw.filter(k => SPELL_LEGAL_KEYWORDS.has(k) || k === 'innate'))
+    .filter(k => k !== 'no_block');
   if (!shown.length) return '';
   // Native coins are colored by the card's own identity (computed once); sticker
   // and granted coins use their fixed class palette.
@@ -1347,11 +1370,11 @@ function keywordIconsHtml(card, colorKey) {
     const styleAttr = srcClass === 'kw-native' ? ` style="${nativeStyle}"` : '';
     const svg = KEYWORD_ICON_SVG[kw];
     if (svg) {
-      parts.push(`<span class="kw-icon ${srcClass}"${styleAttr} role="img" aria-label="${escapeHtml(display)}" title="${title}">${svg}</span>`);
+      parts.push(`<span class="kw-icon ${srcClass}"${styleAttr} role="img" aria-label="${escapeHtml(display)}" data-tip="${title}">${svg}</span>`);
     } else {
       // No coin art yet (e.g. unblockable) — fall back to a tiny text chip,
       // still source-colored.
-      parts.push(`<span class="kw-icon-fallback ${srcClass}"${styleAttr} title="${title}">${escapeHtml(display)}</span>`);
+      parts.push(`<span class="kw-icon-fallback ${srcClass}"${styleAttr} data-tip="${title}">${escapeHtml(display)}</span>`);
     }
   }
   return `<div class="frame-keywords">${parts.join('')}</div>`;
@@ -1505,14 +1528,18 @@ function cardToViewModel(card, opts) {
   }
   const kwIconsHtml = keywordsAsIcons ? keywordIconsHtml(card, colorKey) : '';
 
-  // Paper-basic look: a basic Land with NO other rules text shows a large mana
-  // symbol centered in the otherwise-empty text box, read from what it actually
-  // taps for (landProducibleColors, not the `mana` label). The moment it gains
-  // text — a land-color sticker turns the fixed tap-ability into a choose-form
-  // that renders ("add {U} or {B}"), an `innate` sticker adds "Innate." —
-  // oracleHtml is non-empty and the normal text layout takes over. Skipped for
-  // synthetic cards (overrideOracleText), which aren't engine lands.
-  if (overrideOracleText === undefined && !oracleHtml
+  // Paper-basic look: a basic Land with NO other rules text and no keyword coin
+  // shows a large mana symbol centered in the otherwise-empty text box, read from
+  // what it actually taps for (landProducibleColors, not the `mana` label). The
+  // moment it gains text — a land-color sticker turns the fixed tap-ability into a
+  // choose-form that renders ("add {U} or {B}") — oracleHtml is non-empty and the
+  // normal layout takes over. The !kwIconsHtml guard suppresses the big symbol
+  // whenever the land carries ANY keyword coin (not just innate): the 10px coin +
+  // 45px glyph won't co-fit the text box, so the coin row wins. Innate is the
+  // common trigger (its coin replaced the old "Innate." text on basics), but a
+  // basic that picked up, say, a hexproof grant is handled by the same gate.
+  // Skipped for synthetic cards (overrideOracleText), which aren't engine lands.
+  if (overrideOracleText === undefined && !oracleHtml && !kwIconsHtml
       && hasType(card, 'Land') && hasType(card, 'Basic')) {
     const colors = ENGINE.landProducibleColors(card);
     if (colors.length) {
@@ -1653,11 +1680,12 @@ function formatCostBraced(c) {
 //   card text "{R}: gets +1/+0" -> escapeHtml -> renderManaSymbols
 //   cost {R:2,C:4} -> formatCostBraced -> renderManaSymbols
 //
-// CSS in magiclike_engine.html drives the visual: the WUBRG color pips
-// render the shared SVG art (`.mana-R { background-image:
-// url('../../assets/mana/R.svg'); color: transparent }`), which hides the
-// emoji glyph below and shows the symbol. C/T/X/numeric pips have no SVG
-// yet and keep the letter-in-colored-disc look.
+// CSS in magiclike_engine.html drives the visual: the WUBRG color pips and
+// the T (tap) pip render shared SVG art (`.mana-R { background-image:
+// url('../../assets/mana/R.svg'); color: transparent }`; T uses
+// assets/keywords/tap.svg — the hourglass coin), which hides the emoji/letter
+// glyph below and shows the symbol. C/numeric pips use the blank C.svg coin
+// with the letter/number drawn on top; X still has no SVG (letter-in-disc).
 //
 // Recognized symbols: WUBRGC (color/colorless pips), T (tap), X (variable
 // cost), and any pure-number sequence (generic mana). Unrecognized braces

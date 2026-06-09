@@ -65,6 +65,9 @@ const DEFAULTS = {
   cardManaPipSize:      3,      // 12px (baseline 4)
   cardManaPipPopupSize: 1.5,    // 6px-at-1x = 24px in 4x popup
   cardManaTextSize:     1,      // 1.2em (baseline)
+  // Ability (keyword) icon size: multiplier on the 10px-at-1x .kw-icon coin
+  // shown in the in-play frame's keyword row. Pushed into --card-kw-icon-size.
+  cardKwIconSize:       1,      // 10px (baseline)
   // Master card-size multiplier for hand / board cards. Scales the whole
   // 1x (80x112px) frame — art, text, pips — uniformly. Pushed into the
   // --card-size-scale CSS var; the fixed-scale contexts (draft / popup /
@@ -95,6 +98,10 @@ const POPUP_TEXT_SCALE_OPTIONS = [
 // Mana cost-pip size options. Px-anchored to the frame-pip's 4px baseline at
 // --scale 1, so labels read as actual rendered size in hand/board.
 const MANA_PIP_SIZE_OPTIONS = buildSizeOptions(4, [3, 4, 5, 6, 8, 9, 10, 12]);
+
+// Ability (keyword) icon size options. Px-anchored to the .kw-icon's 10px
+// baseline at --scale 1, so labels read as actual rendered size in hand/board.
+const KW_ICON_SIZE_OPTIONS = buildSizeOptions(10, [6, 8, 10, 12, 14, 16, 20]);
 
 // In-text .mana symbol size options. em-based (scales with surrounding
 // text), so we express as a multiplier of the 1.2em baseline.
@@ -250,6 +257,7 @@ const CSS_VAR_BINDINGS = {
   cardManaPipSize:      '--card-mana-pip-size',
   cardManaPipPopupSize: '--card-mana-pip-popup-size',
   cardManaTextSize:     '--card-mana-text-size',
+  cardKwIconSize:       '--card-kw-icon-size',
 };
 
 function set(key, value) {
@@ -288,6 +296,7 @@ function applyFontsToRoot() {
   root.setProperty('--card-mana-pip-size', data.cardManaPipSize);
   root.setProperty('--card-mana-pip-popup-size', data.cardManaPipPopupSize);
   root.setProperty('--card-mana-text-size', data.cardManaTextSize);
+  root.setProperty('--card-kw-icon-size', data.cardKwIconSize);
 }
 
 return {
@@ -297,6 +306,7 @@ return {
   FONT_SIZE_OPTIONS_BY_ELEMENT,
   POPUP_TEXT_SCALE_OPTIONS,
   MANA_PIP_SIZE_OPTIONS, MANA_TEXT_SIZE_OPTIONS,
+  KW_ICON_SIZE_OPTIONS,
   CARD_SIZE_OPTIONS,
   // Element-key utilities exposed for controller.js's settings UI.
   settingsKeyFont, settingsKeyFsize,
