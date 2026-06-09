@@ -21,7 +21,7 @@
           "severity": "destroy"
         }
       ],
-      "target": "creature",
+      "target": "opp_creature",
       "target_filter": {
         "tapped": true
       }

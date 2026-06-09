@@ -1,12 +1,21 @@
 // `distinct_targets` opt-in: a two-creature spell whose two slots must name
 // DIFFERENT creatures. Roots and Branches / Sword and Sorcery carry the flag (so
-// their text honestly reads "...another target creature" and you can't tap+pump
-// the same creature); Twin Strike / Branching Bolt deliberately do NOT (they stay
-// permissive — you may stack both halves on one creature). This pins:
+// their text reads "...another target creature"); Twin Strike / Branching Bolt
+// deliberately do NOT (they stay permissive — you may stack both halves on one
+// creature).
+//
+// NOTE: Roots and Branches / Sword and Sorcery are also CONTROLLER-gated (tap an
+// opponent's creature, buff your own). Cross-controller slots are inherently
+// distinct, so on those two cards the controller split co-enforces the rule and
+// the pure distinct behavior can't be isolated on them. The distinct rule itself
+// is therefore pinned on a SYNTHETIC same-controller card (the "two target
+// creatures you control ..." shape — both slots self, where controller can't imply
+// distinctness). This pins:
 //   1. text — "another" appears iff the card is flagged;
-//   2. legality — same-creature-in-both-slots is rejected iff flagged;
-//   3. enumeration — getLegalActions emits no same-target combo for a flagged card;
-//   4. castability — a flagged card needs two distinct creatures in play.
+//   2. legality — controller-gated cards take a distinct opp×self pair; the
+//      synthetic same-controller card rejects same-creature-in-both-slots;
+//   3. enumeration — getLegalActions emits only valid combos (no same-target);
+//   4. castability — a controller-gated card needs a creature on each side.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -52,92 +61,148 @@ console.log('=== card data: the two flagged cards carry distinct_targets; the pe
 console.log('\n=== generated text: "another target creature" iff flagged ===');
 (() => {
   const r = id => describeCardText(JSON.parse(JSON.stringify(CARDS[id])));
-  check('roots_and_branches reads "...Another target creature..."',
-    r('roots_and_branches') === 'Tap target creature. Another target creature gets +1/+1 until end of turn.',
+  // The controller filters render into the text too (an opponent controls / you
+  // control), so "another" rides alongside the controller clause.
+  check('roots_and_branches reads "...an opponent controls. Another target creature you control..."',
+    r('roots_and_branches') === 'Tap target creature an opponent controls. Another target creature you control gets +1/+1 until end of turn.',
     r('roots_and_branches'));
-  check('sword_and_sorcery reads "...Tap another target creature."',
-    r('sword_and_sorcery') === 'Target creature gets +2/+2 until end of turn. Tap another target creature.',
+  check('sword_and_sorcery reads "...Tap another target creature an opponent controls."',
+    r('sword_and_sorcery') === 'Target creature you control gets +2/+2 until end of turn. Tap another target creature an opponent controls.',
     r('sword_and_sorcery'));
   check('twin_strike stays repeated (no "another")', !/another/i.test(r('twin_strike')), r('twin_strike'));
   check('branching_bolt stays repeated (no "another")', !/another/i.test(r('branching_bolt')), r('branching_bolt'));
 })();
 
-console.log('\n=== legality: same creature in both slots ===');
+console.log('\n=== legality: controller-gated cards take a distinct opp×self pair; permissive cards stack ===');
 (() => {
-  for (const id of ['roots_and_branches', 'sword_and_sorcery', 'twin_strike', 'branching_bolt']) {
+  // Roots and Branches / Sword and Sorcery are CONTROLLER-gated, so their two slots
+  // are inherently cross-controller (and thus distinct). Feed one creature per side
+  // and build each slot's target from its declared controller filter.
+  const pairFor = (id, youC, oppC) => CARDS[id].target_slots.map(s =>
+    (s.filter && s.filter.controller === 'opp') ? t(oppC) : t(youC));
+  for (const id of ['roots_and_branches', 'sword_and_sorcery']) {
+    const G = newGame();
+    const spell = mk(id, 'you'); G.you.hand.push(spell);
+    const youC = mk('savannah_lions', 'you'); const oppC = mk('savannah_lions', 'opp');
+    G.you.battlefield.push(youC); G.opp.battlefield.push(oppC);
+    const base = { type: 'castSpell', cardIid: spell.iid };
+    check(id + ' distinct opp×self cast is legal',
+      ENGINE.isLegalAction('you', { ...base, targets: pairFor(id, youC, oppC) }) === true);
+    // Same creature in both slots can't be made legal — one slot wants the other
+    // controller, so a same-side pair fails the controller filter.
+    check(id + ' same-creature-both-slots cast is rejected',
+      ENGINE.isLegalAction('you', { ...base, targets: [t(youC), t(youC)] }) === false);
+  }
+  // Permissive cards (no distinct flag): two of your own creatures; same-target OK.
+  for (const id of ['twin_strike', 'branching_bolt']) {
     const G = newGame();
     const spell = mk(id, 'you'); G.you.hand.push(spell);
     const a = mk('savannah_lions', 'you'); const b = mk('savannah_lions', 'you');
     G.you.battlefield.push(a, b);
     const base = { type: 'castSpell', cardIid: spell.iid };
-    const same = ENGINE.isLegalAction('you', { ...base, targets: [t(a), t(a)] });
-    const diff = ENGINE.isLegalAction('you', { ...base, targets: [t(a), t(b)] });
-    const flagged = !!CARDS[id].distinct_targets;
-    check(id + ' distinct two-target cast is legal', diff === true);
-    check(id + ' same-target cast is ' + (flagged ? 'REJECTED' : 'allowed'),
-      same === !flagged, 'same=' + same);
+    check(id + ' distinct two-target cast is legal',
+      ENGINE.isLegalAction('you', { ...base, targets: [t(a), t(b)] }) === true);
+    check(id + ' same-target cast is allowed',
+      ENGINE.isLegalAction('you', { ...base, targets: [t(a), t(a)] }) === true);
   }
+})();
+
+console.log('\n=== distinct_targets in isolation: two DIFFERENT creatures you control (the reusable shape) ===');
+(() => {
+  // No SHIPPING card needs distinct WITHOUT controller-gating today, but the rule
+  // exists for the "two target creatures you control ..." shape — both slots self,
+  // so the controller split can't imply distinctness and distinct_targets does the
+  // real work. Synthesize it from Twin Strike (two self-slots) + the flag.
+  const G = newGame();
+  const spell = mk('twin_strike', 'you'); spell.distinct_targets = true;
+  G.you.hand.push(spell);
+  const a = mk('savannah_lions', 'you'); const b = mk('savannah_lions', 'you');
+  G.you.battlefield.push(a, b);
+  const base = { type: 'castSpell', cardIid: spell.iid };
+  check('synthetic distinct (both self): two different creatures is legal',
+    ENGINE.isLegalAction('you', { ...base, targets: [t(a), t(b)] }) === true);
+  check('synthetic distinct (both self): same creature is REJECTED by the distinct rule',
+    ENGINE.isLegalAction('you', { ...base, targets: [t(a), t(a)] }) === false);
 })();
 
 console.log('\n=== real instantiation path: ENGINE.makeCard carries the flag (cast-enforcement regression) ===');
 (() => {
-  // The legality section above clones via JSON.parse(JSON.stringify(...)), which
-  // preserves every field. The REAL game builds cards through ENGINE.makeCard — a
-  // whitelist copy — so that is the path a live cast runs through. A prior bug
-  // omitted distinct_targets from that whitelist, so the instance had no flag and
-  // the forbidden same-target cast was ALLOWED in the actual game, while these
-  // clone-based tests stayed green. This pins the real path.
+  // The REAL game builds cards through ENGINE.makeCard — a whitelist copy. A prior
+  // bug omitted distinct_targets from that whitelist, so the live instance had no
+  // flag and the forbidden same-target cast was ALLOWED in-game while clone-based
+  // tests stayed green. Pin the real path: the flag survives makeCard, and the
+  // distinct rule it powers rejects a same-creature pick. (The two real cards are
+  // controller-gated above, where distinct can't be isolated; here we re-flag a
+  // makeCard instance with same-controller slots to exercise the rule on the real path.)
   for (const id of ['roots_and_branches', 'sword_and_sorcery']) {
     const made = ENGINE.makeCard(id, [], 0);
     check(id + ' makeCard instance carries distinct_targets',
       made.distinct_targets === true, JSON.stringify(made.distinct_targets));
-
-    const G = newGame();
-    const spell = Object.assign(made, {
-      controller: 'you', owner: 'you',
-      tapped: false, sick: false, damage: 0, tempPower: 0, tempTou: 0,
-      permPower: 0, permTou: 0, damagedBySources: new Set(),
-    });
-    G.you.hand.push(spell);
-    const a = mk('savannah_lions', 'you'); const b = mk('savannah_lions', 'you');
-    G.you.battlefield.push(a, b);
-    const base = { type: 'castSpell', cardIid: spell.iid };
-    const same = ENGINE.isLegalAction('you', { ...base, targets: [t(a), t(a)] });
-    const diff = ENGINE.isLegalAction('you', { ...base, targets: [t(a), t(b)] });
-    check(id + ' (makeCard) distinct two-target cast is legal', diff === true, 'diff=' + diff);
-    check(id + ' (makeCard) same-target cast is REJECTED', same === false, 'same=' + same);
   }
+  const G = newGame();
+  const spell = Object.assign(ENGINE.makeCard('twin_strike', [], 0), {
+    distinct_targets: true, controller: 'you', owner: 'you',
+    tapped: false, sick: false, damage: 0, tempPower: 0, tempTou: 0,
+    permPower: 0, permTou: 0, damagedBySources: new Set(),
+  });
+  G.you.hand.push(spell);
+  const a = mk('savannah_lions', 'you'); const b = mk('savannah_lions', 'you');
+  G.you.battlefield.push(a, b);
+  const base = { type: 'castSpell', cardIid: spell.iid };
+  check('(makeCard) synthetic distinct two-target cast is legal',
+    ENGINE.isLegalAction('you', { ...base, targets: [t(a), t(b)] }) === true, 'diff');
+  check('(makeCard) synthetic distinct same-target cast is REJECTED',
+    ENGINE.isLegalAction('you', { ...base, targets: [t(a), t(a)] }) === false, 'same');
 })();
 
-console.log('\n=== getLegalActions emits no same-target combo for a flagged card ===');
+console.log('\n=== getLegalActions: controller-gated card enumerates only valid opp×self combos ===');
 (() => {
-  for (const id of ['roots_and_branches', 'twin_strike']) {
-    const G = newGame();
-    const spell = mk(id, 'you'); G.you.hand.push(spell);
-    G.you.battlefield.push(mk('savannah_lions', 'you'), mk('savannah_lions', 'you'));
-    const acts = ENGINE.getLegalActions('you')
-      .filter(x => x.type === 'castSpell' && x.cardIid === spell.iid);
-    const sameCombos = acts.filter(x => x.targets && x.targets[0] && x.targets[1]
-      && x.targets[0].iid === x.targets[1].iid).length;
-    const flagged = !!CARDS[id].distinct_targets;
-    check(id + ' enumerates ' + (flagged ? 'ONLY distinct' : 'all') + ' combos',
-      flagged ? (sameCombos === 0 && acts.length === 2) : (sameCombos === 2 && acts.length === 4),
-      'combos=' + acts.length + ' same=' + sameCombos);
-  }
+  // Roots and Branches: slot0 wants an opponent creature, slot1 your own. One
+  // creature per side → exactly one legal assignment, and it is distinct.
+  const G = newGame();
+  const spell = mk('roots_and_branches', 'you'); G.you.hand.push(spell);
+  G.you.battlefield.push(mk('savannah_lions', 'you'));
+  G.opp.battlefield.push(mk('savannah_lions', 'opp'));
+  const acts = ENGINE.getLegalActions('you')
+    .filter(x => x.type === 'castSpell' && x.cardIid === spell.iid);
+  const sameCombos = acts.filter(x => x.targets && x.targets[0] && x.targets[1]
+    && x.targets[0].iid === x.targets[1].iid).length;
+  check('roots_and_branches enumerates one distinct opp×self combo',
+    acts.length === 1 && sameCombos === 0, 'combos=' + acts.length + ' same=' + sameCombos);
 })();
 
-console.log('\n=== castability: a flagged card needs two distinct creatures ===');
+console.log('\n=== getLegalActions: a permissive card emits all combos incl. same-target ===');
 (() => {
-  for (const id of ['roots_and_branches', 'twin_strike']) {
-    const G = newGame();
-    const spell = mk(id, 'you'); G.you.hand.push(spell);
-    G.you.battlefield.push(mk('savannah_lions', 'you')); // only ONE creature
-    const castable = ENGINE.getLegalActions('you')
-      .some(x => x.type === 'castSpell' && x.cardIid === spell.iid);
-    const flagged = !!CARDS[id].distinct_targets;
-    check(id + ' with one creature is ' + (flagged ? 'UNCASTABLE' : 'castable'),
-      castable === !flagged, 'castable=' + castable);
-  }
+  const G = newGame();
+  const spell = mk('twin_strike', 'you'); G.you.hand.push(spell);
+  G.you.battlefield.push(mk('savannah_lions', 'you'), mk('savannah_lions', 'you'));
+  const acts = ENGINE.getLegalActions('you')
+    .filter(x => x.type === 'castSpell' && x.cardIid === spell.iid);
+  const sameCombos = acts.filter(x => x.targets && x.targets[0] && x.targets[1]
+    && x.targets[0].iid === x.targets[1].iid).length;
+  check('twin_strike enumerates all combos (same-target included)',
+    acts.length === 4 && sameCombos === 2, 'combos=' + acts.length + ' same=' + sameCombos);
+})();
+
+console.log('\n=== castability: a controller-gated card needs a creature on EACH side ===');
+(() => {
+  const G = newGame();
+  const spell = mk('roots_and_branches', 'you'); G.you.hand.push(spell);
+  G.you.battlefield.push(mk('savannah_lions', 'you')); // no opponent creature
+  const castable = ENGINE.getLegalActions('you')
+    .some(x => x.type === 'castSpell' && x.cardIid === spell.iid);
+  check('roots_and_branches with no opponent creature is UNCASTABLE', castable === false, 'castable=' + castable);
+})();
+
+console.log('\n=== castability: a permissive card casts with even one creature ===');
+(() => {
+  // Twin Strike isn't distinct — one creature suffices (stack both pumps on it).
+  const G = newGame();
+  const spell = mk('twin_strike', 'you'); G.you.hand.push(spell);
+  G.you.battlefield.push(mk('savannah_lions', 'you'));
+  const castable = ENGINE.getLegalActions('you')
+    .some(x => x.type === 'castSpell' && x.cardIid === spell.iid);
+  check('twin_strike with one creature is castable', castable === true, 'castable=' + castable);
 })();
 
 console.log('\n=== stapled distinct card carries its rule onto the ETB ===');

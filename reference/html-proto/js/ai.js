@@ -434,24 +434,18 @@ function decideEndStepFlash(state, who, actions) {
 // trigger, e.g.) might want a different rule. Conservative by design — only
 // fizzles flash casts when there's clearly nothing good to bounce.
 function flashETBWouldFizzle(state, who, card) {
-  const them = opp(who);
   const triggers = card.triggers || [];
-  const creaturesOf = w => state[w].battlefield.filter(c => hasType(c, 'Creature'));
   for (const trig of triggers) {
     if (!triggerFiresOnEnter(trig)) continue;
-    // Trigger-level target step (The False Witness: opp_creature) — if the ETB
-    // needs a creature that isn't on the board, flashing it in just wastes the
-    // body. Mirror the per-effect affect_creature check below.
-    if (trig.target === 'opp_creature' && creaturesOf(them).length === 0) return true;
-    if (trig.target === 'your_creature' && creaturesOf(who).length === 0) return true;
-    if (trig.target === 'creature'
-        && creaturesOf(who).length === 0 && creaturesOf(them).length === 0) return true;
-    const effects = trig.effects || [];
-    for (const eff of effects) {
-      if (eff.kind === 'affect_creature' && eff.target === 'creature') {
-        if (creaturesOf(them).length === 0) return true;
-      }
-    }
+    // A trigger declares its target at one of two levels: the trigger-level
+    // target() step (trig.target + trig.target_filter) OR a per-effect target
+    // (eff.target + eff.filter). Source the kind and filter from the SAME level
+    // so they can't desync (a trigger-level kind paired with a stray effect
+    // filter would mis-resolve).
+    const targetingEff = (trig.effects || []).find(e => e.target && e.target !== 'self');
+    const targetKind = trig.target || (targetingEff && targetingEff.target);
+    const targetFilter = trig.target ? trig.target_filter : (targetingEff && targetingEff.filter);
+    if (targetKind && ENGINE.targetsForFilter(targetKind, who, targetFilter).length === 0) return true;
   }
   return false;
 }

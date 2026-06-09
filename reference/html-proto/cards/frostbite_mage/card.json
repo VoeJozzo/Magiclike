@@ -22,7 +22,7 @@
           "toughness": 0
         }
       ],
-      "target": "creature"
+      "target": "opp_creature"
     }
   ],
   "types": [

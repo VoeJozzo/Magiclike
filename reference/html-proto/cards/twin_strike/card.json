@@ -21,10 +21,12 @@
   "name": "Twin Strike",
   "target_slots": [
     {
-      "target": "creature"
+      "target": "creature",
+      "filter": { "controller": "self" }
     },
     {
-      "target": "creature"
+      "target": "creature",
+      "filter": { "controller": "self" }
     }
   ],
   "keywords": [

@@ -22,10 +22,12 @@
   "distinct_targets": true,
   "target_slots": [
     {
-      "target": "creature"
+      "target": "creature",
+      "filter": { "controller": "opp" }
     },
     {
-      "target": "creature"
+      "target": "creature",
+      "filter": { "controller": "self" }
     }
   ],
   "keywords": [

@@ -4,7 +4,7 @@
   "cost": {
     "B": 1
   },
-  "target": "creature",
+  "target": "opp_creature",
   "effects": [
     {
       "kind": "pump",
