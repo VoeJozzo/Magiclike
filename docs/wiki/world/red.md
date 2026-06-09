@@ -23,6 +23,12 @@ And they are: war-drummers drumming, warchanters chanting, a raider joyously sma
 
 Hold both registers without forcing them into tragedy-of-the-underclass: the goblins aren't a statement. They're *neighbors*. Comedy and grief in the same cave, never on the same card.
 
+## Status of this page *(authorial)*
+
+> "Red is the shakiest *color*, which is *why* it has the shakiest page. (Which is why we're doing this project.)" — Joe
+
+The shakiness is upstream of the bible, not a transcription error — red is the color still finding itself. Treat this page as the most provisional of the five; expect it to be rewritten as red's cards accumulate.
+
 ## Open structure question
 
 The corpus shows two red populations: the **legion** (red robes + iron armor — the library's arsonists, organized, ambitious) and the **goblin under-nation** (caves, forges, drums). Whether they're connected — recruitment, vassalage, nothing — is unestablished. Proposed-and-unreviewed: the legion recruits from the caves. Parked name for the legion's campaign: "Cindermarch" — Joe: potential, but smells contrived as a faction name; maybe a *movement* — see [[names-ledger]] for the historians'-coinage reading that might rescue it.

@@ -18,12 +18,14 @@ Blue's two faces are both already in the corpus: the **wonder** (a young wizard 
 The corpus contains a complete blue story, told in small windows:
 
 - **Before:** Studious Research, Archivist, Lore Seeker — one ancient library, cluttered tabletops, scroll racks. Plausibly the same sloppy-haired young wizard at two ages, and his elder. Status: same-institution reading is adopted-by-vibe; same-*person* reading is unconfirmed and fine to leave that way.
-- **The fire:** Martyred Scholar — a scholar dying on marble stairs while invading soldiers in red robes and iron armor sack the library. The prompt names its scene: the destruction of the Library of Alexandria.
+- **The fire:** Martyred Scholar — a scholar dying on marble stairs while invading soldiers in red robes and iron armor sack the library. The prompt names its scene: the destruction of the Library of Alexandria. *(Authorial flavor candidate, parked until flavor renders: **"Knowledge burns."** — Joe flagged it for exactly this card. Note it passes the [[flavor-text]] testimony test as a proverb — testimony with the witness worn away.)*
 - **After:** Prodigal Sorcerer — "a young wizard exiled from his order," staff barely sparking, walking a gray road. Quickdraw Mage — teleporting into feasts like a fugitive. Archmage of Veils — face hidden. Every post-fire blue card is a different answer to *what do you do when the shelves burn?*
 
 This is the set's clearest faction-scale story and it should stay scattered across small windows rather than ever getting a summary card.
 
 The library's fall is one rung of the larger pattern in [[the-fall]] — known *ordinally*, per that page's rungs-not-dates principle: more recent than the marble builders, otherwise deliberately unfixed. (The art's internal evidence — a young exile, living-library scenes coexisting with the sack — keeps the within-living-memory reading available without committing to it.)
+
+And per [[magic]], the library now carries extra weight: in a world where magic works but has no theory, the library was the one serious attempt to *build* one — the closest thing to a narrator the world ever tried to grow. The fire didn't just destroy books; it ended the project of explanation.
 
 ## Texture notes
 

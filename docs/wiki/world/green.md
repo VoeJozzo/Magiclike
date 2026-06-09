@@ -19,6 +19,12 @@ And green has a place in the world's succession — the last one in line, and th
 
 Green's indifference rhymes with [[black]]'s but is nothing like it: black *decides* not to care (a judgment, recorded in a ledger); green never held the question. The bear is not callous. The bear is a bear. Tonal touchstone: **"The Snow it Melts the Soonest"** — patient, unhurried, certain; everything melts in its season.
 
+A note on this page's length — it's the shortest of the five color pages, and that's correct *(authorial)*:
+
+> "It's not that green is 'stupid' or 'primitive' or whatever… Its argument is just less complex, less convoluted." — Joe
+
+Green's brevity is fidelity, not neglect. Don't pad it.
+
 ## What the corpus shows *(observed)*
 
 - **Last Druid** — the most beautiful prompt in the log: a dying druid's legs already softening into moss and fallen leaves, a luminous seedling rising from her open hand cradling a fawn-spirit. Death as handoff, not loss. Druids are the Reclaim's hospice workers.

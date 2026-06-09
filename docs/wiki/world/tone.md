@@ -31,9 +31,9 @@ There is no Dark Lord in this world and no evil faction; the disarray has a *sha
 
 *Open:* whether the war is one named thing or the world's permanent weather. Lean: small windows never need the war's name — what a card shows is mud, frost, a bell, a breach. (See [[names-ledger]] on naming restraint generally.)
 
-## Magic is a verb *(authorial, still settling)*
+## Magic is a verb *(authorial — tension resolved 2026-06-09)*
 
-When things happen in this world, magic happens. Magic isn't a separate register reached for on special occasions; it's how events express themselves (Way of Kings is a partial touchstone). **But** the setting deliberately holds both very low-fantasy material (mud, taxes, dented steel, pots smashed in a kitchen) and very high-fantasy material (gods, immortals, men rewoven into brass). How that tension is shown — what an ordinary person sees in an ordinary week — is an open question, maybe *the* open question.
+When things happen in this world, magic happens. Magic isn't a separate register reached for on special occasions; it's how events express themselves. The low/high-fantasy tension this section used to flag is **settled**: the world is high-fantasy in event-density and low-fantasy in *understanding* — full of magic the way medieval England was full of magic, real to everyone and theorized by no one. The full treatment now lives at [[magic]].
 
 ## Interiority — even the monsters *(observed; protect this)*
 
@@ -42,7 +42,7 @@ The corpus consistently grants inner lives to things other sets treat as set-dre
 ## Touchstones *(authorial unless noted)*
 
 - **The Banner Saga** — the threads imagery ([[threads]]).
-- **The Way of Kings** — magic-as-event, partially.
+- **The Way of Kings** — magic-as-event, partially. *(Explicitly NOT the Sanderson hard-magic ethos — in-world, magic never gets explained. "'Gandalf is a wizard' and 'Gandalf can cast fireball if he prepares it during his long rest' are very different ways of conceptualizing magic." — Joe. See [[magic]].)*
 - **Hitchhiker's Guide's hyperspace bypass** — the [[black]]/[[white]] duality: "I simply do not care that you live there" vs. "unfortunately, it has to go somewhere."
 - **The Carryx** (*The Mercy of Gods*) — black's honest callousness: what is, is.
 - **"The Snow it Melts the Soonest"** — green's tonal register ([[green]]).

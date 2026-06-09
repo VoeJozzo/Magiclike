@@ -29,7 +29,15 @@ They are **not** the threads' canonical in-world names ([[threads]] §open-quest
 
 Treat as a default worth reaching for and worth violating on purpose. A black card at dawn should mean something.
 
-## 4. Signature moves worth keeping (art-book register)
+## 4. WUBRG threads in art — a deliberate carve-out *(authorial)*
+
+[[magic]] establishes that rules-language isn't world canon — the world doesn't know it runs on WUBRG. The art gets one deliberate exception:
+
+> "The 'threads-in-art' thing serves a *visual* purpose a lot of the time though, helping with ludonarrative integration. So in our art language, yeah, we have WUBRG threads." — Joe (agreeing ~85% with the demarcation, carving out this much)
+
+Threads depicted in card art may carry the five colors *on purpose* — the image is allowed to speak the game's language because the player reads both at once. The carve-out is **visual, not verbal**: the art shows a crimson thread; no inhabitant calls it a red mana source, and no in-world text names the quintet (§2 still holds).
+
+## 5. Signature moves worth keeping (art-book register)
 
 - **Desaturation + one vivid color** is black's recurring move (Consume Spirit, Demonic Tutor, Blood Artist, Cult Priest — gray worlds, one red). Possible reading for the art book: black sees in ledger-gray; only what's owed has color. Use as craft, not creed.
 - **The mechanic-enacting element gets the light** (Healing Salve, Heir to the Burnt House v2 — see its claude-notes: "the curse leaving the body, not the body itself, is the subject").

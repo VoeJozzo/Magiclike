@@ -26,8 +26,9 @@ Every claim in this shard carries one of these (explicitly or by section):
 ## Pages
 
 **Foundation**
-- [tone.md](tone.md) — the small-windows discipline, the war, low/high fantasy tension, touchstones.
-- [the-fall.md](the-fall.md) — the disarray, the unnamed fall, the world-clock (Meridian at 3 PM), and the world-without-a-narrator epistemology.
+- [tone.md](tone.md) — the small-windows discipline, the war, touchstones.
+- [the-fall.md](the-fall.md) — the disarray, the unnamed fall, the world-clock (Meridian at 3 PM), rungs-not-dates, artifacts-as-archaeology, and the world-without-a-narrator epistemology.
+- [magic.md](magic.md) — works, no theory. Medieval England was full of magic too. Rules-language ≠ world canon.
 - [threads.md](threads.md) — life as thread; the weave cosmology; how it joins the sticker/staple mechanics.
 - [the-divine.md](the-divine.md) — gods who don't intervene, angels who do; the deliberately unresolved theology.
 - [art-language.md](art-language.md) — craft conventions that are NOT world facts (light, hue words, time-of-day).
@@ -46,7 +47,7 @@ Every claim in this shard carries one of these (explicitly or by section):
 
 ## Open questions (the live ones)
 
-1. **How is magic *shown*?** Magic is a verb here — when things happen, so does magic (Way of Kings adjacent). But the setting holds both very low- and very high-fantasy elements, and exactly how that tension resolves is undecided. → [[tone]]
+1. ~~How is magic *shown*?~~ **Settled (2026-06-09):** high-fantasy in event-density, low-fantasy in epistemology — magic works; nobody has a theory. Full of magic the way medieval England was. → [[magic]]
 2. ~~How literal is the thread model?~~ **Settled (2026-06-09):** everyone has seen it once, and nobody believes it. → [[threads]]
 3. **The war** — one long war or many? Named or never named? (Lean: small windows don't need the war's name. Its *shape* is now established — disarray, man against man → [[the-fall]].)
 3a. ~~When did the library fall?~~ **Settled (2026-06-09) by principle, not by date:** the past is known in rungs, not dates — the library fell on a lower rung than the marble, and the bible never fixes when. → [[the-fall]] §Rungs, not dates

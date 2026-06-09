@@ -42,14 +42,25 @@ The same posture now repeats in every register:
 - **Threads** — everyone has seen one once; nobody believes it ([[threads]]).
 - **Gods** — testimony everywhere, verdict nowhere ([[the-divine]]).
 - **History** — ruins everywhere, no agreed account of what fell (this page).
+- **Magic** — works everywhere, no theory of why ([[magic]]).
 
-One sentence for all three: **this is a world that has lost its narrator.** No surviving authority can say what the threads are, what the gods intend, or what the marble was for. The set's voice should honor that — evidence everywhere, verdict nowhere — which is also the argument behind the [[flavor-text]] opinion.
+One sentence for all four: **this is a world that has lost its narrator.** No surviving authority can say what the threads are, what the gods intend, what the marble was for, or why the rites work. The set's voice should honor that — evidence everywhere, verdict nowhere — which is also the argument behind the [[flavor-text]] opinion.
 
 ## Rungs, not dates *(authorial — and a standing principle)*
 
 > "I'm not sure when the library fell. I'm not sure to what extent that matters — I don't feel obligated to be married to one specific point in time. But yes, it's more recent (a 'lower rung on the ladder') than whoever built the city in the art of City of Brass." — Joe
 
 Promoted to a principle: **the past is known ordinally, not chronologically.** The bible records *sequence* (the library fell after the marble was raised; the warlords come after the kings; nature comes last) and never dates. This isn't evasion — it's the same epistemology as everything else here (§narrator): a world without a narrator doesn't get a timeline, it gets a ladder, and everyone agrees on the order of the rungs while disagreeing about everything else. If a future card or page needs "how long ago," the answer is a *relation* ("before the bell was hung," "in the exile's lifetime"), never a number.
+
+## Artifacts are archaeology *(adopted as a soft default, 2026-06-09)*
+
+The corpus's artifacts read as *older than their owners*: City of Brass's bleached tiers, Phylactery's moss-claimed altar, Iron Sentinel patrolling a wall older than its garrison, the Equatorial Engine — which [[meridian]] *maintains*, which is not the same as being able to *make*. Default: **artifacts come from higher rungs**; the present wields more than it can manufacture. An artifact is a knot whose knotter is gone ([[threads]] — "knots without a weaver"). In art this means verdigris, wear, mismatched repair, by default.
+
+But it's a **soft** default, by authorial direction:
+
+> "I do want this to be a *soft default*. Like yeah, things from the past are powerful and wonderful and great, but I think our tragedy here is a *tapering* as much as a *severing*." — Joe
+
+Tapering, not severing: the present still makes things — fewer, lesser, with more of the old work mixed in. A living smith repairing a dead empire's gate is more this world than either absolute (a golden age nothing can be added to, or a workshop renaissance). New-made artifacts are allowed; they should *feel* like the lower rung they come from.
 
 ## Open
 
