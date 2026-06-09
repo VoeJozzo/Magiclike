@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.2.1`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.1.10`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -1193,41 +1193,45 @@ prompt machinery (engine + render + controller + AI). Note: rip-edict now uses
 Diabolic Edict). Browser-verify the rip UI removal (DOM not covered by Node tests).
 (#7 symmetricize: confirmed already in the decided end-state — no change.)
 
-v2.2.0: ability-icon UI polish (follow-up to the PR #90 SVG-icon set). (1) Tap
-symbol now renders the hourglass coin instead of a literal "T" — `.mana-T` was
-never wired to art; pointed it at `assets/keywords/tap.svg` with the same
-`background-image` + `color:transparent` treatment as the WUBRG pips (fixes
-Verdant Verge et al.). (2) Keyword ability icons get a custom hover tooltip
-(`#iconTip`) in Almendra, palette-matched to the colorless card frame (slate
-panel, gold mana-coin rim, cream text, keyword name bolded) — coins now carry
-`data-tip` instead of `title`, rendered by a delegated hover handler in
+v2.1.10: ability-icon UI polish (follow-up to the PR #90 SVG-icon set; drafted
+across two commits as v2.2.0/v2.2.1 — renumbered to a single patch on review,
+since it's display-only polish, not a minor-feature slice).
+(1) Tap symbol now renders the hourglass coin instead of a literal "T" —
+`.mana-T` was never wired to art; pointed it at `assets/keywords/tap.svg` with
+the same `background-image` + `color:transparent` treatment as the WUBRG pips
+(fixes Verdant Verge et al.). (2) Keyword ability icons get a custom hover
+tooltip (`#iconTip`) in Almendra, palette-matched to the colorless card frame
+(slate panel, gold mana-coin rim, cream text, keyword name bolded) — coins now
+carry `data-tip` instead of `title`, rendered by a delegated hover handler in
 `controller.js` (body-level + viewport-clamped, since the icons sit inside the
-`frame-text` overflow:hidden box). (3) Native keyword-coin disc warmed from the
-silvery `#d8d4c8` to a true cream `#ece0be` (the `CREAM` constant; CSS
-`.kw-native` fallback kept in sync). (4) Colorless (C) keyword glyph darkened
+`frame-text` overflow:hidden box). `render()` calls `CONTROLLER.hideIconTip()`
+each repaint so a coin destroyed under the pointer (no mouseout fires for a
+node removed beneath the cursor) doesn't leave the tip stranded — cf. how
+`#mapTooltip` is cleared. (3) Native keyword-coin disc warmed from the silvery
+`#d8d4c8` to a true cream `#ece0be` (the `CREAM` constant; CSS `.kw-native`
+fallback kept in sync). (4) Colorless (C) keyword glyph darkened
 `#6b7280 → #3a3f47` for legibility on the cream disc (inner ring left lighter —
 only the foreground symbol darkened). (5) Tap coin recolored to match the
 colorless keyword-coin palette (cream disc, slate glyph, gray inner ring, cream
 outer ring) per "batch the tap symbol in with the keyword ability symbols."
-`keyword_icons_test` updated (`title`→`data-tip`); 1693 green, lint clean.
-Browser-verified (tap pip + tooltip + cream disc + darkened glyph; pixel-sampled
-the recolored tap coin).
-
-v2.2.1: ability-icon follow-ups (continues the v2.2.0 polish). (1) The innate
-keyword now renders its coin (innate.svg, inlined into KEYWORD_ICON_SVG with the
-var-driven palette + currentColor glyph stroke) in the in-play frame's keyword
-row instead of only the word "Innate." — sticker-granted innate (the common
-case: post-draft basic lands, City of Brass, Phylactery) reads gold like other
-sticker keywords; intrinsic innate (Ingenuity Unbounded) stays native cream. The
+(6) The innate keyword now renders its coin (innate.svg, inlined into
+KEYWORD_ICON_SVG with the var-driven palette + currentColor glyph stroke) in the
+in-play frame's keyword row instead of only the word "Innate." — sticker-granted
+innate (the common case: post-draft basic lands, City of Brass, Phylactery)
+reads gold like other sticker keywords; intrinsic innate (Ingenuity Unbounded)
+stays native cream. innate is selected on both the creature and non-creature
+branches, so it reads as a coin like any other keyword wherever it lands. The
 redundant "Innate." word is dropped on the frame (`describeCardSegments` gates it
-on `!skipKeywords`, so the popup keeps it), and a basic innate land suppresses
-its big mana glyph (`!kwIconsHtml`) so the 10px coin doesn't collide with the
-45px symbol. `keywordSourceClass` now recognizes the bare `innate` sticker id
-(not just `kw_innate`). (2) New Devtools setting — "Ability icons → Keyword coin
-(hand / board)" (`--card-kw-icon-size`, 6–20px) scales the keyword coins,
-mirroring the mana-pip size knobs (default + CSS-var binding + applyFontsToRoot +
-options array, no new branch in `set()`). keyword_icons_test gains innate-coin
-coverage; 1695 green, lint clean. Browser-verified (innate Forest coin gold +
+on `!skipKeywords`, so the popup keeps it), and a basic land carrying any keyword
+coin suppresses its big mana glyph (`!kwIconsHtml`) so the 10px coin doesn't
+collide with the 45px symbol (innate is the common trigger). `keywordSourceClass`
+now recognizes the bare `innate` sticker id (not just `kw_innate`). (7) New
+Devtools setting — "Ability icons → Keyword coin (hand / board)"
+(`--card-kw-icon-size`, 6–20px) scales the keyword coins, mirroring the mana-pip
+size knobs (default + CSS-var binding + applyFontsToRoot + options array, no new
+branch in `set()`). `keyword_icons_test` updated (`title`→`data-tip`) and gains
+innate-coin coverage; 1695 green, lint clean. Browser-verified (tap pip, tooltip,
+cream disc, darkened glyph, pixel-sampled tap coin; innate Forest coin gold +
 "Innate: …" tooltip, big mana suppressed, popup keeps the word; size knob
 10→20→6px live via the CSS var).
 

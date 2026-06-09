@@ -905,6 +905,16 @@ function onIconTipOut(e) {
   if (!host) return;
   // Ignore moves between children of the same icon (relatedTarget still inside).
   if (e.relatedTarget && host.contains(e.relatedTarget)) return;
+  hideIconTip();
+}
+// Force-hide the tooltip, called by render() on every repaint. A repaint
+// rebuilds the hand/board innerHTML, so the hovered coin is removed out from
+// under the pointer — the browser fires no mouseout for a node deleted beneath
+// the cursor, which would otherwise leave #iconTip stuck visible until the
+// pointer next enters and leaves another coin. Mirrors how #mapTooltip is
+// cleared on repaint. (If the pointer is still over a freshly-rebuilt coin, the
+// tip stays hidden until the pointer moves — same as the map tooltip.)
+function hideIconTip() {
   const tip = iconTip();
   if (tip) tip.classList.remove('vis');
 }
@@ -3409,5 +3419,8 @@ return {
   uiBlk: () => uiBlk,
   uiPickBlk: () => uiPickBlk,
   clearUiOnPhaseChange,
+  // Hide the ability-icon tooltip; render() calls this each repaint so a coin
+  // destroyed under the pointer doesn't leave the tip stranded.
+  hideIconTip,
 };
 })();

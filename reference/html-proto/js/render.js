@@ -48,6 +48,10 @@ function makeTriggerBuildOptionBtn(innerHtml, onClick) {
 
 function render() {
   const G = ENGINE.state();
+  // Clear the ability-icon hover tooltip before the rebuild below replaces the
+  // hovered coin (no mouseout fires for a node removed under the pointer, so it
+  // would otherwise linger). See CONTROLLER.hideIconTip.
+  CONTROLLER.hideIconTip();
   // Deep guard: any of these missing means we're not in-game (start
   // screen, post-game, settings panel before first draft, etc.). Callers
   // can fire-and-forget render() without needing to wrap in try/catch.
@@ -1339,8 +1343,10 @@ function nativeKeywordStyle(card, colorKey) {
 // #iconTip popup (Almendra, palette-matched — see CONTROLLER tooltip wiring),
 // not the browser's native title tooltip. Selection mirrors keywordPreamble:
 // creatures show every keyword; non-creatures show only spell-legal ones
-// (flash) plus innate (a land/status keyword — its coin shows on lands). no_block
-// stays hidden (it's the silent half of Pacifism).
+// (flash) plus innate. innate is included on both branches — it reads as a coin
+// like any other keyword wherever it lands (a creature that somehow gains innate
+// shows it too; the common case is a basic land). no_block stays hidden (it's
+// the silent half of Pacifism).
 function keywordIconsHtml(card, colorKey) {
   const tpl = (card.isToken ? TOKENS : CARDS)[card.tplId];
   const isCreatureCard = hasType(card, 'Creature') || (tpl && hasType(tpl, 'Creature'));
@@ -1527,10 +1533,12 @@ function cardToViewModel(card, opts) {
   // what it actually taps for (landProducibleColors, not the `mana` label). The
   // moment it gains text — a land-color sticker turns the fixed tap-ability into a
   // choose-form that renders ("add {U} or {B}") — oracleHtml is non-empty and the
-  // normal layout takes over. An innate basic land surfaces its innate coin
-  // (kwIconsHtml) in place of the old "Innate." text, so suppress the big symbol
-  // there too (the 10px coin + 45px glyph won't co-fit the text box). Skipped for
-  // synthetic cards (overrideOracleText), which aren't engine lands.
+  // normal layout takes over. The !kwIconsHtml guard suppresses the big symbol
+  // whenever the land carries ANY keyword coin (not just innate): the 10px coin +
+  // 45px glyph won't co-fit the text box, so the coin row wins. Innate is the
+  // common trigger (its coin replaced the old "Innate." text on basics), but a
+  // basic that picked up, say, a hexproof grant is handled by the same gate.
+  // Skipped for synthetic cards (overrideOracleText), which aren't engine lands.
   if (overrideOracleText === undefined && !oracleHtml && !kwIconsHtml
       && hasType(card, 'Land') && hasType(card, 'Basic')) {
     const colors = ENGINE.landProducibleColors(card);
