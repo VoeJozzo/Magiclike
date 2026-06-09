@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.3.0`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.4.0`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -1163,6 +1163,27 @@ spell-legal `flash`; `no_block`/`innate` excluded). `unblockable` has no art yet
 so it falls back to a tiny text chip. New `keyword_icons_test.js` (9 assertions);
 full suite green (1615), lint clean. Note: DOM rendering isn't covered by the
 Node harness — browser-verify the row layout/tooltips.
+
+v2.4.0: keyword coin icons are recolored by grant source ("New SVG Icons"
+branch). The coin SVGs are now embedded (js/keyword-icons.js) as inline,
+recolorable markup — glyph = `currentColor`, disc/rim = CSS vars
+(--kw-disc/--kw-rim/--kw-rim2) — generated from the assets/keywords/<kw>.svg art
+(regenerate via the generator if the art changes). keywordIconsHtml inlines them
+(not <img>, which can't inherit color/vars) and tags each by source:
+  - **native** (template keyword) → the card's OWN color: glyph + bright outer
+    highlight ring take the card's identity color, an inner ring darkens it for
+    a two-ring bezel, and the disc uses the card's text ink — cream, or dark
+    (#1a1a1a) on the light White frame (reusing the per-frame text-color logic so
+    White doesn't wash out). Set inline per card via nativeKeywordStyle /
+    KW_NATIVE_COLORS, keyed off the frame colorKey.
+  - **sticker-granted** (kw_* sticker) → gold; **permanent-granted** (grantedBy)
+    → teal. Both mirror the existing keyword-badge palette
+    (.stk-badge.skw / .kw-granted) and get the same bright two-ring treatment.
+Native wins ties. Note: this realizes the intended source-color distinction that
+nativeKeywordBadgesHtml (dead code) only ever described — previously only the
+gold sticker badges were live. keyword_icons_test.js grew to 14 assertions (incl.
+source-class + per-card-color). Full suite green (1620), lint clean. DOM
+colors/rings need a browser eyeball.
 
 > **MUST UPDATE on every dev-branch push that touches code.** Bump `VERSION` in `js/main.js` AND the line above, in the same commit. GitHub Pages caches aggressively; the version string is the only reliable way to confirm a fresh build is live.
 

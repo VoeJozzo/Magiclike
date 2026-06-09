@@ -1253,30 +1253,65 @@ function nativeKeywordBadgesHtml(card, big) {
   return `<div class="stickers-row${big ? '-big' : ''}">${parts.join('')}</div>`;
 }
 
-// Keywords that have a shipped coin icon at assets/keywords/<kw>.svg. The 13
-// combat keywords all have art; `unblockable` is the one gap (text fallback
-// until art exists). `innate` isn't here — it's a non-combat status keyword
-// with its own "Innate." line/badge, not part of the combat icon row.
-const KEYWORD_ICON_SET = new Set([
-  'flying', 'vigilance', 'trample', 'haste', 'first_strike', 'reach', 'defender',
-  'indestructible', 'lifelink', 'deathtouch', 'menace', 'hexproof', 'flash',
-]);
+// Where a card's keyword comes from, → the CSS source class that recolors its
+// coin: native (template) takes the CARD'S color (per-card, set inline — see
+// KW_NATIVE_COLORS below), sticker (kw_* sticker) = gold, granted (by another
+// permanent via grantedBy) = teal. Native wins ties (granting an intrinsic
+// keyword is redundant). Synthetic card-shaped objects (browser previews — no
+// tpl/grant tracking) default native.
+function keywordSourceClass(kw, card, templateKw) {
+  if (templateKw.includes(kw)) return 'kw-native';
+  if ((card.stickers || []).includes('kw_' + kw)) return 'kw-sticker';
+  if (card.grantedBy instanceof Map) {
+    const srcs = card.grantedBy.get(kw);
+    if (srcs && srcs.size > 0) return 'kw-granted';
+  }
+  return 'kw-native';
+}
+
+// Native keyword coins wear the card's own color identity: glyph + outer
+// highlight ring = the card's color; disc = the card's text ink (cream, or
+// dark #1a1a1a on the light white frame); inner ring = a darkened shade for a
+// two-ring bezel. Keyed by frame colorKey. (Sticker/granted ignore this — they
+// use the fixed gold/teal classes.)
+const KW_NATIVE_COLORS = {
+  W: { ink: '#DEC96A', disc: '#1a1a1a', rim: '#8a6d18', rim2: '#DEC96A' },
+  U: { ink: '#2C5AA8', disc: '#d8d4c8', rim: '#18345f', rim2: '#2C5AA8' },
+  B: { ink: '#15151f', disc: '#d8d4c8', rim: '#000000', rim2: '#15151f' },
+  R: { ink: '#A52222', disc: '#d8d4c8', rim: '#5e1414', rim2: '#A52222' },
+  G: { ink: '#1E7A38', disc: '#d8d4c8', rim: '#103f1d', rim2: '#1E7A38' },
+  C: { ink: '#6b7280', disc: '#d8d4c8', rim: '#3a3e44', rim2: '#6b7280' },
+};
+
+// Inline CSS vars for a native coin, from the card's frame color. Mirrors
+// cardToViewModel's colorKey derivation (cost colors > color > land's produced
+// color > colorless).
+function nativeKeywordStyle(card) {
+  const colorKey = (card.colors && card.colors[0]) || card.color
+    || (hasType(card, 'Land') && card.mana) || 'C';
+  const c = KW_NATIVE_COLORS[colorKey] || KW_NATIVE_COLORS.C;
+  return `color:${c.ink};--kw-disc:${c.disc};--kw-rim:${c.rim};--kw-rim2:${c.rim2}`;
+}
 
 // Icon row shown on the small in-play frame in place of the keyword text line
-// (the blow-up popup keeps the words — see openCardPopup). Each icon carries a
-// "Display: reminder" tooltip via the title attribute. Mirrors keywordPreamble's
-// selection: creatures show every keyword; non-creatures show only spell-legal
-// ones (flash). no_block is hidden; innate has its own status line, so both are
-// excluded here.
+// (the blow-up popup keeps the words — see openCardPopup). The coin SVGs are
+// inlined from KEYWORD_ICON_SVG so CSS can recolor them: a per-keyword source
+// class (native/sticker/granted) tints the glyph (currentColor) and disc/rim
+// (CSS vars) to match the keyword-badge palette. Each icon carries a
+// "Display: reminder" title tooltip. Selection mirrors keywordPreamble:
+// creatures show every keyword; non-creatures show only spell-legal ones
+// (flash). no_block is hidden; innate has its own status line, so both excluded.
 function keywordIconsHtml(card) {
   const tpl = (card.isToken ? TOKENS : CARDS)[card.tplId];
   const isCreatureCard = hasType(card, 'Creature') || (tpl && hasType(tpl, 'Creature'));
-  const allKw = (card.keywords && card.keywords.length)
-    ? card.keywords
-    : ((tpl && tpl.keywords) || []);
+  const templateKw = (tpl && tpl.keywords) || [];
+  const allKw = (card.keywords && card.keywords.length) ? card.keywords : templateKw;
   const shown = (isCreatureCard ? allKw : allKw.filter(k => SPELL_LEGAL_KEYWORDS.has(k)))
     .filter(k => k !== 'no_block' && k !== 'innate');
   if (!shown.length) return '';
+  // Native coins are colored by the card's own identity (computed once); sticker
+  // and granted coins use their fixed class palette.
+  const nativeStyle = nativeKeywordStyle(card);
   const seen = new Set();
   const parts = [];
   for (const kw of shown) {
@@ -1285,11 +1320,15 @@ function keywordIconsHtml(card) {
     const display = KEYWORD_DISPLAY[kw] || (kw.charAt(0).toUpperCase() + kw.slice(1));
     const reminder = KEYWORD_REMINDER[kw] || '';
     const title = escapeHtml(reminder ? display + ': ' + reminder : display);
-    if (KEYWORD_ICON_SET.has(kw)) {
-      parts.push(`<img class="kw-icon" src="../../assets/keywords/${kw}.svg" alt="${escapeHtml(display)}" title="${title}">`);
+    const srcClass = keywordSourceClass(kw, card, templateKw);
+    const styleAttr = srcClass === 'kw-native' ? ` style="${nativeStyle}"` : '';
+    const svg = KEYWORD_ICON_SVG[kw];
+    if (svg) {
+      parts.push(`<span class="kw-icon ${srcClass}"${styleAttr} role="img" aria-label="${escapeHtml(display)}" title="${title}">${svg}</span>`);
     } else {
-      // No icon yet (e.g. unblockable) — fall back to a tiny text chip.
-      parts.push(`<span class="kw-icon-fallback" title="${title}">${escapeHtml(display)}</span>`);
+      // No coin art yet (e.g. unblockable) — fall back to a tiny text chip,
+      // still source-colored.
+      parts.push(`<span class="kw-icon-fallback ${srcClass}"${styleAttr} title="${title}">${escapeHtml(display)}</span>`);
     }
   }
   return `<div class="frame-keywords">${parts.join('')}</div>`;

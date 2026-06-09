@@ -310,9 +310,12 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
   /* No special treatment -- inherits frame-text styling. */
 }
 /* Keyword icon row — replaces the keyword text line on the small in-play
-   frame (the blow-up popup keeps the words). Coin icons from
-   assets/keywords/<kw>.svg; each carries a "Keyword: reminder" title tooltip.
-   `unblockable` (no art yet) falls back to a tiny text chip. */
+   frame (the blow-up popup keeps the words). The coin SVGs are inlined from
+   KEYWORD_ICON_SVG with the glyph as currentColor and disc/rim as CSS vars,
+   so the per-keyword source class recolors the coin to the keyword-badge
+   palette: native = blue, sticker-granted = gold, permanent-granted = teal.
+   Each carries a "Keyword: reminder" title tooltip. `unblockable` (no art yet)
+   falls back to a tiny text chip (still source-colored). */
 .card-frame .frame-keywords{
   display: flex;
   flex-wrap: wrap;
@@ -322,17 +325,38 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
   line-height: 0;
 }
 .card-frame .frame-keywords .kw-icon{
-  width: calc(9px * var(--scale));
-  height: calc(9px * var(--scale));
+  width: calc(10px * var(--scale));
+  height: calc(10px * var(--scale));
   display: inline-block;
   vertical-align: middle;
+  line-height: 0;
+}
+.card-frame .frame-keywords .kw-icon svg{
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+/* Source palette — glyph (color/currentColor) + disc + inner rim + outer ring.
+   The outer ring (--kw-rim2) is the bright "highlight" color so each coin shows
+   two distinct border rings (mid inner, bright outer). Sticker = gold, granted
+   = teal (mirrors .stk-badge.skw / .kw-granted). Native is set inline per the
+   card's own color (nativeKeywordStyle); the values here are just a fallback. */
+.card-frame .frame-keywords .kw-native{
+  color: #6b7280; --kw-disc: #d8d4c8; --kw-rim: #3a3e44; --kw-rim2: #6b7280;
+}
+.card-frame .frame-keywords .kw-sticker{
+  color: #ffd700; --kw-disc: #2a2200; --kw-rim: #cc9900; --kw-rim2: #ffd700;
+}
+.card-frame .frame-keywords .kw-granted{
+  color: #7fe5d4; --kw-disc: #0a2622; --kw-rim: #3aa898; --kw-rim2: #7fe5d4;
 }
 .card-frame .frame-keywords .kw-icon-fallback{
+  /* inherits the source ink color set by the .kw-native/.kw-sticker/.kw-granted
+     class it also carries. */
   display: inline-block;
   font-size: calc(5px * var(--scale) * var(--card-text-scale));
   font-weight: bold;
-  color: #c9c2b0;
-  border: 1px solid rgba(255,255,255,0.25);
+  border: 1px solid currentColor;
   border-radius: calc(2px * var(--scale));
   padding: 0 calc(1.5px * var(--scale));
   line-height: 1.4;
@@ -968,6 +992,7 @@ body.ai-thinking #status{
 
 <script src="js/settings.js"></script>
 <script src="js/cards.js"></script>
+<script src="js/keyword-icons.js"></script>
 <script src="js/types.js"></script>
 <script src="js/engine.js"></script>
 <script src="js/card-text.js"></script>

@@ -30,6 +30,7 @@ const JS_DIR = path.join(__dirname, '..', 'js');
 const ENGINE_FILES = [
   'settings.js',
   'cards.js',
+  'keyword-icons.js',
   'types.js',
   'engine.js',
   'card-text.js',
