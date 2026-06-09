@@ -53,11 +53,11 @@ schema later.
 
 ### Mana symbol SVGs (Claude-authored, "manaiconsv13" spec)
 
-- **Location in tree:** `assets/mana/{W,U,B,R,G}.svg`
-- **Used for:** the five WUBRG color pips in card text + v2 frame cost pips (v1.0.172)
+- **Location in tree:** `assets/mana/{W,U,B,R,G,C}.svg`
+- **Used for:** the five WUBRG color pips in card text + v2 frame cost pips (v1.0.172), plus `C` (generic) — a blank coin shell the engine draws the numeral onto
 - **Source:** authored by Claude (in a separate session) per a "manaiconsv13" JSX/React design spec the user provided; converted from JSX components to standalone SVGs for use in the prototype
 - **License:** project-owned (commissioned art, no external license)
-- **Concepts:** White = tipping scales, Blue = open book, Green = leaf, Red = fissure, Black = eclipse (sun + moon)
+- **Concepts:** White = tipping scales, Blue = open book, Green = leaf, Red = fissure, Black = eclipse (sun + moon), Generic = blank coin (numeral overlaid by engine)
 
 ### Keyword ability symbol SVGs (Claude-authored, "keywordiconsship" spec)
 

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40">
+  <defs>
+    <radialGradient id="shine" cx="36%" cy="28%" r="55%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.22"/>
+    </radialGradient>
+  </defs>
+  <circle cx="20" cy="20" r="17" fill="#28282E"/>
+  <circle cx="20" cy="20" r="17" fill="url(#shine)"/>
+  <!-- generic: blank shell — the numeral is rendered by the engine on top -->
+  <circle cx="20" cy="20" r="17" fill="none" stroke="#50505E" stroke-width="2"/>
+  <circle cx="20" cy="20" r="19" fill="none" stroke="#C8B040" stroke-width="1.8"/>
+</svg>
