@@ -606,12 +606,21 @@ function remapEffectSlots(effects, offset) {
 // Keywords implied by creature subtype — card data need not repeat these.
 const SUBTYPE_KEYWORDS = { Angel: ['flying'], Dragon: ['flying'], Treefolk: ['reach'], Wall: ['defender'] };
 
-function applySubtypeKeywords(card) {
-  for (const st of subtypesOf(card)) {
-    for (const kw of (SUBTYPE_KEYWORDS[st] || [])) {
-      if (!card.keywords.includes(kw)) card.keywords.push(kw);
+// Append the subtype-implied keywords for `subtypes` onto `kw` in place (deduped).
+// Shared by makeCard's eager injection AND intrinsicKeywords' re-derivation, so
+// every keyword-build path applies the rule identically — a Dragon that bounces,
+// dies-and-returns, or sheds an until-EOT grant keeps its flying.
+function addSubtypeKeywords(subtypes, kw) {
+  for (const st of subtypes) {
+    for (const k of (SUBTYPE_KEYWORDS[st] || [])) {
+      if (!kw.includes(k)) kw.push(k);
     }
   }
+  return kw;
+}
+
+function applySubtypeKeywords(card) {
+  addSubtypeKeywords(subtypesOf(card), card.keywords);
 }
 
 function makeCard(tplId, stickers, slotIdx, empowerRolls, permaBuffs, bonusTrigger, stapledTpls, subtypeRolls) {
@@ -775,6 +784,10 @@ function intrinsicKeywords(card) {
     const s = STICKERS[sId];
     if (s && s.kind === 'keyword' && !kw.includes(s.keyword)) kw.push(s.keyword);
   }
+  // Subtype-implied keywords are part of the intrinsic set, so every re-derive
+  // path (resetInPlayState on leave-play, the EOT eotGrants cleanup) preserves
+  // them rather than silently dropping a Dragon's flying / a Wall's defender.
+  addSubtypeKeywords(subtypesOf(card), kw);
   return kw;
 }
 
@@ -6526,6 +6539,8 @@ return {
   // truth for the human cast UI's zone-agnostic card lookup.
   findCastableSpell,
   makeCard,
+  // Re-derive seam (template + stickers + subtype-implied), exposed for tests.
+  intrinsicKeywords,
   synthesizeStapledTemplate,
   makeToken,
   getModes,

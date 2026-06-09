@@ -129,6 +129,9 @@ const CATEGORY_A = [
   'test_add_type.js',
   // Type-change layer (add_type/set_types) + Phase-4 test cards (type-change spells, artifact creatures, artifact lands).
   'test_type_change.js',
+  // Subtype-implied keywords (Angel/Dragon→flying, Treefolk→reach, Wall→defender):
+  // eager makeCard injection + survival through the intrinsicKeywords re-derive seam.
+  'test_subtype_keywords.js',
   // Colorless artifact boss special cards (Equatorial Engine / Artifice Triumphant / Ingenuity Unbounded).
   'test_equatorial_artificer_boss.js',
   // Oracle text is generated from effects — no card may carry a dead (render-irrelevant) top-level text field.
