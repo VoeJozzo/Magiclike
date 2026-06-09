@@ -1162,12 +1162,16 @@ function stickerBadgesHtml(stickers, big, empowerRolls, tplId, stapledTpls, subt
   for (const [sId, n] of counts) {
     const s = STICKERS[sId];
     if (!s) continue;
+    // Innate is a keyword sticker, but it gets the dedicated status-badge
+    // treatment (own class, "Innate" label, surfaced first) rather than the
+    // generic keyword badge.
+    const isInnate = s.kind === 'keyword' && s.keyword === 'innate';
     const cls = s.kind === 'stat_boost' ? 'stat'
-              : s.kind === 'innate'    ? 'innate'
+              : isInnate               ? 'innate'
               : 'skw';
     let label;
     if (s.kind === 'stat_boost') label = '+1/+1';
-    else if (s.kind === 'innate') label = 'Innate';
+    else if (isInnate) label = 'Innate';
     // landColor badge label is "+{W}"-style — route the brace token
     // through renderManaSymbols so it shows the color pip / future PNG
     // instead of literal {W} text. The label gets injected into
@@ -1180,8 +1184,8 @@ function stickerBadgesHtml(stickers, big, empowerRolls, tplId, stapledTpls, subt
     if (n > 1) label += ` ×${n}`;
     const html = `<span class="stk-badge ${cls}" title="${s.text}">${label}</span>`;
     // Innate is a status marker — surface first so it's scannable.
-    if (s.kind === 'innate') parts.unshift(html);
-    else                     parts.push(html);
+    if (isInnate) parts.unshift(html);
+    else          parts.push(html);
   }
   return `<div class="stickers-row${big ? '-big' : ''}">${parts.join('')}</div>`;
 }

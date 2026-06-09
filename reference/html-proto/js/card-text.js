@@ -956,7 +956,9 @@ function keywordPreamble(keywords) {
   if (!Array.isArray(keywords) || keywords.length === 0) return '';
   // no_block is the hidden half of Pacifism's "can't attack or block" lockdown
   // (paired with defender); never surfaced as a keyword in its own right.
-  keywords = keywords.filter(k => k !== 'no_block');
+  // innate is a non-combat status keyword — it has its own "Innate." line and
+  // status badge, so it's kept out of the combat keyword preamble.
+  keywords = keywords.filter(k => k !== 'no_block' && k !== 'innate');
   if (keywords.length === 0) return '';
   const display = {
     flying: 'Flying', vigilance: 'Vigilance', trample: 'Trample', haste: 'Haste',
@@ -1054,7 +1056,7 @@ function describeCardSegments(card, opts) {
   if (card.spend_mana_as_any_color || tpl.spend_mana_as_any_color) {
     sections.push([plainSeg('You may spend mana as though it were mana of any color.')]);
   }
-  if (card.innate || tpl.innate) {
+  if ((card.keywords || []).includes('innate') || (tpl.keywords || []).includes('innate')) {
     sections.push([plainSeg('Innate.')]);
   }
   if (Array.isArray(card.triggers)) {

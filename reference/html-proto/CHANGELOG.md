@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.1.0`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.2.0`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -1125,6 +1125,27 @@ prompt machinery (engine + render + controller + AI). Note: rip-edict now uses
 (human rip-pick prompt folds into the tracked GAP-2 human-chooses work, like
 Diabolic Edict). Browser-verify the rip UI removal (DOM not covered by Node tests).
 (#7 symmetricize: confirmed already in the decided end-state — no change.)
+
+v2.2.0: shared-asset + keyword work (from the "New SVG Icons" branch). (1)
+Generic/colorless mana coin now renders. Added `assets/mana/C.svg` — a blank
+gray coin shell (the engine draws the numeral/letter on top) matching the
+engine's generic mana key `C`. Wired the four pip sites that previously fell back
+to a plain disc — `.mana-C`, `.mana-num`, and the frame `col-C` / `col-num` cost
+pips — to `background-image` the coin and render their number in Almendra Bold.
+Also refreshed `assets/mana/source/manaiconsv13.jsx` (the committed copy was a
+stale 5-color version missing the Generic entry the design actually specifies).
+(2) `innate` promoted to a real keyword. It was a one-off boolean
+(`card.innate` + a `kind:'innate'` sticker); now `innate` lives in `KEYWORDS`
+(+`KEYWORD_DISPLAY`) as the single source of truth, and the `card.innate` boolean
+is retired. The opening-hand pull, draft valuation, eligibility label, browser
+grouping, sticker badge, and card text all read the keyword instead. The innate
+sticker is now a `kind:'keyword'` grant but kept hand-defined + lands-only (the
+`kw_*` auto-loop skips it, like defender, so it's never offered on creatures);
+it's mechanically compatible with any card if granted some other way. Like flash,
+innate is a non-combat status keyword, so it's excluded from the combat keyword
+preamble and keeps its dedicated "Innate." line + surfaced badge. Ingenuity
+Unbounded's `innate:true` template field moved into `keywords[]`. Tests updated
+(boss + sticker-dispatch). Full suite green (1606 assertions), lint clean.
 
 > **MUST UPDATE on every dev-branch push that touches code.** Bump `VERSION` in `js/main.js` AND the line above, in the same commit. GitHub Pages caches aggressively; the version string is the only reliable way to confirm a fresh build is live.
 

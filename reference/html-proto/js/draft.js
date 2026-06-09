@@ -447,10 +447,10 @@ function scoreOpponentSticker(sticker, slot) {
     const tier = {
       flying: 14, indestructible: 14, hexproof: 11, lifelink: 10, deathtouch: 10,
       first_strike: 8, vigilance: 7, haste: 7, trample: 6, menace: 5, reach: 4, flash: 3,
+      innate: 6,   // free opening-hand land
     }[sticker.keyword] || 5;
     return tier;
   }
-  if (sticker.kind === 'innate') return 6;     // free opening-hand land
   if (sticker.kind === 'grant_mana_ability') return 7;
   if (sticker.kind === 'cost_mod') {
     // Bigger cards benefit more. For stapled slots, the merged cost is

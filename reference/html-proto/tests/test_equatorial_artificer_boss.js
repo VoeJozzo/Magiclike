@@ -39,7 +39,7 @@ console.log('=== colorless boss card data + constructed registry ===');
     && hasType(CARDS.equatorial_engine, 'Land')
     && CARDS.equatorial_engine.abilities[0].effects[0].amounts.C === 2);
   check('Ingenuity is innate, hexproof, indestructible, and fixes mana',
-    CARDS.ingenuity_unbounded.innate === true
+    (CARDS.ingenuity_unbounded.keywords || []).includes('innate')
     && (CARDS.ingenuity_unbounded.keywords || []).includes('hexproof')
     && (CARDS.ingenuity_unbounded.keywords || []).includes('indestructible')
     && CARDS.ingenuity_unbounded.spend_mana_as_any_color === true);

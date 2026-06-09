@@ -21,8 +21,6 @@ function applyStickerKindEffect(card, s) {
   } else if (s.kind === 'keyword') {
     if (!Array.isArray(card.keywords)) card.keywords = [];
     if (!card.keywords.includes(s.keyword)) card.keywords.push(s.keyword);
-  } else if (s.kind === 'innate') {
-    card.innate = true;
   } else if (s.kind === 'grant_mana_ability') {
     grantManaAbility(card, s.color);
   } else if (s.kind === 'cost_mod') {

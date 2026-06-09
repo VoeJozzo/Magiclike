@@ -122,8 +122,9 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
    color:transparent so the Unicode circle emoji (⚪🔵⚫🔴🟢) injected as
    the span's text content is hidden and acts only as a load-failure
    fallback.
-   For T/X/colorless/numeric pips there's no SVG yet, so those keep the
-   letter-in-colored-circle look. */
+   T and X pips keep the letter-in-colored-circle look (no SVG yet);
+   colorless ({C}) and generic/numeric pips render the shared generic coin
+   (assets/mana/C.svg) — a blank gray disc with the letter/number on top. */
 .mana{display:inline-block;
   min-width:calc(1.2em * var(--card-mana-text-size));
   height:calc(1.2em * var(--card-mana-text-size));
@@ -143,11 +144,13 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
 .mana-B{background-image:url('../../assets/mana/B.svg')}
 .mana-R{background-image:url('../../assets/mana/R.svg')}
 .mana-G{background-image:url('../../assets/mana/G.svg')}
-/* Non-color pips: letter inside a colored disc (no SVG match yet). */
-.mana-C{background-color:#aaa;color:#333;border-radius:50%;font-weight:bold;font-size:0.85em}
+/* Colorless {C} + generic/numeric pips: the blank gray coin SVG backs them.
+   The coin carries no glyph (unlike WUBRG), so the letter/number stays
+   visible (light fg) drawn on top of the disc. */
+.mana-C, .mana-num{background-image:url('../../assets/mana/C.svg');background-color:transparent;color:#E2E2EC;font-family:'Almendra Bold',Georgia,serif;font-weight:bold;font-size:0.82em;text-shadow:0 1px 1px rgba(0,0,0,.75)}
+/* T/X: letter inside a colored disc (no SVG match yet). */
 .mana-T{background-color:#888;color:#fff;border-radius:50%;font-weight:bold;font-style:italic;font-size:0.85em;text-shadow:0 0 1px rgba(0,0,0,.6)}
 .mana-X{background-color:#666;color:#fff;border-radius:50%;font-weight:bold;font-size:0.85em;text-shadow:0 0 1px rgba(0,0,0,.6)}
-.mana-num{background-color:#555;color:#fff;border-radius:50%;font-weight:bold;font-size:0.85em;text-shadow:0 0 1px rgba(0,0,0,.6)}
 
 /* ========================================================================= */
 /* Card frame design (80x112 native pixel-art spec).                      */
@@ -250,8 +253,8 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
 .card-frame .frame-pip.col-B{background-image:url('../../assets/mana/B.svg')}
 .card-frame .frame-pip.col-R{background-image:url('../../assets/mana/R.svg')}
 .card-frame .frame-pip.col-G{background-image:url('../../assets/mana/G.svg')}
-.card-frame .frame-pip.col-C{background-color:#aaa;color:#222}
-.card-frame .frame-pip.col-num{background-color:#555;color:#fff}
+.card-frame .frame-pip.col-C,
+.card-frame .frame-pip.col-num{background-image:url('../../assets/mana/C.svg');background-size:100% 100%;background-repeat:no-repeat;background-color:transparent;color:#E2E2EC;font-family:'Almendra Bold',Georgia,serif;text-shadow:0 1px 1px rgba(0,0,0,.75)}
 
 /* Art window: x=8, y=15, w=64, h=32 (matches the native 64x32 pixel-art
    format we've been shipping for ~61 cards). */

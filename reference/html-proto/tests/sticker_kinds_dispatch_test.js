@@ -34,7 +34,6 @@ function freshCard(tplId, stickers, opts) {
     modifiers: [],
     empowerRolls: opts.empowerRolls || [],
     subtypeRolls: opts.subtypeRolls || [],
-    innate: false,
   };
 }
 
@@ -63,7 +62,7 @@ console.log('=== applyStickersToCard: each kind mutates correctly ===');
 {
   const card = freshCard('plains', ['innate']);
   applyStickersToCard(card);
-  check('innate sets card.innate = true', card.innate === true);
+  check("innate adds 'innate' to card.keywords", (card.keywords || []).includes('innate'));
 }
 
 {
