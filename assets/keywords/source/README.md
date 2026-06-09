@@ -17,9 +17,10 @@ The `.svg` file names match the engine keyword keys
 (`reference/html-proto/js/cards.js` `KEYWORDS`), so the source `firststrike`
 ships as `first_strike.svg`. Coverage notes:
 
-- **13 of the 14 engine keywords** have an icon. The one gap is
-  `unblockable` — no symbol in the source set.
-- **`innate` and `tap`** ship as icons but are not combat keywords in
+- **All 14 combat keywords** have an icon. `unblockable` was the late
+  addition — its source is the separate `keywordiconunblockable.jsx`;
+  `keywordiconsship.jsx` covers the other 13.
+- **`innate` and `tap`** ship as icons too but are not combat keywords in
   `KEYWORDS` (`innate` tags innate abilities; `tap` already has a text pip).
 
 Authored by Claude in a separate session; see top-level `LICENSES.md`.

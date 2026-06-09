@@ -44,11 +44,6 @@ console.log('=== keywordIconsHtml: inline coins + source colors + tooltips ===')
     grantedBy,
   };
   const html = keywordIconsHtml(card);
-  // crude per-icon class extraction
-  const cls = kw => {
-    const m = html.match(new RegExp('kw-icon (kw-[a-z]+)[^>]*aria-label="' + kw[0].toUpperCase() + kw.slice(1)));
-    return m && m[1];
-  };
   check('native keyword (flying) -> kw-native', html.includes('kw-icon kw-native'));
   check('sticker keyword (menace) -> kw-sticker', html.includes('kw-icon kw-sticker'));
   check('permanent-granted keyword (trample) -> kw-granted', html.includes('kw-icon kw-granted'));

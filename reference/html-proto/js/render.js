@@ -1299,12 +1299,19 @@ const KW_NATIVE_COLORS = {
   C: { ink: '#6b7280', disc: CREAM, rim: '#6b7280', rim2: CREAM },
 };
 
-// Inline CSS vars for a native coin, from the card's frame color. Mirrors
-// cardToViewModel's colorKey derivation (cost colors > color > land's produced
-// color > colorless).
-function nativeKeywordStyle(card) {
-  const colorKey = (card.colors && card.colors[0]) || card.color
+// A card's frame color identity: cost/card color > land's produced color >
+// colorless. The single source for both the frame (cardToViewModel) and the
+// native keyword coin (nativeKeywordStyle), so the two can never drift.
+function frameColorKey(card) {
+  return (card.colors && card.colors[0]) || card.color
     || (hasType(card, 'Land') && card.mana) || 'C';
+}
+
+// Inline CSS vars for a native coin, from the card's frame color. The frame's
+// colorKey is passed in (cardToViewModel already derived it) so the coin and the
+// frame never drift; the fallback is for standalone callers (tests) without one.
+function nativeKeywordStyle(card, colorKey) {
+  colorKey = colorKey || frameColorKey(card);
   const c = KW_NATIVE_COLORS[colorKey] || KW_NATIVE_COLORS.C;
   return `color:${c.ink};--kw-disc:${c.disc};--kw-rim:${c.rim};--kw-rim2:${c.rim2}`;
 }
@@ -1317,7 +1324,7 @@ function nativeKeywordStyle(card) {
 // "Display: reminder" title tooltip. Selection mirrors keywordPreamble:
 // creatures show every keyword; non-creatures show only spell-legal ones
 // (flash). no_block is hidden; innate has its own status line, so both excluded.
-function keywordIconsHtml(card) {
+function keywordIconsHtml(card, colorKey) {
   const tpl = (card.isToken ? TOKENS : CARDS)[card.tplId];
   const isCreatureCard = hasType(card, 'Creature') || (tpl && hasType(tpl, 'Creature'));
   const templateKw = (tpl && tpl.keywords) || [];
@@ -1327,7 +1334,7 @@ function keywordIconsHtml(card) {
   if (!shown.length) return '';
   // Native coins are colored by the card's own identity (computed once); sticker
   // and granted coins use their fixed class palette.
-  const nativeStyle = nativeKeywordStyle(card);
+  const nativeStyle = nativeKeywordStyle(card, colorKey);
   const seen = new Set();
   const parts = [];
   for (const kw of shown) {
@@ -1458,10 +1465,7 @@ function cardToViewModel(card, opts) {
   // Frame color: cost colors > card.color > land's produced color
   // (Plains -> W) > Colorless. Multicolor uses first WUBRG-order color;
   // dual-color frame design is a future tweak.
-  const colorKey = (card.colors && card.colors[0])
-    || card.color
-    || (hasType(card, 'Land') && card.mana)
-    || 'C';
+  const colorKey = frameColorKey(card);
 
   const isCreature = hasType(card, 'Creature');
   const [pow, tou] = isCreature
@@ -1499,7 +1503,7 @@ function cardToViewModel(card, opts) {
     const segs = describeCardSegments(card, {skipKeywords: keywordsAsIcons});
     oracleHtml = segmentsToHtml(segs);
   }
-  const kwIconsHtml = keywordsAsIcons ? keywordIconsHtml(card) : '';
+  const kwIconsHtml = keywordsAsIcons ? keywordIconsHtml(card, colorKey) : '';
 
   // Paper-basic look: a basic Land with NO other rules text shows a large mana
   // symbol centered in the otherwise-empty text box, read from what it actually
