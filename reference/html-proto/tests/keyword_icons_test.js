@@ -19,8 +19,8 @@ console.log('=== keywordIconsHtml: inline coins + source colors + tooltips ===')
   const card = { tplId: 'x', types: ['Creature'], keywords: ['flying'] };
   const html = keywordIconsHtml(card);
   check('flying inlines a coin <svg> (not an <img>)', html.includes('<svg') && !html.includes('<img'));
-  check('flying carries a "Flying: <reminder>" tooltip',
-    html.includes('title="Flying: ') && html.includes('blocked by creatures with flying or reach'));
+  check('flying carries a "Flying: <reminder>" tooltip (data-tip)',
+    html.includes('data-tip="Flying: ') && html.includes('blocked by creatures with flying or reach'));
   check('icon row is wrapped in .frame-keywords', html.includes('class="frame-keywords"'));
   check('glyph uses currentColor so CSS can recolor it', html.includes('currentColor'));
 }
@@ -67,7 +67,7 @@ console.log('=== keywordIconsHtml: inline coins + source colors + tooltips ===')
   const card = { tplId: 'x', types: ['Creature'], keywords: ['unblockable'] };
   const html = keywordIconsHtml(card);
   check('unblockable renders a coin (no text fallback)',
-    html.includes('<svg') && !html.includes('kw-icon-fallback') && html.includes('title="Unblockable:'));
+    html.includes('<svg') && !html.includes('kw-icon-fallback') && html.includes('data-tip="Unblockable:'));
 }
 
 {

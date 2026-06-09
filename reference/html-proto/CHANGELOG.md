@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.1.9`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.2.0`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -1192,6 +1192,26 @@ prompt machinery (engine + render + controller + AI). Note: rip-edict now uses
 (human rip-pick prompt folds into the tracked GAP-2 human-chooses work, like
 Diabolic Edict). Browser-verify the rip UI removal (DOM not covered by Node tests).
 (#7 symmetricize: confirmed already in the decided end-state — no change.)
+
+v2.2.0: ability-icon UI polish (follow-up to the PR #90 SVG-icon set). (1) Tap
+symbol now renders the hourglass coin instead of a literal "T" — `.mana-T` was
+never wired to art; pointed it at `assets/keywords/tap.svg` with the same
+`background-image` + `color:transparent` treatment as the WUBRG pips (fixes
+Verdant Verge et al.). (2) Keyword ability icons get a custom hover tooltip
+(`#iconTip`) in Almendra, palette-matched to the colorless card frame (slate
+panel, gold mana-coin rim, cream text, keyword name bolded) — coins now carry
+`data-tip` instead of `title`, rendered by a delegated hover handler in
+`controller.js` (body-level + viewport-clamped, since the icons sit inside the
+`frame-text` overflow:hidden box). (3) Native keyword-coin disc warmed from the
+silvery `#d8d4c8` to a true cream `#ece0be` (the `CREAM` constant; CSS
+`.kw-native` fallback kept in sync). (4) Colorless (C) keyword glyph darkened
+`#6b7280 → #3a3f47` for legibility on the cream disc (inner ring left lighter —
+only the foreground symbol darkened). (5) Tap coin recolored to match the
+colorless keyword-coin palette (cream disc, slate glyph, gray inner ring, cream
+outer ring) per "batch the tap symbol in with the keyword ability symbols."
+`keyword_icons_test` updated (`title`→`data-tip`); 1693 green, lint clean.
+Browser-verified (tap pip + tooltip + cream disc + darkened glyph; pixel-sampled
+the recolored tap coin).
 
 > **MUST UPDATE on every dev-branch push that touches code.** Bump `VERSION` in `js/main.js` AND the line above, in the same commit. GitHub Pages caches aggressively; the version string is the only reliable way to confirm a fresh build is live.
 

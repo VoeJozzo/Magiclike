@@ -156,8 +156,10 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
    The coin carries no glyph (unlike WUBRG), so the letter/number stays
    visible (light fg) drawn on top of the disc. */
 .mana-C, .mana-num{background-image:url('../../assets/mana/C.svg');background-color:transparent;color:#E2E2EC;font-family:'Almendra Bold',Georgia,serif;font-weight:bold;font-size:0.82em;text-shadow:0 1px 1px rgba(0,0,0,.75)}
-/* T/X: letter inside a colored disc (no SVG match yet). */
-.mana-T{background-color:#888;color:#fff;border-radius:50%;font-weight:bold;font-style:italic;font-size:0.85em;text-shadow:0 0 1px rgba(0,0,0,.6)}
+/* T (tap): hourglass coin SVG (assets/keywords/tap.svg), same background-image
+   treatment as WUBRG — color:transparent hides the fallback "T" letter unless
+   the art fails to load. X keeps the letter-in-colored-disc look (no SVG yet). */
+.mana-T{background-image:url('../../assets/keywords/tap.svg');color:transparent;background-color:transparent}
 .mana-X{background-color:#666;color:#fff;border-radius:50%;font-weight:bold;font-size:0.85em;text-shadow:0 0 1px rgba(0,0,0,.6)}
 
 /* ========================================================================= */
@@ -351,7 +353,10 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
    granted = teal (mirrors .stk-badge.skw / .kw-granted), with a bright outer
    highlight ring. */
 .card-frame .frame-keywords .kw-native{
-  color: #6b7280; --kw-disc: #d8d4c8; --kw-rim: #6b7280; --kw-rim2: #d8d4c8;
+  /* Fallback only — render.js nativeKeywordStyle() sets these inline per the
+     card's color (cream disc = KW_NATIVE_COLORS CREAM). Keep --kw-disc/--kw-rim2
+     in sync with that constant. */
+  color: #3a3f47; --kw-disc: #ece0be; --kw-rim: #6b7280; --kw-rim2: #ece0be;
 }
 .card-frame .frame-keywords .kw-sticker{
   color: #ffd700; --kw-disc: #2a2200; --kw-rim: #cc9900; --kw-rim2: #ffd700;
@@ -728,6 +733,15 @@ button:disabled{opacity:.4;cursor:not-allowed}
 #mapContinue:disabled{opacity:.4;cursor:not-allowed;color:#6a8a6a}
 #mapTooltip{position:absolute;display:none;background:#0a1218;border:1px solid #66ddaa;border-radius:4px;padding:6px 10px;color:#bbe;font-size:11px;letter-spacing:0.05em;text-transform:uppercase;font-family:Georgia,serif;pointer-events:none;z-index:10;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.6)}
 #mapTooltip.vis{display:block}
+/* Ability-icon hover tooltip — keyword coins (.kw-icon[data-tip]) on the small
+   in-play frame use this instead of the browser's native title tooltip. Palette
+   echoes the colorless card frame: dark slate panel, warm-gold rim (the mana-
+   coin outer ring, #c8b040), cream Almendra text with the keyword name bolded.
+   JS-positioned + viewport-clamped (CONTROLLER tooltip wiring) because the icons
+   sit inside the frame-text overflow:hidden box — a CSS ::after tip would clip. */
+#iconTip{position:fixed;display:none;max-width:230px;background:#23262e;border:1px solid #c8b040;border-radius:4px;padding:6px 9px;color:#ece0be;font-family:'Almendra',Georgia,serif;font-size:13px;line-height:1.35;text-align:left;pointer-events:none;z-index:9999;box-shadow:0 3px 10px rgba(0,0,0,.55)}
+#iconTip.vis{display:block}
+#iconTip .tip-name{color:#f0e6c8;font-weight:bold}
 #rewardBox{background:#181820;border:2px solid #ffd700;border-radius:10px;padding:24px 18px;max-width:760px;width:100%;text-align:center;box-shadow:0 0 30px rgba(255,215,0,.25);margin:auto}
 #rewardTitle{color:#ffd700;font-size:18px;letter-spacing:2px;margin-bottom:6px;text-transform:uppercase}
 #rewardSubtitle{color:#aaa;font-size:11px;margin-bottom:18px}
@@ -1031,6 +1045,10 @@ body.ai-thinking #status{
     </div>
   </div>
 </div>
+
+<!-- Floating tooltip for ability-icon hover (keyword coins). Body-level so its
+     position:fixed is viewport-relative and it isn't clipped by frame overflow. -->
+<div id="iconTip"></div>
 
 <script src="js/settings.js"></script>
 <script src="js/cards.js"></script>
