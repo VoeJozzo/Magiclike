@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.1.11`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.1.10`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -1209,10 +1209,11 @@ each repaint so a coin destroyed under the pointer (no mouseout fires for a
 node removed beneath the cursor) doesn't leave the tip stranded — cf. how
 `#mapTooltip` is cleared. (3) Native keyword-coin disc warmed from the silvery
 `#d8d4c8` to a true cream `#ece0be` (the `CREAM` constant; CSS `.kw-native`
-fallback kept in sync). (4) Colorless (C) keyword glyph darkened
-`#6b7280 → #3a3f47` for legibility on the cream disc (inner ring left lighter —
-only the foreground symbol darkened). (5) Tap coin recolored to match the
-colorless keyword-coin palette (cream disc, slate glyph, gray inner ring, cream
+fallback kept in sync). (4) Colorless (C) keyword glyph AND inner ring darkened
+`#6b7280 → #3a3f47` for legibility on the cream disc — glyph and inner ring
+share the slate tone, as every other color's coin does (KW_NATIVE_COLORS.C
+ink+rim, CSS `.kw-native` `--kw-rim`). (5) Tap coin recolored to match the
+colorless keyword-coin palette (cream disc, slate glyph, slate inner ring, cream
 outer ring) per "batch the tap symbol in with the keyword ability symbols."
 (6) The innate keyword now renders its coin (innate.svg, inlined into
 KEYWORD_ICON_SVG with the var-driven palette + currentColor glyph stroke) in the
@@ -1234,14 +1235,6 @@ innate-coin coverage; 1695 green, lint clean. Browser-verified (tap pip, tooltip
 cream disc, darkened glyph, pixel-sampled tap coin; innate Forest coin gold +
 "Innate: …" tooltip, big mana suppressed, popup keeps the word; size knob
 10→20→6px live via the CSS var).
-
-v2.1.11: darken the colorless ability-coin inner ring to match its glyph.
-v2.1.10 darkened the colorless (C) keyword glyph to #3a3f47 but left the inner
-ring at the lighter #6b7280, so the glyph sat darker than its own ring. Unified
-them on the slate tone, matching how every other color's coin keeps glyph and
-inner ring the same color — render.js KW_NATIVE_COLORS.C.rim, the CSS .kw-native
-fallback (--kw-rim), and the tap coin (assets/keywords/tap.svg, batched with the
-colorless palette). Purely cosmetic, no logic change. 1695 green, lint clean.
 
 > **MUST UPDATE on every dev-branch push that touches code.** Bump `VERSION` in `js/main.js` AND the line above, in the same commit. GitHub Pages caches aggressively; the version string is the only reliable way to confirm a fresh build is live.
 
