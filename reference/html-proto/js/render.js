@@ -929,7 +929,19 @@ function renderBf(id, bf, who) {
 
     if (pt) {
       const eff = pendingTargetEffect(pt);
-      if (eff && isValidTargetCreature(eff, card)) div.classList.add('targetable');
+      if (eff && isValidTargetCreature(eff, card)) {
+        // distinct_targets: a creature already picked for an earlier slot is no
+        // longer a legal pick, so drop its highlight. Route through the engine's
+        // single cross-slot rule (ENGINE.tsExcludePicked) instead of re-deriving the
+        // identity compare in the UI — the same filter the trigger pick-loop uses.
+        // (Non-distinct casts and the ability path keep every valid creature lit:
+        // tsExcludePicked returns the list unchanged when the object isn't flagged.)
+        const castObj = pt.kind === 'cast' ? castCardByIid(pt.cardIid) : null;
+        const cand = { kind: 'creature', iid: card.iid, label: card.name };
+        const stillLegal = !castObj
+          || ENGINE.tsExcludePicked(castObj, [cand], pt.pickedSlots).length > 0;
+        if (stillLegal) div.classList.add('targetable');
+      }
     }
     if (G.pendingTriggerTarget && G.pendingTriggerTarget.controller === 'you') {
       const ptt = G.pendingTriggerTarget;
