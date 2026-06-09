@@ -30,6 +30,7 @@ const JS_DIR = path.join(__dirname, '..', 'js');
 const ENGINE_FILES = [
   'settings.js',
   'cards.js',
+  'keyword-icons.js',
   'types.js',
   'engine.js',
   'card-text.js',
@@ -162,7 +163,7 @@ const EXPOSED = [
   'applyRandomStickersToSide', 'empowerRollLabel', 'applyEmpowerRoll',
   'rollSubtypeFromDeck', 'pushStickerWithRoll', 'stickersForSlot',
   // Render module-scope helpers (render.js has no IIFE).
-  'stickerBadgesHtml', 'segmentsToHtml', 'effectiveArt', 'renderManaSymbols', 'formatCostBraced',
+  'stickerBadgesHtml', 'keywordIconsHtml', 'segmentsToHtml', 'effectiveArt', 'renderManaSymbols', 'formatCostBraced',
   'isValidTargetCreature', 'canPlayFromUI', 'playerForcedPrompt', 'anyForcedPrompt',
   'activationGlowAvailable',
   'edictChoiceNoun', 'graveyardPickerPrompt', 'castCardByIid',

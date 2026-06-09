@@ -11,8 +11,8 @@
   ],
   "keywords": [
     "hexproof",
-    "indestructible"
+    "indestructible",
+    "innate"
   ],
-  "innate": true,
   "spend_mana_as_any_color": true
 }

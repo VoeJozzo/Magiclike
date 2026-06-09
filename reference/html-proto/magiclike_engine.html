@@ -125,16 +125,14 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
 /* Mana-symbol pips. The `<span class="mana mana-X">` markup is emitted
    by renderManaSymbols() (js/render.js) — used for cost displays AND
    for parsing {R}/{T}/{1} tokens inside card text.
-   Current fallback for W/U/B/R/G is a Unicode circle emoji (⚪🔵⚫🔴🟢)
-   injected as the span's text content. The emoji is already a colored
-   circle, so .mana-W/.mana-U/etc. don't apply a background-color — the
-   emoji IS the visual.
-   For T/X/colorless/numeric pips there's no recognized emoji match, so
-   those keep the letter-in-colored-circle look.
-   PATHWAY for PNG mana art: drop W.png/U.png/etc. into assets/mana/
-   then uncomment the matching override block below. The override sets
-   background-image + color:transparent (hides the emoji glyph) so only
-   the PNG shows. */
+   W/U/B/R/G render the shared SVG art (assets/mana/X.svg) via the
+   .mana-W/.mana-U/etc. background-image overrides below; those set
+   color:transparent so the Unicode circle emoji (⚪🔵⚫🔴🟢) injected as
+   the span's text content is hidden and acts only as a load-failure
+   fallback.
+   T and X pips keep the letter-in-colored-circle look (no SVG yet);
+   colorless ({C}) and generic/numeric pips render the shared generic coin
+   (assets/mana/C.svg) — a blank gray disc with the letter/number on top. */
 .mana{display:inline-block;
   min-width:calc(1.2em * var(--card-mana-text-size));
   height:calc(1.2em * var(--card-mana-text-size));
@@ -154,11 +152,13 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
 .mana-B{background-image:url('../../assets/mana/B.svg')}
 .mana-R{background-image:url('../../assets/mana/R.svg')}
 .mana-G{background-image:url('../../assets/mana/G.svg')}
-/* Non-color pips: letter inside a colored disc (no SVG match yet). */
-.mana-C{background-color:#aaa;color:#333;border-radius:50%;font-weight:bold;font-size:0.85em}
+/* Colorless {C} + generic/numeric pips: the blank gray coin SVG backs them.
+   The coin carries no glyph (unlike WUBRG), so the letter/number stays
+   visible (light fg) drawn on top of the disc. */
+.mana-C, .mana-num{background-image:url('../../assets/mana/C.svg');background-color:transparent;color:#E2E2EC;font-family:'Almendra Bold',Georgia,serif;font-weight:bold;font-size:0.82em;text-shadow:0 1px 1px rgba(0,0,0,.75)}
+/* T/X: letter inside a colored disc (no SVG match yet). */
 .mana-T{background-color:#888;color:#fff;border-radius:50%;font-weight:bold;font-style:italic;font-size:0.85em;text-shadow:0 0 1px rgba(0,0,0,.6)}
 .mana-X{background-color:#666;color:#fff;border-radius:50%;font-weight:bold;font-size:0.85em;text-shadow:0 0 1px rgba(0,0,0,.6)}
-.mana-num{background-color:#555;color:#fff;border-radius:50%;font-weight:bold;font-size:0.85em;text-shadow:0 0 1px rgba(0,0,0,.6)}
 
 /* ========================================================================= */
 /* Card frame design (80x112 native pixel-art spec).                      */
@@ -261,8 +261,8 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
 .card-frame .frame-pip.col-B{background-image:url('../../assets/mana/B.svg')}
 .card-frame .frame-pip.col-R{background-image:url('../../assets/mana/R.svg')}
 .card-frame .frame-pip.col-G{background-image:url('../../assets/mana/G.svg')}
-.card-frame .frame-pip.col-C{background-color:#aaa;color:#222}
-.card-frame .frame-pip.col-num{background-color:#555;color:#fff}
+.card-frame .frame-pip.col-C,
+.card-frame .frame-pip.col-num{background-image:url('../../assets/mana/C.svg');background-size:100% 100%;background-repeat:no-repeat;background-color:transparent;color:#E2E2EC;font-family:'Almendra Bold',Georgia,serif;text-shadow:0 1px 1px rgba(0,0,0,.75)}
 
 /* Art window: x=8, y=15, w=64, h=32 (matches the native 64x32 pixel-art
    format we've been shipping for ~61 cards). */
@@ -316,6 +316,59 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
 }
 .card-frame .frame-oracle{
   /* No special treatment -- inherits frame-text styling. */
+}
+/* Keyword icon row — replaces the keyword text line on the small in-play
+   frame (the blow-up popup keeps the words). The coin SVGs are inlined from
+   KEYWORD_ICON_SVG with the glyph as currentColor and disc/rim as CSS vars,
+   so the per-keyword source class recolors the coin to the keyword-badge
+   palette: native = card color, sticker-granted = gold, permanent-granted =
+   teal. Each carries a "Keyword: reminder" title tooltip. `unblockable` falls
+   back to a tiny text chip (still source-colored). */
+.card-frame .frame-keywords{
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(1px * var(--scale));
+  margin-bottom: calc(1px * var(--scale));
+  line-height: 0;
+}
+.card-frame .frame-keywords .kw-icon{
+  width: calc(10px * var(--scale));
+  height: calc(10px * var(--scale));
+  display: inline-block;
+  vertical-align: middle;
+  line-height: 0;
+}
+.card-frame .frame-keywords .kw-icon svg{
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+/* Source palette — glyph (color/currentColor) + disc + inner rim + outer ring,
+   each coin showing two distinct border rings. Native is set inline per the
+   card's own color (nativeKeywordStyle: card-color glyph + inner ring, cream
+   disc + outer ring) — the values here are only a fallback. Sticker = gold,
+   granted = teal (mirrors .stk-badge.skw / .kw-granted), with a bright outer
+   highlight ring. */
+.card-frame .frame-keywords .kw-native{
+  color: #6b7280; --kw-disc: #d8d4c8; --kw-rim: #6b7280; --kw-rim2: #d8d4c8;
+}
+.card-frame .frame-keywords .kw-sticker{
+  color: #ffd700; --kw-disc: #2a2200; --kw-rim: #cc9900; --kw-rim2: #ffd700;
+}
+.card-frame .frame-keywords .kw-granted{
+  color: #7fe5d4; --kw-disc: #0a2622; --kw-rim: #3aa898; --kw-rim2: #7fe5d4;
+}
+.card-frame .frame-keywords .kw-icon-fallback{
+  /* inherits the source ink color set by the .kw-native/.kw-sticker/.kw-granted
+     class it also carries. */
+  display: inline-block;
+  font-size: calc(5px * var(--scale) * var(--card-text-scale));
+  font-weight: bold;
+  border: 1px solid currentColor;
+  border-radius: calc(2px * var(--scale));
+  padding: 0 calc(1.5px * var(--scale));
+  line-height: 1.4;
 }
 /* Basic-land identity symbol: a large mana glyph centered in the otherwise-empty
    text box, echoing paper basic lands. Emitted via oracleHtml (so it shows on the
@@ -527,7 +580,6 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
 .stk-badge.kw{color:#88ccff;border-color:#5588cc;background:#0c1c30}
 .stk-badge.kw-granted{color:#7fe5d4;border-color:#3aa898;background:#0a2622}
 .stk-badge.skw{color:#ffd700;border-color:#cc9900;background:#2a2200}
-.stk-badge.innate{color:#ffaa44;border-color:#cc7722;background:#2a1a0a}
 .stk-badge.restrict{color:#ff8888;border-color:#cc4444;background:#2a0808}
 .stickers-row-big{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;margin-top:6px}
 .stickers-row-big .stk-badge{font-size:10px;padding:2px 7px}
@@ -982,6 +1034,7 @@ body.ai-thinking #status{
 
 <script src="js/settings.js"></script>
 <script src="js/cards.js"></script>
+<script src="js/keyword-icons.js"></script>
 <script src="js/types.js"></script>
 <script src="js/engine.js"></script>
 <script src="js/card-text.js"></script>

@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.1.8`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.1.9`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -199,6 +199,43 @@ opponent's best creature — permanent base 20, eot base 8, +card value +lane �
 animate-add_type only at a permanent WE control (else it'd gift the opponent a
 body). Verified via `AI.decide`: the AI now casts Encase in Amber at an enemy
 creature. 1269 green, lint clean, 300-game selfplay clean.
+
+v2.1.9: SVG-icon release ("New SVG Icons" branch) — generic mana coin, innate
+promoted to a real keyword, and keyword-ability coin icons on the card frame.
+
+(1) Generic/colorless mana coin. Added `assets/mana/C.svg` — a blank gray coin
+shell (the engine draws the numeral/letter on top) matching the generic mana key
+`C`. Wired the four pip sites that fell back to a plain disc — `.mana-C`,
+`.mana-num`, and frame `col-C` / `col-num` — to render the coin with the number
+in Almendra Bold. Refreshed `assets/mana/source/manaiconsv13.jsx` (the committed
+copy was a stale 5-color version missing the Generic entry).
+
+(2) `innate` promoted to a real keyword. Was a one-off boolean (`card.innate` +
+a `kind:'innate'` sticker); now lives in `KEYWORDS` / `KEYWORD_DISPLAY` as the
+single source of truth, the boolean retired. Opening-hand pull, draft valuation,
+eligibility label, browser grouping, sticker badge, and card text all read the
+keyword. The innate sticker is now a `kind:'keyword'` grant, hand-defined +
+lands-only (the `kw_*` auto-loop skips it, like defender). Excluded from the
+combat keyword preamble (status keyword, like flash); keeps its "Innate." line.
+Ingenuity Unbounded's `innate:true` moved into `keywords[]`.
+
+(3) Keyword-ability coin icons on the in-play frame. The small frame renders its
+keyword line as compact coin icons (instead of words) to save rules-box space;
+the long-press blow-up popup keeps the words. `cardToViewModel` gains a
+`keywordsAsIcons` flag (set by `makeCardEl`) that drops the keyword preamble from
+the oracle text and exposes a `keywordIconsHtml` row. Coin SVGs are embedded
+inline-recolorable (`js/keyword-icons.js`: glyph = currentColor, disc/rim = CSS
+vars, generated from `assets/keywords/<kw>.svg`), tinted by grant source: native
+= the card's own color (card-color glyph + inner ring on a cream disc + cream
+outer ring — a legible two-color rim; White special-cased dark-on-gold since its
+frame is light), sticker = gold, granted = teal. Each carries a "Flying:
+<reminder>" tooltip (new `KEYWORD_REMINDER`). Added the `unblockable` key icon
+(16 keyword SVGs now), so every shown keyword has art; `innate`/`no_block` stay
+out of the row. New `keyword_icons_test.js`.
+
+Full suite green (1693 assertions post-merge), eslint clean. Note: DOM rendering (icon
+sizes, the two-color rings, hover tooltips) isn't covered by the Node harness —
+browser-verify on the live build.
 
 v2.1.8: **Controller-scoped targeting gates on ~20 cards + ai/render target-resolution unification.** (Branch opened at v2.1.0 as "v2.1.1"; renumbered to v2.1.8 on merge — dev had since shipped its own v2.1.1–v2.1.7.) Two threads:
 - **Targeting restrictions.** Removal and debuff spells that should only hit opponents now use `opp_creature`: Pacifism, Sicken, Ravenous Chupacabra (ETB), Righteous Judge (ETB), Reaper Shade (ETB), Royal Assassin (ability), Frostbite Mage (ETB), Bindspeaker (ETB), Plague Sower (ETB), Flame Wisp (ETB). Pump/buff spells that should only target your own creatures now use `your_creature`: Giant Growth, Invigorate, Might of Faith, Divine Favor, Strength of the Pack, Predator's Speed, Firebreathing, Fiery Rush; plus the Wilds mode of Verdant Charm, the Embolden mode of Crusader's Charm, and both effects in Storm Charm's Frenzy mode. Awaken the Stone (untap) gates to your own creature. Multi-target cards (Twin Strike, Sword and Sorcery, Roots and Branches) use the filter form (`target:"creature", filter:{controller:"self/opp"}`) instead of compound values, since `target_slots` routes through `getValidTargets` directly which doesn't expand compound kinds. Godot: `giant_growth.tres` target filter + oracle text updated to match.

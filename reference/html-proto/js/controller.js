@@ -128,7 +128,6 @@ function init() {
 function stickerAppliesLabel(s) {
   switch (s.kind) {
     case 'stat_boost':     return 'creatures';
-    case 'innate':        return 'lands';
     case 'grant_mana_ability':     return "lands that don't already produce {" + s.color + '} (deck must play ' + s.colorAdj + ')';
     case 'add_type':      return s.color
       ? "lands that don't already produce {" + s.color + '} (deck must play ' + s.colorAdj + ')'
@@ -138,6 +137,7 @@ function stickerAppliesLabel(s) {
     case 'subtype':       return 'creatures (rolls a random subtype from your deck)';
     case 'keyword': {
       const kw = s.keyword;
+      if (kw === 'innate') return 'lands';
       if (kw === 'lifelink' || kw === 'deathtouch' || kw === 'trample') {
         return 'creatures, or instants/sorceries that deal damage';
       }
@@ -161,14 +161,16 @@ function appendStickerSectionToBrowser(inner) {
   wrap.appendChild(heading);
 
   // Card boosts = stat/cost/empower; Land mods = innate+landColor (add_type);
-  // Keyword grants = kw_*.
+  // Keyword grants = kw_*. Innate is a keyword sticker but lands-only, so it
+  // stays grouped with Land mods.
   const groups = {
     'Card boosts':       [],
     'Land mods':         [],
     'Keyword grants':    [],
   };
+  const isInnateSticker = s => s.kind === 'keyword' && s.keyword === 'innate';
   for (const s of allStickers) {
-    if (s.kind === 'innate' || s.kind === 'grant_mana_ability' || s.kind === 'add_type') groups['Land mods'].push(s);
+    if (s.kind === 'grant_mana_ability' || s.kind === 'add_type' || isInnateSticker(s)) groups['Land mods'].push(s);
     else if (s.kind === 'keyword')                     groups['Keyword grants'].push(s);
     else                                               groups['Card boosts'].push(s);
   }

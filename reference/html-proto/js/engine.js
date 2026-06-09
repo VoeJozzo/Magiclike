@@ -708,7 +708,6 @@ function makeCard(tplId, stickers, slotIdx, empowerRolls, permaBuffs, bonusTrigg
     // sticker-apply time so the choice is fixed for the run. Saved/loaded.
     empowerRolls: (empowerRolls || []).slice(),
     subtypeRolls: (subtypeRolls || []).slice(),
-    innate: !!tpl.innate,
     // Comes-into-play-tapped lands (Deepseam Quarry). Honored in doPlayLand.
     enters_tapped: !!tpl.enters_tapped,
     triggers: (tpl.triggers || []).map(t => ({
@@ -774,7 +773,6 @@ function makeToken(tokenTplId, controller) {
     eotGrants: [],
     modifiers: [],
     stickers: [],
-    innate: false,
     triggers: undefined,
   };
   return card;
@@ -869,9 +867,12 @@ function makePlayer(name, deck, ownerSide) {
     }
   }
   // Opening hand: pull all innate cards first, then draw to 7 from the rest.
+  // `innate` is a keyword (native or sticker-granted) — applyStickersToCard
+  // has already populated card.keywords by now, so read it from there.
+  const isInnate = c => (c.keywords || []).includes('innate');
   const innate = [];
   const rest = [];
-  for (const c of cards) (c.innate ? innate : rest).push(c);
+  for (const c of cards) (isInnate(c) ? innate : rest).push(c);
   shuffle(rest);
   const drawNeeded = Math.max(0, 7 - innate.length);
   let hand = innate.concat(rest.splice(0, drawNeeded));
@@ -885,7 +886,7 @@ function makePlayer(name, deck, ownerSide) {
   const lc = landCount(hand);
   let mulliganed = false;
   if (lc <= 1 || lc >= 6) {
-    const drawnPortion = hand.filter(c => !c.innate);
+    const drawnPortion = hand.filter(c => !isInnate(c));
     rest.push(...drawnPortion);
     shuffle(rest);
     hand = innate.concat(rest.splice(0, drawNeeded));

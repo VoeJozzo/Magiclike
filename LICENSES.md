@@ -53,11 +53,19 @@ schema later.
 
 ### Mana symbol SVGs (Claude-authored, "manaiconsv13" spec)
 
-- **Location in tree:** `assets/mana/{W,U,B,R,G}.svg`
-- **Used for:** the five WUBRG color pips in card text + v2 frame cost pips (v1.0.172)
+- **Location in tree:** `assets/mana/{W,U,B,R,G,C}.svg`
+- **Used for:** the five WUBRG color pips in card text + v2 frame cost pips (v1.0.172), plus `C` (generic) — a blank coin shell the engine draws the numeral onto
 - **Source:** authored by Claude (in a separate session) per a "manaiconsv13" JSX/React design spec the user provided; converted from JSX components to standalone SVGs for use in the prototype
 - **License:** project-owned (commissioned art, no external license)
-- **Concepts:** White = tipping scales, Blue = open book, Green = leaf, Red = fissure, Black = eclipse (sun + moon)
+- **Concepts:** White = tipping scales, Blue = open book, Green = leaf, Red = fissure, Black = eclipse (sun + moon), Generic = blank coin (numeral overlaid by engine)
+
+### Keyword ability symbol SVGs (Claude-authored, "keywordiconsship" spec)
+
+- **Location in tree:** `assets/keywords/<key>.svg` (16 symbols) + design sources at `assets/keywords/source/keywordiconsship.jsx` (the original 15) and `assets/keywords/source/keywordiconunblockable.jsx` (the unblockable key, added later)
+- **Used for:** keyword-ability icons (flying, reach, lifelink, menace, vigilance, haste, trample, deathtouch, defender, indestructible, hexproof, first_strike, flash, unblockable, plus innate/tap extras) — same 40×40 coin shell as the mana symbols. Rendered on the in-play card frame in place of the keyword text line, recolored by grant source (native = card color, sticker = gold, granted = teal); embedded inline-recolorable at `reference/html-proto/js/keyword-icons.js`.
+- **Source:** authored by Claude (in separate sessions) per "keywordiconsship" / "keywordiconunblockable" JSX/React design specs the user provided; converted from JSX components to standalone SVGs in the shipping lake-gray palette
+- **License:** project-owned (commissioned art, no external license)
+- **Coverage note:** all 14 combat keywords have art (`unblockable` included); `innate` and `tap` also ship icons (extras, not combat keywords). File names match the engine `KEYWORDS` keys.
 
 ---
 

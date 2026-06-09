@@ -1191,6 +1191,8 @@ function stickerBadgesHtml(stickers, big, empowerRolls, tplId, stapledTpls) {
     if (!s) continue;
     // landColor-style label routes the brace token through renderManaSymbols so
     // it shows the color pip instead of literal {W} text (injected as innerHTML).
+    // (Innate + other keyword stickers are skipped above via
+    // FRAME_REDUNDANT_STICKER_KINDS — innate shows via the "Innate." oracle line.)
     let label = (s.kind === 'grant_mana_ability')
       ? '+' + renderManaSymbols('{' + s.color + '}')
       : (s.name || s.kind);   // remove_keyword ("Loses Defender"), set_color, …
@@ -1262,6 +1264,97 @@ function nativeKeywordBadgesHtml(card, big) {
     parts.push(`<span class="stk-badge ${cls}" title="${tooltip}">${label}</span>`);
   }
   return `<div class="stickers-row${big ? '-big' : ''}">${parts.join('')}</div>`;
+}
+
+// Where a card's keyword comes from, → the CSS source class that recolors its
+// coin: native (template) takes the CARD'S color (per-card, set inline — see
+// KW_NATIVE_COLORS below), sticker (kw_* sticker) = gold, granted (by another
+// permanent via grantedBy) = teal. Native wins ties (granting an intrinsic
+// keyword is redundant). Synthetic card-shaped objects (browser previews — no
+// tpl/grant tracking) default native.
+function keywordSourceClass(kw, card, templateKw) {
+  if (templateKw.includes(kw)) return 'kw-native';
+  if ((card.stickers || []).includes('kw_' + kw)) return 'kw-sticker';
+  if (card.grantedBy instanceof Map) {
+    const srcs = card.grantedBy.get(kw);
+    if (srcs && srcs.size > 0) return 'kw-granted';
+  }
+  return 'kw-native';
+}
+
+// Native keyword coins wear the card's own color identity. White is a special
+// case (its frame is light): dark text-ink glyph on its gold identity disc.
+// The other colors put the card-color glyph + card-color INNER ring on a cream
+// disc with a cream OUTER ring — so the border reads card-color (inner) then
+// cream (outer), the legible two-color rim the other UI icons have. Keyed by
+// frame colorKey. (Sticker/granted ignore this — they use the gold/teal classes.)
+//   { ink: glyph,   disc,      rim: inner-ring, rim2: outer-ring }
+const CREAM = '#d8d4c8';
+const KW_NATIVE_COLORS = {
+  W: { ink: '#1a1a1a', disc: '#DEC96A', rim: '#1a1a1a', rim2: '#DEC96A' },
+  U: { ink: '#2C5AA8', disc: CREAM, rim: '#2C5AA8', rim2: CREAM },
+  B: { ink: '#15151f', disc: CREAM, rim: '#15151f', rim2: CREAM },
+  R: { ink: '#A52222', disc: CREAM, rim: '#A52222', rim2: CREAM },
+  G: { ink: '#1E7A38', disc: CREAM, rim: '#1E7A38', rim2: CREAM },
+  C: { ink: '#6b7280', disc: CREAM, rim: '#6b7280', rim2: CREAM },
+};
+
+// A card's frame color identity: cost/card color > land's produced color >
+// colorless. The single source for both the frame (cardToViewModel) and the
+// native keyword coin (nativeKeywordStyle), so the two can never drift.
+function frameColorKey(card) {
+  return (card.colors && card.colors[0]) || card.color
+    || (hasType(card, 'Land') && card.mana) || 'C';
+}
+
+// Inline CSS vars for a native coin, from the card's frame color. The frame's
+// colorKey is passed in (cardToViewModel already derived it) so the coin and the
+// frame never drift; the fallback is for standalone callers (tests) without one.
+function nativeKeywordStyle(card, colorKey) {
+  colorKey = colorKey || frameColorKey(card);
+  const c = KW_NATIVE_COLORS[colorKey] || KW_NATIVE_COLORS.C;
+  return `color:${c.ink};--kw-disc:${c.disc};--kw-rim:${c.rim};--kw-rim2:${c.rim2}`;
+}
+
+// Icon row shown on the small in-play frame in place of the keyword text line
+// (the blow-up popup keeps the words — see openCardPopup). The coin SVGs are
+// inlined from KEYWORD_ICON_SVG so CSS can recolor them: a per-keyword source
+// class (native/sticker/granted) tints the glyph (currentColor) and disc/rim
+// (CSS vars) to match the keyword-badge palette. Each icon carries a
+// "Display: reminder" title tooltip. Selection mirrors keywordPreamble:
+// creatures show every keyword; non-creatures show only spell-legal ones
+// (flash). no_block is hidden; innate has its own status line, so both excluded.
+function keywordIconsHtml(card, colorKey) {
+  const tpl = (card.isToken ? TOKENS : CARDS)[card.tplId];
+  const isCreatureCard = hasType(card, 'Creature') || (tpl && hasType(tpl, 'Creature'));
+  const templateKw = (tpl && tpl.keywords) || [];
+  const allKw = (card.keywords && card.keywords.length) ? card.keywords : templateKw;
+  const shown = (isCreatureCard ? allKw : allKw.filter(k => SPELL_LEGAL_KEYWORDS.has(k)))
+    .filter(k => k !== 'no_block' && k !== 'innate');
+  if (!shown.length) return '';
+  // Native coins are colored by the card's own identity (computed once); sticker
+  // and granted coins use their fixed class palette.
+  const nativeStyle = nativeKeywordStyle(card, colorKey);
+  const seen = new Set();
+  const parts = [];
+  for (const kw of shown) {
+    if (seen.has(kw)) continue;   // dedup intrinsic + granted
+    seen.add(kw);
+    const display = KEYWORD_DISPLAY[kw] || (kw.charAt(0).toUpperCase() + kw.slice(1));
+    const reminder = KEYWORD_REMINDER[kw] || '';
+    const title = escapeHtml(reminder ? display + ': ' + reminder : display);
+    const srcClass = keywordSourceClass(kw, card, templateKw);
+    const styleAttr = srcClass === 'kw-native' ? ` style="${nativeStyle}"` : '';
+    const svg = KEYWORD_ICON_SVG[kw];
+    if (svg) {
+      parts.push(`<span class="kw-icon ${srcClass}"${styleAttr} role="img" aria-label="${escapeHtml(display)}" title="${title}">${svg}</span>`);
+    } else {
+      // No coin art yet (e.g. unblockable) — fall back to a tiny text chip,
+      // still source-colored.
+      parts.push(`<span class="kw-icon-fallback ${srcClass}"${styleAttr} title="${title}">${escapeHtml(display)}</span>`);
+    }
+  }
+  return `<div class="frame-keywords">${parts.join('')}</div>`;
 }
 
 // Render a card's art field as HTML. Detects image URLs (data: URLs and
@@ -1364,14 +1457,15 @@ function cardToViewModel(card, opts) {
   opts = opts || {};
   const inHand = !!opts.inHand;
   const overrideOracleText = opts.overrideOracleText;
+  // keywordsAsIcons: drop the keyword text line from the oracle and instead
+  // expose a separate icon row (vm.keywordIconsHtml). The small in-play frame
+  // sets this; the blow-up popup leaves it off so it keeps the keyword words.
+  const keywordsAsIcons = !!opts.keywordsAsIcons;
 
   // Frame color: cost colors > card.color > land's produced color
   // (Plains -> W) > Colorless. Multicolor uses first WUBRG-order color;
   // dual-color frame design is a future tweak.
-  const colorKey = (card.colors && card.colors[0])
-    || card.color
-    || (hasType(card, 'Land') && card.mana)
-    || 'C';
+  const colorKey = frameColorKey(card);
 
   const isCreature = hasType(card, 'Creature');
   const [pow, tou] = isCreature
@@ -1406,9 +1500,10 @@ function cardToViewModel(card, opts) {
   if (overrideOracleText !== undefined) {
     oracleHtml = renderManaSymbols(escapeHtml(overrideOracleText));
   } else {
-    const segs = describeCardSegments(card, {skipKeywords: false});
+    const segs = describeCardSegments(card, {skipKeywords: keywordsAsIcons});
     oracleHtml = segmentsToHtml(segs);
   }
+  const kwIconsHtml = keywordsAsIcons ? keywordIconsHtml(card, colorKey) : '';
 
   // Paper-basic look: a basic Land with NO other rules text shows a large mana
   // symbol centered in the otherwise-empty text box, read from what it actually
@@ -1440,6 +1535,7 @@ function cardToViewModel(card, opts) {
   return {
     colorKey, isCreature, pow, tou,
     pipsHtml, bumpedMarker, typeText, oracleHtml,
+    keywordIconsHtml: kwIconsHtml,
     artInner, stickersInner,
   };
 }
@@ -1452,7 +1548,9 @@ function makeCardEl(card, opts) {
   const div = document.createElement('div');
   div.dataset.iid = String(card.iid);
 
-  const vm = cardToViewModel(card, opts);
+  // The small in-play frame renders keywords as compact icons (with reminder
+  // tooltips) to save space; the blow-up popup keeps the keyword words.
+  const vm = cardToViewModel(card, Object.assign({}, opts, { keywordsAsIcons: true }));
 
   div.className = 'card-frame col-' + vm.colorKey +
     (card.tapped ? ' tapped' : '') +
@@ -1485,6 +1583,7 @@ function makeCardEl(card, opts) {
     '<div class="frame-art">' + vm.artInner + '</div>' +
     '<div class="frame-type">' + escapeHtml(vm.typeText) + '</div>' +
     '<div class="frame-text">' +
+      vm.keywordIconsHtml +
       '<div class="frame-oracle">' + vm.oracleHtml + '</div>' +
       stickerSection +
     '</div>' +
@@ -1554,22 +1653,23 @@ function formatCostBraced(c) {
 //   card text "{R}: gets +1/+0" -> escapeHtml -> renderManaSymbols
 //   cost {R:2,C:4} -> formatCostBraced -> renderManaSymbols
 //
-// CSS in magiclike_engine.html defines a default colored-circle look for
-// .mana / .mana-W / .mana-R / etc. The pathway is set up so a future
-// `.mana-R { background-image: url('assets/mana/R.png'); color:
-// transparent; }` swap will replace text pips with PNG art globally.
+// CSS in magiclike_engine.html drives the visual: the WUBRG color pips
+// render the shared SVG art (`.mana-R { background-image:
+// url('../../assets/mana/R.svg'); color: transparent }`), which hides the
+// emoji glyph below and shows the symbol. C/T/X/numeric pips have no SVG
+// yet and keep the letter-in-colored-disc look.
 //
 // Recognized symbols: WUBRGC (color/colorless pips), T (tap), X (variable
 // cost), and any pure-number sequence (generic mana). Unrecognized braces
 // are returned untouched so existing text like "{1.5}" or "{foo}" can't
 // break rendering.
-// Per-color glyph used as the FALLBACK rendering (no PNG art yet). The
-// five Unicode circle emoji are coincidentally the right shape and color
-// for mana symbols, so they look recognizable without shipping any image
-// files. When real PNGs land in assets/mana/, the .mana-W / .mana-U / ...
-// CSS overrides will hide the emoji via color:transparent and show the
-// art instead. C (colorless) has no canonical emoji match — keep it
-// as a letter pip until art ships.
+// Per-color glyph kept as the FALLBACK under the SVG art (used if the SVG
+// fails to load, or for C which has no SVG). The five Unicode circle emoji
+// are coincidentally the right shape and color for mana symbols, so they
+// stay recognizable even when art is unavailable. The .mana-W / .mana-U /
+// ... CSS overrides hide the emoji via color:transparent wherever an SVG
+// ships. C (colorless) has no canonical emoji match — keep it as a letter
+// pip until art ships.
 const MANA_GLYPH = { W: '⚪', U: '🔵', B: '⚫', R: '🔴', G: '🟢', C: 'C' };
 
 function renderManaSymbols(text) {

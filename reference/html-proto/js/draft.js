@@ -447,10 +447,11 @@ function scoreOpponentSticker(sticker, slot) {
     const tier = {
       flying: 14, indestructible: 14, hexproof: 11, lifelink: 10, deathtouch: 10,
       first_strike: 8, vigilance: 7, haste: 7, trample: 6, menace: 5, reach: 4, flash: 3,
+      innate: 6,   // free opening-hand land
     }[sticker.keyword] || 5;
     return tier;
   }
-  if (sticker.kind === 'innate') return 6;     // free opening-hand land
+  // (innate is now a keyword — valued via the keyword tier map above.)
   // Land-color fixing: old grant_mana_ability + the new add_type land stickers.
   if (sticker.kind === 'grant_mana_ability' || sticker.kind === 'add_type') return 7;
   if (sticker.kind === 'cost_mod') {
