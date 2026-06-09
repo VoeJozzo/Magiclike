@@ -1311,10 +1311,10 @@ const KW_NATIVE_COLORS = {
   B: { ink: '#15151f', disc: CREAM, rim: '#15151f', rim2: CREAM },
   R: { ink: '#A52222', disc: CREAM, rim: '#A52222', rim2: CREAM },
   G: { ink: '#1E7A38', disc: CREAM, rim: '#1E7A38', rim2: CREAM },
-  // Colorless glyph darkened to a deep slate (was #6b7280, which washed out on
-  // the cream disc) for legibility; still reads gray/colorless, not B's black.
-  // Inner ring kept lighter (#6b7280) — only the foreground symbol is darkened.
-  C: { ink: '#3a3f47', disc: CREAM, rim: '#6b7280', rim2: CREAM },
+  // Colorless glyph + inner ring darkened to a deep slate (was #6b7280, which
+  // washed out on the cream disc) for legibility; still reads gray/colorless, not
+  // B's black. Glyph and inner ring share the tone, as every other color's do.
+  C: { ink: '#3a3f47', disc: CREAM, rim: '#3a3f47', rim2: CREAM },
 };
 
 // A card's frame color identity: cost/card color > land's produced color >

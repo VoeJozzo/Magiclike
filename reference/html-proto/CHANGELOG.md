@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.1.10`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.1.11`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -1234,6 +1234,14 @@ innate-coin coverage; 1695 green, lint clean. Browser-verified (tap pip, tooltip
 cream disc, darkened glyph, pixel-sampled tap coin; innate Forest coin gold +
 "Innate: …" tooltip, big mana suppressed, popup keeps the word; size knob
 10→20→6px live via the CSS var).
+
+v2.1.11: darken the colorless ability-coin inner ring to match its glyph.
+v2.1.10 darkened the colorless (C) keyword glyph to #3a3f47 but left the inner
+ring at the lighter #6b7280, so the glyph sat darker than its own ring. Unified
+them on the slate tone, matching how every other color's coin keeps glyph and
+inner ring the same color — render.js KW_NATIVE_COLORS.C.rim, the CSS .kw-native
+fallback (--kw-rim), and the tap coin (assets/keywords/tap.svg, batched with the
+colorless palette). Purely cosmetic, no logic change. 1695 green, lint clean.
 
 > **MUST UPDATE on every dev-branch push that touches code.** Bump `VERSION` in `js/main.js` AND the line above, in the same commit. GitHub Pages caches aggressively; the version string is the only reliable way to confirm a fresh build is live.
 

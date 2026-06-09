@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40">
   <!-- Tap cost coin. Palette matches the colorless (C) keyword-ability coin
        (render.js KW_NATIVE_COLORS.C): cream disc #ece0be, slate glyph #3a3f47,
-       gray inner ring #6b7280, cream outer ring #ece0be. Colors are hardcoded
+       slate inner ring #3a3f47, cream outer ring #ece0be. Colors are hardcoded
        (not CSS vars) because this ships as a background-image for .mana-T, which
        renders in an isolated context that can't inherit vars — keep in sync by
        hand if the C keyword palette changes. -->
@@ -22,6 +22,6 @@
     <path d="M10,31 L30,31 L20,17 Z"/>
   </g>
   </g>
-  <circle cx="20" cy="20" r="17" fill="none" stroke="#6b7280" stroke-width="2"/>
+  <circle cx="20" cy="20" r="17" fill="none" stroke="#3a3f47" stroke-width="2"/>
   <circle cx="20" cy="20" r="19" fill="none" stroke="#ece0be" stroke-width="1.8"/>
 </svg>
