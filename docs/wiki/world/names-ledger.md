@@ -31,7 +31,7 @@ Where I push back (gently, once): factions whose cards will keep recurring need 
 | **Cindermarch** | the red legion / its campaign | **Parked with potential.** Joe: "could be done OK," but contrived/generic risk; likelier a *movement/campaign* name (tier 3) than a faction name. → [[red]] |
 | **the Dawnward** | white's soldiers/clerics/angels collectively | **Parked, unreviewed.** Also flagged: Adjective-Nounverber-adjacent. → [[white]] |
 | **the Pharos Order** | the burned library's order | **Parked, unreviewed.** Lighthouse-of-Alexandria resonance fits blue's kept-light theme. → [[blue]] |
-| **the Vesper / the Long Dusk** | the world / the era | **Probably dead.** Premised on "the world is literally dark," which was demoted to art-book mood ([[art-language]] §1). Keep only if some other justification emerges; do not use meanwhile. |
+| **the Vesper / the Long Dusk** | the world / the era | **Split (2026-06-09).** "The Vesper" (world name) stays dead — premised on literal darkness, demoted to art-book mood ([[art-language]] §1). "The Long Dusk" (era name) is **half-revived as parked**: Joe's own framing — "the set mainly takes place at metaphorical/narrative/historical dusk… Meridian is at 3:00 PM" ([[the-fall]]) — supplies the metaphorical premise the name needed. Plausible tier-3 historians' coinage. Unreviewed *as a name*; do not use on cards meanwhile. |
 
 ## See also
 

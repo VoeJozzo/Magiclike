@@ -13,7 +13,9 @@ The one place in the corpus under full sun. A tiered white-marble city beneath a
 
 > "It is easy to convince oneself of the superiority of one's nation, one's way of life, when one is untouched by the shaking of the foundation of the world. *Yet.*" — Joe
 
-Meridian is the *yet*. The war ([[tone]]) is somewhere else; the mud is somewhere else; the foundations here are marble and they have never shaken. The city's confidence is genuine, earned, and built directly over the fault line.
+> "If the set mainly takes place at metaphorical/narrative/historical dusk, Meridian is, perhaps, at 3:00 PM. It is not dark, not even close. And yet, it has passed noon." — Joe
+
+Meridian is the *yet*. The war ([[tone]]) is somewhere else; the mud is somewhere else; the foundations here are marble and they have never shaken. The city's confidence is genuine, earned, and built directly over the fault line. And read the Equatorial Engine in this light: the city **bottles noon** — it manufactures the hour it refuses to admit losing ([[the-fall]] §Meridian). The shadows lengthen anyway.
 
 ## The artificers *(observed)*
 

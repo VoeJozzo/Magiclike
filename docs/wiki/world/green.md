@@ -13,6 +13,10 @@ Green is **not a faction — it's a process**. It doesn't fight [[tone|the Long 
 
 > "If you are a bear, you simply… don't care about a lot of things. Even the things that *do* affect you are sort of just… how it is." — Joe
 
+And green has a place in the world's succession — the last one in line, and the most patient:
+
+> "Emperors have fallen to kings, kings will fall to warlords, and nature bides its time, waiting for its turn after the warlords." — Joe ([[the-fall]])
+
 Green's indifference rhymes with [[black]]'s but is nothing like it: black *decides* not to care (a judgment, recorded in a ledger); green never held the question. The bear is not callous. The bear is a bear. Tonal touchstone: **"The Snow it Melts the Soonest"** — patient, unhurried, certain; everything melts in its season.
 
 ## What the corpus shows *(observed)*

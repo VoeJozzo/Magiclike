@@ -27,9 +27,11 @@ Every claim in this shard carries one of these (explicitly or by section):
 
 **Foundation**
 - [tone.md](tone.md) — the small-windows discipline, the war, low/high fantasy tension, touchstones.
+- [the-fall.md](the-fall.md) — the disarray, the unnamed fall, the world-clock (Meridian at 3 PM), and the world-without-a-narrator epistemology.
 - [threads.md](threads.md) — life as thread; the weave cosmology; how it joins the sticker/staple mechanics.
 - [the-divine.md](the-divine.md) — gods who don't intervene, angels who do; the deliberately unresolved theology.
 - [art-language.md](art-language.md) — craft conventions that are NOT world facts (light, hue words, time-of-day).
+- [flavor-text.md](flavor-text.md) — *opinion of one instance* (signed): testimony, never narration. Pre-implementation; nothing renders flavor yet.
 
 **The five colors** *(philosophy per color — what it IS here, especially where that diverges from MTG's pie)*
 - [white.md](white.md) — the bypass must go somewhere. Dirties easily.
@@ -46,7 +48,8 @@ Every claim in this shard carries one of these (explicitly or by section):
 
 1. **How is magic *shown*?** Magic is a verb here — when things happen, so does magic (Way of Kings adjacent). But the setting holds both very low- and very high-fantasy elements, and exactly how that tension resolves is undecided. → [[tone]]
 2. ~~How literal is the thread model?~~ **Settled (2026-06-09):** everyone has seen it once, and nobody believes it. → [[threads]]
-3. **The war** — one long war or many? Named or never named? (Lean: small windows don't need the war's name.) → [[tone]]
+3. **The war** — one long war or many? Named or never named? (Lean: small windows don't need the war's name. Its *shape* is now established — disarray, man against man → [[the-fall]].)
+3a. **When did the library fall?** Lean: within living memory — a recent rung of the old pattern. → [[the-fall]] · [[blue]]
 4. **The divine** — unresolved on purpose, and the unresolvedness is canon. Rule refined: depiction allowed, adjudication forbidden — cards may testify; the set never returns a verdict. → [[the-divine]]
 5. **Elystra / the player** — is a run one of her lives? Proposed, unreviewed. → [[threads]]
 

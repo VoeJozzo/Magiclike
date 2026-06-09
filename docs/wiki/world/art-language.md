@@ -33,6 +33,7 @@ Treat as a default worth reaching for and worth violating on purpose. A black ca
 
 - **Desaturation + one vivid color** is black's recurring move (Consume Spirit, Demonic Tutor, Blood Artist, Cult Priest — gray worlds, one red). Possible reading for the art book: black sees in ledger-gray; only what's owed has color. Use as craft, not creed.
 - **The mechanic-enacting element gets the light** (Healing Salve, Heir to the Burnt House v2 — see its claude-notes: "the curse leaving the body, not the body itself, is the subject").
+- **Tapestry over rough-hewn stone** — the present dresses in the past's leftovers: grand tapestry on rough masonry, verdigris on colossi (Oblation), moss on altars (Phylactery). The [[the-fall|Fall]] rendered as set-dressing, one material seam per scene.
 
 ## See also
 

@@ -19,9 +19,13 @@ The corpus already obeys this. Its best pieces are one candle on a morgue slab (
 
 ## The war *(authorial)*
 
-This is a time of war and conflict, magical and mundane.
+This is a time of war and conflict, magical and mundane — and of **disarray**:
+
+> "Not between 'Good and Evil' or 'White and Blue against Red and Black', but in the broader sense of 'man against man'." — Joe
 
 > "Gods and kings may decide the fates of heaven and earth. Their wars are fought by men, who die face-down in the mud. There is no tension there." — Joe
+
+There is no Dark Lord in this world and no evil faction; the disarray has a *shape* and a past — see [[the-fall]].
 
 *Observed:* the war's everyman is **"a soldier in dented steel plate armor"** — that exact phrase recurs across the prompt corpus like a ballad refrain (Doom Blade's victim, Dread Wraith's prey, Dawn Angel's patient, Final Strike's kneeler, Carrion Feeder's meal, Otherworldly Journey's sleeper). The armor is always *dented*, never gleaming. Keep him. He is everyone.
 

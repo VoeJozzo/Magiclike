@@ -23,6 +23,8 @@ The corpus contains a complete blue story, told in small windows:
 
 This is the set's clearest faction-scale story and it should stay scattered across small windows rather than ever getting a summary card.
 
+The library's fall is one rung of the larger pattern in [[the-fall]] — and *when* it fell is an open question there (lean: within living memory; the exile is young, and the living-library scenes coexist with the sack).
+
 ## Texture notes
 
 - Blue is not all dim libraries — it has royal halls, courts, feasts (Divination's throne room, Preordain's cathedral font). Don't let the underlit mood ([[art-language]] §1) flatten blue into one room.
