@@ -19,6 +19,7 @@
     }
   ],
   "name": "Roots and Branches",
+  "distinct_targets": true,
   "target_slots": [
     {
       "target": "creature",
