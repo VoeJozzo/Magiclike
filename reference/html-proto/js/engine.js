@@ -1089,7 +1089,9 @@ function getCardValue(card, purpose, ctx) {
   let v = pow + tou - cost * 2;
 
   // Body-scaled keyword values (flat bonuses misvalue both 1/1 unblockables and 5/5 vanillas).
-  const kw = card.keywords || [];
+  // Derive subtype-implied keywords: raw templates (draft scoring) don't carry
+  // them, and in-play instances already do — so this is idempotent for both.
+  const kw = addSubtypeKeywords(subtypesOf(card), (card.keywords || []).slice());
   if (kw.includes('flying'))         v += 1 + pow * 0.5;
   if (kw.includes('unblockable'))    v += 1.5 + pow * 0.75;
   if (kw.includes('reach'))          v += 1;

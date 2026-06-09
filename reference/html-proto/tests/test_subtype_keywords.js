@@ -69,5 +69,17 @@ console.log('\n=== negative: a subtype with no implied keyword gains nothing ===
     !goblin.keywords.includes('flying'), JSON.stringify(goblin.keywords));
 })();
 
+console.log('\n=== AI draft scoring counts a raw template’s subtype-implied keyword ===');
+(() => {
+  // getCardValue is fed raw templates during draft (no eager injection there).
+  // Same Dragon with its subtype stripped scores lower by exactly the flying bonus.
+  const dragon = CARDS.shivan_dragon;
+  const noSubtype = Object.assign({}, dragon, { types: ['Creature'] });
+  const withFlying = ENGINE.getCardValue(dragon, 'draft');
+  const withoutFlying = ENGINE.getCardValue(noSubtype, 'draft');
+  check('a raw Dragon template is valued above the same body without the subtype',
+    withFlying > withoutFlying, `${withFlying} vs ${withoutFlying}`);
+})();
+
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');
 process.exit(fail > 0 ? 1 : 0);
