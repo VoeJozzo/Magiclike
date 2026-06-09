@@ -45,9 +45,9 @@ Every claim in this shard carries one of these (explicitly or by section):
 ## Open questions (the live ones)
 
 1. **How is magic *shown*?** Magic is a verb here — when things happen, so does magic (Way of Kings adjacent). But the setting holds both very low- and very high-fantasy elements, and exactly how that tension resolves is undecided. → [[tone]]
-2. **How literal is the thread model?** Do people in-world *see* threads, or is it our rendering language for the invisible? → [[threads]]
+2. ~~How literal is the thread model?~~ **Settled (2026-06-09):** everyone has seen it once, and nobody believes it. → [[threads]]
 3. **The war** — one long war or many? Named or never named? (Lean: small windows don't need the war's name.) → [[tone]]
-4. **The divine** — unresolved on purpose; is the unresolvedness itself canon? (Lean: yes.) → [[the-divine]]
+4. **The divine** — unresolved on purpose, and the unresolvedness is canon. Rule refined: depiction allowed, adjudication forbidden — cards may testify; the set never returns a verdict. → [[the-divine]]
 5. **Elystra / the player** — is a run one of her lives? Proposed, unreviewed. → [[threads]]
 
 ## See also

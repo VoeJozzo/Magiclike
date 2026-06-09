@@ -38,7 +38,9 @@ The roguelike meta already *is* this cosmology: [[sticker-system|stickers]] and 
 
 ## Open questions
 
-1. **How literal is this in-world?** Do people *see* threads (high-fantasy reading), or is thread our rendering language for the invisible (low-fantasy reading: the dying just exhale, and only the art knows it's a thread)? This is the same low/high tension as [[tone]] §magic-is-a-verb, and probably resolves with it. A middle reading worth considering: *everyone has seen it once* — at a deathbed, in a temple, during a splice — and the world disagrees about what it was.
+1. ~~How literal is this in-world?~~ **Adopted: *everyone has seen it once, and nobody believes it.*** At a deathbed, in a temple, during a splice — everyone has seen the thread, and the world disagrees about what it was.
+   > "Like 'the feeling of being watched' or 'I *know* I wasn't alone in the woods.' Everyone's experienced those sensations, and everyone knows they're very real — and most have the good sense not to believe in them anyway." — Joe
+   This keeps the low/high tension ([[tone]] §magic-is-a-verb) as a feature rather than a question to answer: the threads are real, the experience of them is near-universal, and the world's good sense declines the conclusion. (It also rhymes with [[the-divine]]: testimony everywhere, verdict nowhere.)
 2. The five hue words used for threads in the art (cerulean / crimson / emerald / ivory / wine-purple) are **art-book palette, not in-world names** — see [[art-language]]. Whether the threads have in-world names at all: open, no urgency.
 
 ## See also
