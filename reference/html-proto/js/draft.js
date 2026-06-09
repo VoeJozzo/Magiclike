@@ -158,7 +158,7 @@ const CONSTRUCTED_DECKS = {
       'artifice_triumphant', 'artifice_triumphant', 'artifice_triumphant',
       'clockwork_beetle', 'clockwork_beetle',
       'scrap_hound', 'scrap_hound',
-      'alloy_myr', 'alloy_myr',
+      'alloy_construct', 'alloy_construct',
       'counterspell', 'counterspell',
       'anger_of_the_gods', 'anger_of_the_gods',
       'mind_control', 'mind_control',
@@ -451,7 +451,8 @@ function scoreOpponentSticker(sticker, slot) {
     return tier;
   }
   if (sticker.kind === 'innate') return 6;     // free opening-hand land
-  if (sticker.kind === 'grant_mana_ability') return 7;
+  // Land-color fixing: old grant_mana_ability + the new add_type land stickers.
+  if (sticker.kind === 'grant_mana_ability' || sticker.kind === 'add_type') return 7;
   if (sticker.kind === 'cost_mod') {
     // Bigger cards benefit more. For stapled slots, the merged cost is
     // higher than the base alone — a costMinus1 on a Lions+Bolt at WR

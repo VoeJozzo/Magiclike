@@ -3,8 +3,7 @@
   "name": "Petrify",
   "art": "🪨",
   "cost": {
-    "W": 1,
-    "C": 1
+    "W": 1
   },
   "keywords": [
     "flash"

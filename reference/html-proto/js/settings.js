@@ -65,6 +65,11 @@ const DEFAULTS = {
   cardManaPipSize:      3,      // 12px (baseline 4)
   cardManaPipPopupSize: 1.5,    // 6px-at-1x = 24px in 4x popup
   cardManaTextSize:     1,      // 1.2em (baseline)
+  // Master card-size multiplier for hand / board cards. Scales the whole
+  // 1x (80x112px) frame — art, text, pips — uniformly. Pushed into the
+  // --card-size-scale CSS var; the fixed-scale contexts (draft / popup /
+  // previews) set --scale inline and ignore it.
+  cardSizeScale:        1,
   // Devtools: when true, the settings panel shows the full font / mana
   // picker UI. Off by default for the user-facing build; flipped on via
   // the "Devtools" section in the settings panel.
@@ -98,6 +103,20 @@ const MANA_TEXT_SIZE_OPTIONS = [
   { label: '100% (default)',     value: 1 },
   { label: '125%',               value: 1.25 },
   { label: '150%',               value: 1.5 },
+  { label: '200%',               value: 2 },
+];
+
+// Master card-size options. Multiplier on the 1x (80x112px) hand/board
+// frame; everything inside scales with it. 100% is the tuned default.
+const CARD_SIZE_OPTIONS = [
+  { label: '60%',                value: 0.6 },
+  { label: '75%',                value: 0.75 },
+  { label: '85%',                value: 0.85 },
+  { label: '100% (default)',     value: 1 },
+  { label: '115%',               value: 1.15 },
+  { label: '125%',               value: 1.25 },
+  { label: '150%',               value: 1.5 },
+  { label: '175%',               value: 1.75 },
   { label: '200%',               value: 2 },
 ];
 
@@ -226,6 +245,7 @@ function get(key) {
 // tunable: append one row to this table and one --var to the CSS, no
 // new if/else in set().
 const CSS_VAR_BINDINGS = {
+  cardSizeScale:        '--card-size-scale',
   cardPopupTextScale:   '--card-popup-text-scale',
   cardManaPipSize:      '--card-mana-pip-size',
   cardManaPipPopupSize: '--card-mana-pip-popup-size',
@@ -263,6 +283,7 @@ function applyFontsToRoot() {
     root.setProperty(cssVarFont(el.key),  data[settingsKeyFont(el.key)]);
     root.setProperty(cssVarFsize(el.key), data[settingsKeyFsize(el.key)]);
   }
+  root.setProperty('--card-size-scale', data.cardSizeScale);
   root.setProperty('--card-popup-text-scale', data.cardPopupTextScale);
   root.setProperty('--card-mana-pip-size', data.cardManaPipSize);
   root.setProperty('--card-mana-pip-popup-size', data.cardManaPipPopupSize);
@@ -276,6 +297,7 @@ return {
   FONT_SIZE_OPTIONS_BY_ELEMENT,
   POPUP_TEXT_SCALE_OPTIONS,
   MANA_PIP_SIZE_OPTIONS, MANA_TEXT_SIZE_OPTIONS,
+  CARD_SIZE_OPTIONS,
   // Element-key utilities exposed for controller.js's settings UI.
   settingsKeyFont, settingsKeyFsize,
 };

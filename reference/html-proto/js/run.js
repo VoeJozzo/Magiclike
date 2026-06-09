@@ -12,7 +12,7 @@ const TPLID_RENAMES = {
   "aetherVoyager":       "aether_voyager",
   "ageOfDawn":           "dawn_sentinel",
   "airel":               "air_elemental",
-  "alloyMyr":            "alloy_myr",
+  "alloyMyr":            "alloy_construct",
   "ambushDjinn":         "ambush_djinn",
   "ancestralGuard":      "devoted_watcher",
   "ancestralPriest":     "ancestral_priest",
@@ -182,7 +182,7 @@ const TPLID_RENAMES = {
   "ravenousPlague":      "ravenous_plague",
   "razorBeacon":         "razor_beacon",
   "reaperShade":         "reaper_shade",
-  "rhox":                "centaur_courser",
+  "rhox":                "hedge_squire",
   "righteousCavalry":    "righteous_cavalry",
   "righteousJudge":      "righteous_judge",
   "ritual":              "dark_ritual",
@@ -252,7 +252,7 @@ const TPLID_RENAMES = {
   "wizardAdept":         "wizard_adept",
   "wolfbriarElemental":  "wolfbriar_elemental",
   "wrathOfGod":          "day_of_reckoning",
-  "wurm":                "craw_wurm",
+  "wurm":                "gizzard_beast",
   "zealot":              "holy_zealot",
 };
 function renameTplId(id) { return TPLID_RENAMES[id] || id; }

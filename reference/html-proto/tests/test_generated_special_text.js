@@ -69,5 +69,25 @@ console.log('\n=== scarification generates (no custom_text) so empower shows in 
   check('scar rider is preserved in both', /Scar it: each time it enters the battlefield, its controller loses 1 life\.$/.test(base));
 })();
 
+console.log('\n=== stapled multi-target spell: ETB trigger keeps its per-slot targets (regression) ===');
+(() => {
+  // A multi-slot spell (Twin Strike: two `pump` effects on two `creature` slots)
+  // stapled onto a creature folds both effects into ONE ETB trigger that carries
+  // `target_slots`. describeTrigger must forward those slot specs to
+  // describeEffectList (it previously passed only trig.target, dropping the slot
+  // specs) — else the target nouns vanish and the text reads
+  // "...,  gets +1/+1 ...  gets +1/+1 ..." with empty subjects + double spaces.
+  // Repro: "Clockwork Beetle + Twin Strike" rendered blank targets in-game.
+  const beetleTwin = describeCardText(
+    ENGINE.makeCard('clockwork_beetle', [], 0, null, null, null, ['twin_strike']));
+  check('stapled ETB names its targets (no empty subject)', /target creature/i.test(beetleTwin), beetleTwin);
+  check('stapled ETB has no empty-target artifact (no "  gets" / "to  .")',
+    !/\s{2,}gets/.test(beetleTwin) && !/to\s{2,}[.]/.test(beetleTwin), beetleTwin);
+  // Single-target staple control (Lightning Bolt) is unaffected by the slot-spec path.
+  const beetleBolt = describeCardText(
+    ENGINE.makeCard('clockwork_beetle', [], 0, null, null, null, ['lightning_bolt']));
+  check('single-target staple ETB still names "any target"', /any target/i.test(beetleBolt), beetleBolt);
+})();
+
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');
 process.exit(fail > 0 ? 1 : 0);

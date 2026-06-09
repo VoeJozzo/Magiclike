@@ -21,6 +21,14 @@ function applyStickerKindEffect(card, s) {
   } else if (s.kind === 'keyword') {
     if (!Array.isArray(card.keywords)) card.keywords = [];
     if (!card.keywords.includes(s.keyword)) card.keywords.push(s.keyword);
+  } else if (s.kind === 'remove_keyword') {
+    // Inverse of 'keyword': strip a keyword the card has natively (today only
+    // 'defender' — the lone pure-downside keyword worth removing). Everything
+    // downstream reads card.keywords, so dropping it here is sufficient (e.g.
+    // canCreatureAttack stops gating, the badge stops showing it).
+    if (Array.isArray(card.keywords)) {
+      card.keywords = card.keywords.filter(k => k !== s.keyword);
+    }
   } else if (s.kind === 'innate') {
     card.innate = true;
   } else if (s.kind === 'grant_mana_ability') {
@@ -44,6 +52,11 @@ function applyStickerKindEffect(card, s) {
       for (const k of ['W', 'U', 'B', 'R', 'G']) { colored += card.cost[k] || 0; card.cost[k] = 0; }
       if (colored) card.cost.C = (card.cost.C || 0) + colored;
     }
+  } else if (s.kind === 'add_type') {
+    // Add one type tag (land-color stickers add a basic-land subtype). For land
+    // subtypes the §305.6 autogrant then yields the matching mana ability.
+    addType(card, s.type);
+    grantBasicLandMana(card);
   } else if (s.kind === 'set_types') {
     card.types = (Array.isArray(s.types) ? s.types : [s.type]).filter(Boolean);
   } else if (s.kind === 'grant_activated_ability') {
@@ -58,7 +71,9 @@ function applyStickerKindEffect(card, s) {
     });
   } else if (s.kind === 'trigger') {
     if (!Array.isArray(card.triggers)) card.triggers = [];
-    card.triggers.push({ ...s.trigger });
+    // _from_sticker lets the card-text layer color this granted line distinctly
+    // (it's reset every makeCard, so it's display metadata, not persisted state).
+    card.triggers.push({ ...s.trigger, _from_sticker: true });
   }
 }
 
@@ -131,7 +146,9 @@ function applyOneStickerToRuntimeCard(card, sticker) {
 function applyRandomStickersToSide(state, side, n, sourceName, logFn) {
   if (n <= 0) return;
   // Exclude scarified (boss-only), subtype/empower (need rolls). Yields a mix of
-  // statBoost and keyword stickers from the normal reward pool.
+  // statBoost and keyword stickers from the normal reward pool. lose_defender IS
+  // eligible here: on an opponent's wall it hands them an attacker, which is
+  // exactly Archdemon's intended downside (the "bargain" stickers both sides).
   const eligibleStickerIds = Object.keys(STICKERS).filter(id => {
     if (id === 'scarified' || id === 'subtype' || id === 'empower') return false;
     const s = STICKERS[id];
@@ -205,7 +222,9 @@ function empowerRollLabel(card, roll) {
                  : t === 'player' ? 'damage to opponent'
                  : 'damage';
     } else if (eff.kind === 'gain_life') {
-      fieldLabel = 'life gain';
+      // gain_life with a negative amount IS life loss (Spiteful Imp, Blood
+      // Priest, …) — the label must track the sign, not assume the positive.
+      fieldLabel = (eff.amount < 0) ? 'life loss' : 'life gain';
     } else if (eff.kind === 'move_card' && eff.from_zone === 'library' && eff.to_zone === 'hand') {
       fieldLabel = 'cards drawn';
     } else {
@@ -341,12 +360,19 @@ function stickersForSlot(slot, deckColors) {
     triggers: (tpl.triggers || []).map(t => ({...t, effects: copyEffs(t.effects)})),
     abilities: (tpl.abilities || []).map(a => ({...a, effects: copyEffs(a.effects)})),
   };
+  // Subtype-implied keywords (Wall→defender, Dragon→flying, …) are derived, not
+  // printed, so eligibility (e.g. lose_defender on a Wall) must see them. Derive
+  // BEFORE the sticker loop so a remove_keyword sticker can still strip one.
+  ENGINE.applySubtypeKeywords(view);
   let subtypeCursor = 0;
   for (const sId of slot.stickers) {
     const s = resolveSticker(sId);
     if (!s) continue;
     if (s.kind === 'keyword' && !view.keywords.includes(s.keyword)) {
       view.keywords.push(s.keyword);
+    }
+    if (s.kind === 'remove_keyword') {
+      view.keywords = view.keywords.filter(k => k !== s.keyword);  // so lose_defender isn't re-offered
     }
     if (s.kind === 'subtype') {
       const rolled = (slot.subtypeRolls || [])[subtypeCursor];
@@ -355,6 +381,10 @@ function stickersForSlot(slot, deckColors) {
     }
     if (s.kind === 'grant_mana_ability') {
       grantManaAbility(view, s.color);  // §3.9: reflect on the view's tap-ability
+    }
+    if (s.kind === 'add_type') {
+      addType(view, s.type);
+      grantBasicLandMana(view);  // reflect §305.6 mana so landProducibleColors re-offer dedup sees it
     }
     // §3.8 cost_mod (unified costReduction −1 / embargo +1) — reflect on the
     // view so re-offer eligibility sees the modified cost.
