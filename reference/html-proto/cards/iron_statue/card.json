@@ -1,12 +1,11 @@
 {
   "card_id": "iron_statue",
-  "art": "🗿",
+  "art": "\ud83d\uddff",
   "cost": {
     "W": 1,
     "C": 2
   },
   "keywords": [
-    "defender",
     "indestructible"
   ],
   "name": "Iron Statue",

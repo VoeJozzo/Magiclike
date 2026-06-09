@@ -1,0 +1,14 @@
+{
+  "card_id": "bear_cub",
+  "art": "\ud83d\udc3b",
+  "cost": {
+    "G": 1
+  },
+  "name": "Bear Cub",
+  "power": 1,
+  "toughness": 1,
+  "types": [
+    "Creature",
+    "Bear"
+  ]
+}

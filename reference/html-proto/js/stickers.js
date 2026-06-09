@@ -360,6 +360,10 @@ function stickersForSlot(slot, deckColors) {
     triggers: (tpl.triggers || []).map(t => ({...t, effects: copyEffs(t.effects)})),
     abilities: (tpl.abilities || []).map(a => ({...a, effects: copyEffs(a.effects)})),
   };
+  // Subtype-implied keywords (Wall→defender, Dragon→flying, …) are derived, not
+  // printed, so eligibility (e.g. lose_defender on a Wall) must see them. Derive
+  // BEFORE the sticker loop so a remove_keyword sticker can still strip one.
+  ENGINE.applySubtypeKeywords(view);
   let subtypeCursor = 0;
   for (const sId of slot.stickers) {
     const s = resolveSticker(sId);

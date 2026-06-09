@@ -608,6 +608,26 @@ function remapEffectSlots(effects, offset) {
   });
 }
 
+// Keywords implied by creature subtype — card data need not repeat these.
+const SUBTYPE_KEYWORDS = { Angel: ['flying'], Dragon: ['flying'], Treefolk: ['reach'], Wall: ['defender'] };
+
+// Append the subtype-implied keywords for `subtypes` onto `kw` in place (deduped).
+// Shared by makeCard's eager injection AND intrinsicKeywords' re-derivation, so
+// every keyword-build path applies the rule identically — a Dragon that bounces,
+// dies-and-returns, or sheds an until-EOT grant keeps its flying.
+function addSubtypeKeywords(subtypes, kw) {
+  for (const st of subtypes) {
+    for (const k of (SUBTYPE_KEYWORDS[st] || [])) {
+      if (!kw.includes(k)) kw.push(k);
+    }
+  }
+  return kw;
+}
+
+function applySubtypeKeywords(card) {
+  addSubtypeKeywords(subtypesOf(card), card.keywords);
+}
+
 function makeCard(tplId, stickers, slotIdx, empowerRolls, permaBuffs, bonusTrigger, stapledTpls, subtypeRolls) {
   const tpl = (stapledTpls && stapledTpls.length > 0)
     ? synthesizeStapledTemplate(tplId, stapledTpls)
@@ -698,8 +718,8 @@ function makeCard(tplId, stickers, slotIdx, empowerRolls, permaBuffs, bonusTrigg
     // Stapled metadata for empower-target enumeration, sticker eligibility, etc.
     stapledFrom: tpl.stapledFrom,
   };
-  // Order: stickers → permaBuffs → bonusTrigger. (§3.8: the Balancer overrides
-  // channel is gone — symmetricize/embargo/bleach now flow through stickers.)
+  // Order: subtype-implied → stickers → permaBuffs → bonusTrigger.
+  applySubtypeKeywords(card);
   applyStickersToCard(card);
   // permaBuffs: slot-persistent buffs from permanent_eot creatures (Elystra).
   // Shared with resetInPlayState (bounce/flicker recast).
@@ -776,6 +796,10 @@ function intrinsicKeywords(card) {
     const s = STICKERS[sId];
     if (s && s.kind === 'keyword' && !kw.includes(s.keyword)) kw.push(s.keyword);
   }
+  // Subtype-implied keywords are part of the intrinsic set, so every re-derive
+  // path (resetInPlayState on leave-play, the EOT eotGrants cleanup) preserves
+  // them rather than silently dropping a Dragon's flying / a Wall's defender.
+  addSubtypeKeywords(subtypesOf(card), kw);
   return kw;
 }
 
@@ -1077,7 +1101,9 @@ function getCardValue(card, purpose, ctx) {
   let v = pow + tou - cost * 2;
 
   // Body-scaled keyword values (flat bonuses misvalue both 1/1 unblockables and 5/5 vanillas).
-  const kw = card.keywords || [];
+  // Derive subtype-implied keywords: raw templates (draft scoring) don't carry
+  // them, and in-play instances already do — so this is idempotent for both.
+  const kw = addSubtypeKeywords(subtypesOf(card), (card.keywords || []).slice());
   if (kw.includes('flying'))         v += 1 + pow * 0.5;
   if (kw.includes('unblockable'))    v += 1.5 + pow * 0.75;
   if (kw.includes('reach'))          v += 1;
@@ -6588,6 +6614,11 @@ return {
   // truth for the human cast UI's zone-agnostic card lookup.
   findCastableSpell,
   makeCard,
+  // Re-derive seam (template + stickers + subtype-implied), exposed for tests.
+  intrinsicKeywords,
+  // Subtype-implied keyword injection (Wall→defender, Dragon→flying, …). Exposed so
+  // the sticker-eligibility view and tests mirror makeCard's derivation.
+  applySubtypeKeywords,
   // The one cross-slot distinct_targets rule, exposed so the render layer's cast
   // highlight drops already-picked creatures through the SAME filter the trigger
   // pick-loop uses (no second copy of the rule in the UI).

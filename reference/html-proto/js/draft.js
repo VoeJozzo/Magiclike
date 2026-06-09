@@ -158,7 +158,7 @@ const CONSTRUCTED_DECKS = {
       'artifice_triumphant', 'artifice_triumphant', 'artifice_triumphant',
       'clockwork_beetle', 'clockwork_beetle',
       'scrap_hound', 'scrap_hound',
-      'alloy_myr', 'alloy_myr',
+      'alloy_construct', 'alloy_construct',
       'counterspell', 'counterspell',
       'anger_of_the_gods', 'anger_of_the_gods',
       'mind_control', 'mind_control',

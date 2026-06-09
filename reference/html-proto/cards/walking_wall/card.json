@@ -1,0 +1,15 @@
+{
+  "card_id": "walking_wall",
+  "art": "\ud83e\uddf1",
+  "cost": {
+    "C": 2
+  },
+  "name": "Walking Wall",
+  "power": 0,
+  "toughness": 4,
+  "keywords": [],
+  "types": [
+    "Creature",
+    "Wall"
+  ]
+}

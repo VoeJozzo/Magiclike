@@ -61,9 +61,10 @@ console.log('=== applyStickersToCard: each kind mutates correctly ===');
 }
 
 {
-  // remove_keyword: lose_defender strips native defender so the creature can attack.
+  // remove_keyword: lose_defender strips a Wall's (subtype-derived) defender so it can attack.
   const card = freshCard('wall_of_omens', ['lose_defender']);
-  check('lose_defender precondition: wall_of_omens has defender natively',
+  ENGINE.applySubtypeKeywords(card);   // Wall→defender is derived, not printed on the card
+  check('lose_defender precondition: wall_of_omens has defender via its Wall subtype',
     card.keywords.includes('defender'));
   applyStickersToCard(card);
   check("remove_keyword strips 'defender' from card.keywords",

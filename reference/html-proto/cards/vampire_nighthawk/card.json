@@ -1,0 +1,21 @@
+{
+  "card_id": "vampire_nighthawk",
+  "art": "\ud83e\udd87",
+  "cost": {
+    "B": 1,
+    "C": 2
+  },
+  "name": "Vampire Nighthawk",
+  "power": 2,
+  "toughness": 3,
+  "keywords": [
+    "flying",
+    "deathtouch",
+    "lifelink"
+  ],
+  "types": [
+    "Creature",
+    "Vampire",
+    "Shaman"
+  ]
+}

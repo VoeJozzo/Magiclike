@@ -110,7 +110,16 @@ func duplicate_deep() -> CardInstance:
 	return copy
 
 
-# Single seam for combat/target checks: template baseline + runtime grants, deduped.
+# Keywords implied by creature subtype — card data need not repeat these.
+const SUBTYPE_KEYWORDS: Dictionary = {
+	"angel": ["flying"],
+	"dragon": ["flying"],
+	"treefolk": ["reach"],
+	"wall": ["defender"],
+}
+
+
+# Single seam for combat/target checks: template baseline + runtime grants + subtype-implied, deduped.
 func effective_keywords() -> Array:
 	if template == null:
 		return granted_keywords
@@ -124,6 +133,11 @@ func effective_keywords() -> Array:
 	for kw in granted_keywords:
 		if not (kw in result):
 			result.append(kw)
+	if template is CreatureResource:
+		for st: String in template.subtypes:
+			for kw: String in SUBTYPE_KEYWORDS.get(st, []):
+				if not (kw in result):
+					result.append(kw)
 	return result
 
 

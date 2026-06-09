@@ -1,12 +1,11 @@
 {
   "card_id": "serra_angel",
-  "art": "😇",
+  "art": "\ud83d\ude07",
   "cost": {
     "W": 2,
     "C": 3
   },
   "keywords": [
-    "flying",
     "vigilance"
   ],
   "name": "Serra Angel",

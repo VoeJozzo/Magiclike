@@ -1,12 +1,11 @@
 {
   "card_id": "steadfast_wall",
-  "art": "🧱",
+  "art": "\ud83e\uddf1",
   "cost": {
     "W": 1,
     "C": 1
   },
   "keywords": [
-    "defender",
     "flying"
   ],
   "name": "Steadfast Wall",

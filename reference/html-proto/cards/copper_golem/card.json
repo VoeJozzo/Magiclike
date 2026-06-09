@@ -1,14 +1,14 @@
 {
   "card_id": "copper_golem",
   "name": "Copper Golem",
-  "art": "🟤",
+  "art": "\ud83d\udfe4",
   "cost": {
     "C": 3
   },
   "types": [
     "Artifact",
     "Creature",
-    "Golem"
+    "Construct"
   ],
   "power": 3,
   "toughness": 3,

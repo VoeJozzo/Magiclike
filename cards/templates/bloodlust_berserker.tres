@@ -9,7 +9,7 @@ toughness = 2
 card_id = "bloodlust_berserker"
 display_name = "Bloodlust Berserker"
 card_types = Array[String](["creature"])
-subtypes = Array[String](["human", "warrior"])
+subtypes = Array[String](["goblin", "warrior"])
 mana_cost = {
 "C": 1,
 "R": 2

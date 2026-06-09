@@ -6,11 +6,11 @@
 script = ExtResource("1_d6nko")
 power = 2
 toughness = 2
-keywords = Array[String](["flying"])
+keywords = Array[String]([])
 card_id = "wind_drake"
 display_name = "Wind Drake"
 card_types = Array[String](["creature"])
-subtypes = Array[String](["drake"])
+subtypes = Array[String](["dragon"])
 mana_cost = {
 "C": 1,
 "U": 1
