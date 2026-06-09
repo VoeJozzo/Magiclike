@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.4.1`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.4.2`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -1192,6 +1192,17 @@ border (card-color inner, cream outer) like the other UI icons, rather than the
 single-color/highlight rim of v2.4.0. White is special-cased (its frame is
 light): dark ink glyph on its gold identity disc. Sticker (gold) / granted (teal)
 unchanged. KW_NATIVE_COLORS in render.js holds the values. Tests/lint green (1620).
+
+v2.4.2: unblockable keyword icon (the last gap). Baked the user's key design
+(assets/keywords/unblockable.svg + source jsx) into the standard lake-gray
+keyword palette so it recolors through the same currentColor/CSS-var pipeline as
+the other 13 — the key's bow-hole tracks the disc color so it stays a clean ring
+in every source tint. Regenerated js/keyword-icons.js (now 14 inline coins).
+unblockable now renders a coin on the frame (with its "It can't be blocked."
+tooltip) instead of the text-chip fallback; that fallback stays as defensive
+code for any future art-less keyword. Test updated; full suite green (1620),
+lint clean. (All keyword-icon work — v2.3.0 row, v2.4.0 source colors, v2.4.1
+border palette, v2.4.2 unblockable — lives on the "New SVG Icons" branch.)
 
 > **MUST UPDATE on every dev-branch push that touches code.** Bump `VERSION` in `js/main.js` AND the line above, in the same commit. GitHub Pages caches aggressively; the version string is the only reliable way to confirm a fresh build is live.
 

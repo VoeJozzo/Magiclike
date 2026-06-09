@@ -68,11 +68,11 @@ console.log('=== keywordIconsHtml: inline coins + source colors + tooltips ===')
 }
 
 {
-  // unblockable has no coin art yet — text fallback, not an inline svg.
+  // unblockable now has coin art — renders an inline coin like the others.
   const card = { tplId: 'x', types: ['Creature'], keywords: ['unblockable'] };
   const html = keywordIconsHtml(card);
-  check('unblockable falls back to a text chip (no svg)',
-    !html.includes('<svg') && html.includes('kw-icon-fallback') && html.includes('Unblockable'));
+  check('unblockable renders a coin (no text fallback)',
+    html.includes('<svg') && !html.includes('kw-icon-fallback') && html.includes('title="Unblockable:'));
 }
 
 {
