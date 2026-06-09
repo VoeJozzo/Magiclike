@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.4.2`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.1.9`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -1126,83 +1126,42 @@ prompt machinery (engine + render + controller + AI). Note: rip-edict now uses
 Diabolic Edict). Browser-verify the rip UI removal (DOM not covered by Node tests).
 (#7 symmetricize: confirmed already in the decided end-state — no change.)
 
-v2.2.0: shared-asset + keyword work (from the "New SVG Icons" branch). (1)
-Generic/colorless mana coin now renders. Added `assets/mana/C.svg` — a blank
-gray coin shell (the engine draws the numeral/letter on top) matching the
-engine's generic mana key `C`. Wired the four pip sites that previously fell back
-to a plain disc — `.mana-C`, `.mana-num`, and the frame `col-C` / `col-num` cost
-pips — to `background-image` the coin and render their number in Almendra Bold.
-Also refreshed `assets/mana/source/manaiconsv13.jsx` (the committed copy was a
-stale 5-color version missing the Generic entry the design actually specifies).
-(2) `innate` promoted to a real keyword. It was a one-off boolean
-(`card.innate` + a `kind:'innate'` sticker); now `innate` lives in `KEYWORDS`
-(+`KEYWORD_DISPLAY`) as the single source of truth, and the `card.innate` boolean
-is retired. The opening-hand pull, draft valuation, eligibility label, browser
-grouping, sticker badge, and card text all read the keyword instead. The innate
-sticker is now a `kind:'keyword'` grant but kept hand-defined + lands-only (the
-`kw_*` auto-loop skips it, like defender, so it's never offered on creatures);
-it's mechanically compatible with any card if granted some other way. Like flash,
-innate is a non-combat status keyword, so it's excluded from the combat keyword
-preamble and keeps its dedicated "Innate." line + surfaced badge. Ingenuity
-Unbounded's `innate:true` template field moved into `keywords[]`. Tests updated
-(boss + sticker-dispatch). Full suite green (1606 assertions), lint clean.
+v2.1.9: SVG-icon release ("New SVG Icons" branch) — generic mana coin, innate
+promoted to a real keyword, and keyword-ability coin icons on the card frame.
 
-v2.3.0: keyword icons on the in-play frame (continues the "New SVG Icons"
-branch). The small in-hand/board card now renders its keyword line as compact
-coin icons (`assets/keywords/<kw>.svg`) instead of words, to save rules-box
-space; the blow-up popup (long-press) keeps the keyword words. Mechanism: a
-`keywordsAsIcons` flag on `cardToViewModel` — when set (by `makeCardEl`) it drops
-the keyword preamble from the oracle text (`describeCardSegments` already
-supported `skipKeywords`) and exposes a separate `keywordIconsHtml` row that the
-frame inserts at the top of the text box. The popup and other text-context
-renders (draft/browser/previews) call `cardToViewModel` without the flag, so they
-keep words. Each icon carries a "Flying: <reminder>" tooltip (new
-`KEYWORD_REMINDER` registry in cards.js — short rules-gloss per keyword). Icon
-selection mirrors `keywordPreamble` (creatures show all; non-creatures only
-spell-legal `flash`; `no_block`/`innate` excluded). `unblockable` has no art yet,
-so it falls back to a tiny text chip. New `keyword_icons_test.js` (9 assertions);
-full suite green (1615), lint clean. Note: DOM rendering isn't covered by the
-Node harness — browser-verify the row layout/tooltips.
+(1) Generic/colorless mana coin. Added `assets/mana/C.svg` — a blank gray coin
+shell (the engine draws the numeral/letter on top) matching the generic mana key
+`C`. Wired the four pip sites that fell back to a plain disc — `.mana-C`,
+`.mana-num`, and frame `col-C` / `col-num` — to render the coin with the number
+in Almendra Bold. Refreshed `assets/mana/source/manaiconsv13.jsx` (the committed
+copy was a stale 5-color version missing the Generic entry).
 
-v2.4.0: keyword coin icons are recolored by grant source ("New SVG Icons"
-branch). The coin SVGs are now embedded (js/keyword-icons.js) as inline,
-recolorable markup — glyph = `currentColor`, disc/rim = CSS vars
-(--kw-disc/--kw-rim/--kw-rim2) — generated from the assets/keywords/<kw>.svg art
-(regenerate via the generator if the art changes). keywordIconsHtml inlines them
-(not <img>, which can't inherit color/vars) and tags each by source:
-  - **native** (template keyword) → the card's OWN color: glyph + bright outer
-    highlight ring take the card's identity color, an inner ring darkens it for
-    a two-ring bezel, and the disc uses the card's text ink — cream, or dark
-    (#1a1a1a) on the light White frame (reusing the per-frame text-color logic so
-    White doesn't wash out). Set inline per card via nativeKeywordStyle /
-    KW_NATIVE_COLORS, keyed off the frame colorKey.
-  - **sticker-granted** (kw_* sticker) → gold; **permanent-granted** (grantedBy)
-    → teal. Both mirror the existing keyword-badge palette
-    (.stk-badge.skw / .kw-granted) and get the same bright two-ring treatment.
-Native wins ties. Note: this realizes the intended source-color distinction that
-nativeKeywordBadgesHtml (dead code) only ever described — previously only the
-gold sticker badges were live. keyword_icons_test.js grew to 14 assertions (incl.
-source-class + per-card-color). Full suite green (1620), lint clean. DOM
-colors/rings need a browser eyeball.
+(2) `innate` promoted to a real keyword. Was a one-off boolean (`card.innate` +
+a `kind:'innate'` sticker); now lives in `KEYWORDS` / `KEYWORD_DISPLAY` as the
+single source of truth, the boolean retired. Opening-hand pull, draft valuation,
+eligibility label, browser grouping, sticker badge, and card text all read the
+keyword. The innate sticker is now a `kind:'keyword'` grant, hand-defined +
+lands-only (the `kw_*` auto-loop skips it, like defender). Excluded from the
+combat keyword preamble (status keyword, like flash); keeps its "Innate." line.
+Ingenuity Unbounded's `innate:true` moved into `keywords[]`.
 
-v2.4.1: native keyword-coin border tuning (final palette from the playtest
-loop). Native coins now read as: card-color glyph + card-color INNER ring on a
-cream (#d8d4c8) disc, with a cream OUTER ring — so the rim is a legible two-color
-border (card-color inner, cream outer) like the other UI icons, rather than the
-single-color/highlight rim of v2.4.0. White is special-cased (its frame is
-light): dark ink glyph on its gold identity disc. Sticker (gold) / granted (teal)
-unchanged. KW_NATIVE_COLORS in render.js holds the values. Tests/lint green (1620).
+(3) Keyword-ability coin icons on the in-play frame. The small frame renders its
+keyword line as compact coin icons (instead of words) to save rules-box space;
+the long-press blow-up popup keeps the words. `cardToViewModel` gains a
+`keywordsAsIcons` flag (set by `makeCardEl`) that drops the keyword preamble from
+the oracle text and exposes a `keywordIconsHtml` row. Coin SVGs are embedded
+inline-recolorable (`js/keyword-icons.js`: glyph = currentColor, disc/rim = CSS
+vars, generated from `assets/keywords/<kw>.svg`), tinted by grant source: native
+= the card's own color (card-color glyph + inner ring on a cream disc + cream
+outer ring — a legible two-color rim; White special-cased dark-on-gold since its
+frame is light), sticker = gold, granted = teal. Each carries a "Flying:
+<reminder>" tooltip (new `KEYWORD_REMINDER`). Added the `unblockable` key icon
+(16 keyword SVGs now), so every shown keyword has art; `innate`/`no_block` stay
+out of the row. New `keyword_icons_test.js`.
 
-v2.4.2: unblockable keyword icon (the last gap). Baked the user's key design
-(assets/keywords/unblockable.svg + source jsx) into the standard lake-gray
-keyword palette so it recolors through the same currentColor/CSS-var pipeline as
-the other 13 — the key's bow-hole tracks the disc color so it stays a clean ring
-in every source tint. Regenerated js/keyword-icons.js (now 14 inline coins).
-unblockable now renders a coin on the frame (with its "It can't be blocked."
-tooltip) instead of the text-chip fallback; that fallback stays as defensive
-code for any future art-less keyword. Test updated; full suite green (1620),
-lint clean. (All keyword-icon work — v2.3.0 row, v2.4.0 source colors, v2.4.1
-border palette, v2.4.2 unblockable — lives on the "New SVG Icons" branch.)
+Full suite green (1620 assertions), eslint clean. Note: DOM rendering (icon
+sizes, the two-color rings, hover tooltips) isn't covered by the Node harness —
+browser-verify on the live build.
 
 > **MUST UPDATE on every dev-branch push that touches code.** Bump `VERSION` in `js/main.js` AND the line above, in the same commit. GitHub Pages caches aggressively; the version string is the only reliable way to confirm a fresh build is live.
 
