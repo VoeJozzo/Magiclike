@@ -23,11 +23,12 @@ The corpus contains a complete blue story, told in small windows:
 
 This is the set's clearest faction-scale story and it should stay scattered across small windows rather than ever getting a summary card.
 
-The library's fall is one rung of the larger pattern in [[the-fall]] — and *when* it fell is an open question there (lean: within living memory; the exile is young, and the living-library scenes coexist with the sack).
+The library's fall is one rung of the larger pattern in [[the-fall]] — known *ordinally*, per that page's rungs-not-dates principle: more recent than the marble builders, otherwise deliberately unfixed. (The art's internal evidence — a young exile, living-library scenes coexisting with the sack — keeps the within-living-memory reading available without committing to it.)
 
 ## Texture notes
 
 - Blue is not all dim libraries — it has royal halls, courts, feasts (Divination's throne room, Preordain's cathedral font). Don't let the underlit mood ([[art-language]] §1) flatten blue into one room.
+- **Blue owns contested truth.** The False Witness — flash doppelganger, Insect Shapeshifter, seeds of a mimic moth and a colonial land case — is a *blue* card, and its flavor is the set's second testimony: *"She arrived wearing your face. The version of you with the bruise — and the alibi — was sent back."* The imposter in the witness box is blue's horror, not black's: black falsifies the *ledger*; blue falsifies the *witness*.
 - Blue's relationship to [[the-divine]] is *procedural*: Divination and Preordain both show clergy/magi performing rites that visibly function as *information* — whatever the gods are, the asking works even when the answering is ambiguous.
 
 ## For card-makers

@@ -23,7 +23,7 @@ The test is one question: *could a person plausibly say, write, carve, or sing t
 
 1. **The world has lost its narrator** ([[the-fall]]). Threads: seen once, believed never. Gods: testimony, no verdict. History: ruins, no agreed account. An omniscient flavor voice would quietly reintroduce, at the bottom of every card, exactly the authority whose absence defines the setting. The frame would contradict the painting.
 2. **Small windows, enforced at the sentence level** ([[tone]]). A witness only knows their room. A narrator knows too much — narrators are how "The American Revolution" sneaks back onto a card that should say "throw tea off a boat."
-3. **The corpus already complies.** Both existing flavor texts are testimony: a dying declaration (the Heir), words addressed to the victim (the False Witness). The style was discovered, not invented — same as [[threads]].
+3. **The corpus already complies.** Both existing flavor texts are testimony: a dying declaration (the Heir, black), words addressed to the victim (the False Witness, **blue**). One per color — the register belongs to the world, not to a color, which is itself evidence for reason 1. The style was discovered, not invented — same as [[threads]].
 4. **The hung jury needs witnesses** ([[the-divine]]). Per-card certainty is allowed; only the *set* must disagree with itself. Witnesses can be wrong, partial, lying, devout — that's the material. A narrator can't be any of those things, which makes it useless to us.
 
 ## The cost, honestly

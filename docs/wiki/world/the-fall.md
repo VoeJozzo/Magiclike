@@ -45,9 +45,14 @@ The same posture now repeats in every register:
 
 One sentence for all three: **this is a world that has lost its narrator.** No surviving authority can say what the threads are, what the gods intend, or what the marble was for. The set's voice should honor that — evidence everywhere, verdict nowhere — which is also the argument behind the [[flavor-text]] opinion.
 
+## Rungs, not dates *(authorial — and a standing principle)*
+
+> "I'm not sure when the library fell. I'm not sure to what extent that matters — I don't feel obligated to be married to one specific point in time. But yes, it's more recent (a 'lower rung on the ladder') than whoever built the city in the art of City of Brass." — Joe
+
+Promoted to a principle: **the past is known ordinally, not chronologically.** The bible records *sequence* (the library fell after the marble was raised; the warlords come after the kings; nature comes last) and never dates. This isn't evasion — it's the same epistemology as everything else here (§narrator): a world without a narrator doesn't get a timeline, it gets a ladder, and everyone agrees on the order of the rungs while disagreeing about everything else. If a future card or page needs "how long ago," the answer is a *relation* ("before the bell was hung," "in the exile's lifetime"), never a number.
+
 ## Open
 
-- **When did the library fall?** Lean: within living memory — Prodigal Sorcerer is young; the living-library scenes (Studious Research, Archivist) coexist with the sack (Martyred Scholar). A recent rung, not ancient history. Unconfirmed. → [[blue]]
 - Does the era have an in-world (tier-3, historians'-coinage) name? No urgency. → [[names-ledger]]
 
 ## See also

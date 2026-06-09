@@ -23,9 +23,10 @@ This world's black runs on **jurisprudence and accounting**: ledgers, scales, ed
 - **Demonic Tutor** — "a precise, *sanctioned* kill."
 - **Pit Fiend** — exactly five glowing brands orbit its hand: "the full price of the bargain made countable."
 - **Blood Artist** — a vampire in fine Victorian attire, serene, painting with what the dying provide. Old money.
-- **The two existing flavor texts are both black, and both are testimony:**
+- **Black's existing flavor text is testimony** — a dying declaration:
   - *"My house is ashes. I see no reason yours should stand."* (Heir to the Burnt House)
-  - *"She arrived wearing your face. The version of you with the bruise — and the alibi — was sent back."* (The False Witness)
+
+  (The set's other flavor text — the False Witness's — is **blue**, not black; the testimony register belongs to the whole world, not to this color. See [[flavor-text]] and [[blue]].)
 
 The devil of this world is a magistrate. Hell is a debtor's court. (Both card letters — `heir_to_burnt_house/claude-notes.md`, `false_witness/claude-notes.md` — carry the same standing order: **don't soften it**.)
 
