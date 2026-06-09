@@ -67,8 +67,8 @@ console.log('=== whole pool: types[] is present + the accessors are coherent ===
   // subtypesOf returns exactly the non-type/supertype tags.
   check('subtypesOf(grizzly_bears) === ["Bear"]', JSON.stringify(subtypesOf(CARDS.grizzly_bears)) === '["Bear"]',
     JSON.stringify(subtypesOf(CARDS.grizzly_bears)));
-  check('subtypesOf(copper_golem) === ["Golem"] (drops the Artifact/Creature type tags)',
-    JSON.stringify(subtypesOf(CARDS.copper_golem)) === '["Golem"]', JSON.stringify(subtypesOf(CARDS.copper_golem)));
+  check('subtypesOf(copper_golem) === ["Construct"] (drops the Artifact/Creature type tags)',
+    JSON.stringify(subtypesOf(CARDS.copper_golem)) === '["Construct"]', JSON.stringify(subtypesOf(CARDS.copper_golem)));
 })();
 
 console.log('\n=== negative: absent tags miss; nullish safe ===');

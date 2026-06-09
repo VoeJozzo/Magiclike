@@ -6,7 +6,6 @@
     "C": 2
   },
   "keywords": [
-    "flying",
     "haste"
   ],
   "name": "Ember Drake",
@@ -14,6 +13,6 @@
   "toughness": 2,
   "types": [
     "Creature",
-    "Drake"
+    "Dragon"
   ]
 }

@@ -60,6 +60,19 @@ console.log('=== applyStickersToCard: each kind mutates correctly ===');
 }
 
 {
+  // remove_keyword: lose_defender strips a Wall's (subtype-derived) defender so it can attack.
+  const card = freshCard('wall_of_omens', ['lose_defender']);
+  ENGINE.applySubtypeKeywords(card);   // Wall→defender is derived, not printed on the card
+  check('lose_defender precondition: wall_of_omens has defender via its Wall subtype',
+    card.keywords.includes('defender'));
+  applyStickersToCard(card);
+  check("remove_keyword strips 'defender' from card.keywords",
+    !card.keywords.includes('defender'));
+  check('canCreatureAttack true once defender removed (untapped, not sick)',
+    ENGINE.canCreatureAttack({...card, tapped: false, sick: false}));
+}
+
+{
   const card = freshCard('plains', ['innate']);
   applyStickersToCard(card);
   check("innate adds 'innate' to card.keywords", (card.keywords || []).includes('innate'));
@@ -185,63 +198,105 @@ console.log('\n=== stickersForSlot: each kind reflects into view correctly ===')
   check('subtype re-offerable (stackable)', result.some(s => s.id === 'subtype'));
 }
 
-console.log('\n=== stickerBadgesHtml: each kind renders correctly ===');
-
 {
-  const html = stickerBadgesHtml(['plus1_plus1']);
-  check("statBoost badge contains '+1/+1'", html.includes('+1/+1'));
-  check("statBoost badge has 'stat' class", html.includes('stk-badge stat'));
+  // lose_defender: offered on a defender creature, gated off non-defenders, and
+  // not re-offered once applied (view reflects the removal).
+  const wall = stickersForSlot({ tplId: 'wall_of_omens', stickers: [] }, ['W']);
+  check('lose_defender offered on a defender creature', wall.some(s => s.id === 'lose_defender'));
+  const lion = stickersForSlot({ tplId: 'savannah_lions', stickers: [] }, ['W']);
+  check('lose_defender NOT offered on a non-defender creature', !lion.some(s => s.id === 'lose_defender'));
+  const applied = stickersForSlot({ tplId: 'wall_of_omens', stickers: ['lose_defender'] }, ['W']);
+  check('lose_defender NOT re-offered once applied', !applied.some(s => s.id === 'lose_defender'));
 }
 
-{
-  const html = stickerBadgesHtml(['kw_flying']);
-  check("keyword badge contains 'flying'", html.includes('flying'));
-  check("keyword badge has 'skw' class", html.includes('stk-badge skw'));
-}
+console.log('\n=== stickerBadgesHtml: only non-redundant kinds render (Q2) ===');
 
-{
-  const html = stickerBadgesHtml(['innate']);
-  check("innate badge contains 'Innate'", html.includes('Innate'));
-  check("innate badge has 'innate' class", html.includes('stk-badge innate'));
-}
-
-{
-  // landColor badge now routes the {R} token through renderManaSymbols
-  // so the pip icon shows instead of literal '+{R}' text. Check for the
-  // resulting mana-R span plus the leading '+'.
-  const html = stickerBadgesHtml(['land_color_r']);
-  check('landColor badge contains a +<mana-R pip>', html.includes('+<span class="mana mana-R"'));
-  check('landColor badge no longer contains literal +{R} text', !html.includes('+{R}'));
-}
-
-{
-  const html = stickerBadgesHtml(['cost_minus_1']);
-  check("costReduction badge contains '-1 cost'", html.includes('-1 cost'));
-}
-
+// KEPT — info no other frame element surfaces. (grant_mana_ability is also a
+// kept kind, but no registry sticker uses it post-Q3 — land stickers are now
+// add_type — so it's exercised only by inline/boss descriptors, not here.)
 {
   const roll = { location: 'abilities', subIdx: 0, effIdx: 0, modeIdx: null, field: 'amount' };
   const html = stickerBadgesHtml(['empower'], false, [roll], 'spitfire_bastion');
-  check("empower badge contains 'Empower'", html.includes('Empower'));
+  check('empower badge still renders', html.includes('Empower'));
+}
+{
+  // remove_keyword (lose_defender) — its effect (absence of Defender) isn't
+  // shown anywhere else, so the badge stays.
+  const html = stickerBadgesHtml(['lose_defender']);
+  check('lose_defender (remove_keyword) badge still renders', html.includes('Loses Defender'));
 }
 
+// DROPPED — already shown in oracle text / type line / P-T box / cost box.
 {
-  const html = stickerBadgesHtml(['subtype'], false, [], 'savannah_lions', null, ['Beast']);
-  check("subtype badge contains rolled type 'Beast'", html.includes('Beast'));
+  check('statBoost badge suppressed (shown in P/T box)', stickerBadgesHtml(['plus1_plus1']) === '');
+  check('keyword badge suppressed (shown in oracle text)', stickerBadgesHtml(['kw_flying']) === '');
+  check('innate badge suppressed (shown in oracle text)', stickerBadgesHtml(['innate']) === '');
+  check('costReduction badge suppressed (shown in cost box)', stickerBadgesHtml(['cost_minus_1']) === '');
+  check('subtype badge suppressed (shown in type line)',
+    stickerBadgesHtml(['subtype'], false, [], 'savannah_lions', null, ['Beast']) === '');
+  check('land-type (add_type) badge suppressed (shown in type line)',
+    stickerBadgesHtml(['land_color_r']) === '');
+}
+{
+  // Mixed: dropped kinds vanish, kept kinds remain.
+  const html = stickerBadgesHtml(['plus1_plus1', 'kw_flying', 'lose_defender']);
+  check('mixed badges: dropped suppressed, kept shown',
+    !html.includes('+1/+1') && !html.includes('Flying') && html.includes('Loses Defender'));
 }
 
-{
-  const html = stickerBadgesHtml(['plus1_plus1', 'plus1_plus1']);
-  check("statBoost stacking shows multiplier", html.includes('×2'));
-}
+console.log('\n=== Q1: sticker-granted text is flagged for coloring ===');
 
 {
-  const html = stickerBadgesHtml(['plus1_plus1', 'innate', 'kw_flying']);
-  const innateIdx = html.indexOf('Innate');
-  const plusIdx = html.indexOf('+1/+1');
-  check('innate badge renders before others',
-    innateIdx >= 0 && innateIdx < plusIdx,
-    'innate@' + innateIdx + ' plus@' + plusIdx);
+  // Sticker-granted keyword → its keyword-preamble segment carries sticker:true.
+  const card = freshCard('savannah_lions', ['kw_flying']);
+  applyStickersToCard(card);
+  const segs = describeCardSegments(card, { skipKeywords: false });
+  const flyingSeg = segs.find(s => s.text === 'Flying');
+  check('sticker-granted keyword segment flagged sticker:true', !!flyingSeg && flyingSeg.sticker === true);
+}
+{
+  // An intrinsic keyword is NOT flagged (only sticker-granted ones color).
+  const card = freshCard('air_elemental', []);  // 4/4 with intrinsic flying
+  applyStickersToCard(card);
+  const segs = describeCardSegments(card, { skipKeywords: false });
+  const flyingSeg = segs.find(s => s.text === 'Flying');
+  check('intrinsic keyword segment NOT flagged sticker', !!flyingSeg && !flyingSeg.sticker);
+}
+{
+  // Sticker-granted trigger (Scarified) → marked _from_sticker + segs flagged.
+  const card = freshCard('savannah_lions', ['scarified']);
+  applyStickersToCard(card);
+  const trig = (card.triggers || []).find(t => t._from_sticker);
+  check('scarified trigger marked _from_sticker', !!trig);
+  const segs = describeCardSegments(card, { skipKeywords: false });
+  check('scarified trigger segments flagged sticker:true', segs.some(s => s.sticker === true));
+}
+{
+  // segmentsToHtml turns the flag into a .sticker-granted span; plain text isn't wrapped.
+  const flagged = segmentsToHtml([{ text: 'Flying', sticker: true }]);
+  check('segmentsToHtml emits .sticker-granted span', flagged.includes('class="sticker-granted"'));
+  const plain = segmentsToHtml([plainSeg('Flying')]);
+  check('segmentsToHtml leaves unflagged text unwrapped', !plain.includes('<span'));
+}
+
+console.log('\n=== Q3: land-color stickers add a land type (mana autogranted) ===');
+
+{
+  // 'Also a Mountain' adds the Mountain subtype to a Plains; the §305.6 autogrant
+  // then yields red mana. The native white production is preserved.
+  const card = freshCard('plains', ['land_color_r']);
+  applyStickersToCard(card);
+  check('land_color_r adds the Mountain land type', hasType(card, 'Mountain'));
+  check('land_color_r autogrants red mana (305.6)', landProducibleColors(card).includes('R'));
+  check('native white mana preserved', landProducibleColors(card).includes('W'));
+}
+{
+  // Re-offer gating runs through the same add_type + autogrant on the slot view.
+  const fresh = stickersForSlot({ tplId: 'plains', stickers: [] }, ['W', 'R']);
+  check('land_color_r offered on a Plains in a red deck', fresh.some(s => s.id === 'land_color_r'));
+  const after = stickersForSlot({ tplId: 'plains', stickers: ['land_color_r'] }, ['W', 'R']);
+  check('land_color_r NOT re-offered once applied (view sees the autogranted R)',
+    !after.some(s => s.id === 'land_color_r'));
 }
 
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');

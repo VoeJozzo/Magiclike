@@ -4,7 +4,7 @@
   "cost": {
     "W": 1
   },
-  "target": "creature",
+  "target": "your_creature",
   "effects": [
     {
       "kind": "pump",

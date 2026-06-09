@@ -92,15 +92,20 @@ console.log('\n=== Vine Strangle: opp_creature + flying ===');
 console.log('\n=== highlight path honors the restriction (render isValidTargetCreature) ===');
 (() => {
   // doomBlade's pending step: render must NOT mark a black creature targetable.
+  // isValidTargetCreature now delegates to ENGINE.targetsForFilter, so creatures
+  // must be in the game state battlefield for the lookup to find them.
   const G = newGame();
   const black = mkCreature('opp', { color: 'B', colors: ['B'] });
   const white = mkCreature('opp', { color: 'W', colors: ['W'] });
+  G.opp.battlefield.push(black, white);
   const eff = { target: 'creature', filter: { not_color: 'B' } };
   check('highlight rejects black creature', !isValidTargetCreature(eff, black));
   check('highlight accepts non-black creature', isValidTargetCreature(eff, white));
   const oppEff = { target: 'opp_creature', filter: { has_keyword: 'flying' } };
   const yourFlyer = mkCreature('you', { keywords: ['flying'] });
   const oppFlyer = mkCreature('opp', { keywords: ['flying'] });
+  G.you.battlefield.push(yourFlyer);
+  G.opp.battlefield.push(oppFlyer);
   check('highlight rejects your own creature for opp_creature', !isValidTargetCreature(oppEff, yourFlyer));
   check('highlight accepts opp flyer', isValidTargetCreature(oppEff, oppFlyer));
 })();

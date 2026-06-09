@@ -6,7 +6,7 @@
 script = ExtResource("1_cr")
 power = 3
 toughness = 4
-keywords = Array[String](["flying", "lifelink"])
+keywords = Array[String](["lifelink"])
 card_id = "dawn_angel"
 display_name = "Dawn Angel"
 card_types = Array[String](["creature"])

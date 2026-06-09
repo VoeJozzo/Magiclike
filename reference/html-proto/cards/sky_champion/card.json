@@ -1,6 +1,6 @@
 {
   "card_id": "sky_champion",
-  "art": "🪽",
+  "art": "\ud83e\udebd",
   "cost": {
     "W": 1,
     "C": 2
@@ -29,6 +29,7 @@
   ],
   "types": [
     "Creature",
-    "Spirit"
+    "Spirit",
+    "Warrior"
   ]
 }

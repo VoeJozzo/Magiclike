@@ -1,14 +1,14 @@
 {
   "card_id": "sentinel_colossus",
   "name": "Sentinel Colossus",
-  "art": "🗽",
+  "art": "\ud83d\uddfd",
   "cost": {
     "C": 6
   },
   "types": [
     "Artifact",
     "Creature",
-    "Golem"
+    "Construct"
   ],
   "power": 6,
   "toughness": 6,

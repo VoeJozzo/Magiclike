@@ -6,7 +6,7 @@
 script = ExtResource("1_dbg37")
 power = 4
 toughness = 4
-keywords = Array[String](["flying", "vigilance"])
+keywords = Array[String](["vigilance"])
 card_id = "serra_angel"
 display_name = "Serra Angel"
 card_types = Array[String](["creature"])

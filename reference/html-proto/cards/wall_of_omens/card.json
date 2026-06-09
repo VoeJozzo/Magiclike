@@ -1,13 +1,11 @@
 {
   "card_id": "wall_of_omens",
-  "art": "📜",
+  "art": "\ud83d\udcdc",
   "cost": {
     "W": 1,
     "C": 1
   },
-  "keywords": [
-    "defender"
-  ],
+  "keywords": [],
   "name": "Wall of Omens",
   "power": 0,
   "toughness": 4,

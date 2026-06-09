@@ -177,7 +177,7 @@ console.log('\n=== triggerArchetype classification + preamble recovery ===');
     return triggerPreamble(c.triggers[0]);
   }
   if (CARDS.skyfire_drakelord) check('drakelord preamble names its subtype',
-    /another Drake enters under your control/.test(preambleOf('skyfire_drakelord')), preambleOf('skyfire_drakelord'));
+    /another Dragon enters under your control/.test(preambleOf('skyfire_drakelord')), preambleOf('skyfire_drakelord'));
   if (CARDS.goblin_chieftain) check('goblinChieftain preamble names its subtype',
     /Goblin you control attacks/.test(preambleOf('goblin_chieftain')), preambleOf('goblin_chieftain'));
 
@@ -186,7 +186,7 @@ console.log('\n=== triggerArchetype classification + preamble recovery ===');
   check('triggerFiresOnEnter: thisEnters (composable)',
     triggerFiresOnEnter({ event: 'card_zone_change', condition: ['this_card', 'card_moves(anywhere, battlefield)'] }) === true);
   check('triggerFiresOnEnter: subtype-enters lord',
-    triggerFiresOnEnter({ event: 'card_zone_change', condition: ['another_card', 'controlled_by(you)', 'card_has_subtype(Drake)', 'card_moves(anywhere, battlefield)'] }) === true);
+    triggerFiresOnEnter({ event: 'card_zone_change', condition: ['another_card', 'controlled_by(you)', 'card_has_subtype(Dragon)', 'card_moves(anywhere, battlefield)'] }) === true);
   check('triggerFiresOnEnter: dies is NOT an enter',
     triggerFiresOnEnter({ event: 'card_zone_change', condition: ['this_card', 'card_moves(battlefield, graveyard)'] }) === false);
   check('triggerFiresOnEnter: attacks is NOT an enter',

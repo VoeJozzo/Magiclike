@@ -1,6 +1,6 @@
 {
-  "card_id": "craw_wurm",
-  "art": "🐍",
+  "card_id": "gizzard_beast",
+  "art": "\ud83e\udd95",
   "cost": {
     "G": 2,
     "C": 4
@@ -8,11 +8,11 @@
   "keywords": [
     "trample"
   ],
-  "name": "Craw Wurm",
+  "name": "Gizzard Beast",
   "power": 6,
   "toughness": 4,
   "types": [
     "Creature",
-    "Wurm"
+    "Beast"
   ]
 }

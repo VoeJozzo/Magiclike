@@ -27,6 +27,6 @@
   "types": [
     "Creature",
     "Goblin",
-    "Berserker"
+    "Warrior"
   ]
 }

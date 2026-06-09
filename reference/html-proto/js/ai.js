@@ -434,24 +434,18 @@ function decideEndStepFlash(state, who, actions) {
 // trigger, e.g.) might want a different rule. Conservative by design — only
 // fizzles flash casts when there's clearly nothing good to bounce.
 function flashETBWouldFizzle(state, who, card) {
-  const them = opp(who);
   const triggers = card.triggers || [];
-  const creaturesOf = w => state[w].battlefield.filter(c => hasType(c, 'Creature'));
   for (const trig of triggers) {
     if (!triggerFiresOnEnter(trig)) continue;
-    // Trigger-level target step (The False Witness: opp_creature) — if the ETB
-    // needs a creature that isn't on the board, flashing it in just wastes the
-    // body. Mirror the per-effect affect_creature check below.
-    if (trig.target === 'opp_creature' && creaturesOf(them).length === 0) return true;
-    if (trig.target === 'your_creature' && creaturesOf(who).length === 0) return true;
-    if (trig.target === 'creature'
-        && creaturesOf(who).length === 0 && creaturesOf(them).length === 0) return true;
-    const effects = trig.effects || [];
-    for (const eff of effects) {
-      if (eff.kind === 'affect_creature' && eff.target === 'creature') {
-        if (creaturesOf(them).length === 0) return true;
-      }
-    }
+    // A trigger declares its target at one of two levels: the trigger-level
+    // target() step (trig.target + trig.target_filter) OR a per-effect target
+    // (eff.target + eff.filter). Source the kind and filter from the SAME level
+    // so they can't desync (a trigger-level kind paired with a stray effect
+    // filter would mis-resolve).
+    const targetingEff = (trig.effects || []).find(e => e.target && e.target !== 'self');
+    const targetKind = trig.target || (targetingEff && targetingEff.target);
+    const targetFilter = trig.target ? trig.target_filter : (targetingEff && targetingEff.filter);
+    if (targetKind && ENGINE.targetsForFilter(targetKind, who, targetFilter).length === 0) return true;
   }
   return false;
 }
@@ -1168,6 +1162,13 @@ function bestSpellPlay(state, who, card, options) {
       }
       let score = spellValueForEffects(modeEffects);
       score += scoreUntargetedSituation(state, who, modeEffects);
+      // Non-creature permanents (artifacts/enchantments) carry STATIC value —
+      // mana fixing, keyword grants, granted abilities — that spellValueForEffects
+      // can't read off their (often empty on-cast) effects list. Floor them above
+      // the score<=0 reject gate below so they actually get deployed. Without this
+      // the Equatorial Artificer boss never casts Ingenuity Unbounded (its
+      // colorless→any-color fixer), leaving every colored spell in its deck stuck.
+      if (score <= 0 && isPermanent(card)) score = 5;
       return {opt, score};
     }
     return {opt, score: scoreMultiTargetSpell(state, who, card, opt.targets, modeIdx)};
@@ -1193,7 +1194,11 @@ function spellPlayValue(state, who, card, opt) {
     return Math.max(1, ENGINE.getCardValue(card, 'play'));
   }
   const modeEffects = ENGINE.effectsForMode(card, opt.modeIdx || 0);
-  return spellValueForEffects(modeEffects) + scoreUntargetedSituation(state, who, modeEffects);
+  let v = spellValueForEffects(modeEffects) + scoreUntargetedSituation(state, who, modeEffects);
+  // Mirror bestSpellPlay's static-permanent floor so deploy ORDER also treats a
+  // value-less permanent (e.g. Ingenuity Unbounded) as worth playing, not 0.
+  if (v <= 0 && isPermanent(card)) v = 5;
+  return v;
 }
 
 // Score a `fight` as ONE combatant-vs-combatant exchange off its operands (not

@@ -1,12 +1,11 @@
 {
   "card_id": "forest_guardian",
-  "art": "🌳",
+  "art": "\ud83c\udf33",
   "cost": {
     "G": 1,
     "C": 3
   },
   "keywords": [
-    "reach",
     "vigilance"
   ],
   "name": "Forest Guardian",

@@ -143,6 +143,7 @@ Shared assets (used by both the Godot port and the html-proto) live at `assets/`
 
 - Commit changes, but only push when explicitly asked.
 - Don't open PRs unless asked.
+- **GitHub writes post as the *active* `gh` account — which defaults to the owner (`VoeJozzo`), NOT the bot.** Pushes, PRs, and every `gh` API write (`gh pr create` / `comment` / `review`, `gh api`) must be attributed to the acting AI's bot account (e.g. `Thaumaturge-Claude`). Use a per-command token — `GH_TOKEN="$(gh auth token --user <bot>)" gh pr create …` — never a bare `gh pr create` (that mis-attributes the PR to the owner and skips the bot's author auto-subscribe). The commit *author* is separate (per-worktree `git config`, already correct). Don't probe with a truncated `gh auth status | head -N` — all four accounts are in the keyring; read it whole. Accounts, credentials, push/PR flow, and branch protection: [`docs/IDENTITIES.md`](docs/IDENTITIES.md).
 - New work happens in a git worktree (see `~/.claude/worktrees/`). Parallel Claude sessions each need their own worktree — sharing one causes branch-switch clobbering.
 - No version-bump rule for the Godot side (the binary isn't browser-served; Pages serves html-proto only).
 

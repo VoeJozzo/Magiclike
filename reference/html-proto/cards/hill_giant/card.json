@@ -1,0 +1,15 @@
+{
+  "card_id": "hill_giant",
+  "art": "\ud83d\uddff",
+  "cost": {
+    "R": 1,
+    "C": 2
+  },
+  "name": "Hill Giant",
+  "power": 3,
+  "toughness": 3,
+  "types": [
+    "Creature",
+    "Giant"
+  ]
+}

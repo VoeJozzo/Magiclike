@@ -1,13 +1,11 @@
 {
   "card_id": "symbiote_tree",
-  "art": "🌲",
+  "art": "\ud83c\udf32",
   "cost": {
     "G": 1,
     "C": 3
   },
-  "keywords": [
-    "reach"
-  ],
+  "keywords": [],
   "name": "Symbiote Tree",
   "power": 2,
   "toughness": 4,

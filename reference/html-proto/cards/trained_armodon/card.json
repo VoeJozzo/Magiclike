@@ -1,0 +1,18 @@
+{
+  "card_id": "trained_armodon",
+  "art": "\ud83d\udc18",
+  "cost": {
+    "G": 1,
+    "C": 2
+  },
+  "name": "Trained Armodon",
+  "power": 3,
+  "toughness": 3,
+  "keywords": [
+    "trample"
+  ],
+  "types": [
+    "Creature",
+    "Beast"
+  ]
+}

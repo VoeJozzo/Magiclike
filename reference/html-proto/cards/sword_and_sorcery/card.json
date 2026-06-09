@@ -20,12 +20,15 @@
     }
   ],
   "name": "Sword and Sorcery",
+  "distinct_targets": true,
   "target_slots": [
     {
-      "target": "creature"
+      "target": "creature",
+      "filter": { "controller": "self" }
     },
     {
-      "target": "creature"
+      "target": "creature",
+      "filter": { "controller": "opp" }
     }
   ],
   "keywords": [

@@ -130,6 +130,9 @@ const CATEGORY_A = [
   'test_add_type.js',
   // Type-change layer (add_type/set_types) + Phase-4 test cards (type-change spells, artifact creatures, artifact lands).
   'test_type_change.js',
+  // Subtype-implied keywords (Angel/Dragon→flying, Treefolk→reach, Wall→defender):
+  // eager makeCard injection + survival through the intrinsicKeywords re-derive seam.
+  'test_subtype_keywords.js',
   // Colorless artifact boss special cards (Equatorial Engine / Artifice Triumphant / Ingenuity Unbounded).
   'test_equatorial_artificer_boss.js',
   // Oracle text is generated from effects — no card may carry a dead (render-irrelevant) top-level text field.
@@ -142,6 +145,15 @@ const CATEGORY_A = [
   // Deepseam Quarry — reanimation land: enters-tapped, all-graveyards + greatest-
   // total-mana-cost targeting, self-sac activation cost, reanimate-under-your-control.
   'test_deepseam_quarry.js',
+  // distinct_targets opt-in (Roots and Branches / Sword and Sorcery): two-creature
+  // spells whose slots must differ — "another target creature" text + same-target
+  // legality rejection + no same-target combo + needs two creatures to cast.
+  'test_distinct_targets.js',
+  // Unified multi-slot selection, end-to-end: the AI enumerates multi-target
+  // activated abilities (Stapler), a stapled multi-target spell's ETB resolves
+  // every slot, a human-controlled multi-target ETB prompts per choosable slot,
+  // and a distinct_targets ETB resolves onto two DIFFERENT creatures.
+  'test_multitarget_trigger.js',
 ];
 
 const TESTS_DIR = __dirname;

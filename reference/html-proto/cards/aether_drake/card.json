@@ -5,9 +5,7 @@
     "U": 1,
     "C": 3
   },
-  "keywords": [
-    "flying"
-  ],
+  "keywords": [],
   "name": "Aether Drake",
   "power": 2,
   "toughness": 3,
@@ -29,6 +27,6 @@
   ],
   "types": [
     "Creature",
-    "Drake"
+    "Dragon"
   ]
 }

@@ -544,6 +544,11 @@ function mergeStapleInto(merged, stapleTpl) {
       trig.target_slots = stapleTpl.target_slots.map(spec =>
         Object.assign({}, spec, spec.target_filter ? { target_filter: { ...spec.target_filter } } : {}));
     }
+    // Carry the spell's distinct-targets rule onto the ETB. Now that the trigger
+    // path enforces cross-slot constraints (tsAutoPick / advanceTriggerTargetPrompt),
+    // a stapled Roots and Branches / Sword and Sorcery keeps its "another target
+    // creature" semantics instead of silently going permissive.
+    if (stapleTpl.distinct_targets) trig.distinct_targets = true;
     // Land base → the ETB is OPTIONAL and costs the spell's mana cost. A land is
     // free to play, so a free stapled spell is pure value; making it a "you may
     // pay {cost}" trigger restores the bargain. Creature/artifact bases stay
@@ -603,6 +608,26 @@ function remapEffectSlots(effects, offset) {
   });
 }
 
+// Keywords implied by creature subtype — card data need not repeat these.
+const SUBTYPE_KEYWORDS = { Angel: ['flying'], Dragon: ['flying'], Treefolk: ['reach'], Wall: ['defender'] };
+
+// Append the subtype-implied keywords for `subtypes` onto `kw` in place (deduped).
+// Shared by makeCard's eager injection AND intrinsicKeywords' re-derivation, so
+// every keyword-build path applies the rule identically — a Dragon that bounces,
+// dies-and-returns, or sheds an until-EOT grant keeps its flying.
+function addSubtypeKeywords(subtypes, kw) {
+  for (const st of subtypes) {
+    for (const k of (SUBTYPE_KEYWORDS[st] || [])) {
+      if (!kw.includes(k)) kw.push(k);
+    }
+  }
+  return kw;
+}
+
+function applySubtypeKeywords(card) {
+  addSubtypeKeywords(subtypesOf(card), card.keywords);
+}
+
 function makeCard(tplId, stickers, slotIdx, empowerRolls, permaBuffs, bonusTrigger, stapledTpls, subtypeRolls) {
   const tpl = (stapledTpls && stapledTpls.length > 0)
     ? synthesizeStapledTemplate(tplId, stapledTpls)
@@ -631,6 +656,13 @@ function makeCard(tplId, stickers, slotIdx, empowerRolls, permaBuffs, bonusTrigg
     target_slots: Array.isArray(tpl.target_slots)
       ? tpl.target_slots.map(s => ({...s, target_filter: s.target_filter ? {...s.target_filter} : undefined}))
       : undefined,
+    // Cross-slot distinctness (Roots and Branches / Sword and Sorcery — "another
+    // target creature"). MUST be carried alongside target_slots, or cast legality
+    // (tsIsLegalSet / isLegalAction) and the render highlight-drop read it off the
+    // instance as undefined and silently skip the check — the same-target cast the
+    // card forbids gets through. The stapled ETB path is unaffected (the flag rides
+    // the synthesized trigger via mergeStapleInto, not this whitelist).
+    distinct_targets: !!tpl.distinct_targets,
     // Legendary uniqueness enforced at cast time only (no SBA); the Legendary
     // supertype tag derives from this boolean via typesOf.
     legendary: !!tpl.legendary,
@@ -685,8 +717,8 @@ function makeCard(tplId, stickers, slotIdx, empowerRolls, permaBuffs, bonusTrigg
     // Stapled metadata for empower-target enumeration, sticker eligibility, etc.
     stapledFrom: tpl.stapledFrom,
   };
-  // Order: stickers → permaBuffs → bonusTrigger. (§3.8: the Balancer overrides
-  // channel is gone — symmetricize/embargo/bleach now flow through stickers.)
+  // Order: subtype-implied → stickers → permaBuffs → bonusTrigger.
+  applySubtypeKeywords(card);
   applyStickersToCard(card);
   // permaBuffs: slot-persistent buffs from permanent_eot creatures (Elystra).
   // Shared with resetInPlayState (bounce/flicker recast).
@@ -762,6 +794,10 @@ function intrinsicKeywords(card) {
     const s = STICKERS[sId];
     if (s && s.kind === 'keyword' && !kw.includes(s.keyword)) kw.push(s.keyword);
   }
+  // Subtype-implied keywords are part of the intrinsic set, so every re-derive
+  // path (resetInPlayState on leave-play, the EOT eotGrants cleanup) preserves
+  // them rather than silently dropping a Dragon's flying / a Wall's defender.
+  addSubtypeKeywords(subtypesOf(card), kw);
   return kw;
 }
 
@@ -1066,7 +1102,9 @@ function getCardValue(card, purpose, ctx) {
   let v = pow + tou - cost * 2;
 
   // Body-scaled keyword values (flat bonuses misvalue both 1/1 unblockables and 5/5 vanillas).
-  const kw = card.keywords || [];
+  // Derive subtype-implied keywords: raw templates (draft scoring) don't carry
+  // them, and in-play instances already do — so this is idempotent for both.
+  const kw = addSubtypeKeywords(subtypesOf(card), (card.keywords || []).slice());
   if (kw.includes('flying'))         v += 1 + pow * 0.5;
   if (kw.includes('unblockable'))    v += 1.5 + pow * 0.75;
   if (kw.includes('reach'))          v += 1;
@@ -3242,40 +3280,123 @@ function emitZoneChange(card, controller, fromZone, toZone, extraSources, source
 // Returns true if the trigger has no targeted effects (always queueable),
 // OR if every targeted effect has at least one currently-valid target.
 function triggerHasAnyValidTarget(trig, controller) {
-  // New top-level target() step: the trigger needs a legal target of that filter.
-  if (trig.target && targetsForFilter(trig.target, controller, trig.target_filter).length === 0) return false;
-  for (const eff of (trig.effects || [])) {
-    if (!effectNeedsTarget(eff)) continue;
-    const valid = getValidTargets(eff, controller);
-    if (valid.length === 0) return false;
+  // A targeted trigger only goes on the stack if every slot it needs has a legal
+  // target (rule 603.3c). Routed through TargetSelection so it understands all
+  // shapes — top-level target(), per-effect, AND multi-slot target_slots (the old
+  // per-effect-only check gated stapled multi-target ETBs out of the queue, since
+  // a bare target_slot effect has no `target` for getValidTargets to resolve).
+  if (!objectNeedsTarget(trig)) return true;
+  // distinct_targets needs a full legal SET, not just per-slot non-emptiness: with
+  // one legal creature on board, a 2-distinct-slot trigger reports both slots
+  // length-1 (the same creature) and the per-slot loop would pass it, only to
+  // fizzle at tsAutoPick (which returns null when no distinct set exists). Gate on
+  // the side-effect-free auto-picker so the queue matches resolution exactly.
+  if (trig.distinct_targets) return tsAutoPick(trig, controller) != null;
+  for (const list of tsLegalBySlot(trig, controller).values()) {
+    if (!list.length) return false;
   }
   return true;
 }
 
 // Does a player-controlled trigger need the player to CHOOSE its target? Returns
 // { valid, promptEff } when there's a real choice (>1 legal target), else null.
-// Covers BOTH the top-level target() step (§3.5 — migrated triggers carry the
-// target on `trig.target` with bare effects) and the legacy per-effect target.
-// Without the top-level branch, every migrated targeted trigger silently
-// auto-picked instead of prompting (the "targets auto-selected on cast" bug).
-function triggerPlayerTargetPrompt(trig, controller) {
-  if (controller !== 'you') return null;
-  // The target filter is the top-level step (§3.5) or the first per-effect
-  // target — primaryLegalTargets resolves either shape. Implicit-target filters
-  // (self/player/opp/spell) auto-pick: no choice to offer.
-  const filt = trig.target || ((trig.effects || []).find(effectNeedsTarget) || {}).target;
-  if (!filt || filt === 'self' || filt === 'player' || filt === 'opp' || filt === 'spell') return null;
-  const valid = primaryLegalTargets(trig, controller);
-  if (valid.length <= 1) return null;   // 0 → fizzle/auto; 1 → no choice to make
-  // The effect used to value the choice (for the AI driver's pickBestTriggerTarget).
-  const promptEff = (trig.effects || []).find(e => e.kind === 'become_copy_of')
-    || (trig.effects || []).find(e => e.kind === 'grant_cast_permission')
-    || (trig.effects || []).find(e => e.kind !== 'chooses') || (trig.effects || [])[0] || {};
-  return { valid, promptEff };
+// ── Trigger target selection ───────────────────────────────────────────────
+// Targets are chosen as a trigger goes on the stack (MtG rules). All paths route
+// through TargetSelection, so they handle every shape including multi-slot
+// target_slots: pushTriggerOnStack AUTO-picks (AI / opponent, and any human
+// trigger with no genuine choice); the human gets a step-through PROMPT for the
+// slots that are a real choice — forced (one legal target) and implicit
+// (opp/player/self/spell) slots auto-fill.
+
+// Shared stack-push for a resolved trigger entry. (Also resets the priority round
+// so the opponent can respond, like a spell going on the stack.)
+function pushTriggerEntry(p, targets) {
+  G.stack.push({
+    kind: 'trigger',
+    trig: p.trig,
+    sourceIid: p.sourceIid,
+    sourceName: p.sourceName,
+    controller: p.controller,
+    targets,
+    // event → ctx.event for effects that read non-target data (Endomorph etc.).
+    event: p.event || null,
+  });
+  log(`${p.sourceName} triggers: ${triggerLogText(p.trig)}.`, 'sp');
+  if (!G.priority) G.priority = { passes: new Set() };
+  G.priority.passes.clear();
+  G.priorityHolder = opp(p.controller);
 }
 
-// Drain queued triggers to stack. Active player's first, then opp. Pauses on
-// pendingTriggerTarget prompt; remaining triggers drain post-prompt.
+// Auto-pick path: one legal target per slot via tsAutoPick (handles top-level
+// target(), per-effect, AND multi-slot target_slots — the old single-pick logic
+// had no slot branch, so stapled multi-target ETBs fizzled entirely).
+function pushTriggerOnStack(p) {
+  let targets = [];
+  if (objectNeedsTarget(p.trig)) {
+    const picked = tsAutoPick(p.trig, p.controller);
+    if (!picked) {
+      log(`${p.sourceName} trigger fizzles — no legal target.`, 'sp');
+      return;
+    }
+    targets = picked;
+  }
+  pushTriggerEntry(p, targets);
+}
+
+// Step a human-controlled trigger's pending prompt: auto-fill forced (single
+// legal target) and implicit (opp/player/self/spell) slots, stopping at the
+// first slot that's a genuine choice. Returns 'prompt' (pause for the human),
+// 'done' (every slot assigned → finalize), or 'fizzle' (a slot lost its target).
+// Steps the human trigger prompt slot-by-slot, committing each pick before the
+// next. GREEDY, no backtracking: for a distinct_targets trigger with asymmetric
+// per-slot legal sets, an early pick could strand a later slot ('fizzle') even
+// though a different early pick would have yielded a legal full set. Correct only
+// because every current distinct card is 2-slot with the SAME filter on both slots
+// (so with ≥2 creatures there's always an escape; with exactly 2 the second slot
+// auto-fills). Revisit for the first 3+-slot or asymmetric-per-slot distinct card.
+function advanceTriggerTargetPrompt(pt) {
+  const bySlot = tsLegalBySlot(pt.trig, pt.controller);
+  for (const slot of pt.slotKeys) {
+    if (pt.pickedSlots[slot] != null) continue;
+    const valid = tsExcludePicked(pt.trig, bySlot.get(slot) || [], pt.pickedSlots);
+    if (!valid.length) return 'fizzle';
+    if (tsIsImplicitTargetType(tsSlotTargetType(pt.trig, slot)) || valid.length === 1) {
+      pt.pickedSlots[slot] = valid.length === 1 ? valid[0]
+        : pickBestTriggerTarget(tsSlotValueEff(pt.trig, slot), valid, pt.controller);
+      continue;
+    }
+    pt.currentSlot = slot;
+    pt.valid = valid;
+    pt.promptEff = tsSlotValueEff(pt.trig, slot);
+    return 'prompt';
+  }
+  return 'done';
+}
+
+// Build the human step-through prompt for a queued trigger, or null when there's
+// no genuine choice (every slot auto-fills → pushTriggerOnStack handles it).
+function triggerPlayerTargetPrompt(p) {
+  if (p.controller !== 'you' || !objectNeedsTarget(p.trig)) return null;
+  const pt = {
+    controller: p.controller, sourceIid: p.sourceIid, sourceName: p.sourceName,
+    trig: p.trig, event: p.event || null,
+    slotKeys: tsSlotKeys(p.trig, p.controller),
+    pickedSlots: [], currentSlot: -1, valid: null, promptEff: null,
+  };
+  return advanceTriggerTargetPrompt(pt) === 'prompt' ? pt : null;
+}
+
+// Finalize a fully-picked human prompt: assemble the slot-indexed targets and
+// push. (Auto-pick uses pushTriggerOnStack; this preserves the human's choices.)
+function finalizeTriggerTarget(pt) {
+  const targets = [];
+  for (const slot of pt.slotKeys) targets[slot] = pt.pickedSlots[slot];
+  fillSparseHoles(targets, pt.slotKeys[0]);
+  pushTriggerEntry(pt, targets);
+}
+
+// Drain queued triggers to the stack. Active player's first, then opp. Pauses on
+// a human prompt; remaining triggers drain post-prompt.
 function drainTriggers() {
   if (G.gameOver) return false;
   if (G.pendingTriggerTarget) return false;
@@ -3288,74 +3409,17 @@ function drainTriggers() {
   G.pendingTriggers = [];
   for (let i = 0; i < ordered.length; i++) {
     const p = ordered[i];
-    const prompt = (p.controller === 'you')
-      ? triggerPlayerTargetPrompt(p.trig, p.controller)
-      : null;
-    if (prompt) {
-      // Stop draining. Set the prompt; remaining triggers wait in queue.
-      G.pendingTriggers = ordered.slice(i);   // includes the current one (its slot)
-      G.pendingTriggerTarget = {
-        controller: p.controller,
-        sourceIid: p.sourceIid,
-        sourceName: p.sourceName,
-        trig: p.trig,
-        promptEff: prompt.promptEff,
-        valid: prompt.valid,
-      };
-      // Drop the in-prompt trigger from pendingTriggers — it's now in
-      // pendingTriggerTarget. After resolution we re-push from there.
-      G.pendingTriggers.shift();
+    const pt = triggerPlayerTargetPrompt(p);
+    if (pt) {
+      // A human choice remains — pause. The remaining triggers wait in queue.
+      G.pendingTriggers = ordered.slice(i + 1);
+      G.pendingTriggerTarget = pt;
       log(`${p.sourceName} triggered — choose a target.`, 'sp');
       return true;
     }
     pushTriggerOnStack(p);
   }
   return true;
-}
-
-function pushTriggerOnStack(p) {
-  // Triggers go on the stack like spells. Target chosen now (MtG rules).
-  // v1: auto-pick via AI heuristic for both sides; player UI prompt is future work.
-  const targetEff = (p.trig.effects || []).find(effectNeedsTarget);
-  let chosenTarget = null;
-  if (p.trig.target) {
-    // New top-level target() step: pick from the filter's legal set, valued by
-    // the first target-operating effect. (Human prompt deferred — auto-picks
-    // for both sides today, like the legacy per-effect path.)
-    const valid = targetsForFilter(p.trig.target, p.controller, p.trig.target_filter);
-    if (valid.length === 0) {
-      log(`${p.sourceName} trigger fizzles — no legal target.`, 'sp');
-      return;
-    }
-    // Value the choice by the trigger's intent-defining effect: prefer
-    // become_copy_of (The False Witness — copy their best), else the first
-    // non-chooses effect.
-    const valueEff = (p.trig.effects || []).find(e => e.kind === 'become_copy_of')
-      || (p.trig.effects || []).find(e => e.kind === 'grant_cast_permission')
-      || (p.trig.effects || []).find(e => e.kind !== 'chooses') || (p.trig.effects || [])[0] || {};
-    chosenTarget = pickBestTriggerTarget(valueEff, valid, p.controller);
-  } else if (targetEff) {
-    const valid = getValidTargets(targetEff, p.controller);
-    if (valid.length === 0) {
-      log(`${p.sourceName} trigger fizzles — no legal target.`, 'sp');
-      return;
-    }
-    chosenTarget = pickBestTriggerTarget(targetEff, valid, p.controller);
-  }
-  G.stack.push({
-    kind: 'trigger',
-    trig: p.trig,
-    sourceIid: p.sourceIid,
-    sourceName: p.sourceName,
-    controller: p.controller,
-    targets: chosenTarget ? [chosenTarget] : [],
-    // event → ctx.event for effects that read non-target data (Endomorph etc.).
-    event: p.event || null,
-  });
-  log(`${p.sourceName} triggers: ${triggerLogText(p.trig)}.`, 'sp');
-  if (!G.priority) G.priority = { passes: new Set() };
-  G.priority.passes.clear();
-  G.priorityHolder = opp(p.controller);
 }
 
 // Auto-pick best trigger target. v1 used for both sides.
@@ -3761,6 +3825,177 @@ function validTargetsBySlot(card, targetedEffs, who) {
   return out;
 }
 
+// `distinct_targets` cards (Roots and Branches, Sword and Sorcery) require their
+// slots to name DIFFERENT objects — the text reads "...another target creature",
+// which is only honest if one creature can't fill both slots. True iff the chosen
+// per-slot targets are pairwise distinct. Only the present entries are compared
+// (sparse-fill placeholders are skipped by the callers, which pass the real picks).
+function slotTargetsAreDistinct(targetsArr) {
+  const seen = [];
+  for (const t of targetsArr) {
+    if (!t) continue;
+    if (seen.some(s => sameTarget(s, t))) return false;
+    seen.push(t);
+  }
+  return true;
+}
+
+// ─── Multi-slot target SELECTION component ─────────────────────────────────
+// ONE place for "pick one legal target per slot, honoring cross-slot rules"
+// (distinct_targets today). The legality ATOM (getValidTargets / targetsForFilter
+// / validTargetsBySlot — hexproof enforced once) and the resolution-time fetch
+// (makeSlotTargetGetter) are already shared; this is the selection layer that sat
+// triplicated across the spell-cast, activated-ability, and trigger callers.
+// `obj` is any target-bearing thing
+// — a card, an activated ability, or a trigger — all carrying the same shape:
+// top-level `target`(+`target_filter`), canonical `target_slots`, or legacy
+// per-effect `target_slot` on `effects`.
+const TS_COMBO_CAP = 200;
+
+// Per-mode view of a card. Modal cards declare their targets via the chosen
+// mode's effects; `target_slots` / top-level `target` stay card-level. Non-modal
+// callers pass the card's own effects.
+function tsModeObj(card, effects) {
+  return {
+    target: card.target, target_filter: card.target_filter,
+    target_slots: card.target_slots, distinct_targets: card.distinct_targets,
+    effects,
+  };
+}
+
+// True when the object targets via the top-level target() step (the §3.5 hexproof
+// checkpoint) rather than multi-slot target_slots — i.e. one canonical slot 0.
+function tsHasTopLevelTarget(obj) {
+  return !!obj.target && !(Array.isArray(obj.target_slots) && obj.target_slots.length > 0);
+}
+
+// Map<slotIdx, legalTargets[]> across all three target shapes.
+function tsLegalBySlot(obj, who) {
+  if (tsHasTopLevelTarget(obj)) {
+    return new Map([[0, targetsForFilter(obj.target, who, obj.target_filter)]]);
+  }
+  const targetedEffs = (obj.effects || []).filter(effectNeedsTarget);
+  return validTargetsBySlot(obj, targetedEffs, who);
+}
+
+// Cross-slot exclusion: drop targets already chosen for earlier slots when the
+// object requires distinct picks. THE single home for the distinct_targets rule —
+// every selection path (enumerate / auto-pick / human prompt / castable probe)
+// filters through here, so "another target creature" can't drift between them.
+// Operates on an already-fetched list so callers keep their one tsLegalBySlot call.
+function tsExcludePicked(obj, list, picksSoFar) {
+  if (!obj.distinct_targets || !Array.isArray(picksSoFar) || !picksSoFar.length) return list;
+  return list.filter(t => !picksSoFar.some(p => p && sameTarget(p, t)));
+}
+
+// Sorted slot indices this object needs a target for.
+function tsSlotKeys(obj, who) {
+  return [...tsLegalBySlot(obj, who).keys()].sort((a, b) => a - b);
+}
+
+// Fill sparse holes in a slot-indexed targets[] with the first slot's pick, so
+// resolution (makeSlotTargetGetter) always finds an entry. Defensive for the
+// theoretical sparse-slot case (target_slots are dense 0..n-1 today → a no-op).
+// CAUTION for distinct_targets: a future SPARSE-slot card (e.g. slots [0,2]) would
+// have index 1 written with slot 0's pick, bypassing the per-slot distinct filter
+// and injecting a DUPLICATE into a set that was meant to be distinct. Harmless
+// today (all cards dense [0,1]); guard this if a sparse distinct card is added.
+function fillSparseHoles(targets, firstSlotKey) {
+  for (let i = 0; i < targets.length; i++) if (!targets[i]) targets[i] = targets[firstSlotKey];
+}
+
+// Dense per-slotKey combo → a slot-INDEXED targets[] (sparse holes filled with
+// slot 0's pick, matching the legacy resolution indexing makeSlotTargetGetter uses).
+function tsComboToTargets(combo, slotKeys) {
+  const targets = [];
+  for (let i = 0; i < slotKeys.length; i++) targets[slotKeys[i]] = combo[i];
+  fillSparseHoles(targets, slotKeys[0]);
+  return targets;
+}
+
+// Every legal full target set (each a slot-indexed targets[]). Replaces the
+// bespoke cross-product in getLegalActions; honors distinct + the combo cap.
+// Empty → a required slot has no legal target (uncastable) OR the object is
+// untargeted (callers gate on objectNeedsTarget to tell those apart).
+function tsEnumerate(obj, who) {
+  const bySlot = tsLegalBySlot(obj, who);
+  const slotKeys = [...bySlot.keys()].sort((a, b) => a - b);
+  if (!slotKeys.length) return [];
+  const validBySlot = slotKeys.map(s => bySlot.get(s));
+  if (validBySlot.some(arr => !arr.length)) return [];
+  let combos = [[]];
+  for (const validList of validBySlot) {
+    const next = [];
+    for (const partial of combos) {
+      for (const t of tsExcludePicked(obj, validList, partial)) {
+        next.push(partial.concat([t]));
+        if (next.length >= TS_COMBO_CAP) break;
+      }
+      if (next.length >= TS_COMBO_CAP) break;
+    }
+    combos = next;
+    if (combos.length >= TS_COMBO_CAP) break;
+  }
+  return combos.map(combo => tsComboToTargets(combo, slotKeys));
+}
+
+// Validate a fully chosen target set: every slot legal + cross-slot constraint.
+function tsIsLegalSet(obj, who, targets) {
+  const bySlot = tsLegalBySlot(obj, who);
+  const slotKeys = [...bySlot.keys()];
+  for (const slot of slotKeys) {
+    const tgt = targets && targets[slot];
+    if (!tgt) return false;
+    if (!(bySlot.get(slot) || []).some(v => sameTarget(v, tgt))) return false;
+  }
+  if (obj.distinct_targets && !slotTargetsAreDistinct(slotKeys.map(s => targets[s]))) return false;
+  return true;
+}
+
+// The effect that VALUES a slot's pick (for the AI / auto-picker). Multi-slot:
+// the slot's own effect. A top-level target() trigger has bare effects (not
+// individually targeted), so fall back to the trigger's intent-defining effect
+// (become_copy_of → grant_cast_permission → first non-chooses).
+function tsSlotValueEff(obj, slot) {
+  const allEffs = obj.effects || [];
+  return allEffs.filter(effectNeedsTarget).find(e => (e.target_slot || 0) === slot)
+    || allEffs.find(e => e.kind === 'become_copy_of')
+    || allEffs.find(e => e.kind === 'grant_cast_permission')
+    || allEffs.find(e => e.kind !== 'chooses')
+    || allEffs[0] || {};
+}
+
+// The target filter TYPE for a slot (creature / opp / player / spell / …).
+function tsSlotTargetType(obj, slot) {
+  if (tsHasTopLevelTarget(obj)) return obj.target;
+  if (Array.isArray(obj.target_slots) && obj.target_slots[slot]) return obj.target_slots[slot].target;
+  const eff = (obj.effects || []).filter(effectNeedsTarget).find(e => (e.target_slot || 0) === slot);
+  return eff ? eff.target : null;
+}
+
+// Implicit target types resolve automatically — no human choice to offer: the
+// lone opponent, a free player choice, the source itself, a stack spell.
+function tsIsImplicitTargetType(type) {
+  return !type || type === 'self' || type === 'player' || type === 'opp' || type === 'spell';
+}
+
+// AI / auto pick: a full slot-indexed target set, one legal target per slot,
+// valued by pickBestTriggerTarget and honoring distinct. Generalizes the
+// single-target trigger auto-pick to N slots. Returns null if any slot has no
+// legal target (→ the caller fizzles the trigger).
+function tsAutoPick(obj, who) {
+  const bySlot = tsLegalBySlot(obj, who);
+  const slotKeys = [...bySlot.keys()].sort((a, b) => a - b);
+  const picks = [];
+  for (const slot of slotKeys) {
+    const valid = tsExcludePicked(obj, bySlot.get(slot) || [], picks);
+    if (!valid.length) return null;
+    picks[slot] = pickBestTriggerTarget(tsSlotValueEff(obj, slot), valid, who);
+  }
+  fillSparseHoles(picks, slotKeys[0]);
+  return picks;
+}
+
 // ─── Canonical "does this need a target / what are its legal targets" ─────
 // ONE source of truth for an object's (card / activated ability / trigger)
 // targeting shape, so the question can't drift across consumers. The §3.5
@@ -3798,9 +4033,12 @@ function probeTargetsForObject(obj, who) {
   if (Array.isArray(obj.target_slots) && obj.target_slots.length > 0) {
     const fakes = [];
     for (const spec of obj.target_slots) {
-      const valid = getValidTargets(spec, who);
-      if (!valid.length) return null;
-      fakes.push(valid[0]);
+      // distinct_targets: each slot's stand-in must differ from earlier picks (via
+      // tsExcludePicked, the shared cross-slot rule), so the castable-glow greys the
+      // spell out unless two distinct targets exist.
+      const pick = tsExcludePicked(obj, getValidTargets(spec, who), fakes)[0];
+      if (!pick) return null;
+      fakes.push(pick);
     }
     return fakes;
   }
@@ -5245,29 +5483,20 @@ function doSearchPick(who, cardIid) {
   tryBuildOnDraw(card, who);
 }
 function doTriggerTargetPick(who, target) {
-  // Player submits a target for the pending trigger prompt. Push the
-  // trigger onto the stack with the chosen target, then resume draining
-  // any remaining queued triggers.
+  // Player submits a target for the CURRENT slot of the pending trigger prompt.
+  // Record it, then advance: if more slots need a choice, stay paused for the
+  // next; once every slot is assigned, push the trigger and resume draining.
   if (!G.pendingTriggerTarget || G.pendingTriggerTarget.controller !== who) return;
-  const p = G.pendingTriggerTarget;
-  // Sanity-validate the target is in the valid list.
-  if (!p.valid.some(v => sameTarget(v, target))) return;
+  const pt = G.pendingTriggerTarget;
+  // Sanity-validate the target is in the current slot's valid list.
+  if (!pt.valid.some(v => sameTarget(v, target))) return;
+  pt.pickedSlots[pt.currentSlot] = target;
+  const r = advanceTriggerTargetPrompt(pt);
+  if (r === 'prompt') return;   // more slots to choose — stay paused; UI re-renders
   G.pendingTriggerTarget = null;
-  // Push trigger onto stack with the chosen target.
-  G.stack.push({
-    kind: 'trigger',
-    trig: p.trig,
-    sourceIid: p.sourceIid,
-    sourceName: p.sourceName,
-    controller: p.controller,
-    targets: [target],
-  });
-  log(`${p.sourceName} triggers: ${triggerLogText(p.trig)}.`, 'sp');
-  if (!G.priority) G.priority = { passes: new Set() };
-  G.priority.passes.clear();
-  G.priorityHolder = opp(p.controller);
-  // Resume draining the remaining queued triggers (if any).
-  drainTriggers();
+  if (r === 'done') finalizeTriggerTarget(pt);
+  // r === 'fizzle' → a later slot lost its only legal target; drop the trigger.
+  drainTriggers();   // resume the remaining queued triggers
 }
 // Resume a deferred edict (GAP 2) after the human picks which permanent to
 // lose. The chooses() step paused resolution and stashed the chosen-dependent
@@ -5577,51 +5806,14 @@ function isLegalAction(who, action) {
       } else {
         if (!isMainPhaseWindow(who)) return false;
       }
-      // Validate targets if needed. By default, multi-effect spells share
-      // a single target slot (targets[0]) — preserves the legacy behavior
-      // for Swords, Strength of the Pack, Predator's Speed, etc. Effects
-      // can opt into a distinct slot via `target_slot: N` (0-indexed); a
-      // multi-target spell like Branching Bolt has two effects, the second
-      // marked `target_slot: 1`, so it pulls action.targets[1] instead of
-      // sharing targets[0]. The required targets-array length is one more
-      // than the highest target_slot referenced.
+      // Validate the chosen targets through TargetSelection: every declared slot
+      // must hold a legal target and any cross-slot rule (distinct) must hold. The
+      // top-level target() step is the cast-time hexproof checkpoint — folded in
+      // (tsLegalBySlot resolves it to slot 0). Untargeted spells pass trivially.
       const modes = getModes(card);
       const modeIdx = action.modeIdx || 0;
       if (modeIdx < 0 || modeIdx >= modes.length) return false;
-      const activeEffects = modes[modeIdx];
-      const targetedEffs = (activeEffects || []).filter(effectNeedsTarget);
-      const slotSpecsLA = Array.isArray(card.target_slots) ? card.target_slots : null;
-      if (slotSpecsLA) {
-        // Card-level target_slots authoritative: every declared slot needs a
-        // legal target, whether or not an effect carries its target_slot (fight
-        // references its slots via operands, not a scalar target_slot).
-        const bySlot = validTargetsBySlot(card, targetedEffs, who);
-        for (let slot = 0; slot < slotSpecsLA.length; slot++) {
-          const tgt = action.targets && action.targets[slot];
-          if (!tgt) return false;
-          if (!(bySlot.get(slot) || []).some(v => sameTarget(v, tgt))) return false;
-        }
-      } else if (targetedEffs.length > 0) {
-        const maxSlot = targetedEffs.reduce((m, e) => Math.max(m, e.target_slot || 0), 0);
-        if (!action.targets || action.targets.length < maxSlot + 1) return false;
-        const bySlot = validTargetsBySlot(card, targetedEffs, who);
-        for (const eff of targetedEffs) {
-          const slot = eff.target_slot || 0;
-          const tgt = action.targets[slot];
-          if (!tgt) return false;
-          if (!(bySlot.get(slot) || []).some(v => sameTarget(v, tgt))) return false;
-        }
-      }
-      // New targeting model (§3.5): a top-level `target` step is the cast-time
-      // hexproof checkpoint. The spell needs one legal target of that filter;
-      // action.targets[0] must be among them (so an opp hexproof creature is
-      // not a legal target). Inert for legacy cards (none set card.target).
-      if (card.target) {
-        const valid = targetsForFilter(card.target, who, card.target_filter);
-        if (!valid.length) return false;
-        if (!action.targets || !action.targets[0]) return false;
-        if (!valid.some(v => sameTarget(v, action.targets[0]))) return false;
-      }
+      if (!tsIsLegalSet(tsModeObj(card, modes[modeIdx]), who, action.targets)) return false;
       return true;
     }
     case 'activateAbility': {
@@ -5670,41 +5862,11 @@ function isLegalAction(who, action) {
       } else {
         if (!isInstantWindow(who)) return false;
       }
-      // Ability-level multi-target slots (Stapler): one pick per `target_slots`
-      // entry, each validated against its own {target, filter} spec. Replaces
-      // the old `noop` slot-marker effect — target specs belong on the ability,
-      // not masquerading as an empty-body effect kind.
-      if (Array.isArray(ab.target_slots) && ab.target_slots.length > 0) {
-        if (!action.targets || action.targets.length < ab.target_slots.length) return false;
-        for (let s = 0; s < ab.target_slots.length; s++) {
-          const tgt = action.targets[s];
-          if (!tgt) return false;
-          const valid = getValidTargets(ab.target_slots[s], who);
-          if (!valid.some(v => sameTarget(v, tgt))) return false;
-        }
-      }
-      const targetedEffs = ab.effects.filter(effectNeedsTarget);
-      if (targetedEffs.length > 0) {
-        // Multi-target ability validation: each effect's target_slot picks
-        // its target from action.targets[slot].
-        const maxSlot = targetedEffs.reduce((m, e) => Math.max(m, e.target_slot || 0), 0);
-        if (!action.targets || action.targets.length < maxSlot + 1) return false;
-        for (const eff of targetedEffs) {
-          const slot = eff.target_slot || 0;
-          const tgt = action.targets[slot];
-          if (!tgt) return false;
-          const valid = getValidTargets(eff, who);
-          if (!valid.some(v => sameTarget(v, tgt))) return false;
-        }
-      }
-      // New targeting model (§3.5): a top-level `target` step on the ability is
-      // the cast-time hexproof checkpoint. Inert for legacy abilities.
-      if (ab.target) {
-        const valid = targetsForFilter(ab.target, who, ab.target_filter);
-        if (!valid.length) return false;
-        if (!action.targets || !action.targets[0]) return false;
-        if (!valid.some(v => sameTarget(v, action.targets[0]))) return false;
-      }
+      // Validate the chosen targets through TargetSelection (the same component
+      // the cast path uses): ability-level target_slots (Stapler), per-effect
+      // targets, and the top-level target() hexproof checkpoint all resolve
+      // through one path. Untargeted abilities pass trivially.
+      if (!tsIsLegalSet(ab, who, action.targets)) return false;
       return true;
     }
     case 'declareAttackers': {
@@ -5877,80 +6039,22 @@ function getLegalActions(who) {
     } else {
       if (!isMainPhaseWindow(who)) continue;
     }
-    // Enumerate one action per (mode, target combination). Non-modal
-    // single-target cards collapse to the simple "one action per target"
-    // case. Modal cards branch per mode. Multi-target cards generate one
-    // action per cross-product of their target slots.
+    // One castSpell action per (mode, legal target set). TargetSelection
+    // enumerates the per-slot cross-product (distinct-aware, capped); an
+    // untargeted mode emits a single targetless action. Non-modal cards are the
+    // single-mode case; a modal card branches per mode (each mode's targets live
+    // on its effects, so build a per-mode view).
     const modes = getModes(card);
     for (let mIdx = 0; mIdx < modes.length; mIdx++) {
-      const modeEffects = modes[mIdx];
-      const targetedEffs = (modeEffects || []).filter(effectNeedsTarget);
-      const hasSlotSpecs = Array.isArray(card.target_slots) && card.target_slots.length > 0;
-      if (targetedEffs.length === 0 && !hasSlotSpecs) {
-        // New targeting model (§3.5): a top-level `target` step means one
-        // action per legal target of that filter (hexproof-excluded via
-        // targetsForFilter). No valid target → spell not castable.
-        if (card.target) {
-          for (const t of targetsForFilter(card.target, who, card.target_filter)) {
-            const a = { type: 'castSpell', cardIid: card.iid, targets: [t] };
-            if (modes.length > 1) a.modeIdx = mIdx;
-            actions.push(a);
-          }
-          continue;
-        }
-        // Untargeted (or untargeted mode of a modal card).
-        const a = {type:'castSpell', cardIid: card.iid};
+      const modeObj = tsModeObj(card, modes[mIdx]);
+      if (!objectNeedsTarget(modeObj)) {
+        const a = { type: 'castSpell', cardIid: card.iid };
         if (modes.length > 1) a.modeIdx = mIdx;
         actions.push(a);
         continue;
       }
-      // Per-slot legal targets (slot grouping + spec resolution shared with
-      // isLegalAction via validTargetsBySlot). Each unique slot needs one target;
-      // effects sharing a slot share that target (e.g. Strength of the Pack).
-      const bySlot = validTargetsBySlot(card, targetedEffs, who);
-      const slotKeys = [...bySlot.keys()].sort((a, b) => a - b);
-      const validBySlot = slotKeys.map(slot => bySlot.get(slot));
-      // Bail if any slot has no valid targets — spell is uncastable.
-      if (validBySlot.some(arr => arr.length === 0)) continue;
-      // Build the cross-product of slot targets. For single-target spells
-      // (one slot) this is just the target list. For multi-target spells
-      // it grows multiplicatively, bounded by per-slot validity counts.
-      // Cap at 200 combos defensively — beyond that the AI cost outweighs
-      // the benefit of exhaustive search and we'd want a smarter sampler.
-      const combos = [[]];
-      const COMBO_CAP = 200;
-      for (const validList of validBySlot) {
-        const next = [];
-        for (const partial of combos) {
-          for (const t of validList) {
-            next.push([...partial, t]);
-            if (next.length >= COMBO_CAP) break;
-          }
-          if (next.length >= COMBO_CAP) break;
-        }
-        combos.length = 0;
-        combos.push(...next);
-        if (combos.length >= COMBO_CAP) break;
-      }
-      // Assemble one action per combo. action.targets is indexed by slot
-      // value (slot 0 → targets[0], slot 1 → targets[1]); since we sorted
-      // slotKeys ascending and slots are typically dense (0, 1, 2...),
-      // combo[i] aligns with slotKeys[i] which equals i in the common case.
-      // Defensive: if a card uses sparse slots (0, 2 — skipping 1), fill
-      // gaps so action.targets[N] is always present for the highest slot.
-      for (const combo of combos) {
-        const targets = [];
-        for (let i = 0; i < slotKeys.length; i++) {
-          targets[slotKeys[i]] = combo[i];
-        }
-        // Fill any sparse holes with a placeholder copy of slot 0 — the
-        // validator will reject these unless they happen to be valid for
-        // the higher-slot effect, which means the engine is effectively
-        // robust to either dense or sparse slot numbering.
-        for (let i = 0; i < targets.length; i++) {
-          if (!targets[i]) targets[i] = combo[0];
-        }
-        const a = {type:'castSpell', cardIid: card.iid, targets};
+      for (const targets of tsEnumerate(modeObj, who)) {
+        const a = { type: 'castSpell', cardIid: card.iid, targets };
         if (modes.length > 1) a.modeIdx = mIdx;
         actions.push(a);
       }
@@ -5964,10 +6068,6 @@ function getLegalActions(who) {
       const ab = card.abilities[i];
       const isMana = ab.effects[0].kind === 'add_mana';
       if (isMana) continue;   // surfaced as tapLandForMana
-      // Multi-target abilities (Stapler) are player-UI-driven; the AI doesn't
-      // enumerate the 2-target cross-product. Skip so we don't emit always-
-      // illegal single-target actions.
-      if (Array.isArray(ab.target_slots) && ab.target_slots.length > 1) continue;
       // Tap cost requirements.
       if (ab.cost && ab.cost.tap) {
         if (card.tapped) continue;
@@ -6000,18 +6100,17 @@ function getLegalActions(who) {
         if (!canPay) continue;
       }
       if (ab.main_phase_only ? !isMainPhaseWindow(who) : !isInstantWindow(who)) continue;
-      const targetedEff = ab.effects.find(effectNeedsTarget);
-      // Cross-product: (effect targets) × (sac options). A top-level `target`
-      // step (§3.5) enumerates from targetsForFilter (hexproof-excluded); empty
-      // → no actions (ability not activatable). Legacy per-effect targets fall
-      // back to getValidTargets; untargeted → [null].
-      const effectTargets = ab.target ? targetsForFilter(ab.target, who, ab.target_filter)
-        : (targetedEff ? getValidTargets(targetedEff, who) : [null]);
+      // Cross-product: (legal target sets) × (sac options). TargetSelection
+      // enumerates the target sets — single-target abilities yield one-element
+      // sets; multi-slot abilities (Stapler) yield the per-slot cross-product
+      // (previously skipped for the AI). Untargeted → [null]; a targeted ability
+      // with no legal set → no actions (not activatable).
+      const targetSets = objectNeedsTarget(ab) ? tsEnumerate(ab, who) : [null];
       const sacChoices = sacOptions || [null];
-      for (const t of effectTargets) {
+      for (const targets of targetSets) {
         for (const sacIid of sacChoices) {
           const action = {type:'activateAbility', cardIid: card.iid, abilityIdx: i};
-          if (t) action.targets = [t];
+          if (targets) action.targets = targets;
           if (sacIid != null) action.sacIid = sacIid;
           actions.push(action);
         }
@@ -6516,6 +6615,15 @@ return {
   // truth for the human cast UI's zone-agnostic card lookup.
   findCastableSpell,
   makeCard,
+  // Re-derive seam (template + stickers + subtype-implied), exposed for tests.
+  intrinsicKeywords,
+  // Subtype-implied keyword injection (Wall→defender, Dragon→flying, …). Exposed so
+  // the sticker-eligibility view and tests mirror makeCard's derivation.
+  applySubtypeKeywords,
+  // The one cross-slot distinct_targets rule, exposed so the render layer's cast
+  // highlight drops already-picked creatures through the SAME filter the trigger
+  // pick-loop uses (no second copy of the rule in the UI).
+  tsExcludePicked,
   synthesizeStapledTemplate,
   makeToken,
   getModes,
