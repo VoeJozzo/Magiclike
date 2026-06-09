@@ -20,6 +20,7 @@ const CATEGORY_A = [
   'template_isolation_test.js',
   'extracted_helpers_test.js',
   'sticker_kinds_dispatch_test.js',
+  'keyword_icons_test.js',
   // Authored this session to cover PR #5's test-plan items 2/3, 4, 5
   // plus cast-time decision prompts.
   'modal_helper_test.js',

@@ -309,6 +309,34 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
 .card-frame .frame-oracle{
   /* No special treatment -- inherits frame-text styling. */
 }
+/* Keyword icon row — replaces the keyword text line on the small in-play
+   frame (the blow-up popup keeps the words). Coin icons from
+   assets/keywords/<kw>.svg; each carries a "Keyword: reminder" title tooltip.
+   `unblockable` (no art yet) falls back to a tiny text chip. */
+.card-frame .frame-keywords{
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(1px * var(--scale));
+  margin-bottom: calc(1px * var(--scale));
+  line-height: 0;
+}
+.card-frame .frame-keywords .kw-icon{
+  width: calc(9px * var(--scale));
+  height: calc(9px * var(--scale));
+  display: inline-block;
+  vertical-align: middle;
+}
+.card-frame .frame-keywords .kw-icon-fallback{
+  display: inline-block;
+  font-size: calc(5px * var(--scale) * var(--card-text-scale));
+  font-weight: bold;
+  color: #c9c2b0;
+  border: 1px solid rgba(255,255,255,0.25);
+  border-radius: calc(2px * var(--scale));
+  padding: 0 calc(1.5px * var(--scale));
+  line-height: 1.4;
+}
 .card-frame .frame-flavor{
   margin-top: calc(2px * var(--scale));
   padding-top: calc(2px * var(--scale));

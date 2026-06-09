@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.2.0`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.3.0`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -1146,6 +1146,23 @@ innate is a non-combat status keyword, so it's excluded from the combat keyword
 preamble and keeps its dedicated "Innate." line + surfaced badge. Ingenuity
 Unbounded's `innate:true` template field moved into `keywords[]`. Tests updated
 (boss + sticker-dispatch). Full suite green (1606 assertions), lint clean.
+
+v2.3.0: keyword icons on the in-play frame (continues the "New SVG Icons"
+branch). The small in-hand/board card now renders its keyword line as compact
+coin icons (`assets/keywords/<kw>.svg`) instead of words, to save rules-box
+space; the blow-up popup (long-press) keeps the keyword words. Mechanism: a
+`keywordsAsIcons` flag on `cardToViewModel` — when set (by `makeCardEl`) it drops
+the keyword preamble from the oracle text (`describeCardSegments` already
+supported `skipKeywords`) and exposes a separate `keywordIconsHtml` row that the
+frame inserts at the top of the text box. The popup and other text-context
+renders (draft/browser/previews) call `cardToViewModel` without the flag, so they
+keep words. Each icon carries a "Flying: <reminder>" tooltip (new
+`KEYWORD_REMINDER` registry in cards.js — short rules-gloss per keyword). Icon
+selection mirrors `keywordPreamble` (creatures show all; non-creatures only
+spell-legal `flash`; `no_block`/`innate` excluded). `unblockable` has no art yet,
+so it falls back to a tiny text chip. New `keyword_icons_test.js` (9 assertions);
+full suite green (1615), lint clean. Note: DOM rendering isn't covered by the
+Node harness — browser-verify the row layout/tooltips.
 
 > **MUST UPDATE on every dev-branch push that touches code.** Bump `VERSION` in `js/main.js` AND the line above, in the same commit. GitHub Pages caches aggressively; the version string is the only reliable way to confirm a fresh build is live.
 

@@ -1253,6 +1253,48 @@ function nativeKeywordBadgesHtml(card, big) {
   return `<div class="stickers-row${big ? '-big' : ''}">${parts.join('')}</div>`;
 }
 
+// Keywords that have a shipped coin icon at assets/keywords/<kw>.svg. The 13
+// combat keywords all have art; `unblockable` is the one gap (text fallback
+// until art exists). `innate` isn't here — it's a non-combat status keyword
+// with its own "Innate." line/badge, not part of the combat icon row.
+const KEYWORD_ICON_SET = new Set([
+  'flying', 'vigilance', 'trample', 'haste', 'first_strike', 'reach', 'defender',
+  'indestructible', 'lifelink', 'deathtouch', 'menace', 'hexproof', 'flash',
+]);
+
+// Icon row shown on the small in-play frame in place of the keyword text line
+// (the blow-up popup keeps the words — see openCardPopup). Each icon carries a
+// "Display: reminder" tooltip via the title attribute. Mirrors keywordPreamble's
+// selection: creatures show every keyword; non-creatures show only spell-legal
+// ones (flash). no_block is hidden; innate has its own status line, so both are
+// excluded here.
+function keywordIconsHtml(card) {
+  const tpl = (card.isToken ? TOKENS : CARDS)[card.tplId];
+  const isCreatureCard = hasType(card, 'Creature') || (tpl && hasType(tpl, 'Creature'));
+  const allKw = (card.keywords && card.keywords.length)
+    ? card.keywords
+    : ((tpl && tpl.keywords) || []);
+  const shown = (isCreatureCard ? allKw : allKw.filter(k => SPELL_LEGAL_KEYWORDS.has(k)))
+    .filter(k => k !== 'no_block' && k !== 'innate');
+  if (!shown.length) return '';
+  const seen = new Set();
+  const parts = [];
+  for (const kw of shown) {
+    if (seen.has(kw)) continue;   // dedup intrinsic + granted
+    seen.add(kw);
+    const display = KEYWORD_DISPLAY[kw] || (kw.charAt(0).toUpperCase() + kw.slice(1));
+    const reminder = KEYWORD_REMINDER[kw] || '';
+    const title = escapeHtml(reminder ? display + ': ' + reminder : display);
+    if (KEYWORD_ICON_SET.has(kw)) {
+      parts.push(`<img class="kw-icon" src="../../assets/keywords/${kw}.svg" alt="${escapeHtml(display)}" title="${title}">`);
+    } else {
+      // No icon yet (e.g. unblockable) — fall back to a tiny text chip.
+      parts.push(`<span class="kw-icon-fallback" title="${title}">${escapeHtml(display)}</span>`);
+    }
+  }
+  return `<div class="frame-keywords">${parts.join('')}</div>`;
+}
+
 // Render a card's art field as HTML. Detects image URLs (data: URLs and
 // http(s) URLs) and emits an <img>; falls back to the literal string for
 // emoji glyphs (the legacy art format). The wrapping container provides
@@ -1353,6 +1395,10 @@ function cardToViewModel(card, opts) {
   opts = opts || {};
   const inHand = !!opts.inHand;
   const overrideOracleText = opts.overrideOracleText;
+  // keywordsAsIcons: drop the keyword text line from the oracle and instead
+  // expose a separate icon row (vm.keywordIconsHtml). The small in-play frame
+  // sets this; the blow-up popup leaves it off so it keeps the keyword words.
+  const keywordsAsIcons = !!opts.keywordsAsIcons;
 
   // Frame color: cost colors > card.color > land's produced color
   // (Plains -> W) > Colorless. Multicolor uses first WUBRG-order color;
@@ -1395,9 +1441,10 @@ function cardToViewModel(card, opts) {
   if (overrideOracleText !== undefined) {
     oracleHtml = renderManaSymbols(escapeHtml(overrideOracleText));
   } else {
-    const segs = describeCardSegments(card, {skipKeywords: false});
+    const segs = describeCardSegments(card, {skipKeywords: keywordsAsIcons});
     oracleHtml = segmentsToHtml(segs);
   }
+  const kwIconsHtml = keywordsAsIcons ? keywordIconsHtml(card) : '';
 
   const artVal = effectiveArt(card);
   const artInner = isArtUrl(artVal)
@@ -1411,6 +1458,7 @@ function cardToViewModel(card, opts) {
   return {
     colorKey, isCreature, pow, tou,
     pipsHtml, bumpedMarker, typeText, oracleHtml,
+    keywordIconsHtml: kwIconsHtml,
     artInner, stickersInner,
   };
 }
@@ -1423,7 +1471,9 @@ function makeCardEl(card, opts) {
   const div = document.createElement('div');
   div.dataset.iid = String(card.iid);
 
-  const vm = cardToViewModel(card, opts);
+  // The small in-play frame renders keywords as compact icons (with reminder
+  // tooltips) to save space; the blow-up popup keeps the keyword words.
+  const vm = cardToViewModel(card, Object.assign({}, opts, { keywordsAsIcons: true }));
 
   div.className = 'card-frame col-' + vm.colorKey +
     (card.tapped ? ' tapped' : '') +
@@ -1456,6 +1506,7 @@ function makeCardEl(card, opts) {
     '<div class="frame-art">' + vm.artInner + '</div>' +
     '<div class="frame-type">' + escapeHtml(vm.typeText) + '</div>' +
     '<div class="frame-text">' +
+      vm.keywordIconsHtml +
       '<div class="frame-oracle">' + vm.oracleHtml + '</div>' +
       stickerSection +
     '</div>' +

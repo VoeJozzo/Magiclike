@@ -292,6 +292,28 @@ const KEYWORD_DISPLAY = {
   menace: 'Menace', hexproof: 'Hexproof', flash: 'Flash',
   unblockable: 'Unblockable', innate: 'Innate',
 };
+// Reminder text for each keyword — short rules-gloss surfaced as the tooltip
+// when a keyword icon is shown on a card (the icon replaces the keyword word
+// on the small in-play frame; the tooltip reads "Flying: <reminder>"). Kept in
+// sync with KEYWORDS / KEYWORD_DISPLAY.
+const KEYWORD_REMINDER = {
+  flying: 'Can only be blocked by creatures with flying or reach.',
+  vigilance: "Attacking doesn't cause it to tap.",
+  trample: 'Combat damage beyond what would destroy its blockers is dealt to the defending player.',
+  haste: 'It can attack and use tap abilities the turn it comes under your control.',
+  first_strike: 'It deals combat damage before creatures without first strike.',
+  reach: 'It can block creatures with flying.',
+  defender: "It can't attack.",
+  indestructible: "It can't be destroyed by lethal damage or “destroy” effects.",
+  lifelink: 'Damage it deals also causes you to gain that much life.',
+  deathtouch: 'Any amount of combat damage it deals to a creature is enough to destroy it.',
+  menace: "It can't be blocked except by two or more creatures.",
+  hexproof: "It can't be the target of spells or abilities your opponents control.",
+  flash: 'You may cast it any time you could cast an instant.',
+  unblockable: "It can't be blocked.",
+  innate: 'It starts in your opening hand.',
+  tap: 'The tap symbol — appears in activated-ability costs.',
+};
 // Per-keyword sticker offer weight. Higher = more common in pair offers.
 // Keeping it minimal for now — tune as we get playtest signal.
 //   1 = rare/strong (game-warping when stuck)
