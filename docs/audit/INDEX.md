@@ -22,7 +22,7 @@
 | [A1-6](chunk-01-turn-machine.md) | P2 | turn-machine | engine.js | CLEANUP delayed-trigger drain silently discards unknown effect kinds; comment names the retired returnFromExile kind (comment fix + else-warn) | stage | open |
 | [A1-7](chunk-01-turn-machine.md) | P3 | turn-machine | engine.js | Zero-attacker combat skips the §505 priority window entirely — latent canon divergence, Godot windows it; docs-vs-code fork | stage | open |
 | [A1-8](chunk-01-turn-machine.md) | P3 | turn-machine | engine.js | G.attackers never pruned on death; L4992 zero-attackers arm is unreachable dead code with divergent flag hygiene; re-guard contract unstated | stage | open |
-| [A1-9](chunk-01-turn-machine.md) | P3 | turn-machine | engine.js | "X draws." logged on deck-out loss and phylactery rip — the log's top line lies on both empty-library paths (one-line gate) | stage | open |
+| [A1-9](chunk-01-turn-machine.md) | P3 | turn-machine | engine.js | "X draws." logged on deck-out loss and phylactery rip — the log's top line lies on both empty-library paths (one-line gate) | stage | **fixed (PR #107)** |
 | [A1-10](chunk-01-turn-machine.md) | P2 | turn-machine | engine.js | tapLandForMana legal during cleanup discard — UI-reachable, mana unusable, land stays tapped through the opponent's turn | stage | open |
 | [A1-11](chunk-01-turn-machine.md) | P3 | turn-machine | engine.js | Forced modal answers silently disarm End Turn fast-forward — compelled responses treated as voluntary re-engagement (one-line carve-out) | stage | open |
 | [A1-12](chunk-01-turn-machine.md) | P3 | turn-machine | engine.js | PROTOCOL.md §3.6 falsely says the proto collapses UNTAP+UPKEEP+DRAW — UNTAP and DRAW are distinct real phases (docs edit) | ship | open |
@@ -46,7 +46,7 @@
 | [A2-5](chunk-02-combat.md) | P2 | combat | engine.js | change_control never removes from combat — stolen attacker damages its OWN new controller (+ lifelink to them, self-block legal); latent today, live with the first flash/triggered steal; bundle with A2-3 | stage | open |
 | [A2-6](chunk-02-combat.md) | P2 | combat | engine.js | Combat coverage darkness: 200/303 mutants survive; 9 of 10 behavior-deleting mutants invisible (batteries executed twice); the region IS the C1/C2 spec Godot harmonizes to — one test_combat_damage.js battery | park | open |
 | [A2-7](chunk-02-combat.md) | P3 | combat | engine.js | Deathtouch lethal-threshold carves out indestructible blockers — deliberate per comment, absent from canon; sticker-reachable defender-life fork; decision: follow canon (rec.) or write the house rule in; ai.js:778 mirrors | stage | open |
-| [A2-8](chunk-02-combat.md) | P3 | combat | engine.js | Combat lifelink's life_changed omits source_iid (both siblings attach it) — noSelfCascade + Codex-built gain-life triggers misbehave today; one-line fix | stage | open |
+| [A2-8](chunk-02-combat.md) | P3 | combat | engine.js | Combat lifelink's life_changed omits source_iid (both siblings attach it) — noSelfCascade + Codex-built gain-life triggers misbehave today; one-line fix | stage | **fixed (PR #108)** |
 | [A2-9](chunk-02-combat.md) | P3 | combat | engine.js | Lord-buff predicate duplicated in two divergent loops — stat loop buffs ANY permanent (no Creature gate, executed: lands get +1/+1), keyword loop gates; inert today; chunk-4 structural overlap | park | open |
 | [A2-10](chunk-02-combat.md) | P3 | combat | engine.js | dealtDeathtouch names the VICTIM (Godot already renamed it lethal_marked) — clarifying comments ship; mechanical 14-site rename is a trivia candidate | ship | open |
 | [A2-11](chunk-02-combat.md) | P3 | combat | engine.js | Rulebook §800/§802 false claims (docs-only, merged): L52 declaration-order "in both implementations," L26 + 900-keywords L33 menace-fallback parentheticals (Godot-only), stale DIVERGENCE C1/C3 cites, §803 "drain" wording rider | ship | open |
@@ -61,12 +61,12 @@
 | [A3-4](chunk-03-stack-triggers.md) | P2 | stack-triggers | triggers/engine | Canon rulebook page §1000 (triggered abilities) documents the RETIRED pre-migration trigge | stage | open |
 | [A3-5](chunk-03-stack-triggers.md) | P2 | stack-triggers | triggers/engine | The three generated-trigger data tables sit outside BOTH boot validators: a typo'd effect | stage | open |
 | [A3-6](chunk-03-stack-triggers.md) | P2 | stack-triggers | triggers/engine | The composable `card_moves` zone vocabulary over-promises: the engine only emits zone-chan | stage | open |
-| [A3-7](chunk-03-stack-triggers.md) | P2 | stack-triggers | triggers/engine | `generateRandomTrigger` is a production-dead twin of `assembleTrigger` that omits the noSe | stage | open |
+| [A3-7](chunk-03-stack-triggers.md) | P2 | stack-triggers | triggers/engine | `generateRandomTrigger` is a production-dead twin of `assembleTrigger` that omits the noSe | stage | **fixed (PR #110)** |
 | [A3-8](chunk-03-stack-triggers.md) | P2 | stack-triggers | triggers/engine | PROTOCOL.md §3.3 misdocuments the trigger-event wire it canonizes — and the wrong rows are | ship | open |
 | [A3-9](chunk-03-stack-triggers.md) | P2 | stack-triggers | triggers/engine | Trigger-layer coverage darkness + test-quality cluster (dimensions 4/5, grouped): the orch | park | open |
 | [A3-10](chunk-03-stack-triggers.md) | P3 | stack-triggers | triggers/engine | Trigger target legality is gated at EMIT time (inside the event) as well as at drain time: | stage | open |
-| [A3-11](chunk-03-stack-triggers.md) | P3 | stack-triggers | triggers/engine | `life_changed` / leave-play event payload conformance sweep (A2-8's class, completed): dam | stage | open |
-| [A3-12](chunk-03-stack-triggers.md) | P3 | stack-triggers | triggers/engine | Mid-prompt trigger fizzle is silent: when a human's multi-slot target prompt ends in fizzl | stage | open |
+| [A3-11](chunk-03-stack-triggers.md) | P3 | stack-triggers | triggers/engine | `life_changed` / leave-play event payload conformance sweep (A2-8's class, completed): dam | stage | **fixed (PR #108)** |
+| [A3-12](chunk-03-stack-triggers.md) | P3 | stack-triggers | triggers/engine | Mid-prompt trigger fizzle is silent: when a human's multi-slot target prompt ends in fizzl | stage | **fixed (PR #109)** |
 | [A3-13](chunk-03-stack-triggers.md) | P3 | stack-triggers | triggers/engine | Generated-trigger cloning discipline is inconsistent: two consumer sites share the `condit | stage | open |
 | [A3-14](chunk-03-stack-triggers.md) | P3 | stack-triggers | triggers/engine | Delayed-trigger queue keeps unknown `fireAt` values forever: the sibling leak to A1-6 — un | stage | open |
 | [A3-15](chunk-03-stack-triggers.md) | P3 | stack-triggers | triggers/engine | triggers.js's unified-event-shape header (the contract block predicates are written agains | ship | open |
