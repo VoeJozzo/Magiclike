@@ -55,4 +55,21 @@
 | [A2-14](chunk-02-combat.md) | P3 | combat | engine.js | test_ui_targeting pins block legality by source-text regex — false-reds on rename, green under flying-gate deletion (both executed); replace with behavioral check, keep the delegation pin | park | open |
 | [A2-15](chunk-02-combat.md) | P3 | combat | engine.js | Menace enforcement: zero coverage at a site whose comment documents a prior silent-failure bug of this exact shape — check deletable, suite green; two assertions in the A2-6 battery | park | open |
 
-*Chunks done: 6 (dry run), 1, 2. Severity × effort re-sort happens at triage.*
+| [A3-1](chunk-03-stack-triggers.md) | P1 | stack-triggers | triggers/engine | Trigger targets are NOT re-validated at resolution: a target that became illegal on the st | stage | open |
+| [A3-2](chunk-03-stack-triggers.md) | P2 | stack-triggers | triggers/engine | Non-mana activated abilities resolve entirely OFF the stack, contradicting canon §705 — th | stage | open |
+| [A3-3](chunk-03-stack-triggers.md) | P2 | stack-triggers | triggers/engine | The trigger "depth cap" counts WIDTH, not depth: 101 flat, independent triggers trip it an | stage | open |
+| [A3-4](chunk-03-stack-triggers.md) | P2 | stack-triggers | triggers/engine | Canon rulebook page §1000 (triggered abilities) documents the RETIRED pre-migration trigge | stage | open |
+| [A3-5](chunk-03-stack-triggers.md) | P2 | stack-triggers | triggers/engine | The three generated-trigger data tables sit outside BOTH boot validators: a typo'd effect | stage | open |
+| [A3-6](chunk-03-stack-triggers.md) | P2 | stack-triggers | triggers/engine | The composable `card_moves` zone vocabulary over-promises: the engine only emits zone-chan | stage | open |
+| [A3-7](chunk-03-stack-triggers.md) | P2 | stack-triggers | triggers/engine | `generateRandomTrigger` is a production-dead twin of `assembleTrigger` that omits the noSe | stage | open |
+| [A3-8](chunk-03-stack-triggers.md) | P2 | stack-triggers | triggers/engine | PROTOCOL.md §3.3 misdocuments the trigger-event wire it canonizes — and the wrong rows are | ship | open |
+| [A3-9](chunk-03-stack-triggers.md) | P2 | stack-triggers | triggers/engine | Trigger-layer coverage darkness + test-quality cluster (dimensions 4/5, grouped): the orch | park | open |
+| [A3-10](chunk-03-stack-triggers.md) | P3 | stack-triggers | triggers/engine | Trigger target legality is gated at EMIT time (inside the event) as well as at drain time: | stage | open |
+| [A3-11](chunk-03-stack-triggers.md) | P3 | stack-triggers | triggers/engine | `life_changed` / leave-play event payload conformance sweep (A2-8's class, completed): dam | stage | open |
+| [A3-12](chunk-03-stack-triggers.md) | P3 | stack-triggers | triggers/engine | Mid-prompt trigger fizzle is silent: when a human's multi-slot target prompt ends in fizzl | stage | open |
+| [A3-13](chunk-03-stack-triggers.md) | P3 | stack-triggers | triggers/engine | Generated-trigger cloning discipline is inconsistent: two consumer sites share the `condit | stage | open |
+| [A3-14](chunk-03-stack-triggers.md) | P3 | stack-triggers | triggers/engine | Delayed-trigger queue keeps unknown `fireAt` values forever: the sibling leak to A1-6 — un | stage | open |
+| [A3-15](chunk-03-stack-triggers.md) | P3 | stack-triggers | triggers/engine | triggers.js's unified-event-shape header (the contract block predicates are written agains | ship | open |
+| [A3-16](chunk-03-stack-triggers.md) | P3 | stack-triggers | triggers/engine | Comment-hygiene sweep (merged): three more verified-false attribution/contract comments in | ship | open |
+
+*Chunks done: 6 (dry run), 1, 2, 3. Severity × effort re-sort happens at triage.*

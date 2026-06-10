@@ -32,6 +32,9 @@
 
 ## Done today (so far)
 
+- **Chunk 3 (stack/triggers):** 16 findings; headline P1 = no resolution-time target re-validation (hexproof-in-response useless; staple-based real-cards repro). Zero-refutation anomaly logged; hostile self-QA corrected one evidence mechanism — calibration datum. Five leads adjudicated clean.
+- **Joe verdict round 1:** 3 intentional-by-design (A1-1, A1-7, A1-11 — rulebook gets corrected, not code), 4 approved fixes building (A1-3, A1-10, A2-3, A2-5), 2 questions answered.
+
 - **Chunk 2 (combat):** 15 findings (2 P1: first-strike keyword-timing double-damage, trample-vs-marked-damage) + the A1-3 upgrade with an in-pool repro. Usage wall hit mid-verify and the resume recovery worked exactly as designed. 3 ship-class doc/comment fixes heading to the workshop.
 - **Mutation map COMPLETE:** overall 36%; ai/draft/run/picklog layers nearly untested (17/10/17/4%); triggers.js strong (76%). All chunks unlocked.
 
