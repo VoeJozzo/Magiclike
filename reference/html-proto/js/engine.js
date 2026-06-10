@@ -2475,8 +2475,10 @@ const EFFECTS = {
     });
     log(`${pname(ctx.controller)} may cast ${f.card.name} from ${from} this turn.`, 'sp');
   },
-  // Legacy discard kind — still emitted by the Mercurial trigger generator
-  // (discardOpp). Card data uses move_card(hand→graveyard) post-collapse.
+  // Legacy discard kind — still emitted by the trigger generator's
+  // GENERATOR_EFFECTS (discardOpp — Architect's Codex build flow only; the
+  // Mercurial pool contains no discard). Card data uses
+  // move_card(hand→graveyard) post-collapse.
   discard(ctx, params, target) {
     discardFromHand(ctx, discardWho(ctx, target), params.amount);
   },
@@ -4827,9 +4829,10 @@ function checkDeaths() {
       }
     }
     if (dying.length === 0) break;
-    // Leaves-play emit for each dying card, in the same batch order. Fires
-    // after all cardDies emits so the standard dies-listener queue stays
-    // consistent with prior versions.
+    // Leaves-play emit for each dying card, in the same batch order. Emitted
+    // after the whole batch is spliced off the battlefield, with the batch as
+    // extraSources, so simultaneous deaths see each other's card_zone_change.
+    // (The legacy cardDies event is retired — E1; this is the only death emit.)
     for (const entry of dying) {
       emitLeavesBattlefield(entry.card, entry.controller, 'graveyard', dying);
     }
@@ -5632,8 +5635,10 @@ function doDeclareAttackers(who, cardIids) {
   // Done after the tap so triggers see the post-tap state.
   for (const iid of cardIids) {
     const f = findCard(iid); if (!f) continue;
-    // Single emission serves both vocabularies: legacy condId triggers read
-    // attacker/defender; composable triggers read subject_card/defender_key.
+    // attacker/defender are DEAD legacy payload fields — the condId vocabulary
+    // is fully retired (DIVERGENCE E2) and grep finds zero consumers of either.
+    // Composable triggers read subject_card/defender_key. Removing the dead
+    // pair was suite-green but is a payload change — staged, not shipped here.
     emit({type: 'attacks', attacker: f.card, controller: who, defender: opp(who),
           subject_iid: f.card.iid, subject_card: f.card, defender_key: opp(who)});
   }
@@ -6765,8 +6770,11 @@ function executeAction(who, action) {
       '| priorityHolder:', G.priorityHolder, '| stack:', G.stack.length);
     return false;
   }
-  // Any explicit action other than pass/endTurn means the player is re-engaging;
-  // cancel the auto-pass-to-end-of-turn shortcut.
+  // Any explicit action other than pass/endTurn disarms the auto-pass-to-end-
+  // of-turn shortcut — INCLUDING forced responses (cleanup discard, trigger-
+  // target picks): if you're compelled to make a choice mid-fast-forward, the
+  // turn intentionally pauses and waits for a fresh End Turn rather than
+  // resuming on its own (design ruling, PR #98, 2026-06-10 — audit A1-11).
   if (who === G.activePlayer && action.type !== 'pass' && action.type !== 'endTurn') {
     G.endTurnPending = false;
   }

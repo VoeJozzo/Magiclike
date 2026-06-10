@@ -186,9 +186,22 @@ snake_case; JS internal kinds are camelCase per the conversion rule.
 | wire (canonical)         | JS internal        | Godot          | payload                              |
 |--------------------------|--------------------|----------------|--------------------------------------|
 | `card_zone_change`       | `card_zone_change` | `card_zone_change` | `{subject_iid, subject_card, controller, from_zone, to_zone, source_iid}` |
-| `attacks`                | `attacks`          | (pending)      | `{subject_iid}` (this attacks)       |
+| `attacks`                | `attacks`          | (pending)      | `{subject_iid, subject_card, controller, defender_key}` |
+| `combat_damage`          | `combat_damage`    | (pending)      | `{subject_iid, subject_card, controller, who, amount}` |
 | `life_changed`           | `life_changed`     | (pending)      | `{who, delta, source_iid}`            |
-| `spell_cast`             | `spell_cast`       | (pending)      | `{source_iid, controller_key}`       |
+| `spell_cast`             | `spell_cast`       | (pending)      | `{subject_iid, subject_card, controller}` |
+
+Zone tokens for `from_zone`/`to_zone` on `card_zone_change`: `hand`, `library`,
+`graveyard`, `exile`, `stack`, `battlefield` — plus the synthetic `none`, used
+as `from_zone` when a token is minted directly onto the battlefield (it came
+from no prior zone). `source_iid` names the card that *caused* the move (e.g.
+the token-maker), distinct from `subject_iid`; it feeds the `noSelfCascade`
+guard. (Audit A3-8: the `attacks` and `spell_cast` payload rows above were
+corrected to the emitted truth, and the `combat_damage` row added — the
+previously documented `source_iid`/`controller_key` spell_cast fields exist
+nowhere in either engine. The proto's `attacks` emit also still carries dead
+legacy `attacker`/`defender` fields with zero consumers; they are deliberately
+NOT part of this spec.)
 
 Both engines' trigger dispatch reads the canonical name. Adding a new
 event kind requires (a) firing it in both engines from the matching
@@ -196,14 +209,18 @@ state-change point and (b) updating this table.
 
 ### 3.4 Predicate ids
 
-Trigger conditions referenced by name in `triggers[].cond_id`. Each is a
-function `(state, source, event) → bool`. JS-side registry:
-`js/triggers.js::ATOMIC_PREDICATES`. Godot-side registry:
+Atomic predicates composed into trigger conditions. In the proto (post-E2
+migration) a trigger carries a **composable `condition` array** of
+`name(args)` strings (e.g. `["another_card", "card_moves(anywhere, battlefield)"]`),
+AND-ed together; the legacy single `triggers[].cond_id` reference is retired
+on the JS side. The Godot port still reads the legacy `cond_id` shape
+(DIVERGENCE E1/E2: GODOT pending). Each predicate is a function over the
+event `(ctx, args) → bool` (JS) / `(state, source, event) → bool` (Godot).
+JS-side registry: `js/triggers.js::ATOMIC_PREDICATES`. Godot-side registry:
 `engine/predicates/predicates.gd::_PRED_NAMES`.
 
-Canonical IDs are snake_case (matches JS source today; Godot reads them
-via wire as `cond_id` snake-case strings). Both engines validate that every ID a card references
-is registered at boot.
+Canonical IDs are snake_case. Both engines validate that every ID a card
+references is registered at boot.
 
 | id                                   | description                                                              | both? |
 |--------------------------------------|--------------------------------------------------------------------------|-------|
@@ -219,7 +236,7 @@ is registered at boot.
 | `affected_player_is`                 | The affected player is a specific player.                                 | JS    |
 | `is_life_gain`                       | Life delta is positive.                                                  | JS    |
 | `is_life_loss`                       | Life delta is negative.                                                  | JS    |
-| `lost_life_this_turn`                | Opponent has `lifeLostThisTurn > 0`.                                      | Godot |
+| `lost_life_this_turn`                | Opponent has `lifeLostThisTurn > 0`.                                      | both  |
 
 **Calling convention.** Predicates receive `(state, source, event)` and
 return bool. **Never reach into autoload state from inside a predicate

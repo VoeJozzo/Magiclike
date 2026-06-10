@@ -22,7 +22,7 @@ The caster must have priority. The sequence is:
 2. **Choose targets**, if the spell requires them. All chosen targets must be **legal** at the time of casting (see §703). If no legal targets exist, the spell cannot be cast.
 3. **Pay the cost**: tap lands and use mana abilities to produce the required mana. Mana abilities (lands tapping for mana) do not use the stack — they pay immediately.
 4. **Push onto stack**: the spell enters the stack as a stack entry. The card is moved out of the hand into a stack-zone buffer.
-5. **Caster retains priority** for any follow-up actions.
+5. **Priority passes to the opponent** — the caster does not retain priority (intentional simplification of MTG 117.1c; design ruling, PR #98, 2026-06-10). The opponent gets the first response window; the caster regains priority after the opponent passes. (See [[600-priority-and-the-stack|§603]]; the Godot port currently retains priority — `docs/DIVERGENCE.md` D0.)
 
 ## 703. Target legality
 - A target is **legal** if it matches the spell's `target_filter`:
