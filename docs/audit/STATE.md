@@ -4,7 +4,7 @@
 > reads the **Armed** line; the runner reads/writes the queue table. Contract:
 > [`docs/plans/plan-proto-audit.md`](../plans/plan-proto-audit.md).
 
-Armed: no
+Armed: yes
 
 ## Branch model (adaptation, Joe 2026-06-10)
 
@@ -84,4 +84,14 @@ no longer binds.
   `powershell.exe -NoProfile -ExecutionPolicy Bypass -File ...` (execution
   policy blocks `-File` otherwise); overnight git/node forms must be plain
   single commands (no `cd &&`, no `$()`/`;` chains, redirects only inside
-  allowed worktrees).
+  allowed worktrees). NOTE: despite the line above, the dry-run session
+  correctly held `Armed: no` — it could not bake the gh-bot invocation into
+  SKILL.md itself (permission-denied; skills are self-modification-protected).
+- 2026-06-10 ~08:15: **ARMED (supervised).** The gate-1 fix (canonical gh-bot
+  invocation) baked into SKILL.md by the supervised session (trunk commit
+  018f72e, merged to both audit branches). Arming judgment: gates 2/3/4
+  passed clean in the dry run; gate 1's only denial was the skill self-edit,
+  which is a one-time setup path, now done — the recurring loop contains no
+  skill writes. Joe additionally authorized DAYTIME autonomous queue work
+  (2026-06-10 morning): the supervised session drives chunks while the
+  mutation map finishes; scheduled boops resume 23:00.
