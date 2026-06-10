@@ -34,7 +34,7 @@ dry-run target and runs first; thereafter strict priority order (1 → 11).
 
 | # | Chunk | Tier | Status | Claimed (ISO) | Anchor SHA | Findings file |
 |---|-------|------|--------|---------------|------------|---------------|
-| 6 | Stickers pipeline (`stickers.js`) — DRY RUN | 1 | todo | — | — | `chunk-06-stickers.md` |
+| 6 | Stickers pipeline (`stickers.js`) — DRY RUN | 1 | in_progress | 2026-06-10T11:14:05Z | 86dc5b0 | `chunk-06-stickers.md` |
 | 1 | Turn machine / phases / mana / state (`engine.js` `step()` region) | 2 | todo | — | — | `chunk-01-turn-machine.md` |
 | 2 | Combat (attack/block/damage, combat keywords) | 2 | todo | — | — | `chunk-02-combat.md` |
 | 3 | Stack / priority / triggers (`triggers.js`, `trigger-generator.js`) | 2 | todo | — | — | `chunk-03-stack-triggers.md` |
@@ -70,3 +70,7 @@ no longer binds.
 - 2026-06-10 ~02:30: mutation first full run launched in background; pace
   slower than estimated (suite-level contention) → queue gated on map
   completion; tonight = dry run only.
+- 2026-06-10 07:14: chunk-6 DRY RUN claimed (anchor 86dc5b0 = workshop tip;
+  `origin/dev` 37c2eb2 already an ancestor, merge no-op). Mutation map still
+  in flight (4080/7592 @ 07:09) and covers only types.js — stickers.js absent,
+  so chunk-6 behavioral fixes demote to *stage* by default.
