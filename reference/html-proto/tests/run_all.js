@@ -171,6 +171,10 @@ const CATEGORY_A = [
   // Audit A1-10 — the cleanup discard grants no priority: tapLandForMana is
   // illegal/rejected mid-discard, the discard stays legal, taps resume after.
   'test_cleanup_no_mana_taps.js',
+  // Audit A2-3 — ghost attacker: leaving the battlefield removes a creature
+  // from combat (bounce + flash re-cast deals NO damage), while a killed
+  // blocker still leaves its attacker blocked (510.1c tombstone semantics).
+  'test_combat_ghost_attacker.js',
 ];
 
 const TESTS_DIR = __dirname;

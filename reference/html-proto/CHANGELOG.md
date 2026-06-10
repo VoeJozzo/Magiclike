@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.1.21`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.1.22`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -1472,6 +1472,24 @@ expectedActor/AI/render all carry their own cleanupDiscarding clauses and are
 untouched. New `test_cleanup_no_mana_taps.js` (10 assertions): tap illegal +
 rejected + un-enumerated mid-discard (5 red before the fix), discard still
 legal, taps resume after the discard completes. Suite 76 files / 1804 green,
+lint clean.
+
+v2.1.22: audit fix A2-3 (Joe-approved, PR #98 verdict 2026-06-10) — ghost
+attacker via bounce + re-cast is dead. Cast arrivals don't re-mint iids, and
+nothing pruned `G.attackers`/`G.blockers` on leave-play, so a declared
+attacker bounced in the block window and flash-re-cast re-matched its stale
+entry and dealt combat damage while sick/untapped/undeclared (§801/§901.1).
+New `removeFromCombat(iid)` (packet option A), called from the unified
+`emitLeavesBattlefield` funnel: prunes the iid from `G.attackers`, deletes
+block entries whose attacker left, and retires a leaving BLOCKER's key to a
+`'gone:<iid>'` tombstone — the entry survives so a blocked attacker STAYS
+blocked (MTG 509/510.1c, the engine's pre-existing dead-blocker behavior),
+but a re-cast blocker can't re-inherit the block. Also resolves A1-8's
+flag-hygiene residue for leave-play; control-change pruning (A2-5) lands
+next via the same helper. New `test_combat_ghost_attacker.js` (19
+assertions): the end-to-end ghost line through real actions (red before:
+life 20→18 from a never-re-declared sick attacker) + the 510.1c
+blocker-killed guard (green before AND after). Suite 77 files / 1823 green,
 lint clean.
 
 > **MUST UPDATE on every dev-branch push that touches code.** Bump `VERSION` in `js/main.js` AND the line above, in the same commit. GitHub Pages caches aggressively; the version string is the only reliable way to confirm a fresh build is live.
