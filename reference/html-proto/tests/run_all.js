@@ -189,6 +189,11 @@ const CATEGORY_A = [
   // Audit A3-12 — a mid-prompt trigger fizzle logs (sibling-path wording)
   // instead of evaporating wordlessly; happy path logs no fizzle.
   'test_trigger_prompt_fizzle_log.js',
+  // Audit A3-1 — resolution-time target re-validation (§1006.1/§704.1):
+  // hexproof gained in response fizzles the waiting trigger/spell (riders
+  // included), multi-target entries partial-fizzle onto remaining legal
+  // targets, happy path unchanged.
+  'test_resolution_revalidation.js',
 ];
 
 const TESTS_DIR = __dirname;
