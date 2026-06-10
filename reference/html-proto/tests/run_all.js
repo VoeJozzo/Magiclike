@@ -158,6 +158,11 @@ const CATEGORY_A = [
   // leave paths (death/bounce), controller + cross-lord gating, intrinsic
   // protection, multi-source survival, and the six-lord sweep.
   'test_lord_keyword_grants.js',
+  // Endomorph absorb: regression pin for the E1 subject_card payload rename
+  // (every absorb silently fizzled), keyword priority, +1/+1 fallback,
+  // defender exclusion, novelty diff, dead-Endomorph corpse path, opp-side
+  // no-persistence.
+  'test_endomorph_absorb.js',
 ];
 
 const TESTS_DIR = __dirname;

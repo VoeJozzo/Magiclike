@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.1.11`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.1.12`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -1260,6 +1260,21 @@ Modal-managed modals open/close + Escape semantics, and the Architect's
 Codex trigger-build clickthrough (3 conditions → 3 effects → keep/replace
 compare on redraw) — zero console errors; BACKLOG "Recently done" has the
 detail, incl. the SVG-pip item retired as already-shipped (v2.1.9/v2.1.10).
+
+v2.1.12: Endomorph absorb was DEAD — every kill fizzled ("no victim
+recorded") since the E1 zone-change migration renamed the dies-event payload
+to `subject_card` while `endomorph_absorb` kept reading the retired
+`event.card` (the exact bug already found and fixed in
+`bargain_sticker_other`; Endomorph was missed, and with no dedicated test +
+a benign fizzle log, selfplay never noticed). One-line fix (read
+`subject_card`), stale `emitLeavesBattlefield` doc-comment corrected, and a
+new `test_endomorph_absorb.js` (23 checks) pins the whole pipeline:
+regression pin on the payload, keyword-priority pick, +1/+1 fallback via
+modifiers, defender exclusion, novelty diff vs already-known keywords,
+dead-Endomorph graveyard-corpse path (mutual kill still mutates the corpse +
+persists the slot sticker), opp-side absorb without run persistence.
+Surfaced by a code-dig into how the absorb actually executes, requested on
+the BACKLOG endomorphAbsorb item. Suite 74 files / 1746 green, lint clean.
 
 > **MUST UPDATE on every dev-branch push that touches code.** Bump `VERSION` in `js/main.js` AND the line above, in the same commit. GitHub Pages caches aggressively; the version string is the only reliable way to confirm a fresh build is live.
 

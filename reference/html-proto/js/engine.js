@@ -1971,7 +1971,10 @@ const EFFECTS = {
     const f = findCard(target.iid);
     // Endomorph may be dead this step — mutate the graveyard corpse so reward is visible.
     const sourceCard = f ? f.card : null;
-    const victim = ctx.event && ctx.event.card ? ctx.event.card : null;
+    // Zone-change events carry the dying card as `subject_card` (NOT `card`) —
+    // same payload rename that broke bargain_sticker_other after the E1
+    // migration. Reading the dead `event.card` made EVERY absorb fizzle.
+    const victim = ctx.event && ctx.event.subject_card ? ctx.event.subject_card : null;
     if (!victim) {
       log(`${ctx.sourceName} absorb fizzles — no victim recorded.`, 'sp');
       return;
@@ -4581,8 +4584,10 @@ function leavesPlayPreservingBuffs(card) {
 // shuffleIntoLibrary. Lets cards like Archdemon of Bargains
 // use a single 'thisLeaves' trigger instead of needing one trigger per
 // removal type. Caller passes the card and its controller-at-leave-time;
-// downstream trigger handlers reading ctx.event.card see the card object
-// in the same state it left play (slotIdx intact, bargainsNum intact, etc).
+// downstream trigger handlers read the leaving card as ctx.event.subject_card
+// (NOT event.card — that legacy field is gone; reading it broke Archdemon's
+// bargain payout and Endomorph's absorb post-E1). The object arrives in the
+// same state it left play (slotIdx intact, bargainsNum intact, etc).
 //
 // For creatures that fire BOTH this AND cardDies (on death), the leaves
 // event emits FIRST (before resetInPlayState/dies-emit). Cards that want
