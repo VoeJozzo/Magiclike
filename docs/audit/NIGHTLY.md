@@ -32,6 +32,9 @@
 
 ## Done today (so far)
 
+- **Chunk 2 (combat):** 15 findings (2 P1: first-strike keyword-timing double-damage, trample-vs-marked-damage) + the A1-3 upgrade with an in-pool repro. Usage wall hit mid-verify and the resume recovery worked exactly as designed. 3 ship-class doc/comment fixes heading to the workshop.
+- **Mutation map COMPLETE:** overall 36%; ai/draft/run/picklog layers nearly untested (17/10/17/4%); triggers.js strong (76%). All chunks unlocked.
+
 - **Phase 0 complete** + campaign ARMED (after dry-run gate fix; see STATE log).
 - **Chunk 6 (dry run):** 7 findings; 1 shipped docs-only (PR #97, merged);
   1 decision packet for Joe (A6-1).
