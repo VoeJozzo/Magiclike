@@ -1,5 +1,4 @@
 {
-  "_comment": "Audit-campaign worktree permission allowlist (plan-proto-audit.md Phase 0 step 5). INERT TEMPLATE — takes effect only when a human copies it to <worktree>/.claude/settings.local.json. Grants the headless overnight runner: auto-accepted file edits in the campaign worktrees, plus git/node/npm/gh/powershell and read-only shell utilities without prompts. The Claude Code permission guard requires the human to apply this file; Claude may not.",
   "permissions": {
     "defaultMode": "acceptEdits",
     "additionalDirectories": [
