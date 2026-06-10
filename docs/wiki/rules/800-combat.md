@@ -37,13 +37,13 @@ Within each pass, each attacker assigns damage as follows:
 
 - **Unblocked attacker**: assigns its full power as damage to the defending player.
 - **Blocked attacker**: assigns its damage across all assigned blockers in order, applying enough damage to be lethal to each blocker before moving on to the next.
-- **Trample**: if the attacker has [[900-keywords|trample]], excess damage beyond what was assigned to blockers spills to the defending player. With trample, the attacker need only assign each blocker's *remaining toughness* worth of damage (not more) before considering the blocker satisfied; if deathtouch is also present, "enough to be lethal" drops to 1 damage per blocker.
+- **Trample**: if the attacker has [[900-keywords|trample]], excess damage beyond what was assigned to blockers spills to the defending player. With trample, the attacker need only assign each blocker's *remaining toughness* worth of damage (not more) before considering the blocker satisfied; if deathtouch is also present, "enough to be lethal" drops to 1 damage per blocker — **indestructible blockers included** (design ruling, PR #98, 2026-06-10; audit A2-7).
 
 Each blocker assigns its full power to the attacker it is blocking.
 
-When a creature is dealt damage by a source with [[900-keywords|deathtouch]], that creature is **marked as lethal** for the next state-based-action sweep regardless of damage amount. With deathtouch, the "lethal damage" threshold for damage-assignment purposes drops to 1.
+When a creature is dealt damage by a source with [[900-keywords|deathtouch]], that creature is **marked as lethal** for the next state-based-action sweep regardless of damage amount. With deathtouch, the "lethal damage" threshold for damage-assignment purposes drops to 1 — for **every** blocker, indestructible included: the indestructible creature is lethal-marked but survives (design ruling, PR #98, 2026-06-10).
 
-When a creature deals damage and its source has [[900-keywords|lifelink]], the source's controller gains life equal to the damage dealt.
+When a creature deals damage and its source has [[900-keywords|lifelink]], the source's controller gains life equal to the damage dealt. In combat, a lifelink creature that deals damage in a strike step gains its **full power, even when part of that damage is overkill** that lands nowhere — all blockers satisfied, no trample (design ruling, PR #98, 2026-06-10).
 
 [[900-keywords|Indestructible]] creatures do not die from damage (lethal-marked or otherwise). They die only when their toughness becomes 0 or less.
 

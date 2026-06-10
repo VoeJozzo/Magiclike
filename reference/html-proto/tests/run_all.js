@@ -186,6 +186,10 @@ const CATEGORY_A = [
   // Audit A2-4 — declareAttackers legality rejects duplicate iids (mirrors
   // declareBlockers' usedBlockers Set); normal multi-attacker unaffected.
   'test_combat_duplicate_attackers.js',
+  // Audit A2-7 (design ruling, PR #98) — deathtouch dose is 1 vs every
+  // blocker incl. indestructible (marked, survives); lifelink always gains
+  // full power even when the damage is overkill.
+  'test_combat_deathtouch_lifelink.js',
   // Audit A1-9 — DRAW-step log truthfulness: "X draws." only logs when a
   // card actually moved (no phantom-draw line on deck-out / Phylactery rip).
   'test_draw_log_truthfulness.js',
