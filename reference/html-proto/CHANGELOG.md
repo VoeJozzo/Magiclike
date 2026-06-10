@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.1.13`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.1.14`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -1308,6 +1308,16 @@ sweep; chip + destroy finish via moveToGraveyard; untouched-bystander
 negative) — pinned against death-pipeline reordering, not just current
 behavior. Suite 74 files / 1767 green, lint clean, selfplay 200/200 clean
 (0 crashes, 0 invariant violations).
+
+v2.1.14: the "dealt damage by this dies" trigger preamble now states its
+turn-scoping — "Whenever a creature dealt damage by this card this turn
+dies," (canonical Sengir wording; user-confirmed the mechanic is meant to
+be turn-scoped — `damagedBySources` clears in the EOT cleanup sweep, so the
+old text over-promised). "this card" rather than the preamble family's bare
+"this" to avoid the "by this this turn" stutter. Filter-parity fix in the
+v2.0.7 tradition: the text now renders the restriction the engine enforces.
+Wording pinned in `test_endomorph_absorb.js` (45 checks). Suite 74 files /
+1768 green, lint clean.
 
 > **MUST UPDATE on every dev-branch push that touches code.** Bump `VERSION` in `js/main.js` AND the line above, in the same commit. GitHub Pages caches aggressively; the version string is the only reliable way to confirm a fresh build is live.
 

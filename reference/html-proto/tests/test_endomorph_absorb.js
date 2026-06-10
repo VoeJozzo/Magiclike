@@ -67,7 +67,17 @@ function killAttributedTo(G, victim, byCard) {
 }
 const logHas = (G, re) => (G.log || []).some(l => re.test(l.msg || l));
 
-console.log('=== regression pin: a real kill ABSORBS (event payload reaches the handler) ===');
+console.log('=== oracle text: the trigger states its turn-scoping ===');
+(() => {
+  // The damager memory (damagedBySources) clears at EOT, so the kill credit
+  // is this-turn only — the generated text must say so (filter parity:
+  // the text renders every restriction the engine enforces).
+  const endo = ENGINE.makeCard('endomorph', [], 0);
+  check('preamble reads "dealt damage by this card this turn dies"',
+    /dealt damage by this card this turn dies/.test(endo.text), endo.text);
+})();
+
+console.log('\n=== regression pin: a real kill ABSORBS (event payload reaches the handler) ===');
 (() => {
   const G = freshRun();
   const endo = place(G, 'endomorph', 'you', 0);
