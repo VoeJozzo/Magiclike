@@ -70,8 +70,10 @@ Dry run section).
    anomaly becomes a candidate finding routed to whichever chunk owns that
    subsystem (note it in STATE.md's Log if that chunk is already done).
 5. **Read Joe's decision inbox** — comments on the findings PR (#98):
-   `… gh-bot.ps1 pr view 98 --json comments --jq '.comments[] | [.author.login, .body] | @tsv'`
-   (canonical invocation). Protocol (Joe-requested, 2026-06-10): **one bot
+   `… gh-bot.ps1 pr view 98 --json comments` (canonical invocation; do NOT
+   pass complex `--jq` filters — quoting mangles through the PowerShell
+   arg layer and gh fails with a misleading auth error; parse the JSON
+   locally instead). Protocol (Joe-requested, 2026-06-10): **one bot
    comment per open decision item** (🗳️-prefixed, "A<chunk>-<n> — title");
    Joe replies under an item's comment with his verdict (`go` / `option B` /
    `hold — question`). Only `VoeJozzo`-authored comments are decisions;
