@@ -36,7 +36,7 @@ The bots exist purely for **attribution** (tracking which AI did what). They're 
 
 ## Push / PR flow
 
-- **Push transport:** bots push *as themselves* using their keyring token (the delegation skill embeds it in the push URL), so the `require_last_push_approval` rule lets the owner approve. A promptless upgrade — the **gh credential-helper** (`git config credential.https://github.com.helper '!gh auth git-credential'`, username-pinned per worktree, bypassing Git Credential Manager) — is **not yet wired**; all four accounts are keyring-ready for it, but it's only worth it if GCM starts prompting.
+- **Push transport:** bots push *as themselves* using their keyring token (the delegation skill embeds it in the push URL), so the `require_last_push_approval` rule lets the owner approve. A promptless upgrade — the **gh credential-helper** (`git config credential.https://github.com.helper '!gh auth git-credential'`, username-pinned per worktree, bypassing Git Credential Manager) — is **not yet wired**; all four accounts are keyring-ready for it, but it's only worth it if GCM starts prompting. **Update 2026-06-10: GCM *did* prompt** (headless worktree push; the dialog self-cancelled and the push died). The trigger condition has fired — wire the helper (worktree-scoped, username-pinned) in any context that needs promptless pushes; the audit campaign's Phase 0 (`docs/plans/plan-proto-audit.md`) does so for the audit worktree. Token-in-URL remains the fallback for one-off interactive pushes only — its command shape can't pass a permission allowlist, so it is **unusable in autonomous mode**.
 - **Open a PR as a bot** (no global account switch):
   ```bash
   GH_TOKEN="$(gh auth token --user <bot>)" gh pr create --base dev --title "…" --body "…"
