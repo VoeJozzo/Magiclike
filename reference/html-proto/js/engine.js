@@ -78,6 +78,19 @@ function isSpliceableStaple(tplId) {
   if (tpl.effects && tpl.effects.modes) return false;
   return true;
 }
+// The in-game staple chain on a card INSTANCE. In-game cards carry it at
+// card.stapledFrom.stapledTpls; bare card.stapledTpls is slot-level and
+// normally empty on instances — read whichever is populated. The ONE
+// definition, shared by the target filters (matchFilter / matchFilterSpell)
+// and the apply_in_game_splice handler, so a wrong-field read can't silently
+// miss a prior chain (the bug class the handler's field-name note warns about).
+function stapleChainOf(card) {
+  if (card && card.stapledFrom && Array.isArray(card.stapledFrom.stapledTpls)) {
+    return card.stapledFrom.stapledTpls;
+  }
+  return (card && Array.isArray(card.stapledTpls)) ? card.stapledTpls : [];
+}
+
 // Splice compatibility:
 //   Base\Staple  Creature  Spell  Land
 //   Creature     ok(merge) ETB    tap-ability
@@ -2673,12 +2686,7 @@ const EFFECTS = {
     if (!isSpliceableBase(baseCard.tplId)) {
       return fizzle(`${baseCard.name} can't be a splice base.`);
     }
-    // In-game staple chain lives at card.stapledFrom.stapledTpls (NOT card.stapledTpls,
-    // which is slot-level). Reading the wrong field silently misses prior chains.
-    const stapleStaples = (stapleCard.stapledFrom && Array.isArray(stapleCard.stapledFrom.stapledTpls))
-      ? stapleCard.stapledFrom.stapledTpls
-      : (Array.isArray(stapleCard.stapledTpls) ? stapleCard.stapledTpls : []);
-    if (stapleStaples.length > 0) {
+    if (stapleChainOf(stapleCard).length > 0) {
       return fizzle(`${stapleCard.name} is already stapled.`);
     }
     if (!isCompatibleStaplePair(baseCard.tplId, stapleCard.tplId)) {
@@ -4078,7 +4086,13 @@ function probeTargetsForObject(obj, who) {
 function matchFilterSpell(card, filter) {
   if (!filter) return true;
   if (filter.spliceable_base && !isSpliceableBase(card.tplId)) return false;
-  if (filter.spliceable_staple && !isSpliceableStaple(card.tplId)) return false;
+  // Same staple eligibility as matchFilter's permanent branch: template
+  // spliceable AND no prior chain (stapleChainOf). Before this, a stapled
+  // spell on the STACK passed legality and only fizzled at resolution.
+  if (filter.spliceable_staple
+      && (!isSpliceableStaple(card.tplId) || stapleChainOf(card).length > 0)) {
+    return false;
+  }
   if (filter.not_token && card.isToken) return false;
   return true;
 }
@@ -4144,14 +4158,9 @@ function matchFilter(card, filter, controller, who) {
   // the helper.
   if (filter.spliceable_staple) {
     if (!isSpliceableStaple(card.tplId)) return false;
-    // "Already stapled" check — see the field-name note in apply_in_game_splice.
-    // In-game cards carry the chain at card.stapledFrom.stapledTpls; the
-    // direct card.stapledTpls field is empty (it's a slot-level concept).
-    // Reject if either populated form indicates a prior chain.
-    const chain = (card.stapledFrom && Array.isArray(card.stapledFrom.stapledTpls))
-      ? card.stapledFrom.stapledTpls
-      : (Array.isArray(card.stapledTpls) ? card.stapledTpls : []);
-    if (chain.length > 0) return false;
+    // "Already stapled" check — stapleChainOf reads whichever chain field is
+    // populated (the one shared definition; see its header).
+    if (stapleChainOf(card).length > 0) return false;
   }
   return true;
 }

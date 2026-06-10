@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.1.11`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.1.12`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -1286,3 +1286,37 @@ rock->classical building, sky_champion wing->dove. Tests: stapler fizzle-
 refund case (self-staple passes legality - no distinct_targets - and must
 refund), AI-casts-from-exile case, typeline expectations updated to the new
 canonical lines. 1700 green, 300-game selfplay clean, lint clean.
+
+
+v2.1.12: Stapler pick-time validation + shared staple-chain reader + doc sync
+(the three review follow-ups surfaced in the v2.1.11 batch). (1) New
+stapleChainOf(card) — the ONE definition of "this card's in-game staple chain"
+(stapledFrom.stapledTpls with the slot-level stapledTpls fallback), replacing
+the three hand-copied reads in matchFilter, apply_in_game_splice, and the new
+site; matchFilterSpell now applies it, so an already-stapled spell ON THE
+STACK is rejected at targeting/legality instead of fizzling at resolution
+(the latent gap: the permanent branch checked the chain, the stack branch
+didn't). (2) Stapler's ability declares distinct_targets — self-staple is now
+illegal at activation (tsIsLegalSet), excluded from AI enumeration
+(tsEnumerate), and greyed out in the UI pick flow. The render-side highlight
+plumbing is generalized: new pendingDistinctObject(pt) resolves the
+flag-bearing object for casts AND abilities (was cast-only), and the
+battlefield candidate kind mirrors clickBattlefield's pick descriptor
+(permanent for perm/perm-or-spell slots) so sameTarget compares like with
+like. BONUS unearthed while wiring it: the stack-banner's splice targeting
+was DEAD post-target_slots-refactor — isCounterTarget scanned per-effect
+.target fields, which apply_in_game_splice no longer carries, so stack spells
+never lit and could not be clicked for splicing. The banner now derives the
+CURRENT slot's spec via pendingTargetEffect (top-level target / target_slots /
+per-effect, one resolver), and each stack pill lights only if it's a REAL
+legal pick (getValidTargets slot filter + tsExcludePicked distinct rule) — a
+lit pill can't be a dead click. (3) Doc sync: CLAUDE.md module table gains the
+missing keyword-icons.js and types.js rows, "fourteen script tags" corrected
+to seventeen, load order updated. With pick-time validation closing the known
+gaps, the v2.1.11 fizzle-refund stays as defense-in-depth — the test now
+exercises it by invoking the handler directly with a paid-cost ctx, plus new
+cases pinning self-staple-illegal-at-activation and stapled-stack-spell-
+rejected-at-targeting. 1704 green, 300-game selfplay clean, lint clean.
+Browser-verified (ability pick lights spliceable permanent + stack spell,
+splice hint shows, first pick greys out for the second slot, no console
+errors).
