@@ -133,7 +133,7 @@ Joe has authorized Claude to execute Phase 0 **autonomously** when initiated (20
 ## Status
 
 - [ ] Phase 0 setup
-- [ ] Dry run (chunk 7)
+- [ ] Dry run (chunk 6, stickers)
 - [ ] Queue execution (tracked live in `docs/audit/STATE.md` once it exists)
 - [ ] Triage
 - [ ] Remediation (separate planning at triage)
