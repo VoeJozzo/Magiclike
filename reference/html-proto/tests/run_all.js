@@ -168,6 +168,9 @@ const CATEGORY_A = [
   // Audit A1-3 — SBA zero-toughness death: indestructible creatures die at
   // t <= 0 (704.5f), while the damage/deathtouch exemptions stay intact.
   'test_sba_zero_toughness.js',
+  // Audit A1-10 — the cleanup discard grants no priority: tapLandForMana is
+  // illegal/rejected mid-discard, the discard stays legal, taps resume after.
+  'test_cleanup_no_mana_taps.js',
 ];
 
 const TESTS_DIR = __dirname;
