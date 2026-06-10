@@ -38,7 +38,7 @@ dry-run target and runs first; thereafter strict priority order (1 → 11).
 | 1 | Turn machine / phases / mana / state (`engine.js` `step()` region) | 2 | done | 2026-06-10T11:56:28Z | 1a92c42 | [`chunk-01-turn-machine.md`](chunk-01-turn-machine.md) |
 | 2 | Combat (attack/block/damage, combat keywords) | 2 | done | 2026-06-10T13:54:35Z | 6327c73 | [`chunk-02-combat.md`](chunk-02-combat.md) |
 | 3 | Stack / priority / triggers (`triggers.js`, `trigger-generator.js`) | 2 | done | 2026-06-10T16:37:17Z | e6715a9 | [`chunk-03-stack-triggers.md`](chunk-03-stack-triggers.md) |
-| 4 | Effects dispatch + targeting legality (~25 effect kinds) | 2 | todo | — | — | `chunk-04-effects-targeting.md` |
+| 4 | Effects dispatch + targeting legality (~25 effect kinds) | 2 | in_progress | 2026-06-10T21:53:55Z | 4d739ad | `chunk-04-effects-targeting.md` |
 | 5 | Synthesis / staple (`engine.js` splice region) | 1 | todo | — | — | `chunk-05-synthesis.md` |
 | 7 | AI (`ai.js`) | 1 | todo | — | — | `chunk-07-ai.md` |
 | 8 | Draft (`draft.js`) | 1 | todo | — | — | `chunk-08-draft.md` |
@@ -93,3 +93,4 @@ Status: **COMPLETE** (2026-06-10 ~11:20, 224 min, 7,592 mutants). Overall score 
 - 2026-06-10 ~12:40: chunk-2 ship PR #101 merged (comment+docs only, no bump). Chunk 3 claimed @ e6715a9 (dev unchanged).
 - 2026-06-10 ~15:30: chunk 3 DONE. 59 agents; 16 findings (1 P1 / 8 P2 / 7 P3; 12 stage / 3 ship / 1 park) + A1-1 upgrade (consequence map). ZERO refutations (calibration anomaly, recorded) -> hostile self-QA re-attacked the weak items: PASS, and it CORRECTED A3-1 evidence (reachability mechanism was order-blocked; replaced with a stronger all-real-cards staple repro). Five leads adjudicated clean incl. CLEANUP-drain timing (closes chunk-1 lead) and the generated-trigger vocabulary. JOE VERDICT ROUND 1 processed: A1-1/A1-7/A1-11 intentional (docs remediation), A1-3/A1-10/A2-3/A2-5 GO (fix agent building), A6-1/A1-9 answered. Drafting-agent timeout (~72min, no file) on first synthesis attempt — retried with efficiency constraints, succeeded.
 - 2026-06-10 ~16:30: Joe-approved fixes LANDED — PRs #102 (A1-3 indestructible t<=0, v2.1.20), #103 (A1-10 cleanup tap, v2.1.21), #104 (A2-3 ghost attacker w/ tombstone prune, v2.1.22), #105 (A2-5 change_control combat removal + canon §801 para + DIVERGENCE C7, v2.1.23). All red->green, suite 1786->1842 across 4 new test files, zero surprise reds. Chunk-3 ship + verdict-docs PR dispatched.
+- 2026-06-10 ~17:55: PR #106 merged (chunk-3 ships + verdict docs — rulebook now documents intentional priority design). Chunk 4 claimed @ 4d739ad (dev unchanged).
