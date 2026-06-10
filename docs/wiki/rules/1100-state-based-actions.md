@@ -21,7 +21,7 @@ On every sweep, the engine checks:
 ## 1102. SBA sweep order
 A sweep is a single pass: identify all SBA-affected objects, then apply them simultaneously. After applying, the sweep **repeats** until no further changes occur (in case a death triggers another death via chain effects).
 
-A safety counter caps the sweep at 20 iterations to prevent runaway loops. This cap is a safety net for correctness bugs; under correct rules it should never be hit.
+**Godot only:** a safety counter caps the sweep at 20 iterations to prevent runaway loops (`engine/engine.gd`, `_run_sbas`). This cap is a safety net for correctness bugs; under correct rules it should never be hit. **The html-proto has no cap** — its sweep (`checkDeaths`) is an uncapped loop whose termination is guaranteed structurally: dies/leaves triggers are queued into `pendingTriggers` rather than resolving inline, so each iteration can only remove permanents and the battlefield strictly shrinks (O(creatures) bound). See `docs/DIVERGENCE.md` F4 note.
 
 ## 1103. When SBAs run
 SBAs sweep:
