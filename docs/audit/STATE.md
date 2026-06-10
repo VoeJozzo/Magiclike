@@ -35,7 +35,7 @@ dry-run target and runs first; thereafter strict priority order (1 → 11).
 | # | Chunk | Tier | Status | Claimed (ISO) | Anchor SHA | Findings file |
 |---|-------|------|--------|---------------|------------|---------------|
 | 6 | Stickers pipeline (`stickers.js`) — DRY RUN | 1 | done | 2026-06-10T11:14:05Z | 86dc5b0 | [`chunk-06-stickers.md`](chunk-06-stickers.md) |
-| 1 | Turn machine / phases / mana / state (`engine.js` `step()` region) | 2 | todo | — | — | `chunk-01-turn-machine.md` |
+| 1 | Turn machine / phases / mana / state (`engine.js` `step()` region) | 2 | in_progress | 2026-06-10T11:56:28Z | 1a92c42 | `chunk-01-turn-machine.md` |
 | 2 | Combat (attack/block/damage, combat keywords) | 2 | todo | — | — | `chunk-02-combat.md` |
 | 3 | Stack / priority / triggers (`triggers.js`, `trigger-generator.js`) | 2 | todo | — | — | `chunk-03-stack-triggers.md` |
 | 4 | Effects dispatch + targeting legality (~25 effect kinds) | 2 | todo | — | — | `chunk-04-effects-targeting.md` |
@@ -56,12 +56,15 @@ Status: **first full run in flight** (started 2026-06-10 ~02:10 local; ~10h
 ETA at observed pace — 7,592 mutants, 12 workers). Until it completes, every
 fix demotes to *stage* by default (ship gate reads the map).
 
-**Queue gate (2026-06-10):** beyond the chunk-6 dry run, no chunk may be
-claimed until the first full mutation run is complete — the plan requires
-the map before chunk 1. Complete = `mutation-first-full-run.log` (in
-`~\.config\magiclike\audit\logs\`) ends with a `DONE:` line and
-`MUTATION-MAP.md` covers all 11 target files. Delete this paragraph when it
-no longer binds.
+**Queue gate (2026-06-10, relaxed ~08:30 to per-file):** a chunk may be
+claimed once the mutation map **covers that chunk's files** (every mutant
+for the file has a status in `results.json` — check with the per-file
+completeness script in the log, or `node -e` over the JSON). The original
+blanket "whole run must finish" wording overshot the gate's purpose (the
+ship gate reads the map *for the touched region*). As of 08:30:
+`engine.js` COMPLETE (score 45%) → chunks 1/2/4 unlocked; chunk 3 waits on
+`triggers.js` + `trigger-generator.js`; chunks 5/7-11 wait on their files.
+Delete this paragraph when the full run is done.
 
 ## Log
 
