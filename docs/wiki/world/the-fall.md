@@ -15,6 +15,16 @@ updated: 2026-06-09
 
 And "disarray" implies a former *array* — which is the next section. Much of the violence is men fighting over who inherits the wreckage.
 
+## One war, the way "the Huns" were one thing *(authorial + adopted, 2026-06-10)*
+
+The disarray is not just weather — the present sits inside *a* war:
+
+> "I do kind of get the feel that right now we're in the middle of *a* war. Like maybe it's actually a general period of unrest or whatever, but there's a single-ish conflict or type of conflict going on. Like 'the huns' or 'the fall of the roman empire' are conceived of as one event, even though it's more complicated?" — Joe
+
+Adopted with that exact model: **singular in conception, plural in detail.** "The Huns" and "the fall of Rome" are each conceived of as one event, and each dissolves into many under scrutiny. So here: people live inside *the war*, definite article — they can refer to it, date their griefs by it ("before the war," "since the war") — but nobody can draw its borders, name its first battle, or say whether the siege two valleys over is the same war or a different one. A soldier knows *his* war; the singular is something everyone asserts and no one can verify. This is the §narrator epistemology in the present tense, and it pairs with §rungs-not-dates: the war is a rung everyone agrees they're standing on, not an event with edges.
+
+Whether the war ever gets a *name* stays under [[names-ledger]] restraint — at most a tier-3 historians' coinage, applied later by people who weren't there. A card never needs it: what a card shows is mud, frost, a bell, a breach ([[tone]]).
+
 ## Something fell *(authorial — what, exactly, deliberately unknown even to the creators)*
 
 > "There was probably the fall of *something*. An empire, a religion — I don't think we know what yet. There is a past full of grand marble buildings. The present takes place in royal halls — grand with tapestry, to be sure, but that tapestry hangs over rough-hewn stone. Emperors have fallen to kings, kings will fall to warlords, and nature bides its time, waiting for its turn after the warlords." — Joe

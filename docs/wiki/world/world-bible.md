@@ -49,7 +49,7 @@ Every claim in this shard carries one of these (explicitly or by section):
 
 1. ~~How is magic *shown*?~~ **Settled (2026-06-09):** high-fantasy in event-density, low-fantasy in epistemology — magic works; nobody has a theory. Full of magic the way medieval England was. → [[magic]]
 2. ~~How literal is the thread model?~~ **Settled (2026-06-09):** everyone has seen it once, and nobody believes it. → [[threads]]
-3. **The war** — one long war or many? Named or never named? (Lean: small windows don't need the war's name. Its *shape* is now established — disarray, man against man → [[the-fall]].)
+3. ~~The war — one long war or many?~~ **Settled (2026-06-10):** *a* war — singular in conception, plural in detail ("the Huns" model); never named, or at most a later historians' coinage. → [[the-fall]] §One war
 3a. ~~When did the library fall?~~ **Settled (2026-06-09) by principle, not by date:** the past is known in rungs, not dates — the library fell on a lower rung than the marble, and the bible never fixes when. → [[the-fall]] §Rungs, not dates
 4. **The divine** — unresolved on purpose, and the unresolvedness is canon. Rule refined: depiction allowed, adjudication forbidden — cards may testify; the set never returns a verdict. → [[the-divine]]
 5. **Elystra / the player** — is a run one of her lives? Proposed, unreviewed. → [[threads]]

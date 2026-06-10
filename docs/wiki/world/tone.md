@@ -29,7 +29,7 @@ There is no Dark Lord in this world and no evil faction; the disarray has a *sha
 
 *Observed:* the war's everyman is **"a soldier in dented steel plate armor"** — that exact phrase recurs across the prompt corpus like a ballad refrain (Doom Blade's victim, Dread Wraith's prey, Dawn Angel's patient, Final Strike's kneeler, Carrion Feeder's meal, Otherworldly Journey's sleeper). The armor is always *dented*, never gleaming. Keep him. He is everyone.
 
-*Open:* whether the war is one named thing or the world's permanent weather. Lean: small windows never need the war's name — what a card shows is mud, frost, a bell, a breach. (See [[names-ledger]] on naming restraint generally.)
+*Settled (2026-06-10):* it is *a* war — singular in conception, plural in detail, the way "the Huns" are conceived of as one event. Full treatment: [[the-fall]] §One war. Unchanged either way: small windows never need the war's name — what a card shows is mud, frost, a bell, a breach. (See [[names-ledger]] on naming restraint generally.)
 
 ## Magic is a verb *(authorial — tension resolved 2026-06-09)*
 
