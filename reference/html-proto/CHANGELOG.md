@@ -1423,6 +1423,19 @@ added there too. New denylist-probe guard in test_distinct_targets.js
 warnings; literal-initialized damage keeps its runtime init). Suite 74
 files / 1785 green.
 
+v2.1.18: review-of-the-review — one more denylist key: `stickerTypes`
+(PR #93's gold-type-tag display metadata). It slipped v2.1.17's sweep
+because that sweep's criterion was "assigned outside makeCard," and
+stickerTypes is written DURING makeCard — but additively
+(`recordStickerType` never resets the array), so a template-declared value
+would deep-copy through and paint bogus gold type tags rather than being
+rebuilt away. The denylist comment now states the sharper criterion: "not
+unconditionally rebuilt at instantiation." Probe guard extended (synthetic
+template injects stickerTypes → warned + ignored). The rest of the
+assignment-sweep came back clean: `deckColors` is built field-by-field on a
+synthetic view (uninjectable), `target_slot`/`tplId` are effect-level/
+loader-handled. Suite 74 files / 1786 green, lint clean.
+
 > **MUST UPDATE on every dev-branch push that touches code.** Bump `VERSION` in `js/main.js` AND the line above, in the same commit. GitHub Pages caches aggressively; the version string is the only reliable way to confirm a fresh build is live.
 
 Always work on `dev` for html-proto changes.

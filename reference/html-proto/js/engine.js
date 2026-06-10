@@ -660,6 +660,11 @@ const MAKECARD_INSTANCE_KEYS = new Set([
   // slot-derived charge count, etc.
   'tempControlUntilEot', 'copyOf', 'copySourceIid', 'bargainsNum',
   'chargesLeft', '_builtThisGame',
+  // Assigned DURING makeCard but additively (recordStickerType never resets
+  // the array), so a template-declared value wouldn't be rebuilt away — the
+  // criterion for this list is "not unconditionally rebuilt at
+  // instantiation," not just "assigned outside makeCard."
+  'stickerTypes',
 ]);
 
 function makeCard(tplId, stickers, slotIdx, empowerRolls, permaBuffs, bonusTrigger, stapledTpls, subtypeRolls) {

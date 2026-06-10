@@ -288,11 +288,15 @@ console.log('\n=== denylist guard: a template CANNOT inject runtime-only fields 
     power: 1, toughness: 1,
     copyOf: 'grizzly_bears', copySourceIid: 123, tempControlUntilEot: true,
     bargainsNum: 7, chargesLeft: 9, _builtThisGame: true, damage: 5,
+    stickerTypes: ['Zombie'],   // additive recorder — injection wouldn't be rebuilt away
   };
   try {
     const made = ENGINE.makeCard('__denylist_probe__');
     const RUNTIME_KEYS = ['copyOf', 'copySourceIid', 'tempControlUntilEot',
       'bargainsNum', 'chargesLeft', '_builtThisGame'];
+    check('stickerTypes injection ignored (additive recorder, never rebuilt away)',
+      !Array.isArray(made.stickerTypes) || !made.stickerTypes.includes('Zombie'),
+      JSON.stringify(made.stickerTypes));
     const leaked = RUNTIME_KEYS.filter(k => made[k] === CARDS.__denylist_probe__[k]);
     check('runtime-only template fields are ignored, not copied',
       leaked.length === 0, leaked.length ? 'leaked: ' + leaked.join(', ') : 'all ignored');
