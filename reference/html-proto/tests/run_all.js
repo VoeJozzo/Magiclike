@@ -179,6 +179,10 @@ const CATEGORY_A = [
   // a stolen attacker stops dealing damage (was: damaged its own new
   // controller), can't block itself; a stolen blocker stops trading damage.
   'test_combat_change_control.js',
+  // Audit A2-2 — trample vs a lethalNeeded==0 blocker: a fully-marked
+  // indestructible counts as satisfied (full carryover spills, no dump),
+  // while partial marking still respects the boundary.
+  'test_combat_trample_lethal_zero.js',
   // Audit A1-9 — DRAW-step log truthfulness: "X draws." only logs when a
   // card actually moved (no phantom-draw line on deck-out / Phylactery rip).
   'test_draw_log_truthfulness.js',

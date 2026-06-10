@@ -778,11 +778,15 @@ function simulateCombat(state, attackerWho, attackerIids, blockMap) {
         const lethalNeeded = (atkDeathtouch && !indestructible)
           ? Math.min(1, Math.max(0, bTou - wBlk.damage))
           : Math.max(0, bTou - wBlk.damage);
-        if (atkDeals && remaining >= lethalNeeded && lethalNeeded > 0) {
-          wBlk.damage += lethalNeeded;
-          if (atkDeathtouch && !indestructible) wBlk.dealtDeathtouch = true;
-          if (atk.keywords.includes('lifelink')) attackerLifeGain += lethalNeeded;
-          remaining -= lethalNeeded;
+        // A2-2 (engine lockstep): lethalNeeded 0 ⇒ already satisfied — no
+        // damage assigned, trample carryover not suppressed.
+        if (atkDeals && remaining >= lethalNeeded) {
+          if (lethalNeeded > 0) {
+            wBlk.damage += lethalNeeded;
+            if (atkDeathtouch && !indestructible) wBlk.dealtDeathtouch = true;
+            if (atk.keywords.includes('lifelink')) attackerLifeGain += lethalNeeded;
+            remaining -= lethalNeeded;
+          }
         } else {
           unsatisfied.push(wBlk);
         }

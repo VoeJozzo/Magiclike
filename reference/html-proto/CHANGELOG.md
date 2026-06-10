@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.1.28`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.1.29`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -1590,6 +1590,26 @@ grant vs a waiting Flame Wisp trigger), multi-target partial fizzle, the
 spell-side whole-fizzle + rider skip, and the unchanged happy path.
 Predicted test impact per the packet was none — confirmed: zero existing
 assertions flipped. Suite 82 files / 1889 green, lint clean.
+
+v2.1.29: audit fix A2-2 (Joe-approved: "110% authorized", PR #98 round 3,
+2026-06-10) — trample carryover vs a blocker that needs 0 more damage. A
+LIVING blocker can have `lethalNeeded === 0` (a fully-marked indestructible
+— F2 retains marked damage), and the satisfied branch required
+`lethalNeeded > 0`, so the zero-need blocker was classed UNSATISFIED: all
+trample carryover was suppressed AND the attacker's entire remainder was
+dumped onto the creature that needed nothing (a 6/6 trampler vs a
+fully-marked Iron Statue hit the defender for 0 instead of 6). Per §803,
+"needs zero more" counts as satisfied: `remaining >= lethalNeeded` now
+decides the branch and the `> 0` guard moved inside it (keeping its
+legitimate job: no 0-damage recordDamage staking a false kill claim).
+`ai.js` simulateCombat carried the identical structure and got the identical
+restructure (engine/AI lockstep). New
+tests/test_combat_trample_lethal_zero.js (16 assertions, red→green: 3 red
+pre-fix) pins the chunk-2 self-QA scenario (pre-marked 5/5 statue vs 6/6
+trampler → defender takes 6), the partial-marking boundary control
+(pre-mark 3 → assign 2, spill 4), and the no-trample wasted-leftover guard.
+Predicted test impact per the packet was none — confirmed: zero existing
+assertions flipped. Suite 83 files / 1905 green, lint clean.
 > **MUST UPDATE on every dev-branch push that touches code.** Bump `VERSION` in `js/main.js` AND the line above, in the same commit. GitHub Pages caches aggressively; the version string is the only reliable way to confirm a fresh build is live.
 
 Always work on `dev` for html-proto changes.
