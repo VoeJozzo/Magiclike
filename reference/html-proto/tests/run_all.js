@@ -183,6 +183,9 @@ const CATEGORY_A = [
   // indestructible counts as satisfied (full carryover spills, no dump),
   // while partial marking still respects the boundary.
   'test_combat_trample_lethal_zero.js',
+  // Audit A2-4 — declareAttackers legality rejects duplicate iids (mirrors
+  // declareBlockers' usedBlockers Set); normal multi-attacker unaffected.
+  'test_combat_duplicate_attackers.js',
   // Audit A1-9 — DRAW-step log truthfulness: "X draws." only logs when a
   // card actually moved (no phantom-draw line on deck-out / Phylactery rip).
   'test_draw_log_truthfulness.js',

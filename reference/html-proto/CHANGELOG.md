@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.1.29`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.1.30`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -1610,6 +1610,21 @@ trampler → defender takes 6), the partial-marking boundary control
 (pre-mark 3 → assign 2, spill 4), and the no-trample wasted-leftover guard.
 Predicted test impact per the packet was none — confirmed: zero existing
 assertions flipped. Suite 83 files / 1905 green, lint clean.
+
+v2.1.30: audit fix A2-4 (Joe-approved: "authorized", PR #98 round 3,
+2026-06-10) — `isLegalAction('declareAttackers')` now rejects duplicate
+iids, mirroring the `usedBlockers` Set its sibling `declareBlockers` case
+has always had. Pre-fix the raw engine command "attack with [X, X]" was
+accepted: one creature dealt N× combat damage and emitted N× 'attacks'
+triggers (§801 step 505 — one attack role per creature). No UI path could
+produce it; executeAction is the public protocol surface. Reject, not
+dedupe, matching the sibling's semantics. New
+tests/test_combat_duplicate_attackers.js (9 assertions, red→green: 4 red
+pre-fix — the duplicate was accepted and dealt 4 instead of 2): duplicate
+rejected + nothing declared + player not locked out + damage dealt once;
+guard pins a normal multi-attacker declaration (2+3=5) green before and
+after. Predicted test impact per the packet was none — confirmed: zero
+existing assertions flipped. Suite 84 files / 1914 green, lint clean.
 > **MUST UPDATE on every dev-branch push that touches code.** Bump `VERSION` in `js/main.js` AND the line above, in the same commit. GitHub Pages caches aggressively; the version string is the only reliable way to confirm a fresh build is live.
 
 Always work on `dev` for html-proto changes.
