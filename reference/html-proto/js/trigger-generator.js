@@ -1,6 +1,9 @@
-// Procedural trigger generator — Architect's Codex and Mercurial Adept use this
-// to roll (condition × effect) trigger combinations at runtime. Filter is
-// hard-breaks-only (crashes / silent no-ops); soft breaks intentional.
+// Procedural trigger generator — the Architect's Codex (build_on_draw) rolls
+// (condition × effect) trigger combinations at runtime via the three-step
+// generateConditionOptions → generateEffectOptions → assembleTrigger flow.
+// (The Mercurial Adept does NOT use this module — it seeds from the static
+// MERCURIAL_TRIGGER_POOL in engine.js; only its tables' vocabulary overlaps.)
+// Filter is hard-breaks-only (crashes / silent no-ops); soft breaks intentional.
 
 function _genWeightedInt(weights, min) {
   const total = weights.reduce((s, w) => s + w, 0);
@@ -122,6 +125,9 @@ function _genWeightedPick(entries) {
 }
 
 // Roll a (cond, eff) pair. Only hard-break: needsLiveSource effect + dead-source cond.
+// NOTE: no production callers — tests-only (audit A3-7). The live build flow is the
+// three-step Codex path below; unlike assembleTrigger, this twin does NOT set
+// noSelfCascade, so do not wire it into production as-is.
 function generateRandomTrigger() {
   for (let attempt = 0; attempt < 30; attempt++) {
     const cond = _genWeightedPick(GENERATOR_CONDITIONS);
@@ -146,7 +152,7 @@ function generateRandomTrigger() {
   };
 }
 
-// Mercurial Adept two-step: generateConditionOptions → generateEffectOptions → assembleTrigger.
+// Architect's Codex build flow: generateConditionOptions → generateEffectOptions → assembleTrigger.
 function _genWeightedPickN(entries, n) {
   const pool = entries.slice();
   const out = [];
@@ -183,7 +189,7 @@ function generateEffectOptions(chosenCondition) {
   });
 }
 
-// Finalize (cond, eff) → trigger object, same shape as generateRandomTrigger.
+// Finalize (cond, eff) → trigger object (the composable trigger shape).
 function assembleTrigger(chosenCondition, chosenEffect) {
   return {
     event: chosenCondition.event,
