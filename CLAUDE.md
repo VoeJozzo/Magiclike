@@ -4,7 +4,7 @@ Magic: The Gathering-style roguelike. The repo holds two things: the in-progress
 
 The html-proto is a vanilla-JS rules engine — ~20k+ LOC across 13 modules under `js/` plus per-card JSONs under `cards/<tplId>/`. 250+ card templates, full priority/stack model, triggered abilities, draft, roguelike meta. Active on the `dev` branch; see `reference/html-proto/CLAUDE.md` for the current version and module map.
 
-The Godot port reimplements the engine natively. **Structurally similar, not 1:1** — the JS rendering layer doesn't translate, and several JS-specific patterns need rethinking (see "Patterns to NOT replicate" below). Current state: Phases 0–5c shipped (Lightning Bolt through real AI vs AI) — a curated set of card templates in `cards/templates/`, a per-phase smoke-test suite, AI plays complete games. Next: card pool expansion → stickers → draft → roguelike meta (see `docs/plans/godot-port-plan.md` for the forward roadmap).
+The Godot port reimplements the engine natively. **Structurally similar, not 1:1** — the JS rendering layer doesn't translate, and several JS-specific patterns need rethinking (see "Patterns to NOT replicate" below). Current state: Phases 0–5c shipped (Lightning Bolt through real AI vs AI) — a curated set of card templates in `cards/templates/`, a per-phase smoke-test suite, AI plays complete games. Next: Phase 6+ (card-pool expansion → stickers → draft → roguelike meta) is gated on a coordinated refactor — see [`docs/plans/plan-coordinated-refactor.md`](docs/plans/plan-coordinated-refactor.md) and the forward roadmap in [`docs/plans/godot-port-plan.md`](docs/plans/godot-port-plan.md). Card-pool growth is now a *prioritization* problem, not a transcription one: `json_card_loader.gd` reads the html-proto `card.json` files directly and a boot scan reports which proto cards are fully playable; implementing the next-most-valuable missing effect/event/predicate kinds lights up more cards automatically.
 
 Deferred work lives in `docs/BACKLOG.md` — read it when relevant, but don't open a session by attacking it. The user picks what to work on; if you finish a task and have idle attention, surface 1–2 backlog items as suggestions rather than just starting the next one.
 
@@ -23,6 +23,7 @@ Start at [`docs/README.md`](docs/README.md) — the **doc router** (which doc ow
 ```
 /                              repo root, Godot project (VoeJozzo/Magiclike)
 ├── CLAUDE.md                   this file
+├── AGENTS.md                   points non-Claude agents (e.g. Codex) at this file as canonical guidance
 ├── index.html                  redirect to reference/html-proto/ for GitHub Pages
 ├── project.godot               autoload: RulesEngine = res://engine/engine.gd
 ├── .nojekyll                   disables Jekyll on Pages (needed for cards/_manifest.json)
@@ -47,12 +48,18 @@ Start at [`docs/README.md`](docs/README.md) — the **doc router** (which doc ow
 │   ├── game/                   game_board.gd/.tscn, player_panel.gd, combat_lines.gd
 │   └── zones/battlefield_zone.gd  two-row creature/land layout
 ├── tests/                      one runnable .gd + .tscn per phase: 1, 2, 3, 4, 4.5a/b/c, 5a/b/c
+│                               + cross-cutting suites: test_json_card_loader, test_priority_window
 ├── docs/                       reference + planning docs (see docs/README.md index)
-│   ├── BACKLOG.md              deferred work, parking lot
-│   ├── PROTOCOL.md             cross-engine canonical wire format spec
+│   ├── README.md               doc router — which doc owns which question + Find-by-topic map
+│   ├── ARCHITECTURE.md         Godot engine reference: modules + runtime data contracts, by subsystem
+│   ├── PROTOCOL.md             cross-engine canonical wire format spec (card.json schema + catalogs)
+│   ├── DIVERGENCE.md           where the Godot port and html-proto behave differently (rulebook is tie-breaker)
+│   ├── BACKLOG.md              deferred feature work, parking lot
+│   ├── REFACTOR-NOTES.md       prioritized structural debt (advisory; pairs with ARCHITECTURE.md)
+│   ├── IDENTITIES.md           GitHub accounts/credentials map (non-secret — points at, never contains)
 │   ├── STANDARDIZATION-PLAN.md html-proto ↔ Godot harmonization history
-│   ├── plans/                  forward-looking plan specs (godot-port-plan, plan-*)
-│   ├── wiki/                   durable concept pages (the "why" layer; Obsidian-style, junctioned to vault)
+│   ├── plans/                  forward-looking plan specs (godot-port-plan, plan-coordinated-refactor, plan-*)
+│   ├── wiki/                   durable concept pages + canonical rulebook (the "why" layer; Obsidian-style)
 │   └── archive/                superseded handoff narratives (history, not active)
 └── reference/html-proto/       prototype mirror (its own CLAUDE.md + BACKLOG.md)
 ```
@@ -131,11 +138,13 @@ Each phase has a runnable scene at `tests/test_phaseN.{gd,tscn}` (e.g., `test_ph
 
 Each test prints assertion results and exits with code 0 (pass) / 1 (fail). Roughly 30 seconds per phase. A slice is "done" when its new test passes AND all prior phase tests still pass.
 
+Beyond the per-phase smoke tests there are two cross-cutting suites: `tests/test_json_card_loader.{gd,tscn}` (loader translation invariants — asserts type→subclass, snake_case effect kinds, target inference *by card shape*, not by hardcoded id) and `tests/test_priority_window.{gd,tscn}` (priority-window auto-pass / end-turn refactor).
+
 ## Licenses & attributions
 
 **Any time a new outside resource is added to the project — code library, asset pack, AI-art batch, font, sound, tool, anything — log it in `LICENSES.md` at the repo root.** That file is the canonical record of what we depend on, what license each dependency is under, and what we owe attribution-wise. Add the entry in the same commit that pulls the resource in.
 
-Current entries: chun92's Godot Card Framework (MIT), Godot Engine 4.6, pixellab AI art, Claude (this assistant), Almendra fantasy serif font (Google Fonts, SIL OFL 1.1), Claude-authored mana symbol SVGs. See `LICENSES.md` for the full list.
+Current entries: chun92's Godot Card Framework (MIT), Godot Engine 4.6, ESLint + eslint-plugin-sonarjs (dev-only html-proto linting), pixellab AI art, Claude (this assistant), Almendra fantasy serif font (Google Fonts, SIL OFL 1.1), Claude-authored mana symbol SVGs. See `LICENSES.md` for the full list.
 
 Shared assets (used by both the Godot port and the html-proto) live at `assets/` at repo root. Currently: `assets/fonts/Almendra/` and `assets/mana/` (WUBRG SVGs + design source). Html-proto-specific assets live at `reference/html-proto/assets/`.
 
