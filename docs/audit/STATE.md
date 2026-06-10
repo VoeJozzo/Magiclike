@@ -35,7 +35,7 @@ dry-run target and runs first; thereafter strict priority order (1 → 11).
 | # | Chunk | Tier | Status | Claimed (ISO) | Anchor SHA | Findings file |
 |---|-------|------|--------|---------------|------------|---------------|
 | 6 | Stickers pipeline (`stickers.js`) — DRY RUN | 1 | done | 2026-06-10T11:14:05Z | 86dc5b0 | [`chunk-06-stickers.md`](chunk-06-stickers.md) |
-| 1 | Turn machine / phases / mana / state (`engine.js` `step()` region) | 2 | in_progress | 2026-06-10T11:56:28Z | 1a92c42 | `chunk-01-turn-machine.md` |
+| 1 | Turn machine / phases / mana / state (`engine.js` `step()` region) | 2 | done | 2026-06-10T11:56:28Z | 1a92c42 | [`chunk-01-turn-machine.md`](chunk-01-turn-machine.md) |
 | 2 | Combat (attack/block/damage, combat keywords) | 2 | todo | — | — | `chunk-02-combat.md` |
 | 3 | Stack / priority / triggers (`triggers.js`, `trigger-generator.js`) | 2 | todo | — | — | `chunk-03-stack-triggers.md` |
 | 4 | Effects dispatch + targeting legality (~25 effect kinds) | 2 | todo | — | — | `chunk-04-effects-targeting.md` |
@@ -98,3 +98,4 @@ Delete this paragraph when the full run is done.
   skill writes. Joe additionally authorized DAYTIME autonomous queue work
   (2026-06-10 morning): the supervised session drives chunks while the
   mutation map finishes; scheduled boops resume 23:00.
+- 2026-06-10 ~10:15: chunk 1 DONE (daytime supervised run). Tier-2 Workflow: 58 agents, 4 lenses, 40 confirmed/14 refuted pre-dedupe -> 23 findings (3 P1 / 3 P2 / 17 P3; 9 stage with decision packets, 7 ship docs/comment-only, 2 trivia, 5 park). Self-QA PASS (A1-3 re-repro'd live; 2 corrections applied; A1-10 P3->P2 accepted). Headliners: A1-1 priority cluster (opp-handoff vs canon, D0 misdoc), A1-2 canPayPotential/payMana mismatch (half-applied state), A1-3 indestructible t<=0 survival. Ship/trivia PRs grouped 7+2 into two PRs (calibration-day judgment, disclosed in NIGHTLY).

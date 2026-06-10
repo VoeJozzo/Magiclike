@@ -1,104 +1,68 @@
-# Nightly packet — 2026-06-10 (DRY RUN)
+# Daily packet — 2026-06-10 (day shift)
 
-> Rewritten each run. This is the supervised chunk-6 dry run of the
-> `/audit-next-chunk` pipeline. Pencils-down 10:00; finished well ahead.
+> Rewritten per run. This covers the daytime supervised session that followed
+> the overnight Phase 0 build. Previous packet content (dry-run report) is in
+> git history and summarized below.
 
-## TL;DR
+## Read these closely (calibration window)
 
-**The audit pipeline works end-to-end. NOT auto-armed — one 1-line skill edit
-is required first, and I lacked permission to make it (it's yours to approve).**
-Everything else passed cleanly: both-branch commit→push→PR, bot attribution on
-the merged fix PR, and a green fresh-context self-QA.
+1. **Chunk 1 found three P1s in the rules core.** All staged (not shipped) with
+   plain-English decision packets in
+   [`chunk-01-turn-machine.md`](chunk-01-turn-machine.md):
+   - **A1-1 priority cluster** — after ANY cast, priority goes to the opponent;
+     canon (and DIVERGENCE D0, and the Godot port) say the caster keeps it.
+     Affects every game ever played in the proto. Three interlocking legs;
+     coordinated fix drafted.
+   - **A1-2** — the "can you afford this spell?" check is smarter than the
+     code that actually takes the mana; when they disagree the engine crashes
+     mid-payment leaving half-paid state. Repro included.
+   - **A1-3** — indestructible creatures with 0 or less toughness illegally
+     survive (canon says they still die). Live-reproduced twice (finder +
+     self-QA independently).
+2. **Ship/trivia grouping judgment (deviation, disclosed):** the plan says one
+   PR per ship item; chunk 1's seven ship items are ALL docs/comment-only
+   one-liners, so they grouped into ONE docs PR (+ one trivia code PR) to keep
+   the paper trail readable. Say "stop grouping" to revert to strict per-item
+   PRs.
+3. **engine.js mutation score is 45%** — the suite misses over half of
+   deliberate sabotage in the engine's core file. 682 of 1,103 turn-machine
+   region mutants survive. This is why everything behavioral staged: the
+   ladder's coverage gate is doing its job. ai.js is trending far worse
+   (~80% survival, partial).
 
-## Dry-run gate scorecard
+## Done today (so far)
 
-| Gate | Result | Note |
-|---|---|---|
-| 1. Zero permission prompts | ⚠️ **not clean** | The *final working* command forms hit zero prompts, but discovery hit approvable prompts (`cd && …` compounds) and the gh-bot wrapper was unusable until I added `-ExecutionPolicy Bypass`. The durable fix (bake the invocation into SKILL.md) was **permission-denied** this session — see Required action. |
-| 2. Commit→push→PR, both branches | ✅ | Findings: commits pushed to `audit/findings`; long-lived findings PR **#98** (→ `Audit-Review-Refactor`) opened. Workshop: fix PR **#97** merged. |
-| 3. Identity assert (PR author == bot) | ✅ | PR #97 author = `Thaumaturge-Claude`, merged by `Thaumaturge-Claude` (merge `ed3ee53`). |
-| 4. Self-QA green | ✅ | Fresh-context QA = PASS; re-verified the shipped header in the post-merge tree and A6-1's filter claim. |
+- **Phase 0 complete** + campaign ARMED (after dry-run gate fix; see STATE log).
+- **Chunk 6 (dry run):** 7 findings; 1 shipped docs-only (PR #97, merged);
+  1 decision packet for Joe (A6-1).
+- **Chunk 1 (turn machine):** 23 findings (3 P1 / 3 P2 / 17 P3) from a 58-agent
+  tier-2 fan-out; 14 claims refuted by adversarial verification; self-QA PASS
+  with corrections. Docs + trivia PRs in flight (see PR list on #98).
+- **Mutation map:** engine.js COMPLETE (45%); full run continuing, ETA early
+  afternoon.
 
-**Arming decision: `Armed: no`.** Gate 1 did not cleanly pass and the
-prerequisite fix could not be baked into mechanism. Per the dry-run contract,
-no auto-arm on a failure. This is a *cheap* miss by design (first-contact
-plumbing, surfaced while you're awake) — not a pipeline defect.
+## Surprises / anomalies
 
-## Required action before arming (≈30 seconds, yours)
+- Overnight automation never fired (scheduler first-window gotcha + a lost
+  background launch). Tonight 23:00 is the unattended path's first real test.
+- Workflow verifiers caught the live workshop tree moving under them
+  (git merges during reads) and self-corrected to anchor-SHA sandboxes; this
+  is now baked into the runner skill.
+- Mutation runner was initially sized for the desktop (12 workers) on a
+  4-core laptop; right-sized to 8.
 
-The gh-bot wrapper is a `.ps1`, and this machine's PowerShell execution policy
-**blocks running it via a bare `-File`** — proven live (a bare invocation errors
-`running scripts is disabled on this system`). The working, prompt-free form is:
+## Next
 
-```
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/audit/gh-bot.ps1 <args…>
-```
+1. Fix PRs (docs + trivia) merge into the workshop on green.
+2. Chunk 2 (combat) — engine.js map already complete, unlocked now.
+3. Chunk 3 waits on triggers.js map; chunks 5/7-11 wait on their files.
+4. Tonight: 21:00 nightly machine (mutation refresh + selfplay); 23:00
+   scheduled boops resume the queue unattended.
 
-I attempted to bake this (plus the allowlistable-command-form rules) into the
-runner's contract at `.claude/skills/audit-next-chunk/SKILL.md` → *Identity*
-section, but the write was **permission-denied** (skill files are gated; the
-overnight `acceptEdits` config would allow it, but this interactive session did
-not). The exact replacement text is staged in my message and in STATE.md's log.
+## Decision queue for Joe (non-blocking)
 
-**To arm:** approve that one SKILL.md edit (or grant skill-write + re-run the dry
-run), then flip `Armed: no → yes` in `docs/audit/STATE.md`. Once the invocation
-is in the contract, arming is a formality — the mechanism itself is proven.
-
-> Why not just set the machine execution policy or hack a shim? That would be
-> fighting the environment / improvising outside campaign scope — exactly what
-> the failure-discipline rules forbid. The clean fix is the documented
-> per-invocation flag, recorded in the contract.
-
-## Other plumbing learnings (folded into the proposed SKILL.md edit)
-
-Overnight commands must be **plain single invocations** the static analyzer can
-read, or they prompt/refuse (no human to answer):
-- `git -C <dir> …`, never `cd <dir> && git …` (compound → prompt).
-- One command per call — no `;`/`&&` chains, no `$(…)` substitution (refused).
-- Redirect only into an allowed worktree (`/tmp` is blocked) — or pipe to one
-  filter. `node <abspath>/run_all.js` works from anywhere (uses `__dirname`).
-
-## Chunk 6 — stickers (findings: `chunk-06-stickers.md`)
-
-7 findings, all surviving adversarial refutation or carrying a repro snippet:
-
-- **A6-4 (P3, ship, docs-only) — FIXED, PR #97.** Dispatch-test header
-  over-claimed "each STICKERS kind"; corrected to an accurate enumeration.
-  Comment-only, suite 1786/1786 green, lint clean, **zero predicted/actual test
-  flips**. Mutation-map judgment: N/A (no behavior to cover). The only ship this
-  chunk — everything behavioral demoted to *stage* because the mutation map does
-  not yet cover `stickers.js` (run still in flight, see below).
-- **A6-1 (P2, stage)** — random-reward eligibility comment understates the pool
-  (filter also admits add_type/cost_mod/remove_keyword). Canon is silent on the
-  intended pool → genuine fork. **Decision packet written for you** in the
-  finding (recommend: keep broad behavior, fix the comment — your taste call).
-- **A6-2 (P3, stage)** — empower fallback roll isn't persisted; re-rolls each
-  rebuild on the staple-over-null path (design question; fix changes run rewards).
-  Bonus latent at `run.js:1029` (`{...null}` → `{}`).
-- **A6-3 / A6-5 / A6-6 / A6-7 (all P3, park)** — inline set_color dup-storage;
-  untested ability_id-absent dedup branch; latent shared-ref deep-copy
-  inconsistency (no live trigger today); apply-order-dependent multi-sticker
-  cost. All cheap, none urgent.
-
-**Refuted (not filed):** the "three untested sticker kinds" claim — all three
-are covered in `test_mana.js` / `test_equatorial_artificer_boss.js`.
-
-**Surprises / calibration:** none. The one shipped fix predicted zero test
-impact and produced zero. Classifier well-calibrated on this (trivially-safe)
-sample.
-
-## Machine-time status (no Claude usage)
-
-- **Mutation first full run: still in flight** — 4080/7592 @ 07:09, ~13/min,
-  ~4.3h ETA (won't finish before pencils-down). `MUTATION-MAP.md` covers only
-  `types.js` so far. **The chunk queue stays gated** until it completes and the
-  map covers all 11 target files (per STATE.md's queue gate). So even once
-  armed, the runner will only dry-run-equivalent work until the map lands.
-- No new selfplay crash/invariant anomalies to route.
-
-## What the next session should do first
-
-1. (You) Approve the SKILL.md gh-bot-invocation edit; flip `Armed: yes`.
-2. Confirm the mutation run finished (`mutation-first-full-run.log` ends `DONE:`
-   and `MUTATION-MAP.md` covers all 11 files); only then lift the queue gate.
-3. Then claim chunk 1 (turn machine) — tier 2, ~2h.
+- A6-1 sticker-pool taste call (chunk-06 packet).
+- A1-1/A1-2/A1-3 staged P1 fixes — each has a decision packet; the
+  recommendation in all three is "fix per canon," confidence high for A1-1
+  and A1-3, medium-high for A1-2.
+- A1-10 cleanup-window land tap (P2, staged, small fix).
