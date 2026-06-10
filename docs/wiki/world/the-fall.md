@@ -60,7 +60,11 @@ But it's a **soft** default, by authorial direction:
 
 > "I do want this to be a *soft default*. Like yeah, things from the past are powerful and wonderful and great, but I think our tragedy here is a *tapering* as much as a *severing*." — Joe
 
-Tapering, not severing: the present still makes things — fewer, lesser, with more of the old work mixed in. A living smith repairing a dead empire's gate is more this world than either absolute (a golden age nothing can be added to, or a workshop renaissance). New-made artifacts are allowed; they should *feel* like the lower rung they come from.
+Tapering, not severing: the present still makes things — fewer, with more of the old work mixed in. A living smith repairing a dead empire's gate is more this world than either absolute (a golden age nothing can be added to, or a workshop renaissance). And the taper is **statistical, not a capability cap** *(authorial clarification)*:
+
+> "'An artisan has made a wonder' is by no means impossible. It's just less common today than it was yesterday. It will be still less common tomorrow. The kind of decline that can be noticed, but not proven." — Joe
+
+A new wonder is fully possible — it's *rarer*, not forbidden. And "noticed, but not proven" extends the §narrator epistemology into the present tense: even the decline returns no verdict. Old men insist the work was finer once; young smiths call it nostalgia; both are looking at the same gate. The new wonders are real, and so is the argument about them — a card may show either, and the set never settles it.
 
 ## Open
 
