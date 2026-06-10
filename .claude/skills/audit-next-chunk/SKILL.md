@@ -93,7 +93,11 @@ Dry run section).
 ### 2. Execute the chunk at its tier
 
 Common to all tiers — every finder subagent prompt must include:
-- the chunk's file/region list and the anchor SHA;
+- the chunk's file/region list and the anchor SHA — and agents must read
+  from an **anchor-SHA snapshot**, not the live workshop tree (the tree
+  moves under them when fixes merge mid-chunk; learned in chunk 1). Make
+  one before fan-out: `git -C <workshop> archive <anchor> | tar -x -C
+  <tempdir>` and hand the tempdir path to every agent;
 - the audit dimensions (plan §"Audit dimensions") it's hunting;
 - the canon set: rulebook pages `docs/wiki/rules/`, card oracle text,
   `docs/PROTOCOL.md`, existing tests' stated expectations. NOT "real MTG";
