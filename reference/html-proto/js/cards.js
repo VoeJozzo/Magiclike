@@ -52,6 +52,24 @@ function ingestCard(card) {
   return card;
 }
 
+// The five basic land types and the color each conveys (MTG 305.6). Shared by
+// the autogrant below and by the display layer (card-text's mana-ability
+// suppression + render's big-mana-symbol gate), so "which colors does the type
+// line promise?" has exactly one definition.
+const BASIC_LAND_MANA = { Plains: 'W', Island: 'U', Swamp: 'B', Mountain: 'R', Forest: 'G' };
+
+// Colors conveyed by a card's basic-land subtypes, in WUBRG-discovery order.
+// Empty for non-lands and for lands with no basic-land subtype.
+function basicLandTypeColors(card) {
+  if (typeof typesOf !== 'function' || !hasType(card, 'Land')) return [];
+  const out = [];
+  for (const tag of typesOf(card)) {
+    const color = BASIC_LAND_MANA[tag];
+    if (color && !out.includes(color)) out.push(color);
+  }
+  return out;
+}
+
 // Intrinsic mana from a basic-land subtype (MTG 305.6): a Land with the
 // Plains/Island/Swamp/Mountain/Forest subtype produces the matching color. Lets
 // artifact/nonbasic lands — AND runtime land-type STICKERS ("Also a Mountain") —
@@ -61,11 +79,12 @@ function ingestCard(card) {
 // ability (the shape landProducibleColors and the tap action expect) rather than
 // several competing {T} abilities — that's what makes a stickered dual land tap
 // for both colors. grantManaAbility no-ops when the color is already produced, so
-// re-running after a sticker adds a land type is safe. (Basic lands carry sub
-// "Basic", not a color subtype, so they keep their explicit ability untouched.)
+// re-running after a sticker adds a land type is safe. (Basic lands carry both
+// their color subtype AND an explicit authored ability — the autogrant no-ops on
+// them; the explicit ability stays so the Godot JSON loader, which has no §305.6
+// autogrant, still reads a complete card.)
 function grantBasicLandMana(card) {
   if (!(typeof typesOf === 'function' && typeof grantManaAbility === 'function' && hasType(card, 'Land'))) return;
-  const BASIC_LAND_MANA = { Plains: 'W', Island: 'U', Swamp: 'B', Mountain: 'R', Forest: 'G' };
   for (const tag of typesOf(card)) {
     const color = BASIC_LAND_MANA[tag];
     if (color) grantManaAbility(card, color);

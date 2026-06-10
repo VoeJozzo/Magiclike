@@ -800,6 +800,21 @@ function renderHand(id, hand, who) {
     div.onclick = () => CONTROLLER.clickHand(card.iid);
     el.appendChild(div);
   }
+  // Cast-permission cards (e.g. exiled by Seal-Thief Courier with "you may
+  // cast it this turn") render at the END of the hand row in a marked frame —
+  // without this they're only discoverable behind the Ex zone counter. The
+  // click path is the same clickHand → findCastableSpell flow as real hand
+  // cards, so casting Just Works; the .from-exile class adds the violet
+  // dashed frame + EXILED ribbon.
+  for (const entry of ENGINE.castableSpellEntries(who)) {
+    if (entry.zone === 'hand') continue;
+    const div = makeCardEl(entry.card, { inHand: true });
+    div.classList.add('from-exile');
+    div.title = 'Exiled — you may cast this card this turn';
+    if (canPlayFromUI(who, entry.card)) div.classList.add('castable');
+    div.onclick = () => CONTROLLER.clickHand(entry.card.iid);
+    el.appendChild(div);
+  }
 }
 function canPlayFromUI(who, card) {
   // Probe legality with placeholder targets per target_slot.
@@ -1518,6 +1533,7 @@ function cardToViewModel(card, opts) {
   }
 
   const typeText = typeLine(card);
+  const typeHtml = typeLineHtml(card);
 
   let oracleHtml;
   if (overrideOracleText !== undefined) {
@@ -1528,22 +1544,24 @@ function cardToViewModel(card, opts) {
   }
   const kwIconsHtml = keywordsAsIcons ? keywordIconsHtml(card, colorKey) : '';
 
-  // Paper-basic look: a basic Land with NO other rules text and no keyword coin
-  // shows a large mana symbol centered in the otherwise-empty text box, read from
-  // what it actually taps for (landProducibleColors, not the `mana` label). The
-  // moment it gains text — a land-color sticker turns the fixed tap-ability into a
-  // choose-form that renders ("add {U} or {B}") — oracleHtml is non-empty and the
-  // normal layout takes over. The !kwIconsHtml guard suppresses the big symbol
-  // whenever the land carries ANY keyword coin (not just innate): the 10px coin +
-  // 45px glyph won't co-fit the text box, so the coin row wins. Innate is the
-  // common trigger (its coin replaced the old "Innate." text on basics), but a
-  // basic that picked up, say, a hexproof grant is handled by the same gate.
-  // Skipped for synthetic cards (overrideOracleText), which aren't engine lands.
-  if (overrideOracleText === undefined && !oracleHtml && !kwIconsHtml
-      && hasType(card, 'Land') && hasType(card, 'Basic')) {
+  // Paper-basic look: a Land with NO other rules text whose mana production is
+  // fully conveyed by its basic-land subtypes (§305.6 — basics, artifact lands
+  // like Gilded Seat, stickered duals) shows large mana symbol(s) centered in
+  // the otherwise-empty text box, read from what it actually taps for
+  // (landProducibleColors, not the `mana` label). This is the render-side
+  // mirror of card-text's mana-ability suppression: the same lands whose
+  // "{T}: Add" line is dropped from the oracle get the big-symbol treatment,
+  // so the two can't disagree. Lands with extra rules text (Deepseam Quarry)
+  // or unconveyed production (Dross Pylon's {C}) have non-empty oracleHtml and
+  // keep the normal text layout. A keyword coin row (e.g. an Innate sticker)
+  // coexists: the symbol renders below the coins in a shorter `with-coins`
+  // container so both fit the text box. Skipped for synthetic cards
+  // (overrideOracleText), which aren't engine lands.
+  if (overrideOracleText === undefined && !oracleHtml && hasType(card, 'Land')) {
     const colors = ENGINE.landProducibleColors(card);
-    if (colors.length) {
-      oracleHtml = '<div class="frame-bigmana">'
+    const conveyed = basicLandTypeColors(card);
+    if (colors.length && colors.every(c => conveyed.includes(c))) {
+      oracleHtml = '<div class="frame-bigmana' + (kwIconsHtml ? ' with-coins' : '') + '">'
         + colors.map(c => '<span class="bigsym col-' + c + '">'
             + (c === 'C' ? 'C' : '') + '</span>').join('')
         + '</div>';
@@ -1561,10 +1579,27 @@ function cardToViewModel(card, opts) {
 
   return {
     colorKey, isCreature, pow, tou,
-    pipsHtml, bumpedMarker, typeText, oracleHtml,
+    pipsHtml, bumpedMarker, typeText, typeHtml, oracleHtml,
     keywordIconsHtml: kwIconsHtml,
     artInner, stickersInner,
   };
+}
+
+// Type line as HTML, with sticker-added tags wrapped in the gold
+// .sticker-granted span (matching sticker-granted keywords / triggers in the
+// oracle text). Origin comes from card.stickerTypes — the parallel record the
+// sticker pipeline keeps when an add_type / subtype sticker writes into
+// types[] (the types array itself can't distinguish base from granted).
+// Ordering/dedup is typeLineParts (types.js), the same walk typeLine() uses.
+function typeLineHtml(card) {
+  const parts = typeLineParts(card);
+  const stickerTags = new Set(card && Array.isArray(card.stickerTypes) ? card.stickerTypes : []);
+  const tag = t => stickerTags.has(t)
+    ? '<span class="sticker-granted">' + escapeHtml(t) + '</span>'
+    : escapeHtml(t);
+  let s = parts.left.map(tag).join(' ');
+  if (parts.right.length) s += ' — ' + parts.right.map(tag).join(' ');
+  return s;
 }
 
 // Pixel-art in-hand / on-board card. Builds the 80x112 frame at 1x scale
@@ -1608,7 +1643,7 @@ function makeCardEl(card, opts) {
       '<div class="frame-cost">' + vm.pipsHtml + vm.bumpedMarker + '</div>' +
     '</div>' +
     '<div class="frame-art">' + vm.artInner + '</div>' +
-    '<div class="frame-type">' + escapeHtml(vm.typeText) + '</div>' +
+    '<div class="frame-type">' + vm.typeHtml + '</div>' +
     '<div class="frame-text">' +
       vm.keywordIconsHtml +
       '<div class="frame-oracle">' + vm.oracleHtml + '</div>' +

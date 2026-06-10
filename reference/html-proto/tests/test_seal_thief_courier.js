@@ -130,5 +130,30 @@ console.log('\n=== combat damage trigger exiles and permits the stolen card ==='
   check('stolen spell resolves to its owner graveyard', G.opp.graveyard.some(c => c.iid === bolt.iid));
 })();
 
+console.log('\n=== AI casts a spell it holds cast-permission for ===');
+(() => {
+  // Regression: the AI's decision paths resolved castSpell actions hand-only,
+  // so a card it exiled with its own Courier was never cast (the legal action
+  // existed but mapped to no card). findCastableCard now resolves permission
+  // zones too. Decide for 'you' — the AI logic is side-symmetric.
+  const G = newGame();
+  G.phase = 'MAIN2';
+  G.priority = { passes: new Set() }; G.priorityHolder = 'you';
+  const bolt = make('lightning_bolt', 'opp');
+  G.opp.exile.push(bolt);
+  G.castPermissions = [{ controller: 'you', cardIid: bolt.iid, from_zone: 'exile',
+    duration: 'eot', spend_as_any_color: true, sourceIid: -1 }];
+  // A bolt-sized threat so the cast scores as removal (face burn when not
+  // lethal is rightly unattractive to the AI).
+  const bear = make('grizzly_bears', 'opp');
+  bear.sick = false;
+  G.opp.battlefield.push(bear);
+
+  const decision = AI.decide(G, 'you');
+  check('AI decides to cast the exiled spell',
+    !!decision && decision.type === 'castSpell' && decision.cardIid === bolt.iid,
+    JSON.stringify(decision));
+})();
+
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');
 process.exit(fail > 0 ? 1 : 0);

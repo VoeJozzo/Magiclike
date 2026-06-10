@@ -95,5 +95,28 @@ console.log('\n=== resolution staples the second target onto the first ===');
     baseCard && JSON.stringify(baseCard.stapledFrom));
 })();
 
+console.log('\n=== fizzle at resolution refunds activation costs ===');
+(() => {
+  // Self-staple: the same card in both slots passes per-slot legality (the
+  // ability declares no distinct_targets), but apply_in_game_splice rejects it
+  // at resolution. The fizzle must hand back the already-paid costs — Stapler
+  // untaps, the 3 mana returns to the pool, and nothing was stapled.
+  const G = newGame();
+  const stapler = mkStapler('you'); G.you.battlefield.push(stapler);
+  const c0 = mk(baseTpl, 'you');
+  G.you.battlefield.push(c0);
+  const t0 = { kind: 'permanent', iid: c0.iid, label: c0.name };
+  const action = { type: 'activateAbility', cardIid: stapler.iid, abilityIdx: 0, targets: [t0, t0] };
+  check('self-staple is legal at activation (fizzle is a resolution-time event)',
+    ENGINE.isLegalAction('you', action));
+  const total = (m) => ['W','U','B','R','G','C'].reduce((s, c) => s + (m[c] || 0), 0);
+  const manaBefore = total(G.you.mana);
+  ENGINE.executeAction('you', action);
+  check('Stapler untapped after fizzle (tap cost refunded)', stapler.tapped === false);
+  check('mana pool restored after fizzle', total(G.you.mana) === manaBefore,
+    'before=' + manaBefore + ' after=' + total(G.you.mana));
+  check('no staple happened', !c0.stapledFrom);
+})();
+
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');
 process.exit(fail > 0 ? 1 : 0);

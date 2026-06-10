@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.1.10`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.1.11`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -1242,3 +1242,47 @@ Always work on `dev` for html-proto changes.
 
 Deferred work lives in `BACKLOG.md` (gating rules in `/CLAUDE.md`).
 
+
+
+v2.1.11: 11-issue batch (lands display, STC cast-from-exile, Stapler fizzle,
+templating). LANDS: (1) basics now carry their color subtype in types[]
+("Basic Land - Swamp"); explicit tap-abilities kept in card.json (the Godot
+loader has no 305.6 autogrant), the autogrant no-ops on them. (2) card-text's
+mana-ability suppression generalized from "is Basic" to "every produced color
+is conveyed by a basic-land subtype, all amounts 1" (new basicLandTypeColors
+in cards.js, shared BASIC_LAND_MANA map) - artifact lands (Gilded Seat et al.)
+drop their redundant "{T}: Add {W}" line. (3) The big-mana-symbol gate in
+cardToViewModel mirrors that same rule (was hasType Basic), so artifact lands
+inherit the big symbol, and a stickered dual ("Basic Land - Forest Island")
+renders TWO symbols like a paper dual. (4) The !kwIconsHtml suppression is
+gone: a keyword coin row (Innate) now coexists with the big symbol via a
+shorter .with-coins container (coin row above, symbol capped at 28px below).
+(5) New Devtools setting "Mana symbols - Land symbol" (--card-big-mana-size,
+16-44px on the 28px baseline; same options-array + CSS-var-binding pattern as
+the pip knobs). STICKERS: (6) sticker-added type tags render GOLD on the type
+line (frame + popup): the apply paths record card.stickerTypes (display
+metadata, rebuilt per makeCard), typeLine refactored over a shared
+typeLineParts(), new typeLineHtml() wraps recorded tags in .sticker-granted.
+STC: (7) the AI now casts cards it exiled with Seal-Thief Courier - decideMain
+/ getDirectBurnSources / decideOffTurnCombat / decideEndStepFlash /
+decideReaction resolved castSpell actions hand-only, so permission casts were
+legal-but-invisible; new findCastableCard(state, who, iid) resolves permission
+zones from the PASSED state (sim-safe). (8) Cast-permission cards render
+inline at the end of the hand row (violet dashed .from-exile frame + EXILED
+ribbon, same clickHand cast path), no longer discoverable only behind the Ex
+counter; castableSpellEntries exported on ENGINE. STAPLER: (9) a resolution
+fizzle in apply_in_game_splice now REFUNDS activation costs (untap + paid
+mana back to pool via ctx.paidCost / refundActivationCosts) - those fizzles
+mean the picker accepted a pair the ability can't act on (pair validity isn't
+checkable per-slot), so no tap/mana/charge loss; charges were already safe
+(fizzles return before charge accounting). CARDS: (10) Sudden Vines animates
+permanently (eot -> permanent; stays a 1/1 for G with flash - the cheap-fast
+niche in the Living Lands / Golem Forge cycle). (11) set_types templating now
+says "...and loses its other types" (Encase in Amber, Petrify, Artifice
+Triumphant's sticker form) - a set replaces the whole type line and the text
+finally says so. (12) Win10-tofu emoji art replaced (Emoji 13+/15 glyphs
+missing from Win10's Segoe UI Emoji): gilded_seat coin->crown, petrify
+rock->classical building, sky_champion wing->dove. Tests: stapler fizzle-
+refund case (self-staple passes legality - no distinct_targets - and must
+refund), AI-casts-from-exile case, typeline expectations updated to the new
+canonical lines. 1700 green, 300-game selfplay clean, lint clean.

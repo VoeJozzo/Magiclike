@@ -110,8 +110,10 @@ console.log('\n=== multi-tag add (Golem Forge): land → 4/4 Artifact Creature =
   check('is Land + Artifact + Creature, 4/4',
     hasType(inst, 'Land') && hasType(inst, 'Artifact') && hasType(inst, 'Creature')
     && JSON.stringify(ENGINE.getStats(inst)) === '[4,4]');
+  // Basics carry their color subtype now ("Basic Land — Forest"), so the line
+  // HAS an em-dash — assert the three card types all sit in the LEFT half.
   check('typeLine lists all three types left of the dash',
-    ['Land', 'Artifact', 'Creature'].every(t => typeLine(inst).includes(t)) && !typeLine(inst).includes('—'), typeLine(inst));
+    ['Land', 'Artifact', 'Creature'].every(t => typeLine(inst).split('—')[0].includes(t)), typeLine(inst));
 })();
 
 console.log('\n=== the 7 type-change spells are authored + generate clean text ===');

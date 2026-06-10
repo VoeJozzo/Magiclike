@@ -1507,6 +1507,26 @@ function canPayPotential(who, cost, excludeIid) {
   return tryAssign(0, pool);
 }
 // Pay from pool first; if short, auto-tap sources. Color costs first, then generic.
+// Hand back an activated ability's already-paid tap + mana costs. Called by an
+// effect handler that detects a fizzle at resolution time (today only
+// apply_in_game_splice — see its header for why those fizzles deserve a
+// refund). ctx.paidCost is snapshotted by doActivateAbility at payment time.
+// Mana goes back to the POOL: any sources payMana auto-tapped stay tapped, so
+// the player keeps the mana floating for the phase — same end state as having
+// tapped them manually. Sacrifice / counter-removal costs are NOT refunded
+// (nothing using this helper has them; a death can't be unwound anyway).
+function refundActivationCosts(ctx) {
+  const paid = ctx && ctx.paidCost;
+  if (!paid) return;
+  if (paid.tap && ctx.sourceCard) ctx.sourceCard.tapped = false;
+  if (paid.mana) {
+    const pool = G[ctx.controller].mana;
+    for (const c of [...COLORS, 'C']) {
+      if (paid.mana[c]) pool[c] = (pool[c] || 0) + paid.mana[c];
+    }
+  }
+  log(`${ctx.sourceName} — activation costs refunded.`, 'sp');
+}
 function payMana(who, cost) {
   if (!cost) return;
   // Invariant: colors_of_source costs must already be source-resolved by the caller.
@@ -2621,19 +2641,28 @@ const EFFECTS = {
   // Stapler in-game splice. Merges target 1 onto target 0 using the reward-time
   // splice infra. Cross-owner: merged slot moves to caster's runState (removal/steal).
   // Targets validated: spliceable base/staple + isCompatibleStaplePair.
+  // A fizzle here REFUNDS the activation costs (untap + mana back) — unlike a
+  // real-MtG fizzle, these failures mean the pick UI/AI accepted a pair the
+  // ability can't act on (pair compatibility isn't checkable per-slot at
+  // activation), so the player shouldn't lose the tap, the mana, or a charge.
+  // Charges are safe already: every fizzle return exits before the charge
+  // accounting at the bottom.
   apply_in_game_splice(ctx, params, target) {
+    const fizzle = (reason) => {
+      log(`${ctx.sourceName} fizzles — ${reason}`, 'sp');
+      refundActivationCosts(ctx);
+    };
     const all = ctx.allTargets;
     if (!Array.isArray(all) || all.length < 2) {
-      log(`${ctx.sourceName} fizzles — needs two targets.`, 'sp');
-      return;
+      return fizzle('needs two targets.');
     }
     const t0 = all[0], t1 = all[1];
-    if (!t0 || !t1) { log(`${ctx.sourceName} fizzles — target missing.`, 'sp'); return; }
+    if (!t0 || !t1) { return fizzle('target missing.'); }
     const r0 = resolveStackOrPermanent(t0);
     const r1 = resolveStackOrPermanent(t1);
-    if (!r0 || !r1) { log(`${ctx.sourceName} fizzles — target gone.`, 'sp'); return; }
+    if (!r0 || !r1) { return fizzle('target gone.'); }
     if (r0.card.iid === r1.card.iid) {
-      log(`${ctx.sourceName} fizzles — can't staple a card to itself.`, 'sp'); return;
+      return fizzle("can't staple a card to itself.");
     }
     const [canonBaseTpl, canonStapleTpl, swapped] = canonicalSplicePair(
       r0.card.tplId, r1.card.tplId);
@@ -2642,7 +2671,7 @@ const EFFECTS = {
     const baseCard = baseR.card;
     const stapleCard = stapleR.card;
     if (!isSpliceableBase(baseCard.tplId)) {
-      log(`${ctx.sourceName} fizzles — ${baseCard.name} can't be a splice base.`, 'sp'); return;
+      return fizzle(`${baseCard.name} can't be a splice base.`);
     }
     // In-game staple chain lives at card.stapledFrom.stapledTpls (NOT card.stapledTpls,
     // which is slot-level). Reading the wrong field silently misses prior chains.
@@ -2650,10 +2679,10 @@ const EFFECTS = {
       ? stapleCard.stapledFrom.stapledTpls
       : (Array.isArray(stapleCard.stapledTpls) ? stapleCard.stapledTpls : []);
     if (stapleStaples.length > 0) {
-      log(`${ctx.sourceName} fizzles — ${stapleCard.name} is already stapled.`, 'sp'); return;
+      return fizzle(`${stapleCard.name} is already stapled.`);
     }
     if (!isCompatibleStaplePair(baseCard.tplId, stapleCard.tplId)) {
-      log(`${ctx.sourceName} fizzles — ${baseCard.name} and ${stapleCard.name} aren't compatible.`, 'sp'); return;
+      return fizzle(`${baseCard.name} and ${stapleCard.name} aren't compatible.`);
     }
     // Fire stack inputs' effects with their locked-in targets, then consume them
     // (no graveyard — Stapler absorbed them).
@@ -5344,9 +5373,12 @@ function doActivateAbility(who, cardIid, abilityIdx, targets, sacIid) {
   const f = findCard(cardIid); if (!f) return;
   const card = f.card;
   const ab = card.abilities[abilityIdx];
-  // Pay costs.
+  // Pay costs. The tap/mana payment is snapshotted so an effect that detects a
+  // fizzle at resolution (apply_in_game_splice — pair validity isn't fully
+  // checkable at activation) can hand the costs back via refundActivationCosts.
+  const paidMana = ab.cost.mana ? resolvedManaCost(ab.cost.mana, card, who) : null;
   if (ab.cost.tap) card.tapped = true;
-  if (ab.cost.mana) payMana(who, resolvedManaCost(ab.cost.mana, card, who));
+  if (paidMana) payMana(who, paidMana);
   // Sac cost is paid BEFORE the effect resolves. The sacrificed creature
   // dies (firing dies-triggers) before the ability does anything. This
   // matters for self-sac on creatures with dies-triggers — Carrion Feeder
@@ -5367,7 +5399,8 @@ function doActivateAbility(who, cardIid, abilityIdx, targets, sacIid) {
   // Mana abilities don't go on the stack; resolve immediately.
   // Other activated abilities also resolve immediately in this prototype
   // (a simplification — real MtG would put them on the stack).
-  const ctx = { controller: who, sourceName: card.name, sourceIid: card.iid, sourceCard: card, allTargets: Array.isArray(targets) ? targets : [] };
+  const ctx = { controller: who, sourceName: card.name, sourceIid: card.iid, sourceCard: card, allTargets: Array.isArray(targets) ? targets : [],
+    paidCost: { tap: !!ab.cost.tap, mana: paidMana } };
   // Multi-target dispatch (mirrors resolveTopOfStack/resolveTrigger). By
   // default, targeted effects share targets[0]. Effects can opt into a
   // distinct slot via `target_slot: N`. allTargets is also threaded onto
@@ -6614,6 +6647,10 @@ return {
   // controller has cast permission for (Seal-Thief Courier). Single source of
   // truth for the human cast UI's zone-agnostic card lookup.
   findCastableSpell,
+  // Enumerate everything `who` may cast right now: hand + cast-permission
+  // zones. renderHand uses the non-hand entries to show stolen/exiled cards
+  // inline at the end of the hand row.
+  castableSpellEntries,
   makeCard,
   // Re-derive seam (template + stickers + subtype-implied), exposed for tests.
   intrinsicKeywords,
