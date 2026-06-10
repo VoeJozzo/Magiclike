@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.1.24`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.1.25`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -1519,6 +1519,24 @@ always correct; only the log lied. New `test_draw_log_truthfulness.js`
 (10 assertions): deck-out logs the loss with NO "draws." line (red before),
 Phylactery rip logs the rip with NO "draws." line (red before), normal draw
 still logs (regression guard). Suite 79 files / 1852 green, lint clean.
+
+v2.1.25: audit fixes A2-8 + A3-11 (Joe-approved, PR #98 round 2, 2026-06-10) —
+event payload conformance: all four `life_changed` emitters and the leave-play
+`card_zone_change` family now carry `source_iid` per PROTOCOL §3.3. A2-8:
+combat lifelink's emit gained the field (its consumer is real today — a
+noSelfCascade "you gain life" trigger on a lifelink creature fired off its own
+combat gain because it couldn't recognize it). A3-11: `damagePlayer` takes an
+optional `sourceIid` (spell callers thread `ctx.sourceIid`, the three combat
+sites thread `atk.iid`) and its life-loss emit attaches it;
+`emitLeavesBattlefield` gained a `sourceIid` param threaded to emitZoneChange,
+populated at the four effect-driven call sites (bounce, exile, steal,
+move_card) where the causing card is in scope — the death/sacrifice paths
+pass nothing (causality there is a player key / multi-iid Set, documented at
+the helper). The dead legacy `attacker`/`defender` payload fields stay (A3-16d
+declined). New `test_event_source_iid.js` (14 assertions): each corrected site
+pinned through the noSelfCascade guard — self-suppression (red before: 7
+fails, e.g. combat lifelink 20→27 instead of 20→22) + foreign-source
+still-fires guards. Suite 80 files / 1866 green, lint clean.
 
 > **MUST UPDATE on every dev-branch push that touches code.** Bump `VERSION` in `js/main.js` AND the line above, in the same commit. GitHub Pages caches aggressively; the version string is the only reliable way to confirm a fresh build is live.
 
