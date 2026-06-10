@@ -221,13 +221,13 @@ console.log('\n=== stapled distinct card carries its rule onto the ETB ===');
 
 console.log('\n=== regression guard: makeCard preserves EVERY card-level targeting flag for ALL templates ===');
 (() => {
-  // The cast-enforcement bug existed because makeCard copies card-level fields
-  // through an explicit whitelist, and a newly-added flag (distinct_targets) was
-  // left off it — silently dropped on the real game path while clone-based tests
-  // (JSON.parse(JSON.stringify(...))) stayed green. Guard the whole CLASS, not
-  // just the two cards: every template that declares one of these card-level
-  // targeting flags must have it survive ENGINE.makeCard. When you add a NEW
-  // card-level targeting flag, add it to makeCard's instance whitelist AND here.
+  // The cast-enforcement bug existed because makeCard used to copy card-level
+  // fields through an explicit whitelist, and a newly-added flag
+  // (distinct_targets) was left off it — silently dropped on the real game path
+  // while clone-based tests (JSON.parse(JSON.stringify(...))) stayed green.
+  // makeCard is copy-by-default now (denylist of runtime-only keys), so this
+  // guard is belt-and-suspenders for the targeting flags specifically; the
+  // section below pins the copy-by-default rule for EVERY template field.
   const TARGETING_FLAGS = ['target', 'target_filter', 'target_slots', 'distinct_targets'];
   const present = v => Array.isArray(v) ? v.length > 0 : (v !== undefined && v !== null && v !== false && v !== '');
   const dropped = [];
@@ -242,6 +242,36 @@ console.log('\n=== regression guard: makeCard preserves EVERY card-level targeti
   check('makeCard preserves all declared card-level targeting flags across every template',
     dropped.length === 0,
     dropped.length ? dropped.slice(0, 10).join(', ') : 'all ' + Object.keys(CARDS).length + ' templates OK');
+})();
+
+console.log('\n=== copy-by-default guard: EVERY template field survives makeCard ===');
+(() => {
+  // makeCard copies template fields by default (explicit denylist of
+  // runtime-only keys), so a new card-level flag can never again be silently
+  // dropped on the real game path. Pin that rule for every field of every
+  // template: each key must exist on the instance, and — except for the fields
+  // makeCard deliberately transforms — carry an identical value.
+  //   text:     regenerated from effects/triggers via describeCardText
+  //   keywords: subtype-implied keywords (flying on Dragons, …) are appended
+  const TRANSFORMED = new Set(['text', 'keywords']);
+  const SKIP = new Set(['tplId']); // instance identity comes from the makeCard argument
+  const broken = [];
+  for (const id of Object.keys(CARDS)) {
+    let made;
+    try { made = ENGINE.makeCard(id); }
+    catch (e) { broken.push(id + ': makeCard threw (' + e.message + ')'); continue; }
+    for (const k of Object.keys(CARDS[id])) {
+      if (SKIP.has(k)) continue;
+      if (!(k in made)) { broken.push(id + '.' + k + ' missing'); continue; }
+      if (TRANSFORMED.has(k)) continue;
+      if (JSON.stringify(CARDS[id][k]) !== JSON.stringify(made[k])) {
+        broken.push(id + '.' + k + ' mutated');
+      }
+    }
+  }
+  check('every template field survives makeCard (copy-by-default)',
+    broken.length === 0,
+    broken.length ? broken.slice(0, 10).join(', ') : 'all ' + Object.keys(CARDS).length + ' templates OK');
 })();
 
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');

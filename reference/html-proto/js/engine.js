@@ -628,6 +628,17 @@ function applySubtypeKeywords(card) {
   addSubtypeKeywords(subtypesOf(card), card.keywords);
 }
 
+// Runtime instance-state keys owned by makeCard — the copy-by-default loop
+// below must never let a template inject these. A template declaring one is a
+// card-data error (warned at instantiation, the field is ignored).
+const MAKECARD_INSTANCE_KEYS = new Set([
+  'iid', 'slotIdx', 'controller', 'owner', 'isToken',
+  'tapped', 'sick', 'damage', 'tempPower', 'tempTou', 'permPower', 'permTou',
+  'counters', 'dealtDeathtouch', 'killedBy', 'cantAttack', 'cantBlock',
+  'cantAttackBy', 'cantBlockBy', 'damagedBySources', 'grantedBy',
+  'eotGrants', 'typeGrants', 'modifiers', 'stickers', 'empowerRolls', 'subtypeRolls',
+]);
+
 function makeCard(tplId, stickers, slotIdx, empowerRolls, permaBuffs, bonusTrigger, stapledTpls, subtypeRolls) {
   const tpl = (stapledTpls && stapledTpls.length > 0)
     ? synthesizeStapledTemplate(tplId, stapledTpls)
@@ -717,6 +728,23 @@ function makeCard(tplId, stickers, slotIdx, empowerRolls, permaBuffs, bonusTrigg
     // Stapled metadata for empower-target enumeration, sticker eligibility, etc.
     stapledFrom: tpl.stapledFrom,
   };
+  // Copy-by-default for every other card-level field (the inverted whitelist).
+  // The literal above carries only the fields needing bespoke copy semantics
+  // (deep copies, default fills, slot handling); everything else the template
+  // declares lands on the instance automatically as a JSON deep copy —
+  // templates are pure JSON, the same rationale as staple synthesis (§3.10).
+  // A new card-level flag is now a one-place change (card JSON + its reader);
+  // forgetting makeCard can no longer silently drop it on the real game path.
+  for (const k of Object.keys(tpl)) {
+    if (k === 'tplId') continue; // instance identity comes from the argument
+    if (MAKECARD_INSTANCE_KEYS.has(k)) {
+      console.warn('makeCard: template "' + tplId + '" declares runtime-only field "' + k + '" — ignored');
+      continue;
+    }
+    if (k in card) continue; // bespoke-copied above
+    const v = tpl[k];
+    card[k] = (v && typeof v === 'object') ? JSON.parse(JSON.stringify(v)) : v;
+  }
   // Order: subtype-implied → stickers → permaBuffs → bonusTrigger.
   applySubtypeKeywords(card);
   applyStickersToCard(card);
