@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.1.20`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.1.21`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -1459,6 +1459,20 @@ deathtouch causes). New `test_sba_zero_toughness.js` (8 assertions) pins both
 sides: indestructible at t<=0 dies (red before the fix), indestructible with
 lethal marked damage / deathtouch at t>0 still survives (F2 semantics
 intact). Suite 75 files / 1794 green, lint clean.
+
+v2.1.21: audit fix A1-10 (Joe-approved, PR #98 verdict 2026-06-10) —
+`tapLandForMana` is no longer legal during the cleanup discard. Dropped the
+blanket `cleanupDiscarding` clause from `whoHasPriority()`: canon §605 closes
+that window (nothing is castable, the pool zeroes at `setPhase('UNTAP')`, and
+a land tapped there stays tapped through the opponent's whole turn since
+UNTAP untaps only the new active player's permanents). Dependents check: the
+function's only consumers were the two tapLandForMana legality sites and the
+tap enumeration in getLegalActions; discard legality/enumeration/
+expectedActor/AI/render all carry their own cleanupDiscarding clauses and are
+untouched. New `test_cleanup_no_mana_taps.js` (10 assertions): tap illegal +
+rejected + un-enumerated mid-discard (5 red before the fix), discard still
+legal, taps resume after the discard completes. Suite 76 files / 1804 green,
+lint clean.
 
 > **MUST UPDATE on every dev-branch push that touches code.** Bump `VERSION` in `js/main.js` AND the line above, in the same commit. GitHub Pages caches aggressively; the version string is the only reliable way to confirm a fresh build is live.
 

@@ -5865,7 +5865,14 @@ function whoHasPriority(who) {
   if (G.gameOver) return false;
   if (isWaitingForForcedAction()) return false;
   if (isPriorityOpen()) return G.priorityHolder === who;
-  if (G.cleanupDiscarding) return who === G.activePlayer;
+  // A1-10: the cleanup discard does NOT grant priority. This function's only
+  // consumers are the tapLandForMana legality checks and the tap enumeration
+  // in getLegalActions — and canon §605 closes the cleanup-discard window
+  // (nothing is castable, setPhase('UNTAP') zeroes the pool, and the land
+  // would stay tapped through the opponent's whole turn). The discard itself
+  // doesn't route through here: its legality (isLegalAction 'discard'),
+  // enumeration (getLegalActions), and expectedActor all carry their own
+  // cleanupDiscarding clauses.
   // Pre-declaration: only the player making the declaration "has priority"
   // for the purpose of taking actions. (They can also tap mana sources etc.)
   if (G.phase === 'COMBAT_ATTACK' && !G.attackersDeclared) return who === G.activePlayer;
