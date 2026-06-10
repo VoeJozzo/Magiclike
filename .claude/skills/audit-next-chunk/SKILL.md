@@ -41,11 +41,17 @@ through Joe's ultimate review.
   bot-attributed (worktree-scoped keyring credential helper; see
   `docs/IDENTITIES.md` → Push/PR flow).
 - EVERY `gh` API write (pr create/comment/merge/review, api) goes through the
-  wrapper: `tools/audit/gh-bot.ps1 <args…>` (it prefixes
-  `GH_TOKEN` from `gh auth token --user Thaumaturge-Claude`). Never call bare
-  `gh pr create` — it posts as the OWNER's account.
+  wrapper (it prefixes `GH_TOKEN` from `gh auth token --user
+  Thaumaturge-Claude`). The ONE canonical invocation form — this machine's
+  execution policy blocks a bare `-File` call (learned in the 2026-06-10 dry
+  run; this exact form delivered PRs #97/#98 promptlessly):
+  ```
+  powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/audit/gh-bot.ps1 <args…>
+  ```
+  Never call bare `gh pr create` — it posts as the OWNER's account. Never
+  invoke gh-bot.ps1 any other way.
 - After opening a PR, verify attribution once per session:
-  `tools/audit/gh-bot.ps1 pr view <n> --json author --jq .author.login`
+  `powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/audit/gh-bot.ps1 pr view <n> --json author --jq .author.login`
   must print `Thaumaturge-Claude`.
 
 ## The loop
@@ -154,9 +160,10 @@ test impact):
    regression → demote to stage, revert the fix branch. Either way log it
    in NIGHTLY.md as a calibration datum. Declared flips: flip only — never
    delete or weaken an assertion.
-4. PR → `audit/integration` via `gh-bot.ps1` (body: finding ID, evidence,
-   suite count you SAW, mutation judgment, disclosures). Robot-merge it
-   (`gh-bot.ps1 pr merge <n> --merge`). Verify author attribution.
+4. PR → `audit/integration` via the canonical gh-bot invocation (see
+   Identity above; body: finding ID, evidence, suite count you SAW, mutation
+   judgment, disclosures). Robot-merge it (`… gh-bot.ps1 pr merge <n>
+   --merge`). Verify author attribution.
 5. html-proto convention: bump `js/main.js` VERSION + CHANGELOG.md entry
    when js/ files change (tests-only changes don't bump).
 
