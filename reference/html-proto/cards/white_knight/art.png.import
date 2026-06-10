@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cbep0s3hgyjj4"
-path="res://.godot/imported/art.png-e6628d0f835dfe7af5399af11bfc467c.ctex"
+path="res://.godot/imported/art.png-2341c5cffef8ecf9cf5c3344b92d1f31.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://reference/html-proto/cards/whiteKnight/art.png"
-dest_files=["res://.godot/imported/art.png-e6628d0f835dfe7af5399af11bfc467c.ctex"]
+source_file="res://reference/html-proto/cards/white_knight/art.png"
+dest_files=["res://.godot/imported/art.png-2341c5cffef8ecf9cf5c3344b92d1f31.ctex"]
 
 [params]
 

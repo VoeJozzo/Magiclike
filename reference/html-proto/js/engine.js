@@ -78,6 +78,19 @@ function isSpliceableStaple(tplId) {
   if (tpl.effects && tpl.effects.modes) return false;
   return true;
 }
+// The in-game staple chain on a card INSTANCE. In-game cards carry it at
+// card.stapledFrom.stapledTpls; bare card.stapledTpls is slot-level and
+// normally empty on instances — read whichever is populated. The ONE
+// definition, shared by the target filters (matchFilter / matchFilterSpell)
+// and the apply_in_game_splice handler, so a wrong-field read can't silently
+// miss a prior chain (the bug class the handler's field-name note warns about).
+function stapleChainOf(card) {
+  if (card && card.stapledFrom && Array.isArray(card.stapledFrom.stapledTpls)) {
+    return card.stapledFrom.stapledTpls;
+  }
+  return (card && Array.isArray(card.stapledTpls)) ? card.stapledTpls : [];
+}
+
 // Splice compatibility:
 //   Base\Staple  Creature  Spell  Land
 //   Creature     ok(merge) ETB    tap-ability
@@ -1028,6 +1041,45 @@ function resolveStackOrPermanent(target) {
     return { kind: 'spell', card: item.card, controller: item.controller, stackItem: item };
   }
   return null;
+}
+
+// Resolve + validate a Stapler splice pair from a targets[] array. Returns
+// { reason } (human-readable invalidity) or the resolved pair
+// { baseR, stapleR, baseCard, stapleCard, canonBaseTpl, canonStapleTpl }.
+// The ONE definition of "can these two be stapled", shared by:
+//   - isLegalAction's activateAbility case — pair validity is an ACTIVATION
+//     check, so an invalid pair is rejected BEFORE any cost is paid (MtG
+//     601.2h via 602.2b: costs are paid as the last part of activation; an
+//     illegal activation rewinds with nothing spent);
+//   - the apply_in_game_splice handler at resolution — where, per MtG
+//     resolution-fizzle semantics (608.2b-adjacent), costs STAY paid. With
+//     immediate-resolve abilities nothing can invalidate the pair between
+//     the legality check and resolution, so that path only fires on future
+//     legality/handler drift.
+function resolveSplicePair(allTargets) {
+  if (!Array.isArray(allTargets) || allTargets.length < 2) return { reason: 'needs two targets.' };
+  const t0 = allTargets[0], t1 = allTargets[1];
+  if (!t0 || !t1) return { reason: 'target missing.' };
+  const r0 = resolveStackOrPermanent(t0);
+  const r1 = resolveStackOrPermanent(t1);
+  if (!r0 || !r1) return { reason: 'target gone.' };
+  if (r0.card.iid === r1.card.iid) return { reason: "can't staple a card to itself." };
+  const [canonBaseTpl, canonStapleTpl, swapped] = canonicalSplicePair(
+    r0.card.tplId, r1.card.tplId);
+  const baseR = swapped ? r1 : r0;
+  const stapleR = swapped ? r0 : r1;
+  const baseCard = baseR.card;
+  const stapleCard = stapleR.card;
+  if (!isSpliceableBase(baseCard.tplId)) {
+    return { reason: `${baseCard.name} can't be a splice base.` };
+  }
+  if (stapleChainOf(stapleCard).length > 0) {
+    return { reason: `${stapleCard.name} is already stapled.` };
+  }
+  if (!isCompatibleStaplePair(baseCard.tplId, stapleCard.tplId)) {
+    return { reason: `${baseCard.name} and ${stapleCard.name} aren't compatible.` };
+  }
+  return { baseR, stapleR, baseCard, stapleCard, canonBaseTpl, canonStapleTpl };
 }
 
 // Pluck a card off its controller's battlefield. Returns null if gone.
@@ -2620,41 +2672,20 @@ const EFFECTS = {
 
   // Stapler in-game splice. Merges target 1 onto target 0 using the reward-time
   // splice infra. Cross-owner: merged slot moves to caster's runState (removal/steal).
-  // Targets validated: spliceable base/staple + isCompatibleStaplePair.
+  // Pair validity lives in resolveSplicePair, which isLegalAction ALREADY ran
+  // before any cost was paid (MtG 601.2h: costs are the last part of
+  // activation — an invalid pair never pays). Re-checked here only as
+  // defense-in-depth: a fizzle at this point means legality/handler drift,
+  // and per MtG resolution-fizzle semantics the costs stay paid. Charges are
+  // safe regardless: a fizzle returns before the charge accounting at the
+  // bottom.
   apply_in_game_splice(ctx, params, target) {
-    const all = ctx.allTargets;
-    if (!Array.isArray(all) || all.length < 2) {
-      log(`${ctx.sourceName} fizzles — needs two targets.`, 'sp');
+    const pair = resolveSplicePair(ctx.allTargets);
+    if (pair.reason) {
+      log(`${ctx.sourceName} fizzles — ${pair.reason}`, 'sp');
       return;
     }
-    const t0 = all[0], t1 = all[1];
-    if (!t0 || !t1) { log(`${ctx.sourceName} fizzles — target missing.`, 'sp'); return; }
-    const r0 = resolveStackOrPermanent(t0);
-    const r1 = resolveStackOrPermanent(t1);
-    if (!r0 || !r1) { log(`${ctx.sourceName} fizzles — target gone.`, 'sp'); return; }
-    if (r0.card.iid === r1.card.iid) {
-      log(`${ctx.sourceName} fizzles — can't staple a card to itself.`, 'sp'); return;
-    }
-    const [canonBaseTpl, canonStapleTpl, swapped] = canonicalSplicePair(
-      r0.card.tplId, r1.card.tplId);
-    const baseR = swapped ? r1 : r0;
-    const stapleR = swapped ? r0 : r1;
-    const baseCard = baseR.card;
-    const stapleCard = stapleR.card;
-    if (!isSpliceableBase(baseCard.tplId)) {
-      log(`${ctx.sourceName} fizzles — ${baseCard.name} can't be a splice base.`, 'sp'); return;
-    }
-    // In-game staple chain lives at card.stapledFrom.stapledTpls (NOT card.stapledTpls,
-    // which is slot-level). Reading the wrong field silently misses prior chains.
-    const stapleStaples = (stapleCard.stapledFrom && Array.isArray(stapleCard.stapledFrom.stapledTpls))
-      ? stapleCard.stapledFrom.stapledTpls
-      : (Array.isArray(stapleCard.stapledTpls) ? stapleCard.stapledTpls : []);
-    if (stapleStaples.length > 0) {
-      log(`${ctx.sourceName} fizzles — ${stapleCard.name} is already stapled.`, 'sp'); return;
-    }
-    if (!isCompatibleStaplePair(baseCard.tplId, stapleCard.tplId)) {
-      log(`${ctx.sourceName} fizzles — ${baseCard.name} and ${stapleCard.name} aren't compatible.`, 'sp'); return;
-    }
+    const { baseR, stapleR, baseCard, stapleCard } = pair;
     // Fire stack inputs' effects with their locked-in targets, then consume them
     // (no graveyard — Stapler absorbed them).
     const fireStackEffects = (r) => {
@@ -4049,7 +4080,13 @@ function probeTargetsForObject(obj, who) {
 function matchFilterSpell(card, filter) {
   if (!filter) return true;
   if (filter.spliceable_base && !isSpliceableBase(card.tplId)) return false;
-  if (filter.spliceable_staple && !isSpliceableStaple(card.tplId)) return false;
+  // Same staple eligibility as matchFilter's permanent branch: template
+  // spliceable AND no prior chain (stapleChainOf). Before this, a stapled
+  // spell on the STACK passed legality and only fizzled at resolution.
+  if (filter.spliceable_staple
+      && (!isSpliceableStaple(card.tplId) || stapleChainOf(card).length > 0)) {
+    return false;
+  }
   if (filter.not_token && card.isToken) return false;
   return true;
 }
@@ -4115,14 +4152,9 @@ function matchFilter(card, filter, controller, who) {
   // the helper.
   if (filter.spliceable_staple) {
     if (!isSpliceableStaple(card.tplId)) return false;
-    // "Already stapled" check — see the field-name note in apply_in_game_splice.
-    // In-game cards carry the chain at card.stapledFrom.stapledTpls; the
-    // direct card.stapledTpls field is empty (it's a slot-level concept).
-    // Reject if either populated form indicates a prior chain.
-    const chain = (card.stapledFrom && Array.isArray(card.stapledFrom.stapledTpls))
-      ? card.stapledFrom.stapledTpls
-      : (Array.isArray(card.stapledTpls) ? card.stapledTpls : []);
-    if (chain.length > 0) return false;
+    // "Already stapled" check — stapleChainOf reads whichever chain field is
+    // populated (the one shared definition; see its header).
+    if (stapleChainOf(card).length > 0) return false;
   }
   return true;
 }
@@ -5344,7 +5376,11 @@ function doActivateAbility(who, cardIid, abilityIdx, targets, sacIid) {
   const f = findCard(cardIid); if (!f) return;
   const card = f.card;
   const ab = card.abilities[abilityIdx];
-  // Pay costs.
+  // Pay costs. Anything that could make the activation ILLEGAL — slot filters,
+  // distinct_targets, the Stapler pair check — was already validated in
+  // isLegalAction (executeAction gates on it), so per MtG 601.2h the costs
+  // paid here are the LAST part of activation: an illegal activation never
+  // reaches this line, and nothing needs refunding.
   if (ab.cost.tap) card.tapped = true;
   if (ab.cost.mana) payMana(who, resolvedManaCost(ab.cost.mana, card, who));
   // Sac cost is paid BEFORE the effect resolves. The sacrificed creature
@@ -5867,6 +5903,15 @@ function isLegalAction(who, action) {
       // targets, and the top-level target() hexproof checkpoint all resolve
       // through one path. Untargeted abilities pass trivially.
       if (!tsIsLegalSet(ab, who, action.targets)) return false;
+      // Cross-target pair validity (Stapler) is an ACTIVATION check, so it
+      // runs here — before executeAction dispatches and any cost is paid
+      // (MtG 601.2h via 602.2b: costs are the last part of activation; an
+      // illegal activation rewinds with nothing spent). Per-slot filters
+      // can't see the PAIR, so this is the one place that can.
+      if (ab.effects.some(e => e.kind === 'apply_in_game_splice')
+          && resolveSplicePair(action.targets).reason) {
+        return false;
+      }
       return true;
     }
     case 'declareAttackers': {
@@ -6614,6 +6659,10 @@ return {
   // controller has cast permission for (Seal-Thief Courier). Single source of
   // truth for the human cast UI's zone-agnostic card lookup.
   findCastableSpell,
+  // Enumerate everything `who` may cast right now: hand + cast-permission
+  // zones. renderHand uses the non-hand entries to show stolen/exiled cards
+  // inline at the end of the hand row.
+  castableSpellEntries,
   makeCard,
   // Re-derive seam (template + stickers + subtype-implied), exposed for tests.
   intrinsicKeywords,

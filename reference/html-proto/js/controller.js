@@ -2386,7 +2386,7 @@ function openCardPopup(card) {
         <div class="frame-cost">${vm.pipsHtml}</div>
       </div>
       <div class="frame-art">${vm.artInner}</div>
-      <div class="frame-type">${escapeHtml(vm.typeText)}</div>
+      <div class="frame-type">${vm.typeHtml}</div>
       <div class="frame-text">
         <div class="frame-oracle">${vm.oracleHtml}</div>
         ${vm.stickersInner ? '<div class="frame-stickers">' + vm.stickersInner + '</div>' : ''}

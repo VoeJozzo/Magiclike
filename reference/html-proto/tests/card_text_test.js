@@ -344,5 +344,31 @@ console.log('\n=== bumped value → highlight=true on the bumped segment ===');
   }
 }
 
+// ─── §305.6 mana-ability suppression (PR #93 review item 4) ────────────────
+// A land whose tap-for-mana is fully conveyed by its basic-land subtypes
+// renders NO ability text (the type line + big mana symbol carry it); a land
+// whose production is NOT conveyed keeps its text. Pins both halves of the
+// rule plus the unit-amount guard ({C}{C} out-produces what a subtype could
+// promise) and the everything-else-stays case (Phylactery keeps its triggers).
+console.log('\n=== basic-land mana-ability suppression ===');
+{
+  const txt = (id) => describeCardText(ENGINE.makeCard(id));
+  eqText(txt('gilded_seat'), '', 'Gilded Seat (Artifact Land — Plains): "{T}: Add {W}" suppressed, empty text');
+  eqText(txt('swamp'), '', 'Swamp (Basic Land — Swamp): tap ability suppressed, empty text');
+  check('Dross Pylon ({C}-producer, no basic type) keeps "{T}: add {C}"',
+        /\{T\}: add \{C\}/.test(txt('dross_pylon')), txt('dross_pylon'));
+  check('Equatorial Engine ({T}: add {C}{C}) keeps its text (unit-amount guard)',
+        /\{T\}: add \{C\}\{C\}/.test(txt('equatorial_engine')), txt('equatorial_engine'));
+  const phylactery = txt('phylactery');
+  check('Phylactery (Land — Swamp): mana line suppressed but other text kept',
+        !/add \{B\}/.test(phylactery) && phylactery.length > 0, phylactery);
+  // Stickered dual: a Forest granted the Island subtype folds to a choose-form
+  // ability whose colors are ALL conveyed — suppressed too (paper-dual look).
+  const dual = ENGINE.makeCard('forest');
+  addType(dual, 'Island');
+  ingestCard(dual);  // re-run the 305.6 autogrant against the new subtype
+  check('Forest + Island subtype (choose G/U, both conveyed) is suppressed',
+        describeCardText(dual) === '', describeCardText(dual));
+}
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');
 process.exit(fail > 0 ? 1 : 0);

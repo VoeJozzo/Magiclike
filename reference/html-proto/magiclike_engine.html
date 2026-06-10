@@ -66,6 +66,9 @@
   --card-mana-pip-size:       3;     /* 12px from 4px baseline */
   --card-mana-pip-popup-size: 1.5;   /* 6px-at-1x = 24px in 4x popup */
   --card-mana-text-size:      1;
+  /* --card-big-mana-size: multiplier on the basic-land big mana symbol
+     (baseline 28px at --scale 1). User-controlled via settings. */
+  --card-big-mana-size:       1;
   /* Master card-size multiplier for the in-hand / on-board frame (the
      --scale 1 = 80x112px baseline). Scales the whole frame — art, text,
      pips — uniformly. User-controlled via settings ("Card size"). The
@@ -376,10 +379,13 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
   padding: 0 calc(1.5px * var(--scale));
   line-height: 1.4;
 }
-/* Basic-land identity symbol: a large mana glyph centered in the otherwise-empty
-   text box, echoing paper basic lands. Emitted via oracleHtml (so it shows on the
-   frame AND the popup) only when a basic land has no other rules text; any added
-   text reverts to the normal layout. Reuses the cost-pip mana SVGs at large size.
+/* Land identity symbol: a large mana glyph centered in the otherwise-empty
+   text box, echoing paper basic lands. Shown for any land whose mana production
+   is fully conveyed by its basic-land subtypes (§305.6 — basics, artifact lands,
+   stickered duals) and that has no other rules text. Emitted via oracleHtml (so
+   it shows on the frame AND the popup); any added text reverts to the normal
+   layout, except a keyword coin row, which coexists via .with-coins. Reuses the
+   cost-pip mana SVGs at large size; --card-big-mana-size is the settings knob.
    Height matches the text box's content area (51px box - 3px padding x2 = 45px). */
 .card-frame .frame-bigmana{
   display: flex;
@@ -388,12 +394,23 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
   gap: calc(4px * var(--scale));
   height: calc(45px * var(--scale));
 }
+/* Keyword-coin coexistence: when the land also carries a coin row (e.g. an
+   Innate sticker), the symbol container shrinks to the space below the coins
+   (45px box − ~11px coin row − margins) and the symbol is capped at its 28px
+   baseline so an oversized user setting can't push it out of the box. */
+.card-frame .frame-bigmana.with-coins{
+  height: calc(31px * var(--scale));
+}
 .card-frame .frame-bigmana .bigsym{
-  width: calc(28px * var(--scale));
-  height: calc(28px * var(--scale));
+  width: calc(28px * var(--scale) * var(--card-big-mana-size, 1));
+  height: calc(28px * var(--scale) * var(--card-big-mana-size, 1));
   background-size: 100% 100%;
   background-repeat: no-repeat;
   flex-shrink: 0;
+}
+.card-frame .frame-bigmana.with-coins .bigsym{
+  width: min(calc(28px * var(--scale) * var(--card-big-mana-size, 1)), calc(28px * var(--scale)));
+  height: min(calc(28px * var(--scale) * var(--card-big-mana-size, 1)), calc(28px * var(--scale)));
 }
 .card-frame .frame-bigmana .bigsym.col-W{background-image:url('../../assets/mana/W.svg')}
 .card-frame .frame-bigmana .bigsym.col-U{background-image:url('../../assets/mana/U.svg')}
@@ -404,7 +421,7 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
   background:#aaa; color:#222; border-radius:50%;
   display:flex; align-items:center; justify-content:center;
   font-family: var(--card-font-pip);
-  font-size: calc(16px * var(--scale));
+  font-size: calc(16px * var(--scale) * var(--card-big-mana-size, 1));
   line-height:1;
 }
 .card-frame .frame-flavor{
@@ -575,6 +592,26 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
 .card-frame.pblk{box-shadow:0 0 calc(12px * var(--scale)) calc(3px * var(--scale)) #ffff44}
 .card-frame.sick{opacity:.65}
 .card-frame.discardable{box-shadow:0 0 calc(10px * var(--scale)) calc(2px * var(--scale)) #ff9944}
+/* Cast-permission card shown inline in the hand row (Seal-Thief Courier
+   steal): violet dashed frame + EXILED ribbon mark it as not-really-in-hand.
+   Stacks with .castable's green glow when it's currently playable. */
+.card-frame.from-exile{outline:calc(2px * var(--scale)) dashed #b27fe5;outline-offset:calc(-2px * var(--scale))}
+.card-frame.from-exile::after{
+  content:'EXILED';
+  position:absolute;
+  top:calc(46px * var(--scale));
+  left:50%;
+  transform:translateX(-50%);
+  padding:calc(1px * var(--scale)) calc(3px * var(--scale));
+  background:#2a1a3a;
+  border:1px solid #b27fe5;
+  border-radius:calc(2px * var(--scale));
+  color:#d9c2f5;
+  font-size:calc(5px * var(--scale));
+  font-weight:bold;
+  letter-spacing:.08em;
+  pointer-events:none;
+}
 
 /* ========================================================================= */
 /* End card frame                                                         */

@@ -65,6 +65,7 @@ const DEFAULTS = {
   cardManaPipSize:      3,      // 12px (baseline 4)
   cardManaPipPopupSize: 1.5,    // 6px-at-1x = 24px in 4x popup
   cardManaTextSize:     1,      // 1.2em (baseline)
+  cardBigManaSize:      1,      // 28px (baseline) — the basic-land big symbol
   // Ability (keyword) icon size: multiplier on the 10px-at-1x .kw-icon coin
   // shown in the in-play frame's keyword row. Pushed into --card-kw-icon-size.
   cardKwIconSize:       1,      // 10px (baseline)
@@ -102,6 +103,11 @@ const MANA_PIP_SIZE_OPTIONS = buildSizeOptions(4, [3, 4, 5, 6, 8, 9, 10, 12]);
 // Ability (keyword) icon size options. Px-anchored to the .kw-icon's 10px
 // baseline at --scale 1, so labels read as actual rendered size in hand/board.
 const KW_ICON_SIZE_OPTIONS = buildSizeOptions(10, [6, 8, 10, 12, 14, 16, 20]);
+
+// Big mana symbol (the basic-land identity glyph) size options. Px-anchored to
+// the .bigsym's 28px baseline at --scale 1. 44px ≈ fills the text box; when a
+// keyword coin row shares the box, CSS caps the symbol at the 28px baseline.
+const BIG_MANA_SIZE_OPTIONS = buildSizeOptions(28, [16, 20, 24, 28, 32, 36, 40, 44]);
 
 // In-text .mana symbol size options. em-based (scales with surrounding
 // text), so we express as a multiplier of the 1.2em baseline.
@@ -257,6 +263,7 @@ const CSS_VAR_BINDINGS = {
   cardManaPipSize:      '--card-mana-pip-size',
   cardManaPipPopupSize: '--card-mana-pip-popup-size',
   cardManaTextSize:     '--card-mana-text-size',
+  cardBigManaSize:      '--card-big-mana-size',
   cardKwIconSize:       '--card-kw-icon-size',
 };
 
@@ -296,6 +303,7 @@ function applyFontsToRoot() {
   root.setProperty('--card-mana-pip-size', data.cardManaPipSize);
   root.setProperty('--card-mana-pip-popup-size', data.cardManaPipPopupSize);
   root.setProperty('--card-mana-text-size', data.cardManaTextSize);
+  root.setProperty('--card-big-mana-size', data.cardBigManaSize);
   root.setProperty('--card-kw-icon-size', data.cardKwIconSize);
 }
 
@@ -306,6 +314,7 @@ return {
   FONT_SIZE_OPTIONS_BY_ELEMENT,
   POPUP_TEXT_SCALE_OPTIONS,
   MANA_PIP_SIZE_OPTIONS, MANA_TEXT_SIZE_OPTIONS,
+  BIG_MANA_SIZE_OPTIONS,
   KW_ICON_SIZE_OPTIONS,
   CARD_SIZE_OPTIONS,
   // Element-key utilities exposed for controller.js's settings UI.

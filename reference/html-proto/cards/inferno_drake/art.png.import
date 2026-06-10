@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://c5aqvchrifrix"
-path="res://.godot/imported/art.png-b43fae255bab414a8977e22e31de4b1c.ctex"
+path="res://.godot/imported/art.png-c94ca90ec0ff1c37b0e8a34fa88754dd.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://reference/html-proto/cards/inferno/art.png"
-dest_files=["res://.godot/imported/art.png-b43fae255bab414a8977e22e31de4b1c.ctex"]
+source_file="res://reference/html-proto/cards/inferno_drake/art.png"
+dest_files=["res://.godot/imported/art.png-c94ca90ec0ff1c37b0e8a34fa88754dd.ctex"]
 
 [params]
 

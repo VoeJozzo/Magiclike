@@ -50,9 +50,11 @@ console.log('=== whole pool: types[] is present + the accessors are coherent ===
   check('hasType hits governing type + every declared tag', hasTypeMiss.length === 0, hasTypeMiss.slice(0, 5).join(', '));
 
   // typeLine renders the canonical MTG line, including the corrected cases:
-  // basic lands (Basic supertype), City of Brass (single Land), legendary cards.
-  const EXPECT = { forest: 'Basic Land', island: 'Basic Land', mountain: 'Basic Land',
-    plains: 'Basic Land', swamp: 'Basic Land', city_of_brass: 'Land',
+  // basic lands (Basic supertype + their color subtype), City of Brass
+  // (single Land), legendary cards.
+  const EXPECT = { forest: 'Basic Land — Forest', island: 'Basic Land — Island',
+    mountain: 'Basic Land — Mountain', plains: 'Basic Land — Plains',
+    swamp: 'Basic Land — Swamp', city_of_brass: 'Land',
     city_guardian: 'Legendary Creature — Human Soldier', grizzly_bears: 'Creature — Bear' };
   const bad = Object.keys(EXPECT).filter(id => CARDS[id] && typeLine(CARDS[id]) !== EXPECT[id]);
   check('typeLine renders canonical lines (basic lands / legendary / subtypes)',

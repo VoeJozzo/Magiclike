@@ -1,6 +1,17 @@
 // STICKERS — runtime application + deck-construction helpers (extracted from engine.js).
 // Late-binds ENGINE.synthesizeStapledTemplate and tplForSlot (both resolve at call time).
 
+// Display metadata: which type tags on this card came from stickers. The
+// types[] array itself can't distinguish base from sticker-added (addType
+// writes both), so the apply paths below keep this parallel record and the
+// render layer (typeLineHtml) paints these tags gold. Rebuilt on every
+// makeCard / stickersForSlot pass — never persisted.
+function recordStickerType(card, tag) {
+  if (!card || !tag) return;
+  if (!Array.isArray(card.stickerTypes)) card.stickerTypes = [];
+  if (!card.stickerTypes.includes(tag)) card.stickerTypes.push(tag);
+}
+
 // A sticker entry on a slot/card is either a registry id (string) or an inline
 // parameterized descriptor {kind, ...params} (§3.8) — the latter is produced by
 // the apply_sticker effect for the Balancer family (cost_mod / set_color /
@@ -53,6 +64,7 @@ function applyStickerKindEffect(card, s) {
   } else if (s.kind === 'add_type') {
     // Add one type tag (land-color stickers add a basic-land subtype). For land
     // subtypes the §305.6 autogrant then yields the matching mana ability.
+    recordStickerType(card, s.type);
     addType(card, s.type);
     grantBasicLandMana(card);
   } else if (s.kind === 'set_types') {
@@ -116,6 +128,7 @@ function applyStickersToCard(card) {
       if (!rolled) continue;
       // Append the rolled subtype to types[] via the accessor layer — the sole
       // type identity. Lord buffs that match on it read via hasType/subtypesOf.
+      recordStickerType(card, rolled);
       addType(card, rolled);
     } else {
       applyStickerKindEffect(card, s);

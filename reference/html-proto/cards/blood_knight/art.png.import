@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://c2f2yy7bf82ls"
-path="res://.godot/imported/art.png-5eb9a5052bcd7055051d237970fa8211.ctex"
+path="res://.godot/imported/art.png-2d439c44cd84bb75b211802b84d7a514.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://reference/html-proto/cards/bloodKnight/art.png"
-dest_files=["res://.godot/imported/art.png-5eb9a5052bcd7055051d237970fa8211.ctex"]
+source_file="res://reference/html-proto/cards/blood_knight/art.png"
+dest_files=["res://.godot/imported/art.png-2d439c44cd84bb75b211802b84d7a514.ctex"]
 
 [params]
 

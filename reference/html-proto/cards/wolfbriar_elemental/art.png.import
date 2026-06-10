@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dxhioy200ro3d"
-path="res://.godot/imported/art.png-1f741bb0cf5a9a897db435101e9c69f7.ctex"
+path="res://.godot/imported/art.png-115c80a167d38dd7a0b2e0374e946b5b.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://reference/html-proto/cards/wolfbriarElemental/art.png"
-dest_files=["res://.godot/imported/art.png-1f741bb0cf5a9a897db435101e9c69f7.ctex"]
+source_file="res://reference/html-proto/cards/wolfbriar_elemental/art.png"
+dest_files=["res://.godot/imported/art.png-115c80a167d38dd7a0b2e0374e946b5b.ctex"]
 
 [params]
 

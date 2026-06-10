@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://batyh7ot5su24"
-path="res://.godot/imported/art.png-9e02ee39339ae73349b337fcd0aa1c1d.ctex"
+path="res://.godot/imported/art.png-bf3c7c8f614d2ed265ae4281ace5f1f4.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://reference/html-proto/cards/dreadWraith/art.png"
-dest_files=["res://.godot/imported/art.png-9e02ee39339ae73349b337fcd0aa1c1d.ctex"]
+source_file="res://reference/html-proto/cards/dread_wraith/art.png"
+dest_files=["res://.godot/imported/art.png-bf3c7c8f614d2ed265ae4281ace5f1f4.ctex"]
 
 [params]
 
