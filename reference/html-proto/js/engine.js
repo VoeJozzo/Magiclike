@@ -2707,6 +2707,15 @@ const EFFECTS = {
     if (idx < 0) return;
     fromBf.splice(idx, 1);
     G[toCtrl].battlefield.push(card);
+    // A2-5: a permanent whose controller changes is removed from combat
+    // (CR 506.4c; canon §801). Without this, the stale G.attackers /
+    // G.blockers entries still findCard-resolve (both battlefields are
+    // searched), so a mid-combat stolen attacker dealt its combat damage
+    // TO ITS OWN NEW CONTROLLER (defender is fixed at start of combat but
+    // the damage credit reads the live controller), and a stolen untapped
+    // attacker could legally be assigned to block itself. Shares the A2-3
+    // helper: one "leaves combat" concept.
+    removeFromCombat(card.iid);
     if (params.untap_on_take || params.untap) card.tapped = false;
     if (params.grant_haste) applyGrant(card, 'haste', ctx.sourceIid, true);
     if (params.duration === 'eot') card.tempControlUntilEot = true;

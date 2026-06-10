@@ -3,7 +3,7 @@ type: rules
 tags: [magiclike, rules]
 section: "800"
 created: 2026-06-04
-updated: 2026-06-04
+updated: 2026-06-10
 ---
 
 # 800. Combat
@@ -16,6 +16,8 @@ The combat phase consists of three steps in order: Declare Attackers (505), Decl
 1. **Step 505 — Declare Attackers** opens with the active player having priority. The active player declares which of their creatures are attacking by tapping each (unless [[900-keywords|vigilance]]). Declared attackers are added to `state.attackers`. The active player can undo declarations before passing priority. When the active player passes, priority goes to the defender for instant-speed response. When both players pass with the stack empty, the step ends.
 2. **Step 506 — Declare Blockers** is entered with **block declaration as a turn-based action** that happens **before priority opens** (MTG 509.1a). The defending player assigns each of their untapped creatures to block exactly one of the attackers (subject to legality — see §802). After the defending player confirms blocks (`confirm_blocks` action), priority opens with the active player.
 3. **Step 507 — Combat Damage** is a turn-based action with no priority window. See §803.
+
+**Removal from combat (MTG 506.4):** a creature that leaves the battlefield — or **whose controller changes** (506.4c) — is removed from combat: it is pruned from the attacker list and its block assignments are retired. An attacker that was blocked **remains blocked** even if its blocker is removed from combat or dies (510.1c): it deals no combat damage unless it has [[900-keywords|trample]]. (Implemented in the html-proto as `removeFromCombat`, called from the leave-battlefield path and from `change_control` — audit A2-3/A2-5.)
 
 ## 802. Blocking legality
 A blocker assignment is legal if:

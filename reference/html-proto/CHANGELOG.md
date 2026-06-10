@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.1.22`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.1.23`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -1490,6 +1490,23 @@ next via the same helper. New `test_combat_ghost_attacker.js` (19
 assertions): the end-to-end ghost line through real actions (red before:
 life 20→18 from a never-re-declared sick attacker) + the 510.1c
 blocker-killed guard (green before AND after). Suite 77 files / 1823 green,
+lint clean.
+
+v2.1.23: audit fix A2-5 (Joe-approved, PR #98 verdict 2026-06-10) —
+`change_control` now removes the creature from combat (MTG 506.4c) via the
+shared `removeFromCombat` helper. Before: the control swap touched nothing
+but the battlefields, and findCard searches BOTH — so a mid-combat stolen
+attacker dealt its combat damage TO ITS OWN NEW CONTROLLER (defender fixed
+at start of combat, damage credit reads the live controller), and a stolen
+untapped (vigilance) attacker could legally be assigned to block ITSELF.
+Latent today (steal spells are sorcery-window; flash Steal dodges via its
+re-mint quirk) but live the day the first flash/triggered change_control
+lands. Canon: new "Removal from combat" paragraph in
+`docs/wiki/rules/800-combat.md` §801; DIVERGENCE C7 row added (Godot has no
+equivalent yet). New `test_combat_change_control.js` (19 assertions): stolen
+attacker is pruned + damages nobody (red before: new controller 20→18),
+self-block rejected (red before: legal), stolen blocker stops trading damage
+while its attacker stays blocked per 510.1c. Suite 78 files / 1842 green,
 lint clean.
 
 > **MUST UPDATE on every dev-branch push that touches code.** Bump `VERSION` in `js/main.js` AND the line above, in the same commit. GitHub Pages caches aggressively; the version string is the only reliable way to confirm a fresh build is live.
