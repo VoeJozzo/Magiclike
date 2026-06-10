@@ -72,4 +72,6 @@
 | [A3-15](chunk-03-stack-triggers.md) | P3 | stack-triggers | triggers/engine | triggers.js's unified-event-shape header (the contract block predicates are written agains | ship | open |
 | [A3-16](chunk-03-stack-triggers.md) | P3 | stack-triggers | triggers/engine | Comment-hygiene sweep (merged): three more verified-false attribution/contract comments in | ship | open |
 
-*Chunks done: 6 (dry run), 1, 2, 3. Severity × effort re-sort happens at triage.*
+
+
+*Chunks done: 6 (dry run), 1, 2, 3, 4 — the rules core is complete. Severity × effort re-sort happens at triage.*

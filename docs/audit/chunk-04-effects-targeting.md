@@ -417,7 +417,7 @@ trophy keywords to Endomorph.
   accessor `colorsOfCard` already exists at :1497–1505 and is unused here)
   @ `4d739ad`
 - **Dimension:** 3 (oracle-text vs behavior) + 1
-- **Severity:** P2 — **found independently by 2 lenses** (one filed P1;
+- **Severity:** P1 (raised from P2 by self-QA recommendation, accepted by runner: live + executed + both cards co-occur in draft pools — the scale reserves P2 for latent) — **found independently by 2 lenses** (one filed P1;
   verifiers trimmed: live blast radius is one card pairing today). Executed
   through the real cast-legality path (`isLegalAction` returns true for the
   forbidden target; a mono-black control is correctly rejected).
@@ -1607,7 +1607,7 @@ difference.
 | [A4-3](chunk-04-effects-targeting.md) | P1 | effects-targeting | engine.js | Fight retargets around removal: killed fight target silently replaced by the caster's own biggest creature — friendly fire instead of fizzle; live in all 4 fight cards; not closed by PR #111 (fight has no target slots) | stage | open |
 | [A4-4](chunk-04-effects-targeting.md) | P1 | effects-targeting | engine.js | Mass removal is sequential: Day of Reckoning + Blood Artist fires 1 dies-trigger vs the damage wrath's 3, and the count depends on battlefield array order — violates checkDeaths' own batch contract | stage | open |
 | [A4-5](chunk-04-effects-targeting.md) | P1 | effects-targeting | engine.js | CLEANUP keyword rebuild is copyOf-blind: a False Witness copy loses copied flying AND regains base flash at first EOT grant; same root corrupts trophy claims on copy victims; one intrinsicKeywords fix | stage | open |
-| [A4-6](chunk-04-effects-targeting.md) | P2 | effects-targeting | engine.js | color/not_color test only the first pip — "non-Black" Doom Blade legally destroys the {U}{B} Seal-Thief Courier; route both checks through colorsOfCard | stage | open |
+| [A4-6](chunk-04-effects-targeting.md) | P1 | effects-targeting | engine.js | color/not_color test only the first pip — "non-Black" Doom Blade legally destroys the {U}{B} Seal-Thief Courier; route both checks through colorsOfCard | stage | open |
 | [A4-7](chunk-04-effects-targeting.md) | P2 | effects-targeting | engine.js | Trigger/ability chooses() never opens the human prompt — Heir's dies-trigger silently sacrifices a land of the engine's choosing; share the spell resolver's GAP-2 branch | stage | open |
 | [A4-8](chunk-04-effects-targeting.md) | P2 | effects-targeting | engine.js | target_filter silently dropped for creature_or_player/player/opp/spell while the header + PROTOCOL §3.5 claim it's honored (×3 lenses); latent — zero pool cards hit it | stage | open |
 | [A4-9](chunk-04-effects-targeting.md) | P2 | effects-targeting | engine.js | Non-combat trample spills face damage from fight/effect damage — canon §902.2 is combat-only, the engine's own reminder text agrees, and the spill math skips the deathtouch threshold; design fork (spell-half is deliberate) | stage | open |
