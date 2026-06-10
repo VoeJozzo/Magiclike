@@ -641,15 +641,25 @@ function applySubtypeKeywords(card) {
   addSubtypeKeywords(subtypesOf(card), card.keywords);
 }
 
-// Runtime instance-state keys owned by makeCard — the copy-by-default loop
+// Runtime instance-state keys owned by the engine — the copy-by-default loop
 // below must never let a template inject these. A template declaring one is a
 // card-data error (warned at instantiation, the field is ignored).
+// MAINTENANCE: this denylist is the one list the copy-by-default inversion
+// still requires by hand — when adding a NEW runtime field to card instances
+// (in makeCard or anywhere downstream), add it here too, or a template
+// declaring that key would be deep-copied straight onto the instance.
 const MAKECARD_INSTANCE_KEYS = new Set([
   'iid', 'slotIdx', 'controller', 'owner', 'isToken',
   'tapped', 'sick', 'damage', 'tempPower', 'tempTou', 'permPower', 'permTou',
   'counters', 'dealtDeathtouch', 'killedBy', 'cantAttack', 'cantBlock',
   'cantAttackBy', 'cantBlockBy', 'damagedBySources', 'grantedBy',
   'eotGrants', 'typeGrants', 'modifiers', 'stickers', 'empowerRolls', 'subtypeRolls',
+  // Assigned outside makeCard at runtime (steal / copy / bargain / charge /
+  // build-on-draw systems) — a truthy template copyOf would trip
+  // resetInPlayState's copy-revert, a template chargesLeft would shadow the
+  // slot-derived charge count, etc.
+  'tempControlUntilEot', 'copyOf', 'copySourceIid', 'bargainsNum',
+  'chargesLeft', '_builtThisGame',
 ]);
 
 function makeCard(tplId, stickers, slotIdx, empowerRolls, permaBuffs, bonusTrigger, stapledTpls, subtypeRolls) {

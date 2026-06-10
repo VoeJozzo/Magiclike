@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.1.16`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.1.17`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -1409,6 +1409,19 @@ observable behavior change today: suite 74 files / 1768 green (the
 spell-finisher pin in test_endomorph_absorb.js flipped to assert both
 damagers record), lint clean, selfplay 200/200 clean (0 crashes,
 0 invariant violations).
+
+v2.1.17: PR #96 review follow-up — MAKECARD_INSTANCE_KEYS topped up with the
+six runtime instance fields assigned OUTSIDE makeCard (tempControlUntilEot,
+copyOf, copySourceIid, bargainsNum, chargesLeft, _builtThisGame). The
+copy-by-default loop only warns-and-ignores keys on that denylist, so a
+template declaring one of the missing six would have been deep-copied
+straight onto the instance — e.g. a truthy template copyOf would trip
+resetInPlayState's copy-revert path. The denylist comment now states the
+maintenance rule the inversion created: new runtime instance fields must be
+added there too. New denylist-probe guard in test_distinct_targets.js
+(synthetic template declaring one key per runtime system → all ignored with
+warnings; literal-initialized damage keeps its runtime init). Suite 74
+files / 1785 green.
 
 > **MUST UPDATE on every dev-branch push that touches code.** Bump `VERSION` in `js/main.js` AND the line above, in the same commit. GitHub Pages caches aggressively; the version string is the only reliable way to confirm a fresh build is live.
 

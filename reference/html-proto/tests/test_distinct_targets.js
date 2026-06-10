@@ -274,5 +274,34 @@ console.log('\n=== copy-by-default guard: EVERY template field survives makeCard
     broken.length ? broken.slice(0, 10).join(', ') : 'all ' + Object.keys(CARDS).length + ' templates OK');
 })();
 
+console.log('\n=== denylist guard: a template CANNOT inject runtime-only fields ===');
+(() => {
+  // The copy-by-default loop's counterpart risk: a template declaring a
+  // runtime instance field must be ignored (with a console.warn), not
+  // deep-copied — e.g. a truthy copyOf would trip resetInPlayState's
+  // copy-revert path. Probe with a synthetic template carrying one key from
+  // each runtime system that writes card fields outside makeCard, plus one
+  // literal-initialized key (damage). Registered AFTER the all-template
+  // sweeps above so they never see it; removed again in finally.
+  CARDS.__denylist_probe__ = {
+    name: 'Denylist Probe', types: ['Creature'], cost: { R: 1 },
+    power: 1, toughness: 1,
+    copyOf: 'grizzly_bears', copySourceIid: 123, tempControlUntilEot: true,
+    bargainsNum: 7, chargesLeft: 9, _builtThisGame: true, damage: 5,
+  };
+  try {
+    const made = ENGINE.makeCard('__denylist_probe__');
+    const RUNTIME_KEYS = ['copyOf', 'copySourceIid', 'tempControlUntilEot',
+      'bargainsNum', 'chargesLeft', '_builtThisGame'];
+    const leaked = RUNTIME_KEYS.filter(k => made[k] === CARDS.__denylist_probe__[k]);
+    check('runtime-only template fields are ignored, not copied',
+      leaked.length === 0, leaked.length ? 'leaked: ' + leaked.join(', ') : 'all ignored');
+    check('literal-initialized runtime field keeps its init (damage 0, not the template\'s 5)',
+      made.damage === 0, 'damage=' + made.damage);
+  } finally {
+    delete CARDS.__denylist_probe__;
+  }
+})();
+
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');
 process.exit(fail > 0 ? 1 : 0);
