@@ -2655,11 +2655,15 @@ const EFFECTS = {
   // splice infra. Cross-owner: merged slot moves to caster's runState (removal/steal).
   // Targets validated: spliceable base/staple + isCompatibleStaplePair.
   // A fizzle here REFUNDS the activation costs (untap + mana back) — unlike a
-  // real-MtG fizzle, these failures mean the pick UI/AI accepted a pair the
-  // ability can't act on (pair compatibility isn't checkable per-slot at
-  // activation), so the player shouldn't lose the tap, the mana, or a charge.
-  // Charges are safe already: every fizzle return exits before the charge
-  // accounting at the bottom.
+  // real-MtG fizzle, these failures mean the picker accepted a pair the
+  // ability can't act on, so the player shouldn't lose the tap, the mana, or a
+  // charge. As of v2.1.12 the fizzle paths are INTENTIONALLY UNREACHABLE via
+  // legal actions (distinct_targets blocks self-staple; matchFilter +
+  // matchFilterSpell apply the full staple eligibility incl. stapleChainOf at
+  // legality) — don't hunt for a live trigger path; this is defense-in-depth
+  // for any future legality/handler drift, exercised in tests by invoking the
+  // handler directly. Charges are safe regardless: every fizzle return exits
+  // before the charge accounting at the bottom.
   apply_in_game_splice(ctx, params, target) {
     const fizzle = (reason) => {
       log(`${ctx.sourceName} fizzles — ${reason}`, 'sp');

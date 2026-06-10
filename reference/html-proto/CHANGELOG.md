@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.1.12`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.1.13`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -1320,3 +1320,20 @@ rejected-at-targeting. 1704 green, 300-game selfplay clean, lint clean.
 Browser-verified (ability pick lights spliceable permanent + stack spell,
 splice hint shows, first pick greys out for the second slot, no console
 errors).
+
+
+v2.1.13: review-comment fixes from PR #93. (1) basicLandTypeColors now walks
+BASIC_LAND_MANA (declared in WUBRG order) with hasType checks instead of
+walking types[] — the doc said "WUBRG order" but the code returned subtype-ADD
+order (an "Also a Plains" sticker landing after Forest yielded G-before-W).
+Consumers are order-insensitive .every() gates, so this is hygiene: a stable
+canonical identity order, safe for future display use. (2) The
+apply_in_game_splice header now states the fizzle paths are INTENTIONALLY
+UNREACHABLE via legal actions post-v2.1.12 (defense-in-depth; tests invoke the
+handler directly) so future readers don't hunt for a live trigger path.
+Also confirmed per review: renderHand's cast-permission loop only ever runs
+for 'you' in the UI (the opponent renders through renderOppHand, untouched);
+Godot smoke tests pass against the reordered basics' types[] (the loader
+classifies tags order-independently — "Basic" is a known supertype, color
+names fall through to subtypes, and basics keep their explicit authored
+ability since the Godot side has no 305.6 autogrant). 1704 green, lint clean.

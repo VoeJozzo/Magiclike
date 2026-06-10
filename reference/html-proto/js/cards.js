@@ -52,20 +52,24 @@ function ingestCard(card) {
   return card;
 }
 
-// The five basic land types and the color each conveys (MTG 305.6). Shared by
-// the autogrant below and by the display layer (card-text's mana-ability
+// The five basic land types and the color each conveys (MTG 305.6), declared
+// in WUBRG order (basicLandTypeColors' iteration relies on it). Shared by the
+// autogrant below and by the display layer (card-text's mana-ability
 // suppression + render's big-mana-symbol gate), so "which colors does the type
 // line promise?" has exactly one definition.
 const BASIC_LAND_MANA = { Plains: 'W', Island: 'U', Swamp: 'B', Mountain: 'R', Forest: 'G' };
 
-// Colors conveyed by a card's basic-land subtypes, in WUBRG-discovery order.
-// Empty for non-lands and for lands with no basic-land subtype.
+// Colors conveyed by a card's basic-land subtypes, in canonical WUBRG order
+// (walks BASIC_LAND_MANA, not types[], so subtype-ADD order — e.g. an "Also a
+// Plains" sticker landing after Forest — can't leak into the result). Today's
+// consumers only do membership checks, but a stable identity order keeps the
+// function safe for display use. Empty for non-lands and for lands with no
+// basic-land subtype.
 function basicLandTypeColors(card) {
   if (typeof typesOf !== 'function' || !hasType(card, 'Land')) return [];
   const out = [];
-  for (const tag of typesOf(card)) {
-    const color = BASIC_LAND_MANA[tag];
-    if (color && !out.includes(color)) out.push(color);
+  for (const [tag, color] of Object.entries(BASIC_LAND_MANA)) {
+    if (hasType(card, tag)) out.push(color);
   }
   return out;
 }
