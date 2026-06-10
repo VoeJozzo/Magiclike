@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.1.17`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.1.19`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -1435,6 +1435,20 @@ template injects stickerTypes → warned + ignored). The rest of the
 assignment-sweep came back clean: `deckColors` is built field-by-field on a
 synthetic view (uninjectable), `target_slot`/`tplId` are effect-level/
 loader-handled. Suite 74 files / 1786 green, lint clean.
+
+v2.1.19: audit chunk-1 trivia — two provably behavior-preserving dead-code
+removals (findings A1-19/A1-20). (1) Dropped the unreachable
+`!G.pendingTriggerTarget` conjunct from step()'s trigger-drain gate:
+pendingTriggerTarget is registered in PENDING_DECISIONS with
+`active:()=>true`, so anyoneOwesDecision() returns earlier in the same
+loop whenever it's set (and drainTriggers self-guards besides) — the
+conjunct could never be false there; tripwire-proven over the full suite +
+200-game selfplay during the audit. (2) Removed openPriorityRound's dead
+`initialHolder` parameter: all three call sites are zero-argument
+(IIFE-local, no external caller), and a passed holder would have been
+clobbered by drainTriggers→pushTriggerEntry anyway; priority now
+explicitly opens with `G.activePlayer` (MTG 117.3b), per the new doc
+comment. Suite 74 files / 1786 green, lint clean.
 
 > **MUST UPDATE on every dev-branch push that touches code.** Bump `VERSION` in `js/main.js` AND the line above, in the same commit. GitHub Pages caches aggressively; the version string is the only reliable way to confirm a fresh build is live.
 

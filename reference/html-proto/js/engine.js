@@ -4941,9 +4941,12 @@ function afterEffectsApplied() { checkDeaths(); checkLifeTotals(); }
 // both have passed since last stack change, top of stack resolves (or, if
 // stack empty, round closes and phase advances).
 // =========================================================================
-function openPriorityRound(initialHolder) {
+function openPriorityRound() {
   G.priority = { passes: new Set() };
-  G.priorityHolder = initialHolder || G.activePlayer;
+  // Priority always opens with the active player (MTG 117.3b). A caller-
+  // supplied initial holder would be unreliable anyway: drainTriggers →
+  // pushTriggerEntry overwrites priorityHolder when triggers are pending.
+  G.priorityHolder = G.activePlayer;
   // Drain pending triggers onto the stack before priority is exercised
   // (active player first); pushTriggerOnStack resets priorityHolder.
   drainTriggers();
@@ -6391,7 +6394,7 @@ function step() {
     // the next time you do something" and never visibly hit the stack. Draining
     // here surfaces it immediately. (drainTriggers no-ops on an empty queue and
     // returns early if a target prompt is already open, so this can't loop.)
-    if (isPriorityOpen() && G.pendingTriggers.length > 0 && !G.pendingTriggerTarget) {
+    if (isPriorityOpen() && G.pendingTriggers.length > 0) {
       drainTriggers();
       continue;
     }
