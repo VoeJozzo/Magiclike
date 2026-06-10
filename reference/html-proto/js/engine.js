@@ -1526,7 +1526,11 @@ function canPayPotential(who, cost, excludeIid) {
 // refund). ctx.paidCost is snapshotted by doActivateAbility at payment time.
 // Mana goes back to the POOL: any sources payMana auto-tapped stay tapped, so
 // the player keeps the mana floating for the phase — same end state as having
-// tapped them manually. Sacrifice / counter-removal costs are NOT refunded
+// tapped them manually. Known approximation: the refund mirrors the COST shape,
+// not the colors actually spent — a {3} generic cost paid with WWW comes back
+// as {C}{C}{C} (count preserved, color identity not). Acceptable: generic-cost
+// refunds are spendable as generic either way, and the pool empties at the
+// phase boundary. Sacrifice / counter-removal costs are NOT refunded
 // (nothing using this helper has them; a death can't be unwound anyway).
 function refundActivationCosts(ctx) {
   const paid = ctx && ctx.paidCost;

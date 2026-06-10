@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.1.13`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.1.14`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -1337,3 +1337,21 @@ Godot smoke tests pass against the reordered basics' types[] (the loader
 classifies tags order-independently — "Basic" is a known supertype, color
 names fall through to subtypes, and basics keep their explicit authored
 ability since the Godot side has no 305.6 autogrant). 1704 green, lint clean.
+
+
+v2.1.14: second-review fixes from PR #93. (1) refundActivationCosts documents
+its known approximation: the refund mirrors the COST shape, not the colors
+actually spent (a {3} generic paid WWW comes back {C}{C}{C} — count preserved,
+identity not; spendable as generic either way, pool empties at phase end).
+(2) New card_text_test section pins the 305.6 mana-ability suppression rule
+from both sides: Gilded Seat and Swamp render empty text; Dross Pylon ({C})
+and Equatorial Engine ({C}{C} — the unit-amount guard) keep their "{T}: add"
+lines; Phylactery keeps its non-mana rules text; a Forest granted the Island
+subtype (choose-form, both colors conveyed) suppresses like a paper dual.
+Confirmed for the review, no change needed: the 150f70f sidecar diffs were
+audited — all 74 modified .import files touch ONLY path=/source_file=/
+dest_files= lines (the v2.0.67 rename corrections); zero machine-specific
+churn, uids unchanged. The animated-land cosmetic (a Sudden-Vines'd Forest
+shows P/T + the big {G}) is left as-is by design — the card still IS a
+basic-typed land that taps for G (cf. Dryad Arbor), and the symbol stays
+accurate. 1710 green, lint clean.
