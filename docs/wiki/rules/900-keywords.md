@@ -30,7 +30,7 @@ A creature with flying **can only be blocked by creatures with flying or reach**
 A creature with reach **can block creatures with flying**. It is otherwise an ordinary blocker.
 
 ### 901.6 Menace
-A creature with menace **cannot be blocked except by two or more creatures**. A single-blocker assignment against a menace attacker is **illegal** — the engine rejects it at block confirmation, so a defender cannot finalize a lone block on a menace attacker. (A damage-time fallback that treats a lone-blocked menace attacker as unblocked is retained as a safety net for imported or otherwise stale states.)
+A creature with menace **cannot be blocked except by two or more creatures**. A single-blocker assignment against a menace attacker is **illegal** — the engine rejects it at block confirmation, so a defender cannot finalize a lone block on a menace attacker. (**Godot only:** a damage-time fallback that treats a lone-blocked menace attacker as unblocked is retained as a safety net for imported or otherwise stale states. The html-proto has no such fallback — a stale lone block there resolves as a normal block, matching real MTG. See `docs/DIVERGENCE.md` C3; audit A2-11.)
 
 ### 901.7 Defender
 A creature with defender **cannot attack**. It can block normally.

@@ -38,4 +38,4 @@ MTG specifies SBA contents in rule 704.5 with strict ordering. Our SBA sweep is 
 
 ## Implementation status — SBAs
 - 1104 deviations from MTG 704.5: documented.
-- 1101 zero-toughness check: implemented.
+- 1101 zero-toughness check: implemented **for non-indestructible creatures only**. Indestructible creatures are currently (incorrectly) exempted — the html-proto's `checkDeaths` indestructible skip bypasses all three death causes, so an indestructible creature whose toughness drops to 0 or less survives, contradicting §1101's "still die at 0 toughness" above. Fix is staged as audit A1-3; this line gets updated again when it lands.
