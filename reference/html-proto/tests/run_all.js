@@ -179,6 +179,9 @@ const CATEGORY_A = [
   // a stolen attacker stops dealing damage (was: damaged its own new
   // controller), can't block itself; a stolen blocker stops trading damage.
   'test_combat_change_control.js',
+  // Audit A1-9 — DRAW-step log truthfulness: "X draws." only logs when a
+  // card actually moved (no phantom-draw line on deck-out / Phylactery rip).
+  'test_draw_log_truthfulness.js',
 ];
 
 const TESTS_DIR = __dirname;
