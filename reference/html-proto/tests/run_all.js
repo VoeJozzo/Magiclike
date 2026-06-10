@@ -160,8 +160,10 @@ const CATEGORY_A = [
   'test_lord_keyword_grants.js',
   // Endomorph absorb: regression pin for the E1 subject_card payload rename
   // (every absorb silently fizzled), keyword priority, +1/+1 fallback,
-  // defender exclusion, novelty diff, dead-Endomorph corpse path, opp-side
-  // no-persistence.
+  // defender exclusion, dead-Endomorph corpse path, opp-side no-persistence,
+  // plus the shared trophy rule (claimableKeywords): intrinsics-only claims
+  // for BOTH the absorb and the reward-screen claimedKeywords, intrinsic
+  // novelty (borrowed keywords don't block absorption), bounced-fade edge.
   'test_endomorph_absorb.js',
 ];
 

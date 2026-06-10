@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.1.12`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.1.13`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -1275,6 +1275,37 @@ dead-Endomorph graveyard-corpse path (mutual kill still mutates the corpse +
 persists the slot sticker), opp-side absorb without run persistence.
 Surfaced by a code-dig into how the absorb actually executes, requested on
 the BACKLOG endomorphAbsorb item. Suite 74 files / 1746 green, lint clean.
+
+v2.1.13: composed the two keyword-claim systems around one stated trophy
+rule. (1) `claimableKeywords(corpse)` — intrinsicKeywords minus defender —
+is now THE rule for what a kill yields, used by BOTH Endomorph's absorb and
+the end-of-game `claimedKeywords` reward claims. Previously the rule was
+emergent (absorb read the corpse post-resetInPlayState, so it excluded lord/
+EOT grants only by death-pipeline ordering) and inconsistent (the reward
+claim ran pre-reset, so the reward screen offered keywords a creature only
+had because its lord was standing next to it — auras claimed as trophies).
+BEHAVIOR CHANGES (user-blessed for mechanical consistency): the reward
+screen no longer offers borrowed lord/EOT-granted keywords from kills, and
+absorb novelty is judged intrinsics-vs-intrinsics — a keyword Endomorph
+merely borrows (until-EOT flying) no longer blocks absorbing it permanently
+from a kill. (2) `recordDamage(victim, sourceCard, controller)` — one writer
+for the damage-attribution pair every site hand-synced (`damagedBySources`
+Set for Sengir-style dealt-damage-by triggers — creature sources only;
+`killedBy` last-writer-wins player key for reward credit — all sources):
+the damage effect + three combat sites now call it; destroy/edict paths keep
+setting `killedBy` directly (destroying isn't dealing damage, must never
+stamp `damagedBySources`). (3) endomorph_absorb restructured around the
+shared rule: `ABSORB_KEYWORD_PRIORITY` hoisted to a module const, unified
+absorber resolution (live card or graveyard corpse), and the bounced-
+Endomorph ghost edge fixed — it used to log a successful absorb while
+applying nothing; now logs an honest "absorb fades — it left play before
+feeding." `test_endomorph_absorb.js` grown to 40 checks: shared-rule pins
+for both systems (lord-granted haste claimable by NEITHER; sticker lifelink
+by BOTH), intrinsic-novelty (borrowed keyword still absorbed for keeps),
+intrinsic Wall-defender exclusion both shapes, bounced-fade edge — pinned
+against death-pipeline reordering, not just current behavior. Suite 74
+files / 1763 green, lint clean, selfplay 200/200 clean (0 crashes, 0
+invariant violations).
 
 > **MUST UPDATE on every dev-branch push that touches code.** Bump `VERSION` in `js/main.js` AND the line above, in the same commit. GitHub Pages caches aggressively; the version string is the only reliable way to confirm a fresh build is live.
 

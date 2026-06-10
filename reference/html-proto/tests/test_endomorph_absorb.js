@@ -1,15 +1,23 @@
 // Endomorph absorb — dedicated coverage for the endomorph_absorb effect
 // handler (engine.js EFFECTS) and its full pipeline: kill-attribution
-// predicate (card_damaged_by_this over damagedBySources), the novel-keyword
-// diff + priority pick, the +1/+1 fallback, run-slot persistence via
-// RUN.applyStickerToSlot, the in-game mirror (keywords/stickers/modifiers
-// push), and the dead-Endomorph graveyard-corpse path.
+// (recordDamage → damagedBySources / card_damaged_by_this), the shared
+// trophy rule (claimableKeywords: intrinsics only — printed + stickers +
+// subtype-implied, never borrowed lord/EOT grants, never defender — used by
+// BOTH the absorb and the end-of-game claimedKeywords reward system), the
+// priority pick, the +1/+1 fallback, run-slot persistence via
+// RUN.applyStickerToSlot, the in-game mirror, the dead-Endomorph
+// graveyard-corpse path, and the bounced-Endomorph fade.
 //
-// REGRESSION PIN: the E1 zone-change migration renamed the event payload to
-// `subject_card`, but endomorph_absorb kept reading the legacy `event.card` —
-// so EVERY absorb fizzled ("no victim recorded") with no test to notice.
-// Identical to the bargain_sticker_other payout bug fixed earlier. Section 1
-// exists so a payload rename can never silently kill this mechanic again.
+// REGRESSION PINS:
+// - The E1 zone-change migration renamed the event payload to `subject_card`,
+//   but endomorph_absorb kept reading the legacy `event.card` — so EVERY
+//   absorb fizzled ("no victim recorded") with no test to notice. Identical
+//   to the bargain_sticker_other payout bug fixed earlier. Section 1 exists
+//   so a payload rename can never silently kill this mechanic again.
+// - The lord-granted sections pin the trophy rule against death-pipeline
+//   reordering: claims must exclude borrowed keywords because
+//   claimableKeywords reads intrinsics, NOT because resetInPlayState happens
+//   to strip grants before the dies-event emits.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -101,15 +109,29 @@ console.log('\n=== fallback: vanilla victim → +1/+1 (modifiers + sticker + slo
   check('run slot persisted plus1_plus1', (RUN.getSlots()[0].stickers || []).includes('plus1_plus1'));
 })();
 
-console.log('\n=== defender is never absorbed: defender-only victim falls back to +1/+1 ===');
+console.log('\n=== defender is never absorbed (intrinsic Wall defender, both shapes) ===');
 (() => {
+  // iron_statue: Wall (subtype-implied defender) + printed indestructible.
+  // The filter must skip defender while still taking the real trophy.
+  const G = freshRun();
+  const endo = place(G, 'endomorph', 'you', 0);
+  const statue = place(G, 'iron_statue', 'opp');
+  // Strip LIVE indestructible so destroy can kill it — intrinsics (what the
+  // absorb reads) still carry both indestructible and Wall-defender.
+  statue.keywords = statue.keywords.filter(k => k !== 'indestructible');
+  killAttributedTo(G, statue, endo);
+  check('indestructible absorbed from the statue', endo.keywords.includes('indestructible'));
+  check('defender NOT absorbed alongside it', !endo.keywords.includes('defender'));
+})();
+(() => {
+  // Defender-ONLY victim (vanilla bear made a Wall): nothing claimable → +1/+1.
   const G = freshRun();
   const endo = place(G, 'endomorph', 'you', 0);
   const victim = place(G, 'grizzly_bears', 'opp');
-  victim.keywords.push('defender');
+  victim.types.push('Wall');   // intrinsic defender via subtype
   killAttributedTo(G, victim, endo);
-  check('defender not absorbed', !endo.keywords.includes('defender'));
-  check('fell back to +1/+1', endo.stickers.includes('plus1_plus1'));
+  check('defender-only victim: defender not absorbed', !endo.keywords.includes('defender'));
+  check('defender-only victim: fell back to +1/+1', endo.stickers.includes('plus1_plus1'));
 })();
 
 console.log('\n=== already-known keyword is not novel: second flier → +1/+1 ===');
@@ -157,6 +179,90 @@ console.log('\n=== opponent-side Endomorph: in-game mirror only, no run persiste
   drain(G);
   check('opp Endomorph absorbed in-game', oppEndo.keywords.includes('flying'));
   check('player run slots untouched', !(RUN.getSlots()[0].stickers || []).length,
+    JSON.stringify(RUN.getSlots()[0].stickers));
+})();
+
+console.log('\n=== shared trophy rule: lord-granted keywords are claimable by NEITHER system ===');
+(() => {
+  // Victim's only keyword is haste borrowed from its (opposing) lord. Pin for
+  // BOTH systems — and against death-pipeline reordering: the rule must hold
+  // because claimableKeywords reads intrinsics, not because resetInPlayState
+  // happens to strip grants before the dies-event emits.
+  const G = freshRun();
+  const endo = place(G, 'endomorph', 'you', 0);
+  const oppLord = place(G, 'goblin_chieftain', 'opp');
+  const raider = place(G, 'goblin_raider', 'opp');
+  ENGINE.applyStaticKeywordGrants();
+  check('victim is hasted by its lord pre-death', raider.keywords.includes('haste'));
+  G.you.claimedKeywords = new Set();
+  killAttributedTo(G, raider, endo);
+  check('Endomorph did not absorb the borrowed haste', !endo.keywords.includes('haste'));
+  check('fell back to +1/+1', endo.stickers.includes('plus1_plus1'));
+  check('reward claim did not bank the borrowed haste either', !G.you.claimedKeywords.has('haste'),
+    JSON.stringify([...G.you.claimedKeywords]));
+  void oppLord;
+})();
+
+console.log('\n=== claim-system consistency: stickers claimable, borrowed grants not ===');
+(() => {
+  // One kill, one victim carrying BOTH a sticker keyword (lifelink) and a
+  // lord-granted keyword (haste): both systems take the sticker, skip the loan.
+  const G = freshRun();
+  const endo = place(G, 'endomorph', 'you', 0);
+  place(G, 'goblin_chieftain', 'opp');
+  const victim = ENGINE.makeCard('goblin_raider', ['kw_lifelink']);
+  Object.assign(victim, { controller: 'opp', owner: 'opp', tapped: false, sick: false, damage: 0 });
+  G.opp.battlefield.push(victim);
+  ENGINE.applyStaticKeywordGrants();
+  check('victim carries sticker lifelink + granted haste',
+    victim.keywords.includes('lifelink') && victim.keywords.includes('haste'),
+    JSON.stringify(victim.keywords));
+  G.you.claimedKeywords = new Set();
+  killAttributedTo(G, victim, endo);
+  check('Endomorph absorbed the sticker lifelink', endo.keywords.includes('lifelink'));
+  check('Endomorph skipped the granted haste', !endo.keywords.includes('haste'));
+  check('reward claim banked lifelink, not haste',
+    G.you.claimedKeywords.has('lifelink') && !G.you.claimedKeywords.has('haste'),
+    JSON.stringify([...G.you.claimedKeywords]));
+})();
+
+console.log('\n=== novelty is intrinsic: a BORROWED keyword does not block absorbing it for keeps ===');
+(() => {
+  // Endomorph temporarily has flying (until-EOT grant). Killing a flier should
+  // still absorb flying PERMANENTLY — what it borrows isn't what it owns.
+  const G = freshRun();
+  const endo = place(G, 'endomorph', 'you', 0);
+  ENGINE.applyEffect({ controller: 'you', sourceName: 'Wings', sourceIid: 88001 },
+    { kind: 'grant_keyword', keyword: 'flying', duration: 'eot' }, { kind: 'creature', iid: endo.iid });
+  check('endo borrows flying until EOT', endo.keywords.includes('flying'));
+  const victim = place(G, 'cloud_pegasus', 'opp');
+  killAttributedTo(G, victim, endo);
+  check('flying absorbed for keeps despite the borrow', endo.stickers.includes('kw_flying'),
+    JSON.stringify(endo.stickers));
+  check('run slot persisted kw_flying', (RUN.getSlots()[0].stickers || []).includes('kw_flying'));
+})();
+
+console.log('\n=== ghost edge: Endomorph bounced between queue and resolve → honest fade, no false absorb ===');
+(() => {
+  const G = freshRun();
+  const endo = place(G, 'endomorph', 'you', 0);
+  const victim = place(G, 'cloud_pegasus', 'opp');
+  // Victim dies with attribution (queues the absorb trigger)…
+  victim.damagedBySources = new Set([endo.iid]); victim.killedBy = 'you';
+  ENGINE.applyEffect({ controller: 'you', sourceName: 'Doom', sourceIid: 99001 },
+    { kind: 'affect_creature', severity: 'destroy' }, { kind: 'creature', iid: victim.iid });
+  // …and Endomorph is BOUNCED to hand before the trigger resolves: no
+  // battlefield card, no corpse — nowhere for the reward to land.
+  ENGINE.applyEffect({ controller: 'opp', sourceName: 'Unsummon', sourceIid: 99002 },
+    { kind: 'move_card', from_zone: 'battlefield', to_zone: 'hand', selector: 'target' },
+    { kind: 'creature', iid: endo.iid });
+  drain(G);
+  check('fade logged (not a false absorb)', logHas(G, /absorb fades/i));
+  check('no absorb logged', !logHas(G, /absorbs flying/i));
+  const inHand = G.you.hand.find(c => c.iid === endo.iid);
+  check('bounced Endomorph gained nothing', inHand && !inHand.keywords.includes('flying')
+    && !(inHand.stickers || []).includes('kw_flying'));
+  check('run slot untouched', !(RUN.getSlots()[0].stickers || []).length,
     JSON.stringify(RUN.getSlots()[0].stickers));
 })();
 
