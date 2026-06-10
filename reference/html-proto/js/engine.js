@@ -3306,7 +3306,11 @@ function cardHasEffect(card, predicate) {
 }
 
 // EVENTS & TRIGGERS — emit() queues matched triggers in G.pendingTriggers,
-// drained to stack at next priority round. Targets re-validate at resolution.
+// drained to stack at next priority round. Target legality is checked three
+// times: at queue (triggerHasAnyValidTarget), at stack-push (tsAutoPick /
+// prompt), and again at resolution (resolveTrigger → tsRevalidateTargets,
+// §1006.1): slots that became illegal on the stack are dropped; if none
+// survive, the trigger fizzles whole.
 const TRIGGER_DEPTH_CAP = 100;
 
 // Lord-grant reconciliation, called from emit() pre-trigger. Idempotent.
@@ -3654,6 +3658,16 @@ function resolveTrigger(item) {
     log(`Trigger chain too deep (${TRIGGER_DEPTH_CAP}) — bailing to prevent loop.`, 'imp');
     return;
   }
+  // §1006.1 resolution-time re-validation: target legality was checked when
+  // the trigger queued and again as it went on the stack — re-check NOW that
+  // responses have had their window (hexproof gained in response, target left
+  // play, filter no longer matched). Illegal slots are dropped; if no slot
+  // survives, the whole trigger fizzles — rider effects included (§704.1).
+  if (item.trig && !tsRevalidateTargets(item.trig, item.controller, item.targets)) {
+    log(`${item.sourceName} trigger fizzles — no legal target.`, 'sp');
+    afterEffectsApplied();
+    return;
+  }
   // Optional paid trigger (Land+Spell staple ETB): pause and let the controller
   // choose whether to pay. Targets are already locked (chosen at queue time), so
   // the order is target → may-pay → effect. Can't-afford auto-declines (no prompt).
@@ -3710,8 +3724,11 @@ function runTriggerEffects(item) {
       const slot = eff.target_slot || 0;
       const { tgt, snap } = getTriggerTargetForSlot(slot);
       if (!tgt) { log(`${item.sourceName} trigger fizzles — no target.`, 'sp'); continue; }
-      // No re-validation: multi-effect triggers (Exorcist [exile, gain_life]) need
-      // effect 1 to read pre-effect-0 snapshot. Each effect guards live-target itself.
+      // Legality was re-validated ONCE at resolution start (resolveTrigger →
+      // tsRevalidateTargets); a null slot here was dropped as illegal. No
+      // per-effect re-validation beyond the handlers' liveness guards:
+      // multi-effect triggers (Exorcist [exile, gain_life]) need effect 1 to
+      // read the pre-effect-0 snapshot. Each effect guards live-target itself.
       applyEffect(ctx, eff, tgt, snap);
     } else if (eff.scope === 'self') {
       // Self → source creature OR source's controller depending on
@@ -4061,6 +4078,33 @@ function tsIsLegalSet(obj, who, targets) {
   }
   if (obj.distinct_targets && !slotTargetsAreDistinct(slotKeys.map(s => targets[s]))) return false;
   return true;
+}
+
+// §704.1 / §1006.1 — resolution-time target re-validation. Re-checks each
+// locked target against the same per-slot legal sets used at cast/queue time
+// (tsLegalBySlot → getValidTargets / targetsForFilter, so hexproof, filters,
+// and zone changes all re-apply). Slots whose target is no longer legal are
+// nulled IN PLACE — the per-slot resolvers already treat a null slot as
+// "target gone" and skip just that effect, so a multi-target entry proceeds
+// against its remaining legal targets (partial fizzle). Returns false when
+// EVERY targeted slot is illegal: the caller fizzles the whole entry — no
+// effects run, untargeted riders included (§704.1 whole-object fizzle), and
+// costs stay paid. Untargeted objects pass trivially. Runs ONCE, before the
+// effect loop, so the within-resolution snapshot/LKI semantics (multi-effect
+// entries reading pre-effect-0 state) are untouched.
+function tsRevalidateTargets(obj, who, targets) {
+  if (!objectNeedsTarget(obj)) return true;
+  const bySlot = tsLegalBySlot(obj, who);
+  let anyLegal = false;
+  for (const slot of bySlot.keys()) {
+    const tgt = Array.isArray(targets) ? targets[slot] : null;
+    if (tgt && (bySlot.get(slot) || []).some(v => sameTarget(v, tgt))) {
+      anyLegal = true;
+    } else if (Array.isArray(targets) && targets[slot]) {
+      targets[slot] = null;
+    }
+  }
+  return anyLegal;
 }
 
 // The effect that VALUES a slot's pick (for the AI / auto-picker). Multi-slot:
@@ -5149,6 +5193,21 @@ function resolveTopOfStack() {
   } else {
     const ctx = { controller: item.controller, sourceName: card.name, sourceIid: card.iid, sourceCard: card,
                   allTargets: Array.isArray(item.targets) ? item.targets : [] };
+    // Pick effects by mode. For non-modal cards, this returns the flat
+    // effect list. For modal cards, returns the chosen mode's effects.
+    const activeEffects = effectsForMode(card, item.modeIdx);
+    // §704.1 resolution-time target re-validation (the spell-side twin of
+    // resolveTrigger's gate): targets were legal at cast time — re-check NOW
+    // that responses have had their window. Illegal slots are dropped (the
+    // per-slot resolvers skip them); if EVERY targeted slot is illegal the
+    // spell fizzles whole — no effects run (riders included), it goes to the
+    // graveyard, and costs stay paid. Untargeted spells pass trivially.
+    if (!tsRevalidateTargets(tsModeObj(card, activeEffects), item.controller, item.targets)) {
+      log(`${card.name} fizzles — no legal target.`, 'sp');
+      G[card.owner || item.controller].graveyard.push(card);
+      afterEffectsApplied();
+      return;
+    }
     // Snapshot the spell's target BEFORE any effect runs. Multi-effect spells
     // like decomposed Swords ([exile, gain_life]) need the second effect to
     // read the target's pre-resolution power/controller, even though the
@@ -5156,9 +5215,6 @@ function resolveTopOfStack() {
     // known information" semantics.
     const sharedTarget = item.targets ? item.targets[0] : null;
     const sharedSnap = sharedTarget ? snapshotTarget(sharedTarget) : null;
-    // Pick effects by mode. For non-modal cards, this returns the flat
-    // effect list. For modal cards, returns the chosen mode's effects.
-    const activeEffects = effectsForMode(card, item.modeIdx);
     // Snapshot rip-on-target eligibility BEFORE effects fire. The targets
     // need to be checked while they're still on the battlefield — if the
     // spell kills Elystra (e.g., a player who chose to Doom Blade their own

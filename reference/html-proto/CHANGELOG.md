@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.1.27`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.1.28`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -1567,6 +1567,29 @@ module). PR #106's tests-only warning comment removed with the function.
 Suite 81 files / 1873 green (generator file 156 as before: −1 surface check,
 +1 guard pin), lint clean.
 
+v2.1.28: audit fix A3-1 (Joe-approved: "Agreed, fix this", PR #98 round 2,
+2026-06-10) — stack entries now RE-VALIDATE their locked targets at
+resolution (§1006.1 triggers / §704.1 spells). Pre-fix, target legality was
+checked at queue time and stack-push time and never again: hexproof gained
+in response provided zero protection (the waiting trigger/spell hit the
+target anyway), and a dead sole target still let untargeted rider effects
+resolve instead of fizzling the whole entry. New `tsRevalidateTargets`
+re-runs the SAME per-slot legal sets used at cast/queue time (tsLegalBySlot
+→ getValidTargets, so hexproof/filters/zone changes all re-apply) once at
+resolution start, in both resolveTrigger and resolveTopOfStack: illegal
+slots are dropped (multi-target entries proceed against their remaining
+legal targets — partial fizzle), and if every targeted slot is illegal the
+entry fizzles whole with a log line in the existing wording family — riders
+included, costs stay paid. Mana abilities never touch the stack; their fast
+path is untouched. Also fixed the engine.js trigger-section header that
+falsely claimed re-validation already happened (three-way comment
+contradiction in the packet). New tests/test_resolution_revalidation.js
+(16 assertions, red→green: 6 red pre-fix) covers the packet's
+100%-real-actions staple-synthesis repro (Ambush Djinn + Aether Drake flash
+grant vs a waiting Flame Wisp trigger), multi-target partial fizzle, the
+spell-side whole-fizzle + rider skip, and the unchanged happy path.
+Predicted test impact per the packet was none — confirmed: zero existing
+assertions flipped. Suite 82 files / 1889 green, lint clean.
 > **MUST UPDATE on every dev-branch push that touches code.** Bump `VERSION` in `js/main.js` AND the line above, in the same commit. GitHub Pages caches aggressively; the version string is the only reliable way to confirm a fresh build is live.
 
 Always work on `dev` for html-proto changes.
