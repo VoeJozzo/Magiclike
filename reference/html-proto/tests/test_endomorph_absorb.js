@@ -266,5 +266,55 @@ console.log('\n=== ghost edge: Endomorph bounced between queue and resolve → h
     JSON.stringify(RUN.getSlots()[0].stickers));
 })();
 
+console.log('\n=== finisher kills: chip + ANY death this turn feeds (SBA + destroy paths) ===');
+(() => {
+  // The templating is "a creature dealt damage by this dies" — Endomorph need
+  // not deal the killing blow. Two real shapes, exercising BOTH death paths:
+  // (a) Endomorph chips 2, a burn spell finishes — death via the checkDeaths
+  //     SBA batch (the path real combat kills take, with extraSources);
+  // (b) Endomorph chips 2 (block), a destroy spell finishes — death via
+  //     moveToGraveyard. The destroy stamps nothing into damagedBySources
+  //     (destroying isn't damage) but must not erase Endomorph's chip either.
+  const G = freshRun();
+  const endo = place(G, 'endomorph', 'you', 0);
+  const victimA = place(G, 'cloud_pegasus', 'opp');
+  victimA.power = 5; victimA.toughness = 5;
+  // (a) real damage path both times: chip from Endomorph, finish from a spell
+  ENGINE.applyEffect({ controller: 'you', sourceName: 'Endomorph', sourceIid: endo.iid, sourceCard: endo },
+    { kind: 'damage', amount: 2 }, { kind: 'creature', iid: victimA.iid });
+  ENGINE.applyEffect({ controller: 'you', sourceName: 'Lightning Bolt', sourceIid: 77001,
+    sourceCard: { name: 'Lightning Bolt', types: ['Sorcery'] } },
+    { kind: 'damage', amount: 3 }, { kind: 'creature', iid: victimA.iid });
+  check('spell finisher did NOT enter damagedBySources (creature sources only)',
+    victimA.damagedBySources.size === 1 && victimA.damagedBySources.has(endo.iid));
+  // 5 damage on a 5-tough creature: death happens at the next SBA sweep —
+  // poke the settle loop with a pass, then drain the queued trigger.
+  ENGINE.executeAction('you', { type: 'pass' });
+  drain(G);
+  check('(a) SBA death after burn finish: absorb fired', endo.keywords.includes('flying'),
+    JSON.stringify(endo.keywords));
+  // (b) chip then destroy-finish on a fresh victim (flying already absorbed,
+  // so use a lifelink-stickered victim to see a fresh trophy)
+  const victimB = ENGINE.makeCard('goblin_raider', ['kw_lifelink']);
+  Object.assign(victimB, { controller: 'opp', owner: 'opp', tapped: false, sick: false, damage: 0 });
+  G.opp.battlefield.push(victimB);
+  ENGINE.applyEffect({ controller: 'you', sourceName: 'Endomorph', sourceIid: endo.iid, sourceCard: endo },
+    { kind: 'damage', amount: 1 }, { kind: 'creature', iid: victimB.iid });
+  ENGINE.applyEffect({ controller: 'you', sourceName: 'Doom Blade', sourceIid: 77002 },
+    { kind: 'affect_creature', severity: 'destroy' }, { kind: 'creature', iid: victimB.iid });
+  drain(G);
+  check('(b) destroy finish after a block chip: absorb fired', endo.keywords.includes('lifelink'),
+    JSON.stringify(endo.keywords));
+  // Negative: a victim Endomorph never touched feeds nothing — pin on the
+  // sticker count (a wrong fire would add a keyword OR a +1/+1 sticker).
+  const bystander = place(G, 'savannah_lions', 'opp');
+  const stickersBefore = endo.stickers.length;
+  ENGINE.applyEffect({ controller: 'you', sourceName: 'Doom Blade', sourceIid: 77003 },
+    { kind: 'affect_creature', severity: 'destroy' }, { kind: 'creature', iid: bystander.iid });
+  drain(G);
+  check('untouched victim feeds nothing', endo.stickers.length === stickersBefore,
+    JSON.stringify(endo.stickers));
+})();
+
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');
 process.exit(fail > 0 ? 1 : 0);

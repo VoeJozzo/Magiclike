@@ -1299,13 +1299,15 @@ shared rule: `ABSORB_KEYWORD_PRIORITY` hoisted to a module const, unified
 absorber resolution (live card or graveyard corpse), and the bounced-
 Endomorph ghost edge fixed — it used to log a successful absorb while
 applying nothing; now logs an honest "absorb fades — it left play before
-feeding." `test_endomorph_absorb.js` grown to 40 checks: shared-rule pins
+feeding." `test_endomorph_absorb.js` grown to 44 checks: shared-rule pins
 for both systems (lord-granted haste claimable by NEITHER; sticker lifelink
 by BOTH), intrinsic-novelty (borrowed keyword still absorbed for keeps),
-intrinsic Wall-defender exclusion both shapes, bounced-fade edge — pinned
-against death-pipeline reordering, not just current behavior. Suite 74
-files / 1763 green, lint clean, selfplay 200/200 clean (0 crashes, 0
-invariant violations).
+intrinsic Wall-defender exclusion both shapes, bounced-fade edge, and the
+finisher-kill section (chip + burn finish dying at the checkDeaths SBA
+sweep; chip + destroy finish via moveToGraveyard; untouched-bystander
+negative) — pinned against death-pipeline reordering, not just current
+behavior. Suite 74 files / 1767 green, lint clean, selfplay 200/200 clean
+(0 crashes, 0 invariant violations).
 
 > **MUST UPDATE on every dev-branch push that touches code.** Bump `VERSION` in `js/main.js` AND the line above, in the same commit. GitHub Pages caches aggressively; the version string is the only reliable way to confirm a fresh build is live.
 
