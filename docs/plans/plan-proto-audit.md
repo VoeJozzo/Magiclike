@@ -18,7 +18,7 @@ A comprehensive audit of the html-proto (`reference/html-proto/`, ~19.7k LOC acr
 1. **Rules correctness** — does the engine do what the game intends? Trigger ordering, SBA timing, combat edges, targeting legality, zone-change events. A proto rules bug becomes a *spec* bug for the port.
 2. **Structural footguns** — patterns that breed future bugs: one fact maintained in N hand-synced places (the `makeCard` whitelist class), silent-failure paths, copy-paste divergence.
 3. **Card-data conformance** — the 258 card JSONs: schema drift, dead fields, oracle-text-vs-behavior mismatches.
-4. **Test-suite quality** — mutation-testing-backed (see below). Motivated by suspicion of "green theater": tests that exercise code without verifying behavior.
+4. **Test-suite quality** — mutation-testing-backed (see below), hunting BOTH failure modes: **green theater** (under-assertion — the test can't fail; mutation scores catch this) and **brittleness** (over-assertion — the test is coupled to incidental implementation details and goes red under behavior-preserving refactors; only the judgment read-through catches this). The read-through classifies tests *behavioral* vs *implementation-coupled*; the brittle list feeds the parked refactors' planning, so their false-red walls are pre-identified as noise to rewrite against behavior — never appeased by "updating tests until they pass," which is how regressions get laundered into a suite.
 5. **Test-coverage gaps** — per subsystem, note whether a finding there could even be *caught* today (known example: static-lord keyword grants have zero unit coverage).
 
 **Out of scope:** performance, security, UI/render polish. UI code is examined only where it *masks engine bugs* (e.g. a render `catch` swallowing an engine exception).
@@ -35,18 +35,19 @@ Priority-ordered, stop-after-any semantics. A session/run consumes chunks greedi
 | 2 | Combat | attack/block/damage, combat keywords | 2 |
 | 3 | Stack / priority / trigger resolution | trigger pool, `triggers.js`, `trigger-generator.js` | 2 |
 | 4 | Effects dispatch + targeting legality | ~25 effect kinds, targeting | 2 |
-| 5 | Mutation-testing setup | tool config (Stryker or hand-rolled mutant runner) against `tests/run_all.js`; runs unattended thereafter, scores feed later chunks | 3 |
-| 6 | Synthesis / staple | `engine.js` splice region | 1 |
-| 7 | Stickers pipeline | `stickers.js` | 1 |
-| 8 | AI | `ai.js` — decision logic, combat sim | 1 |
-| 9 | Draft | `draft.js` | 1 |
-| 10 | Run / meta / picklog | `run.js` (save/load migrations!), `picklog.js` | 1 |
-| 11 | Card-text generation | `card-text.js` | 1 |
-| 12 | Card-data JSON sweep | 258 card JSONs vs schema + behavior | 3 |
+| 5 | Synthesis / staple | `engine.js` splice region | 1 |
+| 6 | Stickers pipeline | `stickers.js` | 1 |
+| 7 | AI | `ai.js` — decision logic, combat sim | 1 |
+| 8 | Draft | `draft.js` | 1 |
+| 9 | Run / meta / picklog | `run.js` (save/load migrations!), `picklog.js` | 1 |
+| 10 | Card-text generation | `card-text.js` | 1 |
+| 11 | Card-data JSON sweep | 258 card JSONs vs schema + behavior | 3 |
+
+(Mutation-testing setup was originally queue position 5; it moved into Phase 0 because the ship gate depends on the coverage map — until mutation scores exist, every fix demotes to *stage* by default, so the map must exist before chunk 1 runs.)
 
 Chunk boundaries follow context boundaries: split wherever the code's own seams allow (separate files), combine only what's textually entangled (mana woven through phases; triggers woven through stack).
 
-**Dry run:** before the queue runs in earnest, the runner pipeline is shaken out on a *small, low-stakes* chunk (7, stickers) so pipeline bugs don't burn the big chunks' budget. Then the queue proceeds in priority order.
+**Dry run:** before the queue runs in earnest, the runner pipeline is shaken out on a *small, low-stakes* chunk (6, stickers) so pipeline bugs don't burn the big chunks' budget. Then the queue proceeds in priority order.
 
 ## Execution tiers
 
@@ -83,7 +84,7 @@ Overnight is the **default execution mode** — usage stretches further at low s
 
 Joe's rule (2026-06-09): *"anything with a single, unambiguous, correct answer should be something you just fix… if the only thing I would reasonably do is say 'yep, ship it', then ship it."* Every verified finding is stamped with a class:
 
-- **Ship it — fix autonomously, no size limit.** Gates (ALL must hold): single unambiguous correct answer, anchored in **repo canon** (rulebook page in `docs/wiki/rules/`, the card's oracle text, `docs/PROTOCOL.md`, or an existing test's stated expectation — NOT "that's how real MTG works"; the proto diverges deliberately); finding survived adversarial refutation with a reproducing test; fix lands red→green with full suite + lint green; **and the touched region's coverage is real** (per mutation scores) — in weakly-tested regions the fix must bring its own regression coverage, or it demotes to *stage*. Each ship lands as its own small PR off fresh dev. Branch protection still gates every merge on Joe — "autonomous" means autonomous *labor*, never autonomous *merging*.
+- **Ship it — fix autonomously, no size limit.** Gates (ALL must hold): single unambiguous correct answer, anchored in **repo canon** (rulebook page in `docs/wiki/rules/`, the card's oracle text, `docs/PROTOCOL.md`, or an existing test's stated expectation — NOT "that's how real MTG works"; the proto diverges deliberately); finding survived adversarial refutation with a reproducing test; fix lands red→green with full suite + lint green; **the touched region's coverage is real** (per mutation scores) — in weakly-tested regions the fix must bring its own regression coverage, or it demotes to *stage*; **and the fix modifies NO existing test's expectations.** A red existing test is a claim that behavior changed — adjudicating intended-change vs brittle-test vs real-regression is exactly the ambiguity the ship class excludes, so needing to touch an existing test auto-demotes to *stage* (adding new tests is fine; that's the red→green requirement itself). Each ship lands as its own small PR off fresh dev. Branch protection still gates every merge on Joe — "autonomous" means autonomous *labor*, never autonomous *merging*.
 - **Stage it — draft, don't ship.** Any genuine fork (two reasonable behaviors, taste call, tradeoff), or unambiguous-but-uncovered per above. The patch is drafted and embedded in the finding; it becomes a PR only after Joe's nod (morning review or triage).
 - **Park it — triage only.** Refactor-scale, cross-cutting, or design-flavored.
 
@@ -94,10 +95,11 @@ Joe's rule (2026-06-09): *"anything with a single, unambiguous, correct answer s
 ### Phase 0 setup checklist (one short interactive session)
 
 1. Create `docs/audit/` + `STATE.md` skeleton (queue table: chunk, status todo/in_progress/done, claim timestamp, anchor SHA, findings link).
-2. Write the `/audit-next-chunk` project skill encoding the runner loop above.
-3. Pre-authorize the audit worktree's permission allowlist so unattended runs never stall on a prompt.
-4. Create the Task Scheduler entry (night window, hourly).
-5. Dry-run on chunk 7 (stickers) while watching; judge artifact quality next morning before unleashing the queue.
+2. **Stand up mutation testing** (Stryker or a hand-rolled mutant runner against `tests/run_all.js`) and kick off the first full run — the coverage map must exist before chunk 1, because the ship gate reads it. Schedule nightly mutation + selfplay sweeps (pure machine time).
+3. Write the `/audit-next-chunk` project skill encoding the runner loop above.
+4. Pre-authorize the audit worktree's permission allowlist so unattended runs never stall on a prompt.
+5. Create the Task Scheduler entry (night window, hourly).
+6. Dry-run on chunk 6 (stickers) while watching; judge artifact quality next morning before unleashing the queue.
 
 ## Remediation phase
 
