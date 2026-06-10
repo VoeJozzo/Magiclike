@@ -5711,6 +5711,10 @@ function doTriggerTargetPick(who, target) {
   G.pendingTriggerTarget = null;
   if (r === 'done') finalizeTriggerTarget(pt);
   // r === 'fizzle' → a later slot lost its only legal target; drop the trigger.
+  // A3-12: say so — the sibling fizzle paths (pushTriggerOnStack's auto-pick,
+  // resolveTrigger's dead-target arm) both log; this one silently evaporated
+  // a trigger the player was mid-prompt on.
+  if (r === 'fizzle') log(`${pt.sourceName} trigger fizzles — no legal target.`, 'sp');
   drainTriggers();   // resume the remaining queued triggers
 }
 // Resume a deferred edict (GAP 2) after the human picks which permanent to
