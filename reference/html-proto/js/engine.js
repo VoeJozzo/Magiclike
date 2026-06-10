@@ -1726,7 +1726,7 @@ function applyDamageFrom(ctx, target, amt) {
   const hasTrample   = sourceCard && sourceCard.keywords && sourceCard.keywords.includes('trample');
 
   if (target.kind === 'player') {
-    damagePlayer(target.who, amt, ctx.sourceName);
+    damagePlayer(target.who, amt, ctx.sourceName, ctx.sourceIid);
   } else {
     const f = resolveTarget(ctx, target);
     if (!f) return;
@@ -1748,7 +1748,7 @@ function applyDamageFrom(ctx, target, amt) {
     recordDamage(f.card, sourceCard, ctx.controller);
     log(`${ctx.sourceName} deals ${toCreature} to ${f.card.name}.`, 'dmg');
     if (spill > 0) {
-      damagePlayer(f.controller, spill, `${ctx.sourceName} (trample)`);
+      damagePlayer(f.controller, spill, `${ctx.sourceName} (trample)`, ctx.sourceIid);
     }
   }
   if (hasLifelink) {
@@ -1840,7 +1840,7 @@ function affectOneCreature(ctx, f, sevArg) {
     } else {
       log(`${ctx.sourceName} returns ${card.name} — token ceases to exist.`, 'sp');
     }
-    emitLeavesBattlefield(card, f.controller, 'hand');
+    emitLeavesBattlefield(card, f.controller, 'hand', undefined, ctx.sourceIid);
     return;
   }
   if (sev === 3) {
@@ -1866,7 +1866,7 @@ function affectOneCreature(ctx, f, sevArg) {
   } else {
     log(`${ctx.sourceName} exiles ${card.name} — token ceases to exist.`, 'sp');
   }
-  emitLeavesBattlefield(card, f.controller, 'exile');
+  emitLeavesBattlefield(card, f.controller, 'exile', undefined, ctx.sourceIid);
 }
 
 // Place a card ARRIVING on the battlefield (move_card to_zone=battlefield).
@@ -2253,7 +2253,7 @@ const EFFECTS = {
       // Steal = control change; the card stays a permanent (re-created on the
       // thief's battlefield below). Mirrors the legacy cardLeavesBattlefield
       // emission here — to_zone stays 'battlefield'.
-      emitLeavesBattlefield(r.card, r.controller, 'battlefield');
+      emitLeavesBattlefield(r.card, r.controller, 'battlefield', undefined, ctx.sourceIid);
     } else {
       const stIdx = G.stack.indexOf(r.stackItem);
       if (stIdx >= 0) G.stack.splice(stIdx, 1);
@@ -2419,7 +2419,7 @@ const EFFECTS = {
           else if (to === 'graveyard') G[dest].graveyard.push(card);
           else console.warn('move_card: unsupported battlefield dest', to);
         }
-        emitLeavesBattlefield(card, f.controller, to);
+        emitLeavesBattlefield(card, f.controller, to, undefined, ctx.sourceIid);
         continue;
       }
       if (from === 'graveyard' || from === 'exile') {
@@ -4710,7 +4710,7 @@ function removeFromCombat(iid) {
     }
   }
 }
-function emitLeavesBattlefield(card, controller, destZone, extraSources) {
+function emitLeavesBattlefield(card, controller, destZone, extraSources, sourceIid) {
   if (!card) return;
   // Cross the card off the combat bookkeeping the moment it leaves play —
   // BEFORE the zone-change emit, so triggers observe consistent combat
@@ -4728,8 +4728,13 @@ function emitLeavesBattlefield(card, controller, destZone, extraSources) {
   // so a migrated thisKillsCreature (card_damaged_by_this) fires on creatures
   // that died in the same SBA sweep — parity with the legacy cardDies emit,
   // which passes the same batch.
+  // A3-11: sourceIid names the card that CAUSED the departure (PROTOCOL §3.3
+  // source_iid; feeds the noSelfCascade guard). Effect-driven callers thread
+  // ctx.sourceIid; the death/sacrifice paths (checkDeaths, moveToGraveyard,
+  // sacrificeCard) pass nothing — there causality is a player key (killedBy)
+  // or a multi-iid Set (damagedBySources), not a single causing card.
   emitZoneChange(card, controller, 'battlefield', destZone || 'graveyard',
-                 extraSources || [{card, controller}]);
+                 extraSources || [{card, controller}], sourceIid);
 }
 
 // Record a damage event's attribution on the victim. ONE writer for the two
@@ -4959,7 +4964,7 @@ function ripSlotByIdx(who, ripIdx, logPrefix) {
 // Damage to a player. With Phylactery: life floors at 0; overflow rips slots.
 // Without: life can go negative; checkLifeTotals triggers loss at ≤0.
 // Floor-at-0 keeps life-gain intuitive (gaining 3 from 0 → 3, not -X+3).
-function damagePlayer(who, amount, sourceName) {
+function damagePlayer(who, amount, sourceName, sourceIid) {
   if (amount <= 0) return;
   const lifeBefore = G[who].life;
   const lifeAbsorb = Math.max(0, lifeBefore);
@@ -4983,7 +4988,10 @@ function damagePlayer(who, amount, sourceName) {
     // "whenever you lose life" (is_life_loss) triggers fire from burn/combat,
     // not only from gain_life(negative)/drain. (is_life_gain needs delta>0, so
     // a negative delta can't mis-fire it.)
-    emit({type: 'life_changed', who, delta: -lifeLost});
+    // A3-11: source_iid names the damage source (spell callers thread
+    // ctx.sourceIid, combat threads atk.iid) — PROTOCOL §3.3 payload parity
+    // with the other life_changed emitters; feeds the noSelfCascade guard.
+    emit({type: 'life_changed', who, delta: -lifeLost, source_iid: sourceIid});
   }
 }
 function emitCombatDamageToPlayer(source, controller, who, amount) {
@@ -5321,7 +5329,10 @@ function dealCombatDamage(blocked, defender, dealsDamage) {
     // the gain_life effect. Without this, Ajani's Pridemate wouldn't trigger
     // from a lifelink attacker — combat damage uses a different code path
     // than applyDamageFrom (which handles spell damage).
-    emit({type: 'life_changed', who: srcCtrl, delta: amt});
+    // A2-8: source_iid matches the sibling emitters (applyDamageFrom,
+    // gain_life) per PROTOCOL §3.3 — without it a noSelfCascade "you gain
+    // life" trigger couldn't recognize its own combat-lifelink gain.
+    emit({type: 'life_changed', who: srcCtrl, delta: amt, source_iid: source.iid});
   };
   G.attackers.forEach(aIid => {
     const fa = findCard(aIid); if (!fa) return;
@@ -5334,7 +5345,7 @@ function dealCombatDamage(blocked, defender, dealsDamage) {
 
     if (!wasBlocked) {
       if (atkDeals && aPow > 0) {
-        damagePlayer(defender, aPow, atk.name);
+        damagePlayer(defender, aPow, atk.name, atk.iid);
         emitCombatDamageToPlayer(atk, atkCtrl, defender, aPow);
         applyLifelink(atk, atkCtrl, aPow);
       }
@@ -5342,7 +5353,7 @@ function dealCombatDamage(blocked, defender, dealsDamage) {
     }
     if (livingBlockers.length === 0) {
       if (atkDeals && atk.keywords.includes('trample') && aPow > 0) {
-        damagePlayer(defender, aPow, `${atk.name} (trample)`);
+        damagePlayer(defender, aPow, `${atk.name} (trample)`, atk.iid);
         emitCombatDamageToPlayer(atk, atkCtrl, defender, aPow);
         applyLifelink(atk, atkCtrl, aPow);
       }
@@ -5421,7 +5432,7 @@ function dealCombatDamage(blocked, defender, dealsDamage) {
     //   - All satisfied + no trample → leftover wasted
     if (atkDeals && remaining > 0) {
       if (unsatisfied.length === 0 && atk.keywords.includes('trample')) {
-        damagePlayer(defender, remaining, `${atk.name} (trample)`);
+        damagePlayer(defender, remaining, `${atk.name} (trample)`, atk.iid);
         emitCombatDamageToPlayer(atk, atkCtrl, defender, remaining);
         applyLifelink(atk, atkCtrl, remaining);
       } else if (unsatisfied.length > 0) {

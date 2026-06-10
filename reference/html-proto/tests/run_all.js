@@ -182,6 +182,10 @@ const CATEGORY_A = [
   // Audit A1-9 — DRAW-step log truthfulness: "X draws." only logs when a
   // card actually moved (no phantom-draw line on deck-out / Phylactery rip).
   'test_draw_log_truthfulness.js',
+  // Audit A2-8 + A3-11 — event payload conformance: life_changed (combat
+  // lifelink, damagePlayer loss) and the leave-play family carry source_iid,
+  // pinned through the noSelfCascade guard (self-suppression + foreign-fire).
+  'test_event_source_iid.js',
 ];
 
 const TESTS_DIR = __dirname;
