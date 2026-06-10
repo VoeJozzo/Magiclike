@@ -40,6 +40,9 @@ It is **docs-as-code, in wiki form** — co-located with the code (so it's versi
 **Canon (the rulebook)**
 - [rules/](rules/rulebook.md) — the **Comprehensive Rules**, decomposed one page per § ([[rulebook|index]]). The canonical *what*; the pages above are the *why*, and the two cross-link.
 
+**World (the setting bible — living draft)**
+- [world/](world/world-bible.md) — tone, cosmology, color philosophy, names ([[world-bible|index]]). **Scratchpad under heavy iteration**, unlike the rest of this layer: claims are status-tagged (authorial / observed / adopted / parked), and nothing is locked. Seeded 2026-06 from the art-prompt corpus + design conversation.
+
 ## What's *not* here (one home per fact)
 
 This layer **complements** the repo docs and never copies them — it links out:
