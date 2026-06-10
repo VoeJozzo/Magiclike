@@ -77,7 +77,8 @@ Overnight is the **default execution mode** — usage stretches further at low s
 
 - **`/audit-next-chunk` runner** (project skill, built in Phase 0): read `docs/audit/STATE.md` → claim next chunk (record dev-tip anchor SHA) → execute at the chunk's tier → write findings file → **self-QA gate** → commit to the audit branch → update STATE.md → loop to next chunk. Runs greedily until the queue or the usage budget is exhausted.
 - **Self-QA gate:** after each chunk, a fresh-context pass validates the findings file — schema-complete, evidence actually reproduces, deduped against BACKLOG/DIVERGENCE, severity sane — before the chunk is marked done.
-- **Scheduling:** Windows Task Scheduler fires headless `claude -p "/audit-next-chunk"` hourly through the night window. Each invocation is **idempotent**: resume in-progress chunk, claim next, or exit fast if nothing to do / no budget. Hitting the usage wall just means a later invocation resumes after the window resets. (A stale `in_progress` claim older than ~12h is treated as crashed and re-run; chunk runs are idempotent — the findings file is simply rewritten.)
+- **Scheduling:** Windows Task Scheduler fires headless `claude -p "/audit-next-chunk"` (via a wrapper script with lockfile + dated logs) hourly through the **23:00–06:00** window. Each invocation is **idempotent**: resume in-progress chunk, claim next, or exit fast if nothing to do / no budget / not yet armed. Hitting the usage wall just means a later invocation resumes after the window resets. (A stale `in_progress` claim older than ~12h is treated as crashed and re-run; chunk runs are idempotent — the findings file is simply rewritten.) **Wall-clock guard:** no new chunk claims after ~05:30, so all work is finished and written up by ~07:00 when Joe wakes.
+- **Morning packet (the 7 AM deliverable):** updated `STATE.md`, a `NIGHTLY.md` summary (chunks done, fixes shipped, items staged, surprises, anomalies), refreshed PR body, and a best-effort push notification (fallback: everything is in the PR).
 - **Branch/PR flow:** long-lived `audit/findings` branch; findings accumulate commit-by-commit; one PR to dev grows as chunks land. Joe reviews **asynchronously** — morning review never gates overnight progress; branch protection (PR + CODEOWNERS) already guarantees nothing merges without him.
 - **P0 escape hatch:** an overnight run never decides — it stamps the P0 at the top of the PR and fires a push notification.
 - **Free tier runs nightly regardless:** mutation testing + AI-selfplay bughunt sweeps are pure machine time, no Claude usage.
@@ -100,12 +101,25 @@ Joe's rule (2026-06-09): *"anything with a single, unambiguous, correct answer s
 
 Joe has authorized Claude to execute Phase 0 **autonomously** when initiated (2026-06-09). Possible human touchpoints: a UAC elevation prompt when registering the scheduled task, and keeping the PC on/asleep (not shut down) overnight.
 
-1. Create `docs/audit/` + `STATE.md` skeleton (queue table: chunk, status todo/in_progress/done, claim timestamp, anchor SHA, findings link).
-2. **Stand up mutation testing** (Stryker or a hand-rolled mutant runner against `tests/run_all.js`) and kick off the first full run — the coverage map must exist before chunk 1, because the ship gate reads it. Schedule nightly mutation + selfplay sweeps (pure machine time).
-3. Write the `/audit-next-chunk` project skill encoding the runner loop above.
-4. Pre-authorize the audit worktree's permission allowlist so unattended runs never stall on a prompt.
-5. Create the Task Scheduler entry (night window, hourly).
-6. Dry-run on chunk 6 (stickers) while watching; judge artifact quality next morning before unleashing the queue.
+1. **Wrapper script + register the scheduled task FIRST, while Joe is present** — front-loads the only human touchpoint (a possible UAC prompt). Safe to register early: the wrapper no-ops cleanly (log + exit) until the campaign is armed.
+2. Create `docs/audit/` + `STATE.md` skeleton (queue table: chunk, status todo/in_progress/done, claim timestamp, anchor SHA, findings link).
+3. **Stand up mutation testing** (Stryker or a hand-rolled mutant runner against `tests/run_all.js`) and kick off the first full run — the coverage map must exist before chunk 1, because the ship gate reads it. Schedule nightly mutation + selfplay sweeps (pure machine time).
+4. Write the `/audit-next-chunk` project skill encoding the runner loop above, written against the pre-mortem table below.
+5. Pre-authorize the audit worktree's permission allowlist so unattended runs never stall on a prompt.
+6. Dry-run on chunk 6 (stickers); judge artifact quality before arming the queue.
+
+### Pre-mortem: known overnight failure modes
+
+| Failure mode | Defense | Residual risk |
+|---|---|---|
+| Permission prompt stalls the run | Phase 0 allowlist + supervised dry run; hourly retries make stalls non-fatal; loud logs | First nights may surface an unlisted permission — fixed next morning |
+| Quality drift ("laziness") | Each chunk = fresh-context bounded job (drift comes from marathon contexts); schema-forced per-finding evidence; fresh-context self-QA; findings must state coverage explicitly (files/ranges actually read) — sampling can't masquerade as completeness | Shallow-but-plausible findings passing self-QA — calibration morning reviews exist for exactly this |
+| Context exhaustion mid-chunk | Chunks sized to one context; workflows distribute reading; runner may sub-split a chunk and record it in STATE | Chunk 1 (`step()` region) likeliest to need a split |
+| Usage wall mid-chunk | STATE claims + idempotent hourly re-invocation; re-runs rewrite the findings file wholesale | None meaningful — designed for |
+| Crash / hang | Lockfile; stale-claim rule (in_progress >12h → re-run); dated log per invocation | None meaningful |
+| Mis-attributed GitHub writes | Bot-token-per-command rule (CLAUDE.md) baked into the runner skill | Low |
+| Notification fails headless | Best-effort; P0s also go in PR title + NIGHTLY.md | Low |
+| New plumbing, first contact | Supervised dry run + stage-only calibration | Expect 1–3 plumbing bugs in week one — visible and cheap by design, never silent |
 
 ## Remediation phase
 
