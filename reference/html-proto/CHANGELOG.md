@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.1.30`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.1.31`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -1625,6 +1625,33 @@ rejected + nothing declared + player not locked out + damage dealt once;
 guard pins a normal multi-attacker declaration (2+3=5) green before and
 after. Predicted test impact per the packet was none — confirmed: zero
 existing assertions flipped. Suite 84 files / 1914 green, lint clean.
+
+v2.1.31: audit fix A2-7 + lifelink overkill (design ruling, Joe, PR #98
+round 3, 2026-06-10: "1 point of deathtouch damage is lethal.
+Indestructible creatures survive lethal damage." / "Lifelink should always
+gain its full power, even when that damage is overkill."). Deathtouch's
+combat lethal-threshold math carved out indestructible blockers (full
+remaining toughness instead of 1, asserted as deliberate in a comment but
+absent from §902.3/§803): the carve-out is removed — the dose is 1 vs
+every blocker, indestructibles are lethal-marked but survive (immunity
+stays in checkDeaths; losing indestructible later that turn means the mark
+kills at the next SBA, same F2 semantics as retained damage). A
+3-power deathtouch+trample attacker vs Iron Statue now tramples 2 (was 0).
+Lifelink: the "all blockers satisfied + no trample" leftover arm wasted the
+remainder with NO lifelink — the only combat site that capped lifelink
+below full power (verified: unblocked, dead-blockers-trample, per-blocker
+assignment, trample spill, and dump arms all already paid in full). It now
+gains the wasted remainder: a 6/6 lifelink attacker over a 2/2 gains 6
+(was 2). ai.js simulateCombat mirrored both the carve-out (packet's
+ai.js:778 coupling) and the wasted arm — engine/AI lockstep maintained.
+Rulebook updated to state the rulings (900-keywords.md §902.3/§902.4/
+§903.1, 800-combat.md §803, each citing the design ruling). New
+tests/test_combat_deathtouch_lifelink.js (23 assertions, red→green: 5 red
+pre-fix) pins both rulings + green-before/after guards (lifelink+trample
+full gain via spill; deathtouch still kills killable blockers at dose 1).
+Predicted test impact per the packet was none (no test contained
+"deathtouch") — confirmed: zero existing assertions flipped. Suite
+85 files / 1937 green, lint clean.
 > **MUST UPDATE on every dev-branch push that touches code.** Bump `VERSION` in `js/main.js` AND the line above, in the same commit. GitHub Pages caches aggressively; the version string is the only reliable way to confirm a fresh build is live.
 
 Always work on `dev` for html-proto changes.

@@ -774,8 +774,11 @@ function simulateCombat(state, attackerWho, attackerIids, blockMap) {
       for (const wBlk of orderedBlockers) {
         const blk = wBlk.card;
         const [bPow, bTou] = ENGINE.getStats(blk);
-        const indestructible = blk.keywords.includes('indestructible');
-        const lethalNeeded = (atkDeathtouch && !indestructible)
+        // A2-7 (engine lockstep): 1 point of deathtouch damage is a lethal
+        // dose vs EVERY blocker, indestructible included (they're marked
+        // but survive — isDead keeps the immunity). Design ruling, PR #98,
+        // 2026-06-10.
+        const lethalNeeded = atkDeathtouch
           ? Math.min(1, Math.max(0, bTou - wBlk.damage))
           : Math.max(0, bTou - wBlk.damage);
         // A2-2 (engine lockstep): lethalNeeded 0 ⇒ already satisfied — no
@@ -783,7 +786,7 @@ function simulateCombat(state, attackerWho, attackerIids, blockMap) {
         if (atkDeals && remaining >= lethalNeeded) {
           if (lethalNeeded > 0) {
             wBlk.damage += lethalNeeded;
-            if (atkDeathtouch && !indestructible) wBlk.dealtDeathtouch = true;
+            if (atkDeathtouch) wBlk.dealtDeathtouch = true;
             if (atk.keywords.includes('lifelink')) attackerLifeGain += lethalNeeded;
             remaining -= lethalNeeded;
           }
@@ -805,6 +808,10 @@ function simulateCombat(state, attackerWho, attackerIids, blockMap) {
         } else if (unsatisfied.length > 0) {
           unsatisfied[0].damage += remaining;
           if (atk.keywords.includes('lifelink')) attackerLifeGain += remaining;
+        } else if (atk.keywords.includes('lifelink')) {
+          // A2-7 (engine lockstep): wasted overkill still gains lifelink —
+          // full power. Design ruling, PR #98, 2026-06-10.
+          attackerLifeGain += remaining;
         }
       }
     }

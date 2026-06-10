@@ -3,7 +3,7 @@ type: rules
 tags: [magiclike, rules]
 section: "900"
 created: 2026-06-04
-updated: 2026-06-04
+updated: 2026-06-10
 ---
 
 # 900. Keywords
@@ -44,15 +44,15 @@ A creature with first strike **deals its combat damage in a separate, earlier pa
 When a creature with trample attacks and is blocked, damage in excess of the blocker's remaining toughness **spills over to the defending player**. The attacker need only assign enough damage to be lethal to the blocker before assigning the rest.
 
 ### 902.3 Deathtouch
-Any nonzero amount of damage dealt by a source with deathtouch to a creature is considered **lethal**. The creature is destroyed in the next state-based-action sweep.
+Any nonzero amount of damage dealt by a source with deathtouch to a creature is considered **lethal**. The creature is destroyed in the next state-based-action sweep. For combat damage assignment, **1 point of deathtouch damage is a lethal dose against every blocker — indestructible included**: the indestructible creature is lethal-marked but survives ([[#903.1 Indestructible|903.1]]). (Design ruling, PR #98, 2026-06-10 — audit A2-7; the engine previously carved indestructible blockers out and required their full remaining toughness.)
 
 ### 902.4 Lifelink
-When a source with lifelink deals damage, **its controller gains that much life**. Lifelink fires on combat damage and on damage from spells/abilities equally.
+When a source with lifelink deals damage, **its controller gains that much life**. Lifelink fires on combat damage and on damage from spells/abilities equally. In combat, a lifelink creature that deals damage in a strike step **gains its full power, even when part of that damage is overkill** that lands nowhere (all blockers satisfied, no trample). (Design ruling, PR #98, 2026-06-10.)
 
 ## 903. Permanent-status keywords
 
 ### 903.1 Indestructible
-A creature with indestructible **is not destroyed by lethal damage**. The lethal-damage and lethal-marked checks in SBAs ([[1100-state-based-actions]]) ignore it. It can still be removed by:
+A creature with indestructible **is not destroyed by lethal damage**. The lethal-damage and lethal-marked checks in SBAs ([[1100-state-based-actions]]) ignore it. This includes deathtouch's lethal mark ([[#902.3 Deathtouch|902.3]]): a deathtouched indestructible creature is marked but survives — and if it loses indestructible later that turn, the still-lethal mark kills it at the next SBA sweep (design ruling, PR #98, 2026-06-10). It can still be removed by:
 - 0 or less toughness (e.g., if `current_toughness()` drops to 0 from a debuff).
 - An effect that explicitly says "destroy" with the rider "regardless of indestructible" *(no such effect exists today)*.
 - An effect that exiles the creature *(no such effect exists today)*.

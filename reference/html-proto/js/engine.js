@@ -5437,11 +5437,12 @@ function dealCombatDamage(blocked, defender, dealsDamage) {
       const blk = fb.card;
       const blkCtrl = fb.controller;
       const [bPow, bTou] = getStats(blk);
-      const indestructible = blk.keywords.includes('indestructible');
-      // Lethal-equivalent. Deathtouch reduces to 1 ONLY against killable
-      // blockers (deathtouch can't kill indestructibles, so they need full
-      // remaining toughness to satisfy the trample requirement).
-      const lethalNeeded = (atkDeathtouch && !indestructible)
+      // Lethal-equivalent. Deathtouch: 1 point of deathtouch damage is a
+      // lethal dose vs EVERY blocker, indestructible included — the
+      // indestructible creature is lethal-marked but survives (immunity
+      // lives in checkDeaths, not here). Design ruling, PR #98, 2026-06-10
+      // (audit A2-7); matches §902.3/§803, which state the rule unqualified.
+      const lethalNeeded = atkDeathtouch
         ? Math.min(1, Math.max(0, bTou - blk.damage))
         : Math.max(0, bTou - blk.damage);
       let dmgToBlk = 0;
@@ -5459,8 +5460,11 @@ function dealCombatDamage(blocked, defender, dealsDamage) {
           dmgToBlk = lethalNeeded;
           // dealtDeathtouch = victim-side mark: the BLOCKER received deathtouch
           // damage (despite the name; Godot calls it lethal_marked). See audit
-          // A2-10.
-          if (atkDeathtouch && !indestructible) blk.dealtDeathtouch = true;
+          // A2-10. Indestructibles are marked too (A2-7): checkDeaths skips
+          // them while indestructible, but if the keyword is removed later
+          // this turn the still-lethal mark kills them at the next SBA —
+          // same F2 semantics as retained marked damage.
+          if (atkDeathtouch) blk.dealtDeathtouch = true;
           // Even non-lethal damage "stakes the claim" if the creature ends up
           // dying later in combat (recordDamage: last-writer-wins killedBy).
           recordDamage(blk, atk, atkCtrl);
@@ -5493,7 +5497,9 @@ function dealCombatDamage(blocked, defender, dealsDamage) {
     //   - All blockers satisfied + trample → carries to defender
     //   - Any unsatisfied blocker → all leftover dumped on highest-priority
     //     unsatisfied blocker (no trample carryover possible by rules)
-    //   - All satisfied + no trample → leftover wasted
+    //   - All satisfied + no trample → leftover wasted, but lifelink still
+    //     gains it (full power, even when the damage is overkill — design
+    //     ruling, PR #98, 2026-06-10; audit A2-7)
     if (atkDeals && remaining > 0) {
       if (unsatisfied.length === 0 && atk.keywords.includes('trample')) {
         damagePlayer(defender, remaining, `${atk.name} (trample)`, atk.iid);
@@ -5509,6 +5515,12 @@ function dealCombatDamage(blocked, defender, dealsDamage) {
         // logs above would each show "(0)" damage to blocker, hiding the
         // fact that one of them actually took the full leftover.
         log(`${atk.name} piles ${remaining} extra damage onto ${dump.name}.`, 'cb');
+      } else {
+        // All blockers satisfied, no trample: the leftover damage goes
+        // nowhere — but lifelink still gains it. Design ruling, PR #98,
+        // 2026-06-10 (audit A2-7): lifelink always gains the attacker's
+        // full power, even when that damage is overkill.
+        applyLifelink(atk, atkCtrl, remaining);
       }
     }
     atk.damage += attackerDamage;
