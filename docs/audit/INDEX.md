@@ -55,8 +55,8 @@
 | [A2-14](chunk-02-combat.md) | P3 | combat | engine.js | test_ui_targeting pins block legality by source-text regex — false-reds on rename, green under flying-gate deletion (both executed); replace with behavioral check, keep the delegation pin | park | open |
 | [A2-15](chunk-02-combat.md) | P3 | combat | engine.js | Menace enforcement: zero coverage at a site whose comment documents a prior silent-failure bug of this exact shape — check deletable, suite green; two assertions in the A2-6 battery | park | open |
 
-| [A3-1](chunk-03-stack-triggers.md) | P1 | stack-triggers | triggers/engine | Trigger targets are NOT re-validated at resolution: a target that became illegal on the st | stage | open |
-| [A3-2](chunk-03-stack-triggers.md) | P2 | stack-triggers | triggers/engine | Non-mana activated abilities resolve entirely OFF the stack, contradicting canon §705 — th | stage | open |
+| [A3-1](chunk-03-stack-triggers.md) | P1 | stack-triggers | triggers/engine | Trigger targets are NOT re-validated at resolution: a target that became illegal on the st | stage | **fixed (PR #111)** |
+| [A3-2](chunk-03-stack-triggers.md) | P2 | stack-triggers | triggers/engine | Non-mana activated abilities resolve entirely OFF the stack, contradicting canon §705 — th | stage | awaiting design ruling (investigation posted) |
 | [A3-3](chunk-03-stack-triggers.md) | P2 | stack-triggers | triggers/engine | The trigger "depth cap" counts WIDTH, not depth: 101 flat, independent triggers trip it an | stage | open |
 | [A3-4](chunk-03-stack-triggers.md) | P2 | stack-triggers | triggers/engine | Canon rulebook page §1000 (triggered abilities) documents the RETIRED pre-migration trigge | stage | open |
 | [A3-5](chunk-03-stack-triggers.md) | P2 | stack-triggers | triggers/engine | The three generated-trigger data tables sit outside BOTH boot validators: a typo'd effect | stage | open |
