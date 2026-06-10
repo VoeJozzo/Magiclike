@@ -278,10 +278,14 @@ console.log('\n=== ghost edge: Endomorph bounced between queue and resolve → h
 
 console.log('\n=== finisher kills: chip + ANY death this turn feeds (SBA + destroy paths) ===');
 (() => {
-  // The templating is "a creature dealt damage by this dies" — Endomorph need
-  // not deal the killing blow. Two real shapes, exercising BOTH death paths:
+  // The templating is "a creature dealt damage by this card this turn dies" —
+  // Endomorph need not deal the killing blow. Two real shapes, exercising
+  // BOTH death paths:
   // (a) Endomorph chips 2, a burn spell finishes — death via the checkDeaths
-  //     SBA batch (the path real combat kills take, with extraSources);
+  //     SBA batch (the path real combat kills take, with extraSources). The
+  //     spell's damage is recorded too (any iid-bearing source stamps —
+  //     future "whenever this kills" artifacts/spells need the evidence),
+  //     but only Endomorph's stamp matches its trigger.
   // (b) Endomorph chips 2 (block), a destroy spell finishes — death via
   //     moveToGraveyard. The destroy stamps nothing into damagedBySources
   //     (destroying isn't damage) but must not erase Endomorph's chip either.
@@ -293,10 +297,11 @@ console.log('\n=== finisher kills: chip + ANY death this turn feeds (SBA + destr
   ENGINE.applyEffect({ controller: 'you', sourceName: 'Endomorph', sourceIid: endo.iid, sourceCard: endo },
     { kind: 'damage', amount: 2 }, { kind: 'creature', iid: victimA.iid });
   ENGINE.applyEffect({ controller: 'you', sourceName: 'Lightning Bolt', sourceIid: 77001,
-    sourceCard: { name: 'Lightning Bolt', types: ['Sorcery'] } },
+    sourceCard: { iid: 77001, name: 'Lightning Bolt', types: ['Sorcery'] } },
     { kind: 'damage', amount: 3 }, { kind: 'creature', iid: victimA.iid });
-  check('spell finisher did NOT enter damagedBySources (creature sources only)',
-    victimA.damagedBySources.size === 1 && victimA.damagedBySources.has(endo.iid));
+  check('both damagers recorded (any iid-bearing source stamps, spells included)',
+    victimA.damagedBySources.has(endo.iid) && victimA.damagedBySources.has(77001),
+    JSON.stringify([...victimA.damagedBySources]));
   // 5 damage on a 5-tough creature: death happens at the next SBA sweep —
   // poke the settle loop with a pass, then drain the queued trigger.
   ENGINE.executeAction('you', { type: 'pass' });

@@ -4604,10 +4604,16 @@ function emitLeavesBattlefield(card, controller, destZone, extraSources) {
 
 // Record a damage event's attribution on the victim. ONE writer for the two
 // views every damage site used to hand-sync:
-//   damagedBySources — Set of CREATURE iids that damaged this card; powers
-//     Sengir-style "a creature dealt damage by this dies" triggers
-//     (card_damaged_by_this), so non-creature sources (burn spells) don't
-//     stamp it.
+//   damagedBySources — Set of source iids that damaged this card this turn
+//     (cleared in the EOT cleanup sweep); powers Sengir-style "a creature
+//     dealt damage by this card this turn dies" triggers
+//     (card_damaged_by_this). ANY iid-bearing source records — creature,
+//     artifact, spell — so future non-creature damage sources ("whenever
+//     this kills something, …") aren't pre-foreclosed. Today only
+//     battlefield permanents can LISTEN for the predicate, so non-creature
+//     entries are inert evidence; the original creature-source gate bought
+//     nothing but a smaller Set and contradicted its own design note
+//     ("populated by combat & spell damage").
 //   killedBy — player key, last-writer-wins; if the creature ends up dying,
 //     this is who gets keyword-claim credit (claimKeywordsFromKill). Written
 //     unconditionally — spells DO claim kills for the reward screen.
@@ -4616,7 +4622,7 @@ function emitLeavesBattlefield(card, controller, destZone, extraSources) {
 function recordDamage(victim, sourceCard, controller) {
   if (!victim) return;
   victim.killedBy = controller;
-  if (sourceCard && hasType(sourceCard, 'Creature')) {
+  if (sourceCard && sourceCard.iid != null) {
     if (!(victim.damagedBySources instanceof Set)) victim.damagedBySources = new Set();
     victim.damagedBySources.add(sourceCard.iid);
   }

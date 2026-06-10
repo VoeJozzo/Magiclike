@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.1.14`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.1.15`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -1318,6 +1318,23 @@ old text over-promised). "this card" rather than the preamble family's bare
 v2.0.7 tradition: the text now renders the restriction the engine enforces.
 Wording pinned in `test_endomorph_absorb.js` (45 checks). Suite 74 files /
 1768 green, lint clean.
+
+v2.1.15: recordDamage drops its creature-source gate — ANY iid-bearing
+damage source (creature, artifact, spell) now stamps the victim's
+`damagedBySources`. The gate dated to the set's birth commit ("only
+meaningful when the source is a creature"), bought nothing functional
+(nothing can listen for a non-creature source today, so the extra entries
+are inert evidence), and contradicted its own design note ("populated by
+combat & spell damage"). Removing it un-forecloses two future card shapes:
+a non-creature permanent with a "dealt damage by this card this turn dies"
+trigger (an artifact pinger — would now work outright) and a grows-per-kill
+spell (still needs a listening mechanism — graveyard spells aren't trigger
+sources — but the damage evidence is recorded). killedBy semantics
+unchanged; destroy/edict paths still bypass recordDamage entirely. Zero
+observable behavior change today: suite 74 files / 1768 green (the
+spell-finisher pin in test_endomorph_absorb.js flipped to assert both
+damagers record), lint clean, selfplay 200/200 clean (0 crashes,
+0 invariant violations).
 
 > **MUST UPDATE on every dev-branch push that touches code.** Bump `VERSION` in `js/main.js` AND the line above, in the same commit. GitHub Pages caches aggressively; the version string is the only reliable way to confirm a fresh build is live.
 
