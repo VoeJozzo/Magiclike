@@ -4662,8 +4662,49 @@ function leavesPlayPreservingBuffs(card) {
 // For creatures that fire BOTH this AND cardDies (on death), the leaves
 // event emits FIRST (before resetInPlayState/dies-emit). Cards that want
 // only one of the two should declare exactly one trigger.
+// A2-3 / A2-5: ONE "leaves combat" concept. A creature that leaves the
+// battlefield (or changes controller — CR 506.4c) is removed from combat:
+//   - G.attackers: its iid is pruned. Cast arrivals do NOT re-mint iids
+//     (only the move_card/flicker path does), so without this prune a
+//     declared attacker bounced to hand and flash-re-cast re-matched its
+//     stale entry and dealt combat damage while sick, untapped, and never
+//     re-declared (the A2-3 ghost attacker).
+//   - G.blockers entries whose VALUE (the attacker being blocked) is the
+//     leaving iid: deleted — the assignment's target is gone; the blocker
+//     stays on the battlefield but is freed (the staple-remap rule).
+//   - G.blockers entries whose KEY (the blocker) is the leaving iid: the
+//     key is retired to a 'gone:<iid>' tombstone that no live card can
+//     findCard-match, but the ENTRY survives — an attacker that was blocked
+//     STAYS blocked when its blocker leaves combat (MTG 509/510.1c; the
+//     pre-existing engine behavior, which dealCombatDamage realizes as
+//     wasBlocked=true with zero living blockers). Deleting the entry would
+//     wrongly flip the attacker to unblocked; keeping the live key would
+//     let a bounced-and-re-cast blocker re-inherit its block (the A2-3
+//     symmetric hole).
+function removeFromCombat(iid) {
+  if (Array.isArray(G.attackers)) {
+    const ai = G.attackers.indexOf(iid);
+    if (ai >= 0) G.attackers.splice(ai, 1);
+  }
+  if (G.blockers && typeof G.blockers.forEach === 'function') {
+    // Snapshot entries before mutating the Map.
+    const entries = Array.from(G.blockers.entries());
+    for (const [bIid, aIid] of entries) {
+      if (aIid === iid) {
+        G.blockers.delete(bIid);
+      } else if (bIid === iid) {
+        G.blockers.delete(bIid);
+        G.blockers.set('gone:' + bIid, aIid);
+      }
+    }
+  }
+}
 function emitLeavesBattlefield(card, controller, destZone, extraSources) {
   if (!card) return;
+  // Cross the card off the combat bookkeeping the moment it leaves play —
+  // BEFORE the zone-change emit, so triggers observe consistent combat
+  // state. See removeFromCombat above (A2-3).
+  removeFromCombat(card.iid);
   // Tokens leaving play still emit — a future "when this token leaves
   // play" mechanic might want it. Costs nothing if no trigger listens.
   // Unified zone-change mirror. destZone defaults to 'graveyard' (the death
