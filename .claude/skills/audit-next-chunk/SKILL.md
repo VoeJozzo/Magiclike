@@ -69,6 +69,16 @@ Dry run section).
 4. Check the latest selfplay log for crashes/invariant violations — any new
    anomaly becomes a candidate finding routed to whichever chunk owns that
    subsystem (note it in STATE.md's Log if that chunk is already done).
+5. **Read Joe's decision inbox** — comments on the findings PR (#98):
+   `… gh-bot.ps1 pr view 98 --json comments --jq '.comments[] | [.author.login, .body] | @tsv'`
+   (canonical invocation; only comments authored by `VoeJozzo` are
+   decisions). A verdict like `A1-1: go` promotes that staged finding to a
+   fix PR — build it FIRST (before new chunk claims), with its declared
+   regression test, through the normal ship mechanics, then reply on the PR
+   thread confirming what shipped (via gh-bot, so the reply attributes to
+   the bot). `hold`/`park`/questions → record in NIGHTLY.md's decision
+   queue and reply acknowledging. Never re-ask a question Joe has already
+   answered on the thread.
 
 ### 1. Claim
 
