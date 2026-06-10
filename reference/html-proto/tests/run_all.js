@@ -154,6 +154,10 @@ const CATEGORY_A = [
   // every slot, a human-controlled multi-target ETB prompts per choosable slot,
   // and a distinct_targets ETB resolves onto two DIFFERENT creatures.
   'test_multitarget_trigger.js',
+  // Static-lord keyword grants, dedicated: real entry (emit on cast) + real
+  // leave paths (death/bounce), controller + cross-lord gating, intrinsic
+  // protection, multi-source survival, and the six-lord sweep.
+  'test_lord_keyword_grants.js',
 ];
 
 const TESTS_DIR = __dirname;
