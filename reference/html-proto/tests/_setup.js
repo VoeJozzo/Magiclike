@@ -141,7 +141,7 @@ const EXPOSED = [
   // Trigger-generator surface (triggers.js + trigger-generator.js —
   // no IIFE, all module-scope).
   'GENERATOR_EFFECTS', 'GENERATOR_CONDITIONS',
-  'evalTriggerCondition', 'generateRandomTrigger',
+  'evalTriggerCondition',
   // Composable-predicate surface (triggers.js, module-scope — Slice 2 / E2).
   'ATOMIC_PREDICATES', 'evaluateCondition', '_parseCall',
   // Effect-shorthand parser (triggers.js, module-scope — §5.1/§5.2).

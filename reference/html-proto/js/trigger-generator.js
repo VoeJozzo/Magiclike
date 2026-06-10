@@ -114,45 +114,10 @@ const GENERATOR_CONDITIONS = [
    event: 'spell_cast', condition: ['another_card', 'controlled_by(you)']},
 ];
 
-function _genWeightedPick(entries) {
-  const total = entries.reduce((s, e) => s + (e.weight || 1), 0);
-  let r = Math.random() * total;
-  for (const e of entries) {
-    r -= (e.weight || 1);
-    if (r < 0) return e;
-  }
-  return entries[entries.length - 1];
-}
-
-// Roll a (cond, eff) pair. Only hard-break: needsLiveSource effect + dead-source cond.
-// NOTE: no production callers — tests-only (audit A3-7). The live build flow is the
-// three-step Codex path below; unlike assembleTrigger, this twin does NOT set
-// noSelfCascade, so do not wire it into production as-is.
-function generateRandomTrigger() {
-  for (let attempt = 0; attempt < 30; attempt++) {
-    const cond = _genWeightedPick(GENERATOR_CONDITIONS);
-    const eff = _genWeightedPick(GENERATOR_EFFECTS);
-    if (eff.needsLiveSource && !cond.sourceLive) continue;
-    const effects = eff.roll();
-    const text = `When ${cond.text}, ${eff.describe(effects[0])}.`;
-    return {
-      event: cond.event,
-      condition: cond.condition.slice(),
-      text,
-      effects,
-      generated: true,
-    };
-  }
-  return {
-    event: 'card_zone_change',
-    condition: ['this_card', 'card_moves(anywhere, battlefield)'],
-    text: 'When ~ enters, gain 1 life.',
-    effects: [{kind: 'gain_life', scope: 'self', amount: 1}],
-    generated: true,
-  };
-}
-
 // Architect's Codex build flow: generateConditionOptions → generateEffectOptions → assembleTrigger.
+// (A one-call generateRandomTrigger twin was deleted — audit A3-7: it had no
+// production callers and, unlike assembleTrigger, didn't set noSelfCascade,
+// so wiring it up would have shipped cascade-unguarded triggers.)
 function _genWeightedPickN(entries, n) {
   const pool = entries.slice();
   const out = [];
