@@ -149,7 +149,7 @@ runtime handlers — noted).
 | `exile_until_eot`     | (target())                                      | —           | **Decomposed in proto** to `move_card` (bf→exile) + `schedule_delayed` (end-step exile→bf return), since proto already has a delayed-trigger queue. No longer a distinct handler proto-side. Godot still needs its delayed-trigger queue (B4) before it can do the same. |
 | `add_type`            | `types, power?, toughness?, duration?` | JS          | Add types to the target(). `duration: "permanent"` = permanent. |
 | `set_types`            | `types, power?, toughness?, duration?` | JS          | Replace types of the target(). `duration: "permanent"` = permanent. |
-| `schedule_delayed`     | `when, effects`                         | JS          | Queue effects to fire at a future point (e.g. `end_step`). |
+| `schedule_delayed`     | `when, effects`                         | JS          | Queue effects to fire at a future point (e.g. `end_step`). **Caveat:** `when:'end_step'` is a misnomer — in the proto these fire during CLEANUP (no priority window), not the §509 END step. Correct for "until end of turn" durations; NOT a home for genuine "at the beginning of the end step" triggers. |
 | `rip`                 | (no params; reads ctx.chosen)                   | JS          | Zone-agnostic run-layer slot-strip (§13). Trailing step of a rip-edict: `target(opp) → chooses(permanent) → annihilate → rip`. Strips the chosen card's deck-slot (player-side only). Replaces the bundled `rip_permanent` kludge. |
 | `endomorph_absorb` / `apply_in_game_splice` / `symmetricize` / `bargain_sticker_self` / `bargain_sticker_other` | (per card) | JS | Card-specific (Endomorph / Stapler / Symmetricize prompt / Archdemon). (Scarification decomposed to `[apply_sticker(scarified), affect_creature(destroy)]` — `destroy_and_sticker_slot` retired.) |
 | `draw` / `discard`    | `amount`                                        | JS (runtime only) | **Not used in card data** — kept as handlers because the trigger generator (Mercurial Adept) still emits them. Card data uses `move_card`. |
@@ -295,9 +295,10 @@ UNTAP, UPKEEP, DRAW, MAIN1, COMBAT_ATTACK, COMBAT_BLOCK, COMBAT_DAMAGE, MAIN2, E
 ```
 
 Godot's `engine/phase_machine.gd::PhaseMachine.Phase` already enumerates
-all ten. JS today collapses UNTAP+UPKEEP+DRAW into a single UNTAP step;
-the plan (Pass 2 follow-up) is to split them when upkeep-triggered
-abilities land.
+all ten. JS has UNTAP and DRAW as distinct (auto-advancing) phases —
+UNTAP→DRAW is a real, observable phase boundary (mana pools empty on it,
+and the UI ribbon shows DRAW). UPKEEP alone is unimplemented in the JS
+engine; that gap is intentional and tracked as DIVERGENCE.md B1.
 
 ## 4. Effect descriptor shape
 

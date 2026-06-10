@@ -40,6 +40,10 @@ During these windows, **no spells or abilities can be cast or activated**. (Trig
 ## 606. Implementation: auto-pass
 For the AI driver and for unattended priority windows, the engine auto-issues `pass_priority` actions. This is agent UX, not a rules cheat — the priority pass IS happening, the AI is just calling it automatically. The human player passes priority via UI (currently Space/Enter keybind on the Godot side).
 
+Sanctioned auto-pass skips (both engines, unless noted):
+- A priority holder with no productive action (no castable spell, activatable ability, or playable land) is auto-passed (proto `hasNoAction`; Godot `_has_no_meaningful_action`).
+- **The active player's empty-stack END window is skipped outright** (proto `skipApEndStep`; Godot per `plan-priority-window-refactor`). This suppresses the AP's instant-speed options at their own end step, not just sorcery-speed ones — the trade being that anything castable there was equally available in MAIN2, and the AP regains a window on any non-empty stack. The non-active player's END window is preserved. See `docs/DIVERGENCE.md` B6.
+
 ## Implementation status — Priority
 - The "stop on cast / stop on draw / stop on attack" MTGO-style explicit-priority-hold UI is not implemented (see `docs/BACKLOG.md`).
 - A "hold priority for follow-up instant" UI is not implemented.

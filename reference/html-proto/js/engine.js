@@ -347,8 +347,26 @@ let G = null;
 let nextIid = 1;
 let listeners = [];
 
-// Registry of "player owes a decision" modal types. To add: add G.<field> to
-// makeState, then add an entry here. Note pendingTriggerTarget uses .controller, not .who.
+// Registry of "player owes a decision" modal types.
+//
+// ADD-A-MODAL CHECKLIST — the registry entry alone is NOT enough. While a
+// modal is open, isLegalAction rejects everything except that modal's answer
+// action, so missing any site below produces a hard soft-lock (engine paused,
+// getLegalActions returns [], every answer illegal). A new modal needs ALL of:
+//   1. G.<field> initialized in makeState.
+//   2. A registry entry here (note pendingTriggerTarget uses .controller,
+//      not .who).
+//   3. An isForcedActionResponse branch mapping the answer action type to
+//      the open field.
+//   4. An isLegalAction case validating the answer action.
+//   5. A getLegalActions block enumerating the legal answers while the
+//      modal is open.
+//   6. An executeAction dispatch case routing to the do* handler (which
+//      must clear the field).
+//   7. AI handling (ai.js decide path) and/or controller/UI handling
+//      (controller.js) so both kinds of player can actually answer.
+// Reference examples: pendingEdictChoice and pendingOptionalCost touch every
+// site on this list.
 const PENDING_DECISIONS = [
   { field: 'forcedDiscard',        who: d => d.who,        active: d => d.remaining > 0 },
   { field: 'pendingSearch',        who: d => d.who,        active: () => true },
@@ -2641,6 +2659,13 @@ const EFFECTS = {
   // operating on the same target the prior effect did (the §9.1/D9 delayed-effect
   // atom). exile_until_eot decomposes to move_card(bf→exile) + schedule_delayed
   // (move_card(exile→bf), end_step) — replacing the bespoke returnFromExile path.
+  //
+  // NAMING CAVEAT: despite the name, fireAt:'endStep' entries execute during
+  // CLEANUP (step()'s 'CLEANUP' case), NOT the §509 END step — there is no
+  // priority window when they fire. Correct for "until end of turn" durations;
+  // do NOT use this queue for a genuine "at the beginning of the end step"
+  // trigger (it would fire unrespondably in the wrong window). See the drain
+  // site in step() and the `when:'end_step'` caveat in docs/PROTOCOL.md.
   schedule_delayed(ctx, params, target) {
     if (!Array.isArray(G.delayedTriggers)) G.delayedTriggers = [];
     G.delayedTriggers.push({
@@ -6370,8 +6395,14 @@ function step() {
       drainTriggers();
       continue;
     }
-    // Auto-pass dead priority rounds. Skip AP's empty-stack END priority
-    // (they had M2 for sorcery-speed plays).
+    // Auto-pass dead priority rounds. skipApEndStep suppresses the active
+    // player's empty-stack END window ENTIRELY — including instant-speed
+    // options, not just sorcery-speed ones (END never allowed sorcery speed;
+    // see isMainPhaseWindow). The trade: anything the AP could cast at their
+    // own empty-stack END was equally available in MAIN2, and the AP regains
+    // a window whenever the stack is non-empty. The non-active player still
+    // gets their END window (load-bearing for flash responses). Deliberate —
+    // see DIVERGENCE.md B6 and rules §606's sanctioned-skip list.
     if (isPriorityOpen()) {
       const skipApEndStep = G.phase === 'END'
         && G.priorityHolder === G.activePlayer
@@ -6496,6 +6527,17 @@ function step() {
         // returning creature appears on the battlefield with fresh state.
         // ETB triggers for returning creatures fire normally and will
         // resolve via pendingTriggers in the next priority round.
+        //
+        // NAMING CAVEAT: fireAt:'endStep' is a misnomer — this drain runs
+        // during CLEANUP, not the §509 END step. END is a real priority
+        // phase the engine already has; CLEANUP has NO priority window, so
+        // nothing fired here can be responded to. That timing is correct
+        // for the sole current consumer ("until end of turn" durations end
+        // in cleanup), but this queue is NOT the home for a genuine
+        // "at the beginning of the end step" trigger — wiring one to this
+        // field would fire it silently in the wrong, unrespondable window.
+        // Same caveat at the producer (schedule_delayed) and on the
+        // `when:'end_step'` wire name in docs/PROTOCOL.md.
         if (Array.isArray(G.delayedTriggers) && G.delayedTriggers.length > 0) {
           const stillPending = [];
           for (const dt of G.delayedTriggers) {
