@@ -53,8 +53,9 @@ Chunk boundaries follow context boundaries: split wherever the code's own seams 
 
 - **Tier 1 (default):** single deep-read in full context + **one adversarial-verification subagent per suspected bug** — fresh context, told "here's a claimed bug, try to refute it." Nothing is filed without surviving refutation or a reproducing snippet.
 - **Tier 2 (rules core, chunks 1–4):** multi-agent Workflow fan-out — several finders with different lenses (rules correctness, footguns, state-mutation discipline) sweep the chunk in parallel; findings dedupe; then the same adversarial verify. **Joe has explicitly authorized multi-agent workflows for audit sessions** (2026-06-09): "Yes, multi-agent work is authorized. Use the tools you need in order to do this well."
-- **Tier 3 (mechanical):** off-Max where possible — OpenCode/Gemma delegation for the JSON sweep (per the opencode-delegation skill rubric), unattended machine time for mutation runs and selfplay bughunt sweeps.
-- **Model:** Fable for chunk judgment work (part of the campaign's motivation is using Fable while available). Cheap models only for tier-3 mechanical work.
+- **Tier 3 (mechanical):** cheap **Claude** models for bulk sweeps (e.g. Haiku agents for the JSON conformance scan, Sonnet for mechanical-but-contextual passes), plus unattended machine time for mutation runs and selfplay bughunt sweeps (pure `node`, no AI).
+- **Claude-only constraint (Joe, 2026-06-09):** this campaign uses ONLY the Claude family (Fable/Opus/Sonnet/Haiku) — no OpenCode/Gemma delegation, overriding the opencode-delegation skill's default rubric. Rationale: fewer moving parts in an unattended system, known quality, and per-task tier routing is Claude's call.
+- **Model:** Fable for chunk judgment work (part of the campaign's motivation is using Fable while available). Cheaper Claude tiers only for tier-3 mechanical work.
 - **Test-quality interpretation** is cross-cutting: mutation scores are produced unattended; each chunk session interprets the scores for its own subsystem.
 
 ## Findings format
@@ -95,7 +96,9 @@ Joe's rule (2026-06-09): *"anything with a single, unambiguous, correct answer s
 
 **Nightly ordering:** ship-class fixes from already-reviewed chunks run first (small, perishable — they rot into merge conflicts as dev moves — and they clean the code later chunks read), then the run resumes the chunk queue. Fix PRs are separate from the `audit/findings` docs branch: findings PRs stay reviewable as documents, fix PRs as code.
 
-### Phase 0 setup checklist (one short interactive session)
+### Phase 0 setup checklist
+
+Joe has authorized Claude to execute Phase 0 **autonomously** when initiated (2026-06-09). Possible human touchpoints: a UAC elevation prompt when registering the scheduled task, and keeping the PC on/asleep (not shut down) overnight.
 
 1. Create `docs/audit/` + `STATE.md` skeleton (queue table: chunk, status todo/in_progress/done, claim timestamp, anchor SHA, findings link).
 2. **Stand up mutation testing** (Stryker or a hand-rolled mutant runner against `tests/run_all.js`) and kick off the first full run — the coverage map must exist before chunk 1, because the ship gate reads it. Schedule nightly mutation + selfplay sweeps (pure machine time).
