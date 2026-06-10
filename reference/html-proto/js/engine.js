@@ -669,6 +669,10 @@ function applySubtypeKeywords(card) {
 const MAKECARD_INSTANCE_KEYS = new Set([
   'iid', 'slotIdx', 'controller', 'owner', 'isToken',
   'tapped', 'sick', 'damage', 'tempPower', 'tempTou', 'permPower', 'permTou',
+  // NB: dealtDeathtouch is a victim-side lethality mark — set on the creature
+  // that RECEIVED deathtouch damage, not on the dealer (the name reads
+  // backwards). The Godot port calls this concept lethal_marked. See audit
+  // A2-10.
   'counters', 'dealtDeathtouch', 'killedBy', 'cantAttack', 'cantBlock',
   'cantAttackBy', 'cantBlockBy', 'damagedBySources', 'grantedBy',
   'eotGrants', 'typeGrants', 'modifiers', 'stickers', 'empowerRolls', 'subtypeRolls',
@@ -1738,6 +1742,8 @@ function applyDamageFrom(ctx, target, amt) {
       }
     }
     f.card.damage += toCreature;
+    // dealtDeathtouch = victim-side mark: this creature RECEIVED deathtouch
+    // damage (despite the name; Godot calls it lethal_marked). See audit A2-10.
     if (hasDeathtouch) f.card.dealtDeathtouch = true;
     recordDamage(f.card, sourceCard, ctx.controller);
     log(`${ctx.sourceName} deals ${toCreature} to ${f.card.name}.`, 'dmg');
@@ -5319,6 +5325,9 @@ function dealCombatDamage(blocked, defender, dealsDamage) {
       if (atkDeals && remaining >= lethalNeeded && lethalNeeded > 0) {
         blk.damage += lethalNeeded;
         dmgToBlk = lethalNeeded;
+        // dealtDeathtouch = victim-side mark: the BLOCKER received deathtouch
+        // damage (despite the name; Godot calls it lethal_marked). See audit
+        // A2-10.
         if (atkDeathtouch && !indestructible) blk.dealtDeathtouch = true;
         // Even non-lethal damage "stakes the claim" if the creature ends up
         // dying later in combat (recordDamage: last-writer-wins killedBy).
@@ -5334,6 +5343,9 @@ function dealCombatDamage(blocked, defender, dealsDamage) {
       if (dealsDamage(blk) && bPow > 0) {
         attackerDamage += bPow;
         dmgToAtk = bPow;
+        // dealtDeathtouch = victim-side mark: the BLOCKER has deathtouch and
+        // the ATTACKER — its victim — gets the flag (despite the name; Godot
+        // calls it lethal_marked). See audit A2-10.
         if (blk.keywords.includes('deathtouch')) atk.dealtDeathtouch = true;
         // Mirror of the blocker tagging above.
         recordDamage(atk, blk, blkCtrl);
