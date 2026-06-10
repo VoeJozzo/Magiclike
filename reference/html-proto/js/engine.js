@@ -6551,8 +6551,11 @@ function step() {
         if (G.turn === 1 && ap === G.firstPlayer) {
           log(`${G[ap].name} skips draw (going first).`);
         } else {
-          drawCard(ap);
-          log(`${G[ap].name} draws.`);
+          // A1-9: drawCard returns null on both empty-library paths (deck-out
+          // loss and Phylactery slot-rip) — only log "draws." when a card
+          // actually moved to hand, so the log never claims a phantom draw.
+          const drawn = drawCard(ap);
+          if (drawn) log(`${G[ap].name} draws.`);
         }
         setPhase('MAIN1');
         continue;
