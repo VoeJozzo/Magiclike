@@ -165,6 +165,9 @@ const CATEGORY_A = [
   // for BOTH the absorb and the reward-screen claimedKeywords, intrinsic
   // novelty (borrowed keywords don't block absorption), bounced-fade edge.
   'test_endomorph_absorb.js',
+  // Audit A1-3 — SBA zero-toughness death: indestructible creatures die at
+  // t <= 0 (704.5f), while the damage/deathtouch exemptions stay intact.
+  'test_sba_zero_toughness.js',
 ];
 
 const TESTS_DIR = __dirname;

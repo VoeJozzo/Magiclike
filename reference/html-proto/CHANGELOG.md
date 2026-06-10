@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.1.19`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.1.20`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -1449,6 +1449,16 @@ conjunct could never be false there; tripwire-proven over the full suite +
 clobbered by drainTriggers→pushTriggerEntry anyway; priority now
 explicitly opens with `G.activePlayer` (MTG 117.3b), per the new doc
 comment. Suite 74 files / 1786 green, lint clean.
+
+v2.1.20: audit fix A1-3 (Joe-approved, PR #98 verdict 2026-06-10) —
+indestructible creatures now die at toughness <= 0. checkDeaths()'s
+indestructible `continue` skipped ALL three death causes; per MTG 704.5f and
+canon `docs/wiki/rules/1100-state-based-actions.md`, 0-toughness death isn't
+destruction, so the exemption now applies only when `t > 0` (damage/
+deathtouch causes). New `test_sba_zero_toughness.js` (8 assertions) pins both
+sides: indestructible at t<=0 dies (red before the fix), indestructible with
+lethal marked damage / deathtouch at t>0 still survives (F2 semantics
+intact). Suite 75 files / 1794 green, lint clean.
 
 > **MUST UPDATE on every dev-branch push that touches code.** Bump `VERSION` in `js/main.js` AND the line above, in the same commit. GitHub Pages caches aggressively; the version string is the only reliable way to confirm a fresh build is live.
 

@@ -4750,11 +4750,16 @@ function checkDeaths() {
         const [, t] = getStats(c);
         const lethalDamage = (c.damage >= t) || (t <= 0) || c.dealtDeathtouch;
         if (!lethalDamage) continue;
-        if (c.keywords.includes('indestructible')) {
+        if (c.keywords.includes('indestructible') && t > 0) {
           // F2: indestructible only skips the death check — it does NOT heal.
           // Keep the marked damage (and the deathtouch flag): if indestructible
           // is removed later this turn, the still-lethal damage kills it at the
           // next SBA (MTG-correct). Both clear at end of turn with everything else.
+          //
+          // A1-3: the exemption covers only the damage/deathtouch death causes.
+          // A creature at toughness <= 0 dies regardless of indestructible —
+          // 0-toughness death isn't destruction (MTG 704.5f; canon
+          // docs/wiki/rules/1100-state-based-actions.md), hence the `t > 0`.
           continue;
         }
         bf.splice(i, 1);
