@@ -1043,6 +1043,45 @@ function resolveStackOrPermanent(target) {
   return null;
 }
 
+// Resolve + validate a Stapler splice pair from a targets[] array. Returns
+// { reason } (human-readable invalidity) or the resolved pair
+// { baseR, stapleR, baseCard, stapleCard, canonBaseTpl, canonStapleTpl }.
+// The ONE definition of "can these two be stapled", shared by:
+//   - isLegalAction's activateAbility case — pair validity is an ACTIVATION
+//     check, so an invalid pair is rejected BEFORE any cost is paid (MtG
+//     601.2h via 602.2b: costs are paid as the last part of activation; an
+//     illegal activation rewinds with nothing spent);
+//   - the apply_in_game_splice handler at resolution — where, per MtG
+//     resolution-fizzle semantics (608.2b-adjacent), costs STAY paid. With
+//     immediate-resolve abilities nothing can invalidate the pair between
+//     the legality check and resolution, so that path only fires on future
+//     legality/handler drift.
+function resolveSplicePair(allTargets) {
+  if (!Array.isArray(allTargets) || allTargets.length < 2) return { reason: 'needs two targets.' };
+  const t0 = allTargets[0], t1 = allTargets[1];
+  if (!t0 || !t1) return { reason: 'target missing.' };
+  const r0 = resolveStackOrPermanent(t0);
+  const r1 = resolveStackOrPermanent(t1);
+  if (!r0 || !r1) return { reason: 'target gone.' };
+  if (r0.card.iid === r1.card.iid) return { reason: "can't staple a card to itself." };
+  const [canonBaseTpl, canonStapleTpl, swapped] = canonicalSplicePair(
+    r0.card.tplId, r1.card.tplId);
+  const baseR = swapped ? r1 : r0;
+  const stapleR = swapped ? r0 : r1;
+  const baseCard = baseR.card;
+  const stapleCard = stapleR.card;
+  if (!isSpliceableBase(baseCard.tplId)) {
+    return { reason: `${baseCard.name} can't be a splice base.` };
+  }
+  if (stapleChainOf(stapleCard).length > 0) {
+    return { reason: `${stapleCard.name} is already stapled.` };
+  }
+  if (!isCompatibleStaplePair(baseCard.tplId, stapleCard.tplId)) {
+    return { reason: `${baseCard.name} and ${stapleCard.name} aren't compatible.` };
+  }
+  return { baseR, stapleR, baseCard, stapleCard, canonBaseTpl, canonStapleTpl };
+}
+
 // Pluck a card off its controller's battlefield. Returns null if gone.
 //   const card = pluckFromBattlefield(f);
 //   if (!card) return;
@@ -1520,30 +1559,6 @@ function canPayPotential(who, cost, excludeIid) {
   return tryAssign(0, pool);
 }
 // Pay from pool first; if short, auto-tap sources. Color costs first, then generic.
-// Hand back an activated ability's already-paid tap + mana costs. Called by an
-// effect handler that detects a fizzle at resolution time (today only
-// apply_in_game_splice — see its header for why those fizzles deserve a
-// refund). ctx.paidCost is snapshotted by doActivateAbility at payment time.
-// Mana goes back to the POOL: any sources payMana auto-tapped stay tapped, so
-// the player keeps the mana floating for the phase — same end state as having
-// tapped them manually. Known approximation: the refund mirrors the COST shape,
-// not the colors actually spent — a {3} generic cost paid with WWW comes back
-// as {C}{C}{C} (count preserved, color identity not). Acceptable: generic-cost
-// refunds are spendable as generic either way, and the pool empties at the
-// phase boundary. Sacrifice / counter-removal costs are NOT refunded
-// (nothing using this helper has them; a death can't be unwound anyway).
-function refundActivationCosts(ctx) {
-  const paid = ctx && ctx.paidCost;
-  if (!paid) return;
-  if (paid.tap && ctx.sourceCard) ctx.sourceCard.tapped = false;
-  if (paid.mana) {
-    const pool = G[ctx.controller].mana;
-    for (const c of [...COLORS, 'C']) {
-      if (paid.mana[c]) pool[c] = (pool[c] || 0) + paid.mana[c];
-    }
-  }
-  log(`${ctx.sourceName} — activation costs refunded.`, 'sp');
-}
 function payMana(who, cost) {
   if (!cost) return;
   // Invariant: colors_of_source costs must already be source-resolved by the caller.
@@ -2657,49 +2672,20 @@ const EFFECTS = {
 
   // Stapler in-game splice. Merges target 1 onto target 0 using the reward-time
   // splice infra. Cross-owner: merged slot moves to caster's runState (removal/steal).
-  // Targets validated: spliceable base/staple + isCompatibleStaplePair.
-  // A fizzle here REFUNDS the activation costs (untap + mana back) — unlike a
-  // real-MtG fizzle, these failures mean the picker accepted a pair the
-  // ability can't act on, so the player shouldn't lose the tap, the mana, or a
-  // charge. As of v2.1.12 the fizzle paths are INTENTIONALLY UNREACHABLE via
-  // legal actions (distinct_targets blocks self-staple; matchFilter +
-  // matchFilterSpell apply the full staple eligibility incl. stapleChainOf at
-  // legality) — don't hunt for a live trigger path; this is defense-in-depth
-  // for any future legality/handler drift, exercised in tests by invoking the
-  // handler directly. Charges are safe regardless: every fizzle return exits
-  // before the charge accounting at the bottom.
+  // Pair validity lives in resolveSplicePair, which isLegalAction ALREADY ran
+  // before any cost was paid (MtG 601.2h: costs are the last part of
+  // activation — an invalid pair never pays). Re-checked here only as
+  // defense-in-depth: a fizzle at this point means legality/handler drift,
+  // and per MtG resolution-fizzle semantics the costs stay paid. Charges are
+  // safe regardless: a fizzle returns before the charge accounting at the
+  // bottom.
   apply_in_game_splice(ctx, params, target) {
-    const fizzle = (reason) => {
-      log(`${ctx.sourceName} fizzles — ${reason}`, 'sp');
-      refundActivationCosts(ctx);
-    };
-    const all = ctx.allTargets;
-    if (!Array.isArray(all) || all.length < 2) {
-      return fizzle('needs two targets.');
+    const pair = resolveSplicePair(ctx.allTargets);
+    if (pair.reason) {
+      log(`${ctx.sourceName} fizzles — ${pair.reason}`, 'sp');
+      return;
     }
-    const t0 = all[0], t1 = all[1];
-    if (!t0 || !t1) { return fizzle('target missing.'); }
-    const r0 = resolveStackOrPermanent(t0);
-    const r1 = resolveStackOrPermanent(t1);
-    if (!r0 || !r1) { return fizzle('target gone.'); }
-    if (r0.card.iid === r1.card.iid) {
-      return fizzle("can't staple a card to itself.");
-    }
-    const [canonBaseTpl, canonStapleTpl, swapped] = canonicalSplicePair(
-      r0.card.tplId, r1.card.tplId);
-    const baseR = swapped ? r1 : r0;
-    const stapleR = swapped ? r0 : r1;
-    const baseCard = baseR.card;
-    const stapleCard = stapleR.card;
-    if (!isSpliceableBase(baseCard.tplId)) {
-      return fizzle(`${baseCard.name} can't be a splice base.`);
-    }
-    if (stapleChainOf(stapleCard).length > 0) {
-      return fizzle(`${stapleCard.name} is already stapled.`);
-    }
-    if (!isCompatibleStaplePair(baseCard.tplId, stapleCard.tplId)) {
-      return fizzle(`${baseCard.name} and ${stapleCard.name} aren't compatible.`);
-    }
+    const { baseR, stapleR, baseCard, stapleCard } = pair;
     // Fire stack inputs' effects with their locked-in targets, then consume them
     // (no graveyard — Stapler absorbed them).
     const fireStackEffects = (r) => {
@@ -5390,12 +5376,13 @@ function doActivateAbility(who, cardIid, abilityIdx, targets, sacIid) {
   const f = findCard(cardIid); if (!f) return;
   const card = f.card;
   const ab = card.abilities[abilityIdx];
-  // Pay costs. The tap/mana payment is snapshotted so an effect that detects a
-  // fizzle at resolution (apply_in_game_splice — pair validity isn't fully
-  // checkable at activation) can hand the costs back via refundActivationCosts.
-  const paidMana = ab.cost.mana ? resolvedManaCost(ab.cost.mana, card, who) : null;
+  // Pay costs. Anything that could make the activation ILLEGAL — slot filters,
+  // distinct_targets, the Stapler pair check — was already validated in
+  // isLegalAction (executeAction gates on it), so per MtG 601.2h the costs
+  // paid here are the LAST part of activation: an illegal activation never
+  // reaches this line, and nothing needs refunding.
   if (ab.cost.tap) card.tapped = true;
-  if (paidMana) payMana(who, paidMana);
+  if (ab.cost.mana) payMana(who, resolvedManaCost(ab.cost.mana, card, who));
   // Sac cost is paid BEFORE the effect resolves. The sacrificed creature
   // dies (firing dies-triggers) before the ability does anything. This
   // matters for self-sac on creatures with dies-triggers — Carrion Feeder
@@ -5416,8 +5403,7 @@ function doActivateAbility(who, cardIid, abilityIdx, targets, sacIid) {
   // Mana abilities don't go on the stack; resolve immediately.
   // Other activated abilities also resolve immediately in this prototype
   // (a simplification — real MtG would put them on the stack).
-  const ctx = { controller: who, sourceName: card.name, sourceIid: card.iid, sourceCard: card, allTargets: Array.isArray(targets) ? targets : [],
-    paidCost: { tap: !!ab.cost.tap, mana: paidMana } };
+  const ctx = { controller: who, sourceName: card.name, sourceIid: card.iid, sourceCard: card, allTargets: Array.isArray(targets) ? targets : [] };
   // Multi-target dispatch (mirrors resolveTopOfStack/resolveTrigger). By
   // default, targeted effects share targets[0]. Effects can opt into a
   // distinct slot via `target_slot: N`. allTargets is also threaded onto
@@ -5917,6 +5903,15 @@ function isLegalAction(who, action) {
       // targets, and the top-level target() hexproof checkpoint all resolve
       // through one path. Untargeted abilities pass trivially.
       if (!tsIsLegalSet(ab, who, action.targets)) return false;
+      // Cross-target pair validity (Stapler) is an ACTIVATION check, so it
+      // runs here — before executeAction dispatches and any cost is paid
+      // (MtG 601.2h via 602.2b: costs are the last part of activation; an
+      // illegal activation rewinds with nothing spent). Per-slot filters
+      // can't see the PAIR, so this is the one place that can.
+      if (ab.effects.some(e => e.kind === 'apply_in_game_splice')
+          && resolveSplicePair(action.targets).reason) {
+        return false;
+      }
       return true;
     }
     case 'declareAttackers': {

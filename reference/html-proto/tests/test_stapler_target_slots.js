@@ -95,12 +95,12 @@ console.log('\n=== resolution staples the second target onto the first ===');
     baseCard && JSON.stringify(baseCard.stapledFrom));
 })();
 
-console.log('\n=== distinct_targets: self-staple rejected at ACTIVATION, costs never paid ===');
+console.log('\n=== self-staple rejected at ACTIVATION, costs never paid (MtG 601.2h) ===');
 (() => {
-  // The ability declares distinct_targets, so the same card in both slots is
-  // illegal at submit time (tsIsLegalSet) — executeAction rejects it before
-  // any cost is paid. This is the pick-time guard; the resolution-time refund
-  // below stays as defense-in-depth for gaps the legality layer can't see.
+  // Costs are the LAST part of activation: an illegal activation (here the
+  // same card in both slots — caught by distinct_targets AND the
+  // resolveSplicePair legality check) is rejected by executeAction before any
+  // cost is paid, so there is nothing to refund or reverse.
   const G = newGame();
   const stapler = mkStapler('you'); G.you.battlefield.push(stapler);
   const c0 = mk(baseTpl, 'you');
@@ -135,28 +135,28 @@ console.log('\n=== already-stapled STACK spell is not a legal staple target ==='
   G.stack.pop();
 })();
 
-console.log('\n=== fizzle at resolution refunds activation costs (defense-in-depth) ===');
+console.log('\n=== resolution-time fizzle keeps costs paid (MtG 608.2b semantics) ===');
 (() => {
-  // With pick-time validation closing the known gaps, the handler fizzles are
-  // unreachable through legal actions — but they remain the safety net for any
-  // future legality/handler mismatch. Exercise the refund by invoking the
-  // handler directly with a paid-cost context: a self-staple target pair makes
-  // it fizzle, and the snapshotted tap + mana must come back.
+  // The handler re-runs resolveSplicePair as defense-in-depth; reaching a
+  // fizzle there means legality/handler drift, and — matching real MtG, where
+  // an ability that fizzles on resolution does NOT refund its costs — the
+  // paid tap/mana stay spent. Simulate the drift case by invoking the handler
+  // directly with an invalid (self-staple) pair on an already-paid Stapler.
   const G = newGame();
   const stapler = mkStapler('you'); G.you.battlefield.push(stapler);
   const c0 = mk(baseTpl, 'you');
   G.you.battlefield.push(c0);
   const t0 = { kind: 'permanent', iid: c0.iid, label: c0.name };
-  stapler.tapped = true;                              // simulate the paid tap
-  G.you.mana.C -= 3;                                  // simulate the paid mana
+  stapler.tapped = true;                              // the already-paid tap
+  G.you.mana.C -= 3;                                  // the already-paid mana
   const total = (m) => ['W','U','B','R','G','C'].reduce((s, c) => s + (m[c] || 0), 0);
-  const beforeRefund = total(G.you.mana);
+  const afterPayment = total(G.you.mana);
   const ctx = { controller: 'you', sourceName: stapler.name, sourceIid: stapler.iid,
-    sourceCard: stapler, allTargets: [t0, t0], paidCost: { tap: true, mana: { C: 3 } } };
+    sourceCard: stapler, allTargets: [t0, t0] };
   ENGINE.applyEffect(ctx, { kind: 'apply_in_game_splice' }, t0);
-  check('Stapler untapped after fizzle (tap cost refunded)', stapler.tapped === false);
-  check('mana pool refunded after fizzle', total(G.you.mana) === beforeRefund + 3,
-    'before=' + beforeRefund + ' after=' + total(G.you.mana));
+  check('Stapler stays tapped after a resolution fizzle (no refund)', stapler.tapped === true);
+  check('mana pool unchanged by the fizzle (costs stay paid)', total(G.you.mana) === afterPayment,
+    'after-payment=' + afterPayment + ' now=' + total(G.you.mana));
   check('no staple happened', !c0.stapledFrom);
 })();
 
