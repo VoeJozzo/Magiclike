@@ -37,7 +37,7 @@ dry-run target and runs first; thereafter strict priority order (1 → 11).
 | 6 | Stickers pipeline (`stickers.js`) — DRY RUN | 1 | done | 2026-06-10T11:14:05Z | 86dc5b0 | [`chunk-06-stickers.md`](chunk-06-stickers.md) |
 | 1 | Turn machine / phases / mana / state (`engine.js` `step()` region) | 2 | done | 2026-06-10T11:56:28Z | 1a92c42 | [`chunk-01-turn-machine.md`](chunk-01-turn-machine.md) |
 | 2 | Combat (attack/block/damage, combat keywords) | 2 | done | 2026-06-10T13:54:35Z | 6327c73 | [`chunk-02-combat.md`](chunk-02-combat.md) |
-| 3 | Stack / priority / triggers (`triggers.js`, `trigger-generator.js`) | 2 | todo | — | — | `chunk-03-stack-triggers.md` |
+| 3 | Stack / priority / triggers (`triggers.js`, `trigger-generator.js`) | 2 | in_progress | 2026-06-10T16:37:17Z | e6715a9 | `chunk-03-stack-triggers.md` |
 | 4 | Effects dispatch + targeting legality (~25 effect kinds) | 2 | todo | — | — | `chunk-04-effects-targeting.md` |
 | 5 | Synthesis / staple (`engine.js` splice region) | 1 | todo | — | — | `chunk-05-synthesis.md` |
 | 7 | AI (`ai.js`) | 1 | todo | — | — | `chunk-07-ai.md` |
@@ -90,3 +90,4 @@ Status: **COMPLETE** (2026-06-10 ~11:20, 224 min, 7,592 mutants). Overall score 
 - 2026-06-10 ~09:55: chunk-1 remediation landed — docs PR #99 + trivia PR #100 (v2.1.19), both robot-merged, suite 1786/1786 + lint green each, author Thaumaturge-Claude. Chunk 2 (combat) claimed @ 6327c73 (trunk skill updates merged; origin/dev unchanged).
 - 2026-06-10 ~11:25: USAGE WALL hit mid-chunk-2 (resets 11:30). Chunk-2 workflow completed with rules lens fully verified (incl. new P1 A2-candidate: indestructible t<=0 skip — NOTE: same root bug as A1-3, must dedupe/fold at synthesis; adds in-pool Iron Statue+3xSicken repro) but 7 verifiers died at the wall (4 state + 1 testquality + 2 more state). RECOVERY: resume Workflow runId wf_30e2bc8d-680 (script audit-chunk-2-combat-wf_30e2bc8d-680.js in session workflows/scripts dir) after reset — cached agents return instantly, only the 7 failed re-run. THEN synthesize chunk-02-combat.md. Chunk 2 stays in_progress.
 - 2026-06-10 ~12:25: chunk 2 DONE. 39+7 agents (usage-wall resume worked: cached agents instant, only 7 walled verifiers re-ran). 15 findings (2 P1 / 4 P2 / 9 P3) + A1-3 cross-chunk upgrade (in-pool Iron Statue repro, live-executed). Self-QA PASS (A2-2 trample P1 re-reproduced end-to-end). 7 stage / 3 ship (1 comment + 2 docs) / 5 park. Chunk-1 leads resolved (stale-iid guards sufficient for zone changes; ghost-attacker + change_control residuals filed). Verified-clean negative space recorded.
+- 2026-06-10 ~12:40: chunk-2 ship PR #101 merged (comment+docs only, no bump). Chunk 3 claimed @ e6715a9 (dev unchanged).
