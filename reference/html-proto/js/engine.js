@@ -5447,18 +5447,26 @@ function dealCombatDamage(blocked, defender, dealsDamage) {
       let dmgToBlk = 0;
       // Try to satisfy lethal damage. Indestructibles take damage marked
       // (which doesn't kill them) but counts toward enabling trample.
-      if (atkDeals && remaining >= lethalNeeded && lethalNeeded > 0) {
-        blk.damage += lethalNeeded;
-        dmgToBlk = lethalNeeded;
-        // dealtDeathtouch = victim-side mark: the BLOCKER received deathtouch
-        // damage (despite the name; Godot calls it lethal_marked). See audit
-        // A2-10.
-        if (atkDeathtouch && !indestructible) blk.dealtDeathtouch = true;
-        // Even non-lethal damage "stakes the claim" if the creature ends up
-        // dying later in combat (recordDamage: last-writer-wins killedBy).
-        recordDamage(blk, atk, atkCtrl);
-        applyLifelink(atk, atkCtrl, lethalNeeded);
-        remaining -= lethalNeeded;
+      // A2-2: a blocker that needs 0 more (a fully-marked indestructible —
+      // F2 retains its marked damage) is already SATISFIED — it takes no
+      // damage and must not suppress trample carryover (§803: assign each
+      // blocker's REMAINING toughness; 0 remaining ⇒ satisfied with 0).
+      if (atkDeals && remaining >= lethalNeeded) {
+        // Inner guard: a zero-need blocker gets no 0-damage recordDamage
+        // falsely staking a kill claim (and no zero lifelink/log noise).
+        if (lethalNeeded > 0) {
+          blk.damage += lethalNeeded;
+          dmgToBlk = lethalNeeded;
+          // dealtDeathtouch = victim-side mark: the BLOCKER received deathtouch
+          // damage (despite the name; Godot calls it lethal_marked). See audit
+          // A2-10.
+          if (atkDeathtouch && !indestructible) blk.dealtDeathtouch = true;
+          // Even non-lethal damage "stakes the claim" if the creature ends up
+          // dying later in combat (recordDamage: last-writer-wins killedBy).
+          recordDamage(blk, atk, atkCtrl);
+          applyLifelink(atk, atkCtrl, lethalNeeded);
+          remaining -= lethalNeeded;
+        }
       } else {
         unsatisfied.push(fb);
       }
