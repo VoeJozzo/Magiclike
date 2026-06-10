@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.1.26`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.1.27`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -1549,6 +1549,23 @@ test_trigger_prompt_fizzle_log.js (7 assertions) reaches the arm through a
 real beetle+roots staple cast with the later slot stranded by board mutation
 (red before: silent fizzle) + a happy-path no-fizzle-line guard. Suite 81
 files / 1873 green, lint clean.
+
+v2.1.27: audit fix A3-7 (Joe-approved, PR #98 round 2, 2026-06-10) — deleted
+the production-dead `generateRandomTrigger` twin (and its now-unused
+`_genWeightedPick` helper) from trigger-generator.js. Zero production callers
+— the Codex uses the three-step generateConditionOptions →
+generateEffectOptions → assembleTrigger flow, the Mercurial Adept seeds from
+the static pool — and unlike assembleTrigger the twin never set noSelfCascade,
+so wiring it up per its old (already-corrected) header would have shipped
+cascade-unguarded triggers that loop to the depth cap. PRE-DECLARED test
+flips (per the packet): trigger_generator_test.js's surface check removed,
+its 200-roll shape + 500-roll hard-break-filter sections re-pointed at the
+real three-step flow (plus a new all-rolls-carry-noSelfCascade pin — the
+twin's missing flag was the finding's point); tests/_setup.js EXPOSED loses
+the entry; CLAUDE.md module map corrected (Mercurial does not use this
+module). PR #106's tests-only warning comment removed with the function.
+Suite 81 files / 1873 green (generator file 156 as before: −1 surface check,
++1 guard pin), lint clean.
 
 > **MUST UPDATE on every dev-branch push that touches code.** Bump `VERSION` in `js/main.js` AND the line above, in the same commit. GitHub Pages caches aggressively; the version string is the only reliable way to confirm a fresh build is live.
 
