@@ -1,7 +1,7 @@
 {
   "card_id": "gilded_seat",
   "name": "Gilded Seat",
-  "art": "👑",
+  "art": "art.png",
   "types": [
     "Artifact",
     "Land",
