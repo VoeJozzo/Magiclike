@@ -530,8 +530,10 @@ function describeEffect(eff, tplEff) {
       if (sk.kind === 'set_types') {
         const tags = Array.isArray(sk.types) ? sk.types : (sk.type ? [sk.type] : []);
         const body = tags.join(' ');
-        return [plainSeg(subj + ' becomes ' + indefiniteArticle(body) + ' ' + body
-          + ' and loses its other types, permanently')];
+        // Adverb fronted ("permanently becomes") — the trailing form
+        // ("…loses its other types, permanently") read as a dangling clause.
+        return [plainSeg(subj + ' permanently becomes ' + indefiniteArticle(body) + ' ' + body
+          + ' and loses its other types')];
       }
       if (sk.kind === 'grant_activated_ability' && sk.ability) {
         return [plainSeg(subj + ' gains "' + segsToText(describeAbility(sk.ability)) + '" permanently')];
