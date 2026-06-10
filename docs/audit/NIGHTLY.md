@@ -37,7 +37,7 @@
   1 decision packet for Joe (A6-1).
 - **Chunk 1 (turn machine):** 23 findings (3 P1 / 3 P2 / 17 P3) from a 58-agent
   tier-2 fan-out; 14 claims refuted by adversarial verification; self-QA PASS
-  with corrections. Docs + trivia PRs in flight (see PR list on #98).
+  with corrections. Docs PR **#99** + trivia PR **#100** (v2.1.19) merged — suite 1786/1786 + lint green on each.
 - **Mutation map:** engine.js COMPLETE (45%); full run continuing, ETA early
   afternoon.
 
@@ -53,8 +53,7 @@
 
 ## Next
 
-1. Fix PRs (docs + trivia) merge into the workshop on green.
-2. Chunk 2 (combat) — engine.js map already complete, unlocked now.
+1. Chunk 2 (combat) — engine.js map already complete, unlocked now.
 3. Chunk 3 waits on triggers.js map; chunks 5/7-11 wait on their files.
 4. Tonight: 21:00 nightly machine (mutation refresh + selfplay); 23:00
    scheduled boops resume the queue unattended.
