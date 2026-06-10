@@ -64,6 +64,7 @@ Findings live in **`docs/audit/`** — one file per chunk (`chunk-NN-<slug>.md`)
 - **Severity scale:** P0 live bug actively corrupting games / P1 bug / P2 latent footgun / P3 cleanliness
 - **Evidence** — repro snippet or reasoning; **suggested fix sketch**; **rough effort**
 - **Verification status:** *survived adversarial refutation* or *reproduced by test snippet*
+- **Remediation class:** *ship* / *stage* / *park* (see the autonomy ladder below)
 
 **Repro tests do NOT land in the suite during the audit** (a committed failing test breaks dev's green suite). The repro lives as a snippet in the finding; the real test lands *with the fix* in remediation, red→green in one PR.
 
@@ -78,6 +79,18 @@ Overnight is the **default execution mode** — usage stretches further at low s
 - **P0 escape hatch:** an overnight run never decides — it stamps the P0 at the top of the PR and fires a push notification.
 - **Free tier runs nightly regardless:** mutation testing + AI-selfplay bughunt sweeps are pure machine time, no Claude usage.
 
+### Remediation autonomy ladder
+
+Joe's rule (2026-06-09): *"anything with a single, unambiguous, correct answer should be something you just fix… if the only thing I would reasonably do is say 'yep, ship it', then ship it."* Every verified finding is stamped with a class:
+
+- **Ship it — fix autonomously, no size limit.** Gates (ALL must hold): single unambiguous correct answer, anchored in **repo canon** (rulebook page in `docs/wiki/rules/`, the card's oracle text, `docs/PROTOCOL.md`, or an existing test's stated expectation — NOT "that's how real MTG works"; the proto diverges deliberately); finding survived adversarial refutation with a reproducing test; fix lands red→green with full suite + lint green; **and the touched region's coverage is real** (per mutation scores) — in weakly-tested regions the fix must bring its own regression coverage, or it demotes to *stage*. Each ship lands as its own small PR off fresh dev. Branch protection still gates every merge on Joe — "autonomous" means autonomous *labor*, never autonomous *merging*.
+- **Stage it — draft, don't ship.** Any genuine fork (two reasonable behaviors, taste call, tradeoff), or unambiguous-but-uncovered per above. The patch is drafted and embedded in the finding; it becomes a PR only after Joe's nod (morning review or triage).
+- **Park it — triage only.** Refactor-scale, cross-cutting, or design-flavored.
+
+**Calibration:** for the dry-run chunk and the first real chunk, even ship-class items are only staged. Joe's first morning reviews confirm the classifier matches his taste before autonomous shipping switches on.
+
+**Nightly ordering:** ship-class fixes from already-reviewed chunks run first (small, perishable — they rot into merge conflicts as dev moves — and they clean the code later chunks read), then the run resumes the chunk queue. Fix PRs are separate from the `audit/findings` docs branch: findings PRs stay reviewable as documents, fix PRs as code.
+
 ### Phase 0 setup checklist (one short interactive session)
 
 1. Create `docs/audit/` + `STATE.md` skeleton (queue table: chunk, status todo/in_progress/done, claim timestamp, anchor SHA, findings link).
@@ -88,9 +101,9 @@ Overnight is the **default execution mode** — usage stretches further at low s
 
 ## Remediation phase
 
-- **Triage session** when the queue finishes (or whenever Joe says "enough"): consolidated table sorted by severity × effort; **Joe picks** what gets fixed and in what order. The audit produces options, not a self-executing to-do list.
+- **Triage session** when the queue finishes (or whenever Joe says "enough"): consolidated table sorted by severity × effort; **Joe picks** what gets fixed and in what order. The audit produces options, not a self-executing to-do list. By triage time, ship-class items are largely already fixed (autonomy ladder above) — triage consumes the *stage* and *park* classes.
 - **P0s** surface immediately (see escape hatch), not at end-of-audit.
-- **Trivial fixes** were batched during audit; they never reach triage.
+- **Trivial fixes** (smaller than their writeup) were fixed inline during audit — the narrow precursor of the ship class; they never reach triage.
 - **The two parked refactors** (`step()`, `engine.js` decomposition) get re-planned *against* the findings at triage — by then the decomposition seams are known.
 - Remediation items run as normal work sessions (worktree → PR to dev), with the red→green repro test landing alongside each fix.
 
