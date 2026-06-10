@@ -52,10 +52,21 @@ wholesale (chunk runs are idempotent).
 
 ## Mutation coverage map
 
-Status: **not yet run** — until mutation scores exist, every fix demotes to
-*stage* by default (ship gate reads the map). First full run is Phase 0 step 3.
+Status: **first full run in flight** (started 2026-06-10 ~02:10 local; ~10h
+ETA at observed pace — 7,592 mutants, 12 workers). Until it completes, every
+fix demotes to *stage* by default (ship gate reads the map).
+
+**Queue gate (2026-06-10):** beyond the chunk-6 dry run, no chunk may be
+claimed until the first full mutation run is complete — the plan requires
+the map before chunk 1. Complete = `mutation-first-full-run.log` (in
+`~\.config\magiclike\audit\logs\`) ends with a `DONE:` line and
+`MUTATION-MAP.md` covers all 11 target files. Delete this paragraph when it
+no longer binds.
 
 ## Log
 
 - 2026-06-10: Phase 0 started (supervised session, Joe present). Wrapper +
   scheduled task registered and test-fired. Branch model re-scoped per Joe.
+- 2026-06-10 ~02:30: mutation first full run launched in background; pace
+  slower than estimated (suite-level contention) → queue gated on map
+  completion; tonight = dry run only.
