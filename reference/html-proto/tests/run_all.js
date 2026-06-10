@@ -175,6 +175,10 @@ const CATEGORY_A = [
   // from combat (bounce + flash re-cast deals NO damage), while a killed
   // blocker still leaves its attacker blocked (510.1c tombstone semantics).
   'test_combat_ghost_attacker.js',
+  // Audit A2-5 — change_control removes the creature from combat (506.4c):
+  // a stolen attacker stops dealing damage (was: damaged its own new
+  // controller), can't block itself; a stolen blocker stops trading damage.
+  'test_combat_change_control.js',
 ];
 
 const TESTS_DIR = __dirname;
