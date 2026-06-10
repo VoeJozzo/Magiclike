@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://biqoseyvt0gyd"
-path="res://.godot/imported/art.png-86769dfcb33146008d7d22df42ab774f.ctex"
+path="res://.godot/imported/art.png-bebfab68ebcf525698ed56e7c3515f4b.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://reference/html-proto/cards/forestTitan/art.png"
-dest_files=["res://.godot/imported/art.png-86769dfcb33146008d7d22df42ab774f.ctex"]
+source_file="res://reference/html-proto/cards/forest_titan/art.png"
+dest_files=["res://.godot/imported/art.png-bebfab68ebcf525698ed56e7c3515f4b.ctex"]
 
 [params]
 

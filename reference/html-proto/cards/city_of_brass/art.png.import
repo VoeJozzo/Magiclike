@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://x607gfqbuc2i"
-path="res://.godot/imported/art.png-c8b029fe34877e82ee7ba584aabfe2cd.ctex"
+path="res://.godot/imported/art.png-dc4113caa54230078cc3df4b96fc521c.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://reference/html-proto/cards/cityOfBrass/art.png"
-dest_files=["res://.godot/imported/art.png-c8b029fe34877e82ee7ba584aabfe2cd.ctex"]
+source_file="res://reference/html-proto/cards/city_of_brass/art.png"
+dest_files=["res://.godot/imported/art.png-dc4113caa54230078cc3df4b96fc521c.ctex"]
 
 [params]
 

@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://b8gfwvnqlieb7"
-path="res://.godot/imported/art.png-2e5f21945f19f861250525624ed73483.ctex"
+path="res://.godot/imported/art.png-fa1698582fb2a05c974337458edb7b25.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://reference/html-proto/cards/dragon/art.png"
-dest_files=["res://.godot/imported/art.png-2e5f21945f19f861250525624ed73483.ctex"]
+source_file="res://reference/html-proto/cards/shivan_dragon/art.png"
+dest_files=["res://.godot/imported/art.png-fa1698582fb2a05c974337458edb7b25.ctex"]
 
 [params]
 

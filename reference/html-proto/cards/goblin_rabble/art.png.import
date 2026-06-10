@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://ct2dya0y73eo3"
-path="res://.godot/imported/art.png-1582b9dcfc84b75435a7a6dffc05752d.ctex"
+path="res://.godot/imported/art.png-42bf9d7eb697ae0698d39a22983b70f9.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://reference/html-proto/cards/goblinRabble/art.png"
-dest_files=["res://.godot/imported/art.png-1582b9dcfc84b75435a7a6dffc05752d.ctex"]
+source_file="res://reference/html-proto/cards/goblin_rabble/art.png"
+dest_files=["res://.godot/imported/art.png-42bf9d7eb697ae0698d39a22983b70f9.ctex"]
 
 [params]
 
