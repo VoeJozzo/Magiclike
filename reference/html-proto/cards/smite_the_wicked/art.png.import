@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://df1cum3u16est"
-path="res://.godot/imported/art.png-9e9680afe40b4107a6f039311a35b53e.ctex"
+path="res://.godot/imported/art.png-5864a850c886086503481e75c5a69024.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://reference/html-proto/cards/smite/art.png"
-dest_files=["res://.godot/imported/art.png-9e9680afe40b4107a6f039311a35b53e.ctex"]
+source_file="res://reference/html-proto/cards/smite_the_wicked/art.png"
+dest_files=["res://.godot/imported/art.png-5864a850c886086503481e75c5a69024.ctex"]
 
 [params]
 

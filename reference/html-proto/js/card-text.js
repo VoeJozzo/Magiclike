@@ -417,8 +417,14 @@ function describeEffect(eff, tplEff) {
       const dur = (eff.duration === 'permanent') ? '' : ' until end of turn';
       const pt = (eff.power || eff.toughness) ? (eff.power || 0) + '/' + (eff.toughness || 0) + ' ' : '';
       const body = pt + tags.join(' ');
-      const verb = eff.kind === 'set_types' ? ' becomes ' : ' also becomes ';
-      return [plainSeg(t + verb + indefiniteArticle(body) + ' ' + body + dur)];
+      // set_types REPLACES the whole type line (a Creature encased into an
+      // Artifact stops being a Creature) — say so, since "becomes an Artifact"
+      // alone reads like an addition. add_type's "also becomes" already does.
+      if (eff.kind === 'set_types') {
+        return [plainSeg(t + ' becomes ' + indefiniteArticle(body) + ' ' + body
+          + ' and loses its other types' + dur)];
+      }
+      return [plainSeg(t + ' also becomes ' + indefiniteArticle(body) + ' ' + body + dur)];
     }
     case 'apply_in_game_splice':
       return [plainSeg('staple the second target permanent onto the first')];
@@ -524,7 +530,10 @@ function describeEffect(eff, tplEff) {
       if (sk.kind === 'set_types') {
         const tags = Array.isArray(sk.types) ? sk.types : (sk.type ? [sk.type] : []);
         const body = tags.join(' ');
-        return [plainSeg(subj + ' becomes ' + indefiniteArticle(body) + ' ' + body + ' permanently')];
+        // Adverb fronted ("permanently becomes") — the trailing form
+        // ("…loses its other types, permanently") read as a dangling clause.
+        return [plainSeg(subj + ' permanently becomes ' + indefiniteArticle(body) + ' ' + body
+          + ' and loses its other types')];
       }
       if (sk.kind === 'grant_activated_ability' && sk.ability) {
         return [plainSeg(subj + ' gains "' + segsToText(describeAbility(sk.ability)) + '" permanently')];
@@ -1155,16 +1164,27 @@ function describeCardSegments(card, opts) {
     const tplAbilities = Array.isArray(tplBaseline.abilities) ? tplBaseline.abilities : [];
     for (let i = 0; i < card.abilities.length; i++) {
       const ab = card.abilities[i];
-      // A BASIC land's fixed tap-for-mana ability is intrinsic and conveyed by the
-      // "Basic Land — Plains" type line, so suppress it (basics render empty). All
-      // other lands DO show their mana ability: a non-basic land's type line says
-      // nothing about what it taps for (Deepseam Quarry, Equatorial Engine), so the
-      // ability would otherwise be invisible. (Choose-form lands like City of Brass
-      // already fall through — they have no `amounts`.)
-      if (hasType(card,'Land') && hasType(card,'Basic') && ab.cost && ab.cost.tap
-          && ab.effects && ab.effects[0] && ab.effects[0].kind === 'add_mana'
-          && ab.effects[0].amounts) {
-        continue;
+      // A land's plain tap-for-mana ability is suppressed when the type line
+      // already conveys it (MTG 305.6): "Basic Land — Plains" or "Artifact
+      // Land — Plains" promises {W}, so printing "{T}: Add {W}" is redundant —
+      // the big-mana-symbol render takes over instead. The test is per-color:
+      // every color the ability produces must be conveyed by a basic-land
+      // subtype, and each produced amount must be exactly 1 (a {T}: Add {C}{C}
+      // land out-produces what any subtype promises). Lands whose type line
+      // says nothing about their mana (Deepseam Quarry, City of Brass,
+      // Equatorial Engine) keep their ability text — it would otherwise be
+      // invisible. A choose-form ability whose colors are ALL conveyed (e.g. a
+      // Forest with an "Also a Island" sticker → "Basic Land — Forest Island")
+      // is suppressed too, mirroring paper dual lands.
+      if (hasType(card,'Land') && ab.cost && ab.cost.tap && !ab.cost.mana
+          && ab.effects && ab.effects.length === 1 && ab.effects[0].kind === 'add_mana') {
+        const eff = ab.effects[0];
+        const produced = manaEffectColors(eff);
+        const conveyed = basicLandTypeColors(card);
+        const unitAmounts = !eff.amounts || Object.values(eff.amounts).every(n => n === 1);
+        if (produced.length && unitAmounts && produced.every(c => conveyed.includes(c))) {
+          continue;
+        }
       }
       const tplAb = tplAbilities[i];
       const abSegs = describeAbility(ab, tplAb);

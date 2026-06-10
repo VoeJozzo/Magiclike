@@ -97,33 +97,20 @@ function render() {
       castCardByIid(pt.cardIid) ||
       G.you.battlefield.find(c => c.iid === pt.cardIid)
     );
-    // Effects via pt.modeIdx — counterspell check needs the chosen mode.
-    const isCounterTarget = (() => {
-      if (!pt || !ptCard) return false;
-      if (pt.kind === 'cast') {
-        const modeEffects = ENGINE.effectsForMode(ptCard, pt.modeIdx);
-        return modeEffects.some(e => e.target === 'spell' || e.target === 'permanent_or_spell');
-      }
-      if (pt.kind === 'ability') {
-        const ab = (ptCard.abilities || [])[pt.abilityIdx || 0];
-        if (!ab) return false;
-        return (ab.effects || []).some(e => e.target === 'spell' || e.target === 'permanent_or_spell');
-      }
-      return false;
-    })();
+    // CURRENT-slot target spec via pendingTargetEffect — reads the top-level
+    // target(), object/ability target_slots (Stapler), and per-effect targets
+    // through one resolver. The old per-effect `.some(e => e.target ...)` scan
+    // missed slot-declared targets entirely: post-target_slots-refactor the
+    // Stapler's apply_in_game_splice effect carries no .target, so the banner
+    // never lit and stack spells were unclickable for splicing. Current-slot
+    // semantics also means the banner lights exactly when the pick being made
+    // right now can take a spell.
+    const pendingEff = (pt && ptCard) ? pendingTargetEffect(pt) : null;
+    const isCounterTarget = !!pendingEff
+      && (pendingEff.target === 'spell' || pendingEff.target === 'permanent_or_spell');
     banner.classList.add('vis');
     // Splice vs counterspell — same click affordance, different text.
-    const isSpliceTargetMode = (() => {
-      if (!pt || !ptCard) return false;
-      let effects = [];
-      if (pt.kind === 'cast') {
-        effects = ENGINE.effectsForMode(ptCard, pt.modeIdx) || [];
-      } else if (pt.kind === 'ability') {
-        const ab = (ptCard.abilities || [])[pt.abilityIdx || 0];
-        effects = (ab && ab.effects) || [];
-      }
-      return effects.some(e => e.target === 'permanent_or_spell');
-    })();
+    const isSpliceTargetMode = !!pendingEff && pendingEff.target === 'permanent_or_spell';
     bannerHint.textContent = isCounterTarget
       ? (isSpliceTargetMode ? '— click a spell or permanent to splice it' : '— click a spell to counter it')
       : (G.stack.length === 1 ? '— top resolves first' : `— ${G.stack.length} on stack, top resolves first`);
@@ -151,9 +138,20 @@ function render() {
       }
       // stackIdx (real, not reversed) — target-line overlay indexes G.stack directly.
       div.dataset.stackIdx = String(realIdx);
-      if (isCounterTarget) {
-        div.classList.add('targetable');
-        if (it.kind !== 'trigger') {
+      if (isCounterTarget && it.kind !== 'trigger') {
+        // Light only items that are REAL legal picks for the current slot:
+        // getValidTargets applies the slot filter (e.g. spliceable_staple
+        // rejects an already-stapled spell), and tsExcludePicked drops an item
+        // already picked for an earlier slot when the object declares
+        // distinct_targets — same gates the submit-side legality applies, so
+        // a lit item can't be a dead click.
+        const cand = { kind: 'stack', stackItem: it, label: it.card.name };
+        const obj = pendingDistinctObject(pt);
+        const isLegalPick =
+          ENGINE.getValidTargets(pendingEff, 'you').some(v => v.kind === 'stack' && v.stackItem === it)
+          && (!obj || ENGINE.tsExcludePicked(obj, [cand], pt.pickedSlots).length > 0);
+        if (isLegalPick) {
+          div.classList.add('targetable');
           div.onclick = () => CONTROLLER.clickStackTarget(realIdx);
         }
       }
@@ -800,6 +798,21 @@ function renderHand(id, hand, who) {
     div.onclick = () => CONTROLLER.clickHand(card.iid);
     el.appendChild(div);
   }
+  // Cast-permission cards (e.g. exiled by Seal-Thief Courier with "you may
+  // cast it this turn") render at the END of the hand row in a marked frame —
+  // without this they're only discoverable behind the Ex zone counter. The
+  // click path is the same clickHand → findCastableSpell flow as real hand
+  // cards, so casting Just Works; the .from-exile class adds the violet
+  // dashed frame + EXILED ribbon.
+  for (const entry of ENGINE.castableSpellEntries(who)) {
+    if (entry.zone === 'hand') continue;
+    const div = makeCardEl(entry.card, { inHand: true });
+    div.classList.add('from-exile');
+    div.title = 'Exiled — you may cast this card this turn';
+    if (canPlayFromUI(who, entry.card)) div.classList.add('castable');
+    div.onclick = () => CONTROLLER.clickHand(entry.card.iid);
+    el.appendChild(div);
+  }
 }
 function canPlayFromUI(who, card) {
   // Probe legality with placeholder targets per target_slot.
@@ -934,16 +947,22 @@ function renderBf(id, bf, who) {
     if (pt) {
       const eff = pendingTargetEffect(pt);
       if (eff && isValidTargetCreature(eff, card)) {
-        // distinct_targets: a creature already picked for an earlier slot is no
+        // distinct_targets: a card already picked for an earlier slot is no
         // longer a legal pick, so drop its highlight. Route through the engine's
         // single cross-slot rule (ENGINE.tsExcludePicked) instead of re-deriving the
         // identity compare in the UI — the same filter the trigger pick-loop uses.
-        // (Non-distinct casts and the ability path keep every valid creature lit:
+        // The object comes from pendingDistinctObject (cast card OR activated
+        // ability — Stapler's flag lives on the ability), and the candidate kind
+        // mirrors clickBattlefield's pick descriptor (permanent for perm /
+        // perm-or-spell slots, creature otherwise) so sameTarget compares like
+        // with like. (Non-distinct objects keep every valid card lit:
         // tsExcludePicked returns the list unchanged when the object isn't flagged.)
-        const castObj = pt.kind === 'cast' ? castCardByIid(pt.cardIid) : null;
-        const cand = { kind: 'creature', iid: card.iid, label: card.name };
-        const stillLegal = !castObj
-          || ENGINE.tsExcludePicked(castObj, [cand], pt.pickedSlots).length > 0;
+        const obj = pendingDistinctObject(pt);
+        const candKind = (eff.target === 'permanent' || eff.target === 'permanent_or_spell')
+          ? 'permanent' : 'creature';
+        const cand = { kind: candKind, iid: card.iid, label: card.name };
+        const stillLegal = !obj
+          || ENGINE.tsExcludePicked(obj, [cand], pt.pickedSlots).length > 0;
         if (stillLegal) div.classList.add('targetable');
       }
     }
@@ -1061,6 +1080,19 @@ function pendingTopTargetRestrict(pt) {
     const f = ENGINE.findCard(pt.cardIid);
     const ab = f && f.card.abilities[pt.abilityIdx];
     return (ab && ab.target_filter) || null;
+  }
+  return null;
+}
+
+// The object whose `distinct_targets` flag governs the pending pick: the cast
+// card, or the ability being activated (Stapler's flag lives on the ability
+// entry, not the card). Null when there's no pending pick context.
+function pendingDistinctObject(pt) {
+  if (!pt) return null;
+  if (pt.kind === 'cast') return castCardByIid(pt.cardIid);
+  if (pt.kind === 'ability') {
+    const f = ENGINE.findCard(pt.cardIid);
+    return (f && f.card.abilities && f.card.abilities[pt.abilityIdx]) || null;
   }
   return null;
 }
@@ -1518,6 +1550,7 @@ function cardToViewModel(card, opts) {
   }
 
   const typeText = typeLine(card);
+  const typeHtml = typeLineHtml(card);
 
   let oracleHtml;
   if (overrideOracleText !== undefined) {
@@ -1528,22 +1561,24 @@ function cardToViewModel(card, opts) {
   }
   const kwIconsHtml = keywordsAsIcons ? keywordIconsHtml(card, colorKey) : '';
 
-  // Paper-basic look: a basic Land with NO other rules text and no keyword coin
-  // shows a large mana symbol centered in the otherwise-empty text box, read from
-  // what it actually taps for (landProducibleColors, not the `mana` label). The
-  // moment it gains text — a land-color sticker turns the fixed tap-ability into a
-  // choose-form that renders ("add {U} or {B}") — oracleHtml is non-empty and the
-  // normal layout takes over. The !kwIconsHtml guard suppresses the big symbol
-  // whenever the land carries ANY keyword coin (not just innate): the 10px coin +
-  // 45px glyph won't co-fit the text box, so the coin row wins. Innate is the
-  // common trigger (its coin replaced the old "Innate." text on basics), but a
-  // basic that picked up, say, a hexproof grant is handled by the same gate.
-  // Skipped for synthetic cards (overrideOracleText), which aren't engine lands.
-  if (overrideOracleText === undefined && !oracleHtml && !kwIconsHtml
-      && hasType(card, 'Land') && hasType(card, 'Basic')) {
+  // Paper-basic look: a Land with NO other rules text whose mana production is
+  // fully conveyed by its basic-land subtypes (§305.6 — basics, artifact lands
+  // like Gilded Seat, stickered duals) shows large mana symbol(s) centered in
+  // the otherwise-empty text box, read from what it actually taps for
+  // (landProducibleColors, not the `mana` label). This is the render-side
+  // mirror of card-text's mana-ability suppression: the same lands whose
+  // "{T}: Add" line is dropped from the oracle get the big-symbol treatment,
+  // so the two can't disagree. Lands with extra rules text (Deepseam Quarry)
+  // or unconveyed production (Dross Pylon's {C}) have non-empty oracleHtml and
+  // keep the normal text layout. A keyword coin row (e.g. an Innate sticker)
+  // coexists: the symbol renders below the coins in a shorter `with-coins`
+  // container so both fit the text box. Skipped for synthetic cards
+  // (overrideOracleText), which aren't engine lands.
+  if (overrideOracleText === undefined && !oracleHtml && hasType(card, 'Land')) {
     const colors = ENGINE.landProducibleColors(card);
-    if (colors.length) {
-      oracleHtml = '<div class="frame-bigmana">'
+    const conveyed = basicLandTypeColors(card);
+    if (colors.length && colors.every(c => conveyed.includes(c))) {
+      oracleHtml = '<div class="frame-bigmana' + (kwIconsHtml ? ' with-coins' : '') + '">'
         + colors.map(c => '<span class="bigsym col-' + c + '">'
             + (c === 'C' ? 'C' : '') + '</span>').join('')
         + '</div>';
@@ -1561,10 +1596,27 @@ function cardToViewModel(card, opts) {
 
   return {
     colorKey, isCreature, pow, tou,
-    pipsHtml, bumpedMarker, typeText, oracleHtml,
+    pipsHtml, bumpedMarker, typeText, typeHtml, oracleHtml,
     keywordIconsHtml: kwIconsHtml,
     artInner, stickersInner,
   };
+}
+
+// Type line as HTML, with sticker-added tags wrapped in the gold
+// .sticker-granted span (matching sticker-granted keywords / triggers in the
+// oracle text). Origin comes from card.stickerTypes — the parallel record the
+// sticker pipeline keeps when an add_type / subtype sticker writes into
+// types[] (the types array itself can't distinguish base from granted).
+// Ordering/dedup is typeLineParts (types.js), the same walk typeLine() uses.
+function typeLineHtml(card) {
+  const parts = typeLineParts(card);
+  const stickerTags = new Set(card && Array.isArray(card.stickerTypes) ? card.stickerTypes : []);
+  const tag = t => stickerTags.has(t)
+    ? '<span class="sticker-granted">' + escapeHtml(t) + '</span>'
+    : escapeHtml(t);
+  let s = parts.left.map(tag).join(' ');
+  if (parts.right.length) s += ' — ' + parts.right.map(tag).join(' ');
+  return s;
 }
 
 // Pixel-art in-hand / on-board card. Builds the 80x112 frame at 1x scale
@@ -1608,7 +1660,7 @@ function makeCardEl(card, opts) {
       '<div class="frame-cost">' + vm.pipsHtml + vm.bumpedMarker + '</div>' +
     '</div>' +
     '<div class="frame-art">' + vm.artInner + '</div>' +
-    '<div class="frame-type">' + escapeHtml(vm.typeText) + '</div>' +
+    '<div class="frame-type">' + vm.typeHtml + '</div>' +
     '<div class="frame-text">' +
       vm.keywordIconsHtml +
       '<div class="frame-oracle">' + vm.oracleHtml + '</div>' +

@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bl6567bhb4c83"
-path="res://.godot/imported/art.png-96226dcf5ac042c0218b8e6627a2e4a5.ctex"
+path="res://.godot/imported/art.png-1865883630e6fa886e38ca58a4eed793.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://reference/html-proto/cards/plagueSower/art.png"
-dest_files=["res://.godot/imported/art.png-96226dcf5ac042c0218b8e6627a2e4a5.ctex"]
+source_file="res://reference/html-proto/cards/plague_sower/art.png"
+dest_files=["res://.godot/imported/art.png-1865883630e6fa886e38ca58a4eed793.ctex"]
 
 [params]
 

@@ -95,5 +95,70 @@ console.log('\n=== resolution staples the second target onto the first ===');
     baseCard && JSON.stringify(baseCard.stapledFrom));
 })();
 
+console.log('\n=== self-staple rejected at ACTIVATION, costs never paid (MtG 601.2h) ===');
+(() => {
+  // Costs are the LAST part of activation: an illegal activation (here the
+  // same card in both slots — caught by distinct_targets AND the
+  // resolveSplicePair legality check) is rejected by executeAction before any
+  // cost is paid, so there is nothing to refund or reverse.
+  const G = newGame();
+  const stapler = mkStapler('you'); G.you.battlefield.push(stapler);
+  const c0 = mk(baseTpl, 'you');
+  G.you.battlefield.push(c0);
+  const t0 = { kind: 'permanent', iid: c0.iid, label: c0.name };
+  const action = { type: 'activateAbility', cardIid: stapler.iid, abilityIdx: 0, targets: [t0, t0] };
+  check('Stapler ability declares distinct_targets', CARDS.stapler.abilities[0].distinct_targets === true);
+  check('self-staple action is ILLEGAL at activation', !ENGINE.isLegalAction('you', action));
+  const total = (m) => ['W','U','B','R','G','C'].reduce((s, c) => s + (m[c] || 0), 0);
+  const manaBefore = total(G.you.mana);
+  const accepted = ENGINE.executeAction('you', action);
+  check('executeAction rejects it (no cost paid)',
+    accepted === false && stapler.tapped === false && total(G.you.mana) === manaBefore);
+})();
+
+console.log('\n=== already-stapled STACK spell is not a legal staple target ===');
+(() => {
+  // matchFilterSpell mirrors matchFilter's chain check (stapleChainOf): a
+  // spell on the stack that already carries a staple chain must not pass the
+  // spliceable_staple slot filter. Before the fix it passed legality and only
+  // fizzled at resolution.
+  const G = newGame();
+  const spell = mk(stapleTpl, 'you');
+  const item = { card: spell, controller: 'you', targets: [] };
+  G.stack.push(item);
+  const slotSpec = { target: 'permanent_or_spell', filter: { spliceable_staple: true } };
+  const pre = ENGINE.getValidTargets(slotSpec, 'you');
+  check('clean stack spell IS a legal staple target', pre.some(v => v.kind === 'stack' && v.stackItem === item));
+  spell.stapledFrom = { baseTplId: spell.tplId, stapledTpls: ['lightning_bolt'] };
+  const post = ENGINE.getValidTargets(slotSpec, 'you');
+  check('stapled stack spell is NOT a legal staple target', !post.some(v => v.kind === 'stack' && v.stackItem === item));
+  G.stack.pop();
+})();
+
+console.log('\n=== resolution-time fizzle keeps costs paid (MtG 608.2b semantics) ===');
+(() => {
+  // The handler re-runs resolveSplicePair as defense-in-depth; reaching a
+  // fizzle there means legality/handler drift, and — matching real MtG, where
+  // an ability that fizzles on resolution does NOT refund its costs — the
+  // paid tap/mana stay spent. Simulate the drift case by invoking the handler
+  // directly with an invalid (self-staple) pair on an already-paid Stapler.
+  const G = newGame();
+  const stapler = mkStapler('you'); G.you.battlefield.push(stapler);
+  const c0 = mk(baseTpl, 'you');
+  G.you.battlefield.push(c0);
+  const t0 = { kind: 'permanent', iid: c0.iid, label: c0.name };
+  stapler.tapped = true;                              // the already-paid tap
+  G.you.mana.C -= 3;                                  // the already-paid mana
+  const total = (m) => ['W','U','B','R','G','C'].reduce((s, c) => s + (m[c] || 0), 0);
+  const afterPayment = total(G.you.mana);
+  const ctx = { controller: 'you', sourceName: stapler.name, sourceIid: stapler.iid,
+    sourceCard: stapler, allTargets: [t0, t0] };
+  ENGINE.applyEffect(ctx, { kind: 'apply_in_game_splice' }, t0);
+  check('Stapler stays tapped after a resolution fizzle (no refund)', stapler.tapped === true);
+  check('mana pool unchanged by the fizzle (costs stay paid)', total(G.you.mana) === afterPayment,
+    'after-payment=' + afterPayment + ' now=' + total(G.you.mana));
+  check('no staple happened', !c0.stapledFrom);
+})();
+
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');
 process.exit(fail > 0 ? 1 : 0);

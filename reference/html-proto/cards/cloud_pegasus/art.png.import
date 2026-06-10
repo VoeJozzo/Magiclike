@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bgfar33dc52lg"
-path="res://.godot/imported/art.png-e4fc9b4e1fa29f989b568ba18e690422.ctex"
+path="res://.godot/imported/art.png-1d457a54ce9dee41ec5904d8cad857f0.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://reference/html-proto/cards/cloudGiant/art.png"
-dest_files=["res://.godot/imported/art.png-e4fc9b4e1fa29f989b568ba18e690422.ctex"]
+source_file="res://reference/html-proto/cards/cloud_pegasus/art.png"
+dest_files=["res://.godot/imported/art.png-1d457a54ce9dee41ec5904d8cad857f0.ctex"]
 
 [params]
 

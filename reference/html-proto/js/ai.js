@@ -165,6 +165,28 @@ const UNVALUED_EFFECT_KINDS = new Set([
 const AI = (function() {
 
 
+// Resolve a castSpell action's card from the hand OR from a cast-permission
+// zone (e.g. a card exiled by Seal-Thief Courier with "you may cast it this
+// turn"). getLegalActions emits castSpell actions for both, but the decision
+// paths used to look only in hand — making permitted exile cards invisible to
+// the AI (it never cast what it stole). Reads the PASSED state, not the global
+// G, so it stays correct under simulation snapshots (a clone without
+// castPermissions just resolves hand-only).
+function findCastableCard(state, who, iid) {
+  const inHand = state[who].hand.find(c => c.iid === iid);
+  if (inHand) return inHand;
+  for (const perm of (state.castPermissions || [])) {
+    if (perm.controller !== who || perm.cardIid !== iid) continue;
+    const zoneName = perm.from_zone || 'exile';
+    for (const owner of ['you', 'opp']) {
+      const zone = state[owner][zoneName];
+      const found = Array.isArray(zone) ? zone.find(c => c.iid === iid) : null;
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
 // Rough position read (life + board power, board weighted heavier) mapped to a
 // 1-5 Archdemon-of-Bargains pick. The AI is the demon's NON-controller: it picks
 // N stickers for the controller now and collects N when it kills the demon. So
@@ -302,7 +324,7 @@ function decideOffTurnCombat(state, who, actions) {
   const spellsByCard = new Map();
   for (const a of actions) {
     if (a.type !== 'castSpell') continue;
-    const card = state[who].hand.find(c => c.iid === a.cardIid);
+    const card = findCastableCard(state, who, a.cardIid);
     if (!card) continue;
     if (!(card.keywords && card.keywords.includes('flash'))) continue;
     if (!spellsByCard.has(a.cardIid)) spellsByCard.set(a.cardIid, []);
@@ -317,7 +339,7 @@ function decideOffTurnCombat(state, who, actions) {
   let bestInst = null, bestInstScore = -Infinity;
   let bestFlash = null, bestFlashScore = -Infinity;
   for (const [iid, options] of spellsByCard) {
-    const card = state[who].hand.find(c => c.iid === iid);
+    const card = findCastableCard(state, who, iid);
     if (!card) continue;
     const chosen = pickBestTargetForSpell(state, who, card, options);
     if (!chosen) continue;
@@ -404,7 +426,7 @@ function decideEndStepFlash(state, who, actions) {
   const flashCasts = new Map();
   for (const a of actions) {
     if (a.type !== 'castSpell') continue;
-    const card = state[who].hand.find(c => c.iid === a.cardIid);
+    const card = findCastableCard(state, who, a.cardIid);
     if (!card) continue;
     if (!hasType(card, 'Creature')) continue;
     if (!(card.keywords && card.keywords.includes('flash'))) continue;
@@ -416,7 +438,7 @@ function decideEndStepFlash(state, who, actions) {
   }
   if (flashCasts.size === 0) return null;
   const sorted = Array.from(flashCasts.keys())
-    .map(iid => ({ iid, card: state[who].hand.find(c => c.iid === iid), options: flashCasts.get(iid) }))
+    .map(iid => ({ iid, card: findCastableCard(state, who, iid), options: flashCasts.get(iid) }))
     .filter(x => x.card)
     .sort((a, b) => ENGINE.cardCost(b.card) - ENGINE.cardCost(a.card));
   for (const { card, options } of sorted) {
@@ -472,7 +494,7 @@ function decideMain(state, who, actions) {
     if (reservedBurnIids && reservedBurnIids.has(a.cardIid)) continue;
     // Defer VANILLA flash to opp's turn — body-only value is preserved by ambush/end-step paths.
     // Trigger-flash (Quickling) wants to fire NOW (pre-combat bounce).
-    const flashCard = state[who].hand.find(c => c.iid === a.cardIid);
+    const flashCard = findCastableCard(state, who, a.cardIid);
     if (flashCard && hasType(flashCard, 'Creature')
         && flashCard.keywords && flashCard.keywords.includes('flash')
         && (!flashCard.triggers || flashCard.triggers.length === 0)) {
@@ -482,8 +504,10 @@ function decideMain(state, who, actions) {
     spellsByCard.get(a.cardIid).push(a);
   }
   // Curve-up: biggest playable first. Flash-hold: vanilla flash bodies deferred to off-turn.
+  // findCastableCard (not hand.find): cast-permission cards (exile steals)
+  // must stay candidates, or the AI never casts what it stole.
   const candidateCards = Array.from(spellsByCard.keys()).map(iid => ({
-    iid, card: state[who].hand.find(c => c.iid === iid),
+    iid, card: findCastableCard(state, who, iid),
   })).filter(x => {
     if (!x.card) return false;
     if (hasType(x.card, 'Creature') &&
@@ -531,7 +555,7 @@ function getDirectBurnSources(state, who, actions) {
     let amount = 0;
     let cost = 0;
     if (a.type === 'castSpell') {
-      const card = state[who].hand.find(c => c.iid === a.cardIid);
+      const card = findCastableCard(state, who, a.cardIid);
       if (!card) continue;
       const dmg = ENGINE.effectsForMode(card, a.modeIdx).find(e => e.kind === 'damage');
       if (!dmg) continue;
@@ -625,7 +649,7 @@ function decideReaction(state, who, actions) {
   // Counter the top of stack if it's an opp spell worth stopping.
   const counters = actions.filter(a =>
     a.type === 'castSpell' &&
-    ENGINE.cardHasEffect(state[who].hand.find(c => c.iid === a.cardIid),
+    ENGINE.cardHasEffect(findCastableCard(state, who, a.cardIid),
                          e => e.kind === 'counter'));
   if (counters.length && shouldCounter(state, who)) {
     const top = state.stack[state.stack.length - 1];

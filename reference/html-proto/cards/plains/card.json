@@ -19,7 +19,8 @@
     }
   ],
   "types": [
+    "Basic",
     "Land",
-    "Basic"
+    "Plains"
   ]
 }

@@ -272,6 +272,16 @@ function renderManaPipSizeRows(pickerArea) {
     (val) => { SETTINGS.set('cardManaPipPopupSize', Number(val)); render(); }
   ));
   pickerArea.appendChild(manaPipPopupRow);
+
+  // The big land-identity symbol (basics / artifact lands with a basic land
+  // type). --card-big-mana-size is pushed live by SETTINGS.set.
+  const bigManaRow = makeRow('Land symbol (basic-type lands)');
+  bigManaRow.appendChild(makeSelect(
+    SETTINGS.BIG_MANA_SIZE_OPTIONS,
+    SETTINGS.get('cardBigManaSize'),
+    (val) => { SETTINGS.set('cardBigManaSize', Number(val)); render(); }
+  ));
+  pickerArea.appendChild(bigManaRow);
 }
 
 function renderManaTextScaleRow(pickerArea) {

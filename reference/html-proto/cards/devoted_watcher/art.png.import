@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://rtl6x81wt8jb"
-path="res://.godot/imported/art.png-341b33e2d7a420923cf4ef54b10c87df.ctex"
+path="res://.godot/imported/art.png-04968014ea24f85d1ab2d42101e939cc.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://reference/html-proto/cards/ancestralGuard/art.png"
-dest_files=["res://.godot/imported/art.png-341b33e2d7a420923cf4ef54b10c87df.ctex"]
+source_file="res://reference/html-proto/cards/devoted_watcher/art.png"
+dest_files=["res://.godot/imported/art.png-04968014ea24f85d1ab2d42101e939cc.ctex"]
 
 [params]
 
