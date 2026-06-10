@@ -34,7 +34,7 @@ dry-run target and runs first; thereafter strict priority order (1 → 11).
 
 | # | Chunk | Tier | Status | Claimed (ISO) | Anchor SHA | Findings file |
 |---|-------|------|--------|---------------|------------|---------------|
-| 6 | Stickers pipeline (`stickers.js`) — DRY RUN | 1 | in_progress | 2026-06-10T11:14:05Z | 86dc5b0 | `chunk-06-stickers.md` |
+| 6 | Stickers pipeline (`stickers.js`) — DRY RUN | 1 | done | 2026-06-10T11:14:05Z | 86dc5b0 | [`chunk-06-stickers.md`](chunk-06-stickers.md) |
 | 1 | Turn machine / phases / mana / state (`engine.js` `step()` region) | 2 | todo | — | — | `chunk-01-turn-machine.md` |
 | 2 | Combat (attack/block/damage, combat keywords) | 2 | todo | — | — | `chunk-02-combat.md` |
 | 3 | Stack / priority / triggers (`triggers.js`, `trigger-generator.js`) | 2 | todo | — | — | `chunk-03-stack-triggers.md` |
@@ -74,3 +74,12 @@ no longer binds.
   `origin/dev` 37c2eb2 already an ancestor, merge no-op). Mutation map still
   in flight (4080/7592 @ 07:09) and covers only types.js — stickers.js absent,
   so chunk-6 behavioral fixes demote to *stage* by default.
+- 2026-06-10 ~07:55: chunk-6 DRY RUN complete. 7 findings (A6-1..A6-7); one
+  docs-only ship (A6-4) merged to workshop via PR #97 (merge ed3ee53, author
+  Thaumaturge-Claude); rest stage/park. Suite 1786/1786 green, lint clean.
+  Self-QA PASS. **Dry-run gates all passed → arming the queue (see Armed line).**
+  Plumbing fixes surfaced (see NIGHTLY.md): gh-bot.ps1 must be invoked
+  `powershell.exe -NoProfile -ExecutionPolicy Bypass -File ...` (execution
+  policy blocks `-File` otherwise); overnight git/node forms must be plain
+  single commands (no `cd &&`, no `$()`/`;` chains, redirects only inside
+  allowed worktrees).
