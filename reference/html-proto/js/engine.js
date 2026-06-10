@@ -6171,7 +6171,15 @@ function isLegalAction(who, action) {
     case 'declareAttackers': {
       if (G.phase !== 'COMBAT_ATTACK' || who !== G.activePlayer) return false;
       if (G.attackersDeclared) return false;
+      // A2-4: mirror declareBlockers' usedBlockers guard — one attack role
+      // per creature (§801 step 505: set membership). A repeated iid would
+      // otherwise deal N× combat damage and emit N× 'attacks' triggers
+      // downstream (doDeclareAttackers stores the list verbatim). Reject,
+      // don't dedupe, matching the sibling's semantics.
+      const usedAttackers = new Set();
       for (const iid of action.cardIids) {
+        if (usedAttackers.has(iid)) return false;
+        usedAttackers.add(iid);
         const f = findCard(iid);
         if (!f || f.controller !== who) return false;
         if (!canCreatureAttack(f.card)) return false;
