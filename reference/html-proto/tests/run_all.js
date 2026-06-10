@@ -171,10 +171,18 @@ const TESTS_DIR = __dirname;
 let totalPass = 0, totalFail = 0;
 const failures = [];
 
+// Mutation-runner hooks (tools/audit/mutation). Both inert unless the env
+// vars are set: RUN_ALL_BAIL stops at the first failing file (a killed
+// mutant doesn't need the rest of the suite); RUN_ALL_TEST_TIMEOUT_MS
+// bounds each test process (mutants can introduce infinite loops).
+const BAIL = !!process.env.RUN_ALL_BAIL;
+const PER_TEST_TIMEOUT_MS = parseInt(process.env.RUN_ALL_TEST_TIMEOUT_MS, 10) || 0;
+
 const t0 = Date.now();
 for (const file of CATEGORY_A) {
   process.stdout.write('=== ' + file + ' ... ');
-  const result = spawnSync('node', [path.join(TESTS_DIR, file)], { encoding: 'utf8' });
+  const result = spawnSync('node', [path.join(TESTS_DIR, file)],
+    { encoding: 'utf8', ...(PER_TEST_TIMEOUT_MS ? { timeout: PER_TEST_TIMEOUT_MS } : {}) });
   const out = (result.stdout || '') + (result.stderr || '');
   // Parse the final "=== TOTAL: N passed, M failed ===" line.
   const m = out.match(/TOTAL:\s*(\d+)\s*passed,\s*(\d+)\s*failed/);
@@ -192,6 +200,10 @@ for (const file of CATEGORY_A) {
     console.log('UNPARSEABLE OUTPUT (likely crashed)');
     totalFail += 1;
     failures.push({ file, output: out });
+  }
+  if (BAIL && totalFail > 0) {
+    console.log('(bailing: RUN_ALL_BAIL set and a failure was seen)');
+    break;
   }
 }
 
