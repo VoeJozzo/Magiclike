@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.1.25`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.1.26`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -1537,6 +1537,18 @@ declined). New `test_event_source_iid.js` (14 assertions): each corrected site
 pinned through the noSelfCascade guard — self-suppression (red before: 7
 fails, e.g. combat lifelink 20→27 instead of 20→22) + foreign-source
 still-fires guards. Suite 80 files / 1866 green, lint clean.
+
+v2.1.26: audit fix A3-12 (Joe-approved, PR #98 round 2, 2026-06-10) — a
+mid-prompt trigger fizzle now logs. doTriggerTargetPick's 'fizzle' arm (a
+later slot lost its only legal target after an earlier pick committed)
+dropped the trigger with no message — the player saw "X triggered — choose a
+target", picked one, and it evaporated; both sibling fizzle paths log. One
+line, mirroring pushTriggerOnStack's wording. Near-unreachable with today's
+pool (the prompt freezes all other actors); the new
+test_trigger_prompt_fizzle_log.js (7 assertions) reaches the arm through a
+real beetle+roots staple cast with the later slot stranded by board mutation
+(red before: silent fizzle) + a happy-path no-fizzle-line guard. Suite 81
+files / 1873 green, lint clean.
 
 > **MUST UPDATE on every dev-branch push that touches code.** Bump `VERSION` in `js/main.js` AND the line above, in the same commit. GitHub Pages caches aggressively; the version string is the only reliable way to confirm a fresh build is live.
 

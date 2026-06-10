@@ -186,6 +186,9 @@ const CATEGORY_A = [
   // lifelink, damagePlayer loss) and the leave-play family carry source_iid,
   // pinned through the noSelfCascade guard (self-suppression + foreign-fire).
   'test_event_source_iid.js',
+  // Audit A3-12 — a mid-prompt trigger fizzle logs (sibling-path wording)
+  // instead of evaporating wordlessly; happy path logs no fizzle.
+  'test_trigger_prompt_fizzle_log.js',
 ];
 
 const TESTS_DIR = __dirname;
