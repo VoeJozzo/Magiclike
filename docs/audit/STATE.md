@@ -52,19 +52,7 @@ wholesale (chunk runs are idempotent).
 
 ## Mutation coverage map
 
-Status: **first full run in flight** (started 2026-06-10 ~02:10 local; ~10h
-ETA at observed pace — 7,592 mutants, 12 workers). Until it completes, every
-fix demotes to *stage* by default (ship gate reads the map).
-
-**Queue gate (2026-06-10, relaxed ~08:30 to per-file):** a chunk may be
-claimed once the mutation map **covers that chunk's files** (every mutant
-for the file has a status in `results.json` — check with the per-file
-completeness script in the log, or `node -e` over the JSON). The original
-blanket "whole run must finish" wording overshot the gate's purpose (the
-ship gate reads the map *for the touched region*). As of 08:30:
-`engine.js` COMPLETE (score 45%) → chunks 1/2/4 unlocked; chunk 3 waits on
-`triggers.js` + `trigger-generator.js`; chunks 5/7-11 wait on their files.
-Delete this paragraph when the full run is done.
+Status: **COMPLETE** (2026-06-10 ~11:20, 224 min, 7,592 mutants). Overall score **36%**. Per-file: engine.js 45, ai.js 17, run.js 17, card-text.js 59, draft.js 10, cards.js 41, stickers.js 40, triggers.js 76, trigger-generator.js 13, picklog.js 4, types.js 86. ALL CHUNKS UNLOCKED. Map at ~/.config/magiclike/audit/mutation/; nightly task refreshes incrementally.
 
 ## Log
 
@@ -100,3 +88,4 @@ Delete this paragraph when the full run is done.
   mutation map finishes; scheduled boops resume 23:00.
 - 2026-06-10 ~10:15: chunk 1 DONE (daytime supervised run). Tier-2 Workflow: 58 agents, 4 lenses, 40 confirmed/14 refuted pre-dedupe -> 23 findings (3 P1 / 3 P2 / 17 P3; 9 stage with decision packets, 7 ship docs/comment-only, 2 trivia, 5 park). Self-QA PASS (A1-3 re-repro'd live; 2 corrections applied; A1-10 P3->P2 accepted). Headliners: A1-1 priority cluster (opp-handoff vs canon, D0 misdoc), A1-2 canPayPotential/payMana mismatch (half-applied state), A1-3 indestructible t<=0 survival. Ship/trivia PRs grouped 7+2 into two PRs (calibration-day judgment, disclosed in NIGHTLY).
 - 2026-06-10 ~09:55: chunk-1 remediation landed — docs PR #99 + trivia PR #100 (v2.1.19), both robot-merged, suite 1786/1786 + lint green each, author Thaumaturge-Claude. Chunk 2 (combat) claimed @ 6327c73 (trunk skill updates merged; origin/dev unchanged).
+- 2026-06-10 ~11:25: USAGE WALL hit mid-chunk-2 (resets 11:30). Chunk-2 workflow completed with rules lens fully verified (incl. new P1 A2-candidate: indestructible t<=0 skip — NOTE: same root bug as A1-3, must dedupe/fold at synthesis; adds in-pool Iron Statue+3xSicken repro) but 7 verifiers died at the wall (4 state + 1 testquality + 2 more state). RECOVERY: resume Workflow runId wf_30e2bc8d-680 (script audit-chunk-2-combat-wf_30e2bc8d-680.js in session workflows/scripts dir) after reset — cached agents return instantly, only the 7 failed re-run. THEN synthesize chunk-02-combat.md. Chunk 2 stays in_progress.
