@@ -804,7 +804,11 @@ function triggerPreamble(trig) {
   if (cid === 'thisAttacks') return 'When this attacks,';
   if (cid === 'thisDealsCombatDamageToOpp') return 'Whenever this deals combat damage to an opponent,';
   if (cid === 'thisLeaves')  return 'When this leaves the battlefield,';
-  if (cid === 'thisKillsCreature') return 'Whenever a creature dealt damage by this dies,';
+  // "this turn": damagedBySources clears in the EOT cleanup sweep, so the
+  // kill credit is turn-scoped (canonical Sengir wording) — say so. "this
+  // card" (not the usual bare "this") to avoid the "by this this turn"
+  // stutter.
+  if (cid === 'thisKillsCreature') return 'Whenever a creature dealt damage by this card this turn dies,';
   if (cid === 'thisAttacksAfterOppLifeLoss') {
     return 'When this attacks, if an opponent has lost life this turn,';
   }

@@ -221,13 +221,13 @@ console.log('\n=== stapled distinct card carries its rule onto the ETB ===');
 
 console.log('\n=== regression guard: makeCard preserves EVERY card-level targeting flag for ALL templates ===');
 (() => {
-  // The cast-enforcement bug existed because makeCard copies card-level fields
-  // through an explicit whitelist, and a newly-added flag (distinct_targets) was
-  // left off it — silently dropped on the real game path while clone-based tests
-  // (JSON.parse(JSON.stringify(...))) stayed green. Guard the whole CLASS, not
-  // just the two cards: every template that declares one of these card-level
-  // targeting flags must have it survive ENGINE.makeCard. When you add a NEW
-  // card-level targeting flag, add it to makeCard's instance whitelist AND here.
+  // The cast-enforcement bug existed because makeCard used to copy card-level
+  // fields through an explicit whitelist, and a newly-added flag
+  // (distinct_targets) was left off it — silently dropped on the real game path
+  // while clone-based tests (JSON.parse(JSON.stringify(...))) stayed green.
+  // makeCard is copy-by-default now (denylist of runtime-only keys), so this
+  // guard is belt-and-suspenders for the targeting flags specifically; the
+  // section below pins the copy-by-default rule for EVERY template field.
   const TARGETING_FLAGS = ['target', 'target_filter', 'target_slots', 'distinct_targets'];
   const present = v => Array.isArray(v) ? v.length > 0 : (v !== undefined && v !== null && v !== false && v !== '');
   const dropped = [];
@@ -242,6 +242,69 @@ console.log('\n=== regression guard: makeCard preserves EVERY card-level targeti
   check('makeCard preserves all declared card-level targeting flags across every template',
     dropped.length === 0,
     dropped.length ? dropped.slice(0, 10).join(', ') : 'all ' + Object.keys(CARDS).length + ' templates OK');
+})();
+
+console.log('\n=== copy-by-default guard: EVERY template field survives makeCard ===');
+(() => {
+  // makeCard copies template fields by default (explicit denylist of
+  // runtime-only keys), so a new card-level flag can never again be silently
+  // dropped on the real game path. Pin that rule for every field of every
+  // template: each key must exist on the instance, and — except for the fields
+  // makeCard deliberately transforms — carry an identical value.
+  //   text:     regenerated from effects/triggers via describeCardText
+  //   keywords: subtype-implied keywords (flying on Dragons, …) are appended
+  const TRANSFORMED = new Set(['text', 'keywords']);
+  const SKIP = new Set(['tplId']); // instance identity comes from the makeCard argument
+  const broken = [];
+  for (const id of Object.keys(CARDS)) {
+    let made;
+    try { made = ENGINE.makeCard(id); }
+    catch (e) { broken.push(id + ': makeCard threw (' + e.message + ')'); continue; }
+    for (const k of Object.keys(CARDS[id])) {
+      if (SKIP.has(k)) continue;
+      if (!(k in made)) { broken.push(id + '.' + k + ' missing'); continue; }
+      if (TRANSFORMED.has(k)) continue;
+      if (JSON.stringify(CARDS[id][k]) !== JSON.stringify(made[k])) {
+        broken.push(id + '.' + k + ' mutated');
+      }
+    }
+  }
+  check('every template field survives makeCard (copy-by-default)',
+    broken.length === 0,
+    broken.length ? broken.slice(0, 10).join(', ') : 'all ' + Object.keys(CARDS).length + ' templates OK');
+})();
+
+console.log('\n=== denylist guard: a template CANNOT inject runtime-only fields ===');
+(() => {
+  // The copy-by-default loop's counterpart risk: a template declaring a
+  // runtime instance field must be ignored (with a console.warn), not
+  // deep-copied — e.g. a truthy copyOf would trip resetInPlayState's
+  // copy-revert path. Probe with a synthetic template carrying one key from
+  // each runtime system that writes card fields outside makeCard, plus one
+  // literal-initialized key (damage). Registered AFTER the all-template
+  // sweeps above so they never see it; removed again in finally.
+  CARDS.__denylist_probe__ = {
+    name: 'Denylist Probe', types: ['Creature'], cost: { R: 1 },
+    power: 1, toughness: 1,
+    copyOf: 'grizzly_bears', copySourceIid: 123, tempControlUntilEot: true,
+    bargainsNum: 7, chargesLeft: 9, _builtThisGame: true, damage: 5,
+    stickerTypes: ['Zombie'],   // additive recorder — injection wouldn't be rebuilt away
+  };
+  try {
+    const made = ENGINE.makeCard('__denylist_probe__');
+    const RUNTIME_KEYS = ['copyOf', 'copySourceIid', 'tempControlUntilEot',
+      'bargainsNum', 'chargesLeft', '_builtThisGame'];
+    check('stickerTypes injection ignored (additive recorder, never rebuilt away)',
+      !Array.isArray(made.stickerTypes) || !made.stickerTypes.includes('Zombie'),
+      JSON.stringify(made.stickerTypes));
+    const leaked = RUNTIME_KEYS.filter(k => made[k] === CARDS.__denylist_probe__[k]);
+    check('runtime-only template fields are ignored, not copied',
+      leaked.length === 0, leaked.length ? 'leaked: ' + leaked.join(', ') : 'all ignored');
+    check('literal-initialized runtime field keeps its init (damage 0, not the template\'s 5)',
+      made.damage === 0, 'damage=' + made.damage);
+  } finally {
+    delete CARDS.__denylist_probe__;
+  }
 })();
 
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');

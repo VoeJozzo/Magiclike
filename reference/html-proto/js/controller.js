@@ -37,7 +37,8 @@ const Modal = {
     const entry = this._stack[idx];
     this._stack.splice(idx, 1);
     if (entry.prevFocus && typeof entry.prevFocus.focus === 'function') {
-      try { entry.prevFocus.focus(); } catch (_) {}
+      // Restore can fail if the element left the DOM meanwhile; breadcrumb only.
+      try { entry.prevFocus.focus(); } catch (err) { console.warn('Modal.hide: focus restore failed', err); }
     }
     // Only fire onClose for user-initiated dismiss (render-loop hides know what they want).
     if (entry.onClose && opts && opts.userInitiated) entry.onClose();
@@ -328,7 +329,9 @@ function showStartScreen() {
     const el = document.documentElement;
     const req = el.requestFullscreen || el.webkitRequestFullscreen;
     if (req && !document.fullscreenElement && !document.webkitFullscreenElement) {
-      try { req.call(el).catch(() => {}); } catch (_) {}
+      // Denial is a normal browser/policy outcome; breadcrumb only.
+      try { req.call(el).catch(err => console.warn('Fullscreen request rejected:', err)); }
+      catch (err) { console.warn('Fullscreen request failed:', err); }
     }
   }, {capture: true, once: true});
   const btns = document.getElementById('startBtns');

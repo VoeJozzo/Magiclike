@@ -154,6 +154,17 @@ const CATEGORY_A = [
   // every slot, a human-controlled multi-target ETB prompts per choosable slot,
   // and a distinct_targets ETB resolves onto two DIFFERENT creatures.
   'test_multitarget_trigger.js',
+  // Static-lord keyword grants, dedicated: real entry (emit on cast) + real
+  // leave paths (death/bounce), controller + cross-lord gating, intrinsic
+  // protection, multi-source survival, and the six-lord sweep.
+  'test_lord_keyword_grants.js',
+  // Endomorph absorb: regression pin for the E1 subject_card payload rename
+  // (every absorb silently fizzled), keyword priority, +1/+1 fallback,
+  // defender exclusion, dead-Endomorph corpse path, opp-side no-persistence,
+  // plus the shared trophy rule (claimableKeywords): intrinsics-only claims
+  // for BOTH the absorb and the reward-screen claimedKeywords, intrinsic
+  // novelty (borrowed keywords don't block absorption), bounced-fade edge.
+  'test_endomorph_absorb.js',
 ];
 
 const TESTS_DIR = __dirname;

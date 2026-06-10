@@ -641,6 +641,32 @@ function applySubtypeKeywords(card) {
   addSubtypeKeywords(subtypesOf(card), card.keywords);
 }
 
+// Runtime instance-state keys owned by the engine — the copy-by-default loop
+// below must never let a template inject these. A template declaring one is a
+// card-data error (warned at instantiation, the field is ignored).
+// MAINTENANCE: this denylist is the one list the copy-by-default inversion
+// still requires by hand — when adding a NEW runtime field to card instances
+// (in makeCard or anywhere downstream), add it here too, or a template
+// declaring that key would be deep-copied straight onto the instance.
+const MAKECARD_INSTANCE_KEYS = new Set([
+  'iid', 'slotIdx', 'controller', 'owner', 'isToken',
+  'tapped', 'sick', 'damage', 'tempPower', 'tempTou', 'permPower', 'permTou',
+  'counters', 'dealtDeathtouch', 'killedBy', 'cantAttack', 'cantBlock',
+  'cantAttackBy', 'cantBlockBy', 'damagedBySources', 'grantedBy',
+  'eotGrants', 'typeGrants', 'modifiers', 'stickers', 'empowerRolls', 'subtypeRolls',
+  // Assigned outside makeCard at runtime (steal / copy / bargain / charge /
+  // build-on-draw systems) — a truthy template copyOf would trip
+  // resetInPlayState's copy-revert, a template chargesLeft would shadow the
+  // slot-derived charge count, etc.
+  'tempControlUntilEot', 'copyOf', 'copySourceIid', 'bargainsNum',
+  'chargesLeft', '_builtThisGame',
+  // Assigned DURING makeCard but additively (recordStickerType never resets
+  // the array), so a template-declared value wouldn't be rebuilt away — the
+  // criterion for this list is "not unconditionally rebuilt at
+  // instantiation," not just "assigned outside makeCard."
+  'stickerTypes',
+]);
+
 function makeCard(tplId, stickers, slotIdx, empowerRolls, permaBuffs, bonusTrigger, stapledTpls, subtypeRolls) {
   const tpl = (stapledTpls && stapledTpls.length > 0)
     ? synthesizeStapledTemplate(tplId, stapledTpls)
@@ -730,6 +756,23 @@ function makeCard(tplId, stickers, slotIdx, empowerRolls, permaBuffs, bonusTrigg
     // Stapled metadata for empower-target enumeration, sticker eligibility, etc.
     stapledFrom: tpl.stapledFrom,
   };
+  // Copy-by-default for every other card-level field (the inverted whitelist).
+  // The literal above carries only the fields needing bespoke copy semantics
+  // (deep copies, default fills, slot handling); everything else the template
+  // declares lands on the instance automatically as a JSON deep copy —
+  // templates are pure JSON, the same rationale as staple synthesis (§3.10).
+  // A new card-level flag is now a one-place change (card JSON + its reader);
+  // forgetting makeCard can no longer silently drop it on the real game path.
+  for (const k of Object.keys(tpl)) {
+    if (k === 'tplId') continue; // instance identity comes from the argument
+    if (MAKECARD_INSTANCE_KEYS.has(k)) {
+      console.warn('makeCard: template "' + tplId + '" declares runtime-only field "' + k + '" — ignored');
+      continue;
+    }
+    if (k in card) continue; // bespoke-copied above
+    const v = tpl[k];
+    card[k] = (v && typeof v === 'object') ? JSON.parse(JSON.stringify(v)) : v;
+  }
   // Order: subtype-implied → stickers → permaBuffs → bonusTrigger.
   applySubtypeKeywords(card);
   applyStickersToCard(card);
@@ -1678,12 +1721,7 @@ function applyDamageFrom(ctx, target, amt) {
     }
     f.card.damage += toCreature;
     if (hasDeathtouch) f.card.dealtDeathtouch = true;
-    f.card.killedBy = ctx.controller;
-    // damagedBySources powers Sengir-style "dealt-damage-this-turn dies" triggers.
-    if (sourceCard && hasType(sourceCard, 'Creature')) {
-      if (!(f.card.damagedBySources instanceof Set)) f.card.damagedBySources = new Set();
-      f.card.damagedBySources.add(sourceCard.iid);
-    }
+    recordDamage(f.card, sourceCard, ctx.controller);
     log(`${ctx.sourceName} deals ${toCreature} to ${f.card.name}.`, 'dmg');
     if (spill > 0) {
       damagePlayer(f.controller, spill, `${ctx.sourceName} (trample)`);
@@ -1915,6 +1953,16 @@ function fetchLibraryToBattlefield(ctx, filter, post) {
   emitZoneChange(card, ctx.controller, 'library', 'battlefield');
 }
 
+// Endomorph's trophy table — which absorbable keyword to take when a kill
+// offers several. Higher = juicier. Unlisted keywords rank 0: still
+// absorbable, picked last (ties keep the victim's intrinsic keyword order).
+const ABSORB_KEYWORD_PRIORITY = {
+  flying: 4, indestructible: 4,
+  lifelink: 3, deathtouch: 3, hexproof: 3, trample: 3,
+  haste: 2, vigilance: 2, first_strike: 2, flash: 2,
+  reach: 1, menace: 1,
+};
+
 const EFFECTS = {
   damage(ctx, params, target) {
     if (params.scope) {
@@ -1986,75 +2034,65 @@ const EFFECTS = {
   // Absorb a novel keyword from victim, else grow +1/+1. Persists via slot sticker.
   // Auto-picks highest-priority keyword; defender excluded (downside).
   endomorph_absorb(ctx, params, target) {
-    const KEYWORD_PRIORITY = {
-      flying: 4, indestructible: 4,
-      lifelink: 3, deathtouch: 3, hexproof: 3, trample: 3,
-      haste: 2, vigilance: 2, first_strike: 2, flash: 2,
-      reach: 1, menace: 1,
-    };
-    const f = findCard(target.iid);
-    // Endomorph may be dead this step — mutate the graveyard corpse so reward is visible.
-    const sourceCard = f ? f.card : null;
-    const victim = ctx.event && ctx.event.card ? ctx.event.card : null;
+    // Zone-change events carry the dying card as `subject_card` (NOT `card`) —
+    // same payload rename that broke bargain_sticker_other after the E1
+    // migration. Reading the dead `event.card` made EVERY absorb fizzle.
+    const victim = ctx.event && ctx.event.subject_card ? ctx.event.subject_card : null;
     if (!victim) {
       log(`${ctx.sourceName} absorb fizzles — no victim recorded.`, 'sp');
       return;
     }
-    // Determine novel keywords. The victim's keyword set at death time is
-    // its current `keywords` array (native + stickered + any in-game grants
-    // that survived the death move). We filter out 'defender' and any
-    // keywords the source already has.
-    const sourceKeywords = sourceCard ? new Set(sourceCard.keywords || []) : new Set();
-    // Source slot lookup. If Endomorph is alive, just read sourceCard.slotIdx.
-    // If Endomorph died in the same combat-damage step, sourceCard is null —
-    // BUT the dead card object still exists in a graveyard (resetInPlayState
-    // doesn't touch slotIdx), so we can find it by target.iid. This is the
-    // correct way to handle multi-Endomorph cases (cloned Endomorphs); a
-    // tplId-based scan would always pick the same slot regardless of which
-    // Endomorph actually killed the victim.
-    let slotIdx = sourceCard ? sourceCard.slotIdx : null;
-    let deadCard = null;
-    if (slotIdx == null && sourceCard == null) {
+    // Resolve the absorber: the live battlefield card, or its graveyard
+    // corpse when Endomorph died in the same exchange (mutual combat kill —
+    // resetInPlayState preserves slotIdx, and the corpse object is still
+    // mutable, so the reward persists to the right run slot AND shows on the
+    // dead card). iid scan, not tplId: each cloned Endomorph credits its own
+    // slot.
+    const live = findCard(target.iid);
+    let absorber = live ? live.card : null;
+    if (!absorber) {
       for (const who of ['you', 'opp']) {
-        const found = G[who].graveyard.find(c => c.iid === target.iid);
-        if (found) { deadCard = found; break; }
-      }
-      if (deadCard) {
-        slotIdx = deadCard.slotIdx;
-        // The dead card still has its keyword list intact (death preserves
-        // .keywords). Use it to compute the source's keyword set.
-        for (const kw of (deadCard.keywords || [])) sourceKeywords.add(kw);
+        const corpse = G[who].graveyard.find(c => c.iid === target.iid);
+        if (corpse) { absorber = corpse; break; }
       }
     }
-    const inGameTarget = sourceCard || deadCard;   // graveyard corpse still mutable
-    const novel = (victim.keywords || [])
-      .filter(kw => kw !== 'defender' && !sourceKeywords.has(kw));
+    if (!absorber) {
+      // Endomorph left play some other way between trigger queue and resolve
+      // (bounced, exiled) — no battlefield card, no corpse, nowhere for the
+      // reward to land. (Previously this logged a successful absorb while
+      // applying nothing.)
+      log(`${ctx.sourceName} absorb fades — it left play before feeding.`, 'sp');
+      return;
+    }
+    // Novelty is judged intrinsics-vs-intrinsics via the shared trophy rule
+    // (claimableKeywords): the victim offers only what it intrinsically OWNED,
+    // and a keyword Endomorph merely borrows (lord aura, until-EOT grant)
+    // doesn't block absorbing it permanently from a kill.
+    const have = new Set(intrinsicKeywords(absorber));
+    const novel = claimableKeywords(victim).filter(kw => !have.has(kw));
     let absorbed = null;
     if (novel.length > 0) {
-      novel.sort((a, b) => (KEYWORD_PRIORITY[b] || 0) - (KEYWORD_PRIORITY[a] || 0));
+      novel.sort((a, b) => (ABSORB_KEYWORD_PRIORITY[b] || 0) - (ABSORB_KEYWORD_PRIORITY[a] || 0));
       absorbed = novel[0];
     }
     // Persistence only when controller is player-side with a runState slot.
     const canPersist = (ctx.controller === 'you')
-      && (slotIdx != null)
+      && (absorber.slotIdx != null)
       && (typeof RUN !== 'undefined' && RUN.applyStickerToSlot);
     if (absorbed) {
       const sticker_id = 'kw_' + absorbed;
-      if (canPersist) RUN.applyStickerToSlot(slotIdx, sticker_id);
-      // Mirror onto in-game instance so the keyword is active AND the sticker badge shows now.
-      if (inGameTarget) {
-        if (!inGameTarget.keywords.includes(absorbed)) inGameTarget.keywords.push(absorbed);
-        if (!inGameTarget.stickers.includes(sticker_id)) inGameTarget.stickers.push(sticker_id);
-      }
+      if (canPersist) RUN.applyStickerToSlot(absorber.slotIdx, sticker_id);
+      // Mirror onto the instance so the keyword is active AND the sticker
+      // badge shows now (the sticker also makes it intrinsic from here on).
+      if (!absorber.keywords.includes(absorbed)) absorber.keywords.push(absorbed);
+      if (!absorber.stickers.includes(sticker_id)) absorber.stickers.push(sticker_id);
       log(`${ctx.sourceName} absorbs ${absorbed} from ${victim.name}.`, 'sp');
     } else {
       // Fallback +1/+1 via slot sticker (persists across games, unlike counter).
       const sticker_id = 'plus1_plus1';
-      if (canPersist) RUN.applyStickerToSlot(slotIdx, sticker_id);
-      if (inGameTarget) {
-        inGameTarget.modifiers.push({ power: 1, toughness: 1 });
-        inGameTarget.stickers.push(sticker_id);
-      }
+      if (canPersist) RUN.applyStickerToSlot(absorber.slotIdx, sticker_id);
+      absorber.modifiers.push({ power: 1, toughness: 1 });
+      absorber.stickers.push(sticker_id);
       log(`${ctx.sourceName} eats ${victim.name} and grows +1/+1.`, 'sp');
     }
   },
@@ -4585,8 +4623,10 @@ function leavesPlayPreservingBuffs(card) {
 // shuffleIntoLibrary. Lets cards like Archdemon of Bargains
 // use a single 'thisLeaves' trigger instead of needing one trigger per
 // removal type. Caller passes the card and its controller-at-leave-time;
-// downstream trigger handlers reading ctx.event.card see the card object
-// in the same state it left play (slotIdx intact, bargainsNum intact, etc).
+// downstream trigger handlers read the leaving card as ctx.event.subject_card
+// (NOT event.card — that legacy field is gone; reading it broke Archdemon's
+// bargain payout and Endomorph's absorb post-E1). The object arrives in the
+// same state it left play (slotIdx intact, bargainsNum intact, etc).
 //
 // For creatures that fire BOTH this AND cardDies (on death), the leaves
 // event emits FIRST (before resetInPlayState/dies-emit). Cards that want
@@ -4609,16 +4649,55 @@ function emitLeavesBattlefield(card, controller, destZone, extraSources) {
                  extraSources || [{card, controller}]);
 }
 
-// Credit killer with the dying creature's keywords (runtime grants included).
-// Skips 'defender' (never offered as sticker reward).
+// Record a damage event's attribution on the victim. ONE writer for the two
+// views every damage site used to hand-sync:
+//   damagedBySources — Set of source iids that damaged this card this turn
+//     (cleared in the EOT cleanup sweep); powers Sengir-style "a creature
+//     dealt damage by this card this turn dies" triggers
+//     (card_damaged_by_this). ANY iid-bearing source records — creature,
+//     artifact, spell — so future non-creature damage sources ("whenever
+//     this kills something, …") aren't pre-foreclosed. Today only
+//     battlefield permanents can LISTEN for the predicate, so non-creature
+//     entries are inert evidence; the original creature-source gate bought
+//     nothing but a smaller Set and contradicted its own design note
+//     ("populated by combat & spell damage").
+//   killedBy — player key, last-writer-wins; if the creature ends up dying,
+//     this is who gets keyword-claim credit (claimKeywordsFromKill). Written
+//     unconditionally — spells DO claim kills for the reward screen.
+// DAMAGE only — destroy/edict paths set killedBy directly (destroying isn't
+// dealing damage, so they must never stamp damagedBySources).
+function recordDamage(victim, sourceCard, controller) {
+  if (!victim) return;
+  victim.killedBy = controller;
+  if (sourceCard && sourceCard.iid != null) {
+    if (!(victim.damagedBySources instanceof Set)) victim.damagedBySources = new Set();
+    victim.damagedBySources.add(sourceCard.iid);
+  }
+}
+
+// The shared trophy rule — what may be claimed from a slain creature, used by
+// BOTH keyword-claim systems (Endomorph's absorb and the end-of-game reward
+// claims): the keywords the creature intrinsically OWNED — printed + sticker-
+// granted + subtype-implied (intrinsicKeywords) — never borrowed magic (lord
+// auras, until-EOT grants), and never defender (not a trophy, never offered
+// as a sticker reward). Reading intrinsics rather than the live keywords
+// array makes the rule independent of death-pipeline ordering: today
+// resetInPlayState happens to strip grants before the dies-event emits, but
+// no claim path should rely on that.
+function claimableKeywords(corpse) {
+  return intrinsicKeywords(corpse).filter(kw => kw !== 'defender');
+}
+
+// Credit killer with the dying creature's claimable keywords (see
+// claimableKeywords — intrinsics only; borrowed lord/EOT grants are NOT
+// claimable, matching Endomorph's absorb rule).
 function claimKeywordsFromKill(card, killer) {
   if (!card || !hasType(card, 'Creature')) return;
   if (!killer || !G[killer]) return;
   if (!(G[killer].claimedKeywords instanceof Set)) {
     G[killer].claimedKeywords = new Set();
   }
-  for (const kw of (card.keywords || [])) {
-    if (kw === 'defender') continue;
+  for (const kw of claimableKeywords(card)) {
     G[killer].claimedKeywords.add(kw);
   }
 }
@@ -5213,13 +5292,9 @@ function dealCombatDamage(blocked, defender, dealsDamage) {
         blk.damage += lethalNeeded;
         dmgToBlk = lethalNeeded;
         if (atkDeathtouch && !indestructible) blk.dealtDeathtouch = true;
-        if (!(blk.damagedBySources instanceof Set)) blk.damagedBySources = new Set();
-        blk.damagedBySources.add(atk.iid);
-        // Tag the killer for keyword-claim attribution. Last-writer-wins —
-        // see card init comment. Unconditional on the damage event, since
-        // we want even non-lethal damage to "stake the claim" if the
-        // creature ends up dying later in combat.
-        blk.killedBy = atkCtrl;
+        // Even non-lethal damage "stakes the claim" if the creature ends up
+        // dying later in combat (recordDamage: last-writer-wins killedBy).
+        recordDamage(blk, atk, atkCtrl);
         applyLifelink(atk, atkCtrl, lethalNeeded);
         remaining -= lethalNeeded;
       } else {
@@ -5232,12 +5307,8 @@ function dealCombatDamage(blocked, defender, dealsDamage) {
         attackerDamage += bPow;
         dmgToAtk = bPow;
         if (blk.keywords.includes('deathtouch')) atk.dealtDeathtouch = true;
-        if (!(atk.damagedBySources instanceof Set)) atk.damagedBySources = new Set();
-        atk.damagedBySources.add(blk.iid);
-        // Tag the attacker as killed by blocker's controller (mirror of
-        // blocker tagging above). If the attacker dies, the blocker's
-        // controller gets the keyword-claim credit.
-        atk.killedBy = blkCtrl;
+        // Mirror of the blocker tagging above.
+        recordDamage(atk, blk, blkCtrl);
         applyLifelink(blk, blkCtrl, bPow);
       }
       // Honest log: show the actual exchange. "X (2) fights Y (3)" reads
@@ -5258,10 +5329,7 @@ function dealCombatDamage(blocked, defender, dealsDamage) {
       } else if (unsatisfied.length > 0) {
         const dump = unsatisfied[0].card;
         dump.damage += remaining;
-        if (!(dump.damagedBySources instanceof Set)) dump.damagedBySources = new Set();
-        dump.damagedBySources.add(atk.iid);
-        // Tag killer for keyword-claim if this damage proves lethal.
-        dump.killedBy = atkCtrl;
+        recordDamage(dump, atk, atkCtrl);
         applyLifelink(atk, atkCtrl, remaining);
         // Also log the dump so the player sees that the attacker piled
         // leftover damage onto one blocker. Without this, the per-pair

@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.1.11`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.1.17`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -1236,14 +1236,6 @@ cream disc, darkened glyph, pixel-sampled tap coin; innate Forest coin gold +
 "Innate: …" tooltip, big mana suppressed, popup keeps the word; size knob
 10→20→6px live via the CSS var).
 
-> **MUST UPDATE on every dev-branch push that touches code.** Bump `VERSION` in `js/main.js` AND the line above, in the same commit. GitHub Pages caches aggressively; the version string is the only reliable way to confirm a fresh build is live.
-
-Always work on `dev` for html-proto changes.
-
-Deferred work lives in `BACKLOG.md` (gating rules in `/CLAUDE.md`).
-
-
-
 v2.1.11: 11-issue batch (lands display, STC cast-from-exile, Stapler fizzle,
 templating). LANDS: (1) basics now carry their color subtype in types[]
 ("Basic Land - Swamp"); explicit tap-abilities kept in card.json (the Godot
@@ -1317,3 +1309,137 @@ hand them back on a resolution fizzle) was replaced wholesale by the 601.2h
 costs-last restructure in (9) per review discussion - no refund machinery
 survives. Animated-land + big-symbol left as-is by design (a Sudden-Vines'd
 Forest still IS a basic-typed land that taps for {G}; cf. Dryad Arbor).
+
+v2.1.12: engine-hygiene batch. (1) `makeCard` template→instance copy inverted
+from whitelist to copy-by-default: the instance literal keeps only fields
+needing bespoke copy semantics; every other template field deep-copies to the
+instance automatically (templates are pure JSON — same rationale as the §3.10
+staple-merge clone), guarded by a `MAKECARD_INSTANCE_KEYS` denylist of
+runtime-only keys (warn on template collision). Closes the "new card-level
+flag silently dropped on the real game path" class (the PR #86
+`distinct_targets` bug) and fixes 9 latent template-only drops (`special`,
+`custom_text`, `build_on_draw`, `permanent_eot`, `rip_on_target`,
+`art_ladder`, `static_cost_bump`, `trigger_pool_seed`, `charges_at_run_start`
+now carry to instances). New copy-by-default guard in
+`test_distinct_targets.js` pins every-field survival across all 297
+templates. (2) New `test_lord_keyword_grants.js` (27 checks) — dedicated
+static-lord keyword-grant coverage: real entry path (emit during cast
+resolution), real leave paths (death via graveyard move, bounce to hand),
+controller + cross-lord subtype gating, intrinsic-keyword protection,
+multi-source survival, +1/+1 stat half via getStats, six-lord sweep.
+(3) `controller.js` Modal focus-restore + fullscreen-request catches now log
+quiet `console.warn` breadcrumbs instead of swallowing. Suite 73 files /
+1723 green, lint clean. Browser-verified separately (no code change): all 13
+Modal-managed modals open/close + Escape semantics, and the Architect's
+Codex trigger-build clickthrough (3 conditions → 3 effects → keep/replace
+compare on redraw) — zero console errors; BACKLOG "Recently done" has the
+detail, incl. the SVG-pip item retired as already-shipped (v2.1.9/v2.1.10).
+
+v2.1.13: Endomorph absorb was DEAD — every kill fizzled ("no victim
+recorded") since the E1 zone-change migration renamed the dies-event payload
+to `subject_card` while `endomorph_absorb` kept reading the retired
+`event.card` (the exact bug already found and fixed in
+`bargain_sticker_other`; Endomorph was missed, and with no dedicated test +
+a benign fizzle log, selfplay never noticed). One-line fix (read
+`subject_card`), stale `emitLeavesBattlefield` doc-comment corrected, and a
+new `test_endomorph_absorb.js` (23 checks) pins the whole pipeline:
+regression pin on the payload, keyword-priority pick, +1/+1 fallback via
+modifiers, defender exclusion, novelty diff vs already-known keywords,
+dead-Endomorph graveyard-corpse path (mutual kill still mutates the corpse +
+persists the slot sticker), opp-side absorb without run persistence.
+Surfaced by a code-dig into how the absorb actually executes, requested on
+the BACKLOG endomorphAbsorb item. Suite 74 files / 1746 green, lint clean.
+
+v2.1.14: composed the two keyword-claim systems around one stated trophy
+rule. (1) `claimableKeywords(corpse)` — intrinsicKeywords minus defender —
+is now THE rule for what a kill yields, used by BOTH Endomorph's absorb and
+the end-of-game `claimedKeywords` reward claims. Previously the rule was
+emergent (absorb read the corpse post-resetInPlayState, so it excluded lord/
+EOT grants only by death-pipeline ordering) and inconsistent (the reward
+claim ran pre-reset, so the reward screen offered keywords a creature only
+had because its lord was standing next to it — auras claimed as trophies).
+BEHAVIOR CHANGES (user-blessed for mechanical consistency): the reward
+screen no longer offers borrowed lord/EOT-granted keywords from kills, and
+absorb novelty is judged intrinsics-vs-intrinsics — a keyword Endomorph
+merely borrows (until-EOT flying) no longer blocks absorbing it permanently
+from a kill. (2) `recordDamage(victim, sourceCard, controller)` — one writer
+for the damage-attribution pair every site hand-synced (`damagedBySources`
+Set for Sengir-style dealt-damage-by triggers — creature sources only;
+`killedBy` last-writer-wins player key for reward credit — all sources):
+the damage effect + three combat sites now call it; destroy/edict paths keep
+setting `killedBy` directly (destroying isn't dealing damage, must never
+stamp `damagedBySources`). (3) endomorph_absorb restructured around the
+shared rule: `ABSORB_KEYWORD_PRIORITY` hoisted to a module const, unified
+absorber resolution (live card or graveyard corpse), and the bounced-
+Endomorph ghost edge fixed — it used to log a successful absorb while
+applying nothing; now logs an honest "absorb fades — it left play before
+feeding." `test_endomorph_absorb.js` grown to 44 checks: shared-rule pins
+for both systems (lord-granted haste claimable by NEITHER; sticker lifelink
+by BOTH), intrinsic-novelty (borrowed keyword still absorbed for keeps),
+intrinsic Wall-defender exclusion both shapes, bounced-fade edge, and the
+finisher-kill section (chip + burn finish dying at the checkDeaths SBA
+sweep; chip + destroy finish via moveToGraveyard; untouched-bystander
+negative) — pinned against death-pipeline reordering, not just current
+behavior. Suite 74 files / 1767 green, lint clean, selfplay 200/200 clean
+(0 crashes, 0 invariant violations).
+
+v2.1.15: the "dealt damage by this dies" trigger preamble now states its
+turn-scoping — "Whenever a creature dealt damage by this card this turn
+dies," (canonical Sengir wording; user-confirmed the mechanic is meant to
+be turn-scoped — `damagedBySources` clears in the EOT cleanup sweep, so the
+old text over-promised). "this card" rather than the preamble family's bare
+"this" to avoid the "by this this turn" stutter. Filter-parity fix in the
+v2.0.7 tradition: the text now renders the restriction the engine enforces.
+Wording pinned in `test_endomorph_absorb.js` (45 checks). Suite 74 files /
+1768 green, lint clean.
+
+v2.1.16: recordDamage drops its creature-source gate — ANY iid-bearing
+damage source (creature, artifact, spell) now stamps the victim's
+`damagedBySources`. The gate dated to the set's birth commit ("only
+meaningful when the source is a creature"), bought nothing functional
+(nothing can listen for a non-creature source today, so the extra entries
+are inert evidence), and contradicted its own design note ("populated by
+combat & spell damage"). Removing it un-forecloses two future card shapes:
+a non-creature permanent with a "dealt damage by this card this turn dies"
+trigger (an artifact pinger — would now work outright) and a grows-per-kill
+spell (still needs a listening mechanism — graveyard spells aren't trigger
+sources — but the damage evidence is recorded). killedBy semantics
+unchanged; destroy/edict paths still bypass recordDamage entirely. Zero
+observable behavior change today: suite 74 files / 1768 green (the
+spell-finisher pin in test_endomorph_absorb.js flipped to assert both
+damagers record), lint clean, selfplay 200/200 clean (0 crashes,
+0 invariant violations).
+
+v2.1.17: PR #96 review follow-up — MAKECARD_INSTANCE_KEYS topped up with the
+six runtime instance fields assigned OUTSIDE makeCard (tempControlUntilEot,
+copyOf, copySourceIid, bargainsNum, chargesLeft, _builtThisGame). The
+copy-by-default loop only warns-and-ignores keys on that denylist, so a
+template declaring one of the missing six would have been deep-copied
+straight onto the instance — e.g. a truthy template copyOf would trip
+resetInPlayState's copy-revert path. The denylist comment now states the
+maintenance rule the inversion created: new runtime instance fields must be
+added there too. New denylist-probe guard in test_distinct_targets.js
+(synthetic template declaring one key per runtime system → all ignored with
+warnings; literal-initialized damage keeps its runtime init). Suite 74
+files / 1785 green.
+
+v2.1.18: review-of-the-review — one more denylist key: `stickerTypes`
+(PR #93's gold-type-tag display metadata). It slipped v2.1.17's sweep
+because that sweep's criterion was "assigned outside makeCard," and
+stickerTypes is written DURING makeCard — but additively
+(`recordStickerType` never resets the array), so a template-declared value
+would deep-copy through and paint bogus gold type tags rather than being
+rebuilt away. The denylist comment now states the sharper criterion: "not
+unconditionally rebuilt at instantiation." Probe guard extended (synthetic
+template injects stickerTypes → warned + ignored). The rest of the
+assignment-sweep came back clean: `deckColors` is built field-by-field on a
+synthetic view (uninjectable), `target_slot`/`tplId` are effect-level/
+loader-handled. Suite 74 files / 1786 green, lint clean.
+
+> **MUST UPDATE on every dev-branch push that touches code.** Bump `VERSION` in `js/main.js` AND the line above, in the same commit. GitHub Pages caches aggressively; the version string is the only reliable way to confirm a fresh build is live.
+
+Always work on `dev` for html-proto changes.
+
+Deferred work lives in `BACKLOG.md` (gating rules in `/CLAUDE.md`).
+
+

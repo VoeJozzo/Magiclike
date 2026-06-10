@@ -4,7 +4,7 @@ Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folde
 
 ## Version
 
-**Current: `v2.1.11`** — source of truth: `js/main.js` `const VERSION` (keep in sync on bump). Full version history: [`CHANGELOG.md`](CHANGELOG.md).
+**Current: `v2.1.18`** — source of truth: `js/main.js` `const VERSION` (keep in sync on bump). Full version history: [`CHANGELOG.md`](CHANGELOG.md).
 
 ## File structure
 
@@ -51,7 +51,7 @@ Schema migrations live in the `RUN` module and run on load.
 
 ## Design backlog
 
-The earlier in-code roadmap comment block has been removed as features shipped (tokens, modal spells, etc. are now implemented). Static Lords are fully implemented: lords grant both stat changes (via `getStats`) AND keywords (via `applyStaticKeywordGrants`, called from `emit()` with `grantedBy`-Map leave-play cleanup) — grep `cards/*/card.json` for `static_buffs` to find them (6 grant keywords: goblin_chieftain/haste, field_marshal & knight_commander/vigilance, spirit_shepherd/hexproof, apex_elder/trample, skyfire_drakelord/first_strike). Note: the keyword-grant path has no dedicated unit test yet (only selfplay coverage). Ask the user about current priorities before assuming what's next.
+The earlier in-code roadmap comment block has been removed as features shipped (tokens, modal spells, etc. are now implemented). Static Lords are fully implemented: lords grant both stat changes (via `getStats`) AND keywords (via `applyStaticKeywordGrants`, called from `emit()` with `grantedBy`-Map leave-play cleanup) — grep `cards/*/card.json` for `static_buffs` to find them (6 grant keywords: goblin_chieftain/haste, field_marshal & knight_commander/vigilance, spirit_shepherd/hexproof, apex_elder/trample, skyfire_drakelord/first_strike). The keyword-grant path has dedicated coverage in `tests/test_lord_keyword_grants.js` (real entry/leave paths, gating, multi-source). Ask the user about current priorities before assuming what's next.
 
 ## Testing
 
