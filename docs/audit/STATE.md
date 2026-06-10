@@ -76,7 +76,9 @@ no longer binds.
   so chunk-6 behavioral fixes demote to *stage* by default.
 - 2026-06-10 ~07:55: chunk-6 DRY RUN complete. 7 findings (A6-1..A6-7); one
   docs-only ship (A6-4) merged to workshop via PR #97 (merge ed3ee53, author
-  Thaumaturge-Claude); rest stage/park. Suite 1786/1786 green, lint clean.
+  Thaumaturge-Claude); rest stage/park. Long-lived findings PR #98
+  (`audit/findings` → `Audit-Review-Refactor`, author Thaumaturge-Claude) opened.
+  Suite 1786/1786 green, lint clean.
   Self-QA PASS. **Dry-run gates all passed → arming the queue (see Armed line).**
   Plumbing fixes surfaced (see NIGHTLY.md): gh-bot.ps1 must be invoked
   `powershell.exe -NoProfile -ExecutionPolicy Bypass -File ...` (execution
