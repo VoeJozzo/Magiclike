@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.1.10`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.1.11`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -1235,6 +1235,31 @@ innate-coin coverage; 1695 green, lint clean. Browser-verified (tap pip, tooltip
 cream disc, darkened glyph, pixel-sampled tap coin; innate Forest coin gold +
 "Innate: …" tooltip, big mana suppressed, popup keeps the word; size knob
 10→20→6px live via the CSS var).
+
+v2.1.11: engine-hygiene batch. (1) `makeCard` template→instance copy inverted
+from whitelist to copy-by-default: the instance literal keeps only fields
+needing bespoke copy semantics; every other template field deep-copies to the
+instance automatically (templates are pure JSON — same rationale as the §3.10
+staple-merge clone), guarded by a `MAKECARD_INSTANCE_KEYS` denylist of
+runtime-only keys (warn on template collision). Closes the "new card-level
+flag silently dropped on the real game path" class (the PR #86
+`distinct_targets` bug) and fixes 9 latent template-only drops (`special`,
+`custom_text`, `build_on_draw`, `permanent_eot`, `rip_on_target`,
+`art_ladder`, `static_cost_bump`, `trigger_pool_seed`, `charges_at_run_start`
+now carry to instances). New copy-by-default guard in
+`test_distinct_targets.js` pins every-field survival across all 297
+templates. (2) New `test_lord_keyword_grants.js` (27 checks) — dedicated
+static-lord keyword-grant coverage: real entry path (emit during cast
+resolution), real leave paths (death via graveyard move, bounce to hand),
+controller + cross-lord subtype gating, intrinsic-keyword protection,
+multi-source survival, +1/+1 stat half via getStats, six-lord sweep.
+(3) `controller.js` Modal focus-restore + fullscreen-request catches now log
+quiet `console.warn` breadcrumbs instead of swallowing. Suite 73 files /
+1723 green, lint clean. Browser-verified separately (no code change): all 13
+Modal-managed modals open/close + Escape semantics, and the Architect's
+Codex trigger-build clickthrough (3 conditions → 3 effects → keep/replace
+compare on redraw) — zero console errors; BACKLOG "Recently done" has the
+detail, incl. the SVG-pip item retired as already-shipped (v2.1.9/v2.1.10).
 
 > **MUST UPDATE on every dev-branch push that touches code.** Bump `VERSION` in `js/main.js` AND the line above, in the same commit. GitHub Pages caches aggressively; the version string is the only reliable way to confirm a fresh build is live.
 
