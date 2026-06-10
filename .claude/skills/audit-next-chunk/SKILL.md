@@ -71,14 +71,18 @@ Dry run section).
    subsystem (note it in STATE.md's Log if that chunk is already done).
 5. **Read Joe's decision inbox** — comments on the findings PR (#98):
    `… gh-bot.ps1 pr view 98 --json comments --jq '.comments[] | [.author.login, .body] | @tsv'`
-   (canonical invocation; only comments authored by `VoeJozzo` are
-   decisions). A verdict like `A1-1: go` promotes that staged finding to a
-   fix PR — build it FIRST (before new chunk claims), with its declared
-   regression test, through the normal ship mechanics, then reply on the PR
-   thread confirming what shipped (via gh-bot, so the reply attributes to
-   the bot). `hold`/`park`/questions → record in NIGHTLY.md's decision
-   queue and reply acknowledging. Never re-ask a question Joe has already
-   answered on the thread.
+   (canonical invocation). Protocol (Joe-requested, 2026-06-10): **one bot
+   comment per open decision item** (🗳️-prefixed, "A<chunk>-<n> — title");
+   Joe replies under an item's comment with his verdict (`go` / `option B` /
+   `hold — question`). Only `VoeJozzo`-authored comments are decisions;
+   associate each by the nearest preceding 🗳️ item or an explicit ID. A `go`
+   promotes that staged finding to a fix PR — build it FIRST (before new
+   chunk claims), with its declared regression test, through the normal
+   ship mechanics, then reply under the SAME item confirming what shipped
+   (via gh-bot). Questions → answer under the item. `hold`/`park` → record
+   in NIGHTLY.md. When a chunk completes with new stage-class findings,
+   POST one 🗳️ comment per item (TL;DR, recommendation + confidence, packet
+   link, "Reply here"). Never re-ask anything Joe already answered.
 
 ### 1. Claim
 
