@@ -190,6 +190,11 @@ const CATEGORY_A = [
   // blocker incl. indestructible (marked, survives); lifelink always gains
   // full power even when the damage is overkill.
   'test_combat_deathtouch_lifelink.js',
+  // Audit A2-1 (design ruling, PR #98) — first-strike membership snapshotted
+  // at combat-damage start: a lord dying in pass 1 doesn't make its granted
+  // creature deal damage twice, and a creature gaining first strike between
+  // passes still deals its single snapshot-assigned pass-2 hit.
+  'test_combat_first_strike_snapshot.js',
   // Audit A1-9 — DRAW-step log truthfulness: "X draws." only logs when a
   // card actually moved (no phantom-draw line on deck-out / Phylactery rip).
   'test_draw_log_truthfulness.js',

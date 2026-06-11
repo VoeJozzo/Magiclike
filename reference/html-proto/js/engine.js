@@ -5482,15 +5482,30 @@ function resolveCombatDamage() {
   for (const [bIid] of G.blockers) {
     const fb = findCard(bIid); if (fb) allCombatants.push(fb.card);
   }
-  const hasFirstStrike = allCombatants.some(c => c.keywords.includes('first_strike'));
+  // A2-1: first-strike membership is SNAPSHOTTED here, once, before any
+  // damage — both strike steps consult this set, never live keywords.
+  // Deaths are swept BETWEEN the passes (afterEffectsApplied), and a dying
+  // lord revokes its granted keywords (clearRestrictionsFromSource) — under
+  // a live read, a creature whose first-strike grant died with its lord
+  // re-qualified for the pass-2 `!first_strike` filter and dealt damage
+  // TWICE (and a creature gaining first strike between passes dealt zero).
+  // Each combatant deals damage in exactly the wave the snapshot assigns:
+  // pass 1 if it had first strike when damage started, pass 2 otherwise —
+  // never both (no accidental double-strike semantics). Design ruling,
+  // PR #98, 2026-06-11 (audit A2-1): per MTG — step 507 has no priority
+  // window between the strike steps, so nothing can respond to the
+  // revocation; canon §803.
+  const fsIids = new Set(
+    allCombatants.filter(c => c.keywords.includes('first_strike')).map(c => c.iid)
+  );
 
-  if (hasFirstStrike) {
-    // First-strike step: only first-strikers deal damage.
-    dealCombatDamage(blocked, defender, c => c.keywords.includes('first_strike'));
+  if (fsIids.size > 0) {
+    // First-strike step: only snapshot first-strikers deal damage.
+    dealCombatDamage(blocked, defender, c => fsIids.has(c.iid));
     afterEffectsApplied();
     if (G.gameOver) return;
-    // Normal step: anyone still alive that DOESN'T have first strike.
-    dealCombatDamage(blocked, defender, c => !c.keywords.includes('first_strike'));
+    // Normal step: everyone who did NOT have first strike at damage start.
+    dealCombatDamage(blocked, defender, c => !fsIids.has(c.iid));
   } else {
     // No first strike — single pass, all combatants.
     dealCombatDamage(blocked, defender, () => true);

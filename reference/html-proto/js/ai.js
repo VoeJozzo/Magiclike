@@ -724,7 +724,14 @@ function simulateCombat(state, attackerWho, attackerIids, blockMap) {
       const w = snap(bIid); if (w) allCombatants.push(w.card);
     }
   }
-  const hasFirstStrike = allCombatants.some(c => c.keywords.includes('first_strike'));
+  // A2-1 lockstep: snapshot first-strike membership once, mirroring
+  // resolveCombatDamage's damage-start snapshot. Within this simulation the
+  // working copies' keywords never mutate between strikes (no lord-death
+  // revocation is simulated), so this is shape-parity with the engine, not
+  // a behavior change here.
+  const fsIids = new Set(
+    allCombatants.filter(c => c.keywords.includes('first_strike')).map(c => c.iid)
+  );
 
   const isDead = (w) => {
     if (!w) return true;
@@ -817,9 +824,9 @@ function simulateCombat(state, attackerWho, attackerIids, blockMap) {
     }
   };
 
-  if (hasFirstStrike) {
-    oneStrike(c => c.keywords.includes('first_strike'));
-    oneStrike(c => !c.keywords.includes('first_strike'));
+  if (fsIids.size > 0) {
+    oneStrike(c => fsIids.has(c.iid));
+    oneStrike(c => !fsIids.has(c.iid));
   } else {
     oneStrike(() => true);
   }

@@ -3,7 +3,7 @@ type: rules
 tags: [magiclike, rules]
 section: "800"
 created: 2026-06-04
-updated: 2026-06-10
+updated: 2026-06-11
 ---
 
 # 800. Combat
@@ -31,7 +31,9 @@ A blocker assignment is legal if:
 Combat damage is resolved in **up to two passes**:
 
 1. **Pass 1 — First-Strike pass**: skipped entirely if no attacker or blocker in this combat has [[900-keywords|first strike]]. Otherwise, every attacker and blocker that has first strike assigns and deals damage. State-based actions sweep (creatures die). Queued death triggers drain and resolve when priority next opens (MAIN2 — step 507 has no priority window; see [[600-priority-and-the-stack|§605]]). Win conditions checked.
-2. **Pass 2 — Normal pass**: every attacker and blocker that did NOT have first strike (and any first-strike creatures that survived pass 1, which contribute no further damage in our current implementation — see Implementation status) assigns and deals damage. State-based actions sweep again. Queued death triggers drain and resolve when priority next opens (MAIN2).
+2. **Pass 2 — Normal pass**: every attacker and blocker that did NOT have first strike at the snapshot (and any first-strike creatures that survived pass 1, which contribute no further damage — see Implementation status) assigns and deals damage. State-based actions sweep again. Queued death triggers drain and resolve when priority next opens (MAIN2).
+
+**Wave membership is snapshotted once, when combat damage begins.** Which creatures deal damage in which pass is fixed at the start of step 507; both passes consult that snapshot, never live keywords. Keyword changes between the passes do not reassign anyone's wave: a creature whose first strike was granted by a lord that dies in pass 1 has already dealt its pass-1 damage and deals none in pass 2, and a creature that *gains* first strike between the passes still deals its single pass-2 hit. Each creature deals damage in exactly the one wave the snapshot assigns — never both (design ruling, PR #98, 2026-06-11; audit A2-1: step 507 has no priority window between the passes, so nothing can respond to the change — the two waves are one atomic damage event).
 
 Within each pass, each attacker assigns damage as follows:
 
@@ -51,4 +53,5 @@ When a creature deals damage and its source has [[900-keywords|lifelink]], the s
 - **Multi-blocker damage assignment** is currently split between the two implementations and the divergence is gameplay-affecting. See `docs/DIVERGENCE.md` items C1, C2 for details. Briefly: html-proto matches the canonical rule above (smart distribution, deathtouch reduces threshold to 1). Godot **dumps all attacker damage on the first assigned blocker** — three 1/1 chumps blocking a 5/5 result in 1 death (Godot) vs. 3 deaths (proto). Harmonization to Godot is on the to-do list.
 - **Menace single-blocker enforcement** is now aligned (`docs/DIVERGENCE.md` C3): both engines reject a lone block on a menace attacker at declaration/confirmation. Godot enforces it in `_legal_confirm_blocks` (via `_menace_blocks_are_legal`/`_prune_single_menace_blocks`) and keeps the damage-time collapse only as a guard for imported/stale states; proto rejects at declaration.
 - **First-strike interaction with double-strike**: double-strike is not implemented in either. A first-strike creature surviving pass 1 contributes no damage in pass 2.
+- **First-strike wave snapshot** (§803): the html-proto snapshots first-strike membership once at damage start (`resolveCombatDamage` — audit A2-1; design ruling, PR #98, 2026-06-11). The Godot port currently re-reads `has_keyword("first_strike")` live inside each pass (`_combat_damage_pass`) — harmonize to the snapshot rule when the C1/C2 combat work lands.
 - **Damage assignment by attacker**: in MTG the attacker chooses the blocker order at declare-blockers step (508.6). Neither implementation offers that choice, but the substitute order differs per engine: the **html-proto** re-sorts living blockers at damage time by its kill-value heuristic, indestructibles last (`dealCombatDamage`, engine.js:5257-5383 — deliberate, see the comments there); **Godot** uses the order the defender declared them in (`blockers[0]` first) pending C1 harmonization. (Audit A2-11 corrected this bullet — it previously claimed declaration order in both implementations.)
