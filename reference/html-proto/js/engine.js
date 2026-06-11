@@ -2063,7 +2063,9 @@ function searchLibraryToHand(ctx, filter) {
   const matches = lib.filter(c => matchesSearchFilter(c, filter));
   if (matches.length === 0) { log('No matching card in library.', 'sp'); shuffle(lib); return; }
   if (ctx.controller === 'you') {
-    G.pendingSearch = { who: 'you', filter, source: ctx.sourceName };
+    // sourceIid rides along so doSearchPick can attribute its zone-change
+    // emit to the searching card (audit A3-6).
+    G.pendingSearch = { who: 'you', filter, source: ctx.sourceName, sourceIid: ctx.sourceIid };
     log(`${ctx.sourceName} — choose a card from your library.`, 'sp');
     return;
   }
@@ -2073,6 +2075,8 @@ function searchLibraryToHand(ctx, filter) {
   G[ctx.controller].hand.push(card);
   shuffle(lib);
   log(`${pname(ctx.controller)} searches for ${card.name}.`, 'sp');
+  // A3-6: a tutor is a library→hand move like any other.
+  emitZoneChange(card, ctx.controller, 'library', 'hand', undefined, ctx.sourceIid);
   tryBuildOnDraw(card, ctx.controller);
 }
 // Discard from a player's hand. Human → forcedDiscard prompt (resolved later by
@@ -2084,14 +2088,20 @@ function discardFromHand(ctx, who, amount) {
   const n = Math.min(amount, tp.hand.length);
   if (n === 0) { log(`${pname(who)} has no cards to discard.`, 'sp'); return; }
   if (who === 'you') {
-    G.forcedDiscard = { who: 'you', remaining: n, source: ctx.sourceName };
+    // sourceIid rides along so doDiscard can attribute its zone-change emit
+    // to the card that forced the discard (audit A3-6).
+    G.forcedDiscard = { who: 'you', remaining: n, source: ctx.sourceName, sourceIid: ctx.sourceIid };
     log(`${ctx.sourceName} — choose ${n} card(s) to discard.`, 'sp');
     return;
   }
   const sorted = tp.hand.slice().sort((a, b) => costTotalCard(a) - costTotalCard(b));
   for (let i = 0; i < n; i++) {
     const idx = tp.hand.findIndex(c => c.iid === sorted[i].iid);
-    if (idx >= 0) tp.graveyard.push(tp.hand.splice(idx, 1)[0]);
+    if (idx < 0) continue;
+    const discarded = tp.hand.splice(idx, 1)[0];
+    tp.graveyard.push(discarded);
+    // A3-6: discards are announced — card_moves(hand, graveyard) fires.
+    emitZoneChange(discarded, who, 'hand', 'graveyard', undefined, ctx.sourceIid);
   }
   log(`${pname(who)} discards ${n}.`, 'sp');
 }
@@ -2469,6 +2479,14 @@ const EFFECTS = {
     fresh.owner = ctx.controller;
     G[ctx.controller].library.push(fresh);
     shuffle(G[ctx.controller].library);
+    // A3-6: the fresh instance materializes in the thief's library — a mint,
+    // not a move, so from_zone is the synthetic 'none' (same convention as
+    // token minting). The CONSUMED original is deliberately silent: the
+    // stolen permanent's leave already emitted above, and a stolen stack
+    // spell ceases to exist (counterspell-consume semantics — no arrival,
+    // no event; the plain `counter` handler is the one that emits
+    // stack→graveyard).
+    emitZoneChange(fresh, ctx.controller, 'none', 'library', undefined, ctx.sourceIid);
     const verb = fromStack ? 'counters and shuffles' : 'shuffles';
     log(`${ctx.sourceName} ${verb} ${stolenCardName} into ${pname(ctx.controller)}'s library — yours forever.`, 'sp');
   },
@@ -2491,6 +2509,10 @@ const EFFECTS = {
     // graveyard for the rest of the game.
     G[removed.card.owner || removed.controller].graveyard.push(removed.card);
     log(`${ctx.sourceName} counters ${removed.card.name}!`, 'sp');
+    // A3-6: a countered spell genuinely moves stack→graveyard — announce it.
+    // `controller` stays the caster (the card was theirs on the stack), even
+    // though the graveyard it lands in is owner-routed.
+    emitZoneChange(removed.card, removed.controller, 'stack', 'graveyard', undefined, ctx.sourceIid);
   },
   add_mana(ctx, params) {
     // Color-choice form (§3.9): {choose:'any'} or {choose:['W','U']} adds one
@@ -2537,7 +2559,7 @@ const EFFECTS = {
     losePlayerLife(who, -amount, ctx.sourceIid);
   },
   draw(ctx, params) {
-    for (let i=0;i<params.amount;i++) drawCard(ctx.controller);
+    for (let i=0;i<params.amount;i++) drawCard(ctx.controller, ctx.sourceIid);
     log(`${pname(ctx.controller)} draws ${params.amount}.`, 'sp');
   },
   // Unified card-movement primitive (effects-refactor §4.2 / decision 10).
@@ -2589,16 +2611,20 @@ const EFFECTS = {
       return;
     }
     for (let n = 0; n < amount; n++) {
-      // Draw: delegate to drawCard so deck-out / Phylactery semantics hold.
+      // Draw: delegate to drawCard so deck-out / Phylactery semantics hold
+      // (drawCard emits the library→hand zone change — audit A3-6).
       if (from === 'library' && to === 'hand' && sel === 'controller_top') {
-        drawCard(ctx.controller);
+        drawCard(ctx.controller, ctx.sourceIid);
         continue;
       }
       // Mill: top of controller's library → graveyard.
       if (from === 'library' && to === 'graveyard' && sel === 'controller_top') {
         const lib = G[ctx.controller].library;
         if (!lib.length) break;
-        G[ctx.controller].graveyard.push(lib.shift());
+        const milled = lib.shift();
+        G[ctx.controller].graveyard.push(milled);
+        // A3-6: mills are announced — card_moves(library, graveyard) fires.
+        emitZoneChange(milled, ctx.controller, 'library', 'graveyard', undefined, ctx.sourceIid);
         continue;
       }
       const t = (sel === 'target') ? (target || ctx.chosen)
@@ -2662,9 +2688,14 @@ const EFFECTS = {
         const dest = card.owner || ctx.controller;
         if (to === 'hand') G[dest].hand.push(card);
         else if (to === 'library') { G[dest].library.push(card); if (post.shuffle) shuffle(G[dest].library); }
-        else if (to === 'battlefield') placeCardOnBattlefield(ctx, card, from, post);  // reanimate / exile-return
+        else if (to === 'battlefield') { placeCardOnBattlefield(ctx, card, from, post); continue; }  // reanimate / exile-return (emits its own ETB)
         else if (to === 'exile' && from === 'graveyard') G[dest].exile.push(card);
         else { console.warn('move_card: unsupported', from, 'dest', to); break; }
+        // A3-6: non-battlefield arrivals from graveyard/exile are announced
+        // here (battlefield arrivals emit inside placeCardOnBattlefield).
+        // `controller` = the owner whose zone it lands in — graveyard/exile
+        // cards have no separate controller.
+        emitZoneChange(card, dest, from, to, undefined, ctx.sourceIid);
         continue;
       }
       console.warn('move_card: unsupported from_zone', from);
@@ -3861,12 +3892,22 @@ function emit(evt, extraSources) {
   }
 }
 
-// Unified zone-change emission (Slice 2 / DIVERGENCE E2). The sole battlefield
-// enter/leave/death event now — composable triggers (event: 'card_zone_change')
-// match on this; the legacy cardEntersBattlefield / cardDies /
-// cardLeavesBattlefield events were retired once card migration completed.
+// Unified zone-change emission (Slice 2 / DIVERGENCE E2). The single
+// card-movement event — composable triggers (event: 'card_zone_change') match
+// on this; the legacy cardEntersBattlefield / cardDies / cardLeavesBattlefield
+// events were retired once card migration completed. Since the A3-6 build-out
+// (v2.1.40) EVERY genuine card move between zones routes through here, not
+// just battlefield-touching ones — draws, tutors, discards, mills, casts,
+// counters, resolutions, graveyard/exile recursion, and 'none'-sourced mints.
+// The supported pairs and the deliberate NON-events (game setup, rips/
+// annihilation, staple merges, control changes, shuffles) live in canon
+// §1002.2 / PROTOCOL §3.3 — when adding or removing an emission site, update
+// those two docs together with the code.
 // extraSources lets a card that has already left a zone still see its own
 // zone-change trigger (parity with the cardDies/cardLeaves extraSources).
+// Listeners are unchanged: emit() walks the two battlefields (+ extraSources)
+// — only permanents hear events; the new pairs widen what is announced, not
+// who can listen.
 function emitZoneChange(card, controller, fromZone, toZone, extraSources, sourceIid) {
   if (!card) return;
   emit({
@@ -5106,7 +5147,18 @@ function stripGrantedKeyword(card, kw, sourceIid) {
   }
 }
 
-function drawCard(who) {
+// Draw the top card of `who`'s library into their hand. `sourceIid` names the
+// card that CAUSED the draw (a "draw(2)" spell, a triggered draw) when one is
+// in scope — it rides the card_zone_change emit so noSelfCascade can
+// self-suppress; the turn-draw passes none.
+//
+// Zone-event note (audit A3-6): this is the ONE library→hand draw seam, so the
+// emit below announces every in-game draw. Opening hands deliberately bypass
+// it — makePlayer constructs hand/library by array ops before the game starts,
+// and Magiclike's rule is that zone-movement events DO NOT EXIST before the
+// game begins (canon §1002.2): setup placement and the forced mulligan are not
+// "moves", and abilities have no battlefield to listen from yet anyway.
+function drawCard(who, sourceIid) {
   const p = G[who];
   if (!p.library.length) {
     // Phylactery boon also covers decking out: each card you'd overdraw
@@ -5127,6 +5179,9 @@ function drawCard(who) {
     log(`${p.name} can't draw — loses!`, 'dmg'); endGame(opp(who)); return null;
   }
   const c = p.library.shift(); p.hand.push(c);
+  // A3-6: announce the draw. Listeners are battlefield permanents (emit()'s
+  // walk is unchanged); a `card_moves(library, hand)` trigger now fires.
+  emitZoneChange(c, who, 'library', 'hand', undefined, sourceIid);
   // build_on_draw hook fires when the card enters hand via drawing. Other
   // hand-entry paths (tutoring, opening-hand placement) call this helper
   // directly. Bouncing/recurring/flickering doesn't count — those are
@@ -5778,6 +5833,8 @@ function resolveTopOfStack() {
     if (!tsRevalidateTargets(tsModeObj(card, activeEffects), item.controller, item.targets)) {
       log(`${card.name} fizzles — no legal target.`, 'sp');
       G[card.owner || item.controller].graveyard.push(card);
+      // A3-6: a fizzled spell still moves stack→graveyard — announce it.
+      emitZoneChange(card, item.controller, 'stack', 'graveyard');
       afterEffectsApplied();
       return;
     }
@@ -5872,12 +5929,18 @@ function resolveTopOfStack() {
       // Push card to graveyard first so the rip-up sweep finds and removes
       // it (otherwise the spell card is in limbo). The rip helper then
       // discards that pile entry along with the slot.
+      // A3-6: deliberately NO stack→graveyard emit here — the graveyard push
+      // is transient bookkeeping for the rip sweep, and rip is the engine's
+      // no-trigger removal verb (the card never durably arrives anywhere).
       G[card.owner || item.controller].graveyard.push(card);
       ripSlotByIdx(item.controller, card.slotIdx, `Elystra binds ${card.name}`);
       afterEffectsApplied();
       return;
     }
     G[card.owner || item.controller].graveyard.push(card);
+    // A3-6: a resolved sorcery moving stack→graveyard is announced. As with
+    // `counter`, `controller` is the caster; the pile is owner-routed.
+    emitZoneChange(card, item.controller, 'stack', 'graveyard');
   }
   afterEffectsApplied();
 }
@@ -6163,6 +6226,11 @@ function doCastSpell(who, cardIid, targets, modeIdx) {
   // effect-set. For non-modal cards this is undefined/0, transparent to the
   // existing flow.
   pushOnStack({card, controller: who, targets: targets || [], modeIdx: modeIdx || 0});
+  // A3-6: casting moves the card to the stack — from its actual source zone
+  // ('hand' normally; 'graveyard'/'exile' under a cast permission). Emitted
+  // AFTER pushOnStack so the card is genuinely on the stack (and after the
+  // spell_cast emit, which keeps the existing trigger order untouched).
+  emitZoneChange(card, who, castable.zone, 'stack');
   // Modal log message includes the chosen mode label if available, so the
   // log doesn't say just "casts X" for ambiguous modal cards.
   let modeLabel = '';
@@ -6329,6 +6397,11 @@ function doDiscard(who, cardIid) {
   const card = p.hand.splice(idx, 1)[0];
   p.graveyard.push(card);
   log(`${p.name} discards ${card.name}.`);
+  // A3-6: announce the discard. Attribute it to the card that forced it
+  // (threaded onto forcedDiscard by discardFromHand) when one is in scope.
+  const discardSourceIid = (G.forcedDiscard && G.forcedDiscard.who === who)
+    ? G.forcedDiscard.sourceIid : undefined;
+  emitZoneChange(card, who, 'hand', 'graveyard', undefined, discardSourceIid);
   if (G.forcedDiscard && G.forcedDiscard.who === who) {
     G.forcedDiscard.remaining--;
     // Two paths null the forced-discard prompt: hitting the requested count,
@@ -6350,6 +6423,8 @@ function doSearchPick(who, cardIid) {
   G[who].hand.push(card);
   shuffle(lib);
   log(`${G[who].name} fetches ${card.name}.`, 'sp');
+  // A3-6: a tutor is a library→hand move; attribute it to the searching card.
+  emitZoneChange(card, who, 'library', 'hand', undefined, G.pendingSearch.sourceIid);
   G.pendingSearch = null;
   // Tutored cards trigger build_on_draw the same as any other hand-entry.
   // The Codex doesn't currently appear in any tutor's filter, but if a

@@ -287,6 +287,11 @@ const CATEGORY_A = [
   // move_card selector table; no-target/no-amount resolution guards; the
   // discard arm honors its selector.
   'test_a4_validation_guards.js',
+  // Audit A3-6 (approved build-out) — card_zone_change emits for EVERY
+  // genuine zone move (draws, tutors, discards, mills, casts, counters,
+  // resolutions, recursion, none→library mints); pool isolation pins,
+  // budget no-loop, noSelfCascade via drawCard sourceIid, setup-silence.
+  'test_a3_6_zone_events.js',
 ];
 
 const TESTS_DIR = __dirname;
