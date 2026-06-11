@@ -202,6 +202,16 @@ for a non-coder. No branch, no PR, until Joe's nod.
 the top of the findings PR body + NIGHTLY.md and fire a push notification
 immediately.
 
+### 4b. Distill into the engine wiki (Joe-authorized 2026-06-10, structure Claude's)
+
+After remediation, distill the chunk's DURABLE knowledge into
+`docs/wiki/engine/<subsystem>.md` (template + anatomy in
+`docs/wiki/engine/README.md`): the verified flow, Joe's design rulings
+(cite PR #98 + date), verified-clean negative space, open finding IDs
+(link, don't duplicate status), and the region's mutation reality. Ship it
+with the chunk's docs PR into the workshop. Durable means: survives
+remediation; no line numbers (cite function names); no transient status.
+
 ### 5. Self-QA gate (fresh context, before marking done)
 
 Spawn a fresh-context subagent over the findings file: schema-complete?
