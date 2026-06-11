@@ -50,6 +50,13 @@ through Joe's ultimate review.
   ```
   Never call bare `gh pr create` — it posts as the OWNER's account. Never
   invoke gh-bot.ps1 any other way.
+- **Comment bodies from files — flag case is load-bearing** (learned
+  2026-06-11: 14 inbox comments posted as literal filenames): `gh api`'s
+  lowercase `-f` is RAW/literal — `-f body=@C:\...\x.md` posts the path
+  string itself. Use uppercase **`-F body=@<file>`** (expands `@file`), or
+  `gh pr comment <n> --body-file <file>`. PR creation via
+  `pr create --body-file` was always safe. After posting, verify ONE body
+  rendered (`… api repos/…/comments/<id> --jq .body`), not just the id echo.
 - After opening a PR, verify attribution once per session:
   `powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/audit/gh-bot.ps1 pr view <n> --json author --jq .author.login`
   must print `Thaumaturge-Claude`.
