@@ -150,23 +150,43 @@ function applyOneStickerToRuntimeCard(card, sticker) {
   applyStickerKindEffect(card, s);
 }
 
+// One pick's candidate pool for the bargain reward below: every eligible
+// sticker paired with the permanents it can currently land on. The pool is
+// the BROAD registry set — stat boosts, keyword grants, Innate, the five
+// land-color (add_type) stickers, the −1-cost (cost_mod) sticker, and
+// lose_defender — excluding only scarified (boss-only, weight 0) and the
+// roll-needing subtype/empower. lose_defender IS eligible here: on an
+// opponent's wall it hands them an attacker, which is exactly Archdemon's
+// intended downside (the "bargain" stickers both sides). Each sticker's own
+// appliesTo still constrains placement.
+function bargainStickerCandidates(perms) {
+  const out = [];
+  for (const id of Object.keys(STICKERS)) {
+    if (id === 'scarified' || id === 'subtype' || id === 'empower') continue;
+    const s = STICKERS[id];
+    if (!s) continue;
+    // weight 0 = excluded from random pools (boss-only / dedicated paths).
+    if (!s.weight) continue;
+    const eligible = perms.filter(p => !s.appliesTo || s.appliesTo(p));
+    if (eligible.length > 0) out.push({ sticker: s, perms: eligible });
+  }
+  return out;
+}
+
 // Apply N random stickers to permanents controlled by `side` (Archdemon of
 // Bargains). Player-side: persists via RUN.applyStickerToSlot AND applies to
 // the runtime card. Opp-side: runtime card only (opp slots regenerate each
 // game). `state` is G; `logFn` is the engine's internal log.
+//
+// Selection (A6-1 option C — Joe, PR #98 round 3, 2026-06-10: "Keep the pool
+// broad, but make it factor weights in appropriately"): each pick draws the
+// STICKER by rarity weight via pickWeightedSticker — the same machinery as
+// normal reward offers, so Indestructible/Hexproof/Unblockable/Costs-1-Less
+// stay rare here too — then a target permanent uniformly among that sticker's
+// eligible permanents. Candidates re-derive between picks, so eligibility
+// updates as stickers land (a creature given flying can't be given it again).
 function applyRandomStickersToSide(state, side, n, sourceName, logFn) {
   if (n <= 0) return;
-  // Exclude scarified (boss-only), subtype/empower (need rolls). Yields a mix of
-  // statBoost and keyword stickers from the normal reward pool. lose_defender IS
-  // eligible here: on an opponent's wall it hands them an attacker, which is
-  // exactly Archdemon's intended downside (the "bargain" stickers both sides).
-  const eligibleStickerIds = Object.keys(STICKERS).filter(id => {
-    if (id === 'scarified' || id === 'subtype' || id === 'empower') return false;
-    const s = STICKERS[id];
-    if (!s) return false;
-    if (s.weight === 0) return false;
-    return true;
-  });
   const perms = state[side].battlefield;
   if (perms.length === 0) {
     if (logFn) logFn(`${sourceName} — no permanents to sticker.`, 'sp');
@@ -174,22 +194,17 @@ function applyRandomStickersToSide(state, side, n, sourceName, logFn) {
   }
   let applied = 0;
   for (let i = 0; i < n; i++) {
-    const tries = [];
-    for (const p of perms) {
-      for (const sid of eligibleStickerIds) {
-        const s = STICKERS[sid];
-        if (!s.appliesTo || s.appliesTo(p)) tries.push({perm: p, sid});
-      }
-    }
-    if (tries.length === 0) break;
-    const pick = tries[Math.floor(Math.random() * tries.length)];
-    applyOneStickerToRuntimeCard(pick.perm, pick.sid);
-    if (side === 'you' && typeof pick.perm.slotIdx === 'number'
+    const candidates = bargainStickerCandidates(perms);
+    if (candidates.length === 0) break;
+    const s = pickWeightedSticker(candidates.map(c => c.sticker));
+    const entry = candidates.find(c => c.sticker === s);
+    const perm = entry.perms[Math.floor(Math.random() * entry.perms.length)];
+    applyOneStickerToRuntimeCard(perm, s.id);
+    if (side === 'you' && typeof perm.slotIdx === 'number'
         && typeof RUN !== 'undefined' && RUN.applyStickerToSlot) {
-      RUN.applyStickerToSlot(pick.perm.slotIdx, pick.sid);
+      RUN.applyStickerToSlot(perm.slotIdx, s.id);
     }
-    const s = STICKERS[pick.sid];
-    if (logFn) logFn(`${pick.perm.name} gains "${s.name}" sticker.`, 'sp');
+    if (logFn) logFn(`${perm.name} gains "${s.name}" sticker.`, 'sp');
     applied++;
   }
   if (applied === 0 && logFn) {
