@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.1.39`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.1.40`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -1953,6 +1953,35 @@ test_a4_trigger_edict_prompt (12), test_a4_targeting_filters (13),
 test_a4_validation_guards (38). One existing fixture completed (not
 weakened): test_effect_validation's mcGraveyardToExileOk gains the
 selector A4-21 now requires. Suite 107 files / 2236 green, lint clean.
+
+v2.1.40: audit A3-6 build-out (approved feature — Joe, PR #98 round 2:
+"This is meant to support arbitrary zone movements. We should probably
+build that out."). `card_zone_change` now fires for EVERY genuine card move
+between zones, not just battlefield-touching ones: draws + tutors
+(library→hand, via the one drawCard seam + both search paths), discards
+(hand→graveyard, AI + human prompt paths), mills (library→graveyard),
+casts (hand/graveyard/exile→stack in doCastSpell), counters and sorcery
+resolutions/fizzles (stack→graveyard), graveyard/exile recursion to
+hand/library/exile, and steal's fresh-instance mint (none→library — the
+synthetic `none` from_zone now covers any mint, not just tokens).
+drawCard/pendingSearch/forcedDiscard thread `sourceIid` so noSelfCascade
+self-suppresses on the new events. Deliberate NON-events, documented in
+canon §1002.2a–b + PROTOCOL §3.3: game setup (opening hands/mulligans are
+constructed, never drawn — zone events don't exist before the game
+starts), rip/annihilate + steal-consumed stack spells (cease to exist;
+rip stays the no-trigger verb), the Elystra rip path's transient graveyard
+push, staple consumption (a merge), control changes (same zone), and
+shuffles. Battlefield-touching emissions are untouched from v2.1.39 —
+structurally pinned: every shipped/generated card_zone_change trigger
+carries a battlefield-touching card_moves term, so zero existing triggers
+can match the new events (pool-behavior change: none; the feature is that
+authored triggers like card_moves(library, hand) now FIRE). One new
+red→green file test_a3_6_zone_events (36 assertions; 22 red pre-fix),
+covering every new emission site, the pool-isolation pins, the
+TRIGGER_DEPTH_CAP budget stopping a draw-triggered-draw loop (101 draws
+then bail, no deck-out), noSelfCascade end-to-end, and the setup-silence
+rule. DIVERGENCE E1 notes the Godot port still emits battlefield-only.
+Suite 108 files / 2272 green, lint clean.
 > **MUST UPDATE on every dev-branch push that touches code.** Bump `VERSION` in `js/main.js` AND the line above, in the same commit. GitHub Pages caches aggressively; the version string is the only reliable way to confirm a fresh build is live.
 
 Always work on `dev` for html-proto changes.

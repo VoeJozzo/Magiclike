@@ -202,8 +202,19 @@ snake_case; JS internal kinds are camelCase per the conversion rule.
 
 Zone tokens for `from_zone`/`to_zone` on `card_zone_change`: `hand`, `library`,
 `graveyard`, `exile`, `stack`, `battlefield` — plus the synthetic `none`, used
-as `from_zone` when a token is minted directly onto the battlefield (it came
-from no prior zone). `source_iid` names the card that *caused* the move (e.g.
+as `from_zone` when a card is minted directly into a zone with no prior zone
+(a token onto the battlefield; steal's fresh instance into the thief's
+library). The proto emits `card_zone_change` for **every genuine card move
+between zones** (audit A3-6 build-out, v2.1.40): battlefield arrivals/leaves,
+draws, tutors, discards, mills, casts (`→ stack`), counters and spell
+resolutions (`stack → graveyard`), and graveyard/exile recursion. Non-moves
+that deliberately do NOT emit: game-setup placement (opening hands/mulligans —
+zone events don't exist before the game starts), rip/annihilate and steal's
+consumed stack spell (the card ceases to exist — rip is the no-trigger removal
+verb), staple consumption (a merge), control changes (same zone), and library
+shuffles (reordering within one zone). The Godot port still emits
+battlefield-touching moves only (DIVERGENCE E1). `source_iid` names the card
+that *caused* the move (e.g.
 the token-maker), distinct from `subject_iid`; it feeds the `noSelfCascade`
 guard. (Audit A3-8: the `attacks` and `spell_cast` payload rows above were
 corrected to the emitted truth, and the `combat_damage` row added — the
