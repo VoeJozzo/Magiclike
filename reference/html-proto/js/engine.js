@@ -1119,6 +1119,14 @@ function copySourceRef(ctx) {
 //   const f = resolveTarget(ctx, target);
 //   if (!f) return;
 function resolveTarget(ctx, target) {
+  // Missing/iid-less target → the SAME logged fizzle as a stale target
+  // (audit A4-17). Before this guard a misauthored no-target effect threw a
+  // raw TypeError out of executeAction mid-resolution, stranding the spell
+  // in NO zone (popped from hand and stack, never reaching the graveyard).
+  if (!target || target.iid == null) {
+    log(`${ctx.sourceName} fizzles — no target.`, 'sp');
+    return null;
+  }
   const f = findCard(target.iid);
   if (f) return f;
   log(`${ctx.sourceName} fizzles — target gone.`, 'sp');
@@ -1201,13 +1209,19 @@ function pluckFromBattlefield(f) {
 // question after granting (so grants went stale on steal/type change).
 // filter.controller:'self' = "creatures you control" (shares lord controller).
 //
-// A4-14 NOTE (next batch): the getStats ↔ matchFilter mutual-recursion guard
-// (a stat-bounded lord filter re-entering getStats) belongs HERE — this
-// predicate is the one funnel through which both halves reach matchFilter.
+// A4-14: lord-buff filters evaluate through matchFilterNoStats — the
+// stats-free view. The four stat-bound axes (max/min power/toughness) call
+// getStats, which walks the lord loop, which lands back here: a stat-bounded
+// static_buff filter would recurse getStats ↔ matchFilter to a RangeError on
+// every stats read (AI scoring, SBAs, render, combat). This predicate is the
+// one funnel through which BOTH halves (stat + keyword) reach matchFilter,
+// so the guard lives here; boot validation additionally REJECTS stat bounds
+// inside static_buffs until that semantics is properly designed
+// (validateAllCardEffects, loud).
 function lordBuffApplies(lord, lordCtrl, buff, target, tgtCtrl) {
   if (lord.iid === target.iid) return false;   // lords buff OTHER creatures
   if (!hasType(target, 'Creature')) return false;
-  if (!matchFilter(target, buff.filter, tgtCtrl, lordCtrl)) return false;
+  if (!matchFilterNoStats(target, buff.filter, tgtCtrl, lordCtrl)) return false;
   if (buff.subtype && !hasType(target, buff.subtype)) return false;
   return true;
 }
@@ -1407,6 +1421,43 @@ function choosesDescriptor(c, who) {
     slotIdx: (typeof c.slotIdx === 'number') ? c.slotIdx : null,
     controller: who,
   };
+}
+
+// Human-facing `chooses()` gate (GAP 2 / audit A4-7): when the player forced
+// to choose is the HUMAN, pause resolution and prompt instead of auto-picking
+// — the choice is the chooser's by the card's own text. ONE shared gate for
+// all three resolution loops (spell / trigger / activated ability); before
+// A4-7 only the spell resolver had it, so a trigger-sourced edict (Heir to
+// the Burnt House dying under the AI) silently sacrificed a permanent of the
+// engine's choosing. Stashes the chosen-dependent trailing effects
+// (sacrifice/annihilate/rip) on pendingEdictChoice; doEdictChoice replays
+// them once the human picks. Returns true → the caller BREAKS out of its
+// effect loop (resolution defers); false → fall through to the handler's
+// auto-pick (AI chooser, or an empty pool which the handler logs).
+// Chooser derivation matches the handler exactly: the established player
+// target (curTgt from a target() step), else a player in ctx.allTargets,
+// else the controller's opponent.
+function maybeDeferHumanChooses(ctx, eff, effList, curTgt) {
+  const playerTgt = (curTgt && curTgt.kind === 'player') ? curTgt
+    : (ctx.allTargets || []).find(t => t && t.kind === 'player');
+  const chooser = playerTgt ? playerTgt.who : opp(ctx.controller);
+  if (chooser !== 'you') return false;
+  const choosesFilter = eff.filter || 'creature';
+  const pool = choosesEligiblePool(chooser, choosesFilter);
+  if (pool.length === 0) return false;  // handler logs "no <noun> to choose"
+  const idx = effList.indexOf(eff);
+  G.pendingEdictChoice = {
+    who: chooser,
+    source: ctx.sourceName,
+    sourceIid: ctx.sourceIid,
+    controller: ctx.controller,
+    filter: choosesFilter,
+    pool: pool.map(c => choosesDescriptor(c, chooser)),
+    trailingEffects: effList.slice(idx + 1).map(e => ({ ...e })),
+  };
+  const noun = choosesFilter;   // 'creature' | 'permanent' | 'land'
+  log(`${ctx.sourceName}: ${pname(chooser)} must choose a ${noun} to lose.`, 'sp');
+  return true;
 }
 
 // Sac/edict scoring — measures board-presence threat (cost sunk).
@@ -1779,7 +1830,16 @@ function deductFromPool(pool, cost) {
 
 // Damage with deathtouch/lifelink/trample. Source: ctx.sourceCard or findCard(ctx.sourceIid).
 function applyDamageFrom(ctx, target, amt) {
-  if (amt <= 0) return;
+  // `!(amt > 0)` (not `amt <= 0`) also rejects undefined/NaN: a damage effect
+  // authored without `amount` used to slip past `undefined <= 0` and write
+  // `damage = NaN`, making the creature immune to ALL damage until cleanup
+  // (audit A4-17). Missing target → the standard logged fizzle, not a
+  // TypeError out of executeAction.
+  if (!(amt > 0)) return;
+  if (!target) {
+    log(`${ctx.sourceName} fizzles — no target.`, 'sp');
+    return;
+  }
   let sourceCard = ctx.sourceCard || null;
   if (!sourceCard && ctx.sourceIid != null) {
     const sf = findCard(ctx.sourceIid);
@@ -1787,7 +1847,15 @@ function applyDamageFrom(ctx, target, amt) {
   }
   const hasDeathtouch = sourceCard && sourceCard.keywords && sourceCard.keywords.includes('deathtouch');
   const hasLifelink  = sourceCard && sourceCard.keywords && sourceCard.keywords.includes('lifelink');
-  const hasTrample   = sourceCard && sourceCard.keywords && sourceCard.keywords.includes('trample');
+  // Trample spill applies to effect damage (deliberate design — trample
+  // stickers on damaging sorceries work via this branch) but NOT to fight
+  // damage (audit A4-9, design ruling): a fight is two creatures dealing
+  // power damage to each other — canon §902.2 scopes trample to combat, the
+  // fight cards' text promises only mutual damage, and the fight handler's
+  // own intent rider list (deathtouch/lifelink) omits trample. The fight
+  // handler sets ctx.fightDamage on its per-combatant contexts.
+  const hasTrample   = !ctx.fightDamage
+    && sourceCard && sourceCard.keywords && sourceCard.keywords.includes('trample');
 
   if (target.kind === 'player') {
     damagePlayer(target.who, amt, ctx.sourceName, ctx.sourceIid);
@@ -2040,11 +2108,18 @@ function fetchLibraryToBattlefield(ctx, filter, post) {
   const idx = lib.findIndex(c => matchesSearchFilter(c, filter));
   if (idx < 0) { log('No matching card in library.', 'sp'); return; }
   const card = lib.splice(idx, 1)[0];
-  if (post && post.tap) card.tapped = true;
-  G[ctx.controller].battlefield.push(card);
   shuffle(lib);
   log(`${pname(ctx.controller)} fetches ${card.name}${post && post.tap ? ' (tapped)' : ''}.`, 'sp');
-  emitZoneChange(card, ctx.controller, 'library', 'battlefield');
+  // The arrival goes through the ONE battlefield door (audit A4-20):
+  // placeCardOnBattlefield mints the §3.7 fresh iid, sets summoning sickness
+  // unless hasted, applies post (tap), and emits the sourced ETB zone-change.
+  // The old bespoke push skipped all of that — harmless for the five
+  // land-only users, but a creature fetch would have arrived attack-ready
+  // with its mint-time iid preserved.
+  placeCardOnBattlefield(ctx, card, 'library', post);
+  // Mirror the spell resolver's defensive sick=false for non-creatures
+  // (lands/artifacts have no summoning-sickness concept).
+  if (!hasType(card, 'Creature')) card.sick = false;
 }
 
 // Endomorph's trophy table — which absorbable keyword to take when a kill
@@ -2055,6 +2130,17 @@ const ABSORB_KEYWORD_PRIORITY = {
   lifelink: 3, deathtouch: 3, hexproof: 3, trample: 3,
   haste: 2, vigilance: 2, first_strike: 2, flash: 2,
   reach: 1, menace: 1,
+};
+
+// Legacy save safety: older Codex outputs used bare-name token ids ('goblin'
+// etc.). Module-scope (not inside create_tokens) so the EFFECT_SCHEMA
+// create_tokens validator accepts the same aliases the handler resolves.
+const TOKEN_ALIAS = {
+  goblin: 'goblin_r_1_1',
+  soldier: 'soldier_w_1_1',
+  spirit: 'spirit_w_1_1',
+  bear: 'bear_g_2_2',
+  saproling: 'saproling_g_1_1',
 };
 
 const EFFECTS = {
@@ -2363,7 +2449,16 @@ const EFFECTS = {
         : undefined;
     }
     // ─── Append the new slot and shuffle a fresh instance into library ──
-    const newSlotIdx = (typeof RUN !== 'undefined' && RUN.appendSlot)
+    // RUN-state writes are HUMAN-side only (audit A4-15): there is exactly
+    // one persisted run deck — the player's — and every sibling RUN-writing
+    // handler (endomorph_absorb, apply_sticker, rip) gates on the
+    // controller; this appendSlot was the lone ungated write. An
+    // opp-controlled Steal used to append the stolen slot to the VICTIM's
+    // saved run (a duplicate of their own card, persisted). An opp thief now
+    // keeps the theft in-game only: fresh instance into its in-game library
+    // below, slotIdx null (the opp transient-slot convention), and the
+    // victim's slot deliberately untouched.
+    const newSlotIdx = (ctx.controller === 'you' && typeof RUN !== 'undefined' && RUN.appendSlot)
       ? RUN.appendSlot(stolenTplId, stickers, meta)
       : null;
     // Fresh runtime card — template stats + sticker effects re-applied, no
@@ -2378,13 +2473,23 @@ const EFFECTS = {
     log(`${ctx.sourceName} ${verb} ${stolenCardName} into ${pname(ctx.controller)}'s library — yours forever.`, 'sp');
   },
   counter(ctx, params, target) {
+    if (!target || !target.stackItem) {
+      log(`${ctx.sourceName} fizzles — no target.`, 'sp');
+      return;
+    }
     const idx = G.stack.indexOf(target.stackItem);
     if (idx < 0) { log(`Target spell no longer on stack.`); return; }
     if (G.stack[idx].kind === 'trigger') {
       log(`${ctx.sourceName} can't counter that.`, 'sp'); return;
     }
     const removed = G.stack.splice(idx, 1)[0];
-    G[removed.controller].graveyard.push(removed.card);
+    // OWNER's graveyard (§706 / §400) — audit A4-19: this was the engine's
+    // ONE controller-routed graveyard site (every sibling — resolution,
+    // moveToGraveyard, sacrifice, checkDeaths, both move_card branches — is
+    // owner-routed). Live via Seal-Thief Courier's cast-permission flow:
+    // countering an opp-owned card you cast filed THEIR card in YOUR
+    // graveyard for the rest of the game.
+    G[removed.card.owner || removed.controller].graveyard.push(removed.card);
     log(`${ctx.sourceName} counters ${removed.card.name}!`, 'sp');
   },
   add_mana(ctx, params) {
@@ -2414,14 +2519,22 @@ const EFFECTS = {
       || ctx.controller;
     const amount = params.amount;
     if (!amount) return;
-    G[who].life += amount;
     if (amount > 0) {
+      G[who].life += amount;
       log(`${pname(who)} gains ${amount} life.`, 'sp');
-    } else {
-      G[who].lifeLostThisTurn = (G[who].lifeLostThisTurn || 0) + (-amount);
-      log(`${pname(who)} loses ${-amount} life.`, 'sp');
+      emit({type: 'life_changed', who, delta: amount, source_iid: ctx.sourceIid});
+      return;
     }
-    emit({type: 'life_changed', who, delta: amount, source_iid: ctx.sourceIid});
+    // Life LOSS routes through the shared floor/rip helper (audit A4-12,
+    // design ruling option A): under Phylactery, life floors at 0 and each
+    // point past 0 rips a slot — ONE price for losing life whether it came
+    // from damage or a drain. The raw `life += amount` here used to bypass
+    // the boon entirely, leaving the protected player at negative life (and
+    // the next damagePlayer's max(0, …) then RESET them up to 0).
+    // losePlayerLife tracks lifeLostThisTurn and emits life_changed for the
+    // ACTUAL loss (identical to the full amount when unprotected).
+    log(`${pname(who)} loses ${-amount} life.`, 'sp');
+    losePlayerLife(who, -amount, ctx.sourceIid);
   },
   draw(ctx, params) {
     for (let i=0;i<params.amount;i++) drawCard(ctx.controller);
@@ -2450,8 +2563,29 @@ const EFFECTS = {
       return;
     }
     // Hand → graveyard: collapsed discard (controller or a targeted player).
+    // The selector names the DISCARDER (§5.2 shorthand semantics, audit
+    // A4-21): 'controller_chosen' ("you discard") is always the controller;
+    // 'target_player_chosen' ("target player discards") requires a player
+    // target and fizzles without one. Before this, both shorthands executed
+    // identically — the discarder decided by whatever player target happened
+    // to be in scope. Selector-less legacy effects keep the discardWho
+    // fallback (player target in scope, else controller).
     if (from === 'hand' && to === 'graveyard') {
-      discardFromHand(ctx, discardWho(ctx, target), amount);
+      let discarder;
+      if (params.selector === 'controller_chosen') {
+        discarder = ctx.controller;
+      } else if (params.selector === 'target_player_chosen') {
+        const pt = (target && target.kind === 'player') ? target
+          : (ctx.allTargets || []).find(t => t && t.kind === 'player');
+        if (!pt) {
+          log(`${ctx.sourceName} fizzles — no player target to discard.`, 'sp');
+          return;
+        }
+        discarder = pt.who;
+      } else {
+        discarder = discardWho(ctx, target);
+      }
+      discardFromHand(ctx, discarder, amount);
       return;
     }
     for (let n = 0; n < amount; n++) {
@@ -2483,8 +2617,17 @@ const EFFECTS = {
         if (!f) break;
         const card = pluckFromBattlefield(f);
         if (!card) break;
-        if (post.keep_buffs) leavesPlayPreservingBuffs(card);
-        else { clearRestrictionsFromSource(card.iid); resetInPlayState(card); }
+        // EVERY battlefield-leave flushes pending permanent_eot buffs before
+        // the in-play reset (audit A4-16): flushPermanentEotToPermaBuffs
+        // self-gates on tpl.permanent_eot, so this is a no-op for every card
+        // but Elystra — whose printed text ("End-of-turn effects on Elystra
+        // last forever") the old path violated. The `post.keep_buffs` fork
+        // that used to gate this was DEAD: the refactor plan specified the
+        // flag for flicker, no card ever carried it, so Cloudshift/
+        // Otherworldly Journey/Oblation silently discarded her pending
+        // buffs while every other leave path (death, sacrifice, the
+        // affect_creature bounce/exile arms, cleanup) flushed.
+        leavesPlayPreservingBuffs(card);
         const dest = card.owner || f.controller;
         if (!card.isToken) {
           if (to === 'hand') G[dest].hand.push(card);
@@ -2508,10 +2651,14 @@ const EFFECTS = {
         }
         if (idx < 0) break;
         const [card] = zone.splice(idx, 1);
-        card.tapped = false; card.sick = false; card.damage = 0;
-        card.tempPower = 0; card.tempTou = 0;
-        if (card.damagedBySources instanceof Set) card.damagedBySources.clear();
-        card.dealtDeathtouch = false;
+        // Revival reset = the FULL resetInPlayState contract (audit A4-22),
+        // not a hand-rolled field list: the old 6-field list missed killedBy,
+        // so a reanimated creature carried its original killer's trophy
+        // credit into its next death. preserveDeathState=false is exactly
+        // the documented revival case ("Death paths set true; revival paths
+        // false") — and calling the one reset function closes the whole
+        // forgot-a-field class, not just this field.
+        resetInPlayState(card);
         const dest = card.owner || ctx.controller;
         if (to === 'hand') G[dest].hand.push(card);
         else if (to === 'library') { G[dest].library.push(card); if (post.shuffle) shuffle(G[dest].library); }
@@ -2593,14 +2740,6 @@ const EFFECTS = {
   // Mint tokens. Params: token_id (TOKENS key), count (default 1), controller ('self'|'opp').
   create_tokens(ctx, params) {
     let token_id = params.token_id;
-    // Legacy save safety: older Codex outputs used bare-name ids ('goblin' etc.).
-    const TOKEN_ALIAS = {
-      goblin: 'goblin_r_1_1',
-      soldier: 'soldier_w_1_1',
-      spirit: 'spirit_w_1_1',
-      bear: 'bear_g_2_2',
-      saproling: 'saproling_g_1_1',
-    };
     if (token_id && TOKEN_ALIAS[token_id]) token_id = TOKEN_ALIAS[token_id];
     if (!token_id || !TOKENS[token_id]) {
       log(`${ctx.sourceName} fizzles — unknown token ${token_id}.`, 'sp');
@@ -2665,8 +2804,10 @@ const EFFECTS = {
   // NOT targeting — hexproof never applies. Reads the established player from
   // the preceding target(player) step (the `target` param or ctx.allTargets),
   // auto-picks the lowest sac-value creature (AI), and records ctx.chosen for
-  // the following effect (sacrifice/annihilate). The human choose-your-creature
-  // prompt is deferred (review GAP 2) — auto-pick covers AI players today.
+  // the following effect (sacrifice/annihilate). When the chooser is the
+  // HUMAN, all three resolution loops pause BEFORE this handler runs
+  // (maybeDeferHumanChooses → pendingEdictChoice, GAP 2 / audit A4-7) — this
+  // auto-pick is the AI path plus the empty-pool log.
   chooses(ctx, params, target) {
     const playerTgt = (target && target.kind === 'player')
       ? target
@@ -2826,8 +2967,10 @@ const EFFECTS = {
     const [aPow] = getStats(a.card);
     const [bPow] = getStats(b.card);
     log(`${a.card.name} (${aPow}) fights ${b.card.name} (${bPow}).`, 'cb');
-    const aCtx = { controller: a.controller, sourceName: a.card.name, sourceIid: a.card.iid };
-    const bCtx = { controller: b.controller, sourceName: b.card.name, sourceIid: b.card.iid };
+    // fightDamage: trample never spills from a fight (audit A4-9, design
+    // ruling) — see applyDamageFrom. Deathtouch/lifelink still ride.
+    const aCtx = { controller: a.controller, sourceName: a.card.name, sourceIid: a.card.iid, fightDamage: true };
+    const bCtx = { controller: b.controller, sourceName: b.card.name, sourceIid: b.card.iid, fightDamage: true };
     applyDamageFrom(aCtx, {kind:'creature', iid: b.card.iid}, aPow);
     applyDamageFrom(bCtx, {kind:'creature', iid: a.card.iid}, bPow);
   },
@@ -3284,13 +3427,61 @@ function isSupportedMoveCardPair(from, to) {
   return false;
 }
 
+// Per-(from,to) allowed move_card selectors — ONE fact, derived from the
+// handler's real dispatch (audit A4-21: the schema used to validate zone
+// PAIRS while the handler dispatches on (from,to,selector) TRIPLES, so a
+// schema-clean combo could warn-and-no-op at runtime). `null` in a list =
+// the selector may be omitted (the arm defaults or ignores it).
+const MOVE_CARD_SELECTORS = {
+  'library->hand':        [null, 'controller_top', 'library_search'],
+  'library->graveyard':   [null, 'controller_top'],
+  'library->battlefield': [null, 'library_search'],   // filtered auto-fetch; selector unused
+  'hand->graveyard':      [null, 'controller_chosen', 'target_player_chosen'],
+  'battlefield->hand':    ['target', 'self', 'copy_source'],
+  'battlefield->library': ['target', 'self', 'copy_source'],
+  'battlefield->exile':   ['target', 'self', 'copy_source'],
+  'battlefield->graveyard': ['target', 'self', 'copy_source'],
+  'graveyard->hand':        ['target', 'self', 'copy_source'],
+  'graveyard->library':     ['target', 'self', 'copy_source'],
+  'graveyard->battlefield': ['target', 'self', 'copy_source'],
+  'graveyard->exile':       ['target', 'self', 'copy_source'],
+  'exile->hand':            ['target', 'self', 'copy_source'],
+  'exile->library':         ['target', 'self', 'copy_source'],
+  'exile->battlefield':     ['target', 'self', 'copy_source'],
+};
+
+// Schema helper: a required magnitude is a number or a {from:'...'} expression
+// (resolved at apply time by resolveEffectParams).
+function isAmountParam(v) {
+  return typeof v === 'number' || (v != null && typeof v === 'object' && v.from);
+}
+
 const EFFECT_SCHEMA = {
   move_card: (e) => {
     const ZONES = ['library', 'hand', 'graveyard', 'battlefield', 'exile'];
     if (!ZONES.includes(e.from_zone)) return 'move_card bad/missing from_zone';
     if (!ZONES.includes(e.to_zone)) return 'move_card bad/missing to_zone';
     if (!isSupportedMoveCardPair(e.from_zone, e.to_zone)) return 'move_card unsupported zone pair';
+    const allowed = MOVE_CARD_SELECTORS[e.from_zone + '->' + e.to_zone];
+    if (allowed && !allowed.includes(e.selector != null ? e.selector : null)) {
+      return 'move_card selector "' + e.selector + '" unsupported for '
+        + e.from_zone + '->' + e.to_zone + ' (want ' + allowed.filter(s => s).join('|') + ')';
+    }
     return null;
+  },
+  // Required-param entries (audit A4-17): a missing amount used to boot
+  // clean and corrupt at resolution (damage → NaN = unkillable creature;
+  // add_mana → raw TypeError mid-action).
+  damage:    (e) => (isAmountParam(e.amount) ? null : 'damage missing numeric amount'),
+  gain_life: (e) => (isAmountParam(e.amount) ? null : 'gain_life missing numeric amount'),
+  draw:      (e) => (isAmountParam(e.amount) ? null : 'draw missing numeric amount'),
+  discard:   (e) => (isAmountParam(e.amount) ? null : 'discard missing numeric amount'),
+  add_mana:  (e) => ((e.amounts && typeof e.amounts === 'object') || e.choose
+    ? null : 'add_mana missing amounts/choose'),
+  grant_keyword: (e) => (e.keyword ? null : 'grant_keyword missing keyword'),
+  create_tokens: (e) => {
+    const id = e.token_id && TOKEN_ALIAS[e.token_id] ? TOKEN_ALIAS[e.token_id] : e.token_id;
+    return (id && TOKENS[id]) ? null : 'create_tokens unknown token_id "' + e.token_id + '"';
   },
   grant_cast_permission: (e) => {
     const ZONES = ['exile'];
@@ -3316,17 +3507,76 @@ const EFFECT_SCHEMA = {
   },
 };
 
+// The CLOSED restriction-key vocabulary (audit A4-11): the union of every
+// key consumed by matchFilter, matchFilterSpell, the graveyard_card search
+// axes (getValidTargets), and the library-search filter (matchesSearchFilter
+// — move_card filters route there). matchFilter silently ignores unknown
+// keys, so a typo'd or camelCase key used to make a card target MORE than
+// its designer intended with zero signal — even the procedural card text
+// dropped the same unknown key. Keep in lockstep with those four consumers.
+const MATCH_FILTER_KEYS = new Set([
+  // matchFilter axes
+  'tapped', 'not_color', 'color', 'controller',
+  'max_tough', 'min_tough', 'max_power', 'min_power',
+  'not_keyword', 'has_keyword', 'subtype', 'type', 'not_type',
+  'not_token', 'spliceable_base', 'spliceable_staple',
+  // graveyard_card search axes (consumed in getValidTargets, not matchFilter)
+  'graveyards', 'select',
+  // library-search axis (matchesSearchFilter's `sub` shorthand)
+  'sub',
+]);
+
+// Effect kinds that DEREFERENCE a target and have no targetless fallback
+// (audit A4-17): authored without any way to receive one (effect-level
+// target/target_slot/scope, or a card/ability/trigger-level target step)
+// they fizzle — or, pre-guards, crashed — at resolution. Kinds with a
+// non-target fallback (gain_life/draw/discard → controller; sacrifice/
+// annihilate/rip/move_card/become_copy_of/grant_cast_permission →
+// ctx.chosen; fight → operands) are deliberately absent.
+const TARGET_REQUIRED_KINDS = new Set([
+  'damage', 'pump', 'add_counter', 'untap', 'affect_creature',
+  'grant_keyword', 'apply_sticker', 'symmetricize', 'add_type', 'set_types',
+  'counter',
+]);
+
 function validateAllCardEffects(cards) {
   const unknownKinds = [];
   const unknownFilters = [];
   const schemaErrors = [];
+  const unknownFilterKeys = [];
+  const targetErrors = [];
   const list = Array.isArray(cards) ? cards : Object.values(cards || {});
-  const checkList = (effs, cardId) => {
+  // Restriction-key sweep (audit A4-11). Only OBJECT filters carry the
+  // matchFilter vocabulary — string filters (target()/chooses() taxonomy
+  // names) are checked against TARGET_FILTERS instead.
+  const checkFilterKeys = (filter, where) => {
+    if (!filter || typeof filter !== 'object' || Array.isArray(filter)) return;
+    for (const k of Object.keys(filter)) {
+      if (!MATCH_FILTER_KEYS.has(k)) unknownFilterKeys.push(where + '(' + k + ')');
+    }
+  };
+  const checkList = (effs, cardId, hasOwnerTarget) => {
     for (const e of (effs || [])) {
       if (!e || typeof e !== 'object') continue;
       if (e.kind && !EFFECTS[e.kind]) unknownKinds.push(cardId + '.' + e.kind);
       if ((e.kind === 'chooses' || e.kind === 'target') && e.filter && !TARGET_FILTERS.has(e.filter)) {
         unknownFilters.push(cardId + '.' + e.kind + '(' + e.filter + ')');
+      }
+      if (e.filter && typeof e.filter === 'object') {
+        checkFilterKeys(e.filter, cardId + '.' + e.kind + '.filter');
+      }
+      // target_filter on a player/opp target is nonsensical (matchFilter's
+      // vocabulary is card axes) and was silently dropped — reject loudly
+      // (audit A4-8's player/opp leg).
+      if ((e.target === 'player' || e.target === 'opp') && e.filter) {
+        schemaErrors.push(cardId + ': filter on a ' + e.target
+          + ' target is unsupported (card-axis filters never apply to players)');
+      }
+      // Targeted kinds need SOME target source (audit A4-17).
+      if (TARGET_REQUIRED_KINDS.has(e.kind) && !e.scope && !e.target
+          && e.target_slot == null && !hasOwnerTarget) {
+        targetErrors.push(cardId + ': ' + e.kind
+          + ' has no target source (no target/target_slot/scope and no owner-level target step)');
       }
       const schema = EFFECT_SCHEMA[e.kind];
       if (schema) { const err = schema(e); if (err) schemaErrors.push(cardId + ': ' + err); }
@@ -3334,18 +3584,54 @@ function validateAllCardEffects(cards) {
   };
   for (const card of list) {
     const cardId = card.tplId || card.card_id || card.name || '?';
-    checkList(allCardEffects(card), cardId);
+    const cardHasTarget = !!(card.target
+      || (Array.isArray(card.target_slots) && card.target_slots.length));
+    checkList(allCardEffects(card), cardId, cardHasTarget);
     // New top-level target() step filter.
     if (card.target && !TARGET_FILTERS.has(card.target)) {
       unknownFilters.push(cardId + '.target(' + card.target + ')');
     }
-    for (const ab of (card.abilities || [])) checkList(ab.effects, cardId);
-    for (const trig of (card.triggers || [])) checkList(trig.effects, cardId);
+    checkFilterKeys(card.target_filter, cardId + '.target_filter');
+    if ((card.target === 'player' || card.target === 'opp') && card.target_filter) {
+      schemaErrors.push(cardId + ': target_filter on a ' + card.target
+        + ' target is unsupported (card-axis filters never apply to players)');
+    }
+    if (Array.isArray(card.target_slots)) {
+      for (const spec of card.target_slots) {
+        if (spec) checkFilterKeys(spec.filter, cardId + '.target_slots.filter');
+      }
+    }
+    for (const ab of (card.abilities || [])) {
+      checkFilterKeys(ab.target_filter, cardId + '.ability.target_filter');
+      checkList(ab.effects, cardId,
+        !!(ab.target || (Array.isArray(ab.target_slots) && ab.target_slots.length)));
+    }
+    for (const trig of (card.triggers || [])) {
+      checkFilterKeys(trig.target_filter, cardId + '.trigger.target_filter');
+      checkList(trig.effects, cardId,
+        !!(trig.target || (Array.isArray(trig.target_slots) && trig.target_slots.length)));
+    }
+    // static_buff filters: same key sweep, PLUS stat bounds are rejected
+    // outright (audit A4-14) — a stat-bounded lord filter closes the
+    // getStats ↔ matchFilter recursion; lordBuffApplies evaluates stat-free
+    // (matchFilterNoStats) until that semantics is properly designed, so a
+    // stat bound here would be silently ignored at best.
+    for (const buff of (card.static_buffs || [])) {
+      if (!buff) continue;
+      checkFilterKeys(buff.filter, cardId + '.static_buff.filter');
+      if (buff.filter && STAT_BOUND_FILTER_KEYS.some(k => buff.filter[k] !== undefined)) {
+        schemaErrors.push(cardId + ': static_buff filter uses a stat bound ('
+          + STAT_BOUND_FILTER_KEYS.filter(k => buff.filter[k] !== undefined).join(',')
+          + ') — unsupported until stat-bounded lord buffs are designed (audit A4-14)');
+      }
+    }
   }
   if (unknownKinds.length) console.warn('Unknown effect kind(s):', unknownKinds.join(', '));
   if (unknownFilters.length) console.warn('Unknown target/chooses filter(s):', unknownFilters.join(', '));
   if (schemaErrors.length) console.warn('Effect schema error(s):', schemaErrors.join('; '));
-  return { unknownKinds, unknownFilters, schemaErrors };
+  if (unknownFilterKeys.length) console.warn('Unknown filter key(s):', unknownFilterKeys.join(', '));
+  if (targetErrors.length) console.warn('Effect target error(s):', targetErrors.join('; '));
+  return { unknownKinds, unknownFilters, schemaErrors, unknownFilterKeys, targetErrors };
 }
 
 // Audit A3-5 — shared shape check for a generated/persisted trigger: event ∈
@@ -3401,14 +3687,37 @@ function validateGeneratedTriggerTables() {
 
 // Effect kinds that operate on a creature (vs player) — drives scope:'self' meaning.
 // Add creature-operators here; damage/gain_life/draw/discard/add_mana resolve self → controller.
+// add_type/set_types operate on the permanent (audit A4-13's fix-design trap:
+// artifice_triumphant grants an `add_type scope:'self'` ability that must be
+// creature-routed).
 const CREATURE_EFFECT_KINDS = new Set([
   'pump', 'add_counter', 'untap', 'affect_creature',
   'fight', 'endomorph_absorb',
   'grant_keyword',
   'sacrifice',
+  'add_type', 'set_types',
 ]);
 function effectOperatesOnCreature(eff) {
   return CREATURE_EFFECT_KINDS.has(eff.kind);
+}
+
+// scope:'self' resolution — the creature-vs-player fork, ONE helper for all
+// three resolution loops (audit A4-13). 'self' means the SOURCE CREATURE for
+// creature-operating effects (CREATURE_EFFECT_KINDS) and the SOURCE'S
+// CONTROLLER for player-operating ones (damage = "you lose N", gain_life,
+// draw, discard, add_mana). The v0.99.29 Final Strike bug was a missing fork
+// in the spell loop; the ability loop shipped as the divergent third
+// hand-synced copy (it routed EVERY self to the creature, so a "T: deal 1 to
+// you" ability would have burned the creature instead). For a spell, the
+// "creature" descriptor is the spell card itself — not on the battlefield,
+// so creature-operating self effects fizzle gracefully there.
+function resolveSelfTarget(eff, sourceIid, sourceName, controller) {
+  if (effectOperatesOnCreature(eff)) {
+    const tgt = { kind: 'creature', iid: sourceIid, label: sourceName };
+    return { tgt, snap: snapshotTarget(tgt) };
+  }
+  const tgt = { kind: 'player', who: controller };
+  return { tgt, snap: tgt };
 }
 
 // card.effects is flat array OR {modes:[[...],...]}. getModes always returns array-of-modes.
@@ -3902,6 +4211,10 @@ function runTriggerEffects(item) {
   if (hasTargetStep) { const f0 = getTriggerTargetForSlot(0); curTgt = f0.tgt; curSnap = f0.snap; }
   for (const eff of (item.trig.effects || [])) {
     if (eff.kind === 'chooses') {
+      // Human chooser → pause with the edict prompt (audit A4-7; the shared
+      // gate the spell resolver always had). Trailing effects replay in
+      // doEdictChoice; the AI path falls through to the handler's auto-pick.
+      if (maybeDeferHumanChooses(ctx, eff, item.trig.effects || [], curTgt)) break;
       applyEffect(ctx, eff, curTgt, curSnap);
       if (ctx.chosen) { curTgt = ctx.chosen; curSnap = snapshotTarget(ctx.chosen); }
       continue;
@@ -3917,17 +4230,9 @@ function runTriggerEffects(item) {
       // read the pre-effect-0 snapshot. Each effect guards live-target itself.
       applyEffect(ctx, eff, tgt, snap);
     } else if (eff.scope === 'self') {
-      // Self → source creature OR source's controller depending on
-      // effectOperatesOnCreature.
-      let selfTarget = null, selfSnap = null;
-      if (effectOperatesOnCreature(eff)) {
-        selfTarget = { kind: 'creature', iid: item.sourceIid, label: item.sourceName };
-        selfSnap = snapshotTarget(selfTarget);
-      } else {
-        selfTarget = { kind: 'player', who: item.controller };
-        selfSnap = selfTarget;
-      }
-      applyEffect(ctx, eff, selfTarget, selfSnap);
+      // Self → source creature OR source's controller (shared fork, A4-13).
+      const self = resolveSelfTarget(eff, item.sourceIid, item.sourceName, item.controller);
+      applyEffect(ctx, eff, self.tgt, self.snap);
     } else if (hasTargetStep && eff.scope == null) {
       // Bare effect after a target() step → operate on the established/chosen target.
       applyEffect(ctx, eff, curTgt, curSnap);
@@ -3988,12 +4293,23 @@ function getValidTargets(effect, controller) {
    .filter(x => !(x.card.keywords.includes('hexproof') && x.ctrl !== controller));
   switch (effect.target) {
     case 'creature_or_player':  // "any target" — a creature or a player
+      // The optional restriction (effect.filter / target_filter) applies to
+      // the CREATURE half only (audit A4-8 — it used to be silently dropped
+      // for this kind, so "deal 3 to any target with flying" would have
+      // shipped unrestricted). matchFilter's vocabulary is card axes, so
+      // players are always legal; a filter meant to exclude players is a
+      // different (unsupported) concept and boot-rejected on player/opp.
       return [
         {kind:'player', who:'you', label: G.you.name},
         {kind:'player', who:'opp', label: G.opp.name},
-        ...allCreatures.map(x => ({kind:'creature', iid:x.card.iid, label:x.card.name})),
+        ...allCreatures
+          .filter(x => matchFilter(x.card, effect.filter, x.ctrl, controller))
+          .map(x => ({kind:'creature', iid:x.card.iid, label:x.card.name})),
       ];
     case 'player':
+      // Card-axis filters never apply to players — a player/opp target
+      // paired with a target_filter is rejected at boot (A4-8;
+      // validateAllCardEffects).
       return [
         {kind:'player', who:'you', label: G.you.name},
         {kind:'player', who:'opp', label: G.opp.name},
@@ -4044,8 +4360,14 @@ function getValidTargets(effect, controller) {
       return cands.map(x => ({kind:'graveyard_card', iid: x.c.iid, label: x.c.name, controller: x.k}));
     }
     case 'spell':
+      // The restriction goes through matchFilterSpell (audit A4-8 — it was
+      // silently dropped here while permanent_or_spell's stack half
+      // enforced it). matchFilterSpell's axes are spliceable_*/not_token
+      // today; type/color counterspell filters need an axis extension (a
+      // separate design decision) and stay unsupported.
       return G.stack
         .filter(s => s.kind !== 'trigger' && s.card)
+        .filter(s => matchFilterSpell(s.card, effect.filter))
         .map(s => ({kind:'stack', stackItem: s, label: s.card.name}));
     case 'permanent_or_spell': {
       // Stapler target: perm OR spell. Each half uses its own match function.
@@ -4085,6 +4407,12 @@ function targetsForFilter(filter, controller, restrict) {
   // restrictions — not_color, has_keyword, max_tough, tapped, not_token, etc. — that
   // the closed taxonomy can't name on its own. Merge it into the getValidTargets
   // filter so the cast-time enumeration (and hexproof checkpoint) honors it.
+  // Per-kind scope (audit A4-8): card-object kinds (creature/permanent/land/
+  // your_creature/opp_creature/graveyard_card) enforce the full matchFilter
+  // vocabulary; creature_or_player enforces it on the creature half (players
+  // are always legal); 'spell' enforces the matchFilterSpell axes only
+  // (spliceable_*/not_token). player/opp accept NO restriction — the pairing
+  // is rejected at boot (validateAllCardEffects).
   const merge = (f) => restrict ? Object.assign({}, f, restrict) : f;
   switch (filter) {
     case 'creature_or_player': return getValidTargets({ target: 'creature_or_player', filter: restrict || undefined }, controller);
@@ -4473,6 +4801,29 @@ function matchFilter(card, filter, controller, who) {
   }
   return true;
 }
+
+// The four matchFilter axes that read getStats. Lord-buff evaluation must
+// not use them (getStats walks the lord loop → recursion, audit A4-14);
+// boot validation rejects them inside static_buffs (validateAllCardEffects).
+const STAT_BOUND_FILTER_KEYS = ['max_tough', 'min_tough', 'max_power', 'min_power'];
+
+// matchFilter through a STATS-FREE view: the four stat-bound axes are
+// skipped (treated as matching). Sole consumer today is lordBuffApplies —
+// the one funnel through which both static_buff halves (stat + keyword)
+// evaluate their filters — so a stat-bounded lord filter can no longer
+// close the getStats ↔ matchFilter cycle into a RangeError (audit A4-14).
+// If stat-bounded lord buffs are ever designed for real, the non-circular
+// semantics is thresholding on PRE-lord stats; until then they're
+// boot-rejected and skipped here.
+function matchFilterNoStats(card, filter, controller, who) {
+  if (filter && STAT_BOUND_FILTER_KEYS.some(k => filter[k] !== undefined)) {
+    const f = { ...filter };
+    for (const k of STAT_BOUND_FILTER_KEYS) delete f[k];
+    return matchFilter(card, f, controller, who);
+  }
+  return matchFilter(card, filter, controller, who);
+}
+
 function sameTarget(a, b) {
   if (a.kind !== b.kind) return false;
   if (a.kind === 'player') return a.who === b.who;
@@ -4901,8 +5252,11 @@ function flushPermanentEotToPermaBuffs(card) {
   }
 }
 
-// Card leaves play, persistent buffs survive on the slot. Used by bounce,
-// exile, flicker. Order matters: flush BEFORE resetInPlayState.
+// Card leaves play, persistent buffs survive on the slot. Used by the
+// affect_creature bounce/exile arms AND every move_card battlefield-leave
+// (bounce/flicker/exile/shuffle — audit A4-16; the move_card path used to
+// skip the flush behind a dead `post.keep_buffs` flag no card carried).
+// Order matters: flush BEFORE resetInPlayState.
 function leavesPlayPreservingBuffs(card) {
   flushPermanentEotToPermaBuffs(card);
   clearRestrictionsFromSource(card.iid);
@@ -5210,26 +5564,30 @@ function ripSlotByIdx(who, ripIdx, logPrefix) {
   return true;
 }
 
-// Damage to a player. With Phylactery: life floors at 0; overflow rips slots.
-// Without: life can go negative; checkLifeTotals triggers loss at ≤0.
-// Floor-at-0 keeps life-gain intuitive (gaining 3 from 0 → 3, not -X+3).
-function damagePlayer(who, amount, sourceName, sourceIid) {
-  if (amount <= 0) return;
+// Lose `n` life (n > 0) — the ONE writer for life LOSS, shared by
+// damagePlayer (burn/combat) and gain_life's negative branch (drains).
+// Audit A4-12: drains used to subtract raw, bypassing Phylactery entirely —
+// the protected player sat at negative life and the next damagePlayer's
+// max(0, …) then RESET them up to 0. Design ruling (option A): ONE price
+// for losing life — under Phylactery, life floors at 0 and each would-be
+// point below 0 rips a slot, whether the loss came from damage or a drain
+// (Phylactery's text reads "Life lost past 0").
+function losePlayerLife(who, n, sourceIid) {
+  if (!(n > 0)) return;
   const lifeBefore = G[who].life;
   const lifeAbsorb = Math.max(0, lifeBefore);
-  log(`${sourceName || 'damage'} deals ${amount} to ${pname(who)}.`, 'dmg');
   if (hasPhylacteryProtection(who)) {
-    G[who].life = Math.max(0, lifeBefore - amount);
-    const overflow = Math.max(0, amount - lifeAbsorb);
+    G[who].life = Math.max(0, lifeBefore - n);
+    const overflow = Math.max(0, n - lifeAbsorb);
     for (let i = 0; i < overflow; i++) {
       const ok = ripSlotForPhylactery(who);
       if (!ok) break;   // out of slots; player will die on next checkLifeTotals
     }
   } else {
-    G[who].life -= amount;
+    G[who].life -= n;
   }
   // Track ACTUAL life lost this turn (post-Phylactery). Bloodlust triggers
-  // need damage that reached life total — fully-absorbed damage doesn't count.
+  // need loss that reached the life total — fully-absorbed loss doesn't count.
   const lifeLost = lifeBefore - G[who].life;
   if (lifeLost > 0) {
     G[who].lifeLostThisTurn = (G[who].lifeLostThisTurn || 0) + lifeLost;
@@ -5242,6 +5600,15 @@ function damagePlayer(who, amount, sourceName, sourceIid) {
     // with the other life_changed emitters; feeds the noSelfCascade guard.
     emit({type: 'life_changed', who, delta: -lifeLost, source_iid: sourceIid});
   }
+}
+
+// Damage to a player. With Phylactery: life floors at 0; overflow rips slots.
+// Without: life can go negative; checkLifeTotals triggers loss at ≤0.
+// Floor-at-0 keeps life-gain intuitive (gaining 3 from 0 → 3, not -X+3).
+function damagePlayer(who, amount, sourceName, sourceIid) {
+  if (!(amount > 0)) return;
+  log(`${sourceName || 'damage'} deals ${amount} to ${pname(who)}.`, 'dmg');
+  losePlayerLife(who, amount, sourceIid);
 }
 function emitCombatDamageToPlayer(source, controller, who, amount) {
   if (!source || amount <= 0) return;
@@ -5456,31 +5823,14 @@ function resolveTopOfStack() {
       let tgt = null;
       let snap = null;
       if (eff.kind === 'chooses') {
-        // Human-facing selection (GAP 2): when the player forced to choose is
-        // the human, pause and prompt instead of auto-picking. Stash the
-        // chosen-dependent trailing effects (sacrifice/annihilate/rip); they
-        // replay in doEdictChoice once the human picks. The AI path falls
-        // through to the handler's auto-pick (selfplay/tests unchanged).
-        const chooser = (curTgt && curTgt.kind === 'player') ? curTgt.who : opp(ctx.controller);
-        const choosesFilter = eff.filter || 'creature';
-        if (chooser === 'you') {
-          const pool = choosesEligiblePool(chooser, choosesFilter);
-          if (pool.length > 0) {
-            const idx = activeEffects.indexOf(eff);
-            G.pendingEdictChoice = {
-              who: chooser,
-              source: ctx.sourceName,
-              sourceIid: ctx.sourceIid,
-              controller: ctx.controller,
-              filter: choosesFilter,
-              pool: pool.map(c => choosesDescriptor(c, chooser)),
-              trailingEffects: activeEffects.slice(idx + 1).map(e => ({ ...e })),
-            };
-            const noun = choosesFilter;   // 'creature' | 'permanent' | 'land'
-            log(`${ctx.sourceName}: ${pname(chooser)} must choose a ${noun} to lose.`, 'sp');
-            break; // defer; spell still moves to graveyard. doEdictChoice resumes.
-          }
-          // empty pool → fall through to the handler (logs "no creature to choose").
+        // Human-facing selection (GAP 2 / audit A4-7): when the player
+        // forced to choose is the human, pause and prompt instead of
+        // auto-picking — via the shared gate all three resolution loops use.
+        // Trailing effects (sacrifice/annihilate/rip) replay in
+        // doEdictChoice once the human picks. The AI path (and an empty
+        // pool) falls through to the handler's auto-pick.
+        if (maybeDeferHumanChooses(ctx, eff, activeEffects, curTgt)) {
+          break; // defer; spell still moves to graveyard. doEdictChoice resumes.
         }
         // Reads the established player (curTgt) and records ctx.chosen; the
         // chosen permanent becomes the operative target for the next effect.
@@ -5489,21 +5839,14 @@ function resolveTopOfStack() {
         continue;
       }
       if (eff.scope === 'self') {
-        // Mirror the trigger resolver's branching: self resolves to the
-        // SOURCE CREATURE for creature-operating effects, and to the
-        // SOURCE'S CONTROLLER (a player target) for player-operating
-        // effects (damage, gain_life, draw, discard, add_mana). Without
-        // this branch, a spell like Final Strike — "destroy creature,
-        // you lose 2 life" — would route the damage to itself (the
-        // sorcery card) instead of to the player, fizzling because the
-        // sorcery isn't on the battlefield. Bug observed v0.99.29.
-        if (effectOperatesOnCreature(eff)) {
-          tgt = {kind:'creature', iid: card.iid, label: card.name};
-          snap = snapshotTarget(tgt);
-        } else {
-          tgt = {kind:'player', who: item.controller};
-          snap = tgt;
-        }
+        // Self → source creature OR source's controller (the shared A4-13
+        // fork). For a spell the "creature" is the sorcery card itself —
+        // not on the battlefield, so creature-operating self effects fizzle
+        // gracefully while player-operating ones (Final Strike's "you lose
+        // 2 life") hit the controller. Bug observed v0.99.29.
+        const self = resolveSelfTarget(eff, card.iid, card.name, item.controller);
+        tgt = self.tgt;
+        snap = self.snap;
       } else if (effectNeedsTarget(eff)) {
         const slot = eff.target_slot || 0;
         const fetched = getTargetForSlot(slot);
@@ -5890,13 +6233,25 @@ function doActivateAbility(who, cardIid, abilityIdx, targets, sacIid) {
     let tgt = null;
     let snap = null;
     if (e.kind === 'chooses') {
+      // Human chooser → pause with the edict prompt (audit A4-7; shared
+      // gate). Latent today (no pool ability uses chooses) but the third
+      // resolution loop gets the same contract preemptively.
+      if (maybeDeferHumanChooses(ctx, e, ab.effects, abCurTgt)) break;
       applyEffect(ctx, e, abCurTgt, abCurSnap);
       if (ctx.chosen) { abCurTgt = ctx.chosen; abCurSnap = snapshotTarget(ctx.chosen); }
       continue;
     }
     if (e.scope === 'self') {
-      tgt = {kind:'creature', iid: card.iid, label: card.name};
-      snap = snapshotTarget(tgt);
+      // Self → source creature OR source's controller (audit A4-13: this
+      // loop was the divergent third hand-synced copy of the v0.99.29 fork
+      // — it routed EVERY self to the creature, so a "T: deal 1 to you"
+      // ability damaged the creature instead of the player. The live
+      // self-abilities all survive: pump/add_type are creature-routed by
+      // CREATURE_EFFECT_KINDS; gain_life/move_card route to the controller,
+      // which their handlers' ctx.controller fallbacks already produced).
+      const self = resolveSelfTarget(e, card.iid, card.name, who);
+      tgt = self.tgt;
+      snap = self.snap;
     } else if (effectNeedsTarget(e)) {
       const slot = e.target_slot || 0;
       const fetched = getAbilityTargetForSlot(slot);

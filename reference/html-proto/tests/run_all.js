@@ -254,6 +254,39 @@ const CATEGORY_A = [
   // Audit A4-6 — color/not_color filters test the full color identity
   // (colorsOfCard), not just the first pip; multicolor + token paths.
   'test_color_filter_multicolor.js',
+  // Audit A4-19/20/22 — counter routes to the OWNER's graveyard; library
+  // fetches go through placeCardOnBattlefield (fresh iid + sickness);
+  // reanimation resets via the full resetInPlayState (killedBy cleared).
+  'test_a4_zone_state_fixes.js',
+  // Audit A4-16 — move_card battlefield-leaves flush Elystra's pending
+  // permanent_eot buffs (the dead post.keep_buffs fork is gone). BEHAVIOR
+  // CHANGE: her EOT buffs now survive flicker, per her printed text.
+  'test_a4_elystra_flicker_buffs.js',
+  // Audit A4-15 — steal's RUN.appendSlot is human-gated: an opp thief never
+  // writes the victim's persisted run deck (in-game-only theft).
+  'test_a4_steal_run_gate.js',
+  // Audit A4-9 (design ruling) — trample spills from effect damage, never
+  // from fights; deathtouch fight victim-mark fenced.
+  'test_a4_fight_trample_deathtouch.js',
+  // Audit A4-12 (design ruling) — life LOSS shares damage's Phylactery
+  // floor/rip via losePlayerLife (drains can no longer go below 0).
+  'test_a4_phylactery_lifeloss.js',
+  // Audit A4-13 — ability scope:'self' creature-vs-player fork via the
+  // shared resolveSelfTarget (the divergent third copy); add_type stays
+  // creature-routed (artifice_triumphant trap).
+  'test_a4_self_target_ability.js',
+  // Audit A4-7 — trigger-path chooses() routes to the human edict prompt
+  // via the shared maybeDeferHumanChooses gate (trigger twin of
+  // test_edict_human_choice).
+  'test_a4_trigger_edict_prompt.js',
+  // Audit A4-8 + A4-14 — creature_or_player/spell arms honor target_filter;
+  // stat-bounded lord static_buffs can't stack-overflow getStats.
+  'test_a4_targeting_filters.js',
+  // Audit A4-11/17/21 (+8/14 boot legs) — filter-key vocabulary closed at
+  // boot; required-param schema; targeted-kinds-need-a-target sweep;
+  // move_card selector table; no-target/no-amount resolution guards; the
+  // discard arm honors its selector.
+  'test_a4_validation_guards.js',
 ];
 
 const TESTS_DIR = __dirname;

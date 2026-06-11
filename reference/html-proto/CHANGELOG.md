@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.1.38`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.1.39`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -1881,6 +1881,78 @@ test_lord_grant_reconcile.js (19), test_fight_fizzle.js (9),
 test_copy_keyword_persistence.js (14), test_color_filter_multicolor.js
 (13). Predicted test impact per all four findings — none — confirmed: zero
 existing assertions flipped. Suite 98 files / 2107 green, lint clean.
+
+v2.1.39: audit fix batch — fourteen approved chunk-4 items (Joe's wholesale
+round-4 GO, 2026-06-10; A4-14's Elystra gate cleared by the supervisor).
+**A4-7:** the trigger + ability resolution loops never routed chooses() to
+the human edict prompt — an AI-controlled Heir to the Burnt House dying
+silently sacrificed a land of the ENGINE's choosing. The spell resolver's
+prompt branch is extracted into one shared maybeDeferHumanChooses() gate
+consumed by all three loops; the chooses handler's stale "prompt is
+deferred" comment fixed. **A4-8:** getValidTargets silently DROPPED
+target_filter for creature_or_player (creature half now matchFilter-
+enforced; players always legal) and spell (now matchFilterSpell-enforced);
+player/opp + filter pairings are boot-rejected as nonsensical;
+targetsForFilter's header now states the per-kind scope. **A4-9 (design
+ruling, option A):** trample spill stays for effect damage (trample
+stickers on sorceries are deliberate design) but is gated OUT of fight
+(ctx.fightDamage) — a trampler that fights no longer leaks excess into the
+player's face; reminder text rewritten to match; deathtouch-on-fight
+victim-mark fenced. **A4-11:** matchFilter's key vocabulary is CLOSED at
+boot — MATCH_FILTER_KEYS (matchFilter ∪ matchFilterSpell ∪ graveyard-search
+∪ library-search axes) swept over every target_filter / slot filter /
+effect filter / static_buff filter; a typo'd or camelCase key (the old
+PROTOCOL spelling) no longer silently over-targets. **A4-12 (design
+ruling, option A):** life LOSS routes through new shared losePlayerLife()
+— under Phylactery, drains floor at 0 and rip slots exactly like damage
+(was: raw subtract to negative life, then damage RESET you up to 0);
+damagePlayer delegates to the same writer; Phylactery's text amended
+"Damage past 0" → "Life lost past 0". **A4-13:** doActivateAbility's
+scope:'self' gains the creature-vs-player fork via new shared
+resolveSelfTarget() (the v0.99.29 bug's divergent third hand-synced copy:
+"T: deal 1 to you" damaged the creature); add_type/set_types added to
+CREATURE_EFFECT_KINDS (artifice_triumphant stays creature-routed).
+**A4-14:** the getStats↔matchFilter mutual recursion (stat-bounded lord
+static_buff → RangeError on every stats read) is closed in lordBuffApplies
+— the one funnel — via matchFilterNoStats (the four stat axes skipped);
+stat bounds inside static_buffs are ALSO boot-rejected until designed.
+**A4-15:** steal's RUN.appendSlot was the lone RUN write without the 'you'
+gate — an opp-controlled Steal appended the stolen slot to the VICTIM's
+persisted run deck; now human-gated (opp theft is in-game only; victim's
+slot untouched). apply_in_game_splice's slot-mint sits in the same family
+but is chunk 5's (its 97 survivors are handed there) — left as the
+A5-family rider. **A4-16 (BEHAVIOR CHANGE, per Elystra's printed text):**
+the move_card battlefield-leave path now flushes permanent_eot buffs via
+leavesPlayPreservingBuffs unconditionally — Cloudshift/Otherworldly
+Journey/Oblation no longer eat Elystra's pending "last forever" gains; the
+dead post.keep_buffs fork deleted; stale headers fixed. **A4-17:**
+resolveTarget + applyDamageFrom guard missing/iid-less targets (logged
+fizzle, was TypeError stranding the spell in NO zone) and non-numeric
+amounts (was NaN damage = unkillable creature); EFFECT_SCHEMA grows
+required-param entries (damage/gain_life/draw/discard amount-or-expr;
+add_mana amounts|choose; grant_keyword keyword; create_tokens known
+token_id incl. hoisted TOKEN_ALIAS) plus a targeted-kinds-need-a-target
+sweep (new `targetErrors` list). **A4-19:** a countered spell now routes to
+its OWNER's graveyard (§706) — counter was the engine's one
+controller-routed graveyard site, live via Seal-Thief Courier. **A4-20:**
+fetchLibraryToBattlefield arrivals go through placeCardOnBattlefield (§3.7
+fresh iid + summoning sickness + post + sourced ETB emit); a future
+creature fetch can't arrive attack-ready. **A4-21:** EFFECT_SCHEMA
+validates move_card selectors against the handler's real per-pair dispatch
+(MOVE_CARD_SELECTORS — schema-clean combos can no longer no-op at
+runtime), and the hand→graveyard arm honors the §5.2 shorthand selectors
+(controller_chosen → controller; target_player_chosen → requires a player
+target, else logged fizzle). **A4-22:** the move_card reanimation branch
+calls the full resetInPlayState instead of a hand-rolled 6-field list that
+missed killedBy (stale killer credit on re-death) — closes the
+forgot-a-field class. Nine new red→green regression files (red captured
+pre-fix): test_a4_zone_state_fixes (15), test_a4_elystra_flicker_buffs
+(12), test_a4_steal_run_gate (9), test_a4_fight_trample_deathtouch (10),
+test_a4_phylactery_lifeloss (12), test_a4_self_target_ability (8),
+test_a4_trigger_edict_prompt (12), test_a4_targeting_filters (13),
+test_a4_validation_guards (38). One existing fixture completed (not
+weakened): test_effect_validation's mcGraveyardToExileOk gains the
+selector A4-21 now requires. Suite 107 files / 2236 green, lint clean.
 > **MUST UPDATE on every dev-branch push that touches code.** Bump `VERSION` in `js/main.js` AND the line above, in the same commit. GitHub Pages caches aggressively; the version string is the only reliable way to confirm a fresh build is live.
 
 Always work on `dev` for html-proto changes.
