@@ -544,10 +544,12 @@ the day one ships, mid-game splices will silently destroy the property.
   enumerator (`run.js:852–875`): canonicalSplicePair gives Land(2) priority
   over Spell(3) so the land wins base; empower's appliesTo accepts damage
   spells at weight 10 — a burn slot with an empower sticker paired with a land
-  is a routine reward outcome. **Distinct from A6-2/PR #103** (refuter diffed:
-  that was the NON-persistent missing-roll re-roll on the fallback path in
+  is a routine reward outcome. **Distinct from A6-2** (refuter diffed:
+  that is the NON-persistent missing-roll re-roll on the fallback path in
   stickers.js; this is a RECORDED roll mis-remapped at merge time in engine.js
-  — different site, different mechanism, no overlap). Not canon-sanctioned:
+  — different site, different mechanism, no overlap. Erratum 2026-06-11: A6-2
+  is still OPEN — the INDEX "fixed PR #103" stamp this chunk inherited was a
+  bookkeeping error; #103 is A1-10). Not canon-sanctioned:
   sticker-system.md says rolls are stored then applied; mergeSpliceData's own
   roll-concat+remap shows splice-survival is the code's contract — the
   land-base gap is internal inconsistency, not design.
@@ -828,11 +830,13 @@ tripwires.
 - **A4-18 (chunk 4)** — its 97-survivor `apply_in_game_splice` bucket is
   decomposed by this chunk (see Mutation-map note and Test quality above);
   chunk 5 discharges that handed-forward dark mass.
-- **A6-2 / PR #103** — A5-8 is a **distinct mechanism** from the shipped
-  empower fix: PR #103 fixed the non-persistent missing-roll re-roll on the
-  stickers.js fallback path; A5-8 is a recorded roll mis-remapped at merge time
-  in engine.js (refuter diffed both; no overlap — and the truthy mis-remapped
-  roll actively *blocks* the #103-era fallback).
+- **A6-2** — A5-8 is a **distinct mechanism** from the A6-2 empower finding:
+  A6-2 is the non-persistent missing-roll re-roll on the stickers.js fallback
+  path; A5-8 is a recorded roll mis-remapped at merge time in engine.js
+  (refuter diffed both; no overlap — and the truthy mis-remapped roll actively
+  *blocks* that fallback). Erratum 2026-06-11: this chunk's drafts said
+  "A6-2/PR #103" following a wrong INDEX stamp — A6-2 is in fact still OPEN
+  (#103 is A1-10's PR; stickers.js has no fix commits).
 - **A4-16 (chunk 4)** — Elystra flicker dropping pending permanent buffs — is
   adjacent to **A5-6**: same producer function
   (`flushPermanentEotToPermaBuffs`), different bug; a fixer touching either
@@ -849,7 +853,7 @@ tripwires.
 | [A5-5](chunk-05-synthesis.md) | P2 | synthesis | run.js | Cloned Stapler has no charges field: infinite charges, never ripped, display stuck at "3" — refuter executed the FULL producing path (boon → real clone roll → real activations ×4); charge semantics ride A5-11 | stage | open |
 | [A5-6](chunk-05-synthesis.md) | P3 | synthesis | engine.js | permaBuffs shape mismatch: merge core + unit test pin a phantom ARRAY shape (refuter: systemic, 5 gating sites); real producer is flushPermanentEotToPermaBuffs's OBJECT shape; staple's buffs always destroyed, base's survive by accident; latent (Elystra special-gated) | stage | open |
 | [A5-7](chunk-05-synthesis.md) | P3 | synthesis | engine.js | In-game splice reads slot-only bonusTrigger/permaBuffs off runtime cards (always undefined) vs the reward path's slots; parity test omits exactly those fields; refuter: Watcher's Gift doesn't exist — Steal's stolen-slot meta is the real latent writer; unreachable today | stage | open |
-| [A5-8](chunk-05-synthesis.md) | P3 | synthesis | engine.js | Empower roll mis-remapped on LAND-base splices (effects→triggers gate is creature-only) — recorded roll goes silently inert; chain prior-count misclassifies land staples; distinct mechanism from A6-2/PR #103 (refuter-diffed) | stage | open |
+| [A5-8](chunk-05-synthesis.md) | P3 | synthesis | engine.js | Empower roll mis-remapped on LAND-base splices (effects→triggers gate is creature-only) — recorded roll goes silently inert; chain prior-count misclassifies land staples; distinct mechanism from A6-2, which is still open (refuter-diffed) | stage | open |
 | [A5-9](chunk-05-synthesis.md) | P3 | synthesis | engine.js | matchFilter spliceable_base comment claims "no Lands" — lands are valid, designed (and tiebreak-prioritized) bases | ship | open |
 | [A5-10](chunk-05-synthesis.md) | P3 | synthesis | run.js | Splice reward comment describes the pre-v1.0.47 pick-then-pick flow; the pair is pre-rolled at offer time | ship | open |
 | [A5-11](chunk-05-synthesis.md) | P3 | synthesis | 1500-the-run.md / run.js | Canon §1504 describes the OPPONENT clone heuristic; player Clone is uniformly random, lands included (5000-roll empirical refuter check); third disagreeing comment at run.js:760; needs Joe's ruling — A5-5's design half rides it | stage | open |
