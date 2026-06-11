@@ -141,6 +141,9 @@ const EXPOSED = [
   // Trigger-generator surface (triggers.js + trigger-generator.js —
   // no IIFE, all module-scope).
   'GENERATOR_EFFECTS', 'GENERATOR_CONDITIONS',
+  // Mercurial Adept's static pool (engine.js module scope, above the IIFE) —
+  // exposed for the A3-13 condition-aliasing and A3-5 table-validation tests.
+  'MERCURIAL_TRIGGER_POOL',
   'evalTriggerCondition',
   // Composable-predicate surface (triggers.js, module-scope — Slice 2 / E2).
   'ATOMIC_PREDICATES', 'evaluateCondition', '_parseCall',
