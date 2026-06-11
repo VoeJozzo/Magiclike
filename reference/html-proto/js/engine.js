@@ -873,12 +873,20 @@ function makeToken(tokenTplId, controller) {
 
 // Intrinsic = template + stickers (NOT runtime grants). Used by
 // clearRestrictionsFromSource. Stapled-aware so Knight+Spirit retains both halves' keywords.
+// Copy-aware (audit A4-5): while card.copyOf is set (become_copy_of), the
+// copied template's printed keywords ARE the card's intrinsic identity — so
+// every re-derive path (the CLEANUP eotGrants rebuild, grant strips, trophy
+// claimableKeywords) preserves a copy's flying instead of resurrecting the
+// base template's flash. resetInPlayState clears copyOf before its own
+// re-derive, so the leave-play revert still lands on the base identity.
 function intrinsicKeywords(card) {
   if (card.isToken) {
     const tpl = TOKENS[card.tplId];
     return (tpl && tpl.keywords) ? tpl.keywords.slice() : [];
   }
-  const tpl = card.stapledFrom
+  const tpl = (card.copyOf && CARDS[card.copyOf])
+    ? CARDS[card.copyOf]
+    : card.stapledFrom
     ? synthesizeStapledTemplate(card.stapledFrom.baseTplId,
                                  card.stapledFrom.stapledTpls)
     : CARDS[card.tplId];
@@ -1184,6 +1192,26 @@ function pluckFromBattlefield(f) {
   return bf.splice(idx, 1)[0];
 }
 
+// ONE shared "does this lord's static buff apply to this target?" predicate —
+// the single answer for BOTH halves of a static_buff: the live stat half
+// (getStats) and the reconciled keyword half (applyStaticKeywordGrants).
+// Audit A4-2 / A2-9: these gates used to live as two hand-synced copies with
+// divergent guards — the stat copy lacked the Creature check (so a
+// subtype-free lord buffed lands), and the keyword copy never re-asked the
+// question after granting (so grants went stale on steal/type change).
+// filter.controller:'self' = "creatures you control" (shares lord controller).
+//
+// A4-14 NOTE (next batch): the getStats ↔ matchFilter mutual-recursion guard
+// (a stat-bounded lord filter re-entering getStats) belongs HERE — this
+// predicate is the one funnel through which both halves reach matchFilter.
+function lordBuffApplies(lord, lordCtrl, buff, target, tgtCtrl) {
+  if (lord.iid === target.iid) return false;   // lords buff OTHER creatures
+  if (!hasType(target, 'Creature')) return false;
+  if (!matchFilter(target, buff.filter, tgtCtrl, lordCtrl)) return false;
+  if (buff.subtype && !hasType(target, buff.subtype)) return false;
+  return true;
+}
+
 function getStats(card) {
   // Works on real instances AND synthetic template+stickers shapes (reward UI).
   let p = (card.power || 0) + (card.tempPower || 0) + (card.permPower || 0);
@@ -1204,16 +1232,14 @@ function getStats(card) {
   if (card.iid != null && typeof G !== 'undefined' && G && G.you && G.you.battlefield) {
     const owner = findCard(card.iid);
     if (owner) {
-      const allCreatures = [
+      const allPermanents = [   // every permanent, lands included (A2-9 rename)
         ...G.you.battlefield.map(c => ({ card: c, controller: 'you' })),
         ...G.opp.battlefield.map(c => ({ card: c, controller: 'opp' })),
       ];
-      for (const { card: lord, controller: lordCtrl } of allCreatures) {
-        if (!lord.static_buffs || lord.iid === card.iid) continue;
+      for (const { card: lord, controller: lordCtrl } of allPermanents) {
+        if (!lord.static_buffs) continue;
         for (const buff of lord.static_buffs) {
-          // filter.controller:'self' = "creatures you control" (shares lord controller).
-          if (!matchFilter(card, buff.filter, owner.controller, lordCtrl)) continue;
-          if (buff.subtype && !hasType(card, buff.subtype)) continue;
+          if (!lordBuffApplies(lord, lordCtrl, buff, card, owner.controller)) continue;
           p += (buff.power || 0);
           t += (buff.toughness || 0);
         }
@@ -1528,6 +1554,10 @@ function colorsOfCard(card) {
   if (card.cost) {
     for (const c of COLORS) if ((card.cost[c] || 0) > 0) colors.push(c);
   }
+  // Cost-less cards (tokens) carry only the single printed `color` — fall
+  // back to it so their color identity isn't empty (audit A4-6: matchFilter's
+  // color/not_color checks route through this full-identity list).
+  if (!colors.length && card.color && COLORS.includes(card.color)) colors.push(card.color);
   return colors;
 }
 function resolvedManaCost(rawCost, sourceCard, who) {
@@ -1811,6 +1841,12 @@ function resolveFightOperands(ctx, operands) {
   });
   ops.forEach((op, i) => {
     if (out[i]) return;
+    // The auto-fill exists for {select} computed operands ONLY. A {slot}
+    // operand whose chosen creature is gone at resolution stays null so the
+    // fight handler's !a||!b guard fizzles it (audit A4-3 — this pass used to
+    // fill failed slot references too, conscripting the caster's next-biggest
+    // creature as the replacement combatant: friendly fire instead of fizzle).
+    if (op && op.slot != null) return;
     const ours = G[ctx.controller].battlefield
       .filter(c => hasType(c, 'Creature') && !used.has(c.iid));
     if (!ours.length) return;
@@ -3435,22 +3471,24 @@ function cardHasEffect(card, predicate) {
 const TRIGGER_DEPTH_CAP = 100;
 
 // Lord-grant reconciliation, called from emit() pre-trigger. Idempotent.
-// Cleanup via clearRestrictionsFromSource on lord leave-play.
+// TRUE diff-reconcile (audit A4-2): an add pass for every (lord buff, target)
+// pair the shared lordBuffApplies predicate accepts, then a revoke pass for
+// lord-sourced grants it no longer accepts (the creature was stolen, changed
+// type, ...). Before the revoke pass this was add-only, so a grant went stale
+// FOREVER unless the lord left play (leave-play cleanup stays with
+// clearRestrictionsFromSource).
 function applyStaticKeywordGrants() {
   if (!G || !G.you || !G.opp) return;
   const all = [
     ...G.you.battlefield.map(c => ({ card: c, controller: 'you' })),
     ...G.opp.battlefield.map(c => ({ card: c, controller: 'opp' })),
   ];
-  for (const { card: lord, controller: lordCtrl } of all) {
-    if (!lord.static_buffs) continue;
+  const lords = all.filter(e => e.card.static_buffs);
+  for (const { card: lord, controller: lordCtrl } of lords) {
     for (const buff of lord.static_buffs) {
       if (!buff.keywords || !buff.keywords.length) continue;
       for (const { card: target, controller: tgtCtrl } of all) {
-        if (target.iid === lord.iid) continue;
-        if (!hasType(target, 'Creature')) continue;
-        if (!matchFilter(target, buff.filter, tgtCtrl, lordCtrl)) continue;
-        if (buff.subtype && !hasType(target, buff.subtype)) continue;
+        if (!lordBuffApplies(lord, lordCtrl, buff, target, tgtCtrl)) continue;
         if (!(target.grantedBy instanceof Map)) target.grantedBy = new Map();
         for (const kw of buff.keywords) {
           if (!target.grantedBy.has(kw)) target.grantedBy.set(kw, new Set());
@@ -3458,6 +3496,28 @@ function applyStaticKeywordGrants() {
           target.grantedBy.get(kw).add(lord.iid);
           if (!target.keywords.includes(kw)) target.keywords.push(kw);
         }
+      }
+    }
+  }
+  // Revoke pass: walk each card's grant entries whose source resolves to a
+  // battlefield lord whose static_buffs CLAIM the keyword; if no buff of that
+  // lord still accepts the (buff, target) pair, the grant is stale — strip it.
+  // Grants whose source is anything else (one-shot spells, abilities, a lord
+  // keyword granted by its TRIGGER rather than its static_buff) keep their
+  // existing leave-play contract untouched.
+  const lordByIid = new Map(lords.map(e => [e.card.iid, e]));
+  for (const { card: target, controller: tgtCtrl } of all) {
+    if (!(target.grantedBy instanceof Map)) continue;
+    for (const [kw, sources] of [...target.grantedBy]) {
+      for (const srcIid of [...sources]) {
+        const entry = lordByIid.get(srcIid);
+        if (!entry) continue;
+        const claiming = entry.card.static_buffs
+          .filter(b => b.keywords && b.keywords.includes(kw));
+        if (!claiming.length) continue;
+        const still = claiming.some(b =>
+          lordBuffApplies(entry.card, entry.controller, b, target, tgtCtrl));
+        if (!still) stripGrantedKeyword(target, kw, srcIid);
       }
     }
   }
@@ -4343,8 +4403,11 @@ function matchFilterSpell(card, filter) {
 function matchFilter(card, filter, controller, who) {
   if (!filter) return true;
   if (filter.tapped !== undefined && card.tapped !== filter.tapped) return false;
-  if (filter.not_color && card.color === filter.not_color) return false;
-  if (filter.color && card.color !== filter.color) return false;
+  // Color checks test the FULL color identity (audit A4-6): card.color is
+  // just colors[0], so first-pip equality let "non-Black" Doom Blade destroy
+  // the {U}{B} Seal-Thief Courier and would make {color:'U'} reject a W/U card.
+  if (filter.not_color && colorsOfCard(card).includes(filter.not_color)) return false;
+  if (filter.color && !colorsOfCard(card).includes(filter.color)) return false;
   if (filter.controller === 'self' && controller !== who) return false;
   if (filter.controller === 'opp'  && controller === who) return false;
   if (filter.max_tough !== undefined) {
@@ -4461,6 +4524,10 @@ function resetInPlayState(card, preserveDeathState) {
   // RETAINED: the leave trigger fired by this very departure still needs it to
   // return the exiled original (read off the event's subject_card).
   if (card.copyOf) {
+    // Clear the flag FIRST: intrinsicKeywords is copy-aware (audit A4-5), and
+    // this branch wants the BASE identity back — re-deriving with copyOf
+    // still set would rebuild the copied keywords we're reverting.
+    card.copyOf = null;
     const baseTpl = CARDS[card.tplId];
     if (baseTpl) {
       card.name = baseTpl.name;
@@ -4479,7 +4546,6 @@ function resetInPlayState(card, preserveDeathState) {
       card.keywords = intrinsicKeywords(card);
       card.text = describeCardText(card);
     }
-    card.copyOf = null;
   }
   card.dealtDeathtouch = false;
   // Re-apply permaBuffs from slot for permanent_eot creatures (Elystra). Buffs
@@ -4658,22 +4724,33 @@ function clearRestrictionsFromSource(sourceIid) {
       if (Array.isArray(c.typeGrants) && c.typeGrants.length) {
         c.typeGrants = c.typeGrants.filter(g => g.source !== sourceIid);
       }
-      // Granted keywords: remove this source from each keyword's grant set.
-      // If the set empties AND the keyword isn't intrinsic, strip it from
-      // the keywords list (e.g., Bindspeaker dies → target loses defender).
+      // Granted keywords: remove this source from each keyword's grant set
+      // (e.g., Bindspeaker dies → target loses defender). Strip logic shared
+      // with applyStaticKeywordGrants' revoke pass (audit A4-2).
       if (c.grantedBy instanceof Map) {
-        for (const [kw, sources] of [...c.grantedBy]) {
-          if (!sources.has(sourceIid)) continue;
-          sources.delete(sourceIid);
-          if (sources.size === 0) {
-            c.grantedBy.delete(kw);
-            if (!intrinsicKeywords(c).includes(kw)) {
-              const idx = c.keywords.indexOf(kw);
-              if (idx >= 0) c.keywords.splice(idx, 1);
-            }
-          }
-        }
+        for (const kw of [...c.grantedBy.keys()]) stripGrantedKeyword(c, kw, sourceIid);
       }
+    }
+  }
+}
+
+// Remove sourceIid from `card`'s grant set for `kw`. If the set empties, the
+// keyword is stripped from card.keywords UNLESS it's intrinsic (template /
+// sticker / subtype-implied) or still carried by a live EOT grant (Threaten's
+// grant_haste must survive a lord-grant revocation). Shared by
+// clearRestrictionsFromSource (leave-play) and applyStaticKeywordGrants'
+// revoke pass (filter falsification, audit A4-2).
+function stripGrantedKeyword(card, kw, sourceIid) {
+  if (!(card.grantedBy instanceof Map)) return;
+  const sources = card.grantedBy.get(kw);
+  if (!sources || !sources.has(sourceIid)) return;
+  sources.delete(sourceIid);
+  if (sources.size === 0) {
+    card.grantedBy.delete(kw);
+    if (!intrinsicKeywords(card).includes(kw)
+        && !(Array.isArray(card.eotGrants) && card.eotGrants.includes(kw))) {
+      const idx = card.keywords.indexOf(kw);
+      if (idx >= 0) card.keywords.splice(idx, 1);
     }
   }
 }

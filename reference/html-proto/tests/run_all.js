@@ -240,6 +240,20 @@ const CATEGORY_A = [
   // solver (solveManaPayment); the payer executes the checker's solution,
   // payment is atomic (full payment or zero mutation, never half-applied).
   'test_paymana_plan_unification.js',
+  // Audit A4-2 (adjudicates A2-9) — one shared lordBuffApplies predicate for
+  // both static_buff halves; applyStaticKeywordGrants diff-reconciles (grants
+  // revoke when the lord's filter stops matching — steal, type change).
+  'test_lord_grant_reconcile.js',
+  // Audit A4-3 — fight fizzles (never retargets) when a chosen {slot}
+  // participant is gone at resolution; {select} auto-pick unaffected.
+  'test_fight_fizzle.js',
+  // Audit A4-5 — intrinsicKeywords is copy-aware: a become_copy_of copy keeps
+  // the copied keywords through the CLEANUP eotGrants rebuild; leave-play
+  // revert still lands on the base identity.
+  'test_copy_keyword_persistence.js',
+  // Audit A4-6 — color/not_color filters test the full color identity
+  // (colorsOfCard), not just the first pip; multicolor + token paths.
+  'test_color_filter_multicolor.js',
 ];
 
 const TESTS_DIR = __dirname;

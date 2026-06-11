@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.1.37`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.1.38`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -1843,6 +1843,44 @@ gain via a not_keyword-gated FS lord that starts matching when the
 vigilance-granting lord dies in pass 1). Predicted test impact per the
 finding — none — confirmed: zero existing assertions flipped. Suite 94
 files / 2052 green, lint clean.
+
+v2.1.38: audit fix batch — the four named chunk-4 P1 GOs (Joe's verdicts,
+PR #98, 2026-06-11). **A4-2 (adjudicates parked A2-9):** lord static-buff
+keyword grants were ADD-ONLY — steal a Goblin from under Goblin Chieftain
+and it kept haste forever (stale hexproof/vigilance/trample likewise) while
+the stat half of the SAME buff dropped live. One shared lordBuffApplies()
+predicate is now the single gate for BOTH halves (A2-9's resolution: the
+stat loop gains the Creature check it lacked — a subtype-free lord no
+longer buffs lands — and `allCreatures` in getStats renamed allPermanents);
+applyStaticKeywordGrants is a true diff-reconcile with a revoke pass for
+lord-sourced grants the predicate no longer accepts, via a new
+stripGrantedKeyword() helper shared with clearRestrictionsFromSource (the
+strip also respects live eotGrants, so Threaten's own granted haste
+survives the revocation of the old lord's). The A4-14 getStats↔matchFilter
+recursion guard is NOT included (next batch) — its one home is marked in
+lordBuffApplies' header. **A4-3:** fight effects retargeted around removal —
+resolveFightOperands' auto-fill pass, written for {select} computed
+operands, also filled a {slot} operand whose chosen creature died in
+response, conscripting the caster's next-biggest creature (friendly fire
+after printing the fizzle log; live in all 4 fight cards). Per §704/§1006
+fizzle semantics: the fill pass now skips {slot} operands, so a missing
+participant hits the handler's !a||!b fizzle. **A4-5:** intrinsicKeywords
+was copyOf-blind — the CLEANUP eotGrants rebuild erased a False Witness
+copy's copied flying and resurrected the base flash (same root corrupted
+claimableKeywords trophy claims on copy victims). intrinsicKeywords now
+derives from CARDS[card.copyOf] while the copy is live (mirroring its
+stapledFrom branch); resetInPlayState clears copyOf before its own
+re-derive so the leave-play revert still lands on the base identity.
+**A4-6:** color/not_color target filters compared card.color — the FIRST
+pip only — so "non-Black" Doom Blade legally destroyed the {U}{B}
+Seal-Thief Courier (and {color:'U'} would reject a W/U card). Both checks
+now route through colorsOfCard's full identity list; colorsOfCard gains a
+printed-color fallback so cost-less tokens keep their single-color
+identity. Four new red→green regression files (red captured pre-fix):
+test_lord_grant_reconcile.js (19), test_fight_fizzle.js (9),
+test_copy_keyword_persistence.js (14), test_color_filter_multicolor.js
+(13). Predicted test impact per all four findings — none — confirmed: zero
+existing assertions flipped. Suite 98 files / 2107 green, lint clean.
 > **MUST UPDATE on every dev-branch push that touches code.** Bump `VERSION` in `js/main.js` AND the line above, in the same commit. GitHub Pages caches aggressively; the version string is the only reliable way to confirm a fresh build is live.
 
 Always work on `dev` for html-proto changes.
