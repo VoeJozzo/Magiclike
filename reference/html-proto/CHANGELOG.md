@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.1.36`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.1.37`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -1815,6 +1815,34 @@ now says "permanents or spells" (matches its permanent_or_spell targeting;
 custom_text, rules-inert). New wiki page docs/wiki/engine/synthesis-staple.md
 (chunk-5 distillation) + engine README listing. Suite 93 files / 2038
 green, lint clean.
+
+v2.1.37: audit fix A2-1 (chunk 2, P1; design ruling, PR #98, 2026-06-11:
+"OK yeah, that kills the case for double damage. Let's go with MtG's
+behavior here") — first-strike wave membership is snapshotted ONCE at
+combat-damage start. resolveCombatDamage's two strike passes filtered on
+LIVE card.keywords; deaths sweep BETWEEN the passes, and a dying lord's
+clearRestrictionsFromSource splices its granted keywords out — so a
+creature whose first strike was granted by a lord that died in pass 1
+re-passed the pass-2 `!first_strike` filter and dealt combat damage TWICE
+(the finding's executed repro: Skyfire Drakelord's granted Dragon hit for
+3 + 2 = 5 face where canon says 3); inversely, a creature GAINING first
+strike between the passes matched neither filter and dealt zero. Fix: an
+`fsIids` Set snapshotted from allCombatants before pass 1; both passes
+filter on the snapshot, so each combatant deals damage in exactly the one
+wave the snapshot assigns — never both (no accidental double-strike
+semantics). ai.js simulateCombat mirrors the snapshot shape for lockstep
+(no behavior change there — the sim never mutates keywords between
+strikes). Canon docs/wiki/rules/800-combat.md §803 gains an explicit
+wave-snapshot paragraph + a per-engine implementation-status line (the
+Godot port still live-reads per pass; harmonize with C1/C2). New
+tests/test_combat_first_strike_snapshot.js (14 assertions, red→green:
+both pins red pre-fix — face 5-not-3 on the lord-death double dip, face
+0-not-2 on the mid-combat gain), driving both directions through public
+actions only (revoke via skyfire_drakelord + a Dragon'd goblin_raider;
+gain via a not_keyword-gated FS lord that starts matching when the
+vigilance-granting lord dies in pass 1). Predicted test impact per the
+finding — none — confirmed: zero existing assertions flipped. Suite 94
+files / 2052 green, lint clean.
 > **MUST UPDATE on every dev-branch push that touches code.** Bump `VERSION` in `js/main.js` AND the line above, in the same commit. GitHub Pages caches aggressively; the version string is the only reliable way to confirm a fresh build is live.
 
 Always work on `dev` for html-proto changes.
