@@ -227,6 +227,10 @@ const CATEGORY_A = [
   // the next real window (§1004.4); no synthetic round conjured mid-pause,
   // pending declarations never silently skipped.
   'test_trigger_closed_window_drain.js',
+  // Audit A6-1 option C — the bargain sticker pool stays BROAD (add_type/
+  // cost_mod/remove_keyword included; scarified/subtype/empower excluded)
+  // and each pick now respects rarity weights via pickWeightedSticker.
+  'test_bargain_weighted_pool.js',
 ];
 
 const TESTS_DIR = __dirname;

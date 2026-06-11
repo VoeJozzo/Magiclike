@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.1.33`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.1.34`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -1717,6 +1717,34 @@ the real window + open-window guard). Predicted test impact per the packet
 was "zero tests assert priorityHolder post-cast or post-ability" —
 confirmed: zero existing assertions flipped. Suite 91 files / 2000 green,
 lint clean.
+
+v2.1.34: audit fix A6-1, option C (Joe's ruling, PR #98 round 3, 2026-06-10:
+"Do C. Keep the pool broad, but make it factor weights in appropriately.") —
+bargain sticker rewards now respect rarity weights. Pre-fix,
+applyRandomStickersToSide (Archdemon of Bargains' ETB/LTB payouts) enumerated
+every legal (permanent, sticker) pairing and drew UNIFORMLY — the registry
+rarity weights were ignored, so a weight-1 rare (Indestructible/Hexproof/
+Unblockable/Costs-1-Less) was as likely per pairing as weight-20 +1/+1, and a
+permanent eligible for more sticker types soaked up proportionally more
+picks. Now each pick builds its candidate pool via the new
+bargainStickerCandidates() (the BROAD pool, unchanged per the ruling: stat
+boosts, keyword grants, Innate, the five land-color add_type stickers,
+cost_minus_1, lose_defender — still excluding scarified/subtype/empower and
+weight 0) and draws the STICKER via pickWeightedSticker, the same machinery
+as normal reward offers (run.js sticker offers, draft.js AI bursts), then a
+target permanent uniformly among that sticker's eligible permanents;
+candidates re-derive between picks so eligibility updates as stickers land.
+The code comment that understated the pool (A6-1's original evidence) is
+replaced by the real enumeration + the weighting rule. New
+tests/test_bargain_weighted_pool.js (21 assertions, red→green: 3 red pre-fix
+— the uniform draw at a stubbed roll of 0.6 picked weight-1 Indestructible
+over weight-20 +1/+1): deterministic Math.random-stub weighting checks (no
+sampling) + direct inspection of the constructed weighted pool (breadth, the
+three exclusions, registry weights carried through, per-sticker placement
+lists). Predicted test impact per the packet — the existing bargain test
+asserts a tolerant count, likely still green — confirmed:
+test_bargain_chooser_and_empower.js 20/20, zero existing assertions flipped.
+Suite 92 files / 2021 green, lint clean.
 > **MUST UPDATE on every dev-branch push that touches code.** Bump `VERSION` in `js/main.js` AND the line above, in the same commit. GitHub Pages caches aggressively; the version string is the only reliable way to confirm a fresh build is live.
 
 Always work on `dev` for html-proto changes.
