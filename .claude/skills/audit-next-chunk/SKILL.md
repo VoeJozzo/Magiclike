@@ -187,6 +187,12 @@ test impact):
 5. html-proto convention: bump `js/main.js` VERSION + CHANGELOG.md entry
    when js/ files change (tests-only changes don't bump).
 
+**Standing rule (Joe, 2026-06-10, PR #98):** defensive validation and
+diagnostics that CANNOT change game behavior (boot-time table validation,
+loud-warning arms, log truthfulness) ship autonomously without a ballot —
+"part of the work" — disclosed in the nightly packet. Anything that can
+alter a game outcome still stages.
+
 **Trivia** (fix smaller than the writeup — typo'd predicate, `x || x`):
 batch the chunk's trivia into ONE small `audit/fix-chunkNN-trivia` PR into
 the workshop, same green gates. Note each in the findings file as a line
