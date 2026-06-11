@@ -169,3 +169,51 @@ Distance between two card groups = **mean cross-edge mass** between their member
 - `bucket_distance.js` — the archetype distance matrix (including the goblins↔burn one-line lesson).
 
 They are throwaway-quality but ~70% of a real `buckets.js`; the extraction-rule table is the part worth porting verbatim.
+
+---
+
+# Part II — Scratchpad: the wider vision
+
+*(Everything below is **deliberately unspecced** — an idea dump, invited as such, written with the dial turned to "share the excitement." Nothing here is agreed, sequenced, or even necessarily good. The connective thesis, though, I'll stand behind:)*
+
+**The synergy graph shouldn't be a bucket-generation detail. It should be the game's shared nervous system** — one boot-time data structure that the draft, the map, the opponents, the rewards, the UI, the analytics, and the card-design pipeline all read. The sticker system already proved the pattern: a meta-layer currency that flows both directions between run and game became the game's signature. The graph can do for *structure* what stickers did for *progression*. The pool stops being a list of cards and becomes a **place** — and almost every idea below is some system discovering it can read the map of that place.
+
+## The map
+
+- **The map is a projection of the graph onto geography.** Today map nodes are colored W/U/B/R/G. Instead: nodes are *archetype-affine* — the opponent at a node is seeded from a graph region, so routing reads as "fight through goblin country or cut across the spirit marshes." The distance matrix already knows the continents; the map generator just samples them. Color affinity becomes the special case, not the system.
+- **Forecastable routing.** Because node opponents are theme-seeded, map icons can honestly telegraph *plans*, not just colors — "aggro territory ahead" is actionable ("grab the Wall bucket / the lifegain package *now*"). Routing becomes deckbuilding at one remove, which is exactly the StS muscle the map currently doesn't exercise.
+- **Themed markets stock from graph regions.** The bazaar ideas from the session (Library, War Camp, Menagerie, Gravemarket) stop needing curated inventories — a market node is a *named region of the graph* with a coherence floor. The Gravemarket stays special: it sells your own ripped slots back, and the graph can *price* them by edge centrality — buying back the card your whole engine missed costs more than buying back filler. The wound that hurt most is the expensive one to heal. That's drama as a pricing function.
+- **Sector escalation as graph navigation.** Each new sector's map could deliberately bias toward regions *hostile* to your deck — boss selection in particular: pick the archetype at maximal effective distance from (or maximal counter-leverage against) the player's profile. The Balancer shows up *because* you snowballed wide. Difficulty that reads as the world responding to who you've become, with zero stat inflation.
+
+## Opponents
+
+- **Opponents are built by the bucket generator.** Replace pick-by-pick AI drafting with 7–8 bucket picks from a seed. Opponent decks become *coherent* — they have plans you can read mid-game and play around — and the hand-curated constructed decks (Goblin Aggro, Spirit Tribal…) become merely *famous seeds* rather than maintained lists. Bosses = maximal-coherence decks grown around their signature card as the seed.
+- **Difficulty = temperature.** This is the scratchpad idea I'd defend in a knife fight. Scale opponent strength by *generation temperature*: early enemies are built at high T (sloppy, unfocused decks — beatable by fundamentals), bosses approach T→0 (the platonic engine). The difficulty curve becomes "how well is the enemy deck built," which is precisely what difficulty means between human players — and it's one float. No card-quality changes, no HP inflation, no cheating AI. The existing sticker/staple/clone scaling stays as the second axis; coherence becomes the first.
+- **A rival.** One persistent NPC per run: a seed + theme profile + temperature that re-appears every sector, its deck growing by the *same* growth rules as yours (buckets, stickers, maybe even spoils of its own from "fights" it notionally wins offscreen). You watch its deck mature in parallel with yours, and the final meeting is two grown decks with histories. The Nemesis system, except the nemesis is a decklist.
+
+## Stickers, splice, and graph surgery
+
+- **The subtype sticker is secretly the most strategic card in the game and nobody knows it yet.** Stickers that change a card's data *literally rewire the graph*: +Goblin on a value creature creates real edges to the chieftain and the drummer; future buckets *follow the new wiring*. Sticker → graph update → the run's growth trajectory bends. The moment buckets ship, subtype/keyword stickers stop being stat-adjacent curiosities and become *steering*. The UI should celebrate this ("new synergies unlocked: …" — the edge labels are the copy, pre-written).
+- **Splice candidates ranked by edge weight.** The splice reward UI sorts pairs by their edge: "these two cards have been asking to be stapled." The graph generating *romance* between cards is also just… correct matchmaking — the best splices are producer/consumer pairs collapsed into one card.
+- **WANTS-aware sticker offers.** A slot with unmet WANTS biases its own offers: the sac outlet starving for fodder gets offered the token-empower. Rewards that *complete engines* instead of inflating stats — which is the exact medicine for the "+1/+1 spreadsheets" reward-texture critique from the start of this session.
+
+## The deck as a visible organism
+
+- **The constellation view.** Draw the deck as its subgraph: cards as stars, edges as lines, edge weight as brightness. Stickers and splices visibly add lines *while you watch*. The "deck as character" thesis finally gets a *portrait* — and a run's story becomes a time-lapse of a constellation assembling. (The force-directed layout of the full pool is also the meta-codex: archetype space with fog-of-war over regions you've never drafted. Exploration as collection.)
+- **Realized synergy.** The engine already emits structured events; cross-reference them against the deck's edges and you can detect when an edge *actually fires in play* (Rabble's tokens died, the Artist drained). Paper synergy vs. realized synergy. Uses stack up fast: celebrate it in the log; gate banner unlocks on it ("earn the Grave Bargains banner by *doing* it," the keyword-claim philosophy extended to structure); and feed it back into rule-weight tuning — the graph *learns which of its own edges are real* from selfplay, which is the Duels telemetry approach finally done right, on top of a structural prior instead of instead of one.
+- **Codex & Mercurial point their generators at the graph.** Architect's Codex and Mercurial Adept already roll procedural abilities; let them sample from the deck's *unmet WANTS*. The Codex stops offering random text and starts offering the missing organ. (Endomorph already mutates its own PROVIDES mid-run by eating keywords — there's a whole genre of "graph-live cards" hiding here: cards whose wiring changes as the run plays.)
+
+## Run modifiers & the content pipeline
+
+- **Temperature as a player-facing boon axis.** "The Loom" — all your buckets generate at T→0 (perfect engines) but offers shrink to 2. "The Bazaar of Babel" — high T everywhere, 4-card buckets, chaos drafting. One existing knob, two opposite fantasies.
+- **The graph as card-design compass.** The distance matrix is a live dashboard of the pool's gaps: islands that need bridges (counterspells → a spells-matter payoff package), thin tribes with payoffs but no bodies, dead cards with low degree everywhere. The card-pitch workflow can take a *target edge* as its brief: "pitch me cards that connect the counterspell island to the death-matters continent." And low-degree cards can get automatic draftWeight boosts inside the buckets where they *do* fit — the system quietly rehabilitating its own least-loved children.
+- **A pre-commit graph diff as content CI.** New card lands → boot scan → "this card adds 14 edges, joins Grave Bargains and Skyborne, bridges nothing, degree percentile 62." A card that adds *zero* edges triggers a gentle warning: it's either deliberately standalone or accidentally inert. The same line that catches design mistakes also describes the card for the changelog.
+
+## What I'd actually chase first (the scratchpad ranked, despite myself)
+
+1. **Difficulty = temperature** (one float, transforms the run's spine).
+2. **Opponents built by the generator** (coherent enemies; deletes a curation burden).
+3. **Stickers as graph surgery** (zero new code — it's *already true* the moment buckets ship; just needs the UI to say so).
+4. **Realized-synergy detection** (the feedback loop that makes everything else self-tuning).
+5. **The constellation view** (pure presentation, pure love — ship last, want most).
+
