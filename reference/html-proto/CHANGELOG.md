@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.1.34`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.1.35`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -1745,6 +1745,43 @@ lists). Predicted test impact per the packet — the existing bargain test
 asserts a tolerant count, likely still green — confirmed:
 test_bargain_chooser_and_empower.js 20/20, zero existing assertions flipped.
 Suite 92 files / 2021 green, lint clean.
+
+v2.1.35: audit fix A1-2 — mana payer unification: ONE solver for legality AND
+payment (Joe-approved, PR #98 round 4: "A1-2: Go" on the proposal "have the
+smart check hand its winning combination to the payer, and the payer just
+executes it"; round 3 ruling on the why: "this smells of unnecessarily
+duplicative logic"). Pre-fix, affordability (canPayPotential — backtracking
+over choose-source color assignments) and payment (payMana — greedy fixed
+W,U,B,R,G order via tapSourceProducing, no backtracking) were two different
+algorithms. With two partially-overlapping choose-duals (reachable via
+land_color_* stickers, land staples, City of Brass) the checker said
+"castable", the greedy payer spent the wrong dual first, hit a dead end
+mid-payment and THREW out of executeAction — half-applied state: a land
+wrongly tapped, its mana consumed, the spell still in hand, step()/notify()
+never run (violating doCastSpell's "assume the action has been validated"
+contract). The same mismatched pair gated all three payMana call sites
+(doCastSpell, doActivateAbility, doOptionalCost — the optional-cost leg also
+irrecoverably lost the trigger, chunk-4's executed repro). Now
+solveManaPayment computes a concrete plan — which sources to tap, which
+color each choose-source produces — via the same backtracking search the
+checker ran (now recording its winning assignment), then trims unneeded
+taps in an order that preserves the old payer's observable preferences
+(pool-first, fixed-before-choose, front-to-back); canPayPotential is a thin
+"does a plan exist?" wrapper and payMana executes the plan verbatim —
+solve-then-execute, validated before any mutation, so payment is atomic by
+construction (genuinely unaffordable payMana throws BEFORE touching
+anything). tapSourceProducing (the greedy auto-tapper) is deleted; the
+mana-ability fast-path semantics (docs/wiki/mana-model.md) are untouched.
+New tests/test_paymana_plan_unification.js (17 assertions, red→green: 8 red
+pre-fix — the {U}{B}-on-overlapping-duals cast threw with dual A left
+tapped, and unaffordable payMana tapped before throwing): checker-approved
+cast pays end-to-end (direct payMana solve + public-API cast resolving),
+atomic failure (no mutation on unaffordable), pool-first/fixed-preferred
+guards, and the doOptionalCost call site paying through the same solver.
+Predicted test impact per the packet — none, no test pins greedy payment —
+confirmed: zero existing assertions flipped (test_mana.js auto-tap and
+fixed-over-City-of-Brass arms green unchanged). Suite 93 files / 2038
+green, lint clean.
 > **MUST UPDATE on every dev-branch push that touches code.** Bump `VERSION` in `js/main.js` AND the line above, in the same commit. GitHub Pages caches aggressively; the version string is the only reliable way to confirm a fresh build is live.
 
 Always work on `dev` for html-proto changes.
