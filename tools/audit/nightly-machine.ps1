@@ -1,6 +1,7 @@
 # nightly-machine.ps1 — the audit campaign's free tier: pure machine time,
-# no Claude usage. Runs nightly at 21:00 via the "Magiclike Audit Nightly
-# Machine" scheduled task, finishing before/alongside the 23:00 audit window.
+# no Claude usage. Runs daily at 09:00 (moved from 21:00 per Joe 2026-06-10:
+# CPU is idle in daytime and mutation workers contend with the overnight
+# agents' suite runs) via the "Magiclike Audit Nightly Machine" task.
 #
 #   1. Pull the workshop worktree to the latest audit/integration tip.
 #   2. Incremental mutation run (only mutants in changed files re-execute)

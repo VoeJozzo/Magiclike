@@ -70,8 +70,10 @@ Dry run section).
    anomaly becomes a candidate finding routed to whichever chunk owns that
    subsystem (note it in STATE.md's Log if that chunk is already done).
 5. **Read Joe's decision inbox** — comments on the findings PR (#98):
-   `… gh-bot.ps1 pr view 98 --json comments --jq '.comments[] | [.author.login, .body] | @tsv'`
-   (canonical invocation). Protocol (Joe-requested, 2026-06-10): **one bot
+   `… gh-bot.ps1 pr view 98 --json comments` (canonical invocation; do NOT
+   pass complex `--jq` filters — quoting mangles through the PowerShell
+   arg layer and gh fails with a misleading auth error; parse the JSON
+   locally instead). Protocol (Joe-requested, 2026-06-10): **one bot
    comment per open decision item** (🗳️-prefixed, "A<chunk>-<n> — title");
    Joe replies under an item's comment with his verdict (`go` / `option B` /
    `hold — question`). Only `VoeJozzo`-authored comments are decisions;
@@ -199,6 +201,16 @@ for a non-coder. No branch, no PR, until Joe's nod.
 **P0 escape hatch:** a P0 never waits and never self-decides — stamp it at
 the top of the findings PR body + NIGHTLY.md and fire a push notification
 immediately.
+
+### 4b. Distill into the engine wiki (Joe-authorized 2026-06-10, structure Claude's)
+
+After remediation, distill the chunk's DURABLE knowledge into
+`docs/wiki/engine/<subsystem>.md` (template + anatomy in
+`docs/wiki/engine/README.md`): the verified flow, Joe's design rulings
+(cite PR #98 + date), verified-clean negative space, open finding IDs
+(link, don't duplicate status), and the region's mutation reality. Ship it
+with the chunk's docs PR into the workshop. Durable means: survives
+remediation; no line numbers (cite function names); no transient status.
 
 ### 5. Self-QA gate (fresh context, before marking done)
 
