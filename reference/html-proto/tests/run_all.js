@@ -205,6 +205,21 @@ const CATEGORY_A = [
   // included), multi-target entries partial-fizzle onto remaining legal
   // targets, happy path unchanged.
   'test_resolution_revalidation.js',
+  // Audit A3-10 — no silent emit-time trigger eat: a targeted trigger with
+  // no legal target queues on event match and fizzles WITH a log at the
+  // stack-push moment (§1004/§1005); happy path pinned green.
+  'test_trigger_emit_fizzle_log.js',
+  // Audit A3-13 — trigger copies are exact at copy-time, then diverge:
+  // condition arrays deep-copied at makePlayer's Mercurial pool pick,
+  // makeCard's bonusTrigger push, and finalizeBuild's slot/live-card writes.
+  'test_trigger_condition_clone.js',
+  // Audit A3-14 — schedule_delayed refuses unknown `when` loudly (no more
+  // immortal zombie entries in delayedTriggers) + EFFECT_SCHEMA boot arm.
+  'test_delayed_fireat_validation.js',
+  // Audit A3-5 — boot validation for the three generated-trigger tables
+  // (GENERATOR_EFFECTS/CONDITIONS + MERCURIAL_TRIGGER_POOL) + the stale-save
+  // bonusTrigger warn at makePlayer.
+  'test_generated_tables_validation.js',
 ];
 
 const TESTS_DIR = __dirname;

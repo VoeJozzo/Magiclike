@@ -805,15 +805,30 @@ function makeCard(tplId, stickers, slotIdx, empowerRolls, permaBuffs, bonusTrigg
   // as data so it survives save/load; condId form is required (not closure).
   if (bonusTrigger && typeof bonusTrigger === 'object') {
     if (!Array.isArray(card.triggers)) card.triggers = [];
-    card.triggers.push({
-      ...bonusTrigger,
-      effects: (bonusTrigger.effects || []).map(e => ({...e})),
-    });
+    card.triggers.push(cloneTriggerData(bonusTrigger));
   }
   // Regenerate text from effects/triggers/abilities (post-empower mutation).
   // custom_text:true cards keep hand-authored text (Endomorph, Codex, Elystra, Steal).
   card.text = describeCardText(card);
   return card;
+}
+
+// Copy a trigger object for attachment to a card or run slot. Audit A3-13
+// (Joe's ruling, PR #98 round 4): attached triggers are EXACT copies at
+// copy-time that then diverge independently — so `condition` (an array, or a
+// nested {op, terms} tree) must be deep-copied, not shared by reference.
+// Pre-fix the consumer-side spreads cloned `effects` per element but aliased
+// `condition`: every game's Mercurial card pointed INTO the module-level
+// MERCURIAL_TRIGGER_POOL, one in-place mutation away from contaminating the
+// pool for every later game (normalizeCardEffects already rewrites the
+// adjacent `effects` field in place — the exact pattern that would bite).
+function cloneTriggerData(trig) {
+  const cond = trig.condition;
+  return {
+    ...trig,
+    condition: (cond && typeof cond === 'object') ? JSON.parse(JSON.stringify(cond)) : cond,
+    effects: (trig.effects || []).map(e => ({...e})),
+  };
 }
 
 // Mint a token from TOKENS. isToken:true (vanish on leave-play), slotIdx:null,
@@ -920,10 +935,18 @@ function makePlayer(name, deck, ownerSide) {
     }
     if (!bonus && pool && pool.length > 0) {
       const pick = pool[Math.floor(Math.random() * pool.length)];
-      bonus = {
-        ...pick,
-        effects: (pick.effects || []).map(e => ({...e})),
-      };
+      // cloneTriggerData (audit A3-13): the pick must not alias the global
+      // pool entry's condition array.
+      bonus = cloneTriggerData(pick);
+    }
+    if (bonus) {
+      // Audit A3-5 stale-save guard: a persisted bonusTrigger (or embedded
+      // slot triggerPool pick) predating an id rename would silently no-op
+      // for the whole run. Warn loudly; still attach (behavior-neutral).
+      const refs = { unknownKinds: [], unknownTokens: [], unknownAtomics: [], unknownEvents: [] };
+      collectUnknownTriggerRefs(bonus, 'bonusTrigger(' + entry.tplId + ')', refs);
+      const bad = refs.unknownKinds.concat(refs.unknownTokens, refs.unknownAtomics, refs.unknownEvents);
+      if (bad.length) console.warn('makePlayer: slot bonusTrigger references unknown ids:', bad.join(', '));
     }
     return makeCard(entry.tplId, entry.stickers, i, entry.empowerRolls, entry.permaBuffs, bonus, entry.stapledTpls, entry.subtypeRolls);
   });
@@ -1031,7 +1054,11 @@ function makeState(playerDeck, oppDeck) {
     pendingSearch: null,              // {who, filter, source} — tutors
     pendingTriggerBuild: null,        // {who, cardIid, options, allowKeep} — Codex etc.
     pendingTriggerTarget: null,       // {controller, sourceIid, sourceName, trig, valid}
-    // Trigger queue/budget. Drained at priority-round open. Depth cap kills loops.
+    // Trigger queue/budget. Drained at priority-round open. triggerChainDepth
+    // is (despite the name) a per-stack-episode trigger BUDGET — it counts
+    // every trigger resolution since the stack last emptied, not nesting
+    // depth — and kills loops at TRIGGER_DEPTH_CAP (audit A3-3; see the cap
+    // const's comment for why width is the deliberate choice).
     pendingTriggers: [],
     triggerChainDepth: 0,
     // Delayed triggers fire at scheduled events (endStep). Otherworldly Journey etc.
@@ -2675,9 +2702,21 @@ const EFFECTS = {
   // trigger (it would fire unrespondably in the wrong window). See the drain
   // site in step() and the `when:'end_step'` caveat in docs/PROTOCOL.md.
   schedule_delayed(ctx, params, target) {
+    // Audit A3-14: an unknown `when` used to pass through verbatim and sit
+    // in delayedTriggers FOREVER — re-checked and re-kept on every cleanup
+    // (the drain only fires 'endStep'), an immortal zombie entry that
+    // accumulates when triggered repeatedly. Refuse loudly instead; the
+    // EFFECT_SCHEMA entry catches the same typo at boot for card-authored
+    // effects. (Sibling leak: unknown effect KINDS silently dropped in the
+    // drain — A1-6.)
+    if (params.when !== 'end_step') {
+      console.warn('schedule_delayed: unknown when "' + params.when + '" from '
+        + ctx.sourceName + ' — refusing to enqueue (supported: end_step)');
+      return;
+    }
     if (!Array.isArray(G.delayedTriggers)) G.delayedTriggers = [];
     G.delayedTriggers.push({
-      fireAt: params.when === 'end_step' ? 'endStep' : params.when,
+      fireAt: 'endStep',
       fireFor: 'either',
       effect: 'deferredEffects',
       effects: (params.effects || []).map(e => ({...e})),
@@ -3211,6 +3250,14 @@ const EFFECT_SCHEMA = {
     return null;
   },
   chooses: (e) => (e.filter ? null : 'chooses missing filter'),
+  // Audit A3-14: 'end_step' is the only fire time the cleanup drain executes;
+  // anything else would sit in delayedTriggers forever. Keep in lockstep with
+  // the schedule_delayed handler's guard and the drain in step()'s CLEANUP arm.
+  schedule_delayed: (e) => {
+    if (e.when !== 'end_step') return 'schedule_delayed bad/missing when (want end_step)';
+    if (!Array.isArray(e.effects)) return 'schedule_delayed missing effects array';
+    return null;
+  },
   affect_creature: (e) => {
     const SEV = ['tap', 'bounce', 'destroy', 'exile'];
     if (e.severity != null && !SEV.includes(e.severity) && !(e.severity >= 1 && e.severity <= 4)) {
@@ -3250,6 +3297,57 @@ function validateAllCardEffects(cards) {
   if (unknownFilters.length) console.warn('Unknown target/chooses filter(s):', unknownFilters.join(', '));
   if (schemaErrors.length) console.warn('Effect schema error(s):', schemaErrors.join('; '));
   return { unknownKinds, unknownFilters, schemaErrors };
+}
+
+// Audit A3-5 — shared shape check for a generated/persisted trigger: event ∈
+// VALID_TRIGGER_EVENTS, every atomic predicate registered, every effect kind
+// in EFFECTS (+ token_id in TOKENS for create_tokens). Pushes findings into
+// the `out` lists, each entry prefixed by `id`.
+function collectUnknownTriggerRefs(trig, id, out) {
+  if (!trig || typeof trig !== 'object') return;
+  if (trig.event && !VALID_TRIGGER_EVENTS.has(trig.event)) {
+    out.unknownEvents.push(id + '.' + trig.event);
+  }
+  if (trig.condition != null && typeof trig.condition !== 'function') {
+    _collectUnknownAtomics(trig.condition, out.unknownAtomics, id);
+  }
+  for (const e of (trig.effects || [])) {
+    if (!e || typeof e !== 'object') continue;
+    if (e.kind && !EFFECTS[e.kind]) out.unknownKinds.push(id + '.' + e.kind);
+    if (e.kind === 'create_tokens' && e.token_id && !TOKENS[e.token_id]) {
+      out.unknownTokens.push(id + '.' + e.token_id);
+    }
+  }
+}
+
+// Audit A3-5 — boot-time validation for the three generated-trigger data
+// tables, which sit OUTSIDE both card validators (those walk only the CARDS
+// collection passed in): GENERATOR_EFFECTS / GENERATOR_CONDITIONS
+// (trigger-generator.js) and MERCURIAL_TRIGGER_POOL (this file). A typo'd
+// effect kind, token id, predicate, or event in one of them boots clean and
+// silently no-ops a player's whole-run boon — PROTOCOL §3.4 promises boot
+// validation for every referenced id, and the pool's triggers ARE
+// card-attached at runtime. Called from main.js boot alongside the card
+// validators; warns to console, returns the lists for tests.
+function validateGeneratedTriggerTables() {
+  const out = { unknownKinds: [], unknownTokens: [], unknownAtomics: [], unknownEvents: [] };
+  for (const ge of GENERATOR_EFFECTS) {
+    // Entries are roll() factories — roll a sample; amounts vary per roll,
+    // kinds/token ids don't.
+    collectUnknownTriggerRefs({ effects: ge.roll() }, 'GENERATOR_EFFECTS.' + ge.id, out);
+  }
+  for (const gc of GENERATOR_CONDITIONS) {
+    collectUnknownTriggerRefs({ event: gc.event, condition: gc.condition },
+      'GENERATOR_CONDITIONS.' + gc.id, out);
+  }
+  for (const t of MERCURIAL_TRIGGER_POOL) {
+    collectUnknownTriggerRefs(t, 'MERCURIAL_TRIGGER_POOL.' + t.label, out);
+  }
+  if (out.unknownKinds.length) console.warn('Generated-trigger tables: unknown effect kind(s):', out.unknownKinds.join(', '));
+  if (out.unknownTokens.length) console.warn('Generated-trigger tables: unknown token id(s):', out.unknownTokens.join(', '));
+  if (out.unknownAtomics.length) console.warn('Generated-trigger tables: unknown atomic predicate(s):', out.unknownAtomics.join(', '));
+  if (out.unknownEvents.length) console.warn('Generated-trigger tables: unknown event kind(s):', out.unknownEvents.join(', '));
+  return out;
 }
 
 // Effect kinds that operate on a creature (vs player) — drives scope:'self' meaning.
@@ -3306,11 +3404,21 @@ function cardHasEffect(card, predicate) {
 }
 
 // EVENTS & TRIGGERS — emit() queues matched triggers in G.pendingTriggers,
-// drained to stack at next priority round. Target legality is checked three
-// times: at queue (triggerHasAnyValidTarget), at stack-push (tsAutoPick /
-// prompt), and again at resolution (resolveTrigger → tsRevalidateTargets,
-// §1006.1): slots that became illegal on the stack are dropped; if none
-// survive, the trigger fizzles whole.
+// drained to stack at next priority round. Queueing is on event/condition
+// match only (§1004); target legality is checked twice: at stack-push
+// (tsAutoPick / prompt, §1005 — no legal target → logged fizzle), and again
+// at resolution (resolveTrigger → tsRevalidateTargets, §1006.1): slots that
+// became illegal on the stack are dropped; if none survive, the trigger
+// fizzles whole. (Audit A3-10 removed a third, emit-time legality gate that
+// silently ate no-target triggers before they could queue.)
+//
+// TRIGGER_DEPTH_CAP is a per-stack-episode trigger BUDGET, not a nesting
+// depth: resolveTrigger counts every trigger resolution since the stack last
+// emptied (reset in the settle loop when both players pass on an empty
+// stack). Deliberate (audit A3-3, Joe's ruling PR #98, 2026-06-10: keep the
+// counter) — the width count also bounds mutual A→B→A trigger loops that a
+// true nesting-depth counter would never catch (each round of such a loop
+// resolves at depth 1–2).
 const TRIGGER_DEPTH_CAP = 100;
 
 // Lord-grant reconciliation, called from emit() pre-trigger. Idempotent.
@@ -3351,7 +3459,9 @@ function emit(evt, extraSources) {
     for (const trig of card.triggers) {
       if (trig.event !== evt.type) continue;
       if (!evalTriggerCondition(trig, card, evt, who)) continue;
-      if (!triggerHasAnyValidTarget(trig, who)) continue;
+      // No target-legality gate here (audit A3-10): a matched trigger always
+      // queues (§1004). Targets are chosen — and legality enforced, with a
+      // logged fizzle — when it goes on the stack (pushTriggerOnStack, §1005).
       G.pendingTriggers.push({
         trig,
         sourceIid: card.iid,
@@ -3392,27 +3502,6 @@ function emitZoneChange(card, controller, fromZone, toZone, extraSources, source
   }, extraSources);
 }
 
-// Returns true if the trigger has no targeted effects (always queueable),
-// OR if every targeted effect has at least one currently-valid target.
-function triggerHasAnyValidTarget(trig, controller) {
-  // A targeted trigger only goes on the stack if every slot it needs has a legal
-  // target (rule 603.3c). Routed through TargetSelection so it understands all
-  // shapes — top-level target(), per-effect, AND multi-slot target_slots (the old
-  // per-effect-only check gated stapled multi-target ETBs out of the queue, since
-  // a bare target_slot effect has no `target` for getValidTargets to resolve).
-  if (!objectNeedsTarget(trig)) return true;
-  // distinct_targets needs a full legal SET, not just per-slot non-emptiness: with
-  // one legal creature on board, a 2-distinct-slot trigger reports both slots
-  // length-1 (the same creature) and the per-slot loop would pass it, only to
-  // fizzle at tsAutoPick (which returns null when no distinct set exists). Gate on
-  // the side-effect-free auto-picker so the queue matches resolution exactly.
-  if (trig.distinct_targets) return tsAutoPick(trig, controller) != null;
-  for (const list of tsLegalBySlot(trig, controller).values()) {
-    if (!list.length) return false;
-  }
-  return true;
-}
-
 // Does a player-controlled trigger need the player to CHOOSE its target? Returns
 // { valid, promptEff } when there's a real choice (>1 legal target), else null.
 // ── Trigger target selection ───────────────────────────────────────────────
@@ -3445,6 +3534,11 @@ function pushTriggerEntry(p, targets) {
 // Auto-pick path: one legal target per slot via tsAutoPick (handles top-level
 // target(), per-effect, AND multi-slot target_slots — the old single-pick logic
 // had no slot branch, so stapled multi-target ETBs fizzled entirely).
+// This is where rule 603.3c lives: a targeted trigger only goes on the stack
+// if every slot it needs has a legal target — tsAutoPick returns null
+// otherwise (including no-distinct-set for distinct_targets) and the fizzle
+// is LOGGED. (Audit A3-10: this is the sole pre-stack gate; emit() queues on
+// event/condition match alone.)
 function pushTriggerOnStack(p) {
   let targets = [];
   if (objectNeedsTarget(p.trig)) {
@@ -3653,9 +3747,12 @@ function cardValueOrZero(card) {
 
 // Resolve a trigger from the stack.
 function resolveTrigger(item) {
+  // Per-stack-episode trigger budget, NOT nesting depth (audit A3-3, kept
+  // deliberately): increments on every resolution, resets only when the
+  // stack empties with both players passing.
   G.triggerChainDepth = (G.triggerChainDepth || 0) + 1;
   if (G.triggerChainDepth > TRIGGER_DEPTH_CAP) {
-    log(`Trigger chain too deep (${TRIGGER_DEPTH_CAP}) — bailing to prevent loop.`, 'imp');
+    log(`Trigger budget exhausted (${TRIGGER_DEPTH_CAP} triggers this stack episode) — bailing to prevent a loop.`, 'imp');
     return;
   }
   // §1006.1 resolution-time re-validation: target legality was checked when
@@ -5089,7 +5186,8 @@ function passPriority(who) {
         drainTriggers();
       }
     } else {
-      // Stack just emptied: reset chain depth (we're done with that pile).
+      // Stack just emptied: reset the per-episode trigger budget (we're
+      // done with that pile).
       G.triggerChainDepth = 0;
       // Empty stack: drain any pending triggers; if there are now items on
       // the stack, the round stays open. Otherwise close and advance.
@@ -5928,10 +6026,9 @@ function finalizeBuild(p, trigger) {
   if (typeof RUN !== 'undefined' && RUN.getSlots && typeof p.slotIdx === 'number') {
     const slot = RUN.getSlots()[p.slotIdx];
     if (slot) {
-      slot.bonusTrigger = {
-        ...trigger,
-        effects: (trigger.effects || []).map(e => ({...e})),
-      };
+      // cloneTriggerData (audit A3-13): slot and live card each get their
+      // own condition array — exact copies now, free to diverge.
+      slot.bonusTrigger = cloneTriggerData(trigger);
     }
   }
   // Find the live card across all zones — Codex prompt fires on draw,
@@ -5949,10 +6046,7 @@ function finalizeBuild(p, trigger) {
   if (liveCard) {
     if (!Array.isArray(liveCard.triggers)) liveCard.triggers = [];
     liveCard.triggers = liveCard.triggers.filter(t => !t.generated);
-    liveCard.triggers.push({
-      ...trigger,
-      effects: (trigger.effects || []).map(e => ({...e})),
-    });
+    liveCard.triggers.push(cloneTriggerData(trigger));
   }
   log(`📜 Built ability: ${triggerLogText(trigger)}`, 'sp');
   G.pendingTriggerBuild = null;
@@ -6984,6 +7078,8 @@ return {
   // Static-lord keyword-grant seam + its leave-play cleanup, exposed for tests.
   applyStaticKeywordGrants, clearRestrictionsFromSource,
   targetsForFilter, TARGET_FILTERS, validateAllCardEffects,
+  // Audit A3-5 — boot validation for the generated-trigger data tables.
+  validateGeneratedTriggerTables,
   // Canonical targeting-shape API (single source of truth across UI consumers).
   objectNeedsTarget, primaryLegalTargets, probeTargetsForObject,
   // §7b coverage seam: the dispatch table + the coverage report. The valuation
