@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.1.32`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.1.33`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -1687,6 +1687,36 @@ test_trigger_condition_clone.js (11), test_delayed_fireat_validation.js
 (7), test_generated_tables_validation.js (10). Predicted test impact per
 the packets was none — confirmed: zero existing assertions flipped. Suite
 89 files / 1971 green, lint clean.
+
+v2.1.33: audit fix A1-1 legs 2+3 — priority pass-tracker reset on non-mana
+ability activation + no synthetic priority rounds from closed-window trigger
+drains (Joe-approved, PR #98 round 3: "Sounds like a pair of good catches.
+Please fix them"; leg 1, the opp-handoff after a cast, was separately ruled
+intentional and is unchanged). **Leg 2**: doActivateAbility was the only
+board-mutating action that never cleared `G.priority.passes` — an opponent's
+pre-activation pass stayed on the books, so an ability activation plus the
+activator's own (auto-)pass closed the phase (or resolved combat damage)
+with the other player never holding priority on the post-ability board. Now
+non-mana activations wipe the pass tracker (§603's both-pass close means
+"in succession since the last action"); the activator keeps priority
+(nothing went on the stack); mana abilities stay exempt, matching
+tapLandForMana. **Leg 3**: drainTriggers now refuses to run while priority
+is CLOSED (§605 — pending attack/block declarations, combat damage,
+cleanup); queued triggers wait for the next openPriorityRound per §1004.4.
+Pre-fix, pushTriggerEntry conjured a synthetic round (`if (!G.priority)
+G.priority = {passes: new Set()}`) that both players auto-passed, marching
+the phase past the parked declaration — combat silently skipped with
+attackersDeclared still false (live-executed: a "Sacrifice a creature: add
+mana" ability mid-declaration skipped combat entirely; latent today, armed
+the day any trigger-firing mana ability lands). The synthesis is deleted;
+pushTriggerEntry now requires the open round drainTriggers guarantees. New
+tests (red→green: 6 and 6 red pre-fix): test_ability_pass_reset.js (16 —
+main-phase + block-window response windows, mana-exemption guard),
+test_trigger_closed_window_drain.js (13 — closed-window queue + drain at
+the real window + open-window guard). Predicted test impact per the packet
+was "zero tests assert priorityHolder post-cast or post-ability" —
+confirmed: zero existing assertions flipped. Suite 91 files / 2000 green,
+lint clean.
 > **MUST UPDATE on every dev-branch push that touches code.** Bump `VERSION` in `js/main.js` AND the line above, in the same commit. GitHub Pages caches aggressively; the version string is the only reliable way to confirm a fresh build is live.
 
 Always work on `dev` for html-proto changes.

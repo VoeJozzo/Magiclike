@@ -220,6 +220,13 @@ const CATEGORY_A = [
   // (GENERATOR_EFFECTS/CONDITIONS + MERCURIAL_TRIGGER_POOL) + the stale-save
   // bonusTrigger warn at makePlayer.
   'test_generated_tables_validation.js',
+  // Audit A1-1 leg 2 — non-mana ability activation resets the priority
+  // pass tracker (§603 both-pass-in-succession); mana abilities exempt.
+  'test_ability_pass_reset.js',
+  // Audit A1-1 leg 3 — triggers queued while priority is closed WAIT for
+  // the next real window (§1004.4); no synthetic round conjured mid-pause,
+  // pending declarations never silently skipped.
+  'test_trigger_closed_window_drain.js',
 ];
 
 const TESTS_DIR = __dirname;

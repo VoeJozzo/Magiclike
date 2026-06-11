@@ -3526,7 +3526,13 @@ function pushTriggerEntry(p, targets) {
     event: p.event || null,
   });
   log(`${p.sourceName} triggers: ${triggerLogText(p.trig)}.`, 'sp');
-  if (!G.priority) G.priority = { passes: new Set() };
+  // A1-1 leg 3: drainTriggers refuses to run while priority is closed, so a
+  // round is guaranteed open here. Never synthesize one — a conjured round
+  // gets auto-passed by both players and advancePhaseAfterPriority then
+  // marches the phase PAST whatever declaration the engine was parked on
+  // (combat/blocks silently skipped). If this ever throws on a null
+  // G.priority, some new call path is draining from a closed window — gate
+  // that path, don't re-add the synthesis.
   G.priority.passes.clear();
   G.priorityHolder = opp(p.controller);
 }
@@ -3610,6 +3616,16 @@ function drainTriggers() {
   if (G.gameOver) return false;
   if (G.pendingTriggerTarget) return false;
   if (G.pendingTriggers.length === 0) return false;
+  // A1-1 leg 3 (Joe-approved fix, PR #98): never drain while priority is
+  // CLOSED (§605 windows — pending attack/block declarations, combat damage,
+  // cleanup). Canon §1004.4: triggers queued while priority is closed WAIT;
+  // they drain at the next openPriorityRound (which calls this function).
+  // Pre-fix, pushTriggerEntry conjured a synthetic round here, which both
+  // players auto-passed, advancing the phase out from under a pending
+  // declaration — combat (or blocks) silently skipped. Reachable via mana
+  // abilities (legal at any time) whose costs/effects fire triggers, e.g. a
+  // "Sacrifice a creature: add mana" card.
+  if (!isPriorityOpen()) return false;
   const active = G.activePlayer;
   const ordered = [
     ...G.pendingTriggers.filter(p => p.controller === active),
@@ -5793,6 +5809,17 @@ function doActivateAbility(who, cardIid, abilityIdx, targets, sacIid) {
   afterEffectsApplied();
   if (ab.effects[0].kind !== 'add_mana') {
     log(`${G[who].name} activates ${card.name}${targets && targets[0] ? ' on ' + targets[0].label : ''}.`, who === 'you' ? 'sp' : 'ai');
+    // A1-1 leg 2 (Joe-approved fix, PR #98): a non-mana ability just mutated
+    // the board — wipe the pass tracker so a pre-activation pass no longer
+    // counts toward closing the round (§603's both-pass close means "both
+    // passed in succession since the last action"; spells and trigger pushes
+    // both already reset it). Pre-fix this was the only board-mutating
+    // action without a reset: the opponent's stale pass let the activation
+    // plus the activator's own (auto-)pass close the phase — or resolve
+    // combat damage — with no response window on the new board. The
+    // activator keeps priority (nothing went on the stack). Mana abilities
+    // stay exempt, matching the tapLandForMana path.
+    if (G.priority) G.priority.passes.clear();
   }
   // Drain any triggers that fired during cost payment or effect resolution.
   // Activated abilities resolve immediately in this engine (a simplification —
