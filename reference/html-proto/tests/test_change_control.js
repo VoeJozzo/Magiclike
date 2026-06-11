@@ -2,7 +2,9 @@
 // Covers the control-change core (Mind Control / Threaten): pluck from the
 // current controller, push to the caster, with optional untap/haste/duration.
 // transfer_ownership delegates to the proven steal handler (not re-tested
-// deeply here). Additive — gainControl/steal remain. Exercised via applyEffect.
+// deeply here). The migration is done: gainControl is retired (no handler;
+// effect_migration_test pins it GONE); steal remains permanently by design
+// as the transfer_ownership delegate. Exercised via applyEffect.
 
 const setup = require('./_setup');
 setup.loadEngine();

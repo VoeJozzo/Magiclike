@@ -3,8 +3,8 @@ type: index
 tags: [magiclike, wiki, engine, audit]
 aliases: ["Engine internals hub"]
 created: 2026-06-10
-updated: 2026-06-10
-sources: ["docs/audit/ chunk findings 01-04", "PR #98 verdict rounds (2026-06-10)"]
+updated: 2026-06-11
+sources: ["docs/audit/ chunk findings 01-05", "PR #98 verdict rounds (2026-06-10)"]
 ---
 
 # Engine internals (audit-distilled)
@@ -35,8 +35,9 @@ Per-subsystem knowledge of the [[html-proto]] rules engine, distilled from the 2
 - [[combat]] — declaration legality, keyword gates, the two-pass damage core, removal-from-combat (chunk 2).
 - [[triggers-and-stack]] — emit → queue → drain → resolve, APNAP, the trigger budget cap, generated triggers (chunk 3).
 - [[effects-and-targeting]] — the EFFECTS dispatch table, targeting/hexproof layer, resolution-time re-validation, zone routing (chunk 4).
+- [[synthesis-staple]] — the splice merge core, the two pathways (reward + Stapler boon), charge economy and the rip lifecycle (chunk 5).
 
-**Planned** (seeded as their audit chunks complete): synthesis-staple (ch. 5), stickers-runtime (ch. 6), ai (ch. 7), draft (ch. 8), run-meta (ch. 9), card-text (ch. 10), card-data (ch. 11).
+**Planned** (seeded as their audit chunks complete): stickers-runtime (ch. 6), ai (ch. 7), draft (ch. 8), run-meta (ch. 9), card-text (ch. 10), card-data (ch. 11).
 
 ## See also
 

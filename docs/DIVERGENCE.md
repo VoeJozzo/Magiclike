@@ -111,14 +111,14 @@ This matters when a single spell has multiple effects that all reference the sam
 **Scenario A — target stays put. Live state applies.**
 Hypothetical card: *"Target creature gets +2/+2 and gains lifelink. Then it deals damage equal to its toughness to its controller."*
 - Live state per effect (Godot's default, MTG-canonical for this case): pump applies (creature becomes 4/5), then damage = 5.
-- Proto's "always snapshot" approach gives 3, which is wrong.
+- The proto's historical "always snapshot" approach gave 3, which was wrong (fixed by the v2.0.77 hybrid below).
 
 **Scenario B — target leaves between effects. Last-known-information applies.**
 Real MTG card (not in proto today): *Swords to Plowshares — "Exile target creature. Its controller gains life equal to its power."*
 - The first effect exiles the target; the second references "its power." The target is no longer in battlefield.
 - Correct MTG behavior: the engine snapshots the target's attributes (power, controller, etc.) at the moment of zone-exit. The second effect reads from the snapshot.
 - Pure live state (Godot's current default) would fail here — the target's power isn't queryable from a removed-from-zone card.
-- Proto's pre-resolution snapshot accidentally handles this case but for the wrong reason (it snapshots ALL targets, not just departed ones).
+- The proto's snapshots are taken **lazily, at the first read of each target slot** (`makeSlotTargetGetter`) — not eagerly for all targets at resolution start. For every live card the first read happens before anything can remove the target, so this is equivalent in practice; the only divergence case is a hypothetical legacy per-effect-target card reading a `target_*` expression after an earlier effect already removed that target without ever reading it. (Open triage question: should the D1 contract eager-prime every slot's snapshot at resolution start to close that gap by construction?)
 
 **The hybrid (what we're aligning on)**: live state by default; last-known-information snapshot only when a target has left its expected zone. **Proto implements this as of v2.0.77** (`liveTargetView` in `resolveExpr`: live `getStats` while `findCard` locates the target on the battlefield, else the snapshot — Predate exercises Scenario A, Swords/Exorcist exercise Scenario B). Godot still needs the same hybrid when it grows multi-effect target-reading spells.
 

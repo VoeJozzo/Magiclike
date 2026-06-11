@@ -131,9 +131,9 @@ runtime handlers — noted).
 | kind                  | params                                          | implemented | description                                                                          |
 |-----------------------|-------------------------------------------------|-------------|--------------------------------------------------------------------------------------|
 | `damage`              | `amount: int, scope?`                           | JS          | Deal N to the target() (creature/player). `scope: "all_creatures"` = sweep (was `damage_all`). |
-| `pump`                | `power: int, toughness: int, duration?, scope?` | JS          | Buff the target() creature. `duration: "permanent"` = +1/+1 counters (was `add_counter`); negative power/toughness = weaken (was `weaken`); `scope: "all_yours"`/`"all_creatures"` = sweep (was `pump_all_yours`). |
+| `pump`                | `power: int, toughness: int, duration?, scope?` | JS          | Buff the target() creature. `duration: "permanent"` = +1/+1 counters (absorbed `add_counter`'s +1/+1 form; the named-counter form survives as its own kind — see `add_counter` below); negative power/toughness = weaken (was `weaken`); `scope: "all_yours"`/`"all_creatures"` = sweep (was `pump_all_yours`). |
 | `affect_creature`     | `severity: "tap"\|"bounce"\|"destroy"\|"exile", scope?` | JS | Removal on the target() creature. `scope` = sweep (was `remove_all`). Empower promotes severity up the ladder. (Renamed from `remove_creature`; integer severities `1-4` still accepted defensively by the dispatcher but card data uses the string names.) |
-| `move_card`           | `from_zone, to_zone, selector, amount?, filter?, post?` | JS  | Unified card movement. Selector: `controller_top` (draw/mill), `target`, `self`, `library_search` (tutor). Subsumes `draw`, `discard`, `flicker` (bf→exile then exile→bf), `return_from_graveyard`, `shuffle_into_library`, `search_creature`, `search_land_tapped`. `post`: `{tap, shuffle, keep_buffs}`. |
+| `move_card`           | `from_zone, to_zone, selector, amount?, filter?, post?` | JS  | Unified card movement. Selector: `controller_top` (draw/mill), `target`, `self`, `library_search` (tutor), `copy_source` (the creature the source copied — False Witness's leave-return). Subsumes `draw`, `discard`, `flicker` (bf→exile then exile→bf), `return_from_graveyard`, `shuffle_into_library`, `search_creature`, `search_land_tapped`. `post`: `{tap, shuffle, keep_buffs}`. |
 | `change_control`      | `duration?, transfer_ownership?, grant_haste?, untap_on_take?` | JS | Take control of the target() permanent (was `gain_control`/`steal`). `transfer_ownership` = permanent run-slot theft. |
 | `apply_sticker`       | `sticker: {kind, ...params}`                    | JS          | Apply a persistent per-slot sticker to the target() (`cost_mod` / `set_color` / `stat_boost` / `set_types` / `grant_activated_ability`). Replaces `embargo`/`bleach`/`symmetricize`'s bespoke channel. |
 | `chooses`             | `filter`                                        | JS          | The target() player chooses a permanent matching `filter` (edict's first step; no hexproof). |
@@ -142,10 +142,13 @@ runtime handlers — noted).
 | `add_mana`            | `amounts: {W:1,...}` OR `choose: "any"\|[colors]` | JS        | Add mana. `choose` form added in §3.9 so a land/dork taps for a chosen color. Lands ARE a `{cost:{tap}, effects:[{add_mana}]}` ability now (no `mana`/`extraManaColors` production field). |
 | `gain_life`           | `amount, who?`                                  | JS          | Controller (or `who`/target) gains N life.                                          |
 | `counter`             | (target() must be a stack spell)                | JS          | Counter target spell.                                                                |
-| `grant_keyword`       | `keyword, duration?, whose?`                    | JS          | Grant keyword to the target() (eot/permanent); `whose: "allYours"`/"all" = mass.    |
-| `create_tokens`       | `count, tokenId`                                | JS          | Mint N tokens.                                                                       |
+| `grant_keyword`       | `keyword, duration?, scope?`                    | JS          | Grant keyword to the target() (eot/permanent); `scope: "all_yours"`/`"all_creatures"` = mass. |
+| `create_tokens`       | `count, token_id, controller?`                  | JS          | Mint N tokens (`token_id` = a TOKENS key). `controller: "opp"` mints them under the opponent (default: the caster). |
+| `add_counter`         | `counter, amount?` (named form)                 | JS          | Put N named counters (e.g. `counter: "verse"`) on the target() — a bare resource in `card.counters`, no P/T change (Hymnwright). The +1/+1 form was absorbed into `pump duration: "permanent"`; only the named form remains in card data. |
+| `become_copy_of`      | `keep_subtypes?`                                | JS          | The source becomes a copy of the chosen creature's printed characteristics, plus the kept subtypes (False Witness). Materialized onto the instance; reverts on leave-play. |
+| `grant_cast_permission` | `from_zone?, duration?, spend_as_any_color?`  | JS          | Let the controller cast the target card from a non-hand zone (default `exile`, default `eot`) — Seal-Thief Courier. Has an `EFFECT_SCHEMA` validator. |
 | `untap`               | (target())                                      | JS          | Untap the target().                                                                  |
-| `fight_target`        | (target())                                      | JS          | Your strongest creature fights the target().                                         |
+| `fight`               | `operands: [{slot: N} \| {select: "..."}] ×2`   | JS          | The two creatures named by `operands` simultaneously deal damage equal to their live power to each other. E.g. `[{select: "highest_power_yours"}, {slot: 0}]` = your strongest creature fights the target. |
 | `exile_until_eot`     | (target())                                      | —           | **Decomposed in proto** to `move_card` (bf→exile) + `schedule_delayed` (end-step exile→bf return), since proto already has a delayed-trigger queue. No longer a distinct handler proto-side. Godot still needs its delayed-trigger queue (B4) before it can do the same. |
 | `add_type`            | `types, power?, toughness?, duration?` | JS          | Add types to the target(). `duration: "permanent"` = permanent. |
 | `set_types`            | `types, power?, toughness?, duration?` | JS          | Replace types of the target(). `duration: "permanent"` = permanent. |
@@ -153,6 +156,12 @@ runtime handlers — noted).
 | `rip`                 | (no params; reads ctx.chosen)                   | JS          | Zone-agnostic run-layer slot-strip (§13). Trailing step of a rip-edict: `target(opp) → chooses(permanent) → annihilate → rip`. Strips the chosen card's deck-slot (player-side only). Replaces the bundled `rip_permanent` kludge. |
 | `endomorph_absorb` / `apply_in_game_splice` / `symmetricize` / `bargain_sticker_self` / `bargain_sticker_other` | (per card) | JS | Card-specific (Endomorph / Stapler / Symmetricize prompt / Archdemon). (Scarification decomposed to `[apply_sticker(scarified), affect_creature(destroy)]` — `destroy_and_sticker_slot` retired.) |
 | `draw` / `discard`    | `amount`                                        | JS (runtime only) | **Not used in card data** — kept as handlers because the trigger generator (Mercurial Adept) still emits them. Card data uses `move_card`. |
+| `steal`               | (runtime-internal)                              | JS (runtime only) | **Not used in card data** — `change_control` with `transfer_ownership: true` delegates to it (the permanent run-slot theft path; the Steal card is authored as `change_control`). |
+
+This catalog is hand-synced. The machine-checked layer is
+`effectCoverageReport` (+ `tests/test_effect_coverage.js`), which pins the
+EFFECTS dispatch table against card-data usage in both directions — trust it
+over this table when they disagree, then fix the table.
 
 `apply_sticker` inline sticker descriptors currently include:
 
@@ -248,9 +257,11 @@ to NOT replicate.")
 Targeting is a **top-level `target` step**, not a per-effect field. A card,
 trigger, or activated ability that needs one target carries `"target": "<filter>"`
 from the **closed taxonomy** below; its effects are then **bare** and operate on
-the established target. Hexproof and target legality are checked **once, at the
-`target()` step** (cast time). This replaced the old per-effect `target` string
-on single-target cards.
+the established target. Hexproof and target legality are checked at the
+`target()` step (cast time) **and re-validated at resolution** (canon §704 —
+responses get their window first; illegal slots are dropped, and if every
+targeted slot has gone illegal the spell or trigger fizzles whole, costs stay
+paid). This replaced the old per-effect `target` string on single-target cards.
 
 Closed target-filter taxonomy (`ENGINE.TARGET_FILTERS`):
 
@@ -269,10 +280,13 @@ Closed target-filter taxonomy (`ENGINE.TARGET_FILTERS`):
 Optional **`target_filter`** — a restriction the closed taxonomy can't name on
 its own (e.g. "non-black creature", "tapped creature", "flying creature you don't
 control"). It sits **beside** `target` on the same container (card / trigger /
-ability) and carries `matchFilter` keys: `notColor`, `color`, `hasKeyword`,
-`notKeyword`, `subtype`, `tapped`, `maxTough`/`minTough`, `maxPower`/`minPower`,
-`notToken`, `type`/`not_type`. The taxonomy kind covers the type + controller
-axis; `target_filter` covers everything else.
+ability) and carries `matchFilter` keys: `not_color`, `color`, `has_keyword`,
+`not_keyword`, `subtype`, `tapped`, `max_tough`/`min_tough`,
+`max_power`/`min_power`, `not_token`, `type`/`not_type`. The taxonomy kind
+covers the type + controller axis; `target_filter` covers everything else.
+**Keys are snake_case** (the same sweep as the §3.2 naming rule) — and
+`matchFilter` silently ignores unknown keys today, so a camelCase or typo'd
+key fails OPEN (the restriction simply doesn't enforce; no boot error).
 
 **`graveyard_card` filter axes.** This kind reads its whole shape from
 `target_filter`:
@@ -286,9 +300,10 @@ axis; `target_filter` covers everything else.
   Distinct from a `matchFilter` threshold (a per-card test): a superlative needs
   the whole candidate set, and ties stay legal so the chooser picks among equals
   (Deepseam Quarry: greatest total mana cost among all graveyards). Supersedes the
-  retired `graveyard_creature` / `opp_graveyard_card` one-off kinds. Enforced at the same cast-time `target()` checkpoint
-(and at highlight). Examples: Doom Blade `target: "creature", target_filter: {notColor: "B"}`;
-Vine Strangle `target: "opp_creature", target_filter: {hasKeyword: "flying"}`.
+  retired `graveyard_creature` / `opp_graveyard_card` one-off kinds. Enforced at the same `target()` checkpoint
+(and at highlight), and again at the resolution re-validation. Examples: Doom Blade
+`target: "creature", target_filter: {not_color: "B"}`;
+Vine Strangle `target: "opp_creature", target_filter: {has_keyword: "flying"}`.
 
 Related forms:
 - **`target: "self"`** on an *effect* still means the source itself (a creature
