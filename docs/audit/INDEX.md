@@ -60,7 +60,7 @@
 | [A3-3](chunk-03-stack-triggers.md) | P2 | stack-triggers | triggers/engine | The trigger "depth cap" counts WIDTH, not depth: 101 flat, independent triggers trip it an | stage | **fixed (PR #116, docs)** |
 | [A3-4](chunk-03-stack-triggers.md) | P2 | stack-triggers | triggers/engine | Canon rulebook page §1000 (triggered abilities) documents the RETIRED pre-migration trigge | stage | **fixed (PR #117, canon rewrite)** |
 | [A3-5](chunk-03-stack-triggers.md) | P2 | stack-triggers | triggers/engine | The three generated-trigger data tables sit outside BOTH boot validators: a typo'd effect | stage | **fixed (PR #116)** |
-| [A3-6](chunk-03-stack-triggers.md) | P2 | stack-triggers | triggers/engine | The composable `card_moves` zone vocabulary over-promises: the engine only emits zone-chan | stage | open |
+| [A3-6](chunk-03-stack-triggers.md) | P2 | stack-triggers | triggers/engine | The composable `card_moves` zone vocabulary over-promises: the engine only emits zone-chan | stage | **fixed (PR #126, feature build-out)** |
 | [A3-7](chunk-03-stack-triggers.md) | P2 | stack-triggers | triggers/engine | `generateRandomTrigger` is a production-dead twin of `assembleTrigger` that omits the noSe | stage | **fixed (PR #110)** |
 | [A3-8](chunk-03-stack-triggers.md) | P2 | stack-triggers | triggers/engine | PROTOCOL.md §3.3 misdocuments the trigger-event wire it canonizes — and the wrong rows are | ship | open |
 | [A3-9](chunk-03-stack-triggers.md) | P2 | stack-triggers | triggers/engine | Trigger-layer coverage darkness + test-quality cluster (dimensions 4/5, grouped): the orch | park | open |
