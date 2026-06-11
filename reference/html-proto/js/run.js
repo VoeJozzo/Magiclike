@@ -768,8 +768,12 @@ const REWARD_TYPE_WEIGHTS = {
   splice:        2,   // uncommon — combines two of the player's cards into
                       // one slot (Bolt + Giant Growth → 2-cost spell that
                       // bolts a creature AND pumps another). Cost-additive,
-                      // deck-size-reducing. Player picks the base, then
-                      // picks the staple from remaining slots.
+                      // deck-size-reducing. The base+staple pair is
+                      // PRE-ROLLED at offer time (rollOneCandidate
+                      // enumerates eligible pairs and picks one;
+                      // canonicalSplicePair decides which half is the
+                      // base); the player accepts or declines the offered
+                      // pair as-is — no pick-then-pick step (v1.0.47).
 };
 
 // Roll the type of one reward candidate by weight. Allows excluded types so

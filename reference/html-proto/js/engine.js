@@ -583,7 +583,7 @@ function mergeStapleInto(merged, stapleTpl) {
     // Land base → the ETB is OPTIONAL and costs the spell's mana cost. A land is
     // free to play, so a free stapled spell is pure value; making it a "you may
     // pay {cost}" trigger restores the bargain. Creature/artifact bases stay
-    // free — you already paid the base's full cost. (BACKLOG: optional paid ETB.)
+    // free — you already paid the base's full cost.
     if (hasType(merged, 'Land') && stapleTpl.cost && Object.keys(stapleTpl.cost).length > 0) {
       trig.optional_cost = { ...stapleTpl.cost };
     }
@@ -2044,12 +2044,16 @@ const EFFECTS = {
     };
     if (params.scope) {
       const p = params.power || 0, t = params.toughness || 0;
+      let n = 0;
       for (const st of creaturesInScope(ctx, params.scope)) {
         const f = findCard(st.iid);
         if (!f) continue;
         applyTo(f.card, p, t);
+        n++;
       }
-      log(`${ctx.sourceName} gives +${p}/+${t}${perm ? '' : ' EOT'} to each creature in scope.`, 'sp');
+      // Count-based mass log (matches grant_keyword's mass arm) — emitted
+      // after the recipient list is known, so it's scope-truthful.
+      log(`${ctx.sourceName} gives +${p}/+${t}${perm ? '' : ' EOT'} to ${n} creature${n === 1 ? '' : 's'}.`, 'sp');
       return;
     }
     const f = resolveTarget(ctx, target);
@@ -2739,8 +2743,10 @@ const EFFECTS = {
   // steal handler. Otherwise it's a control change (Mind Control / Threaten):
   // pluck from the current controller, push to the caster, with optional
   // untap_on_take / grant_haste / duration (eot). Accepts both the new
-  // snake_case param names and the legacy ones during cutover. Additive —
-  // gainControl/steal remain until card migration retires them.
+  // snake_case param names and the legacy ones during cutover. The card
+  // migration is done — gainControl is retired (no handler; effect_migration_test
+  // pins it GONE). steal remains permanently BY DESIGN as the runtime-internal
+  // transfer_ownership delegate (it is not in card data).
   change_control(ctx, params, target) {
     if (params.transfer_ownership) { EFFECTS.steal(ctx, params, target); return; }
     const f = resolveTarget(ctx, target);
@@ -3363,7 +3369,7 @@ const CREATURE_EFFECT_KINDS = new Set([
   'pump', 'add_counter', 'untap', 'affect_creature',
   'fight', 'endomorph_absorb',
   'grant_keyword',
-  'sacrifice', 'gainControl',
+  'sacrifice',
 ]);
 function effectOperatesOnCreature(eff) {
   return CREATURE_EFFECT_KINDS.has(eff.kind);
@@ -4385,9 +4391,11 @@ function matchFilter(card, filter, controller, who) {
   // CARDS[tplId] guard.
   if (filter.not_token && card.isToken) return false;
   // Spliceable-base filter (Stapler's first target). Must be a card that
-  // can act as a base in the existing splice infrastructure: no Lands, no
-  // special creatures (Elystra/Codex/Stapler itself), no tokens, no modal
-  // cards. Routes through isSpliceableBase which is the canonical check.
+  // can act as a base in the existing splice infrastructure: no special
+  // cards (Elystra/Codex/Stapler itself), no tokens, no modal cards. Lands
+  // ARE valid bases — designed and tiebreak-prioritized (canonicalSplicePair
+  // ranks Land above Spell for the base). Routes through isSpliceableBase
+  // which is the canonical check.
   if (filter.spliceable_base && !isSpliceableBase(card.tplId)) return false;
   // Spliceable-staple filter (Stapler's second target). Must be a card
   // that can act as a staple-half: spliceable AND not already stapled
@@ -5329,13 +5337,6 @@ function resolveTopOfStack() {
       afterEffectsApplied();
       return;
     }
-    // Snapshot the spell's target BEFORE any effect runs. Multi-effect spells
-    // like decomposed Swords ([exile, gain_life]) need the second effect to
-    // read the target's pre-resolution power/controller, even though the
-    // first effect already removed the card. This implements MtG's "last
-    // known information" semantics.
-    const sharedTarget = item.targets ? item.targets[0] : null;
-    const sharedSnap = sharedTarget ? snapshotTarget(sharedTarget) : null;
     // Snapshot rip-on-target eligibility BEFORE effects fire. The targets
     // need to be checked while they're still on the battlefield — if the
     // spell kills Elystra (e.g., a player who chose to Doom Blade their own
@@ -5359,8 +5360,11 @@ function resolveTopOfStack() {
     // Multi-target dispatch: by default, all targeted effects share
     // item.targets[0] (legacy semantics for Swords, Strength of the Pack,
     // etc.). Effects that opt into a distinct target via `target_slot: N`
-    // pull from item.targets[N]. Snapshots are computed per slot lazily
-    // so each unique slot only snapshots once.
+    // pull from item.targets[N]. Snapshots are computed per slot lazily —
+    // the FIRST read of a slot freezes its last-known-information snapshot
+    // (§3.6), so a multi-effect spell like decomposed Swords ([exile,
+    // gain_life]) reads the target's pre-removal power/controller even
+    // after an earlier effect removed the card.
     const getTargetForSlot = makeSlotTargetGetter(Array.isArray(item.targets) ? item.targets : []);
     // New targeting model (§3.5): a top-level `target` step on the card means
     // the spell collected one target (item.targets[0]); bare effects operate

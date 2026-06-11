@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.1.35`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.1.36`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -1781,6 +1781,39 @@ guards, and the doOptionalCost call site paying through the same solver.
 Predicted test impact per the packet — none, no test pins greedy payment —
 confirmed: zero existing assertions flipped (test_mana.js auto-tap and
 fixed-over-City-of-Brass arms green unchanged). Suite 93 files / 2038
+green, lint clean.
+
+v2.1.36: audit docs/comment ship batch (chunk 4 + 5: A4-10, A4-25, A5-9,
+A5-10, A5-12, A5-13) — behavior-neutral. JS half (the bump's reason):
+deleted resolveTopOfStack's dead sharedTarget/sharedSnap locals (zero reads
+repo-wide; their stale "snapshot BEFORE any effect runs" comment described
+machinery that moved to makeSlotTargetGetter's lazy first-read-per-slot
+snapshot — comment folded into the accurate one); dropped the dead
+'gainControl' entry from CREATURE_EFFECT_KINDS (no handler, no card data,
+effect_migration_test pins it GONE); pump's mass-arm log de-dev-speaked
+("to each creature in scope" → count-based "to N creature(s)", matching
+grant_keyword's mass log). Comment/doc half: change_control header +
+test_change_control header no longer claim "gainControl/steal remain until
+card migration retires them" (migration done; steal stays by design as the
+transfer_ownership delegate); matchFilter's spliceable_base comment no
+longer claims "no Lands" (lands are valid, tiebreak-prioritized bases);
+run.js splice-reward weight comment now describes the v1.0.47 pre-rolled
+pair, not the retired pick-then-pick flow; stale "(BACKLOG: optional paid
+ETB.)" tag dropped (it shipped); PROTOCOL.md §3.2/§3.5 corrected to the
+wire the engine actually reads (snake_case target_filter axes + examples,
+fight+operands row replacing phantom fight_target, grant_keyword
+scope not whose, create_tokens token_id+controller, new rows for
+add_counter named-form / become_copy_of / grant_cast_permission / steal
+runtime-note, move_card copy_source selector, cast-time-AND-resolution
+re-validation sentence per §704/PR #111, hand-synced-catalog note pointing
+at effectCoverageReport); DIVERGENCE D1 detail reworded to the lazy
+first-read snapshot reality (+ one-line eager-prime triage question);
+docs/wiki/staple-synthesis.md inverted base/staple sentence fixed (the
+HIGHER-priority type is the base) + stale "parked in BACKLOG" claim
+replaced with the shipped optional-paid-ETB behavior; Stapler oracle text
+now says "permanents or spells" (matches its permanent_or_spell targeting;
+custom_text, rules-inert). New wiki page docs/wiki/engine/synthesis-staple.md
+(chunk-5 distillation) + engine README listing. Suite 93 files / 2038
 green, lint clean.
 > **MUST UPDATE on every dev-branch push that touches code.** Bump `VERSION` in `js/main.js` AND the line above, in the same commit. GitHub Pages caches aggressively; the version string is the only reliable way to confirm a fresh build is live.
 
