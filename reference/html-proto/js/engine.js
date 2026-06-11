@@ -1609,15 +1609,35 @@ function castableSpellEntries(who) {
   return out;
 }
 
-// Can `who` pay `cost` from pool + untapped sources? Backtracks over dual-land choices.
-function canPayPotential(who, cost, excludeIid) {
-  if (!cost) return true;
+// ----- Mana payment (audit A1-2: ONE solver for legality AND payment) -----
+// solveManaPayment is the single mana brain. It computes a concrete payment
+// plan — which untapped sources to tap, and which color each choose-source
+// produces — such that pool + production covers `cost`. canPayPotential
+// ("can you afford this?") asks whether a plan exists; payMana executes the
+// plan verbatim. Pre-fix these were two ALGORITHMS — a backtracking checker
+// and a greedy payer (tapSourceProducing, fixed W,U,B,R,G order) — that
+// could disagree on partially-overlapping choose-sources: the checker
+// approved the cast, the payer spent the wrong dual first, hit a dead end
+// mid-payment and threw out of executeAction, leaving half-applied state
+// (a land wrongly tapped, its mana consumed, the spell still in hand). Now
+// the full solution is found BEFORE any mutation, so payment is atomic by
+// construction: it fully happens or nothing changes.
+//
+// Returns {cost, taps: [{card, color, amounts}]} or null if unpayable.
+// `cost` in the plan is the resolvedManaCost form; `color` is the chosen
+// color for a choose-source (null for fixed sources, which add `amounts`
+// wholesale). Taps hold live card references — execute the plan immediately
+// (it doesn't survive intervening state changes).
+function solveManaPayment(who, cost, excludeIid) {
+  if (!cost) return { cost: null, taps: [] };
+  // Invariant: colors_of_source costs must already be source-resolved by the caller.
   cost = resolvedManaCost(cost, null, who);
   const pool = {...G[who].mana};
   // §3.9: lands and creature dorks are one pool of tap-for-mana abilities.
-  // Single-color sources fold into the pool; multi-color (choose) sources
-  // become choice points. Fixed multi-mana abilities add all their mana.
-  const choices = [];
+  // Fixed sources add their amounts wholesale; multi-color (choose) sources
+  // are the solver's choice points.
+  const fixed = [];
+  const chooses = [];
   for (const c of G[who].battlefield) {
     if (c.tapped) continue;
     // A source tapped as the ability's own {T} cost can't also pay its mana cost
@@ -1627,65 +1647,79 @@ function canPayPotential(who, cost, excludeIid) {
     const ab = manaAbilityOf(c);
     if (!ab) continue;
     const eff0 = ab.effects[0];
-    if (eff0.choose) {
-      choices.push(manaEffectColors(eff0));
-      continue;
-    }
-    const am = eff0.amounts;
-    const ks = Object.keys(am);
-    if (ks.length === 1 && am[ks[0]] === 1) {
-      pool[ks[0]] = (pool[ks[0]] || 0) + 1;
-    } else {
-      for (const k of ks) pool[k] = (pool[k] || 0) + am[k];
-    }
+    if (eff0.choose) chooses.push({ card: c, colors: manaEffectColors(eff0) });
+    else fixed.push({ card: c, amounts: eff0.amounts });
   }
-  function tryAssign(idx, p) {
-    if (idx === choices.length) return canPayFromPool(p, cost);
-    for (const color of choices[idx]) {
+  // Feasibility: fold every fixed source into the pool and backtrack over
+  // choose-source color assignments (the search the old canPayPotential ran
+  // — now the single authority), recording the winning assignment.
+  const base = {...pool};
+  for (const f of fixed) {
+    for (const k of Object.keys(f.amounts)) base[k] = (base[k] || 0) + f.amounts[k];
+  }
+  const assignment = new Array(chooses.length);
+  const tryAssign = (idx, p) => {
+    if (idx === chooses.length) return canPayFromPool(p, cost);
+    for (const color of chooses[idx].colors) {
       const next = {...p};
       next[color] = (next[color] || 0) + 1;
-      if (tryAssign(idx + 1, next)) return true;
+      if (tryAssign(idx + 1, next)) { assignment[idx] = color; return true; }
     }
     return false;
+  };
+  if (!tryAssign(0, base)) return null;
+  // The fold proved payability with EVERY source tapped; trim the taps the
+  // payment doesn't need. Trim order encodes the old payer's observable
+  // preferences: drop CHOOSE sources first (keep flexible sources untapped —
+  // a basic is spent before City of Brass) and drop later battlefield slots
+  // before earlier ones (the payer taps front-to-back). Pool mana is never
+  // "tapped", so maximal trimming also preserves pay-from-pool-first.
+  const taps = fixed.map(f => ({ card: f.card, color: null, amounts: f.amounts }));
+  for (let i = 0; i < chooses.length; i++) {
+    taps.push({ card: chooses[i].card, color: assignment[i], amounts: null });
   }
-  return tryAssign(0, pool);
+  const covers = (skip) => {
+    const p = {...pool};
+    for (let i = 0; i < taps.length; i++) {
+      if (skip.has(i)) continue;
+      const t = taps[i];
+      if (t.color) p[t.color] = (p[t.color] || 0) + 1;
+      else for (const k of Object.keys(t.amounts)) p[k] = (p[k] || 0) + t.amounts[k];
+    }
+    return canPayFromPool(p, cost);
+  };
+  const dropped = new Set();
+  // chooses sit after fixed in `taps`, so a single back-to-front walk tries
+  // dropping chooses first (reversed), then fixed (reversed).
+  for (let i = taps.length - 1; i >= 0; i--) {
+    dropped.add(i);
+    if (!covers(dropped)) dropped.delete(i);
+  }
+  return { cost, taps: taps.filter((_, i) => !dropped.has(i)) };
 }
-// Pay from pool first; if short, auto-tap sources. Color costs first, then generic.
+// Can `who` pay `cost` from pool + untapped sources? Thin wrapper over the
+// solver — legality and payment share one brain and cannot disagree (A1-2).
+function canPayPotential(who, cost, excludeIid) {
+  return solveManaPayment(who, cost, excludeIid) !== null;
+}
+// Pay `cost`: solve, then execute the plan — tap exactly the planned sources
+// (each choose-source produces its assigned color), then deduct the resolved
+// cost from the pool. Throws WITHOUT mutating anything when no plan exists
+// (callers gate on canPayPotential via isLegalAction, so a throw here means
+// the caller skipped validation — and the board is still intact).
 function payMana(who, cost) {
   if (!cost) return;
-  // Invariant: colors_of_source costs must already be source-resolved by the caller.
-  cost = resolvedManaCost(cost, null, who);
-  const p = G[who];
-  if (canPayFromPool(p.mana, cost)) { deductFromPool(p.mana, cost); return; }
-  if (cost.spend_as_any_color) {
-    let needed = cost.C || 0;
-    for (const c of COLORS) needed += cost[c] || 0;
-    const poolTotal = () => (p.mana.W||0)+(p.mana.U||0)+(p.mana.B||0)+(p.mana.R||0)+(p.mana.G||0)+(p.mana.C||0);
-    while (poolTotal() < needed) {
-      if (!tapSourceProducing(who, null)) throw new Error('Mana payment failed (any-color)');
-    }
-    deductFromPool(p.mana, cost);
-    return;
+  const plan = solveManaPayment(who, cost, null);
+  if (!plan) {
+    throw new Error('Mana payment failed (unaffordable): ' + JSON.stringify(cost));
   }
-  const need = {...cost};
-  for (const c of COLORS) {
-    while ((need[c]||0) > 0) {
-      if ((p.mana[c]||0) > 0) { p.mana[c]--; need[c]--; continue; }
-      if (!tapSourceProducing(who, c)) {
-        throw new Error('Mana payment failed (color): ' + c);
-      }
-      p.mana[c]--; need[c]--;
-    }
+  const pool = G[who].mana;
+  for (const t of plan.taps) {
+    t.card.tapped = true;
+    if (t.color) pool[t.color] = (pool[t.color] || 0) + 1;
+    else for (const k of Object.keys(t.amounts)) pool[k] = (pool[k] || 0) + t.amounts[k];
   }
-  let generic = need.C || 0;
-  while (generic > 0) {
-    let used = false;
-    for (const c of [...COLORS, 'C']) {
-      if ((p.mana[c]||0) > 0) { p.mana[c]--; generic--; used = true; break; }
-    }
-    if (used) continue;
-    if (!tapSourceProducing(who, null)) throw new Error('Mana payment failed (generic)');
-  }
+  if (plan.cost) deductFromPool(pool, plan.cost);
 }
 function deductFromPool(pool, cost) {
   if (cost && cost.spend_as_any_color) {
@@ -1708,35 +1742,8 @@ function deductFromPool(pool, cost) {
     generic -= used;
   }
 }
-// Tap an untapped source producing `color` (or any if null). §3.9: lands and
-// creature dorks are one pool of mana abilities. Preference: FIXED-color sources
-// before CHOOSE (flexible) ones, so a basic land is spent before City of Brass.
-// Creatures gate on summoning sickness; lands don't.
-function tapSourceProducing(who, color) {
-  const usable = G[who].battlefield.filter(c =>
-    !c.tapped && (!hasType(c, 'Creature') || !c.sick) && manaAbilityOf(c));
-  const tap = (c, requested) => {
-    const eff = manaAbilityOf(c).effects[0];
-    c.tapped = true;
-    if (eff.choose) {
-      const opts = eff.choose === 'any' ? COLORS : eff.choose;
-      G[who].mana[requested && opts.includes(requested) ? requested : opts[0]]++;
-    } else {
-      for (const k of Object.keys(eff.amounts)) G[who].mana[k] += eff.amounts[k];
-    }
-    return true;
-  };
-  const isFixed = (c) => !manaAbilityOf(c).effects[0].choose;
-  const makes = (c) => manaEffectColors(manaAbilityOf(c).effects[0]);
-  if (color !== null) {
-    for (const c of usable) if (isFixed(c) && makes(c).includes(color)) return tap(c, color);
-    for (const c of usable) if (!isFixed(c) && makes(c).includes(color)) return tap(c, color);
-    return false;
-  }
-  for (const c of usable) if (isFixed(c)) return tap(c, null);
-  for (const c of usable) return tap(c, null);
-  return false;
-}
+// (tapSourceProducing — the greedy auto-tapper — was deleted with the A1-2
+// payer unification: payMana now executes solveManaPayment's plan instead.)
 
 // ----- Effects -----
 

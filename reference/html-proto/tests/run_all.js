@@ -231,6 +231,10 @@ const CATEGORY_A = [
   // cost_mod/remove_keyword included; scarified/subtype/empower excluded)
   // and each pick now respects rarity weights via pickWeightedSticker.
   'test_bargain_weighted_pool.js',
+  // Audit A1-2 — payer unification: canPayPotential and payMana share ONE
+  // solver (solveManaPayment); the payer executes the checker's solution,
+  // payment is atomic (full payment or zero mutation, never half-applied).
+  'test_paymana_plan_unification.js',
 ];
 
 const TESTS_DIR = __dirname;
