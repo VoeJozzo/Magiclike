@@ -1,6 +1,6 @@
 {
   "card_id": "frostbite_mage",
-  "art": "❄",
+  "art": "art.png",
   "cost": {
     "U": 1,
     "C": 1

@@ -141,3 +141,96 @@ Mortician's Assistant: In a dim stone crypt, a weary sickly-green zombie mortici
 
 Royal Assassin: [COLLABORATIVE COMPOSITE, not a single generation] Mechanic-in-art for "destroy target TAPPED creature": the victim is literally tapped out -- a nobleman drunk and slumped face-down over his own feast table, struck at his most defenseless. Base banquet scene generated from a prompt (dim candlelit hall, nobleman in wine-red velvet passed out over the feast, a lean hooded assassin in black leaning in with a dagger, spilled wine, single candelabra, deep chiaroscuro). Then hand-built: camera-panned right (crop the left edge, pad the right) to open space behind the noble; the assassin composited in from an alternate roll; a blood-tipped dagger HAND-DRAWN by the user; and the stone wall behind him filled via inpaint with the LOCAL prompt "rough weathered castle stonework in deep shadow". KEY INPAINT LESSONS BANKED: pass images as RAW base64 (no data-URI prefix); mask white = regenerate, black = preserve; use a LOCAL prompt describing only the masked patch ("stone wall") not the whole scene; inpaint is great at extending/blending scenery but will NOT invent a crisp figure or small object at small sizes (compositing a real one + razor-masking only the seams works); /inpaint-v3 (Pro, high-res) needs a hosted image URL, not base64.
 Hymnwright: A young cleric in cream-and-gold robes kneels in side profile, bent over a great open hymnal resting on a stone bier, a quill in her hand as she writes the names of the dead onto its glowing pages. A faint, pale-cerulean soul-wisp rises and curls up from the page where her quill touches it. The only light in the scene is the warm glow of the open book and a single candle at its edge. The background is a dim stone crypt of pale columns, with a shrouded body lying on the floor.
+
+Frostbite Mage:
+
+Fantasy concept art. Frost wizard casting a spell.
+
+Single character. The wizard is the overwhelming focal point of the image.
+
+The wizard occupies approximately 80-85% of the image height. The camera is close to the character. The character dominates the composition.
+
+Strong readable silhouette.
+
+The image is designed around large value masses and strong value separation.
+
+The face is composed of four distinct value regions:
+
+* very dark hood shadow
+* dark eye region
+* medium skin tones
+* bright white beard
+
+Each value region forms a large readable shape.
+
+The eye region is a distinct dark band beneath the hood. Bright blue eyes are clearly visible inside the dark eye region.
+
+The wizard is an older man with a large white beard and dark blue hooded robes.
+
+The beard forms one large bright shape.
+
+The hood forms one large dark shape.
+
+The robe is composed of large shadow masses and large lighting masses.
+
+Strong separation between:
+
+* hood and face
+* face and beard
+* beard and robe
+* hand and robe
+* spell and background
+
+Large dramatic robe folds. Large gradients. Large lighting transitions.
+
+No fine texture.
+
+No embroidery.
+
+No filigree.
+
+No fur texture.
+
+No tiny accessories.
+
+No visual noise.
+
+The wizard holds a staff topped with a single large crystal.
+
+The crystal is readable as a single dominant shape.
+
+The casting hand is oversized and clearly visible.
+
+The ice spell is a single geometric blast emerging from the hand.
+
+The spell contains large value regions rather than many small details.
+
+Large snowflake symbol at the center of the spell.
+
+Background is extremely simple.
+
+Snowy plain.
+
+Distant mountains rendered as large atmospheric shapes.
+
+Large value masses only.
+
+High contrast between character and environment.
+
+Epic fantasy illustration.
+
+Rich rendering.
+
+Strong readability at thumbnail size.
+
+Designed to remain recognizable when reduced to low-resolution pixel art.
+
+No text.
+
+No logos.
+
+No watermark.
+
+2:1 aspect ratio.
+
+Production note: Prompt iteration and analysis were performed with ChatGPT (GPT-5.5). Images were generated using OpenAI's integrated image generation system available through ChatGPT. Generated images were then downscaled to 64*32 using K-Means Clustering and Lanczos/Bilinear Resampling.

@@ -43,6 +43,15 @@ schema later.
 - **Source:** pixellab.ai
 - **License:** (user-managed account; check pixellab's terms of service for distribution rights — placeholder until exact terms are documented)
 
+### OpenAI integrated image generation - Frostbite Mage
+
+- **Location in tree:** `reference/html-proto/cards/frostbite_mage/art.png`
+- **Used for:** the 64x32 pixel-art portrait for Frostbite Mage
+- **Source:** OpenAI's integrated image generation system available through ChatGPT
+- **License:** project-owned generated output supplied by the project owner
+- **Prompt record:** `.claude/skills/magiclike-card-art/references/claude-prompts.txt`
+- **Production note:** Prompt iteration and analysis were performed with ChatGPT (GPT-5.5). Images were generated using OpenAI's integrated image generation system available through ChatGPT. Generated images were then downscaled to 64*32 using K-Means Clustering and Lanczos/Bilinear Resampling.
+
 ### Almendra (Google Fonts) — fantasy serif
 
 - **Location in tree:** `assets/fonts/Almendra/`
