@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.1.31`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.1.32`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -1652,6 +1652,41 @@ full gain via spill; deathtouch still kills killable blockers at dose 1).
 Predicted test impact per the packet was none (no test contained
 "deathtouch") — confirmed: zero existing assertions flipped. Suite
 85 files / 1937 green, lint clean.
+
+v2.1.32: audit trigger-hygiene batch — fixes A3-10, A3-13, A3-14, A3-5 +
+A3-3 docs (Joe's verdicts, PR #98 rounds 3–4, 2026-06-10). **A3-10** (Joe:
+"if a trigger fizzles because it is never put on the stack in the first
+place, no log entry occurs — fix this"): deleted emit()'s redundant
+per-trigger target-legality gate (`triggerHasAnyValidTarget`) — a matched
+trigger now always queues (§1004) and target legality is enforced at the
+stack-push moment (§1005, the site that LOGS its fizzle) and at resolution
+(§1006.1); silent no-target vanishes become logged fizzles, and the
+emit→drain wrong-suppression window closes. The misplaced 603.3c citation
+moved to pushTriggerOnStack. **A3-13** (Joe: "exact copies at the moment
+they're copied, then allowed to diverge"): new cloneTriggerData deep-copies
+`condition` at all four consumer spreads (makePlayer's Mercurial pool pick,
+makeCard's bonusTrigger push, finalizeBuild's slot write + live-card push)
+— pre-fix every game's Mercurial card aliased the module-level pool entry's
+condition array (contamination executed in the red test). **A3-14**:
+schedule_delayed refuses unknown `when` values loudly (console.warn, not
+enqueued) instead of parking an immortal entry in delayedTriggers that
+every cleanup re-keeps; EFFECT_SCHEMA gains a schedule_delayed entry so the
+typo is also caught at boot. **A3-5**: new
+ENGINE.validateGeneratedTriggerTables() boot-sweeps the three tables
+outside both card validators (GENERATOR_EFFECTS / GENERATOR_CONDITIONS /
+MERCURIAL_TRIGGER_POOL) for unknown effect kinds, token ids, predicates,
+and event kinds (called from main.js); makePlayer warns on a stale
+persisted slot bonusTrigger (warn-only, still attaches). **A3-3** (Joe:
+"keep the current behavior, fix the documentation. 100 is plenty, we want
+the stronger protection"): the four lying descriptions of the trigger cap
+now state the real semantics — a per-stack-episode trigger BUDGET (width),
+not nesting depth: the engine comment(s), the bail log line ("Trigger
+budget exhausted"), canon §1008, and DIVERGENCE E6. New tests (all
+red→green pre-fix: 1/6/3/4 red): test_trigger_emit_fizzle_log.js (6),
+test_trigger_condition_clone.js (11), test_delayed_fireat_validation.js
+(7), test_generated_tables_validation.js (10). Predicted test impact per
+the packets was none — confirmed: zero existing assertions flipped. Suite
+89 files / 1971 green, lint clean.
 > **MUST UPDATE on every dev-branch push that touches code.** Bump `VERSION` in `js/main.js` AND the line above, in the same commit. GitHub Pages caches aggressively; the version string is the only reliable way to confirm a fresh build is live.
 
 Always work on `dev` for html-proto changes.

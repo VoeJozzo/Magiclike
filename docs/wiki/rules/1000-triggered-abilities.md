@@ -3,7 +3,7 @@ type: rules
 tags: [magiclike, rules]
 section: "1000"
 created: 2026-06-04
-updated: 2026-06-04
+updated: 2026-06-10
 ---
 
 # 1000. Triggered Abilities
@@ -53,8 +53,8 @@ When a trigger's stack entry reaches the top:
 *(MTG rule 603.4: "if" clauses in triggers are re-checked on resolution.)*
 Currently, the engine **only checks `cond_id` at queue time**, not at resolution. If a trigger's condition becomes false between queue and resolution, the trigger still resolves. Tracked in `docs/DIVERGENCE.md` E5.
 
-## 1008. Trigger chain depth
-The html-proto caps trigger-chain depth at 100 nested resolutions; exceeding it bails with a warning. The Godot port does not yet have this cap, but **will mirror proto's threshold** — an earlier "no cap needed if drain is correct" stance was reversed after real card design produced accidental infinite-loop combinations. See `docs/DIVERGENCE.md` E6 and the "Patterns to REPLICATE" note in the root `CLAUDE.md`.
+## 1008. Trigger budget (per stack episode)
+The html-proto enforces a **trigger budget of 100 resolutions per stack episode** — a *width* count, not nesting depth: every trigger resolution since the stack last emptied counts toward the cap, and the counter resets only when both players pass on an empty stack. Exceeding the budget consumes the trigger with a logged warning ("Trigger budget exhausted"). This is deliberate (design ruling, audit A3-3, PR #98, 2026-06-10: keep the counter): the width count is a *stronger* loop-stopper than true nesting depth — it also bounds mutual A→B→A trigger loops, which resolve at depth 1–2 each round and would never trip a depth counter — and reaching 101 legitimate triggers in one stack episode is practically impossible today. The Godot port does not yet have this cap, but **will mirror proto's budget semantics** — an earlier "no cap needed if drain is correct" stance was reversed after real card design produced accidental infinite-loop combinations. See `docs/DIVERGENCE.md` E6 and the "Patterns to REPLICATE" note in the root `CLAUDE.md`.
 
 ## Implementation status — Triggered Abilities
 - 1007 intervening-if: not implemented (known deviation).
