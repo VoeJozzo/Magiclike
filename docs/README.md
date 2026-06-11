@@ -41,6 +41,7 @@ The reference docs are partitioned by **job**; most real questions are **topics*
 | Doc | Scope |
 |---|---|
 | [`godot-port-plan.md`](plans/godot-port-plan.md) | Forward phase roadmap for the Godot port (what ships next, in order). |
+| [`plan-bucket-draft.md`](plans/plan-bucket-draft.md) | **The Growing Deck & synergy-graph buckets** — restructure the draft into run-long growth via generated card buckets (producer/consumer synergy graph, prototyped against the real pool). Design spec, proto-first, not yet executed. |
 | [`BACKLOG.md`](BACKLOG.md) | Deferred **features**, unsequenced parking lot (Godot side). Proto side: [`../reference/html-proto/BACKLOG.md`](../reference/html-proto/BACKLOG.md). |
 | [`REFACTOR-NOTES.md`](REFACTOR-NOTES.md) | Structural **debt**, prioritized P0–P2. Advisory; pick up opportunistically. |
 | [`STANDARDIZATION-PLAN.md`](STANDARDIZATION-PLAN.md) | Cross-engine standardization rollout (Passes 1–4 shipped: snake_case wire, 258-card migration, JsonCardLoader; Pass 5/6 = future Godot-native wire shape, retire `.tres`, effect-kind porting). |
