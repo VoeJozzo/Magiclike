@@ -297,6 +297,12 @@ const CATEGORY_A = [
   // dies-listener swept by the same wipe hears every death, order-
   // independently; bounce/exile arms + pass-1 indestructible included.
   'test_mass_removal_batch.js',
+  // Audit A3-2 — stackable infrastructure: kind:'ability' stack entries with
+  // response windows + §1006.1 re-validation; mana fast path untouched;
+  // `stackable` absent → true, non-boolean rejected at boot; dormant
+  // drain-time-immediate arm for stackable:false triggers; counter parity;
+  // AI sanity over ability entries.
+  'test_stackable_infra.js',
 ];
 
 const TESTS_DIR = __dirname;

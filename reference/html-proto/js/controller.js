@@ -2037,8 +2037,9 @@ function clickStackTarget(stackIdx) {
   if (!pendingTarget) return;
   const G = ENGINE.state();
   const item = G.stack[stackIdx]; if (!item) return;
-  // Triggers are never valid targets for counter; defensive guard.
-  if (item.kind === 'trigger' || !item.card) return;
+  // Triggers and ability entries are never valid targets for counter
+  // (§1004.6); defensive guard.
+  if (item.kind === 'trigger' || item.kind === 'ability' || !item.card) return;
   const action = buildPendingActionWithTarget({kind:'stack', stackItem: item, label: item.card.name});
   if (action && action.pending) {
     render();

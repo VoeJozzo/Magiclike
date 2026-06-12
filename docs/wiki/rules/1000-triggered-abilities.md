@@ -3,7 +3,7 @@ type: rules
 tags: [magiclike, rules]
 section: "1000"
 created: 2026-06-04
-updated: 2026-06-10
+updated: 2026-06-11
 ---
 
 # 1000. Triggered Abilities
@@ -27,7 +27,7 @@ updated: 2026-06-10
   ```
 
   — "When this dies, gain 2 life."
-- **1001.3** A trigger may additionally carry: target declarations (`target` / `target_slots` / `distinct_targets`, §1005), an optional cost ("you may pay {cost}:", §1006.3), the `noSelfCascade` guard (§1003.4), and an authored `text` label (§1009.3).
+- **1001.3** A trigger may additionally carry: target declarations (`target` / `target_slots` / `distinct_targets`, §1005), an optional cost ("you may pay {cost}:", §1006.3), the `noSelfCascade` guard (§1003.4), the `stackable` designation (§1004.7a; absent → true), and an authored `text` label (§1009.3).
 - **1001.4** A triggered ability is not a card. It goes on the stack as its own kind of object (§1004) and ceases to exist when it resolves or fizzles (§1006.4).
 
 ## 1002. Events
@@ -83,8 +83,9 @@ updated: 2026-06-10
 - **1004.3** Queued triggers go onto the stack the next time priority would open, **before** any player receives priority, in **APNAP order**: the active player's triggers first (in queue order), then the non-active player's — so under LIFO the non-active player's resolve first.
 - **1004.4** The order is bound **at drain time**. Triggers queued while priority is closed (§605) wait; triggers queued during cleanup survive the turn boundary and drain at the **next turn's first priority window**, ordered by the **new** active player. Their conditions were already evaluated when the event fired (§1007), so any "this turn" reading refers to the turn the event actually happened.
 - **1004.5** Each trigger pushed onto the stack resets the response round and hands priority to the **opponent of that trigger's controller** — the same rule as casting a spell ([[600-priority-and-the-stack|§603]]). After a drain completes, priority is therefore held by the opponent of the controller of the last trigger pushed (the one on top of the stack).
-- **1004.6** Triggers on the stack can be responded to like spells. They **cannot be countered**: counter effects refuse trigger entries, and "target spell" targeting excludes them ([[700-casting-and-activating|§706]]).
-- **1004.7** *Contrast — activated abilities:* non-mana **activated** abilities currently do not take a stack entry at all; they resolve immediately when activated, and only the triggers they spawn are respondable (see §700's implementation status; audit A3-2 — current behavior ruled acceptable). A per-ability **Stackable** designation is being specced separately; this rule carries that forward-pointer.
+- **1004.6** Triggers on the stack can be responded to like spells. They **cannot be countered**: counter effects refuse trigger entries — and `kind:'ability'` entries (§1004.7) — and "target spell" targeting excludes both ([[700-casting-and-activating|§706]]).
+- **1004.7** **Activated abilities take stack entries too.** A non-mana activated ability pushes its own `kind:'ability'` stack entry: activation pays costs and locks targets, the response round resets with priority to the **activator's opponent** (the same handoff rule as spells and trigger pushes, [[600-priority-and-the-stack|§603]]), and resolution applies §1006.1 target re-validation and fizzle semantics — costs stay paid on a fizzle. Mana abilities never use the stack ([[700-casting-and-activating|§705]]).
+  - **1004.7a** **The `stackable` designation.** Every trigger and activated ability carries an optional boolean `stackable`; **absent means `true`** (design ruling, PR #98 — the default posture is "players can respond"). `stackable: false` means the object never takes a stack entry: an unstackable trigger resolves **at drain, in queue order, before any stack push and before any player holds priority** — player-atomic with its event, logged ("split second", the provisional player-facing name), still budget-counted (§1008); an unstackable ability resolves inline at activation. **Currently everything is stackable** — no shipped definition sets the field; the per-ability classification ("would anyone ever reasonably want to respond to this?") is a pending dedicated design pass (`docs/plans/plan-stackable.md`). The unstackable semantics above are provisional until that pass.
 
 ## 1005. Target selection
 
@@ -139,7 +140,7 @@ The condition is evaluated **exactly once, when the event fires** (§1004.1). It
 - §1006.1 resolution-time re-validation: html-proto implemented 2026-06-10 (audit A3-1 ruling, PR #111). Godot-side status not verified at this rewrite.
 - §1008 budget: html-proto implemented (`TRIGGER_DEPTH_CAP`); Godot pending — the port will mirror the threshold (E6; "Patterns to REPLICATE" in the root `CLAUDE.md`).
 - §1007: both engines align (E5).
-- §1004.7 / activated abilities off-stack: html-proto behavior, ruled acceptable pending the Stackable design (audit A3-2, PR #98).
+- §1004.7 / stackable infrastructure: html-proto implemented v2.1.42 (audit A3-2; PR #98 round-5 ruling) — `kind:'ability'` stack entries live, `stackable` defaults true, the unstackable arms (drain-time-immediate for triggers, inline for abilities) are built but **dormant**: no card sets the field, pending Joe's classification pass. Godot pending (it has no non-mana activated abilities yet).
 - §1005 prompt machinery, per-engine names: proto `pendingTriggerTarget` / `triggerTargetPick`; Godot `awaiting_target_for_trigger` / `pick_trigger_target`.
 - §1011 delayed queue: realized in the proto (`schedule_delayed`); the `'end_step'` wire name is a known misnomer for cleanup timing (see PROTOCOL's caveat).
 

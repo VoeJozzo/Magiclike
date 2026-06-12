@@ -3,7 +3,7 @@ type: rules
 tags: [magiclike, rules]
 section: "700"
 created: 2026-06-04
-updated: 2026-06-04
+updated: 2026-06-11
 ---
 
 # 700. Casting and Activating
@@ -42,8 +42,10 @@ When a spell's stack entry reaches the top and both players have passed priority
 
 ## 705. Activated abilities
 - An activated ability has a cost and an effect.
-- The currently-implemented cost components are `tap` (`{T}`) and `mana`.
-- Activated abilities go on the stack the same as spells, except: **mana abilities** (abilities that produce mana and have no targets) resolve immediately without using the stack. This is the only fast-path.
+- Cost components: `tap` (`{T}`), `mana`, `sacrifice`, and `remove_counters`.
+- **Non-mana activated abilities go on the stack** as their own `kind:'ability'` entries (see [[1000-triggered-abilities|§1004.7]]): activation pays costs and locks targets, the opponent of the activator gets the response window ([[600-priority-and-the-stack|§603]]), and resolution re-validates targets with the same fizzle semantics as spells and triggers (§704.1) — costs stay paid on a fizzle.
+- **Mana abilities** (abilities whose effect produces mana) never use the stack — they resolve immediately. This fast path is hardcoded; it does not consult the `stackable` field.
+- **`stackable`** (optional boolean on every ability and trigger; **absent → `true`**): a `stackable: false` ability resolves inline at activation with no response window. The field is infrastructure only right now — **every shipped ability and trigger is stackable**; the per-ability classification is a pending design pass (`docs/plans/plan-stackable.md`, audit A3-2).
 - The owner must have priority to activate, except mana abilities (which can be activated any time mana could be paid, even mid-cost-payment).
 
 ## 706. Counterspell
@@ -51,8 +53,9 @@ A spell with the `counter` effect targets another spell on the stack. When it re
 - If the target spell is still on the stack: remove it, send the card to its owner's graveyard (countered spells **never go to the battlefield**, even creatures).
 - If the target is gone: the counterspell fizzles cleanly.
 
-Triggered abilities cannot be countered by `counter` (no Stifle equivalent in the pool).
+Triggered abilities and activated-ability stack entries cannot be countered by `counter` — they aren't spells (no Stifle equivalent in the pool): the counter handler refuses both entry kinds, and "target spell" targeting never enumerates them ([[1000-triggered-abilities|§1004.6]]).
 
 ## Implementation status — Casting and Activating
 - 702.2 target choice currently happens at cast time and is locked in. There is no "choose target on resolution" pattern.
-- 705 mana ability fast-path: lands' tap-for-mana skips the stack and pays immediately. Other mana abilities (e.g., creatures that tap for mana) would use the same path.
+- 705 mana ability fast-path: lands' tap-for-mana skips the stack and pays immediately; creature dorks use the same path.
+- 705 ability stack entries + `stackable`: html-proto implemented v2.1.42 (audit A3-2). The `stackable: false` arms are built but dormant — no card carries the field; classification is Joe's pending design pass. Godot pending (no non-mana activated abilities yet).

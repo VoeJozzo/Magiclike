@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.1.41`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.1.42`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -2008,6 +2008,48 @@ batch-visibility pins for all three leave severities (each emit carries
 the whole batch), pass-1 indestructible validation (survivor excluded
 from the batch), and single-target/tap unchanged. Suite 109 files / 2287
 green, lint clean.
+
+v2.1.42: **Stackable infrastructure** (audit A3-2, Joe's PR #98 round-5
+proposal: "You implement the infrastructure. You leave everything as
+'stackable' atm... you do the code work, I'll take the design off your
+plate"). One optional boolean — `stackable` — now exists on trigger AND
+activated-ability definitions; ABSENT defaults TRUE (graceful, no card
+edits: zero card.json files carry the field tonight), present-but-non-
+boolean is a loud boot schema error (validateAllCardEffects +
+collectUnknownTriggerRefs/generated-tables sweep). The real build: non-mana
+activated abilities STOPPED resolving inline — activation pays costs and
+locks targets exactly as before, then pushes a real `kind:'ability'` stack
+entry; the §603 response round opens (priority to the activator's
+opponent, same handoff as spells/triggers); resolution rides
+resolveTopOfStack → resolveAbilityEntry with the shipped A3-1 §1006.1/
+§704.1 framework (target re-validation, whole-fizzle with log, costs stay
+paid) plus a resolution-time Stapler pair re-check (the pair can now decay
+in the response window). Mana abilities keep the hardcoded off-stack fast
+path (canon §705) — both doTapLandForMana and the add_mana
+doActivateAbility arm, untouched. The unstackable arms exist but are
+DORMANT (provisional semantics per plan-stackable.md §6 Q1, pending Joe's
+classification pass): abilities keep the old inline body as the
+stackable:false arm; triggers get drain-time-immediate
+(resolveTriggerImmediate — resolves at drain in queue order before any
+stack push, logged "(split second)", budget-counted). Counter parity
+(§1004.6): the counter handler refuses kind:'ability' entries, and the
+'spell'/'permanent_or_spell' targeting arms + resolveStackOrPermanent
+exclude them by name. AI: shouldCounter passes over ability entries
+(reusing the trigger path); 25-game bughunt selfplay 100% clean (0
+crashes/stuck/runaway). UI minimal: the stack banner renders ability
+entries as synthetic cards (name + describeAbility text, ✦), the reaction
+status line says "activated X (ability)", target lines read ab.effects,
+counter-pick highlighting skips them. Docs: PROTOCOL §5/§6 stackable
+field (Godot-pending); canon §1004.6-7 + §705-706 rewritten to the new
+truth; DIVERGENCE D8 row replaced. Declared test flips, both pinning the
+OLD inline resolution: test_ability_pass_reset (arms 1-2 now pin the
+stack entry + earlier response window; the leg-2 pass reset is structural
+via the push) and test_equatorial_artificer_boss (3 immediate-effect
+asserts now settle the entry first). New red→green file
+test_stackable_infra (42 assertions; 15 red pre-build) covering the
+response window, respond-kills-target fizzle, mana fast path, default +
+dormant drain-time-immediate arm, boot validation, counter parity, AI
+sanity. Suite 110 files / 2333 green, lint clean.
 > **MUST UPDATE on every dev-branch push that touches code.** Bump `VERSION` in `js/main.js` AND the line above, in the same commit. GitHub Pages caches aggressively; the version string is the only reliable way to confirm a fresh build is live.
 
 Always work on `dev` for html-proto changes.

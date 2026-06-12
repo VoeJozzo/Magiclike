@@ -1144,7 +1144,7 @@ function resolveStackOrPermanent(target) {
   }
   if (target.kind === 'stack') {
     const item = target.stackItem;
-    if (!item || !item.card || item.kind === 'trigger') return null;
+    if (!item || !item.card || item.kind === 'trigger' || item.kind === 'ability') return null;
     if (G.stack.indexOf(item) < 0) return null;
     return { kind: 'spell', card: item.card, controller: item.controller, stackItem: item };
   }
@@ -1159,11 +1159,12 @@ function resolveStackOrPermanent(target) {
 //     check, so an invalid pair is rejected BEFORE any cost is paid (MtG
 //     601.2h via 602.2b: costs are paid as the last part of activation; an
 //     illegal activation rewinds with nothing spent);
-//   - the apply_in_game_splice handler at resolution — where, per MtG
-//     resolution-fizzle semantics (608.2b-adjacent), costs STAY paid. With
-//     immediate-resolve abilities nothing can invalidate the pair between
-//     the legality check and resolution, so that path only fires on future
-//     legality/handler drift.
+//   - resolveAbilityEntry + the apply_in_game_splice handler at resolution —
+//     where, per MtG resolution-fizzle semantics (608.2b-adjacent), costs
+//     STAY paid. Since A3-2 (abilities take stack entries) a response window
+//     exists between activation and resolution, so the pair CAN decay in
+//     between — the resolution-time re-check is load-bearing, not just
+//     drift insurance.
 function resolveSplicePair(allTargets) {
   if (!Array.isArray(allTargets) || allTargets.length < 2) return { reason: 'needs two targets.' };
   const t0 = allTargets[0], t1 = allTargets[1];
@@ -2523,7 +2524,9 @@ const EFFECTS = {
     }
     const idx = G.stack.indexOf(target.stackItem);
     if (idx < 0) { log(`Target spell no longer on stack.`); return; }
-    if (G.stack[idx].kind === 'trigger') {
+    // §1004.6 parity: trigger AND activated-ability stack entries can't be
+    // countered — they aren't spells (canon §706; A3-2 added the ability arm).
+    if (G.stack[idx].kind === 'trigger' || G.stack[idx].kind === 'ability') {
       log(`${ctx.sourceName} can't counter that.`, 'sp'); return;
     }
     const removed = G.stack.splice(idx, 1)[0];
@@ -3660,11 +3663,23 @@ function validateAllCardEffects(cards) {
     }
     for (const ab of (card.abilities || [])) {
       checkFilterKeys(ab.target_filter, cardId + '.ability.target_filter');
+      // A3-2: `stackable` is an optional BOOLEAN (absent → true). A present
+      // non-boolean would silently truthy/falsy its way into the wrong
+      // resolution path — reject it loudly at boot.
+      if (ab && 'stackable' in ab && typeof ab.stackable !== 'boolean') {
+        schemaErrors.push(cardId + ': ability stackable must be a boolean (got '
+          + (typeof ab.stackable) + ')');
+      }
       checkList(ab.effects, cardId,
         !!(ab.target || (Array.isArray(ab.target_slots) && ab.target_slots.length)));
     }
     for (const trig of (card.triggers || [])) {
       checkFilterKeys(trig.target_filter, cardId + '.trigger.target_filter');
+      // A3-2: same boolean-only rule for triggers.
+      if (trig && 'stackable' in trig && typeof trig.stackable !== 'boolean') {
+        schemaErrors.push(cardId + ': trigger stackable must be a boolean (got '
+          + (typeof trig.stackable) + ')');
+      }
       checkList(trig.effects, cardId,
         !!(trig.target || (Array.isArray(trig.target_slots) && trig.target_slots.length)));
     }
@@ -3700,6 +3715,12 @@ function collectUnknownTriggerRefs(trig, id, out) {
   if (trig.event && !VALID_TRIGGER_EVENTS.has(trig.event)) {
     out.unknownEvents.push(id + '.' + trig.event);
   }
+  // A3-2: `stackable` must be boolean when present (absent → true). Guarded
+  // on the list existing so older callers with the pre-A3-2 `out` shape
+  // don't crash.
+  if ('stackable' in trig && typeof trig.stackable !== 'boolean' && out.badStackable) {
+    out.badStackable.push(id);
+  }
   if (trig.condition != null && typeof trig.condition !== 'function') {
     _collectUnknownAtomics(trig.condition, out.unknownAtomics, id);
   }
@@ -3722,7 +3743,7 @@ function collectUnknownTriggerRefs(trig, id, out) {
 // card-attached at runtime. Called from main.js boot alongside the card
 // validators; warns to console, returns the lists for tests.
 function validateGeneratedTriggerTables() {
-  const out = { unknownKinds: [], unknownTokens: [], unknownAtomics: [], unknownEvents: [] };
+  const out = { unknownKinds: [], unknownTokens: [], unknownAtomics: [], unknownEvents: [], badStackable: [] };
   for (const ge of GENERATOR_EFFECTS) {
     // Entries are roll() factories — roll a sample; amounts vary per roll,
     // kinds/token ids don't.
@@ -3739,6 +3760,7 @@ function validateGeneratedTriggerTables() {
   if (out.unknownTokens.length) console.warn('Generated-trigger tables: unknown token id(s):', out.unknownTokens.join(', '));
   if (out.unknownAtomics.length) console.warn('Generated-trigger tables: unknown atomic predicate(s):', out.unknownAtomics.join(', '));
   if (out.unknownEvents.length) console.warn('Generated-trigger tables: unknown event kind(s):', out.unknownEvents.join(', '));
+  if (out.badStackable.length) console.warn('Generated-trigger tables: non-boolean stackable on:', out.badStackable.join(', '));
   return out;
 }
 
@@ -3961,6 +3983,38 @@ function emitZoneChange(card, controller, fromZone, toZone, extraSources, source
 // slots that are a real choice — forced (one legal target) and implicit
 // (opp/player/self/spell) slots auto-fill.
 
+// ── A3-2 stackable infrastructure ──────────────────────────────────────────
+// Per-definition `stackable` boolean on trigger AND activated-ability
+// definitions. ABSENT → TRUE (Joe's ruling, PR #98 round 5: the default
+// posture is "players can respond", and the default must work gracefully
+// with no field written on any card — no card carries it yet). Boot
+// validation rejects present-but-non-boolean values (validateAllCardEffects
+// + collectUnknownTriggerRefs), so `!== false` is exact. Mana abilities
+// never consult this — they are hardcoded off-stack (canon §705).
+function isStackable(def) { return !def || def.stackable !== false; }
+
+// stackable:false drain-time-immediate arm for TRIGGERS — provisional
+// semantics per plan-stackable.md §6 Q1 (drain-time-immediate recommended);
+// subject to Joe's design pass; DORMANT — nothing is unstackable yet (every
+// shipped trigger defaults stackable). The trigger is player-atomic with its
+// event: targets were just chosen at drain, and it resolves HERE — before
+// any stack push and before any player exercises priority — so there is no
+// response window ("split second", Joe's provisional player-facing name).
+// It still logs, still counts against the per-episode trigger budget
+// (resolveTrigger increments it), and its downstream events still emit and
+// queue normally, draining at the next window.
+function resolveTriggerImmediate(p, targets) {
+  log(`${p.sourceName} triggers (split second): ${triggerLogText(p.trig)}.`, 'sp');
+  resolveTrigger({
+    kind: 'trigger', trig: p.trig, sourceIid: p.sourceIid, sourceName: p.sourceName,
+    controller: p.controller, targets, event: p.event || null,
+  });
+  // The board just mutated with no stack push: wipe any stale passes so a
+  // pre-event pass can't close the round over the new board (same rationale
+  // as the A1-1 leg 2 reset on inline ability resolution).
+  if (G.priority) G.priority.passes.clear();
+}
+
 // Shared stack-push for a resolved trigger entry. (Also resets the priority round
 // so the opponent can respond, like a spell going on the stack.)
 function pushTriggerEntry(p, targets) {
@@ -4004,6 +4058,8 @@ function pushTriggerOnStack(p) {
     }
     targets = picked;
   }
+  // A3-2: an unstackable trigger resolves at drain instead of stacking.
+  if (!isStackable(p.trig)) { resolveTriggerImmediate(p, targets); return; }
   pushTriggerEntry(p, targets);
 }
 
@@ -4056,6 +4112,9 @@ function finalizeTriggerTarget(pt) {
   const targets = [];
   for (const slot of pt.slotKeys) targets[slot] = pt.pickedSlots[slot];
   fillSparseHoles(targets, pt.slotKeys[0]);
+  // A3-2: a human-prompted unstackable trigger also resolves immediately
+  // once its targets are picked (same dormant arm as pushTriggerOnStack).
+  if (!isStackable(pt.trig)) { resolveTriggerImmediate(pt, targets); return; }
   pushTriggerEntry(pt, targets);
 }
 
@@ -4432,8 +4491,11 @@ function getValidTargets(effect, controller) {
       // enforced it). matchFilterSpell's axes are spliceable_*/not_token
       // today; type/color counterspell filters need an axis extension (a
       // separate design decision) and stay unsupported.
+      // Trigger and kind:'ability' entries are excluded — "target spell"
+      // never sees them (§1004.6; the `s.card` guard would already drop
+      // them, but the kinds are named so the rule is explicit).
       return G.stack
-        .filter(s => s.kind !== 'trigger' && s.card)
+        .filter(s => s.kind !== 'trigger' && s.kind !== 'ability' && s.card)
         .filter(s => matchFilterSpell(s.card, effect.filter))
         .map(s => ({kind:'stack', stackItem: s, label: s.card.name}));
     case 'permanent_or_spell': {
@@ -4447,7 +4509,7 @@ function getValidTargets(effect, controller) {
         .filter(x => matchFilter(x.card, effect.filter, x.ctrl, controller))
         .map(x => ({kind:'permanent', iid:x.card.iid, label:x.card.name}));
       const spells = G.stack
-        .filter(s => s.kind !== 'trigger' && s.card)
+        .filter(s => s.kind !== 'trigger' && s.kind !== 'ability' && s.card)
         .filter(s => matchFilterSpell(s.card, effect.filter))
         .map(s => ({kind:'stack', stackItem: s, label: s.card.name}));
       return perms.concat(spells);
@@ -5834,6 +5896,11 @@ function resolveTopOfStack() {
     resolveTrigger(item);
     return;
   }
+  // Activated-ability entries (A3-2 stackable infrastructure) likewise.
+  if (item.kind === 'ability') {
+    resolveAbilityEntry(item);
+    return;
+  }
   const card = item.card;
   log(`Resolving ${card.name}.`, 'sp');
   if (hasType(card, 'Creature') || hasType(card, 'Artifact')) {
@@ -6310,16 +6377,89 @@ function doActivateAbility(who, cardIid, abilityIdx, targets, sacIid) {
       card.counters[name] = (card.counters[name] || 0) - ab.cost.remove_counters[name];
     }
   }
-  // Mana abilities don't go on the stack; resolve immediately.
-  // Other activated abilities also resolve immediately in this prototype
-  // (a simplification — real MtG would put them on the stack).
-  const ctx = { controller: who, sourceName: card.name, sourceIid: card.iid, sourceCard: card, allTargets: Array.isArray(targets) ? targets : [] };
+  // Costs are paid; route by stackability (A3-2 stackable infrastructure).
+  // Mana abilities NEVER stack — hardcoded fast path (canon §705), they
+  // resolve inline below regardless of any `stackable` field.
+  const isMana = ab.effects[0].kind === 'add_mana';
+  const entry = {
+    kind: 'ability', ab,
+    sourceIid: card.iid, sourceName: card.name,
+    // The source card object, captured at activation. Resolution reads it as
+    // last-known information (§3.6 spirit): the source may leave play between
+    // activation and resolution (it may even have paid itself as the
+    // sacrifice cost just above) and the ability still resolves.
+    sourceCard: card,
+    controller: who,
+    targets: Array.isArray(targets) ? targets : [],
+  };
+  if (!isMana && isStackable(ab)) {
+    // Stackable path (the default — `stackable` absent → true): the ability
+    // takes a real kind:'ability' stack entry, exactly like a trigger.
+    // Costs were paid and targets locked above; effects run at resolution
+    // (resolveAbilityEntry) with §1006.1/§704.1 target re-validation.
+    G.stack.push(entry);
+    log(`${G[who].name} activates ${card.name}${targets && targets[0] ? ' on ' + targets[0].label : ''}.`, who === 'you' ? 'sp' : 'ai');
+    // §603 handoff, same as a spell cast (pushOnStack) or a trigger push:
+    // reset the response round and hand priority to the activator's
+    // opponent. Non-mana activation is gated on isInstantWindow /
+    // isMainPhaseWindow (both require an open round), so G.priority is
+    // reliable here — same contract pushOnStack relies on.
+    G.priority.passes.clear();
+    G.priorityHolder = opp(who);
+    // Triggers fired by COST payment (a sacrifice's dies-trigger) drain on
+    // top of the ability entry — LIFO: they resolve before the ability,
+    // matching where they'd land in MtG.
+    drainTriggers();
+    return;
+  }
+  // Inline arm: mana abilities (always), PLUS the stackable:false arm for
+  // non-mana abilities — provisional semantics per plan-stackable.md §6 Q1
+  // (drain-time-immediate recommended); subject to Joe's design pass;
+  // DORMANT — nothing is unstackable yet (every shipped ability defaults
+  // stackable). This is byte-for-byte today's pre-A3-2 inline resolution.
+  runAbilityEffects(entry);
+  if (!isMana) {
+    log(`${G[who].name} activates ${card.name}${targets && targets[0] ? ' on ' + targets[0].label : ''}.`, who === 'you' ? 'sp' : 'ai');
+    // A1-1 leg 2 (Joe-approved fix, PR #98): a non-mana ability just mutated
+    // the board — wipe the pass tracker so a pre-activation pass no longer
+    // counts toward closing the round (§603's both-pass close means "both
+    // passed in succession since the last action"; spells and trigger pushes
+    // both already reset it). Pre-fix this was the only board-mutating
+    // action without a reset: the opponent's stale pass let the activation
+    // plus the activator's own (auto-)pass close the phase — or resolve
+    // combat damage — with no response window on the new board. The
+    // activator keeps priority (nothing went on the stack). Mana abilities
+    // stay exempt, matching the tapLandForMana path.
+    if (G.priority) G.priority.passes.clear();
+  }
+  // Drain any triggers that fired during cost payment or effect resolution.
+  // The inline arms bypass the stack, so without this drain, triggers from
+  // the cost (e.g., Old Guardian's dies-trigger when sacrificed to Carrion
+  // Feeder) would sit in pendingTriggers and only land on the stack after a
+  // manual priority pass. Spells and stackable abilities handle this at
+  // their push sites.
+  drainTriggers();
+}
+
+// Run an ability's effects against its locked targets. Shared by the inline
+// arm of doActivateAbility (mana abilities + the dormant stackable:false
+// path) and kind:'ability' stack-entry resolution (resolveAbilityEntry).
+// `item` is the entry shape doActivateAbility builds: {ab, sourceIid,
+// sourceName, sourceCard, controller, targets}.
+function runAbilityEffects(item) {
+  const ab = item.ab;
+  const who = item.controller;
+  const targets = Array.isArray(item.targets) ? item.targets : [];
+  // sourceCard is the activation-time object (last-known information) — see
+  // the entry-construction comment in doActivateAbility.
+  const ctx = { controller: who, sourceName: item.sourceName, sourceIid: item.sourceIid,
+                sourceCard: item.sourceCard || null, allTargets: targets };
   // Multi-target dispatch (mirrors resolveTopOfStack/resolveTrigger). By
   // default, targeted effects share targets[0]. Effects can opt into a
   // distinct slot via `target_slot: N`. allTargets is also threaded onto
   // ctx so multi-target effects like apply_in_game_splice (Stapler) can read
   // both inputs directly without relying on inter-effect coordination.
-  const getAbilityTargetForSlot = makeSlotTargetGetter(Array.isArray(targets) ? targets : []);
+  const getAbilityTargetForSlot = makeSlotTargetGetter(targets);
   // New targeting model (§3.5): a top-level `target` step on the ability means
   // it picked one target (targets[0]); bare effects operate on it,
   // chooses() replaces it. Inert for legacy abilities (none set ab.target).
@@ -6346,7 +6486,7 @@ function doActivateAbility(who, cardIid, abilityIdx, targets, sacIid) {
       // self-abilities all survive: pump/add_type are creature-routed by
       // CREATURE_EFFECT_KINDS; gain_life/move_card route to the controller,
       // which their handlers' ctx.controller fallbacks already produced).
-      const self = resolveSelfTarget(e, card.iid, card.name, who);
+      const self = resolveSelfTarget(e, item.sourceIid, item.sourceName, who);
       tgt = self.tgt;
       snap = self.snap;
     } else if (effectNeedsTarget(e)) {
@@ -6362,33 +6502,33 @@ function doActivateAbility(who, cardIid, abilityIdx, targets, sacIid) {
   }
   ctx.chosen = null;
   afterEffectsApplied();
-  if (ab.effects[0].kind !== 'add_mana') {
-    log(`${G[who].name} activates ${card.name}${targets && targets[0] ? ' on ' + targets[0].label : ''}.`, who === 'you' ? 'sp' : 'ai');
-    // A1-1 leg 2 (Joe-approved fix, PR #98): a non-mana ability just mutated
-    // the board — wipe the pass tracker so a pre-activation pass no longer
-    // counts toward closing the round (§603's both-pass close means "both
-    // passed in succession since the last action"; spells and trigger pushes
-    // both already reset it). Pre-fix this was the only board-mutating
-    // action without a reset: the opponent's stale pass let the activation
-    // plus the activator's own (auto-)pass close the phase — or resolve
-    // combat damage — with no response window on the new board. The
-    // activator keeps priority (nothing went on the stack). Mana abilities
-    // stay exempt, matching the tapLandForMana path.
-    if (G.priority) G.priority.passes.clear();
+}
+
+// kind:'ability' stack-entry resolution (A3-2 stackable infrastructure) —
+// the §1006.1/§704.1 framework applied to activated abilities: targets were
+// legal at activation; re-judge NOW that responses have had their window.
+// Illegal slots are dropped by the per-slot resolvers; if EVERY targeted
+// slot is illegal the ability fizzles whole — rider effects included — with
+// a log. Costs stay paid (they were the last part of activation, §601.2h).
+function resolveAbilityEntry(item) {
+  if (!tsRevalidateTargets(item.ab, item.controller, item.targets)) {
+    log(`${item.sourceName}'s ability fizzles — no legal target.`, 'sp');
+    afterEffectsApplied();
+    return;
   }
-  // Drain any triggers that fired during cost payment or effect resolution.
-  // Activated abilities resolve immediately in this engine (a simplification —
-  // in real MtG they'd go on the stack, where dies-triggers from sacrifice
-  // costs would land on top and resolve first). Without this drain, triggers
-  // from the cost (e.g., Old Guardian's dies-trigger when sacrificed to
-  // Carrion Feeder) sit in pendingTriggers and only land on the stack after
-  // a manual priority pass — making them invisible to the player at the
-  // moment of activation. Spells handle this implicitly via pushOnStack;
-  // activated abilities need an explicit drain because they bypass the stack.
-  // pushTriggerOnStack (called from drainTriggers) resets the priority round
-  // and gives opp priority to respond, matching the "ability goes on stack
-  // and opp can respond" flow of real MtG.
-  drainTriggers();
+  // Stapler pair validity was an ACTIVATION check (isLegalAction) — now that
+  // a response window exists between activation and resolution, the pair can
+  // decay (half of it removed in response). Re-judge it here; an invalid
+  // pair fizzles the ability like a dead target.
+  if ((item.ab.effects || []).some(e => e.kind === 'apply_in_game_splice')) {
+    const pair = resolveSplicePair(item.targets);
+    if (pair.reason) {
+      log(`${item.sourceName}'s ability fizzles — ${pair.reason}.`, 'sp');
+      afterEffectsApplied();
+      return;
+    }
+  }
+  runAbilityEffects(item);
 }
 function doDeclareAttackers(who, cardIids) {
   G.attackers = cardIids.slice();

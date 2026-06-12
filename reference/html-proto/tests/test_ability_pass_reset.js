@@ -1,27 +1,28 @@
-// Audit fix A1-1 leg 2 — activating a NON-MANA ability resets the priority
-// pass tracker (Joe-approved, PR #98 round 3: "Sounds like a pair of good
-// catches. Please fix them.").
+// Audit fix A1-1 leg 2 — a NON-MANA ability activation resets the priority
+// pass tracker (Joe-approved, PR #98 round 3), so a stale pre-activation
+// pass can never close the round with no response window.
 //
-// Pre-fix, doActivateAbility was the only board-mutating action that never
-// cleared G.priority.passes: an opponent's pre-activation pass stayed "on
-// the books", so the activation + the activator's own (auto-)pass closed
-// the round instantly — the other player never held priority on the
-// post-ability board. Canon §603's both-pass round-close means "both passed
-// in succession since the last action"; spells (pushOnStack) and triggers
-// (pushTriggerEntry) both already reset the tracker.
+// REWRITTEN for A3-2 (stackable infrastructure): non-mana activations now
+// push a real kind:'ability' STACK ENTRY, and the §603 reset rides the push
+// itself (exactly like a spell cast / trigger push) — the leg-2 protection
+// is structural now. The response window moved EARLIER: the opponent
+// responds before the ability resolves, not merely before the round closes
+// over its result. These arms pin the protection in its new shape. (The
+// original inline reset survives verbatim in the dormant stackable:false
+// arm of doActivateAbility.)
 //
 // Arms:
 //   1. KEY (main phase) — you pass, opp pings with Prodigal Sorcerer: the
-//      round must NOT close on your stale pass; you get priority on the
-//      post-ability board and can respond (red pre-fix: MAIN1 closed,
-//      combat-declaration parking, no instant window).
+//      ping goes ON THE STACK, your stale pass is wiped, you hold priority
+//      and can respond BEFORE the ping resolves; after you pass it resolves
+//      and you get a fresh round on the post-resolution board.
 //   2. KEY (block window — where it bites hardest) — blocks are in, the
-//      attacker passes, the defender pings an attacker: the attacker must
-//      regain priority BEFORE combat damage (red pre-fix: straight to
-//      COMBAT_DAMAGE, damage resolved with no response window).
-//   3. Guard — MANA abilities stay exempt (Llanowar Elves doesn't reset the
-//      round; the stale pass still counts and the turn sails on). Pins the
-//      "after non-mana resolution" scope of the fix.
+//      attacker passes, the defender pings an attacker: the entry stacks,
+//      the attacker regains priority BEFORE the ping resolves and again
+//      before combat damage.
+//   3. Guard — MANA abilities stay exempt (Llanowar Elves resolves inline,
+//      no stack entry, no reset; the stale pass still counts and the turn
+//      sails on). Pins the §705 fast path's scope.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -79,19 +80,32 @@ if (!VANILLA || !CARDS['prodigal_sorcerer'] || !CARDS['llanowar_elves'] || !CARD
     ENGINE.executeAction('you', { type: 'pass' });
     check('setup: opp holds priority after your pass',
       ENGINE.expectedActor() === 'opp', 'actor=' + ENGINE.expectedActor());
-    // Opp pings your creature with the Sorcerer (board mutation, no trigger).
+    // Opp pings your creature with the Sorcerer. A3-2: the ping takes a
+    // kind:'ability' stack entry; the push wipes your stale pass.
     ENGINE.executeAction('opp', { type: 'activateAbility', cardIid: sorcerer.iid, abilityIdx: 0,
       targets: [{ kind: 'creature', iid: myCreature.iid, label: myCreature.name }] });
-    check('the ping landed (your creature has 1 damage)',
-      myCreature.damage === 1, 'damage=' + myCreature.damage);
+    check('the ping is ON THE STACK (not yet resolved)',
+      G.stack.length === 1 && G.stack[0].kind === 'ability'
+      && myCreature.damage === 0,
+      'stack=' + G.stack.length + ' damage=' + myCreature.damage);
     check('KEY: phase is still MAIN1 (your stale pass did not close the round)',
       G.phase === 'MAIN1', 'phase=' + G.phase);
-    check('KEY: you hold priority on the post-ability board',
+    check('KEY: you hold priority over the pending ability',
       ENGINE.expectedActor() === 'you' && G.phase === 'MAIN1',
       'actor=' + ENGINE.expectedActor() + ' phase=' + G.phase);
     check('KEY: you can actually respond (bolt is castable)',
       ENGINE.isLegalAction('you', { type: 'castSpell', cardIid: bolt.iid,
         targets: [{ kind: 'creature', iid: sorcerer.iid, label: sorcerer.name }] }));
+    // Decline: the ping resolves (opp auto-passes after you — sorcerer
+    // tapped, nothing else to do), and you get a FRESH round on the
+    // post-resolution board.
+    ENGINE.executeAction('you', { type: 'pass' });
+    check('the ping resolved after the window (your creature has 1 damage)',
+      myCreature.damage === 1 && G.stack.length === 0,
+      'damage=' + myCreature.damage + ' stack=' + G.stack.length);
+    check('KEY: you hold priority again on the post-resolution board (round reset)',
+      ENGINE.expectedActor() === 'you' && G.phase === 'MAIN1',
+      'actor=' + ENGINE.expectedActor() + ' phase=' + G.phase);
     // Round still closes normally once you genuinely pass again (no stall).
     ENGINE.executeAction('you', { type: 'pass' });
     check('after your fresh pass the phase advances (no infinite round)',
@@ -122,15 +136,27 @@ if (!VANILLA || !CARDS['prodigal_sorcerer'] || !CARDS['llanowar_elves'] || !CARD
       G.phase === 'COMBAT_BLOCK' && ENGINE.expectedActor() === 'you',
       'phase=' + G.phase + ' actor=' + ENGINE.expectedActor());
     ENGINE.executeAction('you', { type: 'pass' });           // attacker passes
-    // Defender pings the attacker before damage.
+    // Defender pings the attacker before damage. A3-2: the ping stacks; the
+    // attacker gets a window BEFORE it even resolves.
     ENGINE.executeAction('opp', { type: 'activateAbility', cardIid: sorcerer.iid, abilityIdx: 0,
       targets: [{ kind: 'creature', iid: atk.iid, label: atk.name }] });
-    check('the ping landed on the attacker', atk.damage === 1, 'damage=' + atk.damage);
+    check('the ping is ON THE STACK (attacker undamaged so far)',
+      G.stack.length === 1 && G.stack[0].kind === 'ability' && atk.damage === 0,
+      'stack=' + G.stack.length + ' damage=' + atk.damage);
     check('KEY: still in COMBAT_BLOCK (damage has not resolved out from under you)',
       G.phase === 'COMBAT_BLOCK', 'phase=' + G.phase);
-    check('KEY: no combat damage dealt yet (opp life untouched)',
-      G.opp.life === 20, 'opp.life=' + G.opp.life);
-    check('KEY: attacker holds priority and can respond before damage',
+    check('KEY: attacker holds priority and can respond before the ping resolves',
+      ENGINE.expectedActor() === 'you'
+      && ENGINE.isLegalAction('you', { type: 'castSpell', cardIid: bolt.iid,
+        targets: [{ kind: 'creature', iid: sorcerer.iid, label: sorcerer.name }] }),
+      'actor=' + ENGINE.expectedActor());
+    // Decline: the ping resolves (opp auto-passes — sorcerer tapped).
+    ENGINE.executeAction('you', { type: 'pass' });
+    check('the ping resolved on the attacker', atk.damage === 1, 'damage=' + atk.damage);
+    check('KEY: STILL no combat damage (fresh round on the post-resolution board)',
+      G.phase === 'COMBAT_BLOCK' && G.opp.life === 20,
+      'phase=' + G.phase + ' opp.life=' + G.opp.life);
+    check('KEY: attacker can still respond before damage',
       ENGINE.expectedActor() === 'you'
       && ENGINE.isLegalAction('you', { type: 'castSpell', cardIid: bolt.iid,
         targets: [{ kind: 'creature', iid: sorcerer.iid, label: sorcerer.name }] }),

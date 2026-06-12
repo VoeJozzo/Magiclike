@@ -371,6 +371,7 @@ require an entry in §3.2.
   "condition": ["this_card", "card_moves(anywhere, battlefield)"],  // §3.4 composable predicates (Slice 2)
   "target": "creature",            // optional top-level target() step (§3.5) — bare effects operate on it
   "text": "When ~ enters, ...",    // optional override of auto-synthesized oracle text
+  "stackable": true,               // optional bool; ABSENT → true (A3-2; see below)
   "effects": [ /* see §4 */ ]
 }
 ```
@@ -382,15 +383,40 @@ step. Both engines drain pending triggers in APNAP order (MTG 603.3b). Targeted
 triggers controlled by `you` pause for UI input; opp-controlled triggers
 auto-pick.
 
+**`stackable`** (A3-2, snake_case, optional boolean; html-proto v2.1.42,
+**Godot pending** — rides the composable-trigger rows E1/E2): governs whether
+the trigger takes a stack entry with a response window. **Absent → `true`**
+(design ruling, PR #98 round 5) — the default posture is "players can
+respond", and the default behaves gracefully with no field written.
+`stackable: false` means drain-time-immediate resolution: the trigger still
+queues at emit, but at drain it resolves in queue order before any stack push
+and before any player holds priority — player-atomic with its event, logged
+as "(split second)", still counted against the trigger budget. The false arm
+is **dormant** — no shipped definition carries the field; per-ability
+classification is Joe's pending design pass (`docs/plans/plan-stackable.md`).
+Present-but-non-boolean values are rejected by boot validation in both card
+and generated-trigger sweeps.
+
 ## 6. Activated ability shape
 
 ```jsonc
 {
   "cost": { "tap": true, "mana": {"C": 1, "R": 0} },
   "target": "creature",            // optional top-level target() step (§3.5)
+  "stackable": true,               // optional bool; ABSENT → true (A3-2; see §5)
   "effects": [ /* see §4 */ ]
 }
 ```
+
+**`stackable`** carries the same contract as on triggers (§5): absent →
+`true`. Since A3-2 (html-proto v2.1.42; **Godot pending**) a stackable
+non-mana activated ability pushes a real `kind:'ability'` stack entry —
+costs paid and targets locked at activation, response round opens (priority
+to the activator's opponent), resolution re-validates targets with
+spell/trigger fizzle semantics. `stackable: false` (dormant — nothing uses
+it yet) is the old inline resolution. **Mana abilities ignore the field
+entirely**: they are hardcoded off-stack (canon §705) and resolve
+immediately.
 
 Cost components today: `tap` (bool), `mana` (cost dict), `sacrifice` (Carrion
 Feeder). `cost.mana` is normally a `{W,U,B,R,G,C}` cost dict, but it may also use

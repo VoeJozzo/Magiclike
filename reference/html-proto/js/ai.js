@@ -663,7 +663,9 @@ function decideReaction(state, who, actions) {
 function shouldCounter(state, who) {
   const top = state.stack[state.stack.length - 1];
   if (!top || top.controller === who) return false;
-  if (top.kind === 'trigger' || !top.card) return false;
+  // Trigger and kind:'ability' entries can't be countered (§1004.6) — the
+  // AI's only stack reaction today is countering, so it passes over them.
+  if (top.kind === 'trigger' || top.kind === 'ability' || !top.card) return false;
   const card = top.card;
   // Check the chosen mode only (top.modeIdx locked in) — not all modes.
   const relevantEffects = ENGINE.effectsForMode(card, top.modeIdx);

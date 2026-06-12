@@ -1,6 +1,6 @@
 # Design spec — per-ability `stackable` (A3-2 follow-up)
 
-*Status: DRAFT for Joe's review. Design doc only — no code change rides with this.*
+*Status: infrastructure SHIPPED (html-proto v2.1.42, branch `audit/feat-stackable-infra`) per Joe's round-5 ruling (PR #98, 2026-06-11): Phases 0–2 built everything-stackable — the field + boot validation + `kind:'ability'` stack entries + the dormant unstackable arms — with **no card edits** (absent → `true` handles the default gracefully, superseding Phase 2's "every existing ability gets an explicit `stackable`" line). §4's worked classification and §6's open questions await Joe's dedicated design pass.*
 *Sources: audit finding A3-2 (`docs/audit/chunk-03-stack-triggers.md`), Joe's PR #98 rounds 2–4 comments (2026-06-10/11), engine at `audit/integration`.*
 
 ## 1. Problem statement
