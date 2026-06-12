@@ -43,6 +43,16 @@ schema later.
 - **Source:** pixellab.ai
 - **License:** (user-managed account; check pixellab's terms of service for distribution rights — placeholder until exact terms are documented)
 
+### OpenAI integrated image generation - card art
+
+- **Locations in tree:** `reference/html-proto/cards/frostbite_mage/art.png`, `reference/html-proto/cards/trained_armodon/art.png`
+- **Used for:** 64x32 pixel-art portraits generated for individual cards
+- **Source:** OpenAI's integrated image generation system available through ChatGPT
+- **License:** project-owned generated output supplied by the project owner
+- **Prompt record:** `.claude/skills/magiclike-card-art/references/claude-prompts.txt`
+- **Frostbite Mage production note:** Prompt iteration and analysis were performed with ChatGPT (GPT-5.5). Images were generated using OpenAI's integrated image generation system available through ChatGPT. Generated images were then downscaled to 64*32 using K-Means Clustering and Lanczos/Bilinear Resampling.
+- **Trained Armodon V3 production note:** Start with the source image, resize to 64x32 using Lanczos resampling, apply one PIL `ImageFilter.SHARPEN` pass, and save the raw 64x32 PNG. Nearest-neighbor scaling is used only for previews. PIL sharpen is Pillow's built-in sharpening filter and is not the same as the earlier HTML pixelizer settings.
+
 ### Almendra (Google Fonts) — fantasy serif
 
 - **Location in tree:** `assets/fonts/Almendra/`
