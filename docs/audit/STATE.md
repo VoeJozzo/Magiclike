@@ -42,7 +42,7 @@ dry-run target and runs first; thereafter strict priority order (1 → 11).
 | 5 | Synthesis / staple (`engine.js` splice region) | 1 | done | 2026-06-11T02:27:42Z | 7b3a15f | [`chunk-05-synthesis.md`](chunk-05-synthesis.md) |
 | 7 | AI (`ai.js`) | 1 | done | 2026-06-12T00:44:36Z | 3adb44c | [`chunk-07-ai.md`](chunk-07-ai.md) |
 | 8 | Draft (`draft.js`) | 1 | in_progress | 2026-06-12T01:50:36Z | aca8883 | `chunk-08-draft.md` |
-| 9 | Run / meta / picklog (`run.js`, `picklog.js`) | 1 | todo | — | — | `chunk-09-run-meta.md` |
+| 9 | Run / meta / picklog (`run.js`, `picklog.js`) | 1 | in_progress | 2026-06-12T02:06:09Z | aca8883 | `chunk-09-run-meta.md` |
 | 10 | Card-text generation (`card-text.js`) | 1 | todo | — | — | `chunk-10-card-text.md` |
 | 11 | Card-data JSON sweep (258 card JSONs) | 3 | todo | — | — | `chunk-11-card-json.md` |
 
