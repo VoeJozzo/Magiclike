@@ -10,6 +10,17 @@ function check(label, ok, info) {
   if (ok) pass++; else fail++;
 }
 
+// A3-2: non-mana activations now take a kind:'ability' stack entry — pass
+// until it resolves (the free/affordable re-activation keeps hasNoAction
+// false, so step() parks on the activator instead of auto-resolving).
+function settle(G) {
+  let safety = 8;
+  while (G.stack.length > 0 && safety-- > 0) {
+    const w = ENGINE.expectedActor(); if (!w) break;
+    ENGINE.executeAction(w, { type: 'pass' });
+  }
+}
+
 function boot() {
   RUN.start({ cards: Array(12).fill('plains'), colors: ['W'] }, null);
   RUN.startNextGame();
@@ -85,6 +96,7 @@ console.log('\n=== Artifice Triumphant neutralizes permanently and grants reanim
   ENGINE.executeAction('you', { type: 'activateAbility', cardIid: knight.iid, abilityIdx });
   check('Equatorial tapped and Ingenuity let {C}{C} pay the white activation cost',
     equator.tapped && G.you.mana.C === 1);
+  settle(G);   // A3-2: the granted ability resolves off the stack
   check('target is a creature again until end of turn',
     hasType(knight, 'Artifact') && hasType(knight, 'Creature'));
   const slot = RUN.getSlots()[0];
@@ -114,6 +126,7 @@ console.log('\n=== Artifice Triumphant colorless activation is intentionally fre
   check('colorless target can reactivate with no mana available',
     ENGINE.isLegalAction('you', { type: 'activateAbility', cardIid: colossus.iid, abilityIdx }));
   ENGINE.executeAction('you', { type: 'activateAbility', cardIid: colossus.iid, abilityIdx });
+  settle(G);   // A3-2: the granted ability resolves off the stack
   check('free activation makes the colorless target a creature until end of turn',
     hasType(colossus, 'Artifact') && hasType(colossus, 'Creature'));
   check('colors_of_source cannot be paid without a source-card resolution',
@@ -147,6 +160,7 @@ console.log('\n=== Artifice Triumphant target shows the activated-ability glow a
     activationGlowAvailable(colossus, 'opp') === false);
   const abilityIdx = (colossus.abilities || []).findIndex(ab => ab._sticker_ability_id === 'artifice_triumphant_reanimate');
   ENGINE.executeAction('you', { type: 'activateAbility', cardIid: colossus.iid, abilityIdx });
+  settle(G);   // A3-2: the granted ability resolves off the stack
   check('glow drops once it is already a Creature again (re-activation is a no-op)',
     activationGlowAvailable(colossus, 'you') === false && hasType(colossus, 'Creature'));
 })();

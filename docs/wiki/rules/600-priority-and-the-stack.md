@@ -3,7 +3,7 @@ type: rules
 tags: [magiclike, rules]
 section: "600"
 created: 2026-06-04
-updated: 2026-06-04
+updated: 2026-06-11
 ---
 
 # 600. Priority and the Stack
@@ -11,14 +11,14 @@ updated: 2026-06-04
 *[[rulebook|Rulebook]] › §600*
 
 ## 601. The stack
-A LIFO list of spells and triggered abilities waiting to resolve. Resolves top-down.
+A LIFO list of spells, triggered abilities, and (non-mana) activated abilities waiting to resolve ([[1000-triggered-abilities|§1004.7]]; mana abilities skip the stack, [[700-casting-and-activating|§705]]). Resolves top-down.
 
 ## 602. When priority opens
 At each phase that opens a priority window (see the [[500-turn-structure]] table), priority opens **with the active player**. After both players pass priority in succession with the stack empty, the phase ends.
 
 ## 603. Priority-passing rules
 - A player with priority may take a legal action (cast a spell, activate an ability, declare an attacker/blocker if the phase allows) or pass priority.
-- After a player casts a spell (or a trigger goes on the stack), **priority passes to the other player** — the caster does NOT retain priority. This is an intentional simplification of MTG rule 117.1c: holding priority is an edge case that leads to a lot of clicking, so it was deliberately dropped (design ruling, PR #98, 2026-06-10). The opponent gets the first response window; the caster regains priority once the opponent passes, so "I act → opponent declines → I act again" is the normal cycle. (The Godot port currently retains priority per 117.1c — see `docs/DIVERGENCE.md` D0; harmonization is the port's decision.)
+- After a player casts a spell (or a trigger or activated ability goes on the stack), **priority passes to the other player** — the caster does NOT retain priority. This is an intentional simplification of MTG rule 117.1c: holding priority is an edge case that leads to a lot of clicking, so it was deliberately dropped (design ruling, PR #98, 2026-06-10). The opponent gets the first response window; the caster regains priority once the opponent passes, so "I act → opponent declines → I act again" is the normal cycle. (The Godot port currently retains priority per 117.1c — see `docs/DIVERGENCE.md` D0; harmonization is the port's decision.)
 - After priority is passed, it goes to the other player.
 - When **both players pass in succession**:
   - If the stack is non-empty, the **top object of the stack resolves**. Then priority opens again with the active player.
