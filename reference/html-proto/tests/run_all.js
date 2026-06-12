@@ -303,6 +303,11 @@ const CATEGORY_A = [
   // drain-time-immediate arm for stackable:false triggers; counter parity;
   // AI sanity over ability entries.
   'test_stackable_infra.js',
+  // Audit A7-4 — bestSpellPlay's self-damage lethal gate is per OPTION: a
+  // modal mode whose self-damage would kill us scores -100 (the old gate
+  // covered non-modal cards only; the comment-promised per-option check
+  // didn't exist). Synthetic modal templates — no pool card has the shape.
+  'test_a7_modal_self_damage.js',
 ];
 
 const TESTS_DIR = __dirname;
