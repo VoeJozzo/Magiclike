@@ -16,7 +16,7 @@ The player drafts a deck from packs with **color-aware sampling**: in-deck color
 
 ## The run
 
-A short **branching map** (Slay-the-Spire-style): per-node battles whose opponents scale with depth (added [[sticker-system|stickers]], spliced or cloned slots) and a boss at the exit. Winning a node offers a **reward** that mutates your deck slots — apply a sticker, transform a slot into a fresh draft pack, clone a slot, **splice** two slots ([[staple-synthesis]]), or remove one. A run-start modifier can append or mutate slots before the draft. Run state persists, with a **mid-game snapshot** that blocks reward-farming by quit-and-reload. ([[1500-the-run]].)
+A short **branching map** (Slay-the-Spire-style): per-node battles whose opponents scale with depth (added [[sticker-system|stickers]], spliced or cloned slots) and a boss at the exit. Runs are **endless**, organized into sectors: beating the exit boss clears the sector and rolls a fresh map, deck and counters carrying forward — the run ends only in a loss. Winning a node offers a **reward** that mutates your deck slots — apply a sticker, transform a slot into a fresh draft pack, clone a slot, **splice** two slots ([[staple-synthesis]]), or remove one. A run-start modifier can append or mutate slots before the draft. Run state persists, with a **mid-game snapshot** that blocks reward-farming by quit-and-reload. ([[1500-the-run]].)
 
 Realized in the [[html-proto]]; [[godot]]-deferred (see [[cross-engine-port]]). The concrete map size, reward weights, and pick counts are tuning parameters and live in the [[rulebook]], not here.
 

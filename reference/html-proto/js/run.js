@@ -313,6 +313,13 @@ function load() {
     const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return false;
     let blob = JSON.parse(raw);
+    // A save from a NEWER build: refuse to load it (this build can't know
+    // its shape), but do NOT clear it — the newer build can still read it;
+    // clearing would destroy a valid save. (Audit A9-4.)
+    if (blob.version > SAVE_VERSION) {
+      console.warn(`Save is v${blob.version}, newer than this build's v${SAVE_VERSION}; not loading.`);
+      return false;
+    }
     while (blob.version < SAVE_VERSION) {
       const migrate = MIGRATIONS[blob.version];
       if (!migrate) {
@@ -444,29 +451,29 @@ function start(playerDeck, modifierId) {
     }
     return slot;
   });
-  // Apply Neow-style run modifier if one was chosen. Modifiers can return
-  // `extras` — additional slots to append (e.g., City of Brass with innate).
-  // Future-proof: modifiers can also return other run-state mutations; we
-  // just consume `extras` for now.
+  // Apply Neow-style run modifier (boon) if one was chosen.
   if (modifierId && RUN_MODIFIERS[modifierId]) {
     // Pass the in-progress slots into apply() so boons can reflect on the
     // deck — e.g., to pick a random creature slot to anoint, or to skip
-    // application if no eligible slots exist. apply() can:
-    //   - return {extras: [...]} to APPEND new slots (City of Brass, Elystra)
-    //   - mutate the slots array IN PLACE to modify existing slots (Watcher's
-    //     Gift attaches a bonusTrigger to a chosen creature slot)
-    // Both shapes are valid; mutation is the right choice when the boon is
-    // modifying existing cards rather than adding new ones.
+    // application if no eligible slots exist.
+    // CONTRACT (stated identically in cards.js above RUN_MODIFIERS):
+    // apply(slots) may mutate the slots array in place OR return
+    // {extras: [...]} of new slots to append.
+    // Today all 7 boons return extras only (each grants a card); none
+    // mutates slots in place. In-place mutation is the documented shape
+    // for a future boon that modifies existing slots rather than adding
+    // new ones.
     const result = RUN_MODIFIERS[modifierId].apply(slots) || {};
     if (Array.isArray(result.extras)) {
       for (const e of result.extras) {
         // Pass through optional slot-level fields. Most boon-extras only
-        // need tplId + stickers (City of Brass, Elystra, Phylactery), but
-        // The Mercurial Adept passes a triggerPool that gets rolled at
-        // each game-start, and future boons may want to seed permaBuffs,
-        // empowerRolls, or bonusTriggers directly. The extras slot is the
-        // right place for these — they're how the boon shapes the slot
-        // it's adding.
+        // need tplId + stickers (City of Brass, Elystra, Phylactery);
+        // future boons may want to seed permaBuffs, empowerRolls, or
+        // bonusTriggers directly. The extras slot is the right place for
+        // these — they're how the boon shapes the slot it's adding.
+        // (The triggerPool passthrough below is legacy-save support only:
+        // Mercurial Adept now seeds her pool via trigger_pool_seed — see
+        // engine.js makePlayer — and no current boon passes a triggerPool.)
         const slot = { tplId: e.tplId, stickers: (e.stickers || []).slice() };
         if (e.triggerPool) slot.triggerPool = e.triggerPool;
         if (e.bonusTrigger) slot.bonusTrigger = e.bonusTrigger;
@@ -652,7 +659,6 @@ function startNextGame() {
   const opp = DRAFT.buildOpponentDeck(numStickers, numStaples, numClones, colorAffinity, constructedId);
   ENGINE.init(runState.slots, opp.cards);
   save();
-  PICKLOG.recordGamePlayed();
   let bossName = null;
   let bossIcon = null;
   if (curNode && curNode.type === 'boss' && constructedId) {
@@ -705,6 +711,10 @@ function getMapState() {
 
 function recordResult(winner, playedSlotIdxs, claimedKeywords) {
   if (!runState) return;
+  // Picklog counts COMPLETED games (win or loss). Counting at game start
+  // double-counted crash-restores (the resume path replays startNextGame)
+  // and counted abandoned games. Analytics-only. (Audit A9-5.)
+  PICKLOG.recordGamePlayed();
   // Clear snapshot — game completed, mutations are earned.
   runState.midGameSlotsSnapshot = null;
   // Set→array since JSON doesn't carry Set type. Reset each game.
@@ -1256,8 +1266,6 @@ function applyStickerToSlot(slotIdx, sticker_id) {
   return true;
 }
 
-// Append a new slot mid-game. Used by Steal. Push-at-end preserves existing
-// slotIdx pointers. Returns new index or null.
 // Append a new slot mid-game. Used by Steal. Push-at-end preserves existing
 // slotIdx pointers. Returns new index or null. Optional `meta` carries
 // empowerRolls / subtypeRolls / permaBuffs / bonusTrigger / stapledTpls /

@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.1.43`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.1.44`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -2074,4 +2074,40 @@ Also removed three stray CLAUDE.md instruction lines from this file's tail
 "Deferred work lives in `BACKLOG.md`…") — paste residue from the
 2026-06-02 CLAUDE.md→CHANGELOG.md extraction (commit 3940cc5), never
 changelog content. Suite 111 files / 2340 green, lint clean.
+
+v2.1.44: audit chunk-9 ship batch (A9-4, A9-5, A9-6, A9-7 + the A9-9
+assertion). **A9-4 (P4, defensive guard):** RUN.load() now refuses a save
+blob whose version is NEWER than this build's SAVE_VERSION (warn + return
+false) instead of silently loading it as-is — the migration loop was
+upward-only. Deliberately does NOT clear the blob: a newer build can still
+read it. **A9-5 (P4, analytics-only):** picklog's per-draft gamesPlayed
+counter moved from startNextGame to recordResult — it now counts COMPLETED
+games (win or loss). Start-counting double-counted crash-restores (the
+resume path replays startNextGame after rollbackForMidGameRestore) and
+counted abandoned games. recordGamePlayed had exactly one caller; no other
+call site. New red→green file test_a9_run_save_guards (7 assertions; 4 red
+pre-fix). **A9-6 (P3, comments):** the RUN.start() boon comment cluster —
+the phantom "Watcher's Gift" canonical example is gone (no such boon
+exists; all 7 current boons return extras only, none mutates slots in
+place); the contradictory apply() contracts (cards.js "pure, no runState
+mutation" vs run.js "mutate IN PLACE… both valid") are resolved to ONE
+contract stated identically at both sites: apply(slots) may mutate the
+slots array in place OR return {extras: [...]}; the retired Mercurial
+triggerPool mechanism comment now points at trigger_pool_seed (engine.js
+makePlayer) and marks the extras triggerPool passthrough as legacy-save
+support only; the double-pasted appendSlot header is de-duped; engine.js's
+makeCard bonusTrigger comment re-attributed from the phantom boon to its
+real writer (Architect's Codex finalizeBuild). **A9-9 (parked invariant,
+guard ships here):** tplid_renames_test gains the full-map assertion that
+every TPLID_RENAMES key is absent from CARDS — picklog re-applies renames
+unconditionally on every load, so a reused legacy key would silently
+rewrite picklog rows forever. **A9-7 (P3, canon docs):** §1500 now
+documents the endless-sector structure (sector clear → fresh map; a run
+ends only in a loss) in §1501/§1502; §1502 gains the 15% constructed
+(non-boss archetype) mid-node roll; §1505's phantom Watcher's Gift example
+replaced with real boons (Polychrome Pact, The Hungering Mimic) and the
+adopted mutate-or-extras contract; §1504's TwoStickers "(often to one
+slot)" corrected to always-same-slot; roguelike-meta.md gets the same
+endless-sector fix. (§1504's Clone sentence untouched — A5-11 pending
+ruling.) Suite 112 files / 2348 green, lint clean.
 

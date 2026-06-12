@@ -460,8 +460,11 @@ STICKERS['scarified'] = {
 
 // =========================================================================
 // RUN MODIFIERS — Neow-style run-defining choices presented before draft.
-// Each modifier: {id, name, text, apply()}. apply() returns {extras: [{tplId,
-// stickers}, ...]} for bonus deck slots; pure (no runState mutation).
+// Each modifier: {id, name, text, apply()}.
+// CONTRACT (stated identically in run.js's RUN.start at the call site):
+// apply(slots) may mutate the slots array in place OR return
+// {extras: [...]} of new slots to append.
+// Today all 7 boons return extras only ({extras: [{tplId, stickers}, ...]}).
 // Future hooks (stickerBias, lifeOffset, etc) can be added similarly.
 // =========================================================================
 const RUN_MODIFIERS = {};

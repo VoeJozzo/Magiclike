@@ -99,6 +99,18 @@ console.log('\n=== v1->v2 save migration translates all tplId fields ===');
     migrated.runState.oppDecks[1][1] === 'merfolk_looter');
 }
 
+console.log('\n=== no TPLID_RENAMES key is a live card id (full map) ===');
+{
+  // Audit A9-9 (parked invariant — this guard ships): picklog.js re-applies
+  // TPLID_RENAMES unconditionally on every load, so if a future card ever
+  // REUSES one of the ~250 legacy keys, its picklog rows get silently
+  // rewritten to the rename target forever. Every key must stay retired.
+  const reused = Object.keys(TPLID_RENAMES).filter(k => CARDS[k]);
+  check('every TPLID_RENAMES key is absent from CARDS',
+    reused.length === 0,
+    reused.length ? 'reused as live ids: ' + reused.join(', ') : undefined);
+}
+
 // NOTE: a "PICKLOG load-time translation" section was deleted here. It seeded
 // localStorage with legacy tplIds but then never exercised PICKLOG's load path
 // (the IIFE had already cached `data` and has no public reset) — instead it
