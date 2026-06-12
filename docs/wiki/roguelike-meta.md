@@ -2,7 +2,7 @@
 type: concept
 tags: [magiclike, gamedev, meta]
 created: 2026-06-02
-updated: 2026-06-04
+updated: 2026-06-11
 sources: ["docs/wiki/rules/", "reference/html-proto/CLAUDE.md"]
 ---
 
@@ -12,7 +12,7 @@ The meta-game wraps individual games in a **draft** and a **roguelike run**. (Ca
 
 ## Draft
 
-The player drafts a deck from packs with **color-aware sampling**: in-deck colors are weighted up (rescuing against color screw), an off-color card drops from the pool after it first appears, and colorless cards are eligible in every slot. Opponents are built either by an AI draft over the same system or from hand-curated **archetypes and bosses**. Lands auto-fill after the draft to match the deck's colors. ([[1400-draft]].)
+The player drafts a deck from packs with **color-aware sampling**: in-deck colors are weighted up (rescuing against color screw), an off-color card drops from the pool after it first appears, and colorless cards are eligible in every slot. Opponents are built either by an AI draft over the same system or from hand-curated **archetypes and bosses**. In classic mode, lands auto-fill after the draft to match the deck's colors; in **Desert Cube** mode the player drafts the lands too — basics are substituted into pack slots at a ~1/3 rate across 40 picks, with no auto-fill. ([[1400-draft]].)
 
 ## The run
 

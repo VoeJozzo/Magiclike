@@ -3,7 +3,7 @@ type: rules
 tags: [magiclike, rules, meta-game]
 section: "1400"
 created: 2026-06-04
-updated: 2026-06-04
+updated: 2026-06-11
 ---
 
 # 1400. Draft
@@ -31,11 +31,19 @@ updated: 2026-06-04
 - Built at the end of the player's draft.
 - Two modes:
   - **Heuristic draft sim**: the AI drafts 23 cards using the same pack-rolling and scoring system.
-  - **Constructed archetype**: a hand-curated deck list (Goblin Aggro, Spirit Tribal, Aristocrats, Archdemon Boss, Balancer Boss). Used for special map nodes.
+  - **Constructed archetype**: a hand-curated deck list (Goblin Aggro, Spirit Tribal, Aristocrats, Archdemon Boss, Balancer Boss, Equatorial Artificer Boss). Used for special map nodes.
 
 ## 1405. Lands
-- After draft, lands are auto-allocated to fill the deck to 40 cards.
+- In classic mode, after the draft, lands are auto-allocated to fill the deck to 40 cards.
 - Land color distribution matches the deck's color distribution (~17 lands typical).
+- **Constructed decks may declare an explicit `lands` list**, which replaces auto-allocation; deck size then follows the list. The Equatorial Artificer boss ships 23 spells + 10 Equatorial Engines — a 33-card deck by design (test-pinned).
+- In Desert Cube mode no land allocation occurs — lands are drafted directly (§1406).
+
+## 1406. Desert Cube mode
+- An alternate draft mode, selectable on the start screen.
+- The player makes **40 picks** — the full deck, lands included. There is **no post-draft land allocation**.
+- After each pack is rolled normally, each slot independently has a **~1/3 chance** of being substituted with a basic land. Substitution happens after the color-aware roll, so spell sampling keeps its color bias (§1402).
+- Identical basics are deduplicated within a pack — a pack never offers two copies of the same basic land.
 
 ## Implementation status — Draft
 - Fully implemented in html-proto.
