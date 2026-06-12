@@ -234,3 +234,15 @@ No watermark.
 2:1 aspect ratio.
 
 Production note: Prompt iteration and analysis were performed with ChatGPT (GPT-5.5). Images were generated using OpenAI's integrated image generation system available through ChatGPT. Generated images were then downscaled to 64*32 using K-Means Clustering and Lanczos/Bilinear Resampling.
+
+Trained Armodon: A powerful, armored beast charges head-on across a grassy plain, its massive tusks and angular face framed by a vigorous dust storm, creating a dynamic, high-impact composition. The creature, a mixture of rhino, elephant, and boar, exudes strength and menace through its jagged, stone-like armor, cracked ivory tusks, and intense, glaring eyes, while vivid earth tones and dramatic lighting bring the scene to life against a bright, painterly sky.
+
+V3 processing note:
+
+1. Start with source image.
+2. Resize to 64x32 using Lanczos resampling.
+3. Apply one PIL `ImageFilter.SHARPEN` pass.
+4. Save the raw 64x32 PNG.
+5. For preview only, scale up with nearest-neighbor.
+
+PIL sharpen is Pillow's built-in sharpening filter. It is not the same as the earlier HTML pixelizer settings; this V3 sheet used a quick experimental transform.
