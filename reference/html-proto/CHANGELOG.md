@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.1.42`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.1.43`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -2050,10 +2050,28 @@ test_stackable_infra (42 assertions; 15 red pre-build) covering the
 response window, respond-kills-target fizzle, mana fast path, default +
 dormant drain-time-immediate arm, boot validation, counter parity, AI
 sanity. Suite 110 files / 2333 green, lint clean.
-> **MUST UPDATE on every dev-branch push that touches code.** Bump `VERSION` in `js/main.js` AND the line above, in the same commit. GitHub Pages caches aggressively; the version string is the only reliable way to confirm a fresh build is live.
 
-Always work on `dev` for html-proto changes.
-
-Deferred work lives in `BACKLOG.md` (gating rules in `/CLAUDE.md`).
-
+v2.1.43: audit chunk-7 small-ship batch (A7-4, A7-5, changelog hygiene).
+**A7-4 (P4):** bestSpellPlay's self-damage lethal gate is now applied per
+OPTION — a modal mode whose own self-damage would put the AI at or below 0
+life scores -100 (a modal card can still pick a survivable mode); the old
+gate covered non-modal cards only while its comment promised a per-option
+check that didn't exist (honestly unreachable in the current pool — no
+modal card has a self-damage mode; the bug class is what's pinned). New
+red→green file test_a7_modal_self_damage (7 assertions; 2 red pre-fix,
+synthetic modal templates). **A7-5 (P3, harness-only):** the selfplay
+harness now reads executeAction's boolean — a rejected (illegal) AI action
+is recorded as a structured `illegalAction: {actor, action}` on the game
+result, counted as its own failure class in the summary (alongside
+crashes/invariant/stuck/runaway, exit code included), and ends that game;
+rejected actions no longer increment actionsTaken or the actionTypes
+action-mix tallies. Previously the deterministic re-propose loop marched
+to the 2000-action cap and the game was mislabeled "runaway" (probe: 3
+stubbed-illegal games → old 3× runaway + ~5980 stderr warn lines; new 3×
+illegal-action, turn recorded, 3 warn lines; 10-game real run 100% clean).
+Also removed three stray CLAUDE.md instruction lines from this file's tail
+("MUST UPDATE on every dev-branch push…" / "Always work on `dev`…" /
+"Deferred work lives in `BACKLOG.md`…") — paste residue from the
+2026-06-02 CLAUDE.md→CHANGELOG.md extraction (commit 3940cc5), never
+changelog content. Suite 111 files / 2340 green, lint clean.
 

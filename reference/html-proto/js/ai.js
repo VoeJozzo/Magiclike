@@ -1189,15 +1189,17 @@ function decideCleanupDiscard(state, who, actions) {
 // (creature=100 flat so a body always clears >0) — NOT a cross-card ranking
 // scale; decideMain uses spellPlayValue() for that.
 function bestSpellPlay(state, who, card, options) {
-  // Bail if non-modal self-damage would lethal us (modal: per-option below).
+  // Self-damage lethal gate, applied per OPTION: a mode whose own self-damage
+  // would put us at or below 0 scores -100 no matter what else it does (so a
+  // modal card can still pick a survivable mode). Non-modal cards are the
+  // single-mode case of the same check — effectsForMode returns their flat
+  // effects list.
   const selfDamageOf = (effs) => (effs || []).reduce((sum, e) =>
     sum + ((e.kind === 'damage' && e.scope === 'self') ? (e.amount || 0) : 0), 0);
-  if (!ENGINE.isModal(card)) {
-    if (selfDamageOf(card.effects) >= state[who].life) return null;
-  }
   const scored = options.map(opt => {
     const modeIdx = opt.modeIdx || 0;
     const modeEffects = ENGINE.effectsForMode(card, modeIdx);
+    if (selfDamageOf(modeEffects) >= state[who].life) return {opt, score: -100};
     if (!opt.targets) {
       const ok = shouldCastUntargeted(state, who, card, modeIdx);
       if (!ok) return {opt, score: -100};
