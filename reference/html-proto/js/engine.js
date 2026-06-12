@@ -1959,7 +1959,21 @@ function sevToNum(sev) {
   return i >= 0 ? i + 1 : 3;  // default destroy
 }
 function numToSev(n) { return SEVERITY_LADDER[Math.max(1, Math.min(4, n)) - 1]; }
-function affectOneCreature(ctx, f, sevArg) {
+// Leave-play emit, optionally DEFERRED into a batch (A4-4). The mass-scope
+// affect_creature path collects all leavers first (pass 1) and emits them
+// together afterwards with the whole batch as extraSources (pass 2) —
+// checkDeaths' simultaneity contract. Single-target callers pass no batch
+// and emit immediately, exactly as before. sourceIid follows the A3-11
+// attribution rule per-arm: undefined for destroy (causality is killedBy),
+// the effect's source for bounce/exile.
+function deferOrEmitLeave(batch, card, controller, destZone, sourceIid) {
+  if (batch) {
+    batch.push({ card, controller, dest: destZone, sourceIid });
+    return;
+  }
+  emitLeavesBattlefield(card, controller, destZone, undefined, sourceIid);
+}
+function affectOneCreature(ctx, f, sevArg, batch) {
   if (!f || !f.card) return;
   const sev = sevToNum(sevArg);
   if (sev === 1) {
@@ -1978,7 +1992,7 @@ function affectOneCreature(ctx, f, sevArg) {
     } else {
       log(`${ctx.sourceName} returns ${card.name} — token ceases to exist.`, 'sp');
     }
-    emitLeavesBattlefield(card, f.controller, 'hand', undefined, ctx.sourceIid);
+    deferOrEmitLeave(batch, card, f.controller, 'hand', ctx.sourceIid);
     return;
   }
   if (sev === 3) {
@@ -1987,7 +2001,7 @@ function affectOneCreature(ctx, f, sevArg) {
       return;
     }
     f.card.killedBy = ctx.controller;
-    moveToGraveyard(f.card, f.controller);
+    moveToGraveyard(f.card, f.controller, batch);
     log(`${ctx.sourceName} destroys ${f.card.name}.`, 'sp');
     return;
   }
@@ -2004,7 +2018,7 @@ function affectOneCreature(ctx, f, sevArg) {
   } else {
     log(`${ctx.sourceName} exiles ${card.name} — token ceases to exist.`, 'sp');
   }
-  emitLeavesBattlefield(card, f.controller, 'exile', undefined, ctx.sourceIid);
+  deferOrEmitLeave(batch, card, f.controller, 'exile', ctx.sourceIid);
 }
 
 // Place a card ARRIVING on the battlefield (move_card to_zone=battlefield).
@@ -2295,8 +2309,20 @@ const EFFECTS = {
   affect_creature(ctx, params, target) {
     const sev = params.severity;
     if (params.scope) {
+      // A4-4: mass removal is SIMULTANEOUS. Two-pass batch mirroring
+      // checkDeaths: pass 1 plucks every in-scope creature off the
+      // battlefield (the severity ladder + indestructible validation live
+      // in affectOneCreature, which defers each leave emit into `batch`);
+      // pass 2 emits every leave with the FULL batch as extraSources, so
+      // simultaneous departures see each other — a dies-listener swept by
+      // the same wipe still hears every death, independent of battlefield
+      // array order. Tap (sev 1) never leaves play; its batch stays empty.
+      const batch = [];
       for (const st of creaturesInScope(ctx, params.scope)) {
-        affectOneCreature(ctx, findCard(st.iid), sev);
+        affectOneCreature(ctx, findCard(st.iid), sev, batch);
+      }
+      for (const e of batch) {
+        emitLeavesBattlefield(e.card, e.controller, e.dest, batch, e.sourceIid);
       }
       return;
     }
@@ -4954,7 +4980,7 @@ function resetInPlayState(card, preserveDeathState) {
   }
 }
 
-function moveToGraveyard(card, controller) {
+function moveToGraveyard(card, controller, batch) {
   const bf = G[controller].battlefield;
   const idx = bf.findIndex(c => c.iid === card.iid);
   if (idx < 0) return;
@@ -4987,7 +5013,10 @@ function moveToGraveyard(card, controller) {
   // "when this leaves play" mechanics on non-creature permanents. Emitted
   // AFTER cardDies so dies-listeners (Sengir, Endomorph) fire in their
   // original order; leaves-listeners (Archdemon of Bargains) fire after.
-  emitLeavesBattlefield(card, controller);
+  // A4-4: mass-scope destroy defers this emit into `batch` (see
+  // deferOrEmitLeave) so simultaneous deaths see each other; single-target
+  // callers pass no batch and emit immediately, as always.
+  deferOrEmitLeave(batch, card, controller, 'graveyard', undefined);
 }
 
 // Sacrifice a creature. Mechanically identical to moveToGraveyard (same

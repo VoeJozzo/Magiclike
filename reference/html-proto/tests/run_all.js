@@ -292,6 +292,11 @@ const CATEGORY_A = [
   // resolutions, recursion, none→library mints); pool isolation pins,
   // budget no-loop, noSelfCascade via drawCard sourceIid, setup-silence.
   'test_a3_6_zone_events.js',
+  // Audit A4-4 — mass removal is simultaneous: the affect_creature scope
+  // path batches its leave emits (checkDeaths' two-pass design), so a
+  // dies-listener swept by the same wipe hears every death, order-
+  // independently; bounce/exile arms + pass-1 indestructible included.
+  'test_mass_removal_batch.js',
 ];
 
 const TESTS_DIR = __dirname;

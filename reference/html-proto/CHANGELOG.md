@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.1.40`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.1.41`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -1982,6 +1982,32 @@ TRIGGER_DEPTH_CAP budget stopping a draw-triggered-draw loop (101 draws
 then bail, no deck-out), noSelfCascade end-to-end, and the setup-silence
 rule. DIVERGENCE E1 notes the Godot port still emits battlefield-only.
 Suite 108 files / 2272 green, lint clean.
+
+v2.1.41: audit A4-4 fix (P1, GO — Joe, PR #98 round 5) — mass removal is
+SIMULTANEOUS. The affect_creature `scope` path (destroy/bounce/exile arms)
+used to emit each creature's leave-play zone-change as it was removed, so
+a dies-listener swept by the same wipe only heard deaths that happened
+before its own — Blood Artist + 2 vanillas under Day of Reckoning drained
+1 or 3 depending on battlefield array position (executed both ways), while
+the damage wraths (Pyroclasm → checkDeaths' SBA batch) always drained 3.
+Now the scope path mirrors checkDeaths' two-pass batch design: pass 1
+plucks every in-scope creature (severity ladder + indestructible
+validation unchanged, via affectOneCreature's new deferred-emit `batch`
+arg; moveToGraveyard grew the same optional arg), pass 2 emits each leave
+with the FULL batch as extraSources — simultaneous departures see each
+other, per emitLeavesBattlefield's own stated contract. Single-target
+paths pass no batch and emit immediately, byte-identical behavior. A3-11
+source_iid attribution preserved per-arm (destroy: undefined/killedBy;
+bounce/exile: the effect's sourceIid). The old hexproof concern on this
+path is obsolete — hexproof has been structural at the target() layer
+since Slice 3; mass-scope effects never check it (investigated + posted to
+PR #98). One new red→green file test_mass_removal_batch (15 assertions;
+6 red pre-fix): the finding's declared scenario artist-first AND
+artist-last through the real cast/settle loop (drain ×3 both ways),
+batch-visibility pins for all three leave severities (each emit carries
+the whole batch), pass-1 indestructible validation (survivor excluded
+from the batch), and single-target/tap unchanged. Suite 109 files / 2287
+green, lint clean.
 > **MUST UPDATE on every dev-branch push that touches code.** Bump `VERSION` in `js/main.js` AND the line above, in the same commit. GitHub Pages caches aggressively; the version string is the only reliable way to confirm a fresh build is live.
 
 Always work on `dev` for html-proto changes.
