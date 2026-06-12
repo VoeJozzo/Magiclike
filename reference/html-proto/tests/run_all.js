@@ -308,6 +308,11 @@ const CATEGORY_A = [
   // covered non-modal cards only; the comment-promised per-option check
   // didn't exist). Synthetic modal templates — no pool card has the shape.
   'test_a7_modal_self_damage.js',
+  // Audit A9-4 + A9-5 — RUN.load() refuses future-version saves (warn +
+  // return false, blob left intact); picklog gamesPlayed counts game
+  // COMPLETIONS in recordResult (no crash-restore double-count, no
+  // abandoned-game count).
+  'test_a9_run_save_guards.js',
 ];
 
 const TESTS_DIR = __dirname;

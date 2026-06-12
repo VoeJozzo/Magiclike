@@ -38,8 +38,9 @@ Per-subsystem knowledge of the [[html-proto]] rules engine, distilled from the 2
 - [[synthesis-staple]] — the splice merge core, the two pathways (reward + Stapler boon), charge economy and the rip lifecycle (chunk 5).
 - [[ai]] — the player agent: legality-surface contract, the four drift-twin pairs, sanctioned transient mutations, the valuation partition, the post-Stackable respond arm (chunk 7).
 - [[draft]] — the two draft modes, the shrinking-table pack-color policy, the two color-signal reads, opponent construction + scaling (chunk 8).
+- [[run-meta]] — the slot model + slotIdx caller contract, the save/migration lifecycle, anti-farming snapshot, pre-rolled rewards, endless sectors, the boon contract, picklog (chunk 9).
 
-**Planned** (seeded as their audit chunks complete): stickers-runtime (ch. 6), run-meta (ch. 9), card-text (ch. 10), card-data (ch. 11).
+**Planned** (seeded as their audit chunks complete): stickers-runtime (ch. 6), card-text (ch. 10), card-data (ch. 11).
 
 ## See also
 

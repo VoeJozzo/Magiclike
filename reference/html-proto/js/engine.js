@@ -801,8 +801,10 @@ function makeCard(tplId, stickers, slotIdx, empowerRolls, permaBuffs, bonusTrigg
   // permaBuffs: slot-persistent buffs from permanent_eot creatures (Elystra).
   // Shared with resetInPlayState (bounce/flicker recast).
   if (permaBuffs) applyPermaBuffsToCard(card, permaBuffs);
-  // bonusTrigger: slot-persistent trigger from boons (Watcher's Gift). Stored
-  // as data so it survives save/load; condId form is required (not closure).
+  // bonusTrigger: slot-persistent trigger (today written by the Architect's
+  // Codex ability finalize — see finalizeBuild; boon extras can also seed
+  // one). Stored as data so it survives save/load; condId form is required
+  // (not closure).
   if (bonusTrigger && typeof bonusTrigger === 'object') {
     if (!Array.isArray(card.triggers)) card.triggers = [];
     card.triggers.push(cloneTriggerData(bonusTrigger));
