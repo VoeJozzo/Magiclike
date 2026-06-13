@@ -320,6 +320,10 @@ const CATEGORY_A = [
   // COMPLETIONS in recordResult (no crash-restore double-count, no
   // abandoned-game count).
   'test_a9_run_save_guards.js',
+  // Audit A9-2 + A9-3 — run-slot removal contract: EFFECTS.rip (Vile Edict)
+  // routes through ripSlotByIdx, and a shared fixup decrements in-game slotIdx
+  // AND remaps playedSlotIdxs (drop-at + decrement-above) on every rip.
+  'test_a9_slot_invariant.js',
   // Audit A10-1/3/4 — card-text truthfulness pins (picker label = oracle, no
   // raw-kind leak; ~ substitution incl. the Mercurial Adept face leak;
   // add_type/set_types scope:self subject "this").

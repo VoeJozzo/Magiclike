@@ -2882,8 +2882,13 @@ const EFFECTS = {
     const slotIdx = (typeof t.slotIdx === 'number') ? t.slotIdx : null;
     if (t.controller === 'you' && slotIdx != null
         && typeof RUN !== 'undefined' && RUN.removeSlotByIdx) {
-      RUN.removeSlotByIdx(slotIdx);
-      log(`${t.label || 'A card'} is gone from your deck for the rest of the run.`, 'sp');
+      // Route through ripSlotByIdx so the slotIdx caller-contract is honored
+      // (decrement cached pointers + remap playedSlotIdxs via the shared fixup)
+      // instead of stripping the slot raw (audit A9-2/A9-3). The victim is
+      // already off the battlefield (the preceding annihilate ran), so the
+      // in-game instance find harmlessly finds nothing and still does the RUN
+      // removal + fixup.
+      ripSlotByIdx(t.controller, slotIdx);
     }
   },
   // The targeted player selects one of their own creatures (§3.5). This is
@@ -5694,6 +5699,34 @@ function hasPhylacteryProtection(who) {
   return slots.some(s => s && s.tplId === 'phylactery');
 }
 
+// Shared slot-pointer fixup for ANY run-slot removal (audit A9-2/A9-3). The
+// removeSlotByIdx caller contract has two invariants, and this is the single
+// place both live: (1) every in-game card whose cached slotIdx sits ABOVE the
+// removed index must decrement (so slot-based lookups stay valid); (2) the
+// player's playedSlotIdxs Set — read by the win-reward filter (filterByPlayed)
+// — must be remapped the SAME way (DROP the removed index, DECREMENT every
+// index above it). The Set was never named by the old contract, so even the
+// honoring rip sites left it stale, mis-aiming sticker rewards (A9-3).
+function fixupSlotPointersAfterRemoval(who, removedIdx) {
+  const zones = ['library', 'hand', 'battlefield', 'graveyard', 'exile'];
+  for (const zoneName of zones) {
+    const zone = G[who][zoneName];
+    if (!zone) continue;
+    for (const c of zone) {
+      if (typeof c.slotIdx === 'number' && c.slotIdx > removedIdx) c.slotIdx -= 1;
+    }
+  }
+  const played = G[who] && G[who].playedSlotIdxs;
+  if (played instanceof Set && played.size > 0) {
+    const remapped = new Set();
+    for (const i of played) {
+      if (i === removedIdx) continue;            // drop-at: the slot is gone
+      remapped.add(i > removedIdx ? i - 1 : i);  // decrement-above
+    }
+    G[who].playedSlotIdxs = remapped;
+  }
+}
+
 // Rip ONE slot from runState as Phylactery's curse-payment. Picks random
 // non-Phylactery slot; rips Phylactery itself only when it's the last slot.
 // Removes the in-game card instance from whatever zone holds it, then
@@ -5738,16 +5771,9 @@ function ripSlotForPhylactery(who) {
       break;
     }
   }
-  // Decrement slotIdx for in-game cards pointing past the removed slot.
-  for (const zoneName of zones) {
-    const zone = G[who][zoneName];
-    if (!zone) continue;
-    for (const c of zone) {
-      if (typeof c.slotIdx === 'number' && c.slotIdx > ripIdx) {
-        c.slotIdx -= 1;
-      }
-    }
-  }
+  // Decrement slotIdx for cards past the removed slot AND remap playedSlotIdxs
+  // (audit A9-2/A9-3 — the shared contract fixup).
+  fixupSlotPointersAfterRemoval(who, ripIdx);
   log(`💀 Phylactery rips ${removedCardName} from your deck — gone forever.`, 'dmg');
   return true;
 }
@@ -5776,15 +5802,7 @@ function ripSlotByIdx(who, ripIdx, logPrefix) {
       break;
     }
   }
-  for (const zoneName of zones) {
-    const zone = G[who][zoneName];
-    if (!zone) continue;
-    for (const c of zone) {
-      if (typeof c.slotIdx === 'number' && c.slotIdx > ripIdx) {
-        c.slotIdx -= 1;
-      }
-    }
-  }
+  fixupSlotPointersAfterRemoval(who, ripIdx);  // slotIdx decrement + playedSlotIdxs remap (audit A9-2/A9-3)
   const deckLabel = who === 'you' ? 'your deck' : "opponent's deck";
   const duration = who === 'you' ? 'gone forever' : 'gone for the rest of this fight';
   log(`${logPrefix || '✂'} ${removedCardName || 'card'} ripped from ${deckLabel} — ${duration}.`, 'dmg');
