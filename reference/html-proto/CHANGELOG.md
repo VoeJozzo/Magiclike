@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.1.45`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.1.46`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -2145,4 +2145,38 @@ validation (validateAllCardEffects) now sweeps card/ability/trigger slot
 targets + effect-level e.target against GETVALIDTARGETS_TARGETS. New red→green
 files test_a10_text_truthfulness (15) + test_a11_target_string_validation (7).
 Suite 114 files / 2370 green, lint clean.
+
+v2.1.46: audit A7/A9 approved-fix batch (Joe PR #98 verdicts, 2026-06-12),
+multi-agent adversarially reviewed. **A7-1 (P2 latent):** the autotapper no
+longer auto-pays extra-cost mana abilities ("{T}, sacrifice a creature: add
+{B}{B}") — excluded from the mana solver + the tap-for-mana lane (so a spell
+never auto-casts off a sacrifice source and the sac is never silently paid),
+trivial {T}/mana abilities unchanged, a boot tripwire flags the unsupported
+shape; a MANUAL activation still pays the full cost (it stays a mana ability).
+**A7-2 (P3):** add_counter gained a non-zero cast value (mirrors the trigger
+valuer 3+P+T, floored >=1, Joe's "at least tries to cast") so the AI will cast
+untargeted counter spells, and effectCoverageReport now PROBES that each VALUED
+kind has a real cast-scorer branch (it previously did set-algebra only and
+couldn't see this gap). **A7-3 (P3):** the AI value-picks grave-return targets
+(the migrated move_card graveyard→hand shape; yard derived from the target's
+stamped controller tag) instead of valid[0] (the oldest, value-blind card) —
+live for grave_digger / morticians_assistant / spirit_shepherd. **A9-1 (P2):**
+the v1→v2 save migration was rewritten against the git-verified real v1 shape
+(slots, midGameSlotsSnapshot, pendingReward.replacementPack both shapes, the
+modifier id) — the old phantom-shape migration renamed four never-persisted
+fields and MISSED the snapshot, so loading an old mid-game save could resurrect
+dead tplIds and clearSave the run; A9-10 dropped per Joe (SAVE_VERSION stays 2).
+**A9-2/A9-3 (P2/P3):** run-slot removal now honors the full caller contract via
+one shared fixupSlotPointersAfterRemoval helper (decrement cached slotIdx +
+remap the playedSlotIdxs win-reward filter, drop-at + decrement-above) at every
+rip AND splice removal site; EFFECTS.rip (Vile Edict) routes through
+ripSlotByIdx (the Stapler out-of-charges rip stays deferred under the A5-4
+ballot). Four new red→green test files (test_a7_grave_return_pick,
+test_a7_add_counter_cast_value, test_a9_slot_invariant, test_a7_extra_cost_mana)
++ extended test_effect_coverage + re-pinned tplid_renames_test. Adversarial
+review (7 agents): A7-2/A7-3/A9-1/A9-2-3 sound; A7-1 + holistic minor-issues,
+addressed (splice A9-3 gap closed, A7-1 solver leg pinned). Known latent
+follow-up (no pool card, awaiting Joe): {mana}-cost mana abilities (filter-lands)
+are classified auto-payable but doTapLandForMana doesn't actually pay mana costs
+(pre-existing). Suite 114→118 files / 2370→2413 assertions green, lint clean.
 
