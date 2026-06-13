@@ -257,27 +257,51 @@ const TPLID_RENAMES = {
 };
 function renameTplId(id) { return TPLID_RENAMES[id] || id; }
 
+// Rename every tplId carried by a slots array in place — the live slots OR the
+// midGameSlotsSnapshot (a deep-clone of slots, identical shape).
+function migrateSlotTplIds(slots) {
+  if (!Array.isArray(slots)) return;
+  for (const slot of slots) {
+    if (slot && slot.tplId) slot.tplId = renameTplId(slot.tplId);
+    if (slot && Array.isArray(slot.stapledTpls)) {
+      slot.stapledTpls = slot.stapledTpls.map(renameTplId);
+    }
+  }
+}
+
 const MIGRATIONS = {
+  // v1->v2 tplId rename. The renames must reach every place a tplId actually
+  // persists on a SAVED runState. Git-verified at df2fd38^ (where SAVE_VERSION
+  // was 1 and save() stored {version, runState}): those places are the live
+  // slots; the mid-game slots snapshot (a deep-clone of slots taken at game
+  // start); a pending transform reward's replacementPack (two shapes — a
+  // 'mixed'-phase candidate, and the committed 'transformPick' phase); and the
+  // run modifier (boon) id (e.g. cityOfBrass -> city_of_brass). The PREVIOUS
+  // migration was written against a PHANTOM shape: it renamed four fields that
+  // never existed on a persisted runState (pendingNeowModifier / currentPack /
+  // youPicks / oppDecks — youPicks/currentPack live on DRAFT's in-memory state,
+  // not the save) and MISSED the snapshot, so loading an old mid-game save
+  // resurrected dead tplIds and the next deck build threw "Unknown card",
+  // wiping the run (audit A9-1). (A9-10's later version-gap miss is a non-issue
+  // per Joe — solo player, two-week-old saves — so SAVE_VERSION stays 2.)
   1: (blob) => {
-    // Apply rename map to every place a tplId persists:
-    // slots[].tplId, slots[].stapledTpls[], pendingNeowModifier, currentPack[], youPicks[], oppDecks[][]
     const rs = blob.runState || {};
-    if (Array.isArray(rs.slots)) {
-      for (const slot of rs.slots) {
-        if (slot && slot.tplId) slot.tplId = renameTplId(slot.tplId);
-        if (slot && Array.isArray(slot.stapledTpls)) {
-          slot.stapledTpls = slot.stapledTpls.map(renameTplId);
+    migrateSlotTplIds(rs.slots);
+    migrateSlotTplIds(rs.midGameSlotsSnapshot);
+    if (rs.modifier) rs.modifier = renameTplId(rs.modifier);
+    const pr = rs.pendingReward;
+    if (pr) {
+      // Shape A — 'mixed' phase: each transform candidate carries replacementPack.
+      if (Array.isArray(pr.candidates)) {
+        for (const cand of pr.candidates) {
+          if (cand && Array.isArray(cand.replacementPack)) {
+            cand.replacementPack = cand.replacementPack.map(renameTplId);
+          }
         }
       }
-    }
-    if (rs.pendingNeowModifier) rs.pendingNeowModifier = renameTplId(rs.pendingNeowModifier);
-    if (Array.isArray(rs.currentPack)) rs.currentPack = rs.currentPack.map(renameTplId);
-    if (Array.isArray(rs.youPicks))    rs.youPicks    = rs.youPicks.map(renameTplId);
-    if (Array.isArray(rs.oppDecks)) {
-      for (const deck of rs.oppDecks) {
-        if (Array.isArray(deck)) {
-          for (let i = 0; i < deck.length; i++) deck[i] = renameTplId(deck[i]);
-        }
+      // Shape B — 'transformPick' phase: a top-level replacementPack.
+      if (Array.isArray(pr.replacementPack)) {
+        pr.replacementPack = pr.replacementPack.map(renameTplId);
       }
     }
     blob.version = 2;

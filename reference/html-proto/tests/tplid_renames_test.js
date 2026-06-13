@@ -51,52 +51,78 @@ for (const [oldId, newId] of Object.entries(RENAMES)) {
   check('manifest no longer has ' + oldId, !manifest.includes(oldId));
 }
 
-console.log('\n=== v1->v2 save migration translates all tplId fields ===');
+console.log('\n=== v1->v2 save migration translates every PERSISTED tplId carrier (audit A9-1) ===');
 {
-  // Build a contrived v1 save blob that exercises every field where a
-  // tplId can live.
+  // A v1 save blob using ONLY fields that actually persist on runState
+  // (git-verified at df2fd38^: save() stored {version, runState}; youPicks/
+  // currentPack lived on DRAFT's in-memory `state`, never on the save). The
+  // real tplId carriers are: slots, the mid-game snapshot (a deep-clone of
+  // slots), pendingReward.replacementPack (two shapes), and the modifier id.
   const v1Blob = {
     version: 1,
     runState: {
       slots: [
         { tplId: 'fireImp', stickers: ['plus1_plus1'] },
         { tplId: 'archmage', stickers: [] },
-        // A slot with stapledTpls covering an old + new id mix.
         { tplId: 'zealot', stickers: [], stapledTpls: ['merfolk', 'savannah_lions'] },
       ],
-      pendingNeowModifier: 'phylactery',   // not in rename list -- unchanged
-      currentPack: ['fireImp', 'lightning_bolt', 'archmage'],
-      youPicks: ['merfolk', 'shock'],
-      oppDecks: [
-        ['zealot', 'archmage', 'forest'],
-        ['fireImp', 'merfolk'],
+      // The MISSED carrier (A9-1): the mid-game snapshot, carrying legacy ids.
+      midGameSlotsSnapshot: [
+        { tplId: 'fireImp', stickers: [] },
+        { tplId: 'zealot', stickers: [], stapledTpls: ['merfolk'] },
       ],
+      modifier: 'cityOfBrass',   // a renamed id (cityOfBrass -> city_of_brass)
+      // 'mixed'-phase reward (Shape A): a transform candidate carries replacementPack.
+      pendingReward: {
+        phase: 'mixed',
+        candidates: [
+          { kind: 'transform', slotIdx: 1, replacementPack: ['fireImp', 'merfolk'] },
+          { kind: 'sticker', slotIdx: 0, sticker_id: 'empower' },   // sticker id, never renamed
+        ],
+      },
     },
   };
   const migrated = MIGRATIONS[1](v1Blob);
   check('version bumped to 2', migrated.version === 2);
-  check('slot[0].tplId fireImp -> cinderSprite',
-    migrated.runState.slots[0].tplId === 'cinder_sprite');
-  check('slot[1].tplId archmage -> archmageOfVeils',
-    migrated.runState.slots[1].tplId === 'archmage_of_veils');
-  check('slot[2].tplId zealot -> holyZealot',
-    migrated.runState.slots[2].tplId === 'holy_zealot');
-  check('slot[2].stapledTpls[0] merfolk -> merfolkLooter',
-    migrated.runState.slots[2].stapledTpls[0] === 'merfolk_looter');
-  check('slot[2].stapledTpls[1] savannahLions unchanged',
-    migrated.runState.slots[2].stapledTpls[1] === 'savannah_lions');
-  check('pendingNeowModifier phylactery untouched',
-    migrated.runState.pendingNeowModifier === 'phylactery');
-  check('currentPack[0] fireImp -> cinderSprite',
-    migrated.runState.currentPack[0] === 'cinder_sprite');
-  check('currentPack[1] bolt unchanged',
-    migrated.runState.currentPack[1] === 'lightning_bolt');
-  check('youPicks[0] merfolk -> merfolkLooter',
-    migrated.runState.youPicks[0] === 'merfolk_looter');
-  check('oppDecks[0][0] zealot -> holyZealot',
-    migrated.runState.oppDecks[0][0] === 'holy_zealot');
-  check('oppDecks[1][1] merfolk -> merfolkLooter',
-    migrated.runState.oppDecks[1][1] === 'merfolk_looter');
+  check('slot[0].tplId fireImp -> cinder_sprite', migrated.runState.slots[0].tplId === 'cinder_sprite');
+  check('slot[1].tplId archmage -> archmage_of_veils', migrated.runState.slots[1].tplId === 'archmage_of_veils');
+  check('slot[2].tplId zealot -> holy_zealot', migrated.runState.slots[2].tplId === 'holy_zealot');
+  check('slot[2].stapledTpls[0] merfolk -> merfolk_looter', migrated.runState.slots[2].stapledTpls[0] === 'merfolk_looter');
+  check('slot[2].stapledTpls[1] savannah_lions unchanged', migrated.runState.slots[2].stapledTpls[1] === 'savannah_lions');
+  // The core red->green: the snapshot is now migrated (was left at legacy ids,
+  // resurrecting dead tplIds on mid-game restore -> "Unknown card" -> run wipe).
+  check('A9-1: midGameSlotsSnapshot[0] fireImp -> cinder_sprite', migrated.runState.midGameSlotsSnapshot[0].tplId === 'cinder_sprite');
+  check('A9-1: midGameSlotsSnapshot[1] zealot -> holy_zealot', migrated.runState.midGameSlotsSnapshot[1].tplId === 'holy_zealot');
+  check('A9-1: snapshot stapledTpls merfolk -> merfolk_looter', migrated.runState.midGameSlotsSnapshot[1].stapledTpls[0] === 'merfolk_looter');
+  check('A9-1: modifier cityOfBrass -> city_of_brass', migrated.runState.modifier === 'city_of_brass');
+  check('A9-1: reward candidate replacementPack[0] fireImp -> cinder_sprite', migrated.runState.pendingReward.candidates[0].replacementPack[0] === 'cinder_sprite');
+  check('A9-1: reward candidate replacementPack[1] merfolk -> merfolk_looter', migrated.runState.pendingReward.candidates[0].replacementPack[1] === 'merfolk_looter');
+  check('sticker_id empower untouched (never a tplId)', migrated.runState.pendingReward.candidates[1].sticker_id === 'empower');
+  // The phantom fields the old migration renamed must NOT be fabricated.
+  check('no phantom pendingNeowModifier field invented', !('pendingNeowModifier' in migrated.runState));
+  check('no phantom currentPack field invented', !('currentPack' in migrated.runState));
+  check('no phantom youPicks field invented', !('youPicks' in migrated.runState));
+  check('no phantom oppDecks field invented', !('oppDecks' in migrated.runState));
+  // Every migrated id resolves in CARDS (no "Unknown card" on next deck build).
+  const allIds = [...migrated.runState.slots, ...migrated.runState.midGameSlotsSnapshot].map(s => s.tplId);
+  check('every migrated slot/snapshot tplId resolves in CARDS (no run-destruction)',
+    allIds.every(id => !!CARDS[id]), allIds.filter(id => !CARDS[id]).join(','));
+}
+
+// Second sub-case: Shape B ('transformPick' phase) — a top-level replacementPack.
+console.log('\n=== A9-1: transformPick-phase reward replacementPack (Shape B) ===');
+{
+  const v1Blob = {
+    version: 1,
+    runState: {
+      slots: [{ tplId: 'archmage', stickers: [] }],
+      pendingReward: { phase: 'transformPick', slotIdx: 0, replacementPack: ['fireImp', 'archmage', 'lightning_bolt'] },
+    },
+  };
+  const migrated = MIGRATIONS[1](v1Blob);
+  check('Shape B replacementPack[0] fireImp -> cinder_sprite', migrated.runState.pendingReward.replacementPack[0] === 'cinder_sprite');
+  check('Shape B replacementPack[1] archmage -> archmage_of_veils', migrated.runState.pendingReward.replacementPack[1] === 'archmage_of_veils');
+  check('Shape B replacementPack[2] lightning_bolt unchanged', migrated.runState.pendingReward.replacementPack[2] === 'lightning_bolt');
 }
 
 console.log('\n=== no TPLID_RENAMES key is a live card id (full map) ===');
