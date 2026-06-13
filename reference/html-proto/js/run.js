@@ -1315,8 +1315,9 @@ function appendSlot(tplId, stickers, meta) {
   return runState.slots.length - 1;
 }
 
-// Remove a slot by index. Used by Phylactery rip / Vile Edict / Elystra.
-// CALLER CONTRACT (two invariants, both via ENGINE.fixupSlotPointersAfterRemoval):
+// Remove a slot by index. Used by Phylactery rip / Vile Edict / Elystra / splice.
+// CALLER CONTRACT (two invariants, both via engine.js's internal
+// fixupSlotPointersAfterRemoval, called from every rip + splice removal site):
 // (1) decrement slotIdx for any in-game card whose slotIdx > the removed index;
 // (2) remap each player's playedSlotIdxs Set the same way — DROP the removed
 // index, DECREMENT every index above it (the win-reward filterByPlayed gate

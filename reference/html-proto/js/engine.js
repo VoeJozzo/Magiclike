@@ -3177,18 +3177,10 @@ const EFFECTS = {
           && typeof RUN !== 'undefined' && RUN.removeSlotByIdx) {
         const removedIdx = stapleCard.slotIdx;
         RUN.removeSlotByIdx(removedIdx);
-        // CRITICAL: splice shifts higher indices down by 1 — fix cached slotIdx
-        // pointers in every zone. Otherwise charge-accounting silently no-ops.
-        const zones = ['library', 'hand', 'battlefield', 'graveyard', 'exile'];
-        for (const zoneName of zones) {
-          const zone = G.you[zoneName];
-          if (!zone) continue;
-          for (const c of zone) {
-            if (typeof c.slotIdx === 'number' && c.slotIdx > removedIdx) {
-              c.slotIdx -= 1;
-            }
-          }
-        }
+        // Splice shifts higher indices down by 1 — fix cached slotIdx pointers
+        // AND remap playedSlotIdxs via the shared contract fixup (audit A9-3:
+        // splicing a played card must not leave the win-reward filter stale).
+        fixupSlotPointersAfterRemoval('you', removedIdx);
       }
       let newSlotIdx = null;
       if (mintSlot) {
@@ -3311,18 +3303,9 @@ const EFFECTS = {
       // if base was at a lower index — handled by the existing stIdx
       // shift on the inner removal). The general fixup is still needed
       // for OTHER cards (the Stapler itself, anything with cached idx).
-      const fixupSlotIdxAfter = (removedIdx) => {
-        const zones = ['library', 'hand', 'battlefield', 'graveyard', 'exile'];
-        for (const zoneName of zones) {
-          const zone = G.you[zoneName];
-          if (!zone) continue;
-          for (const c of zone) {
-            if (typeof c.slotIdx === 'number' && c.slotIdx > removedIdx) {
-              c.slotIdx -= 1;
-            }
-          }
-        }
-      };
+      // Per-removal fixup: decrement cached slotIdx pointers AND remap
+      // playedSlotIdxs (audit A9-3 — via the shared contract helper).
+      const fixupSlotIdxAfter = (removedIdx) => fixupSlotPointersAfterRemoval('you', removedIdx);
       if (baseCard.owner === 'you' && typeof baseCard.slotIdx === 'number'
           && typeof RUN !== 'undefined' && RUN.removeSlotByIdx) {
         const removedIdx = baseCard.slotIdx;
@@ -5728,13 +5711,15 @@ function hasPhylacteryProtection(who) {
 }
 
 // Shared slot-pointer fixup for ANY run-slot removal (audit A9-2/A9-3). The
-// removeSlotByIdx caller contract has two invariants, and this is the single
-// place both live: (1) every in-game card whose cached slotIdx sits ABOVE the
+// removeSlotByIdx caller contract has two invariants, and this is the shared
+// place both live (used by every rip site AND both splice slot-removal paths;
+// the Stapler out-of-charges rip still inlines (1) only — deferred under the
+// A5-4 ballot): (1) every in-game card whose cached slotIdx sits ABOVE the
 // removed index must decrement (so slot-based lookups stay valid); (2) the
 // player's playedSlotIdxs Set — read by the win-reward filter (filterByPlayed)
 // — must be remapped the SAME way (DROP the removed index, DECREMENT every
-// index above it). The Set was never named by the old contract, so even the
-// honoring rip sites left it stale, mis-aiming sticker rewards (A9-3).
+// index above it). The Set was never named by the old contract, so every
+// contract-honoring removal site left it stale, mis-aiming sticker rewards (A9-3).
 function fixupSlotPointersAfterRemoval(who, removedIdx) {
   const zones = ['library', 'hand', 'battlefield', 'graveyard', 'exile'];
   for (const zoneName of zones) {

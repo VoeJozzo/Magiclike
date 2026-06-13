@@ -102,5 +102,24 @@ console.log('\n=== A7-1: doTapLandForMana refuses extra-cost abilities (defense-
   check('tapless extra-cost ability NOT wrongly tapped', altar2.tapped === false, 'tapped=' + altar2.tapped);
 })();
 
+console.log('\n=== A7-1: the mana SOLVER excludes extra-cost abilities as sources (the auto-cast leg) ===');
+(() => {
+  // manaAbilityOf (the solver source-scan, via landProducibleColors) must NOT
+  // see an extra-cost ability — else a spell auto-casts off it without paying
+  // the sacrifice. This pins the gate the tap-lane/legality assertions above do
+  // NOT cover: reverting the manaAbilityOf trivial-cost gate re-opens
+  // auto-cast-off-a-sac-source (the finding's headline "counted as a FREE source").
+  // landProducibleColors is land-only and reads manaAbilityOf (the solver's
+  // source scan), so use LAND bases to exercise the gate directly.
+  const altar = mk('gray_ogre', 'you', SAC_MANA); altar.types = ['Land'];
+  const dork = mk('gray_ogre', 'you', TRIVIAL_MANA); dork.types = ['Land'];
+  const altarColors = ENGINE.landProducibleColors(altar);
+  const dorkColors = ENGINE.landProducibleColors(dork);
+  check('landProducibleColors(extra-cost altar) is [] (solver excludes it)',
+    Array.isArray(altarColors) && altarColors.length === 0, JSON.stringify(altarColors));
+  check('landProducibleColors(trivial dork) is non-empty (still a source)',
+    Array.isArray(dorkColors) && dorkColors.length >= 1, JSON.stringify(dorkColors));
+})();
+
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');
 process.exit(fail > 0 ? 1 : 0);
