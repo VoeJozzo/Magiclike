@@ -82,5 +82,33 @@ console.log('\n=== a stale valuation entry (registered kind with no handler) is 
   }
 })();
 
+console.log('\n=== A7-2: a VALUED kind with no cast-scorer branch is CAUGHT (unscoredValuation) ===');
+(() => {
+  // The net fires: a VALUED-claimed kind with a HANDLERS entry but NO
+  // spellValueForEffects branch must surface — the exact A7-2 bug class
+  // (add_counter was VALUED-claimed yet cast-scored 0, and the old set-algebra
+  // report could not see it).
+  const EFFECTS = ENGINE.EFFECTS;
+  const valued = AI.VALUED_EFFECT_KINDS;
+  const FAKE = '__unscored_probe_kind__';
+  EFFECTS[FAKE] = function () {};   // a real handler (so not 'stale'/'unclassified')
+  valued.add(FAKE);                 // ...claimed VALUED, but no cast-scorer branch exists
+  try {
+    const cov = ENGINE.effectCoverageReport();
+    check('a VALUED kind with no cast-scorer branch is flagged in unscoredValuation',
+      cov.unscoredValuation.includes(FAKE), cov.unscoredValuation.join(','));
+  } finally {
+    delete EFFECTS[FAKE];
+    valued.delete(FAKE);
+  }
+  const after = ENGINE.effectCoverageReport();
+  // Documented zero-price exception: 'sacrifice' prices 0 on the cast path ON
+  // PURPOSE (its value rides the edict `chooses`) — must NOT be flagged.
+  check("'sacrifice' (zero-price by design) is NOT flagged", !after.unscoredValuation.includes('sacrifice'),
+    after.unscoredValuation.join(','));
+  check('live pool clean: no VALUED kind lacks a real cast-scorer branch',
+    after.unscoredValuation.length === 0, after.unscoredValuation.join(','));
+})();
+
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');
 process.exit(fail > 0 ? 1 : 0);

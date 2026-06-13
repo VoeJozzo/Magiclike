@@ -109,6 +109,12 @@ function spellValueForEffects(effects) {
     else if (e.kind === 'gain_life') v += (e.amount || 0) < 0 ? (3 + Math.abs(e.amount) * 2) : 1;
     else if (e.kind === 'schedule_delayed') v += 1;  // exile_until_eot's return tail (the bf→exile half carries the value)
     else if (e.kind === 'pump') v += (e.power < 0 || e.toughness < 0) ? (3 + Math.abs(e.toughness || 0)) : 2;
+    // A7-2: mirror engine.js abilityValue's add_counter case (3 + P + T), floored
+    // at >=1 (Joe) so an UNTARGETED counter spell is never valued 0 and the AI at
+    // least tries to cast it. Was a dead branch — VALUED-claimed but with no
+    // cast-scorer entry (effectCoverageReport's unscoredValuation now probes for
+    // exactly this class).
+    else if (e.kind === 'add_counter') v += Math.max(1, 3 + (e.power || 0) + (e.toughness || 0));
     else if (e.kind === 'grant_keyword') {
       // mass-yours-eot Overrun-shape vs single-target permanent vs symmetric.
       const eot = e.duration === 'eot';

@@ -1554,11 +1554,31 @@ function effectCoverageReport() {
   // Valuation classification lives in ai.js (relocated, review #6 — loaded after
   // this module). Read lazily, like the cast-scoring sets below; if absent
   // (engine-only test boot), skip the valuation-coverage check.
-  let unclassifiedValuation = [], staleValuation = [];
+  let unclassifiedValuation = [], staleValuation = [], unscoredValuation = [];
   if (typeof VALUED_EFFECT_KINDS !== 'undefined' && typeof UNVALUED_EFFECT_KINDS !== 'undefined') {
     const classified = new Set([...VALUED_EFFECT_KINDS, ...UNVALUED_EFFECT_KINDS]);
     unclassifiedValuation = kinds.filter(k => !classified.has(k));
     staleValuation = [...classified].filter(k => !EFFECTS[k]);
+  }
+  // A7-2: being ON the VALUED checklist does not prove the AI's cast scorer
+  // actually has a branch for the kind. Probe each VALUED kind through
+  // spellValueForEffects (the untargeted-cast valuer — it has NO default
+  // fallthrough, so an unbranched kind scores exactly 0): it must score > 0,
+  // EXCEPT kinds that price 0 there on purpose because their value rides a
+  // sibling effect (`sacrifice` rides the edict `chooses`). This catches the
+  // silent class the set-algebra above cannot — VALUED-claimed but cast-scored
+  // 0, so the AI never casts an untargeted spell of that kind (the add_counter
+  // hole). spellValueForEffects lives in ai.js (loaded after) — read lazily.
+  if (typeof VALUED_EFFECT_KINDS !== 'undefined' && typeof spellValueForEffects === 'function') {
+    const ZERO_PRICE_VALUED = new Set(['sacrifice']);
+    const vprobe = { amount: 1, power: 1, toughness: 1, count: 1, severity: 1,
+      token_id: 'soldier_w_1_1', keyword: 'flying', from_zone: 'library', to_zone: 'hand' };
+    unscoredValuation = [...VALUED_EFFECT_KINDS].filter(k => {
+      if (ZERO_PRICE_VALUED.has(k)) return false;
+      let v = 0;
+      try { v = spellValueForEffects([{ ...vprobe, kind: k }]) || 0; } catch (_) { v = 0; }
+      return v <= 0;
+    });
   }
   // Card-text: probe each kind; the describeEffect default returns a "[kind]"
   // debug sentinel. A sentinel hit means no describe case — unless the kind is
@@ -1584,7 +1604,7 @@ function effectCoverageReport() {
     unclassifiedCastScoring = kinds.filter(k => !classifiedCast.has(k));
     staleCastScoring = [...classifiedCast].filter(k => !EFFECTS[k]);
   }
-  return { unclassifiedValuation, staleValuation, missingText,
+  return { unclassifiedValuation, staleValuation, unscoredValuation, missingText,
            unclassifiedCastScoring, staleCastScoring };
 }
 
@@ -4272,14 +4292,24 @@ function pickBestTriggerTarget(eff, valid, controller) {
       return sorted[0];
     }
   }
-  if (eff.kind === 'returnFromGraveyard' || eff.kind === 'grant_cast_permission') {
-    const graveOwner = eff.kind === 'grant_cast_permission' ? opp(controller) : controller;
-    const graveCards = G[graveOwner].graveyard;
+  // Grave-return pick: the migrated shape is move_card graveyard->hand
+  // (tools/migrate-effects.js collapsed the retired `returnFromGraveyard` kind
+  // into it); grant_cast_permission still recalls from a yard too. Value-pick
+  // the best returnable card, deriving WHICH graveyard each candidate sits in
+  // from its own stamped `controller` tag (getValidTargets stamps it per yard),
+  // NOT a single binary yard — so cross-/multi-yard filters value correctly.
+  // (findCard can't see graveyard cards, so look up by iid in the stamped
+  // yard.) (audit A7-3)
+  const isGraveReturn =
+    eff.kind === 'grant_cast_permission' ||
+    (eff.kind === 'move_card' && eff.from_zone === 'graveyard' && eff.to_zone === 'hand');
+  if (isGraveReturn) {
     const scored = valid
       .filter(t => t.kind === 'graveyard_card')
       .map(t => {
-        const card = graveCards.find(c => c.iid === t.iid);
-        return {t, value: card ? (cardValueOrZero(card)) : 0};
+        const yard = t.controller && G[t.controller] ? G[t.controller].graveyard : [];
+        const card = yard.find(c => c.iid === t.iid);
+        return {t, value: card ? cardValueOrZero(card) : 0};
       })
       .sort((a, b) => b.value - a.value);
     if (scored.length) return scored[0].t;
