@@ -62,8 +62,8 @@ eqText(segsToText(describeEffect({ kind: 'gain_life', scope: 'self', amount: 3 }
        'you gain 3 life', 'gain_life self');
 eqText(segsToText(describeEffect({ kind: 'gain_life', amount: { from: 'target_power' },
                                    target: 'creature' })),
-       'you gains life equal to the target\'s power',
-       'gain_life with dynamic amount and default owner');
+       'you gain life equal to the target\'s power',
+       'gain_life with dynamic amount and default owner (audit A10-5: the old expectation pinned the "you gains" bug)');
 
 console.log('\n=== describeEffect: draw / discard ===');
 eqText(segsToText(describeEffect({ kind: 'draw', amount: 1 })),

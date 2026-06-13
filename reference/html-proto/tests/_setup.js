@@ -174,6 +174,7 @@ const EXPOSED = [
   'describeAmount', 'describeEffect', 'describeEffectList',
   'describeTrigger', 'triggerLogText', 'describeAbility', 'describeStaticBuff',
   'describeCardText', 'describeCardSegments', 'describeModalSegs',
+  'abilityPickerLabel', 'formatTriggerText',
   // Card-text internal helpers — exposed so tests can target them
   // independently if a regression localizes to one.
   'targetPhrase', 'withFilter', 'plainSeg', 'indefiniteArticle', 'manaCostBraces',

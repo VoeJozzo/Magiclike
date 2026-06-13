@@ -1966,9 +1966,10 @@ function clickBattlefield(iid) {
       }
       if (!ENGINE.isLegalAction('you', probe)) continue;
       // Build a human-readable label. For mana abilities, "Tap for {color}"
-      // form is clearer than the raw text. For other abilities, use the
-      // engine's describeAbility helper if available, else fall back to
-      // raw text. Keep labels short — picker buttons are small.
+      // form is clearer than the raw text. Everything else renders through
+      // the engine's own oracle via abilityPickerLabel (card-text.js) —
+      // audit A10-1 replaced a hand-rolled kind→label table here that lied
+      // about kinds, costs, permanence, and subjects.
       let label;
       if (isMana) {
         const am = ab.effects[0].amounts || {};
@@ -1978,28 +1979,7 @@ function clickBattlefield(iid) {
         }
         label = 'Tap for ' + (parts.join('') || 'mana');
       } else {
-        // Use the ability's first effect's kind to synthesize a short label.
-        // Cards already have full text in their hover/popup; this is just
-        // for picker disambiguation.
-        const eff = ab.effects[0];
-        const costStr = (ab.cost && ab.cost.tap) ? '{T}' :
-                        (ab.cost && ab.cost.mana) ?
-                          Object.keys(ab.cost.mana).map(c => {
-                            const n = ab.cost.mana[c];
-                            return n === 1 ? '{' + c + '}' : '{' + n + '}'.replace('C', '');
-                          }).join('') :
-                        (ab.cost && ab.cost.sacrifice) ? 'Sacrifice' : '';
-        const isDrawMove = eff.kind === 'move_card' && eff.from_zone === 'library' && eff.to_zone === 'hand';
-        const isReanimate = eff.kind === 'move_card' && eff.from_zone === 'graveyard' && eff.to_zone === 'battlefield';
-        const effDesc = eff.kind === 'damage' ? 'Deal ' + (eff.amount || 1) + ' damage' :
-                        eff.kind === 'pump' ? '+' + (eff.power || 0) + '/+' + (eff.toughness || 0) + ' EOT' :
-                        (eff.kind === 'draw' || isDrawMove) ? 'Draw ' + (eff.amount || 1) :
-                        isReanimate ? 'Reanimate' :
-                        eff.kind === 'untap' ? 'Untap a creature' :
-                        eff.kind === 'gain_life' ? 'Gain ' + (eff.amount || 1) + ' life' :
-                        eff.kind === 'apply_in_game_splice' ? 'Staple' :
-                        eff.kind;
-        label = (costStr ? costStr + ': ' : '') + effDesc;
+        label = abilityPickerLabel(ab);
       }
       // Action-builder: fires this specific ability when chosen.
       const fireAbility = () => {

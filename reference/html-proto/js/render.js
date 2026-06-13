@@ -128,7 +128,9 @@ function render() {
           try { bodyText = segsToText(describeAbility(it.ab, it.ab)); }
           catch (_) { bodyText = 'Activated ability'; }
         } else {
-          bodyText = triggerLogText(it.trig);
+          // ~ → source name (audit A10-3): authored/assembled trigger texts
+          // carry the conventional placeholder; never show it raw.
+          bodyText = formatTriggerText(triggerLogText(it.trig), it.sourceName);
         }
         div = makeSyntheticCard({
           name: it.sourceName + (isAbility ? ' activates' : ' triggers'),

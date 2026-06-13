@@ -313,6 +313,13 @@ const CATEGORY_A = [
   // COMPLETIONS in recordResult (no crash-restore double-count, no
   // abandoned-game count).
   'test_a9_run_save_guards.js',
+  // Audit A10-1/3/4 — card-text truthfulness pins (picker label = oracle, no
+  // raw-kind leak; ~ substitution incl. the Mercurial Adept face leak;
+  // add_type/set_types scope:self subject "this").
+  'test_a10_text_truthfulness.js',
+  // Audit A11-1 — slot/effect-level target strings validated at boot (an
+  // unknown name = a silently-uncastable card); the live pool stays clean.
+  'test_a11_target_string_validation.js',
 ];
 
 const TESTS_DIR = __dirname;

@@ -39,8 +39,9 @@ Per-subsystem knowledge of the [[html-proto]] rules engine, distilled from the 2
 - [[ai]] — the player agent: legality-surface contract, the four drift-twin pairs, sanctioned transient mutations, the valuation partition, the post-Stackable respond arm (chunk 7).
 - [[draft]] — the two draft modes, the shrinking-table pack-color policy, the two color-signal reads, opponent construction + scaling (chunk 8).
 - [[run-meta]] — the slot model + slotIdx caller contract, the save/migration lifecycle, anti-farming snapshot, pre-rolled rewards, endless sectors, the boon contract, picklog (chunk 9).
+- [[card-text]] — the data→English oracle pipeline, the `~`-placeholder substitution seam, custom_text passthrough, the coverage watchdog, the idiom registry (chunk 10).
 
-**Planned** (seeded as their audit chunks complete): stickers-runtime (ch. 6), card-text (ch. 10), card-data (ch. 11).
+**Planned** (seeded as their audit chunks complete): stickers-runtime (ch. 6), card-data (ch. 11).
 
 ## See also
 

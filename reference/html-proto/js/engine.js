@@ -1,6 +1,10 @@
 // Mercurial Adept's trigger pool. makeCard rolls one fresh per game from
 // this pool, so the same slot has a different personality each fight.
-// `label` is shown in the card popup repertoire (with the active one indicated).
+// `label` is shown in the card popup repertoire — but only for LEGACY saves:
+// the repertoire gates on slot.triggerPool (controller.js), which post-cutover
+// slots (trigger_pool_seed) never carry, so in current saves the card's
+// authored face text is the player's only description of this pool — keep
+// card.json's text in sync with these entries (audit A10-2).
 const MERCURIAL_TRIGGER_POOL = [
   {
     label: 'Striker',
@@ -3640,8 +3644,28 @@ function validateAllCardEffects(cards) {
         targetErrors.push(cardId + ': ' + e.kind
           + ' has no target source (no target/target_slot/scope and no owner-level target step)');
       }
+      // Effect-level target strings resolve through getValidTargets, whose
+      // default arm returns [] — a typo boots clean and the card is silently
+      // uncastable forever (audit A11-1).
+      if (typeof e.target === 'string' && !GETVALIDTARGETS_TARGETS.has(e.target)) {
+        targetErrors.push(cardId + ': effect-level target "' + e.target
+          + '" is not a name getValidTargets resolves');
+      }
       const schema = EFFECT_SCHEMA[e.kind];
       if (schema) { const err = schema(e); if (err) schemaErrors.push(cardId + ': ' + err); }
+    }
+  };
+  // Slot-level target strings (target_slots[i].target) also resolve through
+  // getValidTargets — same silent-uncastable failure mode as the effect-level
+  // check in checkList (audit A11-1). Swept on card-, ability-, and
+  // trigger-level slot arrays.
+  const checkSlotTargets = (slots, where) => {
+    for (const spec of (Array.isArray(slots) ? slots : [])) {
+      if (!spec || typeof spec.target !== 'string') continue;
+      if (!GETVALIDTARGETS_TARGETS.has(spec.target)) {
+        targetErrors.push(where + ': slot-level target "' + spec.target
+          + '" is not a name getValidTargets resolves');
+      }
     }
   };
   for (const card of list) {
@@ -3663,8 +3687,10 @@ function validateAllCardEffects(cards) {
         if (spec) checkFilterKeys(spec.filter, cardId + '.target_slots.filter');
       }
     }
+    checkSlotTargets(card.target_slots, cardId);
     for (const ab of (card.abilities || [])) {
       checkFilterKeys(ab.target_filter, cardId + '.ability.target_filter');
+      checkSlotTargets(ab.target_slots, cardId + '.ability');
       // A3-2: `stackable` is an optional BOOLEAN (absent → true). A present
       // non-boolean would silently truthy/falsy its way into the wrong
       // resolution path — reject it loudly at boot.
@@ -3677,6 +3703,7 @@ function validateAllCardEffects(cards) {
     }
     for (const trig of (card.triggers || [])) {
       checkFilterKeys(trig.target_filter, cardId + '.trigger.target_filter');
+      checkSlotTargets(trig.target_slots, cardId + '.trigger');
       // A3-2: same boolean-only rule for triggers.
       if (trig && 'stackable' in trig && typeof trig.stackable !== 'boolean') {
         schemaErrors.push(cardId + ': trigger stackable must be a boolean (got '
@@ -4006,7 +4033,11 @@ function isStackable(def) { return !def || def.stackable !== false; }
 // (resolveTrigger increments it), and its downstream events still emit and
 // queue normally, draining at the next window.
 function resolveTriggerImmediate(p, targets) {
-  log(`${p.sourceName} triggers (split second): ${triggerLogText(p.trig)}.`, 'sp');
+  // formatTriggerText: ~ → source name; strip the authored/generated text's
+  // own trailing period before this template appends one (audit A10-3 —
+  // every trigger log line used to end "..").
+  const trigDesc = formatTriggerText(triggerLogText(p.trig), p.sourceName).replace(/\.$/, '');
+  log(`${p.sourceName} triggers (split second): ${trigDesc}.`, 'sp');
   resolveTrigger({
     kind: 'trigger', trig: p.trig, sourceIid: p.sourceIid, sourceName: p.sourceName,
     controller: p.controller, targets, event: p.event || null,
@@ -4030,7 +4061,10 @@ function pushTriggerEntry(p, targets) {
     // event → ctx.event for effects that read non-target data (Endomorph etc.).
     event: p.event || null,
   });
-  log(`${p.sourceName} triggers: ${triggerLogText(p.trig)}.`, 'sp');
+  // Same ~-substitution + trailing-period dedupe as resolveTriggerImmediate
+  // (audit A10-3).
+  const trigDesc = formatTriggerText(triggerLogText(p.trig), p.sourceName).replace(/\.$/, '');
+  log(`${p.sourceName} triggers: ${trigDesc}.`, 'sp');
   // A1-1 leg 3: drainTriggers refuses to run while priority is closed, so a
   // round is guaranteed open here. Never synthesize one — a conjured round
   // gets auto-passed by both players and advancePhaseAfterPriority then
@@ -4526,6 +4560,21 @@ function getValidTargets(effect, controller) {
 const TARGET_FILTERS = new Set([
   'creature', 'player', 'opp', 'creature_or_player', 'spell', 'permanent', 'land',
   'your_creature', 'opp_creature', 'graveyard_card',
+]);
+
+// The target names getValidTargets' switch actually resolves (audit A11-1).
+// Slot-level (`target_slots[i].target`) and effect-level (`e.target`) strings
+// are served by getValidTargets DIRECTLY — not via targetsForFilter, which
+// maps the TARGET_FILTERS taxonomy (your_creature / opp_creature / land) onto
+// getValidTargets shapes before calling in. A name outside this set falls
+// into getValidTargets' default arm at runtime (console.warn + []): the card
+// boots clean and is silently uncastable forever. Boot validation
+// (validateAllCardEffects) sweeps slot- and effect-level targets against this
+// set. KEEP IN SYNC with both runtime paths: the getValidTargets switch above
+// and targetsForFilter's case map below.
+const GETVALIDTARGETS_TARGETS = new Set([
+  'creature_or_player', 'player', 'opp', 'creature', 'permanent',
+  'graveyard_card', 'spell', 'permanent_or_spell',
 ]);
 
 // Legal-target set for a target() step's filter (Slice 3 step 2 / §3.5). THIS
@@ -6779,7 +6828,9 @@ function finalizeBuild(p, trigger) {
     liveCard.triggers = liveCard.triggers.filter(t => !t.generated);
     liveCard.triggers.push(cloneTriggerData(trigger));
   }
-  log(`📜 Built ability: ${triggerLogText(trigger)}`, 'sp');
+  // ~ → card name (audit A10-3). If the live card wasn't found, '~' → '~'
+  // is an identity substitution — better an honest placeholder than ''.
+  log(`📜 Built ability: ${formatTriggerText(triggerLogText(trigger), liveCard ? liveCard.name : '~')}`, 'sp');
   G.pendingTriggerBuild = null;
 }
 

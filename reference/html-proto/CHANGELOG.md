@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.1.44`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.1.45`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -2110,4 +2110,39 @@ adopted mutate-or-extras contract; §1504's TwoStickers "(often to one
 slot)" corrected to always-same-slot; roguelike-meta.md gets the same
 endless-sector fix. (§1504's Clone sentence untouched — A5-11 pending
 ruling.) Suite 112 files / 2348 green, lint clean.
+
+v2.1.45: audit chunk-10 + chunk-11 truthfulness ship batch (A10-1/2/3/4/5/8/9
++ A11-1) — all player-facing text/display fixes, no game-outcome change.
+**A10-1 (P3):** the unified ability picker's button labels were a hand-rolled
+kind→label table that lied — raw internal kinds ("{T}: affect_creature"),
+inverted permanence ("+1/+1 EOT" for a permanent counter), wrong subject,
+understated costs (deepseam_quarry's "{T}: Reanimate" hid its {2}+sacrifice);
+replaced with abilityPickerLabel = the capped describeAbility oracle (the same
+path render's ability pill uses), the private table + inline cost renderer
+deleted. **A10-2 (P3):** The Mercurial Adept's custom_text face advertised a
+stale pool — 2 of 6 listed abilities don't exist (the live pool's last two are
+Reaper/Hexweaver); the two stale clauses corrected, and the engine.js pool
+comment now flags that the popup Repertoire renders only for legacy saves, so
+the face is the player's only pool description. **A10-3 (P3):** the ~ name
+placeholder leaked raw to players — on custom_text faces (Adept, Codex) and in
+every ~-templated trigger log line / stack pill — and every trigger log line
+ended "..". formatTriggerText now wraps all consumers (the custom_text face,
+both trigger-log sites, the stack pill, the build-ability log) and the log
+sites dedupe the trailing period; render.js's deliberate textContent
+substitution is left untouched (escaping it would render a literal &amp;).
+**A10-4 (P3):** add_type/set_types with scope:'self' rendered an empty subject
+(live on artifice_triumphant's face) — now emits "this", mirroring pump's arm.
+**A10-5 (P4):** "you gains life equal to…" grammar bug, locked in by
+card_text_test pinning the wrong string — conjugated by subject ("you gain" /
+"<name> gains") and the test expectation re-pinned (a declared flip). **A10-8
+(P4):** apply_sticker had drifted into TEXT_IDIOM_ONLY while carrying a full
+standalone describe case — removed from the set + header reworded, re-arming
+the coverage guard. **A10-9 (P5):** stale "line 567" cite in the bake-guard
+comment → cite by function. **A11-1 (P4, chunk 11):** slot- and effect-level
+target STRINGS resolve through getValidTargets' default arm (warn + []) — a
+typo booted clean and the card was silently uncastable forever; boot
+validation (validateAllCardEffects) now sweeps card/ability/trigger slot
+targets + effect-level e.target against GETVALIDTARGETS_TARGETS. New red→green
+files test_a10_text_truthfulness (15) + test_a11_target_string_validation (7).
+Suite 114 files / 2370 green, lint clean.
 
