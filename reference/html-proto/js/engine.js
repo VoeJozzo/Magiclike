@@ -237,11 +237,29 @@ function writeMergedSpliceToSlot(slot, merged) {
 // ability as the single source of truth. Top-level (not IIFE-internal) so the
 // module-level splice helpers and stickers.js can share them.
 //
-// The tap-for-mana ability on a permanent (cost.tap + add_mana), or null.
+// A7-1: a mana ability is auto-payable ONLY if its cost is trivial — {T} and/or
+// mana, nothing else. Any extra cost (sacrifice, remove_counters, a future
+// field) would have to be SILENTLY auto-paid by the tap-for-mana fast lane, so
+// it's excluded from every automatic mana path (enumeration, legality,
+// doTapLandForMana, the solver) per Joe's guard: the autotapper must never
+// sacrifice / pay-down without an explicit player choice. Trivial-cost mana
+// abilities still auto-pay.
+function manaAbilityCostIsTrivial(ab) {
+  if (!ab || !ab.cost) return true;
+  for (const k of Object.keys(ab.cost)) { if (k !== 'tap' && k !== 'mana') return false; }
+  return true;
+}
+// True iff `ab` is an add_mana ability the auto-payer / tap lane may use.
+function isAutoUsableManaAbility(ab) {
+  return !!(ab && ab.effects && ab.effects[0] && ab.effects[0].kind === 'add_mana' && manaAbilityCostIsTrivial(ab));
+}
+
+// The tap-for-mana ability on a permanent (cost.tap + add_mana, trivial cost), or null.
 function manaAbilityOf(card) {
   if (!card || !Array.isArray(card.abilities)) return null;
   return card.abilities.find(ab => ab && ab.cost && ab.cost.tap
-    && ab.effects && ab.effects[0] && ab.effects[0].kind === 'add_mana') || null;
+    && ab.effects && ab.effects[0] && ab.effects[0].kind === 'add_mana'
+    && manaAbilityCostIsTrivial(ab)) || null;
 }
 // Colors an add_mana effect can produce ({choose} or {amounts}).
 function manaEffectColors(eff) {
@@ -3723,6 +3741,16 @@ function validateAllCardEffects(cards) {
         schemaErrors.push(cardId + ': ability stackable must be a boolean (got '
           + (typeof ab.stackable) + ')');
       }
+      // A7-1: a mana ability whose cost includes ANYTHING beyond {T}/mana is
+      // unsupported until an explicit-cost mana pipeline exists — the auto-payer
+      // can only pay {T}/mana, so an extra cost (sacrifice, remove_counters, ...)
+      // would be silently dodged. Flag the shape loudly at boot.
+      if (ab && ab.effects && ab.effects[0] && ab.effects[0].kind === 'add_mana'
+          && ab.cost && Object.keys(ab.cost).some(k => k !== 'tap' && k !== 'mana')) {
+        schemaErrors.push(cardId + ': mana ability has a non-tap/mana cost ('
+          + Object.keys(ab.cost).filter(k => k !== 'tap' && k !== 'mana').join(',')
+          + ') -- extra-cost mana abilities are unsupported (A7-1)');
+      }
       checkList(ab.effects, cardId,
         !!(ab.target || (Array.isArray(ab.target_slots) && ab.target_slots.length)));
     }
@@ -6382,6 +6410,11 @@ function doTapLandForMana(who, cardIid, color, abilityIdx) {
     manaAb = manaAbilityOf(card);
   }
   if (!manaAb) return;
+  // A7-1: the tap lane pays ONLY the tap; an extra-cost mana ability must never
+  // resolve here (its sacrifice/remove_counters would be silently skipped, and a
+  // tapless one would be wrongly tapped). Refuse — it routes through
+  // activateAbility, which pays the full cost.
+  if (!manaAbilityCostIsTrivial(manaAb)) return;
   card.tapped = true;
   const eff0 = manaAb.effects[0];
   if (eff0.choose) {
@@ -7002,10 +7035,12 @@ function isLegalAction(who, action) {
       let manaAb = null;
       if (abIdx >= 0) {
         manaAb = f.card.abilities[abIdx];
-        if (!manaAb || !manaAb.effects || manaAb.effects[0].kind !== 'add_mana') return false;
+        // A7-1: the tap lane only legalizes TRIVIAL-cost mana abilities; an
+        // extra-cost one must go through activateAbility (which pays full cost).
+        if (!isAutoUsableManaAbility(manaAb)) return false;
       } else {
-        // Backwards-compat: caller didn't specify, find the first mana ability.
-        manaAb = f.card.abilities.find(ab => ab.effects && ab.effects[0] && ab.effects[0].kind === 'add_mana');
+        // Backwards-compat: caller didn't specify, find the first trivial mana ability.
+        manaAb = f.card.abilities.find(ab => isAutoUsableManaAbility(ab));
         if (!manaAb) return false;
       }
       if (f.card.sick) return false;
@@ -7080,6 +7115,11 @@ function isLegalAction(who, action) {
       if (isMana) {
         // Mana abilities are always available when source can be tapped, regardless of priority.
         // (Matches MtG: mana abilities don't require priority and don't use the stack.)
+        // A7-1 note: this priority-free status is correct even for an extra-cost
+        // mana ability (e.g. "Sacrifice a creature: add B" — still a mana ability
+        // per the engine's model). The A7-1 guard lives in the AUTO paths only
+        // (solver/tap lane), so the autotapper never silently pays the extra
+        // cost; a MANUAL activateAbility still pays the full cost explicitly.
         return true;
       }
       // Non-mana ability: timing depends on main_phase_only flag.
@@ -7261,7 +7301,10 @@ function getLegalActions(who) {
         // land stapled merges the mana ability is at index >= 1. If we find
         // one, emit a tapLandForMana action with the abilityIdx so the
         // engine knows which ability to use.
-        const manaAbIdx = card.abilities.findIndex(ab => ab.effects && ab.effects[0] && ab.effects[0].kind === 'add_mana');
+        // A7-1: only TRIVIAL-cost mana abilities ({T}/mana) belong in the tap
+        // lane; an extra-cost (or tapless extra-cost) add_mana ability is
+        // excluded (the tap lane pays only the tap, skipping its real cost).
+        const manaAbIdx = card.abilities.findIndex(ab => isAutoUsableManaAbility(ab));
         if (manaAbIdx >= 0) {
           actions.push({type:'tapLandForMana', cardIid: card.iid, abilityIdx: manaAbIdx});
         }

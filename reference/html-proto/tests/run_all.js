@@ -315,6 +315,10 @@ const CATEGORY_A = [
   // Audit A7-2 — add_counter has a non-zero cast value (mirrors abilityValue
   // 3+P+T, floored >=1) so the AI tries to cast untargeted counter spells.
   'test_a7_add_counter_cast_value.js',
+  // Audit A7-1 — extra-cost mana abilities ({T},sacrifice: add mana, and the
+  // tapless variant) are excluded from every auto-pay path (the tap lane never
+  // silently pays a non-trivial cost) + a boot tripwire flags the shape.
+  'test_a7_extra_cost_mana.js',
   // Audit A9-4 + A9-5 — RUN.load() refuses future-version saves (warn +
   // return false, blob left intact); picklog gamesPlayed counts game
   // COMPLETIONS in recordResult (no crash-restore double-count, no
