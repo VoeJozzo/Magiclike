@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.1.48`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.1.49`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -2216,4 +2216,28 @@ splice merge silently dropped) is retired in favor of stat_boost/kw_* slot
 stickers — the engine's blessed run-persistent channel, so splice/clone/steal
 preserve the buffs for free; a load-time migration converts legacy permaBuffs
 saves. Suite 118 → 125 files / 2414 → 2487 assertions green, lint clean.
+
+v2.1.49: parked-audit clear — the ~22 deferred findings that fit the
+Audit-Review-Refactor charter (test-coverage gaps, DRY refactors, latent-bug
+guards), each red→green, then a 6-agent adversarial review (zero production
+defects; one self-introduced test-theater assertion fixed). Chunk-6: inline
+set_color/set_types stickers dedup on push (A6-3), granted abilities/triggers are
+deep-copied so two cards from one shared descriptor don't alias a nested field
+(A6-6), + cost-order and grant-dedup characterization (A6-7/A6-5). Chunk-8/9: the
+dead buildOpponentDeck "colors" output removed (A8-4), reward-pick sticker/ripUp
+arms bounds-guarded (A9-8), a TPLID_RENAMES live-id collision boot-check (A9-9).
+Chunk-2: combat coverage — vigilance no-tap + multi-block damage/kill-order,
+summoning sickness, menace lone-block, and a behavioral canCreatureBlock pin
+replacing a source-text regex (A2-6/13/15/14; A2-9 was already moot). Chunk-4: the
+three drifted hexproof gates consolidated to one hexproofBlocks predicate (A4-24),
+grant_cast_permission/grant_keyword coverage (A4-18), and two same-resolution
+discards now accumulate instead of blind-overwriting (A4-23 leg-2). Chunk-3: the
+pickBestTriggerTarget auto-pick heuristic pinned, and the generator's
+green-theater filter test replaced with literal-flag pins (A3-9). Chunk-1: a
+scripted full-turn behavioral test (A1-23), resetCombatState()/emptyManaPool() DRY
+extractions (A1-21/A1-22), loud default arms on the three switches that had none
+incl. the step() infinite-spin hang-guard (A1-5), and a centralized
+startMainPhase() test helper (A1-4 Phase 1 — the 76-file migration is a tracked
+follow-up). A9-10 reclassified won't-fix (no pre-snake-case saves exist). Suite
+125 → 138 files / 2487 → 2583 assertions green, lint clean.
 
