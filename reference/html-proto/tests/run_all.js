@@ -384,6 +384,9 @@ const CATEGORY_A = [
   // A4-23 (leg 2) — two forced discards in one resolution accumulate instead of
   // blind-overwriting the open prompt.
   'test_a4_mid_resolution_prompts.js',
+  // A4-18 (re-scoped remainder) — grant_cast_permission dedup (was 100% mutation-
+  // dark) + grant_keyword scope arms.
+  'test_a4_18_effect_coverage.js',
 ];
 
 const TESTS_DIR = __dirname;
