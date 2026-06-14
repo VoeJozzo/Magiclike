@@ -7,11 +7,13 @@
 Armed: no
 
 **Campaign status: CONCLUDED (2026-06-14).** All 11 chunks audited; 135 findings
-— 108 resolved, 26 parked, 1 won't-fix (A9-10 — Joe: no pre-snake-case saves
-exist), 0 open (see [`INDEX.md`](INDEX.md)).
+— 129 resolved, 4 parked + 1 partial (A1-4), 1 won't-fix (A9-10 — Joe: no
+pre-snake-case saves exist), 0 open (see [`INDEX.md`](INDEX.md)).
 The chunk-5 synthesis/staple batch + A1-6 were closed in the recovery pass (Opus,
-v2.1.48) after Fable went offline mid-campaign. See [`NIGHTLY.md`](NIGHTLY.md) for
-the campaign log. The runner stays disarmed.
+v2.1.48) after Fable went offline mid-campaign; the **parked-audit clear (Opus,
+v2.1.49)** then closed 21 of the 26 parked items (Joe-directed — the test/DRY/
+latent-guard work that fit the Review-Refactor charter). See [`NIGHTLY.md`](NIGHTLY.md)
+for the campaign log. The runner stays disarmed.
 
 ## Branch model (adaptation, Joe 2026-06-10)
 
@@ -76,3 +78,11 @@ Status: **not yet run** — until mutation scores exist, every fix demotes to
   review (two high-severity findings fixed). html-proto v2.1.48, suite 125 files
   / 2487 assertions green, lint clean. INDEX rebuilt from the verified ledger:
   0 open. Branch pushed for Joe's exit-PR review.
+- 2026-06-14: **Parked-audit clear** (Opus, v2.1.49). Joe directed clearing the
+  parked items that fit the Review-Refactor charter. Closed 21 of 26 (A6-3/5/6/7,
+  A8-4, A9-8/9, A2-6/9/13/14/15, A3-9, A4-18/23/24, A5-15, A1-5/21/22/23) each
+  red→green, plus A1-4 Phase 1 (startMainPhase helper). A 6-agent adversarial
+  review found zero production defects + one self-introduced test-theater
+  assertion (fixed). Remaining: A1-4 bulk migration (tracked), A5-14/A10-6/A10-7
+  (genuinely unreachable — no pool card), A7-6 (notes). Suite 139 files / 2589
+  assertions green, lint clean. Branch pushed; exit PR still Joe-gated.

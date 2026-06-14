@@ -6,9 +6,9 @@
 > Rebuilt 2026-06-14 from the verified per-finding survey ledger at the close of
 > the campaign (chunk-5 recovery by Opus).
 
-**Campaign status: CONCLUDED.** 135 findings — **108 resolved**, 26 parked (pointer/refactor-feed is the deliverable; no fix expected), 1 won't-fix (A9-10 — Joe: no pre-snake-case saves exist, so the migration guards an empty population), **0 open**.
+**Campaign status: CONCLUDED.** 135 findings — **129 resolved**, 4 parked + 1 partial (pointer/refactor-feed is the deliverable; no fix expected), 1 won't-fix (A9-10 — Joe: no pre-snake-case saves exist, so the migration guards an empty population), **0 open**.
 
-_"Resolved" includes ship/comment/docs fixes and design rulings (some "resolved" = ruled intentional + documented, no code change). "Parked" items are tracked-but-deliberately-deferred (test-coverage additions, DRY/refactor feeds). The chunk-5 synthesis/staple batch + A1-6 were closed in the recovery pass (v2.1.48)._
+_"Resolved" includes ship/comment/docs fixes and design rulings (some "resolved" = ruled intentional + documented, no code change). The **parked-audit clear (v2.1.49)** then closed 21 of the 26 parked items — the test-coverage gaps, DRY refactors, and latent-bug guards that fit the Review-Refactor charter (each red→green, then a 6-agent adversarial review). The remaining 5: **A1-4** is partial (the centralized startMainPhase helper landed; the 76-file caller migration is a tracked follow-up); **A5-14 / A10-6 / A10-7** stay parked as genuinely-unreachable (no pool card exercises them — fixing now is speculative + untestable); **A7-6** is a notes-not-a-finding entry. The chunk-5 synthesis/staple batch + A1-6 were closed in the recovery pass (v2.1.48)._
 
 ## Chunk 1 — Turn machine / phases / mana / state (engine.js L4400-6770 core + priority/legality plumbing)
 
@@ -18,8 +18,8 @@ _"Resolved" includes ship/comment/docs fixes and design rulings (some "resolved"
 | A1-1 (legs 2+3: pass-tracker + synthesized rounds) | P1 | stage | Ability never resets pass tracker; triggers synthesize rounds in closed windows | ✅ resolved |
 | A1-2 | P1 | stage | Mana legality/payment mismatch crashes mid-cast | ✅ resolved |
 | A1-3 | P1 | stage | Indestructible creature at toughness ≤0 illegally survives | ✅ resolved |
-| A1-4 | P2 | park | 36/70 test files hand-write engine internals (silent-green on rename) | ⏸️ parked |
-| A1-5 | P2 | park | Action-vocab in 4 hand-synced switches; no default arm (silent no-op / hang) | ⏸️ parked |
+| A1-4 | P2 | park | 36/70 test files hand-write engine internals (silent-green on rename) | 🟡 partial *(v2.1.49: startMainPhase helper landed + self-tested; 76-file caller migration tracked)* |
+| A1-5 | P2 | park | Action-vocab in 4 hand-synced switches; no default arm (silent no-op / hang) | ✅ resolved *(v2.1.49 clear)* |
 | A1-6 | P2 | stage | CLEANUP drain silently discards unknown effect KINDS; retired returnFromExile comment | ✅ resolved *(closed in chunk-5 recovery)* |
 | A1-7 | P3 | stage | Zero-attacker combat skips the §505 priority window | ✅ resolved |
 | A1-8 | P3 | stage | G.attackers never pruned on death; L4992 dead arm; unstated re-guard contract | ✅ resolved |
@@ -35,9 +35,9 @@ _"Resolved" includes ship/comment/docs fixes and design rulings (some "resolved"
 | A1-18 | P3 | ship | Canon §1102 '20-iteration SBA cap' describes Godot only, not proto | ✅ resolved |
 | A1-19 | P3 | trivia | Dead !G.pendingTriggerTarget conjunct at step():6369 | ✅ resolved |
 | A1-20 | P3 | trivia | openPriorityRound(initialHolder) dead parameter | ✅ resolved |
-| A1-21 | P3 | park | Combat-reset four-field list duplicated across 3 engine sites + 1 test | ⏸️ parked |
-| A1-22 | P3 | park | Empty-mana-pool literal ×3 + color-list inlined ×5 + draft.js dup COLORS | ⏸️ parked |
-| A1-23 | P3 | park | Coverage gaps (11 grouped dark zones) — one full-turn test kills est. 100+ survivors | ⏸️ parked |
+| A1-21 | P3 | park | Combat-reset four-field list duplicated across 3 engine sites + 1 test | ✅ resolved *(v2.1.49 clear)* |
+| A1-22 | P3 | park | Empty-mana-pool literal ×3 + color-list inlined ×5 + draft.js dup COLORS | ✅ resolved *(v2.1.49 clear)* |
+| A1-23 | P3 | park | Coverage gaps (11 grouped dark zones) — one full-turn test kills est. 100+ survivors | ✅ resolved *(v2.1.49 clear)* |
 
 ## Chunk 2 — Combat (engine.js damage core, declaration legality, keyword gates, combat-state lifecycle)
 
@@ -49,16 +49,16 @@ _"Resolved" includes ship/comment/docs fixes and design rulings (some "resolved"
 | A2-3 | P2 | stage | Ghost attacker via bounce + re-cast (cast arrivals don't re-mint iids) | ✅ resolved |
 | A2-4 | P2 | stage | declareAttackers legality accepts duplicate iids — one creature attacks N times | ✅ resolved |
 | A2-5 | P2 | stage | change_control never removes creature from combat — stolen attacker damages its OWN new controller | ✅ resolved |
-| A2-6 | P2 | park (test addition) | Combat coverage darkness — 200/303 mutants survive; the C1/C2 spec the Godot port harmonizes to | ⏸️ parked |
+| A2-6 | P2 | park (test addition) | Combat coverage darkness — 200/303 mutants survive; the C1/C2 spec the Godot port harmonizes to | ✅ resolved *(v2.1.49 clear)* |
 | A2-7 | P3 | stage (genuine canon fork) | Deathtouch lethal-threshold carves out indestructible blockers (code vs canon fork) | ✅ resolved |
 | A2-8 | P3 | stage (behavioral one-liner) | Combat lifelink life_changed emit omits source_iid | ✅ resolved |
-| A2-9 | P3 | park (chunk-4 structural overlap) | Lord-buff predicate duplicated in two divergent loops (stat loop missing Creature gate) | ⏸️ parked |
+| A2-9 | P3 | park (chunk-4 structural overlap) | Lord-buff predicate duplicated in two divergent loops (stat loop missing Creature gate) | ✅ resolved *(v2.1.49 clear)* |
 | A2-10 | P3 | ship (comment-only) | dealtDeathtouch is an inverted name (marks the VICTIM, not the dealer) | ✅ resolved |
 | A2-11 | P3 | ship (docs-only) | Rulebook §800/§802 carry false implementation-status claims (declaration-order + menace-fallback + stale cites) | ✅ resolved |
 | A2-12 | P3 | ship (docs-only) | §1100 status line 'zero-toughness check: implemented' false for indestructibles | ✅ resolved |
-| A2-13 | P3 | park (test addition) | Summoning sickness fenced by ONE accidental choreography-coupled assertion | ⏸️ parked |
-| A2-14 | P3 | park | test_ui_targeting pins block legality by source-text regex (brittle, zero behavioral protection) | ⏸️ parked |
-| A2-15 | P3 | park (test addition) | Menace enforcement has zero regression coverage at a documented-recurrence site | ⏸️ parked |
+| A2-13 | P3 | park (test addition) | Summoning sickness fenced by ONE accidental choreography-coupled assertion | ✅ resolved *(v2.1.49 clear)* |
+| A2-14 | P3 | park | test_ui_targeting pins block legality by source-text regex (brittle, zero behavioral protection) | ✅ resolved *(v2.1.49 clear)* |
+| A2-15 | P3 | park (test addition) | Menace enforcement has zero regression coverage at a documented-recurrence site | ✅ resolved *(v2.1.49 clear)* |
 
 ## Chunk 3
 
@@ -72,7 +72,7 @@ _"Resolved" includes ship/comment/docs fixes and design rulings (some "resolved"
 | A3-6 | P2 | stage | card_moves overpromise | ✅ resolved |
 | A3-7 | P2 | stage | Dead twin | ✅ resolved |
 | A3-8 | P2 | ship | PROTOCOL3.3 wire | ✅ resolved |
-| A3-9 | P2 | park | Coverage cluster | ⏸️ parked |
+| A3-9 | P2 | park | Coverage cluster | ✅ resolved *(v2.1.49 clear)* |
 | A3-10 | P3 | stage | Double-gated | ✅ resolved |
 | A3-11 | P3 | stage | omit source_iid | ✅ resolved |
 | A3-12 | P3 | stage | Fizzle silent | ✅ resolved |
@@ -102,13 +102,13 @@ _"Resolved" includes ship/comment/docs fixes and design rulings (some "resolved"
 | A4-15 | P2 | stage | steal writes the human's persisted run state for any controller — opp-cast steal corrupts the save | ✅ resolved |
 | A4-16 | P2 | stage (behavior change per Elystra text) | move_card battlefield-leave never flushes Elystra's permanent_eot buffs (dead keep_buffs param) | ✅ resolved |
 | A4-17 | P2 | stage (rides A3-5/A1-6) | Missing target/params = uncaught TypeError mid-mutation or NaN damage immunity; EFFECT_SCHEMA gaps | ✅ resolved |
-| A4-18 | P2 | park | Effects/targeting coverage darkness decomposed + test-quality cluster (grouped) | ⏸️ parked |
+| A4-18 | P2 | park | Effects/targeting coverage darkness decomposed + test-quality cluster (grouped) | ✅ resolved *(v2.1.49 clear)* |
 | A4-19 | P3 | stage | Countered spell routed to controller's graveyard not owner's (engine's lone owner-routing violation) | ✅ resolved |
 | A4-20 | P3 | stage | fetchLibraryToBattlefield bypasses arrival discipline (no iid mint, no sickness) | ✅ resolved |
 | A4-21 | P3 | stage (rides A3-5) | move_card schema validates pairs but dispatch needs triples; discard arm ignores selector | ✅ resolved |
 | A4-22 | P3 | stage | Reanimation leaves killedBy stale (hand-rolled partial reset missed it) | ✅ resolved |
-| A4-23 | P3 | park | Mid-resolution prompts: trailing effects run before human's pick; two prompts blind-overwrite | ⏸️ parked |
-| A4-24 | P3 | park | Hexproof checkpoint is one layer but three pasted gates with guard drift; 2/3 copies mutation-dark | ⏸️ parked |
+| A4-23 | P3 | park | Mid-resolution prompts: trailing effects run before human's pick; two prompts blind-overwrite | ✅ resolved *(v2.1.49 clear)* |
+| A4-24 | P3 | park | Hexproof checkpoint is one layer but three pasted gates with guard drift; 2/3 copies mutation-dark | ✅ resolved *(v2.1.49 clear)* |
 | A4-25 | P3 | ship (comment/docs) + trivia riders | Comment/trivia hygiene sweep — dead LKI locals, retired-kind comments, dev-speak log strings | ✅ resolved |
 
 ## chunk-05-synthesis (Synthesis / staple — apply_in_game_splice, charge accounting, the Stapler boon, clone/splice rewards, staple canon)
@@ -129,7 +129,7 @@ _"Resolved" includes ship/comment/docs fixes and design rulings (some "resolved"
 | A5-12 | P3 | ship | staple-synthesis.md inverted base/staple sentence + stale 'parked in BACKLOG' claim + matching stale code tag | ✅ resolved |
 | A5-13 | P3 | ship | Stapler oracle text 'Choose two target permanents' vs actual permanent_or_spell targeting (card-text edit, rules-inert) | ✅ resolved |
 | A5-14 | P3 | park | Land+Land merge doesn't union land subtypes (latent — no subtype-matters cards) | ⏸️ parked |
-| A5-15 | P3 | park | Charge-rip purges zones by tplId on both sides with no leave-play discipline (latent footgun template) | ⏸️ parked |
+| A5-15 | P3 | park | Charge-rip purges zones by tplId on both sides with no leave-play discipline (latent footgun template) | ✅ resolved *(v2.1.49 clear)* |
 
 ## Chunk 6 - Stickers (stickers.js)
 
@@ -137,11 +137,11 @@ _"Resolved" includes ship/comment/docs fixes and design rulings (some "resolved"
 |----|-----|-------|-------|--------|
 | A6-1 | P2 | stage | Random-reward eligibility comment understates kind pool | ✅ resolved |
 | A6-2 | P3 | stage | Empower fallback roll non-persistent; re-rolls on staple path | ✅ resolved *(closed in chunk-5 recovery)* |
-| A6-3 | P3 | park | Inline set_color/set_types accumulate duplicate persisted entries | ⏸️ parked |
+| A6-3 | P3 | park | Inline set_color/set_types accumulate duplicate persisted entries | ✅ resolved *(v2.1.49 clear)* |
 | A6-4 | P3 | ship | Dispatch-test header over-claims kind coverage (docs-only) | ✅ resolved |
-| A6-5 | P3 | park | grant_activated_ability dedup branch (absent ability_id) untested | ⏸️ parked |
-| A6-6 | P3 | park | applyStickerKindEffect violates file's own deep-copy discipline (latent) | ⏸️ parked |
-| A6-7 | P3 | park | Multi-sticker cost resolution is apply-order dependent | ⏸️ parked |
+| A6-5 | P3 | park | grant_activated_ability dedup branch (absent ability_id) untested | ✅ resolved *(v2.1.49 clear)* |
+| A6-6 | P3 | park | applyStickerKindEffect violates file's own deep-copy discipline (latent) | ✅ resolved *(v2.1.49 clear)* |
+| A6-7 | P3 | park | Multi-sticker cost resolution is apply-order dependent | ✅ resolved *(v2.1.49 clear)* |
 
 ## chunk-07-ai
 
@@ -161,7 +161,7 @@ _"Resolved" includes ship/comment/docs fixes and design rulings (some "resolved"
 | A8-1 | P3 | ship | rollPack policy comment describes retired slot-3 bias; no slot-index logic in code | ✅ resolved |
 | A8-2 | P3 | ship | Canon 1400 stale 3 ways (Desert Cube absent, 1404 omits boss, 1405 auto-allocate) | ✅ resolved |
 | A8-3 | P4 | ship | countPips comment claims classic ignores lands; 5 artifact lands contribute pips | ✅ resolved |
-| A8-4 | P4 | park | buildOpponentDeck oppColors UI-dead output + two-shape contract trap | ⏸️ parked |
+| A8-4 | P4 | park | buildOpponentDeck oppColors UI-dead output + two-shape contract trap | ✅ resolved *(v2.1.49 clear)* |
 | A8-5 | P3 | stage | Opp staple budget ~4/10 land-consuming, ~1/7 basic-fusing - texture or leak? | ✅ resolved |
 | A8-6 | P4 | ship | Trivia bundle x4: consume_spirit, rollTransformPack doc, stale unused, dangling fragment | ✅ resolved |
 
@@ -177,8 +177,8 @@ _"Resolved" includes ship/comment/docs fixes and design rulings (some "resolved"
 | A9-5 | P4 | ship | picklog gamesPlayed double-counts on crash-restore; counts at start not completion | ✅ resolved |
 | A9-6 | P3 | ship | RUN.start() comment cluster: phantom Watcher's Gift, retired triggerPool, contradictory apply() contracts, double-pasted header | ✅ resolved |
 | A9-7 | P3 | ship | Canon §1500 gaps: endless sectors undocumented; §1502 omits 15% constructed mid-nodes; §1505 phantom Watcher's Gift; §1504 TwoStickers wording | ✅ resolved |
-| A9-8 | P3 | park | pickRewardCandidate guard asymmetry (sticker/ripUp skip bounds re-check + non-stackable dedup); unreachable today | ⏸️ parked |
-| A9-9 | P3 | park | TPLID_RENAMES keys must never be reused as live card ids (picklog re-applies renames every load) | ⏸️ parked |
+| A9-8 | P3 | park | pickRewardCandidate guard asymmetry (sticker/ripUp skip bounds re-check + non-stackable dedup); unreachable today | ✅ resolved *(v2.1.49 clear)* |
+| A9-9 | P3 | park | TPLID_RENAMES keys must never be reused as live card ids (picklog re-applies renames every load) | ✅ resolved *(v2.1.49 clear)* |
 
 ## chunk-10 (card-text.js — describeCardText/describeAbility/describeEffect, triggerLogText, idiom registry, coverage report)
 
