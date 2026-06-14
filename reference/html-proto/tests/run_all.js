@@ -195,6 +195,15 @@ const CATEGORY_A = [
   // creature deal damage twice, and a creature gaining first strike between
   // passes still deals its single snapshot-assigned pass-2 hit.
   'test_combat_first_strike_snapshot.js',
+  // Audit A2-6 — residual combat coverage: vigilance no-tap on declaration +
+  // multi-block damage (all-die exchange + kill-value ordering characterization).
+  'test_combat_keyword_gates.js',
+  // Audit A2-13 — summoning sickness gate (canCreatureAttack + declareAttackers
+  // legality), replacing the lone accidental choreography-coupled fence.
+  'test_combat_summoning_sick.js',
+  // Audit A2-15 — menace lone-block rejection (2+ blockers required); fences the
+  // documented Object.entries string-key regression.
+  'test_combat_menace.js',
   // Audit A1-9 — DRAW-step log truthfulness: "X draws." only logs when a
   // card actually moved (no phantom-draw line on deck-out / Phylactery rip).
   'test_draw_log_truthfulness.js',

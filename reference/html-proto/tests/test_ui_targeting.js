@@ -87,8 +87,21 @@ console.log('\n=== an untargeted spell still casts immediately (no false targeti
 
 console.log('\n=== blocker UI delegates attacker-specific legality to the engine ===');
 (() => {
-  check('controller uses ENGINE.canCreatureBlock(blocker, attacker) when assigning blocks',
-    /ENGINE\.canCreatureBlock\(blkCard,\s*card\)/.test(SRC));
+  // A2-14: behavioral replacement for the former source-text regex. The old check
+  // matched variable names (blkCard, card) in controller source — zero behavioral
+  // protection (stayed green if the flying gate were deleted) and false-red on a
+  // rename. Assert the actual gate in ENGINE.canCreatureBlock instead.
+  const flier  = { iid: 7001, types: ['Creature'], keywords: ['flying'] };
+  const ground = { iid: 7002, types: ['Creature'], keywords: [] };
+  const reach  = { iid: 7003, types: ['Creature'], keywords: ['reach'] };
+  check('a ground creature cannot block a flier (engine gate)',
+    ENGINE.canCreatureBlock(ground, flier) === false);
+  check('a reach creature can block a flier',
+    ENGINE.canCreatureBlock(reach, flier) === true);
+  check('a ground creature can block a ground attacker (no over-rejection)',
+    ENGINE.canCreatureBlock(ground, ground) === true);
+  // KEEP the delegation/architecture pin: the controller click path must NOT
+  // re-implement flying/reach logic (a behavioral test can't observe this).
   check('controller does not duplicate flying/reach blocking logic in the click path',
     !/card\.keywords\.includes\('flying'\)[\s\S]{0,160}blkCard\.keywords\.includes\('reach'\)/.test(SRC));
 })();
