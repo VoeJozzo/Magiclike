@@ -3110,6 +3110,28 @@ const EFFECTS = {
       return;
     }
     const { baseR, stapleR, baseCard, stapleCard } = pair;
+    // A5-2 (Joe ruled FIZZLE, PR #98): stapling a just-cast SPELL onto a
+    // non-creature battlefield PERMANENT is illegal — the spell fizzles.
+    // canonicalSplicePair ranks by template TYPE with no zone awareness, so a
+    // creature spell (type Creature, rank 0) wrongly outranks a battlefield Land
+    // (rank 2) and becomes the base — routing into the S+S path below, where the
+    // spell "fast-resolved" (mana gone, never hit a zone) AND the manual
+    // slot-shift over-deleted an unrelated run slot (saved-to-disk data loss).
+    // Instead the spell is countered (stack -> owner's graveyard) exactly like
+    // EFFECTS.counter, before any charge accounting (a fizzle costs no charge).
+    // Narrow: spell-onto-CREATURE keeps the creature as base (perm path) — only
+    // a spell-AS-base over a permanent is rejected here.
+    if (baseR.kind === 'spell' && stapleR.kind === 'perm') {
+      const item = baseR.stackItem;
+      const sIdx = item ? G.stack.indexOf(item) : -1;
+      if (sIdx >= 0) {
+        const removed = G.stack.splice(sIdx, 1)[0];
+        G[removed.card.owner || removed.controller].graveyard.push(removed.card);
+        emitZoneChange(removed.card, removed.controller, 'stack', 'graveyard', undefined, ctx.sourceIid);
+      }
+      log(`${ctx.sourceName} can't staple ${baseCard.name} onto ${stapleCard.name} — the spell fizzles.`, 'sp');
+      return;
+    }
     // Fire stack inputs' effects with their locked-in targets, then consume them
     // (no graveyard — Stapler absorbed them).
     const fireStackEffects = (r) => {
@@ -3303,11 +3325,15 @@ const EFFECTS = {
         RUN.removeSlotByIdx(removedIdx);
         fixupSlotIdxAfter(removedIdx);
       }
-      if (stapleCard.owner === 'you' && typeof stapleCard.slotIdx === 'number'
+      if (stapleR.kind === 'spell' && stapleCard.owner === 'you' && typeof stapleCard.slotIdx === 'number'
           && typeof RUN !== 'undefined' && RUN.removeSlotByIdx) {
-        // stapleCard is a stack item, not in any zone — fixupSlotIdxAfter
-        // (which walks zones) didn't update it. Apply the manual shift if
-        // base's removal was at a lower index.
+        // A5-2 zone guard: only a genuine STACK-ITEM staple gets the manual
+        // shift. A stack item isn't in any zone, so fixupSlotIdxAfter (which
+        // walks zones) didn't update it — hence the manual shift. A
+        // battlefield-permanent staple is already shifted by the zone walk;
+        // shifting it again over-deleted an unrelated run slot (the original
+        // A5-2 data loss — now also fenced by the fizzle guard above, this keeps
+        // the invariant explicit so no future path can reach the double-shift).
         let stIdx = stapleCard.slotIdx;
         if (baseCard.owner === 'you' && typeof baseCard.slotIdx === 'number' && baseCard.slotIdx < stapleCard.slotIdx) {
           stIdx -= 1;

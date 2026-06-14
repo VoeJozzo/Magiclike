@@ -348,6 +348,9 @@ const CATEGORY_A = [
   // A5-1/A5-3 — side-aware combat-state transfer: a spliced opp attacker no
   // longer attacks you; an absorbed blocker's attacker stays blocked (tombstone).
   'test_a5_1_splice_combat_side.js',
+  // A5-2 — a spell stapled onto a non-creature battlefield permanent fizzles
+  // (countered to graveyard) instead of fast-resolving + deleting a run slot.
+  'test_a5_2_spell_perm_fizzle.js',
 ];
 
 const TESTS_DIR = __dirname;
