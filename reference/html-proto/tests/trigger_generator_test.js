@@ -108,35 +108,46 @@ console.log('\n=== three-step build flow output shape (200 rolls) ===');
     'missing=' + missingGuard);
 }
 
-console.log('\n=== Hard-break filter: needsLiveSource never pairs with !sourceLive ===');
+console.log('\n=== Hard-break filter: needsLiveSource never pairs with !sourceLive (A3-9 #1, literal pins) ===');
 {
-  // Pull dead-source conditions and live-source effects, then verify the
-  // build flow never produces a bad pairing across many rolls. Detect by
-  // looking at (condId, effect.kind) tuples — any live-source effect kind
-  // appearing with a dead-source condId is a regression.
-  const deadCondIds = new Set(GENERATOR_CONDITIONS.filter(c => !c.sourceLive).map(c => c.id));
-  // Build a "kind -> needsLiveSource?" map. Multiple effects share a kind
-  // but with consistent flags within this generator.
-  const liveKinds = new Set();
-  for (const eff of GENERATOR_EFFECTS) {
-    if (!eff.needsLiveSource) continue;
-    const rolled = eff.roll();
-    if (rolled[0] && rolled[0].kind) liveKinds.add(rolled[0].kind);
-  }
-  let violations = 0;
-  for (let i = 0; i < 500; i++) {
-    const t = rollAssembled();
-    if (deadCondIds.has(triggerArchetype(t)) && t.effects[0] && liveKinds.has(t.effects[0].kind)) {
-      // The same kind COULD appear from a different effect that's not
-      // needsLiveSource — so we need to double-check by looking at the
-      // effect target. needsLiveSource effects typically target 'self'.
-      if (t.effects[0].scope === 'self') {
-        violations++;
-      }
+  // GREEN-THEATER FIX (audit A3-9 #1): the previous version derived BOTH the
+  // "dead conditions" set AND the "live-source kinds" set from the very flags it
+  // was testing, so a needsLiveSource true->false flip (the dangerous direction —
+  // it would let the generator roll a self-targeting buff under a dead-source
+  // condition where ~ no longer exists) moved spec and assertion together and
+  // stayed green. Pin against HARDCODED literal flag sets so a flip goes RED.
+  const liveEffectIds = GENERATOR_EFFECTS.filter(e => e.needsLiveSource).map(e => e.id).sort();
+  check('live-source effects are EXACTLY {addCounterSelf, pumpSelf}',
+    JSON.stringify(liveEffectIds) === JSON.stringify(['addCounterSelf', 'pumpSelf']),
+    JSON.stringify(liveEffectIds));
+  const deadCondIds = GENERATOR_CONDITIONS.filter(c => !c.sourceLive).map(c => c.id).sort();
+  check('dead-source conditions are EXACTLY {anyCardDies, thisDies}',
+    JSON.stringify(deadCondIds) === JSON.stringify(['anyCardDies', 'thisDies']),
+    JSON.stringify(deadCondIds));
+
+  // Behavioral pin: a dead-source condition is NEVER offered a live-source effect
+  // (the hard-break guard in generateEffectOptions). Hardcode the dead cond so
+  // the assertion doesn't ride the flag under test.
+  const DEAD = { id: 'literalDead', sourceLive: false, event: 'card_zone_change',
+                 condition: ['this_card', 'card_moves(battlefield, graveyard)'], text: 'x' };
+  let leaked = 0;
+  for (let i = 0; i < 80; i++) {
+    for (const opt of generateEffectOptions(DEAD)) {
+      if (opt.effId === 'pumpSelf' || opt.effId === 'addCounterSelf') leaked++;
     }
   }
-  check('no live-source-self effect appears under a dead-source condition (500 rolls)',
-    violations === 0, 'violations=' + violations);
+  check('a dead-source cond is NEVER offered pumpSelf/addCounterSelf (80 rolls)', leaked === 0, 'leaked=' + leaked);
+
+  // Control: a LIVE-source cond CAN be offered them — proves the gate is real,
+  // not a blanket exclude that would pass even if live effects were deleted.
+  const LIVE = { id: 'literalLive', sourceLive: true, event: 'attacks', condition: ['this_card'], text: 'x' };
+  let liveSeen = 0;
+  for (let i = 0; i < 200; i++) {
+    for (const opt of generateEffectOptions(LIVE)) {
+      if (opt.effId === 'pumpSelf' || opt.effId === 'addCounterSelf') liveSeen++;
+    }
+  }
+  check('a live-source cond CAN be offered a live-source effect (gate is real)', liveSeen > 0, 'seen=' + liveSeen);
 }
 
 console.log('\n=== Two-step build flow: condition options ===');

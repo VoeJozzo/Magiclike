@@ -387,6 +387,9 @@ const CATEGORY_A = [
   // A4-18 (re-scoped remainder) — grant_cast_permission dedup (was 100% mutation-
   // dark) + grant_keyword scope arms.
   'test_a4_18_effect_coverage.js',
+  // A3-9 (re-scoped remainder) — pickBestTriggerTarget auto-pick heuristic
+  // (controller-comparison branches), signed gain_life, the #10c damageFace rider.
+  'test_trigger_orchestration.js',
 ];
 
 const TESTS_DIR = __dirname;
