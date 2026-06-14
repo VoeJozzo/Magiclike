@@ -1264,8 +1264,12 @@ function getStats(card) {
   if (Array.isArray(card.modifiers)) {
     for (const m of card.modifiers) { p += (m.power||0); t += (m.toughness||0); }
   } else if (Array.isArray(card.stickers)) {
+    // Synthetic template+stickers shapes (reward UI) with no modifiers[]. Resolve
+    // each sticker — resolveSticker handles BOTH registry ids and inline
+    // {kind:'stat_boost'} descriptors (Elystra's banked buffs since A5-6/A5-7);
+    // a bare STICKERS[sId] lookup would miss the inline objects.
     for (const sId of card.stickers) {
-      const s = STICKERS[sId];
+      const s = resolveSticker(sId);
       if (s && s.kind === 'stat_boost') {
         p += (s.power || 0); t += (s.toughness || 0);
       }
@@ -3280,9 +3284,13 @@ const EFFECTS = {
       const blockSide = opp(G.activePlayer);
       // Snapshot the staple's roles BEFORE the funnel clears them.
       const stapleWasAttacking = Array.isArray(G.attackers) && G.attackers.includes(stapleCard.iid);
-      let stapleBlockedAtk = null;
-      if (G.blockers && typeof G.blockers.get === 'function' && G.blockers.has(stapleCard.iid)) {
-        stapleBlockedAtk = G.blockers.get(stapleCard.iid);
+      let stapleBlockedAtk = null;            // attacker the staple was blocking (staple = Map key)
+      const blockersOfStaple = [];            // blockers assigned to the staple AS attacker (staple = Map value)
+      if (G.blockers && typeof G.blockers.forEach === 'function') {
+        for (const [bIid, aIid] of G.blockers.entries()) {
+          if (bIid === stapleCard.iid) stapleBlockedAtk = aIid;
+          else if (aIid === stapleCard.iid) blockersOfStaple.push(bIid);
+        }
       }
       removeFromCombat(stapleCard.iid);
       // Read the base's roles AFTER both funnels (the cross-owner move above
@@ -3294,6 +3302,15 @@ const EFFECTS = {
       // attacking side and the base isn't already attacking.
       if (stapleWasAttacking && resultOwner === attackSide && !baseAttacking) {
         if (Array.isArray(G.attackers) && !G.attackers.includes(preservedIid)) G.attackers.push(preservedIid);
+        // The merged base inherits the attack role, so the staple's blockers must
+        // re-point at it — otherwise the merged attacker reads as UNblocked and
+        // hits face (the funnel bare-deletes value-side block entries; A5-1
+        // review). Only live blockers carry over.
+        for (const bIid of blockersOfStaple) {
+          if (G.blockers && typeof G.blockers.set === 'function' && findCard(bIid)) {
+            G.blockers.set(bIid, preservedIid);
+          }
+        }
       }
       // Inherit the staple's BLOCK assignment only if the merged creature is on
       // the blocking side, the base isn't already blocking, and the blocked
@@ -3301,6 +3318,9 @@ const EFFECTS = {
       if (stapleBlockedAtk != null && resultOwner === blockSide && !baseBlocking
           && Array.isArray(G.attackers) && G.attackers.includes(stapleBlockedAtk)) {
         G.blockers.set(preservedIid, stapleBlockedAtk);
+        // The base now blocks that attacker, so the funnel's 'gone:'+staple
+        // tombstone for the same attacker is redundant — drop it (A5-3 review).
+        G.blockers.delete('gone:' + stapleCard.iid);
       }
     } else {
       // ─── SPELL-BASE PATH (S+S) ─────────────────────────────────────
@@ -3378,14 +3398,20 @@ const EFFECTS = {
         }
         if (stSlot.charges <= 0) {
           log(`${ctx.sourceName} is out of charges — ripped from the run.`, 'sp');
+          // Remove only THIS Stapler's instance (the slot being ripped), NOT
+          // every card sharing its tplId. A5-5 lets a cloned Stapler coexist on
+          // its own slot with independent charges; a bare tplId purge here would
+          // also delete the still-charged clone's in-play card (A5-5 review).
           const stTplId = stapler.tplId;
+          const ripSlotIdx = stapler.slotIdx;
+          const keep = c => !(c.tplId === stTplId && c.slotIdx === ripSlotIdx);
           for (const side of ['you', 'opp']) {
             const p = G[side];
-            p.battlefield = p.battlefield.filter(c => c.tplId !== stTplId);
-            p.hand = p.hand.filter(c => c.tplId !== stTplId);
-            p.library = p.library.filter(c => c.tplId !== stTplId);
-            p.graveyard = p.graveyard.filter(c => c.tplId !== stTplId);
-            p.exile = p.exile.filter(c => c.tplId !== stTplId);
+            p.battlefield = p.battlefield.filter(keep);
+            p.hand = p.hand.filter(keep);
+            p.library = p.library.filter(keep);
+            p.graveyard = p.graveyard.filter(keep);
+            p.exile = p.exile.filter(keep);
           }
           if (RUN.removeSlotByIdx) {
             const ripIdx = stapler.slotIdx;
@@ -5484,7 +5510,7 @@ function flushPermanentEotToStickers(card) {
     if (!Array.isArray(card.modifiers)) card.modifiers = [];
     card.modifiers.push({ power: dP, toughness: dT });   // keep the buff this game
     if (!Array.isArray(card.stickers)) card.stickers = [];
-    card.stickers.push(sticker);                         // gold badge shows now
+    card.stickers.push(sticker);                         // recorded on the card (P/T box reflects it)
     card.tempPower = 0; card.tempTou = 0;                // consumed
   }
   // EOT keyword grants → kw_<keyword> registry stickers. intrinsicKeywords reads

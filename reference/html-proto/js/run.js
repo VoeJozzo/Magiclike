@@ -367,8 +367,29 @@ function load() {
     let stalePruned = 0;
     let rollsBackfilled = 0;
     let subtypeMigrated = 0;
+    let permaBuffsMigrated = 0;
     if (Array.isArray(runState.slots)) {
       for (const slot of runState.slots) {
+        // A5-6/A5-7: convert a legacy slot.permaBuffs object (Elystra's banked
+        // power/toughness/keywords from before the sticker refactor) into the
+        // stat_boost / kw_* stickers that now carry it — so an in-flight save
+        // spanning the upgrade doesn't silently drop the accumulated buffs.
+        if (slot.permaBuffs && typeof slot.permaBuffs === 'object') {
+          if (!Array.isArray(slot.stickers)) slot.stickers = [];
+          const pb = slot.permaBuffs;
+          if ((pb.power || 0) !== 0 || (pb.toughness || 0) !== 0) {
+            slot.stickers.push({ kind: 'stat_boost', power: pb.power || 0, toughness: pb.toughness || 0 });
+          }
+          if (Array.isArray(pb.keywords)) {
+            for (const kw of pb.keywords) {
+              const id = 'kw_' + kw;
+              if (STICKERS[id] && !slot.stickers.includes(id)) slot.stickers.push(id);
+            }
+          }
+          delete slot.permaBuffs;
+          permaBuffsMigrated++;
+          dirty = true;
+        }
         if (!Array.isArray(slot.stickers)) continue;
         if (!Array.isArray(slot.subtypeRolls)) slot.subtypeRolls = [];
         slot.stickers = slot.stickers.map(id => {
@@ -409,6 +430,9 @@ function load() {
       }
       if (subtypeMigrated > 0) {
         console.log(`Migrated ${subtypeMigrated} legacy subtype sticker(s) to unified format.`);
+      }
+      if (permaBuffsMigrated > 0) {
+        console.log(`Migrated ${permaBuffsMigrated} legacy permaBuffs slot(s) to stat_boost/kw stickers.`);
       }
       if (stalePruned > 0 || rollsBackfilled > 0 || subtypeMigrated > 0) dirty = true;
     }

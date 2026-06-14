@@ -125,7 +125,13 @@ function applyStickersToCard(card) {
                                               card.stapledFrom.stapledTpls)
           : CARDS[card.tplId];
         roll = (tpl ? rollEmpowerTarget(tpl) : null) || null;
-        rolls[empowerCursor] = roll;   // PERSIST so it stays fixed (incl. a null blank)
+        // Record the result on this card so a stored null reads as "blank" rather
+        // than "never rolled". NOTE: card.empowerRolls is a .slice() copy of the
+        // slot (makeCard), so this stabilizes only THIS in-memory card — the
+        // DURABLE per-slot persistence for the legacy/undefined case is the
+        // slot-side backfill in run.js (loaded player slots arrive pre-filled,
+        // null included, so this branch is reached only for transient/opp cards).
+        rolls[empowerCursor] = roll;
       }
       empowerCursor++;
       if (roll) applyEmpowerRoll(card, roll, s.amount || 1);

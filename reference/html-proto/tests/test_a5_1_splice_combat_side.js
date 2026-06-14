@@ -147,6 +147,52 @@ console.log('\n=== A5-3: merging one of your blockers onto another keeps BOTH at
     G.you.life === youLife0, 'life ' + youLife0 + ' -> ' + G.you.life);
 }
 
+console.log('\n=== A5-1: splicing your BLOCKED attacker onto a non-attacker keeps it BLOCKED ===');
+{
+  // Review regression: when the staple is a blocked attacker and the base
+  // inherits the attack role, the staple's blockers must re-point at the base —
+  // otherwise the merged attacker reads unblocked and hits face.
+  const G = newGame();
+  const B = mk(baseTpl, 'you');   B.power = 2; B.toughness = 2;            // your non-attacking base
+  const S = mk(stapleTpl, 'you'); S.power = 3; S.toughness = 3;            // your attacker (blocked)
+  G.you.battlefield.push(B, S);
+  const D = mk(VANILLA, 'opp');   D.power = 0; D.toughness = 4;            // opp blocker on S
+  G.opp.battlefield.push(D);
+  const oppLife0 = G.opp.life;
+  poseCombat(G, 'you', [S.iid], [[D.iid, S.iid]]);                        // your combat, D blocks S
+
+  splice('you', B.iid, S.iid);    // staple your blocked attacker onto your base
+  check('merged base inherited the attack role', G.attackers.includes(B.iid), 'attackers=' + JSON.stringify(G.attackers));
+  check('A5-1: the blocker re-points at the merged base (still blocked)',
+    G.blockers.get(D.iid) === B.iid, 'blockers=' + JSON.stringify([...G.blockers.entries()]));
+  check('S consumed', gone(G, S.iid));
+
+  resolveToMain2(G);
+  check('A5-1: opp took NO face damage (merged attacker stayed blocked)',
+    G.opp.life === oppLife0, 'life ' + oppLife0 + ' -> ' + G.opp.life);
+}
+
+console.log('\n=== A5-3: inheriting a block onto an idle base leaves NO stale tombstone ===');
+{
+  const G = newGame();
+  const bA = mk(baseTpl, 'you');   bA.power = 0; bA.toughness = 3;        // base, NOT blocking
+  const bB = mk(stapleTpl, 'you'); bB.power = 0; bB.toughness = 3;        // staple, blocking atk1
+  G.you.battlefield.push(bA, bB);
+  const atk1 = mk(VANILLA, 'opp'); atk1.power = 2; atk1.toughness = 2;
+  G.opp.battlefield.push(atk1);
+  const youLife0 = G.you.life;
+  poseCombat(G, 'opp', [atk1.iid], [[bB.iid, atk1.iid]]);                 // opp combat, bB blocks atk1
+
+  splice('you', bA.iid, bB.iid);  // base inherits bB's block
+  check('base inherited the block (bA blocks atk1)', G.blockers.get(bA.iid) === atk1.iid,
+    'blockers=' + JSON.stringify([...G.blockers.entries()]));
+  check('no stale gone:bB tombstone left behind', !G.blockers.has('gone:' + bB.iid),
+    'blockers=' + JSON.stringify([...G.blockers.entries()]));
+
+  resolveToMain2(G);
+  check('atk1 stayed blocked — no face damage', G.you.life === youLife0, 'life ' + youLife0 + ' -> ' + G.you.life);
+}
+
 }
 
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');
