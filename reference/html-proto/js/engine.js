@@ -237,16 +237,20 @@ function writeMergedSpliceToSlot(slot, merged) {
 // ability as the single source of truth. Top-level (not IIFE-internal) so the
 // module-level splice helpers and stickers.js can share them.
 //
-// A7-1: a mana ability is auto-payable ONLY if its cost is trivial — {T} and/or
-// mana, nothing else. Any extra cost (sacrifice, remove_counters, a future
-// field) would have to be SILENTLY auto-paid by the tap-for-mana fast lane, so
-// it's excluded from every automatic mana path (enumeration, legality,
-// doTapLandForMana, the solver) per Joe's guard: the autotapper must never
-// sacrifice / pay-down without an explicit player choice. Trivial-cost mana
-// abilities still auto-pay.
+// A7-1 (+ filter-land follow-up): a mana ability is auto-payable ONLY if its
+// cost is {T} (or nothing) — nothing else. The auto-payer (doTapLandForMana)
+// pays only the tap; it cannot pay a sacrifice / remove_counters cost NOR a
+// mana cost (a filter-land "{T}, {1}: add {W}{U}" would otherwise be tapped
+// with its {1} never paid — free fixing) NOR the solver model it without the
+// input. So ANY such ability is excluded from every automatic mana path
+// (enumeration, legality, doTapLandForMana, the solver) and boot-flagged as
+// unsupported, per Joe's guard: the autotapper must never silently pay a cost
+// the player didn't choose. (Enabling real filter mana — paying the {1} to net
+// the fixing through the solver — is a separate feature to build before any
+// such card ships.)
 function manaAbilityCostIsTrivial(ab) {
   if (!ab || !ab.cost) return true;
-  for (const k of Object.keys(ab.cost)) { if (k !== 'tap' && k !== 'mana') return false; }
+  for (const k of Object.keys(ab.cost)) { if (k !== 'tap') return false; }
   return true;
 }
 // True iff `ab` is an add_mana ability the auto-payer / tap lane may use.
@@ -3724,15 +3728,16 @@ function validateAllCardEffects(cards) {
         schemaErrors.push(cardId + ': ability stackable must be a boolean (got '
           + (typeof ab.stackable) + ')');
       }
-      // A7-1: a mana ability whose cost includes ANYTHING beyond {T}/mana is
+      // A7-1: a mana ability whose cost includes ANYTHING beyond {T} is
       // unsupported until an explicit-cost mana pipeline exists — the auto-payer
-      // can only pay {T}/mana, so an extra cost (sacrifice, remove_counters, ...)
-      // would be silently dodged. Flag the shape loudly at boot.
+      // pays only the tap, so an extra cost (sacrifice, remove_counters, OR a
+      // mana cost / filter-land) would be silently dodged. Flag it loudly at boot.
       if (ab && ab.effects && ab.effects[0] && ab.effects[0].kind === 'add_mana'
-          && ab.cost && Object.keys(ab.cost).some(k => k !== 'tap' && k !== 'mana')) {
-        schemaErrors.push(cardId + ': mana ability has a non-tap/mana cost ('
-          + Object.keys(ab.cost).filter(k => k !== 'tap' && k !== 'mana').join(',')
-          + ') -- extra-cost mana abilities are unsupported (A7-1)');
+          && ab.cost && Object.keys(ab.cost).some(k => k !== 'tap')) {
+        schemaErrors.push(cardId + ': mana ability has a non-tap cost ('
+          + Object.keys(ab.cost).filter(k => k !== 'tap').join(',')
+          + ') -- extra-cost mana abilities (sacrifice / mana / filter-land) '
+          + 'are unsupported by the auto-payer (A7-1)');
       }
       checkList(ab.effects, cardId,
         !!(ab.target || (Array.isArray(ab.target_slots) && ab.target_slots.length)));

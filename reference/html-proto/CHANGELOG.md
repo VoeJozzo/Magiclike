@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.1.46`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.1.47`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -2179,4 +2179,19 @@ addressed (splice A9-3 gap closed, A7-1 solver leg pinned). Known latent
 follow-up (no pool card, awaiting Joe): {mana}-cost mana abilities (filter-lands)
 are classified auto-payable but doTapLandForMana doesn't actually pay mana costs
 (pre-existing). Suite 114→118 files / 2370→2413 assertions green, lint clean.
+
+v2.1.47: filter-land follow-up to A7-1 (Joe-approved, 2026-06-13). The
+adversarial review flagged that a {mana}-cost mana ability — a filter-land
+"{T}, {1}: add {W}{U}" — was classified auto-payable, but doTapLandForMana pays
+only the tap: it would be tapped with its {1} input never paid (free fixing)
+and the solver counted its output as a free source (pre-existing + latent; no
+pool card has the shape). Closed by treating a {mana} cost as non-trivial,
+exactly like a sacrifice cost: manaAbilityCostIsTrivial now allows ONLY {T}, so
+filter-/extra-cost mana abilities are excluded from every auto path (the mana
+solver + the tap-for-mana lane) and the boot tripwire flags them as unsupported.
+Trivial {T}-only sources are unchanged (0 pool cards affected — suite stayed
+green). Enabling REAL filter mana (paying the {1} to net the fixing through the
+solver) remains a separate feature to build before such a card ships.
+test_a7_extra_cost_mana extended (filter-land boot-flagged + solver-excluded).
+Suite 118 files / 2414 assertions green, lint clean.
 

@@ -60,14 +60,14 @@ console.log('=== A7-1 boot tripwire: extra-cost mana abilities flagged; trivial 
     { tplId: 'okDork', abilities: TRIVIAL_MANA },
     { tplId: 'filterLand', abilities: MANA_ONLY_COST },
   ]));
-  check('{T},sacrifice: add mana flagged', r.schemaErrors.some(e => e.startsWith('sacAltar:') && /non-tap\/mana cost|A7-1/.test(e)), r.schemaErrors.join('; '));
+  check('{T},sacrifice: add mana flagged', r.schemaErrors.some(e => e.startsWith('sacAltar:') && /non-tap cost|A7-1/.test(e)), r.schemaErrors.join('; '));
   check('tapless sacrifice: add mana flagged', r.schemaErrors.some(e => e.startsWith('taplessSacAltar:')));
   check('trivial {T}-only mana dork NOT flagged (the 18 pool dorks)', !r.schemaErrors.some(e => e.startsWith('okDork:')));
-  check('mana-only cost ({1},{T}) NOT flagged (filter-land may auto-pay)', !r.schemaErrors.some(e => e.startsWith('filterLand:')));
+  check('filter-land ({1},{T}: add WU) IS flagged (auto-payer cannot pay the mana cost)', r.schemaErrors.some(e => e.startsWith('filterLand:')));
   // The live pool has no extra-cost mana ability today.
   const live = quiet(() => ENGINE.validateAllCardEffects(CARDS));
-  check('live pool has no extra-cost mana ability', !live.schemaErrors.some(e => /non-tap\/mana cost/.test(e)),
-    live.schemaErrors.filter(e => /non-tap\/mana/.test(e)).join('; '));
+  check('live pool has no extra-cost mana ability', !live.schemaErrors.some(e => /non-tap cost/.test(e)),
+    live.schemaErrors.filter(e => /non-tap cost/.test(e)).join('; '));
 })();
 
 console.log('\n=== A7-1: extra-cost mana abilities are excluded from the tapLandForMana auto-lane ===');
@@ -119,6 +119,12 @@ console.log('\n=== A7-1: the mana SOLVER excludes extra-cost abilities as source
     Array.isArray(altarColors) && altarColors.length === 0, JSON.stringify(altarColors));
   check('landProducibleColors(trivial dork) is non-empty (still a source)',
     Array.isArray(dorkColors) && dorkColors.length >= 1, JSON.stringify(dorkColors));
+  // Filter-land follow-up: a {1},{T} mana cost is also non-auto-payable, so the
+  // solver excludes it too (else it would net free fixing).
+  const filterLand = mk('gray_ogre', 'you', MANA_ONLY_COST); filterLand.types = ['Land'];
+  const filterColors = ENGINE.landProducibleColors(filterLand);
+  check('landProducibleColors(filter-land {1},{T}) is [] (mana cost not auto-payable)',
+    Array.isArray(filterColors) && filterColors.length === 0, JSON.stringify(filterColors));
 })();
 
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');
