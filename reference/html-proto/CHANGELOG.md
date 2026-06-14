@@ -2238,6 +2238,9 @@ scripted full-turn behavioral test (A1-23), resetCombatState()/emptyManaPool() D
 extractions (A1-21/A1-22), loud default arms on the three switches that had none
 incl. the step() infinite-spin hang-guard (A1-5), and a centralized
 startMainPhase() test helper (A1-4 Phase 1 — the 76-file migration is a tracked
-follow-up). A9-10 reclassified won't-fix (no pre-snake-case saves exist). Suite
-125 → 138 files / 2487 → 2583 assertions green, lint clean.
+follow-up). Chunk-5: the out-of-charges Stapler rip now routes its battlefield
+removal through leave-play discipline (removeFromCombat + clearRestrictionsFromSource)
+instead of a raw filter, so a ripped Stapler can't leave a ghost attacker or a
+dangling restriction (A5-15). A9-10 reclassified won't-fix (no pre-snake-case
+saves exist). Suite 125 → 139 files / 2487 → 2589 assertions green, lint clean.
 

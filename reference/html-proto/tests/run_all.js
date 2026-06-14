@@ -396,6 +396,9 @@ const CATEGORY_A = [
   // A1-5 — the step() unknown-phase hang-guard (a corrupt phase halts loudly
   // instead of spinning while(true) forever).
   'test_action_vocab_defaults.js',
+  // A5-15 — the out-of-charges Stapler rip routes battlefield removal through
+  // leave-play discipline (removeFromCombat + clearRestrictionsFromSource).
+  'test_a5_15_charge_rip_leave_play.js',
 ];
 
 const TESTS_DIR = __dirname;

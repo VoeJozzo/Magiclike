@@ -3411,16 +3411,29 @@ const EFFECTS = {
           // every card sharing its tplId. A5-5 lets a cloned Stapler coexist on
           // its own slot with independent charges; a bare tplId purge here would
           // also delete the still-charged clone's in-play card (A5-5 review).
+          // A5-15: route the rip through leave-play discipline rather than a raw
+          // array filter. A battlefield Stapler must be crossed off combat and have
+          // any restrictions it was granting cleared, exactly like the sibling rip
+          // paths (ripSlotByIdx / ripSlotForPhylactery). Silent (no dies/zone emit)
+          // so a self-rip can't trip Sengir/Endomorph — matching ripSlotByIdx. The
+          // (tplId, slotIdx) scope is preserved verbatim, so A5-5's clone-survives
+          // invariant still holds.
           const stTplId = stapler.tplId;
           const ripSlotIdx = stapler.slotIdx;
-          const keep = c => !(c.tplId === stTplId && c.slotIdx === ripSlotIdx);
+          const isRipped = c => c.tplId === stTplId && c.slotIdx === ripSlotIdx;
           for (const side of ['you', 'opp']) {
             const p = G[side];
-            p.battlefield = p.battlefield.filter(keep);
-            p.hand = p.hand.filter(keep);
-            p.library = p.library.filter(keep);
-            p.graveyard = p.graveyard.filter(keep);
-            p.exile = p.exile.filter(keep);
+            for (const zoneName of ['battlefield', 'hand', 'library', 'graveyard', 'exile']) {
+              const zone = p[zoneName];
+              for (let i = zone.length - 1; i >= 0; i--) {
+                if (!isRipped(zone[i])) continue;
+                const [c] = zone.splice(i, 1);
+                if (zoneName === 'battlefield') {
+                  removeFromCombat(c.iid);
+                  clearRestrictionsFromSource(c.iid);
+                }
+              }
+            }
           }
           if (RUN.removeSlotByIdx) {
             const ripIdx = stapler.slotIdx;
@@ -5769,8 +5782,9 @@ function hasPhylacteryProtection(who) {
 // Shared slot-pointer fixup for ANY run-slot removal (audit A9-2/A9-3). The
 // removeSlotByIdx caller contract has two invariants, and this is the shared
 // place both live (used by every rip site AND both splice slot-removal paths;
-// the Stapler out-of-charges rip still inlines (1) only — deferred under the
-// A5-4 ballot): (1) every in-game card whose cached slotIdx sits ABOVE the
+// the Stapler out-of-charges rip now honors BOTH this slot-pointer fixup AND the
+// leave-play discipline — removeFromCombat + clearRestrictionsFromSource — A5-15):
+// (1) every in-game card whose cached slotIdx sits ABOVE the
 // removed index must decrement (so slot-based lookups stay valid); (2) the
 // player's playedSlotIdxs Set — read by the win-reward filter (filterByPlayed)
 // — must be remapped the SAME way (DROP the removed index, DECREMENT every
