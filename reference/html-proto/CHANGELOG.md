@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.1.49`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.1.50`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -2243,4 +2243,23 @@ removal through leave-play discipline (removeFromCombat + clearRestrictionsFromS
 instead of a raw filter, so a ripped Stapler can't leave a ghost attacker or a
 dangling restriction (A5-15). A9-10 reclassified won't-fix (no pre-snake-case
 saves exist). Suite 125 → 139 files / 2487 → 2589 assertions green, lint clean.
+
+v2.1.50: test-suite discipline pass — **test-only; the served engine is
+byte-identical to v2.1.49** (no gameplay change). Surfaced by a 15-agent review
+of all 139 test files. (1) Dropped 4 non-fencing assertions: source-text /
+card-text regexes and a config-constant pin (STICKERS['subtype'].weight===10)
+that false-red on a benign change without catching a real bug — the behavioral
+coverage around each is the actual fence. (2) Real-drove test_cleanup_no_mana_taps:
+its cleanup-discard window was hand-posed (G.cleanupDiscarding/phase/priority set
+directly), so a rename of those gate fields could let the "tap is illegal"
+negatives pass for the wrong reason; it now reaches the window by real play
+(endTurn → the engine sets cleanupDiscarding at CLEANUP when hand>7). (3) A1-4
+internals-coupling: 63 files that each hand-wrote the same 6-field MAIN1
+priority/phase pose block now call setup.startMainPhase, and the 2 combat-posers
+call a new setup.startCombat — so a future rename of those fields breaks _setup
+once instead of silently-greening dozens of tests (1 file left: its block omits
+the priority field). Dedup review found the suite well-partitioned (no real
+duplication to cut) and zero obsolete tests. A 25-run bail-on-fail hunt for a
+1-in-~7 intermittent failure seen once pre-migration did NOT reproduce (suite
+stable across 25 full runs). Suite 139 files / 2587 assertions green, lint clean.
 
