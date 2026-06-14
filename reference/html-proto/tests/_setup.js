@@ -241,4 +241,32 @@ function loadEngine() {
   }
 }
 
-module.exports = { getSource, loadEngine, ENGINE_FILES };
+// A1-4: a SINGLE source of truth for "get `who` to an open MAIN1 priority round".
+// 76 test files hand-write G.priority/priorityHolder/phase directly (249 sites);
+// the audit's rename experiment (G.priority -> G.prio) left 34/36 silently green
+// because their stale hand-writes were simply ignored by the engine. This helper
+// PREFERS driving the real machine (so a future rename breaks HERE, in one place,
+// and migrated tests regain their grip on the priority bookkeeping), with one
+// authoritative hand-written fallback for the forced-player case (where advancing
+// through the opponent's turn would disturb a test's bespoke board). Migrating the
+// 76 callers onto this is a tracked follow-up — NOT done wholesale here (it's the
+// risky multi-hour sweep; 2 files are deliberately rename-fragile good tests).
+function startMainPhase(who) {
+  const ENGINE = global.ENGINE;
+  const G = ENGINE.state();
+  let safety = 200;
+  while (safety-- > 0) {
+    if (G.phase === 'MAIN1' && ENGINE.expectedActor() === who && G.stack.length === 0) return G;
+    const w = ENGINE.expectedActor();
+    // Only real-drive while `who` is the one we're waiting on — never pass through
+    // the opponent's turn (that would run draws/phases over the caller's board).
+    if (!w || G.gameOver || G.activePlayer !== who) break;
+    ENGINE.executeAction(w, { type: 'pass' });
+  }
+  // Single authoritative fallback — the ONLY hand-written copy of this shape.
+  G.activePlayer = who; G.priorityHolder = who; G.phase = 'MAIN1';
+  G.stack = []; G.gameOver = false; G.priority = { passes: new Set() };
+  return G;
+}
+
+module.exports = { getSource, loadEngine, ENGINE_FILES, startMainPhase };
