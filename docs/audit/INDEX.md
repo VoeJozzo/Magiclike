@@ -6,7 +6,7 @@
 > Rebuilt 2026-06-14 from the verified per-finding survey ledger at the close of
 > the campaign (chunk-5 recovery by Opus).
 
-**Campaign status: CONCLUDED.** 135 findings — **108 resolved**, 26 parked (pointer/refactor-feed is the deliverable; no fix expected), 1 deferred by Joe (A9-10), **0 open**.
+**Campaign status: CONCLUDED.** 135 findings — **108 resolved**, 26 parked (pointer/refactor-feed is the deliverable; no fix expected), 1 won't-fix (A9-10 — Joe: no pre-snake-case saves exist, so the migration guards an empty population), **0 open**.
 
 _"Resolved" includes ship/comment/docs fixes and design rulings (some "resolved" = ruled intentional + documented, no code change). "Parked" items are tracked-but-deliberately-deferred (test-coverage additions, DRY/refactor feeds). The chunk-5 synthesis/staple batch + A1-6 were closed in the recovery pass (v2.1.48)._
 
@@ -172,7 +172,7 @@ _"Resolved" includes ship/comment/docs fixes and design rulings (some "resolved"
 | A9-1 | P2 | stage | v1->v2 save migration written against phantom shape; resurrects dead tplIds -> clearSave run destruction | ✅ resolved |
 | A9-2 | P2 | stage | EFFECTS.rip (Vile Edict) skips removeSlotByIdx slotIdx-fixup contract; live in boss decks | ✅ resolved |
 | A9-3 | P3 | stage | playedSlotIdxs never remapped by any slot removal; win-reward filters target wrong slots | ✅ resolved |
-| A9-10 | P3 | stage | snake_case sweep (e2e151f) extended TPLID_RENAMES without bumping SAVE_VERSION to 3; gap-window v2 saves never migrated | ⏭️ deferred (Joe) |
+| A9-10 | P3 | stage | snake_case sweep (e2e151f) extended TPLID_RENAMES without bumping SAVE_VERSION to 3; gap-window v2 saves never migrated | 🚫 won't-fix (Joe: no pre-snake-case saves exist) |
 | A9-4 | P4 | ship | load() silently accepts future-version saves (upward-only migration loop) | ✅ resolved |
 | A9-5 | P4 | ship | picklog gamesPlayed double-counts on crash-restore; counts at start not completion | ✅ resolved |
 | A9-6 | P3 | ship | RUN.start() comment cluster: phantom Watcher's Gift, retired triggerPool, contradictory apply() contracts, double-pasted header | ✅ resolved |

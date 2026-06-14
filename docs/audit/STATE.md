@@ -7,7 +7,8 @@
 Armed: no
 
 **Campaign status: CONCLUDED (2026-06-14).** All 11 chunks audited; 135 findings
-— 108 resolved, 26 parked, 1 deferred (A9-10), 0 open (see [`INDEX.md`](INDEX.md)).
+— 108 resolved, 26 parked, 1 won't-fix (A9-10 — Joe: no pre-snake-case saves
+exist), 0 open (see [`INDEX.md`](INDEX.md)).
 The chunk-5 synthesis/staple batch + A1-6 were closed in the recovery pass (Opus,
 v2.1.48) after Fable went offline mid-campaign. See [`NIGHTLY.md`](NIGHTLY.md) for
 the campaign log. The runner stays disarmed.

@@ -17,7 +17,7 @@ to the `audit/integration` workshop, version-bumped on the html-proto.
 
 ## Outcome
 
-**135 findings — 108 resolved, 26 parked, 1 deferred (A9-10), 0 open.** The
+**135 findings — 108 resolved, 26 parked, 1 won't-fix (A9-10), 0 open.** The
 campaign is CONCLUDED. Full per-finding status: [`INDEX.md`](INDEX.md).
 
 - **Resolved (108)** spans behavioral fixes (with red→green tests), design
@@ -26,8 +26,9 @@ campaign is CONCLUDED. Full per-finding status: [`INDEX.md`](INDEX.md).
 - **Parked (26)** are tracked-but-deliberately-deferred: test-coverage additions
   and DRY/refactor feeds where the pointer itself is the deliverable — nothing
   misbehaves.
-- **Deferred (1):** A9-10 (a SAVE_VERSION bump for a snake_case rename gap-window)
-  — Joe dropped it.
+- **Won't-fix (1):** A9-10 (a SAVE_VERSION bump for a snake_case rename gap-window)
+  — Joe ruled it out: no pre-snake-case saves exist, so the migration would guard
+  an empty population.
 
 ## The recovery pass (Opus, 2026-06-13 → 06-14)
 
