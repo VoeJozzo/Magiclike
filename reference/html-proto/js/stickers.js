@@ -22,6 +22,30 @@ function resolveSticker(entry) {
   if (entry && typeof entry === 'object' && entry.kind) return entry;
   return null;
 }
+// A6-3: inline set-semantics descriptors (set_color / set_types) are idempotent
+// in EFFECT — a second identical application changes nothing — yet the apply
+// paths appended a duplicate entry on every application, growing the stored
+// list without bound (e.g. Bleaching the same run slot across N games stacks N
+// identical {kind:'set_color',color:'C'} descriptors). Detect an equivalent
+// inline descriptor already present so the push can be skipped (the idempotent
+// effect is still re-applied). Scoped to set-semantics ONLY: cost_mod is
+// deliberately stackable (embargo taxes accumulate by design).
+function inlineSetSemanticsDup(list, desc) {
+  if (!desc || (desc.kind !== 'set_color' && desc.kind !== 'set_types')) return false;
+  return (list || []).some(e => e && typeof e === 'object' && e.kind === desc.kind
+    && (desc.kind === 'set_color'
+        ? e.color === desc.color
+        : JSON.stringify(e.types || [e.type]) === JSON.stringify(desc.types || [desc.type])));
+}
+// A6-6: deep-clone a granted ability/trigger before stamping it onto a card.
+// resolveSticker returns the shared STICKERS[id] singleton for registry
+// stickers, so a one-level copy would alias a nested array/object (an effect's
+// types[], a cost's mana sub-object) across every card built from one entry —
+// the shared-ref class the stickersForSlot deep-copy discipline guards against.
+// Latent today (only inline descriptors use these kinds), cheap to do now.
+function deepCloneStickerShape(o) {
+  return (typeof structuredClone === 'function') ? structuredClone(o) : JSON.parse(JSON.stringify(o));
+}
 // Apply one sticker's kind-effect to a card (no push/dedup — callers handle that).
 // Shared by the batch (applyStickersToCard) and incremental
 // (applyOneStickerToRuntimeCard) paths for the non-roll kinds.
@@ -45,6 +69,10 @@ function applyStickerKindEffect(card, s) {
   } else if (s.kind === 'cost_mod') {
     // Signed additive cost change (§3.8): +N for embargo, −1 for the reduction
     // reward (unified from costReduction). Generic floored at 0.
+    // A6-7: stickers apply in card.stickers (= acquisition) order, so a cost_mod
+    // floor vs a later set_color('C') pip-fold can yield a different generic cost
+    // by order. That acquisition-order is canonical (canon is silent; the both-
+    // -sticker case is rare). test_a6_7_cost_order.js pins it.
     if (card.cost) card.cost.C = Math.max(0, (card.cost.C || 0) + (s.amount || 0));
     // A Land+Spell staple's REAL cost is the ETB trigger's optional_cost (the
     // land's own cast cost is free/vestigial), so a cost sticker must adjust it
@@ -73,17 +101,18 @@ function applyStickerKindEffect(card, s) {
     if (!s.ability) return;
     if (!Array.isArray(card.abilities)) card.abilities = [];
     if (s.ability_id && card.abilities.some(ab => ab && ab._sticker_ability_id === s.ability_id)) return;
-    card.abilities.push({
-      ...s.ability,
-      cost: s.ability.cost ? {...s.ability.cost} : undefined,
-      effects: (s.ability.effects || []).map(e => ({...e})),
-      _sticker_ability_id: s.ability_id || null,
-    });
+    // A6-6: deep-copy the whole granted ability (was a one-level cost/effects copy).
+    const granted = deepCloneStickerShape(s.ability);
+    granted._sticker_ability_id = s.ability_id || null;
+    card.abilities.push(granted);
   } else if (s.kind === 'trigger') {
     if (!Array.isArray(card.triggers)) card.triggers = [];
     // _from_sticker lets the card-text layer color this granted line distinctly
     // (it's reset every makeCard, so it's display metadata, not persisted state).
-    card.triggers.push({ ...s.trigger, _from_sticker: true });
+    // A6-6: deep-copy (same latent shared-ref shape as the ability arm above).
+    const granted = s.trigger ? deepCloneStickerShape(s.trigger) : {};
+    granted._from_sticker = true;
+    card.triggers.push(granted);
   }
 }
 
@@ -161,6 +190,9 @@ function applyOneStickerToRuntimeCard(card, sticker) {
   if (!Array.isArray(card.stickers)) card.stickers = [];
   const isInline = typeof sticker === 'object';
   if (!s.stackable && !isInline && card.stickers.includes(sticker)) return;
+  // A6-3: don't store a duplicate idempotent set_color/set_types descriptor, but
+  // still re-apply the (idempotent) effect so the card reflects it either way.
+  if (isInline && inlineSetSemanticsDup(card.stickers, sticker)) { applyStickerKindEffect(card, s); return; }
   card.stickers.push(sticker);
   applyStickerKindEffect(card, s);
 }

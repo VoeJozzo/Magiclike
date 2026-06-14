@@ -162,7 +162,7 @@ const EXPOSED = [
   'isSpliceableBase', 'isSpliceableStaple',
   // Sticker module surface (stickers.js, all top-level).
   'pickWeightedSticker', 'bargainStickerCandidates',
-  'applyStickersToCard', 'applyOneStickerToRuntimeCard',
+  'applyStickersToCard', 'applyOneStickerToRuntimeCard', 'applyStickerKindEffect',
   'applyRandomStickersToSide', 'empowerRollLabel', 'applyEmpowerRoll',
   'rollSubtypeFromDeck', 'pushStickerWithRoll', 'stickersForSlot',
   // Render module-scope helpers (render.js has no IIFE).

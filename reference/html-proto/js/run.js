@@ -1311,12 +1311,15 @@ function applyStickerToSlot(slotIdx, sticker_id) {
   if (!slot) return false;
   // sticker_id is a registry id (string) or an inline {kind,...} descriptor
   // (§3.8 apply_sticker). Inline descriptors carry per-application params, so
-  // they bypass the id-based stackable dedup (cost_mod stacks; set_color is
-  // idempotent).
+  // they bypass the id-based stackable dedup (cost_mod stacks; set_color /
+  // set_types are idempotent AND deduped on push — A6-3).
   const isInline = sticker_id && typeof sticker_id === 'object';
   const sticker = isInline ? sticker_id : STICKERS[sticker_id];
   if (!sticker || !sticker.kind) return false;
   if (!isInline && !sticker.stackable && slot.stickers.includes(sticker_id)) return false;
+  // A6-3: don't persist a duplicate idempotent set_color/set_types descriptor
+  // (inlineSetSemanticsDup is stickers.js module-scope; loaded before run.js).
+  if (isInline && inlineSetSemanticsDup(slot.stickers, sticker_id)) return true;
   pushStickerWithRoll(slot, sticker_id, runState.slots);
   save();
   return true;

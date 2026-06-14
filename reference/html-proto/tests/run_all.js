@@ -357,6 +357,18 @@ const CATEGORY_A = [
   // A6-2 — a stored-BLANK empower roll (null) stays blank instead of re-rolling a
   // fresh random target each rebuild; clone no longer launders null into {}.
   'test_a6_2_empower_stored_blank.js',
+  // A6-3 — inline set_color/set_types sticker descriptors dedup on push (no
+  // unbounded growth); cost_mod stays stackable.
+  'test_a6_3_inline_sticker_dedup.js',
+  // A6-5 — grant_activated_ability dedup branch characterization (id-keyed dedups;
+  // id-less grows) — pins the previously-untested branch.
+  'test_a6_5_grant_ability_dedup.js',
+  // A6-6 — a granted ability/trigger is deep-copied so two cards from one shared
+  // descriptor don't alias a nested field.
+  'test_a6_6_grant_ability_deepcopy.js',
+  // A6-7 — multi-sticker cost resolution is acquisition-order dependent (canonical);
+  // characterization test pins it.
+  'test_a6_7_cost_order.js',
 ];
 
 const TESTS_DIR = __dirname;
