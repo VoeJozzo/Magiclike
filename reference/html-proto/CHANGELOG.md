@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.1.50`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.1.51`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -2261,4 +2261,22 @@ pass false), and the set_types-dedup order-sensitivity assumption (the
 JSON.stringify compare is safe only while set_types arrays stay single-element).
 Suite 2589 assertions green, 500-game self-play 100% clean (0 illegal actions),
 lint clean.
+
+v2.1.51: bargain respects deck colors (Joe ruling 2026-06-14, surfaced during
+the /simplify follow-up). BUG: land-color "Also a X" stickers gate on
+`c.deckColors`, but live battlefield cards carry no deckColors field, so the
+in-game Archdemon-of-Bargains path skipped the gate that deck construction
+enforces — a mono-black deck's Swamp could be handed a white "Also a Plains"
+sticker (a real B/W dual splashing an off-deck color; confirmed empirically),
+and the two sticker paths disagreed silently/undocumented. FIX: new runtime
+helper `deckColorsForSide(state, side)` (unions a live side's cards across all
+zones into pseudo-slots — the opponent has no run slots in-game — and reads
+their colors via `deckColorsFromSlots`); `applyRandomStickersToSide` computes it
+once and passes it to `bargainStickerCandidates(perms, deckColors)`, which
+supplies it to each sticker's `appliesTo` via a card-view (the filter still
+collects the real cards). On-color fixing still allowed; same-color stays
+dedup-excluded; `bargainStickerCandidates(perms)` with no colors keeps the old
+broad behavior (backward-compat). New test_bargain_deck_color_gate.js (10
+assertions: helper union, on/off-color gating, dedup, backward-compat,
+end-to-end no-splash). Suite 140 files / 2599 assertions green, lint clean.
 

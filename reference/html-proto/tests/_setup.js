@@ -156,7 +156,7 @@ const EXPOSED = [
   'EMPOWER_FIELDS', 'isEmpowerableField', 'enumerateEmpowerTargets',
   'rollEmpowerTarget', 'hasEmpowerableEffect',
   // Engine module-scope helpers (above the ENGINE IIFE).
-  'deckColorsFromSlots', 'fakeTargetsForLegality', 'landProducibleColors',
+  'deckColorsFromSlots', 'deckColorsForSide', 'fakeTargetsForLegality', 'landProducibleColors',
   'isCompatibleStaplePair', 'manaAbilityOf', 'manaEffectColors',
   'remapEmpowerRollForStaple', 'countEffects', 'mergeSpliceData',
   'isSpliceableBase', 'isSpliceableStaple',

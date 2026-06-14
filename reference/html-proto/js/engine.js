@@ -340,6 +340,21 @@ function deckColorsFromSlots(slots) {
   return [...set];
 }
 
+// Runtime analog of deckColorsFromSlots for a LIVE side (player or opp): unions
+// the side's cards across all zones into pseudo-slots and reads their colors.
+// Used to gate land-color stickers on the in-game Archdemon-bargain path the
+// SAME way deck construction gates them — live cards carry no deckColors field,
+// so this recovers the side's colors from its actual cards (opp has no slots).
+function deckColorsForSide(state, side) {
+  const p = state && state[side];
+  if (!p) return [];
+  const slots = [];
+  for (const zone of ['library', 'hand', 'battlefield', 'graveyard', 'exile']) {
+    for (const c of (p[zone] || [])) slots.push({ tplId: c.tplId });
+  }
+  return deckColorsFromSlots(slots);
+}
+
 // Build a placeholder target array for legality probing — "could this be
 // cast right now?" without committing to a real target. Returns null if
 // any slot has no valid target. Multi-target spells need one entry per

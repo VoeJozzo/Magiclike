@@ -210,8 +210,11 @@ function applyOneStickerToRuntimeCard(card, sticker) {
 // roll-needing subtype/empower. lose_defender IS eligible here: on an
 // opponent's wall it hands them an attacker, which is exactly Archdemon's
 // intended downside (the "bargain" stickers both sides). Each sticker's own
-// appliesTo still constrains placement.
-function bargainStickerCandidates(perms) {
+// appliesTo still constrains placement — and `deckColors` (the stickered side's,
+// passed in) gates the land-color stickers to colors the deck actually runs, the
+// same rule deck construction enforces (Joe ruling 2026-06-14: the bargain must
+// not splash a color the deck was never built for).
+function bargainStickerCandidates(perms, deckColors) {
   const out = [];
   for (const id of Object.keys(STICKERS)) {
     if (id === 'scarified' || id === 'subtype' || id === 'empower') continue;
@@ -219,7 +222,11 @@ function bargainStickerCandidates(perms) {
     if (!s) continue;
     // weight 0 = excluded from random pools (boss-only / dedicated paths).
     if (!s.weight) continue;
-    const eligible = perms.filter(p => !s.appliesTo || s.appliesTo(p));
+    // Live cards carry no deckColors field, so a deckColors-aware appliesTo
+    // (the land-color set) would skip its gate. Supply the side's colors via a
+    // view for the check; the filter still collects the REAL card objects.
+    const eligible = perms.filter(p => !s.appliesTo
+      || s.appliesTo(deckColors ? { ...p, deckColors } : p));
     if (eligible.length > 0) out.push({ sticker: s, perms: eligible });
   }
   return out;
@@ -245,8 +252,12 @@ function applyRandomStickersToSide(state, side, n, sourceName, logFn) {
     return;
   }
   let applied = 0;
+  // The stickered side's deck colors gate land-color stickers (same as deck
+  // construction). Stable across picks — it reads templates, not the live
+  // (about-to-be-stickered) cards — so compute it once.
+  const deckColors = deckColorsForSide(state, side);
   for (let i = 0; i < n; i++) {
-    const candidates = bargainStickerCandidates(perms);
+    const candidates = bargainStickerCandidates(perms, deckColors);
     if (candidates.length === 0) break;
     const s = pickWeightedSticker(candidates.map(c => c.sticker));
     const entry = candidates.find(c => c.sticker === s);
