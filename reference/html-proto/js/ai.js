@@ -109,6 +109,12 @@ function spellValueForEffects(effects) {
     else if (e.kind === 'gain_life') v += (e.amount || 0) < 0 ? (3 + Math.abs(e.amount) * 2) : 1;
     else if (e.kind === 'schedule_delayed') v += 1;  // exile_until_eot's return tail (the bf→exile half carries the value)
     else if (e.kind === 'pump') v += (e.power < 0 || e.toughness < 0) ? (3 + Math.abs(e.toughness || 0)) : 2;
+    // A7-2: mirror engine.js abilityValue's add_counter case (3 + P + T), floored
+    // at >=1 (Joe) so an UNTARGETED counter spell is never valued 0 and the AI at
+    // least tries to cast it. Was a dead branch — VALUED-claimed but with no
+    // cast-scorer entry (effectCoverageReport's unscoredValuation now probes for
+    // exactly this class).
+    else if (e.kind === 'add_counter') v += Math.max(1, 3 + (e.power || 0) + (e.toughness || 0));
     else if (e.kind === 'grant_keyword') {
       // mass-yours-eot Overrun-shape vs single-target permanent vs symmetric.
       const eot = e.duration === 'eot';
@@ -663,7 +669,9 @@ function decideReaction(state, who, actions) {
 function shouldCounter(state, who) {
   const top = state.stack[state.stack.length - 1];
   if (!top || top.controller === who) return false;
-  if (top.kind === 'trigger' || !top.card) return false;
+  // Trigger and kind:'ability' entries can't be countered (§1004.6) — the
+  // AI's only stack reaction today is countering, so it passes over them.
+  if (top.kind === 'trigger' || top.kind === 'ability' || !top.card) return false;
   const card = top.card;
   // Check the chosen mode only (top.modeIdx locked in) — not all modes.
   const relevantEffects = ENGINE.effectsForMode(card, top.modeIdx);
@@ -724,7 +732,14 @@ function simulateCombat(state, attackerWho, attackerIids, blockMap) {
       const w = snap(bIid); if (w) allCombatants.push(w.card);
     }
   }
-  const hasFirstStrike = allCombatants.some(c => c.keywords.includes('first_strike'));
+  // A2-1 lockstep: snapshot first-strike membership once, mirroring
+  // resolveCombatDamage's damage-start snapshot. Within this simulation the
+  // working copies' keywords never mutate between strikes (no lord-death
+  // revocation is simulated), so this is shape-parity with the engine, not
+  // a behavior change here.
+  const fsIids = new Set(
+    allCombatants.filter(c => c.keywords.includes('first_strike')).map(c => c.iid)
+  );
 
   const isDead = (w) => {
     if (!w) return true;
@@ -774,15 +789,22 @@ function simulateCombat(state, attackerWho, attackerIids, blockMap) {
       for (const wBlk of orderedBlockers) {
         const blk = wBlk.card;
         const [bPow, bTou] = ENGINE.getStats(blk);
-        const indestructible = blk.keywords.includes('indestructible');
-        const lethalNeeded = (atkDeathtouch && !indestructible)
+        // A2-7 (engine lockstep): 1 point of deathtouch damage is a lethal
+        // dose vs EVERY blocker, indestructible included (they're marked
+        // but survive — isDead keeps the immunity). Design ruling, PR #98,
+        // 2026-06-10.
+        const lethalNeeded = atkDeathtouch
           ? Math.min(1, Math.max(0, bTou - wBlk.damage))
           : Math.max(0, bTou - wBlk.damage);
-        if (atkDeals && remaining >= lethalNeeded && lethalNeeded > 0) {
-          wBlk.damage += lethalNeeded;
-          if (atkDeathtouch && !indestructible) wBlk.dealtDeathtouch = true;
-          if (atk.keywords.includes('lifelink')) attackerLifeGain += lethalNeeded;
-          remaining -= lethalNeeded;
+        // A2-2 (engine lockstep): lethalNeeded 0 ⇒ already satisfied — no
+        // damage assigned, trample carryover not suppressed.
+        if (atkDeals && remaining >= lethalNeeded) {
+          if (lethalNeeded > 0) {
+            wBlk.damage += lethalNeeded;
+            if (atkDeathtouch) wBlk.dealtDeathtouch = true;
+            if (atk.keywords.includes('lifelink')) attackerLifeGain += lethalNeeded;
+            remaining -= lethalNeeded;
+          }
         } else {
           unsatisfied.push(wBlk);
         }
@@ -801,14 +823,18 @@ function simulateCombat(state, attackerWho, attackerIids, blockMap) {
         } else if (unsatisfied.length > 0) {
           unsatisfied[0].damage += remaining;
           if (atk.keywords.includes('lifelink')) attackerLifeGain += remaining;
+        } else if (atk.keywords.includes('lifelink')) {
+          // A2-7 (engine lockstep): wasted overkill still gains lifelink —
+          // full power. Design ruling, PR #98, 2026-06-10.
+          attackerLifeGain += remaining;
         }
       }
     }
   };
 
-  if (hasFirstStrike) {
-    oneStrike(c => c.keywords.includes('first_strike'));
-    oneStrike(c => !c.keywords.includes('first_strike'));
+  if (fsIids.size > 0) {
+    oneStrike(c => fsIids.has(c.iid));
+    oneStrike(c => !fsIids.has(c.iid));
   } else {
     oneStrike(() => true);
   }
@@ -1169,15 +1195,17 @@ function decideCleanupDiscard(state, who, actions) {
 // (creature=100 flat so a body always clears >0) — NOT a cross-card ranking
 // scale; decideMain uses spellPlayValue() for that.
 function bestSpellPlay(state, who, card, options) {
-  // Bail if non-modal self-damage would lethal us (modal: per-option below).
+  // Self-damage lethal gate, applied per OPTION: a mode whose own self-damage
+  // would put us at or below 0 scores -100 no matter what else it does (so a
+  // modal card can still pick a survivable mode). Non-modal cards are the
+  // single-mode case of the same check — effectsForMode returns their flat
+  // effects list.
   const selfDamageOf = (effs) => (effs || []).reduce((sum, e) =>
     sum + ((e.kind === 'damage' && e.scope === 'self') ? (e.amount || 0) : 0), 0);
-  if (!ENGINE.isModal(card)) {
-    if (selfDamageOf(card.effects) >= state[who].life) return null;
-  }
   const scored = options.map(opt => {
     const modeIdx = opt.modeIdx || 0;
     const modeEffects = ENGINE.effectsForMode(card, modeIdx);
+    if (selfDamageOf(modeEffects) >= state[who].life) return {opt, score: -100};
     if (!opt.targets) {
       const ok = shouldCastUntargeted(state, who, card, modeIdx);
       if (!ok) return {opt, score: -100};

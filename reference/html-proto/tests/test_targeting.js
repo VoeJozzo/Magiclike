@@ -130,5 +130,32 @@ console.log("\n=== graveyard_card graveyards:['opp'] sees opponent graveyard and
   check('excludes your graveyard card', !valid.some(t => t.iid === mine.iid));
 })();
 
+console.log('\n=== target(permanent) is ALSO a hexproof checkpoint (A4-24 dark branch) ===');
+(() => {
+  clearBoards();
+  const minePlain = place('you');
+  const mineHex   = place('you', { hexproof: true });
+  const oppPlain  = place('opp');
+  const oppHex    = place('opp', { hexproof: true });
+  const t = ENGINE.targetsForFilter('permanent', 'you')
+    .filter(x => x.kind === 'permanent').map(x => x.iid);
+  check('permanent: includes my plain creature', t.includes(minePlain.iid));
+  check('permanent: includes MY hexproof creature (own hexproof targetable)', t.includes(mineHex.iid));
+  check('permanent: includes opp non-hexproof', t.includes(oppPlain.iid));
+  check('permanent: EXCLUDES opp hexproof creature', !t.includes(oppHex.iid));
+})();
+
+console.log('\n=== target(permanent_or_spell) honors hexproof (A4-24 dark branch) ===');
+(() => {
+  clearBoards();
+  const mineHex = place('you', { hexproof: true });
+  const oppHex  = place('opp', { hexproof: true });
+  // permanent_or_spell is NOT in targetsForFilter's switch — call getValidTargets directly.
+  const perms = ENGINE.getValidTargets({ target: 'permanent_or_spell' }, 'you')
+    .filter(x => x.kind === 'permanent').map(x => x.iid);
+  check('permanent_or_spell: own hexproof permanent is legal', perms.includes(mineHex.iid));
+  check('permanent_or_spell: EXCLUDES opp hexproof permanent', !perms.includes(oppHex.iid));
+})();
+
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');
 process.exit(fail > 0 ? 1 : 0);

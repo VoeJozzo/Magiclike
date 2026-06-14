@@ -33,6 +33,14 @@ schema later.
 - **Used for:** dev-only static analysis of the html-proto JS (`npm run lint`) — high-signal bug smells (`no-identical-expressions`, duplicate conditions, unreachable code, etc.).
 - **Note:** NOT part of the runtime — the engine has no build step and Pages serves the raw `.js` files. sonarjs's LGPL copyleft has no reach into the project's own code: it's never linked into or distributed with the shipped engine, only run as a local analyzer.
 
+### acorn + acorn-walk (audit tooling)
+
+- **Location in tree:** `tools/audit/` (`package.json` dependencies; `node_modules/` git-ignored, `package-lock.json` pins versions)
+- **License:** MIT (both)
+- **Source:** https://github.com/acornjs/acorn
+- **Used for:** JS parsing in the audit campaign's hand-rolled mutation runner (`tools/audit/mutation/mutation-runner.js`) — mutant-site discovery via AST walk.
+- **Note:** NOT part of the game or the html-proto runtime — campaign-only dev tooling.
+
 ---
 
 ## Visual assets

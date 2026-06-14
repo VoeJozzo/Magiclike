@@ -1,0 +1,9 @@
+{
+  "name": "magiclike-audit-tools",
+  "private": true,
+  "description": "Audit-campaign machine tooling (mutation runner). Not part of the game.",
+  "dependencies": {
+    "acorn": "^8.15.0",
+    "acorn-walk": "^8.3.4"
+  }
+}

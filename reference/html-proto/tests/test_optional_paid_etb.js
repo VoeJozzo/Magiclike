@@ -32,7 +32,7 @@ const VANILLA = (() => {
 const SPELL = 'goblin_rabble';   // create_tokens, {R:1,C:2}, untargeted
 let iidc = 7000;
 function stapleInstance(baseTplId, controller) {
-  const card = ENGINE.makeCard(baseTplId, undefined, 0, undefined, undefined, undefined, [SPELL]);
+  const card = ENGINE.makeCard(baseTplId, undefined, 0, undefined, undefined, [SPELL]);
   card.iid = iidc++; card.controller = controller; card.owner = controller;
   return card;
 }
@@ -41,14 +41,14 @@ console.log('=== synthesis: Land+Spell ETB is optional+paid; Creature+Spell stay
 if (!CARDS[SPELL] || !VANILLA) {
   console.log('  (goblinRabble or a vanilla creature unavailable -- skipping)');
 } else {
-  const land = ENGINE.makeCard('plains', undefined, 0, undefined, undefined, undefined, [SPELL]);
+  const land = ENGINE.makeCard('plains', undefined, 0, undefined, undefined, [SPELL]);
   const etb = (land.triggers || []).find(t => t.event === 'card_zone_change');
   check('Land+Spell has an ETB trigger', !!etb);
   check('Land+Spell ETB carries optional_cost = the spell cost',
     etb && etb.optional_cost && etb.optional_cost.R === 1 && etb.optional_cost.C === 2,
     etb && JSON.stringify(etb.optional_cost));
 
-  const cre = ENGINE.makeCard(VANILLA, undefined, 0, undefined, undefined, undefined, [SPELL]);
+  const cre = ENGINE.makeCard(VANILLA, undefined, 0, undefined, undefined, [SPELL]);
   const cEtb = (cre.triggers || []).find(t => t.event === 'card_zone_change');
   check('Creature+Spell has the ETB trigger', !!cEtb);
   check('Creature+Spell ETB is FREE (no optional_cost)', cEtb && !cEtb.optional_cost);
@@ -140,13 +140,13 @@ if (CARDS.lightning_bolt) {
   // never exercised this. Modeled on the AI path (the side that hung): the
   // controller auto-picks the target (no human prompt), then the optional cost.
   const G = newGame();
-  const etbTpl = ENGINE.makeCard('plains', undefined, 0, undefined, undefined, undefined, ['lightning_bolt']);
+  const etbTpl = ENGINE.makeCard('plains', undefined, 0, undefined, undefined, ['lightning_bolt']);
   const etb = (etbTpl.triggers || []).find(t => t.event === 'card_zone_change');
   check('stapled bolt ETB carries the target step (target + optional_cost)',
     etb && etb.target === 'creature_or_player' && etb.optional_cost && etb.optional_cost.R === 1,
     etb && JSON.stringify({ target: etb.target, cost: etb.optional_cost }));
 
-  const land = ENGINE.makeCard('plains', undefined, 0, undefined, undefined, undefined, ['lightning_bolt']);
+  const land = ENGINE.makeCard('plains', undefined, 0, undefined, undefined, ['lightning_bolt']);
   land.iid = iidc++; land.controller = 'opp'; land.owner = 'opp';
   G.opp.hand.push(land);
   readyMain(G, 'opp');
@@ -189,7 +189,7 @@ if (CARDS.mind_rot) {
   // mindrot is {B}{1}; a "-1 cost" (cost_minus_1) sticker on the spell must
   // reduce the ETB's optional_cost too — it used to only touch the vestigial
   // (free-land) card.cost, leaving the "you may pay" cost unchanged.
-  const inst = ENGINE.makeCard('mountain', ['cost_minus_1'], 0, undefined, undefined, undefined, ['mind_rot']);
+  const inst = ENGINE.makeCard('mountain', ['cost_minus_1'], 0, undefined, undefined, ['mind_rot']);
   const etb = (inst.triggers || []).find(t => t.event === 'card_zone_change');
   check('mindrot base cost is {B}{1}', CARDS.mind_rot.cost.B === 1 && CARDS.mind_rot.cost.C === 1);
   check('cost_minus_1 reduces the optional_cost to {B} (C: 1 → 0)',

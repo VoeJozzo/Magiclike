@@ -257,27 +257,60 @@ const TPLID_RENAMES = {
 };
 function renameTplId(id) { return TPLID_RENAMES[id] || id; }
 
+// A9-9: every TPLID_RENAMES key MUST be a RETIRED id. picklog re-applies
+// renameTplId over every loaded pick on every load (no schema gate — picklog.js),
+// so if a key were ever reused as a LIVE card id, that card's picklog history
+// would be silently rewritten forever. Boot surfaces any collision (main.js); the
+// static invariant is also pinned in tplid_renames_test.js. Empty today.
+function tplidRenameKeyCollisions(cards) {
+  return Object.keys(TPLID_RENAMES).filter(k => cards && cards[k]);
+}
+
+// Rename every tplId carried by a slots array in place — the live slots OR the
+// midGameSlotsSnapshot (a deep-clone of slots, identical shape).
+function migrateSlotTplIds(slots) {
+  if (!Array.isArray(slots)) return;
+  for (const slot of slots) {
+    if (slot && slot.tplId) slot.tplId = renameTplId(slot.tplId);
+    if (slot && Array.isArray(slot.stapledTpls)) {
+      slot.stapledTpls = slot.stapledTpls.map(renameTplId);
+    }
+  }
+}
+
 const MIGRATIONS = {
+  // v1->v2 tplId rename. The renames must reach every place a tplId actually
+  // persists on a SAVED runState. Git-verified at df2fd38^ (where SAVE_VERSION
+  // was 1 and save() stored {version, runState}): those places are the live
+  // slots; the mid-game slots snapshot (a deep-clone of slots taken at game
+  // start); a pending transform reward's replacementPack (two shapes — a
+  // 'mixed'-phase candidate, and the committed 'transformPick' phase); and the
+  // run modifier (boon) id (e.g. cityOfBrass -> city_of_brass). The PREVIOUS
+  // migration was written against a PHANTOM shape: it renamed four fields that
+  // never existed on a persisted runState (pendingNeowModifier / currentPack /
+  // youPicks / oppDecks — youPicks/currentPack live on DRAFT's in-memory state,
+  // not the save) and MISSED the snapshot, so loading an old mid-game save
+  // resurrected dead tplIds and the next deck build threw "Unknown card",
+  // wiping the run (audit A9-1). (A9-10's later version-gap miss is a non-issue
+  // per Joe — solo player, two-week-old saves — so SAVE_VERSION stays 2.)
   1: (blob) => {
-    // Apply rename map to every place a tplId persists:
-    // slots[].tplId, slots[].stapledTpls[], pendingNeowModifier, currentPack[], youPicks[], oppDecks[][]
     const rs = blob.runState || {};
-    if (Array.isArray(rs.slots)) {
-      for (const slot of rs.slots) {
-        if (slot && slot.tplId) slot.tplId = renameTplId(slot.tplId);
-        if (slot && Array.isArray(slot.stapledTpls)) {
-          slot.stapledTpls = slot.stapledTpls.map(renameTplId);
+    migrateSlotTplIds(rs.slots);
+    migrateSlotTplIds(rs.midGameSlotsSnapshot);
+    if (rs.modifier) rs.modifier = renameTplId(rs.modifier);
+    const pr = rs.pendingReward;
+    if (pr) {
+      // Shape A — 'mixed' phase: each transform candidate carries replacementPack.
+      if (Array.isArray(pr.candidates)) {
+        for (const cand of pr.candidates) {
+          if (cand && Array.isArray(cand.replacementPack)) {
+            cand.replacementPack = cand.replacementPack.map(renameTplId);
+          }
         }
       }
-    }
-    if (rs.pendingNeowModifier) rs.pendingNeowModifier = renameTplId(rs.pendingNeowModifier);
-    if (Array.isArray(rs.currentPack)) rs.currentPack = rs.currentPack.map(renameTplId);
-    if (Array.isArray(rs.youPicks))    rs.youPicks    = rs.youPicks.map(renameTplId);
-    if (Array.isArray(rs.oppDecks)) {
-      for (const deck of rs.oppDecks) {
-        if (Array.isArray(deck)) {
-          for (let i = 0; i < deck.length; i++) deck[i] = renameTplId(deck[i]);
-        }
+      // Shape B — 'transformPick' phase: a top-level replacementPack.
+      if (Array.isArray(pr.replacementPack)) {
+        pr.replacementPack = pr.replacementPack.map(renameTplId);
       }
     }
     blob.version = 2;
@@ -313,6 +346,13 @@ function load() {
     const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return false;
     let blob = JSON.parse(raw);
+    // A save from a NEWER build: refuse to load it (this build can't know
+    // its shape), but do NOT clear it — the newer build can still read it;
+    // clearing would destroy a valid save. (Audit A9-4.)
+    if (blob.version > SAVE_VERSION) {
+      console.warn(`Save is v${blob.version}, newer than this build's v${SAVE_VERSION}; not loading.`);
+      return false;
+    }
     while (blob.version < SAVE_VERSION) {
       const migrate = MIGRATIONS[blob.version];
       if (!migrate) {
@@ -336,8 +376,29 @@ function load() {
     let stalePruned = 0;
     let rollsBackfilled = 0;
     let subtypeMigrated = 0;
+    let permaBuffsMigrated = 0;
     if (Array.isArray(runState.slots)) {
       for (const slot of runState.slots) {
+        // A5-6/A5-7: convert a legacy slot.permaBuffs object (Elystra's banked
+        // power/toughness/keywords from before the sticker refactor) into the
+        // stat_boost / kw_* stickers that now carry it — so an in-flight save
+        // spanning the upgrade doesn't silently drop the accumulated buffs.
+        if (slot.permaBuffs && typeof slot.permaBuffs === 'object') {
+          if (!Array.isArray(slot.stickers)) slot.stickers = [];
+          const pb = slot.permaBuffs;
+          if ((pb.power || 0) !== 0 || (pb.toughness || 0) !== 0) {
+            slot.stickers.push({ kind: 'stat_boost', power: pb.power || 0, toughness: pb.toughness || 0 });
+          }
+          if (Array.isArray(pb.keywords)) {
+            for (const kw of pb.keywords) {
+              const id = 'kw_' + kw;
+              if (STICKERS[id] && !slot.stickers.includes(id)) slot.stickers.push(id);
+            }
+          }
+          delete slot.permaBuffs;
+          permaBuffsMigrated++;
+          dirty = true;
+        }
         if (!Array.isArray(slot.stickers)) continue;
         if (!Array.isArray(slot.subtypeRolls)) slot.subtypeRolls = [];
         slot.stickers = slot.stickers.map(id => {
@@ -378,6 +439,9 @@ function load() {
       }
       if (subtypeMigrated > 0) {
         console.log(`Migrated ${subtypeMigrated} legacy subtype sticker(s) to unified format.`);
+      }
+      if (permaBuffsMigrated > 0) {
+        console.log(`Migrated ${permaBuffsMigrated} legacy permaBuffs slot(s) to stat_boost/kw stickers.`);
       }
       if (stalePruned > 0 || rollsBackfilled > 0 || subtypeMigrated > 0) dirty = true;
     }
@@ -444,33 +508,33 @@ function start(playerDeck, modifierId) {
     }
     return slot;
   });
-  // Apply Neow-style run modifier if one was chosen. Modifiers can return
-  // `extras` — additional slots to append (e.g., City of Brass with innate).
-  // Future-proof: modifiers can also return other run-state mutations; we
-  // just consume `extras` for now.
+  // Apply Neow-style run modifier (boon) if one was chosen.
   if (modifierId && RUN_MODIFIERS[modifierId]) {
     // Pass the in-progress slots into apply() so boons can reflect on the
     // deck — e.g., to pick a random creature slot to anoint, or to skip
-    // application if no eligible slots exist. apply() can:
-    //   - return {extras: [...]} to APPEND new slots (City of Brass, Elystra)
-    //   - mutate the slots array IN PLACE to modify existing slots (Watcher's
-    //     Gift attaches a bonusTrigger to a chosen creature slot)
-    // Both shapes are valid; mutation is the right choice when the boon is
-    // modifying existing cards rather than adding new ones.
+    // application if no eligible slots exist.
+    // CONTRACT (stated identically in cards.js above RUN_MODIFIERS):
+    // apply(slots) may mutate the slots array in place OR return
+    // {extras: [...]} of new slots to append.
+    // Today all 7 boons return extras only (each grants a card); none
+    // mutates slots in place. In-place mutation is the documented shape
+    // for a future boon that modifies existing slots rather than adding
+    // new ones.
     const result = RUN_MODIFIERS[modifierId].apply(slots) || {};
     if (Array.isArray(result.extras)) {
       for (const e of result.extras) {
         // Pass through optional slot-level fields. Most boon-extras only
-        // need tplId + stickers (City of Brass, Elystra, Phylactery), but
-        // The Mercurial Adept passes a triggerPool that gets rolled at
-        // each game-start, and future boons may want to seed permaBuffs,
-        // empowerRolls, or bonusTriggers directly. The extras slot is the
-        // right place for these — they're how the boon shapes the slot
-        // it's adding.
+        // need tplId + stickers (City of Brass, Elystra, Phylactery);
+        // future boons may want to seed empowerRolls, subtypeRolls, or
+        // bonusTriggers directly (and stickers — including stat_boost/kw_*, the
+        // channel Elystra's permanent buffs now use). The extras slot is the
+        // right place for these — they're how the boon shapes the slot it adds.
+        // (The triggerPool passthrough below is legacy-save support only:
+        // Mercurial Adept now seeds her pool via trigger_pool_seed — see
+        // engine.js makePlayer — and no current boon passes a triggerPool.)
         const slot = { tplId: e.tplId, stickers: (e.stickers || []).slice() };
         if (e.triggerPool) slot.triggerPool = e.triggerPool;
         if (e.bonusTrigger) slot.bonusTrigger = e.bonusTrigger;
-        if (e.permaBuffs) slot.permaBuffs = e.permaBuffs;
         if (e.empowerRolls) slot.empowerRolls = e.empowerRolls.slice();
         if (e.subtypeRolls) slot.subtypeRolls = e.subtypeRolls.slice();
         const extraTpl = CARDS[e.tplId];
@@ -652,7 +716,6 @@ function startNextGame() {
   const opp = DRAFT.buildOpponentDeck(numStickers, numStaples, numClones, colorAffinity, constructedId);
   ENGINE.init(runState.slots, opp.cards);
   save();
-  PICKLOG.recordGamePlayed();
   let bossName = null;
   let bossIcon = null;
   if (curNode && curNode.type === 'boss' && constructedId) {
@@ -660,7 +723,7 @@ function startNextGame() {
     if (spec && spec.name) bossName = spec.name;
     if (spec && spec.icon) bossIcon = spec.icon;
   }
-  return { gameNum: runState.gameNum, oppColors: opp.colors, bossName, bossIcon };
+  return { gameNum: runState.gameNum, bossName, bossIcon };
 }
 
 // Commit fork choice; validates against pendingMapChoice options.
@@ -705,6 +768,10 @@ function getMapState() {
 
 function recordResult(winner, playedSlotIdxs, claimedKeywords) {
   if (!runState) return;
+  // Picklog counts COMPLETED games (win or loss). Counting at game start
+  // double-counted crash-restores (the resume path replays startNextGame)
+  // and counted abandoned games. Analytics-only. (Audit A9-5.)
+  PICKLOG.recordGamePlayed();
   // Clear snapshot — game completed, mutations are earned.
   runState.midGameSlotsSnapshot = null;
   // Set→array since JSON doesn't carry Set type. Reset each game.
@@ -768,8 +835,12 @@ const REWARD_TYPE_WEIGHTS = {
   splice:        2,   // uncommon — combines two of the player's cards into
                       // one slot (Bolt + Giant Growth → 2-cost spell that
                       // bolts a creature AND pumps another). Cost-additive,
-                      // deck-size-reducing. Player picks the base, then
-                      // picks the staple from remaining slots.
+                      // deck-size-reducing. The base+staple pair is
+                      // PRE-ROLLED at offer time (rollOneCandidate
+                      // enumerates eligible pairs and picks one;
+                      // canonicalSplicePair decides which half is the
+                      // base); the player accepts or declines the offered
+                      // pair as-is — no pick-then-pick step (v1.0.47).
 };
 
 // Roll the type of one reward candidate by weight. Allows excluded types so
@@ -967,8 +1038,21 @@ function pickRewardCandidate(idx) {
   if (runState.pendingReward.phase !== 'mixed') return;
   const cand = runState.pendingReward.candidates[idx];
   if (!cand) return;
+  // A9-8: bounds re-check (+ non-stackable dedup) — the sibling guards that
+  // twoStickers/clone/transform/splice already perform, and the canonical
+  // applyStickerToSlot. Unreachable today (pendingReward is pre-rolled single-
+  // shot; nothing mutates the slot list between offer and pick, and the offer
+  // never lists a non-stackable id a slot already has), but the four pick arms
+  // must guard symmetrically so a future offer-to-pick slot mutation can't
+  // TypeError on a stale slotIdx or dedup-leak.
+  const idxOk = (i) => i != null && i >= 0 && i < runState.slots.length;
   if (cand.kind === 'sticker') {
+    if (!idxOk(cand.slotIdx)) { runState.pendingReward = null; save(); return; }
     const slot = runState.slots[cand.slotIdx];
+    const st = STICKERS[cand.sticker_id];
+    if (st && !st.stackable && slot.stickers.includes(cand.sticker_id)) {
+      runState.pendingReward = null; save(); return;
+    }
     slot.stickers.push(cand.sticker_id);
     // Consume pre-rolled empower/subtype; fallback rolls only on legacy shapes.
     if (cand.sticker_id === 'empower') {
@@ -987,6 +1071,7 @@ function pickRewardCandidate(idx) {
     return;
   }
   if (cand.kind === 'ripUp') {
+    if (!idxOk(cand.slotIdx)) { runState.pendingReward = null; save(); return; }
     runState.slots.splice(cand.slotIdx, 1);
     runState.pendingReward = null;
     save();
@@ -1010,8 +1095,9 @@ function pickRewardCandidate(idx) {
     return;
   }
   if (cand.kind === 'clone') {
-    // Deep-clone all slot state (stickers, staples, empowerRolls, permaBuffs,
-    // bonusTrigger) so the player gets the merged/buffed version, not just the base.
+    // Deep-clone all slot state (stickers, staples, empowerRolls, bonusTrigger,
+    // charges) so the player gets the merged/buffed version, not just the base.
+    // Elystra's permanent buffs ride along inside stickers now (audit A5-6/A5-7).
     const orig = runState.slots[cand.slotIdx];
     if (!orig) {
       runState.pendingReward = null;
@@ -1026,19 +1112,25 @@ function pickRewardCandidate(idx) {
       clone.stapledTpls = orig.stapledTpls.slice();
     }
     if (Array.isArray(orig.empowerRolls) && orig.empowerRolls.length > 0) {
-      clone.empowerRolls = orig.empowerRolls.map(r => ({...r}));
+      // A6-2: preserve a stored-blank (null) roll as null — `{...null}` would
+      // launder it into a truthy `{}` that re-applies as a degenerate empty roll.
+      clone.empowerRolls = orig.empowerRolls.map(r => r ? {...r} : r);
     }
     if (Array.isArray(orig.subtypeRolls) && orig.subtypeRolls.length > 0) {
       clone.subtypeRolls = orig.subtypeRolls.slice();
-    }
-    if (Array.isArray(orig.permaBuffs) && orig.permaBuffs.length > 0) {
-      clone.permaBuffs = orig.permaBuffs.map(b => ({...b}));
     }
     if (orig.bonusTrigger) {
       clone.bonusTrigger = {
         ...orig.bonusTrigger,
         effects: (orig.bonusTrigger.effects || []).map(e => ({...e})),
       };
+    }
+    if (typeof orig.charges === 'number') {
+      // A5-5 (Joe Option A, PR #98): photocopy the REMAINING charges. A clone
+      // of a half-used Stapler is half-used — without this the clone slot has no
+      // charges field, the engine charge gate reads it as infinite (never
+      // decrements, never rips), and the UI shows "3 charges" forever.
+      clone.charges = orig.charges;
     }
     runState.slots.splice(cand.slotIdx + 1, 0, clone);
     runState.pendingReward = null;
@@ -1153,13 +1245,14 @@ function applySplice(baseSlotIdx, stapleSlotIdx) {
   // Merge the staple's slot data into the base via the shared splice core
   // (engine.js mergeSpliceData). Stickers are slot-scoped and just concat;
   // empower rolls remap (effect indices shift when arrays concatenate / move
-  // into an ETB trigger); subtype/permaBuffs concat; bonusTrigger: base wins.
+  // into an ETB trigger); subtype concat; bonusTrigger: base wins. (Elystra's
+  // permanent buffs are stickers now, so they ride the sticker concat.)
   const merged = mergeSpliceData(
     { tplId: baseSlot.tplId, stickers: baseSlot.stickers, empowerRolls: baseSlot.empowerRolls,
-      subtypeRolls: baseSlot.subtypeRolls, permaBuffs: baseSlot.permaBuffs,
+      subtypeRolls: baseSlot.subtypeRolls,
       bonusTrigger: baseSlot.bonusTrigger, priorStaples: baseSlot.stapledTpls },
     { tplId: stapleSlot.tplId, stickers: stapleSlot.stickers, empowerRolls: stapleSlot.empowerRolls,
-      subtypeRolls: stapleSlot.subtypeRolls, permaBuffs: stapleSlot.permaBuffs,
+      subtypeRolls: stapleSlot.subtypeRolls,
       bonusTrigger: stapleSlot.bonusTrigger });
   writeMergedSpliceToSlot(baseSlot, merged);
   // Remove the staple slot. If staple comes BEFORE base, removing it
@@ -1241,25 +1334,26 @@ function applyStickerToSlot(slotIdx, sticker_id) {
   if (!slot) return false;
   // sticker_id is a registry id (string) or an inline {kind,...} descriptor
   // (§3.8 apply_sticker). Inline descriptors carry per-application params, so
-  // they bypass the id-based stackable dedup (cost_mod stacks; set_color is
-  // idempotent).
+  // they bypass the id-based stackable dedup (cost_mod stacks; set_color /
+  // set_types are idempotent AND deduped on push — A6-3).
   const isInline = sticker_id && typeof sticker_id === 'object';
   const sticker = isInline ? sticker_id : STICKERS[sticker_id];
   if (!sticker || !sticker.kind) return false;
   if (!isInline && !sticker.stackable && slot.stickers.includes(sticker_id)) return false;
+  // A6-3: don't persist a duplicate idempotent set_color/set_types descriptor
+  // (inlineSetSemanticsDup is stickers.js module-scope; loaded before run.js).
+  if (isInline && inlineSetSemanticsDup(slot.stickers, sticker_id)) return true;
   pushStickerWithRoll(slot, sticker_id, runState.slots);
   save();
   return true;
 }
 
 // Append a new slot mid-game. Used by Steal. Push-at-end preserves existing
-// slotIdx pointers. Returns new index or null.
-// Append a new slot mid-game. Used by Steal. Push-at-end preserves existing
 // slotIdx pointers. Returns new index or null. Optional `meta` carries
-// empowerRolls / subtypeRolls / permaBuffs / bonusTrigger / stapledTpls /
-// charges from the stolen slot — without these, a stolen card with empower
-// or subtype stickers would have its rolls forgotten and its stickers
-// degrade or fizzle on the next cast.
+// empowerRolls / subtypeRolls / bonusTrigger / stapledTpls / charges from the
+// stolen slot — without these, a stolen card with empower or subtype stickers
+// would have its rolls forgotten and its stickers degrade or fizzle on the next
+// cast. (Elystra's permanent buffs ride along inside stickers — A5-6/A5-7.)
 function appendSlot(tplId, stickers, meta) {
   if (!runState || !runState.slots) return null;
   if (!CARDS[tplId]) return null;
@@ -1267,7 +1361,6 @@ function appendSlot(tplId, stickers, meta) {
   if (meta && typeof meta === 'object') {
     if (Array.isArray(meta.empowerRolls)) newSlot.empowerRolls = meta.empowerRolls.slice();
     if (Array.isArray(meta.subtypeRolls)) newSlot.subtypeRolls = meta.subtypeRolls.slice();
-    if (Array.isArray(meta.permaBuffs))   newSlot.permaBuffs   = meta.permaBuffs.slice();
     if (Array.isArray(meta.stapledTpls))  newSlot.stapledTpls  = meta.stapledTpls.slice();
     if (meta.bonusTrigger)                newSlot.bonusTrigger = meta.bonusTrigger;
     if (typeof meta.charges === 'number') newSlot.charges = meta.charges;
@@ -1279,9 +1372,14 @@ function appendSlot(tplId, stickers, meta) {
   return runState.slots.length - 1;
 }
 
-// Remove a slot by index. Used by Phylactery rip. CALLER CONTRACT: must
-// decrement slotIdx for any in-game card whose slotIdx > removed index
-// (see ENGINE.ripSlotForPhylactery for reference implementation).
+// Remove a slot by index. Used by Phylactery rip / Vile Edict / Elystra / splice.
+// CALLER CONTRACT (two invariants, both via engine.js's internal
+// fixupSlotPointersAfterRemoval, called from every rip + splice removal site):
+// (1) decrement slotIdx for any in-game card whose slotIdx > the removed index;
+// (2) remap each player's playedSlotIdxs Set the same way — DROP the removed
+// index, DECREMENT every index above it (the win-reward filterByPlayed gate
+// reads it). Skipping (1) corrupts the wrong saved slot via stale pointers
+// (audit A9-2); skipping (2) mis-aims the sticker reward filter (audit A9-3).
 function removeSlotByIdx(idx) {
   if (!runState || !runState.slots) return null;
   if (idx < 0 || idx >= runState.slots.length) return null;
@@ -1290,9 +1388,17 @@ function removeSlotByIdx(idx) {
   return removed;
 }
 
+// Test-only: seed a pendingReward so the reward-pick arms (and their A9-8
+// bounds/dedup guards) can be exercised directly. The reward roll is random and
+// win-gated, so there is no production path to set a crafted reward; this is the
+// only seam the reward-pick coverage uses. Not part of the gameplay API.
+function _setPendingRewardForTest(reward) {
+  if (runState) runState.pendingReward = reward;
+}
+
 return { start, startNextGame, recordResult, getStats: getRunStats, isActive,
          pickRewardCandidate, pickTransformReplacement, dismissReveal, getReward, getSlots,
-         applySplice,
+         applySplice, _setPendingRewardForTest,
          applyStickerToSlot, appendSlot, removeSlotByIdx,
          // Map navigation API.
          getMapState, pickMapNode,

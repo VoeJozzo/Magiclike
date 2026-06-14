@@ -10,6 +10,17 @@ function check(label, ok, info) {
   if (ok) pass++; else fail++;
 }
 
+// A3-2: non-mana activations now take a kind:'ability' stack entry — pass
+// until it resolves (the free/affordable re-activation keeps hasNoAction
+// false, so step() parks on the activator instead of auto-resolving).
+function settle(G) {
+  let safety = 8;
+  while (G.stack.length > 0 && safety-- > 0) {
+    const w = ENGINE.expectedActor(); if (!w) break;
+    ENGINE.executeAction(w, { type: 'pass' });
+  }
+}
+
 function boot() {
   RUN.start({ cards: Array(12).fill('plains'), colors: ['W'] }, null);
   RUN.startNextGame();
@@ -49,8 +60,13 @@ console.log('=== colorless boss card data + constructed registry ===');
   check('boss deck declares no colors',
     deck && Array.isArray(deck.colors) && deck.colors.length === 0);
   const built = DRAFT.buildOpponentDeck(0, 0, 0, null, 'equatorialArtificerBoss');
-  check('built boss keeps colorless identity',
-    built && Array.isArray(built.colors) && built.colors.length === 0);
+  // A8-4: buildOpponentDeck no longer emits a dead `colors` field; boss color
+  // identity lives on the constructed spec (asserted above via deck.colors).
+  check('buildOpponentDeck emits no dead colors field (constructed)',
+    built && !('colors' in built) && Array.isArray(built.cards));
+  const heuristicBuilt = DRAFT.buildOpponentDeck(0, 0, 0, null, null);
+  check('buildOpponentDeck emits no dead colors field (heuristic)',
+    heuristicBuilt && !('colors' in heuristicBuilt) && Array.isArray(heuristicBuilt.cards));
   check('built boss uses exactly 10 Equatorial Engines and no other lands',
     built.cards.filter(s => s.tplId === 'equatorial_engine').length === 10
     && built.cards.filter(s => hasType(CARDS[s.tplId], 'Land')).length === 10);
@@ -85,6 +101,7 @@ console.log('\n=== Artifice Triumphant neutralizes permanently and grants reanim
   ENGINE.executeAction('you', { type: 'activateAbility', cardIid: knight.iid, abilityIdx });
   check('Equatorial tapped and Ingenuity let {C}{C} pay the white activation cost',
     equator.tapped && G.you.mana.C === 1);
+  settle(G);   // A3-2: the granted ability resolves off the stack
   check('target is a creature again until end of turn',
     hasType(knight, 'Artifact') && hasType(knight, 'Creature'));
   const slot = RUN.getSlots()[0];
@@ -114,6 +131,7 @@ console.log('\n=== Artifice Triumphant colorless activation is intentionally fre
   check('colorless target can reactivate with no mana available',
     ENGINE.isLegalAction('you', { type: 'activateAbility', cardIid: colossus.iid, abilityIdx }));
   ENGINE.executeAction('you', { type: 'activateAbility', cardIid: colossus.iid, abilityIdx });
+  settle(G);   // A3-2: the granted ability resolves off the stack
   check('free activation makes the colorless target a creature until end of turn',
     hasType(colossus, 'Artifact') && hasType(colossus, 'Creature'));
   check('colors_of_source cannot be paid without a source-card resolution',
@@ -147,6 +165,7 @@ console.log('\n=== Artifice Triumphant target shows the activated-ability glow a
     activationGlowAvailable(colossus, 'opp') === false);
   const abilityIdx = (colossus.abilities || []).findIndex(ab => ab._sticker_ability_id === 'artifice_triumphant_reanimate');
   ENGINE.executeAction('you', { type: 'activateAbility', cardIid: colossus.iid, abilityIdx });
+  settle(G);   // A3-2: the granted ability resolves off the stack
   check('glow drops once it is already a Creature again (re-activation is a no-op)',
     activationGlowAvailable(colossus, 'you') === false && hasType(colossus, 'Creature'));
 })();

@@ -6,7 +6,7 @@
   },
   "name": "The Mercurial Adept",
   "power": 2,
-  "text": "At the start of each game, ~ gains one of these abilities: deal 1 to opp on attack; +1/+0 EOT on spell cast; +1/+1 counter when an ally enters; draw on lifegain; return to hand on death; gain 1 life when an enemy creature dies.",
+  "text": "At the start of each game, ~ gains one of these abilities: deal 1 to opp on attack; +1/+0 EOT on spell cast; +1/+1 counter when an ally enters; draw on lifegain; +1/+0 EOT when another creature dies; gain 2 life when ~ enters.",
   "toughness": 2,
   "trigger_pool_seed": "mercurial",
   "custom_text": true,

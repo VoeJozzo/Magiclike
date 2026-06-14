@@ -22,15 +22,22 @@ const stapleTpl = Object.keys(CARDS).find(k => k !== baseTpl && hasType(CARDS[k]
 
 console.log('=== mergeSpliceData core: concat + bonus precedence + chain ===');
 (() => {
+  // A5-6/A5-7: permaBuffs is retired — Elystra-style permanent buffs are now
+  // stat_boost / kw_* STICKERS, so they merge for free through the stickers
+  // concat (the old test fed array-shaped permaBuffs the merge wrongly expected,
+  // certifying a shape nothing produced). Base carries an inline stat_boost; the
+  // staple a kw_ sticker — both must survive the concat in order.
   const merged = mergeSpliceData(
-    { tplId: baseTpl, stickers: ['plus1_plus1'], empowerRolls: [], subtypeRolls: ['Goblin'],
-      permaBuffs: [{ power: 1, toughness: 0 }], bonusTrigger: null, priorStaples: [] },
-    { tplId: stapleTpl, stickers: ['cost_minus_1'], empowerRolls: [], subtypeRolls: ['Wizard'],
-      permaBuffs: [{ power: 0, toughness: 1 }], bonusTrigger: { foo: 1 } });
+    { tplId: baseTpl, stickers: ['plus1_plus1', { kind: 'stat_boost', power: 1, toughness: 0 }],
+      empowerRolls: [], subtypeRolls: ['Goblin'], bonusTrigger: null, priorStaples: [] },
+    { tplId: stapleTpl, stickers: ['cost_minus_1', 'kw_flying'],
+      empowerRolls: [], subtypeRolls: ['Wizard'], bonusTrigger: { foo: 1 } });
   check('stapledTpls = priorStaples + staple', eqArr(merged.stapledTpls, [stapleTpl]), JSON.stringify(merged.stapledTpls));
-  check('stickers concat (base then staple)', eqArr(merged.stickers, ['plus1_plus1', 'cost_minus_1']));
+  check('stickers concat carries base buffs then staple (incl. stat_boost + kw)',
+    eqArr(merged.stickers, ['plus1_plus1', { kind: 'stat_boost', power: 1, toughness: 0 }, 'cost_minus_1', 'kw_flying']),
+    JSON.stringify(merged.stickers));
   check('subtypeRolls concat', eqArr(merged.subtypeRolls, ['Goblin', 'Wizard']));
-  check('permaBuffs concat', merged.permaBuffs.length === 2);
+  check('permanent buffs ride the sticker concat — no separate permaBuffs field', merged.permaBuffs === undefined);
   check('bonusTrigger: staple inherited when base lacks one', merged.bonusTrigger && merged.bonusTrigger.foo === 1);
 })();
 

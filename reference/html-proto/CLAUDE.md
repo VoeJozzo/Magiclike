@@ -4,7 +4,7 @@ Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folde
 
 ## Version
 
-**Current: `v2.1.18`** — source of truth: `js/main.js` `const VERSION` (keep in sync on bump). Full version history: [`CHANGELOG.md`](CHANGELOG.md).
+**Current: `v2.1.49`** — source of truth: `js/main.js` `const VERSION` (keep in sync on bump). Full version history: [`CHANGELOG.md`](CHANGELOG.md).
 
 ## File structure
 
@@ -32,7 +32,7 @@ Also in the repo: `index.html` at the repo root — a small redirect that points
 | `js/render.js` | `render()` main repaint, `renderManaPool`, `renderHand`, `renderBf`, `passLabel`, `makeCardEl`, `cardToViewModel`, etc. — in-game UI only |
 | `js/settings-panel.js` | `SETTINGS_PANEL` IIFE — settings modal render + show. Sub-renderers per section (devtools, font preset, per-element rows, popup scale, mana pip sizes, export button). Pulled out of controller.js on v1.0.185. |
 | `js/triggers.js` | `ATOMIC_PREDICATES` registry (12 composable atomic predicates) + `evaluateCondition` walker (string / list-AND / `{op,terms}` tree) — the composable trigger-condition vocabulary used at runtime (Slice 2) |
-| `js/trigger-generator.js` | `GENERATOR_EFFECTS` / `GENERATOR_CONDITIONS` data plus the rolling functions for Mercurial Adept / Architect's Codex (`generateRandomTrigger`, `generateConditionOptions`, `generateEffectOptions`, `assembleTrigger`) |
+| `js/trigger-generator.js` | `GENERATOR_EFFECTS` / `GENERATOR_CONDITIONS` data plus the Architect's Codex three-step build flow (`generateConditionOptions`, `generateEffectOptions`, `assembleTrigger`). The Mercurial Adept does NOT use this module — it seeds from `MERCURIAL_TRIGGER_POOL` in engine.js. |
 | `js/main.js` | `VERSION`, the `opp(who)` helper, and the bootstrap that awaits `loadCards()` then calls `CONTROLLER.init()`. |
 | `tests/` | Node-based regression suite (~20 test files + harness). See `tests/README.md`. |
 

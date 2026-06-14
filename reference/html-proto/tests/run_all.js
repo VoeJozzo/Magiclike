@@ -165,16 +165,258 @@ const CATEGORY_A = [
   // for BOTH the absorb and the reward-screen claimedKeywords, intrinsic
   // novelty (borrowed keywords don't block absorption), bounced-fade edge.
   'test_endomorph_absorb.js',
+  // Audit A1-3 — SBA zero-toughness death: indestructible creatures die at
+  // t <= 0 (704.5f), while the damage/deathtouch exemptions stay intact.
+  'test_sba_zero_toughness.js',
+  // Audit A1-10 — the cleanup discard grants no priority: tapLandForMana is
+  // illegal/rejected mid-discard, the discard stays legal, taps resume after.
+  'test_cleanup_no_mana_taps.js',
+  // Audit A2-3 — ghost attacker: leaving the battlefield removes a creature
+  // from combat (bounce + flash re-cast deals NO damage), while a killed
+  // blocker still leaves its attacker blocked (510.1c tombstone semantics).
+  'test_combat_ghost_attacker.js',
+  // Audit A2-5 — change_control removes the creature from combat (506.4c):
+  // a stolen attacker stops dealing damage (was: damaged its own new
+  // controller), can't block itself; a stolen blocker stops trading damage.
+  'test_combat_change_control.js',
+  // Audit A2-2 — trample vs a lethalNeeded==0 blocker: a fully-marked
+  // indestructible counts as satisfied (full carryover spills, no dump),
+  // while partial marking still respects the boundary.
+  'test_combat_trample_lethal_zero.js',
+  // Audit A2-4 — declareAttackers legality rejects duplicate iids (mirrors
+  // declareBlockers' usedBlockers Set); normal multi-attacker unaffected.
+  'test_combat_duplicate_attackers.js',
+  // Audit A2-7 (design ruling, PR #98) — deathtouch dose is 1 vs every
+  // blocker incl. indestructible (marked, survives); lifelink always gains
+  // full power even when the damage is overkill.
+  'test_combat_deathtouch_lifelink.js',
+  // Audit A2-1 (design ruling, PR #98) — first-strike membership snapshotted
+  // at combat-damage start: a lord dying in pass 1 doesn't make its granted
+  // creature deal damage twice, and a creature gaining first strike between
+  // passes still deals its single snapshot-assigned pass-2 hit.
+  'test_combat_first_strike_snapshot.js',
+  // Audit A2-6 — residual combat coverage: vigilance no-tap on declaration +
+  // multi-block damage (all-die exchange + kill-value ordering characterization).
+  'test_combat_keyword_gates.js',
+  // Audit A2-13 — summoning sickness gate (canCreatureAttack + declareAttackers
+  // legality), replacing the lone accidental choreography-coupled fence.
+  'test_combat_summoning_sick.js',
+  // Audit A2-15 — menace lone-block rejection (2+ blockers required); fences the
+  // documented Object.entries string-key regression.
+  'test_combat_menace.js',
+  // Audit A1-9 — DRAW-step log truthfulness: "X draws." only logs when a
+  // card actually moved (no phantom-draw line on deck-out / Phylactery rip).
+  'test_draw_log_truthfulness.js',
+  // Audit A2-8 + A3-11 — event payload conformance: life_changed (combat
+  // lifelink, damagePlayer loss) and the leave-play family carry source_iid,
+  // pinned through the noSelfCascade guard (self-suppression + foreign-fire).
+  'test_event_source_iid.js',
+  // Audit A3-12 — a mid-prompt trigger fizzle logs (sibling-path wording)
+  // instead of evaporating wordlessly; happy path logs no fizzle.
+  'test_trigger_prompt_fizzle_log.js',
+  // Audit A3-1 — resolution-time target re-validation (§1006.1/§704.1):
+  // hexproof gained in response fizzles the waiting trigger/spell (riders
+  // included), multi-target entries partial-fizzle onto remaining legal
+  // targets, happy path unchanged.
+  'test_resolution_revalidation.js',
+  // Audit A3-10 — no silent emit-time trigger eat: a targeted trigger with
+  // no legal target queues on event match and fizzles WITH a log at the
+  // stack-push moment (§1004/§1005); happy path pinned green.
+  'test_trigger_emit_fizzle_log.js',
+  // Audit A3-13 — trigger copies are exact at copy-time, then diverge:
+  // condition arrays deep-copied at makePlayer's Mercurial pool pick,
+  // makeCard's bonusTrigger push, and finalizeBuild's slot/live-card writes.
+  'test_trigger_condition_clone.js',
+  // Audit A3-14 — schedule_delayed refuses unknown `when` loudly (no more
+  // immortal zombie entries in delayedTriggers) + EFFECT_SCHEMA boot arm.
+  'test_delayed_fireat_validation.js',
+  // Audit A3-5 — boot validation for the three generated-trigger tables
+  // (GENERATOR_EFFECTS/CONDITIONS + MERCURIAL_TRIGGER_POOL) + the stale-save
+  // bonusTrigger warn at makePlayer.
+  'test_generated_tables_validation.js',
+  // Audit A1-1 leg 2 — non-mana ability activation resets the priority
+  // pass tracker (§603 both-pass-in-succession); mana abilities exempt.
+  'test_ability_pass_reset.js',
+  // Audit A1-1 leg 3 — triggers queued while priority is closed WAIT for
+  // the next real window (§1004.4); no synthetic round conjured mid-pause,
+  // pending declarations never silently skipped.
+  'test_trigger_closed_window_drain.js',
+  // Audit A6-1 option C — the bargain sticker pool stays BROAD (add_type/
+  // cost_mod/remove_keyword included; scarified/subtype/empower excluded)
+  // and each pick now respects rarity weights via pickWeightedSticker.
+  'test_bargain_weighted_pool.js',
+  // Audit A1-2 — payer unification: canPayPotential and payMana share ONE
+  // solver (solveManaPayment); the payer executes the checker's solution,
+  // payment is atomic (full payment or zero mutation, never half-applied).
+  'test_paymana_plan_unification.js',
+  // Audit A4-2 (adjudicates A2-9) — one shared lordBuffApplies predicate for
+  // both static_buff halves; applyStaticKeywordGrants diff-reconciles (grants
+  // revoke when the lord's filter stops matching — steal, type change).
+  'test_lord_grant_reconcile.js',
+  // Audit A4-3 — fight fizzles (never retargets) when a chosen {slot}
+  // participant is gone at resolution; {select} auto-pick unaffected.
+  'test_fight_fizzle.js',
+  // Audit A4-5 — intrinsicKeywords is copy-aware: a become_copy_of copy keeps
+  // the copied keywords through the CLEANUP eotGrants rebuild; leave-play
+  // revert still lands on the base identity.
+  'test_copy_keyword_persistence.js',
+  // Audit A4-6 — color/not_color filters test the full color identity
+  // (colorsOfCard), not just the first pip; multicolor + token paths.
+  'test_color_filter_multicolor.js',
+  // Audit A4-19/20/22 — counter routes to the OWNER's graveyard; library
+  // fetches go through placeCardOnBattlefield (fresh iid + sickness);
+  // reanimation resets via the full resetInPlayState (killedBy cleared).
+  'test_a4_zone_state_fixes.js',
+  // Audit A4-16 — move_card battlefield-leaves flush Elystra's pending
+  // permanent_eot buffs (the dead post.keep_buffs fork is gone). BEHAVIOR
+  // CHANGE: her EOT buffs now survive flicker, per her printed text.
+  'test_a4_elystra_flicker_buffs.js',
+  // Audit A4-15 — steal's RUN.appendSlot is human-gated: an opp thief never
+  // writes the victim's persisted run deck (in-game-only theft).
+  'test_a4_steal_run_gate.js',
+  // Audit A4-9 (design ruling) — trample spills from effect damage, never
+  // from fights; deathtouch fight victim-mark fenced.
+  'test_a4_fight_trample_deathtouch.js',
+  // Audit A4-12 (design ruling) — life LOSS shares damage's Phylactery
+  // floor/rip via losePlayerLife (drains can no longer go below 0).
+  'test_a4_phylactery_lifeloss.js',
+  // Audit A4-13 — ability scope:'self' creature-vs-player fork via the
+  // shared resolveSelfTarget (the divergent third copy); add_type stays
+  // creature-routed (artifice_triumphant trap).
+  'test_a4_self_target_ability.js',
+  // Audit A4-7 — trigger-path chooses() routes to the human edict prompt
+  // via the shared maybeDeferHumanChooses gate (trigger twin of
+  // test_edict_human_choice).
+  'test_a4_trigger_edict_prompt.js',
+  // Audit A4-8 + A4-14 — creature_or_player/spell arms honor target_filter;
+  // stat-bounded lord static_buffs can't stack-overflow getStats.
+  'test_a4_targeting_filters.js',
+  // Audit A4-11/17/21 (+8/14 boot legs) — filter-key vocabulary closed at
+  // boot; required-param schema; targeted-kinds-need-a-target sweep;
+  // move_card selector table; no-target/no-amount resolution guards; the
+  // discard arm honors its selector.
+  'test_a4_validation_guards.js',
+  // Audit A3-6 (approved build-out) — card_zone_change emits for EVERY
+  // genuine zone move (draws, tutors, discards, mills, casts, counters,
+  // resolutions, recursion, none→library mints); pool isolation pins,
+  // budget no-loop, noSelfCascade via drawCard sourceIid, setup-silence.
+  'test_a3_6_zone_events.js',
+  // Audit A4-4 — mass removal is simultaneous: the affect_creature scope
+  // path batches its leave emits (checkDeaths' two-pass design), so a
+  // dies-listener swept by the same wipe hears every death, order-
+  // independently; bounce/exile arms + pass-1 indestructible included.
+  'test_mass_removal_batch.js',
+  // Audit A3-2 — stackable infrastructure: kind:'ability' stack entries with
+  // response windows + §1006.1 re-validation; mana fast path untouched;
+  // `stackable` absent → true, non-boolean rejected at boot; dormant
+  // drain-time-immediate arm for stackable:false triggers; counter parity;
+  // AI sanity over ability entries.
+  'test_stackable_infra.js',
+  // Audit A7-4 — bestSpellPlay's self-damage lethal gate is per OPTION: a
+  // modal mode whose self-damage would kill us scores -100 (the old gate
+  // covered non-modal cards only; the comment-promised per-option check
+  // didn't exist). Synthetic modal templates — no pool card has the shape.
+  'test_a7_modal_self_damage.js',
+  // Audit A7-3 — AI value-picks grave-return targets (the migrated move_card
+  // graveyard->hand shape; yard derived from the target's stamped controller
+  // tag) instead of returning valid[0] (oldest card, value-blind).
+  'test_a7_grave_return_pick.js',
+  // Audit A7-2 — add_counter has a non-zero cast value (mirrors abilityValue
+  // 3+P+T, floored >=1) so the AI tries to cast untargeted counter spells.
+  'test_a7_add_counter_cast_value.js',
+  // Audit A7-1 — extra-cost mana abilities ({T},sacrifice: add mana, and the
+  // tapless variant) are excluded from every auto-pay path (the tap lane never
+  // silently pays a non-trivial cost) + a boot tripwire flags the shape.
+  'test_a7_extra_cost_mana.js',
+  // Audit A9-4 + A9-5 — RUN.load() refuses future-version saves (warn +
+  // return false, blob left intact); picklog gamesPlayed counts game
+  // COMPLETIONS in recordResult (no crash-restore double-count, no
+  // abandoned-game count).
+  'test_a9_run_save_guards.js',
+  // Audit A9-2 + A9-3 — run-slot removal contract: EFFECTS.rip (Vile Edict)
+  // routes through ripSlotByIdx, and a shared fixup decrements in-game slotIdx
+  // AND remaps playedSlotIdxs (drop-at + decrement-above) on every rip.
+  'test_a9_slot_invariant.js',
+  // Audit A1-6 — the CLEANUP end-step delayed-trigger drain warns (not silently
+  // drops) on an unhandled effect kind; the deferredEffects path is unchanged.
+  'test_a1_6_unknown_delayed_kind.js',
+  // Audit A10-1/3/4 — card-text truthfulness pins (picker label = oracle, no
+  // raw-kind leak; ~ substitution incl. the Mercurial Adept face leak;
+  // add_type/set_types scope:self subject "this").
+  'test_a10_text_truthfulness.js',
+  // Audit A11-1 — slot/effect-level target strings validated at boot (an
+  // unknown name = a silently-uncastable card); the live pool stays clean.
+  'test_a11_target_string_validation.js',
+  // Audit chunk-5 — synthesis/staple fix batch (Stapler/Splice).
+  // A5-4 — out-of-charges rip routes through the shared slot-pointer fixup so a
+  // merged slot minted above the stapler keeps a valid cached slotIdx.
+  'test_a5_4_charge_rip.js',
+  // A5-5 — cloning a Stapler photocopies its REMAINING charges (Joe Option A)
+  // so the clone decrements and rips instead of reading as infinite.
+  'test_a5_5_clone_charges.js',
+  // A5-1/A5-3 — side-aware combat-state transfer: a spliced opp attacker no
+  // longer attacks you; an absorbed blocker's attacker stays blocked (tombstone).
+  'test_a5_1_splice_combat_side.js',
+  // A5-2 — a spell stapled onto a non-creature battlefield permanent fizzles
+  // (countered to graveyard) instead of fast-resolving + deleting a run slot.
+  'test_a5_2_spell_perm_fizzle.js',
+  // A5-8 — an empower roll on a spell stapled onto a LAND base survives (relocates
+  // to the ETB trigger) instead of silently no-op'ing; prior-staple counts oracle-derived.
+  'test_a5_8_empower_land_splice.js',
+  // A6-2 — a stored-BLANK empower roll (null) stays blank instead of re-rolling a
+  // fresh random target each rebuild; clone no longer launders null into {}.
+  'test_a6_2_empower_stored_blank.js',
+  // A6-3 — inline set_color/set_types sticker descriptors dedup on push (no
+  // unbounded growth); cost_mod stays stackable.
+  'test_a6_3_inline_sticker_dedup.js',
+  // A6-5 — grant_activated_ability dedup branch characterization (id-keyed dedups;
+  // id-less grows) — pins the previously-untested branch.
+  'test_a6_5_grant_ability_dedup.js',
+  // A6-6 — a granted ability/trigger is deep-copied so two cards from one shared
+  // descriptor don't alias a nested field.
+  'test_a6_6_grant_ability_deepcopy.js',
+  // A6-7 — multi-sticker cost resolution is acquisition-order dependent (canonical);
+  // characterization test pins it.
+  'test_a6_7_cost_order.js',
+  // A9-8 — reward-pick sticker/ripUp arms bounds-check + non-stackable dedup
+  // (guard symmetry); also seeds the previously-absent reward-pick coverage.
+  'test_a9_8_reward_pick_guards.js',
+  // A4-23 (leg 2) — two forced discards in one resolution accumulate instead of
+  // blind-overwriting the open prompt.
+  'test_a4_mid_resolution_prompts.js',
+  // A4-18 (re-scoped remainder) — grant_cast_permission dedup (was 100% mutation-
+  // dark) + grant_keyword scope arms.
+  'test_a4_18_effect_coverage.js',
+  // A3-9 (re-scoped remainder) — pickBestTriggerTarget auto-pick heuristic
+  // (controller-comparison branches), signed gain_life, the #10c damageFace rider.
+  'test_trigger_orchestration.js',
+  // A1-23 — scripted full-turn cycle: play/draw rule, mana emptying, lifeLost
+  // reset, AP handoff, and the endTurnPending arm + fast-forward.
+  'test_full_turn_cycle.js',
+  // A1-5 — the step() unknown-phase hang-guard (a corrupt phase halts loudly
+  // instead of spinning while(true) forever).
+  'test_action_vocab_defaults.js',
+  // A5-15 — the out-of-charges Stapler rip routes battlefield removal through
+  // leave-play discipline (removeFromCombat + clearRestrictionsFromSource).
+  'test_a5_15_charge_rip_leave_play.js',
 ];
 
 const TESTS_DIR = __dirname;
 let totalPass = 0, totalFail = 0;
 const failures = [];
 
+// Mutation-runner hooks (tools/audit/mutation). Both inert unless the env
+// vars are set: RUN_ALL_BAIL stops at the first failing file (a killed
+// mutant doesn't need the rest of the suite); RUN_ALL_TEST_TIMEOUT_MS
+// bounds each test process (mutants can introduce infinite loops).
+const BAIL = !!process.env.RUN_ALL_BAIL;
+const PER_TEST_TIMEOUT_MS = parseInt(process.env.RUN_ALL_TEST_TIMEOUT_MS, 10) || 0;
+
 const t0 = Date.now();
 for (const file of CATEGORY_A) {
   process.stdout.write('=== ' + file + ' ... ');
-  const result = spawnSync('node', [path.join(TESTS_DIR, file)], { encoding: 'utf8' });
+  const result = spawnSync('node', [path.join(TESTS_DIR, file)],
+    { encoding: 'utf8', ...(PER_TEST_TIMEOUT_MS ? { timeout: PER_TEST_TIMEOUT_MS } : {}) });
   const out = (result.stdout || '') + (result.stderr || '');
   // Parse the final "=== TOTAL: N passed, M failed ===" line.
   const m = out.match(/TOTAL:\s*(\d+)\s*passed,\s*(\d+)\s*failed/);
@@ -192,6 +434,10 @@ for (const file of CATEGORY_A) {
     console.log('UNPARSEABLE OUTPUT (likely crashed)');
     totalFail += 1;
     failures.push({ file, output: out });
+  }
+  if (BAIL && totalFail > 0) {
+    console.log('(bailing: RUN_ALL_BAIL set and a failure was seen)');
+    break;
   }
 }
 

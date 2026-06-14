@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "defaultMode": "acceptEdits",
+    "additionalDirectories": [
+      "C:\\Users\\Joe\\Documents\\magiclike-audit\\findings",
+      "C:\\Users\\Joe\\Documents\\magiclike-audit\\workshop",
+      "C:\\Users\\Joe\\.config\\magiclike\\audit"
+    ],
+    "allow": [
+      "Bash(git:*)",
+      "Bash(node:*)",
+      "Bash(npm:*)",
+      "Bash(gh:*)",
+      "Bash(powershell:*)",
+      "Bash(powershell.exe:*)",
+      "Bash(ls:*)", "Bash(cat:*)", "Bash(head:*)", "Bash(tail:*)",
+      "Bash(wc:*)", "Bash(grep:*)", "Bash(rg:*)", "Bash(find:*)",
+      "Bash(mkdir:*)", "Bash(cp:*)", "Bash(diff:*)", "Bash(jq:*)",
+      "PowerShell(git:*)",
+      "PowerShell(node:*)",
+      "PowerShell(npm:*)",
+      "PowerShell(gh:*)",
+      "PowerShell(Get-Content:*)",
+      "PowerShell(Get-ChildItem:*)",
+      "PowerShell(Test-Path:*)",
+      "PowerShell(Select-String:*)"
+    ]
+  }
+}

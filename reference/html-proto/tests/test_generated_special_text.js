@@ -79,13 +79,13 @@ console.log('\n=== stapled multi-target spell: ETB trigger keeps its per-slot ta
   // "...,  gets +1/+1 ...  gets +1/+1 ..." with empty subjects + double spaces.
   // Repro: "Clockwork Beetle + Twin Strike" rendered blank targets in-game.
   const beetleTwin = describeCardText(
-    ENGINE.makeCard('clockwork_beetle', [], 0, null, null, null, ['twin_strike']));
+    ENGINE.makeCard('clockwork_beetle', [], 0, null, null, ['twin_strike']));
   check('stapled ETB names its targets (no empty subject)', /target creature/i.test(beetleTwin), beetleTwin);
   check('stapled ETB has no empty-target artifact (no "  gets" / "to  .")',
     !/\s{2,}gets/.test(beetleTwin) && !/to\s{2,}[.]/.test(beetleTwin), beetleTwin);
   // Single-target staple control (Lightning Bolt) is unaffected by the slot-spec path.
   const beetleBolt = describeCardText(
-    ENGINE.makeCard('clockwork_beetle', [], 0, null, null, null, ['lightning_bolt']));
+    ENGINE.makeCard('clockwork_beetle', [], 0, null, null, ['lightning_bolt']));
   check('single-target staple ETB still names "any target"', /any target/i.test(beetleBolt), beetleBolt);
 })();
 
