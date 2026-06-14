@@ -116,25 +116,10 @@ console.log('\n=== control: a non-permanent_eot creature banks nothing ===');
   check('ordinary creature exiled with temps reset', !!exiled && exiled.tempPower === 0);
 })();
 
-console.log('\n=== A5-6/A5-7 migration: a legacy permaBuffs save converts to stickers on load ===');
-(() => {
-  RUN.clearSave && RUN.clearSave();
-  const blob = { version: 2, runState: { active: true, slots: [
-    { tplId: 'elystra_the_immortal', stickers: [], permaBuffs: { power: 2, toughness: 2, keywords: ['flying'] } },
-    { tplId: 'plains', stickers: [] },
-  ] } };
-  localStorage.setItem('magiclike_run_v1', JSON.stringify(blob));
-  const ok = RUN.load();
-  check('legacy save loaded', ok === true);
-  const slot = RUN.getSlots()[0];
-  check('legacy permaBuffs field removed from the slot', !slot.permaBuffs, 'permaBuffs=' + JSON.stringify(slot.permaBuffs));
-  const stat = (slot.stickers || []).find(s => s && typeof s === 'object' && s.kind === 'stat_boost');
-  check('converted to a stat_boost sticker (+2/+2)', !!stat && stat.power === 2 && stat.toughness === 2,
-    'stickers=' + JSON.stringify(slot.stickers));
-  check('converted the keyword grant to a kw_flying sticker', (slot.stickers || []).includes('kw_flying'),
-    'stickers=' + JSON.stringify(slot.stickers));
-  RUN.clearSave && RUN.clearSave();
-})();
+// (The legacy permaBuffs→sticker load migration was removed in v2.1.51 — dead
+// code, nothing has written permaBuffs since the A5-6/A5-7 sticker refactor — so
+// its migration test was removed with it. The flush-to-stickers behavior above
+// is the live guarantee.)
 
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');
 process.exit(fail > 0 ? 1 : 0);

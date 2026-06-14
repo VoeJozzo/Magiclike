@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.1.50`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.1.51`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -2268,4 +2268,18 @@ creature_or_player. (4) BACKLOG: review/remove obsolete `load()` migration logic
 New `test_mana_ability_classification.js` (10 checks: targeting discriminator,
 untargeted-rider, cost-axis separation, empty-effects crash-safety). Suite
 139 → 140 files / 2589 → 2599 assertions green, lint clean.
+v2.1.51: more PR #133 follow-ups. (1) Removed the dead `permaBuffs`→sticker load
+migration in `run.js` `load()` — nothing has written `permaBuffs` since the
+A5-6/A5-7 sticker refactor, so the conversion (and its `midGameSlotsSnapshot`
+blind spot) was unreachable dead code; its migration test in
+`test_a4_elystra_flicker_buffs.js` was removed with it (the live flush-to-stickers
+guarantee stays covered). The five `permaBuffs` mentions remaining in `engine.js`
+are rationale comments (why the current sticker concat is correct), not code. A
+BACKLOG item tracks auditing the other unconditional `load()` migrations
+(subtype-sticker rename, STICKER_ID_RENAMES, empower backfill, stale-prune) for
+the same reachability question. (2) `pickWeightedSticker` now defaults a missing
+weight to 0 (fail-closed — excluded), not 3 (fail-open — silently included at a
+default), matching the `!s.weight` pool filters. No behavior change today: every
+registered sticker carries an explicit weight (verified). Suite 140 files /
+2595 assertions green (−4: the removed migration test), lint clean.
 
