@@ -2250,6 +2250,10 @@ check called all over getLegalActions, i.e. the AI's hot path) now returns the
 moment tryAssign proves feasibility, skipping the O(taps²) plan-trim loop that
 only payMana consumes; the boolean result and the payment plan are unchanged.
 Plus a behavior-identical readability tidy (the move_card selector validation's
-`e.selector != null ? e.selector : null` → `e.selector ?? null`). Suite 2589
-assertions green, 500-game self-play 100% clean (0 illegal actions), lint clean.
+`e.selector != null ? e.selector : null` → `e.selector ?? null`). Also de-flaked
+test_a4_steal_run_gate: its `opp.library.find(gray_ogre)` could match a stray
+copy from the randomly-built opp deck (carrying its own slotIdx) rather than the
+freshly-stolen instance — it now snapshots the pre-existing gray_ogre iids and
+picks the newly-minted one. Suite 2589 assertions green, 500-game self-play
+100% clean (0 illegal actions), lint clean.
 
