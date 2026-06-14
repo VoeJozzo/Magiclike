@@ -109,14 +109,23 @@ function applyStickersToCard(card) {
     const s = resolveSticker(sId);
     if (!s) continue;
     if (s.kind === 'empower') {
-      let roll = (card.empowerRolls || [])[empowerCursor];
-      if (!roll) {
+      const rolls = Array.isArray(card.empowerRolls) ? card.empowerRolls : (card.empowerRolls = []);
+      let roll = rolls[empowerCursor];
+      // A6-2: distinguish a stored BLANK (null — "rolled, nothing to empower")
+      // from NEVER-rolled (undefined — a legacy save). Only undefined falls back
+      // to a fresh roll; a stored null is respected and stays null. The old code
+      // re-rolled on either (truthy test), so a slot whose base had nothing to
+      // empower would, once a staple added empowerable fields, get a FRESH random
+      // target on every makeCard — non-deterministic across saves/staples. Joe:
+      // "the empower stays pointing at the same number when stapled."
+      if (roll === undefined) {
         // Stapled fallback: use merged tpl so roll can land on staple half's effects.
         const tpl = card.stapledFrom
           ? ENGINE.synthesizeStapledTemplate(card.stapledFrom.baseTplId,
                                               card.stapledFrom.stapledTpls)
           : CARDS[card.tplId];
-        roll = tpl ? rollEmpowerTarget(tpl) : null;
+        roll = (tpl ? rollEmpowerTarget(tpl) : null) || null;
+        rolls[empowerCursor] = roll;   // PERSIST so it stays fixed (incl. a null blank)
       }
       empowerCursor++;
       if (roll) applyEmpowerRoll(card, roll, s.amount || 1);

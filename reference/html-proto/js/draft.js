@@ -347,7 +347,8 @@ function applyOpponentClones(slots, n) {
       clone.stapledTpls = orig.stapledTpls.slice();
     }
     if (Array.isArray(orig.empowerRolls) && orig.empowerRolls.length > 0) {
-      clone.empowerRolls = orig.empowerRolls.map(r => ({...r}));
+      // A6-2: preserve a stored-blank (null) roll as null (not a laundered `{}`).
+      clone.empowerRolls = orig.empowerRolls.map(r => r ? {...r} : r);
     }
     if (Array.isArray(orig.subtypeRolls) && orig.subtypeRolls.length > 0) {
       clone.subtypeRolls = orig.subtypeRolls.slice();

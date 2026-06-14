@@ -354,6 +354,9 @@ const CATEGORY_A = [
   // A5-8 — an empower roll on a spell stapled onto a LAND base survives (relocates
   // to the ETB trigger) instead of silently no-op'ing; prior-staple counts oracle-derived.
   'test_a5_8_empower_land_splice.js',
+  // A6-2 — a stored-BLANK empower roll (null) stays blank instead of re-rolling a
+  // fresh random target each rebuild; clone no longer launders null into {}.
+  'test_a6_2_empower_stored_blank.js',
 ];
 
 const TESTS_DIR = __dirname;
