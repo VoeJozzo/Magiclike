@@ -3229,68 +3229,55 @@ const EFFECTS = {
         const baseIdx = baseBf.findIndex(c => c.iid === preservedIid);
         if (baseIdx >= 0) baseBf.splice(baseIdx, 1);
         G[resultOwner].battlefield.push(baseCard);
+        // The base changed sides — it must leave combat (CR 506.4c / canon
+        // §801), exactly as the A2-5 change-control fix does. This clears any
+        // stale role the base held on its OLD side BEFORE the role-transfer
+        // below decides what (if anything) it inherits on its new side (A5-1).
+        removeFromCombat(preservedIid);
       }
       log(`${ctx.sourceName} staples ${stapleCard.name} onto ${baseCard.name}.`, 'sp');
-      // ─── Combat-state transfer ─────────────────────────────────────
-      // If the staple was in combat (attacking or blocking) when consumed,
-      // the merged base inherits its combat role. Mental model: the staple
-      // is physically affixed to the base, so its commitments carry over.
-      // Base's existing role (if any) wins; staple's role is inherited
-      // only into an empty slot.
+      // ─── Side-aware combat-state transfer (A5-1 / A5-3) ─────────────
+      // A merged creature can hold a combat role only on the side it now
+      // belongs to: resultOwner === G.activePlayer → it may ATTACK;
+      // resultOwner === opp(activePlayer) → it may BLOCK. (Pre-fix this copied
+      // a role side-blindly, so an opp attacker stapled onto YOUR creature kept
+      // its attacker role and dealt its damage to YOU — A5-1.)
       //
-      // Three cases for G.attackers (a list of iids):
-      //   - staple was attacking, base was not: replace staple's iid with
-      //     base's iid in-place (preserves attack order).
-      //   - staple was attacking, base was too: just drop staple's iid.
-      //     The merged result is one creature; it attacks once.
-      //   - staple wasn't attacking: no-op.
-      //
-      // G.blockers is a Map of blockerIid → attackerIid:
-      //   - staple was a blocker (key): replace the key with base's iid
-      //     unless base is already a key elsewhere (in which case drop
-      //     the staple entry — same "one creature, one role" rule).
-      //   - staple was being blocked (value): remove the entry. The
-      //     "attacker" the blocker was assigned to is gone (it became
-      //     part of the merged result, possibly on the other side); the
-      //     block no longer applies. The blocker stays on the battlefield
-      //     but is freed from the assignment.
-      if (Array.isArray(G.attackers)) {
-        const stapleAttIdx = G.attackers.indexOf(stapleCard.iid);
-        if (stapleAttIdx >= 0) {
-          const baseAttIdx = G.attackers.indexOf(preservedIid);
-          if (baseAttIdx >= 0) {
-            G.attackers.splice(stapleAttIdx, 1);
-          } else {
-            G.attackers[stapleAttIdx] = preservedIid;
-          }
-        }
+      // The staple's combat bookkeeping is ALWAYS retired through the one
+      // "leaves combat" funnel, removeFromCombat (CR 506.4c / canon §801):
+      //   - prunes the staple from G.attackers;
+      //   - if the staple was a BLOCKER (Map key), tombstones it to
+      //     'gone:'+iid so the attacker it held STAYS blocked (A5-3 — the old
+      //     bare delete flipped that attacker to unblocked and it hit face);
+      //   - if the staple was a BLOCKED attacker (Map value), frees its
+      //     blockers (its target is gone).
+      // Then we opt-in re-assign the staple's role to the base ONLY when that
+      // role is valid for resultOwner — never side-blindly.
+      const attackSide = G.activePlayer;
+      const blockSide = opp(G.activePlayer);
+      // Snapshot the staple's roles BEFORE the funnel clears them.
+      const stapleWasAttacking = Array.isArray(G.attackers) && G.attackers.includes(stapleCard.iid);
+      let stapleBlockedAtk = null;
+      if (G.blockers && typeof G.blockers.get === 'function' && G.blockers.has(stapleCard.iid)) {
+        stapleBlockedAtk = G.blockers.get(stapleCard.iid);
       }
-      if (G.blockers && typeof G.blockers.forEach === 'function') {
-        // Snapshot entries before mutating the Map.
-        const entries = Array.from(G.blockers.entries());
-        for (const [bIid, aIid] of entries) {
-          if (bIid === stapleCard.iid) {
-            // Staple was blocking. Transfer block to base unless base is
-            // already a blocker.
-            G.blockers.delete(stapleCard.iid);
-            const baseAlreadyBlocking = Array.from(G.blockers.keys()).includes(preservedIid);
-            if (!baseAlreadyBlocking) {
-              G.blockers.set(preservedIid, aIid);
-            }
-          } else if (aIid === stapleCard.iid) {
-            // Staple was being blocked. If base inherited the attacker
-            // role (the common case), rewrite the assignment to point at
-            // base. If base didn't inherit (because base was already
-            // attacking, so the iid was removed entirely), the block
-            // assignment is stale — drop it.
-            const baseStillAttacks = Array.isArray(G.attackers) && G.attackers.includes(preservedIid);
-            if (baseStillAttacks) {
-              G.blockers.set(bIid, preservedIid);
-            } else {
-              G.blockers.delete(bIid);
-            }
-          }
-        }
+      removeFromCombat(stapleCard.iid);
+      // Read the base's roles AFTER both funnels (the cross-owner move above
+      // already funneled a side-switching base out, and the staple funnel just
+      // ran) so "one creature, one role" holds without re-introducing the bug.
+      const baseAttacking = Array.isArray(G.attackers) && G.attackers.includes(preservedIid);
+      const baseBlocking = G.blockers && typeof G.blockers.has === 'function' && G.blockers.has(preservedIid);
+      // Inherit the staple's ATTACK role only if the merged creature is on the
+      // attacking side and the base isn't already attacking.
+      if (stapleWasAttacking && resultOwner === attackSide && !baseAttacking) {
+        if (Array.isArray(G.attackers) && !G.attackers.includes(preservedIid)) G.attackers.push(preservedIid);
+      }
+      // Inherit the staple's BLOCK assignment only if the merged creature is on
+      // the blocking side, the base isn't already blocking, and the blocked
+      // attacker is still live.
+      if (stapleBlockedAtk != null && resultOwner === blockSide && !baseBlocking
+          && Array.isArray(G.attackers) && G.attackers.includes(stapleBlockedAtk)) {
+        G.blockers.set(preservedIid, stapleBlockedAtk);
       }
     } else {
       // ─── SPELL-BASE PATH (S+S) ─────────────────────────────────────

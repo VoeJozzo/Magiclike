@@ -345,6 +345,9 @@ const CATEGORY_A = [
   // A5-5 — cloning a Stapler photocopies its REMAINING charges (Joe Option A)
   // so the clone decrements and rips instead of reading as infinite.
   'test_a5_5_clone_charges.js',
+  // A5-1/A5-3 — side-aware combat-state transfer: a spliced opp attacker no
+  // longer attacks you; an absorbed blocker's attacker stays blocked (tombstone).
+  'test_a5_1_splice_combat_side.js',
 ];
 
 const TESTS_DIR = __dirname;
