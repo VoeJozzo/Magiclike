@@ -28,15 +28,20 @@ console.log('=== A9-8: sticker arm out-of-bounds slotIdx does not throw ===');
   check('reward cleared after OOB sticker pick', RUN.getReward() == null);
 })();
 
-console.log('\n=== A9-8: ripUp arm out-of-bounds slotIdx is a no-op ===');
+console.log('\n=== A9-8: ripUp arm rejects an out-of-range slotIdx (negative is the load-bearing case) ===');
 (() => {
   freshRun();
   const before = RUN.getSlots().length;
-  RUN._setPendingRewardForTest(reward([{ kind: 'ripUp', slotIdx: before /* OOB */ }]));
+  // slotIdx -1 is the input where the guard ACTUALLY matters: without it,
+  // splice(-1, 1) silently rips the LAST live slot. (A past-end index is a splice
+  // no-op with or without the guard, so it would fence nothing — green theater.)
+  RUN._setPendingRewardForTest(reward([{ kind: 'ripUp', slotIdx: -1 }]));
   let threw = null;
   try { RUN.pickRewardCandidate(0); } catch (e) { threw = e; }
-  check('OOB ripUp pick does not throw', threw === null, threw ? String(threw.message) : undefined);
-  check('slot count unchanged after OOB ripUp', RUN.getSlots().length === before, 'len=' + RUN.getSlots().length);
+  check('negative-index ripUp does not throw', threw === null, threw ? String(threw.message) : undefined);
+  check('slot count UNCHANGED (guard rejected -1; unguarded splice(-1,1) would rip the last slot)',
+    RUN.getSlots().length === before, 'len=' + RUN.getSlots().length);
+  check('reward cleared after the rejected ripUp', RUN.getReward() == null);
 })();
 
 console.log('\n=== A9-8: non-stackable dedup on the single-sticker arm ===');
