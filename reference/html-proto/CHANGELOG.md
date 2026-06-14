@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.1.47`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.1.48`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -2194,4 +2194,26 @@ green). Enabling REAL filter mana (paying the {1} to net the fixing through the
 solver) remains a separate feature to build before such a card ships.
 test_a7_extra_cost_mana extended (filter-land boot-flagged + solver-excluded).
 Suite 118 files / 2414 assertions green, lint clean.
+
+v2.1.48: audit chunk-5 — the synthesis/staple (Stapler + Splice) fix batch, all
+Joe-ruled in PR #98, then adversarially reviewed (4 agents) with both
+high-severity findings fixed. A5-4: the out-of-charges rip routes through the
+shared slot-pointer fixup (a merged slot minted above the boon slot kept a stale
+cached slotIdx). A5-5: the Clone reward photocopies a Stapler's REMAINING charges
+(Option A) so the clone decrements/rips instead of reading as infinite — and the
+rip is scoped to the ripped slot's instance, not every same-tplId card, so a
+charged clone survives. A5-1/A5-3: the in-game splice's combat-state transfer is
+now side-aware — a spliced opponent attacker can no longer attack YOU; an
+absorbed blocker's attacker stays blocked (tombstone, not bare delete); a spliced
+blocked-attacker re-points its blockers onto the merged base. A5-2: a spell
+stapled onto a non-creature battlefield permanent FIZZLES (countered to graveyard,
+no charge) instead of fast-resolving + deleting an unrelated run slot. A5-8: an
+empower roll on a spell stapled onto a LAND base survives (relocates to the ETB
+trigger); prior-staple counts are oracle-derived. A6-2: a stored-blank empower
+roll stays blank instead of re-rolling a random target on every rebuild.
+A5-6/A5-7: Elystra's permaBuffs object (a 5-site object-vs-array bug class the
+splice merge silently dropped) is retired in favor of stat_boost/kw_* slot
+stickers — the engine's blessed run-persistent channel, so splice/clone/steal
+preserve the buffs for free; a load-time migration converts legacy permaBuffs
+saves. Suite 118 → 125 files / 2414 → 2487 assertions green, lint clean.
 
