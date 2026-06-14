@@ -32,7 +32,7 @@ After winning a game, the player picks one of up to three reward offers. Reward 
 - **Sticker** (weight 12) — apply a sticker to a slot in the deck.
 - **TwoStickers** (3) — apply two stickers to the **same** slot (a polarized threat).
 - **Transform** (2) — replace a slot with a draft pack of 3 cards, pick one.
-- **Clone** (2) — duplicate the highest-value non-land slot.
+- **Clone** (2) — duplicate a random slot in your deck (lands included); you may decline the offer. (The *opponent's* clone instead duplicates its highest-value non-land slots, scaling with depth — see §1503; audit A5-11.)
 - **Splice** (2) — combine two slots into a single multi-effect card.
 - **RipUp** (1) — remove a slot from the deck.
 - **ThreeStickersBlind** (1) — apply three random stickers to a random creature slot (mystery offer).

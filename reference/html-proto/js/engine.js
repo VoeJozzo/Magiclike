@@ -7663,9 +7663,10 @@ function step() {
           while (G[ap].hand.length > 7) doDiscard(ap, G[ap].hand[0].iid);
         }
         // Process delayed triggers scheduled for end of turn. Fire each
-        // one's effect (currently only 'returnFromExile' for Otherworldly
-        // Journey-style cards). This happens BEFORE EOT cleanup so any
-        // returning creature appears on the battlefield with fresh state.
+        // one's effect (the `deferredEffects` atom — e.g. exile_until_eot's
+        // move_card(exile→battlefield); the old bespoke `returnFromExile` is
+        // retired). This happens BEFORE EOT cleanup so any returning creature
+        // appears on the battlefield with fresh state.
         // ETB triggers for returning creatures fire normally and will
         // resolve via pendingTriggers in the next priority round.
         //
@@ -7695,8 +7696,16 @@ function step() {
                 for (const eff of dt.effects) {
                   applyEffect(dctx, eff, dt.target, snapshotTarget(dt.target));
                 }
+              } else {
+                // A1-6: an endStep entry whose effect kind we don't recognize
+                // would otherwise be dropped here SILENTLY (the only producer,
+                // schedule_delayed, hardcodes 'deferredEffects', so this is
+                // unreachable today). Warn loudly so a future mis-wired delayed
+                // effect surfaces instead of vanishing.
+                console.warn('CLEANUP drain: dropping endStep delayed trigger with unhandled effect kind '
+                  + JSON.stringify(dt.effect) + ' (only deferredEffects is handled) — A1-6');
               }
-              // fired, don't keep
+              // fired (or warned-and-dropped); don't keep
             } else {
               stillPending.push(dt);
             }

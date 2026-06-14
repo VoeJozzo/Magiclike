@@ -328,6 +328,9 @@ const CATEGORY_A = [
   // routes through ripSlotByIdx, and a shared fixup decrements in-game slotIdx
   // AND remaps playedSlotIdxs (drop-at + decrement-above) on every rip.
   'test_a9_slot_invariant.js',
+  // Audit A1-6 — the CLEANUP end-step delayed-trigger drain warns (not silently
+  // drops) on an unhandled effect kind; the deferredEffects path is unchanged.
+  'test_a1_6_unknown_delayed_kind.js',
   // Audit A10-1/3/4 — card-text truthfulness pins (picker label = oracle, no
   // raw-kind leak; ~ substitution incl. the Mercurial Adept face leak;
   // add_type/set_types scope:self subject "this").
