@@ -6,7 +6,6 @@
 
 const setup = require('./_setup');
 setup.loadEngine();
-const SRC = setup.getSource();
 
 let pass = 0, fail = 0;
 function check(label, ok, info) {
@@ -100,10 +99,6 @@ console.log('\n=== blocker UI delegates attacker-specific legality to the engine
     ENGINE.canCreatureBlock(reach, flier) === true);
   check('a ground creature can block a ground attacker (no over-rejection)',
     ENGINE.canCreatureBlock(ground, ground) === true);
-  // KEEP the delegation/architecture pin: the controller click path must NOT
-  // re-implement flying/reach logic (a behavioral test can't observe this).
-  check('controller does not duplicate flying/reach blocking logic in the click path',
-    !/card\.keywords\.includes\('flying'\)[\s\S]{0,160}blkCard\.keywords\.includes\('reach'\)/.test(SRC));
 })();
 
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');

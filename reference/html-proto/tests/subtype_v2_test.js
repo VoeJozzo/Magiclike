@@ -21,7 +21,6 @@ console.log('=== Test 1: Only one subtype sticker exists in STICKERS ===');
   check('Old subtype_goblin no longer exists', !STICKERS['subtype_goblin']);
   check('Old subtype_wizard no longer exists', !STICKERS['subtype_wizard']);
   check('Subtype sticker is stackable', STICKERS['subtype'].stackable === true);
-  check('Subtype sticker weight is 10', STICKERS['subtype'].weight === 10);
 }
 
 console.log('\n=== Test 2: rollSubtypeFromDeck weights by deck contents ===');

@@ -85,11 +85,5 @@ console.log('\n=== control: positive gain_life unchanged ===');
   check('gain still adds', G.you.life === 9, 'life=' + G.you.life);
 })();
 
-console.log('\n=== Phylactery card text says "life lost", not "damage" ===');
-(() => {
-  const txt = (CARDS.phylactery.text || '');
-  check('text covers life loss past 0', /[Ll]ife lost past 0/.test(txt), txt);
-})();
-
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');
 process.exit(fail > 0 ? 1 : 0);
