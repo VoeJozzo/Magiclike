@@ -320,7 +320,7 @@ function absorbStapledSlot(slots, bi, si) {
 
 // Apply N clones to opp's deck. Each clone picks the highest-value non-land
 // slot not yet cloned, then inserts a literal photocopy (stickers, staples,
-// empower rolls, permaBuffs, bonusTrigger) after the original.
+// empower rolls, permaBuffs, bonusTrigger, charges) after the original.
 //
 // Mirrors player's clone semantics — photocopy, not re-roll. Tracking by
 // tplId (not index) prevents 3 copies of the same card from one budget and
@@ -360,6 +360,9 @@ function applyOpponentClones(slots, n) {
         ...orig.bonusTrigger,
         effects: (orig.bonusTrigger.effects || []).map(e => ({...e})),
       };
+    }
+    if (typeof orig.charges === 'number') {
+      clone.charges = orig.charges;   // A5-5 parity: photocopy remaining charges
     }
     slots.splice(bestIdx + 1, 0, clone);
     clonedTplIds.add(orig.tplId);

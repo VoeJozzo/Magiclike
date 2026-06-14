@@ -1049,7 +1049,7 @@ function pickRewardCandidate(idx) {
   }
   if (cand.kind === 'clone') {
     // Deep-clone all slot state (stickers, staples, empowerRolls, permaBuffs,
-    // bonusTrigger) so the player gets the merged/buffed version, not just the base.
+    // bonusTrigger, charges) so the player gets the merged/buffed version, not just the base.
     const orig = runState.slots[cand.slotIdx];
     if (!orig) {
       runState.pendingReward = null;
@@ -1077,6 +1077,13 @@ function pickRewardCandidate(idx) {
         ...orig.bonusTrigger,
         effects: (orig.bonusTrigger.effects || []).map(e => ({...e})),
       };
+    }
+    if (typeof orig.charges === 'number') {
+      // A5-5 (Joe Option A, PR #98): photocopy the REMAINING charges. A clone
+      // of a half-used Stapler is half-used — without this the clone slot has no
+      // charges field, the engine charge gate reads it as infinite (never
+      // decrements, never rips), and the UI shows "3 charges" forever.
+      clone.charges = orig.charges;
     }
     runState.slots.splice(cand.slotIdx + 1, 0, clone);
     runState.pendingReward = null;

@@ -338,6 +338,13 @@ const CATEGORY_A = [
   // Audit A11-1 — slot/effect-level target strings validated at boot (an
   // unknown name = a silently-uncastable card); the live pool stays clean.
   'test_a11_target_string_validation.js',
+  // Audit chunk-5 — synthesis/staple fix batch (Stapler/Splice).
+  // A5-4 — out-of-charges rip routes through the shared slot-pointer fixup so a
+  // merged slot minted above the stapler keeps a valid cached slotIdx.
+  'test_a5_4_charge_rip.js',
+  // A5-5 — cloning a Stapler photocopies its REMAINING charges (Joe Option A)
+  // so the clone decrements and rips instead of reading as infinite.
+  'test_a5_5_clone_charges.js',
 ];
 
 const TESTS_DIR = __dirname;

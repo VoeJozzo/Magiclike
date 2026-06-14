@@ -3373,7 +3373,17 @@ const EFFECTS = {
             p.graveyard = p.graveyard.filter(c => c.tplId !== stTplId);
             p.exile = p.exile.filter(c => c.tplId !== stTplId);
           }
-          if (RUN.removeSlotByIdx) RUN.removeSlotByIdx(stapler.slotIdx);
+          if (RUN.removeSlotByIdx) {
+            const ripIdx = stapler.slotIdx;
+            RUN.removeSlotByIdx(ripIdx);
+            // CALLER CONTRACT (run.js removeSlotByIdx): every removal must
+            // decrement cached slotIdx pointers above the gap AND remap
+            // playedSlotIdxs. The Stapler's boon slot is appended LAST, so a
+            // merged slot minted seconds earlier in THIS handler sits above it
+            // — without this fixup its cached slotIdx goes out of bounds
+            // (audit A5-4). Shared helper, same as the two sites above.
+            fixupSlotPointersAfterRemoval('you', ripIdx);
+          }
         }
       }
     }
