@@ -49,7 +49,7 @@ function openStaplePrompt() {
   G.activePlayer = 'you'; G.priorityHolder = 'you'; G.phase = 'MAIN1';
   G.stack = []; G.gameOver = false; G.priority = { passes: new Set() };
   G.you.mana = { W: 9, U: 9, B: 9, R: 9, G: 9, C: 9 };
-  const beetle = ENGINE.makeCard('clockwork_beetle', [], 0, null, null, null, ['roots_and_branches']);
+  const beetle = ENGINE.makeCard('clockwork_beetle', [], 0, null, null, ['roots_and_branches']);
   Object.assign(beetle, { controller: 'you', owner: 'you', tapped: false,
     sick: false, damage: 0, damagedBySources: new Set() });
   G.you.hand.push(beetle);

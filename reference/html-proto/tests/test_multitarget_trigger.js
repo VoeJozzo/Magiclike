@@ -74,7 +74,7 @@ console.log('\n=== a stapled MULTI-target spell ETB resolves ALL its slots ===')
   // two +1/+1 land on the board (sum of tempPower = 2; the auto-picker, lacking a
   // distinct constraint, may stack both on the controller's best creature).
   const G = newGame();
-  const staple = ENGINE.makeCard(VANILLA, undefined, 0, undefined, undefined, undefined, ['twin_strike']);
+  const staple = ENGINE.makeCard(VANILLA, undefined, 0, undefined, undefined, ['twin_strike']);
   staple.iid = iid++; staple.controller = 'opp'; staple.owner = 'opp';
   G.opp.hand.push(staple);
   const buddy = mk('savannah_lions', 'opp'); buddy.sick = false; // a clear pump target
@@ -123,7 +123,7 @@ console.log('\n=== a human-controlled multi-target ETB prompts for EACH slot ===
   G.stack = []; G.gameOver = false; G.priority = { passes: new Set() };
   G.you.mana = { W: 9, U: 9, B: 9, R: 9, G: 9, C: 9 };
   G.you.battlefield = []; G.opp.battlefield = [];
-  const staple = ENGINE.makeCard(VANILLA, undefined, 0, undefined, undefined, undefined, ['twin_strike']);
+  const staple = ENGINE.makeCard(VANILLA, undefined, 0, undefined, undefined, ['twin_strike']);
   staple.iid = iid++; staple.controller = 'you'; staple.owner = 'you';
   G.you.hand.push(staple);
   const a = mk('savannah_lions', 'you'); const b = mk('benalish_hero', 'you');
@@ -160,7 +160,7 @@ console.log('\n=== a stapled controller-gated multi-target ETB resolves BOTH slo
   // creature and slot1 (controller:self) an 'opp' creature. The opponent path
   // AUTO-picks (tsAutoPick) and must fill each slot from the correct side.
   const G = newGame();
-  const staple = ENGINE.makeCard(VANILLA, undefined, 0, undefined, undefined, undefined, ['roots_and_branches']);
+  const staple = ENGINE.makeCard(VANILLA, undefined, 0, undefined, undefined, ['roots_and_branches']);
   staple.iid = iid++; staple.controller = 'opp'; staple.owner = 'opp';
   G.opp.hand.push(staple);
   const mine = mk('savannah_lions', 'you');   // slot0 tap target (opponent-of-staple)
@@ -206,7 +206,7 @@ console.log('\n=== distinct_targets on the TRIGGER auto-pick path, in isolation 
   // keep the flag (the "tap/pump two DIFFERENT creatures you control" shape). The
   // auto-picker must choose a DIFFERENT creature per slot — not valid[0] twice.
   const G = newGame();
-  const staple = ENGINE.makeCard(VANILLA, undefined, 0, undefined, undefined, undefined, ['roots_and_branches']);
+  const staple = ENGINE.makeCard(VANILLA, undefined, 0, undefined, undefined, ['roots_and_branches']);
   staple.iid = iid++; staple.controller = 'opp'; staple.owner = 'opp';
   G.opp.hand.push(staple);
   const etb = (staple.triggers || []).find(t => t.event === 'card_zone_change');

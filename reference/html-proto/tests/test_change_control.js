@@ -87,7 +87,7 @@ console.log('\n=== Steal on a STAPLED opp creature transfers the WHOLE staple (n
   G.stack = []; G.gameOver = false; G.priority = { passes: new Set() };
   G.you.mana = { W: 0, U: 0, B: 0, R: 0, G: 0, C: 9 };
 
-  const stapled = ENGINE.makeCard('savannah_lions', undefined, 0, undefined, undefined, undefined, ['furnace_whelp']);
+  const stapled = ENGINE.makeCard('savannah_lions', undefined, 0, undefined, undefined, ['furnace_whelp']);
   stapled.controller = 'opp'; stapled.owner = 'opp'; stapled.sick = false;
   G.opp.battlefield.push(stapled);
   check('opp stapled creature is the merged 4/3 flying (sanity)',

@@ -11,8 +11,13 @@
 //
 // Fix shape: the battlefield-leave branch calls leavesPlayPreservingBuffs
 // (flush → clearRestrictions → reset) unconditionally —
-// flushPermanentEotToPermaBuffs self-gates on tpl.permanent_eot, so it is a
+// flushPermanentEotToStickers self-gates on tpl.permanent_eot, so it is a
 // no-op for every other card. The dead keep_buffs fork is deleted.
+//
+// A5-6/A5-7 update: the flush now banks the buffs as SLOT STICKERS (a stat_boost
+// sticker for the P/T delta + a kw_<keyword> sticker per grant) instead of the
+// retired permaBuffs object. The behavioral guarantee is unchanged (the buffs
+// survive flicker); only the storage channel changed.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -63,14 +68,17 @@ console.log('=== A4-16: flicker (move_card bf→exile) banks Elystra\'s pending 
     { kind: 'creature', iid: ely.iid });
   check('Elystra left the battlefield', !G.you.battlefield.some(c => c.tplId === 'elystra_the_immortal'));
   const slot = RUN.getSlots()[ely.slotIdx];
-  check('slot.permaBuffs banked the +2 power', !!(slot && slot.permaBuffs) && slot.permaBuffs.power === 2,
-    'permaBuffs=' + JSON.stringify(slot && slot.permaBuffs));
-  check('slot.permaBuffs banked the +2 toughness', !!(slot && slot.permaBuffs) && slot.permaBuffs.toughness === 2);
-  check('slot.permaBuffs banked the EOT keyword grant (flying)',
-    !!(slot && slot.permaBuffs) && (slot.permaBuffs.keywords || []).includes('flying'));
+  const statSticker = (slot.stickers || []).find(s => s && typeof s === 'object' && s.kind === 'stat_boost');
+  check('slot banked a stat_boost sticker for the +2/+2',
+    !!statSticker && statSticker.power === 2 && statSticker.toughness === 2,
+    'stickers=' + JSON.stringify(slot && slot.stickers));
+  check('slot banked the EOT keyword grant as a kw_flying sticker',
+    (slot.stickers || []).includes('kw_flying'),
+    'stickers=' + JSON.stringify(slot && slot.stickers));
 
   // Cloudshift's second half: return from exile — the banked buffs re-apply
-  // (resetInPlayState reads slot.permaBuffs on permanent_eot arrivals).
+  // (the stat_boost modifier survives resetInPlayState and the kw_flying sticker
+  // is re-derived by intrinsicKeywords on permanent_eot arrivals).
   ENGINE.applyEffect({ controller: 'you', sourceName: 'Cloudshift', sourceIid: null },
     { kind: 'move_card', from_zone: 'exile', to_zone: 'battlefield', selector: 'target' },
     { kind: 'graveyard_card', iid: ely.iid });
@@ -101,9 +109,9 @@ console.log('\n=== control: a non-permanent_eot creature banks nothing ===');
     { kind: 'move_card', from_zone: 'battlefield', to_zone: 'exile', selector: 'target' },
     { kind: 'creature', iid: ogre.iid });
   const slot = RUN.getSlots()[ogre.slotIdx];
-  check('ordinary creature: no permaBuffs banked (flush self-gates on permanent_eot)',
-    !slot.permaBuffs || ((slot.permaBuffs.power || 0) === 0 && (slot.permaBuffs.toughness || 0) === 0),
-    'permaBuffs=' + JSON.stringify(slot.permaBuffs));
+  check('ordinary creature: no buff sticker banked (flush self-gates on permanent_eot)',
+    !(slot.stickers || []).some(s => s && typeof s === 'object' && s.kind === 'stat_boost'),
+    'stickers=' + JSON.stringify(slot.stickers));
   const exiled = G.you.exile.find(c => c.tplId === 'gray_ogre');
   check('ordinary creature exiled with temps reset', !!exiled && exiled.tempPower === 0);
 })();

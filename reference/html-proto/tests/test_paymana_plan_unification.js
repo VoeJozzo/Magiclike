@@ -167,7 +167,7 @@ console.log('\n=== 4. KEY: doOptionalCost pays through the same solver ===');
   // land itself can\'t rescue the {U}{B} payment — the duals must be solved.
   const G = newGame();
   makeDuals(G);
-  const staple = ENGINE.makeCard('forest', undefined, 0, undefined, undefined,
+  const staple = ENGINE.makeCard('forest', undefined, 0, undefined,
     undefined, [UB_TPL.tplId]);
   staple.controller = 'you'; staple.owner = 'you';
   G.you.hand.push(staple);

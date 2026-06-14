@@ -46,7 +46,7 @@ console.log('=== A5-4: out-of-charges rip fixes up cached slot pointers ===');
   const mkPerm = (tplId, owner, slotIdx) => {
     const inst = JSON.parse(JSON.stringify(CARDS[tplId]));
     return Object.assign(inst, { iid: iid++, tplId, controller: owner, owner, slotIdx,
-      stickers: [], empowerRolls: [], subtypeRolls: [], permaBuffs: [],
+      stickers: [], empowerRolls: [], subtypeRolls: [],
       tapped: false, sick: false, damage: 0, keywords: [], damagedBySources: new Set() });
   };
   const oppBase = mkPerm(baseTpl, 'opp', null);

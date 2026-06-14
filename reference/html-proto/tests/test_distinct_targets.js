@@ -211,7 +211,7 @@ console.log('\n=== stapled distinct card carries its rule onto the ETB ===');
   // trigger; the rule now rides along (the trigger path enforces cross-slot
   // constraints), so the stapled card keeps "another target creature" semantics
   // instead of silently going permissive.
-  const staple = ENGINE.makeCard('clockwork_beetle', [], 0, null, null, null, ['roots_and_branches']);
+  const staple = ENGINE.makeCard('clockwork_beetle', [], 0, null, null, ['roots_and_branches']);
   const etb = (staple.triggers || []).find(t => t.event === 'card_zone_change');
   check('staple ETB carries distinct_targets', !!etb && etb.distinct_targets === true,
     etb && JSON.stringify(etb.distinct_targets));

@@ -786,7 +786,7 @@ function makeRewardCardEl(tpl, slot) {
     (slot && slot.stickers) || [],
     undefined,
     (slot && slot.empowerRolls) || [],
-    undefined, undefined,
+    undefined,                          // bonusTrigger
     (slot && slot.stapledTpls) || [],
     (slot && slot.subtypeRolls) || []
   );
@@ -1280,7 +1280,7 @@ function renderReward() {
           [],                               // no stickers on merged preview
           undefined,
           [],                               // no empowerRolls
-          undefined, undefined,
+          undefined,                        // bonusTrigger
           priorStaples.concat([stapleSlot.tplId]),
           []
         );

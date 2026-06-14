@@ -209,14 +209,15 @@ function mergeSpliceData(base, staple) {
   const remappedRolls = (staple.empowerRolls || []).map(roll =>
     remapEmpowerRollForStaple(roll, baseIsCreature, stapleIsCreature, baseIsPermanent,
                               priorMergedEffectCount, priorMergedTriggerCount, priorMergedAbilityCount));
-  const baseBuffs = Array.isArray(base.permaBuffs) ? base.permaBuffs : [];
-  const stapleBuffs = Array.isArray(staple.permaBuffs) ? staple.permaBuffs : [];
+  // A5-6/A5-7: permaBuffs is retired. Elystra's buffs are now stat_boost/kw_*
+  // STICKERS, so they merge for free through the `stickers` concat above — the
+  // old object-vs-array permaBuffs concat (which expected a list nothing
+  // produced, silently dropping the real object-shaped buffs) is gone.
   return {
     stapledTpls: priorStaples.concat([staple.tplId]),
     stickers: (base.stickers || []).concat(staple.stickers || []),
     empowerRolls: (base.empowerRolls || []).concat(remappedRolls),
     subtypeRolls: (base.subtypeRolls || []).concat(staple.subtypeRolls || []),
-    permaBuffs: baseBuffs.concat(stapleBuffs),
     bonusTrigger: base.bonusTrigger || staple.bonusTrigger || null,
   };
 }
@@ -231,7 +232,6 @@ function writeMergedSpliceToSlot(slot, merged) {
   slot.stickers = merged.stickers;
   slot.empowerRolls = merged.empowerRolls;
   if (merged.subtypeRolls.length > 0) slot.subtypeRolls = merged.subtypeRolls;
-  if (merged.permaBuffs.length > 0) slot.permaBuffs = merged.permaBuffs;
   if (merged.bonusTrigger) slot.bonusTrigger = merged.bonusTrigger;
 }
 
@@ -718,7 +718,7 @@ const MAKECARD_INSTANCE_KEYS = new Set([
   'stickerTypes',
 ]);
 
-function makeCard(tplId, stickers, slotIdx, empowerRolls, permaBuffs, bonusTrigger, stapledTpls, subtypeRolls) {
+function makeCard(tplId, stickers, slotIdx, empowerRolls, bonusTrigger, stapledTpls, subtypeRolls) {
   const tpl = (stapledTpls && stapledTpls.length > 0)
     ? synthesizeStapledTemplate(tplId, stapledTpls)
     : CARDS[tplId];
@@ -824,12 +824,11 @@ function makeCard(tplId, stickers, slotIdx, empowerRolls, permaBuffs, bonusTrigg
     const v = tpl[k];
     card[k] = (v && typeof v === 'object') ? JSON.parse(JSON.stringify(v)) : v;
   }
-  // Order: subtype-implied → stickers → permaBuffs → bonusTrigger.
+  // Order: subtype-implied → stickers → bonusTrigger. (Elystra's permanent_eot
+  // buffs are now stat_boost/kw_* stickers applied by applyStickersToCard above
+  // — audit A5-6/A5-7 retired the separate permaBuffs object.)
   applySubtypeKeywords(card);
   applyStickersToCard(card);
-  // permaBuffs: slot-persistent buffs from permanent_eot creatures (Elystra).
-  // Shared with resetInPlayState (bounce/flicker recast).
-  if (permaBuffs) applyPermaBuffsToCard(card, permaBuffs);
   // bonusTrigger: slot-persistent trigger (today written by the Architect's
   // Codex ability finalize — see finalizeBuild; boon extras can also seed
   // one). Stored as data so it survives save/load; condId form is required
@@ -961,7 +960,7 @@ function makePlayer(name, deck, ownerSide) {
   // not controller — matters for steal effects. slotIdx threads deck index;
   // for player → runState.slots[i] for sticker persistence, for opp → transient.
   const cards = deck.map((entry, i) => {
-    if (typeof entry === 'string') return makeCard(entry, undefined, i, undefined, undefined);
+    if (typeof entry === 'string') return makeCard(entry, undefined, i, undefined);
     // Bonus trigger: fixed bonusTrigger (locked at run-start) OR triggerPool
     // (rolled fresh per game). Fixed wins. Slot-level pool overrides template seed.
     let bonus = entry.bonusTrigger;
@@ -987,7 +986,7 @@ function makePlayer(name, deck, ownerSide) {
       const bad = refs.unknownKinds.concat(refs.unknownTokens, refs.unknownAtomics, refs.unknownEvents);
       if (bad.length) console.warn('makePlayer: slot bonusTrigger references unknown ids:', bad.join(', '));
     }
-    return makeCard(entry.tplId, entry.stickers, i, entry.empowerRolls, entry.permaBuffs, bonus, entry.stapledTpls, entry.subtypeRolls);
+    return makeCard(entry.tplId, entry.stickers, i, entry.empowerRolls, bonus, entry.stapledTpls, entry.subtypeRolls);
   });
   for (const c of cards) c.owner = ownerSide;
   // Stamp live charges and rewrite "N charges" text from slot data (Stapler etc.).
@@ -2471,7 +2470,7 @@ const EFFECTS = {
   },
   // Counter a stack spell OR take a battlefield permanent — adds slot to runState forever.
   // Spell path: removes from stack (no effects fire); spell ceases (not graveyard).
-  // Slot identity preserved (tplId + stickers + rolls + permaBuffs + bonusTrigger + stapledTpls + charges).
+  // Slot identity preserved (tplId + stickers + rolls + bonusTrigger + stapledTpls + charges).
   steal(ctx, params, target) {
     const r = resolveStackOrPermanent(target);
     if (!r) {
@@ -2507,17 +2506,17 @@ const EFFECTS = {
       if (stIdx >= 0) G.stack.splice(stIdx, 1);
     }
     // ─── Build sticker list and metadata to carry into the new slot ─────
-    // Player-side slot present: copy stickers + all parallel rolls + perma-
-    // buffs + bonusTrigger + stapledTpls + charges. Otherwise: just the
-    // stickers cached on the runtime card (typically empty for stack spells,
-    // but copy what's there in case opp's deck was sticker-scaled).
+    // Player-side slot present: copy stickers + all parallel rolls +
+    // bonusTrigger + stapledTpls + charges. Otherwise: just the stickers cached
+    // on the runtime card (typically empty for stack spells, but copy what's
+    // there in case opp's deck was sticker-scaled). Elystra's permanent buffs
+    // ride along inside stickers now (audit A5-6/A5-7).
     let stickers, meta;
     if (stolenSlot) {
       stickers = (stolenSlot.stickers || []).slice();
       meta = {
         empowerRolls: stolenSlot.empowerRolls,
         subtypeRolls: stolenSlot.subtypeRolls,
-        permaBuffs:   stolenSlot.permaBuffs,
         bonusTrigger: stolenSlot.bonusTrigger,
         stapledTpls:  stolenSlot.stapledTpls,
         charges:      stolenSlot.charges,
@@ -2552,7 +2551,7 @@ const EFFECTS = {
     // Fresh runtime card — template stats + sticker effects re-applied, no
     // residue from the original instance (counters, grants, damage, combat).
     const fresh = makeCard(stolenTplId, stickers, newSlotIdx,
-      meta && meta.empowerRolls, meta && meta.permaBuffs, meta && meta.bonusTrigger,
+      meta && meta.empowerRolls, meta && meta.bonusTrigger,
       meta && meta.stapledTpls, meta && meta.subtypeRolls);
     fresh.owner = ctx.controller;
     G[ctx.controller].library.push(fresh);
@@ -2724,7 +2723,7 @@ const EFFECTS = {
         const card = pluckFromBattlefield(f);
         if (!card) break;
         // EVERY battlefield-leave flushes pending permanent_eot buffs before
-        // the in-play reset (audit A4-16): flushPermanentEotToPermaBuffs
+        // the in-play reset (audit A4-16): flushPermanentEotToStickers
         // self-gates on tpl.permanent_eot, so this is a no-op for every card
         // but Elystra — whose printed text ("End-of-turn effects on Elystra
         // last forever") the old path violated. The `post.keep_buffs` fork
@@ -3179,16 +3178,15 @@ const EFFECTS = {
     // slot mint, and combat-state transfer below on top of the same merge).
     const merged = mergeSpliceData(
       { tplId: baseCard.tplId, stickers: baseCard.stickers, empowerRolls: baseCard.empowerRolls,
-        subtypeRolls: baseCard.subtypeRolls, permaBuffs: baseCard.permaBuffs,
+        subtypeRolls: baseCard.subtypeRolls,
         bonusTrigger: baseCard.bonusTrigger, priorStaples },
       { tplId: stapleCard.tplId, stickers: stapleCard.stickers, empowerRolls: stapleCard.empowerRolls,
-        subtypeRolls: stapleCard.subtypeRolls, permaBuffs: stapleCard.permaBuffs,
+        subtypeRolls: stapleCard.subtypeRolls,
         bonusTrigger: stapleCard.bonusTrigger });
     const newStapledTpls = merged.stapledTpls;
     const mergedStickers = merged.stickers;
     const mergedRolls = merged.empowerRolls;
     const mergedSubtypeRolls = merged.subtypeRolls;
-    const mergedPermaBuffs = merged.permaBuffs;
     const mergedBonus = merged.bonusTrigger;
     // Ownership: caster owns the merge IFF they contributed an input. Pure
     // opp+opp splices are attrition only (no slot mint, stays on base's bf).
@@ -3231,7 +3229,7 @@ const EFFECTS = {
       // that (slotIdx becomes null on the rebuilt card, matching opp's
       // transient-slot convention).
       const rebuilt = makeCard(baseCard.tplId, mergedStickers, newSlotIdx,
-                               mergedRolls, mergedPermaBuffs, mergedBonus, newStapledTpls, mergedSubtypeRolls);
+                               mergedRolls, mergedBonus, newStapledTpls, mergedSubtypeRolls);
       const preservedIid = baseCard.iid;
       const preservedTapped = baseCard.tapped;
       const preservedSick = baseCard.sick;
@@ -5156,18 +5154,11 @@ function resetInPlayState(card, preserveDeathState) {
     }
   }
   card.dealtDeathtouch = false;
-  // Re-apply permaBuffs from slot for permanent_eot creatures (Elystra). Buffs
-  // accumulate across the game on slot.permaBuffs; the card's modifier was
-  // stale from makeCard time. Strip and re-apply with current slot state.
-  if (Array.isArray(card.modifiers)) {
-    card.modifiers = card.modifiers.filter(m => m.source !== 'permaBuffs');
-  }
-  const tpl = CARDS[card.tplId];
-  if (tpl && tpl.permanent_eot && typeof card.slotIdx === 'number'
-      && typeof RUN !== 'undefined' && RUN.getSlots) {
-    const slot = RUN.getSlots()[card.slotIdx];
-    if (slot && slot.permaBuffs) applyPermaBuffsToCard(card, slot.permaBuffs);
-  }
+  // Elystra's permanent_eot buffs are now slot stickers (audit A5-6/A5-7), so
+  // they need no special re-apply here: the stat_boost modifier the flush pushed
+  // has no 'permaBuffs' source and is NOT stripped (it survives the flicker), and
+  // sticker-granted keywords are re-derived by intrinsicKeywords above. A fresh
+  // makeCard re-applies them from slot.stickers via applyStickersToCard.
 }
 
 function moveToGraveyard(card, controller, batch) {
@@ -5195,7 +5186,7 @@ function moveToGraveyard(card, controller, batch) {
   // Same flush as checkDeaths — capture permanent_eot buffs before
   // resetInPlayState clears them. Used for direct-destroy paths
   // (affect_creature destroy, mass destroy).
-  flushPermanentEotToPermaBuffs(card);
+  flushPermanentEotToStickers(card);
   clearRestrictionsFromSource(card.iid);
   resetInPlayState(card, true);   // preserve damagedBySources for dies-triggers
   // Leaves-play emit covers all leave paths uniformly. Fires for any card
@@ -5232,7 +5223,7 @@ function sacrificeCard(card, controller) {
   }
   // Flush permanent_eot — symmetric with checkDeaths and moveToGraveyard.
   // Sacrifice-sourced deaths shouldn't lose Elystra's accumulated buffs.
-  flushPermanentEotToPermaBuffs(card);
+  flushPermanentEotToStickers(card);
   clearRestrictionsFromSource(card.iid);
   resetInPlayState(card, true);
   log(`${pname(controller)} sacrifices ${card.name}.`, 'dmg');
@@ -5453,76 +5444,68 @@ function tryBuildOnDraw(card, who) {
 }
 function endGame(winner) {
   // Flush any pending permanent_eot conversions BEFORE flipping the game-over
-  // flag. The normal path is EOT cleanup, which converts tempPower/tempTou
-  // and eotGrants into slot.permaBuffs. But endGame can fire mid-turn
-  // (lethal attack, lethal Bolt, mill-out) — in which case EOT cleanup
-  // never runs, and any spells you cast on Elystra this turn evaporate when
-  // the next game starts. The flush makes "Elystra survives the win" robust
-  // against any game-end timing.
+  // flag. The normal path is EOT cleanup, which banks tempPower/tempTou and
+  // eotGrants as slot stickers. But endGame can fire mid-turn (lethal attack,
+  // lethal Bolt, mill-out) — in which case EOT cleanup never runs, and any
+  // spells you cast on Elystra this turn would evaporate when the next game
+  // starts. The flush makes "Elystra survives the win" robust against any
+  // game-end timing.
   for (const who of ['you', 'opp']) {
     for (const c of G[who].battlefield) {
-      flushPermanentEotToPermaBuffs(c);
+      flushPermanentEotToStickers(c);
     }
   }
   G.gameOver = true; G.winner = winner;
   log(`${pname(winner)} wins!`, 'imp');
 }
 
-// Apply slot.permaBuffs to a card — pushes a power/toughness modifier and
-// registers keywords in grantedBy with synthetic iid -1 (immune to
-// clearRestrictionsFromSource). Not idempotent for the modifier — caller
-// must strip first (resetInPlayState does this).
-function applyPermaBuffsToCard(card, permaBuffs) {
-  if (!permaBuffs) return;
-  // §3.8: symmetricize is now an additive snapshot (no symmetrizedTo sentinel),
-  // so permaBuffs (Elystra's accumulated power/tou) just stack normally.
-  if ((permaBuffs.power || 0) !== 0 || (permaBuffs.toughness || 0) !== 0) {
+// Flush a permanent_eot creature's (Elystra) current-turn temp buffs and EOT
+// keyword grants to SLOT STICKERS — the engine's blessed run-persistent channel
+// (splice/clone/steal-safe via the existing sticker plumbing, unlike the retired
+// permaBuffs object that nothing else produced and the splice merge mis-shaped:
+// audit A5-6/A5-7). Mirrors endomorph_absorb: emit a stat_boost sticker for the
+// P/T delta and a kw_<keyword> sticker per grant, apply the effect to the
+// in-play card now (so the buff survives this turn's cleanup), and persist to the
+// slot (so it survives save/load and carries to next game). Self-gates on
+// permanent_eot — a no-op for every other card. Consumes (zeroes) the temp
+// values it banks, so repeat calls in one leave path are idempotent.
+function flushPermanentEotToStickers(card) {
+  const tpl = CARDS[card.tplId];
+  if (!tpl || !tpl.permanent_eot) return;
+  if (typeof card.slotIdx !== 'number') return;
+  const persist = (typeof RUN !== 'undefined' && RUN.applyStickerToSlot)
+    ? (s) => RUN.applyStickerToSlot(card.slotIdx, s) : () => {};
+  // P/T delta → one stat_boost sticker (inline; carries the exact magnitude, so
+  // an asymmetric +2/+0 round-trips that a single registry id couldn't).
+  const dP = card.tempPower || 0, dT = card.tempTou || 0;
+  if (dP !== 0 || dT !== 0) {
+    const sticker = { kind: 'stat_boost', power: dP, toughness: dT };
+    persist(sticker);
     if (!Array.isArray(card.modifiers)) card.modifiers = [];
-    card.modifiers.push({
-      power: permaBuffs.power || 0,
-      toughness: permaBuffs.toughness || 0,
-      source: 'permaBuffs',   // marker for the strip-and-reapply path
-    });
+    card.modifiers.push({ power: dP, toughness: dT });   // keep the buff this game
+    if (!Array.isArray(card.stickers)) card.stickers = [];
+    card.stickers.push(sticker);                         // gold badge shows now
+    card.tempPower = 0; card.tempTou = 0;                // consumed
   }
-  if (Array.isArray(permaBuffs.keywords)) {
+  // EOT keyword grants → kw_<keyword> registry stickers. intrinsicKeywords reads
+  // these (so the keyword survives resetInPlayState's re-derive), and render
+  // shows the gold kw badge — exactly endomorph's absorb path.
+  if (Array.isArray(card.eotGrants) && card.eotGrants.length) {
     if (!(card.grantedBy instanceof Map)) card.grantedBy = new Map();
-    for (const kw of permaBuffs.keywords) {
+    if (!Array.isArray(card.stickers)) card.stickers = [];
+    for (const kw of card.eotGrants) {
+      const sticker_id = 'kw_' + kw;
+      if (STICKERS[sticker_id]) {
+        persist(sticker_id);
+        if (!card.stickers.includes(sticker_id)) card.stickers.push(sticker_id);
+      }
+      // In-game: keep the keyword active after eotGrants clears. Synthetic source
+      // -1 is immune to clearRestrictionsFromSource, like the old permaBuffs path.
       if (!card.keywords.includes(kw)) card.keywords.push(kw);
       if (!card.grantedBy.has(kw)) card.grantedBy.set(kw, new Set());
       card.grantedBy.get(kw).add(-1);
     }
-  }
-}
-
-// Flush a permanent_eot creature's (Elystra) temp buffs and EOT grants into
-// slot.permaBuffs. Idempotent. Caller resets temp values after.
-function flushPermanentEotToPermaBuffs(card) {
-  const tpl = CARDS[card.tplId];
-  if (!tpl || !tpl.permanent_eot) return;
-  if (typeof card.slotIdx !== 'number') return;
-  const slot = (typeof RUN !== 'undefined' && RUN.getSlots) ? RUN.getSlots()[card.slotIdx] : null;
-  if (!slot) return;
-  if (!slot.permaBuffs) slot.permaBuffs = {power: 0, toughness: 0, keywords: []};
-  slot.permaBuffs.power += (card.tempPower || 0);
-  slot.permaBuffs.toughness += (card.tempTou || 0);
-  if (Array.isArray(card.eotGrants)) {
-    for (const kw of card.eotGrants) {
-      if (!slot.permaBuffs.keywords.includes(kw)) {
-        slot.permaBuffs.keywords.push(kw);
-      }
-    }
-  }
-  // Also promote to in-game perm state so the creature keeps buffs this turn.
-  card.permPower = (card.permPower || 0) + (card.tempPower || 0);
-  card.permTou = (card.permTou || 0) + (card.tempTou || 0);
-  // EOT grants → grantedBy with synthetic source iid -1, which
-  // clearRestrictionsFromSource never matches, so grants survive the rebuild.
-  if (Array.isArray(card.eotGrants)) {
-    if (!(card.grantedBy instanceof Map)) card.grantedBy = new Map();
-    for (const kw of card.eotGrants) {
-      if (!card.grantedBy.has(kw)) card.grantedBy.set(kw, new Set());
-      card.grantedBy.get(kw).add(-1);
-    }
+    card.eotGrants = [];   // consumed
   }
 }
 
@@ -5532,7 +5515,7 @@ function flushPermanentEotToPermaBuffs(card) {
 // skip the flush behind a dead `post.keep_buffs` flag no card carried).
 // Order matters: flush BEFORE resetInPlayState.
 function leavesPlayPreservingBuffs(card) {
-  flushPermanentEotToPermaBuffs(card);
+  flushPermanentEotToStickers(card);
   clearRestrictionsFromSource(card.iid);
   resetInPlayState(card);
 }
@@ -5703,7 +5686,7 @@ function checkDeaths() {
           claimKeywordsFromKill(c, c.killedBy);
         }
         // Flush Elystra-style EOT buffs BEFORE resetInPlayState wipes them.
-        flushPermanentEotToPermaBuffs(c);
+        flushPermanentEotToStickers(c);
         clearRestrictionsFromSource(c.iid);
         resetInPlayState(c, true);   // preserve damagedBySources for dies-triggers
         log(`${c.name} dies.`, 'dmg');
@@ -7744,11 +7727,11 @@ function step() {
         // its temporary toughness survive: the damage clears the same instant
         // the temp P/T does, so the death check that follows sees a clean board.
         [...G.you.battlefield, ...G.opp.battlefield].forEach(c => {
-          // permanent_eot creatures (Elystra) — convert temp buffs and EOT
-          // grants to slot.permaBuffs before they get cleared. Helper is
+          // permanent_eot creatures (Elystra) — bank this turn's temp buffs and
+          // EOT grants as slot stickers before they get cleared. Helper is
           // shared with endGame, which also needs to flush pending buffs
           // when the game ends mid-turn (before EOT cleanup would fire).
-          flushPermanentEotToPermaBuffs(c);
+          flushPermanentEotToStickers(c);
           c.tempPower = 0; c.tempTou = 0; c.damage = 0;
           c.dealtDeathtouch = false;
           // Revoke until-end-of-turn type grants (add_type/set_types) — the

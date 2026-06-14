@@ -492,16 +492,16 @@ function start(playerDeck, modifierId) {
       for (const e of result.extras) {
         // Pass through optional slot-level fields. Most boon-extras only
         // need tplId + stickers (City of Brass, Elystra, Phylactery);
-        // future boons may want to seed permaBuffs, empowerRolls, or
-        // bonusTriggers directly. The extras slot is the right place for
-        // these — they're how the boon shapes the slot it's adding.
+        // future boons may want to seed empowerRolls, subtypeRolls, or
+        // bonusTriggers directly (and stickers — including stat_boost/kw_*, the
+        // channel Elystra's permanent buffs now use). The extras slot is the
+        // right place for these — they're how the boon shapes the slot it adds.
         // (The triggerPool passthrough below is legacy-save support only:
         // Mercurial Adept now seeds her pool via trigger_pool_seed — see
         // engine.js makePlayer — and no current boon passes a triggerPool.)
         const slot = { tplId: e.tplId, stickers: (e.stickers || []).slice() };
         if (e.triggerPool) slot.triggerPool = e.triggerPool;
         if (e.bonusTrigger) slot.bonusTrigger = e.bonusTrigger;
-        if (e.permaBuffs) slot.permaBuffs = e.permaBuffs;
         if (e.empowerRolls) slot.empowerRolls = e.empowerRolls.slice();
         if (e.subtypeRolls) slot.subtypeRolls = e.subtypeRolls.slice();
         const extraTpl = CARDS[e.tplId];
@@ -1048,8 +1048,9 @@ function pickRewardCandidate(idx) {
     return;
   }
   if (cand.kind === 'clone') {
-    // Deep-clone all slot state (stickers, staples, empowerRolls, permaBuffs,
-    // bonusTrigger, charges) so the player gets the merged/buffed version, not just the base.
+    // Deep-clone all slot state (stickers, staples, empowerRolls, bonusTrigger,
+    // charges) so the player gets the merged/buffed version, not just the base.
+    // Elystra's permanent buffs ride along inside stickers now (audit A5-6/A5-7).
     const orig = runState.slots[cand.slotIdx];
     if (!orig) {
       runState.pendingReward = null;
@@ -1070,9 +1071,6 @@ function pickRewardCandidate(idx) {
     }
     if (Array.isArray(orig.subtypeRolls) && orig.subtypeRolls.length > 0) {
       clone.subtypeRolls = orig.subtypeRolls.slice();
-    }
-    if (Array.isArray(orig.permaBuffs) && orig.permaBuffs.length > 0) {
-      clone.permaBuffs = orig.permaBuffs.map(b => ({...b}));
     }
     if (orig.bonusTrigger) {
       clone.bonusTrigger = {
@@ -1200,13 +1198,14 @@ function applySplice(baseSlotIdx, stapleSlotIdx) {
   // Merge the staple's slot data into the base via the shared splice core
   // (engine.js mergeSpliceData). Stickers are slot-scoped and just concat;
   // empower rolls remap (effect indices shift when arrays concatenate / move
-  // into an ETB trigger); subtype/permaBuffs concat; bonusTrigger: base wins.
+  // into an ETB trigger); subtype concat; bonusTrigger: base wins. (Elystra's
+  // permanent buffs are stickers now, so they ride the sticker concat.)
   const merged = mergeSpliceData(
     { tplId: baseSlot.tplId, stickers: baseSlot.stickers, empowerRolls: baseSlot.empowerRolls,
-      subtypeRolls: baseSlot.subtypeRolls, permaBuffs: baseSlot.permaBuffs,
+      subtypeRolls: baseSlot.subtypeRolls,
       bonusTrigger: baseSlot.bonusTrigger, priorStaples: baseSlot.stapledTpls },
     { tplId: stapleSlot.tplId, stickers: stapleSlot.stickers, empowerRolls: stapleSlot.empowerRolls,
-      subtypeRolls: stapleSlot.subtypeRolls, permaBuffs: stapleSlot.permaBuffs,
+      subtypeRolls: stapleSlot.subtypeRolls,
       bonusTrigger: stapleSlot.bonusTrigger });
   writeMergedSpliceToSlot(baseSlot, merged);
   // Remove the staple slot. If staple comes BEFORE base, removing it
@@ -1301,10 +1300,10 @@ function applyStickerToSlot(slotIdx, sticker_id) {
 
 // Append a new slot mid-game. Used by Steal. Push-at-end preserves existing
 // slotIdx pointers. Returns new index or null. Optional `meta` carries
-// empowerRolls / subtypeRolls / permaBuffs / bonusTrigger / stapledTpls /
-// charges from the stolen slot — without these, a stolen card with empower
-// or subtype stickers would have its rolls forgotten and its stickers
-// degrade or fizzle on the next cast.
+// empowerRolls / subtypeRolls / bonusTrigger / stapledTpls / charges from the
+// stolen slot — without these, a stolen card with empower or subtype stickers
+// would have its rolls forgotten and its stickers degrade or fizzle on the next
+// cast. (Elystra's permanent buffs ride along inside stickers — A5-6/A5-7.)
 function appendSlot(tplId, stickers, meta) {
   if (!runState || !runState.slots) return null;
   if (!CARDS[tplId]) return null;
@@ -1312,7 +1311,6 @@ function appendSlot(tplId, stickers, meta) {
   if (meta && typeof meta === 'object') {
     if (Array.isArray(meta.empowerRolls)) newSlot.empowerRolls = meta.empowerRolls.slice();
     if (Array.isArray(meta.subtypeRolls)) newSlot.subtypeRolls = meta.subtypeRolls.slice();
-    if (Array.isArray(meta.permaBuffs))   newSlot.permaBuffs   = meta.permaBuffs.slice();
     if (Array.isArray(meta.stapledTpls))  newSlot.stapledTpls  = meta.stapledTpls.slice();
     if (meta.bonusTrigger)                newSlot.bonusTrigger = meta.bonusTrigger;
     if (typeof meta.charges === 'number') newSlot.charges = meta.charges;

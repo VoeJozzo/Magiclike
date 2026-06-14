@@ -33,16 +33,16 @@ console.log('=== A6-2: a stored-blank empower roll stays blank (no wandering re-
 (() => {
   // Base had nothing to empower at roll time -> slot stored null. After a staple
   // adds an empowerable field, a rebuild must NOT start empowering it.
-  const c1 = ENGINE.makeCard(LAND, ['empower'], 0, [null], null, null, [SPELL], []);
+  const c1 = ENGINE.makeCard(LAND, ['empower'], 0, [null], null, [SPELL], []);
   check('stored-null empower does NOT bump the staple damage (stays 3)', trigDamage(c1) === 3, 'dmg=' + trigDamage(c1));
-  const c2 = ENGINE.makeCard(LAND, ['empower'], 0, [null], null, null, [SPELL], []);
+  const c2 = ENGINE.makeCard(LAND, ['empower'], 0, [null], null, [SPELL], []);
   check('and it is STABLE across rebuilds (still 3)', trigDamage(c2) === 3, 'dmg=' + trigDamage(c2));
 })();
 
 console.log('\n=== control: a stored REAL roll still applies (no over-correction) ===');
 (() => {
   const realRoll = { location: 'triggers', subIdx: 0, effIdx: 0, field: 'amount' };
-  const c = ENGINE.makeCard(LAND, ['empower'], 0, [realRoll], null, null, [SPELL], []);
+  const c = ENGINE.makeCard(LAND, ['empower'], 0, [realRoll], null, [SPELL], []);
   check('a real stored roll empowers the ETB damage (3 -> 4)', trigDamage(c) === 4, 'dmg=' + trigDamage(c));
 })();
 

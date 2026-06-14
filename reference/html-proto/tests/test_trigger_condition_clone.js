@@ -77,7 +77,7 @@ console.log('\n=== A3-13 site 2: makeCard bonusTrigger push does not alias the s
     label: '__bt_test__', event: 'attacks', condition: ['this_card'],
     text: 'test', effects: [{ kind: 'gain_life', scope: 'self', amount: 1 }],
   };
-  const card = ENGINE.makeCard('plains', undefined, 0, undefined, undefined, bt);
+  const card = ENGINE.makeCard('plains', undefined, 0, undefined, bt);
   const trig = (card.triggers || []).find(t => t.label === '__bt_test__');
   check('bonus trigger attached by makeCard', !!trig);
   if (trig) {
