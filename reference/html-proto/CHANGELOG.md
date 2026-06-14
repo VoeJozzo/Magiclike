@@ -2254,6 +2254,11 @@ Plus a behavior-identical readability tidy (the move_card selector validation's
 test_a4_steal_run_gate: its `opp.library.find(gray_ogre)` could match a stray
 copy from the randomly-built opp deck (carrying its own slotIdx) rather than the
 freshly-stolen instance — it now snapshots the pre-existing gray_ogre iids and
-picks the newly-minted one. Suite 2589 assertions green, 500-game self-play
-100% clean (0 illegal actions), lint clean.
+picks the newly-minted one. Two review-surfaced caveats documented (no behavior
+change): the solveManaPayment wantPlan=false feasibility-only contract (the
+return is {cost,taps:null}, not an executable plan; only canPayPotential may
+pass false), and the set_types-dedup order-sensitivity assumption (the
+JSON.stringify compare is safe only while set_types arrays stay single-element).
+Suite 2589 assertions green, 500-game self-play 100% clean (0 illegal actions),
+lint clean.
 

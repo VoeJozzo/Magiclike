@@ -35,6 +35,11 @@ function inlineSetSemanticsDup(list, desc) {
   return (list || []).some(e => e && typeof e === 'object' && e.kind === desc.kind
     && (desc.kind === 'set_color'
         ? e.color === desc.color
+        // ORDER-SENSITIVE compare: safe only while set_types arrays are single-
+        // element (today's only shape). Multi-tag arrays in a different order
+        // (['Artifact','Creature'] vs ['Creature','Artifact']) would silently
+        // fail to dedup and re-grow the list — sort both sides first if multi-
+        // tag set_types is ever introduced.
         : JSON.stringify(e.types || [e.type]) === JSON.stringify(desc.types || [desc.type])));
 }
 // A6-6: deep-clone a granted ability/trigger before stamping it onto a card.

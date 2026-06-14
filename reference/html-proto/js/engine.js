@@ -1768,6 +1768,11 @@ function castableSpellEntries(who) {
 // tryAssign proves payability, skipping the O(taps^2) plan-trim that only
 // payMana consumes. canPayPotential runs per castable spell/ability in
 // getLegalActions, so this trims real work off the AI's hot path.
+// CONTRACT (load-bearing): the wantPlan=false return is feasibility-only —
+// {cost, taps:null}, NOT an executable plan. Only canPayPotential (which reads
+// `!== null`) may pass false. Every payer (payMana, doOptionalCost) must OMIT
+// the arg so it defaults true and gets the trimmed taps; a payer that passed
+// false would crash on plan.taps — loud (a TypeError), never silent miss-pay.
 function solveManaPayment(who, cost, excludeIid, wantPlan = true) {
   if (!cost) return { cost: null, taps: [] };
   // Invariant: colors_of_source costs must already be source-resolved by the caller.
