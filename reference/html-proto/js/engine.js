@@ -140,7 +140,7 @@ function countEffects(tpl) {
   return 0;
 }
 
-function remapEmpowerRollForStaple(roll, baseIsCreature, stapleIsCreature,
+function remapEmpowerRollForStaple(roll, baseIsCreature, stapleIsCreature, baseIsPermanent,
                                    priorMergedEffectCount, priorMergedTriggerCount, priorMergedAbilityCount) {
   if (!roll) return roll;
   if (baseIsCreature && stapleIsCreature) {
@@ -153,7 +153,12 @@ function remapEmpowerRollForStaple(roll, baseIsCreature, stapleIsCreature,
     return roll;
   }
   if (roll.location !== 'effects') return roll;
-  if (baseIsCreature) {
+  // A5-8: a spell staple on ANY permanent base (Creature OR Land) collapses into
+  // an ETB trigger — mergeStapleInto's basePermanent dispatch treats both the
+  // same. The gate was creature-only, so an empower roll on a spell stapled onto
+  // a LAND base stayed location:'effects' and silently no-op'd (the merged card
+  // has no effects[] — the spell became a trigger). Widen it to any permanent.
+  if (baseIsPermanent) {
     return {
       ...roll,
       location: 'triggers',
@@ -182,29 +187,27 @@ function mergeSpliceData(base, staple) {
   const stapleTpl = CARDS[staple.tplId];
   const baseIsCreature = hasType(baseTpl, 'Creature');
   const stapleIsCreature = !!(stapleTpl && hasType(stapleTpl, 'Creature'));
+  // A5-8: a Land base is ALSO a permanent — a spell staple collapses into an ETB
+  // trigger on it (mergeStapleInto's basePermanent dispatch), exactly as on a
+  // creature base. The empower remap must know this so a roll relocates from
+  // effects[] -> triggers[].
+  const baseIsPermanent = baseIsCreature || hasType(baseTpl, 'Land');
   // Merged effect/trigger/ability counts BEFORE this staple — accounts for any
-  // prior staples, since each shifts the indices differently by merge case:
-  //   Creature+Creature → prior's triggers + abilities concat into the merged
-  //     arrays; Creature base + Spell staple → prior becomes one ETB trigger;
-  //     Spell base + Spell staple → prior's effects concat.
-  let priorMergedEffectCount = countEffects(baseTpl);
-  let priorMergedTriggerCount = (baseTpl.triggers || []).length;
-  let priorMergedAbilityCount = (baseTpl.abilities || []).length;
+  // prior staples, since each shifts the indices a new staple's empower roll
+  // points at. A5-8: derive these from the oracle (synthesizeStapledTemplate),
+  // not a hand-written per-type loop. The old loop's non-creature-base `else`
+  // arm miscounted a prior SPELL staple on a LAND base as +0 triggers (it adds
+  // an ETB trigger), so a second spell staple's roll landed on the PRIOR spell's
+  // trigger. synthesizeStapledTemplate returns the bare baseTpl for an empty
+  // chain and calls mergeStapleInto (not mergeSpliceData) — read-only here, no
+  // recursion. Matches the old loop in every non-buggy case.
   const priorStaples = (base.priorStaples || []).slice();
-  for (const priorTplId of priorStaples) {
-    const priorTpl = CARDS[priorTplId];
-    if (!priorTpl) continue;
-    if (baseIsCreature && hasType(priorTpl, 'Creature')) {
-      priorMergedTriggerCount += (priorTpl.triggers || []).length;
-      priorMergedAbilityCount += (priorTpl.abilities || []).length;
-    } else if (baseIsCreature) {
-      priorMergedTriggerCount += 1;
-    } else {
-      priorMergedEffectCount += countEffects(priorTpl);
-    }
-  }
+  const priorMerged = ENGINE.synthesizeStapledTemplate(base.tplId, priorStaples);
+  const priorMergedEffectCount = countEffects(priorMerged);
+  const priorMergedTriggerCount = (priorMerged.triggers || []).length;
+  const priorMergedAbilityCount = (priorMerged.abilities || []).length;
   const remappedRolls = (staple.empowerRolls || []).map(roll =>
-    remapEmpowerRollForStaple(roll, baseIsCreature, stapleIsCreature,
+    remapEmpowerRollForStaple(roll, baseIsCreature, stapleIsCreature, baseIsPermanent,
                               priorMergedEffectCount, priorMergedTriggerCount, priorMergedAbilityCount));
   const baseBuffs = Array.isArray(base.permaBuffs) ? base.permaBuffs : [];
   const stapleBuffs = Array.isArray(staple.permaBuffs) ? staple.permaBuffs : [];

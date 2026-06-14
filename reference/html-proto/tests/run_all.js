@@ -351,6 +351,9 @@ const CATEGORY_A = [
   // A5-2 — a spell stapled onto a non-creature battlefield permanent fizzles
   // (countered to graveyard) instead of fast-resolving + deleting a run slot.
   'test_a5_2_spell_perm_fizzle.js',
+  // A5-8 — an empower roll on a spell stapled onto a LAND base survives (relocates
+  // to the ETB trigger) instead of silently no-op'ing; prior-staple counts oracle-derived.
+  'test_a5_8_empower_land_splice.js',
 ];
 
 const TESTS_DIR = __dirname;
