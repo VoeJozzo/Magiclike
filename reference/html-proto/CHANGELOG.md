@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.1.49`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.1.50`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -2243,4 +2243,29 @@ removal through leave-play discipline (removeFromCombat + clearRestrictionsFromS
 instead of a raw filter, so a ripped Stapler can't leave a ghost attacker or a
 dangling restriction (A5-15). A9-10 reclassified won't-fix (no pre-snake-case
 saves exist). Suite 125 → 139 files / 2487 → 2589 assertions green, lint clean.
+v2.1.50: PR #133 review follow-ups. (1) Mana-ability classification unified
+behind `isManaAbility(ab)` and keyed on TARGETING, not `effects[0]` alone: a mana
+ability is one that produces mana AND requires no target. An untargeted rider
+("T: add G, gain 1 life") stays a mana ability (Joe's ruling); a TARGETED hybrid
+("T: add G, +1/+1 target creature") is no longer mis-classified as pure mana — it
+now routes through the normal activated-ability/stackable path instead of silently
+dropping its rider on the tap-lane or being auto-fired by the solver. Cost-
+triviality is split into a separate `isAutoUsableManaAbility` (the auto-payer/tap-
+lane gate), so a sacrifice/mana-cost mana ability is still off-stack and legal any
+time (closed-window-drain contract preserved). The shared helper also guards the
+bare `effects[0]` deref at all three route/legality sites, so a malformed empty-
+effects ability is "not a mana ability" rather than a TypeError (no current card
+hits any of this — latent footgun fixes). (2) Dead `target: "self"` paths stripped
+(0 producers, 0 cards): `scope: "self"` is the canonical "affects itself" form;
+`effectNeedsTarget`/the two staple slot-scanners no longer special-case it, and
+the stale PROTOCOL.md bullet claiming effect-level `target: "self"` works is
+corrected (the engine has no resolver for it and boot validation rejects it; only
+`move_card`'s `selector: "self"` is a real "self" on a target-shaped field). (3)
+`resolveTarget` gained a precondition comment (card/permanent targets only; callers
+must peel off `kind:'player'` first) — latent, no current non-damage effect targets
+creature_or_player. (4) BACKLOG: review/remove obsolete `load()` migration logic
+(the dead `permaBuffs`→sticker conversion + its `midGameSlotsSnapshot` blind spot).
+New `test_mana_ability_classification.js` (10 checks: targeting discriminator,
+untargeted-rider, cost-axis separation, empty-effects crash-safety). Suite
+139 → 140 files / 2589 → 2599 assertions green, lint clean.
 

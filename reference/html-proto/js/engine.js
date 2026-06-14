@@ -256,17 +256,40 @@ function manaAbilityCostIsTrivial(ab) {
   for (const k of Object.keys(ab.cost)) { if (k !== 'tap') return false; }
   return true;
 }
-// True iff `ab` is an add_mana ability the auto-payer / tap lane may use.
+// True iff `ab` is a MANA ABILITY (canon §705): it produces mana and REQUIRES NO
+// TARGET. Mana abilities resolve off-stack, ignore the `stackable` field (the
+// fast-path is hardcoded; see isStackable), and are legal whenever their cost
+// can be paid — regardless of HOW costly that is. TARGETING — not effect-purity
+// or cost — is the discriminator: an untargeted rider rides along fine ("T: add
+// G, gain 1 life" is still a mana ability), but a TARGETED ability ("T: add G,
+// +1/+1 target creature") is NOT — it takes a target and must route through the
+// normal activated-ability / stackable path. (Cost-triviality is a SEPARATE axis
+// gating only the AUTO-PAYER — see isAutoUsableManaAbility — not whether `ab` is
+// a mana ability: a sacrifice/mana-cost mana ability is still off-stack.) The
+// effects[0] check both requires mana to lead (manaEffectColors reads effects[0])
+// AND guards the deref, so an empty effects[] is "not a mana ability", not a
+// crash. The no-target check is inlined (vs objectNeedsTarget) so this early
+// helper has no forward dependency — grantBasicLandMana calls it at card-load
+// time, before later helpers resolve in the test harness's single-eval scope;
+// it mirrors objectNeedsTarget/effectNeedsTarget exactly.
+function isManaAbility(ab) {
+  if (!ab || !Array.isArray(ab.effects) || !ab.effects[0]) return false;
+  if (ab.effects[0].kind !== 'add_mana') return false;
+  if (ab.target) return false;
+  if (Array.isArray(ab.target_slots) && ab.target_slots.length > 0) return false;
+  return !ab.effects.some(e => e && (e.target || e.target_slot != null));
+}
+// True iff `ab` is a mana ability the auto-payer / tap lane may use: a mana
+// ability with a trivial (tap-only) cost the solver can pay on its own.
 function isAutoUsableManaAbility(ab) {
-  return !!(ab && ab.effects && ab.effects[0] && ab.effects[0].kind === 'add_mana' && manaAbilityCostIsTrivial(ab));
+  return isManaAbility(ab) && manaAbilityCostIsTrivial(ab);
 }
 
-// The tap-for-mana ability on a permanent (cost.tap + add_mana, trivial cost), or null.
+// The tap-for-mana ability on a permanent (cost.tap + auto-usable mana), or null.
 function manaAbilityOf(card) {
   if (!card || !Array.isArray(card.abilities)) return null;
   return card.abilities.find(ab => ab && ab.cost && ab.cost.tap
-    && ab.effects && ab.effects[0] && ab.effects[0].kind === 'add_mana'
-    && manaAbilityCostIsTrivial(ab)) || null;
+    && isAutoUsableManaAbility(ab)) || null;
 }
 // Colors an add_mana effect can produce ({choose} or {amounts}).
 function manaEffectColors(eff) {
@@ -641,7 +664,7 @@ function computeNextFreeSlot(merged) {
   let maxSlot = -1;
   function visit(eff) {
     if (!eff) return;
-    if (eff.target && eff.target !== 'self') {
+    if (eff.target) {
       maxSlot = Math.max(maxSlot, eff.target_slot || 0);
     }
   }
@@ -661,7 +684,7 @@ function remapEffectSlots(effects, offset) {
   if (!Array.isArray(effects)) return effects;
   return effects.map(e => {
     const copy = {...e};
-    if (copy.target && copy.target !== 'self') {
+    if (copy.target) {
       copy.target_slot = (e.target_slot || 0) + offset;
     }
     return copy;
@@ -1148,6 +1171,10 @@ function copySourceRef(ctx) {
 // Standard fizzle-on-missing-target preamble for EFFECTS handlers.
 //   const f = resolveTarget(ctx, target);
 //   if (!f) return;
+// PRECONDITION: resolves CARD/permanent targets only (looked up by `iid`).
+// Players have no `iid`, so a `{kind:'player'}` target would fizzle here as
+// "no target". Callers handling a creature_or_player effect MUST peel off
+// `target.kind === 'player'` first (see the damage handler) before calling.
 function resolveTarget(ctx, target) {
   // Missing/iid-less target → the SAME logged fizzle as a stale target
   // (audit A4-17). Before this guard a misauthored no-target effect threw a
@@ -3572,7 +3599,7 @@ function applyEffect(ctx, effect, target, targetSnap) {
 // `target_slots`). Scope/self effects carry neither and never reach here as
 // targeted.
 function effectNeedsTarget(eff) {
-  return (!!eff.target && eff.target !== 'self') || (eff.target_slot != null);
+  return !!eff.target || (eff.target_slot != null);
 }
 
 // Boot-time effect validation (Slice 3 step 4). Walks every card's effects
@@ -6585,8 +6612,10 @@ function doActivateAbility(who, cardIid, abilityIdx, targets, sacIid) {
   }
   // Costs are paid; route by stackability (A3-2 stackable infrastructure).
   // Mana abilities NEVER stack — hardcoded fast path (canon §705), they
-  // resolve inline below regardless of any `stackable` field.
-  const isMana = ab.effects[0].kind === 'add_mana';
+  // resolve inline below regardless of any `stackable` field. A targeted
+  // ability that also makes mana is NOT a mana ability (isManaAbility keys on
+  // no-target), so it correctly takes the stackable path below.
+  const isMana = isManaAbility(ab);
   const entry = {
     kind: 'ability', ab,
     sourceIid: card.iid, sourceName: card.name,
@@ -7185,7 +7214,7 @@ function isLegalAction(who, action) {
           if (((f.card.counters && f.card.counters[name]) || 0) < ab.cost.remove_counters[name]) return false;
         }
       }
-      const isMana = ab.effects[0].kind === 'add_mana';
+      const isMana = isManaAbility(ab);
       if (isMana) {
         // Mana abilities are always available when source can be tapped, regardless of priority.
         // (Matches MtG: mana abilities don't require priority and don't use the stack.)
@@ -7426,7 +7455,7 @@ function getLegalActions(who) {
     if (!card.abilities) continue;
     for (let i=0; i<card.abilities.length; i++) {
       const ab = card.abilities[i];
-      const isMana = ab.effects[0].kind === 'add_mana';
+      const isMana = isManaAbility(ab);
       if (isMana) continue;   // surfaced as tapLandForMana
       // Tap cost requirements.
       if (ab.cost && ab.cost.tap) {
@@ -8008,6 +8037,9 @@ return {
   playerOwesDecision,
   subscribe, findCard, getStats, getCardValue, sacValueOnBoard, cardCost: costTotalCard,
   landProducibleColors, payMana,
+  // Mana-ability classifier (produces mana + no target), exposed for tests —
+  // the discriminator for the off-stack / no-priority fast path.
+  isManaAbility,
   canCreatureAttack, canCreatureBlock,
   effectNeedsTarget, getValidTargets,
   effectiveCastCost,
