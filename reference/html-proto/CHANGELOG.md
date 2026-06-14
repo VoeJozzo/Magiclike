@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.1.49`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.1.50`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -2243,4 +2243,13 @@ removal through leave-play discipline (removeFromCombat + clearRestrictionsFromS
 instead of a raw filter, so a ripped Stapler can't leave a ghost attacker or a
 dangling restriction (A5-15). A9-10 reclassified won't-fix (no pre-snake-case
 saves exist). Suite 125 → 139 files / 2487 → 2589 assertions green, lint clean.
+
+v2.1.50: post-audit cleanup pass (/simplify on PR #133). solveManaPayment grows
+a `wantPlan` flag — canPayPotential (the per-castable-spell/ability legality
+check called all over getLegalActions, i.e. the AI's hot path) now returns the
+moment tryAssign proves feasibility, skipping the O(taps²) plan-trim loop that
+only payMana consumes; the boolean result and the payment plan are unchanged.
+Plus a behavior-identical readability tidy (the move_card selector validation's
+`e.selector != null ? e.selector : null` → `e.selector ?? null`). Suite 2589
+assertions green, 500-game self-play 100% clean (0 illegal actions), lint clean.
 
