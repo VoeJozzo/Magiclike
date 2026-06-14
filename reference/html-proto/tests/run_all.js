@@ -381,6 +381,9 @@ const CATEGORY_A = [
   // A9-8 — reward-pick sticker/ripUp arms bounds-check + non-stackable dedup
   // (guard symmetry); also seeds the previously-absent reward-pick coverage.
   'test_a9_8_reward_pick_guards.js',
+  // A4-23 (leg 2) — two forced discards in one resolution accumulate instead of
+  // blind-overwriting the open prompt.
+  'test_a4_mid_resolution_prompts.js',
 ];
 
 const TESTS_DIR = __dirname;

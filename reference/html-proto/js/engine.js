@@ -2159,7 +2159,16 @@ function discardFromHand(ctx, who, amount) {
   if (who === 'you') {
     // sourceIid rides along so doDiscard can attribute its zone-change emit
     // to the card that forced the discard (audit A3-6).
-    G.forcedDiscard = { who: 'you', remaining: n, source: ctx.sourceName, sourceIid: ctx.sourceIid };
+    // A4-23: a second forced discard in the SAME resolution ACCUMULATES onto the
+    // open prompt — was a blind `=` that dropped the earlier prompt's remaining
+    // count, so a card with two discard effects would under-discard. Latent today
+    // (no shipped card stacks two human-side discards in one effects array).
+    if (G.forcedDiscard && G.forcedDiscard.who === 'you') {
+      G.forcedDiscard.remaining += n;
+      console.warn('discardFromHand: merged a second forcedDiscard prompt (remaining=' + G.forcedDiscard.remaining + ')');
+    } else {
+      G.forcedDiscard = { who: 'you', remaining: n, source: ctx.sourceName, sourceIid: ctx.sourceIid };
+    }
     log(`${ctx.sourceName} — choose ${n} card(s) to discard.`, 'sp');
     return;
   }
@@ -4548,12 +4557,19 @@ function applySelect(cands, select) {
   const want = (select && select.extreme === 'least') ? Math.min(...vals) : Math.max(...vals);
   return cands.filter((_, i) => vals[i] === want);
 }
+// ONE hexproof checkpoint (A4-24 — was three pasted .filter() copies with a
+// missing-null-guard drift on the creature branch). True when `card` is opp-
+// controlled relative to the caster AND hexproof, i.e. NOT a legal target. The
+// `|| []` normalizes the drift so all three target branches read one fact.
+function hexproofBlocks(card, ctrl, caster) {
+  return (card.keywords || []).includes('hexproof') && ctrl !== caster;
+}
 function getValidTargets(effect, controller) {
   const allCreatures = [
     ...G.you.battlefield.map(c => ({card: c, ctrl: 'you'})),
     ...G.opp.battlefield.map(c => ({card: c, ctrl: 'opp'})),
   ].filter(x => hasType(x.card, 'Creature'))
-   .filter(x => !(x.card.keywords.includes('hexproof') && x.ctrl !== controller));
+   .filter(x => !hexproofBlocks(x.card, x.ctrl, controller));
   switch (effect.target) {
     case 'creature_or_player':  // "any target" — a creature or a player
       // The optional restriction (effect.filter / target_filter) applies to
@@ -4591,7 +4607,7 @@ function getValidTargets(effect, controller) {
         ...G.opp.battlefield.map(c => ({card: c, ctrl: 'opp'})),
       ]
         .filter(x => isPermanent(x.card))
-        .filter(x => !(x.card.keywords && x.card.keywords.includes('hexproof') && x.ctrl !== controller))
+        .filter(x => !hexproofBlocks(x.card, x.ctrl, controller))
         .filter(x => matchFilter(x.card, effect.filter, x.ctrl, controller))
         .map(x => ({kind:'permanent', iid:x.card.iid, label:x.card.name}));
     case 'graveyard_card': {
@@ -4642,7 +4658,7 @@ function getValidTargets(effect, controller) {
         ...G.opp.battlefield.map(c => ({card: c, ctrl: 'opp'})),
       ]
         .filter(x => isPermanent(x.card))
-        .filter(x => !(x.card.keywords && x.card.keywords.includes('hexproof') && x.ctrl !== controller))
+        .filter(x => !hexproofBlocks(x.card, x.ctrl, controller))
         .filter(x => matchFilter(x.card, effect.filter, x.ctrl, controller))
         .map(x => ({kind:'permanent', iid:x.card.iid, label:x.card.name}));
       const spells = G.stack
