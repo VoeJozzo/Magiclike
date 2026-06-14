@@ -399,6 +399,25 @@ let G = null;
 let nextIid = 1;
 let listeners = [];
 
+// Add the mana an add_mana-shaped effect produces to `who`'s pool, and return
+// the log fragment of what was added ("{G}" or "{B}{B}{B}"). THE single source
+// of truth for the {choose}/{amounts} → pool mutation — shared by the add_mana
+// effect handler and the tap-for-mana lane (each logs its own framing).
+// `colorChoice` is the resolved pick for a {choose} effect (UI/AI); absent or
+// illegal → the first option. (Defined here, after `G`, so it's in scope for
+// both callers.)
+function produceMana(who, eff, colorChoice) {
+  if (eff.choose) {
+    const opts = eff.choose === 'any' ? COLORS : eff.choose;
+    const c = (colorChoice && opts.includes(colorChoice)) ? colorChoice : opts[0];
+    G[who].mana[c]++;
+    return `{${c}}`;
+  }
+  const am = eff.amounts || {};
+  for (const k of Object.keys(am)) G[who].mana[k] += am[k];
+  return Object.entries(am).map(([k, n]) => `{${k}}`.repeat(n)).join('');
+}
+
 // Registry of "player owes a decision" modal types.
 //
 // ADD-A-MODAL CHECKLIST — the registry entry alone is NOT enough. While a
@@ -2634,19 +2653,16 @@ const EFFECTS = {
     emitZoneChange(removed.card, removed.controller, 'stack', 'graveyard', undefined, ctx.sourceIid);
   },
   add_mana(ctx, params) {
-    // Color-choice form (§3.9): {choose:'any'} or {choose:['W','U']} adds one
-    // mana of a chosen color. params.color is the resolved pick (UI/AI); else
-    // default to the first option.
-    if (params.choose) {
-      const opts = params.choose === 'any' ? COLORS : params.choose;
-      const c = (params.color && opts.includes(params.color)) ? params.color : opts[0];
-      G[ctx.controller].mana[c]++;
-      log(`${pname(ctx.controller)} adds {${c}}.`, 'sp');
-      return;
-    }
-    for (const c of Object.keys(params.amounts)) G[ctx.controller].mana[c] += params.amounts[c];
-    const txt = Object.entries(params.amounts).map(([c,n]) => `{${c}}`.repeat(n)).join('');
-    log(`${pname(ctx.controller)} adds ${txt}.`, 'sp');
+    // §3.9 mana production through the shared produceMana helper (single source
+    // of the {choose}/{amounts} → pool logic). The {choose} color pick comes
+    // from params.color (a baked pick) or ctx.manaColor (the tap-lane's resolved
+    // choice); absent → the first option.
+    const added = produceMana(ctx.controller, params, params.color || ctx.manaColor);
+    // Tap-lane activations log "taps SOURCE for {X}" (ctx.tapForMana, set by
+    // doTapLandForMana); every other producer — spells like Dark Ritual, the
+    // generic ability path — logs "adds {X}".
+    if (ctx.tapForMana) log(`${pname(ctx.controller)} taps ${ctx.sourceName} for ${added}.`);
+    else log(`${pname(ctx.controller)} adds ${added}.`, 'sp');
   },
   // Unified signed life-delta (DIVERGENCE D4). amount > 0 gains life and fires a
   // life_changed(delta>0) → is_life_gain; amount < 0 loses life, tracks
@@ -6516,19 +6532,17 @@ function doTapLandForMana(who, cardIid, color, abilityIdx) {
   // tapless one would be wrongly tapped). Refuse — it routes through
   // activateAbility, which pays the full cost.
   if (!manaAbilityCostIsTrivial(manaAb)) return;
-  card.tapped = true;
-  const eff0 = manaAb.effects[0];
-  if (eff0.choose) {
-    const opts = eff0.choose === 'any' ? COLORS : eff0.choose;
-    const chosen = (color && opts.includes(color)) ? color : opts[0];
-    G[who].mana[chosen]++;
-    log(`${G[who].name} taps ${card.name} for {${chosen}}.`);
-  } else {
-    const am = eff0.amounts;
-    for (const k of Object.keys(am)) G[who].mana[k] += am[k];
-    const txt = Object.entries(am).map(([k, n]) => `{${k}}`.repeat(n)).join('');
-    log(`${G[who].name} taps ${card.name} for ${txt}.`);
-  }
+  card.tapped = true;   // pay the tap cost
+  // Resolve through the shared ability-effects path (the SAME one doActivateAbility
+  // uses) so the mana-fill logic — and any untargeted rider effect — lives in one
+  // place, not a parallel hand-rolled copy. The chosen color and the
+  // "taps SOURCE for {X}" log framing ride along on the entry
+  // (ctx.manaColor / ctx.tapForMana → the add_mana handler).
+  runAbilityEffects({
+    ab: manaAb, controller: who, sourceName: card.name,
+    sourceIid: card.iid, sourceCard: card, targets: [],
+    manaColor: color, tapForMana: true,
+  });
 }
 function doCastSpell(who, cardIid, targets, modeIdx) {
   const p = G[who];
@@ -6688,7 +6702,10 @@ function runAbilityEffects(item) {
   // sourceCard is the activation-time object (last-known information) — see
   // the entry-construction comment in doActivateAbility.
   const ctx = { controller: who, sourceName: item.sourceName, sourceIid: item.sourceIid,
-                sourceCard: item.sourceCard || null, allTargets: targets };
+                sourceCard: item.sourceCard || null, allTargets: targets,
+                // Tap-for-mana lane threads the resolved color choice + log
+                // framing through to the add_mana handler (doTapLandForMana).
+                manaColor: item.manaColor, tapForMana: item.tapForMana };
   // Multi-target dispatch (mirrors resolveTopOfStack/resolveTrigger). By
   // default, targeted effects share targets[0]. Effects can opt into a
   // distinct slot via `target_slot: N`. allTargets is also threaded onto

@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.1.51`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.1.52`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -2282,4 +2282,20 @@ weight to 0 (fail-closed — excluded), not 3 (fail-open — silently included a
 default), matching the `!s.weight` pool filters. No behavior change today: every
 registered sticker carries an explicit weight (verified). Suite 140 files /
 2595 assertions green (−4: the removed migration test), lint clean.
+v2.1.52: consolidated the two mana-resolution paths (PR #133 follow-up refactor).
+`doTapLandForMana` was a parallel hand-rolled copy of the {choose}/{amounts} →
+pool logic the `add_mana` effect handler already has, and it ran ONLY `effects[0]`
+— silently dropping any rider. Both now route through ONE path: a shared
+`produceMana(who, eff, color)` helper is the single source of the pool mutation,
+and `doTapLandForMana` pays the tap then delegates to `runAbilityEffects` (the
+same resolution `doActivateAbility` uses), threading the chosen color and the
+"taps SOURCE for {X}" log framing via `ctx.manaColor` / `ctx.tapForMana`.
+Behavioral upshot: an untargeted rider on a mana ability (e.g. a hypothetical
+"{T}: add G, gain 1 life" dork — the form v2.1.50 newly admits) now resolves on
+the tap lane exactly as activating it would, instead of being dropped. No current
+card is affected (every shipped mana ability is a single `add_mana` effect). The
+spell/`add_mana` path (Dark Ritual) and the basic-land/dork/rock taps are
+unchanged — verified by test_mana / test_deepseam_quarry / test_equatorial. New
+tap-lane color+rider checks added to test_mana_ability_classification.js. Suite
+140 files / 2597 assertions green, lint clean.
 

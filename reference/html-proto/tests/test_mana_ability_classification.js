@@ -69,5 +69,34 @@ console.log('\n=== getLegalActions does not throw on a permanent with an empty-e
     threw === null, threw ? String(threw.message || threw) : '');
 })();
 
+console.log('\n=== tap-lane resolves through the shared path: color choice + untargeted rider ===');
+// doTapLandForMana now routes through runAbilityEffects (the same path as
+// doActivateAbility) instead of a parallel hand-rolled mana-fill. Two
+// consequences pinned here: (1) the {choose} color still threads through; (2) an
+// untargeted rider on a mana ability ALSO resolves — pre-consolidation the
+// tap-lane ran only effects[0] and silently dropped it.
+(() => {
+  RUN.clearSave && RUN.clearSave();
+  RUN.start({ cards: Array(12).fill('plains'), colors: ['W'] }, null);
+  RUN.startNextGame();
+  const G = ENGINE.state();
+  const who = G.activePlayer;
+  const lifeBefore = G[who].life;
+  const c = ENGINE.makeCard('plains');
+  c.types = ['Creature'];                 // a dork, so the tap lane applies
+  c.abilities = [{ cost: { tap: true }, effects: [
+    { kind: 'add_mana', choose: ['G'] },  // produces {G}
+    { kind: 'gain_life', amount: 1 },     // untargeted rider
+  ] }];
+  c.tapped = false; c.summoningSick = false; c.sick = false;
+  G[who].battlefield.push(c);
+  ENGINE.executeAction(who, { type: 'tapLandForMana', cardIid: c.iid, color: 'G' });
+  check('chosen color threaded through the unified path ({G} added)', G[who].mana.G >= 1,
+    'G=' + G[who].mana.G);
+  check('untargeted rider resolved too (gain 1 life — dropped pre-consolidation)',
+    G[who].life === lifeBefore + 1, 'life ' + lifeBefore + ' -> ' + G[who].life);
+  RUN.clearSave && RUN.clearSave();
+})();
+
 console.log('\n=== TOTAL: '+pass+' passed, '+fail+' failed ===');
 if (fail > 0) process.exit(1);
