@@ -60,8 +60,13 @@ console.log('=== colorless boss card data + constructed registry ===');
   check('boss deck declares no colors',
     deck && Array.isArray(deck.colors) && deck.colors.length === 0);
   const built = DRAFT.buildOpponentDeck(0, 0, 0, null, 'equatorialArtificerBoss');
-  check('built boss keeps colorless identity',
-    built && Array.isArray(built.colors) && built.colors.length === 0);
+  // A8-4: buildOpponentDeck no longer emits a dead `colors` field; boss color
+  // identity lives on the constructed spec (asserted above via deck.colors).
+  check('buildOpponentDeck emits no dead colors field (constructed)',
+    built && !('colors' in built) && Array.isArray(built.cards));
+  const heuristicBuilt = DRAFT.buildOpponentDeck(0, 0, 0, null, null);
+  check('buildOpponentDeck emits no dead colors field (heuristic)',
+    heuristicBuilt && !('colors' in heuristicBuilt) && Array.isArray(heuristicBuilt.cards));
   check('built boss uses exactly 10 Equatorial Engines and no other lands',
     built.cards.filter(s => s.tplId === 'equatorial_engine').length === 10
     && built.cards.filter(s => hasType(CARDS[s.tplId], 'Land')).length === 10);

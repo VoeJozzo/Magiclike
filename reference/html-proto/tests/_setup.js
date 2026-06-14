@@ -137,7 +137,7 @@ const EXPOSED = [
   // Card-load surface (cards.js, module-scope).
   'ingestCard', 'basicLandTypeColors',
   // tplId rename plumbing — exposed for tplid_renames_test.
-  'TPLID_RENAMES', 'renameTplId', 'MIGRATIONS', 'SAVE_VERSION', 'SAVE_KEY',
+  'TPLID_RENAMES', 'renameTplId', 'tplidRenameKeyCollisions', 'MIGRATIONS', 'SAVE_VERSION', 'SAVE_KEY',
   // Trigger-generator surface (triggers.js + trigger-generator.js —
   // no IIFE, all module-scope).
   'GENERATOR_EFFECTS', 'GENERATOR_CONDITIONS',

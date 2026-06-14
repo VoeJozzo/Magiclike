@@ -257,6 +257,15 @@ const TPLID_RENAMES = {
 };
 function renameTplId(id) { return TPLID_RENAMES[id] || id; }
 
+// A9-9: every TPLID_RENAMES key MUST be a RETIRED id. picklog re-applies
+// renameTplId over every loaded pick on every load (no schema gate — picklog.js),
+// so if a key were ever reused as a LIVE card id, that card's picklog history
+// would be silently rewritten forever. Boot surfaces any collision (main.js); the
+// static invariant is also pinned in tplid_renames_test.js. Empty today.
+function tplidRenameKeyCollisions(cards) {
+  return Object.keys(TPLID_RENAMES).filter(k => cards && cards[k]);
+}
+
 // Rename every tplId carried by a slots array in place — the live slots OR the
 // midGameSlotsSnapshot (a deep-clone of slots, identical shape).
 function migrateSlotTplIds(slots) {
@@ -714,7 +723,7 @@ function startNextGame() {
     if (spec && spec.name) bossName = spec.name;
     if (spec && spec.icon) bossIcon = spec.icon;
   }
-  return { gameNum: runState.gameNum, oppColors: opp.colors, bossName, bossIcon };
+  return { gameNum: runState.gameNum, bossName, bossIcon };
 }
 
 // Commit fork choice; validates against pendingMapChoice options.
@@ -1029,8 +1038,21 @@ function pickRewardCandidate(idx) {
   if (runState.pendingReward.phase !== 'mixed') return;
   const cand = runState.pendingReward.candidates[idx];
   if (!cand) return;
+  // A9-8: bounds re-check (+ non-stackable dedup) — the sibling guards that
+  // twoStickers/clone/transform/splice already perform, and the canonical
+  // applyStickerToSlot. Unreachable today (pendingReward is pre-rolled single-
+  // shot; nothing mutates the slot list between offer and pick, and the offer
+  // never lists a non-stackable id a slot already has), but the four pick arms
+  // must guard symmetrically so a future offer-to-pick slot mutation can't
+  // TypeError on a stale slotIdx or dedup-leak.
+  const idxOk = (i) => i != null && i >= 0 && i < runState.slots.length;
   if (cand.kind === 'sticker') {
+    if (!idxOk(cand.slotIdx)) { runState.pendingReward = null; save(); return; }
     const slot = runState.slots[cand.slotIdx];
+    const st = STICKERS[cand.sticker_id];
+    if (st && !st.stackable && slot.stickers.includes(cand.sticker_id)) {
+      runState.pendingReward = null; save(); return;
+    }
     slot.stickers.push(cand.sticker_id);
     // Consume pre-rolled empower/subtype; fallback rolls only on legacy shapes.
     if (cand.sticker_id === 'empower') {
@@ -1049,6 +1071,7 @@ function pickRewardCandidate(idx) {
     return;
   }
   if (cand.kind === 'ripUp') {
+    if (!idxOk(cand.slotIdx)) { runState.pendingReward = null; save(); return; }
     runState.slots.splice(cand.slotIdx, 1);
     runState.pendingReward = null;
     save();
@@ -1365,9 +1388,17 @@ function removeSlotByIdx(idx) {
   return removed;
 }
 
+// Test-only: seed a pendingReward so the reward-pick arms (and their A9-8
+// bounds/dedup guards) can be exercised directly. The reward roll is random and
+// win-gated, so there is no production path to set a crafted reward; this is the
+// only seam the reward-pick coverage uses. Not part of the gameplay API.
+function _setPendingRewardForTest(reward) {
+  if (runState) runState.pendingReward = reward;
+}
+
 return { start, startNextGame, recordResult, getStats: getRunStats, isActive,
          pickRewardCandidate, pickTransformReplacement, dismissReveal, getReward, getSlots,
-         applySplice,
+         applySplice, _setPendingRewardForTest,
          applyStickerToSlot, appendSlot, removeSlotByIdx,
          // Map navigation API.
          getMapState, pickMapNode,

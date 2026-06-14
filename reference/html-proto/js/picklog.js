@@ -25,6 +25,9 @@ function ensurePicklogLoaded() {
     }
     // tplId renames inline — no schema bump (would wipe history).
     // renameTplId from run.js (must load before picklog.js — see script order).
+    // INVARIANT (A9-9): every TPLID_RENAMES key must be a RETIRED id — reusing one
+    // as a live card id silently rewrites that card's history here. Boot-checked
+    // in main.js (tplidRenameKeyCollisions) + pinned in tplid_renames_test.js.
     for (const draft of blob.drafts) {
       if (!Array.isArray(draft.picks)) continue;
       for (const pick of draft.picks) {

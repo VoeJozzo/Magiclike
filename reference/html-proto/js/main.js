@@ -25,6 +25,12 @@ loadCards().then(() => {
   // Audit A3-5: the generated-trigger data tables (Codex generator +
   // Mercurial pool) sit outside both card validators — sweep them too.
   ENGINE.validateGeneratedTriggerTables();
+  // Audit A9-9: a TPLID_RENAMES key reused as a LIVE card id makes picklog
+  // silently rewrite that card's pick history on every load — surface it at boot.
+  const renameClashes = tplidRenameKeyCollisions(CARDS);
+  if (renameClashes.length) console.error(
+    'TPLID_RENAMES keys reused as live card ids (picklog will silently rewrite ' +
+    'their history):', renameClashes);
   // §7b coverage: every EFFECTS handler must be classified for AI valuation and
   // have card-text. A miss here means a future kind would silently score 0 / show
   // "[kind]" — warn loudly at boot (mirrors Godot's _ready() push_error).

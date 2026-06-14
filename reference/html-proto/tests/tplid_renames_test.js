@@ -137,6 +137,16 @@ console.log('\n=== no TPLID_RENAMES key is a live card id (full map) ===');
     reused.length ? 'reused as live ids: ' + reused.join(', ') : undefined);
 }
 
+console.log('\n=== A9-9 boot helper: no rename-key collisions today ===');
+{
+  // The same invariant via the shared boot helper (main.js runs this at startup
+  // and console.errors any collision). Empty today by construction.
+  const clashes = tplidRenameKeyCollisions(CARDS);
+  check('tplidRenameKeyCollisions(CARDS) is empty',
+    Array.isArray(clashes) && clashes.length === 0,
+    clashes && clashes.length ? clashes.join(', ') : undefined);
+}
+
 // NOTE: a "PICKLOG load-time translation" section was deleted here. It seeded
 // localStorage with legacy tplIds but then never exercised PICKLOG's load path
 // (the IIFE had already cached `data` and has no public reset) — instead it

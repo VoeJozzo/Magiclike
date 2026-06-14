@@ -369,6 +369,9 @@ const CATEGORY_A = [
   // A6-7 — multi-sticker cost resolution is acquisition-order dependent (canonical);
   // characterization test pins it.
   'test_a6_7_cost_order.js',
+  // A9-8 — reward-pick sticker/ripUp arms bounds-check + non-stackable dedup
+  // (guard symmetry); also seeds the previously-absent reward-pick coverage.
+  'test_a9_8_reward_pick_guards.js',
 ];
 
 const TESTS_DIR = __dirname;

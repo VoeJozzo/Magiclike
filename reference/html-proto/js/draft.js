@@ -222,21 +222,11 @@ function buildOpponentDeck(numStickers, numStaples, numClones, colorAffinity, co
       picks.push(chosen);
     }
   }
-  // Constructed: prefer declared colors (avoid filler-padding noise for mono builds).
-  let oppColors;
-  if (constructed && Array.isArray(constructed.colors)) {
-    oppColors = constructed.colors.slice(0, 2);
-  } else {
-    const pips0 = countPips(picks);
-    const colorOrder = COLORS.slice().sort((a, b) => pips0[b] - pips0[a]);
-    oppColors = colorOrder.filter(k => pips0[k] > 0).slice(0, 2);
-    if (oppColors.length < 2) {
-      const remaining = COLORS.filter(k => !oppColors.includes(k));
-      while (oppColors.length < 2 && remaining.length) {
-        oppColors.push(remaining.shift());
-      }
-    }
-  }
+  // A8-4: the opp deck's "colors" output was UI-dead — no production code read it
+  // (the boss-banner consumer reads only name/icon; the drafter reads colors off
+  // the constructed spec, not here), and its two branches returned inconsistent
+  // shapes (constructed 0–1, heuristic always padded to 2). Removed rather than
+  // documented; color identity, where needed, lives on the constructed spec.
   const pips = countPips(picks);
   const lands = (constructed && Array.isArray(constructed.lands))
     ? constructed.lands.slice()
@@ -246,7 +236,7 @@ function buildOpponentDeck(numStickers, numStaples, numClones, colorAffinity, co
   if (numStaples > 0)  applyOpponentStaples(slots, numStaples);
   if (numStickers > 0) applyOpponentStickers(slots, numStickers);
   if (numClones > 0)   applyOpponentClones(slots, numClones);
-  return { cards: slots, colors: oppColors };
+  return { cards: slots };
 }
 
 function applyOpponentStaples(slots, n) {
