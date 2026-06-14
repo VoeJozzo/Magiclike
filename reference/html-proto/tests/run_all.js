@@ -390,6 +390,12 @@ const CATEGORY_A = [
   // A3-9 (re-scoped remainder) — pickBestTriggerTarget auto-pick heuristic
   // (controller-comparison branches), signed gain_life, the #10c damageFace rider.
   'test_trigger_orchestration.js',
+  // A1-23 — scripted full-turn cycle: play/draw rule, mana emptying, lifeLost
+  // reset, AP handoff, and the endTurnPending arm + fast-forward.
+  'test_full_turn_cycle.js',
+  // A1-5 — the step() unknown-phase hang-guard (a corrupt phase halts loudly
+  // instead of spinning while(true) forever).
+  'test_action_vocab_defaults.js',
 ];
 
 const TESTS_DIR = __dirname;

@@ -1031,7 +1031,7 @@ function makePlayer(name, deck, ownerSide) {
     hand = innate.concat(rest.splice(0, drawNeeded));
     mulliganed = true;
   }
-  return { name, life: 20, mana:{W:0,U:0,B:0,R:0,G:0,C:0},
+  return { name, life: 20, mana: emptyManaPool(),
            library: rest, hand, battlefield: [], graveyard: [], exile: [],
            landPlayedThisTurn: false,
            mulliganed, // logged once by init(), then ignored
@@ -6001,10 +6001,24 @@ function passPriority(who) {
 // advances a phase.
 function setPhase(p) {
   if (G.phase !== p) {
-    G.you.mana = { W: 0, U: 0, B: 0, R: 0, G: 0, C: 0 };
-    G.opp.mana = { W: 0, U: 0, B: 0, R: 0, G: 0, C: 0 };
+    G.you.mana = emptyManaPool();
+    G.opp.mana = emptyManaPool();
   }
   G.phase = p;
+}
+// A1-22: an empty mana pool. One factory replaces the {W:0,...} literal that was
+// pasted at makePlayer + both setPhase resets (§106.4 / DIVERGENCE B2) — a missing
+// key in one copy would let that color float across phases.
+function emptyManaPool() {
+  return { W: 0, U: 0, B: 0, R: 0, G: 0, C: 0 };
+}
+// A1-21: the per-turn combat declaration bookkeeping, cleared at COMBAT_DAMAGE
+// resolution and at CLEANUP (§514.3). One writer replaces the pasted copies.
+function resetCombatState() {
+  G.attackers = [];
+  G.blockers = new Map();
+  G.attackersDeclared = false;
+  G.blockersDeclared = false;
 }
 
 function advancePhaseAfterPriority() {
@@ -6030,6 +6044,11 @@ function advancePhaseAfterPriority() {
       break;
     case 'END':
       setPhase('CLEANUP');
+      break;
+    default:
+      // A1-5 drift guard: an unknown phase here would leave G.phase unchanged
+      // (recoverable — step() re-evaluates — but log loudly so it's not silent).
+      console.error('advancePhaseAfterPriority: unknown phase "' + G.phase + '" — phase left unchanged.');
       break;
   }
 }
@@ -7698,9 +7717,7 @@ function step() {
       case 'COMBAT_DAMAGE':
         // Auto-resolve. Priority window for damage already happened in COMBAT_BLOCK.
         resolveCombatDamage();
-        G.attackers = []; G.blockers = new Map();
-        G.attackersDeclared = false;
-        G.blockersDeclared = false;
+        resetCombatState();
         setPhase('MAIN2');
         continue;
 
@@ -7845,12 +7862,16 @@ function step() {
         // mean the second player's first turn shows as Turn 2, which is
         // confusing when opp goes first.
         if (G.activePlayer === G.firstPlayer) G.turn++;
-        G.attackers = []; G.blockers = new Map();
-        G.attackersDeclared = false;
-        G.blockersDeclared = false;
+        resetCombatState();
         G.endTurnPending = false;   // new turn — clear the auto-pass flag
         setPhase('UNTAP');
         continue;
+      default:
+        // A1-5: an unknown phase must NOT `continue` (that re-enters the while
+        // loop on the same unchanged phase -> infinite spin). Halt loudly so the
+        // engine pauses with a diagnostic instead of hanging.
+        console.error('step(): unknown phase "' + G.phase + '" — halting the step loop to avoid an infinite spin.');
+        return;
     }
   }
 }
@@ -7914,6 +7935,13 @@ function executeAction(who, action) {
     case 'optionalCost':      doOptionalCost(who, action.pay); break;
     case 'pass':             doPass(who); break;
     case 'endTurn':          doEndTurn(who); break;
+    default:
+      // A1-5 drift guard: an action.type that passed isLegalAction but is missing
+      // from this dispatch would otherwise no-op yet return true (silent success —
+      // the controller/AI would re-decide the same no-op every tick). Fail loudly.
+      console.error('executeAction: unknown action.type "' + action.type +
+        '" — isLegalAction and the dispatch switch have drifted out of sync.');
+      return false;
   }
   step();
   notify();
