@@ -405,10 +405,9 @@ const TESTS_DIR = __dirname;
 let totalPass = 0, totalFail = 0;
 const failures = [];
 
-// Mutation-runner hooks (tools/audit/mutation). Both inert unless the env
-// vars are set: RUN_ALL_BAIL stops at the first failing file (a killed
-// mutant doesn't need the rest of the suite); RUN_ALL_TEST_TIMEOUT_MS
-// bounds each test process (mutants can introduce infinite loops).
+// Optional env-var knobs, both inert unless set: RUN_ALL_BAIL stops at the
+// first failing file; RUN_ALL_TEST_TIMEOUT_MS bounds each test process (a
+// guard against a test that hangs in an infinite loop).
 const BAIL = !!process.env.RUN_ALL_BAIL;
 const PER_TEST_TIMEOUT_MS = parseInt(process.env.RUN_ALL_TEST_TIMEOUT_MS, 10) || 0;
 

@@ -43,7 +43,7 @@ The bots exist purely for **attribution** (tracking which AI did what). They're 
   git config --worktree --add credential.https://github.com.helper ""   # resets inherited GCM
   git config --worktree --add credential.https://github.com.helper '!f() { if [ "$1" = get ]; then echo "password=$(gh auth token --user <bot>)"; fi; }; f'
   ```
-  Wire this (worktree-scoped) in any context needing promptless pushes; the audit campaign's Phase 0 (`docs/plans/plan-proto-audit.md`) does so for the audit worktree. Token-in-URL remains the fallback for one-off interactive pushes only — its command shape can't pass a permission allowlist, so it is **unusable in autonomous mode**.
+  Wire this (worktree-scoped) in any context needing promptless pushes; the audit campaign's Phase 0 does so for the audit worktree. Token-in-URL remains the fallback for one-off interactive pushes only — its command shape can't pass a permission allowlist, so it is **unusable in autonomous mode**.
 - **Open a PR as a bot** (no global account switch):
   ```bash
   GH_TOKEN="$(gh auth token --user <bot>)" gh pr create --base dev --title "…" --body "…"
