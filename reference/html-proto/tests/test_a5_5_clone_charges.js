@@ -64,8 +64,7 @@ console.log('\n=== A5-5 review: a charged clone Stapler SURVIVES the original ri
   RUN.start({ cards: Array(5).fill('plains'), colors: ['W'] }, 'stapler');
   RUN.startNextGame();
   const G = ENGINE.state();
-  G.activePlayer = 'you'; G.priorityHolder = 'you'; G.phase = 'MAIN1';
-  G.stack = []; G.gameOver = false; G.priority = { passes: new Set() };
+  setup.startMainPhase('you');
   G.you.mana = { C: 9, W: 9, U: 9, B: 9, R: 9, G: 9 };
 
   // Two independent Stapler slots: the boon original (1 charge, about to rip) and

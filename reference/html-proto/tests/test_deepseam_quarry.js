@@ -20,13 +20,8 @@ const G = ENGINE.state();
 
 function has(arr, iid) { return arr.some(c => c && c.iid === iid); }
 function sorceryWindow() {
-  G.activePlayer = 'you';
-  G.phase = 'MAIN1';
-  G.stack = [];
+  setup.startMainPhase('you');
   G.cleanupDiscarding = false;
-  G.gameOver = false;
-  G.priority = { passes: new Set() };
-  G.priorityHolder = 'you';
 }
 // Put the board/turn into a main-phase window for the AI seat `who` (mirrors
 // ai_burn_lethal_test's helper; MAIN2 skips the burn-lethal reservation path).

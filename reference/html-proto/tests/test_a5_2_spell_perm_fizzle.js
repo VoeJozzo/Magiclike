@@ -35,8 +35,7 @@ console.log('=== A5-2: a creature spell stapled onto a battlefield land FIZZLES 
   RUN.start({ cards: ['mountain', 'plains', 'swamp', 'forest'], colors: ['R', 'W', 'B', 'G'] }, 'stapler');
   RUN.startNextGame();
   const G = ENGINE.state();
-  G.activePlayer = 'you'; G.priorityHolder = 'you'; G.phase = 'MAIN1';
-  G.stack = []; G.gameOver = false; G.priority = { passes: new Set() };
+  setup.startMainPhase('you');
 
   const slots0 = RUN.getSlots();
   const slotsLen0 = slots0.length;

@@ -40,9 +40,7 @@ function newGame() {
   const G = ENGINE.state();
   G.you.battlefield = []; G.opp.battlefield = [];
   G.you.life = 20; G.opp.life = 20;
-  G.stack = []; G.gameOver = false;
-  G.activePlayer = 'you'; G.priorityHolder = 'you'; G.phase = 'MAIN1';
-  G.priority = { passes: new Set() };
+  setup.startMainPhase('you');
   G.you.mana = { W: 9, U: 9, B: 9, R: 9, G: 9, C: 9 };
   return G;
 }

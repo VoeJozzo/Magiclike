@@ -32,8 +32,7 @@ function newGame() {
   RUN.start({ cards: Array(12).fill('island'), colors: ['U'] }, null);
   RUN.startNextGame();
   const G = ENGINE.state();
-  G.activePlayer = 'you'; G.priorityHolder = 'you'; G.phase = 'MAIN1';
-  G.stack = []; G.gameOver = false; G.priority = { passes: new Set() };
+  setup.startMainPhase('you');
   G.you.battlefield = []; G.opp.battlefield = [];
   G.you.hand = []; G.opp.hand = [];
   return G;

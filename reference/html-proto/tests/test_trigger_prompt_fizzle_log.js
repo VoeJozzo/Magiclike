@@ -46,8 +46,7 @@ function openStaplePrompt() {
   G.you.battlefield = []; G.opp.battlefield = [];
   G.you.battlefield.push(mk('savannah_lions', 'you'), mk('savannah_lions', 'you'));
   G.opp.battlefield.push(mk('savannah_lions', 'opp'), mk('savannah_lions', 'opp'));
-  G.activePlayer = 'you'; G.priorityHolder = 'you'; G.phase = 'MAIN1';
-  G.stack = []; G.gameOver = false; G.priority = { passes: new Set() };
+  setup.startMainPhase('you');
   G.you.mana = { W: 9, U: 9, B: 9, R: 9, G: 9, C: 9 };
   const beetle = ENGINE.makeCard('clockwork_beetle', [], 0, null, null, ['roots_and_branches']);
   Object.assign(beetle, { controller: 'you', owner: 'you', tapped: false,

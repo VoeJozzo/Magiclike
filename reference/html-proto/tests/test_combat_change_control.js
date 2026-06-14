@@ -45,8 +45,7 @@ function newGame() {
   return ENGINE.state();
 }
 function readyMain(G, who) {
-  G.activePlayer = who; G.priorityHolder = who; G.phase = 'MAIN1';
-  G.stack = []; G.gameOver = false; G.priority = { passes: new Set() };
+  setup.startMainPhase(who);
 }
 // Untapped lands + a castable card keep hasNoAction() false so the engine's
 // auto-pass fast-path doesn't consume the combat priority rounds before the

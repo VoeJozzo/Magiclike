@@ -21,9 +21,7 @@ function freshGame() {
   RUN.clearSave && RUN.clearSave();
   RUN.start({ cards: Array(12).fill('plains'), colors: ['W'] }, null);
   RUN.startNextGame();
-  const G = ENGINE.state();
-  G.activePlayer = 'you'; G.priorityHolder = 'you'; G.phase = 'MAIN1';
-  G.stack = []; G.gameOver = false; G.priority = { passes: new Set() };
+  const G = setup.startMainPhase('you');
   G.pendingTriggers = []; G.pendingTriggerTarget = null;
   G.you.mana = { W: 9, U: 9, B: 9, R: 9, G: 9, C: 9 };
   G.opp.mana = { W: 9, U: 9, B: 9, R: 9, G: 9, C: 9 };
@@ -88,8 +86,7 @@ console.log('\n=== accrual: a verse per OTHER creature that dies ===');
 
   // The first resolve ran priority forward (into combat) and emptied the mana
   // pool at the phase boundary (v2.0.42); reopen a MAIN1 window with mana.
-  G.phase = 'MAIN1'; G.activePlayer = 'you'; G.priorityHolder = 'you';
-  G.stack = []; G.priority = { passes: new Set() };
+  setup.startMainPhase('you');
   G.you.mana = { W: 9, U: 9, B: 9, R: 9, G: 9, C: 9 };
   const v2 = place(G, VICTIM, 'opp');
   const bolt2 = inHand(G, 'lightning_bolt', 'you');
