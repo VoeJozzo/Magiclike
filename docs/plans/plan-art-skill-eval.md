@@ -121,8 +121,9 @@ Blind best-vs-best, user-judged. Arm identity sealed during judging; decoded via
 | illusion_drake | keeper | 1.06 / gen_06 | **control** |
 | inferno_caller | keeper | 2.03 / gen_03 (seed 2078541351) | **treatment** |
 | iron_statue | no keeper | quality-noted: 1.03 / gen_03 (seed 1596325315) | control |
+| island | keeper | 2.03 / gen_03 (seed 1650588914) | **control** |
 
-**Tally (keepers):** treatment 2, control 1, no-keeper 1. Quality-noted non-keeper frame: control 1 (iron_statue). n=4 cards so far.
+**Tally (keepers):** treatment 2, control 2, no-keeper 1. Quality-noted non-keeper frame: control 1 (iron_statue). n=5 cards so far.
 
 **Process findings surfaced along the way:**
 - **Byte-identical contamination** (caught by a hardened `preflight`): duplicate saved frames across runs/arms, honest manifests. Root cause traced to the skill brief's shared `curl -o /tmp/pixflux_resp.json` path (a failed/empty curl re-saves a prior call's bytes), **not** server-side stale returns — billing showed dups were real billed calls, and the in-memory `gen_image.py` helper produced 0 dups under the same seed-reuse that triggered it. `preflight` now fails on any byte-identical pair (within- or cross-run) as a cause-agnostic backstop.
