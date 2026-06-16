@@ -110,3 +110,19 @@ Ran the full loop on 3 random unarted cards before scaling. Full record in `art-
 ## 9. Cost
 
 Anthropic side: **$0 metered** — everything runs on the subscription via agents. PixelLab side: each arm draws up to ~10 image-gen calls from its shared seed array (~3–5s each, 5 concurrent), so the ceiling is 10 cards × 2 arms × ~10 ≈ **~200 generations** — often fewer, since an agent needn't spend its full budget. The only spend, and it's in budget. We'll log actual pixflux usage from the API responses.
+
+## 10. Results ledger — C4 ("ground the depiction in reality")
+
+Blind best-vs-best, user-judged. Arm identity sealed during judging; decoded via `harness.py decode` after the pick. 10 gens/arm.
+
+| Card | Outcome | Winning frame | Arm |
+|---|---|---|---|
+| serra_angel | keeper | 1.08 / gen_08 (seed 1484945952) | **treatment** |
+| illusion_drake | keeper | 1.06 / gen_06 | **control** |
+| inferno_caller | keeper | 2.03 / gen_03 (seed 2078541351) | **treatment** |
+| iron_statue | no keeper | quality-noted: 1.03 / gen_03 (seed 1596325315) | control |
+
+**Tally (keepers):** treatment 2, control 1, no-keeper 1. Quality-noted non-keeper frame: control 1 (iron_statue). n=4 cards so far.
+
+**Process findings surfaced along the way:**
+- **Byte-identical contamination** (caught by a hardened `preflight`): duplicate saved frames across runs/arms, honest manifests. Root cause traced to the skill brief's shared `curl -o /tmp/pixflux_resp.json` path (a failed/empty curl re-saves a prior call's bytes), **not** server-side stale returns — billing showed dups were real billed calls, and the in-memory `gen_image.py` helper produced 0 dups under the same seed-reuse that triggered it. `preflight` now fails on any byte-identical pair (within- or cross-run) as a cause-agnostic backstop.

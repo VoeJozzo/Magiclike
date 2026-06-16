@@ -5,3 +5,4 @@
 serra_angel
 illusion_drake
 inferno_caller
+iron_statue
