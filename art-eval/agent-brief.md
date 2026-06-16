@@ -29,6 +29,8 @@ and do not look at the other arm's output. Do not state which arm you think you 
   seed is allowed (that is how seed-locked iteration works) — but every generation must use
   a seed that is in the pool.
 - Always generate at `image_size: {"width": 64, "height": 32}`, `no_background: false`.
+- **Keep at most 2 pixflux calls in flight at once.** The API caps concurrent jobs at 5 and
+  the other arm is generating in parallel; fire in small batches, never all 10 at once.
 - Run the full loop your skill file describes (brainstorm → prompt → generate → look →
   reroll / seed-lock tweak / inpaint). Iterate freely within the budget.
 
