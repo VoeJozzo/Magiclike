@@ -3,3 +3,4 @@
 # replacement within C4), but cards run under OTHER candidates (C2, etc.) are
 # NOT excluded — cross-experiment resampling is allowed and intended.
 serra_angel
+illusion_drake
