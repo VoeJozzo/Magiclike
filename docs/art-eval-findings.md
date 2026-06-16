@@ -498,3 +498,19 @@ ROUND #1 STAGED:
   self-identifying after it leaves the run dir (past gap: no record of which art went to which card).
 - **BLOCKED on pixflux credits** (token account exhausted). Resume: smoke-test a credited token,
   then launch arm_a (control, SKILL-control.md) + arm_b (c4, SKILL-c4-variant.md) on the brief.
+
+## ===== POLICY: "already-run" is now scoped PER CANDIDATE (2026-06-16) =====
+Director call: a card that was run under one candidate (e.g. C2) is eligible to be
+re-drawn under another (C4). Rationale: different candidates are different experiments;
+the agents are memoryless (no generation-side carryover); and producing art for a
+still-unarted card is the actual deliverable — "we didn't make art we liked in C2" is no
+reason to bar the card forever. No-replacement still holds WITHIN a candidate's run.
+- Caveat noted (accepted): JUDGE carryover — the director has seen prey_upon/vile_edict
+  before. It primes on the CARD, hits both C4 arms equally, and the director judges blind,
+  so it doesn't bias the control-vs-treatment contrast (may color an absolute keeper call).
+- Wrinkle (harmless): seeds are deterministic from card NAME, so a re-drawn card reuses its
+  prior seed pool; fresh prompts → different images; no cross-experiment seed-matched
+  comparison is done, so it doesn't matter.
+- Implementation: harness `DONEFILE = art-eval/done_<cand>.txt`. `done_cards.txt` →
+  `done_c2.txt` (C2's record preserved + scoped). `done_c4.txt` created (serra_angel).
+  Effect: C4 eligible = 121 (122 unarted − serra_angel); prey_upon + vile_edict re-eligible.

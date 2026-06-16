@@ -1,0 +1,5 @@
+# Cards drawn for the C4 ("ground the depiction in reality") eval run.
+# Per-candidate scope: a card here is excluded from FURTHER C4 draws (no
+# replacement within C4), but cards run under OTHER candidates (C2, etc.) are
+# NOT excluded — cross-experiment resampling is allowed and intended.
+serra_angel

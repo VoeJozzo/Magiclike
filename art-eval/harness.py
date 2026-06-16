@@ -33,7 +33,6 @@ CARDS    = ROOT / "reference/html-proto/cards"
 RUNS     = ROOT / "art-eval/runs"
 VARIANTS = ROOT / "art-eval/variants"
 SHEETS   = ROOT / "docs/art-eval-sheets"
-DONEFILE = ROOT / "art-eval/done_cards.txt"
 
 CONTROL_SKILL = VARIANTS / "SKILL-control.md"
 
@@ -49,6 +48,12 @@ CAND_SIG      = {
     "c4": "Ground the depiction in reality",
     "c5": "Evaluator-mode self-critique",
 }.get(CAND, "")
+
+# "Already-run" is scoped PER CANDIDATE, not globally: a card tested under one
+# candidate (e.g. C2) is a fresh, legitimate trial under another (C4) — different
+# treatment, memoryless agents, and producing art for a still-unarted card is the
+# whole point. So no-replacement applies WITHIN a candidate's run, not across.
+DONEFILE = ROOT / f"art-eval/done_{CAND}.txt"
 
 def stable_int(s: str) -> int:
     """Deterministic across machines/python versions (built-in hash() is not)."""
