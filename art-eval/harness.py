@@ -46,6 +46,7 @@ CAND          = os.environ.get("ART_EVAL_CAND", "c2").lower()
 VARIANT_FILE  = VARIANTS / f"SKILL-{CAND}-variant.md"
 CAND_SIG      = {
     "c2": "diagnosable-flaw",
+    "c4": "Ground the depiction in reality",
     "c5": "Evaluator-mode self-critique",
 }.get(CAND, "")
 
@@ -103,7 +104,11 @@ def variant_ok() -> tuple:
     return True, f"{CAND} variant = control + {len(added)} added line(s) incl. {CAND.upper()} block"
 
 def _real_gens(armdir: Path) -> list:
-    return sorted([f for f in armdir.glob("gen_*_seed*.png") if "_8x" not in f.name],
+    # Files are named "<card_id>_gen_NN_seed<seed>.png" (card prefix makes a roll
+    # self-identifying once it leaves the run dir). The leading "*" in the glob
+    # tolerates both the prefixed form and the legacy bare "gen_..." form; the
+    # regexes key off the gen_/seed tokens, so the prefix never confuses parsing.
+    return sorted([f for f in armdir.glob("*gen_*_seed*.png") if "_8x" not in f.name],
                   key=lambda f: int(re.search(r"gen_(\d+)_seed", f.name).group(1)))
 
 def init_run(run: str, card: str):

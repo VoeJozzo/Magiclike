@@ -432,3 +432,69 @@ nominee internally; user judges the blind full-pool; then compare each arm's nom
 **BLOCKED:** pixflux returned HTTP 402 — the repo token's account is exhausted (Generations
 1999.95/2000.0, Credits 0.0). Round staged but not run; awaiting a credited credential. Resume by
 re-running the smoke test, then launching arm_a (control) + arm_b (c5) on the committed seed pool.
+
+## ===== C5 PARKED — workflow-fit realization (2026-06-15) =====
+While designing C5's first round, surfaced an assumption baked into EVERY round so far:
+the harness tests an **autonomous "fire-and-forget" agent loop**, but the way we actually
+use the skill is **human-in-the-loop** (director reacts round-to-round; cf. the Dark Ritual
+note — the best art came from steering, not one-shot). That mismatch is a *general* caveat
+but it's *fatal* for C5 specifically: C5 makes the agent review and pick its own work — which
+is exactly the job the director does when present. So C5's value is real only in the
+unattended case, and the autonomous harness would *flatter* it (testing it precisely where
+no human reviews). **C5 status: PARKED** (scaffolding kept: variant + run dir). Revisit if/when
+we care about unattended bulk runs of the ~120 unarted cards.
+
+This gives a filter for the whole candidate slate: prefer candidates that improve the
+**artifact** (the art itself — testable in the harness AND workflow-agnostic) over candidates
+that improve the agent's **solo decision-making** (untestable in our real workflow + redundant
+when the director is present). By that filter C3/C4/C6 survive; C5 is the odd one out.
+
+## ===== C4 — "ground the depiction in reality" — PROTOCOL FINALIZED + ROUND #1 STAGED =====
+C4 = a pre-generation REASONING step (distinct layer from C1/C2/C3/C5): before drafting a
+pixflux prompt, reason about how the subject actually works physically (scale, physics,
+behavior, what it interacts with) and bake that in. Surfaced from Lightning Bolt (bolts kept
+landing on flat ground; only the director caught it). Distinct from vocabulary-precision
+(that's word-choice once you know what to depict; C4 is deciding what's TRUE to depict —
+upstream) and from subject-prior dominance (that's "model refuses, swap subject"; C4 is
+"model complies with a wrong default, so reason first"). Full text: `art-eval/variants/
+SKILL-c4-variant.md`, signature "Ground the depiction in reality". Director reviewed the wording.
+
+PROTOCOL (converged with director over a long design pass; deliberately SIMPLER than my first
+drafts, which over-optimized for clean measurement at the cost of art):
+- **H1:** C4 makes art the director judges better. **H0:** it doesn't. (Outcome = director's
+  blind subjective call. The director's taste is the target, not a proxy — so no pre-registered
+  "correct physics" criterion and no manipulation/validity check: those guard against
+  evaluator-bias, which died when we cut the LLM judge. Blinding the director is sufficient.)
+- **Control = current shipping SKILL.md, verbatim. Treatment = control + the C4 block.** The
+  only thing hand-authored is the reviewed block; both arms get an IDENTICAL base brief
+  (`art-eval/agent-brief.md`) — only the skill-file path differs. That closes the control-arm
+  fairness vector by construction.
+- **Card = the unit of replication** (NOT the generation — treating 10 gens as 10 trials is
+  pseudoreplication, the blood-draw error: n cards × 10 gens is n, not 10n). Seeds are a
+  blocking factor (shared pool = same dice for both arms).
+- **Card selection: RNG, not hand-picked** (auditable salt; round 1 = `pick c4-1`). Removes the
+  selection-bias vector. Each drawn card gets a free physics-relevance tag (weapon/structure/
+  phenomenon/animal vs vanilla) for later conditional analysis — tag never touches selection.
+- **Full skill loop, free iteration** (reroll/seed-lock/inpaint within ~10-gen budget) — test
+  C4 as actually used; do NOT amputate iteration for clean per-seed pairs (that makes worse art
+  and tests a workflow we don't use).
+- **Stats:** qualitative/directional until n≈10-15; only then number-claims (Wilcoxon signed-rank
+  or sign test on the per-card calls). At our effect sizes p<0.05 is unlikely regardless (C2
+  never hit it); direction + verdict-strength + keepers carry the decision, as with C2.
+- **Free observational piggyback:** the per-gen manifest logs seed/prompt/mode(explore|tweak|
+  inpaint)/parent per generation. Lets us later look at agent seed-consumption behavior (e.g.
+  do winning agents grind one seed?) as HYPOTHESIS-GENERATION. NOT a clean test of iteration
+  strategy — strategy is agent-chosen (observational, tangled with arm/card), so answering it
+  needs its own round that ASSIGNS the strategy. Leads, not verdicts.
+
+ROUND #1 STAGED:
+- Card: `serra_angel` (4/4 W Angel, Vigilance) — RNG draw, salt `c4-1`. Physics tag: MODERATE
+  (winged-humanoid anatomy/flight plausibility + likely armament proportions; no phenomenon
+  physics; strong "haloed winged woman" prior to push against). Draw stands (anti-bias: no
+  re-roll for taste).
+- Run `skillab-c4-serra_angel`; shared 10-seed pool committed at run-root; blind key recorded
+  (`decode`-recomputable from card name).
+- Filename convention now `<card_id>_gen_NN_seed<seed>.png` (+ `_8x`) so a roll stays
+  self-identifying after it leaves the run dir (past gap: no record of which art went to which card).
+- **BLOCKED on pixflux credits** (token account exhausted). Resume: smoke-test a credited token,
+  then launch arm_a (control, SKILL-control.md) + arm_b (c4, SKILL-c4-variant.md) on the brief.
