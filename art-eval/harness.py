@@ -146,9 +146,14 @@ def preflight(run: str):
         if len(gens) == 0:
             problems.append(f"{arm}: no gens"); continue
         seeds = sorted(int(re.search(r"seed(\d+)", g.name).group(1)) for g in gens)
-        if pool is not None and seeds != pool:
-            problems.append(f"{arm}: seeds do not match shared pool")
-        print(f"{arm}: {len(gens)} gens, seeds match pool: {pool is not None and seeds==pool}")
+        # Protocol allows seed reuse (seed-locked tweaks) and <=10 gens, so the
+        # invariant is "every seed used is FROM the shared pool" (subset), not
+        # an exact match to all 10.
+        if pool is not None and not set(seeds).issubset(set(pool)):
+            stray = sorted(set(seeds) - set(pool))
+            problems.append(f"{arm}: used seed(s) outside the shared pool: {stray}")
+        print(f"{arm}: {len(gens)} gens, {len(set(seeds))} distinct seeds, "
+              f"all from pool: {pool is not None and set(seeds).issubset(set(pool))}")
     # contamination heuristic: arms must not be byte-identical pairwise
     a = {re.search(r'seed(\d+)', g.name).group(1): g for g in _real_gens(rd/'arm_a')}
     b = {re.search(r'seed(\d+)', g.name).group(1): g for g in _real_gens(rd/'arm_b')}
