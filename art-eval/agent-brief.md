@@ -66,6 +66,19 @@ in generation order. Each line:
 This manifest is the record of *what you did with the seeds* — never skip it, never
 back-fill from memory. It is also how we recover the prompts (a past round lost them).
 
+## Integrity (read this — a real failure happened here)
+
+- **Every saved image must come from a pixflux call you just made for that
+  generation.** Never copy, reuse, rename, or hand-edit another file into your
+  output dir. Never read or pull from any other run's directory.
+- **Sanity-check every result against the prompt you sent.** PixelLab has been
+  observed to occasionally return a STALE image from an earlier request (a
+  completely unrelated subject — e.g. a blue dragon when you asked for a fire
+  shaman). If a result has nothing to do with your prompt, treat it as a bad
+  return: discard that file and re-roll the generation (a fresh seed from the
+  pool is fine). Do not keep an image whose content contradicts the prompt.
+- The manifest must reflect what you actually sent to the API, every line.
+
 ## Nominate
 
 When done, pick your single best image. Record it by writing `{out_dir}/BEST.txt`

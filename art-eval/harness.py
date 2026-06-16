@@ -154,13 +154,39 @@ def preflight(run: str):
             problems.append(f"{arm}: used seed(s) outside the shared pool: {stray}")
         print(f"{arm}: {len(gens)} gens, {len(set(seeds))} distinct seeds, "
               f"all from pool: {pool is not None and set(seeds).issubset(set(pool))}")
-    # contamination heuristic: arms must not be byte-identical pairwise
-    a = {re.search(r'seed(\d+)', g.name).group(1): g for g in _real_gens(rd/'arm_a')}
-    b = {re.search(r'seed(\d+)', g.name).group(1): g for g in _real_gens(rd/'arm_b')}
-    ident = sum(1 for s in a if s in b and a[s].read_bytes() == b[s].read_bytes())
-    if ident:
-        problems.append(f"{ident} arm_a/arm_b gens are BYTE-IDENTICAL (possible control-vs-control)")
-    print(f"byte-identical cross-arm pairs: {ident} (want 0)")
+    # Byte-identity checks (hash-based, seed-independent). A real pixflux
+    # generation should never be byte-identical to ANY other image -- not
+    # another arm's (control-vs-control contamination) and not a prior run's.
+    # OBSERVED FAILURE: pixflux occasionally returns a STALE image from an
+    # earlier request under the same token, with a fully honest-looking
+    # manifest (right prompt, right seed) -- the only tell is that the bytes
+    # match a previous generation. Hash, don't seed-match: the stale return
+    # that motivated this had a DIFFERENT seed than its twin, so the old
+    # seed-keyed compare missed it entirely.
+    this_imgs = [(arm, g, hashlib.md5(g.read_bytes()).hexdigest())
+                 for arm in ("arm_a", "arm_b") for g in _real_gens(rd / arm)]
+    seen, within = {}, []
+    for arm, g, h in this_imgs:
+        if h in seen:
+            within.append(f"{arm}/{g.name} == {seen[h]}")
+        else:
+            seen[h] = f"{arm}/{g.name}"
+    if within:
+        problems.append("within-run BYTE-IDENTICAL images (contamination): " + "; ".join(within))
+    print(f"within-run byte-identical collisions: {len(within)} (want 0)")
+    others = {}
+    for run_dir in sorted(RUNS.iterdir()):
+        if not run_dir.is_dir() or run_dir.name == run:
+            continue
+        for png in run_dir.rglob("*.png"):
+            if "_8x" in png.name:
+                continue
+            others.setdefault(hashlib.md5(png.read_bytes()).hexdigest(),
+                              str(png.relative_to(ROOT)))
+    cross = [f"{arm}/{g.name} == {others[h]}" for arm, g, h in this_imgs if h in others]
+    if cross:
+        problems.append("BYTE-IDENTICAL to another run's image (stale API return?): " + "; ".join(cross))
+    print(f"cross-run byte-identical images: {len(cross)} (want 0)")
     ok, msg = variant_ok(); print("variant check:", "OK" if ok else "FAIL", "-", msg)
     if problems:
         print("PREFLIGHT: FAIL"); [print("  -", p) for p in problems]; sys.exit(1)
