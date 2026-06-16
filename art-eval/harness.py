@@ -157,12 +157,17 @@ def preflight(run: str):
     # Byte-identity checks (hash-based, seed-independent). A real pixflux
     # generation should never be byte-identical to ANY other image -- not
     # another arm's (control-vs-control contamination) and not a prior run's.
-    # OBSERVED FAILURE: pixflux occasionally returns a STALE image from an
-    # earlier request under the same token, with a fully honest-looking
-    # manifest (right prompt, right seed) -- the only tell is that the bytes
-    # match a previous generation. Hash, don't seed-match: the stale return
-    # that motivated this had a DIFFERENT seed than its twin, so the old
-    # seed-keyed compare missed it entirely.
+    # OBSERVED FAILURE: byte-identical duplicates appeared across runs (a
+    # blue-dragon prompt and a fire-shaman prompt at different seeds hashed
+    # identically) with fully honest-looking manifests -- the only tell is the
+    # matching bytes. CAUSE UNDETERMINED: either a server-side cache/dedup, or
+    # (more likely) the skill brief's literal `curl -o /tmp/pixflux_resp.json`
+    # shared path letting a decode read a prior call's leftover bytes. Billing
+    # showed generations billed ~1:1 with files, so duplicates were still real
+    # billed calls -- which doesn't distinguish the two. The in-memory helper
+    # (art-eval/gen_image.py) removes the local footgun; this check stays as a
+    # cause-agnostic backstop. Hash, don't seed-match: the first twin had a
+    # DIFFERENT seed than its mate, so a seed-keyed compare missed it.
     this_imgs = [(arm, g, hashlib.md5(g.read_bytes()).hexdigest())
                  for arm in ("arm_a", "arm_b") for g in _real_gens(rd / arm)]
     seen, within = {}, []
