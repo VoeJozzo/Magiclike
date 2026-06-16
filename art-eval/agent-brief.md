@@ -43,6 +43,9 @@ For every generation, save two files in `{out_dir}`:
 - `{card_id}_gen_NN_seed<seed>_8x.png` — an 8× nearest-neighbor upscale (512×256), for
   reading the frame.
 
+The 8× upscale uses Pillow: `from PIL import Image; Image.open(p).resize((512,256), Image.NEAREST).save(out)`.
+If `import PIL` fails, run `pip install Pillow` first (the container may be fresh).
+
 The card-id prefix makes each roll self-identifying after it leaves this directory. The
 harness parses the seed and gen number out of the filename, so the format is not optional.
 
