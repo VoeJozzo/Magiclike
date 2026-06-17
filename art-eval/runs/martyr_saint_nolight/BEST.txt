@@ -1,0 +1,24 @@
+martyr_saint — no-light (environment-lit) dying martyr, top 3
+=============================================================
+
+1. martyr_saint_gen_07_seed361064096.png
+   Cleanest read of the brief: young cleric in clearly white-and-gold vestments (gold stole)
+   slumped dying against a fallen column, head lolling. Lit entirely by cool blue dusk light
+   through two tall broken-arch windows, long shadows raking the flagstones. Zero light beam /
+   rays / motes. Best balance of composition, costume legibility, and named natural light.
+
+2. martyr_saint_gen_08_seed789229971.png
+   Best full-body dying pose: cleric reclined/slumped against a column step, head fallen back,
+   white robe with gold trim and belt. Soft moonlight pools pale silver on the floor, corners
+   in deep blue shadow — clearly environment-lit, no beam. Slightly more serene than agonized,
+   but the strongest "collapsed at the moment of death" body language.
+
+3. martyr_saint_gen_01_seed361064096.png
+   The original explore that set the direction: slumped against column, white-and-gold robe,
+   visible faint gold halo ring (the iconographic cue, not a beam), cool dusk light through a
+   side window. A touch busier/darker than gen 07 but the only top pick with a clear halo.
+
+Honorable mentions:
+- gen_03 (candlelit shrine) — gorgeous warm candle lighting, but figure sits serene, not dying.
+- gen_06 (warm sunset rake on fallen-on-back) — good warm relight, but a vertical staff-like
+  element faintly echoes the removed beam.
