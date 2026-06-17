@@ -16,8 +16,13 @@ and do not look at the other arm's output. Do not state which arm you think you 
 
 ## What you're given
 
-- **Card:** `{card_id}` — read `reference/html-proto/cards/{card_id}/card.json` in full
-  (name, types, cost, power/toughness, keywords, triggers, effects, flavor).
+- **Card:** `{card_id}`. Read the card's data from `{out_dir}/card_context.json` — a
+  sanitized copy carrying name, types, cost, power/toughness, keywords, triggers, and
+  effects. Work **only** from this file; do not open `reference/html-proto/cards/{card_id}/`
+  or hunt for the card's data anywhere else. The card's placeholder `art` field (a single
+  emoji) has been **deliberately stripped** — no art hint is provided on purpose, because
+  deriving the depiction from the mechanic is the whole point. Depict what the card *does*,
+  reasoned from its types / effects / triggers — never from a pre-supplied symbol.
 - **Skill file to read and follow:** `{skill_file}` — read the whole thing and work by it.
 - **Shared seed pool** (identical for both arms — your fair "deck of dice"): `{seeds}`.
 - **Output directory:** `{out_dir}` — save everything here.

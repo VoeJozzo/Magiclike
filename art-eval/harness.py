@@ -89,6 +89,21 @@ def seeds_for(card: str, n: int = 10) -> list:
     rng = random.Random(stable_int("seeds:" + card))
     return [rng.randint(1, 2_147_483_646) for _ in range(n)]
 
+def write_card_context(rd: Path, card: str) -> Path:
+    """Write the sanitized card data the agents read instead of the raw card.json.
+
+    Drops the `art` field -- a placeholder EMOJI (e.g. 🔥, 🧠). Handing the agent
+    that symbol is a depiction anchor: it pre-loads the literal default we want the
+    agent to DERIVE from the mechanic, not be told. Everything else (name, types,
+    cost, power/toughness, keywords, triggers, effects) is preserved verbatim.
+    Agents read THIS committed run-root file; they never open the raw
+    reference/html-proto card.json, so the emoji never reaches their context."""
+    raw = json.loads((CARDS / card / "card.json").read_text())
+    raw.pop("art", None)
+    out = rd / "card_context.json"
+    out.write_text(json.dumps(raw, indent=2))
+    return out
+
 def label_map(card: str) -> dict:
     """Deterministic, recomputable blind labels. arm_a/arm_b -> '1'/'2'.
     Recomputable from the card name alone, so a reset can't lose the answer key."""
@@ -126,8 +141,10 @@ def init_run(run: str, card: str):
         (rd / a).mkdir(parents=True, exist_ok=True)
     seeds = seeds_for(card)
     (rd / "seeds.json").write_text(json.dumps(seeds))   # run-root => COMMITTED
+    ctx = write_card_context(rd, card)                  # art-emoji stripped
     print(f"init {run} for {card}")
     print("seeds (committed at run-root):", seeds)
+    print("card context (art-stripped):", ctx)
     print("control skill :", CONTROL_SKILL)
     print("variant skill :", VARIANT_FILE)
     ok, msg = variant_ok(); print("variant check :", "OK" if ok else "FAIL", "-", msg)
@@ -228,10 +245,14 @@ def build_sheet(run: str, card: str):
     print("(label mapping is recomputable via `decode`; not revealed here)")
 
 def decode(run: str):
-    # infer card from run name suffix
-    card = run.split("-", 2)[-1]
+    # run names follow "skillab-<cand>-<card>"; parse BOTH so the role label
+    # reflects the ACTUAL candidate this run tested (not the env default), and the
+    # card id is right regardless of which CAND is set in the environment.
+    parts = run.split("-", 2)
+    cand = parts[1].upper() if len(parts) == 3 and parts[0] == "skillab" else CAND.upper()
+    card = parts[-1]
     m = label_map(card)
-    roles = {"arm_a": "CONTROL (SKILL-control.md)", "arm_b": f"TREATMENT ({CAND.upper()} variant)"}
+    roles = {"arm_a": "CONTROL (SKILL-control.md)", "arm_b": f"TREATMENT ({cand} variant)"}
     inv = {v: k for k, v in m.items()}
     print(f"run={run} card={card}")
     print(f"  label 1 = {m['1']} = {roles[m['1']]}")
