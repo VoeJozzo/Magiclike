@@ -15,3 +15,4 @@ might_of_faith
 mind_control
 mountain
 oxen_herd
+vine_twister

@@ -130,8 +130,37 @@ Blind best-vs-best, user-judged. Arm identity sealed during judging; decoded via
 | mind_control | keeper ("good enough", not great) | 1.02 / gen_02 (seed 306991308) | **treatment** |
 | mountain | keeper (arbitrary; all near-equivalent) | 2.07 / gen_07 (seed 1557831263); 3 treatment alts saved to cards/mountain/alts/ (1.02/1.04/1.05) per user request | **control** (keeper); treatment alts archived |
 | oxen_herd | keeper ("not super strong"; user: "both arts got the same place") | 2.01 / gen_01 (seed 519956986) | **treatment** |
+| vine_twister | round 14; FIRST emoji-stripped round; pool-quality primary. Marginal lean ("1.02, no suuuuper strong preferences") | 1.02 / gen_02 (seed 1611006294) — also treatment's OWN nominee (rare agent-self-select ↔ user concordance) | **treatment** (marginal; near-tie) |
 
 **Tally (keepers):** treatment 4, control 6, no-keeper 3. Quality-noted frames: control 4, treatment 2. n=13 rounds; **10 keepers banked — milestone reached** (control-vs-treatment discussion due now). Keeper sequence: serra(T), illusion(C), inferno(T), island(C), llanowar(C), mercurial(C), might(C), mind_control(T), mountain(C), oxen_herd(T). Composition finding (martyr_saint): the C4 treatment kept rendering the gain-life mechanic literally as a two-figure "she gives / he receives" transfer, which doesn't survive the 64×32 downscale; control's single-figure framing read cleaner. (Observation: control keeps winning blind best-vs-best; treatment's edge from serra/inferno isn't recurring.)
+
+### Addendum — metric reframe + pool-quality re-analysis (after n=13, 2026-06-17)
+
+The keeper tally above (control 6, treatment 4) was re-examined and is now considered
+**noise-dominated, not decision-grade.** Two changes came out of a design pass:
+
+- **Pool-quality re-read (user, blind→decoded):** judging each card on *whole-pool* quality
+  (not the single keeper) gives **treatment 4 / control 2 / no-difference 7**:
+  treatment-better = serra_angel, inferno_caller, iron_statue, might_of_faith; control-better
+  = llanowar_elves, martyr_saint; the rest (incl. both basic lands + illusion_drake) tie.
+  This *inverts* the keeper headline. Why: the keeper metric picks the max of ~10 draws (an
+  extreme order statistic); on the 7 tied pools the single best frame lands in an arm ~by
+  coin-flip, and that broke ~4–2 control by chance. might_of_faith is the tell — treatment-better
+  *pool*, but the single keeper came from control (the metric miscredited control).
+- **Primary endpoint = pool-quality; keeper = secondary.** Rationale (an unbiased stats pass
+  agreed on the test, and we extended it): production runs only ONE skill version, so the real
+  question is "does the live skill hand me better pools to pick from?" — a distributional
+  question pool-quality matches, and which is lower-variance than the max-vs-max keeper contest.
+  Correct test for both = paired **sign test (exact binomial on non-tie pairs)**. Current numbers:
+  keeper 4/10 → p≈0.75; pool-quality 4/6 → p≈0.69. **Neither significant; underpowered, not null.**
+  Ties (incl. degenerate land/vanilla cards) are *dropped from the math* but NOT from the draw —
+  card selection stays production-representative (we still need land art), and every round yields
+  shippable art regardless, so no budget is wasted. To detect a moderate effect needs ~40+
+  eligible cards. Outstanding hardening: a single-judge reliability check (re-judge a blind subset).
+- **Emoji strip (from round 14 / vine_twister on):** the `art` placeholder emoji (🔥/🧠/🌿) was
+  being handed to agents via the raw card.json — a depiction anchor antithetical to C4. The
+  harness now writes a sanitized `card_context.json` (art field dropped, all else verbatim) at
+  run-root and the brief forbids opening the raw card dir. All n=13 above predate the strip.
 
 **Process findings surfaced along the way:**
 - **Byte-identical contamination** (caught by a hardened `preflight`): duplicate saved frames across runs/arms, honest manifests. Root cause traced to the skill brief's shared `curl -o /tmp/pixflux_resp.json` path (a failed/empty curl re-saves a prior call's bytes), **not** server-side stale returns — billing showed dups were real billed calls, and the in-memory `gen_image.py` helper produced 0 dups under the same seed-reuse that triggered it. `preflight` now fails on any byte-identical pair (within- or cross-run) as a cause-agnostic backstop.
