@@ -16,3 +16,4 @@ mind_control
 mountain
 oxen_herd
 vine_twister
+squire_of_oaths

@@ -1,0 +1,15 @@
+{
+  "card_id": "squire_of_oaths",
+  "cost": {
+    "W": 1,
+    "C": 1
+  },
+  "name": "Squire of Oaths",
+  "power": 2,
+  "toughness": 3,
+  "types": [
+    "Creature",
+    "Human",
+    "Soldier"
+  ]
+}
