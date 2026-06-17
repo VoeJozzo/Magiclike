@@ -20,3 +20,4 @@ squire_of_oaths
 vengeful_spirit
 drain_life
 worldly_tutor
+righteous_cavalry
