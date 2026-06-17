@@ -22,3 +22,4 @@ drain_life
 worldly_tutor
 righteous_cavalry
 awaken_the_vault
+wind_dancer
