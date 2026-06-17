@@ -17,3 +17,4 @@ mountain
 oxen_herd
 vine_twister
 squire_of_oaths
+vengeful_spirit
