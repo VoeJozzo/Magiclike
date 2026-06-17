@@ -90,3 +90,19 @@ When done, pick your single best image. Record it by writing `{out_dir}/BEST.txt
 containing exactly the chosen filename (e.g. `{card_id}_gen_07_seed123456.png`) on the first
 line, then a short paragraph on why it's your pick. Do not delete the non-nominated rolls;
 they stay for the blind contact sheet.
+
+## Final report (required — pipeline accounting)
+
+End your run by reporting these numbers explicitly so we can verify no art is lost
+between the API and the contact sheet:
+
+- **Total pixflux API generations you invoked** — count EVERY image-generation API call you
+  made, including any you discarded as stale/off-prompt or that errored. This is the number
+  of times you were billed for a generation.
+- **Frames saved** — how many final PNGs are in `{out_dir}` (these become the contact sheet).
+- **Discarded/failed** — the difference, with a one-line note on why (e.g. "1 stale return
+  re-rolled"). If you discarded nothing, say "0 discarded; API calls == frames saved."
+- Then your nominated filename and a one-line rationale.
+
+The saved-frame count must equal your manifest line count. If your API-call count exceeds your
+saved frames, the gap is exactly the art that did NOT travel up the pipeline — name it.
