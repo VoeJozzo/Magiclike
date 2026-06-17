@@ -9,3 +9,4 @@ iron_statue
 island
 living_lands
 llanowar_elves
+martyr_saint
