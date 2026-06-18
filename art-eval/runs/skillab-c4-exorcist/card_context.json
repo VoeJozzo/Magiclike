@@ -1,0 +1,40 @@
+{
+  "card_id": "exorcist",
+  "cost": {
+    "W": 2,
+    "C": 2
+  },
+  "name": "Exorcist",
+  "power": 2,
+  "toughness": 3,
+  "triggers": [
+    {
+      "event": "card_zone_change",
+      "condition": [
+        "this_card",
+        "card_moves(anywhere, battlefield)"
+      ],
+      "effects": [
+        {
+          "kind": "affect_creature",
+          "severity": "exile"
+        },
+        {
+          "kind": "gain_life",
+          "who": {
+            "from": "target_controller"
+          },
+          "amount": {
+            "from": "target_power"
+          }
+        }
+      ],
+      "target": "creature"
+    }
+  ],
+  "types": [
+    "Creature",
+    "Human",
+    "Cleric"
+  ]
+}

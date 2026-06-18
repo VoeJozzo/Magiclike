@@ -57,3 +57,4 @@ roots_and_branches
 gizzard_beast
 spitfire_bastion
 wall_of_omens
+exorcist
