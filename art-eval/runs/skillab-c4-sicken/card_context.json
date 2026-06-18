@@ -1,0 +1,21 @@
+{
+  "card_id": "sicken",
+  "cost": {
+    "B": 1
+  },
+  "target": "opp_creature",
+  "effects": [
+    {
+      "kind": "pump",
+      "power": -2,
+      "toughness": -2
+    }
+  ],
+  "name": "Sicken",
+  "keywords": [
+    "flash"
+  ],
+  "types": [
+    "Sorcery"
+  ]
+}
