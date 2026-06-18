@@ -52,3 +52,4 @@ dross_pylon
 dread_knight
 sudden_vines
 bear_cub
+wizard_adept
