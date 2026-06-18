@@ -34,3 +34,4 @@ primal_roar
 sicken
 counter_specialist
 predate
+soulblade_captain
