@@ -25,3 +25,4 @@ awaken_the_vault
 wind_dancer
 crusaders_charm
 ember_anvil
+ember_herald
