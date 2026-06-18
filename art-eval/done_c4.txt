@@ -50,3 +50,4 @@ strength_of_the_pack
 archmage_patriarch
 dross_pylon
 dread_knight
+sudden_vines
