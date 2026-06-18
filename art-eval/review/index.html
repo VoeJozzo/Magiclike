@@ -14,8 +14,9 @@
   html,body{margin:0;background:var(--bg);color:var(--ink);
     font:14px/1.45 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
   a{color:var(--p1)}
-  .bar{position:sticky;top:0;z-index:10;display:flex;gap:12px;align-items:center;
-    padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--line)}
+  .bar{position:sticky;top:0;z-index:10;display:flex;gap:8px 12px;align-items:center;
+    flex-wrap:wrap;padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--line)}
+  @media(max-width:760px){.bar .sp{display:none}.wrap{padding:14px 10px 80px}}
   .bar h1{font-size:15px;margin:0;font-weight:600;letter-spacing:.3px}
   .bar .sp{flex:1}
   .pill{background:var(--panel2);border:1px solid var(--line);border-radius:999px;
@@ -142,10 +143,11 @@
 <script>
 const R = window.REVIEW;
 const SHEETDIR = "../../docs/art-eval-sheets/";
+const sheetURL = c => (window.SHEETDATA && window.SHEETDATA[c.sheet]) || (SHEETDIR + c.sheet);
 const KEY = "art-eval-" + R.cand + "-verdicts";
 const V = JSON.parse(localStorage.getItem(KEY) || "{}");   // {cardId:{pool,keeper,note}}
 let i = +(localStorage.getItem(KEY + ":ix") || 0);
-let z = +(localStorage.getItem(KEY + ":z") || 0.8);
+let z = +(localStorage.getItem(KEY + ":z") || (innerWidth < 760 ? 0.5 : 0.8));
 
 const $ = s => document.querySelector(s);
 const save = () => localStorage.setItem(KEY, JSON.stringify(V));
@@ -168,7 +170,7 @@ function render(){
   $("#cDesc").textContent = card.desc;
   $("#ix").textContent = i + 1;
   $("#tot").textContent = R.cards.length;
-  $("#sheetImg").src = SHEETDIR + card.sheet;
+  $("#sheetImg").src = sheetURL(card);
   $("#note").value = v.note || "";
   $("#keepLbl").textContent = v.keeper || "— none —";
 
@@ -192,7 +194,7 @@ function render(){
     const crop = document.createElement("div");
     crop.className = "crop";
     crop.style.width = R.cw + "px"; crop.style.height = R.ch + "px";
-    crop.style.backgroundImage = "url('" + SHEETDIR + card.sheet + "')";
+    crop.style.backgroundImage = "url(\"" + sheetURL(card) + "\")";
     crop.style.backgroundPosition = (-cell.x) + "px " + (-cell.y) + "px";
     crop.style.backgroundRepeat = "no-repeat";
     t.appendChild(crop);
