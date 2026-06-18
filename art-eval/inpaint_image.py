@@ -34,7 +34,8 @@ def _b64_raw(path: str) -> str:
     return base64.b64encode(open(path, "rb").read()).decode()
 
 
-def _call_inpaint(desc, w, h, img_b64, mask_b64, negative, guidance) -> bytes:
+def _call_inpaint(desc, w, h, img_b64, mask_b64, negative) -> bytes:
+    # NB: /v2/inpaint rejects guidance_scale (extra_forbidden) — do not send it.
     token = open(TOKEN_FILE).read().strip()
     body = {
         "description": desc,
@@ -44,8 +45,6 @@ def _call_inpaint(desc, w, h, img_b64, mask_b64, negative, guidance) -> bytes:
     }
     if negative:
         body["negative_description"] = negative
-    if guidance is not None:
-        body["guidance_scale"] = float(guidance)
     resp = subprocess.run(
         ["curl", "-sS", "-X", "POST", ENDPOINT,
          "-H", "Authorization: " + token,
@@ -70,7 +69,6 @@ def main():
     ap.add_argument("--step", required=True, type=int)
     ap.add_argument("--prompt", required=True, help="LOCAL prompt: what belongs in the masked patch")
     ap.add_argument("--negative", default="")
-    ap.add_argument("--guidance", default=None)
     a = ap.parse_args()
 
     src = Image.open(a.image).convert("RGB")
@@ -79,7 +77,7 @@ def main():
         raise SystemExit(f"mask size {msk.size} != image size {src.size}")
     w, h = src.size
     raw = _call_inpaint(a.prompt, w, h, _b64_raw(a.image), _b64_raw(a.mask),
-                        a.negative, a.guidance)
+                        a.negative)
     os.makedirs(a.out, exist_ok=True)
     nn = f"{a.step:02d}"
     path = os.path.join(a.out, f"{a.name}_{nn}.png")
