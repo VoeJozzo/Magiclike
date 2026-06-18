@@ -32,3 +32,4 @@ faithless_looting
 embargo
 primal_roar
 sicken
+counter_specialist
