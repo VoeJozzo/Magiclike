@@ -48,3 +48,4 @@ alloy_construct
 echo_spirit
 strength_of_the_pack
 archmage_patriarch
+dross_pylon
