@@ -42,3 +42,4 @@ wind_drake
 golem_forge
 forest_forager
 symmetricize
+pyromaniac
