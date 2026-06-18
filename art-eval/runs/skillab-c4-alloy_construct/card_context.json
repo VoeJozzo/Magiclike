@@ -1,0 +1,15 @@
+{
+  "card_id": "alloy_construct",
+  "name": "Alloy Construct",
+  "cost": {
+    "C": 2
+  },
+  "types": [
+    "Artifact",
+    "Creature",
+    "Construct"
+  ],
+  "power": 2,
+  "toughness": 2,
+  "keywords": []
+}

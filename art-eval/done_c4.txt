@@ -44,3 +44,4 @@ forest_forager
 symmetricize
 pyromaniac
 threaten
+alloy_construct
