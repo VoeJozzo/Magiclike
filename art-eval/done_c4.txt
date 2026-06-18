@@ -38,3 +38,4 @@ soulblade_captain
 brand_of_iron
 flame_lash
 storm_sage
+wind_drake
