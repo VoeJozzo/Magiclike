@@ -46,7 +46,7 @@ VARIANT_FILE  = VARIANTS / f"SKILL-{CAND}-variant.md"
 CAND_SIG      = {
     "c2": "diagnosable-flaw",
     "c4": "Ground the depiction in reality",
-    "c5": "Evaluator-mode self-critique",
+    "c5": "Diagnose-then-iterate",
 }.get(CAND, "")
 
 # "Already-run" is scoped PER CANDIDATE, not globally: a card tested under one
