@@ -30,3 +30,4 @@ tide_charm
 sengir_vampire
 faithless_looting
 embargo
+primal_roar
