@@ -35,3 +35,4 @@ sicken
 counter_specialist
 predate
 soulblade_captain
+brand_of_iron
