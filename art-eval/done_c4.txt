@@ -26,3 +26,4 @@ wind_dancer
 crusaders_charm
 ember_anvil
 ember_herald
+tide_charm
