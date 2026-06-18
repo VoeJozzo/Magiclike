@@ -39,3 +39,4 @@ brand_of_iron
 flame_lash
 storm_sage
 wind_drake
+golem_forge
