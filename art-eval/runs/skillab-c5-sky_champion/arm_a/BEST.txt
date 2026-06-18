@@ -1,0 +1,17 @@
+sky_champion_gen_09_seed904463015.png
+
+Sky Champion's defining mechanic is not merely Flying -- it is a flyer whose
+arrival GRANTS flying to one of your creatures (its ETB trigger). The art must
+enact that, not just decorate "a winged warrior." Gen 09 is the only frame where
+BOTH figures are unmistakably airborne: a large white-gold winged spirit warrior
+on the right, and a second bronze-armored soldier on the left lifted into the sky
+with his own wing of light spread -- now flying alongside the champion. That is
+the card happening: the Sky Champion has bestowed flight on an ally and they take
+to the air together. It also honors the strong flying-literal convention for the
+champion itself, carries clean white/gold color identity for a {W} card with a
+distinct bronze ally for contrast, and reads instantly at 64x32 as "two warriors
+flying together." Its visible flaw -- the ally's single prominent wing rather than
+a symmetric pair -- is the kind of reaching, fixable imperfection the discipline
+prefers over the more polished but mechanically timid gen 07 (a single radiant
+angel above a still-grounded soldier), which depicts a blessing but not the act of
+granting flight.
