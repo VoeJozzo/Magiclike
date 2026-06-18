@@ -1,0 +1,41 @@
+{
+  "card_id": "twin_strike",
+  "cost": {
+    "W": 1
+  },
+  "effects": [
+    {
+      "kind": "pump",
+      "power": 1,
+      "toughness": 1,
+      "target_slot": 0
+    },
+    {
+      "kind": "pump",
+      "power": 1,
+      "toughness": 1,
+      "target_slot": 1
+    }
+  ],
+  "name": "Twin Strike",
+  "target_slots": [
+    {
+      "target": "creature",
+      "filter": {
+        "controller": "self"
+      }
+    },
+    {
+      "target": "creature",
+      "filter": {
+        "controller": "self"
+      }
+    }
+  ],
+  "keywords": [
+    "flash"
+  ],
+  "types": [
+    "Sorcery"
+  ]
+}
