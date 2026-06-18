@@ -18,6 +18,7 @@ from pathlib import Path
 
 ARGS = [a for a in sys.argv[1:] if not a.startswith("-")]
 ALL = "--all" in sys.argv[1:]
+REMAINING = "--remaining" in sys.argv[1:]   # all sheeted cards NOT already judged
 CAND = (ARGS[0] if ARGS else "c4").lower()
 HERE = Path(__file__).resolve().parent
 ART = HERE.parent                      # art-eval/
@@ -50,6 +51,43 @@ DESC = {
     "spitfire_bastion": "R Wall 1/3; tap to deal 1 damage to any creature or player.",
     "wall_of_omens": "W Wall 0/4; ETB draw a card (defensive cantrip).",
     "exorcist": "W Human Cleric 2/3; ETB exile a creature, its controller gains life equal to its power.",
+    # --- batch 2 (rounds 1-36, added for the --remaining review) ---
+    "serra_angel": "W Angel 4/4 vigilance (angelic beater).",
+    "awaken_the_vault": "G sorcery: target land you control becomes a 3/3 Creature until end of turn (temporary man-land).",
+    "brand_of_iron": "R sorcery: target permanent permanently gains the Artifact type (metal-branding).",
+    "counter_specialist": "U Human Wizard 1/4; whenever you cast a spell that counters, this gets +1/+1 permanently.",
+    "crusaders_charm": "W flash modal sorcery — choose one: deal 2 to any target / +2/+2 EOT to your creature / gain 3 & draw 1.",
+    "drain_life": "B sorcery: deal 2 damage to each of two targets; you gain 4 life (life-siphon).",
+    "embargo": "W sorcery: return target permanent to hand and stick a +1 cost-increase sticker on it (taxing bounce).",
+    "ember_anvil": "Artifact Land Mountain; taps for R.",
+    "ember_herald": "R Human Shaman 1/2; ETB deal 1 damage to any target.",
+    "faithless_looting": "R sorcery: draw 2, then discard 2 (rummaging).",
+    "flame_lash": "R sorcery: deal 4 damage to target (burn).",
+    "illusion_drake": "U Illusion Dragon 3/2 (conjured/illusory dragon; vanilla).",
+    "inferno_caller": "R Human Shaman 2/3; whenever it attacks, deal 2 damage to any target.",
+    "iron_statue": "W Construct Wall 0/5 indestructible (immovable defensive statue).",
+    "island": "Basic Land Island; taps for U.",
+    "living_lands": "G sorcery: target land you control permanently becomes a 2/2 Creature (man-land).",
+    "llanowar_elves": "G Elf Druid 1/1 (classic mana-elf).",
+    "martyr_saint": "W Human Cleric 1/2; when it dies, you gain 3 life.",
+    "mercurial_adept": "Human Wizard 2/2 (vanilla; cost 3 generic).",
+    "might_of_faith": "W flash sorcery: target creature gets +2/+2 (combat trick).",
+    "mind_control": "U sorcery: gain control of target creature (permanent steal).",
+    "mountain": "Basic Land Mountain; taps for R.",
+    "oxen_herd": "G Beast 4/4 trample, lifelink (big green lifegain trampler).",
+    "predate": "G sorcery: put +1/+1 on your creature, then it fights a target creature (bite).",
+    "primal_roar": "G sorcery: your creatures all get +2/+2 (team pump).",
+    "righteous_cavalry": "W Human Knight 4/3 (vanilla beater).",
+    "sengir_vampire": "B Vampire 4/4 flying, lifelink; when a creature it damaged dies, it gets +1/+1 permanently.",
+    "sicken": "B flash sorcery: target creature gets -2/-2 (shrink/kill).",
+    "soulblade_captain": "W Human Knight 2/2; whenever you cast a spell, your creatures get +1/+0.",
+    "squire_of_oaths": "W Human Soldier 2/3 (vanilla).",
+    "storm_sage": "U Human Wizard 2/3; whenever another creature you control enters, draw a card.",
+    "tide_charm": "U flash modal sorcery — choose one: counter target spell / bounce target creature / draw 2.",
+    "vengeful_spirit": "W Spirit 2/2 flying; when it dies, destroy target creature.",
+    "vine_twister": "G Treefolk 2/2; ETB give a target creature you control trample.",
+    "wind_dancer": "U Faerie 1/1 flying (vanilla evasive).",
+    "worldly_tutor": "G sorcery: search your library for a creature card and put it into your hand (tutor).",
 }
 
 # Batch draw order (rounds 37-56). Falls back to alphabetical if any are missing.
@@ -104,12 +142,23 @@ def build():
     cards = []
     have = {p.name.split("skillab-%s-" % CAND, 1)[-1]
             for p in RUNS.glob(f"skillab-{CAND}-*") if (p / "_meta" / "blind_map.json").exists()}
+    # --remaining: every sheeted card the user has NOT already judged (resumes the
+    # experiment without re-showing reviewed cards). Reads the committed verdicts file.
+    judged = set()
+    vpath = ART / f"verdicts_{CAND}.json"
+    if vpath.exists():
+        judged = set(json.loads(vpath.read_text()).get("verdicts", {}))
     batch = [c for c in ORDER if c in have]
     extra = sorted(have - set(ORDER))
-    ordered = (batch + extra) if ALL else (batch or extra)
-    if not ALL and extra:
-        print(f"note: scoped to the {len(batch)}-card batch; {len(extra)} other "
-              f"{CAND} runs exist (re-run with --all to include them).")
+    if REMAINING:
+        ordered = [c for c in (batch + extra) if c not in judged]
+        print(f"--remaining: {len(judged)} already judged, {len(ordered)} left to review.")
+    else:
+        ordered = (batch + extra) if ALL else (batch or extra)
+        if not ALL and extra:
+            print(f"note: scoped to the {len(batch)}-card batch; {len(extra)} other "
+                  f"{CAND} runs exist (re-run with --all to include them, "
+                  f"or --remaining for only the unjudged ones).")
     for card in ordered:
         rd = RUNS / f"skillab-{CAND}-{card}"
         bm = json.loads((rd / "_meta" / "blind_map.json").read_text())  # {"1":arm,"2":arm}
