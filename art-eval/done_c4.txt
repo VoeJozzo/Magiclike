@@ -46,3 +46,4 @@ pyromaniac
 threaten
 alloy_construct
 echo_spirit
+strength_of_the_pack
