@@ -51,6 +51,8 @@ DESC = {
     "spitfire_bastion": "R Wall 1/3; tap to deal 1 damage to any creature or player.",
     "wall_of_omens": "W Wall 0/4; ETB draw a card (defensive cantrip).",
     "exorcist": "W Human Cleric 2/3; ETB exile a creature, its controller gains life equal to its power.",
+    # --- C5 round (diagnose-then-iterate variant) ---
+    "curse_shade": "B Specter 2/2; when it dies, exile target creature (death-trigger removal).",
     # --- batch 2 (rounds 1-36, added for the --remaining review) ---
     "serra_angel": "W Angel 4/4 vigilance (angelic beater).",
     "awaken_the_vault": "G sorcery: target land you control becomes a 3/3 Creature until end of turn (temporary man-land).",
