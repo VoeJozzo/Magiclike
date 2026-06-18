@@ -29,3 +29,4 @@ ember_herald
 tide_charm
 sengir_vampire
 faithless_looting
+embargo
