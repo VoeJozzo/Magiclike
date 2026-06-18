@@ -65,12 +65,30 @@ def done_set() -> set:
     return {l.strip() for l in DONEFILE.read_text().splitlines()
             if l.strip() and not l.startswith("#")}
 
+def _is_arted(d: Path) -> bool:
+    """A card counts as already-arted (ineligible for the single-art harness) if it has
+    a plain art.png, OR a special multi-art `art_ladder` (which uses art-1.png/art-2.png/…
+    instead of art.png). The ladder case is why elystra_the_immortal wrongly slipped into
+    the pool: it has no file literally named art.png, only art-1/2/3.png + an art_ladder."""
+    if (d / "art.png").exists():
+        return True
+    if list(d.glob("art-*.png")):
+        return True
+    cj = d / "card.json"
+    if cj.exists():
+        try:
+            if "art_ladder" in json.loads(cj.read_text()):
+                return True
+        except Exception:
+            pass
+    return False
+
 def unarted_pool() -> list:
     out = []
     for d in sorted(CARDS.iterdir()):
         if not d.is_dir():
             continue
-        if (d / "art.png").exists():       # already has art -> not eligible
+        if _is_arted(d):                   # plain art.png OR art_ladder -> not eligible
             continue
         out.append(d.name)
     return out
