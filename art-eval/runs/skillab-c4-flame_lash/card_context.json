@@ -1,0 +1,18 @@
+{
+  "card_id": "flame_lash",
+  "cost": {
+    "R": 1,
+    "C": 2
+  },
+  "target": "creature",
+  "effects": [
+    {
+      "kind": "damage",
+      "amount": 4
+    }
+  ],
+  "name": "Flame Lash",
+  "types": [
+    "Sorcery"
+  ]
+}
