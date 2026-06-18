@@ -1,0 +1,21 @@
+{
+  "card_id": "symmetricize",
+  "cost": {
+    "W": 1,
+    "C": 1
+  },
+  "target": "creature",
+  "effects": [
+    {
+      "kind": "symmetricize"
+    }
+  ],
+  "name": "Symmetricize",
+  "special": true,
+  "keywords": [
+    "flash"
+  ],
+  "types": [
+    "Sorcery"
+  ]
+}
