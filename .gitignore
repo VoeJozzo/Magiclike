@@ -26,3 +26,6 @@ Thumbs.db
 # Python bytecode cache (e.g. art-eval/harness.py imported as a module).
 __pycache__/
 *.pyc
+
+# exploratory iterate-on-good-art probe (scratch; results delivered as files + curated summary)
+art-eval/probe/
