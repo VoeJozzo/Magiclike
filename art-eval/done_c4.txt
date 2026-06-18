@@ -53,3 +53,4 @@ dread_knight
 sudden_vines
 bear_cub
 wizard_adept
+roots_and_branches

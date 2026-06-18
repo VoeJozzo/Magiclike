@@ -1,0 +1,42 @@
+{
+  "card_id": "roots_and_branches",
+  "cost": {
+    "G": 1,
+    "C": 1
+  },
+  "effects": [
+    {
+      "kind": "affect_creature",
+      "severity": "tap",
+      "target_slot": 0
+    },
+    {
+      "kind": "pump",
+      "power": 1,
+      "toughness": 1,
+      "target_slot": 1
+    }
+  ],
+  "name": "Roots and Branches",
+  "distinct_targets": true,
+  "target_slots": [
+    {
+      "target": "creature",
+      "filter": {
+        "controller": "opp"
+      }
+    },
+    {
+      "target": "creature",
+      "filter": {
+        "controller": "self"
+      }
+    }
+  ],
+  "keywords": [
+    "flash"
+  ],
+  "types": [
+    "Sorcery"
+  ]
+}
