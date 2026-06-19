@@ -55,11 +55,19 @@ for human masking. This is a technical-capacity limit, not a ceremony.
   manifest is what makes branching possible: every frame is re-seedable for the next branch.
 - Inpaint via `art-eval/inpaint_image.py` — human-in-the-loop per the rule above.
 - Useful PixelLab params from the OpenAPI spec (`https://api.pixellab.ai/v2/openapi.json`),
-  not currently wired into the helper but worth reaching for:
-  - `text_guidance_scale` (the real guidance field; plain `guidance_scale` 422s),
-  - `init_image` + `init_image_strength` — a real **image-conditioned / img2img** path
-    (feed a finished frame + low strength to nudge it; unexplored so far),
-  - `outline` / `shading` / `detail` / `view` / `direction` style controls.
+  **not currently wired into `gen_image.py`** (it rides every default) but worth reaching for:
+  - **`text_guidance_scale`** — *"how closely to follow the text description."* `number`,
+    **1.0–20.0, default 8.** (The real field; plain `guidance_scale` 422s.) Higher = tighter
+    adherence, but it amplifies what the model already wants to do — when you're fighting it,
+    fix the words, not the dial. Helper should expose this.
+  - **`init_image` + `init_image_strength`** — a real whole-image **image-conditioned /
+    img2img** path. `init_image` is a `Base64Image` (`{type:"base64", base64, format}`) you
+    start from; `init_image_strength` is an `integer` **1–999, default 300** = strength of the
+    initial image's influence (**high = stay close to the input / light nudge; low = let the
+    prompt pull it further**). This is the missing "feed in the good art and nudge it" tool —
+    keeps the whole composition (unlike blind text re-roll) with no mask/human step (unlike
+    inpaint). **Behavior at 64×32 is untested — a capability to try, not yet a technique.**
+  - `outline` / `shading` / `detail` / `view` / `direction` — style controls (unexplored).
   - `negative_description` is **deprecated on pixflux** (don't rely on it) and real on
     inpaint — but we have **no clean evidence it produced better art**, so it is not a
     recommended technique.
