@@ -1555,6 +1555,58 @@ function maybeDeferHumanChooses(ctx, eff, effList, curTgt) {
   return true;
 }
 
+// A4-23 leg-1: when a HUMAN search/discard prompt opens mid-resolution, the
+// effects AFTER it must wait for the human's pick (canon §704.2 "resolve each
+// effect in order"; §600 makes resolution atomic) — exactly as the edict
+// chooses() path defers via pendingEdictChoice.trailingEffects. Stash the
+// trailing effects on the open prompt and return true so the caller BREAKS its
+// effect loop; doSearchPick / doDiscard replay them (resumeTrailingEffects) once
+// the pick completes. One shared human-pause contract for chooses + search +
+// discard. Pre-fix the search/discard handlers set their prompt and RETURNED but
+// the loop kept running, so a trailing effect fired before the pick — e.g.
+// Demonic Tutor's "lose 2 life" hit before you chose the tutored card.
+// who === 'you' = a HUMAN is prompted; the AI path resolves inline (no defer).
+function maybeDeferTrailingForHumanPrompt(ctx, eff, effList) {
+  const idx = effList.indexOf(eff);
+  if (idx < 0) return false;
+  const trailing = effList.slice(idx + 1);
+  if (!trailing.length) return false;            // nothing after this effect
+  const stash = (prompt) => {
+    if (prompt.trailingEffects) return false;    // an earlier effect already deferred
+    prompt.trailingEffects = trailing.map(e => ({ ...e }));
+    prompt.deferCtx = {
+      controller: ctx.controller, sourceName: ctx.sourceName,
+      sourceIid: ctx.sourceIid, allTargets: ctx.allTargets || [],
+      chosen: ctx.chosen || null,
+    };
+    return true;
+  };
+  if (G.pendingSearch && G.pendingSearch.who === 'you') return stash(G.pendingSearch);
+  if (G.forcedDiscard && G.forcedDiscard.who === 'you') return stash(G.forcedDiscard);
+  return false;
+}
+// Replay trailing effects after a human pause resolved, re-deferring if one of
+// them opens another human pause (chained pauses). Shared by doEdictChoice /
+// doSearchPick / doDiscard. scope:'self' resolves against the stashed source
+// (the A4-13 fork); other effects run bare — handlers fall back to ctx.chosen,
+// preserved for the edict path. (A4-23 leg-1.) CAVEAT: a trailing effect that
+// depends on a top-level target() step's established CARD target (or a
+// target_slot) would lose it here — no shipped card combines a target() step
+// with a human search/discard plus a target-dependent trailing effect (verified
+// across the pool); wiring one would need the slot targets threaded through
+// deferCtx. Same limitation the edict replay has always had.
+function resumeTrailingEffects(ctx, effects) {
+  for (const eff of (effects || [])) {
+    let tgt = null, snap = null;
+    if (eff.scope === 'self') {
+      const self = resolveSelfTarget(eff, ctx.sourceIid, ctx.sourceName, ctx.controller);
+      tgt = self.tgt; snap = self.snap;
+    }
+    applyEffect(ctx, eff, tgt, snap);
+    if (maybeDeferTrailingForHumanPrompt(ctx, eff, effects)) return;
+  }
+}
+
 // Sac/edict scoring — measures board-presence threat (cost sunk).
 // ~75% of getCardValue coefficients.
 function sacValueOnBoard(card) {
@@ -4593,6 +4645,7 @@ function runTriggerEffects(item) {
     } else {
       applyEffect(ctx, eff, null, null);
     }
+    if (maybeDeferTrailingForHumanPrompt(ctx, eff, item.trig.effects || [])) break;   // A4-23 leg-1
   }
   ctx.chosen = null;
   afterEffectsApplied();
@@ -6281,6 +6334,7 @@ function resolveTopOfStack() {
         snap = curSnap;
       }
       applyEffect(ctx, eff, tgt, snap);
+      if (maybeDeferTrailingForHumanPrompt(ctx, eff, activeEffects)) break;   // A4-23 leg-1
     }
     ctx.chosen = null;
     // Rip-on-target check (Elystra). Uses the eligibility snapshot taken
@@ -6777,6 +6831,7 @@ function runAbilityEffects(item) {
       snap = abCurSnap;
     }
     applyEffect(ctx, e, tgt, snap);
+    if (maybeDeferTrailingForHumanPrompt(ctx, e, ab.effects)) break;   // A4-23 leg-1
   }
   ctx.chosen = null;
   afterEffectsApplied();
@@ -6856,7 +6911,12 @@ function doDiscard(who, cardIid) {
     // a 5-card forced discard against a 2-card hand resolves after 2). The
     // latter avoids an unresolvable prompt blocking step() forever.
     if (G.forcedDiscard.remaining <= 0 || p.hand.length === 0) {
+      // A4-23 leg-1: trailing effects resume only when the LAST discard
+      // completes (replay exactly once, not per discarded card).
+      const trailing = G.forcedDiscard.trailingEffects;
+      const deferCtx = G.forcedDiscard.deferCtx;
       G.forcedDiscard = null;
+      if (trailing && trailing.length) resumeTrailingEffects(deferCtx, trailing);
     }
   }
 }
@@ -6872,11 +6932,17 @@ function doSearchPick(who, cardIid) {
   log(`${G[who].name} fetches ${card.name}.`, 'sp');
   // A3-6: a tutor is a library→hand move; attribute it to the searching card.
   emitZoneChange(card, who, 'library', 'hand', undefined, G.pendingSearch.sourceIid);
+  // A4-23 leg-1: capture any deferred trailing effects before clearing the prompt.
+  const trailing = G.pendingSearch.trailingEffects;
+  const deferCtx = G.pendingSearch.deferCtx;
   G.pendingSearch = null;
   // Tutored cards trigger build_on_draw the same as any other hand-entry.
   // The Codex doesn't currently appear in any tutor's filter, but if a
   // future "tutor any card" effect lands, this is where it'd matter.
   tryBuildOnDraw(card, who);
+  // A4-23 leg-1: the effects after the search now resume, AFTER the pick (canon
+  // §704.2 in-order resolution) — e.g. Demonic Tutor's "lose 2 life".
+  if (trailing && trailing.length) resumeTrailingEffects(deferCtx, trailing);
 }
 function doTriggerTargetPick(who, target) {
   // Player submits a target for the CURRENT slot of the pending trigger prompt.
@@ -6917,7 +6983,10 @@ function doEdictChoice(who, iid) {
       slotIdx: picked.slotIdx, controller: who },
   };
   log(`${pname(who)} chooses ${picked.label}.`, 'sp');
-  for (const eff of p.trailingEffects) applyEffect(ctx, eff, null, null);
+  // A4-23 leg-1: shared replay (re-defers if a trailing effect opens another
+  // human pause). ctx.chosen is set, so non-self trailing effects (sacrifice/
+  // annihilate/rip) operate on the pick exactly as before.
+  resumeTrailingEffects(ctx, p.trailingEffects);
   drainTriggers();
 }
 function doSymmetricizeChoice(who, which) {

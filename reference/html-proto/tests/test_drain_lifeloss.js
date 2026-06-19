@@ -73,16 +73,22 @@ console.log('\n=== Blood Priest drains the OPPONENT (and tracks life loss) ===')
     'lifeLostThisTurn=' + G.you.lifeLostThisTurn);
 })();
 
-console.log('\n=== Demonic Tutor: the "you lose 2 life" is self life loss ===');
+console.log('\n=== Demonic Tutor: the "you lose 2 life" is self life loss (after the pick — A4-23 leg-1) ===');
 (() => {
   const G = game('you');
   const myLife0 = G.you.life;
-  // seed library with a creature so the search has something
-  G.you.library.push(mk(Object.keys(CARDS).find(k => hasType(CARDS[k], 'Creature') && !CARDS[k].special), 'you'));
+  // seed library with a creature so the search has something to find (and so it
+  // opens a HUMAN search prompt rather than fizzling with nothing to fetch).
+  const findable = mk(Object.keys(CARDS).find(k => hasType(CARDS[k], 'Creature') && !CARDS[k].special), 'you');
+  G.you.library.push(findable);
   const dt = mk('demonic_tutor', 'you'); G.you.hand.push(dt);
   ENGINE.executeAction('you', { type: 'castSpell', cardIid: dt.iid });
   drain(G);
-  check('caster lost 2 life (self drain)', G.you.life === myLife0 - 2, myLife0 + '→' + G.you.life);
+  // A4-23 leg-1: the trailing "lose 2 life" now resolves AFTER the human's search
+  // pick (canon §704.2 in-order resolution), not mid-resolution before it.
+  check('self life-loss DEFERRED until the search pick', G.you.life === myLife0, 'life=' + G.you.life);
+  ENGINE.executeAction('you', { type: 'searchPick', cardIid: findable.iid });
+  check('caster lost 2 life (self drain) after the pick', G.you.life === myLife0 - 2, myLife0 + '→' + G.you.life);
 })();
 
 console.log('\n=== AI still values + casts a drain creature (not undervalued) ===');
