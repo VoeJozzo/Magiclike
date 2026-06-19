@@ -1,0 +1,2 @@
+{"step": 1, "image": "step_00.png", "mask": "mask_01.png", "prompt": "a kneeling armored soldier in dark steel armor, hunched and dying, pixel art", "negative": "blob, blur, mush, two figures", "guidance": null}
+{"step": 2, "image": "step_01.png", "mask": "mask_02.png", "prompt": "a single armored knight kneeling and collapsing in defeat, clear silhouette, dark steel armor with violet rim light, pixel art", "negative": "blob, blur, mush, formless, multiple figures, smear", "guidance": null}
