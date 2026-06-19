@@ -266,10 +266,11 @@ function manaAbilityCostIsTrivial(ab) {
 // a mana ability: a sacrifice/mana-cost mana ability is still off-stack.) The
 // effects[0] check both requires mana to lead (manaEffectColors reads effects[0])
 // AND guards the deref, so an empty effects[] is "not a mana ability", not a
-// crash. The no-target check is inlined (vs objectNeedsTarget) so this early
-// helper has no forward dependency — grantBasicLandMana calls it at card-load
-// time, before later helpers resolve in the test harness's single-eval scope;
-// it mirrors objectNeedsTarget/effectNeedsTarget exactly.
+// crash. The no-target check is inlined rather than delegated to objectNeedsTarget
+// because this helper lives in the file's pre-IIFE prelude (a cluster of pure
+// classifiers), and prelude functions can't reference IIFE-internal bindings like
+// objectNeedsTarget — see produceMana for the same constraint. It mirrors
+// objectNeedsTarget/effectNeedsTarget exactly.
 function isManaAbility(ab) {
   if (!ab || !Array.isArray(ab.effects) || !ab.effects[0]) return false;
   if (ab.effects[0].kind !== 'add_mana') return false;
@@ -402,8 +403,9 @@ let listeners = [];
 // of truth for the {choose}/{amounts} → pool mutation — shared by the add_mana
 // effect handler and the tap-for-mana lane (each logs its own framing).
 // `colorChoice` is the resolved pick for a {choose} effect (UI/AI); absent or
-// illegal → the first option. (Defined here, after `G`, so it's in scope for
-// both callers.)
+// illegal → the first option. (Lives INSIDE the ENGINE IIFE — unlike the pure
+// mana classifiers in the prelude above — because it touches engine state: `G`
+// and `COLORS` are IIFE-internal and a prelude function couldn't reach them.)
 function produceMana(who, eff, colorChoice) {
   if (eff.choose) {
     const opts = eff.choose === 'any' ? COLORS : eff.choose;
