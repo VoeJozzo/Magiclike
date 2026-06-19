@@ -53,8 +53,7 @@ function newGame() {
   const G = ENGINE.state();
   G.you.battlefield = []; G.opp.battlefield = [];
   G.you.hand = []; G.opp.hand = [];
-  G.activePlayer = 'you'; G.priorityHolder = 'you'; G.phase = 'MAIN1';
-  G.stack = []; G.gameOver = false; G.priority = { passes: new Set() };
+  setup.startMainPhase('you');
   return G;
 }
 const VANILLA = (() => {

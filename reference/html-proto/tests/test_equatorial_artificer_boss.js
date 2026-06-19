@@ -25,12 +25,7 @@ function boot() {
   RUN.start({ cards: Array(12).fill('plains'), colors: ['W'] }, null);
   RUN.startNextGame();
   const G = ENGINE.state();
-  G.activePlayer = 'you';
-  G.priorityHolder = 'you';
-  G.phase = 'MAIN1';
-  G.stack = [];
-  G.gameOver = false;
-  G.priority = { passes: new Set() };
+  setup.startMainPhase('you');
   G.you.hand = [];
   G.you.battlefield = [];
   G.you.graveyard = [];

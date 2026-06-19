@@ -54,8 +54,7 @@ function newGame() {
   return G;
 }
 function readyMain(G, who) {
-  G.activePlayer = who; G.priorityHolder = who; G.phase = 'MAIN1';
-  G.stack = []; G.gameOver = false; G.priority = { passes: new Set() };
+  setup.startMainPhase(who);
 }
 function passUntil(G, done, max) {
   let safety = max || 60;
@@ -443,13 +442,11 @@ console.log('\n=== noSelfCascade: a guarded draw-trigger fires on a foreign draw
 console.log('\n=== setup rule (canon §1002.2a): opening hands are constructed, not moved — no events before the game ===');
 (() => {
   const G = newGame();  // newGame runs RUN.startNextGame() — a full game setup
+  // The real seam is behavioral: makePlayer constructs the opening hand without
+  // firing any library->hand event, so setup queues no zone-change triggers.
+  // (Dropped a source-text pin over makePlayer's body that asserted the same by
+  // implementation shape — this outcome assertion already proves it.)
   check('game setup queued no zone-change triggers', ENGINE.state().pendingTriggers.length === 0);
-  // And the seam is real: makePlayer never routes through drawCard — the
-  // 7-card hand exists without a single library→hand event having fired.
-  const src = setup.getSource();
-  const mpBody = src.slice(src.indexOf('function makePlayer'), src.indexOf('function makeState'));
-  check('makePlayer constructs hands without drawCard/emitZoneChange (source pin)',
-    mpBody.length > 0 && !/drawCard\(|emitZoneChange\(/.test(mpBody));
 })();
 
 }

@@ -48,9 +48,7 @@ function mk(t, c) {
 function game(active) {
   RUN.start({ cards: Array(12).fill('plains'), colors: ['W'] }, null);
   RUN.startNextGame();
-  const G = ENGINE.state();
-  G.activePlayer = active; G.priorityHolder = active; G.phase = 'MAIN1';
-  G.stack = []; G.gameOver = false; G.priority = { passes: new Set() };
+  const G = setup.startMainPhase(active);
   G[active].mana = { W: 9, U: 9, B: 9, R: 9, G: 9, C: 9 };
   return G;
 }

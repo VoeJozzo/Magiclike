@@ -41,7 +41,7 @@ console.log('\n=== basic land taps for its color the turn it is played (no sickn
   resetMana('you');
   const p = put('you', 'plains');
   ENGINE.executeAction && null;
-  G.activePlayer = 'you'; G.priorityHolder = 'you'; G.phase = 'MAIN1'; G.stack = []; G.priority = { passes: new Set() };
+  setup.startMainPhase('you');
   check('tap is legal', ENGINE.isLegalAction('you', { type: 'tapLandForMana', cardIid: p.iid }));
   ENGINE.executeAction('you', { type: 'tapLandForMana', cardIid: p.iid });
   check('produced {W}', G.you.mana.W === 1 && p.tapped, JSON.stringify(G.you.mana));

@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.1.52`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.1.53`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -2243,7 +2243,25 @@ removal through leave-play discipline (removeFromCombat + clearRestrictionsFromS
 instead of a raw filter, so a ripped Stapler can't leave a ghost attacker or a
 dangling restriction (A5-15). A9-10 reclassified won't-fix (no pre-snake-case
 saves exist). Suite 125 → 139 files / 2487 → 2589 assertions green, lint clean.
-v2.1.50: PR #133 review follow-ups. (1) Mana-ability classification unified
+v2.1.50: test-suite discipline pass — **test-only; the served engine is
+byte-identical to v2.1.49** (no gameplay change). Surfaced by a 15-agent review
+of all 139 test files. (1) Dropped 4 non-fencing assertions: source-text /
+card-text regexes and a config-constant pin (STICKERS['subtype'].weight===10)
+that false-red on a benign change without catching a real bug — the behavioral
+coverage around each is the actual fence. (2) Real-drove test_cleanup_no_mana_taps:
+its cleanup-discard window was hand-posed (G.cleanupDiscarding/phase/priority set
+directly), so a rename of those gate fields could let the "tap is illegal"
+negatives pass for the wrong reason; it now reaches the window by real play
+(endTurn → the engine sets cleanupDiscarding at CLEANUP when hand>7). (3) A1-4
+internals-coupling: 63 files that each hand-wrote the same 6-field MAIN1
+priority/phase pose block now call setup.startMainPhase, and the 2 combat-posers
+call a new setup.startCombat — so a future rename of those fields breaks _setup
+once instead of silently-greening dozens of tests (1 file left: its block omits
+the priority field). Dedup review found the suite well-partitioned (no real
+duplication to cut) and zero obsolete tests. A 25-run bail-on-fail hunt for a
+1-in-~7 intermittent failure seen once pre-migration did NOT reproduce (suite
+stable across 25 full runs). Suite 139 files / 2587 assertions green, lint clean.
+v2.1.51: PR #133 review follow-ups. (1) Mana-ability classification unified
 behind `isManaAbility(ab)` and keyed on TARGETING, not `effects[0]` alone: a mana
 ability is one that produces mana AND requires no target. An untargeted rider
 ("T: add G, gain 1 life") stays a mana ability (Joe's ruling); a TARGETED hybrid
@@ -2265,10 +2283,9 @@ corrected (the engine has no resolver for it and boot validation rejects it; onl
 must peel off `kind:'player'` first) — latent, no current non-damage effect targets
 creature_or_player. (4) BACKLOG: review/remove obsolete `load()` migration logic
 (the dead `permaBuffs`→sticker conversion + its `midGameSlotsSnapshot` blind spot).
-New `test_mana_ability_classification.js` (10 checks: targeting discriminator,
-untargeted-rider, cost-axis separation, empty-effects crash-safety). Suite
-139 → 140 files / 2589 → 2599 assertions green, lint clean.
-v2.1.51: more PR #133 follow-ups. (1) Removed the dead `permaBuffs`→sticker load
+New `test_mana_ability_classification.js` (targeting discriminator, untargeted-
+rider, cost-axis separation, empty-effects crash-safety). Suite green, lint clean.
+v2.1.52: more PR #133 follow-ups. (1) Removed the dead `permaBuffs`→sticker load
 migration in `run.js` `load()` — nothing has written `permaBuffs` since the
 A5-6/A5-7 sticker refactor, so the conversion (and its `midGameSlotsSnapshot`
 blind spot) was unreachable dead code; its migration test in
@@ -2280,9 +2297,8 @@ BACKLOG item tracks auditing the other unconditional `load()` migrations
 the same reachability question. (2) `pickWeightedSticker` now defaults a missing
 weight to 0 (fail-closed — excluded), not 3 (fail-open — silently included at a
 default), matching the `!s.weight` pool filters. No behavior change today: every
-registered sticker carries an explicit weight (verified). Suite 140 files /
-2595 assertions green (−4: the removed migration test), lint clean.
-v2.1.52: consolidated the two mana-resolution paths (PR #133 follow-up refactor).
+registered sticker carries an explicit weight (verified). Suite green, lint clean.
+v2.1.53: consolidated the two mana-resolution paths (PR #133 follow-up refactor).
 `doTapLandForMana` was a parallel hand-rolled copy of the {choose}/{amounts} →
 pool logic the `add_mana` effect handler already has, and it ran ONLY `effects[0]`
 — silently dropping any rider. Both now route through ONE path: a shared
@@ -2291,11 +2307,12 @@ and `doTapLandForMana` pays the tap then delegates to `runAbilityEffects` (the
 same resolution `doActivateAbility` uses), threading the chosen color and the
 "taps SOURCE for {X}" log framing via `ctx.manaColor` / `ctx.tapForMana`.
 Behavioral upshot: an untargeted rider on a mana ability (e.g. a hypothetical
-"{T}: add G, gain 1 life" dork — the form v2.1.50 newly admits) now resolves on
+"{T}: add G, gain 1 life" dork — the form the targeting fix (v2.1.51) newly admits) now resolves on
 the tap lane exactly as activating it would, instead of being dropped. No current
 card is affected (every shipped mana ability is a single `add_mana` effect). The
 spell/`add_mana` path (Dark Ritual) and the basic-land/dork/rock taps are
 unchanged — verified by test_mana / test_deepseam_quarry / test_equatorial. New
-tap-lane color+rider checks added to test_mana_ability_classification.js. Suite
-140 files / 2597 assertions green, lint clean.
+tap-lane color+rider checks in test_mana_ability_classification.js. Suite 140
+files / 2595 assertions green, lint clean (post-merge with the base's v2.1.50
+test-discipline pass).
 

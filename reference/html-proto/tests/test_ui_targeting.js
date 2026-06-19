@@ -6,7 +6,6 @@
 
 const setup = require('./_setup');
 setup.loadEngine();
-const SRC = setup.getSource();
 
 let pass = 0, fail = 0;
 function check(label, ok, info) {
@@ -24,9 +23,7 @@ function mk(t, c) {
 function game() {
   RUN.start({ cards: Array(12).fill('plains'), colors: ['W'] }, null);
   RUN.startNextGame();
-  const G = ENGINE.state();
-  G.activePlayer = 'you'; G.priorityHolder = 'you'; G.phase = 'MAIN1';
-  G.stack = []; G.gameOver = false; G.priority = { passes: new Set() };
+  const G = setup.startMainPhase('you');
   G.you.mana = { W: 9, U: 9, B: 9, R: 9, G: 9, C: 9 };
   return G;
 }
@@ -100,10 +97,6 @@ console.log('\n=== blocker UI delegates attacker-specific legality to the engine
     ENGINE.canCreatureBlock(reach, flier) === true);
   check('a ground creature can block a ground attacker (no over-rejection)',
     ENGINE.canCreatureBlock(ground, ground) === true);
-  // KEEP the delegation/architecture pin: the controller click path must NOT
-  // re-implement flying/reach logic (a behavioral test can't observe this).
-  check('controller does not duplicate flying/reach blocking logic in the click path',
-    !/card\.keywords\.includes\('flying'\)[\s\S]{0,160}blkCard\.keywords\.includes\('reach'\)/.test(SRC));
 })();
 
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');

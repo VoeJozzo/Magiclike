@@ -42,9 +42,7 @@ function freshRun() {
   RUN.clearSave && RUN.clearSave();
   RUN.start({ cards: ['endomorph'].concat(Array(11).fill('mountain')), colors: ['R'] }, null);
   RUN.startNextGame();
-  const G = ENGINE.state();
-  G.activePlayer = 'you'; G.priorityHolder = 'you'; G.phase = 'MAIN1';
-  G.stack = []; G.gameOver = false; G.priority = { passes: new Set() };
+  const G = setup.startMainPhase('you');
   G.you.battlefield = []; G.opp.battlefield = []; G.you.hand = [];
   G.pendingTriggers = [];
   return G;

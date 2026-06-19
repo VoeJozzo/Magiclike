@@ -15,11 +15,8 @@ function newGame() {
   RUN.start({ cards: Array(12).fill('plains'), colors: ['W'] }, null);
   RUN.startNextGame();
   const G = ENGINE.state();
-  G.activePlayer = 'you'; G.priorityHolder = null; G.phase = 'COMBAT_ATTACK';
-  G.priority = null; G.stack = []; G.gameOver = false;
+  setup.startCombat('you', { phase: 'COMBAT_ATTACK' });
   G.pendingTriggers = []; G.pendingTriggerTarget = null;
-  G.attackers = []; G.blockers = new Map();
-  G.attackersDeclared = false; G.blockersDeclared = false;
   G.you.hand = []; G.opp.hand = [];
   G.you.battlefield = []; G.opp.battlefield = [];
   G.you.graveyard = []; G.opp.graveyard = [];
