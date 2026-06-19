@@ -209,10 +209,8 @@ function mergeSpliceData(base, staple) {
   const remappedRolls = (staple.empowerRolls || []).map(roll =>
     remapEmpowerRollForStaple(roll, baseIsCreature, stapleIsCreature, baseIsPermanent,
                               priorMergedEffectCount, priorMergedTriggerCount, priorMergedAbilityCount));
-  // A5-6/A5-7: permaBuffs is retired. Elystra's buffs are now stat_boost/kw_*
-  // STICKERS, so they merge for free through the `stickers` concat above — the
-  // old object-vs-array permaBuffs concat (which expected a list nothing
-  // produced, silently dropping the real object-shaped buffs) is gone.
+  // Elystra's permanent buffs are stat_boost/kw_* stickers, so they merge for
+  // free through the `stickers` concat above — no separate buff field to merge.
   return {
     stapledTpls: priorStaples.concat([staple.tplId]),
     stickers: (base.stickers || []).concat(staple.stickers || []),
@@ -867,8 +865,7 @@ function makeCard(tplId, stickers, slotIdx, empowerRolls, bonusTrigger, stapledT
     card[k] = (v && typeof v === 'object') ? JSON.parse(JSON.stringify(v)) : v;
   }
   // Order: subtype-implied → stickers → bonusTrigger. (Elystra's permanent_eot
-  // buffs are now stat_boost/kw_* stickers applied by applyStickersToCard above
-  // — audit A5-6/A5-7 retired the separate permaBuffs object.)
+  // buffs ride the stat_boost/kw_* stickers applied by applyStickersToCard above.)
   applySubtypeKeywords(card);
   applyStickersToCard(card);
   // bonusTrigger: slot-persistent trigger (today written by the Architect's
@@ -5252,11 +5249,11 @@ function resetInPlayState(card, preserveDeathState) {
     }
   }
   card.dealtDeathtouch = false;
-  // Elystra's permanent_eot buffs are now slot stickers (audit A5-6/A5-7), so
-  // they need no special re-apply here: the stat_boost modifier the flush pushed
-  // has no 'permaBuffs' source and is NOT stripped (it survives the flicker), and
-  // sticker-granted keywords are re-derived by intrinsicKeywords above. A fresh
-  // makeCard re-applies them from slot.stickers via applyStickersToCard.
+  // Elystra's permanent_eot buffs are slot stickers, so they need no special
+  // re-apply here: the stat_boost modifier the flush pushed carries no source
+  // tag and is NOT stripped (it survives the flicker), and sticker-granted
+  // keywords are re-derived by intrinsicKeywords above. A fresh makeCard
+  // re-applies them from slot.stickers via applyStickersToCard.
 }
 
 function moveToGraveyard(card, controller, batch) {
@@ -5559,9 +5556,8 @@ function endGame(winner) {
 
 // Flush a permanent_eot creature's (Elystra) current-turn temp buffs and EOT
 // keyword grants to SLOT STICKERS — the engine's blessed run-persistent channel
-// (splice/clone/steal-safe via the existing sticker plumbing, unlike the retired
-// permaBuffs object that nothing else produced and the splice merge mis-shaped:
-// audit A5-6/A5-7). Mirrors endomorph_absorb: emit a stat_boost sticker for the
+// (splice/clone/steal-safe via the existing sticker plumbing). Mirrors
+// endomorph_absorb: emit a stat_boost sticker for the
 // P/T delta and a kw_<keyword> sticker per grant, apply the effect to the
 // in-play card now (so the buff survives this turn's cleanup), and persist to the
 // slot (so it survives save/load and carries to next game). Self-gates on
@@ -5597,8 +5593,9 @@ function flushPermanentEotToStickers(card) {
         persist(sticker_id);
         if (!card.stickers.includes(sticker_id)) card.stickers.push(sticker_id);
       }
-      // In-game: keep the keyword active after eotGrants clears. Synthetic source
-      // -1 is immune to clearRestrictionsFromSource, like the old permaBuffs path.
+      // In-game: keep the keyword active after eotGrants clears. -1 is a
+      // synthetic "permanent" source — no real permanent has that iid (they
+      // start at 1), so clearRestrictionsFromSource never strips it.
       if (!card.keywords.includes(kw)) card.keywords.push(kw);
       if (!card.grantedBy.has(kw)) card.grantedBy.set(kw, new Set());
       card.grantedBy.get(kw).add(-1);
