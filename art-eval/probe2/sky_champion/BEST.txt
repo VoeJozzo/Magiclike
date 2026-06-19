@@ -1,0 +1,35 @@
+BEST: sky_champion_gen_01_seed1228432800.png  (the baseline, gen 1)
+
+WHY:
+The baseline remained the best frame after 6 generations. It has the cleanest,
+most on-spec composition of the set: a centrally-placed white-gold winged spirit
+warrior with a clearly glowing halo, hovering on a clean BROAD VERTICAL golden
+shaft of light, over a pale dawn-blue sky and distant green battlefield. Color
+contrast (luminous white-gold spirit vs the dim grounded soldier vs cool dawn
+sky) is the strongest of any roll; the vertical light-shaft reads as elegant
+"ascension/flight."
+
+Its one real flaw -- the bronze soldier is grounded, off to the left, and
+disconnected from the spirit/shaft, so the card's "lift an ally into flight"
+mechanic isn't fully enacted -- was NOT fixable by prompt iteration on this seed:
+
+  gen 2 (seed-locked, soldier centered on shaft + arms raised): DEGRADE -- drifted
+         to a single front-on angel; the two-figure interaction collapsed entirely.
+  gen 3 (seed-locked, minimal "on the golden shaft" edit): held composition far
+         better and added a connecting golden beam (nice interaction read), but the
+         soldier stayed grounded and the clean vertical shaft turned diagonal --
+         net no-change-to-slight-degrade vs baseline.
+  gen 4 (fresh seed of gen-3 prompt): DEGRADE -- washed-out monochrome yellow,
+         detached halo ring, lost color contrast and dawn sky.
+  gen 5 (fresh seed): best two-figure HANDCLASP interaction, but blown-out hazy
+         background, detached halo, red cape (off-spec), soldier on a stone pillar
+         (still grounded) -- net DEGRADE as a clean readable frame.
+  gen 6 (seed-locked, minimal "lifted into the air" edit): DEGRADE -- spirit
+         shrank to a small pale-blue ghost in the corner, shaft vanished, soldier
+         grounded again. Worst seed-locked roll.
+
+VERDICT: Starting from already-good art, prompt iteration CHURNED/DRIFTED rather
+than improved. No generation beat the baseline. Seed-locked single-clause edits did
+NOT reliably hold composition (gens 2 and 6 drifted hard; only gen 3's truly
+minimal edit held). Fresh seeds traded one strength for another but never matched
+the baseline overall. The baseline (gen 1) remained best.
