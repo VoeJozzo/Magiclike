@@ -66,7 +66,12 @@ for human masking. This is a technical-capacity limit, not a ceremony.
     initial image's influence (**high = stay close to the input / light nudge; low = let the
     prompt pull it further**). This is the missing "feed in the good art and nudge it" tool —
     keeps the whole composition (unlike blind text re-roll) with no mask/human step (unlike
-    inpaint). **Behavior at 64×32 is untested — a capability to try, not yet a technique.**
+    inpaint). **TESTED & works** (G2G4 strength sweep): the strength dial = preserve↔redraw —
+    ~900 ≈ exact copy of the input; ~300 (default) reinterprets within the same composition
+    and palette; ~150 redraws the subject on the init's compositional/palette scaffold (at
+    150 it produced a *cleaner, more legible* fossil than the muddy source). This is the real
+    "feed in the good art and nudge it" tool. ~17s/call when the API is healthy; wired into
+    `gen_image.py` as spec `"init"` + `"init_strength"` (manifest-logged).
   - `outline` / `shading` / `detail` / `view` / `direction` — style controls (unexplored).
   - `negative_description` is **deprecated on pixflux** (don't rely on it) and real on
     inpaint — but we have **no clean evidence it produced better art**, so it is not a
