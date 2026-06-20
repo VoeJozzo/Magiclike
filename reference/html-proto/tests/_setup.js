@@ -248,9 +248,9 @@ function loadEngine() {
 // PREFERS driving the real machine (so a future rename breaks HERE, in one place,
 // and migrated tests regain their grip on the priority bookkeeping), with one
 // authoritative hand-written fallback for the forced-player case (where advancing
-// through the opponent's turn would disturb a test's bespoke board). Migrating the
-// 76 callers onto this is a tracked follow-up — NOT done wholesale here (it's the
-// risky multi-hour sweep; 2 files are deliberately rename-fragile good tests).
+// through the opponent's turn would disturb a test's bespoke board). The ~63
+// MAIN1-pose callers were migrated onto this (workflow, per-file verified); the
+// COMBAT-posers use startCombat (below).
 function startMainPhase(who) {
   const ENGINE = global.ENGINE;
   const G = ENGINE.state();
@@ -269,4 +269,33 @@ function startMainPhase(who) {
   return G;
 }
 
-module.exports = { getSource, loadEngine, ENGINE_FILES, startMainPhase };
+// Pose a COMBAT state for `who` (the active player) — the same priority/phase
+// pose-block startMainPhase owns, but for combat windows, which the real-drive
+// fast-path can't cleanly reach. Hand-poses, in ONE place, so a field rename
+// breaks here rather than in every combat test.
+//   opts.attackers : iid[]            (default [])
+//   opts.blockers  : [[bIid, aIid]]   (default []) -> G.blockers Map
+//   opts.phase     : 'COMBAT_ATTACK' | 'COMBAT_BLOCK' (default 'COMBAT_BLOCK')
+//   opts.declared  : are attackers/blockers declared? (default: phase === 'COMBAT_BLOCK')
+// Pre-declaration (COMBAT_ATTACK awaiting declares) leaves priority CLOSED
+// (priorityHolder = null, priority = null); a posed post-declaration window opens
+// a fresh round for `who`. Does NOT touch pendingTriggers or the board — the
+// caller owns those.
+function startCombat(who, opts) {
+  opts = opts || {};
+  const G = global.ENGINE.state();
+  const phase = opts.phase || 'COMBAT_BLOCK';
+  const declared = (opts.declared != null) ? opts.declared : (phase === 'COMBAT_BLOCK');
+  G.activePlayer = who;
+  G.phase = phase;
+  G.stack = []; G.gameOver = false;
+  G.attackers = (opts.attackers || []).slice();
+  G.blockers = new Map(opts.blockers || []);
+  G.attackersDeclared = declared;
+  G.blockersDeclared = declared;
+  if (declared) { G.priorityHolder = who; G.priority = { passes: new Set() }; }
+  else { G.priorityHolder = null; G.priority = null; }
+  return G;
+}
+
+module.exports = { getSource, loadEngine, ENGINE_FILES, startMainPhase, startCombat };

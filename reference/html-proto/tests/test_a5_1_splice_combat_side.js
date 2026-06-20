@@ -42,15 +42,10 @@ function newGame() {
   RUN.startNextGame();
   return ENGINE.state();
 }
-// Pose the game mid-combat with declared attackers/blockers, deterministically.
+// Pose the game mid-combat with declared attackers/blockers, deterministically
+// (delegates the priority/phase pose-block to the shared setup.startCombat — A1-4).
 function poseCombat(G, activePlayer, attackers, blockers) {
-  G.activePlayer = activePlayer; G.priorityHolder = activePlayer;
-  G.phase = 'COMBAT_BLOCK'; G.stack = []; G.gameOver = false;
-  G.priority = { passes: new Set() };
-  G.attackers = attackers.slice();
-  G.attackersDeclared = true;
-  G.blockers = new Map(blockers || []);
-  G.blockersDeclared = true;
+  setup.startCombat(activePlayer, { attackers, blockers });
 }
 function splice(caster, baseIid, stapleIid) {
   ENGINE.applyEffect(

@@ -53,8 +53,7 @@ function newGame() {
   return G;
 }
 function readyMain(G, who) {
-  G.activePlayer = who; G.priorityHolder = who; G.phase = 'MAIN1';
-  G.stack = []; G.gameOver = false; G.priority = { passes: new Set() };
+  setup.startMainPhase(who);
 }
 // Untapped land + a castable card keep hasNoAction() false so the auto-pass
 // fast path doesn't consume the combat rounds (test_combat_change_control.js).

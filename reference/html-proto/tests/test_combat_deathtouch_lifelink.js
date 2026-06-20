@@ -56,8 +56,7 @@ function newGame() {
   return ENGINE.state();
 }
 function readyMain(G, who) {
-  G.activePlayer = who; G.priorityHolder = who; G.phase = 'MAIN1';
-  G.stack = []; G.gameOver = false; G.priority = { passes: new Set() };
+  setup.startMainPhase(who);
 }
 function passUntil(G, done, max) {
   let safety = max || 40;

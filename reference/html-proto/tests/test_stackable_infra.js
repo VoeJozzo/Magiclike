@@ -58,8 +58,7 @@ function newGame() {
   G.you.battlefield = []; G.opp.battlefield = [];
   G.you.hand = []; G.opp.hand = [];
   G.you.graveyard = []; G.opp.graveyard = [];
-  G.activePlayer = 'you'; G.priorityHolder = 'you'; G.phase = 'MAIN1';
-  G.stack = []; G.gameOver = false; G.priority = { passes: new Set() };
+  setup.startMainPhase('you');
   G.pendingTriggers = []; G.pendingTriggerTarget = null;
   G.you.mana = { W: 9, U: 9, B: 9, R: 9, G: 9, C: 9 };
   G.opp.mana = { W: 9, U: 9, B: 9, R: 9, G: 9, C: 9 };

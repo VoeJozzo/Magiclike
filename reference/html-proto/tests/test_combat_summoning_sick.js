@@ -18,7 +18,7 @@ function mk(tplId, controller){
 }
 function newGame(){ RUN.clearSave && RUN.clearSave();
   RUN.start({ cards: Array(12).fill('plains'), colors:['R'] }, null); RUN.startNextGame(); return ENGINE.state(); }
-function readyMain(G, who){ G.activePlayer=who; G.priorityHolder=who; G.phase='MAIN1'; G.stack=[]; G.gameOver=false; G.priority={passes:new Set()}; }
+function readyMain(G, who){ setup.startMainPhase(who); }
 function giveHold(G, who){ G[who].battlefield.push(mk('mountain', who)); G[who].hand.push(mk('lightning_bolt', who)); }
 function passUntil(G, done, max){ let s=max||30; while(!done() && s-->0){ const w=ENGINE.expectedActor(); if(!w)break; ENGINE.executeAction(w,{type:'pass'}); } }
 const VANILLA = (()=>{ for (const [id,c] of Object.entries(CARDS)){ if (hasType(c,'Creature') && !c.triggers && !c.abilities && !c.static_buffs) return id; } return null; })();

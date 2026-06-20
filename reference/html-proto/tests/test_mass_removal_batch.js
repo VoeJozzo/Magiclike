@@ -22,8 +22,7 @@ function game(active) {
   RUN.start({ cards: Array(12).fill('plains'), colors: ['W'] }, null);
   RUN.startNextGame();
   const G = ENGINE.state();
-  G.activePlayer = active; G.priorityHolder = active; G.phase = 'MAIN1';
-  G.stack = []; G.gameOver = false; G.priority = { passes: new Set() };
+  setup.startMainPhase(active);
   G[active].mana = { W: 9, U: 9, B: 9, R: 9, G: 9, C: 9 };
   G.you.battlefield = []; G.opp.battlefield = [];
   G.pendingTriggers = [];

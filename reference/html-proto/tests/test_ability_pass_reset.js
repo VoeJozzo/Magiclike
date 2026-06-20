@@ -49,8 +49,7 @@ function newGame() {
   const G = ENGINE.state();
   G.you.battlefield = []; G.opp.battlefield = [];
   G.you.hand = []; G.opp.hand = [];
-  G.activePlayer = 'you'; G.priorityHolder = 'you'; G.phase = 'MAIN1';
-  G.stack = []; G.gameOver = false; G.priority = { passes: new Set() };
+  setup.startMainPhase('you');
   G.you.mana = { W: 9, U: 9, B: 9, R: 9, G: 9, C: 9 };
   return G;
 }

@@ -32,8 +32,7 @@ function newGame(deckCards) {
   return ENGINE.state();
 }
 function readyMain(G, who) {
-  G.activePlayer = who; G.priorityHolder = who; G.phase = 'MAIN1';
-  G.stack = []; G.gameOver = false; G.priority = { passes: new Set() };
+  setup.startMainPhase(who);
 }
 // Pass priority for whoever is expected to act until the turn rolls over
 // (or the game ends) — same shape as test_exile_until_eot.js's endTurn.

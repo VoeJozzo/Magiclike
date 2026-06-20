@@ -201,9 +201,7 @@ console.log('\n=== end-to-end: cast awakenVault through the real action flow ===
   // not just the effect handler in isolation.
   RUN.start({ cards: Array(12).fill('plains'), colors: ['W'] }, null);
   RUN.startNextGame();
-  const G = ENGINE.state();
-  G.activePlayer = 'you'; G.priorityHolder = 'you'; G.phase = 'MAIN1';
-  G.stack = []; G.gameOver = false; G.priority = { passes: new Set() };
+  const G = setup.startMainPhase('you');
   G.you.mana = { W: 9, U: 9, B: 9, R: 9, G: 9, C: 9 };
   const land = ENGINE.makeCard('forest', [], 0);
   land.controller = 'you'; land.owner = 'you'; land.sick = false; land.iid = 7001;
@@ -246,9 +244,7 @@ console.log('\n=== #4: the AI has tooling — it casts a neutralize spell at an 
 (() => {
   RUN.start({ cards: Array(12).fill('plains'), colors: ['W'] }, null);
   RUN.startNextGame();
-  const G = ENGINE.state();
-  G.activePlayer = 'you'; G.priorityHolder = 'you'; G.phase = 'MAIN1';
-  G.stack = []; G.gameOver = false; G.priority = { passes: new Set() };
+  const G = setup.startMainPhase('you');
   G.you.mana = { W: 9, U: 9, B: 9, R: 9, G: 9, C: 9 };
   G.you.hand = []; G.you.battlefield = []; G.opp.battlefield = [];
   const enemy = ENGINE.makeCard('sentinel_colossus', [], 0);  // a 6/6 worth answering

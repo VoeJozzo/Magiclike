@@ -48,8 +48,7 @@ function newGame() {
   G.you.battlefield = []; G.opp.battlefield = [];
   G.you.hand = []; G.opp.hand = [];
   G.you.mana = { W: 0, U: 0, B: 0, R: 0, G: 0, C: 0 };
-  G.activePlayer = 'you'; G.priorityHolder = 'you'; G.phase = 'MAIN1';
-  G.stack = []; G.gameOver = false; G.priority = { passes: new Set() };
+  setup.startMainPhase('you');
   return G;
 }
 const poolTotal = (m) => (m.W||0)+(m.U||0)+(m.B||0)+(m.R||0)+(m.G||0)+(m.C||0);

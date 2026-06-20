@@ -17,6 +17,13 @@
 //   3. getLegalActions does not enumerate tap actions in that window
 //   4. discard is STILL legal during the window (the gate that must survive)
 //   5. after the discard completes, tapping the land works again
+//
+// The cleanup-discard window is reached by REAL PLAY (endTurn -> the engine
+// sets cleanupDiscarding itself at CLEANUP when hand>7), not by hand-posing
+// G.cleanupDiscarding/phase/priority. That keeps the test honest: if those
+// internal fields are renamed, the engine still poses its own window and the
+// behavioral assertions stand — rather than a hand-set flag that, once stale,
+// would let the negatives pass for the wrong reason.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -34,29 +41,35 @@ function newGame() {
 }
 
 const G = newGame();
+// Force 'you' to an open MAIN1 round (deterministic regardless of the coin flip).
+setup.startMainPhase('you');
 
-// An untapped land on your battlefield.
+// An untapped land on your battlefield (added post-untap, so it stays untapped
+// through your turn into CLEANUP).
 const land = G.you.library.find(c => hasType(c, 'Land'));
 G.you.library = G.you.library.filter(c => c !== land);
 land.tapped = false;
 G.you.battlefield.push(land);
 
-// Hand of 9 — must discard down to 7. Force the engine's cleanup-discard
-// pause exactly as setPhase('CLEANUP') produces it (engine.js doEndTurn path).
-while (G.you.hand.length < 9) {
-  const c = G.you.library.pop();
-  G.you.hand.push(c);
+// Stuff your hand to 9 so the ENGINE's own cleanup-discard pause engages.
+while (G.you.hand.length < 9) { const c = G.you.library.pop(); if (!c) break; G.you.hand.push(c); }
+
+// Reach YOUR cleanup-discard window via real play: endTurn fast-forwards your
+// turn; at CLEANUP with hand>7 the engine sets cleanupDiscarding and pauses.
+ENGINE.executeAction('you', { type: 'endTurn' });
+let drive = 300;
+while (drive-- > 0 && !G.cleanupDiscarding && !G.gameOver) {
+  const w = ENGINE.expectedActor(); if (!w) break;
+  ENGINE.executeAction(w, { type: 'pass' });
 }
-G.activePlayer = 'you';
-G.phase = 'CLEANUP';
-G.stack = [];
-G.priority = null;          // no open priority round during cleanup
-G.priorityHolder = null;
-G.cleanupDiscarding = true; // the flag set when hand.length > 7 at cleanup
-G.forcedDiscard = null;
-G.gameOver = false;
 
 console.log('=== A1-10: the cleanup-discard window rejects mana taps ===');
+check('reached the engine-posed cleanup-discard window',
+  G.cleanupDiscarding === true && G.phase === 'CLEANUP',
+  'phase=' + G.phase + ' discarding=' + G.cleanupDiscarding);
+check('the discarding player is you (expected actor)', ENGINE.expectedActor() === 'you',
+  'actor=' + ENGINE.expectedActor());
+
 const tapAction = { type: 'tapLandForMana', cardIid: land.iid };
 check('A1-10: tapLandForMana is illegal during cleanupDiscarding',
   !ENGINE.isLegalAction('you', tapAction));
@@ -81,19 +94,17 @@ check('getLegalActions still enumerates discards',
 console.log('\n=== after the discard completes, tapping works again ===');
 // Discard down to 7 through the real action path; the engine clears
 // cleanupDiscarding when hand.length <= 7.
-let safety = 4;
+let safety = 6;
 while (G.cleanupDiscarding && G.you.hand.length > 7 && safety-- > 0) {
   ENGINE.executeAction('you', { type: 'discard', cardIid: G.you.hand[0].iid });
 }
 check('cleanup discard completed (flag cleared)', !G.cleanupDiscarding,
   'hand=' + G.you.hand.length);
-// Give the player a normal main-phase priority window and tap. Reset the
-// tap state so this section is independent of whether the buggy pre-fix
-// engine tapped the land above.
+// Hand the player a fresh main-phase window and tap (the rolled-over turn
+// emptied the pool and the land is still untapped after UNTAP only ran for the
+// active player — here we just re-open a clean MAIN1 for the assertion).
 land.tapped = false;
-G.you.mana = { W: 0, U: 0, B: 0, R: 0, G: 0, C: 0 };
-G.activePlayer = 'you'; G.priorityHolder = 'you'; G.phase = 'MAIN1';
-G.stack = []; G.priority = { passes: new Set() };
+setup.startMainPhase('you');
 check('tapLandForMana is legal again after the discard',
   ENGINE.isLegalAction('you', tapAction));
 const ok2 = ENGINE.executeAction('you', tapAction);
