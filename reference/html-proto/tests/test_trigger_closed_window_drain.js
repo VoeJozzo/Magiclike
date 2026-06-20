@@ -119,6 +119,14 @@ if (!VANILLA) {
     G.phase === 'COMBAT_ATTACK' && !G.attackersDeclared && ENGINE.expectedActor() === 'you',
     'phase=' + G.phase + ' declared=' + G.attackersDeclared + ' actor=' + ENGINE.expectedActor());
 
+  // The altar has served its purpose (queuing the dies-trigger). Remove it so the
+  // rest of this test stays focused on the drain: its lingering extra-cost mana
+  // ability would otherwise (correctly, post-A7-1 fix) offer 'you' an instant-
+  // speed activateAbility at every window and suppress the auto-pass into combat.
+  // That enumeration is covered by test_a7_extra_cost_mana.js; here it's noise.
+  // (A no-op in real play — no shipped card has an extra-cost mana ability.)
+  G.you.battlefield = G.you.battlefield.filter(c => c.iid !== altar.iid);
+
   console.log('\n=== A1-1 leg 3 KEY: the queued trigger drains at the next real window; combat happens ===');
   ENGINE.executeAction('you', { type: 'declareAttackers', cardIids: [atk.iid] });
   check('queued trigger drained and resolved in the post-declaration window (+2 life)',

@@ -7471,8 +7471,15 @@ function getLegalActions(who) {
     if (!card.abilities) continue;
     for (let i=0; i<card.abilities.length; i++) {
       const ab = card.abilities[i];
-      const isMana = isManaAbility(ab);
-      if (isMana) continue;   // surfaced as tapLandForMana
+      // Skip ONLY auto-usable ({T}-only) mana abilities — they're surfaced in the
+      // tapLandForMana lane above, so this is the exact complement of that gate.
+      // An EXTRA-cost mana ability (sac/mana cost the tap lane can't pay — A7-1)
+      // is NOT auto-usable, so it falls through to here and surfaces as an
+      // explicit activated ability that pays its full cost (per A7-1's "surface
+      // only as explicit activated abilities"). Keying on isManaAbility instead
+      // would skip it from BOTH lanes — legal (isLegalAction) yet enumerable
+      // nowhere (PR #134 review, Thaumaturge-ChatGPT).
+      if (isAutoUsableManaAbility(ab)) continue;
       // Tap cost requirements.
       if (ab.cost && ab.cost.tap) {
         if (card.tapped) continue;

@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.1.53`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.1.54`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -2315,4 +2315,20 @@ unchanged — verified by test_mana / test_deepseam_quarry / test_equatorial. Ne
 tap-lane color+rider checks in test_mana_ability_classification.js. Suite 140
 files / 2595 assertions green, lint clean (post-merge with the base's v2.1.50
 test-discipline pass).
+v2.1.54: PR #134 review follow-up (Thaumaturge-ChatGPT). An extra-cost mana
+ability ({T},sacrifice / mana-cost add_mana — the A7-1 shape) was legal via
+isLegalAction (mana abilities are legal any time) but enumerable NOWHERE:
+getLegalActions skipped EVERY mana ability from the explicit activateAbility lane
+(keying on isManaAbility), while the tapLandForMana auto-lane already excludes
+non-trivial-cost ones. The activate lane now skips only isAutoUsableManaAbility —
+the exact complement of the tap lane — so an extra-cost mana ability surfaces as
+an explicit activated ability that pays its full cost (sac choices enumerated),
+matching A7-1's stated "surface only as explicit activated abilities". Pre-
+existing (the old effects[0]==='add_mana' check had the same gap); no shipped
+card is affected (A7-1 boot-rejects extra-cost mana abilities) — a latent-
+consistency fix. test_a7_extra_cost_mana.js grows the activate-lane-INCLUSION
+check the reviewer noted was missing; test_trigger_closed_window_drain.js drops
+its spent synthetic altar after it queues the trigger (the now-enumerated ability
+would otherwise correctly suppress the auto-pass into combat). Suite 140 files /
+2597 assertions green, lint clean.
 
