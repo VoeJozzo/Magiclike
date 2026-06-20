@@ -45,12 +45,15 @@ def _call_inpaint(desc, w, h, img_b64, mask_b64, negative) -> bytes:
     }
     if negative:
         body["negative_description"] = negative
+    # body via stdin (--data-binary @-): image base64 can exceed the OS arg limit.
     resp = subprocess.run(
-        ["curl", "-sS", "-X", "POST", ENDPOINT,
+        ["curl", "-sS", "--max-time", "90", "-X", "POST", ENDPOINT,
          "-H", "Authorization: " + token,
          "-H", "Content-Type: application/json",
-         "-d", json.dumps(body)],
-        capture_output=True, text=True)
+         "--data-binary", "@-"],
+        input=json.dumps(body), capture_output=True, text=True)
+    if not resp.stdout.strip():
+        raise RuntimeError(f"empty/timed-out response (curl rc={resp.returncode})")
     data = json.loads(resp.stdout)
     if "image" not in data:
         raise RuntimeError("no image in response: " + json.dumps(data)[:400])

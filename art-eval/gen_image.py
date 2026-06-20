@@ -49,14 +49,16 @@ def _call_pixflux(prompt: str, seed: int, guidance=None,
     if init_b64 is not None:                 # img2img: start from an existing frame
         body["init_image"] = {"type": "base64", "base64": init_b64, "format": "png"}
         body["init_image_strength"] = int(init_strength if init_strength is not None else 300)
-    # capture_output -> response stays in memory; NO shared -o /tmp file.
+    body_json = json.dumps(body)
+    # Pipe the body via stdin (--data-binary @-): a high-res init_image base64 exceeds the
+    # OS command-line arg limit (ARG_MAX) if passed as -d <body>.
     resp = subprocess.run(
         ["curl", "-sS", "--max-time", "90", "-X", "POST",
          "https://api.pixellab.ai/v2/create-image-pixflux",
          "-H", "Authorization: " + token,
          "-H", "Content-Type: application/json",
-         "-d", json.dumps(body)],
-        capture_output=True, text=True)
+         "--data-binary", "@-"],
+        input=body_json, capture_output=True, text=True)
     if not resp.stdout.strip():
         raise RuntimeError(f"empty/timed-out response from pixflux (curl rc={resp.returncode}, "
                            "--max-time 90s). Endpoint returned nothing -- retry / check API health.")
