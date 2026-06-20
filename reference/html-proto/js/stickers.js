@@ -202,6 +202,14 @@ function applyOneStickerToRuntimeCard(card, sticker) {
   applyStickerKindEffect(card, s);
 }
 
+// Is a sticker eligible to appear in a RANDOM pool at all? weight 0 = boss-only
+// or dedicated-path stickers (e.g. scarified) that are never randomly offered.
+// One shared fact for the deck-offer path (stickersForSlot) and the in-game
+// bargain (bargainStickerCandidates).
+function isRandomlyOfferable(s) {
+  return !!(s && s.weight);
+}
+
 // One pick's candidate pool for the bargain reward below: every eligible
 // sticker paired with the permanents it can currently land on. The pool is
 // the BROAD registry set — stat boosts, keyword grants, Innate, the five
@@ -217,11 +225,12 @@ function applyOneStickerToRuntimeCard(card, sticker) {
 function bargainStickerCandidates(perms, deckColors) {
   const out = [];
   for (const id of Object.keys(STICKERS)) {
-    if (id === 'scarified' || id === 'subtype' || id === 'empower') continue;
     const s = STICKERS[id];
-    if (!s) continue;
-    // weight 0 = excluded from random pools (boss-only / dedicated paths).
-    if (!s.weight) continue;
+    if (!isRandomlyOfferable(s)) continue;   // weight 0 (e.g. scarified) = not in the random pool
+    // empower/subtype need an application-time roll the in-game applier doesn't
+    // generate (the deck-offer path does — see the Archdemon backlog), so the
+    // bargain can't offer them. Keyed on kind, not a hardcoded id list.
+    if (s.kind === 'subtype' || s.kind === 'empower') continue;
     // Live cards carry no deckColors field, so a deckColors-aware appliesTo
     // (the land-color set) would skip its gate. Supply the side's colors via a
     // view for the check; the filter still collects the REAL card objects.
@@ -494,8 +503,9 @@ function stickersForSlot(slot, deckColors) {
     }
   }
   return Object.values(STICKERS).filter(s => {
-    // weight 0 = excluded from random offers (boss-only or specific application paths).
-    if (!s.weight) return false;
+    if (!isRandomlyOfferable(s)) return false;   // weight 0 = boss-only / dedicated path
+    // NB: unlike the bargain, the deck-offer path KEEPS empower/subtype — they
+    // roll here at construction time (pushStickerWithRoll), so they're valid offers.
     if (!s.appliesTo(view)) return false;
     if (!s.stackable && slot.stickers.includes(s.id)) return false;
     return true;
