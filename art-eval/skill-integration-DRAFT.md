@@ -71,7 +71,12 @@ for human masking. This is a technical-capacity limit, not a ceremony.
     and palette; ~150 redraws the subject on the init's compositional/palette scaffold (at
     150 it produced a *cleaner, more legible* fossil than the muddy source). This is the real
     "feed in the good art and nudge it" tool. ~17s/call when the API is healthy; wired into
-    `gen_image.py` as spec `"init"` + `"init_strength"` (manifest-logged).
+    `gen_image.py` as spec `"init"` + `"init_strength"` (manifest-logged). **Hard constraint
+    (from the API): `init_image` must be EXACTLY the output size (64×32) — pixflux 422s on a
+    larger init ("must match image_size"); it will NOT downsample a hi-res reference for you.
+    So you can't pixel-art-ify a detailed photo by feeding it in: it has to be crushed to
+    64×32 first, and fine detail (e.g. a legible skeleton) dies in that reduction before
+    conditioning even happens.**
   - `outline` / `shading` / `detail` / `view` / `direction` — style controls (unexplored).
   - `negative_description` is **deprecated on pixflux** (don't rely on it) and real on
     inpaint — but we have **no clean evidence it produced better art**, so it is not a
