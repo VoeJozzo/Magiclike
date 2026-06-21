@@ -1,0 +1,7 @@
+wash_away_gen_10_seed479743658.png
+
+Rationale: Best balance of mechanic-enactment, silhouette, and set-coherence for Wash Away (blue sorcery, mass bounce of ALL creatures). A towering cerulean breaker with a clean barrel-curl tube/eye fills the right of the frame — the single strongest, most iconic wave silhouette of the batch — set against a dark stormy sky for drama. At center-left a legible cluster of victims (a green lizard-beast front and center, flanked by armored soldiers) is caught right at the leading foam edge, so the "a wave is about to wash these creatures off the board" moment reads instantly. Cerulean/teal palette is on-identity for blue and harmonizes with the anchor arts (unsummon, tide_charm). The water dominating with multiple distinct creatures being swept enacts the mass-bounce mechanic rather than just decorating the "water" theme.
+
+Close runners-up:
+- gen 07 (seed 444884556): largest, most readable figures, but broader wave wall = less iconic silhouette and figures read as bracing rather than swept.
+- gen 02 (seed 140773098): best sense of MOTION — creatures genuinely hurled/tumbling, one flung clear of the wave — strongest "multiple creatures bounced" reading, but figures are tiny and hard to parse individually.
