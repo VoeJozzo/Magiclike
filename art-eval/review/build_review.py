@@ -108,6 +108,25 @@ DESC = {
     "vine_twister": "G Treefolk 2/2; ETB give a target creature you control trample.",
     "wind_dancer": "U Faerie 1/1 flying (vanilla evasive).",
     "worldly_tutor": "G sorcery: search your library for a creature card and put it into your hand (tutor).",
+    # --- C6 round (explore-wide / breadth-over-depth variant) ---
+    "arcane_denial": "U flash sorcery: counter target spell; that spell's controller draws a card.",
+    "blood_priest": "B Human Cleric 1/2 (vanilla; cost BC).",
+    "city_guardian": "W Legendary Human Soldier 2/1 first strike.",
+    "copper_golem": "Artifact Creature Construct 3/3 (colorless; cost 3).",
+    "counterspell": "U flash sorcery: counter target spell (cost UU).",
+    "day_of_reckoning": "W sorcery: destroy all creatures (board wipe; cost WW + 3 generic).",
+    "frostbite_mage": "U Human Wizard 1/2 (vanilla; cost UC).",
+    "gray_ogre": "R Ogre 2/2 (vanilla beater; cost RC).",
+    "healing_light": "W flash sorcery: gain 5 life.",
+    "patient_saint": "W Spirit Cleric 0/4 defender (defensive wall).",
+    "phantom_warrior": "U Spirit 2/2 unblockable.",
+    "plains": "Basic Land Plains; taps for W.",
+    "prey_upon": "G sorcery: a creature you control fights a target creature (bite).",
+    "razor_beacon": "Artifact Creature Construct 2/2 flying (colorless; cost 3).",
+    "shadow_assassin": "B Human Assassin 2/2 deathtouch, menace.",
+    "steel_initiate": "W Human Soldier 2/2; whenever it attacks, you gain 1 life.",
+    "war_horde": "R Goblin Warrior 4/3 (vanilla beater; cost RR + 2 generic).",
+    "wash_away": "U sorcery: return ALL creatures to their owners' hands (board-wide bounce).",
 }
 
 # Batch draw order (rounds 37-56). Falls back to alphabetical if any are missing.
