@@ -1,0 +1,27 @@
+wash_away_gen_05_seed1255866315.png
+
+Nominee rationale:
+Wash Away is a UC2 blue Sorcery that bounces ALL creatures (a board-wide
+"return everything to hand"). The art that best ENACTS that mechanic is the
+one that shows multiple, distinct creatures actually being carried off by a
+flood -- not a pretty wave on its own.
+
+Gen 5 (aerial-diagonal courtyard flood) delivers exactly that: three clearly
+different creatures -- a red-helmed soldier, a green beast/goblin, and a
+blue-cloaked figure -- caught in a glowing cyan surge sweeping across stone
+flagstones. "All creatures washed away" is read directly off the frame. It is
+also the strongest set-coherence match: deep cerulean/sapphire palette,
+painterly pixel clusters, and real environmental depth, the same blue-card
+vocabulary as the studious_research anchor.
+
+Close runner-up: gen_01 (seed 2050819176) -- a towering curling wave with dark
+tumbling bodies in its foaming base. It has the best pure 64x32 silhouette
+(instantly legible as the card's title action) and is the pick if maximum
+at-a-glance readability is preferred over showing distinct multiple victims.
+
+Discarded for weak mechanic-enactment: gen_08 and gen_02 (beautiful waves but
+the victims didn't render -- subject-prior won); gen_06 (caster + wave, but no
+creatures shown being swept); gen_09 (bright daylight drifted to a peaceful
+landscape, off blue-card identity); gen_03/gen_07 (atmospheric but figures read
+as standing/riding, not being washed away); gen_04 (good single-victim close-up
+but only one creature, less "all").
