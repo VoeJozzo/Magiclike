@@ -47,6 +47,7 @@ CAND_SIG      = {
     "c2": "diagnosable-flaw",
     "c4": "Ground the depiction in reality",
     "c5": "Diagnose-then-iterate",
+    "c6": "breadth over depth",
 }.get(CAND, "")
 
 # "Already-run" is scoped PER CANDIDATE, not globally: a card tested under one

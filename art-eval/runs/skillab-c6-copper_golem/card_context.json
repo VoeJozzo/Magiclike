@@ -1,0 +1,15 @@
+{
+  "card_id": "copper_golem",
+  "name": "Copper Golem",
+  "cost": {
+    "C": 3
+  },
+  "types": [
+    "Artifact",
+    "Creature",
+    "Construct"
+  ],
+  "power": 3,
+  "toughness": 3,
+  "keywords": []
+}

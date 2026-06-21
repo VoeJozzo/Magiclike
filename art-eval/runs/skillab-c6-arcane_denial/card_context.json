@@ -1,0 +1,27 @@
+{
+  "card_id": "arcane_denial",
+  "cost": {
+    "U": 1,
+    "C": 2
+  },
+  "target": "spell",
+  "effects": [
+    {
+      "kind": "counter"
+    },
+    {
+      "kind": "move_card",
+      "from_zone": "library",
+      "to_zone": "hand",
+      "selector": "controller_top",
+      "amount": 1
+    }
+  ],
+  "name": "Arcane Denial",
+  "keywords": [
+    "flash"
+  ],
+  "types": [
+    "Sorcery"
+  ]
+}

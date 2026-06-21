@@ -1,0 +1,22 @@
+# Cards drawn for the C6 ('explore wide / breadth over depth') eval run.
+# Per-candidate no-replacement scope (same rule as done_c4/c5).
+plains
+shadow_assassin
+city_guardian
+frostbite_mage
+blood_priest
+gray_ogre
+arcane_denial
+prey_upon
+copper_golem
+phantom_warrior
+patient_saint
+war_horde
+roots_and_branches
+healing_light
+day_of_reckoning
+razor_beacon
+flame_summoner
+counterspell
+steel_initiate
+wash_away

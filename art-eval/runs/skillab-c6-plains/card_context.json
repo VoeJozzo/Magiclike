@@ -1,0 +1,25 @@
+{
+  "card_id": "plains",
+  "mana": "W",
+  "name": "Plains",
+  "abilities": [
+    {
+      "cost": {
+        "tap": true
+      },
+      "effects": [
+        {
+          "kind": "add_mana",
+          "amounts": {
+            "W": 1
+          }
+        }
+      ]
+    }
+  ],
+  "types": [
+    "Basic",
+    "Land",
+    "Plains"
+  ]
+}
