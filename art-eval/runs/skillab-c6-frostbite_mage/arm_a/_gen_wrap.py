@@ -44,6 +44,46 @@ PROMPTS = {
      "cerulean robes lowers his casting hand, faint icy mist trailing from his fingers. "
      "Both figures fully visible, the same size. The background is a frozen courtyard "
      "under a cold grey sky, snow drifting."),
+ # gen 5: reroll of the gen-2/3 concept at a fresh seed (variance sample, dropped weapon)
+ 5: ("A frost mage in sapphire-blue robes, frost rimed on his sleeves, side profile "
+     "facing east, exhaling a plume of glittering ice-blue frost from his outstretched "
+     "palm. The frost sheathes an enemy soldier's weapon arm in thick rippled blue ice, "
+     "the frozen arm hanging limp and dead at his side, his axe slipping from numb "
+     "fingers and falling point-down into the snow. The soldier grimaces, recoiling. "
+     "Two figures, both fully visible head to knee, the same size. The background is a "
+     "snow-dusted ruined courtyard under a pale grey winter sky."),
+ # gen 6: seed-lock tweak of gen 3 -> crank the frozen-arm ice crust harder
+ 6: ("A frost mage in sapphire-blue robes, frost rimed on his sleeves, side profile "
+     "facing east, exhaling a plume of glittering ice-blue frost from his outstretched "
+     "palm. The enemy soldier's whole weapon arm is encased in a thick jagged crust of "
+     "cracking blue ice, the frozen arm dragged down by its weight, his axe already "
+     "fallen and half-buried point-down in the snow at his feet. The soldier grimaces, "
+     "recoiling. Two figures, both fully visible head to knee, the same size. The "
+     "background is a snow-dusted ruined courtyard under a pale grey winter sky."),
+ # gen 7: seed-lock tweak of gen 6 -> victim's frozen arm sagging, axe clearly on the ground
+ 7: ("A frost mage in sapphire-blue robes, frost rimed on his sleeves, side profile "
+     "facing east, casting a plume of glittering ice-blue frost from his outstretched "
+     "palm. Across from him an enemy soldier's whole weapon arm is sheathed in a thick "
+     "jagged crust of cracking blue ice; the heavy frozen arm sags low, and his battered "
+     "axe lies flat on the snow at his feet, dropped. The soldier hunches and recoils, "
+     "his free hand raised. Two figures, both fully visible head to knee, the same size. "
+     "The background is a snow-dusted ruined courtyard under a pale grey winter sky."),
+ # gen 8: reroll of the flipped composition (mage right, victim left, spell-beam) at fresh seed
+ 8: ("A frost mage in sapphire-blue robes, frost rimed on his sleeves, side profile "
+     "facing east, exhaling a plume of glittering ice-blue frost from his outstretched "
+     "palm. The frost sheathes an enemy soldier's weapon arm in thick rippled blue ice, "
+     "the frozen arm hanging limp and dead at his side, his axe slipping from numb "
+     "fingers and falling point-down into the snow. The soldier grimaces, recoiling. "
+     "Two figures, both fully visible head to knee, the same size. The background is a "
+     "snow-dusted ruined courtyard under a pale grey winter sky."),
+ # gen 9: seed-lock tweak of gen 8 -> keep the curling frost tendril, make weapon arm sag + drop
+ 9: ("A frost mage in sapphire-blue robes, frost rimed on his sleeves, side profile "
+     "facing east, exhaling a curling glittering ice-blue frost tendril from his "
+     "outstretched palm. The tendril coils around an enemy soldier's weapon arm, "
+     "crusting it in blue ice so the arm sags low and his sword slips from his numb "
+     "frozen hand, falling toward the snow. The soldier hunches and recoils, his free "
+     "hand raised. Two figures, both fully visible head to knee, the same size. The "
+     "background is a snow-dusted ruined courtyard under a pale grey winter sky."),
 }
 
 import json
