@@ -127,6 +127,19 @@ DESC = {
     "steel_initiate": "W Human Soldier 2/2; whenever it attacks, you gain 1 life.",
     "war_horde": "R Goblin Warrior 4/3 (vanilla beater; cost RR + 2 generic).",
     "wash_away": "U sorcery: return ALL creatures to their owners' hands (board-wide bounce).",
+    # --- C6 partial replication batch (power follow-up; archmage_patriarch / bone_reliquary / curse_shade already above) ---
+    "air_elemental": "U Elemental 4/4 flying (a being of living air).",
+    "ancient_hydra": "G Hydra 7/7 trample (cost GG + 5 generic).",
+    "awaken_the_stone": "U flash sorcery: untap target creature you control.",
+    "cloudshift": "W flash sorcery: exile your creature, then immediately return it (blink).",
+    "devastation_tide": "U sorcery: return ALL opponents' creatures to hand (one-sided board bounce).",
+    "drain_life": "B sorcery: deal 2 to a creature + 2 to the opponent; you gain 4 life (siphon).",
+    "duress": "B sorcery: target opponent discards a card from hand (hand disruption).",
+    "forest": "Basic Land Forest; taps for G.",
+    "forest_guardian": "G Treefolk 3/5 vigilance (rooted sentinel).",
+    "frost_binder": "U Human Wizard 1/2; ETB tap target creature.",
+    "furnace_roar": "R sorcery: deal 5 damage to ALL creatures (board wipe; cost RR + 3 generic).",
+    "grave_digger": "B Zombie 3/3; ETB return a creature card from your graveyard to hand.",
 }
 
 # Batch draw order (rounds 37-56). Falls back to alphabetical if any are missing.
