@@ -66,6 +66,23 @@ C6 (breadth-over-depth) **wins on spread quality** (p=0.013) but **not on the ke
 | war_horde | TREATMENT | 1.03 | TREATMENT |
 | wash_away | TREATMENT | 2.08 | TREATMENT |
 
+## Partial replication batch — combined n=35 (added later)
+
+A 15-card partial replication was run to add power to the keeper question (the original 20 left it underpowered at 13–7). Combined results:
+
+| metric | original 20 | new 15 | **combined 35** |
+|---|---|---|---|
+| pool decisive | 14 T / 3 C (p=0.013) | 8 T / 1 C (p=0.039) | **22 T / 4 C, p=0.001** |
+| ties / no-call | 1 / 2 | 6 / 0 | 7 / 2 |
+| keeper provenance | 13 T / 7 C (p=0.263) | 6 T / 4 C (p=0.754) | **19 T / 11 C, p=0.200** |
+| keeper = null | 0 | 5 (director shipped nothing) | 5 |
+
+**Pool-quality is now decisive (p=0.001)** — robust enough to survive Bonferroni across the whole C2–C6 program (~10 tests, threshold ~0.005). Breadth reliably produces better *spreads*, replicated in both batches.
+
+**Keeper stays a weak, unconfirmed lean (19/30 = 0.63, p=0.20).** It did NOT strengthen with more data; we're underpowered (true-0.63 needs ~150 reps; card supply is ~54) and cannot confirm it. Honest call: breadth improves spread quality (confirmed); the single-keeper effect is a persistent lean we can't nail down.
+
+**Manipulation-strength caveat (important):** the breadth/depth behavioral split *collapsed* in the new batch — control's fresh-seed ratio jumped 0.68 → **0.96** (control agents spontaneously explored wide too), shrinking the treatment gap from +0.25 to +0.04. That produced more ties (6/15) yet treatment still won decisive pool calls 8–1. Implication: the variant's edge is not merely "more distinct seeds" (control matched that here) but the deliberate *framing/composition* variety the skill instructs — a dimension raw seed-count doesn't measure.
+
 ## Keepers placed
 
 All 20 primary keepers copied to `reference/html-proto/cards/<tpl>/art.png`.
