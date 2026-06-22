@@ -1,0 +1,15 @@
+furnace_roar_gen_04_seed831089787.png
+
+Rationale: Furnace Roar deals 5 damage to ALL creatures, so the art must enact
+indiscriminate, simultaneous destruction of multiple creatures - not a single
+targeted bolt. Gen 4 nails this: a row of clearly separated dark creature
+silhouettes (armored/horned figures) stands across the battlefield as a towering
+roaring wall of furnace-orange and yellow-white flame surges over them, blackening
+their bodies. The multiple distinct victims read instantly as "all creatures,"
+and the lineup survives the 64x32 silhouette test better than any other frame -
+the figures stay individually legible instead of merging into a blob. The warm
+fire-against-dark-smoke palette harmonizes with the red-burn set anchor (char).
+
+Runner-up: gen 01 (similar multi-victim wall-of-fire, knight is characterful but
+the right-side figures merge slightly into the flame). gen 09 is a strong third
+(well-separated silhouettes, advancing fire wall from the left).
