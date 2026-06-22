@@ -1,0 +1,5 @@
+forest_gen_04_seed1238047488.png
+
+Rationale: A winding earthen path receding between two large mossy-barked trunks into a glowing emerald depth. For a basic Forest land (a literal-card with no narrative beat), the art's job is to read instantly and cleanly as "forest" with full green color identity at 64x32 — and this frame does it best of the spread. The converging trunks frame a bright vanishing point, giving real depth; the dappled warm light, ferns, and undergrowth carry a saturated, unmistakably-green palette that harmonizes with the set's old-growth anchor (ancient_treant) while standing as its own clean composition. Strong, readable silhouette; no muddy gestalt.
+
+Close runners-up: gen_08 (warm golden-green sunlit clearing) and gen_05 (lush stream glade) and gen_01 (crepuscular old-growth interior) — all also read well and have strong green identity.
