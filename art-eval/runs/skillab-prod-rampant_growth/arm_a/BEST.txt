@@ -1,0 +1,15 @@
+rampant_growth_gen_01_seed791953755.png
+
+Rationale: Best enacts the card's mechanic — a Land entering play / ramp. A
+broad burst of fresh emerald grass and saplings erupts upward through splitting
+brown soil with clods of dirt flung up, against a dim old-growth forest. It
+reads unmistakably as NEW land violently growing into being across a clearing
+(not a pre-existing tree or a single sprite), which is exactly what Rampant
+Growth does. Strong central silhouette (a green eruption from a dark earth
+baseline), correct green color identity, and it sits naturally in the set's
+forested-scene vocabulary (ancient_treant, choking_vines).
+
+Runner-up: rampant_growth_gen_07_seed1770130322.png — a striking macro of a seed
+splitting with a sprout exploding out, dew and dirt suspended; the most
+beautiful single frame, but reads as one sprout rather than terrain/land, and
+its bokeh background is slightly sprite-like for the set.
