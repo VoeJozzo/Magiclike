@@ -1,0 +1,20 @@
+cloudshift_gen_09_seed641359571.png
+
+Rationale: Best mechanic-enactment + readability balance. Cloudshift exiles your
+creature and instantly returns it -- a flicker/blink. This frame shows a knight
+caught mid-flicker: his front half (helmet, armor, stance, raised sword) stays
+solid and clearly readable as a creature, while his rear half streams off into a
+trail of white-blue cloud-vapor and golden motes. You simultaneously recognize
+the creature AND see the vanish happening to it -- the rules-in-art principle.
+Strong side-profile silhouette at 64x32, correct white/gold color identity
+against a twilight-blue sky, harmonizes with benevolent_angel's warm-gold-on-dark
+palette. One fixable flaw: the right-edge warm cloud skews slightly orange/fiery,
+but it reads as warm white-light atmosphere, not red.
+
+Runners-up:
+- gen_07 (seed 885906360): most dramatic dissolution, cleanest blue sky, but the
+  solid half of the figure is washed pale with little internal definition.
+- gen_06 (seed 97787606): striking vertical teleport-up between cathedral pillars,
+  lower body lost in a golden column; slightly low contrast (figure washed into gold).
+- gen_02 (seed 1490652074): clean centered teleport, lower body dissolving into a
+  particle column framed by pillars; more static framing.
