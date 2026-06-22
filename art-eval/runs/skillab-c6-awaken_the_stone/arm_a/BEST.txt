@@ -1,0 +1,5 @@
+awaken_the_stone_gen_08_seed2107708083.png
+
+Rationale: Best enacts the card's mechanic (untap = a dormant stone creature springing back to motion). A pale-gray granite gargoyle heaves awake off its stone pedestal, wings rising, with brilliant cerulean light blazing through its body and pooling at its base — the blue "untap" magic made literal, in correct blue color identity. Of all rolls this is the cleanest synthesis of the three things I wanted together: (1) clearly STONE (pale granite, not a dark blob), (2) clearly AWAKENING (on its pedestal, mid-rise, with motion), and (3) bright central cerulean glow. The moonlit ivy-draped-courtyard framing keeps it coherent with the set's golem/construct anchors (copper_golem) and its blue magic with archmage_of_veils. Generated at text_guidance_scale=11 to tighten the crack-light adherence.
+
+Runner-up: gen_01 (seed 708475114) — most polished glow + courtyard gestalt, but reads static (standing, not awakening), so it loses the mechanic-enactment test to gen_08.
