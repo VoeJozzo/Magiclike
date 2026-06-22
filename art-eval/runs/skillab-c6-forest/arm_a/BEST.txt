@@ -1,0 +1,6 @@
+forest_gen_07_seed878519638.png
+
+Nominee rationale:
+A glowing old-growth forest interior — tall moss-slicked trunks framing a bright sunlit gap, crepuscular rays slanting down through the canopy onto fern undergrowth and a faint path. Best gestalt of the batch at 64x32: it reads instantly and unmistakably as a deep, living forest, and it harmonizes tightly with the set's nature anchor (ancient_treant's filtered-canopy light, layered deep-emerald trunks). For a basic Forest land the right move is pure environment with no subject, and the streaming natural light gives it the radiance a green-mana source wants. Runner-up: forest_gen_06 (colossal ancient oak) if a single-tree icon is preferred.
+
+[seed: 878519638, text_guidance_scale: 8 (default), no_background: false, image_size: 64x32]
