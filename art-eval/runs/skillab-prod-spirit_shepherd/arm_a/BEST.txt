@@ -1,0 +1,5 @@
+spirit_shepherd_gen_01_seed1750884282.png
+
+Rationale: Best all-around satisfaction of the brief at 64x32. A winged shepherd in bone-white-and-gold robes (correct W color identity) hovers airborne (flying keyword honored), holding a crook-staff while a scattered flock of translucent pale-cyan spirit-wisps drifts beside her like ghost-sheep. This is the clearest mechanic-in-art of the spread: the SHEPHERD identity (gathers/buffs/anchors a Spirit tribe) is unmistakable, the wisps read as a flock being herded, and the moonlit graveyard backdrop nods to the death-recall trigger (return a Spirit from your graveyard). Strongest single readable silhouette and cleanest color identity; reaches without going generic-angel.
+
+Runner-up: spirit_shepherd_gen_10_seed1903458396.png — most literal death-recall (winged shepherd lifting a rising cyan spirit from a headstone), dynamic and on-color, but the rising spirit reads as a glowing pillar rather than a discrete ghost.
