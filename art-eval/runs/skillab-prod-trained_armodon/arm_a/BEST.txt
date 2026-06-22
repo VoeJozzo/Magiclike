@@ -1,0 +1,5 @@
+trained_armodon_gen_02_seed1621849091.png
+
+Best frame. It is the truest read of the card's totality: an unmistakable armored tusked elephant-beast (armodon) with bony gray plating and long ivory tusks, shown in a clean readable side-profile silhouette. Crucially it enacts the "Trained" half of the card -- a green-clad beast-handler figure and a saddle/howdah ride on its back -- which none of the other frames achieve. It sits in a deep-emerald old-growth forest, harmonizing with the green-creature anchor set (surging_beast, feral_stalker, forest_titan). Strong color-identity (green), strong subject legibility, and the only frame that depicts the beast as commanded/war-readied rather than just a wild animal.
+
+Runner-up: trained_armodon_gen_01_seed1392775323.png -- front-on armored elephant charging at the viewer, bony plating and tusks legible; best trample-charge energy, but lacks the "trained" handler beat.
