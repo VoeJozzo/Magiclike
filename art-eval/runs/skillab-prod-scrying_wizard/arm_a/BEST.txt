@@ -1,0 +1,5 @@
+scrying_wizard_gen_02_seed199499127.png
+
+Rationale: The only frame that enacts BOTH halves of the card's tap ability in one readable scene — the wizard draws a fresh glowing scroll into one hand (the "draw top card") while a discarded scroll burns in the brass brazier beside him (the "discard a card"). Classic blue-robed wizard with a strong centered silhouette, warm firelight + cool magic two-tone lighting, and a cluttered study background that matches the set's existing blue-wizard art vocabulary (studious_research, archmage_of_veils). Mechanic-in-art over decoration: it shows the filter loop happening rather than a generic fortune-teller pose.
+
+Runners-up: gen_01 (hooded wizard cradling a glowing scrying orb with a card numeral visible inside — cleanest scrying read, strongest single-effect silhouette) and gen_08 (dramatic centered orb-gazing, very legible) — both strong but depict only the scry/draw half, not the discard.
