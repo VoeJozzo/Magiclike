@@ -1,0 +1,19 @@
+{
+  "card_id": "duress",
+  "cost": {
+    "B": 1
+  },
+  "target": "opp",
+  "effects": [
+    {
+      "kind": "move_card",
+      "from_zone": "hand",
+      "to_zone": "graveyard",
+      "amount": 1
+    }
+  ],
+  "name": "Duress",
+  "types": [
+    "Sorcery"
+  ]
+}

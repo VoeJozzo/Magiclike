@@ -1,0 +1,25 @@
+{
+  "card_id": "forest",
+  "mana": "G",
+  "name": "Forest",
+  "abilities": [
+    {
+      "cost": {
+        "tap": true
+      },
+      "effects": [
+        {
+          "kind": "add_mana",
+          "amounts": {
+            "G": 1
+          }
+        }
+      ]
+    }
+  ],
+  "types": [
+    "Basic",
+    "Land",
+    "Forest"
+  ]
+}

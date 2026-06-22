@@ -1,0 +1,28 @@
+{
+  "card_id": "cloudshift",
+  "cost": {
+    "W": 1
+  },
+  "target": "your_creature",
+  "effects": [
+    {
+      "kind": "move_card",
+      "from_zone": "battlefield",
+      "to_zone": "exile",
+      "selector": "target"
+    },
+    {
+      "kind": "move_card",
+      "from_zone": "exile",
+      "to_zone": "battlefield",
+      "selector": "target"
+    }
+  ],
+  "name": "Cloudshift",
+  "keywords": [
+    "flash"
+  ],
+  "types": [
+    "Sorcery"
+  ]
+}

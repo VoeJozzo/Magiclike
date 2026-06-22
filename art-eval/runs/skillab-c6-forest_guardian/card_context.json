@@ -1,0 +1,17 @@
+{
+  "card_id": "forest_guardian",
+  "cost": {
+    "G": 1,
+    "C": 3
+  },
+  "keywords": [
+    "vigilance"
+  ],
+  "name": "Forest Guardian",
+  "power": 3,
+  "toughness": 5,
+  "types": [
+    "Creature",
+    "Treefolk"
+  ]
+}
