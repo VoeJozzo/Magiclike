@@ -1,0 +1,10 @@
+{
+  "card_id": "tidal_conduit",
+  "name": "Tidal Conduit",
+  "types": [
+    "Artifact",
+    "Land",
+    "Island"
+  ],
+  "mana": "U"
+}
