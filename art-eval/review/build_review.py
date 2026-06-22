@@ -140,6 +140,22 @@ DESC = {
     "frost_binder": "U Human Wizard 1/2; ETB tap target creature.",
     "furnace_roar": "R sorcery: deal 5 damage to ALL creatures (board wipe; cost RR + 3 generic).",
     "grave_digger": "B Zombie 3/3; ETB return a creature card from your graveyard to hand.",
+    # --- production run (never-arted tail; live merged breadth skill, single arm) ---
+    "grizzly_bears": "G Bear 2/2 (vanilla beater).",
+    "high_priestess": "W Human Cleric 2/3; +1/+1 to your other Clerics; gain 2 life when another Cleric ETBs.",
+    "hypnotic_specter": "B Specter 2/2 flying; when it attacks, target opponent discards a card.",
+    "quickling": "U Faerie 2/1 flash, flying; ETB return a creature to its owner's hand (bounce).",
+    "rampant_growth": "G sorcery: search your library for a land, put it onto the battlefield tapped (ramp).",
+    "scrying_wizard": "U Human Wizard 1/2; tap: draw a card, then discard a card (loot).",
+    "seal_thief_courier": "UB Human Rogue 2/2; combat damage to a player -> exile a nonland card from their graveyard, you may cast it this turn (any color).",
+    "spirit_shepherd": "W Spirit 2/3 flying, hexproof; +1/+1 & hexproof to your other Spirits; dies -> return a Spirit from graveyard to hand.",
+    "steadfast_wall": "W Wall 0/5 flying (airborne defensive rampart).",
+    "storm_charm": "R flash modal sorcery: 3 damage to any target / +2/+0 & haste to your creature / 1 damage to each creature.",
+    "tidal_conduit": "Artifact Land Island; taps for U.",
+    "trained_armodon": "G Beast 3/3 trample (war-trained tusked beast).",
+    "vampire_nighthawk": "B Vampire Shaman 2/3 flying, deathtouch, lifelink.",
+    "vigorous_druid": "G Elf Druid 2/3; tap: add GG.",
+    "walking_wall": "Artifact Creature Wall 0/4 (a fortification that walks).",
 }
 
 # Batch draw order (rounds 37-56). Falls back to alphabetical if any are missing.

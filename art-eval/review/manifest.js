@@ -1,617 +1,89 @@
 window.REVIEW = {
- "cand": "c6",
+ "cand": "prod",
  "cw": 384,
  "ch": 192,
  "cards": [
   {
-   "id": "archmage_patriarch",
-   "name": "Archmage Patriarch",
-   "cost": "U3",
-   "typeline": "Creature Human Wizard  2/3",
-   "desc": "U Human Wizard 2/3; anthem +1/+1 to your other Wizards; loots on each spell you cast.",
-   "sheet": "archmage_patriarch_c6ab_sheet.png",
+   "id": "grizzly_bears",
+   "name": "Grizzly Bears",
+   "cost": "G",
+   "typeline": "Creature Bear  2/2",
+   "desc": "G Bear 2/2 (vanilla beater).",
+   "sheet": "grizzly_bears_prodab_sheet.png",
    "sw": 1968,
-   "sh": 896,
+   "sh": 452,
    "cells": [
-    {
-     "label": "1.01",
-     "pool": "1",
-     "x": 8,
-     "y": 8
-    },
-    {
-     "label": "1.02",
-     "pool": "1",
-     "x": 400,
-     "y": 8
-    },
-    {
-     "label": "1.03",
-     "pool": "1",
-     "x": 792,
-     "y": 8
-    },
-    {
-     "label": "1.04",
-     "pool": "1",
-     "x": 1184,
-     "y": 8
-    },
-    {
-     "label": "1.05",
-     "pool": "1",
-     "x": 1576,
-     "y": 8
-    },
-    {
-     "label": "1.06",
-     "pool": "1",
-     "x": 8,
-     "y": 230
-    },
-    {
-     "label": "1.07",
-     "pool": "1",
-     "x": 400,
-     "y": 230
-    },
-    {
-     "label": "1.08",
-     "pool": "1",
-     "x": 792,
-     "y": 230
-    },
-    {
-     "label": "1.09",
-     "pool": "1",
-     "x": 1184,
-     "y": 230
-    },
     {
      "label": "2.01",
      "pool": "2",
-     "x": 1576,
-     "y": 230
+     "x": 8,
+     "y": 8
     },
     {
      "label": "2.02",
      "pool": "2",
-     "x": 8,
-     "y": 452
+     "x": 400,
+     "y": 8
     },
     {
      "label": "2.03",
      "pool": "2",
-     "x": 400,
-     "y": 452
+     "x": 792,
+     "y": 8
     },
     {
      "label": "2.04",
      "pool": "2",
-     "x": 792,
-     "y": 452
+     "x": 1184,
+     "y": 8
     },
     {
      "label": "2.05",
      "pool": "2",
-     "x": 1184,
-     "y": 452
+     "x": 1576,
+     "y": 8
     },
     {
      "label": "2.06",
      "pool": "2",
-     "x": 1576,
-     "y": 452
+     "x": 8,
+     "y": 230
     },
     {
      "label": "2.07",
      "pool": "2",
-     "x": 8,
-     "y": 674
+     "x": 400,
+     "y": 230
     },
     {
      "label": "2.08",
      "pool": "2",
-     "x": 400,
-     "y": 674
+     "x": 792,
+     "y": 230
     },
     {
      "label": "2.09",
      "pool": "2",
-     "x": 792,
-     "y": 674
+     "x": 1184,
+     "y": 230
     },
     {
      "label": "2.10",
      "pool": "2",
-     "x": 1184,
-     "y": 674
+     "x": 1576,
+     "y": 230
     }
    ]
   },
   {
-   "id": "air_elemental",
-   "name": "Air Elemental",
-   "cost": "UU3",
-   "typeline": "Creature Elemental  4/4  \u2014 flying",
-   "desc": "U Elemental 4/4 flying (a being of living air).",
-   "sheet": "air_elemental_c6ab_sheet.png",
+   "id": "high_priestess",
+   "name": "High Priestess",
+   "cost": "W2",
+   "typeline": "Creature Human Cleric  2/3",
+   "desc": "W Human Cleric 2/3; +1/+1 to your other Clerics; gain 2 life when another Cleric ETBs.",
+   "sheet": "high_priestess_prodab_sheet.png",
    "sw": 1968,
-   "sh": 896,
-   "cells": [
-    {
-     "label": "1.01",
-     "pool": "1",
-     "x": 8,
-     "y": 8
-    },
-    {
-     "label": "1.02",
-     "pool": "1",
-     "x": 400,
-     "y": 8
-    },
-    {
-     "label": "1.03",
-     "pool": "1",
-     "x": 792,
-     "y": 8
-    },
-    {
-     "label": "1.04",
-     "pool": "1",
-     "x": 1184,
-     "y": 8
-    },
-    {
-     "label": "1.05",
-     "pool": "1",
-     "x": 1576,
-     "y": 8
-    },
-    {
-     "label": "1.06",
-     "pool": "1",
-     "x": 8,
-     "y": 230
-    },
-    {
-     "label": "1.07",
-     "pool": "1",
-     "x": 400,
-     "y": 230
-    },
-    {
-     "label": "1.08",
-     "pool": "1",
-     "x": 792,
-     "y": 230
-    },
-    {
-     "label": "2.01",
-     "pool": "2",
-     "x": 1184,
-     "y": 230
-    },
-    {
-     "label": "2.02",
-     "pool": "2",
-     "x": 1576,
-     "y": 230
-    },
-    {
-     "label": "2.03",
-     "pool": "2",
-     "x": 8,
-     "y": 452
-    },
-    {
-     "label": "2.04",
-     "pool": "2",
-     "x": 400,
-     "y": 452
-    },
-    {
-     "label": "2.05",
-     "pool": "2",
-     "x": 792,
-     "y": 452
-    },
-    {
-     "label": "2.06",
-     "pool": "2",
-     "x": 1184,
-     "y": 452
-    },
-    {
-     "label": "2.07",
-     "pool": "2",
-     "x": 1576,
-     "y": 452
-    },
-    {
-     "label": "2.08",
-     "pool": "2",
-     "x": 8,
-     "y": 674
-    },
-    {
-     "label": "2.09",
-     "pool": "2",
-     "x": 400,
-     "y": 674
-    }
-   ]
-  },
-  {
-   "id": "ancient_hydra",
-   "name": "Ancient Hydra",
-   "cost": "GG5",
-   "typeline": "Creature Hydra  7/7  \u2014 trample",
-   "desc": "G Hydra 7/7 trample (cost GG + 5 generic).",
-   "sheet": "ancient_hydra_c6ab_sheet.png",
-   "sw": 1968,
-   "sh": 896,
-   "cells": [
-    {
-     "label": "1.01",
-     "pool": "1",
-     "x": 8,
-     "y": 8
-    },
-    {
-     "label": "1.02",
-     "pool": "1",
-     "x": 400,
-     "y": 8
-    },
-    {
-     "label": "1.03",
-     "pool": "1",
-     "x": 792,
-     "y": 8
-    },
-    {
-     "label": "1.04",
-     "pool": "1",
-     "x": 1184,
-     "y": 8
-    },
-    {
-     "label": "1.05",
-     "pool": "1",
-     "x": 1576,
-     "y": 8
-    },
-    {
-     "label": "1.06",
-     "pool": "1",
-     "x": 8,
-     "y": 230
-    },
-    {
-     "label": "1.07",
-     "pool": "1",
-     "x": 400,
-     "y": 230
-    },
-    {
-     "label": "1.08",
-     "pool": "1",
-     "x": 792,
-     "y": 230
-    },
-    {
-     "label": "1.09",
-     "pool": "1",
-     "x": 1184,
-     "y": 230
-    },
-    {
-     "label": "2.01",
-     "pool": "2",
-     "x": 1576,
-     "y": 230
-    },
-    {
-     "label": "2.02",
-     "pool": "2",
-     "x": 8,
-     "y": 452
-    },
-    {
-     "label": "2.03",
-     "pool": "2",
-     "x": 400,
-     "y": 452
-    },
-    {
-     "label": "2.04",
-     "pool": "2",
-     "x": 792,
-     "y": 452
-    },
-    {
-     "label": "2.05",
-     "pool": "2",
-     "x": 1184,
-     "y": 452
-    },
-    {
-     "label": "2.06",
-     "pool": "2",
-     "x": 1576,
-     "y": 452
-    },
-    {
-     "label": "2.07",
-     "pool": "2",
-     "x": 8,
-     "y": 674
-    },
-    {
-     "label": "2.08",
-     "pool": "2",
-     "x": 400,
-     "y": 674
-    },
-    {
-     "label": "2.09",
-     "pool": "2",
-     "x": 792,
-     "y": 674
-    },
-    {
-     "label": "2.10",
-     "pool": "2",
-     "x": 1184,
-     "y": 674
-    }
-   ]
-  },
-  {
-   "id": "awaken_the_stone",
-   "name": "Awaken the Stone",
-   "cost": "U",
-   "typeline": "Sorcery  \u2014 flash",
-   "desc": "U flash sorcery: untap target creature you control.",
-   "sheet": "awaken_the_stone_c6ab_sheet.png",
-   "sw": 1968,
-   "sh": 896,
-   "cells": [
-    {
-     "label": "1.01",
-     "pool": "1",
-     "x": 8,
-     "y": 8
-    },
-    {
-     "label": "1.02",
-     "pool": "1",
-     "x": 400,
-     "y": 8
-    },
-    {
-     "label": "1.03",
-     "pool": "1",
-     "x": 792,
-     "y": 8
-    },
-    {
-     "label": "1.04",
-     "pool": "1",
-     "x": 1184,
-     "y": 8
-    },
-    {
-     "label": "1.05",
-     "pool": "1",
-     "x": 1576,
-     "y": 8
-    },
-    {
-     "label": "1.06",
-     "pool": "1",
-     "x": 8,
-     "y": 230
-    },
-    {
-     "label": "1.07",
-     "pool": "1",
-     "x": 400,
-     "y": 230
-    },
-    {
-     "label": "1.08",
-     "pool": "1",
-     "x": 792,
-     "y": 230
-    },
-    {
-     "label": "2.01",
-     "pool": "2",
-     "x": 1184,
-     "y": 230
-    },
-    {
-     "label": "2.02",
-     "pool": "2",
-     "x": 1576,
-     "y": 230
-    },
-    {
-     "label": "2.03",
-     "pool": "2",
-     "x": 8,
-     "y": 452
-    },
-    {
-     "label": "2.04",
-     "pool": "2",
-     "x": 400,
-     "y": 452
-    },
-    {
-     "label": "2.05",
-     "pool": "2",
-     "x": 792,
-     "y": 452
-    },
-    {
-     "label": "2.06",
-     "pool": "2",
-     "x": 1184,
-     "y": 452
-    },
-    {
-     "label": "2.07",
-     "pool": "2",
-     "x": 1576,
-     "y": 452
-    },
-    {
-     "label": "2.08",
-     "pool": "2",
-     "x": 8,
-     "y": 674
-    },
-    {
-     "label": "2.09",
-     "pool": "2",
-     "x": 400,
-     "y": 674
-    }
-   ]
-  },
-  {
-   "id": "bone_reliquary",
-   "name": "Bone Reliquary",
-   "cost": "",
-   "typeline": "Artifact Land Swamp",
-   "desc": "Artifact Land Swamp; taps for B.",
-   "sheet": "bone_reliquary_c6ab_sheet.png",
-   "sw": 1968,
-   "sh": 896,
-   "cells": [
-    {
-     "label": "1.01",
-     "pool": "1",
-     "x": 8,
-     "y": 8
-    },
-    {
-     "label": "1.02",
-     "pool": "1",
-     "x": 400,
-     "y": 8
-    },
-    {
-     "label": "1.03",
-     "pool": "1",
-     "x": 792,
-     "y": 8
-    },
-    {
-     "label": "1.04",
-     "pool": "1",
-     "x": 1184,
-     "y": 8
-    },
-    {
-     "label": "1.05",
-     "pool": "1",
-     "x": 1576,
-     "y": 8
-    },
-    {
-     "label": "1.06",
-     "pool": "1",
-     "x": 8,
-     "y": 230
-    },
-    {
-     "label": "1.07",
-     "pool": "1",
-     "x": 400,
-     "y": 230
-    },
-    {
-     "label": "1.08",
-     "pool": "1",
-     "x": 792,
-     "y": 230
-    },
-    {
-     "label": "1.09",
-     "pool": "1",
-     "x": 1184,
-     "y": 230
-    },
-    {
-     "label": "2.01",
-     "pool": "2",
-     "x": 1576,
-     "y": 230
-    },
-    {
-     "label": "2.02",
-     "pool": "2",
-     "x": 8,
-     "y": 452
-    },
-    {
-     "label": "2.03",
-     "pool": "2",
-     "x": 400,
-     "y": 452
-    },
-    {
-     "label": "2.04",
-     "pool": "2",
-     "x": 792,
-     "y": 452
-    },
-    {
-     "label": "2.05",
-     "pool": "2",
-     "x": 1184,
-     "y": 452
-    },
-    {
-     "label": "2.06",
-     "pool": "2",
-     "x": 1576,
-     "y": 452
-    },
-    {
-     "label": "2.07",
-     "pool": "2",
-     "x": 8,
-     "y": 674
-    },
-    {
-     "label": "2.08",
-     "pool": "2",
-     "x": 400,
-     "y": 674
-    },
-    {
-     "label": "2.09",
-     "pool": "2",
-     "x": 792,
-     "y": 674
-    }
-   ]
-  },
-  {
-   "id": "cloudshift",
-   "name": "Cloudshift",
-   "cost": "W",
-   "typeline": "Sorcery  \u2014 flash",
-   "desc": "W flash sorcery: exile your creature, then immediately return it (blink).",
-   "sheet": "cloudshift_c6ab_sheet.png",
-   "sw": 1968,
-   "sh": 896,
+   "sh": 452,
    "cells": [
     {
      "label": "1.01",
@@ -672,186 +144,18 @@ window.REVIEW = {
      "pool": "1",
      "x": 1576,
      "y": 230
-    },
-    {
-     "label": "2.01",
-     "pool": "2",
-     "x": 8,
-     "y": 452
-    },
-    {
-     "label": "2.02",
-     "pool": "2",
-     "x": 400,
-     "y": 452
-    },
-    {
-     "label": "2.03",
-     "pool": "2",
-     "x": 792,
-     "y": 452
-    },
-    {
-     "label": "2.04",
-     "pool": "2",
-     "x": 1184,
-     "y": 452
-    },
-    {
-     "label": "2.05",
-     "pool": "2",
-     "x": 1576,
-     "y": 452
-    },
-    {
-     "label": "2.06",
-     "pool": "2",
-     "x": 8,
-     "y": 674
-    },
-    {
-     "label": "2.07",
-     "pool": "2",
-     "x": 400,
-     "y": 674
-    },
-    {
-     "label": "2.08",
-     "pool": "2",
-     "x": 792,
-     "y": 674
-    },
-    {
-     "label": "2.09",
-     "pool": "2",
-     "x": 1184,
-     "y": 674
     }
    ]
   },
   {
-   "id": "curse_shade",
-   "name": "Curse Shade",
-   "cost": "B2",
-   "typeline": "Creature Specter  2/2",
-   "desc": "B Specter 2/2; when it dies, exile target creature (death-trigger removal).",
-   "sheet": "curse_shade_c6ab_sheet.png",
+   "id": "hypnotic_specter",
+   "name": "Hypnotic Specter",
+   "cost": "BB1",
+   "typeline": "Creature Specter  2/2  \u2014 flying",
+   "desc": "B Specter 2/2 flying; when it attacks, target opponent discards a card.",
+   "sheet": "hypnotic_specter_prodab_sheet.png",
    "sw": 1968,
-   "sh": 896,
-   "cells": [
-    {
-     "label": "1.01",
-     "pool": "1",
-     "x": 8,
-     "y": 8
-    },
-    {
-     "label": "1.02",
-     "pool": "1",
-     "x": 400,
-     "y": 8
-    },
-    {
-     "label": "1.03",
-     "pool": "1",
-     "x": 792,
-     "y": 8
-    },
-    {
-     "label": "1.04",
-     "pool": "1",
-     "x": 1184,
-     "y": 8
-    },
-    {
-     "label": "1.05",
-     "pool": "1",
-     "x": 1576,
-     "y": 8
-    },
-    {
-     "label": "1.06",
-     "pool": "1",
-     "x": 8,
-     "y": 230
-    },
-    {
-     "label": "1.07",
-     "pool": "1",
-     "x": 400,
-     "y": 230
-    },
-    {
-     "label": "1.08",
-     "pool": "1",
-     "x": 792,
-     "y": 230
-    },
-    {
-     "label": "2.01",
-     "pool": "2",
-     "x": 1184,
-     "y": 230
-    },
-    {
-     "label": "2.02",
-     "pool": "2",
-     "x": 1576,
-     "y": 230
-    },
-    {
-     "label": "2.03",
-     "pool": "2",
-     "x": 8,
-     "y": 452
-    },
-    {
-     "label": "2.04",
-     "pool": "2",
-     "x": 400,
-     "y": 452
-    },
-    {
-     "label": "2.05",
-     "pool": "2",
-     "x": 792,
-     "y": 452
-    },
-    {
-     "label": "2.06",
-     "pool": "2",
-     "x": 1184,
-     "y": 452
-    },
-    {
-     "label": "2.07",
-     "pool": "2",
-     "x": 1576,
-     "y": 452
-    },
-    {
-     "label": "2.08",
-     "pool": "2",
-     "x": 8,
-     "y": 674
-    },
-    {
-     "label": "2.09",
-     "pool": "2",
-     "x": 400,
-     "y": 674
-    }
-   ]
-  },
-  {
-   "id": "devastation_tide",
-   "name": "Devastation Tide",
-   "cost": "UU3",
-   "typeline": "Sorcery",
-   "desc": "U sorcery: return ALL opponents' creatures to hand (one-sided board bounce).",
-   "sheet": "devastation_tide_c6ab_sheet.png",
-   "sw": 1968,
-   "sh": 896,
+   "sh": 452,
    "cells": [
     {
      "label": "1.01",
@@ -908,64 +212,22 @@ window.REVIEW = {
      "y": 230
     },
     {
-     "label": "2.01",
-     "pool": "2",
+     "label": "1.10",
+     "pool": "1",
      "x": 1576,
      "y": 230
-    },
-    {
-     "label": "2.02",
-     "pool": "2",
-     "x": 8,
-     "y": 452
-    },
-    {
-     "label": "2.03",
-     "pool": "2",
-     "x": 400,
-     "y": 452
-    },
-    {
-     "label": "2.04",
-     "pool": "2",
-     "x": 792,
-     "y": 452
-    },
-    {
-     "label": "2.05",
-     "pool": "2",
-     "x": 1184,
-     "y": 452
-    },
-    {
-     "label": "2.06",
-     "pool": "2",
-     "x": 1576,
-     "y": 452
-    },
-    {
-     "label": "2.07",
-     "pool": "2",
-     "x": 8,
-     "y": 674
-    },
-    {
-     "label": "2.08",
-     "pool": "2",
-     "x": 400,
-     "y": 674
     }
    ]
   },
   {
-   "id": "drain_life",
-   "name": "Drain Life",
-   "cost": "B2",
-   "typeline": "Sorcery",
-   "desc": "B sorcery: deal 2 to a creature + 2 to the opponent; you gain 4 life (siphon).",
-   "sheet": "drain_life_c6ab_sheet.png",
+   "id": "quickling",
+   "name": "Quickling",
+   "cost": "UU",
+   "typeline": "Creature Faerie  2/1  \u2014 flash, flying",
+   "desc": "U Faerie 2/1 flash, flying; ETB return a creature to its owner's hand (bounce).",
+   "sheet": "quickling_prodab_sheet.png",
    "sw": 1968,
-   "sh": 896,
+   "sh": 452,
    "cells": [
     {
      "label": "1.01",
@@ -1022,646 +284,94 @@ window.REVIEW = {
      "y": 230
     },
     {
-     "label": "2.01",
-     "pool": "2",
+     "label": "1.10",
+     "pool": "1",
      "x": 1576,
      "y": 230
-    },
-    {
-     "label": "2.02",
-     "pool": "2",
-     "x": 8,
-     "y": 452
-    },
-    {
-     "label": "2.03",
-     "pool": "2",
-     "x": 400,
-     "y": 452
-    },
-    {
-     "label": "2.04",
-     "pool": "2",
-     "x": 792,
-     "y": 452
-    },
-    {
-     "label": "2.05",
-     "pool": "2",
-     "x": 1184,
-     "y": 452
-    },
-    {
-     "label": "2.06",
-     "pool": "2",
-     "x": 1576,
-     "y": 452
-    },
-    {
-     "label": "2.07",
-     "pool": "2",
-     "x": 8,
-     "y": 674
-    },
-    {
-     "label": "2.08",
-     "pool": "2",
-     "x": 400,
-     "y": 674
-    },
-    {
-     "label": "2.09",
-     "pool": "2",
-     "x": 792,
-     "y": 674
     }
    ]
   },
   {
-   "id": "duress",
-   "name": "Duress",
-   "cost": "B",
+   "id": "rampant_growth",
+   "name": "Rampant Growth",
+   "cost": "G1",
    "typeline": "Sorcery",
-   "desc": "B sorcery: target opponent discards a card from hand (hand disruption).",
-   "sheet": "duress_c6ab_sheet.png",
+   "desc": "G sorcery: search your library for a land, put it onto the battlefield tapped (ramp).",
+   "sheet": "rampant_growth_prodab_sheet.png",
    "sw": 1968,
-   "sh": 896,
+   "sh": 452,
    "cells": [
-    {
-     "label": "1.01",
-     "pool": "1",
-     "x": 8,
-     "y": 8
-    },
-    {
-     "label": "1.02",
-     "pool": "1",
-     "x": 400,
-     "y": 8
-    },
-    {
-     "label": "1.03",
-     "pool": "1",
-     "x": 792,
-     "y": 8
-    },
-    {
-     "label": "1.04",
-     "pool": "1",
-     "x": 1184,
-     "y": 8
-    },
-    {
-     "label": "1.05",
-     "pool": "1",
-     "x": 1576,
-     "y": 8
-    },
-    {
-     "label": "1.06",
-     "pool": "1",
-     "x": 8,
-     "y": 230
-    },
-    {
-     "label": "1.07",
-     "pool": "1",
-     "x": 400,
-     "y": 230
-    },
-    {
-     "label": "1.08",
-     "pool": "1",
-     "x": 792,
-     "y": 230
-    },
     {
      "label": "2.01",
      "pool": "2",
-     "x": 1184,
-     "y": 230
+     "x": 8,
+     "y": 8
     },
     {
      "label": "2.02",
      "pool": "2",
-     "x": 1576,
-     "y": 230
+     "x": 400,
+     "y": 8
     },
     {
      "label": "2.03",
      "pool": "2",
-     "x": 8,
-     "y": 452
+     "x": 792,
+     "y": 8
     },
     {
      "label": "2.04",
      "pool": "2",
-     "x": 400,
-     "y": 452
+     "x": 1184,
+     "y": 8
     },
     {
      "label": "2.05",
      "pool": "2",
-     "x": 792,
-     "y": 452
+     "x": 1576,
+     "y": 8
     },
     {
      "label": "2.06",
      "pool": "2",
-     "x": 1184,
-     "y": 452
+     "x": 8,
+     "y": 230
     },
     {
      "label": "2.07",
      "pool": "2",
-     "x": 1576,
-     "y": 452
+     "x": 400,
+     "y": 230
     },
     {
      "label": "2.08",
      "pool": "2",
-     "x": 8,
-     "y": 674
+     "x": 792,
+     "y": 230
     },
     {
      "label": "2.09",
      "pool": "2",
-     "x": 400,
-     "y": 674
+     "x": 1184,
+     "y": 230
+    },
+    {
+     "label": "2.10",
+     "pool": "2",
+     "x": 1576,
+     "y": 230
     }
    ]
   },
   {
-   "id": "forest",
-   "name": "Forest",
-   "cost": "",
-   "typeline": "Basic Land Forest",
-   "desc": "Basic Land Forest; taps for G.",
-   "sheet": "forest_c6ab_sheet.png",
-   "sw": 1968,
-   "sh": 896,
-   "cells": [
-    {
-     "label": "1.01",
-     "pool": "1",
-     "x": 8,
-     "y": 8
-    },
-    {
-     "label": "1.02",
-     "pool": "1",
-     "x": 400,
-     "y": 8
-    },
-    {
-     "label": "1.03",
-     "pool": "1",
-     "x": 792,
-     "y": 8
-    },
-    {
-     "label": "1.04",
-     "pool": "1",
-     "x": 1184,
-     "y": 8
-    },
-    {
-     "label": "1.05",
-     "pool": "1",
-     "x": 1576,
-     "y": 8
-    },
-    {
-     "label": "1.06",
-     "pool": "1",
-     "x": 8,
-     "y": 230
-    },
-    {
-     "label": "1.07",
-     "pool": "1",
-     "x": 400,
-     "y": 230
-    },
-    {
-     "label": "1.08",
-     "pool": "1",
-     "x": 792,
-     "y": 230
-    },
-    {
-     "label": "2.01",
-     "pool": "2",
-     "x": 1184,
-     "y": 230
-    },
-    {
-     "label": "2.02",
-     "pool": "2",
-     "x": 1576,
-     "y": 230
-    },
-    {
-     "label": "2.03",
-     "pool": "2",
-     "x": 8,
-     "y": 452
-    },
-    {
-     "label": "2.04",
-     "pool": "2",
-     "x": 400,
-     "y": 452
-    },
-    {
-     "label": "2.05",
-     "pool": "2",
-     "x": 792,
-     "y": 452
-    },
-    {
-     "label": "2.06",
-     "pool": "2",
-     "x": 1184,
-     "y": 452
-    },
-    {
-     "label": "2.07",
-     "pool": "2",
-     "x": 1576,
-     "y": 452
-    },
-    {
-     "label": "2.08",
-     "pool": "2",
-     "x": 8,
-     "y": 674
-    },
-    {
-     "label": "2.09",
-     "pool": "2",
-     "x": 400,
-     "y": 674
-    }
-   ]
-  },
-  {
-   "id": "forest_guardian",
-   "name": "Forest Guardian",
-   "cost": "G3",
-   "typeline": "Creature Treefolk  3/5  \u2014 vigilance",
-   "desc": "G Treefolk 3/5 vigilance (rooted sentinel).",
-   "sheet": "forest_guardian_c6ab_sheet.png",
-   "sw": 1968,
-   "sh": 896,
-   "cells": [
-    {
-     "label": "1.01",
-     "pool": "1",
-     "x": 8,
-     "y": 8
-    },
-    {
-     "label": "1.02",
-     "pool": "1",
-     "x": 400,
-     "y": 8
-    },
-    {
-     "label": "1.03",
-     "pool": "1",
-     "x": 792,
-     "y": 8
-    },
-    {
-     "label": "1.04",
-     "pool": "1",
-     "x": 1184,
-     "y": 8
-    },
-    {
-     "label": "1.05",
-     "pool": "1",
-     "x": 1576,
-     "y": 8
-    },
-    {
-     "label": "1.06",
-     "pool": "1",
-     "x": 8,
-     "y": 230
-    },
-    {
-     "label": "1.07",
-     "pool": "1",
-     "x": 400,
-     "y": 230
-    },
-    {
-     "label": "1.08",
-     "pool": "1",
-     "x": 792,
-     "y": 230
-    },
-    {
-     "label": "1.09",
-     "pool": "1",
-     "x": 1184,
-     "y": 230
-    },
-    {
-     "label": "2.01",
-     "pool": "2",
-     "x": 1576,
-     "y": 230
-    },
-    {
-     "label": "2.02",
-     "pool": "2",
-     "x": 8,
-     "y": 452
-    },
-    {
-     "label": "2.03",
-     "pool": "2",
-     "x": 400,
-     "y": 452
-    },
-    {
-     "label": "2.04",
-     "pool": "2",
-     "x": 792,
-     "y": 452
-    },
-    {
-     "label": "2.05",
-     "pool": "2",
-     "x": 1184,
-     "y": 452
-    },
-    {
-     "label": "2.06",
-     "pool": "2",
-     "x": 1576,
-     "y": 452
-    },
-    {
-     "label": "2.07",
-     "pool": "2",
-     "x": 8,
-     "y": 674
-    },
-    {
-     "label": "2.08",
-     "pool": "2",
-     "x": 400,
-     "y": 674
-    }
-   ]
-  },
-  {
-   "id": "frost_binder",
-   "name": "Frost Binder",
+   "id": "scrying_wizard",
+   "name": "Scrying Wizard",
    "cost": "U1",
    "typeline": "Creature Human Wizard  1/2",
-   "desc": "U Human Wizard 1/2; ETB tap target creature.",
-   "sheet": "frost_binder_c6ab_sheet.png",
+   "desc": "U Human Wizard 1/2; tap: draw a card, then discard a card (loot).",
+   "sheet": "scrying_wizard_prodab_sheet.png",
    "sw": 1968,
-   "sh": 896,
-   "cells": [
-    {
-     "label": "1.01",
-     "pool": "1",
-     "x": 8,
-     "y": 8
-    },
-    {
-     "label": "1.02",
-     "pool": "1",
-     "x": 400,
-     "y": 8
-    },
-    {
-     "label": "1.03",
-     "pool": "1",
-     "x": 792,
-     "y": 8
-    },
-    {
-     "label": "1.04",
-     "pool": "1",
-     "x": 1184,
-     "y": 8
-    },
-    {
-     "label": "1.05",
-     "pool": "1",
-     "x": 1576,
-     "y": 8
-    },
-    {
-     "label": "1.06",
-     "pool": "1",
-     "x": 8,
-     "y": 230
-    },
-    {
-     "label": "1.07",
-     "pool": "1",
-     "x": 400,
-     "y": 230
-    },
-    {
-     "label": "1.08",
-     "pool": "1",
-     "x": 792,
-     "y": 230
-    },
-    {
-     "label": "1.09",
-     "pool": "1",
-     "x": 1184,
-     "y": 230
-    },
-    {
-     "label": "2.01",
-     "pool": "2",
-     "x": 1576,
-     "y": 230
-    },
-    {
-     "label": "2.02",
-     "pool": "2",
-     "x": 8,
-     "y": 452
-    },
-    {
-     "label": "2.03",
-     "pool": "2",
-     "x": 400,
-     "y": 452
-    },
-    {
-     "label": "2.04",
-     "pool": "2",
-     "x": 792,
-     "y": 452
-    },
-    {
-     "label": "2.05",
-     "pool": "2",
-     "x": 1184,
-     "y": 452
-    },
-    {
-     "label": "2.06",
-     "pool": "2",
-     "x": 1576,
-     "y": 452
-    },
-    {
-     "label": "2.07",
-     "pool": "2",
-     "x": 8,
-     "y": 674
-    },
-    {
-     "label": "2.08",
-     "pool": "2",
-     "x": 400,
-     "y": 674
-    }
-   ]
-  },
-  {
-   "id": "furnace_roar",
-   "name": "Furnace Roar",
-   "cost": "RR3",
-   "typeline": "Sorcery",
-   "desc": "R sorcery: deal 5 damage to ALL creatures (board wipe; cost RR + 3 generic).",
-   "sheet": "furnace_roar_c6ab_sheet.png",
-   "sw": 1968,
-   "sh": 896,
-   "cells": [
-    {
-     "label": "1.01",
-     "pool": "1",
-     "x": 8,
-     "y": 8
-    },
-    {
-     "label": "1.02",
-     "pool": "1",
-     "x": 400,
-     "y": 8
-    },
-    {
-     "label": "1.03",
-     "pool": "1",
-     "x": 792,
-     "y": 8
-    },
-    {
-     "label": "1.04",
-     "pool": "1",
-     "x": 1184,
-     "y": 8
-    },
-    {
-     "label": "1.05",
-     "pool": "1",
-     "x": 1576,
-     "y": 8
-    },
-    {
-     "label": "1.06",
-     "pool": "1",
-     "x": 8,
-     "y": 230
-    },
-    {
-     "label": "1.07",
-     "pool": "1",
-     "x": 400,
-     "y": 230
-    },
-    {
-     "label": "1.08",
-     "pool": "1",
-     "x": 792,
-     "y": 230
-    },
-    {
-     "label": "1.09",
-     "pool": "1",
-     "x": 1184,
-     "y": 230
-    },
-    {
-     "label": "2.01",
-     "pool": "2",
-     "x": 1576,
-     "y": 230
-    },
-    {
-     "label": "2.02",
-     "pool": "2",
-     "x": 8,
-     "y": 452
-    },
-    {
-     "label": "2.03",
-     "pool": "2",
-     "x": 400,
-     "y": 452
-    },
-    {
-     "label": "2.04",
-     "pool": "2",
-     "x": 792,
-     "y": 452
-    },
-    {
-     "label": "2.05",
-     "pool": "2",
-     "x": 1184,
-     "y": 452
-    },
-    {
-     "label": "2.06",
-     "pool": "2",
-     "x": 1576,
-     "y": 452
-    },
-    {
-     "label": "2.07",
-     "pool": "2",
-     "x": 8,
-     "y": 674
-    },
-    {
-     "label": "2.08",
-     "pool": "2",
-     "x": 400,
-     "y": 674
-    },
-    {
-     "label": "2.09",
-     "pool": "2",
-     "x": 792,
-     "y": 674
-    }
-   ]
-  },
-  {
-   "id": "grave_digger",
-   "name": "Grave Digger",
-   "cost": "B3",
-   "typeline": "Creature Zombie  3/3",
-   "desc": "B Zombie 3/3; ETB return a creature card from your graveyard to hand.",
-   "sheet": "grave_digger_c6ab_sheet.png",
-   "sw": 1968,
-   "sh": 896,
+   "sh": 452,
    "cells": [
     {
      "label": "1.01",
@@ -1722,60 +432,582 @@ window.REVIEW = {
      "pool": "1",
      "x": 1576,
      "y": 230
-    },
+    }
+   ]
+  },
+  {
+   "id": "seal_thief_courier",
+   "name": "Seal-Thief Courier",
+   "cost": "UB1",
+   "typeline": "Creature Human Rogue  2/2",
+   "desc": "UB Human Rogue 2/2; combat damage to a player -> exile a nonland card from their graveyard, you may cast it this turn (any color).",
+   "sheet": "seal_thief_courier_prodab_sheet.png",
+   "sw": 1968,
+   "sh": 452,
+   "cells": [
     {
      "label": "2.01",
      "pool": "2",
      "x": 8,
-     "y": 452
+     "y": 8
     },
     {
      "label": "2.02",
      "pool": "2",
      "x": 400,
-     "y": 452
+     "y": 8
     },
     {
      "label": "2.03",
      "pool": "2",
      "x": 792,
-     "y": 452
+     "y": 8
     },
     {
      "label": "2.04",
      "pool": "2",
      "x": 1184,
-     "y": 452
+     "y": 8
     },
     {
      "label": "2.05",
      "pool": "2",
      "x": 1576,
-     "y": 452
+     "y": 8
     },
     {
      "label": "2.06",
      "pool": "2",
      "x": 8,
-     "y": 674
+     "y": 230
     },
     {
      "label": "2.07",
      "pool": "2",
      "x": 400,
-     "y": 674
+     "y": 230
     },
     {
      "label": "2.08",
      "pool": "2",
      "x": 792,
-     "y": 674
+     "y": 230
     },
     {
      "label": "2.09",
      "pool": "2",
      "x": 1184,
-     "y": 674
+     "y": 230
+    },
+    {
+     "label": "2.10",
+     "pool": "2",
+     "x": 1576,
+     "y": 230
+    }
+   ]
+  },
+  {
+   "id": "spirit_shepherd",
+   "name": "Spirit Shepherd",
+   "cost": "W3",
+   "typeline": "Creature Spirit  2/3  \u2014 flying, hexproof",
+   "desc": "W Spirit 2/3 flying, hexproof; +1/+1 & hexproof to your other Spirits; dies -> return a Spirit from graveyard to hand.",
+   "sheet": "spirit_shepherd_prodab_sheet.png",
+   "sw": 1968,
+   "sh": 452,
+   "cells": [
+    {
+     "label": "1.01",
+     "pool": "1",
+     "x": 8,
+     "y": 8
+    },
+    {
+     "label": "1.02",
+     "pool": "1",
+     "x": 400,
+     "y": 8
+    },
+    {
+     "label": "1.03",
+     "pool": "1",
+     "x": 792,
+     "y": 8
+    },
+    {
+     "label": "1.04",
+     "pool": "1",
+     "x": 1184,
+     "y": 8
+    },
+    {
+     "label": "1.05",
+     "pool": "1",
+     "x": 1576,
+     "y": 8
+    },
+    {
+     "label": "1.06",
+     "pool": "1",
+     "x": 8,
+     "y": 230
+    },
+    {
+     "label": "1.07",
+     "pool": "1",
+     "x": 400,
+     "y": 230
+    },
+    {
+     "label": "1.08",
+     "pool": "1",
+     "x": 792,
+     "y": 230
+    },
+    {
+     "label": "1.09",
+     "pool": "1",
+     "x": 1184,
+     "y": 230
+    },
+    {
+     "label": "1.10",
+     "pool": "1",
+     "x": 1576,
+     "y": 230
+    }
+   ]
+  },
+  {
+   "id": "steadfast_wall",
+   "name": "Steadfast Wall",
+   "cost": "W1",
+   "typeline": "Creature Wall  0/5  \u2014 flying",
+   "desc": "W Wall 0/5 flying (airborne defensive rampart).",
+   "sheet": "steadfast_wall_prodab_sheet.png",
+   "sw": 1968,
+   "sh": 452,
+   "cells": [
+    {
+     "label": "2.01",
+     "pool": "2",
+     "x": 8,
+     "y": 8
+    },
+    {
+     "label": "2.02",
+     "pool": "2",
+     "x": 400,
+     "y": 8
+    },
+    {
+     "label": "2.03",
+     "pool": "2",
+     "x": 792,
+     "y": 8
+    },
+    {
+     "label": "2.04",
+     "pool": "2",
+     "x": 1184,
+     "y": 8
+    },
+    {
+     "label": "2.05",
+     "pool": "2",
+     "x": 1576,
+     "y": 8
+    },
+    {
+     "label": "2.06",
+     "pool": "2",
+     "x": 8,
+     "y": 230
+    },
+    {
+     "label": "2.07",
+     "pool": "2",
+     "x": 400,
+     "y": 230
+    },
+    {
+     "label": "2.08",
+     "pool": "2",
+     "x": 792,
+     "y": 230
+    },
+    {
+     "label": "2.09",
+     "pool": "2",
+     "x": 1184,
+     "y": 230
+    },
+    {
+     "label": "2.10",
+     "pool": "2",
+     "x": 1576,
+     "y": 230
+    }
+   ]
+  },
+  {
+   "id": "storm_charm",
+   "name": "Storm Charm",
+   "cost": "R2",
+   "typeline": "Sorcery  \u2014 flash",
+   "desc": "R flash modal sorcery: 3 damage to any target / +2/+0 & haste to your creature / 1 damage to each creature.",
+   "sheet": "storm_charm_prodab_sheet.png",
+   "sw": 1968,
+   "sh": 452,
+   "cells": [
+    {
+     "label": "1.01",
+     "pool": "1",
+     "x": 8,
+     "y": 8
+    },
+    {
+     "label": "1.02",
+     "pool": "1",
+     "x": 400,
+     "y": 8
+    },
+    {
+     "label": "1.03",
+     "pool": "1",
+     "x": 792,
+     "y": 8
+    },
+    {
+     "label": "1.04",
+     "pool": "1",
+     "x": 1184,
+     "y": 8
+    },
+    {
+     "label": "1.05",
+     "pool": "1",
+     "x": 1576,
+     "y": 8
+    },
+    {
+     "label": "1.06",
+     "pool": "1",
+     "x": 8,
+     "y": 230
+    },
+    {
+     "label": "1.07",
+     "pool": "1",
+     "x": 400,
+     "y": 230
+    },
+    {
+     "label": "1.08",
+     "pool": "1",
+     "x": 792,
+     "y": 230
+    },
+    {
+     "label": "1.09",
+     "pool": "1",
+     "x": 1184,
+     "y": 230
+    },
+    {
+     "label": "1.10",
+     "pool": "1",
+     "x": 1576,
+     "y": 230
+    }
+   ]
+  },
+  {
+   "id": "tidal_conduit",
+   "name": "Tidal Conduit",
+   "cost": "",
+   "typeline": "Artifact Land Island",
+   "desc": "Artifact Land Island; taps for U.",
+   "sheet": "tidal_conduit_prodab_sheet.png",
+   "sw": 1968,
+   "sh": 452,
+   "cells": [
+    {
+     "label": "2.01",
+     "pool": "2",
+     "x": 8,
+     "y": 8
+    },
+    {
+     "label": "2.02",
+     "pool": "2",
+     "x": 400,
+     "y": 8
+    },
+    {
+     "label": "2.03",
+     "pool": "2",
+     "x": 792,
+     "y": 8
+    },
+    {
+     "label": "2.04",
+     "pool": "2",
+     "x": 1184,
+     "y": 8
+    },
+    {
+     "label": "2.05",
+     "pool": "2",
+     "x": 1576,
+     "y": 8
+    },
+    {
+     "label": "2.06",
+     "pool": "2",
+     "x": 8,
+     "y": 230
+    },
+    {
+     "label": "2.07",
+     "pool": "2",
+     "x": 400,
+     "y": 230
+    },
+    {
+     "label": "2.08",
+     "pool": "2",
+     "x": 792,
+     "y": 230
+    },
+    {
+     "label": "2.09",
+     "pool": "2",
+     "x": 1184,
+     "y": 230
+    },
+    {
+     "label": "2.10",
+     "pool": "2",
+     "x": 1576,
+     "y": 230
+    }
+   ]
+  },
+  {
+   "id": "trained_armodon",
+   "name": "Trained Armodon",
+   "cost": "G2",
+   "typeline": "Creature Beast  3/3  \u2014 trample",
+   "desc": "G Beast 3/3 trample (war-trained tusked beast).",
+   "sheet": "trained_armodon_prodab_sheet.png",
+   "sw": 1968,
+   "sh": 452,
+   "cells": [
+    {
+     "label": "2.01",
+     "pool": "2",
+     "x": 8,
+     "y": 8
+    },
+    {
+     "label": "2.02",
+     "pool": "2",
+     "x": 400,
+     "y": 8
+    },
+    {
+     "label": "2.03",
+     "pool": "2",
+     "x": 792,
+     "y": 8
+    },
+    {
+     "label": "2.04",
+     "pool": "2",
+     "x": 1184,
+     "y": 8
+    },
+    {
+     "label": "2.05",
+     "pool": "2",
+     "x": 1576,
+     "y": 8
+    },
+    {
+     "label": "2.06",
+     "pool": "2",
+     "x": 8,
+     "y": 230
+    },
+    {
+     "label": "2.07",
+     "pool": "2",
+     "x": 400,
+     "y": 230
+    },
+    {
+     "label": "2.08",
+     "pool": "2",
+     "x": 792,
+     "y": 230
+    },
+    {
+     "label": "2.09",
+     "pool": "2",
+     "x": 1184,
+     "y": 230
+    },
+    {
+     "label": "2.10",
+     "pool": "2",
+     "x": 1576,
+     "y": 230
+    }
+   ]
+  },
+  {
+   "id": "vampire_nighthawk",
+   "name": "Vampire Nighthawk",
+   "cost": "B2",
+   "typeline": "Creature Vampire Shaman  2/3  \u2014 flying, deathtouch, lifelink",
+   "desc": "B Vampire Shaman 2/3 flying, deathtouch, lifelink.",
+   "sheet": "vampire_nighthawk_prodab_sheet.png",
+   "sw": 1968,
+   "sh": 452,
+   "cells": [
+    {
+     "label": "2.01",
+     "pool": "2",
+     "x": 8,
+     "y": 8
+    },
+    {
+     "label": "2.02",
+     "pool": "2",
+     "x": 400,
+     "y": 8
+    },
+    {
+     "label": "2.03",
+     "pool": "2",
+     "x": 792,
+     "y": 8
+    },
+    {
+     "label": "2.04",
+     "pool": "2",
+     "x": 1184,
+     "y": 8
+    },
+    {
+     "label": "2.05",
+     "pool": "2",
+     "x": 1576,
+     "y": 8
+    },
+    {
+     "label": "2.06",
+     "pool": "2",
+     "x": 8,
+     "y": 230
+    },
+    {
+     "label": "2.07",
+     "pool": "2",
+     "x": 400,
+     "y": 230
+    },
+    {
+     "label": "2.08",
+     "pool": "2",
+     "x": 792,
+     "y": 230
+    },
+    {
+     "label": "2.09",
+     "pool": "2",
+     "x": 1184,
+     "y": 230
+    },
+    {
+     "label": "2.10",
+     "pool": "2",
+     "x": 1576,
+     "y": 230
+    }
+   ]
+  },
+  {
+   "id": "vigorous_druid",
+   "name": "Vigorous Druid",
+   "cost": "G2",
+   "typeline": "Creature Elf Druid  2/3",
+   "desc": "G Elf Druid 2/3; tap: add GG.",
+   "sheet": "vigorous_druid_prodab_sheet.png",
+   "sw": 1968,
+   "sh": 452,
+   "cells": [
+    {
+     "label": "1.01",
+     "pool": "1",
+     "x": 8,
+     "y": 8
+    },
+    {
+     "label": "1.02",
+     "pool": "1",
+     "x": 400,
+     "y": 8
+    },
+    {
+     "label": "1.03",
+     "pool": "1",
+     "x": 792,
+     "y": 8
+    },
+    {
+     "label": "1.04",
+     "pool": "1",
+     "x": 1184,
+     "y": 8
+    },
+    {
+     "label": "1.05",
+     "pool": "1",
+     "x": 1576,
+     "y": 8
+    },
+    {
+     "label": "1.06",
+     "pool": "1",
+     "x": 8,
+     "y": 230
+    },
+    {
+     "label": "1.07",
+     "pool": "1",
+     "x": 400,
+     "y": 230
+    },
+    {
+     "label": "1.08",
+     "pool": "1",
+     "x": 792,
+     "y": 230
+    },
+    {
+     "label": "1.09",
+     "pool": "1",
+     "x": 1184,
+     "y": 230
+    },
+    {
+     "label": "1.10",
+     "pool": "1",
+     "x": 1576,
+     "y": 230
     }
    ]
   }
