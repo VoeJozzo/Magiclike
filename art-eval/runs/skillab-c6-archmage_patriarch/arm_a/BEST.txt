@@ -1,0 +1,14 @@
+archmage_patriarch_gen_09_seed469469553.png
+
+Rationale: Best overall enactment of the card's defining mechanic (every spell you cast, the
+Archmage draws knowledge / loots). A grey-bearded elder in deep cerulean-and-gold robes sits at
+a lectern conjuring a brilliant blue arcane glyph of light directly above an open tome -- knowledge
+being drawn out of the book made literal. Lighting discipline is the strongest of the batch: the
+conjured cerulean star is the sole bright source (candle as warm accent), exactly the skill's
+"named light source" move. Correct blue color identity (cerulean, not the orange-flame trap that
+crept into gen_06), unmistakable "patriarch" presence (aged, throned, robed lord), and a clean,
+striking 64x32 gestalt -- reads as the thing at size. The draw+discard *duality* (spent ash heap)
+is faint here, a reaching frame's fixable flaw rather than a reason to down-rank.
+
+Runners-up: gen_01 (page mid-flight into the tome, clearest literal draw, warmer light) and
+gen_10 (frontal throned patriarch holding a glowing cerulean page -- strongest pure "lord" presence).
