@@ -1,0 +1,20 @@
+air_elemental_gen_04_seed340067298.png
+
+Rationale: Best enacts the card's defining keyword, Flying, while reading as an
+elemental *being* rather than mere weather. A clearly defined humanoid head and
+torso of shimmering translucent white wind/vapor, glowing cyan eyes, broad
+sweeping wings of streaming cloud, dynamic three-quarter soaring pose, dramatic
+sunburst over a sea of cumulus clouds far below. Sits squarely in the set's
+bright-cerulean-sky vocabulary (harmonizes with Cloud Pegasus and Mahamoti
+Djinn). Strong centered silhouette at 64x32. Its only flaw -- legs tapering into
+a thin wispy column -- is on-theme for a body made of air dissolving into wind,
+not a defect. Beats gen 7 (more static/symmetric, vaguer face), gen 5 (too
+solid/fleshy, less "made of air"), and the off-concept rolls that drifted into a
+bird (gen 6) or a purple-robed angel (gen 8).
+
+Prompt: "A majestic air elemental, a clear winged humanoid figure with a defined
+torso and head formed of shimmering translucent wind and pale vapor, broad
+sweeping wings of white streaming cloud, hovering high above the clouds,
+three-quarter view, glowing cyan eyes, arms outstretched. The background is a
+bright cerulean sky with sunlit cumulus clouds far below."
+[seed: 340067298, text_guidance_scale: 8 (default), no_background: false, image_size: 64x32]
