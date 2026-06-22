@@ -1,0 +1,12 @@
+drain_life_gen_08_seed1397603377.png
+
+Rationale: Strongest mechanic-in-art read of the batch. Two clearly distinct figures
+enact the drain: a hooded black-robed sorcerer at left, hands raised and pulling, and a
+collapsing victim sprawled on the crypt floor at right with a brilliant column of sickly
+violet life-essence being torn straight up out of his body. The victim's collapsing pose
+sells "life being ripped out" more literally than any other frame, while the violet
+essence is the sole light source (matching the card's color identity, B + colorless).
+Strong, legible silhouette at 64x32 (robed figure / bright vertical siphon / prone body),
+and it harmonizes tonally with the black anchors doom_blade, soul_reaper, and
+consume_spirit (dark interior, intimate violence, energy-as-light). Close runners-up:
+gen_07 (clean upright two-figure siphon) and gen_02 (bright hand-to-victim transfer).
