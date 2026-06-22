@@ -1,0 +1,8 @@
+archmage_patriarch_gen_01_seed388158321.png
+
+Rationale: Best enacts the card's defining mechanic (the static +1/+1 to other Wizards you control). The patriarch stands centered and tallest, channeling cyan arcane light, with two readable hooded apprentice wizards flanking him on either side -- the buff shown literally as the elder empowering his lesser mages. Strongest gestalt of the spread at 64x32: clear three-figure silhouette (large center, two smaller flanks), instantly legible as "elder wizard who leads and strengthens other wizards." Squarely on the set's blue-wizard palette (deep indigo + gold-thread robes, glowing cyan magic, dim vaulted-stone academy background with floating blue orbs), harmonizing with archmage_of_veils. The loot trigger (draw/discard on cast) is implied by the spell energy he is channeling rather than spelled out, which is the right altitude for a character-card. Clean face and hands, no diagnosable flaw.
+
+Runners-up:
+- gen_08 (seed 1203497524): cleanest loot-trigger enactment -- plucking a glowing cyan card of light from the air in a candlelit study; best of the "vision B" bookish takes.
+- gen_06 (seed 614767280): striking intimate portrait holding the cyan rune-stone; great face, but a character note rather than a buff/leader read.
+- gen_04 (seed 1021823820): dynamic profile pouring cyan onto two kneeling apprentices; strong buff enactment, slightly blank face.
