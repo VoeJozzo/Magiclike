@@ -1,0 +1,16 @@
+ancient_hydra_gen_05_seed1760458744.png
+
+Rationale: Best mechanic-in-art read for the card's one keyword, Trample. A massive
+multi-headed emerald-scaled hydra lunges to the right INTO a row of tiny armored
+soldiers being crushed/trampled at its feet, against a dusk battlefield with fire and
+broken figures. It enacts Trample (the creature plowing through a line of defenders)
+rather than merely depicting a hydra, while still reading clearly as a big green
+many-necked hydra dominating the 64x32 frame. Color identity is correct (deep-emerald
+green body). Strong frame-filling silhouette consistent with the forest_titan anchor
+(huge green body + real environment behind).
+
+Runners-up:
+- gen_09 (seed 1768824287): the clearest "many distinct heads" hydra crown, gorgeous
+  moonlit swamp, best pure-hydra silhouette -- but enacts no mechanic (no Trample beat).
+- gen_07 (seed 905030913): clean two-headed rear with a line of soldiers at right;
+  good trample read and crisp scales, slightly less "trampling-through" than gen_05.
