@@ -355,3 +355,12 @@ Pixflux generates whole images; `/v2/inpaint` *edits* them — and this is where
 ## One-breath summary
 
 Read the card → study 1–2 anchor arts → propose three different *visions*, each with mechanic-enactment + silhouette + intent + anchor → user picks → write prompt using subject/pose/context/background structure, no banned phrases → show prompt → generate via pixflux at 64×32 opaque → save to `reference/html-proto/cards/<tplId>/art.png` → add to `.git/info/exclude` → show user → iterate without defending.
+
+
+## Explore wide — breadth over depth; don't converge early
+
+Spend your generation budget on **breadth over depth.** The instinct is to find one decent roll early and then refine it — reroll the same prompt, lock the seed and tweak one element — until it is polished. Resist that. Instead keep generating **genuinely distinct takes**: different compositions, camera framings, which beat of the mechanic you foreground, even different core subjects. Each generation should use a fresh seed and a meaningfully different prompt, not a tweak of the previous one.
+
+Aim for a spread where any two frames look like separate *attempts* at the card, not neighbours in a refinement chain. Deliberately cover the option space: if one roll is a close-up, make the next a wide shot; if one centres the caster, make the next centre the target; vary the palette-mood, the angle, the moment of action. Only at the very end of the budget, if a single direction is clearly strongest, may you spend one or two rolls tightening it.
+
+Why: a wide spread of distinct candidates yields a better single best frame than a deep refinement of one early pick — random variance across fresh attempts does more work than directed tweaking, and the final selection is the director's to make from the spread. Your job is to maximise the quality *and diversity* of that spread, not to pre-converge it.
