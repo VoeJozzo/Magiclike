@@ -1,0 +1,5 @@
+bone_reliquary_gen_08_seed710505372.png
+
+Rationale: Best satisfies all three of the card's types simultaneously — a crafted, ornate golden reliquary SHRINE (Artifact) standing on a small mossy island in still black bog water (Land / Swamp), glowing with violet necromantic mana from twin gem-windows (B / black mana identity). Reads unambiguously as a built reliquary structure rather than a generic mound or single skull, and the clean symmetric water reflection is the strongest, most distinctive composition in the spread. Color identity is correctly black/violet (unlike gen 9's warm orange glow). Runners-up: gen 6 (same concept, lower casket form, slightly less legible as a shrine) and gen 9 (very atmospheric skull-filled tree-hollow, but warm glow drifts off black-mana identity).
+
+Seed: 710505372 | text_guidance_scale: 8 (default) | no_background: false | image_size: 64x32
