@@ -1,0 +1,15 @@
+frost_binder_gen_03_seed1551428143.png
+
+Rationale: Best mechanic-in-art for Frost Binder, whose ETB taps a target creature.
+A hooded wizard in deep sapphire robes (correct blue color identity) stands at left,
+arm thrust out, projecting a swirling ring of cyan ice energy that visibly wraps and
+binds a struggling armored victim at right -- the "tap target creature" trigger made
+literal as a creature seized/held in place. Clean two-figure silhouette at 64x32 with
+clear left-caster / right-victim read, strong cold rim-light, and a dark snow-dusted
+stone hall background that harmonizes with the archmage_of_veils anchor. Its only
+visible flaw is the victim's stance reads a touch free rather than fully locked --
+fixable, and preferred over the timider, more decorative caster-only frames per the
+reach-don't-hedge principle.
+
+Runner-up: gen_05 (seed284015004) -- frost-white archmage pointing, a small target
+seizing up; good but the victim is smaller and less legible as a tapped creature.
