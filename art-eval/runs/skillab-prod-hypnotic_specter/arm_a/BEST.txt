@@ -1,0 +1,8 @@
+hypnotic_specter_gen_09_seed1948976646.png
+
+RATIONALE
+Hypnotic Specter is a black flying 2/2 Specter whose signature beat is: when it attacks, the opponent discards a card. The art must enact that mind-theft, and gen 9 does it most legibly of the whole spread: a hooded skeletal specter leans over a sleeper in a curtained bed, bony hands outstretched, drawing a clearly-rendered GLOWING VIOLET PLAYING CARD out of the air beside the victim's head. Unlike gen 5 (same direction, card reads as an abstract glow) the card in gen 9 is unmistakably a card, so the discard mechanic is depicted on the victim rather than merely decorated. Color identity is dead-on black/violet, the menacing skull-under-hood gives a strong readable silhouette at 64x32, and it still functions as a creature-card hero image (the specter is the subject, not a distant silhouette).
+
+Close runner-up: gen 04 (seed 1694428303) - a wide flying-specter silhouette trailing a ribbon of stolen glowing cards over a moonlit village; best single combination of the flying keyword + the discard mechanic, but the specter is a distant silhouette rather than a foregrounded creature, so it loses the "creature card hero" test to gen 9.
+Other strong frame: gen 07 (seed 1235452775) - most polished pure creature portrait, nails the flying keyword, but shows no discard.
+Weakest: gen 06 (two-figure swoop collapsed into a murky blob - the multi-subject headcount failure).

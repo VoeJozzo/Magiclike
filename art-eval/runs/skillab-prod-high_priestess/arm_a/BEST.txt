@@ -1,0 +1,14 @@
+high_priestess_gen_01_seed1769360709.png
+
+Rationale:
+Best balance of mechanic-in-art, color identity, and card-size readability. High Priestess is a Cleric lord that gains 2 life each time another Cleric you control enters the battlefield -- i.e. the matriarch of a clerical order whose healing flows as her flock gathers. Gen 1 enacts exactly that: a central radiant priestess in bone-white-and-gold robes and mitre, hands raised, pouring a warm golden healing radiance outward, with two hooded acolyte clerics kneeling and lit by her glow, in a candlelit gothic cathedral with stained-glass windows.
+
+Why over the other strong frames:
+- Color identity: cleanly mono-white/gold (the card costs W + 2 generic). Gen 2 (the cupped-sphere portrait) is gorgeous but leans wine-purple, off-color, and shows no gathered Clerics. Gen 10 (ring of clerics) is elegant but the gold/cerulean burst washes out the priestess and shrinks her.
+- Silhouette test at 64x32: a single bright central figure flanked by two dark kneeling shapes -- a clear, readable gestalt. The procession/altar frames (4, 6, 9) make the priestess small and peripheral.
+- Set coherence: matches the white set's radiant-gold treatment (serra_angel, benevolent_angel, holy_zealot).
+- The lord + lifegain mechanic reads directly: light radiating from her over the clerics who have gathered to her.
+
+Diagnosable flaw (kept anyway per reach-don't-hedge): the explicit life-light "threads" connecting clerics to her did not render as discrete strands; it reads as ambient radiance instead. Minor and fixable; the frame still reaches for the real beat.
+
+Runner-up: high_priestess_gen_02_seed1637100164.png (best portrait; off-color purple is its only real knock).
