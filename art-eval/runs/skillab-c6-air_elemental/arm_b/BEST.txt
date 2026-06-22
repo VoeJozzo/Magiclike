@@ -1,0 +1,22 @@
+air_elemental_gen_07_seed590641537.png
+
+Rationale: Best mechanic-in-art for "Air Elemental, 4/4 Flying" — it depicts the
+creature as a humanoid literally WOVEN from moving wind: a translucent figure
+traced by white condensation-streaks and air-currents, with the cerulean sky
+visible THROUGH its body. It is unambiguously airborne (flying = the strong
+literal-depiction keyword), with a dynamic diagonal lunge that gives a readable
+silhouette at 64x32 and a sense of speed. It enacts the elemental nature instead
+of drawing a winged beast that merely happens to be in the sky. Set-coherent
+with the blue-flier anchors (mahamoti_djinn, cloud_pegasus): bright cerulean sky,
+big billowing white cumulus clouds.
+
+Known flaw (kept per the diagnosable-flaw principle): the figure's lower body
+dissolves a bit loosely into the cloud bank, softening the silhouette's bottom
+edge — a fixable target for a seed-locked tweak, and preferable to a clean-but-
+generic frame.
+
+Close runner-up: air_elemental_gen_08_seed462443145.png — the most instantly
+legible "creature" read (a cloud-bodied elemental warrior, fists raised, small
+tornado at the legs, debris blasting outward), but it reads slightly solid/golem-
+like rather than "made of living air," so it enacts the elemental theme a notch
+less purely than gen 07.
