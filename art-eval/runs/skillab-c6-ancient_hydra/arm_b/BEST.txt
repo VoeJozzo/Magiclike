@@ -1,0 +1,20 @@
+ancient_hydra_gen_04_seed130707120.png
+
+Nominee rationale:
+Four large, distinct serpentine heads fan out across the frame, each with open
+jaws and glaring red eyes, rising from a central coiled body over still swamp
+water in a dim cavernous old-growth forest. This best satisfies the silhouette
+test: a hydra's defining identity is "multiple necks branching from one body,"
+and here that shape is large, unmistakable, and fully legible even at 64x32
+(the model's strong default is a SINGLE-headed serpent -- gens 1, 6 fell to that
+prior; explicit headcount fixed it). The mossy grey-green, lichen-weathered
+palette reads as genuinely ancient/primordial, matching the card's heavily
+colorless {5}{2}{G} cost and 7/7 body, and the dark full-scene atmosphere
+harmonizes with the set's green-creature anchors (Forest Titan, Feral Stalker).
+Clean green color identity; trample/force-of-nature menace conveyed through the
+looming, jaws-open multi-head pose. The heads' large scale makes them readable
+where busier rolls lose detail.
+
+Close runners-up: gen 10 (five arching heads, dynamic posture, brighter swamp
+scene) and gen 9 (five heads, sunlit, dynamic varied poses). gen 7 (clean row of
+five heads) is solid but the necks read slightly repetitive/uniform.
