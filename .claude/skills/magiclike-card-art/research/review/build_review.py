@@ -9,7 +9,7 @@ is NOT written into the manifest, so opening the applet (or reading manifest.js)
 does not unblind the reviewer or the assistant. Decode happens only via
 `harness.py decode` after verdicts are in.
 
-Usage:  python3 art-eval/review/build_review.py [cand]   # cand defaults to c4
+Usage:  python3 research/review/build_review.py [cand]   # cand defaults to c4
 Geometry mirrors harness.build_sheet exactly (SCALE 6, COLS 5, CW 384, CH 192,
 LABEL_H 22, PAD 8).
 """
@@ -21,7 +21,7 @@ ALL = "--all" in sys.argv[1:]
 REMAINING = "--remaining" in sys.argv[1:]   # all sheeted cards NOT already judged
 CAND = (ARGS[0] if ARGS else "c4").lower()
 HERE = Path(__file__).resolve().parent
-ART = HERE.parent                      # art-eval/
+ART = HERE.parent                      # research/
 ROOT = ART.parent                      # repo root
 RUNS = ART / "runs"
 SHEETS = ROOT / "docs" / "art-eval-sheets"

@@ -7,7 +7,7 @@ base64 data: URI (via window.SHEETDATA). No external files, no server, no
 relative paths -- openable by tapping it on a phone. Still blind: SHEETDATA is
 keyed by sheet filename only; no arm identity anywhere.
 
-Usage:  python3 art-eval/review/bundle.py [cand]
+Usage:  python3 research/review/bundle.py [cand]
 """
 import base64, json, sys
 from pathlib import Path

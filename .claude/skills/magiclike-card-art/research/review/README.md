@@ -16,7 +16,7 @@ alike. `manifest.js` carries only `label → crop-box`, never which arm a label 
 ## Use
 1. Pull the branch (the applet references the sheet PNGs at
    `../../docs/art-eval-sheets/*.png`, which live in the repo).
-2. Open `art-eval/review/index.html`.
+2. Open `research/review/index.html`.
 3. For each card: pick **① better / Tie / ② better**, click a tile to mark the
    **keeper**, optionally add a note. Keys: `←`/`→` navigate, `1`/`2`/`t` set the
    verdict, click a tile = keeper. Progress + per-card jump dots are at the
@@ -28,8 +28,8 @@ alike. `manifest.js` carries only `label → crop-box`, never which arm a label 
 After a new batch (or to include older runs):
 
 ```
-python3 art-eval/review/build_review.py c4          # scoped to the current 20-card batch
-python3 art-eval/review/build_review.py c4 --all     # include all c4 runs
+python3 research/review/build_review.py c4          # scoped to the current 20-card batch
+python3 research/review/build_review.py c4 --all     # include all c4 runs
 ```
 
 `manifest.js` is generated but committed so the app opens without running Python.

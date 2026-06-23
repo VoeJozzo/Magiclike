@@ -4,6 +4,10 @@ Durable, **git-tracked** record of the eval's results (the `art-eval/` working d
 gitignored and gets wiped on container reset — see the incident note below; nothing of
 value lives only there again).
 
+> **Relocation (2026-06-23):** the working dir was committed and has since moved to
+> `.claude/skills/magiclike-card-art/research/` (co-located with the skill it produced).
+> Historical `art-eval/...` paths below refer to that same content at its old root location.
+
 ## ⚠️ Persistence policy (learned the hard way, 2026-06-05)
 
 The remote container is ephemeral; only committed-and-pushed files survive a reset. The

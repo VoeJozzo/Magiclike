@@ -173,10 +173,10 @@ State the scene positively. Naming an unwanted element even to negate it — *"t
 
 ### 6. Generate via pixflux
 
-**Prefer the committed helper `art-eval/gen_image.py`** over hand-rolled curl. It captures the response *in memory*, decodes, writes a unique per-gen file (+ an 8× upscale and a `manifest.jsonl` line carrying **seed + prompt**), and refuses to save a frame byte-identical to one already in the arm. The manifest is what makes seed-locked branching reproducible later.
+**Prefer the committed helper `research/gen_image.py`** (in this skill folder) over hand-rolled curl. It captures the response *in memory*, decodes, writes a unique per-gen file (+ an 8× upscale and a `manifest.jsonl` line carrying **seed + prompt**), and refuses to save a frame byte-identical to one already in the arm. The manifest is what makes seed-locked branching reproducible later.
 
 ```bash
-python3 art-eval/gen_image.py --card <tplId> --out <dir> \
+python3 .claude/skills/magiclike-card-art/research/gen_image.py --card <tplId> --out <dir> \
   --spec '{"gen":1,"seed":2059828219,"mode":"explore","prompt":"..."}'
 # optional spec fields: "guidance" (text_guidance_scale), "init"+"init_strength" (img2img)
 ```

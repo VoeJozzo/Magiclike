@@ -6,9 +6,9 @@ carries ONLY per-frame blind labels + their crop-box within an already-rendered
 contact sheet -- never which arm/source a label maps to. So opening the applet (or
 reading manifest.js) does not unblind the reviewer or the assistant.
 
-This builder targets the art-eval A/B harness layout:
-  art-eval/runs/skillab-<cand>-<card>/{arm_a,arm_b}/<card>_gen_NN_seed*.png
-  art-eval/runs/skillab-<cand>-<card>/_meta/blind_map.json   # {"1":arm,"2":arm}
+This builder targets the research/ A/B harness layout:
+  research/runs/skillab-<cand>-<card>/{arm_a,arm_b}/<card>_gen_NN_seed*.png
+  research/runs/skillab-<cand>-<card>/_meta/blind_map.json   # {"1":arm,"2":arm}
   docs/art-eval-sheets/<card>_<cand>ab_sheet.png             # pre-rendered sheet
 Geometry mirrors harness.build_sheet exactly (SCALE 6, COLS 5, CW 384, CH 192,
 LABEL_H 22, PAD 8).
@@ -55,7 +55,7 @@ def repo_root() -> Path:
 
 HERE = Path(__file__).resolve().parent
 ROOT = repo_root()
-ART = ROOT / "art-eval"
+ART = HERE.parent / "research"     # sibling dir under the skill (holds verdicts_*.json + runs)
 RUNS = ART / "runs"
 SHEETS = ROOT / "docs" / "art-eval-sheets"
 

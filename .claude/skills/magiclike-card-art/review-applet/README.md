@@ -6,7 +6,7 @@ CSS `background-position`, so **no per-source file paths exist** — the blind i
 preserved for reviewer and assistant alike when reviewing an A/B test. Verdicts
 auto-save to `localStorage` and export as JSON.
 
-This was distilled from the C2–C6 art-skill A/B program (see `art-eval/`), where
+This was distilled from the C2–C6 art-skill A/B program (see the sibling `research/` dir), where
 the measured lesson was that **human-in-the-loop selection is the lever** — agent-
 solo self-picking tested null. This tool is how you put the spread in front of the
 director cleanly.
@@ -16,7 +16,7 @@ director cleanly.
 | file | role |
 |---|---|
 | `index.html` | the reviewer UI (general — consumes `window.REVIEW` + optional `window.SHEETDATA`). Keys: `←`/`→` navigate, `1`/`2`/`t` set verdict, click a tile = keeper. |
-| `build_review.py` | emits `manifest.js` (`window.REVIEW`) for the **art-eval A/B harness layout**. |
+| `build_review.py` | emits `manifest.js` (`window.REVIEW`) for the **research/ A/B harness layout**. |
 | `bundle.py` | inlines manifest + every sheet (base64) into a single `review-bundle.html` you can open by tapping it on a phone. The portable form. |
 
 `manifest.js` and `review-bundle.html` are generated per batch and gitignored.
@@ -33,7 +33,7 @@ python3 bundle.py c6                    # -> review-bundle.html (self-contained,
 Open `review-bundle.html`. For each card: pick **① / Tie / ②**, click a tile to
 mark the **keeper**, add a note. **Export verdicts** → paste the JSON back to the
 assistant. (For A/B work, decode + keeper placement happen only after that, via
-`art-eval/harness.py decode`.)
+`../research/harness.py decode`.)
 
 ## Reusing for a non-A/B spread
 

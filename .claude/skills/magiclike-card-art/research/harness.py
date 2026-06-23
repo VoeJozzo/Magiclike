@@ -5,24 +5,24 @@ WHY THIS EXISTS: the execution container restores from a snapshot pinned near an
 older commit. Every restore rewinds the working tree and DELETES anything not
 committed-and-pushed (and resets .git/info/exclude). Earlier rounds lost the C2
 variant file and the shared seed pool because they lived in gitignored locations
-(.claude/skills/... and art-eval/runs/<run>/_meta/). This module keeps every
+(.claude/skills/... and research/runs/<run>/_meta/). This module keeps every
 harness input either (a) deterministically recomputable from the card name, or
 (b) at a committed path, so a mid-round reset can never silently corrupt a round.
 
 USAGE
-  python3 art-eval/harness.py pool                 # list unarted, not-done cards
-  python3 art-eval/harness.py pick [salt]          # deterministic card pick
-  python3 art-eval/harness.py init <run> <card>    # make dirs + committed seeds.json
-  python3 art-eval/harness.py preflight <run>      # verify a round before judging
-  python3 art-eval/harness.py sheet <run> <card>   # build blind contact sheet
-  python3 art-eval/harness.py decode <run>         # reveal which label is control/treatment
-  python3 art-eval/harness.py selftest             # check stack health (no pixflux)
+  python3 .claude/skills/magiclike-card-art/research/harness.py pool                 # list unarted, not-done cards
+  python3 .claude/skills/magiclike-card-art/research/harness.py pick [salt]          # deterministic card pick
+  python3 .claude/skills/magiclike-card-art/research/harness.py init <run> <card>    # make dirs + committed seeds.json
+  python3 .claude/skills/magiclike-card-art/research/harness.py preflight <run>      # verify a round before judging
+  python3 .claude/skills/magiclike-card-art/research/harness.py sheet <run> <card>   # build blind contact sheet
+  python3 .claude/skills/magiclike-card-art/research/harness.py decode <run>         # reveal which label is control/treatment
+  python3 .claude/skills/magiclike-card-art/research/harness.py selftest             # check stack health (no pixflux)
 
 INVARIANTS enforced:
   - card MUST be unarted (no reference/.../art.png) and not in done_cards.txt
   - seeds.json lives at run ROOT (committed), never under _meta/ (gitignored)
   - both arms MUST share the identical seed pool
-  - the active candidate's variant is read from art-eval/variants/SKILL-<cand>-variant.md
+  - the active candidate's variant is read from research/variants/SKILL-<cand>-variant.md
     (committed; control/c4/c5/c6) and MUST differ from the control base by exactly
     that candidate's signature block. NOTE: the C2 variant file was lost to an early
     reset and is not committed; C2 is done, so the default candidate is C6 (the
@@ -31,16 +31,17 @@ INVARIANTS enforced:
 import sys, os, json, glob, re, random, hashlib
 from pathlib import Path
 
-ROOT     = Path(__file__).resolve().parent.parent
+HERE     = Path(__file__).resolve().parent          # the research dir (lives under the skill)
+ROOT     = next(p for p in HERE.parents if (p / "project.godot").exists())  # repo root
 CARDS    = ROOT / "reference/html-proto/cards"
-RUNS     = ROOT / "art-eval/runs"
-VARIANTS = ROOT / "art-eval/variants"
+RUNS     = HERE / "runs"
+VARIANTS = HERE / "variants"
 SHEETS   = ROOT / "docs/art-eval-sheets"
 
 CONTROL_SKILL = VARIANTS / "SKILL-control.md"
 
 # Which candidate-hypothesis variant this round tests. Set via env, e.g.
-#   ART_EVAL_CAND=c5 python3 art-eval/harness.py ...
+#   ART_EVAL_CAND=c5 python3 .claude/skills/magiclike-card-art/research/harness.py ...
 # Each candidate has a committed variant file + a unique signature phrase that
 # variant_ok() requires to be present (proves the treatment really differs from
 # control by the intended block, not by accident or a silent control-vs-control).
@@ -57,7 +58,7 @@ CAND_SIG      = {
 # candidate (e.g. C2) is a fresh, legitimate trial under another (C4) — different
 # treatment, memoryless agents, and producing art for a still-unarted card is the
 # whole point. So no-replacement applies WITHIN a candidate's run, not across.
-DONEFILE = ROOT / f"art-eval/done_{CAND}.txt"
+DONEFILE = HERE / f"done_{CAND}.txt"
 
 def stable_int(s: str) -> int:
     """Deterministic across machines/python versions (built-in hash() is not)."""
@@ -135,7 +136,7 @@ def label_map(card: str) -> dict:
 def variant_ok() -> tuple:
     """Return (ok, msg). Variant must be control + exactly the candidate's block."""
     if not VARIANT_FILE.exists() or not CONTROL_SKILL.exists():
-        return False, "missing committed skill snapshot(s) under art-eval/variants/"
+        return False, "missing committed skill snapshot(s) under research/variants/"
     if not CAND_SIG:
         return False, f"unknown candidate '{CAND}' (no signature registered)"
     ctrl = CONTROL_SKILL.read_text().splitlines()
@@ -204,7 +205,7 @@ def preflight(run: str):
     # shared path letting a decode read a prior call's leftover bytes. Billing
     # showed generations billed ~1:1 with files, so duplicates were still real
     # billed calls -- which doesn't distinguish the two. The in-memory helper
-    # (art-eval/gen_image.py) removes the local footgun; this check stays as a
+    # (research/gen_image.py) removes the local footgun; this check stays as a
     # cause-agnostic backstop. Hash, don't seed-match: the first twin had a
     # DIFFERENT seed than its mate, so a seed-keyed compare missed it.
     this_imgs = [(arm, g, hashlib.md5(g.read_bytes()).hexdigest())

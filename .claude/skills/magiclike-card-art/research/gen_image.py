@@ -16,8 +16,8 @@ same arm's output dir (it retries once with seed+1, then errors). Cross-arm
 / cross-run identity is still caught by `harness.py preflight`.
 
 Usage (one gen per call; keeps the agent's tweak-loop in control):
-  python3 art-eval/gen_image.py \
-     --card iron_statue --out art-eval/runs/<run>/arm_a \
+  python3 .claude/skills/magiclike-card-art/research/gen_image.py \
+     --card iron_statue --out .claude/skills/magiclike-card-art/research/runs/<run>/arm_a \
      --spec '{"gen":1,"seed":2059828219,"mode":"explore","parent":null,
               "prompt":"..."}'
 
@@ -31,8 +31,7 @@ auto-logged to manifest.jsonl):
 import sys, json, base64, subprocess, os, hashlib, argparse
 from PIL import Image
 
-TOKEN_FILE = os.path.join(os.path.dirname(__file__), "..",
-                          ".claude/skills/magiclike-card-art/pixellab-token")
+TOKEN_FILE = os.path.join(os.path.dirname(__file__), "..", "pixellab-token")
 
 
 def _call_pixflux(prompt: str, seed: int, guidance=None,
