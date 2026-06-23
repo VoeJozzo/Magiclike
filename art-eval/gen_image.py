@@ -37,7 +37,8 @@ TOKEN_FILE = os.path.join(os.path.dirname(__file__), "..",
 
 def _call_pixflux(prompt: str, seed: int, guidance=None,
                   init_b64=None, init_strength=None) -> bytes:
-    token = open(TOKEN_FILE).read().strip()
+    with open(TOKEN_FILE) as f:
+        token = f.read().strip()
     body = {
         "description": prompt,
         "image_size": {"width": 64, "height": 32},
@@ -75,7 +76,8 @@ def _existing_hashes(out: str) -> set:
     hs = set()
     for fn in os.listdir(out):
         if fn.endswith(".png") and "_8x" not in fn and "_seed" in fn:
-            hs.add(hashlib.md5(open(os.path.join(out, fn), "rb").read()).hexdigest())
+            with open(os.path.join(out, fn), "rb") as f:
+                hs.add(hashlib.md5(f.read()).hexdigest())
     return hs
 
 
@@ -90,7 +92,10 @@ def generate(card: str, out: str, spec: dict) -> str:
     guidance = spec.get("guidance")
     init_path = spec.get("init")
     init_strength = spec.get("init_strength")
-    init_b64 = base64.b64encode(open(init_path, "rb").read()).decode() if init_path else None
+    init_b64 = None
+    if init_path:
+        with open(init_path, "rb") as f:
+            init_b64 = base64.b64encode(f.read()).decode()
     kw = dict(guidance=guidance, init_b64=init_b64, init_strength=init_strength)
 
     prior = _existing_hashes(out)
