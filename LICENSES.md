@@ -39,7 +39,7 @@ schema later.
 
 ### pixellab — AI-generated pixel art
 
-- **Used for:** all 64×32 pixel-art card portraits under `reference/html-proto/cards/<tplId>/art.png` (~61 cards as of v1.0.144) and the per-color card frames being integrated on the `ui` branch
+- **Used for:** all 64×32 pixel-art card portraits under `reference/html-proto/cards/<tplId>/art.png` (~285 cards as of 2026-06-23, grown via the C2–C6 art-skill batches + a final breadth-posture production run) and the per-color card frames being integrated on the `ui` branch
 - **Source:** pixellab.ai
 - **License:** (user-managed account; check pixellab's terms of service for distribution rights — placeholder until exact terms are documented)
 
