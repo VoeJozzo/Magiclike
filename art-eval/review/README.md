@@ -1,5 +1,11 @@
 # Art-eval blind review applet
 
+> **This is the frozen experiment instance** (carries the per-card `DESC`/`ORDER`
+> from the C4–C6 rounds). The **canonical, generalized copy** lives at
+> `.claude/skills/magiclike-card-art/review-applet/` — make geometry/contract
+> changes there. The cell geometry here (`SCALE 6 / COLS 5 / CW 384 / CH 192`)
+> must stay in lockstep with `harness.build_sheet` and the skill copy.
+
 A zero-dependency, server-free reviewer for the A/B art contact sheets. Open
 `index.html` by double-clicking it (works over `file://` — no build server, no
 fetch, no canvas). One card per page; each frame is cropped live out of the

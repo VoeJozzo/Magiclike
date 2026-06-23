@@ -22,8 +22,11 @@ INVARIANTS enforced:
   - card MUST be unarted (no reference/.../art.png) and not in done_cards.txt
   - seeds.json lives at run ROOT (committed), never under _meta/ (gitignored)
   - both arms MUST share the identical seed pool
-  - the C2 variant is read from art-eval/variants/SKILL-c2-variant.md (committed)
-    and MUST differ from the control base by exactly the diagnosable-flaw paragraph
+  - the active candidate's variant is read from art-eval/variants/SKILL-<cand>-variant.md
+    (committed; control/c4/c5/c6) and MUST differ from the control base by exactly
+    that candidate's signature block. NOTE: the C2 variant file was lost to an early
+    reset and is not committed; C2 is done, so the default candidate is C6 (the
+    program winner) and selftest passes out of the box.
 """
 import sys, os, json, glob, re, random, hashlib
 from pathlib import Path
@@ -41,7 +44,7 @@ CONTROL_SKILL = VARIANTS / "SKILL-control.md"
 # Each candidate has a committed variant file + a unique signature phrase that
 # variant_ok() requires to be present (proves the treatment really differs from
 # control by the intended block, not by accident or a silent control-vs-control).
-CAND          = os.environ.get("ART_EVAL_CAND", "c2").lower()
+CAND          = os.environ.get("ART_EVAL_CAND", "c6").lower()  # c6 = program winner; c2's variant file was lost to a reset
 VARIANT_FILE  = VARIANTS / f"SKILL-{CAND}-variant.md"
 CAND_SIG      = {
     "c2": "diagnosable-flaw",
