@@ -1,5 +1,0 @@
-drain_life_gen_01_seed716703906.png
-
-Rationale: Cleanest mechanic-in-art enactment of Drain Life. A wine-purple necromancer stands on the left while a bold crimson arc of life-essence is torn from a kneeling, grey, withering victim on the right and curls into the caster's space -- the life *transfer* (the card's signature: drain victim + gain life) is the single readable shape, not just decoration. The crimson essence is the only light source, so color identity (black/crimson) is dead-on and the silhouette reads instantly at 64x32: caster | glowing arc | drained husk. The victim is convincingly drained-but-human grey (avoids the "second zombie" trap), giving clear contrast against the robed caster. Harmonizes with the black-removal anchors (doom_blade's chiaroscuro, blood_artist's single crimson pop).
-
-Runners-up: gen_09 (same concept, more symmetrical, but the essence reads as a vertical column/geyser rather than a connecting arc) and gen_07 (excellent moody palm-to-husk drain, slightly less legible at thumbnail size).

@@ -1,8 +1,0 @@
-furnace_roar_gen_08_seed1066354843.png
-
-Rationale: Furnace Roar is a sorcery that deals 5 damage to ALL creatures -- a board-wipe burn blast. The art must enact "one engulfing blast catches every creature." Gen 8 does both halves best:
-- The "roar"/blast: a brilliant white-hot detonation core blooms at center and radiates crimson/orange outward, reading as an explosive shockwave rather than a passive bonfire.
-- "all creatures": a clean, legible rank of distinct dark armored-warrior silhouettes spans the lower third, caught in the blaze with scattered embers at their feet -- the plurality of victims reads instantly at 64x32.
-It also harmonizes with the Pyroclasm/Char anchors (fire as the sole light source, deep shadow, saturated red identity). Strong central silhouette: bright blast-bloom above a row of dark figures.
-
-Close runners-up: gen 9 (most legible row of victims, but fire reads as backdrop more than blast); gen 1 (great radiating blast, figures smaller/less crisp); gen 5 (clean rank but fire is a curtain, not an outward blast).

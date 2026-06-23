@@ -1,5 +1,0 @@
-forest_guardian_gen_02_seed1277822034.png
-
-Rationale: Sharpest mechanic-in-art read of the spread. Forest Guardian's defining trait is Vigilance (3/5 sentinel that never lowers its guard), and this close-up makes the whole 64x32 frame an act of watching: a weathered grey-brown bark face with a lichen/moss brow and two enormous wide-open green eyes that read as unblinking and alert. The bark material is unambiguous, so it clearly reads as a Treefolk rather than a plain tree (the failure mode that swallowed gens 1 and 3 to the "tree" subject-prior). Strong single readable silhouette (a face filling the frame), clean green color identity, and the watchful-eyes motif enacts the keyword instead of merely decorating the forest theme.
-
-Runner-up: forest_guardian_gen_06_seed557022792.png -- best full-body "hulking forest guardian" composition, framed in an arch of canopy light, harmonizes with the forest_titan anchor; docked only because its single visible eye is faint and the body reads slightly generic-brute next to gen 2's pure vigilance beat.

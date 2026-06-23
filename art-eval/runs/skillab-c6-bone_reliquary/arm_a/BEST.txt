@@ -1,9 +1,0 @@
-bone_reliquary_gen_09_seed1428117109.png
-
-Rationale: Best overall enactment of the card. Bone Reliquary is an Artifact Land (Swamp) that taps for black mana, so the art has to read as a PLACE that radiates dark power, not a floating object. This frame nails all four axes:
-- Mechanic-in-art: the reliquary's glowing wine-purple/magenta relic (a skull behind the glass niche) IS the visible black-mana source; its light streaks across the still black water in a clear reflection. The glow does the work the rules text implies.
-- Bone content reads: a recognizable skull glows inside the shrine niche (where gens 1/3/4 drifted toward "gold chest", this one keeps the bone relic legible).
-- "Land"/location reading: the stone temple-niche altar sits on a mossy island ringed by dark swamp water, draped with hanging moss and silhouetted dead trees — a destination, not a sprite.
-- Color identity + set coherence: dusk-swamp blues/violets with a black-water mirror, harmonizing with the existing Swamp basic and Doom Blade's obsidian-violet palette.
-
-Strong, simple silhouette (the framed altar niche centered over its reflection). Runners-up: gen_06 (arched portal-shrine, gorgeous atmosphere but implicit bones) and gen_04 (balanced golden bone-casket on island with purple relic windows + reflection). gen_08 pushed the skull-face reading hardest (guidance 11) but came out murky/dark.

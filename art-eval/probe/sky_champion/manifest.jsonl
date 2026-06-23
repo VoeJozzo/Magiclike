@@ -1,2 +1,0 @@
-{"step": 1, "image": "step_00.png", "mask": "mask_01.png", "prompt": "open sky and distant green field at the horizon, soft dawn light", "negative": "pillar, beam, column, pole, sword, vertical stripe", "guidance": null}
-{"step": 2, "image": "step_01.png", "mask": "mask_02.png", "prompt": "lower body of a white-and-gold armored spirit warrior, two armored legs, greaves, hovering above the field", "negative": "pillar, beam, pole, single leg, stick", "guidance": null}

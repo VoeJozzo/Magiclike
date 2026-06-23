@@ -1,6 +1,0 @@
-devastation_tide_gen_08_seed638291456.png
-
-Rationale: Best mechanic-in-art enactment of the card's effect (bounce ALL opponents' creatures — i.e. a tide sweeping an army off the battlefield and carrying it away). A towering dark-cerulean wave looms on the right under a dramatic bruised/dawn storm sky, while in the foreground an armored soldier is clearly mid-fall, swept off his feet toward the viewer, and two more soldiers tumble in the flood at lower-right. The multi-figure sweep makes the "return them all" reading legible at 64x32, the strong foreground silhouette passes the silhouette test, and the deep-blue water palette with bright white foam harmonizes with the set's blue anchors (tide_charm, studious_research). It reaches for a specific, populated scene rather than a generic wave — exactly the diagnosable-detail bet the skill favors over a clean-but-empty roll.
-
-Runner-up: gen_05_seed913596967 (clean towering wave + three flung soldiers, but flatter palette).
-Honorable mention: gen_07_seed1937829354 (most beautiful teal barrel with figures tumbling inside the curl).

@@ -1,5 +1,0 @@
-vigorous_druid_gen_06_seed1209457640.png
-
-Rationale: Best mechanic-in-art of the spread. Vigorous Druid's ability is "tap: add GG (two green mana)," and this is the only frame that enacts the *doubling* literally and unambiguously — a hooded elf druid sits cross-legged with palms up, and TWO distinct, symmetric columns of bright lime-green mana rise, one from each open hand. The twin-stream symmetry reads as "two mana" at a glance. It also nails the set's green-druid vocabulary (deep old-growth forest, mossy floor, green glow as the sole light source) and harmonizes directly with the last_druid anchor (seated forest druid channeling green light). Strong centered silhouette that survives 64x32, proper color identity, serene character read.
-
-Runner-up: gen_01 (seated druid beside a single rising green mana-column) -- gorgeous and readable, but shows a single stream rather than the doubled output, so it enacts "makes mana" but not "makes TWO."

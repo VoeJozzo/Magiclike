@@ -1,8 +1,0 @@
-quickling_gen_08_seed1904029004.png
-
-Rationale: This is the only frame where the card's signature ETB mechanic -- bounce -- visibly HAPPENS. A clearly-winged blue faerie hovers airborne on the left (satisfying flying), while a dark orc creature is flung through the air on the right, breaking apart into a streaking trail of blue motes that arc back toward the faerie -- reading instantly as "the faerie's sudden arrival whisked that creature away." It enacts flash (sudden appearance), flying (faerie is airborne), and the bounce trigger all at once, with two cleanly separated subjects, a strong left/right silhouette, and correct blue color identity over a bright sky. Other strong frames (gen 9, gen 3) are more graceful but depict only flying-speed, not the bounce; per the mechanic-in-art principle, the frame that shows the rule wins. gen 8 is both clean and on-message.
-
-Runners-up:
-- gen 9 (seed 1726765554): beautiful flying character-note, faerie soaring with a cerulean energy-ribbon trail; depicts flying but not the bounce.
-- gen 3 (seed 1906016635): sleek faerie streaking across sky with a speed trail; strong "fast flying blue creature" read, no bounce.
-- gen 1 (seed 2143906762): faerie firing blue magic at a large armored knight; clear two-subject victim story but the dissolve/bounce doesn't fully land.
