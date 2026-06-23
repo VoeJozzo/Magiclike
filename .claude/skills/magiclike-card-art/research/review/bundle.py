@@ -14,7 +14,7 @@ from pathlib import Path
 
 CAND = (sys.argv[1] if len(sys.argv) > 1 else "c4").lower()
 HERE = Path(__file__).resolve().parent
-ROOT = HERE.parent.parent
+ROOT = next(p for p in HERE.parents if (p / "project.godot").exists())
 SHEETS = ROOT / "docs" / "art-eval-sheets"
 
 html = (HERE / "index.html").read_text()

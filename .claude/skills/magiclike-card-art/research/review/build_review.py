@@ -22,7 +22,7 @@ REMAINING = "--remaining" in sys.argv[1:]   # all sheeted cards NOT already judg
 CAND = (ARGS[0] if ARGS else "c4").lower()
 HERE = Path(__file__).resolve().parent
 ART = HERE.parent                      # research/
-ROOT = ART.parent                      # repo root
+ROOT = next(p for p in HERE.parents if (p / "project.godot").exists())  # repo root
 RUNS = ART / "runs"
 SHEETS = ROOT / "docs" / "art-eval-sheets"
 
