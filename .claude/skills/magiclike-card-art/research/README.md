@@ -1,11 +1,14 @@
 # Card-art skill — the tuning experiment, in brief
 
 A one-time blind A/B program (**C2–C6**) tuned the `magiclike-card-art` skill.
-The techniques it validated are baked into [`../SKILL.md`](../SKILL.md); this is
-the short record of *what was tried*. Full raw detail — per-card verdicts, the
-harness, every skill-variant snapshot, all generated frames — is recoverable
-from git history and the off-repo archive zip. Only `gen_image.py` (the live
-generation helper the skill uses) is kept here alongside this note.
+The techniques it validated are baked into [`../SKILL.md`](../SKILL.md); this page
+is the short record of *what was tried*.
+
+Kept alongside it: the working toolkit — `gen_image.py` (generation), `harness.py`
+(A/B orchestration + contact-sheet builder), `../review-applet/` (blind reviewer),
+plus the `variants/` skill snapshots and `verdicts_*.json` the harness/applet read.
+Trimmed away (recoverable from git history + the off-repo archive): the verbose
+per-round ledgers, working notes, and the raw generated frames.
 
 ## Method
 For each card: a **control** arm (skill as-is) and a **treatment** arm (skill +
