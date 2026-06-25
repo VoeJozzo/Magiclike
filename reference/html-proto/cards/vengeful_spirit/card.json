@@ -1,6 +1,6 @@
 {
   "card_id": "vengeful_spirit",
-  "art": "👻",
+  "art": "art.png",
   "cost": {
     "W": 1,
     "C": 2

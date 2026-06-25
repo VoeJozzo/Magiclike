@@ -1,6 +1,6 @@
 {
   "card_id": "freeze_moment",
-  "art": "❄",
+  "art": "art.png",
   "cost": {
     "U": 1
   },

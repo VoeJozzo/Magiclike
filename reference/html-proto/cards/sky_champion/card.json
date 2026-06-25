@@ -1,6 +1,6 @@
 {
   "card_id": "sky_champion",
-  "art": "\ud83d\udd4a\ufe0f",
+  "art": "art.png",
   "cost": {
     "W": 1,
     "C": 2

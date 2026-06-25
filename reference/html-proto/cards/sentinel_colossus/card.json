@@ -1,7 +1,7 @@
 {
   "card_id": "sentinel_colossus",
   "name": "Sentinel Colossus",
-  "art": "\ud83d\uddfd",
+  "art": "art.png",
   "cost": {
     "C": 6
   },

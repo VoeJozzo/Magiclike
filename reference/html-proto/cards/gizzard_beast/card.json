@@ -1,6 +1,6 @@
 {
   "card_id": "gizzard_beast",
-  "art": "\ud83e\udd95",
+  "art": "art.png",
   "cost": {
     "G": 2,
     "C": 4

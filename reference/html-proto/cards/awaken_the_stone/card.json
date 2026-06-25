@@ -1,6 +1,6 @@
 {
   "card_id": "awaken_the_stone",
-  "art": "⏰",
+  "art": "art.png",
   "cost": {
     "U": 1
   },

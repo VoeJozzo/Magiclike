@@ -1,7 +1,7 @@
 {
   "card_id": "verdant_verge",
   "name": "Verdant Verge",
-  "art": "🍃",
+  "art": "art.png",
   "types": [
     "Artifact",
     "Land",

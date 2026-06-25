@@ -1,7 +1,7 @@
 {
   "card_id": "deepseam_quarry",
   "name": "Deepseam Quarry",
-  "art": "⛏",
+  "art": "art.png",
   "types": [
     "Land"
   ],

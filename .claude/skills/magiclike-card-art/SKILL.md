@@ -223,6 +223,8 @@ Response shape: `{"usage": {...}, "image": {"type": "base64", "base64": "..."}}`
 
 Decode the base64 and write to `reference/html-proto/cards/<tplId>/art.png`.
 
+> **Writing the PNG is NOT enough — wire the card to it, or it won't display.** The proto resolves card art from the card.json **`art` field**, not from the presence of a file: `resolveArtPath` only renders an image when `art` is a bare image filename (`"art.png"`); any other value — including the default **emoji placeholder** — passes through and renders as that emoji. So after saving the PNG, **edit `reference/html-proto/cards/<tplId>/card.json` and set `"art": "art.png"`** (replacing the emoji). Skipping this leaves the portrait on disk but invisible in-game. (This exact gap once left 110 placed portraits unshown.)
+
 > **On a web / ephemeral container, PUSH or lose it.** A cloud session's container resets unpredictably and discards anything not pushed to the GitHub branch — committing is *not* enough. Run `git push` after every keeper (or batch) you need to survive. On local hardware the normal commit flow is fine; this rule is specifically for ephemeral remotes.
 
 Then append the path to `.git/info/exclude` (the worktree-shared local-only ignore) so the work-in-progress can't accidentally be committed:
@@ -373,7 +375,7 @@ Pixflux generates whole images; `/v2/inpaint` *edits* them — and this is where
 
 ## One-breath summary
 
-Read the card → study 1–2 anchor arts → propose three different *visions*, each with mechanic-enactment + silhouette + intent + anchor → user picks → write prompt using subject/pose/context/background structure, no banned phrases → show prompt → generate via pixflux at 64×32 opaque → save to `reference/html-proto/cards/<tplId>/art.png` → add to `.git/info/exclude` → show user → iterate without defending.
+Read the card → study 1–2 anchor arts → propose three different *visions*, each with mechanic-enactment + silhouette + intent + anchor → user picks → write prompt using subject/pose/context/background structure, no banned phrases → show prompt → generate via pixflux at 64×32 opaque → save to `reference/html-proto/cards/<tplId>/art.png` **and set that card.json's `art` field to `"art.png"`** → add to `.git/info/exclude` → show user → iterate without defending.
 
 
 ## Explore wide — breadth over depth; don't converge early
