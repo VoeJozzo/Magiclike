@@ -254,8 +254,6 @@ A small inline preview is genuinely hard to evaluate for a 64×32 image. If the 
 
 This isn't just etiquette — it's the measured lever. Agent-*solo* selection (self-diagnose, self-pick) was A/B-tested twice (candidates C4 and C5) and came back **null**; the human-in-the-loop is what produces keepers. Don't try to be autonomous in selection or direction.
 
-**For a big spread, use the review applet** at `review-applet/` in this skill folder. It builds a zero-dependency, `file://`-openable reviewer (one card per page; ①/Tie/② + click-to-keep + notes, verdicts export as JSON) and — for A/B work — preserves the blind by cropping frames live out of a pre-rendered contact sheet, so neither reviewer nor assistant sees which arm a label maps to. See its README to regenerate for a new batch.
-
 Then offer:
 
 - **Keep** — promote and finalize the approved art:

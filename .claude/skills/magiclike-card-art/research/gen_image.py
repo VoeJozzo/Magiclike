@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Clean pixflux generation helper for the art-eval A/B harness.
+"""Clean pixflux generation helper for card-art generation.
 
 WHY THIS EXISTS: the skill brief's literal `curl -o /tmp/pixflux_resp.json`
 writes EVERY call to one shared path. A failed/empty curl, or a race, then

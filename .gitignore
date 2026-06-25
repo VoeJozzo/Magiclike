@@ -23,6 +23,6 @@ Thumbs.db
 # Claude Code worktrees (each holds a full repo copy — never commit).
 .claude/worktrees/
 
-# Python bytecode cache (e.g. the card-art research harness imported as a module).
+# Python bytecode cache.
 __pycache__/
 *.pyc
