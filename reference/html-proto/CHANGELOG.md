@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.1.56`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.1.57`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -2377,3 +2377,19 @@ check the reviewer noted was missing; test_trigger_closed_window_drain.js drops
 its spent synthetic altar after it queues the trigger (the now-enumerated ability
 would otherwise correctly suppress the auto-pass into combat). Suite 140 files /
 2597 assertions green, lint clean.
+
+v2.1.57: defer trailing effects after a human search/discard (audit A4-23
+leg-1; Joe design ruling GO 2026-07-02 — strict in-order resolution per canon
+§704.2). Effects AFTER a human-pausing effect (tutor search / forced discard)
+used to run BEFORE the human's pick — Demonic Tutor's caster lost 2 life before
+choosing the card. Fix generalizes the edict (A4-7) deferral into one
+human-pause contract: `maybeDeferTrailingForHumanPrompt` stashes trailing
+effects + deferCtx when a human prompt opens (wired into all three resolution
+loops — spell / trigger / activated-ability); `resumeTrailingEffects` replays
+them after the pick (re-deferring on a chained pause; doDiscard replays once
+after the LAST discard; doEdictChoice unified onto it, behavior-identical).
+The AI path is unchanged (no prompt → resolves inline, order preserved). New
+test_a4_23_trailing_defer.js (red→green: tutor life-loss defers, discard
+trailing fires once, AI inline); test_drain_lifeloss.js re-pinned to post-pick
+timing. Salvaged from the pre-outage branch (commit 20fd17b5), cherry-picked
+onto the recovery lineage. Suite 142 files / 2626 assertions green, lint clean.

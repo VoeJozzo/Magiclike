@@ -407,6 +407,10 @@ const CATEGORY_A = [
   // A5-15 — the out-of-charges Stapler rip routes battlefield removal through
   // leave-play discipline (removeFromCombat + clearRestrictionsFromSource).
   'test_a5_15_charge_rip_leave_play.js',
+  // A4-23 leg-1 — effects after a HUMAN search/discard defer until the pick
+  // (Demonic Tutor's "lose 2 life"; discard trailing replays once after the
+  // last discard); AI path resolves inline, unchanged.
+  'test_a4_23_trailing_defer.js',
 ];
 
 const TESTS_DIR = __dirname;
