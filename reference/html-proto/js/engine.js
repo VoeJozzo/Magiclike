@@ -340,6 +340,21 @@ function deckColorsFromSlots(slots) {
   return [...set];
 }
 
+// Runtime analog of deckColorsFromSlots for a LIVE side (player or opp): unions
+// the side's cards across all zones into pseudo-slots and reads their colors.
+// Used to gate land-color stickers on the in-game Archdemon-bargain path the
+// SAME way deck construction gates them — live cards carry no deckColors field,
+// so this recovers the side's colors from its actual cards (opp has no slots).
+function deckColorsForSide(state, side) {
+  const p = state && state[side];
+  if (!p) return [];
+  const slots = [];
+  for (const zone of ['library', 'hand', 'battlefield', 'graveyard', 'exile']) {
+    for (const c of (p[zone] || [])) slots.push({ tplId: c.tplId });
+  }
+  return deckColorsFromSlots(slots);
+}
+
 // Build a placeholder target array for legality probing — "could this be
 // cast right now?" without committing to a real target. Returns null if
 // any slot has no valid target. Multi-target spells need one entry per
@@ -1764,7 +1779,16 @@ function castableSpellEntries(who) {
 // color for a choose-source (null for fixed sources, which add `amounts`
 // wholesale). Taps hold live card references — execute the plan immediately
 // (it doesn't survive intervening state changes).
-function solveManaPayment(who, cost, excludeIid) {
+// `wantPlan` false = feasibility only (legality checks): return as soon as
+// tryAssign proves payability, skipping the O(taps^2) plan-trim that only
+// payMana consumes. canPayPotential runs per castable spell/ability in
+// getLegalActions, so this trims real work off the AI's hot path.
+// CONTRACT (load-bearing): the wantPlan=false return is feasibility-only —
+// {cost, taps:null}, NOT an executable plan. Only canPayPotential (which reads
+// `!== null`) may pass false. Every payer (payMana, doOptionalCost) must OMIT
+// the arg so it defaults true and gets the trimmed taps; a payer that passed
+// false would crash on plan.taps — loud (a TypeError), never silent miss-pay.
+function solveManaPayment(who, cost, excludeIid, wantPlan = true) {
   if (!cost) return { cost: null, taps: [] };
   // Invariant: colors_of_source costs must already be source-resolved by the caller.
   cost = resolvedManaCost(cost, null, who);
@@ -1804,6 +1828,9 @@ function solveManaPayment(who, cost, excludeIid) {
     return false;
   };
   if (!tryAssign(0, base)) return null;
+  // Feasibility established. Legality callers want only the yes/no, so stop
+  // before the trim (taps is null — no caller of the !wantPlan path reads it).
+  if (!wantPlan) return { cost, taps: null };
   // The fold proved payability with EVERY source tapped; trim the taps the
   // payment doesn't need. Trim order encodes the old payer's observable
   // preferences: drop CHOOSE sources first (keep flexible sources untapped —
@@ -1836,7 +1863,7 @@ function solveManaPayment(who, cost, excludeIid) {
 // Can `who` pay `cost` from pool + untapped sources? Thin wrapper over the
 // solver — legality and payment share one brain and cannot disagree (A1-2).
 function canPayPotential(who, cost, excludeIid) {
-  return solveManaPayment(who, cost, excludeIid) !== null;
+  return solveManaPayment(who, cost, excludeIid, false) !== null;
 }
 // Pay `cost`: solve, then execute the plan — tap exactly the planned sources
 // (each choose-source produces its assigned color), then deduct the resolved
@@ -3631,7 +3658,7 @@ const EFFECT_SCHEMA = {
     if (!ZONES.includes(e.to_zone)) return 'move_card bad/missing to_zone';
     if (!isSupportedMoveCardPair(e.from_zone, e.to_zone)) return 'move_card unsupported zone pair';
     const allowed = MOVE_CARD_SELECTORS[e.from_zone + '->' + e.to_zone];
-    if (allowed && !allowed.includes(e.selector != null ? e.selector : null)) {
+    if (allowed && !allowed.includes(e.selector ?? null)) {
       return 'move_card selector "' + e.selector + '" unsupported for '
         + e.from_zone + '->' + e.to_zone + ' (want ' + allowed.filter(s => s).join('|') + ')';
     }

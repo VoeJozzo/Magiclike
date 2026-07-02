@@ -245,6 +245,10 @@ const CATEGORY_A = [
   // cost_mod/remove_keyword included; scarified/subtype/empower excluded)
   // and each pick now respects rarity weights via pickWeightedSticker.
   'test_bargain_weighted_pool.js',
+  // Bargain deck-color gate (Joe ruling 2026-06-14) — the in-game Archdemon
+  // sticker reward respects the stickered side's deck colors (deckColorsForSide),
+  // matching deck construction, so it can't splash a land an off-deck color.
+  'test_bargain_deck_color_gate.js',
   // Audit A1-2 — payer unification: canPayPotential and payMana share ONE
   // solver (solveManaPayment); the payer executes the checker's solution,
   // payment is atomic (full payment or zero mutation, never half-applied).
