@@ -39,9 +39,18 @@ schema later.
 
 ### pixellab — AI-generated pixel art
 
-- **Used for:** all 64×32 pixel-art card portraits under `reference/html-proto/cards/<tplId>/art.png` (~285 cards as of 2026-06-23, grown via the C2–C6 art-skill batches + a final breadth-posture production run) and the per-color card frames being integrated on the `ui` branch
+- **Used for:** all 64×32 pixel-art card portraits under `reference/html-proto/cards/<tplId>/art.png` (~285 cards as of 2026-06-23, grown via the C2–C6 art-skill batches + a final breadth-posture production run; **except** frostbite_mage + trained_armodon, whose active portraits are OpenAI-generated — see the next entry, with the pixellab versions stashed under those cards' `alts/`) and the per-color card frames being integrated on the `ui` branch
 - **Source:** pixellab.ai
 - **License:** (user-managed account; check pixellab's terms of service for distribution rights — placeholder until exact terms are documented)
+
+### OpenAI integrated image generation — card art
+
+- **Locations in tree:** `reference/html-proto/cards/frostbite_mage/art.png`, `reference/html-proto/cards/trained_armodon/art.png`
+- **Used for:** 64×32 pixel-art portraits generated for individual cards (adopted from PR #124 per Joe's side-by-side pick, 2026-07-02)
+- **Source:** OpenAI's integrated image generation system available through ChatGPT (Thaumaturge-ChatGPT pipeline)
+- **License:** project-owned generated output supplied by the project owner
+- **Prompt record:** `.claude/skills/magiclike-card-art/references/claude-prompts.txt` (the "ChatGPT (GPT-5.5) pipeline records" section)
+- **Frostbite Mage production note:** Prompt iteration and analysis were performed with ChatGPT (GPT-5.5). Images were generated using OpenAI's integrated image generation system available through ChatGPT. Generated images were then downscaled to 64×32 using K-Means Clustering and Lanczos/Bilinear Resampling.
 
 ### Almendra (Google Fonts) — fantasy serif
 

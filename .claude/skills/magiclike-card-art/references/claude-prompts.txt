@@ -311,3 +311,111 @@ Forest: A dense old-growth forest interior glowing with warm golden light, tall 
 
 Furnace Roar: Wide aftermath of a firestorm: a scorched black battlefield strewn with the charred, smoldering silhouettes of fallen creatures, several still standing as crumbling ash-figures wreathed in dying orange flame and rising smoke. Drifting embers glow against the dark. The only source of light is the smoldering wreckage. The background is a furnace-orange heat-shimmer sky over distant burning ruins.  [seed: 73672669, text_guidance_scale: 8, no_background: false, image_size: 64x32]
 
+
+
+=== ChatGPT (GPT-5.5) pipeline records — adopted Frostbite Mage + Trained Armodon portraits (PR #124, folded in 2026-07-02) ===
+
+Frostbite Mage:
+
+Fantasy concept art. Frost wizard casting a spell.
+
+Single character. The wizard is the overwhelming focal point of the image.
+
+The wizard occupies approximately 80-85% of the image height. The camera is close to the character. The character dominates the composition.
+
+Strong readable silhouette.
+
+The image is designed around large value masses and strong value separation.
+
+The face is composed of four distinct value regions:
+
+* very dark hood shadow
+* dark eye region
+* medium skin tones
+* bright white beard
+
+Each value region forms a large readable shape.
+
+The eye region is a distinct dark band beneath the hood. Bright blue eyes are clearly visible inside the dark eye region.
+
+The wizard is an older man with a large white beard and dark blue hooded robes.
+
+The beard forms one large bright shape.
+
+The hood forms one large dark shape.
+
+The robe is composed of large shadow masses and large lighting masses.
+
+Strong separation between:
+
+* hood and face
+* face and beard
+* beard and robe
+* hand and robe
+* spell and background
+
+Large dramatic robe folds. Large gradients. Large lighting transitions.
+
+No fine texture.
+
+No embroidery.
+
+No filigree.
+
+No fur texture.
+
+No tiny accessories.
+
+No visual noise.
+
+The wizard holds a staff topped with a single large crystal.
+
+The crystal is readable as a single dominant shape.
+
+The casting hand is oversized and clearly visible.
+
+The ice spell is a single geometric blast emerging from the hand.
+
+The spell contains large value regions rather than many small details.
+
+Large snowflake symbol at the center of the spell.
+
+Background is extremely simple.
+
+Snowy plain.
+
+Distant mountains rendered as large atmospheric shapes.
+
+Large value masses only.
+
+High contrast between character and environment.
+
+Epic fantasy illustration.
+
+Rich rendering.
+
+Strong readability at thumbnail size.
+
+Designed to remain recognizable when reduced to low-resolution pixel art.
+
+No text.
+
+No logos.
+
+No watermark.
+
+2:1 aspect ratio.
+
+Production note: Prompt iteration and analysis were performed with ChatGPT (GPT-5.5). Images were generated using OpenAI's integrated image generation system available through ChatGPT. Generated images were then downscaled to 64*32 using K-Means Clustering and Lanczos/Bilinear Resampling.
+
+Trained Armodon: A powerful, armored beast charges head-on across a grassy plain, its massive tusks and angular face framed by a vigorous dust storm, creating a dynamic, high-impact composition. The creature, a mixture of rhino, elephant, and boar, exudes strength and menace through its jagged, stone-like armor, cracked ivory tusks, and intense, glaring eyes, while vivid earth tones and dramatic lighting bring the scene to life against a bright, painterly sky.
+
+V3 processing note:
+
+1. Start with source image.
+2. Resize to 64x32 using Lanczos resampling.
+3. Apply one PIL `ImageFilter.SHARPEN` pass.
+4. Save the raw 64x32 PNG.
+5. For preview only, scale up with nearest-neighbor.
+
+PIL sharpen is Pillow's built-in sharpening filter. It is not the same as the earlier HTML pixelizer settings; this V3 sheet used a quick experimental transform.
