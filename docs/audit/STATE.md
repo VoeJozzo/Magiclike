@@ -4,7 +4,7 @@
 > reads the **Armed** line; the runner reads/writes the queue table. Contract:
 > [`docs/plans/plan-proto-audit.md`](../plans/plan-proto-audit.md).
 
-Armed: yes
+Armed: no
 
 ## Branch model (adaptation, Joe 2026-06-10)
 
@@ -123,4 +123,33 @@ Status: **COMPLETE** (2026-06-10 ~11:20, 224 min, 7,592 mutants). Overall score 
 - 2026-06-12 ~03:25Z: chunk-9 ship batch MERGED (PR #131, v2.1.44, suite ->2348: A9-4 future-version guard, A9-5 picklog completion-counting, A9-6 comment cluster + A9-9 invariant rider, A9-7 canon endless-sectors; run-meta wiki page landed). A9 ballots posted (4686883555/612/670). CHUNKS 10 + 11 claimed @ 04a925f, running in PARALLEL (10: card-text Tier-1 deep read; 11: Tier-3 JSON sweep - checklist builder -> Haiku batch fan-out -> judge verification). 23:10 local; both fit comfortably before pencils-down.
 - 2026-06-12 ~04:55Z: chunk 11 DONE (Tier-3 sweep: 297/297 cards via checklist-builder -> 15 Haiku batches -> judge verification; 13 anomalies -> 13 FALSE-POSITIVES = the pool is conformance-clean, credit the campaign's boot-validation arms; the 13 FPs recorded as a vocabulary cheat-sheet). One finding A11-1 (P4 ship): slot/effect-level target strings validated against NOTHING - typo = silently uncastable card. Self-QA FIX-THEN-SHIP: it FALSIFIED the supervisor's original A11-1 framing (mislocated case, inverted boot-rejection logic) - rewritten + calibration datum recorded (judges verify claims; QA catches synthesis). CHUNK 10: deep read DONE (9 findings: F1 lying picker labels P3, F2 Mercurial face advertises 2 nonexistent abilities P3, F3 tilde leak + double-period P3, F4-F9 P4/trivia; archetype table ZERO gaps over 117 classifications; card_text_test pins one bug F5); refuters on F1/2/3 running. Queue table updated to the true 297 count.
 - 2026-06-12 ~05:50Z: chunk 10 DONE - **ALL 11 CHUNKS COMPLETE. THE AUDIT SWEEP IS FINISHED.** Chunk 10: 9 findings (A10-1 lying picker labels P3 - refuter attack BACKFIRED, cost-lie vanilla-reachable via deepseam_quarry; A10-2 Mercurial face advertises 2 nonexistent abilities + the Repertoire popup never renders; A10-3 tilde leak + universal double period, render.js:264 correctly excluded; A10-4 empty subject live; A10-5 test-pinned grammar; A10-6/7 latent parks; A10-8 guard drift; A10-9 trivia). 3 refuters (1 confirmed / 2 modified / 0 refuted); self-QA FIX-THEN-SHIP -> 3 fixes applied (A10-9 evidence field + location line, pumpSelf/addCounterSelf naming). 7 ship / 2 park; ZERO stage - no ballots needed (all text/display, no game-outcome changes). INDEX rows added. NEXT: chunk-10 ship batch (7 items, one text-truthfulness PR + card-text wiki page), then the campaign-complete NIGHTLY + inbox wrap.
+- 2026-07-02 (Fable 5, post-export-control return): **CAMPAIGN CONCLUDED — final entry.**
+  CORRECTION of the ~06:15Z entry below: it was a stale-context resume — the chunk-10 ship
+  batch it set out to rebuild had ALREADY shipped 2026-06-13/14 as **v2.1.45 (commit
+  3c22577d)** on the recovery lineage (`Audit-Exit-Recovery-Curated`, built June 13–21 by
+  Opus + Joe, unknown to the resumed session). `audit/fix-chunk10-ships-v2` was never needed
+  (deleted, 0 commits). Lesson for any resumed session: diff this ledger's claims against
+  live `git fetch` + `gh pr list` before acting on them.
+  RECONCILIATION (this session): Fable ran an independent 8-dimension adversarial review of
+  the recovery lineage — **zero new P1/P2**; hygiene defects found + fixed (fabricated
+  assertion counts; v2.1.50's "stable across 25 runs" claim was FALSE — the a4-steal flake
+  was real at ~1-in-7 and is de-flaked in v2.1.51, verified 15/15 isolated; stale INDEX rows
+  corrected in this commit). Landed on the exit branch: PR #136 → v2.1.51/52 (renumbered
+  55/56→51/52), PR #134 → v2.1.53–56 (ChatGPT's P1 adjudicated UPHELD — the permaBuffs load
+  migration RESTORED, released dev v2.1.18 still writes slot.permaBuffs; P2 parked to BACKLOG
+  per Joe), PR #138 → v2.1.57 (the salvaged pre-outage A4-23 leg-1, Joe design ruling GO).
+  Final tip verified: suite 142 files / 2626 assertions / 0 failed; lint clean; selfplay 500
+  games 0 crashes / 0 runaway / 0 illegal actions. Exit PR #133 refreshed (163 files,
+  v2.1.57); awaiting Joe's playtest sign-off + ultimate review → dev.
+  BALLOTS: all adjudicated (June); the only open design work is the Stackable classification
+  pass (docs/plans/plan-stackable.md §4/§6, Joe-led).
+  RETIRED (Joe's call 2026-07-02): Armed → no (line above); both OS scheduled tasks deleted —
+  "Magiclike Audit Runner" (23:00 boop.ps1) and "Magiclike Audit Nightly Machine" (09:00
+  nightly-machine.ps1, which pointed into the workshop worktree slated for removal anyway).
+  Definitions preserved at `~/.config/magiclike/recovery-2026-07-02/task-*.xml` alongside the
+  pre-cleanup rollback ledger (all 104 branch SHAs + worktree list; notably
+  `audit/fix-chunk10-ships` = f3a31a29 — the dead builder's stash, deleted not tagged
+  [node_modules bloat], reflog-recoverable ~90 days).
+  PR #98 closes unmerged (Joe's call): the campaign record lives on this branch + the PR
+  thread; closed as process-complete, not abandoned.
 - 2026-07-02 ~06:15Z: RESUME AFTER 3-WEEK MODEL OUTAGE. Fable 5 became unavailable mid-build 2026-06-12 (the chunk-10 ship builder hung ~26h then died with a model error); scheduled tasks were disabled 2026-06-13 and stay disabled pending Joe's re-arm decision; no boops ran; dev untouched; inbox unchanged (0 new VoeJozzo comments). Session resumed on Opus 4.8 with full context. Cleanup: stale runner.lock removed; the dead builder's partial tree (7 files) preserved as a WIP commit on local branch audit/fix-chunk10-ships; workshop restored clean to audit/integration @ 04a925f. The 'ghost processes' Joe saw were the Claude Desktop app's Electron children + the peer bot's idle Codex runtime - nothing campaign-related was running. IN FLIGHT: final ship batch REBUILD (audit/fix-chunk10-ships-v2, A10-1/2/3/4/5/8/9 + A11-1, -> v2.1.45) + card-text wiki redraft (temp copy evaporated). Then: campaign-complete NIGHTLY + inbox wrap. Ballot queue unchanged: chunk-5 x9, A7-1/2/3, A8-5, A9-1+10/2/3, Stackable Q1-Q4 + classification pass.
