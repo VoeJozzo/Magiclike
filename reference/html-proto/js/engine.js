@@ -209,10 +209,8 @@ function mergeSpliceData(base, staple) {
   const remappedRolls = (staple.empowerRolls || []).map(roll =>
     remapEmpowerRollForStaple(roll, baseIsCreature, stapleIsCreature, baseIsPermanent,
                               priorMergedEffectCount, priorMergedTriggerCount, priorMergedAbilityCount));
-  // A5-6/A5-7: permaBuffs is retired. Elystra's buffs are now stat_boost/kw_*
-  // STICKERS, so they merge for free through the `stickers` concat above — the
-  // old object-vs-array permaBuffs concat (which expected a list nothing
-  // produced, silently dropping the real object-shaped buffs) is gone.
+  // Elystra's permanent buffs are stat_boost/kw_* stickers, so they merge for
+  // free through the `stickers` concat above — no separate buff field to merge.
   return {
     stapledTpls: priorStaples.concat([staple.tplId]),
     stickers: (base.stickers || []).concat(staple.stickers || []),
@@ -256,17 +254,41 @@ function manaAbilityCostIsTrivial(ab) {
   for (const k of Object.keys(ab.cost)) { if (k !== 'tap') return false; }
   return true;
 }
-// True iff `ab` is an add_mana ability the auto-payer / tap lane may use.
+// True iff `ab` is a MANA ABILITY (canon §705): it produces mana and REQUIRES NO
+// TARGET. Mana abilities resolve off-stack, ignore the `stackable` field (the
+// fast-path is hardcoded; see isStackable), and are legal whenever their cost
+// can be paid — regardless of HOW costly that is. TARGETING — not effect-purity
+// or cost — is the discriminator: an untargeted rider rides along fine ("T: add
+// G, gain 1 life" is still a mana ability), but a TARGETED ability ("T: add G,
+// +1/+1 target creature") is NOT — it takes a target and must route through the
+// normal activated-ability / stackable path. (Cost-triviality is a SEPARATE axis
+// gating only the AUTO-PAYER — see isAutoUsableManaAbility — not whether `ab` is
+// a mana ability: a sacrifice/mana-cost mana ability is still off-stack.) The
+// effects[0] check both requires mana to lead (manaEffectColors reads effects[0])
+// AND guards the deref, so an empty effects[] is "not a mana ability", not a
+// crash. The no-target check is inlined rather than delegated to objectNeedsTarget
+// because this helper lives in the file's pre-IIFE prelude (a cluster of pure
+// classifiers), and prelude functions can't reference IIFE-internal bindings like
+// objectNeedsTarget — see produceMana for the same constraint. It mirrors
+// objectNeedsTarget/effectNeedsTarget exactly.
+function isManaAbility(ab) {
+  if (!ab || !Array.isArray(ab.effects) || !ab.effects[0]) return false;
+  if (ab.effects[0].kind !== 'add_mana') return false;
+  if (ab.target) return false;
+  if (Array.isArray(ab.target_slots) && ab.target_slots.length > 0) return false;
+  return !ab.effects.some(e => e && (e.target || e.target_slot != null));
+}
+// True iff `ab` is a mana ability the auto-payer / tap lane may use: a mana
+// ability with a trivial (tap-only) cost the solver can pay on its own.
 function isAutoUsableManaAbility(ab) {
-  return !!(ab && ab.effects && ab.effects[0] && ab.effects[0].kind === 'add_mana' && manaAbilityCostIsTrivial(ab));
+  return isManaAbility(ab) && manaAbilityCostIsTrivial(ab);
 }
 
-// The tap-for-mana ability on a permanent (cost.tap + add_mana, trivial cost), or null.
+// The tap-for-mana ability on a permanent (cost.tap + auto-usable mana), or null.
 function manaAbilityOf(card) {
   if (!card || !Array.isArray(card.abilities)) return null;
   return card.abilities.find(ab => ab && ab.cost && ab.cost.tap
-    && ab.effects && ab.effects[0] && ab.effects[0].kind === 'add_mana'
-    && manaAbilityCostIsTrivial(ab)) || null;
+    && isAutoUsableManaAbility(ab)) || null;
 }
 // Colors an add_mana effect can produce ({choose} or {amounts}).
 function manaEffectColors(eff) {
@@ -390,6 +412,26 @@ const COLORS = ['W','U','B','R','G'];
 let G = null;
 let nextIid = 1;
 let listeners = [];
+
+// Add the mana an add_mana-shaped effect produces to `who`'s pool, and return
+// the log fragment of what was added ("{G}" or "{B}{B}{B}"). THE single source
+// of truth for the {choose}/{amounts} → pool mutation — shared by the add_mana
+// effect handler and the tap-for-mana lane (each logs its own framing).
+// `colorChoice` is the resolved pick for a {choose} effect (UI/AI); absent or
+// illegal → the first option. (Lives INSIDE the ENGINE IIFE — unlike the pure
+// mana classifiers in the prelude above — because it touches engine state: `G`
+// and `COLORS` are IIFE-internal and a prelude function couldn't reach them.)
+function produceMana(who, eff, colorChoice) {
+  if (eff.choose) {
+    const opts = eff.choose === 'any' ? COLORS : eff.choose;
+    const c = (colorChoice && opts.includes(colorChoice)) ? colorChoice : opts[0];
+    G[who].mana[c]++;
+    return `{${c}}`;
+  }
+  const am = eff.amounts || {};
+  for (const k of Object.keys(am)) G[who].mana[k] += am[k];
+  return Object.entries(am).map(([k, n]) => `{${k}}`.repeat(n)).join('');
+}
 
 // Registry of "player owes a decision" modal types.
 //
@@ -656,7 +698,7 @@ function computeNextFreeSlot(merged) {
   let maxSlot = -1;
   function visit(eff) {
     if (!eff) return;
-    if (eff.target && eff.target !== 'self') {
+    if (eff.target) {
       maxSlot = Math.max(maxSlot, eff.target_slot || 0);
     }
   }
@@ -676,7 +718,7 @@ function remapEffectSlots(effects, offset) {
   if (!Array.isArray(effects)) return effects;
   return effects.map(e => {
     const copy = {...e};
-    if (copy.target && copy.target !== 'self') {
+    if (copy.target) {
       copy.target_slot = (e.target_slot || 0) + offset;
     }
     return copy;
@@ -840,8 +882,7 @@ function makeCard(tplId, stickers, slotIdx, empowerRolls, bonusTrigger, stapledT
     card[k] = (v && typeof v === 'object') ? JSON.parse(JSON.stringify(v)) : v;
   }
   // Order: subtype-implied → stickers → bonusTrigger. (Elystra's permanent_eot
-  // buffs are now stat_boost/kw_* stickers applied by applyStickersToCard above
-  // — audit A5-6/A5-7 retired the separate permaBuffs object.)
+  // buffs ride the stat_boost/kw_* stickers applied by applyStickersToCard above.)
   applySubtypeKeywords(card);
   applyStickersToCard(card);
   // bonusTrigger: slot-persistent trigger (today written by the Architect's
@@ -1163,6 +1204,10 @@ function copySourceRef(ctx) {
 // Standard fizzle-on-missing-target preamble for EFFECTS handlers.
 //   const f = resolveTarget(ctx, target);
 //   if (!f) return;
+// PRECONDITION: resolves CARD/permanent targets only (looked up by `iid`).
+// Players have no `iid`, so a `{kind:'player'}` target would fizzle here as
+// "no target". Callers handling a creature_or_player effect MUST peel off
+// `target.kind === 'player'` first (see the damage handler) before calling.
 function resolveTarget(ctx, target) {
   // Missing/iid-less target → the SAME logged fizzle as a stale target
   // (audit A4-17). Before this guard a misauthored no-target effect threw a
@@ -2634,19 +2679,16 @@ const EFFECTS = {
     emitZoneChange(removed.card, removed.controller, 'stack', 'graveyard', undefined, ctx.sourceIid);
   },
   add_mana(ctx, params) {
-    // Color-choice form (§3.9): {choose:'any'} or {choose:['W','U']} adds one
-    // mana of a chosen color. params.color is the resolved pick (UI/AI); else
-    // default to the first option.
-    if (params.choose) {
-      const opts = params.choose === 'any' ? COLORS : params.choose;
-      const c = (params.color && opts.includes(params.color)) ? params.color : opts[0];
-      G[ctx.controller].mana[c]++;
-      log(`${pname(ctx.controller)} adds {${c}}.`, 'sp');
-      return;
-    }
-    for (const c of Object.keys(params.amounts)) G[ctx.controller].mana[c] += params.amounts[c];
-    const txt = Object.entries(params.amounts).map(([c,n]) => `{${c}}`.repeat(n)).join('');
-    log(`${pname(ctx.controller)} adds ${txt}.`, 'sp');
+    // §3.9 mana production through the shared produceMana helper (single source
+    // of the {choose}/{amounts} → pool logic). The {choose} color pick comes
+    // from params.color (a baked pick) or ctx.manaColor (the tap-lane's resolved
+    // choice); absent → the first option.
+    const added = produceMana(ctx.controller, params, params.color || ctx.manaColor);
+    // Tap-lane activations log "taps SOURCE for {X}" (ctx.tapForMana, set by
+    // doTapLandForMana); every other producer — spells like Dark Ritual, the
+    // generic ability path — logs "adds {X}".
+    if (ctx.tapForMana) log(`${pname(ctx.controller)} taps ${ctx.sourceName} for ${added}.`);
+    else log(`${pname(ctx.controller)} adds ${added}.`, 'sp');
   },
   // Unified signed life-delta (DIVERGENCE D4). amount > 0 gains life and fires a
   // life_changed(delta>0) → is_life_gain; amount < 0 loses life, tracks
@@ -3599,7 +3641,7 @@ function applyEffect(ctx, effect, target, targetSnap) {
 // `target_slots`). Scope/self effects carry neither and never reach here as
 // targeted.
 function effectNeedsTarget(eff) {
-  return (!!eff.target && eff.target !== 'self') || (eff.target_slot != null);
+  return !!eff.target || (eff.target_slot != null);
 }
 
 // Boot-time effect validation (Slice 3 step 4). Walks every card's effects
@@ -5236,11 +5278,11 @@ function resetInPlayState(card, preserveDeathState) {
     }
   }
   card.dealtDeathtouch = false;
-  // Elystra's permanent_eot buffs are now slot stickers (audit A5-6/A5-7), so
-  // they need no special re-apply here: the stat_boost modifier the flush pushed
-  // has no 'permaBuffs' source and is NOT stripped (it survives the flicker), and
-  // sticker-granted keywords are re-derived by intrinsicKeywords above. A fresh
-  // makeCard re-applies them from slot.stickers via applyStickersToCard.
+  // Elystra's permanent_eot buffs are slot stickers, so they need no special
+  // re-apply here: the stat_boost modifier the flush pushed carries no source
+  // tag and is NOT stripped (it survives the flicker), and sticker-granted
+  // keywords are re-derived by intrinsicKeywords above. A fresh makeCard
+  // re-applies them from slot.stickers via applyStickersToCard.
 }
 
 function moveToGraveyard(card, controller, batch) {
@@ -5543,9 +5585,8 @@ function endGame(winner) {
 
 // Flush a permanent_eot creature's (Elystra) current-turn temp buffs and EOT
 // keyword grants to SLOT STICKERS — the engine's blessed run-persistent channel
-// (splice/clone/steal-safe via the existing sticker plumbing, unlike the retired
-// permaBuffs object that nothing else produced and the splice merge mis-shaped:
-// audit A5-6/A5-7). Mirrors endomorph_absorb: emit a stat_boost sticker for the
+// (splice/clone/steal-safe via the existing sticker plumbing). Mirrors
+// endomorph_absorb: emit a stat_boost sticker for the
 // P/T delta and a kw_<keyword> sticker per grant, apply the effect to the
 // in-play card now (so the buff survives this turn's cleanup), and persist to the
 // slot (so it survives save/load and carries to next game). Self-gates on
@@ -5581,8 +5622,9 @@ function flushPermanentEotToStickers(card) {
         persist(sticker_id);
         if (!card.stickers.includes(sticker_id)) card.stickers.push(sticker_id);
       }
-      // In-game: keep the keyword active after eotGrants clears. Synthetic source
-      // -1 is immune to clearRestrictionsFromSource, like the old permaBuffs path.
+      // In-game: keep the keyword active after eotGrants clears. -1 is a
+      // synthetic "permanent" source — no real permanent has that iid (they
+      // start at 1), so clearRestrictionsFromSource never strips it.
       if (!card.keywords.includes(kw)) card.keywords.push(kw);
       if (!card.grantedBy.has(kw)) card.grantedBy.set(kw, new Set());
       card.grantedBy.get(kw).add(-1);
@@ -6516,19 +6558,17 @@ function doTapLandForMana(who, cardIid, color, abilityIdx) {
   // tapless one would be wrongly tapped). Refuse — it routes through
   // activateAbility, which pays the full cost.
   if (!manaAbilityCostIsTrivial(manaAb)) return;
-  card.tapped = true;
-  const eff0 = manaAb.effects[0];
-  if (eff0.choose) {
-    const opts = eff0.choose === 'any' ? COLORS : eff0.choose;
-    const chosen = (color && opts.includes(color)) ? color : opts[0];
-    G[who].mana[chosen]++;
-    log(`${G[who].name} taps ${card.name} for {${chosen}}.`);
-  } else {
-    const am = eff0.amounts;
-    for (const k of Object.keys(am)) G[who].mana[k] += am[k];
-    const txt = Object.entries(am).map(([k, n]) => `{${k}}`.repeat(n)).join('');
-    log(`${G[who].name} taps ${card.name} for ${txt}.`);
-  }
+  card.tapped = true;   // pay the tap cost
+  // Resolve through the shared ability-effects path (the SAME one doActivateAbility
+  // uses) so the mana-fill logic — and any untargeted rider effect — lives in one
+  // place, not a parallel hand-rolled copy. The chosen color and the
+  // "taps SOURCE for {X}" log framing ride along on the entry
+  // (ctx.manaColor / ctx.tapForMana → the add_mana handler).
+  runAbilityEffects({
+    ab: manaAb, controller: who, sourceName: card.name,
+    sourceIid: card.iid, sourceCard: card, targets: [],
+    manaColor: color, tapForMana: true,
+  });
 }
 function doCastSpell(who, cardIid, targets, modeIdx) {
   const p = G[who];
@@ -6612,8 +6652,10 @@ function doActivateAbility(who, cardIid, abilityIdx, targets, sacIid) {
   }
   // Costs are paid; route by stackability (A3-2 stackable infrastructure).
   // Mana abilities NEVER stack — hardcoded fast path (canon §705), they
-  // resolve inline below regardless of any `stackable` field.
-  const isMana = ab.effects[0].kind === 'add_mana';
+  // resolve inline below regardless of any `stackable` field. A targeted
+  // ability that also makes mana is NOT a mana ability (isManaAbility keys on
+  // no-target), so it correctly takes the stackable path below.
+  const isMana = isManaAbility(ab);
   const entry = {
     kind: 'ability', ab,
     sourceIid: card.iid, sourceName: card.name,
@@ -6686,7 +6728,10 @@ function runAbilityEffects(item) {
   // sourceCard is the activation-time object (last-known information) — see
   // the entry-construction comment in doActivateAbility.
   const ctx = { controller: who, sourceName: item.sourceName, sourceIid: item.sourceIid,
-                sourceCard: item.sourceCard || null, allTargets: targets };
+                sourceCard: item.sourceCard || null, allTargets: targets,
+                // Tap-for-mana lane threads the resolved color choice + log
+                // framing through to the add_mana handler (doTapLandForMana).
+                manaColor: item.manaColor, tapForMana: item.tapForMana };
   // Multi-target dispatch (mirrors resolveTopOfStack/resolveTrigger). By
   // default, targeted effects share targets[0]. Effects can opt into a
   // distinct slot via `target_slot: N`. allTargets is also threaded onto
@@ -7212,7 +7257,7 @@ function isLegalAction(who, action) {
           if (((f.card.counters && f.card.counters[name]) || 0) < ab.cost.remove_counters[name]) return false;
         }
       }
-      const isMana = ab.effects[0].kind === 'add_mana';
+      const isMana = isManaAbility(ab);
       if (isMana) {
         // Mana abilities are always available when source can be tapped, regardless of priority.
         // (Matches MtG: mana abilities don't require priority and don't use the stack.)
@@ -7453,8 +7498,15 @@ function getLegalActions(who) {
     if (!card.abilities) continue;
     for (let i=0; i<card.abilities.length; i++) {
       const ab = card.abilities[i];
-      const isMana = ab.effects[0].kind === 'add_mana';
-      if (isMana) continue;   // surfaced as tapLandForMana
+      // Skip ONLY auto-usable ({T}-only) mana abilities — they're surfaced in the
+      // tapLandForMana lane above, so this is the exact complement of that gate.
+      // An EXTRA-cost mana ability (sac/mana cost the tap lane can't pay — A7-1)
+      // is NOT auto-usable, so it falls through to here and surfaces as an
+      // explicit activated ability that pays its full cost (per A7-1's "surface
+      // only as explicit activated abilities"). Keying on isManaAbility instead
+      // would skip it from BOTH lanes — legal (isLegalAction) yet enumerable
+      // nowhere (PR #134 review, Thaumaturge-ChatGPT).
+      if (isAutoUsableManaAbility(ab)) continue;
       // Tap cost requirements.
       if (ab.cost && ab.cost.tap) {
         if (card.tapped) continue;
@@ -8035,6 +8087,9 @@ return {
   playerOwesDecision,
   subscribe, findCard, getStats, getCardValue, sacValueOnBoard, cardCost: costTotalCard,
   landProducibleColors, payMana,
+  // Mana-ability classifier (produces mana + no target), exposed for tests —
+  // the discriminator for the off-stack / no-priority fast path.
+  isManaAbility,
   canCreatureAttack, canCreatureBlock,
   effectNeedsTarget, getValidTargets,
   effectiveCastCost,

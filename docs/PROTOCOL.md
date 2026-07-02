@@ -317,9 +317,13 @@ key fails OPEN (the restriction simply doesn't enforce; no boot error).
 Vine Strangle `target: "opp_creature", target_filter: {has_keyword: "flying"}`.
 
 Related forms:
-- **`target: "self"`** on an *effect* still means the source itself (a creature
-  for creature-operating effects; the controller for player-operating ones like
-  `gain_life`/`add_mana`). This is per-effect, distinct from the top-level step.
+- **`scope: "self"`** on an *effect* means the source itself (a creature for
+  creature-operating effects; the controller for player-operating ones like
+  `gain_life`/`add_mana`). This is the canonical "affects itself" form. There is
+  no effect-level `target: "self"` — `scope` owns the concept; the engine has no
+  resolver for a `target: "self"` and boot validation rejects it. (The only
+  `"self"` that lives on a target-shaped field is `move_card`'s
+  `selector: "self"` — "move the source card itself".)
 - **`chooses(filter)`** — a separate effect, NOT a `target()` step: the
   *targeted player* selects a permanent of `filter` (no hexproof check). Used by
   edicts: `target("player") → chooses("creature") → sacrifice`.

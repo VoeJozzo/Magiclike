@@ -237,6 +237,10 @@ const CATEGORY_A = [
   // Audit A1-1 leg 2 — non-mana ability activation resets the priority
   // pass tracker (§603 both-pass-in-succession); mana abilities exempt.
   'test_ability_pass_reset.js',
+  // PR #133 follow-up — mana-ability classification keys on TARGETING (not
+  // effect-purity): an untargeted rider stays a mana ability, a targeted hybrid
+  // does not; malformed empty-effects ability is crash-safe.
+  'test_mana_ability_classification.js',
   // Audit A1-1 leg 3 — triggers queued while priority is closed WAIT for
   // the next real window (§1004.4); no synthetic round conjured mid-pause,
   // pending declarations never silently skipped.

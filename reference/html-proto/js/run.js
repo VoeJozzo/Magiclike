@@ -383,6 +383,12 @@ function load() {
         // power/toughness/keywords from before the sticker refactor) into the
         // stat_boost / kw_* stickers that now carry it — so an in-flight save
         // spanning the upgrade doesn't silently drop the accumulated buffs.
+        // LIVE, not dead code (PR #134 review adjudication, 2026-07-02): the
+        // released dev build (v2.1.18) still WRITES slot.permaBuffs via
+        // flushPermanentEotToPermaBuffs under SAVE_VERSION 2, so this is the
+        // only bridge for a save that crosses the sticker refactor. Remove only
+        // when the released build no longer writes the field (or a deliberate
+        // SAVE_VERSION bump retires it).
         if (slot.permaBuffs && typeof slot.permaBuffs === 'object') {
           if (!Array.isArray(slot.stickers)) slot.stickers = [];
           const pb = slot.permaBuffs;

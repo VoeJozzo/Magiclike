@@ -122,12 +122,17 @@ function applyStickerKindEffect(card, s) {
 }
 
 function pickWeightedSticker(stickers) {
+  // Missing/zero weight → 0 (excluded from the weighted draw): fail-closed, so a
+  // sticker that forgets `weight` silently drops out of pools rather than slipping
+  // in at a default. (Every registered sticker carries an explicit weight today;
+  // this default only governs a future omission.) Mirrors the `!s.weight` pool
+  // filters in bargainStickerCandidates / stickersForSlot.
   let total = 0;
-  for (const s of stickers) total += (s.weight || 3);
+  for (const s of stickers) total += (s.weight || 0);
   if (total <= 0) return stickers[Math.floor(Math.random() * stickers.length)];
   let roll = Math.random() * total;
   for (const s of stickers) {
-    roll -= (s.weight || 3);
+    roll -= (s.weight || 0);
     if (roll < 0) return s;
   }
   return stickers[stickers.length - 1];

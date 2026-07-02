@@ -117,6 +117,9 @@ console.log('\n=== control: a non-permanent_eot creature banks nothing ===');
 })();
 
 console.log('\n=== A5-6/A5-7 migration: a legacy permaBuffs save converts to stickers on load ===');
+// LIVE migration (PR #134 review adjudication, 2026-07-02): released dev
+// v2.1.18 still writes slot.permaBuffs, so this load-time bridge — and this
+// test — stay until the released build no longer writes the field.
 (() => {
   RUN.clearSave && RUN.clearSave();
   const blob = { version: 2, runState: { active: true, slots: [

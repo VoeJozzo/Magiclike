@@ -83,6 +83,30 @@ console.log('\n=== A7-1: extra-cost mana abilities are excluded from the tapLand
   check('the trivial dork IS still surfaced as tapLandForMana (control)', tapFor(dork.iid).length >= 1, JSON.stringify(tapFor(dork.iid)));
 })();
 
+console.log('\n=== A7-1: an extra-cost mana ability IS reachable via the explicit activateAbility lane (PR #134 review) ===');
+// The A7 design says extra-cost mana abilities "surface only as explicit
+// activated abilities". getLegalActions used to skip EVERY mana ability from the
+// activate lane (keying on isManaAbility), so a costly altar was excluded from
+// the tap lane (can't pay the sac there) AND the activate lane → legal via
+// isLegalAction yet enumerable nowhere. Now the activate lane skips only
+// isAutoUsableManaAbility, the exact complement of the tap lane. (Thaumaturge-ChatGPT.)
+(() => {
+  const G = newGame();
+  const victim = mk('gray_ogre', 'you');             // a creature to satisfy the sac cost
+  const altar = mk('gray_ogre', 'you', SAC_MANA);    // {T},sac a creature: add {B}{B}
+  const dork = mk('gray_ogre', 'you', TRIVIAL_MANA); // {T}: add {G}
+  G.you.battlefield = [victim, altar, dork];
+  const actions = ENGINE.getLegalActions('you');
+  const actFor = (iid) => actions.filter(a => a.type === 'activateAbility' && a.cardIid === iid);
+  const tapFor = (iid) => actions.filter(a => a.type === 'tapLandForMana' && a.cardIid === iid);
+  check('extra-cost altar IS surfaced as activateAbility (with a sac choice)',
+    actFor(altar.iid).length >= 1 && actFor(altar.iid).every(a => a.sacIid != null),
+    JSON.stringify(actFor(altar.iid)));
+  check('trivial dork is NOT double-listed in the activate lane (tap-lane only)',
+    actFor(dork.iid).length === 0 && tapFor(dork.iid).length >= 1,
+    'act=' + actFor(dork.iid).length + ' tap=' + tapFor(dork.iid).length);
+})();
+
 console.log('\n=== A7-1: doTapLandForMana refuses extra-cost abilities (defense-in-depth) ===');
 (() => {
   const G = newGame();
