@@ -1306,6 +1306,12 @@ function rollbackForMidGameRestore() {
 // (keyword grant, +1/+1) — this only mutates run-state.
 function applyStickerToSlot(slotIdx, sticker_id) {
   if (!runState || !runState.slots) return false;
+  // TRIPWIRE: slotIdx indexes the PLAYER's run deck. The `!slot` guard below
+  // catches only an OUT-OF-RANGE index — NOT a wrong-owner one: an opp card's
+  // slotIdx is a valid transient index that would land on a real (wrong) PLAYER
+  // slot here. Safe today only because every caller gates on owner === 'you'
+  // first. A future caller that loops both sides without that gate would
+  // silently corrupt a player slot — keep the owner check at the call site.
   const slot = runState.slots[slotIdx];
   if (!slot) return false;
   // sticker_id is a registry id (string) or an inline {kind,...} descriptor

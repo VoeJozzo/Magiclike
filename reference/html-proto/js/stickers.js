@@ -35,6 +35,11 @@ function inlineSetSemanticsDup(list, desc) {
   return (list || []).some(e => e && typeof e === 'object' && e.kind === desc.kind
     && (desc.kind === 'set_color'
         ? e.color === desc.color
+        // ORDER-SENSITIVE compare: safe only while set_types arrays are single-
+        // element (today's only shape). Multi-tag arrays in a different order
+        // (['Artifact','Creature'] vs ['Creature','Artifact']) would silently
+        // fail to dedup and re-grow the list — sort both sides first if multi-
+        // tag set_types is ever introduced.
         : JSON.stringify(e.types || [e.type]) === JSON.stringify(desc.types || [desc.type])));
 }
 // A6-6: deep-clone a granted ability/trigger before stamping it onto a card.
@@ -202,6 +207,14 @@ function applyOneStickerToRuntimeCard(card, sticker) {
   applyStickerKindEffect(card, s);
 }
 
+// Is a sticker eligible to appear in a RANDOM pool at all? weight 0 = boss-only
+// or dedicated-path stickers (e.g. scarified) that are never randomly offered.
+// One shared fact for the deck-offer path (stickersForSlot) and the in-game
+// bargain (bargainStickerCandidates).
+function isRandomlyOfferable(s) {
+  return !!(s && s.weight);
+}
+
 // One pick's candidate pool for the bargain reward below: every eligible
 // sticker paired with the permanents it can currently land on. The pool is
 // the BROAD registry set — stat boosts, keyword grants, Innate, the five
@@ -210,16 +223,24 @@ function applyOneStickerToRuntimeCard(card, sticker) {
 // roll-needing subtype/empower. lose_defender IS eligible here: on an
 // opponent's wall it hands them an attacker, which is exactly Archdemon's
 // intended downside (the "bargain" stickers both sides). Each sticker's own
-// appliesTo still constrains placement.
-function bargainStickerCandidates(perms) {
+// appliesTo still constrains placement — and `deckColors` (the stickered side's,
+// passed in) gates the land-color stickers to colors the deck actually runs, the
+// same rule deck construction enforces (Joe ruling 2026-06-14: the bargain must
+// not splash a color the deck was never built for).
+function bargainStickerCandidates(perms, deckColors) {
   const out = [];
   for (const id of Object.keys(STICKERS)) {
-    if (id === 'scarified' || id === 'subtype' || id === 'empower') continue;
     const s = STICKERS[id];
-    if (!s) continue;
-    // weight 0 = excluded from random pools (boss-only / dedicated paths).
-    if (!s.weight) continue;
-    const eligible = perms.filter(p => !s.appliesTo || s.appliesTo(p));
+    if (!isRandomlyOfferable(s)) continue;   // weight 0 (e.g. scarified) = not in the random pool
+    // empower/subtype need an application-time roll the in-game applier doesn't
+    // generate (the deck-offer path does — see the Archdemon backlog), so the
+    // bargain can't offer them. Keyed on kind, not a hardcoded id list.
+    if (s.kind === 'subtype' || s.kind === 'empower') continue;
+    // Live cards carry no deckColors field, so a deckColors-aware appliesTo
+    // (the land-color set) would skip its gate. Supply the side's colors via a
+    // view for the check; the filter still collects the REAL card objects.
+    const eligible = perms.filter(p => !s.appliesTo
+      || s.appliesTo(deckColors ? { ...p, deckColors } : p));
     if (eligible.length > 0) out.push({ sticker: s, perms: eligible });
   }
   return out;
@@ -245,8 +266,12 @@ function applyRandomStickersToSide(state, side, n, sourceName, logFn) {
     return;
   }
   let applied = 0;
+  // The stickered side's deck colors gate land-color stickers (same as deck
+  // construction). Stable across picks — it reads templates, not the live
+  // (about-to-be-stickered) cards — so compute it once.
+  const deckColors = deckColorsForSide(state, side);
   for (let i = 0; i < n; i++) {
-    const candidates = bargainStickerCandidates(perms);
+    const candidates = bargainStickerCandidates(perms, deckColors);
     if (candidates.length === 0) break;
     const s = pickWeightedSticker(candidates.map(c => c.sticker));
     const entry = candidates.find(c => c.sticker === s);
@@ -483,8 +508,9 @@ function stickersForSlot(slot, deckColors) {
     }
   }
   return Object.values(STICKERS).filter(s => {
-    // weight 0 = excluded from random offers (boss-only or specific application paths).
-    if (!s.weight) return false;
+    if (!isRandomlyOfferable(s)) return false;   // weight 0 = boss-only / dedicated path
+    // NB: unlike the bargain, the deck-offer path KEEPS empower/subtype — they
+    // roll here at construction time (pushStickerWithRoll), so they're valid offers.
     if (!s.appliesTo(view)) return false;
     if (!s.stackable && slot.stickers.includes(s.id)) return false;
     return true;

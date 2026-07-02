@@ -49,12 +49,18 @@ console.log('=== A4-15: an OPP-controlled steal must NOT touch the human run dec
   G.you.battlefield.push(mine);
   const slotsBefore = RUN.getSlots().length;
   const ctx = { controller: 'opp', sourceName: 'Thief Boss', sourceIid: null };
+  // The opp's randomly-built deck may already hold a gray_ogre (carrying its own
+  // run slot), so snapshot the existing gray_ogre iids and later pick out the
+  // one the steal NEWLY minted — not a pre-existing library copy. Without this,
+  // a find-first match on a stray deck gray_ogre flakes the slotIdx assertion.
+  const beforeIids = new Set(
+    G.opp.library.filter(c => c.tplId === 'gray_ogre').map(c => c.iid));
   ENGINE.applyEffect(ctx, { kind: 'steal' }, { kind: 'creature', iid: mine.iid });
   check('creature left the human battlefield', G.you.battlefield.length === 0);
   check('human run deck did NOT grow (no phantom duplicate slot)',
     RUN.getSlots().length === slotsBefore,
     'slots ' + slotsBefore + ' -> ' + RUN.getSlots().length);
-  const fresh = G.opp.library.find(c => c.tplId === 'gray_ogre');
+  const fresh = G.opp.library.find(c => c.tplId === 'gray_ogre' && !beforeIids.has(c.iid));
   check("fresh instance shuffled into the thief's in-game library", !!fresh);
   if (fresh) {
     check('fresh instance is opp-owned', fresh.owner === 'opp');

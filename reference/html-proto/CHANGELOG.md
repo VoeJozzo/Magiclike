@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.1.54`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.1.56`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -2261,7 +2261,49 @@ the priority field). Dedup review found the suite well-partitioned (no real
 duplication to cut) and zero obsolete tests. A 25-run bail-on-fail hunt for a
 1-in-~7 intermittent failure seen once pre-migration did NOT reproduce (suite
 stable across 25 full runs). Suite 139 files / 2587 assertions green, lint clean.
-v2.1.51: PR #133 review follow-ups. (1) Mana-ability classification unified
+v2.1.51: post-audit cleanup pass (/simplify on PR #133). solveManaPayment grows
+a `wantPlan` flag — canPayPotential (the per-castable-spell/ability legality
+check called all over getLegalActions, i.e. the AI's hot path) now returns the
+moment tryAssign proves feasibility, skipping the O(taps²) plan-trim loop that
+only payMana consumes; the boolean result and the payment plan are unchanged.
+Plus a behavior-identical readability tidy (the move_card selector validation's
+`e.selector != null ? e.selector : null` → `e.selector ?? null`). Also de-flaked
+test_a4_steal_run_gate: its `opp.library.find(gray_ogre)` could match a stray
+copy from the randomly-built opp deck (carrying its own slotIdx) rather than the
+freshly-stolen instance — it now snapshots the pre-existing gray_ogre iids and
+picks the newly-minted one. (CORRECTION to v2.1.50's claim that this flake "did
+NOT reproduce … stable across 25 full runs": it did persist — reproducing
+~1-in-7 in isolated runs, re-measured 2026-07-02 — until this de-flake.) Two
+review-surfaced caveats documented (no behavior
+change): the solveManaPayment wantPlan=false feasibility-only contract (the
+return is {cost,taps:null}, not an executable plan; only canPayPotential may
+pass false), and the set_types-dedup order-sensitivity assumption (the
+JSON.stringify compare is safe only while set_types arrays stay single-element).
+Also dedups the sticker random-pool gate into one isRandomlyOfferable helper
+(behavior-preserving; the bargain's roll-kind exclusion is now kind-based, not a
+hardcoded id list). Suite 140 files / 2597 assertions green (count re-measured
+2026-07-02; this entry originally claimed 2599 unmeasured), 500-game self-play
+100% clean (0 illegal actions), lint clean.
+
+v2.1.52: bargain respects deck colors (Joe ruling 2026-06-14, surfaced during
+the /simplify follow-up). BUG: land-color "Also a X" stickers gate on
+`c.deckColors`, but live battlefield cards carry no deckColors field, so the
+in-game Archdemon-of-Bargains path skipped the gate that deck construction
+enforces — a mono-black deck's Swamp could be handed a white "Also a Plains"
+sticker (a real B/W dual splashing an off-deck color; confirmed empirically),
+and the two sticker paths disagreed silently/undocumented. FIX: new runtime
+helper `deckColorsForSide(state, side)` (unions a live side's cards across all
+zones into pseudo-slots — the opponent has no run slots in-game — and reads
+their colors via `deckColorsFromSlots`); `applyRandomStickersToSide` computes it
+once and passes it to `bargainStickerCandidates(perms, deckColors)`, which
+supplies it to each sticker's `appliesTo` via a card-view (the filter still
+collects the real cards). On-color fixing still allowed; same-color stays
+dedup-excluded; `bargainStickerCandidates(perms)` with no colors keeps the old
+broad behavior (backward-compat). New test_bargain_deck_color_gate.js (10
+assertions: helper union, on/off-color gating, dedup, backward-compat,
+end-to-end no-splash). Suite 140 files / 2597 assertions green, lint clean.
+
+v2.1.53: PR #133 review follow-ups. (1) Mana-ability classification unified
 behind `isManaAbility(ab)` and keyed on TARGETING, not `effects[0]` alone: a mana
 ability is one that produces mana AND requires no target. An untargeted rider
 ("T: add G, gain 1 life") stays a mana ability (Joe's ruling); a TARGETED hybrid
@@ -2281,24 +2323,28 @@ corrected (the engine has no resolver for it and boot validation rejects it; onl
 `move_card`'s `selector: "self"` is a real "self" on a target-shaped field). (3)
 `resolveTarget` gained a precondition comment (card/permanent targets only; callers
 must peel off `kind:'player'` first) — latent, no current non-damage effect targets
-creature_or_player. (4) BACKLOG: review/remove obsolete `load()` migration logic
-(the dead `permaBuffs`→sticker conversion + its `midGameSlotsSnapshot` blind spot).
+creature_or_player. (4) BACKLOG: review the unconditional `load()` migrations for
+reachability (see the v2.1.54 note — the `permaBuffs` conversion turned out live,
+guarding released v2.1.18 saves, and stays).
 New `test_mana_ability_classification.js` (targeting discriminator, untargeted-
 rider, cost-axis separation, empty-effects crash-safety). Suite green, lint clean.
-v2.1.52: more PR #133 follow-ups. (1) Removed the dead `permaBuffs`→sticker load
-migration in `run.js` `load()` — nothing has written `permaBuffs` since the
-A5-6/A5-7 sticker refactor, so the conversion (and its `midGameSlotsSnapshot`
-blind spot) was unreachable dead code; its migration test in
-`test_a4_elystra_flicker_buffs.js` was removed with it (the live flush-to-stickers
-guarantee stays covered). The five `permaBuffs` mentions remaining in `engine.js`
-are rationale comments (why the current sticker concat is correct), not code. A
-BACKLOG item tracks auditing the other unconditional `load()` migrations
-(subtype-sticker rename, STICKER_ID_RENAMES, empower backfill, stale-prune) for
-the same reachability question. (2) `pickWeightedSticker` now defaults a missing
+v2.1.54: more PR #133 follow-ups. (1) `pickWeightedSticker` now defaults a missing
 weight to 0 (fail-closed — excluded), not 3 (fail-open — silently included at a
 default), matching the `!s.weight` pool filters. No behavior change today: every
-registered sticker carries an explicit weight (verified). Suite green, lint clean.
-v2.1.53: consolidated the two mana-resolution paths (PR #133 follow-up refactor).
+registered sticker carries an explicit weight (verified). (2) NOTE: this entry
+originally also removed the `permaBuffs`→sticker load migration in `run.js`
+`load()` as "dead code" — that removal was REVERTED pre-merge (2026-07-02) after
+the Thaumaturge-ChatGPT review finding was adjudicated UPHELD: the *released*
+dev build (v2.1.18, the Pages-served game) still writes `slot.permaBuffs` via
+`flushPermanentEotToPermaBuffs` under SAVE_VERSION 2, so the load-time
+normalization is the only bridge protecting an in-flight save that crosses the
+upgrade; it stays until dev's release no longer writes permaBuffs (or a
+SAVE_VERSION bump retires it deliberately). Its migration test in
+`test_a4_elystra_flicker_buffs.js` is restored with it. A BACKLOG item tracks
+auditing the other unconditional `load()` migrations (subtype-sticker rename,
+STICKER_ID_RENAMES, empower backfill, stale-prune) for reachability. Suite
+green, lint clean.
+v2.1.55: consolidated the two mana-resolution paths (PR #133 follow-up refactor).
 `doTapLandForMana` was a parallel hand-rolled copy of the {choose}/{amounts} →
 pool logic the `add_mana` effect handler already has, and it ran ONLY `effects[0]`
 — silently dropping any rider. Both now route through ONE path: a shared
@@ -2307,7 +2353,7 @@ and `doTapLandForMana` pays the tap then delegates to `runAbilityEffects` (the
 same resolution `doActivateAbility` uses), threading the chosen color and the
 "taps SOURCE for {X}" log framing via `ctx.manaColor` / `ctx.tapForMana`.
 Behavioral upshot: an untargeted rider on a mana ability (e.g. a hypothetical
-"{T}: add G, gain 1 life" dork — the form the targeting fix (v2.1.51) newly admits) now resolves on
+"{T}: add G, gain 1 life" dork — the form the targeting fix (v2.1.53) newly admits) now resolves on
 the tap lane exactly as activating it would, instead of being dropped. No current
 card is affected (every shipped mana ability is a single `add_mana` effect). The
 spell/`add_mana` path (Dark Ritual) and the basic-land/dork/rock taps are
@@ -2315,7 +2361,7 @@ unchanged — verified by test_mana / test_deepseam_quarry / test_equatorial. Ne
 tap-lane color+rider checks in test_mana_ability_classification.js. Suite 140
 files / 2595 assertions green, lint clean (post-merge with the base's v2.1.50
 test-discipline pass).
-v2.1.54: PR #134 review follow-up (Thaumaturge-ChatGPT). An extra-cost mana
+v2.1.56: PR #134 review follow-up (Thaumaturge-ChatGPT). An extra-cost mana
 ability ({T},sacrifice / mana-cost add_mana — the A7-1 shape) was legal via
 isLegalAction (mana abilities are legal any time) but enumerable NOWHERE:
 getLegalActions skipped EVERY mana ability from the explicit activateAbility lane
@@ -2331,4 +2377,3 @@ check the reviewer noted was missing; test_trigger_closed_window_drain.js drops
 its spent synthetic altar after it queues the trigger (the now-enumerated ability
 would otherwise correctly suppress the auto-pass into combat). Suite 140 files /
 2597 assertions green, lint clean.
-
