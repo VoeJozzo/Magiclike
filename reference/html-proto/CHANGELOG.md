@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.1.56`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.1.52`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -2263,7 +2263,7 @@ duplication to cut) and zero obsolete tests. A 25-run bail-on-fail hunt for a
 1-in-~7 intermittent failure seen once pre-migration did NOT reproduce (suite
 stable across 25 full runs). Suite 139 files / 2587 assertions green, lint clean.
 
-v2.1.55: post-audit cleanup pass (/simplify on PR #133). solveManaPayment grows
+v2.1.51: post-audit cleanup pass (/simplify on PR #133). solveManaPayment grows
 a `wantPlan` flag — canPayPotential (the per-castable-spell/ability legality
 check called all over getLegalActions, i.e. the AI's hot path) now returns the
 moment tryAssign proves feasibility, skipping the O(taps²) plan-trim loop that
@@ -2273,17 +2273,21 @@ Plus a behavior-identical readability tidy (the move_card selector validation's
 test_a4_steal_run_gate: its `opp.library.find(gray_ogre)` could match a stray
 copy from the randomly-built opp deck (carrying its own slotIdx) rather than the
 freshly-stolen instance — it now snapshots the pre-existing gray_ogre iids and
-picks the newly-minted one. Two review-surfaced caveats documented (no behavior
+picks the newly-minted one. (CORRECTION to v2.1.50's claim that this flake "did
+NOT reproduce … stable across 25 full runs": it did persist — reproducing
+~1-in-7 in isolated runs, re-measured 2026-07-02 — until this de-flake.) Two
+review-surfaced caveats documented (no behavior
 change): the solveManaPayment wantPlan=false feasibility-only contract (the
 return is {cost,taps:null}, not an executable plan; only canPayPotential may
 pass false), and the set_types-dedup order-sensitivity assumption (the
 JSON.stringify compare is safe only while set_types arrays stay single-element).
 Also dedups the sticker random-pool gate into one isRandomlyOfferable helper
 (behavior-preserving; the bargain's roll-kind exclusion is now kind-based, not a
-hardcoded id list). Suite 2599 assertions green, 500-game self-play 100% clean
-(0 illegal actions), lint clean.
+hardcoded id list). Suite 140 files / 2597 assertions green (count re-measured
+2026-07-02; this entry originally claimed 2599 unmeasured), 500-game self-play
+100% clean (0 illegal actions), lint clean.
 
-v2.1.56: bargain respects deck colors (Joe ruling 2026-06-14, surfaced during
+v2.1.52: bargain respects deck colors (Joe ruling 2026-06-14, surfaced during
 the /simplify follow-up). BUG: land-color "Also a X" stickers gate on
 `c.deckColors`, but live battlefield cards carry no deckColors field, so the
 in-game Archdemon-of-Bargains path skipped the gate that deck construction
@@ -2299,5 +2303,5 @@ collects the real cards). On-color fixing still allowed; same-color stays
 dedup-excluded; `bargainStickerCandidates(perms)` with no colors keeps the old
 broad behavior (backward-compat). New test_bargain_deck_color_gate.js (10
 assertions: helper union, on/off-color gating, dedup, backward-compat,
-end-to-end no-splash). Suite 140 files / 2599 assertions green, lint clean.
+end-to-end no-splash). Suite 140 files / 2597 assertions green, lint clean.
 
