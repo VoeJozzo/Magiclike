@@ -1,6 +1,6 @@
 {
   "card_id": "might_of_faith",
-  "art": "✋",
+  "art": "art.png",
   "cost": {
     "W": 1
   },

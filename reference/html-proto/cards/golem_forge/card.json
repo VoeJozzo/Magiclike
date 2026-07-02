@@ -1,7 +1,7 @@
 {
   "card_id": "golem_forge",
   "name": "Golem Forge",
-  "art": "⚙️",
+  "art": "art.png",
   "cost": {
     "C": 3
   },

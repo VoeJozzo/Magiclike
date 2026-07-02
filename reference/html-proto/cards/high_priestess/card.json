@@ -1,6 +1,6 @@
 {
   "card_id": "high_priestess",
-  "art": "⛪",
+  "art": "art.png",
   "cost": {
     "W": 1,
     "C": 2

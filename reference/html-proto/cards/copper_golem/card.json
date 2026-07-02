@@ -1,7 +1,7 @@
 {
   "card_id": "copper_golem",
   "name": "Copper Golem",
-  "art": "\ud83d\udfe4",
+  "art": "art.png",
   "cost": {
     "C": 3
   },

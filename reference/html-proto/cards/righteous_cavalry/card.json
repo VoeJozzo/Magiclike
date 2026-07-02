@@ -1,6 +1,6 @@
 {
   "card_id": "righteous_cavalry",
-  "art": "🐴",
+  "art": "art.png",
   "cost": {
     "W": 2,
     "C": 2

@@ -1,6 +1,6 @@
 {
   "card_id": "iron_statue",
-  "art": "\ud83d\uddff",
+  "art": "art.png",
   "cost": {
     "W": 1,
     "C": 2

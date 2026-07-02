@@ -1,6 +1,6 @@
 {
   "card_id": "squire_of_oaths",
-  "art": "⚜",
+  "art": "art.png",
   "cost": {
     "W": 1,
     "C": 1

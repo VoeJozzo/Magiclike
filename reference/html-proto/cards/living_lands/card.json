@@ -1,7 +1,7 @@
 {
   "card_id": "living_lands",
   "name": "Living Lands",
-  "art": "🌱",
+  "art": "art.png",
   "cost": {
     "G": 2
   },

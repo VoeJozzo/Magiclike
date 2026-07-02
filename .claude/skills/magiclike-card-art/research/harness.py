@@ -1,0 +1,312 @@
+#!/usr/bin/env python3
+"""Art-skill A/B harness — committed, reset-proof single source of truth.
+
+WHY THIS EXISTS: the execution container restores from a snapshot pinned near an
+older commit. Every restore rewinds the working tree and DELETES anything not
+committed-and-pushed (and resets .git/info/exclude). Earlier rounds lost the C2
+variant file and the shared seed pool because they lived in gitignored locations
+(.claude/skills/... and research/runs/<run>/_meta/). This module keeps every
+harness input either (a) deterministically recomputable from the card name, or
+(b) at a committed path, so a mid-round reset can never silently corrupt a round.
+
+USAGE
+  python3 .claude/skills/magiclike-card-art/research/harness.py pool                 # list unarted, not-done cards
+  python3 .claude/skills/magiclike-card-art/research/harness.py pick [salt]          # deterministic card pick
+  python3 .claude/skills/magiclike-card-art/research/harness.py init <run> <card>    # make dirs + committed seeds.json
+  python3 .claude/skills/magiclike-card-art/research/harness.py preflight <run>      # verify a round before judging
+  python3 .claude/skills/magiclike-card-art/research/harness.py sheet <run> <card>   # build blind contact sheet
+  python3 .claude/skills/magiclike-card-art/research/harness.py decode <run>         # reveal which label is control/treatment
+  python3 .claude/skills/magiclike-card-art/research/harness.py selftest             # check stack health (no pixflux)
+
+INVARIANTS enforced:
+  - card MUST be unarted (no reference/.../art.png) and not in done_cards.txt
+  - seeds.json lives at run ROOT (committed), never under _meta/ (gitignored)
+  - both arms MUST share the identical seed pool
+  - the active candidate's variant is read from research/variants/SKILL-<cand>-variant.md
+    (committed; control/c4/c5/c6) and MUST differ from the control base by exactly
+    that candidate's signature block. NOTE: the C2 variant file was lost to an early
+    reset and is not committed; C2 is done, so the default candidate is C6 (the
+    program winner) and selftest passes out of the box.
+"""
+import sys, os, json, glob, re, random, hashlib
+from pathlib import Path
+
+HERE     = Path(__file__).resolve().parent          # the research dir (lives under the skill)
+ROOT     = next(p for p in HERE.parents if (p / "project.godot").exists())  # repo root
+CARDS    = ROOT / "reference/html-proto/cards"
+RUNS     = HERE / "runs"
+VARIANTS = HERE / "variants"
+SHEETS   = ROOT / "docs/art-eval-sheets"
+
+CONTROL_SKILL = VARIANTS / "SKILL-control.md"
+
+# Which candidate-hypothesis variant this round tests. Set via env, e.g.
+#   ART_EVAL_CAND=c5 python3 .claude/skills/magiclike-card-art/research/harness.py ...
+# Each candidate has a committed variant file + a unique signature phrase that
+# variant_ok() requires to be present (proves the treatment really differs from
+# control by the intended block, not by accident or a silent control-vs-control).
+CAND          = os.environ.get("ART_EVAL_CAND", "c6").lower()  # c6 = program winner; c2's variant file was lost to a reset
+VARIANT_FILE  = VARIANTS / f"SKILL-{CAND}-variant.md"
+CAND_SIG      = {
+    "c2": "diagnosable-flaw",
+    "c4": "Ground the depiction in reality",
+    "c5": "Diagnose-then-iterate",
+    "c6": "breadth over depth",
+}.get(CAND, "")
+
+# "Already-run" is scoped PER CANDIDATE, not globally: a card tested under one
+# candidate (e.g. C2) is a fresh, legitimate trial under another (C4) — different
+# treatment, memoryless agents, and producing art for a still-unarted card is the
+# whole point. So no-replacement applies WITHIN a candidate's run, not across.
+DONEFILE = HERE / f"done_{CAND}.txt"
+
+def stable_int(s: str) -> int:
+    """Deterministic across machines/python versions (built-in hash() is not)."""
+    return int(hashlib.md5(s.encode()).hexdigest(), 16)
+
+def done_set() -> set:
+    if not DONEFILE.exists():
+        return set()
+    return {l.strip() for l in DONEFILE.read_text().splitlines()
+            if l.strip() and not l.startswith("#")}
+
+def _is_arted(d: Path) -> bool:
+    """A card counts as already-arted (ineligible for the single-art harness) if it has
+    a plain art.png, OR a special multi-art `art_ladder` (which uses art-1.png/art-2.png/…
+    instead of art.png). The ladder case is why elystra_the_immortal wrongly slipped into
+    the pool: it has no file literally named art.png, only art-1/2/3.png + an art_ladder."""
+    if (d / "art.png").exists():
+        return True
+    if list(d.glob("art-*.png")):
+        return True
+    cj = d / "card.json"
+    if cj.exists():
+        try:
+            if "art_ladder" in json.loads(cj.read_text()):
+                return True
+        except Exception:
+            pass
+    return False
+
+def unarted_pool() -> list:
+    out = []
+    for d in sorted(CARDS.iterdir()):
+        if not d.is_dir():
+            continue
+        if _is_arted(d):                   # plain art.png OR art_ladder -> not eligible
+            continue
+        out.append(d.name)
+    return out
+
+def candidates() -> list:
+    done = done_set()
+    return [c for c in unarted_pool() if c not in done]
+
+def pick_card(salt: str = "") -> str:
+    cands = candidates()
+    if not cands:
+        raise SystemExit("no eligible cards left")
+    return random.Random(stable_int("pick:" + salt)).choice(cands)
+
+def seeds_for(card: str, n: int = 10) -> list:
+    rng = random.Random(stable_int("seeds:" + card))
+    return [rng.randint(1, 2_147_483_646) for _ in range(n)]
+
+def write_card_context(rd: Path, card: str) -> Path:
+    """Write the sanitized card data the agents read instead of the raw card.json.
+
+    Drops the `art` field -- a placeholder EMOJI (e.g. 🔥, 🧠). Handing the agent
+    that symbol is a depiction anchor: it pre-loads the literal default we want the
+    agent to DERIVE from the mechanic, not be told. Everything else (name, types,
+    cost, power/toughness, keywords, triggers, effects) is preserved verbatim.
+    Agents read THIS committed run-root file; they never open the raw
+    reference/html-proto card.json, so the emoji never reaches their context."""
+    raw = json.loads((CARDS / card / "card.json").read_text())
+    raw.pop("art", None)
+    out = rd / "card_context.json"
+    out.write_text(json.dumps(raw, indent=2))
+    return out
+
+def label_map(card: str) -> dict:
+    """Deterministic, recomputable blind labels. arm_a/arm_b -> '1'/'2'.
+    Recomputable from the card name alone, so a reset can't lose the answer key."""
+    swap = stable_int("label:" + card) % 2 == 1
+    return {"1": "arm_b", "2": "arm_a"} if swap else {"1": "arm_a", "2": "arm_b"}
+
+def variant_ok() -> tuple:
+    """Return (ok, msg). Variant must be control + exactly the candidate's block."""
+    if not VARIANT_FILE.exists() or not CONTROL_SKILL.exists():
+        return False, "missing committed skill snapshot(s) under research/variants/"
+    if not CAND_SIG:
+        return False, f"unknown candidate '{CAND}' (no signature registered)"
+    ctrl = CONTROL_SKILL.read_text().splitlines()
+    var  = VARIANT_FILE.read_text().splitlines()
+    added = [l for l in var if l not in ctrl]
+    if not any(CAND_SIG in l for l in added):
+        return False, f"variant does not contain the {CAND.upper()} signature '{CAND_SIG}'"
+    return True, f"{CAND} variant = control + {len(added)} added line(s) incl. {CAND.upper()} block"
+
+def _real_gens(armdir: Path) -> list:
+    # Files are named "<card_id>_gen_NN_seed<seed>.png" (card prefix makes a roll
+    # self-identifying once it leaves the run dir). The leading "*" in the glob
+    # tolerates both the prefixed form and the legacy bare "gen_..." form; the
+    # regexes key off the gen_/seed tokens, so the prefix never confuses parsing.
+    return sorted([f for f in armdir.glob("*gen_*_seed*.png") if "_8x" not in f.name],
+                  key=lambda f: int(re.search(r"gen_(\d+)_seed", f.name).group(1)))
+
+def init_run(run: str, card: str):
+    if (CARDS / card / "art.png").exists():
+        raise SystemExit(f"REFUSED: {card} already has art.png (not an unarted card)")
+    if card in done_set():
+        raise SystemExit(f"REFUSED: {card} is in done_cards.txt")
+    rd = RUNS / run
+    for a in ("arm_a", "arm_b", "_meta"):
+        (rd / a).mkdir(parents=True, exist_ok=True)
+    seeds = seeds_for(card)
+    (rd / "seeds.json").write_text(json.dumps(seeds))   # run-root => COMMITTED
+    ctx = write_card_context(rd, card)                  # art-emoji stripped
+    print(f"init {run} for {card}")
+    print("seeds (committed at run-root):", seeds)
+    print("card context (art-stripped):", ctx)
+    print("control skill :", CONTROL_SKILL)
+    print("variant skill :", VARIANT_FILE)
+    ok, msg = variant_ok(); print("variant check :", "OK" if ok else "FAIL", "-", msg)
+
+def preflight(run: str):
+    rd = RUNS / run
+    sj = rd / "seeds.json"
+    problems = []
+    if not sj.exists():
+        problems.append("seeds.json missing at run-root (was it left in gitignored _meta/?)")
+        pool = None
+    else:
+        pool = sorted(json.loads(sj.read_text()))
+    for arm in ("arm_a", "arm_b"):
+        gens = _real_gens(rd / arm)
+        if len(gens) == 0:
+            problems.append(f"{arm}: no gens"); continue
+        seeds = sorted(int(re.search(r"seed(\d+)", g.name).group(1)) for g in gens)
+        # Protocol allows seed reuse (seed-locked tweaks) and <=10 gens, so the
+        # invariant is "every seed used is FROM the shared pool" (subset), not
+        # an exact match to all 10.
+        if pool is not None and not set(seeds).issubset(set(pool)):
+            stray = sorted(set(seeds) - set(pool))
+            problems.append(f"{arm}: used seed(s) outside the shared pool: {stray}")
+        print(f"{arm}: {len(gens)} gens, {len(set(seeds))} distinct seeds, "
+              f"all from pool: {pool is not None and set(seeds).issubset(set(pool))}")
+    # Byte-identity checks (hash-based, seed-independent). A real pixflux
+    # generation should never be byte-identical to ANY other image -- not
+    # another arm's (control-vs-control contamination) and not a prior run's.
+    # OBSERVED FAILURE: byte-identical duplicates appeared across runs (a
+    # blue-dragon prompt and a fire-shaman prompt at different seeds hashed
+    # identically) with fully honest-looking manifests -- the only tell is the
+    # matching bytes. CAUSE UNDETERMINED: either a server-side cache/dedup, or
+    # (more likely) the skill brief's literal `curl -o /tmp/pixflux_resp.json`
+    # shared path letting a decode read a prior call's leftover bytes. Billing
+    # showed generations billed ~1:1 with files, so duplicates were still real
+    # billed calls -- which doesn't distinguish the two. The in-memory helper
+    # (research/gen_image.py) removes the local footgun; this check stays as a
+    # cause-agnostic backstop. Hash, don't seed-match: the first twin had a
+    # DIFFERENT seed than its mate, so a seed-keyed compare missed it.
+    this_imgs = [(arm, g, hashlib.md5(g.read_bytes()).hexdigest())
+                 for arm in ("arm_a", "arm_b") for g in _real_gens(rd / arm)]
+    seen, within = {}, []
+    for arm, g, h in this_imgs:
+        if h in seen:
+            within.append(f"{arm}/{g.name} == {seen[h]}")
+        else:
+            seen[h] = f"{arm}/{g.name}"
+    if within:
+        problems.append("within-run BYTE-IDENTICAL images (contamination): " + "; ".join(within))
+    print(f"within-run byte-identical collisions: {len(within)} (want 0)")
+    others = {}
+    for run_dir in sorted(RUNS.iterdir()):
+        if not run_dir.is_dir() or run_dir.name == run:
+            continue
+        for png in run_dir.rglob("*.png"):
+            if "_8x" in png.name:
+                continue
+            others.setdefault(hashlib.md5(png.read_bytes()).hexdigest(),
+                              str(png.relative_to(ROOT)))
+    cross = [f"{arm}/{g.name} == {others[h]}" for arm, g, h in this_imgs if h in others]
+    if cross:
+        problems.append("BYTE-IDENTICAL to another run's image (stale API return?): " + "; ".join(cross))
+    print(f"cross-run byte-identical images: {len(cross)} (want 0)")
+    ok, msg = variant_ok(); print("variant check:", "OK" if ok else "FAIL", "-", msg)
+    if problems:
+        print("PREFLIGHT: FAIL"); [print("  -", p) for p in problems]; sys.exit(1)
+    print("PREFLIGHT: PASS")
+
+def build_sheet(run: str, card: str):
+    from PIL import Image, ImageDraw, ImageFont
+    rd = RUNS / run
+    SCALE, LABEL_H, PAD, COLS = 6, 22, 8, 5
+    CW, CH = 64 * SCALE, 32 * SCALE
+    m = label_map(card)
+    cells = []
+    for lbl in ("1", "2"):
+        for i, f in enumerate(_real_gens(rd / m[lbl]), 1):
+            cells.append((f"{lbl}.{i:02d}", f))
+    rows = (len(cells) + COLS - 1) // COLS
+    W = COLS * CW + (COLS + 1) * PAD
+    H = rows * (CH + LABEL_H) + (rows + 1) * PAD
+    sheet = Image.new("RGB", (W, H), (28, 28, 32)); d = ImageDraw.Draw(sheet)
+    try:    font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 16)
+    except: font = ImageFont.load_default()
+    for idx, (label, f) in enumerate(cells):
+        r, c = divmod(idx, COLS)
+        x = PAD + c * (CW + PAD); y = PAD + r * (CH + LABEL_H + PAD)
+        sheet.paste(Image.open(f).convert("RGB").resize((CW, CH), Image.NEAREST), (x, y))
+        d.text((x + 4, y + CH + 3), label, fill=(235, 235, 240), font=font)
+    SHEETS.mkdir(parents=True, exist_ok=True)
+    out = SHEETS / f"{card}_{CAND}ab_sheet.png"
+    sheet.save(out)
+    # answer key stays in gitignored _meta/ (out of the user's blind view); also recomputable
+    (rd / "_meta").mkdir(parents=True, exist_ok=True)
+    (rd / "_meta" / "blind_map.json").write_text(json.dumps(m))
+    print(f"sheet: {sheet.size} -> {out}")
+    print("(label mapping is recomputable via `decode`; not revealed here)")
+
+def decode(run: str):
+    # run names follow "skillab-<cand>-<card>"; parse BOTH so the role label
+    # reflects the ACTUAL candidate this run tested (not the env default), and the
+    # card id is right regardless of which CAND is set in the environment.
+    parts = run.split("-", 2)
+    cand = parts[1].upper() if len(parts) == 3 and parts[0] == "skillab" else CAND.upper()
+    card = parts[-1]
+    m = label_map(card)
+    roles = {"arm_a": "CONTROL (SKILL-control.md)", "arm_b": f"TREATMENT ({cand} variant)"}
+    inv = {v: k for k, v in m.items()}
+    print(f"run={run} card={card}")
+    print(f"  label 1 = {m['1']} = {roles[m['1']]}")
+    print(f"  label 2 = {m['2']} = {roles[m['2']]}")
+    print(f"  control shown as label {inv['arm_a']}; treatment shown as label {inv['arm_b']}")
+
+def selftest():
+    print("=== art-eval harness selftest (no pixflux) ===")
+    print("repo root      :", ROOT)
+    print("unarted cards  :", len(unarted_pool()))
+    print("done cards     :", len(done_set()))
+    print("eligible cards :", len(candidates()))
+    ok, msg = variant_ok(); print("variant check  :", "OK" if ok else "FAIL", "-", msg)
+    tok = (ROOT / ".claude/skills/magiclike-card-art/pixellab-token")
+    print("token present  :", tok.exists(),
+          "(format ok)" if tok.exists() and tok.read_text().strip().lower().startswith("bearer ") else "")
+    # determinism check
+    c = "lightning_bolt"
+    print("determinism    : seeds_for(%s)[0]=%d (stable), label1=%s" %
+          (c, seeds_for(c)[0], label_map(c)["1"]))
+    print("SELFTEST:", "PASS" if ok and tok.exists() else "FAIL")
+
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print(__doc__); sys.exit(0)
+    cmd = sys.argv[1]; a = sys.argv[2:]
+    {"pool":     lambda: print("\n".join(candidates())),
+     "pick":     lambda: print(pick_card(a[0] if a else "")),
+     "init":     lambda: init_run(a[0], a[1]),
+     "preflight":lambda: preflight(a[0]),
+     "sheet":    lambda: build_sheet(a[0], a[1]),
+     "decode":   lambda: decode(a[0]),
+     "selftest": selftest,
+    }.get(cmd, lambda: print(f"unknown cmd {cmd}\n{__doc__}"))()

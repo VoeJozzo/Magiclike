@@ -1,6 +1,6 @@
 {
   "card_id": "wall_of_omens",
-  "art": "\ud83d\udcdc",
+  "art": "art.png",
   "cost": {
     "W": 1,
     "C": 1
