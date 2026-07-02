@@ -187,7 +187,7 @@ Under the hood it's a plain pixflux POST. The PixelLab MCP wrappers don't expose
 
 ```bash
 curl -sS -X POST https://api.pixellab.ai/v2/create-image-pixflux \
-  -H "Authorization: <token>" \
+  -H "Authorization: Bearer $PIXELLAB_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "description": "<the prompt>",
@@ -197,7 +197,7 @@ curl -sS -X POST https://api.pixellab.ai/v2/create-image-pixflux \
   -o /tmp/pixflux_resp.json
 ```
 
-**Getting the token:** Read `.claude/skills/magiclike-card-art/pixellab-token` — a single-line file containing `Bearer <token>`, committed to the repo so cloud sessions can call pixflux directly. Don't ask the user; it's already configured. If the file is missing or empty, stop and tell the user — don't substitute, don't guess, don't fall back to scraping `~/.claude.json`.
+**Getting the token:** Read it from the `PIXELLAB_API_KEY` environment variable — Bash: `$PIXELLAB_API_KEY`, PowerShell: `$env:PIXELLAB_API_KEY`; use it as `Authorization: Bearer $PIXELLAB_API_KEY`. (A repo-root `.mcp.json` referencing the same env var could pre-wire the optional PixelLab MCP server for clones — not currently present; add it only with Joe's explicit OK, since it's a startup config.) Setup (once per machine): Bash — `export PIXELLAB_API_KEY="<token>"` in `~/.bashrc`; PowerShell — `[Environment]::SetEnvironmentVariable("PIXELLAB_API_KEY", "<token>", "User")` (restart Claude Code after). If it's unset, curl returns 401 — stop and ask the user to set it; **never** commit a token file, scrape `~/.claude.json`, or otherwise work around it. (History note: a `pixellab-token` file was committed here 2026-05-21→07-02 — a live credential in a public repo, removed and the key rotated. `.gitignore` now blocks that path. Cloud sessions lose direct pixflux access until a proper secret mechanism exists; that trade was accepted deliberately.)
 
 **Size is non-negotiable:** **Always use `image_size: {"width": 64, "height": 32}`.** This isn't a stylistic default — the html-proto card frames are *configured* to accept that exact size. Other dimensions produce art that doesn't fit the frame. Don't drift from this even if a prompt seems to "want" more pixels.
 

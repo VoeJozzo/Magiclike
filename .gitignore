@@ -26,3 +26,6 @@ Thumbs.db
 # Python bytecode cache.
 __pycache__/
 *.pyc
+
+# Never commit credentials (a pixellab token lived here 2026-05-21..07-02; key rotated)
+.claude/skills/magiclike-card-art/pixellab-token
