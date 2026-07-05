@@ -119,14 +119,24 @@ function render() {
       const realIdx = G.stack.length - 1 - displayIdx;
       const tgtLabel = (it.targets && it.targets[0] && it.targets[0].label) ? ` → ${it.targets[0].label}` : '';
       let div;
-      if (it.kind === 'trigger') {
-        // Triggers have no card backing -- build a card-like with the
-        // trigger text in the body.
+      if (it.kind === 'trigger' || it.kind === 'ability') {
+        // Triggers and activated-ability entries (A3-2) have no card backing
+        // -- build a card-like with the trigger/ability text in the body.
+        const isAbility = it.kind === 'ability';
+        let bodyText;
+        if (isAbility) {
+          try { bodyText = segsToText(describeAbility(it.ab, it.ab)); }
+          catch (_) { bodyText = 'Activated ability'; }
+        } else {
+          // ~ → source name (audit A10-3): authored/assembled trigger texts
+          // carry the conventional placeholder; never show it raw.
+          bodyText = formatTriggerText(triggerLogText(it.trig), it.sourceName);
+        }
         div = makeSyntheticCard({
-          name: it.sourceName + ' triggers',
-          type: 'Trigger',
-          text: triggerLogText(it.trig) + tgtLabel,
-          art: '⚡',
+          name: it.sourceName + (isAbility ? ' activates' : ' triggers'),
+          type: isAbility ? 'Ability' : 'Trigger',
+          text: bodyText + tgtLabel,
+          art: isAbility ? '✦' : '⚡',
           color: 'C',
           scale: 0.7,
         });
@@ -138,7 +148,7 @@ function render() {
       }
       // stackIdx (real, not reversed) — target-line overlay indexes G.stack directly.
       div.dataset.stackIdx = String(realIdx);
-      if (isCounterTarget && it.kind !== 'trigger') {
+      if (isCounterTarget && it.kind !== 'trigger' && it.kind !== 'ability') {
         // Light only items that are REAL legal picks for the current slot:
         // getValidTargets applies the slot filter (e.g. spliceable_staple
         // rejects an already-stapled spell), and tsExcludePicked drops an item
@@ -453,8 +463,10 @@ function render() {
     sb.textContent = `End of turn — your hand is ${G.you.hand.length}/7. Click a card in your hand to discard it.`;
   } else if (inReaction && expectedActor === 'you') {
     const top = G.stack[G.stack.length-1];
-    const topName = top.kind === 'trigger' ? `${top.sourceName} (triggered)` : top.card.name;
-    sb.textContent = `${G[top.controller].name} cast ${topName}. Click an instant to react, or "No Reaction".`;
+    const topName = top.kind === 'trigger' ? `${top.sourceName} (triggered)`
+      : top.kind === 'ability' ? `${top.sourceName} (ability)` : top.card.name;
+    const topVerb = top.kind === 'ability' ? 'activated' : 'cast';
+    sb.textContent = `${G[top.controller].name} ${topVerb} ${topName}. Click an instant to react, or "No Reaction".`;
   } else if (G.phase === 'COMBAT_ATTACK' && G.activePlayer === 'you' && !G.attackersDeclared) {
     sb.textContent = `Declare attackers — click your creatures, then "Done Attacking" (or "Skip Combat").`;
   } else if (G.phase === 'COMBAT_BLOCK' && G.activePlayer === 'opp' && !G.blockersDeclared) {
@@ -533,6 +545,8 @@ function drawTargetLines() {
     let effects = [];
     if (item.kind === 'trigger') {
       effects = (item.trig && item.trig.effects) || [];
+    } else if (item.kind === 'ability') {
+      effects = (item.ab && item.ab.effects) || [];
     } else if (item.card) {
       effects = ENGINE.effectsForMode(item.card, item.modeIdx || 0) || [];
     }

@@ -1,7 +1,7 @@
 {
   "card_id": "alloy_construct",
   "name": "Alloy Construct",
-  "art": "\ud83e\udd16",
+  "art": "art.png",
   "cost": {
     "C": 2
   },

@@ -1,6 +1,6 @@
 {
   "card_id": "vampire_nighthawk",
-  "art": "\ud83e\udd87",
+  "art": "art.png",
   "cost": {
     "B": 1,
     "C": 2

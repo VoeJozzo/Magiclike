@@ -25,9 +25,7 @@ function mk(t, c) {
 function castETB(tplId, caster) {
   RUN.start({ cards: Array(12).fill('plains'), colors: ['W'] }, null);
   RUN.startNextGame();
-  const G = ENGINE.state();
-  G.activePlayer = caster; G.priorityHolder = caster; G.phase = 'MAIN1';
-  G.stack = []; G.gameOver = false; G.priority = { passes: new Set() };
+  const G = setup.startMainPhase(caster);
   G[caster].mana = { W: 9, U: 9, B: 9, R: 9, G: 9, C: 9 };
   const c1 = Object.keys(CARDS).find(k => hasType(CARDS[k], 'Creature') && !CARDS[k].special);
   const c2 = Object.keys(CARDS).find(k => hasType(CARDS[k], 'Creature') && !CARDS[k].special && k !== c1);
@@ -75,9 +73,7 @@ console.log('\n=== a single legal target still auto-picks (no needless prompt) =
   // give the human exactly one own creature so your_creature has 1 option).
   RUN.start({ cards: Array(12).fill('plains'), colors: ['W'] }, null);
   RUN.startNextGame();
-  const G = ENGINE.state();
-  G.activePlayer = 'you'; G.priorityHolder = 'you'; G.phase = 'MAIN1';
-  G.stack = []; G.gameOver = false; G.priority = { passes: new Set() };
+  const G = setup.startMainPhase('you');
   G.you.mana = { W: 9, U: 9, B: 9, R: 9, G: 9, C: 9 };
   // aetherDrake's your_creature trigger: with NO other own creature, only the
   // drake itself is a legal target → exactly 1 → auto-pick, no prompt.

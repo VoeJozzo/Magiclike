@@ -39,9 +39,7 @@ function mk(tplId, controller) {
 function newGame() {
   RUN.start({ cards: Array(12).fill('plains'), colors: ['W'] }, null);
   RUN.startNextGame();
-  const G = ENGINE.state();
-  G.activePlayer = 'you'; G.priorityHolder = 'you'; G.phase = 'MAIN1';
-  G.stack = []; G.gameOver = false; G.priority = { passes: new Set() };
+  const G = setup.startMainPhase('you');
   G.you.mana = { W: 9, U: 9, B: 9, R: 9, G: 9, C: 9 };
   // Deterministic board: clear both battlefields so target enumeration only sees
   // the creatures this test adds.
@@ -211,7 +209,7 @@ console.log('\n=== stapled distinct card carries its rule onto the ETB ===');
   // trigger; the rule now rides along (the trigger path enforces cross-slot
   // constraints), so the stapled card keeps "another target creature" semantics
   // instead of silently going permissive.
-  const staple = ENGINE.makeCard('clockwork_beetle', [], 0, null, null, null, ['roots_and_branches']);
+  const staple = ENGINE.makeCard('clockwork_beetle', [], 0, null, null, ['roots_and_branches']);
   const etb = (staple.triggers || []).find(t => t.event === 'card_zone_change');
   check('staple ETB carries distinct_targets', !!etb && etb.distinct_targets === true,
     etb && JSON.stringify(etb.distinct_targets));

@@ -37,7 +37,7 @@
   },
   "name": "Stapler",
   "special": true,
-  "text": "3 charges (persist across runs). {3}, T: Choose two target permanents. Staple the second onto the first. When this is out of charges, rip it up.",
+  "text": "3 charges (persist across runs). {3}, T: Choose two target permanents or spells. Staple the second onto the first. When this is out of charges, rip it up.",
   "custom_text": true,
   "types": [
     "Artifact"

@@ -1,6 +1,7 @@
-// Sticker-kind dispatch coverage: each STICKERS kind (statBoost, keyword,
-// innate, landColor, costReduction, empower, subtype) is exercised across
-// the three surfaces it touches:
+// Sticker-kind dispatch coverage: the registry sticker kinds (statBoost,
+// keyword, remove_keyword, innate, landColor/add_type, costReduction, empower,
+// subtype) plus the inline parameterized kinds (cost_mod, set_color) are
+// exercised across the three surfaces it touches:
 //
 //   applyStickersToCard — mutating a card at construction time
 //   stickersForSlot     — gating re-offer at reward time

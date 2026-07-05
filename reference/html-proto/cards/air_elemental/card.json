@@ -1,6 +1,6 @@
 {
   "card_id": "air_elemental",
-  "art": "💨",
+  "art": "art.png",
   "cost": {
     "U": 2,
     "C": 3

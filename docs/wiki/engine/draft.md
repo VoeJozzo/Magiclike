@@ -1,0 +1,36 @@
+---
+type: concept
+tags: [magiclike, engine, draft]
+created: 2026-06-12
+updated: 2026-06-12
+---
+
+# Draft (engine internals)
+
+*Page anatomy + durability rules: [[README|engine hub]]. The player-lens companion (signal reading, CABS, open-vs-forcing) is **draft-strategy**, vault-side — not an in-repo page; the roguelike-structure concept companion is [[roguelike-meta]]. This page carries the verified mechanics of `draft.js`: pack rolling, pick scoring, land allocation, Desert Cube, and opponent deck construction with its staple/sticker/clone scaling.*
+
+## What it does
+
+The draft layer builds both decks for a run. The player drafts from rolled packs (`rollPack` → `pickFromPack` scoring assist / `pickPlayer` mutation), in one of **two modes**; the opponent's deck is built without a draft UI by `buildOpponentDeck` — either a heuristic draft-alike or one of the constructed archetype decks — then "scaled with depth" by `applyOpponentStaples`, `applyOpponentStickers`, and `applyOpponentClones`. Two separate card pools feed this: `draftPool` (player-facing; `special:true` cards excluded) and `oppPool`.
+
+## The flow
+
+- **Two draft modes.** **Classic**: 23 spell picks, then `allocLands` auto-builds the 17-land manabase from `countPips`'s color tally using **largest-remainder apportionment** — 23+17=40 every time. **Desert Cube**: 40 picks *including* lands — basics are substituted into packs at a **1/3 rate**, and there is **no auto-allocation step at all**. The mode difference is the whole allocation story: Desert Cube drafts always end at exactly 40 picks with zero appended lands (executed-probe verified).
+- **The real pack-color policy (rollPack).** Each pack slot's color is rolled independently from a weighted table — there is **no slot-index logic of any kind** (no "slot 3 bias"). The actual bias is a **shrinking table**: once a color *outside the player's deck colors* appears once in a pack, it drops from the roll table for the rest of that pack — a once-per-pack rescue for off-deck colors, while **in-deck colors may repeat freely**. Canon [[1402-pack-rolling|§1402]] and [[roguelike-meta]] describe this policy correctly. Probe-verified: off-deck colors appeared ≤1× per pack in 3000/3000 packs, with no per-slot anomaly.
+- **Two separate color-signal reads — keep them distinct.** (1) `inDeckColors` (feeding rollPack's deck-color set) is **deliberately land-aware**: it adds a Land card's `mana` directly, with an in-code comment explicitly intending land picks as color signals. (2) `countPips` (feeding `allocLands` via `getPlayerDeck`, and `pickFromPack`'s color-commitment scorer) tallies cost pips — and its land branch is **not mode-gated**, so the five colored-mana artifact lands in the classic pool (bone_reliquary, ember_anvil, gilded_seat, tidal_conduit, verdant_verge) each contribute a phantom pip in classic too (a single bone_reliquary pick yields a B-color deck with a 17-swamp manabase). Mana-'C' lands skip correctly; `special:true` lands never enter the pool. Multicolor note: gold cards count as their first-pip color (2 cards in pool; countPips compensates).
+- **Opponent construction (buildOpponentDeck).** Two branches: the **heuristic** drafter assembles 23 spells + 17 basics from `oppPool` (optionally steered by a colorAffinity), or one of the **6 constructed archetype decks** ships as declared — including the **equatorial artificer boss**, a colorless deck that overrides the 40-card shape by design: 10 Equatorial Engines → a **33-card deck**, test-pinned by `test_equatorial_artificer_boss.js`. The derived `opp.colors` field is **not currently read by the UI**, and has a two-shape contract (constructed = declared as-is, may be length 0–1; heuristic = always padded to exactly 2 from WUBRG order) — a distinction any future consumer of the field must account for.
+- **Depth scaling.** The opponent's upgrade budgets derive from `gameNum` with divisors **/1 (stickers), /3 (staples), /5 (clones)** — e.g. staples = floor((gameNum−1)/3), so ≥1 staple from game 4 of every run. Clones are reachable in practice (gameNum carries across sectors; the initial dead-code suspicion was refuted by the deep-read itself). Sticker budgets are spent exactly; the burst loop terminates.
+- **The opponent staple distribution (measured).** `applyOpponentStaples` enumerates unordered canonicalized card pairs, weights Creature+Creature at 3 and everything else at 1, with a ×0.1 castability penalty — the opponent rolls blind, no judgment layer (the player-side equivalent is player-*chosen*). Independently reproduced distribution over a heuristic 23+17 deck: **C+C 32% / C+L 30% / L+L 14% / C+S 12% / L+S 10.7% / S+S 1.3%** — so **~4 in 10** staple rolls consume one of the opponent's own lands, and **~1 in 7** fuse two lands together (strict Basic+Basic ~1 in 8.5), shrinking its manabase for near-zero threat gain. Canon promises depth scaling but is silent on how staples are spent. For the colorless equatorial boss the castability penalty cancels out of relative weights (harmless). A code-shape note: drafted nonbasic lands without a `mana` field would be invisible to the opp's deckColors read — no such land exists in today's pool.
+- **Merge mechanics live elsewhere.** The splice eligibility/merge core (`isSpliceableBase`, `isCompatibleStaplePair`, `canonicalSplicePair`, `absorbStapledSlot`) is [[synthesis-staple]]'s territory (chunk 5); this chunk read those contract slices and concurred with chunk 5's clean verdict on the staple/absorb ordering.
+
+## Design rulings
+
+The global terminology ruling governs here as everywhere: Magiclike's rules are **the** rules. Two in-code deliberate choices are design, not defect: the **equatorial artificer boss's 33-card deck** (intentionally exempt from "fill to 40"), and **`inDeckColors`' land-awareness** (land picks are meant to signal color commitment — its own comment says so).
+
+## Verified clean
+
+The audit checked and explicitly cleared: **no biased shuffles or off-by-ones** in the three weighted-draw loops (3000-pack + 300-staple runs clean); the **off-deck once-per-pack cap held 0/3000**; **allocLands sound** — 23+17=40 every build, wrap branch unreachable, zero-pip default explicit; **Desert Cube clean** — always exactly 40 picks, the 1/3 substitution rate holds, no duplicate basics; `pickPlayer` rejects out-of-pack and post-complete picks, and PICKLOG receives the pre-mutation pack; **no shared-reference leaks on the player path** (one read-only escape: `getConstructedDeck` returns the live registry object); **no draft-state survival into the run**; **opponent clones reachable**; **sticker budget exact** over 200 builds; **pool cache safe** (loadCards awaited; laziness test-pinned); the soft dup cap held 0/200. On the opponent clone path: cloning charges is **unreachable opp-side** (the stapler is `special:true`, excluded from oppPool; no constructed deck lists charges cards), and the player-vs-opp clone heuristic deliberately diverges — canon §1504 describes the *opponent* heuristic, which `applyOpponentClones` implements faithfully.
+
+## See also
+
+[[README|Engine hub]] · [[synthesis-staple]] · [[ai]] · [[roguelike-meta]] · [[staple-synthesis]] · [[sticker-system]] · [[rulebook|Comprehensive Rules]] · [[html-proto]] · [[cross-engine-port]]

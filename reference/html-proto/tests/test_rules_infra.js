@@ -29,8 +29,7 @@ function newGame() {
   return ENGINE.state();
 }
 function readyMain(G, who) {
-  G.activePlayer = who; G.priorityHolder = who; G.phase = 'MAIN1';
-  G.stack = []; G.gameOver = false; G.priority = { passes: new Set() };
+  setup.startMainPhase(who);
 }
 // Pass priority for both seats until the phase changes (runs the transition's SBA).
 function advanceOnePhase(G) {

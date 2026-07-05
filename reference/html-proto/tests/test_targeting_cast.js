@@ -54,8 +54,7 @@ function newGame() {
   return G;
 }
 function readyForCast(G, who) {
-  G.activePlayer = who; G.priorityHolder = who; G.phase = 'MAIN1';
-  G.stack = []; G.gameOver = false; G.priority = { passes: new Set() };
+  setup.startMainPhase(who);
   G[who].mana = { W: 9, U: 9, B: 9, R: 9, G: 9, C: 9 };
 }
 function drainStack(G) {

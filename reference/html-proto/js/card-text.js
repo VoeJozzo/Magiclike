@@ -206,16 +206,19 @@ function signedStat(field, eff, tplEff, negZero) {
   return { text: sign + Math.abs(v), highlight: bumped };
 }
 
-// §7b coverage: effect kinds intentionally WITHOUT a standalone describeEffect
-// case — they only ever render inside a multi-effect idiom or via authored
-// card.text, never as a lone segment. effectCoverageReport (engine.js) skips
-// these when checking for the "[kind]" debug sentinel.
-//   apply_sticker — the embargo/bleach idiom is rendered at the list level
+// §7b coverage: effect kinds whose STANDALONE render is intentionally empty
+// or absent — their text is carried by a multi-effect idiom or by authored
+// card.text instead. effectCoverageReport (engine.js) skips these when
+// checking for the "[kind]" debug sentinel, so a kind belongs here ONLY if
+// it genuinely has no standalone describeEffect text — a member that grows
+// a real case must leave the set, or the coverage guard stops guarding it
+// (audit A10-8: apply_sticker drifted in exactly this way and was removed).
 //   steal         — internal; dispatched by change_control (which has text)
-//   annihilate    — the rip/edict chain renders the whole phrase
+//   annihilate    — its case returns [] by design; the rip/edict chain
+//                   renders the whole phrase
 //   bargainSticker* — Archdemon of Bargains uses authored card.text
 const TEXT_IDIOM_ONLY = new Set([
-  'apply_sticker', 'steal', 'annihilate', 'bargain_sticker_self', 'bargain_sticker_other',
+  'steal', 'annihilate', 'bargain_sticker_self', 'bargain_sticker_other',
 ]);
 
 // Render one effect to segments (lowercase-leading; caller capitalizes).
@@ -235,7 +238,9 @@ function describeEffect(eff, tplEff) {
     case 'gain_life':
       if (typeof eff.amount === 'object' && eff.amount && eff.amount.from) {
         const owner = (eff.who && eff.who.from === 'target_controller') ? "its controller" : 'you';
-        return [plainSeg(owner + ' gains life equal to ' + describeAmount(eff.amount))];
+        // Conjugate by subject (audit A10-5): "you gain", "its controller gains".
+        const verb = owner === 'you' ? ' gain life equal to ' : ' gains life equal to ';
+        return [plainSeg(owner + verb + describeAmount(eff.amount))];
       }
       // §D4: a negative amount is life loss — render the sign as "lose N life".
       if (typeof eff.amount === 'number' && eff.amount < 0) {
@@ -417,14 +422,18 @@ function describeEffect(eff, tplEff) {
       const dur = (eff.duration === 'permanent') ? '' : ' until end of turn';
       const pt = (eff.power || eff.toughness) ? (eff.power || 0) + '/' + (eff.toughness || 0) + ' ' : '';
       const body = pt + tags.join(' ');
+      // scope:'self' carries no target noun — subject is "this", mirroring
+      // pump's arm (audit A10-4: artifice_triumphant's granted ability
+      // rendered an empty subject + double space).
+      const subj = eff.scope === 'self' ? 'this' : t;
       // set_types REPLACES the whole type line (a Creature encased into an
       // Artifact stops being a Creature) — say so, since "becomes an Artifact"
       // alone reads like an addition. add_type's "also becomes" already does.
       if (eff.kind === 'set_types') {
-        return [plainSeg(t + ' becomes ' + indefiniteArticle(body) + ' ' + body
+        return [plainSeg(subj + ' becomes ' + indefiniteArticle(body) + ' ' + body
           + ' and loses its other types' + dur)];
       }
-      return [plainSeg(t + ' also becomes ' + indefiniteArticle(body) + ' ' + body + dur)];
+      return [plainSeg(subj + ' also becomes ' + indefiniteArticle(body) + ' ' + body + dur)];
     }
     case 'apply_in_game_splice':
       return [plainSeg('staple the second target permanent onto the first')];
@@ -952,6 +961,21 @@ function describeAbility(ab, tplAb) {
   return [plainSeg(cost + ': ')].concat(body).concat(speedClause);
 }
 
+// One-line button label for the controller's unified ability picker (audit
+// A10-1). Renders through the engine's own oracle (describeAbility →
+// segsToText) — the same path as render.js's ability stack pill — so a
+// picker button can never contradict the card's rules text. (The previous
+// hand-rolled kind→label table lied: raw internal kinds as labels, inverted
+// permanence, wrong subject, understated costs.) Capped because picker
+// buttons are small; the card's hover/popup carries the full text.
+function abilityPickerLabel(ab, maxLen) {
+  const cap = maxLen || 60;
+  let text = '';
+  try { text = segsToText(describeAbility(ab, ab)); } catch (_) { text = ''; }
+  if (!text) text = 'Activate ability';
+  return text.length > cap ? text.slice(0, cap - 1).trimEnd() + '…' : text;
+}
+
 // Lord buff: "Other <subtype>s you control get +P/+T and have <kw>."
 function describeStaticBuff(buff) {
   const sub = buff.subtype ? buff.subtype + 's' : 'creatures';
@@ -1043,8 +1067,8 @@ function keywordPreamble(keywords) {
 
 // Flat string for storage/logging. UI uses describeCardSegments for highlights.
 // skipKeywords:true keeps the stored text free of the keyword preamble so
-// successive engine regenerations (line 567 of engine.js fires on every
-// makeCard / makeCard-after-grant) don't bake "Trample. " into card.text
+// successive engine regenerations (engine.js makeCard's card.text refresh,
+// which runs on every makeCard / makeCard-after-grant) don't bake "Trample. " into card.text
 // and double up with the render-time preamble. The keyword preamble is a
 // UI concern, added fresh by the card frame's describeCardSegments call.
 function describeCardText(card) {
@@ -1098,7 +1122,10 @@ function describeCardSegments(card, opts) {
       const kwSegs = keywordPreambleSegs(prepend, stickerGrantedKeywords(card));
       if (kwSegs.length) { kwSegs.push(plainSeg('.')); sections.push(kwSegs); }
     }
-    const staticText = card.text || tpl.text || '';
+    // Authored text may carry the conventional ~ placeholder (Adept, Codex) —
+    // substitute the card's name so it never reaches a player's eyes raw
+    // (audit A10-3; substitution is idempotent once baked into card.text).
+    const staticText = formatTriggerText(card.text || tpl.text || '', card.name || tpl.name);
     if (staticText) sections.push([plainSeg(staticText)]);
     const out = [];
     for (let i = 0; i < sections.length; i++) {

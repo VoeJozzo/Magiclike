@@ -1,6 +1,6 @@
 {
   "card_id": "forest_forager",
-  "art": "🌲",
+  "art": "art.png",
   "cost": {
     "G": 1,
     "C": 2

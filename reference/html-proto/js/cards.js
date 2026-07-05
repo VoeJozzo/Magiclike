@@ -324,7 +324,10 @@ const KEYWORD_DISPLAY = {
 const KEYWORD_REMINDER = {
   flying: 'Can only be blocked by creatures with flying or reach.',
   vigilance: "Attacking doesn't cause it to tap.",
-  trample: 'Combat damage beyond what would destroy its blockers is dealt to the defending player.',
+  // Magiclike trample covers combat AND effect damage from a trampling
+  // source (trample stickers on damaging sorceries are deliberate design) —
+  // but never fights (audit A4-9 design ruling; see applyDamageFrom).
+  trample: 'Damage beyond what would destroy the creature it hits (all blockers, in combat) carries over to that creature\'s controller. Fights never carry over.',
   haste: 'It can attack and use tap abilities the turn it comes under your control.',
   first_strike: 'It deals combat damage before creatures without first strike.',
   reach: 'It can block creatures with flying.',
@@ -457,8 +460,11 @@ STICKERS['scarified'] = {
 
 // =========================================================================
 // RUN MODIFIERS — Neow-style run-defining choices presented before draft.
-// Each modifier: {id, name, text, apply()}. apply() returns {extras: [{tplId,
-// stickers}, ...]} for bonus deck slots; pure (no runState mutation).
+// Each modifier: {id, name, text, apply()}.
+// CONTRACT (stated identically in run.js's RUN.start at the call site):
+// apply(slots) may mutate the slots array in place OR return
+// {extras: [...]} of new slots to append.
+// Today all 7 boons return extras only ({extras: [{tplId, stickers}, ...]}).
 // Future hooks (stickerBias, lifeOffset, etc) can be added similarly.
 // =========================================================================
 const RUN_MODIFIERS = {};

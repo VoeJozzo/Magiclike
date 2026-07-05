@@ -173,11 +173,21 @@ State the scene positively. Naming an unwanted element even to negate it — *"t
 
 ### 6. Generate via pixflux
 
-Hit pixflux directly with curl. The PixelLab MCP wrappers don't expose this endpoint and produce worse results at 64×32 (the `create_object` tool is square-only; `create_map_object` defaults to transparent and underdelivers on small scenes).
+**Prefer the committed helper `research/gen_image.py`** (in this skill folder) over hand-rolled curl. It captures the response *in memory*, decodes, writes a unique per-gen file (+ an 8× upscale and a `manifest.jsonl` line carrying **seed + prompt**), and refuses to save a frame byte-identical to one already in the arm. The manifest is what makes seed-locked branching reproducible later.
+
+```bash
+python3 .claude/skills/magiclike-card-art/research/gen_image.py --card <tplId> --out <dir> \
+  --spec '{"gen":1,"seed":2059828219,"mode":"explore","prompt":"..."}'
+# optional spec fields: "guidance" (text_guidance_scale), "init"+"init_strength" (img2img)
+```
+
+> **Footgun the helper exists to kill:** the literal `curl -o /tmp/pixflux_resp.json` pattern below writes *every* call to one shared path, so a failed/empty curl (or a race) makes the decode read a **previous** call's leftover bytes — producing byte-identical saved files from genuinely distinct, billed API calls. If you must curl by hand, write each response to a **unique** path, never a shared `/tmp` file.
+
+Under the hood it's a plain pixflux POST. The PixelLab MCP wrappers don't expose this endpoint and produce worse results at 64×32 (the `create_object` tool is square-only; `create_map_object` defaults to transparent and underdelivers on small scenes).
 
 ```bash
 curl -sS -X POST https://api.pixellab.ai/v2/create-image-pixflux \
-  -H "Authorization: <token>" \
+  -H "Authorization: Bearer $PIXELLAB_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "description": "<the prompt>",
@@ -187,7 +197,7 @@ curl -sS -X POST https://api.pixellab.ai/v2/create-image-pixflux \
   -o /tmp/pixflux_resp.json
 ```
 
-**Getting the token:** Read `.claude/skills/magiclike-card-art/pixellab-token` — a single-line file containing `Bearer <token>`, committed to the repo so cloud sessions can call pixflux directly. Don't ask the user; it's already configured. If the file is missing or empty, stop and tell the user — don't substitute, don't guess, don't fall back to scraping `~/.claude.json`.
+**Getting the token:** Read it from the `PIXELLAB_API_KEY` environment variable — Bash: `$PIXELLAB_API_KEY`, PowerShell: `$env:PIXELLAB_API_KEY`; use it as `Authorization: Bearer $PIXELLAB_API_KEY`. (A repo-root `.mcp.json` referencing the same env var could pre-wire the optional PixelLab MCP server for clones — not currently present; add it only with Joe's explicit OK, since it's a startup config.) Setup (once per machine): Bash — `export PIXELLAB_API_KEY="<token>"` in `~/.bashrc`; PowerShell — `[Environment]::SetEnvironmentVariable("PIXELLAB_API_KEY", "<token>", "User")` (restart Claude Code after). If it's unset, curl returns 401 — stop and ask the user to set it; **never** commit a token file, scrape `~/.claude.json`, or otherwise work around it. (History note: a `pixellab-token` file was committed here 2026-05-21→07-02 — a live credential in a public repo, removed and the key rotated. `.gitignore` now blocks that path. Cloud sessions lose direct pixflux access until a proper secret mechanism exists; that trade was accepted deliberately.)
 
 **Size is non-negotiable:** **Always use `image_size: {"width": 64, "height": 32}`.** This isn't a stylistic default — the html-proto card frames are *configured* to accept that exact size. Other dimensions produce art that doesn't fit the frame. Don't drift from this even if a prompt seems to "want" more pixels.
 
@@ -199,6 +209,7 @@ curl -sS -X POST https://api.pixellab.ai/v2/create-image-pixflux \
 - `no_background: false` (default) → opaque background. Use `true` only for transparent sprites; you almost never want this for card art.
 - `text_guidance_scale` — 1.0–20.0, default 8. Higher = tighter adherence to the prompt; lower = more model interpretation. **It amplifies whatever the model is already inclined to do with your prompt — it does not force a composition the model is resisting.** On a prompt the model cooperates with, raising it sharpens intent (it genuinely helped on a deer/woodsman scene). On a composition the model fights — an impalement it kept refusing to render — cranking it to 11/14/18 just amplified the generic-atmosphere fallback: vaguer, not closer. So: raise it when you're on-track and want the prompt followed harder; **suspect** it when you're fighting the model, and fix the *words* instead. **Before bumping it: if rerolls keep ignoring a key element, first try replacing that element's description with a more precise noun (see vocabulary-precision).** Vocabulary is a scalpel; guidance is a volume knob — it makes the model louder, not smarter. Empirical case: pushing 8→15 didn't fix Branching Bolt's fork; switching to "caret or circumflex" and "Lichtenberg figures" did.
 - `seed` — controls reproducibility. A fixed **nonzero integer** reproduces a generation near-exactly across calls — only faint dither noise differs, so judge sameness **by eye, not by byte-hash or pixel-diff** (near-identical frames still differ in raw bytes; an automated diff will call them "different" when a human sees twins). `seed: 0` or omitting it = random each call. Must be a strict integer — negatives and large magnitudes are fine; strings or floats → HTTP 422. **The API response does not echo the seed back**, so a result is only reproducible if you recorded the seed you sent — log it with the prompt (phase 7). How *tightly* a seed locks varies by seed/prompt combo: some hold a composition hard across rerolls, others drift noticeably, for reasons we don't fully understand.
+- `init_image` + `init_image_strength` — **img2img: feed in a frame and nudge it.** `init_image` is a `{type:"base64", base64, format}` you start from; `init_image_strength` (integer **1–999, default 300**) is the dial between preserve and redraw: **~900 ≈ near-exact copy**, **~300 reinterprets within the same composition/palette**, **~150 redraws the subject on the init's compositional scaffold** (at 150 it can come back *cleaner* than a muddy source). This keeps the whole composition (unlike a blind text reroll) with no mask/human step (unlike inpaint) — **tested & works**, wired into `gen_image.py` as spec `"init"` + `"init_strength"`. **Hard constraint: `init_image` must be EXACTLY 64×32** (pixflux 422s on a larger init — it won't downsample a hi-res reference), so you can't pixel-art-ify a detailed photo by feeding it in; fine detail dies in the crush to 64×32 before conditioning even happens.
 
 **Seed-locked iteration — surgical prompt refinement.** Once a seed produces a composition you like, you can refine it almost surgically: hold the seed fixed and change **one** element of the prompt — the overall composition holds and mostly just that element moves (proven by swapping an armor color and getting the same scene in the new color). It's the cleanest way to A/B a single variable. Two caveats:
 1. **Try** to converge on the wording before you commit to a seed — but it's chicken-and-egg, since you often can't tell the wording is right until a seed renders it. In practice: iterate wording at random seeds until the *concept* clicks, then lock a seed you like and make small tweaks from there.
@@ -211,6 +222,10 @@ Response shape: `{"usage": {...}, "image": {"type": "base64", "base64": "..."}}`
 ### 7. Save and gitignore
 
 Decode the base64 and write to `reference/html-proto/cards/<tplId>/art.png`.
+
+> **Writing the PNG is NOT enough — wire the card to it, or it won't display.** The proto resolves card art from the card.json **`art` field**, not from the presence of a file: `resolveArtPath` only renders an image when `art` is a bare image filename (`"art.png"`); any other value — including the default **emoji placeholder** — passes through and renders as that emoji. So after saving the PNG, **edit `reference/html-proto/cards/<tplId>/card.json` and set `"art": "art.png"`** (replacing the emoji). Skipping this leaves the portrait on disk but invisible in-game. (This exact gap once left 110 placed portraits unshown.)
+
+> **On a web / ephemeral container, PUSH or lose it.** A cloud session's container resets unpredictably and discards anything not pushed to the GitHub branch — committing is *not* enough. Run `git push` after every keeper (or batch) you need to survive. On local hardware the normal commit flow is fine; this rule is specifically for ephemeral remotes.
 
 Then append the path to `.git/info/exclude` (the worktree-shared local-only ignore) so the work-in-progress can't accidentally be committed:
 
@@ -236,6 +251,10 @@ A small inline preview is genuinely hard to evaluate for a 64×32 image. If the 
 **Upscale to evaluate — for your own eyes, not just theirs.** A 64×32 PNG is nearly unreadable inline, for *you* as much as the user. Before you judge a roll or present it, nearest-neighbor-upscale it ~8× (to ~512×256) and Read *that* (`System.Drawing`, `InterpolationMode = NearestNeighbor`). And judge the **whole** image at size — *does it read as the thing?* — not merely whether the parts are present. The gestalt is exactly what the upscale reveals and the postage-stamp hides; it's also where the user's eye will out-see yours, so trust their read.
 
 **Surface every generation to the user — never silently bench a roll.** When you fire a batch (variance sampling, seed-lock tests, single-variable A/Bs), show the user *all* the results, not just the one you'd pick. Taste is the director's, not yours: a frame you'd discard may be exactly what they want, or perfect for a different card — and they paid for every generation. Send results as files (they render at real size, unlike the cramped inline preview) so the user can judge the full spread, not your edit of it.
+
+This isn't just etiquette — it's the measured lever. Agent-*solo* selection (self-diagnose, self-pick) was A/B-tested twice (candidates C4 and C5) and came back **null**; the human-in-the-loop is what produces keepers. Don't try to be autonomous in selection or direction.
+
+**For a big spread, use the review applet** at `review-applet/` in this skill folder. It builds a zero-dependency, `file://`-openable reviewer (one card per page; ①/Tie/② + click-to-keep + notes, verdicts export as JSON) and — for A/B work — preserves the blind by cropping frames live out of a pre-rendered contact sheet, so neither reviewer nor assistant sees which arm a label maps to. See its README to regenerate for a new batch.
 
 Then offer:
 
@@ -335,6 +354,8 @@ Not "a shadow battlemage." A specific moment: hovering, peering, jealous. The ch
 
 Pixflux generates whole images; `/v2/inpaint` *edits* them — and this is where the loop stops being one-shot generation and becomes real collaboration, up to and including the user painting pixels themselves. Reach for it when a result is mostly right and you want to surgically change, extend, or add to one region.
 
+> **Inpaint is human-in-the-loop ONLY — never fire it on your own initiative.** Fired blind by the agent (auto-diagnose a flaw → auto-mask → auto-repaint) it mostly returns noise, and at 64×32 the masked region rarely holds. The "diagnose-then-iterate via inpaint" *solo* posture was A/B-tested (candidate C5, n=20) and came back **null** — no better than plain control. So inpaint earns its keep only when a human with eyes is choosing and masking the region *with* you. Propose it to the director and do it together, or hand the frame back for them to mask; don't substitute it for just rerolling a good prompt on fresh seeds (which is cheaper and, per the breadth result below, does more work). Everything in this section assumes that human-in-the-loop framing.
+
 **How to drive it.** POST `https://api.pixellab.ai/v2/inpaint` (same `Bearer` auth). Body: `description`, `image_size` (the working size, ≤ 200×200), `inpainting_image`, `mask_image`. Pass each image as **raw base64** — `{"type":"base64","base64":"<raw>"}`, with no `data:image/png;base64,` prefix. The **mask is white = regenerate, black = preserve**. The returned `image.base64` may itself come back as a data-URI — strip any prefix before you decode. Synchronous, ~3–5s.
 
 **Local prompts only.** The `description` names *what belongs in the masked patch* — `"stone wall"`, `"grass"`, `"deep shadow"` — never the whole scene. Inpaint repaints only the masked pixels; feed it the entire scene and it crams the whole thing into the hole. (PixelLab's own docs say the same: "describe what to generate in those areas.")
@@ -354,4 +375,13 @@ Pixflux generates whole images; `/v2/inpaint` *edits* them — and this is where
 
 ## One-breath summary
 
-Read the card → study 1–2 anchor arts → propose three different *visions*, each with mechanic-enactment + silhouette + intent + anchor → user picks → write prompt using subject/pose/context/background structure, no banned phrases → show prompt → generate via pixflux at 64×32 opaque → save to `reference/html-proto/cards/<tplId>/art.png` → add to `.git/info/exclude` → show user → iterate without defending.
+Read the card → study 1–2 anchor arts → propose three different *visions*, each with mechanic-enactment + silhouette + intent + anchor → user picks → write prompt using subject/pose/context/background structure, no banned phrases → show prompt → generate via pixflux at 64×32 opaque → save to `reference/html-proto/cards/<tplId>/art.png` **and set that card.json's `art` field to `"art.png"`** → add to `.git/info/exclude` → show user → iterate without defending.
+
+
+## Explore wide — breadth over depth; don't converge early
+
+Spend your generation budget on **breadth over depth.** The instinct is to find one decent roll early and then refine it — reroll the same prompt, lock the seed and tweak one element — until it is polished. Resist that. Instead keep generating **genuinely distinct takes**: different compositions, camera framings, which beat of the mechanic you foreground, even different core subjects. Each generation should use a fresh seed and a meaningfully different prompt, not a tweak of the previous one.
+
+Aim for a spread where any two frames look like separate *attempts* at the card, not neighbours in a refinement chain. Deliberately cover the option space: if one roll is a close-up, make the next a wide shot; if one centres the caster, make the next centre the target; vary the palette-mood, the angle, the moment of action. Only at the very end of the budget, if a single direction is clearly strongest, may you spend one or two rolls tightening it.
+
+Why: a wide spread of distinct candidates yields a better single best frame than a deep refinement of one early pick — random variance across fresh attempts does more work than directed tweaking, and the final selection is the director's to make from the spread. Your job is to maximise the quality *and diversity* of that spread, not to pre-converge it.

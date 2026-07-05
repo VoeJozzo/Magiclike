@@ -1,6 +1,6 @@
 {
   "card_id": "symbiote_tree",
-  "art": "\ud83c\udf32",
+  "art": "art.png",
   "cost": {
     "G": 1,
     "C": 3

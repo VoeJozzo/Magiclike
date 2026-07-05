@@ -3,7 +3,7 @@ type: index
 tags: [magiclike, wiki]
 aliases: ["Concept wiki hub"]
 created: 2026-06-02
-updated: 2026-06-06
+updated: 2026-06-10
 ---
 
 # Magiclike — durable concepts wiki
@@ -42,6 +42,16 @@ It is **docs-as-code, in wiki form** — co-located with the code (so it's versi
 
 **World (the setting bible — living draft)**
 - [world/](world/world-bible.md) — tone, cosmology, color philosophy, names ([[world-bible|index]]). **Scratchpad under heavy iteration**, unlike the rest of this layer: claims are status-tagged (authorial / observed / adopted / parked), and nothing is locked. Seeded 2026-06 from the art-prompt corpus + design conversation.
+
+## Engine internals (audit-distilled)
+
+Per-subsystem verified mechanics of the [[html-proto]] engine, distilled and maintained per-chunk by the proto audit. One page per subsystem; anatomy contract + durability rules in the hub.
+
+- [engine/README.md](engine/README.md) — the cluster hub: what these pages are, the page-anatomy contract, durability rules, current + planned pages.
+- [engine/turn-machine.md](engine/turn-machine.md) — `step()`, phases, priority rounds, mana emptying, SBAs, win/loss.
+- [engine/combat.md](engine/combat.md) — declaration legality, keyword gates, the two-pass damage core, removal-from-combat.
+- [engine/triggers-and-stack.md](engine/triggers-and-stack.md) — emit → queue → drain → resolve, APNAP, the trigger budget cap, generated triggers.
+- [engine/effects-and-targeting.md](engine/effects-and-targeting.md) — the EFFECTS dispatch table, the targeting/hexproof layer, resolution-time re-validation, zone routing.
 
 ## What's *not* here (one home per fact)
 

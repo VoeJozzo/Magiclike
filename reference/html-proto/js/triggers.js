@@ -1,11 +1,15 @@
 // ─── Composable atomic predicates (Slice 2 / DIVERGENCE E2) ──────────────
 // New-vocabulary predicates over the unified event shapes (§3 of
 // plan-zone-change-and-composable-predicates.md):
-//   card_zone_change {kind, subject_iid, subject_card, controller, from_zone, to_zone, killed_by_iid?}
-//   spell_cast       {kind, subject_iid, subject_card, controller}
-//   attacks          {kind, subject_iid, subject_card, controller, defender_key}
-//   life_changed     {kind, who, delta, source_iid?}
-//   combat_damage    {kind, subject_iid, subject_card, controller, who, amount}
+//   card_zone_change {type, subject_iid, subject_card, controller, from_zone, to_zone, source_iid?}
+//   spell_cast       {type, subject_iid, subject_card, controller}
+//   attacks          {type, subject_iid, subject_card, controller, defender_key}
+//   life_changed     {type, who, delta, source_iid?}
+//   combat_damage    {type, subject_iid, subject_card, controller, who, amount}
+// `type` is the discriminator emit()/the dispatcher match on (the wire name is
+// the same string on both engines — PROTOCOL §3.3). `source_iid` on
+// card_zone_change names the card that CAUSED the move (e.g. the token-maker),
+// distinct from subject_iid; the noSelfCascade guard below reads it.
 // Each atomic takes (ctx, args); ctx = {state, source, event, who} where `who`
 // is the trigger source's controller (Godot resolves the same from
 // source.controller_key — the per-engine signature detail; the evaluator

@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Art-Eval — blind review</title>
+<style>
+  :root{
+    --bg:#16161a; --panel:#1c1c20; --panel2:#23232a; --ink:#e9e9ee; --dim:#9a9aa6;
+    --line:#33333d; --p1:#5aa9ff; --p2:#ffb25a; --tie:#9a9aa6; --keep:#54d98c;
+    --hq:#c9a3ff;
+    --z:.8;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);
+    font:14px/1.45 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  a{color:var(--p1)}
+  .bar{position:sticky;top:0;z-index:10;display:flex;gap:8px 12px;align-items:center;
+    flex-wrap:wrap;padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--line)}
+  @media(max-width:760px){.bar .sp{display:none}.wrap{padding:14px 10px 80px}}
+  .bar h1{font-size:15px;margin:0;font-weight:600;letter-spacing:.3px}
+  .bar .sp{flex:1}
+  .pill{background:var(--panel2);border:1px solid var(--line);border-radius:999px;
+    padding:3px 10px;color:var(--dim);font-size:12px}
+  button{font:inherit;color:var(--ink);background:var(--panel2);border:1px solid var(--line);
+    border-radius:8px;padding:6px 12px;cursor:pointer}
+  button:hover{border-color:#55556a}
+  button:disabled{opacity:.4;cursor:default}
+  .wrap{max-width:1500px;margin:0 auto;padding:18px 16px 80px}
+  .head{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:6px}
+  .head .name{font-size:22px;font-weight:700}
+  .head .cost{font-family:ui-monospace,monospace;background:var(--panel2);
+    border:1px solid var(--line);border-radius:6px;padding:1px 8px;color:#cfcfe0}
+  .head .type{color:var(--dim)}
+  .desc{color:#c7c7d2;margin:0 0 14px;max-width:1100px}
+  .toolrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0 14px}
+  .toolrow .lbl{color:var(--dim);font-size:12px;margin-right:2px}
+  .verdict button{min-width:96px}
+  .verdict button.on[data-v="1"]{background:#16314f;border-color:var(--p1);color:#dfeeff}
+  .verdict button.on[data-v="2"]{background:#4a3413;border-color:var(--p2);color:#ffeccf}
+  .verdict button.on[data-v="tie"]{background:#2c2c34;border-color:#777;color:#fff}
+  .grid{display:flex;flex-wrap:wrap;gap:14px}
+  .tile{position:relative;border:2px solid var(--line);border-radius:10px;overflow:hidden;
+    cursor:pointer;background:#000;padding:0;line-height:0}
+  .tile .crop{image-rendering:pixelated;zoom:var(--z)}
+  .tile .tag{position:absolute;left:6px;top:6px;font:600 12px ui-monospace,monospace;
+    padding:2px 7px;border-radius:6px;background:rgba(0,0,0,.66);color:#fff;letter-spacing:.4px}
+  .tile.p1 .tag{box-shadow:inset 0 0 0 1px var(--p1)}
+  .tile.p2 .tag{box-shadow:inset 0 0 0 1px var(--p2)}
+  .tile:hover{border-color:#55556a}
+  .tile.keep{border-color:var(--keep)}
+  .tile .star{position:absolute;right:6px;top:6px;color:var(--keep);font-size:15px;
+    opacity:0;text-shadow:0 0 4px #000}
+  .tile.keep .star{opacity:1}
+  .tile.hq{box-shadow:inset 0 0 0 2px var(--hq)}
+  .hqbtn{position:absolute;right:6px;bottom:6px;z-index:2;
+    font:600 10px ui-monospace,monospace;padding:2px 6px;border-radius:6px;line-height:1;
+    background:rgba(0,0,0,.6);color:var(--dim);border:1px solid var(--line);cursor:pointer}
+  .tile.hq .hqbtn{background:var(--hq);color:#1a1023;border-color:var(--hq)}
+  .poolgroup{margin:0 0 4px;color:var(--dim);font-size:12px;width:100%;
+    border-top:1px dashed var(--line);padding-top:10px}
+  .note{width:100%;max-width:1100px;margin-top:14px;background:var(--panel);
+    border:1px solid var(--line);border-radius:8px;color:var(--ink);padding:8px 10px;font:inherit}
+  .nav{display:flex;gap:10px;align-items:center;margin:18px 0 4px}
+  .jump{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+  .jump button{padding:3px 8px;font-size:12px;border-radius:6px;min-width:30px}
+  .jump button.cur{border-color:#7a7a93;background:#2c2c36}
+  .jump button.done{color:var(--keep)}
+  .sheetbox{margin:8px 0 4px}
+  .sheetbox summary{cursor:pointer;color:var(--dim);font-size:12px}
+  .sheetbox img{margin-top:8px;max-width:100%;border:1px solid var(--line);
+    border-radius:8px;image-rendering:pixelated}
+  dialog{background:var(--panel);color:var(--ink);border:1px solid var(--line);
+    border-radius:12px;max-width:min(900px,92vw);width:760px;padding:0}
+  dialog::backdrop{background:rgba(0,0,0,.6)}
+  dialog .dh{display:flex;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line)}
+  dialog .dh b{font-size:15px}.dh .sp{flex:1}
+  dialog textarea{width:100%;height:340px;border:0;border-radius:0;background:#101014;
+    color:#dfe6ee;font:12.5px/1.5 ui-monospace,monospace;padding:14px 16px;resize:vertical}
+  dialog .df{display:flex;gap:10px;justify-content:flex-end;padding:12px 16px;
+    border-top:1px solid var(--line)}
+  .kbd{font:11px ui-monospace,monospace;color:var(--dim);border:1px solid var(--line);
+    border-radius:5px;padding:1px 5px;background:var(--panel2)}
+  .muted{color:var(--dim)}
+</style>
+</head>
+<body>
+<div class="bar">
+  <h1>Art-Eval · blind review</h1>
+  <span class="pill" id="cand"></span>
+  <span class="pill" id="prog"></span>
+  <span class="sp"></span>
+  <span class="muted" style="font-size:12px">size</span>
+  <button id="szS">S</button><button id="szM">M</button><button id="szL">L</button>
+  <button id="exportBtn">Export verdicts ▾</button>
+</div>
+
+<div class="wrap">
+  <div class="head">
+    <span class="name" id="cName"></span>
+    <span class="cost" id="cCost"></span>
+    <span class="type" id="cType"></span>
+  </div>
+  <p class="desc" id="cDesc"></p>
+
+  <div class="toolrow verdict" id="verdict">
+    <span class="lbl">Which pool reads better?</span>
+    <button data-v="1">① better</button>
+    <button data-v="tie">Tie</button>
+    <button data-v="2">② better</button>
+    <span class="lbl" style="margin-left:14px">keeper:</span>
+    <span class="pill" id="keepLbl">— none —</span>
+    <button id="clearKeep" title="clear keeper">clear</button>
+  </div>
+
+  <details class="sheetbox">
+    <summary>show full contact sheet (the rendered blind sheet these tiles are cropped from)</summary>
+    <img id="sheetImg" alt="contact sheet">
+  </details>
+
+  <div class="grid" id="grid"></div>
+
+  <textarea class="note" id="note" rows="2" placeholder="optional note for this card (why the winner won, any caveats)…"></textarea>
+
+  <div class="nav">
+    <button id="prev">← Prev</button>
+    <button id="next">Next →</button>
+    <span class="muted">card <b id="ix"></b> / <span id="tot"></span></span>
+    <span class="sp" style="flex:1"></span>
+    <span class="muted">keys: <span class="kbd">←</span> <span class="kbd">→</span> nav ·
+      <span class="kbd">1</span>/<span class="kbd">2</span>/<span class="kbd">t</span> verdict ·
+      <span class="kbd">click</span> = keeper · <span class="kbd">HQ</span> chip = mark high-quality</span>
+  </div>
+  <div class="jump" id="jump"></div>
+</div>
+
+<dialog id="exportDlg">
+  <div class="dh"><b>Verdicts</b><span class="sp"></span>
+    <span class="muted" id="expCount" style="font-size:12px"></span></div>
+  <textarea id="exportTxt" readonly></textarea>
+  <div class="df">
+    <button id="copyBtn">Copy to clipboard</button>
+    <button id="dlBtn">Download .json</button>
+    <button id="closeDlg">Close</button>
+  </div>
+</dialog>
+
+<script src="manifest.js"></script>
+<script>
+const R = window.REVIEW;
+const SHEETDIR = "../../docs/art-eval-sheets/";
+const sheetURL = c => (window.SHEETDATA && window.SHEETDATA[c.sheet]) || (SHEETDIR + c.sheet);
+const KEY = "art-eval-" + R.cand + "-verdicts";
+const V = JSON.parse(localStorage.getItem(KEY) || "{}");   // {cardId:{pool,keeper,note}}
+let i = +(localStorage.getItem(KEY + ":ix") || 0);
+let z = +(localStorage.getItem(KEY + ":z") || (innerWidth < 760 ? 0.5 : 0.8));
+
+const $ = s => document.querySelector(s);
+const save = () => localStorage.setItem(KEY, JSON.stringify(V));
+const vof = c => { const v = V[c] = V[c] || {pool:null, keeper:null, note:"", hq:[]};
+  if (!Array.isArray(v.hq)) v.hq = []; return v; };
+const judged = c => { const v = V[c]; return v && (v.pool || v.keeper); };
+
+function setZoom(nz){ z = nz; document.documentElement.style.setProperty("--z", z);
+  localStorage.setItem(KEY+":z", z);
+  for (const b of [["szS",.5],["szM",.8],["szL",1]])
+    $("#"+b[0]).style.borderColor = (Math.abs(z-b[1])<.01) ? "#7a7a93" : "";
+}
+
+function render(){
+  const card = R.cards[i];
+  const v = vof(card.id);
+  $("#cand").textContent = "cand " + R.cand;
+  $("#cName").textContent = card.name;
+  $("#cCost").textContent = card.cost || "—";
+  $("#cType").textContent = card.typeline;
+  $("#cDesc").textContent = card.desc;
+  $("#ix").textContent = i + 1;
+  $("#tot").textContent = R.cards.length;
+  $("#sheetImg").src = sheetURL(card);
+  $("#note").value = v.note || "";
+  $("#keepLbl").textContent = v.keeper || "— none —";
+
+  for (const b of $("#verdict").querySelectorAll("button[data-v]"))
+    b.classList.toggle("on", v.pool === b.dataset.v);
+
+  const grid = $("#grid"); grid.innerHTML = "";
+  let lastPool = null;
+  for (const cell of card.cells){
+    if (cell.pool !== lastPool){
+      lastPool = cell.pool;
+      const h = document.createElement("div");
+      h.className = "poolgroup";
+      h.textContent = "Pool " + (cell.pool === "1" ? "①" : "②")
+        + "  (label " + cell.pool + ".xx)";
+      grid.appendChild(h);
+    }
+    const t = document.createElement("button");
+    t.className = "tile p" + cell.pool + (v.keeper === cell.label ? " keep" : "")
+      + (v.hq.includes(cell.label) ? " hq" : "");
+    t.title = "click = set keeper " + cell.label;
+    const crop = document.createElement("div");
+    crop.className = "crop";
+    crop.style.width = R.cw + "px"; crop.style.height = R.ch + "px";
+    crop.style.backgroundImage = "url(\"" + sheetURL(card) + "\")";
+    crop.style.backgroundPosition = (-cell.x) + "px " + (-cell.y) + "px";
+    crop.style.backgroundRepeat = "no-repeat";
+    t.appendChild(crop);
+    const tag = document.createElement("span");
+    tag.className = "tag"; tag.textContent = cell.label; t.appendChild(tag);
+    const star = document.createElement("span");
+    star.className = "star"; star.textContent = "★ keeper"; t.appendChild(star);
+    const hqb = document.createElement("span");
+    hqb.className = "hqbtn"; hqb.textContent = "HQ";
+    hqb.title = "toggle high-quality " + cell.label;
+    hqb.onclick = (e) => { e.stopPropagation();
+      const k = v.hq.indexOf(cell.label);
+      if (k >= 0) v.hq.splice(k, 1); else v.hq.push(cell.label);
+      save(); render(); };
+    t.appendChild(hqb);
+    t.onclick = () => { v.keeper = (v.keeper === cell.label) ? null : cell.label;
+      save(); render(); };
+    grid.appendChild(t);
+  }
+
+  const jump = $("#jump"); jump.innerHTML = "";
+  R.cards.forEach((c, k) => {
+    const b = document.createElement("button");
+    b.textContent = k + 1;
+    b.title = c.id;
+    if (k === i) b.classList.add("cur");
+    if (judged(c.id)) b.classList.add("done");
+    b.onclick = () => { i = k; persistIx(); render(); };
+    jump.appendChild(b);
+  });
+
+  const done = R.cards.filter(c => judged(c.id)).length;
+  $("#prog").textContent = done + " / " + R.cards.length + " judged";
+  $("#prev").disabled = i === 0;
+  $("#next").disabled = i === R.cards.length - 1;
+}
+
+function persistIx(){ localStorage.setItem(KEY + ":ix", i); }
+function go(d){ const n = i + d; if (n >= 0 && n < R.cards.length){ i = n; persistIx(); render(); } }
+
+$("#prev").onclick = () => go(-1);
+$("#next").onclick = () => go(1);
+$("#clearKeep").onclick = () => { vof(R.cards[i].id).keeper = null; save(); render(); };
+$("#szS").onclick = () => setZoom(.5);
+$("#szM").onclick = () => setZoom(.8);
+$("#szL").onclick = () => setZoom(1);
+$("#note").oninput = e => { vof(R.cards[i].id).note = e.target.value; save(); };
+
+for (const b of $("#verdict").querySelectorAll("button[data-v]"))
+  b.onclick = () => { const v = vof(R.cards[i].id);
+    v.pool = (v.pool === b.dataset.v) ? null : b.dataset.v; save(); render(); };
+
+document.addEventListener("keydown", e => {
+  if (e.target.tagName === "TEXTAREA") return;
+  if (e.key === "ArrowLeft") go(-1);
+  else if (e.key === "ArrowRight") go(1);
+  else if (e.key === "1" || e.key === "2" || e.key.toLowerCase() === "t"){
+    const v = vof(R.cards[i].id); const nv = e.key.toLowerCase() === "t" ? "tie" : e.key;
+    v.pool = (v.pool === nv) ? null : nv; save(); render();
+  }
+});
+
+// ---- export ----
+function exportText(){
+  const lines = [];
+  R.cards.forEach((c, k) => {
+    const v = V[c.id] || {};
+    const pool = v.pool ? ("pool=" + (v.pool === "tie" ? "tie" : v.pool)) : "pool=?";
+    const keep = v.keeper ? ("  keeper=" + v.keeper) : "";
+    const hq = (v.hq && v.hq.length) ? ("  hq=" + v.hq.slice().sort().join(",")) : "";
+    const note = v.note ? ("  note=" + JSON.stringify(v.note)) : "";
+    lines.push((c.id).padEnd(22) + pool + keep + hq + note);
+  });
+  return lines.join("\n");
+}
+$("#exportBtn").onclick = () => {
+  $("#exportTxt").value = exportText();
+  const done = R.cards.filter(c => judged(c.id)).length;
+  $("#expCount").textContent = done + " / " + R.cards.length + " judged";
+  $("#exportDlg").showModal();
+};
+$("#closeDlg").onclick = () => $("#exportDlg").close();
+$("#copyBtn").onclick = async () => {
+  try { await navigator.clipboard.writeText($("#exportTxt").value);
+    $("#copyBtn").textContent = "Copied ✓"; setTimeout(()=>$("#copyBtn").textContent="Copy to clipboard",1200); }
+  catch { $("#exportTxt").select(); document.execCommand("copy"); }
+};
+$("#dlBtn").onclick = () => {
+  const blob = new Blob([JSON.stringify({cand:R.cand, verdicts:V}, null, 1)],
+    {type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = "art-eval-" + R.cand + "-verdicts.json";
+  a.click(); URL.revokeObjectURL(a.href);
+};
+
+if (i >= R.cards.length) i = 0;
+setZoom(z);
+render();
+</script>
+</body>
+</html>

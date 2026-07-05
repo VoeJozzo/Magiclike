@@ -2,7 +2,7 @@
 type: concept
 tags: [magiclike, gamedev, meta]
 created: 2026-06-02
-updated: 2026-06-04
+updated: 2026-06-11
 sources: ["docs/wiki/rules/", "docs/plans/plan-effects-refactor.md"]
 ---
 
@@ -12,7 +12,7 @@ Stapling (splicing) **merges two deck slots into one synthesized card** (`synthe
 
 ## Type-canonical merge
 
-The pair is canonicalized by a **type hierarchy** (Creature > Artifact > Land > Spell): the lower-ranking type becomes the **base** (its identity dominates), the higher-ranking the **staple** (it contributes a property). Dispatch is by *staple type*, not branch order (`docs/plans/plan-effects-refactor.md` §3.10):
+The pair is canonicalized by a **type hierarchy** (Creature > Artifact > Land > Spell): the higher-priority type becomes the **base** (its identity dominates), the lower-priority the **staple** (it contributes a property). Dispatch is by *staple type*, not branch order (`docs/plans/plan-effects-refactor.md` §3.10):
 
 - staple = **Creature** → body merge (stats / keywords / abilities union);
 - staple = **Land** → the base gains the land's tap-for-mana ability (the unified land-as-ability model, §3.9);
@@ -20,7 +20,7 @@ The pair is canonicalized by a **type hierarchy** (Creature > Artifact > Land > 
 
 ## Notes
 
-The merged card's text and behavior derive from the combined effects — no hand-concatenation (see [[procedural-card-text]]) — and a generic deep-clone carries fields forward so new schema fields staple automatically. The Land+Spell *free*-ETB is a known too-strong case slated for an optional-paid redesign (parked in `docs/BACKLOG.md`).
+The merged card's text and behavior derive from the combined effects — no hand-concatenation (see [[procedural-card-text]]) — and a generic deep-clone carries fields forward so new schema fields staple automatically. On a Land base, the stapled spell's ETB is **optional and paid** ("you may pay {cost}") — a land is free to play, so a free stapled spell was pure value; the optional cost restores the bargain. Creature/artifact bases keep the ETB free, since the base's full cost was already paid.
 
 Realized in the [[html-proto]]; [[godot]]-deferred (see [[cross-engine-port]]).
 

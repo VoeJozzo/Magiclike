@@ -55,7 +55,11 @@ console.log('\n=== per-kind schema for the new atomics ===');
   ];
   const good = [
     { tplId: 'mcOk', effects: [{ kind: 'move_card', from_zone: 'library', to_zone: 'hand' }] },
-    { tplId: 'mcGraveyardToExileOk', effects: [{ kind: 'move_card', from_zone: 'graveyard', to_zone: 'exile' }] },
+    // selector added when A4-21's selector table landed: a selector-less
+    // graveyard→exile is exactly the warn-and-no-op trap the table closes
+    // (the handler's t-derivation has no fallback for this pair). The
+    // fixture still pins what it always did — the zone PAIR is supported.
+    { tplId: 'mcGraveyardToExileOk', effects: [{ kind: 'move_card', from_zone: 'graveyard', to_zone: 'exile', selector: 'target' }] },
     { tplId: 'gcpOk', effects: [{ kind: 'grant_cast_permission', from_zone: 'exile', duration: 'eot' }] },
     { tplId: 'sevOk', effects: [{ kind: 'affect_creature', severity: 'destroy' }] },
   ];

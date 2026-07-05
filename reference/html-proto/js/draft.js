@@ -222,21 +222,11 @@ function buildOpponentDeck(numStickers, numStaples, numClones, colorAffinity, co
       picks.push(chosen);
     }
   }
-  // Constructed: prefer declared colors (avoid filler-padding noise for mono builds).
-  let oppColors;
-  if (constructed && Array.isArray(constructed.colors)) {
-    oppColors = constructed.colors.slice(0, 2);
-  } else {
-    const pips0 = countPips(picks);
-    const colorOrder = COLORS.slice().sort((a, b) => pips0[b] - pips0[a]);
-    oppColors = colorOrder.filter(k => pips0[k] > 0).slice(0, 2);
-    if (oppColors.length < 2) {
-      const remaining = COLORS.filter(k => !oppColors.includes(k));
-      while (oppColors.length < 2 && remaining.length) {
-        oppColors.push(remaining.shift());
-      }
-    }
-  }
+  // A8-4: the opp deck's "colors" output was UI-dead — no production code read it
+  // (the boss-banner consumer reads only name/icon; the drafter reads colors off
+  // the constructed spec, not here), and its two branches returned inconsistent
+  // shapes (constructed 0–1, heuristic always padded to 2). Removed rather than
+  // documented; color identity, where needed, lives on the constructed spec.
   const pips = countPips(picks);
   const lands = (constructed && Array.isArray(constructed.lands))
     ? constructed.lands.slice()
@@ -246,7 +236,7 @@ function buildOpponentDeck(numStickers, numStaples, numClones, colorAffinity, co
   if (numStaples > 0)  applyOpponentStaples(slots, numStaples);
   if (numStickers > 0) applyOpponentStickers(slots, numStickers);
   if (numClones > 0)   applyOpponentClones(slots, numClones);
-  return { cards: slots, colors: oppColors };
+  return { cards: slots };
 }
 
 function applyOpponentStaples(slots, n) {
@@ -257,8 +247,8 @@ function applyOpponentStaples(slots, n) {
   }
   const COLOR_KEYS = ['W','U','B','R','G'];
   const isCastable = (baseTplId, stapleTplId) => {
-    // Cheap castability check: every color in merged cost must be in deck colors.
-    // template — just sums cost.
+    // Cheap castability check: every color in merged cost must be in deck
+    // colors. Doesn't build the merged template — just sums the two costs.
     const baseTpl = CARDS[baseTplId];
     const stapleTpl = CARDS[stapleTplId];
     for (const c of COLOR_KEYS) {
@@ -320,7 +310,7 @@ function absorbStapledSlot(slots, bi, si) {
 
 // Apply N clones to opp's deck. Each clone picks the highest-value non-land
 // slot not yet cloned, then inserts a literal photocopy (stickers, staples,
-// empower rolls, permaBuffs, bonusTrigger) after the original.
+// empower rolls, bonusTrigger, charges) after the original.
 //
 // Mirrors player's clone semantics — photocopy, not re-roll. Tracking by
 // tplId (not index) prevents 3 copies of the same card from one budget and
@@ -347,19 +337,20 @@ function applyOpponentClones(slots, n) {
       clone.stapledTpls = orig.stapledTpls.slice();
     }
     if (Array.isArray(orig.empowerRolls) && orig.empowerRolls.length > 0) {
-      clone.empowerRolls = orig.empowerRolls.map(r => ({...r}));
+      // A6-2: preserve a stored-blank (null) roll as null (not a laundered `{}`).
+      clone.empowerRolls = orig.empowerRolls.map(r => r ? {...r} : r);
     }
     if (Array.isArray(orig.subtypeRolls) && orig.subtypeRolls.length > 0) {
       clone.subtypeRolls = orig.subtypeRolls.slice();
-    }
-    if (Array.isArray(orig.permaBuffs) && orig.permaBuffs.length > 0) {
-      clone.permaBuffs = orig.permaBuffs.map(b => ({...b}));
     }
     if (orig.bonusTrigger) {
       clone.bonusTrigger = {
         ...orig.bonusTrigger,
         effects: (orig.bonusTrigger.effects || []).map(e => ({...e})),
       };
+    }
+    if (typeof orig.charges === 'number') {
+      clone.charges = orig.charges;   // A5-5 parity: photocopy remaining charges
     }
     slots.splice(bestIdx + 1, 0, clone);
     clonedTplIds.add(orig.tplId);
@@ -464,7 +455,10 @@ function scoreOpponentSticker(sticker, slot) {
       : 0;
     return 4 + totalCost;
   }
-  if (sticker.kind === 'trigger') return 10;   // architecture only — unused
+  // Unreachable in offers: no trigger-kind sticker is ever offered by
+  // stickersForSlot — scarified (weight 0, applied only by its dedicated
+  // in-game effect) is the one trigger-kind sticker.
+  if (sticker.kind === 'trigger') return 10;
   if (sticker.kind === 'subtype') {
     // Opp's decks aren't tribal-themed, so a stickered subtype is usually
     // inert. Score 1 — not zero (opp can still pick one if nothing else is
@@ -609,9 +603,11 @@ function intrinsicCardValue(card, picksSoFar) {
   return ENGINE.getCardValue(card, 'draft', ctx);
 }
 
-// Slot 3 of each pack is biased toward existing deck colors as a rescue
-// against color-screw — see rollPack for the policy. Earlier packs (when
-// you have 0 or 1 colors in your picks) are fully uniform random.
+// Pack color policy: each slot rolls a color from a shrinking table. An
+// off-deck color (no picks of it yet) drops from the table after one
+// appearance in the pack; in-deck colors stay and may repeat. Colorless
+// cards are eligible in every slot. There is no slot-index bias — see the
+// inner comments in rollPack for the full mechanism.
 
 function rollPack(pool, picksSoFar) {
   // Color-aware pack: roll a color per slot, sample a card from that color's
@@ -704,7 +700,7 @@ function rollPack(pool, picksSoFar) {
 
     // If this color is OFF-deck, drop it from the table for future slots so it
     // appears at most once. Only when we actually picked a card OF that color —
-    // a colorless pick in this slot doesn't "consume_spirit" the rolled color. In-deck
+    // a colorless pick in this slot doesn't "consume" the rolled color. In-deck
     // colors stay on the table and can repeat (rewards committed drafters).
     if (CARDS[id] && CARDS[id].color === color && !inDeckColors.has(color)) {
       colorTable = colorTable.filter(c => c !== color);
@@ -742,11 +738,14 @@ function pickPlayer(tplId) {
   state.currentPack = rollPackForMode(draftPool(), state.youPicks, state.mode);
 }
 
-// Count colored mana symbols across a card list. Each pip = 1. In Desert
-// Cube mode, basic lands also signal color intent (a Plains contributes a
-// "W pip"), so pack rolling and downstream UI treat early land picks as
-// color commitment. Classic ignores lands (cards have no cost, so they
-// contribute nothing — same behavior as before).
+// Count colored mana symbols across a card list. Each pip = 1. The land
+// branch is not mode-gated: any land with a colored `mana` field counts as
+// one pip of that color. Basic lands only appear in picks in Desert Cube
+// (a Plains contributes a "W pip"), but a drafted colored-mana nonbasic
+// land (e.g. the artifact lands) signals its color in either mode — a
+// deliberate commitment signal. Feeds allocLands and scoreDraftCard's
+// color-commitment read; rollPack reads land colors via its own separate
+// inDeckColors scan, not through here.
 function countPips(tplIds) {
   const pips = {W:0, U:0, B:0, R:0, G:0};
   for (const id of tplIds) {
@@ -825,8 +824,9 @@ return {
   // draft with the same scorer opp uses.
   pickFromPack,
   // Roll a fresh pack against the standard draft pool, biased toward the
-  // colors implied by `picksSoFar` (a list of tplIds, typically the player's
-  // current deck minus lands). Used by RUN for the Transform reward.
+  // colors implied by `picksSoFar` (a list of tplIds). The sole caller —
+  // RUN's Transform reward — passes ALL deck slots, lands included; land
+  // entries feed the in-deck color signal correctly via inDeckColors.
   rollTransformPack: (picksSoFar) => rollPack(draftPool(), picksSoFar || []),
   // Constructed deck registry — read-only access for UI (map tooltips need
   // deck names) and map generation (needs the ID list to pick a deck).
