@@ -188,6 +188,19 @@ function check(label, ok, info) {
     lands.join(','));
 }
 
+// --- §6b special cards: seen by the graph, never offered ----------------------
+{
+  check('special cards are analyzed (deck presence exerts pull)',
+    !!BUCKETS.analyzeCard('elystra_the_immortal') && !!BUCKETS.analyzeCard('endomorph'));
+  let offeredSpecial = false;
+  for (let i = 0; i < 25; i++) {
+    for (const b of BUCKETS.rollBucketOffer([])) {
+      for (const id of b.cards) if (CARDS[id] && CARDS[id].special) offeredSpecial = true;
+    }
+  }
+  check('...but special cards never appear in offers', !offeredSpecial);
+}
+
 // --- §7 theme health report -------------------------------------------------
 {
   const report = BUCKETS.themeHealthReport();

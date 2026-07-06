@@ -256,13 +256,19 @@ function ensurePool() {
   _byId = {};
   for (const id of Object.keys(CARDS)) {
     const tpl = CARDS[id];
-    if (!tpl || tpl.special) continue;                 // boss/boon-only cards
+    if (!tpl) continue;
     if (hasType(tpl, 'Basic')) continue;               // basics ride the land slots
-    const w = tpl.draftWeight;
-    if (typeof w === 'number' && w <= 0) continue;     // explicitly undraftable
+    // EVERY card gets analyzed into _byId — including special (boss/boon-only)
+    // cards — so a boon card sitting in your deck still exerts pull on what
+    // the offers court (an Endomorph wants the same world an aristocrats
+    // deck wants). Only the OFFERABLE subset joins _pool: specials and
+    // explicitly undraftable cards are seen, never offered.
     const a = analyze(tpl);
-    _pool.push(a);
     _byId[id] = a;
+    if (tpl.special) continue;
+    const w = tpl.draftWeight;
+    if (typeof w === 'number' && w <= 0) continue;
+    _pool.push(a);
   }
 }
 
