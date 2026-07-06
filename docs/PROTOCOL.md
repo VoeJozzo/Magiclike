@@ -75,6 +75,7 @@ to the manifest.
 | `abilities`    | `object[]`       | opt      | Activated abilities (e.g. tap-to-mana). Same shape as triggers minus `event`/`cond_id`, plus a `cost` object. |
 | `mana`         | `string` (W/U/B/R/G/C) | land  | Land's **primary-color label** (deck-color/draft/pip display only). §3.9: mana **production** lives on the land's tap-ability (`abilities: [{cost:{tap}, effects:[{add_mana, ...}]}]`), exactly like a mana dork — not on `mana`. A multi-color land uses `add_mana: {choose: ...}`. Use `"C"` for an identity-less land (e.g. City of Brass taps for any color but has no color identity — colorless frame, contributes no WUBRG to deck colors/pips). |
 | `customText`   | `bool`           | opt      | If true, suppresses the `~` placeholder lint.                 |
+| `synergy`      | `object`         | opt      | Card-local synergy hints for the bucket generator — the `customText` of the synergy graph. `{provides?: {<resource>: weight}, wants?: {<resource>: weight}}`, max-merged with structurally derived values. Reserved for one-off custom-kind cards the extractor deliberately doesn't parse (Elystra, Endomorph); mechanics appearing on 2+ cards get an extraction rule in `js/buckets.js` instead. Resource names validated at index time (unknown → console warning). Vocabulary: `dies fodder etb lifegain spellcast wide anthem` + `sub:<Subtype>`. (html-proto v2.2.x; Godot Phases 8–9.) |
 
 **Removed in §3.9 (Slice 3):** `extraManaColors`. Lands now produce mana through
 a tap-for-mana ability (the `add_mana` `choose` form covers City-of-Brass "any

@@ -40,12 +40,18 @@ function check(label, ok, info) {
   const bolt = BUCKETS.analyzeCard('lightning_bolt');
   check('bolt has aggro plan tag (face damage = the race plan)', bolt.tags.has('aggro'));
 
-  // Human is a chassis, not a strategy — must never generate edges.
-  const anyHuman = Object.keys(CARDS).find(id => {
+  // Humans are NOT special-cased: they provide their subtype like any tribe.
+  // Nothing in today's pool WANTS them (a pool fact, not a ban) — so Human
+  // generates zero edges until someone ships a Human payoff, at which point
+  // Human tribal simply starts working with no code change.
+  const knight = BUCKETS.analyzeCard('white_knight');
+  check('Humans provide sub:Human like any tribe (no exclusion list)',
+    knight && knight.provides['sub:Human'] > 0);
+  const anyHumanWant = Object.keys(CARDS).find(id => {
     const a = BUCKETS.analyzeCard(id);
-    return a && (a.provides['sub:Human'] || a.wants['sub:Human']);
+    return a && a.wants['sub:Human'];
   });
-  check('no card provides or wants sub:Human (excluded chassis subtype)', !anyHuman);
+  check('today: nothing wants Humans (documents the pool, not a rule)', !anyHumanWant);
 
   // this_card self-triggers must not register wants on other cards: an ETB
   // "when THIS enters, X" card is not an ally-ETB payoff.
@@ -199,6 +205,27 @@ function check(label, ok, info) {
     }
   }
   check('...but special cards never appear in offers', !offeredSpecial);
+}
+
+// --- §6c synergy hints: the custom_text of the graph --------------------------
+{
+  // Inject a synthetic custom-kind card that declares its synergy by hand.
+  CARDS.__hint_test = {
+    tplId: '__hint_test', name: 'Hint Tester', types: ['Creature', 'Horror'],
+    cost: { B: 1 }, power: 1, toughness: 1, special: true,
+    synergy: { wants: { dies: 3, bogusResource: 5 }, provides: { fodder: 2 } },
+  };
+  BUCKETS._resetCacheForTest();
+  const a = BUCKETS.analyzeCard('__hint_test');
+  check('synergy hint: declared wants applied', a && a.wants.dies === 3);
+  check('synergy hint: declared provides applied', a && a.provides.fodder === 2);
+  check('synergy hint: unknown resource ignored (warns, no crash)',
+    a && !a.wants.bogusResource);
+  const e = BUCKETS.edgeBetween('__hint_test', 'goblin_rabble');
+  check('hinted card grows real edges (rabble fodder/dies feed it)', e.w >= 6,
+    `w=${e.w}`);
+  delete CARDS.__hint_test;
+  BUCKETS._resetCacheForTest();
 }
 
 // --- §7 theme health report -------------------------------------------------

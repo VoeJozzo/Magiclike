@@ -62,9 +62,13 @@ const SEED_POOL_TOP = 12;       // identity seeds are sampled from the top-N
                                 // by edge-mass-into-deck (not argmax — variety).
 const MAX_COPIES = 4;           // deck-wide copy cap, matching the draft rule.
 
-// Subtypes that are chassis, not strategy — no card pays off "Human", so a
-// "Human" edge would be pure noise (59 members, 0 payoffs at last audit).
-const EXCLUDED_SUBTYPES = new Set(['Human']);
+// No subtype is excluded from the graph. Even very broad tribes (Human: ~59
+// members, 0 payoffs as of v2.2.0) are harmless without a payoff — provides
+// never attract provides, so a want-less tribe generates zero edges — and
+// the moment someone ships a Human lord, Human tribal simply starts working.
+// If a broad tribe ever swamps offers, the principled lever is specificity
+// weighting (scale a resource's edges down by how many cards provide it),
+// not a ban list.
 
 // ---------------------------------------------------------------------------
 // §5 (data) Theme names — resource key → bucket display name.
@@ -135,6 +139,35 @@ function collectKindsAndConds(node, kinds, conds) {
   }
 }
 
+// §1b Card-local synergy hints — the custom_text of the graph.
+//
+// Rule of thumb: mechanics that appear on 2+ cards get an extraction rule
+// here; a one-off custom kind the extractor deliberately doesn't parse
+// (endomorph_absorb, Elystra's permanence) may instead declare its synergy
+// ON the card:  "synergy": { "wants": {"dies": 3}, "provides": {...} }.
+// Hints are ADDITIVE (max-merged with derived values, same as bump), and
+// resource names are validated against the vocabulary below — a typo warns
+// at index time instead of silently doing nothing (the predicate-registry
+// boot-validation pattern).
+const HINT_RESOURCES = new Set([
+  'dies', 'fodder', 'etb', 'lifegain', 'spellcast', 'wide', 'anthem',
+]);
+function applySynergyHints(tpl, provides, wants) {
+  if (!tpl.synergy) return;
+  const bump = (map, key, w) => { map[key] = Math.max(map[key] || 0, w); };
+  for (const [map, src, label] of [[provides, tpl.synergy.provides, 'provides'],
+                                   [wants, tpl.synergy.wants, 'wants']]) {
+    if (!src) continue;
+    for (const [res, w] of Object.entries(src)) {
+      if (!HINT_RESOURCES.has(res) && !/^sub:[A-Z]/.test(res)) {
+        console.warn(`BUCKETS: ${tpl.tplId} synergy.${label} names unknown resource "${res}" — ignored`);
+        continue;
+      }
+      if (typeof w === 'number' && w > 0) bump(map, res, w);
+    }
+  }
+}
+
 // The extraction rules. Each rule is one small block; together they are the
 // module's entire authored knowledge about what synergy IS. Adding a new
 // mechanic to the game usually means adding ~2 lines here.
@@ -149,7 +182,7 @@ function analyze(tpl) {
 
   const isCreature = hasType(tpl, 'Creature');
   const isSpellCard = hasType(tpl, 'Sorcery') || hasType(tpl, 'Instant');
-  const subtypes = (tpl.types || []).filter(t => !TYPE_RANK_TYPES.has(t) && !EXCLUDED_SUBTYPES.has(t));
+  const subtypes = (tpl.types || []).filter(t => !TYPE_RANK_TYPES.has(t));
 
   // --- PROVIDES ---
   for (const st of subtypes) bump(provides, 'sub:' + st, W_PROV_SUBTYPE);
@@ -190,7 +223,7 @@ function analyze(tpl) {
     const selfOnly = cs.includes('this_card');
     for (const s of cs) {
       const sub = s.match(/^card_has_subtype\((\w+)\)$/);
-      if (sub && !EXCLUDED_SUBTYPES.has(sub[1])) bump(wants, 'sub:' + sub[1], W_WANT_PAYOFF);
+      if (sub) bump(wants, 'sub:' + sub[1], W_WANT_PAYOFF);
       if (selfOnly) continue;
       if (/^card_moves\(battlefield,\s*graveyard\)$/.test(s)) bump(wants, 'dies', W_WANT_PAYOFF);
       if (/^card_moves\([^)]*battlefield\)$/.test(s) && cs.includes('another_card')) {
@@ -202,7 +235,7 @@ function analyze(tpl) {
   }
   // Static buffs: tribal lords want their tribe; global anthems want width.
   for (const sb of (tpl.static_buffs || [])) {
-    if (sb.subtype && !EXCLUDED_SUBTYPES.has(sb.subtype)) {
+    if (sb.subtype) {
       bump(wants, 'sub:' + sb.subtype, W_WANT_PAYOFF);
       bump(provides, 'anthem', 1);
     } else if (!sb.subtype) {
@@ -226,6 +259,8 @@ function analyze(tpl) {
   if (kinds.some(k => k.kind === 'affect_creature' || k.kind === 'fight' ||
                       (k.kind === 'damage' && isSpellCard))) tags.add('removal');
   if (kinds.some(k => k.kind === 'move_card')) tags.add('cardflow');
+
+  applySynergyHints(tpl, provides, wants);
 
   return {
     // In-engine cards carry tplId (cards.js renames the wire format's
