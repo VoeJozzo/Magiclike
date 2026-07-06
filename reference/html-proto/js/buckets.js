@@ -298,17 +298,25 @@ function deckColorSet(deckTplIds) {
   return colors;
 }
 
-// Candidate legality inside a bucket: stays ≤2 colors, castable in the deck's
-// colors (when the deck HAS colors — at run start it doesn't, and the first
-// bucket pick is what chooses them), and under the deck-wide copy cap.
+// Candidate legality inside a bucket: the bucket stays ≤2 colors, the deck's
+// color identity stays ≤2 colors, and the deck-wide copy cap holds.
+//
+// The color rule is two-phase: while the deck holds FEWER than two colors
+// (run start, or a mono-color first pick), candidates may introduce a second
+// color — otherwise a mono-blue first bucket would lock the whole run to
+// blue. Once the deck is committed to two colors, candidates must be
+// castable inside them (colorless always fits).
 function isLegalCandidate(cand, bucket, deckColors, copyCounts) {
   if ((copyCounts[cand.tplId] || 0) >= MAX_COPIES) return false;
   const bucketColors = new Set();
   for (const b of bucket) for (const c of b.colors) bucketColors.add(c);
   for (const c of cand.colors) bucketColors.add(c);
   if (bucketColors.size > 2) return false;
-  if (deckColors.size > 0) {
+  if (deckColors.size >= 2) {
     for (const c of cand.colors) if (!deckColors.has(c)) return false;
+  } else {
+    const combined = new Set([...deckColors, ...bucketColors]);
+    if (combined.size > 2) return false;
   }
   return true;
 }
@@ -495,20 +503,35 @@ function rollBucketOffer(deckTplIds) {
   for (const id of deckIds) baseCopyCounts[id] = (baseCopyCounts[id] || 0) + 1;
 
   const offer = [];
-  const seeds = pickSeeds(deckAnalyses, deckColors, baseCopyCounts);
-  for (const seed of seeds) {
-    if (offer.length >= OFFER_SIZE) break;
+  const usedNames = new Set();
+  // Grow one bucket per seed. An offer of three identically-named plans is
+  // a boring offer, so a bucket whose name duplicates an already-offered one
+  // gets ONE retry with a fresh seed before being accepted anyway.
+  const tryAddBucket = (seed) => {
     // Each bucket sees the deck's copy counts plus ITS OWN picks, but not the
     // other offered buckets' — offers are alternatives, not siblings.
     const copyCounts = Object.assign({}, baseCopyCounts);
     copyCounts[seed.tplId] = (copyCounts[seed.tplId] || 0) + 1;
     const { bucket, why } = growBucket(seed, deckAnalyses, deckColors, copyCounts);
     if (bucket.length === BUCKET_CARDS && coherenceOf(bucket) >= MIN_COHERENCE) {
-      offer.push(finishBucket(bucket, why));
-    } else {
-      const loose = reinforcementsBucket(deckColors, Object.assign({}, baseCopyCounts));
-      if (loose.length === BUCKET_CARDS) offer.push(finishBucket(loose, []));
+      return finishBucket(bucket, why);
     }
+    const loose = reinforcementsBucket(deckColors, Object.assign({}, baseCopyCounts));
+    return (loose.length === BUCKET_CARDS) ? finishBucket(loose, []) : null;
+  };
+  const seeds = pickSeeds(deckAnalyses, deckColors, baseCopyCounts);
+  for (const seed of seeds) {
+    if (offer.length >= OFFER_SIZE) break;
+    let bucket = tryAddBucket(seed);
+    if (bucket && usedNames.has(bucket.name)) {
+      const retrySeeds = pickSeeds(deckAnalyses, deckColors, baseCopyCounts)
+        .filter(s => s.tplId !== seed.tplId && !offer.some(b => b.cards.includes(s.tplId)));
+      if (retrySeeds.length) {
+        const retry = tryAddBucket(retrySeeds[Math.floor(_rand() * retrySeeds.length)]);
+        if (retry && !usedNames.has(retry.name)) bucket = retry;
+      }
+    }
+    if (bucket) { usedNames.add(bucket.name); offer.push(bucket); }
   }
   // Backfill with Reinforcements if seeding starved (tiny pools, weird colors).
   while (offer.length < OFFER_SIZE) {

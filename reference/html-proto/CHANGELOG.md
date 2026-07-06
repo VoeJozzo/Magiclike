@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.1.57`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.2.0`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -2393,3 +2393,25 @@ test_a4_23_trailing_defer.js (red→green: tutor life-loss defers, discard
 trailing fires once, AI inline); test_drain_lifeloss.js re-pinned to post-pick
 timing. Salvaged from the pre-outage branch (commit 20fd17b5), cherry-picked
 onto the recovery lineage. Suite 142 files / 2626 assertions green, lint clean.
+
+v2.2.0: THE GROWING DECK — bucket-based run structure (docs/plans/
+plan-bucket-draft.md). New js/buckets.js: synergy-graph bucket generation —
+PROVIDES/WANTS resource extraction from card.json structure (~15 rules),
+labeled producer/consumer edges (+ weak shared-plan tags), seed-and-grow with
+softmax sampling, coherence floor with Reinforcements fallback, emergent
+theme naming (dominant edge resource → THEME_NAMES), boot theme-health
+report. New run mode 'growing' (start-screen primary): the run starts from 3
+bucket picks (each 3 cards + 2 lands; the first pick sets the run's colors —
+buckets may introduce a second color while the deck holds fewer than two,
+then lock to the pair) and grows between fights via the new two-phase
+addBucket reward (weight = 2 × spell deficit, fading to 0 at 23 spells; land
+top-up to 17 at target). Heuristic opponents mirror the player's spell count
+(constructed decks/bosses stay full-size scripted landmarks — buildOpponentDeck
+numPicks param, lands scale at 23:17). runState.config {mode} with legacy-save
+backfill; bucketPick added to the load-time phase validator; PICKLOG
+logBucketPick (own bucketPicks record array — card-stat matrices stay clean).
+UI: bucket tiles (name pill + 3 card minis + land pips) shared by the draft
+screen and the reward flow; classic + Desert Cube modes unchanged. Tests:
+buckets_test.js (32) + growing_deck_test.js (28); browser-verified end-to-end
+(boon → bucket draft → game 1 → addBucket reward → commit) via Playwright.
+Suite 144 files / 2686 assertions green, lint clean.

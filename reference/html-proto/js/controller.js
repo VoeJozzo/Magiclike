@@ -859,9 +859,12 @@ function makeBucketTileEl(bucket, onClick) {
   labelEl.textContent = bucket.name.toUpperCase();
   div.appendChild(labelEl);
   for (const tplId of bucket.cards) {
-    const tpl = CARDS[tplId];
-    if (!tpl) continue;
-    div.appendChild(makeRewardCardEl(tpl, null));
+    if (!CARDS[tplId]) continue;
+    // Draft-safe render path: no {inHand} view-model — castability reads the
+    // live game state, which is null during the run-start bucket draft.
+    const el = makeCardEl(ENGINE.makeCard(tplId));
+    el.style.setProperty('--scale', '2');
+    div.appendChild(el);
   }
   // Land pips: 'mountain' → {R} etc., rendered with the shared mana symbols.
   const pips = (bucket.lands || [])

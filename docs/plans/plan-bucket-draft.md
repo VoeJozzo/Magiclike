@@ -1,6 +1,8 @@
 # Plan: The Growing Deck & Synergy-Graph Buckets
 
-**Status (2026-06-11):** Design spec, **not yet executed** on either engine. Produced in a design session (Joe + Claude); the core algorithm was **prototyped and validated against the real 289-card proto pool** in-session (prototype scripts: [`bucket-prototype/`](bucket-prototype/)). Proto-first: everything here lands in the html-proto before the Godot port (which is still at Phase 5c; this work slots in around Phases 8–9, draft/roguelike meta).
+**Status (2026-07-06):** **Executed on the html-proto (v2.2.0)** — `js/buckets.js` (the synergy graph + generation), the `'growing'` draft mode (run starts from 3 bucket picks; the first pick sets the run's colors and may add a second while under two), the two-phase `addBucket` reward with the fading growth weight, land top-up, opponent size mirroring (constructed decks exempt), save-config backfill, PICKLOG bucket records, and the bucket-tile UI. 60 new assertions (`buckets_test.js` + `growing_deck_test.js`), browser-verified end-to-end via Playwright. Still open from Part I: the small-deck life/length tuning pass (§2f — selfplay sweeps), desert-integration variant, and all of Part II. Godot port unaffected (Phases 8–9 later).
+
+**Original status (2026-06-11):** Design spec produced in a design session (Joe + Claude); the core algorithm was prototyped and validated against the real 289-card proto pool in-session (prototype scripts: [`bucket-prototype/`](bucket-prototype/)).
 
 **Decision provenance.** Items marked ✅ were explicitly agreed in-session; items marked ◇ are proposals awaiting Joe's call. Where this doc and a future implementation disagree, re-read the session transcript or just re-decide — nothing here is sacred except the problem statement.
 

@@ -114,6 +114,36 @@ function check(label, ok, info) {
     [...seenNames].join(', '));
 }
 
+// --- §3b second-color expansion + offer name diversity -----------------------
+{
+  // A mono-color deck must NOT lock the run to one color: while the deck has
+  // <2 colors, buckets may introduce a second (browser-verified regression —
+  // the SPELLSTORM×3 lockout).
+  const monoRed = ['raging_goblin', 'goblin_piercer', 'lightning_bolt',
+                   'mountain', 'mountain'];
+  const PIP_COLORS = ['W', 'U', 'B', 'R', 'G'];
+  let sawSecondColor = false;
+  let colorBudgetOk = true;
+  let diverseOffers = 0;
+  for (let i = 0; i < 15; i++) {
+    const offer = BUCKETS.rollBucketOffer(monoRed);
+    const names = new Set(offer.map(b => b.name));
+    if (names.size >= 2) diverseOffers++;
+    for (const b of offer) {
+      const cols = new Set(['R']);
+      for (const id of b.cards) {
+        for (const k of PIP_COLORS) if ((CARDS[id].cost || {})[k] > 0) cols.add(k);
+      }
+      if (cols.size > 2) colorBudgetOk = false;
+      if (cols.size === 2) sawSecondColor = true;
+    }
+  }
+  check('mono-color deck: buckets can introduce a second color', sawSecondColor);
+  check('...but never a third (deck identity stays ≤2 colors)', colorBudgetOk);
+  check('offers usually carry ≥2 distinct plan names', diverseOffers >= 10,
+    `${diverseOffers}/15`);
+}
+
 // --- §4 run-start (empty deck) offers ---------------------------------------
 {
   let ok = true, twoColorOk = true;
