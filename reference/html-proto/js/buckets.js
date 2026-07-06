@@ -19,12 +19,12 @@
 //                       softmax-sampled best companion under constraints
 //                       (≤2 colors, castable in deck colors, copy cap,
 //                       curve spread).
-//   §4 rollOffer()    — compose a 3-bucket offer: 2 "identity" seeds
-//                       (strongest edges into the current deck) + 1
-//                       "adjacent" seed (a payoff the deck isn't feeding
-//                       yet). Low-coherence buckets fall back to a loose
-//                       "Reinforcements" bundle so offers never come up
-//                       empty.
+//   §4 rollOffer()    — compose a 3-bucket offer: seeds sampled from the
+//                       whole legal pool, each card weighted by its deck-
+//                       affinity (weights-as-weights: the wishlist shapes
+//                       the odds, not the outcomes). Low-coherence buckets
+//                       fall back to a loose "Reinforcements" bundle so
+//                       offers never come up empty.
 //   §5 naming         — bucket name = label of the dominant edge resource.
 //
 // API: rollBucketOffer(deckTplIds), rollBucket(seedTplId, deckTplIds),
@@ -58,8 +58,6 @@ const DECK_COUPLING = 0.25;     // λ: how much a candidate's edges into the
 const CURVE_CLASH_PENALTY = 0.5;// score multiplier when a candidate shares a
                                 // mana cost with a card already in the bucket.
 const MIN_COHERENCE = 3;        // buckets below this fall back to Reinforcements.
-const SEED_POOL_TOP = 12;       // identity seeds are sampled from the top-N
-                                // by edge-mass-into-deck (not argmax — variety).
 const MAX_COPIES = 4;           // deck-wide copy cap, matching the draft rule.
 
 // No subtype is excluded from the graph. Even very broad tribes (Human: ~59
@@ -531,6 +529,13 @@ function finishBucket(bucketAnalyses, why) {
 // into the current deck (deck empty → by payoff-ness, so run-start "banner"
 // buckets grow around lords and engine payoffs). Adjacent seed: a payoff the
 // deck is NOT feeding yet — same colors, different plan.
+// Seed selection: sample OFFER_SIZE seeds from the whole legal pool, each
+// card weighted by its deck-affinity (sum of edge weights into every card
+// you own; for an empty deck, by payoff-ness so run-start "banners" grow
+// around lords and engine payoffs). Weights-as-weights, no head/band
+// special cases: your wishlist shapes the ODDS, not the outcomes — the
+// wishlist's top is likely, coherent-but-uncommitted plans are possible,
+// and the long tail stays alive. Sampling is without replacement.
 function pickSeeds(deckAnalyses, deckColors, copyCounts) {
   const candidates = _pool.filter(c =>
     !c.isLand && isLegalCandidate(c, [], deckColors, copyCounts));
@@ -539,27 +544,24 @@ function pickSeeds(deckAnalyses, deckColors, copyCounts) {
     for (const v of Object.values(c.wants)) sum += v;
     return sum + (c.provides.anthem || 0);
   };
-  const scored = candidates.map(c => ({
-    c,
-    intoDeck: deckAnalyses.length ? edgeMassIntoDeck(c, deckAnalyses) : payoffness(c),
-    payoff: payoffness(c),
-  }));
-  scored.sort((a, b) => b.intoDeck - a.intoDeck);
+  const weightOf = c => deckAnalyses.length
+    ? edgeMassIntoDeck(c, deckAnalyses)
+    : payoffness(c);
+  const entries = candidates.map(c => ({ c, w: weightOf(c) })).filter(e => e.w > 0);
   const seeds = [];
-  const used = new Set();
-  const sampleFrom = (list) => {
-    const open = list.filter(s => !used.has(s.c.tplId));
-    const pick = softmaxPick(open.map(s => ({ item: s.c, score: s.intoDeck })), 1);
-    if (pick) { used.add(pick.tplId); seeds.push(pick); }
-  };
-  // Two identity seeds from the head of the ranking.
-  sampleFrom(scored.slice(0, SEED_POOL_TOP));
-  sampleFrom(scored.slice(0, SEED_POOL_TOP));
-  // One adjacent seed: payoffs in the middle band of deck-affinity — coherent
-  // plans the deck hasn't committed to. Falls back to the identity pool.
-  const mid = scored.filter(s => s.payoff > 0)
-    .slice(Math.floor(scored.length * 0.25), Math.floor(scored.length * 0.75));
-  sampleFrom(mid.length ? mid : scored.slice(0, SEED_POOL_TOP));
+  for (let k = 0; k < OFFER_SIZE && entries.length; k++) {
+    let total = 0;
+    for (const e of entries) total += e.w;
+    if (total <= 0) break;
+    let roll = _rand() * total;
+    let picked = entries.length - 1;
+    for (let i = 0; i < entries.length; i++) {
+      roll -= entries[i].w;
+      if (roll <= 0) { picked = i; break; }
+    }
+    seeds.push(entries[picked].c);
+    entries.splice(picked, 1);   // without replacement
+  }
   return seeds;
 }
 

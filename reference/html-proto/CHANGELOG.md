@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.2.1`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.2.2`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -2434,3 +2434,15 @@ offers; still never offered. (5) Bucket tiles: hover tooltip with the
 generator's edge reasons prettified to card names; etb creature-provision
 constants restored to natural values (idf owns ubiquity now). Suite 144
 files / 2693 assertions green, lint clean.
+
+v2.2.2: seed selection rewritten to weights-as-weights (Joe's proposal from
+design review). Seeds now sample from the whole legal pool with probability
+proportional to deck-affinity (empty deck: payoff-ness) — replacing the
+top-12 head + middle-band "adjacent" special case with one mechanism that
+blends identity, adjacency, and exploration naturally. The wishlist shapes
+the odds, not the outcomes. Measured vs prior: distinct seeds across 20
+offers 14→61 (BR deck) / →100 (WU); top-seed concentration 20%→19% with a
+far richer tail; identity preserved (BR still ~68% Warband+Grave Bargains);
+Reinforcements fallback 0-8% (honest goodstuff variance). Net code
+reduction: SEED_POOL_TOP and the adjacent-band logic deleted. Suite 144
+files / 2693 assertions green (stochastic tests stressed 5x), lint clean.
