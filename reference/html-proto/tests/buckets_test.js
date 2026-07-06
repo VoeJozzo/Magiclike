@@ -221,9 +221,11 @@ function check(label, ok, info) {
   check('synergy hint: declared provides applied', a && a.provides.fodder === 2);
   check('synergy hint: unknown resource ignored (warns, no crash)',
     a && !a.wants.bogusResource);
+  // Threshold is idf-aware: dies has ~64 providers so its contributions are
+  // deliberately discounted (2 provide × 3 want × ~0.55 idf ≈ 3.3).
   const e = BUCKETS.edgeBetween('__hint_test', 'goblin_rabble');
-  check('hinted card grows real edges (rabble fodder/dies feed it)', e.w >= 6,
-    `w=${e.w}`);
+  check('hinted card grows real edges (rabble dies-feeds it)',
+    e.w >= 2.5 && e.reasons.some(r => r.includes('[dies]')), `w=${e.w}`);
   delete CARDS.__hint_test;
   BUCKETS._resetCacheForTest();
 }
