@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.2.0`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.2.1`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -2415,3 +2415,22 @@ screen and the reward flow; classic + Desert Cube modes unchanged. Tests:
 buckets_test.js (32) + growing_deck_test.js (28); browser-verified end-to-end
 (boon → bucket draft → game 1 → addBucket reward → commit) via Playwright.
 Suite 144 files / 2686 assertions green, lint clean.
+
+v2.2.1: bucket-generator refinement round from adversarial design review.
+(1) Specificity weighting (idf): every provide-side edge contribution scales
+by anchor/log2(2+providers), so ubiquitous resources (etb: 188 providers,
+spellcast: 83, dies: 64) bind loosely and scarce ones (tribes: 8-19) bind
+tightly — replaces per-resource hand-nudges as the general ubiquity control;
+naming mass uses the same factor. Measured: The Processional 41%→14% of
+offers vs an ETB-payoff deck, empty-deck offers now tribe-led, Reinforcements
+fallback ~3%. (2) Human subtype exclusion REMOVED — provides never attract
+provides, so a payoff-less tribe generates zero edges; a future Human lord
+now just works. (3) New optional card.json field `synergy` {provides,wants}
+— card-local hints for one-off custom-kind cards the extractor deliberately
+doesn't parse (the customText of the graph); max-merged, resource names
+boot-validated, documented in PROTOCOL.md §2.1. (4) Special (boon/boss)
+cards now analyzed into the graph index so deck presence exerts pull on
+offers; still never offered. (5) Bucket tiles: hover tooltip with the
+generator's edge reasons prettified to card names; etb creature-provision
+constants restored to natural values (idf owns ubiquity now). Suite 144
+files / 2693 assertions green, lint clean.

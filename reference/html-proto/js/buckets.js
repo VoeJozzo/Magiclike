@@ -206,10 +206,13 @@ function analyze(tpl) {
     const cost = totalCost(tpl);
     if (cost <= 1) bump(provides, 'fodder', W_PROV_EXPEND);
     if (cost <= 2) bump(provides, 'dies', W_PROV_DIES_CHEAP);
-    // Every creature enters, so this is deliberately WEAK — at 0.75 the etb
-    // resource swamped the graph (offer histograms showed The Processional
-    // at ~51% of offers vs. an ETB-payoff deck; ~24% at these weights).
-    bump(provides, 'etb', cost <= 3 ? 0.4 : 0.2);
+    // Every creature enters. These constants express only the MECHANICAL
+    // strength (cheap creatures enter more often); the fact that ~188 cards
+    // provide etb is priced separately and automatically by the specificity
+    // weighting (idf) in the edge function — measured offer histograms:
+    // The Processional 51% of offers vs. an ETB-payoff deck pre-idf, 14%
+    // with it (one identity theme among several, which is correct).
+    bump(provides, 'etb', cost <= 3 ? 0.75 : 0.4);
   }
   if (isSpellCard) bump(provides, 'spellcast', 1);
 
@@ -284,6 +287,18 @@ const TYPE_RANK_TYPES = new Set([
 // ---------------------------------------------------------------------------
 let _pool = null;        // [analysis] for every bucket-eligible card
 let _byId = null;        // tplId → analysis
+let _idf = null;         // resource → specificity factor (see below)
+
+// Specificity weighting (inverse document frequency). A resource provided by
+// half the pool (etb: ~188 providers) says almost nothing about two cards
+// belonging together; a resource provided by a dozen (a tribe) says a lot.
+// Each provide-side contribution is scaled by anchor/log2(2+providers), so a
+// resource with IDF_ANCHOR_PROVIDERS providers scores ×1.0, tribes sit near
+// ×0.8–1.0, and ubiquitous resources (etb/spellcast/dies) bind loosely
+// (~×0.45–0.55). This is the general mechanism behind ad-hoc judgments like
+// "Human is too broad to be a theme" and "etb provision must be weak" —
+// breadth is priced automatically, for every resource, present and future.
+const IDF_ANCHOR_PROVIDERS = 8;
 
 function ensurePool() {
   if (_pool) return;
@@ -305,16 +320,26 @@ function ensurePool() {
     if (typeof w === 'number' && w <= 0) continue;
     _pool.push(a);
   }
+  const providerCount = {};
+  for (const a of _pool) {
+    for (const r of Object.keys(a.provides)) providerCount[r] = (providerCount[r] || 0) + 1;
+  }
+  _idf = {};
+  const anchor = Math.log2(2 + IDF_ANCHOR_PROVIDERS);
+  for (const [r, n] of Object.entries(providerCount)) {
+    _idf[r] = anchor / Math.log2(2 + n);
+  }
 }
+function idf(res) { return _idf[res] || 1; }
 
 function edge(a, b) {
   let w = 0;
   const reasons = [];
   for (const [r, pw] of Object.entries(a.provides)) {
-    if (b.wants[r]) { w += pw * b.wants[r]; reasons.push(`${a.tplId} feeds ${b.tplId} [${r}]`); }
+    if (b.wants[r]) { w += pw * b.wants[r] * idf(r); reasons.push(`${a.tplId} feeds ${b.tplId} [${r}]`); }
   }
   for (const [r, pw] of Object.entries(b.provides)) {
-    if (a.wants[r]) { w += pw * a.wants[r]; reasons.push(`${b.tplId} feeds ${a.tplId} [${r}]`); }
+    if (a.wants[r]) { w += pw * a.wants[r] * idf(r); reasons.push(`${b.tplId} feeds ${a.tplId} [${r}]`); }
   }
   for (const t of a.tags) {
     if (b.tags.has(t)) { w += W_HOMOPHILY; reasons.push(`shared plan [${t}]`); }
@@ -471,10 +496,10 @@ function nameBucket(bucket) {
     for (let j = i + 1; j < bucket.length; j++) {
       const a = bucket[i], b = bucket[j];
       for (const [r, pw] of Object.entries(a.provides)) {
-        if (b.wants[r]) mass[r] = (mass[r] || 0) + pw * b.wants[r];
+        if (b.wants[r]) mass[r] = (mass[r] || 0) + pw * b.wants[r] * idf(r);
       }
       for (const [r, pw] of Object.entries(b.provides)) {
-        if (a.wants[r]) mass[r] = (mass[r] || 0) + pw * a.wants[r];
+        if (a.wants[r]) mass[r] = (mass[r] || 0) + pw * a.wants[r] * idf(r);
       }
       for (const t of a.tags) if (b.tags.has(t)) mass[t] = (mass[t] || 0) + W_HOMOPHILY;
     }
