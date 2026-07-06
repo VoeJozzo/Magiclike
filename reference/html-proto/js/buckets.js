@@ -173,7 +173,10 @@ function analyze(tpl) {
     const cost = totalCost(tpl);
     if (cost <= 1) bump(provides, 'fodder', W_PROV_EXPEND);
     if (cost <= 2) bump(provides, 'dies', W_PROV_DIES_CHEAP);
-    bump(provides, 'etb', cost <= 3 ? 0.75 : 0.4);   // every creature enters; cheap ones enter often
+    // Every creature enters, so this is deliberately WEAK — at 0.75 the etb
+    // resource swamped the graph (offer histograms showed The Processional
+    // at ~51% of offers vs. an ETB-payoff deck; ~24% at these weights).
+    bump(provides, 'etb', cost <= 3 ? 0.4 : 0.2);
   }
   if (isSpellCard) bump(provides, 'spellcast', 1);
 

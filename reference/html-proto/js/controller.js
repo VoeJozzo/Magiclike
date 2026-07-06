@@ -857,6 +857,20 @@ function makeBucketTileEl(bucket, onClick) {
   const labelEl = document.createElement('div');
   labelEl.className = 'rwd-kind-label rwd-kind-bucket';
   labelEl.textContent = bucket.name.toUpperCase();
+  // Hover: WHY these cards are together — the generator's own edge reasons,
+  // prettified from tplIds to card names ("Goblin Rabble feeds Carrion
+  // Feeder (fodder)").
+  const whyLines = (bucket.why || []).slice(0, 4).map(r => {
+    const m = r.match(/^(\S+) feeds (\S+) \[(.+)\]$/);
+    if (m) {
+      const a = CARDS[m[1]] ? CARDS[m[1]].name : m[1];
+      const b = CARDS[m[2]] ? CARDS[m[2]].name : m[2];
+      return `${a} feeds ${b} (${m[3].replace('sub:', '')})`;
+    }
+    const t = r.match(/^shared plan \[(.+)\]$/);
+    return t ? `shared plan: ${t[1]}` : r;
+  });
+  if (whyLines.length) labelEl.title = 'Why these cards:\n' + whyLines.join('\n');
   div.appendChild(labelEl);
   for (const tplId of bucket.cards) {
     if (!CARDS[tplId]) continue;
