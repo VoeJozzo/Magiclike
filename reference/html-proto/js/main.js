@@ -39,6 +39,9 @@ loadCards().then(() => {
       || cov.unclassifiedCastScoring.length || cov.staleCastScoring.length) {
     console.warn('Effect coverage gaps:', cov);
   }
+  // Bucket theme health: which tribal themes the synergy graph can serve and
+  // which are thin — the thin list doubles as a card-design TODO list.
+  console.log(BUCKETS.themeHealthReport());
   CONTROLLER.init();
 }).catch(e => {
   console.error('Failed to load card data:', e);

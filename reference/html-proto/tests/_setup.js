@@ -35,6 +35,7 @@ const ENGINE_FILES = [
   'engine.js',
   'card-text.js',
   'stickers.js',
+  'buckets.js',
   'ai.js',
   'draft.js',
   'run.js',
@@ -130,7 +131,7 @@ function installDomStubs() {
 // and run.js / draft.js / picklog.js for their respective IIFE exports.
 const EXPOSED = [
   // Public module objects (top of each .js file).
-  'ENGINE', 'AI', 'RUN', 'DRAFT', 'CARDS', 'STICKERS',
+  'ENGINE', 'AI', 'RUN', 'DRAFT', 'CARDS', 'STICKERS', 'BUCKETS',
   // §7b cast-path coverage sets (ai.js module scope).
   'TARGET_SCORED_KINDS', 'NOT_TARGET_SCORED_KINDS',
   'CONTROLLER', 'PICKLOG', 'VERSION', 'Modal', 'RUN_MODIFIERS', 'SETTINGS',

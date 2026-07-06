@@ -411,6 +411,13 @@ const CATEGORY_A = [
   // (Demonic Tutor's "lose 2 life"; discard trailing replays once after the
   // last discard); AI path resolves inline, unchanged.
   'test_a4_23_trailing_defer.js',
+  // Growing Deck (plan-bucket-draft): synergy-graph bucket generation core
+  // (extraction rules, labeled edges, bucket/offer invariants, naming) and
+  // the run-level integration (growing draft mode, addBucket two-phase
+  // reward, growth-weight arc, land top-up, opponent mirroring, config
+  // backfill).
+  'buckets_test.js',
+  'growing_deck_test.js',
 ];
 
 const TESTS_DIR = __dirname;
