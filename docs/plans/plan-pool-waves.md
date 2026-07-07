@@ -1,10 +1,61 @@
-# Plan: Pool Interconnection Waves (Wave 1.5 ✅ / Wave 1 protocol agreed)
+# Plan: Pool Interconnection Waves (Wave 1.5 ✅ / Wave 1 ✅ judged — implementation pending)
 
-**Status (2026-07-07):** Wave 1.5 executed and shipped (v2.2.7). Wave 1 protocol
-agreed with Joe, NOT yet run. This doc is the session handoff — state, protocol,
-measured findings, and decision ledger. Companion: [`plan-bucket-draft.md`](plan-bucket-draft.md)
+**Status (2026-07-07):** Wave 1.5 shipped (v2.2.7). Wave 1 executed same day:
+12 designer hands → 36 pitches → 1 Fable killer (11 ship / 25 kill) → recruit
+annotation → Joe's verdicts via the review-board artifact. 8 cards approved to
+ship (3 with Joe's redesigns), 4 held, rest dead. Implementation NOT yet
+started. Companion: [`plan-bucket-draft.md`](plan-bucket-draft.md)
 (the Growing Deck system this all serves), `reference/html-proto/tests/pool_assay.js`
 (the metrics instrument — run it before and after any wave).
+
+## Wave 1 verdicts (Joe, 2026-07-07 — the build list)
+
+**SHIP (8):**
+1. **Gloomfang Leech** `1B` Vampire 1/1 — opp loses life → +1/+1 counter on self.
+   (10 recruits: the entire burn suite gains its first hook.)
+2. **Ironbrand Marshal** `1R` 2/2 — Artifact creatures you control get +1/+1.
+   Kept red (blacksmith flavor, brand_of_iron precedent, R sits in both
+   plan-poor pairs; colorless rejected: a colorless LORD fits every deck =
+   omnipresence/hub risk).
+3. **Toll of Secrets** `1B` Human Rogue 1/2 — you discard → opp loses 1.
+   (0 recruits but 9 live edges day one; creates the UB discard plan.)
+4. **Grim Ferryman** `1B` Zombie 2/2 — {T}, sacrifice a creature: draw a card.
+5. **Bloodtithe Collector** `1B` Vampire 1/2 — opp loses life → you gain 1.
+   JOE OVERRULE of the killer's one-payoff-per-niche kill: not a duplicate of
+   Gloomfang, a BRIDGE (wants opp_loss, provides lifegain → feeds pridemate).
+6. **Tideglass Broker** `U` Faerie — flash flier, ETB blink another creature
+   you control. JOE OVERRULE of the kill; fixes required: no self-blink loop,
+   rate check. Final spec TBD (see open items).
+7. **Toll of Silence** — counterspell, its controller loses life. JOE OVERRULE
+   with respec: **UUB, lose 2**. (Wire note: rider is gain_life −2 target opp —
+   identical in a duel since you never counter your own spell.)
+8. **Rakdos Underboss** `1BR` Demon 2/2 — JOE RESPEC: Demons you control get
+   **+1/−1**; a Demon dies → drain 1. The respec answers the killer's "stapled
+   halves" complaint: the anthem now feeds the drain. Engine handles negative
+   buffs (getStats sums signed values; SBAs kill at t≤0). Known interaction:
+   your 1-toughness demons die when he enters — feature, very Rakdos.
+
+**HOLD (4, parked):** Reckless Bloodletter (eot pump lands after the two-pass
+combat-damage math — unintuitive; counters-version possible later), Charnel
+Chorister (Joe leans ship; storm-sage ubiquity worry — idf answer given),
+Cinder Ward (not a red card; confirmed busted with elystra_the_immortal's
+permanent_eot), Ashclot Zealot (needs 1 new atomic predicate
+spell_has_damage_effect, ~15 lines — cheap when wanted).
+
+**Extraction patch scope (trimmed to shipped cards):** opp_loss provides+wants,
+discard provides+wants, sub:Artifact provides, life_changed DIRECTION SPLIT
+(is_life_loss → self_pain/opp_loss, else lifegain — fixes the 23-false-edge
+latent bug found during annotation). DROPPED from the measured 64-line patch:
+bounce rules (twins dead), kw:deathtouch (Reckoning dead), reanimation-wants
+rule (Memory dead; it was honest for deepseam_quarry but deletions are wins —
+re-add when a reanimator ships).
+
+**Open item:** Tideglass Broker final spec (Fable proposes, Joe cuts).
+
+**Instruments:** review-board artifact (verdict buttons + copy-export);
+wave1/ scratchpad holds hands, results, annotations, extraction_price.diff,
+and the killer audit (24/25 kills verified; 1 wire claim wrong: Chorus of the
+Drowned — ancient_hydra combat_damage precedent + mind_rot discard shape).
 
 ## Where things stand (engine v2.2.7, branch claude/growing-deck-buckets)
 
