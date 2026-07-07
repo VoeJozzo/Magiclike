@@ -3,7 +3,7 @@
 //
 // The generator is stochastic by design (softmax sampling), so most
 // assertions are STRUCTURAL INVARIANTS checked across many rolls (size,
-// colors, copy cap, coherence floor, land count) rather than exact contents.
+// colors, coherence floor, land count) rather than exact contents.
 // Known-card extraction facts (Goblin Chieftain is a Goblin payoff, Goblin
 // Rabble's tokens feed sac outlets, ...) pin the rule table itself.
 
@@ -86,7 +86,7 @@ function check(label, ok, info) {
 {
   const PIP_COLORS = ['W', 'U', 'B', 'R', 'G'];
   const colorsOfTpl = tpl => PIP_COLORS.filter(k => (tpl.cost || {})[k] > 0);
-  let sizeOk = true, landOk = true, colorOk = true, capOk = true, nameOk = true;
+  let sizeOk = true, landOk = true, colorOk = true, nameOk = true;
   const seenNames = new Set();
   // A committed two-color deck: bucket cards must stay castable inside it.
   const deck = ['goblin_piercer', 'raging_goblin', 'blood_artist', 'carrion_feeder',
@@ -98,9 +98,6 @@ function check(label, ok, info) {
       seenNames.add(b.name);
       if (b.cards.length !== 3 || b.lands.length !== 2) sizeOk = false;
       if (!b.name || typeof b.name !== 'string') nameOk = false;
-      const counts = {};
-      for (const id of [...deck, ...b.cards]) counts[id] = (counts[id] || 0) + 1;
-      if (Object.values(counts).some(n => n > 4)) capOk = false;
       for (const id of b.cards) {
         const cols = colorsOfTpl(CARDS[id]);
         if (cols.some(c => c !== 'B' && c !== 'R')) colorOk = false;
@@ -114,7 +111,6 @@ function check(label, ok, info) {
   check('every offer is 3 buckets of 3 cards + 2 lands (40 rolls)', sizeOk);
   check('bucket lands are basic lands', landOk);
   check('bucket cards stay inside the deck\'s colors (BR)', colorOk);
-  check('deck-wide 4-copy cap respected', capOk);
   check('every bucket has a name', nameOk);
   check('offers vary across rolls (softmax, not argmax)', seenNames.size >= 3,
     [...seenNames].join(', '));

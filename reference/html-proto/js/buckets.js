@@ -17,8 +17,7 @@
 //                       (weak). Every edge carries human-readable reasons.
 //   §3 growBucket()   — seed-and-grow: start from a seed, twice add the
 //                       softmax-sampled best companion under constraints
-//                       (≤2 colors, castable in deck colors, copy cap,
-//                       curve spread).
+//                       (≤2 colors, castable in deck colors, curve spread).
 //   §4 rollOffer()    — compose a 3-bucket offer: seeds sampled from the
 //                       whole legal pool, each card weighted by its deck-
 //                       affinity (weights-as-weights: the wishlist shapes
@@ -53,12 +52,31 @@ const W_HOMOPHILY     = 0.5;   // shared plan tag (flying / aggro / removal / ca
 
 const GROWTH_TEMPERATURE = 0.7; // softmax temperature: 0 → same bucket every
                                 // run (boring), high → incoherent. Variety dial.
-const DECK_COUPLING = 0.25;     // λ: how much a candidate's edges into the
-                                // existing DECK count vs. edges into the bucket.
+// λ: how much a candidate's edges into the existing DECK count during bucket
+// GROWTH (vs. edges into the bucket itself). Kept deliberately small: seed
+// selection already carries the deck's identity (weights-as-weights), so a
+// large λ double-counts it — at 0.25, even off-theme seeds grew deck-themed
+// members and 42% of post-first-pick buckets were the same tribe (measured);
+// at 0.1 that's 29% (influential, not dictatorial) with committed mid-run
+// decks still ~87% identity-themed. Growth's job is serving the SEED's plan.
+const DECK_COUPLING = 0.1;
 const CURVE_CLASH_PENALTY = 0.5;// score multiplier when a candidate shares a
                                 // mana cost with a card already in the bucket.
 const MIN_COHERENCE = 3;        // buckets below this fall back to Reinforcements.
-const MAX_COPIES = 4;           // deck-wide copy cap, matching the draft rule.
+// There is deliberately NO deck-wide copy cap (Joe's call, 2026-07-06): an
+// earlier 4-copy rule here was an unauthorized import of MTG convention.
+// Redundancy self-prices via the graph (self-feeding cards pull their own
+// twins; pure payoffs don't).
+
+// Baseline seed weight added to every legal card's deck-affinity before
+// proportional sampling (Laplace smoothing). This is the exploration dial
+// with a built-in curriculum: the baseline is constant while affinity mass
+// GROWS with the deck, so early offers (tiny deck, peaked affinity) stay
+// exploratory and late offers naturally follow the earned wishlist. Without
+// it, a 5-card mono-theme start leaves ~170 pool cards at literal zero seed
+// probability and the first pick dictates the whole draft (measured: 49% of
+// post-first-pick buckets were the same tribe).
+const SEED_BASE_WEIGHT = 0.75;
 
 // No subtype is excluded from the graph. Even very broad tribes (Human: ~59
 // members, 0 payoffs as of v2.2.0) are harmless without a payoff — provides
@@ -373,8 +391,7 @@ function deckColorSet(deckTplIds) {
 // color — otherwise a mono-blue first bucket would lock the whole run to
 // blue. Once the deck is committed to two colors, candidates must be
 // castable inside them (colorless always fits).
-function isLegalCandidate(cand, bucket, deckColors, copyCounts) {
-  if ((copyCounts[cand.tplId] || 0) >= MAX_COPIES) return false;
+function isLegalCandidate(cand, bucket, deckColors) {
   const bucketColors = new Set();
   for (const b of bucket) for (const c of b.colors) bucketColors.add(c);
   for (const c of cand.colors) bucketColors.add(c);
@@ -406,7 +423,7 @@ function softmaxPick(scored, temperature) {
   return scored[scored.length - 1].item;
 }
 
-function growBucket(seedAnalysis, deckAnalyses, deckColors, copyCounts) {
+function growBucket(seedAnalysis, deckAnalyses, deckColors) {
   const bucket = [seedAnalysis];
   const why = [];
   while (bucket.length < BUCKET_CARDS) {
@@ -414,7 +431,7 @@ function growBucket(seedAnalysis, deckAnalyses, deckColors, copyCounts) {
     for (const cand of _pool) {
       if (bucket.includes(cand)) continue;
       if (cand.isLand) continue;   // lands ride the dedicated land slots
-      if (!isLegalCandidate(cand, bucket, deckColors, copyCounts)) continue;
+      if (!isLegalCandidate(cand, bucket, deckColors)) continue;
       let score = 0;
       const reasons = [];
       for (const b of bucket) {
@@ -430,7 +447,6 @@ function growBucket(seedAnalysis, deckAnalyses, deckColors, copyCounts) {
     const pick = softmaxPick(scored, GROWTH_TEMPERATURE);
     if (!pick) break;
     bucket.push(pick.cand);
-    copyCounts[pick.cand.tplId] = (copyCounts[pick.cand.tplId] || 0) + 1;
     for (const r of pick.reasons) why.push(r);
   }
   return { bucket, why };
@@ -447,9 +463,9 @@ function coherenceOf(bucket) {
 
 // Loose fallback: a curve-spread trio of solid cards in deck colors. Exists
 // so an offer can never come up empty (thin pools, exotic deck colors).
-function reinforcementsBucket(deckColors, copyCounts) {
+function reinforcementsBucket(deckColors) {
   const legal = _pool.filter(c =>
-    !c.isLand && isLegalCandidate(c, [], deckColors, copyCounts));
+    !c.isLand && isLegalCandidate(c, [], deckColors));
   const byValue = legal
     .map(c => ({ c, v: ENGINE.getCardValue(CARDS[c.tplId], 'draft') + _rand() * 2 }))
     .sort((x, y) => y.v - x.v);
@@ -457,17 +473,15 @@ function reinforcementsBucket(deckColors, copyCounts) {
   for (const { c } of byValue) {
     if (bucket.length >= BUCKET_CARDS) break;
     if (bucket.some(b => b.cost === c.cost)) continue;   // spread the curve
-    if (!isLegalCandidate(c, bucket, deckColors, copyCounts)) continue;
+    if (!isLegalCandidate(c, bucket, deckColors)) continue;
     bucket.push(c);
-    copyCounts[c.tplId] = (copyCounts[c.tplId] || 0) + 1;
   }
   // Curve spread is a preference, not a law — fill remaining slots loosely.
   for (const { c } of byValue) {
     if (bucket.length >= BUCKET_CARDS) break;
     if (bucket.includes(c)) continue;
-    if (!isLegalCandidate(c, bucket, deckColors, copyCounts)) continue;
+    if (!isLegalCandidate(c, bucket, deckColors)) continue;
     bucket.push(c);
-    copyCounts[c.tplId] = (copyCounts[c.tplId] || 0) + 1;
   }
   return bucket;
 }
@@ -536,9 +550,9 @@ function finishBucket(bucketAnalyses, why) {
 // special cases: your wishlist shapes the ODDS, not the outcomes — the
 // wishlist's top is likely, coherent-but-uncommitted plans are possible,
 // and the long tail stays alive. Sampling is without replacement.
-function pickSeeds(deckAnalyses, deckColors, copyCounts) {
+function pickSeeds(deckAnalyses, deckColors) {
   const candidates = _pool.filter(c =>
-    !c.isLand && isLegalCandidate(c, [], deckColors, copyCounts));
+    !c.isLand && isLegalCandidate(c, [], deckColors));
   const payoffness = c => {
     let sum = 0;
     for (const v of Object.values(c.wants)) sum += v;
@@ -547,7 +561,7 @@ function pickSeeds(deckAnalyses, deckColors, copyCounts) {
   const weightOf = c => deckAnalyses.length
     ? edgeMassIntoDeck(c, deckAnalyses)
     : payoffness(c);
-  const entries = candidates.map(c => ({ c, w: weightOf(c) })).filter(e => e.w > 0);
+  const entries = candidates.map(c => ({ c, w: SEED_BASE_WEIGHT + weightOf(c) }));
   const seeds = [];
   for (let k = 0; k < OFFER_SIZE && entries.length; k++) {
     let total = 0;
@@ -570,32 +584,25 @@ function rollBucketOffer(deckTplIds) {
   const deckIds = deckTplIds || [];
   const deckAnalyses = deckIds.map(id => _byId[id]).filter(Boolean);
   const deckColors = deckColorSet(deckIds);
-  const baseCopyCounts = {};
-  for (const id of deckIds) baseCopyCounts[id] = (baseCopyCounts[id] || 0) + 1;
-
   const offer = [];
   const usedNames = new Set();
   // Grow one bucket per seed. An offer of three identically-named plans is
   // a boring offer, so a bucket whose name duplicates an already-offered one
   // gets ONE retry with a fresh seed before being accepted anyway.
   const tryAddBucket = (seed) => {
-    // Each bucket sees the deck's copy counts plus ITS OWN picks, but not the
-    // other offered buckets' — offers are alternatives, not siblings.
-    const copyCounts = Object.assign({}, baseCopyCounts);
-    copyCounts[seed.tplId] = (copyCounts[seed.tplId] || 0) + 1;
-    const { bucket, why } = growBucket(seed, deckAnalyses, deckColors, copyCounts);
+    const { bucket, why } = growBucket(seed, deckAnalyses, deckColors);
     if (bucket.length === BUCKET_CARDS && coherenceOf(bucket) >= MIN_COHERENCE) {
       return finishBucket(bucket, why);
     }
-    const loose = reinforcementsBucket(deckColors, Object.assign({}, baseCopyCounts));
+    const loose = reinforcementsBucket(deckColors);
     return (loose.length === BUCKET_CARDS) ? finishBucket(loose, []) : null;
   };
-  const seeds = pickSeeds(deckAnalyses, deckColors, baseCopyCounts);
+  const seeds = pickSeeds(deckAnalyses, deckColors);
   for (const seed of seeds) {
     if (offer.length >= OFFER_SIZE) break;
     let bucket = tryAddBucket(seed);
     if (bucket && usedNames.has(bucket.name)) {
-      const retrySeeds = pickSeeds(deckAnalyses, deckColors, baseCopyCounts)
+      const retrySeeds = pickSeeds(deckAnalyses, deckColors)
         .filter(s => s.tplId !== seed.tplId && !offer.some(b => b.cards.includes(s.tplId)));
       if (retrySeeds.length) {
         const retry = tryAddBucket(retrySeeds[Math.floor(_rand() * retrySeeds.length)]);
@@ -606,7 +613,7 @@ function rollBucketOffer(deckTplIds) {
   }
   // Backfill with Reinforcements if seeding starved (tiny pools, weird colors).
   while (offer.length < OFFER_SIZE) {
-    const loose = reinforcementsBucket(deckColors, Object.assign({}, baseCopyCounts));
+    const loose = reinforcementsBucket(deckColors);
     if (loose.length < BUCKET_CARDS) break;
     offer.push(finishBucket(loose, []));
   }
@@ -620,10 +627,7 @@ function rollBucket(seedTplId, deckTplIds) {
   const deckIds = deckTplIds || [];
   const deckAnalyses = deckIds.map(id => _byId[id]).filter(Boolean);
   const deckColors = deckColorSet(deckIds);
-  const copyCounts = {};
-  for (const id of deckIds) copyCounts[id] = (copyCounts[id] || 0) + 1;
-  copyCounts[seedTplId] = (copyCounts[seedTplId] || 0) + 1;
-  const { bucket, why } = growBucket(seed, deckAnalyses, deckColors, copyCounts);
+  const { bucket, why } = growBucket(seed, deckAnalyses, deckColors);
   return finishBucket(bucket, why);
 }
 

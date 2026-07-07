@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.2.2`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.2.3`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -2446,3 +2446,20 @@ far richer tail; identity preserved (BR still ~68% Warband+Grave Bargains);
 Reinforcements fallback 0-8% (honest goodstuff variance). Net code
 reduction: SEED_POOL_TOP and the adjacent-band logic deleted. Suite 144
 files / 2693 assertions green (stochastic tests stressed 5x), lint clean.
+
+v2.2.3: anti-inbreeding round, from Joe's first playtest ("offered goblins
+7/9 times"). Root causes measured: (1) a 5-card mono-theme start left ~170
+pool cards at literal ZERO seed probability (only cards with deck-affinity
+could seed) and (2) DECK_COUPLING during growth double-counted identity —
+seeds already carry the deck's wishes under weights-as-weights, so at
+λ=0.25 even off-theme seeds grew deck-themed members. Fixes: SEED_BASE_WEIGHT
+0.75 added to every legal card before proportional sampling (Laplace
+smoothing — constant baseline + growing affinity mass = automatic
+exploration→identity curriculum across the run, no schedule), and
+DECK_COUPLING 0.25→0.1. Measured post-first-goblin-pick same-tribe buckets:
+49%→29% (committed mid-run decks still ~87% identity). Also REMOVED the
+deck-wide 4-copy cap per Joe's verdict — it was an unauthorized import of
+MTG convention (the only in-repo basis is the opponent drafter's heuristic
+at draft.js scoreDraftCard, which stands unchanged); the whole copyCounts
+thread deleted, redundancy self-prices via the graph. Suite 144 files /
+2692 assertions green (stochastic tests stressed 5x), lint clean.
