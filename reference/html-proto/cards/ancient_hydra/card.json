@@ -14,5 +14,23 @@
   "types": [
     "Creature",
     "Hydra"
+  ],
+  "triggers": [
+    {
+      "event": "combat_damage",
+      "condition": [
+        "this_card",
+        "affected_player_is(opp)"
+      ],
+      "effects": [
+        {
+          "kind": "pump",
+          "power": 1,
+          "toughness": 1,
+          "duration": "permanent",
+          "scope": "self"
+        }
+      ]
+    }
   ]
 }

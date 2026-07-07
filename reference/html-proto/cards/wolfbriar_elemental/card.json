@@ -28,6 +28,7 @@
   ],
   "types": [
     "Creature",
-    "Elemental"
+    "Elemental",
+    "Wolf"
   ]
 }

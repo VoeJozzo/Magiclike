@@ -8,7 +8,8 @@
   "types": [
     "Artifact",
     "Creature",
-    "Construct"
+    "Construct",
+    "Hound"
   ],
   "power": 2,
   "toughness": 1,
