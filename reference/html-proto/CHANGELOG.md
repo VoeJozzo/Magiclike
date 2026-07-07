@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.2.3`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.2.4`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -2463,3 +2463,14 @@ MTG convention (the only in-repo basis is the opponent drafter's heuristic
 at draft.js scoreDraftCard, which stands unchanged); the whole copyCounts
 thread deleted, redundancy self-prices via the graph. Suite 144 files /
 2692 assertions green (stochastic tests stressed 5x), lint clean.
+
+v2.2.4: two playtest-caught bucket bugs. (1) Reinforcements was near-
+deterministic (value-sort + tiny jitter) AND could contain cards already in
+the player's deck — Joe was offered his exact three-card deck back, three
+offers running. Now softmax-sampled by intrinsic value with already-owned
+cards excluded: goodstuff's job is NEW power; redundancy is earned through
+synergy buckets only. (2) Bucket land allocation is coverage-first: a
+U:3/B:1 bucket now gets island+swamp instead of island+island (pure
+largest-remainder rounds the splash color to zero at n=2; deck-wide 17-land
+allocation stays proportional in draft.js). Regression tests for both.
+Suite 144 files / 2695 assertions green, lint clean.

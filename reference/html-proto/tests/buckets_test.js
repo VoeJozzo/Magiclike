@@ -226,6 +226,30 @@ function check(label, ok, info) {
   BUCKETS._resetCacheForTest();
 }
 
+// --- §6d playtest regressions: lands coverage + Reinforcements honesty --------
+{
+  // U:3/B:1 bucket must produce island+swamp, not island+island (pure
+  // largest-remainder rounds the splash color to zero at n=2).
+  const lands = BUCKETS.landsForCards(['skyfire_drakelord', 'mind_control', 'final_strike']);
+  check('bucket lands cover every needed color (U3/B1 → island+swamp)',
+    lands.includes('island') && lands.includes('swamp'), lands.join(','));
+
+  // Reinforcements must never sell the player their own deck back, and must
+  // vary across offers (playtest caught identical goodstuff 3 offers running).
+  const deck = ['skyfire_drakelord', 'mind_control', 'final_strike', 'island', 'island'];
+  const sets = new Set();
+  let soldOwnCard = false;
+  for (let i = 0; i < 12; i++) {
+    for (const b of BUCKETS.rollBucketOffer(deck)) {
+      if (b.name !== 'Reinforcements') continue;
+      sets.add(b.cards.slice().sort().join(','));
+      if (b.cards.some(c => deck.includes(c))) soldOwnCard = true;
+    }
+  }
+  check('Reinforcements never contains cards already in the deck', !soldOwnCard);
+  check('Reinforcements varies across offers', sets.size >= 2, `${sets.size} distinct sets`);
+}
+
 // --- §7 theme health report -------------------------------------------------
 {
   const report = BUCKETS.themeHealthReport();

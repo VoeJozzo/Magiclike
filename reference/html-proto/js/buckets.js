@@ -463,25 +463,29 @@ function coherenceOf(bucket) {
 
 // Loose fallback: a curve-spread trio of solid cards in deck colors. Exists
 // so an offer can never come up empty (thin pools, exotic deck colors).
-function reinforcementsBucket(deckColors) {
+function reinforcementsBucket(deckColors, deckTplIds) {
+  // Goodstuff's job is NEW power, never redundancy — cards you already own
+  // are excluded (dupes are earned through synergy buckets, where a twin
+  // must pull its weight via self-feeding edges). Cards are softmax-sampled
+  // by intrinsic value, not top-sorted: a playtest caught the sort-with-
+  // small-jitter version selling the player their exact deck back, three
+  // offers in a row.
+  const owned = new Set(deckTplIds || []);
   const legal = _pool.filter(c =>
-    !c.isLand && isLegalCandidate(c, [], deckColors));
-  const byValue = legal
-    .map(c => ({ c, v: ENGINE.getCardValue(CARDS[c.tplId], 'draft') + _rand() * 2 }))
-    .sort((x, y) => y.v - x.v);
+    !c.isLand && !owned.has(c.tplId) && isLegalCandidate(c, [], deckColors));
   const bucket = [];
-  for (const { c } of byValue) {
-    if (bucket.length >= BUCKET_CARDS) break;
-    if (bucket.some(b => b.cost === c.cost)) continue;   // spread the curve
-    if (!isLegalCandidate(c, bucket, deckColors)) continue;
-    bucket.push(c);
-  }
-  // Curve spread is a preference, not a law — fill remaining slots loosely.
-  for (const { c } of byValue) {
-    if (bucket.length >= BUCKET_CARDS) break;
-    if (bucket.includes(c)) continue;
-    if (!isLegalCandidate(c, bucket, deckColors)) continue;
-    bucket.push(c);
+  while (bucket.length < BUCKET_CARDS) {
+    const scored = [];
+    for (const c of legal) {
+      if (bucket.includes(c)) continue;
+      if (!isLegalCandidate(c, bucket, deckColors)) continue;
+      let v = ENGINE.getCardValue(CARDS[c.tplId], 'draft');
+      if (bucket.some(b => b.cost === c.cost)) v *= CURVE_CLASH_PENALTY;
+      if (v > 0) scored.push({ item: c, score: v });
+    }
+    const pick = softmaxPick(scored, 1);
+    if (!pick) break;
+    bucket.push(pick);
   }
   return bucket;
 }
@@ -489,6 +493,11 @@ function reinforcementsBucket(deckColors) {
 // ---------------------------------------------------------------------------
 // §4 Lands + naming + offer composition.
 // ---------------------------------------------------------------------------
+// Coverage-first at bucket scale: with only 2 land slots, every color the
+// bucket actually needs gets a land before proportionality kicks in. (Pure
+// largest-remainder rounds a U:3/B:1 bucket to island+island — faithful
+// math, unplayable splash; playtest-caught.) Deck-wide allocation (17
+// lands) stays proportional over in draft.js.
 function landsForCards(cardTplIds) {
   const pips = { W: 0, U: 0, B: 0, R: 0, G: 0 };
   for (const id of cardTplIds) {
@@ -496,8 +505,16 @@ function landsForCards(cardTplIds) {
     if (!tpl || !tpl.cost) continue;
     for (const k of PIP_COLORS) pips[k] += (tpl.cost[k] || 0);
   }
-  return DRAFT.allocLandsFor(pips, BUCKET_LANDS);
+  const colors = PIP_COLORS.filter(k => pips[k] > 0)
+    .sort((a, b) => pips[b] - pips[a]);
+  if (colors.length === 0) return DRAFT.allocLandsFor(pips, BUCKET_LANDS);
+  const out = [];
+  for (let i = 0; i < BUCKET_LANDS; i++) {
+    out.push(COLOR_TO_BASIC[colors[i % colors.length]]);
+  }
+  return out;
 }
+const COLOR_TO_BASIC = { W: 'plains', U: 'island', B: 'swamp', R: 'mountain', G: 'forest' };
 
 // Bucket name = label of the resource carrying the most internal edge weight.
 // Tribal resources win ties (a Goblin bucket should be named for goblins even
@@ -594,7 +611,7 @@ function rollBucketOffer(deckTplIds) {
     if (bucket.length === BUCKET_CARDS && coherenceOf(bucket) >= MIN_COHERENCE) {
       return finishBucket(bucket, why);
     }
-    const loose = reinforcementsBucket(deckColors);
+    const loose = reinforcementsBucket(deckColors, deckIds);
     return (loose.length === BUCKET_CARDS) ? finishBucket(loose, []) : null;
   };
   const seeds = pickSeeds(deckAnalyses, deckColors);
@@ -613,7 +630,7 @@ function rollBucketOffer(deckTplIds) {
   }
   // Backfill with Reinforcements if seeding starved (tiny pools, weird colors).
   while (offer.length < OFFER_SIZE) {
-    const loose = reinforcementsBucket(deckColors);
+    const loose = reinforcementsBucket(deckColors, deckIds);
     if (loose.length < BUCKET_CARDS) break;
     offer.push(finishBucket(loose, []));
   }
