@@ -86,9 +86,11 @@ function check(label, ok, info) {
 {
   const PIP_COLORS = ['W', 'U', 'B', 'R', 'G'];
   const colorsOfTpl = tpl => PIP_COLORS.filter(k => (tpl.cost || {})[k] > 0);
-  let sizeOk = true, landOk = true, colorOk = true, nameOk = true;
+  let sizeOk = true, landOk = true, nameOk = true, bucketTwoColorOk = true;
+  let offColorCards = 0, totalCards = 0;
   const seenNames = new Set();
-  // A committed two-color deck: bucket cards must stay castable inside it.
+  // A committed two-color deck: off-color cards are ALLOWED (soft splash
+  // temptation, Joe's call) but must stay rare; each bucket stays ≤2 colors.
   const deck = ['goblin_piercer', 'raging_goblin', 'blood_artist', 'carrion_feeder',
                 'mountain', 'mountain', 'swamp', 'swamp'];
   for (let i = 0; i < 40; i++) {
@@ -98,10 +100,14 @@ function check(label, ok, info) {
       seenNames.add(b.name);
       if (b.cards.length !== 3 || b.lands.length !== 2) sizeOk = false;
       if (!b.name || typeof b.name !== 'string') nameOk = false;
+      const bucketCols = new Set();
       for (const id of b.cards) {
+        totalCards++;
         const cols = colorsOfTpl(CARDS[id]);
-        if (cols.some(c => c !== 'B' && c !== 'R')) colorOk = false;
+        for (const c of cols) bucketCols.add(c);
+        if (cols.some(c => c !== 'B' && c !== 'R')) offColorCards++;
       }
+      if (bucketCols.size > 2) bucketTwoColorOk = false;
       for (const id of b.lands) {
         const tpl = CARDS[id];
         if (!tpl || !hasType(tpl, 'Basic')) landOk = false;
@@ -110,7 +116,9 @@ function check(label, ok, info) {
   }
   check('every offer is 3 buckets of 3 cards + 2 lands (40 rolls)', sizeOk);
   check('bucket lands are basic lands', landOk);
-  check('bucket cards stay inside the deck\'s colors (BR)', colorOk);
+  check('no bucket spans more than two colors (the one hard color law)', bucketTwoColorOk);
+  check('off-color splash cards stay rare (<20%; measured ~6%)',
+    offColorCards / totalCards < 0.2, (100 * offColorCards / totalCards).toFixed(1) + '%');
   check('every bucket has a name', nameOk);
   check('offers vary across rolls (softmax, not argmax)', seenNames.size >= 3,
     [...seenNames].join(', '));
@@ -125,23 +133,25 @@ function check(label, ok, info) {
                    'mountain', 'mountain'];
   const PIP_COLORS = ['W', 'U', 'B', 'R', 'G'];
   let sawSecondColor = false;
-  let colorBudgetOk = true;
+  let thirdColorBuckets = 0, buckets = 0;
   let diverseOffers = 0;
   for (let i = 0; i < 15; i++) {
     const offer = BUCKETS.rollBucketOffer(monoRed);
     const names = new Set(offer.map(b => b.name));
     if (names.size >= 2) diverseOffers++;
     for (const b of offer) {
+      buckets++;
       const cols = new Set(['R']);
       for (const id of b.cards) {
         for (const k of PIP_COLORS) if ((CARDS[id].cost || {})[k] > 0) cols.add(k);
       }
-      if (cols.size > 2) colorBudgetOk = false;
+      if (cols.size > 2) thirdColorBuckets++;
       if (cols.size === 2) sawSecondColor = true;
     }
   }
   check('mono-color deck: buckets can introduce a second color', sawSecondColor);
-  check('...but never a third (deck identity stays ≤2 colors)', colorBudgetOk);
+  check('...and a third only as a rare soft temptation (<30%; measured ~10%)',
+    thirdColorBuckets / buckets < 0.3, `${thirdColorBuckets}/${buckets}`);
   check('offers usually carry ≥2 distinct plan names', diverseOffers >= 10,
     `${diverseOffers}/15`);
 }

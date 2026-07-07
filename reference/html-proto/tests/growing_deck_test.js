@@ -21,9 +21,9 @@ function countSpells(tplIds) {
   DRAFT.startDraft('growing');
   check('growing draft starts with a 3-bucket offer', DRAFT.getBucketOffer().length === 3);
   check('growing draft has no card pack', DRAFT.getPlayerPack().length === 0);
-  check('progress counts buckets: 0/3', (() => {
+  check('progress counts buckets: 0/5', (() => {
     const p = DRAFT.getProgress();
-    return p.picked === 0 && p.total === 3;
+    return p.picked === 0 && p.total === 5;
   })());
 
   DRAFT.pickBucketOffer(0);
@@ -32,16 +32,18 @@ function countSpells(tplIds) {
     return s.youPicks.length === 5 && countSpells(s.youPicks) === 3;
   })(), JSON.stringify(DRAFT._state().youPicks));
   check('offer rerolled against picks so far', DRAFT.getBucketOffer().length === 3);
-  check('not complete after 1 of 3', !DRAFT.isComplete());
+  check('not complete after 1 of 5', !DRAFT.isComplete());
 
   DRAFT.pickBucketOffer(1);
   DRAFT.pickBucketOffer(0);
-  check('complete after 3 bucket picks', DRAFT.isComplete());
+  DRAFT.pickBucketOffer(2);
+  DRAFT.pickBucketOffer(0);
+  check('complete after 5 bucket picks', DRAFT.isComplete());
 
   const deck = DRAFT.getPlayerDeck();
-  check('player deck = 9 spells + 6 lands', (() => {
+  check('player deck = 15 spells + 10 lands', (() => {
     const spells = countSpells(deck.cards);
-    return deck.cards.length === 15 && spells === 9;
+    return deck.cards.length === 25 && spells === 15;
   })(), `${deck.cards.length} cards, ${countSpells(deck.cards)} spells`);
   check('player deck mode passthrough = growing', deck.mode === 'growing');
   check('deck colors derived from picks', Array.isArray(deck.colors) && deck.colors.length >= 1);
@@ -49,7 +51,7 @@ function countSpells(tplIds) {
   // --- §2 RUN.start stores growing config ------------------------------------
   RUN.start(deck, null);
   const slots = RUN.getSlots();
-  check('run slots match deck size', slots.length === 15);
+  check('run slots match deck size', slots.length === 25);
 
   // --- §3 addBucket reward: two-phase commit ---------------------------------
   const deckTplIds = slots.map(s => s.tplId);
@@ -91,7 +93,7 @@ function countSpells(tplIds) {
   // Fresh minimal growing run far under target: growth candidates should
   // appear in (nearly) every offer.
   DRAFT.startDraft('growing');
-  DRAFT.pickBucketOffer(0); DRAFT.pickBucketOffer(0); DRAFT.pickBucketOffer(0);
+  for (let i = 0; i < 5; i++) DRAFT.pickBucketOffer(0);
   RUN.start(DRAFT.getPlayerDeck(), null);
   let sawAddBucket = 0;
   for (let i = 0; i < 12; i++) {
@@ -104,7 +106,8 @@ function countSpells(tplIds) {
     const r = RUN.getReward();
     if (r && r.phase === 'mixed' && r.candidates.some(c => c.kind === 'addBucket')) sawAddBucket++;
   }
-  check('under target: addBucket appears in most offers', sawAddBucket >= 9, `${sawAddBucket}/12`);
+  // 15-spell start → deficit 8 → weight 16 vs table sum 23: P(offer has one) ≈ 0.8.
+  check('under target: addBucket appears in most offers', sawAddBucket >= 6, `${sawAddBucket}/12`);
 
   // Grow the deck to target: weight must drop to zero (classic reward table).
   while (true) {

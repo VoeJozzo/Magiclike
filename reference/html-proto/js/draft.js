@@ -9,8 +9,9 @@ const TOTAL_DECK_SIZE = TOTAL_PICKS + TOTAL_LANDS;
 const PACK_SIZE = 3;
 // Growing Deck mode: the run starts from a handful of bucket picks instead of
 // 23 card picks; the deck then grows via addBucket rewards between fights.
-// Each bucket = 3 cards + 2 lands, so 3 picks ≈ 9 spells + 6 lands.
-const GROWING_START_BUCKETS = 3;
+// Each bucket = 3 cards + 2 lands, so 5 picks = 15 spells + 10 lands (raised
+// from 3 after playtest: 15-card decks ended games by deck-out — Joe's call).
+const GROWING_START_BUCKETS = 5;
 const COLORS = ['W','U','B','R','G'];
 const COLOR_TO_LAND = { W:'plains', U:'island', B:'swamp', R:'mountain', G:'forest' };
 const DESERT_CUBE_LAND_PROB = 1 / 3;

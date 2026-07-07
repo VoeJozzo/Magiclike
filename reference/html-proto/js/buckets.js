@@ -50,8 +50,12 @@ const W_PROV_EXPEND   = 1;     // cost ≤1 creatures are willing fodder
 const W_PROV_DIES_CHEAP = 0.75; // cost ≤2 creatures die readily enough to count
 const W_HOMOPHILY     = 0.5;   // shared plan tag (flying / aggro / removal / cardflow)
 
-const GROWTH_TEMPERATURE = 0.7; // softmax temperature: 0 → same bucket every
-                                // run (boring), high → incoherent. Variety dial.
+// Growth samples weights-as-weights like everything else, but SQUARES its
+// weights first: a bundle must cohere, so strong edges should dominate —
+// while seeds stay linear (offers should explore). Raising this sharpens
+// buckets toward the platonic engine; 1 = flat proportional (measured too
+// incoherent: ~19% Reinforcements fallback), 2 lands at ~6-8%.
+const GROWTH_SHARPNESS = 2;
 // λ: how much a candidate's edges into the existing DECK count during bucket
 // GROWTH (vs. edges into the bucket itself). Kept deliberately small: seed
 // selection already carries the deck's identity (weights-as-weights), so a
@@ -383,45 +387,45 @@ function deckColorSet(deckTplIds) {
   return colors;
 }
 
-// Candidate legality inside a bucket: the bucket stays ≤2 colors, the deck's
-// color identity stays ≤2 colors, and the deck-wide copy cap holds.
-//
-// The color rule is two-phase: while the deck holds FEWER than two colors
-// (run start, or a mono-color first pick), candidates may introduce a second
-// color — otherwise a mono-blue first bucket would lock the whole run to
-// blue. Once the deck is committed to two colors, candidates must be
-// castable inside them (colorless always fits).
-function isLegalCandidate(cand, bucket, deckColors) {
+// The one HARD color law: a single bucket never spans more than two colors
+// (a 3-color 3-card bundle isn't a plan, it's a pile). Deck fit is SOFT —
+// see deckFitMultiplier: off-color candidates are down-weighted, never
+// banned; whether a splash is castable is the player's call to make.
+function isLegalCandidate(cand, bucket) {
   const bucketColors = new Set();
   for (const b of bucket) for (const c of b.colors) bucketColors.add(c);
   for (const c of cand.colors) bucketColors.add(c);
-  if (bucketColors.size > 2) return false;
-  if (deckColors.size >= 2) {
-    for (const c of cand.colors) if (!deckColors.has(c)) return false;
-  } else {
-    const combined = new Set([...deckColors, ...bucketColors]);
-    if (combined.size > 2) return false;
-  }
-  return true;
+  return bucketColors.size <= 2;
 }
 
-// Softmax-sample one entry from scored [{item, score}] — never argmax, so the
-// same seed grows into recognizably-the-same-plan but not the-same-three-cards.
-function softmaxPick(scored, temperature) {
-  if (scored.length === 0) return null;
-  let max = -Infinity;
-  for (const s of scored) if (s.score > max) max = s.score;
-  const denom = temperature * Math.max(1, max / 4);
-  const weights = scored.map(s => Math.exp((s.score - max) / denom));
+// Weights-as-weights: draw one entry from [{item, w}], probability
+// proportional to w. THE house sampling pattern — seeds, Reinforcements,
+// and (candidate follow-up) growth all express "likelihood follows weight".
+function weightedSample(entries) {
   let total = 0;
-  for (const w of weights) total += w;
+  for (const e of entries) total += e.w;
+  if (total <= 0) return null;
   let roll = _rand() * total;
-  for (let i = 0; i < scored.length; i++) {
-    roll -= weights[i];
-    if (roll <= 0) return scored[i].item;
+  for (const e of entries) {
+    roll -= e.w;
+    if (roll <= 0) return e.item;
   }
-  return scored[scored.length - 1].item;
+  return entries[entries.length - 1].item;
 }
+
+// Soft third-color handling (Joe's call: castability is a skill issue, not a
+// law). A deck's first two colors are free; each ADDITIONAL new color a
+// candidate would introduce multiplies its weight by this factor — off-color
+// cards become rare temptations the player may decline, mirroring classic
+// draft's escalating splash penalty instead of the old hard ban.
+const OFF_COLOR_PENALTY = 0.05;
+function deckFitMultiplier(cand, deckColors) {
+  const newColors = cand.colors.filter(c => !deckColors.has(c)).length;
+  const freeSlots = Math.max(0, 2 - deckColors.size);
+  const penalized = Math.max(0, newColors - freeSlots);
+  return penalized > 0 ? Math.pow(OFF_COLOR_PENALTY, penalized) : 1;
+}
+
 
 function growBucket(seedAnalysis, deckAnalyses, deckColors) {
   const bucket = [seedAnalysis];
@@ -431,7 +435,7 @@ function growBucket(seedAnalysis, deckAnalyses, deckColors) {
     for (const cand of _pool) {
       if (bucket.includes(cand)) continue;
       if (cand.isLand) continue;   // lands ride the dedicated land slots
-      if (!isLegalCandidate(cand, bucket, deckColors)) continue;
+      if (!isLegalCandidate(cand, bucket)) continue;
       let score = 0;
       const reasons = [];
       for (const b of bucket) {
@@ -439,12 +443,22 @@ function growBucket(seedAnalysis, deckAnalyses, deckColors) {
         score += e.w;
         for (const r of e.reasons) reasons.push(r);
       }
+      // The plan gate: a candidate with NO edge into the bucket can't join,
+      // no matter how much the deck likes it — the deck bonus below only
+      // re-ranks cards that already serve the seed's plan.
       if (score <= 0) continue;
       score += DECK_COUPLING * edgeMassIntoDeck(cand, deckAnalyses);
       if (bucket.some(b => b.cost === cand.cost)) score *= CURVE_CLASH_PENALTY;
+      // Fit is judged against deck colors PLUS colors this bucket already
+      // introduces — otherwise each candidate would claim the free
+      // new-color slot independently and a mono-color deck could be
+      // offered a fully off-color two-color bundle at no penalty.
+      const effColors = new Set(deckColors);
+      for (const b of bucket) for (const c of b.colors) effColors.add(c);
+      score *= deckFitMultiplier(cand, effColors);
       scored.push({ item: { cand, reasons }, score });
     }
-    const pick = softmaxPick(scored, GROWTH_TEMPERATURE);
+    const pick = weightedSample(scored.map(e => ({ item: e.item, w: Math.pow(e.score, GROWTH_SHARPNESS) })));
     if (!pick) break;
     bucket.push(pick.cand);
     for (const r of pick.reasons) why.push(r);
@@ -471,19 +485,21 @@ function reinforcementsBucket(deckColors, deckTplIds) {
   // small-jitter version selling the player their exact deck back, three
   // offers in a row.
   const owned = new Set(deckTplIds || []);
-  const legal = _pool.filter(c =>
-    !c.isLand && !owned.has(c.tplId) && isLegalCandidate(c, [], deckColors));
+  const legal = _pool.filter(c => !c.isLand && !owned.has(c.tplId));
   const bucket = [];
   while (bucket.length < BUCKET_CARDS) {
-    const scored = [];
+    const entries = [];
     for (const c of legal) {
       if (bucket.includes(c)) continue;
-      if (!isLegalCandidate(c, bucket, deckColors)) continue;
+      if (!isLegalCandidate(c, bucket)) continue;
       let v = ENGINE.getCardValue(CARDS[c.tplId], 'draft');
       if (bucket.some(b => b.cost === c.cost)) v *= CURVE_CLASH_PENALTY;
-      if (v > 0) scored.push({ item: c, score: v });
+      const effColors = new Set(deckColors);
+      for (const b of bucket) for (const cc of b.colors) effColors.add(cc);
+      v *= deckFitMultiplier(c, effColors);
+      if (v > 0) entries.push({ item: c, w: v });
     }
-    const pick = softmaxPick(scored, 1);
+    const pick = weightedSample(entries);
     if (!pick) break;
     bucket.push(pick);
   }
@@ -493,11 +509,11 @@ function reinforcementsBucket(deckColors, deckTplIds) {
 // ---------------------------------------------------------------------------
 // §4 Lands + naming + offer composition.
 // ---------------------------------------------------------------------------
-// Coverage-first at bucket scale: with only 2 land slots, every color the
-// bucket actually needs gets a land before proportionality kicks in. (Pure
-// largest-remainder rounds a U:3/B:1 bucket to island+island — faithful
-// math, unplayable splash; playtest-caught.) Deck-wide allocation (17
-// lands) stays proportional over in draft.js.
+// Bucket lands, in Joe's words: "What's the most common color? You get one
+// of those! What's the second most common color? You get one of those!"
+// (Mono-color buckets get two of the same; deck-wide 17-land allocation
+// stays proportional in draft.js. Pure largest-remainder here rounded a
+// U:3/B:1 bucket to island+island — playtest-caught.)
 function landsForCards(cardTplIds) {
   const pips = { W: 0, U: 0, B: 0, R: 0, G: 0 };
   for (const id of cardTplIds) {
@@ -568,8 +584,7 @@ function finishBucket(bucketAnalyses, why) {
 // wishlist's top is likely, coherent-but-uncommitted plans are possible,
 // and the long tail stays alive. Sampling is without replacement.
 function pickSeeds(deckAnalyses, deckColors) {
-  const candidates = _pool.filter(c =>
-    !c.isLand && isLegalCandidate(c, [], deckColors));
+  const candidates = _pool.filter(c => !c.isLand);
   const payoffness = c => {
     let sum = 0;
     for (const v of Object.values(c.wants)) sum += v;
@@ -578,20 +593,16 @@ function pickSeeds(deckAnalyses, deckColors) {
   const weightOf = c => deckAnalyses.length
     ? edgeMassIntoDeck(c, deckAnalyses)
     : payoffness(c);
-  const entries = candidates.map(c => ({ c, w: SEED_BASE_WEIGHT + weightOf(c) }));
+  let entries = candidates.map(c => ({
+    item: c,
+    w: (SEED_BASE_WEIGHT + weightOf(c)) * deckFitMultiplier(c, deckColors),
+  }));
   const seeds = [];
   for (let k = 0; k < OFFER_SIZE && entries.length; k++) {
-    let total = 0;
-    for (const e of entries) total += e.w;
-    if (total <= 0) break;
-    let roll = _rand() * total;
-    let picked = entries.length - 1;
-    for (let i = 0; i < entries.length; i++) {
-      roll -= entries[i].w;
-      if (roll <= 0) { picked = i; break; }
-    }
-    seeds.push(entries[picked].c);
-    entries.splice(picked, 1);   // without replacement
+    const pick = weightedSample(entries);
+    if (!pick) break;
+    seeds.push(pick);
+    entries = entries.filter(e => e.item !== pick);   // without replacement
   }
   return seeds;
 }

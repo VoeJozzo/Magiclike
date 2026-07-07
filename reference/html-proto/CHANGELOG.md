@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.2.4`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.2.5`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -2474,3 +2474,22 @@ U:3/B:1 bucket now gets island+swamp instead of island+island (pure
 largest-remainder rounds the splash color to zero at n=2; deck-wide 17-land
 allocation stays proportional in draft.js). Regression tests for both.
 Suite 144 files / 2695 assertions green, lint clean.
+
+v2.2.5: design-review round four (all four directives Joe's). (1) ONE
+sampler everywhere: growth now uses weightedSample like seeds and
+Reinforcements; softmaxPick + GROWTH_TEMPERATURE deleted. Growth SQUARES its
+weights (GROWTH_SHARPNESS=2 — bundles must cohere; seeds stay linear —
+offers should explore); flat proportional measured too loose (~19%
+Reinforcements fallback), sharpness 2 lands at ~10%. Softmax was also
+flattening multiplicative penalties, which motivated the unification.
+(2) Soft third color: the deck-colors hard ban replaced by
+deckFitMultiplier — first two colors free, each additional new color ×0.05
+on seed weight and growth score, judged against deck ∪ bucket colors so a
+bundle can't claim the free slot twice. Castability is the player's call
+("skill issue"); measured: ~6% off-color cards, ~9% third-color temptation
+buckets for a committed deck. The one HARD color law left: a bucket never
+spans >2 colors. (3) GROWING_START_BUCKETS 3→5 (25-card start) — 15-card
+decks ended games by deck-out. (4) Bucket lands comment rewritten to Joe's
+spec (code already matched: most common color, then second most common).
+Suite 144 files / 2696 assertions green (buckets stressed 5x), lint clean,
+browser-verified end-to-end (5-pick draft → game boots → reward grows +5).
