@@ -40,6 +40,13 @@ function check(label, ok, info) {
   const bolt = BUCKETS.analyzeCard('lightning_bolt');
   check('bolt has aggro plan tag (face damage = the race plan)', bolt.tags.has('aggro'));
 
+  // Subtype-implied keywords reach the graph (engine.js SUBTYPE_KEYWORDS via
+  // ENGINE.addSubtypeKeywords): this Serra Angel has no explicit flying in
+  // keywords[], but Angels fly at runtime — the graph must agree. (Found by
+  // a Wave 1.5 judge agent; the graph had been blind to implied keywords.)
+  const serra = BUCKETS.analyzeCard('serra_angel');
+  check('implied keywords: Angel gets the flying plan tag', serra.tags.has('flying'));
+
   // Humans are NOT special-cased: they provide their subtype like any tribe.
   // Nothing in today's pool WANTS them (a pool fact, not a ban) — so Human
   // generates zero edges until someone ships a Human payoff, at which point

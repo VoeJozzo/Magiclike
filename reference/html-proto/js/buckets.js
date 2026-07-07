@@ -202,6 +202,14 @@ function analyze(tpl) {
 
   const isCreature = hasType(tpl, 'Creature');
   const isSpellCard = hasType(tpl, 'Sorcery') || hasType(tpl, 'Instant');
+  // Effective keywords include the engine's subtype implications (Angel/Dragon
+  // fly, Treefolk reach, Wall defends — engine.js SUBTYPE_KEYWORDS via the
+  // shared addSubtypeKeywords helper). Reading raw keywords[] alone made the
+  // graph blind to every implied keyword — found by a Wave 1.5 judge agent
+  // citing engine.js:729 while killing a redundant "add flying to the Angel"
+  // patch.
+  const effKeywords = ENGINE.addSubtypeKeywords(
+    (tpl.types || []), (tpl.keywords || []).slice());
   const subtypes = (tpl.types || []).filter(t => !TYPE_RANK_TYPES.has(t));
 
   // --- PROVIDES ---
@@ -218,7 +226,7 @@ function analyze(tpl) {
     }
     if (k.kind === 'gain_life' && (k.amount || 0) > 0) bump(provides, 'lifegain', W_PROV_LIFE);
   }
-  if ((tpl.keywords || []).includes('lifelink')) bump(provides, 'lifegain', W_PROV_LIFE * 0.75);
+  if (effKeywords.includes('lifelink')) bump(provides, 'lifegain', W_PROV_LIFE * 0.75);
   if (isCreature) {
     // Cheap bodies are willing fodder; big ones aren't. This gate is what
     // keeps "everything dies eventually" from wiring every creature to
@@ -274,8 +282,8 @@ function analyze(tpl) {
   }
 
   // --- Plan tags (weak similarity: shared strategy, not producer/consumer) ---
-  if ((tpl.keywords || []).includes('flying')) tags.add('flying');
-  if ((tpl.keywords || []).includes('haste')) tags.add('aggro');
+  if (effKeywords.includes('flying')) tags.add('flying');
+  if (effKeywords.includes('haste')) tags.add('aggro');
   if ((tpl.triggers || []).some(t => t.event === 'attacks')) tags.add('aggro');
   // Damage that can go to the face is part of the race plan.
   if (kinds.some(k => k.kind === 'damage') && /player|opp|any/.test(String(tpl.target || ''))) tags.add('aggro');

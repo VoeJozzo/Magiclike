@@ -8201,6 +8201,11 @@ return {
   // §7b coverage seam: the dispatch table + the coverage report. The valuation
   // classification sets (VALUED/UNVALUED_EFFECT_KINDS) now live on AI (review #6).
   EFFECTS, effectCoverageReport,
+  // Subtype-implied keywords (Angel/Dragon fly, Treefolk reach, Wall defends)
+  // — exported so BUCKETS' extraction reads the same effective keywords the
+  // runtime grants (raw keywords[] alone made the synergy graph blind to
+  // every implied keyword).
+  addSubtypeKeywords,
   concede() {
     if (!G || G.gameOver) return;
     log('You concede.', 'imp');

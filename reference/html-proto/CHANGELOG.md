@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.2.5`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.2.6`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -2493,3 +2493,13 @@ decks ended games by deck-out. (4) Bucket lands comment rewritten to Joe's
 spec (code already matched: most common color, then second most common).
 Suite 144 files / 2696 assertions green (buckets stressed 5x), lint clean,
 browser-verified end-to-end (5-pick draft → game boots → reward grows +5).
+
+v2.2.6: bucket extraction reads EFFECTIVE keywords — the engine's
+subtype-implied keywords (SUBTYPE_KEYWORDS: Angel/Dragon fly, Treefolk
+reach, Wall defends) now reach the synergy graph via a new
+ENGINE.addSubtypeKeywords export. Raw keywords[] alone left the graph
+blind to every implied keyword (Serra Angel had no flying plan tag).
+Found during the Wave 1.5 flavor audit: a judge agent killed a
+redundant "add flying to the Angel" patch by citing engine.js:729,
+exposing the extraction gap. Regression test pins Serra's flying tag.
+Suite 144 files / 2697 assertions green, lint clean.
