@@ -4,7 +4,7 @@ Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folde
 
 ## Version
 
-**Current: `v2.2.7`** — source of truth: `js/main.js` `const VERSION` (keep in sync on bump). Full version history: [`CHANGELOG.md`](CHANGELOG.md).
+**Current: `v2.2.8`** — source of truth: `js/main.js` `const VERSION` (keep in sync on bump). Full version history: [`CHANGELOG.md`](CHANGELOG.md).
 
 ## File structure
 
@@ -16,7 +16,7 @@ Also in the repo: `index.html` at the repo root — a small redirect that points
 
 | File | Role |
 |---|---|
-| `cards/<tplId>/card.json` | One file per card template (258 cards). Each folder also holds `art.png` for cards with PNG art. `cards/_manifest.json` lists every folder name. |
+| `cards/<tplId>/card.json` | One file per card template (305 cards). Each folder also holds `art.png` for cards with PNG art. `cards/_manifest.json` lists every folder name. |
 | `js/settings.js` | `SETTINGS` IIFE — user-tunable display config (card frame style, per-element font + size multipliers, popup text scale, mana symbol sizes, devtools flag). `localStorage` at `magiclike_settings_v1`. `applyFontsToRoot()` pushes saved values into `:root` CSS vars at boot before the first paint. |
 | `js/cards.js` | `CARDS = {}` + `async loadCards()` fetcher (populates CARDS from the per-card JSONs at boot). Also holds `TOKENS`, `KEYWORDS`, `STICKERS`, `EMPOWER_FIELDS`, `KEYWORD_DISPLAY`, `KEYWORD_STICKER_WEIGHTS`, `RUN_MODIFIERS` — the shared registries that don't fit the per-card model — plus the §305.6 basic-land-mana layer (`BASIC_LAND_MANA`, `basicLandTypeColors`, `grantBasicLandMana`). |
 | `js/keyword-icons.js` | `KEYWORD_ICON_SVG` — inline-ready keyword coin SVGs (generated from `assets/keywords/<kw>.svg`; glyph ink is `currentColor`, disc/rim are CSS vars so the source class recolors the coin). |

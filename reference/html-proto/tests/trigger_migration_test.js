@@ -47,6 +47,13 @@ const ARCHETYPES = {
   'card_zone_change | card_is_creature, card_moves(battlefield, graveyard)': 'anyCardDies',
   'card_zone_change | another_card, card_is_creature, card_moves(battlefield, graveyard), card_damaged_by_this': 'thisKillsCreature',
   'life_changed | is_life_gain, affected_player_is(you)': 'youGainLife',
+  // Wave 1 archetypes (Gloomfang Leech/Bloodtithe Collector, Toll of Secrets,
+  // Rakdos Underboss). NOTE: this table duplicates triggers.js's
+  // _ARCHETYPE_BY_SIG — keep the two in lockstep (refactor candidate: the
+  // test could read the real table through a triggers.js export instead).
+  'life_changed | is_life_loss, affected_player_is(opp)': 'oppLosesLife',
+  'card_zone_change | controlled_by(you), card_moves(hand, graveyard)': 'youDiscard',
+  'card_zone_change | card_has_subtype(*), card_moves(battlefield, graveyard)': 'cardDiesOfSubtype',
   'spell_cast | another_card, controlled_by(you)': 'youCastSpell',
   'spell_cast | another_card, controlled_by(you), card_has_effect(counter)': 'youCastCounterspell',
 };

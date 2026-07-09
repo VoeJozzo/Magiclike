@@ -1,0 +1,30 @@
+{
+  "card_id": "toll_of_silence",
+  "art": "🔕",
+  "cost": {
+    "U": 2,
+    "B": 1
+  },
+  "target_slots": [
+    { "target": "spell" },
+    { "target": "opp" }
+  ],
+  "effects": [
+    {
+      "kind": "counter",
+      "target_slot": 0
+    },
+    {
+      "kind": "gain_life",
+      "amount": -2,
+      "target_slot": 1
+    }
+  ],
+  "name": "Toll of Silence",
+  "keywords": [
+    "flash"
+  ],
+  "types": [
+    "Sorcery"
+  ]
+}

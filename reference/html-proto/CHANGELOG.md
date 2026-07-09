@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.2.7`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.2.8`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -2517,3 +2517,31 @@ banked for future payoffs per the accretion doctrine). Suite 144 files /
 2697 assertions green, lint clean. Post-wave assay: hub share and plan
 counts ~unchanged as predicted — these are flavor fixes and banked
 subtypes; the interconnection movement is Wave 1's job.
+
+v2.2.8: Wave 1 ships — 8 new-niche recruiting payoffs from the 12-designer /
+1-killer wave (docs/plans/plan-pool-waves.md), curated by Joe via the
+review-board artifact. New cards: gloomfang_leech (opp life loss → +1/+1
+counter; hooks the whole burn suite — 10 recruits), bloodtithe_collector
+(opp life loss → gain 1; the burn↔lifegain bridge, Joe's overrule of the
+killer's one-per-niche policy), toll_of_secrets (you discard → opp loses 1;
+first discard payoff), grim_ferryman ({T}, sac: draw — third distinct
+sac-outlet plan), ironbrand_marshal (Artifact-creature lord; first artifact
+payoff), rakdos_underboss (Demons +1/-1 + demon-death drain; the anthem
+feeds the drain — kills your own 1-toughness demons on purpose),
+toll_of_silence (UUB counter + controller loses 2; two-slot spell/opp
+shape), tideglass_broker (2U 1/2 flash flier, ETB blinks ANOTHER creature
+you control). New primitives: `another: true` target_filter (source
+exclusion in the ts* trigger-targeting layer — distinct from
+distinct_targets' slot-vs-slot rule) + 3 trigger archetypes (oppLosesLife,
+youDiscard, cardDiesOfSubtype) with card-text preambles. Static-buff text:
+signed stats ("+1/-1", was "+1/+-1"); type-tag buffs read "Artifact
+creatures"; "Other" only when the lord matches its own buff. BUCKETS
+extraction: Wave 1 vocabulary (discard/self_pain/opp_loss provides+wants,
+sub:Artifact provides) + the life_changed DIRECTION SPLIT (is_life_loss →
+self_pain/opp_loss — fixes a latent 23-false-edge bug where life-loss
+payoffs bucketed with lifegain providers); theme names The Foundry / The
+Toll / Bloodletting. Structural pins updated: trigger_migration archetype
+table (+3, dup-table refactor candidate flagged), zone-events pin gains an
+intentional-non-battlefield allowlist (toll_of_secrets). Suite 145 files /
+2737 assertions green; selfplay 500 games 0 crashes/violations/stuck;
+lint clean.

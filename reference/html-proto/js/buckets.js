@@ -109,7 +109,10 @@ const THEME_NAMES = {
   'sub:Drake':    'Drake Aerie',
   'sub:Vampire':  'The Thirst',
   'sub:Zombie':   'The Risen',
+  'sub:Artifact': 'The Foundry',
   dies:      'Grave Bargains',
+  discard:   'The Toll',
+  opp_loss:  'Bloodletting',
   fodder:    'The Expendables',
   etb:       'The Processional',
   lifegain:  'Communion',
@@ -171,6 +174,7 @@ function collectKindsAndConds(node, kinds, conds) {
 // boot-validation pattern).
 const HINT_RESOURCES = new Set([
   'dies', 'fodder', 'etb', 'lifegain', 'spellcast', 'wide', 'anthem',
+  'discard', 'self_pain', 'opp_loss',
 ]);
 function applySynergyHints(tpl, provides, wants) {
   if (!tpl.synergy) return;
@@ -243,6 +247,14 @@ function analyze(tpl) {
     bump(provides, 'etb', cost <= 3 ? 0.75 : 0.4);
   }
   if (isSpellCard) bump(provides, 'spellcast', 1);
+  // Wave 1 vocabulary (~2 lines per niche; scope + rationale in
+  // docs/plans/plan-pool-waves.md — bounce/deathtouch/reanimation rules were
+  // measured but dropped with their cards; re-add when a card pays for them):
+  if (kinds.some(k => k.kind === 'move_card' && k.from_zone === 'hand' && k.to_zone === 'graveyard' && k.scope === 'self')) bump(provides, 'discard', 2);
+  if (kinds.some(k => (k.kind === 'gain_life' && (k.amount || 0) < 0 && k.scope === 'self') || (k.kind === 'damage' && k.scope === 'self'))) bump(provides, 'self_pain', 2);
+  if ((kinds.some(k => k.kind === 'damage') && /player|opp|any/.test(String(tpl.target || '')))
+      || kinds.some(k => k.kind === 'gain_life' && (k.amount || 0) < 0 && k.scope !== 'self')) bump(provides, 'opp_loss', 1);
+  if (isCreature && hasType(tpl, 'Artifact')) bump(provides, 'sub:Artifact', W_PROV_SUBTYPE);
 
   // --- WANTS ---
   // Trigger conditions. `this_card` triggers are self-referential (my own
@@ -257,11 +269,19 @@ function analyze(tpl) {
       if (sub) bump(wants, 'sub:' + sub[1], W_WANT_PAYOFF);
       if (selfOnly) continue;
       if (/^card_moves\(battlefield,\s*graveyard\)$/.test(s)) bump(wants, 'dies', W_WANT_PAYOFF);
+      if (/^card_moves\(hand,\s*graveyard\)$/.test(s)) bump(wants, 'discard', W_WANT_PAYOFF);
       if (/^card_moves\([^)]*battlefield\)$/.test(s) && cs.includes('another_card')) {
         bump(wants, 'etb', W_WANT_PAYOFF);          // "when another creature enters" payoffs
       }
     }
-    if (trg.event === 'life_changed') bump(wants, 'lifegain', W_WANT_PAYOFF);
+    // Life-change payoffs are directional: a card fed by LOSS must not be
+    // bucketed with lifegain providers (found as a 23-false-edge latent bug
+    // during Wave 1 annotation — Gloomfang Leech registered wants:lifegain).
+    if (trg.event === 'life_changed') {
+      if (cs.includes('is_life_loss')) {
+        bump(wants, cs.includes('affected_player_is(you)') ? 'self_pain' : 'opp_loss', W_WANT_PAYOFF);
+      } else bump(wants, 'lifegain', W_WANT_PAYOFF);
+    }
     if (trg.event === 'spell_cast') bump(wants, 'spellcast', W_WANT_PAYOFF);
   }
   // Static buffs: tribal lords want their tribe; global anthems want width.

@@ -3813,6 +3813,11 @@ const MATCH_FILTER_KEYS = new Set([
   'graveyards', 'select',
   // library-search axis (matchesSearchFilter's `sub` shorthand)
   'sub',
+  // Source-exclusion axis ("exile ANOTHER target creature you control" —
+  // Tideglass Broker). NOT consumed by matchFilter (which has no source in
+  // scope): enforced in the ts* trigger-targeting layer, which threads the
+  // trigger's sourceIid. Distinct from `distinct_targets` (slot-vs-slot).
+  'another',
 ]);
 
 // Effect kinds that DEREFERENCE a target and have no targetless fallback
@@ -4321,7 +4326,7 @@ function pushTriggerEntry(p, targets) {
 function pushTriggerOnStack(p) {
   let targets = [];
   if (objectNeedsTarget(p.trig)) {
-    const picked = tsAutoPick(p.trig, p.controller);
+    const picked = tsAutoPick(p.trig, p.controller, p.sourceIid);
     if (!picked) {
       log(`${p.sourceName} trigger fizzles — no legal target.`, 'sp');
       return;
@@ -4345,7 +4350,7 @@ function pushTriggerOnStack(p) {
 // (so with ≥2 creatures there's always an escape; with exactly 2 the second slot
 // auto-fills). Revisit for the first 3+-slot or asymmetric-per-slot distinct card.
 function advanceTriggerTargetPrompt(pt) {
-  const bySlot = tsLegalBySlot(pt.trig, pt.controller);
+  const bySlot = tsLegalBySlot(pt.trig, pt.controller, pt.sourceIid);
   for (const slot of pt.slotKeys) {
     if (pt.pickedSlots[slot] != null) continue;
     const valid = tsExcludePicked(pt.trig, bySlot.get(slot) || [], pt.pickedSlots);
@@ -4944,12 +4949,34 @@ function tsHasTopLevelTarget(obj) {
 }
 
 // Map<slotIdx, legalTargets[]> across all three target shapes.
-function tsLegalBySlot(obj, who) {
+// excludeIid (optional): the source object's iid, threaded by the TRIGGER
+// paths so a slot whose filter declares `another: true` ("exile ANOTHER
+// target creature you control" — Tideglass Broker) can never target its own
+// source. matchFilter can't enforce this — it has no source in scope — so
+// this is the single home for the rule, mirroring tsExcludePicked's role
+// for distinct_targets. Resolution-time revalidation (tsRevalidateTargets)
+// deliberately doesn't thread it: a chosen target is never the source.
+function tsLegalBySlot(obj, who, excludeIid) {
+  let bySlot;
   if (tsHasTopLevelTarget(obj)) {
-    return new Map([[0, targetsForFilter(obj.target, who, obj.target_filter)]]);
+    bySlot = new Map([[0, targetsForFilter(obj.target, who, obj.target_filter)]]);
+  } else {
+    const targetedEffs = (obj.effects || []).filter(effectNeedsTarget);
+    bySlot = validTargetsBySlot(obj, targetedEffs, who);
   }
-  const targetedEffs = (obj.effects || []).filter(effectNeedsTarget);
-  return validTargetsBySlot(obj, targetedEffs, who);
+  if (excludeIid != null) {
+    for (const [slot, list] of bySlot) {
+      if (tsSlotWantsAnother(obj, slot)) bySlot.set(slot, list.filter(t => t.iid !== excludeIid));
+    }
+  }
+  return bySlot;
+}
+
+// Does this slot's filter declare `another: true` (source-exclusion)?
+function tsSlotWantsAnother(obj, slot) {
+  if (tsHasTopLevelTarget(obj)) return !!(obj.target_filter && obj.target_filter.another);
+  const spec = Array.isArray(obj.target_slots) ? obj.target_slots[slot] : null;
+  return !!(spec && spec.filter && spec.filter.another);
 }
 
 // Cross-slot exclusion: drop targets already chosen for earlier slots when the
@@ -5084,8 +5111,8 @@ function tsIsImplicitTargetType(type) {
 // valued by pickBestTriggerTarget and honoring distinct. Generalizes the
 // single-target trigger auto-pick to N slots. Returns null if any slot has no
 // legal target (→ the caller fizzles the trigger).
-function tsAutoPick(obj, who) {
-  const bySlot = tsLegalBySlot(obj, who);
+function tsAutoPick(obj, who, excludeIid) {
+  const bySlot = tsLegalBySlot(obj, who, excludeIid);
   const slotKeys = [...bySlot.keys()].sort((a, b) => a - b);
   const picks = [];
   for (const slot of slotKeys) {

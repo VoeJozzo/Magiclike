@@ -1,0 +1,32 @@
+{
+  "card_id": "grim_ferryman",
+  "abilities": [
+    {
+      "cost": {
+        "tap": true,
+        "sacrifice": "creature"
+      },
+      "effects": [
+        {
+          "kind": "move_card",
+          "from_zone": "library",
+          "to_zone": "hand",
+          "selector": "controller_top",
+          "amount": 1
+        }
+      ]
+    }
+  ],
+  "art": "🛶",
+  "cost": {
+    "B": 1,
+    "C": 1
+  },
+  "name": "Grim Ferryman",
+  "power": 2,
+  "toughness": 2,
+  "types": [
+    "Creature",
+    "Zombie"
+  ]
+}

@@ -647,6 +647,10 @@ function describeEffectList(effects, cardName, tplEffects, stepTarget, stepFilte
       const inj = { target: stepTarget };
       if (stepFilter) inj.filter = stepFilter;
       else if (typeof edictFilter === 'string' && EDICT_CHAIN_KINDS.has(e.kind)) inj.edictFilter = edictFilter;
+      // Source-exclusion filter (`another: true`, §5b sibling of distinct_targets):
+      // reuse the distinct-slot "another target ..." phrasing — honest because
+      // the ts* layer forbids the source filling the slot.
+      if (stepFilter && stepFilter.another) inj._another = true;
       return Object.assign({}, e, inj);
     });
   }
@@ -834,9 +838,12 @@ function triggerPreamble(trig) {
     return 'Whenever a ' + sub + ' you control attacks,';
   }
   if (cid === 'anyCardDies')    return 'Whenever a creature dies,';
+  if (cid === 'cardDiesOfSubtype') return 'Whenever a ' + sub + ' dies,';
   if (cid === 'youCastSpell')   return 'Whenever you cast a spell,';
   if (cid === 'youCastCounterspell') return 'Whenever you cast a counterspell,';
   if (cid === 'youGainLife')    return 'Whenever you gain life,';
+  if (cid === 'oppLosesLife')   return 'Whenever an opponent loses life,';
+  if (cid === 'youDiscard')     return 'Whenever you discard a card,';
   if (ev === 'attacks') return 'When this attacks,';
   return 'Whenever a relevant event occurs,';
 }
@@ -977,18 +984,29 @@ function abilityPickerLabel(ab, maxLen) {
 }
 
 // Lord buff: "Other <subtype>s you control get +P/+T and have <kw>."
-function describeStaticBuff(buff) {
-  const sub = buff.subtype ? buff.subtype + 's' : 'creatures';
+function describeStaticBuff(buff, lordTpl) {
+  // Card-TYPE buffs read "Artifact creatures" (the engine only buffs
+  // creatures — lordBuffApplies gates on hasType Creature); subtype buffs
+  // keep the tribal plural ("Demons"). "Other" is honest only when the lord
+  // itself matches the buff (it's excluded by iid) — an Ironbrand Marshal
+  // (no Artifact type) buffs EVERY artifact creature, so "Other" would lie.
+  const isTypeTag = buff.subtype && typeCategory(buff.subtype) === 'type';
+  const sub = buff.subtype ? (isTypeTag ? buff.subtype + ' creatures' : buff.subtype + 's') : 'creatures';
+  const lordMatches = !lordTpl || !buff.subtype || hasType(lordTpl, buff.subtype);
+  const other = lordMatches ? 'Other ' : '';
   let scope;
   if (buff.filter && (buff.filter.controller === 'self' || buff.filter.controller === 'you')) {
-    scope = 'Other ' + sub + ' you control';
+    scope = other + sub + ' you control';
   } else if (buff.filter && buff.filter.controller === 'opp') {
-    scope = 'Other ' + sub + ' an opponent controls';
+    scope = other + sub + ' an opponent controls';
   } else {
-    scope = 'Other ' + sub;
+    scope = other + sub;
   }
+  if (!lordMatches) scope = scope.charAt(0).toUpperCase() + scope.slice(1);
+  // Signed stat rendering: "+1/-1", not "+1/+-1" (Rakdos Underboss).
+  const signed = (n) => (n < 0 ? String(n) : '+' + n);
   const stats = (buff.power || buff.toughness)
-    ? 'get +' + (buff.power || 0) + '/+' + (buff.toughness || 0)
+    ? 'get ' + signed(buff.power || 0) + '/' + signed(buff.toughness || 0)
     : '';
   // Lookup display names so "first_strike" → "first strike", etc.
   const kwDisplay = {
@@ -1163,7 +1181,7 @@ function describeCardSegments(card, opts) {
   }
   if (Array.isArray(card.static_buffs)) {
     for (const buff of card.static_buffs) {
-      const phrase = describeStaticBuff(buff);
+      const phrase = describeStaticBuff(buff, card);
       if (phrase) sections.push([plainSeg(phrase)]);
     }
   }

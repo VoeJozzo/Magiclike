@@ -418,6 +418,9 @@ const CATEGORY_A = [
   // backfill).
   'buckets_test.js',
   'growing_deck_test.js',
+  // Wave 1 cards (8 new-niche payoffs) + the `another` source-exclusion
+  // target filter + the buckets life_changed direction split.
+  'wave1_cards_test.js',
 ];
 
 const TESTS_DIR = __dirname;
