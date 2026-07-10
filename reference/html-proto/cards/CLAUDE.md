@@ -31,9 +31,7 @@ name in `cards/_manifest.json` (forgetting this = card silently absent).
   as subtypes automatically — no registry edit needed for a new tribe.
 - **`art`**: `"art.png"` (file in the card's folder) or a single emoji
   placeholder. Every card has one.
-- **`keywords`**: array; see `js/cards.js` KEYWORDS. Some are IMPLIED by
-  subtype at runtime (Angel/Dragon→flying, Treefolk→reach, Wall→defender —
-  engine SUBTYPE_KEYWORDS): don't also write the implied keyword.
+- **`keywords`**: array; the registry is `KEYWORDS` in `js/cards.js`.
 
 Ingestion (`js/cards.js ingestCard`) applies exactly four transforms:
 `card_id`→`tplId`; derive `color`/`colors` from cost (kept if you author
@@ -75,8 +73,14 @@ them — so don't); desugar string-effect shorthand (`"draw(2)"` → the
    A card being cast is on the stack and can never hear its own cast (only
    battlefield permanents listen). Keep the term in the wire (it's part of
    the classification signature); generated text correctly says "a spell."
-7. **A land's `mana` field is display-only** (pips/frame). Mana production
-   comes from basic-land subtypes (auto-granted) or an explicit
+7. **Some types confer abilities automatically — write the type, not the
+   ability.** Two layers: (a) `SUBTYPE_KEYWORDS` (`js/engine.js`) implies
+   keywords from creature subtypes — Angel/Dragon→flying, Treefolk→reach,
+   Wall→defender; a card typed Dragon must NOT also write `flying` (the
+   suite pins this, and Wave 1.5 killed three patches for proposing implied
+   keywords). (b) Basic-land subtypes (Forest, Island, …) auto-grant the
+   tap-for-mana ability at ingest — a land's `mana` field is display-only
+   (pips/frame); non-basic mana production needs an explicit
    `{cost:{tap:true}, effects:[{kind:'add_mana', ...}]}` ability.
 8. **"Draw" and library→hand are the same zone event.** The engine cannot
    distinguish a draw from a tutor in `card_moves(library, hand)` triggers.
@@ -92,23 +96,27 @@ them — so don't); desugar string-effect shorthand (`"draw(2)"` → the
     predicates, effect kinds, filter keys — filter-key checking exists since
     v2.2.x) and the node suite are the only nets. Run both; read the output.
 
-## Vocabulary quick reference (verify in source when in doubt)
+## Vocabulary — where the source of truth lives (don't trust copies)
 
-- **Effect kinds**: keys of `EFFECTS` in `js/engine.js` (~31; `damage`,
-  `pump`, `gain_life`, `move_card`, `affect_creature` (severity
-  tap/bounce/destroy/exile), `grant_keyword`, `create_tokens`, `counter`,
-  `fight`, `add_mana`, `add_type`/`set_types`, `chooses`, …).
-- **Target strings**: `creature, player, opp, creature_or_player, spell,
-  permanent, land, your_creature, opp_creature, graveyard_card`
-  (`TARGET_FILTERS`, `js/engine.js`).
-- **Filter keys**: `MATCH_FILTER_KEYS` (`js/engine.js`) — `controller,
-  subtype, type, not_type, has_keyword, not_keyword, color, not_color,
-  tapped, min/max_power, min/max_tough, not_token, another, …`. Unknown
-  keys WARN at boot; a typo before v2.2.x silently disabled the restriction.
-- **Trigger events**: `card_zone_change, spell_cast, attacks, life_changed,
-  combat_damage` — the only five that ever fire.
-- **Trigger-level `target: "opp"`** (and other implicit types) auto-resolves
-  with zero UI prompts — the blood_artist/toll_of_secrets drain shape.
+These lists drift as the engine grows; this doc deliberately does NOT
+enumerate them. Read the table you need at its home:
+
+- **Effect kinds** → keys of the `EFFECTS` dispatch table, `js/engine.js`
+  (e.g. `damage`, `pump`, `move_card`, `affect_creature`, …).
+- **Target strings** → `TARGET_FILTERS`, `js/engine.js`.
+- **Filter keys** → `MATCH_FILTER_KEYS`, `js/engine.js`. Unknown keys WARN
+  at boot; before v2.2.x a typo silently disabled the restriction.
+- **Condition predicates** → `ATOMIC_PREDICATES`, `js/triggers.js`.
+- **Trigger events** → `VALID_TRIGGER_EVENTS`, `js/triggers.js` (the five
+  the engine actually emits).
+- **Keywords** → `KEYWORDS`, `js/cards.js`. Implied ones: `SUBTYPE_KEYWORDS`,
+  `js/engine.js`.
+- **Trigger archetypes** (classification + text preambles) →
+  `_ARCHETYPE_BY_SIG`, `js/triggers.js`.
+
+One behavioral note worth keeping here: **trigger-level `target: "opp"`**
+(and other implicit types) auto-resolves with zero UI prompts — the
+blood_artist / toll_of_secrets drain shape.
 
 ## Shipping checklist
 
