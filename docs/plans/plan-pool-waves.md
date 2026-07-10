@@ -89,6 +89,51 @@ re-add when a reanimator ships).
 
 **Open item:** Tideglass Broker final spec (Fable proposes, Joe cuts).
 
+## Wave 2 FINAL BUILD SPEC (locked 2026-07-10; flavor in wave2_flavor_final.json)
+
+Mechanics = conversation-board `after` fields; names/typelines = flavor-final
+file (31/32; RG_3-0 pending hook-templating nod + name pick).
+
+**Primitive bill, reconciled:**
+1. Static spell-modifier hook (engine, ~30-40 lines + tests): resolution-time
+   riders from battlefield permanents over a spell's targets, per-target
+   filters. Customers: Sapling Tender (counter on your-creature targets),
+   Primal Metamagus (1 damage to all targets), Vigil Chanter (vigilance to
+   creature targets), Wildfire Colossus [pending nod] (counter on self per
+   damage-sorcery). Needs a card-text describe case (~10-15 lines).
+2. card_has_keyword(kw) predicate (~6 lines) — Feinting Sprite, Surgecaster.
+3. opponents_turn predicate (~5 lines) — Tidewatcher.
+4. card_has_effect(kind, scope) extension (~6 lines; Joe's parameterize-don't-
+   multiply ruling; scope 'etb' scans the subject card's ETB triggers) —
+   Triage Cleric.
+5. card_has_subtype any-of args (~2 lines + preamble) — Covenant Scholar.
+6. ability_activated event (~15-20 lines; non-mana stack-entry emit site
+   only) — Backlash Mage.
+7. describeStaticBuff keyword-filter phrasing (~5 lines) + FIRST dedicated
+   test coverage for that function (3rd extension in two waves) — Wing
+   Commander.
+8. Archetype signatures + preambles for every new condition shape; refactor
+   the duplicated archetype table (triggers.js export consumed by
+   trigger_migration_test — Joe-flagged).
+9. Manifest-completeness suite pin (~5 lines; no test currently catches an
+   unlisted cards/ folder — Joe-found gap).
+10. buckets.js vocabulary for shipped niches + THREE wart fixes (landfall
+    false-etb, qualified spellcast, mass-buff wants:wide incl. 4 existing
+    cards) + extraction re-check on FINAL typelines (Goblin +2, Angel +2,
+    Treefolk +2, Faerie +2, Elf +5, Human 12→10 in batch).
+
+**Confirm-by-silence flags:** Wing Commander is Angel-typed → implied flying
+= a real mechanical buff (1WU 2/3 FLYING lord of fliers) — Joe picked it,
+flagged once; Covenant Scholar typeline is Elf Merfolk Wizard while its
+MECHANICS tribes stay Wizard+Merfolk; Flintlock voice ("target opponent")
+parked to backlog per "tentatively fine."
+
+**Flavor-pass protocol learnings (for future waves):** proposers = menu
+factory (14/31 finals were Joe remixes of menu parts); scoring judges ≈
+chance vs Joe (6-7/31) — replace with deterministic lint (collisions,
+implied keywords, census); priming direction is non-obvious (deprimed run
+was MORE conservative on typelines: 75%→57% divergence).
+
 **Instruments:** review-board artifact (verdict buttons + copy-export);
 wave1/ scratchpad holds hands, results, annotations, extraction_price.diff,
 and the killer audit (24/25 kills verified; 1 wire claim wrong: Chorus of the
