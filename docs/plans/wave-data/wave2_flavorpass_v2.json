@@ -1,0 +1,1319 @@
+{
+ "proposals": {
+  "GW_0-2": [
+   {
+    "src": "B",
+    "name": "Steadfast Vanguard",
+    "typeLine": "Creature — Human Soldier",
+    "tribes": null,
+    "artNote": null
+   },
+   {
+    "src": "P1",
+    "name": "Rousing Sergeant",
+    "typeLine": "Creature — Human Soldier",
+    "tribes": null,
+    "artNote": "A drill sergeant blowing a horn while the whole camp snaps upright, weapons already in hand from before they lay down."
+   },
+   {
+    "src": "P2",
+    "name": "Resolute Vanguard",
+    "typeLine": "Creature — Human Soldier",
+    "tribes": null,
+    "artNote": "A captain plants their banner mid-charge; the whole line snaps taut and alert without breaking stride."
+   },
+   {
+    "src": "P3",
+    "name": "Unwearied Vanguard",
+    "typeLine": "Creature — Human Soldier",
+    "tribes": null,
+    "artNote": "A front-line soldier plants a banner mid-charge, shield never dipping — troops behind snap to full alert without breaking stride."
+   }
+  ],
+  "GW_3-1": [
+   {
+    "src": "B",
+    "name": "Tenacious Yearling",
+    "typeLine": "Creature — Beast",
+    "tribes": null,
+    "artNote": null
+   },
+   {
+    "src": "P1",
+    "name": "Grafting Elder",
+    "typeLine": "Creature — Elf Druid",
+    "tribes": null,
+    "artNote": "An elder's staff dripping sap onto a wounded ally, sealing the wound into a knot of new growth."
+   },
+   {
+    "src": "P2",
+    "name": "Sapling Tender",
+    "typeLine": "Creature — Elf Druid",
+    "tribes": null,
+    "artNote": "Cupped hands guide a spark of green magic into a comrade's wound, and a vine curls shut behind it."
+   },
+   {
+    "src": "P3",
+    "name": "Wild Channeler",
+    "typeLine": "Creature — Elf Shaman",
+    "tribes": null,
+    "artNote": "Every ward-spell she redirects sheds excess magic as visible new growth on the ally it touches."
+   }
+  ],
+  "WU_0-0": [
+   {
+    "src": "B",
+    "name": "Sudden Reprieve",
+    "typeLine": "Sorcery",
+    "tribes": null,
+    "artNote": null
+   },
+   {
+    "src": "P1",
+    "name": "Vanishing Step",
+    "typeLine": "Sorcery",
+    "tribes": null,
+    "artNote": "A creature mid-stride vanishing into motes of light on one side of the field, already whole again on the other."
+   },
+   {
+    "src": "P2",
+    "name": "Vanishing Act",
+    "typeLine": "Sorcery",
+    "tribes": null,
+    "artNote": "A cloak snaps shut over a warrior mid-swing and billows open on empty, undisturbed ground."
+   },
+   {
+    "src": "P3",
+    "name": "Momentary Exile",
+    "typeLine": "Sorcery",
+    "tribes": null,
+    "artNote": null
+   }
+  ],
+  "WU_1-0": [
+   {
+    "src": "B",
+    "name": "Windmark Marshal",
+    "typeLine": "Creature — Human Soldier",
+    "tribes": null,
+    "artNote": null
+   },
+   {
+    "src": "P1",
+    "name": "Skyline Tactician",
+    "typeLine": "Creature — Human Soldier",
+    "tribes": null,
+    "artNote": "A rooftop commander pointing skyward as a wing of flyers wheels into tighter formation."
+   },
+   {
+    "src": "P2",
+    "name": "Wing Commander",
+    "typeLine": "Creature — Angel Soldier",
+    "tribes": null,
+    "artNote": "An angel directs a wedge of drakes and pegasi with a raised blade against a churning cloudbank."
+   },
+   {
+    "src": "P3",
+    "name": "Wing Commander",
+    "typeLine": "Creature — Human Soldier",
+    "tribes": null,
+    "artNote": null
+   }
+  ],
+  "WU_1-1": [
+   {
+    "src": "B",
+    "name": "Wayclearer Knight",
+    "typeLine": "Creature — Human Knight",
+    "tribes": null,
+    "artNote": null
+   },
+   {
+    "src": "P1",
+    "name": "Shackling Lancer",
+    "typeLine": "Creature — Human Knight",
+    "tribes": null,
+    "artNote": "A charging lance erupting in chain-light, pinning an enemy blocker's legs to the ground."
+   },
+   {
+    "src": "P2",
+    "name": "Kneelbreaker",
+    "typeLine": "Creature — Human Knight",
+    "tribes": null,
+    "artNote": "A knight's warhorse crests the ridge and an enemy's knee buckles before the charge even lands."
+   },
+   {
+    "src": "P3",
+    "name": "Pinning Lancer",
+    "typeLine": "Creature — Human Knight",
+    "tribes": null,
+    "artNote": "Lance drives a defender's shield arm down and pinned wide the instant the charge begins."
+   }
+  ],
+  "WU_1-2": [
+   {
+    "src": "B",
+    "name": "Ambuscade Adept",
+    "typeLine": "Creature — Human Wizard",
+    "tribes": null,
+    "artNote": null
+   },
+   {
+    "src": "P1",
+    "name": "Ambush Adept",
+    "typeLine": "Creature — Human Wizard",
+    "tribes": null,
+    "artNote": "A hooded apprentice yanking a spell out of thin air a half-second before the enemy expects it."
+   },
+   {
+    "src": "P2",
+    "name": "Feinting Blade",
+    "typeLine": "Creature — Shapeshifter Rogue",
+    "tribes": null,
+    "artNote": "A duelist blurs into someone else's shape mid-parry, blade already where the real strike wasn't."
+   },
+   {
+    "src": "P3",
+    "name": "Flashborn Sprite",
+    "typeLine": "Creature — Faerie",
+    "tribes": null,
+    "artNote": null
+   }
+  ],
+  "WU_2-2": [
+   {
+    "src": "B",
+    "name": "Warden of Hidden Hours",
+    "typeLine": "Creature — Human Wizard",
+    "tribes": null,
+    "artNote": null
+   },
+   {
+    "src": "P1",
+    "name": "Feinting Rogue",
+    "typeLine": "Creature — Human Rogue",
+    "tribes": null,
+    "artNote": "A duelist mid-feint, blade flickering between three fake openings before the real one lands."
+   },
+   {
+    "src": "P2",
+    "name": "Riposte Pyromancer",
+    "typeLine": "Creature — Human Wizard",
+    "tribes": null,
+    "artNote": "A wizard's counter-thrust trails fire, striking only after the enemy's blow has already missed."
+   },
+   {
+    "src": "P3",
+    "name": "Flashfire Renegade",
+    "typeLine": "Creature — Human Rogue",
+    "tribes": null,
+    "artNote": null
+   }
+  ],
+  "WU_3-0": [
+   {
+    "src": "B",
+    "name": "Windward Blessing",
+    "typeLine": "Sorcery",
+    "tribes": null,
+    "artNote": null
+   },
+   {
+    "src": "P1",
+    "name": "Borrowed Wings",
+    "typeLine": "Sorcery",
+    "tribes": null,
+    "artNote": "Translucent feathered wings sketching themselves onto a ground-bound creature's back in one exhaled breath of magic."
+   },
+   {
+    "src": "P2",
+    "name": "Skyward Surge",
+    "typeLine": "Sorcery",
+    "tribes": null,
+    "artNote": "Wings of light tear open across a rider's back between one stride and the next."
+   },
+   {
+    "src": "P3",
+    "name": "Skyward Leap",
+    "typeLine": "Sorcery",
+    "tribes": null,
+    "artNote": null
+   }
+  ],
+  "WU_3-2": [
+   {
+    "src": "B",
+    "name": "Undertow Recall",
+    "typeLine": "Sorcery",
+    "tribes": null,
+    "artNote": null
+   },
+   {
+    "src": "P1",
+    "name": "Strategic Retreat",
+    "typeLine": "Sorcery",
+    "tribes": null,
+    "artNote": "A soldier stepping backward through a fading blue door, already reading the scrap of intelligence it bought."
+   },
+   {
+    "src": "P2",
+    "name": "Tactical Withdrawal",
+    "typeLine": "Sorcery",
+    "tribes": null,
+    "artNote": "A general signals retreat while a scribe at their side is already noting what was learned."
+   },
+   {
+    "src": "P3",
+    "name": "Tactical Recall",
+    "typeLine": "Sorcery",
+    "tribes": null,
+    "artNote": null
+   }
+  ],
+  "GU_0-0": [
+   {
+    "src": "B",
+    "name": "Covenant Scholar",
+    "typeLine": "Creature — Merfolk Wizard",
+    "tribes": "Wizard, Merfolk",
+    "artNote": null
+   },
+   {
+    "src": "P1",
+    "name": "Twin Circle Sage",
+    "typeLine": "Creature — Elf Wizard",
+    "tribes": "Elf, Wizard",
+    "artNote": "One hand rooted in loam growing elf-saplings, the other trailing water where wizard-apprentices conjure mid-stride."
+   },
+   {
+    "src": "P2",
+    "name": "Tidewood Warden",
+    "typeLine": "Creature — Elf Druid",
+    "tribes": "Elf, Merfolk",
+    "artNote": "Roots and river-scale intertwine at a tidepool's edge, kin of the deep and the grove answering the same call."
+   },
+   {
+    "src": "P3",
+    "name": "Grovetide Warden",
+    "typeLine": "Creature — Elemental",
+    "tribes": "Elf, Merfolk",
+    "artNote": "Half root-bark, half running current — a body built where forest floor meets riverbank, thickening every time either kind answers the call."
+   }
+  ],
+  "GU_0-1": [
+   {
+    "src": "B",
+    "name": "Riftcurrent Minnow",
+    "typeLine": "Creature — Fish",
+    "tribes": null,
+    "artNote": null
+   },
+   {
+    "src": "P1",
+    "name": "Eager Apprentice",
+    "typeLine": "Creature — Human Wizard",
+    "tribes": null,
+    "artNote": "A student's eyes brightening with every page that turns itself in the book floating before them."
+   },
+   {
+    "src": "P2",
+    "name": "Eager Faerie",
+    "typeLine": "Creature — Faerie Rogue",
+    "tribes": null,
+    "artNote": "A tiny sprite darts circles around a spellbook, unable to sit still while its pages turn."
+   },
+   {
+    "src": "P3",
+    "name": "Eager Familiar",
+    "typeLine": "Creature — Familiar",
+    "tribes": null,
+    "artNote": null
+   }
+  ],
+  "GU_0-2": [
+   {
+    "src": "B",
+    "name": "Mistwing Duelist",
+    "typeLine": "Creature — Spirit",
+    "tribes": null,
+    "artNote": null
+   },
+   {
+    "src": "P1",
+    "name": "Arcane Drifter",
+    "typeLine": "Creature — Illusion",
+    "tribes": null,
+    "artNote": "A half-formed illusion rippling translucent and lifting off the ground the instant a spell-glyph flares nearby."
+   },
+   {
+    "src": "P2",
+    "name": "Spellrider",
+    "typeLine": "Creature — Illusion",
+    "tribes": null,
+    "artNote": "A ribbon of raw spellcraft catches the illusion and lifts it clear of the ground for one shimmering breath."
+   },
+   {
+    "src": "P3",
+    "name": "Arcane Drifter",
+    "typeLine": "Creature — Illusion",
+    "tribes": null,
+    "artNote": null
+   }
+  ],
+  "GU_1-2": [
+   {
+    "src": "B",
+    "name": "Otter Strategist",
+    "typeLine": "Creature — Otter Wizard",
+    "tribes": null,
+    "artNote": null
+   },
+   {
+    "src": "P1",
+    "name": "Insightful Sentry",
+    "typeLine": "Creature — Spirit",
+    "tribes": null,
+    "artNote": "A pale watcher standing motionless through the day, quill scratching furiously the moment the sun goes down."
+   },
+   {
+    "src": "P2",
+    "name": "Interloping Scholar",
+    "typeLine": "Creature — Human Wizard",
+    "tribes": null,
+    "artNote": "A hulking tome-bearer scribbles furiously by lamplight, casting a ward the instant the enemy thinks it's safe."
+   },
+   {
+    "src": "P3",
+    "name": "Tidewatcher",
+    "typeLine": "Creature — Merfolk",
+    "tribes": null,
+    "artNote": null
+   }
+  ],
+  "GU_2-1": [
+   {
+    "src": "B",
+    "name": "Chrysalis Ward",
+    "typeLine": "Sorcery",
+    "tribes": null,
+    "artNote": null
+   },
+   {
+    "src": "P1",
+    "name": "Veiling Current",
+    "typeLine": "Sorcery",
+    "tribes": null,
+    "artNote": "A creature dissolving into blue mist mid-swing, blows passing clean through where its body used to be."
+   },
+   {
+    "src": "P2",
+    "name": "Warding Shell",
+    "typeLine": "Sorcery",
+    "tribes": null,
+    "artNote": "A carapace of river-glass seals over an ally the instant a spell is aimed their way."
+   },
+   {
+    "src": "P3",
+    "name": "Shielding Current",
+    "typeLine": "Sorcery",
+    "tribes": null,
+    "artNote": null
+   }
+  ],
+  "GU_2-2": [
+   {
+    "src": "B",
+    "name": "Rootbinder Druid",
+    "typeLine": "Creature — Elf Druid",
+    "tribes": null,
+    "artNote": null
+   },
+   {
+    "src": "P1",
+    "name": "Earthsinger",
+    "typeLine": "Creature — Elf Shaman",
+    "tribes": null,
+    "artNote": "A shaman's hum rippling through bedrock until a slab of stone peels up on four legs of soil and root."
+   },
+   {
+    "src": "P2",
+    "name": "Earthsong Druid",
+    "typeLine": "Creature — Elf Druid",
+    "tribes": null,
+    "artNote": "A druid hums low, and beneath their palm a patch of soil shudders like something waking up."
+   },
+   {
+    "src": "P3",
+    "name": "Landwaker",
+    "typeLine": "Creature — Elf Druid",
+    "tribes": null,
+    "artNote": null
+   }
+  ],
+  "GW_1-2": [
+   {
+    "src": "B",
+    "name": "Canopy Sentinel",
+    "typeLine": "Creature — Treefolk",
+    "tribes": null,
+    "artNote": null
+   },
+   {
+    "src": "P1",
+    "name": "Rootguard Sentinel",
+    "typeLine": "Creature — Treefolk Soldier",
+    "tribes": null,
+    "artNote": "A treefolk standing unmoving watch beside a field of grass that, on closer look, is also standing unmoving watch."
+   },
+   {
+    "src": "P2",
+    "name": "Earthwatch Guardian",
+    "typeLine": "Creature — Treefolk Soldier",
+    "tribes": null,
+    "artNote": "Roots that were just roots a moment ago now stand shoulder-to-shoulder with the shield-wall, eyes open."
+   },
+   {
+    "src": "P3",
+    "name": "Rootbound Sentinel",
+    "typeLine": "Creature — Treefolk",
+    "tribes": null,
+    "artNote": "Roots run out from its feet into the surrounding earth itself, and the ground goes taut with the same readiness in its bark."
+   }
+  ],
+  "GW_2-0": [
+   {
+    "src": "B",
+    "name": "Bramble Acolyte",
+    "typeLine": "Creature — Elf Druid",
+    "tribes": null,
+    "artNote": null
+   },
+   {
+    "src": "P1",
+    "name": "Broodwarden",
+    "typeLine": "Creature — Beast",
+    "tribes": null,
+    "artNote": "A den-mother beast flanked by cubs mid-birth, visibly thickening with muscle as each one finds its feet."
+   },
+   {
+    "src": "P2",
+    "name": "Warren Matriarch",
+    "typeLine": "Creature — Beast",
+    "tribes": null,
+    "artNote": "New cubs spill from every burrow mouth at once, and she grows a size with each one that answers her call."
+   },
+   {
+    "src": "P3",
+    "name": "Proud Broodmother",
+    "typeLine": "Creature — Beast",
+    "tribes": null,
+    "artNote": null
+   }
+  ],
+  "GW_3-0": [
+   {
+    "src": "B",
+    "name": "Mourning Shepherd",
+    "typeLine": "Creature — Human Cleric",
+    "tribes": null,
+    "artNote": null
+   },
+   {
+    "src": "P1",
+    "name": "Charnel Shaman",
+    "typeLine": "Creature — Human Shaman",
+    "tribes": null,
+    "artNote": "A shaman closing a fallen ally's eyes as the light that leaves them threads visibly into a living comrade instead."
+   },
+   {
+    "src": "P2",
+    "name": "Deathbloom Tender",
+    "typeLine": "Creature — Elf Druid",
+    "tribes": null,
+    "artNote": "Dark flowers push up through a fallen soldier's armor, and the tender guides their bloom into a living comrade's wounds."
+   },
+   {
+    "src": "P3",
+    "name": "Undergrowth Shaman",
+    "typeLine": "Creature — Human Shaman",
+    "tribes": null,
+    "artNote": null
+   }
+  ],
+  "RG_0-0": [
+   {
+    "src": "B",
+    "name": "Skullcrag Igniter",
+    "typeLine": "Creature — Goblin Shaman",
+    "tribes": null,
+    "artNote": null
+   },
+   {
+    "src": "P1",
+    "name": "Goblin Immolator",
+    "typeLine": "Creature — Goblin Shaman",
+    "tribes": null,
+    "artNote": "A goblin shoving a shrieking ally into a furnace-rig bolted to its own chest, grinning as the barrel glows red."
+   },
+   {
+    "src": "P2",
+    "name": "Bloodstoke Goblin",
+    "typeLine": "Creature — Goblin Shaman",
+    "tribes": null,
+    "artNote": "A goblin shoves a squirming ally into the furnace grate and grins at what comes out the other end."
+   },
+   {
+    "src": "P3",
+    "name": "Goblin Cannoneer",
+    "typeLine": "Creature — Goblin",
+    "tribes": null,
+    "artNote": "A goblin stuffs a shrieking companion into a barrel-cannon, lights the fuse, and grins."
+   }
+  ],
+  "RG_1-0": [
+   {
+    "src": "B",
+    "name": "Bramblefang Provoker",
+    "typeLine": "Creature — Elemental Wolf",
+    "tribes": null,
+    "artNote": null
+   },
+   {
+    "src": "P1",
+    "name": "Kindling Shaman",
+    "typeLine": "Creature — Human Shaman",
+    "tribes": null,
+    "artNote": "Every gesture the shaman makes leaves a trail of sparks that jump independently toward whatever the spell was aimed at."
+   },
+   {
+    "src": "P2",
+    "name": "Thornspark Shaman",
+    "typeLine": "Creature — Elf Shaman",
+    "tribes": null,
+    "artNote": "Every rune this shaman traces leaves a thorn of ember hanging in the air, waiting to prick whatever it's aimed at."
+   },
+   {
+    "src": "P3",
+    "name": "Scorchwood Shaman",
+    "typeLine": "Creature — Human Shaman",
+    "tribes": null,
+    "artNote": null
+   }
+  ],
+  "RG_1-1": [
+   {
+    "src": "B",
+    "name": "Warhorn Rampager",
+    "typeLine": "Creature — Beast",
+    "tribes": null,
+    "artNote": null
+   },
+   {
+    "src": "P1",
+    "name": "Frenzied Outrider",
+    "typeLine": "Creature — Human Berserker",
+    "tribes": null,
+    "artNote": "A rider baring teeth in a wide grin as the war-horns sound and the charge behind surges to a gallop."
+   },
+   {
+    "src": "P2",
+    "name": "Kindled Aggressor",
+    "typeLine": "Creature — Goblin Warrior",
+    "tribes": null,
+    "artNote": "Every ally that breaks rank and charges lights a fuse in this brute's chest a little shorter."
+   },
+   {
+    "src": "P3",
+    "name": "Packfire Hound",
+    "typeLine": "Creature — Hound",
+    "tribes": null,
+    "artNote": null
+   }
+  ],
+  "RG_2-2": [
+   {
+    "src": "B",
+    "name": "Landstrider Cub",
+    "typeLine": "Creature — Beast",
+    "tribes": null,
+    "artNote": null
+   },
+   {
+    "src": "P1",
+    "name": "Landgrown Sapling",
+    "typeLine": "Creature — Elemental",
+    "tribes": null,
+    "artNote": "A sprout barely ankle-high, roots visibly lengthening the instant a new hill breaks the horizon nearby."
+   },
+   {
+    "src": "P2",
+    "name": "Landbound Sprout",
+    "typeLine": "Creature — Elemental",
+    "tribes": null,
+    "artNote": "A single green shoot thickens by a season's growth the instant new ground answers underfoot."
+   },
+   {
+    "src": "P3",
+    "name": "Groundling",
+    "typeLine": "Creature — Elemental",
+    "tribes": null,
+    "artNote": null
+   }
+  ],
+  "RG_3-0": [
+   {
+    "src": "B",
+    "name": "Wildfire Colossus",
+    "typeLine": "Creature — Elemental",
+    "tribes": null,
+    "artNote": null
+   },
+   {
+    "src": "P1",
+    "name": "Scorchgrown Giant",
+    "typeLine": "Creature — Giant",
+    "tribes": null,
+    "artNote": "A giant's muscles cracking wider and glowing like coals every time a fireball streaks overhead toward the enemy line."
+   },
+   {
+    "src": "P2",
+    "name": "Scorchvine Beast",
+    "typeLine": "Creature — Beast",
+    "tribes": null,
+    "artNote": "Scar tissue in the shape of char and creeper both, thickened by every sorcery that's ever singed it."
+   },
+   {
+    "src": "P3",
+    "name": "Ruin Reveler",
+    "typeLine": "Creature — Ogre",
+    "tribes": null,
+    "artNote": null
+   }
+  ],
+  "RW_2-2": [
+   {
+    "src": "B",
+    "name": "Scrap the Machine",
+    "typeLine": "Sorcery",
+    "tribes": null,
+    "artNote": null
+   },
+   {
+    "src": "P1",
+    "name": "Sunder the Gears",
+    "typeLine": "Sorcery",
+    "tribes": null,
+    "artNote": "A hammer-strike catching a construct mid-stride, gears and plating exploding outward in one ugly crunch."
+   },
+   {
+    "src": "P2",
+    "name": "Shattering Strike",
+    "typeLine": "Sorcery",
+    "tribes": null,
+    "artNote": "A hammer-blow of raw heat cracks a construct's chassis before its gears finish turning to face the threat."
+   },
+   {
+    "src": "P3",
+    "name": "Smelting Blast",
+    "typeLine": "Sorcery",
+    "tribes": null,
+    "artNote": null
+   }
+  ],
+  "RW_3-2": [
+   {
+    "src": "B",
+    "name": "Flintlock Duelist",
+    "typeLine": "Creature — Human Rogue",
+    "tribes": null,
+    "artNote": null
+   },
+   {
+    "src": "P1",
+    "name": "Backlash Cinder",
+    "typeLine": "Creature — Goblin Shaman",
+    "tribes": null,
+    "artNote": "A small goblin flinching as sparks leap off every ally's activated trick, redirecting the overspill as a jet of flame at the foe."
+   },
+   {
+    "src": "P2",
+    "name": "Sparklash Goblin",
+    "typeLine": "Creature — Goblin",
+    "tribes": null,
+    "artNote": "Every trick its allies pull leaves this goblin snickering and flinging a stray coal at the nearest enemy."
+   },
+   {
+    "src": "P3",
+    "name": "Spark Instigator",
+    "typeLine": "Creature — Goblin",
+    "tribes": null,
+    "artNote": null
+   }
+  ],
+  "GW_2-1": [
+   {
+    "src": "B",
+    "name": "Timberland Strider",
+    "typeLine": "Creature — Elf Scout",
+    "tribes": null,
+    "artNote": null
+   },
+   {
+    "src": "P1",
+    "name": "Wildwood Scout",
+    "typeLine": "Creature — Elf Scout",
+    "tribes": null,
+    "artNote": "A scout crouched at a newly-claimed border stone, muscles coiling taut the instant the marker is planted."
+   },
+   {
+    "src": "P2",
+    "name": "Verdant Upstart",
+    "typeLine": "Creature — Elf",
+    "tribes": null,
+    "artNote": "A seedling-thing puffs up a full size the moment new turf is broken nearby, then just as quickly settles back down."
+   },
+   {
+    "src": "P3",
+    "name": "Homestead Pioneer",
+    "typeLine": "Creature — Human Scout",
+    "tribes": null,
+    "artNote": null
+   }
+  ],
+  "GW_2-2": [
+   {
+    "src": "B",
+    "name": "Glade Marshal",
+    "typeLine": "Creature — Human Soldier",
+    "tribes": null,
+    "artNote": null
+   },
+   {
+    "src": "P1",
+    "name": "Vigil Chaplain",
+    "typeLine": "Creature — Human Cleric",
+    "tribes": null,
+    "artNote": "A cleric's blessing-light settling over a targeted ally and, instead of fading, hardening into a steady unblinking stance."
+   },
+   {
+    "src": "P2",
+    "name": "Vigil Chanter",
+    "typeLine": "Creature — Human Cleric",
+    "tribes": null,
+    "artNote": "A hymn goes up the instant a blessing is cast, and every warrior it touches straightens, suddenly tireless."
+   },
+   {
+    "src": "P3",
+    "name": "Watchful Chaplain",
+    "typeLine": "Creature — Human Cleric",
+    "tribes": null,
+    "artNote": null
+   }
+  ],
+  "GU_3-0": [
+   {
+    "src": "B",
+    "name": "Slack Tide",
+    "typeLine": "Sorcery",
+    "tribes": null,
+    "artNote": null
+   },
+   {
+    "src": "P1",
+    "name": "Renewed Vigil",
+    "typeLine": "Sorcery",
+    "tribes": null,
+    "artNote": "A weary fighter's tapped-out stance snapping upright in one smooth motion, second wind visible as a flare of light."
+   },
+   {
+    "src": "P2",
+    "name": "Renewed Vigil",
+    "typeLine": "Sorcery",
+    "tribes": null,
+    "artNote": "A soldier shakes off a stagger mid-swing, back on their feet and alert before the blow even lands."
+   },
+   {
+    "src": "P3",
+    "name": "Second Wind",
+    "typeLine": "Sorcery",
+    "tribes": null,
+    "artNote": null
+   }
+  ],
+  "RW_0-1": [
+   {
+    "src": "B",
+    "name": "Chapter Recruiter",
+    "typeLine": "Creature — Human Soldier",
+    "tribes": "Human",
+    "artNote": null
+   },
+   {
+    "src": "P1",
+    "name": "Human Vanguard",
+    "typeLine": "Creature — Human Soldier",
+    "tribes": "Human",
+    "artNote": "A lone banner-bearer at the front of a swelling column, visibly hardier with every new face that joins the line behind them."
+   },
+   {
+    "src": "P2",
+    "name": "Muster Sergeant",
+    "typeLine": "Creature — Human Soldier",
+    "tribes": "Human",
+    "artNote": "A recruiting drum sounds in the village square, and the sergeant's stance grows surer with every new hand that answers."
+   },
+   {
+    "src": "P3",
+    "name": "Warband Elder",
+    "typeLine": "Creature — Human Soldier",
+    "tribes": "Human",
+    "artNote": "A grizzled veteran who's outlived a dozen musters, watching each fresh recruit fall in line with the weary satisfaction of someone who's seen this army rebuild itself before."
+   }
+  ],
+  "RW_1-1": [
+   {
+    "src": "B",
+    "name": "Banner of the Vanguard",
+    "typeLine": "Creature — Human Soldier",
+    "tribes": null,
+    "artNote": null
+   },
+   {
+    "src": "P1",
+    "name": "Battlecry Adjutant",
+    "typeLine": "Creature — Human Soldier",
+    "tribes": null,
+    "artNote": "An officer's shout rippling outward as a visible shockwave, every ally's weapon arm surging forward a half-step faster."
+   },
+   {
+    "src": "P2",
+    "name": "Frenzied Instigator",
+    "typeLine": "Creature — Human Berserker",
+    "tribes": null,
+    "artNote": "A berserker whose grin widens with every comrade who throws themselves screaming into the fray."
+   },
+   {
+    "src": "P3",
+    "name": "Fervent Warlord",
+    "typeLine": "Creature — Human Warrior",
+    "tribes": null,
+    "artNote": null
+   }
+  ],
+  "RW_2-1": [
+   {
+    "src": "B",
+    "name": "Skyward Tactician",
+    "typeLine": "Creature — Human Soldier",
+    "tribes": null,
+    "artNote": null
+   },
+   {
+    "src": "P1",
+    "name": "Gale Conjurer",
+    "typeLine": "Creature — Human Wizard",
+    "tribes": null,
+    "artNote": "A winged spellcaster's incantation blowing outward as a gust that lifts a nearby ally's feet clean off the ground."
+   },
+   {
+    "src": "P2",
+    "name": "Zephyr Caller",
+    "typeLine": "Creature — Djinn",
+    "tribes": null,
+    "artNote": "A djinn traces a rune and a following wind catches an ally's cloak, lifting them clear of the mud."
+   },
+   {
+    "src": "P3",
+    "name": "Skyblessed Angel",
+    "typeLine": "Creature — Angel",
+    "tribes": null,
+    "artNote": "Her benediction catches mid-syllable on whatever spell is already in flight, and a soldier's boots leave the ground with it."
+   }
+  ],
+  "RW_3-0": [
+   {
+    "src": "B",
+    "name": "Convalescent Firebrand",
+    "typeLine": "Creature — Human Cleric",
+    "tribes": null,
+    "artNote": null
+   },
+   {
+    "src": "P1",
+    "name": "Triage Cleric",
+    "typeLine": "Creature — Human Cleric",
+    "tribes": null,
+    "artNote": "A field cleric already kneeling with bandages ready before the smoke from an ally's explosive entrance even clears."
+   },
+   {
+    "src": "P2",
+    "name": "Wound-Binding Cleric",
+    "typeLine": "Creature — Human Cleric",
+    "tribes": null,
+    "artNote": "The cleric is already kneeling at a wound before the smoke from the last violent arrival even clears."
+   },
+   {
+    "src": "P3",
+    "name": "Triage Cleric",
+    "typeLine": "Creature — Human Cleric",
+    "tribes": null,
+    "artNote": null
+   }
+  ]
+ },
+ "rulings": [
+  {
+   "key": "GW_0-2",
+   "scores": [
+    7,
+    9,
+    7,
+    5
+   ],
+   "pick": "B",
+   "note": "Rousing Sergeant literally galvanizes troops into the ETB vigilance buff; Vanguard options are more self-descriptive than team-buff-descriptive, and 'Vanguard' recurs as bait across this batch's option pools so keeping it out avoids downstream collisions."
+  },
+  {
+   "key": "GW_3-1",
+   "scores": [
+    8,
+    6,
+    5,
+    6
+   ],
+   "pick": "A",
+   "note": "Grafting Elder nails the counter-via-targeted-spells mechanic ('graft' = attaching), though 'Elder' echoes pool's existing Elder of the Grove/Apex Elder mildly; still clear best fit over the Beast/generic-Shaman options."
+  },
+  {
+   "key": "WU_0-0",
+   "scores": [
+    9,
+    6,
+    7,
+    5
+   ],
+   "pick": "A",
+   "note": "Momentary Exile is the most literal description of a one-beat exile-then-return; Vanishing Act is a decent runner-up but reads slightly punnier/lighter than the pool's register."
+  },
+  {
+   "key": "WU_1-0",
+   "scores": [
+    8,
+    7,
+    5,
+    7
+   ],
+   "pick": "A",
+   "note": "Skyline Tactician avoids two traps: the Angel-Soldier option silently implies flying not present in the spec, and 'Wing Commander' echoes pool's existing Knight Commander pattern; Tactician keeps it clean."
+  },
+  {
+   "key": "WU_1-1",
+   "scores": [
+    7,
+    9,
+    6,
+    7
+   ],
+   "pick": "B",
+   "note": "Pinning Lancer vividly matches 'taps a blocker on attack' (pin = immobilize), reads as natural Magic cadence; Shackling overstates the effect and Wayclearer is a slightly awkward compound."
+  },
+  {
+   "key": "WU_1-2",
+   "scores": [
+    6,
+    5,
+    5,
+    9
+   ],
+   "pick": "D",
+   "note": "Flashborn Sprite is a direct, elegant pun on the card's own Flash keyword feeding its own growth; Ambush/Ambuscade options collide with pool's existing Ambush Djinn."
+  },
+  {
+   "key": "WU_2-2",
+   "scores": [
+    6,
+    7,
+    8,
+    5
+   ],
+   "pick": "C",
+   "note": "Riposte Pyromancer captures reactive instant-speed casting plus the red half of UR without repeating 'Flash-' already spent on WU_1-2's pick; Warden of Hidden Hours reads too purple/abstract for the mechanic."
+  },
+  {
+   "key": "WU_3-0",
+   "scores": [
+    9,
+    6,
+    5,
+    5
+   ],
+   "pick": "A",
+   "note": "Borrowed Wings is an elegant, precise pun for temporary flight-granting; Windward Blessing's 'Blessing' reads white, not a fit for this mono-U card."
+  },
+  {
+   "key": "WU_3-2",
+   "scores": [
+    6,
+    7,
+    6,
+    9
+   ],
+   "pick": "D",
+   "note": "Undertow Recall leans into blue's water/knowledge idiom and 'Recall' double-covers both bounce and draw; the Strategic/Tactical options read more militaristic than bluish and miss the draw half."
+  },
+  {
+   "key": "GU_0-0",
+   "scores": [
+    9,
+    7,
+    7,
+    7
+   ],
+   "pick": "A",
+   "note": "Covenant Scholar is self-consistent (the creature is literally both chosen tribes) and boosts scarce Merfolk (pool count 2); Twin Circle Sage is clever but 'Sage' is already a 3x-used pool suffix."
+  },
+  {
+   "key": "GU_0-1",
+   "scores": [
+    6,
+    6,
+    9,
+    7
+   ],
+   "pick": "C",
+   "note": "Eager Familiar ties perfectly to a wizard's-companion-grows-with-knowledge flavor, introduces a brand-new subtype, and dodges the Human/Wizard oversaturation the Apprentice option carries."
+  },
+  {
+   "key": "GU_0-2",
+   "scores": [
+    6,
+    6,
+    6,
+    9
+   ],
+   "pick": "D",
+   "note": "Spellrider is the tightest single-word pun for 'gains flying when you cast noncreature spells'; Arcane Drifter is offered twice (dead duplicate slot) and reads generically vague by comparison."
+  },
+  {
+   "key": "GU_1-2",
+   "scores": [
+    6,
+    7,
+    6,
+    9
+   ],
+   "pick": "D",
+   "note": "Tidewatcher nails the reactive/opponent's-turn timing with a clean blue idiom and boosts scarce Merfolk; Interloping Scholar has the cleverer pun but doubles down on oversaturated Human+Wizard."
+  },
+  {
+   "key": "GU_2-1",
+   "scores": [
+    6,
+    7,
+    6,
+    9
+   ],
+   "pick": "D",
+   "note": "Warding Shell covers both halves of the effect (shell=toughness, ward=hexproof) with sea-shell imagery appropriate to blue; Chrysalis Ward's imagery reads more green than blue."
+  },
+  {
+   "key": "GU_2-2",
+   "scores": [
+    6,
+    7,
+    7,
+    8
+   ],
+   "pick": "D",
+   "note": "Rootbinder Druid is clean of collisions; Landwaker is the more literal 'turns land into creature' pun but echoes pool's existing Awakener closely enough to flag."
+  },
+  {
+   "key": "GW_1-2",
+   "scores": [
+    6,
+    8,
+    5,
+    5
+   ],
+   "pick": "B",
+   "note": "Earthwatch Guardian is the only option that specifically nods to the land-vigilance-granting clause; all four collide somewhat with pool's crowded Guard/Guardian/Sentry/Sentinel vocabulary, but this one has the strongest mechanic payoff to justify it."
+  },
+  {
+   "key": "GW_2-0",
+   "scores": [
+    5,
+    7,
+    9,
+    8
+   ],
+   "pick": "C",
+   "note": "Proud Broodmother turns the +1/+1-per-creature-ETB trigger into a literal 'pride' pun; Bramble Acolyte doesn't engage the mechanic and collides with pool's Wicked Acolyte."
+  },
+  {
+   "key": "GW_3-0",
+   "scores": [
+    6,
+    9,
+    6,
+    7
+   ],
+   "pick": "B",
+   "note": "Deathbloom Tender is a lovely death-to-growth pun matching the dies-trigger-counter mechanic, and lands on Elf Druid rather than piling onto the Human count like the other three."
+  },
+  {
+   "key": "RG_0-0",
+   "scores": [
+    5,
+    9,
+    8,
+    6
+   ],
+   "pick": "B",
+   "note": "Goblin Cannoneer vividly frames the sacrificed creature as ammunition fired at any target; Bloodstoke Goblin collides with the pool's already-saturated Blood- prefix (7 existing entries)."
+  },
+  {
+   "key": "RG_1-0",
+   "scores": [
+    4,
+    7,
+    6,
+    8
+   ],
+   "pick": "D",
+   "note": "Thornspark Shaman balances both colors and precisely puns 'spark' onto the bonus-damage clause while avoiding Human tax; Bramblefang Provoker doesn't engage the spell-damage mechanic at all."
+  },
+  {
+   "key": "RG_1-1",
+   "scores": [
+    6,
+    7,
+    6,
+    8
+   ],
+   "pick": "D",
+   "note": "Warhorn Rampager cleanly signals 'gets fired up when the pack charges'; Packfire Hound is the more evocative pun but stacks onto a pool already carrying two Hound-named cards."
+  },
+  {
+   "key": "RG_2-2",
+   "scores": [
+    6,
+    7,
+    9,
+    6
+   ],
+   "pick": "C",
+   "note": "Landgrown Sapling is a precise literal-growth pun (a sapling growing from each new plot of land) and lands on the less-saturated Elemental type."
+  },
+  {
+   "key": "RG_3-0",
+   "scores": [
+    5,
+    9,
+    6,
+    5
+   ],
+   "pick": "B",
+   "note": "Scorchgrown Giant precisely puns 'grown by scorching sorceries'; Wildfire Colossus directly collides with the pool's existing Wildfire Devil."
+  },
+  {
+   "key": "RW_2-2",
+   "scores": [
+    8,
+    5,
+    6,
+    9
+   ],
+   "pick": "D",
+   "note": "Sunder the Gears matches the pool's established 'Verb the Noun' convention (Awaken the Stone/Vault) with vivid mechanical imagery; Shattering Strike collides with pool's existing Final/Twin Strike."
+  },
+  {
+   "key": "RW_3-2",
+   "scores": [
+    7,
+    7,
+    8,
+    6
+   ],
+   "pick": "C",
+   "note": "Spark Instigator cleanly puns 'activating an ability provokes damage' without the mild anachronism risk of Flintlock (a gunpowder-era word) or that option's collision with pool's Goblin Duelist."
+  },
+  {
+   "key": "GW_2-1",
+   "scores": [
+    8,
+    7,
+    6,
+    7
+   ],
+   "pick": "D",
+   "note": "Wildwood Scout gives up a hair of literal precision (Homestead Pioneer more exactly matches 'land enters battlefield') to land on the far less-saturated Elf/Scout combo instead of Human; Scout is also a brand-new subtype."
+  },
+  {
+   "key": "GW_2-2",
+   "scores": [
+    4,
+    8,
+    7,
+    6
+   ],
+   "pick": "B",
+   "note": "Vigil Chanter ties the casting trigger ('chanter' = one who casts) to the granted keyword itself; Glade Marshal is off-color (glade reads green) and collides with pool's two existing Marshal cards."
+  },
+  {
+   "key": "GU_3-0",
+   "scores": [
+    8,
+    8,
+    6,
+    6
+   ],
+   "pick": "A",
+   "note": "Renewed Vigil is a clean double-pun (renewed=untap, vigil=vigilance) offered twice in the package (dead duplicate slot); Second Wind/Slack Tide only cover the untap half."
+  },
+  {
+   "key": "RW_0-1",
+   "scores": [
+    8,
+    5,
+    6,
+    6
+   ],
+   "pick": "A",
+   "note": "Chapter Recruiter directly matches the 'creature enters, gain counter' trigger via 'recruiter'; Muster Sergeant is mechanically the strongest pun but collides with this batch's own Rousing Sergeant pick, and Warband Elder collides with Grafting Elder."
+  },
+  {
+   "key": "RW_1-1",
+   "scores": [
+    6,
+    8,
+    6,
+    5
+   ],
+   "pick": "B",
+   "note": "Battlecry Adjutant is a tight double-military-pun for a static team anthem; Frenzied Instigator was ruled out for colliding with this batch's own Spark Instigator pick."
+  },
+  {
+   "key": "RW_2-1",
+   "scores": [
+    6,
+    5,
+    4,
+    9
+   ],
+   "pick": "D",
+   "note": "Zephyr Caller is self-consistent (a wind-djinn that calls flight onto allies when it casts) and avoids piling onto pool's already-saturated Angel count (4 existing); Skyward Tactician was ruled out for colliding with this batch's own Skyline Tactician pick."
+  },
+  {
+   "key": "RW_3-0",
+   "scores": [
+    5,
+    8,
+    8,
+    7
+   ],
+   "pick": "B",
+   "note": "Triage Cleric is a vivid, precise battlefield-medic pun for 'gain life when a damage-ETB creature enters,' offered twice in the package (dead duplicate slot); Convalescent Firebrand reads as an internally contradictory combination."
+  }
+ ],
+ "batchNotes": "Subtype spread across the 26 creature picks is healthy and deliberately census-aware: Human appears 8 times (Rousing Sergeant, Skyline Tactician, Pinning Lancer, Riposte Pyromancer, Vigil Chanter, Chapter Recruiter, Battlecry Adjutant, Triage Cleric) versus 62 in the existing pool — kept to under a third of this batch despite several packages offering nothing but Human options (RW_0-1's \"populous tribe\" design literally requires Human, so that one is non-discretionary). Diversity wins: two Merfolk (Covenant Scholar, Tidewatcher, boosting a tribe sitting at only 2 in the pool), a brand-new Familiar subtype (Eager Familiar) and a brand-new Scout subtype (Wildwood Scout), plus Djinn, Illusion, Elemental, Giant, Faerie, and three Elf/Druid picks spread across different cards rather than clustering. Deliberately avoided the Angel option for WU_1-0 (Wing Commander/Angel Soldier) since it would have silently granted flying not present in that card's spec — the clearest implied-keyword trap in the batch — and avoided a second Angel for RW_2-1 to not pile onto the pool's already-substantial 4 existing Angels.\n\nTwo intentional but flagged word-repeats survive: \"Vigil\" appears in both Vigil Chanter (GW_2-2) and Renewed Vigil (GU_3-0) — both cards mechanically grant vigilance, so the shared root is earned rather than lazy, but it's still the same word twice in one 32-card set. Similarly \"spark\" surfaces in both Thornspark Shaman (RG_1-0) and Spark Instigator (RW_3-2), both red damage-payoff creatures — again mechanically motivated but worth a second look if a harder anti-repetition pass is wanted. Everywhere else a same-word collision was live (Vanguard bait in GW_0-2/RW_1-1, Sergeant in GW_0-2/RW_0-1, Elder in GW_3-1/RW_0-1, Instigator in RW_3-2/RW_1-1, Tactician in WU_1-0/RW_2-1) I deliberately picked away from the second occurrence, which is why several individual rulings look like they left points on the table relative to a raw per-card score — those are batch-hygiene tradeoffs, not oversights. Register held close to the pool's plain-classic-Magic idiom throughout; the one deliberate register override was ruling out \"Flintlock Duelist\" for RW_3-2 on anachronism grounds (gunpowder-trigger imagery in an otherwise non-firearms pool)."
+}

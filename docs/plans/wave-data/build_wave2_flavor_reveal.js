@@ -6,34 +6,58 @@
 const fs = require('fs');
 const path = require('path');
 const DIR = __dirname;
-const { proposals, rulings, batchNotes } = JSON.parse(fs.readFileSync(path.join(DIR, 'wave2_flavorpass.json'), 'utf8'));
+const v1 = JSON.parse(fs.readFileSync(path.join(DIR, 'wave2_flavorpass.json'), 'utf8'));
+const v2 = JSON.parse(fs.readFileSync(path.join(DIR, 'wave2_flavorpass_v2.json'), 'utf8'));
 const anon = JSON.parse(fs.readFileSync(path.join(DIR, 'wave2_flavor_anon.json'), 'utf8'));
 const anonByKey = Object.fromEntries(anon.map(a => [a.key, a]));
-const rByKey = Object.fromEntries(rulings.map(r => [r.key, r]));
 
+// Per run: which option (name+typeLine) did the judge pick, and its score per option.
+function pickOf(run, key) {
+  const r = run.rulings.find(x => x.key === key); if (!r) return null;
+  const sorted = [...run.proposals[key]].sort((a, b) => a.name < b.name ? -1 : 1);
+  const idx = 'ABCD'.indexOf(r.pick);
+  return { picked: sorted[idx], scores: r.scores, sorted, note: r.note };
+}
+// Merge options across runs; dedupe by name+typeLine.
+const merged = {};
+for (const key of Object.keys(v1.proposals)) {
+  const opts = [];
+  const seen = new Set();
+  for (const [run, tag] of [[v1, 'J1'], [v2, 'J2']]) {
+    const info = pickOf(run, key);
+    if (!info) continue;
+    info.sorted.forEach((o, i) => {
+      const id = o.name + '|' + o.typeLine + '|' + (o.tribes || '');
+      let entry = opts.find(e => e.id === id);
+      if (!entry) { entry = { id, name: o.name, typeLine: o.typeLine, tribes: o.tribes, artNote: o.artNote, src: o.src, picks: [], scores: [] }; opts.push(entry); }
+      if (o.artNote && !entry.artNote) entry.artNote = o.artNote;
+      entry.scores.push(tag + ': ' + (info.scores && info.scores[i] != null ? info.scores[i] : '—'));
+      if (info.picked === o) entry.picks.push(tag);
+    });
+  }
+  merged[key] = { opts, notes: { J1: (v1.rulings.find(x=>x.key===key)||{}).note, J2: (v2.rulings.find(x=>x.key===key)||{}).note } };
+}
+const batchNotes = 'JUDGE 1 (v1 primed-context run): ' + v1.batchNotes + ' ||| JUDGE 2 (v2 deprimed run): ' + v2.batchNotes;
 const esc = s => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 function pips(c){const out=[];for(const ch of String(c||'')){if(/[0-9]/.test(ch))out.push('<span class="pip pip-c">'+ch+'</span>');else if('WUBRG'.includes(ch))out.push('<span class="pip pip-'+ch+'"></span>');}return out.join('')||esc(c);}
 
-let baseKept = 0;
+let bothKept = 0;
 const tiles = [];
-for (const [key, opts] of Object.entries(proposals)) {
-  const a = anonByKey[key], r = rByKey[key];
-  if (!a || !r) continue;
-  const sorted = [...opts].sort((x, y) => x.name < y.name ? -1 : 1);
-  const pickIdx = 'ABCD'.indexOf(r.pick);
-  const baseOpt = opts.find(o => o.src === 'B');
-  const pickedIsBase = sorted[pickIdx] && baseOpt && sorted[pickIdx].name === baseOpt.name && sorted[pickIdx].typeLine === baseOpt.typeLine;
-  if (pickedIsBase) baseKept++;
+for (const [key, m] of Object.entries(merged)) {
+  const a = anonByKey[key]; if (!a) continue;
+  const baseOpt = m.opts.find(o => o.src === 'B');
+  const baseKeptBoth = baseOpt && baseOpt.picks.length === 2;
+  if (baseKeptBoth) bothKept++;
+  const sorted = [...m.opts].sort((x, y) => x.name < y.name ? -1 : 1);
   const optHtml = sorted.map((o, i) => {
-    const label = 'ABCD'[i];
-    const isPick = i === pickIdx;
+    const label = String.fromCharCode(65 + i);
     const isBase = o.src === 'B';
-    return `<div class="opt ${isPick ? 'is-pick' : ''}" data-base="${isBase ? '1' : '0'}">
+    return `<div class="opt ${o.picks.length ? 'is-pick' : ''}" data-base="${isBase ? '1' : '0'}">
       <div class="opthead"><span class="optlabel">${label}</span>
         <span class="optname">${esc(o.name)}</span>
-        <span class="optscore">${r.scores && r.scores[i] != null ? r.scores[i] + '/10' : ''}</span>
-        ${isPick ? '<span class="chip chip-ship">judge pick</span>' : ''}
-        <span class="chip chip-src reveal-only">${isBase ? 'BASELINE (ours)' : 'proposer ' + esc(o.src)}</span>
+        <span class="optscore">${esc(o.scores.join(' · '))}</span>
+        ${o.picks.map(p => '<span class="chip chip-ship">' + p + ' pick</span>').join('')}
+        <span class="chip chip-src reveal-only">${isBase ? 'BASELINE (ours)' : 'proposer'}</span>
       </div>
       <div class="opttype">${esc(o.typeLine)}${o.tribes ? ' · tribes: ' + esc(o.tribes) : ''}</div>
       ${o.artNote ? `<div class="optart reveal-only">art: ${esc(o.artNote)}</div>` : ''}
@@ -41,19 +65,19 @@ for (const [key, opts] of Object.entries(proposals)) {
     </div>`;
   }).join('');
   tiles.push({ key, html: `
-<article class="card ${pickedIsBase ? 'v-ship' : 'v-hold'}" id="${esc(key)}">
+<article class="card ${baseKeptBoth ? 'v-ship' : 'v-hold'}" id="${esc(key)}">
   <div class="frame">
     <div class="mech"><span class="cost">${pips(a.cost)}</span><span class="mtype">${esc(a.type)}${a.stats ? ' · ' + esc(a.stats) : ''}</span></div>
     <p class="rules">${esc(a.rules)}</p>
   </div>
   <div class="meta">
     <div class="opts">${optHtml}</div>
-    <p class="judgenote"><span class="klabel">judge</span> ${esc(r.note)}</p>
+    <p class="judgenote"><span class="klabel">J1</span> ${esc(m.notes.J1 || '')}</p>
+    <p class="judgenote"><span class="klabel">J2</span> ${esc(m.notes.J2 || '')}</p>
     <textarea class="vnote" rows="1" data-card="${esc(key)}" placeholder="note (optional, no limit)"></textarea>
   </div>
 </article>` });
 }
-
 const html = `<title>Wave 2 — Flavor Reveal</title>
 <style>
 :root{--bg:#eef0ec;--panel:#fbfcfa;--panel2:#f3f5f1;--ink:#20241f;--ink-soft:#5a6058;--line:#d7dbd3;--accent:#4a6570;--ship:#2f7d5a;--ship-bg:#e3efe7;--kill:#a53d35;--kill-bg:#f4e5e2;--hold:#b07f2e;--hold-bg:#f4ecdc;--shadow:0 1px 3px rgba(32,36,31,.08);}
@@ -112,13 +136,10 @@ body.revealed .opt[data-base="1"]{outline:2px solid var(--hold)}
 </style>
 <div class="wrap">
 <h1>Wave 2 — Flavor Reveal</h1>
-<p class="sub">Each card: the bare mechanics, then four flavor options in the judge's blind A–D order with its
-scores and pick. Choose per card (the judge's pick is a recommendation, not a decision). Play blind first,
-then hit REVEAL to see which option was our shipped baseline and read the proposers' art notes.</p>
+<p class="sub">Each card: the bare mechanics, then every distinct flavor option from two independent blinded runs (J1: primed context; J2: deprimed + new-subtype freedom), with both judges\u2019 scores and picks. The two judges kept almost entirely different baselines \u2014 single-judge flavor is noisy; your pick is the tiebreak. Play blind, then REVEAL provenance. </p>
 <div class="statstrip">
   <div class="stat"><b>${tiles.length}</b><span>cards</span></div>
-  <div class="stat"><b>${baseKept}/${tiles.length}</b><span>baselines kept by judge</span></div>
-  <div class="stat"><b>${tiles.length - baseKept}</b><span>dethroned</span></div>
+  <div class="stat"><b>5+5</b><span>kept per judge (only 1 by both)</span></div><div class="stat"><b>${bothKept}</b><span>kept by BOTH judges</span></div>
   <button type="button" class="revealbtn" id="revealbtn">REVEAL provenance</button>
 </div>
 <div class="batchnotes"><b>Judge's batch-coherence notes:</b> ${esc(batchNotes)}</div>
@@ -203,4 +224,4 @@ ${tiles.map(t => t.html).join('\n')}
 
 const outDir = process.argv[2] || DIR;
 fs.writeFileSync(path.join(outDir, 'wave2-flavor.html'), html);
-console.log('wrote wave2-flavor.html', html.length, 'bytes | cards:', tiles.length, '| baseline kept:', baseKept);
+console.log('wrote wave2-flavor.html', html.length, 'bytes | cards:', tiles.length, '| kept by both judges:', bothKept);
