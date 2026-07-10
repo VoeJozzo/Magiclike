@@ -1,0 +1,226 @@
+[
+ {
+  "key": "GW_0-2",
+  "name": "Steadfast Knight",
+  "typeLine": "Creature — Human Knight",
+  "tribes": null,
+  "source": "joe-remix"
+ },
+ {
+  "key": "GW_3-1",
+  "name": "Sapling Tender",
+  "typeLine": "Creature — Elf Druid",
+  "tribes": null,
+  "source": "proposal-v2"
+ },
+ {
+  "key": "WU_0-0",
+  "name": "Vanishing Act",
+  "typeLine": "Sorcery",
+  "tribes": null,
+  "source": "proposal"
+ },
+ {
+  "key": "WU_1-0",
+  "name": "Wing Commander",
+  "typeLine": "Creature — Angel Soldier",
+  "tribes": null,
+  "source": "proposal-v2"
+ },
+ {
+  "key": "WU_1-1",
+  "name": "Intimidating Lancer",
+  "typeLine": "Creature — Human Knight",
+  "tribes": null,
+  "source": "joe-remix"
+ },
+ {
+  "key": "WU_1-2",
+  "name": "Feinting Sprite",
+  "typeLine": "Creature — Faerie Rogue",
+  "tribes": null,
+  "source": "joe-remix"
+ },
+ {
+  "key": "WU_2-2",
+  "name": "Surgecaster",
+  "typeLine": "Creature — Human Wizard",
+  "tribes": null,
+  "source": "joe-remix"
+ },
+ {
+  "key": "WU_3-0",
+  "name": "Updraft",
+  "typeLine": "Sorcery",
+  "tribes": null,
+  "source": "proposal"
+ },
+ {
+  "key": "WU_3-2",
+  "name": "Strategic Retreat",
+  "typeLine": "Sorcery",
+  "tribes": null,
+  "source": "proposal-v2"
+ },
+ {
+  "key": "GU_0-0",
+  "name": "Covenant Scholar",
+  "typeLine": "Creature — Elf Merfolk Wizard",
+  "tribes": "Wizard, Merfolk",
+  "source": "joe-remix"
+ },
+ {
+  "key": "GU_0-1",
+  "name": "Curious Faerie",
+  "typeLine": "Creature — Faerie",
+  "tribes": null,
+  "source": "proposal"
+ },
+ {
+  "key": "GU_0-2",
+  "name": "Spellrider",
+  "typeLine": "Creature — Human Wizard",
+  "tribes": null,
+  "source": "joe-remix"
+ },
+ {
+  "key": "GU_1-2",
+  "name": "Tidewatcher",
+  "typeLine": "Creature — Merfolk",
+  "tribes": null,
+  "source": "proposal-v2"
+ },
+ {
+  "key": "GU_2-1",
+  "name": "Chrysalis Ward",
+  "typeLine": "Sorcery",
+  "tribes": null,
+  "source": "baseline"
+ },
+ {
+  "key": "GU_2-2",
+  "name": "Earthsinger",
+  "typeLine": "Creature — Elf Shaman",
+  "tribes": null,
+  "source": "proposal-v2"
+ },
+ {
+  "key": "GW_1-2",
+  "name": "Rootbound Sentinel",
+  "typeLine": "Creature — Treefolk",
+  "tribes": null,
+  "source": "proposal-v2"
+ },
+ {
+  "key": "GW_2-0",
+  "name": "Bramble Acolyte",
+  "typeLine": "Creature — Elf Druid",
+  "tribes": null,
+  "source": "baseline"
+ },
+ {
+  "key": "GW_3-0",
+  "name": "Charnel Shaman",
+  "typeLine": "Creature — Human Shaman",
+  "tribes": null,
+  "source": "proposal-v2"
+ },
+ {
+  "key": "RG_0-0",
+  "name": "Altar Butcher",
+  "typeLine": "Creature — Goblin Cleric",
+  "tribes": null,
+  "source": "joe-remix"
+ },
+ {
+  "key": "RG_1-0",
+  "name": "Primal Metamagus",
+  "typeLine": "Creature — Elemental Shaman",
+  "tribes": null,
+  "source": "joe-remix"
+ },
+ {
+  "key": "RG_1-1",
+  "name": "Aggressive Instigator",
+  "typeLine": "Creature — Goblin Berserker",
+  "tribes": null,
+  "source": "joe-remix"
+ },
+ {
+  "key": "RG_2-2",
+  "name": "Frontier Sapling",
+  "typeLine": "Creature — Treefolk",
+  "tribes": null,
+  "source": "joe-remix"
+ },
+ {
+  "key": "RG_3-0",
+  "name": null,
+  "typeLine": null,
+  "tribes": null,
+  "source": "PENDING — mechanics question (sorcery-you-control damage templating)"
+ },
+ {
+  "key": "RW_2-2",
+  "name": "Scrap",
+  "typeLine": "Sorcery",
+  "tribes": null,
+  "source": "joe-remix"
+ },
+ {
+  "key": "RW_3-2",
+  "name": "Backlash Mage",
+  "typeLine": "Creature — Human Wizard",
+  "tribes": null,
+  "source": "joe-remix"
+ },
+ {
+  "key": "GW_2-1",
+  "name": "Wildwood Scout",
+  "typeLine": "Creature — Elf Scout",
+  "tribes": null,
+  "source": "proposal-v2"
+ },
+ {
+  "key": "GW_2-2",
+  "name": "Vigil Chanter",
+  "typeLine": "Creature — Human Cleric",
+  "tribes": null,
+  "source": "proposal-v2"
+ },
+ {
+  "key": "GU_3-0",
+  "name": "Second Wind",
+  "typeLine": "Sorcery",
+  "tribes": null,
+  "source": "proposal-v2"
+ },
+ {
+  "key": "RW_0-1",
+  "name": "Chapter Recruiter",
+  "typeLine": "Creature — Human Soldier",
+  "tribes": "Human",
+  "source": "baseline"
+ },
+ {
+  "key": "RW_1-1",
+  "name": "Vanguard Ensign",
+  "typeLine": "Creature — Human Soldier",
+  "tribes": null,
+  "source": "joe-remix"
+ },
+ {
+  "key": "RW_2-1",
+  "name": "Rescue Angel",
+  "typeLine": "Creature — Angel",
+  "tribes": null,
+  "source": "joe-remix RENAME-LATER flag"
+ },
+ {
+  "key": "RW_3-0",
+  "name": "Triage Cleric",
+  "typeLine": "Creature — Human Cleric",
+  "tribes": null,
+  "source": "proposal"
+ }
+]
