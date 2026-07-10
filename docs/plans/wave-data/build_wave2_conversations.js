@@ -10,7 +10,7 @@ const path = require('path');
 // [group] ship = Joe R2 ship; discuss = Joe R2 hold (open question)
 // [bill] needs engine primitive
 const CARDS = [
- {key:'GW_0-2',name:'Steadfast Vanguard',group:'discuss',
+ {key:'GW_0-2',name:'Steadfast Vanguard',group:'ship',
   before:{cost:'1GW',type:'Creature — Human Soldier',stats:'2/3',rules:'When Steadfast Vanguard enters, creatures you control gain vigilance until end of turn.'},
   after:{cost:'1WW',type:'Creature — Human Soldier',stats:'2/3',rules:'When Steadfast Vanguard enters, creatures you control gain vigilance until end of turn.'},
   thread:[['Killer (ship)','New niche: nothing grants mass vigilance. Alpha-strike without dropping your shields. Wire-legal today (aerial_maneuver grant shape).'],
@@ -19,12 +19,12 @@ const CARDS = [
    ['Fable','1WW confirmed — mass vigilance is white anyway. Applied to AFTER.']]},
  {key:'GW_3-1',name:'Tenacious Yearling',group:'discuss',bill:true,
   before:{cost:'2G',type:'Creature — Beast',stats:'1/2',rules:'Whenever you cast a spell that alters a creature\'s power or toughness, put a +1/+1 counter on Tenacious Yearling.'},
-  after:{cost:'2G',type:'Creature — Beast',stats:'1/2',rules:'Whenever you cast a spell that changes a creature\'s power or toughness or grants it a keyword, put a +1/+1 counter on [self OR the creature it targeted — OPEN].'},
+  after:{cost:'2G',type:'Creature — Beast',stats:'1/2',rules:'Spells you cast that change a creature\'s power or toughness or grant it a keyword also put a +1/+1 counter on that creature. (static spell-modifier — shared primitive with Bramblefang)'},
   thread:[['Killer (ship)','Best of three tricks-matter pitches. Opens a real niche: no card rewards drafting combat tricks. Recruit record: 15 — the whole trick shelf.'],
    ['Architect','Two triggers (pump + grant_keyword) give OR semantics on existing rails; rules text broadened to match. Ship the trick vocabulary alongside — the biggest recruit card unwired defeats the point.'],
    ['Joe','Does this want to put the counter on itself, or on the targeted creature?'],
-   ['Fable','Sharper design: counter on the SPELL\'S TARGET — "your tricks leave permanent scars," spreads value, can\'t be answered by killing one Beast. Needs the event-target plumbing, but Glade Marshal + Bramblefang already want the same ~15-20 lines. On-self is wire-legal today if you want zero risk. My vote: on-target.']]},
- {key:'WU_0-0',name:'Sudden Reprieve',group:'discuss',
+   ['Fable','Sharper design: counter on the SPELL\'S TARGET — "your tricks leave permanent scars," spreads value, can\'t be answered by killing one Beast. Needs the event-target plumbing, but Glade Marshal + Bramblefang already want the same ~15-20 lines. On-self is wire-legal today if you want zero risk. My vote: on-target.'],['Joe','We had talked about "your spells also do X" — what do you think about using a pipeline like that here?'],['Fable','Yes — unify it with Bramblefang on the ONE static spell-modifier primitive: "Spells you cast that change a creature\'s power or toughness or grant it a keyword also put a +1/+1 counter on it." Resolution-time, so the counter lands WITH the trick (no timing trap), no event-target plumbing needed, and the ~30-line primitive now has two customers. AFTER updated.']]},
+ {key:'WU_0-0',name:'Sudden Reprieve',group:'ship',
   before:{cost:'1U',type:'Sorcery',stats:'',rules:'Flash. Exile target creature you control, then return it to the battlefield.'},
   after:{cost:'1U',type:'Sorcery',stats:'',rules:'Flash. Exile target creature you control, then return it to the battlefield.'},
   thread:[['Killer (ship)','Wins the blink-spell niche. The move_card bf→exile→bf pair is Tideglass Broker\'s trigger recast as a flash spell; flicker payoffs exist but no flicker spell.'],
@@ -35,19 +35,19 @@ const CARDS = [
   after:{cost:'1WU',type:'Creature — Human Soldier',stats:'2/3',rules:'Other creatures you control with flying get +1/+1.'},
   thread:[['Killer (ship)','First keyword-filtered lord; no fliers-matter payoff exists. static_buffs filters route through matchFilter which supports has_keyword.'],
    ['Architect','Ship with the describeStaticBuff generator fix (keyword-filter phrasing, ~5 lines) — every lord relies on generated text; a hand-authored override would drift.']]},
- {key:'WU_1-1',name:'Wayclearer Knight',group:'discuss',
+ {key:'WU_1-1',name:'Wayclearer Knight',group:'ship',
   before:{cost:'3W',type:'Creature — Human Knight',stats:'3/3',rules:'Whenever Wayclearer Knight attacks, tap target creature an opponent controls.'},
   after:{cost:'3W',type:'Creature — Human Knight',stats:'3/3',rules:'Whenever Wayclearer Knight attacks, tap target creature an opponent controls.'},
   thread:[['Killer (ship)','Beats the other attack-tap pitch: tapping FEEDS smite_the_wicked (destroy target TAPPED creature — verified in pool). Wire-legal (mist_raider attack-trigger shape).'],
    ['Joe','...what\'s going on here? I\'m confused.'],
    ['Fable','Plainly: when it attacks, you tap one of their creatures — clearing a blocker (the name). Bonus: the tapped creature becomes legal food for smite_the_wicked. The architect noise was about extraction vocabulary, not the card. If the confusion was something else, point me at it.']]},
- {key:'WU_1-2',name:'Ambuscade Adept',group:'discuss',bill:true,
+ {key:'WU_1-2',name:'Ambuscade Adept',group:'ship',bill:true,
   before:{cost:'1U',type:'Creature — Human Wizard',stats:'1/2',rules:'Flash. Whenever you cast a spell with flash, put a +1/+1 counter on Ambuscade Adept.'},
   after:{cost:'1U',type:'Creature — Human Wizard',stats:'1/2',rules:'Flash. Whenever you cast a spell with flash, put a +1/+1 counter on Ambuscade Adept.'},
   thread:[['Killer (kill→Joe overruled)','Flash-matters claimed three times; Warden of Hidden Hours wins on body/hand. Losing duplicate.'],
    ['Joe','Is "another" necessary for function? For clarity? Want Claude-as-game-design-partner feedback.'],
    ['Fable','Engine proof: spell_cast listeners are battlefield permanents; a card being cast is on the stack — it can NEVER hear its own cast, so "another" is functionally a no-op. House convention already resolves this: anger_hound/storm_caller carry another_card in the WIRE (the classification signature) while generated text reads "a spell." Solved problem, confusing hat. Needs the shared card_has_keyword predicate (~6 lines).']]},
- {key:'WU_2-2',name:'Warden of Hidden Hours',group:'discuss',bill:true,
+ {key:'WU_2-2',name:'Warden of Hidden Hours',group:'ship',bill:true,
   before:{cost:'1WU',type:'Creature — Human Wizard',stats:'2/3',rules:'Flash. Whenever you cast a spell with flash, put a +1/+1 counter on Warden of Hidden Hours.'},
   after:{cost:'1UR',type:'Creature — Human Wizard',stats:'2/3',rules:'Whenever you cast a spell with flash, put a +1/+1 counter on Warden of Hidden Hours. (flash REMOVED — payoff, not the thing)'},
   thread:[['Killer (ship)','Wins the flash-matters niche. Vocab price honest: card_has_keyword mirrors card_has_subtype, one line.'],
@@ -66,28 +66,28 @@ const CARDS = [
   after:{cost:'1GU',type:'Creature — Merfolk Wizard',stats:'2/3',rules:'Whenever another Wizard or Merfolk enters the battlefield under your control, put a +1/+1 counter on Covenant Scholar. (PROPOSED)'},
   thread:[['Killer (kill→Joe overruled)','Second Wizard-density payoff vs archmage_patriarch; also pitch cost (1GU) and JSON (4 mana) disagreed — build at 1GU.'],
    ['Joe','Thoughts on "Wizard or Merfolk"?'],
-   ['Fable','Cheap and clean: extend card_has_subtype to any-of (card_has_subtype(Wizard, Merfolk)) — ~2 lines + a preamble tweak. Better than two triggers, which double-fire on a Merfolk Wizard. Recommend.']]},
+   ['Fable','Cheap and clean: extend card_has_subtype to any-of (card_has_subtype(Wizard, Merfolk)) — ~2 lines + a preamble tweak. Better than two triggers, which double-fire on a Merfolk Wizard. Recommend.'],['Joe','So as-is, we don\'t double-fire, correct?'],['Fable','Correct — a trigger fires once per EVENT no matter how many condition terms match. The double-fire risk existed only in the hypothetical TWO-triggers implementation of OR. With the any-of predicate it stays one trigger, one fire, even for a Merfolk Wizard entering.']]},
  {key:'GU_0-1',name:'Riftcurrent Minnow',group:'discuss',
   before:{cost:'U',type:'Creature — Fish',stats:'1/1',rules:'Whenever you draw a card, Riftcurrent Minnow gets +1/+0 until end of turn.'},
-  after:{cost:'U',type:'Creature — Fish',stats:'1/1',rules:'Whenever a card is put into your hand from your library, Riftcurrent Minnow gets +1/+0 until end of turn.'},
+  after:{cost:'U',type:'Creature — Fish',stats:'1/1',rules:'Whenever you draw a card, Riftcurrent Minnow gets +1/+0 until end of turn. (house ruling: drawing = any library→hand move)'},
   thread:[['Killer (ship)','First draw-matters card; zero cards condition on card_moves(library, hand); modest register incarnate.'],
    ['Joe','Help me understand the templating difference. Compatibility with tutors, or something else?'],
-   ['Fable','The engine\'s zone event can\'t tell a draw from a tutor — both are library→hand. The rewrite templated honestly to the wire (includes tutors). Strict "draw" costs ~5 lines (flag the draw-path emit). Lean: broad version — tutors triggering it feels fine, zero engine work.']]},
+   ['Fable','The engine\'s zone event can\'t tell a draw from a tutor — both are library→hand. The rewrite templated honestly to the wire (includes tutors). Strict "draw" costs ~5 lines (flag the draw-path emit). Lean: broad version — tutors triggering it feels fine, zero engine work.'],['Joe','This sounds like a broader house-style issue: this probably wants to SAY "draw", and our tutors should also probably say "draw". Backlog item? Does this make sense?'],['Fable','It makes sense and I like it: house ruling "drawing = any card moving library→hand." Minnow\'s text reads "Whenever you draw a card," and the wire is honest because the house DEFINES draw that way. Backlogged: a tutor-text consistency pass so search effects phrase their hand-put as drawing.']]},
  {key:'GU_0-2',name:'Mistwing Duelist',group:'ship',
   before:{cost:'1GU',type:'Creature — Spirit',stats:'2/2',rules:'Whenever you cast an instant or sorcery spell, Mistwing Duelist gains flying until end of turn.'},
   after:{cost:'2U',type:'Creature — Spirit',stats:'2/2',rules:'Whenever you cast a noncreature spell, Mistwing Duelist gains flying until end of turn.'},
   thread:[['Killer (kill→Joe overruled)','OR-tree wire claim + saturation — but every pool spell is Sorcery-typed, so "instant or sorcery" needs no OR at all.'],['Joe','I like it — broader, more future-proof, cleaner. (mono-U respec)']]},
- {key:'GU_1-1',name:'Riverbend Adept',group:'discuss',
+ {key:'GU_1-1',name:'Riverbend Adept',group:'killed',
   before:{cost:'1U',type:'Creature — Merfolk Wizard',stats:'1/2',rules:'Whenever a creature an opponent controls is returned to its owner\'s hand, put a +1/+1 counter on Riverbend Adept.'},
   after:{cost:'1U',type:'Creature — Merfolk Wizard',stats:'1/2',rules:'(as pitched, + card_is_creature safety term — DIRECTION OPEN)'},
   thread:[['Killer (ship)','First bounce payoff; zero cards condition on card_moves(battlefield, hand). Devastation Tide feeds it N counters.'],
    ['Joe','I made a mistake calling it blink — I meant reusing ETBs and stuff. The architect missed the point somewhere.'],
-   ['Fable','Clarifying fact: the reuse-ETBs payoff shape is "whenever another creature enters" — and you just SHIPPED its counter version (Bramble Acolyte). Every blink/bounce-replay/token feeds Acolyte. Riverbend\'s distinct niche is the opp-side bounce (tempo suite, 5 recruits). Recommend: ship as judged; a BLUE Acolyte is a clone decision if you want one.']]},
+   ['Fable','Clarifying fact: the reuse-ETBs payoff shape is "whenever another creature enters" — and you just SHIPPED its counter version (Bramble Acolyte). Every blink/bounce-replay/token feeds Acolyte. Riverbend\'s distinct niche is the opp-side bounce (tempo suite, 5 recruits). Recommend: ship as judged; a BLUE Acolyte is a clone decision if you want one.'],['Joe','KILL — bouncing opponents\' creatures is a narrow niche that is generally kinda bad. If that\'s the design we\'re iterating towards, it\'s a kill.'],['Fable','Killed. Ledger note: the bounce-payoff niche is now twice-rejected (Wave 1 twins + this) — future waves stop resurfacing it.']]},
  {key:'GU_1-2',name:'Otter Strategist',group:'ship',bill:true,
   before:{cost:'1U',type:'Creature — Otter Wizard',stats:'1/4',rules:'Whenever you cast a spell during an opponent\'s turn, draw a card.'},
   after:{cost:'1U',type:'Creature — Otter Wizard',stats:'1/4',rules:'Whenever you cast a spell during an opponent\'s turn, draw a card.'},
   thread:[['Killer (kill→Joe overruled)','Same hold-mana niche as Warden; turn-ownership predicate is a new price (~5 lines: opponents_turn).'],['Joe','Ship.']]},
- {key:'GU_2-1',name:'Chrysalis Ward',group:'discuss',
+ {key:'GU_2-1',name:'Chrysalis Ward',group:'ship',
   before:{cost:'1U',type:'Sorcery',stats:'',rules:'Flash. Target creature you control gains hexproof and indestructible until end of turn.'},
   after:{cost:'1U',type:'Sorcery',stats:'',rules:'Flash. Target creature you control gains hexproof and gets +0/+1 until end of turn.'},
   thread:[['Killer (refine)','Right instinct (no protection trick exists); retype to Sorcery+flash idiom.'],
@@ -117,11 +117,11 @@ const CARDS = [
   thread:[['Killer (ship)','Third sac-outlet, genuinely different plan: bodies→damage (feeder=board, ferryman=cards). Makes Threaten a two-for-one.']]},
  {key:'RG_1-0',name:'Bramblefang Provoker',group:'discuss',bill:true,
   before:{cost:'1RG',type:'Creature — Elemental Wolf',stats:'2/2',rules:'Whenever you cast a spell that changes a creature\'s power or toughness until end of turn, Bramblefang Provoker deals 1 damage to any target.'},
-  after:{cost:'1RG',type:'Creature — Elemental Wolf',stats:'2/2',rules:'Spells you cast also deal 1 damage to each creature they target. (PROPOSED static version — fixes the timing trap)'},
+  after:{cost:'1RG',type:'Creature — Elemental Wolf',stats:'2/2',rules:'Spells you cast also deal 1 damage to each creature or player they target.'},
   thread:[['Killer (kill→Joe overruled)','Strictly narrower storm_caller as pitched; the forced-redirect respec differentiates it.'],
    ['Architect','LOAD-BEARING TIMING TRAP as a trigger: spell-cast triggers resolve ABOVE the spell — flashing Giant Growth to save a 1-toughness blocker pings it dead BEFORE the pump lands.'],
    ['Joe','Do we need the "targets a creature" rider — duress dealing 1 damage seems fine? Wild idea: what if it actually MODIFIED the spell? "Spells also deal 1 damage to each of their targets."'],
-   ['Fable','Your wild idea is secretly the bug fix: a static modifier applies at RESOLUTION — after the pump lands — dissolving the trap entirely. ~25-40 lines, new but clean. I\'d build the static version.']]},
+   ['Fable','Your wild idea is secretly the bug fix: a static modifier applies at RESOLUTION — after the pump lands — dissolving the trap entirely. ~25-40 lines, new but clean. I\'d build the static version.'],['Joe','Why do we specify creature? Should this work on, say, duress? Seems potentially cool.'],['Fable','It should — extending to players is clean and very red: "Spells you cast also deal 1 damage to each creature or player they target." mind_rot pings the opponent, bolt does +1. Spell-targets (counterspells) stay excluded — you can\'t damage a spell, and pinging its controller is cute but muddy. AFTER updated.']]},
  {key:'RG_1-1',name:'Warhorn Rampager',group:'ship',
   before:{cost:'1R',type:'Creature — Beast',stats:'2/1',rules:'Whenever another creature you control attacks, Warhorn Rampager gets +1/+0 until end of turn.'},
   after:{cost:'1R',type:'Creature — Beast',stats:'2/1',rules:'Whenever another creature you control attacks, Warhorn Rampager gets +1/+0 until end of turn.'},
@@ -135,7 +135,7 @@ const CARDS = [
   after:{cost:'1RG',type:'Creature — Elemental',stats:'2/3',rules:'Whenever you cast a sorcery that deals damage, put a +1/+1 counter on Wildfire Colossus.'},
   thread:[['Killer (ship)','New niche: no burn-matters payoff. Reframes symmetric sweepers as fuel. cardHasEffect scans only spell effects — ETB pingers correctly don\'t trigger it.'],
    ['Joe','As templated, does this trigger on creatures with ETBs? Does it SEEM like it would?'],
-   ['Fable','No and no: casting flame_wisp does nothing (spell-level scan only), and the text says "sorcery," so it doesn\'t read like creatures count. Text and engine agree. Convalescent Firebrand\'s new predicate covers exactly the ETB side.']]},
+   ['Fable','No and no: casting flame_wisp does nothing (spell-level scan only), and the text says "sorcery," so it doesn\'t read like creatures count. Text and engine agree. Convalescent Firebrand\'s new predicate covers exactly the ETB side.'],['Joe','Sorry, I thought it said "spells". Can you check and see if this drifted?'],['Fable','Checked — no functional drift. The pitch said "instant or sorcery," which in this pool equals "sorcery" (every spell is Sorcery-typed; there is no Instant). Bare "spell" would be the WRONG word — it would suggest creature casts count, and they don\'t. The card text will read "sorcery."']]},
  {key:'RW_2-2',name:'Scrap the Machine',group:'ship',
   before:{cost:'R',type:'Sorcery',stats:'',rules:'Flash. Destroy target artifact creature.'},
   after:{cost:'R',type:'Sorcery',stats:'',rules:'Flash. Destroy target artifact.'},
@@ -145,17 +145,17 @@ const CARDS = [
   after:{cost:'1R',type:'Creature — Human Rogue',stats:'2/1',rules:'Whenever you activate an ability of a creature you control, Flintlock Duelist deals 1 damage to target opponent.'},
   thread:[['Killer (ship)','Genuinely new niche (activations-matter) with rich providers. Price: ability_activated event, ~15-20 lines.'],
    ['Joe','Do we need "target opponent", or can we say "your opponent"?'],
-   ['Fable','Functionally identical in a duel. Keep target:opp in the wire — blood_artist/toll_of_secrets house shape, auto-resolves with zero prompts — and "target opponent loses..." is already the pool\'s voice. Mana abilities structurally excluded (off-stack path); pinned by test.']]},
+   ['Fable','Functionally identical in a duel. Keep target:opp in the wire — blood_artist/toll_of_secrets house shape, auto-resolves with zero prompts — and "target opponent loses..." is already the pool\'s voice. Mana abilities structurally excluded (off-stack path); pinned by test.'],['Joe','Do those require targeting in the UI? We don\'t want unnecessary clicks if there\'s only ever one thing to click.'],['Fable','Zero clicks — the engine auto-fills implicit target types on triggers (the trigger-prompt code: "forced (one legal target) and implicit (opp/player/self/spell) slots auto-fill"). Only genuine choices ever prompt. Blood_artist has drained opponents promptlessly all along.']]},
  {key:'GW_2-1',name:'Timberland Strider',group:'ship',
   before:{cost:'2G',type:'Creature — Elf Scout',stats:'2/2',rules:'Whenever a land enters the battlefield under your control, Timberland Strider gets +1/+1 until end of turn.'},
   after:{cost:'G',type:'Creature — Elf Scout',stats:'1/1',rules:'Whenever a land enters the battlefield under your control, Timberland Strider gets +1/+1 until end of turn.'},
   thread:[['Killer (kill→Joe overruled)','Weakest landfall pitch — but at G 1/1 it\'s a different card.'],['Joe','1/1 for G.'],['Fable','Cub (permanent) and Strider (tempo) are different landfall rewards; both fine.']]},
  {key:'GW_2-2',name:'Glade Marshal',group:'discuss',bill:true,
   before:{cost:'2W',type:'Creature — Human Soldier',stats:'2/3',rules:'Whenever you cast a spell that gives a creature +X/+X, target creature you control gains vigilance until end of turn.'},
-  after:{cost:'2W',type:'Creature — Human Soldier',stats:'2/3',rules:'Whenever you cast a spell that targets a creature, that creature gains vigilance until end of turn. (Single-target spells only.)'},
+  after:{cost:'2W',type:'Creature — Human Soldier',stats:'2/3',rules:'Whenever you cast a spell, each creature it targets gains vigilance until end of turn.'},
   thread:[['Killer (kill→Joe overruled)','Tricks-matter went to Yearling; Joe respec\'d to the targets-a-creature form.'],
    ['Joe','Not seeing the issue justifying the architect\'s single-target rider. Which cards break?'],
-   ['Fable','Two, by name: roots_and_branches (slot 0 taps THEIR creature, slot 1 pumps yours) and sword_and_sorcery (same split). On multi-target spells "that creature" is ambiguous — naive reads grant THEIR creature vigilance or fire twice. The rider is the honest scope. Alternative: "each creature it targets" (occasionally pumps theirs, harmless-weird).']]},
+   ['Fable','Two, by name: roots_and_branches (slot 0 taps THEIR creature, slot 1 pumps yours) and sword_and_sorcery (same split). On multi-target spells "that creature" is ambiguous — naive reads grant THEIR creature vigilance or fire twice. The rider is the honest scope. Alternative: "each creature it targets" (occasionally pumps theirs, harmless-weird).'],['Joe','If we grant a creature vigilance and then tap it, that\'s weird but not harmful, is it? Complexity is not a bad thing in a ccg.'],['Fable','Agreed — rider dropped. Going with "each creature it targets": fires on multi-target spells, occasionally gifts their creature vigilance, embraced as texture. Shares the event-target plumbing with Bramblefang\'s family. AFTER updated.']]},
  {key:'GU_3-0',name:'Slack Tide',group:'ship',
   before:{cost:'1GU',type:'Sorcery',stats:'',rules:'Flash. Untap target creature you control. It gains vigilance until end of turn.'},
   after:{cost:'1WU',type:'Sorcery',stats:'',rules:'Flash. Untap target creature you control. It gains vigilance until end of turn.'},
@@ -190,11 +190,12 @@ function tile(c){
   const changed = JSON.stringify(c.before)!==JSON.stringify(c.after);
   const chips=[`<span class="chip chip-hand">${esc(c.key)}</span>`];
   if(c.group==='discuss')chips.push('<span class="chip chip-cur-hold">IN DISCUSSION</span>');
+  else if(c.group==='killed')chips.push('<span class="chip" style="background:var(--kill-bg);color:var(--kill)">KILLED</span>');
   else chips.push('<span class="chip chip-ship">shipping</span>');
   if(c.bill)chips.push('<span class="chip chip-cur-pick">engine bill</span>');
   if(changed)chips.push('<span class="chip chip-changed">rewritten</span>');
   const turns=c.thread.map(([who,text])=>`<div class="turn turn-${who.startsWith('Joe')?'joe':who.startsWith('Fable')?'fable':'agent'}"><span class="who">${esc(who)}</span><p>${esc(text)}</p></div>`).join('');
-  return `<article class="card v-${c.group==='discuss'?'hold':'ship'}" id="${esc(c.key)}">
+  return `<article class="card v-${c.group==='discuss'?'hold':c.group==='killed'?'kill':'ship'}" id="${esc(c.key)}">
   <div class="frame frame-pair ci-${ci(c.after.cost)}">
     <div class="half"><div class="halflabel">BEFORE — pitch</div><header class="cardhead"><h3>${esc(c.name)}</h3><span class="cost">${pips(c.before.cost)}</span></header><div class="typeline"><span>${esc(c.before.type)}</span>${c.before.stats?`<span class="stats">${esc(c.before.stats)}</span>`:''}</div><p class="rules">${esc(c.before.rules)}</p></div>
     <div class="arrow" aria-hidden="true">→</div>
@@ -215,6 +216,7 @@ function tile(c){
 }
 
 const discuss = CARDS.filter(c=>c.group==='discuss');
+const killed = CARDS.filter(c=>c.group==='killed');
 const ship = CARDS.filter(c=>c.group==='ship');
 
 const html = `<title>Wave 2 — Card Conversations</title>
@@ -239,6 +241,7 @@ h2 .count{font-size:.85rem;font-family:ui-monospace,monospace;border-radius:4px;
 .card{background:var(--panel);border:1px solid var(--line);border-radius:8px;box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column}
 .card.v-ship{border-left:4px solid var(--ship)}
 .card.v-hold{border-left:4px solid var(--hold)}
+.card.v-kill{border-left:4px solid var(--kill);opacity:.75}
 .frame{padding:12px 14px;border-bottom:1px solid var(--line);background:var(--panel2)}
 .frame-pair{display:flex;gap:10px;align-items:stretch}
 .frame-pair .half{flex:1;min-width:0;padding:8px 10px;border-radius:6px;background:var(--panel);border:1px solid var(--line)}
@@ -303,6 +306,8 @@ BEFORE/AFTER frames show the pitch vs the current spec; green outline = somethin
 <p class="blurb">Your 18 ships with all respecs applied (1WW Recruiter, 2WR Banner, 1WU Slack Tide, 1/1 Cub, G 1/1 Strider, mono-U Mistwing, BG Shepherd, "destroy target artifact" Scrap). Veto or annotate anything here too.</p>
 <div class="grid">${ship.map(tile).join('\n')}</div>
 </section>
+
+${killed.length ? `<section id="killed"><h2><span class="count" style="color:var(--kill);background:var(--kill-bg)">${killed.length}</span>Killed</h2><div class="grid">${killed.map(tile).join('\n')}</div></section>` : ''}
 
 <div class="tallybar" id="tallybar">
   <span>Verdicts:</span>
