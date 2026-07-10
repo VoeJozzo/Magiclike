@@ -29,8 +29,9 @@ name in `cards/_manifest.json` (forgetting this = card silently absent).
   Governing types (`Creature`, `Sorcery`, `Land`, `Artifact`) + subtypes +
   supertypes (`Basic`, `Legendary`) all live here. Unknown tags are treated
   as subtypes automatically — no registry edit needed for a new tribe.
-- **`art`**: `"art.png"` (file in the card's folder) or a single emoji
-  placeholder. Every card has one.
+- **`art`**: required; exactly one of two forms — a filename (`"art.png"`,
+  resolved inside the card's own folder) or a literal emoji placeholder
+  (`"🐻"`). The renderer picks by value; there is no third form.
 - **`keywords`**: array; the registry is `KEYWORDS` in `js/cards.js`.
 
 Ingestion (`js/cards.js ingestCard`) applies exactly four transforms:
@@ -44,10 +45,10 @@ them — so don't); desugar string-effect shorthand (`"draw(2)"` → the
    `"keywords": ["flash"]`. The engine keys castability off the keyword only.
    Writing `"Instant"` produces a card that can never be cast reactively.
 2. **Card text is GENERATED from your effects** (`js/card-text.js`). Never
-   write a `text` field — it's dead weight unless `custom_text: true`
-   (special cards only), and `test_no_dead_text.js` fails the suite on dead
-   text fields. If the generated text reads wrong, the card DATA is wrong
-   (or the generator needs a case — that's engine work, not a text field).
+   write a `text` field — the suite rejects dead text fields
+   (`test_no_dead_text.js`). If the generated text reads wrong, the card
+   DATA is wrong, or the generator needs a case — that's engine work, not
+   a text field.
 3. **Targeting is a top-level step, not a per-effect field.** Put `target`
    (and optional `target_filter` beside it) on the card / trigger / ability.
    A `target:` key INSIDE an effects-array entry does not resolve at spell
@@ -85,13 +86,7 @@ them — so don't); desugar string-effect shorthand (`"draw(2)"` → the
 8. **"Draw" and library→hand are the same zone event.** The engine cannot
    distinguish a draw from a tutor in `card_moves(library, hand)` triggers.
    (House style ruling pending — see BACKLOG.)
-9. **Retired effect kinds** must not appear in card templates: `draw`,
-   `discard`, `flicker`, `edict`, `steal`, `gainControl`, `damageAll`,
-   `weaken`, bare `add_counter` for +1/+1 (use `pump` with
-   `duration:"permanent"`), and friends — `tests/effect_migration_test.js`
-   is the enforcing list. The string SHORTHAND `"draw(2)"` is fine (it
-   desugars to `move_card` at ingest); the dict `{kind:"draw"}` is not.
-10. **All boot validation is warn-only.** Nothing rejects a card — a broken
+9. **All boot validation is warn-only.** Nothing rejects a card — a broken
     card loads and misbehaves. The console warnings (unknown events,
     predicates, effect kinds, filter keys — filter-key checking exists since
     v2.2.x) and the node suite are the only nets. Run both; read the output.
@@ -118,27 +113,9 @@ One behavioral note worth keeping here: **trigger-level `target: "opp"`**
 (and other implicit types) auto-resolves with zero UI prompts — the
 blood_artist / toll_of_secrets drain shape.
 
-## Shipping checklist
+## Beyond the format
 
-1. Folder + `card.json` + manifest entry + art (emoji placeholder is fine).
-2. Boot clean: run the suite; read the summary line AND the warnings.
-3. New trigger shape? Archetype entry + preamble + migration-test table.
-4. New mechanic? ~2-line extraction rule in `js/buckets.js` (provides/wants)
-   so the Growing Deck's synergy graph can see the card — see
-   `docs/plans/plan-pool-waves.md` for the vocabulary discipline.
-5. Behavior test (see `tests/wave1_cards_test.js` for the harness idiom —
-   and its hard-won fixture rules: clear BOTH dealt hands, no lethal damage
-   on your own fixtures, fresh game per sub-test).
-6. AI usage: a player-facing activated ability needs `pickBestActivation`
-   coverage or the AI never uses it; selfplay 500 clean is the gate.
-7. Version bump (`js/main.js` + CHANGELOG + proto CLAUDE.md, same number;
-   check `origin/dev` for collisions first).
-
-## Observed agent failure modes (measured, waves 1–2)
-
-Invented selectors (`target_player_chosen`); `types: ["Instant"]`; per-effect
-`target:` keys on single-target spells; `{op:'or'}` condition trees;
-pitch-cost vs JSON-cost mismatches; hand-authored `text` fields; assuming
-`card_has_effect` scans triggers (it scans spell-level effects only);
-proposing keywords the subtype already implies. Check your output against
-this list before returning it.
+This doc covers the card FORMAT only. The shipping *process* — tests,
+selfplay, versioning, landing — is owned by the **magiclike-card-implementation
+skill**; synergy-graph vocabulary discipline lives in
+`docs/plans/plan-pool-waves.md`.

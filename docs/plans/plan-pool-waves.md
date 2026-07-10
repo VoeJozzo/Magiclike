@@ -10,12 +10,17 @@ time, zero-hook 43%→35%). Wave 2 ran at 20 designers across GW/WU/GU/RG/RW
 produced implementation-ready wire JSON + engine plans for every card
 (scratchpad wave2/specs/hardened.json; cut sheet wave2-cutsheet.md).
 
-**Pending Joe:** Bramblefang timing-trap blessing (spell-cast trigger
-resolves above the spell — pings the blocker before the pump saves it),
-Riverbend Adept direction (architect recommends keeping controlled_by(opp);
-"you control" would feed self-bounce, NOT flicker — blink never touches
-hand), Skyward Tactician in/out, Tenacious Yearling re-promotion (two-
-trigger templating resolved; recruit record 15).
+**FINAL CUT (Joe, 2026-07-10, via the conversation-board rounds): 32 SHIP,
+1 KILL (Riverbend Adept — the bounce-payoff niche is now TWICE-rejected;
+stop resurfacing it).** Authoritative per-card specs + full decision threads:
+`docs/plans/wave-data/build_wave2_conversations.js` (the CARDS array's
+`after` fields ARE the build specs). Key final designs: Tenacious Yearling
+= "Spells you cast that target creatures you control also put a +1/+1
+counter on them" (Joe's wording); Bramblefang = "Spells you cast also deal
+1 damage to their targets" — BOTH on the new static spell-modifier
+primitive (resolution-time, replaces the event-target plumbing, two
+customers). Parked style ruling: "target opponent" vs "your opponent"
+text voice (Flintlock shipped tentatively under current voice).
 
 **Engine bill for the 7 gated cards (~60 lines, file-level plans in specs):**
 card_has_keyword + opponents_turn + card_has_etb_effect predicates,
