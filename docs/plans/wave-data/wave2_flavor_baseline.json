@@ -1,0 +1,164 @@
+[
+ {
+  "key": "GW_0-2",
+  "name": "Steadfast Vanguard",
+  "typeLine": "Creature — Human Soldier"
+ },
+ {
+  "key": "GW_3-1",
+  "name": "Tenacious Yearling",
+  "typeLine": "Creature — Beast"
+ },
+ {
+  "key": "WU_0-0",
+  "name": "Sudden Reprieve",
+  "typeLine": "Sorcery"
+ },
+ {
+  "key": "WU_1-0",
+  "name": "Windmark Marshal",
+  "typeLine": "Creature — Human Soldier"
+ },
+ {
+  "key": "WU_1-1",
+  "name": "Wayclearer Knight",
+  "typeLine": "Creature — Human Knight"
+ },
+ {
+  "key": "WU_1-2",
+  "name": "Ambuscade Adept",
+  "typeLine": "Creature — Human Wizard"
+ },
+ {
+  "key": "WU_2-2",
+  "name": "Warden of Hidden Hours",
+  "typeLine": "Creature — Human Wizard"
+ },
+ {
+  "key": "WU_3-0",
+  "name": "Windward Blessing",
+  "typeLine": "Sorcery"
+ },
+ {
+  "key": "WU_3-2",
+  "name": "Undertow Recall",
+  "typeLine": "Sorcery"
+ },
+ {
+  "key": "GU_0-0",
+  "name": "Covenant Scholar",
+  "typeLine": "Creature — Merfolk Wizard",
+  "tribes": "Wizard, Merfolk"
+ },
+ {
+  "key": "GU_0-1",
+  "name": "Riftcurrent Minnow",
+  "typeLine": "Creature — Fish"
+ },
+ {
+  "key": "GU_0-2",
+  "name": "Mistwing Duelist",
+  "typeLine": "Creature — Spirit"
+ },
+ {
+  "key": "GU_1-2",
+  "name": "Otter Strategist",
+  "typeLine": "Creature — Otter Wizard"
+ },
+ {
+  "key": "GU_2-1",
+  "name": "Chrysalis Ward",
+  "typeLine": "Sorcery"
+ },
+ {
+  "key": "GU_2-2",
+  "name": "Rootbinder Druid",
+  "typeLine": "Creature — Elf Druid"
+ },
+ {
+  "key": "GW_1-2",
+  "name": "Canopy Sentinel",
+  "typeLine": "Creature — Treefolk"
+ },
+ {
+  "key": "GW_2-0",
+  "name": "Bramble Acolyte",
+  "typeLine": "Creature — Elf Druid"
+ },
+ {
+  "key": "GW_3-0",
+  "name": "Mourning Shepherd",
+  "typeLine": "Creature — Human Cleric"
+ },
+ {
+  "key": "RG_0-0",
+  "name": "Skullcrag Igniter",
+  "typeLine": "Creature — Goblin Shaman"
+ },
+ {
+  "key": "RG_1-0",
+  "name": "Bramblefang Provoker",
+  "typeLine": "Creature — Elemental Wolf"
+ },
+ {
+  "key": "RG_1-1",
+  "name": "Warhorn Rampager",
+  "typeLine": "Creature — Beast"
+ },
+ {
+  "key": "RG_2-2",
+  "name": "Landstrider Cub",
+  "typeLine": "Creature — Beast"
+ },
+ {
+  "key": "RG_3-0",
+  "name": "Wildfire Colossus",
+  "typeLine": "Creature — Elemental"
+ },
+ {
+  "key": "RW_2-2",
+  "name": "Scrap the Machine",
+  "typeLine": "Sorcery"
+ },
+ {
+  "key": "RW_3-2",
+  "name": "Flintlock Duelist",
+  "typeLine": "Creature — Human Rogue"
+ },
+ {
+  "key": "GW_2-1",
+  "name": "Timberland Strider",
+  "typeLine": "Creature — Elf Scout"
+ },
+ {
+  "key": "GW_2-2",
+  "name": "Glade Marshal",
+  "typeLine": "Creature — Human Soldier"
+ },
+ {
+  "key": "GU_3-0",
+  "name": "Slack Tide",
+  "typeLine": "Sorcery"
+ },
+ {
+  "key": "RW_0-1",
+  "name": "Chapter Recruiter",
+  "typeLine": "Creature — Human Soldier",
+  "tribes": "Human"
+ },
+ {
+  "key": "RW_1-1",
+  "name": "Banner of the Vanguard",
+  "typeLine": "Creature — Human Soldier"
+ },
+ {
+  "key": "RW_2-1",
+  "name": "Skyward Tactician",
+  "typeLine": "Creature — Human Soldier"
+ },
+ {
+  "key": "RW_3-0",
+  "name": "Convalescent Firebrand",
+  "typeLine": "Creature — Human Cleric"
+ }
+]
