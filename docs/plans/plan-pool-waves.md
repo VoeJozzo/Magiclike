@@ -1,4 +1,36 @@
-# Plan: Pool Interconnection Waves (Wave 1.5 ✅ / Wave 1 ✅ judged — implementation pending)
+# Plan: Pool Interconnection Waves (1.5 ✅ · 1 ✅ shipped v2.2.8 · 2 ✅ spec-hardened, build pending)
+
+## Wave 2 state (2026-07-10)
+
+Wave 1 SHIPPED as v2.2.8 (8 cards + `another` filter + extraction vocab;
+suite 2737 green, selfplay 500 clean; all pairs ≥12 plans for the first
+time, zero-hook 43%→35%). Wave 2 ran at 20 designers across GW/WU/GU/RG/RW
+(60 pitches → 1 Fable killer → 16 survivors), Joe's verdicts took 23 ships
+(11 killer-overrules) + 10 holds, then a 33-agent SPEC-HARDENING pass
+produced implementation-ready wire JSON + engine plans for every card
+(scratchpad wave2/specs/hardened.json; cut sheet wave2-cutsheet.md).
+
+**Pending Joe:** Bramblefang timing-trap blessing (spell-cast trigger
+resolves above the spell — pings the blocker before the pump saves it),
+Riverbend Adept direction (architect recommends keeping controlled_by(opp);
+"you control" would feed self-bounce, NOT flicker — blink never touches
+hand), Skyward Tactician in/out, Tenacious Yearling re-promotion (two-
+trigger templating resolved; recruit record 15).
+
+**Engine bill for the 7 gated cards (~60 lines, file-level plans in specs):**
+card_has_keyword + opponents_turn + card_has_etb_effect predicates,
+ability_activated event, spell_cast target threading + spell_target
+selector, describeStaticBuff keyword-filter phrasing. Plus extraction
+vocabulary per shipped card, two wart-fixes (landfall false-etb, qualified
+spellcast), and the mass-buff wants:wide gap (warchanter et al. mis-measured
+today — found by Steadfast Vanguard's architect).
+
+**Pipeline addition (proven this wave):** designers → killer → Joe's cut →
+per-card SPEC-HARDENING architects (dossier = pitch + ruling + Joe's notes
+as directives + curator flags + graph annotation; repo access, verify-don't-
+trust) → warm consolidation → build. Also queued: Joe's extraction-audit
+idea — sweep the whole pool for cards deserving want/provide rules
+(smite_the_wicked's tapped-want was invisible until Wave 2 measured it).
 
 **Status (2026-07-07):** Wave 1.5 shipped (v2.2.7). Wave 1 executed same day:
 12 designer hands → 36 pitches → 1 Fable killer (11 ship / 25 kill) → recruit
