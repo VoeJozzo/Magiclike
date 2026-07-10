@@ -1,10 +1,9 @@
 # Card author's handbook (`cards/`)
 
-How to write a `card.json` that does what its text says. This file is the
-required first read for ANY agent (or human) authoring or reviewing cards —
-it exists because two design waves measured exactly where MTG intuition and
-this engine part ways. Wire-format spec: [`docs/PROTOCOL.md`](../../../docs/PROTOCOL.md).
-Engine module map: [`../CLAUDE.md`](../CLAUDE.md).
+How to write a `card.json` that does what its text says — the required
+first read for any agent or human authoring or reviewing cards. Wire-format
+spec: [`docs/PROTOCOL.md`](../../../docs/PROTOCOL.md). Engine module map:
+[`../CLAUDE.md`](../CLAUDE.md).
 
 ## Anatomy
 
@@ -52,8 +51,8 @@ them — so don't); desugar string-effect shorthand (`"draw(2)"` → the
 3. **Targeting is a top-level step, not a per-effect field.** Put `target`
    (and optional `target_filter` beside it) on the card / trigger / ability.
    A `target:` key INSIDE an effects-array entry does not resolve at spell
-   resolution — the effect silently falls back to its default (measured:
-   Wave 1's counterspell rider drained its own caster). Multi-target cards
+   resolution — the effect silently falls back to its default (e.g. a
+   gain_life rider falls back to the controller). Multi-target cards
    use card-level `target_slots: [...]` + per-effect `target_slot: N`
    (+ `distinct_targets: true` for "another target"). Source-exclusion
    ("ANOTHER target creature you control") = `target_filter: {another: true}`.
@@ -77,9 +76,8 @@ them — so don't); desugar string-effect shorthand (`"draw(2)"` → the
 7. **Some types confer abilities automatically — write the type, not the
    ability.** Two layers: (a) `SUBTYPE_KEYWORDS` (`js/engine.js`) implies
    keywords from creature subtypes — Angel/Dragon→flying, Treefolk→reach,
-   Wall→defender; a card typed Dragon must NOT also write `flying` (the
-   suite pins this, and Wave 1.5 killed three patches for proposing implied
-   keywords). (b) Basic-land subtypes (Forest, Island, …) auto-grant the
+   Wall→defender; a card typed Dragon must NOT also write `flying`.
+   (b) Basic-land subtypes (Forest, Island, …) auto-grant the
    tap-for-mana ability at ingest — a land's `mana` field is display-only
    (pips/frame); non-basic mana production needs an explicit
    `{cost:{tap:true}, effects:[{kind:'add_mana', ...}]}` ability.
@@ -99,8 +97,8 @@ enumerate them. Read the table you need at its home:
 - **Effect kinds** → keys of the `EFFECTS` dispatch table, `js/engine.js`
   (e.g. `damage`, `pump`, `move_card`, `affect_creature`, …).
 - **Target strings** → `TARGET_FILTERS`, `js/engine.js`.
-- **Filter keys** → `MATCH_FILTER_KEYS`, `js/engine.js`. Unknown keys WARN
-  at boot; before v2.2.x a typo silently disabled the restriction.
+- **Filter keys** → `MATCH_FILTER_KEYS`, `js/engine.js` (unknown keys warn
+  at boot).
 - **Condition predicates** → `ATOMIC_PREDICATES`, `js/triggers.js`.
 - **Trigger events** → `VALID_TRIGGER_EVENTS`, `js/triggers.js` (the five
   the engine actually emits).
