@@ -30,6 +30,10 @@ const CATEGORY_A = [
   // Locks in card-text output after the card-text.js extraction (v1.0.134).
   'card_text_test.js',
   'art_ladder_test.js',
+  // Wave 2 (Joe-found gap): cards/_manifest.json ↔ cards/ folder sync — an
+  // unlisted folder ships invisible in the browser while Node tests stay
+  // green (they read the filesystem, not the manifest).
+  'manifest_test.js',
   'draft_pool_lazy_test.js',
   'boon_art_derives_from_card_test.js',
   'tplid_renames_test.js',

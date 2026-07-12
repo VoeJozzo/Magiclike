@@ -20,43 +20,19 @@ function check(label, ok, info) {
   if (ok) pass++; else fail++;
 }
 
-// Collapse a condition list to a comparable signature: card_has_subtype(X) ->
-// card_has_subtype(*) so the three subtype lords group regardless of subtype.
-function condSig(event, cond) {
-  if (!Array.isArray(cond)) return null;
-  const terms = cond.map((t) =>
-    (typeof t === 'string' ? t.replace(/card_has_subtype\([^)]*\)/, 'card_has_subtype(*)') : JSON.stringify(t)));
-  return event + ' | ' + terms.join(', ');
-}
-
-// The known trigger archetypes (signature -> archetype name). Each must still be
-// PRESENT in the pool; the migration's real invariant is "no archetype was
-// dropped or mis-mapped, and nothing is unclassified" — NOT the exact per-
-// archetype card count (which moves every time a triggered card is added).
-const ARCHETYPES = {
-  'card_zone_change | this_card, card_moves(anywhere, battlefield)': 'thisEnters',
-  'card_zone_change | another_card, card_is_creature, controlled_by(you), card_moves(anywhere, battlefield)': 'anotherCreatureYouEntersStrict',
-  'card_zone_change | another_card, controlled_by(you), card_has_subtype(*), card_moves(anywhere, battlefield)': 'anotherCreatureYouEntersOfSubtype',
-  'attacks | this_card': 'thisAttacks',
-  'attacks | this_card, lost_life_this_turn(opp)': 'thisAttacksAfterOppLifeLoss',
-  'attacks | controlled_by(you), card_has_subtype(*)': 'creatureYouAttacksOfSubtype',
-  'combat_damage | this_card, affected_player_is(opp)': 'thisDealsCombatDamageToOpp',
-  'card_zone_change | this_card, card_moves(battlefield, graveyard)': 'thisDies',
-  'card_zone_change | this_card, card_moves(battlefield, anywhere)': 'thisLeaves',
-  'card_zone_change | another_card, card_is_creature, card_moves(battlefield, graveyard)': 'anotherCreatureDies',
-  'card_zone_change | card_is_creature, card_moves(battlefield, graveyard)': 'anyCardDies',
-  'card_zone_change | another_card, card_is_creature, card_moves(battlefield, graveyard), card_damaged_by_this': 'thisKillsCreature',
-  'life_changed | is_life_gain, affected_player_is(you)': 'youGainLife',
-  // Wave 1 archetypes (Gloomfang Leech/Bloodtithe Collector, Toll of Secrets,
-  // Rakdos Underboss). NOTE: this table duplicates triggers.js's
-  // _ARCHETYPE_BY_SIG — keep the two in lockstep (refactor candidate: the
-  // test could read the real table through a triggers.js export instead).
-  'life_changed | is_life_loss, affected_player_is(opp)': 'oppLosesLife',
-  'card_zone_change | controlled_by(you), card_moves(hand, graveyard)': 'youDiscard',
-  'card_zone_change | card_has_subtype(*), card_moves(battlefield, graveyard)': 'cardDiesOfSubtype',
-  'spell_cast | another_card, controlled_by(you)': 'youCastSpell',
-  'spell_cast | another_card, controlled_by(you), card_has_effect(counter)': 'youCastCounterspell',
-};
+// The test reads the LIVE archetype table and signature function from
+// triggers.js (Wave 2 refactor, Joe-flagged: the former hand-copied table
+// here had to be maintained in lockstep and could silently drift). The
+// invariants got STRONGER, not weaker: a row dropped from _ARCHETYPE_BY_SIG
+// leaves its cards unclassified (check below fails); a stale row whose
+// cards all vanished fails the presence check. Two anchor pins guard the
+// degenerate case of the table itself being wiped.
+const condSig = (event, cond) => (Array.isArray(cond) ? _condSignature(event, cond) : null);
+const ARCHETYPES = _ARCHETYPE_BY_SIG;
+check('anchor: live table classifies thisEnters',
+  ARCHETYPES['card_zone_change | this_card, card_moves(anywhere, battlefield)'] === 'thisEnters');
+check('anchor: live table classifies thisDies',
+  ARCHETYPES['card_zone_change | this_card, card_moves(battlefield, graveyard)'] === 'thisDies');
 
 // ── 1. Every archetype present + nothing unclassified ────────────────────
 console.log('=== every known archetype present, no trigger unclassified ===');

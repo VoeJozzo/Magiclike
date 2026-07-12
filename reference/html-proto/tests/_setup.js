@@ -152,6 +152,9 @@ const EXPOSED = [
   '_parseEffectCall', 'desugarEffectString', 'normalizeCardEffects',
   'validateAllCardConditions', 'VALID_TRIGGER_EVENTS',
   'triggerArchetype', 'triggerSubtype', 'triggerFiresOnEnter',
+  // Live archetype table + signature fn (triggers.js, module-scope) — read
+  // directly by trigger_migration_test since the Wave 2 dedup refactor.
+  '_ARCHETYPE_BY_SIG', '_condSignature',
   'generateConditionOptions', 'generateEffectOptions', 'assembleTrigger',
   // Empower system (cards.js module-scope).
   'EMPOWER_FIELDS', 'isEmpowerableField', 'enumerateEmpowerTargets',
