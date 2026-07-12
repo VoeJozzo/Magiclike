@@ -1,4 +1,23 @@
-# Plan: Pool Interconnection Waves (1.5 ✅ · 1 ✅ shipped v2.2.8 · 2 ✅ spec-hardened, build pending)
+# Plan: Pool Interconnection Waves (1.5 ✅ · 1 ✅ shipped v2.2.8 · 2 ✅ SHIPPED v2.2.9)
+
+## Wave 2 SHIPPED (2026-07-12, v2.2.9)
+
+All 32 cards + the full 10-item primitive bill landed across 7 commits
+(123ac774 predicates → 9fb37926 spell-rider hook → 42433d85
+ability_activated → 5f0dd5e7 describeStaticBuff → 1995056d table-dedup +
+manifest pin → b072a5c9 cards → 9be7b1be extraction vocabulary). Measured:
+**zero-hook 35% → 17%** (target was <25%), **every pair ≥ 12 plans**
+(UB 12 floor, RG 17 top; UB/BR were the 10/11 problem children), hub band
+43–47% (top was 62% pre-wave). Suite 149 files / 2911 green; selfplay 500
+clean; lint clean. Build-time deltas from spec, all logged in CHANGELOG:
+"first dedicated describeStaticBuff coverage" was wrong (3 synthetic checks
+existed; the WAVE-1 extensions were what lacked pins); a 4th extraction
+wart surfaced (any-of tribal regex extracted nothing for Covenant Scholar);
+applyTypeChange needed an applyStaticKeywordGrants() call (animated lands
+must see rootbound_sentinel's grant immediately). Text-polish backlog:
+second_wind renders "Untap target creature you control. Target creature
+you control gains vigilance…" — a same-target follow-up "It" idiom would
+fix it pool-wide (untap doesn't participate in coalesceEotBuffs).
 
 ## Wave 2 state (2026-07-10)
 

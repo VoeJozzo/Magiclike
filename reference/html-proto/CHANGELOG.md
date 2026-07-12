@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.2.8`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.2.9`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -2545,3 +2545,35 @@ table (+3, dup-table refactor candidate flagged), zone-events pin gains an
 intentional-non-battlefield allowlist (toll_of_secrets). Suite 145 files /
 2737 assertions green; selfplay 500 games 0 crashes/violations/stuck;
 lint clean.
+
+v2.2.9: Wave 2 ships — 32 cards from the 20-designer / 1-killer /
+33-architect / blinded-flavor-pass wave (docs/plans/plan-pool-waves.md;
+per-card specs + decision threads in docs/plans/wave-data/), curated by
+Joe across six conversation-board rounds (32 ship / 1 kill — Riverbend
+Adept; the bounce-payoff niche is now twice-rejected). Pool 305→337.
+New engine primitives: STATIC SPELL-RIDER HOOK (spell_riders card field —
+battlefield permanents modify your resolving spells at RESOLUTION time,
+scopes all_targets/creature_targets/your_creature_targets/self, optional
+spell_filter; customers sapling_tender, primal_metamagus, vigil_chanter,
+wildfire_colossus); ABILITY_ACTIVATED event (non-mana stack-entry emit
+only, mana abilities structurally silent per canon §705; customer
+backlash_mage); predicates card_has_keyword (effective keywords),
+opponents_turn, card_has_effect(kind, etb) scope, card_has_subtype any-of
+args (covenant_scholar, single-fire pinned). 9 new trigger archetypes +
+preambles (flash-cast, opp-turn cast, noncreature cast, creature-ability
+activation, ETB-damager enters, landfall, creature-you-dies, another-
+attacks, you-draw [house ruling: draw = any library→hand move]);
+card_has_keyword(*) signature wildcarding; "or"-join preambles.
+describeStaticBuff renders has_keyword filters ("creatures you control
+with flying" — wing_commander) with effective-keyword "Other" honesty;
+describeSpellRider added. Engine fix: applyTypeChange refreshes static
+keyword grants immediately (animated land must see rootbound_sentinel
+vigilance at animation, not at the next emit). Trigger-migration test now
+reads the LIVE archetype table (dup table deleted, Joe-flagged); NEW
+manifest-completeness pin (unlisted cards/ folder = invisible in browser,
+Joe-found gap). BUCKETS: 8 new resources (trick, activation, landdrop,
+animate, flashcast, burnspell, carddraw, kw:flying) + 4 wart fixes
+(qualified spellcast, mass-buff wants:wide, landfall false-sub:Land,
+any-of tribal regex). Assay: zero-hook 35%→17% (target <25%), all pairs
+≥12 plans (UB 12 floor), hub band 43-47%. Suite 149 files / 2911 green;
+selfplay 500 games 0 crashes; lint clean.
