@@ -4433,10 +4433,50 @@ function drainTriggers() {
   G.pendingTriggers = [];
   for (let i = 0; i < ordered.length; i++) {
     const p = ordered[i];
+    // The per-episode trigger budget ticks HERE — one per fired trigger
+    // taken up, whether it later resolves, fizzles, prompts, or bails. This
+    // is the seam every trigger passes exactly once (see resolveTrigger's
+    // header for why the increment moved out of resolution).
+    G.triggerChainDepth = (G.triggerChainDepth || 0) + 1;
+    // ability_triggered (Wave 2, Joe's spec — built at his direction after
+    // the MTG-model review settled the semantics): announce every triggered
+    // ability at FIRE time, before any fizzle check — per MTG 603, an
+    // ability that triggers-then-fizzles-at-targeting still TRIGGERED. This
+    // take-up point is the one seam every fired trigger passes through
+    // (auto-pick, human-prompt, and the stackable:false immediate arm), so
+    // one emit here covers all paths exactly once. `cause` carries the
+    // originating event ("what triggered that ability"); `trig` the firing
+    // ability itself (read by trigger_has_effect-style predicates). No
+    // bespoke self-exclusion: recursion is governed by TRIGGER_DEPTH_CAP,
+    // our version of MTG's infinite-loop meta-rule — a loosely-conditioned
+    // meta-listener loops to the budget and bails loudly (pinned by test).
+    // The announcement respects the same budget: once it is blown, the pile
+    // drains to termination without further announcements (an ungated emit
+    // here would re-seed the queue on every bailed resolution, forever).
+    // The exhaustion is logged ONCE per episode — the meta-rule is loud,
+    // not a silent chain-stop.
+    if (G.triggerChainDepth > TRIGGER_DEPTH_CAP && !G.triggerBudgetBlownLogged) {
+      G.triggerBudgetBlownLogged = true;
+      log(`Trigger budget exhausted (${TRIGGER_DEPTH_CAP} triggers this stack episode) — bailing to prevent a loop.`, 'imp');
+    }
+    if (G.triggerChainDepth <= TRIGGER_DEPTH_CAP) emit({
+      type: 'ability_triggered',
+      subject_iid: p.sourceIid,
+      // Last-known information: null if the source left play between firing
+      // and drain (its ability still triggered; card-predicates just fail).
+      subject_card: (findCard(p.sourceIid) || {}).card || null,
+      controller: p.controller,
+      cause: p.event || null,
+      trig: p.trig,
+    });
     const pt = triggerPlayerTargetPrompt(p);
     if (pt) {
       // A human choice remains — pause. The remaining triggers wait in queue.
-      G.pendingTriggers = ordered.slice(i + 1);
+      // CONCAT, not assign: the ability_triggered emit above (and any other
+      // emit during this loop) may have queued NEW pendings — a bare
+      // assignment silently discarded them (found by the meta-listener test:
+      // a prompt-path trigger's announcement vanished).
+      G.pendingTriggers = ordered.slice(i + 1).concat(G.pendingTriggers);
       G.pendingTriggerTarget = pt;
       log(`${p.sourceName} triggered — choose a target.`, 'sp');
       return true;
@@ -4573,9 +4613,12 @@ function cardValueOrZero(card) {
 // Resolve a trigger from the stack.
 function resolveTrigger(item) {
   // Per-stack-episode trigger budget, NOT nesting depth (audit A3-3, kept
-  // deliberately): increments on every resolution, resets only when the
-  // stack empties with both players passing.
-  G.triggerChainDepth = (G.triggerChainDepth || 0) + 1;
+  // deliberately). Since the ability_triggered build the counter increments
+  // at the drainTriggers TAKE-UP point (one tick per FIRED trigger — every
+  // resolution path flows through take-up), not here: incrementing at
+  // resolution let a drain-only cycle (take-up → emit → requeue → push,
+  // never resolving) grow the stack unboundedly with the budget frozen at
+  // zero. This site keeps the bail CHECK.
   if (G.triggerChainDepth > TRIGGER_DEPTH_CAP) {
     log(`Trigger budget exhausted (${TRIGGER_DEPTH_CAP} triggers this stack episode) — bailing to prevent a loop.`, 'imp');
     return;
@@ -6159,12 +6202,18 @@ function passPriority(who) {
         drainTriggers();
       }
     } else {
-      // Stack just emptied: reset the per-episode trigger budget (we're
-      // done with that pile).
-      G.triggerChainDepth = 0;
-      // Empty stack: drain any pending triggers; if there are now items on
-      // the stack, the round stays open. Otherwise close and advance.
+      // Stack just emptied: drain pendings FIRST — if the drain refills the
+      // stack we are NOT done with the pile, and the per-episode trigger
+      // budget must keep counting. Pre-fix the order was reset-then-drain,
+      // which let a self-feeding ability_triggered listener reset its own
+      // budget every one-entry cycle and loop forever — the cap only ever
+      // contained cascades that stayed within a single stack pile. Reset
+      // only when stack AND queue are truly spent.
       drainTriggers();
+      if (G.stack.length === 0 && G.pendingTriggers.length === 0) {
+        G.triggerChainDepth = 0;
+        G.triggerBudgetBlownLogged = false;
+      }
       if (G.stack.length > 0) {
         G.priority.passes.clear();
         G.priorityHolder = G.activePlayer;

@@ -10,6 +10,11 @@
 //                    is the ability's SOURCE permanent; fired only from the
 //                    non-mana stack-entry activation site (mana abilities are
 //                    structurally silent, canon §705)
+//   ability_triggered {type, subject_iid, subject_card, controller, cause, trig}
+//                    — a TRIGGERED ability fired (Joe's spec: fire-time, before
+//                    fizzle checks — MTG 603; `cause` = the originating event,
+//                    `trig` = the firing ability). Recursion governed by
+//                    TRIGGER_DEPTH_CAP, no bespoke self-exclusion.
 // `type` is the discriminator emit()/the dispatcher match on (the wire name is
 // the same string on both engines — PROTOCOL §3.3). `source_iid` on
 // card_zone_change names the card that CAUSED the move (e.g. the token-maker),
@@ -78,6 +83,14 @@ const ATOMIC_PREDICATES = {
         triggerFiresOnEnter(trig) && (trig.effects || []).some((e) => e && e.kind === args[0]));
     }
     return ENGINE.cardHasEffect(c, (e) => e.kind === args[0]);
+  },
+  // The FIRING ability (ability_triggered's `trig` payload) contains an
+  // effect of the named kind — "a damage ability of a creature you control
+  // triggers". Reads the event's ability, not the subject card's card.json
+  // (that's card_has_effect's job).
+  trigger_has_effect: (ctx, args) => {
+    const trig = ctx.event && ctx.event.trig;
+    return !!trig && (trig.effects || []).some((e) => e && e.kind === args[0]);
   },
   // Event-meta (player-subject events, e.g. life_changed)
   affected_player_is: (ctx, args) => ctx.event.who === _predResolvePlayer(args[0], ctx.who),
@@ -373,7 +386,7 @@ function triggerKeyword(trig) {
 // latter accepted during the migration window; removed in step 8).
 const VALID_TRIGGER_EVENTS = new Set([
   'card_zone_change', 'spell_cast', 'attacks', 'life_changed', 'combat_damage',
-  'ability_activated',
+  'ability_activated', 'ability_triggered',
 ]);
 
 // Recursively collect unknown atomic-predicate names from a condition

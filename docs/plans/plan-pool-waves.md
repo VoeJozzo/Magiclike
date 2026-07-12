@@ -123,17 +123,23 @@ file (31/32; RG_3-0 pending hook-templating nod + name pick).
 3. opponents_turn predicate (~5 lines) — Tidewatcher.
 4. card_has_effect(kind, scope) extension (~6 lines; parameterize-don't-
    multiply; scope 'etb' scans the subject card's ETB triggers) — Triage
-   Cleric. LEDGER (Joe, 2026-07-10, semantics SETTLED by MTG-model review): the
-   ability_triggered event is fully specced and shovel-ready for its first
-   trigger-matters customer — fire-time emission at the top of
-   pushTriggerOnStack/resolveTriggerImmediate (before fizzle checks; a
-   fizzled trigger still TRIGGERED, per MTG 603), cause payload = the
-   originating event (Joe's spec), recursion handled by the existing
-   TRIGGER_DEPTH_CAP (our version of MTG's infinite-loop meta-rule — no
-   bespoke self-exclusion). Complementary grammar, not either/or:
-   structural predicates read WHAT A CARD IS; this event announces WHAT
-   JUST HAPPENED; resolve-time damage-source attribution ('a triggered
-   ability deals damage') is a third orthogonal piece, also unbuilt.
+   Cleric. LEDGER CORRECTION (2026-07-12): the entry that used to sit here
+   attributed a "defer ability_triggered until a customer arrives" decision
+   to Joe. That attribution was FALSE — the deferral was Claude's
+   recommendation only; Joe argued FOR building the event across three
+   consecutive turns and his final pre-compaction message ("we have the
+   info we need to build this") meant the event. Post-compaction Claude
+   misread that as blessing the deferral and shipped the wave without it.
+   RESOLVED: ability_triggered is now BUILT (v2.2.10) to the semantics
+   Joe's MTG-model review settled — fire-time emission at the drainTriggers
+   take-up point before fizzle checks (a fizzled trigger still TRIGGERED,
+   MTG 603), cause + trig payload, recursion via the TRIGGER_DEPTH_CAP
+   meta-rule (no bespoke self-exclusion). Complementary grammar:
+   structural predicates read WHAT A CARD IS; the event announces WHAT
+   JUST HAPPENED; resolve-time damage-source attribution is a third
+   orthogonal piece, still unbuilt. OPEN: whether Triage Cleric migrates
+   onto the event or stays on the structural predicate (Joe's call —
+   asked 2026-07-12).
 5. card_has_subtype any-of args (~2 lines + preamble) — Covenant Scholar.
 6. ability_activated event (~15-20 lines; non-mana stack-entry emit site
    only) — Backlash Mage.

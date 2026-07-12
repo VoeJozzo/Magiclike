@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.2.9`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.2.10`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -2577,3 +2577,31 @@ animate, flashcast, burnspell, carddraw, kw:flying) + 4 wart fixes
 any-of tribal regex). Assay: zero-hook 35%→17% (target <25%), all pairs
 ≥12 plans (UB 12 floor), hub band 43-47%. Suite 149 files / 2911 green;
 selfplay 500 games 0 crashes; lint clean.
+
+v2.2.10: The ability_triggered event — built at Joe's direction, correcting
+a v2.2.9 process failure: Joe argued for building the event across the
+three turns before a context compaction ("we have the info we need to
+build this"); Claude misread that as blessing its own defer-until-a-
+customer recommendation and shipped Wave 2 without it (the plan-doc
+ledger even attributed the deferral to Joe — corrected). The event:
+emitted at the drainTriggers TAKE-UP point — the one seam every fired
+trigger passes through (auto-pick, human-prompt, stackable:false arms) —
+at FIRE time, before fizzle checks (MTG 603: a trigger that fizzles at
+targeting still triggered). Payload: subject (source permanent, last-
+known), cause (the originating event — "what triggered that ability"),
+trig (the firing ability, read by the new trigger_has_effect(kind)
+predicate). Recursion by meta-rule, no bespoke self-exclusion: the
+TRIGGER_DEPTH_CAP budget now ticks at take-up (one per FIRED trigger)
+instead of at resolution — building the event exposed that the old
+increment-at-resolution let a drain-only cycle grow the stack unboundedly
+with the budget frozen, and that reset-before-drain let a one-entry loop
+reset its own budget every cycle (both fixed; exhaustion logs once per
+episode). Also fixed: the drainTriggers prompt-pause clobbered pendings
+queued by emits during the drain loop (a prompt-path trigger's
+announcement silently vanished) — now concatenated. Boundary pinned:
+activated abilities emit ability_activated, never this; mana abilities
+emit nothing. tests/wave2_ability_triggered_test.js (16 checks): payload,
+fizzle-still-triggers, another_card self-echo filter, Ouroboros
+containment, activation boundary, boot validation. OPEN (Joe's call):
+migrate Triage Cleric onto the event or keep it structural. Suite 150
+files / 2927 green; selfplay 500 games 0 crashes/violations/stuck.

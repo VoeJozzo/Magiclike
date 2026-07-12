@@ -201,6 +201,7 @@ snake_case; JS internal kinds are camelCase per the conversion rule.
 | `life_changed`           | `life_changed`     | (pending)      | `{who, delta, source_iid}`            |
 | `spell_cast`             | `spell_cast`       | (pending)      | `{subject_iid, subject_card, controller}` |
 | `ability_activated`      | `ability_activated`| (pending)      | `{subject_iid, subject_card, controller}` |
+| `ability_triggered`      | `ability_triggered`| (pending)      | `{subject_iid, subject_card, controller, cause, trig}` |
 
 Zone tokens for `from_zone`/`to_zone` on `card_zone_change`: `hand`, `library`,
 `graveyard`, `exile`, `stack`, `battlefield` — plus the synthetic `none`, used
@@ -230,6 +231,21 @@ taking its stack entry; `subject_card` is the ability's source permanent,
 `controller` the activator. Mana abilities never emit it — they are hardcoded
 off-stack (canon §705), so tapping a dork or a land is structurally invisible
 to activations-matter triggers (pinned in `tests/wave2_ability_event_test.js`).
+
+`ability_triggered` (v2.2.10, Joe's spec) announces a TRIGGERED ability at
+FIRE time — emitted at the drainTriggers take-up point, the one seam every
+fired trigger passes through (auto-pick, human-prompt, stackable:false
+immediate), BEFORE any fizzle check: per MTG 603, an ability that
+triggers-then-fizzles-at-targeting still triggered. `cause` carries the
+originating event ("what triggered that ability"); `trig` the firing ability
+(read by the `trigger_has_effect(kind)` predicate); `subject_card` is
+last-known information (null if the source left play before drain).
+Recursion is governed by the existing `TRIGGER_DEPTH_CAP` budget — MTG's
+infinite-loop meta-rule, no bespoke self-exclusion (a loosely-conditioned
+meta-listener loops to the budget and bails loudly; pinned in
+`tests/wave2_ability_triggered_test.js`). Activated abilities and mana
+abilities never emit it — those are `ability_activated`'s (and nobody's)
+domain respectively.
 
 Both engines' trigger dispatch reads the canonical name. Adding a new
 event kind requires (a) firing it in both engines from the matching

@@ -436,6 +436,10 @@ const CATEGORY_A = [
   // Wave 2 cards (32): text goldens for the whole batch (locks the new
   // archetype signatures + preambles) + per-card behavior probes.
   'wave2_cards_test.js',
+  // ability_triggered event (Joe's spec, built at his direction): fire-time
+  // emission before fizzle checks, cause+trig payload, budget-as-meta-rule
+  // containment (incl. the take-up budget move + drain-concat fix).
+  'wave2_ability_triggered_test.js',
 ];
 
 const TESTS_DIR = __dirname;
