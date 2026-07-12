@@ -176,10 +176,12 @@ const CARDS = [
   thread:[['Killer (kill→Joe overruled)','Spell-cast saturation — but pays in EVASION, a currency the other payoffs don\'t.'],['Joe','Ship (was: let\'s think about it — resolved by shipping).']]},
  {key:'RW_3-0',name:'Convalescent Firebrand',group:'ship',bill:true,
   before:{cost:'1W',type:'Creature — Human Cleric',stats:'2/2',rules:'Whenever another creature with an enters-the-battlefield damage ability enters the battlefield under your control, you gain 2 life.'},
-  after:{cost:'1W',type:'Creature — Human Cleric',stats:'2/2',rules:'Whenever another creature with an enters-the-battlefield damage ability enters the battlefield under your control, you gain 2 life.'},
+  after:{cost:'1W',type:'Creature — Human Cleric',stats:'2/2',rules:'Whenever another creature with an enters-the-battlefield ability enters the battlefield under your control, you gain 2 life.'},
   thread:[['Killer (kill→Joe overruled)','Broken as designed: card_has_effect only scans spell effects; ETB pingers keep damage in triggers — it never fires.'],
    ['Joe','How hard is this to actually implement?'],
-   ['Fable','Small: card_has_etb_effect predicate scanning the cast card\'s ETB triggers (~6 lines) + archetype/preamble (~4). Reusable for any "creatures with ETB X" payoff.']]},
+   ['Fable','Small: card_has_etb_effect predicate scanning the cast card\'s ETB triggers (~6 lines) + archetype/preamble (~4). Reusable for any "creatures with ETB X" payoff.'],
+   ['Joe (post-ship, v2.2.11)','The flavor doesn\'t make any sense if it\'s keying off of damage specifically.'],
+   ['Fable','Corrected to any-ETB: card_has_effect(any, etb). The damage clause was the designer pitch\'s wording (transcript-verified), carried through every round unchallenged — but the healer tends arrivals, she doesn\'t follow arsonists. Broader card: every ETB creature feeds her now.']]},
 ];
 
 const esc = s => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');

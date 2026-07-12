@@ -76,13 +76,16 @@ const ATOMIC_PREDICATES = {
     if (!c) return false;
     // Optional second arg scopes WHERE to look (parameterize, don't multiply
     // predicate names — Joe's ruling). Default: spell-level effects, as ever.
-    // 'etb': the subject card's enters-the-battlefield triggers ("whenever a
-    // creature WITH AN ETB DAMAGE ABILITY enters" — Triage Cleric).
+    // 'etb': the subject card's enters-the-battlefield triggers. Kind 'any'
+    // matches every effect kind ("whenever a creature WITH AN ETB ABILITY
+    // enters" — Triage Cleric; Joe's flavor correction dropped the
+    // damage-specific version).
+    const kindOk = (e) => e && (args[0] === 'any' || e.kind === args[0]);
     if (args[1] === 'etb') {
       return (c.triggers || []).some((trig) =>
-        triggerFiresOnEnter(trig) && (trig.effects || []).some((e) => e && e.kind === args[0]));
+        triggerFiresOnEnter(trig) && (trig.effects || []).some(kindOk));
     }
-    return ENGINE.cardHasEffect(c, (e) => e.kind === args[0]);
+    return ENGINE.cardHasEffect(c, kindOk);
   },
   // The FIRING ability (ability_triggered's `trig` payload) contains an
   // effect of the named kind — "a damage ability of a creature you control
@@ -324,7 +327,10 @@ const _ARCHETYPE_BY_SIG = {
   'spell_cast | another_card, controlled_by(you), opponents_turn': 'youCastSpellOppTurn',
   'spell_cast | another_card, controlled_by(you), {"op":"not","terms":["card_is_creature"]}': 'youCastNoncreatureSpell',
   'ability_activated | controlled_by(you), card_is_creature': 'youActivateCreatureAbility',
-  'card_zone_change | another_card, card_is_creature, controlled_by(you), card_has_effect(damage, etb), card_moves(anywhere, battlefield)': 'anotherEtbDamagerYouEnters',
+  // Any-ETB, not damage-specific: Joe's flavor correction (the healer tends
+  // arrivals, she doesn't follow arsonists) — the damage-keyed archetype
+  // shipped briefly in v2.2.9 and left with its only customer.
+  'card_zone_change | another_card, card_is_creature, controlled_by(you), card_has_effect(any, etb), card_moves(anywhere, battlefield)': 'anotherEtbCreatureYouEnters',
   // No card_is_creature term: the subtype IS the gate (OfSubtype precedent) —
   // today's customers are landfall (card_has_subtype(Land) reads types[]
   // through hasType, so card types work as "subtypes" here).

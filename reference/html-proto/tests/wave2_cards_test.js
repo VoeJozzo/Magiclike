@@ -66,7 +66,7 @@ console.log('=== text goldens (all 32 — locks archetypes, preambles, rider tex
 const GOLDENS = {
   steadfast_knight: 'When this enters the battlefield, creatures you control gain vigilance until end of turn.',
   chapter_recruiter: 'Whenever another Human enters under your control, put a +1/+1 counter on this.',
-  triage_cleric: 'Whenever another creature with an enters-the-battlefield damage ability enters under your control, gain 2 life.',
+  triage_cleric: 'Whenever another creature with an enters-the-battlefield ability enters under your control, gain 2 life.',
   intimidating_lancer: 'When this attacks, tap target creature an opponent controls.',
   vigil_chanter: 'Spells you cast also grant vigilance to each creature they target until end of turn.',
   rescue_angel: 'Whenever you cast a spell, target creature you control gains flying until end of turn.',
@@ -131,17 +131,23 @@ console.log('\n=== chapter_recruiter: Humans feed it; non-Humans do not ===');
   check('non-Human enters -> still 2/2', p === 2 && t === 2, p + '/' + t);
 })();
 
-console.log('\n=== triage_cleric: ETB-damager enters -> gain 2; vanilla does not ===');
+console.log('\n=== triage_cleric: any ETB-ability creature enters -> gain 2; vanilla does not ===');
 (() => {
+  // Any-ETB, not damage-specific (Joe's flavor correction, v2.2.11 — the
+  // healer tends arrivals; damage-keying was the pitch's wording, not the
+  // intended card).
   const G = freshGame();
   G.you.battlefield.push(mk('triage_cleric', 'you'));
   G.opp.battlefield.push(mk('grizzly_bears', 'opp')); // ping target for pyromaniac
   const life0 = G.you.life;
-  cast(G, 'pyromaniac');           // has an ETB damage trigger
+  cast(G, 'pyromaniac');           // ETB damage trigger — still counts
   check('pyromaniac (ETB pinger) -> +2 life', G.you.life === life0 + 2,
     life0 + ' -> ' + G.you.life);
+  cast(G, 'sky_champion');         // ETB grant-flying trigger — NON-damage ETB now counts
+  check('sky_champion (non-damage ETB) -> +2 more', G.you.life === life0 + 4,
+    life0 + ' -> ' + G.you.life);
   cast(G, 'grizzly_bears');
-  check('vanilla creature -> no gain', G.you.life === life0 + 2, String(G.you.life));
+  check('vanilla creature -> no gain', G.you.life === life0 + 4, String(G.you.life));
 })();
 
 console.log('\n=== intimidating_lancer: attack tap (their creature) ===');

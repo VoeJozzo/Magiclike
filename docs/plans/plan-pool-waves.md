@@ -137,9 +137,14 @@ file (31/32; RG_3-0 pending hook-templating nod + name pick).
    meta-rule (no bespoke self-exclusion). Complementary grammar:
    structural predicates read WHAT A CARD IS; the event announces WHAT
    JUST HAPPENED; resolve-time damage-source attribution is a third
-   orthogonal piece, still unbuilt. OPEN: whether Triage Cleric migrates
-   onto the event or stays on the structural predicate (Joe's call —
-   asked 2026-07-12).
+   orthogonal piece, still unbuilt. RESOLVED (Joe, 2026-07-12): Triage
+   Cleric stays STRUCTURAL, and its text corrected to ANY-ETB — "the
+   flavor doesn't make any sense if it's keying off of damage
+   specifically." The damage clause traced to the designer pitch
+   (transcript line 777, pre-recycle), not to any Joe decision; it
+   survived six review rounds unchallenged. Wire: card_has_effect(any,
+   etb); archetype anotherEtbDamagerYouEnters → anotherEtbCreatureYouEnters
+   (the damage-keyed variant left with its only customer).
 5. card_has_subtype any-of args (~2 lines + preamble) — Covenant Scholar.
 6. ability_activated event (~15-20 lines; non-mana stack-entry emit site
    only) — Backlash Mage.

@@ -1,7 +1,7 @@
 {
   "card_id": "triage_cleric",
   "name": "Triage Cleric",
-  "art": "⛑️",
+  "art": "\u26d1\ufe0f",
   "cost": {
     "W": 1,
     "C": 1
@@ -20,7 +20,7 @@
         "another_card",
         "card_is_creature",
         "controlled_by(you)",
-        "card_has_effect(damage, etb)",
+        "card_has_effect(any, etb)",
         "card_moves(anywhere, battlefield)"
       ],
       "effects": [

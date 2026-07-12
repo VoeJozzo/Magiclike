@@ -855,8 +855,8 @@ function triggerPreamble(trig) {
   if (cid === 'youActivateCreatureAbility') {
     return 'Whenever you activate an ability of a creature you control,';
   }
-  if (cid === 'anotherEtbDamagerYouEnters') {
-    return 'Whenever another creature with an enters-the-battlefield damage ability enters under your control,';
+  if (cid === 'anotherEtbCreatureYouEnters') {
+    return 'Whenever another creature with an enters-the-battlefield ability enters under your control,';
   }
   if (cid === 'cardYouEntersOfSubtype') {
     // Card-type gates read as their common noun ("a land enters"); tribal

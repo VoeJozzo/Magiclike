@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.2.10`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.2.11`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -2605,3 +2605,18 @@ fizzle-still-triggers, another_card self-echo filter, Ouroboros
 containment, activation boundary, boot validation. OPEN (Joe's call):
 migrate Triage Cleric onto the event or keep it structural. Suite 150
 files / 2927 green; selfplay 500 games 0 crashes/violations/stuck.
+
+v2.2.11: Triage Cleric text correction (Joe): "Whenever another creature
+with an enters-the-battlefield ability enters under your control, you gain
+2 life" — any ETB, not damage-specific ("the flavor doesn't make any sense
+if it's keying off of damage specifically"). The damage clause traced to
+the designer PITCH wording (transcript-verified), not to any design
+decision; it survived six review rounds unchallenged. Wire:
+card_has_effect gains an 'any' kind wildcard → card_has_effect(any, etb);
+archetype anotherEtbDamagerYouEnters → anotherEtbCreatureYouEnters (the
+damage-keyed variant left with its only customer). Card stays on the
+structural predicate (fires on the enter, matching printed text) — the
+ability_triggered migration question is closed. Broader card: every
+ETB-ability creature feeds her now (sky_champion pinned alongside
+pyromaniac in the test). Suite 150 files / 2928 green; selfplay 500
+games 0 crashes/violations/stuck.
