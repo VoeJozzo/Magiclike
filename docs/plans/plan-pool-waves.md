@@ -99,8 +99,7 @@ file (31/32; RG_3-0 pending hook-templating nod + name pick).
    riders from battlefield permanents over a spell's targets, per-target
    filters. Customers: Sapling Tender (counter on your-creature targets),
    Primal Metamagus (1 damage to all targets), Vigil Chanter (vigilance to
-   creature targets), Wildfire Colossus [pending nod] (counter on self per
-   damage-sorcery). Needs a card-text describe case (~10-15 lines).
+   creature targets), Wildfire Colossus [CONFIRMED] (counter on self per damage-sorcery; name kept). Needs a card-text describe case (~10-15 lines).
 2. card_has_keyword(kw) predicate (~6 lines) — Feinting Sprite, Surgecaster.
 3. opponents_turn predicate (~5 lines) — Tidewatcher.
 4. card_has_effect(kind, scope) extension (~6 lines; Joe's parameterize-don't-
@@ -124,8 +123,7 @@ file (31/32; RG_3-0 pending hook-templating nod + name pick).
 
 **Confirm-by-silence flags:** Wing Commander is Angel-typed → implied flying
 = a real mechanical buff (1WU 2/3 FLYING lord of fliers) — Joe picked it,
-flagged once; Covenant Scholar typeline is Elf Merfolk Wizard while its
-MECHANICS tribes stay Wizard+Merfolk; Flintlock voice ("target opponent")
+flagged once; Covenant Scholar: tribes are ELF+MERFOLK (Joe correction — the covenant itself), typeline Elf Merfolk Wizard; Flintlock voice ("target opponent")
 parked to backlog per "tentatively fine."
 
 **Flavor-pass protocol learnings (for future waves):** proposers = menu

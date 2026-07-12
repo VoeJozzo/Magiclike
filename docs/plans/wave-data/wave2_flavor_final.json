@@ -66,8 +66,8 @@
   "key": "GU_0-0",
   "name": "Covenant Scholar",
   "typeLine": "Creature — Elf Merfolk Wizard",
-  "tribes": "Wizard, Merfolk",
-  "source": "joe-remix"
+  "tribes": "Elf, Merfolk",
+  "source": "joe-remix (covenant = Elf+Merfolk, corrected)"
  },
  {
   "key": "GU_0-1",
@@ -155,10 +155,10 @@
  },
  {
   "key": "RG_3-0",
-  "name": null,
-  "typeLine": null,
+  "name": "Wildfire Colossus",
+  "typeLine": "Creature — Elemental",
   "tribes": null,
-  "source": "PENDING — mechanics question (sorcery-you-control damage templating)"
+  "source": "baseline name kept; mechanics respec to static hook: \"Sorceries you cast that deal damage also put a +1/+1 counter on Wildfire Colossus.\""
  },
  {
   "key": "RW_2-2",
