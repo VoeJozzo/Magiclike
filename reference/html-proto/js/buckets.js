@@ -255,6 +255,34 @@ function analyze(tpl) {
   if ((kinds.some(k => k.kind === 'damage') && /player|opp|any/.test(String(tpl.target || '')))
       || kinds.some(k => k.kind === 'gain_life' && (k.amount || 0) < 0 && k.scope !== 'self')) bump(provides, 'opp_loss', 1);
   if (isCreature && hasType(tpl, 'Artifact')) bump(provides, 'sub:Artifact', W_PROV_SUBTYPE);
+  // Wave 2 vocabulary (same ~2-lines-per-niche contract; each rule has a
+  // shipped customer — deletions-are-wins applies if a niche ever empties):
+  // landdrop: ramp puts extra lands onto the battlefield (landfall fuel).
+  if (kinds.some(k => k.kind === 'move_card' && k.to_zone === 'battlefield'
+      && k.filter && k.filter.type === 'Land')) bump(provides, 'landdrop', 2);
+  // animate: turning lands into creatures (rootbound_sentinel's food).
+  if (kinds.some(k => k.kind === 'add_type'
+      && (Array.isArray(k.types) ? k.types : [k.type]).includes('Creature'))) bump(provides, 'animate', 2);
+  // flashcast: a flash spell specifically (subset of spellcast — the
+  // "qualified spellcast" wart: flash-matters payoffs must not wire to
+  // every sorcery in the pool).
+  if (isSpellCard && effKeywords.includes('flash')) bump(provides, 'flashcast', 1);
+  // burnspell: a spell that deals damage (wildfire_colossus's diet).
+  if (isSpellCard && kinds.some(k => k.kind === 'damage')) bump(provides, 'burnspell', 1);
+  // trick: a spell aimed at YOUR creature (the protect/pump shelf —
+  // sapling_tender and vigil_chanter reward casting these).
+  if (isSpellCard && String(tpl.target || '') === 'your_creature') bump(provides, 'trick', 1);
+  // carddraw: puts cards from library into hand (house ruling: tutors ARE
+  // draws — "drawing = any library→hand move").
+  if (kinds.some(k => k.kind === 'move_card' && k.from_zone === 'library'
+      && k.to_zone === 'hand')) bump(provides, 'carddraw', 1);
+  // activation: a non-mana activated ability (backlash_mage's providers).
+  if ((tpl.abilities || []).some(ab =>
+      (ab.effects || []).some(e => e && e.kind !== 'add_mana'))) bump(provides, 'activation', 1);
+  // kw:flying: intrinsic/implied fliers feed the fliers-matter lord
+  // (wing_commander). Scoped to flying while it is the only keyword with a
+  // payoff — extend per-customer, not speculatively.
+  if (isCreature && effKeywords.includes('flying')) bump(provides, 'kw:flying', 1);
 
   // --- WANTS ---
   // Trigger conditions. `this_card` triggers are self-referential (my own
@@ -265,11 +293,22 @@ function analyze(tpl) {
     collectKindsAndConds({ condition: trg.condition }, [], cs);
     const selfOnly = cs.includes('this_card');
     for (const s of cs) {
-      const sub = s.match(/^card_has_subtype\((\w+)\)$/);
-      if (sub) bump(wants, 'sub:' + sub[1], W_WANT_PAYOFF);
+      // Any-of args (card_has_subtype(Elf, Merfolk) — Covenant Scholar) want
+      // EACH named tribe; the old \w+ regex silently extracted nothing from
+      // multi-arg predicates. A Land gate is landfall, not tribal: it wants
+      // extra land DROPS (ramp), and "sub:Land" would spawn an unfeedable
+      // bucket theme.
+      const sub = s.match(/^card_has_subtype\(([^)]+)\)$/);
+      if (sub) {
+        for (const one of sub[1].split(/,\s*/)) {
+          if (one === 'Land') bump(wants, 'landdrop', W_WANT_PAYOFF);
+          else bump(wants, 'sub:' + one, W_WANT_PAYOFF);
+        }
+      }
       if (selfOnly) continue;
       if (/^card_moves\(battlefield,\s*graveyard\)$/.test(s)) bump(wants, 'dies', W_WANT_PAYOFF);
       if (/^card_moves\(hand,\s*graveyard\)$/.test(s)) bump(wants, 'discard', W_WANT_PAYOFF);
+      if (/^card_moves\(library,\s*hand\)$/.test(s)) bump(wants, 'carddraw', W_WANT_PAYOFF);
       if (/^card_moves\([^)]*battlefield\)$/.test(s) && cs.includes('another_card')) {
         bump(wants, 'etb', W_WANT_PAYOFF);          // "when another creature enters" payoffs
       }
@@ -282,16 +321,57 @@ function analyze(tpl) {
         bump(wants, cs.includes('affected_player_is(you)') ? 'self_pain' : 'opp_loss', W_WANT_PAYOFF);
       } else bump(wants, 'lifegain', W_WANT_PAYOFF);
     }
-    if (trg.event === 'spell_cast') bump(wants, 'spellcast', W_WANT_PAYOFF);
+    // Qualified spell-cast payoffs want the QUALIFIED subset, not every
+    // spell (the Wave 2 "qualified spellcast" wart): flash-matters and
+    // cast-on-their-turn payoffs both feed on flash spells specifically.
+    if (trg.event === 'spell_cast') {
+      if (cs.some(s => /^card_has_keyword\(flash\)$/.test(s)) || cs.includes('opponents_turn')) {
+        bump(wants, 'flashcast', W_WANT_PAYOFF);
+      } else {
+        bump(wants, 'spellcast', W_WANT_PAYOFF);
+      }
+    }
+    // Activations-matter (backlash_mage): fed by non-mana activated abilities.
+    if (trg.event === 'ability_activated') bump(wants, 'activation', W_WANT_PAYOFF);
+  }
+  // Static spell riders reward CASTING: your-creature-targeted riders live
+  // on the trick shelf; creature-targeted on tricks too; all-target riders
+  // on any spell; damage-filtered riders on burn.
+  for (const rd of (tpl.spell_riders || [])) {
+    if (rd.spell_filter && rd.spell_filter.has_effect === 'damage') {
+      bump(wants, 'burnspell', W_WANT_PAYOFF);
+    } else if (rd.rider_scope === 'your_creature_targets' || rd.rider_scope === 'creature_targets') {
+      bump(wants, 'trick', W_WANT_PAYOFF);
+    } else {
+      bump(wants, 'spellcast', W_WANT_PAYOFF);
+    }
   }
   // Static buffs: tribal lords want their tribe; global anthems want width.
   for (const sb of (tpl.static_buffs || [])) {
-    if (sb.subtype) {
+    if (sb.subtype === 'Land') {
+      // "Land creatures you control ..." (rootbound_sentinel) is fed by
+      // animators, not by a Land tribe.
+      bump(wants, 'animate', W_WANT_PAYOFF);
+      bump(provides, 'anthem', 1);
+    } else if (sb.subtype) {
       bump(wants, 'sub:' + sb.subtype, W_WANT_PAYOFF);
       bump(provides, 'anthem', 1);
-    } else if (!sb.subtype) {
+    } else {
       bump(wants, 'wide', W_WANT_WIDE);
+      // Keyword-filtered anthems also want that keyword on the board
+      // (wing_commander: fliers-matter).
+      if (sb.filter && sb.filter.has_keyword) {
+        bump(wants, 'kw:' + sb.filter.has_keyword, W_WANT_PAYOFF);
+      }
     }
+  }
+  // One-shot mass buffs (trigger or spell effects with scope all_yours) want
+  // a wide board just like anthems — the Wave 2 "mass-buff wants:wide" wart:
+  // warchanter / inspiring_herald / horned_herald / soulblade_captain (and
+  // now steadfast_knight, overrun, rally_the_troops) were mis-measured as
+  // wanting nothing.
+  if (kinds.some(k => (k.kind === 'pump' || k.kind === 'grant_keyword') && k.scope === 'all_yours')) {
+    bump(wants, 'wide', W_WANT_WIDE);
   }
   // Sacrifice costs: sac outlets WANT fodder and PRODUCE deaths.
   for (const ab of (tpl.abilities || [])) {

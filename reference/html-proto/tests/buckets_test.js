@@ -60,6 +60,30 @@ function check(label, ok, info) {
     recruiter && recruiter.wants['sub:Human'] > 0,
     JSON.stringify(recruiter && recruiter.wants));
 
+  // Wave 2 vocabulary pins — one wanter + one provider per new resource.
+  const w2 = (id) => BUCKETS.analyzeCard(id);
+  check('trick: sapling_tender wants, updraft provides',
+    w2('sapling_tender').wants.trick > 0 && w2('updraft').provides.trick > 0);
+  check('activation: backlash_mage wants, pyromaniac provides',
+    w2('backlash_mage').wants.activation > 0 && w2('pyromaniac').provides.activation > 0);
+  check('landdrop: frontier_sapling wants, rampant_growth provides (no sub:Land theme)',
+    w2('frontier_sapling').wants.landdrop > 0 && !w2('frontier_sapling').wants['sub:Land']
+    && w2('rampant_growth').provides.landdrop > 0);
+  check('animate: rootbound_sentinel wants, earthsinger provides',
+    w2('rootbound_sentinel').wants.animate > 0 && w2('earthsinger').provides.animate > 0);
+  check('flashcast (qualified spellcast wart): feinting_sprite wants it, NOT generic spellcast',
+    w2('feinting_sprite').wants.flashcast > 0 && !w2('feinting_sprite').wants.spellcast
+    && w2('lightning_bolt').provides.flashcast > 0);
+  check('carddraw: curious_faerie wants, divination provides (tutors count — house ruling)',
+    w2('curious_faerie').wants.carddraw > 0 && w2('divination').provides.carddraw > 0
+    && w2('worldly_tutor').provides.carddraw > 0);
+  check('any-of tribal wart: covenant_scholar wants BOTH Elf and Merfolk',
+    w2('covenant_scholar').wants['sub:Elf'] > 0 && w2('covenant_scholar').wants['sub:Merfolk'] > 0);
+  check('mass-buff wants:wide wart: warchanter and steadfast_knight want wide now',
+    w2('warchanter').wants.wide > 0 && w2('steadfast_knight').wants.wide > 0);
+  check('kw:flying: wing_commander wants, air_elemental provides',
+    w2('wing_commander').wants['kw:flying'] > 0 && w2('air_elemental').provides['kw:flying'] > 0);
+
   // this_card self-triggers must not register wants on other cards: an ETB
   // "when THIS enters, X" card is not an ally-ETB payoff.
   const selfEtb = Object.keys(CARDS)
