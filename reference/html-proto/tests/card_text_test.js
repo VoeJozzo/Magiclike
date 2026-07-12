@@ -205,6 +205,34 @@ eqText(describeStaticBuff({ subtype: 'Spirit', filter: { controller: 'self' },
                             keywords: ['flying'] }),
        'Other Spirits you control have flying.', 'lord granting flying');
 eqText(describeStaticBuff({}), '', 'empty buff → empty string');
+// Wave 1 extensions, pinned against real shipped templates: signed stats
+// (Rakdos Underboss, a Demon — "Other" honest) and the "Other" honesty
+// check itself (Ironbrand Marshal buffs Artifact creatures but is not one —
+// he buffs EVERY artifact creature, so no "Other").
+eqText(describeStaticBuff(CARDS['rakdos_underboss'].static_buffs[0], CARDS['rakdos_underboss']),
+       'Other Demons you control get +1/-1.', 'signed stats +1/-1 (Rakdos Underboss)');
+eqText(describeStaticBuff(CARDS['ironbrand_marshal'].static_buffs[0], CARDS['ironbrand_marshal']),
+       'Artifact creatures you control get +1/+1.',
+       'type-tag phrasing, no "Other" when the lord does not match (Ironbrand Marshal)');
+// Wave 2 keyword filter (Wing Commander): the has_keyword restriction must
+// render, and the "Other" honesty check reads the lord's EFFECTIVE keywords
+// (an Angel flies by subtype, with no keywords entry).
+const angelLord = { name: 'Wing Commander', types: ['Creature', 'Angel', 'Soldier'] };
+eqText(describeStaticBuff({ filter: { controller: 'self', has_keyword: 'flying' },
+                            power: 1, toughness: 1 }, angelLord),
+       'Other creatures you control with flying get +1/+1.',
+       'keyword filter renders; subtype-implied flying keeps "Other" honest');
+eqText(describeStaticBuff({ filter: { controller: 'self', has_keyword: 'flying' },
+                            power: 1, toughness: 1 },
+                          { name: 'Grounded Sergeant', types: ['Creature', 'Human'] }),
+       'Creatures you control with flying get +1/+1.',
+       'non-flying lord: filter renders, no "Other" (he buffs every flier)');
+eqText(describeStaticBuff({ filter: { controller: 'self', has_keyword: 'first_strike' },
+                            power: 1, toughness: 0 },
+                          { name: 'Duelist', types: ['Creature', 'Human'],
+                            keywords: ['first_strike'] }),
+       'Other creatures you control with first strike get +1/+0.',
+       'keyword display name mapping (first_strike → "first strike")');
 
 // ─── describeAbility / describeTrigger preamble ───────────────────────
 console.log('\n=== describeAbility ===');

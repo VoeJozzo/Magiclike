@@ -1027,22 +1027,6 @@ function describeStaticBuff(buff, lordTpl) {
   // (no Artifact type) buffs EVERY artifact creature, so "Other" would lie.
   const isTypeTag = buff.subtype && typeCategory(buff.subtype) === 'type';
   const sub = buff.subtype ? (isTypeTag ? buff.subtype + ' creatures' : buff.subtype + 's') : 'creatures';
-  const lordMatches = !lordTpl || !buff.subtype || hasType(lordTpl, buff.subtype);
-  const other = lordMatches ? 'Other ' : '';
-  let scope;
-  if (buff.filter && (buff.filter.controller === 'self' || buff.filter.controller === 'you')) {
-    scope = other + sub + ' you control';
-  } else if (buff.filter && buff.filter.controller === 'opp') {
-    scope = other + sub + ' an opponent controls';
-  } else {
-    scope = other + sub;
-  }
-  if (!lordMatches) scope = scope.charAt(0).toUpperCase() + scope.slice(1);
-  // Signed stat rendering: "+1/-1", not "+1/+-1" (Rakdos Underboss).
-  const signed = (n) => (n < 0 ? String(n) : '+' + n);
-  const stats = (buff.power || buff.toughness)
-    ? 'get ' + signed(buff.power || 0) + '/' + signed(buff.toughness || 0)
-    : '';
   // Lookup display names so "first_strike" → "first strike", etc.
   const kwDisplay = {
     flying: 'flying', vigilance: 'vigilance', trample: 'trample', haste: 'haste',
@@ -1050,6 +1034,34 @@ function describeStaticBuff(buff, lordTpl) {
     lifelink: 'lifelink', reach: 'reach', menace: 'menace', defender: 'defender',
     flash: 'flash', hexproof: 'hexproof', indestructible: 'indestructible',
   };
+  // Keyword-filtered buffs ("creatures you control with flying" — Wing
+  // Commander). The filter narrows who gets buffed, so the phrase must
+  // render it; before Wave 2 it was silently dropped and the text
+  // overclaimed. For the "Other" honesty check the lord's keywords are read
+  // EFFECTIVELY — subtype-implied included, since Wing Commander's own
+  // flying comes from Angel, not a keywords entry.
+  const kwFilter = (buff.filter && buff.filter.has_keyword) || null;
+  const withKw = kwFilter ? ' with ' + (kwDisplay[kwFilter] || kwFilter) : '';
+  const lordHasKw = !kwFilter || !lordTpl
+    || ((typeof ENGINE !== 'undefined' && ENGINE.addSubtypeKeywords)
+      ? ENGINE.addSubtypeKeywords((lordTpl.types || []), (lordTpl.keywords || []).slice())
+      : (lordTpl.keywords || [])).includes(kwFilter);
+  const lordMatches = (!lordTpl || !buff.subtype || hasType(lordTpl, buff.subtype)) && lordHasKw;
+  const other = lordMatches ? 'Other ' : '';
+  let scope;
+  if (buff.filter && (buff.filter.controller === 'self' || buff.filter.controller === 'you')) {
+    scope = other + sub + ' you control' + withKw;
+  } else if (buff.filter && buff.filter.controller === 'opp') {
+    scope = other + sub + ' an opponent controls' + withKw;
+  } else {
+    scope = other + sub + withKw;
+  }
+  if (!lordMatches) scope = scope.charAt(0).toUpperCase() + scope.slice(1);
+  // Signed stat rendering: "+1/-1", not "+1/+-1" (Rakdos Underboss).
+  const signed = (n) => (n < 0 ? String(n) : '+' + n);
+  const stats = (buff.power || buff.toughness)
+    ? 'get ' + signed(buff.power || 0) + '/' + signed(buff.toughness || 0)
+    : '';
   const kwList = (buff.keywords && buff.keywords.length)
     ? buff.keywords.map(k => 'have ' + (kwDisplay[k] || k)).join(' and ')
     : '';
