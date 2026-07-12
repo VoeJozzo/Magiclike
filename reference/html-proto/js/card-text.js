@@ -984,6 +984,41 @@ function abilityPickerLabel(ab, maxLen) {
 }
 
 // Lord buff: "Other <subtype>s you control get +P/+T and have <kw>."
+// Wave 2 static spell riders — "Spells you cast also …". One sentence per
+// rider, phrased by (spell_filter, rider_scope, first effect). The four
+// shipping shapes are covered exactly; a new shape rendering '' fails the
+// no-dead-text discipline loudly in tests rather than lying quietly.
+function describeSpellRider(rider, selfName) {
+  const eff = (rider.effects || [])[0] || {};
+  const filt = rider.spell_filter || {};
+  const spellNoun = filt.has_effect === 'damage'
+    ? 'Sorceries you cast that deal damage' : 'Spells you cast';
+  const scope = rider.rider_scope || 'all_targets';
+  if (scope === 'self') {
+    if (eff.kind === 'pump' && eff.duration === 'permanent') {
+      return spellNoun + ' also put a +' + (eff.power || 0) + '/+' + (eff.toughness || 0)
+        + ' counter on ' + (selfName || 'this') + '.';
+    }
+    return '';
+  }
+  const qualifier = scope === 'your_creature_targets' ? ' that target creatures you control' : '';
+  const object = scope === 'your_creature_targets' ? 'them'
+    : scope === 'creature_targets' ? 'each creature they target'
+    : 'their targets';
+  if (eff.kind === 'damage') {
+    return spellNoun + qualifier + ' also deal ' + (eff.amount || 0) + ' damage to ' + object + '.';
+  }
+  if (eff.kind === 'pump' && eff.duration === 'permanent') {
+    return spellNoun + qualifier + ' also put a +' + (eff.power || 0) + '/+' + (eff.toughness || 0)
+      + ' counter on ' + object + '.';
+  }
+  if (eff.kind === 'grant_keyword') {
+    return spellNoun + qualifier + ' also grant ' + (eff.keyword || '') + ' to ' + object
+      + (eff.duration === 'eot' ? ' until end of turn' : '') + '.';
+  }
+  return '';
+}
+
 function describeStaticBuff(buff, lordTpl) {
   // Card-TYPE buffs read "Artifact creatures" (the engine only buffs
   // creatures — lordBuffApplies gates on hasType Creature); subtype buffs
@@ -1182,6 +1217,12 @@ function describeCardSegments(card, opts) {
   if (Array.isArray(card.static_buffs)) {
     for (const buff of card.static_buffs) {
       const phrase = describeStaticBuff(buff, card);
+      if (phrase) sections.push([plainSeg(phrase)]);
+    }
+  }
+  if (Array.isArray(card.spell_riders)) {
+    for (const rider of card.spell_riders) {
+      const phrase = describeSpellRider(rider, card.name || tpl.name);
       if (phrase) sections.push([plainSeg(phrase)]);
     }
   }

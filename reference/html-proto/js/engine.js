@@ -3965,6 +3965,22 @@ function validateAllCardEffects(cards) {
           + ') — unsupported until stat-bounded lord buffs are designed (audit A4-14)');
       }
     }
+    // Wave 2 spell riders: effect kinds through the shared sweep; scope and
+    // spell_filter keys against their closed vocabularies.
+    const RIDER_SCOPES = ['all_targets', 'creature_targets', 'your_creature_targets', 'self'];
+    for (const rider of (card.spell_riders || [])) {
+      if (!rider) continue;
+      checkList(rider.effects, cardId + '.spell_riders', true);
+      if (rider.rider_scope && !RIDER_SCOPES.includes(rider.rider_scope)) {
+        schemaErrors.push(cardId + ': spell_riders rider_scope "' + rider.rider_scope
+          + '" not in ' + RIDER_SCOPES.join('/'));
+      }
+      for (const k of Object.keys(rider.spell_filter || {})) {
+        if (k !== 'has_effect' && k !== 'type') {
+          unknownFilterKeys.push(cardId + '.spell_riders.spell_filter(' + k + ')');
+        }
+      }
+    }
   }
   if (unknownKinds.length) console.warn('Unknown effect kind(s):', unknownKinds.join(', '));
   if (unknownFilters.length) console.warn('Unknown target/chooses filter(s):', unknownFilters.join(', '));
@@ -6238,6 +6254,50 @@ function pushOnStack(item) {
   }
 }
 
+// ── Wave 2: static spell riders ─────────────────────────────────────────────
+// Battlefield permanents may modify their controller's own resolving spells:
+// "Spells you cast also …" (card field `spell_riders`). Shape:
+//   spell_riders: [{ spell_filter?: {has_effect: <kind>}, rider_scope, effects }]
+// rider_scope: 'all_targets' (creatures + players), 'creature_targets',
+// 'your_creature_targets', or 'self' (the rider's own source card).
+// Semantics settled with Joe: riders apply AFTER the spell's own effects
+// (resolution-time — a pump lands before the rider reads the board); targets
+// that died during resolution are skipped; countered/fizzled spells apply no
+// riders; creature casts never do (they resolve in the permanent branch).
+// Customers: Sapling Tender, Primal Metamagus, Vigil Chanter, Wildfire Colossus.
+function applySpellRiders(item, card) {
+  const caster = item.controller;
+  const targets = Array.isArray(item.targets) ? item.targets.filter(Boolean) : [];
+  for (const src of G[caster].battlefield.slice()) {
+    for (const rider of (src.spell_riders || [])) {
+      const filt = rider.spell_filter;
+      if (filt && filt.has_effect && !cardHasEffect(card, (e) => e.kind === filt.has_effect)) continue;
+      if (filt && filt.type && !hasType(card, filt.type)) continue;
+      const ctx = { controller: caster, sourceName: src.name, sourceIid: src.iid, sourceCard: src };
+      const scope = rider.rider_scope || 'all_targets';
+      if (scope === 'self') {
+        for (const eff of (rider.effects || [])) {
+          const self = resolveSelfTarget(eff, src.iid, src.name, caster);
+          applyEffect(ctx, eff, self.tgt, self.snap);
+        }
+        continue;
+      }
+      for (const t of targets) {
+        if (t.kind === 'creature') {
+          const f = findCard(t.iid);
+          if (!f) continue;                                   // died during resolution
+          if (scope === 'your_creature_targets' && f.controller !== caster) continue;
+        } else if (t.kind === 'player') {
+          if (scope !== 'all_targets') continue;              // creature scopes skip players
+        } else {
+          continue;                                           // spell/graveyard targets: not rider-able
+        }
+        for (const eff of (rider.effects || [])) applyEffect(ctx, eff, t);
+      }
+    }
+  }
+}
+
 function resolveTopOfStack() {
   if (!G.stack.length) return;
   const item = G.stack.pop();
@@ -6321,6 +6381,7 @@ function resolveTopOfStack() {
     // `eff.target`/`target_slot` branch below, unchanged.
     const hasTargetStep = !!card.target;
     let curTgt = null, curSnap = null;
+    let ridersSkipped = false;   // set on human-prompt deferrals (riders apply only on full inline resolution)
     if (hasTargetStep) { const f0 = getTargetForSlot(0); curTgt = f0.tgt; curSnap = f0.snap; }
     for (const eff of activeEffects) {
       let tgt = null;
@@ -6333,6 +6394,7 @@ function resolveTopOfStack() {
         // doEdictChoice once the human picks. The AI path (and an empty
         // pool) falls through to the handler's auto-pick.
         if (maybeDeferHumanChooses(ctx, eff, activeEffects, curTgt)) {
+          ridersSkipped = true;
           break; // defer; spell still moves to graveyard. doEdictChoice resumes.
         }
         // Reads the established player (curTgt) and records ctx.chosen; the
@@ -6361,9 +6423,15 @@ function resolveTopOfStack() {
         snap = curSnap;
       }
       applyEffect(ctx, eff, tgt, snap);
-      if (maybeDeferTrailingForHumanPrompt(ctx, eff, activeEffects)) break;   // A4-23 leg-1
+      if (maybeDeferTrailingForHumanPrompt(ctx, eff, activeEffects)) { ridersSkipped = true; break; }   // A4-23 leg-1
     }
     ctx.chosen = null;
+    // Wave 2 static spell riders ("Spells you cast also …"): applied AFTER
+    // the spell's own effects, so a pump lands before a rider reads the
+    // board — the resolution-time semantics that dissolved the trigger
+    // version's timing trap. Fizzled and countered spells never reach here;
+    // human-chooses deferrals skip riders (no current card overlaps both).
+    if (!ridersSkipped) applySpellRiders(item, card);
     // Rip-on-target check (Elystra). Uses the eligibility snapshot taken
     // before effects fired — see comment above the snapshot for why we
     // can't re-check here (Elystra may have just died from this very

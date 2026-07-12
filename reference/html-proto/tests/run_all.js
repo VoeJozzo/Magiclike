@@ -421,6 +421,10 @@ const CATEGORY_A = [
   // Wave 1 cards (8 new-niche payoffs) + the `another` source-exclusion
   // target filter + the buckets life_changed direction split.
   'wave1_cards_test.js',
+  // Wave 2 static spell riders ('Spells you cast also …') — the shared
+  // primitive behind Sapling Tender / Primal Metamagus / Vigil Chanter /
+  // Wildfire Colossus: post-resolution application, scopes, filters, text.
+  'wave2_hook_test.js',
 ];
 
 const TESTS_DIR = __dirname;
