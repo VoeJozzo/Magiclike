@@ -104,10 +104,17 @@ file (31/32; RG_3-0 pending hook-templating nod + name pick).
 3. opponents_turn predicate (~5 lines) — Tidewatcher.
 4. card_has_effect(kind, scope) extension (~6 lines; parameterize-don't-
    multiply; scope 'etb' scans the subject card's ETB triggers) — Triage
-   Cleric. LEDGER (Joe, 2026-07-10): ability_triggered stays a FUTURE event;
-   when a trigger-matters card arrives, build it with Joe's cause-payload
-   spec (event carries WHAT caused the ability to trigger) and settle the
-   fire-time-vs-resolve-time + fizzle semantics against that card.
+   Cleric. LEDGER (Joe, 2026-07-10, semantics SETTLED by MTG-model review): the
+   ability_triggered event is fully specced and shovel-ready for its first
+   trigger-matters customer — fire-time emission at the top of
+   pushTriggerOnStack/resolveTriggerImmediate (before fizzle checks; a
+   fizzled trigger still TRIGGERED, per MTG 603), cause payload = the
+   originating event (Joe's spec), recursion handled by the existing
+   TRIGGER_DEPTH_CAP (our version of MTG's infinite-loop meta-rule — no
+   bespoke self-exclusion). Complementary grammar, not either/or:
+   structural predicates read WHAT A CARD IS; this event announces WHAT
+   JUST HAPPENED; resolve-time damage-source attribution ('a triggered
+   ability deals damage') is a third orthogonal piece, also unbuilt.
 5. card_has_subtype any-of args (~2 lines + preamble) — Covenant Scholar.
 6. ability_activated event (~15-20 lines; non-mana stack-entry emit site
    only) — Backlash Mage.
