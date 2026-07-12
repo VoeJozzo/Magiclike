@@ -102,9 +102,12 @@ file (31/32; RG_3-0 pending hook-templating nod + name pick).
    creature targets), Wildfire Colossus [CONFIRMED] (counter on self per damage-sorcery; name kept). Needs a card-text describe case (~10-15 lines).
 2. card_has_keyword(kw) predicate (~6 lines) — Feinting Sprite, Surgecaster.
 3. opponents_turn predicate (~5 lines) — Tidewatcher.
-4. card_has_effect(kind, scope) extension (~6 lines; Joe's parameterize-don't-
-   multiply ruling; scope 'etb' scans the subject card's ETB triggers) —
-   Triage Cleric.
+4. card_has_effect(kind, scope) extension (~6 lines; parameterize-don't-
+   multiply; scope 'etb' scans the subject card's ETB triggers) — Triage
+   Cleric. LEDGER (Joe, 2026-07-10): ability_triggered stays a FUTURE event;
+   when a trigger-matters card arrives, build it with Joe's cause-payload
+   spec (event carries WHAT caused the ability to trigger) and settle the
+   fire-time-vs-resolve-time + fizzle semantics against that card.
 5. card_has_subtype any-of args (~2 lines + preamble) — Covenant Scholar.
 6. ability_activated event (~15-20 lines; non-mana stack-entry emit site
    only) — Backlash Mage.

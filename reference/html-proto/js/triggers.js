@@ -37,15 +37,43 @@ const ATOMIC_PREDICATES = {
     // satisfies card_has_subtype(Cleric). (Pre-v2.0.70 this matched against the
     // legacy space-separated `sub` string; that field is gone -- types[] is now
     // the sole source, and a tag like "Goblin" is one entry, not a substring.)
-    return hasType(c, args[0]);
+    // Multiple args are ANY-OF: card_has_subtype(Elf, Merfolk) = "is an Elf
+    // or a Merfolk" (Covenant Scholar's two-tribe covenant).
+    return args.some((a) => hasType(c, a));
   },
+  // The cast/subject card carries the named keyword — including keywords
+  // IMPLIED by subtype (Angel/Dragon fly etc.), read through the same
+  // effective-keyword helper the synergy graph uses. "Whenever you cast a
+  // spell with flash" (Feinting Sprite, Surgecaster).
+  card_has_keyword: (ctx, args) => {
+    const c = ctx.event.subject_card;
+    if (!c) return false;
+    const kws = (typeof ENGINE !== 'undefined' && ENGINE.addSubtypeKeywords)
+      ? ENGINE.addSubtypeKeywords((c.types || []), (c.keywords || []).slice())
+      : (c.keywords || []);
+    return kws.includes(args[0]);
+  },
+  // True when it is not the listener's controller's turn ("Whenever you cast
+  // a spell during an opponent's turn" — Tidewatcher). Reads the active
+  // player off state; false when state carries no turn info (test stubs).
+  opponents_turn: (ctx) =>
+    !!ctx.state && ctx.state.activePlayer != null && ctx.state.activePlayer !== ctx.who,
   card_damaged_by_this: (ctx) => {
     const c = ctx.event.subject_card;
     return !!c && (c.damagedBySources instanceof Set) && c.damagedBySources.has(ctx.source.iid);
   },
   card_has_effect:  (ctx, args) => {
     const c = ctx.event.subject_card;
-    return !!c && ENGINE.cardHasEffect(c, (e) => e.kind === args[0]);
+    if (!c) return false;
+    // Optional second arg scopes WHERE to look (parameterize, don't multiply
+    // predicate names — Joe's ruling). Default: spell-level effects, as ever.
+    // 'etb': the subject card's enters-the-battlefield triggers ("whenever a
+    // creature WITH AN ETB DAMAGE ABILITY enters" — Triage Cleric).
+    if (args[1] === 'etb') {
+      return (c.triggers || []).some((trig) =>
+        triggerFiresOnEnter(trig) && (trig.effects || []).some((e) => e && e.kind === args[0]));
+    }
+    return ENGINE.cardHasEffect(c, (e) => e.kind === args[0]);
   },
   // Event-meta (player-subject events, e.g. life_changed)
   affected_player_is: (ctx, args) => ctx.event.who === _predResolvePlayer(args[0], ctx.who),
