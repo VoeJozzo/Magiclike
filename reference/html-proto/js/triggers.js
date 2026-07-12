@@ -6,6 +6,10 @@
 //   attacks          {type, subject_iid, subject_card, controller, defender_key}
 //   life_changed     {type, who, delta, source_iid?}
 //   combat_damage    {type, subject_iid, subject_card, controller, who, amount}
+//   ability_activated {type, subject_iid, subject_card, controller} — subject
+//                    is the ability's SOURCE permanent; fired only from the
+//                    non-mana stack-entry activation site (mana abilities are
+//                    structurally silent, canon §705)
 // `type` is the discriminator emit()/the dispatcher match on (the wire name is
 // the same string on both engines — PROTOCOL §3.3). `source_iid` on
 // card_zone_change names the card that CAUSED the move (e.g. the token-maker),
@@ -338,6 +342,7 @@ function triggerSubtype(trig) {
 // latter accepted during the migration window; removed in step 8).
 const VALID_TRIGGER_EVENTS = new Set([
   'card_zone_change', 'spell_cast', 'attacks', 'life_changed', 'combat_damage',
+  'ability_activated',
 ]);
 
 // Recursively collect unknown atomic-predicate names from a condition

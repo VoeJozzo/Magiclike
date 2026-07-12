@@ -6823,6 +6823,15 @@ function doActivateAbility(who, cardIid, abilityIdx, targets, sacIid) {
     // (resolveAbilityEntry) with §1006.1/§704.1 target re-validation.
     G.stack.push(entry);
     log(`${G[who].name} activates ${card.name}${targets && targets[0] ? ' on ' + targets[0].label : ''}.`, who === 'you' ? 'sp' : 'ai');
+    // ability_activated — announced from THIS site only: the non-mana
+    // stack-entry path. Mana abilities are structurally silent (they take the
+    // inline arm below / doTapLandForMana — canon §705 off-stack, so tapping a
+    // dork can never feed an activations-matter payoff), and the dormant
+    // stackable:false inline arm deliberately doesn't emit either (revisit
+    // with its design pass). Emitted BEFORE the drainTriggers() below, so a
+    // listener's trigger lands ON TOP of the ability entry — LIFO, the
+    // trigger resolves first, matching where MtG puts it.
+    emit({type: 'ability_activated', subject_iid: card.iid, subject_card: card, controller: who});
     // §603 handoff, same as a spell cast (pushOnStack) or a trigger push:
     // reset the response round and hand priority to the activator's
     // opponent. Non-mana activation is gated on isInstantWindow /

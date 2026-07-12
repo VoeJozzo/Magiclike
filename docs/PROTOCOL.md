@@ -200,6 +200,7 @@ snake_case; JS internal kinds are camelCase per the conversion rule.
 | `combat_damage`          | `combat_damage`    | (pending)      | `{subject_iid, subject_card, controller, who, amount}` |
 | `life_changed`           | `life_changed`     | (pending)      | `{who, delta, source_iid}`            |
 | `spell_cast`             | `spell_cast`       | (pending)      | `{subject_iid, subject_card, controller}` |
+| `ability_activated`      | `ability_activated`| (pending)      | `{subject_iid, subject_card, controller}` |
 
 Zone tokens for `from_zone`/`to_zone` on `card_zone_change`: `hand`, `library`,
 `graveyard`, `exile`, `stack`, `battlefield` — plus the synthetic `none`, used
@@ -223,6 +224,12 @@ previously documented `source_iid`/`controller_key` spell_cast fields exist
 nowhere in either engine. The proto's `attacks` emit also still carries dead
 legacy `attacker`/`defender` fields with zero consumers; they are deliberately
 NOT part of this spec.)
+
+`ability_activated` (Wave 2, v2.2.9) announces a NON-MANA activated ability
+taking its stack entry; `subject_card` is the ability's source permanent,
+`controller` the activator. Mana abilities never emit it — they are hardcoded
+off-stack (canon §705), so tapping a dork or a land is structurally invisible
+to activations-matter triggers (pinned in `tests/wave2_ability_event_test.js`).
 
 Both engines' trigger dispatch reads the canonical name. Adding a new
 event kind requires (a) firing it in both engines from the matching

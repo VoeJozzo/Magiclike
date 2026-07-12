@@ -425,6 +425,10 @@ const CATEGORY_A = [
   // primitive behind Sapling Tender / Primal Metamagus / Vigil Chanter /
   // Wildfire Colossus: post-resolution application, scopes, filters, text.
   'wave2_hook_test.js',
+  // Wave 2 ability_activated event (Backlash Mage's activations-matter
+  // niche): non-mana stack-entry emit site, mana abilities structurally
+  // silent, condition scoping, boot validation.
+  'wave2_ability_event_test.js',
 ];
 
 const TESTS_DIR = __dirname;
