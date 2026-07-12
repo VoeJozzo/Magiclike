@@ -1,0 +1,31 @@
+{
+  "card_id": "altar_butcher",
+  "name": "Altar Butcher",
+  "art": "🔪",
+  "cost": {
+    "R": 1,
+    "C": 1
+  },
+  "power": 2,
+  "toughness": 1,
+  "types": [
+    "Creature",
+    "Goblin",
+    "Cleric"
+  ],
+  "abilities": [
+    {
+      "cost": {
+        "tap": true,
+        "sacrifice": "creature"
+      },
+      "effects": [
+        {
+          "kind": "damage",
+          "amount": 2
+        }
+      ],
+      "target": "creature_or_player"
+    }
+  ]
+}

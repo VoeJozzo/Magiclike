@@ -1,0 +1,34 @@
+{
+  "card_id": "triage_cleric",
+  "name": "Triage Cleric",
+  "art": "⛑️",
+  "cost": {
+    "W": 1,
+    "C": 1
+  },
+  "power": 2,
+  "toughness": 2,
+  "types": [
+    "Creature",
+    "Human",
+    "Cleric"
+  ],
+  "triggers": [
+    {
+      "event": "card_zone_change",
+      "condition": [
+        "another_card",
+        "card_is_creature",
+        "controlled_by(you)",
+        "card_has_effect(damage, etb)",
+        "card_moves(anywhere, battlefield)"
+      ],
+      "effects": [
+        {
+          "kind": "gain_life",
+          "amount": 2
+        }
+      ]
+    }
+  ]
+}

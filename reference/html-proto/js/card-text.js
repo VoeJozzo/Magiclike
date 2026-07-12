@@ -811,7 +811,9 @@ function triggerPreamble(trig) {
   const ev = trig.event;
   // Classify from condId (legacy) or composable condition (Slice 2 / E2).
   const cid = triggerArchetype(trig);
-  const sub = triggerSubtype(trig) || 'creature';
+  // Any-of subtype args ("Elf, Merfolk" — Covenant Scholar) render as an
+  // "or"-join: "another Elf or Merfolk enters under your control,".
+  const sub = (triggerSubtype(trig) || 'creature').split(/,\s*/).join(' or ');
   if (cid === 'thisEnters')  return 'When this enters the battlefield,';
   if (cid === 'thisDies')    return 'When this dies,';
   if (cid === 'thisAttacks') return 'When this attacks,';
@@ -844,6 +846,27 @@ function triggerPreamble(trig) {
   if (cid === 'youGainLife')    return 'Whenever you gain life,';
   if (cid === 'oppLosesLife')   return 'Whenever an opponent loses life,';
   if (cid === 'youDiscard')     return 'Whenever you discard a card,';
+  // Wave 2 archetypes.
+  if (cid === 'youCastSpellWithKeyword') {
+    return 'Whenever you cast a spell with ' + (triggerKeyword(trig) || 'a keyword') + ',';
+  }
+  if (cid === 'youCastSpellOppTurn') return 'Whenever you cast a spell during an opponent\'s turn,';
+  if (cid === 'youCastNoncreatureSpell') return 'Whenever you cast a noncreature spell,';
+  if (cid === 'youActivateCreatureAbility') {
+    return 'Whenever you activate an ability of a creature you control,';
+  }
+  if (cid === 'anotherEtbDamagerYouEnters') {
+    return 'Whenever another creature with an enters-the-battlefield damage ability enters under your control,';
+  }
+  if (cid === 'cardYouEntersOfSubtype') {
+    // Card-type gates read as their common noun ("a land enters"); tribal
+    // subtypes keep their capital ("a Goblin enters").
+    const noun = sub === 'Land' ? 'land' : sub;
+    return 'Whenever a ' + noun + ' enters the battlefield under your control,';
+  }
+  if (cid === 'creatureYouDies') return 'Whenever a creature you control dies,';
+  if (cid === 'anotherCreatureYouAttacks') return 'Whenever another creature you control attacks,';
+  if (cid === 'youDraw') return 'Whenever you draw a card,';
   if (ev === 'attacks') return 'When this attacks,';
   return 'Whenever a relevant event occurs,';
 }

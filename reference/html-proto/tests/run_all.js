@@ -433,6 +433,9 @@ const CATEGORY_A = [
   // niche): non-mana stack-entry emit site, mana abilities structurally
   // silent, condition scoping, boot validation.
   'wave2_ability_event_test.js',
+  // Wave 2 cards (32): text goldens for the whole batch (locks the new
+  // archetype signatures + preambles) + per-card behavior probes.
+  'wave2_cards_test.js',
 ];
 
 const TESTS_DIR = __dirname;

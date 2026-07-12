@@ -5524,6 +5524,11 @@ function applyTypeChange(ctx, params, target, op) {
   const stats = (p || t) ? ` (${p}/${t})` : '';
   if (op === 'set') log(`${f.card.name} becomes ${tags.join(' ')}${stats}${dur}.`, 'sp');
   else log(`${f.card.name} becomes ${tags.join(' ')} in addition to its other types${stats}${dur}.`, 'sp');
+  // A type change can flip static-buff eligibility RIGHT NOW (a land animated
+  // into a creature must immediately see Rootbound Sentinel's "Land creatures
+  // you control have vigilance") — without this, grants lag until the next
+  // emit(), which is too late for tap-at-declare rules like vigilance.
+  applyStaticKeywordGrants();
 }
 
 // When a card leaves the battlefield, any "until removed" restrictions it

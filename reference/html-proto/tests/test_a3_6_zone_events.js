@@ -341,7 +341,10 @@ console.log('\n=== existing-pool isolation (structural pin): every shipped/gener
   // gets named here (with behavior covered by its own test) instead of
   // weakening the scan. toll_of_secrets: Wave 1 discard payoff — hears
   // card_moves(hand, graveyard); coverage in wave1_cards_test.js.
-  const INTENTIONAL_NON_BF_LISTENERS = new Set(['toll_of_secrets']);
+  // curious_faerie: Wave 2 draw payoff — hears card_moves(library, hand)
+  // under the house ruling "drawing = any library→hand move"; coverage in
+  // wave2_cards_test.js.
+  const INTENTIONAL_NON_BF_LISTENERS = new Set(['toll_of_secrets', 'curious_faerie']);
   const offenders = [];
   const scanTrig = (label, trig) => {
     if (!trig || trig.event !== 'card_zone_change') return;

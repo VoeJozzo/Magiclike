@@ -277,6 +277,7 @@ function _condSignature(event, condition) {
   if (!Array.isArray(condition)) return event + ' | <non-array>';
   const terms = condition.map((t) => (typeof t === 'string'
     ? t.replace(/card_has_subtype\([^)]*\)/, 'card_has_subtype(*)')
+       .replace(/card_has_keyword\([^)]*\)/, 'card_has_keyword(*)')
     : JSON.stringify(t)));
   return event + ' | ' + terms.join(', ');
 }
@@ -303,6 +304,24 @@ const _ARCHETYPE_BY_SIG = {
   'card_zone_change | card_has_subtype(*), card_moves(battlefield, graveyard)': 'cardDiesOfSubtype',
   'spell_cast | another_card, controlled_by(you)': 'youCastSpell',
   'spell_cast | another_card, controlled_by(you), card_has_effect(counter)': 'youCastCounterspell',
+  // Wave 2 archetypes. card_has_keyword wildcards like card_has_subtype (see
+  // _condSignature); card_has_effect stays literal (youCastCounterspell
+  // precedent — the args ARE the archetype).
+  'spell_cast | another_card, controlled_by(you), card_has_keyword(*)': 'youCastSpellWithKeyword',
+  'spell_cast | another_card, controlled_by(you), opponents_turn': 'youCastSpellOppTurn',
+  'spell_cast | another_card, controlled_by(you), {"op":"not","terms":["card_is_creature"]}': 'youCastNoncreatureSpell',
+  'ability_activated | controlled_by(you), card_is_creature': 'youActivateCreatureAbility',
+  'card_zone_change | another_card, card_is_creature, controlled_by(you), card_has_effect(damage, etb), card_moves(anywhere, battlefield)': 'anotherEtbDamagerYouEnters',
+  // No card_is_creature term: the subtype IS the gate (OfSubtype precedent) —
+  // today's customers are landfall (card_has_subtype(Land) reads types[]
+  // through hasType, so card types work as "subtypes" here).
+  'card_zone_change | controlled_by(you), card_has_subtype(*), card_moves(anywhere, battlefield)': 'cardYouEntersOfSubtype',
+  'card_zone_change | card_is_creature, controlled_by(you), card_moves(battlefield, graveyard)': 'creatureYouDies',
+  'attacks | another_card, controlled_by(you)': 'anotherCreatureYouAttacks',
+  // House ruling (Joe, Wave 2): "drawing" = ANY library→hand move, tutors
+  // included — the text says "draw" and the wire is honest because the house
+  // defines draw that way. (Backlog: tutor-text consistency pass.)
+  'card_zone_change | controlled_by(you), card_moves(library, hand)': 'youDraw',
 };
 
 // Classify a trigger into its archetype id (the old condId vocabulary) from
@@ -327,11 +346,23 @@ function triggerFiresOnEnter(trig) {
 }
 
 // Extract the subtype a trigger filters on (card_has_subtype(...) term, or a
-// legacy params.sub), for preamble phrasing. Null if none.
+// legacy params.sub), for preamble phrasing. Null if none. Any-of args come
+// back raw ("Elf, Merfolk") — the preamble renders the "or"-join.
 function triggerSubtype(trig) {
   for (const t of (trig && trig.condition || [])) {
     if (typeof t === 'string' && t.startsWith('card_has_subtype(')) {
       return t.slice('card_has_subtype('.length, -1).replace(/^"|"$/g, '');
+    }
+  }
+  return null;
+}
+
+// Sibling of triggerSubtype for card_has_keyword(...) terms — feeds the
+// youCastSpellWithKeyword preamble ("Whenever you cast a spell with flash,").
+function triggerKeyword(trig) {
+  for (const t of (trig && trig.condition || [])) {
+    if (typeof t === 'string' && t.startsWith('card_has_keyword(')) {
+      return t.slice('card_has_keyword('.length, -1).replace(/^"|"$/g, '');
     }
   }
   return null;

@@ -48,17 +48,17 @@ function check(label, ok, info) {
   check('implied keywords: Angel gets the flying plan tag', serra.tags.has('flying'));
 
   // Humans are NOT special-cased: they provide their subtype like any tribe.
-  // Nothing in today's pool WANTS them (a pool fact, not a ban) — so Human
-  // generates zero edges until someone ships a Human payoff, at which point
-  // Human tribal simply starts working with no code change.
+  // The old pin here documented "nothing wants Humans (a pool fact, not a
+  // ban) — Human tribal starts working the day a payoff ships, no code
+  // change." Wave 2 shipped that payoff (chapter_recruiter), and the
+  // prophecy held: the want appeared with zero extractor changes.
   const knight = BUCKETS.analyzeCard('white_knight');
   check('Humans provide sub:Human like any tribe (no exclusion list)',
     knight && knight.provides['sub:Human'] > 0);
-  const anyHumanWant = Object.keys(CARDS).find(id => {
-    const a = BUCKETS.analyzeCard(id);
-    return a && a.wants['sub:Human'];
-  });
-  check('today: nothing wants Humans (documents the pool, not a rule)', !anyHumanWant);
+  const recruiter = BUCKETS.analyzeCard('chapter_recruiter');
+  check('chapter_recruiter WANTS Humans (the payoff arrived, no code change)',
+    recruiter && recruiter.wants['sub:Human'] > 0,
+    JSON.stringify(recruiter && recruiter.wants));
 
   // this_card self-triggers must not register wants on other cards: an ETB
   // "when THIS enters, X" card is not an ally-ETB payoff.

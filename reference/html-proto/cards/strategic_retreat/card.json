@@ -1,0 +1,29 @@
+{
+  "card_id": "strategic_retreat",
+  "name": "Strategic Retreat",
+  "art": "↩️",
+  "cost": {
+    "U": 1,
+    "C": 1
+  },
+  "types": [
+    "Sorcery"
+  ],
+  "keywords": [
+    "flash"
+  ],
+  "target": "your_creature",
+  "effects": [
+    {
+      "kind": "affect_creature",
+      "severity": "bounce"
+    },
+    {
+      "kind": "move_card",
+      "from_zone": "library",
+      "to_zone": "hand",
+      "selector": "controller_top",
+      "amount": 1
+    }
+  ]
+}

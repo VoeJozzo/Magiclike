@@ -1,0 +1,33 @@
+{
+  "card_id": "aggressive_instigator",
+  "name": "Aggressive Instigator",
+  "art": "📣",
+  "cost": {
+    "R": 1,
+    "C": 1
+  },
+  "power": 2,
+  "toughness": 1,
+  "types": [
+    "Creature",
+    "Goblin",
+    "Berserker"
+  ],
+  "triggers": [
+    {
+      "event": "attacks",
+      "condition": [
+        "another_card",
+        "controlled_by(you)"
+      ],
+      "effects": [
+        {
+          "kind": "pump",
+          "power": 1,
+          "toughness": 0,
+          "scope": "self"
+        }
+      ]
+    }
+  ]
+}
