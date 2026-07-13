@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.2.21`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.2.22`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -2785,3 +2785,24 @@ earned — fallbacks are now always named Reinforcements, and a new pin
 enforces the invariant "a theme label implies a synergy story (why[]
 non-empty)". Browser-verified on the draft offer screen. Suite 150 files
 / 2968 green.
+
+v2.2.22: Killed the bucket labelling system (Joe: "there are other ways to
+generate a header than what we have right now, and what we have right now
+has real costs. sounds like a very solid cut."). THEME_NAMES, nameBucket,
+the tribal tiebreak, forceFallbackName, and the name-dedup retry are all
+deleted — the v2.2.21 narrative tiles obsoleted the label's communication
+job (the seed's story IS the header), and the name was a second, parallel
+summarization of the bucket that drifted from the story twice in one week
+(v2.2.15: unnamed resources fell to the Reinforcements label; v2.2.21:
+fallbacks wore theme labels). Buckets now carry `fallback: boolean` — the
+contract line the name was a proxy for. UI: themed tiles lead with the
+story, only fallback bundles wear a flat REINFORCEMENTS label; the
+addBucket teaser lists seed card names ("Goblin Chieftain & friends").
+PICKLOG bucket records key on seed (cards[0]) + fallback flag instead of
+name (old persisted records keep `name`; readers must tolerate both).
+Offer plan-diversity is carried by seed sampling without replacement; if
+PICKLOG shows offers converging on one plan, the principled fix is
+seed-level MMR, not a name check. Tests re-keyed: fallback<->story
+invariant (both directions now), Goblin pin checks actual Goblin
+recruitment instead of the "Goblin Warband" string, offer diversity
+measured on card sets.

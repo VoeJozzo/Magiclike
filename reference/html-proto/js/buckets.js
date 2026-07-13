@@ -1,12 +1,16 @@
 // BUCKETS — synergy-graph bucket generation (the Growing Deck's card faucet).
 //
-// A bucket is a named bundle of 3 cards + 2 basic lands that share a PLAN.
+// A bucket is a bundle of 3 cards + 2 basic lands that share a PLAN.
 // The core idea: a cohesive bucket is a micro-engine — cards that COMPLETE
 // each other (producer → consumer), not cards that merely resemble each
 // other. Blood Artist doesn't want other drain cards; it wants things that
 // die. The generator never decides "I'll build a Goblin bucket" — it picks
 // a seed card and asks the graph "who wants to be near this card?"; the
-// theme name is read off the answer afterward.
+// bucket's identity is its STORY (cards[0] is the seed, why[] the recruited
+// friends' reasons), read straight off the growth edges. There used to be a
+// derived display name on top (THEME_NAMES + dominant-edge nameBucket) —
+// killed at v2.2.22: a second, parallel summarization of the same bucket
+// that drifted from the story twice in one week (v2.2.15, v2.2.21).
 //
 // Pipeline (see docs/plans/plan-bucket-draft.md for the full design):
 //   §1 analyze(card)  — derive PROVIDES / WANTS resource sets + plan tags
@@ -22,9 +26,9 @@
 //                       whole legal pool, each card weighted by its deck-
 //                       affinity (weights-as-weights: the wishlist shapes
 //                       the odds, not the outcomes). Low-coherence buckets
-//                       fall back to a loose "Reinforcements" bundle so
+//                       fall back to a loose value-sampled bundle
+//                       (fallback: true — the UI's "Reinforcements") so
 //                       offers never come up empty.
-//   §5 naming         — bucket name = label of the dominant edge resource.
 //
 // API: rollBucketOffer(deckTplIds), rollBucket(seedTplId, deckTplIds),
 //      edgeBetween(aId, bId), analyzeCard(tplId), landsForCards(cardTplIds),
@@ -89,60 +93,6 @@ const SEED_BASE_WEIGHT = 0.75;
 // If a broad tribe ever swamps offers, the principled lever is specificity
 // weighting (scale a resource's edges down by how many cards provide it),
 // not a ban list.
-
-// ---------------------------------------------------------------------------
-// §5 (data) Theme names — resource key → bucket display name.
-// The one place flavor is authored. Fallbacks: tribal themes without an
-// entry get "<Subtype> Pack"; anything else gets "Reinforcements".
-// ---------------------------------------------------------------------------
-const THEME_NAMES = {
-  'sub:Goblin':   'Goblin Warband',
-  'sub:Spirit':   'Spirit Choir',
-  'sub:Soldier':  'The Muster',
-  'sub:Wizard':   'Arcanum Circle',
-  'sub:Cleric':   'The Congregation',
-  'sub:Knight':   'The Vanguard',
-  'sub:Beast':    'The Wild Hunt',
-  'sub:Treefolk': 'The Old Growth',
-  'sub:Druid':    'Grove Keepers',
-  'sub:Elf':      'The Greenweald',
-  'sub:Drake':    'Drake Aerie',
-  'sub:Vampire':  'The Thirst',
-  'sub:Zombie':   'The Risen',
-  'sub:Artifact': 'The Foundry',
-  dies:      'Grave Bargains',
-  discard:   'The Toll',
-  opp_loss:  'Bloodletting',
-  fodder:    'The Expendables',
-  etb:       'The Processional',
-  lifegain:  'Communion',
-  spellcast: 'Spellstorm',
-  wide:      'The Horde',
-  flying:    'Skyborne',
-  aggro:     'The Red Charge',
-  removal:   'The Culling',
-  cardflow:  'Deep Lore',
-  // Wave 2 + extraction-sweep vocabulary. The name table must grow with the
-  // resource vocabulary: a synergy bucket themed on an unnamed resource
-  // falls back to the 'Reinforcements' LABEL, which carries a no-dupes
-  // contract that synergy buckets never made (caught by the buckets_test
-  // sold-own-card pin when the sweep made mind_control a fodder provider).
-  self_pain:  'Blood Price',
-  trick:      'Sleight of Hand',
-  flashcast:  'The Ambush',
-  burnspell:  'Kindling',
-  carddraw:   'The Archive',
-  activation: 'The Clockworks',
-  landdrop:   'The Frontier',
-  animate:    'The Wakening',
-  tapped:     'The Sleep Raid',
-  wrathproof: 'The Aftermath',
-  etbtrigger: 'The Revolving Door',
-  tapability: 'The Clockworks',
-  counterspell: 'The Refusal',
-  'kw:flying': 'Skyborne',
-  fallback:  'Reinforcements',
-};
 
 // Test seam: all randomness flows through _rand so tests can inject a
 // deterministic sequence (mirrors run.js's _setPendingRewardForTest pattern).
@@ -767,7 +717,7 @@ function reinforcementsBucket(deckColors, deckTplIds) {
 }
 
 // ---------------------------------------------------------------------------
-// §4 Lands + naming + offer composition.
+// §4 Lands + offer composition.
 // ---------------------------------------------------------------------------
 // Bucket lands, in Joe's words: "What's the most common color? You get one
 // of those! What's the second most common color? You get one of those!"
@@ -792,44 +742,16 @@ function landsForCards(cardTplIds) {
 }
 const COLOR_TO_BASIC = { W: 'plains', U: 'island', B: 'swamp', R: 'mountain', G: 'forest' };
 
-// Bucket name = label of the resource carrying the most internal edge weight.
-// Tribal resources win ties (a Goblin bucket should be named for goblins even
-// when generic dies-edges carry similar mass).
-function nameBucket(bucket) {
-  const mass = {};
-  for (let i = 0; i < bucket.length; i++) {
-    for (let j = i + 1; j < bucket.length; j++) {
-      const a = bucket[i], b = bucket[j];
-      for (const [r, pw] of Object.entries(a.provides)) {
-        if (b.wants[r]) mass[r] = (mass[r] || 0) + pw * b.wants[r] * idf(r);
-      }
-      for (const [r, pw] of Object.entries(b.provides)) {
-        if (a.wants[r]) mass[r] = (mass[r] || 0) + pw * a.wants[r] * idf(r);
-      }
-      for (const t of a.tags) if (b.tags.has(t)) mass[t] = (mass[t] || 0) + W_HOMOPHILY;
-    }
-  }
-  let best = null;
-  let bestScore = 0;
-  for (const [r, m] of Object.entries(mass)) {
-    const tribalBoost = r.startsWith('sub:') ? 1.5 : 1;
-    if (m * tribalBoost > bestScore) { bestScore = m * tribalBoost; best = r; }
-  }
-  if (!best) return THEME_NAMES.fallback;
-  if (THEME_NAMES[best]) return THEME_NAMES[best];
-  if (best.startsWith('sub:')) return best.slice(4) + ' Pack';
-  return THEME_NAMES.fallback;
-}
-
-function finishBucket(bucketAnalyses, why, forceFallbackName) {
+function finishBucket(bucketAnalyses, why, isFallback) {
   const cards = bucketAnalyses.map(a => a.tplId);
   return {
-    // A goodstuff bundle must WEAR the Reinforcements label: its cards can
-    // share accidental edge mass, and a theme name implies the synergy
-    // contract (seed + recruited friends) that value-sampling never made.
-    // Inverse of the v2.2.15 naming bug, caught by the story tiles: 4/90
-    // fallback bundles were dressing up as "The Revolving Door" etc.
-    name: forceFallbackName ? THEME_NAMES.fallback : nameBucket(bucketAnalyses),
+    // The fallback flag IS the contract line: a seed-grown bucket carries a
+    // story (cards[0] = seed, why[] = recruited friends' reasons); a
+    // value-sampled goodstuff bundle carries neither and must say so —
+    // its cards can share accidental edge mass, and a story implies a
+    // synergy contract that value-sampling never made (v2.2.21's bug, when
+    // this distinction was carried by a derived display name instead).
+    fallback: !!isFallback,
     cards,
     lands: landsForCards(cards),
     coherence: Math.round(coherenceOf(bucketAnalyses) * 10) / 10,
@@ -878,10 +800,12 @@ function rollBucketOffer(deckTplIds) {
   const deckAnalyses = deckIds.map(id => _byId[id]).filter(Boolean);
   const deckColors = deckColorSet(deckIds);
   const offer = [];
-  const usedNames = new Set();
-  // Grow one bucket per seed. An offer of three identically-named plans is
-  // a boring offer, so a bucket whose name duplicates an already-offered one
-  // gets ONE retry with a fresh seed before being accepted anyway.
+  // Grow one bucket per seed. Offer-level plan diversity is carried by seed
+  // sampling without replacement; the old name-dedup retry (re-roll a bucket
+  // whose derived display name collided with an already-offered one) died
+  // with the naming system — it was string-keyed on a cosmetic proxy and
+  // leaked in both directions. If PICKLOG shows offers converging on one
+  // plan, the principled replacement is seed-level MMR, not a name check.
   const tryAddBucket = (seed) => {
     const { bucket, why } = growBucket(seed, deckAnalyses, deckColors);
     if (bucket.length === BUCKET_CARDS && coherenceOf(bucket) >= MIN_COHERENCE) {
@@ -893,16 +817,8 @@ function rollBucketOffer(deckTplIds) {
   const seeds = pickSeeds(deckAnalyses, deckColors);
   for (const seed of seeds) {
     if (offer.length >= OFFER_SIZE) break;
-    let bucket = tryAddBucket(seed);
-    if (bucket && usedNames.has(bucket.name)) {
-      const retrySeeds = pickSeeds(deckAnalyses, deckColors)
-        .filter(s => s.tplId !== seed.tplId && !offer.some(b => b.cards.includes(s.tplId)));
-      if (retrySeeds.length) {
-        const retry = tryAddBucket(retrySeeds[Math.floor(_rand() * retrySeeds.length)]);
-        if (retry && !usedNames.has(retry.name)) bucket = retry;
-      }
-    }
-    if (bucket) { usedNames.add(bucket.name); offer.push(bucket); }
+    const bucket = tryAddBucket(seed);
+    if (bucket) offer.push(bucket);
   }
   // Backfill with Reinforcements if seeding starved (tiny pools, weird colors).
   while (offer.length < OFFER_SIZE) {

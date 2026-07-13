@@ -83,12 +83,21 @@ function finishDraft(colors) {
 // the draft is finished, to the latest draft record (reward-time growth).
 function logBucketPick(chosen, offered) {
   ensurePicklogLoaded();
+  // Buckets are keyed by their SEED (cards[0]) + fallback flag — the derived
+  // display name died at v2.2.22, and the seed is the better analytics key
+  // anyway (two different plans could share a name; a seed is one plan).
+  // Older persisted records carry `name` instead; readers must tolerate both.
   const record = {
-    name: chosen.name,
+    seed: chosen.fallback ? null : chosen.cards[0],
+    fallback: !!chosen.fallback,
     cards: chosen.cards.slice(),
     lands: (chosen.lands || []).slice(),
     coherence: chosen.coherence,
-    offered: (offered || []).map(b => ({ name: b.name, cards: b.cards.slice() })),
+    offered: (offered || []).map(b => ({
+      seed: b.fallback ? null : b.cards[0],
+      fallback: !!b.fallback,
+      cards: b.cards.slice(),
+    })),
   };
   const target = currentDraft || data.drafts[data.drafts.length - 1];
   if (!target) return;
