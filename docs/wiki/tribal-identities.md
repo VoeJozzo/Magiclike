@@ -44,6 +44,8 @@ What each creature type **does**, mechanically. Sibling page: [[mechanical-color
 | Warrior | R-pulled | The self-enlisted army — red's rank-and-file mirror of the Soldier | settled |
 | Shaman | R/B | **The conductor** — instructs other cards: converts the tribe's events (ETBs, deaths, attacks) into effects | settled |
 | Rogue | U/B | **Saboteurs** — mildly evasive, painful on connection ("when ~ deals combat damage to a player: they discard / you look / you steal"). Engine note: the combat-damage-to-player trigger exists (`thisDealsCombatDamageToOpp`, live on Ancient Hydra since v2.2.7) — buildable today | settled |
+| Berserker | R | **Pain-matters**: gets stronger when you lose life or when it attacks. Red converts damage received into aggression; black *spends* life — the berserker just gets angrier (Reckless Bloodletter, Bloodlust Berserker, the `youLoseLife` predicate) | settled |
+| Blacksmith | R/C | The forge's class — artifact-adjacent (Ironbrand Marshal); the tapering world's living craft | leaning |
 
 Soldier vs. Warrior is a deliberate mirror: the Soldier was *mustered* (the institution drafts you), the Warrior *enlisted* ("rather the army than an inhabitant" — [[red]]).
 

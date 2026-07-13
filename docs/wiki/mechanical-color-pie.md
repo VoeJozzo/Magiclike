@@ -65,6 +65,7 @@ The pie is defined as much by what colors **can't** do; here weaknesses are draf
 - **Run-layer verbs are pie material** *(leaning)*: rip/steal = red · bargains = black · equalize = white · cloning = blue · accretion = green. The bosses already prove it.
 - **Flash is unlegislated** *(settled as a non-rule)*: flash on spells encodes instant-speed, no pie signal; a creature-flash shape may emerge on its own. Watch, don't rule.
 - **No auras, no equipment — on purpose** *(proposed)*: permanent modification lives at the run layer; [[sticker-system|stickers]] and [[staple-synthesis|splices]] are our auras.
+- **Riders and compositions are free** *(settled 2026-07-13)*: a card gluing two colors' verbs together ("counter a spell and gain 3 life") needs no new pie entry — it composes from what the colors already do. Only new *verbs* need slots.
 
 ## Pair archetypes *(all leaning)*
 
@@ -80,6 +81,9 @@ WU Spirits & flicker · UB contested truth (the [[tribal-identities|Rogue]]'s pa
 - **First strike outside Knights — W/R** *(proposed)*: the drilled line and the duelist; matches the current pool split.
 - **Land interaction — settled** *(settled 2026-07-13)*: available, softened by classic-mode auto-fill. **Red destroys outright** (scorched earth) · **green destroys-but-replaces** ("destroy a land; its controller gets a new one" — succession, the land gone feral) · **white symmetric or equalizing** (everyone's works, or "destroy if they have more") · **black steals lands** — foreclosure. (The lands-as-abilities model makes a stolen land just work: it taps for its new owner.)
 - **Coin flips / chaos — rejected** *(settled)*: prefer output randomness elsewhere; not a color identity.
+- **Artifact synergies** *(settled 2026-07-13, except as noted)*: **red forges** (artifact-creature aggression — Ironbrand Marshal, Scrap Hound; the Blacksmith class); **green never** (the Reclaim digests — anti-affinity as identity); **blue catalogs** (artifacts as objects of the past: provenance, study); **black covets** *(penciled — greed/appraisal register)*; white unruled.
+- **Conversion is pan-color** *(penciled)*: "transform without killing" is an effect class, not a slice — each color converts toward its own register (white retires, green animates, blue falsifies, black repossesses).
+- **Design-space pencil marks** *(parked until wanted)*: white erosion-costs — strong effects with maintenance bills ("at end of turn, pay {W} or release it"); the testimony mechanic (cards whose behavior varies per run, Mercurial-style — mechanically *lying* text is impossible here by construction: procedural card text is a truth-machine).
 
 ## Assignments awaiting verdict *(proposed)*
 
