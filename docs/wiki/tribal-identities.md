@@ -42,7 +42,7 @@ What each creature type **does**, mechanically. Sibling page: [[mechanical-color
 | Druid | G | Ramp and mana dorks — attendance, not command ([[green]]) | settled |
 | Warrior | R-pulled | The self-enlisted army — red's rank-and-file mirror of the Soldier | settled |
 | Shaman | R/B | **The conductor** — instructs other cards: converts the tribe's events (ETBs, deaths, attacks) into effects | settled |
-| Rogue | U/B | **Saboteurs** — mildly evasive, painful on connection ("when ~ deals combat damage to a player: they discard / you look / you steal"). Engine note: needs a combat-damage-to-player trigger event | settled |
+| Rogue | U/B | **Saboteurs** — mildly evasive, painful on connection ("when ~ deals combat damage to a player: they discard / you look / you steal"). Engine note: the combat-damage-to-player trigger exists (`thisDealsCombatDamageToOpp`, live on Ancient Hydra since v2.2.7) — buildable today | settled |
 
 Soldier vs. Warrior is a deliberate mirror: the Soldier was *mustered* (the institution drafts you), the Warrior *enlisted* ("rather the army than an inhabitant" — [[red]]).
 
