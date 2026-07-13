@@ -57,14 +57,18 @@ them — so don't); desugar string-effect shorthand (`"draw(2)"` → the
    (+ `distinct_targets: true` for "another target"). Source-exclusion
    ("ANOTHER target creature you control") = `target_filter: {another: true}`.
 4. **Trigger conditions are flat AND-arrays of registered predicate strings**
-   (`js/triggers.js ATOMIC_PREDICATES` — 12 + any-of args). `{op:'or'}` trees
-   evaluate at runtime BUT break archetype classification (generic card text,
-   degraded AI). OR semantics = two triggers, or a multi-arg predicate.
+   (`js/triggers.js ATOMIC_PREDICATES` — 12 + any-of args). `{op}` trees
+   evaluate at runtime but classify to an archetype ONLY if their exact
+   JSON.stringify'd form is a literal key in `_ARCHETYPE_BY_SIG`
+   (spellrider's `{op:'not'}` is the shipped precedent) — an unregistered
+   tree means generic card text and degraded AI. OR semantics = a
+   multi-arg predicate (preferred) or two triggers.
    **Term order is load-bearing**: match the order used in
    `_ARCHETYPE_BY_SIG` (`js/triggers.js`) or your trigger classifies to
    nothing — silently. New condition shape? Add the archetype entry + a
-   card-text preamble (`js/card-text.js triggerPreamble`) + keep the
-   duplicate table in `tests/trigger_migration_test.js` in lockstep.
+   card-text preamble (`js/card-text.js triggerPreamble`); the migration
+   test reads the LIVE table (no duplicate to maintain since v2.2.9), and
+   the wave2_cards_test text-golden pattern is the cheap way to lock both.
 5. **Spell-cast triggers resolve ABOVE the spell that caused them** (MTG
    rule, deliberately). A "when you cast a pump spell, ping" design pings
    BEFORE the pump lands. If the effect must see the spell's result, it

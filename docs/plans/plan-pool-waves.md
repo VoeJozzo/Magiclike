@@ -107,7 +107,8 @@ bounce rules (twins dead), kw:deathtouch (Reckoning dead), reanimation-wants
 rule (Memory dead; it was honest for deepseam_quarry but deletions are wins —
 re-add when a reanimator ships).
 
-**Open item:** Tideglass Broker final spec (Fable proposes, Joe cuts).
+**Open item:** ~~Tideglass Broker final spec~~ — STALE, shipped v2.2.8
+(flash flier, ETB blinks ANOTHER creature via `target_filter {another:true}`).
 
 ## Wave 2 FINAL BUILD SPEC (locked 2026-07-10; flavor in wave2_flavor_final.json)
 
