@@ -157,6 +157,43 @@ Distance between two card groups = **mean cross-edge mass** between their member
 - Adjacent-slot selector needs one more design iteration (the prototype's filter was too strict and returned empty).
 - Where does the loose Reinforcements bucket get its name/flavor variety from? (Cosmetic, but names are half the charm.)
 
+## 8b. Measured dead ends (do not re-litigate without new data)
+
+- **ε-value growth term — measured negative at every dose, not shipped
+  (2026-07-13).** The "organic Murder" idea (add `ε·value·colorFit` to
+  gate-passing growth candidates so high-value answer cards ride into themed
+  buckets). Assay: 300–400 offers × 3 deck scenarios (empty / committed BR /
+  mono-B aristocrats), both dials watched per the standing rule. Every
+  variant failed:
+  - *Every-slot ε (Joe's simple version, tried first per agreement):*
+    coherence degrades hard — fallback rate 23%→35% on the committed deck at
+    ε=0.15 (empty 11%→23%), for ~+2pp answer-card inclusion. An additive
+    bump to EVERY gate-passer fattens the whole tail against the
+    squared-edge heads.
+  - *Last-seat-only ε:* still degrades (fallback +8pp) — marginal buckets
+    that needed a real third recruit to clear MIN_COHERENCE got a value
+    rider instead and died at the gate, erasing their own successes.
+  - *Earned-seat guard (ε only when the 2-card bucket already clears
+    MIN_COHERENCE; provably can't raise fallback — pairwise coherence is
+    monotone in members) + linear seat sampling (no GROWTH_SHARPNESS
+    squaring, per the original tail-seat spec):* fallback flat as proven,
+    but inclusion STILL flat from ε=0.15 to ε=1.5 (watch-list-in-grown
+    ~5–8% baseline, ±1pp at every dose).
+  - *Root cause (pipeline probe):* seat earned in 32% of grown buckets;
+    watch card gate-legal there 20%; and it wins the sampled seat only
+    4–6% of those — because every candidate gets value added, the linear
+    seat spreads nearly uniformly over ~200 gate-passers. **Under
+    weights-as-weights proportional sampling over a pool this size, no
+    additive value term can concentrate probability on specific cards.**
+    Concentration requires head-picking (top-K — violates the
+    weights-as-weights doctrine) or offer-composition (the guaranteed
+    Answers tile — rejected by Joe as samey-goodstuff).
+  - *What actually serves the need today:* the v2.2.19 dies-extraction
+    (Murder reaches death-wanting decks through REAL edges) plus the
+    Reinforcements channel; measured per-offer, 11–18% of offers already
+    contain at least one answer card. Assay + probe scripts preserved in
+    the session scratchpad (epsilon_assay, seat_probe, fallback_probe).
+
 ## 9. Sources (Hearthstone research)
 
 - [Dungeon Run — Hearthstone Wiki](https://hearthstone.fandom.com/wiki/Dungeon_Run) (bundle mechanics)
