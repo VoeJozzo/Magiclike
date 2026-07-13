@@ -181,6 +181,11 @@ function collectKindsAndConds(node, kinds, conds) {
 const HINT_RESOURCES = new Set([
   'dies', 'fodder', 'etb', 'lifegain', 'spellcast', 'wide', 'anthem',
   'discard', 'self_pain', 'opp_loss',
+  // trick: whitelisted for Elystra (v2.2.25) — her permanence makes her the
+  // pool's hungriest consumer of your-creature-targeted spells, and hints
+  // are exactly how a custom-kind card declares that (she was this
+  // mechanism's design exemplar all along; the hint just never got wired).
+  'trick',
 ]);
 function applySynergyHints(tpl, provides, wants) {
   if (!tpl.synergy) return;

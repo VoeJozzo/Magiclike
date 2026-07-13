@@ -392,6 +392,21 @@ function check(label, ok, info) {
     `${sets.size} distinct sets from ${seen} offers in ${rolls} rolls`);
 }
 
+// --- §6c2 Elystra's authored want (v2.2.25) -----------------------------------
+{
+  // The synergy-hint mechanism's design exemplar finally uses it: Elystra's
+  // permanence (EOT effects stick forever) is declared as wants:trick on the
+  // card. She's special (never offered), but a deck holding her must pull
+  // trick spells into offers via seed affinity.
+  const ely = BUCKETS.analyzeCard('elystra_the_immortal');
+  check('elystra WANTS trick (authored synergy hint)', ely && ely.wants.trick === 3,
+    JSON.stringify(ely && ely.wants));
+  const e = BUCKETS.edgeBetween('giant_growth', 'elystra_the_immortal');
+  check('a pump spell feeds elystra (live edge, trick reason)',
+    e.w > 1 && e.reasons.some(r => r.includes('[trick]')),
+    `w=${e.w} ${JSON.stringify(e.reasons)}`);
+}
+
 // --- §6e the dupe shelf (v2.2.24) --------------------------------------------
 {
   const f = BUCKETS._dupeFactorForTest;

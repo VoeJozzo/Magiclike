@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.2.24`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.2.25`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -2858,3 +2858,16 @@ the shelf comment: demand-driven scarcity is "almost like tcgplayer"
 global-rarity mechanism; door noted, deliberately unopened. 7 new shelf
 pins (arithmetic, basics exclusion, quarry inclusion, wall-retreat,
 behavioral never-zero). Suite 150 files / 2976 green.
+
+v2.2.25: Elystra learns to want (Joe's playtest catch: "Elystra doesn't
+appear to have wants, pulling on buff spells and stuff"). She was the
+synergy-hint mechanism's design exemplar from day one — the §1b comment
+names "Elystra's permanence" — but no hint was ever authored on her card.
+Now wired: wants trick 3 via card-declared synergy hint ('trick' added to
+the HINT_RESOURCES whitelist). She's special (never offered in buckets),
+but a deck holding her exerts trick-ward pull on every offer through seed
+affinity — giant_growth <-> elystra is a live edge with the [trick]
+reason. Plus a tile-alignment fix from the same playtest: the story block
+is now a fixed 112px (7 lines) with scroll overflow, so the three tiles'
+card columns line up regardless of story length. 2 new pins. Suite 150
+files / 2978 green.
