@@ -297,14 +297,10 @@ Reference via `TUNING.X` in scorers.
 
 ## 4. Card data
 
-### 4.1 [P2/S] Remove vestigial JSON wiring (Godot)
-**Where.** `addons/card-framework` ships `JsonCardFactory`; `cards/data/` directory exists but is empty; the project uses `TresCardFactory` exclusively. (The CLAUDE.md text that previously called JSON templates "active" is now corrected to "vestigial.")
+### 4.1 [RESOLVED] Remove vestigial JSON wiring (Godot)
+**Was.** `cards/data/` sat empty and `json_card_factory.tscn` suggested a second data source.
 
-**Smell.** False trail for new contributors. Suggests two data sources when there's one.
-
-**Remaining.** The doc wording is fixed; the optional code cleanup is to delete the empty `cards/data/` directory (and the unused `JsonCardFactory` wiring) so there's no dead path at all. Downgraded to P2 since the misleading-doc part is resolved.
-
-**Triggered by.** Whenever this confuses a new session. Cheap to do at any time.
+**Resolved.** Commit `c11c15ee` deleted `cards/data/` and replaced the factory wiring with `scenes/tres_card_factory.{gd,tscn}` (extends the addon's `JsonCardFactory` for visual scaffolding only). No dead path remains.
 
 ---
 
