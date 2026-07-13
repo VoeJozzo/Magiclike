@@ -24,11 +24,11 @@ How the **Godot port** is built: where each piece of behavior lives (modules) **
 ├── addons/card-framework/     vendored chun92 framework (MIT; do not modify)
 ├── assets/                    shared between Godot port and html-proto
 │   ├── fonts/Almendra/        SIL OFL 1.1
+│   ├── keywords/              keyword-ability SVGs + design source
 │   └── mana/                  WUBRG SVGs + design source
 ├── cards/
 │   ├── templates/             *.tres CardResources (hand-curated playable set)
-│   ├── images/                placeholder PNGs; a few wired-in inserts
-│   └── data/                  empty — JsonCardFactory wiring is vestigial
+│   └── images/                placeholder PNGs; a few wired-in inserts
 ├── data/                      CardResource base + subclasses
 ├── engine/                    pure-data rules engine
 │   ├── engine.gd              autoload (state holder + dispatcher)
@@ -40,11 +40,13 @@ How the **Godot port** is built: where each piece of behavior lives (modules) **
 │   └── predicates/predicates.gd
 ├── scenes/
 │   ├── card.{gd,tscn}         Card subclass — overlays, focus, glows
-│   ├── json_card_factory.tscn TresCardFactory wiring
+│   ├── tres_card_factory.{gd,tscn}  TresCardFactory (reads .tres templates)
 │   ├── game/                  game_board, player_panel, combat_lines
 │   └── zones/battlefield_zone.gd
-├── tests/                     test_phase{...}.{gd,tscn}, one per shipped slice
-├── docs/                      this file + RULES/PROTOCOL/DIVERGENCE + REFACTOR-NOTES
+├── tests/                     test_phase{...}.{gd,tscn}, one per shipped slice,
+│                              + standalone (test_priority_window, test_json_card_loader)
+├── docs/                      this file + PROTOCOL/DIVERGENCE/IDENTITIES + BACKLOG
+│                              + REFACTOR-NOTES + STANDARDIZATION-PLAN + README
 │                              + plans/ + wiki/ + archive/
 └── reference/html-proto/      JS prototype (active on dev; serves GitHub Pages)
     ├── magiclike_engine.html  single-page entry (DOM + inline CSS + script tags)
@@ -87,6 +89,7 @@ GitHub Pages serves from `dev`, pointing at `reference/html-proto/magiclike_engi
 | `scenes/game/player_panel.gd` | Life, mana, zone counts, low-library warning. | `update_from_player`, signal `clicked` |
 | `scenes/game/combat_lines.gd` | Overlay drawing attacker→blocker + spell→target lines. | `_process`, `_draw` |
 | `scenes/card.gd` | Card subclass — oracle overlay, legality glow, combat highlight, right-click focus. Passive. | `apply_card_text`, `apply_creature_state`, `set_combat_highlight`, `set_legality_glow`, `enter_focus`/`exit_focus` |
+| `scenes/tres_card_factory.gd` | Card-framework factory reading `cards/templates/<card_id>.tres` instead of per-card JSON; extends the addon's `JsonCardFactory` for its visual scaffolding. | `create_card(card_name, target)` |
 | `scenes/zones/battlefield_zone.gd` | Two-row layout (creatures + lands), adaptive spacing, combat-aware reordering. | overrides `_card_can_be_added`, `_update_target_positions` |
 
 ### 2.2 Runtime data flow
@@ -291,7 +294,7 @@ AI.decide(state, player_key):
 
 ### 2.10 Test suite
 
-Runnable scenes under `tests/`, one per shipped slice (Phases 1 … 5c), each headless-executable via the Godot CLI (invocation in `CLAUDE.md`), printing assertion results and exiting 0/1.
+Runnable scenes under `tests/`, one per shipped slice (Phases 1 … 5c) plus standalone scenes (`test_priority_window`, `test_json_card_loader`), each headless-executable via the Godot CLI (invocation in `CLAUDE.md`), printing assertion results and exiting 0/1.
 
 | Phase | Coverage |
 |---|---|
@@ -339,6 +342,7 @@ Forward roadmap: [`plans/godot-port-plan.md`](plans/godot-port-plan.md).
 | Almendra font | `assets/fonts/Almendra/` | Both — html-proto via `@font-face`; Godot via project import. |
 | Mana SVGs (`{W,U,B,R,G}.svg`) | `assets/mana/` | Both. |
 | Mana source (`source/…`) | `assets/mana/source/` | Design source; not loaded at runtime. |
+| Keyword-ability SVGs (`flying.svg`, `trample.svg`, …) | `assets/keywords/` (+ `source/` design source) | html-proto (`js/keyword-icons.js`); not yet wired into the Godot port. |
 | Godot card images / templates | `cards/images/` · `cards/templates/<card_id>.tres` | `TresCardFactory` · `CardDatabase.get_card`. |
 | html-proto card art / frames | `reference/html-proto/cards/<tplId>/art.png` · `reference/html-proto/assets/frames/` | `effectiveArt` · CSS background. |
 

@@ -24,7 +24,7 @@ The bots exist purely for **attribution** (tracking which AI did what). They're 
 | Thaumaturge-Claude | classic PAT (`ghp_`) | repo, read:org | — | gh keyring |
 | Thaumaturge-ChatGPT | classic PAT (`ghp_`) | repo, read:org | — | gh keyring |
 
-- **"gh keyring"** = the GitHub CLI token store, backed by the OS secure store (Windows Credential Manager). Inspect with `gh auth status` (never prints secret values).
+- **"gh keyring"** = the GitHub CLI token store, backed by the OS secure store (Windows Credential Manager). Inspect with `gh auth status` (never prints secret values) — and read its output whole, not through a truncated `gh auth status | head -N`: all four accounts are in the keyring, and truncation hides whichever ones list last.
 - All three bots use a **classic** PAT with `repo` + `read:org`, stored in the gh keyring. `read:org` is what lets the gh credential-helper push transport authenticate as the bot (the helper resolves the org for the username it's pinned to).
 - Tokens are never committed. A `ghp_…`/`github_pat_…` pushed to this public repo is auto-revoked by GitHub secret scanning.
 
