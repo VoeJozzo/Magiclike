@@ -29,6 +29,7 @@ What each creature type **does**, mechanically. Sibling page: [[mechanical-color
 | Beast | G | "They gonna eat ya" — fight, power | settled |
 | Treefolk | G | Reach, high toughness. Size-scaled: **big = tree** (keywords live at the top end), **small = folk**. Verified in-pool: all 8 toughness-dominant | settled |
 | Elemental | U/R/G | **Spells that lingered** — magic-as-event embodied ([[magic]]): flash, heavy ETBs, sometimes temporary | leaning |
+| Faerie | U | Tricksters: flash-matters payoffs, small fliers (Wave 2: Curious Faerie, Feinting Sprite, Tideglass Broker) | settled |
 | Shade | B | Flavor tribe for the eclipse register ([[black]]); no forced mechanical signature (see §Rejected) | parked |
 
 ## Classes

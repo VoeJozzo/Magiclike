@@ -33,7 +33,7 @@ Everything priced: pay-life, drain (a rider on removal, not a verb — black's k
 Haste, damage spells, firebreathing; hasty expendable tokens. Theft has **no middle setting**: borrowed for the afternoon in-game (Threaten), annexed forever at the run layer (`steal`, `rip` — spoils of war; strike the name from the book). Impulse-play ("Seize") is the agreed shape for red card flow, *(parked)* until play data actually shows red needing it.
 
 ### Green — the Reclaim *(settled)*
-Ramp — mana as time; big bodies; trample; fight; **death triggers that build toward something**; creatures that grow over time (moss as progress bar; end-of-turn accrual until an upkeep event exists). Search: domains — creatures and lands. **Regrowth is green's card economy**: black cheats the cost back onto the battlefield (a ledger trick); green returns cards to hand and repays honestly — it's the color with surplus mana and no other card flow. Land animation *(leaning)*. Run-layer signature: slot growth — stickers that accrete.
+Ramp — but **green accumulates, never bursts** *(settled 2026-07-13)*: dorks, extra lands, landfall payoffs — permanents that stay and keep giving; burst mana stays rejected. (The a-priori experiment flagged the real tension: "ahead of schedule" vs. green's stated patience — accumulation is the reconciliation.) Landfall is green by association *(weak — trigger conditions, like types, are pulls not absolutes)*. Big bodies; trample; fight; **death triggers that build toward something**; creatures that grow over time (moss as progress bar; end-of-turn accrual until an upkeep event exists). Search: domains — creatures and lands. **Regrowth is green's card economy**: black cheats the cost back onto the battlefield (a ledger trick); green returns cards to hand and repays honestly — it's the color with surplus mana and no other card flow. Land animation *(leaning)*. Run-layer signature: slot growth — stickers that accrete.
 
 ### Colorless — the Archaeology *(settled)*
 Artifacts — knots without a weaver ([[threads]], [[the-fall]] §artifacts-are-archaeology); and the deliberately *weird* build-arounds kept out of any color (Stapler, Codex, Endomorph, Mercurial Adept). Time effects, if they ever exist, are Meridian-coded — the [[meridian|Equatorial Engine]] bottles noon; time is a machine here, not a school of magic *(parked)*.
@@ -56,7 +56,8 @@ The pie is defined as much by what colors **can't** do; here weaknesses are draf
 
 - **Flying is tribal, not color-coded** *(settled)*. Tribes fly because of what they are ([[tribal-identities]]); colors get flying via their tribes. Lifelink is drifting the same way *(leaning)*.
 - **Taking is split three ways** *(settled)*: blue duplicates, black repossesses, red loots-then-annexes (see identities above).
-- **Counter-unless-pay is white** *(settled)*: blue's counter is the objection sustained; white's is court costs.
+- **Taxes are shared: white levies, black tolls** *(settled 2026-07-13)*: white's tax is standing and impersonal — a fee schedule (counter-unless-pay, "attacking costs more"); it deters, it doesn't profit. Black's toll is priced to the deed and collected, usually in life — the payment lands in a ledger. A drain stapled to another effect (Toll of Silence) is a *rider*, not a tax. Blue's hard counter stays the objection sustained.
+- **Blue's counter is authored, not derived** *(settled)*: the a-priori experiment (2026-07-13) found no permission pillar in the philosophy — "control is not a color-pie pillar, it's just a thing players do" (Joe). Counters stay blue as a game-design choice: blue must answer without killing.
 - **Search trichotomy** *(settled)*: blue windows · black whole-library-always-costed · green domains. Rationale: never hand one color both volume and precision — split the consistency pie.
 - **Punisher effects are black, not red** *(leaning)*: the toll — both options cost you, and the [[black|Adversaria]] never lied.
 - **Opponent-mill is red; self-mill is blue** *(leaning, engine lacks mill)*: milling someone is library-burn — the arsonists of [[blue|the library]]; blue only sifts its own ashes.
@@ -71,7 +72,8 @@ WU Spirits & flicker · UB contested truth (the [[tribal-identities|Rogue]]'s pa
 
 ## Later assignments (2026-07-13 completeness sweep)
 
-- **Artifact removal — red** *(leaning)*: the sacker smashes the relic. (Needed: colorless build-around engines must have answers.)
+- **Artifact removal — red AND green, two registers** *(settled 2026-07-13)*: red smashes now (printed: Scrap); green reclaims slowly (moss on golems — the a-priori sorters' majority read). Both right.
+- **Anthem split** *(penciled)*: white anthems *stand* (statics, formation lords); red's are *battle-cries* (until end of turn). The pool doesn't enforce this yet (Vanguard Ensign is a WR static); pencil, not law.
 - **Graveyard hate — green** *(leaning)*: the Reclaim finishes digesting — composting completes, and nothing is left to re-knot. (Beats the white "last rites" read: white's saints and martyrs are themselves graveyard-linked. Precedent: Scavenging Ooze.)
 - **Burst mana / rituals — rejected as a mechanic** *(settled)*: not sold, not built, not assigned.
 - **Hexproof / indestructible — unlegislated** *(settled as a non-rule)*: rare and powerful; ruled per card, no standing color law.
