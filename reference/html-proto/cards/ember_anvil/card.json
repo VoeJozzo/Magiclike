@@ -1,7 +1,7 @@
 {
   "card_id": "ember_anvil",
   "name": "Ember Anvil",
-  "art": "🔥",
+  "art": "art.png",
   "types": [
     "Artifact",
     "Land",

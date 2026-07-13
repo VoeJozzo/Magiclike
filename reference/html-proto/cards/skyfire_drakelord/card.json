@@ -6,7 +6,6 @@
     "C": 4
   },
   "keywords": [
-    "flying",
     "first_strike"
   ],
   "name": "Skyfire Drakelord",
@@ -16,7 +15,7 @@
       "filter": {
         "controller": "self"
       },
-      "subtype": "Drake",
+      "subtype": "Dragon",
       "power": 1,
       "toughness": 1,
       "keywords": [
@@ -31,7 +30,7 @@
       "condition": [
         "another_card",
         "controlled_by(you)",
-        "card_has_subtype(Drake)",
+        "card_has_subtype(Dragon)",
         "card_moves(anywhere, battlefield)"
       ],
       "effects": [
@@ -45,6 +44,6 @@
   ],
   "types": [
     "Creature",
-    "Drake"
+    "Dragon"
   ]
 }

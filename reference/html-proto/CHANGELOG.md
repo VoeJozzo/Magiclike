@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.1.0`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.1.57`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -199,6 +199,73 @@ opponent's best creature — permanent base 20, eot base 8, +card value +lane �
 animate-add_type only at a permanent WE control (else it'd gift the opponent a
 body). Verified via `AI.decide`: the AI now casts Encase in Amber at an enemy
 creature. 1269 green, lint clean, 300-game selfplay clean.
+
+v2.1.9: SVG-icon release ("New SVG Icons" branch) — generic mana coin, innate
+promoted to a real keyword, and keyword-ability coin icons on the card frame.
+
+(1) Generic/colorless mana coin. Added `assets/mana/C.svg` — a blank gray coin
+shell (the engine draws the numeral/letter on top) matching the generic mana key
+`C`. Wired the four pip sites that fell back to a plain disc — `.mana-C`,
+`.mana-num`, and frame `col-C` / `col-num` — to render the coin with the number
+in Almendra Bold. Refreshed `assets/mana/source/manaiconsv13.jsx` (the committed
+copy was a stale 5-color version missing the Generic entry).
+
+(2) `innate` promoted to a real keyword. Was a one-off boolean (`card.innate` +
+a `kind:'innate'` sticker); now lives in `KEYWORDS` / `KEYWORD_DISPLAY` as the
+single source of truth, the boolean retired. Opening-hand pull, draft valuation,
+eligibility label, browser grouping, sticker badge, and card text all read the
+keyword. The innate sticker is now a `kind:'keyword'` grant, hand-defined +
+lands-only (the `kw_*` auto-loop skips it, like defender). Excluded from the
+combat keyword preamble (status keyword, like flash); keeps its "Innate." line.
+Ingenuity Unbounded's `innate:true` moved into `keywords[]`.
+
+(3) Keyword-ability coin icons on the in-play frame. The small frame renders its
+keyword line as compact coin icons (instead of words) to save rules-box space;
+the long-press blow-up popup keeps the words. `cardToViewModel` gains a
+`keywordsAsIcons` flag (set by `makeCardEl`) that drops the keyword preamble from
+the oracle text and exposes a `keywordIconsHtml` row. Coin SVGs are embedded
+inline-recolorable (`js/keyword-icons.js`: glyph = currentColor, disc/rim = CSS
+vars, generated from `assets/keywords/<kw>.svg`), tinted by grant source: native
+= the card's own color (card-color glyph + inner ring on a cream disc + cream
+outer ring — a legible two-color rim; White special-cased dark-on-gold since its
+frame is light), sticker = gold, granted = teal. Each carries a "Flying:
+<reminder>" tooltip (new `KEYWORD_REMINDER`). Added the `unblockable` key icon
+(16 keyword SVGs now), so every shown keyword has art; `innate`/`no_block` stay
+out of the row. New `keyword_icons_test.js`.
+
+Full suite green (1693 assertions post-merge), eslint clean. Note: DOM rendering (icon
+sizes, the two-color rings, hover tooltips) isn't covered by the Node harness —
+browser-verify on the live build.
+
+v2.1.8: **Controller-scoped targeting gates on ~20 cards + ai/render target-resolution unification.** (Branch opened at v2.1.0 as "v2.1.1"; renumbered to v2.1.8 on merge — dev had since shipped its own v2.1.1–v2.1.7.) Two threads:
+- **Targeting restrictions.** Removal and debuff spells that should only hit opponents now use `opp_creature`: Pacifism, Sicken, Ravenous Chupacabra (ETB), Righteous Judge (ETB), Reaper Shade (ETB), Royal Assassin (ability), Frostbite Mage (ETB), Bindspeaker (ETB), Plague Sower (ETB), Flame Wisp (ETB). Pump/buff spells that should only target your own creatures now use `your_creature`: Giant Growth, Invigorate, Might of Faith, Divine Favor, Strength of the Pack, Predator's Speed, Firebreathing, Fiery Rush; plus the Wilds mode of Verdant Charm, the Embolden mode of Crusader's Charm, and both effects in Storm Charm's Frenzy mode. Awaken the Stone (untap) gates to your own creature. Multi-target cards (Twin Strike, Sword and Sorcery, Roots and Branches) use the filter form (`target:"creature", filter:{controller:"self/opp"}`) instead of compound values, since `target_slots` routes through `getValidTargets` directly which doesn't expand compound kinds. Godot: `giant_growth.tres` target filter + oracle text updated to match.
+- **Target-resolution unification in ai.js + render.js (−23 LOC).** `flashETBWouldFizzle` (ai.js) was string-matching `trig.target` values to decide if an ETB trigger had legal targets — invisible to the filter form and ignoring hexproof. `isValidTargetCreature` (render.js) manually re-expanded `your_creature`/`opp_creature` → `controller:'self'/'opp'` then called `ENGINE.matchFilter` (which skips hexproof). Both now delegate to `ENGINE.targetsForFilter`/`ENGINE.getValidTargets`, the authoritative target-resolution path. Fixes: (1) AI fizzle check now correctly handles all target forms including `creature + filter:{controller:"opp"}`; (2) opponent hexproof creatures are now correctly excluded from targeting highlights. Dead `them`/`creaturesOf` locals in `flashETBWouldFizzle` removed. Highlight-path test updated to push creatures onto the battlefield before calling `isValidTargetCreature` (required since it now reads engine state). **Merge reconciliation with dev (v2.1.7):** dev had shipped `distinct_targets` (require two *different* creatures) on exactly Roots and Branches + Sword and Sorcery — the same two cards this branch controller-gates. Cross-controller slots are inherently distinct, so the gating co-enforces the rule on those cards; `distinct_targets` is kept as reusable infrastructure for the future "two creatures you control" shape (both slots self, where controller can't imply distinctness). The distinct tests were reframed to the controller-gated reality and a synthetic same-controller card now pins the distinct rule in isolation (cast + trigger auto-pick paths). Bonus: the controller filters render into the oracle text for free — Roots and Branches now reads "Tap target creature **an opponent controls**. Another target creature **you control** gets +1/+1." Post-merge: 1666 green, lint clean.
+
+v2.1.7: **PR #86 review follow-ups — the v2.1.6 `distinct_targets` *cast* enforcement was inert; fixed at the real surface (`bug-investigation` branch).** Four review passes on v2.1.6 (manual code-review, `/simplify`, `/verify`, `/code-review`) found that distinct-on-**cast** never fired for real cards: `makeCard` builds runtime instances from an explicit field whitelist that carried `target`/`target_filter`/`target_slots` but **not** `distinct_targets`, so a live `ENGINE.makeCard('roots_and_branches')` had no flag and `isLegalAction` skipped the cross-slot check — the same-target cast the card forbids ("another target creature") was ALLOWED in the running game. v2.1.6's tests stayed green only because they instantiate via `JSON.parse(JSON.stringify(CARDS[id]))` (the clone preserves the flag), not the `makeCard` path the UI uses. Fixes: (1) carry `distinct_targets` through `makeCard` + a `makeCard`-path regression test (fails pre-fix); (2) make the trigger queue-gate `triggerHasAnyValidTarget` distinct-aware — gate on a full legal *set* via `tsAutoPick`, not per-slot non-emptiness — plus a distinct×trigger resolution test (Slice 5: a stapled Roots and Branches ETB taps one creature and pumps a *different* one); (3) derive card-text "another" from slot **target type** rather than a `JSON.stringify(filter)` signature (robust to filter key order + heterogeneous filters); (4) route the render cast-highlight through the shared `ENGINE.tsExcludePicked` so the cross-slot rule lives in one place (first step of the cast/trigger pick-loop unification — full merge deferred to BACKLOG). Also lands the `/simplify` cleanup (one `tsExcludePicked` home for the distinct rule; `fillSparseHoles` / `tsHasTopLevelTarget` dedup) and signposts the known-latent edge cases (greedy non-backtracking trigger pick; sparse-slot duplicate risk). 1663 green, lint clean, 500-game selfplay 0 crashes / 0 invariant violations. Browser-verified at the real surface: live `makeCard` carries the flag, `isLegalAction` rejects the same-target cast, the cast highlight DROPS the already-picked creature (the previously-broken behavior), and a full distinct cast resolves on two different creatures (Savannah Lions tapped, Benalish Hero +1/+1).
+
+v2.1.6: **Unified multi-slot target selection + stapled multi-target ETB fix (`bug-investigation` branch).** Started from a garbled stapled-card popup — *Clockwork Beetle + Twin Strike* read "…,  gets +1/+1 …  gets +1/+1 …" with empty subjects: `describeTrigger` forwarded `trig.target` but not `trig.target_slots`, so a stapled multi-target spell's ETB lost its target nouns. Fixing that one-liner surfaced a deeper structural bug — the multi-slot *selection* layer was triplicated across the cast / activated-ability / trigger callers, and the trigger path was single-slot, so **stapled `target_slots` cards (Twin Strike, Roots and Branches, Branching Bolt, …) fizzled ENTIRELY when stapled onto a permanent**: `triggerHasAnyValidTarget` (the queue gate) and `pushTriggerOnStack` called `getValidTargets` on a bare `target_slot` effect → `[]` → the ETB was never queued. Extracted ONE `TargetSelection` component (`tsLegalBySlot` / `tsExcludePicked` / `tsEnumerate` / `tsIsLegalSet` / `tsAutoPick` + the human step-loop) that all three callers route through (the legality atom — hexproof — and the resolution fetch `makeSlotTargetGetter` were already shared). Now: stapled multi-target ETBs fire and resolve every slot; the AI enumerates multi-target activated abilities (the old "skip the Stapler" guard is gone); and the human gets a multi-slot trigger prompt that steps through each genuine choice (forced/implicit slots auto-fill) instead of auto-picking. Added a `distinct_targets` opt-in (Roots and Branches / Sword and Sorcery require two *different* creatures → "another target creature"), enforced through the same component on cast AND the stapled ETB. Executed proto-side; the Godot port was deferred. 1654 green, lint clean, 500-game selfplay clean. Browser-verified the multi-slot trigger-prompt UI (per-slot highlight, click-to-advance, distinct picks honored).
+
+v2.1.5: **sticker-changes follow-ups — gold = "from a sticker", land-type mana stickers, badge dead-code cut (`sticker-changes` branch).** Three threads:
+- **Sticker-granted text is now gold** — `.sticker-granted` shares empower's `.bumped` gold, so a single color consistently means "added/modified by a sticker" (empower bumps and granted keywords/triggers read alike). (v2.1.4 briefly used teal; nothing shipped between.)
+- **Land-color stickers now add a real land type** (new `add_type` kind) instead of grafting a bare mana ability. "Also a Mountain" makes the land an actual typed Mountain (so it answers type-matters effects — "search for a Mountain", etc.), and the §305.6 autogrant (`grantBasicLandMana`, extracted from `ingestCard` and now routed through `grantManaAbility`) folds the new color into a single `{T}: Add one of …` choose-ability — the shape `landProducibleColors` and the tap action expect, so a stickered Plains taps for W **or** R off one ability rather than two competing `{T}`s. Composes with v2.1.1's basic-land identity symbol: a stickered basic now has tap-text, so the big mana glyph yields to the normal "{T}: Add {W} or {R}." layout. No existing land changes (none carry multiple basic subtypes; Phylactery's explicit {B} is a no-op merge). The land-type badge is suppressed (the type line shows it). Updated the reward description + grouping (`controller.js`) and draft valuation (`draft.js`) for the new kind; `grant_mana_ability` stays as a valid kind for inline/boss descriptors.
+- **Cut the now-dead `stickerBadgesHtml` branches** that Q2's suppression made unreachable — the stat_boost/innate/keyword/cost_mod/subtype label paths, the innate-first `unshift`, and the unused `subtypeRolls` param + cursor. The loop now only builds the kept kinds (empower, grant_mana_ability, remove_keyword).
+
+1619 green, lint clean, 200-game selfplay clean. Browser-verify the gold text and a stickered dual land's tap (DOM/CSS not covered by Node).
+
+v2.1.4: **sticker card-text polish — granted text is colored, redundant badges dropped (`sticker-changes` branch).** Two paired display changes:
+- **Sticker-granted text now renders in a distinct color** — teal (`.sticker-granted`); v2.1.5 finalized it to gold (so gold = "from a sticker"). Card text is a `{text, highlight, sticker}[]` segment array; a new `keywordPreambleSegs` flags sticker-granted keywords (vs intrinsic/lord-granted, which stay uncolored), and the triggers loop flags sticker-granted triggers (Scarified, marked `_from_sticker` at application time — display metadata, reset every `makeCard`). `segmentsToHtml` maps the flag to a span class. Only registry keyword stickers grant keywords, so inline-descriptor stickers don't color.
+- **Badges whose info the frame already shows are suppressed** (`FRAME_REDUNDANT_STICKER_KINDS`): keyword + trigger (now in the colored oracle text), subtype (the type line), innate ("Innate." in text), stat_boost (the P/T box), cost_mod (the cost pips). Kept: empower, grant_mana_ability, remove_keyword — those carry info no other frame element surfaces. `stickerBadgesHtml` returns `''` when every sticker was suppressed (no empty badge row).
+
+Rewrote the badge tests for the new keep/drop policy and added Q1 segment-flag coverage (exposed `segmentsToHtml` to the test harness). 1614 green, lint clean, 150-game selfplay clean. Browser-verify the actual colors — DOM/CSS isn't covered by the Node suite.
+
+v2.1.3: **sticker fixes + the first keyword-removal sticker (`sticker-changes` branch).** Three threads:
+- **Keyword sticker badge showed the raw keyword id** — a "Has First strike" sticker rendered its on-card badge as `first_strike` (underscored, lowercased) because `stickerBadgesHtml` printed `s.keyword` directly. Now routed through `KEYWORD_DISPLAY` (the map already used by the keyword-preamble and native-keyword badge), so it reads "First strike". Affected every keyword sticker; first strike was just the most visibly wrong.
+- **Empower label ignored the sign of `gain_life`** — life loss is modeled as `gain_life` with `amount < 0` (Spiteful Imp, Blood Priest, …), but `empowerRollLabel` hard-coded "life gain", so Empower on a life-loss card mislabeled as "Empower (life gain)". Now branches on the sign → "Empower (life loss)". Fixes both the on-card badge and the reward-offer modal (both route through the one helper). The empower *math* already tracked the sign.
+- **New `lose_defender` sticker** — the first keyword-REMOVAL sticker, via a new `remove_keyword` kind (inverse of the existing `keyword` add path). Offered only on creatures with native Defender (9 templates); strips it so the creature can attack. Everything downstream already reads `card.keywords` (`canCreatureAttack`, the badge), so the one-line filter is sufficient; the badge falls through to the sticker name ("Loses Defender"). Reflected in the `stickersForSlot` view so it isn't re-offered. Eligible in the Archdemon random-sticker path on purpose: that path stickers both sides, and handing an opponent's wall an attack is exactly Archdemon's intended downside (the bargain). Extended `sticker_kinds_dispatch_test` (+7). 1613 green, lint clean, 200-game selfplay clean (0 crashes/violations/stuck/runaway).
+
+v2.1.2: **Space/Enter pass priority + confirm combat declaration (the `UX Interface Changes` branch).** Keyboard parity with the Godot port, UI-only (no engine/rules change). A single global `keydown` handler (controller.js `init()`) maps **both Space and Enter** to one contextual primary action: confirm a pending combat declaration (Done Attacking/Blocking) if one is open — intent "I'm done declaring," not "skip the step" — otherwise pass priority. Dispatched through the existing button handlers (`passAction`/`doneDeclaring` → the same engine action descriptors the buttons emit), **not** a synthetic DOM `.click()`, so the keyboard is a peer input source rather than a layer over the presentation DOM. The two gates that were inlined in `render()` are extracted into `CONTROLLER.canPass()` and `CONTROLLER.humanOwesDeclaration()`; `render()` now drives the Pass/Done buttons' disabled/visibility from those same predicates (single source of truth) — behavior byte-preserved. Guards (input-layer concerns, not rules): the keys are inert while typing in an `input`/`textarea`/contenteditable, while a focused button would natively activate (no double-fire), and while any modal is open; Space's default page-scroll is `preventDefault`-ed. 1611 green, lint clean (exit 0); browser-verified live in the running engine — Space passes priority on an empty stack, Enter declares a *selected* attacker (dealt combat damage, disambiguating it from "skip combat"), Space and Enter dispatch the identical `executeAction('you',{type:'pass'})` (spy-confirmed), and all three guards suppress. DOM/keyboard behavior isn't covered by the Node suite.
+
+v2.1.1: **card-frame UI / text-render fixes + the basic-land identity symbol (the `UI Updates` branch).** Five presentation-layer fixes, no engine/rules change. (1) **Verse counter sizing** — named-counter badges (`.frame-counter`) were pinned to a fixed `4px` with no text-size multiplier (the one frame element that skipped `--card-fsize-*`), so they rendered tiny. Now sized off the card's rules text (`6px × --card-fsize-text`, same base+multiplier as `.frame-text`/`.frame-oracle`) so they stay legible and track the user's text-size setting (Hymnwright). (2) **Generic ability-cost mana** — `abilityCostPhrase` emitted one `{C}` pip per unit (`{C:2}` → "{C}{C}" → "CC"); now reuses `manaCostBraces` so generic cost mana renders as a number (`{2}` → "2"), matching the card-frame cost and `manaCostBraces` everywhere else (Deepseam Quarry's `{2},{T},Sacrifice` reanimation cost). (3) **Lands hid their mana abilities** — the tap-for-mana suppression in `describeCardSegments` fired for *every* land; now scoped to **basic** lands only (whose "Basic Land — Plains" type line already conveys the ability). Non-basic lands surface their mana ability text again — Deepseam Quarry "{T}: Add {C}", Equatorial Engine "{T}: Add {C}{C}" — while basics stay empty and choose-form lands (City of Brass) are unaffected (no `amounts`). (4) **Custom-text spells dropped their keywords** — the `custom_text` branch only prepended keywords for creatures (granted-only), so a custom-text *spell*'s intrinsic keyword vanished. Non-creature custom-text cards now surface spell-legal keywords (flash) like the generated branch does, so **Steal** reads "Flash. Counter target…"; creatures keep granted-only to avoid duplicating keywords their authored text inlines (City Guardian "First Strike.", Archdemon "Flying, Trample."). (5) **Basic-land identity symbol** — a basic Land with no other rules text now renders a large centered mana symbol (read from `landProducibleColors`, reusing the cost-pip mana SVGs) in its otherwise-empty oracle box, echoing paper basics. Render-layer change in `cardToViewModel` (so it shows on both the frame and the 4× popup via the shared view model) plus a `.frame-bigmana`/`.bigsym` CSS block; no engine/text-gen change. The gate is **"basic land AND empty oracle text,"** so it reverts to the normal layout the moment a land gains text — a `land_color_*` sticker turns the fixed tap-ability into a choose-form that renders ("{T}: Add {U} or {B}."), an `innate` sticker adds "Innate." Non-basics (Deepseam Quarry, City of Brass) and creatures are unaffected; colorless basics get a grey-disc `{C}` fallback (no `C.svg` asset yet — known gap if a Wastes-style basic is ever added). 1606 green, lint clean (exit 0); browser-verified in the live DOM (5 basics show U/W/B/R/G SVGs; stickered island + non-basic land fall back to text). CSS badge/symbol sizing is DOM-only.
 
 v2.1.0: **two cards + a graveyard-targeting refactor + the card-implementation skill (minor bump — opens 2.1.x).** Lands the `card-impl-skill` branch (PR #68), rebased onto dev. Four threads:
 - **Seal-Thief Courier** (three-mana U/B 2/2 Human Rogue): "Whenever this deals combat damage to an opponent, exile target nonland card from their graveyard — you may cast it this turn, spending mana as though it were mana of any color." New seams: a `combat_damage` trigger event + the `thisDealsCombatDamageToOpp` archetype (reusing the existing `affected_player_is` predicate); a `grant_cast_permission` effect backed by a `castPermissions` list on state (initialized in `makeState`, read by `findCastableSpell`/`castableSpellEntries` so both the human cast flow and the AI enumerator can cast from exile, cleared at end of turn); `move_card` graveyard→exile; a `not_type` axis on `matchFilter`.
@@ -1126,9 +1193,1203 @@ prompt machinery (engine + render + controller + AI). Note: rip-edict now uses
 Diabolic Edict). Browser-verify the rip UI removal (DOM not covered by Node tests).
 (#7 symmetricize: confirmed already in the decided end-state — no change.)
 
-> **MUST UPDATE on every dev-branch push that touches code.** Bump `VERSION` in `js/main.js` AND the line above, in the same commit. GitHub Pages caches aggressively; the version string is the only reliable way to confirm a fresh build is live.
+v2.1.10: ability-icon UI polish (follow-up to the PR #90 SVG-icon set; drafted
+across two commits as v2.2.0/v2.2.1 — renumbered to a single patch on review,
+since it's display-only polish, not a minor-feature slice).
+(1) Tap symbol now renders the hourglass coin instead of a literal "T" —
+`.mana-T` was never wired to art; pointed it at `assets/keywords/tap.svg` with
+the same `background-image` + `color:transparent` treatment as the WUBRG pips
+(fixes Verdant Verge et al.). (2) Keyword ability icons get a custom hover
+tooltip (`#iconTip`) in Almendra, palette-matched to the colorless card frame
+(slate panel, gold mana-coin rim, cream text, keyword name bolded) — coins now
+carry `data-tip` instead of `title`, rendered by a delegated hover handler in
+`controller.js` (body-level + viewport-clamped, since the icons sit inside the
+`frame-text` overflow:hidden box). `render()` calls `CONTROLLER.hideIconTip()`
+each repaint so a coin destroyed under the pointer (no mouseout fires for a
+node removed beneath the cursor) doesn't leave the tip stranded — cf. how
+`#mapTooltip` is cleared. (3) Native keyword-coin disc warmed from the silvery
+`#d8d4c8` to a true cream `#ece0be` (the `CREAM` constant; CSS `.kw-native`
+fallback kept in sync). (4) Colorless (C) keyword glyph AND inner ring darkened
+`#6b7280 → #3a3f47` for legibility on the cream disc — glyph and inner ring
+share the slate tone, as every other color's coin does (KW_NATIVE_COLORS.C
+ink+rim, CSS `.kw-native` `--kw-rim`). (5) Tap coin recolored to match the
+colorless keyword-coin palette (cream disc, slate glyph, slate inner ring, cream
+outer ring) per "batch the tap symbol in with the keyword ability symbols."
+(6) The innate keyword now renders its coin (innate.svg, inlined into
+KEYWORD_ICON_SVG with the var-driven palette + currentColor glyph stroke) in the
+in-play frame's keyword row instead of only the word "Innate." — sticker-granted
+innate (the common case: post-draft basic lands, City of Brass, Phylactery)
+reads gold like other sticker keywords; intrinsic innate (Ingenuity Unbounded)
+stays native cream. innate is selected on both the creature and non-creature
+branches, so it reads as a coin like any other keyword wherever it lands. The
+redundant "Innate." word is dropped on the frame (`describeCardSegments` gates it
+on `!skipKeywords`, so the popup keeps it), and a basic land carrying any keyword
+coin suppresses its big mana glyph (`!kwIconsHtml`) so the 10px coin doesn't
+collide with the 45px symbol (innate is the common trigger). `keywordSourceClass`
+now recognizes the bare `innate` sticker id (not just `kw_innate`). (7) New
+Devtools setting — "Ability icons → Keyword coin (hand / board)"
+(`--card-kw-icon-size`, 6–20px) scales the keyword coins, mirroring the mana-pip
+size knobs (default + CSS-var binding + applyFontsToRoot + options array, no new
+branch in `set()`). `keyword_icons_test` updated (`title`→`data-tip`) and gains
+innate-coin coverage; 1695 green, lint clean. Browser-verified (tap pip, tooltip,
+cream disc, darkened glyph, pixel-sampled tap coin; innate Forest coin gold +
+"Innate: …" tooltip, big mana suppressed, popup keeps the word; size knob
+10→20→6px live via the CSS var).
 
-Always work on `dev` for html-proto changes.
+v2.1.11: 11-issue batch (lands display, STC cast-from-exile, Stapler fizzle,
+templating). LANDS: (1) basics now carry their color subtype in types[]
+("Basic Land - Swamp"); explicit tap-abilities kept in card.json (the Godot
+loader has no 305.6 autogrant), the autogrant no-ops on them. (2) card-text's
+mana-ability suppression generalized from "is Basic" to "every produced color
+is conveyed by a basic-land subtype, all amounts 1" (new basicLandTypeColors
+in cards.js, shared BASIC_LAND_MANA map) - artifact lands (Gilded Seat et al.)
+drop their redundant "{T}: Add {W}" line. (3) The big-mana-symbol gate in
+cardToViewModel mirrors that same rule (was hasType Basic), so artifact lands
+inherit the big symbol, and a stickered dual ("Basic Land - Forest Island")
+renders TWO symbols like a paper dual. (4) The !kwIconsHtml suppression is
+gone: a keyword coin row (Innate) now coexists with the big symbol via a
+shorter .with-coins container (coin row above, symbol capped at 28px below).
+(5) New Devtools setting "Mana symbols - Land symbol" (--card-big-mana-size,
+16-44px on the 28px baseline; same options-array + CSS-var-binding pattern as
+the pip knobs). STICKERS: (6) sticker-added type tags render GOLD on the type
+line (frame + popup): the apply paths record card.stickerTypes (display
+metadata, rebuilt per makeCard), typeLine refactored over a shared
+typeLineParts(), new typeLineHtml() wraps recorded tags in .sticker-granted.
+STC: (7) the AI now casts cards it exiled with Seal-Thief Courier - decideMain
+/ getDirectBurnSources / decideOffTurnCombat / decideEndStepFlash /
+decideReaction resolved castSpell actions hand-only, so permission casts were
+legal-but-invisible; new findCastableCard(state, who, iid) resolves permission
+zones from the PASSED state (sim-safe). (8) Cast-permission cards render
+inline at the end of the hand row (violet dashed .from-exile frame + EXILED
+ribbon, same clickHand cast path), no longer discoverable only behind the Ex
+counter; castableSpellEntries exported on ENGINE. STAPLER: (9) pair validity
+(self-staple / already-stapled / base eligibility / compat) is an ACTIVATION
+check now: the new shared resolveSplicePair runs in isLegalAction before any
+cost is paid (MtG 601.2h via 602.2b - costs are the LAST part of activation;
+an illegal activation rewinds with nothing spent), the ability declares
+distinct_targets, and matchFilterSpell applies the staple-chain check to
+STACK items too - so an invalid pair never taps the Stapler or spends mana.
+The handler re-runs the same validator as defense-in-depth; per MtG
+resolution-fizzle semantics (608.2b) costs STAY paid there. Charges safe
+regardless (fizzles return before charge accounting). CARDS: (10) Sudden Vines animates
+permanently (eot -> permanent; stays a 1/1 for G with flash - the cheap-fast
+niche in the Living Lands / Golem Forge cycle). (11) set_types templating now
+says "...and loses its other types" (Encase in Amber, Petrify, Artifice
+Triumphant's sticker form) - a set replaces the whole type line and the text
+finally says so. (12) Win10-tofu emoji art replaced (Emoji 13+/15 glyphs
+missing from Win10's Segoe UI Emoji): gilded_seat coin->crown, petrify
+rock->classical building, sky_champion wing->dove. Tests: self-staple-illegal-
+at-activation (nothing paid), resolution-fizzle-keeps-costs-paid, stapled-
+stack-spell-rejected-at-targeting, AI-casts-from-exile, the 305.6 suppression
+rule pinned from both sides (Gilded Seat/Swamp render empty; {C} and {C}{C}
+producers keep their text - the unit-amount guard; Phylactery keeps its
+non-mana text; a stickered Forest+Island dual suppresses like paper), typeline
+expectations updated to the new canonical lines. 1710 green, 300-game selfplay
+clean, lint clean.
 
-Deferred work lives in `BACKLOG.md` (gating rules in `/CLAUDE.md`).
+Review cycles (PR #93, three passes; version pinned at v2.1.11 for the whole
+PR): stapleChainOf(card) became the ONE staple-chain definition (was three
+hand-copied stapledFrom.stapledTpls reads). The stack-banner's splice
+targeting was repaired - post-target_slots-refactor it scanned per-effect
+.target fields the splice effect no longer carries, so stack spells never lit
+for splicing; it now derives the CURRENT slot's spec via pendingTargetEffect
+and lights only real legal picks (getValidTargets + tsExcludePicked - a lit
+pill can't be a dead click); pendingDistinctObject resolves the distinct flag
+for casts AND abilities. basicLandTypeColors returns canonical WUBRG order
+(walks BASIC_LAND_MANA, not types[], so sticker-add order can't leak in).
+CLAUDE.md module table gained the missing keyword-icons.js/types.js rows +
+the corrected script-tag count. Godot cross-check ran for real: phase 1 +
+phase 5c headless smoke tests ALL ASSERTIONS PASSED against this branch, the
+loader ingesting all 297 cards with zero parse failures; the editor pass's
+.import sidecar regeneration (stale since the v2.0.67 folder rename) +
+missing-sidecar additions were committed separately and audited - all 74
+modified files touch only path=/source_file=/dest_files= lines, no
+machine-specific churn. An intermediate refund-on-fizzle design (pay costs,
+hand them back on a resolution fizzle) was replaced wholesale by the 601.2h
+costs-last restructure in (9) per review discussion - no refund machinery
+survives. Animated-land + big-symbol left as-is by design (a Sudden-Vines'd
+Forest still IS a basic-typed land that taps for {G}; cf. Dryad Arbor).
 
+v2.1.12: engine-hygiene batch. (1) `makeCard` template→instance copy inverted
+from whitelist to copy-by-default: the instance literal keeps only fields
+needing bespoke copy semantics; every other template field deep-copies to the
+instance automatically (templates are pure JSON — same rationale as the §3.10
+staple-merge clone), guarded by a `MAKECARD_INSTANCE_KEYS` denylist of
+runtime-only keys (warn on template collision). Closes the "new card-level
+flag silently dropped on the real game path" class (the PR #86
+`distinct_targets` bug) and fixes 9 latent template-only drops (`special`,
+`custom_text`, `build_on_draw`, `permanent_eot`, `rip_on_target`,
+`art_ladder`, `static_cost_bump`, `trigger_pool_seed`, `charges_at_run_start`
+now carry to instances). New copy-by-default guard in
+`test_distinct_targets.js` pins every-field survival across all 297
+templates. (2) New `test_lord_keyword_grants.js` (27 checks) — dedicated
+static-lord keyword-grant coverage: real entry path (emit during cast
+resolution), real leave paths (death via graveyard move, bounce to hand),
+controller + cross-lord subtype gating, intrinsic-keyword protection,
+multi-source survival, +1/+1 stat half via getStats, six-lord sweep.
+(3) `controller.js` Modal focus-restore + fullscreen-request catches now log
+quiet `console.warn` breadcrumbs instead of swallowing. Suite 73 files /
+1723 green, lint clean. Browser-verified separately (no code change): all 13
+Modal-managed modals open/close + Escape semantics, and the Architect's
+Codex trigger-build clickthrough (3 conditions → 3 effects → keep/replace
+compare on redraw) — zero console errors; BACKLOG "Recently done" has the
+detail, incl. the SVG-pip item retired as already-shipped (v2.1.9/v2.1.10).
+
+v2.1.13: Endomorph absorb was DEAD — every kill fizzled ("no victim
+recorded") since the E1 zone-change migration renamed the dies-event payload
+to `subject_card` while `endomorph_absorb` kept reading the retired
+`event.card` (the exact bug already found and fixed in
+`bargain_sticker_other`; Endomorph was missed, and with no dedicated test +
+a benign fizzle log, selfplay never noticed). One-line fix (read
+`subject_card`), stale `emitLeavesBattlefield` doc-comment corrected, and a
+new `test_endomorph_absorb.js` (23 checks) pins the whole pipeline:
+regression pin on the payload, keyword-priority pick, +1/+1 fallback via
+modifiers, defender exclusion, novelty diff vs already-known keywords,
+dead-Endomorph graveyard-corpse path (mutual kill still mutates the corpse +
+persists the slot sticker), opp-side absorb without run persistence.
+Surfaced by a code-dig into how the absorb actually executes, requested on
+the BACKLOG endomorphAbsorb item. Suite 74 files / 1746 green, lint clean.
+
+v2.1.14: composed the two keyword-claim systems around one stated trophy
+rule. (1) `claimableKeywords(corpse)` — intrinsicKeywords minus defender —
+is now THE rule for what a kill yields, used by BOTH Endomorph's absorb and
+the end-of-game `claimedKeywords` reward claims. Previously the rule was
+emergent (absorb read the corpse post-resetInPlayState, so it excluded lord/
+EOT grants only by death-pipeline ordering) and inconsistent (the reward
+claim ran pre-reset, so the reward screen offered keywords a creature only
+had because its lord was standing next to it — auras claimed as trophies).
+BEHAVIOR CHANGES (user-blessed for mechanical consistency): the reward
+screen no longer offers borrowed lord/EOT-granted keywords from kills, and
+absorb novelty is judged intrinsics-vs-intrinsics — a keyword Endomorph
+merely borrows (until-EOT flying) no longer blocks absorbing it permanently
+from a kill. (2) `recordDamage(victim, sourceCard, controller)` — one writer
+for the damage-attribution pair every site hand-synced (`damagedBySources`
+Set for Sengir-style dealt-damage-by triggers — creature sources only;
+`killedBy` last-writer-wins player key for reward credit — all sources):
+the damage effect + three combat sites now call it; destroy/edict paths keep
+setting `killedBy` directly (destroying isn't dealing damage, must never
+stamp `damagedBySources`). (3) endomorph_absorb restructured around the
+shared rule: `ABSORB_KEYWORD_PRIORITY` hoisted to a module const, unified
+absorber resolution (live card or graveyard corpse), and the bounced-
+Endomorph ghost edge fixed — it used to log a successful absorb while
+applying nothing; now logs an honest "absorb fades — it left play before
+feeding." `test_endomorph_absorb.js` grown to 44 checks: shared-rule pins
+for both systems (lord-granted haste claimable by NEITHER; sticker lifelink
+by BOTH), intrinsic-novelty (borrowed keyword still absorbed for keeps),
+intrinsic Wall-defender exclusion both shapes, bounced-fade edge, and the
+finisher-kill section (chip + burn finish dying at the checkDeaths SBA
+sweep; chip + destroy finish via moveToGraveyard; untouched-bystander
+negative) — pinned against death-pipeline reordering, not just current
+behavior. Suite 74 files / 1767 green, lint clean, selfplay 200/200 clean
+(0 crashes, 0 invariant violations).
+
+v2.1.15: the "dealt damage by this dies" trigger preamble now states its
+turn-scoping — "Whenever a creature dealt damage by this card this turn
+dies," (canonical Sengir wording; user-confirmed the mechanic is meant to
+be turn-scoped — `damagedBySources` clears in the EOT cleanup sweep, so the
+old text over-promised). "this card" rather than the preamble family's bare
+"this" to avoid the "by this this turn" stutter. Filter-parity fix in the
+v2.0.7 tradition: the text now renders the restriction the engine enforces.
+Wording pinned in `test_endomorph_absorb.js` (45 checks). Suite 74 files /
+1768 green, lint clean.
+
+v2.1.16: recordDamage drops its creature-source gate — ANY iid-bearing
+damage source (creature, artifact, spell) now stamps the victim's
+`damagedBySources`. The gate dated to the set's birth commit ("only
+meaningful when the source is a creature"), bought nothing functional
+(nothing can listen for a non-creature source today, so the extra entries
+are inert evidence), and contradicted its own design note ("populated by
+combat & spell damage"). Removing it un-forecloses two future card shapes:
+a non-creature permanent with a "dealt damage by this card this turn dies"
+trigger (an artifact pinger — would now work outright) and a grows-per-kill
+spell (still needs a listening mechanism — graveyard spells aren't trigger
+sources — but the damage evidence is recorded). killedBy semantics
+unchanged; destroy/edict paths still bypass recordDamage entirely. Zero
+observable behavior change today: suite 74 files / 1768 green (the
+spell-finisher pin in test_endomorph_absorb.js flipped to assert both
+damagers record), lint clean, selfplay 200/200 clean (0 crashes,
+0 invariant violations).
+
+v2.1.17: PR #96 review follow-up — MAKECARD_INSTANCE_KEYS topped up with the
+six runtime instance fields assigned OUTSIDE makeCard (tempControlUntilEot,
+copyOf, copySourceIid, bargainsNum, chargesLeft, _builtThisGame). The
+copy-by-default loop only warns-and-ignores keys on that denylist, so a
+template declaring one of the missing six would have been deep-copied
+straight onto the instance — e.g. a truthy template copyOf would trip
+resetInPlayState's copy-revert path. The denylist comment now states the
+maintenance rule the inversion created: new runtime instance fields must be
+added there too. New denylist-probe guard in test_distinct_targets.js
+(synthetic template declaring one key per runtime system → all ignored with
+warnings; literal-initialized damage keeps its runtime init). Suite 74
+files / 1785 green.
+
+v2.1.18: review-of-the-review — one more denylist key: `stickerTypes`
+(PR #93's gold-type-tag display metadata). It slipped v2.1.17's sweep
+because that sweep's criterion was "assigned outside makeCard," and
+stickerTypes is written DURING makeCard — but additively
+(`recordStickerType` never resets the array), so a template-declared value
+would deep-copy through and paint bogus gold type tags rather than being
+rebuilt away. The denylist comment now states the sharper criterion: "not
+unconditionally rebuilt at instantiation." Probe guard extended (synthetic
+template injects stickerTypes → warned + ignored). The rest of the
+assignment-sweep came back clean: `deckColors` is built field-by-field on a
+synthetic view (uninjectable), `target_slot`/`tplId` are effect-level/
+loader-handled. Suite 74 files / 1786 green, lint clean.
+
+v2.1.19: audit chunk-1 trivia — two provably behavior-preserving dead-code
+removals (findings A1-19/A1-20). (1) Dropped the unreachable
+`!G.pendingTriggerTarget` conjunct from step()'s trigger-drain gate:
+pendingTriggerTarget is registered in PENDING_DECISIONS with
+`active:()=>true`, so anyoneOwesDecision() returns earlier in the same
+loop whenever it's set (and drainTriggers self-guards besides) — the
+conjunct could never be false there; tripwire-proven over the full suite +
+200-game selfplay during the audit. (2) Removed openPriorityRound's dead
+`initialHolder` parameter: all three call sites are zero-argument
+(IIFE-local, no external caller), and a passed holder would have been
+clobbered by drainTriggers→pushTriggerEntry anyway; priority now
+explicitly opens with `G.activePlayer` (MTG 117.3b), per the new doc
+comment. Suite 74 files / 1786 green, lint clean.
+
+v2.1.20: audit fix A1-3 (Joe-approved, PR #98 verdict 2026-06-10) —
+indestructible creatures now die at toughness <= 0. checkDeaths()'s
+indestructible `continue` skipped ALL three death causes; per MTG 704.5f and
+canon `docs/wiki/rules/1100-state-based-actions.md`, 0-toughness death isn't
+destruction, so the exemption now applies only when `t > 0` (damage/
+deathtouch causes). New `test_sba_zero_toughness.js` (8 assertions) pins both
+sides: indestructible at t<=0 dies (red before the fix), indestructible with
+lethal marked damage / deathtouch at t>0 still survives (F2 semantics
+intact). Suite 75 files / 1794 green, lint clean.
+
+v2.1.21: audit fix A1-10 (Joe-approved, PR #98 verdict 2026-06-10) —
+`tapLandForMana` is no longer legal during the cleanup discard. Dropped the
+blanket `cleanupDiscarding` clause from `whoHasPriority()`: canon §605 closes
+that window (nothing is castable, the pool zeroes at `setPhase('UNTAP')`, and
+a land tapped there stays tapped through the opponent's whole turn since
+UNTAP untaps only the new active player's permanents). Dependents check: the
+function's only consumers were the two tapLandForMana legality sites and the
+tap enumeration in getLegalActions; discard legality/enumeration/
+expectedActor/AI/render all carry their own cleanupDiscarding clauses and are
+untouched. New `test_cleanup_no_mana_taps.js` (10 assertions): tap illegal +
+rejected + un-enumerated mid-discard (5 red before the fix), discard still
+legal, taps resume after the discard completes. Suite 76 files / 1804 green,
+lint clean.
+
+v2.1.22: audit fix A2-3 (Joe-approved, PR #98 verdict 2026-06-10) — ghost
+attacker via bounce + re-cast is dead. Cast arrivals don't re-mint iids, and
+nothing pruned `G.attackers`/`G.blockers` on leave-play, so a declared
+attacker bounced in the block window and flash-re-cast re-matched its stale
+entry and dealt combat damage while sick/untapped/undeclared (§801/§901.1).
+New `removeFromCombat(iid)` (packet option A), called from the unified
+`emitLeavesBattlefield` funnel: prunes the iid from `G.attackers`, deletes
+block entries whose attacker left, and retires a leaving BLOCKER's key to a
+`'gone:<iid>'` tombstone — the entry survives so a blocked attacker STAYS
+blocked (MTG 509/510.1c, the engine's pre-existing dead-blocker behavior),
+but a re-cast blocker can't re-inherit the block. Also resolves A1-8's
+flag-hygiene residue for leave-play; control-change pruning (A2-5) lands
+next via the same helper. New `test_combat_ghost_attacker.js` (19
+assertions): the end-to-end ghost line through real actions (red before:
+life 20→18 from a never-re-declared sick attacker) + the 510.1c
+blocker-killed guard (green before AND after). Suite 77 files / 1823 green,
+lint clean.
+
+v2.1.23: audit fix A2-5 (Joe-approved, PR #98 verdict 2026-06-10) —
+`change_control` now removes the creature from combat (MTG 506.4c) via the
+shared `removeFromCombat` helper. Before: the control swap touched nothing
+but the battlefields, and findCard searches BOTH — so a mid-combat stolen
+attacker dealt its combat damage TO ITS OWN NEW CONTROLLER (defender fixed
+at start of combat, damage credit reads the live controller), and a stolen
+untapped (vigilance) attacker could legally be assigned to block ITSELF.
+Latent today (steal spells are sorcery-window; flash Steal dodges via its
+re-mint quirk) but live the day the first flash/triggered change_control
+lands. Canon: new "Removal from combat" paragraph in
+`docs/wiki/rules/800-combat.md` §801; DIVERGENCE C7 row added (Godot has no
+equivalent yet). New `test_combat_change_control.js` (19 assertions): stolen
+attacker is pruned + damages nobody (red before: new controller 20→18),
+self-block rejected (red before: legal), stolen blocker stops trading damage
+while its attacker stays blocked per 510.1c. Suite 78 files / 1842 green,
+lint clean.
+
+v2.1.24: audit fix A1-9 (Joe-approved, PR #98 round 2, 2026-06-10) — the DRAW
+step now logs "X draws." only when a card actually moved to hand. Before:
+`drawCard(ap)` was followed by an unconditional log, so both empty-library
+paths produced a phantom-draw line — a deck-out loss read (newest-first)
+"You draws." / "Opponent wins!" / "can't draw — loses!", and a Phylactery
+slot-rip was followed by a false "draws." in live play. Engine state was
+always correct; only the log lied. New `test_draw_log_truthfulness.js`
+(10 assertions): deck-out logs the loss with NO "draws." line (red before),
+Phylactery rip logs the rip with NO "draws." line (red before), normal draw
+still logs (regression guard). Suite 79 files / 1852 green, lint clean.
+
+v2.1.25: audit fixes A2-8 + A3-11 (Joe-approved, PR #98 round 2, 2026-06-10) —
+event payload conformance: all four `life_changed` emitters and the leave-play
+`card_zone_change` family now carry `source_iid` per PROTOCOL §3.3. A2-8:
+combat lifelink's emit gained the field (its consumer is real today — a
+noSelfCascade "you gain life" trigger on a lifelink creature fired off its own
+combat gain because it couldn't recognize it). A3-11: `damagePlayer` takes an
+optional `sourceIid` (spell callers thread `ctx.sourceIid`, the three combat
+sites thread `atk.iid`) and its life-loss emit attaches it;
+`emitLeavesBattlefield` gained a `sourceIid` param threaded to emitZoneChange,
+populated at the four effect-driven call sites (bounce, exile, steal,
+move_card) where the causing card is in scope — the death/sacrifice paths
+pass nothing (causality there is a player key / multi-iid Set, documented at
+the helper). The dead legacy `attacker`/`defender` payload fields stay (A3-16d
+declined). New `test_event_source_iid.js` (14 assertions): each corrected site
+pinned through the noSelfCascade guard — self-suppression (red before: 7
+fails, e.g. combat lifelink 20→27 instead of 20→22) + foreign-source
+still-fires guards. Suite 80 files / 1866 green, lint clean.
+
+v2.1.26: audit fix A3-12 (Joe-approved, PR #98 round 2, 2026-06-10) — a
+mid-prompt trigger fizzle now logs. doTriggerTargetPick's 'fizzle' arm (a
+later slot lost its only legal target after an earlier pick committed)
+dropped the trigger with no message — the player saw "X triggered — choose a
+target", picked one, and it evaporated; both sibling fizzle paths log. One
+line, mirroring pushTriggerOnStack's wording. Near-unreachable with today's
+pool (the prompt freezes all other actors); the new
+test_trigger_prompt_fizzle_log.js (7 assertions) reaches the arm through a
+real beetle+roots staple cast with the later slot stranded by board mutation
+(red before: silent fizzle) + a happy-path no-fizzle-line guard. Suite 81
+files / 1873 green, lint clean.
+
+v2.1.27: audit fix A3-7 (Joe-approved, PR #98 round 2, 2026-06-10) — deleted
+the production-dead `generateRandomTrigger` twin (and its now-unused
+`_genWeightedPick` helper) from trigger-generator.js. Zero production callers
+— the Codex uses the three-step generateConditionOptions →
+generateEffectOptions → assembleTrigger flow, the Mercurial Adept seeds from
+the static pool — and unlike assembleTrigger the twin never set noSelfCascade,
+so wiring it up per its old (already-corrected) header would have shipped
+cascade-unguarded triggers that loop to the depth cap. PRE-DECLARED test
+flips (per the packet): trigger_generator_test.js's surface check removed,
+its 200-roll shape + 500-roll hard-break-filter sections re-pointed at the
+real three-step flow (plus a new all-rolls-carry-noSelfCascade pin — the
+twin's missing flag was the finding's point); tests/_setup.js EXPOSED loses
+the entry; CLAUDE.md module map corrected (Mercurial does not use this
+module). PR #106's tests-only warning comment removed with the function.
+Suite 81 files / 1873 green (generator file 156 as before: −1 surface check,
++1 guard pin), lint clean.
+
+v2.1.28: audit fix A3-1 (Joe-approved: "Agreed, fix this", PR #98 round 2,
+2026-06-10) — stack entries now RE-VALIDATE their locked targets at
+resolution (§1006.1 triggers / §704.1 spells). Pre-fix, target legality was
+checked at queue time and stack-push time and never again: hexproof gained
+in response provided zero protection (the waiting trigger/spell hit the
+target anyway), and a dead sole target still let untargeted rider effects
+resolve instead of fizzling the whole entry. New `tsRevalidateTargets`
+re-runs the SAME per-slot legal sets used at cast/queue time (tsLegalBySlot
+→ getValidTargets, so hexproof/filters/zone changes all re-apply) once at
+resolution start, in both resolveTrigger and resolveTopOfStack: illegal
+slots are dropped (multi-target entries proceed against their remaining
+legal targets — partial fizzle), and if every targeted slot is illegal the
+entry fizzles whole with a log line in the existing wording family — riders
+included, costs stay paid. Mana abilities never touch the stack; their fast
+path is untouched. Also fixed the engine.js trigger-section header that
+falsely claimed re-validation already happened (three-way comment
+contradiction in the packet). New tests/test_resolution_revalidation.js
+(16 assertions, red→green: 6 red pre-fix) covers the packet's
+100%-real-actions staple-synthesis repro (Ambush Djinn + Aether Drake flash
+grant vs a waiting Flame Wisp trigger), multi-target partial fizzle, the
+spell-side whole-fizzle + rider skip, and the unchanged happy path.
+Predicted test impact per the packet was none — confirmed: zero existing
+assertions flipped. Suite 82 files / 1889 green, lint clean.
+
+v2.1.29: audit fix A2-2 (Joe-approved: "110% authorized", PR #98 round 3,
+2026-06-10) — trample carryover vs a blocker that needs 0 more damage. A
+LIVING blocker can have `lethalNeeded === 0` (a fully-marked indestructible
+— F2 retains marked damage), and the satisfied branch required
+`lethalNeeded > 0`, so the zero-need blocker was classed UNSATISFIED: all
+trample carryover was suppressed AND the attacker's entire remainder was
+dumped onto the creature that needed nothing (a 6/6 trampler vs a
+fully-marked Iron Statue hit the defender for 0 instead of 6). Per §803,
+"needs zero more" counts as satisfied: `remaining >= lethalNeeded` now
+decides the branch and the `> 0` guard moved inside it (keeping its
+legitimate job: no 0-damage recordDamage staking a false kill claim).
+`ai.js` simulateCombat carried the identical structure and got the identical
+restructure (engine/AI lockstep). New
+tests/test_combat_trample_lethal_zero.js (16 assertions, red→green: 3 red
+pre-fix) pins the chunk-2 self-QA scenario (pre-marked 5/5 statue vs 6/6
+trampler → defender takes 6), the partial-marking boundary control
+(pre-mark 3 → assign 2, spill 4), and the no-trample wasted-leftover guard.
+Predicted test impact per the packet was none — confirmed: zero existing
+assertions flipped. Suite 83 files / 1905 green, lint clean.
+
+v2.1.30: audit fix A2-4 (Joe-approved: "authorized", PR #98 round 3,
+2026-06-10) — `isLegalAction('declareAttackers')` now rejects duplicate
+iids, mirroring the `usedBlockers` Set its sibling `declareBlockers` case
+has always had. Pre-fix the raw engine command "attack with [X, X]" was
+accepted: one creature dealt N× combat damage and emitted N× 'attacks'
+triggers (§801 step 505 — one attack role per creature). No UI path could
+produce it; executeAction is the public protocol surface. Reject, not
+dedupe, matching the sibling's semantics. New
+tests/test_combat_duplicate_attackers.js (9 assertions, red→green: 4 red
+pre-fix — the duplicate was accepted and dealt 4 instead of 2): duplicate
+rejected + nothing declared + player not locked out + damage dealt once;
+guard pins a normal multi-attacker declaration (2+3=5) green before and
+after. Predicted test impact per the packet was none — confirmed: zero
+existing assertions flipped. Suite 84 files / 1914 green, lint clean.
+
+v2.1.31: audit fix A2-7 + lifelink overkill (design ruling, Joe, PR #98
+round 3, 2026-06-10: "1 point of deathtouch damage is lethal.
+Indestructible creatures survive lethal damage." / "Lifelink should always
+gain its full power, even when that damage is overkill."). Deathtouch's
+combat lethal-threshold math carved out indestructible blockers (full
+remaining toughness instead of 1, asserted as deliberate in a comment but
+absent from §902.3/§803): the carve-out is removed — the dose is 1 vs
+every blocker, indestructibles are lethal-marked but survive (immunity
+stays in checkDeaths; losing indestructible later that turn means the mark
+kills at the next SBA, same F2 semantics as retained damage). A
+3-power deathtouch+trample attacker vs Iron Statue now tramples 2 (was 0).
+Lifelink: the "all blockers satisfied + no trample" leftover arm wasted the
+remainder with NO lifelink — the only combat site that capped lifelink
+below full power (verified: unblocked, dead-blockers-trample, per-blocker
+assignment, trample spill, and dump arms all already paid in full). It now
+gains the wasted remainder: a 6/6 lifelink attacker over a 2/2 gains 6
+(was 2). ai.js simulateCombat mirrored both the carve-out (packet's
+ai.js:778 coupling) and the wasted arm — engine/AI lockstep maintained.
+Rulebook updated to state the rulings (900-keywords.md §902.3/§902.4/
+§903.1, 800-combat.md §803, each citing the design ruling). New
+tests/test_combat_deathtouch_lifelink.js (23 assertions, red→green: 5 red
+pre-fix) pins both rulings + green-before/after guards (lifelink+trample
+full gain via spill; deathtouch still kills killable blockers at dose 1).
+Predicted test impact per the packet was none (no test contained
+"deathtouch") — confirmed: zero existing assertions flipped. Suite
+85 files / 1937 green, lint clean.
+
+v2.1.32: audit trigger-hygiene batch — fixes A3-10, A3-13, A3-14, A3-5 +
+A3-3 docs (Joe's verdicts, PR #98 rounds 3–4, 2026-06-10). **A3-10** (Joe:
+"if a trigger fizzles because it is never put on the stack in the first
+place, no log entry occurs — fix this"): deleted emit()'s redundant
+per-trigger target-legality gate (`triggerHasAnyValidTarget`) — a matched
+trigger now always queues (§1004) and target legality is enforced at the
+stack-push moment (§1005, the site that LOGS its fizzle) and at resolution
+(§1006.1); silent no-target vanishes become logged fizzles, and the
+emit→drain wrong-suppression window closes. The misplaced 603.3c citation
+moved to pushTriggerOnStack. **A3-13** (Joe: "exact copies at the moment
+they're copied, then allowed to diverge"): new cloneTriggerData deep-copies
+`condition` at all four consumer spreads (makePlayer's Mercurial pool pick,
+makeCard's bonusTrigger push, finalizeBuild's slot write + live-card push)
+— pre-fix every game's Mercurial card aliased the module-level pool entry's
+condition array (contamination executed in the red test). **A3-14**:
+schedule_delayed refuses unknown `when` values loudly (console.warn, not
+enqueued) instead of parking an immortal entry in delayedTriggers that
+every cleanup re-keeps; EFFECT_SCHEMA gains a schedule_delayed entry so the
+typo is also caught at boot. **A3-5**: new
+ENGINE.validateGeneratedTriggerTables() boot-sweeps the three tables
+outside both card validators (GENERATOR_EFFECTS / GENERATOR_CONDITIONS /
+MERCURIAL_TRIGGER_POOL) for unknown effect kinds, token ids, predicates,
+and event kinds (called from main.js); makePlayer warns on a stale
+persisted slot bonusTrigger (warn-only, still attaches). **A3-3** (Joe:
+"keep the current behavior, fix the documentation. 100 is plenty, we want
+the stronger protection"): the four lying descriptions of the trigger cap
+now state the real semantics — a per-stack-episode trigger BUDGET (width),
+not nesting depth: the engine comment(s), the bail log line ("Trigger
+budget exhausted"), canon §1008, and DIVERGENCE E6. New tests (all
+red→green pre-fix: 1/6/3/4 red): test_trigger_emit_fizzle_log.js (6),
+test_trigger_condition_clone.js (11), test_delayed_fireat_validation.js
+(7), test_generated_tables_validation.js (10). Predicted test impact per
+the packets was none — confirmed: zero existing assertions flipped. Suite
+89 files / 1971 green, lint clean.
+
+v2.1.33: audit fix A1-1 legs 2+3 — priority pass-tracker reset on non-mana
+ability activation + no synthetic priority rounds from closed-window trigger
+drains (Joe-approved, PR #98 round 3: "Sounds like a pair of good catches.
+Please fix them"; leg 1, the opp-handoff after a cast, was separately ruled
+intentional and is unchanged). **Leg 2**: doActivateAbility was the only
+board-mutating action that never cleared `G.priority.passes` — an opponent's
+pre-activation pass stayed on the books, so an ability activation plus the
+activator's own (auto-)pass closed the phase (or resolved combat damage)
+with the other player never holding priority on the post-ability board. Now
+non-mana activations wipe the pass tracker (§603's both-pass close means
+"in succession since the last action"); the activator keeps priority
+(nothing went on the stack); mana abilities stay exempt, matching
+tapLandForMana. **Leg 3**: drainTriggers now refuses to run while priority
+is CLOSED (§605 — pending attack/block declarations, combat damage,
+cleanup); queued triggers wait for the next openPriorityRound per §1004.4.
+Pre-fix, pushTriggerEntry conjured a synthetic round (`if (!G.priority)
+G.priority = {passes: new Set()}`) that both players auto-passed, marching
+the phase past the parked declaration — combat silently skipped with
+attackersDeclared still false (live-executed: a "Sacrifice a creature: add
+mana" ability mid-declaration skipped combat entirely; latent today, armed
+the day any trigger-firing mana ability lands). The synthesis is deleted;
+pushTriggerEntry now requires the open round drainTriggers guarantees. New
+tests (red→green: 6 and 6 red pre-fix): test_ability_pass_reset.js (16 —
+main-phase + block-window response windows, mana-exemption guard),
+test_trigger_closed_window_drain.js (13 — closed-window queue + drain at
+the real window + open-window guard). Predicted test impact per the packet
+was "zero tests assert priorityHolder post-cast or post-ability" —
+confirmed: zero existing assertions flipped. Suite 91 files / 2000 green,
+lint clean.
+
+v2.1.34: audit fix A6-1, option C (Joe's ruling, PR #98 round 3, 2026-06-10:
+"Do C. Keep the pool broad, but make it factor weights in appropriately.") —
+bargain sticker rewards now respect rarity weights. Pre-fix,
+applyRandomStickersToSide (Archdemon of Bargains' ETB/LTB payouts) enumerated
+every legal (permanent, sticker) pairing and drew UNIFORMLY — the registry
+rarity weights were ignored, so a weight-1 rare (Indestructible/Hexproof/
+Unblockable/Costs-1-Less) was as likely per pairing as weight-20 +1/+1, and a
+permanent eligible for more sticker types soaked up proportionally more
+picks. Now each pick builds its candidate pool via the new
+bargainStickerCandidates() (the BROAD pool, unchanged per the ruling: stat
+boosts, keyword grants, Innate, the five land-color add_type stickers,
+cost_minus_1, lose_defender — still excluding scarified/subtype/empower and
+weight 0) and draws the STICKER via pickWeightedSticker, the same machinery
+as normal reward offers (run.js sticker offers, draft.js AI bursts), then a
+target permanent uniformly among that sticker's eligible permanents;
+candidates re-derive between picks so eligibility updates as stickers land.
+The code comment that understated the pool (A6-1's original evidence) is
+replaced by the real enumeration + the weighting rule. New
+tests/test_bargain_weighted_pool.js (21 assertions, red→green: 3 red pre-fix
+— the uniform draw at a stubbed roll of 0.6 picked weight-1 Indestructible
+over weight-20 +1/+1): deterministic Math.random-stub weighting checks (no
+sampling) + direct inspection of the constructed weighted pool (breadth, the
+three exclusions, registry weights carried through, per-sticker placement
+lists). Predicted test impact per the packet — the existing bargain test
+asserts a tolerant count, likely still green — confirmed:
+test_bargain_chooser_and_empower.js 20/20, zero existing assertions flipped.
+Suite 92 files / 2021 green, lint clean.
+
+v2.1.35: audit fix A1-2 — mana payer unification: ONE solver for legality AND
+payment (Joe-approved, PR #98 round 4: "A1-2: Go" on the proposal "have the
+smart check hand its winning combination to the payer, and the payer just
+executes it"; round 3 ruling on the why: "this smells of unnecessarily
+duplicative logic"). Pre-fix, affordability (canPayPotential — backtracking
+over choose-source color assignments) and payment (payMana — greedy fixed
+W,U,B,R,G order via tapSourceProducing, no backtracking) were two different
+algorithms. With two partially-overlapping choose-duals (reachable via
+land_color_* stickers, land staples, City of Brass) the checker said
+"castable", the greedy payer spent the wrong dual first, hit a dead end
+mid-payment and THREW out of executeAction — half-applied state: a land
+wrongly tapped, its mana consumed, the spell still in hand, step()/notify()
+never run (violating doCastSpell's "assume the action has been validated"
+contract). The same mismatched pair gated all three payMana call sites
+(doCastSpell, doActivateAbility, doOptionalCost — the optional-cost leg also
+irrecoverably lost the trigger, chunk-4's executed repro). Now
+solveManaPayment computes a concrete plan — which sources to tap, which
+color each choose-source produces — via the same backtracking search the
+checker ran (now recording its winning assignment), then trims unneeded
+taps in an order that preserves the old payer's observable preferences
+(pool-first, fixed-before-choose, front-to-back); canPayPotential is a thin
+"does a plan exist?" wrapper and payMana executes the plan verbatim —
+solve-then-execute, validated before any mutation, so payment is atomic by
+construction (genuinely unaffordable payMana throws BEFORE touching
+anything). tapSourceProducing (the greedy auto-tapper) is deleted; the
+mana-ability fast-path semantics (docs/wiki/mana-model.md) are untouched.
+New tests/test_paymana_plan_unification.js (17 assertions, red→green: 8 red
+pre-fix — the {U}{B}-on-overlapping-duals cast threw with dual A left
+tapped, and unaffordable payMana tapped before throwing): checker-approved
+cast pays end-to-end (direct payMana solve + public-API cast resolving),
+atomic failure (no mutation on unaffordable), pool-first/fixed-preferred
+guards, and the doOptionalCost call site paying through the same solver.
+Predicted test impact per the packet — none, no test pins greedy payment —
+confirmed: zero existing assertions flipped (test_mana.js auto-tap and
+fixed-over-City-of-Brass arms green unchanged). Suite 93 files / 2038
+green, lint clean.
+
+v2.1.36: audit docs/comment ship batch (chunk 4 + 5: A4-10, A4-25, A5-9,
+A5-10, A5-12, A5-13) — behavior-neutral. JS half (the bump's reason):
+deleted resolveTopOfStack's dead sharedTarget/sharedSnap locals (zero reads
+repo-wide; their stale "snapshot BEFORE any effect runs" comment described
+machinery that moved to makeSlotTargetGetter's lazy first-read-per-slot
+snapshot — comment folded into the accurate one); dropped the dead
+'gainControl' entry from CREATURE_EFFECT_KINDS (no handler, no card data,
+effect_migration_test pins it GONE); pump's mass-arm log de-dev-speaked
+("to each creature in scope" → count-based "to N creature(s)", matching
+grant_keyword's mass log). Comment/doc half: change_control header +
+test_change_control header no longer claim "gainControl/steal remain until
+card migration retires them" (migration done; steal stays by design as the
+transfer_ownership delegate); matchFilter's spliceable_base comment no
+longer claims "no Lands" (lands are valid, tiebreak-prioritized bases);
+run.js splice-reward weight comment now describes the v1.0.47 pre-rolled
+pair, not the retired pick-then-pick flow; stale "(BACKLOG: optional paid
+ETB.)" tag dropped (it shipped); PROTOCOL.md §3.2/§3.5 corrected to the
+wire the engine actually reads (snake_case target_filter axes + examples,
+fight+operands row replacing phantom fight_target, grant_keyword
+scope not whose, create_tokens token_id+controller, new rows for
+add_counter named-form / become_copy_of / grant_cast_permission / steal
+runtime-note, move_card copy_source selector, cast-time-AND-resolution
+re-validation sentence per §704/PR #111, hand-synced-catalog note pointing
+at effectCoverageReport); DIVERGENCE D1 detail reworded to the lazy
+first-read snapshot reality (+ one-line eager-prime triage question);
+docs/wiki/staple-synthesis.md inverted base/staple sentence fixed (the
+HIGHER-priority type is the base) + stale "parked in BACKLOG" claim
+replaced with the shipped optional-paid-ETB behavior; Stapler oracle text
+now says "permanents or spells" (matches its permanent_or_spell targeting;
+custom_text, rules-inert). New wiki page docs/wiki/engine/synthesis-staple.md
+(chunk-5 distillation) + engine README listing. Suite 93 files / 2038
+green, lint clean.
+
+v2.1.37: audit fix A2-1 (chunk 2, P1; design ruling, PR #98, 2026-06-11:
+"OK yeah, that kills the case for double damage. Let's go with MtG's
+behavior here") — first-strike wave membership is snapshotted ONCE at
+combat-damage start. resolveCombatDamage's two strike passes filtered on
+LIVE card.keywords; deaths sweep BETWEEN the passes, and a dying lord's
+clearRestrictionsFromSource splices its granted keywords out — so a
+creature whose first strike was granted by a lord that died in pass 1
+re-passed the pass-2 `!first_strike` filter and dealt combat damage TWICE
+(the finding's executed repro: Skyfire Drakelord's granted Dragon hit for
+3 + 2 = 5 face where canon says 3); inversely, a creature GAINING first
+strike between the passes matched neither filter and dealt zero. Fix: an
+`fsIids` Set snapshotted from allCombatants before pass 1; both passes
+filter on the snapshot, so each combatant deals damage in exactly the one
+wave the snapshot assigns — never both (no accidental double-strike
+semantics). ai.js simulateCombat mirrors the snapshot shape for lockstep
+(no behavior change there — the sim never mutates keywords between
+strikes). Canon docs/wiki/rules/800-combat.md §803 gains an explicit
+wave-snapshot paragraph + a per-engine implementation-status line (the
+Godot port still live-reads per pass; harmonize with C1/C2). New
+tests/test_combat_first_strike_snapshot.js (14 assertions, red→green:
+both pins red pre-fix — face 5-not-3 on the lord-death double dip, face
+0-not-2 on the mid-combat gain), driving both directions through public
+actions only (revoke via skyfire_drakelord + a Dragon'd goblin_raider;
+gain via a not_keyword-gated FS lord that starts matching when the
+vigilance-granting lord dies in pass 1). Predicted test impact per the
+finding — none — confirmed: zero existing assertions flipped. Suite 94
+files / 2052 green, lint clean.
+
+v2.1.38: audit fix batch — the four named chunk-4 P1 GOs (Joe's verdicts,
+PR #98, 2026-06-11). **A4-2 (adjudicates parked A2-9):** lord static-buff
+keyword grants were ADD-ONLY — steal a Goblin from under Goblin Chieftain
+and it kept haste forever (stale hexproof/vigilance/trample likewise) while
+the stat half of the SAME buff dropped live. One shared lordBuffApplies()
+predicate is now the single gate for BOTH halves (A2-9's resolution: the
+stat loop gains the Creature check it lacked — a subtype-free lord no
+longer buffs lands — and `allCreatures` in getStats renamed allPermanents);
+applyStaticKeywordGrants is a true diff-reconcile with a revoke pass for
+lord-sourced grants the predicate no longer accepts, via a new
+stripGrantedKeyword() helper shared with clearRestrictionsFromSource (the
+strip also respects live eotGrants, so Threaten's own granted haste
+survives the revocation of the old lord's). The A4-14 getStats↔matchFilter
+recursion guard is NOT included (next batch) — its one home is marked in
+lordBuffApplies' header. **A4-3:** fight effects retargeted around removal —
+resolveFightOperands' auto-fill pass, written for {select} computed
+operands, also filled a {slot} operand whose chosen creature died in
+response, conscripting the caster's next-biggest creature (friendly fire
+after printing the fizzle log; live in all 4 fight cards). Per §704/§1006
+fizzle semantics: the fill pass now skips {slot} operands, so a missing
+participant hits the handler's !a||!b fizzle. **A4-5:** intrinsicKeywords
+was copyOf-blind — the CLEANUP eotGrants rebuild erased a False Witness
+copy's copied flying and resurrected the base flash (same root corrupted
+claimableKeywords trophy claims on copy victims). intrinsicKeywords now
+derives from CARDS[card.copyOf] while the copy is live (mirroring its
+stapledFrom branch); resetInPlayState clears copyOf before its own
+re-derive so the leave-play revert still lands on the base identity.
+**A4-6:** color/not_color target filters compared card.color — the FIRST
+pip only — so "non-Black" Doom Blade legally destroyed the {U}{B}
+Seal-Thief Courier (and {color:'U'} would reject a W/U card). Both checks
+now route through colorsOfCard's full identity list; colorsOfCard gains a
+printed-color fallback so cost-less tokens keep their single-color
+identity. Four new red→green regression files (red captured pre-fix):
+test_lord_grant_reconcile.js (19), test_fight_fizzle.js (9),
+test_copy_keyword_persistence.js (14), test_color_filter_multicolor.js
+(13). Predicted test impact per all four findings — none — confirmed: zero
+existing assertions flipped. Suite 98 files / 2107 green, lint clean.
+
+v2.1.39: audit fix batch — fourteen approved chunk-4 items (Joe's wholesale
+round-4 GO, 2026-06-10; A4-14's Elystra gate cleared by the supervisor).
+**A4-7:** the trigger + ability resolution loops never routed chooses() to
+the human edict prompt — an AI-controlled Heir to the Burnt House dying
+silently sacrificed a land of the ENGINE's choosing. The spell resolver's
+prompt branch is extracted into one shared maybeDeferHumanChooses() gate
+consumed by all three loops; the chooses handler's stale "prompt is
+deferred" comment fixed. **A4-8:** getValidTargets silently DROPPED
+target_filter for creature_or_player (creature half now matchFilter-
+enforced; players always legal) and spell (now matchFilterSpell-enforced);
+player/opp + filter pairings are boot-rejected as nonsensical;
+targetsForFilter's header now states the per-kind scope. **A4-9 (design
+ruling, option A):** trample spill stays for effect damage (trample
+stickers on sorceries are deliberate design) but is gated OUT of fight
+(ctx.fightDamage) — a trampler that fights no longer leaks excess into the
+player's face; reminder text rewritten to match; deathtouch-on-fight
+victim-mark fenced. **A4-11:** matchFilter's key vocabulary is CLOSED at
+boot — MATCH_FILTER_KEYS (matchFilter ∪ matchFilterSpell ∪ graveyard-search
+∪ library-search axes) swept over every target_filter / slot filter /
+effect filter / static_buff filter; a typo'd or camelCase key (the old
+PROTOCOL spelling) no longer silently over-targets. **A4-12 (design
+ruling, option A):** life LOSS routes through new shared losePlayerLife()
+— under Phylactery, drains floor at 0 and rip slots exactly like damage
+(was: raw subtract to negative life, then damage RESET you up to 0);
+damagePlayer delegates to the same writer; Phylactery's text amended
+"Damage past 0" → "Life lost past 0". **A4-13:** doActivateAbility's
+scope:'self' gains the creature-vs-player fork via new shared
+resolveSelfTarget() (the v0.99.29 bug's divergent third hand-synced copy:
+"T: deal 1 to you" damaged the creature); add_type/set_types added to
+CREATURE_EFFECT_KINDS (artifice_triumphant stays creature-routed).
+**A4-14:** the getStats↔matchFilter mutual recursion (stat-bounded lord
+static_buff → RangeError on every stats read) is closed in lordBuffApplies
+— the one funnel — via matchFilterNoStats (the four stat axes skipped);
+stat bounds inside static_buffs are ALSO boot-rejected until designed.
+**A4-15:** steal's RUN.appendSlot was the lone RUN write without the 'you'
+gate — an opp-controlled Steal appended the stolen slot to the VICTIM's
+persisted run deck; now human-gated (opp theft is in-game only; victim's
+slot untouched). apply_in_game_splice's slot-mint sits in the same family
+but is chunk 5's (its 97 survivors are handed there) — left as the
+A5-family rider. **A4-16 (BEHAVIOR CHANGE, per Elystra's printed text):**
+the move_card battlefield-leave path now flushes permanent_eot buffs via
+leavesPlayPreservingBuffs unconditionally — Cloudshift/Otherworldly
+Journey/Oblation no longer eat Elystra's pending "last forever" gains; the
+dead post.keep_buffs fork deleted; stale headers fixed. **A4-17:**
+resolveTarget + applyDamageFrom guard missing/iid-less targets (logged
+fizzle, was TypeError stranding the spell in NO zone) and non-numeric
+amounts (was NaN damage = unkillable creature); EFFECT_SCHEMA grows
+required-param entries (damage/gain_life/draw/discard amount-or-expr;
+add_mana amounts|choose; grant_keyword keyword; create_tokens known
+token_id incl. hoisted TOKEN_ALIAS) plus a targeted-kinds-need-a-target
+sweep (new `targetErrors` list). **A4-19:** a countered spell now routes to
+its OWNER's graveyard (§706) — counter was the engine's one
+controller-routed graveyard site, live via Seal-Thief Courier. **A4-20:**
+fetchLibraryToBattlefield arrivals go through placeCardOnBattlefield (§3.7
+fresh iid + summoning sickness + post + sourced ETB emit); a future
+creature fetch can't arrive attack-ready. **A4-21:** EFFECT_SCHEMA
+validates move_card selectors against the handler's real per-pair dispatch
+(MOVE_CARD_SELECTORS — schema-clean combos can no longer no-op at
+runtime), and the hand→graveyard arm honors the §5.2 shorthand selectors
+(controller_chosen → controller; target_player_chosen → requires a player
+target, else logged fizzle). **A4-22:** the move_card reanimation branch
+calls the full resetInPlayState instead of a hand-rolled 6-field list that
+missed killedBy (stale killer credit on re-death) — closes the
+forgot-a-field class. Nine new red→green regression files (red captured
+pre-fix): test_a4_zone_state_fixes (15), test_a4_elystra_flicker_buffs
+(12), test_a4_steal_run_gate (9), test_a4_fight_trample_deathtouch (10),
+test_a4_phylactery_lifeloss (12), test_a4_self_target_ability (8),
+test_a4_trigger_edict_prompt (12), test_a4_targeting_filters (13),
+test_a4_validation_guards (38). One existing fixture completed (not
+weakened): test_effect_validation's mcGraveyardToExileOk gains the
+selector A4-21 now requires. Suite 107 files / 2236 green, lint clean.
+
+v2.1.40: audit A3-6 build-out (approved feature — Joe, PR #98 round 2:
+"This is meant to support arbitrary zone movements. We should probably
+build that out."). `card_zone_change` now fires for EVERY genuine card move
+between zones, not just battlefield-touching ones: draws + tutors
+(library→hand, via the one drawCard seam + both search paths), discards
+(hand→graveyard, AI + human prompt paths), mills (library→graveyard),
+casts (hand/graveyard/exile→stack in doCastSpell), counters and sorcery
+resolutions/fizzles (stack→graveyard), graveyard/exile recursion to
+hand/library/exile, and steal's fresh-instance mint (none→library — the
+synthetic `none` from_zone now covers any mint, not just tokens).
+drawCard/pendingSearch/forcedDiscard thread `sourceIid` so noSelfCascade
+self-suppresses on the new events. Deliberate NON-events, documented in
+canon §1002.2a–b + PROTOCOL §3.3: game setup (opening hands/mulligans are
+constructed, never drawn — zone events don't exist before the game
+starts), rip/annihilate + steal-consumed stack spells (cease to exist;
+rip stays the no-trigger verb), the Elystra rip path's transient graveyard
+push, staple consumption (a merge), control changes (same zone), and
+shuffles. Battlefield-touching emissions are untouched from v2.1.39 —
+structurally pinned: every shipped/generated card_zone_change trigger
+carries a battlefield-touching card_moves term, so zero existing triggers
+can match the new events (pool-behavior change: none; the feature is that
+authored triggers like card_moves(library, hand) now FIRE). One new
+red→green file test_a3_6_zone_events (36 assertions; 22 red pre-fix),
+covering every new emission site, the pool-isolation pins, the
+TRIGGER_DEPTH_CAP budget stopping a draw-triggered-draw loop (101 draws
+then bail, no deck-out), noSelfCascade end-to-end, and the setup-silence
+rule. DIVERGENCE E1 notes the Godot port still emits battlefield-only.
+Suite 108 files / 2272 green, lint clean.
+
+v2.1.41: audit A4-4 fix (P1, GO — Joe, PR #98 round 5) — mass removal is
+SIMULTANEOUS. The affect_creature `scope` path (destroy/bounce/exile arms)
+used to emit each creature's leave-play zone-change as it was removed, so
+a dies-listener swept by the same wipe only heard deaths that happened
+before its own — Blood Artist + 2 vanillas under Day of Reckoning drained
+1 or 3 depending on battlefield array position (executed both ways), while
+the damage wraths (Pyroclasm → checkDeaths' SBA batch) always drained 3.
+Now the scope path mirrors checkDeaths' two-pass batch design: pass 1
+plucks every in-scope creature (severity ladder + indestructible
+validation unchanged, via affectOneCreature's new deferred-emit `batch`
+arg; moveToGraveyard grew the same optional arg), pass 2 emits each leave
+with the FULL batch as extraSources — simultaneous departures see each
+other, per emitLeavesBattlefield's own stated contract. Single-target
+paths pass no batch and emit immediately, byte-identical behavior. A3-11
+source_iid attribution preserved per-arm (destroy: undefined/killedBy;
+bounce/exile: the effect's sourceIid). The old hexproof concern on this
+path is obsolete — hexproof has been structural at the target() layer
+since Slice 3; mass-scope effects never check it (investigated + posted to
+PR #98). One new red→green file test_mass_removal_batch (15 assertions;
+6 red pre-fix): the finding's declared scenario artist-first AND
+artist-last through the real cast/settle loop (drain ×3 both ways),
+batch-visibility pins for all three leave severities (each emit carries
+the whole batch), pass-1 indestructible validation (survivor excluded
+from the batch), and single-target/tap unchanged. Suite 109 files / 2287
+green, lint clean.
+
+v2.1.42: **Stackable infrastructure** (audit A3-2, Joe's PR #98 round-5
+proposal: "You implement the infrastructure. You leave everything as
+'stackable' atm... you do the code work, I'll take the design off your
+plate"). One optional boolean — `stackable` — now exists on trigger AND
+activated-ability definitions; ABSENT defaults TRUE (graceful, no card
+edits: zero card.json files carry the field tonight), present-but-non-
+boolean is a loud boot schema error (validateAllCardEffects +
+collectUnknownTriggerRefs/generated-tables sweep). The real build: non-mana
+activated abilities STOPPED resolving inline — activation pays costs and
+locks targets exactly as before, then pushes a real `kind:'ability'` stack
+entry; the §603 response round opens (priority to the activator's
+opponent, same handoff as spells/triggers); resolution rides
+resolveTopOfStack → resolveAbilityEntry with the shipped A3-1 §1006.1/
+§704.1 framework (target re-validation, whole-fizzle with log, costs stay
+paid) plus a resolution-time Stapler pair re-check (the pair can now decay
+in the response window). Mana abilities keep the hardcoded off-stack fast
+path (canon §705) — both doTapLandForMana and the add_mana
+doActivateAbility arm, untouched. The unstackable arms exist but are
+DORMANT (provisional semantics per plan-stackable.md §6 Q1, pending Joe's
+classification pass): abilities keep the old inline body as the
+stackable:false arm; triggers get drain-time-immediate
+(resolveTriggerImmediate — resolves at drain in queue order before any
+stack push, logged "(split second)", budget-counted). Counter parity
+(§1004.6): the counter handler refuses kind:'ability' entries, and the
+'spell'/'permanent_or_spell' targeting arms + resolveStackOrPermanent
+exclude them by name. AI: shouldCounter passes over ability entries
+(reusing the trigger path); 25-game bughunt selfplay 100% clean (0
+crashes/stuck/runaway). UI minimal: the stack banner renders ability
+entries as synthetic cards (name + describeAbility text, ✦), the reaction
+status line says "activated X (ability)", target lines read ab.effects,
+counter-pick highlighting skips them. Docs: PROTOCOL §5/§6 stackable
+field (Godot-pending); canon §1004.6-7 + §705-706 rewritten to the new
+truth; DIVERGENCE D8 row replaced. Declared test flips, both pinning the
+OLD inline resolution: test_ability_pass_reset (arms 1-2 now pin the
+stack entry + earlier response window; the leg-2 pass reset is structural
+via the push) and test_equatorial_artificer_boss (3 immediate-effect
+asserts now settle the entry first). New red→green file
+test_stackable_infra (42 assertions; 15 red pre-build) covering the
+response window, respond-kills-target fizzle, mana fast path, default +
+dormant drain-time-immediate arm, boot validation, counter parity, AI
+sanity. Suite 110 files / 2333 green, lint clean.
+
+v2.1.43: audit chunk-7 small-ship batch (A7-4, A7-5, changelog hygiene).
+**A7-4 (P4):** bestSpellPlay's self-damage lethal gate is now applied per
+OPTION — a modal mode whose own self-damage would put the AI at or below 0
+life scores -100 (a modal card can still pick a survivable mode); the old
+gate covered non-modal cards only while its comment promised a per-option
+check that didn't exist (honestly unreachable in the current pool — no
+modal card has a self-damage mode; the bug class is what's pinned). New
+red→green file test_a7_modal_self_damage (7 assertions; 2 red pre-fix,
+synthetic modal templates). **A7-5 (P3, harness-only):** the selfplay
+harness now reads executeAction's boolean — a rejected (illegal) AI action
+is recorded as a structured `illegalAction: {actor, action}` on the game
+result, counted as its own failure class in the summary (alongside
+crashes/invariant/stuck/runaway, exit code included), and ends that game;
+rejected actions no longer increment actionsTaken or the actionTypes
+action-mix tallies. Previously the deterministic re-propose loop marched
+to the 2000-action cap and the game was mislabeled "runaway" (probe: 3
+stubbed-illegal games → old 3× runaway + ~5980 stderr warn lines; new 3×
+illegal-action, turn recorded, 3 warn lines; 10-game real run 100% clean).
+Also removed three stray CLAUDE.md instruction lines from this file's tail
+("MUST UPDATE on every dev-branch push…" / "Always work on `dev`…" /
+"Deferred work lives in `BACKLOG.md`…") — paste residue from the
+2026-06-02 CLAUDE.md→CHANGELOG.md extraction (commit 3940cc5), never
+changelog content. Suite 111 files / 2340 green, lint clean.
+
+v2.1.44: audit chunk-9 ship batch (A9-4, A9-5, A9-6, A9-7 + the A9-9
+assertion). **A9-4 (P4, defensive guard):** RUN.load() now refuses a save
+blob whose version is NEWER than this build's SAVE_VERSION (warn + return
+false) instead of silently loading it as-is — the migration loop was
+upward-only. Deliberately does NOT clear the blob: a newer build can still
+read it. **A9-5 (P4, analytics-only):** picklog's per-draft gamesPlayed
+counter moved from startNextGame to recordResult — it now counts COMPLETED
+games (win or loss). Start-counting double-counted crash-restores (the
+resume path replays startNextGame after rollbackForMidGameRestore) and
+counted abandoned games. recordGamePlayed had exactly one caller; no other
+call site. New red→green file test_a9_run_save_guards (7 assertions; 4 red
+pre-fix). **A9-6 (P3, comments):** the RUN.start() boon comment cluster —
+the phantom "Watcher's Gift" canonical example is gone (no such boon
+exists; all 7 current boons return extras only, none mutates slots in
+place); the contradictory apply() contracts (cards.js "pure, no runState
+mutation" vs run.js "mutate IN PLACE… both valid") are resolved to ONE
+contract stated identically at both sites: apply(slots) may mutate the
+slots array in place OR return {extras: [...]}; the retired Mercurial
+triggerPool mechanism comment now points at trigger_pool_seed (engine.js
+makePlayer) and marks the extras triggerPool passthrough as legacy-save
+support only; the double-pasted appendSlot header is de-duped; engine.js's
+makeCard bonusTrigger comment re-attributed from the phantom boon to its
+real writer (Architect's Codex finalizeBuild). **A9-9 (parked invariant,
+guard ships here):** tplid_renames_test gains the full-map assertion that
+every TPLID_RENAMES key is absent from CARDS — picklog re-applies renames
+unconditionally on every load, so a reused legacy key would silently
+rewrite picklog rows forever. **A9-7 (P3, canon docs):** §1500 now
+documents the endless-sector structure (sector clear → fresh map; a run
+ends only in a loss) in §1501/§1502; §1502 gains the 15% constructed
+(non-boss archetype) mid-node roll; §1505's phantom Watcher's Gift example
+replaced with real boons (Polychrome Pact, The Hungering Mimic) and the
+adopted mutate-or-extras contract; §1504's TwoStickers "(often to one
+slot)" corrected to always-same-slot; roguelike-meta.md gets the same
+endless-sector fix. (§1504's Clone sentence untouched — A5-11 pending
+ruling.) Suite 112 files / 2348 green, lint clean.
+
+v2.1.45: audit chunk-10 + chunk-11 truthfulness ship batch (A10-1/2/3/4/5/8/9
++ A11-1) — all player-facing text/display fixes, no game-outcome change.
+**A10-1 (P3):** the unified ability picker's button labels were a hand-rolled
+kind→label table that lied — raw internal kinds ("{T}: affect_creature"),
+inverted permanence ("+1/+1 EOT" for a permanent counter), wrong subject,
+understated costs (deepseam_quarry's "{T}: Reanimate" hid its {2}+sacrifice);
+replaced with abilityPickerLabel = the capped describeAbility oracle (the same
+path render's ability pill uses), the private table + inline cost renderer
+deleted. **A10-2 (P3):** The Mercurial Adept's custom_text face advertised a
+stale pool — 2 of 6 listed abilities don't exist (the live pool's last two are
+Reaper/Hexweaver); the two stale clauses corrected, and the engine.js pool
+comment now flags that the popup Repertoire renders only for legacy saves, so
+the face is the player's only pool description. **A10-3 (P3):** the ~ name
+placeholder leaked raw to players — on custom_text faces (Adept, Codex) and in
+every ~-templated trigger log line / stack pill — and every trigger log line
+ended "..". formatTriggerText now wraps all consumers (the custom_text face,
+both trigger-log sites, the stack pill, the build-ability log) and the log
+sites dedupe the trailing period; render.js's deliberate textContent
+substitution is left untouched (escaping it would render a literal &amp;).
+**A10-4 (P3):** add_type/set_types with scope:'self' rendered an empty subject
+(live on artifice_triumphant's face) — now emits "this", mirroring pump's arm.
+**A10-5 (P4):** "you gains life equal to…" grammar bug, locked in by
+card_text_test pinning the wrong string — conjugated by subject ("you gain" /
+"<name> gains") and the test expectation re-pinned (a declared flip). **A10-8
+(P4):** apply_sticker had drifted into TEXT_IDIOM_ONLY while carrying a full
+standalone describe case — removed from the set + header reworded, re-arming
+the coverage guard. **A10-9 (P5):** stale "line 567" cite in the bake-guard
+comment → cite by function. **A11-1 (P4, chunk 11):** slot- and effect-level
+target STRINGS resolve through getValidTargets' default arm (warn + []) — a
+typo booted clean and the card was silently uncastable forever; boot
+validation (validateAllCardEffects) now sweeps card/ability/trigger slot
+targets + effect-level e.target against GETVALIDTARGETS_TARGETS. New red→green
+files test_a10_text_truthfulness (15) + test_a11_target_string_validation (7).
+Suite 114 files / 2370 green, lint clean.
+
+v2.1.46: audit A7/A9 approved-fix batch (Joe PR #98 verdicts, 2026-06-12),
+multi-agent adversarially reviewed. **A7-1 (P2 latent):** the autotapper no
+longer auto-pays extra-cost mana abilities ("{T}, sacrifice a creature: add
+{B}{B}") — excluded from the mana solver + the tap-for-mana lane (so a spell
+never auto-casts off a sacrifice source and the sac is never silently paid),
+trivial {T}/mana abilities unchanged, a boot tripwire flags the unsupported
+shape; a MANUAL activation still pays the full cost (it stays a mana ability).
+**A7-2 (P3):** add_counter gained a non-zero cast value (mirrors the trigger
+valuer 3+P+T, floored >=1, Joe's "at least tries to cast") so the AI will cast
+untargeted counter spells, and effectCoverageReport now PROBES that each VALUED
+kind has a real cast-scorer branch (it previously did set-algebra only and
+couldn't see this gap). **A7-3 (P3):** the AI value-picks grave-return targets
+(the migrated move_card graveyard→hand shape; yard derived from the target's
+stamped controller tag) instead of valid[0] (the oldest, value-blind card) —
+live for grave_digger / morticians_assistant / spirit_shepherd. **A9-1 (P2):**
+the v1→v2 save migration was rewritten against the git-verified real v1 shape
+(slots, midGameSlotsSnapshot, pendingReward.replacementPack both shapes, the
+modifier id) — the old phantom-shape migration renamed four never-persisted
+fields and MISSED the snapshot, so loading an old mid-game save could resurrect
+dead tplIds and clearSave the run; A9-10 dropped per Joe (SAVE_VERSION stays 2).
+**A9-2/A9-3 (P2/P3):** run-slot removal now honors the full caller contract via
+one shared fixupSlotPointersAfterRemoval helper (decrement cached slotIdx +
+remap the playedSlotIdxs win-reward filter, drop-at + decrement-above) at every
+rip AND splice removal site; EFFECTS.rip (Vile Edict) routes through
+ripSlotByIdx (the Stapler out-of-charges rip stays deferred under the A5-4
+ballot). Four new red→green test files (test_a7_grave_return_pick,
+test_a7_add_counter_cast_value, test_a9_slot_invariant, test_a7_extra_cost_mana)
++ extended test_effect_coverage + re-pinned tplid_renames_test. Adversarial
+review (7 agents): A7-2/A7-3/A9-1/A9-2-3 sound; A7-1 + holistic minor-issues,
+addressed (splice A9-3 gap closed, A7-1 solver leg pinned). Known latent
+follow-up (no pool card, awaiting Joe): {mana}-cost mana abilities (filter-lands)
+are classified auto-payable but doTapLandForMana doesn't actually pay mana costs
+(pre-existing). Suite 114→118 files / 2370→2413 assertions green, lint clean.
+
+v2.1.47: filter-land follow-up to A7-1 (Joe-approved, 2026-06-13). The
+adversarial review flagged that a {mana}-cost mana ability — a filter-land
+"{T}, {1}: add {W}{U}" — was classified auto-payable, but doTapLandForMana pays
+only the tap: it would be tapped with its {1} input never paid (free fixing)
+and the solver counted its output as a free source (pre-existing + latent; no
+pool card has the shape). Closed by treating a {mana} cost as non-trivial,
+exactly like a sacrifice cost: manaAbilityCostIsTrivial now allows ONLY {T}, so
+filter-/extra-cost mana abilities are excluded from every auto path (the mana
+solver + the tap-for-mana lane) and the boot tripwire flags them as unsupported.
+Trivial {T}-only sources are unchanged (0 pool cards affected — suite stayed
+green). Enabling REAL filter mana (paying the {1} to net the fixing through the
+solver) remains a separate feature to build before such a card ships.
+test_a7_extra_cost_mana extended (filter-land boot-flagged + solver-excluded).
+Suite 118 files / 2414 assertions green, lint clean.
+
+v2.1.48: audit chunk-5 — the synthesis/staple (Stapler + Splice) fix batch, all
+Joe-ruled in PR #98, then adversarially reviewed (4 agents) with both
+high-severity findings fixed. A5-4: the out-of-charges rip routes through the
+shared slot-pointer fixup (a merged slot minted above the boon slot kept a stale
+cached slotIdx). A5-5: the Clone reward photocopies a Stapler's REMAINING charges
+(Option A) so the clone decrements/rips instead of reading as infinite — and the
+rip is scoped to the ripped slot's instance, not every same-tplId card, so a
+charged clone survives. A5-1/A5-3: the in-game splice's combat-state transfer is
+now side-aware — a spliced opponent attacker can no longer attack YOU; an
+absorbed blocker's attacker stays blocked (tombstone, not bare delete); a spliced
+blocked-attacker re-points its blockers onto the merged base. A5-2: a spell
+stapled onto a non-creature battlefield permanent FIZZLES (countered to graveyard,
+no charge) instead of fast-resolving + deleting an unrelated run slot. A5-8: an
+empower roll on a spell stapled onto a LAND base survives (relocates to the ETB
+trigger); prior-staple counts are oracle-derived. A6-2: a stored-blank empower
+roll stays blank instead of re-rolling a random target on every rebuild.
+A5-6/A5-7: Elystra's permaBuffs object (a 5-site object-vs-array bug class the
+splice merge silently dropped) is retired in favor of stat_boost/kw_* slot
+stickers — the engine's blessed run-persistent channel, so splice/clone/steal
+preserve the buffs for free; a load-time migration converts legacy permaBuffs
+saves. Suite 118 → 125 files / 2414 → 2487 assertions green, lint clean.
+
+v2.1.49: parked-audit clear — the ~22 deferred findings that fit the
+Audit-Review-Refactor charter (test-coverage gaps, DRY refactors, latent-bug
+guards), each red→green, then a 6-agent adversarial review (zero production
+defects; one self-introduced test-theater assertion fixed). Chunk-6: inline
+set_color/set_types stickers dedup on push (A6-3), granted abilities/triggers are
+deep-copied so two cards from one shared descriptor don't alias a nested field
+(A6-6), + cost-order and grant-dedup characterization (A6-7/A6-5). Chunk-8/9: the
+dead buildOpponentDeck "colors" output removed (A8-4), reward-pick sticker/ripUp
+arms bounds-guarded (A9-8), a TPLID_RENAMES live-id collision boot-check (A9-9).
+Chunk-2: combat coverage — vigilance no-tap + multi-block damage/kill-order,
+summoning sickness, menace lone-block, and a behavioral canCreatureBlock pin
+replacing a source-text regex (A2-6/13/15/14; A2-9 was already moot). Chunk-4: the
+three drifted hexproof gates consolidated to one hexproofBlocks predicate (A4-24),
+grant_cast_permission/grant_keyword coverage (A4-18), and two same-resolution
+discards now accumulate instead of blind-overwriting (A4-23 leg-2). Chunk-3: the
+pickBestTriggerTarget auto-pick heuristic pinned, and the generator's
+green-theater filter test replaced with literal-flag pins (A3-9). Chunk-1: a
+scripted full-turn behavioral test (A1-23), resetCombatState()/emptyManaPool() DRY
+extractions (A1-21/A1-22), loud default arms on the three switches that had none
+incl. the step() infinite-spin hang-guard (A1-5), and a centralized
+startMainPhase() test helper (A1-4 Phase 1 — the 76-file migration is a tracked
+follow-up). Chunk-5: the out-of-charges Stapler rip now routes its battlefield
+removal through leave-play discipline (removeFromCombat + clearRestrictionsFromSource)
+instead of a raw filter, so a ripped Stapler can't leave a ghost attacker or a
+dangling restriction (A5-15). A9-10 reclassified won't-fix (no pre-snake-case
+saves exist). Suite 125 → 139 files / 2487 → 2589 assertions green, lint clean.
+v2.1.50: test-suite discipline pass — **test-only; the served engine is
+byte-identical to v2.1.49** (no gameplay change). Surfaced by a 15-agent review
+of all 139 test files. (1) Dropped 4 non-fencing assertions: source-text /
+card-text regexes and a config-constant pin (STICKERS['subtype'].weight===10)
+that false-red on a benign change without catching a real bug — the behavioral
+coverage around each is the actual fence. (2) Real-drove test_cleanup_no_mana_taps:
+its cleanup-discard window was hand-posed (G.cleanupDiscarding/phase/priority set
+directly), so a rename of those gate fields could let the "tap is illegal"
+negatives pass for the wrong reason; it now reaches the window by real play
+(endTurn → the engine sets cleanupDiscarding at CLEANUP when hand>7). (3) A1-4
+internals-coupling: 63 files that each hand-wrote the same 6-field MAIN1
+priority/phase pose block now call setup.startMainPhase, and the 2 combat-posers
+call a new setup.startCombat — so a future rename of those fields breaks _setup
+once instead of silently-greening dozens of tests (1 file left: its block omits
+the priority field). Dedup review found the suite well-partitioned (no real
+duplication to cut) and zero obsolete tests. A 25-run bail-on-fail hunt for a
+1-in-~7 intermittent failure seen once pre-migration did NOT reproduce (suite
+stable across 25 full runs). Suite 139 files / 2587 assertions green, lint clean.
+v2.1.51: post-audit cleanup pass (/simplify on PR #133). solveManaPayment grows
+a `wantPlan` flag — canPayPotential (the per-castable-spell/ability legality
+check called all over getLegalActions, i.e. the AI's hot path) now returns the
+moment tryAssign proves feasibility, skipping the O(taps²) plan-trim loop that
+only payMana consumes; the boolean result and the payment plan are unchanged.
+Plus a behavior-identical readability tidy (the move_card selector validation's
+`e.selector != null ? e.selector : null` → `e.selector ?? null`). Also de-flaked
+test_a4_steal_run_gate: its `opp.library.find(gray_ogre)` could match a stray
+copy from the randomly-built opp deck (carrying its own slotIdx) rather than the
+freshly-stolen instance — it now snapshots the pre-existing gray_ogre iids and
+picks the newly-minted one. (CORRECTION to v2.1.50's claim that this flake "did
+NOT reproduce … stable across 25 full runs": it did persist — reproducing
+~1-in-7 in isolated runs, re-measured 2026-07-02 — until this de-flake.) Two
+review-surfaced caveats documented (no behavior
+change): the solveManaPayment wantPlan=false feasibility-only contract (the
+return is {cost,taps:null}, not an executable plan; only canPayPotential may
+pass false), and the set_types-dedup order-sensitivity assumption (the
+JSON.stringify compare is safe only while set_types arrays stay single-element).
+Also dedups the sticker random-pool gate into one isRandomlyOfferable helper
+(behavior-preserving; the bargain's roll-kind exclusion is now kind-based, not a
+hardcoded id list). Suite 140 files / 2597 assertions green (count re-measured
+2026-07-02; this entry originally claimed 2599 unmeasured), 500-game self-play
+100% clean (0 illegal actions), lint clean.
+
+v2.1.52: bargain respects deck colors (Joe ruling 2026-06-14, surfaced during
+the /simplify follow-up). BUG: land-color "Also a X" stickers gate on
+`c.deckColors`, but live battlefield cards carry no deckColors field, so the
+in-game Archdemon-of-Bargains path skipped the gate that deck construction
+enforces — a mono-black deck's Swamp could be handed a white "Also a Plains"
+sticker (a real B/W dual splashing an off-deck color; confirmed empirically),
+and the two sticker paths disagreed silently/undocumented. FIX: new runtime
+helper `deckColorsForSide(state, side)` (unions a live side's cards across all
+zones into pseudo-slots — the opponent has no run slots in-game — and reads
+their colors via `deckColorsFromSlots`); `applyRandomStickersToSide` computes it
+once and passes it to `bargainStickerCandidates(perms, deckColors)`, which
+supplies it to each sticker's `appliesTo` via a card-view (the filter still
+collects the real cards). On-color fixing still allowed; same-color stays
+dedup-excluded; `bargainStickerCandidates(perms)` with no colors keeps the old
+broad behavior (backward-compat). New test_bargain_deck_color_gate.js (10
+assertions: helper union, on/off-color gating, dedup, backward-compat,
+end-to-end no-splash). Suite 140 files / 2597 assertions green, lint clean.
+
+v2.1.53: PR #133 review follow-ups. (1) Mana-ability classification unified
+behind `isManaAbility(ab)` and keyed on TARGETING, not `effects[0]` alone: a mana
+ability is one that produces mana AND requires no target. An untargeted rider
+("T: add G, gain 1 life") stays a mana ability (Joe's ruling); a TARGETED hybrid
+("T: add G, +1/+1 target creature") is no longer mis-classified as pure mana — it
+now routes through the normal activated-ability/stackable path instead of silently
+dropping its rider on the tap-lane or being auto-fired by the solver. Cost-
+triviality is split into a separate `isAutoUsableManaAbility` (the auto-payer/tap-
+lane gate), so a sacrifice/mana-cost mana ability is still off-stack and legal any
+time (closed-window-drain contract preserved). The shared helper also guards the
+bare `effects[0]` deref at all three route/legality sites, so a malformed empty-
+effects ability is "not a mana ability" rather than a TypeError (no current card
+hits any of this — latent footgun fixes). (2) Dead `target: "self"` paths stripped
+(0 producers, 0 cards): `scope: "self"` is the canonical "affects itself" form;
+`effectNeedsTarget`/the two staple slot-scanners no longer special-case it, and
+the stale PROTOCOL.md bullet claiming effect-level `target: "self"` works is
+corrected (the engine has no resolver for it and boot validation rejects it; only
+`move_card`'s `selector: "self"` is a real "self" on a target-shaped field). (3)
+`resolveTarget` gained a precondition comment (card/permanent targets only; callers
+must peel off `kind:'player'` first) — latent, no current non-damage effect targets
+creature_or_player. (4) BACKLOG: review the unconditional `load()` migrations for
+reachability (see the v2.1.54 note — the `permaBuffs` conversion turned out live,
+guarding released v2.1.18 saves, and stays).
+New `test_mana_ability_classification.js` (targeting discriminator, untargeted-
+rider, cost-axis separation, empty-effects crash-safety). Suite green, lint clean.
+v2.1.54: more PR #133 follow-ups. (1) `pickWeightedSticker` now defaults a missing
+weight to 0 (fail-closed — excluded), not 3 (fail-open — silently included at a
+default), matching the `!s.weight` pool filters. No behavior change today: every
+registered sticker carries an explicit weight (verified). (2) NOTE: this entry
+originally also removed the `permaBuffs`→sticker load migration in `run.js`
+`load()` as "dead code" — that removal was REVERTED pre-merge (2026-07-02) after
+the Thaumaturge-ChatGPT review finding was adjudicated UPHELD: the *released*
+dev build (v2.1.18, the Pages-served game) still writes `slot.permaBuffs` via
+`flushPermanentEotToPermaBuffs` under SAVE_VERSION 2, so the load-time
+normalization is the only bridge protecting an in-flight save that crosses the
+upgrade; it stays until dev's release no longer writes permaBuffs (or a
+SAVE_VERSION bump retires it deliberately). Its migration test in
+`test_a4_elystra_flicker_buffs.js` is restored with it. A BACKLOG item tracks
+auditing the other unconditional `load()` migrations (subtype-sticker rename,
+STICKER_ID_RENAMES, empower backfill, stale-prune) for reachability. Suite
+green, lint clean.
+v2.1.55: consolidated the two mana-resolution paths (PR #133 follow-up refactor).
+`doTapLandForMana` was a parallel hand-rolled copy of the {choose}/{amounts} →
+pool logic the `add_mana` effect handler already has, and it ran ONLY `effects[0]`
+— silently dropping any rider. Both now route through ONE path: a shared
+`produceMana(who, eff, color)` helper is the single source of the pool mutation,
+and `doTapLandForMana` pays the tap then delegates to `runAbilityEffects` (the
+same resolution `doActivateAbility` uses), threading the chosen color and the
+"taps SOURCE for {X}" log framing via `ctx.manaColor` / `ctx.tapForMana`.
+Behavioral upshot: an untargeted rider on a mana ability (e.g. a hypothetical
+"{T}: add G, gain 1 life" dork — the form the targeting fix (v2.1.53) newly admits) now resolves on
+the tap lane exactly as activating it would, instead of being dropped. No current
+card is affected (every shipped mana ability is a single `add_mana` effect). The
+spell/`add_mana` path (Dark Ritual) and the basic-land/dork/rock taps are
+unchanged — verified by test_mana / test_deepseam_quarry / test_equatorial. New
+tap-lane color+rider checks in test_mana_ability_classification.js. Suite 140
+files / 2595 assertions green, lint clean (post-merge with the base's v2.1.50
+test-discipline pass).
+v2.1.56: PR #134 review follow-up (Thaumaturge-ChatGPT). An extra-cost mana
+ability ({T},sacrifice / mana-cost add_mana — the A7-1 shape) was legal via
+isLegalAction (mana abilities are legal any time) but enumerable NOWHERE:
+getLegalActions skipped EVERY mana ability from the explicit activateAbility lane
+(keying on isManaAbility), while the tapLandForMana auto-lane already excludes
+non-trivial-cost ones. The activate lane now skips only isAutoUsableManaAbility —
+the exact complement of the tap lane — so an extra-cost mana ability surfaces as
+an explicit activated ability that pays its full cost (sac choices enumerated),
+matching A7-1's stated "surface only as explicit activated abilities". Pre-
+existing (the old effects[0]==='add_mana' check had the same gap); no shipped
+card is affected (A7-1 boot-rejects extra-cost mana abilities) — a latent-
+consistency fix. test_a7_extra_cost_mana.js grows the activate-lane-INCLUSION
+check the reviewer noted was missing; test_trigger_closed_window_drain.js drops
+its spent synthetic altar after it queues the trigger (the now-enumerated ability
+would otherwise correctly suppress the auto-pass into combat). Suite 140 files /
+2597 assertions green, lint clean.
+
+v2.1.57: defer trailing effects after a human search/discard (audit A4-23
+leg-1; Joe design ruling GO 2026-07-02 — strict in-order resolution per canon
+§704.2). Effects AFTER a human-pausing effect (tutor search / forced discard)
+used to run BEFORE the human's pick — Demonic Tutor's caster lost 2 life before
+choosing the card. Fix generalizes the edict (A4-7) deferral into one
+human-pause contract: `maybeDeferTrailingForHumanPrompt` stashes trailing
+effects + deferCtx when a human prompt opens (wired into all three resolution
+loops — spell / trigger / activated-ability); `resumeTrailingEffects` replays
+them after the pick (re-deferring on a chained pause; doDiscard replays once
+after the LAST discard; doEdictChoice unified onto it, behavior-identical).
+The AI path is unchanged (no prompt → resolves inline, order preserved). New
+test_a4_23_trailing_defer.js (red→green: tutor life-loss defers, discard
+trailing fires once, AI inline); test_drain_lifeloss.js re-pinned to post-pick
+timing. Salvaged from the pre-outage branch (commit 20fd17b5), cherry-picked
+onto the recovery lineage. Suite 142 files / 2626 assertions green, lint clean.

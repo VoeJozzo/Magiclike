@@ -11,13 +11,13 @@
           "severity": "destroy"
         }
       ],
-      "target": "creature",
+      "target": "opp_creature",
       "target_filter": {
         "tapped": true
       }
     }
   ],
-  "art": "🥷",
+  "art": "art.png",
   "cost": {
     "B": 1,
     "C": 1

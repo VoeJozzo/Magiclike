@@ -1,12 +1,11 @@
 {
   "card_id": "iron_statue",
-  "art": "🗿",
+  "art": "art.png",
   "cost": {
     "W": 1,
     "C": 2
   },
   "keywords": [
-    "defender",
     "indestructible"
   ],
   "name": "Iron Statue",

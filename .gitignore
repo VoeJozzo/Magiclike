@@ -22,3 +22,10 @@ Thumbs.db
 
 # Claude Code worktrees (each holds a full repo copy — never commit).
 .claude/worktrees/
+
+# Python bytecode cache.
+__pycache__/
+*.pyc
+
+# Never commit credentials (a pixellab token lived here 2026-05-21..07-02; key rotated)
+.claude/skills/magiclike-card-art/pixellab-token

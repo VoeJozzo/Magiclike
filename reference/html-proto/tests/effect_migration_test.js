@@ -189,7 +189,7 @@ console.log('\n=== kind-collapse: retired kinds gone, collapsed forms present ==
     && cs.effects[1].kind === 'move_card' && cs.effects[1].from_zone === 'exile' && cs.effects[1].to_zone === 'battlefield');
 
   const pac = CARDS.pacifism;
-  check('pacifism: target(creature)', pac.target === 'creature');
+  check('pacifism: target(opp_creature)', pac.target === 'opp_creature');
   check('pacifism: grant_keyword(defender) + grant_keyword(no_block)',
     pac.effects.length === 2
     && pac.effects[0].kind === 'grant_keyword' && pac.effects[0].keyword === 'defender'

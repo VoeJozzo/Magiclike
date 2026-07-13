@@ -15,11 +15,8 @@ function newGame() {
   RUN.start({ cards: Array(12).fill('plains'), colors: ['W'] }, null);
   RUN.startNextGame();
   const G = ENGINE.state();
-  G.activePlayer = 'you'; G.priorityHolder = null; G.phase = 'COMBAT_ATTACK';
-  G.priority = null; G.stack = []; G.gameOver = false;
+  setup.startCombat('you', { phase: 'COMBAT_ATTACK' });
   G.pendingTriggers = []; G.pendingTriggerTarget = null;
-  G.attackers = []; G.blockers = new Map();
-  G.attackersDeclared = false; G.blockersDeclared = false;
   G.you.hand = []; G.opp.hand = [];
   G.you.battlefield = []; G.opp.battlefield = [];
   G.you.graveyard = []; G.opp.graveyard = [];
@@ -128,6 +125,31 @@ console.log('\n=== combat damage trigger exiles and permits the stolen card ==='
 
   settle(G);
   check('stolen spell resolves to its owner graveyard', G.opp.graveyard.some(c => c.iid === bolt.iid));
+})();
+
+console.log('\n=== AI casts a spell it holds cast-permission for ===');
+(() => {
+  // Regression: the AI's decision paths resolved castSpell actions hand-only,
+  // so a card it exiled with its own Courier was never cast (the legal action
+  // existed but mapped to no card). findCastableCard now resolves permission
+  // zones too. Decide for 'you' — the AI logic is side-symmetric.
+  const G = newGame();
+  G.phase = 'MAIN2';
+  G.priority = { passes: new Set() }; G.priorityHolder = 'you';
+  const bolt = make('lightning_bolt', 'opp');
+  G.opp.exile.push(bolt);
+  G.castPermissions = [{ controller: 'you', cardIid: bolt.iid, from_zone: 'exile',
+    duration: 'eot', spend_as_any_color: true, sourceIid: -1 }];
+  // A bolt-sized threat so the cast scores as removal (face burn when not
+  // lethal is rightly unattractive to the AI).
+  const bear = make('grizzly_bears', 'opp');
+  bear.sick = false;
+  G.opp.battlefield.push(bear);
+
+  const decision = AI.decide(G, 'you');
+  check('AI decides to cast the exiled spell',
+    !!decision && decision.type === 'castSpell' && decision.cardIid === bolt.iid,
+    JSON.stringify(decision));
 })();
 
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');

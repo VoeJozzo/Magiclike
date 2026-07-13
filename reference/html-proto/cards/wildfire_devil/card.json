@@ -1,6 +1,6 @@
 {
   "card_id": "wildfire_devil",
-  "art": "😈",
+  "art": "art.png",
   "cost": {
     "R": 2,
     "C": 3
@@ -26,6 +26,6 @@
   ],
   "types": [
     "Creature",
-    "Devil"
+    "Demon"
   ]
 }

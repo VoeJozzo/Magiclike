@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dt2tiebqic0uh"
-path="res://.godot/imported/art.png-cc76055ffa8cff6c96a5435db9d982a2.ctex"
+path="res://.godot/imported/art.png-3bf899045d36c502b448cc7ec6e6c72d.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://reference/html-proto/cards/ambushDjinn/art.png"
-dest_files=["res://.godot/imported/art.png-cc76055ffa8cff6c96a5435db9d982a2.ctex"]
+source_file="res://reference/html-proto/cards/ambush_djinn/art.png"
+dest_files=["res://.godot/imported/art.png-3bf899045d36c502b448cc7ec6e6c72d.ctex"]
 
 [params]
 

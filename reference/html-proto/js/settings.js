@@ -65,6 +65,15 @@ const DEFAULTS = {
   cardManaPipSize:      3,      // 12px (baseline 4)
   cardManaPipPopupSize: 1.5,    // 6px-at-1x = 24px in 4x popup
   cardManaTextSize:     1,      // 1.2em (baseline)
+  cardBigManaSize:      1,      // 28px (baseline) — the basic-land big symbol
+  // Ability (keyword) icon size: multiplier on the 10px-at-1x .kw-icon coin
+  // shown in the in-play frame's keyword row. Pushed into --card-kw-icon-size.
+  cardKwIconSize:       1,      // 10px (baseline)
+  // Master card-size multiplier for hand / board cards. Scales the whole
+  // 1x (80x112px) frame — art, text, pips — uniformly. Pushed into the
+  // --card-size-scale CSS var; the fixed-scale contexts (draft / popup /
+  // previews) set --scale inline and ignore it.
+  cardSizeScale:        1,
   // Devtools: when true, the settings panel shows the full font / mana
   // picker UI. Off by default for the user-facing build; flipped on via
   // the "Devtools" section in the settings panel.
@@ -91,6 +100,15 @@ const POPUP_TEXT_SCALE_OPTIONS = [
 // --scale 1, so labels read as actual rendered size in hand/board.
 const MANA_PIP_SIZE_OPTIONS = buildSizeOptions(4, [3, 4, 5, 6, 8, 9, 10, 12]);
 
+// Ability (keyword) icon size options. Px-anchored to the .kw-icon's 10px
+// baseline at --scale 1, so labels read as actual rendered size in hand/board.
+const KW_ICON_SIZE_OPTIONS = buildSizeOptions(10, [6, 8, 10, 12, 14, 16, 20]);
+
+// Big mana symbol (the basic-land identity glyph) size options. Px-anchored to
+// the .bigsym's 28px baseline at --scale 1. 44px ≈ fills the text box; when a
+// keyword coin row shares the box, CSS caps the symbol at the 28px baseline.
+const BIG_MANA_SIZE_OPTIONS = buildSizeOptions(28, [16, 20, 24, 28, 32, 36, 40, 44]);
+
 // In-text .mana symbol size options. em-based (scales with surrounding
 // text), so we express as a multiplier of the 1.2em baseline.
 const MANA_TEXT_SIZE_OPTIONS = [
@@ -98,6 +116,20 @@ const MANA_TEXT_SIZE_OPTIONS = [
   { label: '100% (default)',     value: 1 },
   { label: '125%',               value: 1.25 },
   { label: '150%',               value: 1.5 },
+  { label: '200%',               value: 2 },
+];
+
+// Master card-size options. Multiplier on the 1x (80x112px) hand/board
+// frame; everything inside scales with it. 100% is the tuned default.
+const CARD_SIZE_OPTIONS = [
+  { label: '60%',                value: 0.6 },
+  { label: '75%',                value: 0.75 },
+  { label: '85%',                value: 0.85 },
+  { label: '100% (default)',     value: 1 },
+  { label: '115%',               value: 1.15 },
+  { label: '125%',               value: 1.25 },
+  { label: '150%',               value: 1.5 },
+  { label: '175%',               value: 1.75 },
   { label: '200%',               value: 2 },
 ];
 
@@ -226,10 +258,13 @@ function get(key) {
 // tunable: append one row to this table and one --var to the CSS, no
 // new if/else in set().
 const CSS_VAR_BINDINGS = {
+  cardSizeScale:        '--card-size-scale',
   cardPopupTextScale:   '--card-popup-text-scale',
   cardManaPipSize:      '--card-mana-pip-size',
   cardManaPipPopupSize: '--card-mana-pip-popup-size',
   cardManaTextSize:     '--card-mana-text-size',
+  cardBigManaSize:      '--card-big-mana-size',
+  cardKwIconSize:       '--card-kw-icon-size',
 };
 
 function set(key, value) {
@@ -263,10 +298,13 @@ function applyFontsToRoot() {
     root.setProperty(cssVarFont(el.key),  data[settingsKeyFont(el.key)]);
     root.setProperty(cssVarFsize(el.key), data[settingsKeyFsize(el.key)]);
   }
+  root.setProperty('--card-size-scale', data.cardSizeScale);
   root.setProperty('--card-popup-text-scale', data.cardPopupTextScale);
   root.setProperty('--card-mana-pip-size', data.cardManaPipSize);
   root.setProperty('--card-mana-pip-popup-size', data.cardManaPipPopupSize);
   root.setProperty('--card-mana-text-size', data.cardManaTextSize);
+  root.setProperty('--card-big-mana-size', data.cardBigManaSize);
+  root.setProperty('--card-kw-icon-size', data.cardKwIconSize);
 }
 
 return {
@@ -276,6 +314,9 @@ return {
   FONT_SIZE_OPTIONS_BY_ELEMENT,
   POPUP_TEXT_SCALE_OPTIONS,
   MANA_PIP_SIZE_OPTIONS, MANA_TEXT_SIZE_OPTIONS,
+  BIG_MANA_SIZE_OPTIONS,
+  KW_ICON_SIZE_OPTIONS,
+  CARD_SIZE_OPTIONS,
   // Element-key utilities exposed for controller.js's settings UI.
   settingsKeyFont, settingsKeyFsize,
 };

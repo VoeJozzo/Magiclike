@@ -48,32 +48,51 @@ function ingestCard(card) {
   // Normalize any function-call-shorthand effects to canonical dicts (§5.1/§5.2).
   // No-op for dict-form effects, so the current all-dict pool is unaffected.
   if (typeof normalizeCardEffects === 'function') normalizeCardEffects(card);
-  // Intrinsic mana from a basic-land subtype (MTG 305.6): a Land with the
-  // Plains/Island/Swamp/Mountain/Forest subtype gets the matching "{T}: Add {C}"
-  // ability, unless it already produces that color. Lets artifact/nonbasic lands
-  // DERIVE their mana from the subtype instead of hand-authoring a tap ability —
-  // add the subtype, get the mana. (Basic lands carry sub "Basic Land", not a
-  // color subtype, so they keep their explicit ability and are unaffected.)
-  if (typeof typesOf === 'function' && typeof manaAbilityForColors === 'function' && hasType(card, 'Land')) {
-    const BASIC_LAND_MANA = { Plains: 'W', Island: 'U', Swamp: 'B', Mountain: 'R', Forest: 'G' };
-    const produced = new Set();
-    for (const ab of (card.abilities || [])) {
-      if (ab && ab.cost && ab.cost.tap && Array.isArray(ab.effects)) {
-        for (const e of ab.effects) {
-          if (e && e.kind === 'add_mana') for (const c of manaEffectColors(e)) produced.add(c);
-        }
-      }
-    }
-    for (const tag of typesOf(card)) {
-      const color = BASIC_LAND_MANA[tag];
-      if (color && !produced.has(color)) {
-        if (!Array.isArray(card.abilities)) card.abilities = [];
-        card.abilities.push(manaAbilityForColors([color]));
-        produced.add(color);
-      }
-    }
-  }
+  grantBasicLandMana(card);
   return card;
+}
+
+// The five basic land types and the color each conveys (MTG 305.6), declared
+// in WUBRG order (basicLandTypeColors' iteration relies on it). Shared by the
+// autogrant below and by the display layer (card-text's mana-ability
+// suppression + render's big-mana-symbol gate), so "which colors does the type
+// line promise?" has exactly one definition.
+const BASIC_LAND_MANA = { Plains: 'W', Island: 'U', Swamp: 'B', Mountain: 'R', Forest: 'G' };
+
+// Colors conveyed by a card's basic-land subtypes, in canonical WUBRG order
+// (walks BASIC_LAND_MANA, not types[], so subtype-ADD order — e.g. an "Also a
+// Plains" sticker landing after Forest — can't leak into the result). Today's
+// consumers only do membership checks, but a stable identity order keeps the
+// function safe for display use. Empty for non-lands and for lands with no
+// basic-land subtype.
+function basicLandTypeColors(card) {
+  if (typeof typesOf !== 'function' || !hasType(card, 'Land')) return [];
+  const out = [];
+  for (const [tag, color] of Object.entries(BASIC_LAND_MANA)) {
+    if (hasType(card, tag)) out.push(color);
+  }
+  return out;
+}
+
+// Intrinsic mana from a basic-land subtype (MTG 305.6): a Land with the
+// Plains/Island/Swamp/Mountain/Forest subtype produces the matching color. Lets
+// artifact/nonbasic lands — AND runtime land-type STICKERS ("Also a Mountain") —
+// DERIVE their mana from the subtype instead of hand-authoring a tap ability:
+// add the subtype, get the mana. Routed through grantManaAbility so a land with
+// MORE than one mana source folds into a single "{T}: Add one of …" choose-
+// ability (the shape landProducibleColors and the tap action expect) rather than
+// several competing {T} abilities — that's what makes a stickered dual land tap
+// for both colors. grantManaAbility no-ops when the color is already produced, so
+// re-running after a sticker adds a land type is safe. (Basic lands carry both
+// their color subtype AND an explicit authored ability — the autogrant no-ops on
+// them; the explicit ability stays so the Godot JSON loader, which has no §305.6
+// autogrant, still reads a complete card.)
+function grantBasicLandMana(card) {
+  if (!(typeof typesOf === 'function' && typeof grantManaAbility === 'function' && hasType(card, 'Land'))) return;
+  for (const tag of typesOf(card)) {
+    const color = BASIC_LAND_MANA[tag];
+    if (color) grantManaAbility(card, color);
+  }
 }
 
 async function loadCards() {
@@ -120,6 +139,14 @@ const KEYWORDS = [
   'first_strike', 'reach', 'defender', 'indestructible',
   'lifelink', 'deathtouch', 'menace', 'hexproof', 'flash',
   'unblockable',
+  // Non-combat marker keyword: a card with `innate` starts in the opening
+  // hand. Generally lives on lands. Like flash it does nothing in combat —
+  // it's a status keyword, excluded from the combat keyword preamble and
+  // rendered via its own status line/badge. Source of truth lives in
+  // `keywords` (no separate boolean); the lands-only `innate` sticker below
+  // grants it, and the kw_* auto-loop skips it so it's never offered on
+  // creatures.
+  'innate',
 ];
 
 // STICKERS — run-long card mods. Shape: {id, name, text, appliesTo, stackable, kind, weight, ...payload}.
@@ -132,33 +159,44 @@ STICKERS['plus1_plus1'] = {
   weight: 20,
   kind: 'stat_boost', power: 1, toughness: 1,
 };
+// Innate is a keyword-granting sticker like the kw_* family, but hand-defined
+// (rather than auto-generated by the loop below) so it can be lands-only:
+// `innate` is generally a land keyword, and we never want it offered on
+// creatures. It's mechanically compatible with any card if granted some other
+// way, but no normal pipeline puts it on a non-land.
 STICKERS['innate'] = {
   id: 'innate', name: 'Innate',
   text: 'Starts in your opening hand.',
   appliesTo: (c) => hasType(c, 'Land'),
   stackable: false,
   weight: 10,
-  kind: 'innate',
+  kind: 'keyword', keyword: 'innate',
 };
-// landColor stickers — extra color on a basic. Gated by deck color (c.deckColors).
+// landColor stickers — add a basic-land subtype (so the name "Also a Mountain"
+// is literally true), and the matching mana falls out of the §305.6 autogrant
+// (grantBasicLandMana). The land becomes a real typed Plains/Mountain/etc., so
+// it also answers type-matters effects ("search for a Mountain"). Gated by deck
+// color (c.deckColors).
 for (const color of ['W','U','B','R','G']) {
   const id = 'land_color_' + color.toLowerCase();
   const colorName = { W:'Plains', U:'Island', B:'Swamp', R:'Mountain', G:'Forest' }[color];
   const colorAdj = { W:'White', U:'Blue', B:'Black', R:'Red', G:'Green' }[color];
   STICKERS[id] = {
     id, name: 'Also a ' + colorName,
-    text: 'This land also produces {' + color + '}.',
+    text: 'This land is also a ' + colorName + ' (it also produces {' + color + '}).',
     appliesTo: (c) => {
       if (!hasType(c, 'Land')) return false;
-      // Already produces this color (base or stickered)? Don't re-offer. §3.9:
-      // production lives on the tap-ability, read via landProducibleColors.
+      // Already produces this color (native, autogranted, or via a prior
+      // land-type sticker)? Don't re-offer. Production is read via
+      // landProducibleColors off the (auto)granted tap-ability.
       if (landProducibleColors(c).includes(color)) return false;
       if (c.deckColors && !c.deckColors.includes(color)) return false;
       return true;
     },
     stackable: false,
     weight: 10,
-    kind: 'grant_mana_ability',
+    kind: 'add_type',
+    type: colorName,   // the basic-land subtype to add; grantBasicLandMana yields the mana
     color,
     colorAdj,
   };
@@ -277,7 +315,32 @@ const KEYWORD_DISPLAY = {
   first_strike: 'First strike', reach: 'Reach', defender: 'Defender',
   indestructible: 'Indestructible', lifelink: 'Lifelink', deathtouch: 'Deathtouch',
   menace: 'Menace', hexproof: 'Hexproof', flash: 'Flash',
-  unblockable: 'Unblockable',
+  unblockable: 'Unblockable', innate: 'Innate',
+};
+// Reminder text for each keyword — short rules-gloss surfaced as the tooltip
+// when a keyword icon is shown on a card (the icon replaces the keyword word
+// on the small in-play frame; the tooltip reads "Flying: <reminder>"). Kept in
+// sync with KEYWORDS / KEYWORD_DISPLAY.
+const KEYWORD_REMINDER = {
+  flying: 'Can only be blocked by creatures with flying or reach.',
+  vigilance: "Attacking doesn't cause it to tap.",
+  // Magiclike trample covers combat AND effect damage from a trampling
+  // source (trample stickers on damaging sorceries are deliberate design) —
+  // but never fights (audit A4-9 design ruling; see applyDamageFrom).
+  trample: 'Damage beyond what would destroy the creature it hits (all blockers, in combat) carries over to that creature\'s controller. Fights never carry over.',
+  haste: 'It can attack and use tap abilities the turn it comes under your control.',
+  first_strike: 'It deals combat damage before creatures without first strike.',
+  reach: 'It can block creatures with flying.',
+  defender: "It can't attack.",
+  indestructible: "It can't be destroyed by lethal damage or “destroy” effects.",
+  lifelink: 'Damage it deals also causes you to gain that much life.',
+  deathtouch: 'Any amount of combat damage it deals to a creature is enough to destroy it.',
+  menace: "It can't be blocked except by two or more creatures.",
+  hexproof: "It can't be the target of spells or abilities your opponents control.",
+  flash: 'You may cast it any time you could cast an instant.',
+  unblockable: "It can't be blocked.",
+  innate: 'It starts in your opening hand.',
+  tap: 'The tap symbol — appears in activated-ability costs.',
 };
 // Per-keyword sticker offer weight. Higher = more common in pair offers.
 // Keeping it minimal for now — tune as we get playtest signal.
@@ -299,6 +362,9 @@ function spellDealsDamage(c) {
 for (const kw of KEYWORDS) {
   // Defender is a downside keyword — never offered as a sticker reward.
   if (kw === 'defender') continue;
+  // Innate has its own hand-defined, lands-only sticker (STICKERS['innate']
+  // above); the generic loop would wrongly make it creature-eligible.
+  if (kw === 'innate') continue;
   const id = 'kw_' + kw;
   const displayName = KEYWORD_DISPLAY[kw] || (kw.charAt(0).toUpperCase() + kw.slice(1));
   STICKERS[id] = {
@@ -336,6 +402,20 @@ for (const kw of KEYWORDS) {
     keyword: kw,
   };
 }
+// Lose Defender — the one keyword-REMOVAL sticker. Defender is pure downside
+// (a creature that can't attack), so stripping it is a clean upgrade. Offered
+// only on creatures that actually have defender (native). Mirror of the keyword
+// add-stickers above, routed through the 'remove_keyword' kind. Defender is the
+// only keyword worth a removal sticker today; generalize if that changes.
+STICKERS['lose_defender'] = {
+  id: 'lose_defender', name: 'Loses Defender',
+  text: 'This creature loses Defender (it can attack).',
+  appliesTo: (c) => hasType(c, 'Creature') && (c.keywords || []).includes('defender'),
+  stackable: false,
+  weight: 10,
+  kind: 'remove_keyword',
+  keyword: 'defender',
+};
 // Subtype sticker — adds a creature subtype rolled from the player's deck,
 // weighted by token frequency. Roll excludes subtypes the target already
 // has, so it can't be inert. Storage mirrors Empower: rolls live on
@@ -380,8 +460,11 @@ STICKERS['scarified'] = {
 
 // =========================================================================
 // RUN MODIFIERS — Neow-style run-defining choices presented before draft.
-// Each modifier: {id, name, text, apply()}. apply() returns {extras: [{tplId,
-// stickers}, ...]} for bonus deck slots; pure (no runState mutation).
+// Each modifier: {id, name, text, apply()}.
+// CONTRACT (stated identically in run.js's RUN.start at the call site):
+// apply(slots) may mutate the slots array in place OR return
+// {extras: [...]} of new slots to append.
+// Today all 7 boons return extras only ({extras: [{tplId, stickers}, ...]}).
 // Future hooks (stickerBias, lifeOffset, etc) can be added similarly.
 // =========================================================================
 const RUN_MODIFIERS = {};

@@ -1,0 +1,16 @@
+{
+  "card_id": "hedge_squire",
+  "art": "art.png",
+  "cost": {
+    "G": 1,
+    "C": 2
+  },
+  "name": "Hedge Squire",
+  "power": 3,
+  "toughness": 3,
+  "types": [
+    "Creature",
+    "Human",
+    "Knight"
+  ]
+}

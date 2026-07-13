@@ -1,6 +1,6 @@
 {
   "card_id": "island",
-  "art": "🌊",
+  "art": "art.png",
   "mana": "U",
   "name": "Island",
   "abilities": [
@@ -19,7 +19,8 @@
     }
   ],
   "types": [
+    "Basic",
     "Land",
-    "Basic"
+    "Island"
   ]
 }

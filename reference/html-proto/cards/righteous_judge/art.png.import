@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://c3ej5xprgpwwc"
-path="res://.godot/imported/art.png-64b87448e3f569386b8afe3f02a55927.ctex"
+path="res://.godot/imported/art.png-eed10bdfbfb3855bb28dcb95560d314b.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://reference/html-proto/cards/righteousJudge/art.png"
-dest_files=["res://.godot/imported/art.png-64b87448e3f569386b8afe3f02a55927.ctex"]
+source_file="res://reference/html-proto/cards/righteous_judge/art.png"
+dest_files=["res://.godot/imported/art.png-eed10bdfbfb3855bb28dcb95560d314b.ctex"]
 
 [params]
 

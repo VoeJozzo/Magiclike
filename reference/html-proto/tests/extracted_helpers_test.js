@@ -27,5 +27,22 @@ check('opp battlefield is an array', Array.isArray(G.opp.battlefield));
 check('both players start at the configured life', G.you.life > 0 && G.opp.life > 0);
 check('phase machine initialized', typeof G.phase === 'string' && G.phase.length > 0);
 
+console.log('\n=== A1-4: startMainPhase helper drives to an open MAIN1 round ===');
+(() => {
+  RUN.clearSave && RUN.clearSave();
+  RUN.start({ cards: Array(12).fill('plains'), colors: ['W'] }, null);
+  RUN.startNextGame();
+  const ap = ENGINE.state().activePlayer;   // deterministic: the seat already at MAIN1 (real-drive path)
+  const g = setup.startMainPhase(ap);
+  check('startMainPhase: phase is MAIN1', g.phase === 'MAIN1', 'phase=' + g.phase);
+  check('startMainPhase: the requested player is the expected actor', ENGINE.expectedActor() === ap, 'actor=' + ENGINE.expectedActor());
+  check('startMainPhase: stack empty', g.stack.length === 0);
+  check('startMainPhase: a priority round is open (passes is a Set)', g.priority && g.priority.passes instanceof Set);
+  // The other seat exercises the authoritative fallback path.
+  const other = ap === 'you' ? 'opp' : 'you';
+  const g2 = setup.startMainPhase(other);
+  check('startMainPhase(other seat): MAIN1 + that seat is the actor', g2.phase === 'MAIN1' && ENGINE.expectedActor() === other);
+})();
+
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');
 process.exit(fail > 0 ? 1 : 0);

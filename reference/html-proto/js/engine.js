@@ -1,6 +1,10 @@
 // Mercurial Adept's trigger pool. makeCard rolls one fresh per game from
 // this pool, so the same slot has a different personality each fight.
-// `label` is shown in the card popup repertoire (with the active one indicated).
+// `label` is shown in the card popup repertoire — but only for LEGACY saves:
+// the repertoire gates on slot.triggerPool (controller.js), which post-cutover
+// slots (trigger_pool_seed) never carry, so in current saves the card's
+// authored face text is the player's only description of this pool — keep
+// card.json's text in sync with these entries (audit A10-2).
 const MERCURIAL_TRIGGER_POOL = [
   {
     label: 'Striker',
@@ -78,6 +82,19 @@ function isSpliceableStaple(tplId) {
   if (tpl.effects && tpl.effects.modes) return false;
   return true;
 }
+// The in-game staple chain on a card INSTANCE. In-game cards carry it at
+// card.stapledFrom.stapledTpls; bare card.stapledTpls is slot-level and
+// normally empty on instances — read whichever is populated. The ONE
+// definition, shared by the target filters (matchFilter / matchFilterSpell)
+// and the apply_in_game_splice handler, so a wrong-field read can't silently
+// miss a prior chain (the bug class the handler's field-name note warns about).
+function stapleChainOf(card) {
+  if (card && card.stapledFrom && Array.isArray(card.stapledFrom.stapledTpls)) {
+    return card.stapledFrom.stapledTpls;
+  }
+  return (card && Array.isArray(card.stapledTpls)) ? card.stapledTpls : [];
+}
+
 // Splice compatibility:
 //   Base\Staple  Creature  Spell  Land
 //   Creature     ok(merge) ETB    tap-ability
@@ -123,7 +140,7 @@ function countEffects(tpl) {
   return 0;
 }
 
-function remapEmpowerRollForStaple(roll, baseIsCreature, stapleIsCreature,
+function remapEmpowerRollForStaple(roll, baseIsCreature, stapleIsCreature, baseIsPermanent,
                                    priorMergedEffectCount, priorMergedTriggerCount, priorMergedAbilityCount) {
   if (!roll) return roll;
   if (baseIsCreature && stapleIsCreature) {
@@ -136,7 +153,12 @@ function remapEmpowerRollForStaple(roll, baseIsCreature, stapleIsCreature,
     return roll;
   }
   if (roll.location !== 'effects') return roll;
-  if (baseIsCreature) {
+  // A5-8: a spell staple on ANY permanent base (Creature OR Land) collapses into
+  // an ETB trigger — mergeStapleInto's basePermanent dispatch treats both the
+  // same. The gate was creature-only, so an empower roll on a spell stapled onto
+  // a LAND base stayed location:'effects' and silently no-op'd (the merged card
+  // has no effects[] — the spell became a trigger). Widen it to any permanent.
+  if (baseIsPermanent) {
     return {
       ...roll,
       location: 'triggers',
@@ -165,38 +187,35 @@ function mergeSpliceData(base, staple) {
   const stapleTpl = CARDS[staple.tplId];
   const baseIsCreature = hasType(baseTpl, 'Creature');
   const stapleIsCreature = !!(stapleTpl && hasType(stapleTpl, 'Creature'));
+  // A5-8: a Land base is ALSO a permanent — a spell staple collapses into an ETB
+  // trigger on it (mergeStapleInto's basePermanent dispatch), exactly as on a
+  // creature base. The empower remap must know this so a roll relocates from
+  // effects[] -> triggers[].
+  const baseIsPermanent = baseIsCreature || hasType(baseTpl, 'Land');
   // Merged effect/trigger/ability counts BEFORE this staple — accounts for any
-  // prior staples, since each shifts the indices differently by merge case:
-  //   Creature+Creature → prior's triggers + abilities concat into the merged
-  //     arrays; Creature base + Spell staple → prior becomes one ETB trigger;
-  //     Spell base + Spell staple → prior's effects concat.
-  let priorMergedEffectCount = countEffects(baseTpl);
-  let priorMergedTriggerCount = (baseTpl.triggers || []).length;
-  let priorMergedAbilityCount = (baseTpl.abilities || []).length;
+  // prior staples, since each shifts the indices a new staple's empower roll
+  // points at. A5-8: derive these from the oracle (synthesizeStapledTemplate),
+  // not a hand-written per-type loop. The old loop's non-creature-base `else`
+  // arm miscounted a prior SPELL staple on a LAND base as +0 triggers (it adds
+  // an ETB trigger), so a second spell staple's roll landed on the PRIOR spell's
+  // trigger. synthesizeStapledTemplate returns the bare baseTpl for an empty
+  // chain and calls mergeStapleInto (not mergeSpliceData) — read-only here, no
+  // recursion. Matches the old loop in every non-buggy case.
   const priorStaples = (base.priorStaples || []).slice();
-  for (const priorTplId of priorStaples) {
-    const priorTpl = CARDS[priorTplId];
-    if (!priorTpl) continue;
-    if (baseIsCreature && hasType(priorTpl, 'Creature')) {
-      priorMergedTriggerCount += (priorTpl.triggers || []).length;
-      priorMergedAbilityCount += (priorTpl.abilities || []).length;
-    } else if (baseIsCreature) {
-      priorMergedTriggerCount += 1;
-    } else {
-      priorMergedEffectCount += countEffects(priorTpl);
-    }
-  }
+  const priorMerged = ENGINE.synthesizeStapledTemplate(base.tplId, priorStaples);
+  const priorMergedEffectCount = countEffects(priorMerged);
+  const priorMergedTriggerCount = (priorMerged.triggers || []).length;
+  const priorMergedAbilityCount = (priorMerged.abilities || []).length;
   const remappedRolls = (staple.empowerRolls || []).map(roll =>
-    remapEmpowerRollForStaple(roll, baseIsCreature, stapleIsCreature,
+    remapEmpowerRollForStaple(roll, baseIsCreature, stapleIsCreature, baseIsPermanent,
                               priorMergedEffectCount, priorMergedTriggerCount, priorMergedAbilityCount));
-  const baseBuffs = Array.isArray(base.permaBuffs) ? base.permaBuffs : [];
-  const stapleBuffs = Array.isArray(staple.permaBuffs) ? staple.permaBuffs : [];
+  // Elystra's permanent buffs are stat_boost/kw_* stickers, so they merge for
+  // free through the `stickers` concat above — no separate buff field to merge.
   return {
     stapledTpls: priorStaples.concat([staple.tplId]),
     stickers: (base.stickers || []).concat(staple.stickers || []),
     empowerRolls: (base.empowerRolls || []).concat(remappedRolls),
     subtypeRolls: (base.subtypeRolls || []).concat(staple.subtypeRolls || []),
-    permaBuffs: baseBuffs.concat(stapleBuffs),
     bonusTrigger: base.bonusTrigger || staple.bonusTrigger || null,
   };
 }
@@ -211,7 +230,6 @@ function writeMergedSpliceToSlot(slot, merged) {
   slot.stickers = merged.stickers;
   slot.empowerRolls = merged.empowerRolls;
   if (merged.subtypeRolls.length > 0) slot.subtypeRolls = merged.subtypeRolls;
-  if (merged.permaBuffs.length > 0) slot.permaBuffs = merged.permaBuffs;
   if (merged.bonusTrigger) slot.bonusTrigger = merged.bonusTrigger;
 }
 
@@ -220,11 +238,57 @@ function writeMergedSpliceToSlot(slot, merged) {
 // ability as the single source of truth. Top-level (not IIFE-internal) so the
 // module-level splice helpers and stickers.js can share them.
 //
-// The tap-for-mana ability on a permanent (cost.tap + add_mana), or null.
+// A7-1 (+ filter-land follow-up): a mana ability is auto-payable ONLY if its
+// cost is {T} (or nothing) — nothing else. The auto-payer (doTapLandForMana)
+// pays only the tap; it cannot pay a sacrifice / remove_counters cost NOR a
+// mana cost (a filter-land "{T}, {1}: add {W}{U}" would otherwise be tapped
+// with its {1} never paid — free fixing) NOR the solver model it without the
+// input. So ANY such ability is excluded from every automatic mana path
+// (enumeration, legality, doTapLandForMana, the solver) and boot-flagged as
+// unsupported, per Joe's guard: the autotapper must never silently pay a cost
+// the player didn't choose. (Enabling real filter mana — paying the {1} to net
+// the fixing through the solver — is a separate feature to build before any
+// such card ships.)
+function manaAbilityCostIsTrivial(ab) {
+  if (!ab || !ab.cost) return true;
+  for (const k of Object.keys(ab.cost)) { if (k !== 'tap') return false; }
+  return true;
+}
+// True iff `ab` is a MANA ABILITY (canon §705): it produces mana and REQUIRES NO
+// TARGET. Mana abilities resolve off-stack, ignore the `stackable` field (the
+// fast-path is hardcoded; see isStackable), and are legal whenever their cost
+// can be paid — regardless of HOW costly that is. TARGETING — not effect-purity
+// or cost — is the discriminator: an untargeted rider rides along fine ("T: add
+// G, gain 1 life" is still a mana ability), but a TARGETED ability ("T: add G,
+// +1/+1 target creature") is NOT — it takes a target and must route through the
+// normal activated-ability / stackable path. (Cost-triviality is a SEPARATE axis
+// gating only the AUTO-PAYER — see isAutoUsableManaAbility — not whether `ab` is
+// a mana ability: a sacrifice/mana-cost mana ability is still off-stack.) The
+// effects[0] check both requires mana to lead (manaEffectColors reads effects[0])
+// AND guards the deref, so an empty effects[] is "not a mana ability", not a
+// crash. The no-target check is inlined rather than delegated to objectNeedsTarget
+// because this helper lives in the file's pre-IIFE prelude (a cluster of pure
+// classifiers), and prelude functions can't reference IIFE-internal bindings like
+// objectNeedsTarget — see produceMana for the same constraint. It mirrors
+// objectNeedsTarget/effectNeedsTarget exactly.
+function isManaAbility(ab) {
+  if (!ab || !Array.isArray(ab.effects) || !ab.effects[0]) return false;
+  if (ab.effects[0].kind !== 'add_mana') return false;
+  if (ab.target) return false;
+  if (Array.isArray(ab.target_slots) && ab.target_slots.length > 0) return false;
+  return !ab.effects.some(e => e && (e.target || e.target_slot != null));
+}
+// True iff `ab` is a mana ability the auto-payer / tap lane may use: a mana
+// ability with a trivial (tap-only) cost the solver can pay on its own.
+function isAutoUsableManaAbility(ab) {
+  return isManaAbility(ab) && manaAbilityCostIsTrivial(ab);
+}
+
+// The tap-for-mana ability on a permanent (cost.tap + auto-usable mana), or null.
 function manaAbilityOf(card) {
   if (!card || !Array.isArray(card.abilities)) return null;
   return card.abilities.find(ab => ab && ab.cost && ab.cost.tap
-    && ab.effects && ab.effects[0] && ab.effects[0].kind === 'add_mana') || null;
+    && isAutoUsableManaAbility(ab)) || null;
 }
 // Colors an add_mana effect can produce ({choose} or {amounts}).
 function manaEffectColors(eff) {
@@ -298,6 +362,21 @@ function deckColorsFromSlots(slots) {
   return [...set];
 }
 
+// Runtime analog of deckColorsFromSlots for a LIVE side (player or opp): unions
+// the side's cards across all zones into pseudo-slots and reads their colors.
+// Used to gate land-color stickers on the in-game Archdemon-bargain path the
+// SAME way deck construction gates them — live cards carry no deckColors field,
+// so this recovers the side's colors from its actual cards (opp has no slots).
+function deckColorsForSide(state, side) {
+  const p = state && state[side];
+  if (!p) return [];
+  const slots = [];
+  for (const zone of ['library', 'hand', 'battlefield', 'graveyard', 'exile']) {
+    for (const c of (p[zone] || [])) slots.push({ tplId: c.tplId });
+  }
+  return deckColorsFromSlots(slots);
+}
+
 // Build a placeholder target array for legality probing — "could this be
 // cast right now?" without committing to a real target. Returns null if
 // any slot has no valid target. Multi-target spells need one entry per
@@ -334,8 +413,46 @@ let G = null;
 let nextIid = 1;
 let listeners = [];
 
-// Registry of "player owes a decision" modal types. To add: add G.<field> to
-// makeState, then add an entry here. Note pendingTriggerTarget uses .controller, not .who.
+// Add the mana an add_mana-shaped effect produces to `who`'s pool, and return
+// the log fragment of what was added ("{G}" or "{B}{B}{B}"). THE single source
+// of truth for the {choose}/{amounts} → pool mutation — shared by the add_mana
+// effect handler and the tap-for-mana lane (each logs its own framing).
+// `colorChoice` is the resolved pick for a {choose} effect (UI/AI); absent or
+// illegal → the first option. (Lives INSIDE the ENGINE IIFE — unlike the pure
+// mana classifiers in the prelude above — because it touches engine state: `G`
+// and `COLORS` are IIFE-internal and a prelude function couldn't reach them.)
+function produceMana(who, eff, colorChoice) {
+  if (eff.choose) {
+    const opts = eff.choose === 'any' ? COLORS : eff.choose;
+    const c = (colorChoice && opts.includes(colorChoice)) ? colorChoice : opts[0];
+    G[who].mana[c]++;
+    return `{${c}}`;
+  }
+  const am = eff.amounts || {};
+  for (const k of Object.keys(am)) G[who].mana[k] += am[k];
+  return Object.entries(am).map(([k, n]) => `{${k}}`.repeat(n)).join('');
+}
+
+// Registry of "player owes a decision" modal types.
+//
+// ADD-A-MODAL CHECKLIST — the registry entry alone is NOT enough. While a
+// modal is open, isLegalAction rejects everything except that modal's answer
+// action, so missing any site below produces a hard soft-lock (engine paused,
+// getLegalActions returns [], every answer illegal). A new modal needs ALL of:
+//   1. G.<field> initialized in makeState.
+//   2. A registry entry here (note pendingTriggerTarget uses .controller,
+//      not .who).
+//   3. An isForcedActionResponse branch mapping the answer action type to
+//      the open field.
+//   4. An isLegalAction case validating the answer action.
+//   5. A getLegalActions block enumerating the legal answers while the
+//      modal is open.
+//   6. An executeAction dispatch case routing to the do* handler (which
+//      must clear the field).
+//   7. AI handling (ai.js decide path) and/or controller/UI handling
+//      (controller.js) so both kinds of player can actually answer.
+// Reference examples: pendingEdictChoice and pendingOptionalCost touch every
+// site on this list.
 const PENDING_DECISIONS = [
   { field: 'forcedDiscard',        who: d => d.who,        active: d => d.remaining > 0 },
   { field: 'pendingSearch',        who: d => d.who,        active: () => true },
@@ -544,10 +661,15 @@ function mergeStapleInto(merged, stapleTpl) {
       trig.target_slots = stapleTpl.target_slots.map(spec =>
         Object.assign({}, spec, spec.target_filter ? { target_filter: { ...spec.target_filter } } : {}));
     }
+    // Carry the spell's distinct-targets rule onto the ETB. Now that the trigger
+    // path enforces cross-slot constraints (tsAutoPick / advanceTriggerTargetPrompt),
+    // a stapled Roots and Branches / Sword and Sorcery keeps its "another target
+    // creature" semantics instead of silently going permissive.
+    if (stapleTpl.distinct_targets) trig.distinct_targets = true;
     // Land base → the ETB is OPTIONAL and costs the spell's mana cost. A land is
     // free to play, so a free stapled spell is pure value; making it a "you may
     // pay {cost}" trigger restores the bargain. Creature/artifact bases stay
-    // free — you already paid the base's full cost. (BACKLOG: optional paid ETB.)
+    // free — you already paid the base's full cost.
     if (hasType(merged, 'Land') && stapleTpl.cost && Object.keys(stapleTpl.cost).length > 0) {
       trig.optional_cost = { ...stapleTpl.cost };
     }
@@ -576,7 +698,7 @@ function computeNextFreeSlot(merged) {
   let maxSlot = -1;
   function visit(eff) {
     if (!eff) return;
-    if (eff.target && eff.target !== 'self') {
+    if (eff.target) {
       maxSlot = Math.max(maxSlot, eff.target_slot || 0);
     }
   }
@@ -596,14 +718,64 @@ function remapEffectSlots(effects, offset) {
   if (!Array.isArray(effects)) return effects;
   return effects.map(e => {
     const copy = {...e};
-    if (copy.target && copy.target !== 'self') {
+    if (copy.target) {
       copy.target_slot = (e.target_slot || 0) + offset;
     }
     return copy;
   });
 }
 
-function makeCard(tplId, stickers, slotIdx, empowerRolls, permaBuffs, bonusTrigger, stapledTpls, subtypeRolls) {
+// Keywords implied by creature subtype — card data need not repeat these.
+const SUBTYPE_KEYWORDS = { Angel: ['flying'], Dragon: ['flying'], Treefolk: ['reach'], Wall: ['defender'] };
+
+// Append the subtype-implied keywords for `subtypes` onto `kw` in place (deduped).
+// Shared by makeCard's eager injection AND intrinsicKeywords' re-derivation, so
+// every keyword-build path applies the rule identically — a Dragon that bounces,
+// dies-and-returns, or sheds an until-EOT grant keeps its flying.
+function addSubtypeKeywords(subtypes, kw) {
+  for (const st of subtypes) {
+    for (const k of (SUBTYPE_KEYWORDS[st] || [])) {
+      if (!kw.includes(k)) kw.push(k);
+    }
+  }
+  return kw;
+}
+
+function applySubtypeKeywords(card) {
+  addSubtypeKeywords(subtypesOf(card), card.keywords);
+}
+
+// Runtime instance-state keys owned by the engine — the copy-by-default loop
+// below must never let a template inject these. A template declaring one is a
+// card-data error (warned at instantiation, the field is ignored).
+// MAINTENANCE: this denylist is the one list the copy-by-default inversion
+// still requires by hand — when adding a NEW runtime field to card instances
+// (in makeCard or anywhere downstream), add it here too, or a template
+// declaring that key would be deep-copied straight onto the instance.
+const MAKECARD_INSTANCE_KEYS = new Set([
+  'iid', 'slotIdx', 'controller', 'owner', 'isToken',
+  'tapped', 'sick', 'damage', 'tempPower', 'tempTou', 'permPower', 'permTou',
+  // NB: dealtDeathtouch is a victim-side lethality mark — set on the creature
+  // that RECEIVED deathtouch damage, not on the dealer (the name reads
+  // backwards). The Godot port calls this concept lethal_marked. See audit
+  // A2-10.
+  'counters', 'dealtDeathtouch', 'killedBy', 'cantAttack', 'cantBlock',
+  'cantAttackBy', 'cantBlockBy', 'damagedBySources', 'grantedBy',
+  'eotGrants', 'typeGrants', 'modifiers', 'stickers', 'empowerRolls', 'subtypeRolls',
+  // Assigned outside makeCard at runtime (steal / copy / bargain / charge /
+  // build-on-draw systems) — a truthy template copyOf would trip
+  // resetInPlayState's copy-revert, a template chargesLeft would shadow the
+  // slot-derived charge count, etc.
+  'tempControlUntilEot', 'copyOf', 'copySourceIid', 'bargainsNum',
+  'chargesLeft', '_builtThisGame',
+  // Assigned DURING makeCard but additively (recordStickerType never resets
+  // the array), so a template-declared value wouldn't be rebuilt away — the
+  // criterion for this list is "not unconditionally rebuilt at
+  // instantiation," not just "assigned outside makeCard."
+  'stickerTypes',
+]);
+
+function makeCard(tplId, stickers, slotIdx, empowerRolls, bonusTrigger, stapledTpls, subtypeRolls) {
   const tpl = (stapledTpls && stapledTpls.length > 0)
     ? synthesizeStapledTemplate(tplId, stapledTpls)
     : CARDS[tplId];
@@ -631,6 +803,13 @@ function makeCard(tplId, stickers, slotIdx, empowerRolls, permaBuffs, bonusTrigg
     target_slots: Array.isArray(tpl.target_slots)
       ? tpl.target_slots.map(s => ({...s, target_filter: s.target_filter ? {...s.target_filter} : undefined}))
       : undefined,
+    // Cross-slot distinctness (Roots and Branches / Sword and Sorcery — "another
+    // target creature"). MUST be carried alongside target_slots, or cast legality
+    // (tsIsLegalSet / isLegalAction) and the render highlight-drop read it off the
+    // instance as undefined and silently skip the check — the same-target cast the
+    // card forbids gets through. The stapled ETB path is unaffected (the flag rides
+    // the synthesized trigger via mergeStapleInto, not this whitelist).
+    distinct_targets: !!tpl.distinct_targets,
     // Legendary uniqueness enforced at cast time only (no SBA); the Legendary
     // supertype tag derives from this boolean via typesOf.
     legendary: !!tpl.legendary,
@@ -676,7 +855,6 @@ function makeCard(tplId, stickers, slotIdx, empowerRolls, permaBuffs, bonusTrigg
     // sticker-apply time so the choice is fixed for the run. Saved/loaded.
     empowerRolls: (empowerRolls || []).slice(),
     subtypeRolls: (subtypeRolls || []).slice(),
-    innate: !!tpl.innate,
     // Comes-into-play-tapped lands (Deepseam Quarry). Honored in doPlayLand.
     enters_tapped: !!tpl.enters_tapped,
     triggers: (tpl.triggers || []).map(t => ({
@@ -686,25 +864,57 @@ function makeCard(tplId, stickers, slotIdx, empowerRolls, permaBuffs, bonusTrigg
     // Stapled metadata for empower-target enumeration, sticker eligibility, etc.
     stapledFrom: tpl.stapledFrom,
   };
-  // Order: stickers → permaBuffs → bonusTrigger. (§3.8: the Balancer overrides
-  // channel is gone — symmetricize/embargo/bleach now flow through stickers.)
+  // Copy-by-default for every other card-level field (the inverted whitelist).
+  // The literal above carries only the fields needing bespoke copy semantics
+  // (deep copies, default fills, slot handling); everything else the template
+  // declares lands on the instance automatically as a JSON deep copy —
+  // templates are pure JSON, the same rationale as staple synthesis (§3.10).
+  // A new card-level flag is now a one-place change (card JSON + its reader);
+  // forgetting makeCard can no longer silently drop it on the real game path.
+  for (const k of Object.keys(tpl)) {
+    if (k === 'tplId') continue; // instance identity comes from the argument
+    if (MAKECARD_INSTANCE_KEYS.has(k)) {
+      console.warn('makeCard: template "' + tplId + '" declares runtime-only field "' + k + '" — ignored');
+      continue;
+    }
+    if (k in card) continue; // bespoke-copied above
+    const v = tpl[k];
+    card[k] = (v && typeof v === 'object') ? JSON.parse(JSON.stringify(v)) : v;
+  }
+  // Order: subtype-implied → stickers → bonusTrigger. (Elystra's permanent_eot
+  // buffs ride the stat_boost/kw_* stickers applied by applyStickersToCard above.)
+  applySubtypeKeywords(card);
   applyStickersToCard(card);
-  // permaBuffs: slot-persistent buffs from permanent_eot creatures (Elystra).
-  // Shared with resetInPlayState (bounce/flicker recast).
-  if (permaBuffs) applyPermaBuffsToCard(card, permaBuffs);
-  // bonusTrigger: slot-persistent trigger from boons (Watcher's Gift). Stored
-  // as data so it survives save/load; condId form is required (not closure).
+  // bonusTrigger: slot-persistent trigger (today written by the Architect's
+  // Codex ability finalize — see finalizeBuild; boon extras can also seed
+  // one). Stored as data so it survives save/load; condId form is required
+  // (not closure).
   if (bonusTrigger && typeof bonusTrigger === 'object') {
     if (!Array.isArray(card.triggers)) card.triggers = [];
-    card.triggers.push({
-      ...bonusTrigger,
-      effects: (bonusTrigger.effects || []).map(e => ({...e})),
-    });
+    card.triggers.push(cloneTriggerData(bonusTrigger));
   }
   // Regenerate text from effects/triggers/abilities (post-empower mutation).
   // custom_text:true cards keep hand-authored text (Endomorph, Codex, Elystra, Steal).
   card.text = describeCardText(card);
   return card;
+}
+
+// Copy a trigger object for attachment to a card or run slot. Audit A3-13
+// (Joe's ruling, PR #98 round 4): attached triggers are EXACT copies at
+// copy-time that then diverge independently — so `condition` (an array, or a
+// nested {op, terms} tree) must be deep-copied, not shared by reference.
+// Pre-fix the consumer-side spreads cloned `effects` per element but aliased
+// `condition`: every game's Mercurial card pointed INTO the module-level
+// MERCURIAL_TRIGGER_POOL, one in-place mutation away from contaminating the
+// pool for every later game (normalizeCardEffects already rewrites the
+// adjacent `effects` field in place — the exact pattern that would bite).
+function cloneTriggerData(trig) {
+  const cond = trig.condition;
+  return {
+    ...trig,
+    condition: (cond && typeof cond === 'object') ? JSON.parse(JSON.stringify(cond)) : cond,
+    effects: (trig.effects || []).map(e => ({...e})),
+  };
 }
 
 // Mint a token from TOKENS. isToken:true (vanish on leave-play), slotIdx:null,
@@ -742,7 +952,6 @@ function makeToken(tokenTplId, controller) {
     eotGrants: [],
     modifiers: [],
     stickers: [],
-    innate: false,
     triggers: undefined,
   };
   return card;
@@ -750,12 +959,20 @@ function makeToken(tokenTplId, controller) {
 
 // Intrinsic = template + stickers (NOT runtime grants). Used by
 // clearRestrictionsFromSource. Stapled-aware so Knight+Spirit retains both halves' keywords.
+// Copy-aware (audit A4-5): while card.copyOf is set (become_copy_of), the
+// copied template's printed keywords ARE the card's intrinsic identity — so
+// every re-derive path (the CLEANUP eotGrants rebuild, grant strips, trophy
+// claimableKeywords) preserves a copy's flying instead of resurrecting the
+// base template's flash. resetInPlayState clears copyOf before its own
+// re-derive, so the leave-play revert still lands on the base identity.
 function intrinsicKeywords(card) {
   if (card.isToken) {
     const tpl = TOKENS[card.tplId];
     return (tpl && tpl.keywords) ? tpl.keywords.slice() : [];
   }
-  const tpl = card.stapledFrom
+  const tpl = (card.copyOf && CARDS[card.copyOf])
+    ? CARDS[card.copyOf]
+    : card.stapledFrom
     ? synthesizeStapledTemplate(card.stapledFrom.baseTplId,
                                  card.stapledFrom.stapledTpls)
     : CARDS[card.tplId];
@@ -764,6 +981,10 @@ function intrinsicKeywords(card) {
     const s = STICKERS[sId];
     if (s && s.kind === 'keyword' && !kw.includes(s.keyword)) kw.push(s.keyword);
   }
+  // Subtype-implied keywords are part of the intrinsic set, so every re-derive
+  // path (resetInPlayState on leave-play, the EOT eotGrants cleanup) preserves
+  // them rather than silently dropping a Dragon's flying / a Wall's defender.
+  addSubtypeKeywords(subtypesOf(card), kw);
   return kw;
 }
 
@@ -795,7 +1016,7 @@ function makePlayer(name, deck, ownerSide) {
   // not controller — matters for steal effects. slotIdx threads deck index;
   // for player → runState.slots[i] for sticker persistence, for opp → transient.
   const cards = deck.map((entry, i) => {
-    if (typeof entry === 'string') return makeCard(entry, undefined, i, undefined, undefined);
+    if (typeof entry === 'string') return makeCard(entry, undefined, i, undefined);
     // Bonus trigger: fixed bonusTrigger (locked at run-start) OR triggerPool
     // (rolled fresh per game). Fixed wins. Slot-level pool overrides template seed.
     let bonus = entry.bonusTrigger;
@@ -808,12 +1029,20 @@ function makePlayer(name, deck, ownerSide) {
     }
     if (!bonus && pool && pool.length > 0) {
       const pick = pool[Math.floor(Math.random() * pool.length)];
-      bonus = {
-        ...pick,
-        effects: (pick.effects || []).map(e => ({...e})),
-      };
+      // cloneTriggerData (audit A3-13): the pick must not alias the global
+      // pool entry's condition array.
+      bonus = cloneTriggerData(pick);
     }
-    return makeCard(entry.tplId, entry.stickers, i, entry.empowerRolls, entry.permaBuffs, bonus, entry.stapledTpls, entry.subtypeRolls);
+    if (bonus) {
+      // Audit A3-5 stale-save guard: a persisted bonusTrigger (or embedded
+      // slot triggerPool pick) predating an id rename would silently no-op
+      // for the whole run. Warn loudly; still attach (behavior-neutral).
+      const refs = { unknownKinds: [], unknownTokens: [], unknownAtomics: [], unknownEvents: [] };
+      collectUnknownTriggerRefs(bonus, 'bonusTrigger(' + entry.tplId + ')', refs);
+      const bad = refs.unknownKinds.concat(refs.unknownTokens, refs.unknownAtomics, refs.unknownEvents);
+      if (bad.length) console.warn('makePlayer: slot bonusTrigger references unknown ids:', bad.join(', '));
+    }
+    return makeCard(entry.tplId, entry.stickers, i, entry.empowerRolls, bonus, entry.stapledTpls, entry.subtypeRolls);
   });
   for (const c of cards) c.owner = ownerSide;
   // Stamp live charges and rewrite "N charges" text from slot data (Stapler etc.).
@@ -833,9 +1062,12 @@ function makePlayer(name, deck, ownerSide) {
     }
   }
   // Opening hand: pull all innate cards first, then draw to 7 from the rest.
+  // `innate` is a keyword (native or sticker-granted) — applyStickersToCard
+  // has already populated card.keywords by now, so read it from there.
+  const isInnate = c => (c.keywords || []).includes('innate');
   const innate = [];
   const rest = [];
-  for (const c of cards) (c.innate ? innate : rest).push(c);
+  for (const c of cards) (isInnate(c) ? innate : rest).push(c);
   shuffle(rest);
   const drawNeeded = Math.max(0, 7 - innate.length);
   let hand = innate.concat(rest.splice(0, drawNeeded));
@@ -849,13 +1081,13 @@ function makePlayer(name, deck, ownerSide) {
   const lc = landCount(hand);
   let mulliganed = false;
   if (lc <= 1 || lc >= 6) {
-    const drawnPortion = hand.filter(c => !c.innate);
+    const drawnPortion = hand.filter(c => !isInnate(c));
     rest.push(...drawnPortion);
     shuffle(rest);
     hand = innate.concat(rest.splice(0, drawNeeded));
     mulliganed = true;
   }
-  return { name, life: 20, mana:{W:0,U:0,B:0,R:0,G:0,C:0},
+  return { name, life: 20, mana: emptyManaPool(),
            library: rest, hand, battlefield: [], graveyard: [], exile: [],
            landPlayedThisTurn: false,
            mulliganed, // logged once by init(), then ignored
@@ -916,7 +1148,11 @@ function makeState(playerDeck, oppDeck) {
     pendingSearch: null,              // {who, filter, source} — tutors
     pendingTriggerBuild: null,        // {who, cardIid, options, allowKeep} — Codex etc.
     pendingTriggerTarget: null,       // {controller, sourceIid, sourceName, trig, valid}
-    // Trigger queue/budget. Drained at priority-round open. Depth cap kills loops.
+    // Trigger queue/budget. Drained at priority-round open. triggerChainDepth
+    // is (despite the name) a per-stack-episode trigger BUDGET — it counts
+    // every trigger resolution since the stack last emptied, not nesting
+    // depth — and kills loops at TRIGGER_DEPTH_CAP (audit A3-3; see the cap
+    // const's comment for why width is the deliberate choice).
     pendingTriggers: [],
     triggerChainDepth: 0,
     // Delayed triggers fire at scheduled events (endStep). Otherworldly Journey etc.
@@ -968,7 +1204,19 @@ function copySourceRef(ctx) {
 // Standard fizzle-on-missing-target preamble for EFFECTS handlers.
 //   const f = resolveTarget(ctx, target);
 //   if (!f) return;
+// PRECONDITION: resolves CARD/permanent targets only (looked up by `iid`).
+// Players have no `iid`, so a `{kind:'player'}` target would fizzle here as
+// "no target". Callers handling a creature_or_player effect MUST peel off
+// `target.kind === 'player'` first (see the damage handler) before calling.
 function resolveTarget(ctx, target) {
+  // Missing/iid-less target → the SAME logged fizzle as a stale target
+  // (audit A4-17). Before this guard a misauthored no-target effect threw a
+  // raw TypeError out of executeAction mid-resolution, stranding the spell
+  // in NO zone (popped from hand and stack, never reaching the graveyard).
+  if (!target || target.iid == null) {
+    log(`${ctx.sourceName} fizzles — no target.`, 'sp');
+    return null;
+  }
   const f = findCard(target.iid);
   if (f) return f;
   log(`${ctx.sourceName} fizzles — target gone.`, 'sp');
@@ -986,11 +1234,51 @@ function resolveStackOrPermanent(target) {
   }
   if (target.kind === 'stack') {
     const item = target.stackItem;
-    if (!item || !item.card || item.kind === 'trigger') return null;
+    if (!item || !item.card || item.kind === 'trigger' || item.kind === 'ability') return null;
     if (G.stack.indexOf(item) < 0) return null;
     return { kind: 'spell', card: item.card, controller: item.controller, stackItem: item };
   }
   return null;
+}
+
+// Resolve + validate a Stapler splice pair from a targets[] array. Returns
+// { reason } (human-readable invalidity) or the resolved pair
+// { baseR, stapleR, baseCard, stapleCard, canonBaseTpl, canonStapleTpl }.
+// The ONE definition of "can these two be stapled", shared by:
+//   - isLegalAction's activateAbility case — pair validity is an ACTIVATION
+//     check, so an invalid pair is rejected BEFORE any cost is paid (MtG
+//     601.2h via 602.2b: costs are paid as the last part of activation; an
+//     illegal activation rewinds with nothing spent);
+//   - resolveAbilityEntry + the apply_in_game_splice handler at resolution —
+//     where, per MtG resolution-fizzle semantics (608.2b-adjacent), costs
+//     STAY paid. Since A3-2 (abilities take stack entries) a response window
+//     exists between activation and resolution, so the pair CAN decay in
+//     between — the resolution-time re-check is load-bearing, not just
+//     drift insurance.
+function resolveSplicePair(allTargets) {
+  if (!Array.isArray(allTargets) || allTargets.length < 2) return { reason: 'needs two targets.' };
+  const t0 = allTargets[0], t1 = allTargets[1];
+  if (!t0 || !t1) return { reason: 'target missing.' };
+  const r0 = resolveStackOrPermanent(t0);
+  const r1 = resolveStackOrPermanent(t1);
+  if (!r0 || !r1) return { reason: 'target gone.' };
+  if (r0.card.iid === r1.card.iid) return { reason: "can't staple a card to itself." };
+  const [canonBaseTpl, canonStapleTpl, swapped] = canonicalSplicePair(
+    r0.card.tplId, r1.card.tplId);
+  const baseR = swapped ? r1 : r0;
+  const stapleR = swapped ? r0 : r1;
+  const baseCard = baseR.card;
+  const stapleCard = stapleR.card;
+  if (!isSpliceableBase(baseCard.tplId)) {
+    return { reason: `${baseCard.name} can't be a splice base.` };
+  }
+  if (stapleChainOf(stapleCard).length > 0) {
+    return { reason: `${stapleCard.name} is already stapled.` };
+  }
+  if (!isCompatibleStaplePair(baseCard.tplId, stapleCard.tplId)) {
+    return { reason: `${baseCard.name} and ${stapleCard.name} aren't compatible.` };
+  }
+  return { baseR, stapleR, baseCard, stapleCard, canonBaseTpl, canonStapleTpl };
 }
 
 // Pluck a card off its controller's battlefield. Returns null if gone.
@@ -1003,6 +1291,32 @@ function pluckFromBattlefield(f) {
   return bf.splice(idx, 1)[0];
 }
 
+// ONE shared "does this lord's static buff apply to this target?" predicate —
+// the single answer for BOTH halves of a static_buff: the live stat half
+// (getStats) and the reconciled keyword half (applyStaticKeywordGrants).
+// Audit A4-2 / A2-9: these gates used to live as two hand-synced copies with
+// divergent guards — the stat copy lacked the Creature check (so a
+// subtype-free lord buffed lands), and the keyword copy never re-asked the
+// question after granting (so grants went stale on steal/type change).
+// filter.controller:'self' = "creatures you control" (shares lord controller).
+//
+// A4-14: lord-buff filters evaluate through matchFilterNoStats — the
+// stats-free view. The four stat-bound axes (max/min power/toughness) call
+// getStats, which walks the lord loop, which lands back here: a stat-bounded
+// static_buff filter would recurse getStats ↔ matchFilter to a RangeError on
+// every stats read (AI scoring, SBAs, render, combat). This predicate is the
+// one funnel through which BOTH halves (stat + keyword) reach matchFilter,
+// so the guard lives here; boot validation additionally REJECTS stat bounds
+// inside static_buffs until that semantics is properly designed
+// (validateAllCardEffects, loud).
+function lordBuffApplies(lord, lordCtrl, buff, target, tgtCtrl) {
+  if (lord.iid === target.iid) return false;   // lords buff OTHER creatures
+  if (!hasType(target, 'Creature')) return false;
+  if (!matchFilterNoStats(target, buff.filter, tgtCtrl, lordCtrl)) return false;
+  if (buff.subtype && !hasType(target, buff.subtype)) return false;
+  return true;
+}
+
 function getStats(card) {
   // Works on real instances AND synthetic template+stickers shapes (reward UI).
   let p = (card.power || 0) + (card.tempPower || 0) + (card.permPower || 0);
@@ -1010,8 +1324,12 @@ function getStats(card) {
   if (Array.isArray(card.modifiers)) {
     for (const m of card.modifiers) { p += (m.power||0); t += (m.toughness||0); }
   } else if (Array.isArray(card.stickers)) {
+    // Synthetic template+stickers shapes (reward UI) with no modifiers[]. Resolve
+    // each sticker — resolveSticker handles BOTH registry ids and inline
+    // {kind:'stat_boost'} descriptors (Elystra's banked buffs since A5-6/A5-7);
+    // a bare STICKERS[sId] lookup would miss the inline objects.
     for (const sId of card.stickers) {
-      const s = STICKERS[sId];
+      const s = resolveSticker(sId);
       if (s && s.kind === 'stat_boost') {
         p += (s.power || 0); t += (s.toughness || 0);
       }
@@ -1023,16 +1341,14 @@ function getStats(card) {
   if (card.iid != null && typeof G !== 'undefined' && G && G.you && G.you.battlefield) {
     const owner = findCard(card.iid);
     if (owner) {
-      const allCreatures = [
+      const allPermanents = [   // every permanent, lands included (A2-9 rename)
         ...G.you.battlefield.map(c => ({ card: c, controller: 'you' })),
         ...G.opp.battlefield.map(c => ({ card: c, controller: 'opp' })),
       ];
-      for (const { card: lord, controller: lordCtrl } of allCreatures) {
-        if (!lord.static_buffs || lord.iid === card.iid) continue;
+      for (const { card: lord, controller: lordCtrl } of allPermanents) {
+        if (!lord.static_buffs) continue;
         for (const buff of lord.static_buffs) {
-          // filter.controller:'self' = "creatures you control" (shares lord controller).
-          if (!matchFilter(card, buff.filter, owner.controller, lordCtrl)) continue;
-          if (buff.subtype && !hasType(card, buff.subtype)) continue;
+          if (!lordBuffApplies(lord, lordCtrl, buff, card, owner.controller)) continue;
           p += (buff.power || 0);
           t += (buff.toughness || 0);
         }
@@ -1065,7 +1381,9 @@ function getCardValue(card, purpose, ctx) {
   let v = pow + tou - cost * 2;
 
   // Body-scaled keyword values (flat bonuses misvalue both 1/1 unblockables and 5/5 vanillas).
-  const kw = card.keywords || [];
+  // Derive subtype-implied keywords: raw templates (draft scoring) don't carry
+  // them, and in-play instances already do — so this is idempotent for both.
+  const kw = addSubtypeKeywords(subtypesOf(card), (card.keywords || []).slice());
   if (kw.includes('flying'))         v += 1 + pow * 0.5;
   if (kw.includes('unblockable'))    v += 1.5 + pow * 0.75;
   if (kw.includes('reach'))          v += 1;
@@ -1200,6 +1518,95 @@ function choosesDescriptor(c, who) {
   };
 }
 
+// Human-facing `chooses()` gate (GAP 2 / audit A4-7): when the player forced
+// to choose is the HUMAN, pause resolution and prompt instead of auto-picking
+// — the choice is the chooser's by the card's own text. ONE shared gate for
+// all three resolution loops (spell / trigger / activated ability); before
+// A4-7 only the spell resolver had it, so a trigger-sourced edict (Heir to
+// the Burnt House dying under the AI) silently sacrificed a permanent of the
+// engine's choosing. Stashes the chosen-dependent trailing effects
+// (sacrifice/annihilate/rip) on pendingEdictChoice; doEdictChoice replays
+// them once the human picks. Returns true → the caller BREAKS out of its
+// effect loop (resolution defers); false → fall through to the handler's
+// auto-pick (AI chooser, or an empty pool which the handler logs).
+// Chooser derivation matches the handler exactly: the established player
+// target (curTgt from a target() step), else a player in ctx.allTargets,
+// else the controller's opponent.
+function maybeDeferHumanChooses(ctx, eff, effList, curTgt) {
+  const playerTgt = (curTgt && curTgt.kind === 'player') ? curTgt
+    : (ctx.allTargets || []).find(t => t && t.kind === 'player');
+  const chooser = playerTgt ? playerTgt.who : opp(ctx.controller);
+  if (chooser !== 'you') return false;
+  const choosesFilter = eff.filter || 'creature';
+  const pool = choosesEligiblePool(chooser, choosesFilter);
+  if (pool.length === 0) return false;  // handler logs "no <noun> to choose"
+  const idx = effList.indexOf(eff);
+  G.pendingEdictChoice = {
+    who: chooser,
+    source: ctx.sourceName,
+    sourceIid: ctx.sourceIid,
+    controller: ctx.controller,
+    filter: choosesFilter,
+    pool: pool.map(c => choosesDescriptor(c, chooser)),
+    trailingEffects: effList.slice(idx + 1).map(e => ({ ...e })),
+  };
+  const noun = choosesFilter;   // 'creature' | 'permanent' | 'land'
+  log(`${ctx.sourceName}: ${pname(chooser)} must choose a ${noun} to lose.`, 'sp');
+  return true;
+}
+
+// A4-23 leg-1: when a HUMAN search/discard prompt opens mid-resolution, the
+// effects AFTER it must wait for the human's pick (canon §704.2 "resolve each
+// effect in order"; §600 makes resolution atomic) — exactly as the edict
+// chooses() path defers via pendingEdictChoice.trailingEffects. Stash the
+// trailing effects on the open prompt and return true so the caller BREAKS its
+// effect loop; doSearchPick / doDiscard replay them (resumeTrailingEffects) once
+// the pick completes. One shared human-pause contract for chooses + search +
+// discard. Pre-fix the search/discard handlers set their prompt and RETURNED but
+// the loop kept running, so a trailing effect fired before the pick — e.g.
+// Demonic Tutor's "lose 2 life" hit before you chose the tutored card.
+// who === 'you' = a HUMAN is prompted; the AI path resolves inline (no defer).
+function maybeDeferTrailingForHumanPrompt(ctx, eff, effList) {
+  const idx = effList.indexOf(eff);
+  if (idx < 0) return false;
+  const trailing = effList.slice(idx + 1);
+  if (!trailing.length) return false;            // nothing after this effect
+  const stash = (prompt) => {
+    if (prompt.trailingEffects) return false;    // an earlier effect already deferred
+    prompt.trailingEffects = trailing.map(e => ({ ...e }));
+    prompt.deferCtx = {
+      controller: ctx.controller, sourceName: ctx.sourceName,
+      sourceIid: ctx.sourceIid, allTargets: ctx.allTargets || [],
+      chosen: ctx.chosen || null,
+    };
+    return true;
+  };
+  if (G.pendingSearch && G.pendingSearch.who === 'you') return stash(G.pendingSearch);
+  if (G.forcedDiscard && G.forcedDiscard.who === 'you') return stash(G.forcedDiscard);
+  return false;
+}
+// Replay trailing effects after a human pause resolved, re-deferring if one of
+// them opens another human pause (chained pauses). Shared by doEdictChoice /
+// doSearchPick / doDiscard. scope:'self' resolves against the stashed source
+// (the A4-13 fork); other effects run bare — handlers fall back to ctx.chosen,
+// preserved for the edict path. (A4-23 leg-1.) CAVEAT: a trailing effect that
+// depends on a top-level target() step's established CARD target (or a
+// target_slot) would lose it here — no shipped card combines a target() step
+// with a human search/discard plus a target-dependent trailing effect (verified
+// across the pool); wiring one would need the slot targets threaded through
+// deferCtx. Same limitation the edict replay has always had.
+function resumeTrailingEffects(ctx, effects) {
+  for (const eff of (effects || [])) {
+    let tgt = null, snap = null;
+    if (eff.scope === 'self') {
+      const self = resolveSelfTarget(eff, ctx.sourceIid, ctx.sourceName, ctx.controller);
+      tgt = self.tgt; snap = self.snap;
+    }
+    applyEffect(ctx, eff, tgt, snap);
+    if (maybeDeferTrailingForHumanPrompt(ctx, eff, effects)) return;
+  }
+}
+
 // Sac/edict scoring — measures board-presence threat (cost sunk).
 // ~75% of getCardValue coefficients.
 function sacValueOnBoard(card) {
@@ -1287,11 +1694,31 @@ function effectCoverageReport() {
   // Valuation classification lives in ai.js (relocated, review #6 — loaded after
   // this module). Read lazily, like the cast-scoring sets below; if absent
   // (engine-only test boot), skip the valuation-coverage check.
-  let unclassifiedValuation = [], staleValuation = [];
+  let unclassifiedValuation = [], staleValuation = [], unscoredValuation = [];
   if (typeof VALUED_EFFECT_KINDS !== 'undefined' && typeof UNVALUED_EFFECT_KINDS !== 'undefined') {
     const classified = new Set([...VALUED_EFFECT_KINDS, ...UNVALUED_EFFECT_KINDS]);
     unclassifiedValuation = kinds.filter(k => !classified.has(k));
     staleValuation = [...classified].filter(k => !EFFECTS[k]);
+  }
+  // A7-2: being ON the VALUED checklist does not prove the AI's cast scorer
+  // actually has a branch for the kind. Probe each VALUED kind through
+  // spellValueForEffects (the untargeted-cast valuer — it has NO default
+  // fallthrough, so an unbranched kind scores exactly 0): it must score > 0,
+  // EXCEPT kinds that price 0 there on purpose because their value rides a
+  // sibling effect (`sacrifice` rides the edict `chooses`). This catches the
+  // silent class the set-algebra above cannot — VALUED-claimed but cast-scored
+  // 0, so the AI never casts an untargeted spell of that kind (the add_counter
+  // hole). spellValueForEffects lives in ai.js (loaded after) — read lazily.
+  if (typeof VALUED_EFFECT_KINDS !== 'undefined' && typeof spellValueForEffects === 'function') {
+    const ZERO_PRICE_VALUED = new Set(['sacrifice']);
+    const vprobe = { amount: 1, power: 1, toughness: 1, count: 1, severity: 1,
+      token_id: 'soldier_w_1_1', keyword: 'flying', from_zone: 'library', to_zone: 'hand' };
+    unscoredValuation = [...VALUED_EFFECT_KINDS].filter(k => {
+      if (ZERO_PRICE_VALUED.has(k)) return false;
+      let v = 0;
+      try { v = spellValueForEffects([{ ...vprobe, kind: k }]) || 0; } catch (_) { v = 0; }
+      return v <= 0;
+    });
   }
   // Card-text: probe each kind; the describeEffect default returns a "[kind]"
   // debug sentinel. A sentinel hit means no describe case — unless the kind is
@@ -1317,7 +1744,7 @@ function effectCoverageReport() {
     unclassifiedCastScoring = kinds.filter(k => !classifiedCast.has(k));
     staleCastScoring = [...classifiedCast].filter(k => !EFFECTS[k]);
   }
-  return { unclassifiedValuation, staleValuation, missingText,
+  return { unclassifiedValuation, staleValuation, unscoredValuation, missingText,
            unclassifiedCastScoring, staleCastScoring };
 }
 
@@ -1345,6 +1772,10 @@ function colorsOfCard(card) {
   if (card.cost) {
     for (const c of COLORS) if ((card.cost[c] || 0) > 0) colors.push(c);
   }
+  // Cost-less cards (tokens) carry only the single printed `color` — fall
+  // back to it so their color identity isn't empty (audit A4-6: matchFilter's
+  // color/not_color checks route through this full-identity list).
+  if (!colors.length && card.color && COLORS.includes(card.color)) colors.push(card.color);
   return colors;
 }
 function resolvedManaCost(rawCost, sourceCard, who) {
@@ -1426,15 +1857,44 @@ function castableSpellEntries(who) {
   return out;
 }
 
-// Can `who` pay `cost` from pool + untapped sources? Backtracks over dual-land choices.
-function canPayPotential(who, cost, excludeIid) {
-  if (!cost) return true;
+// ----- Mana payment (audit A1-2: ONE solver for legality AND payment) -----
+// solveManaPayment is the single mana brain. It computes a concrete payment
+// plan — which untapped sources to tap, and which color each choose-source
+// produces — such that pool + production covers `cost`. canPayPotential
+// ("can you afford this?") asks whether a plan exists; payMana executes the
+// plan verbatim. Pre-fix these were two ALGORITHMS — a backtracking checker
+// and a greedy payer (tapSourceProducing, fixed W,U,B,R,G order) — that
+// could disagree on partially-overlapping choose-sources: the checker
+// approved the cast, the payer spent the wrong dual first, hit a dead end
+// mid-payment and threw out of executeAction, leaving half-applied state
+// (a land wrongly tapped, its mana consumed, the spell still in hand). Now
+// the full solution is found BEFORE any mutation, so payment is atomic by
+// construction: it fully happens or nothing changes.
+//
+// Returns {cost, taps: [{card, color, amounts}]} or null if unpayable.
+// `cost` in the plan is the resolvedManaCost form; `color` is the chosen
+// color for a choose-source (null for fixed sources, which add `amounts`
+// wholesale). Taps hold live card references — execute the plan immediately
+// (it doesn't survive intervening state changes).
+// `wantPlan` false = feasibility only (legality checks): return as soon as
+// tryAssign proves payability, skipping the O(taps^2) plan-trim that only
+// payMana consumes. canPayPotential runs per castable spell/ability in
+// getLegalActions, so this trims real work off the AI's hot path.
+// CONTRACT (load-bearing): the wantPlan=false return is feasibility-only —
+// {cost, taps:null}, NOT an executable plan. Only canPayPotential (which reads
+// `!== null`) may pass false. Every payer (payMana, doOptionalCost) must OMIT
+// the arg so it defaults true and gets the trimmed taps; a payer that passed
+// false would crash on plan.taps — loud (a TypeError), never silent miss-pay.
+function solveManaPayment(who, cost, excludeIid, wantPlan = true) {
+  if (!cost) return { cost: null, taps: [] };
+  // Invariant: colors_of_source costs must already be source-resolved by the caller.
   cost = resolvedManaCost(cost, null, who);
   const pool = {...G[who].mana};
   // §3.9: lands and creature dorks are one pool of tap-for-mana abilities.
-  // Single-color sources fold into the pool; multi-color (choose) sources
-  // become choice points. Fixed multi-mana abilities add all their mana.
-  const choices = [];
+  // Fixed sources add their amounts wholesale; multi-color (choose) sources
+  // are the solver's choice points.
+  const fixed = [];
+  const chooses = [];
   for (const c of G[who].battlefield) {
     if (c.tapped) continue;
     // A source tapped as the ability's own {T} cost can't also pay its mana cost
@@ -1444,65 +1904,82 @@ function canPayPotential(who, cost, excludeIid) {
     const ab = manaAbilityOf(c);
     if (!ab) continue;
     const eff0 = ab.effects[0];
-    if (eff0.choose) {
-      choices.push(manaEffectColors(eff0));
-      continue;
-    }
-    const am = eff0.amounts;
-    const ks = Object.keys(am);
-    if (ks.length === 1 && am[ks[0]] === 1) {
-      pool[ks[0]] = (pool[ks[0]] || 0) + 1;
-    } else {
-      for (const k of ks) pool[k] = (pool[k] || 0) + am[k];
-    }
+    if (eff0.choose) chooses.push({ card: c, colors: manaEffectColors(eff0) });
+    else fixed.push({ card: c, amounts: eff0.amounts });
   }
-  function tryAssign(idx, p) {
-    if (idx === choices.length) return canPayFromPool(p, cost);
-    for (const color of choices[idx]) {
+  // Feasibility: fold every fixed source into the pool and backtrack over
+  // choose-source color assignments (the search the old canPayPotential ran
+  // — now the single authority), recording the winning assignment.
+  const base = {...pool};
+  for (const f of fixed) {
+    for (const k of Object.keys(f.amounts)) base[k] = (base[k] || 0) + f.amounts[k];
+  }
+  const assignment = new Array(chooses.length);
+  const tryAssign = (idx, p) => {
+    if (idx === chooses.length) return canPayFromPool(p, cost);
+    for (const color of chooses[idx].colors) {
       const next = {...p};
       next[color] = (next[color] || 0) + 1;
-      if (tryAssign(idx + 1, next)) return true;
+      if (tryAssign(idx + 1, next)) { assignment[idx] = color; return true; }
     }
     return false;
+  };
+  if (!tryAssign(0, base)) return null;
+  // Feasibility established. Legality callers want only the yes/no, so stop
+  // before the trim (taps is null — no caller of the !wantPlan path reads it).
+  if (!wantPlan) return { cost, taps: null };
+  // The fold proved payability with EVERY source tapped; trim the taps the
+  // payment doesn't need. Trim order encodes the old payer's observable
+  // preferences: drop CHOOSE sources first (keep flexible sources untapped —
+  // a basic is spent before City of Brass) and drop later battlefield slots
+  // before earlier ones (the payer taps front-to-back). Pool mana is never
+  // "tapped", so maximal trimming also preserves pay-from-pool-first.
+  const taps = fixed.map(f => ({ card: f.card, color: null, amounts: f.amounts }));
+  for (let i = 0; i < chooses.length; i++) {
+    taps.push({ card: chooses[i].card, color: assignment[i], amounts: null });
   }
-  return tryAssign(0, pool);
+  const covers = (skip) => {
+    const p = {...pool};
+    for (let i = 0; i < taps.length; i++) {
+      if (skip.has(i)) continue;
+      const t = taps[i];
+      if (t.color) p[t.color] = (p[t.color] || 0) + 1;
+      else for (const k of Object.keys(t.amounts)) p[k] = (p[k] || 0) + t.amounts[k];
+    }
+    return canPayFromPool(p, cost);
+  };
+  const dropped = new Set();
+  // chooses sit after fixed in `taps`, so a single back-to-front walk tries
+  // dropping chooses first (reversed), then fixed (reversed).
+  for (let i = taps.length - 1; i >= 0; i--) {
+    dropped.add(i);
+    if (!covers(dropped)) dropped.delete(i);
+  }
+  return { cost, taps: taps.filter((_, i) => !dropped.has(i)) };
 }
-// Pay from pool first; if short, auto-tap sources. Color costs first, then generic.
+// Can `who` pay `cost` from pool + untapped sources? Thin wrapper over the
+// solver — legality and payment share one brain and cannot disagree (A1-2).
+function canPayPotential(who, cost, excludeIid) {
+  return solveManaPayment(who, cost, excludeIid, false) !== null;
+}
+// Pay `cost`: solve, then execute the plan — tap exactly the planned sources
+// (each choose-source produces its assigned color), then deduct the resolved
+// cost from the pool. Throws WITHOUT mutating anything when no plan exists
+// (callers gate on canPayPotential via isLegalAction, so a throw here means
+// the caller skipped validation — and the board is still intact).
 function payMana(who, cost) {
   if (!cost) return;
-  // Invariant: colors_of_source costs must already be source-resolved by the caller.
-  cost = resolvedManaCost(cost, null, who);
-  const p = G[who];
-  if (canPayFromPool(p.mana, cost)) { deductFromPool(p.mana, cost); return; }
-  if (cost.spend_as_any_color) {
-    let needed = cost.C || 0;
-    for (const c of COLORS) needed += cost[c] || 0;
-    const poolTotal = () => (p.mana.W||0)+(p.mana.U||0)+(p.mana.B||0)+(p.mana.R||0)+(p.mana.G||0)+(p.mana.C||0);
-    while (poolTotal() < needed) {
-      if (!tapSourceProducing(who, null)) throw new Error('Mana payment failed (any-color)');
-    }
-    deductFromPool(p.mana, cost);
-    return;
+  const plan = solveManaPayment(who, cost, null);
+  if (!plan) {
+    throw new Error('Mana payment failed (unaffordable): ' + JSON.stringify(cost));
   }
-  const need = {...cost};
-  for (const c of COLORS) {
-    while ((need[c]||0) > 0) {
-      if ((p.mana[c]||0) > 0) { p.mana[c]--; need[c]--; continue; }
-      if (!tapSourceProducing(who, c)) {
-        throw new Error('Mana payment failed (color): ' + c);
-      }
-      p.mana[c]--; need[c]--;
-    }
+  const pool = G[who].mana;
+  for (const t of plan.taps) {
+    t.card.tapped = true;
+    if (t.color) pool[t.color] = (pool[t.color] || 0) + 1;
+    else for (const k of Object.keys(t.amounts)) pool[k] = (pool[k] || 0) + t.amounts[k];
   }
-  let generic = need.C || 0;
-  while (generic > 0) {
-    let used = false;
-    for (const c of [...COLORS, 'C']) {
-      if ((p.mana[c]||0) > 0) { p.mana[c]--; generic--; used = true; break; }
-    }
-    if (used) continue;
-    if (!tapSourceProducing(who, null)) throw new Error('Mana payment failed (generic)');
-  }
+  if (plan.cost) deductFromPool(pool, plan.cost);
 }
 function deductFromPool(pool, cost) {
   if (cost && cost.spend_as_any_color) {
@@ -1525,41 +2002,23 @@ function deductFromPool(pool, cost) {
     generic -= used;
   }
 }
-// Tap an untapped source producing `color` (or any if null). §3.9: lands and
-// creature dorks are one pool of mana abilities. Preference: FIXED-color sources
-// before CHOOSE (flexible) ones, so a basic land is spent before City of Brass.
-// Creatures gate on summoning sickness; lands don't.
-function tapSourceProducing(who, color) {
-  const usable = G[who].battlefield.filter(c =>
-    !c.tapped && (!hasType(c, 'Creature') || !c.sick) && manaAbilityOf(c));
-  const tap = (c, requested) => {
-    const eff = manaAbilityOf(c).effects[0];
-    c.tapped = true;
-    if (eff.choose) {
-      const opts = eff.choose === 'any' ? COLORS : eff.choose;
-      G[who].mana[requested && opts.includes(requested) ? requested : opts[0]]++;
-    } else {
-      for (const k of Object.keys(eff.amounts)) G[who].mana[k] += eff.amounts[k];
-    }
-    return true;
-  };
-  const isFixed = (c) => !manaAbilityOf(c).effects[0].choose;
-  const makes = (c) => manaEffectColors(manaAbilityOf(c).effects[0]);
-  if (color !== null) {
-    for (const c of usable) if (isFixed(c) && makes(c).includes(color)) return tap(c, color);
-    for (const c of usable) if (!isFixed(c) && makes(c).includes(color)) return tap(c, color);
-    return false;
-  }
-  for (const c of usable) if (isFixed(c)) return tap(c, null);
-  for (const c of usable) return tap(c, null);
-  return false;
-}
+// (tapSourceProducing — the greedy auto-tapper — was deleted with the A1-2
+// payer unification: payMana now executes solveManaPayment's plan instead.)
 
 // ----- Effects -----
 
 // Damage with deathtouch/lifelink/trample. Source: ctx.sourceCard or findCard(ctx.sourceIid).
 function applyDamageFrom(ctx, target, amt) {
-  if (amt <= 0) return;
+  // `!(amt > 0)` (not `amt <= 0`) also rejects undefined/NaN: a damage effect
+  // authored without `amount` used to slip past `undefined <= 0` and write
+  // `damage = NaN`, making the creature immune to ALL damage until cleanup
+  // (audit A4-17). Missing target → the standard logged fizzle, not a
+  // TypeError out of executeAction.
+  if (!(amt > 0)) return;
+  if (!target) {
+    log(`${ctx.sourceName} fizzles — no target.`, 'sp');
+    return;
+  }
   let sourceCard = ctx.sourceCard || null;
   if (!sourceCard && ctx.sourceIid != null) {
     const sf = findCard(ctx.sourceIid);
@@ -1567,10 +2026,18 @@ function applyDamageFrom(ctx, target, amt) {
   }
   const hasDeathtouch = sourceCard && sourceCard.keywords && sourceCard.keywords.includes('deathtouch');
   const hasLifelink  = sourceCard && sourceCard.keywords && sourceCard.keywords.includes('lifelink');
-  const hasTrample   = sourceCard && sourceCard.keywords && sourceCard.keywords.includes('trample');
+  // Trample spill applies to effect damage (deliberate design — trample
+  // stickers on damaging sorceries work via this branch) but NOT to fight
+  // damage (audit A4-9, design ruling): a fight is two creatures dealing
+  // power damage to each other — canon §902.2 scopes trample to combat, the
+  // fight cards' text promises only mutual damage, and the fight handler's
+  // own intent rider list (deathtouch/lifelink) omits trample. The fight
+  // handler sets ctx.fightDamage on its per-combatant contexts.
+  const hasTrample   = !ctx.fightDamage
+    && sourceCard && sourceCard.keywords && sourceCard.keywords.includes('trample');
 
   if (target.kind === 'player') {
-    damagePlayer(target.who, amt, ctx.sourceName);
+    damagePlayer(target.who, amt, ctx.sourceName, ctx.sourceIid);
   } else {
     const f = resolveTarget(ctx, target);
     if (!f) return;
@@ -1586,16 +2053,13 @@ function applyDamageFrom(ctx, target, amt) {
       }
     }
     f.card.damage += toCreature;
+    // dealtDeathtouch = victim-side mark: this creature RECEIVED deathtouch
+    // damage (despite the name; Godot calls it lethal_marked). See audit A2-10.
     if (hasDeathtouch) f.card.dealtDeathtouch = true;
-    f.card.killedBy = ctx.controller;
-    // damagedBySources powers Sengir-style "dealt-damage-this-turn dies" triggers.
-    if (sourceCard && hasType(sourceCard, 'Creature')) {
-      if (!(f.card.damagedBySources instanceof Set)) f.card.damagedBySources = new Set();
-      f.card.damagedBySources.add(sourceCard.iid);
-    }
+    recordDamage(f.card, sourceCard, ctx.controller);
     log(`${ctx.sourceName} deals ${toCreature} to ${f.card.name}.`, 'dmg');
     if (spill > 0) {
-      damagePlayer(f.controller, spill, `${ctx.sourceName} (trample)`);
+      damagePlayer(f.controller, spill, `${ctx.sourceName} (trample)`, ctx.sourceIid);
     }
   }
   if (hasLifelink) {
@@ -1624,6 +2088,12 @@ function resolveFightOperands(ctx, operands) {
   });
   ops.forEach((op, i) => {
     if (out[i]) return;
+    // The auto-fill exists for {select} computed operands ONLY. A {slot}
+    // operand whose chosen creature is gone at resolution stays null so the
+    // fight handler's !a||!b guard fizzles it (audit A4-3 — this pass used to
+    // fill failed slot references too, conscripting the caster's next-biggest
+    // creature as the replacement combatant: friendly fire instead of fizzle).
+    if (op && op.slot != null) return;
     const ours = G[ctx.controller].battlefield
       .filter(c => hasType(c, 'Creature') && !used.has(c.iid));
     if (!ours.length) return;
@@ -1668,7 +2138,21 @@ function sevToNum(sev) {
   return i >= 0 ? i + 1 : 3;  // default destroy
 }
 function numToSev(n) { return SEVERITY_LADDER[Math.max(1, Math.min(4, n)) - 1]; }
-function affectOneCreature(ctx, f, sevArg) {
+// Leave-play emit, optionally DEFERRED into a batch (A4-4). The mass-scope
+// affect_creature path collects all leavers first (pass 1) and emits them
+// together afterwards with the whole batch as extraSources (pass 2) —
+// checkDeaths' simultaneity contract. Single-target callers pass no batch
+// and emit immediately, exactly as before. sourceIid follows the A3-11
+// attribution rule per-arm: undefined for destroy (causality is killedBy),
+// the effect's source for bounce/exile.
+function deferOrEmitLeave(batch, card, controller, destZone, sourceIid) {
+  if (batch) {
+    batch.push({ card, controller, dest: destZone, sourceIid });
+    return;
+  }
+  emitLeavesBattlefield(card, controller, destZone, undefined, sourceIid);
+}
+function affectOneCreature(ctx, f, sevArg, batch) {
   if (!f || !f.card) return;
   const sev = sevToNum(sevArg);
   if (sev === 1) {
@@ -1687,7 +2171,7 @@ function affectOneCreature(ctx, f, sevArg) {
     } else {
       log(`${ctx.sourceName} returns ${card.name} — token ceases to exist.`, 'sp');
     }
-    emitLeavesBattlefield(card, f.controller, 'hand');
+    deferOrEmitLeave(batch, card, f.controller, 'hand', ctx.sourceIid);
     return;
   }
   if (sev === 3) {
@@ -1696,7 +2180,7 @@ function affectOneCreature(ctx, f, sevArg) {
       return;
     }
     f.card.killedBy = ctx.controller;
-    moveToGraveyard(f.card, f.controller);
+    moveToGraveyard(f.card, f.controller, batch);
     log(`${ctx.sourceName} destroys ${f.card.name}.`, 'sp');
     return;
   }
@@ -1713,7 +2197,7 @@ function affectOneCreature(ctx, f, sevArg) {
   } else {
     log(`${ctx.sourceName} exiles ${card.name} — token ceases to exist.`, 'sp');
   }
-  emitLeavesBattlefield(card, f.controller, 'exile');
+  deferOrEmitLeave(batch, card, f.controller, 'exile', ctx.sourceIid);
 }
 
 // Place a card ARRIVING on the battlefield (move_card to_zone=battlefield).
@@ -1772,7 +2256,9 @@ function searchLibraryToHand(ctx, filter) {
   const matches = lib.filter(c => matchesSearchFilter(c, filter));
   if (matches.length === 0) { log('No matching card in library.', 'sp'); shuffle(lib); return; }
   if (ctx.controller === 'you') {
-    G.pendingSearch = { who: 'you', filter, source: ctx.sourceName };
+    // sourceIid rides along so doSearchPick can attribute its zone-change
+    // emit to the searching card (audit A3-6).
+    G.pendingSearch = { who: 'you', filter, source: ctx.sourceName, sourceIid: ctx.sourceIid };
     log(`${ctx.sourceName} — choose a card from your library.`, 'sp');
     return;
   }
@@ -1782,6 +2268,8 @@ function searchLibraryToHand(ctx, filter) {
   G[ctx.controller].hand.push(card);
   shuffle(lib);
   log(`${pname(ctx.controller)} searches for ${card.name}.`, 'sp');
+  // A3-6: a tutor is a library→hand move like any other.
+  emitZoneChange(card, ctx.controller, 'library', 'hand', undefined, ctx.sourceIid);
   tryBuildOnDraw(card, ctx.controller);
 }
 // Discard from a player's hand. Human → forcedDiscard prompt (resolved later by
@@ -1793,14 +2281,29 @@ function discardFromHand(ctx, who, amount) {
   const n = Math.min(amount, tp.hand.length);
   if (n === 0) { log(`${pname(who)} has no cards to discard.`, 'sp'); return; }
   if (who === 'you') {
-    G.forcedDiscard = { who: 'you', remaining: n, source: ctx.sourceName };
+    // sourceIid rides along so doDiscard can attribute its zone-change emit
+    // to the card that forced the discard (audit A3-6).
+    // A4-23: a second forced discard in the SAME resolution ACCUMULATES onto the
+    // open prompt — was a blind `=` that dropped the earlier prompt's remaining
+    // count, so a card with two discard effects would under-discard. Latent today
+    // (no shipped card stacks two human-side discards in one effects array).
+    if (G.forcedDiscard && G.forcedDiscard.who === 'you') {
+      G.forcedDiscard.remaining += n;
+      console.warn('discardFromHand: merged a second forcedDiscard prompt (remaining=' + G.forcedDiscard.remaining + ')');
+    } else {
+      G.forcedDiscard = { who: 'you', remaining: n, source: ctx.sourceName, sourceIid: ctx.sourceIid };
+    }
     log(`${ctx.sourceName} — choose ${n} card(s) to discard.`, 'sp');
     return;
   }
   const sorted = tp.hand.slice().sort((a, b) => costTotalCard(a) - costTotalCard(b));
   for (let i = 0; i < n; i++) {
     const idx = tp.hand.findIndex(c => c.iid === sorted[i].iid);
-    if (idx >= 0) tp.graveyard.push(tp.hand.splice(idx, 1)[0]);
+    if (idx < 0) continue;
+    const discarded = tp.hand.splice(idx, 1)[0];
+    tp.graveyard.push(discarded);
+    // A3-6: discards are announced — card_moves(hand, graveyard) fires.
+    emitZoneChange(discarded, who, 'hand', 'graveyard', undefined, ctx.sourceIid);
   }
   log(`${pname(who)} discards ${n}.`, 'sp');
 }
@@ -1817,12 +2320,40 @@ function fetchLibraryToBattlefield(ctx, filter, post) {
   const idx = lib.findIndex(c => matchesSearchFilter(c, filter));
   if (idx < 0) { log('No matching card in library.', 'sp'); return; }
   const card = lib.splice(idx, 1)[0];
-  if (post && post.tap) card.tapped = true;
-  G[ctx.controller].battlefield.push(card);
   shuffle(lib);
   log(`${pname(ctx.controller)} fetches ${card.name}${post && post.tap ? ' (tapped)' : ''}.`, 'sp');
-  emitZoneChange(card, ctx.controller, 'library', 'battlefield');
+  // The arrival goes through the ONE battlefield door (audit A4-20):
+  // placeCardOnBattlefield mints the §3.7 fresh iid, sets summoning sickness
+  // unless hasted, applies post (tap), and emits the sourced ETB zone-change.
+  // The old bespoke push skipped all of that — harmless for the five
+  // land-only users, but a creature fetch would have arrived attack-ready
+  // with its mint-time iid preserved.
+  placeCardOnBattlefield(ctx, card, 'library', post);
+  // Mirror the spell resolver's defensive sick=false for non-creatures
+  // (lands/artifacts have no summoning-sickness concept).
+  if (!hasType(card, 'Creature')) card.sick = false;
 }
+
+// Endomorph's trophy table — which absorbable keyword to take when a kill
+// offers several. Higher = juicier. Unlisted keywords rank 0: still
+// absorbable, picked last (ties keep the victim's intrinsic keyword order).
+const ABSORB_KEYWORD_PRIORITY = {
+  flying: 4, indestructible: 4,
+  lifelink: 3, deathtouch: 3, hexproof: 3, trample: 3,
+  haste: 2, vigilance: 2, first_strike: 2, flash: 2,
+  reach: 1, menace: 1,
+};
+
+// Legacy save safety: older Codex outputs used bare-name token ids ('goblin'
+// etc.). Module-scope (not inside create_tokens) so the EFFECT_SCHEMA
+// create_tokens validator accepts the same aliases the handler resolves.
+const TOKEN_ALIAS = {
+  goblin: 'goblin_r_1_1',
+  soldier: 'soldier_w_1_1',
+  spirit: 'spirit_w_1_1',
+  bear: 'bear_g_2_2',
+  saproling: 'saproling_g_1_1',
+};
 
 const EFFECTS = {
   damage(ctx, params, target) {
@@ -1847,12 +2378,16 @@ const EFFECTS = {
     };
     if (params.scope) {
       const p = params.power || 0, t = params.toughness || 0;
+      let n = 0;
       for (const st of creaturesInScope(ctx, params.scope)) {
         const f = findCard(st.iid);
         if (!f) continue;
         applyTo(f.card, p, t);
+        n++;
       }
-      log(`${ctx.sourceName} gives +${p}/+${t}${perm ? '' : ' EOT'} to each creature in scope.`, 'sp');
+      // Count-based mass log (matches grant_keyword's mass arm) — emitted
+      // after the recipient list is known, so it's scope-truthful.
+      log(`${ctx.sourceName} gives +${p}/+${t}${perm ? '' : ' EOT'} to ${n} creature${n === 1 ? '' : 's'}.`, 'sp');
       return;
     }
     const f = resolveTarget(ctx, target);
@@ -1895,75 +2430,65 @@ const EFFECTS = {
   // Absorb a novel keyword from victim, else grow +1/+1. Persists via slot sticker.
   // Auto-picks highest-priority keyword; defender excluded (downside).
   endomorph_absorb(ctx, params, target) {
-    const KEYWORD_PRIORITY = {
-      flying: 4, indestructible: 4,
-      lifelink: 3, deathtouch: 3, hexproof: 3, trample: 3,
-      haste: 2, vigilance: 2, first_strike: 2, flash: 2,
-      reach: 1, menace: 1,
-    };
-    const f = findCard(target.iid);
-    // Endomorph may be dead this step — mutate the graveyard corpse so reward is visible.
-    const sourceCard = f ? f.card : null;
-    const victim = ctx.event && ctx.event.card ? ctx.event.card : null;
+    // Zone-change events carry the dying card as `subject_card` (NOT `card`) —
+    // same payload rename that broke bargain_sticker_other after the E1
+    // migration. Reading the dead `event.card` made EVERY absorb fizzle.
+    const victim = ctx.event && ctx.event.subject_card ? ctx.event.subject_card : null;
     if (!victim) {
       log(`${ctx.sourceName} absorb fizzles — no victim recorded.`, 'sp');
       return;
     }
-    // Determine novel keywords. The victim's keyword set at death time is
-    // its current `keywords` array (native + stickered + any in-game grants
-    // that survived the death move). We filter out 'defender' and any
-    // keywords the source already has.
-    const sourceKeywords = sourceCard ? new Set(sourceCard.keywords || []) : new Set();
-    // Source slot lookup. If Endomorph is alive, just read sourceCard.slotIdx.
-    // If Endomorph died in the same combat-damage step, sourceCard is null —
-    // BUT the dead card object still exists in a graveyard (resetInPlayState
-    // doesn't touch slotIdx), so we can find it by target.iid. This is the
-    // correct way to handle multi-Endomorph cases (cloned Endomorphs); a
-    // tplId-based scan would always pick the same slot regardless of which
-    // Endomorph actually killed the victim.
-    let slotIdx = sourceCard ? sourceCard.slotIdx : null;
-    let deadCard = null;
-    if (slotIdx == null && sourceCard == null) {
+    // Resolve the absorber: the live battlefield card, or its graveyard
+    // corpse when Endomorph died in the same exchange (mutual combat kill —
+    // resetInPlayState preserves slotIdx, and the corpse object is still
+    // mutable, so the reward persists to the right run slot AND shows on the
+    // dead card). iid scan, not tplId: each cloned Endomorph credits its own
+    // slot.
+    const live = findCard(target.iid);
+    let absorber = live ? live.card : null;
+    if (!absorber) {
       for (const who of ['you', 'opp']) {
-        const found = G[who].graveyard.find(c => c.iid === target.iid);
-        if (found) { deadCard = found; break; }
-      }
-      if (deadCard) {
-        slotIdx = deadCard.slotIdx;
-        // The dead card still has its keyword list intact (death preserves
-        // .keywords). Use it to compute the source's keyword set.
-        for (const kw of (deadCard.keywords || [])) sourceKeywords.add(kw);
+        const corpse = G[who].graveyard.find(c => c.iid === target.iid);
+        if (corpse) { absorber = corpse; break; }
       }
     }
-    const inGameTarget = sourceCard || deadCard;   // graveyard corpse still mutable
-    const novel = (victim.keywords || [])
-      .filter(kw => kw !== 'defender' && !sourceKeywords.has(kw));
+    if (!absorber) {
+      // Endomorph left play some other way between trigger queue and resolve
+      // (bounced, exiled) — no battlefield card, no corpse, nowhere for the
+      // reward to land. (Previously this logged a successful absorb while
+      // applying nothing.)
+      log(`${ctx.sourceName} absorb fades — it left play before feeding.`, 'sp');
+      return;
+    }
+    // Novelty is judged intrinsics-vs-intrinsics via the shared trophy rule
+    // (claimableKeywords): the victim offers only what it intrinsically OWNED,
+    // and a keyword Endomorph merely borrows (lord aura, until-EOT grant)
+    // doesn't block absorbing it permanently from a kill.
+    const have = new Set(intrinsicKeywords(absorber));
+    const novel = claimableKeywords(victim).filter(kw => !have.has(kw));
     let absorbed = null;
     if (novel.length > 0) {
-      novel.sort((a, b) => (KEYWORD_PRIORITY[b] || 0) - (KEYWORD_PRIORITY[a] || 0));
+      novel.sort((a, b) => (ABSORB_KEYWORD_PRIORITY[b] || 0) - (ABSORB_KEYWORD_PRIORITY[a] || 0));
       absorbed = novel[0];
     }
     // Persistence only when controller is player-side with a runState slot.
     const canPersist = (ctx.controller === 'you')
-      && (slotIdx != null)
+      && (absorber.slotIdx != null)
       && (typeof RUN !== 'undefined' && RUN.applyStickerToSlot);
     if (absorbed) {
       const sticker_id = 'kw_' + absorbed;
-      if (canPersist) RUN.applyStickerToSlot(slotIdx, sticker_id);
-      // Mirror onto in-game instance so the keyword is active AND the sticker badge shows now.
-      if (inGameTarget) {
-        if (!inGameTarget.keywords.includes(absorbed)) inGameTarget.keywords.push(absorbed);
-        if (!inGameTarget.stickers.includes(sticker_id)) inGameTarget.stickers.push(sticker_id);
-      }
+      if (canPersist) RUN.applyStickerToSlot(absorber.slotIdx, sticker_id);
+      // Mirror onto the instance so the keyword is active AND the sticker
+      // badge shows now (the sticker also makes it intrinsic from here on).
+      if (!absorber.keywords.includes(absorbed)) absorber.keywords.push(absorbed);
+      if (!absorber.stickers.includes(sticker_id)) absorber.stickers.push(sticker_id);
       log(`${ctx.sourceName} absorbs ${absorbed} from ${victim.name}.`, 'sp');
     } else {
       // Fallback +1/+1 via slot sticker (persists across games, unlike counter).
       const sticker_id = 'plus1_plus1';
-      if (canPersist) RUN.applyStickerToSlot(slotIdx, sticker_id);
-      if (inGameTarget) {
-        inGameTarget.modifiers.push({ power: 1, toughness: 1 });
-        inGameTarget.stickers.push(sticker_id);
-      }
+      if (canPersist) RUN.applyStickerToSlot(absorber.slotIdx, sticker_id);
+      absorber.modifiers.push({ power: 1, toughness: 1 });
+      absorber.stickers.push(sticker_id);
       log(`${ctx.sourceName} eats ${victim.name} and grows +1/+1.`, 'sp');
     }
   },
@@ -1972,8 +2497,20 @@ const EFFECTS = {
   affect_creature(ctx, params, target) {
     const sev = params.severity;
     if (params.scope) {
+      // A4-4: mass removal is SIMULTANEOUS. Two-pass batch mirroring
+      // checkDeaths: pass 1 plucks every in-scope creature off the
+      // battlefield (the severity ladder + indestructible validation live
+      // in affectOneCreature, which defers each leave emit into `batch`);
+      // pass 2 emits every leave with the FULL batch as extraSources, so
+      // simultaneous departures see each other — a dies-listener swept by
+      // the same wipe still hears every death, independent of battlefield
+      // array order. Tap (sev 1) never leaves play; its batch stays empty.
+      const batch = [];
       for (const st of creaturesInScope(ctx, params.scope)) {
-        affectOneCreature(ctx, findCard(st.iid), sev);
+        affectOneCreature(ctx, findCard(st.iid), sev, batch);
+      }
+      for (const e of batch) {
+        emitLeavesBattlefield(e.card, e.controller, e.dest, batch, e.sourceIid);
       }
       return;
     }
@@ -2070,7 +2607,7 @@ const EFFECTS = {
   },
   // Counter a stack spell OR take a battlefield permanent — adds slot to runState forever.
   // Spell path: removes from stack (no effects fire); spell ceases (not graveyard).
-  // Slot identity preserved (tplId + stickers + rolls + permaBuffs + bonusTrigger + stapledTpls + charges).
+  // Slot identity preserved (tplId + stickers + rolls + bonusTrigger + stapledTpls + charges).
   steal(ctx, params, target) {
     const r = resolveStackOrPermanent(target);
     if (!r) {
@@ -2100,23 +2637,23 @@ const EFFECTS = {
       // Steal = control change; the card stays a permanent (re-created on the
       // thief's battlefield below). Mirrors the legacy cardLeavesBattlefield
       // emission here — to_zone stays 'battlefield'.
-      emitLeavesBattlefield(r.card, r.controller, 'battlefield');
+      emitLeavesBattlefield(r.card, r.controller, 'battlefield', undefined, ctx.sourceIid);
     } else {
       const stIdx = G.stack.indexOf(r.stackItem);
       if (stIdx >= 0) G.stack.splice(stIdx, 1);
     }
     // ─── Build sticker list and metadata to carry into the new slot ─────
-    // Player-side slot present: copy stickers + all parallel rolls + perma-
-    // buffs + bonusTrigger + stapledTpls + charges. Otherwise: just the
-    // stickers cached on the runtime card (typically empty for stack spells,
-    // but copy what's there in case opp's deck was sticker-scaled).
+    // Player-side slot present: copy stickers + all parallel rolls +
+    // bonusTrigger + stapledTpls + charges. Otherwise: just the stickers cached
+    // on the runtime card (typically empty for stack spells, but copy what's
+    // there in case opp's deck was sticker-scaled). Elystra's permanent buffs
+    // ride along inside stickers now (audit A5-6/A5-7).
     let stickers, meta;
     if (stolenSlot) {
       stickers = (stolenSlot.stickers || []).slice();
       meta = {
         empowerRolls: stolenSlot.empowerRolls,
         subtypeRolls: stolenSlot.subtypeRolls,
-        permaBuffs:   stolenSlot.permaBuffs,
         bonusTrigger: stolenSlot.bonusTrigger,
         stapledTpls:  stolenSlot.stapledTpls,
         charges:      stolenSlot.charges,
@@ -2136,44 +2673,74 @@ const EFFECTS = {
         : undefined;
     }
     // ─── Append the new slot and shuffle a fresh instance into library ──
-    const newSlotIdx = (typeof RUN !== 'undefined' && RUN.appendSlot)
+    // RUN-state writes are HUMAN-side only (audit A4-15): there is exactly
+    // one persisted run deck — the player's — and every sibling RUN-writing
+    // handler (endomorph_absorb, apply_sticker, rip) gates on the
+    // controller; this appendSlot was the lone ungated write. An
+    // opp-controlled Steal used to append the stolen slot to the VICTIM's
+    // saved run (a duplicate of their own card, persisted). An opp thief now
+    // keeps the theft in-game only: fresh instance into its in-game library
+    // below, slotIdx null (the opp transient-slot convention), and the
+    // victim's slot deliberately untouched.
+    const newSlotIdx = (ctx.controller === 'you' && typeof RUN !== 'undefined' && RUN.appendSlot)
       ? RUN.appendSlot(stolenTplId, stickers, meta)
       : null;
     // Fresh runtime card — template stats + sticker effects re-applied, no
     // residue from the original instance (counters, grants, damage, combat).
     const fresh = makeCard(stolenTplId, stickers, newSlotIdx,
-      meta && meta.empowerRolls, meta && meta.permaBuffs, meta && meta.bonusTrigger,
+      meta && meta.empowerRolls, meta && meta.bonusTrigger,
       meta && meta.stapledTpls, meta && meta.subtypeRolls);
     fresh.owner = ctx.controller;
     G[ctx.controller].library.push(fresh);
     shuffle(G[ctx.controller].library);
+    // A3-6: the fresh instance materializes in the thief's library — a mint,
+    // not a move, so from_zone is the synthetic 'none' (same convention as
+    // token minting). The CONSUMED original is deliberately silent: the
+    // stolen permanent's leave already emitted above, and a stolen stack
+    // spell ceases to exist (counterspell-consume semantics — no arrival,
+    // no event; the plain `counter` handler is the one that emits
+    // stack→graveyard).
+    emitZoneChange(fresh, ctx.controller, 'none', 'library', undefined, ctx.sourceIid);
     const verb = fromStack ? 'counters and shuffles' : 'shuffles';
     log(`${ctx.sourceName} ${verb} ${stolenCardName} into ${pname(ctx.controller)}'s library — yours forever.`, 'sp');
   },
   counter(ctx, params, target) {
+    if (!target || !target.stackItem) {
+      log(`${ctx.sourceName} fizzles — no target.`, 'sp');
+      return;
+    }
     const idx = G.stack.indexOf(target.stackItem);
     if (idx < 0) { log(`Target spell no longer on stack.`); return; }
-    if (G.stack[idx].kind === 'trigger') {
+    // §1004.6 parity: trigger AND activated-ability stack entries can't be
+    // countered — they aren't spells (canon §706; A3-2 added the ability arm).
+    if (G.stack[idx].kind === 'trigger' || G.stack[idx].kind === 'ability') {
       log(`${ctx.sourceName} can't counter that.`, 'sp'); return;
     }
     const removed = G.stack.splice(idx, 1)[0];
-    G[removed.controller].graveyard.push(removed.card);
+    // OWNER's graveyard (§706 / §400) — audit A4-19: this was the engine's
+    // ONE controller-routed graveyard site (every sibling — resolution,
+    // moveToGraveyard, sacrifice, checkDeaths, both move_card branches — is
+    // owner-routed). Live via Seal-Thief Courier's cast-permission flow:
+    // countering an opp-owned card you cast filed THEIR card in YOUR
+    // graveyard for the rest of the game.
+    G[removed.card.owner || removed.controller].graveyard.push(removed.card);
     log(`${ctx.sourceName} counters ${removed.card.name}!`, 'sp');
+    // A3-6: a countered spell genuinely moves stack→graveyard — announce it.
+    // `controller` stays the caster (the card was theirs on the stack), even
+    // though the graveyard it lands in is owner-routed.
+    emitZoneChange(removed.card, removed.controller, 'stack', 'graveyard', undefined, ctx.sourceIid);
   },
   add_mana(ctx, params) {
-    // Color-choice form (§3.9): {choose:'any'} or {choose:['W','U']} adds one
-    // mana of a chosen color. params.color is the resolved pick (UI/AI); else
-    // default to the first option.
-    if (params.choose) {
-      const opts = params.choose === 'any' ? COLORS : params.choose;
-      const c = (params.color && opts.includes(params.color)) ? params.color : opts[0];
-      G[ctx.controller].mana[c]++;
-      log(`${pname(ctx.controller)} adds {${c}}.`, 'sp');
-      return;
-    }
-    for (const c of Object.keys(params.amounts)) G[ctx.controller].mana[c] += params.amounts[c];
-    const txt = Object.entries(params.amounts).map(([c,n]) => `{${c}}`.repeat(n)).join('');
-    log(`${pname(ctx.controller)} adds ${txt}.`, 'sp');
+    // §3.9 mana production through the shared produceMana helper (single source
+    // of the {choose}/{amounts} → pool logic). The {choose} color pick comes
+    // from params.color (a baked pick) or ctx.manaColor (the tap-lane's resolved
+    // choice); absent → the first option.
+    const added = produceMana(ctx.controller, params, params.color || ctx.manaColor);
+    // Tap-lane activations log "taps SOURCE for {X}" (ctx.tapForMana, set by
+    // doTapLandForMana); every other producer — spells like Dark Ritual, the
+    // generic ability path — logs "adds {X}".
+    if (ctx.tapForMana) log(`${pname(ctx.controller)} taps ${ctx.sourceName} for ${added}.`);
+    else log(`${pname(ctx.controller)} adds ${added}.`, 'sp');
   },
   // Unified signed life-delta (DIVERGENCE D4). amount > 0 gains life and fires a
   // life_changed(delta>0) → is_life_gain; amount < 0 loses life, tracks
@@ -2187,17 +2754,25 @@ const EFFECTS = {
       || ctx.controller;
     const amount = params.amount;
     if (!amount) return;
-    G[who].life += amount;
     if (amount > 0) {
+      G[who].life += amount;
       log(`${pname(who)} gains ${amount} life.`, 'sp');
-    } else {
-      G[who].lifeLostThisTurn = (G[who].lifeLostThisTurn || 0) + (-amount);
-      log(`${pname(who)} loses ${-amount} life.`, 'sp');
+      emit({type: 'life_changed', who, delta: amount, source_iid: ctx.sourceIid});
+      return;
     }
-    emit({type: 'life_changed', who, delta: amount, source_iid: ctx.sourceIid});
+    // Life LOSS routes through the shared floor/rip helper (audit A4-12,
+    // design ruling option A): under Phylactery, life floors at 0 and each
+    // point past 0 rips a slot — ONE price for losing life whether it came
+    // from damage or a drain. The raw `life += amount` here used to bypass
+    // the boon entirely, leaving the protected player at negative life (and
+    // the next damagePlayer's max(0, …) then RESET them up to 0).
+    // losePlayerLife tracks lifeLostThisTurn and emits life_changed for the
+    // ACTUAL loss (identical to the full amount when unprotected).
+    log(`${pname(who)} loses ${-amount} life.`, 'sp');
+    losePlayerLife(who, -amount, ctx.sourceIid);
   },
   draw(ctx, params) {
-    for (let i=0;i<params.amount;i++) drawCard(ctx.controller);
+    for (let i=0;i<params.amount;i++) drawCard(ctx.controller, ctx.sourceIid);
     log(`${pname(ctx.controller)} draws ${params.amount}.`, 'sp');
   },
   // Unified card-movement primitive (effects-refactor §4.2 / decision 10).
@@ -2223,21 +2798,46 @@ const EFFECTS = {
       return;
     }
     // Hand → graveyard: collapsed discard (controller or a targeted player).
+    // The selector names the DISCARDER (§5.2 shorthand semantics, audit
+    // A4-21): 'controller_chosen' ("you discard") is always the controller;
+    // 'target_player_chosen' ("target player discards") requires a player
+    // target and fizzles without one. Before this, both shorthands executed
+    // identically — the discarder decided by whatever player target happened
+    // to be in scope. Selector-less legacy effects keep the discardWho
+    // fallback (player target in scope, else controller).
     if (from === 'hand' && to === 'graveyard') {
-      discardFromHand(ctx, discardWho(ctx, target), amount);
+      let discarder;
+      if (params.selector === 'controller_chosen') {
+        discarder = ctx.controller;
+      } else if (params.selector === 'target_player_chosen') {
+        const pt = (target && target.kind === 'player') ? target
+          : (ctx.allTargets || []).find(t => t && t.kind === 'player');
+        if (!pt) {
+          log(`${ctx.sourceName} fizzles — no player target to discard.`, 'sp');
+          return;
+        }
+        discarder = pt.who;
+      } else {
+        discarder = discardWho(ctx, target);
+      }
+      discardFromHand(ctx, discarder, amount);
       return;
     }
     for (let n = 0; n < amount; n++) {
-      // Draw: delegate to drawCard so deck-out / Phylactery semantics hold.
+      // Draw: delegate to drawCard so deck-out / Phylactery semantics hold
+      // (drawCard emits the library→hand zone change — audit A3-6).
       if (from === 'library' && to === 'hand' && sel === 'controller_top') {
-        drawCard(ctx.controller);
+        drawCard(ctx.controller, ctx.sourceIid);
         continue;
       }
       // Mill: top of controller's library → graveyard.
       if (from === 'library' && to === 'graveyard' && sel === 'controller_top') {
         const lib = G[ctx.controller].library;
         if (!lib.length) break;
-        G[ctx.controller].graveyard.push(lib.shift());
+        const milled = lib.shift();
+        G[ctx.controller].graveyard.push(milled);
+        // A3-6: mills are announced — card_moves(library, graveyard) fires.
+        emitZoneChange(milled, ctx.controller, 'library', 'graveyard', undefined, ctx.sourceIid);
         continue;
       }
       const t = (sel === 'target') ? (target || ctx.chosen)
@@ -2256,8 +2856,17 @@ const EFFECTS = {
         if (!f) break;
         const card = pluckFromBattlefield(f);
         if (!card) break;
-        if (post.keep_buffs) leavesPlayPreservingBuffs(card);
-        else { clearRestrictionsFromSource(card.iid); resetInPlayState(card); }
+        // EVERY battlefield-leave flushes pending permanent_eot buffs before
+        // the in-play reset (audit A4-16): flushPermanentEotToStickers
+        // self-gates on tpl.permanent_eot, so this is a no-op for every card
+        // but Elystra — whose printed text ("End-of-turn effects on Elystra
+        // last forever") the old path violated. The `post.keep_buffs` fork
+        // that used to gate this was DEAD: the refactor plan specified the
+        // flag for flicker, no card ever carried it, so Cloudshift/
+        // Otherworldly Journey/Oblation silently discarded her pending
+        // buffs while every other leave path (death, sacrifice, the
+        // affect_creature bounce/exile arms, cleanup) flushed.
+        leavesPlayPreservingBuffs(card);
         const dest = card.owner || f.controller;
         if (!card.isToken) {
           if (to === 'hand') G[dest].hand.push(card);
@@ -2266,7 +2875,7 @@ const EFFECTS = {
           else if (to === 'graveyard') G[dest].graveyard.push(card);
           else console.warn('move_card: unsupported battlefield dest', to);
         }
-        emitLeavesBattlefield(card, f.controller, to);
+        emitLeavesBattlefield(card, f.controller, to, undefined, ctx.sourceIid);
         continue;
       }
       if (from === 'graveyard' || from === 'exile') {
@@ -2281,16 +2890,25 @@ const EFFECTS = {
         }
         if (idx < 0) break;
         const [card] = zone.splice(idx, 1);
-        card.tapped = false; card.sick = false; card.damage = 0;
-        card.tempPower = 0; card.tempTou = 0;
-        if (card.damagedBySources instanceof Set) card.damagedBySources.clear();
-        card.dealtDeathtouch = false;
+        // Revival reset = the FULL resetInPlayState contract (audit A4-22),
+        // not a hand-rolled field list: the old 6-field list missed killedBy,
+        // so a reanimated creature carried its original killer's trophy
+        // credit into its next death. preserveDeathState=false is exactly
+        // the documented revival case ("Death paths set true; revival paths
+        // false") — and calling the one reset function closes the whole
+        // forgot-a-field class, not just this field.
+        resetInPlayState(card);
         const dest = card.owner || ctx.controller;
         if (to === 'hand') G[dest].hand.push(card);
         else if (to === 'library') { G[dest].library.push(card); if (post.shuffle) shuffle(G[dest].library); }
-        else if (to === 'battlefield') placeCardOnBattlefield(ctx, card, from, post);  // reanimate / exile-return
+        else if (to === 'battlefield') { placeCardOnBattlefield(ctx, card, from, post); continue; }  // reanimate / exile-return (emits its own ETB)
         else if (to === 'exile' && from === 'graveyard') G[dest].exile.push(card);
         else { console.warn('move_card: unsupported', from, 'dest', to); break; }
+        // A3-6: non-battlefield arrivals from graveyard/exile are announced
+        // here (battlefield arrivals emit inside placeCardOnBattlefield).
+        // `controller` = the owner whose zone it lands in — graveyard/exile
+        // cards have no separate controller.
+        emitZoneChange(card, dest, from, to, undefined, ctx.sourceIid);
         continue;
       }
       console.warn('move_card: unsupported from_zone', from);
@@ -2322,8 +2940,10 @@ const EFFECTS = {
     });
     log(`${pname(ctx.controller)} may cast ${f.card.name} from ${from} this turn.`, 'sp');
   },
-  // Legacy discard kind — still emitted by the Mercurial trigger generator
-  // (discardOpp). Card data uses move_card(hand→graveyard) post-collapse.
+  // Legacy discard kind — still emitted by the trigger generator's
+  // GENERATOR_EFFECTS (discardOpp — Architect's Codex build flow only; the
+  // Mercurial pool contains no discard). Card data uses
+  // move_card(hand→graveyard) post-collapse.
   discard(ctx, params, target) {
     discardFromHand(ctx, discardWho(ctx, target), params.amount);
   },
@@ -2364,14 +2984,6 @@ const EFFECTS = {
   // Mint tokens. Params: token_id (TOKENS key), count (default 1), controller ('self'|'opp').
   create_tokens(ctx, params) {
     let token_id = params.token_id;
-    // Legacy save safety: older Codex outputs used bare-name ids ('goblin' etc.).
-    const TOKEN_ALIAS = {
-      goblin: 'goblin_r_1_1',
-      soldier: 'soldier_w_1_1',
-      spirit: 'spirit_w_1_1',
-      bear: 'bear_g_2_2',
-      saproling: 'saproling_g_1_1',
-    };
     if (token_id && TOKEN_ALIAS[token_id]) token_id = TOKEN_ALIAS[token_id];
     if (!token_id || !TOKENS[token_id]) {
       log(`${ctx.sourceName} fizzles — unknown token ${token_id}.`, 'sp');
@@ -2428,16 +3040,23 @@ const EFFECTS = {
     const slotIdx = (typeof t.slotIdx === 'number') ? t.slotIdx : null;
     if (t.controller === 'you' && slotIdx != null
         && typeof RUN !== 'undefined' && RUN.removeSlotByIdx) {
-      RUN.removeSlotByIdx(slotIdx);
-      log(`${t.label || 'A card'} is gone from your deck for the rest of the run.`, 'sp');
+      // Route through ripSlotByIdx so the slotIdx caller-contract is honored
+      // (decrement cached pointers + remap playedSlotIdxs via the shared fixup)
+      // instead of stripping the slot raw (audit A9-2/A9-3). The victim is
+      // already off the battlefield (the preceding annihilate ran), so the
+      // in-game instance find harmlessly finds nothing and still does the RUN
+      // removal + fixup.
+      ripSlotByIdx(t.controller, slotIdx);
     }
   },
   // The targeted player selects one of their own creatures (§3.5). This is
   // NOT targeting — hexproof never applies. Reads the established player from
   // the preceding target(player) step (the `target` param or ctx.allTargets),
   // auto-picks the lowest sac-value creature (AI), and records ctx.chosen for
-  // the following effect (sacrifice/annihilate). The human choose-your-creature
-  // prompt is deferred (review GAP 2) — auto-pick covers AI players today.
+  // the following effect (sacrifice/annihilate). When the chooser is the
+  // HUMAN, all three resolution loops pause BEFORE this handler runs
+  // (maybeDeferHumanChooses → pendingEdictChoice, GAP 2 / audit A4-7) — this
+  // auto-pick is the AI path plus the empty-pool log.
   chooses(ctx, params, target) {
     const playerTgt = (target && target.kind === 'player')
       ? target
@@ -2512,10 +3131,29 @@ const EFFECTS = {
   // operating on the same target the prior effect did (the §9.1/D9 delayed-effect
   // atom). exile_until_eot decomposes to move_card(bf→exile) + schedule_delayed
   // (move_card(exile→bf), end_step) — replacing the bespoke returnFromExile path.
+  //
+  // NAMING CAVEAT: despite the name, fireAt:'endStep' entries execute during
+  // CLEANUP (step()'s 'CLEANUP' case), NOT the §509 END step — there is no
+  // priority window when they fire. Correct for "until end of turn" durations;
+  // do NOT use this queue for a genuine "at the beginning of the end step"
+  // trigger (it would fire unrespondably in the wrong window). See the drain
+  // site in step() and the `when:'end_step'` caveat in docs/PROTOCOL.md.
   schedule_delayed(ctx, params, target) {
+    // Audit A3-14: an unknown `when` used to pass through verbatim and sit
+    // in delayedTriggers FOREVER — re-checked and re-kept on every cleanup
+    // (the drain only fires 'endStep'), an immortal zombie entry that
+    // accumulates when triggered repeatedly. Refuse loudly instead; the
+    // EFFECT_SCHEMA entry catches the same typo at boot for card-authored
+    // effects. (Sibling leak: unknown effect KINDS silently dropped in the
+    // drain — A1-6.)
+    if (params.when !== 'end_step') {
+      console.warn('schedule_delayed: unknown when "' + params.when + '" from '
+        + ctx.sourceName + ' — refusing to enqueue (supported: end_step)');
+      return;
+    }
     if (!Array.isArray(G.delayedTriggers)) G.delayedTriggers = [];
     G.delayedTriggers.push({
-      fireAt: params.when === 'end_step' ? 'endStep' : params.when,
+      fireAt: 'endStep',
       fireFor: 'either',
       effect: 'deferredEffects',
       effects: (params.effects || []).map(e => ({...e})),
@@ -2531,8 +3169,10 @@ const EFFECTS = {
   // steal handler. Otherwise it's a control change (Mind Control / Threaten):
   // pluck from the current controller, push to the caster, with optional
   // untap_on_take / grant_haste / duration (eot). Accepts both the new
-  // snake_case param names and the legacy ones during cutover. Additive —
-  // gainControl/steal remain until card migration retires them.
+  // snake_case param names and the legacy ones during cutover. The card
+  // migration is done — gainControl is retired (no handler; effect_migration_test
+  // pins it GONE). steal remains permanently BY DESIGN as the runtime-internal
+  // transfer_ownership delegate (it is not in card data).
   change_control(ctx, params, target) {
     if (params.transfer_ownership) { EFFECTS.steal(ctx, params, target); return; }
     const f = resolveTarget(ctx, target);
@@ -2547,6 +3187,15 @@ const EFFECTS = {
     if (idx < 0) return;
     fromBf.splice(idx, 1);
     G[toCtrl].battlefield.push(card);
+    // A2-5: a permanent whose controller changes is removed from combat
+    // (CR 506.4c; canon §801). Without this, the stale G.attackers /
+    // G.blockers entries still findCard-resolve (both battlefields are
+    // searched), so a mid-combat stolen attacker dealt its combat damage
+    // TO ITS OWN NEW CONTROLLER (defender is fixed at start of combat but
+    // the damage credit reads the live controller), and a stolen untapped
+    // attacker could legally be assigned to block itself. Shares the A2-3
+    // helper: one "leaves combat" concept.
+    removeFromCombat(card.iid);
     if (params.untap_on_take || params.untap) card.tapped = false;
     if (params.grant_haste) applyGrant(card, 'haste', ctx.sourceIid, true);
     if (params.duration === 'eot') card.tempControlUntilEot = true;
@@ -2567,8 +3216,10 @@ const EFFECTS = {
     const [aPow] = getStats(a.card);
     const [bPow] = getStats(b.card);
     log(`${a.card.name} (${aPow}) fights ${b.card.name} (${bPow}).`, 'cb');
-    const aCtx = { controller: a.controller, sourceName: a.card.name, sourceIid: a.card.iid };
-    const bCtx = { controller: b.controller, sourceName: b.card.name, sourceIid: b.card.iid };
+    // fightDamage: trample never spills from a fight (audit A4-9, design
+    // ruling) — see applyDamageFrom. Deathtouch/lifelink still ride.
+    const aCtx = { controller: a.controller, sourceName: a.card.name, sourceIid: a.card.iid, fightDamage: true };
+    const bCtx = { controller: b.controller, sourceName: b.card.name, sourceIid: b.card.iid, fightDamage: true };
     applyDamageFrom(aCtx, {kind:'creature', iid: b.card.iid}, aPow);
     applyDamageFrom(bCtx, {kind:'creature', iid: a.card.iid}, bPow);
   },
@@ -2581,40 +3232,41 @@ const EFFECTS = {
 
   // Stapler in-game splice. Merges target 1 onto target 0 using the reward-time
   // splice infra. Cross-owner: merged slot moves to caster's runState (removal/steal).
-  // Targets validated: spliceable base/staple + isCompatibleStaplePair.
+  // Pair validity lives in resolveSplicePair, which isLegalAction ALREADY ran
+  // before any cost was paid (MtG 601.2h: costs are the last part of
+  // activation — an invalid pair never pays). Re-checked here only as
+  // defense-in-depth: a fizzle at this point means legality/handler drift,
+  // and per MtG resolution-fizzle semantics the costs stay paid. Charges are
+  // safe regardless: a fizzle returns before the charge accounting at the
+  // bottom.
   apply_in_game_splice(ctx, params, target) {
-    const all = ctx.allTargets;
-    if (!Array.isArray(all) || all.length < 2) {
-      log(`${ctx.sourceName} fizzles — needs two targets.`, 'sp');
+    const pair = resolveSplicePair(ctx.allTargets);
+    if (pair.reason) {
+      log(`${ctx.sourceName} fizzles — ${pair.reason}`, 'sp');
       return;
     }
-    const t0 = all[0], t1 = all[1];
-    if (!t0 || !t1) { log(`${ctx.sourceName} fizzles — target missing.`, 'sp'); return; }
-    const r0 = resolveStackOrPermanent(t0);
-    const r1 = resolveStackOrPermanent(t1);
-    if (!r0 || !r1) { log(`${ctx.sourceName} fizzles — target gone.`, 'sp'); return; }
-    if (r0.card.iid === r1.card.iid) {
-      log(`${ctx.sourceName} fizzles — can't staple a card to itself.`, 'sp'); return;
-    }
-    const [canonBaseTpl, canonStapleTpl, swapped] = canonicalSplicePair(
-      r0.card.tplId, r1.card.tplId);
-    const baseR = swapped ? r1 : r0;
-    const stapleR = swapped ? r0 : r1;
-    const baseCard = baseR.card;
-    const stapleCard = stapleR.card;
-    if (!isSpliceableBase(baseCard.tplId)) {
-      log(`${ctx.sourceName} fizzles — ${baseCard.name} can't be a splice base.`, 'sp'); return;
-    }
-    // In-game staple chain lives at card.stapledFrom.stapledTpls (NOT card.stapledTpls,
-    // which is slot-level). Reading the wrong field silently misses prior chains.
-    const stapleStaples = (stapleCard.stapledFrom && Array.isArray(stapleCard.stapledFrom.stapledTpls))
-      ? stapleCard.stapledFrom.stapledTpls
-      : (Array.isArray(stapleCard.stapledTpls) ? stapleCard.stapledTpls : []);
-    if (stapleStaples.length > 0) {
-      log(`${ctx.sourceName} fizzles — ${stapleCard.name} is already stapled.`, 'sp'); return;
-    }
-    if (!isCompatibleStaplePair(baseCard.tplId, stapleCard.tplId)) {
-      log(`${ctx.sourceName} fizzles — ${baseCard.name} and ${stapleCard.name} aren't compatible.`, 'sp'); return;
+    const { baseR, stapleR, baseCard, stapleCard } = pair;
+    // A5-2 (Joe ruled FIZZLE, PR #98): stapling a just-cast SPELL onto a
+    // non-creature battlefield PERMANENT is illegal — the spell fizzles.
+    // canonicalSplicePair ranks by template TYPE with no zone awareness, so a
+    // creature spell (type Creature, rank 0) wrongly outranks a battlefield Land
+    // (rank 2) and becomes the base — routing into the S+S path below, where the
+    // spell "fast-resolved" (mana gone, never hit a zone) AND the manual
+    // slot-shift over-deleted an unrelated run slot (saved-to-disk data loss).
+    // Instead the spell is countered (stack -> owner's graveyard) exactly like
+    // EFFECTS.counter, before any charge accounting (a fizzle costs no charge).
+    // Narrow: spell-onto-CREATURE keeps the creature as base (perm path) — only
+    // a spell-AS-base over a permanent is rejected here.
+    if (baseR.kind === 'spell' && stapleR.kind === 'perm') {
+      const item = baseR.stackItem;
+      const sIdx = item ? G.stack.indexOf(item) : -1;
+      if (sIdx >= 0) {
+        const removed = G.stack.splice(sIdx, 1)[0];
+        G[removed.card.owner || removed.controller].graveyard.push(removed.card);
+        emitZoneChange(removed.card, removed.controller, 'stack', 'graveyard', undefined, ctx.sourceIid);
+      }
+      log(`${ctx.sourceName} can't staple ${baseCard.name} onto ${stapleCard.name} — the spell fizzles.`, 'sp');
+      return;
     }
     // Fire stack inputs' effects with their locked-in targets, then consume them
     // (no graveyard — Stapler absorbed them).
@@ -2660,16 +3312,15 @@ const EFFECTS = {
     // slot mint, and combat-state transfer below on top of the same merge).
     const merged = mergeSpliceData(
       { tplId: baseCard.tplId, stickers: baseCard.stickers, empowerRolls: baseCard.empowerRolls,
-        subtypeRolls: baseCard.subtypeRolls, permaBuffs: baseCard.permaBuffs,
+        subtypeRolls: baseCard.subtypeRolls,
         bonusTrigger: baseCard.bonusTrigger, priorStaples },
       { tplId: stapleCard.tplId, stickers: stapleCard.stickers, empowerRolls: stapleCard.empowerRolls,
-        subtypeRolls: stapleCard.subtypeRolls, permaBuffs: stapleCard.permaBuffs,
+        subtypeRolls: stapleCard.subtypeRolls,
         bonusTrigger: stapleCard.bonusTrigger });
     const newStapledTpls = merged.stapledTpls;
     const mergedStickers = merged.stickers;
     const mergedRolls = merged.empowerRolls;
     const mergedSubtypeRolls = merged.subtypeRolls;
-    const mergedPermaBuffs = merged.permaBuffs;
     const mergedBonus = merged.bonusTrigger;
     // Ownership: caster owns the merge IFF they contributed an input. Pure
     // opp+opp splices are attrition only (no slot mint, stays on base's bf).
@@ -2687,18 +3338,10 @@ const EFFECTS = {
           && typeof RUN !== 'undefined' && RUN.removeSlotByIdx) {
         const removedIdx = stapleCard.slotIdx;
         RUN.removeSlotByIdx(removedIdx);
-        // CRITICAL: splice shifts higher indices down by 1 — fix cached slotIdx
-        // pointers in every zone. Otherwise charge-accounting silently no-ops.
-        const zones = ['library', 'hand', 'battlefield', 'graveyard', 'exile'];
-        for (const zoneName of zones) {
-          const zone = G.you[zoneName];
-          if (!zone) continue;
-          for (const c of zone) {
-            if (typeof c.slotIdx === 'number' && c.slotIdx > removedIdx) {
-              c.slotIdx -= 1;
-            }
-          }
-        }
+        // Splice shifts higher indices down by 1 — fix cached slotIdx pointers
+        // AND remap playedSlotIdxs via the shared contract fixup (audit A9-3:
+        // splicing a played card must not leave the win-reward filter stale).
+        fixupSlotPointersAfterRemoval('you', removedIdx);
       }
       let newSlotIdx = null;
       if (mintSlot) {
@@ -2720,7 +3363,7 @@ const EFFECTS = {
       // that (slotIdx becomes null on the rebuilt card, matching opp's
       // transient-slot convention).
       const rebuilt = makeCard(baseCard.tplId, mergedStickers, newSlotIdx,
-                               mergedRolls, mergedPermaBuffs, mergedBonus, newStapledTpls, mergedSubtypeRolls);
+                               mergedRolls, mergedBonus, newStapledTpls, mergedSubtypeRolls);
       const preservedIid = baseCard.iid;
       const preservedTapped = baseCard.tapped;
       const preservedSick = baseCard.sick;
@@ -2743,68 +3386,71 @@ const EFFECTS = {
         const baseIdx = baseBf.findIndex(c => c.iid === preservedIid);
         if (baseIdx >= 0) baseBf.splice(baseIdx, 1);
         G[resultOwner].battlefield.push(baseCard);
+        // The base changed sides — it must leave combat (CR 506.4c / canon
+        // §801), exactly as the A2-5 change-control fix does. This clears any
+        // stale role the base held on its OLD side BEFORE the role-transfer
+        // below decides what (if anything) it inherits on its new side (A5-1).
+        removeFromCombat(preservedIid);
       }
       log(`${ctx.sourceName} staples ${stapleCard.name} onto ${baseCard.name}.`, 'sp');
-      // ─── Combat-state transfer ─────────────────────────────────────
-      // If the staple was in combat (attacking or blocking) when consumed,
-      // the merged base inherits its combat role. Mental model: the staple
-      // is physically affixed to the base, so its commitments carry over.
-      // Base's existing role (if any) wins; staple's role is inherited
-      // only into an empty slot.
+      // ─── Side-aware combat-state transfer (A5-1 / A5-3) ─────────────
+      // A merged creature can hold a combat role only on the side it now
+      // belongs to: resultOwner === G.activePlayer → it may ATTACK;
+      // resultOwner === opp(activePlayer) → it may BLOCK. (Pre-fix this copied
+      // a role side-blindly, so an opp attacker stapled onto YOUR creature kept
+      // its attacker role and dealt its damage to YOU — A5-1.)
       //
-      // Three cases for G.attackers (a list of iids):
-      //   - staple was attacking, base was not: replace staple's iid with
-      //     base's iid in-place (preserves attack order).
-      //   - staple was attacking, base was too: just drop staple's iid.
-      //     The merged result is one creature; it attacks once.
-      //   - staple wasn't attacking: no-op.
-      //
-      // G.blockers is a Map of blockerIid → attackerIid:
-      //   - staple was a blocker (key): replace the key with base's iid
-      //     unless base is already a key elsewhere (in which case drop
-      //     the staple entry — same "one creature, one role" rule).
-      //   - staple was being blocked (value): remove the entry. The
-      //     "attacker" the blocker was assigned to is gone (it became
-      //     part of the merged result, possibly on the other side); the
-      //     block no longer applies. The blocker stays on the battlefield
-      //     but is freed from the assignment.
-      if (Array.isArray(G.attackers)) {
-        const stapleAttIdx = G.attackers.indexOf(stapleCard.iid);
-        if (stapleAttIdx >= 0) {
-          const baseAttIdx = G.attackers.indexOf(preservedIid);
-          if (baseAttIdx >= 0) {
-            G.attackers.splice(stapleAttIdx, 1);
-          } else {
-            G.attackers[stapleAttIdx] = preservedIid;
+      // The staple's combat bookkeeping is ALWAYS retired through the one
+      // "leaves combat" funnel, removeFromCombat (CR 506.4c / canon §801):
+      //   - prunes the staple from G.attackers;
+      //   - if the staple was a BLOCKER (Map key), tombstones it to
+      //     'gone:'+iid so the attacker it held STAYS blocked (A5-3 — the old
+      //     bare delete flipped that attacker to unblocked and it hit face);
+      //   - if the staple was a BLOCKED attacker (Map value), frees its
+      //     blockers (its target is gone).
+      // Then we opt-in re-assign the staple's role to the base ONLY when that
+      // role is valid for resultOwner — never side-blindly.
+      const attackSide = G.activePlayer;
+      const blockSide = opp(G.activePlayer);
+      // Snapshot the staple's roles BEFORE the funnel clears them.
+      const stapleWasAttacking = Array.isArray(G.attackers) && G.attackers.includes(stapleCard.iid);
+      let stapleBlockedAtk = null;            // attacker the staple was blocking (staple = Map key)
+      const blockersOfStaple = [];            // blockers assigned to the staple AS attacker (staple = Map value)
+      if (G.blockers && typeof G.blockers.forEach === 'function') {
+        for (const [bIid, aIid] of G.blockers.entries()) {
+          if (bIid === stapleCard.iid) stapleBlockedAtk = aIid;
+          else if (aIid === stapleCard.iid) blockersOfStaple.push(bIid);
+        }
+      }
+      removeFromCombat(stapleCard.iid);
+      // Read the base's roles AFTER both funnels (the cross-owner move above
+      // already funneled a side-switching base out, and the staple funnel just
+      // ran) so "one creature, one role" holds without re-introducing the bug.
+      const baseAttacking = Array.isArray(G.attackers) && G.attackers.includes(preservedIid);
+      const baseBlocking = G.blockers && typeof G.blockers.has === 'function' && G.blockers.has(preservedIid);
+      // Inherit the staple's ATTACK role only if the merged creature is on the
+      // attacking side and the base isn't already attacking.
+      if (stapleWasAttacking && resultOwner === attackSide && !baseAttacking) {
+        if (Array.isArray(G.attackers) && !G.attackers.includes(preservedIid)) G.attackers.push(preservedIid);
+        // The merged base inherits the attack role, so the staple's blockers must
+        // re-point at it — otherwise the merged attacker reads as UNblocked and
+        // hits face (the funnel bare-deletes value-side block entries; A5-1
+        // review). Only live blockers carry over.
+        for (const bIid of blockersOfStaple) {
+          if (G.blockers && typeof G.blockers.set === 'function' && findCard(bIid)) {
+            G.blockers.set(bIid, preservedIid);
           }
         }
       }
-      if (G.blockers && typeof G.blockers.forEach === 'function') {
-        // Snapshot entries before mutating the Map.
-        const entries = Array.from(G.blockers.entries());
-        for (const [bIid, aIid] of entries) {
-          if (bIid === stapleCard.iid) {
-            // Staple was blocking. Transfer block to base unless base is
-            // already a blocker.
-            G.blockers.delete(stapleCard.iid);
-            const baseAlreadyBlocking = Array.from(G.blockers.keys()).includes(preservedIid);
-            if (!baseAlreadyBlocking) {
-              G.blockers.set(preservedIid, aIid);
-            }
-          } else if (aIid === stapleCard.iid) {
-            // Staple was being blocked. If base inherited the attacker
-            // role (the common case), rewrite the assignment to point at
-            // base. If base didn't inherit (because base was already
-            // attacking, so the iid was removed entirely), the block
-            // assignment is stale — drop it.
-            const baseStillAttacks = Array.isArray(G.attackers) && G.attackers.includes(preservedIid);
-            if (baseStillAttacks) {
-              G.blockers.set(bIid, preservedIid);
-            } else {
-              G.blockers.delete(bIid);
-            }
-          }
-        }
+      // Inherit the staple's BLOCK assignment only if the merged creature is on
+      // the blocking side, the base isn't already blocking, and the blocked
+      // attacker is still live.
+      if (stapleBlockedAtk != null && resultOwner === blockSide && !baseBlocking
+          && Array.isArray(G.attackers) && G.attackers.includes(stapleBlockedAtk)) {
+        G.blockers.set(preservedIid, stapleBlockedAtk);
+        // The base now blocks that attacker, so the funnel's 'gone:'+staple
+        // tombstone for the same attacker is redundant — drop it (A5-3 review).
+        G.blockers.delete('gone:' + stapleCard.iid);
       }
     } else {
       // ─── SPELL-BASE PATH (S+S) ─────────────────────────────────────
@@ -2821,29 +3467,24 @@ const EFFECTS = {
       // if base was at a lower index — handled by the existing stIdx
       // shift on the inner removal). The general fixup is still needed
       // for OTHER cards (the Stapler itself, anything with cached idx).
-      const fixupSlotIdxAfter = (removedIdx) => {
-        const zones = ['library', 'hand', 'battlefield', 'graveyard', 'exile'];
-        for (const zoneName of zones) {
-          const zone = G.you[zoneName];
-          if (!zone) continue;
-          for (const c of zone) {
-            if (typeof c.slotIdx === 'number' && c.slotIdx > removedIdx) {
-              c.slotIdx -= 1;
-            }
-          }
-        }
-      };
+      // Per-removal fixup: decrement cached slotIdx pointers AND remap
+      // playedSlotIdxs (audit A9-3 — via the shared contract helper).
+      const fixupSlotIdxAfter = (removedIdx) => fixupSlotPointersAfterRemoval('you', removedIdx);
       if (baseCard.owner === 'you' && typeof baseCard.slotIdx === 'number'
           && typeof RUN !== 'undefined' && RUN.removeSlotByIdx) {
         const removedIdx = baseCard.slotIdx;
         RUN.removeSlotByIdx(removedIdx);
         fixupSlotIdxAfter(removedIdx);
       }
-      if (stapleCard.owner === 'you' && typeof stapleCard.slotIdx === 'number'
+      if (stapleR.kind === 'spell' && stapleCard.owner === 'you' && typeof stapleCard.slotIdx === 'number'
           && typeof RUN !== 'undefined' && RUN.removeSlotByIdx) {
-        // stapleCard is a stack item, not in any zone — fixupSlotIdxAfter
-        // (which walks zones) didn't update it. Apply the manual shift if
-        // base's removal was at a lower index.
+        // A5-2 zone guard: only a genuine STACK-ITEM staple gets the manual
+        // shift. A stack item isn't in any zone, so fixupSlotIdxAfter (which
+        // walks zones) didn't update it — hence the manual shift. A
+        // battlefield-permanent staple is already shifted by the zone walk;
+        // shifting it again over-deleted an unrelated run slot (the original
+        // A5-2 data loss — now also fenced by the fizzle guard above, this keeps
+        // the invariant explicit so no future path can reach the double-shift).
         let stIdx = stapleCard.slotIdx;
         if (baseCard.owner === 'you' && typeof baseCard.slotIdx === 'number' && baseCard.slotIdx < stapleCard.slotIdx) {
           stIdx -= 1;
@@ -2887,16 +3528,45 @@ const EFFECTS = {
         }
         if (stSlot.charges <= 0) {
           log(`${ctx.sourceName} is out of charges — ripped from the run.`, 'sp');
+          // Remove only THIS Stapler's instance (the slot being ripped), NOT
+          // every card sharing its tplId. A5-5 lets a cloned Stapler coexist on
+          // its own slot with independent charges; a bare tplId purge here would
+          // also delete the still-charged clone's in-play card (A5-5 review).
+          // A5-15: route the rip through leave-play discipline rather than a raw
+          // array filter. A battlefield Stapler must be crossed off combat and have
+          // any restrictions it was granting cleared, exactly like the sibling rip
+          // paths (ripSlotByIdx / ripSlotForPhylactery). Silent (no dies/zone emit)
+          // so a self-rip can't trip Sengir/Endomorph — matching ripSlotByIdx. The
+          // (tplId, slotIdx) scope is preserved verbatim, so A5-5's clone-survives
+          // invariant still holds.
           const stTplId = stapler.tplId;
+          const ripSlotIdx = stapler.slotIdx;
+          const isRipped = c => c.tplId === stTplId && c.slotIdx === ripSlotIdx;
           for (const side of ['you', 'opp']) {
             const p = G[side];
-            p.battlefield = p.battlefield.filter(c => c.tplId !== stTplId);
-            p.hand = p.hand.filter(c => c.tplId !== stTplId);
-            p.library = p.library.filter(c => c.tplId !== stTplId);
-            p.graveyard = p.graveyard.filter(c => c.tplId !== stTplId);
-            p.exile = p.exile.filter(c => c.tplId !== stTplId);
+            for (const zoneName of ['battlefield', 'hand', 'library', 'graveyard', 'exile']) {
+              const zone = p[zoneName];
+              for (let i = zone.length - 1; i >= 0; i--) {
+                if (!isRipped(zone[i])) continue;
+                const [c] = zone.splice(i, 1);
+                if (zoneName === 'battlefield') {
+                  removeFromCombat(c.iid);
+                  clearRestrictionsFromSource(c.iid);
+                }
+              }
+            }
           }
-          if (RUN.removeSlotByIdx) RUN.removeSlotByIdx(stapler.slotIdx);
+          if (RUN.removeSlotByIdx) {
+            const ripIdx = stapler.slotIdx;
+            RUN.removeSlotByIdx(ripIdx);
+            // CALLER CONTRACT (run.js removeSlotByIdx): every removal must
+            // decrement cached slotIdx pointers above the gap AND remap
+            // playedSlotIdxs. The Stapler's boon slot is appended LAST, so a
+            // merged slot minted seconds earlier in THIS handler sits above it
+            // — without this fixup its cached slotIdx goes out of bounds
+            // (audit A5-4). Shared helper, same as the two sites above.
+            fixupSlotPointersAfterRemoval('you', ripIdx);
+          }
         }
       }
     }
@@ -3023,7 +3693,7 @@ function applyEffect(ctx, effect, target, targetSnap) {
 // `target_slots`). Scope/self effects carry neither and never reach here as
 // targeted.
 function effectNeedsTarget(eff) {
-  return (!!eff.target && eff.target !== 'self') || (eff.target_slot != null);
+  return !!eff.target || (eff.target_slot != null);
 }
 
 // Boot-time effect validation (Slice 3 step 4). Walks every card's effects
@@ -3046,13 +3716,61 @@ function isSupportedMoveCardPair(from, to) {
   return false;
 }
 
+// Per-(from,to) allowed move_card selectors — ONE fact, derived from the
+// handler's real dispatch (audit A4-21: the schema used to validate zone
+// PAIRS while the handler dispatches on (from,to,selector) TRIPLES, so a
+// schema-clean combo could warn-and-no-op at runtime). `null` in a list =
+// the selector may be omitted (the arm defaults or ignores it).
+const MOVE_CARD_SELECTORS = {
+  'library->hand':        [null, 'controller_top', 'library_search'],
+  'library->graveyard':   [null, 'controller_top'],
+  'library->battlefield': [null, 'library_search'],   // filtered auto-fetch; selector unused
+  'hand->graveyard':      [null, 'controller_chosen', 'target_player_chosen'],
+  'battlefield->hand':    ['target', 'self', 'copy_source'],
+  'battlefield->library': ['target', 'self', 'copy_source'],
+  'battlefield->exile':   ['target', 'self', 'copy_source'],
+  'battlefield->graveyard': ['target', 'self', 'copy_source'],
+  'graveyard->hand':        ['target', 'self', 'copy_source'],
+  'graveyard->library':     ['target', 'self', 'copy_source'],
+  'graveyard->battlefield': ['target', 'self', 'copy_source'],
+  'graveyard->exile':       ['target', 'self', 'copy_source'],
+  'exile->hand':            ['target', 'self', 'copy_source'],
+  'exile->library':         ['target', 'self', 'copy_source'],
+  'exile->battlefield':     ['target', 'self', 'copy_source'],
+};
+
+// Schema helper: a required magnitude is a number or a {from:'...'} expression
+// (resolved at apply time by resolveEffectParams).
+function isAmountParam(v) {
+  return typeof v === 'number' || (v != null && typeof v === 'object' && v.from);
+}
+
 const EFFECT_SCHEMA = {
   move_card: (e) => {
     const ZONES = ['library', 'hand', 'graveyard', 'battlefield', 'exile'];
     if (!ZONES.includes(e.from_zone)) return 'move_card bad/missing from_zone';
     if (!ZONES.includes(e.to_zone)) return 'move_card bad/missing to_zone';
     if (!isSupportedMoveCardPair(e.from_zone, e.to_zone)) return 'move_card unsupported zone pair';
+    const allowed = MOVE_CARD_SELECTORS[e.from_zone + '->' + e.to_zone];
+    if (allowed && !allowed.includes(e.selector ?? null)) {
+      return 'move_card selector "' + e.selector + '" unsupported for '
+        + e.from_zone + '->' + e.to_zone + ' (want ' + allowed.filter(s => s).join('|') + ')';
+    }
     return null;
+  },
+  // Required-param entries (audit A4-17): a missing amount used to boot
+  // clean and corrupt at resolution (damage → NaN = unkillable creature;
+  // add_mana → raw TypeError mid-action).
+  damage:    (e) => (isAmountParam(e.amount) ? null : 'damage missing numeric amount'),
+  gain_life: (e) => (isAmountParam(e.amount) ? null : 'gain_life missing numeric amount'),
+  draw:      (e) => (isAmountParam(e.amount) ? null : 'draw missing numeric amount'),
+  discard:   (e) => (isAmountParam(e.amount) ? null : 'discard missing numeric amount'),
+  add_mana:  (e) => ((e.amounts && typeof e.amounts === 'object') || e.choose
+    ? null : 'add_mana missing amounts/choose'),
+  grant_keyword: (e) => (e.keyword ? null : 'grant_keyword missing keyword'),
+  create_tokens: (e) => {
+    const id = e.token_id && TOKEN_ALIAS[e.token_id] ? TOKEN_ALIAS[e.token_id] : e.token_id;
+    return (id && TOKENS[id]) ? null : 'create_tokens unknown token_id "' + e.token_id + '"';
   },
   grant_cast_permission: (e) => {
     const ZONES = ['exile'];
@@ -3061,6 +3779,14 @@ const EFFECT_SCHEMA = {
     return null;
   },
   chooses: (e) => (e.filter ? null : 'chooses missing filter'),
+  // Audit A3-14: 'end_step' is the only fire time the cleanup drain executes;
+  // anything else would sit in delayedTriggers forever. Keep in lockstep with
+  // the schedule_delayed handler's guard and the drain in step()'s CLEANUP arm.
+  schedule_delayed: (e) => {
+    if (e.when !== 'end_step') return 'schedule_delayed bad/missing when (want end_step)';
+    if (!Array.isArray(e.effects)) return 'schedule_delayed missing effects array';
+    return null;
+  },
   affect_creature: (e) => {
     const SEV = ['tap', 'bounce', 'destroy', 'exile'];
     if (e.severity != null && !SEV.includes(e.severity) && !(e.severity >= 1 && e.severity <= 4)) {
@@ -3070,48 +3796,270 @@ const EFFECT_SCHEMA = {
   },
 };
 
+// The CLOSED restriction-key vocabulary (audit A4-11): the union of every
+// key consumed by matchFilter, matchFilterSpell, the graveyard_card search
+// axes (getValidTargets), and the library-search filter (matchesSearchFilter
+// — move_card filters route there). matchFilter silently ignores unknown
+// keys, so a typo'd or camelCase key used to make a card target MORE than
+// its designer intended with zero signal — even the procedural card text
+// dropped the same unknown key. Keep in lockstep with those four consumers.
+const MATCH_FILTER_KEYS = new Set([
+  // matchFilter axes
+  'tapped', 'not_color', 'color', 'controller',
+  'max_tough', 'min_tough', 'max_power', 'min_power',
+  'not_keyword', 'has_keyword', 'subtype', 'type', 'not_type',
+  'not_token', 'spliceable_base', 'spliceable_staple',
+  // graveyard_card search axes (consumed in getValidTargets, not matchFilter)
+  'graveyards', 'select',
+  // library-search axis (matchesSearchFilter's `sub` shorthand)
+  'sub',
+]);
+
+// Effect kinds that DEREFERENCE a target and have no targetless fallback
+// (audit A4-17): authored without any way to receive one (effect-level
+// target/target_slot/scope, or a card/ability/trigger-level target step)
+// they fizzle — or, pre-guards, crashed — at resolution. Kinds with a
+// non-target fallback (gain_life/draw/discard → controller; sacrifice/
+// annihilate/rip/move_card/become_copy_of/grant_cast_permission →
+// ctx.chosen; fight → operands) are deliberately absent.
+const TARGET_REQUIRED_KINDS = new Set([
+  'damage', 'pump', 'add_counter', 'untap', 'affect_creature',
+  'grant_keyword', 'apply_sticker', 'symmetricize', 'add_type', 'set_types',
+  'counter',
+]);
+
 function validateAllCardEffects(cards) {
   const unknownKinds = [];
   const unknownFilters = [];
   const schemaErrors = [];
+  const unknownFilterKeys = [];
+  const targetErrors = [];
   const list = Array.isArray(cards) ? cards : Object.values(cards || {});
-  const checkList = (effs, cardId) => {
+  // Restriction-key sweep (audit A4-11). Only OBJECT filters carry the
+  // matchFilter vocabulary — string filters (target()/chooses() taxonomy
+  // names) are checked against TARGET_FILTERS instead.
+  const checkFilterKeys = (filter, where) => {
+    if (!filter || typeof filter !== 'object' || Array.isArray(filter)) return;
+    for (const k of Object.keys(filter)) {
+      if (!MATCH_FILTER_KEYS.has(k)) unknownFilterKeys.push(where + '(' + k + ')');
+    }
+  };
+  const checkList = (effs, cardId, hasOwnerTarget) => {
     for (const e of (effs || [])) {
       if (!e || typeof e !== 'object') continue;
       if (e.kind && !EFFECTS[e.kind]) unknownKinds.push(cardId + '.' + e.kind);
       if ((e.kind === 'chooses' || e.kind === 'target') && e.filter && !TARGET_FILTERS.has(e.filter)) {
         unknownFilters.push(cardId + '.' + e.kind + '(' + e.filter + ')');
       }
+      if (e.filter && typeof e.filter === 'object') {
+        checkFilterKeys(e.filter, cardId + '.' + e.kind + '.filter');
+      }
+      // target_filter on a player/opp target is nonsensical (matchFilter's
+      // vocabulary is card axes) and was silently dropped — reject loudly
+      // (audit A4-8's player/opp leg).
+      if ((e.target === 'player' || e.target === 'opp') && e.filter) {
+        schemaErrors.push(cardId + ': filter on a ' + e.target
+          + ' target is unsupported (card-axis filters never apply to players)');
+      }
+      // Targeted kinds need SOME target source (audit A4-17).
+      if (TARGET_REQUIRED_KINDS.has(e.kind) && !e.scope && !e.target
+          && e.target_slot == null && !hasOwnerTarget) {
+        targetErrors.push(cardId + ': ' + e.kind
+          + ' has no target source (no target/target_slot/scope and no owner-level target step)');
+      }
+      // Effect-level target strings resolve through getValidTargets, whose
+      // default arm returns [] — a typo boots clean and the card is silently
+      // uncastable forever (audit A11-1).
+      if (typeof e.target === 'string' && !GETVALIDTARGETS_TARGETS.has(e.target)) {
+        targetErrors.push(cardId + ': effect-level target "' + e.target
+          + '" is not a name getValidTargets resolves');
+      }
       const schema = EFFECT_SCHEMA[e.kind];
       if (schema) { const err = schema(e); if (err) schemaErrors.push(cardId + ': ' + err); }
     }
   };
+  // Slot-level target strings (target_slots[i].target) also resolve through
+  // getValidTargets — same silent-uncastable failure mode as the effect-level
+  // check in checkList (audit A11-1). Swept on card-, ability-, and
+  // trigger-level slot arrays.
+  const checkSlotTargets = (slots, where) => {
+    for (const spec of (Array.isArray(slots) ? slots : [])) {
+      if (!spec || typeof spec.target !== 'string') continue;
+      if (!GETVALIDTARGETS_TARGETS.has(spec.target)) {
+        targetErrors.push(where + ': slot-level target "' + spec.target
+          + '" is not a name getValidTargets resolves');
+      }
+    }
+  };
   for (const card of list) {
     const cardId = card.tplId || card.card_id || card.name || '?';
-    checkList(allCardEffects(card), cardId);
+    const cardHasTarget = !!(card.target
+      || (Array.isArray(card.target_slots) && card.target_slots.length));
+    checkList(allCardEffects(card), cardId, cardHasTarget);
     // New top-level target() step filter.
     if (card.target && !TARGET_FILTERS.has(card.target)) {
       unknownFilters.push(cardId + '.target(' + card.target + ')');
     }
-    for (const ab of (card.abilities || [])) checkList(ab.effects, cardId);
-    for (const trig of (card.triggers || [])) checkList(trig.effects, cardId);
+    checkFilterKeys(card.target_filter, cardId + '.target_filter');
+    if ((card.target === 'player' || card.target === 'opp') && card.target_filter) {
+      schemaErrors.push(cardId + ': target_filter on a ' + card.target
+        + ' target is unsupported (card-axis filters never apply to players)');
+    }
+    if (Array.isArray(card.target_slots)) {
+      for (const spec of card.target_slots) {
+        if (spec) checkFilterKeys(spec.filter, cardId + '.target_slots.filter');
+      }
+    }
+    checkSlotTargets(card.target_slots, cardId);
+    for (const ab of (card.abilities || [])) {
+      checkFilterKeys(ab.target_filter, cardId + '.ability.target_filter');
+      checkSlotTargets(ab.target_slots, cardId + '.ability');
+      // A3-2: `stackable` is an optional BOOLEAN (absent → true). A present
+      // non-boolean would silently truthy/falsy its way into the wrong
+      // resolution path — reject it loudly at boot.
+      if (ab && 'stackable' in ab && typeof ab.stackable !== 'boolean') {
+        schemaErrors.push(cardId + ': ability stackable must be a boolean (got '
+          + (typeof ab.stackable) + ')');
+      }
+      // A7-1: a mana ability whose cost includes ANYTHING beyond {T} is
+      // unsupported until an explicit-cost mana pipeline exists — the auto-payer
+      // pays only the tap, so an extra cost (sacrifice, remove_counters, OR a
+      // mana cost / filter-land) would be silently dodged. Flag it loudly at boot.
+      if (ab && ab.effects && ab.effects[0] && ab.effects[0].kind === 'add_mana'
+          && ab.cost && Object.keys(ab.cost).some(k => k !== 'tap')) {
+        schemaErrors.push(cardId + ': mana ability has a non-tap cost ('
+          + Object.keys(ab.cost).filter(k => k !== 'tap').join(',')
+          + ') -- extra-cost mana abilities (sacrifice / mana / filter-land) '
+          + 'are unsupported by the auto-payer (A7-1)');
+      }
+      checkList(ab.effects, cardId,
+        !!(ab.target || (Array.isArray(ab.target_slots) && ab.target_slots.length)));
+    }
+    for (const trig of (card.triggers || [])) {
+      checkFilterKeys(trig.target_filter, cardId + '.trigger.target_filter');
+      checkSlotTargets(trig.target_slots, cardId + '.trigger');
+      // A3-2: same boolean-only rule for triggers.
+      if (trig && 'stackable' in trig && typeof trig.stackable !== 'boolean') {
+        schemaErrors.push(cardId + ': trigger stackable must be a boolean (got '
+          + (typeof trig.stackable) + ')');
+      }
+      checkList(trig.effects, cardId,
+        !!(trig.target || (Array.isArray(trig.target_slots) && trig.target_slots.length)));
+    }
+    // static_buff filters: same key sweep, PLUS stat bounds are rejected
+    // outright (audit A4-14) — a stat-bounded lord filter closes the
+    // getStats ↔ matchFilter recursion; lordBuffApplies evaluates stat-free
+    // (matchFilterNoStats) until that semantics is properly designed, so a
+    // stat bound here would be silently ignored at best.
+    for (const buff of (card.static_buffs || [])) {
+      if (!buff) continue;
+      checkFilterKeys(buff.filter, cardId + '.static_buff.filter');
+      if (buff.filter && STAT_BOUND_FILTER_KEYS.some(k => buff.filter[k] !== undefined)) {
+        schemaErrors.push(cardId + ': static_buff filter uses a stat bound ('
+          + STAT_BOUND_FILTER_KEYS.filter(k => buff.filter[k] !== undefined).join(',')
+          + ') — unsupported until stat-bounded lord buffs are designed (audit A4-14)');
+      }
+    }
   }
   if (unknownKinds.length) console.warn('Unknown effect kind(s):', unknownKinds.join(', '));
   if (unknownFilters.length) console.warn('Unknown target/chooses filter(s):', unknownFilters.join(', '));
   if (schemaErrors.length) console.warn('Effect schema error(s):', schemaErrors.join('; '));
-  return { unknownKinds, unknownFilters, schemaErrors };
+  if (unknownFilterKeys.length) console.warn('Unknown filter key(s):', unknownFilterKeys.join(', '));
+  if (targetErrors.length) console.warn('Effect target error(s):', targetErrors.join('; '));
+  return { unknownKinds, unknownFilters, schemaErrors, unknownFilterKeys, targetErrors };
+}
+
+// Audit A3-5 — shared shape check for a generated/persisted trigger: event ∈
+// VALID_TRIGGER_EVENTS, every atomic predicate registered, every effect kind
+// in EFFECTS (+ token_id in TOKENS for create_tokens). Pushes findings into
+// the `out` lists, each entry prefixed by `id`.
+function collectUnknownTriggerRefs(trig, id, out) {
+  if (!trig || typeof trig !== 'object') return;
+  if (trig.event && !VALID_TRIGGER_EVENTS.has(trig.event)) {
+    out.unknownEvents.push(id + '.' + trig.event);
+  }
+  // A3-2: `stackable` must be boolean when present (absent → true). Guarded
+  // on the list existing so older callers with the pre-A3-2 `out` shape
+  // don't crash.
+  if ('stackable' in trig && typeof trig.stackable !== 'boolean' && out.badStackable) {
+    out.badStackable.push(id);
+  }
+  if (trig.condition != null && typeof trig.condition !== 'function') {
+    _collectUnknownAtomics(trig.condition, out.unknownAtomics, id);
+  }
+  for (const e of (trig.effects || [])) {
+    if (!e || typeof e !== 'object') continue;
+    if (e.kind && !EFFECTS[e.kind]) out.unknownKinds.push(id + '.' + e.kind);
+    if (e.kind === 'create_tokens' && e.token_id && !TOKENS[e.token_id]) {
+      out.unknownTokens.push(id + '.' + e.token_id);
+    }
+  }
+}
+
+// Audit A3-5 — boot-time validation for the three generated-trigger data
+// tables, which sit OUTSIDE both card validators (those walk only the CARDS
+// collection passed in): GENERATOR_EFFECTS / GENERATOR_CONDITIONS
+// (trigger-generator.js) and MERCURIAL_TRIGGER_POOL (this file). A typo'd
+// effect kind, token id, predicate, or event in one of them boots clean and
+// silently no-ops a player's whole-run boon — PROTOCOL §3.4 promises boot
+// validation for every referenced id, and the pool's triggers ARE
+// card-attached at runtime. Called from main.js boot alongside the card
+// validators; warns to console, returns the lists for tests.
+function validateGeneratedTriggerTables() {
+  const out = { unknownKinds: [], unknownTokens: [], unknownAtomics: [], unknownEvents: [], badStackable: [] };
+  for (const ge of GENERATOR_EFFECTS) {
+    // Entries are roll() factories — roll a sample; amounts vary per roll,
+    // kinds/token ids don't.
+    collectUnknownTriggerRefs({ effects: ge.roll() }, 'GENERATOR_EFFECTS.' + ge.id, out);
+  }
+  for (const gc of GENERATOR_CONDITIONS) {
+    collectUnknownTriggerRefs({ event: gc.event, condition: gc.condition },
+      'GENERATOR_CONDITIONS.' + gc.id, out);
+  }
+  for (const t of MERCURIAL_TRIGGER_POOL) {
+    collectUnknownTriggerRefs(t, 'MERCURIAL_TRIGGER_POOL.' + t.label, out);
+  }
+  if (out.unknownKinds.length) console.warn('Generated-trigger tables: unknown effect kind(s):', out.unknownKinds.join(', '));
+  if (out.unknownTokens.length) console.warn('Generated-trigger tables: unknown token id(s):', out.unknownTokens.join(', '));
+  if (out.unknownAtomics.length) console.warn('Generated-trigger tables: unknown atomic predicate(s):', out.unknownAtomics.join(', '));
+  if (out.unknownEvents.length) console.warn('Generated-trigger tables: unknown event kind(s):', out.unknownEvents.join(', '));
+  if (out.badStackable.length) console.warn('Generated-trigger tables: non-boolean stackable on:', out.badStackable.join(', '));
+  return out;
 }
 
 // Effect kinds that operate on a creature (vs player) — drives scope:'self' meaning.
 // Add creature-operators here; damage/gain_life/draw/discard/add_mana resolve self → controller.
+// add_type/set_types operate on the permanent (audit A4-13's fix-design trap:
+// artifice_triumphant grants an `add_type scope:'self'` ability that must be
+// creature-routed).
 const CREATURE_EFFECT_KINDS = new Set([
   'pump', 'add_counter', 'untap', 'affect_creature',
   'fight', 'endomorph_absorb',
   'grant_keyword',
-  'sacrifice', 'gainControl',
+  'sacrifice',
+  'add_type', 'set_types',
 ]);
 function effectOperatesOnCreature(eff) {
   return CREATURE_EFFECT_KINDS.has(eff.kind);
+}
+
+// scope:'self' resolution — the creature-vs-player fork, ONE helper for all
+// three resolution loops (audit A4-13). 'self' means the SOURCE CREATURE for
+// creature-operating effects (CREATURE_EFFECT_KINDS) and the SOURCE'S
+// CONTROLLER for player-operating ones (damage = "you lose N", gain_life,
+// draw, discard, add_mana). The v0.99.29 Final Strike bug was a missing fork
+// in the spell loop; the ability loop shipped as the divergent third
+// hand-synced copy (it routed EVERY self to the creature, so a "T: deal 1 to
+// you" ability would have burned the creature instead). For a spell, the
+// "creature" descriptor is the spell card itself — not on the battlefield,
+// so creature-operating self effects fizzle gracefully there.
+function resolveSelfTarget(eff, sourceIid, sourceName, controller) {
+  if (effectOperatesOnCreature(eff)) {
+    const tgt = { kind: 'creature', iid: sourceIid, label: sourceName };
+    return { tgt, snap: snapshotTarget(tgt) };
+  }
+  const tgt = { kind: 'player', who: controller };
+  return { tgt, snap: tgt };
 }
 
 // card.effects is flat array OR {modes:[[...],...]}. getModes always returns array-of-modes.
@@ -3156,26 +4104,42 @@ function cardHasEffect(card, predicate) {
 }
 
 // EVENTS & TRIGGERS — emit() queues matched triggers in G.pendingTriggers,
-// drained to stack at next priority round. Targets re-validate at resolution.
+// drained to stack at next priority round. Queueing is on event/condition
+// match only (§1004); target legality is checked twice: at stack-push
+// (tsAutoPick / prompt, §1005 — no legal target → logged fizzle), and again
+// at resolution (resolveTrigger → tsRevalidateTargets, §1006.1): slots that
+// became illegal on the stack are dropped; if none survive, the trigger
+// fizzles whole. (Audit A3-10 removed a third, emit-time legality gate that
+// silently ate no-target triggers before they could queue.)
+//
+// TRIGGER_DEPTH_CAP is a per-stack-episode trigger BUDGET, not a nesting
+// depth: resolveTrigger counts every trigger resolution since the stack last
+// emptied (reset in the settle loop when both players pass on an empty
+// stack). Deliberate (audit A3-3, Joe's ruling PR #98, 2026-06-10: keep the
+// counter) — the width count also bounds mutual A→B→A trigger loops that a
+// true nesting-depth counter would never catch (each round of such a loop
+// resolves at depth 1–2).
 const TRIGGER_DEPTH_CAP = 100;
 
 // Lord-grant reconciliation, called from emit() pre-trigger. Idempotent.
-// Cleanup via clearRestrictionsFromSource on lord leave-play.
+// TRUE diff-reconcile (audit A4-2): an add pass for every (lord buff, target)
+// pair the shared lordBuffApplies predicate accepts, then a revoke pass for
+// lord-sourced grants it no longer accepts (the creature was stolen, changed
+// type, ...). Before the revoke pass this was add-only, so a grant went stale
+// FOREVER unless the lord left play (leave-play cleanup stays with
+// clearRestrictionsFromSource).
 function applyStaticKeywordGrants() {
   if (!G || !G.you || !G.opp) return;
   const all = [
     ...G.you.battlefield.map(c => ({ card: c, controller: 'you' })),
     ...G.opp.battlefield.map(c => ({ card: c, controller: 'opp' })),
   ];
-  for (const { card: lord, controller: lordCtrl } of all) {
-    if (!lord.static_buffs) continue;
+  const lords = all.filter(e => e.card.static_buffs);
+  for (const { card: lord, controller: lordCtrl } of lords) {
     for (const buff of lord.static_buffs) {
       if (!buff.keywords || !buff.keywords.length) continue;
       for (const { card: target, controller: tgtCtrl } of all) {
-        if (target.iid === lord.iid) continue;
-        if (!hasType(target, 'Creature')) continue;
-        if (!matchFilter(target, buff.filter, tgtCtrl, lordCtrl)) continue;
-        if (buff.subtype && !hasType(target, buff.subtype)) continue;
+        if (!lordBuffApplies(lord, lordCtrl, buff, target, tgtCtrl)) continue;
         if (!(target.grantedBy instanceof Map)) target.grantedBy = new Map();
         for (const kw of buff.keywords) {
           if (!target.grantedBy.has(kw)) target.grantedBy.set(kw, new Set());
@@ -3183,6 +4147,28 @@ function applyStaticKeywordGrants() {
           target.grantedBy.get(kw).add(lord.iid);
           if (!target.keywords.includes(kw)) target.keywords.push(kw);
         }
+      }
+    }
+  }
+  // Revoke pass: walk each card's grant entries whose source resolves to a
+  // battlefield lord whose static_buffs CLAIM the keyword; if no buff of that
+  // lord still accepts the (buff, target) pair, the grant is stale — strip it.
+  // Grants whose source is anything else (one-shot spells, abilities, a lord
+  // keyword granted by its TRIGGER rather than its static_buff) keep their
+  // existing leave-play contract untouched.
+  const lordByIid = new Map(lords.map(e => [e.card.iid, e]));
+  for (const { card: target, controller: tgtCtrl } of all) {
+    if (!(target.grantedBy instanceof Map)) continue;
+    for (const [kw, sources] of [...target.grantedBy]) {
+      for (const srcIid of [...sources]) {
+        const entry = lordByIid.get(srcIid);
+        if (!entry) continue;
+        const claiming = entry.card.static_buffs
+          .filter(b => b.keywords && b.keywords.includes(kw));
+        if (!claiming.length) continue;
+        const still = claiming.some(b =>
+          lordBuffApplies(entry.card, entry.controller, b, target, tgtCtrl));
+        if (!still) stripGrantedKeyword(target, kw, srcIid);
       }
     }
   }
@@ -3197,7 +4183,9 @@ function emit(evt, extraSources) {
     for (const trig of card.triggers) {
       if (trig.event !== evt.type) continue;
       if (!evalTriggerCondition(trig, card, evt, who)) continue;
-      if (!triggerHasAnyValidTarget(trig, who)) continue;
+      // No target-legality gate here (audit A3-10): a matched trigger always
+      // queues (§1004). Targets are chosen — and legality enforced, with a
+      // logged fizzle — when it goes on the stack (pushTriggerOnStack, §1005).
       G.pendingTriggers.push({
         trig,
         sourceIid: card.iid,
@@ -3215,12 +4203,22 @@ function emit(evt, extraSources) {
   }
 }
 
-// Unified zone-change emission (Slice 2 / DIVERGENCE E2). The sole battlefield
-// enter/leave/death event now — composable triggers (event: 'card_zone_change')
-// match on this; the legacy cardEntersBattlefield / cardDies /
-// cardLeavesBattlefield events were retired once card migration completed.
+// Unified zone-change emission (Slice 2 / DIVERGENCE E2). The single
+// card-movement event — composable triggers (event: 'card_zone_change') match
+// on this; the legacy cardEntersBattlefield / cardDies / cardLeavesBattlefield
+// events were retired once card migration completed. Since the A3-6 build-out
+// (v2.1.40) EVERY genuine card move between zones routes through here, not
+// just battlefield-touching ones — draws, tutors, discards, mills, casts,
+// counters, resolutions, graveyard/exile recursion, and 'none'-sourced mints.
+// The supported pairs and the deliberate NON-events (game setup, rips/
+// annihilation, staple merges, control changes, shuffles) live in canon
+// §1002.2 / PROTOCOL §3.3 — when adding or removing an emission site, update
+// those two docs together with the code.
 // extraSources lets a card that has already left a zone still see its own
 // zone-change trigger (parity with the cardDies/cardLeaves extraSources).
+// Listeners are unchanged: emit() walks the two battlefields (+ extraSources)
+// — only permanents hear events; the new pairs widen what is announced, not
+// who can listen.
 function emitZoneChange(card, controller, fromZone, toZone, extraSources, sourceIid) {
   if (!card) return;
   emit({
@@ -3238,47 +4236,174 @@ function emitZoneChange(card, controller, fromZone, toZone, extraSources, source
   }, extraSources);
 }
 
-// Returns true if the trigger has no targeted effects (always queueable),
-// OR if every targeted effect has at least one currently-valid target.
-function triggerHasAnyValidTarget(trig, controller) {
-  // New top-level target() step: the trigger needs a legal target of that filter.
-  if (trig.target && targetsForFilter(trig.target, controller, trig.target_filter).length === 0) return false;
-  for (const eff of (trig.effects || [])) {
-    if (!effectNeedsTarget(eff)) continue;
-    const valid = getValidTargets(eff, controller);
-    if (valid.length === 0) return false;
-  }
-  return true;
-}
-
 // Does a player-controlled trigger need the player to CHOOSE its target? Returns
 // { valid, promptEff } when there's a real choice (>1 legal target), else null.
-// Covers BOTH the top-level target() step (§3.5 — migrated triggers carry the
-// target on `trig.target` with bare effects) and the legacy per-effect target.
-// Without the top-level branch, every migrated targeted trigger silently
-// auto-picked instead of prompting (the "targets auto-selected on cast" bug).
-function triggerPlayerTargetPrompt(trig, controller) {
-  if (controller !== 'you') return null;
-  // The target filter is the top-level step (§3.5) or the first per-effect
-  // target — primaryLegalTargets resolves either shape. Implicit-target filters
-  // (self/player/opp/spell) auto-pick: no choice to offer.
-  const filt = trig.target || ((trig.effects || []).find(effectNeedsTarget) || {}).target;
-  if (!filt || filt === 'self' || filt === 'player' || filt === 'opp' || filt === 'spell') return null;
-  const valid = primaryLegalTargets(trig, controller);
-  if (valid.length <= 1) return null;   // 0 → fizzle/auto; 1 → no choice to make
-  // The effect used to value the choice (for the AI driver's pickBestTriggerTarget).
-  const promptEff = (trig.effects || []).find(e => e.kind === 'become_copy_of')
-    || (trig.effects || []).find(e => e.kind === 'grant_cast_permission')
-    || (trig.effects || []).find(e => e.kind !== 'chooses') || (trig.effects || [])[0] || {};
-  return { valid, promptEff };
+// ── Trigger target selection ───────────────────────────────────────────────
+// Targets are chosen as a trigger goes on the stack (MtG rules). All paths route
+// through TargetSelection, so they handle every shape including multi-slot
+// target_slots: pushTriggerOnStack AUTO-picks (AI / opponent, and any human
+// trigger with no genuine choice); the human gets a step-through PROMPT for the
+// slots that are a real choice — forced (one legal target) and implicit
+// (opp/player/self/spell) slots auto-fill.
+
+// ── A3-2 stackable infrastructure ──────────────────────────────────────────
+// Per-definition `stackable` boolean on trigger AND activated-ability
+// definitions. ABSENT → TRUE (Joe's ruling, PR #98 round 5: the default
+// posture is "players can respond", and the default must work gracefully
+// with no field written on any card — no card carries it yet). Boot
+// validation rejects present-but-non-boolean values (validateAllCardEffects
+// + collectUnknownTriggerRefs), so `!== false` is exact. Mana abilities
+// never consult this — they are hardcoded off-stack (canon §705).
+function isStackable(def) { return !def || def.stackable !== false; }
+
+// stackable:false drain-time-immediate arm for TRIGGERS — provisional
+// semantics per plan-stackable.md §6 Q1 (drain-time-immediate recommended);
+// subject to Joe's design pass; DORMANT — nothing is unstackable yet (every
+// shipped trigger defaults stackable). The trigger is player-atomic with its
+// event: targets were just chosen at drain, and it resolves HERE — before
+// any stack push and before any player exercises priority — so there is no
+// response window ("split second", Joe's provisional player-facing name).
+// It still logs, still counts against the per-episode trigger budget
+// (resolveTrigger increments it), and its downstream events still emit and
+// queue normally, draining at the next window.
+function resolveTriggerImmediate(p, targets) {
+  // formatTriggerText: ~ → source name; strip the authored/generated text's
+  // own trailing period before this template appends one (audit A10-3 —
+  // every trigger log line used to end "..").
+  const trigDesc = formatTriggerText(triggerLogText(p.trig), p.sourceName).replace(/\.$/, '');
+  log(`${p.sourceName} triggers (split second): ${trigDesc}.`, 'sp');
+  resolveTrigger({
+    kind: 'trigger', trig: p.trig, sourceIid: p.sourceIid, sourceName: p.sourceName,
+    controller: p.controller, targets, event: p.event || null,
+  });
+  // The board just mutated with no stack push: wipe any stale passes so a
+  // pre-event pass can't close the round over the new board (same rationale
+  // as the A1-1 leg 2 reset on inline ability resolution).
+  if (G.priority) G.priority.passes.clear();
 }
 
-// Drain queued triggers to stack. Active player's first, then opp. Pauses on
-// pendingTriggerTarget prompt; remaining triggers drain post-prompt.
+// Shared stack-push for a resolved trigger entry. (Also resets the priority round
+// so the opponent can respond, like a spell going on the stack.)
+function pushTriggerEntry(p, targets) {
+  G.stack.push({
+    kind: 'trigger',
+    trig: p.trig,
+    sourceIid: p.sourceIid,
+    sourceName: p.sourceName,
+    controller: p.controller,
+    targets,
+    // event → ctx.event for effects that read non-target data (Endomorph etc.).
+    event: p.event || null,
+  });
+  // Same ~-substitution + trailing-period dedupe as resolveTriggerImmediate
+  // (audit A10-3).
+  const trigDesc = formatTriggerText(triggerLogText(p.trig), p.sourceName).replace(/\.$/, '');
+  log(`${p.sourceName} triggers: ${trigDesc}.`, 'sp');
+  // A1-1 leg 3: drainTriggers refuses to run while priority is closed, so a
+  // round is guaranteed open here. Never synthesize one — a conjured round
+  // gets auto-passed by both players and advancePhaseAfterPriority then
+  // marches the phase PAST whatever declaration the engine was parked on
+  // (combat/blocks silently skipped). If this ever throws on a null
+  // G.priority, some new call path is draining from a closed window — gate
+  // that path, don't re-add the synthesis.
+  G.priority.passes.clear();
+  G.priorityHolder = opp(p.controller);
+}
+
+// Auto-pick path: one legal target per slot via tsAutoPick (handles top-level
+// target(), per-effect, AND multi-slot target_slots — the old single-pick logic
+// had no slot branch, so stapled multi-target ETBs fizzled entirely).
+// This is where rule 603.3c lives: a targeted trigger only goes on the stack
+// if every slot it needs has a legal target — tsAutoPick returns null
+// otherwise (including no-distinct-set for distinct_targets) and the fizzle
+// is LOGGED. (Audit A3-10: this is the sole pre-stack gate; emit() queues on
+// event/condition match alone.)
+function pushTriggerOnStack(p) {
+  let targets = [];
+  if (objectNeedsTarget(p.trig)) {
+    const picked = tsAutoPick(p.trig, p.controller);
+    if (!picked) {
+      log(`${p.sourceName} trigger fizzles — no legal target.`, 'sp');
+      return;
+    }
+    targets = picked;
+  }
+  // A3-2: an unstackable trigger resolves at drain instead of stacking.
+  if (!isStackable(p.trig)) { resolveTriggerImmediate(p, targets); return; }
+  pushTriggerEntry(p, targets);
+}
+
+// Step a human-controlled trigger's pending prompt: auto-fill forced (single
+// legal target) and implicit (opp/player/self/spell) slots, stopping at the
+// first slot that's a genuine choice. Returns 'prompt' (pause for the human),
+// 'done' (every slot assigned → finalize), or 'fizzle' (a slot lost its target).
+// Steps the human trigger prompt slot-by-slot, committing each pick before the
+// next. GREEDY, no backtracking: for a distinct_targets trigger with asymmetric
+// per-slot legal sets, an early pick could strand a later slot ('fizzle') even
+// though a different early pick would have yielded a legal full set. Correct only
+// because every current distinct card is 2-slot with the SAME filter on both slots
+// (so with ≥2 creatures there's always an escape; with exactly 2 the second slot
+// auto-fills). Revisit for the first 3+-slot or asymmetric-per-slot distinct card.
+function advanceTriggerTargetPrompt(pt) {
+  const bySlot = tsLegalBySlot(pt.trig, pt.controller);
+  for (const slot of pt.slotKeys) {
+    if (pt.pickedSlots[slot] != null) continue;
+    const valid = tsExcludePicked(pt.trig, bySlot.get(slot) || [], pt.pickedSlots);
+    if (!valid.length) return 'fizzle';
+    if (tsIsImplicitTargetType(tsSlotTargetType(pt.trig, slot)) || valid.length === 1) {
+      pt.pickedSlots[slot] = valid.length === 1 ? valid[0]
+        : pickBestTriggerTarget(tsSlotValueEff(pt.trig, slot), valid, pt.controller);
+      continue;
+    }
+    pt.currentSlot = slot;
+    pt.valid = valid;
+    pt.promptEff = tsSlotValueEff(pt.trig, slot);
+    return 'prompt';
+  }
+  return 'done';
+}
+
+// Build the human step-through prompt for a queued trigger, or null when there's
+// no genuine choice (every slot auto-fills → pushTriggerOnStack handles it).
+function triggerPlayerTargetPrompt(p) {
+  if (p.controller !== 'you' || !objectNeedsTarget(p.trig)) return null;
+  const pt = {
+    controller: p.controller, sourceIid: p.sourceIid, sourceName: p.sourceName,
+    trig: p.trig, event: p.event || null,
+    slotKeys: tsSlotKeys(p.trig, p.controller),
+    pickedSlots: [], currentSlot: -1, valid: null, promptEff: null,
+  };
+  return advanceTriggerTargetPrompt(pt) === 'prompt' ? pt : null;
+}
+
+// Finalize a fully-picked human prompt: assemble the slot-indexed targets and
+// push. (Auto-pick uses pushTriggerOnStack; this preserves the human's choices.)
+function finalizeTriggerTarget(pt) {
+  const targets = [];
+  for (const slot of pt.slotKeys) targets[slot] = pt.pickedSlots[slot];
+  fillSparseHoles(targets, pt.slotKeys[0]);
+  // A3-2: a human-prompted unstackable trigger also resolves immediately
+  // once its targets are picked (same dormant arm as pushTriggerOnStack).
+  if (!isStackable(pt.trig)) { resolveTriggerImmediate(pt, targets); return; }
+  pushTriggerEntry(pt, targets);
+}
+
+// Drain queued triggers to the stack. Active player's first, then opp. Pauses on
+// a human prompt; remaining triggers drain post-prompt.
 function drainTriggers() {
   if (G.gameOver) return false;
   if (G.pendingTriggerTarget) return false;
   if (G.pendingTriggers.length === 0) return false;
+  // A1-1 leg 3 (Joe-approved fix, PR #98): never drain while priority is
+  // CLOSED (§605 windows — pending attack/block declarations, combat damage,
+  // cleanup). Canon §1004.4: triggers queued while priority is closed WAIT;
+  // they drain at the next openPriorityRound (which calls this function).
+  // Pre-fix, pushTriggerEntry conjured a synthetic round here, which both
+  // players auto-passed, advancing the phase out from under a pending
+  // declaration — combat (or blocks) silently skipped. Reachable via mana
+  // abilities (legal at any time) whose costs/effects fire triggers, e.g. a
+  // "Sacrifice a creature: add mana" card.
+  if (!isPriorityOpen()) return false;
   const active = G.activePlayer;
   const ordered = [
     ...G.pendingTriggers.filter(p => p.controller === active),
@@ -3287,74 +4412,17 @@ function drainTriggers() {
   G.pendingTriggers = [];
   for (let i = 0; i < ordered.length; i++) {
     const p = ordered[i];
-    const prompt = (p.controller === 'you')
-      ? triggerPlayerTargetPrompt(p.trig, p.controller)
-      : null;
-    if (prompt) {
-      // Stop draining. Set the prompt; remaining triggers wait in queue.
-      G.pendingTriggers = ordered.slice(i);   // includes the current one (its slot)
-      G.pendingTriggerTarget = {
-        controller: p.controller,
-        sourceIid: p.sourceIid,
-        sourceName: p.sourceName,
-        trig: p.trig,
-        promptEff: prompt.promptEff,
-        valid: prompt.valid,
-      };
-      // Drop the in-prompt trigger from pendingTriggers — it's now in
-      // pendingTriggerTarget. After resolution we re-push from there.
-      G.pendingTriggers.shift();
+    const pt = triggerPlayerTargetPrompt(p);
+    if (pt) {
+      // A human choice remains — pause. The remaining triggers wait in queue.
+      G.pendingTriggers = ordered.slice(i + 1);
+      G.pendingTriggerTarget = pt;
       log(`${p.sourceName} triggered — choose a target.`, 'sp');
       return true;
     }
     pushTriggerOnStack(p);
   }
   return true;
-}
-
-function pushTriggerOnStack(p) {
-  // Triggers go on the stack like spells. Target chosen now (MtG rules).
-  // v1: auto-pick via AI heuristic for both sides; player UI prompt is future work.
-  const targetEff = (p.trig.effects || []).find(effectNeedsTarget);
-  let chosenTarget = null;
-  if (p.trig.target) {
-    // New top-level target() step: pick from the filter's legal set, valued by
-    // the first target-operating effect. (Human prompt deferred — auto-picks
-    // for both sides today, like the legacy per-effect path.)
-    const valid = targetsForFilter(p.trig.target, p.controller, p.trig.target_filter);
-    if (valid.length === 0) {
-      log(`${p.sourceName} trigger fizzles — no legal target.`, 'sp');
-      return;
-    }
-    // Value the choice by the trigger's intent-defining effect: prefer
-    // become_copy_of (The False Witness — copy their best), else the first
-    // non-chooses effect.
-    const valueEff = (p.trig.effects || []).find(e => e.kind === 'become_copy_of')
-      || (p.trig.effects || []).find(e => e.kind === 'grant_cast_permission')
-      || (p.trig.effects || []).find(e => e.kind !== 'chooses') || (p.trig.effects || [])[0] || {};
-    chosenTarget = pickBestTriggerTarget(valueEff, valid, p.controller);
-  } else if (targetEff) {
-    const valid = getValidTargets(targetEff, p.controller);
-    if (valid.length === 0) {
-      log(`${p.sourceName} trigger fizzles — no legal target.`, 'sp');
-      return;
-    }
-    chosenTarget = pickBestTriggerTarget(targetEff, valid, p.controller);
-  }
-  G.stack.push({
-    kind: 'trigger',
-    trig: p.trig,
-    sourceIid: p.sourceIid,
-    sourceName: p.sourceName,
-    controller: p.controller,
-    targets: chosenTarget ? [chosenTarget] : [],
-    // event → ctx.event for effects that read non-target data (Endomorph etc.).
-    event: p.event || null,
-  });
-  log(`${p.sourceName} triggers: ${triggerLogText(p.trig)}.`, 'sp');
-  if (!G.priority) G.priority = { passes: new Set() };
-  G.priority.passes.clear();
-  G.priorityHolder = opp(p.controller);
 }
 
 // Auto-pick best trigger target. v1 used for both sides.
@@ -3438,14 +4506,24 @@ function pickBestTriggerTarget(eff, valid, controller) {
       return sorted[0];
     }
   }
-  if (eff.kind === 'returnFromGraveyard' || eff.kind === 'grant_cast_permission') {
-    const graveOwner = eff.kind === 'grant_cast_permission' ? opp(controller) : controller;
-    const graveCards = G[graveOwner].graveyard;
+  // Grave-return pick: the migrated shape is move_card graveyard->hand
+  // (tools/migrate-effects.js collapsed the retired `returnFromGraveyard` kind
+  // into it); grant_cast_permission still recalls from a yard too. Value-pick
+  // the best returnable card, deriving WHICH graveyard each candidate sits in
+  // from its own stamped `controller` tag (getValidTargets stamps it per yard),
+  // NOT a single binary yard — so cross-/multi-yard filters value correctly.
+  // (findCard can't see graveyard cards, so look up by iid in the stamped
+  // yard.) (audit A7-3)
+  const isGraveReturn =
+    eff.kind === 'grant_cast_permission' ||
+    (eff.kind === 'move_card' && eff.from_zone === 'graveyard' && eff.to_zone === 'hand');
+  if (isGraveReturn) {
     const scored = valid
       .filter(t => t.kind === 'graveyard_card')
       .map(t => {
-        const card = graveCards.find(c => c.iid === t.iid);
-        return {t, value: card ? (cardValueOrZero(card)) : 0};
+        const yard = t.controller && G[t.controller] ? G[t.controller].graveyard : [];
+        const card = yard.find(c => c.iid === t.iid);
+        return {t, value: card ? cardValueOrZero(card) : 0};
       })
       .sort((a, b) => b.value - a.value);
     if (scored.length) return scored[0].t;
@@ -3473,9 +4551,22 @@ function cardValueOrZero(card) {
 
 // Resolve a trigger from the stack.
 function resolveTrigger(item) {
+  // Per-stack-episode trigger budget, NOT nesting depth (audit A3-3, kept
+  // deliberately): increments on every resolution, resets only when the
+  // stack empties with both players passing.
   G.triggerChainDepth = (G.triggerChainDepth || 0) + 1;
   if (G.triggerChainDepth > TRIGGER_DEPTH_CAP) {
-    log(`Trigger chain too deep (${TRIGGER_DEPTH_CAP}) — bailing to prevent loop.`, 'imp');
+    log(`Trigger budget exhausted (${TRIGGER_DEPTH_CAP} triggers this stack episode) — bailing to prevent a loop.`, 'imp');
+    return;
+  }
+  // §1006.1 resolution-time re-validation: target legality was checked when
+  // the trigger queued and again as it went on the stack — re-check NOW that
+  // responses have had their window (hexproof gained in response, target left
+  // play, filter no longer matched). Illegal slots are dropped; if no slot
+  // survives, the whole trigger fizzles — rider effects included (§704.1).
+  if (item.trig && !tsRevalidateTargets(item.trig, item.controller, item.targets)) {
+    log(`${item.sourceName} trigger fizzles — no legal target.`, 'sp');
+    afterEffectsApplied();
     return;
   }
   // Optional paid trigger (Land+Spell staple ETB): pause and let the controller
@@ -3526,6 +4617,10 @@ function runTriggerEffects(item) {
   if (hasTargetStep) { const f0 = getTriggerTargetForSlot(0); curTgt = f0.tgt; curSnap = f0.snap; }
   for (const eff of (item.trig.effects || [])) {
     if (eff.kind === 'chooses') {
+      // Human chooser → pause with the edict prompt (audit A4-7; the shared
+      // gate the spell resolver always had). Trailing effects replay in
+      // doEdictChoice; the AI path falls through to the handler's auto-pick.
+      if (maybeDeferHumanChooses(ctx, eff, item.trig.effects || [], curTgt)) break;
       applyEffect(ctx, eff, curTgt, curSnap);
       if (ctx.chosen) { curTgt = ctx.chosen; curSnap = snapshotTarget(ctx.chosen); }
       continue;
@@ -3534,27 +4629,23 @@ function runTriggerEffects(item) {
       const slot = eff.target_slot || 0;
       const { tgt, snap } = getTriggerTargetForSlot(slot);
       if (!tgt) { log(`${item.sourceName} trigger fizzles — no target.`, 'sp'); continue; }
-      // No re-validation: multi-effect triggers (Exorcist [exile, gain_life]) need
-      // effect 1 to read pre-effect-0 snapshot. Each effect guards live-target itself.
+      // Legality was re-validated ONCE at resolution start (resolveTrigger →
+      // tsRevalidateTargets); a null slot here was dropped as illegal. No
+      // per-effect re-validation beyond the handlers' liveness guards:
+      // multi-effect triggers (Exorcist [exile, gain_life]) need effect 1 to
+      // read the pre-effect-0 snapshot. Each effect guards live-target itself.
       applyEffect(ctx, eff, tgt, snap);
     } else if (eff.scope === 'self') {
-      // Self → source creature OR source's controller depending on
-      // effectOperatesOnCreature.
-      let selfTarget = null, selfSnap = null;
-      if (effectOperatesOnCreature(eff)) {
-        selfTarget = { kind: 'creature', iid: item.sourceIid, label: item.sourceName };
-        selfSnap = snapshotTarget(selfTarget);
-      } else {
-        selfTarget = { kind: 'player', who: item.controller };
-        selfSnap = selfTarget;
-      }
-      applyEffect(ctx, eff, selfTarget, selfSnap);
+      // Self → source creature OR source's controller (shared fork, A4-13).
+      const self = resolveSelfTarget(eff, item.sourceIid, item.sourceName, item.controller);
+      applyEffect(ctx, eff, self.tgt, self.snap);
     } else if (hasTargetStep && eff.scope == null) {
       // Bare effect after a target() step → operate on the established/chosen target.
       applyEffect(ctx, eff, curTgt, curSnap);
     } else {
       applyEffect(ctx, eff, null, null);
     }
+    if (maybeDeferTrailingForHumanPrompt(ctx, eff, item.trig.effects || [])) break;   // A4-23 leg-1
   }
   ctx.chosen = null;
   afterEffectsApplied();
@@ -3601,20 +4692,38 @@ function applySelect(cands, select) {
   const want = (select && select.extreme === 'least') ? Math.min(...vals) : Math.max(...vals);
   return cands.filter((_, i) => vals[i] === want);
 }
+// ONE hexproof checkpoint (A4-24 — was three pasted .filter() copies with a
+// missing-null-guard drift on the creature branch). True when `card` is opp-
+// controlled relative to the caster AND hexproof, i.e. NOT a legal target. The
+// `|| []` normalizes the drift so all three target branches read one fact.
+function hexproofBlocks(card, ctrl, caster) {
+  return (card.keywords || []).includes('hexproof') && ctrl !== caster;
+}
 function getValidTargets(effect, controller) {
   const allCreatures = [
     ...G.you.battlefield.map(c => ({card: c, ctrl: 'you'})),
     ...G.opp.battlefield.map(c => ({card: c, ctrl: 'opp'})),
   ].filter(x => hasType(x.card, 'Creature'))
-   .filter(x => !(x.card.keywords.includes('hexproof') && x.ctrl !== controller));
+   .filter(x => !hexproofBlocks(x.card, x.ctrl, controller));
   switch (effect.target) {
     case 'creature_or_player':  // "any target" — a creature or a player
+      // The optional restriction (effect.filter / target_filter) applies to
+      // the CREATURE half only (audit A4-8 — it used to be silently dropped
+      // for this kind, so "deal 3 to any target with flying" would have
+      // shipped unrestricted). matchFilter's vocabulary is card axes, so
+      // players are always legal; a filter meant to exclude players is a
+      // different (unsupported) concept and boot-rejected on player/opp.
       return [
         {kind:'player', who:'you', label: G.you.name},
         {kind:'player', who:'opp', label: G.opp.name},
-        ...allCreatures.map(x => ({kind:'creature', iid:x.card.iid, label:x.card.name})),
+        ...allCreatures
+          .filter(x => matchFilter(x.card, effect.filter, x.ctrl, controller))
+          .map(x => ({kind:'creature', iid:x.card.iid, label:x.card.name})),
       ];
     case 'player':
+      // Card-axis filters never apply to players — a player/opp target
+      // paired with a target_filter is rejected at boot (A4-8;
+      // validateAllCardEffects).
       return [
         {kind:'player', who:'you', label: G.you.name},
         {kind:'player', who:'opp', label: G.opp.name},
@@ -3633,7 +4742,7 @@ function getValidTargets(effect, controller) {
         ...G.opp.battlefield.map(c => ({card: c, ctrl: 'opp'})),
       ]
         .filter(x => isPermanent(x.card))
-        .filter(x => !(x.card.keywords && x.card.keywords.includes('hexproof') && x.ctrl !== controller))
+        .filter(x => !hexproofBlocks(x.card, x.ctrl, controller))
         .filter(x => matchFilter(x.card, effect.filter, x.ctrl, controller))
         .map(x => ({kind:'permanent', iid:x.card.iid, label:x.card.name}));
     case 'graveyard_card': {
@@ -3665,8 +4774,17 @@ function getValidTargets(effect, controller) {
       return cands.map(x => ({kind:'graveyard_card', iid: x.c.iid, label: x.c.name, controller: x.k}));
     }
     case 'spell':
+      // The restriction goes through matchFilterSpell (audit A4-8 — it was
+      // silently dropped here while permanent_or_spell's stack half
+      // enforced it). matchFilterSpell's axes are spliceable_*/not_token
+      // today; type/color counterspell filters need an axis extension (a
+      // separate design decision) and stay unsupported.
+      // Trigger and kind:'ability' entries are excluded — "target spell"
+      // never sees them (§1004.6; the `s.card` guard would already drop
+      // them, but the kinds are named so the rule is explicit).
       return G.stack
-        .filter(s => s.kind !== 'trigger' && s.card)
+        .filter(s => s.kind !== 'trigger' && s.kind !== 'ability' && s.card)
+        .filter(s => matchFilterSpell(s.card, effect.filter))
         .map(s => ({kind:'stack', stackItem: s, label: s.card.name}));
     case 'permanent_or_spell': {
       // Stapler target: perm OR spell. Each half uses its own match function.
@@ -3675,11 +4793,11 @@ function getValidTargets(effect, controller) {
         ...G.opp.battlefield.map(c => ({card: c, ctrl: 'opp'})),
       ]
         .filter(x => isPermanent(x.card))
-        .filter(x => !(x.card.keywords && x.card.keywords.includes('hexproof') && x.ctrl !== controller))
+        .filter(x => !hexproofBlocks(x.card, x.ctrl, controller))
         .filter(x => matchFilter(x.card, effect.filter, x.ctrl, controller))
         .map(x => ({kind:'permanent', iid:x.card.iid, label:x.card.name}));
       const spells = G.stack
-        .filter(s => s.kind !== 'trigger' && s.card)
+        .filter(s => s.kind !== 'trigger' && s.kind !== 'ability' && s.card)
         .filter(s => matchFilterSpell(s.card, effect.filter))
         .map(s => ({kind:'stack', stackItem: s, label: s.card.name}));
       return perms.concat(spells);
@@ -3696,6 +4814,21 @@ const TARGET_FILTERS = new Set([
   'your_creature', 'opp_creature', 'graveyard_card',
 ]);
 
+// The target names getValidTargets' switch actually resolves (audit A11-1).
+// Slot-level (`target_slots[i].target`) and effect-level (`e.target`) strings
+// are served by getValidTargets DIRECTLY — not via targetsForFilter, which
+// maps the TARGET_FILTERS taxonomy (your_creature / opp_creature / land) onto
+// getValidTargets shapes before calling in. A name outside this set falls
+// into getValidTargets' default arm at runtime (console.warn + []): the card
+// boots clean and is silently uncastable forever. Boot validation
+// (validateAllCardEffects) sweeps slot- and effect-level targets against this
+// set. KEEP IN SYNC with both runtime paths: the getValidTargets switch above
+// and targetsForFilter's case map below.
+const GETVALIDTARGETS_TARGETS = new Set([
+  'creature_or_player', 'player', 'opp', 'creature', 'permanent',
+  'graveyard_card', 'spell', 'permanent_or_spell',
+]);
+
 // Legal-target set for a target() step's filter (Slice 3 step 2 / §3.5). THIS
 // is the hexproof checkpoint: opp-controlled hexproof creatures are excluded,
 // the caster's own hexproof creatures are allowed. Maps the new closed
@@ -3706,6 +4839,12 @@ function targetsForFilter(filter, controller, restrict) {
   // restrictions — not_color, has_keyword, max_tough, tapped, not_token, etc. — that
   // the closed taxonomy can't name on its own. Merge it into the getValidTargets
   // filter so the cast-time enumeration (and hexproof checkpoint) honors it.
+  // Per-kind scope (audit A4-8): card-object kinds (creature/permanent/land/
+  // your_creature/opp_creature/graveyard_card) enforce the full matchFilter
+  // vocabulary; creature_or_player enforces it on the creature half (players
+  // are always legal); 'spell' enforces the matchFilterSpell axes only
+  // (spliceable_*/not_token). player/opp accept NO restriction — the pairing
+  // is rejected at boot (validateAllCardEffects).
   const merge = (f) => restrict ? Object.assign({}, f, restrict) : f;
   switch (filter) {
     case 'creature_or_player': return getValidTargets({ target: 'creature_or_player', filter: restrict || undefined }, controller);
@@ -3760,6 +4899,204 @@ function validTargetsBySlot(card, targetedEffs, who) {
   return out;
 }
 
+// `distinct_targets` cards (Roots and Branches, Sword and Sorcery) require their
+// slots to name DIFFERENT objects — the text reads "...another target creature",
+// which is only honest if one creature can't fill both slots. True iff the chosen
+// per-slot targets are pairwise distinct. Only the present entries are compared
+// (sparse-fill placeholders are skipped by the callers, which pass the real picks).
+function slotTargetsAreDistinct(targetsArr) {
+  const seen = [];
+  for (const t of targetsArr) {
+    if (!t) continue;
+    if (seen.some(s => sameTarget(s, t))) return false;
+    seen.push(t);
+  }
+  return true;
+}
+
+// ─── Multi-slot target SELECTION component ─────────────────────────────────
+// ONE place for "pick one legal target per slot, honoring cross-slot rules"
+// (distinct_targets today). The legality ATOM (getValidTargets / targetsForFilter
+// / validTargetsBySlot — hexproof enforced once) and the resolution-time fetch
+// (makeSlotTargetGetter) are already shared; this is the selection layer that sat
+// triplicated across the spell-cast, activated-ability, and trigger callers.
+// `obj` is any target-bearing thing
+// — a card, an activated ability, or a trigger — all carrying the same shape:
+// top-level `target`(+`target_filter`), canonical `target_slots`, or legacy
+// per-effect `target_slot` on `effects`.
+const TS_COMBO_CAP = 200;
+
+// Per-mode view of a card. Modal cards declare their targets via the chosen
+// mode's effects; `target_slots` / top-level `target` stay card-level. Non-modal
+// callers pass the card's own effects.
+function tsModeObj(card, effects) {
+  return {
+    target: card.target, target_filter: card.target_filter,
+    target_slots: card.target_slots, distinct_targets: card.distinct_targets,
+    effects,
+  };
+}
+
+// True when the object targets via the top-level target() step (the §3.5 hexproof
+// checkpoint) rather than multi-slot target_slots — i.e. one canonical slot 0.
+function tsHasTopLevelTarget(obj) {
+  return !!obj.target && !(Array.isArray(obj.target_slots) && obj.target_slots.length > 0);
+}
+
+// Map<slotIdx, legalTargets[]> across all three target shapes.
+function tsLegalBySlot(obj, who) {
+  if (tsHasTopLevelTarget(obj)) {
+    return new Map([[0, targetsForFilter(obj.target, who, obj.target_filter)]]);
+  }
+  const targetedEffs = (obj.effects || []).filter(effectNeedsTarget);
+  return validTargetsBySlot(obj, targetedEffs, who);
+}
+
+// Cross-slot exclusion: drop targets already chosen for earlier slots when the
+// object requires distinct picks. THE single home for the distinct_targets rule —
+// every selection path (enumerate / auto-pick / human prompt / castable probe)
+// filters through here, so "another target creature" can't drift between them.
+// Operates on an already-fetched list so callers keep their one tsLegalBySlot call.
+function tsExcludePicked(obj, list, picksSoFar) {
+  if (!obj.distinct_targets || !Array.isArray(picksSoFar) || !picksSoFar.length) return list;
+  return list.filter(t => !picksSoFar.some(p => p && sameTarget(p, t)));
+}
+
+// Sorted slot indices this object needs a target for.
+function tsSlotKeys(obj, who) {
+  return [...tsLegalBySlot(obj, who).keys()].sort((a, b) => a - b);
+}
+
+// Fill sparse holes in a slot-indexed targets[] with the first slot's pick, so
+// resolution (makeSlotTargetGetter) always finds an entry. Defensive for the
+// theoretical sparse-slot case (target_slots are dense 0..n-1 today → a no-op).
+// CAUTION for distinct_targets: a future SPARSE-slot card (e.g. slots [0,2]) would
+// have index 1 written with slot 0's pick, bypassing the per-slot distinct filter
+// and injecting a DUPLICATE into a set that was meant to be distinct. Harmless
+// today (all cards dense [0,1]); guard this if a sparse distinct card is added.
+function fillSparseHoles(targets, firstSlotKey) {
+  for (let i = 0; i < targets.length; i++) if (!targets[i]) targets[i] = targets[firstSlotKey];
+}
+
+// Dense per-slotKey combo → a slot-INDEXED targets[] (sparse holes filled with
+// slot 0's pick, matching the legacy resolution indexing makeSlotTargetGetter uses).
+function tsComboToTargets(combo, slotKeys) {
+  const targets = [];
+  for (let i = 0; i < slotKeys.length; i++) targets[slotKeys[i]] = combo[i];
+  fillSparseHoles(targets, slotKeys[0]);
+  return targets;
+}
+
+// Every legal full target set (each a slot-indexed targets[]). Replaces the
+// bespoke cross-product in getLegalActions; honors distinct + the combo cap.
+// Empty → a required slot has no legal target (uncastable) OR the object is
+// untargeted (callers gate on objectNeedsTarget to tell those apart).
+function tsEnumerate(obj, who) {
+  const bySlot = tsLegalBySlot(obj, who);
+  const slotKeys = [...bySlot.keys()].sort((a, b) => a - b);
+  if (!slotKeys.length) return [];
+  const validBySlot = slotKeys.map(s => bySlot.get(s));
+  if (validBySlot.some(arr => !arr.length)) return [];
+  let combos = [[]];
+  for (const validList of validBySlot) {
+    const next = [];
+    for (const partial of combos) {
+      for (const t of tsExcludePicked(obj, validList, partial)) {
+        next.push(partial.concat([t]));
+        if (next.length >= TS_COMBO_CAP) break;
+      }
+      if (next.length >= TS_COMBO_CAP) break;
+    }
+    combos = next;
+    if (combos.length >= TS_COMBO_CAP) break;
+  }
+  return combos.map(combo => tsComboToTargets(combo, slotKeys));
+}
+
+// Validate a fully chosen target set: every slot legal + cross-slot constraint.
+function tsIsLegalSet(obj, who, targets) {
+  const bySlot = tsLegalBySlot(obj, who);
+  const slotKeys = [...bySlot.keys()];
+  for (const slot of slotKeys) {
+    const tgt = targets && targets[slot];
+    if (!tgt) return false;
+    if (!(bySlot.get(slot) || []).some(v => sameTarget(v, tgt))) return false;
+  }
+  if (obj.distinct_targets && !slotTargetsAreDistinct(slotKeys.map(s => targets[s]))) return false;
+  return true;
+}
+
+// §704.1 / §1006.1 — resolution-time target re-validation. Re-checks each
+// locked target against the same per-slot legal sets used at cast/queue time
+// (tsLegalBySlot → getValidTargets / targetsForFilter, so hexproof, filters,
+// and zone changes all re-apply). Slots whose target is no longer legal are
+// nulled IN PLACE — the per-slot resolvers already treat a null slot as
+// "target gone" and skip just that effect, so a multi-target entry proceeds
+// against its remaining legal targets (partial fizzle). Returns false when
+// EVERY targeted slot is illegal: the caller fizzles the whole entry — no
+// effects run, untargeted riders included (§704.1 whole-object fizzle), and
+// costs stay paid. Untargeted objects pass trivially. Runs ONCE, before the
+// effect loop, so the within-resolution snapshot/LKI semantics (multi-effect
+// entries reading pre-effect-0 state) are untouched.
+function tsRevalidateTargets(obj, who, targets) {
+  if (!objectNeedsTarget(obj)) return true;
+  const bySlot = tsLegalBySlot(obj, who);
+  let anyLegal = false;
+  for (const slot of bySlot.keys()) {
+    const tgt = Array.isArray(targets) ? targets[slot] : null;
+    if (tgt && (bySlot.get(slot) || []).some(v => sameTarget(v, tgt))) {
+      anyLegal = true;
+    } else if (Array.isArray(targets) && targets[slot]) {
+      targets[slot] = null;
+    }
+  }
+  return anyLegal;
+}
+
+// The effect that VALUES a slot's pick (for the AI / auto-picker). Multi-slot:
+// the slot's own effect. A top-level target() trigger has bare effects (not
+// individually targeted), so fall back to the trigger's intent-defining effect
+// (become_copy_of → grant_cast_permission → first non-chooses).
+function tsSlotValueEff(obj, slot) {
+  const allEffs = obj.effects || [];
+  return allEffs.filter(effectNeedsTarget).find(e => (e.target_slot || 0) === slot)
+    || allEffs.find(e => e.kind === 'become_copy_of')
+    || allEffs.find(e => e.kind === 'grant_cast_permission')
+    || allEffs.find(e => e.kind !== 'chooses')
+    || allEffs[0] || {};
+}
+
+// The target filter TYPE for a slot (creature / opp / player / spell / …).
+function tsSlotTargetType(obj, slot) {
+  if (tsHasTopLevelTarget(obj)) return obj.target;
+  if (Array.isArray(obj.target_slots) && obj.target_slots[slot]) return obj.target_slots[slot].target;
+  const eff = (obj.effects || []).filter(effectNeedsTarget).find(e => (e.target_slot || 0) === slot);
+  return eff ? eff.target : null;
+}
+
+// Implicit target types resolve automatically — no human choice to offer: the
+// lone opponent, a free player choice, the source itself, a stack spell.
+function tsIsImplicitTargetType(type) {
+  return !type || type === 'self' || type === 'player' || type === 'opp' || type === 'spell';
+}
+
+// AI / auto pick: a full slot-indexed target set, one legal target per slot,
+// valued by pickBestTriggerTarget and honoring distinct. Generalizes the
+// single-target trigger auto-pick to N slots. Returns null if any slot has no
+// legal target (→ the caller fizzles the trigger).
+function tsAutoPick(obj, who) {
+  const bySlot = tsLegalBySlot(obj, who);
+  const slotKeys = [...bySlot.keys()].sort((a, b) => a - b);
+  const picks = [];
+  for (const slot of slotKeys) {
+    const valid = tsExcludePicked(obj, bySlot.get(slot) || [], picks);
+    if (!valid.length) return null;
+    picks[slot] = pickBestTriggerTarget(tsSlotValueEff(obj, slot), valid, who);
+  }
+  fillSparseHoles(picks, slotKeys[0]);
+  return picks;
+}
+
 // ─── Canonical "does this need a target / what are its legal targets" ─────
 // ONE source of truth for an object's (card / activated ability / trigger)
 // targeting shape, so the question can't drift across consumers. The §3.5
@@ -3797,9 +5134,12 @@ function probeTargetsForObject(obj, who) {
   if (Array.isArray(obj.target_slots) && obj.target_slots.length > 0) {
     const fakes = [];
     for (const spec of obj.target_slots) {
-      const valid = getValidTargets(spec, who);
-      if (!valid.length) return null;
-      fakes.push(valid[0]);
+      // distinct_targets: each slot's stand-in must differ from earlier picks (via
+      // tsExcludePicked, the shared cross-slot rule), so the castable-glow greys the
+      // spell out unless two distinct targets exist.
+      const pick = tsExcludePicked(obj, getValidTargets(spec, who), fakes)[0];
+      if (!pick) return null;
+      fakes.push(pick);
     }
     return fakes;
   }
@@ -3810,15 +5150,24 @@ function probeTargetsForObject(obj, who) {
 function matchFilterSpell(card, filter) {
   if (!filter) return true;
   if (filter.spliceable_base && !isSpliceableBase(card.tplId)) return false;
-  if (filter.spliceable_staple && !isSpliceableStaple(card.tplId)) return false;
+  // Same staple eligibility as matchFilter's permanent branch: template
+  // spliceable AND no prior chain (stapleChainOf). Before this, a stapled
+  // spell on the STACK passed legality and only fizzled at resolution.
+  if (filter.spliceable_staple
+      && (!isSpliceableStaple(card.tplId) || stapleChainOf(card).length > 0)) {
+    return false;
+  }
   if (filter.not_token && card.isToken) return false;
   return true;
 }
 function matchFilter(card, filter, controller, who) {
   if (!filter) return true;
   if (filter.tapped !== undefined && card.tapped !== filter.tapped) return false;
-  if (filter.not_color && card.color === filter.not_color) return false;
-  if (filter.color && card.color !== filter.color) return false;
+  // Color checks test the FULL color identity (audit A4-6): card.color is
+  // just colors[0], so first-pip equality let "non-Black" Doom Blade destroy
+  // the {U}{B} Seal-Thief Courier and would make {color:'U'} reject a W/U card.
+  if (filter.not_color && colorsOfCard(card).includes(filter.not_color)) return false;
+  if (filter.color && !colorsOfCard(card).includes(filter.color)) return false;
   if (filter.controller === 'self' && controller !== who) return false;
   if (filter.controller === 'opp'  && controller === who) return false;
   if (filter.max_tough !== undefined) {
@@ -3865,9 +5214,11 @@ function matchFilter(card, filter, controller, who) {
   // CARDS[tplId] guard.
   if (filter.not_token && card.isToken) return false;
   // Spliceable-base filter (Stapler's first target). Must be a card that
-  // can act as a base in the existing splice infrastructure: no Lands, no
-  // special creatures (Elystra/Codex/Stapler itself), no tokens, no modal
-  // cards. Routes through isSpliceableBase which is the canonical check.
+  // can act as a base in the existing splice infrastructure: no special
+  // cards (Elystra/Codex/Stapler itself), no tokens, no modal cards. Lands
+  // ARE valid bases — designed and tiebreak-prioritized (canonicalSplicePair
+  // ranks Land above Spell for the base). Routes through isSpliceableBase
+  // which is the canonical check.
   if (filter.spliceable_base && !isSpliceableBase(card.tplId)) return false;
   // Spliceable-staple filter (Stapler's second target). Must be a card
   // that can act as a staple-half: spliceable AND not already stapled
@@ -3876,17 +5227,35 @@ function matchFilter(card, filter, controller, who) {
   // the helper.
   if (filter.spliceable_staple) {
     if (!isSpliceableStaple(card.tplId)) return false;
-    // "Already stapled" check — see the field-name note in apply_in_game_splice.
-    // In-game cards carry the chain at card.stapledFrom.stapledTpls; the
-    // direct card.stapledTpls field is empty (it's a slot-level concept).
-    // Reject if either populated form indicates a prior chain.
-    const chain = (card.stapledFrom && Array.isArray(card.stapledFrom.stapledTpls))
-      ? card.stapledFrom.stapledTpls
-      : (Array.isArray(card.stapledTpls) ? card.stapledTpls : []);
-    if (chain.length > 0) return false;
+    // "Already stapled" check — stapleChainOf reads whichever chain field is
+    // populated (the one shared definition; see its header).
+    if (stapleChainOf(card).length > 0) return false;
   }
   return true;
 }
+
+// The four matchFilter axes that read getStats. Lord-buff evaluation must
+// not use them (getStats walks the lord loop → recursion, audit A4-14);
+// boot validation rejects them inside static_buffs (validateAllCardEffects).
+const STAT_BOUND_FILTER_KEYS = ['max_tough', 'min_tough', 'max_power', 'min_power'];
+
+// matchFilter through a STATS-FREE view: the four stat-bound axes are
+// skipped (treated as matching). Sole consumer today is lordBuffApplies —
+// the one funnel through which both static_buff halves (stat + keyword)
+// evaluate their filters — so a stat-bounded lord filter can no longer
+// close the getStats ↔ matchFilter cycle into a RangeError (audit A4-14).
+// If stat-bounded lord buffs are ever designed for real, the non-circular
+// semantics is thresholding on PRE-lord stats; until then they're
+// boot-rejected and skipped here.
+function matchFilterNoStats(card, filter, controller, who) {
+  if (filter && STAT_BOUND_FILTER_KEYS.some(k => filter[k] !== undefined)) {
+    const f = { ...filter };
+    for (const k of STAT_BOUND_FILTER_KEYS) delete f[k];
+    return matchFilter(card, f, controller, who);
+  }
+  return matchFilter(card, filter, controller, who);
+}
+
 function sameTarget(a, b) {
   if (a.kind !== b.kind) return false;
   if (a.kind === 'player') return a.who === b.who;
@@ -3938,6 +5307,10 @@ function resetInPlayState(card, preserveDeathState) {
   // RETAINED: the leave trigger fired by this very departure still needs it to
   // return the exiled original (read off the event's subject_card).
   if (card.copyOf) {
+    // Clear the flag FIRST: intrinsicKeywords is copy-aware (audit A4-5), and
+    // this branch wants the BASE identity back — re-deriving with copyOf
+    // still set would rebuild the copied keywords we're reverting.
+    card.copyOf = null;
     const baseTpl = CARDS[card.tplId];
     if (baseTpl) {
       card.name = baseTpl.name;
@@ -3956,24 +5329,16 @@ function resetInPlayState(card, preserveDeathState) {
       card.keywords = intrinsicKeywords(card);
       card.text = describeCardText(card);
     }
-    card.copyOf = null;
   }
   card.dealtDeathtouch = false;
-  // Re-apply permaBuffs from slot for permanent_eot creatures (Elystra). Buffs
-  // accumulate across the game on slot.permaBuffs; the card's modifier was
-  // stale from makeCard time. Strip and re-apply with current slot state.
-  if (Array.isArray(card.modifiers)) {
-    card.modifiers = card.modifiers.filter(m => m.source !== 'permaBuffs');
-  }
-  const tpl = CARDS[card.tplId];
-  if (tpl && tpl.permanent_eot && typeof card.slotIdx === 'number'
-      && typeof RUN !== 'undefined' && RUN.getSlots) {
-    const slot = RUN.getSlots()[card.slotIdx];
-    if (slot && slot.permaBuffs) applyPermaBuffsToCard(card, slot.permaBuffs);
-  }
+  // Elystra's permanent_eot buffs are slot stickers, so they need no special
+  // re-apply here: the stat_boost modifier the flush pushed carries no source
+  // tag and is NOT stripped (it survives the flicker), and sticker-granted
+  // keywords are re-derived by intrinsicKeywords above. A fresh makeCard
+  // re-applies them from slot.stickers via applyStickersToCard.
 }
 
-function moveToGraveyard(card, controller) {
+function moveToGraveyard(card, controller, batch) {
   const bf = G[controller].battlefield;
   const idx = bf.findIndex(c => c.iid === card.iid);
   if (idx < 0) return;
@@ -3998,7 +5363,7 @@ function moveToGraveyard(card, controller) {
   // Same flush as checkDeaths — capture permanent_eot buffs before
   // resetInPlayState clears them. Used for direct-destroy paths
   // (affect_creature destroy, mass destroy).
-  flushPermanentEotToPermaBuffs(card);
+  flushPermanentEotToStickers(card);
   clearRestrictionsFromSource(card.iid);
   resetInPlayState(card, true);   // preserve damagedBySources for dies-triggers
   // Leaves-play emit covers all leave paths uniformly. Fires for any card
@@ -4006,7 +5371,10 @@ function moveToGraveyard(card, controller) {
   // "when this leaves play" mechanics on non-creature permanents. Emitted
   // AFTER cardDies so dies-listeners (Sengir, Endomorph) fire in their
   // original order; leaves-listeners (Archdemon of Bargains) fire after.
-  emitLeavesBattlefield(card, controller);
+  // A4-4: mass-scope destroy defers this emit into `batch` (see
+  // deferOrEmitLeave) so simultaneous deaths see each other; single-target
+  // callers pass no batch and emit immediately, as always.
+  deferOrEmitLeave(batch, card, controller, 'graveyard', undefined);
 }
 
 // Sacrifice a creature. Mechanically identical to moveToGraveyard (same
@@ -4032,7 +5400,7 @@ function sacrificeCard(card, controller) {
   }
   // Flush permanent_eot — symmetric with checkDeaths and moveToGraveyard.
   // Sacrifice-sourced deaths shouldn't lose Elystra's accumulated buffs.
-  flushPermanentEotToPermaBuffs(card);
+  flushPermanentEotToStickers(card);
   clearRestrictionsFromSource(card.iid);
   resetInPlayState(card, true);
   log(`${pname(controller)} sacrifices ${card.name}.`, 'dmg');
@@ -4135,27 +5503,49 @@ function clearRestrictionsFromSource(sourceIid) {
       if (Array.isArray(c.typeGrants) && c.typeGrants.length) {
         c.typeGrants = c.typeGrants.filter(g => g.source !== sourceIid);
       }
-      // Granted keywords: remove this source from each keyword's grant set.
-      // If the set empties AND the keyword isn't intrinsic, strip it from
-      // the keywords list (e.g., Bindspeaker dies → target loses defender).
+      // Granted keywords: remove this source from each keyword's grant set
+      // (e.g., Bindspeaker dies → target loses defender). Strip logic shared
+      // with applyStaticKeywordGrants' revoke pass (audit A4-2).
       if (c.grantedBy instanceof Map) {
-        for (const [kw, sources] of [...c.grantedBy]) {
-          if (!sources.has(sourceIid)) continue;
-          sources.delete(sourceIid);
-          if (sources.size === 0) {
-            c.grantedBy.delete(kw);
-            if (!intrinsicKeywords(c).includes(kw)) {
-              const idx = c.keywords.indexOf(kw);
-              if (idx >= 0) c.keywords.splice(idx, 1);
-            }
-          }
-        }
+        for (const kw of [...c.grantedBy.keys()]) stripGrantedKeyword(c, kw, sourceIid);
       }
     }
   }
 }
 
-function drawCard(who) {
+// Remove sourceIid from `card`'s grant set for `kw`. If the set empties, the
+// keyword is stripped from card.keywords UNLESS it's intrinsic (template /
+// sticker / subtype-implied) or still carried by a live EOT grant (Threaten's
+// grant_haste must survive a lord-grant revocation). Shared by
+// clearRestrictionsFromSource (leave-play) and applyStaticKeywordGrants'
+// revoke pass (filter falsification, audit A4-2).
+function stripGrantedKeyword(card, kw, sourceIid) {
+  if (!(card.grantedBy instanceof Map)) return;
+  const sources = card.grantedBy.get(kw);
+  if (!sources || !sources.has(sourceIid)) return;
+  sources.delete(sourceIid);
+  if (sources.size === 0) {
+    card.grantedBy.delete(kw);
+    if (!intrinsicKeywords(card).includes(kw)
+        && !(Array.isArray(card.eotGrants) && card.eotGrants.includes(kw))) {
+      const idx = card.keywords.indexOf(kw);
+      if (idx >= 0) card.keywords.splice(idx, 1);
+    }
+  }
+}
+
+// Draw the top card of `who`'s library into their hand. `sourceIid` names the
+// card that CAUSED the draw (a "draw(2)" spell, a triggered draw) when one is
+// in scope — it rides the card_zone_change emit so noSelfCascade can
+// self-suppress; the turn-draw passes none.
+//
+// Zone-event note (audit A3-6): this is the ONE library→hand draw seam, so the
+// emit below announces every in-game draw. Opening hands deliberately bypass
+// it — makePlayer constructs hand/library by array ops before the game starts,
+// and Magiclike's rule is that zone-movement events DO NOT EXIST before the
+// game begins (canon §1002.2): setup placement and the forced mulligan are not
+// "moves", and abilities have no battlefield to listen from yet anyway.
+function drawCard(who, sourceIid) {
   const p = G[who];
   if (!p.library.length) {
     // Phylactery boon also covers decking out: each card you'd overdraw
@@ -4176,6 +5566,9 @@ function drawCard(who) {
     log(`${p.name} can't draw — loses!`, 'dmg'); endGame(opp(who)); return null;
   }
   const c = p.library.shift(); p.hand.push(c);
+  // A3-6: announce the draw. Listeners are battlefield permanents (emit()'s
+  // walk is unchanged); a `card_moves(library, hand)` trigger now fires.
+  emitZoneChange(c, who, 'library', 'hand', undefined, sourceIid);
   // build_on_draw hook fires when the card enters hand via drawing. Other
   // hand-entry paths (tutoring, opening-hand placement) call this helper
   // directly. Bouncing/recurring/flickering doesn't count — those are
@@ -4228,83 +5621,78 @@ function tryBuildOnDraw(card, who) {
 }
 function endGame(winner) {
   // Flush any pending permanent_eot conversions BEFORE flipping the game-over
-  // flag. The normal path is EOT cleanup, which converts tempPower/tempTou
-  // and eotGrants into slot.permaBuffs. But endGame can fire mid-turn
-  // (lethal attack, lethal Bolt, mill-out) — in which case EOT cleanup
-  // never runs, and any spells you cast on Elystra this turn evaporate when
-  // the next game starts. The flush makes "Elystra survives the win" robust
-  // against any game-end timing.
+  // flag. The normal path is EOT cleanup, which banks tempPower/tempTou and
+  // eotGrants as slot stickers. But endGame can fire mid-turn (lethal attack,
+  // lethal Bolt, mill-out) — in which case EOT cleanup never runs, and any
+  // spells you cast on Elystra this turn would evaporate when the next game
+  // starts. The flush makes "Elystra survives the win" robust against any
+  // game-end timing.
   for (const who of ['you', 'opp']) {
     for (const c of G[who].battlefield) {
-      flushPermanentEotToPermaBuffs(c);
+      flushPermanentEotToStickers(c);
     }
   }
   G.gameOver = true; G.winner = winner;
   log(`${pname(winner)} wins!`, 'imp');
 }
 
-// Apply slot.permaBuffs to a card — pushes a power/toughness modifier and
-// registers keywords in grantedBy with synthetic iid -1 (immune to
-// clearRestrictionsFromSource). Not idempotent for the modifier — caller
-// must strip first (resetInPlayState does this).
-function applyPermaBuffsToCard(card, permaBuffs) {
-  if (!permaBuffs) return;
-  // §3.8: symmetricize is now an additive snapshot (no symmetrizedTo sentinel),
-  // so permaBuffs (Elystra's accumulated power/tou) just stack normally.
-  if ((permaBuffs.power || 0) !== 0 || (permaBuffs.toughness || 0) !== 0) {
+// Flush a permanent_eot creature's (Elystra) current-turn temp buffs and EOT
+// keyword grants to SLOT STICKERS — the engine's blessed run-persistent channel
+// (splice/clone/steal-safe via the existing sticker plumbing). Mirrors
+// endomorph_absorb: emit a stat_boost sticker for the
+// P/T delta and a kw_<keyword> sticker per grant, apply the effect to the
+// in-play card now (so the buff survives this turn's cleanup), and persist to the
+// slot (so it survives save/load and carries to next game). Self-gates on
+// permanent_eot — a no-op for every other card. Consumes (zeroes) the temp
+// values it banks, so repeat calls in one leave path are idempotent.
+function flushPermanentEotToStickers(card) {
+  const tpl = CARDS[card.tplId];
+  if (!tpl || !tpl.permanent_eot) return;
+  if (typeof card.slotIdx !== 'number') return;
+  const persist = (typeof RUN !== 'undefined' && RUN.applyStickerToSlot)
+    ? (s) => RUN.applyStickerToSlot(card.slotIdx, s) : () => {};
+  // P/T delta → one stat_boost sticker (inline; carries the exact magnitude, so
+  // an asymmetric +2/+0 round-trips that a single registry id couldn't).
+  const dP = card.tempPower || 0, dT = card.tempTou || 0;
+  if (dP !== 0 || dT !== 0) {
+    const sticker = { kind: 'stat_boost', power: dP, toughness: dT };
+    persist(sticker);
     if (!Array.isArray(card.modifiers)) card.modifiers = [];
-    card.modifiers.push({
-      power: permaBuffs.power || 0,
-      toughness: permaBuffs.toughness || 0,
-      source: 'permaBuffs',   // marker for the strip-and-reapply path
-    });
+    card.modifiers.push({ power: dP, toughness: dT });   // keep the buff this game
+    if (!Array.isArray(card.stickers)) card.stickers = [];
+    card.stickers.push(sticker);                         // recorded on the card (P/T box reflects it)
+    card.tempPower = 0; card.tempTou = 0;                // consumed
   }
-  if (Array.isArray(permaBuffs.keywords)) {
+  // EOT keyword grants → kw_<keyword> registry stickers. intrinsicKeywords reads
+  // these (so the keyword survives resetInPlayState's re-derive), and render
+  // shows the gold kw badge — exactly endomorph's absorb path.
+  if (Array.isArray(card.eotGrants) && card.eotGrants.length) {
     if (!(card.grantedBy instanceof Map)) card.grantedBy = new Map();
-    for (const kw of permaBuffs.keywords) {
+    if (!Array.isArray(card.stickers)) card.stickers = [];
+    for (const kw of card.eotGrants) {
+      const sticker_id = 'kw_' + kw;
+      if (STICKERS[sticker_id]) {
+        persist(sticker_id);
+        if (!card.stickers.includes(sticker_id)) card.stickers.push(sticker_id);
+      }
+      // In-game: keep the keyword active after eotGrants clears. -1 is a
+      // synthetic "permanent" source — no real permanent has that iid (they
+      // start at 1), so clearRestrictionsFromSource never strips it.
       if (!card.keywords.includes(kw)) card.keywords.push(kw);
       if (!card.grantedBy.has(kw)) card.grantedBy.set(kw, new Set());
       card.grantedBy.get(kw).add(-1);
     }
+    card.eotGrants = [];   // consumed
   }
 }
 
-// Flush a permanent_eot creature's (Elystra) temp buffs and EOT grants into
-// slot.permaBuffs. Idempotent. Caller resets temp values after.
-function flushPermanentEotToPermaBuffs(card) {
-  const tpl = CARDS[card.tplId];
-  if (!tpl || !tpl.permanent_eot) return;
-  if (typeof card.slotIdx !== 'number') return;
-  const slot = (typeof RUN !== 'undefined' && RUN.getSlots) ? RUN.getSlots()[card.slotIdx] : null;
-  if (!slot) return;
-  if (!slot.permaBuffs) slot.permaBuffs = {power: 0, toughness: 0, keywords: []};
-  slot.permaBuffs.power += (card.tempPower || 0);
-  slot.permaBuffs.toughness += (card.tempTou || 0);
-  if (Array.isArray(card.eotGrants)) {
-    for (const kw of card.eotGrants) {
-      if (!slot.permaBuffs.keywords.includes(kw)) {
-        slot.permaBuffs.keywords.push(kw);
-      }
-    }
-  }
-  // Also promote to in-game perm state so the creature keeps buffs this turn.
-  card.permPower = (card.permPower || 0) + (card.tempPower || 0);
-  card.permTou = (card.permTou || 0) + (card.tempTou || 0);
-  // EOT grants → grantedBy with synthetic source iid -1, which
-  // clearRestrictionsFromSource never matches, so grants survive the rebuild.
-  if (Array.isArray(card.eotGrants)) {
-    if (!(card.grantedBy instanceof Map)) card.grantedBy = new Map();
-    for (const kw of card.eotGrants) {
-      if (!card.grantedBy.has(kw)) card.grantedBy.set(kw, new Set());
-      card.grantedBy.get(kw).add(-1);
-    }
-  }
-}
-
-// Card leaves play, persistent buffs survive on the slot. Used by bounce,
-// exile, flicker. Order matters: flush BEFORE resetInPlayState.
+// Card leaves play, persistent buffs survive on the slot. Used by the
+// affect_creature bounce/exile arms AND every move_card battlefield-leave
+// (bounce/flicker/exile/shuffle — audit A4-16; the move_card path used to
+// skip the flush behind a dead `post.keep_buffs` flag no card carried).
+// Order matters: flush BEFORE resetInPlayState.
 function leavesPlayPreservingBuffs(card) {
-  flushPermanentEotToPermaBuffs(card);
+  flushPermanentEotToStickers(card);
   clearRestrictionsFromSource(card.iid);
   resetInPlayState(card);
 }
@@ -4314,14 +5702,57 @@ function leavesPlayPreservingBuffs(card) {
 // shuffleIntoLibrary. Lets cards like Archdemon of Bargains
 // use a single 'thisLeaves' trigger instead of needing one trigger per
 // removal type. Caller passes the card and its controller-at-leave-time;
-// downstream trigger handlers reading ctx.event.card see the card object
-// in the same state it left play (slotIdx intact, bargainsNum intact, etc).
+// downstream trigger handlers read the leaving card as ctx.event.subject_card
+// (NOT event.card — that legacy field is gone; reading it broke Archdemon's
+// bargain payout and Endomorph's absorb post-E1). The object arrives in the
+// same state it left play (slotIdx intact, bargainsNum intact, etc).
 //
 // For creatures that fire BOTH this AND cardDies (on death), the leaves
 // event emits FIRST (before resetInPlayState/dies-emit). Cards that want
 // only one of the two should declare exactly one trigger.
-function emitLeavesBattlefield(card, controller, destZone, extraSources) {
+// A2-3 / A2-5: ONE "leaves combat" concept. A creature that leaves the
+// battlefield (or changes controller — CR 506.4c) is removed from combat:
+//   - G.attackers: its iid is pruned. Cast arrivals do NOT re-mint iids
+//     (only the move_card/flicker path does), so without this prune a
+//     declared attacker bounced to hand and flash-re-cast re-matched its
+//     stale entry and dealt combat damage while sick, untapped, and never
+//     re-declared (the A2-3 ghost attacker).
+//   - G.blockers entries whose VALUE (the attacker being blocked) is the
+//     leaving iid: deleted — the assignment's target is gone; the blocker
+//     stays on the battlefield but is freed (the staple-remap rule).
+//   - G.blockers entries whose KEY (the blocker) is the leaving iid: the
+//     key is retired to a 'gone:<iid>' tombstone that no live card can
+//     findCard-match, but the ENTRY survives — an attacker that was blocked
+//     STAYS blocked when its blocker leaves combat (MTG 509/510.1c; the
+//     pre-existing engine behavior, which dealCombatDamage realizes as
+//     wasBlocked=true with zero living blockers). Deleting the entry would
+//     wrongly flip the attacker to unblocked; keeping the live key would
+//     let a bounced-and-re-cast blocker re-inherit its block (the A2-3
+//     symmetric hole).
+function removeFromCombat(iid) {
+  if (Array.isArray(G.attackers)) {
+    const ai = G.attackers.indexOf(iid);
+    if (ai >= 0) G.attackers.splice(ai, 1);
+  }
+  if (G.blockers && typeof G.blockers.forEach === 'function') {
+    // Snapshot entries before mutating the Map.
+    const entries = Array.from(G.blockers.entries());
+    for (const [bIid, aIid] of entries) {
+      if (aIid === iid) {
+        G.blockers.delete(bIid);
+      } else if (bIid === iid) {
+        G.blockers.delete(bIid);
+        G.blockers.set('gone:' + bIid, aIid);
+      }
+    }
+  }
+}
+function emitLeavesBattlefield(card, controller, destZone, extraSources, sourceIid) {
   if (!card) return;
+  // Cross the card off the combat bookkeeping the moment it leaves play —
+  // BEFORE the zone-change emit, so triggers observe consistent combat
+  // state. See removeFromCombat above (A2-3).
+  removeFromCombat(card.iid);
   // Tokens leaving play still emit — a future "when this token leaves
   // play" mechanic might want it. Costs nothing if no trigger listens.
   // Unified zone-change mirror. destZone defaults to 'graveyard' (the death
@@ -4334,20 +5765,64 @@ function emitLeavesBattlefield(card, controller, destZone, extraSources) {
   // so a migrated thisKillsCreature (card_damaged_by_this) fires on creatures
   // that died in the same SBA sweep — parity with the legacy cardDies emit,
   // which passes the same batch.
+  // A3-11: sourceIid names the card that CAUSED the departure (PROTOCOL §3.3
+  // source_iid; feeds the noSelfCascade guard). Effect-driven callers thread
+  // ctx.sourceIid; the death/sacrifice paths (checkDeaths, moveToGraveyard,
+  // sacrificeCard) pass nothing — there causality is a player key (killedBy)
+  // or a multi-iid Set (damagedBySources), not a single causing card.
   emitZoneChange(card, controller, 'battlefield', destZone || 'graveyard',
-                 extraSources || [{card, controller}]);
+                 extraSources || [{card, controller}], sourceIid);
 }
 
-// Credit killer with the dying creature's keywords (runtime grants included).
-// Skips 'defender' (never offered as sticker reward).
+// Record a damage event's attribution on the victim. ONE writer for the two
+// views every damage site used to hand-sync:
+//   damagedBySources — Set of source iids that damaged this card this turn
+//     (cleared in the EOT cleanup sweep); powers Sengir-style "a creature
+//     dealt damage by this card this turn dies" triggers
+//     (card_damaged_by_this). ANY iid-bearing source records — creature,
+//     artifact, spell — so future non-creature damage sources ("whenever
+//     this kills something, …") aren't pre-foreclosed. Today only
+//     battlefield permanents can LISTEN for the predicate, so non-creature
+//     entries are inert evidence; the original creature-source gate bought
+//     nothing but a smaller Set and contradicted its own design note
+//     ("populated by combat & spell damage").
+//   killedBy — player key, last-writer-wins; if the creature ends up dying,
+//     this is who gets keyword-claim credit (claimKeywordsFromKill). Written
+//     unconditionally — spells DO claim kills for the reward screen.
+// DAMAGE only — destroy/edict paths set killedBy directly (destroying isn't
+// dealing damage, so they must never stamp damagedBySources).
+function recordDamage(victim, sourceCard, controller) {
+  if (!victim) return;
+  victim.killedBy = controller;
+  if (sourceCard && sourceCard.iid != null) {
+    if (!(victim.damagedBySources instanceof Set)) victim.damagedBySources = new Set();
+    victim.damagedBySources.add(sourceCard.iid);
+  }
+}
+
+// The shared trophy rule — what may be claimed from a slain creature, used by
+// BOTH keyword-claim systems (Endomorph's absorb and the end-of-game reward
+// claims): the keywords the creature intrinsically OWNED — printed + sticker-
+// granted + subtype-implied (intrinsicKeywords) — never borrowed magic (lord
+// auras, until-EOT grants), and never defender (not a trophy, never offered
+// as a sticker reward). Reading intrinsics rather than the live keywords
+// array makes the rule independent of death-pipeline ordering: today
+// resetInPlayState happens to strip grants before the dies-event emits, but
+// no claim path should rely on that.
+function claimableKeywords(corpse) {
+  return intrinsicKeywords(corpse).filter(kw => kw !== 'defender');
+}
+
+// Credit killer with the dying creature's claimable keywords (see
+// claimableKeywords — intrinsics only; borrowed lord/EOT grants are NOT
+// claimable, matching Endomorph's absorb rule).
 function claimKeywordsFromKill(card, killer) {
   if (!card || !hasType(card, 'Creature')) return;
   if (!killer || !G[killer]) return;
   if (!(G[killer].claimedKeywords instanceof Set)) {
     G[killer].claimedKeywords = new Set();
   }
-  for (const kw of (card.keywords || [])) {
-    if (kw === 'defender') continue;
+  for (const kw of claimableKeywords(card)) {
     G[killer].claimedKeywords.add(kw);
   }
 }
@@ -4369,11 +5844,16 @@ function checkDeaths() {
         const [, t] = getStats(c);
         const lethalDamage = (c.damage >= t) || (t <= 0) || c.dealtDeathtouch;
         if (!lethalDamage) continue;
-        if (c.keywords.includes('indestructible')) {
+        if (c.keywords.includes('indestructible') && t > 0) {
           // F2: indestructible only skips the death check — it does NOT heal.
           // Keep the marked damage (and the deathtouch flag): if indestructible
           // is removed later this turn, the still-lethal damage kills it at the
           // next SBA (MTG-correct). Both clear at end of turn with everything else.
+          //
+          // A1-3: the exemption covers only the damage/deathtouch death causes.
+          // A creature at toughness <= 0 dies regardless of indestructible —
+          // 0-toughness death isn't destruction (MTG 704.5f; canon
+          // docs/wiki/rules/1100-state-based-actions.md), hence the `t > 0`.
           continue;
         }
         bf.splice(i, 1);
@@ -4383,7 +5863,7 @@ function checkDeaths() {
           claimKeywordsFromKill(c, c.killedBy);
         }
         // Flush Elystra-style EOT buffs BEFORE resetInPlayState wipes them.
-        flushPermanentEotToPermaBuffs(c);
+        flushPermanentEotToStickers(c);
         clearRestrictionsFromSource(c.iid);
         resetInPlayState(c, true);   // preserve damagedBySources for dies-triggers
         log(`${c.name} dies.`, 'dmg');
@@ -4391,9 +5871,10 @@ function checkDeaths() {
       }
     }
     if (dying.length === 0) break;
-    // Leaves-play emit for each dying card, in the same batch order. Fires
-    // after all cardDies emits so the standard dies-listener queue stays
-    // consistent with prior versions.
+    // Leaves-play emit for each dying card, in the same batch order. Emitted
+    // after the whole batch is spliced off the battlefield, with the batch as
+    // extraSources, so simultaneous deaths see each other's card_zone_change.
+    // (The legacy cardDies event is retired — E1; this is the only death emit.)
     for (const entry of dying) {
       emitLeavesBattlefield(entry.card, entry.controller, 'graveyard', dying);
     }
@@ -4418,6 +5899,37 @@ function hasPhylacteryProtection(who) {
   const slots = RUN.getSlots();
   if (!slots) return false;
   return slots.some(s => s && s.tplId === 'phylactery');
+}
+
+// Shared slot-pointer fixup for ANY run-slot removal (audit A9-2/A9-3). The
+// removeSlotByIdx caller contract has two invariants, and this is the shared
+// place both live (used by every rip site AND both splice slot-removal paths;
+// the Stapler out-of-charges rip now honors BOTH this slot-pointer fixup AND the
+// leave-play discipline — removeFromCombat + clearRestrictionsFromSource — A5-15):
+// (1) every in-game card whose cached slotIdx sits ABOVE the
+// removed index must decrement (so slot-based lookups stay valid); (2) the
+// player's playedSlotIdxs Set — read by the win-reward filter (filterByPlayed)
+// — must be remapped the SAME way (DROP the removed index, DECREMENT every
+// index above it). The Set was never named by the old contract, so every
+// contract-honoring removal site left it stale, mis-aiming sticker rewards (A9-3).
+function fixupSlotPointersAfterRemoval(who, removedIdx) {
+  const zones = ['library', 'hand', 'battlefield', 'graveyard', 'exile'];
+  for (const zoneName of zones) {
+    const zone = G[who][zoneName];
+    if (!zone) continue;
+    for (const c of zone) {
+      if (typeof c.slotIdx === 'number' && c.slotIdx > removedIdx) c.slotIdx -= 1;
+    }
+  }
+  const played = G[who] && G[who].playedSlotIdxs;
+  if (played instanceof Set && played.size > 0) {
+    const remapped = new Set();
+    for (const i of played) {
+      if (i === removedIdx) continue;            // drop-at: the slot is gone
+      remapped.add(i > removedIdx ? i - 1 : i);  // decrement-above
+    }
+    G[who].playedSlotIdxs = remapped;
+  }
 }
 
 // Rip ONE slot from runState as Phylactery's curse-payment. Picks random
@@ -4464,16 +5976,9 @@ function ripSlotForPhylactery(who) {
       break;
     }
   }
-  // Decrement slotIdx for in-game cards pointing past the removed slot.
-  for (const zoneName of zones) {
-    const zone = G[who][zoneName];
-    if (!zone) continue;
-    for (const c of zone) {
-      if (typeof c.slotIdx === 'number' && c.slotIdx > ripIdx) {
-        c.slotIdx -= 1;
-      }
-    }
-  }
+  // Decrement slotIdx for cards past the removed slot AND remap playedSlotIdxs
+  // (audit A9-2/A9-3 — the shared contract fixup).
+  fixupSlotPointersAfterRemoval(who, ripIdx);
   log(`💀 Phylactery rips ${removedCardName} from your deck — gone forever.`, 'dmg');
   return true;
 }
@@ -4502,41 +6007,37 @@ function ripSlotByIdx(who, ripIdx, logPrefix) {
       break;
     }
   }
-  for (const zoneName of zones) {
-    const zone = G[who][zoneName];
-    if (!zone) continue;
-    for (const c of zone) {
-      if (typeof c.slotIdx === 'number' && c.slotIdx > ripIdx) {
-        c.slotIdx -= 1;
-      }
-    }
-  }
+  fixupSlotPointersAfterRemoval(who, ripIdx);  // slotIdx decrement + playedSlotIdxs remap (audit A9-2/A9-3)
   const deckLabel = who === 'you' ? 'your deck' : "opponent's deck";
   const duration = who === 'you' ? 'gone forever' : 'gone for the rest of this fight';
   log(`${logPrefix || '✂'} ${removedCardName || 'card'} ripped from ${deckLabel} — ${duration}.`, 'dmg');
   return true;
 }
 
-// Damage to a player. With Phylactery: life floors at 0; overflow rips slots.
-// Without: life can go negative; checkLifeTotals triggers loss at ≤0.
-// Floor-at-0 keeps life-gain intuitive (gaining 3 from 0 → 3, not -X+3).
-function damagePlayer(who, amount, sourceName) {
-  if (amount <= 0) return;
+// Lose `n` life (n > 0) — the ONE writer for life LOSS, shared by
+// damagePlayer (burn/combat) and gain_life's negative branch (drains).
+// Audit A4-12: drains used to subtract raw, bypassing Phylactery entirely —
+// the protected player sat at negative life and the next damagePlayer's
+// max(0, …) then RESET them up to 0. Design ruling (option A): ONE price
+// for losing life — under Phylactery, life floors at 0 and each would-be
+// point below 0 rips a slot, whether the loss came from damage or a drain
+// (Phylactery's text reads "Life lost past 0").
+function losePlayerLife(who, n, sourceIid) {
+  if (!(n > 0)) return;
   const lifeBefore = G[who].life;
   const lifeAbsorb = Math.max(0, lifeBefore);
-  log(`${sourceName || 'damage'} deals ${amount} to ${pname(who)}.`, 'dmg');
   if (hasPhylacteryProtection(who)) {
-    G[who].life = Math.max(0, lifeBefore - amount);
-    const overflow = Math.max(0, amount - lifeAbsorb);
+    G[who].life = Math.max(0, lifeBefore - n);
+    const overflow = Math.max(0, n - lifeAbsorb);
     for (let i = 0; i < overflow; i++) {
       const ok = ripSlotForPhylactery(who);
       if (!ok) break;   // out of slots; player will die on next checkLifeTotals
     }
   } else {
-    G[who].life -= amount;
+    G[who].life -= n;
   }
   // Track ACTUAL life lost this turn (post-Phylactery). Bloodlust triggers
-  // need damage that reached life total — fully-absorbed damage doesn't count.
+  // need loss that reached the life total — fully-absorbed loss doesn't count.
   const lifeLost = lifeBefore - G[who].life;
   if (lifeLost > 0) {
     G[who].lifeLostThisTurn = (G[who].lifeLostThisTurn || 0) + lifeLost;
@@ -4544,8 +6045,20 @@ function damagePlayer(who, amount, sourceName) {
     // "whenever you lose life" (is_life_loss) triggers fire from burn/combat,
     // not only from gain_life(negative)/drain. (is_life_gain needs delta>0, so
     // a negative delta can't mis-fire it.)
-    emit({type: 'life_changed', who, delta: -lifeLost});
+    // A3-11: source_iid names the damage source (spell callers thread
+    // ctx.sourceIid, combat threads atk.iid) — PROTOCOL §3.3 payload parity
+    // with the other life_changed emitters; feeds the noSelfCascade guard.
+    emit({type: 'life_changed', who, delta: -lifeLost, source_iid: sourceIid});
   }
+}
+
+// Damage to a player. With Phylactery: life floors at 0; overflow rips slots.
+// Without: life can go negative; checkLifeTotals triggers loss at ≤0.
+// Floor-at-0 keeps life-gain intuitive (gaining 3 from 0 → 3, not -X+3).
+function damagePlayer(who, amount, sourceName, sourceIid) {
+  if (!(amount > 0)) return;
+  log(`${sourceName || 'damage'} deals ${amount} to ${pname(who)}.`, 'dmg');
+  losePlayerLife(who, amount, sourceIid);
 }
 function emitCombatDamageToPlayer(source, controller, who, amount) {
   if (!source || amount <= 0) return;
@@ -4566,9 +6079,12 @@ function afterEffectsApplied() { checkDeaths(); checkLifeTotals(); }
 // both have passed since last stack change, top of stack resolves (or, if
 // stack empty, round closes and phase advances).
 // =========================================================================
-function openPriorityRound(initialHolder) {
+function openPriorityRound() {
   G.priority = { passes: new Set() };
-  G.priorityHolder = initialHolder || G.activePlayer;
+  // Priority always opens with the active player (MTG 117.3b). A caller-
+  // supplied initial holder would be unreliable anyway: drainTriggers →
+  // pushTriggerEntry overwrites priorityHolder when triggers are pending.
+  G.priorityHolder = G.activePlayer;
   // Drain pending triggers onto the stack before priority is exercised
   // (active player first); pushTriggerOnStack resets priorityHolder.
   drainTriggers();
@@ -4595,7 +6111,8 @@ function passPriority(who) {
         drainTriggers();
       }
     } else {
-      // Stack just emptied: reset chain depth (we're done with that pile).
+      // Stack just emptied: reset the per-episode trigger budget (we're
+      // done with that pile).
       G.triggerChainDepth = 0;
       // Empty stack: drain any pending triggers; if there are now items on
       // the stack, the round stays open. Otherwise close and advance.
@@ -4620,10 +6137,24 @@ function passPriority(who) {
 // advances a phase.
 function setPhase(p) {
   if (G.phase !== p) {
-    G.you.mana = { W: 0, U: 0, B: 0, R: 0, G: 0, C: 0 };
-    G.opp.mana = { W: 0, U: 0, B: 0, R: 0, G: 0, C: 0 };
+    G.you.mana = emptyManaPool();
+    G.opp.mana = emptyManaPool();
   }
   G.phase = p;
+}
+// A1-22: an empty mana pool. One factory replaces the {W:0,...} literal that was
+// pasted at makePlayer + both setPhase resets (§106.4 / DIVERGENCE B2) — a missing
+// key in one copy would let that color float across phases.
+function emptyManaPool() {
+  return { W: 0, U: 0, B: 0, R: 0, G: 0, C: 0 };
+}
+// A1-21: the per-turn combat declaration bookkeeping, cleared at COMBAT_DAMAGE
+// resolution and at CLEANUP (§514.3). One writer replaces the pasted copies.
+function resetCombatState() {
+  G.attackers = [];
+  G.blockers = new Map();
+  G.attackersDeclared = false;
+  G.blockersDeclared = false;
 }
 
 function advancePhaseAfterPriority() {
@@ -4649,6 +6180,11 @@ function advancePhaseAfterPriority() {
       break;
     case 'END':
       setPhase('CLEANUP');
+      break;
+    default:
+      // A1-5 drift guard: an unknown phase here would leave G.phase unchanged
+      // (recoverable — step() re-evaluates — but log loudly so it's not silent).
+      console.error('advancePhaseAfterPriority: unknown phase "' + G.phase + '" — phase left unchanged.');
       break;
   }
 }
@@ -4683,6 +6219,11 @@ function resolveTopOfStack() {
     resolveTrigger(item);
     return;
   }
+  // Activated-ability entries (A3-2 stackable infrastructure) likewise.
+  if (item.kind === 'ability') {
+    resolveAbilityEntry(item);
+    return;
+  }
   const card = item.card;
   log(`Resolving ${card.name}.`, 'sp');
   if (hasType(card, 'Creature') || hasType(card, 'Artifact')) {
@@ -4699,16 +6240,23 @@ function resolveTopOfStack() {
   } else {
     const ctx = { controller: item.controller, sourceName: card.name, sourceIid: card.iid, sourceCard: card,
                   allTargets: Array.isArray(item.targets) ? item.targets : [] };
-    // Snapshot the spell's target BEFORE any effect runs. Multi-effect spells
-    // like decomposed Swords ([exile, gain_life]) need the second effect to
-    // read the target's pre-resolution power/controller, even though the
-    // first effect already removed the card. This implements MtG's "last
-    // known information" semantics.
-    const sharedTarget = item.targets ? item.targets[0] : null;
-    const sharedSnap = sharedTarget ? snapshotTarget(sharedTarget) : null;
     // Pick effects by mode. For non-modal cards, this returns the flat
     // effect list. For modal cards, returns the chosen mode's effects.
     const activeEffects = effectsForMode(card, item.modeIdx);
+    // §704.1 resolution-time target re-validation (the spell-side twin of
+    // resolveTrigger's gate): targets were legal at cast time — re-check NOW
+    // that responses have had their window. Illegal slots are dropped (the
+    // per-slot resolvers skip them); if EVERY targeted slot is illegal the
+    // spell fizzles whole — no effects run (riders included), it goes to the
+    // graveyard, and costs stay paid. Untargeted spells pass trivially.
+    if (!tsRevalidateTargets(tsModeObj(card, activeEffects), item.controller, item.targets)) {
+      log(`${card.name} fizzles — no legal target.`, 'sp');
+      G[card.owner || item.controller].graveyard.push(card);
+      // A3-6: a fizzled spell still moves stack→graveyard — announce it.
+      emitZoneChange(card, item.controller, 'stack', 'graveyard');
+      afterEffectsApplied();
+      return;
+    }
     // Snapshot rip-on-target eligibility BEFORE effects fire. The targets
     // need to be checked while they're still on the battlefield — if the
     // spell kills Elystra (e.g., a player who chose to Doom Blade their own
@@ -4732,8 +6280,11 @@ function resolveTopOfStack() {
     // Multi-target dispatch: by default, all targeted effects share
     // item.targets[0] (legacy semantics for Swords, Strength of the Pack,
     // etc.). Effects that opt into a distinct target via `target_slot: N`
-    // pull from item.targets[N]. Snapshots are computed per slot lazily
-    // so each unique slot only snapshots once.
+    // pull from item.targets[N]. Snapshots are computed per slot lazily —
+    // the FIRST read of a slot freezes its last-known-information snapshot
+    // (§3.6), so a multi-effect spell like decomposed Swords ([exile,
+    // gain_life]) reads the target's pre-removal power/controller even
+    // after an earlier effect removed the card.
     const getTargetForSlot = makeSlotTargetGetter(Array.isArray(item.targets) ? item.targets : []);
     // New targeting model (§3.5): a top-level `target` step on the card means
     // the spell collected one target (item.targets[0]); bare effects operate
@@ -4748,31 +6299,14 @@ function resolveTopOfStack() {
       let tgt = null;
       let snap = null;
       if (eff.kind === 'chooses') {
-        // Human-facing selection (GAP 2): when the player forced to choose is
-        // the human, pause and prompt instead of auto-picking. Stash the
-        // chosen-dependent trailing effects (sacrifice/annihilate/rip); they
-        // replay in doEdictChoice once the human picks. The AI path falls
-        // through to the handler's auto-pick (selfplay/tests unchanged).
-        const chooser = (curTgt && curTgt.kind === 'player') ? curTgt.who : opp(ctx.controller);
-        const choosesFilter = eff.filter || 'creature';
-        if (chooser === 'you') {
-          const pool = choosesEligiblePool(chooser, choosesFilter);
-          if (pool.length > 0) {
-            const idx = activeEffects.indexOf(eff);
-            G.pendingEdictChoice = {
-              who: chooser,
-              source: ctx.sourceName,
-              sourceIid: ctx.sourceIid,
-              controller: ctx.controller,
-              filter: choosesFilter,
-              pool: pool.map(c => choosesDescriptor(c, chooser)),
-              trailingEffects: activeEffects.slice(idx + 1).map(e => ({ ...e })),
-            };
-            const noun = choosesFilter;   // 'creature' | 'permanent' | 'land'
-            log(`${ctx.sourceName}: ${pname(chooser)} must choose a ${noun} to lose.`, 'sp');
-            break; // defer; spell still moves to graveyard. doEdictChoice resumes.
-          }
-          // empty pool → fall through to the handler (logs "no creature to choose").
+        // Human-facing selection (GAP 2 / audit A4-7): when the player
+        // forced to choose is the human, pause and prompt instead of
+        // auto-picking — via the shared gate all three resolution loops use.
+        // Trailing effects (sacrifice/annihilate/rip) replay in
+        // doEdictChoice once the human picks. The AI path (and an empty
+        // pool) falls through to the handler's auto-pick.
+        if (maybeDeferHumanChooses(ctx, eff, activeEffects, curTgt)) {
+          break; // defer; spell still moves to graveyard. doEdictChoice resumes.
         }
         // Reads the established player (curTgt) and records ctx.chosen; the
         // chosen permanent becomes the operative target for the next effect.
@@ -4781,21 +6315,14 @@ function resolveTopOfStack() {
         continue;
       }
       if (eff.scope === 'self') {
-        // Mirror the trigger resolver's branching: self resolves to the
-        // SOURCE CREATURE for creature-operating effects, and to the
-        // SOURCE'S CONTROLLER (a player target) for player-operating
-        // effects (damage, gain_life, draw, discard, add_mana). Without
-        // this branch, a spell like Final Strike — "destroy creature,
-        // you lose 2 life" — would route the damage to itself (the
-        // sorcery card) instead of to the player, fizzling because the
-        // sorcery isn't on the battlefield. Bug observed v0.99.29.
-        if (effectOperatesOnCreature(eff)) {
-          tgt = {kind:'creature', iid: card.iid, label: card.name};
-          snap = snapshotTarget(tgt);
-        } else {
-          tgt = {kind:'player', who: item.controller};
-          snap = tgt;
-        }
+        // Self → source creature OR source's controller (the shared A4-13
+        // fork). For a spell the "creature" is the sorcery card itself —
+        // not on the battlefield, so creature-operating self effects fizzle
+        // gracefully while player-operating ones (Final Strike's "you lose
+        // 2 life") hit the controller. Bug observed v0.99.29.
+        const self = resolveSelfTarget(eff, card.iid, card.name, item.controller);
+        tgt = self.tgt;
+        snap = self.snap;
       } else if (effectNeedsTarget(eff)) {
         const slot = eff.target_slot || 0;
         const fetched = getTargetForSlot(slot);
@@ -4807,6 +6334,7 @@ function resolveTopOfStack() {
         snap = curSnap;
       }
       applyEffect(ctx, eff, tgt, snap);
+      if (maybeDeferTrailingForHumanPrompt(ctx, eff, activeEffects)) break;   // A4-23 leg-1
     }
     ctx.chosen = null;
     // Rip-on-target check (Elystra). Uses the eligibility snapshot taken
@@ -4821,12 +6349,18 @@ function resolveTopOfStack() {
       // Push card to graveyard first so the rip-up sweep finds and removes
       // it (otherwise the spell card is in limbo). The rip helper then
       // discards that pile entry along with the slot.
+      // A3-6: deliberately NO stack→graveyard emit here — the graveyard push
+      // is transient bookkeeping for the rip sweep, and rip is the engine's
+      // no-trigger removal verb (the card never durably arrives anywhere).
       G[card.owner || item.controller].graveyard.push(card);
       ripSlotByIdx(item.controller, card.slotIdx, `Elystra binds ${card.name}`);
       afterEffectsApplied();
       return;
     }
     G[card.owner || item.controller].graveyard.push(card);
+    // A3-6: a resolved sorcery moving stack→graveyard is announced. As with
+    // `counter`, `controller` is the caster; the pile is owner-routed.
+    emitZoneChange(card, item.controller, 'stack', 'graveyard');
   }
   afterEffectsApplied();
 }
@@ -4851,15 +6385,30 @@ function resolveCombatDamage() {
   for (const [bIid] of G.blockers) {
     const fb = findCard(bIid); if (fb) allCombatants.push(fb.card);
   }
-  const hasFirstStrike = allCombatants.some(c => c.keywords.includes('first_strike'));
+  // A2-1: first-strike membership is SNAPSHOTTED here, once, before any
+  // damage — both strike steps consult this set, never live keywords.
+  // Deaths are swept BETWEEN the passes (afterEffectsApplied), and a dying
+  // lord revokes its granted keywords (clearRestrictionsFromSource) — under
+  // a live read, a creature whose first-strike grant died with its lord
+  // re-qualified for the pass-2 `!first_strike` filter and dealt damage
+  // TWICE (and a creature gaining first strike between passes dealt zero).
+  // Each combatant deals damage in exactly the wave the snapshot assigns:
+  // pass 1 if it had first strike when damage started, pass 2 otherwise —
+  // never both (no accidental double-strike semantics). Design ruling,
+  // PR #98, 2026-06-11 (audit A2-1): per MTG — step 507 has no priority
+  // window between the strike steps, so nothing can respond to the
+  // revocation; canon §803.
+  const fsIids = new Set(
+    allCombatants.filter(c => c.keywords.includes('first_strike')).map(c => c.iid)
+  );
 
-  if (hasFirstStrike) {
-    // First-strike step: only first-strikers deal damage.
-    dealCombatDamage(blocked, defender, c => c.keywords.includes('first_strike'));
+  if (fsIids.size > 0) {
+    // First-strike step: only snapshot first-strikers deal damage.
+    dealCombatDamage(blocked, defender, c => fsIids.has(c.iid));
     afterEffectsApplied();
     if (G.gameOver) return;
-    // Normal step: anyone still alive that DOESN'T have first strike.
-    dealCombatDamage(blocked, defender, c => !c.keywords.includes('first_strike'));
+    // Normal step: everyone who did NOT have first strike at damage start.
+    dealCombatDamage(blocked, defender, c => !fsIids.has(c.iid));
   } else {
     // No first strike — single pass, all combatants.
     dealCombatDamage(blocked, defender, () => true);
@@ -4879,7 +6428,10 @@ function dealCombatDamage(blocked, defender, dealsDamage) {
     // the gain_life effect. Without this, Ajani's Pridemate wouldn't trigger
     // from a lifelink attacker — combat damage uses a different code path
     // than applyDamageFrom (which handles spell damage).
-    emit({type: 'life_changed', who: srcCtrl, delta: amt});
+    // A2-8: source_iid matches the sibling emitters (applyDamageFrom,
+    // gain_life) per PROTOCOL §3.3 — without it a noSelfCascade "you gain
+    // life" trigger couldn't recognize its own combat-lifelink gain.
+    emit({type: 'life_changed', who: srcCtrl, delta: amt, source_iid: source.iid});
   };
   G.attackers.forEach(aIid => {
     const fa = findCard(aIid); if (!fa) return;
@@ -4892,7 +6444,7 @@ function dealCombatDamage(blocked, defender, dealsDamage) {
 
     if (!wasBlocked) {
       if (atkDeals && aPow > 0) {
-        damagePlayer(defender, aPow, atk.name);
+        damagePlayer(defender, aPow, atk.name, atk.iid);
         emitCombatDamageToPlayer(atk, atkCtrl, defender, aPow);
         applyLifelink(atk, atkCtrl, aPow);
       }
@@ -4900,7 +6452,7 @@ function dealCombatDamage(blocked, defender, dealsDamage) {
     }
     if (livingBlockers.length === 0) {
       if (atkDeals && atk.keywords.includes('trample') && aPow > 0) {
-        damagePlayer(defender, aPow, `${atk.name} (trample)`);
+        damagePlayer(defender, aPow, `${atk.name} (trample)`, atk.iid);
         emitCombatDamageToPlayer(atk, atkCtrl, defender, aPow);
         applyLifelink(atk, atkCtrl, aPow);
       }
@@ -4928,29 +6480,40 @@ function dealCombatDamage(blocked, defender, dealsDamage) {
       const blk = fb.card;
       const blkCtrl = fb.controller;
       const [bPow, bTou] = getStats(blk);
-      const indestructible = blk.keywords.includes('indestructible');
-      // Lethal-equivalent. Deathtouch reduces to 1 ONLY against killable
-      // blockers (deathtouch can't kill indestructibles, so they need full
-      // remaining toughness to satisfy the trample requirement).
-      const lethalNeeded = (atkDeathtouch && !indestructible)
+      // Lethal-equivalent. Deathtouch: 1 point of deathtouch damage is a
+      // lethal dose vs EVERY blocker, indestructible included — the
+      // indestructible creature is lethal-marked but survives (immunity
+      // lives in checkDeaths, not here). Design ruling, PR #98, 2026-06-10
+      // (audit A2-7); matches §902.3/§803, which state the rule unqualified.
+      const lethalNeeded = atkDeathtouch
         ? Math.min(1, Math.max(0, bTou - blk.damage))
         : Math.max(0, bTou - blk.damage);
       let dmgToBlk = 0;
       // Try to satisfy lethal damage. Indestructibles take damage marked
       // (which doesn't kill them) but counts toward enabling trample.
-      if (atkDeals && remaining >= lethalNeeded && lethalNeeded > 0) {
-        blk.damage += lethalNeeded;
-        dmgToBlk = lethalNeeded;
-        if (atkDeathtouch && !indestructible) blk.dealtDeathtouch = true;
-        if (!(blk.damagedBySources instanceof Set)) blk.damagedBySources = new Set();
-        blk.damagedBySources.add(atk.iid);
-        // Tag the killer for keyword-claim attribution. Last-writer-wins —
-        // see card init comment. Unconditional on the damage event, since
-        // we want even non-lethal damage to "stake the claim" if the
-        // creature ends up dying later in combat.
-        blk.killedBy = atkCtrl;
-        applyLifelink(atk, atkCtrl, lethalNeeded);
-        remaining -= lethalNeeded;
+      // A2-2: a blocker that needs 0 more (a fully-marked indestructible —
+      // F2 retains its marked damage) is already SATISFIED — it takes no
+      // damage and must not suppress trample carryover (§803: assign each
+      // blocker's REMAINING toughness; 0 remaining ⇒ satisfied with 0).
+      if (atkDeals && remaining >= lethalNeeded) {
+        // Inner guard: a zero-need blocker gets no 0-damage recordDamage
+        // falsely staking a kill claim (and no zero lifelink/log noise).
+        if (lethalNeeded > 0) {
+          blk.damage += lethalNeeded;
+          dmgToBlk = lethalNeeded;
+          // dealtDeathtouch = victim-side mark: the BLOCKER received deathtouch
+          // damage (despite the name; Godot calls it lethal_marked). See audit
+          // A2-10. Indestructibles are marked too (A2-7): checkDeaths skips
+          // them while indestructible, but if the keyword is removed later
+          // this turn the still-lethal mark kills them at the next SBA —
+          // same F2 semantics as retained marked damage.
+          if (atkDeathtouch) blk.dealtDeathtouch = true;
+          // Even non-lethal damage "stakes the claim" if the creature ends up
+          // dying later in combat (recordDamage: last-writer-wins killedBy).
+          recordDamage(blk, atk, atkCtrl);
+          applyLifelink(atk, atkCtrl, lethalNeeded);
+          remaining -= lethalNeeded;
+        }
       } else {
         unsatisfied.push(fb);
       }
@@ -4960,13 +6523,12 @@ function dealCombatDamage(blocked, defender, dealsDamage) {
       if (dealsDamage(blk) && bPow > 0) {
         attackerDamage += bPow;
         dmgToAtk = bPow;
+        // dealtDeathtouch = victim-side mark: the BLOCKER has deathtouch and
+        // the ATTACKER — its victim — gets the flag (despite the name; Godot
+        // calls it lethal_marked). See audit A2-10.
         if (blk.keywords.includes('deathtouch')) atk.dealtDeathtouch = true;
-        if (!(atk.damagedBySources instanceof Set)) atk.damagedBySources = new Set();
-        atk.damagedBySources.add(blk.iid);
-        // Tag the attacker as killed by blocker's controller (mirror of
-        // blocker tagging above). If the attacker dies, the blocker's
-        // controller gets the keyword-claim credit.
-        atk.killedBy = blkCtrl;
+        // Mirror of the blocker tagging above.
+        recordDamage(atk, blk, blkCtrl);
         applyLifelink(blk, blkCtrl, bPow);
       }
       // Honest log: show the actual exchange. "X (2) fights Y (3)" reads
@@ -4978,25 +6540,30 @@ function dealCombatDamage(blocked, defender, dealsDamage) {
     //   - All blockers satisfied + trample → carries to defender
     //   - Any unsatisfied blocker → all leftover dumped on highest-priority
     //     unsatisfied blocker (no trample carryover possible by rules)
-    //   - All satisfied + no trample → leftover wasted
+    //   - All satisfied + no trample → leftover wasted, but lifelink still
+    //     gains it (full power, even when the damage is overkill — design
+    //     ruling, PR #98, 2026-06-10; audit A2-7)
     if (atkDeals && remaining > 0) {
       if (unsatisfied.length === 0 && atk.keywords.includes('trample')) {
-        damagePlayer(defender, remaining, `${atk.name} (trample)`);
+        damagePlayer(defender, remaining, `${atk.name} (trample)`, atk.iid);
         emitCombatDamageToPlayer(atk, atkCtrl, defender, remaining);
         applyLifelink(atk, atkCtrl, remaining);
       } else if (unsatisfied.length > 0) {
         const dump = unsatisfied[0].card;
         dump.damage += remaining;
-        if (!(dump.damagedBySources instanceof Set)) dump.damagedBySources = new Set();
-        dump.damagedBySources.add(atk.iid);
-        // Tag killer for keyword-claim if this damage proves lethal.
-        dump.killedBy = atkCtrl;
+        recordDamage(dump, atk, atkCtrl);
         applyLifelink(atk, atkCtrl, remaining);
         // Also log the dump so the player sees that the attacker piled
         // leftover damage onto one blocker. Without this, the per-pair
         // logs above would each show "(0)" damage to blocker, hiding the
         // fact that one of them actually took the full leftover.
         log(`${atk.name} piles ${remaining} extra damage onto ${dump.name}.`, 'cb');
+      } else {
+        // All blockers satisfied, no trample: the leftover damage goes
+        // nowhere — but lifelink still gains it. Design ruling, PR #98,
+        // 2026-06-10 (audit A2-7): lifelink always gains the attacker's
+        // full power, even when that damage is overkill.
+        applyLifelink(atk, atkCtrl, remaining);
       }
     }
     atk.damage += attackerDamage;
@@ -5040,19 +6607,22 @@ function doTapLandForMana(who, cardIid, color, abilityIdx) {
     manaAb = manaAbilityOf(card);
   }
   if (!manaAb) return;
-  card.tapped = true;
-  const eff0 = manaAb.effects[0];
-  if (eff0.choose) {
-    const opts = eff0.choose === 'any' ? COLORS : eff0.choose;
-    const chosen = (color && opts.includes(color)) ? color : opts[0];
-    G[who].mana[chosen]++;
-    log(`${G[who].name} taps ${card.name} for {${chosen}}.`);
-  } else {
-    const am = eff0.amounts;
-    for (const k of Object.keys(am)) G[who].mana[k] += am[k];
-    const txt = Object.entries(am).map(([k, n]) => `{${k}}`.repeat(n)).join('');
-    log(`${G[who].name} taps ${card.name} for ${txt}.`);
-  }
+  // A7-1: the tap lane pays ONLY the tap; an extra-cost mana ability must never
+  // resolve here (its sacrifice/remove_counters would be silently skipped, and a
+  // tapless one would be wrongly tapped). Refuse — it routes through
+  // activateAbility, which pays the full cost.
+  if (!manaAbilityCostIsTrivial(manaAb)) return;
+  card.tapped = true;   // pay the tap cost
+  // Resolve through the shared ability-effects path (the SAME one doActivateAbility
+  // uses) so the mana-fill logic — and any untargeted rider effect — lives in one
+  // place, not a parallel hand-rolled copy. The chosen color and the
+  // "taps SOURCE for {X}" log framing ride along on the entry
+  // (ctx.manaColor / ctx.tapForMana → the add_mana handler).
+  runAbilityEffects({
+    ab: manaAb, controller: who, sourceName: card.name,
+    sourceIid: card.iid, sourceCard: card, targets: [],
+    manaColor: color, tapForMana: true,
+  });
 }
 function doCastSpell(who, cardIid, targets, modeIdx) {
   const p = G[who];
@@ -5079,6 +6649,11 @@ function doCastSpell(who, cardIid, targets, modeIdx) {
   // effect-set. For non-modal cards this is undefined/0, transparent to the
   // existing flow.
   pushOnStack({card, controller: who, targets: targets || [], modeIdx: modeIdx || 0});
+  // A3-6: casting moves the card to the stack — from its actual source zone
+  // ('hand' normally; 'graveyard'/'exile' under a cast permission). Emitted
+  // AFTER pushOnStack so the card is genuinely on the stack (and after the
+  // spell_cast emit, which keeps the existing trigger order untouched).
+  emitZoneChange(card, who, castable.zone, 'stack');
   // Modal log message includes the chosen mode label if available, so the
   // log doesn't say just "casts X" for ambiguous modal cards.
   let modeLabel = '';
@@ -5105,7 +6680,11 @@ function doActivateAbility(who, cardIid, abilityIdx, targets, sacIid) {
   const f = findCard(cardIid); if (!f) return;
   const card = f.card;
   const ab = card.abilities[abilityIdx];
-  // Pay costs.
+  // Pay costs. Anything that could make the activation ILLEGAL — slot filters,
+  // distinct_targets, the Stapler pair check — was already validated in
+  // isLegalAction (executeAction gates on it), so per MtG 601.2h the costs
+  // paid here are the LAST part of activation: an illegal activation never
+  // reaches this line, and nothing needs refunding.
   if (ab.cost.tap) card.tapped = true;
   if (ab.cost.mana) payMana(who, resolvedManaCost(ab.cost.mana, card, who));
   // Sac cost is paid BEFORE the effect resolves. The sacrificed creature
@@ -5125,16 +6704,94 @@ function doActivateAbility(who, cardIid, abilityIdx, targets, sacIid) {
       card.counters[name] = (card.counters[name] || 0) - ab.cost.remove_counters[name];
     }
   }
-  // Mana abilities don't go on the stack; resolve immediately.
-  // Other activated abilities also resolve immediately in this prototype
-  // (a simplification — real MtG would put them on the stack).
-  const ctx = { controller: who, sourceName: card.name, sourceIid: card.iid, sourceCard: card, allTargets: Array.isArray(targets) ? targets : [] };
+  // Costs are paid; route by stackability (A3-2 stackable infrastructure).
+  // Mana abilities NEVER stack — hardcoded fast path (canon §705), they
+  // resolve inline below regardless of any `stackable` field. A targeted
+  // ability that also makes mana is NOT a mana ability (isManaAbility keys on
+  // no-target), so it correctly takes the stackable path below.
+  const isMana = isManaAbility(ab);
+  const entry = {
+    kind: 'ability', ab,
+    sourceIid: card.iid, sourceName: card.name,
+    // The source card object, captured at activation. Resolution reads it as
+    // last-known information (§3.6 spirit): the source may leave play between
+    // activation and resolution (it may even have paid itself as the
+    // sacrifice cost just above) and the ability still resolves.
+    sourceCard: card,
+    controller: who,
+    targets: Array.isArray(targets) ? targets : [],
+  };
+  if (!isMana && isStackable(ab)) {
+    // Stackable path (the default — `stackable` absent → true): the ability
+    // takes a real kind:'ability' stack entry, exactly like a trigger.
+    // Costs were paid and targets locked above; effects run at resolution
+    // (resolveAbilityEntry) with §1006.1/§704.1 target re-validation.
+    G.stack.push(entry);
+    log(`${G[who].name} activates ${card.name}${targets && targets[0] ? ' on ' + targets[0].label : ''}.`, who === 'you' ? 'sp' : 'ai');
+    // §603 handoff, same as a spell cast (pushOnStack) or a trigger push:
+    // reset the response round and hand priority to the activator's
+    // opponent. Non-mana activation is gated on isInstantWindow /
+    // isMainPhaseWindow (both require an open round), so G.priority is
+    // reliable here — same contract pushOnStack relies on.
+    G.priority.passes.clear();
+    G.priorityHolder = opp(who);
+    // Triggers fired by COST payment (a sacrifice's dies-trigger) drain on
+    // top of the ability entry — LIFO: they resolve before the ability,
+    // matching where they'd land in MtG.
+    drainTriggers();
+    return;
+  }
+  // Inline arm: mana abilities (always), PLUS the stackable:false arm for
+  // non-mana abilities — provisional semantics per plan-stackable.md §6 Q1
+  // (drain-time-immediate recommended); subject to Joe's design pass;
+  // DORMANT — nothing is unstackable yet (every shipped ability defaults
+  // stackable). This is byte-for-byte today's pre-A3-2 inline resolution.
+  runAbilityEffects(entry);
+  if (!isMana) {
+    log(`${G[who].name} activates ${card.name}${targets && targets[0] ? ' on ' + targets[0].label : ''}.`, who === 'you' ? 'sp' : 'ai');
+    // A1-1 leg 2 (Joe-approved fix, PR #98): a non-mana ability just mutated
+    // the board — wipe the pass tracker so a pre-activation pass no longer
+    // counts toward closing the round (§603's both-pass close means "both
+    // passed in succession since the last action"; spells and trigger pushes
+    // both already reset it). Pre-fix this was the only board-mutating
+    // action without a reset: the opponent's stale pass let the activation
+    // plus the activator's own (auto-)pass close the phase — or resolve
+    // combat damage — with no response window on the new board. The
+    // activator keeps priority (nothing went on the stack). Mana abilities
+    // stay exempt, matching the tapLandForMana path.
+    if (G.priority) G.priority.passes.clear();
+  }
+  // Drain any triggers that fired during cost payment or effect resolution.
+  // The inline arms bypass the stack, so without this drain, triggers from
+  // the cost (e.g., Old Guardian's dies-trigger when sacrificed to Carrion
+  // Feeder) would sit in pendingTriggers and only land on the stack after a
+  // manual priority pass. Spells and stackable abilities handle this at
+  // their push sites.
+  drainTriggers();
+}
+
+// Run an ability's effects against its locked targets. Shared by the inline
+// arm of doActivateAbility (mana abilities + the dormant stackable:false
+// path) and kind:'ability' stack-entry resolution (resolveAbilityEntry).
+// `item` is the entry shape doActivateAbility builds: {ab, sourceIid,
+// sourceName, sourceCard, controller, targets}.
+function runAbilityEffects(item) {
+  const ab = item.ab;
+  const who = item.controller;
+  const targets = Array.isArray(item.targets) ? item.targets : [];
+  // sourceCard is the activation-time object (last-known information) — see
+  // the entry-construction comment in doActivateAbility.
+  const ctx = { controller: who, sourceName: item.sourceName, sourceIid: item.sourceIid,
+                sourceCard: item.sourceCard || null, allTargets: targets,
+                // Tap-for-mana lane threads the resolved color choice + log
+                // framing through to the add_mana handler (doTapLandForMana).
+                manaColor: item.manaColor, tapForMana: item.tapForMana };
   // Multi-target dispatch (mirrors resolveTopOfStack/resolveTrigger). By
   // default, targeted effects share targets[0]. Effects can opt into a
   // distinct slot via `target_slot: N`. allTargets is also threaded onto
   // ctx so multi-target effects like apply_in_game_splice (Stapler) can read
   // both inputs directly without relying on inter-effect coordination.
-  const getAbilityTargetForSlot = makeSlotTargetGetter(Array.isArray(targets) ? targets : []);
+  const getAbilityTargetForSlot = makeSlotTargetGetter(targets);
   // New targeting model (§3.5): a top-level `target` step on the ability means
   // it picked one target (targets[0]); bare effects operate on it,
   // chooses() replaces it. Inert for legacy abilities (none set ab.target).
@@ -5145,13 +6802,25 @@ function doActivateAbility(who, cardIid, abilityIdx, targets, sacIid) {
     let tgt = null;
     let snap = null;
     if (e.kind === 'chooses') {
+      // Human chooser → pause with the edict prompt (audit A4-7; shared
+      // gate). Latent today (no pool ability uses chooses) but the third
+      // resolution loop gets the same contract preemptively.
+      if (maybeDeferHumanChooses(ctx, e, ab.effects, abCurTgt)) break;
       applyEffect(ctx, e, abCurTgt, abCurSnap);
       if (ctx.chosen) { abCurTgt = ctx.chosen; abCurSnap = snapshotTarget(ctx.chosen); }
       continue;
     }
     if (e.scope === 'self') {
-      tgt = {kind:'creature', iid: card.iid, label: card.name};
-      snap = snapshotTarget(tgt);
+      // Self → source creature OR source's controller (audit A4-13: this
+      // loop was the divergent third hand-synced copy of the v0.99.29 fork
+      // — it routed EVERY self to the creature, so a "T: deal 1 to you"
+      // ability damaged the creature instead of the player. The live
+      // self-abilities all survive: pump/add_type are creature-routed by
+      // CREATURE_EFFECT_KINDS; gain_life/move_card route to the controller,
+      // which their handlers' ctx.controller fallbacks already produced).
+      const self = resolveSelfTarget(e, item.sourceIid, item.sourceName, who);
+      tgt = self.tgt;
+      snap = self.snap;
     } else if (effectNeedsTarget(e)) {
       const slot = e.target_slot || 0;
       const fetched = getAbilityTargetForSlot(slot);
@@ -5162,25 +6831,37 @@ function doActivateAbility(who, cardIid, abilityIdx, targets, sacIid) {
       snap = abCurSnap;
     }
     applyEffect(ctx, e, tgt, snap);
+    if (maybeDeferTrailingForHumanPrompt(ctx, e, ab.effects)) break;   // A4-23 leg-1
   }
   ctx.chosen = null;
   afterEffectsApplied();
-  if (ab.effects[0].kind !== 'add_mana') {
-    log(`${G[who].name} activates ${card.name}${targets && targets[0] ? ' on ' + targets[0].label : ''}.`, who === 'you' ? 'sp' : 'ai');
+}
+
+// kind:'ability' stack-entry resolution (A3-2 stackable infrastructure) —
+// the §1006.1/§704.1 framework applied to activated abilities: targets were
+// legal at activation; re-judge NOW that responses have had their window.
+// Illegal slots are dropped by the per-slot resolvers; if EVERY targeted
+// slot is illegal the ability fizzles whole — rider effects included — with
+// a log. Costs stay paid (they were the last part of activation, §601.2h).
+function resolveAbilityEntry(item) {
+  if (!tsRevalidateTargets(item.ab, item.controller, item.targets)) {
+    log(`${item.sourceName}'s ability fizzles — no legal target.`, 'sp');
+    afterEffectsApplied();
+    return;
   }
-  // Drain any triggers that fired during cost payment or effect resolution.
-  // Activated abilities resolve immediately in this engine (a simplification —
-  // in real MtG they'd go on the stack, where dies-triggers from sacrifice
-  // costs would land on top and resolve first). Without this drain, triggers
-  // from the cost (e.g., Old Guardian's dies-trigger when sacrificed to
-  // Carrion Feeder) sit in pendingTriggers and only land on the stack after
-  // a manual priority pass — making them invisible to the player at the
-  // moment of activation. Spells handle this implicitly via pushOnStack;
-  // activated abilities need an explicit drain because they bypass the stack.
-  // pushTriggerOnStack (called from drainTriggers) resets the priority round
-  // and gives opp priority to respond, matching the "ability goes on stack
-  // and opp can respond" flow of real MtG.
-  drainTriggers();
+  // Stapler pair validity was an ACTIVATION check (isLegalAction) — now that
+  // a response window exists between activation and resolution, the pair can
+  // decay (half of it removed in response). Re-judge it here; an invalid
+  // pair fizzles the ability like a dead target.
+  if ((item.ab.effects || []).some(e => e.kind === 'apply_in_game_splice')) {
+    const pair = resolveSplicePair(item.targets);
+    if (pair.reason) {
+      log(`${item.sourceName}'s ability fizzles — ${pair.reason}.`, 'sp');
+      afterEffectsApplied();
+      return;
+    }
+  }
+  runAbilityEffects(item);
 }
 function doDeclareAttackers(who, cardIids) {
   G.attackers = cardIids.slice();
@@ -5194,8 +6875,10 @@ function doDeclareAttackers(who, cardIids) {
   // Done after the tap so triggers see the post-tap state.
   for (const iid of cardIids) {
     const f = findCard(iid); if (!f) continue;
-    // Single emission serves both vocabularies: legacy condId triggers read
-    // attacker/defender; composable triggers read subject_card/defender_key.
+    // attacker/defender are DEAD legacy payload fields — the condId vocabulary
+    // is fully retired (DIVERGENCE E2) and grep finds zero consumers of either.
+    // Composable triggers read subject_card/defender_key. Removing the dead
+    // pair was suite-green but is a payload change — staged, not shipped here.
     emit({type: 'attacks', attacker: f.card, controller: who, defender: opp(who),
           subject_iid: f.card.iid, subject_card: f.card, defender_key: opp(who)});
   }
@@ -5216,6 +6899,11 @@ function doDiscard(who, cardIid) {
   const card = p.hand.splice(idx, 1)[0];
   p.graveyard.push(card);
   log(`${p.name} discards ${card.name}.`);
+  // A3-6: announce the discard. Attribute it to the card that forced it
+  // (threaded onto forcedDiscard by discardFromHand) when one is in scope.
+  const discardSourceIid = (G.forcedDiscard && G.forcedDiscard.who === who)
+    ? G.forcedDiscard.sourceIid : undefined;
+  emitZoneChange(card, who, 'hand', 'graveyard', undefined, discardSourceIid);
   if (G.forcedDiscard && G.forcedDiscard.who === who) {
     G.forcedDiscard.remaining--;
     // Two paths null the forced-discard prompt: hitting the requested count,
@@ -5223,7 +6911,12 @@ function doDiscard(who, cardIid) {
     // a 5-card forced discard against a 2-card hand resolves after 2). The
     // latter avoids an unresolvable prompt blocking step() forever.
     if (G.forcedDiscard.remaining <= 0 || p.hand.length === 0) {
+      // A4-23 leg-1: trailing effects resume only when the LAST discard
+      // completes (replay exactly once, not per discarded card).
+      const trailing = G.forcedDiscard.trailingEffects;
+      const deferCtx = G.forcedDiscard.deferCtx;
       G.forcedDiscard = null;
+      if (trailing && trailing.length) resumeTrailingEffects(deferCtx, trailing);
     }
   }
 }
@@ -5237,36 +6930,39 @@ function doSearchPick(who, cardIid) {
   G[who].hand.push(card);
   shuffle(lib);
   log(`${G[who].name} fetches ${card.name}.`, 'sp');
+  // A3-6: a tutor is a library→hand move; attribute it to the searching card.
+  emitZoneChange(card, who, 'library', 'hand', undefined, G.pendingSearch.sourceIid);
+  // A4-23 leg-1: capture any deferred trailing effects before clearing the prompt.
+  const trailing = G.pendingSearch.trailingEffects;
+  const deferCtx = G.pendingSearch.deferCtx;
   G.pendingSearch = null;
   // Tutored cards trigger build_on_draw the same as any other hand-entry.
   // The Codex doesn't currently appear in any tutor's filter, but if a
   // future "tutor any card" effect lands, this is where it'd matter.
   tryBuildOnDraw(card, who);
+  // A4-23 leg-1: the effects after the search now resume, AFTER the pick (canon
+  // §704.2 in-order resolution) — e.g. Demonic Tutor's "lose 2 life".
+  if (trailing && trailing.length) resumeTrailingEffects(deferCtx, trailing);
 }
 function doTriggerTargetPick(who, target) {
-  // Player submits a target for the pending trigger prompt. Push the
-  // trigger onto the stack with the chosen target, then resume draining
-  // any remaining queued triggers.
+  // Player submits a target for the CURRENT slot of the pending trigger prompt.
+  // Record it, then advance: if more slots need a choice, stay paused for the
+  // next; once every slot is assigned, push the trigger and resume draining.
   if (!G.pendingTriggerTarget || G.pendingTriggerTarget.controller !== who) return;
-  const p = G.pendingTriggerTarget;
-  // Sanity-validate the target is in the valid list.
-  if (!p.valid.some(v => sameTarget(v, target))) return;
+  const pt = G.pendingTriggerTarget;
+  // Sanity-validate the target is in the current slot's valid list.
+  if (!pt.valid.some(v => sameTarget(v, target))) return;
+  pt.pickedSlots[pt.currentSlot] = target;
+  const r = advanceTriggerTargetPrompt(pt);
+  if (r === 'prompt') return;   // more slots to choose — stay paused; UI re-renders
   G.pendingTriggerTarget = null;
-  // Push trigger onto stack with the chosen target.
-  G.stack.push({
-    kind: 'trigger',
-    trig: p.trig,
-    sourceIid: p.sourceIid,
-    sourceName: p.sourceName,
-    controller: p.controller,
-    targets: [target],
-  });
-  log(`${p.sourceName} triggers: ${triggerLogText(p.trig)}.`, 'sp');
-  if (!G.priority) G.priority = { passes: new Set() };
-  G.priority.passes.clear();
-  G.priorityHolder = opp(p.controller);
-  // Resume draining the remaining queued triggers (if any).
-  drainTriggers();
+  if (r === 'done') finalizeTriggerTarget(pt);
+  // r === 'fizzle' → a later slot lost its only legal target; drop the trigger.
+  // A3-12: say so — the sibling fizzle paths (pushTriggerOnStack's auto-pick,
+  // resolveTrigger's dead-target arm) both log; this one silently evaporated
+  // a trigger the player was mid-prompt on.
+  if (r === 'fizzle') log(`${pt.sourceName} trigger fizzles — no legal target.`, 'sp');
+  drainTriggers();   // resume the remaining queued triggers
 }
 // Resume a deferred edict (GAP 2) after the human picks which permanent to
 // lose. The chooses() step paused resolution and stashed the chosen-dependent
@@ -5287,7 +6983,10 @@ function doEdictChoice(who, iid) {
       slotIdx: picked.slotIdx, controller: who },
   };
   log(`${pname(who)} chooses ${picked.label}.`, 'sp');
-  for (const eff of p.trailingEffects) applyEffect(ctx, eff, null, null);
+  // A4-23 leg-1: shared replay (re-defers if a trailing effect opens another
+  // human pause). ctx.chosen is set, so non-self trailing effects (sacrifice/
+  // annihilate/rip) operate on the pick exactly as before.
+  resumeTrailingEffects(ctx, p.trailingEffects);
   drainTriggers();
 }
 function doSymmetricizeChoice(who, which) {
@@ -5403,10 +7102,9 @@ function finalizeBuild(p, trigger) {
   if (typeof RUN !== 'undefined' && RUN.getSlots && typeof p.slotIdx === 'number') {
     const slot = RUN.getSlots()[p.slotIdx];
     if (slot) {
-      slot.bonusTrigger = {
-        ...trigger,
-        effects: (trigger.effects || []).map(e => ({...e})),
-      };
+      // cloneTriggerData (audit A3-13): slot and live card each get their
+      // own condition array — exact copies now, free to diverge.
+      slot.bonusTrigger = cloneTriggerData(trigger);
     }
   }
   // Find the live card across all zones — Codex prompt fires on draw,
@@ -5424,12 +7122,11 @@ function finalizeBuild(p, trigger) {
   if (liveCard) {
     if (!Array.isArray(liveCard.triggers)) liveCard.triggers = [];
     liveCard.triggers = liveCard.triggers.filter(t => !t.generated);
-    liveCard.triggers.push({
-      ...trigger,
-      effects: (trigger.effects || []).map(e => ({...e})),
-    });
+    liveCard.triggers.push(cloneTriggerData(trigger));
   }
-  log(`📜 Built ability: ${triggerLogText(trigger)}`, 'sp');
+  // ~ → card name (audit A10-3). If the live card wasn't found, '~' → '~'
+  // is an identity substitution — better an honest placeholder than ''.
+  log(`📜 Built ability: ${formatTriggerText(triggerLogText(trigger), liveCard ? liveCard.name : '~')}`, 'sp');
   G.pendingTriggerBuild = null;
 }
 
@@ -5486,7 +7183,14 @@ function whoHasPriority(who) {
   if (G.gameOver) return false;
   if (isWaitingForForcedAction()) return false;
   if (isPriorityOpen()) return G.priorityHolder === who;
-  if (G.cleanupDiscarding) return who === G.activePlayer;
+  // A1-10: the cleanup discard does NOT grant priority. This function's only
+  // consumers are the tapLandForMana legality checks and the tap enumeration
+  // in getLegalActions — and canon §605 closes the cleanup-discard window
+  // (nothing is castable, setPhase('UNTAP') zeroes the pool, and the land
+  // would stay tapped through the opponent's whole turn). The discard itself
+  // doesn't route through here: its legality (isLegalAction 'discard'),
+  // enumeration (getLegalActions), and expectedActor all carry their own
+  // cleanupDiscarding clauses.
   // Pre-declaration: only the player making the declaration "has priority"
   // for the purpose of taking actions. (They can also tap mana sources etc.)
   if (G.phase === 'COMBAT_ATTACK' && !G.attackersDeclared) return who === G.activePlayer;
@@ -5546,10 +7250,12 @@ function isLegalAction(who, action) {
       let manaAb = null;
       if (abIdx >= 0) {
         manaAb = f.card.abilities[abIdx];
-        if (!manaAb || !manaAb.effects || manaAb.effects[0].kind !== 'add_mana') return false;
+        // A7-1: the tap lane only legalizes TRIVIAL-cost mana abilities; an
+        // extra-cost one must go through activateAbility (which pays full cost).
+        if (!isAutoUsableManaAbility(manaAb)) return false;
       } else {
-        // Backwards-compat: caller didn't specify, find the first mana ability.
-        manaAb = f.card.abilities.find(ab => ab.effects && ab.effects[0] && ab.effects[0].kind === 'add_mana');
+        // Backwards-compat: caller didn't specify, find the first trivial mana ability.
+        manaAb = f.card.abilities.find(ab => isAutoUsableManaAbility(ab));
         if (!manaAb) return false;
       }
       if (f.card.sick) return false;
@@ -5576,51 +7282,14 @@ function isLegalAction(who, action) {
       } else {
         if (!isMainPhaseWindow(who)) return false;
       }
-      // Validate targets if needed. By default, multi-effect spells share
-      // a single target slot (targets[0]) — preserves the legacy behavior
-      // for Swords, Strength of the Pack, Predator's Speed, etc. Effects
-      // can opt into a distinct slot via `target_slot: N` (0-indexed); a
-      // multi-target spell like Branching Bolt has two effects, the second
-      // marked `target_slot: 1`, so it pulls action.targets[1] instead of
-      // sharing targets[0]. The required targets-array length is one more
-      // than the highest target_slot referenced.
+      // Validate the chosen targets through TargetSelection: every declared slot
+      // must hold a legal target and any cross-slot rule (distinct) must hold. The
+      // top-level target() step is the cast-time hexproof checkpoint — folded in
+      // (tsLegalBySlot resolves it to slot 0). Untargeted spells pass trivially.
       const modes = getModes(card);
       const modeIdx = action.modeIdx || 0;
       if (modeIdx < 0 || modeIdx >= modes.length) return false;
-      const activeEffects = modes[modeIdx];
-      const targetedEffs = (activeEffects || []).filter(effectNeedsTarget);
-      const slotSpecsLA = Array.isArray(card.target_slots) ? card.target_slots : null;
-      if (slotSpecsLA) {
-        // Card-level target_slots authoritative: every declared slot needs a
-        // legal target, whether or not an effect carries its target_slot (fight
-        // references its slots via operands, not a scalar target_slot).
-        const bySlot = validTargetsBySlot(card, targetedEffs, who);
-        for (let slot = 0; slot < slotSpecsLA.length; slot++) {
-          const tgt = action.targets && action.targets[slot];
-          if (!tgt) return false;
-          if (!(bySlot.get(slot) || []).some(v => sameTarget(v, tgt))) return false;
-        }
-      } else if (targetedEffs.length > 0) {
-        const maxSlot = targetedEffs.reduce((m, e) => Math.max(m, e.target_slot || 0), 0);
-        if (!action.targets || action.targets.length < maxSlot + 1) return false;
-        const bySlot = validTargetsBySlot(card, targetedEffs, who);
-        for (const eff of targetedEffs) {
-          const slot = eff.target_slot || 0;
-          const tgt = action.targets[slot];
-          if (!tgt) return false;
-          if (!(bySlot.get(slot) || []).some(v => sameTarget(v, tgt))) return false;
-        }
-      }
-      // New targeting model (§3.5): a top-level `target` step is the cast-time
-      // hexproof checkpoint. The spell needs one legal target of that filter;
-      // action.targets[0] must be among them (so an opp hexproof creature is
-      // not a legal target). Inert for legacy cards (none set card.target).
-      if (card.target) {
-        const valid = targetsForFilter(card.target, who, card.target_filter);
-        if (!valid.length) return false;
-        if (!action.targets || !action.targets[0]) return false;
-        if (!valid.some(v => sameTarget(v, action.targets[0]))) return false;
-      }
+      if (!tsIsLegalSet(tsModeObj(card, modes[modeIdx]), who, action.targets)) return false;
       return true;
     }
     case 'activateAbility': {
@@ -5657,10 +7326,15 @@ function isLegalAction(who, action) {
           if (((f.card.counters && f.card.counters[name]) || 0) < ab.cost.remove_counters[name]) return false;
         }
       }
-      const isMana = ab.effects[0].kind === 'add_mana';
+      const isMana = isManaAbility(ab);
       if (isMana) {
         // Mana abilities are always available when source can be tapped, regardless of priority.
         // (Matches MtG: mana abilities don't require priority and don't use the stack.)
+        // A7-1 note: this priority-free status is correct even for an extra-cost
+        // mana ability (e.g. "Sacrifice a creature: add B" — still a mana ability
+        // per the engine's model). The A7-1 guard lives in the AUTO paths only
+        // (solver/tap lane), so the autotapper never silently pays the extra
+        // cost; a MANUAL activateAbility still pays the full cost explicitly.
         return true;
       }
       // Non-mana ability: timing depends on main_phase_only flag.
@@ -5669,47 +7343,34 @@ function isLegalAction(who, action) {
       } else {
         if (!isInstantWindow(who)) return false;
       }
-      // Ability-level multi-target slots (Stapler): one pick per `target_slots`
-      // entry, each validated against its own {target, filter} spec. Replaces
-      // the old `noop` slot-marker effect — target specs belong on the ability,
-      // not masquerading as an empty-body effect kind.
-      if (Array.isArray(ab.target_slots) && ab.target_slots.length > 0) {
-        if (!action.targets || action.targets.length < ab.target_slots.length) return false;
-        for (let s = 0; s < ab.target_slots.length; s++) {
-          const tgt = action.targets[s];
-          if (!tgt) return false;
-          const valid = getValidTargets(ab.target_slots[s], who);
-          if (!valid.some(v => sameTarget(v, tgt))) return false;
-        }
-      }
-      const targetedEffs = ab.effects.filter(effectNeedsTarget);
-      if (targetedEffs.length > 0) {
-        // Multi-target ability validation: each effect's target_slot picks
-        // its target from action.targets[slot].
-        const maxSlot = targetedEffs.reduce((m, e) => Math.max(m, e.target_slot || 0), 0);
-        if (!action.targets || action.targets.length < maxSlot + 1) return false;
-        for (const eff of targetedEffs) {
-          const slot = eff.target_slot || 0;
-          const tgt = action.targets[slot];
-          if (!tgt) return false;
-          const valid = getValidTargets(eff, who);
-          if (!valid.some(v => sameTarget(v, tgt))) return false;
-        }
-      }
-      // New targeting model (§3.5): a top-level `target` step on the ability is
-      // the cast-time hexproof checkpoint. Inert for legacy abilities.
-      if (ab.target) {
-        const valid = targetsForFilter(ab.target, who, ab.target_filter);
-        if (!valid.length) return false;
-        if (!action.targets || !action.targets[0]) return false;
-        if (!valid.some(v => sameTarget(v, action.targets[0]))) return false;
+      // Validate the chosen targets through TargetSelection (the same component
+      // the cast path uses): ability-level target_slots (Stapler), per-effect
+      // targets, and the top-level target() hexproof checkpoint all resolve
+      // through one path. Untargeted abilities pass trivially.
+      if (!tsIsLegalSet(ab, who, action.targets)) return false;
+      // Cross-target pair validity (Stapler) is an ACTIVATION check, so it
+      // runs here — before executeAction dispatches and any cost is paid
+      // (MtG 601.2h via 602.2b: costs are the last part of activation; an
+      // illegal activation rewinds with nothing spent). Per-slot filters
+      // can't see the PAIR, so this is the one place that can.
+      if (ab.effects.some(e => e.kind === 'apply_in_game_splice')
+          && resolveSplicePair(action.targets).reason) {
+        return false;
       }
       return true;
     }
     case 'declareAttackers': {
       if (G.phase !== 'COMBAT_ATTACK' || who !== G.activePlayer) return false;
       if (G.attackersDeclared) return false;
+      // A2-4: mirror declareBlockers' usedBlockers guard — one attack role
+      // per creature (§801 step 505: set membership). A repeated iid would
+      // otherwise deal N× combat damage and emit N× 'attacks' triggers
+      // downstream (doDeclareAttackers stores the list verbatim). Reject,
+      // don't dedupe, matching the sibling's semantics.
+      const usedAttackers = new Set();
       for (const iid of action.cardIids) {
+        if (usedAttackers.has(iid)) return false;
+        usedAttackers.add(iid);
         const f = findCard(iid);
         if (!f || f.controller !== who) return false;
         if (!canCreatureAttack(f.card)) return false;
@@ -5855,7 +7516,10 @@ function getLegalActions(who) {
         // land stapled merges the mana ability is at index >= 1. If we find
         // one, emit a tapLandForMana action with the abilityIdx so the
         // engine knows which ability to use.
-        const manaAbIdx = card.abilities.findIndex(ab => ab.effects && ab.effects[0] && ab.effects[0].kind === 'add_mana');
+        // A7-1: only TRIVIAL-cost mana abilities ({T}/mana) belong in the tap
+        // lane; an extra-cost (or tapless extra-cost) add_mana ability is
+        // excluded (the tap lane pays only the tap, skipping its real cost).
+        const manaAbIdx = card.abilities.findIndex(ab => isAutoUsableManaAbility(ab));
         if (manaAbIdx >= 0) {
           actions.push({type:'tapLandForMana', cardIid: card.iid, abilityIdx: manaAbIdx});
         }
@@ -5876,80 +7540,22 @@ function getLegalActions(who) {
     } else {
       if (!isMainPhaseWindow(who)) continue;
     }
-    // Enumerate one action per (mode, target combination). Non-modal
-    // single-target cards collapse to the simple "one action per target"
-    // case. Modal cards branch per mode. Multi-target cards generate one
-    // action per cross-product of their target slots.
+    // One castSpell action per (mode, legal target set). TargetSelection
+    // enumerates the per-slot cross-product (distinct-aware, capped); an
+    // untargeted mode emits a single targetless action. Non-modal cards are the
+    // single-mode case; a modal card branches per mode (each mode's targets live
+    // on its effects, so build a per-mode view).
     const modes = getModes(card);
     for (let mIdx = 0; mIdx < modes.length; mIdx++) {
-      const modeEffects = modes[mIdx];
-      const targetedEffs = (modeEffects || []).filter(effectNeedsTarget);
-      const hasSlotSpecs = Array.isArray(card.target_slots) && card.target_slots.length > 0;
-      if (targetedEffs.length === 0 && !hasSlotSpecs) {
-        // New targeting model (§3.5): a top-level `target` step means one
-        // action per legal target of that filter (hexproof-excluded via
-        // targetsForFilter). No valid target → spell not castable.
-        if (card.target) {
-          for (const t of targetsForFilter(card.target, who, card.target_filter)) {
-            const a = { type: 'castSpell', cardIid: card.iid, targets: [t] };
-            if (modes.length > 1) a.modeIdx = mIdx;
-            actions.push(a);
-          }
-          continue;
-        }
-        // Untargeted (or untargeted mode of a modal card).
-        const a = {type:'castSpell', cardIid: card.iid};
+      const modeObj = tsModeObj(card, modes[mIdx]);
+      if (!objectNeedsTarget(modeObj)) {
+        const a = { type: 'castSpell', cardIid: card.iid };
         if (modes.length > 1) a.modeIdx = mIdx;
         actions.push(a);
         continue;
       }
-      // Per-slot legal targets (slot grouping + spec resolution shared with
-      // isLegalAction via validTargetsBySlot). Each unique slot needs one target;
-      // effects sharing a slot share that target (e.g. Strength of the Pack).
-      const bySlot = validTargetsBySlot(card, targetedEffs, who);
-      const slotKeys = [...bySlot.keys()].sort((a, b) => a - b);
-      const validBySlot = slotKeys.map(slot => bySlot.get(slot));
-      // Bail if any slot has no valid targets — spell is uncastable.
-      if (validBySlot.some(arr => arr.length === 0)) continue;
-      // Build the cross-product of slot targets. For single-target spells
-      // (one slot) this is just the target list. For multi-target spells
-      // it grows multiplicatively, bounded by per-slot validity counts.
-      // Cap at 200 combos defensively — beyond that the AI cost outweighs
-      // the benefit of exhaustive search and we'd want a smarter sampler.
-      const combos = [[]];
-      const COMBO_CAP = 200;
-      for (const validList of validBySlot) {
-        const next = [];
-        for (const partial of combos) {
-          for (const t of validList) {
-            next.push([...partial, t]);
-            if (next.length >= COMBO_CAP) break;
-          }
-          if (next.length >= COMBO_CAP) break;
-        }
-        combos.length = 0;
-        combos.push(...next);
-        if (combos.length >= COMBO_CAP) break;
-      }
-      // Assemble one action per combo. action.targets is indexed by slot
-      // value (slot 0 → targets[0], slot 1 → targets[1]); since we sorted
-      // slotKeys ascending and slots are typically dense (0, 1, 2...),
-      // combo[i] aligns with slotKeys[i] which equals i in the common case.
-      // Defensive: if a card uses sparse slots (0, 2 — skipping 1), fill
-      // gaps so action.targets[N] is always present for the highest slot.
-      for (const combo of combos) {
-        const targets = [];
-        for (let i = 0; i < slotKeys.length; i++) {
-          targets[slotKeys[i]] = combo[i];
-        }
-        // Fill any sparse holes with a placeholder copy of slot 0 — the
-        // validator will reject these unless they happen to be valid for
-        // the higher-slot effect, which means the engine is effectively
-        // robust to either dense or sparse slot numbering.
-        for (let i = 0; i < targets.length; i++) {
-          if (!targets[i]) targets[i] = combo[0];
-        }
-        const a = {type:'castSpell', cardIid: card.iid, targets};
+      for (const targets of tsEnumerate(modeObj, who)) {
+        const a = { type: 'castSpell', cardIid: card.iid, targets };
         if (modes.length > 1) a.modeIdx = mIdx;
         actions.push(a);
       }
@@ -5961,12 +7567,15 @@ function getLegalActions(who) {
     if (!card.abilities) continue;
     for (let i=0; i<card.abilities.length; i++) {
       const ab = card.abilities[i];
-      const isMana = ab.effects[0].kind === 'add_mana';
-      if (isMana) continue;   // surfaced as tapLandForMana
-      // Multi-target abilities (Stapler) are player-UI-driven; the AI doesn't
-      // enumerate the 2-target cross-product. Skip so we don't emit always-
-      // illegal single-target actions.
-      if (Array.isArray(ab.target_slots) && ab.target_slots.length > 1) continue;
+      // Skip ONLY auto-usable ({T}-only) mana abilities — they're surfaced in the
+      // tapLandForMana lane above, so this is the exact complement of that gate.
+      // An EXTRA-cost mana ability (sac/mana cost the tap lane can't pay — A7-1)
+      // is NOT auto-usable, so it falls through to here and surfaces as an
+      // explicit activated ability that pays its full cost (per A7-1's "surface
+      // only as explicit activated abilities"). Keying on isManaAbility instead
+      // would skip it from BOTH lanes — legal (isLegalAction) yet enumerable
+      // nowhere (PR #134 review, Thaumaturge-ChatGPT).
+      if (isAutoUsableManaAbility(ab)) continue;
       // Tap cost requirements.
       if (ab.cost && ab.cost.tap) {
         if (card.tapped) continue;
@@ -5999,18 +7608,17 @@ function getLegalActions(who) {
         if (!canPay) continue;
       }
       if (ab.main_phase_only ? !isMainPhaseWindow(who) : !isInstantWindow(who)) continue;
-      const targetedEff = ab.effects.find(effectNeedsTarget);
-      // Cross-product: (effect targets) × (sac options). A top-level `target`
-      // step (§3.5) enumerates from targetsForFilter (hexproof-excluded); empty
-      // → no actions (ability not activatable). Legacy per-effect targets fall
-      // back to getValidTargets; untargeted → [null].
-      const effectTargets = ab.target ? targetsForFilter(ab.target, who, ab.target_filter)
-        : (targetedEff ? getValidTargets(targetedEff, who) : [null]);
+      // Cross-product: (legal target sets) × (sac options). TargetSelection
+      // enumerates the target sets — single-target abilities yield one-element
+      // sets; multi-slot abilities (Stapler) yield the per-slot cross-product
+      // (previously skipped for the AI). Untargeted → [null]; a targeted ability
+      // with no legal set → no actions (not activatable).
+      const targetSets = objectNeedsTarget(ab) ? tsEnumerate(ab, who) : [null];
       const sacChoices = sacOptions || [null];
-      for (const t of effectTargets) {
+      for (const targets of targetSets) {
         for (const sacIid of sacChoices) {
           const action = {type:'activateAbility', cardIid: card.iid, abilityIdx: i};
-          if (t) action.targets = [t];
+          if (targets) action.targets = targets;
           if (sacIid != null) action.sacIid = sacIid;
           actions.push(action);
         }
@@ -6153,12 +7761,18 @@ function step() {
     // the next time you do something" and never visibly hit the stack. Draining
     // here surfaces it immediately. (drainTriggers no-ops on an empty queue and
     // returns early if a target prompt is already open, so this can't loop.)
-    if (isPriorityOpen() && G.pendingTriggers.length > 0 && !G.pendingTriggerTarget) {
+    if (isPriorityOpen() && G.pendingTriggers.length > 0) {
       drainTriggers();
       continue;
     }
-    // Auto-pass dead priority rounds. Skip AP's empty-stack END priority
-    // (they had M2 for sorcery-speed plays).
+    // Auto-pass dead priority rounds. skipApEndStep suppresses the active
+    // player's empty-stack END window ENTIRELY — including instant-speed
+    // options, not just sorcery-speed ones (END never allowed sorcery speed;
+    // see isMainPhaseWindow). The trade: anything the AP could cast at their
+    // own empty-stack END was equally available in MAIN2, and the AP regains
+    // a window whenever the stack is non-empty. The non-active player still
+    // gets their END window (load-bearing for flash responses). Deliberate —
+    // see DIVERGENCE.md B6 and rules §606's sanctioned-skip list.
     if (isPriorityOpen()) {
       const skipApEndStep = G.phase === 'END'
         && G.priorityHolder === G.activePlayer
@@ -6225,8 +7839,11 @@ function step() {
         if (G.turn === 1 && ap === G.firstPlayer) {
           log(`${G[ap].name} skips draw (going first).`);
         } else {
-          drawCard(ap);
-          log(`${G[ap].name} draws.`);
+          // A1-9: drawCard returns null on both empty-library paths (deck-out
+          // loss and Phylactery slot-rip) — only log "draws." when a card
+          // actually moved to hand, so the log never claims a phantom draw.
+          const drawn = drawCard(ap);
+          if (drawn) log(`${G[ap].name} draws.`);
         }
         setPhase('MAIN1');
         continue;
@@ -6262,9 +7879,7 @@ function step() {
       case 'COMBAT_DAMAGE':
         // Auto-resolve. Priority window for damage already happened in COMBAT_BLOCK.
         resolveCombatDamage();
-        G.attackers = []; G.blockers = new Map();
-        G.attackersDeclared = false;
-        G.blockersDeclared = false;
+        resetCombatState();
         setPhase('MAIN2');
         continue;
 
@@ -6278,11 +7893,23 @@ function step() {
           while (G[ap].hand.length > 7) doDiscard(ap, G[ap].hand[0].iid);
         }
         // Process delayed triggers scheduled for end of turn. Fire each
-        // one's effect (currently only 'returnFromExile' for Otherworldly
-        // Journey-style cards). This happens BEFORE EOT cleanup so any
-        // returning creature appears on the battlefield with fresh state.
+        // one's effect (the `deferredEffects` atom — e.g. exile_until_eot's
+        // move_card(exile→battlefield); the old bespoke `returnFromExile` is
+        // retired). This happens BEFORE EOT cleanup so any returning creature
+        // appears on the battlefield with fresh state.
         // ETB triggers for returning creatures fire normally and will
         // resolve via pendingTriggers in the next priority round.
+        //
+        // NAMING CAVEAT: fireAt:'endStep' is a misnomer — this drain runs
+        // during CLEANUP, not the §509 END step. END is a real priority
+        // phase the engine already has; CLEANUP has NO priority window, so
+        // nothing fired here can be responded to. That timing is correct
+        // for the sole current consumer ("until end of turn" durations end
+        // in cleanup), but this queue is NOT the home for a genuine
+        // "at the beginning of the end step" trigger — wiring one to this
+        // field would fire it silently in the wrong, unrespondable window.
+        // Same caveat at the producer (schedule_delayed) and on the
+        // `when:'end_step'` wire name in docs/PROTOCOL.md.
         if (Array.isArray(G.delayedTriggers) && G.delayedTriggers.length > 0) {
           const stillPending = [];
           for (const dt of G.delayedTriggers) {
@@ -6299,8 +7926,16 @@ function step() {
                 for (const eff of dt.effects) {
                   applyEffect(dctx, eff, dt.target, snapshotTarget(dt.target));
                 }
+              } else {
+                // A1-6: an endStep entry whose effect kind we don't recognize
+                // would otherwise be dropped here SILENTLY (the only producer,
+                // schedule_delayed, hardcodes 'deferredEffects', so this is
+                // unreachable today). Warn loudly so a future mis-wired delayed
+                // effect surfaces instead of vanishing.
+                console.warn('CLEANUP drain: dropping endStep delayed trigger with unhandled effect kind '
+                  + JSON.stringify(dt.effect) + ' (only deferredEffects is handled) — A1-6');
               }
-              // fired, don't keep
+              // fired (or warned-and-dropped); don't keep
             } else {
               stillPending.push(dt);
             }
@@ -6313,11 +7948,11 @@ function step() {
         // its temporary toughness survive: the damage clears the same instant
         // the temp P/T does, so the death check that follows sees a clean board.
         [...G.you.battlefield, ...G.opp.battlefield].forEach(c => {
-          // permanent_eot creatures (Elystra) — convert temp buffs and EOT
-          // grants to slot.permaBuffs before they get cleared. Helper is
+          // permanent_eot creatures (Elystra) — bank this turn's temp buffs and
+          // EOT grants as slot stickers before they get cleared. Helper is
           // shared with endGame, which also needs to flush pending buffs
           // when the game ends mid-turn (before EOT cleanup would fire).
-          flushPermanentEotToPermaBuffs(c);
+          flushPermanentEotToStickers(c);
           c.tempPower = 0; c.tempTou = 0; c.damage = 0;
           c.dealtDeathtouch = false;
           // Revoke until-end-of-turn type grants (add_type/set_types) — the
@@ -6389,12 +8024,16 @@ function step() {
         // mean the second player's first turn shows as Turn 2, which is
         // confusing when opp goes first.
         if (G.activePlayer === G.firstPlayer) G.turn++;
-        G.attackers = []; G.blockers = new Map();
-        G.attackersDeclared = false;
-        G.blockersDeclared = false;
+        resetCombatState();
         G.endTurnPending = false;   // new turn — clear the auto-pass flag
         setPhase('UNTAP');
         continue;
+      default:
+        // A1-5: an unknown phase must NOT `continue` (that re-enters the while
+        // loop on the same unchanged phase -> infinite spin). Halt loudly so the
+        // engine pauses with a diagnostic instead of hanging.
+        console.error('step(): unknown phase "' + G.phase + '" — halting the step loop to avoid an infinite spin.');
+        return;
     }
   }
 }
@@ -6433,8 +8072,11 @@ function executeAction(who, action) {
       '| priorityHolder:', G.priorityHolder, '| stack:', G.stack.length);
     return false;
   }
-  // Any explicit action other than pass/endTurn means the player is re-engaging;
-  // cancel the auto-pass-to-end-of-turn shortcut.
+  // Any explicit action other than pass/endTurn disarms the auto-pass-to-end-
+  // of-turn shortcut — INCLUDING forced responses (cleanup discard, trigger-
+  // target picks): if you're compelled to make a choice mid-fast-forward, the
+  // turn intentionally pauses and waits for a fresh End Turn rather than
+  // resuming on its own (design ruling, PR #98, 2026-06-10 — audit A1-11).
   if (who === G.activePlayer && action.type !== 'pass' && action.type !== 'endTurn') {
     G.endTurnPending = false;
   }
@@ -6455,6 +8097,13 @@ function executeAction(who, action) {
     case 'optionalCost':      doOptionalCost(who, action.pay); break;
     case 'pass':             doPass(who); break;
     case 'endTurn':          doEndTurn(who); break;
+    default:
+      // A1-5 drift guard: an action.type that passed isLegalAction but is missing
+      // from this dispatch would otherwise no-op yet return true (silent success —
+      // the controller/AI would re-decide the same no-op every tick). Fail loudly.
+      console.error('executeAction: unknown action.type "' + action.type +
+        '" — isLegalAction and the dispatch switch have drifted out of sync.');
+      return false;
   }
   step();
   notify();
@@ -6507,6 +8156,9 @@ return {
   playerOwesDecision,
   subscribe, findCard, getStats, getCardValue, sacValueOnBoard, cardCost: costTotalCard,
   landProducibleColors, payMana,
+  // Mana-ability classifier (produces mana + no target), exposed for tests —
+  // the discriminator for the off-stack / no-priority fast path.
+  isManaAbility,
   canCreatureAttack, canCreatureBlock,
   effectNeedsTarget, getValidTargets,
   effectiveCastCost,
@@ -6514,7 +8166,20 @@ return {
   // controller has cast permission for (Seal-Thief Courier). Single source of
   // truth for the human cast UI's zone-agnostic card lookup.
   findCastableSpell,
+  // Enumerate everything `who` may cast right now: hand + cast-permission
+  // zones. renderHand uses the non-hand entries to show stolen/exiled cards
+  // inline at the end of the hand row.
+  castableSpellEntries,
   makeCard,
+  // Re-derive seam (template + stickers + subtype-implied), exposed for tests.
+  intrinsicKeywords,
+  // Subtype-implied keyword injection (Wall→defender, Dragon→flying, …). Exposed so
+  // the sticker-eligibility view and tests mirror makeCard's derivation.
+  applySubtypeKeywords,
+  // The one cross-slot distinct_targets rule, exposed so the render layer's cast
+  // highlight drops already-picked creatures through the SAME filter the trigger
+  // pick-loop uses (no second copy of the rule in the UI).
+  tsExcludePicked,
   synthesizeStapledTemplate,
   makeToken,
   getModes,
@@ -6529,6 +8194,8 @@ return {
   // Static-lord keyword-grant seam + its leave-play cleanup, exposed for tests.
   applyStaticKeywordGrants, clearRestrictionsFromSource,
   targetsForFilter, TARGET_FILTERS, validateAllCardEffects,
+  // Audit A3-5 — boot validation for the generated-trigger data tables.
+  validateGeneratedTriggerTables,
   // Canonical targeting-shape API (single source of truth across UI consumers).
   objectNeedsTarget, primaryLegalTargets, probeTargetsForObject,
   // §7b coverage seam: the dispatch table + the coverage report. The valuation

@@ -10,7 +10,7 @@ keywords = Array[String](["trample"])
 card_id = "trained_armodon"
 display_name = "Trained Armodon"
 card_types = Array[String](["creature"])
-subtypes = Array[String](["elephant"])
+subtypes = Array[String](["beast"])
 mana_cost = {
 "C": 2,
 "G": 1

@@ -30,6 +30,7 @@ const JS_DIR = path.join(__dirname, '..', 'js');
 const ENGINE_FILES = [
   'settings.js',
   'cards.js',
+  'keyword-icons.js',
   'types.js',
   'engine.js',
   'card-text.js',
@@ -134,13 +135,16 @@ const EXPOSED = [
   'TARGET_SCORED_KINDS', 'NOT_TARGET_SCORED_KINDS',
   'CONTROLLER', 'PICKLOG', 'VERSION', 'Modal', 'RUN_MODIFIERS', 'SETTINGS',
   // Card-load surface (cards.js, module-scope).
-  'ingestCard',
+  'ingestCard', 'basicLandTypeColors',
   // tplId rename plumbing — exposed for tplid_renames_test.
-  'TPLID_RENAMES', 'renameTplId', 'MIGRATIONS', 'SAVE_VERSION', 'SAVE_KEY',
+  'TPLID_RENAMES', 'renameTplId', 'tplidRenameKeyCollisions', 'MIGRATIONS', 'SAVE_VERSION', 'SAVE_KEY',
   // Trigger-generator surface (triggers.js + trigger-generator.js —
   // no IIFE, all module-scope).
   'GENERATOR_EFFECTS', 'GENERATOR_CONDITIONS',
-  'evalTriggerCondition', 'generateRandomTrigger',
+  // Mercurial Adept's static pool (engine.js module scope, above the IIFE) —
+  // exposed for the A3-13 condition-aliasing and A3-5 table-validation tests.
+  'MERCURIAL_TRIGGER_POOL',
+  'evalTriggerCondition',
   // Composable-predicate surface (triggers.js, module-scope — Slice 2 / E2).
   'ATOMIC_PREDICATES', 'evaluateCondition', '_parseCall',
   // Effect-shorthand parser (triggers.js, module-scope — §5.1/§5.2).
@@ -152,23 +156,25 @@ const EXPOSED = [
   'EMPOWER_FIELDS', 'isEmpowerableField', 'enumerateEmpowerTargets',
   'rollEmpowerTarget', 'hasEmpowerableEffect',
   // Engine module-scope helpers (above the ENGINE IIFE).
-  'deckColorsFromSlots', 'fakeTargetsForLegality',
+  'deckColorsFromSlots', 'deckColorsForSide', 'fakeTargetsForLegality', 'landProducibleColors',
   'isCompatibleStaplePair', 'manaAbilityOf', 'manaEffectColors',
   'remapEmpowerRollForStaple', 'countEffects', 'mergeSpliceData',
   'isSpliceableBase', 'isSpliceableStaple',
   // Sticker module surface (stickers.js, all top-level).
-  'pickWeightedSticker',
-  'applyStickersToCard', 'applyOneStickerToRuntimeCard',
+  'pickWeightedSticker', 'bargainStickerCandidates',
+  'applyStickersToCard', 'applyOneStickerToRuntimeCard', 'applyStickerKindEffect',
   'applyRandomStickersToSide', 'empowerRollLabel', 'applyEmpowerRoll',
   'rollSubtypeFromDeck', 'pushStickerWithRoll', 'stickersForSlot',
   // Render module-scope helpers (render.js has no IIFE).
-  'stickerBadgesHtml', 'effectiveArt', 'renderManaSymbols', 'formatCostBraced',
+  'stickerBadgesHtml', 'keywordIconsHtml', 'segmentsToHtml', 'effectiveArt', 'renderManaSymbols', 'formatCostBraced',
   'isValidTargetCreature', 'canPlayFromUI', 'playerForcedPrompt', 'anyForcedPrompt',
+  'activationGlowAvailable',
   'edictChoiceNoun', 'graveyardPickerPrompt', 'castCardByIid',
   // Card-text module surface (card-text.js, all module-scope, no IIFE).
   'describeAmount', 'describeEffect', 'describeEffectList',
   'describeTrigger', 'triggerLogText', 'describeAbility', 'describeStaticBuff',
   'describeCardText', 'describeCardSegments', 'describeModalSegs',
+  'abilityPickerLabel', 'formatTriggerText',
   // Card-text internal helpers — exposed so tests can target them
   // independently if a regression localizes to one.
   'targetPhrase', 'withFilter', 'plainSeg', 'indefiniteArticle', 'manaCostBraces',
@@ -178,7 +184,7 @@ const EXPOSED = [
   // Unified type system (types.js, all module-scope, no IIFE — Phase 1).
   'TYPE_REGISTRY', 'typeRegistryEntry', 'typeCategory', 'isCardTypeTag',
   'typesOf', 'hasType', 'addType', 'subtypesOf', 'governingType',
-  'isPermanent', 'typeLine',
+  'isPermanent', 'typeLine', 'typeLineParts',
 ];
 
 // Card templates now live in cards/<tplId>/card.json. The browser-side
@@ -235,4 +241,61 @@ function loadEngine() {
   }
 }
 
-module.exports = { getSource, loadEngine, ENGINE_FILES };
+// A1-4: a SINGLE source of truth for "get `who` to an open MAIN1 priority round".
+// 76 test files hand-write G.priority/priorityHolder/phase directly (249 sites);
+// the audit's rename experiment (G.priority -> G.prio) left 34/36 silently green
+// because their stale hand-writes were simply ignored by the engine. This helper
+// PREFERS driving the real machine (so a future rename breaks HERE, in one place,
+// and migrated tests regain their grip on the priority bookkeeping), with one
+// authoritative hand-written fallback for the forced-player case (where advancing
+// through the opponent's turn would disturb a test's bespoke board). The ~63
+// MAIN1-pose callers were migrated onto this (workflow, per-file verified); the
+// COMBAT-posers use startCombat (below).
+function startMainPhase(who) {
+  const ENGINE = global.ENGINE;
+  const G = ENGINE.state();
+  let safety = 200;
+  while (safety-- > 0) {
+    if (G.phase === 'MAIN1' && ENGINE.expectedActor() === who && G.stack.length === 0) return G;
+    const w = ENGINE.expectedActor();
+    // Only real-drive while `who` is the one we're waiting on — never pass through
+    // the opponent's turn (that would run draws/phases over the caller's board).
+    if (!w || G.gameOver || G.activePlayer !== who) break;
+    ENGINE.executeAction(w, { type: 'pass' });
+  }
+  // Single authoritative fallback — the ONLY hand-written copy of this shape.
+  G.activePlayer = who; G.priorityHolder = who; G.phase = 'MAIN1';
+  G.stack = []; G.gameOver = false; G.priority = { passes: new Set() };
+  return G;
+}
+
+// Pose a COMBAT state for `who` (the active player) — the same priority/phase
+// pose-block startMainPhase owns, but for combat windows, which the real-drive
+// fast-path can't cleanly reach. Hand-poses, in ONE place, so a field rename
+// breaks here rather than in every combat test.
+//   opts.attackers : iid[]            (default [])
+//   opts.blockers  : [[bIid, aIid]]   (default []) -> G.blockers Map
+//   opts.phase     : 'COMBAT_ATTACK' | 'COMBAT_BLOCK' (default 'COMBAT_BLOCK')
+//   opts.declared  : are attackers/blockers declared? (default: phase === 'COMBAT_BLOCK')
+// Pre-declaration (COMBAT_ATTACK awaiting declares) leaves priority CLOSED
+// (priorityHolder = null, priority = null); a posed post-declaration window opens
+// a fresh round for `who`. Does NOT touch pendingTriggers or the board — the
+// caller owns those.
+function startCombat(who, opts) {
+  opts = opts || {};
+  const G = global.ENGINE.state();
+  const phase = opts.phase || 'COMBAT_BLOCK';
+  const declared = (opts.declared != null) ? opts.declared : (phase === 'COMBAT_BLOCK');
+  G.activePlayer = who;
+  G.phase = phase;
+  G.stack = []; G.gameOver = false;
+  G.attackers = (opts.attackers || []).slice();
+  G.blockers = new Map(opts.blockers || []);
+  G.attackersDeclared = declared;
+  G.blockersDeclared = declared;
+  if (declared) { G.priorityHolder = who; G.priority = { passes: new Set() }; }
+  else { G.priorityHolder = null; G.priority = null; }
+  return G;
+}
+
+module.exports = { getSource, loadEngine, ENGINE_FILES, startMainPhase, startCombat };

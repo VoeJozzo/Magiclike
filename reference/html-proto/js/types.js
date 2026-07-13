@@ -102,20 +102,30 @@ function isPermanent(card) {
   return !!g && typeRegistryEntry(g).behaviorClass !== 'spell';
 }
 
+// The type line's ordered halves: {left: [supertypes, types], right: [subtypes]},
+// deduped, canonical order. typeLine() joins them into the display string;
+// render.js's typeLineHtml() walks the same parts to wrap sticker-added tags
+// in a gold span — one ordering definition for both consumers.
+function typeLineParts(card) {
+  const seen = new Set();
+  const tags = typesOf(card).filter(t => { if (seen.has(t)) return false; seen.add(t); return true; });
+  return {
+    left: [
+      ...tags.filter(t => typeCategory(t) === 'supertype'),
+      ...tags.filter(t => typeCategory(t) === 'type'),
+    ],
+    right: tags.filter(t => typeCategory(t) === 'subtype'),
+  };
+}
+
 // The displayed type line: "<supertypes> <types> — <subtypes>", canonical order
 // (supertypes then types left of the em-dash, subtypes right), deduped. For
 // most cards this matches the old `type [— sub]` render — EXCEPT basics, whose
 // types[] carries both "Basic" (supertype) and "Land" (type): the parser keeps
 // "Basic" left of the dash, dedups, and renders the MTG-style "Basic Land".
 function typeLine(card) {
-  const seen = new Set();
-  const tags = typesOf(card).filter(t => { if (seen.has(t)) return false; seen.add(t); return true; });
-  const left = [
-    ...tags.filter(t => typeCategory(t) === 'supertype'),
-    ...tags.filter(t => typeCategory(t) === 'type'),
-  ];
-  const right = tags.filter(t => typeCategory(t) === 'subtype');
-  let s = left.join(' ');
-  if (right.length) s += ' — ' + right.join(' ');
+  const parts = typeLineParts(card);
+  let s = parts.left.join(' ');
+  if (parts.right.length) s += ' — ' + parts.right.join(' ');
   return s;
 }

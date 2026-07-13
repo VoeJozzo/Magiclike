@@ -5,15 +5,13 @@
     "U": 1,
     "C": 2
   },
-  "keywords": [
-    "flying"
-  ],
+  "keywords": [],
   "name": "Illusion Drake",
   "power": 3,
   "toughness": 2,
   "types": [
     "Creature",
     "Illusion",
-    "Drake"
+    "Dragon"
   ]
 }

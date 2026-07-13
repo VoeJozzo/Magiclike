@@ -19,6 +19,16 @@ Targeting is its **own layer**, separate from effects: a spell or ability declar
 - **Illegal at resolution → fizzle.** If a locked target is gone (left play, flickered), the spell fizzles ([[700-casting-and-activating|§704]]) — the re-check is structural, not per-effect.
 - **Mid-resolution departure → last-known information, not fizzle.** Fizzle covers a target that's *already* gone when the spell starts resolving. But when a multi-effect spell's target leaves *between* its effects (e.g. *exile target creature, then its controller gains life equal to its power*), the later effects don't fizzle — they read a **last-known-information snapshot** taken at the instant the target left its zone; while it's still in its zone they read live state. (The "D1" hybrid — `docs/DIVERGENCE.md` §3.6; realized in the [[html-proto]], [[godot]]-pending.)
 
+## Design discipline: when to gate the controller
+
+A card's `target()` can be left open (`creature`) or scoped to a side (`your_creature` / `opp_creature`, or the `filter:{controller:…}` form for multi-slot/modal cards). The deciding question is **not "is this removal?"** — it's **"is the self-targeting option ever worth having?"** Gate only when the self-own is strictly a trap; keep it open when it enables clever or fun play:
+
+- **Gate (`opp_creature`)** when self-targeting is pure downside: destroy, exile-with-no-upside, burn. *Ravenous Chupacabra* gates so the AI/human can't be forced to kill their own last creature — if it's your only body and the board's empty, the card is simply uncastable, which is correct.
+- **Leave open** when the self-target unlocks intended plays: *Exorcist* can exile **your own** creature for life in a pinch; **bounce** can save a creature from removal or re-trigger an ETB. The flexibility is the design.
+- Mirror restriction → oracle text. When you gate, update the printed text too (*Giant Growth* → "Target creature **you control**…") so legality and wording never drift.
+
+This is a balance lever, not a rules requirement — it lives in card data (`target` / `filter`), and the engine just honors it. → [[limited-format-design]]
+
 ## Realized vs. planned
 
 The decomposition is **realized in the [[html-proto]]** (hexproof enforced at `target()`, the edict `chooses()` prompt). The [[godot]] port adopts it with its effects refactor; multi-target shapes (a handful of cards) are the last piece pending the full migration. Plan and status: `docs/plans/plan-effects-refactor.md` §3.5.

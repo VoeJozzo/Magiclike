@@ -24,7 +24,7 @@ The bots exist purely for **attribution** (tracking which AI did what). They're 
 | Thaumaturge-Claude | classic PAT (`ghp_`) | repo, read:org | — | gh keyring |
 | Thaumaturge-ChatGPT | classic PAT (`ghp_`) | repo, read:org | — | gh keyring |
 
-- **"gh keyring"** = the GitHub CLI token store, backed by the OS secure store (Windows Credential Manager). Inspect with `gh auth status` (never prints secret values).
+- **"gh keyring"** = the GitHub CLI token store, backed by the OS secure store (Windows Credential Manager). Inspect with `gh auth status` (never prints secret values) — and read its output whole, not through a truncated `gh auth status | head -N`: all four accounts are in the keyring, and truncation hides whichever ones list last.
 - All three bots use a **classic** PAT with `repo` + `read:org`, stored in the gh keyring. `read:org` is what lets the gh credential-helper push transport authenticate as the bot (the helper resolves the org for the username it's pinned to).
 - Tokens are never committed. A `ghp_…`/`github_pat_…` pushed to this public repo is auto-revoked by GitHub secret scanning.
 
@@ -36,7 +36,14 @@ The bots exist purely for **attribution** (tracking which AI did what). They're 
 
 ## Push / PR flow
 
-- **Push transport:** bots push *as themselves* using their keyring token (the delegation skill embeds it in the push URL), so the `require_last_push_approval` rule lets the owner approve. A promptless upgrade — the **gh credential-helper** (`git config credential.https://github.com.helper '!gh auth git-credential'`, username-pinned per worktree, bypassing Git Credential Manager) — is **not yet wired**; all four accounts are keyring-ready for it, but it's only worth it if GCM starts prompting.
+- **Push transport:** bots push *as themselves* using their keyring token (the delegation skill embeds it in the push URL), so the `require_last_push_approval` rule lets the owner approve. A promptless upgrade — the **gh credential-helper** (`git config credential.https://github.com.helper '!gh auth git-credential'`, username-pinned per worktree, bypassing Git Credential Manager) — is **not yet wired**; all four accounts are keyring-ready for it, but it's only worth it if GCM starts prompting. **Update 2026-06-10: GCM *did* prompt** (headless worktree push; the dialog self-cancelled and the push died), and wiring the upgrade **falsified the username-pin hypothesis**: gh 2.92's `gh auth git-credential` serves only the *active* account and exits 1 when git passes a different username. The mechanism that works (tested live, promptless, bot-attributed) is a **keyring-derived-token helper** — same runtime-derivation pattern as `GH_PAT_GEMMA`, token never stored:
+  ```
+  git config extensions.worktreeConfig true   # once per repo
+  git config --worktree credential.https://github.com.username <bot>
+  git config --worktree --add credential.https://github.com.helper ""   # resets inherited GCM
+  git config --worktree --add credential.https://github.com.helper '!f() { if [ "$1" = get ]; then echo "password=$(gh auth token --user <bot>)"; fi; }; f'
+  ```
+  Wire this (worktree-scoped) in any context needing promptless pushes; the audit campaign's Phase 0 does so for the audit worktree. Token-in-URL remains the fallback for one-off interactive pushes only — its command shape can't pass a permission allowlist, so it is **unusable in autonomous mode**.
 - **Open a PR as a bot** (no global account switch):
   ```bash
   GH_TOKEN="$(gh auth token --user <bot>)" gh pr create --base dev --title "…" --body "…"

@@ -21,7 +21,7 @@
           "amount": 2
         }
       ],
-      "target": "creature"
+      "target": "opp_creature"
     }
   ],
   "types": [

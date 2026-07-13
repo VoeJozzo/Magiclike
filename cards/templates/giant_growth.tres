@@ -5,14 +5,14 @@
 [resource]
 script = ExtResource("1_3rhtk")
 requires_target = true
-target_filter = "creature"
+target_filter = "your_creature"
 card_id = "giant_growth"
 display_name = "Giant Growth"
 card_types = Array[String](["instant"])
 mana_cost = {
 "G": 1
 }
-text = "Target creature gets +3/+3 until end of turn."
+text = "Target creature you control gets +3/+3 until end of turn."
 on_cast_effects = Array[Dictionary]([{
 "duration": "eot",
 "kind": "pump",

@@ -5,7 +5,7 @@
     "G": 1,
     "C": 1
   },
-  "target": "creature",
+  "target": "your_creature",
   "effects": [
     {
       "kind": "pump",

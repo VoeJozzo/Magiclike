@@ -1,6 +1,6 @@
 {
   "card_id": "curse_shade",
-  "art": "🌫",
+  "art": "\ud83c\udf2b",
   "cost": {
     "B": 1,
     "C": 2
@@ -26,6 +26,6 @@
   ],
   "types": [
     "Creature",
-    "Shade"
+    "Specter"
   ]
 }

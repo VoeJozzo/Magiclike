@@ -4,7 +4,7 @@
   "mana": "B",
   "name": "Phylactery",
   "special": true,
-  "text": "Your life can't go below 0 and you can't lose to an empty library. Damage past 0 — and each would-be overdraw — rips that many slots from your deck instead. (This card is always ripped last.)",
+  "text": "Your life can't go below 0 and you can't lose to an empty library. Life lost past 0 — and each would-be overdraw — rips that many slots from your deck instead. (This card is always ripped last.)",
   "abilities": [
     {
       "cost": {

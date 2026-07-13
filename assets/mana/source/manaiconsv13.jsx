@@ -3,7 +3,8 @@ const P = {
   blue:  { name: "Blue",  concept: "Open Book",      bg: "#0C2E86", rim: "#3868CC", fg: "#BACCFF" },
   green: { name: "Green", concept: "Leaf",            bg: "#0C4418", rim: "#247030", fg: "#86D494" },
   red:   { name: "Red",   concept: "Fissure",         bg: "#7C0A0A", rim: "#C02424", fg: "#FFC8B0" },
-  black: { name: "Black", concept: "Eclipse",         bg: "#080814", rim: "#20203C", fg: "#DCD09A" },
+  black:   { name: "Black",   concept: "Eclipse",     bg: "#080814", rim: "#20203C", fg: "#DCD09A" },
+  generic: { name: "Generic", concept: "— (number)",  bg: "#28282E", rim: "#50505E", fg: "#C0C0CC" },
 };
 
 function WhiteSymbol({ fg }) {
@@ -137,11 +138,12 @@ function ManaIcon({ colorKey, size }) {
       <circle cx="20" cy="20" r="17" fill={c.bg} />
       <circle cx="20" cy="20" r="17" fill={`url(#shine-${uid})`} />
       <g clipPath={`url(#clip-${uid})`}>
-        {colorKey === "white" && <WhiteSymbol fg={c.fg} />}
-        {colorKey === "blue"  && <BlueSymbol  fg={c.fg} />}
-        {colorKey === "green" && <GreenSymbol fg={c.fg} uid={uid} />}
-        {colorKey === "red"   && <RedSymbol   fg={c.fg} />}
-        {colorKey === "black" && <BlackSymbol fg={c.fg} bg={c.bg} />}
+        {colorKey === "white"   && <WhiteSymbol fg={c.fg} />}
+        {colorKey === "blue"    && <BlueSymbol  fg={c.fg} />}
+        {colorKey === "green"   && <GreenSymbol fg={c.fg} uid={uid} />}
+        {colorKey === "red"     && <RedSymbol   fg={c.fg} />}
+        {colorKey === "black"   && <BlackSymbol fg={c.fg} bg={c.bg} />}
+        {/* generic — blank shell, number rendered by engine */}
       </g>
       <circle cx="20" cy="20" r="17" fill="none" stroke={c.rim} strokeWidth="2" />
       <circle cx="20" cy="20" r="19" fill="none" stroke="#C8B040" strokeWidth="1.8" />
@@ -150,17 +152,18 @@ function ManaIcon({ colorKey, size }) {
 }
 
 const SIZES = [80, 48, 32, 16];
-const ORDER = ["white", "blue", "green", "red", "black"];
+const ORDER = ["white", "blue", "green", "red", "black", "generic"];
 const LORE  = {
   white: "Justice · Order · Hierarchy",
   blue:  "Knowledge · Control · Pattern",
   green: "Growth · Nature · Life",
   red:   "Chaos · Passion · Pressure",
-  black: "Ambition · Sacrifice · Will",
+  black:   "Ambition · Sacrifice · Will",
+  generic: "Generic mana cost",
 };
 const CARD_TONES = {
   white: "#2E2410", blue: "#0E1630", green: "#0A200E",
-  red:   "#300808", black: "#1A1230",
+  red:   "#300808", black: "#1A1230", generic: "#1A1A1A",
 };
 
 export default function App() {

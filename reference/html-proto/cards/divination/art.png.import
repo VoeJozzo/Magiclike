@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://rpyn51chutpw"
-path="res://.godot/imported/art.png-76395c8c08f4cf280daa21c7578c928c.ctex"
+path="res://.godot/imported/art.png-e53c171c7a259475f64c0b6f1c301802.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://reference/html-proto/cards/divin/art.png"
-dest_files=["res://.godot/imported/art.png-76395c8c08f4cf280daa21c7578c928c.ctex"]
+source_file="res://reference/html-proto/cards/divination/art.png"
+dest_files=["res://.godot/imported/art.png-e53c171c7a259475f64c0b6f1c301802.ctex"]
 
 [params]
 

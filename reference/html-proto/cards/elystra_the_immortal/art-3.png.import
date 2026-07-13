@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://3v3fr8fas0kv"
-path="res://.godot/imported/art-3.png-4a765e5290a9e921c4b0a0301362bfa8.ctex"
+path="res://.godot/imported/art-3.png-cba37da4aefb0529dbd167a03726130e.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://reference/html-proto/cards/elystra/art-3.png"
-dest_files=["res://.godot/imported/art-3.png-4a765e5290a9e921c4b0a0301362bfa8.ctex"]
+source_file="res://reference/html-proto/cards/elystra_the_immortal/art-3.png"
+dest_files=["res://.godot/imported/art-3.png-cba37da4aefb0529dbd167a03726130e.ctex"]
 
 [params]
 

@@ -118,6 +118,22 @@ function renderDevtoolsCollapsible(list) {
   return pickerArea;
 }
 
+// Master card-size dropdown. Scales the whole hand/board frame (art, text,
+// pips) uniformly off the 1x baseline via the --card-size-scale CSS var —
+// SETTINGS.set pushes the var live, so cards resize without a re-render;
+// render() just refreshes any size-dependent layout. Sits at the top of the
+// picker since the per-element font sizes below are all relative to 1x.
+function renderCardSizeRow(pickerArea) {
+  makeSlotHeader(pickerArea, 'Card size');
+  const row = makeRow('Hand / board card scale');
+  row.appendChild(makeSelect(
+    SETTINGS.CARD_SIZE_OPTIONS,
+    SETTINGS.get('cardSizeScale'),
+    (val) => { SETTINGS.set('cardSizeScale', Number(val)); render(); }
+  ));
+  pickerArea.appendChild(row);
+}
+
 // Slot-shaped preset dropdown. Applying a preset writes the title font to
 // all four title-slot elements, body font to body-slot, pip font to pip-
 // slot. 'Custom' appears when per-element values don't all match a preset.
@@ -131,7 +147,7 @@ function renderFontPresetRow(pickerArea) {
   pickerArea.appendChild(fontHeader);
 
   const scaleNote = document.createElement('div');
-  scaleNote.textContent = 'Sizes shown at 1× scale (cards in hand / board).';
+  scaleNote.textContent = 'Sizes shown at 1× card size (the Card size knob above scales these too).';
   scaleNote.style.cssText = 'color:#778;font-size:10px;font-style:italic;margin-top:-2px';
   pickerArea.appendChild(scaleNote);
 
@@ -256,6 +272,16 @@ function renderManaPipSizeRows(pickerArea) {
     (val) => { SETTINGS.set('cardManaPipPopupSize', Number(val)); render(); }
   ));
   pickerArea.appendChild(manaPipPopupRow);
+
+  // The big land-identity symbol (basics / artifact lands with a basic land
+  // type). --card-big-mana-size is pushed live by SETTINGS.set.
+  const bigManaRow = makeRow('Land symbol (basic-type lands)');
+  bigManaRow.appendChild(makeSelect(
+    SETTINGS.BIG_MANA_SIZE_OPTIONS,
+    SETTINGS.get('cardBigManaSize'),
+    (val) => { SETTINGS.set('cardBigManaSize', Number(val)); render(); }
+  ));
+  pickerArea.appendChild(bigManaRow);
 }
 
 function renderManaTextScaleRow(pickerArea) {
@@ -266,6 +292,20 @@ function renderManaTextScaleRow(pickerArea) {
     (val) => { SETTINGS.set('cardManaTextSize', Number(val)); render(); }
   ));
   pickerArea.appendChild(manaTextRow);
+}
+
+// Ability (keyword) icon size: the coins in the in-play frame's keyword row
+// (flying, vigilance, innate, …). --card-kw-icon-size is pushed live by
+// SETTINGS.set, so the coins resize immediately; render() just refreshes layout.
+function renderKwIconSizeRow(pickerArea) {
+  makeSlotHeader(pickerArea, 'Ability icons');
+  const kwRow = makeRow('Keyword coin (hand / board)');
+  kwRow.appendChild(makeSelect(
+    SETTINGS.KW_ICON_SIZE_OPTIONS,
+    SETTINGS.get('cardKwIconSize'),
+    (val) => { SETTINGS.set('cardKwIconSize', Number(val)); render(); }
+  ));
+  pickerArea.appendChild(kwRow);
 }
 
 // Export-current-settings button. Dumps SETTINGS.getAll() to clipboard so
@@ -320,11 +360,13 @@ function renderPanel() {
   list.innerHTML = '';
 
   const pickerArea = renderDevtoolsCollapsible(list);
+  renderCardSizeRow(pickerArea);
   const refreshPresetActive = renderFontPresetRow(pickerArea);
   renderFontElementRows(pickerArea, refreshPresetActive);
   renderPopupTextScaleRow(pickerArea);
   renderManaPipSizeRows(pickerArea);
   renderManaTextScaleRow(pickerArea);
+  renderKwIconSizeRow(pickerArea);
   renderExportButton(pickerArea);
 }
 

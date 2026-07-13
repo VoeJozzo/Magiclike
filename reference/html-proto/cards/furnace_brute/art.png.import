@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://7dulvuejopby"
-path="res://.godot/imported/art.png-e1693004a102201e5d311e570bd99243.ctex"
+path="res://.godot/imported/art.png-c711b810bec974209c697516947c6c22.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://reference/html-proto/cards/beastBaiter/art.png"
-dest_files=["res://.godot/imported/art.png-e1693004a102201e5d311e570bd99243.ctex"]
+source_file="res://reference/html-proto/cards/furnace_brute/art.png"
+dest_files=["res://.godot/imported/art.png-c711b810bec974209c697516947c6c22.ctex"]
 
 [params]
 

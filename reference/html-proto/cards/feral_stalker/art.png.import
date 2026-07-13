@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://svnb3e4sl44v"
-path="res://.godot/imported/art.png-ef547ba5ff8297326864c1944bc53ef4.ctex"
+path="res://.godot/imported/art.png-49fd083ac0344859094cfbc760838a7a.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://reference/html-proto/cards/feralStalker/art.png"
-dest_files=["res://.godot/imported/art.png-ef547ba5ff8297326864c1944bc53ef4.ctex"]
+source_file="res://reference/html-proto/cards/feral_stalker/art.png"
+dest_files=["res://.godot/imported/art.png-49fd083ac0344859094cfbc760838a7a.ctex"]
 
 [params]
 

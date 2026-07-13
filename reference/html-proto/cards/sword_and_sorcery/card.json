@@ -1,6 +1,6 @@
 {
   "card_id": "sword_and_sorcery",
-  "art": "📜",
+  "art": "art.png",
   "cost": {
     "W": 1,
     "U": 1,
@@ -20,12 +20,15 @@
     }
   ],
   "name": "Sword and Sorcery",
+  "distinct_targets": true,
   "target_slots": [
     {
-      "target": "creature"
+      "target": "creature",
+      "filter": { "controller": "self" }
     },
     {
-      "target": "creature"
+      "target": "creature",
+      "filter": { "controller": "opp" }
     }
   ],
   "keywords": [

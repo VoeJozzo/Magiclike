@@ -1,10 +1,10 @@
 {
   "card_id": "giant_growth",
-  "art": "💪",
+  "art": "art.png",
   "cost": {
     "G": 1
   },
-  "target": "creature",
+  "target": "your_creature",
   "effects": [
     {
       "kind": "pump",

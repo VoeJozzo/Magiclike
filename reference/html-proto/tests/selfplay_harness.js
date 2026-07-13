@@ -13,7 +13,8 @@
 //     first, life trajectories, etc.) rather than draft quality gaps.
 //
 // Both modes log:
-//   - crashes, invariant violations, stuck/runaway games (same fidelity)
+//   - crashes, invariant violations, stuck/runaway games, AI illegal actions
+//     (same fidelity)
 //   - balance summary: pacing, first-player edge, action mix, mana curve,
 //     life trajectory, board presence, color commitment
 //
@@ -179,6 +180,7 @@ function runOneGame(gameIdx) {
     gameIdx,
     crashed: false, crashError: null, crashStack: null, crashedDuringAction: null,
     invariantViolation: null, stuck: false, runaway: false,
+    illegalAction: null,
     winner: null, turns: 0, actionsTaken: 0,
     cardsSeen: new Set(),
     firstPlayer: null,
@@ -356,12 +358,25 @@ function runOneGame(gameIdx) {
       return result;
     }
 
-    try { ENGINE.executeAction(actor, action); }
+    // executeAction's contract: illegal → console.warn + return false, no
+    // throw (the catch is for genuine crashes mid-execution). An AI that
+    // proposes an illegal action is its own failure class — without this,
+    // the deterministic re-propose loop marches to ACTION_CAP and gets
+    // mislabeled "runaway", and the rejected no-ops pollute the
+    // actionTypes/actionsTaken stats.
+    let ok;
+    try { ok = ENGINE.executeAction(actor, action); }
     catch (e) {
       result.crashed = true;
       result.crashError = `executeAction threw: ${e.message}`;
       result.crashStack = e.stack;
       result.crashedDuringAction = `${actor}:${action.type}`;
+      return result;
+    }
+    if (!ok) {
+      result.illegalAction = { actor, action };
+      result.turns = G.turn || lastTurn;
+      result.actionsTaken = actionsTaken;
       return result;
     }
 
@@ -401,7 +416,8 @@ const crashes = results.filter(r => r.crashed);
 const invariantHits = results.filter(r => r.invariantViolation);
 const stuck = results.filter(r => r.stuck);
 const runaway = results.filter(r => r.runaway);
-const clean = results.filter(r => !r.crashed && !r.invariantViolation && !r.stuck && !r.runaway);
+const illegal = results.filter(r => r.illegalAction);
+const clean = results.filter(r => !r.crashed && !r.invariantViolation && !r.stuck && !r.runaway && !r.illegalAction);
 
 console.log('=== SUMMARY ===');
 console.log(`Total games:           ${results.length}`);
@@ -410,6 +426,7 @@ console.log(`Crashes:               ${crashes.length}`);
 console.log(`Invariant violations:  ${invariantHits.length}`);
 console.log(`Stuck:                 ${stuck.length}`);
 console.log(`Runaway (>${TURN_CAP}t):       ${runaway.length}`);
+console.log(`Illegal AI actions:    ${illegal.length}`);
 console.log('');
 
 if (clean.length > 0) {
@@ -477,6 +494,8 @@ dumpFailures('CRASHES', crashes, r => r.crashError);
 dumpFailures('INVARIANT VIOLATIONS', invariantHits, r => r.invariantViolation);
 dumpFailures('STUCK', stuck, r => r.crashError || 'expectedActor returned null with game not over');
 dumpFailures('RUNAWAY', runaway, r => `>${TURN_CAP} turns`);
+dumpFailures('ILLEGAL AI ACTIONS', illegal,
+  r => `${r.illegalAction.actor}: ${JSON.stringify(r.illegalAction.action)}`);
 
 if (crashes.length > 0) {
   console.log('=== CRASH STACK SAMPLES (one per unique error) ===');
@@ -493,5 +512,5 @@ if (crashes.length > 0) {
   console.log('');
 }
 
-const anyFailure = crashes.length + invariantHits.length + stuck.length + runaway.length;
+const anyFailure = crashes.length + invariantHits.length + stuck.length + runaway.length + illegal.length;
 process.exit(anyFailure > 0 ? 1 : 0);

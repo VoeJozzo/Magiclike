@@ -1,0 +1,16 @@
+{
+  "card_id": "wind_drake",
+  "art": "\ud83d\udc32",
+  "cost": {
+    "U": 1,
+    "C": 1
+  },
+  "name": "Wind Drake",
+  "power": 2,
+  "toughness": 2,
+  "keywords": [],
+  "types": [
+    "Creature",
+    "Dragon"
+  ]
+}

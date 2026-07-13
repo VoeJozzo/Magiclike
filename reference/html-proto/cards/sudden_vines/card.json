@@ -1,7 +1,7 @@
 {
   "card_id": "sudden_vines",
   "name": "Sudden Vines",
-  "art": "🌿",
+  "art": "art.png",
   "cost": {
     "G": 1
   },
@@ -20,7 +20,7 @@
       ],
       "power": 1,
       "toughness": 1,
-      "duration": "eot"
+      "duration": "permanent"
     }
   ],
   "types": [

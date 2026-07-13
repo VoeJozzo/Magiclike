@@ -37,7 +37,8 @@ const Modal = {
     const entry = this._stack[idx];
     this._stack.splice(idx, 1);
     if (entry.prevFocus && typeof entry.prevFocus.focus === 'function') {
-      try { entry.prevFocus.focus(); } catch (_) {}
+      // Restore can fail if the element left the DOM meanwhile; breadcrumb only.
+      try { entry.prevFocus.focus(); } catch (err) { console.warn('Modal.hide: focus restore failed', err); }
     }
     // Only fire onClose for user-initiated dismiss (render-loop hides know what they want).
     if (entry.onClose && opts && opts.userInitiated) entry.onClose();
@@ -117,6 +118,14 @@ function init() {
   if (settingsBtnPersistent) {
     settingsBtnPersistent.onclick = SETTINGS_PANEL.show;
   }
+  // Keyboard pass / confirm: Space and Enter both trigger the contextual
+  // primary action (Done Attacking/Blocking during a combat declaration,
+  // otherwise Pass). See onPrimaryActionKey for the gating.
+  document.addEventListener('keydown', onPrimaryActionKey);
+  // Ability-icon hover tooltip (keyword coins). Delegated on document so it
+  // covers the cards rebuilt on every repaint without re-binding per element.
+  document.addEventListener('mouseover', onIconTipOver);
+  document.addEventListener('mouseout', onIconTipOut);
   showStartScreen();
 }
 
@@ -124,13 +133,16 @@ function init() {
 function stickerAppliesLabel(s) {
   switch (s.kind) {
     case 'stat_boost':     return 'creatures';
-    case 'innate':        return 'lands';
     case 'grant_mana_ability':     return "lands that don't already produce {" + s.color + '} (deck must play ' + s.colorAdj + ')';
+    case 'add_type':      return s.color
+      ? "lands that don't already produce {" + s.color + '} (deck must play ' + s.colorAdj + ')'
+      : 'permanents (adds the ' + s.type + ' type)';
     case 'cost_mod':      return 'non-lands with at least one generic mana and total mana cost ≥ 2';
     case 'empower':       return 'cards with numeric effects (damage, damageAll, pump, counters, pumpAllYours, gain_life, draw, discard, affect_creature)';
     case 'subtype':       return 'creatures (rolls a random subtype from your deck)';
     case 'keyword': {
       const kw = s.keyword;
+      if (kw === 'innate') return 'lands';
       if (kw === 'lifelink' || kw === 'deathtouch' || kw === 'trample') {
         return 'creatures, or instants/sorceries that deal damage';
       }
@@ -153,14 +165,17 @@ function appendStickerSectionToBrowser(inner) {
   heading.style.cssText = 'color:#e0b060;font-size:13px;letter-spacing:.1em;margin:0 0 8px;border-left:3px solid #e0b060;padding:2px 0 2px 8px;text-transform:uppercase';
   wrap.appendChild(heading);
 
-  // Card boosts = stat/cost/empower; Land mods = innate+landColor; Keyword grants = kw_*.
+  // Card boosts = stat/cost/empower; Land mods = innate+landColor (add_type);
+  // Keyword grants = kw_*. Innate is a keyword sticker but lands-only, so it
+  // stays grouped with Land mods.
   const groups = {
     'Card boosts':       [],
     'Land mods':         [],
     'Keyword grants':    [],
   };
+  const isInnateSticker = s => s.kind === 'keyword' && s.keyword === 'innate';
   for (const s of allStickers) {
-    if (s.kind === 'innate' || s.kind === 'grant_mana_ability') groups['Land mods'].push(s);
+    if (s.kind === 'grant_mana_ability' || s.kind === 'add_type' || isInnateSticker(s)) groups['Land mods'].push(s);
     else if (s.kind === 'keyword')                     groups['Keyword grants'].push(s);
     else                                               groups['Card boosts'].push(s);
   }
@@ -314,7 +329,9 @@ function showStartScreen() {
     const el = document.documentElement;
     const req = el.requestFullscreen || el.webkitRequestFullscreen;
     if (req && !document.fullscreenElement && !document.webkitFullscreenElement) {
-      try { req.call(el).catch(() => {}); } catch (_) {}
+      // Denial is a normal browser/policy outcome; breadcrumb only.
+      try { req.call(el).catch(err => console.warn('Fullscreen request rejected:', err)); }
+      catch (err) { console.warn('Fullscreen request failed:', err); }
     }
   }, {capture: true, once: true});
   const btns = document.getElementById('startBtns');
@@ -769,7 +786,7 @@ function makeRewardCardEl(tpl, slot) {
     (slot && slot.stickers) || [],
     undefined,
     (slot && slot.empowerRolls) || [],
-    undefined, undefined,
+    undefined,                          // bonusTrigger
     (slot && slot.stapledTpls) || [],
     (slot && slot.subtypeRolls) || []
   );
@@ -852,6 +869,73 @@ function attachMapLongPress(el, label) {
   el.addEventListener('mousemove',  (e) => move(e.clientX, e.clientY));
   el.addEventListener('mouseup',    cancel);
   el.addEventListener('mouseleave', cancel);
+}
+
+// Ability-icon hover tooltip. Keyword coins on the in-play frame carry a
+// data-tip string ("Flying: <reminder>"); #iconTip renders it in Almendra,
+// palette-matched (see CSS). Delegated on document so it survives the full
+// re-render each repaint, and reads the [data-tip] ancestor of whatever child
+// (e.g. the inner <svg>) the pointer actually entered.
+let _iconTipEl = null;
+function iconTip() {
+  if (!_iconTipEl) _iconTipEl = document.getElementById('iconTip');
+  return _iconTipEl;
+}
+function onIconTipOver(e) {
+  const host = e.target.closest && e.target.closest('[data-tip]');
+  if (!host) return;
+  const tip = iconTip();
+  if (!tip) return;
+  const raw = host.getAttribute('data-tip') || '';
+  // Bold the keyword name (text before the first ": "); textContent on each
+  // part keeps it injection-safe (data-tip is already attribute-decoded).
+  tip.textContent = '';
+  const sep = raw.indexOf(': ');
+  if (sep > 0) {
+    const name = document.createElement('span');
+    name.className = 'tip-name';
+    name.textContent = raw.slice(0, sep);
+    tip.appendChild(name);
+    tip.appendChild(document.createTextNode(raw.slice(sep)));
+  } else {
+    tip.textContent = raw;
+  }
+  tip.classList.add('vis');
+  positionIconTip(tip, host);
+}
+function onIconTipOut(e) {
+  const host = e.target.closest && e.target.closest('[data-tip]');
+  if (!host) return;
+  // Ignore moves between children of the same icon (relatedTarget still inside).
+  if (e.relatedTarget && host.contains(e.relatedTarget)) return;
+  hideIconTip();
+}
+// Force-hide the tooltip, called by render() on every repaint. A repaint
+// rebuilds the hand/board innerHTML, so the hovered coin is removed out from
+// under the pointer — the browser fires no mouseout for a node deleted beneath
+// the cursor, which would otherwise leave #iconTip stuck visible until the
+// pointer next enters and leaves another coin. Mirrors how #mapTooltip is
+// cleared on repaint. (If the pointer is still over a freshly-rebuilt coin, the
+// tip stays hidden until the pointer moves — same as the map tooltip.)
+function hideIconTip() {
+  const tip = iconTip();
+  if (tip) tip.classList.remove('vis');
+}
+function positionIconTip(tip, host) {
+  const r = host.getBoundingClientRect();
+  // Measure at origin, then place centered above the icon, clamped to the
+  // viewport; flip below if there isn't room above.
+  tip.style.left = '0px';
+  tip.style.top = '0px';
+  const tr = tip.getBoundingClientRect();
+  const vw = window.innerWidth, vh = window.innerHeight;
+  let left = r.left + r.width / 2 - tr.width / 2;
+  left = Math.max(4, Math.min(left, vw - tr.width - 4));
+  let top = r.top - tr.height - 6;
+  if (top < 4) top = r.bottom + 6;
+  top = Math.max(4, Math.min(top, vh - tr.height - 4));
+  tip.style.left = left + 'px';
+  tip.style.top = top + 'px';
 }
 
 // Post-draft Innate offer: pick a basic land type to guarantee in opening hands.
@@ -1196,7 +1280,7 @@ function renderReward() {
           [],                               // no stickers on merged preview
           undefined,
           [],                               // no empowerRolls
-          undefined, undefined,
+          undefined,                        // bonusTrigger
           priorStaples.concat([stapleSlot.tplId]),
           []
         );
@@ -1882,9 +1966,10 @@ function clickBattlefield(iid) {
       }
       if (!ENGINE.isLegalAction('you', probe)) continue;
       // Build a human-readable label. For mana abilities, "Tap for {color}"
-      // form is clearer than the raw text. For other abilities, use the
-      // engine's describeAbility helper if available, else fall back to
-      // raw text. Keep labels short — picker buttons are small.
+      // form is clearer than the raw text. Everything else renders through
+      // the engine's own oracle via abilityPickerLabel (card-text.js) —
+      // audit A10-1 replaced a hand-rolled kind→label table here that lied
+      // about kinds, costs, permanence, and subjects.
       let label;
       if (isMana) {
         const am = ab.effects[0].amounts || {};
@@ -1894,28 +1979,7 @@ function clickBattlefield(iid) {
         }
         label = 'Tap for ' + (parts.join('') || 'mana');
       } else {
-        // Use the ability's first effect's kind to synthesize a short label.
-        // Cards already have full text in their hover/popup; this is just
-        // for picker disambiguation.
-        const eff = ab.effects[0];
-        const costStr = (ab.cost && ab.cost.tap) ? '{T}' :
-                        (ab.cost && ab.cost.mana) ?
-                          Object.keys(ab.cost.mana).map(c => {
-                            const n = ab.cost.mana[c];
-                            return n === 1 ? '{' + c + '}' : '{' + n + '}'.replace('C', '');
-                          }).join('') :
-                        (ab.cost && ab.cost.sacrifice) ? 'Sacrifice' : '';
-        const isDrawMove = eff.kind === 'move_card' && eff.from_zone === 'library' && eff.to_zone === 'hand';
-        const isReanimate = eff.kind === 'move_card' && eff.from_zone === 'graveyard' && eff.to_zone === 'battlefield';
-        const effDesc = eff.kind === 'damage' ? 'Deal ' + (eff.amount || 1) + ' damage' :
-                        eff.kind === 'pump' ? '+' + (eff.power || 0) + '/+' + (eff.toughness || 0) + ' EOT' :
-                        (eff.kind === 'draw' || isDrawMove) ? 'Draw ' + (eff.amount || 1) :
-                        isReanimate ? 'Reanimate' :
-                        eff.kind === 'untap' ? 'Untap a creature' :
-                        eff.kind === 'gain_life' ? 'Gain ' + (eff.amount || 1) + ' life' :
-                        eff.kind === 'apply_in_game_splice' ? 'Staple' :
-                        eff.kind;
-        label = (costStr ? costStr + ': ' : '') + effDesc;
+        label = abilityPickerLabel(ab);
       }
       // Action-builder: fires this specific ability when chosen.
       const fireAbility = () => {
@@ -1953,8 +2017,9 @@ function clickStackTarget(stackIdx) {
   if (!pendingTarget) return;
   const G = ENGINE.state();
   const item = G.stack[stackIdx]; if (!item) return;
-  // Triggers are never valid targets for counter; defensive guard.
-  if (item.kind === 'trigger' || !item.card) return;
+  // Triggers and ability entries are never valid targets for counter
+  // (§1004.6); defensive guard.
+  if (item.kind === 'trigger' || item.kind === 'ability' || !item.card) return;
   const action = buildPendingActionWithTarget({kind:'stack', stackItem: item, label: item.card.name});
   if (action && action.pending) {
     render();
@@ -2117,6 +2182,55 @@ function doneDeclaring() {
 }
 function concede() { ENGINE.concede(); }
 
+// ----- Primary action (Space / Enter) -----
+// The keyboard is a peer of the on-screen buttons, not a layer on top of them:
+// these helpers read engine state and call the same controller actions, so the
+// keys feed the engine the same action descriptors the buttons do. render()
+// drives the Pass / Done buttons from the very same predicates, so the two
+// input paths agree by construction rather than by one scraping the other.
+
+// True when the human owes a combat declaration — attackers on their own turn,
+// blockers on the opponent's. Pure function of engine state.
+function humanOwesDeclaration() {
+  const G = ENGINE.state();
+  if (!G) return false;
+  return (G.phase === 'COMBAT_ATTACK' && G.activePlayer === 'you' && !G.attackersDeclared)
+      || (G.phase === 'COMBAT_BLOCK'  && G.activePlayer === 'opp' && !G.blockersDeclared);
+}
+
+// Whether a plain priority pass is the human's to give right now. Mixes engine
+// state (whose turn, cleanup, forced prompts) with one UI-only fact the engine
+// can't see — pendingTarget, a half-built cast — so it lives in the controller.
+function canPass() {
+  const G = ENGINE.state();
+  if (!G) return false;
+  return !(G.gameOver || pendingTarget || G.cleanupDiscarding
+        || ENGINE.playerOwesDecision('you')
+        || ENGINE.expectedActor() !== 'you');
+}
+
+// The single "primary action" Space/Enter drive: confirm a pending combat
+// declaration if one is open (intent: "I'm done declaring," not "skip"),
+// otherwise pass priority. Both branches go through the existing button
+// handlers — same path to the engine, no DOM round-trip.
+function primaryAction() {
+  if (humanOwesDeclaration()) { doneDeclaring(); return; }
+  if (canPass()) passAction();
+}
+
+function onPrimaryActionKey(e) {
+  if (e.key !== 'Enter' && e.key !== ' ' && e.code !== 'Space') return;
+  // Let the browser have keys aimed at a focused control: typing in the card
+  // search / settings fields, or re-activating an already-focused button
+  // (whose native handler would otherwise double-fire with primaryAction).
+  const t = e.target;
+  if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA'
+            || t.tagName === 'BUTTON' || t.isContentEditable)) return;
+  if (Modal._stack.length) return;   // settings / popup / reward / draft gate
+  e.preventDefault();                // stop Space from scrolling the page
+  primaryAction();
+}
+
 // =========================================================================
 // Long-press → card popup. Implemented here so all card-render sites can
 // share the same gesture wiring.
@@ -2256,7 +2370,7 @@ function openCardPopup(card) {
         <div class="frame-cost">${vm.pipsHtml}</div>
       </div>
       <div class="frame-art">${vm.artInner}</div>
-      <div class="frame-type">${escapeHtml(vm.typeText)}</div>
+      <div class="frame-type">${vm.typeHtml}</div>
       <div class="frame-text">
         <div class="frame-oracle">${vm.oracleHtml}</div>
         ${vm.stickersInner ? '<div class="frame-stickers">' + vm.stickersInner + '</div>' : ''}
@@ -3271,6 +3385,7 @@ return {
   closeCardPopup, attachLongPress,
   openZone, closeZone,
   cancelTarget, endTurn, passAction, doneDeclaring, concede, searchPick, triggerBuildPick, numberChoice, symmetricizeChoice, edictChoice, optionalCost, toggleLog,
+  canPass, humanOwesDeclaration,
   pickModalMode, cancelModalChoice,
   pendingModalChoice: () => pendingModalChoice,
   toggleStats, statsExport, statsClear,
@@ -3288,5 +3403,8 @@ return {
   uiBlk: () => uiBlk,
   uiPickBlk: () => uiPickBlk,
   clearUiOnPhaseChange,
+  // Hide the ability-icon tooltip; render() calls this each repaint so a coin
+  // destroyed under the pointer doesn't leave the tip stranded.
+  hideIconTip,
 };
 })();

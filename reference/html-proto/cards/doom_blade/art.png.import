@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dpgiy447g0qbw"
-path="res://.godot/imported/art.png-cde53dadf7e40865376c349ae94ab143.ctex"
+path="res://.godot/imported/art.png-84ccd0e0cb97e2fa289e8e52d25c9e06.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://reference/html-proto/cards/doomBlade/art.png"
-dest_files=["res://.godot/imported/art.png-cde53dadf7e40865376c349ae94ab143.ctex"]
+source_file="res://reference/html-proto/cards/doom_blade/art.png"
+dest_files=["res://.godot/imported/art.png-84ccd0e0cb97e2fa289e8e52d25c9e06.ctex"]
 
 [params]
 

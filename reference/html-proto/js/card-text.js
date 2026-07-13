@@ -53,6 +53,13 @@ function graveyardCardPhrase(filter) {
   return 'target ' + core + ' from ' + yards;
 }
 function targetPhrase(eff) {
+  const base = targetNoun(eff);
+  // distinct_targets: a later slot that repeats an earlier slot's type is marked
+  // `_another` (in describeEffectList) and reads "another target creature" — only
+  // honest because the engine forbids one object filling both slots.
+  return (eff && eff._another && /^target /.test(base)) ? 'another ' + base : base;
+}
+function targetNoun(eff) {
   const t = eff.target;
   if (t === 'self')     return 'you';
   // Accurate, structural mapping (no kind/sign guessing): 'opp' is opponent-only
@@ -199,16 +206,19 @@ function signedStat(field, eff, tplEff, negZero) {
   return { text: sign + Math.abs(v), highlight: bumped };
 }
 
-// §7b coverage: effect kinds intentionally WITHOUT a standalone describeEffect
-// case — they only ever render inside a multi-effect idiom or via authored
-// card.text, never as a lone segment. effectCoverageReport (engine.js) skips
-// these when checking for the "[kind]" debug sentinel.
-//   apply_sticker — the embargo/bleach idiom is rendered at the list level
+// §7b coverage: effect kinds whose STANDALONE render is intentionally empty
+// or absent — their text is carried by a multi-effect idiom or by authored
+// card.text instead. effectCoverageReport (engine.js) skips these when
+// checking for the "[kind]" debug sentinel, so a kind belongs here ONLY if
+// it genuinely has no standalone describeEffect text — a member that grows
+// a real case must leave the set, or the coverage guard stops guarding it
+// (audit A10-8: apply_sticker drifted in exactly this way and was removed).
 //   steal         — internal; dispatched by change_control (which has text)
-//   annihilate    — the rip/edict chain renders the whole phrase
+//   annihilate    — its case returns [] by design; the rip/edict chain
+//                   renders the whole phrase
 //   bargainSticker* — Archdemon of Bargains uses authored card.text
 const TEXT_IDIOM_ONLY = new Set([
-  'apply_sticker', 'steal', 'annihilate', 'bargain_sticker_self', 'bargain_sticker_other',
+  'steal', 'annihilate', 'bargain_sticker_self', 'bargain_sticker_other',
 ]);
 
 // Render one effect to segments (lowercase-leading; caller capitalizes).
@@ -228,7 +238,9 @@ function describeEffect(eff, tplEff) {
     case 'gain_life':
       if (typeof eff.amount === 'object' && eff.amount && eff.amount.from) {
         const owner = (eff.who && eff.who.from === 'target_controller') ? "its controller" : 'you';
-        return [plainSeg(owner + ' gains life equal to ' + describeAmount(eff.amount))];
+        // Conjugate by subject (audit A10-5): "you gain", "its controller gains".
+        const verb = owner === 'you' ? ' gain life equal to ' : ' gains life equal to ';
+        return [plainSeg(owner + verb + describeAmount(eff.amount))];
       }
       // §D4: a negative amount is life loss — render the sign as "lose N life".
       if (typeof eff.amount === 'number' && eff.amount < 0) {
@@ -410,8 +422,18 @@ function describeEffect(eff, tplEff) {
       const dur = (eff.duration === 'permanent') ? '' : ' until end of turn';
       const pt = (eff.power || eff.toughness) ? (eff.power || 0) + '/' + (eff.toughness || 0) + ' ' : '';
       const body = pt + tags.join(' ');
-      const verb = eff.kind === 'set_types' ? ' becomes ' : ' also becomes ';
-      return [plainSeg(t + verb + indefiniteArticle(body) + ' ' + body + dur)];
+      // scope:'self' carries no target noun — subject is "this", mirroring
+      // pump's arm (audit A10-4: artifice_triumphant's granted ability
+      // rendered an empty subject + double space).
+      const subj = eff.scope === 'self' ? 'this' : t;
+      // set_types REPLACES the whole type line (a Creature encased into an
+      // Artifact stops being a Creature) — say so, since "becomes an Artifact"
+      // alone reads like an addition. add_type's "also becomes" already does.
+      if (eff.kind === 'set_types') {
+        return [plainSeg(subj + ' becomes ' + indefiniteArticle(body) + ' ' + body
+          + ' and loses its other types' + dur)];
+      }
+      return [plainSeg(subj + ' also becomes ' + indefiniteArticle(body) + ' ' + body + dur)];
     }
     case 'apply_in_game_splice':
       return [plainSeg('staple the second target permanent onto the first')];
@@ -517,7 +539,10 @@ function describeEffect(eff, tplEff) {
       if (sk.kind === 'set_types') {
         const tags = Array.isArray(sk.types) ? sk.types : (sk.type ? [sk.type] : []);
         const body = tags.join(' ');
-        return [plainSeg(subj + ' becomes ' + indefiniteArticle(body) + ' ' + body + ' permanently')];
+        // Adverb fronted ("permanently becomes") — the trailing form
+        // ("…loses its other types, permanently") read as a dangling clause.
+        return [plainSeg(subj + ' permanently becomes ' + indefiniteArticle(body) + ' ' + body
+          + ' and loses its other types')];
       }
       if (sk.kind === 'grant_activated_ability' && sk.ability) {
         return [plainSeg(subj + ' gains "' + segsToText(describeAbility(sk.ability)) + '" permanently')];
@@ -581,8 +606,25 @@ function coalesceEotBuffs(effects, tplOf) {
 // Effects whose rendered noun is governed by a preceding chooses() filter.
 const EDICT_CHAIN_KINDS = new Set(['sacrifice', 'annihilate', 'rip']);
 
-function describeEffectList(effects, cardName, tplEffects, stepTarget, stepFilter, slotSpecs) {
+function describeEffectList(effects, cardName, tplEffects, stepTarget, stepFilter, slotSpecs, distinctTargets) {
   if (!Array.isArray(effects) || effects.length === 0) return [];
+  // distinct_targets: a later slot reads "another ..." when an earlier slot targets
+  // the same OBJECT TYPE. The engine forbids one object filling two slots by
+  // IDENTITY (sameTarget), independent of each slot's filter — so key on the slot's
+  // `target` type, NOT a JSON.stringify(filter) signature. The old signature key
+  // broke two ways: it depended on filter key-insertion order (JSON.stringify isn't
+  // canonical), and two same-type slots with DIFFERENT filters (e.g. "creature" vs
+  // "creature you control") still can't reuse an object in the engine but wouldn't
+  // read "another." Type-repetition matches the engine's actual collision domain.
+  const anotherSlots = new Set();
+  if (distinctTargets && Array.isArray(slotSpecs)) {
+    const seenTargets = new Set();
+    for (let s = 0; s < slotSpecs.length; s++) {
+      const sp = slotSpecs[s];
+      if (!sp || !sp.target) continue;
+      if (seenTargets.has(sp.target)) anotherSlots.add(s); else seenTargets.add(sp.target);
+    }
+  }
   // Give each bare effect a synthetic `target` so targetPhrase + withFilter
   // render "...target non-black creature" etc. Two sources, matching how
   // resolution feeds the target: (1) multi-target — the effect's `target_slot`
@@ -597,7 +639,9 @@ function describeEffectList(effects, cardName, tplEffects, stepTarget, stepFilte
       if (!e || e.target || e.kind === 'chooses' || e.scope != null) return e;
       if (Array.isArray(slotSpecs) && e.target_slot != null && slotSpecs[e.target_slot]) {
         const spec = slotSpecs[e.target_slot];
-        return Object.assign({}, e, spec.filter ? { target: spec.target, filter: spec.filter } : { target: spec.target });
+        const inj = spec.filter ? { target: spec.target, filter: spec.filter } : { target: spec.target };
+        if (anotherSlots.has(e.target_slot)) inj._another = true;
+        return Object.assign({}, e, inj);
       }
       if (!stepTarget) return e;
       const inj = { target: stepTarget };
@@ -769,7 +813,11 @@ function triggerPreamble(trig) {
   if (cid === 'thisAttacks') return 'When this attacks,';
   if (cid === 'thisDealsCombatDamageToOpp') return 'Whenever this deals combat damage to an opponent,';
   if (cid === 'thisLeaves')  return 'When this leaves the battlefield,';
-  if (cid === 'thisKillsCreature') return 'Whenever a creature dealt damage by this dies,';
+  // "this turn": damagedBySources clears in the EOT cleanup sweep, so the
+  // kill credit is turn-scoped (canonical Sengir wording) — say so. "this
+  // card" (not the usual bare "this") to avoid the "by this this turn"
+  // stutter.
+  if (cid === 'thisKillsCreature') return 'Whenever a creature dealt damage by this card this turn dies,';
   if (cid === 'thisAttacksAfterOppLifeLoss') {
     return 'When this attacks, if an opponent has lost life this turn,';
   }
@@ -811,7 +859,7 @@ function manaCostBraces(cost, opts) {
 function describeTrigger(trig, tplTrig) {
   const preamble = triggerPreamble(trig);
   const tplEffs = tplTrig ? tplTrig.effects : undefined;
-  const body = describeEffectList(trig.effects || [], null, tplEffs, trig.target, trig.target_filter);
+  const body = describeEffectList(trig.effects || [], null, tplEffs, trig.target, trig.target_filter, trig.target_slots, trig.distinct_targets);
   const bodyLower = body.slice();
   for (let i = 0; i < bodyLower.length; i++) {
     if (bodyLower[i].text && bodyLower[i].text.length > 0) {
@@ -867,10 +915,10 @@ function abilityCostPhrase(cost) {
       parts.push('one mana of each of this card\'s colors');
       return parts.join(', ');
     }
-    let s = '';
-    for (const [color, n] of Object.entries(cost.mana)) {
-      for (let i = 0; i < n; i++) s += '{' + color + '}';
-    }
+    // Generic mana renders as a single number ({2}), not repeated colorless pips
+    // ({C}{C}), matching the card-frame cost and manaCostBraces. C is generic in a
+    // cost; only colored pips repeat. (Deepseam Quarry: {C:2} -> "{2}", not "CC".)
+    const s = manaCostBraces(cost.mana);
     if (s) parts.push(s);
   }
   if (cost.sacrifice) {
@@ -913,6 +961,21 @@ function describeAbility(ab, tplAb) {
   return [plainSeg(cost + ': ')].concat(body).concat(speedClause);
 }
 
+// One-line button label for the controller's unified ability picker (audit
+// A10-1). Renders through the engine's own oracle (describeAbility →
+// segsToText) — the same path as render.js's ability stack pill — so a
+// picker button can never contradict the card's rules text. (The previous
+// hand-rolled kind→label table lied: raw internal kinds as labels, inverted
+// permanence, wrong subject, understated costs.) Capped because picker
+// buttons are small; the card's hover/popup carries the full text.
+function abilityPickerLabel(ab, maxLen) {
+  const cap = maxLen || 60;
+  let text = '';
+  try { text = segsToText(describeAbility(ab, ab)); } catch (_) { text = ''; }
+  if (!text) text = 'Activate ability';
+  return text.length > cap ? text.slice(0, cap - 1).trimEnd() + '…' : text;
+}
+
 // Lord buff: "Other <subtype>s you control get +P/+T and have <kw>."
 function describeStaticBuff(buff) {
   const sub = buff.subtype ? buff.subtype + 's' : 'creatures';
@@ -951,26 +1014,61 @@ function describeStaticBuff(buff) {
 // spell's preamble — otherwise a sorcery could nonsensically read "Trample."
 const SPELL_LEGAL_KEYWORDS = new Set(['flash']);
 
-// Keyword list as "Flying, Vigilance" prefix.
-function keywordPreamble(keywords) {
-  if (!Array.isArray(keywords) || keywords.length === 0) return '';
+const KW_PREAMBLE_DISPLAY = {
+  flying: 'Flying', vigilance: 'Vigilance', trample: 'Trample', haste: 'Haste',
+  first_strike: 'First strike', double_strike: 'Double strike', deathtouch: 'Deathtouch',
+  lifelink: 'Lifelink', reach: 'Reach', menace: 'Menace', defender: 'Defender',
+  flash: 'Flash', hexproof: 'Hexproof', indestructible: 'Indestructible',
+};
+
+// Which keywords on a card were granted by a sticker (vs intrinsic / lord-granted).
+// Read so the keyword preamble can color them distinctly (sticker-granted text).
+// Only registry-id keyword stickers grant keywords; inline descriptors don't.
+function stickerGrantedKeywords(card) {
+  const set = new Set();
+  for (const sId of (card.stickers || [])) {
+    const s = (typeof sId === 'string' && typeof STICKERS !== 'undefined') ? STICKERS[sId] : null;
+    if (s && s.kind === 'keyword' && s.keyword) set.add(s.keyword);
+  }
+  return set;
+}
+
+// Tag every segment of a section as sticker-granted (preserving any empower
+// highlight) so the renderer colors the whole granted line distinctly.
+function markStickerSegs(segs) {
+  return (segs || []).map(s => ({ ...s, sticker: true }));
+}
+
+// Keyword preamble as segments — "Flying, Vigilance". Sticker-granted keywords
+// (in stickerKws) carry sticker:true so they render in the sticker color.
+// Returns [] when nothing to show; the period is appended by the caller.
+function keywordPreambleSegs(keywords, stickerKws) {
+  if (!Array.isArray(keywords) || keywords.length === 0) return [];
   // no_block is the hidden half of Pacifism's "can't attack or block" lockdown
   // (paired with defender); never surfaced as a keyword in its own right.
-  keywords = keywords.filter(k => k !== 'no_block');
-  if (keywords.length === 0) return '';
-  const display = {
-    flying: 'Flying', vigilance: 'Vigilance', trample: 'Trample', haste: 'Haste',
-    first_strike: 'First strike', double_strike: 'Double strike', deathtouch: 'Deathtouch',
-    lifelink: 'Lifelink', reach: 'Reach', menace: 'Menace', defender: 'Defender',
-    flash: 'Flash', hexproof: 'Hexproof', indestructible: 'Indestructible',
-  };
-  return keywords.map(k => display[k] || (k[0].toUpperCase() + k.slice(1))).join(', ');
+  // innate is a non-combat status keyword — it has its own "Innate." line and
+  // status badge, so it's kept out of the combat keyword preamble.
+  keywords = keywords.filter(k => k !== 'no_block' && k !== 'innate');
+  if (keywords.length === 0) return [];
+  const segs = [];
+  keywords.forEach((k, i) => {
+    if (i > 0) segs.push(plainSeg(', '));
+    const name = KW_PREAMBLE_DISPLAY[k] || (k[0].toUpperCase() + k.slice(1));
+    segs.push((stickerKws && stickerKws.has(k)) ? { text: name, highlight: false, sticker: true } : plainSeg(name));
+  });
+  return segs;
+}
+
+// Keyword list as a flat "Flying, Vigilance" string (no period). Delegates to
+// the segment version so there's one source of truth for display names/filtering.
+function keywordPreamble(keywords) {
+  return keywordPreambleSegs(keywords).map(s => s.text).join('');
 }
 
 // Flat string for storage/logging. UI uses describeCardSegments for highlights.
 // skipKeywords:true keeps the stored text free of the keyword preamble so
-// successive engine regenerations (line 567 of engine.js fires on every
-// makeCard / makeCard-after-grant) don't bake "Trample. " into card.text
+// successive engine regenerations (engine.js makeCard's card.text refresh,
+// which runs on every makeCard / makeCard-after-grant) don't bake "Trample. " into card.text
 // and double up with the render-time preamble. The keyword preamble is a
 // UI concern, added fresh by the card frame's describeCardSegments call.
 function describeCardText(card) {
@@ -1002,15 +1100,32 @@ function describeCardSegments(card, opts) {
     // objects, not array-of-arrays. The non-special branch below has
     // its own flatten loop; we mirror it.
     const sections = [];
-    if (!opts.skipKeywords && (hasType(card,'Creature') || hasType(tpl,'Creature'))) {
-      const intrinsic = new Set(tpl.keywords || []);
-      const granted = (card.keywords || []).filter(kw => !intrinsic.has(kw) && kw !== 'no_block');
-      if (granted.length > 0) {
-        const kw = keywordPreamble(granted);
-        if (kw) sections.push([plainSeg(kw + '.')]);
+    if (!opts.skipKeywords) {
+      const isCreatureCard = hasType(card,'Creature') || hasType(tpl,'Creature');
+      let prepend;
+      if (isCreatureCard) {
+        // Authored creature text inlines its intrinsic keywords (City Guardian
+        // "First Strike.", Archdemon "Flying, Trample."), so prepending the full
+        // list would duplicate — surface only GRANTED keywords (Elystra/Endomorph/
+        // runtime grants), which the static text can't know about.
+        const intrinsic = new Set(tpl.keywords || []);
+        prepend = (card.keywords || []).filter(kw => !intrinsic.has(kw) && kw !== 'no_block');
+      } else {
+        // A non-creature spell's authored text describes its effect, never its
+        // casting-timing keyword, so Flash would otherwise vanish (Steal). Surface
+        // spell-legal keywords (flash) the same way the generated branch does — no
+        // duplication risk since custom spell text doesn't write "Flash" inline.
+        prepend = (card.keywords || tpl.keywords || []).filter(kw => SPELL_LEGAL_KEYWORDS.has(kw));
       }
+      // Render as segments so sticker-granted keywords color (gold); the prepend
+      // logic above (granted-on-creatures / spell-legal-on-spells) is preserved.
+      const kwSegs = keywordPreambleSegs(prepend, stickerGrantedKeywords(card));
+      if (kwSegs.length) { kwSegs.push(plainSeg('.')); sections.push(kwSegs); }
     }
-    const staticText = card.text || tpl.text || '';
+    // Authored text may carry the conventional ~ placeholder (Adept, Codex) —
+    // substitute the card's name so it never reaches a player's eyes raw
+    // (audit A10-3; substitution is idempotent once baked into card.text).
+    const staticText = formatTriggerText(card.text || tpl.text || '', card.name || tpl.name);
     if (staticText) sections.push([plainSeg(staticText)]);
     const out = [];
     for (let i = 0; i < sections.length; i++) {
@@ -1036,14 +1151,15 @@ function describeCardSegments(card, opts) {
     // leaking combat keywords onto it.
     const isCreatureCard = hasType(card,'Creature') || hasType(tpl,'Creature');
     const allKw = card.keywords || tpl.keywords || [];
-    const kw = keywordPreamble(isCreatureCard ? allKw : allKw.filter(k => SPELL_LEGAL_KEYWORDS.has(k)));
-    if (kw) sections.push([plainSeg(kw + '.')]);
+    const kwList = isCreatureCard ? allKw : allKw.filter(k => SPELL_LEGAL_KEYWORDS.has(k));
+    const kwSegs = keywordPreambleSegs(kwList, stickerGrantedKeywords(card));
+    if (kwSegs.length) { kwSegs.push(plainSeg('.')); sections.push(kwSegs); }
   }
   if (card.effects && card.effects.modes) {
     sections.push(describeModalSegs(card.effects.modes, tplBaseline.effects && tplBaseline.effects.modes));
   } else if (Array.isArray(card.effects) && card.effects.length > 0) {
     const tplEffs = Array.isArray(tplBaseline.effects) ? tplBaseline.effects : undefined;
-    sections.push(describeEffectList(card.effects, card.name || tpl.name, tplEffs, card.target || tpl.target, card.target_filter || tpl.target_filter, card.target_slots || tpl.target_slots));
+    sections.push(describeEffectList(card.effects, card.name || tpl.name, tplEffs, card.target || tpl.target, card.target_filter || tpl.target_filter, card.target_slots || tpl.target_slots, card.distinct_targets || tpl.distinct_targets));
   }
   if (Array.isArray(card.static_buffs)) {
     for (const buff of card.static_buffs) {
@@ -1054,7 +1170,10 @@ function describeCardSegments(card, opts) {
   if (card.spend_mana_as_any_color || tpl.spend_mana_as_any_color) {
     sections.push([plainSeg('You may spend mana as though it were mana of any color.')]);
   }
-  if (card.innate || tpl.innate) {
+  // On the in-play frame (skipKeywords) the innate coin in the icon row conveys
+  // this, so suppress the redundant word; the popup (words mode) keeps "Innate."
+  if (!opts.skipKeywords
+      && ((card.keywords || []).includes('innate') || (tpl.keywords || []).includes('innate'))) {
     sections.push([plainSeg('Innate.')]);
   }
   if (Array.isArray(card.triggers)) {
@@ -1062,20 +1181,37 @@ function describeCardSegments(card, opts) {
     for (let i = 0; i < card.triggers.length; i++) {
       const trig = card.triggers[i];
       const tplTrig = tplTriggers[i];
-      sections.push(describeTrigger(trig, tplTrig));
+      let trigSegs = describeTrigger(trig, tplTrig);
+      // Sticker-granted triggers (e.g. Scarified) render in the sticker color.
+      if (trig && trig._from_sticker) trigSegs = markStickerSegs(trigSegs);
+      sections.push(trigSegs);
     }
   }
   if (Array.isArray(card.abilities)) {
     const tplAbilities = Array.isArray(tplBaseline.abilities) ? tplBaseline.abilities : [];
     for (let i = 0; i < card.abilities.length; i++) {
       const ab = card.abilities[i];
-      // A basic land's fixed tap-for-mana ability is intrinsic (shown via the
-      // type line, not rules text) — suppress it so basics render empty. A
-      // choose-form mana land (City of Brass / duals) keeps its ability text.
-      if (hasType(card,'Land') && ab.cost && ab.cost.tap
-          && ab.effects && ab.effects[0] && ab.effects[0].kind === 'add_mana'
-          && ab.effects[0].amounts) {
-        continue;
+      // A land's plain tap-for-mana ability is suppressed when the type line
+      // already conveys it (MTG 305.6): "Basic Land — Plains" or "Artifact
+      // Land — Plains" promises {W}, so printing "{T}: Add {W}" is redundant —
+      // the big-mana-symbol render takes over instead. The test is per-color:
+      // every color the ability produces must be conveyed by a basic-land
+      // subtype, and each produced amount must be exactly 1 (a {T}: Add {C}{C}
+      // land out-produces what any subtype promises). Lands whose type line
+      // says nothing about their mana (Deepseam Quarry, City of Brass,
+      // Equatorial Engine) keep their ability text — it would otherwise be
+      // invisible. A choose-form ability whose colors are ALL conveyed (e.g. a
+      // Forest with an "Also a Island" sticker → "Basic Land — Forest Island")
+      // is suppressed too, mirroring paper dual lands.
+      if (hasType(card,'Land') && ab.cost && ab.cost.tap && !ab.cost.mana
+          && ab.effects && ab.effects.length === 1 && ab.effects[0].kind === 'add_mana') {
+        const eff = ab.effects[0];
+        const produced = manaEffectColors(eff);
+        const conveyed = basicLandTypeColors(card);
+        const unitAmounts = !eff.amounts || Object.values(eff.amounts).every(n => n === 1);
+        if (produced.length && unitAmounts && produced.every(c => conveyed.includes(c))) {
+          continue;
+        }
       }
       const tplAb = tplAbilities[i];
       const abSegs = describeAbility(ab, tplAb);

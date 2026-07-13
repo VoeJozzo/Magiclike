@@ -1,6 +1,6 @@
 {
   "card_id": "counter_specialist",
-  "art": "🚫",
+  "art": "art.png",
   "cost": {
     "U": 1,
     "C": 2

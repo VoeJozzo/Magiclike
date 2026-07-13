@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bhg6g0xmp8q4j"
-path="res://.godot/imported/art.png-6c77a0c4d23fed8dcc81f02298e109c4.ctex"
+path="res://.godot/imported/art.png-9aded44acde4ecc5a115692895df5ace.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://reference/html-proto/cards/goblinChieftain/art.png"
-dest_files=["res://.godot/imported/art.png-6c77a0c4d23fed8dcc81f02298e109c4.ctex"]
+source_file="res://reference/html-proto/cards/goblin_chieftain/art.png"
+dest_files=["res://.godot/imported/art.png-9aded44acde4ecc5a115692895df5ace.ctex"]
 
 [params]
 

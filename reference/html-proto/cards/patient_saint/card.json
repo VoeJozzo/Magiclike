@@ -14,7 +14,7 @@
       ]
     }
   ],
-  "art": "🕯",
+  "art": "art.png",
   "cost": {
     "W": 1,
     "C": 1
@@ -27,8 +27,7 @@
   "toughness": 4,
   "types": [
     "Creature",
-    "Human",
-    "Cleric",
-    "Wall"
+    "Spirit",
+    "Cleric"
   ]
 }

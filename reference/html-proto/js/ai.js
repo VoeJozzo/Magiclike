@@ -109,6 +109,12 @@ function spellValueForEffects(effects) {
     else if (e.kind === 'gain_life') v += (e.amount || 0) < 0 ? (3 + Math.abs(e.amount) * 2) : 1;
     else if (e.kind === 'schedule_delayed') v += 1;  // exile_until_eot's return tail (the bf→exile half carries the value)
     else if (e.kind === 'pump') v += (e.power < 0 || e.toughness < 0) ? (3 + Math.abs(e.toughness || 0)) : 2;
+    // A7-2: mirror engine.js abilityValue's add_counter case (3 + P + T), floored
+    // at >=1 (Joe) so an UNTARGETED counter spell is never valued 0 and the AI at
+    // least tries to cast it. Was a dead branch — VALUED-claimed but with no
+    // cast-scorer entry (effectCoverageReport's unscoredValuation now probes for
+    // exactly this class).
+    else if (e.kind === 'add_counter') v += Math.max(1, 3 + (e.power || 0) + (e.toughness || 0));
     else if (e.kind === 'grant_keyword') {
       // mass-yours-eot Overrun-shape vs single-target permanent vs symmetric.
       const eot = e.duration === 'eot';
@@ -164,6 +170,28 @@ const UNVALUED_EFFECT_KINDS = new Set([
 
 const AI = (function() {
 
+
+// Resolve a castSpell action's card from the hand OR from a cast-permission
+// zone (e.g. a card exiled by Seal-Thief Courier with "you may cast it this
+// turn"). getLegalActions emits castSpell actions for both, but the decision
+// paths used to look only in hand — making permitted exile cards invisible to
+// the AI (it never cast what it stole). Reads the PASSED state, not the global
+// G, so it stays correct under simulation snapshots (a clone without
+// castPermissions just resolves hand-only).
+function findCastableCard(state, who, iid) {
+  const inHand = state[who].hand.find(c => c.iid === iid);
+  if (inHand) return inHand;
+  for (const perm of (state.castPermissions || [])) {
+    if (perm.controller !== who || perm.cardIid !== iid) continue;
+    const zoneName = perm.from_zone || 'exile';
+    for (const owner of ['you', 'opp']) {
+      const zone = state[owner][zoneName];
+      const found = Array.isArray(zone) ? zone.find(c => c.iid === iid) : null;
+      if (found) return found;
+    }
+  }
+  return null;
+}
 
 // Rough position read (life + board power, board weighted heavier) mapped to a
 // 1-5 Archdemon-of-Bargains pick. The AI is the demon's NON-controller: it picks
@@ -302,7 +330,7 @@ function decideOffTurnCombat(state, who, actions) {
   const spellsByCard = new Map();
   for (const a of actions) {
     if (a.type !== 'castSpell') continue;
-    const card = state[who].hand.find(c => c.iid === a.cardIid);
+    const card = findCastableCard(state, who, a.cardIid);
     if (!card) continue;
     if (!(card.keywords && card.keywords.includes('flash'))) continue;
     if (!spellsByCard.has(a.cardIid)) spellsByCard.set(a.cardIid, []);
@@ -317,7 +345,7 @@ function decideOffTurnCombat(state, who, actions) {
   let bestInst = null, bestInstScore = -Infinity;
   let bestFlash = null, bestFlashScore = -Infinity;
   for (const [iid, options] of spellsByCard) {
-    const card = state[who].hand.find(c => c.iid === iid);
+    const card = findCastableCard(state, who, iid);
     if (!card) continue;
     const chosen = pickBestTargetForSpell(state, who, card, options);
     if (!chosen) continue;
@@ -404,7 +432,7 @@ function decideEndStepFlash(state, who, actions) {
   const flashCasts = new Map();
   for (const a of actions) {
     if (a.type !== 'castSpell') continue;
-    const card = state[who].hand.find(c => c.iid === a.cardIid);
+    const card = findCastableCard(state, who, a.cardIid);
     if (!card) continue;
     if (!hasType(card, 'Creature')) continue;
     if (!(card.keywords && card.keywords.includes('flash'))) continue;
@@ -416,7 +444,7 @@ function decideEndStepFlash(state, who, actions) {
   }
   if (flashCasts.size === 0) return null;
   const sorted = Array.from(flashCasts.keys())
-    .map(iid => ({ iid, card: state[who].hand.find(c => c.iid === iid), options: flashCasts.get(iid) }))
+    .map(iid => ({ iid, card: findCastableCard(state, who, iid), options: flashCasts.get(iid) }))
     .filter(x => x.card)
     .sort((a, b) => ENGINE.cardCost(b.card) - ENGINE.cardCost(a.card));
   for (const { card, options } of sorted) {
@@ -434,24 +462,18 @@ function decideEndStepFlash(state, who, actions) {
 // trigger, e.g.) might want a different rule. Conservative by design — only
 // fizzles flash casts when there's clearly nothing good to bounce.
 function flashETBWouldFizzle(state, who, card) {
-  const them = opp(who);
   const triggers = card.triggers || [];
-  const creaturesOf = w => state[w].battlefield.filter(c => hasType(c, 'Creature'));
   for (const trig of triggers) {
     if (!triggerFiresOnEnter(trig)) continue;
-    // Trigger-level target step (The False Witness: opp_creature) — if the ETB
-    // needs a creature that isn't on the board, flashing it in just wastes the
-    // body. Mirror the per-effect affect_creature check below.
-    if (trig.target === 'opp_creature' && creaturesOf(them).length === 0) return true;
-    if (trig.target === 'your_creature' && creaturesOf(who).length === 0) return true;
-    if (trig.target === 'creature'
-        && creaturesOf(who).length === 0 && creaturesOf(them).length === 0) return true;
-    const effects = trig.effects || [];
-    for (const eff of effects) {
-      if (eff.kind === 'affect_creature' && eff.target === 'creature') {
-        if (creaturesOf(them).length === 0) return true;
-      }
-    }
+    // A trigger declares its target at one of two levels: the trigger-level
+    // target() step (trig.target + trig.target_filter) OR a per-effect target
+    // (eff.target + eff.filter). Source the kind and filter from the SAME level
+    // so they can't desync (a trigger-level kind paired with a stray effect
+    // filter would mis-resolve).
+    const targetingEff = (trig.effects || []).find(e => e.target && e.target !== 'self');
+    const targetKind = trig.target || (targetingEff && targetingEff.target);
+    const targetFilter = trig.target ? trig.target_filter : (targetingEff && targetingEff.filter);
+    if (targetKind && ENGINE.targetsForFilter(targetKind, who, targetFilter).length === 0) return true;
   }
   return false;
 }
@@ -478,7 +500,7 @@ function decideMain(state, who, actions) {
     if (reservedBurnIids && reservedBurnIids.has(a.cardIid)) continue;
     // Defer VANILLA flash to opp's turn — body-only value is preserved by ambush/end-step paths.
     // Trigger-flash (Quickling) wants to fire NOW (pre-combat bounce).
-    const flashCard = state[who].hand.find(c => c.iid === a.cardIid);
+    const flashCard = findCastableCard(state, who, a.cardIid);
     if (flashCard && hasType(flashCard, 'Creature')
         && flashCard.keywords && flashCard.keywords.includes('flash')
         && (!flashCard.triggers || flashCard.triggers.length === 0)) {
@@ -488,8 +510,10 @@ function decideMain(state, who, actions) {
     spellsByCard.get(a.cardIid).push(a);
   }
   // Curve-up: biggest playable first. Flash-hold: vanilla flash bodies deferred to off-turn.
+  // findCastableCard (not hand.find): cast-permission cards (exile steals)
+  // must stay candidates, or the AI never casts what it stole.
   const candidateCards = Array.from(spellsByCard.keys()).map(iid => ({
-    iid, card: state[who].hand.find(c => c.iid === iid),
+    iid, card: findCastableCard(state, who, iid),
   })).filter(x => {
     if (!x.card) return false;
     if (hasType(x.card, 'Creature') &&
@@ -537,7 +561,7 @@ function getDirectBurnSources(state, who, actions) {
     let amount = 0;
     let cost = 0;
     if (a.type === 'castSpell') {
-      const card = state[who].hand.find(c => c.iid === a.cardIid);
+      const card = findCastableCard(state, who, a.cardIid);
       if (!card) continue;
       const dmg = ENGINE.effectsForMode(card, a.modeIdx).find(e => e.kind === 'damage');
       if (!dmg) continue;
@@ -631,7 +655,7 @@ function decideReaction(state, who, actions) {
   // Counter the top of stack if it's an opp spell worth stopping.
   const counters = actions.filter(a =>
     a.type === 'castSpell' &&
-    ENGINE.cardHasEffect(state[who].hand.find(c => c.iid === a.cardIid),
+    ENGINE.cardHasEffect(findCastableCard(state, who, a.cardIid),
                          e => e.kind === 'counter'));
   if (counters.length && shouldCounter(state, who)) {
     const top = state.stack[state.stack.length - 1];
@@ -645,7 +669,9 @@ function decideReaction(state, who, actions) {
 function shouldCounter(state, who) {
   const top = state.stack[state.stack.length - 1];
   if (!top || top.controller === who) return false;
-  if (top.kind === 'trigger' || !top.card) return false;
+  // Trigger and kind:'ability' entries can't be countered (§1004.6) — the
+  // AI's only stack reaction today is countering, so it passes over them.
+  if (top.kind === 'trigger' || top.kind === 'ability' || !top.card) return false;
   const card = top.card;
   // Check the chosen mode only (top.modeIdx locked in) — not all modes.
   const relevantEffects = ENGINE.effectsForMode(card, top.modeIdx);
@@ -706,7 +732,14 @@ function simulateCombat(state, attackerWho, attackerIids, blockMap) {
       const w = snap(bIid); if (w) allCombatants.push(w.card);
     }
   }
-  const hasFirstStrike = allCombatants.some(c => c.keywords.includes('first_strike'));
+  // A2-1 lockstep: snapshot first-strike membership once, mirroring
+  // resolveCombatDamage's damage-start snapshot. Within this simulation the
+  // working copies' keywords never mutate between strikes (no lord-death
+  // revocation is simulated), so this is shape-parity with the engine, not
+  // a behavior change here.
+  const fsIids = new Set(
+    allCombatants.filter(c => c.keywords.includes('first_strike')).map(c => c.iid)
+  );
 
   const isDead = (w) => {
     if (!w) return true;
@@ -756,15 +789,22 @@ function simulateCombat(state, attackerWho, attackerIids, blockMap) {
       for (const wBlk of orderedBlockers) {
         const blk = wBlk.card;
         const [bPow, bTou] = ENGINE.getStats(blk);
-        const indestructible = blk.keywords.includes('indestructible');
-        const lethalNeeded = (atkDeathtouch && !indestructible)
+        // A2-7 (engine lockstep): 1 point of deathtouch damage is a lethal
+        // dose vs EVERY blocker, indestructible included (they're marked
+        // but survive — isDead keeps the immunity). Design ruling, PR #98,
+        // 2026-06-10.
+        const lethalNeeded = atkDeathtouch
           ? Math.min(1, Math.max(0, bTou - wBlk.damage))
           : Math.max(0, bTou - wBlk.damage);
-        if (atkDeals && remaining >= lethalNeeded && lethalNeeded > 0) {
-          wBlk.damage += lethalNeeded;
-          if (atkDeathtouch && !indestructible) wBlk.dealtDeathtouch = true;
-          if (atk.keywords.includes('lifelink')) attackerLifeGain += lethalNeeded;
-          remaining -= lethalNeeded;
+        // A2-2 (engine lockstep): lethalNeeded 0 ⇒ already satisfied — no
+        // damage assigned, trample carryover not suppressed.
+        if (atkDeals && remaining >= lethalNeeded) {
+          if (lethalNeeded > 0) {
+            wBlk.damage += lethalNeeded;
+            if (atkDeathtouch) wBlk.dealtDeathtouch = true;
+            if (atk.keywords.includes('lifelink')) attackerLifeGain += lethalNeeded;
+            remaining -= lethalNeeded;
+          }
         } else {
           unsatisfied.push(wBlk);
         }
@@ -783,14 +823,18 @@ function simulateCombat(state, attackerWho, attackerIids, blockMap) {
         } else if (unsatisfied.length > 0) {
           unsatisfied[0].damage += remaining;
           if (atk.keywords.includes('lifelink')) attackerLifeGain += remaining;
+        } else if (atk.keywords.includes('lifelink')) {
+          // A2-7 (engine lockstep): wasted overkill still gains lifelink —
+          // full power. Design ruling, PR #98, 2026-06-10.
+          attackerLifeGain += remaining;
         }
       }
     }
   };
 
-  if (hasFirstStrike) {
-    oneStrike(c => c.keywords.includes('first_strike'));
-    oneStrike(c => !c.keywords.includes('first_strike'));
+  if (fsIids.size > 0) {
+    oneStrike(c => fsIids.has(c.iid));
+    oneStrike(c => !fsIids.has(c.iid));
   } else {
     oneStrike(() => true);
   }
@@ -1151,15 +1195,17 @@ function decideCleanupDiscard(state, who, actions) {
 // (creature=100 flat so a body always clears >0) — NOT a cross-card ranking
 // scale; decideMain uses spellPlayValue() for that.
 function bestSpellPlay(state, who, card, options) {
-  // Bail if non-modal self-damage would lethal us (modal: per-option below).
+  // Self-damage lethal gate, applied per OPTION: a mode whose own self-damage
+  // would put us at or below 0 scores -100 no matter what else it does (so a
+  // modal card can still pick a survivable mode). Non-modal cards are the
+  // single-mode case of the same check — effectsForMode returns their flat
+  // effects list.
   const selfDamageOf = (effs) => (effs || []).reduce((sum, e) =>
     sum + ((e.kind === 'damage' && e.scope === 'self') ? (e.amount || 0) : 0), 0);
-  if (!ENGINE.isModal(card)) {
-    if (selfDamageOf(card.effects) >= state[who].life) return null;
-  }
   const scored = options.map(opt => {
     const modeIdx = opt.modeIdx || 0;
     const modeEffects = ENGINE.effectsForMode(card, modeIdx);
+    if (selfDamageOf(modeEffects) >= state[who].life) return {opt, score: -100};
     if (!opt.targets) {
       const ok = shouldCastUntargeted(state, who, card, modeIdx);
       if (!ok) return {opt, score: -100};
@@ -1168,6 +1214,13 @@ function bestSpellPlay(state, who, card, options) {
       }
       let score = spellValueForEffects(modeEffects);
       score += scoreUntargetedSituation(state, who, modeEffects);
+      // Non-creature permanents (artifacts/enchantments) carry STATIC value —
+      // mana fixing, keyword grants, granted abilities — that spellValueForEffects
+      // can't read off their (often empty on-cast) effects list. Floor them above
+      // the score<=0 reject gate below so they actually get deployed. Without this
+      // the Equatorial Artificer boss never casts Ingenuity Unbounded (its
+      // colorless→any-color fixer), leaving every colored spell in its deck stuck.
+      if (score <= 0 && isPermanent(card)) score = 5;
       return {opt, score};
     }
     return {opt, score: scoreMultiTargetSpell(state, who, card, opt.targets, modeIdx)};
@@ -1193,7 +1246,11 @@ function spellPlayValue(state, who, card, opt) {
     return Math.max(1, ENGINE.getCardValue(card, 'play'));
   }
   const modeEffects = ENGINE.effectsForMode(card, opt.modeIdx || 0);
-  return spellValueForEffects(modeEffects) + scoreUntargetedSituation(state, who, modeEffects);
+  let v = spellValueForEffects(modeEffects) + scoreUntargetedSituation(state, who, modeEffects);
+  // Mirror bestSpellPlay's static-permanent floor so deploy ORDER also treats a
+  // value-less permanent (e.g. Ingenuity Unbounded) as worth playing, not 0.
+  if (v <= 0 && isPermanent(card)) v = 5;
+  return v;
 }
 
 // Score a `fight` as ONE combatant-vs-combatant exchange off its operands (not

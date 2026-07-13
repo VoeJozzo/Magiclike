@@ -6,7 +6,6 @@
 
 const setup = require('./_setup');
 setup.loadEngine();
-const SRC = setup.getSource();
 
 let pass = 0, fail = 0;
 function check(label, ok, info) {
@@ -24,9 +23,7 @@ function mk(t, c) {
 function game() {
   RUN.start({ cards: Array(12).fill('plains'), colors: ['W'] }, null);
   RUN.startNextGame();
-  const G = ENGINE.state();
-  G.activePlayer = 'you'; G.priorityHolder = 'you'; G.phase = 'MAIN1';
-  G.stack = []; G.gameOver = false; G.priority = { passes: new Set() };
+  const G = setup.startMainPhase('you');
   G.you.mana = { W: 9, U: 9, B: 9, R: 9, G: 9, C: 9 };
   return G;
 }
@@ -87,10 +84,19 @@ console.log('\n=== an untargeted spell still casts immediately (no false targeti
 
 console.log('\n=== blocker UI delegates attacker-specific legality to the engine ===');
 (() => {
-  check('controller uses ENGINE.canCreatureBlock(blocker, attacker) when assigning blocks',
-    /ENGINE\.canCreatureBlock\(blkCard,\s*card\)/.test(SRC));
-  check('controller does not duplicate flying/reach blocking logic in the click path',
-    !/card\.keywords\.includes\('flying'\)[\s\S]{0,160}blkCard\.keywords\.includes\('reach'\)/.test(SRC));
+  // A2-14: behavioral replacement for the former source-text regex. The old check
+  // matched variable names (blkCard, card) in controller source — zero behavioral
+  // protection (stayed green if the flying gate were deleted) and false-red on a
+  // rename. Assert the actual gate in ENGINE.canCreatureBlock instead.
+  const flier  = { iid: 7001, types: ['Creature'], keywords: ['flying'] };
+  const ground = { iid: 7002, types: ['Creature'], keywords: [] };
+  const reach  = { iid: 7003, types: ['Creature'], keywords: ['reach'] };
+  check('a ground creature cannot block a flier (engine gate)',
+    ENGINE.canCreatureBlock(ground, flier) === false);
+  check('a reach creature can block a flier',
+    ENGINE.canCreatureBlock(reach, flier) === true);
+  check('a ground creature can block a ground attacker (no over-rejection)',
+    ENGINE.canCreatureBlock(ground, ground) === true);
 })();
 
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');

@@ -10,7 +10,7 @@ keywords = Array[String](["reach"])
 card_id = "giant_spider"
 display_name = "Giant Spider"
 card_types = Array[String](["creature"])
-subtypes = Array[String](["spider"])
+subtypes = Array[String](["insect"])
 mana_cost = {
 "C": 2,
 "G": 1

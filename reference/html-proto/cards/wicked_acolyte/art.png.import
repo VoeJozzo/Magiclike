@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cl83qn4n4qyja"
-path="res://.godot/imported/art.png-34af85c69d314a45db67c27bda4be4ea.ctex"
+path="res://.godot/imported/art.png-6af56d595359d9336b382b68e43be1eb.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://reference/html-proto/cards/wickedAcolyte/art.png"
-dest_files=["res://.godot/imported/art.png-34af85c69d314a45db67c27bda4be4ea.ctex"]
+source_file="res://reference/html-proto/cards/wicked_acolyte/art.png"
+dest_files=["res://.godot/imported/art.png-6af56d595359d9336b382b68e43be1eb.ctex"]
 
 [params]
 

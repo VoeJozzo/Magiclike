@@ -1,6 +1,6 @@
 {
   "card_id": "unsummon",
-  "art": "↩",
+  "art": "art.png",
   "cost": {
     "U": 1
   },

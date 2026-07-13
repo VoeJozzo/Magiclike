@@ -1,10 +1,11 @@
 # Magiclike Test Suite
 
 Node.js tests for the engine in `reference/html-proto/js/`. Each test
-loads the engine's 9 module files in script-tag order, stubs the DOM
-that `controller.js` / `render.js` reach for at load time, then
-exercises the public API (ENGINE, AI, RUN, DRAFT) and a handful of
-exposed module-private helpers (resolveTarget, makeCard,
+loads the engine's module files in script-tag order (the canonical
+list is `ENGINE_FILES` in `_setup.js` — 17 files at last count),
+stubs the DOM that `controller.js` / `render.js` reach for at load
+time, then exercises the public API (ENGINE, AI, RUN, DRAFT) and a
+handful of exposed module-private helpers (resolveTarget, makeCard,
 rollSubtypeFromDeck, etc.).
 
 ## Prerequisites
@@ -14,7 +15,8 @@ Node.js. No npm install needed — tests use only built-in modules.
 ## Quick start
 
 ```bash
-# Run the core suite (362 assertions, ~1 second).
+# Run the core suite (~1 minute; the summary line prints the live
+# file/assertion counts — 74 files / 1786 assertions at last count).
 node tests/run_all.js
 
 # Run an individual test.
@@ -31,8 +33,12 @@ within `tests/` directly — they reference `js/` via `__dirname`.
 
 ### Core regression suite (run via `run_all.js`)
 
-362 assertions across 13 files, ~1s total. Guards engine invariants
-and structural patterns that protect against silent regressions.
+The authoritative file list is `CATEGORY_A` in `run_all.js` (74 test
+files / 1786 assertions at last count — trust the suite's own summary
+line over this README). Guards engine invariants and structural
+patterns that protect against silent regressions. The sections below
+describe the founding tests; the suite has grown well past them (one
+test file per shipped card/mechanic is the norm).
 
 **Ported from the prior-session bundle:**
 
@@ -105,9 +111,10 @@ testing.
 
 ## How a test loads the engine
 
-Browser-side, the engine is 13 module files loaded via
-`<script src>` tags. Each file is at script (module) scope; later
-files reference identifiers declared in earlier files.
+Browser-side, the engine is a set of module files loaded via
+`<script src>` tags (17 at last count; the canonical, ordered list is
+`ENGINE_FILES` in `_setup.js`). Each file is at script (module)
+scope; later files reference identifiers declared in earlier files.
 
 For Node tests, `_setup.js` is the shared loader:
 
@@ -115,10 +122,12 @@ For Node tests, `_setup.js` is the shared loader:
    `MutationObserver`, `requestAnimationFrame`, etc. The engine's
    `init()` and the render loop touch these even though tests don't
    exercise UI.
-2. Read the 13 JS module files and concatenate them in the same order
-   `magiclike_engine.html` loads them: `cards` → `engine` → `card-text`
-   → `stickers` → `ai` → `draft` → `run` → `picklog` → `controller` →
-   `render` → `triggers` → `trigger-generator` → `main`.
+2. Read the JS module files (`ENGINE_FILES`) and concatenate them in
+   the same order `magiclike_engine.html` loads them: `settings` →
+   `cards` → `keyword-icons` → `types` → `engine` → `card-text` →
+   `stickers` → `ai` → `draft` → `run` → `picklog` → `controller` →
+   `render` → `settings-panel` → `triggers` → `trigger-generator` →
+   `main`.
 3. Strip `CONTROLLER.init();` from the bootstrap (it tries to wire up
    real DOM listeners we don't have).
 4. Eval the result inside a `new Function(...)`, with a trailing
@@ -171,7 +180,8 @@ If you want the test included in `run_all.js`, add its filename to
 ## Maintenance notes
 
 Tests were originally built when the engine was a single monolithic
-HTML file, and validated against the current 13-module layout.
+HTML file, and have tracked the multi-module layout since (see
+`ENGINE_FILES` in `_setup.js` for the current module list).
 
 Major engine changes that may require test updates:
 - New `PENDING_DECISIONS` entries — tests poke `G.pending*` directly
@@ -197,4 +207,4 @@ Major engine changes that may require test updates:
 
 ## Future work
 
-- **Unified test runner.** A runner that loads the engine once and runs every test's assertions cumulatively would dramatically speed up the full suite (~50-100ms × ~20 tests today).
+- **Unified test runner.** A runner that loads the engine once and runs every test's assertions cumulatively would dramatically speed up the full suite (~50-100ms of load overhead × 74 test files today).

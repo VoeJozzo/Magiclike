@@ -48,6 +48,10 @@ function makeTriggerBuildOptionBtn(innerHtml, onClick) {
 
 function render() {
   const G = ENGINE.state();
+  // Clear the ability-icon hover tooltip before the rebuild below replaces the
+  // hovered coin (no mouseout fires for a node removed under the pointer, so it
+  // would otherwise linger). See CONTROLLER.hideIconTip.
+  CONTROLLER.hideIconTip();
   // Deep guard: any of these missing means we're not in-game (start
   // screen, post-game, settings panel before first draft, etc.). Callers
   // can fire-and-forget render() without needing to wrap in try/catch.
@@ -93,33 +97,20 @@ function render() {
       castCardByIid(pt.cardIid) ||
       G.you.battlefield.find(c => c.iid === pt.cardIid)
     );
-    // Effects via pt.modeIdx — counterspell check needs the chosen mode.
-    const isCounterTarget = (() => {
-      if (!pt || !ptCard) return false;
-      if (pt.kind === 'cast') {
-        const modeEffects = ENGINE.effectsForMode(ptCard, pt.modeIdx);
-        return modeEffects.some(e => e.target === 'spell' || e.target === 'permanent_or_spell');
-      }
-      if (pt.kind === 'ability') {
-        const ab = (ptCard.abilities || [])[pt.abilityIdx || 0];
-        if (!ab) return false;
-        return (ab.effects || []).some(e => e.target === 'spell' || e.target === 'permanent_or_spell');
-      }
-      return false;
-    })();
+    // CURRENT-slot target spec via pendingTargetEffect — reads the top-level
+    // target(), object/ability target_slots (Stapler), and per-effect targets
+    // through one resolver. The old per-effect `.some(e => e.target ...)` scan
+    // missed slot-declared targets entirely: post-target_slots-refactor the
+    // Stapler's apply_in_game_splice effect carries no .target, so the banner
+    // never lit and stack spells were unclickable for splicing. Current-slot
+    // semantics also means the banner lights exactly when the pick being made
+    // right now can take a spell.
+    const pendingEff = (pt && ptCard) ? pendingTargetEffect(pt) : null;
+    const isCounterTarget = !!pendingEff
+      && (pendingEff.target === 'spell' || pendingEff.target === 'permanent_or_spell');
     banner.classList.add('vis');
     // Splice vs counterspell — same click affordance, different text.
-    const isSpliceTargetMode = (() => {
-      if (!pt || !ptCard) return false;
-      let effects = [];
-      if (pt.kind === 'cast') {
-        effects = ENGINE.effectsForMode(ptCard, pt.modeIdx) || [];
-      } else if (pt.kind === 'ability') {
-        const ab = (ptCard.abilities || [])[pt.abilityIdx || 0];
-        effects = (ab && ab.effects) || [];
-      }
-      return effects.some(e => e.target === 'permanent_or_spell');
-    })();
+    const isSpliceTargetMode = !!pendingEff && pendingEff.target === 'permanent_or_spell';
     bannerHint.textContent = isCounterTarget
       ? (isSpliceTargetMode ? '— click a spell or permanent to splice it' : '— click a spell to counter it')
       : (G.stack.length === 1 ? '— top resolves first' : `— ${G.stack.length} on stack, top resolves first`);
@@ -128,14 +119,24 @@ function render() {
       const realIdx = G.stack.length - 1 - displayIdx;
       const tgtLabel = (it.targets && it.targets[0] && it.targets[0].label) ? ` → ${it.targets[0].label}` : '';
       let div;
-      if (it.kind === 'trigger') {
-        // Triggers have no card backing -- build a card-like with the
-        // trigger text in the body.
+      if (it.kind === 'trigger' || it.kind === 'ability') {
+        // Triggers and activated-ability entries (A3-2) have no card backing
+        // -- build a card-like with the trigger/ability text in the body.
+        const isAbility = it.kind === 'ability';
+        let bodyText;
+        if (isAbility) {
+          try { bodyText = segsToText(describeAbility(it.ab, it.ab)); }
+          catch (_) { bodyText = 'Activated ability'; }
+        } else {
+          // ~ → source name (audit A10-3): authored/assembled trigger texts
+          // carry the conventional placeholder; never show it raw.
+          bodyText = formatTriggerText(triggerLogText(it.trig), it.sourceName);
+        }
         div = makeSyntheticCard({
-          name: it.sourceName + ' triggers',
-          type: 'Trigger',
-          text: triggerLogText(it.trig) + tgtLabel,
-          art: '⚡',
+          name: it.sourceName + (isAbility ? ' activates' : ' triggers'),
+          type: isAbility ? 'Ability' : 'Trigger',
+          text: bodyText + tgtLabel,
+          art: isAbility ? '✦' : '⚡',
           color: 'C',
           scale: 0.7,
         });
@@ -147,9 +148,20 @@ function render() {
       }
       // stackIdx (real, not reversed) — target-line overlay indexes G.stack directly.
       div.dataset.stackIdx = String(realIdx);
-      if (isCounterTarget) {
-        div.classList.add('targetable');
-        if (it.kind !== 'trigger') {
+      if (isCounterTarget && it.kind !== 'trigger' && it.kind !== 'ability') {
+        // Light only items that are REAL legal picks for the current slot:
+        // getValidTargets applies the slot filter (e.g. spliceable_staple
+        // rejects an already-stapled spell), and tsExcludePicked drops an item
+        // already picked for an earlier slot when the object declares
+        // distinct_targets — same gates the submit-side legality applies, so
+        // a lit item can't be a dead click.
+        const cand = { kind: 'stack', stackItem: it, label: it.card.name };
+        const obj = pendingDistinctObject(pt);
+        const isLegalPick =
+          ENGINE.getValidTargets(pendingEff, 'you').some(v => v.kind === 'stack' && v.stackItem === it)
+          && (!obj || ENGINE.tsExcludePicked(obj, [cand], pt.pickedSlots).length > 0);
+        if (isLegalPick) {
+          div.classList.add('targetable');
           div.onclick = () => CONTROLLER.clickStackTarget(realIdx);
         }
       }
@@ -162,22 +174,20 @@ function render() {
   renderBf('youBf', G.you.battlefield, 'you');
   renderBf('oppBf', G.opp.battlefield, 'opp');
 
-  const showDone = (G.activePlayer === 'you' && G.phase === 'COMBAT_ATTACK' && !G.attackersDeclared)
-                || (G.activePlayer === 'opp' && G.phase === 'COMBAT_BLOCK' && !G.blockersDeclared);
+  // Shared with the Space/Enter keyboard path — see CONTROLLER.humanOwesDeclaration.
+  const showDone = CONTROLLER.humanOwesDeclaration();
   const btnDone = document.getElementById('btnDone');
   btnDone.style.display = showDone ? 'block' : 'none';
   btnDone.textContent = G.phase === 'COMBAT_ATTACK' ? 'Done Attacking' : 'Done Blocking';
 
   const expectedActor = ENGINE.expectedActor();
   const inReaction = !!(G.priority && G.stack.length > 0);
-  const humanForcedPrompt = playerForcedPrompt(G, 'you');
   const forcedPromptOpen = anyForcedPrompt(G);
 
   const passBtn = document.getElementById('btnPass');
   passBtn.textContent = passLabel(G, expectedActor);
-  passBtn.disabled = G.gameOver || !!pt || G.cleanupDiscarding
-                  || humanForcedPrompt
-                  || expectedActor !== 'you';
+  // Same predicate the Space/Enter primary action consults (CONTROLLER.canPass).
+  passBtn.disabled = !CONTROLLER.canPass();
 
   document.getElementById('btnEnd').disabled =
     G.gameOver || !!pt || G.activePlayer !== 'you' || G.stack.length > 0
@@ -453,8 +463,10 @@ function render() {
     sb.textContent = `End of turn — your hand is ${G.you.hand.length}/7. Click a card in your hand to discard it.`;
   } else if (inReaction && expectedActor === 'you') {
     const top = G.stack[G.stack.length-1];
-    const topName = top.kind === 'trigger' ? `${top.sourceName} (triggered)` : top.card.name;
-    sb.textContent = `${G[top.controller].name} cast ${topName}. Click an instant to react, or "No Reaction".`;
+    const topName = top.kind === 'trigger' ? `${top.sourceName} (triggered)`
+      : top.kind === 'ability' ? `${top.sourceName} (ability)` : top.card.name;
+    const topVerb = top.kind === 'ability' ? 'activated' : 'cast';
+    sb.textContent = `${G[top.controller].name} ${topVerb} ${topName}. Click an instant to react, or "No Reaction".`;
   } else if (G.phase === 'COMBAT_ATTACK' && G.activePlayer === 'you' && !G.attackersDeclared) {
     sb.textContent = `Declare attackers — click your creatures, then "Done Attacking" (or "Skip Combat").`;
   } else if (G.phase === 'COMBAT_BLOCK' && G.activePlayer === 'opp' && !G.blockersDeclared) {
@@ -533,6 +545,8 @@ function drawTargetLines() {
     let effects = [];
     if (item.kind === 'trigger') {
       effects = (item.trig && item.trig.effects) || [];
+    } else if (item.kind === 'ability') {
+      effects = (item.ab && item.ab.effects) || [];
     } else if (item.card) {
       effects = ENGINE.effectsForMode(item.card, item.modeIdx || 0) || [];
     }
@@ -744,7 +758,9 @@ function openGraveyardTargetPicker(validTargets, prompt) {
 function setText(id, v) { document.getElementById(id).textContent = v; }
 // escapeHtml + formatTriggerText live in card-text.js (loads before this file).
 
-// {text, highlight}[] → HTML, with .bumped spans for empower-emphasized values.
+// {text, highlight, sticker}[] → HTML. .bumped spans color empower-emphasized
+// values; .sticker-granted spans color text granted by a sticker (keywords,
+// scarified triggers). A segment can carry both flags.
 function segmentsToHtml(segs) {
   if (!Array.isArray(segs)) return '';
   return segs.map(s => {
@@ -754,7 +770,9 @@ function segmentsToHtml(segs) {
     // so the order is correct.
     const safe = escapeHtml(s.text || '');
     const withPips = renderManaSymbols(safe);
-    return s.highlight ? `<span class="bumped">${withPips}</span>` : withPips;
+    const cls = (s.highlight ? 'bumped ' : '') + (s.sticker ? 'sticker-granted' : '');
+    const trimmed = cls.trim();
+    return trimmed ? `<span class="${trimmed}">${withPips}</span>` : withPips;
   }).join('');
 }
 
@@ -792,6 +810,21 @@ function renderHand(id, hand, who) {
     if (canPlayFromUI(who, card)) div.classList.add('castable');
     if (G.cleanupDiscarding && G.activePlayer === who) div.classList.add('discardable');
     div.onclick = () => CONTROLLER.clickHand(card.iid);
+    el.appendChild(div);
+  }
+  // Cast-permission cards (e.g. exiled by Seal-Thief Courier with "you may
+  // cast it this turn") render at the END of the hand row in a marked frame —
+  // without this they're only discoverable behind the Ex zone counter. The
+  // click path is the same clickHand → findCastableSpell flow as real hand
+  // cards, so casting Just Works; the .from-exile class adds the violet
+  // dashed frame + EXILED ribbon.
+  for (const entry of ENGINE.castableSpellEntries(who)) {
+    if (entry.zone === 'hand') continue;
+    const div = makeCardEl(entry.card, { inHand: true });
+    div.classList.add('from-exile');
+    div.title = 'Exiled — you may cast this card this turn';
+    if (canPlayFromUI(who, entry.card)) div.classList.add('castable');
+    div.onclick = () => CONTROLLER.clickHand(entry.card.iid);
     el.appendChild(div);
   }
 }
@@ -848,6 +881,40 @@ function renderOppHand(hand) {
   }
 }
 
+// True if `who` has a legal, non-redundant activated ability on this permanent
+// — the gate for the green ".activatable" glow. Applies to ANY non-land
+// permanent the player controls, not just creatures: an artifact with a granted
+// ability (e.g. an Artifice Triumphant target, or a mana rock like Alloy Myr)
+// must glow too. Lands advertise their tap-for-mana via the dimmer
+// .land-tappable glow instead, so they're excluded here.
+//
+// A reanimate-style add_type ability is skipped once the card already has every
+// type it would grant: the Artifice'd artifact glows while it's a bare artifact
+// (activating re-animates it) and STOPS glowing once it's already a creature
+// this turn (re-activating is a no-op). That inversion was the bug — the old
+// gate keyed on hasType(card,'Creature'), so the glow appeared only AFTER
+// activation (when it does nothing) and never before (when it matters).
+function activationGlowAvailable(card, who) {
+  if (who !== 'you') return false;
+  if (!isPermanent(card) || hasType(card, 'Land')) return false;
+  if (!card.abilities || !card.abilities.length) return false;
+  if (card.tapped || card.sick) return false;
+  return card.abilities.some((ab, i) => {
+    if (!ab.effects || !ab.effects.length) return false;
+    // No-op reanimate: every effect is an add_type whose types the card already
+    // has → activating changes nothing, so don't advertise it.
+    if (ab.effects.every(e => e.kind === 'add_type'
+        && (e.types || []).every(t => hasType(card, t)))) return false;
+    if (ab.effects[0].kind === 'add_mana') return true;
+    const targetedEff = ab.effects.find(ENGINE.effectNeedsTarget);
+    const probe = targetedEff
+      ? {type:'activateAbility', cardIid: card.iid, abilityIdx: i,
+         targets:[(ENGINE.getValidTargets(targetedEff, 'you')[0] || {kind:'player', who:'you', label:'You'})]}
+      : {type:'activateAbility', cardIid: card.iid, abilityIdx: i};
+    return ENGINE.isLegalAction('you', probe);
+  });
+}
+
 function renderBf(id, bf, who) {
   const el = document.getElementById(id);
   el.innerHTML = '';
@@ -893,7 +960,25 @@ function renderBf(id, bf, who) {
 
     if (pt) {
       const eff = pendingTargetEffect(pt);
-      if (eff && isValidTargetCreature(eff, card)) div.classList.add('targetable');
+      if (eff && isValidTargetCreature(eff, card)) {
+        // distinct_targets: a card already picked for an earlier slot is no
+        // longer a legal pick, so drop its highlight. Route through the engine's
+        // single cross-slot rule (ENGINE.tsExcludePicked) instead of re-deriving the
+        // identity compare in the UI — the same filter the trigger pick-loop uses.
+        // The object comes from pendingDistinctObject (cast card OR activated
+        // ability — Stapler's flag lives on the ability), and the candidate kind
+        // mirrors clickBattlefield's pick descriptor (permanent for perm /
+        // perm-or-spell slots, creature otherwise) so sameTarget compares like
+        // with like. (Non-distinct objects keep every valid card lit:
+        // tsExcludePicked returns the list unchanged when the object isn't flagged.)
+        const obj = pendingDistinctObject(pt);
+        const candKind = (eff.target === 'permanent' || eff.target === 'permanent_or_spell')
+          ? 'permanent' : 'creature';
+        const cand = { kind: candKind, iid: card.iid, label: card.name };
+        const stillLegal = !obj
+          || ENGINE.tsExcludePicked(obj, [cand], pt.pickedSlots).length > 0;
+        if (stillLegal) div.classList.add('targetable');
+      }
     }
     if (G.pendingTriggerTarget && G.pendingTriggerTarget.controller === 'you') {
       const ptt = G.pendingTriggerTarget;
@@ -923,18 +1008,7 @@ function renderBf(id, bf, who) {
         && who === 'you' && ENGINE.canCreatureBlock(card)) {
       div.classList.add('could-blk');
     }
-    if (who === 'you' && hasType(card, 'Creature') && card.abilities && !card.tapped && !card.sick) {
-      const hasAvail = card.abilities.some((ab, i) => {
-        if (ab.effects[0].kind === 'add_mana') return true;
-        const targetedEff = ab.effects.find(ENGINE.effectNeedsTarget);
-        const probe = targetedEff
-          ? {type:'activateAbility', cardIid: card.iid, abilityIdx: i,
-             targets:[(ENGINE.getValidTargets(targetedEff, 'you')[0] || {kind:'player', who:'you', label:'You'})]}
-          : {type:'activateAbility', cardIid: card.iid, abilityIdx: i};
-        return ENGINE.isLegalAction('you', probe);
-      });
-      if (hasAvail) div.classList.add('activatable');
-    }
+    if (activationGlowAvailable(card, who)) div.classList.add('activatable');
     div.onclick = () => CONTROLLER.clickBattlefield(card.iid);
     el.appendChild(div);
   }
@@ -1024,6 +1098,19 @@ function pendingTopTargetRestrict(pt) {
   return null;
 }
 
+// The object whose `distinct_targets` flag governs the pending pick: the cast
+// card, or the ability being activated (Stapler's flag lives on the ability
+// entry, not the card). Null when there's no pending pick context.
+function pendingDistinctObject(pt) {
+  if (!pt) return null;
+  if (pt.kind === 'cast') return castCardByIid(pt.cardIid);
+  if (pt.kind === 'ability') {
+    const f = ENGINE.findCard(pt.cardIid);
+    return (f && f.card.abilities && f.card.abilities[pt.abilityIdx]) || null;
+  }
+  return null;
+}
+
 // Object-level slot specs — one pick per `target_slots` entry. The canonical
 // multi-target shape (§5b), on a hand-cast card OR an activated ability
 // (Stapler). The slot's filter lives here, not on the effects.
@@ -1077,44 +1164,38 @@ function pendingTargetEffect(pt) {
 
 function isValidTargetCreature(eff, card) {
   if (!eff) return false;
-  // Normalize the target() taxonomy to an eligible card-type + an implied
-  // controller restriction:
-  //   creature / your_creature / opp_creature / creature_or_player → creatures
-  //   permanent / permanent_or_spell → battlefield permanents (stack spells are
-  //     highlighted via a separate path in renderStack).
-  // (Player targets are highlighted elsewhere.) Name kept for its single caller.
   const t = eff.target;
   const CREATURE_KINDS = ['creature', 'your_creature', 'opp_creature', 'creature_or_player'];
   const PERM_KINDS = ['permanent', 'permanent_or_spell'];
-  if (CREATURE_KINDS.includes(t)) {
-    if (!hasType(card, 'Creature')) return false;
-  } else if (PERM_KINDS.includes(t)) {
-    if (!isPermanent(card)) return false;
-  } else {
-    return false;
-  }
-  if (t === 'creature_or_player') return true;
-  // Build the effective restriction: the taxonomy's implied controller plus the
-  // step's explicit target_filter (threaded onto eff.filter). Route the whole
-  // thing through the canonical matchFilter so every key (not_color, has_keyword,
-  // max_tough, tapped, not_token, spliceable…) is honored at highlight time
-  // exactly as at cast — no more drifting between highlight and click legality.
-  const restrict = Object.assign({}, eff.filter || null);
-  if (t === 'your_creature') restrict.controller = 'self';
-  if (t === 'opp_creature') restrict.controller = 'opp';
-  if (Object.keys(restrict).length === 0) return true;
-  return ENGINE.matchFilter(card, restrict, card.controller, 'you');
+  if (!CREATURE_KINDS.includes(t) && !PERM_KINDS.includes(t)) return false;
+  // Sole caller passes pendingTargetEffect(pt) output, which normalizes a
+  // top-level target_filter into .filter — so .filter is the only key that ever
+  // arrives here.
+  const filter = eff.filter;
+  const valid = CREATURE_KINDS.includes(t)
+    ? ENGINE.targetsForFilter(t, 'you', filter)
+    : ENGINE.getValidTargets({ target: t, filter }, 'you');
+  return valid.some(v => v.iid === card.iid);
 }
+
+// Sticker kinds whose effect is ALREADY communicated elsewhere on the frame, so
+// a badge would be redundant: keyword/trigger → colored in the oracle text (see
+// segmentsToHtml's .sticker-granted); subtype → the type line; innate → "Innate."
+// in the oracle text; stat_boost → the P/T box; cost_mod → the cost pips. Kept
+// (not listed): empower, grant_mana_ability, remove_keyword — those carry info no
+// other frame element surfaces. (subtype + add_type both show in the type line.)
+const FRAME_REDUNDANT_STICKER_KINDS = new Set(
+  ['keyword', 'trigger', 'subtype', 'add_type', 'innate', 'stat_boost', 'cost_mod']);
 
 // Render sticker badges. `big` = larger styling for the reward modal.
 // empowerRolls/tplId/stapledTpls let individual Empower badges be labeled
-// with the rolled field. subtypeRolls lets subtype badges show rolled type.
-function stickerBadgesHtml(stickers, big, empowerRolls, tplId, stapledTpls, subtypeRolls) {
+// with the rolled field. (Suppressed kinds — keyword/subtype/etc. — are shown
+// elsewhere on the frame; see FRAME_REDUNDANT_STICKER_KINDS.)
+function stickerBadgesHtml(stickers, big, empowerRolls, tplId, stapledTpls) {
   if (!stickers || !stickers.length) return '';
   const parts = [];
   const counts = new Map();
   let empowerIdx = 0;
-  let subtypeIdx = 0;
   // For empower-roll labeling, use the synthesized template if the slot is
   // stapled. Without this, a roll that targets the staple half's effect (e.g.
   // location='triggers' on an ETB-Bolt) would have its field looked up against
@@ -1128,6 +1209,10 @@ function stickerBadgesHtml(stickers, big, empowerRolls, tplId, stapledTpls, subt
   for (const sId of stickers) {
     const s = STICKERS[sId];
     if (!s) continue;
+    // Skip badges whose info the frame already shows (oracle text / type line /
+    // P-T / cost). Only empower consumes a parallel-rolls cursor among the kept
+    // kinds, so skipping these doesn't desync anything.
+    if (FRAME_REDUNDANT_STICKER_KINDS.has(s.kind)) continue;
     if (s.kind === 'empower') {
       const cls = 'skw';
       const roll = empowerRolls ? empowerRolls[empowerIdx] : null;
@@ -1146,43 +1231,25 @@ function stickerBadgesHtml(stickers, big, empowerRolls, tplId, stapledTpls, subt
       parts.push(`<span class="stk-badge ${cls}" title="${s.text}">${label}</span>`);
       continue;
     }
-    if (s.kind === 'subtype') {
-      // Each subtype sticker carries an individual rolled subtype on the
-      // parallel subtypeRolls array. Unlike statBoost (which counts up),
-      // subtype rolls can each be a different value, so we render one
-      // badge per roll.
-      const rolled = subtypeRolls ? subtypeRolls[subtypeIdx] : null;
-      subtypeIdx++;
-      const label = rolled || 'Subtype';
-      parts.push(`<span class="stk-badge skw" title="${s.text}">${label}</span>`);
-      continue;
-    }
     counts.set(sId, (counts.get(sId) || 0) + 1);
   }
+  // Only the KEPT kinds reach here (the rest were skipped above): today that's
+  // grant_mana_ability (a "+{R}" pip) and remove_keyword / other inline kinds
+  // (rendered by name). All use the generic 'skw' badge style.
   for (const [sId, n] of counts) {
     const s = STICKERS[sId];
     if (!s) continue;
-    const cls = s.kind === 'stat_boost' ? 'stat'
-              : s.kind === 'innate'    ? 'innate'
-              : 'skw';
-    let label;
-    if (s.kind === 'stat_boost') label = '+1/+1';
-    else if (s.kind === 'innate') label = 'Innate';
-    // landColor badge label is "+{W}"-style — route the brace token
-    // through renderManaSymbols so it shows the color pip / future PNG
-    // instead of literal {W} text. The label gets injected into
-    // innerHTML below, so an HTML span is fine here.
-    else if (s.kind === 'grant_mana_ability') label = '+' + renderManaSymbols('{' + s.color + '}');
-    else if (s.kind === 'cost_mod') label = ((s.amount || 0) < 0 ? (s.amount || 0) : '+' + (s.amount || 0)) + ' cost';
-    else if (s.kind === 'trigger') label = s.name || 'Trigger';
-    else if (s.kind === 'keyword') label = s.keyword;
-    else label = s.name || s.kind;   // defensive — never render 'undefined'
+    // landColor-style label routes the brace token through renderManaSymbols so
+    // it shows the color pip instead of literal {W} text (injected as innerHTML).
+    // (Innate + other keyword stickers are skipped above via
+    // FRAME_REDUNDANT_STICKER_KINDS — innate shows via the "Innate." oracle line.)
+    let label = (s.kind === 'grant_mana_ability')
+      ? '+' + renderManaSymbols('{' + s.color + '}')
+      : (s.name || s.kind);   // remove_keyword ("Loses Defender"), set_color, …
     if (n > 1) label += ` ×${n}`;
-    const html = `<span class="stk-badge ${cls}" title="${s.text}">${label}</span>`;
-    // Innate is a status marker — surface first so it's scannable.
-    if (s.kind === 'innate') parts.unshift(html);
-    else                     parts.push(html);
+    parts.push(`<span class="stk-badge skw" title="${s.text}">${label}</span>`);
   }
+  if (parts.length === 0) return '';   // all stickers were redundant — no empty row
   return `<div class="stickers-row${big ? '-big' : ''}">${parts.join('')}</div>`;
 }
 
@@ -1247,6 +1314,116 @@ function nativeKeywordBadgesHtml(card, big) {
     parts.push(`<span class="stk-badge ${cls}" title="${tooltip}">${label}</span>`);
   }
   return `<div class="stickers-row${big ? '-big' : ''}">${parts.join('')}</div>`;
+}
+
+// Where a card's keyword comes from, → the CSS source class that recolors its
+// coin: native (template) takes the CARD'S color (per-card, set inline — see
+// KW_NATIVE_COLORS below), sticker (kw_* sticker) = gold, granted (by another
+// permanent via grantedBy) = teal. Native wins ties (granting an intrinsic
+// keyword is redundant). Synthetic card-shaped objects (browser previews — no
+// tpl/grant tracking) default native.
+function keywordSourceClass(kw, card, templateKw) {
+  if (templateKw.includes(kw)) return 'kw-native';
+  if ((card.stickers || []).includes('kw_' + kw)) return 'kw-sticker';
+  // The innate sticker is stored under its bare id ('innate', not 'kw_innate'),
+  // so the kw_-prefixed check above misses it — a stickered innate coin (the
+  // common case: post-draft basic-land Innate) should read gold like any
+  // sticker-granted keyword. Intrinsic innate (e.g. Ingenuity Unbounded) still
+  // hits the templateKw native branch above.
+  if (kw === 'innate' && (card.stickers || []).includes('innate')) return 'kw-sticker';
+  if (card.grantedBy instanceof Map) {
+    const srcs = card.grantedBy.get(kw);
+    if (srcs && srcs.size > 0) return 'kw-granted';
+  }
+  return 'kw-native';
+}
+
+// Native keyword coins wear the card's own color identity. White is a special
+// case (its frame is light): dark text-ink glyph on its gold identity disc.
+// The other colors put the card-color glyph + card-color INNER ring on a cream
+// disc with a cream OUTER ring — so the border reads card-color (inner) then
+// cream (outer), the legible two-color rim the other UI icons have. Keyed by
+// frame colorKey. (Sticker/granted ignore this — they use the gold/teal classes.)
+//   { ink: glyph,   disc,      rim: inner-ring, rim2: outer-ring }
+// Warm parchment cream for the UBRGC native coin disc + outer ring. The old
+// #d8d4c8 was a near-neutral warm-gray that read "silvery"; this is pulled
+// toward the frame-name cream (#f0e6c8) for a clearly creamy disc that still
+// contrasts the dark card-color glyph and stays distinct from W's gold disc.
+// If the CSS .kw-native fallback (--kw-disc/--kw-rim2) changes, keep it in sync.
+const CREAM = '#ece0be';
+const KW_NATIVE_COLORS = {
+  W: { ink: '#1a1a1a', disc: '#DEC96A', rim: '#1a1a1a', rim2: '#DEC96A' },
+  U: { ink: '#2C5AA8', disc: CREAM, rim: '#2C5AA8', rim2: CREAM },
+  B: { ink: '#15151f', disc: CREAM, rim: '#15151f', rim2: CREAM },
+  R: { ink: '#A52222', disc: CREAM, rim: '#A52222', rim2: CREAM },
+  G: { ink: '#1E7A38', disc: CREAM, rim: '#1E7A38', rim2: CREAM },
+  // Colorless glyph + inner ring darkened to a deep slate (was #6b7280, which
+  // washed out on the cream disc) for legibility; still reads gray/colorless, not
+  // B's black. Glyph and inner ring share the tone, as every other color's do.
+  C: { ink: '#3a3f47', disc: CREAM, rim: '#3a3f47', rim2: CREAM },
+};
+
+// A card's frame color identity: cost/card color > land's produced color >
+// colorless. The single source for both the frame (cardToViewModel) and the
+// native keyword coin (nativeKeywordStyle), so the two can never drift.
+function frameColorKey(card) {
+  return (card.colors && card.colors[0]) || card.color
+    || (hasType(card, 'Land') && card.mana) || 'C';
+}
+
+// Inline CSS vars for a native coin, from the card's frame color. The frame's
+// colorKey is passed in (cardToViewModel already derived it) so the coin and the
+// frame never drift; the fallback is for standalone callers (tests) without one.
+function nativeKeywordStyle(card, colorKey) {
+  colorKey = colorKey || frameColorKey(card);
+  const c = KW_NATIVE_COLORS[colorKey] || KW_NATIVE_COLORS.C;
+  return `color:${c.ink};--kw-disc:${c.disc};--kw-rim:${c.rim};--kw-rim2:${c.rim2}`;
+}
+
+// Icon row shown on the small in-play frame in place of the keyword text line
+// (the blow-up popup keeps the words — see openCardPopup). The coin SVGs are
+// inlined from KEYWORD_ICON_SVG so CSS can recolor them: a per-keyword source
+// class (native/sticker/granted) tints the glyph (currentColor) and disc/rim
+// (CSS vars) to match the keyword-badge palette. Each icon carries a
+// "Display: reminder" string in data-tip, rendered on hover by the custom
+// #iconTip popup (Almendra, palette-matched — see CONTROLLER tooltip wiring),
+// not the browser's native title tooltip. Selection mirrors keywordPreamble:
+// creatures show every keyword; non-creatures show only spell-legal ones
+// (flash) plus innate. innate is included on both branches — it reads as a coin
+// like any other keyword wherever it lands (a creature that somehow gains innate
+// shows it too; the common case is a basic land). no_block stays hidden (it's
+// the silent half of Pacifism).
+function keywordIconsHtml(card, colorKey) {
+  const tpl = (card.isToken ? TOKENS : CARDS)[card.tplId];
+  const isCreatureCard = hasType(card, 'Creature') || (tpl && hasType(tpl, 'Creature'));
+  const templateKw = (tpl && tpl.keywords) || [];
+  const allKw = (card.keywords && card.keywords.length) ? card.keywords : templateKw;
+  const shown = (isCreatureCard ? allKw : allKw.filter(k => SPELL_LEGAL_KEYWORDS.has(k) || k === 'innate'))
+    .filter(k => k !== 'no_block');
+  if (!shown.length) return '';
+  // Native coins are colored by the card's own identity (computed once); sticker
+  // and granted coins use their fixed class palette.
+  const nativeStyle = nativeKeywordStyle(card, colorKey);
+  const seen = new Set();
+  const parts = [];
+  for (const kw of shown) {
+    if (seen.has(kw)) continue;   // dedup intrinsic + granted
+    seen.add(kw);
+    const display = KEYWORD_DISPLAY[kw] || (kw.charAt(0).toUpperCase() + kw.slice(1));
+    const reminder = KEYWORD_REMINDER[kw] || '';
+    const title = escapeHtml(reminder ? display + ': ' + reminder : display);
+    const srcClass = keywordSourceClass(kw, card, templateKw);
+    const styleAttr = srcClass === 'kw-native' ? ` style="${nativeStyle}"` : '';
+    const svg = KEYWORD_ICON_SVG[kw];
+    if (svg) {
+      parts.push(`<span class="kw-icon ${srcClass}"${styleAttr} role="img" aria-label="${escapeHtml(display)}" data-tip="${title}">${svg}</span>`);
+    } else {
+      // No coin art yet (e.g. unblockable) — fall back to a tiny text chip,
+      // still source-colored.
+      parts.push(`<span class="kw-icon-fallback ${srcClass}"${styleAttr} data-tip="${title}">${escapeHtml(display)}</span>`);
+    }
+  }
+  return `<div class="frame-keywords">${parts.join('')}</div>`;
 }
 
 // Render a card's art field as HTML. Detects image URLs (data: URLs and
@@ -1349,14 +1526,15 @@ function cardToViewModel(card, opts) {
   opts = opts || {};
   const inHand = !!opts.inHand;
   const overrideOracleText = opts.overrideOracleText;
+  // keywordsAsIcons: drop the keyword text line from the oracle and instead
+  // expose a separate icon row (vm.keywordIconsHtml). The small in-play frame
+  // sets this; the blow-up popup leaves it off so it keeps the keyword words.
+  const keywordsAsIcons = !!opts.keywordsAsIcons;
 
   // Frame color: cost colors > card.color > land's produced color
   // (Plains -> W) > Colorless. Multicolor uses first WUBRG-order color;
   // dual-color frame design is a future tweak.
-  const colorKey = (card.colors && card.colors[0])
-    || card.color
-    || (hasType(card, 'Land') && card.mana)
-    || 'C';
+  const colorKey = frameColorKey(card);
 
   const isCreature = hasType(card, 'Creature');
   const [pow, tou] = isCreature
@@ -1386,13 +1564,39 @@ function cardToViewModel(card, opts) {
   }
 
   const typeText = typeLine(card);
+  const typeHtml = typeLineHtml(card);
 
   let oracleHtml;
   if (overrideOracleText !== undefined) {
     oracleHtml = renderManaSymbols(escapeHtml(overrideOracleText));
   } else {
-    const segs = describeCardSegments(card, {skipKeywords: false});
+    const segs = describeCardSegments(card, {skipKeywords: keywordsAsIcons});
     oracleHtml = segmentsToHtml(segs);
+  }
+  const kwIconsHtml = keywordsAsIcons ? keywordIconsHtml(card, colorKey) : '';
+
+  // Paper-basic look: a Land with NO other rules text whose mana production is
+  // fully conveyed by its basic-land subtypes (§305.6 — basics, artifact lands
+  // like Gilded Seat, stickered duals) shows large mana symbol(s) centered in
+  // the otherwise-empty text box, read from what it actually taps for
+  // (landProducibleColors, not the `mana` label). This is the render-side
+  // mirror of card-text's mana-ability suppression: the same lands whose
+  // "{T}: Add" line is dropped from the oracle get the big-symbol treatment,
+  // so the two can't disagree. Lands with extra rules text (Deepseam Quarry)
+  // or unconveyed production (Dross Pylon's {C}) have non-empty oracleHtml and
+  // keep the normal text layout. A keyword coin row (e.g. an Innate sticker)
+  // coexists: the symbol renders below the coins in a shorter `with-coins`
+  // container so both fit the text box. Skipped for synthetic cards
+  // (overrideOracleText), which aren't engine lands.
+  if (overrideOracleText === undefined && !oracleHtml && hasType(card, 'Land')) {
+    const colors = ENGINE.landProducibleColors(card);
+    const conveyed = basicLandTypeColors(card);
+    if (colors.length && colors.every(c => conveyed.includes(c))) {
+      oracleHtml = '<div class="frame-bigmana' + (kwIconsHtml ? ' with-coins' : '') + '">'
+        + colors.map(c => '<span class="bigsym col-' + c + '">'
+            + (c === 'C' ? 'C' : '') + '</span>').join('')
+        + '</div>';
+    }
   }
 
   const artVal = effectiveArt(card);
@@ -1401,14 +1605,32 @@ function cardToViewModel(card, opts) {
     : escapeHtml(artVal || '');
 
   const stickersInner = (card.stickers && card.stickers.length)
-    ? stickerBadgesHtml(card.stickers, false, card.empowerRolls, card.tplId, card.stapledFrom && card.stapledFrom.stapledTpls, card.subtypeRolls)
+    ? stickerBadgesHtml(card.stickers, false, card.empowerRolls, card.tplId, card.stapledFrom && card.stapledFrom.stapledTpls)
     : '';
 
   return {
     colorKey, isCreature, pow, tou,
-    pipsHtml, bumpedMarker, typeText, oracleHtml,
+    pipsHtml, bumpedMarker, typeText, typeHtml, oracleHtml,
+    keywordIconsHtml: kwIconsHtml,
     artInner, stickersInner,
   };
+}
+
+// Type line as HTML, with sticker-added tags wrapped in the gold
+// .sticker-granted span (matching sticker-granted keywords / triggers in the
+// oracle text). Origin comes from card.stickerTypes — the parallel record the
+// sticker pipeline keeps when an add_type / subtype sticker writes into
+// types[] (the types array itself can't distinguish base from granted).
+// Ordering/dedup is typeLineParts (types.js), the same walk typeLine() uses.
+function typeLineHtml(card) {
+  const parts = typeLineParts(card);
+  const stickerTags = new Set(card && Array.isArray(card.stickerTypes) ? card.stickerTypes : []);
+  const tag = t => stickerTags.has(t)
+    ? '<span class="sticker-granted">' + escapeHtml(t) + '</span>'
+    : escapeHtml(t);
+  let s = parts.left.map(tag).join(' ');
+  if (parts.right.length) s += ' — ' + parts.right.map(tag).join(' ');
+  return s;
 }
 
 // Pixel-art in-hand / on-board card. Builds the 80x112 frame at 1x scale
@@ -1419,7 +1641,9 @@ function makeCardEl(card, opts) {
   const div = document.createElement('div');
   div.dataset.iid = String(card.iid);
 
-  const vm = cardToViewModel(card, opts);
+  // The small in-play frame renders keywords as compact icons (with reminder
+  // tooltips) to save space; the blow-up popup keeps the keyword words.
+  const vm = cardToViewModel(card, Object.assign({}, opts, { keywordsAsIcons: true }));
 
   div.className = 'card-frame col-' + vm.colorKey +
     (card.tapped ? ' tapped' : '') +
@@ -1450,8 +1674,9 @@ function makeCardEl(card, opts) {
       '<div class="frame-cost">' + vm.pipsHtml + vm.bumpedMarker + '</div>' +
     '</div>' +
     '<div class="frame-art">' + vm.artInner + '</div>' +
-    '<div class="frame-type">' + escapeHtml(vm.typeText) + '</div>' +
+    '<div class="frame-type">' + vm.typeHtml + '</div>' +
     '<div class="frame-text">' +
+      vm.keywordIconsHtml +
       '<div class="frame-oracle">' + vm.oracleHtml + '</div>' +
       stickerSection +
     '</div>' +
@@ -1521,22 +1746,24 @@ function formatCostBraced(c) {
 //   card text "{R}: gets +1/+0" -> escapeHtml -> renderManaSymbols
 //   cost {R:2,C:4} -> formatCostBraced -> renderManaSymbols
 //
-// CSS in magiclike_engine.html defines a default colored-circle look for
-// .mana / .mana-W / .mana-R / etc. The pathway is set up so a future
-// `.mana-R { background-image: url('assets/mana/R.png'); color:
-// transparent; }` swap will replace text pips with PNG art globally.
+// CSS in magiclike_engine.html drives the visual: the WUBRG color pips and
+// the T (tap) pip render shared SVG art (`.mana-R { background-image:
+// url('../../assets/mana/R.svg'); color: transparent }`; T uses
+// assets/keywords/tap.svg — the hourglass coin), which hides the emoji/letter
+// glyph below and shows the symbol. C/numeric pips use the blank C.svg coin
+// with the letter/number drawn on top; X still has no SVG (letter-in-disc).
 //
 // Recognized symbols: WUBRGC (color/colorless pips), T (tap), X (variable
 // cost), and any pure-number sequence (generic mana). Unrecognized braces
 // are returned untouched so existing text like "{1.5}" or "{foo}" can't
 // break rendering.
-// Per-color glyph used as the FALLBACK rendering (no PNG art yet). The
-// five Unicode circle emoji are coincidentally the right shape and color
-// for mana symbols, so they look recognizable without shipping any image
-// files. When real PNGs land in assets/mana/, the .mana-W / .mana-U / ...
-// CSS overrides will hide the emoji via color:transparent and show the
-// art instead. C (colorless) has no canonical emoji match — keep it
-// as a letter pip until art ships.
+// Per-color glyph kept as the FALLBACK under the SVG art (used if the SVG
+// fails to load, or for C which has no SVG). The five Unicode circle emoji
+// are coincidentally the right shape and color for mana symbols, so they
+// stay recognizable even when art is unavailable. The .mana-W / .mana-U /
+// ... CSS overrides hide the emoji via color:transparent wherever an SVG
+// ships. C (colorless) has no canonical emoji match — keep it as a letter
+// pip until art ships.
 const MANA_GLYPH = { W: '⚪', U: '🔵', B: '⚫', R: '🔴', G: '🟢', C: 'C' };
 
 function renderManaSymbols(text) {

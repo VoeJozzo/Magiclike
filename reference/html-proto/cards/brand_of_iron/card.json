@@ -1,7 +1,7 @@
 {
   "card_id": "brand_of_iron",
   "name": "Brand of Iron",
-  "art": "🔨",
+  "art": "art.png",
   "cost": {
     "R": 1
   },

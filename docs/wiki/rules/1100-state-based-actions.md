@@ -21,7 +21,7 @@ On every sweep, the engine checks:
 ## 1102. SBA sweep order
 A sweep is a single pass: identify all SBA-affected objects, then apply them simultaneously. After applying, the sweep **repeats** until no further changes occur (in case a death triggers another death via chain effects).
 
-A safety counter caps the sweep at 20 iterations to prevent runaway loops. This cap is a safety net for correctness bugs; under correct rules it should never be hit.
+**Godot only:** a safety counter caps the sweep at 20 iterations to prevent runaway loops (`engine/engine.gd`, `_run_sbas`). This cap is a safety net for correctness bugs; under correct rules it should never be hit. **The html-proto has no cap** — its sweep (`checkDeaths`) is an uncapped loop whose termination is guaranteed structurally: dies/leaves triggers are queued into `pendingTriggers` rather than resolving inline, so each iteration can only remove permanents and the battlefield strictly shrinks (O(creatures) bound). See `docs/DIVERGENCE.md` F4 note.
 
 ## 1103. When SBAs run
 SBAs sweep:
@@ -38,4 +38,4 @@ MTG specifies SBA contents in rule 704.5 with strict ordering. Our SBA sweep is 
 
 ## Implementation status — SBAs
 - 1104 deviations from MTG 704.5: documented.
-- 1101 zero-toughness check: implemented.
+- 1101 zero-toughness check: implemented **for non-indestructible creatures only**. Indestructible creatures are currently (incorrectly) exempted — the html-proto's `checkDeaths` indestructible skip bypasses all three death causes, so an indestructible creature whose toughness drops to 0 or less survives, contradicting §1101's "still die at 0 toughness" above. Fix is staged as audit A1-3; this line gets updated again when it lands.

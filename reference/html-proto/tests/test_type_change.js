@@ -110,8 +110,10 @@ console.log('\n=== multi-tag add (Golem Forge): land → 4/4 Artifact Creature =
   check('is Land + Artifact + Creature, 4/4',
     hasType(inst, 'Land') && hasType(inst, 'Artifact') && hasType(inst, 'Creature')
     && JSON.stringify(ENGINE.getStats(inst)) === '[4,4]');
+  // Basics carry their color subtype now ("Basic Land — Forest"), so the line
+  // HAS an em-dash — assert the three card types all sit in the LEFT half.
   check('typeLine lists all three types left of the dash',
-    ['Land', 'Artifact', 'Creature'].every(t => typeLine(inst).includes(t)) && !typeLine(inst).includes('—'), typeLine(inst));
+    ['Land', 'Artifact', 'Creature'].every(t => typeLine(inst).split('—')[0].includes(t)), typeLine(inst));
 })();
 
 console.log('\n=== the 7 type-change spells are authored + generate clean text ===');
@@ -141,7 +143,7 @@ console.log('\n=== the 7 type-change spells are authored + generate clean text =
 
 console.log('\n=== 8 colorless artifact creatures ===');
 (() => {
-  const robots = ['clockwork_beetle', 'scrap_hound', 'alloy_myr', 'copper_golem', 'razor_beacon', 'iron_sentinel', 'bulwark_automaton', 'sentinel_colossus'];
+  const robots = ['clockwork_beetle', 'scrap_hound', 'alloy_construct', 'copper_golem', 'razor_beacon', 'iron_sentinel', 'bulwark_automaton', 'sentinel_colossus'];
   check('all 8 present', robots.every(id => CARDS[id]), robots.filter(id => !CARDS[id]).join(', '));
   check('each is an Artifact Creature (explicit types[]) + colorless',
     robots.every(id => { const c = CARDS[id]; return hasType(c, 'Artifact') && hasType(c, 'Creature') && governingType(c) === 'Creature' && !['W', 'U', 'B', 'R', 'G'].some(k => c.cost && c.cost[k]); }));
@@ -199,9 +201,7 @@ console.log('\n=== end-to-end: cast awakenVault through the real action flow ===
   // not just the effect handler in isolation.
   RUN.start({ cards: Array(12).fill('plains'), colors: ['W'] }, null);
   RUN.startNextGame();
-  const G = ENGINE.state();
-  G.activePlayer = 'you'; G.priorityHolder = 'you'; G.phase = 'MAIN1';
-  G.stack = []; G.gameOver = false; G.priority = { passes: new Set() };
+  const G = setup.startMainPhase('you');
   G.you.mana = { W: 9, U: 9, B: 9, R: 9, G: 9, C: 9 };
   const land = ENGINE.makeCard('forest', [], 0);
   land.controller = 'you'; land.owner = 'you'; land.sick = false; land.iid = 7001;
@@ -244,9 +244,7 @@ console.log('\n=== #4: the AI has tooling — it casts a neutralize spell at an 
 (() => {
   RUN.start({ cards: Array(12).fill('plains'), colors: ['W'] }, null);
   RUN.startNextGame();
-  const G = ENGINE.state();
-  G.activePlayer = 'you'; G.priorityHolder = 'you'; G.phase = 'MAIN1';
-  G.stack = []; G.gameOver = false; G.priority = { passes: new Set() };
+  const G = setup.startMainPhase('you');
   G.you.mana = { W: 9, U: 9, B: 9, R: 9, G: 9, C: 9 };
   G.you.hand = []; G.you.battlefield = []; G.opp.battlefield = [];
   const enemy = ENGINE.makeCard('sentinel_colossus', [], 0);  // a 6/6 worth answering
@@ -270,7 +268,7 @@ console.log('\n=== staple same-class UNION: Artifact co-type rides along ===');
   const syn = ENGINE.synthesizeStapledTemplate(vanilla, ['copper_golem']);
   check('Cr base + artifact-Cr staple → merged is BOTH Artifact and Creature',
     hasType(syn, 'Artifact') && hasType(syn, 'Creature') && governingType(syn) === 'Creature');
-  check('merged carries the staple’s subtype (Golem)', hasType(syn, 'Golem'), typeLine(syn));
+  check('merged carries the staple subtype (Construct)', hasType(syn, 'Construct'), typeLine(syn));
   // Land staple still COLLAPSES (no true land-creatures): a Cr+Ld staple stays a
   // cast creature, NOT playable as a land.
   const synLand = ENGINE.synthesizeStapledTemplate(vanilla, ['forest']);

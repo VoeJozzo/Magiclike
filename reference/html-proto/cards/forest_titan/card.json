@@ -13,6 +13,7 @@
   "toughness": 5,
   "types": [
     "Creature",
-    "Giant"
+    "Giant",
+    "Treefolk"
   ]
 }

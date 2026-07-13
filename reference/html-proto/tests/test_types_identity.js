@@ -50,9 +50,11 @@ console.log('=== whole pool: types[] is present + the accessors are coherent ===
   check('hasType hits governing type + every declared tag', hasTypeMiss.length === 0, hasTypeMiss.slice(0, 5).join(', '));
 
   // typeLine renders the canonical MTG line, including the corrected cases:
-  // basic lands (Basic supertype), City of Brass (single Land), legendary cards.
-  const EXPECT = { forest: 'Basic Land', island: 'Basic Land', mountain: 'Basic Land',
-    plains: 'Basic Land', swamp: 'Basic Land', city_of_brass: 'Land',
+  // basic lands (Basic supertype + their color subtype), City of Brass
+  // (single Land), legendary cards.
+  const EXPECT = { forest: 'Basic Land — Forest', island: 'Basic Land — Island',
+    mountain: 'Basic Land — Mountain', plains: 'Basic Land — Plains',
+    swamp: 'Basic Land — Swamp', city_of_brass: 'Land',
     city_guardian: 'Legendary Creature — Human Soldier', grizzly_bears: 'Creature — Bear' };
   const bad = Object.keys(EXPECT).filter(id => CARDS[id] && typeLine(CARDS[id]) !== EXPECT[id]);
   check('typeLine renders canonical lines (basic lands / legendary / subtypes)',
@@ -67,8 +69,8 @@ console.log('=== whole pool: types[] is present + the accessors are coherent ===
   // subtypesOf returns exactly the non-type/supertype tags.
   check('subtypesOf(grizzly_bears) === ["Bear"]', JSON.stringify(subtypesOf(CARDS.grizzly_bears)) === '["Bear"]',
     JSON.stringify(subtypesOf(CARDS.grizzly_bears)));
-  check('subtypesOf(copper_golem) === ["Golem"] (drops the Artifact/Creature type tags)',
-    JSON.stringify(subtypesOf(CARDS.copper_golem)) === '["Golem"]', JSON.stringify(subtypesOf(CARDS.copper_golem)));
+  check('subtypesOf(copper_golem) === ["Construct"] (drops the Artifact/Creature type tags)',
+    JSON.stringify(subtypesOf(CARDS.copper_golem)) === '["Construct"]', JSON.stringify(subtypesOf(CARDS.copper_golem)));
 })();
 
 console.log('\n=== negative: absent tags miss; nullish safe ===');
