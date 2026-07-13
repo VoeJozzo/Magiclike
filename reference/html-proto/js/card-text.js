@@ -407,7 +407,15 @@ function describeEffect(eff, tplEff) {
       if (fz === 'graveyard' && tz === 'exile') return [plainSeg('exile ' + t)];
       if (fz === 'battlefield' && tz === 'library') return [plainSeg('shuffle ' + t + " into its owner's library")];
       if (fz === 'battlefield' && tz === 'hand') return [plainSeg('return ' + t + " to its owner's hand")];
-      if (fz === 'battlefield' && tz === 'exile') return [plainSeg('exile ' + t)];          // flicker outgoing / exile removal
+      if (fz === 'battlefield' && tz === 'exile') {
+        // Ransom rider (Letter of Passage): the exile carries a buy-back option.
+        if (eff.post && eff.post.ransom) {
+          return [plainSeg('exile ' + t + '. Its controller may pay '
+            + manaCostBraces(eff.post.ransom)
+            + ' during their turn to return it to their hand')];
+        }
+        return [plainSeg('exile ' + t)];          // flicker outgoing / exile removal
+      }
       if (fz === 'exile' && tz === 'battlefield') {
         if (eff.selector === 'copy_source') return [plainSeg("return the exiled card to the battlefield under its owner's control")];
         return [plainSeg('return it to the battlefield')];  // flicker return

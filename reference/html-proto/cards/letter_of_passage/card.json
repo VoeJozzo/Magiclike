@@ -1,0 +1,29 @@
+{
+  "card_id": "letter_of_passage",
+  "art": "📜",
+  "cost": {
+    "W": 1,
+    "C": 1
+  },
+  "keywords": [
+    "flash"
+  ],
+  "name": "Letter of Passage",
+  "target": "creature",
+  "effects": [
+    {
+      "kind": "move_card",
+      "from_zone": "battlefield",
+      "to_zone": "exile",
+      "selector": "target",
+      "post": {
+        "ransom": {
+          "C": 2
+        }
+      }
+    }
+  ],
+  "types": [
+    "Sorcery"
+  ]
+}

@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.2.17`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.2.18`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -2729,3 +2729,24 @@ errors); suite 150 files / 2963 green (module loads clean under the Node
 stubs). Roadmap parked in chat: P2 = bucket-offer overlay (see where an
 offer attaches before picking), P3 = codex fog-of-war, P4 = realized-
 synergy postgame report.
+
+v2.2.18: Patient Haunt + Letter of Passage (the color-pie session ships).
+Patient Haunt ({1}{W} Spirit 1/1 flying): "When ~ dies, put a +1/+1 sticker
+on it" — run-layer death-memory through the EXISTING sticker pipeline (Joe's
+templating): a dies-trigger apply_sticker with scope:'self'. Engine:
+apply_sticker joins CREATURE_EFFECT_KINDS (scope-self resolves to the source
+creature) and gains a self-only any-zone fallback (the card is already in
+the graveyard when its dies-trigger resolves — that zone change is the
+mechanic, not a fizzle); targeted apply_sticker (embargo/bleach/Artifice)
+keeps battlefield-only fizzle semantics. Decided semantics: stickers/
+modifiers survive death AND same-battle reanimation (resetInPlayState never
+touched them) — the Haunt is bigger THIS fight, and the slot carries the
+scars to the next. Letter of Passage ({1}{W} flash sorcery): "Exile target
+creature. Its controller may pay {2} during their turn to return it to their
+hand" — arrest with bail. move_card grows a post.ransom rider; new payRansom
+action (isLegalAction + getLegalActions mirrored gates — the standing
+parallel-paths pattern), doPayRansom pays via payMana and returns exile→hand;
+AI buys back on idle mana after spells/abilities (decideMain tail); exile
+zone-viewer gets a gold pay-the-ransom button (browser piece — needs in-page
+verification). Suite 151 files / 2990 green; selfplay 300/300 clean (0
+crashes/violations/stuck); lint clean.

@@ -2553,8 +2553,23 @@ const EFFECTS = {
   // applyBalancerOverrides channel — those cards now decompose to
   // [apply_sticker, move_card]. Tokens have no slot → runtime-only (then vanish).
   apply_sticker(ctx, params, target) {
-    const f = resolveTarget(ctx, target);
-    if (!f) return;
+    // Battlefield resolve first (unchanged semantics for the targeted cards —
+    // embargo/bleach/Artifice fizzle when their target leaves play). SELF-
+    // application alone falls back to an any-zone scan: a dies-trigger
+    // stickering its own card resolves with that card already in the
+    // graveyard (Patient Haunt's death-memory), and the zone change is the
+    // whole point, not a fizzle. scope:'self' arrives here as a creature
+    // target carrying the source's iid (CREATURE_EFFECT_KINDS).
+    if (!target || target.iid == null) {
+      log(`${ctx.sourceName} fizzles — no target.`, 'sp');
+      return;
+    }
+    let f = findCard(target.iid);
+    if (!f && target.iid === ctx.sourceIid) f = findCardAnyZone(target.iid);
+    if (!f) {
+      log(`${ctx.sourceName} fizzles — target gone.`, 'sp');
+      return;
+    }
     // Two shapes: an inline descriptor (`sticker:{kind,...}` — embargo/bleach) or
     // a registry id (`sticker_id` — complex registered stickers like `scarified`).
     // For the registry case we persist by id so RUN.applyStickerToSlot uses the
@@ -2871,7 +2886,12 @@ const EFFECTS = {
         if (!card.isToken) {
           if (to === 'hand') G[dest].hand.push(card);
           else if (to === 'library') { G[dest].library.push(card); if (post.shuffle) shuffle(G[dest].library); }
-          else if (to === 'exile') G[dest].exile.push(card);
+          else if (to === 'exile') {
+            G[dest].exile.push(card);
+            // Ransom rider (Letter of Passage): the exiled card's owner may buy
+            // it back — the flag surfaces as the payRansom action while it waits.
+            if (post.ransom) card.ransom = { cost: { ...post.ransom } };
+          }
           else if (to === 'graveyard') G[dest].graveyard.push(card);
           else console.warn('move_card: unsupported battlefield dest', to);
         }
@@ -4059,6 +4079,7 @@ const CREATURE_EFFECT_KINDS = new Set([
   'grant_keyword',
   'sacrifice',
   'add_type', 'set_types',
+  'apply_sticker',   // scope:'self' = sticker the source card (Patient Haunt)
 ]);
 function effectOperatesOnCreature(eff) {
   return CREATURE_EFFECT_KINDS.has(eff.kind);
@@ -4737,6 +4758,22 @@ function doOptionalCost(who, pay) {
   log(`${pname(who)} pays for ${p.source}.`, 'sp');
   runTriggerEffects(p.item);
   drainTriggers();
+}
+
+// Pay a ransom (Letter of Passage): mana → the exiled card returns to its
+// owner's hand. Zone/ownership/window/affordability all live in isLegalAction's
+// payRansom gate; this executes the paid retrieval.
+function doPayRansom(who, cardIid) {
+  const idx = G[who].exile.findIndex(c => c.iid === cardIid);
+  if (idx < 0) return;
+  const card = G[who].exile[idx];
+  payMana(who, card.ransom.cost);
+  G[who].exile.splice(idx, 1);
+  delete card.ransom;
+  resetInPlayState(card);
+  G[who].hand.push(card);
+  emitZoneChange(card, who, 'exile', 'hand');
+  log(`${pname(who)} pays the ransom — ${card.name} returns to hand.`, 'sp');
 }
 
 // ----- Targeting -----
@@ -7419,6 +7456,16 @@ function isLegalAction(who, action) {
       if (f.card.sick) return false;
       return whoHasPriority(who) || isInstantWindow(who);
     }
+    case 'payRansom': {
+      // Ransomed exile (Letter of Passage): the card waits in ITS OWNER's exile
+      // zone; only that side may pay, at sorcery speed on their own turn.
+      // NOTE: gate mirrored in getLegalActions (the engine's standing parallel
+      // validation paths — same duplication as cost checks elsewhere).
+      const card = G[who].exile.find(c => c.iid === action.cardIid);
+      if (!card || !card.ransom) return false;
+      if (!isMainPhaseWindow(who)) return false;
+      return canPayPotential(who, card.ransom.cost);
+    }
     case 'castSpell': {
       const castable = findCastableSpell(who, action.cardIid);
       const card = castable && castable.card;
@@ -7716,6 +7763,16 @@ function getLegalActions(who) {
         const a = { type: 'castSpell', cardIid: card.iid, targets };
         if (modes.length > 1) a.modeIdx = mIdx;
         actions.push(a);
+      }
+    }
+  }
+
+  // Ransomed exile cards (Letter of Passage): the owner may buy one back at
+  // sorcery speed. Mirrors isLegalAction's payRansom gate.
+  if (isMainPhaseWindow(who)) {
+    for (const card of G[who].exile) {
+      if (card.ransom && canPayPotential(who, card.ransom.cost)) {
+        actions.push({ type: 'payRansom', cardIid: card.iid });
       }
     }
   }
@@ -8253,6 +8310,7 @@ function executeAction(who, action) {
     case 'symmetricizeChoice': doSymmetricizeChoice(who, action.which); break;
     case 'edictChoice':       doEdictChoice(who, action.iid); break;
     case 'optionalCost':      doOptionalCost(who, action.pay); break;
+    case 'payRansom':        doPayRansom(who, action.cardIid); break;
     case 'pass':             doPass(who); break;
     case 'endTurn':          doEndTurn(who); break;
     default:

@@ -2559,7 +2559,19 @@ function openZone(who, zone) {
       const zoneCastable = zone === 'exile'
         && typeof canPlayFromUI === 'function'
         && canPlayFromUI('you', card);
-      if (zoneCastable) {
+      // Ransomed card (Letter of Passage): the owner buys it back from the
+      // exile viewer — gold border, same submit idiom as other modal actions.
+      const ransomPayable = zone === 'exile' && card.ransom
+        && ENGINE.isLegalAction('you', { type: 'payRansom', cardIid: card.iid });
+      if (ransomPayable) {
+        btn.style.borderColor = '#e8c14a';
+        btn.style.color = '#ffeeb8';
+        btn.title = 'Pay the ransom to return this card to your hand';
+        btn.onclick = () => {
+          Modal.hide('zoneModal');
+          ENGINE.executeAction('you', { type: 'payRansom', cardIid: card.iid });
+        };
+      } else if (zoneCastable) {
         btn.style.borderColor = '#44cc44';
         btn.style.color = '#dfffdc';
         btn.title = 'Cast this card';

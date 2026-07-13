@@ -440,6 +440,11 @@ const CATEGORY_A = [
   // emission before fizzle checks, cause+trig payload, budget-as-meta-rule
   // containment (incl. the take-up budget move + drain-concat fix).
   'wave2_ability_triggered_test.js',
+  // Patient Haunt (death-memory: apply_sticker scope:'self' + any-zone self
+  // fallback, slot persistence, same-battle revival semantics) + Letter of
+  // Passage (exile-with-ransom: post.ransom rider, the payRansom action,
+  // AI idle-mana buy-back, generated text).
+  'test_haunt_letter.js',
 ];
 
 const TESTS_DIR = __dirname;

@@ -547,6 +547,13 @@ function decideMain(state, who, actions) {
     if (chosen) return chosen;
   }
 
+  // Ransomed exile cards (Letter of Passage): buy the card back with mana that
+  // would otherwise idle — this runs AFTER spells/abilities, so it only spends
+  // leftovers. Getting a real card back for {2} is nearly always right; the
+  // enumerator already gated on affordability.
+  const ransomActs = actions.filter(a => a.type === 'payRansom');
+  if (ransomActs.length) return ransomActs[0];
+
   return {type:'pass'};
 }
 
