@@ -146,6 +146,17 @@ function check(label, ok, info) {
   check('mass bounce is the Evacuation engine: wash_away provides etb 1.5 + wants etbtrigger 3',
     w2('wash_away').provides.etb === 1.5 && w2('wash_away').wants.etbtrigger === 3
     && BUCKETS.edgeBetween('wash_away', 'bramble_acolyte').w > 2);
+  // A theme label implies a synergy story: only Reinforcements may have an
+  // empty why[] (fallback bundles used to slip through the namer wearing
+  // theme labels — caught by the narrative tiles).
+  let unstoried = 0;
+  for (let i = 0; i < 20; i++) {
+    for (const b of BUCKETS.rollBucketOffer([])) {
+      if (b.name !== 'Reinforcements' && !(b.why || []).length) unstoried++;
+    }
+  }
+  check('every theme-labeled bucket carries its story (why[] non-empty)', unstoried === 0,
+    unstoried + ' theme-labeled buckets with no story');
 
   // this_card self-triggers must not register wants on other cards: an ETB
   // "when THIS enters, X" card is not an ally-ETB payoff.

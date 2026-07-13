@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.2.20`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.2.21`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -2770,3 +2770,18 @@ its wash_away negative pin are untouched (bounce makes replay value, not
 death events). Reinforcements variance pin hardened: scarcity of genuine
 fallbacks is itself a pass (each extraction wave lowers the rate).
 Zero-hook 12% -> 11%. Suite 150 files / 2967 green.
+
+v2.2.21: Narrative bucket tiles (Joe's framing: "[Card A] wants to join
+your deck! and it brings its friends [B] due to [reason]"). Every synergy
+bucket tile now tells its own story — the seed (cards[0], growth order
+preserved) headlines, each recruited friend shows its strongest edge
+reason inline ("Chrysalis Ward feeds Soulblade Captain (spellcast)");
+friend-recruits-friend attributions surface as-is per Joe ("goblin rabble
+brings ITS friend carrion feeder is also fine"). Theme name stays as the
+flavor chip. Building it caught the INVERSE of the v2.2.15 naming bug:
+coherence-fallback goodstuff bundles ran through the namer and 4/90 wore
+theme labels ("The Revolving Door") their value-sampled contents never
+earned — fallbacks are now always named Reinforcements, and a new pin
+enforces the invariant "a theme label implies a synergy story (why[]
+non-empty)". Browser-verified on the draft offer screen. Suite 150 files
+/ 2968 green.

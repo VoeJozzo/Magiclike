@@ -821,10 +821,15 @@ function nameBucket(bucket) {
   return THEME_NAMES.fallback;
 }
 
-function finishBucket(bucketAnalyses, why) {
+function finishBucket(bucketAnalyses, why, forceFallbackName) {
   const cards = bucketAnalyses.map(a => a.tplId);
   return {
-    name: nameBucket(bucketAnalyses),
+    // A goodstuff bundle must WEAR the Reinforcements label: its cards can
+    // share accidental edge mass, and a theme name implies the synergy
+    // contract (seed + recruited friends) that value-sampling never made.
+    // Inverse of the v2.2.15 naming bug, caught by the story tiles: 4/90
+    // fallback bundles were dressing up as "The Revolving Door" etc.
+    name: forceFallbackName ? THEME_NAMES.fallback : nameBucket(bucketAnalyses),
     cards,
     lands: landsForCards(cards),
     coherence: Math.round(coherenceOf(bucketAnalyses) * 10) / 10,
@@ -883,7 +888,7 @@ function rollBucketOffer(deckTplIds) {
       return finishBucket(bucket, why);
     }
     const loose = reinforcementsBucket(deckColors, deckIds);
-    return (loose.length === BUCKET_CARDS) ? finishBucket(loose, []) : null;
+    return (loose.length === BUCKET_CARDS) ? finishBucket(loose, [], true) : null;
   };
   const seeds = pickSeeds(deckAnalyses, deckColors);
   for (const seed of seeds) {
@@ -903,7 +908,7 @@ function rollBucketOffer(deckTplIds) {
   while (offer.length < OFFER_SIZE) {
     const loose = reinforcementsBucket(deckColors, deckIds);
     if (loose.length < BUCKET_CARDS) break;
-    offer.push(finishBucket(loose, []));
+    offer.push(finishBucket(loose, [], true));
   }
   return offer;
 }
