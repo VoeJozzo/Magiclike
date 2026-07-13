@@ -3,7 +3,7 @@ type: index
 tags: [magiclike, worldbuilding, wiki, draft]
 aliases: ["World bible hub"]
 created: 2026-06-09
-updated: 2026-06-09
+updated: 2026-07-13
 sources: [".claude/skills/magiclike-card-art/references/", "reference/html-proto/cards/*/claude-notes.md", "design conversation 2026-06-09"]
 ---
 
@@ -34,7 +34,7 @@ Every claim in this shard carries one of these (explicitly or by section):
 - [art-language.md](art-language.md) — craft conventions that are NOT world facts (light, hue words, time-of-day).
 - [flavor-text.md](flavor-text.md) — *opinion of one instance* (signed): testimony, never narration. Pre-implementation; nothing renders flavor yet.
 
-**The five colors** *(philosophy per color — what it IS here, especially where that diverges from MTG's pie)*
+**The five colors** *(philosophy per color — what it IS here, especially where that diverges from MTG's pie. What each color mechanically DOES now lives at [[mechanical-color-pie]] + [[tribal-identities]], the design-doctrine siblings of this shard.)*
 - [white.md](white.md) — the bypass must go somewhere. Dirties easily.
 - [blue.md](blue.md) — knowledge burns.
 - [black.md](black.md) — what is, is. Honest callousness; the ledger; the eclipse.

@@ -3,7 +3,7 @@ type: index
 tags: [magiclike, wiki]
 aliases: ["Concept wiki hub"]
 created: 2026-06-02
-updated: 2026-07-12
+updated: 2026-07-13
 ---
 
 # Magiclike — durable concepts wiki
@@ -27,6 +27,10 @@ It is **docs-as-code, in wiki form** — co-located with the code (so it's versi
 - [targeting-and-hexproof.md](targeting-and-hexproof.md) — targeting as a layer separate from effects; hexproof enforced structurally.
 - [mana-model.md](mana-model.md) — lands-as-abilities, phase-boundary emptying, the mana-ability fast-path.
 - [trigger-resolution.md](trigger-resolution.md) — the queue → drain → resolve orchestration (APNAP, settle loop, depth cap).
+
+**Design doctrine (living — status-tagged like the world bible)**
+- [mechanical-color-pie.md](mechanical-color-pie.md) — what each color *does*: the five identities (Institution / Salvage / Ledger / Moment / Reclaim), removal verbs, not-a-clone planks, pair archetypes.
+- [tribal-identities.md](tribal-identities.md) — race + class model, per-tribe mechanical identities, the Unwoven death-sticker design space.
 
 **Game systems (the meta layer)**
 - [sticker-system.md](sticker-system.md) — persistent per-run-slot modifiers via one `apply_sticker` pipeline.

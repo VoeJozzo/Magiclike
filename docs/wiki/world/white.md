@@ -21,7 +21,7 @@ White is not 'good', though good is often contained within it. Its register, in 
 - **Pacifism** — a soldier collapsed in a cathedral, bloody sword still in his grip. Not ideal; consequence.
 - **Swords to Plowshares** — the verb made literal: blade in the soil, wheat around it. White's best ending, available to almost no one.
 - **The angels** — powerful, radiant (Binding Angel atop her pinned demon), and employed entirely in triage and arrest while heaven stays serene above ([[the-divine]]). The divine is a blunt instrument, and man is a fragile thing.
-- **Binding Angel chains her demon; she doesn't kill it.** A tendency worth noticing: white *binds* (Pacifism, Encase in Amber's cousin-energy, the arrest) where black *executes* (the Edict). Status: observed pattern, not yet doctrine.
+- **Binding Angel chains her demon; she doesn't kill it.** A tendency worth noticing: white *binds* (Pacifism, Encase in Amber's cousin-energy, the arrest) where black *executes* (the Edict). Status: **promoted to doctrine 2026-07-13** — the whole removal pie now runs on these verbs; see [[mechanical-color-pie]].
 - Dawn is white's hour — loosely ([[art-language]] §3).
 
 ## For card-makers
@@ -32,4 +32,4 @@ Parked name: "the Dawnward" (proposed for white's soldiers/clerics/angels collec
 
 ## See also
 
-[[world-bible|world hub]] · [[the-divine]] · [[black]] (the opposite honesty) · [[tone]]
+[[world-bible|world hub]] · [[the-divine]] · [[black]] (the opposite honesty) · [[tone]] · [[mechanical-color-pie]] (what white *does*)

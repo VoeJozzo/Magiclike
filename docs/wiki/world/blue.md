@@ -41,4 +41,4 @@ Parked name: "the Pharos Order" for the burned library's order (lighthouse of Al
 
 ## See also
 
-[[world-bible|world hub]] · [[red]] (the arsonists) · [[threads]] · [[tone]]
+[[world-bible|world hub]] · [[red]] (the arsonists) · [[threads]] · [[tone]] · [[mechanical-color-pie]] (what blue *does*)

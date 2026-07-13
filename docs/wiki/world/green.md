@@ -39,4 +39,4 @@ Green cards want: patience, appetite, succession; the war's leavings being quiet
 
 ## See also
 
-[[world-bible|world hub]] · [[threads]] (the Reclaim unknots; the fawn-spirit is a re-spun thread) · [[tone]] · [[black]] (the other indifference)
+[[world-bible|world hub]] · [[threads]] (the Reclaim unknots; the fawn-spirit is a re-spun thread) · [[tone]] · [[black]] (the other indifference) · [[mechanical-color-pie]] (what green *does*)
