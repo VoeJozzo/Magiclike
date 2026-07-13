@@ -341,10 +341,22 @@ function analyze(tpl) {
   // bounce-your-own does both more weakly (replay costs the mana again).
   const blinks = kinds.some(k => k.kind === 'move_card' && k.from_zone === 'battlefield' && k.to_zone === 'exile')
     && kinds.some(k => k.kind === 'move_card' && k.from_zone === 'exile' && k.to_zone === 'battlefield');
+  // A GENERIC creature target includes yours (Joe's correction, 2026-07-13:
+  // "your etb value deck will get more out of it than their deck bc they
+  // didn't build around that") — wash_away can always be pointed inward,
+  // so it provides the same replay/dodge value as a printed
+  // "creature you control" bounce. Only opp-locked targets are excluded.
   const bouncesOwn = kinds.some(k => k.kind === 'affect_creature' && k.severity === 'bounce')
-    && targetSteps.some(s => s.t === 'your_creature');
+    && targetSteps.some(s => s.t === 'your_creature' || s.t === 'creature');
+  // Mass bounce (wash_away, devastation_tide) rebuys your WHOLE board's
+  // ETBs and dodges a wrath in response — Evacuation-plus-Processional is a
+  // real archetype. Symmetry (their board bounces too) is priced into the
+  // modest weights.
+  const massBounce = kinds.some(k => k.kind === 'affect_creature' && k.severity === 'bounce'
+    && /^all/.test(String(k.scope || '')));
   if (blinks) { bump(provides, 'etb', 1.5); bump(provides, 'wrathproof', 1.5); }
-  if (bouncesOwn) { bump(provides, 'etb', 0.75); bump(provides, 'wrathproof', 1); }
+  if (massBounce) { bump(provides, 'etb', 1.5); bump(provides, 'wrathproof', 1.5); }
+  else if (bouncesOwn) { bump(provides, 'etb', 0.75); bump(provides, 'wrathproof', 1); }
   // etbtrigger: creatures whose triggers fire on entry carry re-usable ETB
   // VALUE — distinct from 'etb' (every body enters; only these are worth
   // re-entering). Blink is nearly dead pointed at a vanilla bear and
@@ -516,8 +528,9 @@ function analyze(tpl) {
     bump(wants, 'tapability', 2);
   }
   // Blink/bounce-own want ETB VALUE to re-fire (the flicker-deck edge —
-  // surfaced by Joe's direction review of the sweep).
-  if (blinks) bump(wants, 'etbtrigger', W_WANT_PAYOFF);
+  // surfaced by Joe's direction review of the sweep). Mass bounce wants it
+  // hardest: every ETB creature multiplies the rebuy.
+  if (blinks || massBounce) bump(wants, 'etbtrigger', W_WANT_PAYOFF);
   else if (bouncesOwn) bump(wants, 'etbtrigger', 2);
 
   // --- Plan tags (weak similarity: shared strategy, not producer/consumer) ---

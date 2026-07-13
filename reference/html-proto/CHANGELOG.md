@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.2.19`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.2.20`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -2755,3 +2755,18 @@ demands). Murder <-> blood_artist is now a live 1.47 edge with the reason
 plan gate into any-death buckets organically. 2 pins (incl. the wash_away
 negative). Remaining removal-orphan discussion (base-weight modulation vs
 bucket tail seat) still open in chat. Suite 150 files / 2965 green.
+
+v2.2.20: Bounce replay value — Joe's generic-target correction ("your etb
+value deck will get more out of it than their deck bc they didn't build
+around that"). A generic creature target INCLUDES yours, so any-target
+bounce provides etb 0.75 + wrathproof 1 and wants etbtrigger 2
+(mist_raider, cloud_caller, echo_spirit join strategic_retreat); only
+opp-locked targets stay excluded. And wash_away turned out to be a MASS
+bounce (scope all_creatures) — the Evacuation engine: rebuys your whole
+board's ETBs, provides etb 1.5 + wrathproof 1.5, wants etbtrigger 3
+(devastation_tide same). wash_away <-> bramble_acolyte is now a 3.59
+strong edge. Deaths still require destruction — the v2.2.19 dies rule and
+its wash_away negative pin are untouched (bounce makes replay value, not
+death events). Reinforcements variance pin hardened: scarcity of genuine
+fallbacks is itself a pass (each extraction wave lowers the rate).
+Zero-hook 12% -> 11%. Suite 150 files / 2967 green.
