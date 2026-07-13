@@ -101,8 +101,8 @@ function check(label, ok, info) {
     && !w2('seal_thief_courier').wants.dies);
   check('theft feeds sac outlets: threaten provides fodder',
     w2('threaten').provides.fodder > 0);
-  check('untap spells want activation machines: awaken_the_stone wants, pyromaniac provides',
-    w2('awaken_the_stone').wants.activation > 0 && w2('pyromaniac').provides.activation > 0);
+  check('untap spells want TAPABILITY machines: awaken_the_stone wants, pyromaniac provides',
+    w2('awaken_the_stone').wants.tapability > 0 && w2('pyromaniac').provides.tapability > 0);
   check('flying-hate wants nothing (cannot manufacture their fliers): choking_vines',
     Object.keys(w2('choking_vines').wants).length === 0, JSON.stringify(w2('choking_vines').wants));
   // etbtrigger (Joe's direction review of the sweep): blink wants ETB VALUE,
@@ -114,6 +114,19 @@ function check(label, ok, info) {
   const eBear = BUCKETS.edgeBetween('vanishing_act', 'grizzly_bears');
   check('the flicker edge is live and the vanilla edge is not',
     eBlink.w > 1 && eBear.w === 0, eBlink.w.toFixed(2) + ' vs ' + eBear.w.toFixed(2));
+  // Broad gated-on-X audit (Joe: "any card gated on X potentially wants X"):
+  check('tapability split: awaken pulls pyromaniac, NOT furnace_whelp (Joe\'s disambiguation)',
+    w2('awaken_the_stone').wants.tapability > 0
+    && BUCKETS.edgeBetween('awaken_the_stone', 'furnace_whelp').w === 0
+    && BUCKETS.edgeBetween('awaken_the_stone', 'pyromaniac').w > 1);
+  check('mana dorks are tapability providers (untapping llanowar is real value)',
+    w2('llanowar_elves').provides.tapability > 0);
+  check('lost_life_this_turn gate wants opp_loss regardless of event (bloodlust_berserker)',
+    w2('bloodlust_berserker').wants.opp_loss > 0
+    && BUCKETS.edgeBetween('bloodlust_berserker', 'lightning_bolt').w >= 2);
+  check('counterspell payoff wants counterspells, not every sorcery (counter_specialist)',
+    w2('counter_specialist').wants.counterspell > 0 && !w2('counter_specialist').wants.spellcast
+    && w2('counterspell').provides.counterspell > 0);
 
   // this_card self-triggers must not register wants on other cards: an ETB
   // "when THIS enters, X" card is not an ally-ETB payoff.
@@ -311,15 +324,22 @@ function check(label, ok, info) {
   const deck = ['skyfire_drakelord', 'mind_control', 'final_strike', 'island', 'island'];
   const sets = new Set();
   let soldOwnCard = false;
-  for (let i = 0; i < 12; i++) {
+  // Loop until enough Reinforcements offers are SAMPLED, not a fixed roll
+  // count: the growing resource vocabulary makes more synergy buckets
+  // coherently nameable, so genuine Reinforcements fallbacks get rarer
+  // (good!) and a fixed 12 rolls started under-sampling the variance check.
+  let rolls = 0, seen = 0;
+  while (seen < 4 && rolls++ < 60) {
     for (const b of BUCKETS.rollBucketOffer(deck)) {
       if (b.name !== 'Reinforcements') continue;
+      seen++;
       sets.add(b.cards.slice().sort().join(','));
       if (b.cards.some(c => deck.includes(c))) soldOwnCard = true;
     }
   }
   check('Reinforcements never contains cards already in the deck', !soldOwnCard);
-  check('Reinforcements varies across offers', sets.size >= 2, `${sets.size} distinct sets`);
+  check('Reinforcements varies across offers', sets.size >= 2,
+    `${sets.size} distinct sets from ${seen} offers in ${rolls} rolls`);
 }
 
 // --- §7 theme health report -------------------------------------------------

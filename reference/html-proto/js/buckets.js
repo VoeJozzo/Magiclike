@@ -138,6 +138,8 @@ const THEME_NAMES = {
   tapped:     'The Sleep Raid',
   wrathproof: 'The Aftermath',
   etbtrigger: 'The Revolving Door',
+  tapability: 'The Clockworks',
+  counterspell: 'The Refusal',
   'kw:flying': 'Skyborne',
   fallback:  'Reinforcements',
 };
@@ -296,6 +298,17 @@ function analyze(tpl) {
   // activation: a non-mana activated ability (backlash_mage's providers).
   if ((tpl.abilities || []).some(ab =>
       (ab.effects || []).some(e => e && e.kind !== 'add_mana'))) bump(provides, 'activation', 1);
+  // tapability: a TAP-COST ability specifically (mana dorks included —
+  // untapping llanowar_elves is real value). Split from 'activation' at
+  // Joe's direction: awaken_the_stone must not pull furnace_whelp, whose
+  // {R}-pump activation gains nothing from untapping.
+  if (isCreature && (tpl.abilities || []).some(ab => ab.cost && ab.cost.tap)) {
+    bump(provides, 'tapability', 1);
+  }
+  // counterspell: a spell that counters (counter_specialist's diet — the
+  // third arm of the qualified-spellcast family, found by the broad
+  // gated-on-X audit).
+  if (isSpellCard && kinds.some(k => k.kind === 'counter')) bump(provides, 'counterspell', 1);
   // kw:flying: intrinsic/implied fliers feed the fliers-matter lord
   // (wing_commander). Scoped to flying while it is the only keyword with a
   // payoff — extend per-customer, not speculatively.
@@ -397,9 +410,19 @@ function analyze(tpl) {
         // Damage-spell payoffs (ashclot_zealot) feed on burn, not on every
         // sorcery — same qualified-spellcast reasoning as flashcast.
         bump(wants, 'burnspell', W_WANT_PAYOFF);
+      } else if (cs.some(s => /^card_has_effect\(counter\)$/.test(s))) {
+        // Counterspell payoffs (counter_specialist) feed on counterspells —
+        // the broad audit caught this arm wanting generic spellcast.
+        bump(wants, 'counterspell', W_WANT_PAYOFF);
       } else {
         bump(wants, 'spellcast', W_WANT_PAYOFF);
       }
+    }
+    // A lost-life-this-turn gate is a payoff for opponent life loss no
+    // matter which event carries it (bloodlust_berserker rides 'attacks' —
+    // the broad audit caught it wanting nothing).
+    if (cs.some(s => /^lost_life_this_turn\(opp\)$/.test(s))) {
+      bump(wants, 'opp_loss', W_WANT_PAYOFF);
     }
     // Activations-matter (backlash_mage): fed by non-mana activated abilities.
     if (trg.event === 'ability_activated') bump(wants, 'activation', W_WANT_PAYOFF);
@@ -472,13 +495,11 @@ function analyze(tpl) {
       && !(s.f && Array.isArray(s.f.graveyards) && s.f.graveyards.length === 1 && s.f.graveyards[0] === 'opp'))) {
     bump(wants, 'dies', 2);
   }
-  // Untap-your-creature effects are twice as good on tap-ability machines
-  // (awaken_the_stone + pyromaniac): they want activation providers.
-  // (Slightly broad: 'activation' includes the rare non-tap activated
-  // ability like furnace_whelp's {R} pump, which untapping doesn't help.
-  // Split a tap-cost sub-resource if such creatures ever proliferate.)
+  // Untap-your-creature effects want TAP-COST machines specifically
+  // (awaken_the_stone + pyromaniac yes, furnace_whelp no — Joe's
+  // disambiguation of the original activation-flavored version).
   if (kinds.some(k => k.kind === 'untap') && targetSteps.some(s => s.t === 'your_creature')) {
-    bump(wants, 'activation', 2);
+    bump(wants, 'tapability', 2);
   }
   // Blink/bounce-own want ETB VALUE to re-fire (the flicker-deck edge —
   // surfaced by Joe's direction review of the sweep).

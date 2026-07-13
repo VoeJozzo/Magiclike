@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.2.15`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.2.16`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -2693,3 +2693,21 @@ to the "Reinforcements" LABEL — which carries a no-dupes contract synergy
 buckets never made (caught by the sold-own-card pin when the sweep made
 mind_control a fodder provider). 11 theme names added. Suite 150 files /
 2959 green; selfplay 500 clean.
+
+v2.2.16: The BROAD gated-on-X audit (Joe: "any card gated on X potentially
+wants X — did we audit for this?" — the filter sweep had not). Full gate-
+space enumeration (all condition predicates × users, ability costs,
+dynamic amounts, rider filters) found two live misses + shipped Joe's
+tapability disambiguation: (1) bloodlust_berserker's lost_life_this_turn
+gate wanted nothing — now wants opp_loss regardless of carrying event
+(berserker↔bolt edge 2.65); (2) counter_specialist wanted generic
+spellcast — now wants the new counterspell resource (4 providers;
+specialist↔counterspell 3.86); (3) tapability split from activation:
+tap-COST abilities only, mana dorks included (untapping llanowar is real
+value) — awaken_the_stone↔furnace_whelp is now 0.00, awaken↔pyromaniac
+stays live. Clean bill for the rest of the gate space: hymnwright's
+verse-counter cost self-feeds, sengir's damaged-by-this is self-
+manufactured, from:-amounts are downside riders. Reinforcements variance
+pin resampled (sample-until-4-offers): richer vocabulary makes genuine
+fallbacks rarer, starving the old fixed-12-rolls check. Zero-hook 13%→12%.
+Suite 150 files / 2963 green; selfplay 500 clean.
