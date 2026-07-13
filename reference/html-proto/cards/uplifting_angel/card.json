@@ -1,0 +1,32 @@
+{
+  "card_id": "uplifting_angel",
+  "name": "Uplifting Angel",
+  "art": "\ud83d\udc7c",
+  "cost": {
+    "W": 1,
+    "C": 2
+  },
+  "power": 2,
+  "toughness": 2,
+  "types": [
+    "Creature",
+    "Angel"
+  ],
+  "triggers": [
+    {
+      "event": "spell_cast",
+      "condition": [
+        "another_card",
+        "controlled_by(you)"
+      ],
+      "effects": [
+        {
+          "kind": "grant_keyword",
+          "keyword": "flying",
+          "duration": "eot"
+        }
+      ],
+      "target": "your_creature"
+    }
+  ]
+}

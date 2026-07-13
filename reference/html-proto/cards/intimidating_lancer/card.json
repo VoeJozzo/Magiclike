@@ -1,0 +1,34 @@
+{
+  "card_id": "intimidating_lancer",
+  "name": "Intimidating Lancer",
+  "art": "🗡️",
+  "cost": {
+    "W": 1,
+    "C": 3
+  },
+  "power": 3,
+  "toughness": 3,
+  "types": [
+    "Creature",
+    "Human",
+    "Knight"
+  ],
+  "triggers": [
+    {
+      "event": "attacks",
+      "condition": [
+        "this_card"
+      ],
+      "effects": [
+        {
+          "kind": "affect_creature",
+          "severity": "tap"
+        }
+      ],
+      "target": "creature",
+      "target_filter": {
+        "controller": "opp"
+      }
+    }
+  ]
+}

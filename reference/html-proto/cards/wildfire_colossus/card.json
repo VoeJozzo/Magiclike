@@ -1,0 +1,33 @@
+{
+  "card_id": "wildfire_colossus",
+  "name": "Wildfire Colossus",
+  "art": "🌋",
+  "cost": {
+    "R": 1,
+    "G": 1,
+    "C": 1
+  },
+  "power": 2,
+  "toughness": 3,
+  "types": [
+    "Creature",
+    "Elemental"
+  ],
+  "spell_riders": [
+    {
+      "rider_scope": "self",
+      "spell_filter": {
+        "has_effect": "damage",
+        "type": "Sorcery"
+      },
+      "effects": [
+        {
+          "kind": "pump",
+          "duration": "permanent",
+          "power": 1,
+          "toughness": 1
+        }
+      ]
+    }
+  ]
+}

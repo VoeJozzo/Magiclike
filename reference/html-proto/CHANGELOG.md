@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.1.57`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.2.17`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -2393,3 +2393,339 @@ test_a4_23_trailing_defer.js (red→green: tutor life-loss defers, discard
 trailing fires once, AI inline); test_drain_lifeloss.js re-pinned to post-pick
 timing. Salvaged from the pre-outage branch (commit 20fd17b5), cherry-picked
 onto the recovery lineage. Suite 142 files / 2626 assertions green, lint clean.
+
+v2.2.0: THE GROWING DECK — bucket-based run structure (docs/plans/
+plan-bucket-draft.md). New js/buckets.js: synergy-graph bucket generation —
+PROVIDES/WANTS resource extraction from card.json structure (~15 rules),
+labeled producer/consumer edges (+ weak shared-plan tags), seed-and-grow with
+softmax sampling, coherence floor with Reinforcements fallback, emergent
+theme naming (dominant edge resource → THEME_NAMES), boot theme-health
+report. New run mode 'growing' (start-screen primary): the run starts from 3
+bucket picks (each 3 cards + 2 lands; the first pick sets the run's colors —
+buckets may introduce a second color while the deck holds fewer than two,
+then lock to the pair) and grows between fights via the new two-phase
+addBucket reward (weight = 2 × spell deficit, fading to 0 at 23 spells; land
+top-up to 17 at target). Heuristic opponents mirror the player's spell count
+(constructed decks/bosses stay full-size scripted landmarks — buildOpponentDeck
+numPicks param, lands scale at 23:17). runState.config {mode} with legacy-save
+backfill; bucketPick added to the load-time phase validator; PICKLOG
+logBucketPick (own bucketPicks record array — card-stat matrices stay clean).
+UI: bucket tiles (name pill + 3 card minis + land pips) shared by the draft
+screen and the reward flow; classic + Desert Cube modes unchanged. Tests:
+buckets_test.js (32) + growing_deck_test.js (28); browser-verified end-to-end
+(boon → bucket draft → game 1 → addBucket reward → commit) via Playwright.
+Suite 144 files / 2686 assertions green, lint clean.
+
+v2.2.1: bucket-generator refinement round from adversarial design review.
+(1) Specificity weighting (idf): every provide-side edge contribution scales
+by anchor/log2(2+providers), so ubiquitous resources (etb: 188 providers,
+spellcast: 83, dies: 64) bind loosely and scarce ones (tribes: 8-19) bind
+tightly — replaces per-resource hand-nudges as the general ubiquity control;
+naming mass uses the same factor. Measured: The Processional 41%→14% of
+offers vs an ETB-payoff deck, empty-deck offers now tribe-led, Reinforcements
+fallback ~3%. (2) Human subtype exclusion REMOVED — provides never attract
+provides, so a payoff-less tribe generates zero edges; a future Human lord
+now just works. (3) New optional card.json field `synergy` {provides,wants}
+— card-local hints for one-off custom-kind cards the extractor deliberately
+doesn't parse (the customText of the graph); max-merged, resource names
+boot-validated, documented in PROTOCOL.md §2.1. (4) Special (boon/boss)
+cards now analyzed into the graph index so deck presence exerts pull on
+offers; still never offered. (5) Bucket tiles: hover tooltip with the
+generator's edge reasons prettified to card names; etb creature-provision
+constants restored to natural values (idf owns ubiquity now). Suite 144
+files / 2693 assertions green, lint clean.
+
+v2.2.2: seed selection rewritten to weights-as-weights (Joe's proposal from
+design review). Seeds now sample from the whole legal pool with probability
+proportional to deck-affinity (empty deck: payoff-ness) — replacing the
+top-12 head + middle-band "adjacent" special case with one mechanism that
+blends identity, adjacency, and exploration naturally. The wishlist shapes
+the odds, not the outcomes. Measured vs prior: distinct seeds across 20
+offers 14→61 (BR deck) / →100 (WU); top-seed concentration 20%→19% with a
+far richer tail; identity preserved (BR still ~68% Warband+Grave Bargains);
+Reinforcements fallback 0-8% (honest goodstuff variance). Net code
+reduction: SEED_POOL_TOP and the adjacent-band logic deleted. Suite 144
+files / 2693 assertions green (stochastic tests stressed 5x), lint clean.
+
+v2.2.3: anti-inbreeding round, from Joe's first playtest ("offered goblins
+7/9 times"). Root causes measured: (1) a 5-card mono-theme start left ~170
+pool cards at literal ZERO seed probability (only cards with deck-affinity
+could seed) and (2) DECK_COUPLING during growth double-counted identity —
+seeds already carry the deck's wishes under weights-as-weights, so at
+λ=0.25 even off-theme seeds grew deck-themed members. Fixes: SEED_BASE_WEIGHT
+0.75 added to every legal card before proportional sampling (Laplace
+smoothing — constant baseline + growing affinity mass = automatic
+exploration→identity curriculum across the run, no schedule), and
+DECK_COUPLING 0.25→0.1. Measured post-first-goblin-pick same-tribe buckets:
+49%→29% (committed mid-run decks still ~87% identity). Also REMOVED the
+deck-wide 4-copy cap per Joe's verdict — it was an unauthorized import of
+MTG convention (the only in-repo basis is the opponent drafter's heuristic
+at draft.js scoreDraftCard, which stands unchanged); the whole copyCounts
+thread deleted, redundancy self-prices via the graph. Suite 144 files /
+2692 assertions green (stochastic tests stressed 5x), lint clean.
+
+v2.2.4: two playtest-caught bucket bugs. (1) Reinforcements was near-
+deterministic (value-sort + tiny jitter) AND could contain cards already in
+the player's deck — Joe was offered his exact three-card deck back, three
+offers running. Now softmax-sampled by intrinsic value with already-owned
+cards excluded: goodstuff's job is NEW power; redundancy is earned through
+synergy buckets only. (2) Bucket land allocation is coverage-first: a
+U:3/B:1 bucket now gets island+swamp instead of island+island (pure
+largest-remainder rounds the splash color to zero at n=2; deck-wide 17-land
+allocation stays proportional in draft.js). Regression tests for both.
+Suite 144 files / 2695 assertions green, lint clean.
+
+v2.2.5: design-review round four (all four directives Joe's). (1) ONE
+sampler everywhere: growth now uses weightedSample like seeds and
+Reinforcements; softmaxPick + GROWTH_TEMPERATURE deleted. Growth SQUARES its
+weights (GROWTH_SHARPNESS=2 — bundles must cohere; seeds stay linear —
+offers should explore); flat proportional measured too loose (~19%
+Reinforcements fallback), sharpness 2 lands at ~10%. Softmax was also
+flattening multiplicative penalties, which motivated the unification.
+(2) Soft third color: the deck-colors hard ban replaced by
+deckFitMultiplier — first two colors free, each additional new color ×0.05
+on seed weight and growth score, judged against deck ∪ bucket colors so a
+bundle can't claim the free slot twice. Castability is the player's call
+("skill issue"); measured: ~6% off-color cards, ~9% third-color temptation
+buckets for a committed deck. The one HARD color law left: a bucket never
+spans >2 colors. (3) GROWING_START_BUCKETS 3→5 (25-card start) — 15-card
+decks ended games by deck-out. (4) Bucket lands comment rewritten to Joe's
+spec (code already matched: most common color, then second most common).
+Suite 144 files / 2696 assertions green (buckets stressed 5x), lint clean,
+browser-verified end-to-end (5-pick draft → game boots → reward grows +5).
+
+v2.2.6: bucket extraction reads EFFECTIVE keywords — the engine's
+subtype-implied keywords (SUBTYPE_KEYWORDS: Angel/Dragon fly, Treefolk
+reach, Wall defends) now reach the synergy graph via a new
+ENGINE.addSubtypeKeywords export. Raw keywords[] alone left the graph
+blind to every implied keyword (Serra Angel had no flying plan tag).
+Found during the Wave 1.5 flavor audit: a judge agent killed a
+redundant "add flying to the Angel" patch by citing engine.js:729,
+exposing the extraction gap. Regression test pins Serra's flying tag.
+Suite 144 files / 2697 assertions green, lint clean.
+
+v2.2.7: Wave 1.5 flavor-audit ships — four card patches from the 16-finder /
+3-judge agent workflow, curated by Joe (giant_spider's Insect subtype kept:
+deliberate register choice from the type-simplification pass). ancient_hydra:
+Slith-style growth trigger (combat damage to an opponent → permanent +1/+1;
+condition uses the seal_thief_courier affected_player_is(opp) idiom so the
+classifier and text generator speak it natively). pyromaniac: {R},{T}: deal
+1 to any target (judge-refined from a free ping that was strictly-better
+Prodigal Sorcerer; cost.mana per Deepseam Quarry precedent). wolfbriar_
+elemental +Wolf, scrap_hound +Hound/Construct subtypes (type-line truth;
+banked for future payoffs per the accretion doctrine). Suite 144 files /
+2697 assertions green, lint clean. Post-wave assay: hub share and plan
+counts ~unchanged as predicted — these are flavor fixes and banked
+subtypes; the interconnection movement is Wave 1's job.
+
+v2.2.8: Wave 1 ships — 8 new-niche recruiting payoffs from the 12-designer /
+1-killer wave (docs/plans/plan-pool-waves.md), curated by Joe via the
+review-board artifact. New cards: gloomfang_leech (opp life loss → +1/+1
+counter; hooks the whole burn suite — 10 recruits), bloodtithe_collector
+(opp life loss → gain 1; the burn↔lifegain bridge, Joe's overrule of the
+killer's one-per-niche policy), toll_of_secrets (you discard → opp loses 1;
+first discard payoff), grim_ferryman ({T}, sac: draw — third distinct
+sac-outlet plan), ironbrand_marshal (Artifact-creature lord; first artifact
+payoff), rakdos_underboss (Demons +1/-1 + demon-death drain; the anthem
+feeds the drain — kills your own 1-toughness demons on purpose),
+toll_of_silence (UUB counter + controller loses 2; two-slot spell/opp
+shape), tideglass_broker (2U 1/2 flash flier, ETB blinks ANOTHER creature
+you control). New primitives: `another: true` target_filter (source
+exclusion in the ts* trigger-targeting layer — distinct from
+distinct_targets' slot-vs-slot rule) + 3 trigger archetypes (oppLosesLife,
+youDiscard, cardDiesOfSubtype) with card-text preambles. Static-buff text:
+signed stats ("+1/-1", was "+1/+-1"); type-tag buffs read "Artifact
+creatures"; "Other" only when the lord matches its own buff. BUCKETS
+extraction: Wave 1 vocabulary (discard/self_pain/opp_loss provides+wants,
+sub:Artifact provides) + the life_changed DIRECTION SPLIT (is_life_loss →
+self_pain/opp_loss — fixes a latent 23-false-edge bug where life-loss
+payoffs bucketed with lifegain providers); theme names The Foundry / The
+Toll / Bloodletting. Structural pins updated: trigger_migration archetype
+table (+3, dup-table refactor candidate flagged), zone-events pin gains an
+intentional-non-battlefield allowlist (toll_of_secrets). Suite 145 files /
+2737 assertions green; selfplay 500 games 0 crashes/violations/stuck;
+lint clean.
+
+v2.2.9: Wave 2 ships — 32 cards from the 20-designer / 1-killer /
+33-architect / blinded-flavor-pass wave (docs/plans/plan-pool-waves.md;
+per-card specs + decision threads in docs/plans/wave-data/), curated by
+Joe across six conversation-board rounds (32 ship / 1 kill — Riverbend
+Adept; the bounce-payoff niche is now twice-rejected). Pool 305→337.
+New engine primitives: STATIC SPELL-RIDER HOOK (spell_riders card field —
+battlefield permanents modify your resolving spells at RESOLUTION time,
+scopes all_targets/creature_targets/your_creature_targets/self, optional
+spell_filter; customers sapling_tender, primal_metamagus, vigil_chanter,
+wildfire_colossus); ABILITY_ACTIVATED event (non-mana stack-entry emit
+only, mana abilities structurally silent per canon §705; customer
+backlash_mage); predicates card_has_keyword (effective keywords),
+opponents_turn, card_has_effect(kind, etb) scope, card_has_subtype any-of
+args (covenant_scholar, single-fire pinned). 9 new trigger archetypes +
+preambles (flash-cast, opp-turn cast, noncreature cast, creature-ability
+activation, ETB-damager enters, landfall, creature-you-dies, another-
+attacks, you-draw [house ruling: draw = any library→hand move]);
+card_has_keyword(*) signature wildcarding; "or"-join preambles.
+describeStaticBuff renders has_keyword filters ("creatures you control
+with flying" — wing_commander) with effective-keyword "Other" honesty;
+describeSpellRider added. Engine fix: applyTypeChange refreshes static
+keyword grants immediately (animated land must see rootbound_sentinel
+vigilance at animation, not at the next emit). Trigger-migration test now
+reads the LIVE archetype table (dup table deleted, Joe-flagged); NEW
+manifest-completeness pin (unlisted cards/ folder = invisible in browser,
+Joe-found gap). BUCKETS: 8 new resources (trick, activation, landdrop,
+animate, flashcast, burnspell, carddraw, kw:flying) + 4 wart fixes
+(qualified spellcast, mass-buff wants:wide, landfall false-sub:Land,
+any-of tribal regex). Assay: zero-hook 35%→17% (target <25%), all pairs
+≥12 plans (UB 12 floor), hub band 43-47%. Suite 149 files / 2911 green;
+selfplay 500 games 0 crashes; lint clean.
+
+v2.2.10: The ability_triggered event — built at Joe's direction, correcting
+a v2.2.9 process failure: Joe argued for building the event across the
+three turns before a context compaction ("we have the info we need to
+build this"); Claude misread that as blessing its own defer-until-a-
+customer recommendation and shipped Wave 2 without it (the plan-doc
+ledger even attributed the deferral to Joe — corrected). The event:
+emitted at the drainTriggers TAKE-UP point — the one seam every fired
+trigger passes through (auto-pick, human-prompt, stackable:false arms) —
+at FIRE time, before fizzle checks (MTG 603: a trigger that fizzles at
+targeting still triggered). Payload: subject (source permanent, last-
+known), cause (the originating event — "what triggered that ability"),
+trig (the firing ability, read by the new trigger_has_effect(kind)
+predicate). Recursion by meta-rule, no bespoke self-exclusion: the
+TRIGGER_DEPTH_CAP budget now ticks at take-up (one per FIRED trigger)
+instead of at resolution — building the event exposed that the old
+increment-at-resolution let a drain-only cycle grow the stack unboundedly
+with the budget frozen, and that reset-before-drain let a one-entry loop
+reset its own budget every cycle (both fixed; exhaustion logs once per
+episode). Also fixed: the drainTriggers prompt-pause clobbered pendings
+queued by emits during the drain loop (a prompt-path trigger's
+announcement silently vanished) — now concatenated. Boundary pinned:
+activated abilities emit ability_activated, never this; mana abilities
+emit nothing. tests/wave2_ability_triggered_test.js (16 checks): payload,
+fizzle-still-triggers, another_card self-echo filter, Ouroboros
+containment, activation boundary, boot validation. OPEN (Joe's call):
+migrate Triage Cleric onto the event or keep it structural. Suite 150
+files / 2927 green; selfplay 500 games 0 crashes/violations/stuck.
+
+v2.2.11: Triage Cleric text correction (Joe): "Whenever another creature
+with an enters-the-battlefield ability enters under your control, you gain
+2 life" — any ETB, not damage-specific ("the flavor doesn't make any sense
+if it's keying off of damage specifically"). The damage clause traced to
+the designer PITCH wording (transcript-verified), not to any design
+decision; it survived six review rounds unchallenged. Wire:
+card_has_effect gains an 'any' kind wildcard → card_has_effect(any, etb);
+archetype anotherEtbDamagerYouEnters → anotherEtbCreatureYouEnters (the
+damage-keyed variant left with its only customer). Card stays on the
+structural predicate (fires on the enter, matching printed text) — the
+ability_triggered migration question is closed. Broader card: every
+ETB-ability creature feeds her now (sky_champion pinned alongside
+pyromaniac in the test). Suite 150 files / 2928 green; selfplay 500
+games 0 crashes/violations/stuck.
+
+v2.2.12: Two text idioms (Joe). (1) Same-target "It": with one shared
+top-level target (no slots), every clause resolves against the same locked
+pick — repeating the full target phrase read like a second choice that
+does not exist. After the first clause names it, later clauses say "it":
+second_wind ("Untap target creature you control. It gains vigilance...")
+plus two pool cards the sweep improved for free (artifice_triumphant,
+symbiote_tree). Slot cards (twin_strike, branching_bolt) correctly keep
+the verbose form — they genuinely pick twice. (2) Tutor draw voice: the
+house ruling "drawing = any library→hand move" now speaks in the text —
+library-search-to-hand renders "...and draw it" (5 cards: demonic_tutor,
+worldly_tutor, last_druid, nature_caller, verdant_charm mode 3);
+search-to-BATTLEFIELD ramp is not a draw and is untouched. Full-pool text
+diff: exactly 8/337 cards changed, all intended. Suite 150 files / 2928
+green.
+
+v2.2.13: The four Wave 1 HOLDS ship (Joe un-parked all of them) + the
+Rescue Angel rename lands. reckless_bloodletter (1R Human Berserker 1/3 —
+"Whenever you lose life, this creature gets +1/+0 until end of turn";
+Joe: "this can actually ship, I misread it"); charnel_chorister (1B Human
+Cleric 1/2 — ETB-drain, the third member of the entry-payoff family with
+storm_sage/bramble_acolyte); cinder_ward RESPEC (Joe: RW, +1/+0 rider —
+"Target creature you control gets +1/+0 and gains indestructible until
+end of turn"; Elystra interaction consciously accepted, revisit if
+degenerate); ashclot_zealot (BR Human Shaman 1/2 — damage-sorcery drain;
+the Wave 1 blocker predicate became free when Wave 2 shipped
+card_has_effect(damage); typed Shaman not the pitch's unregistered
+"Cultist", cult_priest precedent). Two new archetypes+preambles
+(youLoseLife, youCastDamageSpell — "sorcery" voice per the Colossus
+ruling); ashclot wants burnspell (qualified-spellcast rule extended), not
+generic spellcast. rescue_angel → uplifting_angel ("Uplifting Angel!
+That's the name I wanted") — folder+manifest+TPLID_RENAMES migration
+entry. Pool 337→341. Suite 150 files / 2949 green; selfplay 500 clean.
+
+v2.2.14: Extraction-audit pool sweep (Joe's queued idea — "destroy target
+tapped creature wants something, y'know?"). Governing principle, applied
+pool-wide: a filter/condition earns a want only when YOUR deck can
+manufacture the condition (you can tap their creatures; you cannot make
+their creatures fly — choking_vines correctly wants nothing). Six rule
+families, every one with live wanters AND providers: tapped (smite/
+royal_assassin/righteous_judge want; binding_angel/frost_binder/lancer/
+roots_and_branches provide; sage_of_the_wilds' own-creature filter
+correctly excluded); wrathproof (4 sweepers want; cinder_ward's
+indestructible + blink/bounce-own provide — the killer's "one-side your
+own sweeper" plan, now a graph edge); blink-manufactures-ETBs
+(vanishing_act/tideglass provide etb 1.5 — feeds bramble_acolyte/
+beast_whisperer/chorister); graveyard-consumers-want-dies (grave_digger,
+deepseam_quarry — the Wave 1 reanimation rule re-added with two live
+customers; seal_thief's opp-yard hate excluded); theft-feeds-sac-outlets
+(threaten/mind_control provide fodder — the "Threaten two-for-one");
+untap-wants-activation (awaken_the_stone/second_wind/sage want; the
+activation providers from Wave 2 feed them). New (target, filter) pair
+enumeration across card/trigger/ability/slot levels. 8 new pins. Assay:
+zero-hook 16% → 13%; floor pair UR 12 → 13. Suite 150 files / 2957 green;
+selfplay 500 clean.
+
+v2.2.15: etbtrigger — blink wants ETB VALUE (Joe's direction review of the
+sweep). Creatures whose triggers fire on entry provide etbtrigger 1; blink
+wants 3, bounce-your-own wants 2 — vanishing_act now pulls pyromaniac
+(edge 1.69, idf-damped) and never a vanilla bear (0.00; both pinned).
+Extraction doctrine ledgered in the analyze() header, Joe's formulation:
+ANY card gated on X potentially wants X, shipping when your deck can
+manufacture X and the gate exploits rather than self-restricts; direction
+convention = the card that is nearly dead alone holds the want (direction
+is load-bearing for legibility, the payoff census, and hub-group placement
+even while the edge formula is symmetric). Flying-hate want stays parked:
+granter census confirms all 5 flying-granters are your-side-only; fuse =
+first generic granter. Found+fixed: THEME_NAMES never grew with the
+resource vocabulary, so synergy buckets themed on new resources fell back
+to the "Reinforcements" LABEL — which carries a no-dupes contract synergy
+buckets never made (caught by the sold-own-card pin when the sweep made
+mind_control a fodder provider). 11 theme names added. Suite 150 files /
+2959 green; selfplay 500 clean.
+
+v2.2.16: The BROAD gated-on-X audit (Joe: "any card gated on X potentially
+wants X — did we audit for this?" — the filter sweep had not). Full gate-
+space enumeration (all condition predicates × users, ability costs,
+dynamic amounts, rider filters) found two live misses + shipped Joe's
+tapability disambiguation: (1) bloodlust_berserker's lost_life_this_turn
+gate wanted nothing — now wants opp_loss regardless of carrying event
+(berserker↔bolt edge 2.65); (2) counter_specialist wanted generic
+spellcast — now wants the new counterspell resource (4 providers;
+specialist↔counterspell 3.86); (3) tapability split from activation:
+tap-COST abilities only, mana dorks included (untapping llanowar is real
+value) — awaken_the_stone↔furnace_whelp is now 0.00, awaken↔pyromaniac
+stays live. Clean bill for the rest of the gate space: hymnwright's
+verse-counter cost self-feeds, sengir's damaged-by-this is self-
+manufactured, from:-amounts are downside riders. Reinforcements variance
+pin resampled (sample-until-4-offers): richer vocabulary makes genuine
+fallbacks rarer, starving the old fixed-12-rolls check. Zero-hook 13%→12%.
+Suite 150 files / 2963 green; selfplay 500 clean.
+
+v2.2.17: The Constellation (🔭) — the origin-session "constellation view",
+shipped naive-first per Joe ("we're just prototyping, audience of 1").
+New js/constellation.js IIFE + persistent 🔭 button beside the settings
+gear: Deck tab shows the current run's slots as named stars force-laid
+over their synergy edges (w>=1 — a 12-card deck deserves its faint edges);
+Pool tab shows all 327 nonland cards over the 972 strong edges (w>=2,
+computed once per boot and cached). Hover lights a star's neighborhood
+and shows its top edges WITH the graph's human-readable reasons
+("crusaders_charm feeds ajanis_pridemate [lifegain]") — the de-neuralese
+moment, live in-game. Drag to stir. Physics ported verbatim from the
+Synergy Observatory artifact (settle offline, redraw on hover, no rAF).
+Pure presentation: reads BUCKETS/RUN, writes nothing. Browser-verified
+(served + driven headless: pool view, hover tooltip, deck view, zero page
+errors); suite 150 files / 2963 green (module loads clean under the Node
+stubs). Roadmap parked in chat: P2 = bucket-offer overlay (see where an
+offer attaches before picking), P3 = codex fog-of-war, P4 = realized-
+synergy postgame report.

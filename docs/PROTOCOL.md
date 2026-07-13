@@ -75,6 +75,7 @@ to the manifest.
 | `abilities`    | `object[]`       | opt      | Activated abilities (e.g. tap-to-mana). Same shape as triggers minus `event`/`cond_id`, plus a `cost` object. |
 | `mana`         | `string` (W/U/B/R/G/C) | land  | Land's **primary-color label** (deck-color/draft/pip display only). §3.9: mana **production** lives on the land's tap-ability (`abilities: [{cost:{tap}, effects:[{add_mana, ...}]}]`), exactly like a mana dork — not on `mana`. A multi-color land uses `add_mana: {choose: ...}`. Use `"C"` for an identity-less land (e.g. City of Brass taps for any color but has no color identity — colorless frame, contributes no WUBRG to deck colors/pips). |
 | `customText`   | `bool`           | opt      | If true, suppresses the `~` placeholder lint.                 |
+| `synergy`      | `object`         | opt      | Card-local synergy hints for the bucket generator — the `customText` of the synergy graph. `{provides?: {<resource>: weight}, wants?: {<resource>: weight}}`, max-merged with structurally derived values. Reserved for one-off custom-kind cards the extractor deliberately doesn't parse (Elystra, Endomorph); mechanics appearing on 2+ cards get an extraction rule in `js/buckets.js` instead. Resource names validated at index time (unknown → console warning). Vocabulary: `dies fodder etb lifegain spellcast wide anthem` + `sub:<Subtype>`. (html-proto v2.2.x; Godot Phases 8–9.) |
 
 **Removed in §3.9 (Slice 3):** `extraManaColors`. Lands now produce mana through
 a tap-for-mana ability (the `add_mana` `choose` form covers City-of-Brass "any
@@ -199,6 +200,8 @@ snake_case; JS internal kinds are camelCase per the conversion rule.
 | `combat_damage`          | `combat_damage`    | (pending)      | `{subject_iid, subject_card, controller, who, amount}` |
 | `life_changed`           | `life_changed`     | (pending)      | `{who, delta, source_iid}`            |
 | `spell_cast`             | `spell_cast`       | (pending)      | `{subject_iid, subject_card, controller}` |
+| `ability_activated`      | `ability_activated`| (pending)      | `{subject_iid, subject_card, controller}` |
+| `ability_triggered`      | `ability_triggered`| (pending)      | `{subject_iid, subject_card, controller, cause, trig}` |
 
 Zone tokens for `from_zone`/`to_zone` on `card_zone_change`: `hand`, `library`,
 `graveyard`, `exile`, `stack`, `battlefield` — plus the synthetic `none`, used
@@ -222,6 +225,27 @@ previously documented `source_iid`/`controller_key` spell_cast fields exist
 nowhere in either engine. The proto's `attacks` emit also still carries dead
 legacy `attacker`/`defender` fields with zero consumers; they are deliberately
 NOT part of this spec.)
+
+`ability_activated` (Wave 2, v2.2.9) announces a NON-MANA activated ability
+taking its stack entry; `subject_card` is the ability's source permanent,
+`controller` the activator. Mana abilities never emit it — they are hardcoded
+off-stack (canon §705), so tapping a dork or a land is structurally invisible
+to activations-matter triggers (pinned in `tests/wave2_ability_event_test.js`).
+
+`ability_triggered` (v2.2.10, Joe's spec) announces a TRIGGERED ability at
+FIRE time — emitted at the drainTriggers take-up point, the one seam every
+fired trigger passes through (auto-pick, human-prompt, stackable:false
+immediate), BEFORE any fizzle check: per MTG 603, an ability that
+triggers-then-fizzles-at-targeting still triggered. `cause` carries the
+originating event ("what triggered that ability"); `trig` the firing ability
+(read by the `trigger_has_effect(kind)` predicate); `subject_card` is
+last-known information (null if the source left play before drain).
+Recursion is governed by the existing `TRIGGER_DEPTH_CAP` budget — MTG's
+infinite-loop meta-rule, no bespoke self-exclusion (a loosely-conditioned
+meta-listener loops to the budget and bails loudly; pinned in
+`tests/wave2_ability_triggered_test.js`). Activated abilities and mana
+abilities never emit it — those are `ability_activated`'s (and nobody's)
+domain respectively.
 
 Both engines' trigger dispatch reads the canonical name. Adding a new
 event kind requires (a) firing it in both engines from the matching

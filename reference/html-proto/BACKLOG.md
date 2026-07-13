@@ -21,6 +21,32 @@ The following items live in `docs/DIVERGENCE.md` as their primary tracker. Liste
 
 ### Other
 
+- **"target opponent" vs "your opponent" text voice** (Joe, Wave 2 — parked at
+  "tentatively fine") — a 1v1 roguelike can fairly render implicit opp-targets
+  as "Your opponent loses 1 life" instead of MTG's "target opponent." ~5-line
+  generator change + golden updates; now touches blood_artist, toll_of_secrets,
+  rakdos_underboss, backlash_mage, charnel_chorister, ashclot_zealot
+  identically. Joe's style call.
+- **Art batch for the 36 emoji-placeholder cards** (32 Wave 2 + 4 un-parked
+  Wave 1 holds) — all shipped with emoji art; regenerate via the
+  magiclike-card-art skill when art credits/time are available.
+- **Triage Cleric cost watch** — the any-ETB correction (v2.2.11) makes her
+  near-"gain 2 per creature you play" in ETB-dense decks at 1W 2/2. Playtest
+  before re-costing; the assay can't see power level.
+- **UR is now the thinnest pair (12 plans, v2.2.13 assay)** — note for the
+  next wave's targeting; every other pair is 15+.
+- **Extraction-audit pool sweep** (Joe's idea, queued since Wave 2) — sweep
+  the whole pool for cards deserving want/provide rules
+  (smite_the_wicked's tapped-want was invisible until Wave 2 measured it).
+- **Wave 3 candidate: second payoffs per tribe** — 13 of 14 tribes have
+  exactly 1 payoff (goblins, with 2, are the tribe Joe said "feels better");
+  banked subtypes Wolf/Hydra/Construct/Hound/Spider have 0. GATED on
+  playtesting v2.2.13 first — whether 1-payoff tribes feel samey is a
+  hypothesis the assay can't test. Flavor-pass protocol learnings for the
+  next wave are ledgered in docs/plans/plan-pool-waves.md (drop scoring
+  judges, keep proposer menus, deterministic lint).
+
+
 - **Redo card art for Lightning Bolt, Murder, Sword and Sorcery, Unsummon** — these four received first-pass / "slush" art from the card-art A/B eval and were placed as stopgaps; they need a proper redo. Lightning Bolt's current art is the *figure* version (it should be figure-free — a force of nature, not a person being struck); Murder wants bespoke marquee art (it's a premium removal spell); Sword and Sorcery and Unsummon never produced a roll that legibly captured the mechanic. Regenerate via the merged C2 card-art skill when art credits are available. (Gilded Seat, Veil of Mists, and Hedge Squire got keeper-grade art from the same eval and are fine.)
 
 - **Collapse duplicated "duration" handling (dedupe, not a new framework)** — temporary effects are reverted by ~5 copy-pasted mechanisms in two shapes: the **EOT clock** (`tempPower`/`tempTou`, `eotGrants`, `typeGrants` with `eot:true`, `tempControlUntilEot` — all zeroed in the cleanup loop ~`engine.js:5733`) and the **leave-play listener** (`grantedBy` Map via `clearRestrictionsFromSource`, plus `typeGrants` with `eot:false`). The win is one shared EOT-revert helper + reusing the `grantedBy`-style leave-play listener, so the *next* temporary effect registers instead of adding a field + a cleanup site. **Do it when next working in combat/keyword-cleanup code anyway**, or when a card needs a *third* duration (e.g. "until your next turn") — that card is the moment it pays for itself. Deliberately do NOT build a general `until(<any event>)` registry: it'd serve zero current cards and is the "generic god-object event-matcher" the CLAUDE.md style notes warn against. No bug today; this is pure dedupe. (Considered + deferred this session; the longer spec was cut as premature.)

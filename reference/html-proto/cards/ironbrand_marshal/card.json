@@ -1,0 +1,26 @@
+{
+  "card_id": "ironbrand_marshal",
+  "art": "🔨",
+  "cost": {
+    "R": 1,
+    "C": 1
+  },
+  "name": "Ironbrand Marshal",
+  "power": 2,
+  "toughness": 2,
+  "static_buffs": [
+    {
+      "filter": {
+        "controller": "self"
+      },
+      "subtype": "Artifact",
+      "power": 1,
+      "toughness": 1
+    }
+  ],
+  "types": [
+    "Creature",
+    "Human",
+    "Blacksmith"
+  ]
+}

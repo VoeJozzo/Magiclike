@@ -1,0 +1,28 @@
+{
+  "card_id": "primal_metamagus",
+  "name": "Primal Metamagus",
+  "art": "💥",
+  "cost": {
+    "R": 1,
+    "G": 1,
+    "C": 1
+  },
+  "power": 2,
+  "toughness": 2,
+  "types": [
+    "Creature",
+    "Elemental",
+    "Shaman"
+  ],
+  "spell_riders": [
+    {
+      "rider_scope": "all_targets",
+      "effects": [
+        {
+          "kind": "damage",
+          "amount": 1
+        }
+      ]
+    }
+  ]
+}

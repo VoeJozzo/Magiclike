@@ -1,7 +1,7 @@
 // Bootstrap + shared module-level helpers. Loaded last so all IIFEs
 // (ENGINE, AI, DRAFT, RUN, CONTROLLER, PICKLOG) are defined first.
 
-const VERSION = 'v2.1.57';
+const VERSION = 'v2.2.17';
 
 function opp(who) { return who === 'you' ? 'opp' : 'you'; }
 
@@ -39,6 +39,9 @@ loadCards().then(() => {
       || cov.unclassifiedCastScoring.length || cov.staleCastScoring.length) {
     console.warn('Effect coverage gaps:', cov);
   }
+  // Bucket theme health: which tribal themes the synergy graph can serve and
+  // which are thin — the thin list doubles as a card-design TODO list.
+  console.log(BUCKETS.themeHealthReport());
   CONTROLLER.init();
 }).catch(e => {
   console.error('Failed to load card data:', e);

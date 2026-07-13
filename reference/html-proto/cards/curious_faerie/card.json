@@ -1,0 +1,31 @@
+{
+  "card_id": "curious_faerie",
+  "name": "Curious Faerie",
+  "art": "✨",
+  "cost": {
+    "U": 1
+  },
+  "power": 1,
+  "toughness": 1,
+  "types": [
+    "Creature",
+    "Faerie"
+  ],
+  "triggers": [
+    {
+      "event": "card_zone_change",
+      "condition": [
+        "controlled_by(you)",
+        "card_moves(library, hand)"
+      ],
+      "effects": [
+        {
+          "kind": "pump",
+          "power": 1,
+          "toughness": 0,
+          "scope": "self"
+        }
+      ]
+    }
+  ]
+}

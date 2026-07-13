@@ -1,11 +1,17 @@
 // DRAFT — color-biased pack rolls, auto-lands, opponent deck construction.
 // API: startDraft, getPlayerPack, getProgress, pickPlayer, isComplete, getPlayerDeck, buildOpponentDeck.
+// Growing Deck mode adds: getBucketOffer, pickBucketOffer (run-start bucket draft).
 const DRAFT = (function() {
 
 const TOTAL_PICKS = 23;
 const TOTAL_LANDS = 17;
 const TOTAL_DECK_SIZE = TOTAL_PICKS + TOTAL_LANDS;
 const PACK_SIZE = 3;
+// Growing Deck mode: the run starts from a handful of bucket picks instead of
+// 23 card picks; the deck then grows via addBucket rewards between fights.
+// Each bucket = 3 cards + 2 lands, so 5 picks = 15 spells + 10 lands (raised
+// from 3 after playtest: 15-card decks ended games by deck-out — Joe's call).
+const GROWING_START_BUCKETS = 5;
 const COLORS = ['W','U','B','R','G'];
 const COLOR_TO_LAND = { W:'plains', U:'island', B:'swamp', R:'mountain', G:'forest' };
 const DESERT_CUBE_LAND_PROB = 1 / 3;
@@ -62,8 +68,39 @@ function startDraft(mode) {
     mode: mode || 'classic',
     complete: false,
   };
-  state.currentPack = rollPackForMode(draftPool(), [], state.mode);
+  if (state.mode === 'growing') {
+    // Growing Deck: no card packs — the player picks GROWING_START_BUCKETS
+    // buckets (generated fresh against the empty-then-growing pick list, so
+    // the FIRST pick is effectively the run's banner: it chooses the colors
+    // every later offer respects).
+    state.bucketsPicked = 0;
+    state.currentPack = [];
+    state.bucketOffer = BUCKETS.rollBucketOffer([]);
+  } else {
+    state.currentPack = rollPackForMode(draftPool(), [], state.mode);
+  }
   PICKLOG.startDraft();
+}
+
+// --- Growing Deck run-start draft ---
+function getBucketOffer() {
+  return (state && state.mode === 'growing') ? state.bucketOffer.slice() : [];
+}
+
+function pickBucketOffer(idx) {
+  if (!state || state.mode !== 'growing' || state.complete) return;
+  const bucket = state.bucketOffer && state.bucketOffer[idx];
+  if (!bucket) return;
+  PICKLOG.logBucketPick(bucket, state.bucketOffer);
+  for (const tplId of bucket.cards) state.youPicks.push(tplId);
+  for (const tplId of bucket.lands) state.youPicks.push(tplId);
+  state.bucketsPicked++;
+  if (state.bucketsPicked >= GROWING_START_BUCKETS) {
+    state.complete = true;
+    state.bucketOffer = [];
+    return;
+  }
+  state.bucketOffer = BUCKETS.rollBucketOffer(state.youPicks);
 }
 
 // Hand-curated constructed decks for 'constructed' map nodes.
@@ -181,9 +218,15 @@ function getConstructedDeck(id) {
   return CONSTRUCTED_DECKS[id] || null;
 }
 
-// Build opp deck (23 spells + lands). constructedId → curated list; else heuristic draft.
-function buildOpponentDeck(numStickers, numStaples, numClones, colorAffinity, constructedId) {
+// Build opp deck (spells + lands). constructedId → curated list; else heuristic draft.
+// numPicks (optional): heuristic-drafted opponents mirror the player's current
+// deck size in Growing Deck mode. Constructed decks (bosses, themed nodes) are
+// scripted landmarks and always play their full curated list.
+function buildOpponentDeck(numStickers, numStaples, numClones, colorAffinity, constructedId, numPicks) {
   const constructed = getConstructedDeck(constructedId);
+  const pickTarget = constructed
+    ? TOTAL_PICKS
+    : Math.max(1, Math.min(TOTAL_PICKS, numPicks || TOTAL_PICKS));
   let picks;
   if (constructed) {
     picks = constructed.cards.slice(0, TOTAL_PICKS);
@@ -215,7 +258,7 @@ function buildOpponentDeck(numStickers, numStaples, numClones, colorAffinity, co
         picks.push(chosen);
       }
     }
-    for (let i = picks.length; i < TOTAL_PICKS; i++) {
+    for (let i = picks.length; i < pickTarget; i++) {
       const pack = rollPack(oppPool(), picks);
       if (!pack.length) break;
       const chosen = pickFromPack(pack, picks);
@@ -228,9 +271,11 @@ function buildOpponentDeck(numStickers, numStaples, numClones, colorAffinity, co
   // shapes (constructed 0–1, heuristic always padded to 2). Removed rather than
   // documented; color identity, where needed, lives on the constructed spec.
   const pips = countPips(picks);
+  // Lands scale with deck size at the canonical 23:17 spell-to-land ratio.
+  const landCount = Math.max(1, Math.round(pickTarget * TOTAL_LANDS / TOTAL_PICKS));
   const lands = (constructed && Array.isArray(constructed.lands))
     ? constructed.lands.slice()
-    : allocLands(pips);
+    : allocLands(pips, landCount);
   const slots = [...picks, ...lands].map(tplId => ({ tplId, stickers: [] }));
   // Order: staples first (consume slots), then stickers, then clones (photocopy modified slots).
   if (numStaples > 0)  applyOpponentStaples(slots, numStaples);
@@ -713,8 +758,11 @@ function rollPack(pool, picksSoFar) {
 function getPlayerPack() { return state ? state.currentPack.slice() : []; }
 function getProgress() {
   if (!state) return {picked:0, total:TOTAL_PICKS};
-  // In Desert Cube the player picks the full deck (40 cards including lands)
-  // in a single draft phase; in classic they pick only the 23 spells.
+  // Growing Deck counts bucket picks; Desert Cube picks the full 40-card deck
+  // (lands included); classic picks only the 23 spells.
+  if (state.mode === 'growing') {
+    return {picked: state.bucketsPicked, total: GROWING_START_BUCKETS};
+  }
   const total = state.mode === 'desertCube' ? TOTAL_DECK_SIZE : TOTAL_PICKS;
   return {picked: state.youPicks.length, total};
 }
@@ -760,24 +808,27 @@ function countPips(tplIds) {
   return pips;
 }
 
-// Allocate TOTAL_LANDS basic lands proportional to colored pips.
-// Largest-remainder method to handle rounding cleanly.
-function allocLands(pips) {
+// Allocate `count` basic lands (default TOTAL_LANDS) proportional to colored
+// pips. Largest-remainder method to handle rounding cleanly. Also exported as
+// allocLandsFor so BUCKETS can color a bucket's 2 lands by the bucket's pips —
+// land allocation stays single-sourced here.
+function allocLands(pips, count) {
+  const landCount = (typeof count === 'number' && count > 0) ? count : TOTAL_LANDS;
   const totalPips = COLORS.reduce((s, k) => s + pips[k], 0);
   if (totalPips === 0) {
     // Edge case: no colored pips. Default to all forests.
-    return Array(TOTAL_LANDS).fill('forest');
+    return Array(landCount).fill('forest');
   }
   const exact = {};
   const floor = {};
   let allocated = 0;
   for (const k of COLORS) {
-    exact[k] = (pips[k] / totalPips) * TOTAL_LANDS;
+    exact[k] = (pips[k] / totalPips) * landCount;
     floor[k] = Math.floor(exact[k]);
     allocated += floor[k];
   }
   // Distribute remaining lands by largest fractional remainder.
-  let remaining = TOTAL_LANDS - allocated;
+  let remaining = landCount - allocated;
   const remainders = COLORS
     .map(k => ({ k, frac: exact[k] - floor[k], pips: pips[k] }))
     .sort((a, b) => (b.frac - a.frac) || (b.pips - a.pips));
@@ -800,15 +851,16 @@ function getPlayerDeck() {
   // multiple times only the first finishes (currentDraft is null after).
   PICKLOG.finishDraft(colors);
   // Classic mode: 23 spell picks + 17 auto-allocated lands (proportional to
-  // colored pips). Desert Cube: the youPicks list already includes lands
-  // since the player drafted them directly — no extra allocation.
-  const cards = state.mode === 'desertCube'
+  // colored pips). Desert Cube and Growing Deck: the youPicks list already
+  // includes lands (drafted directly / carried by buckets) — no allocation.
+  const cards = (state.mode === 'desertCube' || state.mode === 'growing')
     ? state.youPicks.slice()
     : [...state.youPicks, ...allocLands(pips)];
   return {
     cards,
     colors,
     picks: state.youPicks.slice(),
+    mode: state.mode,
   };
 }
 
@@ -819,6 +871,11 @@ function summarizeColors(pips) {
 return {
   startDraft, getPlayerPack, getProgress, pickPlayer, isComplete,
   getPlayerDeck, buildOpponentDeck,
+  // Growing Deck run-start draft (bucket picks instead of card picks):
+  getBucketOffer, pickBucketOffer,
+  // Land allocation for arbitrary pip counts — BUCKETS colors each bucket's
+  // 2 lands through this so the largest-remainder logic stays single-sourced.
+  allocLandsFor: (pips, count) => allocLands(pips, count),
   // Heuristic card picker. Exposed for the self-play harness (heuristic-drafted
   // player mode) and any other consumer that wants to drive a programmatic
   // draft with the same scorer opp uses.

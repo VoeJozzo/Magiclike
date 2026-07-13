@@ -30,6 +30,10 @@ const CATEGORY_A = [
   // Locks in card-text output after the card-text.js extraction (v1.0.134).
   'card_text_test.js',
   'art_ladder_test.js',
+  // Wave 2 (Joe-found gap): cards/_manifest.json ↔ cards/ folder sync — an
+  // unlisted folder ships invisible in the browser while Node tests stay
+  // green (they read the filesystem, not the manifest).
+  'manifest_test.js',
   'draft_pool_lazy_test.js',
   'boon_art_derives_from_card_test.js',
   'tplid_renames_test.js',
@@ -411,6 +415,31 @@ const CATEGORY_A = [
   // (Demonic Tutor's "lose 2 life"; discard trailing replays once after the
   // last discard); AI path resolves inline, unchanged.
   'test_a4_23_trailing_defer.js',
+  // Growing Deck (plan-bucket-draft): synergy-graph bucket generation core
+  // (extraction rules, labeled edges, bucket/offer invariants, naming) and
+  // the run-level integration (growing draft mode, addBucket two-phase
+  // reward, growth-weight arc, land top-up, opponent mirroring, config
+  // backfill).
+  'buckets_test.js',
+  'growing_deck_test.js',
+  // Wave 1 cards (8 new-niche payoffs) + the `another` source-exclusion
+  // target filter + the buckets life_changed direction split.
+  'wave1_cards_test.js',
+  // Wave 2 static spell riders ('Spells you cast also …') — the shared
+  // primitive behind Sapling Tender / Primal Metamagus / Vigil Chanter /
+  // Wildfire Colossus: post-resolution application, scopes, filters, text.
+  'wave2_hook_test.js',
+  // Wave 2 ability_activated event (Backlash Mage's activations-matter
+  // niche): non-mana stack-entry emit site, mana abilities structurally
+  // silent, condition scoping, boot validation.
+  'wave2_ability_event_test.js',
+  // Wave 2 cards (32): text goldens for the whole batch (locks the new
+  // archetype signatures + preambles) + per-card behavior probes.
+  'wave2_cards_test.js',
+  // ability_triggered event (Joe's spec, built at his direction): fire-time
+  // emission before fizzle checks, cause+trig payload, budget-as-meta-rule
+  // containment (incl. the take-up budget move + drain-concat fix).
+  'wave2_ability_triggered_test.js',
 ];
 
 const TESTS_DIR = __dirname;

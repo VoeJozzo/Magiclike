@@ -1,0 +1,36 @@
+{
+  "card_id": "charnel_shaman",
+  "name": "Charnel Shaman",
+  "art": "💀",
+  "cost": {
+    "B": 1,
+    "G": 1,
+    "C": 1
+  },
+  "power": 2,
+  "toughness": 3,
+  "types": [
+    "Creature",
+    "Human",
+    "Shaman"
+  ],
+  "triggers": [
+    {
+      "event": "card_zone_change",
+      "condition": [
+        "card_is_creature",
+        "controlled_by(you)",
+        "card_moves(battlefield, graveyard)"
+      ],
+      "effects": [
+        {
+          "kind": "pump",
+          "duration": "permanent",
+          "power": 1,
+          "toughness": 1
+        }
+      ],
+      "target": "your_creature"
+    }
+  ]
+}

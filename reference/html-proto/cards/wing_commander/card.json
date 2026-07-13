@@ -1,0 +1,27 @@
+{
+  "card_id": "wing_commander",
+  "name": "Wing Commander",
+  "art": "🦅",
+  "cost": {
+    "W": 1,
+    "U": 1,
+    "C": 1
+  },
+  "power": 2,
+  "toughness": 3,
+  "types": [
+    "Creature",
+    "Angel",
+    "Soldier"
+  ],
+  "static_buffs": [
+    {
+      "filter": {
+        "controller": "self",
+        "has_keyword": "flying"
+      },
+      "power": 1,
+      "toughness": 1
+    }
+  ]
+}

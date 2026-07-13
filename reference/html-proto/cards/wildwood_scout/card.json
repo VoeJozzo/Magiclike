@@ -1,0 +1,33 @@
+{
+  "card_id": "wildwood_scout",
+  "name": "Wildwood Scout",
+  "art": "🏹",
+  "cost": {
+    "G": 1
+  },
+  "power": 1,
+  "toughness": 1,
+  "types": [
+    "Creature",
+    "Elf",
+    "Scout"
+  ],
+  "triggers": [
+    {
+      "event": "card_zone_change",
+      "condition": [
+        "controlled_by(you)",
+        "card_has_subtype(Land)",
+        "card_moves(anywhere, battlefield)"
+      ],
+      "effects": [
+        {
+          "kind": "pump",
+          "power": 1,
+          "toughness": 1,
+          "scope": "self"
+        }
+      ]
+    }
+  ]
+}

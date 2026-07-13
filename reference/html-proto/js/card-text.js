@@ -369,8 +369,12 @@ function describeEffect(eff, tplEff) {
       // idioms (matches the legacy kinds' phrasing for parity).
       const fz = eff.from_zone, tz = eff.to_zone;
       if (fz === 'library' && tz === 'hand' && eff.selector === 'library_search') {  // collapsed searchCreature
+        // "draw it", not "put it into your hand" — the house ruling defines
+        // drawing as ANY library→hand move (Joe, Wave 2: tutors ARE draws),
+        // so tutor text uses the draw verb and draw-matters cards
+        // (curious_faerie) read consistently with what actually triggers.
         const noun = searchFilterNoun(eff.filter, true);
-        return [plainSeg('search your library for ' + indefiniteArticle(noun) + ' ' + noun + ' and put it into your hand')];
+        return [plainSeg('search your library for ' + indefiniteArticle(noun) + ' ' + noun + ' and draw it')];
       }
       if (fz === 'library' && tz === 'battlefield') {  // collapsed searchLandTapped (auto fetch)
         // Derive the fetched-card noun from the filter (subtype > type > "card"),
@@ -647,6 +651,10 @@ function describeEffectList(effects, cardName, tplEffects, stepTarget, stepFilte
       const inj = { target: stepTarget };
       if (stepFilter) inj.filter = stepFilter;
       else if (typeof edictFilter === 'string' && EDICT_CHAIN_KINDS.has(e.kind)) inj.edictFilter = edictFilter;
+      // Source-exclusion filter (`another: true`, §5b sibling of distinct_targets):
+      // reuse the distinct-slot "another target ..." phrasing — honest because
+      // the ts* layer forbids the source filling the slot.
+      if (stepFilter && stepFilter.another) inj._another = true;
       return Object.assign({}, e, inj);
     });
   }
@@ -777,6 +785,28 @@ function describeEffectList(effects, cardName, tplEffects, stepTarget, stepFilte
   const nonEmpty = parts.filter(p => Array.isArray(p) && p.some(s => s && s.text));
   if (nonEmpty.length === 0) return [];
   if (nonEmpty.length === 1) return capitalizeSegs(nonEmpty[0]).concat(plainSeg('.'));
+  // Same-target "It" idiom (Joe, Wave 2 follow-up): with ONE shared top-level
+  // target (no slots — slot cards like Twin Strike genuinely pick twice),
+  // every clause resolves against the same locked pick, so repeating the full
+  // target phrase reads like a second choice that doesn't exist. After the
+  // first clause names it, later clauses say "it": "Untap target creature you
+  // control. It gains vigilance until end of turn." Substituted before
+  // capitalization so a clause-initial "it" becomes "It" naturally.
+  if (stepTarget && !(Array.isArray(slotSpecs) && slotSpecs.length)) {
+    const sharedEff = stepFilter ? { target: stepTarget, filter: stepFilter } : { target: stepTarget };
+    const shared = withFilter(targetPhrase(sharedEff), sharedEff);
+    let mentioned = false;
+    for (const clause of nonEmpty) {
+      let inThis = false;
+      for (const seg of clause) {
+        if (!seg || !seg.text || seg.text.indexOf(shared) === -1) continue;
+        if (mentioned) seg.text = seg.text.replace(shared, 'it');
+        inThis = true;
+        break;
+      }
+      if (inThis) mentioned = true;
+    }
+  }
   const out = [];
   for (let i = 0; i < nonEmpty.length; i++) {
     if (i > 0) out.push(plainSeg('. '));
@@ -807,7 +837,9 @@ function triggerPreamble(trig) {
   const ev = trig.event;
   // Classify from condId (legacy) or composable condition (Slice 2 / E2).
   const cid = triggerArchetype(trig);
-  const sub = triggerSubtype(trig) || 'creature';
+  // Any-of subtype args ("Elf, Merfolk" — Covenant Scholar) render as an
+  // "or"-join: "another Elf or Merfolk enters under your control,".
+  const sub = (triggerSubtype(trig) || 'creature').split(/,\s*/).join(' or ');
   if (cid === 'thisEnters')  return 'When this enters the battlefield,';
   if (cid === 'thisDies')    return 'When this dies,';
   if (cid === 'thisAttacks') return 'When this attacks,';
@@ -834,9 +866,38 @@ function triggerPreamble(trig) {
     return 'Whenever a ' + sub + ' you control attacks,';
   }
   if (cid === 'anyCardDies')    return 'Whenever a creature dies,';
+  if (cid === 'cardDiesOfSubtype') return 'Whenever a ' + sub + ' dies,';
   if (cid === 'youCastSpell')   return 'Whenever you cast a spell,';
   if (cid === 'youCastCounterspell') return 'Whenever you cast a counterspell,';
   if (cid === 'youGainLife')    return 'Whenever you gain life,';
+  if (cid === 'oppLosesLife')   return 'Whenever an opponent loses life,';
+  if (cid === 'youDiscard')     return 'Whenever you discard a card,';
+  // Wave 2 archetypes.
+  if (cid === 'youCastSpellWithKeyword') {
+    return 'Whenever you cast a spell with ' + (triggerKeyword(trig) || 'a keyword') + ',';
+  }
+  if (cid === 'youCastSpellOppTurn') return 'Whenever you cast a spell during an opponent\'s turn,';
+  if (cid === 'youCastNoncreatureSpell') return 'Whenever you cast a noncreature spell,';
+  if (cid === 'youActivateCreatureAbility') {
+    return 'Whenever you activate an ability of a creature you control,';
+  }
+  if (cid === 'anotherEtbCreatureYouEnters') {
+    return 'Whenever another creature with an enters-the-battlefield ability enters under your control,';
+  }
+  if (cid === 'cardYouEntersOfSubtype') {
+    // Card-type gates read as their common noun ("a land enters"); tribal
+    // subtypes keep their capital ("a Goblin enters").
+    const noun = sub === 'Land' ? 'land' : sub;
+    return 'Whenever a ' + noun + ' enters the battlefield under your control,';
+  }
+  if (cid === 'creatureYouDies') return 'Whenever a creature you control dies,';
+  if (cid === 'anotherCreatureYouAttacks') return 'Whenever another creature you control attacks,';
+  if (cid === 'youDraw') return 'Whenever you draw a card,';
+  if (cid === 'youLoseLife') return 'Whenever you lose life,';
+  // "sorcery", not "spell": every damage spell in the pool is Sorcery-typed,
+  // and bare "spell" would wrongly suggest creature casts count (the
+  // Wildfire Colossus ruling).
+  if (cid === 'youCastDamageSpell') return 'Whenever you cast a sorcery that deals damage,';
   if (ev === 'attacks') return 'When this attacks,';
   return 'Whenever a relevant event occurs,';
 }
@@ -977,19 +1038,49 @@ function abilityPickerLabel(ab, maxLen) {
 }
 
 // Lord buff: "Other <subtype>s you control get +P/+T and have <kw>."
-function describeStaticBuff(buff) {
-  const sub = buff.subtype ? buff.subtype + 's' : 'creatures';
-  let scope;
-  if (buff.filter && (buff.filter.controller === 'self' || buff.filter.controller === 'you')) {
-    scope = 'Other ' + sub + ' you control';
-  } else if (buff.filter && buff.filter.controller === 'opp') {
-    scope = 'Other ' + sub + ' an opponent controls';
-  } else {
-    scope = 'Other ' + sub;
+// Wave 2 static spell riders — "Spells you cast also …". One sentence per
+// rider, phrased by (spell_filter, rider_scope, first effect). The four
+// shipping shapes are covered exactly; a new shape rendering '' fails the
+// no-dead-text discipline loudly in tests rather than lying quietly.
+function describeSpellRider(rider, selfName) {
+  const eff = (rider.effects || [])[0] || {};
+  const filt = rider.spell_filter || {};
+  const spellNoun = filt.has_effect === 'damage'
+    ? 'Sorceries you cast that deal damage' : 'Spells you cast';
+  const scope = rider.rider_scope || 'all_targets';
+  if (scope === 'self') {
+    if (eff.kind === 'pump' && eff.duration === 'permanent') {
+      return spellNoun + ' also put a +' + (eff.power || 0) + '/+' + (eff.toughness || 0)
+        + ' counter on ' + (selfName || 'this') + '.';
+    }
+    return '';
   }
-  const stats = (buff.power || buff.toughness)
-    ? 'get +' + (buff.power || 0) + '/+' + (buff.toughness || 0)
-    : '';
+  const qualifier = scope === 'your_creature_targets' ? ' that target creatures you control' : '';
+  const object = scope === 'your_creature_targets' ? 'them'
+    : scope === 'creature_targets' ? 'each creature they target'
+    : 'their targets';
+  if (eff.kind === 'damage') {
+    return spellNoun + qualifier + ' also deal ' + (eff.amount || 0) + ' damage to ' + object + '.';
+  }
+  if (eff.kind === 'pump' && eff.duration === 'permanent') {
+    return spellNoun + qualifier + ' also put a +' + (eff.power || 0) + '/+' + (eff.toughness || 0)
+      + ' counter on ' + object + '.';
+  }
+  if (eff.kind === 'grant_keyword') {
+    return spellNoun + qualifier + ' also grant ' + (eff.keyword || '') + ' to ' + object
+      + (eff.duration === 'eot' ? ' until end of turn' : '') + '.';
+  }
+  return '';
+}
+
+function describeStaticBuff(buff, lordTpl) {
+  // Card-TYPE buffs read "Artifact creatures" (the engine only buffs
+  // creatures — lordBuffApplies gates on hasType Creature); subtype buffs
+  // keep the tribal plural ("Demons"). "Other" is honest only when the lord
+  // itself matches the buff (it's excluded by iid) — an Ironbrand Marshal
+  // (no Artifact type) buffs EVERY artifact creature, so "Other" would lie.
+  const isTypeTag = buff.subtype && typeCategory(buff.subtype) === 'type';
+  const sub = buff.subtype ? (isTypeTag ? buff.subtype + ' creatures' : buff.subtype + 's') : 'creatures';
   // Lookup display names so "first_strike" → "first strike", etc.
   const kwDisplay = {
     flying: 'flying', vigilance: 'vigilance', trample: 'trample', haste: 'haste',
@@ -997,6 +1088,34 @@ function describeStaticBuff(buff) {
     lifelink: 'lifelink', reach: 'reach', menace: 'menace', defender: 'defender',
     flash: 'flash', hexproof: 'hexproof', indestructible: 'indestructible',
   };
+  // Keyword-filtered buffs ("creatures you control with flying" — Wing
+  // Commander). The filter narrows who gets buffed, so the phrase must
+  // render it; before Wave 2 it was silently dropped and the text
+  // overclaimed. For the "Other" honesty check the lord's keywords are read
+  // EFFECTIVELY — subtype-implied included, since Wing Commander's own
+  // flying comes from Angel, not a keywords entry.
+  const kwFilter = (buff.filter && buff.filter.has_keyword) || null;
+  const withKw = kwFilter ? ' with ' + (kwDisplay[kwFilter] || kwFilter) : '';
+  const lordHasKw = !kwFilter || !lordTpl
+    || ((typeof ENGINE !== 'undefined' && ENGINE.addSubtypeKeywords)
+      ? ENGINE.addSubtypeKeywords((lordTpl.types || []), (lordTpl.keywords || []).slice())
+      : (lordTpl.keywords || [])).includes(kwFilter);
+  const lordMatches = (!lordTpl || !buff.subtype || hasType(lordTpl, buff.subtype)) && lordHasKw;
+  const other = lordMatches ? 'Other ' : '';
+  let scope;
+  if (buff.filter && (buff.filter.controller === 'self' || buff.filter.controller === 'you')) {
+    scope = other + sub + ' you control' + withKw;
+  } else if (buff.filter && buff.filter.controller === 'opp') {
+    scope = other + sub + ' an opponent controls' + withKw;
+  } else {
+    scope = other + sub + withKw;
+  }
+  if (!lordMatches) scope = scope.charAt(0).toUpperCase() + scope.slice(1);
+  // Signed stat rendering: "+1/-1", not "+1/+-1" (Rakdos Underboss).
+  const signed = (n) => (n < 0 ? String(n) : '+' + n);
+  const stats = (buff.power || buff.toughness)
+    ? 'get ' + signed(buff.power || 0) + '/' + signed(buff.toughness || 0)
+    : '';
   const kwList = (buff.keywords && buff.keywords.length)
     ? buff.keywords.map(k => 'have ' + (kwDisplay[k] || k)).join(' and ')
     : '';
@@ -1163,7 +1282,13 @@ function describeCardSegments(card, opts) {
   }
   if (Array.isArray(card.static_buffs)) {
     for (const buff of card.static_buffs) {
-      const phrase = describeStaticBuff(buff);
+      const phrase = describeStaticBuff(buff, card);
+      if (phrase) sections.push([plainSeg(phrase)]);
+    }
+  }
+  if (Array.isArray(card.spell_riders)) {
+    for (const rider of card.spell_riders) {
+      const phrase = describeSpellRider(rider, card.name || tpl.name);
       if (phrase) sections.push([plainSeg(phrase)]);
     }
   }

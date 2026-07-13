@@ -1,0 +1,39 @@
+{
+  "card_id": "spellrider",
+  "name": "Spellrider",
+  "art": "🧹",
+  "cost": {
+    "U": 1,
+    "C": 2
+  },
+  "power": 2,
+  "toughness": 2,
+  "types": [
+    "Creature",
+    "Human",
+    "Wizard"
+  ],
+  "triggers": [
+    {
+      "event": "spell_cast",
+      "condition": [
+        "another_card",
+        "controlled_by(you)",
+        {
+          "op": "not",
+          "terms": [
+            "card_is_creature"
+          ]
+        }
+      ],
+      "effects": [
+        {
+          "kind": "grant_keyword",
+          "keyword": "flying",
+          "duration": "eot",
+          "scope": "self"
+        }
+      ]
+    }
+  ]
+}

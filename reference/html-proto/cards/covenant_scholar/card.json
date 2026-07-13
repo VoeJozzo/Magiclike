@@ -1,0 +1,38 @@
+{
+  "card_id": "covenant_scholar",
+  "name": "Covenant Scholar",
+  "art": "📜",
+  "cost": {
+    "G": 1,
+    "U": 1,
+    "C": 1
+  },
+  "power": 2,
+  "toughness": 3,
+  "types": [
+    "Creature",
+    "Elf",
+    "Merfolk",
+    "Wizard"
+  ],
+  "triggers": [
+    {
+      "event": "card_zone_change",
+      "condition": [
+        "another_card",
+        "controlled_by(you)",
+        "card_has_subtype(Elf, Merfolk)",
+        "card_moves(anywhere, battlefield)"
+      ],
+      "effects": [
+        {
+          "kind": "pump",
+          "duration": "permanent",
+          "power": 1,
+          "toughness": 1,
+          "scope": "self"
+        }
+      ]
+    }
+  ]
+}
