@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.2.14`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.2.15`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -2675,3 +2675,21 @@ activation providers from Wave 2 feed them). New (target, filter) pair
 enumeration across card/trigger/ability/slot levels. 8 new pins. Assay:
 zero-hook 16% → 13%; floor pair UR 12 → 13. Suite 150 files / 2957 green;
 selfplay 500 clean.
+
+v2.2.15: etbtrigger — blink wants ETB VALUE (Joe's direction review of the
+sweep). Creatures whose triggers fire on entry provide etbtrigger 1; blink
+wants 3, bounce-your-own wants 2 — vanishing_act now pulls pyromaniac
+(edge 1.69, idf-damped) and never a vanilla bear (0.00; both pinned).
+Extraction doctrine ledgered in the analyze() header, Joe's formulation:
+ANY card gated on X potentially wants X, shipping when your deck can
+manufacture X and the gate exploits rather than self-restricts; direction
+convention = the card that is nearly dead alone holds the want (direction
+is load-bearing for legibility, the payoff census, and hub-group placement
+even while the edge formula is symmetric). Flying-hate want stays parked:
+granter census confirms all 5 flying-granters are your-side-only; fuse =
+first generic granter. Found+fixed: THEME_NAMES never grew with the
+resource vocabulary, so synergy buckets themed on new resources fell back
+to the "Reinforcements" LABEL — which carries a no-dupes contract synergy
+buckets never made (caught by the sold-own-card pin when the sweep made
+mind_control a fodder provider). 11 theme names added. Suite 150 files /
+2959 green; selfplay 500 clean.

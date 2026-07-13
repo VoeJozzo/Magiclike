@@ -105,6 +105,15 @@ function check(label, ok, info) {
     w2('awaken_the_stone').wants.activation > 0 && w2('pyromaniac').provides.activation > 0);
   check('flying-hate wants nothing (cannot manufacture their fliers): choking_vines',
     Object.keys(w2('choking_vines').wants).length === 0, JSON.stringify(w2('choking_vines').wants));
+  // etbtrigger (Joe's direction review of the sweep): blink wants ETB VALUE,
+  // not just bodies — vanishing_act pulls pyromaniac, never a vanilla bear.
+  check('etbtrigger: vanishing_act wants, pyromaniac provides, grizzly_bears does not',
+    w2('vanishing_act').wants.etbtrigger > 0 && w2('pyromaniac').provides.etbtrigger > 0
+    && !w2('grizzly_bears').provides.etbtrigger);
+  const eBlink = BUCKETS.edgeBetween('vanishing_act', 'pyromaniac');
+  const eBear = BUCKETS.edgeBetween('vanishing_act', 'grizzly_bears');
+  check('the flicker edge is live and the vanilla edge is not',
+    eBlink.w > 1 && eBear.w === 0, eBlink.w.toFixed(2) + ' vs ' + eBear.w.toFixed(2));
 
   // this_card self-triggers must not register wants on other cards: an ETB
   // "when THIS enters, X" card is not an ally-ETB payoff.

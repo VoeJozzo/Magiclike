@@ -122,6 +122,23 @@ const THEME_NAMES = {
   aggro:     'The Red Charge',
   removal:   'The Culling',
   cardflow:  'Deep Lore',
+  // Wave 2 + extraction-sweep vocabulary. The name table must grow with the
+  // resource vocabulary: a synergy bucket themed on an unnamed resource
+  // falls back to the 'Reinforcements' LABEL, which carries a no-dupes
+  // contract that synergy buckets never made (caught by the buckets_test
+  // sold-own-card pin when the sweep made mind_control a fodder provider).
+  self_pain:  'Blood Price',
+  trick:      'Sleight of Hand',
+  flashcast:  'The Ambush',
+  burnspell:  'Kindling',
+  carddraw:   'The Archive',
+  activation: 'The Clockworks',
+  landdrop:   'The Frontier',
+  animate:    'The Wakening',
+  tapped:     'The Sleep Raid',
+  wrathproof: 'The Aftermath',
+  etbtrigger: 'The Revolving Door',
+  'kw:flying': 'Skyborne',
   fallback:  'Reinforcements',
 };
 
@@ -286,9 +303,17 @@ function analyze(tpl) {
 
   // --- Extraction-audit sweep (Joe, post-Wave-2): (target, filter) pairs at
   // every authoring level, for filter-driven wants like "destroy target
-  // TAPPED creature". Principle: a filter earns a want only when YOUR deck
-  // can manufacture the condition (you can tap their creatures; you cannot
-  // make their creatures fly — so choking_vines wants nothing).
+  // TAPPED creature". Doctrine (Joe's generalization): ANY card gated on X
+  // being true potentially wants X — the want ships when (a) your deck can
+  // manufacture X (choking_vines' flying-gate stays parked: every granter
+  // in the pool is your-side-only; fuse = the first generic flying-granter)
+  // and (b) the gate exploits X rather than self-restricts (sage's own-
+  // creature tapped filter). Direction convention: the card that is nearly
+  // DEAD ALONE holds the want — and direction is load-bearing even though
+  // today's edge formula is symmetric: legibility, the payoff census reads
+  // wants, and hub-group placement (provides never attract provides, so
+  // threaten-as-fodder-PROVIDER pulls sac outlets without pulling token
+  // makers — Joe's right-side-of-the-equation rule).
   const targetSteps = [{ t: tpl.target, f: tpl.target_filter }];
   for (const src of [tpl, ...(tpl.triggers || []), ...(tpl.abilities || [])]) {
     if (src !== tpl) targetSteps.push({ t: src.target, f: src.target_filter });
@@ -307,6 +332,13 @@ function analyze(tpl) {
     && targetSteps.some(s => s.t === 'your_creature');
   if (blinks) { bump(provides, 'etb', 1.5); bump(provides, 'wrathproof', 1.5); }
   if (bouncesOwn) { bump(provides, 'etb', 0.75); bump(provides, 'wrathproof', 1); }
+  // etbtrigger: creatures whose triggers fire on entry carry re-usable ETB
+  // VALUE — distinct from 'etb' (every body enters; only these are worth
+  // re-entering). Blink is nearly dead pointed at a vanilla bear and
+  // excellent pointed at pyromaniac, so blink holds the want (below).
+  if (isCreature && (tpl.triggers || []).some(t => triggerFiresOnEnter(t))) {
+    bump(provides, 'etbtrigger', 1);
+  }
   // Indestructible grants are the direct sweeper insurance (cinder_ward).
   if (kinds.some(k => k.kind === 'grant_keyword' && k.keyword === 'indestructible')) {
     bump(provides, 'wrathproof', 2);
@@ -442,9 +474,16 @@ function analyze(tpl) {
   }
   // Untap-your-creature effects are twice as good on tap-ability machines
   // (awaken_the_stone + pyromaniac): they want activation providers.
+  // (Slightly broad: 'activation' includes the rare non-tap activated
+  // ability like furnace_whelp's {R} pump, which untapping doesn't help.
+  // Split a tap-cost sub-resource if such creatures ever proliferate.)
   if (kinds.some(k => k.kind === 'untap') && targetSteps.some(s => s.t === 'your_creature')) {
     bump(wants, 'activation', 2);
   }
+  // Blink/bounce-own want ETB VALUE to re-fire (the flicker-deck edge —
+  // surfaced by Joe's direction review of the sweep).
+  if (blinks) bump(wants, 'etbtrigger', W_WANT_PAYOFF);
+  else if (bouncesOwn) bump(wants, 'etbtrigger', 2);
 
   // --- Plan tags (weak similarity: shared strategy, not producer/consumer) ---
   if (effKeywords.includes('flying')) tags.add('flying');
