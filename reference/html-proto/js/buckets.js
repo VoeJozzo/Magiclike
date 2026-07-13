@@ -599,8 +599,8 @@ function deckColorSet(deckTplIds) {
 
 // The one HARD color law: a single bucket never spans more than two colors
 // (a 3-color 3-card bundle isn't a plan, it's a pile). Deck fit is SOFT —
-// see deckFitMultiplier: off-color candidates are down-weighted, never
-// banned; whether a splash is castable is the player's call to make.
+// see colorFitFactor: off-color candidates are down-weighted by commitment,
+// never banned; whether a splash is castable is the player's call to make.
 function isLegalCandidate(cand, bucket) {
   const bucketColors = new Set();
   for (const b of bucket) for (const c of b.colors) bucketColors.add(c);
@@ -623,17 +623,34 @@ function weightedSample(entries) {
   return entries[entries.length - 1].item;
 }
 
-// Soft third-color handling (Joe's call: castability is a skill issue, not a
-// law). A deck's first two colors are free; each ADDITIONAL new color a
-// candidate would introduce multiplies its weight by this factor — off-color
-// cards become rare temptations the player may decline, mirroring classic
-// draft's escalating splash penalty instead of the old hard ban.
-const OFF_COLOR_PENALTY = 0.05;
-function deckFitMultiplier(cand, deckColors) {
-  const newColors = cand.colors.filter(c => !deckColors.has(c)).length;
-  const freeSlots = Math.max(0, 2 - deckColors.size);
-  const penalized = Math.max(0, newColors - freeSlots);
-  return penalized > 0 ? Math.pow(OFF_COLOR_PENALTY, penalized) : 1;
+// Presence-pull color allocation (Joe's 2.1, 2026-07-13 — replaces the old
+// deckFitMultiplier ×0.05-per-extra-color cliff, which was commitment-blind
+// — one white card fenced a third color exactly as hard as twelve — and
+// near-banned marginal splashes via the free-slot + magic-constant shape).
+// What survives from 2.1: the commitment curriculum. Empty and mono decks
+// explore freely ("when you start, no color pull; your first color, still
+// no pull"); once ≥2 colors are committed, off-color candidates are
+// suppressed by base^(C·offFraction) — the fence scales continuously with
+// how many colors you've committed (C) and with how off-color the card is
+// (offFraction = share of its pip-colors the deck does NOT own, so a
+// half-in-color gold card is fenced far less than a fully foreign one:
+// the marginal-splash legalization the cliff denied).
+// What did NOT survive: the additive form ("(color_pull)+(want pull)").
+// Measured 2026-07-13 (200 simulated 7-pick drafts per k, random picker):
+// additive pull at k=0.5..3 collapsed clean-two-color decks 83.5%→≤10%,
+// sprawled decks to 4-5 colors, and drove the fallback rate 16%→30-44%
+// (rising with k) — same mechanism as the ε-value dead end (plan doc §8b):
+// additive uniform bonuses flatten within-group ranking and can't produce
+// the ~20× between-group suppression colors need. Color force must be
+// MULTIPLICATIVE. One knob (`let` for the _setColorPullForTest sweep seam);
+// measured origin at 0.3: see the v2.2.23 changelog entry.
+let SPLASH_BASE = 0.3;
+function colorFitFactor(cand, deckColors) {
+  const C = deckColors.size;
+  if (C <= 1 || cand.colors.length === 0) return 1;
+  const off = cand.colors.filter(c => !deckColors.has(c)).length;
+  if (off === 0) return 1;
+  return Math.pow(SPLASH_BASE, C * (off / cand.colors.length));
 }
 
 
@@ -658,14 +675,12 @@ function growBucket(seedAnalysis, deckAnalyses, deckColors) {
       // re-ranks cards that already serve the seed's plan.
       if (score <= 0) continue;
       score += DECK_COUPLING * edgeMassIntoDeck(cand, deckAnalyses);
+      // Color fence toward the DECK's committed colors (the deck is the
+      // color identity; the bucket's own ≤2-color law is enforced by
+      // isLegalCandidate above). Multiplicative, post-gate — the plan
+      // stays sovereign; the fence only reweights plan-legal candidates.
+      score *= colorFitFactor(cand, deckColors);
       if (bucket.some(b => b.cost === cand.cost)) score *= CURVE_CLASH_PENALTY;
-      // Fit is judged against deck colors PLUS colors this bucket already
-      // introduces — otherwise each candidate would claim the free
-      // new-color slot independently and a mono-color deck could be
-      // offered a fully off-color two-color bundle at no penalty.
-      const effColors = new Set(deckColors);
-      for (const b of bucket) for (const c of b.colors) effColors.add(c);
-      score *= deckFitMultiplier(cand, effColors);
       scored.push({ item: { cand, reasons }, score });
     }
     const pick = weightedSample(scored.map(e => ({ item: e.item, w: Math.pow(e.score, GROWTH_SHARPNESS) })));
@@ -704,9 +719,7 @@ function reinforcementsBucket(deckColors, deckTplIds) {
       if (!isLegalCandidate(c, bucket)) continue;
       let v = ENGINE.getCardValue(CARDS[c.tplId], 'draft');
       if (bucket.some(b => b.cost === c.cost)) v *= CURVE_CLASH_PENALTY;
-      const effColors = new Set(deckColors);
-      for (const b of bucket) for (const cc of b.colors) effColors.add(cc);
-      v *= deckFitMultiplier(c, effColors);
+      v *= colorFitFactor(c, deckColors);
       if (v > 0) entries.push({ item: c, w: v });
     }
     const pick = weightedSample(entries);
@@ -782,7 +795,7 @@ function pickSeeds(deckAnalyses, deckColors) {
     : payoffness(c);
   let entries = candidates.map(c => ({
     item: c,
-    w: (SEED_BASE_WEIGHT + weightOf(c)) * deckFitMultiplier(c, deckColors),
+    w: (SEED_BASE_WEIGHT + weightOf(c)) * colorFitFactor(c, deckColors),
   }));
   const seeds = [];
   for (let k = 0; k < OFFER_SIZE && entries.length; k++) {
@@ -884,5 +897,6 @@ return {
   // Test seams:
   _resetCacheForTest: () => { _pool = null; _byId = null; },
   _setRandForTest: (fn) => { _rand = fn || Math.random; },
+  _setColorPullForTest: (k) => { SPLASH_BASE = (typeof k === 'number') ? k : 0.3; },
 };
 })();

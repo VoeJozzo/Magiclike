@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.2.22`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.2.23`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -2806,3 +2806,29 @@ seed-level MMR, not a name check. Tests re-keyed: fallback<->story
 invariant (both directions now), Goblin pin checks actual Goblin
 recruitment instead of the "Goblin Warband" string, offer diversity
 measured on card sets.
+
+v2.2.23: Presence-pull color allocation (Joe's 2.1) — the deckFitMultiplier
+cliff is dead. What shipped keeps 2.1's commitment curriculum: empty and
+mono decks explore colors freely ("when you start, no color pull; your
+first color, still no pull"); once >=2 colors are committed, off-color
+candidates are suppressed by SPLASH_BASE^(C x offFraction) — the fence
+scales continuously with committed-color count AND with how off-color the
+card is, so a half-in-color gold card is fenced far less than a fully
+foreign one (the marginal-splash legalization the old commitment-blind
+x0.05 cliff denied). Applied at all three sites (seeds, growth post-gate,
+Reinforcements); free-slot logic and OFF_COLOR_PENALTY deleted.
+The additive form Joe originally sketched was built FIRST and measured
+out (200 simulated 7-pick drafts per dose, random picker): at k=0.5..3
+clean-two-color decks collapsed 83.5%->2.5-10%, decks sprawled to 4-5
+colors, fallback exploded 16%->30-44% rising with k — the same law the
+eps-value dead end proved (plan doc 8b): additive uniform bonuses flatten
+within-group ranking and cannot produce the ~20x between-group suppression
+colors need; color force must be multiplicative. Multiplicative sweep:
+base 0.2 = 76.5% clean2 / 1.31 splash pips; 0.3 = 67.5% / 1.90; 0.4 =
+46.5% / 2.94; 0.5 = 36.5% / 3.92 — fallback flat (16.8-17.9% vs 16.2%
+baseline) and same-tribe pick rate eased 44.9%->41-43% (mild anti-inbred)
+at every dose. Shipped at 0.3: two-color modal shape holds while the
+marginal splash roughly doubles (0.97->1.90 pips) — classic feel, cliff
+gone, one knob. Mono-deck test pin re-keyed to the new contract (free
+exploration at C<=1 is by design; the fence is pinned post-commitment).
+Suite 150 files / 2969 green.

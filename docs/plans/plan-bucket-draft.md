@@ -194,6 +194,19 @@ Distance between two card groups = **mean cross-edge mass** between their member
     contain at least one answer card. Assay + probe scripts preserved in
     the session scratchpad (epsilon_assay, seat_probe, fallback_probe).
 
+- **Additive color pull — measured negative at every dose, shipped
+  multiplicative instead (2026-07-13, v2.2.23).** Joe's 2.1 as literally
+  sketched ("(color_pull)+(want pull)+foo1"): additive k·C toward owned
+  colors at k=0.5–3 collapsed clean-two-color decks 83.5%→2.5–10%,
+  sprawled decks to 4–5 colors, and drove fallback 16%→30–44% (rising
+  with k). Same law as the ε-value entry above, now confirmed twice in
+  one day: **additive uniform bonuses under proportional sampling flatten
+  within-group ranking and cannot produce large between-group suppression;
+  forces that must gate groups (color identity, dupe scarcity) must be
+  multiplicative.** The commitment curriculum of 2.1 survived the form
+  change (free at C≤1, fence scaling with C); only the arithmetic died.
+  Sim: color_sim in the session scratchpad.
+
 ## 9. Sources (Hearthstone research)
 
 - [Dungeon Run — Hearthstone Wiki](https://hearthstone.fandom.com/wiki/Dungeon_Run) (bundle mechanics)

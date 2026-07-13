@@ -261,8 +261,15 @@ function check(label, ok, info) {
     }
   }
   check('mono-color deck: buckets can introduce a second color', sawSecondColor);
-  check('...and a third only as a rare soft temptation (<30%; measured ~10%)',
-    thirdColorBuckets / buckets < 0.3, `${thirdColorBuckets}/${buckets}`);
+  // v2.2.23 contract change: a ≤1-color deck has NO color fence at all
+  // (colorFitFactor returns 1 — "your first color, still no pull"), so
+  // off-deck-color buckets are free exploration, not a rare temptation
+  // (measured ~45-50% under the new system vs ~10% under the old cliff).
+  // The fence's contract is POST-commitment — pinned by the committed-deck
+  // off-color-rarity check in §3. Here we only pin that affinity seeding
+  // still keeps a mono deck's offers gravitating toward its color.
+  check('...and off-color buckets stay below two-thirds (affinity gravity)',
+    thirdColorBuckets / buckets < 0.67, `${thirdColorBuckets}/${buckets}`);
   check('offers usually carry ≥2 distinct card sets', diverseOffers >= 10,
     `${diverseOffers}/15`);
 }
