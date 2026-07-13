@@ -3,7 +3,7 @@ type: index
 tags: [magiclike, wiki]
 aliases: ["Concept wiki hub"]
 created: 2026-06-02
-updated: 2026-06-10
+updated: 2026-07-12
 ---
 
 # Magiclike — durable concepts wiki
@@ -60,7 +60,7 @@ This layer **complements** the repo docs and never copies them — it links out:
 - **Canonical rules** now live *here* too — [[rulebook|`rules/`]] (decomposed from the old `docs/RULES.md` monolith). Kept distinct from the *why* pages by `type: rules` frontmatter.
 - **Wire format · engine reference (modules + contracts)** → `docs/PROTOCOL.md` · `docs/ARCHITECTURE.md`.
 - **Cross-engine gaps** → `docs/DIVERGENCE.md`.
-- **Live status** (current phase, card counts, roadmap) → the repo root `CLAUDE.md` + `docs/plans/`. **Status lives in the repo, never here.**
+- **Live status** (current phase, card counts, roadmap) → `docs/plans/godot-port-plan.md` (the root `CLAUDE.md` deliberately carries no status). **Status lives in the repo, never here.**
 
 (Doc map: `docs/README.md`.)
 
