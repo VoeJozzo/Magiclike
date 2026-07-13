@@ -4,7 +4,7 @@ Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folde
 
 ## Version
 
-**Current: `v2.2.16`** — source of truth: `js/main.js` `const VERSION` (keep in sync on bump). Full version history: [`CHANGELOG.md`](CHANGELOG.md).
+**Current: `v2.2.17`** — source of truth: `js/main.js` `const VERSION` (keep in sync on bump). Full version history: [`CHANGELOG.md`](CHANGELOG.md).
 
 ## File structure
 
@@ -31,6 +31,7 @@ Also in the repo: `index.html` at the repo root — a small redirect that points
 | `js/picklog.js` | `PICKLOG` IIFE — draft pick analytics, `magiclike_picklog_v1` storage, exposed on `window.PICKLOG` for console queries |
 | `js/controller.js` | `CONTROLLER` IIFE — input handling, modals, AI scheduling, plus the meta-game render helpers it owns (renderMap, renderReward, renderDraft, renderStatsContent, …) |
 | `js/render.js` | `render()` main repaint, `renderManaPool`, `renderHand`, `renderBf`, `passLabel`, `makeCardEl`, `cardToViewModel`, etc. — in-game UI only |
+| `js/constellation.js` | `CONSTELLATION` IIFE — the 🔭 in-game synergy-graph viewer (origin-session "constellation view", naive P1): Deck tab (current run slots, named stars, w≥1 edges) and Pool tab (all nonland cards, w≥2, cached). Reads `BUCKETS.edgeBetween` reasons for hover tooltips; canvas force-layout settled offline, no rAF loop. UI-only — browser-verified, not in the Node harness. |
 | `js/settings-panel.js` | `SETTINGS_PANEL` IIFE — settings modal render + show. Sub-renderers per section (devtools, font preset, per-element rows, popup scale, mana pip sizes, export button). Pulled out of controller.js on v1.0.185. |
 | `js/triggers.js` | `ATOMIC_PREDICATES` registry (12 composable atomic predicates) + `evaluateCondition` walker (string / list-AND / `{op,terms}` tree) — the composable trigger-condition vocabulary used at runtime (Slice 2) |
 | `js/trigger-generator.js` | `GENERATOR_EFFECTS` / `GENERATOR_CONDITIONS` data plus the Architect's Codex three-step build flow (`generateConditionOptions`, `generateEffectOptions`, `assembleTrigger`). The Mercurial Adept does NOT use this module — it seeds from `MERCURIAL_TRIGGER_POOL` in engine.js. |

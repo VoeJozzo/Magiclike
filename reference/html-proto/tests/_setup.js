@@ -43,6 +43,7 @@ const ENGINE_FILES = [
   'controller.js',
   'render.js',
   'settings-panel.js',
+  'constellation.js',
   'triggers.js',
   'trigger-generator.js',
   'main.js',

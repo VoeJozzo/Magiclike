@@ -118,6 +118,12 @@ function init() {
   if (settingsBtnPersistent) {
     settingsBtnPersistent.onclick = SETTINGS_PANEL.show;
   }
+  // Constellation viewer (🔭) — sibling of the gear; CONSTELLATION.show picks
+  // Deck vs Pool tab by whether a run is active.
+  const constellationBtn = document.getElementById('constellationBtn');
+  if (constellationBtn) {
+    constellationBtn.onclick = CONSTELLATION.show;
+  }
   // Keyboard pass / confirm: Space and Enter both trigger the contextual
   // primary action (Done Attacking/Blocking during a combat declaration,
   // otherwise Pass). See onPrimaryActionKey for the gating.

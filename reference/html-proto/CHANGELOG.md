@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.2.16`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.2.17`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -2711,3 +2711,21 @@ manufactured, from:-amounts are downside riders. Reinforcements variance
 pin resampled (sample-until-4-offers): richer vocabulary makes genuine
 fallbacks rarer, starving the old fixed-12-rolls check. Zero-hook 13%→12%.
 Suite 150 files / 2963 green; selfplay 500 clean.
+
+v2.2.17: The Constellation (🔭) — the origin-session "constellation view",
+shipped naive-first per Joe ("we're just prototyping, audience of 1").
+New js/constellation.js IIFE + persistent 🔭 button beside the settings
+gear: Deck tab shows the current run's slots as named stars force-laid
+over their synergy edges (w>=1 — a 12-card deck deserves its faint edges);
+Pool tab shows all 327 nonland cards over the 972 strong edges (w>=2,
+computed once per boot and cached). Hover lights a star's neighborhood
+and shows its top edges WITH the graph's human-readable reasons
+("crusaders_charm feeds ajanis_pridemate [lifegain]") — the de-neuralese
+moment, live in-game. Drag to stir. Physics ported verbatim from the
+Synergy Observatory artifact (settle offline, redraw on hover, no rAF).
+Pure presentation: reads BUCKETS/RUN, writes nothing. Browser-verified
+(served + driven headless: pool view, hover tooltip, deck view, zero page
+errors); suite 150 files / 2963 green (module loads clean under the Node
+stubs). Roadmap parked in chat: P2 = bucket-offer overlay (see where an
+offer attaches before picking), P3 = codex fog-of-war, P4 = realized-
+synergy postgame report.
