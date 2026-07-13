@@ -21,7 +21,7 @@ What each color **does**, mechanically — the game-design layer over the world 
 | Green | **The Reclaim** | eats |
 
 ### White — the Institution *(settled)*
-Many small people, organized: tokens, anthems, lords; lifegain as triage; **equalization and tax** — symmetric effects white is built to exploit (the Balancer boss is the prototype). Removal: exile, can't-attack binds, counter-unless-pay (theoretical today), and **freeze** ("doesn't untap during its controller's next untap step" — needs a small engine flag; verified absent 2026-07-13). White detains; blue postpones. Blink lives on the WU seam with rescue as white's intent. Run-layer signature: symmetric/tax modifiers.
+Many small people, organized: tokens, anthems, lords; lifegain as triage; **equalization and tax** — symmetric effects white is built to exploit (the Balancer boss is the prototype). Removal: exile, can't-attack binds, counter-unless-pay (theoretical today), and **freeze** ("doesn't untap during its controller's next untap step" — needs a small engine flag; verified absent 2026-07-13). White detains; blue postpones. Blink lives on the WU seam with rescue as white's intent. Card economy: *(pitched, left be for now)* equalization-shaped draw — white never gets ahead on cards, it refuses to be behind ("if an opponent has more cards in hand, draw until even"). Run-layer signature: symmetric/tax modifiers.
 
 ### Blue — the Salvage *(settled)*
 Card selection and draw as rites that visibly work; sorceries-matter triggers; counter; **copies and clones — blue never takes your things, it makes fraudulent duplicates** (it falsifies the witness, per [[blue]]). Search: **windows only** (scry, dig, top-N) — never precise tutors. Removal: bounce, counter, tap/untap manipulation. Run-layer signature: cloning.
@@ -42,6 +42,16 @@ Artifacts — knots without a weaver ([[threads]], [[the-fall]] §artifacts-are-
 
 The severity ladder (tap / bounce / destroy / exile) is one engine mechanism; the pie is which rungs each color gets. **White arrests** (exile, binds, freeze) · **blue delays** (bounce, counter) · **black executes** (destroy, edict) · **red sacks** (damage) · **green eats** (fight, only fight). Promoted from [[white]]'s "binds where black executes" observed pattern (2026-07-13).
 
+## Weakness ledger *(settled 2026-07-13)*
+
+The pie is defined as much by what colors **can't** do; here weaknesses are draft texture and archetype incentive, and they are deliberate:
+
+- **White** — bad card draw (the classic; equalization is its only economy). Premium removal, small threats.
+- **Blue** — no killing (the classic): everything it does is delay, duplicate, postpone — nothing is permanent.
+- **Black** — **can't bill what has no account**: no interaction with spells on the stack, no answers to artifacts. Against creatures its removal is excellent and cheap.
+- **Red** — no easy answer to big toughness (damage is its only verb); can't hold what it takes in-game.
+- **Green** — bad removal, full stop: fight needs a body on the board *and* a favorable fight. An empty green board is a spectator.
+
 ## Planks — where we are not a clone
 
 - **Flying is tribal, not color-coded** *(settled)*. Tribes fly because of what they are ([[tribal-identities]]); colors get flying via their tribes. Lifelink is drifting the same way *(leaning)*.
@@ -58,6 +68,16 @@ The severity ladder (tap / bounce / destroy / exile) is one engine mechanism; th
 ## Pair archetypes *(all leaning)*
 
 WU Spirits & flicker · UB contested truth (the [[tribal-identities|Rogue]]'s pair) · BR aristocrats · RG stampede · GW husbandry · WB Clerics (the life-total ledger) · UR spellcraft · BG graves (the two indifferences: recorded vs. digested) · RW rally · GU wildlore (creatures as card advantage).
+
+## Later assignments (2026-07-13 completeness sweep)
+
+- **Artifact removal — red** *(leaning)*: the sacker smashes the relic. (Needed: colorless build-around engines must have answers.)
+- **Graveyard hate — green** *(leaning)*: the Reclaim finishes digesting — composting completes, and nothing is left to re-knot. (Beats the white "last rites" read: white's saints and martyrs are themselves graveyard-linked. Precedent: Scavenging Ooze.)
+- **Burst mana / rituals — rejected as a mechanic** *(settled)*: not sold, not built, not assigned.
+- **Hexproof / indestructible — unlegislated** *(settled as a non-rule)*: rare and powerful; ruled per card, no standing color law.
+- **First strike outside Knights — W/R** *(proposed)*: the drilled line and the duelist; matches the current pool split.
+- **Land destruction — available, softened by design** *(proposed)*: classic-mode auto-fill makes it less feel-bad here than in MTG. Homes: red targeted (scorched earth), green reclamation (nature's turn comes early), white symmetric-only (everyone's works, equally). If a land is ever *stolen* in-game, that's black foreclosure.
+- **Coin flips / chaos — rejected** *(settled)*: prefer output randomness elsewhere; not a color identity.
 
 ## Assignments awaiting verdict *(proposed)*
 
