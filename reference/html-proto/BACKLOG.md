@@ -38,6 +38,13 @@ The following items live in `docs/DIVERGENCE.md` as their primary tracker. Liste
 - **Extraction-audit pool sweep** (Joe's idea, queued since Wave 2) — sweep
   the whole pool for cards deserving want/provide rules
   (smite_the_wicked's tapped-want was invisible until Wave 2 measured it).
+- **Constellation P3: pool codex fog-of-war** (Joe, 2026-07-13: "something
+  I DO want to implement, but now is not quite the time — I haven't thought
+  through that FoW system yet"). Dim un-encountered cards in the Pool tab;
+  blocked on Joe designing what "encountered" means (owned? offered? seen
+  in battle?). P4 (realized-synergy postgame report — light only the edges
+  that actually FIRED during play) also parked; Joe notes it should tie
+  into PICKLOG, the existing data-gathering tool.
 - **Wave 3 candidate: second payoffs per tribe** — 13 of 14 tribes have
   exactly 1 payoff (goblins, with 2, are the tribe Joe said "feels better");
   banked subtypes Wolf/Hydra/Construct/Hound/Spider have 0. GATED on

@@ -878,6 +878,14 @@ function makeBucketTileEl(bucket, onClick) {
   });
   if (whyLines.length) labelEl.title = 'Why these cards:\n' + whyLines.join('\n');
   div.appendChild(labelEl);
+  // P2 offer overlay: preview where this bucket would attach to your deck
+  // (CONSTELLATION offer mode). stopPropagation — previewing must not pick.
+  const scopeBtn = document.createElement('button');
+  scopeBtn.className = 'bucket-scope-btn';
+  scopeBtn.textContent = '🔭 preview';
+  scopeBtn.title = 'See where this bucket attaches to your deck';
+  scopeBtn.onclick = (e) => { e.stopPropagation(); CONSTELLATION.showOffer(bucket.cards); };
+  div.appendChild(scopeBtn);
   for (const tplId of bucket.cards) {
     if (!CARDS[tplId]) continue;
     // Draft-safe render path: no {inHand} view-model — castability reads the

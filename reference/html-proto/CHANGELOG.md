@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.2.17`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.2.18`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -2729,3 +2729,18 @@ errors); suite 150 files / 2963 green (module loads clean under the Node
 stubs). Roadmap parked in chat: P2 = bucket-offer overlay (see where an
 offer attaches before picking), P3 = codex fog-of-war, P4 = realized-
 synergy postgame report.
+
+v2.2.18: Constellation P2 — the offer overlay (Joe: "Yes, I like this!").
+Every bucket tile (run-start draft AND the addBucket reward — shared
+makeBucketTileEl) gains a "🔭 preview" button: CONSTELLATION.showOffer
+renders the offer's cards as gold-ringed INCOMING stars over your current
+deck constellation, with deck-to-offer attachment edges drawn dashed gold
+— you see where the bucket hooks in before you pick. Deck source falls
+back to draft picks pre-run (the run-start draft happens before RUN is
+active). Preview click stopPropagation — previewing never picks. Tabs
+exit offer mode; hint line explains the encoding. Browser-verified
+end-to-end (boon gate → offer 1 preview → pick → offer 2 preview shows
+real attachments; zero page errors). Also: Constellation P3 (codex
+fog-of-war) backlogged at Joe's direction — he wants it but the FoW
+design isn't thought through yet; P4 note (realized-synergy should tie
+into PICKLOG). Suite 150 files / 2963 green.

@@ -27,12 +27,18 @@ const CONSTELLATION = (() => {
   // minW: deck view shows w>=1 (a 12-card deck deserves its faint edges —
   // pyromaniac↔vanishing_act at 1.69 is a real story); pool stays at the
   // strong threshold 2 or it becomes yarn.
-  function buildGraph(tplIds, minW) {
+  function buildGraph(tplIds, minW, offerIds) {
     const counts = {};
     for (const id of tplIds) counts[id] = (counts[id] || 0) + 1;
+    const incoming = new Set();
+    for (const id of (offerIds || [])) {
+      if (!counts[id]) counts[id] = 0;   // offer copies render as ONE incoming star
+      incoming.add(id);
+    }
     const ids = Object.keys(counts).filter(id => CARDS[id] && !hasType(CARDS[id], 'Land'));
     const ns = ids.map((id, i) => ({
-      id, i, name: CARDS[id].name, col: colorOf(id), copies: counts[id], deg: 0,
+      id, i, name: CARDS[id].name, col: colorOf(id), copies: Math.max(1, counts[id]), deg: 0,
+      inc: incoming.has(id),
       x: Math.cos(i * 2.399) * (60 + (i % 9) * 16),
       y: Math.sin(i * 2.399) * (60 + (i % 9) * 16), vx: 0, vy: 0,
     }));
@@ -90,14 +96,21 @@ const CONSTELLATION = (() => {
     for (const [a, b, wt] of edges) {
       const A = nodes[a], B = nodes[b];
       const lit = hot != null && (a === hot || b === hot);
+      // An edge with exactly one incoming endpoint is an ATTACHMENT — where
+      // the offer would hook onto the deck. Dashed + warm so it reads as
+      // "not yours yet".
+      const attach = !!A.inc !== !!B.inc;
+      ctx.setLineDash(attach ? [5, 4] : []);
       ctx.strokeStyle = lit ? 'rgba(159,196,255,.9)'
+        : attach ? 'rgba(255,206,120,' + Math.min(.7, .3 + wt * .06) + ')'
         : 'rgba(130,152,205,' + Math.min(.45, .15 + wt * .045) + ')';
-      ctx.lineWidth = lit ? 1.5 : .8;
+      ctx.lineWidth = lit ? 1.5 : attach ? 1.1 : .8;
       ctx.beginPath();
       ctx.moveTo(cx + A.x * scale, cy + A.y * scale);
       ctx.lineTo(cx + B.x * scale, cy + B.y * scale);
       ctx.stroke();
     }
+    ctx.setLineDash([]);
     const showNames = nodes.length <= 45;
     for (const n of nodes) {
       const r = 2 + Math.sqrt(n.deg) * (mode === 'deck' ? 1.6 : .9);
@@ -107,18 +120,32 @@ const CONSTELLATION = (() => {
       ctx.globalAlpha = hot == null ? 1
         : (n.i === hot || adj[n.i].some(k => edges[k][0] === hot || edges[k][1] === hot) ? 1 : .25);
       ctx.fill(); ctx.globalAlpha = 1;
+      if (n.inc) { ctx.strokeStyle = '#ffce78'; ctx.lineWidth = 1.6; ctx.stroke(); }
       if (n.i === hot) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.2; ctx.stroke(); }
-      if (showNames) {
-        ctx.fillStyle = n.i === hot ? '#fff' : 'rgba(200,208,226,.85)';
+      if (showNames || n.inc) {
+        ctx.fillStyle = n.i === hot ? '#fff' : n.inc ? '#ffce78' : 'rgba(200,208,226,.85)';
         ctx.font = '10px ui-monospace,monospace'; ctx.textAlign = 'center';
         ctx.fillText(n.name + (n.copies > 1 ? ' ×' + n.copies : ''), X, Y + r + 11);
       }
     }
   }
 
+  // The current deck's tplIds: run slots when a run is live, else the
+  // draft picks so far (the run-start bucket draft happens PRE-run).
+  function deckIds() {
+    if (typeof RUN !== 'undefined' && RUN.isActive && RUN.isActive()) {
+      return RUN.getSlots().map(s => s.tplId);
+    }
+    const ds = (typeof DRAFT !== 'undefined' && DRAFT._state) ? DRAFT._state() : null;
+    return (ds && ds.youPicks) ? ds.youPicks.slice() : [];
+  }
+  let offerCards = null;   // non-null => offer-preview mode
   function load() {
-    if (mode === 'deck' && typeof RUN !== 'undefined' && RUN.isActive && RUN.isActive()) {
-      const g = buildGraph(RUN.getSlots().map(s => s.tplId), 1);
+    if (mode === 'offer') {
+      const g = buildGraph(deckIds(), 1, offerCards || []);
+      nodes = g.nodes; edges = g.edges;
+    } else if (mode === 'deck' && deckIds().length) {
+      const g = buildGraph(deckIds(), 1);
       nodes = g.nodes; edges = g.edges;
     } else if (mode === 'deck') {
       nodes = []; edges = [];
@@ -172,9 +199,11 @@ const CONSTELLATION = (() => {
     for (const b of modal.querySelectorAll('.constTab')) {
       tabBtns[b.dataset.tab] = b;
       b.onclick = () => {
+        offerCards = null;
         mode = b.dataset.tab;
         for (const k in tabBtns) tabBtns[k].classList.toggle('on', k === mode);
         tipEl.style.display = 'none';
+        setHint();
         load();
       };
     }
@@ -206,14 +235,34 @@ const CONSTELLATION = (() => {
     });
   }
 
+  function setHint() {
+    const el = document.getElementById('constHint');
+    if (el) el.textContent = mode === 'offer'
+      ? 'gold ring = incoming · dashed = where this offer attaches to your deck'
+      : 'hover a star for its pulls · drag to stir';
+  }
   function show() {
     if (!modal) build();
-    mode = (typeof RUN !== 'undefined' && RUN.isActive && RUN.isActive()) ? 'deck' : 'pool';
+    offerCards = null;
+    mode = deckIds().length ? 'deck' : 'pool';
     for (const k in tabBtns) tabBtns[k].classList.toggle('on', k === mode);
     modal.style.display = 'flex';
+    setHint();
+    load();
+  }
+  // P2 — the offer overlay (Joe: "Yes, I like this!"): preview a bucket
+  // offer as incoming stars with dashed attachment edges into the current
+  // deck, BEFORE picking.
+  function showOffer(offerTplIds) {
+    if (!modal) build();
+    offerCards = (offerTplIds || []).slice();
+    mode = 'offer';
+    for (const k in tabBtns) tabBtns[k].classList.remove('on');
+    modal.style.display = 'flex';
+    setHint();
     load();
   }
   function hide() { modal.style.display = 'none'; tipEl.style.display = 'none'; }
 
-  return { show, hide };
+  return { show, hide, showOffer };
 })();
