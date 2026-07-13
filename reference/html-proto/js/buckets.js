@@ -362,6 +362,20 @@ function analyze(tpl) {
     bump(provides, 'fodder', 1.5);
     bump(provides, 'dies', 1);
   }
+  // Removal MANUFACTURES death events, and any-death payoffs (blood_artist's
+  // archetype has no controller term — it hears THEIR creatures dying) feed
+  // on them: "Murder feeds Blood Artist [dies]" is the organic road into a
+  // deck that wants deaths (Joe's sweep follow-up, 2026-07-13). Destroy
+  // effects only — exile and bounce make no death event. Damage-based
+  // removal kills via SBAs, slightly less reliably (survivors, face mode).
+  if (isSpellCard && kinds.some(k => k.kind === 'affect_creature' && k.severity === 'destroy')) {
+    bump(provides, 'dies', 1);
+  }
+  if (isSpellCard && kinds.some(k => k.kind === 'damage' && !k.scope)
+      && targetSteps.some(st => /creature/.test(String(st.t || '')))) {
+    bump(provides, 'dies', 0.75);
+  }
+  if (kinds.some(k => k.kind === 'fight')) bump(provides, 'dies', 0.75);
 
   // --- WANTS ---
   // Trigger conditions. `this_card` triggers are self-referential (my own

@@ -127,6 +127,15 @@ function check(label, ok, info) {
   check('counterspell payoff wants counterspells, not every sorcery (counter_specialist)',
     w2('counter_specialist').wants.counterspell > 0 && !w2('counter_specialist').wants.spellcast
     && w2('counterspell').provides.counterspell > 0);
+  // Removal manufactures deaths (the "organic Murder" rule): destroy and
+  // damage-removal feed any-death payoffs; bounce and exile make NO death
+  // event and stay silent.
+  check('removal provides dies: murder 1, bolt 0.75; wash_away (bounce) none',
+    w2('murder').provides.dies === 1 && w2('lightning_bolt').provides.dies === 0.75
+    && !w2('wash_away').provides.dies);
+  check('murder <-> blood_artist is a live edge with the dies reason',
+    BUCKETS.edgeBetween('murder', 'blood_artist').w > 1
+    && /dies/.test(BUCKETS.edgeBetween('murder', 'blood_artist').reasons[0] || ''));
 
   // this_card self-triggers must not register wants on other cards: an ETB
   // "when THIS enters, X" card is not an ally-ETB payoff.

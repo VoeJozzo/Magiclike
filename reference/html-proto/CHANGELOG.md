@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.2.18`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.2.19`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -2744,3 +2744,14 @@ real attachments; zero page errors). Also: Constellation P3 (codex
 fog-of-war) backlogged at Joe's direction — he wants it but the FoW
 design isn't thought through yet; P4 note (realized-synergy should tie
 into PICKLOG). Suite 150 files / 2963 green.
+
+v2.2.19: Removal manufactures deaths — the "organic Murder" rule (Joe:
+"the thing we want is some organic way for Murder to show up in my demon
+tribal deck"; approved as a step, not a complete solution). Destroy-effect
+spells provide dies 1, damage-removal and fight spells 0.75; bounce and
+exile provide NOTHING (no death event — the precision the doctrine
+demands). Murder <-> blood_artist is now a live 1.47 edge with the reason
+"murder feeds blood_artist [dies]", which lets removal pass the growth
+plan gate into any-death buckets organically. 2 pins (incl. the wash_away
+negative). Remaining removal-orphan discussion (base-weight modulation vs
+bucket tail seat) still open in chat. Suite 150 files / 2965 green.
