@@ -76,7 +76,7 @@ WU Spirits & flicker · UB contested truth (the [[tribal-identities|Rogue]]'s pa
 - **Burst mana / rituals — rejected as a mechanic** *(settled)*: not sold, not built, not assigned.
 - **Hexproof / indestructible — unlegislated** *(settled as a non-rule)*: rare and powerful; ruled per card, no standing color law.
 - **First strike outside Knights — W/R** *(proposed)*: the drilled line and the duelist; matches the current pool split.
-- **Land destruction — available, softened by design** *(proposed)*: classic-mode auto-fill makes it less feel-bad here than in MTG. Homes: red targeted (scorched earth), green reclamation (nature's turn comes early), white symmetric-only (everyone's works, equally). If a land is ever *stolen* in-game, that's black foreclosure.
+- **Land interaction — settled** *(settled 2026-07-13)*: available, softened by classic-mode auto-fill. **Red destroys outright** (scorched earth) · **green destroys-but-replaces** ("destroy a land; its controller gets a new one" — succession, the land gone feral) · **white symmetric or equalizing** (everyone's works, or "destroy if they have more") · **black steals lands** — foreclosure. (The lands-as-abilities model makes a stolen land just work: it taps for its new owner.)
 - **Coin flips / chaos — rejected** *(settled)*: prefer output randomness elsewhere; not a color identity.
 
 ## Assignments awaiting verdict *(proposed)*

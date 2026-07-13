@@ -52,7 +52,7 @@ Run-layer death-memory, templated by Joe in-session: **"When ~ dies, put a +1/+1
 
 > "This IS the kind of design that I find fun." — Joe, on run-layer self-modification — the space where this game does what paper MTG can't.
 
-Pitched, unbuilt: *Patient Haunt* ({1}{W} Spirit 1/1 flying, dies → +1/+1 sticker) · *Thrice-Buried Saint* ({2}{W} Spirit Cleric 2/2, dies → sticker; the third death confers flying + lifelink). The Saint's threshold read is **bespoke runtime logic when built** (the Elystra / Endomorph precedent) — *(settled 2026-07-13)* it does NOT become a schema field on every card. Build-time checks: mid-battle recursion semantics; whether player slots cap sticker count.
+Engineering precedents *(settled 2026-07-13)*: threshold reads of a card's own stickers are **bespoke runtime logic per card** (the Elystra / Endomorph precedent), never a schema field on every card. Build-time checks for any death-sticker design: mid-battle recursion semantics; whether player slots cap sticker count. (Individual card designs live with their cards, not here.)
 
 ## Rejected — for the record
 
