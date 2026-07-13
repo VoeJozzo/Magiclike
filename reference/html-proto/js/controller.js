@@ -854,19 +854,30 @@ function appendRewardFlavor(parent, name, text, extraClass) {
   return flavor;
 }
 
-// Growing Deck: one clickable bucket tile — name pill, 3 card minis, and a
-// pip row for the 2 basic lands the bucket carries. Shared by the run-start
+// Growing Deck: one clickable bucket tile — story header, 3 card minis, and
+// a pip row for the 2 basic lands the bucket carries. Shared by the run-start
 // bucket draft (draft screen) and the addBucket reward's bucketPick phase.
 function makeBucketTileEl(bucket, onClick) {
   const div = document.createElement('div');
   div.className = 'rwd-pair rwd-pair-bucket';
-  const labelEl = document.createElement('div');
-  labelEl.className = 'rwd-kind-label rwd-kind-bucket';
-  labelEl.textContent = bucket.name.toUpperCase();
-  // Hover: WHY these cards are together — the generator's own edge reasons,
-  // prettified from tplIds to card names ("Goblin Rabble feeds Carrion
-  // Feeder (fodder)").
-  const whyLines = (bucket.why || []).slice(0, 4).map(r => {
+  // Only fallback bundles wear a flat label — themed buckets lead with the
+  // story itself (the old derived theme names were killed at v2.2.22: a
+  // vaguer paraphrase of the story line rendered right under them, and a
+  // recurring drift-bug source).
+  if (bucket.fallback) {
+    const labelEl = document.createElement('div');
+    labelEl.className = 'rwd-kind-label rwd-kind-bucket';
+    labelEl.textContent = 'REINFORCEMENTS';
+    div.appendChild(labelEl);
+  }
+  // Narrative framing (Joe, 2026-07-13): a bucket IS "a seed plus the
+  // friends it recruited" (cards[0] is the seed; growth order preserved),
+  // so tell that story instead of hiding it in a tooltip. Each friend
+  // shows ITS strongest edge reason — which may point at another friend,
+  // not the seed ("goblin rabble brings ITS friend carrion feeder" — fine,
+  // we just want to surface it). Reinforcements has no seed story (value-
+  // sampled goodstuff), so it keeps the flat label.
+  const pretty = r => {
     const m = r.match(/^(\S+) feeds (\S+) \[(.+)\]$/);
     if (m) {
       const a = CARDS[m[1]] ? CARDS[m[1]].name : m[1];
@@ -875,9 +886,29 @@ function makeBucketTileEl(bucket, onClick) {
     }
     const t = r.match(/^shared plan \[(.+)\]$/);
     return t ? `shared plan: ${t[1]}` : r;
-  });
-  if (whyLines.length) labelEl.title = 'Why these cards:\n' + whyLines.join('\n');
-  div.appendChild(labelEl);
+  };
+  if ((bucket.why || []).length && bucket.cards.length && CARDS[bucket.cards[0]]) {
+    const story = document.createElement('div');
+    story.className = 'bucket-story';
+    const seedName = CARDS[bucket.cards[0]].name;
+    let html = '<b>' + seedName + '</b> wants to join your deck!';
+    for (const tplId of bucket.cards.slice(1)) {
+      if (!CARDS[tplId]) continue;
+      const line = (bucket.why || []).find(r => r.includes(tplId));
+      html += '<br>brings <b>' + CARDS[tplId].name + '</b>'
+        + (line ? ' — <span class="bucket-why">' + pretty(line) + '</span>' : '');
+    }
+    story.innerHTML = html;
+    div.appendChild(story);
+  }
+  // P2 offer overlay: preview where this bucket would attach to your deck
+  // (CONSTELLATION offer mode). stopPropagation — previewing must not pick.
+  const scopeBtn = document.createElement('button');
+  scopeBtn.className = 'bucket-scope-btn';
+  scopeBtn.textContent = '🔭 preview';
+  scopeBtn.title = 'See where this bucket attaches to your deck';
+  scopeBtn.onclick = (e) => { e.stopPropagation(); CONSTELLATION.showOffer(bucket.cards); };
+  div.appendChild(scopeBtn);
   for (const tplId of bucket.cards) {
     if (!CARDS[tplId]) continue;
     // Draft-safe render path: no {inHand} view-model — castability reads the
@@ -1309,10 +1340,10 @@ function renderReward() {
         console.warn('Skipping reward candidate with unknown kind:', cand);
         return;
       }
-      // Growing Deck growth: the mixed-phase tile is a compact teaser (the
-      // bucket names); committing it opens the bucketPick phase where the
-      // full 3-card bundles render. No slotIdx by design — handle early,
-      // like threeStickersBlind.
+      // Growing Deck growth: the mixed-phase tile is a compact teaser (each
+      // bucket's seed card name); committing it opens the bucketPick phase
+      // where the full 3-card bundles render. No slotIdx by design — handle
+      // early, like threeStickersBlind.
       if (cand.kind === 'addBucket') {
         const div = document.createElement('div');
         div.className = 'rwd-pair rwd-pair-bucket';
@@ -1331,7 +1362,9 @@ function renderReward() {
         div.appendChild(grow);
         appendRewardConnector(div, '+++');
         appendRewardFlavor(div, 'Choose one of three buckets',
-          cand.buckets.map(b => b.name).join(' · '));
+          cand.buckets.map(b => b.fallback ? 'Reinforcements'
+            : (CARDS[b.cards[0]] ? CARDS[b.cards[0]].name : b.cards[0]) + ' & friends')
+            .join(' · '));
         div.onclick = () => pickRewardCandidateClick(idx);
         optionsEl.appendChild(div);
         return;

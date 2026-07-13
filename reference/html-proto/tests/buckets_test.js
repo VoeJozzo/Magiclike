@@ -1,5 +1,5 @@
 // BUCKETS core: extraction rules, labeled edges, seed-and-grow invariants,
-// offer composition, naming, and the Reinforcements fallback.
+// offer composition, and the Reinforcements fallback (fallback: true).
 //
 // The generator is stochastic by design (softmax sampling), so most
 // assertions are STRUCTURAL INVARIANTS checked across many rolls (size,
@@ -127,6 +127,40 @@ function check(label, ok, info) {
   check('counterspell payoff wants counterspells, not every sorcery (counter_specialist)',
     w2('counter_specialist').wants.counterspell > 0 && !w2('counter_specialist').wants.spellcast
     && w2('counterspell').provides.counterspell > 0);
+  // Removal manufactures deaths (the "organic Murder" rule): destroy and
+  // damage-removal feed any-death payoffs; bounce and exile make NO death
+  // event and stay silent.
+  check('removal provides dies: murder 1, bolt 0.75; wash_away (bounce) none',
+    w2('murder').provides.dies === 1 && w2('lightning_bolt').provides.dies === 0.75
+    && !w2('wash_away').provides.dies);
+  check('murder <-> blood_artist is a live edge with the dies reason',
+    BUCKETS.edgeBetween('murder', 'blood_artist').w > 1
+    && /dies/.test(BUCKETS.edgeBetween('murder', 'blood_artist').reasons[0] || ''));
+  // Joe's generic-target correction ("your etb value deck will get more out
+  // of it than their deck"): a generic creature target includes YOURS, and a
+  // mass bounce rebuys your whole board — both provide etb/wrathproof and
+  // want etbtrigger. Deaths still require destruction (the dies pin above).
+  check('generic bounce provides replay value: mist_raider + cloud_caller provide etb',
+    w2('mist_raider').provides.etb >= 0.75 && w2('cloud_caller').provides.etb >= 0.75
+    && w2('mist_raider').wants.etbtrigger > 0);
+  check('mass bounce is the Evacuation engine: wash_away provides etb 1.5 + wants etbtrigger 3',
+    w2('wash_away').provides.etb === 1.5 && w2('wash_away').wants.etbtrigger === 3
+    && BUCKETS.edgeBetween('wash_away', 'bramble_acolyte').w > 2);
+  // The fallback flag IS the contract line (successor to the v2.2.21
+  // theme-label-implies-story invariant, re-keyed when display names died):
+  // a seed-grown bucket carries a story (why[] non-empty), a fallback
+  // bundle carries none — the flag and the story must never disagree.
+  let unstoried = 0, storiedFallbacks = 0;
+  for (let i = 0; i < 20; i++) {
+    for (const b of BUCKETS.rollBucketOffer([])) {
+      if (!b.fallback && !(b.why || []).length) unstoried++;
+      if (b.fallback && (b.why || []).length) storiedFallbacks++;
+    }
+  }
+  check('every seed-grown bucket carries its story (why[] non-empty)', unstoried === 0,
+    unstoried + ' grown buckets with no story');
+  check('fallback bundles never carry a story (value-sampling made no contract)',
+    storiedFallbacks === 0, storiedFallbacks + ' fallbacks with why[]');
 
   // this_card self-triggers must not register wants on other cards: an ETB
   // "when THIS enters, X" card is not an ally-ETB payoff.
@@ -161,9 +195,9 @@ function check(label, ok, info) {
 {
   const PIP_COLORS = ['W', 'U', 'B', 'R', 'G'];
   const colorsOfTpl = tpl => PIP_COLORS.filter(k => (tpl.cost || {})[k] > 0);
-  let sizeOk = true, landOk = true, nameOk = true, bucketTwoColorOk = true;
+  let sizeOk = true, landOk = true, flagOk = true, bucketTwoColorOk = true;
   let offColorCards = 0, totalCards = 0;
-  const seenNames = new Set();
+  const seenSets = new Set();
   // A committed two-color deck: off-color cards are ALLOWED (soft splash
   // temptation, Joe's call) but must stay rare; each bucket stays ≤2 colors.
   const deck = ['goblin_piercer', 'raging_goblin', 'blood_artist', 'carrion_feeder',
@@ -172,9 +206,9 @@ function check(label, ok, info) {
     const offer = BUCKETS.rollBucketOffer(deck);
     if (offer.length !== 3) sizeOk = false;
     for (const b of offer) {
-      seenNames.add(b.name);
+      seenSets.add(b.cards.slice().sort().join(','));
       if (b.cards.length !== 3 || b.lands.length !== 2) sizeOk = false;
-      if (!b.name || typeof b.name !== 'string') nameOk = false;
+      if (typeof b.fallback !== 'boolean') flagOk = false;
       const bucketCols = new Set();
       for (const id of b.cards) {
         totalCards++;
@@ -194,9 +228,9 @@ function check(label, ok, info) {
   check('no bucket spans more than two colors (the one hard color law)', bucketTwoColorOk);
   check('off-color splash cards stay rare (<20%; measured ~6%)',
     offColorCards / totalCards < 0.2, (100 * offColorCards / totalCards).toFixed(1) + '%');
-  check('every bucket has a name', nameOk);
-  check('offers vary across rolls (softmax, not argmax)', seenNames.size >= 3,
-    [...seenNames].join(', '));
+  check('every bucket declares its fallback flag', flagOk);
+  check('offers vary across rolls (softmax, not argmax)', seenSets.size >= 6,
+    seenSets.size + ' distinct card sets over 40 rolls');
 }
 
 // --- §3b second-color expansion + offer name diversity -----------------------
@@ -212,8 +246,10 @@ function check(label, ok, info) {
   let diverseOffers = 0;
   for (let i = 0; i < 15; i++) {
     const offer = BUCKETS.rollBucketOffer(monoRed);
-    const names = new Set(offer.map(b => b.name));
-    if (names.size >= 2) diverseOffers++;
+    // Distinct card SETS across the 3 tiles (plan diversity used to be
+    // checked via display names; those died at v2.2.22).
+    const sets = new Set(offer.map(b => b.cards.slice().sort().join(',')));
+    if (sets.size >= 2) diverseOffers++;
     for (const b of offer) {
       buckets++;
       const cols = new Set(['R']);
@@ -225,9 +261,16 @@ function check(label, ok, info) {
     }
   }
   check('mono-color deck: buckets can introduce a second color', sawSecondColor);
-  check('...and a third only as a rare soft temptation (<30%; measured ~10%)',
-    thirdColorBuckets / buckets < 0.3, `${thirdColorBuckets}/${buckets}`);
-  check('offers usually carry ≥2 distinct plan names', diverseOffers >= 10,
+  // v2.2.23 contract change: a ≤1-color deck has NO color fence at all
+  // (colorFitFactor returns 1 — "your first color, still no pull"), so
+  // off-deck-color buckets are free exploration, not a rare temptation
+  // (measured ~45-50% under the new system vs ~10% under the old cliff).
+  // The fence's contract is POST-commitment — pinned by the committed-deck
+  // off-color-rarity check in §3. Here we only pin that affinity seeding
+  // still keeps a mono deck's offers gravitating toward its color.
+  check('...and off-color buckets stay below two-thirds (affinity gravity)',
+    thirdColorBuckets / buckets < 0.67, `${thirdColorBuckets}/${buckets}`);
+  check('offers usually carry ≥2 distinct card sets', diverseOffers >= 10,
     `${diverseOffers}/15`);
 }
 
@@ -251,21 +294,24 @@ function check(label, ok, info) {
   check('banner buckets stay ≤2 colors (the pick chooses run colors)', twoColorOk);
 }
 
-// --- §5 seeded bucket + naming ----------------------------------------------
+// --- §5 seeded bucket serves the seed's plan ---------------------------------
 {
   const b = BUCKETS.rollBucket('goblin_chieftain', []);
-  check('seeded bucket contains its seed', b.cards.includes('goblin_chieftain'));
+  check('seeded bucket contains its seed AT cards[0] (the story contract)',
+    b.cards[0] === 'goblin_chieftain');
   check('seeded goblin bucket coherence > 0', b.coherence > 0, `coherence=${b.coherence}`);
 
-  // Naming: run several rolls; a chieftain-seeded bucket should usually be
-  // named for goblins (tribal boost), never nameless.
-  let goblinNamed = 0;
+  // Growth serves the seed's plan (successor to the "usually named Goblin
+  // Warband" naming pin): a chieftain-seeded bucket should usually recruit
+  // at least one other Goblin.
+  let goblinRecruited = 0;
   for (let i = 0; i < 12; i++) {
     const roll = BUCKETS.rollBucket('goblin_chieftain', []);
-    if (roll.name === 'Goblin Warband') goblinNamed++;
+    if (roll.cards.slice(1).some(id =>
+      (CARDS[id].types || []).includes('Goblin'))) goblinRecruited++;
   }
-  check('chieftain-seeded buckets usually named Goblin Warband', goblinNamed >= 8,
-    `${goblinNamed}/12`);
+  check('chieftain-seeded buckets usually recruit a Goblin', goblinRecruited >= 8,
+    `${goblinRecruited}/12`);
 }
 
 // --- §6 lands follow bucket pips --------------------------------------------
@@ -331,15 +377,52 @@ function check(label, ok, info) {
   let rolls = 0, seen = 0;
   while (seen < 4 && rolls++ < 60) {
     for (const b of BUCKETS.rollBucketOffer(deck)) {
-      if (b.name !== 'Reinforcements') continue;
+      if (!b.fallback) continue;
       seen++;
       sets.add(b.cards.slice().sort().join(','));
       if (b.cards.some(c => deck.includes(c))) soldOwnCard = true;
     }
   }
   check('Reinforcements never contains cards already in the deck', !soldOwnCard);
-  check('Reinforcements varies across offers', sets.size >= 2,
+  // If 60 rolls can't even produce 4 fallbacks, variance is moot — the
+  // vocabulary has made genuine Reinforcements that rare, which is the
+  // desired direction (each extraction wave lowered the fallback rate).
+  check('Reinforcements varies across offers (or is too rare to sample)',
+    sets.size >= 2 || seen < 4,
     `${sets.size} distinct sets from ${seen} offers in ${rolls} rolls`);
+}
+
+// --- §6e the dupe shelf (v2.2.24) --------------------------------------------
+{
+  const f = BUCKETS._dupeFactorForTest;
+  check('empty deck: everything rides at full shelf (factor 1)',
+    f('goblin_rabble', []) === 1);
+  check('one copy owned at n=1: factor 1/2; fresh cards untouched',
+    f('goblin_rabble', ['goblin_rabble']) === 0.5
+    && f('lightning_bolt', ['goblin_rabble']) === 1);
+  check('shelf shares at n=3: 3 copies -> 1/4, 1 copy -> 3/4 (never zero)',
+    f('raging_goblin', ['raging_goblin', 'raging_goblin', 'raging_goblin', 'lightning_bolt']) === 0.25
+    && f('lightning_bolt', ['raging_goblin', 'raging_goblin', 'raging_goblin', 'lightning_bolt']) === 0.75);
+  check('basics never set n (17 Forests must not switch the shelf off)',
+    f('goblin_rabble', ['forest', 'forest', 'forest', 'forest', 'goblin_rabble']) === 0.5);
+  check('nonbasic lands count (a Quarry pile is a deliberate identity)',
+    f('deepseam_quarry', ['deepseam_quarry', 'deepseam_quarry']) === 1 / 3);
+  // The wall retreats when touched: adding a 4th raging_goblin raises n,
+  // restocking every other card's shelf share (3/4 -> 4/5 for a 1-of).
+  check('reaching the wall raises it for everyone',
+    f('lightning_bolt', ['raging_goblin', 'raging_goblin', 'raging_goblin', 'raging_goblin', 'lightning_bolt'])
+      === 0.8);
+  // Behavioral never-zero: a goblin deck holding rabble at max copies can
+  // still be offered another rabble (gradient, not cap).
+  const gobDeck = ['goblin_rabble', 'goblin_chieftain', 'raging_goblin',
+    'mountain', 'mountain'];
+  let rabbleOffered = false;
+  for (let i = 0; i < 60 && !rabbleOffered; i++) {
+    for (const b of BUCKETS.rollBucketOffer(gobDeck)) {
+      if (!b.fallback && b.cards.includes('goblin_rabble')) rabbleOffered = true;
+    }
+  }
+  check('owned-at-max cards still appear in offers (never zero)', rabbleOffered);
 }
 
 // --- §7 theme health report -------------------------------------------------

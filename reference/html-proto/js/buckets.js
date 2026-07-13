@@ -1,12 +1,16 @@
 // BUCKETS — synergy-graph bucket generation (the Growing Deck's card faucet).
 //
-// A bucket is a named bundle of 3 cards + 2 basic lands that share a PLAN.
+// A bucket is a bundle of 3 cards + 2 basic lands that share a PLAN.
 // The core idea: a cohesive bucket is a micro-engine — cards that COMPLETE
 // each other (producer → consumer), not cards that merely resemble each
 // other. Blood Artist doesn't want other drain cards; it wants things that
 // die. The generator never decides "I'll build a Goblin bucket" — it picks
 // a seed card and asks the graph "who wants to be near this card?"; the
-// theme name is read off the answer afterward.
+// bucket's identity is its STORY (cards[0] is the seed, why[] the recruited
+// friends' reasons), read straight off the growth edges. There used to be a
+// derived display name on top (THEME_NAMES + dominant-edge nameBucket) —
+// killed at v2.2.22: a second, parallel summarization of the same bucket
+// that drifted from the story twice in one week (v2.2.15, v2.2.21).
 //
 // Pipeline (see docs/plans/plan-bucket-draft.md for the full design):
 //   §1 analyze(card)  — derive PROVIDES / WANTS resource sets + plan tags
@@ -22,9 +26,9 @@
 //                       whole legal pool, each card weighted by its deck-
 //                       affinity (weights-as-weights: the wishlist shapes
 //                       the odds, not the outcomes). Low-coherence buckets
-//                       fall back to a loose "Reinforcements" bundle so
+//                       fall back to a loose value-sampled bundle
+//                       (fallback: true — the UI's "Reinforcements") so
 //                       offers never come up empty.
-//   §5 naming         — bucket name = label of the dominant edge resource.
 //
 // API: rollBucketOffer(deckTplIds), rollBucket(seedTplId, deckTplIds),
 //      edgeBetween(aId, bId), analyzeCard(tplId), landsForCards(cardTplIds),
@@ -70,7 +74,44 @@ const MIN_COHERENCE = 3;        // buckets below this fall back to Reinforcement
 // There is deliberately NO deck-wide copy cap (Joe's call, 2026-07-06): an
 // earlier 4-copy rule here was an unauthorized import of MTG convention.
 // Redundancy self-prices via the graph (self-feeding cards pull their own
-// twins; pure payoffs don't).
+// twins; pure payoffs don't) — and since v2.2.24 ALSO via the dupe shelf
+// below, which is a gradient, never a cap.
+
+// The dupe shelf (Joe's 3.1, 2026-07-13, "derived from anti-card-counting
+// strategies"): imagine the pool holds n+1 copies of every card, where
+// n = the max copy-count over your deck's NONBASIC slots (basics excluded —
+// seventeen Forests would set n=17 and switch the mechanism off; nonbasic
+// land piles are a deliberate identity and count). A candidate's weight is
+// multiplied by its remaining shelf share, (n+1 − copies)/(n+1):
+// fresh cards ride at ×1, your n-th copy at 1/(n+1) — never zero, and the
+// wall RETREATS when touched: reaching n+1 copies of anything raises n,
+// restocking the shelf for everyone ("you can always go deeper; it just
+// gets progressively rarer"). Multiplicative on the same weights the graph
+// already computes, so self-feeding twins survive (a second recruiter's
+// mutual edges keep it competitive at ×½) while a second Murder's
+// edgeless twin gets halved into oblivion — the discrimination falls out
+// of the arithmetic, no rule written. Ledger note (Joe): this is demand-
+// driven scarcity, "almost like tcgplayer — Tarmogoyf isn't actually rarer
+// than Death's Shadow, just more people trying to put copies in their
+// decks" — the same multiplier fed by pool-wide demand instead of deck
+// copies would be an emergent global-rarity mechanism. That door is noted
+// and deliberately NOT opened (his call, "which we do not currently").
+function dupeShelf(deckTplIds) {
+  const counts = {};
+  let n = 0;
+  for (const id of (deckTplIds || [])) {
+    const tpl = CARDS[id];
+    if (!tpl || hasType(tpl, 'Basic')) continue;
+    counts[id] = (counts[id] || 0) + 1;
+    if (counts[id] > n) n = counts[id];
+  }
+  return { counts, n };
+}
+function dupeFactor(tplId, shelf) {
+  const copies = shelf.counts[tplId] || 0;
+  if (copies === 0) return 1;
+  return (shelf.n + 1 - copies) / (shelf.n + 1);
+}
 
 // Baseline seed weight added to every legal card's deck-affinity before
 // proportional sampling (Laplace smoothing). This is the exploration dial
@@ -89,60 +130,6 @@ const SEED_BASE_WEIGHT = 0.75;
 // If a broad tribe ever swamps offers, the principled lever is specificity
 // weighting (scale a resource's edges down by how many cards provide it),
 // not a ban list.
-
-// ---------------------------------------------------------------------------
-// §5 (data) Theme names — resource key → bucket display name.
-// The one place flavor is authored. Fallbacks: tribal themes without an
-// entry get "<Subtype> Pack"; anything else gets "Reinforcements".
-// ---------------------------------------------------------------------------
-const THEME_NAMES = {
-  'sub:Goblin':   'Goblin Warband',
-  'sub:Spirit':   'Spirit Choir',
-  'sub:Soldier':  'The Muster',
-  'sub:Wizard':   'Arcanum Circle',
-  'sub:Cleric':   'The Congregation',
-  'sub:Knight':   'The Vanguard',
-  'sub:Beast':    'The Wild Hunt',
-  'sub:Treefolk': 'The Old Growth',
-  'sub:Druid':    'Grove Keepers',
-  'sub:Elf':      'The Greenweald',
-  'sub:Drake':    'Drake Aerie',
-  'sub:Vampire':  'The Thirst',
-  'sub:Zombie':   'The Risen',
-  'sub:Artifact': 'The Foundry',
-  dies:      'Grave Bargains',
-  discard:   'The Toll',
-  opp_loss:  'Bloodletting',
-  fodder:    'The Expendables',
-  etb:       'The Processional',
-  lifegain:  'Communion',
-  spellcast: 'Spellstorm',
-  wide:      'The Horde',
-  flying:    'Skyborne',
-  aggro:     'The Red Charge',
-  removal:   'The Culling',
-  cardflow:  'Deep Lore',
-  // Wave 2 + extraction-sweep vocabulary. The name table must grow with the
-  // resource vocabulary: a synergy bucket themed on an unnamed resource
-  // falls back to the 'Reinforcements' LABEL, which carries a no-dupes
-  // contract that synergy buckets never made (caught by the buckets_test
-  // sold-own-card pin when the sweep made mind_control a fodder provider).
-  self_pain:  'Blood Price',
-  trick:      'Sleight of Hand',
-  flashcast:  'The Ambush',
-  burnspell:  'Kindling',
-  carddraw:   'The Archive',
-  activation: 'The Clockworks',
-  landdrop:   'The Frontier',
-  animate:    'The Wakening',
-  tapped:     'The Sleep Raid',
-  wrathproof: 'The Aftermath',
-  etbtrigger: 'The Revolving Door',
-  tapability: 'The Clockworks',
-  counterspell: 'The Refusal',
-  'kw:flying': 'Skyborne',
-  fallback:  'Reinforcements',
-};
 
 // Test seam: all randomness flows through _rand so tests can inject a
 // deterministic sequence (mirrors run.js's _setPendingRewardForTest pattern).
@@ -341,10 +328,22 @@ function analyze(tpl) {
   // bounce-your-own does both more weakly (replay costs the mana again).
   const blinks = kinds.some(k => k.kind === 'move_card' && k.from_zone === 'battlefield' && k.to_zone === 'exile')
     && kinds.some(k => k.kind === 'move_card' && k.from_zone === 'exile' && k.to_zone === 'battlefield');
+  // A GENERIC creature target includes yours (Joe's correction, 2026-07-13:
+  // "your etb value deck will get more out of it than their deck bc they
+  // didn't build around that") — wash_away can always be pointed inward,
+  // so it provides the same replay/dodge value as a printed
+  // "creature you control" bounce. Only opp-locked targets are excluded.
   const bouncesOwn = kinds.some(k => k.kind === 'affect_creature' && k.severity === 'bounce')
-    && targetSteps.some(s => s.t === 'your_creature');
+    && targetSteps.some(s => s.t === 'your_creature' || s.t === 'creature');
+  // Mass bounce (wash_away, devastation_tide) rebuys your WHOLE board's
+  // ETBs and dodges a wrath in response — Evacuation-plus-Processional is a
+  // real archetype. Symmetry (their board bounces too) is priced into the
+  // modest weights.
+  const massBounce = kinds.some(k => k.kind === 'affect_creature' && k.severity === 'bounce'
+    && /^all/.test(String(k.scope || '')));
   if (blinks) { bump(provides, 'etb', 1.5); bump(provides, 'wrathproof', 1.5); }
-  if (bouncesOwn) { bump(provides, 'etb', 0.75); bump(provides, 'wrathproof', 1); }
+  if (massBounce) { bump(provides, 'etb', 1.5); bump(provides, 'wrathproof', 1.5); }
+  else if (bouncesOwn) { bump(provides, 'etb', 0.75); bump(provides, 'wrathproof', 1); }
   // etbtrigger: creatures whose triggers fire on entry carry re-usable ETB
   // VALUE — distinct from 'etb' (every body enters; only these are worth
   // re-entering). Blink is nearly dead pointed at a vanilla bear and
@@ -362,6 +361,20 @@ function analyze(tpl) {
     bump(provides, 'fodder', 1.5);
     bump(provides, 'dies', 1);
   }
+  // Removal MANUFACTURES death events, and any-death payoffs (blood_artist's
+  // archetype has no controller term — it hears THEIR creatures dying) feed
+  // on them: "Murder feeds Blood Artist [dies]" is the organic road into a
+  // deck that wants deaths (Joe's sweep follow-up, 2026-07-13). Destroy
+  // effects only — exile and bounce make no death event. Damage-based
+  // removal kills via SBAs, slightly less reliably (survivors, face mode).
+  if (isSpellCard && kinds.some(k => k.kind === 'affect_creature' && k.severity === 'destroy')) {
+    bump(provides, 'dies', 1);
+  }
+  if (isSpellCard && kinds.some(k => k.kind === 'damage' && !k.scope)
+      && targetSteps.some(st => /creature/.test(String(st.t || '')))) {
+    bump(provides, 'dies', 0.75);
+  }
+  if (kinds.some(k => k.kind === 'fight')) bump(provides, 'dies', 0.75);
 
   // --- WANTS ---
   // Trigger conditions. `this_card` triggers are self-referential (my own
@@ -502,8 +515,9 @@ function analyze(tpl) {
     bump(wants, 'tapability', 2);
   }
   // Blink/bounce-own want ETB VALUE to re-fire (the flicker-deck edge —
-  // surfaced by Joe's direction review of the sweep).
-  if (blinks) bump(wants, 'etbtrigger', W_WANT_PAYOFF);
+  // surfaced by Joe's direction review of the sweep). Mass bounce wants it
+  // hardest: every ETB creature multiplies the rebuy.
+  if (blinks || massBounce) bump(wants, 'etbtrigger', W_WANT_PAYOFF);
   else if (bouncesOwn) bump(wants, 'etbtrigger', 2);
 
   // --- Plan tags (weak similarity: shared strategy, not producer/consumer) ---
@@ -622,8 +636,8 @@ function deckColorSet(deckTplIds) {
 
 // The one HARD color law: a single bucket never spans more than two colors
 // (a 3-color 3-card bundle isn't a plan, it's a pile). Deck fit is SOFT —
-// see deckFitMultiplier: off-color candidates are down-weighted, never
-// banned; whether a splash is castable is the player's call to make.
+// see colorFitFactor: off-color candidates are down-weighted by commitment,
+// never banned; whether a splash is castable is the player's call to make.
 function isLegalCandidate(cand, bucket) {
   const bucketColors = new Set();
   for (const b of bucket) for (const c of b.colors) bucketColors.add(c);
@@ -646,21 +660,41 @@ function weightedSample(entries) {
   return entries[entries.length - 1].item;
 }
 
-// Soft third-color handling (Joe's call: castability is a skill issue, not a
-// law). A deck's first two colors are free; each ADDITIONAL new color a
-// candidate would introduce multiplies its weight by this factor — off-color
-// cards become rare temptations the player may decline, mirroring classic
-// draft's escalating splash penalty instead of the old hard ban.
-const OFF_COLOR_PENALTY = 0.05;
-function deckFitMultiplier(cand, deckColors) {
-  const newColors = cand.colors.filter(c => !deckColors.has(c)).length;
-  const freeSlots = Math.max(0, 2 - deckColors.size);
-  const penalized = Math.max(0, newColors - freeSlots);
-  return penalized > 0 ? Math.pow(OFF_COLOR_PENALTY, penalized) : 1;
+// Presence-pull color allocation (Joe's 2.1, 2026-07-13 — replaces the old
+// deckFitMultiplier ×0.05-per-extra-color cliff, which was commitment-blind
+// — one white card fenced a third color exactly as hard as twelve — and
+// near-banned marginal splashes via the free-slot + magic-constant shape).
+// What survives from 2.1: the commitment curriculum. Empty and mono decks
+// explore freely ("when you start, no color pull; your first color, still
+// no pull"); once ≥2 colors are committed, off-color candidates are
+// suppressed by base^(C·offFraction) — the fence scales continuously with
+// how many colors you've committed (C) and with how off-color the card is
+// (offFraction = share of its pip-colors the deck does NOT own, so a
+// half-in-color gold card is fenced far less than a fully foreign one:
+// the marginal-splash legalization the cliff denied).
+// What did NOT survive: the additive form ("(color_pull)+(want pull)").
+// Measured 2026-07-13 (200 simulated 7-pick drafts per k, random picker):
+// additive pull at k=0.5..3 collapsed clean-two-color decks 83.5%→≤10%,
+// sprawled decks to 4-5 colors, and drove the fallback rate 16%→30-44%
+// (rising with k) — same mechanism as the ε-value dead end (plan doc §8b):
+// additive uniform bonuses flatten within-group ranking and can't produce
+// the ~20× between-group suppression colors need. Color force must be
+// MULTIPLICATIVE. One knob (`let` for the _setColorPullForTest sweep seam);
+// measured origin 0.3 (v2.2.23), re-tuned to 0.25 when the dupe shelf
+// shifted weight toward fresh (disproportionately off-color) cards and
+// softened the color shape — 0.25 under the shelf reproduces the 0.3
+// pre-shelf histogram (v2.2.24 changelog has both tables).
+let SPLASH_BASE = 0.25;
+function colorFitFactor(cand, deckColors) {
+  const C = deckColors.size;
+  if (C <= 1 || cand.colors.length === 0) return 1;
+  const off = cand.colors.filter(c => !deckColors.has(c)).length;
+  if (off === 0) return 1;
+  return Math.pow(SPLASH_BASE, C * (off / cand.colors.length));
 }
 
 
-function growBucket(seedAnalysis, deckAnalyses, deckColors) {
+function growBucket(seedAnalysis, deckAnalyses, deckColors, shelf) {
   const bucket = [seedAnalysis];
   const why = [];
   while (bucket.length < BUCKET_CARDS) {
@@ -681,14 +715,13 @@ function growBucket(seedAnalysis, deckAnalyses, deckColors) {
       // re-ranks cards that already serve the seed's plan.
       if (score <= 0) continue;
       score += DECK_COUPLING * edgeMassIntoDeck(cand, deckAnalyses);
+      // Color fence toward the DECK's committed colors (the deck is the
+      // color identity; the bucket's own ≤2-color law is enforced by
+      // isLegalCandidate above). Multiplicative, post-gate — the plan
+      // stays sovereign; the fence only reweights plan-legal candidates.
+      score *= colorFitFactor(cand, deckColors);
+      score *= dupeFactor(cand.tplId, shelf);
       if (bucket.some(b => b.cost === cand.cost)) score *= CURVE_CLASH_PENALTY;
-      // Fit is judged against deck colors PLUS colors this bucket already
-      // introduces — otherwise each candidate would claim the free
-      // new-color slot independently and a mono-color deck could be
-      // offered a fully off-color two-color bundle at no penalty.
-      const effColors = new Set(deckColors);
-      for (const b of bucket) for (const c of b.colors) effColors.add(c);
-      score *= deckFitMultiplier(cand, effColors);
       scored.push({ item: { cand, reasons }, score });
     }
     const pick = weightedSample(scored.map(e => ({ item: e.item, w: Math.pow(e.score, GROWTH_SHARPNESS) })));
@@ -713,7 +746,9 @@ function coherenceOf(bucket) {
 function reinforcementsBucket(deckColors, deckTplIds) {
   // Goodstuff's job is NEW power, never redundancy — cards you already own
   // are excluded (dupes are earned through synergy buckets, where a twin
-  // must pull its weight via self-feeding edges). Cards are softmax-sampled
+  // must pull its weight via self-feeding edges), which is why the dupe
+  // shelf isn't applied here: every remaining candidate sits at factor 1
+  // by construction. Cards are softmax-sampled
   // by intrinsic value, not top-sorted: a playtest caught the sort-with-
   // small-jitter version selling the player their exact deck back, three
   // offers in a row.
@@ -727,9 +762,7 @@ function reinforcementsBucket(deckColors, deckTplIds) {
       if (!isLegalCandidate(c, bucket)) continue;
       let v = ENGINE.getCardValue(CARDS[c.tplId], 'draft');
       if (bucket.some(b => b.cost === c.cost)) v *= CURVE_CLASH_PENALTY;
-      const effColors = new Set(deckColors);
-      for (const b of bucket) for (const cc of b.colors) effColors.add(cc);
-      v *= deckFitMultiplier(c, effColors);
+      v *= colorFitFactor(c, deckColors);
       if (v > 0) entries.push({ item: c, w: v });
     }
     const pick = weightedSample(entries);
@@ -740,7 +773,7 @@ function reinforcementsBucket(deckColors, deckTplIds) {
 }
 
 // ---------------------------------------------------------------------------
-// §4 Lands + naming + offer composition.
+// §4 Lands + offer composition.
 // ---------------------------------------------------------------------------
 // Bucket lands, in Joe's words: "What's the most common color? You get one
 // of those! What's the second most common color? You get one of those!"
@@ -765,39 +798,16 @@ function landsForCards(cardTplIds) {
 }
 const COLOR_TO_BASIC = { W: 'plains', U: 'island', B: 'swamp', R: 'mountain', G: 'forest' };
 
-// Bucket name = label of the resource carrying the most internal edge weight.
-// Tribal resources win ties (a Goblin bucket should be named for goblins even
-// when generic dies-edges carry similar mass).
-function nameBucket(bucket) {
-  const mass = {};
-  for (let i = 0; i < bucket.length; i++) {
-    for (let j = i + 1; j < bucket.length; j++) {
-      const a = bucket[i], b = bucket[j];
-      for (const [r, pw] of Object.entries(a.provides)) {
-        if (b.wants[r]) mass[r] = (mass[r] || 0) + pw * b.wants[r] * idf(r);
-      }
-      for (const [r, pw] of Object.entries(b.provides)) {
-        if (a.wants[r]) mass[r] = (mass[r] || 0) + pw * a.wants[r] * idf(r);
-      }
-      for (const t of a.tags) if (b.tags.has(t)) mass[t] = (mass[t] || 0) + W_HOMOPHILY;
-    }
-  }
-  let best = null;
-  let bestScore = 0;
-  for (const [r, m] of Object.entries(mass)) {
-    const tribalBoost = r.startsWith('sub:') ? 1.5 : 1;
-    if (m * tribalBoost > bestScore) { bestScore = m * tribalBoost; best = r; }
-  }
-  if (!best) return THEME_NAMES.fallback;
-  if (THEME_NAMES[best]) return THEME_NAMES[best];
-  if (best.startsWith('sub:')) return best.slice(4) + ' Pack';
-  return THEME_NAMES.fallback;
-}
-
-function finishBucket(bucketAnalyses, why) {
+function finishBucket(bucketAnalyses, why, isFallback) {
   const cards = bucketAnalyses.map(a => a.tplId);
   return {
-    name: nameBucket(bucketAnalyses),
+    // The fallback flag IS the contract line: a seed-grown bucket carries a
+    // story (cards[0] = seed, why[] = recruited friends' reasons); a
+    // value-sampled goodstuff bundle carries neither and must say so —
+    // its cards can share accidental edge mass, and a story implies a
+    // synergy contract that value-sampling never made (v2.2.21's bug, when
+    // this distinction was carried by a derived display name instead).
+    fallback: !!isFallback,
     cards,
     lands: landsForCards(cards),
     coherence: Math.round(coherenceOf(bucketAnalyses) * 10) / 10,
@@ -816,7 +826,7 @@ function finishBucket(bucketAnalyses, why) {
 // special cases: your wishlist shapes the ODDS, not the outcomes — the
 // wishlist's top is likely, coherent-but-uncommitted plans are possible,
 // and the long tail stays alive. Sampling is without replacement.
-function pickSeeds(deckAnalyses, deckColors) {
+function pickSeeds(deckAnalyses, deckColors, shelf) {
   const candidates = _pool.filter(c => !c.isLand);
   const payoffness = c => {
     let sum = 0;
@@ -828,7 +838,8 @@ function pickSeeds(deckAnalyses, deckColors) {
     : payoffness(c);
   let entries = candidates.map(c => ({
     item: c,
-    w: (SEED_BASE_WEIGHT + weightOf(c)) * deckFitMultiplier(c, deckColors),
+    w: (SEED_BASE_WEIGHT + weightOf(c)) * colorFitFactor(c, deckColors)
+       * dupeFactor(c.tplId, shelf),
   }));
   const seeds = [];
   for (let k = 0; k < OFFER_SIZE && entries.length; k++) {
@@ -846,37 +857,32 @@ function rollBucketOffer(deckTplIds) {
   const deckAnalyses = deckIds.map(id => _byId[id]).filter(Boolean);
   const deckColors = deckColorSet(deckIds);
   const offer = [];
-  const usedNames = new Set();
-  // Grow one bucket per seed. An offer of three identically-named plans is
-  // a boring offer, so a bucket whose name duplicates an already-offered one
-  // gets ONE retry with a fresh seed before being accepted anyway.
+  // Grow one bucket per seed. Offer-level plan diversity is carried by seed
+  // sampling without replacement; the old name-dedup retry (re-roll a bucket
+  // whose derived display name collided with an already-offered one) died
+  // with the naming system — it was string-keyed on a cosmetic proxy and
+  // leaked in both directions. If PICKLOG shows offers converging on one
+  // plan, the principled replacement is seed-level MMR, not a name check.
+  const shelf = dupeShelf(deckIds);
   const tryAddBucket = (seed) => {
-    const { bucket, why } = growBucket(seed, deckAnalyses, deckColors);
+    const { bucket, why } = growBucket(seed, deckAnalyses, deckColors, shelf);
     if (bucket.length === BUCKET_CARDS && coherenceOf(bucket) >= MIN_COHERENCE) {
       return finishBucket(bucket, why);
     }
     const loose = reinforcementsBucket(deckColors, deckIds);
-    return (loose.length === BUCKET_CARDS) ? finishBucket(loose, []) : null;
+    return (loose.length === BUCKET_CARDS) ? finishBucket(loose, [], true) : null;
   };
-  const seeds = pickSeeds(deckAnalyses, deckColors);
+  const seeds = pickSeeds(deckAnalyses, deckColors, shelf);
   for (const seed of seeds) {
     if (offer.length >= OFFER_SIZE) break;
-    let bucket = tryAddBucket(seed);
-    if (bucket && usedNames.has(bucket.name)) {
-      const retrySeeds = pickSeeds(deckAnalyses, deckColors)
-        .filter(s => s.tplId !== seed.tplId && !offer.some(b => b.cards.includes(s.tplId)));
-      if (retrySeeds.length) {
-        const retry = tryAddBucket(retrySeeds[Math.floor(_rand() * retrySeeds.length)]);
-        if (retry && !usedNames.has(retry.name)) bucket = retry;
-      }
-    }
-    if (bucket) { usedNames.add(bucket.name); offer.push(bucket); }
+    const bucket = tryAddBucket(seed);
+    if (bucket) offer.push(bucket);
   }
   // Backfill with Reinforcements if seeding starved (tiny pools, weird colors).
   while (offer.length < OFFER_SIZE) {
     const loose = reinforcementsBucket(deckColors, deckIds);
     if (loose.length < BUCKET_CARDS) break;
-    offer.push(finishBucket(loose, []));
+    offer.push(finishBucket(loose, [], true));
   }
   return offer;
 }
@@ -888,7 +894,7 @@ function rollBucket(seedTplId, deckTplIds) {
   const deckIds = deckTplIds || [];
   const deckAnalyses = deckIds.map(id => _byId[id]).filter(Boolean);
   const deckColors = deckColorSet(deckIds);
-  const { bucket, why } = growBucket(seed, deckAnalyses, deckColors);
+  const { bucket, why } = growBucket(seed, deckAnalyses, deckColors, dupeShelf(deckIds));
   return finishBucket(bucket, why);
 }
 
@@ -936,5 +942,7 @@ return {
   // Test seams:
   _resetCacheForTest: () => { _pool = null; _byId = null; },
   _setRandForTest: (fn) => { _rand = fn || Math.random; },
+  _setColorPullForTest: (k) => { SPLASH_BASE = (typeof k === 'number') ? k : 0.3; },
+  _dupeFactorForTest: (tplId, deckTplIds) => dupeFactor(tplId, dupeShelf(deckTplIds)),
 };
 })();

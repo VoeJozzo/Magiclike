@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.2.17`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.2.24`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -2729,3 +2729,132 @@ errors); suite 150 files / 2963 green (module loads clean under the Node
 stubs). Roadmap parked in chat: P2 = bucket-offer overlay (see where an
 offer attaches before picking), P3 = codex fog-of-war, P4 = realized-
 synergy postgame report.
+
+v2.2.18: Constellation P2 — the offer overlay (Joe: "Yes, I like this!").
+Every bucket tile (run-start draft AND the addBucket reward — shared
+makeBucketTileEl) gains a "🔭 preview" button: CONSTELLATION.showOffer
+renders the offer's cards as gold-ringed INCOMING stars over your current
+deck constellation, with deck-to-offer attachment edges drawn dashed gold
+— you see where the bucket hooks in before you pick. Deck source falls
+back to draft picks pre-run (the run-start draft happens before RUN is
+active). Preview click stopPropagation — previewing never picks. Tabs
+exit offer mode; hint line explains the encoding. Browser-verified
+end-to-end (boon gate → offer 1 preview → pick → offer 2 preview shows
+real attachments; zero page errors). Also: Constellation P3 (codex
+fog-of-war) backlogged at Joe's direction — he wants it but the FoW
+design isn't thought through yet; P4 note (realized-synergy should tie
+into PICKLOG). Suite 150 files / 2963 green.
+
+v2.2.19: Removal manufactures deaths — the "organic Murder" rule (Joe:
+"the thing we want is some organic way for Murder to show up in my demon
+tribal deck"; approved as a step, not a complete solution). Destroy-effect
+spells provide dies 1, damage-removal and fight spells 0.75; bounce and
+exile provide NOTHING (no death event — the precision the doctrine
+demands). Murder <-> blood_artist is now a live 1.47 edge with the reason
+"murder feeds blood_artist [dies]", which lets removal pass the growth
+plan gate into any-death buckets organically. 2 pins (incl. the wash_away
+negative). Remaining removal-orphan discussion (base-weight modulation vs
+bucket tail seat) still open in chat. Suite 150 files / 2965 green.
+
+v2.2.20: Bounce replay value — Joe's generic-target correction ("your etb
+value deck will get more out of it than their deck bc they didn't build
+around that"). A generic creature target INCLUDES yours, so any-target
+bounce provides etb 0.75 + wrathproof 1 and wants etbtrigger 2
+(mist_raider, cloud_caller, echo_spirit join strategic_retreat); only
+opp-locked targets stay excluded. And wash_away turned out to be a MASS
+bounce (scope all_creatures) — the Evacuation engine: rebuys your whole
+board's ETBs, provides etb 1.5 + wrathproof 1.5, wants etbtrigger 3
+(devastation_tide same). wash_away <-> bramble_acolyte is now a 3.59
+strong edge. Deaths still require destruction — the v2.2.19 dies rule and
+its wash_away negative pin are untouched (bounce makes replay value, not
+death events). Reinforcements variance pin hardened: scarcity of genuine
+fallbacks is itself a pass (each extraction wave lowers the rate).
+Zero-hook 12% -> 11%. Suite 150 files / 2967 green.
+
+v2.2.21: Narrative bucket tiles (Joe's framing: "[Card A] wants to join
+your deck! and it brings its friends [B] due to [reason]"). Every synergy
+bucket tile now tells its own story — the seed (cards[0], growth order
+preserved) headlines, each recruited friend shows its strongest edge
+reason inline ("Chrysalis Ward feeds Soulblade Captain (spellcast)");
+friend-recruits-friend attributions surface as-is per Joe ("goblin rabble
+brings ITS friend carrion feeder is also fine"). Theme name stays as the
+flavor chip. Building it caught the INVERSE of the v2.2.15 naming bug:
+coherence-fallback goodstuff bundles ran through the namer and 4/90 wore
+theme labels ("The Revolving Door") their value-sampled contents never
+earned — fallbacks are now always named Reinforcements, and a new pin
+enforces the invariant "a theme label implies a synergy story (why[]
+non-empty)". Browser-verified on the draft offer screen. Suite 150 files
+/ 2968 green.
+
+v2.2.22: Killed the bucket labelling system (Joe: "there are other ways to
+generate a header than what we have right now, and what we have right now
+has real costs. sounds like a very solid cut."). THEME_NAMES, nameBucket,
+the tribal tiebreak, forceFallbackName, and the name-dedup retry are all
+deleted — the v2.2.21 narrative tiles obsoleted the label's communication
+job (the seed's story IS the header), and the name was a second, parallel
+summarization of the bucket that drifted from the story twice in one week
+(v2.2.15: unnamed resources fell to the Reinforcements label; v2.2.21:
+fallbacks wore theme labels). Buckets now carry `fallback: boolean` — the
+contract line the name was a proxy for. UI: themed tiles lead with the
+story, only fallback bundles wear a flat REINFORCEMENTS label; the
+addBucket teaser lists seed card names ("Goblin Chieftain & friends").
+PICKLOG bucket records key on seed (cards[0]) + fallback flag instead of
+name (old persisted records keep `name`; readers must tolerate both).
+Offer plan-diversity is carried by seed sampling without replacement; if
+PICKLOG shows offers converging on one plan, the principled fix is
+seed-level MMR, not a name check. Tests re-keyed: fallback<->story
+invariant (both directions now), Goblin pin checks actual Goblin
+recruitment instead of the "Goblin Warband" string, offer diversity
+measured on card sets.
+
+v2.2.23: Presence-pull color allocation (Joe's 2.1) — the deckFitMultiplier
+cliff is dead. What shipped keeps 2.1's commitment curriculum: empty and
+mono decks explore colors freely ("when you start, no color pull; your
+first color, still no pull"); once >=2 colors are committed, off-color
+candidates are suppressed by SPLASH_BASE^(C x offFraction) — the fence
+scales continuously with committed-color count AND with how off-color the
+card is, so a half-in-color gold card is fenced far less than a fully
+foreign one (the marginal-splash legalization the old commitment-blind
+x0.05 cliff denied). Applied at all three sites (seeds, growth post-gate,
+Reinforcements); free-slot logic and OFF_COLOR_PENALTY deleted.
+The additive form Joe originally sketched was built FIRST and measured
+out (200 simulated 7-pick drafts per dose, random picker): at k=0.5..3
+clean-two-color decks collapsed 83.5%->2.5-10%, decks sprawled to 4-5
+colors, fallback exploded 16%->30-44% rising with k — the same law the
+eps-value dead end proved (plan doc 8b): additive uniform bonuses flatten
+within-group ranking and cannot produce the ~20x between-group suppression
+colors need; color force must be multiplicative. Multiplicative sweep:
+base 0.2 = 76.5% clean2 / 1.31 splash pips; 0.3 = 67.5% / 1.90; 0.4 =
+46.5% / 2.94; 0.5 = 36.5% / 3.92 — fallback flat (16.8-17.9% vs 16.2%
+baseline) and same-tribe pick rate eased 44.9%->41-43% (mild anti-inbred)
+at every dose. Shipped at 0.3: two-color modal shape holds while the
+marginal splash roughly doubles (0.97->1.90 pips) — classic feel, cliff
+gone, one knob. Mono-deck test pin re-keyed to the new contract (free
+exploration at C<=1 is by design; the fence is pinned post-commitment).
+Suite 150 files / 2969 green.
+
+v2.2.24: The dupe shelf (Joe's 3.1, "derived from anti-card-counting
+strategies") — the pool notionally holds n+1 copies of every card, where
+n = max copy-count over your deck's NONBASIC slots (basics excluded so 17
+Forests can't switch it off; nonbasic land piles are a deliberate identity
+and count). Candidate weights at seeds and growth are multiplied by the
+remaining shelf share (n+1-copies)/(n+1): fresh cards x1, your n-th copy
+1/(n+1) — never zero, and the wall retreats when touched (reaching n+1
+copies raises n, restocking the shelf for everyone). Multiplicative on the
+graph's own weights, so self-feeding twins survive (recruiter's mutual
+edges keep its twin competitive at x1/2) while an edgeless second Murder
+halves into oblivion — the discrimination is emergent, no rule written.
+Reinforcements needs no shelf (it already excludes owned cards outright).
+Measured (200 simulated 7-pick drafts, both dials): dupe slots per deck
+3.73 -> 1.80, max copies 2.69 -> 1.89; same-tribe pick rate eased
+43.2% -> 38-39% (fewer twin-stacks — mild anti-inbred bonus); fallback
++2-4pp (the twin was sometimes the best coherent recruit — acceptable,
+watched). Knock-on: the shelf shifts weight toward fresh cards, which
+skew off-color, softening the color shape (clean2 67% -> 55.5%) —
+SPLASH_BASE re-tuned 0.3 -> 0.25, which reproduces the v2.2.23 color
+histogram under the shelf (clean2 65.5%, splash pips 2.00). Ledgered in
+the shelf comment: demand-driven scarcity is "almost like tcgplayer"
+(Joe) — the same multiplier fed by pool-wide demand would be an emergent
+global-rarity mechanism; door noted, deliberately unopened. 7 new shelf
+pins (arithmetic, basics exclusion, quarry inclusion, wall-retreat,
+behavioral never-zero). Suite 150 files / 2976 green.
