@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.2.23`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.2.24`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -2832,3 +2832,29 @@ marginal splash roughly doubles (0.97->1.90 pips) — classic feel, cliff
 gone, one knob. Mono-deck test pin re-keyed to the new contract (free
 exploration at C<=1 is by design; the fence is pinned post-commitment).
 Suite 150 files / 2969 green.
+
+v2.2.24: The dupe shelf (Joe's 3.1, "derived from anti-card-counting
+strategies") — the pool notionally holds n+1 copies of every card, where
+n = max copy-count over your deck's NONBASIC slots (basics excluded so 17
+Forests can't switch it off; nonbasic land piles are a deliberate identity
+and count). Candidate weights at seeds and growth are multiplied by the
+remaining shelf share (n+1-copies)/(n+1): fresh cards x1, your n-th copy
+1/(n+1) — never zero, and the wall retreats when touched (reaching n+1
+copies raises n, restocking the shelf for everyone). Multiplicative on the
+graph's own weights, so self-feeding twins survive (recruiter's mutual
+edges keep its twin competitive at x1/2) while an edgeless second Murder
+halves into oblivion — the discrimination is emergent, no rule written.
+Reinforcements needs no shelf (it already excludes owned cards outright).
+Measured (200 simulated 7-pick drafts, both dials): dupe slots per deck
+3.73 -> 1.80, max copies 2.69 -> 1.89; same-tribe pick rate eased
+43.2% -> 38-39% (fewer twin-stacks — mild anti-inbred bonus); fallback
++2-4pp (the twin was sometimes the best coherent recruit — acceptable,
+watched). Knock-on: the shelf shifts weight toward fresh cards, which
+skew off-color, softening the color shape (clean2 67% -> 55.5%) —
+SPLASH_BASE re-tuned 0.3 -> 0.25, which reproduces the v2.2.23 color
+histogram under the shelf (clean2 65.5%, splash pips 2.00). Ledgered in
+the shelf comment: demand-driven scarcity is "almost like tcgplayer"
+(Joe) — the same multiplier fed by pool-wide demand would be an emergent
+global-rarity mechanism; door noted, deliberately unopened. 7 new shelf
+pins (arithmetic, basics exclusion, quarry inclusion, wall-retreat,
+behavioral never-zero). Suite 150 files / 2976 green.

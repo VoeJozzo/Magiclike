@@ -74,7 +74,44 @@ const MIN_COHERENCE = 3;        // buckets below this fall back to Reinforcement
 // There is deliberately NO deck-wide copy cap (Joe's call, 2026-07-06): an
 // earlier 4-copy rule here was an unauthorized import of MTG convention.
 // Redundancy self-prices via the graph (self-feeding cards pull their own
-// twins; pure payoffs don't).
+// twins; pure payoffs don't) — and since v2.2.24 ALSO via the dupe shelf
+// below, which is a gradient, never a cap.
+
+// The dupe shelf (Joe's 3.1, 2026-07-13, "derived from anti-card-counting
+// strategies"): imagine the pool holds n+1 copies of every card, where
+// n = the max copy-count over your deck's NONBASIC slots (basics excluded —
+// seventeen Forests would set n=17 and switch the mechanism off; nonbasic
+// land piles are a deliberate identity and count). A candidate's weight is
+// multiplied by its remaining shelf share, (n+1 − copies)/(n+1):
+// fresh cards ride at ×1, your n-th copy at 1/(n+1) — never zero, and the
+// wall RETREATS when touched: reaching n+1 copies of anything raises n,
+// restocking the shelf for everyone ("you can always go deeper; it just
+// gets progressively rarer"). Multiplicative on the same weights the graph
+// already computes, so self-feeding twins survive (a second recruiter's
+// mutual edges keep it competitive at ×½) while a second Murder's
+// edgeless twin gets halved into oblivion — the discrimination falls out
+// of the arithmetic, no rule written. Ledger note (Joe): this is demand-
+// driven scarcity, "almost like tcgplayer — Tarmogoyf isn't actually rarer
+// than Death's Shadow, just more people trying to put copies in their
+// decks" — the same multiplier fed by pool-wide demand instead of deck
+// copies would be an emergent global-rarity mechanism. That door is noted
+// and deliberately NOT opened (his call, "which we do not currently").
+function dupeShelf(deckTplIds) {
+  const counts = {};
+  let n = 0;
+  for (const id of (deckTplIds || [])) {
+    const tpl = CARDS[id];
+    if (!tpl || hasType(tpl, 'Basic')) continue;
+    counts[id] = (counts[id] || 0) + 1;
+    if (counts[id] > n) n = counts[id];
+  }
+  return { counts, n };
+}
+function dupeFactor(tplId, shelf) {
+  const copies = shelf.counts[tplId] || 0;
+  if (copies === 0) return 1;
+  return (shelf.n + 1 - copies) / (shelf.n + 1);
+}
 
 // Baseline seed weight added to every legal card's deck-affinity before
 // proportional sampling (Laplace smoothing). This is the exploration dial
@@ -643,8 +680,11 @@ function weightedSample(entries) {
 // additive uniform bonuses flatten within-group ranking and can't produce
 // the ~20× between-group suppression colors need. Color force must be
 // MULTIPLICATIVE. One knob (`let` for the _setColorPullForTest sweep seam);
-// measured origin at 0.3: see the v2.2.23 changelog entry.
-let SPLASH_BASE = 0.3;
+// measured origin 0.3 (v2.2.23), re-tuned to 0.25 when the dupe shelf
+// shifted weight toward fresh (disproportionately off-color) cards and
+// softened the color shape — 0.25 under the shelf reproduces the 0.3
+// pre-shelf histogram (v2.2.24 changelog has both tables).
+let SPLASH_BASE = 0.25;
 function colorFitFactor(cand, deckColors) {
   const C = deckColors.size;
   if (C <= 1 || cand.colors.length === 0) return 1;
@@ -654,7 +694,7 @@ function colorFitFactor(cand, deckColors) {
 }
 
 
-function growBucket(seedAnalysis, deckAnalyses, deckColors) {
+function growBucket(seedAnalysis, deckAnalyses, deckColors, shelf) {
   const bucket = [seedAnalysis];
   const why = [];
   while (bucket.length < BUCKET_CARDS) {
@@ -680,6 +720,7 @@ function growBucket(seedAnalysis, deckAnalyses, deckColors) {
       // isLegalCandidate above). Multiplicative, post-gate — the plan
       // stays sovereign; the fence only reweights plan-legal candidates.
       score *= colorFitFactor(cand, deckColors);
+      score *= dupeFactor(cand.tplId, shelf);
       if (bucket.some(b => b.cost === cand.cost)) score *= CURVE_CLASH_PENALTY;
       scored.push({ item: { cand, reasons }, score });
     }
@@ -705,7 +746,9 @@ function coherenceOf(bucket) {
 function reinforcementsBucket(deckColors, deckTplIds) {
   // Goodstuff's job is NEW power, never redundancy — cards you already own
   // are excluded (dupes are earned through synergy buckets, where a twin
-  // must pull its weight via self-feeding edges). Cards are softmax-sampled
+  // must pull its weight via self-feeding edges), which is why the dupe
+  // shelf isn't applied here: every remaining candidate sits at factor 1
+  // by construction. Cards are softmax-sampled
   // by intrinsic value, not top-sorted: a playtest caught the sort-with-
   // small-jitter version selling the player their exact deck back, three
   // offers in a row.
@@ -783,7 +826,7 @@ function finishBucket(bucketAnalyses, why, isFallback) {
 // special cases: your wishlist shapes the ODDS, not the outcomes — the
 // wishlist's top is likely, coherent-but-uncommitted plans are possible,
 // and the long tail stays alive. Sampling is without replacement.
-function pickSeeds(deckAnalyses, deckColors) {
+function pickSeeds(deckAnalyses, deckColors, shelf) {
   const candidates = _pool.filter(c => !c.isLand);
   const payoffness = c => {
     let sum = 0;
@@ -795,7 +838,8 @@ function pickSeeds(deckAnalyses, deckColors) {
     : payoffness(c);
   let entries = candidates.map(c => ({
     item: c,
-    w: (SEED_BASE_WEIGHT + weightOf(c)) * colorFitFactor(c, deckColors),
+    w: (SEED_BASE_WEIGHT + weightOf(c)) * colorFitFactor(c, deckColors)
+       * dupeFactor(c.tplId, shelf),
   }));
   const seeds = [];
   for (let k = 0; k < OFFER_SIZE && entries.length; k++) {
@@ -819,15 +863,16 @@ function rollBucketOffer(deckTplIds) {
   // with the naming system — it was string-keyed on a cosmetic proxy and
   // leaked in both directions. If PICKLOG shows offers converging on one
   // plan, the principled replacement is seed-level MMR, not a name check.
+  const shelf = dupeShelf(deckIds);
   const tryAddBucket = (seed) => {
-    const { bucket, why } = growBucket(seed, deckAnalyses, deckColors);
+    const { bucket, why } = growBucket(seed, deckAnalyses, deckColors, shelf);
     if (bucket.length === BUCKET_CARDS && coherenceOf(bucket) >= MIN_COHERENCE) {
       return finishBucket(bucket, why);
     }
     const loose = reinforcementsBucket(deckColors, deckIds);
     return (loose.length === BUCKET_CARDS) ? finishBucket(loose, [], true) : null;
   };
-  const seeds = pickSeeds(deckAnalyses, deckColors);
+  const seeds = pickSeeds(deckAnalyses, deckColors, shelf);
   for (const seed of seeds) {
     if (offer.length >= OFFER_SIZE) break;
     const bucket = tryAddBucket(seed);
@@ -849,7 +894,7 @@ function rollBucket(seedTplId, deckTplIds) {
   const deckIds = deckTplIds || [];
   const deckAnalyses = deckIds.map(id => _byId[id]).filter(Boolean);
   const deckColors = deckColorSet(deckIds);
-  const { bucket, why } = growBucket(seed, deckAnalyses, deckColors);
+  const { bucket, why } = growBucket(seed, deckAnalyses, deckColors, dupeShelf(deckIds));
   return finishBucket(bucket, why);
 }
 
@@ -898,5 +943,6 @@ return {
   _resetCacheForTest: () => { _pool = null; _byId = null; },
   _setRandForTest: (fn) => { _rand = fn || Math.random; },
   _setColorPullForTest: (k) => { SPLASH_BASE = (typeof k === 'number') ? k : 0.3; },
+  _dupeFactorForTest: (tplId, deckTplIds) => dupeFactor(tplId, dupeShelf(deckTplIds)),
 };
 })();

@@ -392,6 +392,39 @@ function check(label, ok, info) {
     `${sets.size} distinct sets from ${seen} offers in ${rolls} rolls`);
 }
 
+// --- §6e the dupe shelf (v2.2.24) --------------------------------------------
+{
+  const f = BUCKETS._dupeFactorForTest;
+  check('empty deck: everything rides at full shelf (factor 1)',
+    f('goblin_rabble', []) === 1);
+  check('one copy owned at n=1: factor 1/2; fresh cards untouched',
+    f('goblin_rabble', ['goblin_rabble']) === 0.5
+    && f('lightning_bolt', ['goblin_rabble']) === 1);
+  check('shelf shares at n=3: 3 copies -> 1/4, 1 copy -> 3/4 (never zero)',
+    f('raging_goblin', ['raging_goblin', 'raging_goblin', 'raging_goblin', 'lightning_bolt']) === 0.25
+    && f('lightning_bolt', ['raging_goblin', 'raging_goblin', 'raging_goblin', 'lightning_bolt']) === 0.75);
+  check('basics never set n (17 Forests must not switch the shelf off)',
+    f('goblin_rabble', ['forest', 'forest', 'forest', 'forest', 'goblin_rabble']) === 0.5);
+  check('nonbasic lands count (a Quarry pile is a deliberate identity)',
+    f('deepseam_quarry', ['deepseam_quarry', 'deepseam_quarry']) === 1 / 3);
+  // The wall retreats when touched: adding a 4th raging_goblin raises n,
+  // restocking every other card's shelf share (3/4 -> 4/5 for a 1-of).
+  check('reaching the wall raises it for everyone',
+    f('lightning_bolt', ['raging_goblin', 'raging_goblin', 'raging_goblin', 'raging_goblin', 'lightning_bolt'])
+      === 0.8);
+  // Behavioral never-zero: a goblin deck holding rabble at max copies can
+  // still be offered another rabble (gradient, not cap).
+  const gobDeck = ['goblin_rabble', 'goblin_chieftain', 'raging_goblin',
+    'mountain', 'mountain'];
+  let rabbleOffered = false;
+  for (let i = 0; i < 60 && !rabbleOffered; i++) {
+    for (const b of BUCKETS.rollBucketOffer(gobDeck)) {
+      if (!b.fallback && b.cards.includes('goblin_rabble')) rabbleOffered = true;
+    }
+  }
+  check('owned-at-max cards still appear in offers (never zero)', rabbleOffered);
+}
+
 // --- §7 theme health report -------------------------------------------------
 {
   const report = BUCKETS.themeHealthReport();
