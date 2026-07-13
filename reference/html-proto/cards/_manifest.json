@@ -309,7 +309,7 @@
  "triage_cleric",
  "intimidating_lancer",
  "vigil_chanter",
- "rescue_angel",
+ "uplifting_angel",
  "wing_commander",
  "second_wind",
  "vanguard_ensign",
@@ -335,5 +335,9 @@
  "backlash_mage",
  "scrap",
  "primal_metamagus",
- "wildfire_colossus"
+ "wildfire_colossus",
+ "reckless_bloodletter",
+ "charnel_chorister",
+ "cinder_ward",
+ "ashclot_zealot"
 ]

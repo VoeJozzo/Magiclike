@@ -254,6 +254,9 @@ const TPLID_RENAMES = {
   "wrathOfGod":          "day_of_reckoning",
   "wurm":                "gizzard_beast",
   "zealot":              "holy_zealot",
+  // v2.2.13: Joe's RENAME-LATER flag from the Wave 2 flavor pass, resolved
+  // ("Uplifting Angel! That's the name I wanted").
+  "rescue_angel":        "uplifting_angel",
 };
 function renameTplId(id) { return TPLID_RENAMES[id] || id; }
 

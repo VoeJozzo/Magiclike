@@ -69,7 +69,7 @@ const GOLDENS = {
   triage_cleric: 'Whenever another creature with an enters-the-battlefield ability enters under your control, gain 2 life.',
   intimidating_lancer: 'When this attacks, tap target creature an opponent controls.',
   vigil_chanter: 'Spells you cast also grant vigilance to each creature they target until end of turn.',
-  rescue_angel: 'Whenever you cast a spell, target creature you control gains flying until end of turn.',
+  uplifting_angel: 'Whenever you cast a spell, target creature you control gains flying until end of turn.',
   wing_commander: 'Other creatures you control with flying get +1/+1.',
   second_wind: 'Untap target creature you control. It gains vigilance until end of turn.',
   vanguard_ensign: 'Other creatures you control get +1/+0.',
@@ -517,10 +517,10 @@ console.log('\n=== updraft / chrysalis_ward / second_wind: the trick suite ===')
   check('second_wind: vigilance granted', bear.keywords.includes('vigilance'));
 })();
 
-console.log('\n=== rescue_angel: your cast grants a flier (sole target auto-fills) ===');
+console.log('\n=== uplifting_angel: your cast grants a flier (sole target auto-fills) ===');
 (() => {
   const G = freshGame();
-  const angel = mk('rescue_angel', 'you');
+  const angel = mk('uplifting_angel', 'you');
   G.you.battlefield.push(angel);
   check('Angel flies by subtype (no keywords entry)',
     (ENGINE.addSubtypeKeywords(angel.types, (angel.keywords || []).slice())).includes('flying'));

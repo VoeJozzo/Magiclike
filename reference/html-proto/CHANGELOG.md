@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.2.12`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.2.13`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -2635,3 +2635,21 @@ worldly_tutor, last_druid, nature_caller, verdant_charm mode 3);
 search-to-BATTLEFIELD ramp is not a draw and is untouched. Full-pool text
 diff: exactly 8/337 cards changed, all intended. Suite 150 files / 2928
 green.
+
+v2.2.13: The four Wave 1 HOLDS ship (Joe un-parked all of them) + the
+Rescue Angel rename lands. reckless_bloodletter (1R Human Berserker 1/3 —
+"Whenever you lose life, this creature gets +1/+0 until end of turn";
+Joe: "this can actually ship, I misread it"); charnel_chorister (1B Human
+Cleric 1/2 — ETB-drain, the third member of the entry-payoff family with
+storm_sage/bramble_acolyte); cinder_ward RESPEC (Joe: RW, +1/+0 rider —
+"Target creature you control gets +1/+0 and gains indestructible until
+end of turn"; Elystra interaction consciously accepted, revisit if
+degenerate); ashclot_zealot (BR Human Shaman 1/2 — damage-sorcery drain;
+the Wave 1 blocker predicate became free when Wave 2 shipped
+card_has_effect(damage); typed Shaman not the pitch's unregistered
+"Cultist", cult_priest precedent). Two new archetypes+preambles
+(youLoseLife, youCastDamageSpell — "sorcery" voice per the Colossus
+ruling); ashclot wants burnspell (qualified-spellcast rule extended), not
+generic spellcast. rescue_angel → uplifting_angel ("Uplifting Angel!
+That's the name I wanted") — folder+manifest+TPLID_RENAMES migration
+entry. Pool 337→341. Suite 150 files / 2949 green; selfplay 500 clean.

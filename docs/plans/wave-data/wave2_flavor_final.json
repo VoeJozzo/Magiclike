@@ -2,14 +2,14 @@
  {
   "key": "GW_0-2",
   "name": "Steadfast Knight",
-  "typeLine": "Creature — Human Knight",
+  "typeLine": "Creature \u2014 Human Knight",
   "tribes": null,
   "source": "joe-remix"
  },
  {
   "key": "GW_3-1",
   "name": "Sapling Tender",
-  "typeLine": "Creature — Elf Druid",
+  "typeLine": "Creature \u2014 Elf Druid",
   "tribes": null,
   "source": "proposal-v2"
  },
@@ -23,28 +23,28 @@
  {
   "key": "WU_1-0",
   "name": "Wing Commander",
-  "typeLine": "Creature — Angel Soldier",
+  "typeLine": "Creature \u2014 Angel Soldier",
   "tribes": null,
   "source": "proposal-v2"
  },
  {
   "key": "WU_1-1",
   "name": "Intimidating Lancer",
-  "typeLine": "Creature — Human Knight",
+  "typeLine": "Creature \u2014 Human Knight",
   "tribes": null,
   "source": "joe-remix"
  },
  {
   "key": "WU_1-2",
   "name": "Feinting Sprite",
-  "typeLine": "Creature — Faerie Rogue",
+  "typeLine": "Creature \u2014 Faerie Rogue",
   "tribes": null,
   "source": "joe-remix"
  },
  {
   "key": "WU_2-2",
   "name": "Surgecaster",
-  "typeLine": "Creature — Human Wizard",
+  "typeLine": "Creature \u2014 Human Wizard",
   "tribes": null,
   "source": "joe-remix"
  },
@@ -65,28 +65,28 @@
  {
   "key": "GU_0-0",
   "name": "Covenant Scholar",
-  "typeLine": "Creature — Elf Merfolk Wizard",
+  "typeLine": "Creature \u2014 Elf Merfolk Wizard",
   "tribes": "Elf, Merfolk",
   "source": "joe-remix (covenant = Elf+Merfolk, corrected)"
  },
  {
   "key": "GU_0-1",
   "name": "Curious Faerie",
-  "typeLine": "Creature — Faerie",
+  "typeLine": "Creature \u2014 Faerie",
   "tribes": null,
   "source": "proposal"
  },
  {
   "key": "GU_0-2",
   "name": "Spellrider",
-  "typeLine": "Creature — Human Wizard",
+  "typeLine": "Creature \u2014 Human Wizard",
   "tribes": null,
   "source": "joe-remix"
  },
  {
   "key": "GU_1-2",
   "name": "Tidewatcher",
-  "typeLine": "Creature — Merfolk",
+  "typeLine": "Creature \u2014 Merfolk",
   "tribes": null,
   "source": "proposal-v2"
  },
@@ -100,63 +100,63 @@
  {
   "key": "GU_2-2",
   "name": "Earthsinger",
-  "typeLine": "Creature — Elf Shaman",
+  "typeLine": "Creature \u2014 Elf Shaman",
   "tribes": null,
   "source": "proposal-v2"
  },
  {
   "key": "GW_1-2",
   "name": "Rootbound Sentinel",
-  "typeLine": "Creature — Treefolk",
+  "typeLine": "Creature \u2014 Treefolk",
   "tribes": null,
   "source": "proposal-v2"
  },
  {
   "key": "GW_2-0",
   "name": "Bramble Acolyte",
-  "typeLine": "Creature — Elf Druid",
+  "typeLine": "Creature \u2014 Elf Druid",
   "tribes": null,
   "source": "baseline"
  },
  {
   "key": "GW_3-0",
   "name": "Charnel Shaman",
-  "typeLine": "Creature — Human Shaman",
+  "typeLine": "Creature \u2014 Human Shaman",
   "tribes": null,
   "source": "proposal-v2"
  },
  {
   "key": "RG_0-0",
   "name": "Altar Butcher",
-  "typeLine": "Creature — Goblin Cleric",
+  "typeLine": "Creature \u2014 Goblin Cleric",
   "tribes": null,
   "source": "joe-remix"
  },
  {
   "key": "RG_1-0",
   "name": "Primal Metamagus",
-  "typeLine": "Creature — Elemental Shaman",
+  "typeLine": "Creature \u2014 Elemental Shaman",
   "tribes": null,
   "source": "joe-remix"
  },
  {
   "key": "RG_1-1",
   "name": "Aggressive Instigator",
-  "typeLine": "Creature — Goblin Berserker",
+  "typeLine": "Creature \u2014 Goblin Berserker",
   "tribes": null,
   "source": "joe-remix"
  },
  {
   "key": "RG_2-2",
   "name": "Frontier Sapling",
-  "typeLine": "Creature — Treefolk",
+  "typeLine": "Creature \u2014 Treefolk",
   "tribes": null,
   "source": "joe-remix"
  },
  {
   "key": "RG_3-0",
   "name": "Wildfire Colossus",
-  "typeLine": "Creature — Elemental",
+  "typeLine": "Creature \u2014 Elemental",
   "tribes": null,
   "source": "baseline name kept; mechanics respec to static hook: \"Sorceries you cast that deal damage also put a +1/+1 counter on Wildfire Colossus.\""
  },
@@ -170,21 +170,21 @@
  {
   "key": "RW_3-2",
   "name": "Backlash Mage",
-  "typeLine": "Creature — Human Wizard",
+  "typeLine": "Creature \u2014 Human Wizard",
   "tribes": null,
   "source": "joe-remix"
  },
  {
   "key": "GW_2-1",
   "name": "Wildwood Scout",
-  "typeLine": "Creature — Elf Scout",
+  "typeLine": "Creature \u2014 Elf Scout",
   "tribes": null,
   "source": "proposal-v2"
  },
  {
   "key": "GW_2-2",
   "name": "Vigil Chanter",
-  "typeLine": "Creature — Human Cleric",
+  "typeLine": "Creature \u2014 Human Cleric",
   "tribes": null,
   "source": "proposal-v2"
  },
@@ -198,28 +198,28 @@
  {
   "key": "RW_0-1",
   "name": "Chapter Recruiter",
-  "typeLine": "Creature — Human Soldier",
+  "typeLine": "Creature \u2014 Human Soldier",
   "tribes": "Human",
   "source": "baseline"
  },
  {
   "key": "RW_1-1",
   "name": "Vanguard Ensign",
-  "typeLine": "Creature — Human Soldier",
+  "typeLine": "Creature \u2014 Human Soldier",
   "tribes": null,
   "source": "joe-remix"
  },
  {
   "key": "RW_2-1",
-  "name": "Rescue Angel",
-  "typeLine": "Creature — Angel",
+  "name": "Uplifting Angel",
+  "typeLine": "Creature \u2014 Angel",
   "tribes": null,
-  "source": "joe-remix RENAME-LATER flag"
+  "source": "joe-remix (renamed from Rescue Angel per RENAME-LATER flag, 2026-07-12)"
  },
  {
   "key": "RW_3-0",
   "name": "Triage Cleric",
-  "typeLine": "Creature — Human Cleric",
+  "typeLine": "Creature \u2014 Human Cleric",
   "tribes": null,
   "source": "proposal"
  }

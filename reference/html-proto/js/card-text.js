@@ -893,6 +893,11 @@ function triggerPreamble(trig) {
   if (cid === 'creatureYouDies') return 'Whenever a creature you control dies,';
   if (cid === 'anotherCreatureYouAttacks') return 'Whenever another creature you control attacks,';
   if (cid === 'youDraw') return 'Whenever you draw a card,';
+  if (cid === 'youLoseLife') return 'Whenever you lose life,';
+  // "sorcery", not "spell": every damage spell in the pool is Sorcery-typed,
+  // and bare "spell" would wrongly suggest creature casts count (the
+  // Wildfire Colossus ruling).
+  if (cid === 'youCastDamageSpell') return 'Whenever you cast a sorcery that deals damage,';
   if (ev === 'attacks') return 'When this attacks,';
   return 'Whenever a relevant event occurs,';
 }

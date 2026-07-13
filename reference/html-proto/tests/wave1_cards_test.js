@@ -255,5 +255,125 @@ console.log('\n=== buckets extraction: Wave 1 vocabulary + the life_changed dire
   check('leech <-> bolt is a STRONG edge (recruit-grade)', e2.w >= 2, e2.w.toFixed(2));
 })();
 
+
+// ── Wave 1 HOLDS, un-parked by Joe (v2.2.13): all four ship ──────────────
+
+console.log('\n=== goldens: the four un-parked holds ===');
+(() => {
+  const G4 = {
+    reckless_bloodletter: 'Whenever you lose life, this creature gets +1/+0 until end of turn.',
+    charnel_chorister: 'Whenever another creature enters under your control, target opponent loses 1 life.',
+    cinder_ward: 'Target creature you control gets +1/+0 and gains indestructible until end of turn.',
+    ashclot_zealot: 'Whenever you cast a sorcery that deals damage, target opponent loses 1 life.',
+  };
+  for (const [id, want] of Object.entries(G4)) {
+    const got = describeCardText(ENGINE.makeCard(id));
+    check(id, got === want, got !== want ? 'got "' + got + '"' : '');
+  }
+})();
+
+console.log('\n=== reckless_bloodletter: YOUR life loss pumps it; gains and opp losses do not ===');
+(() => {
+  const G = freshGame();
+  const bl = mk('reckless_bloodletter', 'you');
+  G.you.battlefield.push(bl);
+  ENGINE.applyEffect({ controller: 'opp', sourceName: 'Test', sourceIid: 99301 },
+    { kind: 'damage', amount: 2 }, { kind: 'player', who: 'you' });
+  drain(G);
+  let [p, t] = ENGINE.getStats(bl);
+  check('you lose 2 -> 2/3 until EOT', p === 2 && t === 3, p + '/' + t);
+  check('pump is TEMP, not a counter', bl.tempPower === 1 && bl.permPower === 0);
+  hitOpp(G, 2);
+  ENGINE.applyEffect({ controller: 'you', sourceName: 'Test', sourceIid: 99302 },
+    { kind: 'gain_life', amount: 2, scope: 'self' }, null);
+  drain(G);
+  [p, t] = ENGINE.getStats(bl);
+  check('opp loss + your gain -> unchanged', p === 2 && t === 3, p + '/' + t);
+})();
+
+console.log('\n=== charnel_chorister: your creature enters -> opp loses 1; theirs does not ===');
+(() => {
+  const G = freshGame();
+  G.you.battlefield.push(mk('charnel_chorister', 'you'));
+  const oppLife = G.opp.life;
+  G.you.mana = { W: 9, U: 9, B: 9, R: 9, G: 9, C: 9 };
+  const bear = mk('grizzly_bears', 'you');
+  G.you.hand.push(bear);
+  ENGINE.executeAction('you', { type: 'castSpell', cardIid: bear.iid });
+  drain(G);
+  check('your creature enters -> opp loses 1 (promptless)', G.opp.life === oppLife - 1,
+    oppLife + ' -> ' + G.opp.life);
+  G.opp.battlefield.push(mk('grizzly_bears', 'opp'));
+  ENGINE.applyEffect({ controller: 'opp', sourceName: 'Test', sourceIid: 99303 },
+    { kind: 'gain_life', amount: 0, scope: 'self' }, null); // no-op, just settle
+  drain(G);
+  check('their creature on the field did not re-trigger', G.opp.life === oppLife - 1);
+})();
+
+console.log('\n=== cinder_ward: +1/+0 + indestructible; destroy fizzles through it ===');
+(() => {
+  const G = freshGame();
+  const bear = mk('grizzly_bears', 'you');
+  G.you.battlefield.push(bear);
+  G.you.mana = { W: 9, U: 9, B: 9, R: 9, G: 9, C: 9 };
+  const ward = mk('cinder_ward', 'you');
+  G.you.hand.push(ward);
+  const ok = ENGINE.executeAction('you', { type: 'castSpell', cardIid: ward.iid,
+    targets: [{ kind: 'creature', iid: bear.iid, label: bear.name }] });
+  drain(G);
+  check('cast executed', ok === true);
+  const s = ENGINE.getStats(bear);
+  check('bear is 3/2 with indestructible', s[0] === 3 && s[1] === 2
+    && bear.keywords.includes('indestructible'), s.join('/') + ' ' + JSON.stringify(bear.keywords));
+  ENGINE.applyEffect({ controller: 'opp', sourceName: 'Test Destroy', sourceIid: 99304 },
+    { kind: 'affect_creature', severity: 'destroy' }, { kind: 'creature', iid: bear.iid, label: bear.name });
+  drain(G);
+  check('destroy fizzled (indestructible)', G.you.battlefield.some(c => c.iid === bear.iid));
+})();
+
+console.log('\n=== ashclot_zealot: damage sorcery -> opp loses 1; non-damage and creatures do not ===');
+(() => {
+  const G = freshGame();
+  G.you.battlefield.push(mk('ashclot_zealot', 'you'));
+  const victim = mk('air_elemental', 'opp');
+  G.opp.battlefield.push(victim);
+  const oppLife = G.opp.life;
+  G.you.mana = { W: 9, U: 9, B: 9, R: 9, G: 9, C: 9 };
+  const bolt = mk('lightning_bolt', 'you');
+  G.you.hand.push(bolt);
+  ENGINE.executeAction('you', { type: 'castSpell', cardIid: bolt.iid,
+    targets: [{ kind: 'creature', iid: victim.iid, label: victim.name }] });
+  drain(G);
+  check('bolt at a creature -> opp lost exactly 1 (the drain)', G.opp.life === oppLife - 1,
+    oppLife + ' -> ' + G.opp.life);
+  G.you.library = [mk('swamp', 'you'), mk('swamp', 'you')];
+  G.you.mana = { W: 9, U: 9, B: 9, R: 9, G: 9, C: 9 };
+  const div = mk('divination', 'you');
+  G.you.hand.push(div);
+  ENGINE.executeAction('you', { type: 'castSpell', cardIid: div.iid });
+  drain(G);
+  check('non-damage sorcery -> no drain', G.opp.life === oppLife - 1, String(G.opp.life));
+  G.you.mana = { W: 9, U: 9, B: 9, R: 9, G: 9, C: 9 };
+  const bear = mk('grizzly_bears', 'you');
+  G.you.hand.push(bear);
+  ENGINE.executeAction('you', { type: 'castSpell', cardIid: bear.iid });
+  drain(G);
+  check('creature cast -> no drain', G.opp.life === oppLife - 1, String(G.opp.life));
+})();
+
+console.log('\n=== extraction: the four holds wire into the graph ===');
+(() => {
+  const bl = BUCKETS.analyzeCard('reckless_bloodletter');
+  check('bloodletter WANTS self_pain', bl.wants.self_pain > 0, JSON.stringify(bl.wants));
+  const cc = BUCKETS.analyzeCard('charnel_chorister');
+  check('chorister WANTS etb, PROVIDES opp_loss', cc.wants.etb > 0 && cc.provides.opp_loss > 0);
+  const cw = BUCKETS.analyzeCard('cinder_ward');
+  check('cinder_ward PROVIDES trick + flashcast', cw.provides.trick > 0 && cw.provides.flashcast > 0);
+  const az = BUCKETS.analyzeCard('ashclot_zealot');
+  check('ashclot WANTS burnspell (not generic spellcast), PROVIDES opp_loss',
+    az.wants.burnspell > 0 && !az.wants.spellcast && az.provides.opp_loss > 0,
+    JSON.stringify(az.wants));
+})();
+
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');
 process.exitCode = fail ? 1 : 0;

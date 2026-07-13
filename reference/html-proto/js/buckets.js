@@ -327,6 +327,10 @@ function analyze(tpl) {
     if (trg.event === 'spell_cast') {
       if (cs.some(s => /^card_has_keyword\(flash\)$/.test(s)) || cs.includes('opponents_turn')) {
         bump(wants, 'flashcast', W_WANT_PAYOFF);
+      } else if (cs.some(s => /^card_has_effect\(damage\)$/.test(s))) {
+        // Damage-spell payoffs (ashclot_zealot) feed on burn, not on every
+        // sorcery — same qualified-spellcast reasoning as flashcast.
+        bump(wants, 'burnspell', W_WANT_PAYOFF);
       } else {
         bump(wants, 'spellcast', W_WANT_PAYOFF);
       }

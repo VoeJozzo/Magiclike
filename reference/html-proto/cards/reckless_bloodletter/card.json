@@ -1,0 +1,33 @@
+{
+  "card_id": "reckless_bloodletter",
+  "name": "Reckless Bloodletter",
+  "art": "\ud83d\udca2",
+  "cost": {
+    "R": 1,
+    "C": 1
+  },
+  "power": 1,
+  "toughness": 3,
+  "types": [
+    "Creature",
+    "Human",
+    "Berserker"
+  ],
+  "triggers": [
+    {
+      "event": "life_changed",
+      "condition": [
+        "is_life_loss",
+        "affected_player_is(you)"
+      ],
+      "effects": [
+        {
+          "kind": "pump",
+          "power": 1,
+          "toughness": 0,
+          "scope": "self"
+        }
+      ]
+    }
+  ]
+}

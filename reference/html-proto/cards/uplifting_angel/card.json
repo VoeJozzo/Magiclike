@@ -1,7 +1,7 @@
 {
-  "card_id": "rescue_angel",
-  "name": "Rescue Angel",
-  "art": "👼",
+  "card_id": "uplifting_angel",
+  "name": "Uplifting Angel",
+  "art": "\ud83d\udc7c",
   "cost": {
     "W": 1,
     "C": 2

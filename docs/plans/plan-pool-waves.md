@@ -91,12 +91,13 @@ started. Companion: [`plan-bucket-draft.md`](plan-bucket-draft.md)
    buffs (getStats sums signed values; SBAs kill at t≤0). Known interaction:
    your 1-toughness demons die when he enters — feature, very Rakdos.
 
-**HOLD (4, parked):** Reckless Bloodletter (eot pump lands after the two-pass
-combat-damage math — unintuitive; counters-version possible later), Charnel
-Chorister (Joe leans ship; storm-sage ubiquity worry — idf answer given),
-Cinder Ward (not a red card; confirmed busted with elystra_the_immortal's
-permanent_eot), Ashclot Zealot (needs 1 new atomic predicate
-spell_has_damage_effect, ~15 lines — cheap when wanted).
+**HOLD (4) — ALL SHIPPED v2.2.13 (Joe un-parked, 2026-07-12):** Reckless
+Bloodletter (as pitched — "I misread it"), Charnel Chorister (ETB-drain
+version), Cinder Ward (RESPEC: RW, +1/+0 rider added; Elystra interaction
+consciously accepted — revisit if degenerate), Ashclot Zealot (its blocker
+predicate became free when Wave 2 shipped card_has_effect(damage); typed
+Human Shaman — "Cultist" is not a pool subtype, cult_priest precedent).
+Also resolved: rescue_angel → uplifting_angel (Joe's RENAME-LATER flag).
 
 **Extraction patch scope (trimmed to shipped cards):** opp_loss provides+wants,
 discard provides+wants, sub:Artifact provides, life_changed DIRECTION SPLIT

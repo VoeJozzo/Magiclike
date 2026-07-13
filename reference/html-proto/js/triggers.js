@@ -341,6 +341,9 @@ const _ARCHETYPE_BY_SIG = {
   // included — the text says "draw" and the wire is honest because the house
   // defines draw that way. (Backlog: tutor-text consistency pass.)
   'card_zone_change | controlled_by(you), card_moves(library, hand)': 'youDraw',
+  // Wave 1 holds, shipped v2.2.13 (Joe un-parked all four):
+  'life_changed | is_life_loss, affected_player_is(you)': 'youLoseLife',
+  'spell_cast | another_card, controlled_by(you), card_has_effect(damage)': 'youCastDamageSpell',
 };
 
 // Classify a trigger into its archetype id (the old condId vocabulary) from
