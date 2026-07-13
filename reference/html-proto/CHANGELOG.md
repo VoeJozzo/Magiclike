@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.2.13`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.2.14`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -2653,3 +2653,25 @@ ruling); ashclot wants burnspell (qualified-spellcast rule extended), not
 generic spellcast. rescue_angel → uplifting_angel ("Uplifting Angel!
 That's the name I wanted") — folder+manifest+TPLID_RENAMES migration
 entry. Pool 337→341. Suite 150 files / 2949 green; selfplay 500 clean.
+
+v2.2.14: Extraction-audit pool sweep (Joe's queued idea — "destroy target
+tapped creature wants something, y'know?"). Governing principle, applied
+pool-wide: a filter/condition earns a want only when YOUR deck can
+manufacture the condition (you can tap their creatures; you cannot make
+their creatures fly — choking_vines correctly wants nothing). Six rule
+families, every one with live wanters AND providers: tapped (smite/
+royal_assassin/righteous_judge want; binding_angel/frost_binder/lancer/
+roots_and_branches provide; sage_of_the_wilds' own-creature filter
+correctly excluded); wrathproof (4 sweepers want; cinder_ward's
+indestructible + blink/bounce-own provide — the killer's "one-side your
+own sweeper" plan, now a graph edge); blink-manufactures-ETBs
+(vanishing_act/tideglass provide etb 1.5 — feeds bramble_acolyte/
+beast_whisperer/chorister); graveyard-consumers-want-dies (grave_digger,
+deepseam_quarry — the Wave 1 reanimation rule re-added with two live
+customers; seal_thief's opp-yard hate excluded); theft-feeds-sac-outlets
+(threaten/mind_control provide fodder — the "Threaten two-for-one");
+untap-wants-activation (awaken_the_stone/second_wind/sage want; the
+activation providers from Wave 2 feed them). New (target, filter) pair
+enumeration across card/trigger/ability/slot levels. 8 new pins. Assay:
+zero-hook 16% → 13%; floor pair UR 12 → 13. Suite 150 files / 2957 green;
+selfplay 500 clean.

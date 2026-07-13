@@ -284,6 +284,40 @@ function analyze(tpl) {
   // payoff — extend per-customer, not speculatively.
   if (isCreature && effKeywords.includes('flying')) bump(provides, 'kw:flying', 1);
 
+  // --- Extraction-audit sweep (Joe, post-Wave-2): (target, filter) pairs at
+  // every authoring level, for filter-driven wants like "destroy target
+  // TAPPED creature". Principle: a filter earns a want only when YOUR deck
+  // can manufacture the condition (you can tap their creatures; you cannot
+  // make their creatures fly — so choking_vines wants nothing).
+  const targetSteps = [{ t: tpl.target, f: tpl.target_filter }];
+  for (const src of [tpl, ...(tpl.triggers || []), ...(tpl.abilities || [])]) {
+    if (src !== tpl) targetSteps.push({ t: src.target, f: src.target_filter });
+    for (const sp of (src.target_slots || [])) targetSteps.push({ t: sp.target, f: sp.filter });
+  }
+  // tapped: tap-effects feed the destroy-tapped suite (smite_the_wicked,
+  // royal_assassin, righteous_judge).
+  if (kinds.some(k => k.kind === 'affect_creature' && k.severity === 'tap')) {
+    bump(provides, 'tapped', 2);
+  }
+  // Blink (bf→exile + exile→bf) re-fires YOUR ETBs and dodges sweepers;
+  // bounce-your-own does both more weakly (replay costs the mana again).
+  const blinks = kinds.some(k => k.kind === 'move_card' && k.from_zone === 'battlefield' && k.to_zone === 'exile')
+    && kinds.some(k => k.kind === 'move_card' && k.from_zone === 'exile' && k.to_zone === 'battlefield');
+  const bouncesOwn = kinds.some(k => k.kind === 'affect_creature' && k.severity === 'bounce')
+    && targetSteps.some(s => s.t === 'your_creature');
+  if (blinks) { bump(provides, 'etb', 1.5); bump(provides, 'wrathproof', 1.5); }
+  if (bouncesOwn) { bump(provides, 'etb', 0.75); bump(provides, 'wrathproof', 1); }
+  // Indestructible grants are the direct sweeper insurance (cinder_ward).
+  if (kinds.some(k => k.kind === 'grant_keyword' && k.keyword === 'indestructible')) {
+    bump(provides, 'wrathproof', 2);
+  }
+  // Temporary (or permanent) theft hands the sac outlets a body that was
+  // never yours — the killer's "makes Threaten a two-for-one" play pattern.
+  if (kinds.some(k => k.kind === 'change_control')) {
+    bump(provides, 'fodder', 1.5);
+    bump(provides, 'dies', 1);
+  }
+
   // --- WANTS ---
   // Trigger conditions. `this_card` triggers are self-referential (my own
   // ETB/death) — they are NOT a want on other cards, so we require the
@@ -383,6 +417,33 @@ function analyze(tpl) {
       bump(wants, 'fodder', W_WANT_PAYOFF);
       bump(provides, 'dies', W_PROV_TOKENS);
     }
+  }
+  // Extraction-audit wants (sweep, post-Wave-2):
+  // "Destroy target TAPPED creature" is a payoff for tapping — but a tapped
+  // filter on YOUR OWN creature (sage_of_the_wilds' untap) is a legality
+  // nicety, not a want.
+  if (targetSteps.some(s => s.f && s.f.tapped === true && s.t !== 'your_creature')) {
+    bump(wants, 'tapped', W_WANT_PAYOFF);
+  }
+  // Symmetric sweepers want board-wipe insurance (cinder_ward's whole plan:
+  // one-side your own wrath; blink/bounce dodge it too).
+  if (kinds.some(k => k.scope === 'all_creatures'
+      && (k.kind === 'damage' || (k.kind === 'affect_creature' && k.severity === 'destroy')))) {
+    bump(wants, 'wrathproof', 2);
+  }
+  // Graveyard consumers (grave_digger, deepseam_quarry) feed on creatures
+  // dying — the reanimation-wants rule Wave 1 measured then dropped,
+  // re-added now that the sweep confirmed two live customers. A consumer
+  // locked to the OPPONENT's graveyard (seal_thief_courier's hate trigger)
+  // is meta, not deck synergy.
+  if (targetSteps.some(s => s.t === 'graveyard_card'
+      && !(s.f && Array.isArray(s.f.graveyards) && s.f.graveyards.length === 1 && s.f.graveyards[0] === 'opp'))) {
+    bump(wants, 'dies', 2);
+  }
+  // Untap-your-creature effects are twice as good on tap-ability machines
+  // (awaken_the_stone + pyromaniac): they want activation providers.
+  if (kinds.some(k => k.kind === 'untap') && targetSteps.some(s => s.t === 'your_creature')) {
+    bump(wants, 'activation', 2);
   }
 
   // --- Plan tags (weak similarity: shared strategy, not producer/consumer) ---

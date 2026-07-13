@@ -84,6 +84,28 @@ function check(label, ok, info) {
   check('kw:flying: wing_commander wants, air_elemental provides',
     w2('wing_commander').wants['kw:flying'] > 0 && w2('air_elemental').provides['kw:flying'] > 0);
 
+  // Extraction-audit sweep pins (post-Wave-2). The principle each rule obeys:
+  // a filter earns a want only when YOUR deck can manufacture the condition.
+  check('tapped: smite_the_wicked wants, intimidating_lancer + roots_and_branches provide',
+    w2('smite_the_wicked').wants.tapped > 0 && w2('intimidating_lancer').provides.tapped > 0
+    && w2('roots_and_branches').provides.tapped > 0);
+  check('tapped: sage_of_the_wilds does NOT want it (own-creature untap filter is legality, not a want)',
+    !w2('sage_of_the_wilds').wants.tapped);
+  check('wrathproof: pyroclasm + day_of_reckoning want, cinder_ward + vanishing_act provide',
+    w2('pyroclasm').wants.wrathproof > 0 && w2('day_of_reckoning').wants.wrathproof > 0
+    && w2('cinder_ward').provides.wrathproof > 0 && w2('vanishing_act').provides.wrathproof > 0);
+  check('blink manufactures ETBs: vanishing_act + tideglass_broker provide etb',
+    w2('vanishing_act').provides.etb >= 1.5 && w2('tideglass_broker').provides.etb >= 1.5);
+  check('graveyard consumers want dies (grave_digger, deepseam_quarry); opp-yard hate does not (seal_thief)',
+    w2('grave_digger').wants.dies > 0 && w2('deepseam_quarry').wants.dies > 0
+    && !w2('seal_thief_courier').wants.dies);
+  check('theft feeds sac outlets: threaten provides fodder',
+    w2('threaten').provides.fodder > 0);
+  check('untap spells want activation machines: awaken_the_stone wants, pyromaniac provides',
+    w2('awaken_the_stone').wants.activation > 0 && w2('pyromaniac').provides.activation > 0);
+  check('flying-hate wants nothing (cannot manufacture their fliers): choking_vines',
+    Object.keys(w2('choking_vines').wants).length === 0, JSON.stringify(w2('choking_vines').wants));
+
   // this_card self-triggers must not register wants on other cards: an ETB
   // "when THIS enters, X" card is not an ally-ETB payoff.
   const selfEtb = Object.keys(CARDS)
