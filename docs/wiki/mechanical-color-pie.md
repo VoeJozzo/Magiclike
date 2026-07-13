@@ -66,6 +66,7 @@ The pie is defined as much by what colors **can't** do; here weaknesses are draf
 - **Flash is unlegislated** *(settled as a non-rule)*: flash on spells encodes instant-speed, no pie signal; a creature-flash shape may emerge on its own. Watch, don't rule.
 - **No auras, no equipment — on purpose** *(proposed)*: permanent modification lives at the run layer; [[sticker-system|stickers]] and [[staple-synthesis|splices]] are our auras.
 - **Riders and compositions are free** *(settled 2026-07-13)*: a card gluing two colors' verbs together ("counter a spell and gain 3 life") needs no new pie entry — it composes from what the colors already do. Only new *verbs* need slots.
+- **Frames are free; payloads obey the pie** *(settled 2026-07-13)*: trigger conditions, rider hooks, and activation shells are frames any card may use — "anyone can have an ETB trigger" (Joe). The *effect inside* the frame carries the color identity. Landfall-green and the like are associations (pulls), never laws.
 
 ## Pair archetypes *(all leaning)*
 
