@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.2.11`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.2.12`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -2620,3 +2620,18 @@ ability_triggered migration question is closed. Broader card: every
 ETB-ability creature feeds her now (sky_champion pinned alongside
 pyromaniac in the test). Suite 150 files / 2928 green; selfplay 500
 games 0 crashes/violations/stuck.
+
+v2.2.12: Two text idioms (Joe). (1) Same-target "It": with one shared
+top-level target (no slots), every clause resolves against the same locked
+pick — repeating the full target phrase read like a second choice that
+does not exist. After the first clause names it, later clauses say "it":
+second_wind ("Untap target creature you control. It gains vigilance...")
+plus two pool cards the sweep improved for free (artifice_triumphant,
+symbiote_tree). Slot cards (twin_strike, branching_bolt) correctly keep
+the verbose form — they genuinely pick twice. (2) Tutor draw voice: the
+house ruling "drawing = any library→hand move" now speaks in the text —
+library-search-to-hand renders "...and draw it" (5 cards: demonic_tutor,
+worldly_tutor, last_druid, nature_caller, verdant_charm mode 3);
+search-to-BATTLEFIELD ramp is not a draw and is untouched. Full-pool text
+diff: exactly 8/337 cards changed, all intended. Suite 150 files / 2928
+green.

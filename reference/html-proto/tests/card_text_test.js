@@ -307,13 +307,13 @@ console.log('\n=== describeModalSegs ===');
 // ─── End-to-end: real card from CARDS ─────────────────────────────────
 console.log('\n=== describeEffect: move_card library search text ===');
 eqText(segsToText(describeEffect({ kind: 'move_card', from_zone: 'library', to_zone: 'hand', selector: 'library_search', filter: 'creature' })),
-       'search your library for a creature card and put it into your hand',
+       'search your library for a creature card and draw it',
        'string creature filter renders as creature card');
 eqText(segsToText(describeEffect({ kind: 'move_card', from_zone: 'library', to_zone: 'hand', selector: 'library_search', filter: { type: 'Artifact' } })),
-       'search your library for an artifact card and put it into your hand',
+       'search your library for an artifact card and draw it',
        'object artifact filter renders with article');
 eqText(segsToText(describeEffect({ kind: 'move_card', from_zone: 'library', to_zone: 'hand', selector: 'library_search' })),
-       'search your library for a card and put it into your hand',
+       'search your library for a card and draw it',
        'unfiltered library search renders as a card');
 eqText(segsToText(describeEffect({ kind: 'move_card', from_zone: 'library', to_zone: 'battlefield', selector: 'library_search', filter: 'land', post: { tap: true } })),
        'search your library for a land and put it onto the battlefield tapped',

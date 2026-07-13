@@ -369,8 +369,12 @@ function describeEffect(eff, tplEff) {
       // idioms (matches the legacy kinds' phrasing for parity).
       const fz = eff.from_zone, tz = eff.to_zone;
       if (fz === 'library' && tz === 'hand' && eff.selector === 'library_search') {  // collapsed searchCreature
+        // "draw it", not "put it into your hand" — the house ruling defines
+        // drawing as ANY library→hand move (Joe, Wave 2: tutors ARE draws),
+        // so tutor text uses the draw verb and draw-matters cards
+        // (curious_faerie) read consistently with what actually triggers.
         const noun = searchFilterNoun(eff.filter, true);
-        return [plainSeg('search your library for ' + indefiniteArticle(noun) + ' ' + noun + ' and put it into your hand')];
+        return [plainSeg('search your library for ' + indefiniteArticle(noun) + ' ' + noun + ' and draw it')];
       }
       if (fz === 'library' && tz === 'battlefield') {  // collapsed searchLandTapped (auto fetch)
         // Derive the fetched-card noun from the filter (subtype > type > "card"),
@@ -781,6 +785,28 @@ function describeEffectList(effects, cardName, tplEffects, stepTarget, stepFilte
   const nonEmpty = parts.filter(p => Array.isArray(p) && p.some(s => s && s.text));
   if (nonEmpty.length === 0) return [];
   if (nonEmpty.length === 1) return capitalizeSegs(nonEmpty[0]).concat(plainSeg('.'));
+  // Same-target "It" idiom (Joe, Wave 2 follow-up): with ONE shared top-level
+  // target (no slots — slot cards like Twin Strike genuinely pick twice),
+  // every clause resolves against the same locked pick, so repeating the full
+  // target phrase reads like a second choice that doesn't exist. After the
+  // first clause names it, later clauses say "it": "Untap target creature you
+  // control. It gains vigilance until end of turn." Substituted before
+  // capitalization so a clause-initial "it" becomes "It" naturally.
+  if (stepTarget && !(Array.isArray(slotSpecs) && slotSpecs.length)) {
+    const sharedEff = stepFilter ? { target: stepTarget, filter: stepFilter } : { target: stepTarget };
+    const shared = withFilter(targetPhrase(sharedEff), sharedEff);
+    let mentioned = false;
+    for (const clause of nonEmpty) {
+      let inThis = false;
+      for (const seg of clause) {
+        if (!seg || !seg.text || seg.text.indexOf(shared) === -1) continue;
+        if (mentioned) seg.text = seg.text.replace(shared, 'it');
+        inThis = true;
+        break;
+      }
+      if (inThis) mentioned = true;
+    }
+  }
   const out = [];
   for (let i = 0; i < nonEmpty.length; i++) {
     if (i > 0) out.push(plainSeg('. '));

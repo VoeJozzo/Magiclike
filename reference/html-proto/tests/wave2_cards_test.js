@@ -71,7 +71,7 @@ const GOLDENS = {
   vigil_chanter: 'Spells you cast also grant vigilance to each creature they target until end of turn.',
   rescue_angel: 'Whenever you cast a spell, target creature you control gains flying until end of turn.',
   wing_commander: 'Other creatures you control with flying get +1/+1.',
-  second_wind: 'Untap target creature you control. Target creature you control gains vigilance until end of turn.',
+  second_wind: 'Untap target creature you control. It gains vigilance until end of turn.',
   vanguard_ensign: 'Other creatures you control get +1/+0.',
   vanishing_act: 'Exile target creature you control, then return it to the battlefield.',
   updraft: 'Target creature you control gains flying until end of turn.',
