@@ -32,7 +32,7 @@
   ],
   "synergy": {
     "wants": {
-      "trick": 3
+      "eot_buff": 3
     }
   }
 }

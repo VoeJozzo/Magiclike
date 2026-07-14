@@ -25,14 +25,15 @@ function check(label, ok, info) {
   const rabble = BUCKETS.analyzeCard('goblin_rabble');
   check('rabble PROVIDES sub:Goblin via token_id', rabble.provides['sub:Goblin'] > 0);
   check('rabble PROVIDES fodder + dies (token maker)',
-    rabble.provides.fodder > 0 && rabble.provides.dies > 0);
+    rabble.provides.fodder > 0 && rabble.provides.your_dies > 0);
 
   const artist = BUCKETS.analyzeCard('blood_artist');
-  check('blood_artist WANTS dies (death payoff)', artist.wants.dies > 0);
+  check('blood_artist WANTS both dies directions (any-death payoff)',
+    artist.wants.your_dies > 0 && artist.wants.opp_dies > 0);
 
   const feeder = BUCKETS.analyzeCard('carrion_feeder');
   check('carrion_feeder WANTS fodder (sac outlet)', feeder.wants.fodder > 0);
-  check('carrion_feeder PROVIDES dies (sac outlets produce deaths)', feeder.provides.dies > 0);
+  check('carrion_feeder PROVIDES your_dies (sac outlets produce YOUR deaths)', feeder.provides.your_dies > 0);
 
   const pridemate = BUCKETS.analyzeCard('ajanis_pridemate');
   check('pridemate WANTS lifegain (life_changed trigger)', pridemate.wants.lifegain > 0);
@@ -97,8 +98,8 @@ function check(label, ok, info) {
   check('blink manufactures ETBs: vanishing_act + tideglass_broker provide etb',
     w2('vanishing_act').provides.etb >= 1.5 && w2('tideglass_broker').provides.etb >= 1.5);
   check('graveyard consumers want dies (grave_digger, deepseam_quarry); opp-yard hate does not (seal_thief)',
-    w2('grave_digger').wants.dies > 0 && w2('deepseam_quarry').wants.dies > 0
-    && !w2('seal_thief_courier').wants.dies);
+    w2('grave_digger').wants.your_dies > 0 && w2('deepseam_quarry').wants.your_dies > 0
+    && !w2('seal_thief_courier').wants.your_dies);
   check('theft feeds sac outlets: threaten provides fodder',
     w2('threaten').provides.fodder > 0);
   check('untap spells want TAPABILITY machines: awaken_the_stone wants, pyromaniac provides',
@@ -131,8 +132,8 @@ function check(label, ok, info) {
   // damage-removal feed any-death payoffs; bounce and exile make NO death
   // event and stay silent.
   check('removal provides dies: murder 1, bolt 0.75; wash_away (bounce) none',
-    w2('murder').provides.dies === 1 && w2('lightning_bolt').provides.dies === 0.75
-    && !w2('wash_away').provides.dies);
+    w2('murder').provides.opp_dies === 1 && w2('lightning_bolt').provides.opp_dies === 0.75
+    && !w2('wash_away').provides.opp_dies && !w2('wash_away').provides.your_dies);
   check('murder <-> blood_artist is a live edge with the dies reason',
     BUCKETS.edgeBetween('murder', 'blood_artist').w > 1
     && /dies/.test(BUCKETS.edgeBetween('murder', 'blood_artist').reasons[0] || ''));
@@ -178,25 +179,34 @@ function check(label, ok, info) {
   // Non-spell destroyers manufacture deaths too — the dies provide is
   // shape-agnostic (chupacabra's ETB destroy, assassin's repeatable tap).
   check('creature-borne destroy provides dies (chupacabra, royal_assassin)',
-    w2('ravenous_chupacabra').provides.dies === 1 && w2('royal_assassin').provides.dies === 1);
+    w2('ravenous_chupacabra').provides.opp_dies === 1 && w2('royal_assassin').provides.opp_dies === 1);
   // The gate asymmetry is doctrine: a subtype-gated DIES trigger keeps the
   // generic dies want (sac outlets work on your demons), while a subtype-
   // gated ENTRY trigger drops generic etb (wrong-tribe bodies never fire it).
   check('subtype-gated dies payoff keeps both wants (rakdos_underboss)',
-    w2('rakdos_underboss').wants['sub:Demon'] > 0 && w2('rakdos_underboss').wants.dies > 0);
+    w2('rakdos_underboss').wants['sub:Demon'] > 0 && w2('rakdos_underboss').wants.your_dies > 0
+    && w2('rakdos_underboss').wants.opp_dies > 0);
   // Opp-discard is their loss, not your engine: toll_of_secrets hears only
   // YOUR discards, so duress/mind_rot correctly provide no discard.
   check('opp-discard cards provide no discard resource (duress, mind_rot)',
-    !w2('duress').provides.discard && !w2('mind_rot').provides.discard);
+    !w2('duress').provides.self_discard && !w2('mind_rot').provides.self_discard);
   // card_damaged_by_this gates make external death-manufacturers useless
   // (Murder's kill was never damaged by Sengir): those payoffs must not
   // want generic dies. Ungated and merely ownership-gated payoffs keep it.
   check('damaged-by-this dies payoffs want no generic dies (sengir, endomorph)',
-    !w2('sengir_vampire').wants.dies && !w2('endomorph').wants.dies);
-  check('any-death and your-side dies payoffs keep the want (blood_artist, charnel_shaman)',
-    w2('blood_artist').wants.dies > 0 && w2('charnel_shaman').wants.dies > 0);
+    !w2('sengir_vampire').wants.your_dies && !w2('sengir_vampire').wants.opp_dies
+    && !w2('endomorph').wants.your_dies && !w2('endomorph').wants.opp_dies);
+  // The ownership discrimination (Joe's question made it a rule): an
+  // any-death payoff wants both directions; a your-side-only payoff wants
+  // your_dies ONLY — so Murder never edges into charnel_shaman.
+  check('any-death payoff wants both directions (blood_artist)',
+    w2('blood_artist').wants.your_dies > 0 && w2('blood_artist').wants.opp_dies > 0);
+  check('your-side-only payoff wants your_dies only (charnel_shaman)',
+    w2('charnel_shaman').wants.your_dies > 0 && !w2('charnel_shaman').wants.opp_dies);
+  check('murder has no edge into charnel_shaman (removal kills THEIRS)',
+    !BUCKETS.edgeBetween('murder', 'charnel_shaman').reasons.some(r => /dies/.test(r)));
   check('the pyromaniac->sengir phantom edge is dead',
-    !BUCKETS.edgeBetween('pyromaniac', 'sengir_vampire').reasons.some(r => r.includes('[dies]')));
+    !BUCKETS.edgeBetween('pyromaniac', 'sengir_vampire').reasons.some(r => /dies/.test(r)));
 
   // this_card self-triggers must not register wants on other cards: an ETB
   // "when THIS enters, X" card is not an ally-ETB payoff.
@@ -376,11 +386,11 @@ function check(label, ok, info) {
   CARDS.__hint_test = {
     tplId: '__hint_test', name: 'Hint Tester', types: ['Creature', 'Horror'],
     cost: { B: 1 }, power: 1, toughness: 1, special: true,
-    synergy: { wants: { dies: 3, bogusResource: 5 }, provides: { fodder: 2 } },
+    synergy: { wants: { your_dies: 3, bogusResource: 5 }, provides: { fodder: 2 } },
   };
   BUCKETS._resetCacheForTest();
   const a = BUCKETS.analyzeCard('__hint_test');
-  check('synergy hint: declared wants applied', a && a.wants.dies === 3);
+  check('synergy hint: declared wants applied', a && a.wants.your_dies === 3);
   check('synergy hint: declared provides applied', a && a.provides.fodder === 2);
   check('synergy hint: unknown resource ignored (warns, no crash)',
     a && !a.wants.bogusResource);
@@ -388,7 +398,7 @@ function check(label, ok, info) {
   // deliberately discounted (2 provide × 3 want × ~0.55 idf ≈ 3.3).
   const e = BUCKETS.edgeBetween('__hint_test', 'goblin_rabble');
   check('hinted card grows real edges (rabble dies-feeds it)',
-    e.w >= 2.5 && e.reasons.some(r => r.includes('[dies]')), `w=${e.w}`);
+    e.w >= 2.5 && e.reasons.some(r => r.includes('[your_dies]')), `w=${e.w}`);
   delete CARDS.__hint_test;
   BUCKETS._resetCacheForTest();
 }
@@ -434,13 +444,21 @@ function check(label, ok, info) {
   // permanence (EOT effects stick forever) is declared as wants:trick on the
   // card. She's special (never offered), but a deck holding her must pull
   // trick spells into offers via seed affinity.
+  const w2 = (id) => BUCKETS.analyzeCard(id);
   const ely = BUCKETS.analyzeCard('elystra_the_immortal');
-  check('elystra WANTS trick (authored synergy hint)', ely && ely.wants.trick === 3,
-    JSON.stringify(ely && ely.wants));
+  check('elystra WANTS eot_buff (her permanence eats until-EOT buffs)',
+    ely && ely.wants.eot_buff === 3, JSON.stringify(ely && ely.wants));
   const e = BUCKETS.edgeBetween('giant_growth', 'elystra_the_immortal');
-  check('a pump spell feeds elystra (live edge, trick reason)',
-    e.w > 1 && e.reasons.some(r => r.includes('[trick]')),
+  check('a pump spell feeds elystra (live edge, eot_buff reason)',
+    e.w > 1 && e.reasons.some(r => r.includes('[eot_buff]')),
     `w=${e.w} ${JSON.stringify(e.reasons)}`);
+  // Joe's refinement: trick overmatched — Cloudshift targets your creature
+  // but flickering Elystra RESETS her buffs and rips the spell. It provides
+  // trick (tender still rewards casting it) but NOT eot_buff, and its edge
+  // to Elystra is dead.
+  check('cloudshift provides trick but not eot_buff; no elystra edge',
+    w2('cloudshift').provides.trick > 0 && !w2('cloudshift').provides.eot_buff
+    && BUCKETS.edgeBetween('cloudshift', 'elystra_the_immortal').w === 0);
 }
 
 // --- §6e the dupe shelf (v2.2.24) --------------------------------------------

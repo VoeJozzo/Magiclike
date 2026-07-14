@@ -184,13 +184,20 @@ function collectKindsAndConds(node, kinds, conds) {
 // resource names are validated against the vocabulary below — a typo warns
 // at index time instead of silently doing nothing (the predicate-registry
 // boot-validation pattern).
+// Direction-split vocabulary (Joe, 2026-07-14): deaths and discards carry
+// WHOSE side the event happens on — 'your_dies' (sacrifice/token/combat/
+// sweeper deaths on your side), 'opp_dies' (removal-made deaths on theirs),
+// 'self_discard' (your cards hitting the graveyard). Any-death payoffs want
+// both dies directions; side-gated payoffs want their side only.
 const HINT_RESOURCES = new Set([
-  'dies', 'fodder', 'etb', 'lifegain', 'spellcast', 'wide', 'anthem',
-  'discard', 'self_pain', 'opp_loss',
-  // trick: whitelisted for Elystra (v2.2.25) — her permanence makes her the
-  // pool's hungriest consumer of your-creature-targeted spells, and hints
-  // are exactly how a custom-kind card declares that (she was this
-  // mechanism's design exemplar all along; the hint just never got wired).
+  'your_dies', 'opp_dies', 'fodder', 'etb', 'lifegain', 'spellcast', 'wide',
+  'anthem', 'self_discard', 'self_pain', 'opp_loss',
+  // eot_buff: whitelisted for Elystra (v2.2.25 as trick, refined v2.2.30) —
+  // her permanence wants until-EOT buffs specifically (eot_buff), not
+  // your-creature targeting generically; hints are exactly how a
+  // custom-kind card declares that (she was this mechanism's design
+  // exemplar all along).
+  'eot_buff',
   'trick',
 ]);
 function applySynergyHints(tpl, provides, wants) {
@@ -241,7 +248,7 @@ function analyze(tpl) {
       const tribe = String(k.token_id || '').split('_')[0];
       if (tribe) bump(provides, 'sub:' + tribe.charAt(0).toUpperCase() + tribe.slice(1), W_PROV_TOKENS);
       bump(provides, 'fodder', W_PROV_TOKENS);
-      bump(provides, 'dies', W_PROV_TOKENS);
+      bump(provides, 'your_dies', W_PROV_TOKENS);
       bump(provides, 'wide', W_PROV_TOKENS);
       bump(provides, 'etb', W_PROV_TOKENS);
     }
@@ -254,7 +261,7 @@ function analyze(tpl) {
     // every death payoff (the prototype's promiscuity bug).
     const cost = totalCost(tpl);
     if (cost <= 1) bump(provides, 'fodder', W_PROV_EXPEND);
-    if (cost <= 2) bump(provides, 'dies', W_PROV_DIES_CHEAP);
+    if (cost <= 2) bump(provides, 'your_dies', W_PROV_DIES_CHEAP);
     // Every creature enters. These constants express only the MECHANICAL
     // strength (cheap creatures enter more often); the fact that ~188 cards
     // provide etb is priced separately and automatically by the specificity
@@ -267,14 +274,13 @@ function analyze(tpl) {
   // Wave 1 vocabulary (~2 lines per niche; scope + rationale in
   // docs/plans/plan-pool-waves.md — bounce/deathtouch/reanimation rules were
   // measured but dropped with their cards; re-add when a card pays for them):
-  // DIRECTION CONVENTION: 'discard' means YOUR OWN cards hitting the
+  // DIRECTION CONVENTION: 'self_discard' = YOUR OWN cards hitting the
   // graveyard (looting fuel) — the sole wanter (toll_of_secrets) hears only
   // controlled_by(you) discards, hence scope self here. OPP-discard effects
   // (duress, mind_rot, hypnotic_specter) deliberately provide nothing; the
   // day an opp-discard payoff ships ("when your opponent discards, ..."),
-  // it wants a NEW resource (opp_discard) with those cards as providers —
-  // do not widen this rule.
-  if (kinds.some(k => k.kind === 'move_card' && k.from_zone === 'hand' && k.to_zone === 'graveyard' && k.scope === 'self')) bump(provides, 'discard', 2);
+  // it wants a NEW resource (opp_discard) with those cards as providers.
+  if (kinds.some(k => k.kind === 'move_card' && k.from_zone === 'hand' && k.to_zone === 'graveyard' && k.scope === 'self')) bump(provides, 'self_discard', 2);
   if (kinds.some(k => (k.kind === 'gain_life' && (k.amount || 0) < 0 && k.scope === 'self') || (k.kind === 'damage' && k.scope === 'self'))) bump(provides, 'self_pain', 2);
   if ((kinds.some(k => k.kind === 'damage') && /player|opp|any/.test(String(tpl.target || '')))
       || kinds.some(k => k.kind === 'gain_life' && (k.amount || 0) < 0 && k.scope !== 'self')) bump(provides, 'opp_loss', 1);
@@ -295,7 +301,17 @@ function analyze(tpl) {
   if (isSpellCard && kinds.some(k => k.kind === 'damage')) bump(provides, 'burnspell', 1);
   // trick: a spell aimed at YOUR creature (the protect/pump shelf —
   // sapling_tender and vigil_chanter reward casting these).
-  if (isSpellCard && String(tpl.target || '') === 'your_creature') bump(provides, 'trick', 1);
+  if (isSpellCard && String(tpl.target || '') === 'your_creature') {
+    bump(provides, 'trick', 1);
+    // eot_buff: the subset of tricks whose payload is an until-EOT buff
+    // (pump / keyword grant — EOT is the engine default duration). Elystra's
+    // permanence wants THESE, not tricks generically: Cloudshift targets
+    // your creature but flickering her resets her buffs AND rips the spell
+    // (Joe: "ripping stuff up is actually a downside").
+    if (kinds.some(k => k.kind === 'pump' || k.kind === 'grant_keyword')) {
+      bump(provides, 'eot_buff', 1);
+    }
+  }
   // carddraw: puts cards from library into hand (house ruling: tutors ARE
   // draws — "drawing = any library→hand move").
   if (kinds.some(k => k.kind === 'move_card' && k.from_zone === 'library'
@@ -377,7 +393,7 @@ function analyze(tpl) {
   // never yours — the killer's "makes Threaten a two-for-one" play pattern.
   if (kinds.some(k => k.kind === 'change_control')) {
     bump(provides, 'fodder', 1.5);
-    bump(provides, 'dies', 1);
+    bump(provides, 'your_dies', 1);   // the stolen body dies under YOUR control
   }
   // Removal MANUFACTURES death events, and any-death payoffs (blood_artist's
   // archetype has no controller term — it hears THEIR creatures dying) feed
@@ -390,13 +406,19 @@ function analyze(tpl) {
   // destroy (a blinkable death engine) and royal_assassin's repeatable
   // tap-destroy providing dies 0 while one-shot Murder provided 1.
   if (kinds.some(k => k.kind === 'affect_creature' && k.severity === 'destroy')) {
-    bump(provides, 'dies', 1);
+    bump(provides, 'opp_dies', 1);   // you point removal at THEIR creatures
+    // A sweeper kills your board too — wraths genuinely feed your-side
+    // death payoffs (charnel_shaman hears your creatures die to Pyroclasm).
+    if (kinds.some(k => k.kind === 'affect_creature' && k.severity === 'destroy'
+        && /^all/.test(String(k.scope || '')))) {
+      bump(provides, 'your_dies', 1);
+    }
   }
   if (isSpellCard && kinds.some(k => k.kind === 'damage' && !k.scope)
       && targetSteps.some(st => /creature/.test(String(st.t || '')))) {
-    bump(provides, 'dies', 0.75);
+    bump(provides, 'opp_dies', 0.75);
   }
-  if (kinds.some(k => k.kind === 'fight')) bump(provides, 'dies', 0.75);
+  if (kinds.some(k => k.kind === 'fight')) bump(provides, 'opp_dies', 0.75);
 
   // --- WANTS ---
   // Trigger conditions. `this_card` triggers are self-referential (my own
@@ -444,9 +466,15 @@ function analyze(tpl) {
       //    has a second customer.)
       if (/^card_moves\(battlefield,\s*graveyard\)$/.test(s)
           && !cs.includes('card_damaged_by_this')) {
-        bump(wants, 'dies', W_WANT_PAYOFF);
+        // Direction split (Joe): "a creature dies" hears both sides; "a
+        // creature YOU CONTROL dies" (charnel_shaman) is fed by outlets,
+        // tokens, sweepers, and combat — never by targeted removal.
+        bump(wants, 'your_dies', W_WANT_PAYOFF);
+        if (!cs.some(x => /^controlled_by\(you\)$/.test(x))) {
+          bump(wants, 'opp_dies', W_WANT_PAYOFF);
+        }
       }
-      if (/^card_moves\(hand,\s*graveyard\)$/.test(s)) bump(wants, 'discard', W_WANT_PAYOFF);
+      if (/^card_moves\(hand,\s*graveyard\)$/.test(s)) bump(wants, 'self_discard', W_WANT_PAYOFF);
       if (/^card_moves\(library,\s*hand\)$/.test(s)) bump(wants, 'carddraw', W_WANT_PAYOFF);
       if (/^card_moves\([^)]*battlefield\)$/.test(s) && cs.includes('another_card')
           && !subGatedEntry) {
@@ -531,7 +559,7 @@ function analyze(tpl) {
   for (const ab of (tpl.abilities || [])) {
     if (ab.cost && ab.cost.sacrifice && ab.cost.sacrifice !== 'self') {
       bump(wants, 'fodder', W_WANT_PAYOFF);
-      bump(provides, 'dies', W_PROV_TOKENS);
+      bump(provides, 'your_dies', W_PROV_TOKENS);
     }
   }
   // Extraction-audit wants (sweep, post-Wave-2):
@@ -554,7 +582,7 @@ function analyze(tpl) {
   // is meta, not deck synergy.
   if (targetSteps.some(s => s.t === 'graveyard_card'
       && !(s.f && Array.isArray(s.f.graveyards) && s.f.graveyards.length === 1 && s.f.graveyards[0] === 'opp'))) {
-    bump(wants, 'dies', 2);
+    bump(wants, 'your_dies', 2);   // your graveyard fills from YOUR deaths
   }
   // Untap-your-creature effects want TAP-COST machines specifically
   // (awaken_the_stone + pyromaniac yes, furnace_whelp no — Joe's

@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.2.29`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.2.30`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -2943,3 +2943,25 @@ morning's raw dumps. Also: the discard direction convention documented
 at the rule (discard = YOUR discards; an opp-discard payoff ships a NEW
 opp_discard resource with duress/mind_rot/hypnotic_specter as its
 providers — do not widen). 3 new pins. Suite 150 files / 2992 green.
+
+v2.2.30: Direction-split vocabulary (three Joe calls in one sitting).
+(1) 'dies' splits into 'your_dies' / 'opp_dies': providers — sac outlets,
+token makers, cheap creatures, theft (dies under YOUR control) provide
+your_dies; targeted removal and fight provide opp_dies; sweepers provide
+BOTH (Pyroclasm genuinely feeds charnel_shaman). Wanters — any-death
+payoffs (blood_artist) want both directions; controlled_by(you) payoffs
+(charnel_shaman) want your_dies only, so Murder no longer edges into
+them; graveyard consumers want your_dies (your yard fills from your
+deaths); rakdos_underboss keeps both (demons die on either side).
+(2) 'discard' renamed 'self_discard' (Joe: "inertia is not a good
+reason") — the opp_discard direction is reserved for the day an
+opp-discard payoff ships. (3) 'eot_buff': Elystra's true diet — trick
+overmatched (Cloudshift targets your creature, but flickering Elystra
+RESETS her accumulated buffs and rips the spell; "ripping stuff up is
+actually a downside"). New provides rule: your-creature spells whose
+payload is a pump/keyword grant (until-EOT is the engine default)
+provide eot_buff alongside trick; Elystra's hint wants eot_buff 3;
+cloudshift<->elystra edge is dead; sapling_tender/vigil_chanter keep
+wanting generic trick (they reward the CAST, not the buff). ~18 pins
+updated + 4 new (ownership discrimination, cloudshift anti-synergy).
+Suite 150 files / 2995 green.
