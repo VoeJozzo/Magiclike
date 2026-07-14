@@ -174,6 +174,20 @@ function check(label, ok, info) {
     w2('beast_whisperer').wants.etb > 0 && w2('charnel_chorister').wants.etb > 0);
   check('the phantom drummer edge is dead (cult_priest cannot trigger it)',
     BUCKETS.edgeBetween('cult_priest', 'goblin_war_drummer').w === 0);
+  // Rule-shape audit pins (Joe, 2026-07-14):
+  // Non-spell destroyers manufacture deaths too — the dies provide is
+  // shape-agnostic (chupacabra's ETB destroy, assassin's repeatable tap).
+  check('creature-borne destroy provides dies (chupacabra, royal_assassin)',
+    w2('ravenous_chupacabra').provides.dies === 1 && w2('royal_assassin').provides.dies === 1);
+  // The gate asymmetry is doctrine: a subtype-gated DIES trigger keeps the
+  // generic dies want (sac outlets work on your demons), while a subtype-
+  // gated ENTRY trigger drops generic etb (wrong-tribe bodies never fire it).
+  check('subtype-gated dies payoff keeps both wants (rakdos_underboss)',
+    w2('rakdos_underboss').wants['sub:Demon'] > 0 && w2('rakdos_underboss').wants.dies > 0);
+  // Opp-discard is their loss, not your engine: toll_of_secrets hears only
+  // YOUR discards, so duress/mind_rot correctly provide no discard.
+  check('opp-discard cards provide no discard resource (duress, mind_rot)',
+    !w2('duress').provides.discard && !w2('mind_rot').provides.discard);
 
   // this_card self-triggers must not register wants on other cards: an ETB
   // "when THIS enters, X" card is not an ally-ETB payoff.

@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.2.27`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.2.28`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -2905,3 +2905,24 @@ any-creature entry payoffs (beast_whisperer, storm_sage, triage_cleric,
 bramble_acolyte, charnel_chorister) keep the generic want. 3 new pins
 incl. the dead phantom edge. Also: stale CLAUDE.md buckets row updated
 for the v2.2.26 retirement. Suite 150 files / 2986 green.
+
+v2.2.28: Rule-shape audit (Joe: "review for other potential mismatches —
+the code probably reads as legible constructions; ask if it makes sense
+with what the rule is trying to do"). Swept every extraction rule for the
+drummer bug's shape (a structural pattern ignoring a qualifier beside
+it). Findings: (1) FIXED — the v2.2.19 destroy->dies provide was
+spell-scoped for no semantic reason: ravenous_chupacabra (ETB destroy, a
+blinkable death engine), royal_assassin (repeatable tap-destroy),
+righteous_judge, reaper_shade, vengeful_spirit all provided dies 0 while
+one-shot Murder provided 1. Destroy now provides dies regardless of card
+shape. (2) DOCTRINE, documented in-code: subtype-gated DIES triggers
+(rakdos_underboss, "whenever a Demon dies") deliberately KEEP the
+generic dies want — dies-providers stay useful under a tribe gate (sac
+outlets sacrifice YOUR demons), unlike entry-bodies which never fire a
+wrong-tribe entry gate. The asymmetry with the v2.2.27 etb fix is
+intentional. (3) VERIFIED CORRECT, pinned: opp-discard cards (duress,
+mind_rot) provide no discard — toll_of_secrets hears only your own
+discards. Clean sweeps: no spell_cast subtype double-count, no
+tap-your-own false tapped provides, no opp-token false fodder, heals/
+drains self-gain correctly, no generic-target pumps missing trick.
+5 new pins. Suite 150 files / 2989 green.

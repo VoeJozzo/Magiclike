@@ -378,7 +378,11 @@ function analyze(tpl) {
   // deck that wants deaths (Joe's sweep follow-up, 2026-07-13). Destroy
   // effects only — exile and bounce make no death event. Damage-based
   // removal kills via SBAs, slightly less reliably (survivors, face mode).
-  if (isSpellCard && kinds.some(k => k.kind === 'affect_creature' && k.severity === 'destroy')) {
+  // ANY card shape counts (Joe's rule-shape audit, 2026-07-14): the v2.2.19
+  // rule was spell-scoped for no semantic reason, leaving chupacabra's ETB
+  // destroy (a blinkable death engine) and royal_assassin's repeatable
+  // tap-destroy providing dies 0 while one-shot Murder provided 1.
+  if (kinds.some(k => k.kind === 'affect_creature' && k.severity === 'destroy')) {
     bump(provides, 'dies', 1);
   }
   if (isSpellCard && kinds.some(k => k.kind === 'damage' && !k.scope)
@@ -417,6 +421,12 @@ function analyze(tpl) {
         }
       }
       if (selfOnly) continue;
+      // Deliberately NOT gated on subGatedEntry (the asymmetry with the etb
+      // rule below is doctrine, not an oversight): "whenever a DEMON dies"
+      // (rakdos_underboss) keeps the generic dies want because dies-
+      // PROVIDERS stay useful under a tribe gate — a sac outlet sacrifices
+      // YOUR demons. Entry-providers are the bodies themselves, and a
+      // wrong-tribe body can never fire a gated entry trigger.
       if (/^card_moves\(battlefield,\s*graveyard\)$/.test(s)) bump(wants, 'dies', W_WANT_PAYOFF);
       if (/^card_moves\(hand,\s*graveyard\)$/.test(s)) bump(wants, 'discard', W_WANT_PAYOFF);
       if (/^card_moves\(library,\s*hand\)$/.test(s)) bump(wants, 'carddraw', W_WANT_PAYOFF);
