@@ -267,6 +267,13 @@ function analyze(tpl) {
   // Wave 1 vocabulary (~2 lines per niche; scope + rationale in
   // docs/plans/plan-pool-waves.md — bounce/deathtouch/reanimation rules were
   // measured but dropped with their cards; re-add when a card pays for them):
+  // DIRECTION CONVENTION: 'discard' means YOUR OWN cards hitting the
+  // graveyard (looting fuel) — the sole wanter (toll_of_secrets) hears only
+  // controlled_by(you) discards, hence scope self here. OPP-discard effects
+  // (duress, mind_rot, hypnotic_specter) deliberately provide nothing; the
+  // day an opp-discard payoff ships ("when your opponent discards, ..."),
+  // it wants a NEW resource (opp_discard) with those cards as providers —
+  // do not widen this rule.
   if (kinds.some(k => k.kind === 'move_card' && k.from_zone === 'hand' && k.to_zone === 'graveyard' && k.scope === 'self')) bump(provides, 'discard', 2);
   if (kinds.some(k => (k.kind === 'gain_life' && (k.amount || 0) < 0 && k.scope === 'self') || (k.kind === 'damage' && k.scope === 'self'))) bump(provides, 'self_pain', 2);
   if ((kinds.some(k => k.kind === 'damage') && /player|opp|any/.test(String(tpl.target || '')))
@@ -421,13 +428,24 @@ function analyze(tpl) {
         }
       }
       if (selfOnly) continue;
-      // Deliberately NOT gated on subGatedEntry (the asymmetry with the etb
-      // rule below is doctrine, not an oversight): "whenever a DEMON dies"
-      // (rakdos_underboss) keeps the generic dies want because dies-
-      // PROVIDERS stay useful under a tribe gate — a sac outlet sacrifices
-      // YOUR demons. Entry-providers are the bodies themselves, and a
-      // wrong-tribe body can never fire a gated entry trigger.
-      if (/^card_moves\(battlefield,\s*graveyard\)$/.test(s)) bump(wants, 'dies', W_WANT_PAYOFF);
+      // The gate test for dies wants (doctrine, per the 2026-07-14 rule-shape
+      // audit): keep the generic want when dies-PROVIDERS stay useful under
+      // the trigger's gate, drop it when they don't.
+      //  - subtype gate ("whenever a DEMON dies", rakdos_underboss): KEEP —
+      //    a sac outlet sacrifices YOUR demons. (Contrast the entry rule
+      //    below: a wrong-tribe body can never fire a gated entry trigger.)
+      //  - controlled_by(you) ("a creature you control dies",
+      //    charnel_shaman): KEEP — outlets, token deaths, and combat all
+      //    qualify; only the removal arm is wasted.
+      //  - card_damaged_by_this ("a creature THIS damaged dies",
+      //    sengir_vampire, endomorph): DROP — no external death-
+      //    manufacturer qualifies; the card feeds itself by fighting.
+      //    (Its real want is fight spells — parked until that resource
+      //    has a second customer.)
+      if (/^card_moves\(battlefield,\s*graveyard\)$/.test(s)
+          && !cs.includes('card_damaged_by_this')) {
+        bump(wants, 'dies', W_WANT_PAYOFF);
+      }
       if (/^card_moves\(hand,\s*graveyard\)$/.test(s)) bump(wants, 'discard', W_WANT_PAYOFF);
       if (/^card_moves\(library,\s*hand\)$/.test(s)) bump(wants, 'carddraw', W_WANT_PAYOFF);
       if (/^card_moves\([^)]*battlefield\)$/.test(s) && cs.includes('another_card')

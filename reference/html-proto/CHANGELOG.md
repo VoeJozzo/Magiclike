@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.2.28`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.2.29`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -2926,3 +2926,20 @@ discards. Clean sweeps: no spell_cast subtype double-count, no
 tap-your-own false tapped provides, no opp-token false fodder, heals/
 drains self-gain correctly, no generic-target pumps missing trick.
 5 new pins. Suite 150 files / 2989 green.
+
+v2.2.29: The gate test, completed (Joe: "do our destroys/dies things gate
+on ownership?"). Swept every dies-payoff for its gate: 6 any-death
+(blood_artist et al.), 1 your-side-only (charnel_shaman), 1 tribe-gated
+(rakdos_underboss), and 2 damaged-by-this (sengir_vampire, endomorph).
+Doctrine now written at the rule: keep the generic dies want when
+dies-providers stay useful under the gate (subtype gates: sac outlets
+kill YOUR demons; ownership gates: outlets/tokens/combat all qualify),
+DROP it when none do — card_damaged_by_this admits no external death-
+manufacturer (Murder's kill was never damaged by Sengir; the card feeds
+itself by fighting; its true want is fight spells, parked until a second
+customer). Sengir/endomorph phantom dies wants removed — this was the
+source of the mushy [Pyromaniac|Sengir|Drain Life] buckets in the
+morning's raw dumps. Also: the discard direction convention documented
+at the rule (discard = YOUR discards; an opp-discard payoff ships a NEW
+opp_discard resource with duress/mind_rot/hypnotic_specter as its
+providers — do not widen). 3 new pins. Suite 150 files / 2992 green.

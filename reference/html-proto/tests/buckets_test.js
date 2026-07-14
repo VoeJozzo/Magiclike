@@ -188,6 +188,15 @@ function check(label, ok, info) {
   // YOUR discards, so duress/mind_rot correctly provide no discard.
   check('opp-discard cards provide no discard resource (duress, mind_rot)',
     !w2('duress').provides.discard && !w2('mind_rot').provides.discard);
+  // card_damaged_by_this gates make external death-manufacturers useless
+  // (Murder's kill was never damaged by Sengir): those payoffs must not
+  // want generic dies. Ungated and merely ownership-gated payoffs keep it.
+  check('damaged-by-this dies payoffs want no generic dies (sengir, endomorph)',
+    !w2('sengir_vampire').wants.dies && !w2('endomorph').wants.dies);
+  check('any-death and your-side dies payoffs keep the want (blood_artist, charnel_shaman)',
+    w2('blood_artist').wants.dies > 0 && w2('charnel_shaman').wants.dies > 0);
+  check('the pyromaniac->sengir phantom edge is dead',
+    !BUCKETS.edgeBetween('pyromaniac', 'sengir_vampire').reasons.some(r => r.includes('[dies]')));
 
   // this_card self-triggers must not register wants on other cards: an ETB
   // "when THIS enters, X" card is not an ally-ETB payoff.
