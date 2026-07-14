@@ -115,6 +115,59 @@ One behavioral note worth keeping here: **trigger-level `target: "opp"`**
 (and other implicit types) auto-resolves with zero UI prompts — the
 blood_artist / toll_of_secrets drain shape.
 
+## Does the synergy graph see your card? (required check before shipping)
+
+The Growing Deck's bucket generator reads card STRUCTURE through ~15
+extraction rules (`js/buckets.js §1 analyze()`) — never names or text. Your
+card's draft-time identity (what pulls on it, what it pulls on, which
+buckets recruit it) is whatever those rules extract. A card can be
+rules-correct and play perfectly while the graph sees something wrong —
+phantom edges (Cult Priest "feeding" the Goblin-only War Drummer) or
+blindness (Chupacabra providing zero deaths). Check before landing:
+
+```
+node -e "const s=require('./tests/_setup');s.loadEngine();
+console.log(JSON.stringify(BUCKETS.analyzeCard('your_card'),
+  (k,v)=>v instanceof Set?[...v]:v,1));
+console.log(BUCKETS.edgeBetween('your_card','intended_partner'));"
+```
+
+Read the output and ask: **does this match the design intent?** Then route:
+
+1. **Extraction is right** → ship.
+2. **The mechanic is known vocabulary but a rule misses/mismatches it** →
+   fix the RULE, never the card (rules generalize; every future card with
+   the shape benefits — the per-card down-tune doesn't exist by design).
+   Doctrine the rule edit must obey (ledger: `analyze()` header +
+   `docs/plans/plan-pool-waves.md`):
+   - **Direction is semantics**: `your_dies`/`opp_dies`/`self_discard` are
+     different resources because they're different events. Don't widen a
+     directional resource; add its sibling.
+   - **Gates pass the provider test**: a qualified trigger ("whenever a
+     GOBLIN enters" / "a creature THIS damaged dies") keeps a generic want
+     only if the resource's providers stay useful under the gate. Sac
+     outlets kill your Demons (keep); wrong-tribe bodies never fire a
+     gated entry trigger (drop).
+   - **The nearly-dead-alone card holds the want** (direction is
+     load-bearing for legibility and hub placement).
+   - **Ship with a customer**: no speculative resources — a new resource
+     needs a wanter and a provider the day it lands.
+3. **The mechanic is a one-off custom kind the extractor deliberately
+   doesn't parse** → declare it on the card:
+   `"synergy": {"wants": {"eot_buff": 3}, "provides": {...}}`
+   (Elystra is the precedent). Hints merge additive-max — they can RAISE
+   what rules derived, never lower it. Resource names are validated against
+   `HINT_RESOURCES` (`js/buckets.js`); a typo warns at boot and does nothing.
+4. **The card registers nothing** → it has zero edges, will never be
+   recruited into any themed bucket, and reaches players only through the
+   per-slot value fill. That's either deliberately standalone or
+   accidentally inert — decide on purpose, in the PR description.
+
+Weights, if you touch a rule: wants 3 = "the card's plan depends on it",
+2 = strong-but-secondary; provides 2 = manufactures in quantity, 1 = is/does
+the thing once. Breadth is priced automatically by idf — never hand-nerf a
+resource for being common.
+
 ## Beyond the format
 
 This doc covers the card FORMAT only. The shipping *process* — tests,
