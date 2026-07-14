@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.2.26`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.2.27`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -2891,3 +2891,17 @@ Answer-card exposure now rides real edges only (the accidental fallback
 channel is gone — by design: a channel whose bandwidth shrinks as the
 graph improves is exhaust, not a channel). 5 new pins. Suite 150 files
 / 2983 green.
+
+v2.2.27: Qualified-entry wart fixed (Joe's playtest catch: "why is there
+an etb connection between goblin war-drummer and cult priest?" — a Human
+Cleric that can never fire the drummer's Goblin-only trigger). A
+subtype-gated entry trigger ("whenever another GOBLIN enters") was
+double-counted as wanting BOTH its tribe (correct) and generic etb
+(wrong), wiring the payoff to every creature in the pool. Five payoffs
+carried the phantom want: goblin_war_drummer, high_priestess,
+skyfire_drakelord, chapter_recruiter, covenant_scholar. Same
+qualified-payoff family as flashcast/burnspell/counterspell. Unqualified
+any-creature entry payoffs (beast_whisperer, storm_sage, triage_cleric,
+bramble_acolyte, charnel_chorister) keep the generic want. 3 new pins
+incl. the dead phantom edge. Also: stale CLAUDE.md buckets row updated
+for the v2.2.26 retirement. Suite 150 files / 2986 green.

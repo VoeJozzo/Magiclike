@@ -162,6 +162,19 @@ function check(label, ok, info) {
   check('fallback bundles never carry a story (value-sampling made no contract)',
     storiedFallbacks === 0, storiedFallbacks + ' fallbacks with why[]');
 
+  // Qualified-entry wart (Joe's playtest catch: drummer had an etb edge to
+  // a Human Cleric that can never fire it): a subtype-gated entry trigger
+  // wants its TRIBE, never generic etb; unqualified any-creature entry
+  // payoffs keep the generic want.
+  check('subtype-gated entry payoffs want the tribe, NOT generic etb',
+    !w2('goblin_war_drummer').wants.etb && w2('goblin_war_drummer').wants['sub:Goblin'] > 0
+    && !w2('chapter_recruiter').wants.etb && !w2('skyfire_drakelord').wants.etb
+    && !w2('high_priestess').wants.etb && !w2('covenant_scholar').wants.etb);
+  check('unqualified entry payoffs still want etb (beast_whisperer, charnel_chorister)',
+    w2('beast_whisperer').wants.etb > 0 && w2('charnel_chorister').wants.etb > 0);
+  check('the phantom drummer edge is dead (cult_priest cannot trigger it)',
+    BUCKETS.edgeBetween('cult_priest', 'goblin_war_drummer').w === 0);
+
   // this_card self-triggers must not register wants on other cards: an ETB
   // "when THIS enters, X" card is not an ally-ETB payoff.
   const selfEtb = Object.keys(CARDS)

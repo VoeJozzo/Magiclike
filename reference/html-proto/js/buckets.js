@@ -395,6 +395,14 @@ function analyze(tpl) {
     const cs = [];
     collectKindsAndConds({ condition: trg.condition }, [], cs);
     const selfOnly = cs.includes('this_card');
+    // A subtype-gated entry trigger ("whenever another GOBLIN enters") is a
+    // payoff for that tribe, NOT for bodies in general — the tribal want is
+    // recorded by the card_has_subtype arm below, and the generic etb want
+    // must stay silent or the drummer wires to every creature in the pool
+    // (Joe's playtest catch, 2026-07-14: "why is there an etb connection
+    // between war drummer and cult priest?" — a Human Cleric that can never
+    // fire it). Same qualified-payoff wart family as flashcast/burnspell.
+    const subGatedEntry = cs.some(x => /^card_has_subtype\(/.test(x));
     for (const s of cs) {
       // Any-of args (card_has_subtype(Elf, Merfolk) — Covenant Scholar) want
       // EACH named tribe; the old \w+ regex silently extracted nothing from
@@ -412,7 +420,8 @@ function analyze(tpl) {
       if (/^card_moves\(battlefield,\s*graveyard\)$/.test(s)) bump(wants, 'dies', W_WANT_PAYOFF);
       if (/^card_moves\(hand,\s*graveyard\)$/.test(s)) bump(wants, 'discard', W_WANT_PAYOFF);
       if (/^card_moves\(library,\s*hand\)$/.test(s)) bump(wants, 'carddraw', W_WANT_PAYOFF);
-      if (/^card_moves\([^)]*battlefield\)$/.test(s) && cs.includes('another_card')) {
+      if (/^card_moves\([^)]*battlefield\)$/.test(s) && cs.includes('another_card')
+          && !subGatedEntry) {
         bump(wants, 'etb', W_WANT_PAYOFF);          // "when another creature enters" payoffs
       }
     }
