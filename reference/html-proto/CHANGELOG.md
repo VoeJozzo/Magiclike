@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.2.25`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.2.26`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -2871,3 +2871,23 @@ reason. Plus a tile-alignment fix from the same playtest: the story block
 is now a fixed 112px (7 lines) with scroll overflow, so the three tiles'
 card columns line up regardless of story length. 2 new pins. Suite 150
 files / 2978 green.
+
+v2.2.26: The Reinforcements retirement (Joe's plan, BACKLOG-ledgered
+2026-07-14). The coherence floor MIN_COHERENCE is deleted — it existed so
+incoherent buckets wouldn't ship wearing a lying theme label, and labels
+died at v2.2.22; an unlabeled weak bucket tells an honest weak story the
+player declines with open eyes. Whole-bucket fallback is replaced by
+Joe's per-slot value fill: a stranded bucket keeps its seed + grown
+recruits and fills only empty seats with the goodstuff logic (value-
+weighted, color-fenced, never owned), each filled seat carrying an
+honest "joins [value]" story line ("a solid card in your colors").
+Whole-bundle Reinforcements now fires only if seeding itself starves.
+Measured (300 offers x 3 scenarios): fallback tiles 10-30% -> 0.0%;
+mean coherence eases (6.3-6.9 -> 5.1-6.3) as former-fallback tiles ship
+as weak-but-honest plans (9-26% of tiles below the old floor); and the
+value seat fired ZERO times in 2,700 buckets — at 341 cards growth never
+strands, so the per-slot fill is insurance, exercised by its test seam.
+Answer-card exposure now rides real edges only (the accidental fallback
+channel is gone — by design: a channel whose bandwidth shrinks as the
+graph improves is exhaust, not a channel). 5 new pins. Suite 150 files
+/ 2983 green.

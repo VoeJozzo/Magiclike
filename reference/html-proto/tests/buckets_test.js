@@ -440,6 +440,38 @@ function check(label, ok, info) {
   check('owned-at-max cards still appear in offers (never zero)', rabbleOffered);
 }
 
+// --- §6f the Reinforcements retirement (v2.2.26) -------------------------------
+{
+  // Per-slot value fill: a stranded bucket keeps its grown members and
+  // fills only the empty seats — value-weighted, color-fenced, never a
+  // card you own, with an honest value-type why line per filled seat.
+  const deck = ['murder', 'swamp', 'swamp'];
+  const r = BUCKETS._valueFillForTest(['blood_artist'], deck);
+  check('value fill completes a stranded bucket to 3 cards', r.cards.length === 3,
+    r.cards.join(','));
+  check('filled seats carry the [value] why line (one per seat)',
+    r.why.length === 2 && r.why.every(w => / joins \[value\]$/.test(w)),
+    JSON.stringify(r.why));
+  check('value fill never sells you your own cards', !r.cards.includes('murder'));
+  const PIPS = ['W', 'U', 'B', 'R', 'G'];
+  const cols = new Set();
+  for (const id of r.cards) for (const k of PIPS) if ((CARDS[id].cost || {})[k] > 0) cols.add(k);
+  check('filled bucket still obeys the two-color law', cols.size <= 2, [...cols].join(','));
+
+  // With a full pool, normal offers NEVER fall back anymore: every seed
+  // grows-or-fills to a full bucket (the floor is gone; whole-bundle
+  // Reinforcements is reserved for seeding starvation).
+  let fallbacks = 0, tiles = 0;
+  for (let i = 0; i < 15; i++) {
+    for (const b of BUCKETS.rollBucketOffer(['goblin_piercer', 'blood_artist', 'mountain', 'swamp'])) {
+      tiles++;
+      if (b.fallback) fallbacks++;
+    }
+  }
+  check('normal offers contain zero Reinforcements bundles (retirement)',
+    fallbacks === 0, `${fallbacks}/${tiles}`);
+}
+
 // --- §7 theme health report -------------------------------------------------
 {
   const report = BUCKETS.themeHealthReport();

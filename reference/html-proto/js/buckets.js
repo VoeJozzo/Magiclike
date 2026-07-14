@@ -25,10 +25,12 @@
 //   §4 rollOffer()    — compose a 3-bucket offer: seeds sampled from the
 //                       whole legal pool, each card weighted by its deck-
 //                       affinity (weights-as-weights: the wishlist shapes
-//                       the odds, not the outcomes). Low-coherence buckets
-//                       fall back to a loose value-sampled bundle
-//                       (fallback: true — the UI's "Reinforcements") so
-//                       offers never come up empty.
+//                       the odds, not the outcomes). Every grown bucket
+//                       ships; seats that growth can't fill get one
+//                       value-sampled card each (the per-slot fill). A
+//                       whole value bundle (fallback: true — the UI's
+//                       "Reinforcements") appears only if seeding itself
+//                       starves, so offers never come up empty.
 //
 // API: rollBucketOffer(deckTplIds), rollBucket(seedTplId, deckTplIds),
 //      edgeBetween(aId, bId), analyzeCard(tplId), landsForCards(cardTplIds),
@@ -70,7 +72,11 @@ const GROWTH_SHARPNESS = 2;
 const DECK_COUPLING = 0.1;
 const CURVE_CLASH_PENALTY = 0.5;// score multiplier when a candidate shares a
                                 // mana cost with a card already in the bucket.
-const MIN_COHERENCE = 3;        // buckets below this fall back to Reinforcements.
+// There is deliberately NO copy of the old MIN_COHERENCE floor here: it was
+// retired at v2.2.26 (Joe's call). The floor existed so incoherent buckets
+// wouldn't ship wearing a lying theme label — labels died at v2.2.22, and an
+// unlabeled weak bucket tells an honest weak story the player can decline
+// with open eyes. Weak plans are now a product, not a failure.
 // There is deliberately NO deck-wide copy cap (Joe's call, 2026-07-06): an
 // earlier 4-copy rule here was an unauthorized import of MTG convention.
 // Redundancy self-prices via the graph (self-feeding cards pull their own
@@ -746,8 +752,36 @@ function coherenceOf(bucket) {
   return sum;
 }
 
-// Loose fallback: a curve-spread trio of solid cards in deck colors. Exists
-// so an offer can never come up empty (thin pools, exotic deck colors).
+// Per-slot value fill (Joe's design, v2.2.26 — the Reinforcements
+// retirement): when growth strands below BUCKET_CARDS (no gate-legal
+// candidates left), the empty seats are filled one card at a time by the
+// goodstuff logic — value-weighted, color-fenced, never a card you own
+// (new power: the old bundles' contract, kept). A filled seat is a natural
+// tail seat: a value outlet that fires exactly when synergy is exhausted —
+// the honest micro-form of the value channel the ε experiments couldn't
+// build additively (plan-bucket-draft §8b).
+function valueFillSeats(bucket, why, deckColors, deckTplIds) {
+  const owned = new Set(deckTplIds || []);
+  while (bucket.length < BUCKET_CARDS) {
+    const entries = [];
+    for (const c of _pool) {
+      if (c.isLand || bucket.includes(c) || owned.has(c.tplId)) continue;
+      if (!isLegalCandidate(c, bucket)) continue;
+      let v = ENGINE.getCardValue(CARDS[c.tplId], 'draft');
+      if (bucket.some(b => b.cost === c.cost)) v *= CURVE_CLASH_PENALTY;
+      v *= colorFitFactor(c, deckColors);
+      if (v > 0) entries.push({ item: c, w: v });
+    }
+    const pick = weightedSample(entries);
+    if (!pick) break;
+    bucket.push(pick);
+    why.push(`${pick.tplId} joins [value]`);
+  }
+}
+
+// Loose fallback: a curve-spread trio of solid cards in deck colors. Since
+// v2.2.26 this fires ONLY when seeding itself starves (the offer backfill
+// loop — tiny pools, pool exhaustion); normal offers never fall back.
 function reinforcementsBucket(deckColors, deckTplIds) {
   // Goodstuff's job is NEW power, never redundancy — cards you already own
   // are excluded (dupes are earned through synergy buckets, where a twin
@@ -869,13 +903,12 @@ function rollBucketOffer(deckTplIds) {
   // leaked in both directions. If PICKLOG shows offers converging on one
   // plan, the principled replacement is seed-level MMR, not a name check.
   const shelf = dupeShelf(deckIds);
+  // Every grown bucket ships (the coherence floor died with the labels —
+  // see the §0 note); stranded seats get value-filled per slot.
   const tryAddBucket = (seed) => {
     const { bucket, why } = growBucket(seed, deckAnalyses, deckColors, shelf);
-    if (bucket.length === BUCKET_CARDS && coherenceOf(bucket) >= MIN_COHERENCE) {
-      return finishBucket(bucket, why);
-    }
-    const loose = reinforcementsBucket(deckColors, deckIds);
-    return (loose.length === BUCKET_CARDS) ? finishBucket(loose, [], true) : null;
+    valueFillSeats(bucket, why, deckColors, deckIds);
+    return (bucket.length === BUCKET_CARDS) ? finishBucket(bucket, why) : null;
   };
   const seeds = pickSeeds(deckAnalyses, deckColors, shelf);
   for (const seed of seeds) {
@@ -900,6 +933,7 @@ function rollBucket(seedTplId, deckTplIds) {
   const deckAnalyses = deckIds.map(id => _byId[id]).filter(Boolean);
   const deckColors = deckColorSet(deckIds);
   const { bucket, why } = growBucket(seed, deckAnalyses, deckColors, dupeShelf(deckIds));
+  valueFillSeats(bucket, why, deckColors, deckIds);
   return finishBucket(bucket, why);
 }
 
@@ -948,6 +982,13 @@ return {
   _resetCacheForTest: () => { _pool = null; _byId = null; },
   _setRandForTest: (fn) => { _rand = fn || Math.random; },
   _setColorPullForTest: (k) => { SPLASH_BASE = (typeof k === 'number') ? k : 0.3; },
+  _valueFillForTest: (bucketTplIds, deckTplIds) => {
+    ensurePool();
+    const bucket = (bucketTplIds || []).map(id => _byId[id]).filter(Boolean);
+    const why = [];
+    valueFillSeats(bucket, why, deckColorSet(deckTplIds || []), deckTplIds || []);
+    return { cards: bucket.map(a => a.tplId), why };
+  },
   _dupeFactorForTest: (tplId, deckTplIds) => dupeFactor(tplId, dupeShelf(deckTplIds)),
 };
 })();
