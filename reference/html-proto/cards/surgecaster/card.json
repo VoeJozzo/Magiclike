@@ -1,0 +1,36 @@
+{
+  "card_id": "surgecaster",
+  "name": "Surgecaster",
+  "art": "⚡",
+  "cost": {
+    "U": 1,
+    "R": 1,
+    "C": 1
+  },
+  "power": 2,
+  "toughness": 3,
+  "types": [
+    "Creature",
+    "Human",
+    "Wizard"
+  ],
+  "triggers": [
+    {
+      "event": "spell_cast",
+      "condition": [
+        "another_card",
+        "controlled_by(you)",
+        "card_has_keyword(flash)"
+      ],
+      "effects": [
+        {
+          "kind": "pump",
+          "duration": "permanent",
+          "power": 1,
+          "toughness": 1,
+          "scope": "self"
+        }
+      ]
+    }
+  ]
+}

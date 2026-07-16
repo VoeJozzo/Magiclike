@@ -1,0 +1,36 @@
+{
+  "card_id": "chapter_recruiter",
+  "name": "Chapter Recruiter",
+  "art": "🎺",
+  "cost": {
+    "W": 2,
+    "C": 1
+  },
+  "power": 1,
+  "toughness": 1,
+  "types": [
+    "Creature",
+    "Human",
+    "Soldier"
+  ],
+  "triggers": [
+    {
+      "event": "card_zone_change",
+      "condition": [
+        "another_card",
+        "controlled_by(you)",
+        "card_has_subtype(Human)",
+        "card_moves(anywhere, battlefield)"
+      ],
+      "effects": [
+        {
+          "kind": "pump",
+          "duration": "permanent",
+          "power": 1,
+          "toughness": 1,
+          "scope": "self"
+        }
+      ]
+    }
+  ]
+}

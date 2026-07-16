@@ -1,0 +1,30 @@
+{
+  "card_id": "rootbound_sentinel",
+  "name": "Rootbound Sentinel",
+  "art": "🌳",
+  "cost": {
+    "G": 1,
+    "W": 1,
+    "C": 1
+  },
+  "power": 2,
+  "toughness": 4,
+  "types": [
+    "Creature",
+    "Treefolk"
+  ],
+  "keywords": [
+    "vigilance"
+  ],
+  "static_buffs": [
+    {
+      "filter": {
+        "controller": "self"
+      },
+      "subtype": "Land",
+      "keywords": [
+        "vigilance"
+      ]
+    }
+  ]
+}

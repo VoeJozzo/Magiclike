@@ -1,0 +1,26 @@
+{
+  "card_id": "vanguard_ensign",
+  "name": "Vanguard Ensign",
+  "art": "🚩",
+  "cost": {
+    "W": 1,
+    "R": 1,
+    "C": 2
+  },
+  "power": 2,
+  "toughness": 2,
+  "types": [
+    "Creature",
+    "Human",
+    "Soldier"
+  ],
+  "static_buffs": [
+    {
+      "filter": {
+        "controller": "self"
+      },
+      "power": 1,
+      "toughness": 0
+    }
+  ]
+}

@@ -76,6 +76,36 @@ function finishDraft(colors) {
   persist();
 }
 
+// Growing Deck: log a bucket pick. Buckets are bundles, not cards, so they
+// get their own record array (bucketPicks) instead of polluting picks —
+// getCardStats/getPairsMatrix index picks entries as tplIds.
+// Records attach to the in-progress draft (run-start bucket draft) or, once
+// the draft is finished, to the latest draft record (reward-time growth).
+function logBucketPick(chosen, offered) {
+  ensurePicklogLoaded();
+  // Buckets are keyed by their SEED (cards[0]) + fallback flag — the derived
+  // display name died at v2.2.22, and the seed is the better analytics key
+  // anyway (two different plans could share a name; a seed is one plan).
+  // Older persisted records carry `name` instead; readers must tolerate both.
+  const record = {
+    seed: chosen.fallback ? null : chosen.cards[0],
+    fallback: !!chosen.fallback,
+    cards: chosen.cards.slice(),
+    lands: (chosen.lands || []).slice(),
+    coherence: chosen.coherence,
+    offered: (offered || []).map(b => ({
+      seed: b.fallback ? null : b.cards[0],
+      fallback: !!b.fallback,
+      cards: b.cards.slice(),
+    })),
+  };
+  const target = currentDraft || data.drafts[data.drafts.length - 1];
+  if (!target) return;
+  if (!Array.isArray(target.bucketPicks)) target.bucketPicks = [];
+  target.bucketPicks.push(record);
+  if (!currentDraft) persist();
+}
+
 function recordGamePlayed() {
   ensurePicklogLoaded();
   if (!data.drafts.length) return;
@@ -173,7 +203,7 @@ function exportData() {
 }
 
 return {
-  startDraft: beginPicklogDraft, logPick, finishDraft,
+  startDraft: beginPicklogDraft, logPick, logBucketPick, finishDraft,
   recordGamePlayed, recordRunResult,
   getPairsMatrix, getCardStats, summarize,
   clearAll, exportData,

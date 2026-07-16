@@ -35,6 +35,7 @@ const ENGINE_FILES = [
   'engine.js',
   'card-text.js',
   'stickers.js',
+  'buckets.js',
   'ai.js',
   'draft.js',
   'run.js',
@@ -42,6 +43,7 @@ const ENGINE_FILES = [
   'controller.js',
   'render.js',
   'settings-panel.js',
+  'constellation.js',
   'triggers.js',
   'trigger-generator.js',
   'main.js',
@@ -130,7 +132,7 @@ function installDomStubs() {
 // and run.js / draft.js / picklog.js for their respective IIFE exports.
 const EXPOSED = [
   // Public module objects (top of each .js file).
-  'ENGINE', 'AI', 'RUN', 'DRAFT', 'CARDS', 'STICKERS',
+  'ENGINE', 'AI', 'RUN', 'DRAFT', 'CARDS', 'STICKERS', 'BUCKETS',
   // §7b cast-path coverage sets (ai.js module scope).
   'TARGET_SCORED_KINDS', 'NOT_TARGET_SCORED_KINDS',
   'CONTROLLER', 'PICKLOG', 'VERSION', 'Modal', 'RUN_MODIFIERS', 'SETTINGS',
@@ -151,6 +153,9 @@ const EXPOSED = [
   '_parseEffectCall', 'desugarEffectString', 'normalizeCardEffects',
   'validateAllCardConditions', 'VALID_TRIGGER_EVENTS',
   'triggerArchetype', 'triggerSubtype', 'triggerFiresOnEnter',
+  // Live archetype table + signature fn (triggers.js, module-scope) — read
+  // directly by trigger_migration_test since the Wave 2 dedup refactor.
+  '_ARCHETYPE_BY_SIG', '_condSignature',
   'generateConditionOptions', 'generateEffectOptions', 'assembleTrigger',
   // Empower system (cards.js module-scope).
   'EMPOWER_FIELDS', 'isEmpowerableField', 'enumerateEmpowerTargets',

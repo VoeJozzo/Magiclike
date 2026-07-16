@@ -667,6 +667,27 @@ button:disabled{opacity:.4;cursor:not-allowed}
    mid-game, draft, reward, etc.) without going back to the menu. */
 #settingsBtnPersistent{position:fixed;top:8px;left:8px;width:28px;height:28px;border-radius:50%;border:1px solid #444;background:#1a1a2a;color:#aaa;font-size:14px;cursor:pointer;z-index:1100;display:flex;align-items:center;justify-content:center;padding:0;opacity:0.7;transition:opacity .12s,background .12s}
 #settingsBtnPersistent:hover{opacity:1;background:#2a2a3a}
+#constellationBtn{position:fixed;top:8px;left:44px;width:28px;height:28px;border-radius:50%;border:1px solid #444;background:#1a1a2a;color:#aaa;font-size:14px;cursor:pointer;z-index:1100;display:flex;align-items:center;justify-content:center;padding:0;opacity:0.7;transition:opacity .12s,background .12s}
+#constellationBtn:hover{opacity:1;background:#2a2a3a}
+.bucket-scope-btn{display:block;margin:2px auto 6px;background:#1a2030;border:1px solid #33405c;color:#9fb0cc;border-radius:12px;padding:2px 10px;font-size:11px;cursor:pointer}
+.bucket-scope-btn:hover{background:#2c3d61;color:#fff}
+.bucket-story{font-size:11px;line-height:1.45;color:#b9c2d4;text-align:left;margin:2px 6px 6px;max-width:300px;height:112px;overflow-y:auto}
+.bucket-story b{color:#e8ecf5}
+.bucket-why{color:#8fa0bd;font-size:10px}
+#constellationModal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1200;align-items:center;justify-content:center}
+#constPanel{position:relative;width:min(960px,94vw);height:min(680px,90vh);background:#10131a;border:1px solid #3a4356;border-radius:10px;display:flex;flex-direction:column;overflow:hidden}
+#constHead{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid #232a38;color:#dfe3ec}
+#constTitle{font-weight:700}
+#constHint{margin-left:auto;font-size:11px;color:#7e8aa3}
+.constTab{background:#1a2030;border:1px solid #33405c;color:#9fb0cc;border-radius:14px;padding:3px 12px;font-size:12px;cursor:pointer}
+.constTab.on{background:#2c3d61;color:#fff;border-color:#4c6390}
+#constClose{background:none;border:none;color:#9fb0cc;font-size:15px;cursor:pointer;padding:2px 6px}
+#constClose:hover{color:#fff}
+#constCanvas{flex:1;width:100%;cursor:crosshair}
+#constEmpty{display:none;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#7e8aa3;font-size:13px;max-width:340px;text-align:center}
+#constTip{display:none;position:absolute;pointer-events:none;background:rgba(16,19,26,.94);border:1px solid #3a4356;color:#dfe3ec;border-radius:6px;padding:7px 10px;font-size:12px;max-width:290px;z-index:5}
+#constTip b{color:#fff}
+#constTip .constRsn{display:block;color:#9fb0cc;margin-top:2px}
 
 #tgtbar{display:none;background:#2a2000;border-bottom:1px solid #888800;color:#ffee44;padding:5px 12px;font-size:11px;align-items:center;gap:10px;flex-shrink:0}
 #tgtbar.vis{display:flex}
@@ -811,6 +832,11 @@ button:disabled{opacity:.4;cursor:not-allowed}
 .rwd-kind-transform{color:#88c8ff;background:#0a1828;border:1px solid #88c8ff44}
 .rwd-kind-clone{color:#88e088;background:#0a1f0a;border:1px solid #88e08844}
 .rwd-kind-ripUp{color:#ff6060;background:#1f0808;border:1px solid #ff606044}
+/* Growing Deck buckets — amber "growth" identity. Tile shared by the
+   run-start bucket draft and the addBucket reward's pick phase. */
+.rwd-kind-bucket{color:#e8a44a;background:#1f1408;border:1px solid #e8a44a44}
+.rwd-pair-bucket{border-color:#e8a44a33}
+.bucket-lands{font-size:12px;color:#c8b088;display:flex;align-items:center;gap:4px;padding:4px 0;letter-spacing:.05em}
 #cardPopup{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;z-index:1200;padding:24px;cursor:pointer;animation:fadeIn .15s ease-out}
 #cardPopup.vis{display:flex}
 #settingsModal{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;z-index:1200;padding:24px;font-family:Georgia,serif}
@@ -883,6 +909,7 @@ body.ai-thinking #status{
 <body>
 <div id="version"></div>
 <button id="settingsBtnPersistent" title="Settings" aria-label="Open settings">⚙</button>
+<button id="constellationBtn" title="Constellation — the synergy graph" aria-label="Open constellation">🔭</button>
 <div id="tgtbar">
   <span>Target for <b id="tgtname">?</b> — click highlighted creatures or player buttons</span>
   <button id="tgtCancelBtn" onclick="CONTROLLER.cancelTarget()" style="margin-left:auto">Cancel</button>
@@ -1093,6 +1120,7 @@ body.ai-thinking #status{
 <script src="js/engine.js"></script>
 <script src="js/card-text.js"></script>
 <script src="js/stickers.js"></script>
+<script src="js/buckets.js"></script>
 <script src="js/ai.js"></script>
 <script src="js/draft.js"></script>
 <script src="js/run.js"></script>
@@ -1100,6 +1128,7 @@ body.ai-thinking #status{
 <script src="js/controller.js"></script>
 <script src="js/render.js"></script>
 <script src="js/settings-panel.js"></script>
+<script src="js/constellation.js"></script>
 <script src="js/triggers.js"></script>
 <script src="js/trigger-generator.js"></script>
 <script src="js/main.js"></script>

@@ -118,6 +118,12 @@ function init() {
   if (settingsBtnPersistent) {
     settingsBtnPersistent.onclick = SETTINGS_PANEL.show;
   }
+  // Constellation viewer (🔭) — sibling of the gear; CONSTELLATION.show picks
+  // Deck vs Pool tab by whether a run is active.
+  const constellationBtn = document.getElementById('constellationBtn');
+  if (constellationBtn) {
+    constellationBtn.onclick = CONSTELLATION.show;
+  }
   // Keyboard pass / confirm: Space and Enter both trigger the contextual
   // primary action (Done Attacking/Blocking during a combat declaration,
   // otherwise Pass). See onPrimaryActionKey for the gating.
@@ -340,7 +346,14 @@ function showStartScreen() {
   if (RUN.hasSave()) {
     sub.textContent = 'You have a run in progress.';
     makeStartBtn(btns, 'Continue Run', 'primary', continueRun);
-    makeStartBtn(btns, 'New Run (discard save)', 'discard', () => {
+    makeStartBtn(btns, 'New Growing Deck Run (discard save)', 'discard', () => {
+      if (confirm('Discard your current run and start a new Growing Deck run?')) {
+        RUN.clearSave();
+        screen.style.display = 'none';
+        newRun('growing');
+      }
+    });
+    makeStartBtn(btns, 'New Classic Run (discard save)', 'discard', () => {
       if (confirm('Discard your current run and start a new one?')) {
         RUN.clearSave();
         screen.style.display = 'none';
@@ -356,7 +369,13 @@ function showStartScreen() {
     });
   } else {
     sub.textContent = 'A card roguelike';
-    makeStartBtn(btns, 'New Run', 'primary', () => {
+    // Growing Deck: start from 3 bucket picks, grow toward 23 spells via
+    // addBucket rewards between fights (docs/plans/plan-bucket-draft.md).
+    makeStartBtn(btns, 'New Run (Growing Deck)', 'primary', () => {
+      screen.style.display = 'none';
+      newRun('growing');
+    });
+    makeStartBtn(btns, 'New Classic Run', 'cube', () => {
       screen.style.display = 'none';
       newRun('classic');
     });
@@ -685,6 +704,18 @@ function pickNeow(id) {
 function pickDraft(tplId) {
   if (!inDraft) return;
   DRAFT.pickPlayer(tplId);
+  afterDraftPick();
+}
+
+// Growing Deck: pick one of the 3 offered buckets on the draft screen.
+function pickDraftBucket(idx) {
+  if (!inDraft) return;
+  DRAFT.pickBucketOffer(idx);
+  afterDraftPick();
+}
+
+// Shared draft-advance: complete → hand the deck to RUN; else repaint.
+function afterDraftPick() {
   if (DRAFT.isComplete()) {
     inDraft = false;
     document.getElementById('draftScreen').classList.remove('vis');
@@ -731,6 +762,10 @@ function pickRewardCandidateClick(idx) {
 }
 function pickTransformReplacementClick(tplId) {
   RUN.pickTransformReplacement(tplId);
+  renderReward();
+}
+function pickBucketClick(idx) {
+  RUN.pickBucket(idx);
   renderReward();
 }
 
@@ -817,6 +852,86 @@ function appendRewardFlavor(parent, name, text, extraClass) {
   flavor.appendChild(textEl);
   parent.appendChild(flavor);
   return flavor;
+}
+
+// Growing Deck: one clickable bucket tile — story header, 3 card minis, and
+// a pip row for the 2 basic lands the bucket carries. Shared by the run-start
+// bucket draft (draft screen) and the addBucket reward's bucketPick phase.
+function makeBucketTileEl(bucket, onClick) {
+  const div = document.createElement('div');
+  div.className = 'rwd-pair rwd-pair-bucket';
+  // Only fallback bundles wear a flat label — themed buckets lead with the
+  // story itself (the old derived theme names were killed at v2.2.22: a
+  // vaguer paraphrase of the story line rendered right under them, and a
+  // recurring drift-bug source).
+  if (bucket.fallback) {
+    const labelEl = document.createElement('div');
+    labelEl.className = 'rwd-kind-label rwd-kind-bucket';
+    labelEl.textContent = 'REINFORCEMENTS';
+    div.appendChild(labelEl);
+  }
+  // Narrative framing (Joe, 2026-07-13): a bucket IS "a seed plus the
+  // friends it recruited" (cards[0] is the seed; growth order preserved),
+  // so tell that story instead of hiding it in a tooltip. Each friend
+  // shows ITS strongest edge reason — which may point at another friend,
+  // not the seed ("goblin rabble brings ITS friend carrion feeder" — fine,
+  // we just want to surface it). Reinforcements has no seed story (value-
+  // sampled goodstuff), so it keeps the flat label.
+  const pretty = r => {
+    const m = r.match(/^(\S+) feeds (\S+) \[(.+)\]$/);
+    if (m) {
+      const a = CARDS[m[1]] ? CARDS[m[1]].name : m[1];
+      const b = CARDS[m[2]] ? CARDS[m[2]].name : m[2];
+      return `${a} feeds ${b} (${m[3].replace('sub:', '')})`;
+    }
+    // Per-slot value fill (v2.2.26): the seat joined on value, not edges —
+    // say so truthfully instead of inventing a synergy line.
+    if (/^\S+ joins \[value\]$/.test(r)) return 'a solid card in your colors';
+    const t = r.match(/^shared plan \[(.+)\]$/);
+    return t ? `shared plan: ${t[1]}` : r;
+  };
+  if ((bucket.why || []).length && bucket.cards.length && CARDS[bucket.cards[0]]) {
+    const story = document.createElement('div');
+    story.className = 'bucket-story';
+    const seedName = CARDS[bucket.cards[0]].name;
+    let html = '<b>' + seedName + '</b> wants to join your deck!';
+    for (const tplId of bucket.cards.slice(1)) {
+      if (!CARDS[tplId]) continue;
+      const line = (bucket.why || []).find(r => r.includes(tplId));
+      html += '<br>brings <b>' + CARDS[tplId].name + '</b>'
+        + (line ? ' — <span class="bucket-why">' + pretty(line) + '</span>' : '');
+    }
+    story.innerHTML = html;
+    div.appendChild(story);
+  }
+  // P2 offer overlay: preview where this bucket would attach to your deck
+  // (CONSTELLATION offer mode). stopPropagation — previewing must not pick.
+  const scopeBtn = document.createElement('button');
+  scopeBtn.className = 'bucket-scope-btn';
+  scopeBtn.textContent = '🔭 preview';
+  scopeBtn.title = 'See where this bucket attaches to your deck';
+  scopeBtn.onclick = (e) => { e.stopPropagation(); CONSTELLATION.showOffer(bucket.cards); };
+  div.appendChild(scopeBtn);
+  for (const tplId of bucket.cards) {
+    if (!CARDS[tplId]) continue;
+    // Draft-safe render path: no {inHand} view-model — castability reads the
+    // live game state, which is null during the run-start bucket draft.
+    const el = makeCardEl(ENGINE.makeCard(tplId));
+    el.style.setProperty('--scale', '2');
+    div.appendChild(el);
+  }
+  // Land pips: 'mountain' → {R} etc., rendered with the shared mana symbols.
+  const pips = (bucket.lands || [])
+    .map(id => CARDS[id] && CARDS[id].mana ? `{${CARDS[id].mana}}` : '')
+    .join('');
+  if (pips) {
+    const landsEl = document.createElement('div');
+    landsEl.className = 'bucket-lands';
+    landsEl.innerHTML = '+ lands ' + renderManaSymbols(pips);
+    div.appendChild(landsEl);
+  }
+  div.onclick = onClick;
+  return div;
 }
 
 // Map node tooltip -- tap shows briefly, long-press shows while held (mobile-friendly).
@@ -1232,9 +1347,38 @@ function renderReward() {
     setText('rewardSubtitle', 'Pick one option to apply between games.');
     const slots = RUN.getSlots();
     reward.candidates.forEach((cand, idx) => {
-      const KNOWN_KINDS = ['sticker', 'twoStickers', 'transform', 'clone', 'ripUp', 'threeStickersBlind', 'splice'];
+      const KNOWN_KINDS = ['sticker', 'twoStickers', 'transform', 'clone', 'ripUp', 'threeStickersBlind', 'splice', 'addBucket'];
       if (!cand || !KNOWN_KINDS.includes(cand.kind)) {
         console.warn('Skipping reward candidate with unknown kind:', cand);
+        return;
+      }
+      // Growing Deck growth: the mixed-phase tile is a compact teaser (each
+      // bucket's seed card name); committing it opens the bucketPick phase
+      // where the full 3-card bundles render. No slotIdx by design — handle
+      // early, like threeStickersBlind.
+      if (cand.kind === 'addBucket') {
+        const div = document.createElement('div');
+        div.className = 'rwd-pair rwd-pair-bucket';
+        const labelEl = document.createElement('div');
+        labelEl.className = 'rwd-kind-label rwd-kind-bucket';
+        labelEl.textContent = 'GROW — ADD A BUCKET';
+        div.appendChild(labelEl);
+        const grow = makeSyntheticCard({
+          name: 'Reinforcements Arrive',
+          type: 'Reward',
+          text: '3 cards + 2 lands join your deck',
+          art: '📦',
+          color: 'C',
+          scale: 2,
+        });
+        div.appendChild(grow);
+        appendRewardConnector(div, '+++');
+        appendRewardFlavor(div, 'Choose one of three buckets',
+          cand.buckets.map(b => b.fallback ? 'Reinforcements'
+            : (CARDS[b.cards[0]] ? CARDS[b.cards[0]].name : b.cards[0]) + ' & friends')
+            .join(' · '));
+        div.onclick = () => pickRewardCandidateClick(idx);
+        optionsEl.appendChild(div);
         return;
       }
       // Blind reward — slot identity is hidden until pick. Render with no
@@ -1419,6 +1563,17 @@ function renderReward() {
     return;
   }
 
+  // Growing Deck: pick one of the 3 generated buckets. Same tile the
+  // run-start bucket draft uses.
+  if (reward.phase === 'bucketPick') {
+    setText('rewardTitle', 'Choose a Bucket');
+    setText('rewardSubtitle', 'One bundle of 3 cards + 2 lands joins your deck.');
+    reward.buckets.forEach((bucket, idx) => {
+      optionsEl.appendChild(makeBucketTileEl(bucket, () => pickBucketClick(idx)));
+    });
+    return;
+  }
+
   if (reward.phase === 'twoStickersReveal') {
     const slots = RUN.getSlots();
     const slot = slots[reward.slotIdx];
@@ -1476,22 +1631,35 @@ function renderDraft() {
   const totalEl = document.getElementById('draftPickTotal');
   if (totalEl) totalEl.textContent = progress.total;
   const subtitleEl = document.getElementById('draftSubtitle');
+  const growing = DRAFT._state() && DRAFT._state().mode === 'growing';
   if (subtitleEl) {
-    subtitleEl.textContent = progress.total === 40
+    subtitleEl.textContent = growing
+      ? 'Choose one bucket — 3 cards + 2 lands. Your first pick sets your colors; your deck grows between fights.'
+      : progress.total === 40
       ? 'Choose one card. Lands appear in packs — draft your own manabase.'
       : 'Choose one card. Lands will be added automatically based on your colors.';
   }
-  const pack = DRAFT.getPlayerPack();
-  // Same shared card-picker loop as the boons + land offer. Build a vanilla
-  // instance per template (the pack isn't slot-bound yet — no stickers/runtime
-  // state). Cards render at 2× so they're readable; long-press is wired by
-  // makeCardEl. (--scale is a no-op on the classic 62×88 .card, a tolerable
-  // fallback for classic-mode picks.)
-  renderCardPicker(
-    document.getElementById('draftPack'),
-    pack.map(tplId => ({ card: ENGINE.makeCard(tplId), value: tplId })),
-    pickDraft,
-  );
+  if (growing) {
+    // Growing Deck: the "pack" is 3 bucket tiles (same tile as the addBucket
+    // reward's pick phase).
+    const packEl = document.getElementById('draftPack');
+    packEl.innerHTML = '';
+    DRAFT.getBucketOffer().forEach((bucket, idx) => {
+      packEl.appendChild(makeBucketTileEl(bucket, () => pickDraftBucket(idx)));
+    });
+  } else {
+    const pack = DRAFT.getPlayerPack();
+    // Same shared card-picker loop as the boons + land offer. Build a vanilla
+    // instance per template (the pack isn't slot-bound yet — no stickers/runtime
+    // state). Cards render at 2× so they're readable; long-press is wired by
+    // makeCardEl. (--scale is a no-op on the classic 62×88 .card, a tolerable
+    // fallback for classic-mode picks.)
+    renderCardPicker(
+      document.getElementById('draftPack'),
+      pack.map(tplId => ({ card: ENGINE.makeCard(tplId), value: tplId })),
+      pickDraft,
+    );
+  }
   // Footer: list of picks so far. If the player picked a Neow boon, show
   // it as the first entry with a ✦ marker so it's visually distinct from
   // drafted picks — gives continuity with the deck the boon will join at

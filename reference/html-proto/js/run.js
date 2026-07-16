@@ -254,6 +254,9 @@ const TPLID_RENAMES = {
   "wrathOfGod":          "day_of_reckoning",
   "wurm":                "gizzard_beast",
   "zealot":              "holy_zealot",
+  // v2.2.13: Joe's RENAME-LATER flag from the Wave 2 flavor pass, resolved
+  // ("Uplifting Angel! That's the name I wanted").
+  "rescue_angel":        "uplifting_angel",
 };
 function renameTplId(id) { return TPLID_RENAMES[id] || id; }
 
@@ -451,10 +454,17 @@ function load() {
       }
       if (stalePruned > 0 || rollsBackfilled > 0 || subtypeMigrated > 0) dirty = true;
     }
+    // Config backfill: saves from before the Growing Deck have no config —
+    // they are classic runs by definition.
+    if (!runState.config || typeof runState.config.mode !== 'string') {
+      runState.config = { mode: 'classic' };
+      dirty = true;
+    }
     // Reroll pendingReward if it's not a current shape (legacy splice pre-rolls).
     if (runState.pendingReward) {
       const ph = runState.pendingReward.phase;
-      if (ph !== 'mixed' && ph !== 'transformPick' && ph !== 'twoStickersReveal') {
+      if (ph !== 'mixed' && ph !== 'transformPick' && ph !== 'twoStickersReveal' &&
+          ph !== 'bucketPick') {
         runState.pendingReward = generateRewardOffer();
         dirty = true;
       }
@@ -566,6 +576,12 @@ function start(playerDeck, modifierId) {
     map: generateMap(),
     pendingMapChoice: null,
     pendingPostDraftOffer: null,
+    // Run config. Growing Deck runs start small (bucket draft) and grow via
+    // addBucket rewards until the deck reaches the classic 23-spell size;
+    // classic/desertCube runs start full and never see addBucket offers.
+    config: {
+      mode: (playerDeck && playerDeck.mode === 'growing') ? 'growing' : 'classic',
+    },
   };
   runState.map.currentNodeId = runState.map.rootId;
   // Post-draft Innate offer: up to 3 most-drafted basic types.
@@ -719,7 +735,11 @@ function startNextGame() {
     : null;
   const colorAffinity = curNode ? curNode.color : null;
   const constructedId = curNode ? curNode.constructedId : null;
-  const opp = DRAFT.buildOpponentDeck(numStickers, numStaples, numClones, colorAffinity, constructedId);
+  // Growing Deck: heuristic-drafted opponents mirror the player's current
+  // spell count (both sides grow across the run); constructed decks and
+  // bosses are scripted landmarks and ignore the mirror (draft.js).
+  const numPicks = isGrowingRun() ? countSpellSlots(runState.slots) : undefined;
+  const opp = DRAFT.buildOpponentDeck(numStickers, numStaples, numClones, colorAffinity, constructedId, numPicks);
   ENGINE.init(runState.slots, opp.cards);
   save();
   let bossName = null;
@@ -849,17 +869,52 @@ const REWARD_TYPE_WEIGHTS = {
                       // pair as-is — no pick-then-pick step (v1.0.47).
 };
 
+// Growing Deck growth targets — the canonical classic deck shape the run
+// grows toward (23 spells + 17 lands; mirrors draft.js's TOTAL_PICKS/LANDS).
+const GROWING_TARGET_SPELLS = 23;
+const GROWING_TARGET_LANDS = 17;
+// addBucket's reward weight per missing spell. At a 12-spell deficit the
+// weight is 24 (vs. sticker's 12) so early offers almost always carry a
+// growth option; the weight fades to 0 as the deck fills — one formula gives
+// the run its arc: building → empowering.
+const GROWTH_WEIGHT_PER_MISSING_SPELL = 2;
+
+function countSpellSlots(slots) {
+  let n = 0;
+  for (const slot of slots) {
+    const tpl = CARDS[slot.tplId];
+    if (tpl && !hasType(tpl, 'Land')) n++;
+  }
+  return n;
+}
+
+function isGrowingRun() {
+  return !!(runState && runState.config && runState.config.mode === 'growing');
+}
+
+// The effective reward-type table for THIS offer: the static weights plus a
+// dynamically-weighted addBucket entry while a Growing Deck is under target.
+function effectiveRewardWeights() {
+  const weights = Object.assign({}, REWARD_TYPE_WEIGHTS);
+  if (isGrowingRun()) {
+    const deficit = GROWING_TARGET_SPELLS - countSpellSlots(runState.slots);
+    if (deficit > 0) weights.addBucket = GROWTH_WEIGHT_PER_MISSING_SPELL * deficit;
+  }
+  return weights;
+}
+
 // Roll the type of one reward candidate by weight. Allows excluded types so
 // we can fall back when a type can't be fulfilled.
-function pickRewardType(excluded) {
+function pickRewardType(excluded, weights) {
   const exc = excluded || new Set();
+  const table = weights || REWARD_TYPE_WEIGHTS;
   let total = 0;
-  for (const [t, w] of Object.entries(REWARD_TYPE_WEIGHTS)) {
+  for (const [t, w] of Object.entries(table)) {
     if (!exc.has(t)) total += w;
   }
   if (total <= 0) return null;
   let roll = Math.random() * total;
-  for (const [t, w] of Object.entries(REWARD_TYPE_WEIGHTS)) {
+  for (const [t, w] of Object.entries(table)) {
     if (exc.has(t)) continue;
     roll -= w;
     if (roll < 0) return t;
@@ -897,6 +952,17 @@ function rollOneCandidate(type, alreadyOffered) {
       return cand;
     }
     return null;
+  }
+  if (type === 'addBucket') {
+    // Growing Deck growth: 3 synergy-graph buckets (each 3 cards + 2 lands),
+    // pre-rolled at offer time so the offer is stable across save/load.
+    // Single-shot dup key — at most one growth candidate per offer.
+    if (alreadyOffered.has('addBucket')) return null;
+    const deckTplIds = runState.slots.map(s => s.tplId);
+    const buckets = BUCKETS.rollBucketOffer(deckTplIds);
+    if (!buckets || buckets.length === 0) return null;
+    alreadyOffered.add('addBucket');
+    return { kind: 'addBucket', buckets };
   }
   if (type === 'transform') {
     // Lands included — manabase modification is intentional.
@@ -999,11 +1065,14 @@ function rollOneCandidate(type, alreadyOffered) {
 function generateRewardOffer() {
   const candidates = [];
   const alreadyOffered = new Set();
+  // Snapshot the weight table once per offer — includes the dynamic addBucket
+  // weight while a Growing Deck is under its spell target.
+  const weights = effectiveRewardWeights();
   for (let i = 0; i < 3; i++) {
     const excluded = new Set();
     let cand = null;
     while (!cand) {
-      const type = pickRewardType(excluded);
+      const type = pickRewardType(excluded, weights);
       if (!type) break;     // every type exhausted
       cand = rollOneCandidate(type, alreadyOffered);
       if (!cand) excluded.add(type);
@@ -1088,6 +1157,22 @@ function pickRewardCandidate(idx) {
       phase: 'transformPick',
       slotIdx: cand.slotIdx,
       replacementPack: cand.replacementPack.slice(),
+    };
+    save();
+    return;
+  }
+  if (cand.kind === 'addBucket') {
+    // Two-phase like transform: committing the candidate opens the pick-a-
+    // bucket phase; the deck mutates in pickBucket, not here.
+    runState.pendingReward = {
+      phase: 'bucketPick',
+      buckets: cand.buckets.map(b => ({
+        name: b.name,
+        cards: b.cards.slice(),
+        lands: b.lands.slice(),
+        coherence: b.coherence,
+        why: (b.why || []).slice(),
+      })),
     };
     save();
     return;
@@ -1224,6 +1309,49 @@ function pickTransformReplacement(tplId) {
   runState.slots[slotIdx] = { tplId, stickers: [] };
   runState.pendingReward = null;
   save();
+}
+
+// Growing Deck: commit a bucket pick — push a fresh slot per card and per
+// land (mirrors start()'s slot builder, incl. charges_at_run_start). Once
+// the deck reaches its spell target, a one-time land top-up closes the
+// small rounding gap buckets leave (4 buckets × 2 lands = 16 vs. target 17).
+function pickBucket(bucketIdx) {
+  if (!runState || !runState.pendingReward) return;
+  if (runState.pendingReward.phase !== 'bucketPick') return;
+  const bucket = runState.pendingReward.buckets && runState.pendingReward.buckets[bucketIdx];
+  if (!bucket) return;
+  PICKLOG.logBucketPick(bucket, runState.pendingReward.buckets);
+  for (const tplId of [...bucket.cards, ...bucket.lands]) {
+    if (!CARDS[tplId]) continue;
+    const slot = { tplId, stickers: [] };
+    const tpl = CARDS[tplId];
+    if (tpl && typeof tpl.charges_at_run_start === 'number') {
+      slot.charges = tpl.charges_at_run_start;
+    }
+    runState.slots.push(slot);
+  }
+  if (countSpellSlots(runState.slots) >= GROWING_TARGET_SPELLS) {
+    topUpLands();
+  }
+  runState.pendingReward = null;
+  save();
+}
+
+// Push basic lands until the deck holds GROWING_TARGET_LANDS, colored by the
+// deck's overall pip profile (single-sourced through DRAFT.allocLandsFor).
+function topUpLands() {
+  const landCount = runState.slots.length - countSpellSlots(runState.slots);
+  const deficit = GROWING_TARGET_LANDS - landCount;
+  if (deficit <= 0) return;
+  const pips = { W: 0, U: 0, B: 0, R: 0, G: 0 };
+  for (const slot of runState.slots) {
+    const tpl = CARDS[slot.tplId];
+    if (!tpl || !tpl.cost) continue;
+    for (const k of Object.keys(pips)) pips[k] += (tpl.cost[k] || 0);
+  }
+  for (const landTplId of DRAFT.allocLandsFor(pips, deficit)) {
+    runState.slots.push({ tplId: landTplId, stickers: [] });
+  }
 }
 
 // Apply a splice — merge staple slot into base, remove staple. Pre-rolled
@@ -1409,7 +1537,7 @@ function _setPendingRewardForTest(reward) {
 }
 
 return { start, startNextGame, recordResult, getStats: getRunStats, isActive,
-         pickRewardCandidate, pickTransformReplacement, dismissReveal, getReward, getSlots,
+         pickRewardCandidate, pickTransformReplacement, pickBucket, dismissReveal, getReward, getSlots,
          applySplice, _setPendingRewardForTest,
          applyStickerToSlot, appendSlot, removeSlotByIdx,
          // Map navigation API.

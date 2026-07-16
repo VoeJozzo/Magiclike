@@ -1,0 +1,41 @@
+{
+  "card_id": "earthsinger",
+  "name": "Earthsinger",
+  "art": "\ud83c\udfb5",
+  "cost": {
+    "G": 1,
+    "C": 1
+  },
+  "power": 1,
+  "toughness": 2,
+  "types": [
+    "Creature",
+    "Elf",
+    "Shaman"
+  ],
+  "abilities": [
+    {
+      "cost": {
+        "tap": true,
+        "mana": {
+          "G": 1
+        }
+      },
+      "target": "permanent",
+      "target_filter": {
+        "type": "Land"
+      },
+      "effects": [
+        {
+          "kind": "add_type",
+          "types": [
+            "Elemental",
+            "Creature"
+          ],
+          "power": 2,
+          "toughness": 2
+        }
+      ]
+    }
+  ]
+}

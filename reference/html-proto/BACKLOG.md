@@ -21,6 +21,39 @@ The following items live in `docs/DIVERGENCE.md` as their primary tracker. Liste
 
 ### Other
 
+- **"target opponent" vs "your opponent" text voice** (Joe, Wave 2 — parked at
+  "tentatively fine") — a 1v1 roguelike can fairly render implicit opp-targets
+  as "Your opponent loses 1 life" instead of MTG's "target opponent." ~5-line
+  generator change + golden updates; now touches blood_artist, toll_of_secrets,
+  rakdos_underboss, backlash_mage, charnel_chorister, ashclot_zealot
+  identically. Joe's style call.
+- **Art batch for the 36 emoji-placeholder cards** (32 Wave 2 + 4 un-parked
+  Wave 1 holds) — all shipped with emoji art; regenerate via the
+  magiclike-card-art skill when art credits/time are available.
+- **Triage Cleric cost watch** — the any-ETB correction (v2.2.11) makes her
+  near-"gain 2 per creature you play" in ETB-dense decks at 1W 2/2. Playtest
+  before re-costing; the assay can't see power level.
+- **UR is now the thinnest pair (12 plans, v2.2.13 assay)** — note for the
+  next wave's targeting; every other pair is 15+.
+- **Extraction-audit pool sweep** (Joe's idea, queued since Wave 2) — sweep
+  the whole pool for cards deserving want/provide rules
+  (smite_the_wicked's tapped-want was invisible until Wave 2 measured it).
+- **Constellation P3: pool codex fog-of-war** (Joe, 2026-07-13: "something
+  I DO want to implement, but now is not quite the time — I haven't thought
+  through that FoW system yet"). Dim un-encountered cards in the Pool tab;
+  blocked on Joe designing what "encountered" means (owned? offered? seen
+  in battle?). P4 (realized-synergy postgame report — light only the edges
+  that actually FIRED during play) also parked; Joe notes it should tie
+  into PICKLOG, the existing data-gathering tool.
+- **Wave 3 candidate: second payoffs per tribe** — 13 of 14 tribes have
+  exactly 1 payoff (goblins, with 2, are the tribe Joe said "feels better");
+  banked subtypes Wolf/Hydra/Construct/Hound/Spider have 0. GATED on
+  playtesting v2.2.13 first — whether 1-payoff tribes feel samey is a
+  hypothesis the assay can't test. Flavor-pass protocol learnings for the
+  next wave are ledgered in docs/plans/plan-pool-waves.md (drop scoring
+  judges, keep proposer menus, deterministic lint).
+
+
 - **Redo card art for Lightning Bolt, Murder, Sword and Sorcery, Unsummon** — these four received first-pass / "slush" art from the card-art A/B eval and were placed as stopgaps; they need a proper redo. Lightning Bolt's current art is the *figure* version (it should be figure-free — a force of nature, not a person being struck); Murder wants bespoke marquee art (it's a premium removal spell); Sword and Sorcery and Unsummon never produced a roll that legibly captured the mechanic. Regenerate via the merged C2 card-art skill when art credits are available. (Gilded Seat, Veil of Mists, and Hedge Squire got keeper-grade art from the same eval and are fine.)
 
 - **Collapse duplicated "duration" handling (dedupe, not a new framework)** — temporary effects are reverted by ~5 copy-pasted mechanisms in two shapes: the **EOT clock** (`tempPower`/`tempTou`, `eotGrants`, `typeGrants` with `eot:true`, `tempControlUntilEot` — all zeroed in the cleanup loop ~`engine.js:5733`) and the **leave-play listener** (`grantedBy` Map via `clearRestrictionsFromSource`, plus `typeGrants` with `eot:false`). The win is one shared EOT-revert helper + reusing the `grantedBy`-style leave-play listener, so the *next* temporary effect registers instead of adding a field + a cleanup site. **Do it when next working in combat/keyword-cleanup code anyway**, or when a card needs a *third* duration (e.g. "until your next turn") — that card is the moment it pays for itself. Deliberately do NOT build a general `until(<any event>)` registry: it'd serve zero current cards and is the "generic god-object event-matcher" the CLAUDE.md style notes warn against. No bug today; this is pure dedupe. (Considered + deferred this session; the longer spec was cut as premature.)
@@ -46,6 +79,8 @@ The following items live in `docs/DIVERGENCE.md` as their primary tracker. Liste
 - **Review-residue P3s from the 2026-07-02 adversarial review** (three small items, none behavioral today): (1) *brittle blocker-identity assertion* — `test_combat_keyword_gates.js` line ~87 asserts *which* blocker dies in the double-block scenario; that's engine damage-assignment order (attacker's free choice under MTG rules), not a rule — a rules-legal kill-order retune reddens it. The adjacent "exactly one died" assertion is the real invariant; consider dropping the identity pin. (2) *deferred-discard source attribution* — the A4-23 leg-2 accumulate keeps the FIRST discard's `source`/`sourceIid` when a second forced discard merges into an open prompt, so the second's A3-6 zone-change emit attributes to the first source (latent: no shipped card stacks two human discards in one resolution; acknowledged in-comment at the merge site). (3) *cosmetic mana classifiers not migrated* — `controller.js` (~1901, 1933), `render.js` (~908), `card-text.js` (~1207) still test raw `effects[0].kind === 'add_mana'` instead of the v2.1.53 `isManaAbility()`; UI/text only, no stack-routing consequence — migrate them the next time any of those sites is touched, or alongside the extra-cost mana-ability work above.
 - **Close the mutation-testing loop (the campaign never did)** — the June-10 mutation baseline (7,592 mutants, **36% overall kill score**; map + per-file survivor lists at `~/.config/magiclike/audit/mutation/`, runner at `tools/audit/mutation/` on the archive branches) was consumed as the campaign's ship gate but never closed out: (1) **no second measurement exists** — the nightly re-score died 2026-06-11, so whether the campaign's suite growth (1,786 → 2,626 assertions) actually raised the kill score is unknown; re-run against the current tip for the before/after. **Config caveat (learned the hard way 2026-07-02):** a naive re-run with the June default of `--workers 8` THRASHES — the suite grew ~47% (baseline single-run is now ~82s), so 8 concurrent sandboxes contend past the 240s watchdog and time out spuriously (~50% timeout rate observed; timeouts score as *killed*, so the result inflates into meaninglessness). A failed 2-day run confirmed this. Fix: `--workers 2` (and clear any stale `results.json` first — the content-hash cache would reuse the garbage timeouts). Budget ~3-4h clean, pure CPU, no tokens; run it when the desktop is idle and someone can spot-check throughput. (2) **The weak meta-layer files were accepted-as-is implicitly, never ruled on** — `picklog.js` 4%, `draft.js` 10%, `trigger-generator.js` 13%, `ai.js` 17% (1,417 survivors); Joe should either bless the acceptance (meta-layer, lower stakes than the rules core) or commission targeted teeth. (3) If a fresh run happens, triage the top survivor clusters rather than chasing the raw score — per the standing ruling, survivors indict *code coverage*, and the cure is adding teeth, never deleting tests. Surfaced 2026-07-02 answering "what ever happened with that data?"
 - **Evaluate AI progression / difficulty scaling** — surfaced by audit A5-11. The opponent's clone/sticker/staple counts scale with run depth (canon §1503; `buildOpponentDeck` → `applyOpponentClones` in `draft.js`, deterministic "duplicate strongest non-land, scaling with depth"). Whether the resulting curve actually *feels* like meaningful escalation — vs. too flat early or too spiky late — was never play-evaluated. Do a pass: play/selfplay across depths, check the opponent genuinely gets harder in a satisfying way, and tune the scaling divisors/weights if not.
+
+- **Reinforcements retirement package** — SHIPPED as v2.2.26 (fallback 0.0%, value seat never fires at current pool density — insurance only). Original plan: — the fallback's founding rationale died with the theme labels (v2.2.22): it existed so incoherent buckets wouldn't ship wearing a lying theme name, but an unlabeled weak bucket now tells an honest weak story. The plan, in Joe's design: (1) **delete `MIN_COHERENCE`** — every seed ships its honest bucket, the player reads three weak reasons and declines with open eyes; (2) **per-slot value fill replaces whole-bucket fallback** (Joe's design: "duplicate the logic, but in the smaller case") — when growth strands below 3 cards, keep the seed + grown recruits and fill only the empty seat(s) with the Reinforcements sampling logic (value-weighted, color-fenced, not-owned); story line for the filled seat is a value-type reason ("joins as a solid card in your colors"); (3) **whole-bucket Reinforcements survives only for true pool exhaustion** (can't even seed — near-unreachable at 341 cards). Notably (2) is a natural tail seat: a value-sampled slot that fires exactly when synergy is exhausted — the honest micro-form of the value channel the ε experiments failed to build (plan-bucket-draft §8b). Also killed in discussion: "lean into the fallback as the value channel" — a channel whose bandwidth shrinks as the graph improves is exhaust, not a channel (Joe: "we've deliberately set it up to fire as rarely as possible"). Dials for the build: coherence distribution of shipped buckets, answer-card exposure before/after, PICKLOG pick-rate of low-coherence tiles (the v2.2.22 fallback flag already logs what's needed — a few of Joe's runs first would inform whether players ever pick goodstuff tiles at all).
 
 ## Recently done
 

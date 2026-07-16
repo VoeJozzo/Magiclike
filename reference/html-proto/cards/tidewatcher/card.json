@@ -1,0 +1,34 @@
+{
+  "card_id": "tidewatcher",
+  "name": "Tidewatcher",
+  "art": "🌊",
+  "cost": {
+    "U": 1,
+    "C": 1
+  },
+  "power": 1,
+  "toughness": 4,
+  "types": [
+    "Creature",
+    "Merfolk"
+  ],
+  "triggers": [
+    {
+      "event": "spell_cast",
+      "condition": [
+        "another_card",
+        "controlled_by(you)",
+        "opponents_turn"
+      ],
+      "effects": [
+        {
+          "kind": "move_card",
+          "from_zone": "library",
+          "to_zone": "hand",
+          "selector": "controller_top",
+          "amount": 1
+        }
+      ]
+    }
+  ]
+}

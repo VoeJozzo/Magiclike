@@ -3813,6 +3813,11 @@ const MATCH_FILTER_KEYS = new Set([
   'graveyards', 'select',
   // library-search axis (matchesSearchFilter's `sub` shorthand)
   'sub',
+  // Source-exclusion axis ("exile ANOTHER target creature you control" —
+  // Tideglass Broker). NOT consumed by matchFilter (which has no source in
+  // scope): enforced in the ts* trigger-targeting layer, which threads the
+  // trigger's sourceIid. Distinct from `distinct_targets` (slot-vs-slot).
+  'another',
 ]);
 
 // Effect kinds that DEREFERENCE a target and have no targetless fallback
@@ -3958,6 +3963,22 @@ function validateAllCardEffects(cards) {
         schemaErrors.push(cardId + ': static_buff filter uses a stat bound ('
           + STAT_BOUND_FILTER_KEYS.filter(k => buff.filter[k] !== undefined).join(',')
           + ') — unsupported until stat-bounded lord buffs are designed (audit A4-14)');
+      }
+    }
+    // Wave 2 spell riders: effect kinds through the shared sweep; scope and
+    // spell_filter keys against their closed vocabularies.
+    const RIDER_SCOPES = ['all_targets', 'creature_targets', 'your_creature_targets', 'self'];
+    for (const rider of (card.spell_riders || [])) {
+      if (!rider) continue;
+      checkList(rider.effects, cardId + '.spell_riders', true);
+      if (rider.rider_scope && !RIDER_SCOPES.includes(rider.rider_scope)) {
+        schemaErrors.push(cardId + ': spell_riders rider_scope "' + rider.rider_scope
+          + '" not in ' + RIDER_SCOPES.join('/'));
+      }
+      for (const k of Object.keys(rider.spell_filter || {})) {
+        if (k !== 'has_effect' && k !== 'type') {
+          unknownFilterKeys.push(cardId + '.spell_riders.spell_filter(' + k + ')');
+        }
       }
     }
   }
@@ -4321,7 +4342,7 @@ function pushTriggerEntry(p, targets) {
 function pushTriggerOnStack(p) {
   let targets = [];
   if (objectNeedsTarget(p.trig)) {
-    const picked = tsAutoPick(p.trig, p.controller);
+    const picked = tsAutoPick(p.trig, p.controller, p.sourceIid);
     if (!picked) {
       log(`${p.sourceName} trigger fizzles — no legal target.`, 'sp');
       return;
@@ -4345,7 +4366,7 @@ function pushTriggerOnStack(p) {
 // (so with ≥2 creatures there's always an escape; with exactly 2 the second slot
 // auto-fills). Revisit for the first 3+-slot or asymmetric-per-slot distinct card.
 function advanceTriggerTargetPrompt(pt) {
-  const bySlot = tsLegalBySlot(pt.trig, pt.controller);
+  const bySlot = tsLegalBySlot(pt.trig, pt.controller, pt.sourceIid);
   for (const slot of pt.slotKeys) {
     if (pt.pickedSlots[slot] != null) continue;
     const valid = tsExcludePicked(pt.trig, bySlot.get(slot) || [], pt.pickedSlots);
@@ -4412,10 +4433,50 @@ function drainTriggers() {
   G.pendingTriggers = [];
   for (let i = 0; i < ordered.length; i++) {
     const p = ordered[i];
+    // The per-episode trigger budget ticks HERE — one per fired trigger
+    // taken up, whether it later resolves, fizzles, prompts, or bails. This
+    // is the seam every trigger passes exactly once (see resolveTrigger's
+    // header for why the increment moved out of resolution).
+    G.triggerChainDepth = (G.triggerChainDepth || 0) + 1;
+    // ability_triggered (Wave 2, Joe's spec — built at his direction after
+    // the MTG-model review settled the semantics): announce every triggered
+    // ability at FIRE time, before any fizzle check — per MTG 603, an
+    // ability that triggers-then-fizzles-at-targeting still TRIGGERED. This
+    // take-up point is the one seam every fired trigger passes through
+    // (auto-pick, human-prompt, and the stackable:false immediate arm), so
+    // one emit here covers all paths exactly once. `cause` carries the
+    // originating event ("what triggered that ability"); `trig` the firing
+    // ability itself (read by trigger_has_effect-style predicates). No
+    // bespoke self-exclusion: recursion is governed by TRIGGER_DEPTH_CAP,
+    // our version of MTG's infinite-loop meta-rule — a loosely-conditioned
+    // meta-listener loops to the budget and bails loudly (pinned by test).
+    // The announcement respects the same budget: once it is blown, the pile
+    // drains to termination without further announcements (an ungated emit
+    // here would re-seed the queue on every bailed resolution, forever).
+    // The exhaustion is logged ONCE per episode — the meta-rule is loud,
+    // not a silent chain-stop.
+    if (G.triggerChainDepth > TRIGGER_DEPTH_CAP && !G.triggerBudgetBlownLogged) {
+      G.triggerBudgetBlownLogged = true;
+      log(`Trigger budget exhausted (${TRIGGER_DEPTH_CAP} triggers this stack episode) — bailing to prevent a loop.`, 'imp');
+    }
+    if (G.triggerChainDepth <= TRIGGER_DEPTH_CAP) emit({
+      type: 'ability_triggered',
+      subject_iid: p.sourceIid,
+      // Last-known information: null if the source left play between firing
+      // and drain (its ability still triggered; card-predicates just fail).
+      subject_card: (findCard(p.sourceIid) || {}).card || null,
+      controller: p.controller,
+      cause: p.event || null,
+      trig: p.trig,
+    });
     const pt = triggerPlayerTargetPrompt(p);
     if (pt) {
       // A human choice remains — pause. The remaining triggers wait in queue.
-      G.pendingTriggers = ordered.slice(i + 1);
+      // CONCAT, not assign: the ability_triggered emit above (and any other
+      // emit during this loop) may have queued NEW pendings — a bare
+      // assignment silently discarded them (found by the meta-listener test:
+      // a prompt-path trigger's announcement vanished).
+      G.pendingTriggers = ordered.slice(i + 1).concat(G.pendingTriggers);
       G.pendingTriggerTarget = pt;
       log(`${p.sourceName} triggered — choose a target.`, 'sp');
       return true;
@@ -4552,9 +4613,12 @@ function cardValueOrZero(card) {
 // Resolve a trigger from the stack.
 function resolveTrigger(item) {
   // Per-stack-episode trigger budget, NOT nesting depth (audit A3-3, kept
-  // deliberately): increments on every resolution, resets only when the
-  // stack empties with both players passing.
-  G.triggerChainDepth = (G.triggerChainDepth || 0) + 1;
+  // deliberately). Since the ability_triggered build the counter increments
+  // at the drainTriggers TAKE-UP point (one tick per FIRED trigger — every
+  // resolution path flows through take-up), not here: incrementing at
+  // resolution let a drain-only cycle (take-up → emit → requeue → push,
+  // never resolving) grow the stack unboundedly with the budget frozen at
+  // zero. This site keeps the bail CHECK.
   if (G.triggerChainDepth > TRIGGER_DEPTH_CAP) {
     log(`Trigger budget exhausted (${TRIGGER_DEPTH_CAP} triggers this stack episode) — bailing to prevent a loop.`, 'imp');
     return;
@@ -4944,12 +5008,34 @@ function tsHasTopLevelTarget(obj) {
 }
 
 // Map<slotIdx, legalTargets[]> across all three target shapes.
-function tsLegalBySlot(obj, who) {
+// excludeIid (optional): the source object's iid, threaded by the TRIGGER
+// paths so a slot whose filter declares `another: true` ("exile ANOTHER
+// target creature you control" — Tideglass Broker) can never target its own
+// source. matchFilter can't enforce this — it has no source in scope — so
+// this is the single home for the rule, mirroring tsExcludePicked's role
+// for distinct_targets. Resolution-time revalidation (tsRevalidateTargets)
+// deliberately doesn't thread it: a chosen target is never the source.
+function tsLegalBySlot(obj, who, excludeIid) {
+  let bySlot;
   if (tsHasTopLevelTarget(obj)) {
-    return new Map([[0, targetsForFilter(obj.target, who, obj.target_filter)]]);
+    bySlot = new Map([[0, targetsForFilter(obj.target, who, obj.target_filter)]]);
+  } else {
+    const targetedEffs = (obj.effects || []).filter(effectNeedsTarget);
+    bySlot = validTargetsBySlot(obj, targetedEffs, who);
   }
-  const targetedEffs = (obj.effects || []).filter(effectNeedsTarget);
-  return validTargetsBySlot(obj, targetedEffs, who);
+  if (excludeIid != null) {
+    for (const [slot, list] of bySlot) {
+      if (tsSlotWantsAnother(obj, slot)) bySlot.set(slot, list.filter(t => t.iid !== excludeIid));
+    }
+  }
+  return bySlot;
+}
+
+// Does this slot's filter declare `another: true` (source-exclusion)?
+function tsSlotWantsAnother(obj, slot) {
+  if (tsHasTopLevelTarget(obj)) return !!(obj.target_filter && obj.target_filter.another);
+  const spec = Array.isArray(obj.target_slots) ? obj.target_slots[slot] : null;
+  return !!(spec && spec.filter && spec.filter.another);
 }
 
 // Cross-slot exclusion: drop targets already chosen for earlier slots when the
@@ -5084,8 +5170,8 @@ function tsIsImplicitTargetType(type) {
 // valued by pickBestTriggerTarget and honoring distinct. Generalizes the
 // single-target trigger auto-pick to N slots. Returns null if any slot has no
 // legal target (→ the caller fizzles the trigger).
-function tsAutoPick(obj, who) {
-  const bySlot = tsLegalBySlot(obj, who);
+function tsAutoPick(obj, who, excludeIid) {
+  const bySlot = tsLegalBySlot(obj, who, excludeIid);
   const slotKeys = [...bySlot.keys()].sort((a, b) => a - b);
   const picks = [];
   for (const slot of slotKeys) {
@@ -5481,6 +5567,11 @@ function applyTypeChange(ctx, params, target, op) {
   const stats = (p || t) ? ` (${p}/${t})` : '';
   if (op === 'set') log(`${f.card.name} becomes ${tags.join(' ')}${stats}${dur}.`, 'sp');
   else log(`${f.card.name} becomes ${tags.join(' ')} in addition to its other types${stats}${dur}.`, 'sp');
+  // A type change can flip static-buff eligibility RIGHT NOW (a land animated
+  // into a creature must immediately see Rootbound Sentinel's "Land creatures
+  // you control have vigilance") — without this, grants lag until the next
+  // emit(), which is too late for tap-at-declare rules like vigilance.
+  applyStaticKeywordGrants();
 }
 
 // When a card leaves the battlefield, any "until removed" restrictions it
@@ -6111,12 +6202,18 @@ function passPriority(who) {
         drainTriggers();
       }
     } else {
-      // Stack just emptied: reset the per-episode trigger budget (we're
-      // done with that pile).
-      G.triggerChainDepth = 0;
-      // Empty stack: drain any pending triggers; if there are now items on
-      // the stack, the round stays open. Otherwise close and advance.
+      // Stack just emptied: drain pendings FIRST — if the drain refills the
+      // stack we are NOT done with the pile, and the per-episode trigger
+      // budget must keep counting. Pre-fix the order was reset-then-drain,
+      // which let a self-feeding ability_triggered listener reset its own
+      // budget every one-entry cycle and loop forever — the cap only ever
+      // contained cascades that stayed within a single stack pile. Reset
+      // only when stack AND queue are truly spent.
       drainTriggers();
+      if (G.stack.length === 0 && G.pendingTriggers.length === 0) {
+        G.triggerChainDepth = 0;
+        G.triggerBudgetBlownLogged = false;
+      }
       if (G.stack.length > 0) {
         G.priority.passes.clear();
         G.priorityHolder = G.activePlayer;
@@ -6211,6 +6308,50 @@ function pushOnStack(item) {
   }
 }
 
+// ── Wave 2: static spell riders ─────────────────────────────────────────────
+// Battlefield permanents may modify their controller's own resolving spells:
+// "Spells you cast also …" (card field `spell_riders`). Shape:
+//   spell_riders: [{ spell_filter?: {has_effect: <kind>}, rider_scope, effects }]
+// rider_scope: 'all_targets' (creatures + players), 'creature_targets',
+// 'your_creature_targets', or 'self' (the rider's own source card).
+// Semantics settled with Joe: riders apply AFTER the spell's own effects
+// (resolution-time — a pump lands before the rider reads the board); targets
+// that died during resolution are skipped; countered/fizzled spells apply no
+// riders; creature casts never do (they resolve in the permanent branch).
+// Customers: Sapling Tender, Primal Metamagus, Vigil Chanter, Wildfire Colossus.
+function applySpellRiders(item, card) {
+  const caster = item.controller;
+  const targets = Array.isArray(item.targets) ? item.targets.filter(Boolean) : [];
+  for (const src of G[caster].battlefield.slice()) {
+    for (const rider of (src.spell_riders || [])) {
+      const filt = rider.spell_filter;
+      if (filt && filt.has_effect && !cardHasEffect(card, (e) => e.kind === filt.has_effect)) continue;
+      if (filt && filt.type && !hasType(card, filt.type)) continue;
+      const ctx = { controller: caster, sourceName: src.name, sourceIid: src.iid, sourceCard: src };
+      const scope = rider.rider_scope || 'all_targets';
+      if (scope === 'self') {
+        for (const eff of (rider.effects || [])) {
+          const self = resolveSelfTarget(eff, src.iid, src.name, caster);
+          applyEffect(ctx, eff, self.tgt, self.snap);
+        }
+        continue;
+      }
+      for (const t of targets) {
+        if (t.kind === 'creature') {
+          const f = findCard(t.iid);
+          if (!f) continue;                                   // died during resolution
+          if (scope === 'your_creature_targets' && f.controller !== caster) continue;
+        } else if (t.kind === 'player') {
+          if (scope !== 'all_targets') continue;              // creature scopes skip players
+        } else {
+          continue;                                           // spell/graveyard targets: not rider-able
+        }
+        for (const eff of (rider.effects || [])) applyEffect(ctx, eff, t);
+      }
+    }
+  }
+}
+
 function resolveTopOfStack() {
   if (!G.stack.length) return;
   const item = G.stack.pop();
@@ -6294,6 +6435,7 @@ function resolveTopOfStack() {
     // `eff.target`/`target_slot` branch below, unchanged.
     const hasTargetStep = !!card.target;
     let curTgt = null, curSnap = null;
+    let ridersSkipped = false;   // set on human-prompt deferrals (riders apply only on full inline resolution)
     if (hasTargetStep) { const f0 = getTargetForSlot(0); curTgt = f0.tgt; curSnap = f0.snap; }
     for (const eff of activeEffects) {
       let tgt = null;
@@ -6306,6 +6448,7 @@ function resolveTopOfStack() {
         // doEdictChoice once the human picks. The AI path (and an empty
         // pool) falls through to the handler's auto-pick.
         if (maybeDeferHumanChooses(ctx, eff, activeEffects, curTgt)) {
+          ridersSkipped = true;
           break; // defer; spell still moves to graveyard. doEdictChoice resumes.
         }
         // Reads the established player (curTgt) and records ctx.chosen; the
@@ -6334,9 +6477,15 @@ function resolveTopOfStack() {
         snap = curSnap;
       }
       applyEffect(ctx, eff, tgt, snap);
-      if (maybeDeferTrailingForHumanPrompt(ctx, eff, activeEffects)) break;   // A4-23 leg-1
+      if (maybeDeferTrailingForHumanPrompt(ctx, eff, activeEffects)) { ridersSkipped = true; break; }   // A4-23 leg-1
     }
     ctx.chosen = null;
+    // Wave 2 static spell riders ("Spells you cast also …"): applied AFTER
+    // the spell's own effects, so a pump lands before a rider reads the
+    // board — the resolution-time semantics that dissolved the trigger
+    // version's timing trap. Fizzled and countered spells never reach here;
+    // human-chooses deferrals skip riders (no current card overlaps both).
+    if (!ridersSkipped) applySpellRiders(item, card);
     // Rip-on-target check (Elystra). Uses the eligibility snapshot taken
     // before effects fired — see comment above the snapshot for why we
     // can't re-check here (Elystra may have just died from this very
@@ -6728,6 +6877,15 @@ function doActivateAbility(who, cardIid, abilityIdx, targets, sacIid) {
     // (resolveAbilityEntry) with §1006.1/§704.1 target re-validation.
     G.stack.push(entry);
     log(`${G[who].name} activates ${card.name}${targets && targets[0] ? ' on ' + targets[0].label : ''}.`, who === 'you' ? 'sp' : 'ai');
+    // ability_activated — announced from THIS site only: the non-mana
+    // stack-entry path. Mana abilities are structurally silent (they take the
+    // inline arm below / doTapLandForMana — canon §705 off-stack, so tapping a
+    // dork can never feed an activations-matter payoff), and the dormant
+    // stackable:false inline arm deliberately doesn't emit either (revisit
+    // with its design pass). Emitted BEFORE the drainTriggers() below, so a
+    // listener's trigger lands ON TOP of the ability entry — LIFO, the
+    // trigger resolves first, matching where MtG puts it.
+    emit({type: 'ability_activated', subject_iid: card.iid, subject_card: card, controller: who});
     // §603 handoff, same as a spell cast (pushOnStack) or a trigger push:
     // reset the response round and hand priority to the activator's
     // opponent. Non-mana activation is gated on isInstantWindow /
@@ -8201,6 +8359,11 @@ return {
   // §7b coverage seam: the dispatch table + the coverage report. The valuation
   // classification sets (VALUED/UNVALUED_EFFECT_KINDS) now live on AI (review #6).
   EFFECTS, effectCoverageReport,
+  // Subtype-implied keywords (Angel/Dragon fly, Treefolk reach, Wall defends)
+  // — exported so BUCKETS' extraction reads the same effective keywords the
+  // runtime grants (raw keywords[] alone made the synergy graph blind to
+  // every implied keyword).
+  addSubtypeKeywords,
   concede() {
     if (!G || G.gameOver) return;
     log('You concede.', 'imp');
