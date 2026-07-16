@@ -29,10 +29,5 @@
   "types": [
     "Creature",
     "Spirit"
-  ],
-  "synergy": {
-    "wants": {
-      "eot_buff": 3
-    }
-  }
+  ]
 }

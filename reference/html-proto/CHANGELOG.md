@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.2.30`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.2.31`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -2964,4 +2964,20 @@ provide eot_buff alongside trick; Elystra's hint wants eot_buff 3;
 cloudshift<->elystra edge is dead; sapling_tender/vigil_chanter keep
 wanting generic trick (they reward the CAST, not the buff). ~18 pins
 updated + 4 new (ownership discrimination, cloudshift anti-synergy).
+Suite 150 files / 2995 green.
+
+v2.2.31: Elystra graduates from synergy hint to rule (Joe's rule-vs-hint
+sharpening). Her eot_buff want was a card-JSON synergy hint (v2.2.25/30);
+now it's a rule off the permanent_eot flag: `if (tpl.permanent_eot) wants
+eot_buff 3`. The want is DERIVABLE from structure, so it belongs in the
+rules — and a stapled card that acquires permanent_eot gets the want for
+free (a hint would not travel). Sharpened the hint doctrine to Joe's
+crisp criterion, replacing the fuzzy "custom kind the extractor
+deliberately doesn't parse": a hint is for a synergy whose SOURCE is not
+in parseable structure (emergent / flavor / metagame); anything derivable
+from a flag/kind/trigger is a rule even at one card. As of this
+graduation NO shipped card uses a hint — the mechanism stands as
+infrastructure for the truly-underivable case (kept, not ripped: Joe's
+call — the escape hatch is cheap and the __hint_test synthetic pin keeps
+the path covered). cards/CLAUDE.md option-3 routing updated to match.
 Suite 150 files / 2995 green.

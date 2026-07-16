@@ -174,12 +174,18 @@ function collectKindsAndConds(node, kinds, conds) {
   }
 }
 
-// §1b Card-local synergy hints — the custom_text of the graph.
+// §1b Card-local synergy hints — the escape hatch for the UNDERIVABLE.
 //
-// Rule of thumb: mechanics that appear on 2+ cards get an extraction rule
-// here; a one-off custom kind the extractor deliberately doesn't parse
-// (endomorph_absorb, Elystra's permanence) may instead declare its synergy
-// ON the card:  "synergy": { "wants": {"dies": 3}, "provides": {...} }.
+// Sharp criterion (Joe, 2026-07-14): a hint is for a synergy whose SOURCE
+// is NOT in the card's parseable structure — an emergent, flavor, or
+// metagame interaction a human knows but no structural rule could ever
+// derive. If the synergy IS derivable from the card's data (a flag, an
+// effect kind, a trigger shape), it belongs in a RULE, even when only one
+// card has it today — rules generalize and travel through staples; hints
+// don't. (Elystra was mis-filed here at v2.2.25: her permanence is a flag,
+// so it graduated to a rule at v2.2.30. As of that graduation NO shipped
+// card uses a hint — the mechanism stands as infrastructure for the
+// genuinely-underivable case, exercised by the __hint_test synthetic pin.)
 // Hints are ADDITIVE (max-merged with derived values, same as bump), and
 // resource names are validated against the vocabulary below — a typo warns
 // at index time instead of silently doing nothing (the predicate-registry
@@ -192,11 +198,9 @@ function collectKindsAndConds(node, kinds, conds) {
 const HINT_RESOURCES = new Set([
   'your_dies', 'opp_dies', 'fodder', 'etb', 'lifegain', 'spellcast', 'wide',
   'anthem', 'self_discard', 'self_pain', 'opp_loss',
-  // eot_buff: whitelisted for Elystra (v2.2.25 as trick, refined v2.2.30) —
-  // her permanence wants until-EOT buffs specifically (eot_buff), not
-  // your-creature targeting generically; hints are exactly how a
-  // custom-kind card declares that (she was this mechanism's design
-  // exemplar all along).
+  // eot_buff / trick: the trick shelf's resources, whitelisted so a future
+  // underivable-synergy card can hint them (eot_buff is now produced by a
+  // rule off permanent_eot, v2.2.30; kept here for hint parity).
   'eot_buff',
   'trick',
 ]);
@@ -595,6 +599,13 @@ function analyze(tpl) {
   // hardest: every ETB creature multiplies the rebuy.
   if (blinks || massBounce) bump(wants, 'etbtrigger', W_WANT_PAYOFF);
   else if (bouncesOwn) bump(wants, 'etbtrigger', 2);
+  // Permanence (permanent_eot: EOT effects last forever) wants until-EOT
+  // buffs — the value of making a temporary buff permanent is proportional
+  // to how many temporary buffs you cast. Graduated from Elystra's synergy
+  // hint to a rule (Joe, 2026-07-14): the want is DERIVABLE from the flag,
+  // so it belongs in the rules, and a stapled card that acquires the flag
+  // gets the want for free (a card-JSON hint would not travel).
+  if (tpl.permanent_eot) bump(wants, 'eot_buff', W_WANT_PAYOFF);
 
   // --- Plan tags (weak similarity: shared strategy, not producer/consumer) ---
   if (effKeywords.includes('flying')) tags.add('flying');

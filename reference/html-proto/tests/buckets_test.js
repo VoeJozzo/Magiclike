@@ -446,8 +446,11 @@ function check(label, ok, info) {
   // trick spells into offers via seed affinity.
   const w2 = (id) => BUCKETS.analyzeCard(id);
   const ely = BUCKETS.analyzeCard('elystra_the_immortal');
-  check('elystra WANTS eot_buff (her permanence eats until-EOT buffs)',
-    ely && ely.wants.eot_buff === 3, JSON.stringify(ely && ely.wants));
+  // Graduated from a synergy hint to a rule off the permanent_eot flag
+  // (v2.2.30): her card.json carries no synergy block; the want is derived.
+  check('elystra WANTS eot_buff (derived from permanent_eot, not a hint)',
+    ely && ely.wants.eot_buff === 3 && !CARDS.elystra_the_immortal.synergy,
+    JSON.stringify(ely && ely.wants));
   const e = BUCKETS.edgeBetween('giant_growth', 'elystra_the_immortal');
   check('a pump spell feeds elystra (live edge, eot_buff reason)',
     e.w > 1 && e.reasons.some(r => r.includes('[eot_buff]')),

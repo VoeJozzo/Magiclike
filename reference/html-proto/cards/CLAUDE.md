@@ -152,12 +152,19 @@ Read the output and ask: **does this match the design intent?** Then route:
      load-bearing for legibility and hub placement).
    - **Ship with a customer**: no speculative resources — a new resource
      needs a wanter and a provider the day it lands.
-3. **The mechanic is a one-off custom kind the extractor deliberately
-   doesn't parse** → declare it on the card:
-   `"synergy": {"wants": {"eot_buff": 3}, "provides": {...}}`
-   (Elystra is the precedent). Hints merge additive-max — they can RAISE
-   what rules derived, never lower it. Resource names are validated against
-   `HINT_RESOURCES` (`js/buckets.js`); a typo warns at boot and does nothing.
+3. **The synergy's SOURCE is not in the card's parseable structure** — an
+   emergent, flavor, or metagame interaction no structural rule could
+   derive → declare it on the card:
+   `"synergy": {"wants": {"...": 3}, "provides": {...}}`.
+   Sharp test: if the synergy IS derivable from a flag / effect kind /
+   trigger shape, it's a RULE (option 2), even when only one card has it
+   today — rules generalize and travel through staples; a card-JSON hint
+   does neither. (Elystra's permanence looked like a hint case but is a
+   flag → it's a rule. As of that graduation NO shipped card uses a hint;
+   the mechanism is infrastructure for the truly-underivable case.) Hints
+   merge additive-max — they can RAISE what rules derived, never lower it.
+   Resource names are validated against `HINT_RESOURCES` (`js/buckets.js`);
+   a typo warns at boot and does nothing.
 4. **The card registers nothing** → it has zero edges, will never be
    recruited into any themed bucket, and reaches players only through the
    per-slot value fill. That's either deliberately standalone or
