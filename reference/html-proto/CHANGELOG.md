@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.2.32`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.2.33`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -2993,3 +2993,17 @@ plan-bucket-draft; a "why this isn't here" block in code was clutter).
 fill). (4) Elystra's trailing newline restored (a json.dump in v2.2.31
 stripped it, leaving a phantom one-line diff; her card is now byte-clean
 vs dev). No behavior change. Suite 150 files / 2995 green.
+
+v2.2.33: Simplify-pass cleanup on the extraction rules (a second review
+pass over the direction-split diff, no behavior change). (1) The destroy
+provide filters the matching kinds once (const destroyers) instead of
+spelling the `affect_creature && destroy` predicate twice — the outer
+guard and the sweeper sub-check now share one computed list. (2) The
+dies-want ownership gate uses `cs.includes('controlled_by(you)')` (a
+plain literal match, matching its two sibling gate-checks) rather than an
+anchored `.some(x => /^controlled_by\(you\)$/.test(x))` regex that only
+looked like a family match. (3) valueFillSeats hoists the
+bucket-independent land/owned filter out of the fill loop (restoring the
+cheaper shape the retired reinforcementsBucket had) so only
+bucket.includes/isLegalCandidate re-run per seat. Suite 150 files / 2995
+green.

@@ -404,12 +404,12 @@ function analyze(tpl) {
   // rule was spell-scoped for no semantic reason, leaving chupacabra's ETB
   // destroy (a blinkable death engine) and royal_assassin's repeatable
   // tap-destroy providing dies 0 while one-shot Murder provided 1.
-  if (kinds.some(k => k.kind === 'affect_creature' && k.severity === 'destroy')) {
+  const destroyers = kinds.filter(k => k.kind === 'affect_creature' && k.severity === 'destroy');
+  if (destroyers.length) {
     bump(provides, 'opp_dies', 1);   // you point removal at THEIR creatures
     // A sweeper kills your board too — wraths genuinely feed your-side
     // death payoffs (charnel_shaman hears your creatures die to Pyroclasm).
-    if (kinds.some(k => k.kind === 'affect_creature' && k.severity === 'destroy'
-        && /^all/.test(String(k.scope || '')))) {
+    if (destroyers.some(k => /^all/.test(String(k.scope || '')))) {
       bump(provides, 'your_dies', 1);
     }
   }
@@ -469,7 +469,7 @@ function analyze(tpl) {
         // creature YOU CONTROL dies" (charnel_shaman) is fed by outlets,
         // tokens, sweepers, and combat — never by targeted removal.
         bump(wants, 'your_dies', W_WANT_PAYOFF);
-        if (!cs.some(x => /^controlled_by\(you\)$/.test(x))) {
+        if (!cs.includes('controlled_by(you)')) {
           bump(wants, 'opp_dies', W_WANT_PAYOFF);
         }
       }
@@ -833,10 +833,11 @@ function coherenceOf(bucket) {
 // build additively (plan-bucket-draft §8b).
 function valueFillSeats(bucket, why, deckColors, deckTplIds) {
   const owned = new Set(deckTplIds || []);
+  const legal = _pool.filter(c => !c.isLand && !owned.has(c.tplId));
   while (bucket.length < BUCKET_CARDS) {
     const entries = [];
-    for (const c of _pool) {
-      if (c.isLand || bucket.includes(c) || owned.has(c.tplId)) continue;
+    for (const c of legal) {
+      if (bucket.includes(c)) continue;
       if (!isLegalCandidate(c, bucket)) continue;
       let v = ENGINE.getCardValue(CARDS[c.tplId], 'draft');
       if (bucket.some(b => b.cost === c.cost)) v *= CURVE_CLASH_PENALTY;
