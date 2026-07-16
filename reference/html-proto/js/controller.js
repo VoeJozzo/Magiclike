@@ -1016,6 +1016,9 @@ function renderMap() {
   levelsContainer.innerHTML = '';
   // Bottom-up render: root at bottom, exit at top (climbing-the-tower feel).
   const levels = Object.keys(byLevel).map(Number).sort((a, b) => b - a);
+  // Placeholder text glyphs for node icons; real pixel-art icons come from the
+  // pixellab pipeline later (the design's SVG icons were rejected in review).
+  const PLACEHOLDER_ICON = { combat: 'C', elite: 'E', shop: '$', event: '?', rest: 'R', boss: 'B' };
   const iconFor = (node) => {
     if (node.type === 'boss') {
       if (node.constructedId) {
@@ -1066,7 +1069,10 @@ function renderMap() {
       const el = document.createElement('div');
       el.className = 'map-node';
       el.id = 'map-' + n.id;
-      el.textContent = iconFor(n);
+      const mi = document.createElement('span');
+      mi.className = 'mi';
+      mi.textContent = PLACEHOLDER_ICON[n.type] || iconFor(n);
+      el.appendChild(mi);
       el.title = tooltipFor(n);
       // Constructed: ring = spec's first color + ★ badge. Boss: 👹 badge.
       let ringColor = n.color;
@@ -1124,13 +1130,16 @@ function renderMap() {
       const y2 = tr.top + tr.height / 2 - canvasRect.top;
       const fromVisited = visited.has(e.from);
       const toLegal = legal.has(e.to);
-      const stroke = (fromVisited && toLegal) ? '#66ddaa' :
-                     fromVisited ? '#3a5a4a' : '#2a3540';
+      const stroke = (fromVisited && toLegal) ? '#7fd06a' :   // open (visited -> legal): green
+                     fromVisited ? '#a02619' :                 // travelled: heraldic red
+                     '#7a5a28';                                // future: brown
       const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
       line.setAttribute('x1', x1); line.setAttribute('y1', y1);
       line.setAttribute('x2', x2); line.setAttribute('y2', y2);
       line.setAttribute('stroke', stroke);
       line.setAttribute('stroke-width', '2');
+      line.setAttribute('shape-rendering', 'crispEdges');
+      if (!fromVisited) line.setAttribute('stroke-dasharray', '3 3');   // future edges dashed
       svg.appendChild(line);
     }
   });
