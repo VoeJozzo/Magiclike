@@ -413,9 +413,17 @@ function analyze(tpl) {
       bump(provides, 'your_dies', 1);
     }
   }
-  if (isSpellCard && kinds.some(k => k.kind === 'damage' && !k.scope)
-      && targetSteps.some(st => /creature/.test(String(st.t || '')))) {
-    bump(provides, 'opp_dies', 0.75);
+  // Shape-agnostic like the destroy arm above (Joe's rule-shape audit): a
+  // creature-borne damage-to-creature (flame_summoner's ETB burn, a repeatable
+  // pinger) manufactures deaths too — the old isSpellCard guard was spell-
+  // scoped for no semantic reason. Weight = killFraction(amount): the death-
+  // credit a hit earns is exactly the share of the creature pool it can kill,
+  // so a deal-3 sits at ~0.81 of destroy's 1.0 and a 1-ping at ~0.18. Derived,
+  // not hand-picked (variable/unknown damage falls back to a mid 0.75).
+  const dmgHits = kinds.filter(k => k.kind === 'damage' && !k.scope);
+  if (dmgHits.length && targetSteps.some(st => /creature/.test(String(st.t || '')))) {
+    const most = Math.max(...dmgHits.map(k => k.amount || 0));
+    bump(provides, 'opp_dies', most > 0 ? killFraction(most) : 0.75);
   }
   if (kinds.some(k => k.kind === 'fight')) bump(provides, 'opp_dies', 0.75);
 
@@ -649,10 +657,38 @@ let _idf = null;         // resource → specificity factor (see below)
 // breadth is priced automatically, for every resource, present and future.
 const IDF_ANCHOR_PROVIDERS = 8;
 
+// Damage-removal reliability, measured from the pool: killFraction(n) is the
+// share of nonland creatures a hit of n damage kills (toughness <= n). The
+// damage arm of the opp_dies provide reads it directly, so a burn's death-
+// credit is exactly the fraction of the board it can clear — destroy (kills
+// anything) = 1.0, deal-3 (Bolt) ~0.81, a 1-ping ~0.18. Pool-relative like idf:
+// re-derived whenever the pool is (re)built, tracking the real toughness curve.
+let _killCdf = null;
+function buildKillCdf() {
+  const tou = [];
+  for (const id of Object.keys(CARDS)) {
+    const tpl = CARDS[id];
+    if (!tpl || tpl.special || !hasType(tpl, 'Creature')) continue;
+    if (typeof tpl.toughness !== 'number') continue;
+    tou.push(tpl.toughness);
+  }
+  const total = tou.length;
+  const maxT = total ? Math.max(...tou) : 0;
+  const frac = [0];   // frac[n] = share of creatures with toughness <= n
+  for (let n = 1; n <= maxT; n++) frac[n] = tou.filter(t => t <= n).length / total;
+  _killCdf = { total, maxT, frac };
+}
+function killFraction(n) {
+  if (!_killCdf || !_killCdf.total) return 0.75;   // pre-pool fallback
+  if (n <= 0) return 0;
+  return _killCdf.frac[Math.min(n, _killCdf.maxT)];
+}
+
 function ensurePool() {
   if (_pool) return;
   _pool = [];
   _byId = {};
+  buildKillCdf();   // toughness CDF ready before analyze() reads killFraction()
   for (const id of Object.keys(CARDS)) {
     const tpl = CARDS[id];
     if (!tpl) continue;
@@ -814,7 +850,9 @@ function growBucket(seedAnalysis, deckAnalyses, deckColors, shelf) {
   return { bucket, why };
 }
 
-// Internal coherence = sum of pairwise edges. This is the anti-grab-bag gate.
+// Internal coherence = sum of pairwise edges. A per-bucket analytics metric
+// (reported by finishBucket, consumed by picklog/run rewards) — no longer a
+// hard gate: MIN_COHERENCE was retired with the Reinforcements floor (v2.2.26).
 function coherenceOf(bucket) {
   let sum = 0;
   for (let i = 0; i < bucket.length; i++) {
@@ -1025,7 +1063,7 @@ return {
     return (a && b) ? edge(a, b) : { w: 0, reasons: [] };
   },
   // Test seams:
-  _resetCacheForTest: () => { _pool = null; _byId = null; },
+  _resetCacheForTest: () => { _pool = null; _byId = null; _killCdf = null; },
   _setRandForTest: (fn) => { _rand = fn || Math.random; },
   _setColorPullForTest: (k) => { SPLASH_BASE = (typeof k === 'number') ? k : 0.3; },
   _valueFillForTest: (bucketTplIds, deckTplIds) => {

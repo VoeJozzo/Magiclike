@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.2.33`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.2.34`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -3007,3 +3007,27 @@ bucket-independent land/owned filter out of the fill loop (restoring the
 cheaper shape the retired reinforcementsBucket had) so only
 bucket.includes/isLegalCandidate re-run per seat. Suite 150 files / 2995
 green.
+
+v2.2.34: Damage-removal death credit is measured, not guessed (Joe's
+"actually based on something" — a code-review thread that grew a fix).
+(1) The damage-to-creature arm of the opp_dies provide dropped its
+isSpellCard guard — spell-scoped for no semantic reason, the same wart the
+v2.2.28 destroy audit fixed: 17 creature-borne burns (flame_summoner's ETB,
+repeatable pingers) now manufacture deaths instead of providing 0. (2) Its
+weight is killFraction(amount): the share of the 221-creature pool a hit of
+that size actually kills (toughness <= amount), rebuilt from the pool at
+ensurePool() like idf. Destroy stays 1.0 (kills anything); Bolt (deal 3) =
+0.814 (180/221); a 1-ping = 0.176; big burns rise toward destroy
+(searing_blast deal-5 = 0.982). Replaces a hand-picked flat 0.75 — the
+reliability IS the weight, self-calibrating as the toughness curve shifts.
+(3) Dormant tripwire added: collectKindsAndConds does not descend into
+{op:and/or/not} condition sub-trees, so predicates nested in one are
+invisible to extraction (benign today — spellrider's {op:not} only drops a
+"noncreature" refinement, it still wants spellcast). The test allowlists
+spellrider and flips red the day a NEW card ships an {op} condition —
+prompting a check + a walker fix if the hidden predicates matter.
+(Supersedes an earlier "mixed-OR mis-gates" reading: the real failure mode
+is invisibility, not mis-gating.) (4) coherenceOf's "anti-grab-bag gate"
+comment corrected to "analytics metric" — it stopped being a gate when
+MIN_COHERENCE retired (v2.2.26). Behavior change (damage arms re-weighted);
+suite 150 files / 2997 green.

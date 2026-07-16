@@ -131,9 +131,16 @@ function check(label, ok, info) {
   // Removal manufactures deaths (the "organic Murder" rule): destroy and
   // damage-removal feed any-death payoffs; bounce and exile make NO death
   // event and stay silent.
-  check('removal provides dies: murder 1, bolt 0.75; wash_away (bounce) none',
-    w2('murder').provides.opp_dies === 1 && w2('lightning_bolt').provides.opp_dies === 0.75
+  check('removal provides dies: murder 1 (destroy), bolt kills-most (0.5-1), wash_away (bounce) none',
+    w2('murder').provides.opp_dies === 1
+    && w2('lightning_bolt').provides.opp_dies > 0.5 && w2('lightning_bolt').provides.opp_dies < 1
     && !w2('wash_away').provides.opp_dies && !w2('wash_away').provides.your_dies);
+  // Damage death-credit = killFraction(amount): a bigger burn clears more of
+  // the toughness curve, so the opp_dies weight rises monotonically with damage
+  // (deal-2 ~0.53, deal-3 ~0.81, deal-5 ~0.98 of destroy's 1.0).
+  check('damage opp_dies scales with kill-fraction: shock(2) < bolt(3) < searing_blast(5)',
+    w2('shock').provides.opp_dies < w2('lightning_bolt').provides.opp_dies
+    && w2('lightning_bolt').provides.opp_dies < w2('searing_blast').provides.opp_dies);
   check('murder <-> blood_artist is a live edge with the dies reason',
     BUCKETS.edgeBetween('murder', 'blood_artist').w > 1
     && /dies/.test(BUCKETS.edgeBetween('murder', 'blood_artist').reasons[0] || ''));
@@ -207,6 +214,31 @@ function check(label, ok, info) {
     !BUCKETS.edgeBetween('murder', 'charnel_shaman').reasons.some(r => /dies/.test(r)));
   check('the pyromaniac->sengir phantom edge is dead',
     !BUCKETS.edgeBetween('pyromaniac', 'sengir_vampire').reasons.some(r => /dies/.test(r)));
+
+  // Tripwire (dormant): the extractor's condition walker (collectKindsAndConds)
+  // pushes only strings sitting DIRECTLY under a `condition` key — it does not
+  // descend into {op:and/or/not} sub-trees, so any predicate nested inside one
+  // is invisible to want/provide extraction. Benign today: spellrider's
+  // {op:not} only drops a "noncreature" refinement (it still wants spellcast).
+  // But an {op:or} carrying the sole copy of a want-predicate would silently
+  // drop that want. This flips RED the day a NEW card ships an {op} condition,
+  // signalling: check that card's extraction, and teach the walker to descend
+  // if the hidden predicates matter. (Supersedes the earlier "mixed-OR mis-
+  // gates" framing — the real failure is invisibility, not mis-gating.)
+  const VETTED_OP_CONDITIONS = new Set(['spellrider']);   // {op:not}, judged benign
+  const hasOpNode = (node) => {
+    if (Array.isArray(node)) return node.some(hasOpNode);
+    if (!node || typeof node !== 'object') return false;
+    if (typeof node.op === 'string') return true;
+    return Object.values(node).some(hasOpNode);
+  };
+  const opCards = Object.keys(CARDS).filter(id => {
+    const tpl = CARDS[id];
+    return tpl && (tpl.triggers || []).some(trg => hasOpNode(trg.condition));
+  });
+  const unvetted = opCards.filter(id => !VETTED_OP_CONDITIONS.has(id));
+  check('no unvetted {op}-tree trigger condition (extraction-blindness tripwire)',
+    unvetted.length === 0, 'unvetted {op} conditions: ' + unvetted.join(','));
 
   // this_card self-triggers must not register wants on other cards: an ETB
   // "when THIS enters, X" card is not an ally-ETB payoff.
