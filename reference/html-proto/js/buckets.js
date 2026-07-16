@@ -72,11 +72,6 @@ const GROWTH_SHARPNESS = 2;
 const DECK_COUPLING = 0.1;
 const CURVE_CLASH_PENALTY = 0.5;// score multiplier when a candidate shares a
                                 // mana cost with a card already in the bucket.
-// There is deliberately NO copy of the old MIN_COHERENCE floor here: it was
-// retired at v2.2.26 (Joe's call). The floor existed so incoherent buckets
-// wouldn't ship wearing a lying theme label — labels died at v2.2.22, and an
-// unlabeled weak bucket tells an honest weak story the player can decline
-// with open eyes. Weak plans are now a product, not a failure.
 // There is deliberately NO deck-wide copy cap (Joe's call, 2026-07-06): an
 // earlier 4-copy rule here was an unauthorized import of MTG convention.
 // Redundancy self-prices via the graph (self-feeding cards pull their own
@@ -733,8 +728,8 @@ function isLegalCandidate(cand, bucket) {
 }
 
 // Weights-as-weights: draw one entry from [{item, w}], probability
-// proportional to w. THE house sampling pattern — seeds, Reinforcements,
-// and (candidate follow-up) growth all express "likelihood follows weight".
+// proportional to w. THE house sampling pattern — seeds, growth, and
+// the value fill all express "likelihood follows weight".
 function weightedSample(entries) {
   let total = 0;
   for (const e of entries) total += e.w;
@@ -855,38 +850,6 @@ function valueFillSeats(bucket, why, deckColors, deckTplIds) {
   }
 }
 
-// Loose fallback: a curve-spread trio of solid cards in deck colors. Since
-// v2.2.26 this fires ONLY when seeding itself starves (the offer backfill
-// loop — tiny pools, pool exhaustion); normal offers never fall back.
-function reinforcementsBucket(deckColors, deckTplIds) {
-  // Goodstuff's job is NEW power, never redundancy — cards you already own
-  // are excluded (dupes are earned through synergy buckets, where a twin
-  // must pull its weight via self-feeding edges), which is why the dupe
-  // shelf isn't applied here: every remaining candidate sits at factor 1
-  // by construction. Cards are softmax-sampled
-  // by intrinsic value, not top-sorted: a playtest caught the sort-with-
-  // small-jitter version selling the player their exact deck back, three
-  // offers in a row.
-  const owned = new Set(deckTplIds || []);
-  const legal = _pool.filter(c => !c.isLand && !owned.has(c.tplId));
-  const bucket = [];
-  while (bucket.length < BUCKET_CARDS) {
-    const entries = [];
-    for (const c of legal) {
-      if (bucket.includes(c)) continue;
-      if (!isLegalCandidate(c, bucket)) continue;
-      let v = ENGINE.getCardValue(CARDS[c.tplId], 'draft');
-      if (bucket.some(b => b.cost === c.cost)) v *= CURVE_CLASH_PENALTY;
-      v *= colorFitFactor(c, deckColors);
-      if (v > 0) entries.push({ item: c, w: v });
-    }
-    const pick = weightedSample(entries);
-    if (!pick) break;
-    bucket.push(pick);
-  }
-  return bucket;
-}
-
 // ---------------------------------------------------------------------------
 // §4 Lands + offer composition.
 // ---------------------------------------------------------------------------
@@ -992,9 +955,15 @@ function rollBucketOffer(deckTplIds) {
     const bucket = tryAddBucket(seed);
     if (bucket) offer.push(bucket);
   }
-  // Backfill with Reinforcements if seeding starved (tiny pools, weird colors).
+  // Backfill ONLY if seeding itself starved — a pool too small or too exotic
+  // to yield OFFER_SIZE seeds. Fill a whole value bundle from empty (same
+  // sampler as the per-slot fill above; no seed → flat REINFORCEMENTS label,
+  // so we pass an empty why[] and fallback:true). This is the sole surviving
+  // whole-bundle fallback since the v2.2.26 retirement; near-unreachable at
+  // full pool size.
   while (offer.length < OFFER_SIZE) {
-    const loose = reinforcementsBucket(deckColors, deckIds);
+    const loose = [];
+    valueFillSeats(loose, [], deckColors, deckIds);
     if (loose.length < BUCKET_CARDS) break;
     offer.push(finishBucket(loose, [], true));
   }

@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.2.31`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.2.32`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -2981,3 +2981,15 @@ infrastructure for the truly-underivable case (kept, not ripped: Joe's
 call — the escape hatch is cheap and the __hint_test synthetic pin keeps
 the path covered). cards/CLAUDE.md option-3 routing updated to match.
 Suite 150 files / 2995 green.
+
+v2.2.32: Review-pass cleanup (Joe's diff review). (1) reinforcementsBucket
+deleted — it was byte-for-byte the same value sampler as valueFillSeats
+started from an empty bucket (the v2.2.26 per-slot fill generalizes it).
+The seeding-starvation backfill now calls valueFillSeats([]) directly; one
+value-sampling implementation instead of two. (2) The MIN_COHERENCE
+tombstone comment removed (retirement is recorded in CHANGELOG +
+plan-bucket-draft; a "why this isn't here" block in code was clutter).
+(3) weightedSample's pattern comment updated (Reinforcements -> value
+fill). (4) Elystra's trailing newline restored (a json.dump in v2.2.31
+stripped it, leaving a phantom one-line diff; her card is now byte-clean
+vs dev). No behavior change. Suite 150 files / 2995 green.
