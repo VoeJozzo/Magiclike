@@ -1137,9 +1137,9 @@ function renderMap() {
       line.setAttribute('x1', x1); line.setAttribute('y1', y1);
       line.setAttribute('x2', x2); line.setAttribute('y2', y2);
       line.setAttribute('stroke', stroke);
-      line.setAttribute('stroke-width', '2');
+      line.setAttribute('stroke-width', '3');
       line.setAttribute('shape-rendering', 'crispEdges');
-      if (!fromVisited) line.setAttribute('stroke-dasharray', '3 3');   // future edges dashed
+      if (!fromVisited) line.setAttribute('stroke-dasharray', '5 4');   // future edges dashed
       svg.appendChild(line);
     }
   });
