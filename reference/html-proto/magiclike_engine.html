@@ -735,11 +735,12 @@ button:disabled{opacity:.4;cursor:not-allowed}
    land offer (which used to be two separate modals). Styled to match the draft,
    the rich baseline; accent is tintable per flow via --picker-accent /
    --picker-accent-text, and the colors row self-hides when empty. */
-.picker-overlay{position:fixed;inset:0;background:rgba(0,0,0,.94);display:none;align-items:flex-start;justify-content:center;z-index:1100;padding:20px;overflow-y:auto}
+.picker-overlay{--iron:#13170e;--wood-hi:#6d7c4c;--gold:#ffd86a;--heral:#a02619;--moss:#a7b487;position:fixed;inset:0;background:radial-gradient(120% 80% at 50% -10%,#20281a 0%,#171d10 55%,#0f130b 100%);display:none;align-items:flex-start;justify-content:center;z-index:1100;padding:20px;overflow-y:auto;image-rendering:pixelated}
 .picker-overlay.vis{display:flex}
-.picker-box{background:#0e1424;border:2px solid var(--picker-accent,#5a4a20);border-radius:10px;padding:24px 18px;max-width:760px;width:100%;text-align:center;box-shadow:0 0 30px rgba(0,0,0,.35);margin:auto}
-.picker-title{color:var(--picker-accent-text,#ffd700);font-size:18px;letter-spacing:2px;margin-bottom:6px;text-transform:uppercase}
-.picker-subtitle{color:#aaa;font-size:11px;margin-bottom:14px;font-style:italic;line-height:1.5}
+.picker-box{background:linear-gradient(#1a2016,#12160d);border:2px solid var(--iron);border-radius:0;box-shadow:inset 0 0 0 2px rgba(109,124,76,.35),0 6px 24px rgba(0,0,0,.5);padding:14px;max-width:760px;width:100%;text-align:center;margin:auto}
+.picker-header{border-style:solid;border-width:20px 6px 8px 6px;border-image:url(assets/ui/woodbar_src.png) 20 6 8 6 fill round;image-rendering:pixelated;margin-bottom:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:12px}
+.picker-title{color:var(--picker-accent-text,#efe6cc);font-size:14px;font-weight:700;letter-spacing:.05em;margin:0;text-transform:none;text-shadow:1px 1px 0 var(--iron)}
+.picker-subtitle{color:var(--moss);font-size:10px;margin:0;font-style:normal;line-height:1.4}
 .picker-colors{display:flex;gap:10px;justify-content:center;align-items:center;margin:6px 0 10px;flex-wrap:wrap}
 .picker-colors:empty{display:none}
 .picker-row{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
@@ -1067,8 +1068,10 @@ body.ai-thinking #status{
 </div>
 <div id="cardPickModal" class="picker-overlay">
   <div class="picker-box">
-    <div id="cardPickTitle" class="picker-title"></div>
-    <div id="cardPickSubtitle" class="picker-subtitle"></div>
+    <div class="picker-header">
+      <div id="cardPickTitle" class="picker-title"></div>
+      <div id="cardPickSubtitle" class="picker-subtitle"></div>
+    </div>
     <div id="cardPickColors" class="picker-colors"></div>
     <div id="cardPickRow" class="picker-row"></div>
   </div>
