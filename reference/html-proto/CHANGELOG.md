@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.2.24`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.2.34`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -2858,3 +2858,176 @@ the shelf comment: demand-driven scarcity is "almost like tcgplayer"
 global-rarity mechanism; door noted, deliberately unopened. 7 new shelf
 pins (arithmetic, basics exclusion, quarry inclusion, wall-retreat,
 behavioral never-zero). Suite 150 files / 2976 green.
+
+v2.2.25: Elystra learns to want (Joe's playtest catch: "Elystra doesn't
+appear to have wants, pulling on buff spells and stuff"). She was the
+synergy-hint mechanism's design exemplar from day one — the §1b comment
+names "Elystra's permanence" — but no hint was ever authored on her card.
+Now wired: wants trick 3 via card-declared synergy hint ('trick' added to
+the HINT_RESOURCES whitelist). She's special (never offered in buckets),
+but a deck holding her exerts trick-ward pull on every offer through seed
+affinity — giant_growth <-> elystra is a live edge with the [trick]
+reason. Plus a tile-alignment fix from the same playtest: the story block
+is now a fixed 112px (7 lines) with scroll overflow, so the three tiles'
+card columns line up regardless of story length. 2 new pins. Suite 150
+files / 2978 green.
+
+v2.2.26: The Reinforcements retirement (Joe's plan, BACKLOG-ledgered
+2026-07-14). The coherence floor MIN_COHERENCE is deleted — it existed so
+incoherent buckets wouldn't ship wearing a lying theme label, and labels
+died at v2.2.22; an unlabeled weak bucket tells an honest weak story the
+player declines with open eyes. Whole-bucket fallback is replaced by
+Joe's per-slot value fill: a stranded bucket keeps its seed + grown
+recruits and fills only empty seats with the goodstuff logic (value-
+weighted, color-fenced, never owned), each filled seat carrying an
+honest "joins [value]" story line ("a solid card in your colors").
+Whole-bundle Reinforcements now fires only if seeding itself starves.
+Measured (300 offers x 3 scenarios): fallback tiles 10-30% -> 0.0%;
+mean coherence eases (6.3-6.9 -> 5.1-6.3) as former-fallback tiles ship
+as weak-but-honest plans (9-26% of tiles below the old floor); and the
+value seat fired ZERO times in 2,700 buckets — at 341 cards growth never
+strands, so the per-slot fill is insurance, exercised by its test seam.
+Answer-card exposure now rides real edges only (the accidental fallback
+channel is gone — by design: a channel whose bandwidth shrinks as the
+graph improves is exhaust, not a channel). 5 new pins. Suite 150 files
+/ 2983 green.
+
+v2.2.27: Qualified-entry wart fixed (Joe's playtest catch: "why is there
+an etb connection between goblin war-drummer and cult priest?" — a Human
+Cleric that can never fire the drummer's Goblin-only trigger). A
+subtype-gated entry trigger ("whenever another GOBLIN enters") was
+double-counted as wanting BOTH its tribe (correct) and generic etb
+(wrong), wiring the payoff to every creature in the pool. Five payoffs
+carried the phantom want: goblin_war_drummer, high_priestess,
+skyfire_drakelord, chapter_recruiter, covenant_scholar. Same
+qualified-payoff family as flashcast/burnspell/counterspell. Unqualified
+any-creature entry payoffs (beast_whisperer, storm_sage, triage_cleric,
+bramble_acolyte, charnel_chorister) keep the generic want. 3 new pins
+incl. the dead phantom edge. Also: stale CLAUDE.md buckets row updated
+for the v2.2.26 retirement. Suite 150 files / 2986 green.
+
+v2.2.28: Rule-shape audit (Joe: "review for other potential mismatches —
+the code probably reads as legible constructions; ask if it makes sense
+with what the rule is trying to do"). Swept every extraction rule for the
+drummer bug's shape (a structural pattern ignoring a qualifier beside
+it). Findings: (1) FIXED — the v2.2.19 destroy->dies provide was
+spell-scoped for no semantic reason: ravenous_chupacabra (ETB destroy, a
+blinkable death engine), royal_assassin (repeatable tap-destroy),
+righteous_judge, reaper_shade, vengeful_spirit all provided dies 0 while
+one-shot Murder provided 1. Destroy now provides dies regardless of card
+shape. (2) DOCTRINE, documented in-code: subtype-gated DIES triggers
+(rakdos_underboss, "whenever a Demon dies") deliberately KEEP the
+generic dies want — dies-providers stay useful under a tribe gate (sac
+outlets sacrifice YOUR demons), unlike entry-bodies which never fire a
+wrong-tribe entry gate. The asymmetry with the v2.2.27 etb fix is
+intentional. (3) VERIFIED CORRECT, pinned: opp-discard cards (duress,
+mind_rot) provide no discard — toll_of_secrets hears only your own
+discards. Clean sweeps: no spell_cast subtype double-count, no
+tap-your-own false tapped provides, no opp-token false fodder, heals/
+drains self-gain correctly, no generic-target pumps missing trick.
+5 new pins. Suite 150 files / 2989 green.
+
+v2.2.29: The gate test, completed (Joe: "do our destroys/dies things gate
+on ownership?"). Swept every dies-payoff for its gate: 6 any-death
+(blood_artist et al.), 1 your-side-only (charnel_shaman), 1 tribe-gated
+(rakdos_underboss), and 2 damaged-by-this (sengir_vampire, endomorph).
+Doctrine now written at the rule: keep the generic dies want when
+dies-providers stay useful under the gate (subtype gates: sac outlets
+kill YOUR demons; ownership gates: outlets/tokens/combat all qualify),
+DROP it when none do — card_damaged_by_this admits no external death-
+manufacturer (Murder's kill was never damaged by Sengir; the card feeds
+itself by fighting; its true want is fight spells, parked until a second
+customer). Sengir/endomorph phantom dies wants removed — this was the
+source of the mushy [Pyromaniac|Sengir|Drain Life] buckets in the
+morning's raw dumps. Also: the discard direction convention documented
+at the rule (discard = YOUR discards; an opp-discard payoff ships a NEW
+opp_discard resource with duress/mind_rot/hypnotic_specter as its
+providers — do not widen). 3 new pins. Suite 150 files / 2992 green.
+
+v2.2.30: Direction-split vocabulary (three Joe calls in one sitting).
+(1) 'dies' splits into 'your_dies' / 'opp_dies': providers — sac outlets,
+token makers, cheap creatures, theft (dies under YOUR control) provide
+your_dies; targeted removal and fight provide opp_dies; sweepers provide
+BOTH (Pyroclasm genuinely feeds charnel_shaman). Wanters — any-death
+payoffs (blood_artist) want both directions; controlled_by(you) payoffs
+(charnel_shaman) want your_dies only, so Murder no longer edges into
+them; graveyard consumers want your_dies (your yard fills from your
+deaths); rakdos_underboss keeps both (demons die on either side).
+(2) 'discard' renamed 'self_discard' (Joe: "inertia is not a good
+reason") — the opp_discard direction is reserved for the day an
+opp-discard payoff ships. (3) 'eot_buff': Elystra's true diet — trick
+overmatched (Cloudshift targets your creature, but flickering Elystra
+RESETS her accumulated buffs and rips the spell; "ripping stuff up is
+actually a downside"). New provides rule: your-creature spells whose
+payload is a pump/keyword grant (until-EOT is the engine default)
+provide eot_buff alongside trick; Elystra's hint wants eot_buff 3;
+cloudshift<->elystra edge is dead; sapling_tender/vigil_chanter keep
+wanting generic trick (they reward the CAST, not the buff). ~18 pins
+updated + 4 new (ownership discrimination, cloudshift anti-synergy).
+Suite 150 files / 2995 green.
+
+v2.2.31: Elystra graduates from synergy hint to rule (Joe's rule-vs-hint
+sharpening). Her eot_buff want was a card-JSON synergy hint (v2.2.25/30);
+now it's a rule off the permanent_eot flag: `if (tpl.permanent_eot) wants
+eot_buff 3`. The want is DERIVABLE from structure, so it belongs in the
+rules — and a stapled card that acquires permanent_eot gets the want for
+free (a hint would not travel). Sharpened the hint doctrine to Joe's
+crisp criterion, replacing the fuzzy "custom kind the extractor
+deliberately doesn't parse": a hint is for a synergy whose SOURCE is not
+in parseable structure (emergent / flavor / metagame); anything derivable
+from a flag/kind/trigger is a rule even at one card. As of this
+graduation NO shipped card uses a hint — the mechanism stands as
+infrastructure for the truly-underivable case (kept, not ripped: Joe's
+call — the escape hatch is cheap and the __hint_test synthetic pin keeps
+the path covered). cards/CLAUDE.md option-3 routing updated to match.
+Suite 150 files / 2995 green.
+
+v2.2.32: Review-pass cleanup (Joe's diff review). (1) reinforcementsBucket
+deleted — it was byte-for-byte the same value sampler as valueFillSeats
+started from an empty bucket (the v2.2.26 per-slot fill generalizes it).
+The seeding-starvation backfill now calls valueFillSeats([]) directly; one
+value-sampling implementation instead of two. (2) The MIN_COHERENCE
+tombstone comment removed (retirement is recorded in CHANGELOG +
+plan-bucket-draft; a "why this isn't here" block in code was clutter).
+(3) weightedSample's pattern comment updated (Reinforcements -> value
+fill). (4) Elystra's trailing newline restored (a json.dump in v2.2.31
+stripped it, leaving a phantom one-line diff; her card is now byte-clean
+vs dev). No behavior change. Suite 150 files / 2995 green.
+
+v2.2.33: Simplify-pass cleanup on the extraction rules (a second review
+pass over the direction-split diff, no behavior change). (1) The destroy
+provide filters the matching kinds once (const destroyers) instead of
+spelling the `affect_creature && destroy` predicate twice — the outer
+guard and the sweeper sub-check now share one computed list. (2) The
+dies-want ownership gate uses `cs.includes('controlled_by(you)')` (a
+plain literal match, matching its two sibling gate-checks) rather than an
+anchored `.some(x => /^controlled_by\(you\)$/.test(x))` regex that only
+looked like a family match. (3) valueFillSeats hoists the
+bucket-independent land/owned filter out of the fill loop (restoring the
+cheaper shape the retired reinforcementsBucket had) so only
+bucket.includes/isLegalCandidate re-run per seat. Suite 150 files / 2995
+green.
+
+v2.2.34: Damage-removal death credit is measured, not guessed (Joe's
+"actually based on something" — a code-review thread that grew a fix).
+(1) The damage-to-creature arm of the opp_dies provide dropped its
+isSpellCard guard — spell-scoped for no semantic reason, the same wart the
+v2.2.28 destroy audit fixed: 17 creature-borne burns (flame_summoner's ETB,
+repeatable pingers) now manufacture deaths instead of providing 0. (2) Its
+weight is killFraction(amount): the share of the 221-creature pool a hit of
+that size actually kills (toughness <= amount), rebuilt from the pool at
+ensurePool() like idf. Destroy stays 1.0 (kills anything); Bolt (deal 3) =
+0.814 (180/221); a 1-ping = 0.176; big burns rise toward destroy
+(searing_blast deal-5 = 0.982). Replaces a hand-picked flat 0.75 — the
+reliability IS the weight, self-calibrating as the toughness curve shifts.
+(3) Dormant tripwire added: collectKindsAndConds does not descend into
+{op:and/or/not} condition sub-trees, so predicates nested in one are
+invisible to extraction (benign today — spellrider's {op:not} only drops a
+"noncreature" refinement, it still wants spellcast). The test allowlists
+spellrider and flips red the day a NEW card ships an {op} condition —
+prompting a check + a walker fix if the hidden predicates matter.
+(Supersedes an earlier "mixed-OR mis-gates" reading: the real failure mode
+is invisibility, not mis-gating.) (4) coherenceOf's "anti-grab-bag gate"
+comment corrected to "analytics metric" — it stopped being a gate when
+MIN_COHERENCE retired (v2.2.26). Behavior change (damage arms re-weighted);
+suite 150 files / 2997 green.

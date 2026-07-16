@@ -238,9 +238,9 @@ console.log('\n=== buckets extraction: Wave 1 vocabulary + the life_changed dire
   const pridemate = BUCKETS.analyzeCard('ajanis_pridemate');
   check('pridemate still wants lifegain (gain branch unregressed)', pridemate.wants.lifegain > 0);
   const toll = BUCKETS.analyzeCard('toll_of_secrets');
-  check('toll_of_secrets WANTS discard', toll.wants.discard > 0, JSON.stringify(toll.wants));
+  check('toll_of_secrets WANTS self_discard', toll.wants.self_discard > 0, JSON.stringify(toll.wants));
   const looter = BUCKETS.analyzeCard('merfolk_looter');
-  check('merfolk_looter PROVIDES discard', looter.provides.discard > 0, JSON.stringify(looter.provides));
+  check('merfolk_looter PROVIDES self_discard', looter.provides.self_discard > 0, JSON.stringify(looter.provides));
   const bolt = BUCKETS.analyzeCard('lightning_bolt');
   check('lightning_bolt PROVIDES opp_loss', bolt.provides.opp_loss > 0, JSON.stringify(bolt.provides));
   const construct = BUCKETS.analyzeCard('alloy_construct');

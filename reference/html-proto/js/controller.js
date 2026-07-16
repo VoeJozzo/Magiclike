@@ -884,6 +884,9 @@ function makeBucketTileEl(bucket, onClick) {
       const b = CARDS[m[2]] ? CARDS[m[2]].name : m[2];
       return `${a} feeds ${b} (${m[3].replace('sub:', '')})`;
     }
+    // Per-slot value fill (v2.2.26): the seat joined on value, not edges —
+    // say so truthfully instead of inventing a synergy line.
+    if (/^\S+ joins \[value\]$/.test(r)) return 'a solid card in your colors';
     const t = r.match(/^shared plan \[(.+)\]$/);
     return t ? `shared plan: ${t[1]}` : r;
   };

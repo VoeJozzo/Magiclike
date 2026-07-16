@@ -25,14 +25,15 @@ function check(label, ok, info) {
   const rabble = BUCKETS.analyzeCard('goblin_rabble');
   check('rabble PROVIDES sub:Goblin via token_id', rabble.provides['sub:Goblin'] > 0);
   check('rabble PROVIDES fodder + dies (token maker)',
-    rabble.provides.fodder > 0 && rabble.provides.dies > 0);
+    rabble.provides.fodder > 0 && rabble.provides.your_dies > 0);
 
   const artist = BUCKETS.analyzeCard('blood_artist');
-  check('blood_artist WANTS dies (death payoff)', artist.wants.dies > 0);
+  check('blood_artist WANTS both dies directions (any-death payoff)',
+    artist.wants.your_dies > 0 && artist.wants.opp_dies > 0);
 
   const feeder = BUCKETS.analyzeCard('carrion_feeder');
   check('carrion_feeder WANTS fodder (sac outlet)', feeder.wants.fodder > 0);
-  check('carrion_feeder PROVIDES dies (sac outlets produce deaths)', feeder.provides.dies > 0);
+  check('carrion_feeder PROVIDES your_dies (sac outlets produce YOUR deaths)', feeder.provides.your_dies > 0);
 
   const pridemate = BUCKETS.analyzeCard('ajanis_pridemate');
   check('pridemate WANTS lifegain (life_changed trigger)', pridemate.wants.lifegain > 0);
@@ -97,8 +98,8 @@ function check(label, ok, info) {
   check('blink manufactures ETBs: vanishing_act + tideglass_broker provide etb',
     w2('vanishing_act').provides.etb >= 1.5 && w2('tideglass_broker').provides.etb >= 1.5);
   check('graveyard consumers want dies (grave_digger, deepseam_quarry); opp-yard hate does not (seal_thief)',
-    w2('grave_digger').wants.dies > 0 && w2('deepseam_quarry').wants.dies > 0
-    && !w2('seal_thief_courier').wants.dies);
+    w2('grave_digger').wants.your_dies > 0 && w2('deepseam_quarry').wants.your_dies > 0
+    && !w2('seal_thief_courier').wants.your_dies);
   check('theft feeds sac outlets: threaten provides fodder',
     w2('threaten').provides.fodder > 0);
   check('untap spells want TAPABILITY machines: awaken_the_stone wants, pyromaniac provides',
@@ -130,9 +131,16 @@ function check(label, ok, info) {
   // Removal manufactures deaths (the "organic Murder" rule): destroy and
   // damage-removal feed any-death payoffs; bounce and exile make NO death
   // event and stay silent.
-  check('removal provides dies: murder 1, bolt 0.75; wash_away (bounce) none',
-    w2('murder').provides.dies === 1 && w2('lightning_bolt').provides.dies === 0.75
-    && !w2('wash_away').provides.dies);
+  check('removal provides dies: murder 1 (destroy), bolt kills-most (0.5-1), wash_away (bounce) none',
+    w2('murder').provides.opp_dies === 1
+    && w2('lightning_bolt').provides.opp_dies > 0.5 && w2('lightning_bolt').provides.opp_dies < 1
+    && !w2('wash_away').provides.opp_dies && !w2('wash_away').provides.your_dies);
+  // Damage death-credit = killFraction(amount): a bigger burn clears more of
+  // the toughness curve, so the opp_dies weight rises monotonically with damage
+  // (deal-2 ~0.53, deal-3 ~0.81, deal-5 ~0.98 of destroy's 1.0).
+  check('damage opp_dies scales with kill-fraction: shock(2) < bolt(3) < searing_blast(5)',
+    w2('shock').provides.opp_dies < w2('lightning_bolt').provides.opp_dies
+    && w2('lightning_bolt').provides.opp_dies < w2('searing_blast').provides.opp_dies);
   check('murder <-> blood_artist is a live edge with the dies reason',
     BUCKETS.edgeBetween('murder', 'blood_artist').w > 1
     && /dies/.test(BUCKETS.edgeBetween('murder', 'blood_artist').reasons[0] || ''));
@@ -161,6 +169,76 @@ function check(label, ok, info) {
     unstoried + ' grown buckets with no story');
   check('fallback bundles never carry a story (value-sampling made no contract)',
     storiedFallbacks === 0, storiedFallbacks + ' fallbacks with why[]');
+
+  // Qualified-entry wart (Joe's playtest catch: drummer had an etb edge to
+  // a Human Cleric that can never fire it): a subtype-gated entry trigger
+  // wants its TRIBE, never generic etb; unqualified any-creature entry
+  // payoffs keep the generic want.
+  check('subtype-gated entry payoffs want the tribe, NOT generic etb',
+    !w2('goblin_war_drummer').wants.etb && w2('goblin_war_drummer').wants['sub:Goblin'] > 0
+    && !w2('chapter_recruiter').wants.etb && !w2('skyfire_drakelord').wants.etb
+    && !w2('high_priestess').wants.etb && !w2('covenant_scholar').wants.etb);
+  check('unqualified entry payoffs still want etb (beast_whisperer, charnel_chorister)',
+    w2('beast_whisperer').wants.etb > 0 && w2('charnel_chorister').wants.etb > 0);
+  check('the phantom drummer edge is dead (cult_priest cannot trigger it)',
+    BUCKETS.edgeBetween('cult_priest', 'goblin_war_drummer').w === 0);
+  // Rule-shape audit pins (Joe, 2026-07-14):
+  // Non-spell destroyers manufacture deaths too — the dies provide is
+  // shape-agnostic (chupacabra's ETB destroy, assassin's repeatable tap).
+  check('creature-borne destroy provides dies (chupacabra, royal_assassin)',
+    w2('ravenous_chupacabra').provides.opp_dies === 1 && w2('royal_assassin').provides.opp_dies === 1);
+  // The gate asymmetry is doctrine: a subtype-gated DIES trigger keeps the
+  // generic dies want (sac outlets work on your demons), while a subtype-
+  // gated ENTRY trigger drops generic etb (wrong-tribe bodies never fire it).
+  check('subtype-gated dies payoff keeps both wants (rakdos_underboss)',
+    w2('rakdos_underboss').wants['sub:Demon'] > 0 && w2('rakdos_underboss').wants.your_dies > 0
+    && w2('rakdos_underboss').wants.opp_dies > 0);
+  // Opp-discard is their loss, not your engine: toll_of_secrets hears only
+  // YOUR discards, so duress/mind_rot correctly provide no discard.
+  check('opp-discard cards provide no discard resource (duress, mind_rot)',
+    !w2('duress').provides.self_discard && !w2('mind_rot').provides.self_discard);
+  // card_damaged_by_this gates make external death-manufacturers useless
+  // (Murder's kill was never damaged by Sengir): those payoffs must not
+  // want generic dies. Ungated and merely ownership-gated payoffs keep it.
+  check('damaged-by-this dies payoffs want no generic dies (sengir, endomorph)',
+    !w2('sengir_vampire').wants.your_dies && !w2('sengir_vampire').wants.opp_dies
+    && !w2('endomorph').wants.your_dies && !w2('endomorph').wants.opp_dies);
+  // The ownership discrimination (Joe's question made it a rule): an
+  // any-death payoff wants both directions; a your-side-only payoff wants
+  // your_dies ONLY — so Murder never edges into charnel_shaman.
+  check('any-death payoff wants both directions (blood_artist)',
+    w2('blood_artist').wants.your_dies > 0 && w2('blood_artist').wants.opp_dies > 0);
+  check('your-side-only payoff wants your_dies only (charnel_shaman)',
+    w2('charnel_shaman').wants.your_dies > 0 && !w2('charnel_shaman').wants.opp_dies);
+  check('murder has no edge into charnel_shaman (removal kills THEIRS)',
+    !BUCKETS.edgeBetween('murder', 'charnel_shaman').reasons.some(r => /dies/.test(r)));
+  check('the pyromaniac->sengir phantom edge is dead',
+    !BUCKETS.edgeBetween('pyromaniac', 'sengir_vampire').reasons.some(r => /dies/.test(r)));
+
+  // Tripwire (dormant): the extractor's condition walker (collectKindsAndConds)
+  // pushes only strings sitting DIRECTLY under a `condition` key — it does not
+  // descend into {op:and/or/not} sub-trees, so any predicate nested inside one
+  // is invisible to want/provide extraction. Benign today: spellrider's
+  // {op:not} only drops a "noncreature" refinement (it still wants spellcast).
+  // But an {op:or} carrying the sole copy of a want-predicate would silently
+  // drop that want. This flips RED the day a NEW card ships an {op} condition,
+  // signalling: check that card's extraction, and teach the walker to descend
+  // if the hidden predicates matter. (Supersedes the earlier "mixed-OR mis-
+  // gates" framing — the real failure is invisibility, not mis-gating.)
+  const VETTED_OP_CONDITIONS = new Set(['spellrider']);   // {op:not}, judged benign
+  const hasOpNode = (node) => {
+    if (Array.isArray(node)) return node.some(hasOpNode);
+    if (!node || typeof node !== 'object') return false;
+    if (typeof node.op === 'string') return true;
+    return Object.values(node).some(hasOpNode);
+  };
+  const opCards = Object.keys(CARDS).filter(id => {
+    const tpl = CARDS[id];
+    return tpl && (tpl.triggers || []).some(trg => hasOpNode(trg.condition));
+  });
+  const unvetted = opCards.filter(id => !VETTED_OP_CONDITIONS.has(id));
+  check('no unvetted {op}-tree trigger condition (extraction-blindness tripwire)',
+    unvetted.length === 0, 'unvetted {op} conditions: ' + unvetted.join(','));
 
   // this_card self-triggers must not register wants on other cards: an ETB
   // "when THIS enters, X" card is not an ally-ETB payoff.
@@ -340,11 +418,11 @@ function check(label, ok, info) {
   CARDS.__hint_test = {
     tplId: '__hint_test', name: 'Hint Tester', types: ['Creature', 'Horror'],
     cost: { B: 1 }, power: 1, toughness: 1, special: true,
-    synergy: { wants: { dies: 3, bogusResource: 5 }, provides: { fodder: 2 } },
+    synergy: { wants: { your_dies: 3, bogusResource: 5 }, provides: { fodder: 2 } },
   };
   BUCKETS._resetCacheForTest();
   const a = BUCKETS.analyzeCard('__hint_test');
-  check('synergy hint: declared wants applied', a && a.wants.dies === 3);
+  check('synergy hint: declared wants applied', a && a.wants.your_dies === 3);
   check('synergy hint: declared provides applied', a && a.provides.fodder === 2);
   check('synergy hint: unknown resource ignored (warns, no crash)',
     a && !a.wants.bogusResource);
@@ -352,7 +430,7 @@ function check(label, ok, info) {
   // deliberately discounted (2 provide × 3 want × ~0.55 idf ≈ 3.3).
   const e = BUCKETS.edgeBetween('__hint_test', 'goblin_rabble');
   check('hinted card grows real edges (rabble dies-feeds it)',
-    e.w >= 2.5 && e.reasons.some(r => r.includes('[dies]')), `w=${e.w}`);
+    e.w >= 2.5 && e.reasons.some(r => r.includes('[your_dies]')), `w=${e.w}`);
   delete CARDS.__hint_test;
   BUCKETS._resetCacheForTest();
 }
@@ -392,6 +470,32 @@ function check(label, ok, info) {
     `${sets.size} distinct sets from ${seen} offers in ${rolls} rolls`);
 }
 
+// --- §6c2 Elystra's authored want (v2.2.25) -----------------------------------
+{
+  // The synergy-hint mechanism's design exemplar finally uses it: Elystra's
+  // permanence (EOT effects stick forever) is declared as wants:trick on the
+  // card. She's special (never offered), but a deck holding her must pull
+  // trick spells into offers via seed affinity.
+  const w2 = (id) => BUCKETS.analyzeCard(id);
+  const ely = BUCKETS.analyzeCard('elystra_the_immortal');
+  // Graduated from a synergy hint to a rule off the permanent_eot flag
+  // (v2.2.30): her card.json carries no synergy block; the want is derived.
+  check('elystra WANTS eot_buff (derived from permanent_eot, not a hint)',
+    ely && ely.wants.eot_buff === 3 && !CARDS.elystra_the_immortal.synergy,
+    JSON.stringify(ely && ely.wants));
+  const e = BUCKETS.edgeBetween('giant_growth', 'elystra_the_immortal');
+  check('a pump spell feeds elystra (live edge, eot_buff reason)',
+    e.w > 1 && e.reasons.some(r => r.includes('[eot_buff]')),
+    `w=${e.w} ${JSON.stringify(e.reasons)}`);
+  // Joe's refinement: trick overmatched — Cloudshift targets your creature
+  // but flickering Elystra RESETS her buffs and rips the spell. It provides
+  // trick (tender still rewards casting it) but NOT eot_buff, and its edge
+  // to Elystra is dead.
+  check('cloudshift provides trick but not eot_buff; no elystra edge',
+    w2('cloudshift').provides.trick > 0 && !w2('cloudshift').provides.eot_buff
+    && BUCKETS.edgeBetween('cloudshift', 'elystra_the_immortal').w === 0);
+}
+
 // --- §6e the dupe shelf (v2.2.24) --------------------------------------------
 {
   const f = BUCKETS._dupeFactorForTest;
@@ -423,6 +527,38 @@ function check(label, ok, info) {
     }
   }
   check('owned-at-max cards still appear in offers (never zero)', rabbleOffered);
+}
+
+// --- §6f the Reinforcements retirement (v2.2.26) -------------------------------
+{
+  // Per-slot value fill: a stranded bucket keeps its grown members and
+  // fills only the empty seats — value-weighted, color-fenced, never a
+  // card you own, with an honest value-type why line per filled seat.
+  const deck = ['murder', 'swamp', 'swamp'];
+  const r = BUCKETS._valueFillForTest(['blood_artist'], deck);
+  check('value fill completes a stranded bucket to 3 cards', r.cards.length === 3,
+    r.cards.join(','));
+  check('filled seats carry the [value] why line (one per seat)',
+    r.why.length === 2 && r.why.every(w => / joins \[value\]$/.test(w)),
+    JSON.stringify(r.why));
+  check('value fill never sells you your own cards', !r.cards.includes('murder'));
+  const PIPS = ['W', 'U', 'B', 'R', 'G'];
+  const cols = new Set();
+  for (const id of r.cards) for (const k of PIPS) if ((CARDS[id].cost || {})[k] > 0) cols.add(k);
+  check('filled bucket still obeys the two-color law', cols.size <= 2, [...cols].join(','));
+
+  // With a full pool, normal offers NEVER fall back anymore: every seed
+  // grows-or-fills to a full bucket (the floor is gone; whole-bundle
+  // Reinforcements is reserved for seeding starvation).
+  let fallbacks = 0, tiles = 0;
+  for (let i = 0; i < 15; i++) {
+    for (const b of BUCKETS.rollBucketOffer(['goblin_piercer', 'blood_artist', 'mountain', 'swamp'])) {
+      tiles++;
+      if (b.fallback) fallbacks++;
+    }
+  }
+  check('normal offers contain zero Reinforcements bundles (retirement)',
+    fallbacks === 0, `${fallbacks}/${tiles}`);
 }
 
 // --- §7 theme health report -------------------------------------------------
