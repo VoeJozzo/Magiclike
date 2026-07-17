@@ -701,11 +701,12 @@ button:disabled{opacity:.4;cursor:not-allowed}
 #gameover-box h1{font-size:32px;margin-bottom:12px}
 #gameover-box.win h1{color:#ffd700}
 #gameover-box.lose h1{color:#ff6060}
-#searchModal{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;z-index:900}
-#searchModal.vis{display:flex}
-#searchBox{background:#1a2a1a;border:2px solid #886600;border-radius:8px;padding:18px;max-width:520px;max-height:70vh;overflow-y:auto;text-align:center}
-#searchBox h2{font-size:14px;color:#ffcc44;margin-bottom:10px;letter-spacing:1px}
-#searchList{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin-top:8px}
+/* search = in-game tutor "pick a card from library". Composes the .picker-* kit
+   for carved paint (no drift), but keeps a compact, CENTERED popup layout below the
+   meta pickers -- it's an in-game effect, not a full-screen deck-building pick. */
+#searchModal{z-index:900;align-items:center}
+#searchBox{max-width:560px;max-height:78vh;overflow-y:auto}
+#searchList{gap:8px;margin:8px 0 0}
 /* Modal-spell mode picker. Same pattern as searchModal but distinct
    styling so the player can tell modes-of-a-spell from cards-from-library. */
 #modalChoiceModal{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;z-index:905}
@@ -995,7 +996,7 @@ body.ai-thinking #status{
   </div>
 </div>
 <div id="cardPopup" onclick="CONTROLLER.closeCardPopup(event)"><div id="cardPopupCard" onclick="event.stopPropagation()"></div></div>
-<div id="searchModal"><div id="searchBox"><h2 id="searchTitle">SEARCH LIBRARY</h2><div id="searchList"></div></div></div>
+<div id="searchModal" class="picker-overlay"><div id="searchBox" class="picker-box"><div class="picker-header"><h2 id="searchTitle" class="picker-title">SEARCH LIBRARY</h2></div><div id="searchList" class="picker-row"></div></div></div>
 <!-- Settings modal — opened from the start-screen ⚙ button. Houses
      user-configurable toggles. Each row is built dynamically by
      SETTINGS_PANEL.render() in js/settings-panel.js so adding a new
