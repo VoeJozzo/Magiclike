@@ -739,6 +739,11 @@ button:disabled{opacity:.4;cursor:not-allowed}
 .picker-overlay.vis{display:flex}
 .picker-box{background:linear-gradient(#1a2016,#12160d);border:2px solid var(--iron);border-radius:0;box-shadow:inset 0 0 0 2px rgba(109,124,76,.35),0 6px 24px rgba(0,0,0,.5);padding:14px;max-width:760px;width:100%;text-align:center;margin:auto}
 .picker-header{border-style:solid;border-width:20px 6px 8px 6px;border-image:url(assets/ui/woodbar_src.png) 20 6 8 6 fill round;image-rendering:pixelated;margin-bottom:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:12px}
+/* .lg -- same dossier, 2x metrics (the map is authored at 2x). A named variant,
+   NOT a fork: change the dossier once and both sizes follow. */
+.picker-header.lg{border-width:40px 12px 16px 12px}
+.picker-header.lg .picker-title{font-size:20px;text-shadow:2px 2px 0 var(--iron)}
+.picker-header.lg .picker-subtitle{font-size:13px}
 .picker-title{color:var(--picker-accent-text,#efe6cc);font-size:14px;font-weight:700;letter-spacing:.05em;margin:0;text-transform:none;text-shadow:1px 1px 0 var(--iron)}
 .picker-subtitle{color:var(--moss);font-size:10px;margin:0;font-style:normal;line-height:1.4}
 .picker-colors{display:flex;gap:10px;justify-content:center;align-items:center;margin:6px 0 10px;flex-wrap:wrap}
@@ -760,9 +765,6 @@ button:disabled{opacity:.4;cursor:not-allowed}
 #optionalCostModal.vis{display:flex}
 /* --- map screen: pixel-chrome reskin (baked tiles via border-image / background-image) --- */
 #mapBox{--iron:#13170e;--wood-hi:#6d7c4c;--gold:#ffd86a;--heral:#a02619;--moss:#a7b487;background:none;border:none;border-radius:0;box-shadow:none;padding:0;max-width:400px;width:100%;text-align:center;margin:auto;image-rendering:pixelated}
-#mapHeader{border-style:solid;border-width:40px 12px 16px 12px;border-image:url(assets/ui/woodbar_src.png) 20 6 8 6 fill round;image-rendering:pixelated;margin-bottom:12px;min-height:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0}
-#mapTitle{color:#efe6cc;font-size:20px;font-weight:700;letter-spacing:.03em;text-transform:none;margin:0;text-shadow:2px 2px 0 var(--iron)}
-#mapSubtitle{color:var(--moss);font-size:13px;margin:2px 0 0}
 #mapCanvas{position:relative;width:100%;min-height:300px;box-sizing:border-box;background:#c1a96f;border-style:solid;border-width:12px;border-image:url(assets/ui/woodbar_src.png) 6 round;image-rendering:pixelated;padding:28px 0;overflow:hidden}
 #mapLevels{position:relative;z-index:2}
 .map-level{display:flex;justify-content:center;gap:56px;margin-bottom:44px;position:relative;z-index:2}
@@ -1077,9 +1079,9 @@ body.ai-thinking #status{
 </div>
 <div id="mapModal">
   <div id="mapBox">
-    <div id="mapHeader">
-      <div id="mapTitle">Choose Your Path</div>
-      <div id="mapSubtitle">Pick the next node to face.</div>
+    <div id="mapHeader" class="picker-header lg">
+      <div id="mapTitle" class="picker-title">Choose Your Path</div>
+      <div id="mapSubtitle" class="picker-subtitle">Pick the next node to face.</div>
     </div>
     <div id="mapCanvas">
       <svg id="mapEdges"></svg>
