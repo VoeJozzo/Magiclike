@@ -491,7 +491,7 @@ RUN_MODIFIERS['city_of_brass'] = {
   // that the boon pool has grown disjoint enough that a stable fallback
   // is needed again.
   apply: () => ({
-    extras: [{ tplId: 'city_of_brass', stickers: ['innate'] }],
+    extras: [{ tplId: 'city_of_brass', stickers: [] }],
   }),
 };
 RUN_MODIFIERS['endomorph'] = {
@@ -515,7 +515,7 @@ RUN_MODIFIERS['phylactery'] = {
   name: 'Phylactery',
   text: "Begin your run with a Phylactery (Swamp, in opening hand). You can't lose to 0 life or to decking out — each damage past zero or would-be overdraw rips a slot from your deck instead. Phylactery itself is always ripped last.",
   apply: () => ({
-    extras: [{ tplId: 'phylactery', stickers: ['innate'] }],
+    extras: [{ tplId: 'phylactery', stickers: [] }],
   }),
 };
 RUN_MODIFIERS['elystra_the_immortal'] = {
