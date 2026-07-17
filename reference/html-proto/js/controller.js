@@ -655,15 +655,10 @@ function showNeowChoice() {
 
   const offered = [...alwaysIds, ...randomIds];
 
-  // Each boon renders AS the card it grants (every current RUN_MODIFIERS id is a
-  // real card tplId); a modifier with no card backing falls back to a synthetic
-  // "Boon" card. Routed through the shared card-pick modal.
-  const items = offered.map(id => {
-    const m = RUN_MODIFIERS[id];
-    if (CARDS[m.id]) return { card: ENGINE.makeCard(m.id), value: id };
-    const boonArt = m.art || (CARDS[m.id] && CARDS[m.id].art) || '✦';
-    return { synthetic: { name: m.name || '', type: 'Boon', text: m.text || '', art: boonArt, color: 'C', scale: 2 }, value: id };
-  });
+  // Each boon renders AS the card it grants — cards.js's contract states every
+  // RUN_MODIFIERS id is a real card tplId, and all of them hold to it. A boon with
+  // no card is a config error: fail loudly rather than render a stand-in.
+  const items = offered.map(id => ({ card: ENGINE.makeCard(RUN_MODIFIERS[id].id), value: id }));
   showCardPickModal({
     title: 'A Boon Awaits',
     subtitle: 'Choose a gift to shape your run.',
@@ -1660,16 +1655,17 @@ function renderDraft() {
       pickDraft,
     );
   }
-  // Footer: list of picks so far. If the player picked a Neow boon, show
-  // it as the first entry with a ✦ marker so it's visually distinct from
-  // drafted picks — gives continuity with the deck the boon will join at
-  // RUN.start time (whether that boon adds a card to the deck or modifies
-  // existing slots, the player sees they've already "committed" to it).
+  // Footer: list of picks so far. If the player picked a Neow boon, show it as the
+  // first entry with a ✦ marker so it's visually distinct from drafted picks — the
+  // player sees they've already committed to the card it grants.
   const picks = DRAFT._state() ? DRAFT._state().youPicks : [];
   const draftedNames = picks.map(id => CARDS[id].name);
   let boonName = null;
   if (pendingNeowModifier && RUN_MODIFIERS[pendingNeowModifier]) {
-    boonName = '✦ ' + RUN_MODIFIERS[pendingNeowModifier].name;
+    // Name the CARD the player actually clicked, not the boon's flavour name: the
+    // picker renders the card (e.g. "City of Brass"), so the footer must agree.
+    const boonTpl = RUN_MODIFIERS[pendingNeowModifier].id;
+    boonName = '✦ ' + (CARDS[boonTpl] ? CARDS[boonTpl].name : boonTpl);
   }
   const allEntries = boonName ? [boonName, ...draftedNames] : draftedNames;
   const summary = allEntries.join(', ');
