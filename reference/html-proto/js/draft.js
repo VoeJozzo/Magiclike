@@ -17,7 +17,6 @@ const COLOR_TO_LAND = { W:'plains', U:'island', B:'swamp', R:'mountain', G:'fore
 const DESERT_CUBE_LAND_PROB = 1 / 3;
 
 // Lazy-cached because CARDS is populated async by loadCards() (v1.0.134).
-// oppPool() kept separate for future archetype divergence.
 let _draftPoolCache = null;
 function draftPool() {
   if (_draftPoolCache === null) {
@@ -36,7 +35,6 @@ function draftPool() {
   }
   return _draftPoolCache;
 }
-function oppPool() { return draftPool(); }
 
 let state = null;
 
@@ -109,7 +107,6 @@ const CONSTRUCTED_DECKS = {
   goblinAggro: {
     name: 'Goblin Aggro',
     colors: ['R'],
-    description: 'Cheap goblins, burn finishers',
     cards: [
       'goblin_piercer', 'goblin_piercer', 'raging_goblin', 'raging_goblin',
       'goblin_raider', 'goblin_raider', 'goblin_duelist', 'goblin_duelist',
@@ -122,7 +119,6 @@ const CONSTRUCTED_DECKS = {
   spiritTribal: {
     name: 'Spirit Tribal',
     colors: ['W'],
-    description: 'Spirits, removal, evasion',
     cards: [
       'savannah_lions', 'white_knight', 'white_knight',
       'devoted_watcher', 'devoted_watcher', 'phantom_warrior', 'phantom_warrior',
@@ -135,7 +131,6 @@ const CONSTRUCTED_DECKS = {
   aristocrats: {
     name: 'Aristocrats',
     colors: ['B', 'R'],
-    description: 'Sacrifice synergies, drain effects',
     cards: [
       'goblin_piercer', 'goblin_raider', 'vampire_bat', 'vampire_bat',
       'rakdos_cadet', 'rakdos_cadet', 'cult_priest', 'cult_priest',
@@ -149,7 +144,6 @@ const CONSTRUCTED_DECKS = {
     name: 'Archdemon of Bargains',
     icon: '👹',
     colors: ['B'],
-    description: 'Mono-black demonic toolbox: removal, drain, recursion',
     isBoss: true,
     cards: [
       'archdemon_of_bargains',
@@ -167,7 +161,6 @@ const CONSTRUCTED_DECKS = {
     name: 'The Balancer',
     icon: '⚖',
     colors: ['W'],
-    description: 'Mono-white control: taxation, exile, equalization',
     isBoss: true,
     cards: [
       'city_guardian', 'city_guardian',
@@ -188,7 +181,6 @@ const CONSTRUCTED_DECKS = {
     name: 'Equatorial Artificer',
     icon: 'C',
     colors: [],
-    description: 'Colorless artifact boss: fast artifact mana unlocks demanding colored spells',
     isBoss: true,
     cards: [
       'ingenuity_unbounded',
@@ -233,7 +225,7 @@ function buildOpponentDeck(numStickers, numStaples, numClones, colorAffinity, co
     if (picks.length < TOTAL_PICKS) {
       console.warn(`Constructed deck "${constructedId}" has ${picks.length} cards; padding to ${TOTAL_PICKS}.`);
       for (let i = picks.length; i < TOTAL_PICKS; i++) {
-        const pack = rollPack(oppPool(), picks);
+        const pack = rollPack(draftPool(), picks);
         if (!pack.length) break;
         picks.push(pickFromPack(pack, picks));
       }
@@ -242,7 +234,7 @@ function buildOpponentDeck(numStickers, numStaples, numClones, colorAffinity, co
     picks = [];
     // colorAffinity forces pick 1 same-color → biases via pickFromPack's commitment logic.
     if (colorAffinity) {
-      const sameColorPool = oppPool().filter(id => {
+      const sameColorPool = draftPool().filter(id => {
         const c = CARDS[id];
         return c && c.color === colorAffinity;
       });
@@ -259,7 +251,7 @@ function buildOpponentDeck(numStickers, numStaples, numClones, colorAffinity, co
       }
     }
     for (let i = picks.length; i < pickTarget; i++) {
-      const pack = rollPack(oppPool(), picks);
+      const pack = rollPack(draftPool(), picks);
       if (!pack.length) break;
       const chosen = pickFromPack(pack, picks);
       picks.push(chosen);
@@ -500,10 +492,6 @@ function scoreOpponentSticker(sticker, slot) {
       : 0;
     return 4 + totalCost;
   }
-  // Unreachable in offers: no trigger-kind sticker is ever offered by
-  // stickersForSlot — scarified (weight 0, applied only by its dedicated
-  // in-game effect) is the one trigger-kind sticker.
-  if (sticker.kind === 'trigger') return 10;
   if (sticker.kind === 'subtype') {
     // Opp's decks aren't tribal-themed, so a stickered subtype is usually
     // inert. Score 1 — not zero (opp can still pick one if nothing else is
@@ -859,7 +847,6 @@ function getPlayerDeck() {
   return {
     cards,
     colors,
-    picks: state.youPicks.slice(),
     mode: state.mode,
   };
 }
