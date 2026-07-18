@@ -46,7 +46,7 @@ use `StyleBoxTexture`). 18 tiles in `reference/html-proto/assets/ui/`.
 | **Rewards** | ✅ inherits the kit (zero reward-specific chrome written); **live-verified** end-to-end (real win → real reward → tiles); kind-sampling caveat in TODO 3 |
 | **Search (in-game tutor)** | ✅ folded into the kit (compact/centered overrides kept) |
 | **Settings** | ⛔ BLOCKED — needs a pixel dropdown from the design agent (see `settings-ui-gap.md`) |
-| **Board** | ⬜ NOT started — the in-game play screen; the last major reskin |
+| **Board** | 🟡 first pass done (`b1e5ad9e`) — full chrome pass (HUD/felt/buttons/mid/phases/zones/stack/log); verified live (tiles resolve, 200 OK). **Awaiting visual/aesthetic review** — in-app screenshot wedges on the live board, so it needs a human eyeball |
 
 All 5 card-picker shells (draft/boon/reward/search) + the map header (via `.lg`) COMPOSE
 one `.picker-*` kit — no forks. Change the dossier once, all follow.
@@ -54,8 +54,16 @@ one `.picker-*` kit — no forks. Change the dossier once, all follow.
 ## Remaining TODOs
 
 **Reskin**
-1. **Board** — in-game play screen (dossiers, battlefield, front line, hand). Biggest
-   remaining surface. Card FRAMES stay as-is (content, not chrome).
+1. **Board** — 🟡 first chrome pass shipped (`b1e5ad9e`): `.pinfo` HUD → woodbar; `.bf`
+   battlefield → felt + woodbar frame; `.acts` buttons → pxbtn tiles (scoped to `.acts`);
+   `#mid` → wood bar; `.phases` → `ctrl_segmented`; `.zones` → iron chips; `#stackBanner`
+   → wood+gold; `#sidebar`/log → wood panel. Card FRAMES untouched (content). **Open for
+   review** — needs a human eyeball (screenshots wedge in-app). Specific things to judge:
+   (a) two stacked woodbar-framed battlefields + HUD strips + mid bar may be *too much wood*
+   — the `.bf` frame is the first thing to thin/drop if it feels heavy; (b) the `.phases`
+   segmented-tile track uses `ctrl_segmented` as a repeating underlay behind variable-width
+   cells, so tile cells won't align to phase cells — verify it reads OK; (c) `.mpool` mana
+   pips were left as-is (mana symbols = content-ish); could gem-ify if desired.
 2. **Settings** — blocked on the design agent's pixel dropdown.
 3. **Live-verify Rewards** — ✅ DONE this session. Drove a real Classic run (auto-picked a
    full draft), forced a genuine win (`opp.life=0` + pass → the engine's own SBA
