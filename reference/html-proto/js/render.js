@@ -346,12 +346,10 @@ function render() {
   } else {
     Modal.hide('symmetricizeChoiceModal');
   }
-  // Edict forced-sacrifice (GAP 2): selection is now IN-PLACE — the eligible
+  // Edict forced-sacrifice (GAP 2): selection is IN-PLACE — the eligible
   // permanents glow on the battlefield (see the .targetable branch in the
-  // per-card render) and a click sacks one (clickBattlefield → edictChoice). The
-  // status bar shows the prompt (see the status-bar block below). No modal —
-  // simpler/clearer than the popup it replaced. Force-hide any stale modal.
-  Modal.hide('edictChoiceModal');
+  // per-card render) and a click sacks one (clickBattlefield submits
+  // edictChoice). The status bar shows the prompt (status-bar block below).
   // Optional-cost trigger (Land+Spell staple ETB). The controller may pay the
   // stapled spell's mana cost to use its effect, or decline.
   if (G.pendingOptionalCost && G.pendingOptionalCost.who === 'you') {
@@ -1269,52 +1267,6 @@ function restrictionBadgesHtml(card, big) {
   return `<div class="stickers-row${big ? '-big' : ''}">${parts.join('')}</div>`;
 }
 
-function nativeKeywordBadgesHtml(card, big) {
-  // Tag each kw by source: 'intrinsic' (template, blue) vs 'granted' (in
-  // grantedBy from another permanent, cyan — disappears if source leaves).
-  // Both intrinsic AND granted → render as intrinsic (granting is redundant).
-  const entries = [];
-  let templateKw = [];
-  // Tokens have their template in TOKENS, not CARDS. Read from the right
-  // table so token-intrinsic keywords (e.g., flying on Spirit tokens) get
-  // the intrinsic badge instead of being hidden.
-  const tplTable = card.isToken ? TOKENS : CARDS;
-  if (card.tplId && tplTable[card.tplId]) {
-    templateKw = (tplTable[card.tplId].keywords || []).slice();
-    for (const kw of templateKw) entries.push({ kw, source: 'intrinsic' });
-    if (card.grantedBy instanceof Map) {
-      for (const [kw, sources] of card.grantedBy) {
-        if (sources.size === 0) continue;
-        if (templateKw.includes(kw)) continue;
-        const names = [];
-        for (const srcIid of sources) {
-          const f = ENGINE.findCard(srcIid);
-          if (f) names.push(f.card.name);
-        }
-        entries.push({ kw, source: 'granted', grantSources: names });
-      }
-    }
-  } else {
-    // Synthetic card-shaped object (card browser preview) — no grant tracking.
-    for (const kw of (card.keywords || [])) entries.push({ kw, source: 'intrinsic' });
-  }
-  if (!entries.length) return '';
-  const parts = [];
-  for (const { kw, source, grantSources } of entries) {
-    if (kw === 'no_block') continue;  // hidden kw (restrict→grant_keyword)
-    const label = KEYWORD_DISPLAY[kw] || (kw.charAt(0).toUpperCase() + kw.slice(1));
-    // Defender = downside ability — render red like restrictions.
-    let cls;
-    if (kw === 'defender')        cls = 'restrict';
-    else if (source === 'granted') cls = 'kw-granted';
-    else                           cls = 'kw';
-    const tooltip = (source === 'granted' && grantSources && grantSources.length)
-      ? `${label} (granted by ${grantSources.join(', ')})`
-      : label;
-    parts.push(`<span class="stk-badge ${cls}" title="${tooltip}">${label}</span>`);
-  }
-  return `<div class="stickers-row${big ? '-big' : ''}">${parts.join('')}</div>`;
-}
 
 // Where a card's keyword comes from, → the CSS source class that recolors its
 // coin: native (template) takes the CARD'S color (per-card, set inline — see

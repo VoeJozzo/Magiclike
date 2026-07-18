@@ -1202,8 +1202,8 @@ function describeCardSegments(card, opts) {
     // effects) aren't in the static text and need to be surfaced. We
     // compute granted = card.keywords \ tpl.keywords and prepend just
     // those, mirroring how non-special cards inline their full preamble.
-    // Skipped when opts.skipKeywords (the classic frame renders its own
-    // keyword badges via nativeKeywordBadgesHtml).
+    // Skipped when opts.skipKeywords (the card frame renders its own
+    // keyword badges via keywordIconsHtml).
     //
     // Sections must be flattened before return because consumers
     // (segmentsToHtml, the test harness) expect a flat array of segment

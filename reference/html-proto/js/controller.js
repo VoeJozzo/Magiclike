@@ -601,11 +601,11 @@ function continueRun() {
     } else {
       RUN.rollbackForMidGameRestore();
       lastGameRecorded = false;
-      if (RUN.getPostDraftOffer && RUN.getPostDraftOffer()) {
+      if (RUN.getPostDraftOffer()) {
         renderPostDraftOffer();
         return;
       }
-      const mapState = RUN.getMapState && RUN.getMapState();
+      const mapState = RUN.getMapState();
       if (mapState) {
         renderMap();
       } else {
@@ -661,7 +661,7 @@ function showNeowChoice() {
   const items = offered.map(id => {
     const m = RUN_MODIFIERS[id];
     if (CARDS[m.id]) return { card: ENGINE.makeCard(m.id), value: id };
-    const boonArt = m.art || (CARDS[m.id] && CARDS[m.id].art) || '✦';
+    const boonArt = m.art || '✦';
     return { synthetic: { name: m.name || '', type: 'Boon', text: m.text || '', art: boonArt, color: 'C', scale: 2 }, value: id };
   });
   showCardPickModal({
@@ -723,7 +723,7 @@ function afterDraftPick() {
     RUN.start(playerDeck, pendingNeowModifier);
     pendingNeowModifier = null;
     lastGameRecorded = false;
-    if (RUN.getPostDraftOffer && RUN.getPostDraftOffer()) {
+    if (RUN.getPostDraftOffer()) {
       renderPostDraftOffer();
       return;
     }
@@ -735,7 +735,7 @@ function afterDraftPick() {
 function nextGame() {
   if (!RUN.isActive()) return;
   if (RUN.getReward()) return;
-  const mapState = RUN.getMapState && RUN.getMapState();
+  const mapState = RUN.getMapState();
   Modal.hide('gameover');
   Modal.hide('rewardModal');
   if (mapState) {
@@ -1057,7 +1057,6 @@ function positionIconTip(tip, host) {
 // Same card-pick modal as the boons; here we also surface the drafted-deck color
 // HUD (now that the draft is done) so the land choice is informed by deck colors.
 function renderPostDraftOffer() {
-  if (!RUN.getPostDraftOffer) return;
   const offer = RUN.getPostDraftOffer();
   if (!offer) { Modal.hide('cardPickModal'); return; }
   const items = offer.basics
@@ -1134,8 +1133,7 @@ function renderMap() {
   const iconFor = (node) => {
     if (node.type === 'boss') {
       if (node.constructedId) {
-        const spec = (typeof DRAFT !== 'undefined' && DRAFT.getConstructedDeck)
-          ? DRAFT.getConstructedDeck(node.constructedId) : null;
+        const spec = DRAFT.getConstructedDeck(node.constructedId);
         if (spec && spec.icon) return spec.icon;
       }
       return '👹';
@@ -1164,8 +1162,7 @@ function renderMap() {
   };
   const tooltipFor = (node) => {
     if (node.constructedId) {
-      const spec = (typeof DRAFT !== 'undefined' && DRAFT.getConstructedDeck)
-        ? DRAFT.getConstructedDeck(node.constructedId) : null;
+      const spec = DRAFT.getConstructedDeck(node.constructedId);
       if (spec) return spec.name;
     }
     const base = labelForType(node.type);
@@ -1188,8 +1185,7 @@ function renderMap() {
       let isConstructed = false;
       const isBoss = (n.type === 'boss');
       if (n.constructedId) {
-        const spec = (typeof DRAFT !== 'undefined' && DRAFT.getConstructedDeck)
-          ? DRAFT.getConstructedDeck(n.constructedId) : null;
+        const spec = DRAFT.getConstructedDeck(n.constructedId);
         if (spec && spec.colors && spec.colors.length > 0) {
           ringColor = spec.colors[0];
           isConstructed = true;
@@ -3505,10 +3501,6 @@ function symmetricizeChoice(which) {
   submit({type: 'symmetricizeChoice', which});
 }
 
-function edictChoice(iid) {
-  submit({type: 'edictChoice', iid});
-}
-
 function optionalCost(pay) {
   submit({type: 'optionalCost', pay});
 }
@@ -3552,7 +3544,7 @@ return {
   init, gameOverClick, clickHand, clickBattlefield, clickStackTarget, clickPlayerTarget,
   closeCardPopup, attachLongPress,
   openZone, closeZone,
-  cancelTarget, endTurn, passAction, doneDeclaring, concede, searchPick, triggerBuildPick, numberChoice, symmetricizeChoice, edictChoice, optionalCost, toggleLog,
+  cancelTarget, endTurn, passAction, doneDeclaring, concede, searchPick, triggerBuildPick, numberChoice, symmetricizeChoice, optionalCost, toggleLog,
   canPass, humanOwesDeclaration,
   pickModalMode, cancelModalChoice,
   pendingModalChoice: () => pendingModalChoice,
