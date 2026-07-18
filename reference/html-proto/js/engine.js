@@ -2351,8 +2351,6 @@ const TOKEN_ALIAS = {
   goblin: 'goblin_r_1_1',
   soldier: 'soldier_w_1_1',
   spirit: 'spirit_w_1_1',
-  bear: 'bear_g_2_2',
-  saproling: 'saproling_g_1_1',
 };
 
 const EFFECTS = {
