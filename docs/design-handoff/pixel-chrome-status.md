@@ -69,9 +69,13 @@ one `.picker-*` kit — no forks. Change the dossier once, all follow.
    were mock-tested previously but not re-hit live. `addBucket` is Growing-Deck-only. Exhaustive
    live coverage needs many wins (coupon-collector) or a `renderReward` inject path (not
    exposed on the `CONTROLLER` export) — left as optional deeper QA, not a blocker.
-   Aside (not my change): the reward offered a *basic land* (Island) as a clone candidate,
-   so committing it was a slot-count no-op (basics are auto-added by color, not stored slots).
-   Pre-existing reward-generation behavior; worth a glance if basic-land clone offers seem odd.
+   Correction (was a false alarm): I initially suspected a basic-land clone was a slot-count
+   no-op. WRONG — that came from a bad cross-call measurement. Verified live with an atomic
+   before/after test: `pickRewardCandidate` with a `clone` candidate unconditionally splices
+   a new slot (+1) for basics and non-basics alike (`run.js` ~L1189; the only guard is a
+   null-slot check). Cloned an Island: deck 43→44, island slots 4→5. `getSlots()` returns
+   `runState.slots` raw (L1382) — basics ARE real stored slots, not recomputed by color.
+   No bug. Only nuance: a clone of a *basic land* is a low-value reward offer, not a defect.
 
 **Refactor**
 4. **Live-test growing + Desert Cube run-opens** — ✅ DONE this session (all three modes now
