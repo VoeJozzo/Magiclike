@@ -1074,5 +1074,10 @@ return {
     return { cards: bucket.map(a => a.tplId), why };
   },
   _dupeFactorForTest: (tplId, deckTplIds) => dupeFactor(tplId, dupeShelf(deckTplIds)),
+  _colorFitForTest: (tplId, deckColors) => {
+    ensurePool();
+    const a = _byId[tplId];
+    return a ? colorFitFactor(a, new Set(deckColors || [])) : null;
+  },
 };
 })();

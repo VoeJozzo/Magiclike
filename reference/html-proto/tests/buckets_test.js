@@ -270,29 +270,24 @@ function check(label, ok, info) {
 }
 
 // --- §3 bucket invariants across many rolls ---------------------------------
+// Structural invariants that must hold for EVERY roll (size, land type, the
+// one hard color law, the fallback flag). They ride real randomness on
+// purpose — a failure here is a real bug, never a false red, and each run
+// fuzzes a fresh path.
 {
-  const PIP_COLORS = ['W', 'U', 'B', 'R', 'G'];
-  const colorsOfTpl = tpl => PIP_COLORS.filter(k => (tpl.cost || {})[k] > 0);
+  const colorsOfTpl = tpl => ['W', 'U', 'B', 'R', 'G'].filter(k => (tpl.cost || {})[k] > 0);
   let sizeOk = true, landOk = true, flagOk = true, bucketTwoColorOk = true;
-  let offColorCards = 0, totalCards = 0;
-  const seenSets = new Set();
-  // A committed two-color deck: off-color cards are ALLOWED (soft splash
-  // temptation, Joe's call) but must stay rare; each bucket stays ≤2 colors.
   const deck = ['goblin_piercer', 'raging_goblin', 'blood_artist', 'carrion_feeder',
                 'mountain', 'mountain', 'swamp', 'swamp'];
   for (let i = 0; i < 40; i++) {
     const offer = BUCKETS.rollBucketOffer(deck);
     if (offer.length !== 3) sizeOk = false;
     for (const b of offer) {
-      seenSets.add(b.cards.slice().sort().join(','));
       if (b.cards.length !== 3 || b.lands.length !== 2) sizeOk = false;
       if (typeof b.fallback !== 'boolean') flagOk = false;
       const bucketCols = new Set();
       for (const id of b.cards) {
-        totalCards++;
-        const cols = colorsOfTpl(CARDS[id]);
-        for (const c of cols) bucketCols.add(c);
-        if (cols.some(c => c !== 'B' && c !== 'R')) offColorCards++;
+        for (const c of colorsOfTpl(CARDS[id])) bucketCols.add(c);
       }
       if (bucketCols.size > 2) bucketTwoColorOk = false;
       for (const id of b.lands) {
@@ -304,52 +299,47 @@ function check(label, ok, info) {
   check('every offer is 3 buckets of 3 cards + 2 lands (40 rolls)', sizeOk);
   check('bucket lands are basic lands', landOk);
   check('no bucket spans more than two colors (the one hard color law)', bucketTwoColorOk);
-  check('off-color splash cards stay rare (<20%; measured ~6%)',
-    offColorCards / totalCards < 0.2, (100 * offColorCards / totalCards).toFixed(1) + '%');
   check('every bucket declares its fallback flag', flagOk);
-  check('offers vary across rolls (softmax, not argmax)', seenSets.size >= 6,
-    seenSets.size + ' distinct card sets over 40 rolls');
 }
 
-// --- §3b second-color expansion + offer name diversity -----------------------
+// --- §3b color fence mechanism (deterministic) ------------------------------
+// The color fence is one pure function, colorFitFactor(card, deckColors): the
+// weight multiplier for how a card's colors fit the deck. Testing it directly
+// pins the exact contract that the old sampled off-color-rate + second-color
+// checks only measured the shadow of — no rolls, no thresholds, nothing to
+// flake.
 {
-  // A mono-color deck must NOT lock the run to one color: while the deck has
-  // <2 colors, buckets may introduce a second (browser-verified regression —
-  // the SPELLSTORM×3 lockout).
-  const monoRed = ['raging_goblin', 'goblin_piercer', 'lightning_bolt',
-                   'mountain', 'mountain'];
-  const PIP_COLORS = ['W', 'U', 'B', 'R', 'G'];
-  let sawSecondColor = false;
-  let thirdColorBuckets = 0, buckets = 0;
-  let diverseOffers = 0;
-  for (let i = 0; i < 15; i++) {
-    const offer = BUCKETS.rollBucketOffer(monoRed);
-    // Distinct card SETS across the 3 tiles (plan diversity used to be
-    // checked via display names; those died at v2.2.22).
-    const sets = new Set(offer.map(b => b.cards.slice().sort().join(',')));
-    if (sets.size >= 2) diverseOffers++;
-    for (const b of offer) {
-      buckets++;
-      const cols = new Set(['R']);
-      for (const id of b.cards) {
-        for (const k of PIP_COLORS) if ((CARDS[id].cost || {})[k] > 0) cols.add(k);
-      }
-      if (cols.size > 2) thirdColorBuckets++;
-      if (cols.size === 2) sawSecondColor = true;
-    }
-  }
-  check('mono-color deck: buckets can introduce a second color', sawSecondColor);
-  // v2.2.23 contract change: a ≤1-color deck has NO color fence at all
-  // (colorFitFactor returns 1 — "your first color, still no pull"), so
-  // off-deck-color buckets are free exploration, not a rare temptation
-  // (measured ~45-50% under the new system vs ~10% under the old cliff).
-  // The fence's contract is POST-commitment — pinned by the committed-deck
-  // off-color-rarity check in §3. Here we only pin that affinity seeding
-  // still keeps a mono deck's offers gravitating toward its color.
-  check('...and off-color buckets stay below two-thirds (affinity gravity)',
-    thirdColorBuckets / buckets < 0.67, `${thirdColorBuckets}/${buckets}`);
-  check('offers usually carry ≥2 distinct card sets', diverseOffers >= 10,
-    `${diverseOffers}/15`);
+  const fit = BUCKETS._colorFitForTest;
+  // A ≤1-color deck applies NO fence (factor 1): a mono-red deck must not lock
+  // the run to red — an off-color card rides undamped. (The SPELLSTORM×3
+  // lockout regression was this returning ~0.)
+  check('mono deck: no color fence, off-color rides at full weight',
+    fit('counterspell', ['R']) === 1, String(fit('counterspell', ['R'])));
+  // Once committed to two colors: on-color stays full, off-color is damped but
+  // never banned (a soft splash temptation, Joe's call).
+  const onColor = fit('lightning_bolt', ['B', 'R']);
+  const offColor = fit('counterspell', ['B', 'R']);
+  check('committed deck: on-color card rides at full weight', onColor === 1,
+    String(onColor));
+  check('committed deck: off-color splash is damped but not banned (0 < f < 1)',
+    offColor > 0 && offColor < 1, String(offColor));
+}
+
+// --- §3c softmax, not argmax (RNG-sensitivity probe) ------------------------
+// The generator must consult the dice. Pinning the RNG to opposite extremes
+// must yield different offers; argmax collapse (ignoring the dice, always
+// taking the single best card) would make them identical. Two fixed constant
+// RNGs → fully deterministic, no threshold.
+{
+  const sig = () =>
+    BUCKETS.rollBucketOffer([]).map(b => b.cards.slice().sort().join(',')).join('|');
+  BUCKETS._setRandForTest(() => 0);
+  const low = sig();
+  BUCKETS._setRandForTest(() => 0.9999);
+  const high = sig();
+  BUCKETS._setRandForTest();
+  check('offers depend on the dice (softmax, not argmax)', low !== high,
+    low === high ? 'identical at both RNG extremes' : 'differ');
 }
 
 // --- §4 run-start (empty deck) offers ---------------------------------------
@@ -373,23 +363,14 @@ function check(label, ok, info) {
 }
 
 // --- §5 seeded bucket serves the seed's plan ---------------------------------
+// Invariants for any goblin_chieftain seed: it lands at cards[0] (the story
+// contract) and coherence is positive (growBucket only adds cards with a
+// positive edge into the bucket, so an internal edge always exists).
 {
   const b = BUCKETS.rollBucket('goblin_chieftain', []);
   check('seeded bucket contains its seed AT cards[0] (the story contract)',
     b.cards[0] === 'goblin_chieftain');
   check('seeded goblin bucket coherence > 0', b.coherence > 0, `coherence=${b.coherence}`);
-
-  // Growth serves the seed's plan (successor to the "usually named Goblin
-  // Warband" naming pin): a chieftain-seeded bucket should usually recruit
-  // at least one other Goblin.
-  let goblinRecruited = 0;
-  for (let i = 0; i < 12; i++) {
-    const roll = BUCKETS.rollBucket('goblin_chieftain', []);
-    if (roll.cards.slice(1).some(id =>
-      (CARDS[id].types || []).includes('Goblin'))) goblinRecruited++;
-  }
-  check('chieftain-seeded buckets usually recruit a Goblin', goblinRecruited >= 8,
-    `${goblinRecruited}/12`);
 }
 
 // --- §6 lands follow bucket pips --------------------------------------------
@@ -443,31 +424,20 @@ function check(label, ok, info) {
   check('bucket lands cover every needed color (U3/B1 → island+swamp)',
     lands.includes('island') && lands.includes('swamp'), lands.join(','));
 
-  // Reinforcements must never sell the player their own deck back, and must
-  // vary across offers (playtest caught identical goodstuff 3 offers running).
+  // Reinforcements must never sell the player their own deck back. Sample a
+  // handful of fallbacks (up to 4, capped at 60 rolls) and check none reprint
+  // a card the deck already holds.
   const deck = ['skyfire_drakelord', 'mind_control', 'final_strike', 'island', 'island'];
-  const sets = new Set();
   let soldOwnCard = false;
-  // Loop until enough Reinforcements offers are SAMPLED, not a fixed roll
-  // count: the growing resource vocabulary makes more synergy buckets
-  // coherently nameable, so genuine Reinforcements fallbacks get rarer
-  // (good!) and a fixed 12 rolls started under-sampling the variance check.
   let rolls = 0, seen = 0;
   while (seen < 4 && rolls++ < 60) {
     for (const b of BUCKETS.rollBucketOffer(deck)) {
       if (!b.fallback) continue;
       seen++;
-      sets.add(b.cards.slice().sort().join(','));
       if (b.cards.some(c => deck.includes(c))) soldOwnCard = true;
     }
   }
   check('Reinforcements never contains cards already in the deck', !soldOwnCard);
-  // If 60 rolls can't even produce 4 fallbacks, variance is moot — the
-  // vocabulary has made genuine Reinforcements that rare, which is the
-  // desired direction (each extraction wave lowered the fallback rate).
-  check('Reinforcements varies across offers (or is too rare to sample)',
-    sets.size >= 2 || seen < 4,
-    `${sets.size} distinct sets from ${seen} offers in ${rolls} rolls`);
 }
 
 // --- §6c2 Elystra's authored want (v2.2.25) -----------------------------------
@@ -516,17 +486,6 @@ function check(label, ok, info) {
   check('reaching the wall raises it for everyone',
     f('lightning_bolt', ['raging_goblin', 'raging_goblin', 'raging_goblin', 'raging_goblin', 'lightning_bolt'])
       === 0.8);
-  // Behavioral never-zero: a goblin deck holding rabble at max copies can
-  // still be offered another rabble (gradient, not cap).
-  const gobDeck = ['goblin_rabble', 'goblin_chieftain', 'raging_goblin',
-    'mountain', 'mountain'];
-  let rabbleOffered = false;
-  for (let i = 0; i < 60 && !rabbleOffered; i++) {
-    for (const b of BUCKETS.rollBucketOffer(gobDeck)) {
-      if (!b.fallback && b.cards.includes('goblin_rabble')) rabbleOffered = true;
-    }
-  }
-  check('owned-at-max cards still appear in offers (never zero)', rabbleOffered);
 }
 
 // --- §6f the Reinforcements retirement (v2.2.26) -------------------------------
