@@ -214,7 +214,6 @@ function ensureSettingsLoaded() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) { data = { ...DEFAULTS }; return; }
     const blob = JSON.parse(raw);
-    migrateLegacySlotKeys(blob);
     data = { ...DEFAULTS, ...blob };
   } catch (e) {
     console.warn('Settings load failed; using defaults:', e);
@@ -222,29 +221,6 @@ function ensureSettingsLoaded() {
   }
 }
 
-// One-shot migration: pre-v1.0.158 stored slot keys (cardFontTitle/Body/Pip
-// + size variants). Walk those into the matching per-element keys when no
-// per-element value is already present. Don't delete the old keys --
-// they're harmless and a future user reverting to an older version would
-// still see them.
-function migrateLegacySlotKeys(blob) {
-  const slotToElements = {
-    title: ['name', 'type', 'pt', 'damage'],
-    body:  ['text', 'stickers'],
-    pip:   ['pip', 'bumped'],
-  };
-  const slotNames = { title: 'Title', body: 'Body', pip: 'Pip' };
-  for (const [slot, elements] of Object.entries(slotToElements)) {
-    const oldFont = blob[`cardFont${slotNames[slot]}`];
-    const oldSize = blob[`cardFontSize${slotNames[slot]}`];
-    for (const el of elements) {
-      const fKey = settingsKeyFont(el);
-      const sKey = settingsKeyFsize(el);
-      if (oldFont !== undefined && blob[fKey] === undefined) blob[fKey] = oldFont;
-      if (oldSize !== undefined && blob[sKey] === undefined) blob[sKey] = oldSize;
-    }
-  }
-}
 
 function get(key) {
   ensureSettingsLoaded();

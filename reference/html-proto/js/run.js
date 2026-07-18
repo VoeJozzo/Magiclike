@@ -336,13 +336,6 @@ function save() {
   }
 }
 
-// §3.8 snake_case rename map for sticker IDs stored in saved slots.
-const STICKER_ID_RENAMES = {
-  plus1plus1: 'plus1_plus1',
-  costMinus1: 'cost_minus_1',
-  landColor_W: 'land_color_w', landColor_U: 'land_color_u', landColor_B: 'land_color_b',
-  landColor_R: 'land_color_r', landColor_G: 'land_color_g',
-};
 
 function load() {
   try {
@@ -378,50 +371,10 @@ function load() {
     let dirty = false;
     let stalePruned = 0;
     let rollsBackfilled = 0;
-    let subtypeMigrated = 0;
-    let permaBuffsMigrated = 0;
     if (Array.isArray(runState.slots)) {
       for (const slot of runState.slots) {
-        // A5-6/A5-7: convert a legacy slot.permaBuffs object (Elystra's banked
-        // power/toughness/keywords from before the sticker refactor) into the
-        // stat_boost / kw_* stickers that now carry it — so an in-flight save
-        // spanning the upgrade doesn't silently drop the accumulated buffs.
-        // LIVE, not dead code (PR #134 review adjudication, 2026-07-02): the
-        // released dev build (v2.1.18) still WRITES slot.permaBuffs via
-        // flushPermanentEotToPermaBuffs under SAVE_VERSION 2, so this is the
-        // only bridge for a save that crosses the sticker refactor. Remove only
-        // when the released build no longer writes the field (or a deliberate
-        // SAVE_VERSION bump retires it).
-        if (slot.permaBuffs && typeof slot.permaBuffs === 'object') {
-          if (!Array.isArray(slot.stickers)) slot.stickers = [];
-          const pb = slot.permaBuffs;
-          if ((pb.power || 0) !== 0 || (pb.toughness || 0) !== 0) {
-            slot.stickers.push({ kind: 'stat_boost', power: pb.power || 0, toughness: pb.toughness || 0 });
-          }
-          if (Array.isArray(pb.keywords)) {
-            for (const kw of pb.keywords) {
-              const id = 'kw_' + kw;
-              if (STICKERS[id] && !slot.stickers.includes(id)) slot.stickers.push(id);
-            }
-          }
-          delete slot.permaBuffs;
-          permaBuffsMigrated++;
-          dirty = true;
-        }
         if (!Array.isArray(slot.stickers)) continue;
         if (!Array.isArray(slot.subtypeRolls)) slot.subtypeRolls = [];
-        slot.stickers = slot.stickers.map(id => {
-          if (typeof id === 'string' && id.startsWith('subtype_') && id !== 'subtype') {
-            const sub = id.slice('subtype_'.length);
-            const cap = sub.charAt(0).toUpperCase() + sub.slice(1);
-            slot.subtypeRolls.push(cap);
-            subtypeMigrated++;
-            return 'subtype';
-          }
-          // §3.8 snake_case sticker-id renames.
-          if (STICKER_ID_RENAMES[id]) { dirty = true; return STICKER_ID_RENAMES[id]; }
-          return id;
-        });
         const before = slot.stickers.length;
         // Keep registry-id stickers AND inline {kind,...} descriptors (§3.8
         // apply_sticker products: cost_mod / set_color / stat_boost snapshots).
@@ -446,13 +399,7 @@ function load() {
       if (rollsBackfilled > 0) {
         console.log(`Backfilled ${rollsBackfilled} empower roll(s) on legacy save.`);
       }
-      if (subtypeMigrated > 0) {
-        console.log(`Migrated ${subtypeMigrated} legacy subtype sticker(s) to unified format.`);
-      }
-      if (permaBuffsMigrated > 0) {
-        console.log(`Migrated ${permaBuffsMigrated} legacy permaBuffs slot(s) to stat_boost/kw stickers.`);
-      }
-      if (stalePruned > 0 || rollsBackfilled > 0 || subtypeMigrated > 0) dirty = true;
+      if (stalePruned > 0 || rollsBackfilled > 0) dirty = true;
     }
     // Config backfill: saves from before the Growing Deck have no config —
     // they are classic runs by definition.
@@ -466,33 +413,6 @@ function load() {
       if (ph !== 'mixed' && ph !== 'transformPick' && ph !== 'twoStickersReveal' &&
           ph !== 'bucketPick') {
         runState.pendingReward = generateRewardOffer();
-        dirty = true;
-      }
-    }
-    // Map migrations: color/constructedId/boss-type backfill for legacy saves.
-    if (runState.map && Array.isArray(runState.map.nodes)) {
-      const COLOR_KEYS = ['W','U','B','R','G'];
-      const maxLevel = runState.map.nodes.reduce((m, n) => Math.max(m, n.level), 0);
-      const bossIds = (typeof DRAFT !== 'undefined' && DRAFT.getConstructedDeckIds)
-        ? DRAFT.getConstructedDeckIds().filter(id => {
-            const spec = DRAFT.getConstructedDeck(id);
-            return spec && spec.isBoss;
-          })
-        : [];
-      for (const n of runState.map.nodes) {
-        if (!('constructedId' in n)) { n.constructedId = null; dirty = true; }
-        const isExit = (n.level === maxLevel);
-        if (isExit && n.type !== 'boss' && bossIds.length > 0) {
-          n.type = 'boss';
-          n.constructedId = bossIds[Math.floor(Math.random() * bossIds.length)];
-          dirty = true;
-        }
-        if ('color' in n) continue;
-        const isEnd = (n.level === 0 || n.level === maxLevel);
-        if (isEnd) { n.color = null; dirty = true; continue; }
-        n.color = Math.random() < 0.6
-          ? COLOR_KEYS[Math.floor(Math.random() * 5)]
-          : null;
         dirty = true;
       }
     }
@@ -696,19 +616,6 @@ function getMapSuccessors(nodeId) {
 
 function startNextGame() {
   if (!runState || !runState.active) return null;
-  // Advance map. Single-successor → auto. Multi → pickMapNode resolved first.
-  if (runState.gameNum > 0 && runState.map && runState.map.currentNodeId) {
-    const cur = runState.map.currentNodeId;
-    const completedVisited = runState.map.visitedNodeIds.includes(cur);
-    if (completedVisited) {
-      const succ = getMapSuccessors(cur);
-      if (succ.length === 1) {
-        runState.map.currentNodeId = succ[0];
-      } else if (succ.length >= 2) {
-        console.warn('startNextGame: pending map choice not resolved; using current node');
-      }
-    }
-  }
   runState.gameNum++;
   runState.lastResult = null;
   runState.pendingReward = null;

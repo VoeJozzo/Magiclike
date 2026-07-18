@@ -1,10 +1,7 @@
 // Mercurial Adept's trigger pool. makeCard rolls one fresh per game from
 // this pool, so the same slot has a different personality each fight.
-// `label` is shown in the card popup repertoire — but only for LEGACY saves:
-// the repertoire gates on slot.triggerPool (controller.js), which post-cutover
-// slots (trigger_pool_seed) never carry, so in current saves the card's
-// authored face text is the player's only description of this pool — keep
-// card.json's text in sync with these entries (audit A10-2).
+// The card's authored face text is the player's only description of this
+// pool — keep card.json's text in sync with these entries (audit A10-2).
 const MERCURIAL_TRIGGER_POOL = [
   {
     label: 'Striker',
@@ -50,8 +47,7 @@ const MERCURIAL_TRIGGER_POOL = [
   },
 ];
 
-// Mercurial Adept now seeds her pool via trigger_pool_seed:'mercurial' (see makePlayer).
-// Pre-v1.0.0 saves carried an embedded triggerPool on the slot — still works via the slot-level path.
+// Mercurial Adept seeds her pool via trigger_pool_seed:'mercurial' (see makePlayer).
 
 
 // ENGINE — game rules, state, phase machine.
@@ -1017,11 +1013,11 @@ function makePlayer(name, deck, ownerSide) {
   // for player → runState.slots[i] for sticker persistence, for opp → transient.
   const cards = deck.map((entry, i) => {
     if (typeof entry === 'string') return makeCard(entry, undefined, i, undefined);
-    // Bonus trigger: fixed bonusTrigger (locked at run-start) OR triggerPool
-    // (rolled fresh per game). Fixed wins. Slot-level pool overrides template seed.
+    // Bonus trigger: fixed bonusTrigger (locked at run-start) OR the
+    // template's pool seed (rolled fresh per game). Fixed wins.
     let bonus = entry.bonusTrigger;
-    let pool = Array.isArray(entry.triggerPool) ? entry.triggerPool : null;
-    if (!pool && !bonus) {
+    let pool = null;
+    if (!bonus) {
       const tpl = CARDS[entry.tplId];
       if (tpl && tpl.trigger_pool_seed === 'mercurial') {
         pool = MERCURIAL_TRIGGER_POOL;
@@ -1034,9 +1030,9 @@ function makePlayer(name, deck, ownerSide) {
       bonus = cloneTriggerData(pick);
     }
     if (bonus) {
-      // Audit A3-5 stale-save guard: a persisted bonusTrigger (or embedded
-      // slot triggerPool pick) predating an id rename would silently no-op
-      // for the whole run. Warn loudly; still attach (behavior-neutral).
+      // Audit A3-5 stale-save guard: a persisted bonusTrigger predating an
+      // id rename would silently no-op for the whole run. Warn loudly;
+      // still attach (behavior-neutral).
       const refs = { unknownKinds: [], unknownTokens: [], unknownAtomics: [], unknownEvents: [] };
       collectUnknownTriggerRefs(bonus, 'bonusTrigger(' + entry.tplId + ')', refs);
       const bad = refs.unknownKinds.concat(refs.unknownTokens, refs.unknownAtomics, refs.unknownEvents);
