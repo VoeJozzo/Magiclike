@@ -1,8 +1,14 @@
 # Pixel-chrome + boon-refactor — status / handoff
 
 **Branch:** `claude/pixel-chrome-tiles`, off `dev` (dev merged in at `17c2f4b5`, current
-as of this session). **HEAD `ce156375`, 17 commits ahead of `dev`**, working tree clean,
-all pushed. Resume: `git fetch && git checkout claude/pixel-chrome-tiles` (or `git pull`).
+as of this session). **HEAD `b8a48965`, 18 commits ahead of `dev`** (before this doc-update
+commit), working tree clean, all pushed. Resume: `git fetch && git checkout
+claude/pixel-chrome-tiles` (or `git pull`).
+
+**Live-verified this session (via the served html-proto):** Growing-Deck boon-pick-#0 flow
+(PICK 0/5 boon → PICK 1/5 buckets), Desert-Cube run-open (straight to PICK 1/40, no boon),
+and the **Rewards screen end-to-end** (real drafted deck → forced win → real
+`generateRewardOffer` → 3 real tiles rendered through the kit). See TODOs 3 & 4.
 
 Two intertwined threads this session:
 - **(A) the pixel-chrome UI reskin** — the original goal.
@@ -37,7 +43,7 @@ use `StyleBoxTexture`). 18 tiles in `reference/html-proto/assets/ui/`.
 | **Map** | ✅ reskinned + polished (2× integer sizing), verified in-engine |
 | **Draft** | ✅ reskinned + verified; growing-deck bucket tiles fixed via shared `.rwd-pair` |
 | **Boon / land modal** | ✅ reskinned — now the SAME `.picker-*` kit as draft |
-| **Rewards** | ✅ inherits the kit (zero reward-specific chrome written); render verified via mock |
+| **Rewards** | ✅ inherits the kit (zero reward-specific chrome written); **live-verified** end-to-end (real win → real reward → tiles); kind-sampling caveat in TODO 3 |
 | **Search (in-game tutor)** | ✅ folded into the kit (compact/centered overrides kept) |
 | **Settings** | ⛔ BLOCKED — needs a pixel dropdown from the design agent (see `settings-ui-gap.md`) |
 | **Board** | ⬜ NOT started — the in-game play screen; the last major reskin |
@@ -51,13 +57,31 @@ one `.picker-*` kit — no forks. Change the dossier once, all follow.
 1. **Board** — in-game play screen (dossiers, battlefield, front line, hand). Biggest
    remaining surface. Card FRAMES stay as-is (content, not chrome).
 2. **Settings** — blocked on the design agent's pixel dropdown.
-3. **Live-verify Rewards** — I forced it visible with mock rows; drive a real reward
-   screen (finish a game) to confirm the 7 reward kinds render.
+3. **Live-verify Rewards** — ✅ DONE this session. Drove a real Classic run (auto-picked a
+   full draft), forced a genuine win (`opp.life=0` + pass → the engine's own SBA
+   `checkLifeTotals` → `endGame('you')` → the controller's game-over handler fired
+   `RUN.recordResult` + `renderReward` automatically). The real `generateRewardOffer`
+   produced a `mixed` reward; 3 tiles rendered through the `.rwd-pair` kit with real
+   content (CLONE Island, STICKER Stapler, STICKER Bloodlust Berserker); picking a tile
+   resolved + advanced to the "YOU WIN → Choose Path" map step.
+   **Caveat:** this run randomly sampled only 2 of the 8 reward kinds (clone, sticker). The
+   other 6 (`twoStickers`, `transform`, `ripUp`, `threeStickersBlind`, `splice`, `addBucket`)
+   were mock-tested previously but not re-hit live. `addBucket` is Growing-Deck-only. Exhaustive
+   live coverage needs many wins (coupon-collector) or a `renderReward` inject path (not
+   exposed on the `CONTROLLER` export) — left as optional deeper QA, not a blocker.
+   Aside (not my change): the reward offered a *basic land* (Island) as a clone candidate,
+   so committing it was a slot-count no-op (basics are auto-added by color, not stored slots).
+   Pre-existing reward-generation behavior; worth a glance if basic-land clone offers seem odd.
 
 **Refactor**
-4. **Live-test growing + Desert Cube run-opens** — only CLASSIC was click-tested
-   end-to-end for boon-pick-#0. Growing (boon phase → buckets) and Desert Cube (no boon)
-   are correct by construction but not live-tested.
+4. **Live-test growing + Desert Cube run-opens** — ✅ DONE this session (all three modes now
+   confirmed live). **Growing:** PICK 0/5 boon phase offered 3 boon-tagged cards
+   (Phylactery / Elystra / City of Brass); picking one advanced to PICK 1/5 bucket draft
+   (18 `.rwd-pair` bucket els) — the boon consumed no real pick. **Desert Cube:** straight to
+   PICK 1/40, no boon phase, 3 card offers. **Classic:** already tested pre-session.
+   (Verification note: the browser's `read_page` a11y tree served STALE cached snapshots all
+   session — ground truth came from live `javascript_tool` DOM/state queries; screenshots
+   time out on card-heavy screens = the known renderer-wedge, not a fault.)
 5. **De-jank Phylactery** (`reference/html-proto/BACKLOG.md`) — its protection is
    `slot.tplId === 'phylactery'`, so a spliced-in Phylactery isn't detected;
    `stapleable:false` is the stopgap. Real fix: stapled-aware slot membership.
