@@ -75,6 +75,7 @@ function targetNoun(eff) {
   if (t === 'graveyard_card') return 'target card';  // detail composed by graveyardCardPhrase (see withFilter)
   if (t === 'permanent')return 'target permanent';
   if (t === 'spell')    return 'target spell';
+  if (t === 'permanent_or_spell') return 'target permanent or spell';
   return t || '';
 }
 
@@ -1237,6 +1238,20 @@ function describeCardSegments(card, opts) {
     // (audit A10-3; substitution is idempotent once baked into card.text).
     const staticText = formatTriggerText(card.text || tpl.text || '', card.name || tpl.name);
     if (staticText) sections.push([plainSeg(staticText)]);
+    // Stapled halves: authored text can't know what a staple added, so append
+    // each staple's generated text — the merged card reads complete without
+    // losing the authored voice (audit A14, Joe's option (c), 2026-07-18).
+    const stapledIds = (card.stapledFrom && card.stapledFrom.stapledTpls) || [];
+    for (const sid of stapledIds) {
+      if (!CARDS[sid]) continue;
+      // landManaExplicit: a staple half's mana ability must PRINT — the merged
+      // card's type line doesn't convey it the way a standalone land's does.
+      const stapleSegs = describeCardSegments(CARDS[sid],
+        Object.assign({}, opts, { landManaExplicit: true }));
+      if (stapleSegs.length) {
+        sections.push([plainSeg('[' + (CARDS[sid].name || sid) + '] '), ...stapleSegs]);
+      }
+    }
     const out = [];
     for (let i = 0; i < sections.length; i++) {
       if (i > 0) out.push(plainSeg(' '));
@@ -1319,7 +1334,7 @@ function describeCardSegments(card, opts) {
       // invisible. A choose-form ability whose colors are ALL conveyed (e.g. a
       // Forest with an "Also a Island" sticker → "Basic Land — Forest Island")
       // is suppressed too, mirroring paper dual lands.
-      if (hasType(card,'Land') && ab.cost && ab.cost.tap && !ab.cost.mana
+      if (!opts.landManaExplicit && hasType(card,'Land') && ab.cost && ab.cost.tap && !ab.cost.mana
           && ab.effects && ab.effects.length === 1 && ab.effects[0].kind === 'add_mana') {
         const eff = ab.effects[0];
         const produced = manaEffectColors(eff);

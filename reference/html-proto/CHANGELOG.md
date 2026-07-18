@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.2.35`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.2.36`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -3056,3 +3056,34 @@ buckets full-suite statistical flake (pre-existing, documented on the
 pending fix-buckets-flake branch; batch E touches nothing buckets_test
 exercises); three subsequent full-suite runs green. No behavior change
 intended or observed. Suite 150 files / 2997 green; lint clean.
+
+v2.2.36: Audit rulings batch — Joe's 2026-07-18 ask-bin rulings executed
+(cuts in batches G/H, this bump) + the proven-bug fixes (batch I), each
+pinned by tests/proofs_audit.js (now registered in run_all; 5/5 green).
+Fixes: (1) R32 — makeCard applies stickers BEFORE subtype-implied keywords,
+so a sticker-rolled Dragon has flying at build (all keyword paths agree).
+(2) A14 — stapling onto a custom-text card (Mercurial Adept, Pacifism)
+appends each staple's generated text after the authored text (Joe's option
+c), with landManaExplicit override so a stapled land's mana line prints.
+(3) A12/A13 — opp sticker-burst odds derive from REWARD_TYPE_WEIGHTS at
+roll time (drift now impossible; the old literals froze pre-v1.0.46 odds,
+so triple bursts were 2x intended). (4) N7 — targetNoun renders
+permanent_or_spell as English. (5) R60/R61 — selfplay bughunt writes
+land_color_* registry ids (its multicolor stress mode was silently inert
+since §3.8). (6) R58/R59 — pool_assay plan metric counts distinct SEED
+cards (names died v2.2.22; every pair had read "1 — PLAN-POOR"; real
+signal now: 46-57 per pair, UR thinnest — agrees with the standing
+BACKLOG note). (7) A35 — the .aturn battlefield glow now follows the
+actual turn (was statically on the player side). (8) A10 — the drafts
+TSV export derives colors through DRAFT.summarizeColors (newly exported),
+reporting what the game says instead of a parallel >=2-pip rule.
+Cuts in G/H per rulings: grant_mana_ability sticker kind, map node types
+elite/shop/event/rest, boon art override, runState.modifier, untap_on_take,
+TOKEN_ALIAS, primaryLegalTargets, vm.typeText, and the retired save
+migrations (permaBuffs — the original approved kill, caught unexecuted in
+review — sticker renames, subtype rename, map backfill, slot.triggerPool
+readers, startNextGame auto-advance, settings slot keys). Kept per rulings:
+string-shorthand authoring, ability_triggered, move_card 'self', the boon
+alwaysOffered pin, empower backfill, the N27 stale-sticker prune (now
+pinned as the safety net in test_balancer). Suite + lint green per batch;
+counts shifted with retired test subjects and the new proofs file.

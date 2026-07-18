@@ -2857,20 +2857,16 @@ function buildDraftsBatchTsv(drafts, startIdx, endIdx) {
     const d = drafts[i];
     const draftId = i + 1;
     const finalColors = (Array.isArray(d.colors) && d.colors.length)
-      ? d.colors.slice().sort().join('')
+      ? d.colors.join('')
       : '';
     const result = d.result || '';
     const games = d.gamesPlayed || 0;
-    // Running color tally as we walk picks. A color is "committed" once
-    // we've picked ≥2 cards of that color — same threshold the draft UI
-    // uses elsewhere. (DRAFT.summarizeColors is a similar idea but uses a
-    // 1+ threshold, so the two aren't interchangeable.)
+    // Running color tally as we walk picks. Colors derive through the
+    // game's own rule (DRAFT.summarizeColors) so the export reports what
+    // the game would say, not a parallel re-derivation (audit A10, Joe's
+    // ruling: the stats screen reports on the game faithfully).
     const colorCounts = { W: 0, U: 0, B: 0, R: 0, G: 0 };
-    const committedSoFar = () => Object.entries(colorCounts)
-      .filter(([, n]) => n >= 2)
-      .map(([c]) => c)
-      .sort()
-      .join('');
+    const committedSoFar = () => DRAFT.summarizeColors(colorCounts).join('');
     (d.picks || []).forEach((p, pickIdx) => {
       const pickN = pickIdx + 1;
       const before = committedSoFar();

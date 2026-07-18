@@ -173,6 +173,10 @@ function render() {
   renderOppHand(G.opp.hand);
   renderBf('youBf', G.you.battlefield, 'you');
   renderBf('oppBf', G.opp.battlefield, 'opp');
+  // Active-turn battlefield glow follows the actual turn (audit A35 — the
+  // class used to sit statically on the player's side).
+  document.getElementById('youBf').classList.toggle('aturn', G.activePlayer === 'you');
+  document.getElementById('oppBf').classList.toggle('aturn', G.activePlayer === 'opp');
 
   // Shared with the Space/Enter keyboard path — see CONTROLLER.humanOwesDeclaration.
   const showDone = CONTROLLER.humanOwesDeclaration();

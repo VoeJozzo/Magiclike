@@ -877,10 +877,13 @@ function makeCard(tplId, stickers, slotIdx, empowerRolls, bonusTrigger, stapledT
     const v = tpl[k];
     card[k] = (v && typeof v === 'object') ? JSON.parse(JSON.stringify(v)) : v;
   }
-  // Order: subtype-implied → stickers → bonusTrigger. (Elystra's permanent_eot
-  // buffs ride the stat_boost/kw_* stickers applied by applyStickersToCard above.)
-  applySubtypeKeywords(card);
+  // Order: stickers → subtype-implied → bonusTrigger. Stickers first so a
+  // rolled subtype's type is on the card when applySubtypeKeywords derives
+  // the implied keyword (a sticker-rolled Dragon has flying at build, same
+  // as every re-derive path — audit R32). Elystra's permanent_eot buffs
+  // ride the stat_boost/kw_* stickers.
   applyStickersToCard(card);
+  applySubtypeKeywords(card);
   // bonusTrigger: slot-persistent trigger (today written by the Architect's
   // Codex ability finalize — see finalizeBuild; boon extras can also seed
   // one). Stored as data so it survives save/load; condId form is required

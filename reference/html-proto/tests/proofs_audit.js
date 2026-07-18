@@ -1,9 +1,8 @@
-// AUDIT BUG PROOFS — deliberately-failing demonstrations of findings from the
-// 2026-07-17 vibecode audit. NOT registered in run_all.js CATEGORY_A: each
-// proof asserts the CORRECT behavior, so on current code a FAIL means "bug
-// confirmed exactly as the finding claims." Each proof joins the suite as a
-// regression pin only in the commit that fixes its finding (flipping green).
-// Run standalone: node tests/proofs_audit.js
+// AUDIT BUG PROOFS — born 2026-07-17 as deliberately-failing demonstrations
+// of vibecode-audit findings (each proof asserts the CORRECT behavior, so a
+// FAIL meant "bug confirmed"). The batch-I fixes (v2.2.36) flipped them
+// green; the file is now registered in run_all.js as the regression pin for
+// that bug class. A CONFIRMED result here means a fixed bug came back.
 const setup = require('./_setup');
 setup.loadEngine();
 
@@ -55,39 +54,42 @@ proof('N7',
   });
 
 proof('A12/A13',
-  "The opponent's sticker-burst odds mirror the player reward weights they claim to mirror",
+  "The opponent's sticker-burst odds derive from the player reward weights (single source, cannot drift)",
   () => {
     const src = setup.getSource();
-    const pm = src.match(/REWARD_TYPE_WEIGHTS = \{[\s\S]*?sticker:\s*(\d+)[\s\S]*?twoStickers:\s*(\d+)[\s\S]*?threeStickersBlind:\s*(\d+)/);
-    const dm = src.match(/burstRoll = Math\.random\(\)\s*\*\s*(\d+)[\s\S]*?burstRoll < (\d+)\) \? 1 : \(burstRoll < (\d+)\) \? 2 : 3/);
-    if (!pm || !dm) throw new Error('source patterns not found (player=' + !!pm + ', opp=' + !!dm + ')');
-    const player = [Number(pm[1]), Number(pm[2]), Number(pm[3])];
-    const total = Number(dm[1]), t1 = Number(dm[2]), t2 = Number(dm[3]);
-    const opp = [t1, t2 - t1, total - t2];
+    const i = src.indexOf('const burstRoll');
+    if (i < 0) throw new Error('burst-roll site not found in source');
+    const region = src.slice(Math.max(0, i - 600), i + 200);
+    const derived = /REWARD_TYPE_WEIGHTS\.sticker/.test(region)
+      && /REWARD_TYPE_WEIGHTS\.threeStickersBlind/.test(region)
+      && !/Math\.random\(\)\s*\*\s*\d/.test(region);
     return {
-      ok: player.join(':') === opp.join(':'),
-      info: 'player single:double:triple = ' + player.join(':') + ' | opp = ' + opp.join(':'),
+      ok: derived,
+      info: derived
+        ? 'burst odds read REWARD_TYPE_WEIGHTS at roll time — no literals to drift'
+        : 'burst-roll site still carries hand-copied literals instead of reading REWARD_TYPE_WEIGHTS',
     };
   });
 
 proof('R60/R61',
-  "Selfplay bughunt's multicolor-land stress setup actually applies its land-color stickers",
+  "Selfplay bughunt's multicolor-land stress setup actually applies its land-color stickers (harness writes registry ids since v2.2.36)",
   () => {
     RUN.start({ cards: ['plains', 'plains', 'bear_cub', 'bear_cub'], colors: ['W'], mode: 'classic' }, null);
     const slots = RUN.getSlots();
     const li = slots.findIndex(s => s.tplId === 'plains');
     if (li < 0) throw new Error('no plains slot after RUN.start');
     const before = (RUN.getSlots()[li].stickers || []).length;
-    RUN.applyStickerToSlot(li, 'landColor_U');          // the id the harness writes
-    const afterHarnessId = (RUN.getSlots()[li].stickers || []).length;
-    RUN.applyStickerToSlot(li, 'land_color_u');          // the id the registry defines
+    RUN.applyStickerToSlot(li, 'land_color_' + 'U'.toLowerCase());  // the id the harness now builds
     const afterCanonical = (RUN.getSlots()[li].stickers || []).length;
+    RUN.applyStickerToSlot(li, 'landColor_B');                       // the retired camelCase form must stay dead
+    const afterLegacy = (RUN.getSlots()[li].stickers || []).length;
     return {
-      ok: afterHarnessId - before === 1,
-      info: "stickers applied with harness id 'landColor_U': " + (afterHarnessId - before) + " | with registry id 'land_color_u': " + (afterCanonical - afterHarnessId),
+      ok: afterCanonical - before === 1 && afterLegacy === afterCanonical,
+      info: "canonical 'land_color_u' applied: " + (afterCanonical - before) + " | retired 'landColor_B' applied: " + (afterLegacy - afterCanonical),
     };
   });
 
 console.log('---');
 console.log('PROOF SUMMARY: ' + confirmed + ' bug(s) confirmed, ' + absent + ' not confirmed, ' + errored + ' proof error(s)');
-process.exit(0);  // verdicts, not gates — this file never reds a pipeline
+console.log('\n=== TOTAL: ' + absent + ' passed, ' + (confirmed + errored) + ' failed ===');
+process.exit(confirmed === 0 && errored === 0 ? 0 : 1);  // regression pin since v2.2.36

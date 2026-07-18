@@ -430,11 +430,16 @@ function applyOpponentStickers(slots, n) {
       const score = intrinsicCardValue(tpl) + stickerBonus;
       if (score > bestSlotScore) { bestSlotScore = score; bestSlotIdx = i; }
     }
-    // Roll a burst size mirroring player reward weights: 12:3:2 for
-    // single/double/triple → 70.6%/17.6%/11.8%. Cap at remaining budget so
-    // the last burst doesn't overspend.
-    const burstRoll = Math.random() * 17;
-    let burstSize = (burstRoll < 12) ? 1 : (burstRoll < 15) ? 2 : 3;
+    // Roll a burst size mirroring the player reward weights, derived at roll
+    // time from REWARD_TYPE_WEIGHTS (single/double/triple = sticker :
+    // twoStickers : threeStickersBlind) so the two can never drift again
+    // (audit A12/A13 — the old literals froze a pre-v1.0.46 ratio). Cap at
+    // remaining budget so the last burst doesn't overspend.
+    const wS = RUN.REWARD_TYPE_WEIGHTS.sticker;
+    const wD = RUN.REWARD_TYPE_WEIGHTS.twoStickers;
+    const wT = RUN.REWARD_TYPE_WEIGHTS.threeStickersBlind;
+    const burstRoll = Math.random() * (wS + wD + wT);
+    let burstSize = (burstRoll < wS) ? 1 : (burstRoll < wS + wD) ? 2 : 3;
     burstSize = Math.min(burstSize, remaining);
     // Apply `burstSize` stickers to the chosen slot. Each sticker re-rolls
     // the candidate offer (since prior stickers may make the slot eligible
@@ -863,6 +868,9 @@ return {
   // Land allocation for arbitrary pip counts — BUCKETS colors each bucket's
   // 2 lands through this so the largest-remainder logic stays single-sourced.
   allocLandsFor: (pips, count) => allocLands(pips, count),
+  // The game's deck-color rule — exported so stats/export surfaces report
+  // through it instead of re-deriving (audit A10).
+  summarizeColors,
   // Heuristic card picker. Exposed for the self-play harness (heuristic-drafted
   // player mode) and any other consumer that wants to drive a programmatic
   // draft with the same scorer opp uses.

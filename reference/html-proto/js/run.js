@@ -1434,6 +1434,9 @@ function _setPendingRewardForTest(reward) {
 return { start, startNextGame, recordResult, getStats: getRunStats, isActive,
          pickRewardCandidate, pickTransformReplacement, pickBucket, dismissReveal, getReward, getSlots,
          applySplice, _setPendingRewardForTest,
+         // Reward-type odds — exported so the opp sticker-burst roll derives
+         // from the same table the player rewards use (audit A12/A13).
+         REWARD_TYPE_WEIGHTS,
          applyStickerToSlot, appendSlot, removeSlotByIdx,
          // Map navigation API.
          getMapState, pickMapNode,
