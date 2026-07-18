@@ -779,9 +779,14 @@ function segmentsToHtml(segs) {
 function renderManaPool(id, mana) {
   const el = document.getElementById(id);
   el.innerHTML = '';
+  // Route pool pips through the ONE pip renderer (renderManaSymbols → .mana-*
+  // SVG art) instead of the old letter-in-a-colored-circle .mp* divs. Single
+  // source of truth for mana-symbol art — see the .mpool .mana sizing rule.
+  let html = '';
   for (const c of ['W','U','B','R','G','C']) {
-    for (let i=0; i<(mana[c]||0); i++) el.innerHTML += `<div class="mp mp${c}">${c}</div>`;
+    for (let i=0; i<(mana[c]||0); i++) html += renderManaSymbols('{' + c + '}');
   }
+  el.innerHTML = html;
 }
 
 // One option button for the choice-modal prompts (pick-a-number / symmetricize
