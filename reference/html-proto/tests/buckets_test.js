@@ -271,9 +271,8 @@ function check(label, ok, info) {
 
 // --- §3 bucket invariants across many rolls ---------------------------------
 // Structural invariants that must hold for EVERY roll (size, land type, the
-// one hard color law, the fallback flag). They ride real randomness on
-// purpose — a failure here is a real bug, never a false red, and each run
-// fuzzes a fresh path.
+// one hard color law, the fallback flag) — so they ride real randomness on
+// purpose: a failure here is a real bug, never a false red.
 {
   const colorsOfTpl = tpl => ['W', 'U', 'B', 'R', 'G'].filter(k => (tpl.cost || {})[k] > 0);
   let sizeOk = true, landOk = true, flagOk = true, bucketTwoColorOk = true;
@@ -303,20 +302,16 @@ function check(label, ok, info) {
 }
 
 // --- §3b color fence mechanism (deterministic) ------------------------------
-// The color fence is one pure function, colorFitFactor(card, deckColors): the
-// weight multiplier for how a card's colors fit the deck. Testing it directly
-// pins the exact contract that the old sampled off-color-rate + second-color
-// checks only measured the shadow of — no rolls, no thresholds, nothing to
-// flake.
+// colorFitFactor(card, deckColors) is the pure weight multiplier the old
+// sampled off-color-rate + second-color checks only measured the effect of.
+// Pinning it directly needs no rolls and no threshold.
 {
   const fit = BUCKETS._colorFitForTest;
-  // A ≤1-color deck applies NO fence (factor 1): a mono-red deck must not lock
-  // the run to red — an off-color card rides undamped. (The SPELLSTORM×3
-  // lockout regression was this returning ~0.)
+  // Factor 1 = no fence. Guards the SPELLSTORM×3 lockout, where this returned
+  // ~0 and trapped a mono deck in its one color.
   check('mono deck: no color fence, off-color rides at full weight',
     fit('counterspell', ['R']) === 1, String(fit('counterspell', ['R'])));
-  // Once committed to two colors: on-color stays full, off-color is damped but
-  // never banned (a soft splash temptation, Joe's call).
+  // Off-color splash stays a temptation, not a ban (Joe's call).
   const onColor = fit('lightning_bolt', ['B', 'R']);
   const offColor = fit('counterspell', ['B', 'R']);
   check('committed deck: on-color card rides at full weight', onColor === 1,
@@ -326,10 +321,9 @@ function check(label, ok, info) {
 }
 
 // --- §3c softmax, not argmax (RNG-sensitivity probe) ------------------------
-// The generator must consult the dice. Pinning the RNG to opposite extremes
-// must yield different offers; argmax collapse (ignoring the dice, always
-// taking the single best card) would make them identical. Two fixed constant
-// RNGs → fully deterministic, no threshold.
+// Pinning the RNG to opposite extremes must yield different offers; argmax
+// collapse (ignoring the dice, always taking the single best card) would make
+// them identical. Two constant RNGs, so it's deterministic.
 {
   const sig = () =>
     BUCKETS.rollBucketOffer([]).map(b => b.cards.slice().sort().join(',')).join('|');
@@ -363,9 +357,8 @@ function check(label, ok, info) {
 }
 
 // --- §5 seeded bucket serves the seed's plan ---------------------------------
-// Invariants for any goblin_chieftain seed: it lands at cards[0] (the story
-// contract) and coherence is positive (growBucket only adds cards with a
-// positive edge into the bucket, so an internal edge always exists).
+// Invariants (real randomness, like §3): coherence is >0 because growBucket
+// only adds positive-edge cards, so an internal edge always exists.
 {
   const b = BUCKETS.rollBucket('goblin_chieftain', []);
   check('seeded bucket contains its seed AT cards[0] (the story contract)',
@@ -424,9 +417,8 @@ function check(label, ok, info) {
   check('bucket lands cover every needed color (U3/B1 → island+swamp)',
     lands.includes('island') && lands.includes('swamp'), lands.join(','));
 
-  // Reinforcements must never sell the player their own deck back. Sample a
-  // handful of fallbacks (up to 4, capped at 60 rolls) and check none reprint
-  // a card the deck already holds.
+  // Reinforcements must never sell the player their own deck back: sample a
+  // few fallbacks and check none reprint a card the deck already holds.
   const deck = ['skyfire_drakelord', 'mind_control', 'final_strike', 'island', 'island'];
   let soldOwnCard = false;
   let rolls = 0, seen = 0;
