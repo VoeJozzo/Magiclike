@@ -46,6 +46,10 @@ Port the **behavior**, not the implementation shape — the prototype's engine h
 - **Don't model per-instance state as dynamically-attached dictionary fields.** Use typed properties on `CardInstance` / `Player`; the `duplicate_deep()` overrides exist to prevent that class of bug. → [`docs/wiki/magiclike-architecture.md`](docs/wiki/magiclike-architecture.md)
 - **Don't let the engine call the text generator.** Keep the engine UI-free — emit a structured "trigger fired" signal; the presentation layer renders the log/text. → [`docs/wiki/magiclike-architecture.md`](docs/wiki/magiclike-architecture.md)
 
+## Comments
+
+A comment must state something the code cannot: a constraint, invariant, rule citation, caller contract, or external data shape. Write in the eternal present — no diff narration ("removed", "the old X", version stamps), no port-phase labels, no "verified"-style claims (pin those with a test), no features that don't exist. Shortest true form; when editing code, update or delete the comments it touches. *(Why + the failure taxonomy: [`docs/wiki/comment-doctrine.md`](docs/wiki/comment-doctrine.md).)*
+
 ## Risks and gotchas
 
 - **`addons/card-framework/` is vendored — never edit it in place.**

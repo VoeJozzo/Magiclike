@@ -19,6 +19,7 @@ For html-proto deferred work, see [`reference/html-proto/BACKLOG.md`](../referen
 
 ### Rules-engine correctness
 - **Trigger chain depth cap** — Godot to mirror proto's 100-depth threshold in `_drain_pending_triggers`. See `docs/DIVERGENCE.md` E6.
+- **Stale target token in `JsonCardLoader._USER_PICKED_TARGETS`** (`engine/json_card_loader.gd` ~42). The list has `graveyard_creature` (retired proto-side; zero cards emit it) but lacks `graveyard_card` (six live cards emit it — grep-verified 2026-07-18). Those six cards load with `requires_target = false`, so the Godot side would cast them without target selection. Fix: swap the token, trim the adjacent "verified across the pool" comment (see CLAUDE.md → Comments), and pin `requires_target` for one affected card in a test. Found by the 2026-07-18 comment audit.
 
 ### Divergence-tracked work
 The following items live in `docs/DIVERGENCE.md` as their primary tracker. Listed here so they're visible in the BACKLOG queue. Look up each by its ID for full context and TO-DO details.
@@ -50,6 +51,7 @@ The following items live in `docs/DIVERGENCE.md` as their primary tracker. Liste
 - **G1** — opponent hand face-down UI (godot) — engine handles hidden info correctly; UI leaks identity
 
 ### AI
+- **`_predict_block_for` doesn't implement its own heuristic** (`engine/ai/combat.gd` ~109–133). Its comment says "smallest blocker that survives, else smallest available"; the loop anchors on the *first* eligible blocker and only replaces it with a lower-power survivor — a dying anchor never yields to a surviving bigger blocker, and the fallback is "first", not "smallest". Attack decisions mispredict blocks in some board states. The comment is the sole record of intent; check the JS original (`js/ai.js`, scored `predictOppBlocks`) before deciding which side to fix, then pin with a test. Found by the 2026-07-18 comment audit.
 - **Per-effect triggered-ability scoring in `AIScoring.card_value`.** Currently a flat keyword/triggered-ability bump. The JS prototype walks effects to score them individually (a Pyromaniac-style ETB is worth less than a Sheoldred-style draw-step lifelink). Deferred from Phase 5b.
 
 ### Tooling / process
