@@ -119,7 +119,6 @@ function searchFilterNoun(filter, includeCard) {
   if (!filter) return 'card';
   if (typeof filter === 'string') return filter.toLowerCase() + suffix;
   if (filter.subtype) return filter.subtype.toLowerCase() + suffix;
-  if (filter.sub) return filter.sub.toLowerCase() + suffix;
   if (filter.type) return filter.type.toLowerCase() + suffix;
   return 'card';
 }

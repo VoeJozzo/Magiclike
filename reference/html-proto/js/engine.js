@@ -1629,7 +1629,6 @@ function sacValueOnBoard(card) {
   if (kw.includes('defender')) v -= 1;
   for (const ab of (card.abilities || [])) v += abilityValue(ab);
   // thisEnters already fired → 0.3× (residual for flicker plays).
-  const FREQ_ONCE = new Set(['thisEnters', 'thisDies']);
   for (const trig of (card.triggers || [])) {
     if (!trig.effects || !trig.effects.length) continue;
     const perFiring = abilityValue({ effects: trig.effects });
@@ -2243,7 +2242,6 @@ function normalizeSearchFilter(filter) {
 function matchesSearchFilter(card, filter) {
   filter = normalizeSearchFilter(filter);
   if (filter.type && !hasType(card, filter.type)) return false;
-  if (filter.sub && !hasType(card, filter.sub)) return false;
   if (filter.subtype && !hasType(card, filter.subtype)) return false;
   return true;
 }
@@ -3152,7 +3150,6 @@ const EFFECTS = {
     if (!Array.isArray(G.delayedTriggers)) G.delayedTriggers = [];
     G.delayedTriggers.push({
       fireAt: 'endStep',
-      fireFor: 'either',
       effect: 'deferredEffects',
       effects: (params.effects || []).map(e => ({...e})),
       target: target || ctx.chosen || null,
@@ -3809,8 +3806,6 @@ const MATCH_FILTER_KEYS = new Set([
   'not_token', 'spliceable_base', 'spliceable_staple',
   // graveyard_card search axes (consumed in getValidTargets, not matchFilter)
   'graveyards', 'select',
-  // library-search axis (matchesSearchFilter's `sub` shorthand)
-  'sub',
   // Source-exclusion axis ("exile ANOTHER target creature you control" —
   // Tideglass Broker). NOT consumed by matchFilter (which has no source in
   // scope): enforced in the ts* trigger-targeting layer, which threads the
@@ -7031,11 +7026,7 @@ function doDeclareAttackers(who, cardIids) {
   // Done after the tap so triggers see the post-tap state.
   for (const iid of cardIids) {
     const f = findCard(iid); if (!f) continue;
-    // attacker/defender are DEAD legacy payload fields — the condId vocabulary
-    // is fully retired (DIVERGENCE E2) and grep finds zero consumers of either.
-    // Composable triggers read subject_card/defender_key. Removing the dead
-    // pair was suite-green but is a payload change — staged, not shipped here.
-    emit({type: 'attacks', attacker: f.card, controller: who, defender: opp(who),
+    emit({type: 'attacks', controller: who,
           subject_iid: f.card.iid, subject_card: f.card, defender_key: opp(who)});
   }
   // Phase advances via priority round (or skip-combat fast-path in step).
@@ -8069,10 +8060,7 @@ function step() {
         if (Array.isArray(G.delayedTriggers) && G.delayedTriggers.length > 0) {
           const stillPending = [];
           for (const dt of G.delayedTriggers) {
-            // 'fireFor' is whose end step the trigger fires on: 'either',
-            // 'you', or 'opp'. Default to 'either' for v1 simplicity.
-            const matchesPlayer = !dt.fireFor || dt.fireFor === 'either' || dt.fireFor === ap;
-            if (dt.fireAt === 'endStep' && matchesPlayer) {
+            if (dt.fireAt === 'endStep') {
               if (dt.effect === 'deferredEffects' && Array.isArray(dt.effects)) {
                 // Apply the scheduled effects on the captured target (e.g.
                 // exile_until_eot's move_card(exile→battlefield)). Tokens that
