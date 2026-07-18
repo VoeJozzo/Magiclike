@@ -185,7 +185,7 @@ const EXPOSED = [
   'targetPhrase', 'withFilter', 'plainSeg', 'indefiniteArticle', 'manaCostBraces',
   'bumpedSeg', 'bumpedDerived',
   'segsToText', 'capitalize', 'capitalizeSegs',
-  'triggerPreamble', 'abilityCostPhrase', 'keywordPreamble',
+  'triggerPreamble', 'abilityCostPhrase',
   // Unified type system (types.js, all module-scope, no IIFE — Phase 1).
   'TYPE_REGISTRY', 'typeRegistryEntry', 'typeCategory', 'isCardTypeTag',
   'typesOf', 'hasType', 'addType', 'subtypesOf', 'governingType',

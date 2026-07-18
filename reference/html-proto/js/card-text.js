@@ -75,7 +75,6 @@ function targetNoun(eff) {
   if (t === 'graveyard_card') return 'target card';  // detail composed by graveyardCardPhrase (see withFilter)
   if (t === 'permanent')return 'target permanent';
   if (t === 'spell')    return 'target spell';
-  if (t === 'card')     return 'target card';
   return t || '';
 }
 
@@ -147,7 +146,6 @@ function describeAmount(amount) {
       target_toughness: "the target's toughness",
       source_power:     "this creature's power",
       source_toughness: "this creature's toughness",
-      mana_spent:       'mana spent on it',
     };
     return dynMap[amount.from] || ('X (' + amount.from + ')');
   }
@@ -1175,12 +1173,6 @@ function keywordPreambleSegs(keywords, stickerKws) {
     segs.push((stickerKws && stickerKws.has(k)) ? { text: name, highlight: false, sticker: true } : plainSeg(name));
   });
   return segs;
-}
-
-// Keyword list as a flat "Flying, Vigilance" string (no period). Delegates to
-// the segment version so there's one source of truth for display names/filtering.
-function keywordPreamble(keywords) {
-  return keywordPreambleSegs(keywords).map(s => s.text).join('');
 }
 
 // Flat string for storage/logging. UI uses describeCardSegments for highlights.

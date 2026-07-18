@@ -1387,7 +1387,7 @@ function nativeKeywordStyle(card, colorKey) {
 // (CSS vars) to match the keyword-badge palette. Each icon carries a
 // "Display: reminder" string in data-tip, rendered on hover by the custom
 // #iconTip popup (Almendra, palette-matched — see CONTROLLER tooltip wiring),
-// not the browser's native title tooltip. Selection mirrors keywordPreamble:
+// not the browser's native title tooltip. Selection mirrors keywordPreambleSegs:
 // creatures show every keyword; non-creatures show only spell-legal ones
 // (flash) plus innate. innate is included on both branches — it reads as a coin
 // like any other keyword wherever it lands (a creature that somehow gains innate
