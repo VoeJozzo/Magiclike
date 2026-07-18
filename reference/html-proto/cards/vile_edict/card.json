@@ -1,5 +1,6 @@
 {
   "card_id": "vile_edict",
+  "boss": true,
   "art": "art.png",
   "cost": {
     "B": 2
@@ -18,7 +19,6 @@
     }
   ],
   "name": "Vile Edict",
-  "special": true,
   "types": [
     "Sorcery"
   ]

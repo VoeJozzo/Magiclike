@@ -30,7 +30,7 @@ function draftPool() {
     // excluding it (plus the special carve-out) is the whole land rule.
     _draftPoolCache = Object.keys(CARDS).filter(id => {
       const c = CARDS[id];
-      if (c.special) return false;
+      if (isUndraftable(c)) return false;
       return !hasType(c, 'Basic');
     });
   }

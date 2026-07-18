@@ -1,5 +1,6 @@
 {
   "card_id": "elystra_the_immortal",
+  "boon": true,
   "art": "art-1.png",
   "art_ladder": [
     {
@@ -22,7 +23,6 @@
   "permanent_eot": true,
   "power": 1,
   "rip_on_target": true,
-  "special": true,
   "text": "End-of-turn effects on Elystra last forever (buffs, granted keywords). Whenever a non-creature spell targets Elystra, rip it from its caster's deck after it resolves.",
   "toughness": 1,
   "custom_text": true,

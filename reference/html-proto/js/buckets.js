@@ -700,7 +700,7 @@ function ensurePool() {
     // explicitly undraftable cards are seen, never offered.
     const a = analyze(tpl);
     _byId[id] = a;
-    if (tpl.special) continue;
+    if (isUndraftable(tpl)) continue;
     const w = tpl.draftWeight;
     if (typeof w === 'number' && w <= 0) continue;
     _pool.push(a);

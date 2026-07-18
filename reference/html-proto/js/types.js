@@ -54,6 +54,10 @@ function typesOf(card) {
 
 // Membership over the effective type set (word-exact — same intent as the legacy
 // `card_has_subtype` / matchFilter checks).
+// A card kept out of the normal draft/offer pool: a run boon or a boss-deck card.
+// Splice-exclusion is a SEPARATE axis (stapleable) -- deliberately NOT folded in here.
+function isUndraftable(tpl) { return !!(tpl && (tpl.boon || tpl.boss)); }
+
 function hasType(card, tag) {
   return !!card && !!tag && typesOf(card).includes(tag);
 }
