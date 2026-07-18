@@ -513,7 +513,7 @@ function hasSave() {
   try { return !!localStorage.getItem(SAVE_KEY); } catch (e) { return false; }
 }
 
-function start(playerDeck, modifierId) {
+function start(playerDeck) {
   // Deck → slots {tplId, stickers}. Lands are slots too (need innate sticker support).
   // charges_at_run_start templates (Stapler) get a charges counter.
   const slots = playerDeck.cards.map(tplId => {
@@ -524,47 +524,10 @@ function start(playerDeck, modifierId) {
     }
     return slot;
   });
-  // Apply Neow-style run modifier (boon) if one was chosen.
-  if (modifierId && RUN_MODIFIERS[modifierId]) {
-    // Pass the in-progress slots into apply() so boons can reflect on the
-    // deck — e.g., to pick a random creature slot to anoint, or to skip
-    // application if no eligible slots exist.
-    // CONTRACT (stated identically in cards.js above RUN_MODIFIERS):
-    // apply(slots) may mutate the slots array in place OR return
-    // {extras: [...]} of new slots to append.
-    // Today all 7 boons return extras only (each grants a card); none
-    // mutates slots in place. In-place mutation is the documented shape
-    // for a future boon that modifies existing slots rather than adding
-    // new ones.
-    const result = RUN_MODIFIERS[modifierId].apply(slots) || {};
-    if (Array.isArray(result.extras)) {
-      for (const e of result.extras) {
-        // Pass through optional slot-level fields. Most boon-extras only
-        // need tplId + stickers (City of Brass, Elystra, Phylactery);
-        // future boons may want to seed empowerRolls, subtypeRolls, or
-        // bonusTriggers directly (and stickers — including stat_boost/kw_*, the
-        // channel Elystra's permanent buffs now use). The extras slot is the
-        // right place for these — they're how the boon shapes the slot it adds.
-        // (The triggerPool passthrough below is legacy-save support only:
-        // Mercurial Adept now seeds her pool via trigger_pool_seed — see
-        // engine.js makePlayer — and no current boon passes a triggerPool.)
-        const slot = { tplId: e.tplId, stickers: (e.stickers || []).slice() };
-        if (e.triggerPool) slot.triggerPool = e.triggerPool;
-        if (e.bonusTrigger) slot.bonusTrigger = e.bonusTrigger;
-        if (e.empowerRolls) slot.empowerRolls = e.empowerRolls.slice();
-        if (e.subtypeRolls) slot.subtypeRolls = e.subtypeRolls.slice();
-        const extraTpl = CARDS[e.tplId];
-        if (extraTpl && typeof extraTpl.charges_at_run_start === 'number') {
-          slot.charges = (typeof e.charges === 'number') ? e.charges : extraTpl.charges_at_run_start;
-        }
-        slots.push(slot);
-      }
-    }
-  }
   runState = {
     slots,
     colors: playerDeck.colors,
-    modifier: modifierId || null,
+    modifier: null,
     gameNum: 0,
     wins: 0,
     active: true,

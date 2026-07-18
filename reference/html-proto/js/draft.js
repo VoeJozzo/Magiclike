@@ -67,20 +67,43 @@ function startDraft(mode) {
     youPicks: [],
     mode: mode || 'classic',
     complete: false,
+    boon: null,
   };
+  // Boon = the run's pick #0: a card chosen from the boon pool, offered in every
+  // mode that used to show the Neow boon modal (classic + growing, NOT desertCube).
+  // pickPlayer's boon branch stores it, then beginPacks() starts the real draft.
+  if (state.mode !== 'desertCube') {
+    state.boonPhase = true;
+    state.currentPack = rollBoonOffer();
+  } else {
+    beginPacks();
+  }
+  PICKLOG.startDraft();
+}
+
+// First real pack (or bucket offer) — after the boon, or immediately for
+// desertCube (which has no boon). Growing Deck's buckets are set up here.
+function beginPacks() {
   if (state.mode === 'growing') {
-    // Growing Deck: no card packs — the player picks GROWING_START_BUCKETS
-    // buckets (generated fresh against the empty-then-growing pick list, so
-    // the FIRST pick is effectively the run's banner: it chooses the colors
-    // every later offer respects).
     state.bucketsPicked = 0;
     state.currentPack = [];
     state.bucketOffer = BUCKETS.rollBucketOffer([]);
   } else {
     state.currentPack = rollPackForMode(draftPool(), [], state.mode);
   }
-  PICKLOG.startDraft();
 }
+
+// The run's pick #0 offer: 3 random cards from the boon pool (cards tagged `boon`).
+function rollBoonOffer() {
+  const pool = Object.keys(CARDS).filter(id => CARDS[id] && CARDS[id].boon);
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  return pool.slice(0, 3);
+}
+
+function isBoonPhase() { return !!(state && state.boonPhase); }
 
 // --- Growing Deck run-start draft ---
 function getBucketOffer() {
@@ -770,6 +793,15 @@ function isComplete()    { return state ? state.complete : false; }
 
 function pickPlayer(tplId) {
   if (!state || state.complete) return;
+  // Pick #0: the boon. Stored on state.boon, NOT youPicks, so it stays an EXTRA
+  // card (as the Neow boon always was) and doesn't consume a draft pick.
+  if (state.boonPhase) {
+    if (!state.currentPack.includes(tplId)) return;
+    state.boon = tplId;
+    state.boonPhase = false;
+    beginPacks();
+    return;
+  }
   if (!state.currentPack.includes(tplId)) return;
   // Log the pick before mutating state — capture the pack as it was offered.
   PICKLOG.logPick(tplId, state.currentPack);
@@ -853,9 +885,12 @@ function getPlayerDeck() {
   // Classic mode: 23 spell picks + 17 auto-allocated lands (proportional to
   // colored pips). Desert Cube and Growing Deck: the youPicks list already
   // includes lands (drafted directly / carried by buckets) — no allocation.
-  const cards = (state.mode === 'desertCube' || state.mode === 'growing')
+  const base = (state.mode === 'desertCube' || state.mode === 'growing')
     ? state.youPicks.slice()
     : [...state.youPicks, ...allocLands(pips)];
+  // The boon (pick #0) rides along as an extra card; its colour is NOT in `pips`,
+  // so land allocation still reflects only the drafted spells (as before).
+  const cards = state.boon ? [state.boon, ...base] : base;
   return {
     cards,
     colors,
@@ -869,7 +904,7 @@ function summarizeColors(pips) {
 }
 
 return {
-  startDraft, getPlayerPack, getProgress, pickPlayer, isComplete,
+  startDraft, getPlayerPack, getProgress, pickPlayer, isComplete, isBoonPhase,
   getPlayerDeck, buildOpponentDeck,
   // Growing Deck run-start draft (bucket picks instead of card picks):
   getBucketOffer, pickBucketOffer,

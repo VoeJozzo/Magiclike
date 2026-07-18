@@ -619,53 +619,19 @@ function continueRun() {
     showStartScreen();
   }
 }
-// Transient pre-run choice; runState.modifier holds the final value post-draft.
-let pendingNeowModifier = null;
 let pendingDraftMode = 'classic';
 
 function newRun(mode) {
   clearTransientGameUi();
-  // Desert Cube skips Neow (cube+boon interaction not designed).
   Modal.hide('gameover');
-  pendingNeowModifier = null;
   pendingDraftMode = mode || 'classic';
-  if (pendingDraftMode === 'desertCube') {
-    DRAFT.startDraft(pendingDraftMode);
-    inDraft = true;
-    renderDraft();
-    return;
-  }
-  showNeowChoice();
+  // The boon is now the draft's pick #0 (see DRAFT.startDraft), so every mode
+  // -- including Desert Cube (no boon) -- goes straight into the draft screen.
+  DRAFT.startDraft(pendingDraftMode);
+  inDraft = true;
+  renderDraft();
 }
 
-function showNeowChoice() {
-  // alwaysOffered boons fill stable left positions; rest random-fill.
-  const TARGET_BOONS = 3;
-  const allIds = Object.keys(RUN_MODIFIERS);
-  const alwaysIds = allIds.filter(id => RUN_MODIFIERS[id].alwaysOffered);
-  const poolIds = allIds.filter(id => !RUN_MODIFIERS[id].alwaysOffered);
-
-  const shuffledPool = poolIds.slice();
-  for (let i = shuffledPool.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffledPool[i], shuffledPool[j]] = [shuffledPool[j], shuffledPool[i]];
-  }
-  const fillCount = Math.max(0, TARGET_BOONS - alwaysIds.length);
-  const randomIds = shuffledPool.slice(0, fillCount);
-
-  const offered = [...alwaysIds, ...randomIds];
-
-  // Each boon renders AS the card it grants — cards.js's contract states every
-  // RUN_MODIFIERS id is a real card tplId, and all of them hold to it. A boon with
-  // no card is a config error: fail loudly rather than render a stand-in.
-  const items = offered.map(id => ({ card: ENGINE.makeCard(RUN_MODIFIERS[id].id), value: id }));
-  showCardPickModal({
-    title: 'A Boon Awaits',
-    subtitle: 'Choose a gift to shape your run.',
-    items, onPick: pickNeow,
-    accent: '#4a90c8', accentText: '#9bd0ff',   // boon blue
-  });
-}
 
 // Unified card-pick modal — the one popup behind the Neow boons AND the post-draft
 // land offer (previously two separate modals). Fills the shared #cardPickModal
@@ -688,13 +654,6 @@ function showCardPickModal({ title, subtitle, items, onPick, colorTpls, accent, 
   Modal.show('cardPickModal', { dismissible: false });
 }
 
-function pickNeow(id) {
-  pendingNeowModifier = id;
-  Modal.hide('cardPickModal');
-  DRAFT.startDraft(pendingDraftMode);
-  inDraft = true;
-  renderDraft();
-}
 
 function pickDraft(tplId) {
   if (!inDraft) return;
@@ -715,8 +674,7 @@ function afterDraftPick() {
     inDraft = false;
     document.getElementById('draftScreen').classList.remove('vis');
     const playerDeck = DRAFT.getPlayerDeck();
-    RUN.start(playerDeck, pendingNeowModifier);
-    pendingNeowModifier = null;
+    RUN.start(playerDeck);
     lastGameRecorded = false;
     if (RUN.getPostDraftOffer && RUN.getPostDraftOffer()) {
       renderPostDraftOffer();
@@ -1615,9 +1573,27 @@ function renderReward() {
     return;
   }
 }
+// Pick #0: the boon offer on the draft screen. Same picker as the packs; the
+// chosen card lands on DRAFT.state.boon and later rides into the deck.
+function renderBoonPhase() {
+  document.getElementById('draftPickNum').textContent = '0';
+  const totalEl = document.getElementById('draftPickTotal');
+  if (totalEl) totalEl.textContent = DRAFT.getProgress().total;
+  const subtitleEl = document.getElementById('draftSubtitle');
+  if (subtitleEl) subtitleEl.textContent = "✦ A boon awaits - your run's first pick. Choose one.";
+  renderCardPicker(
+    document.getElementById('draftPack'),
+    DRAFT.getPlayerPack().map(tplId => ({ card: ENGINE.makeCard(tplId), value: tplId })),
+    pickDraft,
+  );
+  document.getElementById('draftPicksList').textContent = '(none yet)';
+  renderColorHud('draftColors', []);
+}
+
 function renderDraft() {
   const screen = document.getElementById('draftScreen');
   screen.classList.add('vis');
+  if (DRAFT.isBoonPhase()) { renderBoonPhase(); return; }
   const progress = DRAFT.getProgress();
   document.getElementById('draftPickNum').textContent = (progress.picked + 1);
   // Total varies by mode — classic = 23 spell picks, Desert Cube = 40 full
@@ -1660,12 +1636,10 @@ function renderDraft() {
   // player sees they've already committed to the card it grants.
   const picks = DRAFT._state() ? DRAFT._state().youPicks : [];
   const draftedNames = picks.map(id => CARDS[id].name);
+  const _st = DRAFT._state();
   let boonName = null;
-  if (pendingNeowModifier && RUN_MODIFIERS[pendingNeowModifier]) {
-    // Name the CARD the player actually clicked, not the boon's flavour name: the
-    // picker renders the card (e.g. "City of Brass"), so the footer must agree.
-    const boonTpl = RUN_MODIFIERS[pendingNeowModifier].id;
-    boonName = '✦ ' + (CARDS[boonTpl] ? CARDS[boonTpl].name : boonTpl);
+  if (_st && _st.boon && CARDS[_st.boon]) {
+    boonName = '✦ ' + CARDS[_st.boon].name;   // the draft's pick #0 -- a real card
   }
   const allEntries = boonName ? [boonName, ...draftedNames] : draftedNames;
   const summary = allEntries.join(', ');
