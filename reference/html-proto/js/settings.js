@@ -22,19 +22,19 @@ const SETTINGS = (function() {
 
 const STORAGE_KEY = 'magiclike_settings_v1';
 
-// Per-element baseline px sizes (at --scale 1). Drives the size dropdown
-// labels in the settings UI and the buildSizeOptions() helper below.
-// Element names match the suffix on each CSS custom property
-// (--card-font-NAME / --card-fsize-NAME / etc.) and the .frame-NAME class.
+// Settings-UI rows for the per-element font controls. Element names match
+// the suffix on each CSS custom property (--card-font-NAME /
+// --card-fsize-NAME / etc.) and the .frame-NAME class. Baseline px sizes
+// live as literal args at the buildSizeOptions() call sites.
 const CARD_FONT_ELEMENTS = [
-  { key: 'name',     label: 'Name',          baseline: 7, slot: 'title' },
-  { key: 'type',     label: 'Type line',     baseline: 5, slot: 'title' },
-  { key: 'pt',       label: 'P/T',           baseline: 5, slot: 'title' },
-  { key: 'damage',   label: 'Damage marker', baseline: 5, slot: 'title' },
-  { key: 'text',     label: 'Oracle text',   baseline: 6, slot: 'body' },
-  { key: 'stickers', label: 'Stickers',      baseline: 5, slot: 'body' },
-  { key: 'pip',      label: 'Mana pip',      baseline: 3, slot: 'pip' },
-  { key: 'bumped',   label: 'Cost arrow',    baseline: 4, slot: 'pip' },
+  { key: 'name',     label: 'Name',          slot: 'title' },
+  { key: 'type',     label: 'Type line',     slot: 'title' },
+  { key: 'pt',       label: 'P/T',           slot: 'title' },
+  { key: 'damage',   label: 'Damage marker', slot: 'title' },
+  { key: 'text',     label: 'Oracle text',   slot: 'body' },
+  { key: 'stickers', label: 'Stickers',      slot: 'body' },
+  { key: 'pip',      label: 'Mana pip',      slot: 'pip' },
+  { key: 'bumped',   label: 'Cost arrow',    slot: 'pip' },
 ];
 
 const DEFAULTS = {

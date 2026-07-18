@@ -539,23 +539,13 @@ function start(playerDeck, modifierId) {
     const result = RUN_MODIFIERS[modifierId].apply(slots) || {};
     if (Array.isArray(result.extras)) {
       for (const e of result.extras) {
-        // Pass through optional slot-level fields. Most boon-extras only
-        // need tplId + stickers (City of Brass, Elystra, Phylactery);
-        // future boons may want to seed empowerRolls, subtypeRolls, or
-        // bonusTriggers directly (and stickers — including stat_boost/kw_*, the
-        // channel Elystra's permanent buffs now use). The extras slot is the
-        // right place for these — they're how the boon shapes the slot it adds.
-        // (The triggerPool passthrough below is legacy-save support only:
-        // Mercurial Adept now seeds her pool via trigger_pool_seed — see
-        // engine.js makePlayer — and no current boon passes a triggerPool.)
+        // Boon extras carry tplId + stickers (City of Brass, Elystra,
+        // Phylactery — including stat_boost/kw_*, the channel Elystra's
+        // permanent buffs use); charges seed from the template.
         const slot = { tplId: e.tplId, stickers: (e.stickers || []).slice() };
-        if (e.triggerPool) slot.triggerPool = e.triggerPool;
-        if (e.bonusTrigger) slot.bonusTrigger = e.bonusTrigger;
-        if (e.empowerRolls) slot.empowerRolls = e.empowerRolls.slice();
-        if (e.subtypeRolls) slot.subtypeRolls = e.subtypeRolls.slice();
         const extraTpl = CARDS[e.tplId];
         if (extraTpl && typeof extraTpl.charges_at_run_start === 'number') {
-          slot.charges = (typeof e.charges === 'number') ? e.charges : extraTpl.charges_at_run_start;
+          slot.charges = extraTpl.charges_at_run_start;
         }
         slots.push(slot);
       }
@@ -563,7 +553,6 @@ function start(playerDeck, modifierId) {
   }
   runState = {
     slots,
-    colors: playerDeck.colors,
     modifier: modifierId || null,
     gameNum: 0,
     wins: 0,
@@ -645,7 +634,7 @@ function generateMap() {
       }
       nodes.push({
         id: idForLevelCol(level, col),
-        level, col, type, color, constructedId, cols,
+        level, col, type, color, constructedId,
       });
     }
   }

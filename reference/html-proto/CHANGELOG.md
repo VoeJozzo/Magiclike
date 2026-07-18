@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.2.34`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.2.35`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -3031,3 +3031,28 @@ is invisibility, not mis-gating.) (4) coherenceOf's "anti-grab-bag gate"
 comment corrected to "analytics metric" — it stopped being a gate when
 MIN_COHERENCE retired (v2.2.26). Behavior change (damage arms re-weighted);
 suite 150 files / 2997 green.
+
+v2.2.35: Vibecode-audit kill batch — all 40 adversarially-verified dead-code
+findings (K1-K40, Joe-approved 2026-07-17) removed across 12 files, ~120
+lines net deletion, behavior-neutral by construction: every cut was
+dual-verified unreachable by independent prove-it-alive + intent-archaeology
+skeptics, pre-flighted against unmerged branches (the pending
+fix-buckets-flake branch's use of _setRandForTest is why that sibling seam
+LIVES while _setColorPullForTest died), and re-read at the cut site.
+Highlights: the never-written filter.sub search axis (engine + validator +
+card-text renderer), delayedTriggers.fireFor (producer hardcoded 'either'),
+the attacks-emit legacy attacker/defender fields (a prior session staged
+this removal in a comment; now shipped), the edict-modal corpse (dead
+export + DOM + CSS + the defensive Modal.hide that existed only because the
+DOM was left behind), nativeKeywordBadgesHtml (46 lines, superseded by
+keywordIconsHtml), orphan tokens bear_g_2_2/saproling_g_1_1 plus their
+dangling TOKEN_ALIAS entries, the oppPool alias, eight always-true
+existence guards, eight dead CSS families, and assorted write-only fields
+(runState.colors, map-node cols, CONSTRUCTED_DECKS descriptions,
+getPlayerDeck picks, CARD_FONT_ELEMENTS baseline, token text fields).
+Full audit report + evidence: ~/.config/magiclike/audit/vibecode-2026-07-17/.
+Honesty note: batch E's commit-time suite run flashed the known 1-in-6
+buckets full-suite statistical flake (pre-existing, documented on the
+pending fix-buckets-flake branch; batch E touches nothing buckets_test
+exercises); three subsequent full-suite runs green. No behavior change
+intended or observed. Suite 150 files / 2997 green; lint clean.
