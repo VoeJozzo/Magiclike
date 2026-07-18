@@ -1180,7 +1180,7 @@ function isValidTargetCreature(eff, card) {
 // a badge would be redundant: keyword/trigger → colored in the oracle text (see
 // segmentsToHtml's .sticker-granted); subtype → the type line; innate → "Innate."
 // in the oracle text; stat_boost → the P/T box; cost_mod → the cost pips. Kept
-// (not listed): empower, grant_mana_ability, remove_keyword — those carry info no
+// (not listed): empower, remove_keyword — those carry info no
 // other frame element surfaces. (subtype + add_type both show in the type line.)
 const FRAME_REDUNDANT_STICKER_KINDS = new Set(
   ['keyword', 'trigger', 'subtype', 'add_type', 'innate', 'stat_boost', 'cost_mod']);
@@ -1232,18 +1232,12 @@ function stickerBadgesHtml(stickers, big, empowerRolls, tplId, stapledTpls) {
     counts.set(sId, (counts.get(sId) || 0) + 1);
   }
   // Only the KEPT kinds reach here (the rest were skipped above): today that's
-  // grant_mana_ability (a "+{R}" pip) and remove_keyword / other inline kinds
-  // (rendered by name). All use the generic 'skw' badge style.
+  // remove_keyword / other inline kinds (rendered by name). All use the
+  // generic 'skw' badge style.
   for (const [sId, n] of counts) {
     const s = STICKERS[sId];
     if (!s) continue;
-    // landColor-style label routes the brace token through renderManaSymbols so
-    // it shows the color pip instead of literal {W} text (injected as innerHTML).
-    // (Innate + other keyword stickers are skipped above via
-    // FRAME_REDUNDANT_STICKER_KINDS — innate shows via the "Innate." oracle line.)
-    let label = (s.kind === 'grant_mana_ability')
-      ? '+' + renderManaSymbols('{' + s.color + '}')
-      : (s.name || s.kind);   // remove_keyword ("Loses Defender"), set_color, …
+    let label = s.name || s.kind;   // remove_keyword ("Loses Defender"), set_color, …
     if (n > 1) label += ` ×${n}`;
     parts.push(`<span class="stk-badge skw" title="${s.text}">${label}</span>`);
   }
@@ -1515,7 +1509,6 @@ function cardToViewModel(card, opts) {
     if (effC > baseC) bumpedMarker = '<span class="frame-bumped">↑</span>';
   }
 
-  const typeText = typeLine(card);
   const typeHtml = typeLineHtml(card);
 
   let oracleHtml;
@@ -1562,7 +1555,7 @@ function cardToViewModel(card, opts) {
 
   return {
     colorKey, isCreature, pow, tou,
-    pipsHtml, bumpedMarker, typeText, typeHtml, oracleHtml,
+    pipsHtml, bumpedMarker, typeHtml, oracleHtml,
     keywordIconsHtml: kwIconsHtml,
     artInner, stickersInner,
   };

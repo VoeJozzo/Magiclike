@@ -48,7 +48,7 @@ console.log('\n=== Threaten: grant_haste + untap + eot duration ===');
   clearBoards();
   const c = place('opp');
   c.tapped = true;
-  ENGINE.applyEffect(CTX, { kind: 'change_control', duration: 'eot', grant_haste: true, untap_on_take: true },
+  ENGINE.applyEffect(CTX, { kind: 'change_control', duration: 'eot', grant_haste: true, untap: true },
     { kind: 'creature', iid: c.iid });
   check('taken to your side', has(G.you.battlefield, c.iid));
   check('untapped on take', c.tapped === false);

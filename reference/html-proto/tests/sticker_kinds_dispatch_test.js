@@ -212,9 +212,7 @@ console.log('\n=== stickersForSlot: each kind reflects into view correctly ===')
 
 console.log('\n=== stickerBadgesHtml: only non-redundant kinds render (Q2) ===');
 
-// KEPT — info no other frame element surfaces. (grant_mana_ability is also a
-// kept kind, but no registry sticker uses it post-Q3 — land stickers are now
-// add_type — so it's exercised only by inline/boss descriptors, not here.)
+// KEPT — info no other frame element surfaces.
 {
   const roll = { location: 'abilities', subIdx: 0, effIdx: 0, modeIdx: null, field: 'amount' };
   const html = stickerBadgesHtml(['empower'], false, [roll], 'spitfire_bastion');

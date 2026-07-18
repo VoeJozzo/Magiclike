@@ -139,7 +139,6 @@ function init() {
 function stickerAppliesLabel(s) {
   switch (s.kind) {
     case 'stat_boost':     return 'creatures';
-    case 'grant_mana_ability':     return "lands that don't already produce {" + s.color + '} (deck must play ' + s.colorAdj + ')';
     case 'add_type':      return s.color
       ? "lands that don't already produce {" + s.color + '} (deck must play ' + s.colorAdj + ')'
       : 'permanents (adds the ' + s.type + ' type)';
@@ -181,7 +180,7 @@ function appendStickerSectionToBrowser(inner) {
   };
   const isInnateSticker = s => s.kind === 'keyword' && s.keyword === 'innate';
   for (const s of allStickers) {
-    if (s.kind === 'grant_mana_ability' || s.kind === 'add_type' || isInnateSticker(s)) groups['Land mods'].push(s);
+    if (s.kind === 'add_type' || isInnateSticker(s)) groups['Land mods'].push(s);
     else if (s.kind === 'keyword')                     groups['Keyword grants'].push(s);
     else                                               groups['Card boosts'].push(s);
   }
@@ -619,7 +618,7 @@ function continueRun() {
     showStartScreen();
   }
 }
-// Transient pre-run choice; runState.modifier holds the final value post-draft.
+// Transient pre-run choice; consumed by RUN.start when the run begins.
 let pendingNeowModifier = null;
 let pendingDraftMode = 'classic';
 
@@ -661,7 +660,7 @@ function showNeowChoice() {
   const items = offered.map(id => {
     const m = RUN_MODIFIERS[id];
     if (CARDS[m.id]) return { card: ENGINE.makeCard(m.id), value: id };
-    const boonArt = m.art || '✦';
+    const boonArt = '✦';
     return { synthetic: { name: m.name || '', type: 'Boon', text: m.text || '', art: boonArt, color: 'C', scale: 2 }, value: id };
   });
   showCardPickModal({
@@ -1140,10 +1139,6 @@ function renderMap() {
     }
     switch (node.type) {
       case 'combat': return '⚔';
-      case 'elite':  return '☠';
-      case 'shop':   return '$';
-      case 'event':  return '?';
-      case 'rest':   return '🛏';
       default:       return '?';
     }
   };
@@ -1152,10 +1147,6 @@ function renderMap() {
   const labelForType = (type) => {
     switch (type) {
       case 'combat': return 'Draft Deck';
-      case 'elite':  return 'Elite Enemy';
-      case 'shop':   return 'Shop';
-      case 'event':  return 'Event';
-      case 'rest':   return 'Rest Site';
       case 'boss':   return 'Boss';
       default:       return 'Unknown';
     }

@@ -553,7 +553,6 @@ function start(playerDeck, modifierId) {
   }
   runState = {
     slots,
-    modifier: modifierId || null,
     gameNum: 0,
     wins: 0,
     active: true,

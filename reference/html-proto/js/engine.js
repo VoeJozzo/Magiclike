@@ -2342,14 +2342,6 @@ const ABSORB_KEYWORD_PRIORITY = {
   reach: 1, menace: 1,
 };
 
-// Legacy save safety: older Codex outputs used bare-name token ids ('goblin'
-// etc.). Module-scope (not inside create_tokens) so the EFFECT_SCHEMA
-// create_tokens validator accepts the same aliases the handler resolves.
-const TOKEN_ALIAS = {
-  goblin: 'goblin_r_1_1',
-  soldier: 'soldier_w_1_1',
-  spirit: 'spirit_w_1_1',
-};
 
 const EFFECTS = {
   damage(ctx, params, target) {
@@ -2980,7 +2972,6 @@ const EFFECTS = {
   // Mint tokens. Params: token_id (TOKENS key), count (default 1), controller ('self'|'opp').
   create_tokens(ctx, params) {
     let token_id = params.token_id;
-    if (token_id && TOKEN_ALIAS[token_id]) token_id = TOKEN_ALIAS[token_id];
     if (!token_id || !TOKENS[token_id]) {
       log(`${ctx.sourceName} fizzles — unknown token ${token_id}.`, 'sp');
       return;
@@ -3163,8 +3154,7 @@ const EFFECTS = {
   // steal variant (permanent run-slot transfer) — delegated to the proven
   // steal handler. Otherwise it's a control change (Mind Control / Threaten):
   // pluck from the current controller, push to the caster, with optional
-  // untap_on_take / grant_haste / duration (eot). Accepts both the new
-  // snake_case param names and the legacy ones during cutover. The card
+  // untap / grant_haste / duration (eot). The card
   // migration is done — gainControl is retired (no handler; effect_migration_test
   // pins it GONE). steal remains permanently BY DESIGN as the runtime-internal
   // transfer_ownership delegate (it is not in card data).
@@ -3191,7 +3181,7 @@ const EFFECTS = {
     // attacker could legally be assigned to block itself. Shares the A2-3
     // helper: one "leaves combat" concept.
     removeFromCombat(card.iid);
-    if (params.untap_on_take || params.untap) card.tapped = false;
+    if (params.untap) card.tapped = false;
     if (params.grant_haste) applyGrant(card, 'haste', ctx.sourceIid, true);
     if (params.duration === 'eot') card.tempControlUntilEot = true;
     log(`${ctx.sourceName} — ${pname(toCtrl)} gains control of ${card.name}` +
@@ -3764,7 +3754,7 @@ const EFFECT_SCHEMA = {
     ? null : 'add_mana missing amounts/choose'),
   grant_keyword: (e) => (e.keyword ? null : 'grant_keyword missing keyword'),
   create_tokens: (e) => {
-    const id = e.token_id && TOKEN_ALIAS[e.token_id] ? TOKEN_ALIAS[e.token_id] : e.token_id;
+    const id = e.token_id;
     return (id && TOKENS[id]) ? null : 'create_tokens unknown token_id "' + e.token_id + '"';
   },
   grant_cast_permission: (e) => {
@@ -5190,15 +5180,6 @@ function objectNeedsTarget(obj) {
   if (obj.target) return true;
   if (Array.isArray(obj.target_slots) && obj.target_slots.length > 0) return true;
   return Array.isArray(obj.effects) && obj.effects.some(effectNeedsTarget);
-}
-// Legal targets for the object's PRIMARY slot — for "is there any legal target?"
-// and the trigger >1-choice rule.
-function primaryLegalTargets(obj, who) {
-  if (!obj) return [];
-  if (obj.target) return targetsForFilter(obj.target, who, obj.target_filter);
-  if (Array.isArray(obj.target_slots) && obj.target_slots.length > 0) return getValidTargets(obj.target_slots[0], who);
-  const eff = Array.isArray(obj.effects) ? obj.effects.find(effectNeedsTarget) : null;
-  return eff ? getValidTargets(eff, who) : [];
 }
 // Build the probe/fake targets array for a legality check on `obj`, covering all
 // three shapes. Returns targets[] (indexed by slot), or null if a required slot
@@ -8341,7 +8322,7 @@ return {
   // Audit A3-5 — boot validation for the generated-trigger data tables.
   validateGeneratedTriggerTables,
   // Canonical targeting-shape API (single source of truth across UI consumers).
-  objectNeedsTarget, primaryLegalTargets, probeTargetsForObject,
+  objectNeedsTarget, probeTargetsForObject,
   // §7b coverage seam: the dispatch table + the coverage report. The valuation
   // classification sets (VALUED/UNVALUED_EFFECT_KINDS) now live on AI (review #6).
   EFFECTS, effectCoverageReport,

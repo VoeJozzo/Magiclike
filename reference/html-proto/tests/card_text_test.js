@@ -154,12 +154,12 @@ eqText(segsToText(describeEffect({ kind: 'grant_cast_permission', from_zone: 'ex
        'grant_cast_permission from exile through EOT');
 
 console.log('\n=== describeEffect: tokens (count-bumped wording) ===');
-// No TOKENS lookup → falls back to "1/1 creature" stats with a sensible
-// default niceName. Word count: "one", "two", ...
-eqText(segsToText(describeEffect({ kind: 'create_tokens', count: 1, token_id: 'goblin' })),
-       'create a 1/1 Goblin token', 'create 1 token uses "a"');
-eqText(segsToText(describeEffect({ kind: 'create_tokens', count: 2, token_id: 'goblin' })),
-       'create two 1/1 Goblin tokens', 'create N>1 uses word count');
+// Canonical token ids resolve the TOKENS template, so the full token
+// description (color, stats, keywords) renders. Word count: "one", "two", ...
+eqText(segsToText(describeEffect({ kind: 'create_tokens', count: 1, token_id: 'goblin_r_1_1' })),
+       'create a red 1/1 Goblin token with haste', 'create 1 token uses "a"');
+eqText(segsToText(describeEffect({ kind: 'create_tokens', count: 2, token_id: 'goblin_r_1_1' })),
+       'create two red 1/1 Goblin tokens with haste', 'create N>1 uses word count');
 
 console.log('\n=== describeEffect: edge cases ===');
 eqText(segsToText(describeEffect({ kind: 'totallyUnknownEffect' })),

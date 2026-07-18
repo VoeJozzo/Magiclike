@@ -480,8 +480,8 @@ function scoreOpponentSticker(sticker, slot) {
     return tier;
   }
   // (innate is now a keyword — valued via the keyword tier map above.)
-  // Land-color fixing: old grant_mana_ability + the new add_type land stickers.
-  if (sticker.kind === 'grant_mana_ability' || sticker.kind === 'add_type') return 7;
+  // Land-color fixing (add_type land stickers).
+  if (sticker.kind === 'add_type') return 7;
   if (sticker.kind === 'cost_mod') {
     // Bigger cards benefit more. For stapled slots, the merged cost is
     // higher than the base alone — a costMinus1 on a Lions+Bolt at WR
