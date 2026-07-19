@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.2.36`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.2.37`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -3087,3 +3087,12 @@ string-shorthand authoring, ability_triggered, move_card 'self', the boon
 alwaysOffered pin, empower backfill, the N27 stale-sticker prune (now
 pinned as the safety net in test_balancer). Suite + lint green per batch;
 counts shifted with retired test subjects and the new proofs file.
+
+v2.2.37: Audit A3 closed (unblocked by the PR #147 flake-fix merge; branch
+rebased onto it cleanly). rollBucket demoted from public API to the
+_rollBucketForTest seam instead of deleted: the seeded buckets_test rewrite
+left it pinning real invariants (seed-at-cards[0] story contract,
+coherence > 0) that only a chosen-seed entry point can exercise — a straight
+kill would have weakened genuine test power, so the ruling's intent (not a
+production API) was executed in the safe direction. API comment updated;
+sole test call site retargeted. No behavior change.
