@@ -112,6 +112,18 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
 
 .bf{flex:1;background:radial-gradient(130% 90% at 50% 0%,#243821 0%,#18261599 65%,#111c10cc 100%);border:2px solid var(--iron);box-shadow:inset 0 0 0 1px rgba(109,124,76,.25),inset 0 0 22px rgba(0,0,0,.4);border-radius:0;padding:6px;display:flex;flex-wrap:wrap;align-content:flex-start;gap:8px;overflow-y:auto;min-height:90px}
 .bf.aturn{border-color:var(--wood-hi);box-shadow:inset 0 0 0 1px var(--wood-hi),inset 0 0 18px rgba(255,216,106,.14)}
+/* Desktop layout pass: the base CSS is a single mobile-tuned layout (portrait,
+   fill-all-height) with NO media queries — so on a tall desktop the flex:1
+   battlefields stretch into big empty green rectangles. This is the ONLY place
+   the two form factors are tuned separately: on wide screens, size the board to
+   its content and center it vertically (leftover height becomes symmetric margin,
+   not stretched felt) and cap each battlefield to ~2 card rows (scrolls beyond).
+   Narrow / mobile (<1000px) keeps the fill-all-height base layout untouched. */
+@media (min-width:1000px){
+  #board{max-width:1500px;margin-inline:auto;justify-content:center;gap:6px}
+  .parea{flex:0 1 auto}
+  .bf{flex:0 0 auto;height:clamp(150px,22vh,300px)}
+}
 .hand{display:flex;gap:8px;padding:3px;overflow-x:auto;min-height:96px;align-items:center;flex-shrink:0}
 .hand-hidden{display:flex;gap:2px;padding:6px;flex-shrink:0;min-height:30px;align-items:center}
 

@@ -46,7 +46,7 @@ use `StyleBoxTexture`). 18 tiles in `reference/html-proto/assets/ui/`.
 | **Rewards** | ✅ inherits the kit (zero reward-specific chrome written); **live-verified** end-to-end (real win → real reward → tiles); kind-sampling caveat in TODO 3 |
 | **Search (in-game tutor)** | ✅ folded into the kit (compact/centered overrides kept) |
 | **Settings** | ⛔ BLOCKED — needs a pixel dropdown from the design agent (see `settings-ui-gap.md`) |
-| **Board** | 🟡 first pass done (`b1e5ad9e`) — full chrome pass (HUD/felt/buttons/mid/phases/zones/stack/log); verified live (tiles resolve, 200 OK). **Awaiting visual/aesthetic review** — in-app screenshot wedges on the live board, so it needs a human eyeball |
+| **Board** | 🟡 chrome pass + review round done — full chrome (`b1e5ad9e`), then review fixes: de-striped battlefield (dropped woodbar `fill`), uniform phase chips (dropped misaligned `ctrl_segmented`), unified mana pool onto `renderManaSymbols` (was a divergent `.mp*` letter system), and a **desktop layout media query** (base was mobile-only, no `@media`; desktop now caps battlefields to ~2 rows + centers the board — mobile untouched). All verified live via computed styles/measurements. Still worth a human eyeball on final aesthetics |
 
 All 5 card-picker shells (draft/boon/reward/search) + the map header (via `.lg`) COMPOSE
 one `.picker-*` kit — no forks. Change the dossier once, all follow.

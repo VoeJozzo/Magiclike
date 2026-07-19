@@ -21,6 +21,20 @@ The following items live in `docs/DIVERGENCE.md` as their primary tracker. Liste
 
 ### Other
 
+- **Mana-symbol rendering has no single source of truth** (Joe flagged, board-reskin
+  session) — symbols silently degrade to letters/emoji whenever a surface misses the art
+  wiring, and it keeps recurring. Root cause: pip art is duplicated/optional per render
+  path instead of centralized. Two failure modes: (1) `renderManaPool` had its OWN
+  `.mp*` letter-in-a-colored-circle pips running parallel to `renderManaSymbols`' `.mana-*`
+  SVG pips — fixed this session (pool now routes through `renderManaSymbols`, `.mp*` deleted),
+  but it's evidence of the pattern; (2) the SVG art is CSS-keyed via the relative path
+  `../../assets/mana/*.svg`, which only resolves when served from the **repo root** — wrong
+  serve root → 404 → silent fallback to the underlying glyph (emoji for WUBRG, letter for
+  C/T/X). Durable fix (deferred, Joe's call): make `renderManaSymbols` the ONE pip renderer
+  (audit for any other hand-rolled pip markup), make a missing-SVG failure **loud** (a boot
+  check that fetches one mana SVG and warns on 404, instead of degrading silently), and/or
+  kill the path fragility (inline the SVGs or use a root-absolute path so serve context stops
+  mattering).
 - **"target opponent" vs "your opponent" text voice** (Joe, Wave 2 — parked at
   "tentatively fine") — a 1v1 roguelike can fairly render implicit opp-targets
   as "Your opponent loses 1 life" instead of MTG's "target opponent." ~5-line
