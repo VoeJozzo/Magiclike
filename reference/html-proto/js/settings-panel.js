@@ -58,7 +58,7 @@ function makeSelect(options, currentValue, onChange) {
 function makeSlotHeader(parent, text) {
   const h = document.createElement('div');
   h.textContent = text;
-  h.style.cssText = 'color:#aab;font-size:11px;font-weight:bold;letter-spacing:.08em;margin-top:6px;text-transform:uppercase';
+  h.className = 'set-slot-head';
   parent.appendChild(h);
 }
 
@@ -67,11 +67,18 @@ function makeSlotHeader(parent, text) {
 // board). Returns the <input> so callers can read/drive it.
 function addDevtoolsToggle(parent, labelText, key, onToggle) {
   const label = document.createElement('label');
-  label.style.cssText = 'display:flex;align-items:center;gap:8px;color:#cce;font-size:12px;cursor:pointer;padding:2px 0';
+  label.className = 'set-check';
   const cb = document.createElement('input');
   cb.type = 'checkbox';
   cb.checked = !!SETTINGS.get(key);
+  // The native checkbox stays in the DOM (it keeps keyboard focus, labels and
+  // change events working); CSS hides it and paints the baked ctrl_toggle tiles
+  // on this sibling instead, switched by `input:checked + .set-toggle`.
+  const knob = document.createElement('span');
+  knob.className = 'set-toggle';
+  knob.setAttribute('aria-hidden', 'true');
   label.appendChild(cb);
+  label.appendChild(knob);
   label.appendChild(document.createTextNode(labelText));
   parent.appendChild(label);
   cb.onchange = () => { SETTINGS.set(key, cb.checked); if (onToggle) onToggle(cb.checked); };
@@ -87,11 +94,11 @@ function renderDevtoolsCollapsible(list) {
 
   const devtoolsHeader = document.createElement('button');
   devtoolsHeader.textContent = (startExpanded ? '▾' : '▸') + ' Devtools';
-  devtoolsHeader.style.cssText = 'margin-top:10px;padding:6px 10px;background:#0d0d18;border:1px solid #444;color:#aab;border-radius:3px 3px 0 0;cursor:pointer;font-family:inherit;font-size:12px;width:100%;text-align:left;letter-spacing:.05em';
+  devtoolsHeader.className = 'set-fold-head';
   list.appendChild(devtoolsHeader);
 
   const devtoolsBody = document.createElement('div');
-  devtoolsBody.style.cssText = 'padding:8px 10px;background:#0d0d18;border:1px solid #333;border-top:none;border-radius:0 0 3px 3px;margin-bottom:6px';
+  devtoolsBody.className = 'set-fold-body';
   devtoolsBody.style.display = startExpanded ? '' : 'none';
   list.appendChild(devtoolsBody);
 
@@ -143,12 +150,12 @@ function renderCardSizeRow(pickerArea) {
 function renderFontPresetRow(pickerArea) {
   const fontHeader = document.createElement('div');
   fontHeader.textContent = 'Card fonts';
-  fontHeader.style.cssText = 'color:#ffd700;font-size:13px;font-weight:bold;letter-spacing:.06em;margin-top:6px;padding-top:8px;border-top:1px solid #333';
+  fontHeader.className = 'set-section-head';
   pickerArea.appendChild(fontHeader);
 
   const scaleNote = document.createElement('div');
   scaleNote.textContent = 'Sizes shown at 1× card size (the Card size knob above scales these too).';
-  scaleNote.style.cssText = 'color:#778;font-size:10px;font-style:italic;margin-top:-2px';
+  scaleNote.className = 'set-note';
   pickerArea.appendChild(scaleNote);
 
   const presetEntries = Object.entries(SETTINGS.FONT_PRESETS);
@@ -215,7 +222,7 @@ function renderFontElementRows(pickerArea, refreshPresetActive) {
     sizeRow.style.cssText = 'display:flex;align-items:center;gap:6px;margin-top:2px';
     const sizeLabel = document.createElement('span');
     sizeLabel.textContent = 'Size';
-    sizeLabel.style.cssText = 'color:#889;font-size:11px;min-width:30px';
+    sizeLabel.className = 'set-size-label';
     sizeRow.appendChild(sizeLabel);
     const sizeSelect = makeSelect(
       SETTINGS.FONT_SIZE_OPTIONS_BY_ELEMENT[element.key],
@@ -313,25 +320,26 @@ function renderKwIconSizeRow(pickerArea) {
 // textarea on browsers that refuse clipboard.writeText.
 function renderExportButton(pickerArea) {
   const exportWrap = document.createElement('div');
-  exportWrap.style.cssText = 'margin-top:14px;padding-top:10px;border-top:1px solid #333';
+  exportWrap.className = 'set-export-wrap';
   const exportBtn = document.createElement('button');
   exportBtn.textContent = '📋 Copy settings as JSON';
-  exportBtn.style.cssText = 'padding:8px 14px;background:#2a3a44;border:1px solid #4a6a8a;color:#cce;border-radius:4px;cursor:pointer;font-family:inherit;font-size:12px;width:100%';
+  exportBtn.className = 'choice-btn choice-btn-sm';
   exportBtn.onclick = () => {
     const json = JSON.stringify(SETTINGS.getAll(), null, 2);
     const flash = (msg, ok) => {
       exportBtn.textContent = msg;
-      exportBtn.style.background = ok ? '#1a4a2a' : '#4a2a2a';
+      exportBtn.classList.toggle('choice-btn-ok', ok);
+      exportBtn.classList.toggle('choice-btn-decline', !ok);
       setTimeout(() => {
         exportBtn.textContent = '📋 Copy settings as JSON';
-        exportBtn.style.background = '#2a3a44';
+        exportBtn.classList.remove('choice-btn-ok', 'choice-btn-decline');
       }, 1800);
     };
     function showFallbackTextarea() {
       let ta = exportWrap.querySelector('textarea');
       if (!ta) {
         ta = document.createElement('textarea');
-        ta.style.cssText = 'width:100%;height:160px;margin-top:6px;background:#0d0d18;color:#ddd;border:1px solid #444;border-radius:3px;font-family:monospace;font-size:10px;padding:4px;box-sizing:border-box';
+        ta.className = 'set-textarea';
         exportWrap.appendChild(ta);
       }
       ta.value = json;

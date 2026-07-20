@@ -839,6 +839,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
 .choice-btn:active:not(:disabled){border-image:url(assets/ui/pxbtn_press.png) 2 2 3 2 fill round;border-bottom-width:6px;margin-bottom:8px}
 .choice-btn-big{font-size:24px;padding:10px 22px;min-width:64px}
 .choice-btn-decline{color:#e0a09a}
+.choice-btn-ok{color:#9fdfb5}
 .choice-btn-label{font-size:11px;opacity:.7;letter-spacing:.1em;text-transform:uppercase}
 .choice-btn-value{font-size:24px;font-weight:bold;margin-top:4px}
 /* --- data panels (Stats / Card Browser): kit chrome + shared furniture ------
@@ -889,6 +890,25 @@ button:disabled{opacity:.4;cursor:not-allowed}
 .hist-fill{background:#c8503f;height:100%}
 .hist-count{width:24px;text-align:right;color:#f4ead0}
 .draft-pip-sm{padding:0 4px;font-size:10px}
+/* --- Settings panel furniture -------------------------------------------
+   The native <select>/<input>/<textarea> inside remain browser-drawn (see
+   docs/design-handoff/control-gaps.md); everything AROUND them is ours. */
+.set-slot-head{color:#d8cfb0;font-size:11px;font-weight:bold;letter-spacing:.08em;margin-top:6px;text-transform:uppercase}
+.set-check{display:flex;align-items:center;gap:8px;color:#d8cfb0;font-size:12px;cursor:pointer;padding:2px 0}
+/* Baked toggle art. The native checkbox stays in the DOM for focus/labels/change
+   events but is visually hidden; .set-toggle paints ctrl_toggle_off/on at a clean
+   2x (tile is 28x15). Sibling selector, not :has(), so support is universal. */
+.set-check input[type=checkbox]{position:absolute;opacity:0;width:0;height:0;margin:0}
+.set-toggle{flex:0 0 auto;width:56px;height:30px;background:url(assets/ui/ctrl_toggle_off.png) no-repeat center/56px 30px;image-rendering:pixelated}
+.set-check input[type=checkbox]:checked + .set-toggle{background-image:url(assets/ui/ctrl_toggle_on.png)}
+.set-check input[type=checkbox]:focus-visible + .set-toggle{outline:2px solid var(--gold);outline-offset:2px}
+.set-fold-head{margin-top:10px;padding:6px 10px;background:rgba(0,0,0,.3);border:1px solid var(--iron);color:var(--moss);border-radius:0;cursor:pointer;font-size:12px;letter-spacing:.05em}
+.set-fold-body{padding:8px 10px;background:rgba(0,0,0,.3);border:1px solid var(--iron);border-top:none;border-radius:0;margin-bottom:4px}
+.set-section-head{color:var(--gold);font-size:13px;font-weight:bold;letter-spacing:.06em;margin-top:6px;padding-top:8px;border-top:1px solid var(--iron);text-shadow:1px 1px 0 var(--iron)}
+.set-note{color:var(--moss);font-size:10px;font-style:italic;margin-top:-2px;opacity:.85}
+.set-size-label{color:var(--moss);font-size:11px;min-width:30px}
+.set-export-wrap{margin-top:14px;padding-top:10px;border-top:1px solid var(--iron)}
+.set-textarea{width:100%;height:160px;margin-top:6px;background:rgba(0,0,0,.4);color:#e9dcbe;border:1px solid var(--iron);border-radius:0;font-family:monospace;font-size:11px;padding:6px}
 /* --- map screen: pixel-chrome reskin (baked tiles via border-image / background-image) --- */
 #mapBox{--iron:#13170e;--wood-hi:#6d7c4c;--gold:#ffd86a;--heral:#a02619;--moss:#a7b487;background:none;border:none;border-radius:0;box-shadow:none;padding:0;max-width:400px;width:100%;text-align:center;margin:auto;image-rendering:pixelated}
 #mapCanvas{position:relative;width:100%;min-height:300px;box-sizing:border-box;background:#c1a96f;border-style:solid;border-width:12px;border-image:url(assets/ui/woodbar_src.png) 6 round;image-rendering:pixelated;padding:28px 0;overflow:hidden}
@@ -962,11 +982,14 @@ button:disabled{opacity:.4;cursor:not-allowed}
 .bucket-lands{font-size:12px;color:#c8b088;display:flex;align-items:center;gap:4px;padding:4px 0;letter-spacing:.05em}
 #cardPopup{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;z-index:1200;padding:24px;cursor:pointer;animation:fadeIn .15s ease-out}
 #cardPopup.vis{display:flex}
-#settingsModal{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;z-index:1200;padding:24px;font-family:Georgia,serif}
-#settingsModal.vis{display:flex}
-#settingsBox{background:#1a1a26;border:2px solid #5a5a7a;border-radius:10px;padding:20px;width:100%;max-width:340px;max-height:90vh;overflow-y:auto;font-family:Georgia,serif;color:#ddd;position:relative}
-#settingsBox h2{color:#ffd700;font-size:18px;margin:0 0 14px 0;text-align:center;letter-spacing:0.1em}
-#settingsCloseBtn{margin-top:16px;width:100%;padding:8px;background:#2a4a2a;border:1px solid #4a8a4a;color:#aaffaa;border-radius:4px;cursor:pointer;font-size:13px}
+/* Composes .picker-*; only genuine differences remain — it sits above the card
+   pickers, centres as a panel, and scrolls (the knob list is long). The native
+   <select>/<input>/<textarea> inside stay browser-drawn until the design agent
+   ships pixel form controls (see docs/design-handoff/control-gaps.md). */
+#settingsModal{z-index:1200;align-items:center}
+#settingsBox{max-width:340px;max-height:90vh;overflow-y:auto;position:relative;text-align:left}
+#settingsList{display:flex;flex-direction:column;gap:12px}
+#settingsCloseBtn{margin-top:16px;width:100%}
 @keyframes fadeIn { from {opacity:0} to {opacity:1} }
 /* openCardPopup (controller.js) sets #cardPopupCard's style.cssText
    inline (transparent background, no chrome) since the .card-frame frame
@@ -1129,11 +1152,11 @@ body.ai-thinking #status{
      / engine / etc.) to read SETTINGS.get('keyName'). Styling lives in
      the <style> block above so Modal.show's `.vis` class can override
      `display:none` without an inline-style specificity fight. -->
-<div id="settingsModal">
-  <div id="settingsBox">
-    <h2>⚙ SETTINGS</h2>
-    <div id="settingsList" style="display:flex;flex-direction:column;gap:12px"></div>
-    <button id="settingsCloseBtn">Close</button>
+<div id="settingsModal" class="picker-overlay">
+  <div id="settingsBox" class="picker-box">
+    <div class="picker-header"><h2 class="picker-title">⚙ SETTINGS</h2></div>
+    <div id="settingsList"></div>
+    <button id="settingsCloseBtn" class="choice-btn">Close</button>
   </div>
 </div>
 <!-- Trigger-build modal — appears when a buildOnDraw card is drawn.
