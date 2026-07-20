@@ -32,8 +32,8 @@
 //                       "Reinforcements") appears only if seeding itself
 //                       starves, so offers never come up empty.
 //
-// API: rollBucketOffer(deckTplIds), rollBucket(seedTplId, deckTplIds),
-//      edgeBetween(aId, bId), analyzeCard(tplId), landsForCards(cardTplIds),
+// API: rollBucketOffer(deckTplIds), edgeBetween(aId, bId),
+//      analyzeCard(tplId), landsForCards(cardTplIds),
 //      themeHealthReport(), _resetCacheForTest, _setRandForTest.
 const BUCKETS = (function() {
 
@@ -220,8 +220,7 @@ function applySynergyHints(tpl, provides, wants) {
 // mechanic to the game usually means adding ~2 lines here.
 function analyze(tpl) {
   const kinds = [];
-  const conds = [];
-  collectKindsAndConds(tpl, kinds, conds);
+  collectKindsAndConds(tpl, kinds, []);
   const provides = {};
   const wants = {};
   const tags = new Set();
@@ -932,10 +931,6 @@ function finishBucket(bucketAnalyses, why, isFallback) {
   };
 }
 
-// Seed selection. Identity seeds: softmax over the top-N cards by edge mass
-// into the current deck (deck empty → by payoff-ness, so run-start "banner"
-// buckets grow around lords and engine payoffs). Adjacent seed: a payoff the
-// deck is NOT feeding yet — same colors, different plan.
 // Seed selection: sample OFFER_SIZE seeds from the whole legal pool, each
 // card weighted by its deck-affinity (sum of edge weights into every card
 // you own; for an empty deck, by payoff-ness so run-start "banners" grow
@@ -1009,18 +1004,6 @@ function rollBucketOffer(deckTplIds) {
   return offer;
 }
 
-function rollBucket(seedTplId, deckTplIds) {
-  ensurePool();
-  const seed = _byId[seedTplId];
-  if (!seed) return null;
-  const deckIds = deckTplIds || [];
-  const deckAnalyses = deckIds.map(id => _byId[id]).filter(Boolean);
-  const deckColors = deckColorSet(deckIds);
-  const { bucket, why } = growBucket(seed, deckAnalyses, deckColors, dupeShelf(deckIds));
-  valueFillSeats(bucket, why, deckColors, deckIds);
-  return finishBucket(bucket, why);
-}
-
 // ---------------------------------------------------------------------------
 // §6 Theme health report — one boot line; doubles as a card-design TODO list.
 // ---------------------------------------------------------------------------
@@ -1052,7 +1035,6 @@ function themeHealthReport() {
 
 return {
   rollBucketOffer,
-  rollBucket,
   landsForCards,
   themeHealthReport,
   // Introspection (tests + future UI copy):
@@ -1065,7 +1047,6 @@ return {
   // Test seams:
   _resetCacheForTest: () => { _pool = null; _byId = null; _killCdf = null; },
   _setRandForTest: (fn) => { _rand = fn || Math.random; },
-  _setColorPullForTest: (k) => { SPLASH_BASE = (typeof k === 'number') ? k : 0.3; },
   _valueFillForTest: (bucketTplIds, deckTplIds) => {
     ensurePool();
     const bucket = (bucketTplIds || []).map(id => _byId[id]).filter(Boolean);
@@ -1074,6 +1055,20 @@ return {
     return { cards: bucket.map(a => a.tplId), why };
   },
   _dupeFactorForTest: (tplId, deckTplIds) => dupeFactor(tplId, dupeShelf(deckTplIds)),
+  // Grow a bucket from a CHOSEN seed — only offers (random seeds) exist in
+  // production, but the story contract (seed at cards[0], coherence > 0) is
+  // only pinnable from a known seed. Demoted from public API (audit A3).
+  _rollBucketForTest: (seedTplId, deckTplIds) => {
+    ensurePool();
+    const seed = _byId[seedTplId];
+    if (!seed) return null;
+    const deckIds = deckTplIds || [];
+    const deckAnalyses = deckIds.map(id => _byId[id]).filter(Boolean);
+    const deckColors = deckColorSet(deckIds);
+    const { bucket, why } = growBucket(seed, deckAnalyses, deckColors, dupeShelf(deckIds));
+    valueFillSeats(bucket, why, deckColors, deckIds);
+    return finishBucket(bucket, why);
+  },
   _colorFitForTest: (tplId, deckColors) => {
     ensurePool();
     const a = _byId[tplId];

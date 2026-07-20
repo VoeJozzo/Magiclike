@@ -22,19 +22,19 @@ const SETTINGS = (function() {
 
 const STORAGE_KEY = 'magiclike_settings_v1';
 
-// Per-element baseline px sizes (at --scale 1). Drives the size dropdown
-// labels in the settings UI and the buildSizeOptions() helper below.
-// Element names match the suffix on each CSS custom property
-// (--card-font-NAME / --card-fsize-NAME / etc.) and the .frame-NAME class.
+// Settings-UI rows for the per-element font controls. Element names match
+// the suffix on each CSS custom property (--card-font-NAME /
+// --card-fsize-NAME / etc.) and the .frame-NAME class. Baseline px sizes
+// live as literal args at the buildSizeOptions() call sites.
 const CARD_FONT_ELEMENTS = [
-  { key: 'name',     label: 'Name',          baseline: 7, slot: 'title' },
-  { key: 'type',     label: 'Type line',     baseline: 5, slot: 'title' },
-  { key: 'pt',       label: 'P/T',           baseline: 5, slot: 'title' },
-  { key: 'damage',   label: 'Damage marker', baseline: 5, slot: 'title' },
-  { key: 'text',     label: 'Oracle text',   baseline: 6, slot: 'body' },
-  { key: 'stickers', label: 'Stickers',      baseline: 5, slot: 'body' },
-  { key: 'pip',      label: 'Mana pip',      baseline: 3, slot: 'pip' },
-  { key: 'bumped',   label: 'Cost arrow',    baseline: 4, slot: 'pip' },
+  { key: 'name',     label: 'Name',          slot: 'title' },
+  { key: 'type',     label: 'Type line',     slot: 'title' },
+  { key: 'pt',       label: 'P/T',           slot: 'title' },
+  { key: 'damage',   label: 'Damage marker', slot: 'title' },
+  { key: 'text',     label: 'Oracle text',   slot: 'body' },
+  { key: 'stickers', label: 'Stickers',      slot: 'body' },
+  { key: 'pip',      label: 'Mana pip',      slot: 'pip' },
+  { key: 'bumped',   label: 'Cost arrow',    slot: 'pip' },
 ];
 
 const DEFAULTS = {
@@ -214,7 +214,6 @@ function ensureSettingsLoaded() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) { data = { ...DEFAULTS }; return; }
     const blob = JSON.parse(raw);
-    migrateLegacySlotKeys(blob);
     data = { ...DEFAULTS, ...blob };
   } catch (e) {
     console.warn('Settings load failed; using defaults:', e);
@@ -222,29 +221,6 @@ function ensureSettingsLoaded() {
   }
 }
 
-// One-shot migration: pre-v1.0.158 stored slot keys (cardFontTitle/Body/Pip
-// + size variants). Walk those into the matching per-element keys when no
-// per-element value is already present. Don't delete the old keys --
-// they're harmless and a future user reverting to an older version would
-// still see them.
-function migrateLegacySlotKeys(blob) {
-  const slotToElements = {
-    title: ['name', 'type', 'pt', 'damage'],
-    body:  ['text', 'stickers'],
-    pip:   ['pip', 'bumped'],
-  };
-  const slotNames = { title: 'Title', body: 'Body', pip: 'Pip' };
-  for (const [slot, elements] of Object.entries(slotToElements)) {
-    const oldFont = blob[`cardFont${slotNames[slot]}`];
-    const oldSize = blob[`cardFontSize${slotNames[slot]}`];
-    for (const el of elements) {
-      const fKey = settingsKeyFont(el);
-      const sKey = settingsKeyFsize(el);
-      if (oldFont !== undefined && blob[fKey] === undefined) blob[fKey] = oldFont;
-      if (oldSize !== undefined && blob[sKey] === undefined) blob[sKey] = oldSize;
-    }
-  }
-}
 
 function get(key) {
   ensureSettingsLoaded();

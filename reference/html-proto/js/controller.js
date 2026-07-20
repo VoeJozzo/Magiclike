@@ -139,7 +139,6 @@ function init() {
 function stickerAppliesLabel(s) {
   switch (s.kind) {
     case 'stat_boost':     return 'creatures';
-    case 'grant_mana_ability':     return "lands that don't already produce {" + s.color + '} (deck must play ' + s.colorAdj + ')';
     case 'add_type':      return s.color
       ? "lands that don't already produce {" + s.color + '} (deck must play ' + s.colorAdj + ')'
       : 'permanents (adds the ' + s.type + ' type)';
@@ -181,7 +180,7 @@ function appendStickerSectionToBrowser(inner) {
   };
   const isInnateSticker = s => s.kind === 'keyword' && s.keyword === 'innate';
   for (const s of allStickers) {
-    if (s.kind === 'grant_mana_ability' || s.kind === 'add_type' || isInnateSticker(s)) groups['Land mods'].push(s);
+    if (s.kind === 'add_type' || isInnateSticker(s)) groups['Land mods'].push(s);
     else if (s.kind === 'keyword')                     groups['Keyword grants'].push(s);
     else                                               groups['Card boosts'].push(s);
   }
@@ -609,11 +608,11 @@ function continueRun() {
     } else {
       RUN.rollbackForMidGameRestore();
       lastGameRecorded = false;
-      if (RUN.getPostDraftOffer && RUN.getPostDraftOffer()) {
+      if (RUN.getPostDraftOffer()) {
         renderPostDraftOffer();
         return;
       }
-      const mapState = RUN.getMapState && RUN.getMapState();
+      const mapState = RUN.getMapState();
       if (mapState) {
         renderMap();
       } else {
@@ -684,7 +683,7 @@ function afterDraftPick() {
     const playerDeck = DRAFT.getPlayerDeck();
     RUN.start(playerDeck);
     lastGameRecorded = false;
-    if (RUN.getPostDraftOffer && RUN.getPostDraftOffer()) {
+    if (RUN.getPostDraftOffer()) {
       renderPostDraftOffer();
       return;
     }
@@ -696,7 +695,7 @@ function afterDraftPick() {
 function nextGame() {
   if (!RUN.isActive()) return;
   if (RUN.getReward()) return;
-  const mapState = RUN.getMapState && RUN.getMapState();
+  const mapState = RUN.getMapState();
   Modal.hide('gameover');
   Modal.hide('rewardModal');
   if (mapState) {
@@ -1018,7 +1017,6 @@ function positionIconTip(tip, host) {
 // Same card-pick modal as the boons; here we also surface the drafted-deck color
 // HUD (now that the draft is done) so the land choice is informed by deck colors.
 function renderPostDraftOffer() {
-  if (!RUN.getPostDraftOffer) return;
   const offer = RUN.getPostDraftOffer();
   if (!offer) { Modal.hide('cardPickModal'); return; }
   const items = offer.basics
@@ -1098,18 +1096,13 @@ function renderMap() {
   const iconFor = (node) => {
     if (node.type === 'boss') {
       if (node.constructedId) {
-        const spec = (typeof DRAFT !== 'undefined' && DRAFT.getConstructedDeck)
-          ? DRAFT.getConstructedDeck(node.constructedId) : null;
+        const spec = DRAFT.getConstructedDeck(node.constructedId);
         if (spec && spec.icon) return spec.icon;
       }
       return '👹';
     }
     switch (node.type) {
       case 'combat': return '⚔';
-      case 'elite':  return '☠';
-      case 'shop':   return '$';
-      case 'event':  return '?';
-      case 'rest':   return '🛏';
       default:       return '?';
     }
   };
@@ -1118,18 +1111,13 @@ function renderMap() {
   const labelForType = (type) => {
     switch (type) {
       case 'combat': return 'Draft Deck';
-      case 'elite':  return 'Elite Enemy';
-      case 'shop':   return 'Shop';
-      case 'event':  return 'Event';
-      case 'rest':   return 'Rest Site';
       case 'boss':   return 'Boss';
       default:       return 'Unknown';
     }
   };
   const tooltipFor = (node) => {
     if (node.constructedId) {
-      const spec = (typeof DRAFT !== 'undefined' && DRAFT.getConstructedDeck)
-        ? DRAFT.getConstructedDeck(node.constructedId) : null;
+      const spec = DRAFT.getConstructedDeck(node.constructedId);
       if (spec) return spec.name;
     }
     const base = labelForType(node.type);
@@ -1155,8 +1143,7 @@ function renderMap() {
       let isConstructed = false;
       const isBoss = (n.type === 'boss');
       if (n.constructedId) {
-        const spec = (typeof DRAFT !== 'undefined' && DRAFT.getConstructedDeck)
-          ? DRAFT.getConstructedDeck(n.constructedId) : null;
+        const spec = DRAFT.getConstructedDeck(n.constructedId);
         if (spec && spec.colors && spec.colors.length > 0) {
           ringColor = spec.colors[0];
           isConstructed = true;
@@ -2447,12 +2434,12 @@ function attachLongPress(element, card) {
 // Pixel-art card popup. Built per the 80x112 frame spec, rendered at 4x
 // scale (320x448 actual) inside the existing #cardPopup dimmer overlay.
 
-// Helper: builds the "Repertoire" (Mercurial triggerPool) and "Built
-// Ability" (Codex build_on_draw) HTML sections for a card's popup. Returns
-// empty string if neither applies. Reads the SLOT (RUN.getSlots()[card.slotIdx]),
-// not the card, because the slot is the durable record across saves and
-// the slot's bonusTrigger may have updated more recently than the in-game
-// card instance (e.g. just before a re-draw triggers makeCard).
+// Helper: builds the "Built Ability" (Codex build_on_draw) HTML section
+// for a card's popup. Returns empty string if it doesn't apply. Reads the
+// SLOT (RUN.getSlots()[card.slotIdx]), not the card, because the slot is
+// the durable record across saves and the slot's bonusTrigger may have
+// updated more recently than the in-game card instance (e.g. just before
+// a re-draw triggers makeCard).
 function buildPopupTriggerSections(card) {
   if (typeof card.slotIdx !== 'number') return '';
   if (typeof RUN === 'undefined' || !RUN.getSlots) return '';
@@ -2460,23 +2447,6 @@ function buildPopupTriggerSections(card) {
   const slot = slots && slots[card.slotIdx];
   if (!slot) return '';
   let html = '';
-  // Mercurial-style repertoire.
-  if (Array.isArray(slot.triggerPool) && slot.triggerPool.length > 0) {
-    const activeLabels = (card.triggers || []).map(t => t.label).filter(Boolean);
-    const items = slot.triggerPool.map(entry => {
-      const isActive = activeLabels.includes(entry.label);
-      const styleAttr = isActive
-        ? 'color:#ffe7a0;font-weight:bold;background:#3a2f1a;border-left:3px solid #ffd700;padding-left:6px'
-        : 'color:#888;padding-left:9px';
-      const marker = isActive ? '◆ ' : '○ ';
-      return `<div style="${styleAttr};font-size:11px;line-height:1.5;padding:3px 6px;margin:2px 0">${marker}<b>${entry.label}:</b> ${entry.text || ''}</div>`;
-    }).join('');
-    html += `
-      <div class="pop-stickers">
-        <div class="pop-stickers-title" style="color:#ffd700">Repertoire</div>
-        <div style="text-align:left">${items}</div>
-      </div>`;
-  }
   // Codex-style built ability.
   const tpl = CARDS[card.tplId];
   if (tpl && tpl.build_on_draw) {
@@ -2880,20 +2850,16 @@ function buildDraftsBatchTsv(drafts, startIdx, endIdx) {
     const d = drafts[i];
     const draftId = i + 1;
     const finalColors = (Array.isArray(d.colors) && d.colors.length)
-      ? d.colors.slice().sort().join('')
+      ? d.colors.join('')
       : '';
     const result = d.result || '';
     const games = d.gamesPlayed || 0;
-    // Running color tally as we walk picks. A color is "committed" once
-    // we've picked ≥2 cards of that color — same threshold the draft UI
-    // uses elsewhere. (DRAFT.summarizeColors is a similar idea but uses a
-    // 1+ threshold, so the two aren't interchangeable.)
+    // Running color tally as we walk picks. Colors derive through the
+    // game's own rule (DRAFT.summarizeColors) so the export reports what
+    // the game would say, not a parallel re-derivation (audit A10, Joe's
+    // ruling: the stats screen reports on the game faithfully).
     const colorCounts = { W: 0, U: 0, B: 0, R: 0, G: 0 };
-    const committedSoFar = () => Object.entries(colorCounts)
-      .filter(([, n]) => n >= 2)
-      .map(([c]) => c)
-      .sort()
-      .join('');
+    const committedSoFar = () => DRAFT.summarizeColors(colorCounts).join('');
     (d.picks || []).forEach((p, pickIdx) => {
       const pickN = pickIdx + 1;
       const before = committedSoFar();
@@ -3497,10 +3463,6 @@ function symmetricizeChoice(which) {
   submit({type: 'symmetricizeChoice', which});
 }
 
-function edictChoice(iid) {
-  submit({type: 'edictChoice', iid});
-}
-
 function optionalCost(pay) {
   submit({type: 'optionalCost', pay});
 }
@@ -3544,7 +3506,7 @@ return {
   init, gameOverClick, clickHand, clickBattlefield, clickStackTarget, clickPlayerTarget,
   closeCardPopup, attachLongPress,
   openZone, closeZone,
-  cancelTarget, endTurn, passAction, doneDeclaring, concede, searchPick, triggerBuildPick, numberChoice, symmetricizeChoice, edictChoice, optionalCost, toggleLog,
+  cancelTarget, endTurn, passAction, doneDeclaring, concede, searchPick, triggerBuildPick, numberChoice, symmetricizeChoice, optionalCost, toggleLog,
   canPass, humanOwesDeclaration,
   pickModalMode, cancelModalChoice,
   pendingModalChoice: () => pendingModalChoice,

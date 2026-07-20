@@ -82,8 +82,10 @@ console.log('\n=== embargo/bleach card.json are decomposed (no bespoke kinds) ==
     (Array.isArray(c.effects) ? c.effects : []).some(e => e && (e.kind === 'embargo' || e.kind === 'bleach'))));
 })();
 
-console.log('\n=== §3.8 snake_case: a save with legacy sticker ids loads renamed (no data loss) ===');
+console.log('\n=== stale-sticker prune: unknown/legacy sticker ids are dropped on load ===');
 (() => {
+  // The §3.8 rename migrations retired 2026-07-18 (audit batch H); the prune
+  // is the standing safety net — any id the registry doesn't know is dropped.
   const blob = {
     version: SAVE_VERSION,
     runState: {
@@ -94,11 +96,9 @@ console.log('\n=== §3.8 snake_case: a save with legacy sticker ids loads rename
   const ok = RUN.load();
   check('save loaded', ok === true);
   const stickers = RUN.getSlots()[0].stickers;
-  check('plus1plus1 → plus1_plus1', stickers.includes('plus1_plus1'));
-  check('costMinus1 → cost_minus_1', stickers.includes('cost_minus_1'));
-  check('landColor_W → land_color_w', stickers.includes('land_color_w'));
-  check('no legacy ids survive (would have been pruned as unknown)',
+  check('legacy camelCase ids pruned as unknown',
     !stickers.some(s => s === 'plus1plus1' || s === 'costMinus1' || s === 'landColor_W'));
+  check('nothing materialized in their place', stickers.length === 0, JSON.stringify(stickers));
 })();
 
 console.log('\n=== scarification (#18): apply_sticker(scarified by id) + affect_creature(destroy) ===');

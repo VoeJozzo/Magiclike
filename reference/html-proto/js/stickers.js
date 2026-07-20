@@ -69,8 +69,6 @@ function applyStickerKindEffect(card, s) {
     if (Array.isArray(card.keywords)) {
       card.keywords = card.keywords.filter(k => k !== s.keyword);
     }
-  } else if (s.kind === 'grant_mana_ability') {
-    grantManaAbility(card, s.color);
   } else if (s.kind === 'cost_mod') {
     // Signed additive cost change (§3.8): +N for embargo, −1 for the reduction
     // reward (unified from costReduction). Generic floored at 0.
@@ -481,9 +479,6 @@ function stickersForSlot(slot, deckColors) {
       const rolled = (slot.subtypeRolls || [])[subtypeCursor];
       subtypeCursor++;
       if (rolled) addType(view, rolled);
-    }
-    if (s.kind === 'grant_mana_ability') {
-      grantManaAbility(view, s.color);  // §3.9: reflect on the view's tap-ability
     }
     if (s.kind === 'add_type') {
       addType(view, s.type);

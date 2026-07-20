@@ -440,6 +440,10 @@ const CATEGORY_A = [
   // emission before fizzle checks, cause+trig payload, budget-as-meta-rule
   // containment (incl. the take-up budget move + drain-concat fix).
   'wave2_ability_triggered_test.js',
+  // Audit bug proofs (2026-07-17/18): each asserts the correct behavior a
+  // vibecode-audit finding showed was broken; flipped green by the batch-I
+  // fixes (v2.2.36) and kept as the regression pin for that bug class.
+  'proofs_audit.js',
 ];
 
 const TESTS_DIR = __dirname;

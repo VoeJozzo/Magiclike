@@ -173,6 +173,17 @@ function render() {
   renderOppHand(G.opp.hand);
   renderBf('youBf', G.you.battlefield, 'you');
   renderBf('oppBf', G.opp.battlefield, 'opp');
+  // Active-turn battlefield glow follows the actual turn (audit A35 — the
+  // class used to sit statically on the player's side).
+  // The opp === true branch is effectively unobservable today: opp turns
+  // resolve on a deliberately very fast timer, so no render lands while opp
+  // is active (PR #148 review, 2026-07-20 — repeated attempts to catch such a
+  // frame at runtime found none; the you-side branch is confirmed live).
+  // Correct by construction, but UNEXERCISED — if turn pacing ever slows, or
+  // the glow misbehaves during opp's turn, start here rather than assuming
+  // this line has ever run with a true second argument.
+  document.getElementById('youBf').classList.toggle('aturn', G.activePlayer === 'you');
+  document.getElementById('oppBf').classList.toggle('aturn', G.activePlayer === 'opp');
 
   // Shared with the Space/Enter keyboard path — see CONTROLLER.humanOwesDeclaration.
   const showDone = CONTROLLER.humanOwesDeclaration();
@@ -347,8 +358,8 @@ function render() {
   }
   // Edict forced-sacrifice (GAP 2): selection is IN-PLACE — the eligible
   // permanents glow on the battlefield (see the .targetable branch in the
-  // per-card render) and a click sacks one (clickBattlefield → edictChoice). The
-  // status bar shows the prompt (see the status-bar block below).
+  // per-card render) and a click sacks one (clickBattlefield submits
+  // edictChoice). The status bar shows the prompt (status-bar block below).
   // Optional-cost trigger (Land+Spell staple ETB). The controller may pay the
   // stapled spell's mana cost to use its effect, or decline.
   if (G.pendingOptionalCost && G.pendingOptionalCost.who === 'you') {
@@ -1179,7 +1190,7 @@ function isValidTargetCreature(eff, card) {
 // a badge would be redundant: keyword/trigger → colored in the oracle text (see
 // segmentsToHtml's .sticker-granted); subtype → the type line; innate → "Innate."
 // in the oracle text; stat_boost → the P/T box; cost_mod → the cost pips. Kept
-// (not listed): empower, grant_mana_ability, remove_keyword — those carry info no
+// (not listed): empower, remove_keyword — those carry info no
 // other frame element surfaces. (subtype + add_type both show in the type line.)
 const FRAME_REDUNDANT_STICKER_KINDS = new Set(
   ['keyword', 'trigger', 'subtype', 'add_type', 'innate', 'stat_boost', 'cost_mod']);
@@ -1231,18 +1242,12 @@ function stickerBadgesHtml(stickers, big, empowerRolls, tplId, stapledTpls) {
     counts.set(sId, (counts.get(sId) || 0) + 1);
   }
   // Only the KEPT kinds reach here (the rest were skipped above): today that's
-  // grant_mana_ability (a "+{R}" pip) and remove_keyword / other inline kinds
-  // (rendered by name). All use the generic 'skw' badge style.
+  // remove_keyword / other inline kinds (rendered by name). All use the
+  // generic 'skw' badge style.
   for (const [sId, n] of counts) {
     const s = STICKERS[sId];
     if (!s) continue;
-    // landColor-style label routes the brace token through renderManaSymbols so
-    // it shows the color pip instead of literal {W} text (injected as innerHTML).
-    // (Innate + other keyword stickers are skipped above via
-    // FRAME_REDUNDANT_STICKER_KINDS — innate shows via the "Innate." oracle line.)
-    let label = (s.kind === 'grant_mana_ability')
-      ? '+' + renderManaSymbols('{' + s.color + '}')
-      : (s.name || s.kind);   // remove_keyword ("Loses Defender"), set_color, …
+    let label = s.name || s.kind;   // remove_keyword ("Loses Defender"), set_color, …
     if (n > 1) label += ` ×${n}`;
     parts.push(`<span class="stk-badge skw" title="${s.text}">${label}</span>`);
   }
@@ -1266,52 +1271,6 @@ function restrictionBadgesHtml(card, big) {
   return `<div class="stickers-row${big ? '-big' : ''}">${parts.join('')}</div>`;
 }
 
-function nativeKeywordBadgesHtml(card, big) {
-  // Tag each kw by source: 'intrinsic' (template, blue) vs 'granted' (in
-  // grantedBy from another permanent, cyan — disappears if source leaves).
-  // Both intrinsic AND granted → render as intrinsic (granting is redundant).
-  const entries = [];
-  let templateKw = [];
-  // Tokens have their template in TOKENS, not CARDS. Read from the right
-  // table so token-intrinsic keywords (e.g., flying on Spirit tokens) get
-  // the intrinsic badge instead of being hidden.
-  const tplTable = card.isToken ? TOKENS : CARDS;
-  if (card.tplId && tplTable[card.tplId]) {
-    templateKw = (tplTable[card.tplId].keywords || []).slice();
-    for (const kw of templateKw) entries.push({ kw, source: 'intrinsic' });
-    if (card.grantedBy instanceof Map) {
-      for (const [kw, sources] of card.grantedBy) {
-        if (sources.size === 0) continue;
-        if (templateKw.includes(kw)) continue;
-        const names = [];
-        for (const srcIid of sources) {
-          const f = ENGINE.findCard(srcIid);
-          if (f) names.push(f.card.name);
-        }
-        entries.push({ kw, source: 'granted', grantSources: names });
-      }
-    }
-  } else {
-    // Synthetic card-shaped object (card browser preview) — no grant tracking.
-    for (const kw of (card.keywords || [])) entries.push({ kw, source: 'intrinsic' });
-  }
-  if (!entries.length) return '';
-  const parts = [];
-  for (const { kw, source, grantSources } of entries) {
-    if (kw === 'no_block') continue;  // hidden kw (restrict→grant_keyword)
-    const label = KEYWORD_DISPLAY[kw] || (kw.charAt(0).toUpperCase() + kw.slice(1));
-    // Defender = downside ability — render red like restrictions.
-    let cls;
-    if (kw === 'defender')        cls = 'restrict';
-    else if (source === 'granted') cls = 'kw-granted';
-    else                           cls = 'kw';
-    const tooltip = (source === 'granted' && grantSources && grantSources.length)
-      ? `${label} (granted by ${grantSources.join(', ')})`
-      : label;
-    parts.push(`<span class="stk-badge ${cls}" title="${tooltip}">${label}</span>`);
-  }
-  return `<div class="stickers-row${big ? '-big' : ''}">${parts.join('')}</div>`;
-}
 
 // Where a card's keyword comes from, → the CSS source class that recolors its
 // coin: native (template) takes the CARD'S color (per-card, set inline — see
@@ -1384,7 +1343,7 @@ function nativeKeywordStyle(card, colorKey) {
 // (CSS vars) to match the keyword-badge palette. Each icon carries a
 // "Display: reminder" string in data-tip, rendered on hover by the custom
 // #iconTip popup (Almendra, palette-matched — see CONTROLLER tooltip wiring),
-// not the browser's native title tooltip. Selection mirrors keywordPreamble:
+// not the browser's native title tooltip. Selection mirrors keywordPreambleSegs:
 // creatures show every keyword; non-creatures show only spell-legal ones
 // (flash) plus innate. innate is included on both branches — it reads as a coin
 // like any other keyword wherever it lands (a creature that somehow gains innate
@@ -1560,7 +1519,6 @@ function cardToViewModel(card, opts) {
     if (effC > baseC) bumpedMarker = '<span class="frame-bumped">↑</span>';
   }
 
-  const typeText = typeLine(card);
   const typeHtml = typeLineHtml(card);
 
   let oracleHtml;
@@ -1607,7 +1565,7 @@ function cardToViewModel(card, opts) {
 
   return {
     colorKey, isCreature, pow, tou,
-    pipsHtml, bumpedMarker, typeText, typeHtml, oracleHtml,
+    pipsHtml, bumpedMarker, typeHtml, oracleHtml,
     keywordIconsHtml: kwIconsHtml,
     artInner, stickersInner,
   };

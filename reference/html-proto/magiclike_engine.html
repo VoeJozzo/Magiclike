@@ -118,7 +118,6 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
 .zone-btn{cursor:pointer;transition:filter .1s}
 .zone-btn:hover{filter:brightness(1.45)}
 .zone-btn:active{filter:brightness(.8)}
-.pstatus{font-size:10px;color:var(--moss);font-style:italic;text-shadow:1px 1px 0 var(--iron)}
 
 .bf{flex:1;background:radial-gradient(130% 90% at 50% 0%,#243821 0%,#18261599 65%,#111c10cc 100%);border:2px solid var(--iron);box-shadow:inset 0 0 0 1px rgba(109,124,76,.25),inset 0 0 22px rgba(0,0,0,.4);border-radius:0;padding:6px;display:flex;flex-wrap:wrap;align-content:flex-start;gap:8px;overflow-y:auto;min-height:90px}
 .bf.aturn{border-color:var(--wood-hi);box-shadow:inset 0 0 0 1px var(--wood-hi),inset 0 0 18px rgba(255,216,106,.14)}
@@ -138,7 +137,7 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
 .hand-hidden{display:flex;gap:2px;padding:6px;flex-shrink:0;min-height:30px;align-items:center}
 
 /* Suppress mobile long-press text-selection / callout menu on UI elements. */
-.draft-pick, .draft-pick *, .rwd-sticker, .rwd-sticker *, .rwd-pair, .rwd-pair *,
+.rwd-pair, .rwd-pair *,
 #cardPopupCard, #cardPopupCard *, .acts button, .stk-badge {
   -webkit-user-select: none;
   -moz-user-select: none;
@@ -646,7 +645,6 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
 
 .stickers-row{display:flex;flex-wrap:wrap;gap:2px;margin-top:3px;padding:0 2px;justify-content:center}
 .stk-badge{display:inline-block;font-size:8px;padding:1px 4px;border-radius:6px;font-weight:bold;line-height:1.2;letter-spacing:.3px;border:1px solid;background:#0a0a14;white-space:nowrap}
-.stk-badge.stat{color:#ffe066;border-color:#ffe066;background:#3a2c00}
 .stk-badge.kw{color:#88ccff;border-color:#5588cc;background:#0c1c30}
 .stk-badge.kw-granted{color:#7fe5d4;border-color:#3aa898;background:#0a2622}
 .stk-badge.skw{color:#ffd700;border-color:#cc9900;background:#2a2200}
@@ -660,20 +658,6 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
 .phases{display:flex;gap:2px;flex-wrap:wrap;border:2px solid var(--iron);background:#12160d;image-rendering:pixelated;padding:2px}
 .ph{min-width:34px;text-align:center;padding:2px 4px;border-radius:0;font-size:9px;background:#1b2213;color:#8a9670;box-shadow:inset 0 0 0 1px rgba(19,23,14,.6);white-space:nowrap}
 .ph.on{background:rgba(255,216,106,.16);color:var(--gold);font-weight:bold;box-shadow:inset 0 0 0 1px var(--gold)}
-.stk-area{flex:1;min-width:0;border-radius:5px;padding:4px 8px;border:1px solid transparent;transition:border-color .2s,background .2s}
-.stk-area.active{border-color:#ffcc44;background:#1a1408;box-shadow:0 0 12px rgba(255,204,68,.15)}
-.stk-title{font-size:10px;color:#555;margin-bottom:3px;text-transform:uppercase;letter-spacing:1.5px}
-.stk-area.active .stk-title{color:#ffcc44;font-weight:bold}
-.stk-items{display:flex;gap:6px;overflow-x:auto;min-height:30px;align-items:center;flex-wrap:wrap}
-.stk-item{background:#2a1440;border:2px solid #8a4adc;border-radius:4px;padding:5px 9px;font-size:12px;white-space:nowrap;cursor:default;color:#e0c8ff;font-weight:bold;animation:stkpop .25s ease-out}
-.stk-item.tgt{border-color:#ffff00;background:#3a3a08;color:#ffffaa;cursor:pointer;box-shadow:0 0 8px rgba(255,255,0,.4)}
-.stk-item.tgt:hover{background:#4a4a10;border-color:#ffff88}
-.stk-item small{color:#bba;font-size:10px;font-weight:normal;margin-left:4px}
-@keyframes stkpop {
-  0% { transform:scale(.7); opacity:0; }
-  60% { transform:scale(1.08); opacity:1; }
-  100% { transform:scale(1); }
-}
 #stackBanner{position:fixed;top:0;left:0;right:0;z-index:850;background:linear-gradient(180deg,#1f2716 0%,#141a0d 100%);border-top:2px solid var(--iron);border-bottom:3px solid var(--gold);box-shadow:inset 0 0 0 1px var(--iron),0 4px 16px rgba(0,0,0,.6),0 0 24px rgba(255,216,106,.18);padding:8px 12px;transform:translateY(-100%);transition:transform .25s ease-out;display:flex;flex-direction:column;gap:4px}
 #stackBanner.vis{transform:translateY(0)}
 #stackBannerTitle{color:var(--gold);font-weight:bold;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;text-shadow:1px 1px 0 var(--iron);display:flex;justify-content:space-between;align-items:center}
@@ -707,7 +691,6 @@ button:disabled{opacity:.4;cursor:not-allowed}
 .acts .btn-end{border-image:url(assets/ui/pxbtn_primary_rest.png) 2 2 7 2 fill round;color:#f8efd2}
 .acts .btn-end:hover:not(:disabled){border-image:url(assets/ui/pxbtn_hover.png) 2 2 9 2 fill round}
 .acts .btn-skip{color:#cfe0d6}
-.acts .btn-pass{color:#a9c6d6}
 .acts .btn-d{color:#e6a09a}
 /* Menu / popup primary buttons (main menu run buttons + game-over "New Run").
    Same pxbtn tiles as the board, primary variant — these are the headline
@@ -944,18 +927,8 @@ button:disabled{opacity:.4;cursor:not-allowed}
 #iconTip{position:fixed;display:none;max-width:230px;background:#23262e;border:1px solid #c8b040;border-radius:4px;padding:6px 9px;color:#ece0be;font-family:'Almendra',Georgia,serif;font-size:13px;line-height:1.35;text-align:left;pointer-events:none;z-index:9999;box-shadow:0 3px 10px rgba(0,0,0,.55)}
 #iconTip.vis{display:block}
 #iconTip .tip-name{color:#f0e6c8;font-weight:bold}
-.rwd-sticker{background:#2a2010;border:2px solid #ffd700;border-radius:6px;padding:14px 14px;cursor:pointer;width:200px;min-height:120px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;font-family:Georgia,serif;transition:transform .12s,background .12s}
-.rwd-sticker:hover{background:#3a2e10;transform:translateY(-3px)}
-.rwd-sticker .name{color:#ffd700;font-size:15px;font-weight:bold}
-.rwd-sticker .text{color:#ddc;font-size:11px;font-style:italic;text-align:center}
 .rwd-pair{background:linear-gradient(#2a3320,#1c2416);border:2px solid var(--iron,#13170e);border-radius:0;box-shadow:inset 0 0 0 1px var(--wood-hi,#6d7c4c),0 3px 0 rgba(0,0,0,.4);padding:12px 10px;cursor:pointer;width:200px;display:flex;flex-direction:column;align-items:center;gap:6px;font-family:inherit;transition:transform .12s,filter .12s}
 .rwd-pair:hover{transform:translateY(-4px);filter:brightness(1.08)}
-.rwd-pair-card{display:flex;flex-direction:column;align-items:center;gap:4px;width:100%;padding:8px 4px;background:rgba(0,0,0,.28);border-radius:0}
-.rwd-pair-card .art{font-size:36px;line-height:1;display:flex;align-items:center;justify-content:center;min-height:64px}
-.rwd-pair-card .art img{width:128px;height:64px;image-rendering:pixelated;display:block}
-.rwd-pair-card .name{color:#ffe7a0;font-size:13px;font-weight:bold;text-align:center}
-.rwd-pair-card .type{color:#88a;font-size:10px}
-.rwd-pair-card .stats{color:#fff;font-size:13px;font-weight:bold}
 .rwd-pair-plus{color:#ffd700;font-size:18px;font-weight:bold;line-height:1;margin:2px 0}
 .rwd-pair-arrow{color:#88c8ff}
 .rwd-pair-rip{color:#ff6060}
@@ -1062,7 +1035,6 @@ body.ai-thinking #status{
     <span class="pname" id="oppName">Opponent</span>
     <span style="color:#888">&#9829;</span><span class="life" id="oppLife">20</span>
     <div class="mpool" id="oppMana"></div>
-    <span class="pstatus" id="oppStatus"></span>
     <div class="zones"><div>Lib <span id="oppLib">0</span></div><div class="zone-btn" onclick="CONTROLLER.openZone('opp','graveyard')">Gv <span id="oppGv">0</span></div><div class="zone-btn" onclick="CONTROLLER.openZone('opp','exile')">Ex <span id="oppEx">0</span></div><div>Hand <span id="oppHandCount">0</span></div></div>
    </div>
    <div class="hand-hidden" id="oppHandView"></div>
@@ -1083,13 +1055,12 @@ body.ai-thinking #status{
    </div>
   </div>
   <div class="parea" id="youArea">
-   <div class="bf aturn" id="youBf"></div>
+   <div class="bf" id="youBf"></div>
    <div class="hand" id="youHand"></div>
    <div class="pinfo">
     <span class="pname" id="youName">You</span>
     <span style="color:#888">&#9829;</span><span class="life" id="youLife">20</span>
     <div class="mpool" id="youMana"></div>
-    <span class="pstatus" id="youStatus"></span>
     <div class="zones"><div>Lib <span id="youLib">0</span></div><div class="zone-btn" onclick="CONTROLLER.openZone('you','graveyard')">Gv <span id="youGv">0</span></div><div class="zone-btn" onclick="CONTROLLER.openZone('you','exile')">Ex <span id="youEx">0</span></div><div>Hand <span id="youHandCount">0</span></div></div>
    </div>
   </div>

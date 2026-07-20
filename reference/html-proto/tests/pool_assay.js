@@ -63,14 +63,17 @@ for (const [label, deck] of Object.entries(DECKS)) {
 }
 
 // ---- 2. Plans per pair ------------------------------------------------------
-console.log('\n=== 2 · PLANS PER COLOR PAIR (distinct names in 75 buckets; target >= 12) ===');
+console.log('\n=== 2 · PLANS PER COLOR PAIR (distinct seed cards in 75 buckets; target >= 12) ===');
+// Bucket names died at v2.2.22 (identity = the seed + why[]), so plan
+// diversity counts distinct SEED cards — the doctrine's own identity field
+// (audit R58/R59: the old bb.name read collected only undefined).
 const pairs = [['W','U'],['U','B'],['B','R'],['R','G'],['G','W'],['W','B'],['U','R'],['B','G'],['R','W'],['G','U']];
 const pairResults = [];
 for (const [a, b] of pairs) {
   const deck = [LAND[a], LAND[a], LAND[b], LAND[b]];
-  const names = new Set();
-  for (let i = 0; i < 25; i++) for (const bb of BUCKETS.rollBucketOffer(deck)) names.add(bb.name);
-  pairResults.push({ pair: a + b, plans: names.size });
+  const seeds = new Set();
+  for (let i = 0; i < 25; i++) for (const bb of BUCKETS.rollBucketOffer(deck)) seeds.add(bb.cards[0]);
+  pairResults.push({ pair: a + b, plans: seeds.size });
 }
 pairResults.sort((x, y) => x.plans - y.plans);
 for (const r of pairResults) {
