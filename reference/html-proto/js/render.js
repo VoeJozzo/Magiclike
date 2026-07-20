@@ -175,6 +175,13 @@ function render() {
   renderBf('oppBf', G.opp.battlefield, 'opp');
   // Active-turn battlefield glow follows the actual turn (audit A35 — the
   // class used to sit statically on the player's side).
+  // The opp === true branch is effectively unobservable today: opp turns
+  // resolve on a deliberately very fast timer, so no render lands while opp
+  // is active (PR #148 review, 2026-07-20 — repeated attempts to catch such a
+  // frame at runtime found none; the you-side branch is confirmed live).
+  // Correct by construction, but UNEXERCISED — if turn pacing ever slows, or
+  // the glow misbehaves during opp's turn, start here rather than assuming
+  // this line has ever run with a true second argument.
   document.getElementById('youBf').classList.toggle('aturn', G.activePlayer === 'you');
   document.getElementById('oppBf').classList.toggle('aturn', G.activePlayer === 'opp');
 
