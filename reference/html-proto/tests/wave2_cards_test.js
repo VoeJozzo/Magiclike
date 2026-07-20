@@ -286,8 +286,10 @@ console.log('\n=== tidewatcher: draws only on opp-turn casts ===');
   G.you.battlefield.push(mk('tidewatcher', 'you'));
   G.you.library = [mk('forest', 'you'), mk('forest', 'you')];
   const hand0 = G.you.hand.length;
-  cast(G, 'giant_growth', null); // fizzles targetless? give it a target
+  cast(G, 'giant_growth', null);
   drain(G);
+  check('targetless giant_growth cast is rejected (card stays in hand)',
+    G.you.hand.length === hand0 + 1, hand0 + ' -> ' + G.you.hand.length);
   // (giant_growth needs a creature target; use a bear first)
   const bear = mk('grizzly_bears', 'you');
   G.you.battlefield.push(bear);

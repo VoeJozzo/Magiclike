@@ -270,7 +270,6 @@ eqText(segsToText(describeTrigger({ event: 'attacks',
                                     effects: [{ kind: 'damage', target: 'opp', amount: 1 }] })),
        'When this attacks, deal 1 damage to target opponent.', 'attacks → damage');
 
-// ─── describeModalSegs ────────────────────────────────────────────────
 eqText(segsToText(describeTrigger({ event: 'combat_damage',
                                     condition: ['this_card', 'affected_player_is(opp)'],
                                     target: 'graveyard_card',
@@ -283,6 +282,7 @@ eqText(segsToText(describeTrigger({ event: 'combat_damage',
        "Whenever this deals combat damage to an opponent, exile target nonland card from an opponent's graveyard. Until end of turn, you may cast that card, and you may spend mana as though it were mana of any color to cast it.",
        'combat damage theft trigger');
 
+// ─── describeModalSegs ────────────────────────────────────────────────
 console.log('\n=== describeModalSegs ===');
 {
   const modes = [
@@ -303,7 +303,6 @@ console.log('\n=== describeModalSegs ===');
         out.endsWith('.'), 'got "' + out + '"');
 }
 
-// ─── End-to-end: real card from CARDS ─────────────────────────────────
 console.log('\n=== describeEffect: move_card library search text ===');
 eqText(segsToText(describeEffect({ kind: 'move_card', from_zone: 'library', to_zone: 'hand', selector: 'library_search', filter: 'creature' })),
        'search your library for a creature card and draw it',
@@ -318,6 +317,7 @@ eqText(segsToText(describeEffect({ kind: 'move_card', from_zone: 'library', to_z
        'search your library for a land and put it onto the battlefield tapped',
        'string land battlefield fetch renders as land');
 
+// ─── End-to-end: real card from CARDS ─────────────────────────────────
 console.log('\n=== describeCardSegments end-to-end on real cards ===');
 {
   // Lightning Bolt — instant, damage:any-target,3. Auto-generated text

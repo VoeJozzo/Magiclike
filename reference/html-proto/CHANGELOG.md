@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.2.40`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.2.41`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -3151,3 +3151,26 @@ blind spot. Stale special/RUN_MODIFIERS references swept from comments
 (engine, draft, steal-gate, buckets, CLAUDE.md registry list, _setup
 globals); CLAUDE.md's "3 bucket picks" corrected to 5. Suite 151 files /
 3003 green; lint clean.
+v2.2.39: repo-wide comment sweep under the comment doctrine (root
+CLAUDE.md → Comments; docs/wiki/comment-doctrine.md). Comments-only, no
+behavior change: 218 files audited across both engines by per-file editor
+agents, each edited file re-checked by an adversarial reviewer; 205 edited —
+361 comments deleted (changelog narration, version stamps, dev-phase labels,
+verified-claims, speculative futures, restatements), 518 trimmed to shortest
+true form, 72 reviewer restorations of over-deletions. Comments contradicting
+code were flagged and left in place — see BACKLOG "Stale-comment flags"
+(js/draft.js:581 needs a design call on the splash-penalty curve).
+(js/draft.js:581 needs a design call on the splash-penalty curve). Suite 150
+files / 2997 green; lint clean.
+
+v2.2.41: flag-review resolution (F1–F14 from the sweep's review sheet).
+Joe's F1 call: trust the code — the splash-penalty comment's wrong curve
+enumeration is deleted, formula unchanged. Truth-fixes: misplaced doc lines
+rehomed onto describeTrigger and describeStaticBuff; two misplaced test
+dividers rehomed; the Architect's Codex build flow is no longer credited to
+Mercurial Adept; a rotted engine.js line-number pointer dropped. Label
+fixes: 'terror'→'murder' in castable-highlight; '(was: vanished)' narration
+dropped from the fizzle label. New assertion: targetless giant_growth cast
+is rejected (wave2, +1 assertion). Verified in passing: every move_card
+battlefield arrival emits ETB via placeCardOnBattlefield (F4); no card
+emits the retired params.sub shape (F2).

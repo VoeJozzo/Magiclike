@@ -603,7 +603,6 @@ function scoreDraftCard(id, picksSoFar) {
       score += picksSoFar.length < 5 ? 5 : -25;
     } else {
       // Splash into a third color. Tolerated early, punished later.
-      // Curve: -5 at pick 2, -15 at pick 5, -30 at pick 10+.
       score -= Math.min(30, 5 + picksSoFar.length * 2.5);
     }
   }

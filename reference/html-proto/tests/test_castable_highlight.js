@@ -58,7 +58,7 @@ console.log('\n=== gates still apply (no false highlight) ===');
 })();
 (() => {
   const G = game();
-  check('terror NOT highlighted with no creatures on board', !canPlayFromUI('you', inHand(G, 'murder')));
+  check('murder NOT highlighted with no creatures on board', !canPlayFromUI('you', inHand(G, 'murder')));
 })();
 
 console.log('\n=== restricted target highlights only when a legal target exists ===');

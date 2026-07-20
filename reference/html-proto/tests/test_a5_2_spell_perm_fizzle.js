@@ -50,7 +50,7 @@ console.log('=== A5-2: a creature spell stapled onto a battlefield land FIZZLES 
       allTargets: [{ kind: 'stack', stackItem: spellItem }, { kind: 'permanent', iid: land.iid }] },
     { kind: 'apply_in_game_splice' }, null);
 
-  check('A5-2: the spell FIZZLED to its owner graveyard (was: vanished)',
+  check('A5-2: the spell FIZZLED to its owner graveyard',
     G.you.graveyard.some(c => c.iid === spellCard.iid), 'gy=' + JSON.stringify(G.you.graveyard.map(c => c.tplId)));
   check('the spell is off the stack', !G.stack.includes(spellItem));
   check('the land permanent survives on the battlefield', G.you.battlefield.some(c => c.iid === land.iid));

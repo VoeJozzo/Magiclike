@@ -891,7 +891,6 @@ function triggerPreamble(trig) {
   return 'Whenever a relevant event occurs,';
 }
 
-// Full trigger clause as segments (lowercase body since preamble ends in comma).
 // A plain {W,U,B,R,G,C} cost -> brace string: generic first, then color pips
 // (e.g. {R:1,C:2} -> "{2}{R}"). renderManaSymbols draws them.
 function manaCostBraces(cost, opts) {
@@ -906,6 +905,7 @@ function manaCostBraces(cost, opts) {
   return s || empty;
 }
 
+// Full trigger clause as segments (lowercase body since preamble ends in comma).
 function describeTrigger(trig, tplTrig) {
   const preamble = triggerPreamble(trig);
   const tplEffs = tplTrig ? tplTrig.effects : undefined;
@@ -1024,7 +1024,6 @@ function abilityPickerLabel(ab, maxLen) {
   return text.length > cap ? text.slice(0, cap - 1).trimEnd() + '…' : text;
 }
 
-// Lord buff: "Other <subtype>s you control get +P/+T and have <kw>."
 // Static spell riders — "Spells you cast also …". One sentence per
 // rider, phrased by (spell_filter, rider_scope, first effect). The four
 // shipping shapes are covered exactly; a new shape rendering '' fails the
@@ -1060,6 +1059,7 @@ function describeSpellRider(rider, selfName) {
   return '';
 }
 
+// Lord buff: "Other <subtype>s you control get +P/+T and have <kw>."
 function describeStaticBuff(buff, lordTpl) {
   // Card-TYPE buffs read "Artifact creatures" (the engine only buffs
   // creatures — lordBuffApplies gates on hasType Creature); subtype buffs

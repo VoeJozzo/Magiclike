@@ -7,7 +7,7 @@
 //      Mismatch = self-targeting effect resolves against a graveyard
 //      source and crashes / no-ops.
 //   3. Two-step build flow — the (3 conditions, then 3 effects)
-//      Mercurial Adept UX path produces well-formed picks.
+//      Architect's Codex UX path produces well-formed picks.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -218,7 +218,7 @@ console.log('\n=== Mercurial Adept template + deck-build integration ===');
     check('Adept appears in the player game state', !!adept);
     if (adept) {
       // The bonusTrigger is appended onto card.triggers at makeCard time
-      // (see engine.js:1868-1877) rather than stored as a separate field.
+      // rather than stored as a separate field.
       // Adept's template has no intrinsic triggers, so the one trigger we
       // see IS the rolled boon.
       check('Adept has a trigger rolled from the pool',
