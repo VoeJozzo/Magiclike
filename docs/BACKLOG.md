@@ -19,7 +19,6 @@ For html-proto deferred work, see [`reference/html-proto/BACKLOG.md`](../referen
 
 ### Rules-engine correctness
 - **Trigger chain depth cap** — Godot to mirror proto's 100-depth threshold in `_drain_pending_triggers`. See `docs/DIVERGENCE.md` E6.
-- **`test_phase5b` is red on dev — `.tres` keyword gaps.** Found 2026-07-20 running the full Godot suite; reproduced at base `e603e3c2`, so pre-existing, not sweep-caused. `serra_angel.tres` lacks `"flying"` and `walking_wall.tres` lacks `"defender"`, so both `card_value` ordering asserts fail (keywords drive the score). Two-line data fix; suite then 12/12. Same `.tres`-vs-JSON divergence class as the registry-retirement item below.
 - **Stale target token in `JsonCardLoader._USER_PICKED_TARGETS`** (`engine/json_card_loader.gd` ~42). The list has `graveyard_creature` (retired proto-side; zero cards emit it) but lacks `graveyard_card` (six live cards emit it — grep-verified 2026-07-18). Those six cards load with `requires_target = false`, so the Godot side would cast them without target selection. Fix: swap the token, trim the adjacent "verified across the pool" comment (see CLAUDE.md → Comments), and pin `requires_target` for one affected card in a test. Found by the 2026-07-18 comment audit.
 
 ### Divergence-tracked work
@@ -83,5 +82,7 @@ The following items live in `docs/DIVERGENCE.md` as their primary tracker. Liste
 - **Card art for the 23 existing cards.** Placeholders today. Four PNGs (blood_knight, cloud_pegasus, ember_drake, goblin_duelist) are already ported to `cards/images/` but unwired — they're art *inserts*, not full card faces, and our `scenes/card.tscn` treats `front_image` as the entire face. Wiring needs a frame+slot rebuild of card.tscn (Frame TextureRect + Art TextureRect children), then TresCardFactory sets both. After that, port the remaining cards' art from `reference/html-proto/cards/<tplId>/art.png`.
 
 ## Recently done
+
+- **`.tres` keyword gaps fixed — Godot suite 12/12** (2026-07-20). `serra_angel.tres` gained `"flying"`, `walking_wall.tres` gained `"defender"`; `test_phase5b`'s two `card_value` ordering asserts now pass. The red predated the comment sweep (reproduced at base `e603e3c2`). Same `.tres`-vs-JSON divergence class the registry-retirement item tracks.
 
 - **Proto card-id snake_case normalization — already shipped, item retired** (verified 2026-06-09). All 297 manifest ids are pure snake_case; landed back at `e2e151f` "Normalize card ids to match names + add types[] to every card" (proto v2.0.67), with the old camelCase names kept as a save-migration rename map in `js/run.js` and pinned by `tests/tplid_renames_test.js` — exactly the save-compat touch this entry called for. The Phase 6 gate is satisfied.
