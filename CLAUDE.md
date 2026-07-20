@@ -17,6 +17,8 @@ Tests are runnable scenes in `tests/` — one per port phase (e.g., `test_phase4
 
 Run it from the root of the checkout you are working in — **your worktree, not the main checkout** — or `--path` will test someone else's code.
 
+**Fresh worktree: run `--import -v` first** (same binary, `--headless --path . --import -v`). Otherwise the first test scene triggers the full asset import silently — minutes of zero output, indistinguishable from a hang.
+
 Each test prints assertion results and exits with code 0 (pass) / 1 (fail). Roughly 30 seconds per scene. A change is "done" when the whole `tests/` suite passes and the change itself is exercised by a test — extending an existing scene beats adding a new one.
 
 ## Durable concepts wiki (`docs/wiki/`)
