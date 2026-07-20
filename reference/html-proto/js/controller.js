@@ -2736,17 +2736,21 @@ function renderTableWithToolbar(opts) {
   const visibleRows = expanded ? allRows : allRows.slice(0, defaultN);
   const canExpand = allRows.length > defaultN;
 
-  let html = `<div style="display:flex;align-items:center;justify-content:space-between;margin:14px 0 4px;gap:8px;flex-wrap:wrap">`;
-  html += `<div style="color:${color};font-size:10px;font-weight:bold;letter-spacing:.1em">${title.toUpperCase()}</div>`;
-  html += `<div style="display:flex;gap:4px">`;
-  html += `<button onclick="CONTROLLER.copyTableAsTsv('${id}')" style="background:#1a2a3a;border:1px solid #335;color:#88ccff;font-size:9px;padding:3px 8px;border-radius:3px;cursor:pointer;font-family:inherit">copy</button>`;
+  // Presentation lives in CSS (.tbl-*); only `color` is inlined, because it is
+  // the one genuinely DYNAMIC value here — each table passes its own accent, so
+  // no stylesheet rule could know it. Everything else was static and is now a
+  // class, so the panels restyle from one place.
+  let html = `<div class="tbl-head">`;
+  html += `<div class="tbl-title" style="color:${color}">${title.toUpperCase()}</div>`;
+  html += `<div class="tbl-actions">`;
+  html += `<button class="tbl-btn" onclick="CONTROLLER.copyTableAsTsv('${id}')">copy</button>`;
   if (canExpand) {
-    html += `<button onclick="CONTROLLER.toggleStatsTable('${id}')" style="background:#1a1a2a;border:1px solid #335;color:#aaa;font-size:9px;padding:3px 8px;border-radius:3px;cursor:pointer;font-family:inherit">${expanded ? 'show top ' + defaultN : 'show all (' + allRows.length + ')'}</button>`;
+    html += `<button class="tbl-btn" onclick="CONTROLLER.toggleStatsTable('${id}')">${expanded ? 'show top ' + defaultN : 'show all (' + allRows.length + ')'}</button>`;
   }
   html += `</div></div>`;
 
   if (subtitle) {
-    html += `<div style="color:#666;font-size:9px;margin-bottom:4px;font-style:italic">${subtitle}</div>`;
+    html += `<div class="tbl-sub">${subtitle}</div>`;
   }
 
   // Hidden textarea holding the TSV form, used by copyTableAsTsv. We
