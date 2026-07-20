@@ -62,6 +62,7 @@ Node-based regression suite under `tests/`. Run from `reference/html-proto/`:
 ```
 node tests/run_all.js                       # ~2900 assertions, ~25s
 node tests/selfplay_harness.js 500 bughunt  # AI vs AI, ~20s
+node tests/pool_assay.js                    # card-pool health report (prints metrics; no assertions, not in run_all)
 npm install   # one-time, pulls the dev-only lint deps (node_modules git-ignored)
 npm run lint                                 # ESLint + sonarjs bug-smell scan
 ```
