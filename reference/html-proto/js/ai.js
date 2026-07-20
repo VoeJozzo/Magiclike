@@ -36,8 +36,8 @@ const NOT_TARGET_SCORED_KINDS = new Set([
 // scope (outside the AI IIFE) so effectCoverageReport (engine.js) can read the
 // classification sets lazily and tests can reach them via `AI.*`.
 
-// Score a sorcery by best mode. Flash spells (incl. retired-Instant cards) get
-// a flexibility premium — they can be held up for an instant-speed response.
+// Flash spells (incl. retired-Instant cards) get a flexibility premium — they
+// can be held up for an instant-speed response.
 function spellValue(card) {
   const modes = ENGINE.getModes ? ENGINE.getModes(card) : [card.effects || []];
   let bestModeValue = 0;
@@ -237,7 +237,7 @@ function decide(state, who) {
     return {type: 'numberChoice', number: Math.max(p.min, Math.min(p.max, n))};
   }
 
-  // Symmetricize: pick MAX of (power, toughness, cost). Yields the biggest body.
+  // Yields the biggest body.
   if (state.pendingSymmetricizeChoice && state.pendingSymmetricizeChoice.who === who) {
     const v = state.pendingSymmetricizeChoice.values;
     let which = 'power', best = v.power;
@@ -246,7 +246,6 @@ function decide(state, who) {
     return {type:'symmetricizeChoice', which};
   }
 
-  // Edict forced-sacrifice: pick the lowest sac-value permanent.
   if (state.pendingEdictChoice && state.pendingEdictChoice.who === who) {
     const pool = state.pendingEdictChoice.pool;
     let bestIid = pool.length ? pool[0].iid : null, bestVal = Infinity;
@@ -294,7 +293,6 @@ function decide(state, who) {
     return decideBlockers(state, who);
   }
 
-  // Priority: stack non-empty → reaction; main phase → main; off-turn combat → reactive.
   if (state.priority && state.priorityHolder === who) {
     if (state.stack.length > 0) {
       return decideReaction(state, who, actions);
@@ -500,7 +498,6 @@ function decideMain(state, who, actions) {
     if (!spellsByCard.has(a.cardIid)) spellsByCard.set(a.cardIid, []);
     spellsByCard.get(a.cardIid).push(a);
   }
-  // Curve-up: biggest playable first. Flash-hold: vanilla flash bodies deferred to off-turn.
   // findCastableCard (not hand.find): cast-permission cards (exile steals)
   // must stay candidates, or the AI never casts what it stole.
   const candidateCards = Array.from(spellsByCard.keys()).map(iid => ({
@@ -528,7 +525,7 @@ function decideMain(state, who, actions) {
   }
   if (bestPlay) return bestPlay;
 
-  // Activated abilities. Skip reserved-burn sources (part of the lethal line).
+  // Skip reserved-burn sources (part of the lethal line).
   let abilityActs = actions.filter(a => a.type === 'activateAbility');
   if (reservedBurnIids) {
     abilityActs = abilityActs.filter(a => !reservedBurnIids.has(a.cardIid));
@@ -601,7 +598,6 @@ function computeReservedBurnForLethal(state, who) {
   return null;
 }
 
-// Single-spell lethal — one burn source ≥ opp life.
 function findBurnLethal(state, who, actions) {
   const oppLife = state[opp(who)].life;
   if (oppLife <= 0) return null;
@@ -609,7 +605,7 @@ function findBurnLethal(state, who, actions) {
   return killer ? killer.action : null;
 }
 
-// Best land = the one that fixes us. Score producible colors against hand needs.
+// Best land = the one that fixes us.
 function pickBestLand(state, who, landActs) {
   if (landActs.length === 1) return landActs[0];
   const p = state[who];
@@ -903,7 +899,6 @@ function combatBuffSwingValue(state, who, sourceIid, buffPow, buffTou) {
   // valuable but smaller than saving the source's life.
   let swing = 0;
   if (wasDying && !stillDying) swing += 15;   // saved the source — huge
-  // Source was attacking and now kills more blockers (or attacker now dies less)
   let extraBlockerKills = 0;
   for (const bIid of after.deadBlockers) {
     if (!before.deadBlockers.has(bIid)) extraBlockerKills++;
@@ -1781,7 +1776,7 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
       if (handSize === 0) return -100;
       return Math.min(eff.amount || 1, handSize) * 8 + 4;
     }
-    // returnFromGraveyard / shuffleIntoLibrary — value at parity.
+    // returnFromGraveyard — graveyard→hand recursion.
     if (eff.from_zone === 'graveyard' && eff.to_zone === 'hand') {
       if (target.kind !== 'graveyard_card') return -100;
       const grave = state[target.controller || us].graveyard || [];
@@ -1822,13 +1817,11 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
     }
     if (eff.from_zone === 'battlefield' && eff.to_zone === 'exile'
         && modeEffects.some(e => e.kind === 'move_card' && e.from_zone === 'exile' && e.to_zone === 'battlefield')) {
-      // flicker (exile + immediate return). Flickering only makes
-      // sense on our own creatures. Best targets:
+      // flicker (exile + immediate return). Best targets:
       //   1. ETB-trigger creatures we want to re-fire (Wall of Omens, Grave
       //      Digger) — high value, the whole point of flicker.
       //   2. Damaged creatures about to die — flicker resets damage.
-      // Avoid flickering tokens (they cease to exist) and creatures that lose
-      // ongoing benefit from staying put (counters).
+      // Permanent counters don't survive the round-trip, so subtract them below.
       if (target.kind !== 'creature') return -100;
       const c = ENGINE.findCard(target.iid);
       if (!c || c.controller !== us) return -100;
@@ -1844,7 +1837,7 @@ function scoreSpellTargetForMode(state, who, card, target, modeIdx) {
     }
     if (eff.from_zone === 'battlefield' && eff.to_zone === 'hand') {
       // Bounce (embargo's removal half — the apply_sticker cost-tax rides
-      // along). Tempo removal on an opp creature; a bounced token ceases.
+      // along).
       if (target.kind !== 'creature') return -100;
       const c = ENGINE.findCard(target.iid);
       if (!c || c.controller === us) return -100;
@@ -1947,7 +1940,7 @@ function pickBestActivation(state, who, abilityActs) {
       score = isSelf ? -50 : 8;
     } else if (eff.kind === 'move_card' && eff.from_zone === 'library'
         && (eff.to_zone === 'battlefield' || (eff.to_zone === 'hand' && eff.selector === 'library_search'))) {
-      // Tutoring / land-fetch is consistently strong (collapsed search*).
+      // Tutoring / land-fetch is consistently strong.
       score = 8;
     } else if (eff.kind === 'move_card' && eff.from_zone === 'graveyard' && eff.to_zone === 'hand') {
       // Recall a creature card from our graveyard to hand (Hymnwright's verse

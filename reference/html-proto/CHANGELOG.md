@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.2.43`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.2.44`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -3197,3 +3197,17 @@ types.js's hasType doc stranded above isUndraftable (rehomed), and
 pool_assay's "top-card recurrence" census claim (never implemented — the
 string only ever existed in the header). Suite 151 files / 3004 green;
 lint clean.
+
+v2.2.44: comment wave 2 — chunked deep sweep of the ten 700+ line files
+(both engines; fresh editor per ~450-line segment to counter the measured
+within-file attention decay of the whole-file passes, whole-file
+adversarial reviewer per edited file). 48/57 segments edited: 65 comments
+deleted, 89 trimmed; reviewers found zero code drift and themselves fixed
+two sweep-introduced rewrite errors in engine.js. Nine comment-vs-code
+contradictions: seven truth-fixed (four by the wave's own agents, three
+after — schema no-cards claim, misattributed graveyard-recursion label,
+orphaned render header), two backlogged as bug candidates
+(effectiveCastCost returns the live cost object on no-bump paths;
+Archdemon bargain stash uses battlefield-only findCard, so a departed
+source silently drops the count). Suite 151 files / 3004 green; lint
+clean; Godot 12/12.

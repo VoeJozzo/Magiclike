@@ -1,7 +1,7 @@
 extends Node
 
 # Engine — central game-state authority. Autoloaded as `RulesEngine` (Godot has built-in `Engine`).
-# Public API: init_phase{1,2,3}, state(), execute_action(action), is_legal_action(action).
+# Public API: init_phase*/init_game, state(), execute_action(action), is_legal_action(action).
 # Action shapes in engine/action.gd. action.kind dispatches to _do_<kind>.
 # Failed actions return false without mutating; successful actions emit state_changed.
 
@@ -15,11 +15,11 @@ var _state: EngineState = null
 func _ready() -> void:
 	# Predicate validation at boot — catches typos in card resources.
 	Predicates.validate_all_card_predicates(CardDatabase.all_resources())
-	# Cross-engine supportability scan over the full html-proto card pool.
-	# Loads 258 JSONs and prints one line summarizing how many are fully
-	# playable today vs awaiting effect/event/predicate handlers. Skip in
-	# CI / headless tests that don't want the disk hit by setting the env
-	# var MAGICLIKE_SKIP_SUPPORTABILITY_SCAN=1.
+	# Cross-engine supportability scan over the full html-proto card pool:
+	# prints one line summarizing how many cards are fully playable today
+	# vs awaiting effect/event/predicate handlers. Skip in CI / headless
+	# tests that don't want the disk hit by setting the env var
+	# MAGICLIKE_SKIP_SUPPORTABILITY_SCAN=1.
 	if not OS.has_environment("MAGICLIKE_SKIP_SUPPORTABILITY_SCAN"):
 		var json_cards: Dictionary = JsonCardLoader.load_all()
 		if not json_cards.is_empty():
@@ -235,7 +235,7 @@ func _populate_library(player: Player, decklist: Dictionary) -> void:
 			player.library.append(inst)
 
 
-# Global-RNG shuffle (swap for seeded RandomNumberGenerator if replays needed).
+# Uses global RNG, not a seeded RandomNumberGenerator — runs aren't replayable/deterministic.
 func _shuffle_library(player: Player) -> void:
 	player.library.shuffle()
 
@@ -638,9 +638,7 @@ func _legal_cast_spell(action: Dictionary) -> bool:
 		var targets: Array = action.get("targets", [])
 		if targets.is_empty():
 			return false
-		# Hexproof gates opponent-cast targets: a creature with hexproof
-		# can't be targeted by spells controlled by an opposing player.
-		# (Your own spells can still target it.)
+		# Hexproof blocks targeting only by an opposing controller's spells.
 		for t in targets:
 			if t.get("kind", "") == "creature":
 				var tfound = _state.find_instance(t.get("iid", -1))
@@ -1102,7 +1100,6 @@ func _resolve_combat_damage() -> void:
 	_check_win_conditions()
 
 
-# Returns true if any current attacker or assigned blocker has first_strike.
 func _combat_needs_first_strike_step(attacker_blockers: Dictionary) -> bool:
 	for atk_iid in attacker_blockers:
 		var atk_found = _state.find_instance(atk_iid)
@@ -1407,9 +1404,8 @@ func _describe_targets(targets: Array) -> String:
 				var card: CardInstance = _find_card_anywhere(iid)
 				parts.append(card.name() if card != null else "creature#%d" % iid)
 			"stack":
-				# Counterspell-style: target is a spell on the stack. Pull the
-				# source card's display name via _find_card_anywhere (which
-				# checks _stack_held_cards for cards mid-resolution).
+				# Counterspell-style: target is a spell on the stack; _find_card_anywhere
+				# also checks _stack_held_cards for cards mid-resolution.
 				var siid: int = t.get("iid", -1)
 				var scard: CardInstance = _find_card_anywhere(siid)
 				parts.append(scard.name() if scard != null else "the spell on stack")

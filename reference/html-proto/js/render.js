@@ -1031,7 +1031,6 @@ function renderBf(id, bf, who) {
   }
 }
 
-// Effects for the pending pick: chosen mode (cast) or ability (activate).
 // Resolve a pending-cast card by iid — hand first, then a public zone the
 // player has cast permission for (Seal-Thief Courier's cast-from-exile grant).
 // The human target/modal UI must treat a permitted exile card exactly like a
@@ -1179,10 +1178,10 @@ function isValidTargetCreature(eff, card) {
 const FRAME_REDUNDANT_STICKER_KINDS = new Set(
   ['keyword', 'trigger', 'subtype', 'add_type', 'innate', 'stat_boost', 'cost_mod']);
 
-// Render sticker badges. `big` = larger styling for the reward modal.
-// empowerRolls/tplId/stapledTpls let individual Empower badges be labeled
-// with the rolled field. (Suppressed kinds — keyword/subtype/etc. — are shown
-// elsewhere on the frame; see FRAME_REDUNDANT_STICKER_KINDS.)
+// `big` = larger styling for the reward modal. empowerRolls/tplId/stapledTpls
+// let individual Empower badges be labeled with the rolled field. (Suppressed
+// kinds — keyword/subtype/etc. — are shown elsewhere on the frame; see
+// FRAME_REDUNDANT_STICKER_KINDS.)
 function stickerBadgesHtml(stickers, big, empowerRolls, tplId, stapledTpls) {
   if (!stickers || !stickers.length) return '';
   const parts = [];
@@ -1357,8 +1356,7 @@ function keywordIconsHtml(card, colorKey) {
     if (svg) {
       parts.push(`<span class="kw-icon ${srcClass}"${styleAttr} role="img" aria-label="${escapeHtml(display)}" data-tip="${title}">${svg}</span>`);
     } else {
-      // No coin art yet (e.g. unblockable) — fall back to a tiny text chip,
-      // still source-colored.
+      // No SVG for this keyword — fall back to a text chip, still source-colored.
       parts.push(`<span class="kw-icon-fallback ${srcClass}"${styleAttr} data-tip="${title}">${escapeHtml(display)}</span>`);
     }
   }
@@ -1370,12 +1368,10 @@ function keywordIconsHtml(card, colorKey) {
 // Cards with a static art simply have an "art" string in their template
 // and return early. Cards with an `art_ladder` array on their template
 // (currently only Elystra) evolve their portrait as they grow — each
-// ladder entry is `{min_pt, art}`, and we walk the ladder picking the
-// highest threshold the card's current p+t meets.
+// ladder entry is `{min_pt, art}`.
 //
 // Stats come from ENGINE.getStats so live modifiers + sticker pumps +
-// static_buffs + permanent EOT bumps all count. For non-Creatures (no
-// stats to compute), fall back to the base art unconditionally.
+// static_buffs + permanent EOT bumps all count.
 //
 // Called by makeCardEl (hand/board) and openCardPopup (zoom). Draft,
 // reward, and card-browser views work off templates and don't get

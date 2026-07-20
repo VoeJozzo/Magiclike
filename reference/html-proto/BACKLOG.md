@@ -21,6 +21,9 @@ The following items live in `docs/DIVERGENCE.md` as their primary tracker. Liste
 
 ### Other
 
+- **`effectiveCastCost` returns the live cost object on two paths** (`js/engine.js` ~1815). The header claims "returns a copy," but the `!card.cost` and `bump === 0` early returns hand back `card.cost` itself — a caller that mutates the result when no bump is active corrupts the card's real cost. Either spread on every path or fix the contract comment after auditing callers for mutation. Found by the wave-2 comment sweep (2026-07-21); comment left in place as evidence.
+- **Archdemon bargain count can be silently lost** (`js/engine.js` ~7084). The number-choice resolution stashes `bargainsNum` via `findCard(sourceIid)`, but `findCard` searches battlefields only (the adjacent comment wrongly claims all zones; `findCardAnyZone` exists and is unused here). If the Archdemon leaves the battlefield before the choice resolves, the dies trigger reads no bargain count. Switch to `findCardAnyZone` (or decide the departed-source case intentionally voids the bargain) + pin with a test. Found by the wave-2 comment sweep (2026-07-21); comment left in place as evidence.
+
 - **Mana-symbol rendering has no single source of truth** (Joe flagged, board-reskin
   session) — symbols silently degrade to letters/emoji whenever a surface misses the art
   wiring, and it keeps recurring. Root cause: pip art is duplicated/optional per render

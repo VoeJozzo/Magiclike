@@ -53,7 +53,7 @@ const MERCURIAL_TRIGGER_POOL = [
 // ENGINE — game rules, state, phase machine.
 // Public API: init, state, expectedActor, getLegalActions, executeAction, subscribe, findCard, getStats.
 
-// Sticker pipeline moved to js/stickers.js — see that file for
+// Sticker pipeline lives in js/stickers.js:
 // pickWeightedSticker, applyStickersToCard, applyOneStickerToRuntimeCard,
 // applyRandomStickersToSide, empowerRollLabel, applyEmpowerRoll
 // (this range), and rollSubtypeFromDeck, pushStickerWithRoll,
@@ -116,7 +116,7 @@ function canonicalSplicePair(tplA, tplB) {
 function isCompatibleStaplePair(baseTplId, stapleTplId) {
   if (!isSpliceableBase(baseTplId)) return false;
   if (!isSpliceableStaple(stapleTplId)) return false;
-  // §3.10: the multi-color-land restriction is lifted — the synthesized
+  // §3.10: there is no multi-color-land restriction — the synthesized
   // tap-ability uses the add_mana choose form (§3.9), so a multi-color land is a
   // valid staple onto any base. (City of Brass, the only such land today, is
   // `special` — run-boon only — so it's excluded above; the capability stands
@@ -165,12 +165,12 @@ function remapEmpowerRollForStaple(roll, baseIsCreature, stapleIsCreature, baseI
   };
 }
 
-// Shared splice-merge core (plan-effects-refactor §7). The assembly logic that
-// was duplicated between RUN.applySplice (reward-time, slot data) and
-// EFFECTS.apply_in_game_splice (in-game, runtime cards): given the base + staple's
-// slot-shaped parts, compute the merged slot data. PURE — no state mutation, no
-// I/O; each caller applies the result its own way (RUN writes the slot + saves;
-// the Stapler path rebuilds the runtime card + mints a slot + transfers combat).
+// Splice-merge assembly logic, shared by RUN.applySplice (reward-time, slot
+// data) and EFFECTS.apply_in_game_splice (in-game, runtime cards): given the base
+// + staple's slot-shaped parts, compute the merged slot data. PURE — no state
+// mutation, no I/O; each caller applies the result its own way (RUN writes the
+// slot + saves; the Stapler path rebuilds the runtime card + mints a slot +
+// transfers combat).
 //
 // `base.priorStaples` is the base's existing staple chain — `slot.stapledTpls`
 // for the reward path, `card.stapledFrom.stapledTpls` for the in-game path. The
@@ -240,9 +240,7 @@ function writeMergedSpliceToSlot(slot, merged) {
 // input. So ANY such ability is excluded from every automatic mana path
 // (enumeration, legality, doTapLandForMana, the solver) and boot-flagged as
 // unsupported, per Joe's guard: the autotapper must never silently pay a cost
-// the player didn't choose. (Enabling real filter mana — paying the {1} to net
-// the fixing through the solver — is a separate feature to build before any
-// such card ships.)
+// the player didn't choose.
 function manaAbilityCostIsTrivial(ab) {
   if (!ab || !ab.cost) return true;
   for (const k of Object.keys(ab.cost)) { if (k !== 'tap') return false; }
@@ -290,8 +288,7 @@ function manaEffectColors(eff) {
   if (eff.choose) return eff.choose === 'any' ? ['W', 'U', 'B', 'R', 'G'] : eff.choose.slice();
   return Object.keys(eff.amounts || {});
 }
-// Build a tap-for-mana ability for a color set: one color → fixed amounts,
-// several → choose. Used by the staple-merge (land staples).
+// Used by the staple-merge (land staples).
 function manaAbilityForColors(colors) {
   const eff = (colors.length <= 1)
     ? { kind: 'add_mana', amounts: { [colors[0]]: 1 } }
@@ -336,7 +333,7 @@ function tplForSlot(slot) {
 }
 
 // (continued) Sticker deck-construction helpers — rollSubtypeFromDeck,
-// pushStickerWithRoll, stickersForSlot — moved to js/stickers.js.
+// pushStickerWithRoll, stickersForSlot — live in js/stickers.js.
 
 
 // Compute deck color set from a list of slot objects. Pure helper for
@@ -655,10 +652,11 @@ function mergeStapleInto(merged, stapleTpl) {
       trig.target_slots = stapleTpl.target_slots.map(spec =>
         Object.assign({}, spec, spec.target_filter ? { target_filter: { ...spec.target_filter } } : {}));
     }
-    // Carry the spell's distinct-targets rule onto the ETB. Now that the trigger
-    // path enforces cross-slot constraints (tsAutoPick / advanceTriggerTargetPrompt),
-    // a stapled Roots and Branches / Sword and Sorcery keeps its "another target
-    // creature" semantics instead of silently going permissive.
+    // Carry the spell's distinct-targets rule onto the ETB: the trigger path
+    // enforces cross-slot constraints via this field (tsAutoPick /
+    // advanceTriggerTargetPrompt), so a stapled Roots and Branches / Sword and
+    // Sorcery keeps its "another target creature" semantics instead of
+    // silently going permissive.
     if (stapleTpl.distinct_targets) trig.distinct_targets = true;
     // Land base → the ETB is OPTIONAL and costs the spell's mana cost. A land is
     // free to play, so a free stapled spell is pure value; making it a "you may
@@ -928,9 +926,8 @@ function cloneTriggerData(trig) {
   };
 }
 
-// Mint a token from TOKENS. isToken:true (vanish on leave-play), slotIdx:null,
-// no stickers/modifiers. Otherwise behaves like a creature (targeted, takes
-// damage, fires triggers).
+// Mint a token from TOKENS. Vanishes on leave-play (isToken:true); otherwise
+// behaves like a creature (targeted, takes damage, fires triggers).
 function makeToken(tokenTplId, controller) {
   const tpl = TOKENS[tokenTplId];
   if (!tpl) throw new Error('Unknown token: ' + tokenTplId);
@@ -1137,7 +1134,6 @@ function makeState(playerDeck, oppDeck) {
     log: [],
     winner: null,
     gameOver: false,
-    // Unified priority model — replaces reactionMode / dmgState.
     // priority is null when no round is open; an object {passes: Set} when open.
     // priorityHolder is whoever currently has priority within the round.
     priority: null,
@@ -1149,7 +1145,6 @@ function makeState(playerDeck, oppDeck) {
     blockers: new Map(),
     attackersDeclared: false,
     blockersDeclared: false,
-    // Cleanup discard window.
     cleanupDiscarding: false,
     // Modal-prompt slots. Each gets PENDING_DECISIONS entry above; engine pauses while non-null.
     pendingNumberChoice: null,        // {who, source, min, max, sourceIid, callback?} — Bargain
@@ -1533,17 +1528,17 @@ function choosesDescriptor(c, who) {
 // Human-facing `chooses()` gate (GAP 2 / audit A4-7): when the player forced
 // to choose is the HUMAN, pause resolution and prompt instead of auto-picking
 // — the choice is the chooser's by the card's own text. ONE shared gate for
-// all three resolution loops (spell / trigger / activated ability); before
-// A4-7 only the spell resolver had it, so a trigger-sourced edict (Heir to
-// the Burnt House dying under the AI) silently sacrificed a permanent of the
-// engine's choosing. Stashes the chosen-dependent trailing effects
-// (sacrifice/annihilate/rip) on pendingEdictChoice; doEdictChoice replays
-// them once the human picks. Returns true → the caller BREAKS out of its
-// effect loop (resolution defers); false → fall through to the handler's
-// auto-pick (AI chooser, or an empty pool which the handler logs).
-// Chooser derivation matches the handler exactly: the established player
-// target (curTgt from a target() step), else a player in ctx.allTargets,
-// else the controller's opponent.
+// all three resolution loops (spell / trigger / activated ability) — without
+// it, a trigger-sourced edict (e.g. Heir to the Burnt House dying under the
+// AI) falls through to the AI auto-pick and silently sacrifices a permanent
+// of the engine's choosing, not the human's. Stashes the chosen-dependent
+// trailing effects (sacrifice/annihilate/rip) on pendingEdictChoice;
+// doEdictChoice replays them once the human picks. Returns true → the caller
+// BREAKS out of its effect loop (resolution defers); false → fall through to
+// the handler's auto-pick (AI chooser, or an empty pool which the handler
+// logs). Chooser derivation matches the handler exactly: the established
+// player target (curTgt from a target() step), else a player in
+// ctx.allTargets, else the controller's opponent.
 function maybeDeferHumanChooses(ctx, eff, effList, curTgt) {
   const playerTgt = (curTgt && curTgt.kind === 'player') ? curTgt
     : (ctx.allTargets || []).find(t => t && t.kind === 'player');
@@ -1655,7 +1650,6 @@ function sacValueOnBoard(card) {
   return v;
 }
 
-// Score one activated ability.
 function abilityValue(ab) {
   if (!ab || !ab.effects || !ab.effects.length) return 0;
   // The False Witness doppelganger ETB (exile + become a copy) is a two-for-one:
@@ -1969,16 +1963,14 @@ function solveManaPayment(who, cost, excludeIid, wantPlan = true) {
   }
   return { cost, taps: taps.filter((_, i) => !dropped.has(i)) };
 }
-// Can `who` pay `cost` from pool + untapped sources? Thin wrapper over the
-// solver — legality and payment share one brain and cannot disagree (A1-2).
+// Thin wrapper over the solver — legality and payment share one brain and
+// cannot disagree (A1-2).
 function canPayPotential(who, cost, excludeIid) {
   return solveManaPayment(who, cost, excludeIid, false) !== null;
 }
-// Pay `cost`: solve, then execute the plan — tap exactly the planned sources
-// (each choose-source produces its assigned color), then deduct the resolved
-// cost from the pool. Throws WITHOUT mutating anything when no plan exists
-// (callers gate on canPayPotential via isLegalAction, so a throw here means
-// the caller skipped validation — and the board is still intact).
+// Throws WITHOUT mutating anything when no plan exists (callers gate on
+// canPayPotential via isLegalAction, so a throw here means the caller
+// skipped validation — and the board is still intact).
 function payMana(who, cost) {
   if (!cost) return;
   const plan = solveManaPayment(who, cost, null);
@@ -2423,8 +2415,7 @@ const EFFECTS = {
   // applyTypeChange for duration + animate-stats handling.
   add_type(ctx, params, target) { applyTypeChange(ctx, params, target, 'add'); },
   set_types(ctx, params, target) { applyTypeChange(ctx, params, target, 'set'); },
-  // Absorb a novel keyword from victim, else grow +1/+1. Persists via slot sticker.
-  // Auto-picks highest-priority keyword; defender excluded (downside).
+  // claimableKeywords excludes defender — never offered as an absorb trophy.
   endomorph_absorb(ctx, params, target) {
     // Zone-change events carry the dying card as `subject_card` (NOT `card`) —
     // reading `event.card` here fizzles every absorb.
@@ -2465,7 +2456,6 @@ const EFFECTS = {
       novel.sort((a, b) => (ABSORB_KEYWORD_PRIORITY[b] || 0) - (ABSORB_KEYWORD_PRIORITY[a] || 0));
       absorbed = novel[0];
     }
-    // Persistence only when controller is player-side with a runState slot.
     const canPersist = (ctx.controller === 'you')
       && (absorber.slotIdx != null)
       && (typeof RUN !== 'undefined' && RUN.applyStickerToSlot);
@@ -2723,9 +2713,7 @@ const EFFECTS = {
     // from params.color (a baked pick) or ctx.manaColor (the tap-lane's resolved
     // choice); absent → the first option.
     const added = produceMana(ctx.controller, params, params.color || ctx.manaColor);
-    // Tap-lane activations log "taps SOURCE for {X}" (ctx.tapForMana, set by
-    // doTapLandForMana); every other producer — spells like Dark Ritual, the
-    // generic ability path — logs "adds {X}".
+    // ctx.tapForMana, set by doTapLandForMana, picks the log wording below.
     if (ctx.tapForMana) log(`${pname(ctx.controller)} taps ${ctx.sourceName} for ${added}.`);
     else log(`${pname(ctx.controller)} adds ${added}.`, 'sp');
   },
@@ -3280,9 +3268,9 @@ const EFFECTS = {
     const priorStaples = (baseCard.stapledFrom && Array.isArray(baseCard.stapledFrom.stapledTpls))
       ? baseCard.stapledFrom.stapledTpls.slice()
       : (Array.isArray(baseCard.stapledTpls) ? baseCard.stapledTpls.slice() : []);
-    // Merge slot data via the shared core — identical math to the reward-time
-    // RUN.applySplice path (the in-game path layers the runtime-card rebuild,
-    // slot mint, and combat-state transfer below on top of the same merge).
+    // Identical math to the reward-time RUN.applySplice path — the in-game
+    // path layers the runtime-card rebuild, slot mint, and combat-state
+    // transfer below on top of the same merge.
     const merged = mergeSpliceData(
       { tplId: baseCard.tplId, stickers: baseCard.stickers, empowerRolls: baseCard.empowerRolls,
         subtypeRolls: baseCard.subtypeRolls,
@@ -3331,7 +3319,6 @@ const EFFECTS = {
           }
         }
       }
-      // Rebuild base card's runtime fields from the merged template.
       // newSlotIdx may be null for opp-only splices — makeCard accepts
       // that (slotIdx becomes null on the rebuilt card, matching opp's
       // transient-slot convention).
@@ -3349,10 +3336,9 @@ const EFFECTS = {
       baseCard.damage = preservedDamage;
       if (preservedCounters) baseCard.counters = preservedCounters;
       baseCard.owner = resultOwner;
-      // Move the in-game card to resultOwner's battlefield if it's not
-      // already there. For caster-contributes case: result goes to caster.
-      // For opp-only case: result stays with the base's original owner —
-      // no move needed (baseR.controller === resultOwner already).
+      // Caster-contributes case: result goes to caster. Opp-only case: result
+      // stays with the base's original owner — no move needed
+      // (baseR.controller === resultOwner already).
       const baseSide = baseR.controller;
       if (baseSide !== resultOwner) {
         const baseBf = G[baseSide].battlefield;
@@ -3401,8 +3387,6 @@ const EFFECTS = {
       // ran) so "one creature, one role" holds without re-introducing the bug.
       const baseAttacking = Array.isArray(G.attackers) && G.attackers.includes(preservedIid);
       const baseBlocking = G.blockers && typeof G.blockers.has === 'function' && G.blockers.has(preservedIid);
-      // Inherit the staple's ATTACK role only if the merged creature is on the
-      // attacking side and the base isn't already attacking.
       if (stapleWasAttacking && resultOwner === attackSide && !baseAttacking) {
         if (Array.isArray(G.attackers) && !G.attackers.includes(preservedIid)) G.attackers.push(preservedIid);
         // The merged base inherits the attack role, so the staple's blockers must
@@ -3415,9 +3399,6 @@ const EFFECTS = {
           }
         }
       }
-      // Inherit the staple's BLOCK assignment only if the merged creature is on
-      // the blocking side, the base isn't already blocking, and the blocked
-      // attacker is still live.
       if (stapleBlockedAtk != null && resultOwner === blockSide && !baseBlocking
           && Array.isArray(G.attackers) && G.attackers.includes(stapleBlockedAtk)) {
         G.blockers.set(preservedIid, stapleBlockedAtk);
@@ -3673,12 +3654,11 @@ function effectNeedsTarget(eff) {
 // any effect `kind` not in the EFFECTS dispatch table, plus any target()/
 // chooses() filter outside the closed TARGET_FILTERS taxonomy. Surfaces typos
 // at boot rather than at resolution. Accepts both legacy and new kind names
-// (all live in EFFECTS during the cutover). Returns {unknownKinds,
+// (both live in the same EFFECTS table). Returns {unknownKinds,
 // unknownFilters} for tests; warns to console for the running app.
-// Per-kind required-field schema for the NEW atomic effects. Only
-// the new kinds are checked — they aren't used by any card yet, so there's no
-// false-positive risk against the legacy pool; this guards the migration's
-// output. Each entry: kind → validator(effect) returning an error string or null.
+// Per-kind required-field schema for the atomic effects. Kinds without an
+// entry aren't schema-checked. Each entry: kind → validator(effect) returning
+// an error string or null.
 function isSupportedMoveCardPair(from, to) {
   if (from === 'library') return to === 'hand' || to === 'graveyard' || to === 'battlefield';
   if (from === 'hand') return to === 'graveyard';
@@ -3793,7 +3773,7 @@ const MATCH_FILTER_KEYS = new Set([
 // Effect kinds that DEREFERENCE a target and have no targetless fallback
 // (audit A4-17): authored without any way to receive one (effect-level
 // target/target_slot/scope, or a card/ability/trigger-level target step)
-// they fizzle — or, pre-guards, crashed — at resolution. Kinds with a
+// they fizzle at resolution. Kinds with a
 // non-target fallback (gain_life/draw/discard → controller; sacrifice/
 // annihilate/rip/move_card/become_copy_of/grant_cast_permission →
 // ctx.chosen; fight → operands) are deliberately absent.
@@ -3871,7 +3851,6 @@ function validateAllCardEffects(cards) {
     const cardHasTarget = !!(card.target
       || (Array.isArray(card.target_slots) && card.target_slots.length));
     checkList(allCardEffects(card), cardId, cardHasTarget);
-    // New top-level target() step filter.
     if (card.target && !TARGET_FILTERS.has(card.target)) {
       unknownFilters.push(cardId + '.target(' + card.target + ')');
     }
@@ -3935,8 +3914,6 @@ function validateAllCardEffects(cards) {
           + ') — unsupported until stat-bounded lord buffs are designed (audit A4-14)');
       }
     }
-    // Wave 2 spell riders: effect kinds through the shared sweep; scope and
-    // spell_filter keys against their closed vocabularies.
     const RIDER_SCOPES = ['all_targets', 'creature_targets', 'your_creature_targets', 'self'];
     for (const rider of (card.spell_riders || [])) {
       if (!rider) continue;
@@ -4326,8 +4303,7 @@ function pushTriggerOnStack(p) {
 // legal target) and implicit (opp/player/self/spell) slots, stopping at the
 // first slot that's a genuine choice. Returns 'prompt' (pause for the human),
 // 'done' (every slot assigned → finalize), or 'fizzle' (a slot lost its target).
-// Steps the human trigger prompt slot-by-slot, committing each pick before the
-// next. GREEDY, no backtracking: for a distinct_targets trigger with asymmetric
+// GREEDY, no backtracking: for a distinct_targets trigger with asymmetric
 // per-slot legal sets, an early pick could strand a later slot ('fizzle') even
 // though a different early pick would have yielded a legal full set. Correct only
 // because every current distinct card is 2-slot with the SAME filter on both slots
@@ -4404,7 +4380,7 @@ function drainTriggers() {
     // The per-episode trigger budget ticks HERE — one per fired trigger
     // taken up, whether it later resolves, fizzles, prompts, or bails. This
     // is the seam every trigger passes exactly once (see resolveTrigger's
-    // header for why the increment moved out of resolution).
+    // header for why the increment lives here, not at resolution).
     G.triggerChainDepth = (G.triggerChainDepth || 0) + 1;
     // ability_triggered: announce every triggered ability at FIRE time,
     // before any fizzle check — per MTG 603, an
@@ -4576,7 +4552,6 @@ function cardValueOrZero(card) {
   return cost * 2;
 }
 
-// Resolve a trigger from the stack.
 function resolveTrigger(item) {
   // Per-stack-episode trigger budget, NOT nesting depth (audit A3-3, kept
   // deliberately). Since the ability_triggered build the counter increments
@@ -4622,8 +4597,7 @@ function resolveTrigger(item) {
   runTriggerEffects(item);
 }
 
-// Run a trigger's effects against its already-chosen targets. Split from
-// resolveTrigger so the optional-cost path can resume here after payment.
+// Split from resolveTrigger so the optional-cost path can resume here after payment.
 function runTriggerEffects(item) {
   const ctx = {
     sourceIid: item.sourceIid,
@@ -4713,7 +4687,6 @@ function doOptionalCost(who, pay) {
 function selectStat(card, by) {
   switch (by) {
     case 'total_mana_cost': return costTotalCard(card);
-    // extend here: 'power' / 'toughness' via getStats, etc.
     default: console.warn('select: unknown stat', by); return 0;
   }
 }
@@ -4861,9 +4834,8 @@ const GETVALIDTARGETS_TARGETS = new Set([
 
 // Legal-target set for a target() step's filter (§3.5). THIS
 // is the hexproof checkpoint: opp-controlled hexproof creatures are excluded,
-// the caster's own hexproof creatures are allowed. Maps the new closed
-// taxonomy onto the existing getValidTargets machinery. `creature_or_player`
-// is the canonical spelling of proto's legacy `"any"`.
+// the caster's own hexproof creatures are allowed. Maps the closed taxonomy
+// onto the existing getValidTargets machinery.
 function targetsForFilter(filter, controller, restrict) {
   // `restrict` (the optional top-level `target_filter`) carries extra matchFilter
   // restrictions — not_color, has_keyword, max_tough, tapped, not_token, etc. — that
@@ -4948,8 +4920,8 @@ function slotTargetsAreDistinct(targetsArr) {
 // ONE place for "pick one legal target per slot, honoring cross-slot rules"
 // (distinct_targets today). The legality ATOM (getValidTargets / targetsForFilter
 // / validTargetsBySlot — hexproof enforced once) and the resolution-time fetch
-// (makeSlotTargetGetter) are already shared; this is the selection layer that sat
-// triplicated across the spell-cast, activated-ability, and trigger callers.
+// (makeSlotTargetGetter) are already shared; this is the shared selection layer
+// for the spell-cast, activated-ability, and trigger callers.
 // `obj` is any target-bearing thing
 // — a card, an activated ability, or a trigger — all carrying the same shape:
 // top-level `target`(+`target_filter`), canonical `target_slots`, or legacy
@@ -5039,10 +5011,10 @@ function tsComboToTargets(combo, slotKeys) {
   return targets;
 }
 
-// Every legal full target set (each a slot-indexed targets[]). Replaces the
-// bespoke cross-product in getLegalActions; honors distinct + the combo cap.
-// Empty → a required slot has no legal target (uncastable) OR the object is
-// untargeted (callers gate on objectNeedsTarget to tell those apart).
+// Every legal full target set (each a slot-indexed targets[]); honors distinct
+// + the combo cap. Empty → a required slot has no legal target (uncastable)
+// OR the object is untargeted (callers gate on objectNeedsTarget to tell
+// those apart).
 function tsEnumerate(obj, who) {
   const bySlot = tsLegalBySlot(obj, who);
   const slotKeys = [...bySlot.keys()].sort((a, b) => a - b);
@@ -5235,9 +5207,8 @@ function matchFilter(card, filter, controller, who) {
   // not_keyword: rejects creatures with the named keyword (sibling of has_keyword).
   if (filter.not_keyword && (card.keywords || []).includes(filter.not_keyword)) return false;
   // Subtype filter — used by tribal recursion (Spirit Shepherd's "return a
-  // Spirit creature card") and any future "destroy target Goblin", "exile
-  // target Wizard" style restrictions. Cards may have multi-subtype strings
-  // ("Wizard Artificer"), so we substring-match.
+  // Spirit creature card"). Cards may have multi-subtype strings ("Wizard
+  // Artificer"), so we substring-match.
   if (filter.subtype && !hasType(card, filter.subtype)) return false;
   // Card-type filter — narrows "target <type>" spells (e.g. Living Lands'
   // "target land") to the named card type. Sibling of the subtype filter;
@@ -5247,8 +5218,6 @@ function matchFilter(card, filter, controller, who) {
   if (filter.not_type && hasType(card, filter.not_type)) return false;
   // Keyword filter — used by green's anti-flying answers (Choking Vines,
   // Vine Strangle) to restrict targeting to flying creatures specifically.
-  // Generic over keyword name so future "destroy target indestructible"
-  // or "destroy target tapped creature with menace" cards can compose.
   if (filter.has_keyword && !(card.keywords || []).includes(filter.has_keyword)) return false;
   // not_token filter: rejects token permanents/spells. Used by Steal — you
   // can't put a token into your library as a trophy because tokens have no
@@ -5530,9 +5499,7 @@ function applyTypeChange(ctx, params, target, op) {
 }
 
 // When a card leaves the battlefield, any "until removed" restrictions it
-// placed on other creatures clear. Walk every creature on either battlefield
-// and remove sourceIid from their restriction sets; if a set goes empty the
-// creature is no longer restricted.
+// placed on other creatures clear.
 function clearRestrictionsFromSource(sourceIid) {
   for (const who of ['you', 'opp']) {
     for (const c of G[who].battlefield) {
@@ -5612,8 +5579,8 @@ function drawCard(who, sourceIid) {
     log(`${p.name} can't draw — loses!`, 'dmg'); endGame(opp(who)); return null;
   }
   const c = p.library.shift(); p.hand.push(c);
-  // A3-6: announce the draw. Listeners are battlefield permanents (emit()'s
-  // walk is unchanged); a `card_moves(library, hand)` trigger now fires.
+  // A3-6: announces the draw. Only battlefield permanents can listen (emit()
+  // walks just the two battlefields); a `card_moves(library, hand)` trigger fires.
   emitZoneChange(c, who, 'library', 'hand', undefined, sourceIid);
   // build_on_draw hook fires when the card enters hand via drawing. Other
   // hand-entry paths (tutoring, opening-hand placement) call this helper
@@ -5747,10 +5714,9 @@ function leavesPlayPreservingBuffs(card) {
 // shuffleIntoLibrary. Lets cards like Archdemon of Bargains
 // use a single 'thisLeaves' trigger instead of needing one trigger per
 // removal type. Caller passes the card and its controller-at-leave-time;
-// downstream trigger handlers read the leaving card as ctx.event.subject_card
-// (NOT event.card — that legacy field is gone; reading it broke Archdemon's
-// bargain payout and Endomorph's absorb post-E1). The object arrives in the
-// same state it left play (slotIdx intact, bargainsNum intact, etc).
+// downstream trigger handlers read the leaving card as ctx.event.subject_card,
+// not event.card. The object arrives in the same state it left play (slotIdx
+// intact, bargainsNum intact, etc).
 //
 // For creatures that fire BOTH this AND cardDies (on death), the leaves
 // event emits FIRST (before resetInPlayState/dies-emit). Cards that want
@@ -5798,8 +5764,7 @@ function emitLeavesBattlefield(card, controller, destZone, extraSources, sourceI
   // BEFORE the zone-change emit, so triggers observe consistent combat
   // state. See removeFromCombat above (A2-3).
   removeFromCombat(card.iid);
-  // Tokens leaving play still emit — a future "when this token leaves
-  // play" mechanic might want it. Costs nothing if no trigger listens.
+  // Tokens leaving play still emit; costs nothing if no trigger listens.
   // Unified zone-change mirror. destZone defaults to 'graveyard' (the death
   // path — the most common caller); bounce/exile/shuffle/steal callers pass
   // their actual destination so composable card_moves(battlefield, X) triggers
@@ -5807,9 +5772,8 @@ function emitLeavesBattlefield(card, controller, destZone, extraSources, sourceI
   // token never reaches the graveyard array, so post-move detection would
   // mis-tag it. extraSources defaults to the single leaving card, but the
   // simultaneous-death batch path (checkDeaths) passes the whole `dying` set
-  // so a migrated thisKillsCreature (card_damaged_by_this) fires on creatures
-  // that died in the same SBA sweep — parity with the legacy cardDies emit,
-  // which passes the same batch.
+  // so thisKillsCreature (card_damaged_by_this) fires on every creature that
+  // died in the same SBA sweep.
   // A3-11: sourceIid names the card that CAUSED the departure (PROTOCOL §3.3
   // source_iid; feeds the noSelfCascade guard). Effect-driven callers thread
   // ctx.sourceIid; the death/sacrifice paths (checkDeaths, moveToGraveyard,
@@ -5825,10 +5789,8 @@ function emitLeavesBattlefield(card, controller, destZone, extraSources, sourceI
 //     (cleared in the EOT cleanup sweep); powers Sengir-style "a creature
 //     dealt damage by this card this turn dies" triggers
 //     (card_damaged_by_this). ANY iid-bearing source records — creature,
-//     artifact, spell — so future non-creature damage sources ("whenever
-//     this kills something, …") aren't pre-foreclosed. Today only
-//     battlefield permanents can LISTEN for the predicate, so non-creature
-//     entries are inert evidence.
+//     artifact, spell — but only battlefield permanents can LISTEN for the
+//     predicate, so non-creature entries are inert evidence.
 //   killedBy — player key, last-writer-wins; if the creature ends up dying,
 //     this is who gets keyword-claim credit (claimKeywordsFromKill). Written
 //     unconditionally — spells DO claim kills for the reward screen.
@@ -5917,11 +5879,10 @@ function checkDeaths() {
     // Leaves-play emit for each dying card, in the same batch order. Emitted
     // after the whole batch is spliced off the battlefield, with the batch as
     // extraSources, so simultaneous deaths see each other's card_zone_change.
-    // (The legacy cardDies event is retired — E1; this is the only death emit.)
+    // (E1: this is the only death emit — no separate cardDies event exists.)
     for (const entry of dying) {
       emitLeavesBattlefield(entry.card, entry.controller, 'graveyard', dying);
     }
-    // Loop — buff sources just died, surviving creatures may now be lethal.
   }
 }
 function checkLifeTotals() {
@@ -5975,12 +5936,8 @@ function fixupSlotPointersAfterRemoval(who, removedIdx) {
   }
 }
 
-// Rip ONE slot from runState as Phylactery's curse-payment. Picks random
-// non-Phylactery slot; rips Phylactery itself only when it's the last slot.
-// Removes the in-game card instance from whatever zone holds it, then
-// decrements slotIdx for cards pointing past the deletion so references
-// stay valid. Silent — doesn't fire cardDies (avoids Sengir/Endomorph
-// triggers from self-rip). Returns true if ripped, false if no slots left.
+// Rip ONE slot from runState as Phylactery's curse-payment. Silent — doesn't
+// fire cardDies (avoids Sengir/Endomorph triggers from self-rip).
 function ripSlotForPhylactery(who) {
   if (who !== 'you') return false;
   if (typeof RUN === 'undefined' || !RUN.getSlots || !RUN.removeSlotByIdx) return false;
@@ -5998,12 +5955,8 @@ function ripSlotForPhylactery(who) {
   const ripIdx = pool[Math.floor(Math.random() * pool.length)];
   const ripped = RUN.removeSlotByIdx(ripIdx);
   if (!ripped) return false;
-  // Remove the in-game card instance (if any) from whatever zone it's in.
-  // Then decrement slotIdx for cards pointing past the deleted slot index
-  // so subsequent slot-based lookups still resolve correctly.
   const zones = ['library', 'hand', 'battlefield', 'graveyard', 'exile'];
   let removedCardName = ripped.tplId;
-  // Find and remove the in-game instance.
   for (const zoneName of zones) {
     const zone = G[who][zoneName];
     if (!zone) continue;
@@ -6142,9 +6095,7 @@ function passPriority(who) {
   if (!isPriorityOpen() || G.priorityHolder !== who) return;
   G.priority.passes.add(who);
   if (G.priority.passes.size === 2) {
-    // Both players have passed since the last stack change.
     if (G.stack.length > 0) {
-      // Resolve top of stack, then reset passes; priority returns to active player.
       resolveTopOfStack();
       if (G.gameOver) return;
       if (isPriorityOpen()) {
@@ -6176,7 +6127,6 @@ function passPriority(who) {
       }
     }
   } else {
-    // One player has passed; the other now holds priority.
     G.priorityHolder = opp(who);
   }
 }
@@ -6192,14 +6142,15 @@ function setPhase(p) {
   }
   G.phase = p;
 }
-// A1-22: an empty mana pool. One factory replaces the {W:0,...} literal that was
-// pasted at makePlayer + both setPhase resets (§106.4 / DIVERGENCE B2) — a missing
-// key in one copy would let that color float across phases.
+// A1-22: an empty mana pool. Single source for makePlayer and both setPhase
+// resets (§106.4 / DIVERGENCE B2) — a missing key in one copy would let that
+// color float across phases.
 function emptyManaPool() {
   return { W: 0, U: 0, B: 0, R: 0, G: 0, C: 0 };
 }
 // A1-21: the per-turn combat declaration bookkeeping, cleared at COMBAT_DAMAGE
-// resolution and at CLEANUP (§514.3). One writer replaces the pasted copies.
+// resolution and at CLEANUP (§514.3). Single writer — new call sites must
+// reuse this, not duplicate the reset.
 function resetCombatState() {
   G.attackers = [];
   G.blockers = new Map();
@@ -6261,7 +6212,7 @@ function pushOnStack(item) {
   }
 }
 
-// ── Wave 2: static spell riders ─────────────────────────────────────────────
+// ── Static spell riders ──────────────────────────────────────────────────────
 // Battlefield permanents may modify their controller's own resolving spells:
 // "Spells you cast also …" (card field `spell_riders`). Shape:
 //   spell_riders: [{ spell_filter?: {has_effect: <kind>}, rider_scope, effects }]
@@ -6433,11 +6384,10 @@ function resolveTopOfStack() {
       if (maybeDeferTrailingForHumanPrompt(ctx, eff, activeEffects)) { ridersSkipped = true; break; }   // A4-23 leg-1
     }
     ctx.chosen = null;
-    // Wave 2 static spell riders ("Spells you cast also …"): applied AFTER
-    // the spell's own effects, so a pump lands before a rider reads the
-    // board — the resolution-time semantics that dissolved the trigger
-    // version's timing trap. Fizzled and countered spells never reach here;
-    // human-chooses deferrals skip riders (no current card overlaps both).
+    // Static spell riders ("Spells you cast also …") apply AFTER the spell's
+    // own effects, so a pump lands before a rider reads the board. Fizzled
+    // and countered spells never reach here; human-chooses deferrals skip
+    // riders (no current card overlaps both).
     if (!ridersSkipped) applySpellRiders(item, card);
     // Rip-on-target check (Elystra). Uses the eligibility snapshot taken
     // before effects fired — see comment above the snapshot for why we
@@ -6712,7 +6662,7 @@ function doTapLandForMana(who, cardIid, color, abilityIdx) {
   // tapless one would be wrongly tapped). Refuse — it routes through
   // activateAbility, which pays the full cost.
   if (!manaAbilityCostIsTrivial(manaAb)) return;
-  card.tapped = true;   // pay the tap cost
+  card.tapped = true;
   // Resolve through the shared ability-effects path (the SAME one doActivateAbility
   // uses) so the mana-fill logic — and any untargeted rider effect — lives in one
   // place, not a parallel hand-rolled copy. The chosen color and the
@@ -6980,8 +6930,7 @@ function doDeclareAttackers(who, cardIids) {
   });
   log(`${G[who].name} attacks with ${cardIids.length} creature(s).`, 'cb');
   G.attackersDeclared = true;
-  // Emit "attacks" event for each declared attacker so triggers fire.
-  // Done after the tap so triggers see the post-tap state.
+  // Emitted after the tap loop above so triggers observe post-tap state.
   for (const iid of cardIids) {
     const f = findCard(iid); if (!f) continue;
     emit({type: 'attacks', controller: who,
@@ -7053,7 +7002,6 @@ function doTriggerTargetPick(who, target) {
   // next; once every slot is assigned, push the trigger and resume draining.
   if (!G.pendingTriggerTarget || G.pendingTriggerTarget.controller !== who) return;
   const pt = G.pendingTriggerTarget;
-  // Sanity-validate the target is in the current slot's valid list.
   if (!pt.valid.some(v => sameTarget(v, target))) return;
   pt.pickedSlots[pt.currentSlot] = target;
   const r = advanceTriggerTargetPrompt(pt);
@@ -7120,12 +7068,8 @@ function doSymmetricizeChoice(who, which) {
   log(`${p.targetName} becomes ${n}/${n} for {${n}}.`, 'sp');
 }
 function doNumberChoice(who, number) {
-  // Player picks an integer from a fixed range. Validates the prompt
-  // belongs to this player and the number is in range; then dispatches
-  // to the appropriate continuation handler. Currently only the
-  // Archdemon's bargain uses this — onChoose: 'bargainEtb' applies N
-  // stickers to the source's controller's permanents and stashes N on
-  // the source card for the dies trigger to read.
+  // Currently only the Archdemon's bargain uses this — onChoose:'bargainEtb'
+  // stashes N on the source card for its dies trigger to read.
   if (!G.pendingNumberChoice || G.pendingNumberChoice.who !== who) return;
   const p = G.pendingNumberChoice;
   if (!Number.isInteger(number) || number < p.min || number > p.max) return;
@@ -7253,7 +7197,6 @@ function doPass(who) {
 }
 function doEndTurn(who) {
   if (who !== G.activePlayer) return;
-  // If we're mid-declaration, complete the empty declaration first.
   if (G.phase === 'COMBAT_ATTACK' && !G.attackersDeclared) {
     doDeclareAttackers(who, []);
   }
@@ -7423,7 +7366,6 @@ function isLegalAction(who, action) {
           return false;
         }
       }
-      // Counter-removal cost: the source must carry enough of each named counter.
       if (ab.cost && ab.cost.remove_counters) {
         for (const name in ab.cost.remove_counters) {
           if (((f.card.counters && f.card.counters[name]) || 0) < ab.cost.remove_counters[name]) return false;
@@ -7440,7 +7382,6 @@ function isLegalAction(who, action) {
         // cost; a MANUAL activateAbility still pays the full cost explicitly.
         return true;
       }
-      // Non-mana ability: timing depends on main_phase_only flag.
       if (ab.main_phase_only) {
         if (!isMainPhaseWindow(who)) return false;
       } else {
@@ -7528,22 +7469,17 @@ function isLegalAction(who, action) {
       return G.pendingTriggerTarget.valid.some(v => sameTarget(v, action.target));
     }
     case 'numberChoice': {
-      // Legal only when a number-choice prompt is open for this player
-      // and the number is in the prompt's [min, max] range.
       if (!G.pendingNumberChoice || G.pendingNumberChoice.who !== who) return false;
       if (!Number.isInteger(action.number)) return false;
       return action.number >= G.pendingNumberChoice.min
           && action.number <= G.pendingNumberChoice.max;
     }
     case 'symmetricizeChoice': {
-      // Legal only when a Symmetricize prompt is open for this player.
-      // action.which ∈ {'power', 'toughness', 'cost'}.
       if (!G.pendingSymmetricizeChoice || G.pendingSymmetricizeChoice.who !== who) return false;
       return ['power','toughness','cost'].includes(action.which);
     }
     case 'edictChoice': {
-      // Legal only when an edict selection prompt (GAP 2) is open for this
-      // player, and the chosen iid is one of the eligible permanents.
+      // GAP 2 edict-selection prompt: iid must be drawn from the eligible pool.
       if (!G.pendingEdictChoice || G.pendingEdictChoice.who !== who) return false;
       return G.pendingEdictChoice.pool.some(c => c.iid === action.iid);
     }
@@ -7679,13 +7615,12 @@ function getLegalActions(who) {
       // would skip it from BOTH lanes — legal (isLegalAction) yet enumerable
       // nowhere (PR #134 review, Thaumaturge-ChatGPT).
       if (isAutoUsableManaAbility(ab)) continue;
-      // Tap cost requirements.
       if (ab.cost && ab.cost.tap) {
         if (card.tapped) continue;
         if (card.sick && !card.keywords.includes('haste') && hasType(card, 'Creature')) continue;
       }
-      // Mana cost requirements. Exclude the source when {T} is also a cost (it
-      // can't tap for both the cost and the mana).
+      // Exclude the source when {T} is also a cost — it can't tap for both the
+      // cost and the mana.
       if (ab.cost && ab.cost.mana && !canPayPotential(who, resolvedManaCost(ab.cost.mana, card, who), ab.cost.tap ? card.iid : null)) continue;
       // Sacrifice cost: enumerate one entry per legal sac target. 'creature'
       // means any of your own creatures. Note: in MtG you CAN sacrifice the
@@ -7699,7 +7634,7 @@ function getLegalActions(who) {
           sacOptions = G[who].battlefield
             .filter(c => hasType(c, 'Creature'))
             .map(c => c.iid);
-          if (sacOptions.length === 0) continue;  // can't pay sac cost
+          if (sacOptions.length === 0) continue;
         }
       }
       // Counter-removal cost: skip if the source lacks enough of any named counter.
@@ -7853,8 +7788,7 @@ function step() {
   while (true) {
     if (G.gameOver) return;
     // Pause for any open modal (player or AI). Routes through PENDING_DECISIONS
-    // so adding modal types doesn't require updating step() (the omission of
-    // pendingTriggerBuild here was the original Codex MAIN1-skip bug).
+    // so adding modal types doesn't require updating step().
     if (anyoneOwesDecision()) return;
     // Put any pending triggered abilities on the stack BEFORE anyone exercises
     // priority (MTG 603.3b: triggers go on the stack the next time a player would
@@ -7913,7 +7847,6 @@ function step() {
       return;
     }
     if (G.cleanupDiscarding) {
-      // If the player has discarded enough, clear the flag and let CLEANUP finish.
       if (G[G.activePlayer].hand.length <= 7) G.cleanupDiscarding = false;
       else return;
     }
@@ -8214,9 +8147,8 @@ function subscribe(fn) { listeners.push(fn); }
 function init(playerDeck, oppDeck) {
   nextIid = 1;
   G = makeState(playerDeck, oppDeck);
-  // Coin flip — true 50/50 first player. The chosen player skips their
-  // first draw step (handled in DRAW phase). The winner isn't offered a
-  // choice of play/draw.
+  // The winner isn't offered a choice of play/draw — the chosen player
+  // skips their first draw step instead (handled in DRAW phase).
   const first = Math.random() < 0.5 ? 'you' : 'opp';
   G.firstPlayer = first;
   G.activePlayer = first;

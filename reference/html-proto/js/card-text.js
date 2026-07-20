@@ -26,11 +26,10 @@ function formatTriggerText(template, cardName) {
 }
 
 const STAT_PHRASE = { total_mana_cost: 'total mana cost' };
-// Compose the English for a `graveyard_card` target from its filter axes:
-// type/not_type/subtype (adjectives on "card"), `select` (a superlative clause),
-// and `graveyards` (which yards). A superlative names its comparison pool with
-// "among …"; a plain restriction names a location with "from …". Always "target":
-// even a superlative leaves a choice when several cards tie for the extreme.
+// Compose the English for a `graveyard_card` target from its filter axes.
+// A superlative names its comparison pool with "among …"; a plain restriction
+// names a location with "from …". Always "target": even a superlative leaves
+// a choice when several cards tie for the extreme.
 function graveyardCardPhrase(filter) {
   filter = filter || {};
   let core = 'card';
@@ -234,7 +233,6 @@ function describeEffect(eff, tplEff) {
     case 'gain_life':
       if (typeof eff.amount === 'object' && eff.amount && eff.amount.from) {
         const owner = (eff.who && eff.who.from === 'target_controller') ? "its controller" : 'you';
-        // Conjugate by subject: "you gain", "its controller gains".
         const verb = owner === 'you' ? ' gain life equal to ' : ' gains life equal to ';
         return [plainSeg(owner + verb + describeAmount(eff.amount))];
       }
@@ -301,7 +299,6 @@ function describeEffect(eff, tplEff) {
       return [plainSeg('put a +'), pSeg, plainSeg('/+'), tSeg, plainSeg(tail)];
     }
     case 'grant_keyword': {
-      // 'eot' → EOT text; targeted → "as long as on bf" (source-tied); self → no duration.
       let dur;
       if (eff.duration === 'eot') {
         dur = ' until end of turn';
@@ -483,8 +480,8 @@ function describeEffect(eff, tplEff) {
       if (eff.scope === 'self') return [plainSeg('sacrifice this creature')];
       return [plainSeg('sacrifice ' + (t || 'it'))];
     case 'change_control': {
-      // Unified gainControl + steal. transfer_ownership renders the steal
-      // trophy flavor; otherwise the gain-control text (+ duration / riders).
+      // transfer_ownership renders the steal trophy flavor; otherwise the
+      // gain-control text (+ duration / riders).
       if (eff.transfer_ownership) return [plainSeg('shuffle ' + t + ' into your library')];
       const parts = ['gain control of ' + t];
       if (eff.duration === 'eot') parts.push(' until end of turn');
@@ -822,10 +819,9 @@ function capitalizeSegs(segs) {
   return out;
 }
 
-// "When/Whenever ..." prefix from event+condId. Falls back to event-only phrasing.
+// "When/Whenever ..." prefix from event+condition. Falls back to event-only phrasing.
 function triggerPreamble(trig) {
   const ev = trig.event;
-  // Classify from condId (legacy) or composable condition.
   const cid = triggerArchetype(trig);
   // Any-of subtype args ("Elf, Merfolk" — Covenant Scholar) render as an
   // "or"-join: "another Elf or Merfolk enters under your control,".
@@ -1354,7 +1350,6 @@ function describeCardSegments(card, opts) {
   return out;
 }
 
-// "Choose one — A; or B; or C." block.
 function describeModalSegs(modes, tplModes) {
   const out = [plainSeg('Choose one — ')];
   for (let i = 0; i < modes.length; i++) {

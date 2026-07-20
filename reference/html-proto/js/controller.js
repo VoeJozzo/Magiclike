@@ -218,7 +218,6 @@ function appendStickerSectionToBrowser(inner) {
       text.style.cssText = 'color:#bbb';
       item.appendChild(text);
 
-      // Eligibility line — what cards this sticker can be applied to.
       const goes = document.createElement('div');
       goes.innerHTML = '<span style="color:#777">Goes on:</span> <span class="apply-text" style="color:#999"></span>';
       // Same {W}/{U}/etc treatment for the landColor eligibility blurb.
@@ -638,7 +637,7 @@ function newRun(mode) {
 // Unified card-pick modal — the one popup behind the Neow boons AND the post-draft
 // land offer. Fills the shared #cardPickModal slots, routes the card row
 // through renderCardPicker, and optionally shows a drafted-color HUD
-// (colorTpls). Modeled on the draft, the rich baseline.
+// (colorTpls).
 function showCardPickModal({ title, subtitle, items, onPick, colorTpls, accent, accentText }) {
   const box = document.querySelector('#cardPickModal .picker-box');
   if (box) {
@@ -987,8 +986,6 @@ function hideIconTip() {
 }
 function positionIconTip(tip, host) {
   const r = host.getBoundingClientRect();
-  // Measure at origin, then place centered above the icon, clamped to the
-  // viewport; flip below if there isn't room above.
   tip.style.left = '0px';
   tip.style.top = '0px';
   const tr = tip.getBoundingClientRect();
@@ -1004,7 +1001,7 @@ function positionIconTip(tip, host) {
 
 // Post-draft Innate offer: pick a basic land type to guarantee in opening hands.
 // Same card-pick modal as the boons; here we also surface the drafted-deck color
-// HUD (now that the draft is done) so the land choice is informed by deck colors.
+// HUD so the land choice is informed by deck colors.
 function renderPostDraftOffer() {
   const offer = RUN.getPostDraftOffer();
   if (!offer) { Modal.hide('cardPickModal'); return; }
@@ -1057,7 +1054,7 @@ function renderMap() {
   const contBtn = document.getElementById('mapContinue');
   if (contBtn) {
     contBtn.style.display = 'block';
-    const ready = !hasChoice || !!selectedMapNode;   // a choice needs a selection first
+    const ready = !hasChoice || !!selectedMapNode;
     contBtn.disabled = !ready;
     contBtn.onclick = ready ? () => {
       if (hasChoice && !RUN.pickMapNode(selectedMapNode)) return;
@@ -1365,18 +1362,14 @@ function renderReward() {
         labelEl.className = 'rwd-kind-label rwd-kind-splice';
         labelEl.textContent = 'SPLICE';
         div.appendChild(labelEl);
-        // Base card (left).
         div.appendChild(makeRewardCardEl(baseTpl, baseSlot));
-        // Connector: plus between inputs.
         appendRewardConnector(div, '+');
-        // Staple card (middle).
         div.appendChild(makeRewardCardEl(stapleTpl, stapleSlot));
-        // Connector: arrow to result.
         appendRewardConnector(div, '→');
-        // Merged preview (right). Render via makeCardEl directly with the
-        // pre-built mergedCard (which already has stapled mechanics baked
-        // in). Sticker badges from the inputs don't show on the preview;
-        // they DO transfer at resolve time (see applySplice).
+        // makeCardEl directly, not makeRewardCardEl — mergedCard already has
+        // stapled mechanics baked in. Sticker badges from the inputs don't
+        // show on this preview; they DO transfer at resolve time (see
+        // applySplice).
         const mergedEl = makeCardEl(mergedCard, { inHand: true });
         mergedEl.style.setProperty('--scale', '2');
         div.appendChild(mergedEl);
@@ -1391,9 +1384,7 @@ function renderReward() {
       const div = document.createElement('div');
       div.className = 'rwd-pair';
       applyTileColor(div, slot);
-      // Click handler depends on candidate kind, but we set it once below.
 
-      // Top label so the player immediately sees what kind of choice this is.
       const labelEl = document.createElement('div');
       labelEl.className = 'rwd-kind-label rwd-kind-' + cand.kind;
       labelEl.textContent =
@@ -1404,7 +1395,6 @@ function renderReward() {
         cand.kind === 'ripUp'       ? 'RIP UP' : '';
       div.appendChild(labelEl);
 
-      // Card portion.
       div.appendChild(makeRewardCardEl(tpl, slot));
 
       if (cand.kind === 'sticker') {
@@ -1429,7 +1419,6 @@ function renderReward() {
           stickerName = `Empower (${empowerRollLabel(labelTpl, cand.empowerRoll)})`;
         }
         if (cand.sticker_id === 'subtype' && cand.subtypeRoll) {
-          // Show the rolled subtype so the player knows what they're getting.
           stickerName = `Subtype: ${cand.subtypeRoll}`;
         }
         stickerEl.innerHTML =
@@ -1676,7 +1665,6 @@ function onStateChange() {
     renderReward();
   }
   const actor = ENGINE.expectedActor();
-  // Dispatch AI if it's their turn.
   if (actor === 'opp' && !aiScheduled) {
     aiScheduled = true;
     aiThinking = true;
@@ -1858,11 +1846,9 @@ function clickHand(iid) {
   // check until a mode is chosen.
   if (ENGINE.isModal(card)) {
     // Pre-flight: at least ONE mode must be currently castable to bother
-    // showing the picker. Walk the modes; for each, do the same legal-action
-    // check that non-modal cards do, but with mode-appropriate fake targets.
-    // Modal multi-target modes are supported via fakeTargetsForLegality —
-    // each mode's targeted effects get fake fills, including per-slot fakes
-    // for any slots-annotated effects in that mode.
+    // showing the picker, using the same legal-action check as non-modal
+    // cards but with mode-appropriate fake targets from fakeTargetsForLegality
+    // (per-slot fakes for slots-annotated effects, for multi-target modes).
     const modes = ENGINE.getModes(card);
     let anyCastable = false;
     for (let mIdx = 0; mIdx < modes.length; mIdx++) {
@@ -2035,10 +2021,8 @@ function clickBattlefield(iid) {
     return;
   }
 
-  // Unified ability picker for non-land permanents. Enumerates every
-  // legal-to-activate ability and either fires directly (if 1 option) or
-  // shows a picker (2+ options) — covers stapled creature+land merges whose
-  // mana ability may be appended at index >= 1.
+  // Unified ability picker for non-land permanents — covers stapled
+  // creature+land merges whose mana ability may be appended at index >= 1.
   if (f.controller === 'you' && Array.isArray(card.abilities) && card.abilities.length > 0) {
     const options = [];
     for (let i = 0; i < card.abilities.length; i++) {
@@ -2177,16 +2161,16 @@ function clickPlayerTarget(who) {
 }
 
 // Build the action to fire from the current pendingTarget state. For
-// single-slot picks (the common case), this constructs the action with the
-// just-picked target and submits immediately. For multi-slot picks, this
-// accumulates the picked target into pendingTarget.pickedSlots and returns
-// null until all slots are filled — caller stays in target-picking mode for
-// the next slot. When the last slot is picked, builds the final action with
+// single-slot picks (the common case), this returns the finished action for
+// the caller to submit. For multi-slot picks, this accumulates the picked
+// target into pendingTarget.pickedSlots and returns a {pending:true} sentinel
+// until all slots are filled — caller stays in target-picking mode for the
+// next slot. When the last slot is picked, builds the final action with
 // targets[] indexed by slot value.
 function buildPendingActionWithTarget(target) {
   if (!pendingTarget) return null;
-  // Append the target to the pickedSlots accumulator. Initialize on first
-  // pick if we haven't yet — older callers (single-slot path) didn't seed it.
+  // Append the target to the pickedSlots accumulator, initializing it if
+  // this is the first pick — single-slot callers don't pre-seed it.
   if (!Array.isArray(pendingTarget.pickedSlots)) pendingTarget.pickedSlots = [];
   pendingTarget.pickedSlots.push(target);
   const slotsNeeded = slotsNeededForPending(pendingTarget);
@@ -2197,12 +2181,11 @@ function buildPendingActionWithTarget(target) {
     return {pending: true};
   }
   // All slots picked — assemble the final targets array. slotsNeeded is
-  // sorted ascending; pickedSlots is in the same order. Place each pick
-  // at its slot's index. Sparse slots (e.g., a future card using slots 0
-  // and 2) get filled with placeholder copies of slot 0's pick so the
-  // array length covers the highest slot value; the validator only reads
-  // targets[slot] for each effect's actual slot, so placeholders are
-  // harmless.
+  // sorted ascending; pickedSlots is in the same order, placed at each
+  // slot's index. Sparse slot sets get filled with placeholder copies of
+  // slot 0's pick so the array length covers the highest slot value; the
+  // validator only reads targets[slot] for each effect's actual slot, so
+  // placeholders are harmless.
   const targets = [];
   for (let i = 0; i < slotsNeeded.length; i++) {
     targets[slotsNeeded[i]] = pendingTarget.pickedSlots[i];
@@ -2230,9 +2213,8 @@ function cancelTarget() {
   render();
 }
 
-// Player picked a mode for a modal spell. If the mode needs a target,
-// transition to target-picking; otherwise submit immediately. Called from
-// the UI's modal mode picker buttons.
+// Called from the UI's modal mode picker buttons when the player picks a
+// mode for a modal spell.
 function pickModalMode(modeIdx) {
   if (!pendingModalChoice) return;
   const cardIid = pendingModalChoice.cardIid;
@@ -2268,7 +2250,6 @@ function pickModalMode(modeIdx) {
     render();
     return;
   }
-  // Untargeted mode — submit directly.
   submit({type:'castSpell', cardIid, modeIdx});
 }
 
@@ -2302,8 +2283,6 @@ function concede() { ENGINE.concede(); }
 // drives the Pass / Done buttons from the very same predicates, so the two
 // input paths agree by construction rather than by one scraping the other.
 
-// True when the human owes a combat declaration — attackers on their own turn,
-// blockers on the opponent's. Pure function of engine state.
 function humanOwesDeclaration() {
   const G = ENGINE.state();
   if (!G) return false;
@@ -2392,7 +2371,6 @@ function attachLongPress(element, card) {
   element.addEventListener('mousemove', (e) => movePress(e.clientX, e.clientY));
   element.addEventListener('mouseup', cancelPress);
   element.addEventListener('mouseleave', cancelPress);
-  // Click suppression after long-press.
   element.addEventListener('click', (e) => {
     if (suppressNextClick) {
       suppressNextClick = false;
@@ -2405,10 +2383,10 @@ function attachLongPress(element, card) {
 // Pixel-art card popup. Built per the 80x112 frame spec, rendered at 4x
 // scale (320x448 actual) inside the existing #cardPopup dimmer overlay.
 
-// Helper: builds the "Built Ability" (Codex build_on_draw) HTML section
-// for a card's popup. Returns empty string if it doesn't apply. Reads the
-// SLOT (RUN.getSlots()[card.slotIdx]), not the card, because the slot is
-// the durable record across saves and the slot's bonusTrigger may have
+// Builds the "Built Ability" (Codex build_on_draw) HTML section for a
+// card's popup; returns '' if it doesn't apply. Reads the SLOT
+// (RUN.getSlots()[card.slotIdx]), not the card, because the slot is the
+// durable record across saves and the slot's bonusTrigger may have
 // updated more recently than the in-game card instance (e.g. just before
 // a re-draw triggers makeCard).
 function buildPopupTriggerSections(card) {
@@ -2418,7 +2396,6 @@ function buildPopupTriggerSections(card) {
   const slot = slots && slots[card.slotIdx];
   if (!slot) return '';
   let html = '';
-  // Codex-style built ability.
   const tpl = CARDS[card.tplId];
   if (tpl && tpl.build_on_draw) {
     let body;
@@ -2455,8 +2432,9 @@ function openCardPopup(card) {
     ? `<div style="width:320px;margin:8px auto 0;text-align:left">${extraSections}</div>`
     : '';
 
-  // Strip the modal-box chrome from #cardPopupCard -- the frame IS the
-  // visual now, no need for the box styling.
+  // The card-frame element is the entire visual; strip the modal-box
+  // chrome (border/shadow/padding) so it doesn't wrap a second box
+  // around the frame.
   inner.className = '';
   inner.style.cssText = 'background:transparent;border:none;box-shadow:none;padding:0;width:auto;max-width:none;text-align:center;cursor:default';
   inner.innerHTML = `
@@ -2484,12 +2462,10 @@ function closeCardPopup(e) {
   document.getElementById('cardPopup').classList.remove('vis');
 }
 
-// Zone viewer — opens a modal listing every card in the named zone for the
-// named player. Click a card row to drill in and see full text via the
-// existing card popup. Library is closed information for both players —
-// you don't peek at your own library either, since drawing order matters
-// to deck construction skill (knowing the next 5 cards trivializes
-// sequencing decisions). Only graveyard and exile are viewable.
+// Library is closed information for both players — you don't peek at
+// your own library either, since drawing order matters to deck
+// construction skill (knowing the next 5 cards trivializes sequencing
+// decisions). Only graveyard and exile are viewable.
 function openZone(who, zone) {
   // Library is closed info — never viewable, even your own.
   if (zone === 'library') return;
@@ -2515,7 +2491,6 @@ function openZone(who, zone) {
     for (const card of display) {
       const btn = document.createElement('div');
       btn.className = 'zone-card';
-      // Show card name with a small color/type hint.
       const typeHint = governingType(card) ? governingType(card).charAt(0) : '?';
       const cost = card.cost ? renderManaSymbols(formatCostBraced(card.cost)) : '';
       btn.innerHTML = `<span style="opacity:0.6">[${typeHint}]</span> <span class="card-name"></span>${cost ? ' <span style="opacity:0.7;font-size:10px">' + cost + '</span>' : ''}`;
@@ -2591,7 +2566,6 @@ function showManaColorPicker(card, colors, onPick) {
   cancel.onclick = () => document.body.removeChild(dimmer);
   box.appendChild(cancel);
   dimmer.appendChild(box);
-  // Click outside the box to cancel.
   dimmer.addEventListener('click', (e) => {
     if (e.target === dimmer) document.body.removeChild(dimmer);
   });
@@ -2710,9 +2684,8 @@ function renderTableWithToolbar(opts) {
     columns.map(c => c.header).join('\t'),
     ...allRows.map(r => columns.map(c => (c.tsvFmt || c.fmt)(r)).join('\t')),
   ].join('\n');
-  // HTML-escape the TSV before putting it in the textarea value attribute.
-  // (Less critical since textarea content isn't parsed as HTML, but the
-  // attribute does need escaping for &, <, >, ", '.)
+  // Escaping is less critical here since textarea content isn't parsed as
+  // HTML, but the attribute value still needs escaping for &, <, >, ", '.
   html += `<textarea id="statsTsv-${id}" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" aria-hidden="true">${escapeStatsAttribute(tsv)}</textarea>`;
 
   // The actual visible table.
@@ -2730,10 +2703,8 @@ function renderTableWithToolbar(opts) {
     html += `<div class="tbl-grid-row" style="grid-template-columns:${gridCols}">`;
     for (const c of columns) {
       const align = c.align === 'right' ? 'text-align:right;' : '';
-      // Per-column color: explicit `c.color`, or `c.colorize(row, tableColor)`
-      // (used when a particular column should take the table's accent color),
-      // else neutral grey. The first column (typically NAME) defaults to a
-      // brighter readable color.
+      // c.colorize(row, tableColor) is how a column adopts the table's
+      // accent color (the `color` argument passed to this renderer).
       let cellColor;
       if (c.colorize) cellColor = c.colorize(r, color);
       else if (c.color) cellColor = c.color;
@@ -2748,7 +2719,6 @@ function renderTableWithToolbar(opts) {
   return html;
 }
 
-// Toggle the expanded state of a table and re-render the stats panel.
 function toggleStatsTable(id) {
   STATS_UI.expanded[id] = !STATS_UI.expanded[id];
   renderStatsContent();
@@ -2906,7 +2876,6 @@ function renderStatsContent() {
       pickPositionsByCard[id].push(i + 1);
       seen.add(id);
     });
-    // For each unique card in this draft, record the draft's game length.
     for (const id of seen) {
       if (!runLengthsByCard[id]) runLengthsByCard[id] = [];
       runLengthsByCard[id].push(d.gamesPlayed || 0);
@@ -2965,8 +2934,6 @@ function renderStatsContent() {
     { key: 'sample', header: 'N', fmt: r => String(r.runSampleSize), align: 'right', width: '28px', title: 'Sample size (drafts containing this card)' },
   ];
 
-  // Sort descending for top, reversed-asc for bottom. Bottom uses sliced
-  // tail so the order is "worst first" within the visible slice.
   const topByRun = rowsWithRunData;                              // already sorted desc
   const botByRun = rowsWithRunData.slice().reverse();            // ascending = worst first
 
@@ -3073,7 +3040,6 @@ function insightsHtml(drafts, perCardRows) {
     const avgLossGame = (totalLossGames / totalLosses).toFixed(1);
     const games = Object.keys(lossDist).map(Number).sort((a, b) => a - b);
     const maxCount = Math.max(...Object.values(lossDist));
-    // TSV form for the copy button.
     const lossTsv = ['GAME\tLOSSES', ...games.map(g => `${g}\t${lossDist[g]}`)].join('\n');
     html += `<div class="tbl-head">`;
     html += `<div class="tbl-title" style="color:#e0a09a">LOSSES BY GAME #</div>`;
@@ -3197,9 +3163,7 @@ function insightsHtml(drafts, perCardRows) {
       const endIdx = Math.min(startIdx + BATCH_SIZE, drafts.length);
       const startId = startIdx + 1;
       const endId = endIdx;
-      // Pre-compute approximate batch size so the user knows what they're
-      // about to copy. This is an estimate; the actual TSV may be slightly
-      // larger or smaller depending on card name lengths.
+      // Estimate — actual TSV size may vary slightly with card name lengths.
       const batchTsv = buildDraftsBatchTsv(drafts, startIdx, endIdx);
       const sizeKb = (batchTsv.length / 1024).toFixed(1);
       html += `<button class="tbl-btn" onclick="CONTROLLER.copyDraftsBatch(${startIdx},${endIdx})">drafts ${startId}–${endId} (${sizeKb}KB)</button>`;
@@ -3221,8 +3185,7 @@ function statsExport() {
   showStatsExportPicker(jsonPretty, filename);
 }
 
-// Gzip+base64 a string. Returns null if CompressionStream unavailable
-// (Chrome 80+, FF 113+, Safari 16.4+ have it).
+// Returns null if CompressionStream is unavailable (Chrome 80+, FF 113+, Safari 16.4+ have it).
 async function gzipBase64(str) {
   if (typeof CompressionStream === 'undefined') return null;
   const stream = new Blob([str]).stream().pipeThrough(new CompressionStream('gzip'));
@@ -3276,9 +3239,8 @@ function showStatsExportPicker(jsonPretty, filename) {
     return b;
   };
 
-  // Path 1: Compressed copy. Compresses to ~5-15% of original size, then
-  // shows in textarea + tries execCommand('copy') for a one-tap copy.
-  // This is the recommended path for large datasets in the in-app browser.
+  // Path 1: Compressed copy — compresses to ~5-15% of original size.
+  // Recommended path for large datasets in the in-app browser.
   if (typeof CompressionStream !== 'undefined') {
     box.appendChild(mkBtn(
       'Compressed copy ★',
@@ -3326,7 +3288,6 @@ function showStatsExportPicker(jsonPretty, filename) {
     }
   ));
 
-  // Cancel.
   const cancel = document.createElement('button');
   cancel.textContent = 'Cancel';
   cancel.style.cssText = `
@@ -3340,9 +3301,9 @@ function showStatsExportPicker(jsonPretty, filename) {
   document.body.appendChild(overlay);
 }
 
-// Last-resort fallback: show the JSON in a modal textarea so the user can
-// long-press → select all → copy manually. Used only when both Clipboard
-// API and blob downloads have failed.
+// Modal textarea holding the export payload for manual copy (Copy button +
+// long-press → Select All). Reached from the picker's 'Compressed copy' and
+// 'Show as raw text' options.
 function showStatsExportTextarea(payload, compressed) {
   const overlay = document.createElement('div');
   overlay.style.cssText = `

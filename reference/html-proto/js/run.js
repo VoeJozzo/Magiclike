@@ -261,7 +261,7 @@ function renameTplId(id) { return TPLID_RENAMES[id] || id; }
 // renameTplId over every loaded pick on every load (no schema gate — picklog.js),
 // so if a key were ever reused as a LIVE card id, that card's picklog history
 // would be silently rewritten forever. Boot surfaces any collision (main.js); the
-// static invariant is also pinned in tplid_renames_test.js. Empty today.
+// static invariant is also pinned in tplid_renames_test.js.
 function tplidRenameKeyCollisions(cards) {
   return Object.keys(TPLID_RENAMES).filter(k => cards && cards[k]);
 }
@@ -454,7 +454,6 @@ function start(playerDeck) {
     },
   };
   runState.map.currentNodeId = runState.map.rootId;
-  // Post-draft Innate offer: up to 3 most-drafted basic types.
   const BASIC_TPL_IDS = new Set(['plains','island','swamp','mountain','forest']);
   const basicCounts = {};
   for (const slot of runState.slots) {

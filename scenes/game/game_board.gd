@@ -480,7 +480,6 @@ func _spell_oracle_text(iid: int) -> String:
 	return ""
 
 
-# Formats target descriptors as a compact " → opp" or " → creature#5" suffix.
 func _format_targets_for_log(targets: Array) -> String:
 	if targets.is_empty():
 		return ""
@@ -558,13 +557,9 @@ func _apply_combat_highlights(s: EngineState) -> void:
 			visual.set_combat_highlight(state_name)
 
 
-# Edge glow on cards that are legal actions right now. Has two modes:
-#   - Default: green on every "you"-side card whose iid appears in
-#     get_legal_actions("you"). Covers castable spells, playable lands,
-#     tappable mana abilities, declarable attackers, declarable blockers.
-#   - Spell-target mode: when _pending_cast_iid is set, glow shifts to
-#     yellow on legal TARGETS of the spell being cast (the castable cards
-#     and other actions are not relevant because targeting is in progress).
+# Edge glow on cards that are legal to act on right now: green ("playable")
+# on actionable "you"-side cards by default; yellow ("target") on legal
+# targets while a discard, spell cast, or trigger target is being picked.
 func _apply_legality_glows(s: EngineState) -> void:
 	var glow_state: Dictionary = {}  # iid -> "playable" or "target"
 	if _picking_discard:
@@ -602,9 +597,7 @@ func _apply_legality_glows(s: EngineState) -> void:
 		visual.set_legality_glow(glow_state.get(iid, "none"))
 
 
-# Walk the current state and add every iid that's a legal target under the
-# given filter. Used by both the spell-cast target picker and the trigger
-# target picker.
+# Used by both the spell-cast target picker and the trigger target picker.
 func _collect_legal_target_iids(s: EngineState, filter: String, out: Dictionary) -> void:
 	# "spell" filter (Counterspell): glow legal spell entries on the stack.
 	# Their visuals sit at the stack anchor and get the same gold-target
@@ -785,7 +778,6 @@ func _commit_taps_and_cast(spell_iid: int, targets: Array, lands_to_tap: Array) 
 	# Tap planned lands first (each is a normal mana ability).
 	for land in lands_to_tap:
 		RulesEngine.execute_action(Action.make_tap_land_for_mana(land.instance_id))
-	# Confirm we can actually pay after the taps.
 	var s: EngineState = RulesEngine.state()
 	var found = s.find_instance(spell_iid)
 	if found == null or found.card == null:
@@ -1134,12 +1126,10 @@ func _exit_targeting_mode() -> void:
 # ─── Trigger target picker ─────────────────────────────────────────────────
 
 func _enter_trigger_target_mode(meta: Dictionary) -> void:
-	# Both panels become clickable for filters that allow player targets.
 	var filter: String = meta.get("filter", "")
 	var allows_player := (filter == "creature_or_player" or filter == "player")
 	_you_panel.is_clickable = allows_player
 	_opp_panel.is_clickable = allows_player
-	# Find the source card's name for the prompt.
 	var iid: int = meta.get("source_iid", -1)
 	var source_name := "?"
 	if _iid_to_visual.has(iid):
@@ -1152,8 +1142,7 @@ func _exit_trigger_target_mode() -> void:
 	_opp_panel.is_clickable = false
 
 
-# Try to use the clicked creature as the trigger target. Filter-aware: a
-# creature is legal under creature_or_player or creature filters.
+# Filter-aware: a creature is legal under creature_or_player or creature filters.
 func _try_pick_creature_as_trigger_target(iid: int) -> void:
 	var s: EngineState = RulesEngine.state()
 	var filter: String = s.awaiting_target_for_trigger.get("filter", "")

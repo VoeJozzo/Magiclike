@@ -151,9 +151,8 @@ function totalCost(tpl) {
   return sum;
 }
 
-// Recursively collect every {kind:...} effect object and every condition
-// string in a card — shape-agnostic, so triggers / abilities / modal arms
-// / stapled shapes all feed the same rules.
+// Shape-agnostic: triggers / abilities / modal arms / stapled shapes all
+// feed the same extraction rules.
 function collectKindsAndConds(node, kinds, conds) {
   if (Array.isArray(node)) { for (const x of node) collectKindsAndConds(x, kinds, conds); return; }
   if (!node || typeof node !== 'object') return;
@@ -175,9 +174,8 @@ function collectKindsAndConds(node, kinds, conds) {
 // derive. If the synergy IS derivable from the card's data (a flag, an
 // effect kind, a trigger shape), it belongs in a RULE, even when only one
 // card has it today — rules generalize and travel through staples; hints
-// don't. (No shipped card uses a hint today — the mechanism stands as
-// infrastructure for the genuinely-underivable case, exercised by the
-// __hint_test synthetic pin.)
+// don't. (The mechanism is infrastructure for the genuinely-underivable
+// case, exercised by the __hint_test synthetic pin.)
 // Hints are ADDITIVE (max-merged with derived values, same as bump), and
 // resource names are validated against the vocabulary below — a typo warns
 // at index time instead of silently doing nothing (the predicate-registry
@@ -474,7 +472,7 @@ function analyze(tpl) {
       if (/^card_moves\(library,\s*hand\)$/.test(s)) bump(wants, 'carddraw', W_WANT_PAYOFF);
       if (/^card_moves\([^)]*battlefield\)$/.test(s) && cs.includes('another_card')
           && !subGatedEntry) {
-        bump(wants, 'etb', W_WANT_PAYOFF);          // "when another creature enters" payoffs
+        bump(wants, 'etb', W_WANT_PAYOFF);
       }
     }
     // Life-change payoffs are directional: a card fed by LOSS must not be
@@ -1029,7 +1027,7 @@ return {
   _dupeFactorForTest: (tplId, deckTplIds) => dupeFactor(tplId, dupeShelf(deckTplIds)),
   // Grow a bucket from a CHOSEN seed — only offers (random seeds) exist in
   // production, but the story contract (seed at cards[0], coherence > 0) is
-  // only pinnable from a known seed. Demoted from public API (audit A3).
+  // only pinnable from a known seed; kept test-only, off the public API (audit A3).
   _rollBucketForTest: (seedTplId, deckTplIds) => {
     ensurePool();
     const seed = _byId[seedTplId];

@@ -485,8 +485,8 @@ function applyOpponentStickers(slots, n) {
   }
 }
 
-// Heuristic sticker value per slot. Evasion keywords beat stat boosts;
-// land/cost/empower stickers vary with slot context.
+// Evasion keywords beat stat boosts; land/cost/empower stickers vary with
+// slot context.
 function scoreOpponentSticker(sticker, slot) {
   if (sticker.kind === 'stat_boost') {
     return 8 + (sticker.power || 0) * 2 + (sticker.toughness || 0) * 2;
@@ -562,12 +562,6 @@ function scoreOpponentSticker(sticker, slot) {
   return 0;
 }
 
-// Scoring philosophy:
-//   - Commit to two colors as picks accumulate.
-//   - Maintain a healthy curve (lots of 2s and 3s, fewer 5+).
-//   - Maintain creature density (~14-17 of 23 picks should be creatures).
-//   - Reward intrinsically strong cards (stats, evasion, removal).
-//   - Penalize stacking too many copies of one card.
 function pickFromPack(pack, picksSoFar) {
   let best = pack[0], bestScore = -Infinity;
   for (const id of pack) {
@@ -592,16 +586,12 @@ function scoreDraftCard(id, picksSoFar) {
   const topTwo = myColors.slice(0, 2);
   if (card.color) {
     if (topTwo.includes(card.color)) {
-      // In one of our two colors — strong bonus that grows with commitment.
       score += 30 + Math.min(picksSoFar.length, 10);
     } else if (myColors.length === 0) {
-      // First pick or no colors yet — neutral.
       score += 10;
     } else if (myColors.length === 1) {
-      // Picking a second color — fine if early, expensive if late.
       score += picksSoFar.length < 5 ? 5 : -25;
     } else {
-      // Splash into a third color. Tolerated early, punished later.
       score -= Math.min(30, 5 + picksSoFar.length * 2.5);
     }
   }
@@ -695,7 +685,7 @@ function rollPack(pool, picksSoFar) {
     else if (hasType(c, 'Land') && c.mana) inDeckColors.add(c.mana);
   }
 
-  // Bucket the pool by color once; each slot pick is a uniform sample.
+  // Each slot pick is a uniform sample.
   const byColor = {W:[], U:[], B:[], R:[], G:[]};
   // Colorless cards (no color identity — robots, colorless artifacts, artifact
   // lands) fit ANY deck, so they're not "a color the player isn't" and aren't
@@ -821,7 +811,6 @@ function allocLands(pips, count) {
   const landCount = (typeof count === 'number' && count > 0) ? count : TOTAL_LANDS;
   const totalPips = COLORS.reduce((s, k) => s + pips[k], 0);
   if (totalPips === 0) {
-    // Edge case: no colored pips. Default to all forests.
     return Array(landCount).fill('forest');
   }
   const exact = {};
