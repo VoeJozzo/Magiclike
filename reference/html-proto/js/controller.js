@@ -311,17 +311,22 @@ function showCardBrowser() {
 
 // Start-screen button styles, named so the factory below is the single place
 // button construction (create → text → style → onclick → append) lives.
-const START_BTN_STYLE = {
-  primary:   'padding:10px 20px;background:#2a4a2a;border:1px solid #4a8a4a;color:#aaffaa;border-radius:4px;cursor:pointer;font-size:14px',
-  cube:      'padding:10px 20px;background:#3a3a1a;border:1px solid #888844;color:#ddcc88;border-radius:4px;cursor:pointer;font-size:14px',
-  discard:   'padding:8px 20px;background:#2a2a2a;border:1px solid #555;color:#aaa;border-radius:4px;cursor:pointer;font-size:12px',
-  secondary: 'padding:8px 20px;background:#1a1a2a;border:1px solid #444;color:#aaa;border-radius:4px;cursor:pointer;font-size:12px',
-  sandbox:   'padding:8px 20px;background:#2a1a3a;border:1px solid #8855aa;color:#ddb3ff;border-radius:4px;cursor:pointer;font-size:12px',
+// Start-screen button variants. These map to CSS classes rather than inline
+// style strings: inline styles beat the stylesheet, which pinned these buttons
+// to the old flat look and blocked the pixel-chrome tiles. Styling now lives in
+// one place (.start-btn* in magiclike_engine.html). `discard` and `secondary`
+// were visually identical muted small buttons, so they share `start-btn-minor`.
+const START_BTN_CLASS = {
+  primary:   'start-btn start-btn-primary',
+  cube:      'start-btn start-btn-cube',
+  discard:   'start-btn start-btn-minor',
+  secondary: 'start-btn start-btn-minor',
+  sandbox:   'start-btn start-btn-sandbox',
 };
 function makeStartBtn(parent, text, styleKey, onclick) {
   const b = document.createElement('button');
   b.textContent = text;
-  b.style.cssText = START_BTN_STYLE[styleKey];
+  b.className = START_BTN_CLASS[styleKey] || START_BTN_CLASS.secondary;
   b.onclick = onclick;
   parent.appendChild(b);
   return b;

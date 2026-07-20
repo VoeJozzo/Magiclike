@@ -177,7 +177,10 @@ function render() {
   // Shared with the Space/Enter keyboard path — see CONTROLLER.humanOwesDeclaration.
   const showDone = CONTROLLER.humanOwesDeclaration();
   const btnDone = document.getElementById('btnDone');
-  btnDone.style.display = showDone ? 'block' : 'none';
+  // visibility, not display: the button keeps its row in the .acts column even
+  // when hidden, so the center bar doesn't grow/shrink as you flip through
+  // phases (it used to jump when Done appeared at declare-attackers).
+  btnDone.style.visibility = showDone ? 'visible' : 'hidden';
   btnDone.textContent = G.phase === 'COMBAT_ATTACK' ? 'Done Attacking' : 'Done Blocking';
 
   const expectedActor = ENGINE.expectedActor();
