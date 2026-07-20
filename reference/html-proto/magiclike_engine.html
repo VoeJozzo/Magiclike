@@ -84,7 +84,7 @@
 body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;display:flex;flex-direction:column;overflow:hidden;font-size:12px}
 #wrap{display:flex;flex:1;min-height:0}
 #board{flex:1;display:flex;flex-direction:column;min-width:0}
-#sidebar{position:fixed;top:0;right:0;bottom:0;width:280px;max-width:88vw;background:linear-gradient(#1a2016,#12160d);border-style:solid;border-width:0 0 0 8px;border-image:url(assets/ui/woodbar_src.png) 8 fill round;image-rendering:pixelated;display:flex;flex-direction:column;padding:8px;overflow:hidden;transform:translateX(100%);transition:transform .22s ease-out;z-index:900;box-shadow:inset 1px 0 0 rgba(109,124,76,.3),-4px 0 18px rgba(0,0,0,.6)}
+#sidebar{position:fixed;top:0;right:0;bottom:0;width:280px;max-width:88vw;background:linear-gradient(#1a2016,#12160d);border-style:solid;border-width:0 0 0 6px;border-image:url(assets/ui/woodbar_src.png) 20 6 8 6 round;image-rendering:pixelated;display:flex;flex-direction:column;padding:8px;overflow:hidden;transform:translateX(100%);transition:transform .22s ease-out;z-index:900;box-shadow:inset 1px 0 0 rgba(109,124,76,.3),-4px 0 18px rgba(0,0,0,.6)}
 #sidebar.vis{transform:translateX(0)}
 #log-title{font-size:11px;color:var(--moss);margin-bottom:6px;text-transform:uppercase;letter-spacing:1.5px;text-shadow:1px 1px 0 var(--iron);display:flex;justify-content:space-between;align-items:center}
 #logCloseBtn{background:#222;border:1px solid #444;color:#ddd;padding:2px 8px;border-radius:3px;cursor:pointer;font-size:10px}
@@ -94,7 +94,12 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
 .le.imp{color:#ffd700}.le.dmg{color:#ff6060}.le.sp{color:#88aaff}.le.cb{color:#ff9944}.le.ai{color:#aa88ff}
 
 .parea{display:flex;flex-direction:column;flex:1;padding:4px;min-height:0}
-.pinfo{display:flex;align-items:center;gap:8px;padding:6px 12px;border-style:solid;border-width:11px 8px 9px 8px;border-image:url(assets/ui/woodbar_src.png) 11 8 9 8 fill round;image-rendering:pixelated;border-radius:0;margin-bottom:3px;flex-shrink:0}
+/* Uses the tile's documented 9-slice (WOODBAR_SLICE = L6 R6 T20 B8), same as
+   .picker-header. This previously carried an invented `11 8 9 8`: the woodbar
+   source is only 15px WIDE, so left 8 + right 8 = 16 overflowed it, the middle
+   region collapsed to zero width, and `fill` had nothing to paint — the bar
+   rendered as its left/right bevel slices with transparent black between them. */
+.pinfo{display:flex;align-items:center;gap:8px;padding:4px 12px;border-style:solid;border-width:20px 6px 8px 6px;border-image:url(assets/ui/woodbar_src.png) 20 6 8 6 fill round;image-rendering:pixelated;border-radius:0;margin-bottom:3px;flex-shrink:0}
 /* The persistent ⚙ / 🔭 controls are position:fixed top-left (they must float
    above every screen, so they can't be moved into the bar), which left them
    sitting on top of the opponent's name. Reserve a gutter so they occupy
