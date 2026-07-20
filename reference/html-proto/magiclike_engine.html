@@ -780,22 +780,20 @@ button:disabled{opacity:.4;cursor:not-allowed}
 #searchList{gap:8px;margin:8px 0 0}
 /* Modal-spell mode picker. Same pattern as searchModal but distinct
    styling so the player can tell modes-of-a-spell from cards-from-library. */
-#modalChoiceModal{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;z-index:905}
-#modalChoiceModal.vis{display:flex}
-#modalChoiceBox{background:#1a1a2a;border:2px solid #6688aa;border-radius:8px;padding:18px;max-width:520px;width:90%;text-align:center}
-#modalChoiceBox h2{font-size:14px;color:#aaccee;margin-bottom:6px;letter-spacing:1px}
+/* Composes .picker-* now; only the genuine differences remain — this sits
+   BELOW the card pickers in stacking order, and centres as a short prompt. */
+#modalChoiceModal{z-index:905;align-items:center}
 #modalChoiceCardName{font-size:13px;color:#ddeeff;margin-bottom:14px;font-family:Georgia,serif}
 #modalChoiceList{display:flex;flex-direction:column;gap:6px;margin-top:8px}
 .modal-choice{background:#243044;border:1px solid #4a6a8a;color:#cce;padding:10px 14px;border-radius:4px;cursor:pointer;font-size:11px;font-family:Georgia,serif;text-align:left;line-height:1.5}
 .modal-choice:hover{background:#34465a;border-color:#7aa;color:#eef}
 .modal-choice.disabled{opacity:.4;cursor:not-allowed}
 .modal-choice.disabled:hover{background:#243044;border-color:#4a6a8a;color:#cce}
-#modalChoiceCancelBtn{margin-top:14px;background:#222;border:1px solid #555;color:#aaa;padding:6px 14px;border-radius:4px;cursor:pointer;font-size:10px}
-#modalChoiceCancelBtn:hover{background:#333;color:#ddd}
-#zoneModal{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;z-index:910}
-#zoneModal.vis{display:flex}
-#zoneBox{background:#1a1a26;border:2px solid #5a5a7a;border-radius:8px;padding:18px;max-width:520px;width:90%;max-height:80vh;overflow-y:auto;text-align:center}
-#zoneBox h2{font-size:14px;color:#aab;margin-bottom:10px;letter-spacing:1px}
+/* Styling comes from .choice-btn; this ID rule kept only the layout it owns.
+   (It previously restated the whole flat look, and an ID beats the class —
+   so the tile silently never applied.) */
+#modalChoiceCancelBtn{margin-top:14px}
+#zoneModal{z-index:910;align-items:center}
 #zoneList{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin-top:8px}
 .zone-card{background:#1f1f2e;border:1px solid #444;color:#bbb;padding:5px 9px;border-radius:4px;cursor:pointer;font-size:11px;font-family:Georgia,serif;min-width:110px;text-align:left}
 .zone-card:hover{background:#2a2a3e;border-color:#666;color:#ddd}
@@ -825,8 +823,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
 #mapModal.vis{display:flex}
 #cardBrowserModal{position:fixed;inset:0;background:rgba(0,0,0,.96);z-index:1150;display:none;overflow-y:auto;padding:16px;box-sizing:border-box;font-family:inherit}
 #cardBrowserModal.vis{display:block}
-#triggerBuildModal{position:fixed;inset:0;background:rgba(0,0,0,.88);display:none;align-items:center;justify-content:center;z-index:1100;padding:20px;box-sizing:border-box}
-#triggerBuildModal.vis{display:flex}
+#triggerBuildModal{align-items:center}
 /* The four prompt modals compose .picker-overlay now (identical fixed/inset/
    z-index/padding rules deleted rather than duplicated). The one genuine
    difference is kept: these are short prompts, so they centre vertically
@@ -1093,13 +1090,13 @@ body.ai-thinking #status{
 <!-- Trigger-build modal — appears when a buildOnDraw card is drawn.
      Shows three randomly-rolled trigger options as picker cards, plus
      a "keep current" button if the slot already has a bonus trigger. -->
-<div id="triggerBuildModal">
-  <div id="triggerBuildBox" style="background:#1a1822;border:2px solid #ffd700;border-radius:8px;padding:20px;max-width:520px;width:100%;max-height:90vh;overflow-y:auto;font-family:Georgia,serif;color:#ddd">
-    <h2 id="triggerBuildTitle" style="color:#ffd700;font-size:18px;margin:0 0 6px 0;text-align:center;letter-spacing:0.1em">📜 BUILD AN ABILITY</h2>
-    <div id="triggerBuildSubtitle" style="color:#888;font-size:11px;text-align:center;margin-bottom:14px;font-style:italic"></div>
+<div id="triggerBuildModal" class="picker-overlay">
+  <div id="triggerBuildBox" class="picker-box" style="--picker-accent-text:var(--gold);max-width:520px;max-height:90vh;overflow-y:auto">
+    <div class="picker-header"><h2 id="triggerBuildTitle" class="picker-title">📜 BUILD AN ABILITY</h2></div>
+    <div id="triggerBuildSubtitle" class="picker-subtitle"></div>
     <div id="triggerBuildList"></div>
     <div id="triggerBuildKeepWrap" style="margin-top:10px;text-align:center;display:none">
-      <button id="triggerBuildKeepBtn" style="background:#2a2a3a;border:1px solid #5a5a7a;color:#aab;padding:8px 16px;font-family:inherit;font-size:13px;cursor:pointer;border-radius:4px">Keep current ability</button>
+      <button id="triggerBuildKeepBtn" class="choice-btn">Keep current ability</button>
     </div>
   </div>
 </div>
@@ -1128,8 +1125,8 @@ body.ai-thinking #status{
     <div id="optionalCostButtons" class="picker-row"></div>
   </div>
 </div>
-<div id="modalChoiceModal"><div id="modalChoiceBox"><h2>CHOOSE A MODE</h2><div id="modalChoiceCardName"></div><div id="modalChoiceList"></div><button id="modalChoiceCancelBtn" onclick="CONTROLLER.cancelModalChoice()">Cancel</button></div></div>
-<div id="zoneModal" onclick="CONTROLLER.closeZone(event)"><div id="zoneBox" onclick="event.stopPropagation()"><h2 id="zoneTitle">ZONE</h2><div id="zoneList"></div><button id="zoneCloseBtn" onclick="CONTROLLER.closeZone()" style="margin-top:12px;padding:4px 14px;background:#332;border:1px solid #663;color:#ccc;font-family:inherit;cursor:pointer;border-radius:3px">Close</button></div></div>
+<div id="modalChoiceModal" class="picker-overlay"><div id="modalChoiceBox" class="picker-box" style="--picker-accent-text:#a8c8e8;max-width:520px"><div class="picker-header"><h2 class="picker-title">CHOOSE A MODE</h2></div><div id="modalChoiceCardName" class="picker-subtitle"></div><div id="modalChoiceList"></div><button id="modalChoiceCancelBtn" class="choice-btn" onclick="CONTROLLER.cancelModalChoice()">Cancel</button></div></div>
+<div id="zoneModal" class="picker-overlay" onclick="CONTROLLER.closeZone(event)"><div id="zoneBox" class="picker-box" style="max-width:520px;max-height:80vh;overflow-y:auto" onclick="event.stopPropagation()"><div class="picker-header"><h2 id="zoneTitle" class="picker-title">ZONE</h2></div><div id="zoneList" class="picker-row"></div><button id="zoneCloseBtn" class="choice-btn" onclick="CONTROLLER.closeZone()">Close</button></div></div>
 <div id="cardBrowserModal">
   <div id="cardBrowserInner" style="max-width:960px;margin:0 auto;color:#ccc"></div>
 </div>
