@@ -1,13 +1,6 @@
-// Audit A6-2 (Joe ruled GO) — an empower sticker's target must be rolled ONCE
-// and stay fixed. applyStickersToCard treated a stored BLANK roll (null —
-// "rolled, nothing to empower") the same as NEVER-rolled and re-rolled a fresh
-// random target on every makeCard. Harmless on a card that stays empty, but on
-// the STAPLE path the blank survives the merge and the fresh roll lands on the
-// combined card's real fields — a different random target each rebuild
-// (save reloads, re-staples). Joe: "the empower stays pointing at the same number
-// when stapled." Fix: distinguish null (stored blank, respected) from undefined
-// (never rolled, falls back + persists); plus stop the clone {...null} laundering
-// that turned a null into a truthy {}.
+// An empower sticker's target is rolled once and stays fixed. A stored roll of
+// null means "rolled, nothing to empower" and is preserved; undefined means
+// "never rolled" and triggers a fresh roll.
 
 const setup = require('./_setup');
 setup.loadEngine();

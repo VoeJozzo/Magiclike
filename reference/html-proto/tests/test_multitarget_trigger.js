@@ -48,9 +48,8 @@ const VANILLA = Object.keys(CARDS).find(k =>
 
 console.log('=== a multi-target ACTIVATED ability is enumerated via the component ===');
 (() => {
-  // getLegalActions used to skip abilities with target_slots.length > 1, so the
-  // AI never offered the Stapler's two-target cross-product. Now it routes through
-  // tsEnumerate like the cast path: one action per (base, staple) target set.
+  // getLegalActions routes multi-target activated abilities through tsEnumerate
+  // like the cast path: one action per (base, staple) target set.
   const G = newGame();
   const stapler = mkStapler('opp'); G.opp.battlefield.push(stapler);
   const base = mk(VANILLA, 'opp'); const stap = mk(VANILLA, 'opp');
@@ -65,13 +64,12 @@ console.log('=== a multi-target ACTIVATED ability is enumerated via the componen
 
 console.log('\n=== a stapled MULTI-target spell ETB resolves ALL its slots ===');
 (() => {
-  // Twin Strike (two pump slots) stapled onto a creature → an ETB trigger with
-  // target_slots:[creature, creature] and BARE pump effects. pushTriggerOnStack
-  // now routes through TargetSelection.tsAutoPick, which understands target_slots
-  // and picks a legal target for EACH slot (the old single-pick logic had no
-  // target_slots branch, so the trigger fizzled entirely). Both pumps resolve:
-  // two +1/+1 land on the board (sum of tempPower = 2; the auto-picker, lacking a
-  // distinct constraint, may stack both on the controller's best creature).
+  // Twin Strike (two pump slots) stapled onto a creature produces an ETB trigger
+  // with target_slots:[creature, creature] and BARE pump effects. pushTriggerOnStack
+  // routes through TargetSelection.tsAutoPick, which understands target_slots and
+  // picks a legal target for EACH slot. Both pumps resolve: two +1/+1 land on the
+  // board (sum of tempPower = 2; the auto-picker, lacking a distinct constraint,
+  // may stack both on the controller's best creature).
   const G = newGame();
   const staple = ENGINE.makeCard(VANILLA, undefined, 0, undefined, undefined, ['twin_strike']);
   staple.iid = iid++; staple.controller = 'opp'; staple.owner = 'opp';
@@ -111,7 +109,7 @@ console.log('\n=== a human-controlled multi-target ETB prompts for EACH slot ===
 (() => {
   // The human builds stapled cards (plays the Stapler on their own creature), so
   // they should CHOOSE the ETB's targets, not have them auto-picked. The trigger
-  // prompt now steps through every choosable slot. Distinguishing assertion: the
+  // prompt steps through every choosable slot. Distinguishing assertion: the
   // human picks two DIFFERENT creatures (a, b) — auto-pick would instead stack
   // both pumps on the single best creature (a.tempPower=2, b=0).
   RUN.clearSave && RUN.clearSave();

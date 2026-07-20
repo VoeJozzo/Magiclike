@@ -1,10 +1,4 @@
-// Accurate player-target text: a card's rendered text must match what's actually
-// targetable. The old code GUESSED "target opponent" vs "target player" from the
-// effect kind/sign while the data was `target:'player'` (either player legal) —
-// so it printed "target opponent" for cards you could actually aim at yourself.
-// Now there are two precise filters: `opp` (opponent-only) renders "target
-// opponent" AND only the opponent is legal; `player` (choose-any) renders "target
-// player" AND both players are legal. Text == behavior, so plans are trustworthy.
+// A card's rendered target text must match what's actually targetable.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -20,11 +14,9 @@ console.log('=== opp-targeting cards: text says "opponent" AND only the opponent
 (() => {
   RUN.start({ cards: Array(12).fill('plains'), colors: ['W'] }, null);
   RUN.startNextGame();
-  // targetsForFilter('opp', who) must return exactly the one opponent.
   const oppTargets = ENGINE.targetsForFilter('opp', 'you');
   check('targetsForFilter(opp) → exactly the opponent', oppTargets.length === 1
     && oppTargets[0].kind === 'player' && oppTargets[0].who === 'opp', JSON.stringify(oppTargets));
-  // representative migrated cards
   const want = {
     duress: /target opponent discards/i,
     blood_priest: /target opponent loses 2 life/i,

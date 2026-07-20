@@ -1,11 +1,3 @@
-// Audit A4-18 (re-scoped remainder) — most of the originally-named dark effect
-// handlers were already fenced by the shipped chunk-4 STAGE-fix regression tests
-// (steal, become_copy_of, counter/owner-routing, mass-removal batch, fight/
-// trample/deathtouch, the A4-8 filter arms, A4-24 hexproof). This covers the
-// TRUE remainder: grant_cast_permission dedup (was 100% mutation-dark) and the
-// grant_keyword scope arms. AI-valuation mutants are descoped to chunk-7 (they're
-// judgment coefficients, not pinnable); snapshotTarget is already behaviorally
-// covered by the D1 tests, so it's not re-fenced here.
 const setup = require('./_setup'); setup.loadEngine();
 let pass = 0, fail = 0;
 function check(label, ok, info){ console.log('  ' + (ok?'PASS':'FAIL') + ': ' + label + (info?' -- '+info:'')); if(ok)pass++;else fail++; }

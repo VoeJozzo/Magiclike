@@ -1,4 +1,4 @@
-// Rules-infrastructure fixes (DIVERGENCE B2 / F2 / D4).
+// Rules-infrastructure invariants: DIVERGENCE B2 / F2 / D4.
 //   B2 — unused mana empties at every phase boundary (MTG 106.4), not only CLEANUP.
 //   F2 — indestructible keeps its marked damage; only the death check is skipped.
 //   D4 — damage is life loss: it fires the directional life_changed(delta<0), so
@@ -31,7 +31,7 @@ function newGame() {
 function readyMain(G, who) {
   setup.startMainPhase(who);
 }
-// Pass priority for both seats until the phase changes (runs the transition's SBA).
+// Runs the transition's SBA.
 function advanceOnePhase(G) {
   const start = G.phase;
   let safety = 16;

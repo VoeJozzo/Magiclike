@@ -1,7 +1,7 @@
 // Heir to the Burnt House — a dies-trigger edict that makes the killer
-// sacrifice a LAND. The only engine work was making chooses()' filter
-// type-symmetric: 'creature' / 'permanent' / 'land' all narrow the same way
-// (a chooses filter IS a type), so Land needs no bespoke construction.
+// sacrifice a LAND. chooses()'s filter is type-symmetric: 'creature' /
+// 'permanent' / 'land' all narrow the same way (a chooses filter IS a
+// type), so Land needs no bespoke construction.
 //
 // Asserts: (1) the 'land' filter is a recognized chooses filter (no boot
 // warning); (2) oracle text renders "sacrifices a land" (not "a creature");

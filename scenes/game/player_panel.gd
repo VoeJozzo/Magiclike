@@ -1,8 +1,7 @@
 class_name PlayerPanel
 extends Control
 
-# Life/mana/zone counts plus clickable target sink (e.g. for Lightning Bolt's opponent).
-# Programmatic — no .tscn needed.
+# Clickable target sink for spells that target a player (e.g. Lightning Bolt's opponent).
 
 signal clicked
 
@@ -74,7 +73,7 @@ func update_from_player(player: Player) -> void:
 		_mana_label.text = "Mana: (none)"
 	else:
 		_mana_label.text = "Mana: %s" % player.mana.to_string_short()
-	# Library warning glyph below 5 cards = decking-out alert.
+	# ⚠ = decking-out risk (empty-library loss).
 	var lib_size: int = player.library.size()
 	var lib_marker: String = "" if lib_size > 5 else "⚠ "
 	_zones_label.text = "Hand: %d  •  %sLibrary: %d  •  GY: %d" % [

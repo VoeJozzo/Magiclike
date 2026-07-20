@@ -1,6 +1,6 @@
 extends Node
 
-# Phase 4.5a smoke test. Validates the real-game init pathway:
+# Smoke test for the real-game init pathway:
 #   - init_game(decklist, decklist) populates libraries from card_id counts,
 #     shuffles, and draws an opening hand
 #   - Tiny decks (≤ hand_size) draw what's there without crashing
@@ -57,14 +57,12 @@ func _ready() -> void:
 	# during the DRAW phase of your turn (which is engine turn = 2*N - 1
 	# since opp inhabits the even-numbered "half-turns").
 	#
-	# Track hand+library sizes before/after to confirm exactly one draw each.
 	var your_lib_t1: int = s.you.library.size()
 	var your_hand_t1: int = s.you.hand.size()
 	var opp_lib_t1: int = s.opp.library.size()
 	var safety := 60
 	while safety > 0:
 		safety -= 1
-		# Stop once you've drawn (library shrunk by 1, hand grown by 1).
 		# This guarantees we've passed through your turn-2 DRAW step.
 		if s.you.library.size() == your_lib_t1 - 1 and s.you.hand.size() == your_hand_t1 + 1:
 			break
@@ -72,7 +70,6 @@ func _ready() -> void:
 	_assert_true(safety > 0, "opp turn auto-cycled + your turn-2 draw fired without hitting safety cap")
 	_assert_eq(s.you.library.size(), your_lib_t1 - 1, "you drew one card on your turn-2 draw step")
 	_assert_eq(s.you.hand.size(), your_hand_t1 + 1, "you.hand grew by 1")
-	# Opp drew one card during their turn too.
 	_assert_eq(s.opp.library.size(), opp_lib_t1 - 1, "opp drew one card during their turn")
 
 	# ─── Scenario C: deck-out loss ──────────────────────────────────────────
@@ -82,18 +79,14 @@ func _ready() -> void:
 	s = RulesEngine.state()
 	_assert_eq(s.you.library.size(), 0, "deck-out: you start with empty library")
 	_assert_eq(s.winner, "", "deck-out: no winner yet at game start")
-	# Manually advance to DRAW phase to trigger the loss. (We hop through
-	# UNTAP→UPKEEP→DRAW using the phase machine directly so we don't have
-	# to navigate through MAIN1's pass-priority cycle for this test.)
+	# Set phase directly to UPKEEP (skipping UNTAP) rather than passing
+	# priority through MAIN1's full cycle for this test.
 	s.phase_machine.current = PhaseMachine.Phase.UPKEEP
 	# Pass priority through upkeep → draw fires next; the empty-library check
 	# inside _do_draw_card sets state.winner.
 	RulesEngine.execute_action(Action.make_pass_priority())
-	# After advancing to DRAW, _do_draw_card should have detected the empty
-	# library and set winner to "opp".
 	_assert_eq(s.winner, "opp", "deck-out: you lost, opp wins")
 
-	# Final report
 	print("")
 	if failures == 0:
 		print("=== Phase 4.5a smoke test: ALL ASSERTIONS PASSED ✓ ===\n")

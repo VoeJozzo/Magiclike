@@ -15,7 +15,6 @@ function check(label, ok, info) {
   if (ok) pass++; else fail++;
 }
 
-// A baseline creature, plus a per-key MUTATION that should make matchFilter reject.
 function baseCard() {
   return { types: ['Creature'], color: 'W', colors: ['W'], power: 2, toughness: 2,
            tapped: false, keywords: [], isToken: false };

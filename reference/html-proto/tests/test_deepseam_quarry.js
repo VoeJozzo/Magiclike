@@ -23,8 +23,7 @@ function sorceryWindow() {
   setup.startMainPhase('you');
   G.cleanupDiscarding = false;
 }
-// Put the board/turn into a main-phase window for the AI seat `who` (mirrors
-// ai_burn_lethal_test's helper; MAIN2 skips the burn-lethal reservation path).
+// Mirrors ai_burn_lethal_test's helper; MAIN2 skips the burn-lethal reservation path.
 function readyForMain(who) {
   G.activePlayer = who;
   G.priorityHolder = who;
@@ -34,7 +33,7 @@ function readyForMain(who) {
   if (G.priority) G.priority.passes = new Set();
   else G.priority = { passes: new Set() };
 }
-// A vanilla creature template (no triggers/abilities), used as graveyard fodder.
+// Used as graveyard fodder.
 const CREATURE = (() => {
   for (const [id, c] of Object.entries(CARDS)) {
     if (hasType(c, 'Creature') && !c.triggers && !c.abilities) return id;
@@ -42,7 +41,7 @@ const CREATURE = (() => {
   for (const [id, c] of Object.entries(CARDS)) if (hasType(c, 'Creature')) return id;
   return null;
 })();
-// Make a creature with a forced owner + total mana cost (costTotalCard reads card.cost).
+// costTotalCard reads card.cost.
 function grdCreature(owner, total) {
   const c = ENGINE.makeCard(CREATURE);
   c.owner = owner;

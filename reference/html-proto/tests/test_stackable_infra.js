@@ -1,28 +1,24 @@
-// A3-2 — Stackable infrastructure (plan-stackable.md Phases 0-2, everything-
-// stackable). Per Joe's PR #98 round-5 ruling: the `stackable` boolean exists
-// on trigger AND activated-ability definitions, ABSENT defaults TRUE
-// (gracefully — no card carries the field yet), and every shipped definition
-// stays stackable tonight; the unstackable arms exist but are dormant pending
-// Joe's dedicated classification pass.
+// Stackable infrastructure. The `stackable` boolean exists on trigger AND
+// activated-ability definitions; absent, it defaults to true (no card
+// carries the field yet), every shipped definition is stackable, and the
+// unstackable arms are dormant pending a dedicated classification pass.
 //
 // Arms:
-//   (a) KEY (RED pre-build) — a targeted activated ability (Prodigal
-//       Sorcerer's ping) now takes a kind:'ability' stack entry: activation
-//       pays costs + locks targets, the opponent gets a real response window
-//       (§603 handoff), and the effect has NOT happened yet. Pre-build it
-//       resolved inline with no window.
-//   (b) KEY (RED pre-build) — respond-with-removal kills the ability's
-//       target: §1006.1/§704.1 re-validation fizzles the ability at
-//       resolution, WITH a log; costs stay paid. Also pins that "target
-//       spell" enumeration sees the responding spell but never the ability
-//       entry.
+//   (a) KEY — a targeted activated ability (Prodigal Sorcerer's ping) takes
+//       a kind:'ability' stack entry: activation pays costs + locks targets,
+//       the opponent gets a real response window (§603 handoff), and the
+//       effect has NOT happened yet.
+//   (b) KEY — respond-with-removal kills the ability's target: §1006.1/
+//       §704.1 re-validation fizzles the ability at resolution, WITH a log;
+//       costs stay paid. Also pins that "target spell" enumeration sees the
+//       responding spell but never the ability entry.
 //   (c) Guard — mana abilities stay hardcoded off-stack (canon §705): both
 //       the creature-dork activateAbility path and tapLandForMana resolve
 //       instantly with no stack entry.
-//   (d) Default + dormant arm — a trigger with NO stackable field stacks
-//       exactly as today (control), while a constructed stackable:false
-//       trigger exercises the drain-time-immediate arm: resolves at drain,
-//       before any stack push, logged ("split second"), no response window.
+//   (d) Default + dormant arm — a trigger with NO stackable field stacks as
+//       control, while a constructed stackable:false trigger exercises the
+//       drain-time-immediate arm: resolves at drain, before any stack push,
+//       logged ("split second"), no response window.
 //   (e) Boot validation — a present-but-non-boolean `stackable` on a trigger
 //       or ability is a loud schema error; boolean/absent boots clean.
 //   (f) Counter parity (§1004.6) — the counter handler refuses kind:'ability'
@@ -65,9 +61,8 @@ function newGame() {
   return G;
 }
 function logHas(G, re) { return G.log.some(e => re.test(e.msg)); }
-// Pass-until-settled (bounded): drives whoever holds priority to pass until
-// the stack drains. Auto-pass handles the no-action seats; this only feeds
-// the explicit passes a parked (anchored) seat owes.
+// Auto-pass handles the no-action seats; this only feeds the explicit
+// passes a parked (anchored) seat owes.
 function settle(G) {
   let safety = 8;
   while (G.stack.length > 0 && safety-- > 0) {
@@ -141,7 +136,6 @@ if (!VANILLA || !CARDS['prodigal_sorcerer'] || !CARDS['lightning_bolt'] || !CARD
       targets: [{ kind: 'creature', iid: victim.iid, label: victim.name }] });
     check('setup: ability entry on the stack', G.stack.length === 1 && G.stack[0].kind === 'ability');
     const abilityEntry = G.stack[0];
-    // Opp responds: bolts their OWN creature (the ability's target).
     ENGINE.executeAction('opp', { type: 'castSpell', cardIid: bolt.iid,
       targets: [{ kind: 'creature', iid: victim.iid, label: victim.name }] });
     check('setup: bolt above the ability on the stack', G.stack.length === 2);
@@ -302,8 +296,6 @@ if (!VANILLA || !CARDS['prodigal_sorcerer'] || !CARDS['lightning_bolt'] || !CARD
 
   console.log('\n=== (g) AI sanity: own ability entry doesn\'t wedge the loop; legal answer to a human entry ===');
   (() => {
-    // AI activates its own ability, then must pass over its own entry and
-    // let it resolve (bounded drive, every action legal).
     const G = newGame();
     G.activePlayer = 'opp'; G.priorityHolder = 'opp';
     const sorcerer = mk('prodigal_sorcerer', 'opp');

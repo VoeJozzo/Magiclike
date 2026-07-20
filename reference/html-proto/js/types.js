@@ -1,18 +1,17 @@
 // Unified type identity — the SOLE source of truth for a card's type line.
 //
-// Every card (data + runtime instance) carries a `types[]` tag array; the legacy
-// `card.type` (single string) + `card.sub` (space-separated subtypes) fields were
-// removed in the cutover, and ALL engine/render reads go through the accessors
-// here — hasType / subtypesOf / governingType / isPermanent / typeLine. There is
-// no parallel representation: a card's identity lives in one array.
+// Every card (data + runtime instance) carries a `types[]` tag array; ALL
+// engine/render reads go through the accessors here — hasType / subtypesOf /
+// governingType / isPermanent / typeLine. There is no parallel representation:
+// a card's identity lives in one array.
 //
 // On top of the stored tags sits the live type-modifier layer (`card.typeGrants`:
 // add_type / set_types), applied per-read so animate/neutralize effects are
 // reflected everywhere without mutating the base array.
 
 // Registry: each known tag -> { category, behaviorClass? }.
-//   category      : 'type' (left of the em-dash) | 'subtype' (right). 'supertype'
-//                   reserved (e.g. a future Legendary tag).
+//   category      : 'type' (left of the em-dash) | 'subtype' (right) | 'supertype'
+//                   (also left of the em-dash — see Basic/Legendary below).
 //   behaviorClass : 'spell' | 'permanent' | 'land' — drives governingType().
 // Unknown tags (Goblin, Forest, Cleric, ...) default to a behavior-less subtype.
 const TYPE_REGISTRY = {
@@ -31,13 +30,11 @@ function typeRegistryEntry(tag) { return TYPE_REGISTRY[tag] || { category: 'subt
 function typeCategory(tag) { return typeRegistryEntry(tag).category; }
 function isCardTypeTag(tag) { return typeCategory(tag) === 'type'; }
 
-// A card's effective tag list. Base = the stored `card.types` array. The
-// `Legendary` supertype (from the `legendary` boolean) is unioned in — never
-// dropped — so the legend rule keeps firing for a legendary card. Then the live
-// type-modifier layer
-// (`card.typeGrants`: add_type / set_types) is applied: a 'set' grant replaces
-// the working set, an 'add' grant unions tags in. Grants are applied in order;
-// eot grants clear at end of turn, leave-play grants clear in resetInPlayState.
+// A card's effective tag list: the `Legendary` supertype (from the `legendary`
+// boolean) is unioned in — never dropped — so the legend rule keeps firing for
+// a legendary card. The live type-modifier layer (`card.typeGrants`: add_type /
+// set_types) is then applied, in grant order; eot grants clear at end of turn,
+// leave-play grants clear in resetInPlayState.
 function typesOf(card) {
   if (!card) return [];
   let base = Array.isArray(card.types) ? card.types.slice() : [];
@@ -77,9 +74,8 @@ function addType(card, tag) {
 }
 
 // The card's subtype tags only (the right-of-em-dash set) in declaration order.
-// The single replacement for the retired `card.sub.split(/\s+/)` idiom — subtype
-// rolls, staple-merge unions, and lord-buff matching all read subtypes through
-// this so there's one definition of "what are this card's subtypes."
+// Subtype rolls, staple-merge unions, and lord-buff matching all read subtypes
+// through this — one definition of "what are this card's subtypes."
 function subtypesOf(card) {
   return typesOf(card).filter(t => typeCategory(t) === 'subtype');
 }
@@ -87,7 +83,7 @@ function subtypesOf(card) {
 // The single behavioral type that governs zone / cast / combat (see spec §3,
 // "two forks"): a permanent type beats a spell type; among permanents,
 // Creature > Land > Artifact (Artifact is a co-type). Identity comes from the
-// `types[]` array; the legacy `card.type`/`card.sub` fields were removed in v2.0.70.
+// `types[]` array.
 const PERMANENT_PRECEDENCE = ['Creature', 'Land', 'Artifact'];
 function governingType(card) {
   const tags = typesOf(card).filter(isCardTypeTag);
@@ -123,10 +119,10 @@ function typeLineParts(card) {
 }
 
 // The displayed type line: "<supertypes> <types> — <subtypes>", canonical order
-// (supertypes then types left of the em-dash, subtypes right), deduped. For
-// most cards this matches the old `type [— sub]` render — EXCEPT basics, whose
-// types[] carries both "Basic" (supertype) and "Land" (type): the parser keeps
-// "Basic" left of the dash, dedups, and renders the MTG-style "Basic Land".
+// (supertypes then types left of the em-dash, subtypes right), deduped. Basics
+// are the exception: types[] carries both "Basic" (supertype) and "Land"
+// (type), so the parser keeps "Basic" left of the dash, dedups, and renders
+// the MTG-style "Basic Land".
 function typeLine(card) {
   const parts = typeLineParts(card);
   let s = parts.left.join(' ');

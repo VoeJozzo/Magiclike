@@ -1,6 +1,6 @@
 extends RefCounted
 
-# {"kind": "gain_life", "amount": int} — always applies to ctx.controller.
+# {"kind": "gain_life", "amount": int} — no target; always the controller.
 
 static func execute(effect: Dictionary, ctx: Dictionary) -> void:
 	var amount: int = effect.get("amount", 0)

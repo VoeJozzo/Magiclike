@@ -8,7 +8,8 @@
 //   Symmetricize: place a creature, cast Symmetricize at it, verify
 //     pendingSymmetricizeChoice gets set with the right values, submit
 //     a choice, verify the target's stats/cost collapse to the chosen
-//     value AND slot.symmetricized persists (player-side only).
+//     value AND the change persists to the slot as stat_boost/cost_mod
+//     stickers (player-side only).
 //
 //   Number choice: put Archdemon onto the battlefield through ETB
 //     trigger flow, verify pendingNumberChoice is set with min/max,
@@ -62,7 +63,7 @@ function drainStack(G) {
 
 console.log('=== Symmetricize sets up pendingSymmetricizeChoice ===');
 {
-  // Use Devoted Watcher (ancestralGuard) — power=1, toughness=3,
+  // Use Devoted Watcher — power=1, toughness=3,
   // cost=2 ({W:1,C:1}). All three values differ, so each choice
   // produces a visibly distinct outcome.
   const G = makeBaselineGame(['devoted_watcher','plains','plains','plains','plains','plains','plains','plains','plains','plains','plains','plains']);
@@ -72,7 +73,6 @@ console.log('=== Symmetricize sets up pendingSymmetricizeChoice ===');
   piercer.slotIdx = piercerSlotIdx;
   G.you.battlefield.push(piercer);
 
-  // Opp casts Symmetricize at the piercer.
   const sym = mk('symmetricize', 'opp');
   G.opp.hand.push(sym);
   G.opp.mana.W = 1; G.opp.mana.C = 1;
@@ -199,7 +199,6 @@ console.log('\n=== Out-of-set choices are rejected (validates whitelist) ===');
   });
   drainStack(G);
 
-  // Try a bogus 'which' value.
   const before = JSON.stringify({p: piercer.power, t: piercer.toughness, c: piercer.cost});
   ENGINE.executeAction('you', {type: 'symmetricizeChoice', which: 'banana'});
   const after = JSON.stringify({p: piercer.power, t: piercer.toughness, c: piercer.cost});
@@ -214,7 +213,6 @@ console.log('\n=== Number choice: Archdemon ETB opens 1-5 prompt for the CONTROL
     console.log('  (archdemonBargains not in CARDS -- skipping)');
   } else {
     const G = makeBaselineGame();
-    // Put Archdemon in opp's hand with enough mana to cast.
     const demon = mk('archdemon_of_bargains', 'opp');
     G.opp.hand.push(demon);
     G.opp.mana.B = 2; G.opp.mana.C = 3;

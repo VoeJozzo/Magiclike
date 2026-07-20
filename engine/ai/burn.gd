@@ -1,7 +1,7 @@
 class_name AIBurn
 extends RefCounted
 
-# Lethal burn detection. Ported from js/ai.js::findBurnLethal.
+# Ported from js/ai.js::findBurnLethal.
 # Doesn't sequence — sums potential face damage regardless of mana to cast the whole chain.
 
 static func face_damage_in_hand(state: EngineState, player_key: String) -> int:

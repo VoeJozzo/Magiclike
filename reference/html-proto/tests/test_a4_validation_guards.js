@@ -1,32 +1,25 @@
 // Audit A4-11 + A4-17 + A4-21 (+ the A4-8/A4-14 boot legs) — authoring
 // safety nets on the boot validator, plus the two resolution-path guards:
 //
-//   A4-11: matchFilter's key vocabulary was an open tail — a typo'd or
-//          camelCase target_filter key (the PROTOCOL doc's own pre-A4-10
-//          spelling!) booted clean and silently over-targeted. Boot
-//          validation now flags unknown filter keys (MATCH_FILTER_KEYS:
-//          matchFilter ∪ matchFilterSpell ∪ graveyard-search ∪ library-
-//          search axes — the union the verifier flagged, so
-//          deepseam_quarry/seal_thief_courier don't false-positive).
-//   A4-17: missing-target / missing-param failure modes were an uncaught
-//          TypeError (spell stranded in NO zone) or NaN damage corruption
-//          (creature unkillable for a turn). Guards: resolveTarget fizzles
-//          on a null/iid-less target; applyDamageFrom ignores non-positive/
-//          NaN amounts and fizzles on a missing target. EFFECT_SCHEMA grows
-//          required-param entries (damage/gain_life/draw/discard amount;
-//          add_mana amounts|choose; grant_keyword keyword; create_tokens
-//          known token_id) + a targeted-kinds-need-a-target-source sweep
-//          (separate `targetErrors` list).
-//   A4-21: move_card's schema validated (from,to) PAIRS while the handler
-//          dispatches on (from,to,selector) TRIPLES — schema-clean combos
-//          no-op'd at runtime. Schema now checks the selector against the
-//          handler's real dispatch table. And the hand→graveyard arm now
-//          honors the §5.2 shorthand selectors: 'controller_chosen' always
-//          discards the controller; 'target_player_chosen' requires a player
-//          target (else a logged fizzle).
-//   A4-8 boot leg: target_filter on player/opp targets is rejected loudly
-//          (matchFilter's vocabulary is card axes — the pairing is
-//          nonsensical and was silently dropped).
+//   A4-11: MATCH_FILTER_KEYS is the union of matchFilter ∪
+//          matchFilterSpell ∪ graveyard-search ∪ library-search axes,
+//          broad enough that deepseam_quarry/seal_thief_courier don't
+//          false-positive.
+//   A4-17: resolveTarget fizzles on a null/iid-less target;
+//          applyDamageFrom ignores non-positive/NaN amounts and
+//          fizzles on a missing target. EFFECT_SCHEMA requires params
+//          for damage/gain_life/draw/discard (amount), add_mana
+//          (amounts|choose), grant_keyword (keyword), create_tokens
+//          (known token_id); targeted kinds without a target source
+//          are flagged separately in `targetErrors`.
+//   A4-21: the schema checks move_card's selector against the
+//          handler's real dispatch table. The hand→graveyard arm
+//          honors the §5.2 shorthand selectors: 'controller_chosen'
+//          always discards the controller; 'target_player_chosen'
+//          requires a player target (else a logged fizzle).
+//   A4-8 boot leg: target_filter on player/opp targets is rejected
+//          loudly (matchFilter's vocabulary is card axes, so the
+//          pairing is nonsensical).
 //   A4-14 boot leg: stat bounds (max/min power/toughness) inside
 //          static_buffs are rejected loudly until supported.
 
@@ -130,9 +123,6 @@ console.log('\n=== A4-17: required-param schema entries ===');
 console.log('\n=== A4-17: targeted kinds need a target source (targetErrors) ===');
 (() => {
   const r = quiet(() => ENGINE.validateAllCardEffects([
-    // The executed repro: a Sorcery authored {kind:'damage'} with NO way to
-    // get a target — used to boot clean then throw mid-resolution, leaving
-    // the spell in NO zone.
     { tplId: 'orphanDamage', effects: [{ kind: 'damage', amount: 2 }] },
     { tplId: 'okTargeted', target: 'creature', effects: [{ kind: 'damage', amount: 2 }] },
     { tplId: 'okScoped', effects: [{ kind: 'damage', amount: 2, scope: 'all_creatures' }] },

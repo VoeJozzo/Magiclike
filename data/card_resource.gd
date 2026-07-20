@@ -38,8 +38,8 @@ func is_land() -> bool:
 
 
 # The live .tres registry authors spells as "instant"; the html-proto JSON pool
-# uses "sorcery" (post Instant→flash-Sorcery retirement). Accept both so this
-# holds regardless of which data source built the resource.
+# uses "sorcery". Accept both so this holds regardless of which data source
+# built the resource.
 func is_spell() -> bool:
 	return has_type("instant") or has_type("sorcery")
 

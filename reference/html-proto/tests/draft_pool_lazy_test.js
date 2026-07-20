@@ -1,11 +1,9 @@
-// Regression: draftPool() / oppPool() must be lazy. The card-data
-// refactor (v1.0.134) made CARDS empty at module-load time; if these
-// pools were computed at module-load (the old DRAFT_POOL const), they'd
-// freeze to an empty array and the draft screen would offer no cards.
+// draftPool() / oppPool() must be lazy: CARDS is empty at module-load time,
+// so a pool computed eagerly would freeze to an empty array and the draft
+// screen would offer no cards.
 //
-// This test verifies the pools have content AFTER the engine + cards
-// have loaded. If a future refactor accidentally restores eager
-// evaluation against an empty CARDS, this test fails immediately.
+// This test verifies the pools have content after the engine and cards
+// have loaded, catching any regression to eager evaluation.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -66,9 +64,8 @@ console.log('\n=== draftPool: matches the documented filter ===');
 
 console.log('\n=== colorless cards are offered every slot (not bucketed away) ===');
 {
-  // Regression (v2.0.60): colorless cards (color:null) landed in no WUBRG color
-  // bucket, so the color-rolled slots never offered them — colorless creatures
-  // appeared in 0% of packs. They now compete in every slot.
+  // Colorless creatures (color:null) belong to no WUBRG bucket; color-rolled
+  // draft slots must still offer them like any other creature.
   const colorlessCreatures = new Set(Object.keys(CARDS).filter(id => {
     const c = CARDS[id];
     return hasType(c, 'Creature') && !isUndraftable(c) && !c.color;

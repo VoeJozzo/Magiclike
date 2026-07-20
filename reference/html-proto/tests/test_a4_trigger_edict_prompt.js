@@ -1,15 +1,8 @@
-// Audit A4-7 — the trigger (and ability) resolution loops never routed a
-// `chooses()` step to the human prompt: the pause-and-ask contract
-// (pendingEdictChoice, GAP 2) was shipped ONLY in the spell resolver, so an
-// AI-controlled Heir to the Burnt House dying silently sacrificed a land of
-// the ENGINE's choosing when the human was the chooser. The card's own text
-// makes the choice the chooser's.
-//
-// Fix: maybeDeferHumanChooses() — the spell resolver's human-prompt branch
-// extracted into ONE shared gate consumed by all three resolution loops
-// (spell / trigger / activated ability). AI path unchanged (auto-pick).
-//
-// This is the trigger-path twin of test_edict_human_choice.js.
+// The pause-and-ask gate (pendingEdictChoice / maybeDeferHumanChooses) covers
+// all three resolution loops — spell, trigger, activated ability — so an
+// edict's chooser is whoever the card's text names, not whichever side
+// controls the resolving trigger.
+// Companion to test_edict_human_choice.js (the spell-resolution case).
 
 const setup = require('./_setup');
 setup.loadEngine();

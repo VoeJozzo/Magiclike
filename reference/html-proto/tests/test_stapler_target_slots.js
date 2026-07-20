@@ -1,9 +1,5 @@
-// Step 12 (plan-effects-refactor §1.2 / §10): Stapler's `noop` slot-marker hack
-// is gone. The ability now declares `target_slots: [{spliceable_base}, {spliceable
-// Staple}]` — two structural slot specs on the ability instead of a fake empty-
-// body effect. This test pins the contract `noop` used to provide: the ability
-// requires exactly two targets, each validated against its own slot filter, and
-// resolution staples the second onto the first.
+// The ability requires exactly two targets, each validated against its own
+// slot filter, and resolution staples the second onto the first.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -14,8 +10,7 @@ function check(label, ok, info) {
   if (ok) pass++; else fail++;
 }
 
-// Two vanilla spliceable creatures (non-special, non-modal → spliceable as base
-// AND staple). Pick real ones from the pool.
+// Vanilla creatures (non-special, non-modal) are spliceable as both base and staple.
 const baseTpl = Object.keys(CARDS).find(k => hasType(CARDS[k], 'Creature') && isSpliceableBase(k));
 const stapleTpl = Object.keys(CARDS).find(k => k !== baseTpl && hasType(CARDS[k], 'Creature') && isSpliceableStaple(k));
 
@@ -83,8 +78,6 @@ console.log('\n=== resolution staples the second target onto the first ===');
   const t1 = { kind: 'permanent', iid: c1.iid, label: c1.name };
   const before = G.you.battlefield.length;
   ENGINE.executeAction('you', { type: 'activateAbility', cardIid: stapler.iid, abilityIdx: 0, targets: [t0, t1] });
-  // The staple merges c1 into c0: c0 survives (now stapled), c1 leaves the
-  // battlefield. Net battlefield count drops by one (the staple consumed).
   const baseStillThere = G.you.battlefield.some(c => c.iid === c0.iid);
   const stapleConsumed = !G.you.battlefield.some(c => c.iid === c1.iid);
   check('base survives the staple', baseStillThere);
@@ -119,8 +112,7 @@ console.log('\n=== already-stapled STACK spell is not a legal staple target ==='
 (() => {
   // matchFilterSpell mirrors matchFilter's chain check (stapleChainOf): a
   // spell on the stack that already carries a staple chain must not pass the
-  // spliceable_staple slot filter. Before the fix it passed legality and only
-  // fizzled at resolution.
+  // spliceable_staple slot filter.
   const G = newGame();
   const spell = mk(stapleTpl, 'you');
   const item = { card: spell, controller: 'you', targets: [] };
@@ -137,10 +129,9 @@ console.log('\n=== already-stapled STACK spell is not a legal staple target ==='
 console.log('\n=== resolution-time fizzle keeps costs paid (MtG 608.2b semantics) ===');
 (() => {
   // The handler re-runs resolveSplicePair as defense-in-depth; reaching a
-  // fizzle there means legality/handler drift, and — matching real MtG, where
-  // an ability that fizzles on resolution does NOT refund its costs — the
-  // paid tap/mana stay spent. Simulate the drift case by invoking the handler
-  // directly with an invalid (self-staple) pair on an already-paid Stapler.
+  // fizzle there means legality/handler drift. Matching real MtG, where an
+  // ability that fizzles on resolution does NOT refund its costs, the paid
+  // tap/mana stay spent.
   const G = newGame();
   const stapler = mkStapler('you'); G.you.battlefield.push(stapler);
   const c0 = mk(baseTpl, 'you');

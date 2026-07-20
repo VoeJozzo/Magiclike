@@ -1,9 +1,8 @@
-// Manifest completeness (Wave 2, Joe-found gap): the browser loads cards
-// through cards/_manifest.json, so a card folder that never got its manifest
-// line ships INVISIBLE — present on disk, green in Node tests (which read the
-// filesystem), absent from the actual game. No test caught that until now.
+// The browser loads cards through cards/_manifest.json, so a card folder that
+// never got its manifest line ships INVISIBLE — present on disk, green in
+// Node tests (which read the filesystem), absent from the actual game.
 // Invariants:
-//   1. Every folder under cards/ is listed in the manifest (the gap).
+//   1. Every folder under cards/ is listed in the manifest.
 //   2. Every manifest entry has a folder with a card.json (no phantoms).
 //   3. No duplicate manifest entries.
 //   4. Each card.json's card_id matches its folder name (the tplId contract

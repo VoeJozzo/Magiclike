@@ -18,7 +18,7 @@ function escapeHtml(s) { return String(s).replace(/[&<>]/g, c => ({'&':'&amp;','
 // (engine.js) and GENERATOR_EFFECTS / GENERATOR_CONDITIONS (trigger-
 // generator.js). The cardName is HTML-escaped because the result lands
 // in innerHTML — designer-authored templates may contain HTML (e.g.
-// future <b>emphasis</b>), but card names are display data that should
+// <b>emphasis</b>), but card names are display data that should
 // never be parsed as markup.
 function formatTriggerText(template, cardName) {
   return (template || '').replace(/~/g, escapeHtml(cardName || ''));
@@ -68,7 +68,6 @@ function targetNoun(eff) {
   if (t === 'opp')    return 'target opponent';
   if (t === 'player') return 'target player';
   if (t === 'creature') return 'target creature';
-  // New target() taxonomy (§3.5).
   if (t === 'creature_or_player') return 'any target';
   if (t === 'your_creature') return 'target creature you control';
   if (t === 'opp_creature') return 'target creature an opponent controls';
@@ -209,8 +208,7 @@ function signedStat(field, eff, tplEff, negZero) {
 // card.text instead. effectCoverageReport (engine.js) skips these when
 // checking for the "[kind]" debug sentinel, so a kind belongs here ONLY if
 // it genuinely has no standalone describeEffect text — a member that grows
-// a real case must leave the set, or the coverage guard stops guarding it
-// (audit A10-8: apply_sticker drifted in exactly this way and was removed).
+// a real case must leave the set, or the coverage guard stops guarding it.
 //   steal         — internal; dispatched by change_control (which has text)
 //   annihilate    — its case returns [] by design; the rip/edict chain
 //                   renders the whole phrase
@@ -236,7 +234,7 @@ function describeEffect(eff, tplEff) {
     case 'gain_life':
       if (typeof eff.amount === 'object' && eff.amount && eff.amount.from) {
         const owner = (eff.who && eff.who.from === 'target_controller') ? "its controller" : 'you';
-        // Conjugate by subject (audit A10-5): "you gain", "its controller gains".
+        // Conjugate by subject: "you gain", "its controller gains".
         const verb = owner === 'you' ? ' gain life equal to ' : ' gains life equal to ';
         return [plainSeg(owner + verb + describeAmount(eff.amount))];
       }
@@ -310,9 +308,9 @@ function describeEffect(eff, tplEff) {
       } else if (eff.target === 'creature' || eff.target === 'your_creature' || eff.target === 'opp_creature'
                  || eff.scope === 'all_yours' || eff.scope === 'all_creatures') {
         // Non-eot grants are source-linked (applyGrant tracks the source iid;
-        // the keyword falls off when the source leaves play). The §3.5 migration
-        // renamed the target 'creature'→'your_creature'/'opp_creature', which
-        // had silently dropped this phrase.
+        // the keyword falls off when the source leaves play). 'creature' must
+        // stay alongside 'your_creature'/'opp_creature' here — dropping it
+        // silently omits this phrase.
         dur = ' as long as this is on the battlefield';
       } else {
         dur = '';
@@ -364,29 +362,28 @@ function describeEffect(eff, tplEff) {
     }
     case 'move_card': {
       // Generic card-movement primitive → English for the common collapsed
-      // idioms (matches the legacy kinds' phrasing for parity).
+      // idioms; phrasing must match each idiom's established form.
       const fz = eff.from_zone, tz = eff.to_zone;
-      if (fz === 'library' && tz === 'hand' && eff.selector === 'library_search') {  // collapsed searchCreature
+      if (fz === 'library' && tz === 'hand' && eff.selector === 'library_search') {
         // "draw it", not "put it into your hand" — the house ruling defines
-        // drawing as ANY library→hand move (Joe, Wave 2: tutors ARE draws),
-        // so tutor text uses the draw verb and draw-matters cards
-        // (curious_faerie) read consistently with what actually triggers.
+        // drawing as ANY library→hand move, so tutor text uses the draw verb
+        // and draw-matters cards (curious_faerie) read consistently with
+        // what actually triggers.
         const noun = searchFilterNoun(eff.filter, true);
         return [plainSeg('search your library for ' + indefiniteArticle(noun) + ' ' + noun + ' and draw it')];
       }
-      if (fz === 'library' && tz === 'battlefield') {  // collapsed searchLandTapped (auto fetch)
+      if (fz === 'library' && tz === 'battlefield') {
         // Derive the fetched-card noun from the filter (subtype > type > "card"),
         // mirroring the fetch-to-hand case above — a {type:'Land'} filter is "a
-        // land", not the old hardcoded "basic land" (which was narrower than the
-        // filter and drifted from what the card actually does).
+        // land".
         const noun = searchFilterNoun(eff.filter, false);
         return [plainSeg('search your library for ' + indefiniteArticle(noun) + ' ' + noun + ' and put it onto the battlefield' + ((eff.post && eff.post.tap) ? ' tapped' : ''))];
       }
-      if (fz === 'library' && tz === 'hand') {  // collapsed draw
+      if (fz === 'library' && tz === 'hand') {
         if (eff.amount === 1) return [plainSeg('draw a card')];
         return [plainSeg('draw '), amtSeg, plainSeg(' cards')];
       }
-      if (fz === 'hand' && tz === 'graveyard') {  // collapsed discard
+      if (fz === 'hand' && tz === 'graveyard') {
         if (eff.target === 'player' || eff.target === 'opp') {
           if (eff.amount === 1) return [plainSeg(t + ' discards a card')];
           return [plainSeg(t + ' discards '), amtSeg, plainSeg(' cards')];
@@ -425,8 +422,7 @@ function describeEffect(eff, tplEff) {
       const pt = (eff.power || eff.toughness) ? (eff.power || 0) + '/' + (eff.toughness || 0) + ' ' : '';
       const body = pt + tags.join(' ');
       // scope:'self' carries no target noun — subject is "this", mirroring
-      // pump's arm (audit A10-4: artifice_triumphant's granted ability
-      // rendered an empty subject + double space).
+      // pump's arm.
       const subj = eff.scope === 'self' ? 'this' : t;
       // set_types REPLACES the whole type line (a Creature encased into an
       // Artifact stops being a Creature) — say so, since "becomes an Artifact"
@@ -613,11 +609,8 @@ function describeEffectList(effects, cardName, tplEffects, stepTarget, stepFilte
   // distinct_targets: a later slot reads "another ..." when an earlier slot targets
   // the same OBJECT TYPE. The engine forbids one object filling two slots by
   // IDENTITY (sameTarget), independent of each slot's filter — so key on the slot's
-  // `target` type, NOT a JSON.stringify(filter) signature. The old signature key
-  // broke two ways: it depended on filter key-insertion order (JSON.stringify isn't
-  // canonical), and two same-type slots with DIFFERENT filters (e.g. "creature" vs
-  // "creature you control") still can't reuse an object in the engine but wouldn't
-  // read "another." Type-repetition matches the engine's actual collision domain.
+  // `target` type, NOT a JSON.stringify(filter) signature. Type-repetition matches
+  // the engine's actual collision domain.
   const anotherSlots = new Set();
   if (distinctTargets && Array.isArray(slotSpecs)) {
     const seenTargets = new Set();
@@ -711,7 +704,7 @@ function describeEffectList(effects, cardName, tplEffects, stepTarget, stepFilte
       seg1, plainSeg(' damage to ' + t1 + '.'),
     ];
   }
-  // Loot pattern (draw then discard) — both are now collapsed move_card forms.
+  // Loot pattern (draw then discard) — both are collapsed move_card forms.
   if (effects.length === 2
       && effects[0].kind === 'move_card'
       && effects[0].from_zone === 'library' && effects[0].to_zone === 'hand'
@@ -738,10 +731,9 @@ function describeEffectList(effects, cardName, tplEffects, stepTarget, stepFilte
   // Scarification idiom: an affect_creature removal + an apply_sticker(scarified)
   // persistent rider. The removal verb is rendered DYNAMICALLY via describeEffect
   // so an empower-promoted severity shows ("exile", not a frozen "destroy") and
-  // bump-highlights — the whole reason this card stopped being custom_text, which
-  // had hardcoded "Destroy" and hid the empower. (The scar rider prose is fixed —
-  // the scarified life-loss isn't an empower target — so it's a literal here,
-  // mirroring the balancer-tax idiom below.)
+  // bump-highlights. (The scar rider prose is fixed — the scarified life-loss
+  // isn't an empower target — so it's a literal here, mirroring the balancer-tax
+  // idiom below.)
   if (effects.length === 2) {
     const acIdx = effects.findIndex(e => e.kind === 'affect_creature' && !e.scope);
     const apIdx = effects.findIndex(e => e.kind === 'apply_sticker' && e.sticker_id === 'scarified');
@@ -783,7 +775,7 @@ function describeEffectList(effects, cardName, tplEffects, stepTarget, stepFilte
   const nonEmpty = parts.filter(p => Array.isArray(p) && p.some(s => s && s.text));
   if (nonEmpty.length === 0) return [];
   if (nonEmpty.length === 1) return capitalizeSegs(nonEmpty[0]).concat(plainSeg('.'));
-  // Same-target "It" idiom (Joe, Wave 2 follow-up): with ONE shared top-level
+  // Same-target "It" idiom: with ONE shared top-level
   // target (no slots — slot cards like Twin Strike genuinely pick twice),
   // every clause resolves against the same locked pick, so repeating the full
   // target phrase reads like a second choice that doesn't exist. After the
@@ -833,7 +825,7 @@ function capitalizeSegs(segs) {
 // "When/Whenever ..." prefix from event+condId. Falls back to event-only phrasing.
 function triggerPreamble(trig) {
   const ev = trig.event;
-  // Classify from condId (legacy) or composable condition (Slice 2 / E2).
+  // Classify from condId (legacy) or composable condition.
   const cid = triggerArchetype(trig);
   // Any-of subtype args ("Elf, Merfolk" — Covenant Scholar) render as an
   // "or"-join: "another Elf or Merfolk enters under your control,".
@@ -870,7 +862,6 @@ function triggerPreamble(trig) {
   if (cid === 'youGainLife')    return 'Whenever you gain life,';
   if (cid === 'oppLosesLife')   return 'Whenever an opponent loses life,';
   if (cid === 'youDiscard')     return 'Whenever you discard a card,';
-  // Wave 2 archetypes.
   if (cid === 'youCastSpellWithKeyword') {
     return 'Whenever you cast a spell with ' + (triggerKeyword(trig) || 'a keyword') + ',';
   }
@@ -937,7 +928,7 @@ function describeTrigger(trig, tplTrig) {
 }
 
 // Single seam for a trigger's one-line LOG / stack-pill label. Returns the
-// AUTHORED label if the trigger carries one — post-cutover only custom_text cards
+// AUTHORED label if the trigger carries one — only custom_text cards
 // do (e.g. Archdemon's bespoke bargain effects that don't generate cleanly) — else
 // the generated reminder text, with the raw event name as a last resort.
 //
@@ -1001,8 +992,8 @@ function describeAbility(ab, tplAb) {
   }
   // The `main_phase_only` flag restricts an activated ability to the controller's
   // main phase (empty stack) — the non-default timing. Magiclike has no "sorcery"
-  // timing concept (the Flash refactor made instant-speed = the `flash` keyword),
-  // so the reminder reads "during your main phase", not "as a sorcery". Rendered
+  // timing concept — instant speed is the `flash` keyword — so the reminder
+  // reads "during your main phase", not "as a sorcery". Rendered
   // as a second sentence; the caller appends the final period.
   const speedClause = ab.main_phase_only ? [plainSeg('. Activate only during your main phase')] : [];
   if (!cost) return body.concat(speedClause);
@@ -1020,13 +1011,11 @@ function describeAbility(ab, tplAb) {
   return [plainSeg(cost + ': ')].concat(body).concat(speedClause);
 }
 
-// One-line button label for the controller's unified ability picker (audit
-// A10-1). Renders through the engine's own oracle (describeAbility →
+// One-line button label for the controller's unified ability picker.
+// Renders through the engine's own oracle (describeAbility →
 // segsToText) — the same path as render.js's ability stack pill — so a
-// picker button can never contradict the card's rules text. (The previous
-// hand-rolled kind→label table lied: raw internal kinds as labels, inverted
-// permanence, wrong subject, understated costs.) Capped because picker
-// buttons are small; the card's hover/popup carries the full text.
+// picker button can never contradict the card's rules text. Capped because
+// picker buttons are small; the card's hover/popup carries the full text.
 function abilityPickerLabel(ab, maxLen) {
   const cap = maxLen || 60;
   let text = '';
@@ -1036,7 +1025,7 @@ function abilityPickerLabel(ab, maxLen) {
 }
 
 // Lord buff: "Other <subtype>s you control get +P/+T and have <kw>."
-// Wave 2 static spell riders — "Spells you cast also …". One sentence per
+// Static spell riders — "Spells you cast also …". One sentence per
 // rider, phrased by (spell_filter, rider_scope, first effect). The four
 // shipping shapes are covered exactly; a new shape rendering '' fails the
 // no-dead-text discipline loudly in tests rather than lying quietly.
@@ -1079,7 +1068,6 @@ function describeStaticBuff(buff, lordTpl) {
   // (no Artifact type) buffs EVERY artifact creature, so "Other" would lie.
   const isTypeTag = buff.subtype && typeCategory(buff.subtype) === 'type';
   const sub = buff.subtype ? (isTypeTag ? buff.subtype + ' creatures' : buff.subtype + 's') : 'creatures';
-  // Lookup display names so "first_strike" → "first strike", etc.
   const kwDisplay = {
     flying: 'flying', vigilance: 'vigilance', trample: 'trample', haste: 'haste',
     first_strike: 'first strike', double_strike: 'double strike', deathtouch: 'deathtouch',
@@ -1088,8 +1076,7 @@ function describeStaticBuff(buff, lordTpl) {
   };
   // Keyword-filtered buffs ("creatures you control with flying" — Wing
   // Commander). The filter narrows who gets buffed, so the phrase must
-  // render it; before Wave 2 it was silently dropped and the text
-  // overclaimed. For the "Other" honesty check the lord's keywords are read
+  // render it. For the "Other" honesty check the lord's keywords are read
   // EFFECTIVELY — subtype-implied included, since Wing Commander's own
   // flying comes from Angel, not a keywords entry.
   const kwFilter = (buff.filter && buff.filter.has_keyword) || null;
@@ -1125,8 +1112,8 @@ function describeStaticBuff(buff, lordTpl) {
   return body + '.';
 }
 
-// Keywords meaningful on a non-creature spell. Today only `flash` (the
-// retired-Instant marker that grants instant-speed casting). Combat keywords
+// Keywords meaningful on a non-creature spell. Today only `flash` (grants
+// instant-speed casting). Combat keywords
 // (flying/trample/...) never apply to a spell, so they're filtered out of a
 // spell's preamble — otherwise a sorcery could nonsensically read "Trample."
 const SPELL_LEGAL_KEYWORDS = new Set(['flash']);
@@ -1235,7 +1222,7 @@ function describeCardSegments(card, opts) {
     }
     // Authored text may carry the conventional ~ placeholder (Adept, Codex) —
     // substitute the card's name so it never reaches a player's eyes raw
-    // (audit A10-3; substitution is idempotent once baked into card.text).
+    // (substitution is idempotent once baked into card.text).
     const staticText = formatTriggerText(card.text || tpl.text || '', card.name || tpl.name);
     if (staticText) sections.push([plainSeg(staticText)]);
     // Stapled halves: authored text can't know what a staple added, so append

@@ -1,12 +1,9 @@
-// Audit A7-3 — pickBestTriggerTarget's grave-return branch keyed on the
-// RETIRED `returnFromGraveyard` effect kind. The migration collapsed that kind
-// to move_card {from_zone:'graveyard', to_zone:'hand'}, so for the 3 live pool
-// cards (grave_digger / morticians_assistant / spirit_shepherd) the AI's
-// auto-pick fell through every branch to `return valid[0]` — the oldest card
-// in the yard, value-blind and order-dependent. The fix recognizes the
-// migrated shape and value-picks the best returnable card, deriving WHICH
-// graveyard each candidate sits in from its stamped `controller` tag. AI-only
-// pick quality (P3 STAGE); humans get the graveyard picker prompt.
+// pickBestTriggerTarget's grave-return branch matches the move_card
+// {from_zone:'graveyard', to_zone:'hand'} effect shape (see RETURN_EFF
+// below), used by grave_digger, morticians_assistant, and spirit_shepherd.
+// It derives which graveyard each candidate occupies from the candidate's
+// stamped `controller` tag, not from array position or order. AI-only pick
+// quality; humans get the graveyard picker prompt.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -40,7 +37,6 @@ function newGame() {
   return G;
 }
 
-// The migrated grave-return effect shape.
 const RETURN_EFF = { kind: 'move_card', from_zone: 'graveyard', to_zone: 'hand', selector: 'target' };
 // bear_cub (low value) vs ancient_hydra (high value) — a wide, unambiguous gap
 // so the pick can't tie. The AI should always prefer the Hydra.

@@ -1,7 +1,7 @@
-// Boot-time effect validation (Slice 3 step 4). validateAllCardEffects walks
-// every card's effects (on-cast flat/modal + activated/triggered abilities)
-// and flags unknown effect kinds and out-of-taxonomy target()/chooses()
-// filters. Catches typos at boot. The live pool must validate clean.
+// validateAllCardEffects walks every card's effects (on-cast flat/modal +
+// activated/triggered abilities), flagging unknown effect kinds and
+// out-of-taxonomy target()/chooses() filters. The live pool must validate
+// clean.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -55,10 +55,9 @@ console.log('\n=== per-kind schema for the new atomics ===');
   ];
   const good = [
     { tplId: 'mcOk', effects: [{ kind: 'move_card', from_zone: 'library', to_zone: 'hand' }] },
-    // selector added when A4-21's selector table landed: a selector-less
-    // graveyard→exile is exactly the warn-and-no-op trap the table closes
-    // (the handler's t-derivation has no fallback for this pair). The
-    // fixture still pins what it always did — the zone PAIR is supported.
+    // A selector-less graveyard→exile is a warn-and-no-op trap — the
+    // move_card handler's t-derivation has no fallback for this zone pair.
+    // This fixture pins that the zone PAIR itself is supported (with selector).
     { tplId: 'mcGraveyardToExileOk', effects: [{ kind: 'move_card', from_zone: 'graveyard', to_zone: 'exile', selector: 'target' }] },
     { tplId: 'gcpOk', effects: [{ kind: 'grant_cast_permission', from_zone: 'exile', duration: 'eot' }] },
     { tplId: 'sevOk', effects: [{ kind: 'affect_creature', severity: 'destroy' }] },

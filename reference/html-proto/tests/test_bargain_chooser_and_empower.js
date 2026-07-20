@@ -1,13 +1,8 @@
-// Two bug fixes:
+// BUG 1 (Archdemon of Bargains): the ETB number-choice's chooser must follow
+// the CONTROLLER (the dealmaker), never a hardcoded side.
 //
-// BUG 1 (Archdemon of Bargains): the ETB number-choice was hardcoded to prompt
-// `who: 'you'`, so when the BOSS controlled the demon the HUMAN was asked to
-// choose — picking the boss's ETB sticker count AND their own death payout. The
-// chooser must follow the CONTROLLER (the dealmaker).
-//
-// BUG 2 (empower on signed values): empower did `field += amount`, so a -2
-// debuff (Sicken's pump) empowered to -1 (WEAKER) instead of -3. Empower must
-// amplify magnitude in the field's existing direction.
+// BUG 2 (empower on signed values): empower must amplify magnitude in the
+// field's existing direction.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -100,9 +95,7 @@ if (!CARDS['archdemon_of_bargains']) {
   console.log('  (archdemonBargains not in CARDS -- skipping)');
 } else {
   // The bargain: choose N at ETB → N stickers to the controller now; N stickers
-  // to the OTHER side when it leaves. The dies handler used to read the wrong
-  // event field (ctx.event.card, always undefined) and silently defaulted N=1,
-  // decoupling the payout from the bargain. Drive both halves and assert N==N.
+  // to the OTHER side when it leaves.
   const CHOSEN = 4;
   const G = newGame();
   const demon = mk('archdemon_of_bargains', 'opp');
@@ -118,9 +111,9 @@ if (!CARDS['archdemon_of_bargains']) {
   // the dying card as subject_card). Give the recipient ('you' = opp(controller))
   // permanents so stickers have somewhere to land. Assert on N READ (the handler's
   // "applying N sticker(s)" log line), NOT on stickers physically placed — random
-  // sticker kinds + appliesTo eligibility make the placed count nondeterministic
-  // (the flake in the first cut of this test). Scan the whole log because
-  // applyRandomStickersToSide appends per-sticker lines after the summary.
+  // sticker kinds + appliesTo eligibility make the placed count nondeterministic.
+  // Scan the whole log because applyRandomStickersToSide appends per-sticker lines
+  // after the summary.
   for (let i = 0; i < 6; i++) {
     const perm = mk('plains', 'you'); perm.iid = 8200 + i; G.you.battlefield.push(perm);
   }

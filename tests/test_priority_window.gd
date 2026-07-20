@@ -1,13 +1,11 @@
 extends Node
 
-# Slice 0 (priority-window refactor) tests — B6 auto-pass + B7 end-turn.
+# B6 auto-pass + B7 end-turn tests.
 #
-# IMPORTANT: authored WITHOUT a Godot runtime (no godot binary in the dev
-# container where this was written). The predicate-level cases below are
-# deterministic pure-state reads and are high-confidence. The full
-# fast-forward *behavior* scenarios from plan §6 step 5 (B7 end-turn cascade,
-# trigger-interrupt-then-resume, flag-clear-on-next-turn, etc.) are NOT yet
-# encoded here because their end-states depend on the live settle cascade and
+# Predicate-level: deterministic pure-state reads. The fast-forward
+# *behavior* scenarios from plan §6 step 5 (B7 end-turn cascade,
+# trigger-interrupt-then-resume, flag-clear-on-next-turn, etc.) aren't
+# encoded here — their end-states depend on the live settle cascade and
 # must be observed in a real run. See the [GODOT-QA] checklist at the bottom.
 #
 # Run via:

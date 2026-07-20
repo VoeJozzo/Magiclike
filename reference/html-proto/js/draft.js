@@ -9,8 +9,8 @@ const TOTAL_DECK_SIZE = TOTAL_PICKS + TOTAL_LANDS;
 const PACK_SIZE = 3;
 // Growing Deck mode: the run starts from a handful of bucket picks instead of
 // 23 card picks; the deck then grows via addBucket rewards between fights.
-// Each bucket = 3 cards + 2 lands, so 5 picks = 15 spells + 10 lands (raised
-// from 3 after playtest: 15-card decks ended games by deck-out — Joe's call).
+// Each bucket = 3 cards + 2 lands, so 5 picks = 15 spells + 10 lands —
+// playtested minimum; fewer ended games by deck-out.
 const GROWING_START_BUCKETS = 5;
 const COLORS = ['W','U','B','R','G'];
 const COLOR_TO_LAND = { W:'plains', U:'island', B:'swamp', R:'mountain', G:'forest' };
@@ -234,7 +234,7 @@ function getConstructedDeck(id) {
   return CONSTRUCTED_DECKS[id] || null;
 }
 
-// Build opp deck (spells + lands). constructedId → curated list; else heuristic draft.
+// constructedId → curated list; else heuristic draft.
 // numPicks (optional): heuristic-drafted opponents mirror the player's current
 // deck size in Growing Deck mode. Constructed decks (bosses, themed nodes) are
 // scripted landmarks and always play their full curated list.
@@ -281,11 +281,8 @@ function buildOpponentDeck(numStickers, numStaples, numClones, colorAffinity, co
       picks.push(chosen);
     }
   }
-  // A8-4: the opp deck's "colors" output was UI-dead — no production code read it
-  // (the boss-banner consumer reads only name/icon; the drafter reads colors off
-  // the constructed spec, not here), and its two branches returned inconsistent
-  // shapes (constructed 0–1, heuristic always padded to 2). Removed rather than
-  // documented; color identity, where needed, lives on the constructed spec.
+  // Color identity, where needed, lives on the constructed spec, not this
+  // function's output.
   const pips = countPips(picks);
   // Lands scale with deck size at the canonical 23:17 spell-to-land ratio.
   const landCount = Math.max(1, Math.round(pickTarget * TOTAL_LANDS / TOTAL_PICKS));
@@ -321,10 +318,9 @@ function applyOpponentStaples(slots, n) {
   };
   for (let round = 0; round < n; round++) {
     const pairs = [];
-    // v1.0.56: enumerate UNORDERED pairs (i < j) and canonicalize. The
-    // type-priority rule decides base vs staple; iterating ordered pairs
-    // would double-count and require dedup downstream. Mirrors the
-    // reward-time candidate generator change.
+    // Enumerate UNORDERED pairs (i < j) and canonicalize. The type-priority
+    // rule decides base vs staple; iterating ordered pairs would double-count
+    // and require dedup downstream.
     for (let i = 0; i < slots.length; i++) {
       for (let j = i + 1; j < slots.length; j++) {
         const [, , swapped] = canonicalSplicePair(slots[i].tplId, slots[j].tplId);
@@ -354,8 +350,7 @@ function applyOpponentStaples(slots, n) {
   }
 }
 
-// Append staple slot `si` into base slot `bi`, propagating the staple's own
-// chain. Result: baseSlot.stapledTpls = [...prior, staple.tplId, ...staple.stapledTpls].
+// Appends staple slot `si` into base slot `bi`, propagating its staple chain.
 // Order matters — synthesis walks stapledTpls sequentially and slot-remaps
 // each entry, so [B, A] vs [A, B] produces different effect arrangements.
 function absorbStapledSlot(slots, bi, si) {
@@ -369,17 +364,13 @@ function absorbStapledSlot(slots, bi, si) {
   slots.splice(si, 1);
 }
 
-// Apply N clones to opp's deck. Each clone picks the highest-value non-land
-// slot not yet cloned, then inserts a literal photocopy (stickers, staples,
-// empower rolls, bonusTrigger, charges) after the original.
-//
-// Mirrors player's clone semantics — photocopy, not re-roll. Tracking by
-// tplId (not index) prevents 3 copies of the same card from one budget and
-// stays stable across the mid-loop splice.
+// Mirrors player's clone semantics — a photocopy (stickers, staples, empower
+// rolls, bonusTrigger, charges), not a re-roll. Tracking by tplId (not index)
+// prevents 3 copies of the same card from one budget and stays stable across
+// the mid-loop splice.
 function applyOpponentClones(slots, n) {
   const clonedTplIds = new Set();
   for (let round = 0; round < n; round++) {
-    // Find the highest-value non-land slot whose tplId we haven't cloned.
     let bestIdx = -1, bestScore = -Infinity;
     for (let i = 0; i < slots.length; i++) {
       if (clonedTplIds.has(slots[i].tplId)) continue;
@@ -388,7 +379,7 @@ function applyOpponentClones(slots, n) {
       const score = intrinsicCardValue(tpl);
       if (score > bestScore) { bestScore = score; bestIdx = i; }
     }
-    if (bestIdx < 0) break;   // no more cloneable slots
+    if (bestIdx < 0) break;
     const orig = slots[bestIdx];
     const clone = {
       tplId: orig.tplId,
@@ -398,7 +389,7 @@ function applyOpponentClones(slots, n) {
       clone.stapledTpls = orig.stapledTpls.slice();
     }
     if (Array.isArray(orig.empowerRolls) && orig.empowerRolls.length > 0) {
-      // A6-2: preserve a stored-blank (null) roll as null (not a laundered `{}`).
+      // Preserve a stored-blank (null) roll as null (not a laundered `{}`).
       clone.empowerRolls = orig.empowerRolls.map(r => r ? {...r} : r);
     }
     if (Array.isArray(orig.subtypeRolls) && orig.subtypeRolls.length > 0) {
@@ -411,7 +402,7 @@ function applyOpponentClones(slots, n) {
       };
     }
     if (typeof orig.charges === 'number') {
-      clone.charges = orig.charges;   // A5-5 parity: photocopy remaining charges
+      clone.charges = orig.charges;
     }
     slots.splice(bestIdx + 1, 0, clone);
     clonedTplIds.add(orig.tplId);
@@ -441,19 +432,17 @@ function applyOpponentStickers(slots, n) {
   // each). Total power level is the same; distribution shape changes.
   let remaining = n;
   while (remaining > 0) {
-    // Find slots with at least one applicable sticker.
     const eligibleIdx = slots
       .map((_, i) => i)
       .filter(i => stickersForSlot(slots[i], oppColors).length > 0);
-    if (eligibleIdx.length === 0) break;   // no legal targets, stop early
-    // Pick 3 random eligible slots — mirroring the player's offer.
+    if (eligibleIdx.length === 0) break;
+    // Mirrors the player's offer: 3 random eligible slots.
     const cardOffer = [];
     const cardPool = eligibleIdx.slice();
     while (cardOffer.length < 3 && cardPool.length > 0) {
       const idx = Math.floor(Math.random() * cardPool.length);
       cardOffer.push(cardPool.splice(idx, 1)[0]);
     }
-    // Score each offered slot — prefer high-intrinsic-value cards.
     let bestSlotIdx = cardOffer[0], bestSlotScore = -Infinity;
     for (const i of cardOffer) {
       // Stapled-aware scoring: a stapled slot is worth more than its base
@@ -476,9 +465,8 @@ function applyOpponentStickers(slots, n) {
     for (let k = 0; k < burstSize; k++) {
       const stickerCandidates = stickersForSlot(slots[bestSlotIdx], oppColors);
       if (stickerCandidates.length === 0) break;   // slot saturated mid-burst
-      // Roll 3 random sticker options for this slot. Use weighted sampling
-      // (matching the player's offer mechanism) so weights apply consistently
-      // across both players.
+      // Weighted sampling matches the player's offer mechanism, so weights
+      // apply consistently across both players.
       const stickerOffer = [];
       const stickerPool = stickerCandidates.slice();
       while (stickerOffer.length < 3 && stickerPool.length > 0) {
@@ -486,7 +474,6 @@ function applyOpponentStickers(slots, n) {
         const idx = stickerPool.indexOf(picked);
         stickerOffer.push(stickerPool.splice(idx, 1)[0]);
       }
-      // Pick the highest-value sticker for this card.
       let bestSticker = stickerOffer[0], bestStickerScore = -Infinity;
       for (const s of stickerOffer) {
         const score = scoreOpponentSticker(s, slots[bestSlotIdx]);
@@ -532,7 +519,7 @@ function scoreOpponentSticker(sticker, slot) {
     return 1;
   }
   if (sticker.kind === 'empower') {
-    // Single-field Empower (v0.99.80+): exactly ONE eligible field is rolled
+    // Single-field Empower: exactly ONE eligible field is rolled
     // and bumped per stack. Score is the expected value across the uniform
     // pool of eligible (location, effect, mode?, field) targets — i.e., the
     // average per-field value over enumerateEmpowerTargets. Charms have ~3-6
@@ -552,7 +539,6 @@ function scoreOpponentSticker(sticker, slot) {
     // toughness slots (so a Giant Growth target doesn't double-count).
     let total = 0;
     for (const t of targets) {
-      // Look up the actual effect kind via the location.
       let eff;
       if (t.location === 'effects') {
         eff = (t.modeIdx == null)
@@ -577,7 +563,6 @@ function scoreOpponentSticker(sticker, slot) {
   return 0;
 }
 
-// Pick the highest-scoring card in a pack given what's been drafted so far.
 // Scoring philosophy:
 //   - Commit to two colors as picks accumulate.
 //   - Maintain a healthy curve (lots of 2s and 3s, fewer 5+).
@@ -624,7 +609,6 @@ function scoreDraftCard(id, picksSoFar) {
   }
 
   // ----- 2. Curve needs -----
-  // Count how many cards of each cost we have. Score bonus for filling gaps.
   const curve = [0, 0, 0, 0, 0, 0, 0, 0]; // index = cost (0..7+)
   for (const pid of picksSoFar) {
     const c = CARDS[pid];
@@ -659,8 +643,6 @@ function scoreDraftCard(id, picksSoFar) {
   return score;
 }
 
-// Intrinsic value: how good is this card on its own merits?
-// Stats matter for creatures; effect type matters for spells.
 // picksSoFar (optional): when present, lord/static-buff cards see how much
 // tribe they've already enabled, so their value scales with deck density
 // rather than using the conservative flat baseline.
@@ -676,10 +658,8 @@ function intrinsicCardValue(card, picksSoFar) {
 // inner comments in rollPack for the full mechanism.
 
 function rollPack(pool, picksSoFar) {
-  // Color-aware pack: roll a color per slot, sample a card from that color's
-  // bucket. Off-deck colors (no picks of that color yet) appear at most once
-  // per pack; in-deck colors can repeat. "In-deck" = ≥1 prior pick of that
-  // color (looser than the UI's ≥2 threshold — we honor any signal).
+  // "In-deck" = ≥1 prior pick of that color (looser than the UI's ≥2
+  // threshold — we honor any signal).
   //
   // Sampling is weighted by `card.draftWeight`. Default is 1 — cards
   // without an explicit draftWeight appear at the baseline rate. Setting
@@ -723,7 +703,7 @@ function rollPack(pool, picksSoFar) {
   // lands) fit ANY deck, so they're not "a color the player isn't" and aren't
   // subject to the off-color once-per-pack cap. They're eligible in EVERY slot:
   // a slot's candidates are its rolled color's bucket PLUS the colorless pool.
-  // Without this they'd land in no bucket and (pre-2.0.60) were never offered.
+  // Without this they'd land in no bucket and never be offered.
   const colorless = [];
   for (const id of pool) {
     const c = CARDS[id];
@@ -741,7 +721,6 @@ function rollPack(pool, picksSoFar) {
     // and 3 slots), fall back to the full color list.
     if (colorTable.length === 0) colorTable = COLORS.slice();
 
-    // Roll a color uniformly from the current table.
     const color = colorTable[Math.floor(Math.random() * colorTable.length)];
 
     // Pick a card of that color, avoiding duplicates already in the pack.
@@ -750,8 +729,6 @@ function rollPack(pool, picksSoFar) {
     // from the full pool. This matters for the modal-stress-test config
     // where most cards have weight 0 — color-rolled slots whose color has
     // no positive-weight cards would otherwise emit nothing.
-    // Candidates = the rolled color's bucket + the always-eligible colorless
-    // pool (colorless fits any deck, so it competes for every slot).
     const sub = byColor[color] || [];
     const candidates = sub.concat(colorless).filter(id => !used.has(id));
     let id = candidates.length > 0 ? pickWeightedDraftCard(candidates) : null;
@@ -865,7 +842,6 @@ function allocLands(pips, count) {
   for (let i = 0; i < remaining; i++) {
     floor[remainders[i % remainders.length].k]++;
   }
-  // Build list.
   const out = [];
   for (const k of COLORS) {
     for (let i = 0; i < floor[k]; i++) out.push(COLOR_TO_LAND[k]);

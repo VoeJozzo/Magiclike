@@ -1,30 +1,17 @@
-// Audit fixes A2-8 + A3-11 — event payload conformance: life_changed and the
-// leave-play card_zone_change family carry `source_iid` (PROTOCOL §3.3).
+// life_changed and the leave-play card_zone_change family (bounce/exile/
+// steal/move) carry `source_iid` (PROTOCOL §3.3). The only consumer today
+// is the noSelfCascade guard (triggers.js): a trigger on the CAUSING card
+// must not fire from its own event, but must still fire from a foreign
+// source's event.
 //
-// Pre-fix, two of the four life_changed emitters omitted the field:
-//   - combat lifelink (A2-8) — `{type, who, delta}` only, while
-//     applyDamageFrom and gain_life both attach `source_iid: ctx.sourceIid`;
-//   - damagePlayer's life-loss emit (A3-11) — the function was only ever
-//     handed a display STRING, so it structurally could not attach the iid.
-// And the whole leave-play family (emitLeavesBattlefield) had no sourceIid
-// parameter at all — every bounce/exile/steal/move card_zone_change was
-// anonymous even when the causing card was in scope at the call site.
-//
-// The only consumer of source_iid today is the noSelfCascade guard
-// (triggers.js — "don't fire off your own card's event"), so each corrected
-// emit site is pinned through it: a noSelfCascade trigger on the CAUSING
-// card must NOT fire from its own event (red pre-fix: the missing tag made
-// every event look foreign), and must STILL fire from a foreign source's
-// event (over-suppression guard).
-//
-// Sites pinned:
-//   1. combat lifelink gain        (A2-8,  dealCombatDamage applyLifelink)
-//   2. combat face-damage loss     (A3-11, damagePlayer via combat)
-//   3. spell-path face-damage loss (A3-11, damagePlayer via applyDamageFrom)
-//   4. bounce leave-play           (A3-11, emitLeavesBattlefield via affect_creature)
-//   5. move_card leave-play        (A3-11, emitLeavesBattlefield via move_card)
-// (The exile / steal emitLeavesBattlefield call sites take the identical
-// `ctx.sourceIid` thread as #4/#5.)
+// Sites covered:
+//   1. combat lifelink gain        (dealCombatDamage applyLifelink)
+//   2. combat face-damage loss     (damagePlayer via combat)
+//   3. spell-path face-damage loss (damagePlayer via applyDamageFrom)
+//   4. bounce leave-play           (emitLeavesBattlefield via affect_creature)
+//   5. move_card leave-play        (emitLeavesBattlefield via move_card)
+// Exile/steal emitLeavesBattlefield call sites use the identical
+// `ctx.sourceIid` thread as #4/#5.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -174,7 +161,6 @@ if (!VANILLA || !CARDS['lightning_bolt'] || !CARDS['mountain']) {
       { kind: 'damage', amount: 1 }, { kind: 'player', who: 'opp' });
     check('A3-11: own face-ping loss is self-suppressed (source_iid threaded)',
       G.pendingTriggers.length === 0, 'queued=' + G.pendingTriggers.length);
-    // A foreign source's face damage still fires it.
     ENGINE.applyEffect(
       { controller: 'you', sourceName: 'Foreign Burn', sourceIid: -1 },
       { kind: 'damage', amount: 1 }, { kind: 'player', who: 'opp' });
@@ -203,7 +189,6 @@ if (!VANILLA || !CARDS['lightning_bolt'] || !CARDS['mountain']) {
     check('victim was bounced', G.opp.hand.some(c => c.iid === victimA.iid));
     check('A3-11: own bounce is self-suppressed (source_iid threaded)',
       G.pendingTriggers.length === 0, 'queued=' + G.pendingTriggers.length);
-    // A foreign source's bounce still fires it.
     ENGINE.applyEffect(
       { controller: 'you', sourceName: 'Foreign Bounce', sourceIid: -1 },
       { kind: 'affect_creature', severity: 'bounce' },

@@ -1,11 +1,8 @@
-// Wave 2 cards (docs/plans/plan-pool-waves.md FINAL BUILD SPEC, 2026-07-10):
-// 32 ship / 1 kill. Mechanics = conversation-board `after` fields
-// (docs/plans/wave-data/build_wave2_conversations.js); names/typelines =
-// wave2_flavor_final.json. The shared primitives have their own deep pins
-// (wave2_hook_test = spell riders, wave2_ability_event_test = ability_activated);
-// this file covers (1) TEXT GOLDENS — the exact generated rules text of all 32,
-// which transitively locks every new archetype signature + preamble — and
-// (2) per-card behavior probes for the mechanics unique to this batch.
+// Wave 2 cards (docs/plans/plan-pool-waves.md). Mechanics = conversation-board
+// `after` fields (docs/plans/wave-data/build_wave2_conversations.js);
+// names/typelines = wave2_flavor_final.json. Shared primitives have their own
+// deep pins elsewhere (wave2_hook_test = spell riders, wave2_ability_event_test
+// = ability_activated) — not retested here.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -101,7 +98,6 @@ for (const [id, want] of Object.entries(GOLDENS)) {
   const got = describeCardText(ENGINE.makeCard(id));
   check(id, got === want, got !== want ? 'got "' + got + '"' : '');
 }
-// Flash preamble spot-check: the flash sorceries carry the keyword line.
 check('flash sorceries carry flash (scrap keywords)',
   (CARDS.scrap.keywords || []).includes('flash'));
 
@@ -133,9 +129,7 @@ console.log('\n=== chapter_recruiter: Humans feed it; non-Humans do not ===');
 
 console.log('\n=== triage_cleric: any ETB-ability creature enters -> gain 2; vanilla does not ===');
 (() => {
-  // Any-ETB, not damage-specific (Joe's flavor correction, v2.2.11 — the
-  // healer tends arrivals; damage-keying was the pitch's wording, not the
-  // intended card).
+  // Fires on any ETB ability, not just damage ETBs.
   const G = freshGame();
   G.you.battlefield.push(mk('triage_cleric', 'you'));
   G.opp.battlefield.push(mk('grizzly_bears', 'opp')); // ping target for pyromaniac
@@ -158,10 +152,9 @@ console.log('\n=== intimidating_lancer: attack tap (their creature) ===');
   G.you.battlefield.push(lancer); G.opp.battlefield.push(blocker);
   // ANCHOR: a castable response in opp's hand parks the engine mid-combat.
   // Without it the whole turn auto-cascades inside declareAttackers and the
-  // opponent's next UNTAP step silently undoes the tap we're asserting
-  // (found the hard way — the tap DID land, then evaporated). Real lands,
-  // not gifted mana: floating pools empty at every phase boundary (B2), so
-  // combat-phase castability must come from the board.
+  // opponent's next UNTAP step silently undoes the tap being asserted. Real
+  // lands, not gifted mana: floating pools empty at every phase boundary
+  // (B2), so combat-phase castability must come from the board.
   G.opp.hand.push(mk('lightning_bolt', 'opp'));
   G.opp.battlefield.push(mk('mountain', 'opp'), mk('mountain', 'opp'), mk('mountain', 'opp'));
   // Real combat drive (test_ability_pass_reset pattern): close MAIN1, declare.
@@ -214,10 +207,9 @@ console.log('\n=== earthsinger: animates a land 2/2 EOT; double-animation STACKS
   check('and an Elemental', hasType(land, 'Elemental'));
   let s = ENGINE.getStats(land);
   check('2/2', s[0] === 2 && s[1] === 2, s.join('/'));
-  // Joe's build-time question: animating an ALREADY-animated land. Pinned
-  // behavior: the type grant unions harmlessly and the +2/+2 temp stats STACK
-  // (add_type is additive, not a base-stat set) — a double-animated land is a
-  // 4/4 for the turn. Documented, not hidden.
+  // Pinned: double-animating a land unions the type grant harmlessly and the
+  // +2/+2 temp stats STACK (add_type is additive, not a base-stat set) — a
+  // double-animated land is a 4/4 for the turn.
   ENGINE.executeAction('you', { type: 'activateAbility', cardIid: singer2.iid, abilityIdx: 0,
     targets: [{ kind: 'permanent', iid: land.iid, label: land.name }] });
   drain(G);
@@ -293,7 +285,6 @@ console.log('\n=== tidewatcher: draws only on opp-turn casts ===');
   const G = freshGame();
   G.you.battlefield.push(mk('tidewatcher', 'you'));
   G.you.library = [mk('forest', 'you'), mk('forest', 'you')];
-  // Own-turn cast: no draw.
   const hand0 = G.you.hand.length;
   cast(G, 'giant_growth', null); // fizzles targetless? give it a target
   drain(G);
@@ -343,7 +334,6 @@ console.log('\n=== spellrider: noncreature casts grant it flying; creature casts
   G.you.battlefield.push(rider, bear);
   cast(G, 'giant_growth', [{ kind: 'creature', iid: bear.iid, label: bear.name }]);
   check('sorcery cast -> flying', rider.keywords.includes('flying'));
-  // Clear the EOT grant, then cast a creature.
   rider.keywords = rider.keywords.filter(k => k !== 'flying');
   cast(G, 'grizzly_bears');
   check('creature cast -> no flying', !rider.keywords.includes('flying'));
@@ -360,8 +350,8 @@ console.log('\n=== covenant_scholar: Elf feeds, Merfolk feeds, Elf+Merfolk feeds
   cast(G, 'merfolk_looter');       // Merfolk
   s = ENGINE.getStats(scholar);
   check('Merfolk enters -> 4/5', s[0] === 4 && s[1] === 5, s.join('/'));
-  // A second Covenant Scholar is Elf AND Merfolk — the any-of predicate is
-  // one trigger, ONE fire (Joe's double-fire question, pinned).
+  // A second Covenant Scholar is Elf AND Merfolk — the any-of predicate
+  // fires exactly once, not twice.
   cast(G, 'covenant_scholar');
   s = ENGINE.getStats(scholar);
   check('Elf+Merfolk enters -> exactly ONE counter (5/6)', s[0] === 5 && s[1] === 6, s.join('/'));

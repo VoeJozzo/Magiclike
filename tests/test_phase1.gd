@@ -1,6 +1,6 @@
 extends Node
 
-# Phase 1 smoke test. Runs headlessly — no UI required.
+# Runs headlessly — no UI required.
 #
 # Scenario (per docs/godot-port-plan.md):
 #   1. Boot engine: you = {life:20, hand:[Bolt], battlefield:[Mtn, Mtn]},

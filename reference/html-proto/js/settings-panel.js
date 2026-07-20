@@ -1,6 +1,5 @@
-// SETTINGS_PANEL — renders the settings modal. Pulled out of controller.js
-// (which was 3.5k lines) on the v1-removal pass; the panel UI is logically
-// independent of the input handlers / AI scheduling that live in CONTROLLER.
+// SETTINGS_PANEL — renders the settings modal, logically independent of the
+// input handlers / AI scheduling that live in CONTROLLER.
 //
 // Depends on: SETTINGS (settings.js), Modal (controller.js — used at runtime
 // via SETTINGS_PANEL.show()), and render (render.js — called after each
@@ -85,8 +84,8 @@ function addDevtoolsToggle(parent, labelText, key, onToggle) {
   return cb;
 }
 
-// Devtools collapsible. Default-collapsed; if showFontDevtools is already
-// true from a prior session, start expanded so the toggle is reachable.
+// Starts expanded if showFontDevtools was already true from a prior
+// session, so the toggle stays reachable.
 // The font-picker UI lives in pickerArea (returned for the rest of render
 // to append into) and is shown/hidden via display:none, NOT re-rendered.
 function renderDevtoolsCollapsible(list) {

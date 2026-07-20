@@ -1,15 +1,8 @@
-// Audit A7-4 — modal self-damage lethal gate is per OPTION, not just per card.
+// The modal self-damage lethal gate applies per option, not just per card.
 //
-// bestSpellPlay's self-damage gate used to run only for non-modal cards, with
-// a comment deferring modal cards to a per-option check that didn't exist: a
-// modal mode whose self-damage would kill us still scored positively (the
-// damage kind is valued as if it hit the opponent), so the AI would
-// suicide-cast it at lethal life. The fix folds selfDamageOf(modeEffects)
-// into the per-option scoring (lethal self-damage option scores -100).
-//
-// No card in the current pool has a self-damage modal mode (the finding is
-// pool-scanned "honestly unreachable"), so the cards here are synthetic
-// templates registered straight into CARDS — the bug class is what's pinned.
+// No card in the current pool has a self-damage modal mode, so the cards
+// here are synthetic templates registered straight into CARDS — the bug
+// class is what's pinned.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -20,7 +13,7 @@ function check(label, ok, info) {
   if (ok) pass++; else fail++;
 }
 
-// Boot a baseline game we can mutate (same recipe as ai_burn_lethal_test).
+// Same recipe as ai_burn_lethal_test.js.
 function makeBaselineGame() {
   RUN.clearSave && RUN.clearSave();
   RUN.start({cards:['mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','mountain','plains','plains'], colors:['R']}, null);
@@ -57,9 +50,9 @@ const SUICIDE_MODAL = {
   name: 'Desperate Gambit',
   types: ['Sorcery'],
   cost: { R: 1 },
-  // Single suicide mode: 5 self-damage + draw 4. spellValueForEffects scores
-  // this 23 (damage 6+5, draw 12) — strongly positive — so only a per-option
-  // self-damage gate stops the cast at <=5 life.
+  // spellValueForEffects scores this mode 23 (damage 6+5, draw 12) —
+  // strongly positive — so only a per-option self-damage gate stops the
+  // cast at <=5 life.
   effects: { modes: [
     [ {kind: 'damage', scope: 'self', amount: 5}, {kind: 'draw', amount: 4} ],
   ] },
@@ -83,8 +76,8 @@ const SUICIDE_FLAT = {
   name: 'Flat Gambit',
   types: ['Sorcery'],
   cost: { R: 1 },
-  // Non-modal twin of the suicide mode — pins that the old non-modal gate's
-  // behavior survives the fold into per-option scoring.
+  // Non-modal twin of the suicide mode — regression check that the
+  // non-modal self-damage gate still fires outside modal scoring.
   effects: [ {kind: 'damage', scope: 'self', amount: 5}, {kind: 'draw', amount: 4} ],
 };
 

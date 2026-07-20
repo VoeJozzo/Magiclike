@@ -1,11 +1,5 @@
-// Drain cards are LIFE LOSS, not damage. Cards authored as "loses N life"
-// (Blood Artist, Blood Priest, drain demons, Goblin Chieftain's ping, Grave
-// Charm's drain mode, Wicked Acolyte, the self-loss on Demonic Tutor / Life for
-// Life / Dread Knight / Vexing Ogre, and the Scarified sticker) were implemented
-// as damage-to-player. The D4 signed gain_life mechanism existed but nothing
-// migrated the cards onto it. Now they do — life loss is unpreventable, doesn't
-// trigger damage synergies, and DOES feed life-loss synergies (Blood Priest +
-// Bloodlust). This locks the data shape, the behavior, and the AI valuation.
+// Drain cards are life loss, not damage: unpreventable, doesn't trigger damage
+// synergies, and does feed life-loss synergies (e.g. Blood Priest + Bloodlust).
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -84,8 +78,7 @@ console.log('\n=== Demonic Tutor: the "you lose 2 life" is self life loss (after
   const dt = mk('demonic_tutor', 'you'); G.you.hand.push(dt);
   ENGINE.executeAction('you', { type: 'castSpell', cardIid: dt.iid });
   drain(G);
-  // A4-23 leg-1: the trailing "lose 2 life" now resolves AFTER the human's search
-  // pick (canon §704.2 in-order resolution), not mid-resolution before it.
+  // The trailing "lose 2 life" resolves after the human's search pick (canon §704.2, in-order resolution).
   check('self life-loss DEFERRED until the search pick', G.you.life === myLife0, 'life=' + G.you.life);
   ENGINE.executeAction('you', { type: 'searchPick', cardIid: findable.iid });
   check('caster lost 2 life (self drain) after the pick', G.you.life === myLife0 - 2, myLife0 + '→' + G.you.life);

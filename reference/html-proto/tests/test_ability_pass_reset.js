@@ -1,15 +1,12 @@
-// Audit fix A1-1 leg 2 — a NON-MANA ability activation resets the priority
-// pass tracker (Joe-approved, PR #98 round 3), so a stale pre-activation
-// pass can never close the round with no response window.
+// A NON-MANA ability activation resets the priority pass tracker, so a
+// stale pre-activation pass can never close the round with no response
+// window.
 //
-// REWRITTEN for A3-2 (stackable infrastructure): non-mana activations now
-// push a real kind:'ability' STACK ENTRY, and the §603 reset rides the push
-// itself (exactly like a spell cast / trigger push) — the leg-2 protection
-// is structural now. The response window moved EARLIER: the opponent
-// responds before the ability resolves, not merely before the round closes
-// over its result. These arms pin the protection in its new shape. (The
-// original inline reset survives verbatim in the dormant stackable:false
-// arm of doActivateAbility.)
+// Non-mana activations push a real kind:'ability' stack entry, and the
+// §603 reset rides the push itself (like a spell cast or trigger push):
+// the opponent responds before the ability resolves, not merely before
+// the round closes over its result. The original inline reset survives
+// verbatim in the dormant stackable:false arm of doActivateAbility.
 //
 // Arms:
 //   1. KEY (main phase) — you pass, opp pings with Prodigal Sorcerer: the
@@ -79,8 +76,8 @@ if (!VANILLA || !CARDS['prodigal_sorcerer'] || !CARDS['llanowar_elves'] || !CARD
     ENGINE.executeAction('you', { type: 'pass' });
     check('setup: opp holds priority after your pass',
       ENGINE.expectedActor() === 'opp', 'actor=' + ENGINE.expectedActor());
-    // Opp pings your creature with the Sorcerer. A3-2: the ping takes a
-    // kind:'ability' stack entry; the push wipes your stale pass.
+    // Opp pings your creature with the Sorcerer; the ping takes a
+    // kind:'ability' stack entry, and the push wipes your stale pass.
     ENGINE.executeAction('opp', { type: 'activateAbility', cardIid: sorcerer.iid, abilityIdx: 0,
       targets: [{ kind: 'creature', iid: myCreature.iid, label: myCreature.name }] });
     check('the ping is ON THE STACK (not yet resolved)',
@@ -135,8 +132,8 @@ if (!VANILLA || !CARDS['prodigal_sorcerer'] || !CARDS['llanowar_elves'] || !CARD
       G.phase === 'COMBAT_BLOCK' && ENGINE.expectedActor() === 'you',
       'phase=' + G.phase + ' actor=' + ENGINE.expectedActor());
     ENGINE.executeAction('you', { type: 'pass' });           // attacker passes
-    // Defender pings the attacker before damage. A3-2: the ping stacks; the
-    // attacker gets a window BEFORE it even resolves.
+    // Defender pings the attacker before damage; the ping stacks, and the
+    // attacker gets a window before it resolves.
     ENGINE.executeAction('opp', { type: 'activateAbility', cardIid: sorcerer.iid, abilityIdx: 0,
       targets: [{ kind: 'creature', iid: atk.iid, label: atk.name }] });
     check('the ping is ON THE STACK (attacker undamaged so far)',

@@ -12,12 +12,6 @@
 //                  After return, ENGINE / AI / RUN / DRAFT / CARDS /
 //                  STICKERS / CONTROLLER / PICKLOG are on `global`.
 //                  Idempotent — second call is a no-op.
-//
-// History: the previous-session test bundle (see ../../../docs/...) read
-// a monolithic magiclike_engine.html and regex-extracted its single
-// <script> block. After the multi-file refactor (v1.0.129+) the HTML
-// loads modules via <script src=...> tags, so we concatenate them here
-// in the same order as magiclike_engine.html lines 522-530.
 
 const fs = require('fs');
 const path = require('path');
@@ -154,7 +148,7 @@ const EXPOSED = [
   'validateAllCardConditions', 'VALID_TRIGGER_EVENTS',
   'triggerArchetype', 'triggerSubtype', 'triggerFiresOnEnter',
   // Live archetype table + signature fn (triggers.js, module-scope) — read
-  // directly by trigger_migration_test since the Wave 2 dedup refactor.
+  // directly by trigger_migration_test.
   '_ARCHETYPE_BY_SIG', '_condSignature',
   'generateConditionOptions', 'generateEffectOptions', 'assembleTrigger',
   // Empower system (cards.js module-scope).
@@ -192,7 +186,7 @@ const EXPOSED = [
   'isPermanent', 'typeLine', 'typeLineParts', 'isUndraftable',
 ];
 
-// Card templates now live in cards/<tplId>/card.json. The browser-side
+// Card templates live in cards/<tplId>/card.json. The browser-side
 // loadCards() uses fetch() — useless in Node. Tests instead populate
 // CARDS synchronously from disk via fs.readFileSync, much faster than
 // awaiting a fetch loop and gives identical data.
@@ -219,7 +213,7 @@ function loadEngine() {
   _loaded = true;
   installDomStubs();
   let code = getSource();
-  // Strip the browser bootstrap. main.js now wraps CONTROLLER.init() in a
+  // Strip the browser bootstrap. main.js wraps CONTROLLER.init() in a
   // loadCards().then(...) so cards arrive before init. In Node we'll
   // populate CARDS ourselves and call nothing — leaving the .then chain
   // intact would invoke fetch(), which doesn't exist here.
@@ -248,13 +242,12 @@ function loadEngine() {
 
 // A1-4: a SINGLE source of truth for "get `who` to an open MAIN1 priority round".
 // 76 test files hand-write G.priority/priorityHolder/phase directly (249 sites);
-// the audit's rename experiment (G.priority -> G.prio) left 34/36 silently green
-// because their stale hand-writes were simply ignored by the engine. This helper
-// PREFERS driving the real machine (so a future rename breaks HERE, in one place,
-// and migrated tests regain their grip on the priority bookkeeping), with one
-// authoritative hand-written fallback for the forced-player case (where advancing
-// through the opponent's turn would disturb a test's bespoke board). The ~63
-// MAIN1-pose callers were migrated onto this (workflow, per-file verified); the
+// the engine ignores those stale hand-writes, so a field rename here can leave
+// such tests silently green. This helper PREFERS driving the real machine (so a
+// future rename breaks HERE, in one place, and migrated tests regain their grip
+// on the priority bookkeeping), with one authoritative hand-written fallback for
+// the forced-player case (where advancing through the opponent's turn would
+// disturb a test's bespoke board). The ~63 MAIN1-pose callers use this; the
 // COMBAT-posers use startCombat (below).
 function startMainPhase(who) {
   const ENGINE = global.ENGINE;

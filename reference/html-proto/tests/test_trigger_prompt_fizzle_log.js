@@ -1,21 +1,17 @@
-// Audit fix A3-12 — a mid-prompt trigger fizzle logs, instead of vanishing
-// wordlessly.
+// A mid-prompt trigger fizzle logs, instead of vanishing wordlessly.
 //
 // doTriggerTargetPick: when the human's multi-slot target prompt ends in
 // 'fizzle' (a LATER slot lost its only legal target after an earlier pick was
-// committed), the trigger is dropped. Pre-fix the only handling was a comment
-// + drainTriggers() — the player saw "X triggered — choose a target", picked
-// one, and the trigger evaporated with no message. Both sibling fizzle paths
-// (pushTriggerOnStack's auto-pick arm, resolveTrigger's dead-target arm) log;
-// the fix adds the same wording here.
+// committed), the trigger is dropped. Sibling fizzle paths
+// (pushTriggerOnStack's auto-pick arm, resolveTrigger's dead-target arm) log
+// the same wording.
 //
 // Reaching the arm needs a multi-slot human prompt whose later slot strands
 // mid-prompt — near-unreachable through pure play today (the prompt freezes
 // all other actions), so the test opens a REAL prompt through a real cast
 // (a clockwork_beetle + roots_and_branches staple: 2-slot controller-gated
 // ETB) and then strands slot 1 by board mutation before submitting the
-// slot-0 pick, exactly the shape the packet describes for future 3+-slot /
-// asymmetric-filter cards.
+// slot-0 pick.
 
 const setup = require('./_setup');
 setup.loadEngine();

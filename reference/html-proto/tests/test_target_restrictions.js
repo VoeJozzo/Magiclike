@@ -1,10 +1,9 @@
-// Top-level target() restrictions (v2 targeting): the closed taxonomy now
-// carries an optional `target_filter` so cards like Doom Blade ("non-black
-// creature"), Ravenous Plague ("toughness 3 or less"), Smite ("tapped"), and
-// Vine Strangle ("flying creature an opponent controls") express their
-// restriction on the unified target() step instead of a per-effect filter.
-// This proves the restriction is ENFORCED at cast legality + highlights, not
-// just rendered in text.
+// target() draws from a closed taxonomy of target kinds, plus an optional
+// `target_filter` so cards like Doom Blade ("non-black creature"), Ravenous
+// Plague ("toughness 3 or less"), Smite ("tapped"), and Vine Strangle
+// ("flying creature an opponent controls") express their restriction on the
+// unified target() step instead of a per-effect filter. The restriction is
+// enforced at cast legality + highlights, not just rendered in text.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -90,9 +89,8 @@ console.log('\n=== Vine Strangle: opp_creature + flying ===');
 
 console.log('\n=== highlight path honors the restriction (render isValidTargetCreature) ===');
 (() => {
-  // doomBlade's pending step: render must NOT mark a black creature targetable.
-  // isValidTargetCreature now delegates to ENGINE.targetsForFilter, so creatures
-  // must be in the game state battlefield for the lookup to find them.
+  // isValidTargetCreature delegates to ENGINE.targetsForFilter, so creatures
+  // must be on the battlefield in game state for it to find them.
   const G = newGame();
   const black = mkCreature('opp', { color: 'B', colors: ['B'] });
   const white = mkCreature('opp', { color: 'W', colors: ['W'] });

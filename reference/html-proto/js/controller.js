@@ -57,7 +57,7 @@ const CONTROLLER = (function() {
 let pendingTarget = null;       // {kind:'cast'|'ability', cardIid, abilityIdx?, modeIdx?}
 let pendingModalChoice = null;  // {cardIid} — open mode picker
 let selectedMapNode = null;     // map node selected (highlighted) but not yet committed; Continue commits
-let uiAtk = [];                 // attacker selection
+let uiAtk = [];
 let uiBlk = new Map();          // blocker → attacker
 let uiPickBlk = null;           // selected blocker awaiting attacker click
 let aiScheduled = false;
@@ -407,9 +407,8 @@ function showStartScreen() {
 // card into either player's hand or battlefield and top up mana/life via a
 // floating panel. Deliberately bypasses the run meta (no draft/map/rewards) —
 // gameOver and onStateChange are guarded by `sandboxMode` so it can't touch a
-// saved run. NOTE: a static/passive opponent is a planned follow-up; for now
-// the opponent is the normal AI (pair with Settings → Devtools → "Reveal AI
-// opponent's hand" to watch what it holds).
+// saved run. The opponent is the normal AI (pair with Settings → Devtools →
+// "Reveal AI opponent's hand" to watch what it holds).
 function sandboxDeck() {
   // Basic lands only → no deck-out and no random spells cluttering draws.
   // You spawn the cards you want to test. Derived from CARDS so it can't drift.
@@ -641,9 +640,9 @@ function newRun(mode) {
 
 
 // Unified card-pick modal — the one popup behind the Neow boons AND the post-draft
-// land offer (previously two separate modals). Fills the shared #cardPickModal
-// slots, routes the card row through renderCardPicker, and optionally shows a
-// drafted-color HUD (colorTpls). Modeled on the draft, the rich baseline.
+// land offer. Fills the shared #cardPickModal slots, routes the card row
+// through renderCardPicker, and optionally shows a drafted-color HUD
+// (colorTpls). Modeled on the draft, the rich baseline.
 function showCardPickModal({ title, subtitle, items, onPick, colorTpls, accent, accentText }) {
   const box = document.querySelector('#cardPickModal .picker-box');
   if (box) {
@@ -759,20 +758,16 @@ function applyTileColor(div, slot) {
   applyTileColorFromTpl(div, tpl);
 }
 
-// Build a small card-display element for the reward modal. Used by sticker
-// pair, transform, and ripUp candidates — anywhere we show a slot's card.
-// Returns a DOM element. `slot` is the runState slot (with current stickers);
-// `tpl` is the resolved template.
-// Reward-modal card tile. Delegates to makeCardEl (the same renderer used
-// for hand/board cards). The slot (when present) carries stickers /
-// staples / rolls; we build a runtime card with those baked in so the tile
-// reflects the slot's actual state (effective cost, statBoost stats,
-// sticker badges, granted keywords).
+// Reward-modal card tile. Used by sticker pair, transform, and ripUp
+// candidates — anywhere we show a slot's card. Delegates to makeCardEl (the
+// same renderer used for hand/board cards); when `slot` is present it
+// carries stickers/staples/rolls, so the built runtime card reflects the
+// slot's actual state (effective cost, statBoost stats, sticker badges,
+// granted keywords).
 //
 // Splice's "merged preview" passes slot=null with a synthesized template
 // not in CARDS — that case is handled inline in renderReward via
-// makeCard(baseTpl, [], ..., stapledTpls=[...]) so the merged card is a
-// real runtime card with all stapled mechanics; it doesn't come through
+// makeCard(baseTpl, [], ..., stapledTpls=[...]), so it doesn't come through
 // this function.
 function makeRewardCardEl(tpl, slot) {
   const tplId = (slot && slot.tplId) || tpl.tplId;
@@ -821,16 +816,14 @@ function makeBucketTileEl(bucket, onClick) {
   const div = document.createElement('div');
   div.className = 'rwd-pair rwd-pair-bucket';
   // Only fallback bundles wear a flat label — themed buckets lead with the
-  // story itself (the old derived theme names were killed at v2.2.22: a
-  // vaguer paraphrase of the story line rendered right under them, and a
-  // recurring drift-bug source).
+  // story itself, not a derived paraphrase (a recurring drift-bug source).
   if (bucket.fallback) {
     const labelEl = document.createElement('div');
     labelEl.className = 'rwd-kind-label rwd-kind-bucket';
     labelEl.textContent = 'REINFORCEMENTS';
     div.appendChild(labelEl);
   }
-  // Narrative framing (Joe, 2026-07-13): a bucket IS "a seed plus the
+  // Narrative framing: a bucket IS "a seed plus the
   // friends it recruited" (cards[0] is the seed; growth order preserved),
   // so tell that story instead of hiding it in a tooltip. Each friend
   // shows ITS strongest edge reason — which may point at another friend,
@@ -844,7 +837,7 @@ function makeBucketTileEl(bucket, onClick) {
       const b = CARDS[m[2]] ? CARDS[m[2]].name : m[2];
       return `${a} feeds ${b} (${m[3].replace('sub:', '')})`;
     }
-    // Per-slot value fill (v2.2.26): the seat joined on value, not edges —
+    // Per-slot value fill: the seat joined on value, not edges —
     // say so truthfully instead of inventing a synergy line.
     if (/^\S+ joins \[value\]$/.test(r)) return 'a solid card in your colors';
     const t = r.match(/^shared plan \[(.+)\]$/);
@@ -864,7 +857,7 @@ function makeBucketTileEl(bucket, onClick) {
     story.innerHTML = html;
     div.appendChild(story);
   }
-  // P2 offer overlay: preview where this bucket would attach to your deck
+  // Offer overlay: preview where this bucket would attach to your deck
   // (CONSTELLATION offer mode). stopPropagation — previewing must not pick.
   const scopeBtn = document.createElement('button');
   scopeBtn.className = 'bucket-scope-btn';
@@ -1344,7 +1337,7 @@ function renderReward() {
         optionsEl.appendChild(div);
         return;
       }
-      // Splice — pre-rolled pair shown at offer time (v1.0.47+). Player sees
+      // Splice — pre-rolled pair shown at offer time. Player sees
       // both input cards and the merged-result preview before deciding. The
       // candidate carries baseSlotIdx and stapleSlotIdx, both pre-validated;
       // we render three card thumbnails (base + staple + merged) in a row.
@@ -1666,7 +1659,7 @@ function renderColorHud(elementId, tplIds) {
     pip.className = 'draft-pip col-' + c + (n === 0 ? ' dim' : '');
     // renderManaSymbols turns the {W} token into the same pip span used
     // everywhere else (cost displays, card text), so the draft counters
-    // get the emoji-glyph fallback / future PNG drop-in for free.
+    // get the same emoji-glyph fallback as those other renders.
     pip.innerHTML = `${renderManaSymbols('{' + c + '}')}<span>${n}</span>`;
     el.appendChild(pip);
   }
@@ -1750,10 +1743,8 @@ function onStateChange() {
       aiScheduled = false;
       aiThinking = false;
       updateThinkingUi();
-      // Re-check gameOver one more time before executing. AI.decide is
-      // synchronous in the heuristic implementation but the await is here
-      // to support future async deciders (LLM, MCTS) — and a long-running
-      // decide could see the game end out from under it.
+      // Re-check gameOver one more time before executing — decide is
+      // awaited, so a slow decide could see the game end out from under it.
       const stateNow = ENGINE.state();
       if (!stateNow || stateNow.gameOver) return;
       const ok = ENGINE.executeAction('opp', action);
@@ -1931,9 +1922,9 @@ function clickBattlefield(iid) {
     return;
   }
 
-  // Edict forced-sacrifice (Diabolic/Vile Edict) — in-place selection (no modal,
-  // reverted from the popup): click one of your glowing eligible permanents to
-  // sac it. Out-of-pool clicks are rejected engine-side (isLegalAction checks
+  // Edict forced-sacrifice (Diabolic/Vile Edict) — in-place selection (no
+  // modal): click one of your glowing eligible permanents to sac it.
+  // Out-of-pool clicks are rejected engine-side (isLegalAction checks
   // pendingEdictChoice.pool), so a stray click just no-ops.
   if (G.pendingEdictChoice && G.pendingEdictChoice.who === 'you') {
     submit({type:'edictChoice', iid: card.iid});
@@ -2049,11 +2040,10 @@ function clickBattlefield(iid) {
     return;
   }
 
-  // Unified ability picker for non-land permanents (v1.0.64). Enumerate
-  // every legal-to-activate ability and either fire directly (if 1 option)
-  // or show a picker (2+ options). Previously the code only inspected
-  // abilities[0] — missing stapled creature+land merges whose mana ability
-  // is appended at index >= 1, and missing the multi-ability case entirely.
+  // Unified ability picker for non-land permanents. Enumerates every
+  // legal-to-activate ability and either fires directly (if 1 option) or
+  // shows a picker (2+ options) — covers stapled creature+land merges whose
+  // mana ability may be appended at index >= 1.
   if (f.controller === 'you' && Array.isArray(card.abilities) && card.abilities.length > 0) {
     const options = [];
     for (let i = 0; i < card.abilities.length; i++) {
@@ -2095,9 +2085,9 @@ function clickBattlefield(iid) {
       if (!ENGINE.isLegalAction('you', probe)) continue;
       // Build a human-readable label. For mana abilities, "Tap for {color}"
       // form is clearer than the raw text. Everything else renders through
-      // the engine's own oracle via abilityPickerLabel (card-text.js) —
-      // audit A10-1 replaced a hand-rolled kind→label table here that lied
-      // about kinds, costs, permanence, and subjects.
+      // the engine's own oracle via abilityPickerLabel (card-text.js) — the
+      // single source of truth for ability labels, not a hand-rolled
+      // kind→label table (drifts on kinds, costs, permanence, subjects).
       let label;
       if (isMana) {
         const am = ab.effects[0].amounts || {};
@@ -2618,7 +2608,7 @@ function showManaColorPicker(card, colors, onPick) {
 // existing ability and the staple appended a "tap for mana" ability).
 // `options` is an array of {label, onPick} objects. The picker shows each
 // as a button; clicking invokes the onPick callback. Tapping the dimmer
-// cancels. v1.0.64.
+// cancels.
 function showAbilityPicker(card, options) {
   const dimmer = document.createElement('div');
   dimmer.className = 'picker-overlay vis';

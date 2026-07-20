@@ -1,8 +1,7 @@
-// §3.8 Balancer decomposition: embargo / bleach (and later symmetricize) no
-// longer write bespoke slot fields read by applyBalancerOverrides — they
-// decompose into the sticker pipeline via the apply_sticker effect, which
-// applies an inline {kind,...} sticker to the target's slot (persisted) AND the
-// runtime card. Everything flows through one sticker pipeline.
+// embargo/bleach decompose into the sticker pipeline via the apply_sticker
+// effect, which applies an inline {kind,...} sticker to the target's slot
+// (persisted) AND the runtime card. Everything flows through one sticker
+// pipeline.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -13,7 +12,6 @@ function check(label, ok, info) {
   if (ok) pass++; else fail++;
 }
 
-// A real, non-special creature for slot 0.
 const CR = (() => {
   for (const id in CARDS) { const c = CARDS[id]; if (hasType(c, 'Creature') && !isUndraftable(c) && c.cost) return id; }
   return null;
@@ -103,9 +101,9 @@ console.log('\n=== stale-sticker prune: unknown/legacy sticker ids are dropped o
 
 console.log('\n=== scarification (#18): apply_sticker(scarified by id) + affect_creature(destroy) ===');
 (() => {
-  // Decomposed from the old destroy_and_sticker_slot monolith. Sticker-FIRST so
-  // the run-slot scar lands while the creature is still reachable; then destroy.
-  // Exercises apply_sticker's registry-id shape (sticker_id → STICKERS lookup).
+  // Sticker-FIRST so the run-slot scar lands while the creature is still
+  // reachable; then destroy. Exercises apply_sticker's registry-id shape
+  // (sticker_id → STICKERS lookup).
   const { G, inst } = bootWithCreature();
   const tgt = { kind: 'creature', iid: inst.iid };
   ENGINE.applyEffect(CTX('Scarification'), { kind: 'apply_sticker', sticker_id: 'scarified' }, tgt);
@@ -131,13 +129,6 @@ console.log('\n=== vileEdict (#27): chooses(permanent) → annihilate → rip (z
   check('its deck-slot stripped from the run', RUN.getSlots().length === slotsBefore - 1);
   check('vileEdict generates accurate text', describeCardText(CARDS.vile_edict) === 'Target opponent rips a permanent they control.');
 })();
-
-// NOTE: a prior version source-grepped engine/stickers/run.js to assert the old
-// applyBalancerOverrides channel "is deleted". Removed — a "function X stays
-// deleted" grep only fires when someone deliberately re-adds it (a decision, not
-// a regression), and the behavior blocks above already prove embargo/bleach
-// decompose through the one sticker pipeline (runtime cost + slot persistence):
-// if the legacy channel were the live one, those assertions would change.
 
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');
 process.exit(fail > 0 ? 1 : 0);

@@ -1,8 +1,5 @@
-// move_card unified card-movement primitive (Slice 3 step 3 / decision 10).
-// Covers the deterministic, no-battlefield-arrival moves this pass supports:
-// draw, mill, bounce, shuffle-into-library, exile, graveyard→hand. Additive
-// (no card uses move_card yet); exercised directly via the ENGINE.applyEffect
-// seam on a booted board.
+// Exercises the move_card unified card-movement primitive directly via the
+// ENGINE.applyEffect seam on a booted board.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -75,7 +72,6 @@ console.log('\n=== exile: battlefield → exile (target) ===');
 
 console.log('\n=== return: graveyard → hand (target) ===');
 (() => {
-  // Seed a card into the controller's graveyard.
   const c = ENGINE.makeCard(CREATURE_TPL);
   G.you.graveyard.push(c);
   ENGINE.applyEffect(CTX, { kind: 'move_card', from_zone: 'graveyard', to_zone: 'hand', selector: 'target', amount: 1 },
@@ -123,7 +119,6 @@ console.log('\n=== iid-mint regression: exile → battlefield re-mints (§12.10)
   clearBoardsSafe();
   const c = place('you');
   const iid1 = c.iid;
-  // Exile it, then return from exile to the battlefield.
   ENGINE.applyEffect(CTX, { kind: 'move_card', from_zone: 'battlefield', to_zone: 'exile', selector: 'target', amount: 1 },
     { kind: 'creature', iid: iid1 });
   const exiled = G.you.exile.find(x => x.iid === iid1);
@@ -159,7 +154,6 @@ console.log('\n=== search: string land filter narrows library fetch ===');
 
 console.log('\n=== search: library → hand, AI auto-picks (searchCreature collapse, opp) ===');
 (() => {
-  // Seed a creature into opp's library so there's something to fetch.
   const cr = ENGINE.makeCard(CREATURE_TPL); G.opp.library.unshift(cr);
   const h0 = G.opp.hand.length;
   ENGINE.applyEffect({ controller: 'opp', sourceName: 'Tutor', sourceIid: -1 },
@@ -219,8 +213,7 @@ console.log('\n=== search: string creature filter constrains human picks and leg
 
 console.log('\n=== discard: hand → graveyard, AI auto-picks (targeted-player discard, e.g. Duress) ===');
 (() => {
-  // Seed opp's hand with two cards; an opponent-targeted discard makes the AI
-  // discard one (it auto-picks cheapest).
+  // An opponent-targeted discard makes the AI discard one (auto-picks cheapest).
   G.opp.hand = [ENGINE.makeCard(CREATURE_TPL), ENGINE.makeCard(CREATURE_TPL)];
   const h0 = G.opp.hand.length;
   ENGINE.applyEffect({ controller: 'you', sourceName: 'Duress', sourceIid: -1 },

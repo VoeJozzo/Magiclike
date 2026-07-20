@@ -1,16 +1,7 @@
-// Audit A6-1, option C (Joe, PR #98 round 3, 2026-06-10: "Do C. Keep the
-// pool broad, but make it factor weights in appropriately.").
-//
 // The Archdemon-of-Bargains random sticker reward (applyRandomStickersToSide)
-// keeps the BROAD registry pool — stat boosts, keyword grants, Innate, the
-// five land-color (add_type) stickers, the −1-cost (cost_mod) sticker, and
-// lose_defender — excluding only scarified (boss-only, weight 0) and the
-// roll-needing subtype/empower. But each pick now draws the STICKER by rarity
-// weight via pickWeightedSticker (the same machinery normal reward offers
-// use), then a target permanent uniformly among that sticker's eligible
-// permanents. Pre-fix the bargain drew UNIFORMLY over (permanent, sticker)
-// pairings, ignoring weights entirely: Indestructible (weight 1) was exactly
-// as likely as +1/+1 (weight 20).
+// draws the STICKER by rarity weight via pickWeightedSticker (the same
+// machinery normal reward offers use), then a target permanent uniformly
+// among that sticker's eligible permanents.
 //
 // Determinism: no sampling — Math.random is stubbed to fixed values, and the
 // constructed weighted pool is inspected directly via bargainStickerCandidates.
@@ -53,7 +44,6 @@ try {
   // Eligible pool: [+1/+1 (w20), Has Indestructible (w1)], total weight 21.
   // Roll 0.6 → weighted walk lands at 12.6, inside +1/+1's 20-wide band
   // (whichever order the pool iterates: 12.6 < 20 and 12.6 - 1 < 20).
-  // Pre-fix uniform pairing draw: floor(0.6 * 2) = 1 → Indestructible.
   {
     const c = dummyCreature({ keywords: ALL_BUT_INDESTRUCTIBLE.slice() });
     Math.random = () => 0.6;
@@ -92,9 +82,9 @@ try {
 
 console.log('\n=== Pool breadth: the constructed weighted pool stays BROAD ===');
 {
-  // A battlefield that unlocks every pool corner the old comment omitted:
-  // a defender creature (remove_keyword), a 2-generic-cost creature
-  // (cost_mod), and a real land (add_type land-color + Innate).
+  // A battlefield that unlocks every pool corner: a defender creature
+  // (remove_keyword), a 2-generic-cost creature (cost_mod), and a real
+  // land (add_type land-color + Innate).
   const wall = dummyCreature({ keywords: ['defender'] });
   const costly = dummyCreature({ cost: { C: 2 } });
   const land = ENGINE.makeCard('plains');

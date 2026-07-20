@@ -1,12 +1,8 @@
 // Roguelike map progression — two guarantees:
 //
-// 1. REGRESSION: advancing into a boss node must not crash. run.js's
-//    startNextGame() built the boss banner by calling a BARE getConstructedDeck()
-//    — but that function lives inside draft.js's DRAFT IIFE (every other call
-//    site uses DRAFT.getConstructedDeck). The bare name is undefined, so
-//    entering any boss node threw "ReferenceError: getConstructedDeck is not
-//    defined" (introduced in the v1.0.135 meta.js→run.js split). The boss banner
-//    therefore never worked AND the run broke at the boss.
+// 1. REGRESSION: advancing into a boss node must not crash. getConstructedDeck
+//    lives inside draft.js's DRAFT IIFE; only DRAFT.getConstructedDeck is
+//    defined — a bare call is undefined and throws when the boss banner builds.
 //
 // 2. CONTRACT for the "always show the minimap" UI: getMapState() must be
 //    non-null at every between-game transition, so the controller can render the
@@ -33,18 +29,18 @@ console.log('=== walk a full sector (root → boss → next sector) ===');
   let mapPresentEvery = true;
   let sawBossBanner = false;
   let reachedNewSector = false;
-  let sawSingleOptionChoice = false;            // a 1-successor advance is a 1-option choice
+  let sawSingleOptionChoice = false;
 
   try {
     for (let i = 0; i < 14; i++) {
       RUN.recordResult('you', [], []);          // win the current battle
       const ms = RUN.getMapState();
       if (!ms) { mapPresentEvery = false; break; }
-      if (ms.pendingChoice) {                    // any next node (1 or many) → click-to-pick
+      if (ms.pendingChoice) {
         if (ms.pendingChoice.options.length === 1) sawSingleOptionChoice = true;
         RUN.pickMapNode(ms.pendingChoice.options[0]);
       }
-      const info = RUN.startNextGame();          // <- used to throw at the boss node
+      const info = RUN.startNextGame();
       if (info && info.bossName) sawBossBanner = true;
       const cur = RUN.getMapState();
       const node = cur && cur.nodes.find(n => n.id === cur.currentNodeId);
@@ -64,8 +60,8 @@ console.log('=== walk a full sector (root → boss → next sector) ===');
 
 console.log('\n=== boss node carries a resolvable constructed deck ===');
 (() => {
-  // Generate several maps; every exit node should be a boss whose constructedId
-  // resolves via DRAFT.getConstructedDeck (the path startNextGame exercises).
+  // Every boss node's constructedId must resolve via DRAFT.getConstructedDeck
+  // — the path startNextGame exercises.
   let bossNodes = 0, resolvable = 0;
   for (let i = 0; i < 20; i++) {
     RUN.start({ cards: Array(12).fill('plains'), colors: ['W'] }, null);

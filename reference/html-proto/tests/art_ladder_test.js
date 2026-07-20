@@ -102,22 +102,18 @@ console.log('\n=== effectiveArt: non-Creature with ladder ignored (defensive) ==
 
 console.log('\n=== resolveArtPath: bare filename derives from the card\'s own folder ===');
 {
-  // The structural guarantee behind the v2.0.69 fix: image art is stored as a
-  // BARE filename and the folder is derived from the (current) tplId at render
-  // time, so a future folder rename can never stale the path again.
+  // Image art is a bare filename; the folder is derived from the (current)
+  // tplId at render time, so a folder rename can never stale the path.
   check('stored art is a bare filename (no folder baked in)',
     typeof CARDS.architects_codex.art === 'string' && !CARDS.architects_codex.art.includes('/'),
     'stored=' + CARDS.architects_codex.art);
   check('effectiveArt resolves a bare filename to cards/<tplId>/<file>',
     effectiveArt(ENGINE.makeCard('architects_codex')) === 'cards/architects_codex/art.png');
 
-  // Derivation is from the id, not a stored path: char's art file once lived in
-  // cards/incinerate/ (pre-rename); it now resolves to char's own folder.
   check('char resolves to its OWN folder (id-derived, not a stored path)',
     effectiveArt(ENGINE.makeCard('char')) === 'cards/char/art.png');
 
-  // Rename-proof: same bare art, a hypothetical new id auto-resolves to the new
-  // folder with no data edit — exactly what would have prevented the v2.0.67 break.
+  // No data edit is needed — the new folder resolves purely from the id.
   check('a renamed id auto-resolves to the new folder (rename-proof)',
     effectiveArt({ tplId: 'some_new_id', art: 'art.png' }) === 'cards/some_new_id/art.png');
 

@@ -8,16 +8,10 @@
 // RUN.applyStickerToSlot, the in-game mirror, the dead-Endomorph
 // graveyard-corpse path, and the bounced-Endomorph fade.
 //
-// REGRESSION PINS:
-// - The E1 zone-change migration renamed the event payload to `subject_card`,
-//   but endomorph_absorb kept reading the legacy `event.card` — so EVERY
-//   absorb fizzled ("no victim recorded") with no test to notice. Identical
-//   to the bargain_sticker_other payout bug fixed earlier. Section 1 exists
-//   so a payload rename can never silently kill this mechanic again.
-// - The lord-granted sections pin the trophy rule against death-pipeline
-//   reordering: claims must exclude borrowed keywords because
-//   claimableKeywords reads intrinsics, NOT because resetInPlayState happens
-//   to strip grants before the dies-event emits.
+// The lord-granted sections pin the trophy rule against death-pipeline
+// reordering: claims must exclude borrowed keywords because
+// claimableKeywords reads intrinsics, NOT because resetInPlayState happens
+// to strip grants before the dies-event emits.
 
 const setup = require('./_setup');
 setup.loadEngine();

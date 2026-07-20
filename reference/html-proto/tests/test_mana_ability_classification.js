@@ -1,15 +1,8 @@
-// PR #133 follow-up — mana-ability classification is keyed on TARGETING, not
-// effect-purity, and is crash-safe on a malformed (empty-effects) ability.
-//
-// Background: doActivateAbility / isLegalAction / getLegalActions previously
-// decided "is this a mana ability?" via `ab.effects[0].kind === 'add_mana'`,
-// which (a) threw a TypeError on an empty effects[] and (b) mis-classified a
-// TARGETED hybrid ("T: add G, +1/+1 target creature") as a pure mana ability —
-// silently dropping the rider on the tap-lane and letting the auto-payer fire it
-// involuntarily. The unified isManaAbility(ab) helper now requires: produces mana
-// (leading add_mana) AND requires no target (objectNeedsTarget) AND has a trivial
-// (tap-only) cost. An UNtargeted rider ("T: add G, gain 1 life") STAYS a mana
-// ability (Joe's ruling — only targeting disqualifies, not a side effect).
+// isManaAbility(ab) is keyed on targeting, not effect purity or cost, and
+// must not throw on a malformed (empty-effects) ability. It requires:
+// produces mana (leading add_mana) AND no target (objectNeedsTarget). An
+// untargeted rider ("T: add G, gain 1 life") stays a mana ability — only
+// targeting disqualifies it, not cost or a side effect (Joe's ruling).
 const setup = require('./_setup');
 setup.loadEngine();
 let pass = 0, fail = 0;
@@ -54,9 +47,8 @@ console.log('\n=== getLegalActions does not throw on a permanent with an empty-e
     RUN.startNextGame();
     const G = ENGINE.state();
     const who = G.activePlayer;
-    // Inject a battlefield permanent carrying a malformed (empty-effects)
-    // activated ability — the exact shape that used to crash the effects[0] deref
-    // in getLegalActions' activated-ability lane.
+    // getLegalActions' activated-ability lane must not crash on an
+    // empty-effects ability (the effects[0] deref case).
     const c = ENGINE.makeCard('plains');
     c.abilities = [{ cost: { tap: true }, effects: [] }];
     c.tapped = false;
@@ -70,11 +62,9 @@ console.log('\n=== getLegalActions does not throw on a permanent with an empty-e
 })();
 
 console.log('\n=== tap-lane resolves through the shared path: color choice + untargeted rider ===');
-// doTapLandForMana now routes through runAbilityEffects (the same path as
-// doActivateAbility) instead of a parallel hand-rolled mana-fill. Two
-// consequences pinned here: (1) the {choose} color still threads through; (2) an
-// untargeted rider on a mana ability ALSO resolves — pre-consolidation the
-// tap-lane ran only effects[0] and silently dropped it.
+// doTapLandForMana routes through runAbilityEffects — the same path as
+// doActivateAbility — so a {choose} color and an untargeted rider both
+// resolve like any other mana ability.
 (() => {
   RUN.clearSave && RUN.clearSave();
   RUN.start({ cards: Array(12).fill('plains'), colors: ['W'] }, null);
@@ -85,7 +75,7 @@ console.log('\n=== tap-lane resolves through the shared path: color choice + unt
   const c = ENGINE.makeCard('plains');
   c.types = ['Creature'];                 // a dork, so the tap lane applies
   c.abilities = [{ cost: { tap: true }, effects: [
-    { kind: 'add_mana', choose: ['G'] },  // produces {G}
+    { kind: 'add_mana', choose: ['G'] },
     { kind: 'gain_life', amount: 1 },     // untargeted rider
   ] }];
   c.tapped = false; c.summoningSick = false; c.sick = false;

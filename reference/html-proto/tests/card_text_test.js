@@ -1,7 +1,6 @@
 // Card-text regression test. Locks in the rendered output of the
-// describe* family (extracted from engine.js to js/card-text.js in
-// v1.0.134) so future edits can't silently change what shows up on
-// cards in the browser.
+// describe* family so future edits can't silently change what shows up
+// on cards in the browser.
 //
 // Two layers:
 //
@@ -168,8 +167,8 @@ eqText(segsToText(describeEffect({ kind: 'totallyUnknownEffect' })),
 // ─── withFilter / targetPhrase ────────────────────────────────────────
 console.log('\n=== targetPhrase + withFilter ===');
 eqText(targetPhrase({ target: 'creature' }), 'target creature', 'creature target');
-// Accurate, kind-independent mapping: 'opp' (opponent-only) → "target opponent";
-// 'player' (choose-any) → "target player". No more guessing from the effect kind.
+// Kind-independent mapping: 'opp' (opponent-only) → "target opponent";
+// 'player' (choose-any) → "target player".
 eqText(targetPhrase({ target: 'opp', kind: 'damage' }), 'target opponent', 'opp → "target opponent"');
 eqText(targetPhrase({ target: 'opp', kind: 'gain_life', amount: -2 }), 'target opponent', 'opp drain → "target opponent"');
 eqText(targetPhrase({ target: 'player', kind: 'gain_life' }), 'target player', 'player → "target player"');
@@ -205,16 +204,16 @@ eqText(describeStaticBuff({ subtype: 'Spirit', filter: { controller: 'self' },
                             keywords: ['flying'] }),
        'Other Spirits you control have flying.', 'lord granting flying');
 eqText(describeStaticBuff({}), '', 'empty buff → empty string');
-// Wave 1 extensions, pinned against real shipped templates: signed stats
-// (Rakdos Underboss, a Demon — "Other" honest) and the "Other" honesty
-// check itself (Ironbrand Marshal buffs Artifact creatures but is not one —
-// he buffs EVERY artifact creature, so no "Other").
+// Pinned against real shipped templates: signed stats (Rakdos Underboss,
+// a Demon — "Other" honest) and the "Other" honesty check itself
+// (Ironbrand Marshal buffs Artifact creatures but is not one — he buffs
+// EVERY artifact creature, so no "Other").
 eqText(describeStaticBuff(CARDS['rakdos_underboss'].static_buffs[0], CARDS['rakdos_underboss']),
        'Other Demons you control get +1/-1.', 'signed stats +1/-1 (Rakdos Underboss)');
 eqText(describeStaticBuff(CARDS['ironbrand_marshal'].static_buffs[0], CARDS['ironbrand_marshal']),
        'Artifact creatures you control get +1/+1.',
        'type-tag phrasing, no "Other" when the lord does not match (Ironbrand Marshal)');
-// Wave 2 keyword filter (Wing Commander): the has_keyword restriction must
+// Keyword filter (Wing Commander): the has_keyword restriction must
 // render, and the "Other" honesty check reads the lord's EFFECTIVE keywords
 // (an Angel flies by subtype, with no keywords entry).
 const angelLord = { name: 'Wing Commander', types: ['Creature', 'Angel', 'Soldier'] };
@@ -372,7 +371,7 @@ console.log('\n=== bumped value → highlight=true on the bumped segment ===');
   }
 }
 
-// ─── §305.6 mana-ability suppression (PR #93 review item 4) ────────────────
+// ─── §305.6 mana-ability suppression ──────────────────────────────────────
 // A land whose tap-for-mana is fully conveyed by its basic-land subtypes
 // renders NO ability text (the type line + big mana symbol carry it); a land
 // whose production is NOT conveyed keeps its text. Pins both halves of the

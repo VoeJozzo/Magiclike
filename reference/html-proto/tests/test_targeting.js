@@ -1,8 +1,8 @@
-// target() / chooses() targeting primitives + STRUCTURAL hexproof (Slice 3
-// step 2 / §3.5). The target() step is the hexproof checkpoint (opp hexproof
-// creatures are not legal targets); chooses() is selection-by-the-targeted-
-// player (NOT targeting → hexproof never applies); mass `scope` effects have
-// no target step and ignore hexproof. This is *why* an edict kills a hexproof
+// target() / chooses() targeting primitives + STRUCTURAL hexproof (§3.5). The
+// target() step is the hexproof checkpoint (opp hexproof creatures are not
+// legal targets); chooses() is selection-by-the-targeted-player (NOT
+// targeting → hexproof never applies); mass `scope` effects have no target
+// step and ignore hexproof. This is *why* an edict kills a hexproof
 // creature: the player is targeted, the creature is merely chosen.
 
 const setup = require('./_setup');
@@ -93,8 +93,7 @@ console.log('\n=== edict chain sacrifices a HEXPROOF creature (the §3.5 proof) 
   check('precondition: opp hexproof is NOT a legal target() for creature removal',
     !ids(ENGINE.targetsForFilter('creature', 'you')).includes(oppHex.iid));
 
-  // Resolution of: target(player)=opp → chooses(creature) → sacrifice.
-  // (target(player) established opp as allTargets[0]; chooses + sacrifice run here.)
+  // ctx.allTargets[0] stands in for an already-resolved target(player)=opp step.
   const ctx = { controller: 'you', sourceName: 'Diabolic Edict', sourceIid: -1,
                 allTargets: [{ kind: 'player', who: 'opp' }] };
   ENGINE.applyEffect(ctx, { kind: 'chooses', filter: 'creature' }, null);

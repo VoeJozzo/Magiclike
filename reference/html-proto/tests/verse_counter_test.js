@@ -1,5 +1,5 @@
-// Hymnwright — "verse" counters: the first NAMED-counter card (a counter that
-// is a bare resource and does NOT change P/T). Covers the whole primitive:
+// Hymnwright — "verse" counters: a bare-resource counter that does NOT
+// change P/T. Covers the whole primitive:
 //   (1) accrual — a verse per OTHER creature that dies (per-death),
 //   (2) generated card text (accrual clause + the remove_counters cost + recall),
 //   (3) the remove_counters activation cost gated in BOTH isLegalAction AND
@@ -84,8 +84,8 @@ console.log('\n=== accrual: a verse per OTHER creature that dies ===');
   check('victim 1 died', G.opp.graveyard.some(c => c.iid === v1.iid));
   check('Hymnwright gained 1 verse', (hymn.counters.verse || 0) === 1, 'verse=' + hymn.counters.verse);
 
-  // The first resolve ran priority forward (into combat) and emptied the mana
-  // pool at the phase boundary (v2.0.42); reopen a MAIN1 window with mana.
+  // Resolving can advance priority into combat, which empties the mana pool
+  // at the phase boundary; reopen a MAIN1 window with mana.
   setup.startMainPhase('you');
   G.you.mana = { W: 9, U: 9, B: 9, R: 9, G: 9, C: 9 };
   const v2 = place(G, VICTIM, 'opp');

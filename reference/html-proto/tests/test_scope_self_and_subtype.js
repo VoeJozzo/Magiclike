@@ -1,21 +1,14 @@
-// Regression: two trigger/effect bugs surfaced by "Patient Saint + High
-// Priestess + Ajani's Pridemate didn't chain."
+// card_has_subtype(X) does a word-exact match against a card's types[]
+// (js/types.js) — not a substring test — so "Cler" must not match "Cleric"
+// and every entry in a multi-subtype card ("Human Cleric Wall") must match.
 //
-// Bug 1 — card_has_subtype(X): the predicate guarded on Array.isArray(c.sub),
-//   but `sub` is a space-separated STRING everywhere (token cards, splice
-//   merge, matchFilter). So every subtype-ETB trigger (High Priestess: "another
-//   Cleric entered → gain life") silently never fired. Fixed to a word-boundary
-//   string match (triggers.js), matching matchFilter's semantics.
+// scope:'self' creature effects (pump/affect_creature/grant_keyword) and
+// self-targeted player damage resolve against the already-resolved `target`
+// arg: creaturesInScope() returns [] for 'self', so resolveEffectParams
+// (engine.js) strips scope:'self' before the handler runs.
 //
-// Bug 2 — scope:'self' creature effects (pump/affect_creature/grant_keyword) and
-//   self-targeted player damage were silently dropped. The handlers route any
-//   `params.scope` through creaturesInScope(), which returns [] for 'self' — so
-//   a self-pump applied to NOBODY. The callers already resolve scope:'self' into
-//   the `target` arg, so resolveEffectParams now strips scope:'self' (engine.js)
-//   and the handler operates on that target. Affected ~13 self-pump cards
-//   (Ajani's Pridemate, Bloodlust, Carrion Feeder, Dragon, …), two stickers, and
-//   Char's "1 damage to you". No crash → tests/selfplay stayed green (the §8.1
-//   lockstep trap), so this test asserts the OBSERVABLE effect, not the shape.
+// Neither failure crashes — tests/selfplay stay green regardless (the §8.1
+// lockstep trap) — so these assertions check observable life/stat totals.
 
 const setup = require('./_setup');
 setup.loadEngine();

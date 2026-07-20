@@ -1,6 +1,6 @@
 extends Node
 
-# Phase 2 smoke test. Exercises the full path:
+# Smoke test. Exercises the full path:
 #   - play_land
 #   - cast a creature spell (resolves to battlefield with summoning sickness)
 #   - end turn (opp's turn auto-cycles via _settle_state)
@@ -68,10 +68,9 @@ func _ready() -> void:
 	# → COMBAT_BLOCK → COMBAT_DAMAGE → MAIN2 → END → CLEANUP → wrap → opp UNTAP
 	# → opp's whole turn auto-cycles via _settle_state → wrap again → your UNTAP.
 	# Each Pass advances one phase. Player needs to click through ~7 phases to
-	# wrap. Let's verify the auto-cycle works by passing repeatedly until turn 2.
-	# Phase 5c: AI-driven opp now stops at every priority-pass round instead
-	# of auto-cycling through its whole turn, so we may need more iterations
-	# AND we need to actually wait until we're back on the player's turn.
+	# wrap.
+	# AI-driven opp stops at every priority-pass round rather than auto-cycling
+	# its whole turn, so we wait for active_player_key to be back to "you".
 	var phase_passes: int = 0
 	while not (s.turn >= 2 and s.active_player_key == "you") and phase_passes < 60:
 		RulesEngine.execute_action(Action.make_pass_priority())
@@ -89,7 +88,7 @@ func _ready() -> void:
 	# Step 7: advance to COMBAT_ATTACK and declare Goblin as attacker
 	while s.phase_machine.current != PhaseMachine.Phase.COMBAT_ATTACK:
 		RulesEngine.execute_action(Action.make_pass_priority())
-		# safety: bail if we've cycled back to MAIN1
+		# safety: bail if we've cycled all the way back to UNTAP
 		if s.phase_machine.current == PhaseMachine.Phase.UNTAP and s.turn > 2:
 			break
 

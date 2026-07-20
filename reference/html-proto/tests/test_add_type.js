@@ -1,11 +1,8 @@
 // addType — the single write helper for permanent type identity (types.js).
-// Replaces the raw `if (!x.types.includes(t)) x.types.push(t)` idiom that was
-// copy-pasted across the two sticker subtype-roll sites (stickers.js) and the two
-// staple-merge unions (engine.js). Behavior-identical to those raw pushes: dedup
-// is against the STORED base, so a permanently-rolled tag is stored even while a
-// temporary `typeGrants` modifier happens to provide it. The end-to-end sticker /
-// staple paths are covered by subtype_rolls_complete_test + three_stickers_subtype_test
-// (both must stay green — that's the call-site integration coverage).
+// Dedup is against the STORED base: a permanently-rolled tag is stored even
+// while a temporary `typeGrants` modifier happens to provide it. Call-site
+// integration coverage lives in subtype_rolls_complete_test and
+// three_stickers_subtype_test — both must stay green.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -49,7 +46,7 @@ console.log('\n=== addType stores to the PERMANENT base, not the effective set =
     hasType(c, 'Goblin') && !c.types.includes('Goblin'));
   addType(c, 'Goblin');
   check('addType stores Goblin permanently despite the active grant', c.types.includes('Goblin'));
-  c.typeGrants = [];   // grant clears
+  c.typeGrants = [];
   check('Goblin survives the grant clearing', hasType(c, 'Goblin'));
   check('no duplicate Goblin in the base', c.types.filter(t => t === 'Goblin').length === 1);
 })();

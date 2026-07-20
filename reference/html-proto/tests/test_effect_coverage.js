@@ -1,10 +1,8 @@
-// §7b coverage assertion (plan-effects-refactor §8.1 + §12.12): every kind in
-// the EFFECTS dispatch table must be CLASSIFIED for AI valuation (a real scoring
-// branch, or consciously unscored) and must have card-text (a describeEffect
-// case, or be a documented idiom-only kind). This converts the "stringly-typed
-// consumer drifted out of sync with HANDLERS" silent-regression class into a
-// caught-at-boot failure. The §12.12 regression proves the net actually fires:
-// a throwaway HANDLERS kind with no valuation/text is flagged.
+// Every kind in the EFFECTS dispatch table must be CLASSIFIED for AI valuation
+// (a real scoring branch, or consciously unscored) and must have card-text (a
+// describeEffect case, or a documented idiom-only kind). This turns a
+// consumer silently drifting out of sync with HANDLERS into a caught-at-boot
+// failure.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -62,7 +60,6 @@ console.log('\n=== §12.12 regression: an unhandled HANDLERS kind is CAUGHT ==='
   } finally {
     delete EFFECTS[FAKE];   // restore — don't leak into later test files
   }
-  // Sanity: removing it restores a clean report.
   const after = ENGINE.effectCoverageReport();
   check('report is clean again after removing the probe',
     after.unclassifiedValuation.length === 0 && after.missingText.length === 0
@@ -84,10 +81,8 @@ console.log('\n=== a stale valuation entry (registered kind with no handler) is 
 
 console.log('\n=== A7-2: a VALUED kind with no cast-scorer branch is CAUGHT (unscoredValuation) ===');
 (() => {
-  // The net fires: a VALUED-claimed kind with a HANDLERS entry but NO
-  // spellValueForEffects branch must surface — the exact A7-2 bug class
-  // (add_counter was VALUED-claimed yet cast-scored 0, and the old set-algebra
-  // report could not see it).
+  // A VALUED-claimed kind with a HANDLERS entry but no spellValueForEffects
+  // branch must be flagged in unscoredValuation.
   const EFFECTS = ENGINE.EFFECTS;
   const valued = AI.VALUED_EFFECT_KINDS;
   const FAKE = '__unscored_probe_kind__';

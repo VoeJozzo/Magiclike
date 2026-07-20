@@ -1,12 +1,5 @@
-// Audit A3-9 (re-scoped remainder) — trigger-layer coverage. Much of the audit's
-// original dark list shipped its own tests since (zone events, source_iid
-// self-suppress, distinct_targets, emit-fizzle, become_copy_of/grave-return
-// auto-pick). This battery fences the TRUE remainder, highest-value first: the
-// pickBestTriggerTarget auto-pick heuristic (#3 — its controller-comparison
-// branches were mutation-dark; a flip would aim buffs at the opponent and burn
-// at ourselves), the signed gain_life branch, and the #10c design rider (the
-// generator's "opponent" damage text is only true because the heuristic routes
-// free-choice damage to the opponent — pinned as characterization, not changed).
+// pickBestTriggerTarget's controller-comparison branches: a flip would aim buffs
+// at the opponent and burn damage at ourselves.
 const setup = require('./_setup');
 setup.loadEngine();
 let pass = 0, fail = 0;
@@ -99,9 +92,9 @@ else {
 
   console.log('\n=== #10c rider: damageFace encodes target:player; the heuristic makes the "opponent" text true ===');
   (() => {
-    // Characterization (A3-9 #10c): the printed "deal N to opponent" text only
-    // agrees with behavior because pickBestTriggerTarget routes free-choice damage
-    // at the opponent. A behavior fork (target:'opp') is a separate decision.
+    // The printed "deal N to opponent" text only agrees with behavior because
+    // pickBestTriggerTarget routes free-choice damage at the opponent. A behavior
+    // fork (target:'opp') is a separate decision.
     const fac = GENERATOR_EFFECTS.find(e => e.id === 'damageFace');
     check('generator damageFace exists and encodes target:player (free choice)',
       !!fac && fac.roll()[0].target === 'player', fac ? JSON.stringify(fac.roll()[0]) : 'no damageFace');

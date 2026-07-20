@@ -1,12 +1,10 @@
-// End-to-end cast → resolution wiring for the top-level target() step
-// (Slice 3 step 2 keystone). Injects synthetic top-level-`target` cards and
-// casts them through the REAL executeAction → resolveTopOfStack path:
+// End-to-end cast → resolution wiring for the top-level target() step.
+// Injects synthetic top-level-`target` cards and casts them through the
+// REAL executeAction → resolveTopOfStack path:
 //   - part A (resolution): bare effects operate on the established target;
 //     chooses() replaces the operative target for the following effect.
 //   - part B (legality): a top-level target() step is the cast-time hexproof
 //     checkpoint (can't target an opp hexproof creature).
-// No real card uses the new shape yet, so this is additive — verified inert
-// for the live pool by the rest of the suite + selfplay.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -21,11 +19,11 @@ function check(label, ok, info) {
 CARDS._testBolt  = { tplId: '_testBolt',  name: 'Test Bolt',  types: ['Instant'], cost: { R: 1 }, color: 'R', colors: ['R'], target: 'creature_or_player', effects: [{ kind: 'damage', amount: 3 }] };
 CARDS._testEdict = { tplId: '_testEdict', name: 'Test Edict', types: ['Instant'], cost: { B: 1 }, color: 'B', colors: ['B'], target: 'player', effects: [{ kind: 'chooses', filter: 'creature' }, { kind: 'sacrifice' }] };
 CARDS._testPyro  = { tplId: '_testPyro',  name: 'Test Pyro',  types: ['Sorcery'], cost: { R: 1 }, color: 'R', colors: ['R'], effects: [{ kind: 'damage', amount: 2, scope: 'all_creatures' }] };
-// Creature with a top-level-target ETB trigger ("when this enters, deal 1 to
-// target creature") — exercises the trigger-path target() wiring.
+// Creature with a top-level-target ETB trigger — exercises the trigger-path
+// target() wiring.
 CARDS._testZapper = { tplId: '_testZapper', name: 'Test Zapper', types: ['Creature'], cost: { R: 1 }, color: 'R', colors: ['R'], power: 1, toughness: 1,
   triggers: [{ event: 'card_zone_change', condition: ['this_card', 'card_moves(anywhere, battlefield)'], target: 'creature', effects: [{ kind: 'damage', amount: 1 }] }] };
-// Creature with a top-level-target activated ability ("{T}: deal 1 to target creature").
+// Creature with a top-level-target activated ability.
 CARDS._testPinger = { tplId: '_testPinger', name: 'Test Pinger', types: ['Creature'], cost: { R: 1 }, color: 'R', colors: ['R'], power: 0, toughness: 3,
   abilities: [{ cost: { tap: true }, target: 'creature', effects: [{ kind: 'damage', amount: 1 }] }] };
 
@@ -65,8 +63,7 @@ function drainStack(G) {
     ENGINE.executeAction(w, a);
   }
 }
-// Like drainStack but also flushes pending triggers (ETB etc.) by passing
-// priority until both the stack AND the trigger queue are empty.
+// Like drainStack but also flushes pending triggers (ETB etc.).
 function drainAll(G) {
   let safety = 40;
   while ((G.stack.length > 0 || (G.pendingTriggers || []).length > 0) && safety-- > 0) {
@@ -158,10 +155,9 @@ console.log('\n=== Triggered ability with a top-level target() step ===');
   G.opp.battlefield.push(victim);
   const zapper = mk('_testZapper', 'you'); G.you.hand.push(zapper);
   readyForCast(G, 'you');
-  // Cast the creature; its ETB trigger (target(creature) → damage(1)). With the
-  // zapper itself now on the board there are TWO legal creature targets, so a
-  // PLAYER-controlled trigger must PROMPT (it must not silently auto-pick — the
-  // regression that auto-selected migrated triggers' targets on cast).
+  // With the zapper itself now on the board there are TWO legal creature
+  // targets, so a PLAYER-controlled trigger must PROMPT for the target — it
+  // must not silently auto-pick.
   ENGINE.executeAction('you', { type: 'castSpell', cardIid: zapper.iid, targets: [] });
   drainAll(G);
   check('zapper resolved onto the battlefield', G.you.battlefield.some(c => c.tplId === '_testZapper'));
@@ -256,18 +252,18 @@ console.log('\n=== Drain Life: slot 0 = creature, slot 1 = player (mixed-filter 
 
 console.log('\n=== target_slots survive REAL makeCard instantiation (not just deep-copy) ===');
 (() => {
-  // Regression: makeCard dropped target_slots, so multi-slot cards were
-  // uncastable in the real UI (probeTargetsForObject found no slots → null →
-  // not castable). The mk() helper above deep-copies the whole template, which
-  // MASKED this — so assert the engine's real instance carries the field, and
-  // that every authored multi-slot card is castable from a real instance.
+  // If makeCard ever drops target_slots, probeTargetsForObject finds no
+  // slots → null → the card is uncastable in the real UI. The mk() helper
+  // above deep-copies the whole template, which would mask that failure —
+  // so assert the engine's real instance carries the field, and that every
+  // authored multi-slot card is castable from a real instance.
   for (const id of ['drain_life', 'branching_bolt', 'twin_strike', 'roots_and_branches', 'sword_and_sorcery']) {
     const inst = ENGINE.makeCard(id, [], 0);
     check(id + ': real instance carries target_slots',
       Array.isArray(inst.target_slots) && inst.target_slots.length === (CARDS[id].target_slots || []).length,
       JSON.stringify(inst.target_slots));
   }
-  // End-to-end castability of a real makeCard instance (the bug's exact surface).
+  // End-to-end castability of a real makeCard instance.
   const G = newGame();
   const cr = mk(TOUGH_CREATURE, 'opp'); G.opp.battlefield.push(cr);
   const dl = ENGINE.makeCard('drain_life', [], 0); dl.controller = 'you'; dl.owner = 'you';

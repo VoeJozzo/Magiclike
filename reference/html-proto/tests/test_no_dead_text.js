@@ -1,10 +1,9 @@
-// Guards the v2.0.55 cleanup: a card's displayed oracle text is GENERATED from
-// its effects/triggers/abilities, so a hand-written top-level `text` field is
-// dead weight on a procedural card — it never renders and silently rots out of
-// sync. We stripped 245 such fields. This test stops them creeping back: a
-// top-level `text` is allowed ONLY when it actually affects the rendered output
-// (i.e. custom_text authored cards, or a vanilla card with nothing to generate
-// where the text is its only content — genuine flavor).
+// A card's displayed oracle text is GENERATED from its effects/triggers/abilities,
+// so a hand-written top-level `text` field is dead weight on a procedural card —
+// it never renders and silently rots out of sync. A top-level `text` is allowed
+// ONLY when it actually affects the rendered output (i.e. custom_text authored
+// cards, or a vanilla card with nothing to generate where the text is its only
+// content — genuine flavor).
 
 const setup = require('./_setup');
 setup.loadEngine();

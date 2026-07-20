@@ -6,8 +6,6 @@
 //   applyStickersToCard — mutating a card at construction time
 //   stickersForSlot     — gating re-offer at reward time
 //   stickerBadgesHtml   — rendering the visual badge
-//
-// Adapted from the prior-session bundle.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -123,7 +121,6 @@ console.log('=== applyStickersToCard: each kind mutates correctly ===');
   check('set_color sets card.color to C', card.color === 'C', 'color=' + card.color);
 }
 {
-  // Mixed string + inline descriptors in one slot's sticker list.
   const card = freshCard('furnace_whelp', ['plus1_plus1', { kind: 'cost_mod', amount: 1, stackable: true }]);
   const before = card.cost.C;
   applyStickersToCard(card);
@@ -205,8 +202,6 @@ console.log('\n=== stickersForSlot: each kind reflects into view correctly ===')
 }
 
 {
-  // lose_defender: offered on a defender creature, gated off non-defenders, and
-  // not re-offered once applied (view reflects the removal).
   const wall = stickersForSlot({ tplId: 'wall_of_omens', stickers: [] }, ['W']);
   check('lose_defender offered on a defender creature', wall.some(s => s.id === 'lose_defender'));
   const lion = stickersForSlot({ tplId: 'savannah_lions', stickers: [] }, ['W']);
@@ -242,7 +237,6 @@ console.log('\n=== stickerBadgesHtml: only non-redundant kinds render (Q2) ===')
     stickerBadgesHtml(['land_color_r']) === '');
 }
 {
-  // Mixed: dropped kinds vanish, kept kinds remain.
   const html = stickerBadgesHtml(['plus1_plus1', 'kw_flying', 'lose_defender']);
   check('mixed badges: dropped suppressed, kept shown',
     !html.includes('+1/+1') && !html.includes('Flying') && html.includes('Loses Defender'));
@@ -267,7 +261,6 @@ console.log('\n=== Q1: sticker-granted text is flagged for coloring ===');
   check('intrinsic keyword segment NOT flagged sticker', !!flyingSeg && !flyingSeg.sticker);
 }
 {
-  // Sticker-granted trigger (Scarified) → marked _from_sticker + segs flagged.
   const card = freshCard('savannah_lions', ['scarified']);
   applyStickersToCard(card);
   const trig = (card.triggers || []).find(t => t._from_sticker);
@@ -276,7 +269,6 @@ console.log('\n=== Q1: sticker-granted text is flagged for coloring ===');
   check('scarified trigger segments flagged sticker:true', segs.some(s => s.sticker === true));
 }
 {
-  // segmentsToHtml turns the flag into a .sticker-granted span; plain text isn't wrapped.
   const flagged = segmentsToHtml([{ text: 'Flying', sticker: true }]);
   check('segmentsToHtml emits .sticker-granted span', flagged.includes('class="sticker-granted"'));
   const plain = segmentsToHtml([plainSeg('Flying')]);

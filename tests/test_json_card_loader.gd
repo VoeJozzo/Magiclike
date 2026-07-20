@@ -24,13 +24,12 @@ func _ready() -> void:
 	_assert_true(all_cards.size() >= 250,
 		"load_all returned ≥250 cards (got %d)" % all_cards.size())
 
-	# Field translation: every card carries a non-empty id + display name.
 	var any_card: CardResource = _pick(all_cards, func(_c): return true)
 	if _assert_true(any_card != null, "pool is non-empty (picks are not vacuous)"):
 		_assert_true(any_card.card_id != "" and any_card.display_name != "",
 			"loaded card has card_id + display_name")
 
-	# Type string → resource subclass. All three subclasses appear in the pool.
+	# Type string → resource subclass.
 	_assert_true(_pick(all_cards, func(c): return c is SpellResource) != null,
 		"a Sorcery/Instant loads as SpellResource")
 	_assert_true(_pick(all_cards, func(c): return c is CreatureResource) != null,
@@ -63,9 +62,8 @@ func _ready() -> void:
 		var dmg: Dictionary = _first_effect(burn.on_cast_effects, "damage")
 		_assert_true(int(dmg.get("amount", 0)) > 0, "damage effect carries a positive amount")
 
-	# 3. Effect kinds load as canonical snake_case. The camelCase→snake_case
-	#    remap tables were deleted (card data is authored snake_case); a camelCase
-	#    leak here would mean the wire format drifted.
+	# 3. Effect kinds load as canonical snake_case. Card data is authored
+	#    snake_case; a camelCase leak here would mean the wire format drifted.
 	var with_eff: CardResource = _pick(all_cards,
 		func(c): return not (c as CardResource).on_cast_effects.is_empty())
 	if _assert_true(with_eff != null, "found a card with on_cast_effects"):

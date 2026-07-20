@@ -1,4 +1,4 @@
-// ─── Composable atomic predicates (Slice 2 / DIVERGENCE E2) ──────────────
+// ─── Composable atomic predicates ──────────────
 // New-vocabulary predicates over the unified event shapes (§3 of
 // plan-zone-change-and-composable-predicates.md):
 //   card_zone_change {type, subject_iid, subject_card, controller, from_zone, to_zone, source_iid?}
@@ -41,13 +41,12 @@ const ATOMIC_PREDICATES = {
   },
   card_has_subtype: (ctx, args) => {
     const c = ctx.event.subject_card;
-    // Word-exact subtype match via hasType, reading the unified types[] array.
-    // Mirrors matchFilter so a multi-subtype card ("Human Cleric Wall")
-    // satisfies card_has_subtype(Cleric). (Pre-v2.0.70 this matched against the
-    // legacy space-separated `sub` string; that field is gone -- types[] is now
-    // the sole source, and a tag like "Goblin" is one entry, not a substring.)
-    // Multiple args are ANY-OF: card_has_subtype(Elf, Merfolk) = "is an Elf
-    // or a Merfolk" (Covenant Scholar's two-tribe covenant).
+    // Word-exact subtype match via hasType, reading the unified types[] array;
+    // types[] is the sole source, so a tag like "Goblin" is one entry, not a
+    // substring. Mirrors matchFilter so a multi-subtype card ("Human Cleric
+    // Wall") satisfies card_has_subtype(Cleric). Multiple args are ANY-OF:
+    // card_has_subtype(Elf, Merfolk) = "is an Elf or a Merfolk" (Covenant
+    // Scholar's two-tribe covenant).
     return args.some((a) => hasType(c, a));
   },
   // The cast/subject card carries the named keyword — including keywords
@@ -75,11 +74,10 @@ const ATOMIC_PREDICATES = {
     const c = ctx.event.subject_card;
     if (!c) return false;
     // Optional second arg scopes WHERE to look (parameterize, don't multiply
-    // predicate names — Joe's ruling). Default: spell-level effects, as ever.
+    // predicate names — Joe's ruling). Default: spell-level effects.
     // 'etb': the subject card's enters-the-battlefield triggers. Kind 'any'
     // matches every effect kind ("whenever a creature WITH AN ETB ABILITY
-    // enters" — Triage Cleric; Joe's flavor correction dropped the
-    // damage-specific version).
+    // enters" — Triage Cleric).
     const kindOk = (e) => e && (args[0] === 'any' || e.kind === args[0]);
     if (args[1] === 'etb') {
       return (c.triggers || []).some((trig) =>
@@ -199,7 +197,6 @@ const EFFECT_POSITIONAL = {
   rip: [], symmetricize: [],
 };
 
-// Desugar one function-call string to its canonical effect dict.
 function desugarEffectString(str) {
   const { name, positional, kwargs } = _parseEffectCall(str);
   if (EFFECT_SHORTHAND_MOVE[name]) {
@@ -276,12 +273,11 @@ function evaluateCondition(expr, ctx) {
   return false;
 }
 
-// ─── Archetype classification (Slice 2 / E2) ────────────────────────────
-// condId used to be a runtime-readable label that other systems keyed off
-// (card-text preambles, AI trigger-frequency valuation). Post-migration the
-// classification is recovered from event+condition. This is the single
-// centralized inverse of the migration table — consumers call it instead of
-// scattering condition-shape checks.
+// ─── Archetype classification ────────────────────────────
+// Classification is recovered from event+condition — the single centralized
+// inverse of the migration table; consumers (card-text preambles, AI
+// trigger-frequency valuation) call it instead of scattering condition-shape
+// checks.
 // NOTE: term ORDER is load-bearing here. The signature is the condition terms
 // joined in array order, and _ARCHETYPE_BY_SIG keys on the exact string. A card
 // that authors semantically-identical predicates in a different order (or as a
@@ -320,16 +316,15 @@ const _ARCHETYPE_BY_SIG = {
   'card_zone_change | card_has_subtype(*), card_moves(battlefield, graveyard)': 'cardDiesOfSubtype',
   'spell_cast | another_card, controlled_by(you)': 'youCastSpell',
   'spell_cast | another_card, controlled_by(you), card_has_effect(counter)': 'youCastCounterspell',
-  // Wave 2 archetypes. card_has_keyword wildcards like card_has_subtype (see
-  // _condSignature); card_has_effect stays literal (youCastCounterspell
-  // precedent — the args ARE the archetype).
+  // card_has_keyword wildcards like card_has_subtype (see _condSignature);
+  // card_has_effect stays literal (youCastCounterspell precedent — the args
+  // ARE the archetype).
   'spell_cast | another_card, controlled_by(you), card_has_keyword(*)': 'youCastSpellWithKeyword',
   'spell_cast | another_card, controlled_by(you), opponents_turn': 'youCastSpellOppTurn',
   'spell_cast | another_card, controlled_by(you), {"op":"not","terms":["card_is_creature"]}': 'youCastNoncreatureSpell',
   'ability_activated | controlled_by(you), card_is_creature': 'youActivateCreatureAbility',
   // Any-ETB, not damage-specific: Joe's flavor correction (the healer tends
-  // arrivals, she doesn't follow arsonists) — the damage-keyed archetype
-  // shipped briefly in v2.2.9 and left with its only customer.
+  // arrivals, she doesn't follow arsonists).
   'card_zone_change | another_card, card_is_creature, controlled_by(you), card_has_effect(any, etb), card_moves(anywhere, battlefield)': 'anotherEtbCreatureYouEnters',
   // No card_is_creature term: the subtype IS the gate (OfSubtype precedent) —
   // today's customers are landfall (card_has_subtype(Land) reads types[]
@@ -337,17 +332,16 @@ const _ARCHETYPE_BY_SIG = {
   'card_zone_change | controlled_by(you), card_has_subtype(*), card_moves(anywhere, battlefield)': 'cardYouEntersOfSubtype',
   'card_zone_change | card_is_creature, controlled_by(you), card_moves(battlefield, graveyard)': 'creatureYouDies',
   'attacks | another_card, controlled_by(you)': 'anotherCreatureYouAttacks',
-  // House ruling (Joe, Wave 2): "drawing" = ANY library→hand move, tutors
-  // included — the text says "draw" and the wire is honest because the house
-  // defines draw that way. (Backlog: tutor-text consistency pass.)
+  // House ruling (Joe): "drawing" = ANY library→hand move, tutors included —
+  // the text says "draw" and the wire is honest because the house defines
+  // draw that way. (Backlog: tutor-text consistency pass.)
   'card_zone_change | controlled_by(you), card_moves(library, hand)': 'youDraw',
-  // Wave 1 holds, shipped v2.2.13 (Joe un-parked all four):
   'life_changed | is_life_loss, affected_player_is(you)': 'youLoseLife',
   'spell_cast | another_card, controlled_by(you), card_has_effect(damage)': 'youCastDamageSpell',
 };
 
-// Classify a trigger into its archetype id (the old condId vocabulary) from
-// its composable event+condition. Returns null if unknown.
+// Classify a trigger into its archetype id from its composable
+// event+condition. Returns null if unknown.
 function triggerArchetype(trig) {
   if (!trig) return null;
   return _ARCHETYPE_BY_SIG[_condSignature(trig.event, trig.condition)] || null;
@@ -355,9 +349,8 @@ function triggerArchetype(trig) {
 
 // True if the trigger fires when a card ENTERS the battlefield (any ETB
 // archetype: thisEnters / anotherCreatureYouEnters*). Used by AI heuristics
-// (flicker / flash-fizzle valuation) that previously keyed on the legacy
-// `event === 'cardEntersBattlefield'`. Now matches a card_moves(*, battlefield)
-// term under the unified `card_zone_change` event.
+// (flicker / flash-fizzle valuation); matches a card_moves(*, battlefield)
+// term under the card_zone_change event.
 function triggerFiresOnEnter(trig) {
   if (!trig) return false;
   if (trig.event !== 'card_zone_change') return false;
@@ -367,9 +360,9 @@ function triggerFiresOnEnter(trig) {
   return false;
 }
 
-// Extract the subtype a trigger filters on (card_has_subtype(...) term, or a
-// legacy params.sub), for preamble phrasing. Null if none. Any-of args come
-// back raw ("Elf, Merfolk") — the preamble renders the "or"-join.
+// Extract the subtype a trigger filters on (the card_has_subtype(...) term),
+// for preamble phrasing. Null if none. Any-of args come back raw ("Elf,
+// Merfolk") — the preamble renders the "or"-join.
 function triggerSubtype(trig) {
   for (const t of (trig && trig.condition || [])) {
     if (typeof t === 'string' && t.startsWith('card_has_subtype(')) {
@@ -390,9 +383,8 @@ function triggerKeyword(trig) {
   return null;
 }
 
-// ─── Boot validation (Slice 2 / E2) ─────────────────────────────────────
-// Allowed trigger event kinds. New unified vocabulary + legacy kinds (the
-// latter accepted during the migration window; removed in step 8).
+// ─── Boot validation ─────────────────────────────────────
+// Allowed trigger event kinds.
 const VALID_TRIGGER_EVENTS = new Set([
   'card_zone_change', 'spell_cast', 'attacks', 'life_changed', 'combat_damage',
   'ability_activated', 'ability_triggered',
@@ -446,7 +438,7 @@ function validateAllCardConditions(cards) {
   return { unknownAtomics, unknownEvents };
 }
 
-// Resolve: composable condition → legacy closure → fire unconditionally.
+// Resolve: composable condition, else fire unconditionally.
 function evalTriggerCondition(trig, self, evt, who) {
   // Codex-generated trigger guard: refuse to fire when source caused the event.
   if (trig.noSelfCascade && evt) {

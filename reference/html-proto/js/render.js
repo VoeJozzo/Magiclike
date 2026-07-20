@@ -99,12 +99,8 @@ function render() {
     );
     // CURRENT-slot target spec via pendingTargetEffect — reads the top-level
     // target(), object/ability target_slots (Stapler), and per-effect targets
-    // through one resolver. The old per-effect `.some(e => e.target ...)` scan
-    // missed slot-declared targets entirely: post-target_slots-refactor the
-    // Stapler's apply_in_game_splice effect carries no .target, so the banner
-    // never lit and stack spells were unclickable for splicing. Current-slot
-    // semantics also means the banner lights exactly when the pick being made
-    // right now can take a spell.
+    // through one resolver. Current-slot semantics means the banner lights
+    // exactly when the pick being made right now can take a spell.
     const pendingEff = (pt && ptCard) ? pendingTargetEffect(pt) : null;
     const isCounterTarget = !!pendingEff
       && (pendingEff.target === 'spell' || pendingEff.target === 'permanent_or_spell');
@@ -120,16 +116,16 @@ function render() {
       const tgtLabel = (it.targets && it.targets[0] && it.targets[0].label) ? ` → ${it.targets[0].label}` : '';
       let div;
       if (it.kind === 'trigger' || it.kind === 'ability') {
-        // Triggers and activated-ability entries (A3-2) have no card backing
-        // -- build a card-like with the trigger/ability text in the body.
+        // Triggers and activated-ability entries have no card backing --
+        // build a card-like with the trigger/ability text in the body.
         const isAbility = it.kind === 'ability';
         let bodyText;
         if (isAbility) {
           try { bodyText = segsToText(describeAbility(it.ab, it.ab)); }
           catch (_) { bodyText = 'Activated ability'; }
         } else {
-          // ~ → source name (audit A10-3): authored/assembled trigger texts
-          // carry the conventional placeholder; never show it raw.
+          // ~ → source name: authored/assembled trigger texts carry the
+          // conventional placeholder; never show it raw.
           bodyText = formatTriggerText(triggerLogText(it.trig), it.sourceName);
         }
         div = makeSyntheticCard({
@@ -288,7 +284,6 @@ function render() {
     } else if (ptb.step === 'compare') {
       titleEl.textContent = '📜 KEEP OR REPLACE?';
       subtitleEl.textContent = `Compare your new ability with the current one.`;
-      // Render two side-by-side cards: current (left/top) vs new (right/bottom).
       const currentText = formatTriggerText(ptb.currentTrigger.text, sourceName);
       const newText = formatTriggerText(ptb.assembledTrigger.text, sourceName);
       const compareBox = document.createElement('div');
@@ -304,7 +299,6 @@ function render() {
         </div>
       `;
       list.appendChild(compareBox);
-      // Two buttons: take new, keep current.
       const newBtn = document.createElement('button');
       newBtn.style.cssText = 'display:block;width:100%;background:#3a2f4a;border:2px solid #ffd700;color:#ffe7a0;padding:10px 12px;margin:8px 0 4px 0;font-family:inherit;font-size:13px;font-weight:bold;cursor:pointer;border-radius:5px';
       newBtn.textContent = 'Replace with new ability';
@@ -422,7 +416,6 @@ function render() {
     box.classList.toggle('win', G.winner === 'you');
     box.classList.toggle('lose', G.winner === 'opp');
     setText('gameover-msg', G.winner === 'you' ? 'YOU WIN' : 'YOU LOSE');
-    // Run stats and button label.
     const stats = RUN.getStats();
     const btn = document.getElementById('gameover-btn');
     const statsEl = document.getElementById('gameover-stats');
@@ -529,7 +522,7 @@ function render() {
   requestAnimationFrame(drawTargetLines);
 }
 
-// Dashed SVG lines from stack pills to their targets. Red for counters/steal; orange neutral.
+// Dashed SVG lines from stack pills to their targets.
 function drawTargetLines() {
   const svg = document.getElementById('targetLines');
   if (!svg) return;
@@ -590,10 +583,10 @@ function drawTargetLines() {
   });
 }
 
-// Valence → line color (red=harm, green=benefit, orange=neutral).
-// Post-collapse (§3.5/§3.8) live kinds. move_card and pump are shape-dependent
-// (draw vs bounce; buff vs weaken) — classified by from/to and sign in
-// classifyValence, not by flat membership.
+// Valence → line color (red=harm, green=benefit, orange=neutral). Post-collapse
+// (§3.5/§3.8) live kinds; move_card and pump are shape-dependent (draw vs bounce;
+// buff vs weaken) — classified by from/to and sign in classifyValence, not by
+// flat membership.
 const HARMFUL_KINDS = new Set([
   'damage', 'affect_creature', 'change_control',
   'counter', 'rip', 'symmetricize', 'fight',
@@ -643,7 +636,6 @@ function classifyValence(slotEffects, target, casterSide, G) {
   } else if (target.kind === 'stack' && target.stackItem) {
     targetController = target.stackItem.controller;
   }
-  // Self-harm + opp-benefit collapse to neutral; otherwise effect-kind decides.
   if (hasHarm && targetController === casterSide) return 'neutral';
   if (hasBenefit && !hasHarm && targetController && targetController !== casterSide) return 'neutral';
   if (hasHarm) return 'harm';
@@ -862,7 +854,7 @@ function canPlayFromUI(who, card) {
   // ability-level target_slots, and legacy per-effect targets).
   if (ENGINE.objectNeedsTarget(card)) {
     const fakeTargets = ENGINE.probeTargetsForObject(card, who);
-    if (!fakeTargets) return false;   // no legal target → not castable
+    if (!fakeTargets) return false;
     return ENGINE.isLegalAction(who, {type:'castSpell', cardIid: card.iid, targets: fakeTargets});
   }
   return ENGINE.isLegalAction(who, {type:'castSpell', cardIid: card.iid});
@@ -898,10 +890,8 @@ function renderOppHand(hand) {
 //
 // A reanimate-style add_type ability is skipped once the card already has every
 // type it would grant: the Artifice'd artifact glows while it's a bare artifact
-// (activating re-animates it) and STOPS glowing once it's already a creature
-// this turn (re-activating is a no-op). That inversion was the bug — the old
-// gate keyed on hasType(card,'Creature'), so the glow appeared only AFTER
-// activation (when it does nothing) and never before (when it matters).
+// (activating re-animates it) and stops glowing once it's already a creature
+// this turn (re-activating is a no-op).
 function activationGlowAvailable(card, who) {
   if (who !== 'you') return false;
   if (!isPermanent(card) || hasType(card, 'Land')) return false;
@@ -1026,8 +1016,8 @@ function renderBf(id, bf, who) {
     const eff = pendingTargetEffect(pt);
     // Drive the player-target button off real legality, not a hardcoded target
     // list — the §3.5 taxonomy spells "any target" as creature_or_player and
-    // opponent-only as opp, both of which the old literal check missed. This
-    // also gets the per-player gating right (opp → only the opponent's button).
+    // opponent-only as opp. This also gets the per-player gating right (opp →
+    // only the opponent's button).
     if (eff && ENGINE.getValidTargets(eff, 'you').some(v => v.kind === 'player' && v.who === who)) {
       showPlayerTargetButton = true;
     }
@@ -1301,10 +1291,9 @@ function keywordSourceClass(kw, card, templateKw) {
 // cream (outer), the legible two-color rim the other UI icons have. Keyed by
 // frame colorKey. (Sticker/granted ignore this — they use the gold/teal classes.)
 //   { ink: glyph,   disc,      rim: inner-ring, rim2: outer-ring }
-// Warm parchment cream for the UBRGC native coin disc + outer ring. The old
-// #d8d4c8 was a near-neutral warm-gray that read "silvery"; this is pulled
-// toward the frame-name cream (#f0e6c8) for a clearly creamy disc that still
-// contrasts the dark card-color glyph and stays distinct from W's gold disc.
+// Warm parchment cream for the UBRGC native coin disc + outer ring — chosen to
+// read clearly creamy while contrasting the dark card-color glyph and staying
+// distinct from W's gold disc.
 // If the CSS .kw-native fallback (--kw-disc/--kw-rim2) changes, keep it in sync.
 const CREAM = '#ece0be';
 const KW_NATIVE_COLORS = {
@@ -1313,9 +1302,9 @@ const KW_NATIVE_COLORS = {
   B: { ink: '#15151f', disc: CREAM, rim: '#15151f', rim2: CREAM },
   R: { ink: '#A52222', disc: CREAM, rim: '#A52222', rim2: CREAM },
   G: { ink: '#1E7A38', disc: CREAM, rim: '#1E7A38', rim2: CREAM },
-  // Colorless glyph + inner ring darkened to a deep slate (was #6b7280, which
-  // washed out on the cream disc) for legibility; still reads gray/colorless, not
-  // B's black. Glyph and inner ring share the tone, as every other color's do.
+  // Colorless glyph + inner ring use a deep slate for legibility; still reads
+  // gray/colorless, not B's black. Glyph and inner ring share the tone, as
+  // every other color's do.
   C: { ink: '#3a3f47', disc: CREAM, rim: '#3a3f47', rim2: CREAM },
 };
 
@@ -1382,14 +1371,6 @@ function keywordIconsHtml(card, colorKey) {
   return `<div class="frame-keywords">${parts.join('')}</div>`;
 }
 
-// Render a card's art field as HTML. Detects image URLs (data: URLs and
-// http(s) URLs) and emits an <img>; falls back to the literal string for
-// emoji glyphs (the legacy art format). The wrapping container provides
-// its own sizing via CSS (font-size for emoji, max-width/height for img),
-// so the helper only emits the right element shape — no inline sizing.
-//
-// `fallback` is what to render when art is missing/empty (defaults to ''
-// since most callers handle empty gracefully).
 // Pick the right art for a card based on its current power+toughness.
 //
 // Cards with a static art simply have an "art" string in their template
@@ -1408,9 +1389,7 @@ function keywordIconsHtml(card, colorKey) {
 // the "show the early/base form" default for browse contexts.
 // A BARE art filename (no slash, image extension — e.g. "art.png", "art-2.png")
 // is resolved against the card's OWN folder: cards/<tplId>/<file>. Storing just
-// the filename means a folder rename can never stale the path — the v2.0.67 id
-// rename broke 75 baked-in "cards/<oldFolder>/art.png" strings; deriving the
-// folder from the (current) id structurally prevents a recurrence. Full paths,
+// the filename means a folder rename can never stale the path. Full paths,
 // data:/http URLs, and emoji pass through untouched (back-compat + non-images).
 function resolveArtPath(value, card) {
   if (typeof value === 'string' && !value.includes('/') &&
@@ -1451,9 +1430,8 @@ function effectiveArt(card) {
 // by the small inline-art callers (stack pill, library search, zone
 // modal) which substitute a generic 🎴 glyph rather than try to render
 // a real image inside a narrow text pill. Centralized here so a new
-// flavor of art source (e.g. data:image/svg+xml, or a future blob URL)
-// gets recognized in every site at once.
-//   - data:           — inline base64 (legacy embeds, e.g. the old dragon)
+// flavor of art source gets recognized in every site at once.
+//   - data:           — inline base64 embeds
 //   - http            — full URL
 //   - ends in .png/.jpg/.jpeg/.gif/.webp/.svg — file path; a bare filename
 //     is resolved to cards/<tplId>/<file> by resolveArtPath (via effectiveArt)
@@ -1469,8 +1447,8 @@ function isArtUrl(art) {
 // Pre-computed display values for a card, consumed by both makeCardEl
 // (in-hand / on-board frame) and openCardPopup (4x popup frame in
 // controller.js). Centralizing here keeps cost-pip rendering, type-line
-// assembly, art resolution, and sticker-badge construction in one place
-// — both consumers used to inline these and were prone to drift.
+// assembly, art resolution, and sticker-badge construction in one place,
+// so the two consumers can't drift apart.
 //
 // opts.inHand        — show effective cost (cast tax) with ↑ marker.
 //                      Default: show base cost (board/zone view).
@@ -1488,8 +1466,7 @@ function cardToViewModel(card, opts) {
   const keywordsAsIcons = !!opts.keywordsAsIcons;
 
   // Frame color: cost colors > card.color > land's produced color
-  // (Plains -> W) > Colorless. Multicolor uses first WUBRG-order color;
-  // dual-color frame design is a future tweak.
+  // (Plains -> W) > Colorless. Multicolor uses first WUBRG-order color.
   const colorKey = frameColorKey(card);
 
   const isCreature = hasType(card, 'Creature');
@@ -1717,8 +1694,7 @@ function formatCostBraced(c) {
 // are coincidentally the right shape and color for mana symbols, so they
 // stay recognizable even when art is unavailable. The .mana-W / .mana-U /
 // ... CSS overrides hide the emoji via color:transparent wherever an SVG
-// ships. C (colorless) has no canonical emoji match — keep it as a letter
-// pip until art ships.
+// ships. C (colorless) has no canonical emoji match — kept as a letter pip.
 const MANA_GLYPH = { W: '⚪', U: '🔵', B: '⚫', R: '🔴', G: '🟢', C: 'C' };
 
 function renderManaSymbols(text) {

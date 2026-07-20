@@ -1,17 +1,15 @@
-// Audit A4-23 leg-1 — effects AFTER a human-pausing effect (a tutor search or a
-// forced discard) must resolve AFTER the human's pick, not before (canon §704.2
-// "resolve each effect in order"; §600 makes resolution atomic). Before the fix,
-// searchLibraryToHand / discardFromHand opened their prompt and RETURNED, but the
-// resolution loop kept going and ran the trailing effects immediately — so e.g.
-// Demonic Tutor's "lose 2 life" fired BEFORE you chose the tutored card. The fix
-// generalizes the edict (A4-7) deferral: a human pause stashes the trailing
-// effects on the prompt and breaks; doSearchPick / doDiscard replay them once the
-// pick completes (resumeTrailingEffects). AI path is unchanged (resolves inline).
+// Effects after a human-pausing effect (a tutor search or a forced discard)
+// must resolve after the human's pick, not before (canon §704.2 "resolve each
+// effect in order"; §600 makes resolution atomic). A human pause stashes the
+// trailing effects on the prompt and breaks; doSearchPick / doDiscard replay
+// them once the pick completes (resumeTrailingEffects). The AI path resolves
+// inline.
 //
 // Demonic Tutor is a REAL card that exhibits this (effects: [library_search,
-// gain_life -2 scope:self]); the discard block uses a synthetic sorcery to cover
-// the forced-discard path + the "replay exactly once after the LAST discard"
-// subtlety. DOM is browser-only; this covers the engine/resolution layer.
+// gain_life -2 scope:self]); the discard block uses a synthetic sorcery to
+// cover the forced-discard path + the "replay exactly once after the LAST
+// discard" subtlety. DOM is browser-only; this covers the engine/resolution
+// layer.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -99,8 +97,8 @@ if (CARDS['demonic_tutor']) {
 console.log('\n=== Synthetic forced-discard sorcery (human): trailing "+3 life" defers until the LAST discard ===');
 {
   // A real card with a HUMAN discard + a trailing effect doesn't ship today, so
-  // synthesize one (added post-boot; boot validation already ran). discard 2,
-  // then gain 3 — the +3 must replay exactly once, after the SECOND discard.
+  // synthesize one (added post-boot; boot validation already ran). The +3 must
+  // replay exactly once, after the SECOND discard.
   CARDS['_a4_23_rummage'] = {
     card_id: '_a4_23_rummage', name: 'Test Rummage', cost: { C: 0 }, types: ['Sorcery'],
     effects: [
@@ -112,7 +110,7 @@ console.log('\n=== Synthetic forced-discard sorcery (human): trailing "+3 life" 
   const lifeBefore = G.you.life;
   const spell = mk('_a4_23_rummage', 'you'); G.you.hand.push(spell);
   const d1 = mk(VANILLA, 'you'); const d2 = mk(VANILLA, 'you');
-  G.you.hand.push(d1, d2);   // two cards to discard
+  G.you.hand.push(d1, d2);
   readyForCast(G, 'you');
   ENGINE.executeAction('you', { type: 'castSpell', cardIid: spell.iid, targets: [] });
   drainStack(G);

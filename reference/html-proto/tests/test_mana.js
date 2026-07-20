@@ -1,8 +1,7 @@
-// §3.9 mana deep-clean: lands and creature dorks both produce mana through a
-// tap-for-mana ability (the extraManaColors parallel model is retired). Covers
-// land/ability consistency, the add_mana choose form (City of Brass), summoning-
-// sickness gating (lands vs dorks), the landColor sticker, payMana auto-tap, and
-// the land staple-merge.
+// Lands and creature dorks both produce mana through a tap-for-mana ability,
+// not a separate extraManaColors field. Covers land/ability consistency, the
+// add_mana choose form (City of Brass), summoning-sickness gating (lands vs
+// dorks), the landColor sticker, payMana auto-tap, and the land staple-merge.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -68,11 +67,9 @@ console.log('\n=== creature mana dork is summoning-sick the turn it enters ===')
 console.log('\n=== landColor sticker extends the tap-ability ===');
 (() => {
   const c = ENGINE.makeCard('plains', 'you', null);
-  // Apply a land_color_u sticker through the runtime sticker path (takes the id).
   applyOneStickerToRuntimeCard(c, 'land_color_u');
   const prod = ENGINE.landProducibleColors(c).slice().sort();
   check('plains + land_color_u produces W and U', JSON.stringify(prod) === JSON.stringify(['U', 'W']), JSON.stringify(prod));
-  // Tapping it for the stickered color works.
   G.you.battlefield.push(c); resetMana('you');
   ENGINE.executeAction('you', { type: 'tapLandForMana', cardIid: c.iid, color: 'U' });
   check('taps for the stickered {U}', G.you.mana.U === 1, JSON.stringify(G.you.mana));
@@ -82,7 +79,7 @@ console.log('\n=== payMana auto-taps lands for a colored cost ===');
 (() => {
   G.you.battlefield = []; resetMana('you');
   put('you', 'plains'); put('you', 'forest');
-  ENGINE.payMana('you', { W: 1, G: 1 });  // auto-taps both lands
+  ENGINE.payMana('you', { W: 1, G: 1 });
   const tappedCount = G.you.battlefield.filter(c => c.tapped).length;
   check('both lands tapped to pay {W}{G}', tappedCount === 2, 'tapped=' + tappedCount);
 })();
@@ -92,7 +89,7 @@ console.log('\n=== payMana prefers a fixed land over City of Brass for a needed 
   G.you.battlefield = []; resetMana('you');
   const plains = put('you', 'plains');
   const cob = put('you', 'city_of_brass');
-  ENGINE.payMana('you', { W: 1 });  // both can make W; the fixed plains should be spent
+  ENGINE.payMana('you', { W: 1 });
   check('the basic Plains was tapped (fixed source preferred)', plains.tapped === true);
   check('City of Brass left untapped (flexibility preserved)', cob.tapped === false);
 })();
@@ -106,8 +103,8 @@ console.log('\n=== staple: creature + land gains a tap-for-mana ability ===');
   const manaAbs = (merged.abilities || []).filter(ab => ab.cost && ab.cost.tap && ab.effects && ab.effects[0] && ab.effects[0].kind === 'add_mana');
   check('vanilla creature + forest gains a tap-for-mana ability', manaAbs.length === 1, 'count=' + manaAbs.length);
   check('the gained ability produces {G}', JSON.stringify(ENGINE.landProducibleColors({ types: ['Land'], abilities: manaAbs })) === JSON.stringify(['G']));
-  // §3.10: appendMergedText removed — card text is regenerated from the merged
-  // abilities by describeCardText (not hand-concatenated).
+  // Card text is regenerated from the merged abilities by describeCardText,
+  // not hand-concatenated.
   check('describeCardText regenerates the gained mana ability text', /\{T\}.*add \{G\}/i.test(describeCardText(merged)), JSON.stringify(describeCardText(merged)));
 })();
 

@@ -1,9 +1,3 @@
-// Audit A5-5 — a cloned Stapler slot had no `charges` field, so the engine
-// charge gate (`typeof stSlot.charges === 'number'`) read it as infinite: the
-// clone never decremented, never ripped, and the UI showed "3 charges" forever.
-// Joe Option A (PR #98): photocopy the source slot's REMAINING charges onto the
-// clone — a copy of a half-used Stapler is half-used.
-
 const setup = require('./_setup');
 setup.loadEngine();
 
@@ -30,7 +24,7 @@ console.log('=== A5-5: cloning a half-used Stapler photocopies its REMAINING cha
   const stIdx = slots.findIndex(s => s.tplId === 'stapler');
   check('Stapler slot present', stIdx >= 0, 'idx=' + stIdx);
   check('Stapler slot starts at 3 charges', slots[stIdx].charges === 3, 'charges=' + slots[stIdx].charges);
-  slots[stIdx].charges = 1;   // half-used
+  slots[stIdx].charges = 1;
 
   const after = cloneSlot(stIdx);
   const clone = after[stIdx + 1];
@@ -96,7 +90,7 @@ console.log('\n=== A5-5 review: a charged clone Stapler SURVIVES the original ri
   ENGINE.executeAction('you', { type: 'activateAbility', cardIid: actingStapler.iid, abilityIdx: 0,
     targets: [{ kind: 'permanent', iid: oppBase.iid, label: oppBase.name },
               { kind: 'permanent', iid: youStaple.iid, label: youStaple.name }] });
-  // The ability goes on the stack (A3-2); drain it so the splice + charge-rip resolve.
+  // The ability goes on the stack; drain it so the splice + charge-rip resolve.
   let drain = 20;
   while (G.stack.length > 0 && drain-- > 0) {
     const w = ENGINE.expectedActor(); if (!w) break;

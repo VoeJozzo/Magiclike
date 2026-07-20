@@ -1,9 +1,3 @@
-// Audit A2-15 — menace enforcement (a lone blocker is illegal; 2+ required) had
-// ZERO regression coverage, at a site whose own comment records a prior silent
-// failure (Object.entries string-key coercion). A future refactor reintroducing
-// string keys would land green and repeat the bite. This pins the lone-block
-// rejection. Tests only; the menace check (engine.js declareBlockers legality)
-// is correct.
 const setup = require('./_setup');
 setup.loadEngine();
 

@@ -1,9 +1,6 @@
-// Wave 1 cards (docs/plans/plan-pool-waves.md — Joe's verdicts 2026-07-07):
-// gloomfang_leech, bloodtithe_collector, toll_of_secrets, grim_ferryman,
-// ironbrand_marshal, rakdos_underboss, toll_of_silence, tideglass_broker.
-// Plus the two primitives that shipped with them: the `another: true`
-// source-exclusion target filter (ts* layer) and the life_changed DIRECTION
-// SPLIT in the buckets extractor (is_life_loss → self_pain/opp_loss).
+// Exercises two shared primitives: the `another: true` source-exclusion
+// target filter (ts* layer) and the buckets extractor's life_changed
+// direction split (is_life_loss → self_pain/opp_loss).
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -254,9 +251,6 @@ console.log('\n=== buckets extraction: Wave 1 vocabulary + the life_changed dire
   const e2 = BUCKETS.edgeBetween('gloomfang_leech', 'lightning_bolt');
   check('leech <-> bolt is a STRONG edge (recruit-grade)', e2.w >= 2, e2.w.toFixed(2));
 })();
-
-
-// ── Wave 1 HOLDS, un-parked by Joe (v2.2.13): all four ship ──────────────
 
 console.log('\n=== goldens: the four un-parked holds ===');
 (() => {

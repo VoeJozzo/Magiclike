@@ -1,14 +1,10 @@
-// On-cast targeting migration (Slice 3 / effects-refactor §3.5). The migration
-// itself is long done; what still earns its keep here are the ONGOING invariants
-// it established — every target() step is in the closed taxonomy, no effect kept
-// a per-effect target, no card uses a retired effect kind, and the canonical
-// decompositions (edict/flicker/restrict/bolt) still have the right shape.
+// On-cast targeting invariants: every target() step is in the closed taxonomy,
+// no effect kept a per-effect target, no card uses a retired effect kind, and
+// the canonical decompositions (edict/flicker/restrict/bolt) have the right
+// shape.
 //
-// NOTE: this file used to assert exact card COUNTS ("55 cards carry a target()
-// step", "22 draws collapsed to move_card", etc). Those were count-the-
-// implementation: they broke every time a card was added (a non-event) and
-// caught no behavior. Replaced with existence checks (the collapsed form is
-// PRESENT) — the invariant that actually matters post-migration.
+// Existence checks, not card counts: a count assertion breaks every time a
+// card is added (a non-event) and catches no behavior.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -76,7 +72,7 @@ console.log('\n=== representative cards (canonical decompositions) ===');
 console.log('\n=== skipped cards kept their non-taxonomy filters (no silent loss) ===');
 (() => {
   // Cards whose targeted on-cast effect carries a subtype/keyword/max_tough
-  // filter were intentionally NOT migrated (the closed taxonomy can't express
+  // filter are intentionally not migrated (the closed taxonomy can't express
   // them). At least one such card must still have its filter and NO top-level step.
   let preserved = 0;
   for (const card of Object.values(CARDS)) {
@@ -114,7 +110,7 @@ console.log('\n=== kind-collapse: retired kinds gone, collapsed forms present ==
   }
   for (const k of GONE) check('no card uses legacy ' + k, !seen[k], (seen[k] || 0) + ' remain');
 
-  // add_counter's +1/+1 form was collapsed to pump duration:permanent. The kind
+  // add_counter's +1/+1 form is expressed as pump duration:permanent. The kind
   // survives for NAMED counters (verse etc.) — a bare resource that does NOT
   // change P/T, which pump cannot express. So the invariant is narrower than
   // "gone": no card may use the legacy +1/+1 (counter-less) form.

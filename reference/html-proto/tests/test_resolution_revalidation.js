@@ -1,22 +1,12 @@
-// Audit fix A3-1 — stack entries re-validate their locked targets at
-// RESOLUTION (§1006.1 for triggers, §704.1 for spells).
+// Stack entries re-validate their locked targets at RESOLUTION (§1006.1 for
+// triggers, §704.1 for spells).
 //
-// Pre-fix, target legality was checked at queue time and stack-push time and
-// never again: a target that became illegal while the entry waited on the
-// stack (hexproof gained in response, target left play) was still affected,
-// and a dead sole target still let untargeted rider effects resolve instead
-// of fizzling the whole entry. The fix (tsRevalidateTargets) re-runs the SAME
-// per-slot legality sets used at cast/queue time once, at resolution start:
-// illegal slots are dropped (multi-target entries proceed on the remaining
-// legal targets), and if no slot survives the entry fizzles whole with a log
-// line — riders included, costs stay paid. Mana abilities never touch the
-// stack, so their fast path is untouched.
-//
-// Case 1 reproduces the audit packet's 100%-real-actions route: the pool's
-// only hexproof granter (Aether Drake) stapled onto a flash base (Ambush
-// Djinn) via the game's own synthesis, cast in response to a trigger on the
-// stack — the grant resolves first (LIFO), and the waiting trigger must
-// fizzle instead of hitting the now-hexproofed target.
+// tsRevalidateTargets re-runs the SAME per-slot legality sets used at
+// cast/queue time once, at resolution start: illegal slots are dropped
+// (multi-target entries proceed on the remaining legal targets), and if no
+// slot survives the entry fizzles whole with a log line — riders included,
+// costs stay paid. Mana abilities never touch the stack, so their fast path
+// is untouched.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -43,7 +33,7 @@ function mk(tplId, controller) {
 // whole scenario: with a live response available, the engine's auto-pass
 // PAUSES at every priority window instead of churning through resolutions and
 // turns inside a single executeAction call — the response window each case
-// needs is only observable this way (same mechanism as the audit repro).
+// needs is only observable this way.
 function newGame() {
   RUN.clearSave && RUN.clearSave();
   RUN.start({ cards: Array(12).fill('plains'), colors: ['W'] }, null);
@@ -59,8 +49,8 @@ function newGame() {
 }
 
 // Pass priority until a predicate on G holds (or the machine quiesces).
-// pickFor: map of controller -> iid to pick when that side's trigger prompt
-// opens (the synth's grant target).
+// pickIid: iid to pick when a trigger-target prompt opens for 'you' (falls
+// back to the first valid option if omitted or not among the valid choices).
 function driveUntil(G, pred, pickIid) {
   let guard = 0;
   while (guard++ < 60) {
@@ -195,8 +185,7 @@ console.log('\n=== A3-1 (spell twin, §704.1): all targets illegal — the SPELL
 (() => {
   // Consume Spirit: damage 4 to target creature + its controller gains 4 life
   // (an untargeted scope:self rider). Hexproof gained in response must fizzle
-  // the WHOLE spell: no damage AND no lifegain — pre-fix the damage landed and
-  // the rider ran.
+  // the WHOLE spell: no damage AND no lifegain.
   const G = newGame();
   const victim = mk('abyss_lurker', 'you');
   G.you.battlefield.push(victim);

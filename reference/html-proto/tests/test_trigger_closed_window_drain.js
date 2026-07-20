@@ -1,32 +1,17 @@
-// Audit fix A1-1 leg 3 — triggers queued while priority is CLOSED wait for
-// the next real priority window instead of conjuring a synthetic round
-// (Joe-approved, PR #98 round 3: "Sounds like a pair of good catches.
-// Please fix them.").
-//
-// Pre-fix, drainTriggers ran unconditionally and pushTriggerEntry contained
-// `if (!G.priority) G.priority = { passes: new Set() }` — a trigger draining
-// while the engine was parked on a pending declaration (waiting for
-// attackers/blocks, priority CLOSED per canon §605) invented a priority
-// round on the spot. Both players auto-pass the invented round and
-// advancePhaseAfterPriority marches the phase forward PAST the declaration:
-// with zero attackers committed the COMBAT_ATTACK arm goes straight to
-// MAIN2 — combat silently skipped with attackersDeclared still false.
-// Reachable because mana abilities are legal at ANY time (even mid-pause)
-// and doActivateAbility ends with an unconditional drainTriggers(): the
-// first "Sacrifice a creature: add mana" card (sac → dies-trigger) springs
-// it. Canon §1004.4: triggers queued while priority is closed WAIT; they
+// Triggers queued while priority is CLOSED (canon §605 — e.g. parked on a
+// pending attacker/block declaration) wait for the next real priority
+// window rather than draining into a synthetic one. Canon §1004.4: they
 // drain at the next openPriorityRound.
 //
 // Arms:
 //   1. KEY — parked on declare-attackers, a sac-for-mana ability fires a
 //      dies-trigger: the trigger must stay QUEUED (no synthetic round, no
 //      stack push, no resolution) and the engine must stay parked on the
-//      declaration (red pre-fix: round conjured, trigger pushed).
+//      declaration.
 //   2. KEY continuation — declaring attackers then drains the queued
-//      trigger into the real (a.ii) window and combat actually happens
-//      (red pre-fix: combat was skipped before the declaration could occur).
+//      trigger into the real (a.ii) window and combat happens.
 //   3. Guard — the same sac-for-mana ability used during an OPEN round
-//      drains immediately onto the stack, exactly as before.
+//      drains immediately onto the stack.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -63,11 +48,9 @@ const VANILLA = (() => {
   }
   return null;
 })();
-// The landmine card class that makes the closed-window drain live: a
-// "Sacrifice a creature: add {C}" mana ability (none exists in the pool yet
-// — that's exactly why this was a latent landmine).
+// A synthetic "Sacrifice a creature: add {C}" mana ability — no such
+// ability exists in the card pool.
 const SAC_MANA_ABILITY = { cost: { sacrifice: true }, effects: [{ kind: 'add_mana', amounts: { C: 1 } }] };
-// The sacrifice fodder carries a dies-trigger so the sac queues a trigger.
 const diesGainLife = () => ({
   event: 'card_zone_change',
   condition: ['this_card', 'card_moves(battlefield, graveyard)'],
@@ -99,8 +82,6 @@ if (!VANILLA) {
     G.phase === 'COMBAT_ATTACK' && !G.attackersDeclared && G.priority === null
     && ENGINE.expectedActor() === 'you',
     'phase=' + G.phase + ' open=' + (G.priority !== null) + ' actor=' + ENGINE.expectedActor());
-  // Mid-pause, use the mana ability (legal at ANY time), sacrificing the
-  // dies-trigger creature.
   const ok = ENGINE.executeAction('you', { type: 'activateAbility',
     cardIid: altar.iid, abilityIdx: 0, sacIid: victim.iid });
   check('the mana ability executed mid-pause (legal at any time)', ok === true);
@@ -119,12 +100,12 @@ if (!VANILLA) {
     G.phase === 'COMBAT_ATTACK' && !G.attackersDeclared && ENGINE.expectedActor() === 'you',
     'phase=' + G.phase + ' declared=' + G.attackersDeclared + ' actor=' + ENGINE.expectedActor());
 
-  // The altar has served its purpose (queuing the dies-trigger). Remove it so the
-  // rest of this test stays focused on the drain: its lingering extra-cost mana
-  // ability would otherwise (correctly, post-A7-1 fix) offer 'you' an instant-
-  // speed activateAbility at every window and suppress the auto-pass into combat.
-  // That enumeration is covered by test_a7_extra_cost_mana.js; here it's noise.
-  // (A no-op in real play — no shipped card has an extra-cost mana ability.)
+  // Remove the altar (its purpose served) so the rest of this test stays
+  // focused on the drain: its lingering extra-cost mana ability would
+  // otherwise offer 'you' an instant-speed activateAbility at every window
+  // and suppress the auto-pass into combat (enumerated separately in
+  // test_a7_extra_cost_mana.js). No shipped card has an extra-cost mana
+  // ability — this class exists only in this test.
   G.you.battlefield = G.you.battlefield.filter(c => c.iid !== altar.iid);
 
   console.log('\n=== A1-1 leg 3 KEY: the queued trigger drains at the next real window; combat happens ===');
@@ -158,7 +139,6 @@ if (!VANILLA) {
       'pending=' + G2.pendingTriggers.length + ' stack=' + G2.stack.length);
     check('push reset the response round (opponent of controller holds, §1004.5)',
       G2.priorityHolder === 'opp', 'holder=' + G2.priorityHolder);
-    // Let it resolve.
     ENGINE.executeAction('opp', { type: 'pass' });
     ENGINE.executeAction('you', { type: 'pass' });
     check('trigger resolved normally (+2 life)', G2.you.life === 22, 'life=' + G2.you.life);

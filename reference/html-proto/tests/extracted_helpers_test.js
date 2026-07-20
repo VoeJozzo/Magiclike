@@ -1,10 +1,6 @@
-// Boot smoke test: the engine initializes cleanly and basic state invariants
-// hold. (Formerly also carried a source-grep layer asserting resolveTarget /
-// pluckFromBattlefield call-site COUNTS — deleted: those tested how the code was
-// written, not what it does, broke on benign refactors, and missed the bug they
-// claimed to guard. The behavior those helpers centralize — clean fizzle on a
-// dead target, hexproof gating — is covered behaviorally in test_targeting /
-// test_targeting_cast / test_move_card.)
+// Clean fizzle on a dead target is covered behaviorally in
+// test_resolution_revalidation / test_move_card; hexproof gating in
+// test_targeting / test_targeting_cast. Not tested here.
 
 const setup = require('./_setup');
 setup.loadEngine();

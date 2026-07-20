@@ -13,9 +13,8 @@ extends RefCounted
 
 const _TEMPLATE_DIR := "res://cards/templates/"
 
-# Cached card_id list — first call walks the directory, subsequent calls
-# return the cached array. Cards are added/removed at edit time, not at
-# runtime, so a single scan per session is the right tradeoff.
+# Cards are added/removed at edit time, not at runtime, so a single scan per
+# session is the right tradeoff.
 static var _cached_ids: Array[String] = []
 
 
@@ -27,10 +26,8 @@ static func get_card(card_id: String) -> CardResource:
 	return res
 
 
-# Walks cards/templates/ for *.tres files. Self-maintaining: adding a new
-# template under that directory automatically extends the pool without a
-# manual edit here. Used by engine boot validation and any caller that needs
-# to iterate the full pool.
+# Used by engine boot validation and any caller that needs to iterate the
+# full pool.
 static func all_card_ids() -> Array[String]:
 	if not _cached_ids.is_empty():
 		return _cached_ids

@@ -1,10 +1,6 @@
-// Regression: player-controlled triggers with a top-level target() step must
-// PROMPT the player to choose, not silently auto-pick. The §3.5 migration moved
-// trigger targets from per-effect `eff.target` to the top-level `trig.target`
-// (bare effects), but triggerNeedsPlayerChoice only inspected per-effect targets
-// — so every migrated targeted trigger auto-selected its target when the human
-// cast the creature ("targets auto-selected when I cast spells"). The AI still
-// auto-picks (no prompt).
+// A trigger's top-level target() step (trig.target on a bare effect, not
+// per-effect eff.target) must prompt the player to choose; objectNeedsTarget
+// must inspect trig.target too. The AI still auto-picks (no prompt).
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -68,9 +64,6 @@ console.log('\n=== the AI (opp) still auto-picks — no prompt ===');
 
 console.log('\n=== a single legal target still auto-picks (no needless prompt) ===');
 (() => {
-  // your_creature trigger with only ONE of your creatures (the source itself
-  // hasn't entered yet for a non-creature... use otherworldlyJourney? simpler:
-  // give the human exactly one own creature so your_creature has 1 option).
   RUN.start({ cards: Array(12).fill('plains'), colors: ['W'] }, null);
   RUN.startNextGame();
   const G = setup.startMainPhase('you');

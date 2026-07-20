@@ -1,8 +1,6 @@
 class_name PhaseMachine
 extends RefCounted
 
-# Tracks the current phase of the turn.
-
 enum Phase {
 	UNTAP,
 	UPKEEP,
@@ -32,7 +30,7 @@ const PHASE_NAMES := {
 var current: Phase = Phase.UNTAP
 
 
-# Wraps CLEANUP→UNTAP. Returns true on wrap (caller bumps turn / swaps active player).
+# Returns true on wrap (caller bumps turn / swaps active player).
 func advance() -> bool:
 	if current == Phase.CLEANUP:
 		current = Phase.UNTAP

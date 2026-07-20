@@ -10,7 +10,7 @@ function check(label, ok, info) {
   if (ok) pass++; else fail++;
 }
 
-// A3-2: non-mana activations now take a kind:'ability' stack entry — pass
+// Non-mana activations put a kind:'ability' stack entry on the stack; pass
 // until it resolves (the free/affordable re-activation keeps hasNoAction
 // false, so step() parks on the activator instead of auto-resolving).
 function settle(G) {
@@ -55,8 +55,8 @@ console.log('=== colorless boss card data + constructed registry ===');
   check('boss deck declares no colors',
     deck && Array.isArray(deck.colors) && deck.colors.length === 0);
   const built = DRAFT.buildOpponentDeck(0, 0, 0, null, 'equatorialArtificerBoss');
-  // A8-4: buildOpponentDeck no longer emits a dead `colors` field; boss color
-  // identity lives on the constructed spec (asserted above via deck.colors).
+  // Boss color identity lives on the constructed spec, not a `colors` field
+  // on the built deck.
   check('buildOpponentDeck emits no dead colors field (constructed)',
     built && !('colors' in built) && Array.isArray(built.cards));
   const heuristicBuilt = DRAFT.buildOpponentDeck(0, 0, 0, null, null);
@@ -96,7 +96,7 @@ console.log('\n=== Artifice Triumphant neutralizes permanently and grants reanim
   ENGINE.executeAction('you', { type: 'activateAbility', cardIid: knight.iid, abilityIdx });
   check('Equatorial tapped and Ingenuity let {C}{C} pay the white activation cost',
     equator.tapped && G.you.mana.C === 1);
-  settle(G);   // A3-2: the granted ability resolves off the stack
+  settle(G);   // resolves the granted ability off the stack
   check('target is a creature again until end of turn',
     hasType(knight, 'Artifact') && hasType(knight, 'Creature'));
   const slot = RUN.getSlots()[0];
@@ -126,7 +126,7 @@ console.log('\n=== Artifice Triumphant colorless activation is intentionally fre
   check('colorless target can reactivate with no mana available',
     ENGINE.isLegalAction('you', { type: 'activateAbility', cardIid: colossus.iid, abilityIdx }));
   ENGINE.executeAction('you', { type: 'activateAbility', cardIid: colossus.iid, abilityIdx });
-  settle(G);   // A3-2: the granted ability resolves off the stack
+  settle(G);   // resolves the granted ability off the stack
   check('free activation makes the colorless target a creature until end of turn',
     hasType(colossus, 'Artifact') && hasType(colossus, 'Creature'));
   check('colors_of_source cannot be paid without a source-card resolution',
@@ -142,10 +142,6 @@ console.log('\n=== Artifice Triumphant colorless activation is intentionally fre
 
 console.log('\n=== Artifice Triumphant target shows the activated-ability glow as an artifact ===');
 (() => {
-  // Regression: the ".activatable" green glow used to gate on hasType(Creature),
-  // so an Artifice'd target (now a bare Artifact with a granted reanimate
-  // ability) never glowed — and then DID glow after activation, when it's a
-  // creature again and re-activating is a no-op. The fix inverts both.
   const G = boot();
   const colossus = ENGINE.makeCard('sentinel_colossus', [], 0);
   colossus.controller = 'you'; colossus.owner = 'you'; colossus.sick = false; colossus.iid = 9161;
@@ -160,17 +156,15 @@ console.log('\n=== Artifice Triumphant target shows the activated-ability glow a
     activationGlowAvailable(colossus, 'opp') === false);
   const abilityIdx = (colossus.abilities || []).findIndex(ab => ab._sticker_ability_id === 'artifice_triumphant_reanimate');
   ENGINE.executeAction('you', { type: 'activateAbility', cardIid: colossus.iid, abilityIdx });
-  settle(G);   // A3-2: the granted ability resolves off the stack
+  settle(G);   // resolves the granted ability off the stack
   check('glow drops once it is already a Creature again (re-activation is a no-op)',
     activationGlowAvailable(colossus, 'you') === false && hasType(colossus, 'Creature'));
 })();
 
 console.log('\n=== Equatorial boss deploys Ingenuity Unbounded instead of passing ===');
 (() => {
-  // Regression: Ingenuity has no on-cast effects, so the AI scored it 0 and the
-  // score<=0 reject gate dropped it — the boss never cast its colorless→any
-  // fixer, leaving every colored spell in the deck uncastable. Static permanents
-  // now floor above the gate.
+  // Static permanents floor above the AI's score<=0 reject gate, so an
+  // effect-less card like Ingenuity still gets cast rather than passed on.
   const G = boot();
   G.activePlayer = 'opp'; G.priorityHolder = 'opp';
   G.opp.hand = []; G.opp.battlefield = []; G.opp.graveyard = [];

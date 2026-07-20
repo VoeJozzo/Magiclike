@@ -1,10 +1,6 @@
-// condId -> composable `condition` migration (Slice 2 / E2, step 6). The
-// migration is long done; the ONGOING invariants it established are what earn
-// this test's keep:
-//   1. Every known trigger archetype is still PRESENT and classifiable, and no
-//      trigger is unclassified (catches a dropped/mis-mapped condition). The
-//      pre-migration EXACT counts were removed — they were a calcified snapshot
-//      that broke every time a triggered card was added, for no bug caught.
+// condId -> composable `condition` migration. This test's invariants:
+//   1. Every known trigger archetype is present and classifiable, and no
+//      trigger is unclassified (catches a dropped/mis-mapped condition).
 //   2. No legacy cond_id / params / self_only survives on any trigger.
 //   3. Representative real cards evaluate correctly (fire on the positive
 //      scenario, stay silent on the negative) via the composable evaluator.
@@ -21,12 +17,10 @@ function check(label, ok, info) {
 }
 
 // The test reads the LIVE archetype table and signature function from
-// triggers.js (Wave 2 refactor, Joe-flagged: the former hand-copied table
-// here had to be maintained in lockstep and could silently drift). The
-// invariants got STRONGER, not weaker: a row dropped from _ARCHETYPE_BY_SIG
-// leaves its cards unclassified (check below fails); a stale row whose
-// cards all vanished fails the presence check. Two anchor pins guard the
-// degenerate case of the table itself being wiped.
+// triggers.js, not a hand-copied snapshot: a row dropped from
+// _ARCHETYPE_BY_SIG leaves its cards unclassified (check below fails); a
+// stale row whose cards all vanished fails the presence check. Two anchor
+// pins guard the degenerate case of the table itself being wiped.
 const condSig = (event, cond) => (Array.isArray(cond) ? _condSignature(event, cond) : null);
 const ARCHETYPES = _ARCHETYPE_BY_SIG;
 check('anchor: live table classifies thisEnters',
@@ -70,7 +64,6 @@ console.log('\n=== no legacy cond_id / params / self_only on any trigger ===');
 // ── 3. Representative real cards evaluate correctly ──────────────────────
 console.log('\n=== representative migrated cards fire correctly ===');
 (() => {
-  // Helper: find one card whose trigger matches a signature.
   function cardWithSig(sig) {
     for (const card of Object.values(CARDS)) {
       for (const trig of (card.triggers || [])) {
@@ -85,8 +78,7 @@ console.log('\n=== representative migrated cards fire correctly ===');
   }
   function S() { return { you: { lifeLostThisTurn: 0 }, opp: { lifeLostThisTurn: 0 } }; }
 
-  // Subtype-enters lord (e.g. drakelord/Drake). Fires when another creature of
-  // its subtype enters under your control; not on a non-subtype creature.
+  // Subtype-enters lord (e.g. drakelord/Drake).
   const lord = cardWithSig('card_zone_change | another_card, controlled_by(you), card_has_subtype(*), card_moves(anywhere, battlefield)');
   if (lord) {
     const subTerm = lord.trig.condition.find((t) => typeof t === 'string' && t.startsWith('card_has_subtype('));
@@ -97,7 +89,6 @@ console.log('\n=== representative migrated cards fire correctly ===');
     check(`${lord.card.tplId}: silent on non-${sub} ETB`, evalFor(lord, noEvt, 'you') === false);
   } else check('subtype-enters lord present', false);
 
-  // thisDies: fires when THIS card moves battlefield->graveyard; not on bounce.
   const dies = cardWithSig('card_zone_change | this_card, card_moves(battlefield, graveyard)');
   if (dies) {
     const diesEvt = { subject_card: { iid: 1, types: ['Creature'] }, from_zone: 'battlefield', to_zone: 'graveyard' };
@@ -106,7 +97,7 @@ console.log('\n=== representative migrated cards fire correctly ===');
     check(`${dies.card.tplId}: silent on own bounce`, evalFor(dies, bounceEvt, 'you') === false);
   } else check('thisDies card present', false);
 
-  // youCastCounterspell: another spell you control with a counter effect.
+  // youCastCounterspell.
   const counter = cardWithSig('spell_cast | another_card, controlled_by(you), card_has_effect(counter)');
   if (counter) {
     const yes = { subject_card: { iid: 2, effects: [{ kind: 'counter' }] }, controller: 'you' };
@@ -115,9 +106,8 @@ console.log('\n=== representative migrated cards fire correctly ===');
     check(`${counter.card.tplId}: silent on your damage spell`, evalFor(counter, no, 'you') === false);
   } else check('youCastCounterspell card present', false);
 
-  // anyCardDies (Blood Artist shape): fires on ANY creature death incl. self,
-  // but NOT on non-creature permanents (the legacy cardDies emit was
-  // creature-only -- a faithfulness fix over the plan's bare decomposition).
+  // anyCardDies (Blood Artist shape): creature-only by design, not all
+  // permanents dying.
   const anyDies = cardWithSig('card_zone_change | card_is_creature, card_moves(battlefield, graveyard)');
   if (anyDies) {
     const selfDeath = { subject_card: { iid: 1, types: ['Creature'] }, from_zone: 'battlefield', to_zone: 'graveyard' };
@@ -130,12 +120,10 @@ console.log('\n=== representative migrated cards fire correctly ===');
 })();
 
 // ── 4. condId consumers recover via triggerArchetype ─────────────────────
-// card-text preambles and AI trigger-frequency valuation used to read condId;
-// post-migration they classify via triggerArchetype. Verify the classifier
-// and that no migrated card renders the generic "relevant event" fallback.
+// Card-text preambles and AI trigger-frequency valuation classify via
+// triggerArchetype.
 console.log('\n=== triggerArchetype classification + preamble recovery ===');
 (() => {
-  // Composable trigger classifies back to its archetype id.
   check('classifies composable thisDies',
     triggerArchetype({ event: 'card_zone_change', condition: ['this_card', 'card_moves(battlefield, graveyard)'] }) === 'thisDies');
   check('classifies composable subtype-attacks',
@@ -144,7 +132,6 @@ console.log('\n=== triggerArchetype classification + preamble recovery ===');
   check('triggerSubtype extracts subtype',
     triggerSubtype({ condition: ['controlled_by(you)', 'card_has_subtype(Goblin)'] }) === 'Goblin');
 
-  // No migrated card falls through to the generic preamble.
   const generic = [];
   for (const card of Object.values(CARDS)) {
     for (const trig of (card.triggers || [])) {
@@ -154,7 +141,6 @@ console.log('\n=== triggerArchetype classification + preamble recovery ===');
   }
   check('no migrated card renders the generic preamble fallback', generic.length === 0, generic.join(', '));
 
-  // Spot-check a couple of real preambles.
   function preambleOf(tplId) {
     const c = CARDS[tplId]; if (!c || !c.triggers || !c.triggers[0]) return null;
     return triggerPreamble(c.triggers[0]);
@@ -164,8 +150,7 @@ console.log('\n=== triggerArchetype classification + preamble recovery ===');
   if (CARDS.goblin_chieftain) check('goblinChieftain preamble names its subtype',
     /Goblin you control attacks/.test(preambleOf('goblin_chieftain')), preambleOf('goblin_chieftain'));
 
-  // AI ETB-detection (flicker / flash valuation) must still recognize migrated
-  // ETB triggers, which now live on card_zone_change, not cardEntersBattlefield.
+  // AI ETB-detection (flicker / flash valuation) relies on triggerFiresOnEnter.
   check('triggerFiresOnEnter: thisEnters (composable)',
     triggerFiresOnEnter({ event: 'card_zone_change', condition: ['this_card', 'card_moves(anywhere, battlefield)'] }) === true);
   check('triggerFiresOnEnter: subtype-enters lord',
@@ -174,7 +159,6 @@ console.log('\n=== triggerArchetype classification + preamble recovery ===');
     triggerFiresOnEnter({ event: 'card_zone_change', condition: ['this_card', 'card_moves(battlefield, graveyard)'] }) === false);
   check('triggerFiresOnEnter: attacks is NOT an enter',
     triggerFiresOnEnter({ event: 'attacks', condition: ['this_card'] }) === false);
-  // At least one real migrated card is detected as an ETB-trigger card.
   let etbCards = 0;
   for (const card of Object.values(CARDS)) {
     if ((card.triggers || []).some(triggerFiresOnEnter)) etbCards++;

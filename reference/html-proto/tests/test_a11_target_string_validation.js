@@ -1,11 +1,7 @@
-// Audit chunk 11 — A11-1: slot- and effect-level target STRINGS
-// (target_slots[i].target, e.target) resolve through getValidTargets directly
-// — NOT the matchFilter taxonomy — and getValidTargets' default arm returns []
-// (console.warn). So a typo'd target name boots clean and the card is silently
-// uncastable forever. Boot validation now sweeps these strings against
-// GETVALIDTARGETS_TARGETS at card-, ability-, and trigger-level slots plus
-// effect-level e.target. The live 297-card pool was conformance-clean; this
-// pins the guard so a future typo goes RED at boot instead of shipping mute.
+// target_slots[i].target and e.target resolve through getValidTargets
+// directly, not the matchFilter taxonomy, and its default arm silently
+// returns [] (console.warn) — so a typo'd target name boots clean and
+// the card is uncastable forever. Checked against GETVALIDTARGETS_TARGETS.
 
 const setup = require('./_setup');
 setup.loadEngine();

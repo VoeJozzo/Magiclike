@@ -1,12 +1,9 @@
-// Modal helper (controller.js, module scope). Stack-aware show/hide
-// with per-modal Escape opt-in. Tests the stack/dismissible logic
-// directly — no real DOM needed; the helper's internal _stack and
-// dismissible flag are the load-bearing state.
+// Modal helper lives in controller.js (module scope); tests reach
+// Modal._stack directly — no DOM needed.
 //
 // Catches: someone forgetting `dismissible: false` on a new decision
 // modal, breaking stack-LIFO ordering, regressions in the Escape
-// handler (which exists because the helper was originally inside the
-// CONTROLLER IIFE — see v1.0.132 commit message for the bug history).
+// handler.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -46,8 +43,8 @@ console.log('\n=== show is idempotent (render-loop callers safe) ===');
 {
   resetStack();
   Modal.show('searchModal');
-  Modal.show('searchModal');   // second call from a re-render
-  Modal.show('searchModal');   // third
+  Modal.show('searchModal');
+  Modal.show('searchModal');
   check('duplicate shows do not stack', Modal._stack.length === 1);
 }
 

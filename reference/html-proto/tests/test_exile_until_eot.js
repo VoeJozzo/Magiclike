@@ -1,6 +1,4 @@
-// exile_until_eot decomposition (Slice 3 / plan-effects-refactor §4.1):
-// the old monolithic exileUntilEOT handler is gone. Otherworldly Journey now
-// resolves as a top-level target() step plus two effects —
+// Otherworldly Journey resolves as a top-level target() step plus two effects —
 //   move_card(battlefield→exile, selector:target)
 //   schedule_delayed(when:end_step, effects:[move_card(exile→battlefield, selector:target)])
 // The end-step half re-enters the creature via placeCardOnBattlefield, which

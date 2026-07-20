@@ -3,7 +3,6 @@
 //   1. The new tplIds are in CARDS and the manifest; the old ones are gone.
 //   2. TPLID_RENAMES maps every old id to the right new id.
 //   3. The v1->v2 save migration translates every persisted tplId field.
-//   4. PICKLOG load-time translation converts old picks/offered tplIds.
 //
 // If a future Claude reverts a rename or adds a 5th legacy mismatch, this
 // test fails loudly.
@@ -66,7 +65,6 @@ console.log('\n=== v1->v2 save migration translates every PERSISTED tplId carrie
         { tplId: 'archmage', stickers: [] },
         { tplId: 'zealot', stickers: [], stapledTpls: ['merfolk', 'savannah_lions'] },
       ],
-      // The MISSED carrier (A9-1): the mid-game snapshot, carrying legacy ids.
       midGameSlotsSnapshot: [
         { tplId: 'fireImp', stickers: [] },
         { tplId: 'zealot', stickers: [], stapledTpls: ['merfolk'] },
@@ -88,15 +86,14 @@ console.log('\n=== v1->v2 save migration translates every PERSISTED tplId carrie
   check('slot[2].tplId zealot -> holy_zealot', migrated.runState.slots[2].tplId === 'holy_zealot');
   check('slot[2].stapledTpls[0] merfolk -> merfolk_looter', migrated.runState.slots[2].stapledTpls[0] === 'merfolk_looter');
   check('slot[2].stapledTpls[1] savannah_lions unchanged', migrated.runState.slots[2].stapledTpls[1] === 'savannah_lions');
-  // The core red->green: the snapshot is now migrated (was left at legacy ids,
-  // resurrecting dead tplIds on mid-game restore -> "Unknown card" -> run wipe).
+  // An unmigrated snapshot keeps legacy tplIds, which resolve to "Unknown card"
+  // on mid-game restore and wipe the run.
   check('A9-1: midGameSlotsSnapshot[0] fireImp -> cinder_sprite', migrated.runState.midGameSlotsSnapshot[0].tplId === 'cinder_sprite');
   check('A9-1: midGameSlotsSnapshot[1] zealot -> holy_zealot', migrated.runState.midGameSlotsSnapshot[1].tplId === 'holy_zealot');
   check('A9-1: snapshot stapledTpls merfolk -> merfolk_looter', migrated.runState.midGameSlotsSnapshot[1].stapledTpls[0] === 'merfolk_looter');
   check('A9-1: reward candidate replacementPack[0] fireImp -> cinder_sprite', migrated.runState.pendingReward.candidates[0].replacementPack[0] === 'cinder_sprite');
   check('A9-1: reward candidate replacementPack[1] merfolk -> merfolk_looter', migrated.runState.pendingReward.candidates[0].replacementPack[1] === 'merfolk_looter');
   check('sticker_id empower untouched (never a tplId)', migrated.runState.pendingReward.candidates[1].sticker_id === 'empower');
-  // The phantom fields the old migration renamed must NOT be fabricated.
   check('no phantom pendingNeowModifier field invented', !('pendingNeowModifier' in migrated.runState));
   check('no phantom currentPack field invented', !('currentPack' in migrated.runState));
   check('no phantom youPicks field invented', !('youPicks' in migrated.runState));
@@ -125,10 +122,10 @@ console.log('\n=== A9-1: transformPick-phase reward replacementPack (Shape B) ==
 
 console.log('\n=== no TPLID_RENAMES key is a live card id (full map) ===');
 {
-  // Audit A9-9 (parked invariant — this guard ships): picklog.js re-applies
-  // TPLID_RENAMES unconditionally on every load, so if a future card ever
-  // REUSES one of the ~250 legacy keys, its picklog rows get silently
-  // rewritten to the rename target forever. Every key must stay retired.
+  // Audit A9-9: picklog.js re-applies TPLID_RENAMES unconditionally on every
+  // load, so if a future card ever REUSES one of the ~250 legacy keys, its
+  // picklog rows get silently rewritten to the rename target forever. Every
+  // key must stay retired.
   const reused = Object.keys(TPLID_RENAMES).filter(k => CARDS[k]);
   check('every TPLID_RENAMES key is absent from CARDS',
     reused.length === 0,
@@ -145,13 +142,9 @@ console.log('\n=== A9-9 boot helper: no rename-key collisions today ===');
     clashes && clashes.length ? clashes.join(', ') : undefined);
 }
 
-// NOTE: a "PICKLOG load-time translation" section was deleted here. It seeded
-// localStorage with legacy tplIds but then never exercised PICKLOG's load path
-// (the IIFE had already cached `data` and has no public reset) — instead it
-// called renameTplId directly on its own seed data and asserted the result, i.e.
-// it re-tested renameTplId (already covered above) and asserted nothing about
-// PICKLOG. The comment admitted this. A real integration test would need a
-// PICKLOG closure reset; until then there's nothing genuine to assert.
+// NOTE: PICKLOG's IIFE caches `data` at load with no public reset, so its
+// load-time tplId translation can't be exercised without a closure reset —
+// there's nothing genuine to assert here yet.
 
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');
 process.exit(fail > 0 ? 1 : 0);

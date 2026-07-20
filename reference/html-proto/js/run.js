@@ -1,10 +1,9 @@
 // SAVE_VERSION bumps on schema change; MIGRATIONS walks old saves forward.
-// Hoisted out of the RUN IIFE so the test harness can exercise them via EXPOSED.
+// Declared at module scope, not inside the RUN IIFE, so the test harness can exercise them via EXPOSED.
 const SAVE_KEY = 'magiclike_run_v1';
 const SAVE_VERSION = 2;
 
 // tplId renames — old → new. Used by run-save migration AND picklog translation.
-// v1.0.134.16: four cards' tplIds didn't match display names from earlier renames.
 const TPLID_RENAMES = {
   "abyssLurker":         "abyss_lurker",
   "aerialManeuver":      "aerial_maneuver",
@@ -254,8 +253,6 @@ const TPLID_RENAMES = {
   "wrathOfGod":          "day_of_reckoning",
   "wurm":                "gizzard_beast",
   "zealot":              "holy_zealot",
-  // v2.2.13: Joe's RENAME-LATER flag from the Wave 2 flavor pass, resolved
-  // ("Uplifting Angel! That's the name I wanted").
   "rescue_angel":        "uplifting_angel",
 };
 function renameTplId(id) { return TPLID_RENAMES[id] || id; }
@@ -619,7 +616,6 @@ function startNextGame() {
   return { gameNum: runState.gameNum, bossName, bossIcon };
 }
 
-// Commit fork choice; validates against pendingMapChoice options.
 function pickMapNode(nodeId) {
   if (!runState || !runState.pendingMapChoice) return false;
   if (!runState.pendingMapChoice.options.includes(nodeId)) return false;
@@ -629,7 +625,6 @@ function pickMapNode(nodeId) {
   return true;
 }
 
-// Apply Innate sticker to the first slot of the chosen basic tplId.
 function pickPostDraftOffer(tplId) {
   if (!runState || !runState.pendingPostDraftOffer) return false;
   const offer = runState.pendingPostDraftOffer;
@@ -717,11 +712,10 @@ const REWARD_TYPE_WEIGHTS = {
   transform:     2,   // uncommon — opens a draft-style replacement pack
   clone:         2,   // uncommon — duplicate a slot (fresh, no stickers carry)
   threeStickersBlind: 1,  // rare — three stickers on a random creature slot,
-                          // identity not revealed at offer time. Lowered from
-                          // 2 → 1 (v1.0.46) because three stickers on a single
-                          // creature reliably produces a centerpiece threat,
-                          // and at weight 2 it was showing up often enough to
-                          // distort the run's power curve.
+                          // identity not revealed at offer time. Kept low:
+                          // at weight 2, three stickers on one creature
+                          // reliably produces a centerpiece threat that
+                          // distorts the run's power curve.
   ripUp:         1,   // rare — permanently removes a slot
   splice:        2,   // uncommon — combines two of the player's cards into
                       // one slot (Bolt + Giant Growth → 2-cost spell that
@@ -731,7 +725,7 @@ const REWARD_TYPE_WEIGHTS = {
                       // enumerates eligible pairs and picks one;
                       // canonicalSplicePair decides which half is the
                       // base); the player accepts or declines the offered
-                      // pair as-is — no pick-then-pick step (v1.0.47).
+                      // pair as-is — no pick-then-pick step.
 };
 
 // Growing Deck growth targets — the canonical classic deck shape the run
@@ -1264,13 +1258,10 @@ function applySplice(baseSlotIdx, stapleSlotIdx) {
   return true;
 }
 
-// (countEffects + remapEmpowerRollForStaple moved to module scope so both
+// (countEffects + remapEmpowerRollForStaple live at module scope so both
 //  the RUN IIFE and the ENGINE IIFE can call them — ENGINE needs them for
-//  in-game Stapler splice. The function bodies are unchanged from the
-//  original RUN-private versions.)
+//  in-game Stapler splice.)
 
-// Dismiss the reveal screen for twoStickers — closes the modal so the
-// player can advance to the next game.
 function dismissReveal() {
   if (!runState || !runState.pendingReward) return;
   if (runState.pendingReward.phase !== 'twoStickersReveal') return;
@@ -1369,8 +1360,6 @@ function appendSlot(tplId, stickers, meta) {
     if (Array.isArray(meta.stapledTpls))  newSlot.stapledTpls  = meta.stapledTpls.slice();
     if (meta.bonusTrigger)                newSlot.bonusTrigger = meta.bonusTrigger;
     if (typeof meta.charges === 'number') newSlot.charges = meta.charges;
-    // §3.8: Balancer overrides (symmetricized/colorOverride/extraCost) are gone —
-    // those cards now persist via stickers (cost_mod / set_color / stat_boost).
   }
   runState.slots.push(newSlot);
   save();

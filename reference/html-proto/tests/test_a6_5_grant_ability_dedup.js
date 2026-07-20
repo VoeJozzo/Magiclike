@@ -1,8 +1,6 @@
-// Audit A6-5 — grant_activated_ability dedup branch coverage. The id-keyed
-// guard only fires when ability_id is present; an id-less grant re-pushes on
-// recast. This characterization test PINS current behavior (id-keyed dedups;
-// id-less grows) so a future ruling/regression is visible. Pairs with A6-6
-// (deep-copy: the granted abilities must carry independent copies).
+// The id-keyed guard only fires when ability_id is present; an id-less
+// grant re-pushes on recast. This test pins that behavior so any change to
+// it is a deliberate ruling, not a silent regression.
 const setup = require('./_setup');
 setup.loadEngine();
 
@@ -29,9 +27,6 @@ console.log('\n=== A6-5: ability_id ABSENT — current behavior (no dedup) ===')
   const card = mkCard();
   applyOneStickerToRuntimeCard(card, grant(undefined));
   applyOneStickerToRuntimeCard(card, grant(undefined));
-  // CHARACTERIZATION: documents (does not bless) the untested branch. If a
-  // ruling later says id-less grants should dedup, flip this to === 1 and add
-  // the identity-based dedup fix.
   check('id-less grant re-pushes (count 2, current behavior pinned)',
     card.abilities.length === 2, 'count=' + card.abilities.length);
   check('each granted ability carries its own copied cost (not shared) [A6-6]',

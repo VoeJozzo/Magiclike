@@ -82,7 +82,6 @@ func to_string_short() -> String:
 	# Generic / colorless first (matches MTG card-text convention)
 	if pool["C"] > 0:
 		s += str(pool["C"])
-	# Colored repeated by count
 	for color in ["W", "U", "B", "R", "G"]:
 		for i in range(pool[color]):
 			s += color

@@ -1,17 +1,13 @@
-// Human-facing edict selection (GAP 2 — plan-effects-refactor.md §3.5).
-//
-// `chooses()` (Diabolic Edict / Vile Edict) used to ALWAYS auto-pick the
-// lowest-sac-value permanent, even when the player being forced to sacrifice
-// was the human — so a human edict-victim had their creature chosen for them.
-// This is the engine contract for the human prompt: when the chooser is the
-// human ('you'), resolution pauses with `pendingEdictChoice` set, the human
-// submits an `edictChoice` action, and the chosen-dependent trailing effects
+// `chooses()` (Diabolic Edict / Vile Edict): when the chooser is the human
+// ('you'), resolution pauses with `pendingEdictChoice` set, the human submits
+// an `edictChoice` action, and the chosen-dependent trailing effects
 // (sacrifice / annihilate / rip) replay against their pick.
 //
 // AI behavior must be UNCHANGED (auto-pick lowest sac-value) — selfplay is the
 // regression signal and exercises only the AI path, so this dedicated test is
-// the only coverage of the human branch. The DOM modal itself is browser-only
-// (verify in a running game); this covers the engine/decision layer.
+// the only coverage of the human branch. The battlefield-click selection
+// itself is browser-only (verify in a running game); this covers the
+// engine/decision layer.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -119,7 +115,6 @@ console.log("\n=== The human's choice is honored (not forced to the AI's lowest-
   drainStack(G);
 
   check('two creatures offered in the pool', G.pendingEdictChoice && G.pendingEdictChoice.pool.length === 2);
-  // The AI would auto-pick lowest sac-value; pick the higher-value one instead.
   const aVal = ENGINE.sacValueOnBoard(a), bVal = ENGINE.sacValueOnBoard(b);
   const higher = (aVal >= bVal) ? a : b;
   const lower  = (aVal >= bVal) ? b : a;
@@ -149,7 +144,6 @@ console.log('\n=== Legality: only in-pool iids, only the prompted player, only w
     !ENGINE.isLegalAction('opp', { type: 'edictChoice', iid: mine.iid }));
   check('edictChoice with the real iid is legal',
     ENGINE.isLegalAction('you', { type: 'edictChoice', iid: mine.iid }));
-  // Resolve it, then it should no longer be legal.
   ENGINE.executeAction('you', { type: 'edictChoice', iid: mine.iid });
   check('edictChoice illegal once no prompt is pending',
     !ENGINE.isLegalAction('you', { type: 'edictChoice', iid: mine.iid }));
@@ -184,7 +178,7 @@ if (!CARDS['blood_artist']) {
   // Human deliberately sacrifices the victim (keeping Blood Artist alive to trigger).
   check('Blood Artist + victim both offered', G.pendingEdictChoice && G.pendingEdictChoice.pool.length === 2);
   ENGINE.executeAction('you', { type: 'edictChoice', iid: victim.iid });
-  settle(G); // resolve Blood Artist's (player-controlled) death trigger
+  settle(G);
 
   check('victim sacrificed', G.you.graveyard.some(c => c.iid === victim.iid));
   // Blood Artist: "a creature dies → opp loses 1, you gain 1."
@@ -239,12 +233,11 @@ console.log('\n=== AI resolves its own pendingEdictChoice (selfplay path) → au
 
   check('prompt is open for the AI-driven seat', G.pendingEdictChoice && G.pendingEdictChoice.who === 'you');
   const bigVal = ENGINE.sacValueOnBoard(big), smallVal = ENGINE.sacValueOnBoard(small);
-  const expected = (bigVal <= smallVal) ? big : small; // AI picks lowest sac-value
+  const expected = (bigVal <= smallVal) ? big : small;
   const aiAct = AI.decide(G, 'you');
   check('AI.decide returns an edictChoice action', aiAct && aiAct.type === 'edictChoice');
   check('AI auto-picks the lowest sac-value permanent', aiAct && aiAct.iid === expected.iid,
     'picked ' + (aiAct && aiAct.iid) + ', expected ' + expected.iid);
-  // And it executes legally + leaves the higher-value creature alive.
   ENGINE.executeAction('you', aiAct);
   check('AI-chosen (lowest) creature was sacrificed', G.you.graveyard.some(c => c.iid === expected.iid));
   const survivor = (expected === big) ? small : big;
@@ -252,15 +245,10 @@ console.log('\n=== AI resolves its own pendingEdictChoice (selfplay path) → au
     G.you.battlefield.some(c => c.iid === survivor.iid));
 }
 
-// NOTE: the in-place battlefield-click selection (v2.0.53, reverted from a
-// modal) is a DOM interaction that can't be driven headlessly. It is verified
-// in-browser, not here. A prior version of this file source-grepped render.js /
-// controller.js to assert the wiring ("click routes to edictChoice", "modal show
-// is gone") — those were deleted: a grep that the source contains a substring
-// tests how the code is written, not that the click works, gives false
-// confidence, and only ever fires when someone deliberately re-does the design.
-// The engine contract above (prompt opens, human pick honored, legality, AI
-// auto-pick) is the real coverage.
+// NOTE: the in-place battlefield-click selection is a DOM interaction that
+// can't be driven headlessly. It is verified in-browser, not here. The engine
+// contract above (prompt opens, human pick honored, legality, AI auto-pick)
+// is the real coverage.
 
 console.log('\n=== TOTAL: ' + pass + ' passed, ' + fail + ' failed ===');
 process.exit(fail > 0 ? 1 : 0);

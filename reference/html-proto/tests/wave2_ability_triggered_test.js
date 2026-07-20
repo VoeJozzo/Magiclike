@@ -1,6 +1,4 @@
-// The ability_triggered event — Joe's spec, built at his direction (the
-// pre-compaction record: "we have the info we need to build this"). Semantics
-// settled by his MTG-model review:
+// ability_triggered semantics:
 //   - FIRE-TIME emission, before fizzle checks: an ability that
 //     triggers-then-fizzles-at-targeting still TRIGGERED (MTG 603). The emit
 //     site is the drainTriggers take-up point — the one seam every fired
@@ -33,8 +31,7 @@ function mk(tplId, controller) {
     grantedBy: new Map(), eotGrants: [], typeGrants: [],
   });
 }
-// A meta-listener: "whenever a triggered ability of another creature you
-// control fires, you gain 1 life." another_card keeps it off its own procs.
+// A meta-listener; another_card keeps it off its own procs.
 function mkListener(controller, condition) {
   const c = mk('grizzly_bears', controller);
   c.name = 'Meta Listener';
@@ -84,7 +81,7 @@ console.log('=== (a) KEY: a triggered ability firing wakes the meta-listener; ca
   G.you.battlefield.push(listener);
   G.opp.battlefield.push(mk('grizzly_bears', 'opp')); // ping target
   // Capture the payload through a test-registered atomic (function
-  // conditions are unsupported post-migration — JSON wire can't hold them).
+  // conditions are unsupported — JSON wire can't hold them).
   let seen = null;
   ATOMIC_PREDICATES.__test_spy = (ctx) => { if (!seen) seen = ctx.event; return false; };
   const spy = mk('grizzly_bears', 'you');

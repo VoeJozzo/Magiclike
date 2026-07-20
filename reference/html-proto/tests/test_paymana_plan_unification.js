@@ -1,35 +1,21 @@
-// Audit fix A1-2 — payer unification: ONE mana brain (Joe-approved, PR #98
-// round 4 "A1-2: Go" on the proposal: "have the smart check hand its winning
-// combination to the payer, and the payer just executes it").
-//
-// Pre-fix, affordability (canPayPotential — backtracking over choose-source
-// color assignments) and payment (payMana — greedy fixed W,U,B,R,G order via
-// tapSourceProducing, no backtracking) were two different algorithms. With
-// two partially-overlapping choose-sources the checker said "castable", the
-// greedy payer spent the wrong dual first, hit a dead end mid-payment and
-// THREW out of executeAction — half-applied state: a land wrongly tapped,
-// its mana consumed, the spell still in hand, step()/notify() never ran.
-// Post-fix, solveManaPayment computes a concrete plan (the same backtracking
-// search, now recording its solution) and payMana executes exactly that
-// plan — solve-then-execute, validated before any mutation, so payment is
-// atomic by construction. Same solver behind all three payMana call sites
-// (doCastSpell, doActivateAbility, doOptionalCost).
+// Payer unification: one solver drives both affordability and payment.
+// solveManaPayment computes a concrete plan (backtracking over choose-
+// source color assignments) and payMana executes exactly that plan,
+// validated before any mutation — payment is atomic by construction. Same
+// solver behind all three payMana call sites (doCastSpell,
+// doActivateAbility, doOptionalCost).
 //
 // Arms:
-//   1. KEY — checker-approves/greedy-fails geometry ({U}{B} cost; first dual
-//      makes U/B, second makes W/U): the cast must actually pay and land on
-//      the stack (red pre-fix: executeAction threw, dual A left tapped with
-//      its mana consumed, spell stranded in hand).
-//   2. KEY — atomic failure: a genuinely unaffordable payMana throws BEFORE
-//      touching anything — no lands tapped, pool untouched (red pre-fix:
-//      greedy tapped the dual, spent its mana, then threw).
-//   3. Guard — floating pool is still spent before sources are tapped, and
-//      a fixed source is still preferred over a flexible one (green pre-
-//      and post-fix; pins that the plan keeps the old payer's preferences).
-//   4. KEY — the optional-cost call site (doOptionalCost) pays through the
-//      same solver: a Land+Spell staple ETB with the arm-1 geometry pays
-//      and resolves (red pre-fix: payMana threw mid-optional-cost and the
-//      trigger was irrecoverably lost).
+//   1. KEY — checker-approves geometry ({U}{B} cost; first dual makes
+//      U/B, second makes W/U): the cast must actually pay and land on
+//      the stack.
+//   2. KEY — atomic failure: a genuinely unaffordable payMana throws
+//      BEFORE touching anything — no lands tapped, pool untouched.
+//   3. Guard — floating pool is spent before sources are tapped, and a
+//      fixed source is preferred over a flexible one for the same color.
+//   4. KEY — the optional-cost call site (doOptionalCost) pays through
+//      the same solver: a Land+Spell staple ETB with the arm-1 geometry
+//      pays and resolves.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -53,9 +39,9 @@ function newGame() {
 }
 const poolTotal = (m) => (m.W||0)+(m.U||0)+(m.B||0)+(m.R||0)+(m.G||0)+(m.C||0);
 
-// Two partial-overlap choose-duals (the A1-2 repro geometry, built the
-// reachable-today way: land_color_* stickers). landA: Island + B sticker →
-// choose ['U','B']; landB: Plains + U sticker → choose ['W','U'].
+// Two partial-overlap choose-duals via land_color_* stickers. landA: Island
+// + B sticker → choose ['U','B']; landB: Plains + U sticker → choose
+// ['W','U'].
 function makeDuals(G) {
   const landA = ENGINE.makeCard('island', 'you', null);
   applyOneStickerToRuntimeCard(landA, 'land_color_b');
@@ -65,8 +51,8 @@ function makeDuals(G) {
   return { landA, landB };
 }
 
-// No {U}{B}-cost card exists in the pool today; fabricate a minimal
-// untargeted sorcery (the mismatch is about the mana layer, not any card).
+// No {U}{B}-cost card exists in the pool; fabricate a minimal untargeted
+// sorcery (the mismatch is about the mana layer, not any card).
 const UB_TPL = { card_id: '__a12_ub', name: 'A12 Repro UB', types: ['Sorcery'],
   cost: { U: 1, B: 1 }, effects: [{ kind: 'gain_life', amount: 5 }] };
 ingestCard(UB_TPL);                 // card_id → tplId
@@ -79,7 +65,7 @@ CARDS[B2_TPL.tplId] = B2_TPL;
 console.log('=== 1. KEY: the payer executes the solution the checker found ===');
 (() => {
   // 1a. Direct payment: payMana alone (no settle loop) must solve the
-  // overlap — A pays {B}, B pays {U} — where the greedy payer dead-ended.
+  // overlap — A pays {B}, B pays {U}.
   const G = newGame();
   const { landA, landB } = makeDuals(G);
   let threw = null;
@@ -93,9 +79,9 @@ console.log('=== 1. KEY: the payer executes the solution the checker found ===')
     JSON.stringify(G.you.mana));
 
   // 1b. End to end through the public API: the checker-approved cast must
-  // actually happen (pre-fix: executeAction threw, spell stranded in hand).
-  // The settle loop resolves the stack and rolls the turn, so the durable
-  // proof of "payment + resolution fully happened" is the life delta.
+  // actually happen. The settle loop resolves the stack and rolls the turn,
+  // so the durable proof of "payment + resolution fully happened" is the
+  // life delta.
   const G2 = newGame();
   makeDuals(G2);
   const card = ENGINE.makeCard(UB_TPL.tplId, null, null);

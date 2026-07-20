@@ -1,6 +1,5 @@
 extends Control
 
-# game_board — top-level UI for the Phase 1 Lightning Bolt slice.
 # Programmatic UI in _ready; .tscn is just an empty Control. Subscribes to RulesEngine.state_changed.
 
 var _card_manager: CardManager
@@ -29,10 +28,10 @@ var _iid_to_visual: Dictionary = {}
 # Targeting + block-declaration mode state.
 var _pending_cast_iid: int = -1
 var _pending_target_filter: String = ""
-# Phase 5c UI polish (per playtest #1): the auto-tap plan computed when
-# the player clicked a spell. Lands aren't actually tapped until the
-# cast commits (target picked, action dispatched). If the player cancels
-# targeting, this is discarded and the lands stay untapped.
+# The auto-tap plan computed when the player clicked a spell. Lands aren't
+# actually tapped until the cast commits (target picked, action dispatched).
+# If the player cancels targeting, this is discarded and the lands stay
+# untapped.
 var _pending_cast_tap_plan: Array = []
 
 # Block-declaration mode. When non-null, the player has clicked one of their
@@ -44,24 +43,22 @@ var _pending_block_blocker_iid: int = -1
 # blocks are declared as a single turn-based action before priority opens for
 # response casting. To preserve that structure, we make the player explicitly
 # "Confirm blocks" before allowing them to cast Giant Growth or other instants
-# during defender's combat. This way the attacker (in Phase 5+ when AI exists)
-# reacts to a fully-known set of blocks.
+# during defender's combat. This way the attacker reacts to a fully-known set
+# of blocks.
 # Only relevant when active_player == "opp" and phase == COMBAT_BLOCK; reset
 # automatically when leaving that state.
 #
-# Phase 5c UI polish (strict ordering): now derived from engine state
-# (`state.awaiting_block_declaration`) instead of a separate local flag.
-# Defender-confirming fires KIND_CONFIRM_BLOCKS, which clears the engine
-# flag — the UI just reads back. This getter keeps existing call sites
-# working without refactoring every reference.
+# Derived from engine state (`state.awaiting_block_declaration`). Defender-
+# confirming fires KIND_CONFIRM_BLOCKS, which clears the engine flag — the
+# UI just reads back.
 func _is_awaiting_blocks() -> bool:
 	var s: EngineState = RulesEngine.state()
 	return s != null and s.awaiting_block_declaration
 
-# Phase 4.5b: tracks whether we're in the trigger target picker UI mode.
-# Driven by state.awaiting_target_for_trigger; toggling is automatic in
-# _refresh_ui. When true, panel clicks issue KIND_PICK_TRIGGER_TARGET
-# instead of falling through to the spell-target path.
+# Tracks whether we're in the trigger target picker UI mode. Driven by
+# state.awaiting_target_for_trigger; toggling is automatic in _refresh_ui.
+# When true, panel clicks issue KIND_PICK_TRIGGER_TARGET instead of
+# falling through to the spell-target path.
 var _picking_trigger_target: bool = false
 
 # MTG 514.3 cleanup-step discard picker mode. Derived from
@@ -81,15 +78,14 @@ var _engine_log_seen: int = 0
 func _ready() -> void:
 	_build_ui()
 	_connect_engine_signals()
-	# Phase 5c UI polish: capture global keystrokes for pass-priority
-	# (Enter/Space) and cancel-targeting (Escape).
+	# Capture global keystrokes for pass-priority (Enter/Space) and
+	# cancel-targeting (Escape).
 	set_process_unhandled_input(true)
-	# Boot the engine and spawn initial visuals.
-	# Phase 5c: AI vs AI with a multi-color showcase deck so a manual playtest
-	# can see Counterspell, Healing Salve, and every Phase 5a keyword card in
-	# one session. Opp's turn is driven by AI.decide; player still drives
-	# their own via UI. (Switch back to init_phase4_5_demo if you want the
-	# tight R/G mirror without the keyword zoo.)
+	# AI vs AI with a multi-color showcase deck so a manual playtest can see
+	# Counterspell, Healing Salve, and every keyword card in one session.
+	# Opp's turn is driven by AI.decide; player still drives their own via
+	# UI. (Switch back to init_phase4_5_demo for the tight R/G mirror
+	# without the keyword zoo.)
 	RulesEngine.init_phase5_demo()
 	_spawn_initial_visuals()
 	_refresh_ui()
@@ -125,11 +121,10 @@ func _build_ui() -> void:
 	# Layout: opp at top, you at bottom; each side has hand, battlefield, library, graveyard.
 	# Window is 1920x1080.
 
-	# Opponent row (top). Battlefield grew taller in Phase 5c UI polish so
-	# creatures and lands get separate rows. Opp's battlefield flips
-	# creatures_on_top=false so opp's creatures sit at the BOTTOM of their
-	# zone (closer to combat center) and opp's lands push to the top.
-	# Library moved to X=340 to clear the player panel at (40, 40, w=280).
+	# Opponent row (top). Opp's battlefield flips creatures_on_top=false so
+	# opp's creatures sit at the BOTTOM of their zone (closer to combat
+	# center) and opp's lands push to the top. Library moved to X=340 to
+	# clear the player panel at (40, 40, w=280).
 	_opp_library = _make_pile("OppLibrary", Vector2(340, 40), false)
 	_opp_battlefield = _make_battlefield("OppBattlefield", Vector2(560, 120), false)
 	_opp_battlefield.player_key = "opp"
@@ -206,10 +201,9 @@ func _build_ui() -> void:
 	_action_button.text = "Pass priority"
 	_action_button.position = Vector2(40, 930)
 	_action_button.size = Vector2(180, 40)
-	# Phase 5c UI polish: disable keyboard focus so Space/Enter only fire
-	# the global keybind path (game_board._unhandled_input) once. Previously
-	# the button could grab focus from a click and then process ui_accept
-	# in addition to our global handler, advancing two phases per press.
+	# Disable keyboard focus so Space/Enter only fire the global keybind path
+	# (game_board._unhandled_input) once — a focused button would also
+	# process ui_accept itself, advancing two phases per press.
 	_action_button.focus_mode = Control.FOCUS_NONE
 	_action_button.pressed.connect(_on_pass_pressed)
 	add_child(_action_button)
@@ -308,7 +302,6 @@ func _on_state_changed() -> void:
 
 func _refresh_ui() -> void:
 	var s: EngineState = RulesEngine.state()
-	# Phase 4.5b: enter / exit trigger-target picker mode based on engine state.
 	var was_picking := _picking_trigger_target
 	_picking_trigger_target = not s.awaiting_target_for_trigger.is_empty()
 	if _picking_trigger_target and not was_picking:
@@ -321,9 +314,9 @@ func _refresh_ui() -> void:
 	# Player panels
 	_you_panel.update_from_player(s.you)
 	_opp_panel.update_from_player(s.opp)
-	# Phase label. Phase 5c UI polish: priority_player() can return null when
-	# priority is intentionally closed (awaiting block declaration during
-	# COMBAT_BLOCK). Surface that to the player instead of crashing.
+	# Phase label. priority_player() can return null when priority is
+	# intentionally closed (awaiting block declaration during COMBAT_BLOCK).
+	# Surface that to the player instead of crashing.
 	var priority_name: String
 	var pp: Player = s.priority_player()
 	if pp == null:
@@ -353,7 +346,6 @@ func _refresh_ui() -> void:
 		_engine_log_seen += 1
 
 
-# Phase-aware action-button label; targeting/block-mode overrides; stack-non-empty → Resolve.
 func _update_action_button(s: EngineState) -> void:
 	if _picking_discard:
 		var n: int = int(s.awaiting_discard.get("count_remaining", 0))
@@ -407,10 +399,10 @@ func _refresh_stack_display(s: EngineState) -> void:
 		empty.add_theme_color_override("font_color", Color(0.5, 0.5, 0.6))
 		_stack_display.add_child(empty)
 		return
-	# Top of stack at top of display (LIFO visual). Phase 5c UI polish (#6):
-	# stack entries are now Buttons so the player can click them when in
-	# "target a spell" mode (Counterspell). Buttons are visually clear when
-	# the picker is active (highlighted) so the player knows what to click.
+	# Top of stack at top of display (LIFO visual). Stack entries are
+	# Buttons so the player can click them when in "target a spell" mode
+	# (Counterspell). Buttons are visually clear when the picker is active
+	# (highlighted) so the player knows what to click.
 	var entries := s.stack.entries.duplicate()
 	entries.reverse()
 	var picking_spell_target: bool = _pending_cast_iid != -1 and _pending_target_filter == "spell"
@@ -449,9 +441,6 @@ func _refresh_stack_display(s: EngineState) -> void:
 		_stack_display.add_child(btn)
 
 
-# Phase 5c UI polish (#6): handler for clicks on a stack entry when the
-# player is choosing a spell to counter. Commits the deferred auto-tap
-# plan and dispatches the cast.
 func _on_stack_entry_clicked(stack_iid: int) -> void:
 	if _pending_cast_iid == -1:
 		return
@@ -467,8 +456,6 @@ func _on_stack_entry_clicked(stack_iid: int) -> void:
 	_exit_targeting_mode()
 
 
-# Pull oracle text off the source CardResource for a trigger entry, with a
-# fallback that names the triggered-ability event so the line isn't empty.
 func _trigger_oracle_text(entry: Dictionary) -> String:
 	var iid: int = entry.get("source_iid", -1)
 	var s: EngineState = RulesEngine.state()
@@ -480,9 +467,8 @@ func _trigger_oracle_text(entry: Dictionary) -> String:
 	return "(triggered ability)"
 
 
-# Pull oracle text for a spell on the stack via its iid. Spell sources may be
-# held in the engine's _stack_held_cards (not in any zone), so we use the
-# engine's own find_anywhere helper indirectly via _iid_to_visual.
+# Spell sources on the stack may be held in the engine's _stack_held_cards
+# buffer rather than any zone; look up the cached visual via _iid_to_visual.
 func _spell_oracle_text(iid: int) -> String:
 	if _iid_to_visual.has(iid):
 		var visual: Card = _iid_to_visual[iid]
@@ -515,7 +501,6 @@ func _format_targets_for_log(targets: Array) -> String:
 
 
 func _sync_card_visuals(s: EngineState) -> void:
-	# Place each tracked visual in its current zone. Stack visuals cascade off anchor.
 	for iid in _iid_to_visual.keys():
 		var visual: Card = _iid_to_visual[iid]
 		var found = s.find_instance(iid)
@@ -544,10 +529,6 @@ func _sync_card_visuals(s: EngineState) -> void:
 			if visual != null and visual.has_method("apply_creature_state"):
 				visual.apply_creature_state(c)
 	_apply_combat_highlights(s)
-	# Phase 5c UI polish: green glow on cards that are legal to act on
-	# right now (castable spells, playable lands, mana-tappable lands,
-	# attackable creatures, blockable creatures). Walks the priority
-	# player's hand + battlefield against get_legal_actions().
 	_apply_legality_glows(s)
 
 
@@ -577,8 +558,7 @@ func _apply_combat_highlights(s: EngineState) -> void:
 			visual.set_combat_highlight(state_name)
 
 
-# Phase 5c UI polish: edge glow on cards that are legal actions right now.
-# Has two modes:
+# Edge glow on cards that are legal actions right now. Has two modes:
 #   - Default: green on every "you"-side card whose iid appears in
 #     get_legal_actions("you"). Covers castable spells, playable lands,
 #     tappable mana abilities, declarable attackers, declarable blockers.
@@ -602,9 +582,9 @@ func _apply_legality_glows(s: EngineState) -> void:
 			var iid: int = int(action.get("source_iid", -1))
 			if iid != -1:
 				glow_state[iid] = "playable"
-		# Phase 5c UI polish (per playtest #2): also glow hand cards that
-		# would be castable AFTER auto-tap. Player shouldn't have to
-		# manually tap lands to see what they can cast.
+		# Also glow hand cards that would be castable AFTER auto-tap.
+		# Player shouldn't have to manually tap lands to see what they
+		# can cast.
 		for card in s.you.hand:
 			if card.template == null:
 				continue
@@ -622,9 +602,9 @@ func _apply_legality_glows(s: EngineState) -> void:
 		visual.set_legality_glow(glow_state.get(iid, "none"))
 
 
-# Phase 5c UI polish: walk the current state and add every iid that's a
-# legal target under the given filter. Used by both the spell-cast target
-# picker and the trigger target picker.
+# Walk the current state and add every iid that's a legal target under the
+# given filter. Used by both the spell-cast target picker and the trigger
+# target picker.
 func _collect_legal_target_iids(s: EngineState, filter: String, out: Dictionary) -> void:
 	# "spell" filter (Counterspell): glow legal spell entries on the stack.
 	# Their visuals sit at the stack anchor and get the same gold-target
@@ -685,13 +665,12 @@ func _on_your_battlefield_card_pressed(visual: Card) -> void:
 	if iid == -1:
 		return
 
-	# Phase 4.5b: trigger target picker. Creatures on either battlefield are
-	# legal under creature_or_player / creature filters.
+	# Trigger target picker. Creatures on either battlefield are legal under
+	# creature_or_player / creature filters.
 	if _picking_trigger_target:
 		_try_pick_creature_as_trigger_target(iid)
 		return
 
-	# Targeting mode: clicks on creatures may set the spell's target.
 	if _pending_cast_iid != -1:
 		if _is_valid_creature_target(iid):
 			_execute_pending_cast_with_target({"kind": "creature", "iid": iid})
@@ -705,9 +684,9 @@ func _on_your_battlefield_card_pressed(visual: Card) -> void:
 	# Only return if the click was actually consumed by block-selection logic;
 	# otherwise fall through (e.g., clicking a Land should still tap for mana).
 	if phase == PhaseMachine.Phase.COMBAT_BLOCK and s.active_player_key == "opp":
-		# Phase 5c UI polish: clicking a creature that's already blocking
-		# un-declares it (lets the player change their mind before
-		# committing). Only allowed pre-commit.
+		# Clicking a creature that's already blocking un-declares it
+		# (lets the player change their mind before committing). Only
+		# allowed pre-commit.
 		if s.blockers.has(iid) and _is_awaiting_blocks():
 			var undo := Action.make_undeclare_blocker(iid)
 			if RulesEngine.is_legal_action(undo):
@@ -724,10 +703,7 @@ func _on_your_battlefield_card_pressed(visual: Card) -> void:
 			_refresh_ui()
 			return
 
-	# Active player's COMBAT_ATTACK: click your creature to declare attacker,
-	# OR un-declare it if it's already attacking.
 	if phase == PhaseMachine.Phase.COMBAT_ATTACK and s.active_player_key == "you":
-		# Phase 5c UI polish: clicking an attacking creature un-declares it.
 		if iid in s.attackers:
 			var undo := Action.make_undeclare_attacker(iid)
 			if RulesEngine.is_legal_action(undo):
@@ -738,7 +714,6 @@ func _on_your_battlefield_card_pressed(visual: Card) -> void:
 			RulesEngine.execute_action(attack)
 			return
 
-	# Default: activate ability (tap land for mana).
 	var action := Action.make_tap_land_for_mana(iid)
 	if RulesEngine.is_legal_action(action):
 		RulesEngine.execute_action(action)
@@ -749,18 +724,16 @@ func _on_opp_battlefield_card_pressed(visual: Card) -> void:
 	if iid == -1:
 		return
 
-	# Phase 4.5b: trigger target picker — same rule, either side legal.
+	# Trigger target picker — same rule, either side legal.
 	if _picking_trigger_target:
 		_try_pick_creature_as_trigger_target(iid)
 		return
 
-	# Targeting mode: this opp creature could be the target.
 	if _pending_cast_iid != -1:
 		if _is_valid_creature_target(iid):
 			_execute_pending_cast_with_target({"kind": "creature", "iid": iid})
 		return
 
-	# Block declaration: blocker selected + opp creature is attacker → finalize.
 	var s: EngineState = RulesEngine.state()
 	if _pending_block_blocker_iid != -1 \
 			and s.phase_machine.current == PhaseMachine.Phase.COMBAT_BLOCK \
@@ -773,7 +746,6 @@ func _on_opp_battlefield_card_pressed(visual: Card) -> void:
 		_refresh_ui()
 
 
-# Phase 3 filters: "any"|"creature".
 func _is_valid_creature_target(iid: int) -> bool:
 	if _pending_target_filter != "any" and _pending_target_filter != "creature":
 		return false
@@ -786,9 +758,8 @@ func _is_valid_creature_target(iid: int) -> bool:
 	return found.card.template is CreatureResource
 
 
-# Execute a cast with the given target. Used by both panel clicks (player
-# targets) and battlefield clicks (creature targets). Commits the deferred
-# auto-tap plan first, then dispatches the cast.
+# Used by both panel clicks (player targets) and battlefield clicks
+# (creature targets).
 func _execute_pending_cast_with_target(target: Dictionary) -> void:
 	var iid := _pending_cast_iid
 	var plan := _pending_cast_tap_plan
@@ -805,11 +776,11 @@ func _execute_pending_cast_with_target(target: Dictionary) -> void:
 	_exit_targeting_mode()
 
 
-# Phase 5c UI polish (per playtest #1): atomically tap the planned lands
-# and dispatch the cast. If the cast is rejected, this is the LAST step
-# before any state changes, so reverting taps is unnecessary (we'd never
-# get here if the cast would fail — pre-checks already ran). But if the
-# cast somehow fails post-tap, log it and let the player retry.
+# Atomically tap the planned lands and dispatch the cast. If the cast is
+# rejected, this is the LAST step before any state changes, so reverting
+# taps is unnecessary (we'd never get here if the cast would fail —
+# pre-checks already ran). But if the cast somehow fails post-tap, log it
+# and let the player retry.
 func _commit_taps_and_cast(spell_iid: int, targets: Array, lands_to_tap: Array) -> bool:
 	# Tap planned lands first (each is a normal mana ability).
 	for land in lands_to_tap:
@@ -835,8 +806,8 @@ func _commit_taps_and_cast(spell_iid: int, targets: Array, lands_to_tap: Array) 
 
 # Hand cards don't go through CardContainer.on_card_pressed cleanly because
 # Hand's drag system intercepts. We hook gui_input on each spawned hand card.
-# Phase 5c UI polish: this handler logs every reason it bails, so when a
-# click "does nothing" the player can see why in the log.
+# This handler logs every reason it bails, so when a click "does nothing"
+# the player can see why in the log.
 func _on_hand_card_gui_input(event: InputEvent, visual: Card) -> void:
 	if not (event is InputEventMouseButton):
 		return
@@ -883,7 +854,6 @@ func _on_hand_card_gui_input(event: InputEvent, visual: Card) -> void:
 	if _pending_cast_iid != -1:
 		_log_local("[color=#888]Already picking a target — click a creature/player, or press Cancel.[/color]")
 		return
-	# If we're awaiting a trigger target, hand clicks are also ignored.
 	if _picking_trigger_target:
 		_log_local("[color=#888]Pick a target for the pending trigger first.[/color]")
 		return
@@ -906,25 +876,25 @@ func _on_hand_card_gui_input(event: InputEvent, visual: Card) -> void:
 		return
 
 	# Defender's COMBAT_BLOCK: must commit blocks before casting spells.
-	# Engine now enforces this via priority_player_key = "" while awaiting,
-	# but we keep a friendly log message so the player knows why their click
+	# Engine enforces this via priority_player_key = "" while awaiting, but
+	# we keep a friendly log message so the player knows why their click
 	# didn't enter targeting mode.
 	if _is_awaiting_blocks():
 		_log_local("[color=#ffd866]Confirm blocks before casting spells.[/color]")
 		return
 
-	# Phase 5c UI polish (per playtest #1): check phase/priority/stack
-	# legality BEFORE attempting auto-tap. Otherwise clicking a sorcery
-	# during your upkeep would tap lands needlessly before bailing.
+	# Check phase/priority/stack legality BEFORE attempting auto-tap.
+	# Otherwise clicking a sorcery during your upkeep would tap lands
+	# needlessly before bailing.
 	var ctrl: Player = found.controller
 	var reason: String = _diagnose_cast_failure(card, s)
 	if reason != "":
 		_log_local("[color=#ff8888]Can't cast %s — %s[/color]" % [card.name(), reason])
 		return
 
-	# Phase 5c UI polish (per playtest #1): plan auto-tap but defer the
-	# actual tap to the moment the cast commits. For targeted spells this
-	# means we don't tap lands until the player picks a target.
+	# Plan auto-tap but defer the actual tap to the moment the cast commits.
+	# For targeted spells this means we don't tap lands until the player
+	# picks a target.
 	var lands_to_tap: Array = []
 	if not ctrl.mana.can_pay(card.template.mana_cost):
 		lands_to_tap = _plan_lands_to_tap(ctrl, card.template.mana_cost)
@@ -936,9 +906,9 @@ func _on_hand_card_gui_input(event: InputEvent, visual: Card) -> void:
 			])
 			return
 
-	# Targeted spells enter targeting mode (now including "spell" filter
-	# which routes clicks through the clickable stack panel — see #6).
-	# Untargeted ones tap + cast atomically right here.
+	# Targeted spells enter targeting mode ("spell" filter routes clicks
+	# through the clickable stack panel). Untargeted ones tap + cast
+	# atomically right here.
 	if card.template is SpellResource and card.template.requires_target:
 		# Filter "spell" still needs SOMETHING on the stack to target —
 		# bail early with a clear message if the stack is empty.
@@ -951,14 +921,13 @@ func _on_hand_card_gui_input(event: InputEvent, visual: Card) -> void:
 		_pending_cast_tap_plan = lands_to_tap
 		_enter_targeting_mode(iid, card.template.target_filter)
 	else:
-		# Untargeted spell — commit the auto-tap now and cast.
 		_commit_taps_and_cast(iid, [], lands_to_tap)
 
 
-# Phase 5c UI polish: returns true if the player could cast this hand card
-# right now, given that auto-tap would handle mana. Mirrors the cast-time
-# logic in _on_hand_card_gui_input. Lands are not "casts" — they're played
-# directly; play_land legality already shows up in get_legal_actions.
+# Returns true if the player could cast this hand card right now, given
+# that auto-tap would handle mana. Mirrors the cast-time logic in
+# _on_hand_card_gui_input. Lands are not "casts" — they're played directly;
+# play_land legality already shows up in get_legal_actions.
 func _can_potentially_cast(card: CardInstance, s: EngineState) -> bool:
 	if card.is_land():
 		return false  # lands go through play_land, not cast
@@ -990,29 +959,25 @@ func _can_potentially_cast(card: CardInstance, s: EngineState) -> bool:
 		# Other filters: we don't pre-validate target existence (a creature
 		# might exist by cast time; player gets the glow as a hint that the
 		# spell is otherwise legal).
-	# Mana: current pool can pay OR auto-tap plan covers it.
 	if s.you.mana.can_pay(card.template.mana_cost):
 		return true
 	return not _plan_lands_to_tap(s.you, card.template.mana_cost).is_empty()
 
 
-# Phase 5c UI polish: plan a set of untapped lands to tap to cover `cost`,
-# accounting for mana already in the pool. Returns the list of lands (in
-# tap order) or an empty Array if the cost can't be paid even with full
-# tap-out.
+# Plan a set of untapped lands to tap to cover `cost`, accounting for mana
+# already in the pool. Returns the list of lands (in tap order) or an empty
+# Array if the cost can't be paid even with full tap-out.
 #
 # Algorithm: colored pips first (each requires a land producing that
 # color), then generic pips (any remaining untapped land). Greedy —
-# doesn't backtrack. Works correctly for single-color basic lands; will
-# need extension when multi-color lands enter the pool (e.g., dual lands,
-# City of Brass).
+# doesn't backtrack, and assumes each land makes one color; will need
+# extension for multi-color lands (dual lands, City of Brass).
 func _plan_lands_to_tap(controller: Player, cost: Dictionary) -> Array:
 	# Pool already has some mana — only need to make up the difference.
 	var still_needed: Dictionary = {}
 	for color in ["W", "U", "B", "R", "G", "C"]:
 		var c: int = int(cost.get(color, 0)) - int(controller.mana.pool.get(color, 0))
 		still_needed[color] = max(0, c)
-	# Available untapped lands.
 	var available: Array = []
 	for card in controller.battlefield:
 		if card.tapped:
@@ -1023,8 +988,7 @@ func _plan_lands_to_tap(controller: Player, cost: Dictionary) -> Array:
 			continue
 		available.append(card)
 	var planned: Array = []
-	# Pass 1: colored requirements. For each color we still need, find a
-	# land producing that color.
+	# Pass 1: colored requirements.
 	for color in ["W", "U", "B", "R", "G"]:
 		var count: int = still_needed.get(color, 0)
 		for i in range(count):
@@ -1033,8 +997,7 @@ func _plan_lands_to_tap(controller: Player, cost: Dictionary) -> Array:
 				return []  # Can't satisfy this color
 			planned.append(land)
 			available.erase(land)
-	# Pass 2: generic. Any remaining untapped land works. Mana in pool of
-	# any color can also pay generic, so let can_pay decide after taps.
+	# Pass 2: generic. Any remaining untapped land works.
 	var generic_needed: int = still_needed.get("C", 0)
 	# Generic can be paid by extra colored mana already in pool too —
 	# count how much surplus we have after colored requirements.
@@ -1057,12 +1020,12 @@ func _find_land_producing(available: Array, color: String) -> CardInstance:
 	return null
 
 
-# Phase 5c UI polish: pick the "top of stack" spell entry to target with
-# Counterspell. Prefers opponent's spells (the usual counter target);
-# falls back to top-of-stack regardless of controller if there's no opp
-# spell on the stack (unlikely but handles "counter your own spell" cases
-# like saving stack-slot for the opp). Returns a {kind: "stack", iid}
-# target dict or {} if no spell entries exist.
+# Pick the "top of stack" spell entry to target with Counterspell. Prefers
+# opponent's spells (the usual counter target); falls back to top-of-stack
+# regardless of controller if there's no opp spell on the stack (unlikely
+# but handles "counter your own spell" cases like saving stack-slot for the
+# opp). Returns a {kind: "stack", iid} target dict or {} if no spell
+# entries exist.
 func _top_targetable_spell(s: EngineState, caster_key: String) -> Dictionary:
 	# Walk stack top-to-bottom, prefer opp's spells first.
 	var entries: Array = s.stack.entries
@@ -1078,8 +1041,8 @@ func _top_targetable_spell(s: EngineState, caster_key: String) -> Dictionary:
 	return {}
 
 
-# Phase 5c UI polish: when a cast is rejected by is_legal_action, produce a
-# specific reason string so the player isn't left guessing.
+# When a cast is rejected by is_legal_action, produce a specific reason
+# string so the player isn't left guessing.
 func _diagnose_cast_failure(card: CardInstance, s: EngineState) -> String:
 	if s.winner != "":
 		return "game is over"
@@ -1099,7 +1062,7 @@ func _diagnose_cast_failure(card: CardInstance, s: EngineState) -> String:
 
 
 func _on_panel_clicked(panel_key: String) -> void:
-	# Phase 4.5b: trigger target picker takes precedence over spell-cast targeting.
+	# Trigger target picker takes precedence over spell-cast targeting.
 	if _picking_trigger_target:
 		var s: EngineState = RulesEngine.state()
 		var filter: String = s.awaiting_target_for_trigger.get("filter", "")
@@ -1117,9 +1080,8 @@ func _on_panel_clicked(panel_key: String) -> void:
 
 
 func _on_pass_pressed() -> void:
-	# Cancel targeting if active. Phase 5c UI polish (per playtest #1):
-	# discard the deferred auto-tap plan so the player's lands stay
-	# untapped when they bail on a cast.
+	# Cancel targeting if active. Discard the deferred auto-tap plan so the
+	# player's lands stay untapped when they bail on a cast.
 	if _pending_cast_iid != -1:
 		_pending_cast_iid = -1
 		_pending_target_filter = ""
@@ -1154,11 +1116,10 @@ func _enter_targeting_mode(spell_iid: int, target_filter: String) -> void:
 	_opp_panel.is_clickable = allows_player
 	_action_button.text = "Cancel target"
 	_log_local("[color=#ffd866]Pick a target...[/color]")
-	# Phase 5c UI polish (per playtest #2): refresh UI so the legality
-	# glow swaps from "castable cards" to "legal targets" immediately.
-	# Without this, the glow stayed in its previous state until the next
-	# engine state_changed signal — which wouldn't fire just from
-	# entering targeting mode.
+	# Refresh UI so the legality glow swaps from "castable cards" to "legal
+	# targets" immediately. Without this call the glow would stay in its
+	# previous state until the next engine state_changed signal, which
+	# doesn't fire just from entering targeting mode.
 	_refresh_ui()
 
 
@@ -1170,7 +1131,7 @@ func _exit_targeting_mode() -> void:
 	_refresh_ui()
 
 
-# ─── Trigger target picker (Phase 4.5b) ────────────────────────────────────
+# ─── Trigger target picker ─────────────────────────────────────────────────
 
 func _enter_trigger_target_mode(meta: Dictionary) -> void:
 	# Both panels become clickable for filters that allow player targets.
@@ -1210,7 +1171,7 @@ func _try_pick_creature_as_trigger_target(iid: int) -> void:
 		_log_local("[color=#88dd88]Trigger targets %s[/color]" % found.card.name())
 
 
-# ─── Global keybinds (Phase 5c UI polish) ──────────────────────────────────
+# ─── Global keybinds ───────────────────────────────────────────────────────
 # Routes Enter/Space to the action button (typically "Pass priority") and
 # Escape to "cancel targeting / cancel block" so the player isn't stuck
 # hunting for the cancel button. Triggers the same code path as clicking
@@ -1247,9 +1208,6 @@ func _unhandled_input(event: InputEvent) -> void:
 
 # ─── Card focus (right-click inspect) ─────────────────────────────────────
 
-# Right-click on a card: focus it. Right-click on the already-focused card
-# dismisses. Right-click on a different card switches focus. Touch / mobile
-# would use long-press for the same gesture (BACKLOG when we port).
 func _toggle_focus(visual: Card) -> void:
 	if _focused_card == visual:
 		_dismiss_focus()

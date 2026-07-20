@@ -1,9 +1,8 @@
 class_name AI
 extends RefCounted
 
-# AI entry point. Pure: reads state, returns one action descriptor. Engine consumes via execute_action.
-# Ported from reference/html-proto/js/ai.js::decide. Order: trigger target, block, attack,
-# instant-speed response, main, pass.
+# AI entry point. Pure: reads state, returns one action descriptor; engine consumes via execute_action.
+# Mirrors reference/html-proto/js/ai.js::decide.
 
 static func decide(state: EngineState, player_key: String) -> Dictionary:
 	if state == null or state.winner != "":
@@ -68,9 +67,8 @@ static func _decide_trigger_target(state: EngineState, player_key: String) -> Di
 
 
 # ─── Cleanup-step discard ─────────────────────────────────────────────────
-# Pick the lowest-value card in hand by AIScoring.card_value. Ties go to the
-# first one encountered. Lands tend to score low so a flooded AI dumps them
-# first, which is the right call in most mana-screw-then-stabilize scenarios.
+# Lands tend to score low, so a flooded AI discards them first — the right
+# call in most mana-screw-then-stabilize scenarios.
 static func _decide_discard(state: EngineState, player_key: String) -> Dictionary:
 	var p: Player = state.player_by_key(player_key)
 	if p.hand.is_empty():
@@ -107,7 +105,6 @@ static func _next_block_action(state: EngineState, defender_key: String) -> Dict
 
 
 # ─── Instant-speed response ───────────────────────────────────────────────
-# Counterspell opp's spell, or Giant Growth one of ours that's being targeted.
 static func _decide_instant_response(state: EngineState, player_key: String) -> Dictionary:
 	var top = state.stack.top()
 	if top == null:
@@ -169,7 +166,6 @@ static func _find_mana_tap_for(state: EngineState, player_key: String, color: St
 
 
 # ─── Main phase ───────────────────────────────────────────────────────────
-# Greedy curve-up: land first, then highest-cost castable spell, then tap if any uncast spell.
 static func _decide_main(state: EngineState, player_key: String) -> Dictionary:
 	var p: Player = state.player_by_key(player_key)
 	if not p.land_played_this_turn:
@@ -212,7 +208,6 @@ static func _best_castable_spell(state: EngineState, player_key: String) -> Card
 	return best
 
 
-# Greedy: opp face for any-target spells, highest-value opp creature for creature-only.
 static func _pick_spell_target(state: EngineState, player_key: String, card: CardInstance) -> Dictionary:
 	if not (card.template is SpellResource):
 		return {}

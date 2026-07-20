@@ -1,7 +1,4 @@
-// decideMain sequences by play VALUE, not raw mana cost (AI quality fix).
-// Previously the AI cast its highest-COST castable spell first, so an expensive
-// vanilla body would go ahead of a cheap, high-impact removal spell. Now it
-// ranks by a cross-card play value, so removal-on-a-real-threat beats filler.
+// decideMain sequences by play VALUE, not raw mana cost.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -32,7 +29,6 @@ function readyForCast(G, who) {
   setup.startMainPhase(who);
   G[who].mana = { W: 9, U: 9, B: 9, R: 9, G: 9, C: 9 };
 }
-// A vanilla creature (no triggers/abilities) — the "filler" body.
 const VANILLA = (() => {
   for (const [id, c] of Object.entries(CARDS)) {
     if (hasType(c, 'Creature') && !c.triggers && !c.abilities && !c.static_buffs) return id;
@@ -45,8 +41,7 @@ if (!CARDS['sicken'] || !VANILLA) {
   console.log('  (sicken or a vanilla creature unavailable -- skipping)');
 } else {
   const G = newGame();
-  // Hand: cheap removal (Sicken, {B}) + a pricey vanilla body. No lands in hand,
-  // so decideMain goes straight to the spell decision.
+  // No lands in hand, so decideMain goes straight to the spell decision.
   const removal = mk('sicken', 'you');
   const filler = mk(VANILLA, 'you');
   filler.cost = { C: 6 };           // make the body clearly the most EXPENSIVE option

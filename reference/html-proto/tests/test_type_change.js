@@ -1,15 +1,12 @@
-// Type-change layer (add_type / set_types) + the Phase-4 test-case cards
-// (type-change spells, colorless artifact creatures, artifact lands).
+// Type-change layer (add_type / set_types) test cases: type-change spells,
+// colorless artifact creatures, artifact lands.
 //
 // The grant layer mirrors keyword grants: card.typeGrants = [{tags,op,source,eot}],
 // read live by typesOf so every hasType/governingType reader sees the change.
 // Reverts ride the existing end-of-turn cleanup (eot grants + temp stats) and
 // resetInPlayState (leave-play). The revert tests drive a REAL end of turn /
 // real bounce rather than hand-emulating the cleanup loop — emulating it would
-// pass against a copy of the logic and miss a real regression (it did: the first
-// real-turn version of this test caught a bug where a permanent animate's P/T
-// went to the EOT-cleared tempPower/tempTou, so it became a 0/0 creature and
-// died to SBA at cleanup. Fixed to permPower/permTou in applyTypeChange).
+// pass against a copy of the logic and miss a real regression.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -32,9 +29,8 @@ function spawn(tplId) {
   G.you.battlefield.push(inst);
   return { G, inst };
 }
-// Drive a REAL end of turn: both players pass at every window until the turn
-// counter advances, so the engine's actual cleanup loop reverts eot type grants
-// + temp stats (not a hand-copy that could mask a regression).
+// Drive a real end of turn via the engine's actual pass loop (not a hand-copy
+// of the cleanup) so it can't mask a regression.
 function endTurn(G) {
   const startTurn = G.turn;
   let safety = 300;
@@ -69,9 +65,6 @@ console.log('\n=== add_type (permanent): survives EOT, reverts on leave-play ===
     { kind: 'permanent', iid: inst.iid });
   check('is a 2/2 creature', hasType(inst, 'Creature') && JSON.stringify(ENGINE.getStats(inst)) === '[2,2]');
   endTurn(G);
-  // Survives a real end of turn AS A LIVING 2/2 — the permanent animate's stats
-  // must persist with its Creature type (the bug this caught: stats vanished →
-  // 0/0 → died to SBA at cleanup).
   check('SURVIVES a real end of turn as a living 2/2 creature',
     G.you.battlefield.some(c => c.iid === inst.iid) && hasType(inst, 'Creature')
     && JSON.stringify(ENGINE.getStats(inst)) === '[2,2]');
@@ -110,7 +103,7 @@ console.log('\n=== multi-tag add (Golem Forge): land → 4/4 Artifact Creature =
   check('is Land + Artifact + Creature, 4/4',
     hasType(inst, 'Land') && hasType(inst, 'Artifact') && hasType(inst, 'Creature')
     && JSON.stringify(ENGINE.getStats(inst)) === '[4,4]');
-  // Basics carry their color subtype now ("Basic Land — Forest"), so the line
+  // Basics carry their color subtype ("Basic Land — Forest"), so the line
   // HAS an em-dash — assert the three card types all sit in the LEFT half.
   check('typeLine lists all three types left of the dash',
     ['Land', 'Artifact', 'Creature'].every(t => typeLine(inst).split('—')[0].includes(t)), typeLine(inst));
@@ -129,10 +122,9 @@ console.log('\n=== the 7 type-change spells are authored + generate clean text =
   const stxt = describeEffect(CARDS.petrify.effects[0]).map(s => s.text).join('');
   check('set_types generates readable text', !stxt.includes('[set_types]') && /Artifact/.test(stxt), stxt);
   // Indefinite article: "becomes an artifact" (vowel), "becomes a 3/3 creature"
-  // (number spoken "three" → consonant). Regression for the missing-article bug.
+  // (number spoken "three" → consonant).
   check('set_types text reads "becomes an Artifact"', /becomes an Artifact/.test(stxt), stxt);
   check('add_type text reads "becomes a 3/3 Creature"', /becomes a 3\/3 Creature/.test(txt), txt);
-  // Article picker handles letter + number pronunciation cases.
   check('article: vowel-initial → an', indefiniteArticle('Artifact') === 'an');
   check('article: consonant-initial → a', indefiniteArticle('Creature') === 'a' && indefiniteArticle('Goblin') === 'a');
   check('article: numbers follow pronunciation (3→a, 8→an, 11/18→an, 10→a)',
@@ -161,8 +153,7 @@ console.log('\n=== 6 artifact lands (WUBRG + C), mana DERIVED from basic subtype
   check('each is Land + Artifact and taps for its color',
     lands.every(id => { const c = CARDS[id]; return hasType(c, 'Land') && hasType(c, 'Artifact') && c.mana && Array.isArray(c.abilities); }));
   // The 5 colored lands carry a basic-land subtype and DERIVE their mana ability
-  // from it at ingest (no hand-authored ability in the JSON). Verify the derived
-  // ability produces exactly the matching color.
+  // from it at ingest (no hand-authored ability in the JSON).
   const SUBTYPE_COLOR = { gilded_seat: ['Plains', 'W'], tidal_conduit: ['Island', 'U'], bone_reliquary: ['Swamp', 'B'], ember_anvil: ['Mountain', 'R'], verdant_verge: ['Forest', 'G'] };
   for (const [id, [sub, color]] of Object.entries(SUBTYPE_COLOR)) {
     check(`${id}: has the ${sub} subtype`, hasType(CARDS[id], sub));
@@ -274,13 +265,11 @@ console.log('\n=== staple same-class UNION: Artifact co-type rides along ===');
   const synLand = ENGINE.synthesizeStapledTemplate(vanilla, ['forest']);
   check('Cr base + Land staple → Creature, NOT a Land (collapse preserved)',
     hasType(synLand, 'Creature') && !hasType(synLand, 'Land'));
-  // Artifact LAND staple: Land collapses, but the Artifact co-type rides along.
   const synArtLand = ENGINE.synthesizeStapledTemplate(vanilla, ['gilded_seat']);
   check('Cr base + artifact-Land staple → Artifact rides, Land collapses',
     hasType(synArtLand, 'Artifact') && hasType(synArtLand, 'Creature') && !hasType(synArtLand, 'Land'));
-  // Vanilla Cr + vanilla Cr staple forces no spurious CO-TYPE (Artifact). Post
-  // id-normalization every card carries types[], so the merge legitimately has
-  // one too — the real invariant is that it stays a plain Creature with no
+  // Post id-normalization every card carries types[], so the merge legitimately
+  // has one too — the invariant is it stays a plain Creature with no
   // Artifact/Enchantment co-type bolted on, governing as Creature.
   const vanilla2 = Object.keys(CARDS).find(id => id !== vanilla && hasType(CARDS[id], 'Creature') && !isUndraftable(CARDS[id]) && CARDS[id].cost && !(Array.isArray(CARDS[id].types) && CARDS[id].types.filter(t => isCardTypeTag(t)).length > 1) && !CARDS[id].triggers && !CARDS[id].abilities);
   const synPlain = ENGINE.synthesizeStapledTemplate(vanilla, [vanilla2]);

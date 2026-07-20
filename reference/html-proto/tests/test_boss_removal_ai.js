@@ -1,13 +1,7 @@
-// Boss special-removal AI casting (longstanding bug): the two boss decks —
-// Archdemon of Bargains (vileEdict, scarification) and The Balancer
-// (symmetricize, embargo, bleach) — never cast their signature removal because
-// the AI's per-target scorer (scoreSpellTargetForMode) had no branch for
-// rip (Vile Edict: chooses+annihilate+rip) / symmetricize / scarification (apply_sticker+affect_creature) / move_card-bounce /
-// plain-exile, and picked the apply_sticker rider as embargo/bleach's primary
-// effect. All scored 0 → the AI passed. This pins that each now scores positive
-// and gets cast on a valid target (without breaking flicker, which shares the
-// bf→exile shape). (Bleach exiles + bleaches the cost — the AI scores the
-// move_card exile, not the apply_sticker rider.)
+// AI.decide's per-target scorer (js/ai.js::scoreSpellTargetForMode) needs a
+// branch for each of: rip, symmetricize, scarification, move_card-bounce,
+// plain-exile — any spell that falls through to default apply_sticker scoring
+// evaluates to 0, and the AI silently passes instead of casting.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -25,7 +19,6 @@ function mk(tplId, ctrl) {
     damage: 0, keywords: (CARDS[tplId].keywords || []).slice(), damagedBySources: new Set(),
   });
 }
-// Set up an opp (boss) main phase with `spellTpl` in hand and a target creature.
 // `targetSide` controls whose battlefield the creature is on (your_creature
 // spells like cloudshift need the caster's own; removal needs the opponent's).
 function trial(spellTpl, targetSide) {

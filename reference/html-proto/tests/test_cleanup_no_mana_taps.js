@@ -1,4 +1,4 @@
-// Audit fix A1-10 — tapLandForMana is illegal during the cleanup discard.
+// tapLandForMana is illegal during the cleanup discard.
 //
 // Canon: §605 closes the cleanup-discard window ("no spells or abilities can
 // be cast or activated"); §705's mana-ability exception requires a window
@@ -6,10 +6,6 @@
 // setPhase('UNTAP') zeroes the pool, so the mana is unusable by construction.
 // Worse, UNTAP untaps only the NEW active player's permanents, so a land
 // tapped here stays tapped through the opponent's entire turn.
-//
-// Before the fix, whoHasPriority() had a blanket cleanupDiscarding clause
-// granting the active player "priority", which the tapLandForMana legality
-// check consumed — so a misclick mid-discard wasted the land for a turn.
 //
 // This file pins:
 //   1. tapLandForMana is NOT legal while cleanupDiscarding is set

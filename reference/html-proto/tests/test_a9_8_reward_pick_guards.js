@@ -1,11 +1,9 @@
-// Audit A9-8 — reward-pick guard symmetry. The sticker/ripUp pick arms now do
-// the bounds re-check (and the sticker arm the non-stackable dedup) that the
-// other pick arms (twoStickers/clone/transform/splice) and the canonical
-// applyStickerToSlot already perform. Unreachable in normal play (the reward is
-// pre-rolled single-shot and the offer never lists a non-stackable id a slot
-// already has), so these are guard/characterization assertions driven through a
-// test-only pendingReward seam — which also seeds the previously-absent
-// reward-pick coverage (a valid sticker applies; a valid ripUp removes).
+// Guard/characterization tests: the sticker/ripUp reward-pick arms run the same
+// bounds re-check (and, for sticker, the non-stackable dedup) as the other pick
+// arms (twoStickers/clone/transform/splice) and the canonical applyStickerToSlot.
+// Unreachable in normal play — the reward is pre-rolled single-shot and the offer
+// never lists a non-stackable id a slot already has — so these run through a
+// test-only pendingReward seam.
 const setup = require('./_setup');
 setup.loadEngine();
 
@@ -21,7 +19,7 @@ console.log('=== A9-8: sticker arm out-of-bounds slotIdx does not throw ===');
 (() => {
   freshRun();
   const n = RUN.getSlots().length;
-  RUN._setPendingRewardForTest(reward([{ kind: 'sticker', slotIdx: n /* one past end */, sticker_id: 'plus1_plus1' }]));
+  RUN._setPendingRewardForTest(reward([{ kind: 'sticker', slotIdx: n, sticker_id: 'plus1_plus1' }]));
   let threw = null;
   try { RUN.pickRewardCandidate(0); } catch (e) { threw = e; }
   check('OOB sticker pick does not throw', threw === null, threw ? String(threw.message) : undefined);

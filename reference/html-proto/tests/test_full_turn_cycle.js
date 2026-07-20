@@ -1,10 +1,3 @@
-// Audit A1-23 — the turn machine had no single scripted full-turn behavioral
-// test (the lens estimated one kills 100+ mutation survivors at once). This
-// drives real turns via the executeAction pass-loop and pins: the play/draw rule
-// (first player skips turn-1 draw, the other draws), mana emptying on phase
-// change, the UNTAP lifeLostThisTurn reset, the active-player handoff, and the
-// endTurnPending feature (arm + auto-declare-empty fast-forward past a combat
-// that would otherwise pause — previously a total coverage gap). Tests only.
 const setup = require('./_setup');
 setup.loadEngine();
 let pass = 0, fail = 0;
@@ -45,7 +38,7 @@ console.log('\n=== A1-23: endTurnPending arms + fast-forwards past a would-pause
   const G = newGame();
   const ap0 = G.activePlayer;
   // A ready creature would normally PAUSE the machine at COMBAT_ATTACK awaiting a
-  // declaration; endTurnPending must auto-declare empty and roll through (7607).
+  // declaration; endTurnPending must auto-declare empty and roll through.
   if (VANILLA) {
     const cr = JSON.parse(JSON.stringify(CARDS[VANILLA]));
     Object.assign(cr, { iid: 99001, tplId: VANILLA, controller: ap0, owner: ap0,

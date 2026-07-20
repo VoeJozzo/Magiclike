@@ -17,8 +17,7 @@ function check(label, ok, info) {
   if (ok) pass++; else fail++;
 }
 
-// tplId, the subtype under test, and the keyword it should imply. Each card has
-// the keyword STRIPPED from its card.json — derivation is the only source.
+// Each card has the keyword STRIPPED from its card.json — derivation is the only source.
 const CASES = [
   ['shivan_dragon', 'Dragon', 'flying'],
   ['serra_angel', 'Angel', 'flying'],

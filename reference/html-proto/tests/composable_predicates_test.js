@@ -1,9 +1,5 @@
-// Composable predicates (Slice 2 / DIVERGENCE E2) — proto side.
-// Covers the function-call parser, the evaluate() walker (all expression
-// shapes), and each of the 12 atomic predicates against synthetic
-// new-vocabulary events. These run in parallel with the legacy condId path;
-// no card uses the new `condition` field yet, so the existing 482 assertions
-// are unaffected (verified by run_all.js).
+// Composable predicates test (proto side) — runs in parallel with the
+// legacy condId trigger path.
 //
 // Atomics read only specific fields, so synthetic ctx objects (not a started
 // game) are sufficient and keep the unit tests deterministic. `state` is a
@@ -17,7 +13,6 @@ function check(label, ok, info) {
   console.log('  ' + (ok ? 'PASS' : 'FAIL') + ': ' + label + (info ? ' -- ' + info : ''));
   if (ok) pass++; else fail++;
 }
-// Fresh synthetic engine-state stand-in.
 function S(youLost, oppLost) {
   return { you: { lifeLostThisTurn: youLost || 0 }, opp: { lifeLostThisTurn: oppLost || 0 } };
 }
@@ -172,7 +167,6 @@ console.log('\n=== worked: Bloodlust Berserker condition ===');
 // ── Boot validation ──────────────────────────────────────────────────────
 console.log('\n=== validateAllCardConditions ===');
 (() => {
-  // Synthetic card pool: good + bad conditions and event kinds.
   const synthetic = [
     { tplId: 'goodCard', triggers: [
       { event: 'card_zone_change', condition: ['this_card', 'card_moves(battlefield, graveyard)'] },
@@ -203,7 +197,6 @@ console.log('\n=== validateAllCardConditions ===');
   check('valid new event kind accepted', !r.unknownEvents.some(u => u.startsWith('goodEvent.')));
   check('valid combat_damage event kind accepted', !r.unknownEvents.some(u => u.startsWith('goodCombatEvent.')));
 
-  // The real shipped pool (now fully composable) must validate clean.
   const live = validateAllCardConditions(CARDS);
   check('live CARDS pool: no unknown atomics', live.unknownAtomics.length === 0,
     live.unknownAtomics.join(', '));

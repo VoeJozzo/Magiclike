@@ -1,19 +1,17 @@
 // CONSTELLATION — the in-game synergy-graph viewer (🔭 button, top-left).
-// Joe's origin-session item 13 ("de-neuralese realized-synergy + constellation
-// view"), prototyped naive-first (audience of 1): two tabs —
-//   Deck: the current run's slots, named stars, edges with reason tooltips.
-//   Pool: every nonland card (327 nodes / ~1k strong edges), hover to light
-//         a neighborhood. Computed once per boot and cached.
-// Pure presentation: reads BUCKETS.edgeBetween / analyzeCard + RUN.getSlots,
-// writes nothing. Physics = the Synergy Observatory artifact's sim, ported
-// verbatim (settle offline, redraw on hover; no rAF loop, reduced-motion
-// friendly). Not in tests/_setup EXPOSED — UI-only, verified in-browser per
-// the CLAUDE.md testing note.
+// Two tabs — Deck: the current run's slots, named stars, edges with reason
+// tooltips. Pool: every nonland card, hover to light a neighborhood;
+// computed once per boot and cached.
+// Pure presentation: reads BUCKETS.edgeBetween + RUN.getSlots, writes
+// nothing. Settle runs offline; redraw fires on hover — no rAF loop,
+// reduced-motion friendly.
+// Not in tests/_setup's EXPOSED list — UI-only; verify manually in-browser
+// per CLAUDE.md's testing note.
 const CONSTELLATION = (() => {
   const MTG = { W: '#e8dfae', U: '#5598e7', B: '#9a8fb0', R: '#e66767',
     G: '#57a15a', M: '#d9a53f', C: '#a8a49c' };
   let modal = null, canvas = null, ctx = null, tipEl = null, tabBtns = {};
-  let mode = 'deck';         // 'deck' | 'pool'
+  let mode = 'deck';         // 'deck' | 'pool' | 'offer'
   let nodes = [], edges = [], adj = [];
   let poolCache = null;      // {nodes, edges} — 53k edgeBetween calls, once
   let w, h, dpr, cx, cy, scale, dragging = null;
@@ -250,9 +248,8 @@ const CONSTELLATION = (() => {
     setHint();
     load();
   }
-  // P2 — the offer overlay (Joe: "Yes, I like this!"): preview a bucket
-  // offer as incoming stars with dashed attachment edges into the current
-  // deck, BEFORE picking.
+  // Offer overlay: previews a bucket offer as incoming stars with dashed
+  // attachment edges into the current deck, before the pick is made.
   function showOffer(offerTplIds) {
     if (!modal) build();
     offerCards = (offerTplIds || []).slice();

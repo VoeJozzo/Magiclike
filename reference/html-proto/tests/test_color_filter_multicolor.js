@@ -1,18 +1,10 @@
-// Audit A4-6 — color/not_color target filters must test the FULL color
-// identity, not just the first colored pip (Joe's ruling PR #98: "we're
-// likely to want to use 'not_color b' again, so we should definitely fix
-// this").
-//
-// card.color is derived as colors[0] (cards.js), and matchFilter used to
-// compare ONLY that — so Doom Blade ("Destroy target non-Black creature", its
-// own rendered oracle text) legally destroyed the {U}{B} Seal-Thief Courier
-// (first pip U), and a positive {color:'U'} filter would have REJECTED a W/U
-// card (first pip W). Fix: both checks route through colorsOfCard's color
-// list, with a card.color fallback so cost-less cards (tokens) keep their
-// single-color identity. This file pins:
+// color/not_color target filters must test the FULL color identity, not
+// just the first colored pip. card.color is derived as colors[0]
+// (cards.js); matchFilter routes color checks through colorsOfCard's full
+// color list instead. This file pins:
 //   1. Doom Blade vs the real {U}{B} Seal-Thief Courier: ILLEGAL at cast
-//      legality (executed end-to-end pre-fix: it was destroyed);
-//   2. the mono-color pins stay: illegal vs mono-black, legal vs non-black;
+//      legality;
+//   2. the mono-color pins: illegal vs mono-black, legal vs non-black;
 //   3. matchFilter unit pins for both directions on multicolor cards;
 //   4. the token path: tokens have no cost/colors — color identity falls
 //      back to their printed single color.

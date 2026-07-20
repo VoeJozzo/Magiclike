@@ -1,6 +1,6 @@
 // Per-instance independence: stickersForSlot computes from a template
 // without mutating it. Otherwise one slot's stickers could bleed onto
-// every card sharing the tplId. Adapted from the prior-session bundle.
+// every card sharing the tplId.
 
 const setup = require('./_setup');
 setup.loadEngine();

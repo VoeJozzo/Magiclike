@@ -1,14 +1,6 @@
-// Audit A5-2 (Joe ruled FIZZLE, PR #98) — stapling a just-cast SPELL onto a
-// non-creature battlefield PERMANENT.
-//
-// canonicalSplicePair ranks by template TYPE with no zone awareness, so a
-// creature SPELL on the stack (type Creature, rank 0) wrongly outranked a
-// battlefield Land (rank 2) and became the splice "base", routing the merge
-// into the both-were-spells (S+S) path. Three things broke at once: the spell
-// "fast-resolved" (mana gone, never reached any zone), the Land stayed in play
-// untouched, and the S+S manual slot-shift over-deleted an UNRELATED run slot
-// (saved to disk). Fix: the spell fizzles — countered to its owner's graveyard,
-// before any charge accounting. Narrow: spell-onto-CREATURE is unaffected.
+// Splicing a spell onto a non-creature battlefield permanent fizzles the
+// spell — countered to its owner's graveyard, before any charge accounting.
+// Splicing onto a creature permanent is unaffected.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -43,10 +35,10 @@ console.log('=== A5-2: a creature spell stapled onto a battlefield land FIZZLES 
   const charges0 = staplerSlot0.charges;
   check('precondition: stapler slot has charges', typeof charges0 === 'number', 'charges=' + charges0);
 
-  // Battlefield land (the would-be staple permanent), owned by you with a run slot.
+  // The staple permanent for the splice.
   const land = mk(stapleLand, 'you'); land.slotIdx = 0;
   G.you.battlefield.push(land);
-  // A creature SPELL on the stack (the would-be base), with an unrelated run slot.
+  // The base of the splice: a spell on the stack.
   const spellCard = mk(baseCre, 'you'); spellCard.slotIdx = 3;
   G.stack.push({ kind: 'spell', card: spellCard, controller: 'you', targets: [], modeIdx: 0 });
   const spellItem = G.stack[G.stack.length - 1];

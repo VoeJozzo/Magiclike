@@ -1,10 +1,9 @@
-// Audit A4-23 (leg 2) — two forced discards in ONE resolution must ACCUMULATE
-// onto the open prompt, not blind-overwrite it. The old `=` dropped the first
-// prompt's remaining count, so a card with two discard effects would
-// under-discard. Latent today (no shipped card stacks two human-side discards in
-// one effects array). This tests ONLY the leg-2 hardening; leg 1 (the trailing-
-// effect defer — should a tutor's later gain_life wait for the human's search
-// pick?) is a separate design decision and is intentionally NOT changed here.
+// Two forced discards in ONE resolution must ACCUMULATE onto the open
+// prompt, not blind-overwrite it, or a card with two discard effects would
+// under-discard. No shipped card currently stacks two human-side discards in
+// one effects array. This test covers only that accumulation — the
+// trailing-effect defer (should a tutor's later gain_life wait for the
+// human's search pick?) is a separate, unaddressed design question.
 const setup = require('./_setup'); setup.loadEngine();
 let pass = 0, fail = 0;
 function check(label, ok, info){ console.log('  ' + (ok?'PASS':'FAIL') + ': ' + label + (info?' -- '+info:'')); if(ok)pass++;else fail++; }

@@ -1,24 +1,14 @@
-// Audit fix A2-5 — change_control removes the creature from combat.
-//
-// change_control spliced the card between battlefields and touched nothing
-// else. findCard searches BOTH battlefields, so (unlike death/bounce) the
-// swapped creature still resolved in dealCombatDamage — and since the
-// defender is fixed at start of combat but the damage credit reads the LIVE
-// controller, a mid-combat stolen attacker dealt its combat damage TO ITS
-// OWN NEW CONTROLLER. A stolen (vigilance) attacker could also legally be
-// declared to block ITSELF.
-//
-// Fix: change_control now calls removeFromCombat(iid) (the shared A2-3
-// helper) on a successful control swap — real MTG removes a permanent from
-// combat when its controller changes (CR 506.4c); canon §801 documents it.
+// change_control must call removeFromCombat(iid) on a successful control
+// swap: findCard resolves a card across both battlefields, so a mid-combat
+// control change would otherwise still let the swapped creature deal combat
+// damage, credited to its live (new) controller. Real MTG removes a
+// permanent from combat when its controller changes (CR 506.4c; canon §801).
 //
 // This file pins:
 //   1. a stolen ATTACKER is pruned from G.attackers and deals NO damage
-//      (pre-fix it damaged its own new controller)
 //   2. a stolen attacker can NOT be assigned to block itself
-//   3. a stolen BLOCKER stops participating: no damage exchange (pre-fix
-//      the stolen creature still traded damage with its old attacker),
-//      while the attacker it was blocking STAYS blocked (510.1c)
+//   3. a stolen BLOCKER stops participating: no damage exchange, while the
+//      attacker it was blocking STAYS blocked (510.1c)
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -97,7 +87,6 @@ if (!VANILLA || !CARDS['lightning_bolt'] || !CARDS['mountain']) {
     check('block window reached', G.phase === 'COMBAT_BLOCK' && G.blockersDeclared,
       'phase=' + G.phase);
 
-    // The defender steals the attacker mid-combat.
     steal(G, 'opp', A.iid);
     check('A is on the opponent battlefield',
       G.opp.battlefield.some(c => c.iid === A.iid));
@@ -135,7 +124,6 @@ if (!VANILLA || !CARDS['lightning_bolt'] || !CARDS['mountain']) {
     check('waiting on the block declaration',
       G.phase === 'COMBAT_BLOCK' && !G.blockersDeclared, 'phase=' + G.phase);
 
-    // The defender steals the (untapped, vigilance) attacker pre-blocks.
     steal(G, 'opp', X.iid);
     check('X is on the opponent battlefield',
       G.opp.battlefield.some(c => c.iid === X.iid));
@@ -168,7 +156,6 @@ if (!VANILLA || !CARDS['lightning_bolt'] || !CARDS['mountain']) {
     });
     check('blocker declared', !!okBlock && G.blockers.get(blk.iid) === atk.iid);
 
-    // The ATTACKING player steals the blocker in the block-window round.
     steal(G, 'you', blk.iid);
     check('the blocker is on your battlefield',
       G.you.battlefield.some(c => c.iid === blk.iid));

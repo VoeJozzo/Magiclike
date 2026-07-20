@@ -1,7 +1,6 @@
-// Audit A5-15 — the out-of-charges Stapler rip must route its battlefield removal
-// through leave-play discipline (removeFromCombat + clearRestrictionsFromSource),
-// not a raw Array.filter. A5-5 already scoped the purge to (tplId, slotIdx); this
-// pins the remaining half. Latent today (Stapler is the only charges card, an
+// The out-of-charges Stapler rip must route its battlefield removal through
+// leave-play discipline (removeFromCombat + clearRestrictionsFromSource), not
+// a raw Array.filter. Latent today (Stapler is the only charges card, an
 // Artifact, special/unique), so the observable conditions are CONSTRUCTED: the
 // about-to-be-ripped stapler is injected into combat state and stamped as the
 // source of a can't-attack restriction on a bystander.

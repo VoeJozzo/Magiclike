@@ -1,16 +1,6 @@
-// Audit A4-12 — Phylactery's "Your life can't go below 0" was violated by
-// life-LOSS effects: gain_life's negative branch (the ~14-card drain family)
-// subtracted raw with no floor and no rip, leaving the protected player at
-// NEGATIVE life indefinitely — and the next damagePlayer then computed
-// max(0, neg − amount), RESETTING them up to 0 (a net gain from being hit).
-//
-// Design ruling (option A, per the staged packet): ONE price for losing
-// life — drains past 0 rip slots exactly like damage does. Shared helper
-// losePlayerLife(who, n) is the single writer for life loss from both
-// damagePlayer and gain_life's negative branch: floor at 0 under
-// protection, overflow rips, lifeLostThisTurn + life_changed(delta<0) for
-// the ACTUAL loss. Phylactery's card text amended "Damage past 0" → "Life
-// lost past 0".
+// Life loss floors at 0 under protection; loss past 0 rips slots like damage.
+// losePlayerLife(who, n) is the single writer for both damagePlayer and
+// gain_life's negative branch, tracking lifeLostThisTurn from the actual loss.
 
 const setup = require('./_setup');
 setup.loadEngine();

@@ -2,7 +2,6 @@ extends Node
 
 # Engine — central game-state authority. Autoloaded as `RulesEngine` (Godot has built-in `Engine`).
 # Public API: init_phase{1,2,3}, state(), execute_action(action), is_legal_action(action).
-# Signals: state_changed, log_appended, game_over.
 # Action shapes in engine/action.gd. action.kind dispatches to _do_<kind>.
 # Failed actions return false without mutating; successful actions emit state_changed.
 
@@ -27,7 +26,7 @@ func _ready() -> void:
 			JsonCardLoader.supportability_report(json_cards, true)
 
 
-# Reentrancy guard for opp-turn auto-cycle (Phase 2 has no AI).
+# Reentrancy guard for opp-turn auto-cycle.
 var _settling: bool = false
 
 
@@ -42,7 +41,6 @@ func _seed_demo_library(player: Player, count: int = 20) -> void:
 		player.library.append(mtn)
 
 
-# Phase 1: 2 Mountains in play, 1 Lightning Bolt in hand.
 func init_phase1() -> void:
 	_state = EngineState.new()
 	_state.active_player_key = "you"
@@ -62,7 +60,6 @@ func init_phase1() -> void:
 	state_changed.emit()
 
 
-# Phase 2: 1 Mountain in play, 3 in hand + Goblin Raider + Lightning Bolt.
 func init_phase2() -> void:
 	_state = EngineState.new()
 	_state.active_player_key = "you"
@@ -86,8 +83,7 @@ func init_phase2() -> void:
 	state_changed.emit()
 
 
-# Phase 3: blockers + stack instants + basic opp behavior.
-# You: 2 lands + hand with Goblin, Bolt, Giant Growth. Opp: 1 Forest + 2 Bears + Giant Growth.
+# Blockers + stack instants + basic opp behavior.
 func init_phase3() -> void:
 	_state = EngineState.new()
 	_state.active_player_key = "you"
@@ -122,7 +118,7 @@ func init_phase3() -> void:
 	state_changed.emit()
 
 
-# Phase 4: triggered abilities. You: Pyromaniac (ETB→1), Bloodlust (death→+2 if life lost), Bolt.
+# Triggered abilities. You: Pyromaniac (ETB→1), Bloodlust (death→+2 if life lost), Bolt.
 # Opp: Grizzly Bears + Bolt for return-fire on the Berserker's death trigger.
 func init_phase4() -> void:
 	_state = EngineState.new()
@@ -170,8 +166,8 @@ const _PHASE4_5_DEMO_DECK := {
 }
 
 
-# Multi-color showcase deck — exercises every Phase 4.5c/5a addition
-# plus the Phase 6 seed cards ported from html-proto.
+# Multi-color showcase deck — exercises a broad card pool, including
+# cards ported from html-proto.
 const _PHASE5_SHOWCASE_DECK := {
 	"mountain": 4, "forest": 4, "island": 4, "plains": 3, "swamp": 3,
 	"counterspell": 2,
@@ -189,7 +185,7 @@ const _PHASE5_SHOWCASE_DECK := {
 	"giant_growth": 2,
 	"grizzly_bears": 1,
 	"bear_cub": 1,
-	# Phase 6 seed (one of each, so the showcase visibly exercises them).
+	# One of each, ported from html-proto, so the showcase visibly exercises them.
 	"dawn_angel": 1,
 	"air_elemental": 1,
 	"mist_djinn": 1,
@@ -272,9 +268,8 @@ func execute_action(action: Dictionary) -> bool:
 	return ok
 
 
-# Phase 5b: AI scoring. Thin wrapper around AIScoring.card_value so callers
-# can stay on the autoload surface (mirrors JS prototype's ENGINE.getCardValue
-# shape). Phase 5c's AI module will call this from its hand-evaluator.
+# Thin wrapper around AIScoring.card_value so callers can stay on the
+# autoload surface (mirrors JS prototype's ENGINE.getCardValue shape).
 func card_value(template: CardResource, purpose: String = "draft") -> float:
 	return AIScoring.card_value(template, purpose)
 
@@ -335,7 +330,7 @@ func get_legal_actions(player_key: String) -> Array[Dictionary]:
 	return actions
 
 
-# One descriptor per legal target. Multi-target spells deferred to Phase 6+.
+# One descriptor per legal target.
 func _enumerate_cast_actions(card: CardInstance, player_key: String, out: Array[Dictionary]) -> void:
 	if not (card.template is SpellResource):
 		var cast := Action.make_cast_spell(card.instance_id, [])
@@ -398,7 +393,7 @@ func is_legal_action(action: Dictionary) -> bool:
 		Action.KIND_TAP_LAND_FOR_MANA:
 			return _legal_tap_land_for_mana(action)
 		Action.KIND_ACTIVATE_ABILITY:
-			return false  # Phase 6+: non-mana activated abilities. None in Phase 1.
+			return false  # No non-mana activated abilities implemented.
 		Action.KIND_PLAY_LAND:
 			return _legal_play_land(action)
 		Action.KIND_CAST_SPELL:
@@ -423,7 +418,7 @@ func is_legal_action(action: Dictionary) -> bool:
 			return false
 
 
-# Settle after each action — auto-cycles opp's turn (no AI yet).
+# Settle after each action — auto-cycles opp's turn.
 func _settle_state() -> void:
 	if _settling:
 		return
@@ -502,9 +497,8 @@ func _dispatch_action(action: Dictionary) -> bool:
 
 
 # Action-kind dispatch table. Shared by execute_action and _dispatch_action so
-# adding a new action kind requires updating exactly one place (not two — that
-# divergence soft-locked the AI when KIND_DISCARD_CARD was added to
-# execute_action but not here).
+# adding a new action kind requires updating exactly one place — a divergence
+# here can soft-lock the AI.
 func _do_action(action: Dictionary) -> bool:
 	var kind: String = action.get("kind", "")
 	# B7 re-engagement: any explicit non-pass/non-end-turn action by the active
@@ -542,7 +536,6 @@ func _do_action(action: Dictionary) -> bool:
 	return false
 
 
-# Phase 1: only mana abilities (tap land).
 func _legal_tap_land_for_mana(action: Dictionary) -> bool:
 	if _state == null or _state.winner != "":
 		return false
@@ -571,7 +564,7 @@ func _do_tap_land_for_mana(action: Dictionary) -> bool:
 	var card: CardInstance = found.card
 	var controller: Player = found.controller
 	card.tapped = true
-	# Multi-color lands are Phase 2+; for now first produced color.
+	# Multi-color lands unsupported; uses first produced color.
 	var color: String = card.template.mana_produced[0]
 	var ctx := _build_ctx(controller, card, [])
 	Effects.resolve_one({"kind": "add_mana", "amounts": {color: 1}}, ctx)
@@ -613,9 +606,8 @@ func _do_play_land(action: Dictionary) -> bool:
 	controller.land_played_this_turn = true
 	card.summoning_sick = false
 	_state.append_log("%s plays %s" % [controller.name, card.name()])
-	# Lands ETB fires triggers in Phase 4+. Lands themselves don't have
-	# triggered abilities yet, but a landfall card on the battlefield could
-	# react. Fire the event and drain in case anything matches.
+	# Lands themselves have no triggered abilities, but a landfall card on
+	# the battlefield could react, so the ETB event fires regardless.
 	_fire_event({"kind": "card_enters_battlefield", "subject_iid": card.instance_id, "subject_card": card})
 	_drain_pending_triggers()
 	return true
@@ -646,9 +638,9 @@ func _legal_cast_spell(action: Dictionary) -> bool:
 		var targets: Array = action.get("targets", [])
 		if targets.is_empty():
 			return false
-		# Phase 5a: hexproof gates opponent-cast targets. A creature with
-		# hexproof can't be targeted by spells controlled by an opposing
-		# player. (Your own spells can still target it.)
+		# Hexproof gates opponent-cast targets: a creature with hexproof
+		# can't be targeted by spells controlled by an opposing player.
+		# (Your own spells can still target it.)
 		for t in targets:
 			if t.get("kind", "") == "creature":
 				var tfound = _state.find_instance(t.get("iid", -1))
@@ -742,7 +734,6 @@ func _resolve_spell_entry(entry: Dictionary) -> void:
 		else:
 			card.summoning_sick = false
 		_state.append_log("%s enters the battlefield under %s" % [card.name(), controller.name])
-		# Fire ETB event so triggered abilities can react.
 		_fire_event({"kind": "card_enters_battlefield", "subject_iid": card.instance_id, "subject_card": card})
 	else:
 		var owner: Player = _state.player_by_key(card.owner_key)
@@ -789,7 +780,7 @@ func _find_card_anywhere(iid: int) -> CardInstance:
 	return null
 
 
-# Phase 2 incremental attacker declaration (click + Pass to confirm).
+# Incremental attacker declaration (click + Pass to confirm).
 func _legal_declare_attacker(action: Dictionary) -> bool:
 	if _state == null or _state.winner != "":
 		return false
@@ -902,7 +893,6 @@ func _legal_undeclare_attacker(action: Dictionary) -> bool:
 	var iid: int = action.get("source_iid", -1)
 	if not (iid in _state.attackers):
 		return false
-	# Must belong to the active player (the attacker).
 	var found = _state.find_instance(iid)
 	if found == null or found.controller.key != _state.active_player_key:
 		return false
@@ -912,7 +902,6 @@ func _legal_undeclare_attacker(action: Dictionary) -> bool:
 func _do_undeclare_attacker(action: Dictionary) -> bool:
 	var iid: int = action.source_iid
 	_state.attackers.erase(iid)
-	# Clear any blockers that were pointing at this attacker.
 	for b_iid in _state.blockers.keys():
 		if _state.blockers[b_iid] == iid:
 			_state.blockers.erase(b_iid)
@@ -939,7 +928,6 @@ func _legal_undeclare_blocker(action: Dictionary) -> bool:
 	var iid: int = action.get("source_iid", -1)
 	if not _state.blockers.has(iid):
 		return false
-	# Must be the defender's creature.
 	var defending_key: String = _state.opponent_of(_state.active_player_key)
 	var found = _state.find_instance(iid)
 	if found == null or found.controller.key != defending_key:
@@ -1106,7 +1094,7 @@ func _resolve_combat_damage() -> void:
 		_check_win_conditions()
 		if _state.winner != "":
 			return
-	# Pass 2: non-first-strikers (and any survivors of pass 1; no double-strike in Phase 5a).
+	# Pass 2: non-first-strikers (and any survivors of pass 1; no double-strike support).
 	_combat_damage_pass(defending, attacker_blockers, false)
 	_run_sbas()
 	# Drain death triggers HERE so they don't leak into an unrelated next spell.
@@ -1162,9 +1150,7 @@ func _combat_damage_pass(
 					var first_blocker: CardInstance = first_blocker_found.card
 					var blocker_t: int = first_blocker.current_toughness() - first_blocker.damage_marked
 					var assigned: int = min(atk_pow, blocker_t) if attacker.has_keyword("trample") else atk_pow
-					# Deal assigned damage to blocker.
 					_deal_combat_damage(attacker, assigned, {"kind": "creature", "iid": first_blocker_iid})
-					# Trample spill: any leftover goes to defender.
 					if attacker.has_keyword("trample"):
 						var spill: int = atk_pow - assigned
 						if spill > 0:
@@ -1211,7 +1197,6 @@ func _deal_combat_damage(source: CardInstance, amount: int, target: Dictionary) 
 				source.name(), amount, target_card.name(),
 				" (deathtouch)" if source.has_keyword("deathtouch") else "",
 			])
-	# Lifelink — source's controller gains life equal to damage dealt.
 	if source.has_keyword("lifelink"):
 		var controller: Player = _state.player_by_key(source.controller_key)
 		if controller != null:
@@ -1221,7 +1206,6 @@ func _deal_combat_damage(source: CardInstance, amount: int, target: Dictionary) 
 			])
 
 
-# Build a "player target" descriptor referring to the defending player.
 func _damage_target_player(defending: Player) -> Dictionary:
 	return {"kind": "player", "who": defending.key}
 
@@ -1360,8 +1344,9 @@ func _has_no_meaningful_action(player_key: String) -> bool:
 
 
 # Proto parity (canPayPotential, engine.js:1198): can `player_key` afford `cost`
-# by tapping currently-untapped lands, on top of floated mana? Phase 1 lands are
-# mono-color; §3.9's land-as-ability model generalizes the multi-color choice case.
+# by tapping currently-untapped lands, on top of floated mana? Lands are
+# currently mono-color; §3.9's land-as-ability model generalizes the
+# multi-color choice case.
 func _can_pay_potential(player_key: String, cost: Dictionary) -> bool:
 	var p: Player = _state.player_by_key(player_key)
 	var potential: ManaPool = p.mana.duplicate_deep()
@@ -1522,7 +1507,6 @@ func _fire_event(event: Dictionary) -> void:
 			if not Predicates.evaluate(pred, _state, source, event):
 				_state.append_log("Trigger condition false for %s — skipping" % source.name())
 				continue
-			# Phase 4: no chosen targets (effects use hardcoded specs).
 			_state.pending_triggers.append({
 				"source_iid": source.instance_id,
 				"controller_key": source.controller_key,
@@ -1534,7 +1518,7 @@ func _fire_event(event: Dictionary) -> void:
 
 
 # MTG 603.3b APNAP order: AP first (bottom of batch), NAP on top (resolves first LIFO).
-# Phase 4 simplification: queue order within each player.
+# Simplification: order within each player follows queue order.
 func _legal_pick_trigger_target(action: Dictionary) -> bool:
 	if _state == null or _state.winner != "":
 		return false
@@ -1591,8 +1575,7 @@ func _do_pick_trigger_target(action: Dictionary) -> bool:
 
 
 # MTG 514.3 cleanup-step discard. Legal iff awaiting_discard is set for the
-# acting player AND the named card is in their hand. Triggered discards
-# (e.g. "discard a card as you cast X") will reuse this action later.
+# acting player AND the named card is in their hand.
 func _legal_discard_card(action: Dictionary) -> bool:
 	if _state == null or _state.winner != "":
 		return false
@@ -1618,9 +1601,7 @@ func _do_discard_card(action: Dictionary) -> bool:
 		return false
 	player.move_card(card, player.hand, player.graveyard)
 	_state.append_log("%s discards %s." % [player.name, card.name()])
-	# Phase 4-style event hook for future "when X is discarded" triggers.
 	_fire_event({"kind": "card_discarded", "subject_card": card, "controller_key": player_key})
-	# Decrement count; clear awaiting state when satisfied.
 	var remaining: int = _state.awaiting_discard.get("count_remaining", 0) - 1
 	if remaining <= 0:
 		_state.awaiting_discard = {}
@@ -1676,7 +1657,6 @@ func _drain_continue() -> void:
 			_state.append_log("%s's triggered ability needs a target" % src_name)
 			return
 		else:
-			# Opp auto-pick (Phase 3 stub).
 			var auto_target := _auto_pick_trigger_target(filter, trig.controller_key)
 			if auto_target.is_empty():
 				_state.pending_triggers.pop_front()
@@ -1704,7 +1684,7 @@ func _trigger_target_filter(trig: Dictionary) -> String:
 	return ability.get("target_filter", "")
 
 
-# Greedy auto-pick: face damage / first opp creature. Phase 5c replaces with real AI.
+# Greedy auto-pick: face damage / first opp creature.
 func _auto_pick_trigger_target(filter: String, controller_key: String) -> Dictionary:
 	var opp_key: String = _state.opponent_of(controller_key)
 	match filter:

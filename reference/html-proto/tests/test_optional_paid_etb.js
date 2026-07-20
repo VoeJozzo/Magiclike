@@ -1,7 +1,6 @@
-// Optional paid ETB for Land+Spell staples (BACKLOG feature).
-// A spell stapled onto a LAND used to give a FREE ETB. Now it's a "you may pay
-// {the spell's cost}" trigger — a land is free to play, so the stapled effect
-// should cost something. Creature+Spell staples stay free (you paid the body).
+// A spell stapled onto a LAND carries a "you may pay {the spell's cost}" ETB
+// trigger — a land is free to play, so the stapled effect must cost something.
+// Creature+Spell staples stay free (you paid the body).
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -83,10 +82,10 @@ console.log('\n=== play the land → prompt opens for the controller; PAY → ef
 
 console.log('\n=== DECLINE → effect does not run ===');
 {
-  // (Mana isn't asserted here: declining lets the turn settle to CLEANUP, which
-  // empties the pool anyway under the current "clear at CLEANUP only" model
-  // — backlog B2. The no-effect signal below is the real contract: the decline
-  // path never calls payMana or runTriggerEffects.)
+  // (Mana isn't asserted here either: since B2, the settle empties the pool
+  // at the next phase boundary regardless of pay/decline. The no-effect
+  // signal below is the real contract: the decline path never calls payMana
+  // or runTriggerEffects.)
   const G = newGame();
   const land = stapleInstance('plains', 'you');
   G.you.hand.push(land);
@@ -131,13 +130,12 @@ console.log('\n=== AI pays for a worthwhile stapled effect, declines a worthless
 
 console.log('\n=== Land+TARGETED-spell ETB carries the target step + resolves (no null-target crash) ===');
 if (CARDS.lightning_bolt) {
-  // Regression: the synthesized ETB trigger copied the spell's effects but NOT
-  // its top-level target() step. A migrated targeted spell (lightning_bolt: target() + a
-  // BARE damage effect) thus ran a TARGETLESS damage on resolve → null-target
-  // crash in applyDamageFrom — an uncaught throw that froze the AI mid-turn
-  // ("AI hangs on a land+spell ETB"). The untargeted goblinRabble staple above
-  // never exercised this. Modeled on the AI path (the side that hung): the
-  // controller auto-picks the target (no human prompt), then the optional cost.
+  // The synthesized ETB trigger must copy the spell's top-level target() step,
+  // not just its effects — a targeted spell (lightning_bolt: target() + a bare
+  // damage effect) would otherwise resolve TARGETLESS, passing a null target
+  // into applyDamageFrom. The untargeted goblinRabble staple above doesn't
+  // exercise this. Modeled on the AI path: the controller auto-picks the
+  // target (no human prompt), then the optional cost.
   const G = newGame();
   const etbTpl = ENGINE.makeCard('plains', undefined, 0, undefined, undefined, ['lightning_bolt']);
   const etb = (etbTpl.triggers || []).find(t => t.event === 'card_zone_change');
@@ -160,8 +158,7 @@ if (CARDS.lightning_bolt) {
   const youLife0 = G.you.life;
   ENGINE.executeAction('opp', { type: 'playLand', cardIid: land.iid });
   // Drive the priority loop to resolution: pass / pay the optional cost / pick
-  // any trigger target, until nothing's owed. This is the path that hung — the
-  // ETB resolving used to throw (null target) inside executeAction.
+  // any trigger target, until nothing's owed.
   let threw = null, guard = 0;
   try {
     while (guard++ < 60) {
@@ -186,8 +183,8 @@ if (CARDS.lightning_bolt) {
 console.log('\n=== cost sticker reduces the optional ETB cost (not just the vestigial land cost) ===');
 if (CARDS.mind_rot) {
   // mindrot is {B}{1}; a "-1 cost" (cost_minus_1) sticker on the spell must
-  // reduce the ETB's optional_cost too — it used to only touch the vestigial
-  // (free-land) card.cost, leaving the "you may pay" cost unchanged.
+  // reduce the ETB's optional_cost too, not just the vestigial (free-land)
+  // card.cost.
   const inst = ENGINE.makeCard('mountain', ['cost_minus_1'], 0, undefined, undefined, ['mind_rot']);
   const etb = (inst.triggers || []).find(t => t.event === 'card_zone_change');
   check('mindrot base cost is {B}{1}', CARDS.mind_rot.cost.B === 1 && CARDS.mind_rot.cost.C === 1);
@@ -203,8 +200,8 @@ console.log('\n=== ETB trigger hits the stack immediately on play (not deferred 
   G.you.hand.push(land);
   readyMain(G, 'you');
   G.you.mana = { W: 0, U: 0, B: 0, R: 5, G: 0, C: 5 };
-  // Give the human ANOTHER action so step() won't auto-pass-and-resolve — that's
-  // the condition under which the trigger used to sit queued until the next pass.
+  // Give the human ANOTHER action so step() won't auto-pass-and-resolve —
+  // without it the immediate-drain behavior below wouldn't be exercised.
   const extra = ENGINE.makeCard('lightning_bolt', undefined, 0);
   extra.iid = iidc++; extra.controller = 'you'; extra.owner = 'you';
   G.you.hand.push(extra);

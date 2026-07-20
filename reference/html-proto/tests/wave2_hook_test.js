@@ -1,4 +1,4 @@
-// Wave 2 static spell riders ("Spells you cast also …" — applySpellRiders).
+// Static spell riders ("Spells you cast also …" — applySpellRiders).
 // The settled semantics under test (docs/plans/plan-pool-waves.md):
 //   - riders apply AFTER the spell's own effects (resolution-time: the pump
 //     lands before the rider reads the board — no cast-time timing trap)
@@ -6,7 +6,7 @@
 //   - targets that died during resolution are skipped
 //   - fizzled spells apply no riders; creature casts never do
 //   - spell_filter.has_effect gates riders to matching spells
-// Synthetic rider cards mirror the four Wave 2 customers' exact shapes.
+// Synthetic rider cards mirror the four shipping customers' exact shapes.
 
 const setup = require('./_setup');
 setup.loadEngine();

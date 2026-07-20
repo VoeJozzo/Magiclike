@@ -1,15 +1,13 @@
-// Audit A4-3 — fight effects must FIZZLE, not retarget, when a chosen
-// participant is gone at resolution (§704/§1006 fizzle semantics, PR #111's
-// framework; Joe's ruling PR #98: "Definitely not intentional, fix this").
+// Fight effects must FIZZLE, not retarget, when a chosen participant is gone
+// at resolution (§704/§1006 fizzle semantics).
 //
-// resolveFightOperands has two passes: pass 1 resolves {slot:N} operands (the
-// creatures the caster CHOSE), pass 2 fills empty slots with the controller's
-// highest-power unused creature. Pass 2 exists for {select:...} computed
-// operands ("your strongest creature fights..."); before this fix it ALSO
-// filled a {slot} operand whose chosen creature died in response — silently
-// conscripting the caster's own next-biggest creature as the replacement
-// combatant (friendly fire instead of fizzle, right after printing the fizzle
-// log). This file pins:
+// resolveFightOperands resolves {slot:N} operands (the creatures the caster
+// CHOSE) in pass 1, then pass 2 fills empty slots with the controller's
+// highest-power unused creature for {select:...} computed operands ("your
+// strongest creature fights..."). Pass 2 must never backfill a {slot} operand
+// whose chosen creature died in response — that would draft the caster's
+// next-biggest creature into the fight instead of fizzling it. This file
+// pins:
 //   1. Prey Upon shape ({slot},{slot}): the enemy target dies in response →
 //      the fight fizzles, NO friendly fire on the caster's other creature;
 //   2. same with the CASTER's chosen creature dead → fizzle (no substitute);
@@ -51,7 +49,7 @@ console.log('=== 1. Prey Upon: enemy target dies in response → fizzle, no frie
 (() => {
   clearBoards();
   const fighter  = place('you', 'goblin_raider', 2, 2);  // chosen slot-0 fighter
-  const innocent = place('you', 'goblin_raider', 4, 4);  // the bystander pass 2 used to conscript
+  const innocent = place('you', 'goblin_raider', 4, 4);  // bystander pass 2 must not conscript
   const victim   = place('opp', 'goblin_raider', 3, 2);  // chosen slot-1 target
   const ctx = { controller: 'you', sourceName: 'Prey Upon', sourceIid: -1,
                 allTargets: [tgt(fighter), tgt(victim)] };

@@ -1,23 +1,9 @@
-// Audit A4-16 — the move_card battlefield-leave path never flushed Elystra's
-// "last forever" buffs: `post.keep_buffs` was a dead parameter (the refactor
-// plan specified the flag for flicker; no card ever got it), so
-// Cloudshift/Otherworldly Journey/Oblation silently discarded her pending
-// permanent_eot buffs while every OTHER leave path (death, sacrifice, the
-// affect_creature bounce/exile arms, cleanup) flushed.
-//
-// BEHAVIOR CHANGE (deliberate, per Elystra's printed text "End-of-turn
-// effects on Elystra last forever"): her current-turn temp buffs + EOT
-// keyword grants now survive flicker/exile/bounce routed through move_card.
-//
-// Fix shape: the battlefield-leave branch calls leavesPlayPreservingBuffs
-// (flush → clearRestrictions → reset) unconditionally —
-// flushPermanentEotToStickers self-gates on tpl.permanent_eot, so it is a
-// no-op for every other card. The dead keep_buffs fork is deleted.
-//
-// A5-6/A5-7 update: the flush now banks the buffs as SLOT STICKERS (a stat_boost
-// sticker for the P/T delta + a kw_<keyword> sticker per grant) instead of the
-// retired permaBuffs object. The behavioral guarantee is unchanged (the buffs
-// survive flicker); only the storage channel changed.
+// Elystra's "last forever" buffs (her printed text: "End-of-turn effects on
+// Elystra last forever") survive flicker/exile/bounce routed through move_card:
+// the battlefield-leave branch calls leavesPlayPreservingBuffs unconditionally,
+// and flushPermanentEotToStickers self-gates on tpl.permanent_eot, so it is a
+// no-op for every other card. The flush banks the buffs as slot stickers — a
+// stat_boost sticker for the P/T delta plus a kw_<keyword> sticker per grant.
 
 const setup = require('./_setup');
 setup.loadEngine();

@@ -1,6 +1,6 @@
 extends Node
 
-# Phase 3 smoke test. Headline scenario: opp's Giant Growth saves their bear
+# Headline scenario: opp's Giant Growth saves their bear
 # from Lightning Bolt by pumping it to 5/5 in response. Tests the stack
 # architecture (decision C1 from the port plan) end-to-end:
 #   - Player casts Bolt at opp's bear → goes on stack
@@ -9,11 +9,6 @@ extends Node
 #   - Pass priority twice → Giant Growth resolves first (LIFO), bear becomes 5/5
 #   - Pass priority twice more → Bolt resolves, bear takes 3 damage, survives
 #   - State-based actions don't kill the bear (3 damage < 5 toughness)
-#
-# This validates everything Phase 3 added: pump effect, real damage to creatures,
-# state-based actions, and the engine's stack/priority machinery actually doing
-# work (Phase 1 had the stack but only one spell at a time; Phase 2 only had
-# sorcery-speed casts).
 
 var failures: int = 0
 
@@ -61,9 +56,9 @@ func _ready() -> void:
 	_assert_true(ok, "cast Bolt at opp's bear")
 	_assert_eq(s.stack.size(), 1, "stack has Bolt")
 
-	# Step 3: pass priority — Phase 5c AI casts Giant Growth in response then
-	# auto-passes (caster doesn't hold priority indefinitely — that was a
-	# Phase-3 stub quirk). Net effect after one pass_priority from us:
+	# Step 3: pass priority — the AI casts Giant Growth in response then
+	# auto-passes (the caster doesn't hold priority indefinitely). Net effect
+	# after one pass_priority from us:
 	#   - opp tapped Forest for G, cast Giant Growth (stack=[Bolt, GG])
 	#   - opp passed priority — now you have priority
 	ok = RulesEngine.execute_action(Action.make_pass_priority())

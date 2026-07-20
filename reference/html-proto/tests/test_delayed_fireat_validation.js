@@ -1,22 +1,15 @@
-// Audit fix A3-14 — schedule_delayed validates `when` instead of letting
-// unknown fire times sit in the delayed-trigger queue forever.
-//
-// Pre-fix, the handler passed any unrecognized `when` through verbatim
-// (`fireAt: params.when === 'end_step' ? 'endStep' : params.when`) and the
-// boot validator's EFFECT_SCHEMA had no schedule_delayed entry — so a typo'd
-// when:'eot' validated clean at boot, then sat in G.delayedTriggers
-// re-checked and re-kept on EVERY cleanup until game end (the drain only
-// fires 'endStep'): an immortal zombie entry, accumulating when triggered
-// repeatedly. The sibling leak (unknown effect kinds silently DROPPED in the
-// same drain block) is A1-6; this guard narrows that surface from the
-// producer side, per the finding's fold-in note.
+// A3-14: schedule_delayed refuses an unrecognized `when` instead of
+// enqueuing it — the CLEANUP drain only fires 'endStep', so anything else
+// would sit in G.delayedTriggers forever, re-checked on every cleanup.
+// EFFECT_SCHEMA rejects the same shape at boot. Sibling leak (unknown
+// effect kind silently dropped in the same drain) is A1-6.
 //
 // Arms:
-//   1. KEY — scheduling with when:'eot' is REFUSED (nothing enqueued) and
-//      console.warn fires (red pre-fix: enqueued, silent).
+//   1. KEY — scheduling with when:'eot' is refused (nothing enqueued) and
+//      console.warn fires.
 //   2. Guard — when:'end_step' still enqueues fireAt:'endStep'.
 //   3. KEY — EFFECT_SCHEMA flags a schedule_delayed with a bad `when` at
-//      boot validation (red pre-fix: no schema entry, validated clean).
+//      boot validation.
 //   4. Guard — the well-formed shape (otherworldly_journey's) stays clean.
 
 const setup = require('./_setup');
@@ -86,7 +79,7 @@ console.log('\n=== guard: the well-formed schedule_delayed shape validates clean
   }]);
   check('no schema error for the canonical shape', r.schemaErrors.length === 0,
     JSON.stringify(r.schemaErrors));
-  // And the live card pool (incl. otherworldly_journey) stays clean.
+  // Includes otherworldly_journey, the real card using this shape.
   const live = ENGINE.validateAllCardEffects(CARDS);
   check('live card pool has zero schema errors', live.schemaErrors.length === 0,
     JSON.stringify(live.schemaErrors));

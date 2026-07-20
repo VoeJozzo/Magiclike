@@ -1,21 +1,16 @@
-// Audit A3-6 (approved build-out, PR #98: "This is meant to support arbitrary
-// zone movements. We should probably build that out.") — the engine now emits
-// `card_zone_change` for EVERY genuine card move between zones, not just
-// battlefield-touching ones. A trigger authored against any zone pair —
-// card_moves(library, hand) ("whenever you draw"), card_moves(hand, graveyard)
-// ("whenever a card is discarded") — now fires. RED before the build-out:
-// draws/discards/mills/casts/counters/recursion emitted nothing, so every
-// "queued === 1" below read 0.
+// The engine emits `card_zone_change` for every genuine card move between
+// zones, not just battlefield-touching ones, so a trigger authored against
+// any zone pair — card_moves(library, hand) ("whenever you draw"),
+// card_moves(hand, graveyard) ("whenever a card is discarded") — fires.
 //
 // Also pinned here:
 //   - existing-pool isolation (structural): every shipped/generated
 //     card_zone_change trigger carries a battlefield-touching card_moves
-//     term, so the NEW events cannot match any existing trigger — zero
-//     behavior change for the current pool (the full suite enforces the
-//     battlefield emissions themselves).
-//   - the trigger BUDGET stops a draw-triggered-draw loop (TRIGGER_DEPTH_CAP
+//     term, so non-battlefield events cannot match any existing trigger —
+//     zero behavior change for the current pool.
+//   - the trigger budget stops a draw-triggered-draw loop (TRIGGER_DEPTH_CAP
 //     per stack episode), and noSelfCascade self-suppresses via drawCard's
-//     new sourceIid thread.
+//     sourceIid thread.
 //   - the setup rule (canon §1002.2a): opening hands are constructed, not
 //     moved — no zone events exist before the game starts.
 
@@ -64,8 +59,7 @@ function passUntil(G, done, max) {
   }
   return safety > 0;
 }
-// A trigger that listens for one zone pair and gains its controller 1 life —
-// a durable observable even after the queue drains.
+// A durable observable even after the queue drains.
 const onMove = (from, to, extraTerms, opts) => Object.assign({
   event: 'card_zone_change',
   condition: ['card_moves(' + from + ', ' + to + ')'].concat(extraTerms || []),
@@ -322,8 +316,8 @@ console.log('\n=== full loop: cast emits hand→stack, resolution emits stack→
 
 console.log('\n=== existing-pool isolation (structural pin): every shipped/generated card_zone_change trigger is battlefield-touching ===');
 (() => {
-  // If this ever fails, a pool trigger became matchable by the new
-  // non-battlefield events — re-audit pool behavior before shipping it.
+  // If this ever fails, a pool trigger became matchable by a
+  // non-battlefield event — re-audit pool behavior before shipping it.
   const movesArgs = (cond) => {
     const out = [];
     const walk = (t) => {
@@ -337,11 +331,11 @@ console.log('\n=== existing-pool isolation (structural pin): every shipped/gener
     return out;
   };
   // Deliberate non-battlefield listeners. The pin's job is catching
-  // ACCIDENTAL matches to the new zone events; a card designed to hear one
+  // ACCIDENTAL matches to the zone events; a card designed to hear one
   // gets named here (with behavior covered by its own test) instead of
-  // weakening the scan. toll_of_secrets: Wave 1 discard payoff — hears
+  // weakening the scan. toll_of_secrets: discard payoff — hears
   // card_moves(hand, graveyard); coverage in wave1_cards_test.js.
-  // curious_faerie: Wave 2 draw payoff — hears card_moves(library, hand)
+  // curious_faerie: draw payoff — hears card_moves(library, hand)
   // under the house ruling "drawing = any library→hand move"; coverage in
   // wave2_cards_test.js.
   const INTENTIONAL_NON_BF_LISTENERS = new Set(['toll_of_secrets', 'curious_faerie']);
@@ -451,11 +445,9 @@ console.log('\n=== noSelfCascade: a guarded draw-trigger fires on a foreign draw
 
 console.log('\n=== setup rule (canon §1002.2a): opening hands are constructed, not moved — no events before the game ===');
 (() => {
-  const G = newGame();  // newGame runs RUN.startNextGame() — a full game setup
+  const G = newGame();
   // The real seam is behavioral: makePlayer constructs the opening hand without
   // firing any library->hand event, so setup queues no zone-change triggers.
-  // (Dropped a source-text pin over makePlayer's body that asserted the same by
-  // implementation shape — this outcome assertion already proves it.)
   check('game setup queued no zone-change triggers', ENGINE.state().pendingTriggers.length === 0);
 })();
 

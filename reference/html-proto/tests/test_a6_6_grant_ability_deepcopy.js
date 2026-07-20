@@ -1,8 +1,6 @@
 // Audit A6-6 — a granted activated ability must be DEEP-copied so two cards
 // built from one shared (registry-singleton) descriptor don't alias a nested
-// field. Latent today (only inline descriptors use grant_activated_ability),
-// but the day a registry grant sticker exists, a one-level copy would share
-// effects[].types / cost sub-objects across every card built from it.
+// field.
 const setup = require('./_setup');
 setup.loadEngine();
 
@@ -12,8 +10,6 @@ function check(label, ok, info) {
   if (ok) pass++; else fail++;
 }
 
-// One SHARED descriptor (simulates a future STICKERS['grant_x'] singleton) with
-// a nested array (effect.types) and a nested object (ability.cost).
 const SHARED = { kind: 'grant_activated_ability',
   ability: { cost: { C: 1 }, effects: [{ kind: 'set_types', types: ['Artifact'] }] } };
 

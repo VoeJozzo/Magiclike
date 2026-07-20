@@ -7,10 +7,8 @@
 // die. The generator never decides "I'll build a Goblin bucket" — it picks
 // a seed card and asks the graph "who wants to be near this card?"; the
 // bucket's identity is its STORY (cards[0] is the seed, why[] the recruited
-// friends' reasons), read straight off the growth edges. There used to be a
-// derived display name on top (THEME_NAMES + dominant-edge nameBucket) —
-// killed at v2.2.22: a second, parallel summarization of the same bucket
-// that drifted from the story twice in one week (v2.2.15, v2.2.21).
+// friends' reasons), read straight off the growth edges — never a derived
+// display name.
 //
 // Pipeline (see docs/plans/plan-bucket-draft.md for the full design):
 //   §1 analyze(card)  — derive PROVIDES / WANTS resource sets + plan tags
@@ -72,11 +70,11 @@ const GROWTH_SHARPNESS = 2;
 const DECK_COUPLING = 0.1;
 const CURVE_CLASH_PENALTY = 0.5;// score multiplier when a candidate shares a
                                 // mana cost with a card already in the bucket.
-// There is deliberately NO deck-wide copy cap (Joe's call, 2026-07-06): an
-// earlier 4-copy rule here was an unauthorized import of MTG convention.
-// Redundancy self-prices via the graph (self-feeding cards pull their own
-// twins; pure payoffs don't) — and since v2.2.24 ALSO via the dupe shelf
-// below, which is a gradient, never a cap.
+// There is deliberately NO deck-wide copy cap (Joe's call, 2026-07-06): a
+// copy cap would be an unauthorized import of MTG convention. Redundancy
+// self-prices via the graph (self-feeding cards pull their own twins; pure
+// payoffs don't) and via the dupe shelf below, which is a gradient, never
+// a cap.
 
 // The dupe shelf (Joe's 3.1, 2026-07-13, "derived from anti-card-counting
 // strategies"): imagine the pool holds n+1 copies of every card, where
@@ -125,7 +123,7 @@ function dupeFactor(tplId, shelf) {
 const SEED_BASE_WEIGHT = 0.75;
 
 // No subtype is excluded from the graph. Even very broad tribes (Human: ~59
-// members, 0 payoffs as of v2.2.0) are harmless without a payoff — provides
+// members, 0 payoffs) are harmless without a payoff — provides
 // never attract provides, so a want-less tribe generates zero edges — and
 // the moment someone ships a Human lord, Human tribal simply starts working.
 // If a broad tribe ever swamps offers, the principled lever is specificity
@@ -177,10 +175,9 @@ function collectKindsAndConds(node, kinds, conds) {
 // derive. If the synergy IS derivable from the card's data (a flag, an
 // effect kind, a trigger shape), it belongs in a RULE, even when only one
 // card has it today — rules generalize and travel through staples; hints
-// don't. (Elystra was mis-filed here at v2.2.25: her permanence is a flag,
-// so it graduated to a rule at v2.2.30. As of that graduation NO shipped
-// card uses a hint — the mechanism stands as infrastructure for the
-// genuinely-underivable case, exercised by the __hint_test synthetic pin.)
+// don't. (No shipped card uses a hint today — the mechanism stands as
+// infrastructure for the genuinely-underivable case, exercised by the
+// __hint_test synthetic pin.)
 // Hints are ADDITIVE (max-merged with derived values, same as bump), and
 // resource names are validated against the vocabulary below — a typo warns
 // at index time instead of silently doing nothing (the predicate-registry
@@ -194,8 +191,8 @@ const HINT_RESOURCES = new Set([
   'your_dies', 'opp_dies', 'fodder', 'etb', 'lifegain', 'spellcast', 'wide',
   'anthem', 'self_discard', 'self_pain', 'opp_loss',
   // eot_buff / trick: the trick shelf's resources, whitelisted so a future
-  // underivable-synergy card can hint them (eot_buff is now produced by a
-  // rule off permanent_eot, v2.2.30; kept here for hint parity).
+  // underivable-synergy card can hint them (eot_buff is already produced by
+  // a rule off permanent_eot; kept here for hint parity).
   'eot_buff',
   'trick',
 ]);
@@ -230,10 +227,8 @@ function analyze(tpl) {
   const isSpellCard = hasType(tpl, 'Sorcery') || hasType(tpl, 'Instant');
   // Effective keywords include the engine's subtype implications (Angel/Dragon
   // fly, Treefolk reach, Wall defends — engine.js SUBTYPE_KEYWORDS via the
-  // shared addSubtypeKeywords helper). Reading raw keywords[] alone made the
-  // graph blind to every implied keyword — found by a Wave 1.5 judge agent
-  // citing engine.js:729 while killing a redundant "add flying to the Angel"
-  // patch.
+  // shared addSubtypeKeywords helper); raw keywords[] alone would leave the
+  // graph blind to every implied keyword.
   const effKeywords = ENGINE.addSubtypeKeywords(
     (tpl.types || []), (tpl.keywords || []).slice());
   const subtypes = (tpl.types || []).filter(t => !TYPE_RANK_TYPES.has(t));
@@ -256,7 +251,7 @@ function analyze(tpl) {
   if (isCreature) {
     // Cheap bodies are willing fodder; big ones aren't. This gate is what
     // keeps "everything dies eventually" from wiring every creature to
-    // every death payoff (the prototype's promiscuity bug).
+    // every death payoff.
     const cost = totalCost(tpl);
     if (cost <= 1) bump(provides, 'fodder', W_PROV_EXPEND);
     if (cost <= 2) bump(provides, 'your_dies', W_PROV_DIES_CHEAP);
@@ -269,9 +264,8 @@ function analyze(tpl) {
     bump(provides, 'etb', cost <= 3 ? 0.75 : 0.4);
   }
   if (isSpellCard) bump(provides, 'spellcast', 1);
-  // Wave 1 vocabulary (~2 lines per niche; scope + rationale in
-  // docs/plans/plan-pool-waves.md — bounce/deathtouch/reanimation rules were
-  // measured but dropped with their cards; re-add when a card pays for them):
+  // Extraction vocabulary (~2 lines per niche; scope + rationale in
+  // docs/plans/plan-pool-waves.md): each rule needs a shipped card to pay for it.
   // DIRECTION CONVENTION: 'self_discard' = YOUR OWN cards hitting the
   // graveyard (looting fuel) — the sole wanter (toll_of_secrets) hears only
   // controlled_by(you) discards, hence scope self here. OPP-discard effects
@@ -283,8 +277,8 @@ function analyze(tpl) {
   if ((kinds.some(k => k.kind === 'damage') && /player|opp|any/.test(String(tpl.target || '')))
       || kinds.some(k => k.kind === 'gain_life' && (k.amount || 0) < 0 && k.scope !== 'self')) bump(provides, 'opp_loss', 1);
   if (isCreature && hasType(tpl, 'Artifact')) bump(provides, 'sub:Artifact', W_PROV_SUBTYPE);
-  // Wave 2 vocabulary (same ~2-lines-per-niche contract; each rule has a
-  // shipped customer — deletions-are-wins applies if a niche ever empties):
+  // Same ~2-lines-per-niche contract; each rule has a shipped customer —
+  // deletions-are-wins applies if a niche ever empties:
   // landdrop: ramp puts extra lands onto the battlefield (landfall fuel).
   if (kinds.some(k => k.kind === 'move_card' && k.to_zone === 'battlefield'
       && k.filter && k.filter.type === 'Land')) bump(provides, 'landdrop', 2);
@@ -325,15 +319,14 @@ function analyze(tpl) {
     bump(provides, 'tapability', 1);
   }
   // counterspell: a spell that counters (counter_specialist's diet — the
-  // third arm of the qualified-spellcast family, found by the broad
-  // gated-on-X audit).
+  // third arm of the qualified-spellcast family).
   if (isSpellCard && kinds.some(k => k.kind === 'counter')) bump(provides, 'counterspell', 1);
   // kw:flying: intrinsic/implied fliers feed the fliers-matter lord
   // (wing_commander). Scoped to flying while it is the only keyword with a
   // payoff — extend per-customer, not speculatively.
   if (isCreature && effKeywords.includes('flying')) bump(provides, 'kw:flying', 1);
 
-  // --- Extraction-audit sweep (Joe, post-Wave-2): (target, filter) pairs at
+  // --- Extraction-audit sweep (Joe): (target, filter) pairs at
   // every authoring level, for filter-driven wants like "destroy target
   // TAPPED creature". Doctrine (Joe's generalization): ANY card gated on X
   // being true potentially wants X — the want ships when (a) your deck can
@@ -399,10 +392,9 @@ function analyze(tpl) {
   // deck that wants deaths (Joe's sweep follow-up, 2026-07-13). Destroy
   // effects only — exile and bounce make no death event. Damage-based
   // removal kills via SBAs, slightly less reliably (survivors, face mode).
-  // ANY card shape counts (Joe's rule-shape audit, 2026-07-14): the v2.2.19
-  // rule was spell-scoped for no semantic reason, leaving chupacabra's ETB
-  // destroy (a blinkable death engine) and royal_assassin's repeatable
-  // tap-destroy providing dies 0 while one-shot Murder provided 1.
+  // ANY card shape counts — chupacabra's ETB destroy (a blinkable death
+  // engine) and royal_assassin's repeatable tap-destroy provide opp_dies
+  // just like a one-shot Murder.
   const destroyers = kinds.filter(k => k.kind === 'affect_creature' && k.severity === 'destroy');
   if (destroyers.length) {
     bump(provides, 'opp_dies', 1);   // you point removal at THEIR creatures
@@ -412,10 +404,9 @@ function analyze(tpl) {
       bump(provides, 'your_dies', 1);
     }
   }
-  // Shape-agnostic like the destroy arm above (Joe's rule-shape audit): a
-  // creature-borne damage-to-creature (flame_summoner's ETB burn, a repeatable
-  // pinger) manufactures deaths too — the old isSpellCard guard was spell-
-  // scoped for no semantic reason. Weight = killFraction(amount): the death-
+  // Shape-agnostic like the destroy arm above: a creature-borne damage-to-
+  // creature (flame_summoner's ETB burn, a repeatable pinger) manufactures
+  // deaths too. Weight = killFraction(amount): the death-
   // credit a hit earns is exactly the share of the creature pool it can kill,
   // so a deal-3 sits at ~0.81 of destroy's 1.0 and a 1-ping at ~0.18. Derived,
   // not hand-picked (variable/unknown damage falls back to a mid 0.75).
@@ -444,8 +435,7 @@ function analyze(tpl) {
     const subGatedEntry = cs.some(x => /^card_has_subtype\(/.test(x));
     for (const s of cs) {
       // Any-of args (card_has_subtype(Elf, Merfolk) — Covenant Scholar) want
-      // EACH named tribe; the old \w+ regex silently extracted nothing from
-      // multi-arg predicates. A Land gate is landfall, not tribal: it wants
+      // EACH named tribe. A Land gate is landfall, not tribal: it wants
       // extra land DROPS (ramp), and "sub:Land" would spawn an unfeedable
       // bucket theme.
       const sub = s.match(/^card_has_subtype\(([^)]+)\)$/);
@@ -456,9 +446,9 @@ function analyze(tpl) {
         }
       }
       if (selfOnly) continue;
-      // The gate test for dies wants (doctrine, per the 2026-07-14 rule-shape
-      // audit): keep the generic want when dies-PROVIDERS stay useful under
-      // the trigger's gate, drop it when they don't.
+      // The gate test for dies wants (doctrine): keep the generic want when
+      // dies-PROVIDERS stay useful under the trigger's gate, drop it when
+      // they don't.
       //  - subtype gate ("whenever a DEMON dies", rakdos_underboss): KEEP —
       //    a sac outlet sacrifices YOUR demons. (Contrast the entry rule
       //    below: a wrong-tribe body can never fire a gated entry trigger.)
@@ -488,16 +478,15 @@ function analyze(tpl) {
       }
     }
     // Life-change payoffs are directional: a card fed by LOSS must not be
-    // bucketed with lifegain providers (found as a 23-false-edge latent bug
-    // during Wave 1 annotation — Gloomfang Leech registered wants:lifegain).
+    // bucketed with lifegain providers.
     if (trg.event === 'life_changed') {
       if (cs.includes('is_life_loss')) {
         bump(wants, cs.includes('affected_player_is(you)') ? 'self_pain' : 'opp_loss', W_WANT_PAYOFF);
       } else bump(wants, 'lifegain', W_WANT_PAYOFF);
     }
     // Qualified spell-cast payoffs want the QUALIFIED subset, not every
-    // spell (the Wave 2 "qualified spellcast" wart): flash-matters and
-    // cast-on-their-turn payoffs both feed on flash spells specifically.
+    // spell (the "qualified spellcast" wart): flash-matters and cast-on-
+    // their-turn payoffs both feed on flash spells specifically.
     if (trg.event === 'spell_cast') {
       if (cs.some(s => /^card_has_keyword\(flash\)$/.test(s)) || cs.includes('opponents_turn')) {
         bump(wants, 'flashcast', W_WANT_PAYOFF);
@@ -506,16 +495,15 @@ function analyze(tpl) {
         // sorcery — same qualified-spellcast reasoning as flashcast.
         bump(wants, 'burnspell', W_WANT_PAYOFF);
       } else if (cs.some(s => /^card_has_effect\(counter\)$/.test(s))) {
-        // Counterspell payoffs (counter_specialist) feed on counterspells —
-        // the broad audit caught this arm wanting generic spellcast.
+        // Counterspell payoffs (counter_specialist) feed on counterspells,
+        // not generic spellcast.
         bump(wants, 'counterspell', W_WANT_PAYOFF);
       } else {
         bump(wants, 'spellcast', W_WANT_PAYOFF);
       }
     }
     // A lost-life-this-turn gate is a payoff for opponent life loss no
-    // matter which event carries it (bloodlust_berserker rides 'attacks' —
-    // the broad audit caught it wanting nothing).
+    // matter which event carries it (bloodlust_berserker rides 'attacks').
     if (cs.some(s => /^lost_life_this_turn\(opp\)$/.test(s))) {
       bump(wants, 'opp_loss', W_WANT_PAYOFF);
     }
@@ -554,10 +542,9 @@ function analyze(tpl) {
     }
   }
   // One-shot mass buffs (trigger or spell effects with scope all_yours) want
-  // a wide board just like anthems — the Wave 2 "mass-buff wants:wide" wart:
-  // warchanter / inspiring_herald / horned_herald / soulblade_captain (and
-  // now steadfast_knight, overrun, rally_the_troops) were mis-measured as
-  // wanting nothing.
+  // a wide board just like anthems — the "mass-buff wants:wide" family:
+  // warchanter / inspiring_herald / horned_herald / soulblade_captain /
+  // steadfast_knight / overrun / rally_the_troops.
   if (kinds.some(k => (k.kind === 'pump' || k.kind === 'grant_keyword') && k.scope === 'all_yours')) {
     bump(wants, 'wide', W_WANT_WIDE);
   }
@@ -568,7 +555,7 @@ function analyze(tpl) {
       bump(provides, 'your_dies', W_PROV_TOKENS);
     }
   }
-  // Extraction-audit wants (sweep, post-Wave-2):
+  // Extraction-audit wants (sweep):
   // "Destroy target TAPPED creature" is a payoff for tapping — but a tapped
   // filter on YOUR OWN creature (sage_of_the_wilds' untap) is a legality
   // nicety, not a want.
@@ -582,17 +569,15 @@ function analyze(tpl) {
     bump(wants, 'wrathproof', 2);
   }
   // Graveyard consumers (grave_digger, deepseam_quarry) feed on creatures
-  // dying — the reanimation-wants rule Wave 1 measured then dropped,
-  // re-added now that the sweep confirmed two live customers. A consumer
-  // locked to the OPPONENT's graveyard (seal_thief_courier's hate trigger)
-  // is meta, not deck synergy.
+  // dying. A consumer locked to the OPPONENT's graveyard (seal_thief_
+  // courier's hate trigger) is meta, not deck synergy.
   if (targetSteps.some(s => s.t === 'graveyard_card'
       && !(s.f && Array.isArray(s.f.graveyards) && s.f.graveyards.length === 1 && s.f.graveyards[0] === 'opp'))) {
     bump(wants, 'your_dies', 2);   // your graveyard fills from YOUR deaths
   }
-  // Untap-your-creature effects want TAP-COST machines specifically
-  // (awaken_the_stone + pyromaniac yes, furnace_whelp no — Joe's
-  // disambiguation of the original activation-flavored version).
+  // Untap-your-creature effects want TAP-COST machines specifically —
+  // awaken_the_stone + pyromaniac yes, furnace_whelp no (its {R}-pump
+  // activation gains nothing from untapping).
   if (kinds.some(k => k.kind === 'untap') && targetSteps.some(s => s.t === 'your_creature')) {
     bump(wants, 'tapability', 2);
   }
@@ -603,10 +588,10 @@ function analyze(tpl) {
   else if (bouncesOwn) bump(wants, 'etbtrigger', 2);
   // Permanence (permanent_eot: EOT effects last forever) wants until-EOT
   // buffs — the value of making a temporary buff permanent is proportional
-  // to how many temporary buffs you cast. Graduated from Elystra's synergy
-  // hint to a rule (Joe, 2026-07-14): the want is DERIVABLE from the flag,
-  // so it belongs in the rules, and a stapled card that acquires the flag
-  // gets the want for free (a card-JSON hint would not travel).
+  // to how many temporary buffs you cast. This lives here, not as a hint,
+  // because the want is DERIVABLE from the flag: a stapled card that
+  // acquires the flag gets the want for free (a card-JSON hint would not
+  // travel).
   if (tpl.permanent_eot) bump(wants, 'eot_buff', W_WANT_PAYOFF);
 
   // --- Plan tags (weak similarity: shared strategy, not producer/consumer) ---
@@ -777,30 +762,24 @@ function weightedSample(entries) {
   return entries[entries.length - 1].item;
 }
 
-// Presence-pull color allocation (Joe's 2.1, 2026-07-13 — replaces the old
-// deckFitMultiplier ×0.05-per-extra-color cliff, which was commitment-blind
-// — one white card fenced a third color exactly as hard as twelve — and
-// near-banned marginal splashes via the free-slot + magic-constant shape).
-// What survives from 2.1: the commitment curriculum. Empty and mono decks
-// explore freely ("when you start, no color pull; your first color, still
-// no pull"); once ≥2 colors are committed, off-color candidates are
+// Presence-pull color allocation: the commitment curriculum. Empty and mono
+// decks explore freely ("when you start, no color pull; your first color,
+// still no pull"); once ≥2 colors are committed, off-color candidates are
 // suppressed by base^(C·offFraction) — the fence scales continuously with
 // how many colors you've committed (C) and with how off-color the card is
 // (offFraction = share of its pip-colors the deck does NOT own, so a
-// half-in-color gold card is fenced far less than a fully foreign one:
-// the marginal-splash legalization the cliff denied).
-// What did NOT survive: the additive form ("(color_pull)+(want pull)").
-// Measured 2026-07-13 (200 simulated 7-pick drafts per k, random picker):
+// half-in-color gold card is fenced far less than a fully foreign one).
+// Color force must be MULTIPLICATIVE, not additive ("(color_pull)+(want
+// pull)"): measured (200 simulated 7-pick drafts per k, random picker),
 // additive pull at k=0.5..3 collapsed clean-two-color decks 83.5%→≤10%,
 // sprawled decks to 4-5 colors, and drove the fallback rate 16%→30-44%
 // (rising with k) — same mechanism as the ε-value dead end (plan doc §8b):
 // additive uniform bonuses flatten within-group ranking and can't produce
-// the ~20× between-group suppression colors need. Color force must be
-// MULTIPLICATIVE. One knob (`let` for the _setColorPullForTest sweep seam);
-// measured origin 0.3 (v2.2.23), re-tuned to 0.25 when the dupe shelf
-// shifted weight toward fresh (disproportionately off-color) cards and
-// softened the color shape — 0.25 under the shelf reproduces the 0.3
-// pre-shelf histogram (v2.2.24 changelog has both tables).
+// the ~20× between-group suppression colors need. One knob (`let` for the
+// _setColorPullForTest sweep seam), coupled to the dupe shelf: the shelf's
+// pull toward fresh (disproportionately off-color) cards softens the color
+// shape, so retuning the shelf requires re-measuring this against the
+// color histogram.
 let SPLASH_BASE = 0.25;
 function colorFitFactor(cand, deckColors) {
   const C = deckColors.size;
@@ -850,8 +829,8 @@ function growBucket(seedAnalysis, deckAnalyses, deckColors, shelf) {
 }
 
 // Internal coherence = sum of pairwise edges. A per-bucket analytics metric
-// (reported by finishBucket, consumed by picklog/run rewards) — no longer a
-// hard gate: MIN_COHERENCE was retired with the Reinforcements floor (v2.2.26).
+// (reported by finishBucket, consumed by picklog/run rewards), not a hard
+// gate on bucket composition.
 function coherenceOf(bucket) {
   let sum = 0;
   for (let i = 0; i < bucket.length; i++) {
@@ -860,14 +839,12 @@ function coherenceOf(bucket) {
   return sum;
 }
 
-// Per-slot value fill (Joe's design, v2.2.26 — the Reinforcements
-// retirement): when growth strands below BUCKET_CARDS (no gate-legal
-// candidates left), the empty seats are filled one card at a time by the
-// goodstuff logic — value-weighted, color-fenced, never a card you own
-// (new power: the old bundles' contract, kept). A filled seat is a natural
-// tail seat: a value outlet that fires exactly when synergy is exhausted —
-// the honest micro-form of the value channel the ε experiments couldn't
-// build additively (plan-bucket-draft §8b).
+// Per-slot value fill: when growth strands below BUCKET_CARDS (no gate-
+// legal candidates left), the empty seats are filled one card at a time by
+// the goodstuff logic — value-weighted, color-fenced, never a card you own.
+// A filled seat is a natural tail seat: a value outlet that fires exactly
+// when synergy is exhausted — the honest micro-form of the value channel
+// the ε experiments couldn't build additively (plan-bucket-draft §8b).
 function valueFillSeats(bucket, why, deckColors, deckTplIds) {
   const owned = new Set(deckTplIds || []);
   const legal = _pool.filter(c => !c.isLand && !owned.has(c.tplId));
@@ -893,9 +870,10 @@ function valueFillSeats(bucket, why, deckColors, deckTplIds) {
 // ---------------------------------------------------------------------------
 // Bucket lands, in Joe's words: "What's the most common color? You get one
 // of those! What's the second most common color? You get one of those!"
-// (Mono-color buckets get two of the same; deck-wide 17-land allocation
-// stays proportional in draft.js. Pure largest-remainder here rounded a
-// U:3/B:1 bucket to island+island — playtest-caught.)
+// Mono-color buckets get two of the same; deck-wide 17-land allocation
+// stays proportional in draft.js. One land per top color, NOT proportional
+// largest-remainder rounding — that floods a U:3/B:1 splash bucket into
+// island+island (playtest-caught).
 function landsForCards(cardTplIds) {
   const pips = { W: 0, U: 0, B: 0, R: 0, G: 0 };
   for (const id of cardTplIds) {
@@ -921,8 +899,7 @@ function finishBucket(bucketAnalyses, why, isFallback) {
     // story (cards[0] = seed, why[] = recruited friends' reasons); a
     // value-sampled goodstuff bundle carries neither and must say so —
     // its cards can share accidental edge mass, and a story implies a
-    // synergy contract that value-sampling never made (v2.2.21's bug, when
-    // this distinction was carried by a derived display name instead).
+    // synergy contract that value-sampling never made.
     fallback: !!isFallback,
     cards,
     lands: landsForCards(cards),
@@ -970,14 +947,10 @@ function rollBucketOffer(deckTplIds) {
   const deckColors = deckColorSet(deckIds);
   const offer = [];
   // Grow one bucket per seed. Offer-level plan diversity is carried by seed
-  // sampling without replacement; the old name-dedup retry (re-roll a bucket
-  // whose derived display name collided with an already-offered one) died
-  // with the naming system — it was string-keyed on a cosmetic proxy and
-  // leaked in both directions. If PICKLOG shows offers converging on one
+  // sampling without replacement. If PICKLOG shows offers converging on one
   // plan, the principled replacement is seed-level MMR, not a name check.
   const shelf = dupeShelf(deckIds);
-  // Every grown bucket ships (the coherence floor died with the labels —
-  // see the §0 note); stranded seats get value-filled per slot.
+  // Every grown bucket ships; stranded seats get value-filled per slot.
   const tryAddBucket = (seed) => {
     const { bucket, why } = growBucket(seed, deckAnalyses, deckColors, shelf);
     valueFillSeats(bucket, why, deckColors, deckIds);
@@ -992,9 +965,8 @@ function rollBucketOffer(deckTplIds) {
   // Backfill ONLY if seeding itself starved — a pool too small or too exotic
   // to yield OFFER_SIZE seeds. Fill a whole value bundle from empty (same
   // sampler as the per-slot fill above; no seed → flat REINFORCEMENTS label,
-  // so we pass an empty why[] and fallback:true). This is the sole surviving
-  // whole-bundle fallback since the v2.2.26 retirement; near-unreachable at
-  // full pool size.
+  // so we pass an empty why[] and fallback:true). Near-unreachable at full
+  // pool size.
   while (offer.length < OFFER_SIZE) {
     const loose = [];
     valueFillSeats(loose, [], deckColors, deckIds);

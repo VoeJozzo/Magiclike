@@ -2,11 +2,9 @@
 // kills opp on its own, cast it"; multi-spell lethal is sequenced by
 // the AI naturally calling decide() again after each cast.
 //
-// Refactor protection: getDirectBurnSources was extracted in this
-// session as a shared helper between findBurnLethal (single-spell) and
-// computeReservedBurnForLethal (multi-spell). A regression in either
-// helper would let the AI miss obvious kills — exactly the kind of
-// behavior change unit tests catch better than playtest.
+// getDirectBurnSources is a shared helper between findBurnLethal
+// (single-spell) and computeReservedBurnForLethal (multi-spell); a
+// regression in either would let the AI miss an obvious kill.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -28,16 +26,15 @@ function makeBaselineGame() {
   return ENGINE.state();
 }
 
-// Replace `who`'s hand with a single card built from a template.
 // makeCard handles iid assignment, stickers, modifiers, etc.
 function giveHand(G, who, tplIds) {
   G[who].hand = tplIds.map(tplId => ENGINE.makeCard(tplId));
   for (const c of G[who].hand) c.owner = who;
 }
 
-// Set `who`'s mana pool to a specific shape. AI.decide → findBurnLethal
-// flows through ENGINE.getLegalActions, which requires mana actually be
-// in the pool for cast actions to appear as legal.
+// AI.decide → findBurnLethal flows through ENGINE.getLegalActions,
+// which requires mana actually be in the pool for cast actions to
+// appear as legal.
 function setMana(G, who, pool) {
   G[who].mana = Object.assign({W:0,U:0,B:0,R:0,G:0,C:0}, pool);
 }
@@ -69,7 +66,6 @@ console.log('=== Single-spell lethal: AI casts Lightning Bolt at face ===');
     check('Cast target is the player you', action.targets &&
       action.targets[0] && action.targets[0].kind === 'player' &&
       action.targets[0].who === 'you');
-    // Verify it's specifically the Bolt (not some other random pick).
     const card = G.opp.hand.find(c => c.iid === action.cardIid);
     check('Cast card is Lightning Bolt', card && card.tplId === 'lightning_bolt');
   }
@@ -107,8 +103,6 @@ console.log('\n=== No lethal: opp at 20, AI has Bolt but does NOT face-burn ==='
   // or (b) it picks a different action entirely. Either is acceptable.
   // The key assertion is "AI doesn't claim it's lethal here" — meaning
   // findBurnLethal returns null since 3 < 20.
-  // We can't observe findBurnLethal directly, but we can check that
-  // whatever action AI returns is NOT marked as a lethal-cast.
   const action = AI.decide(G, 'opp');
   check('AI returns SOME action even when not lethal', !!action);
   // No way to assert "AI didn't take the burn-lethal path" from outside
@@ -181,9 +175,7 @@ console.log('\n=== Cost-aware lethal: AI prefers cheaper single-spell when both 
 
 console.log('\n=== Ability-based burn: tap-for-damage hits face ===');
 {
-  // Wicked Acolyte has T: deal 1 to player. Set opp at 1 life and the
-  // Acolyte untapped on AI's battlefield. AI should activate the ability
-  // for face for lethal.
+  // Wicked Acolyte has T: deal 1 to player.
   if (CARDS['wicked_acolyte']) {
     const G = makeBaselineGame();
     G.opp.battlefield = [ENGINE.makeCard('wicked_acolyte')];

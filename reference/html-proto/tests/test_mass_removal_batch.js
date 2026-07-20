@@ -1,13 +1,9 @@
-// A4-4: mass removal (the affect_creature `scope` path) must be SIMULTANEOUS,
-// not sequential. Day of Reckoning kills everything AT ONCE — a dies-listener
+// Mass removal (the affect_creature `scope` path) must be SIMULTANEOUS, not
+// sequential: Day of Reckoning kills everything AT ONCE, so a dies-listener
 // (Blood Artist) swept by the same wipe must see every death, including its
 // own, regardless of where it sits in the battlefield array. checkDeaths
-// already implements the batch contract (splice the whole batch first, then
-// emit each death with the full batch as extraSources); the mass-scope
-// destroy/bounce/exile arms used to emit per-creature as each was removed,
-// so a listener destroyed early missed every later death (drained 1 vs the
-// damage-wrath's 3, order-dependently). These tests pin the batch semantics
-// for all three leave-play severities plus pass-1 indestructible validation.
+// implements this by splicing the whole batch first, then emitting each
+// death with the full batch as extraSources.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -43,9 +39,9 @@ function drain(G) {
   }
 }
 
-// The finding's declared scenario: Blood Artist + 2 vanillas, opp casts a
-// destroy-all (Day of Reckoning, scope:all_creatures severity:destroy).
-// Full cast path, triggers resolved through the real settle loop.
+// Blood Artist + 2 vanillas; opp casts a destroy-all (Day of Reckoning,
+// scope:all_creatures severity:destroy) through the full cast path, with
+// triggers resolved via the real settle loop.
 function wrathScenario(artistPosition) {
   const G = game('opp');
   if (artistPosition === 'first') {

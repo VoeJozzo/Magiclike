@@ -1,6 +1,6 @@
 extends Node
 
-# Phase 5a smoke test. One scenario per keyword:
+# One scenario per keyword:
 #   - Defender: can't attack
 #   - Haste: can attack the turn it enters (no summoning sickness gate)
 #   - Vigilance: attacker doesn't tap
@@ -37,7 +37,6 @@ func _ready() -> void:
 	_test_indestructible()
 	_test_hexproof()
 
-	# Final report
 	print("")
 	if failures == 0:
 		print("=== Phase 5a smoke test: ALL ASSERTIONS PASSED ✓ ===\n")
@@ -62,7 +61,7 @@ func _test_haste_bypasses_sickness() -> void:
 	# Place Raging Goblin on battlefield WITHOUT clearing summoning_sick.
 	# A non-haste creature would be locked out.
 	var rg := s.make_instance(CardDatabase.get_card("raging_goblin"), "you")
-	rg.summoning_sick = true  # just entered this turn
+	rg.summoning_sick = true
 	s.you.battlefield.append(rg)
 	s.phase_machine.current = PhaseMachine.Phase.COMBAT_ATTACK
 	var action := Action.make_declare_attacker(rg.instance_id)
@@ -111,8 +110,7 @@ func _test_reach_blocks_flyer() -> void:
 
 func _test_unblockable() -> void:
 	# We don't have an unblockable card yet — synthesize one by granting the
-	# keyword at runtime via granted_keywords. Exercises the runtime-grant
-	# path that stickers (Phase 7) will use.
+	# keyword at runtime via granted_keywords, exercising the runtime-grant path.
 	var s := _fresh_state()
 	var ogre := _put_creature(s, "you", "gray_ogre")
 	ogre.granted_keywords.append("unblockable")
@@ -134,7 +132,6 @@ func _test_first_strike() -> void:
 	s.attackers.append(atk.instance_id)
 	s.blockers[blk.instance_id] = atk.instance_id
 	RulesEngine._resolve_combat_damage()
-	# Blocker should be in opp's graveyard; attacker still alive on battlefield.
 	_assert_true(_in_zone(s, atk, "battlefield"), "first_strike: attacker survived")
 	_assert_true(_in_zone(s, blk, "graveyard"), "first_strike: blocker died before retaliating")
 
@@ -151,7 +148,7 @@ func _test_lifelink() -> void:
 
 
 func _test_deathtouch() -> void:
-	# Deathtouch 1/1 hits a 4/4 — the 4/4 should die from the 1 damage.
+	# Deathtouch: nonlethal damage still kills the blocker.
 	var s := _fresh_state()
 	var nighthawk := _put_creature(s, "you", "vampire_nighthawk")  # 2/3 with deathtouch
 	# Give opp a Hill Giant (3/3 vanilla) to chump-block with.

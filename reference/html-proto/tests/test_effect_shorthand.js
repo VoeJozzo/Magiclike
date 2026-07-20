@@ -1,9 +1,7 @@
 // Effect-shorthand parser (plan-effects-refactor §5.1/§5.2). Card effects may be
 // authored as function-call strings ("damage(3)", "draw(2)") that ingestCard()
-// normalizes to canonical dicts at load. This pins: the §5.1 call parser
-// (positional + keyword args + coercion), the §5.2 curated movement-shorthand
-// desugar table, dict-form pass-through (idempotent for the current pool), and
-// one end-to-end execution (a shorthand effect resolves through move_card).
+// normalizes to canonical dicts at load. Dict-form pass-through is idempotent
+// only for the current card pool, not a proven general property.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -25,7 +23,6 @@ console.log('=== §5.1 function-call parser: positional, keyword, coercion ===')
   check('grant_keyword(flying, duration=eot) → pos + kwarg', eq(desugarEffectString('grant_keyword(flying, duration=eot)'), { kind: 'grant_keyword', keyword: 'flying', duration: 'eot' }));
   check('no-arg counter() → bare kind', eq(desugarEffectString('counter()'), { kind: 'counter' }));
   check('whitespace tolerant ( damage ( 5 ) )', eq(desugarEffectString('damage( 5 )'), { kind: 'damage', amount: 5 }));
-  // coercion: negative int (signed pump), float, bool
   check('pump(-1, -1) negative coercion', eq(desugarEffectString('pump(-1, -1)'), { kind: 'pump', power: -1, toughness: -1 }));
   const p = _parseEffectCall('foo(true, 1.5, "a b")');
   check('coerce bool/float/quoted', p.positional.length === 3 && p.positional[0] === true && p.positional[1] === 1.5 && p.positional[2] === 'a b');
@@ -53,7 +50,7 @@ console.log('\n=== §5.2 movement shorthands desugar to canonical move_card ==='
 
 console.log('\n=== normalizeCardEffects: strings → dicts; dicts pass through ===');
 (() => {
-  // on-cast effects (mix of shorthand + canonical dict)
+  // on-cast effects
   const card = { effects: ['draw(1)', { kind: 'damage', amount: 2 }] };
   normalizeCardEffects(card);
   check('shorthand entry normalized', eq(card.effects[0], { kind: 'move_card', from_zone: 'library', to_zone: 'hand', selector: 'controller_top', amount: 1 }));
@@ -65,7 +62,6 @@ console.log('\n=== normalizeCardEffects: strings → dicts; dicts pass through =
   normalizeCardEffects(dictCard);
   check('all-dict card unchanged', JSON.stringify(dictCard) === before);
 
-  // abilities + triggers + modes shapes
   const ab = { abilities: [{ effects: ['draw(2)'] }], triggers: [{ effects: ['gain_life(1)'] }], effects: { modes: [['damage(1)'], [{ kind: 'draw', amount: 1 }]] } };
   normalizeCardEffects(ab);
   check('ability shorthand normalized', ab.abilities[0].effects[0].kind === 'move_card');
@@ -75,9 +71,7 @@ console.log('\n=== normalizeCardEffects: strings → dicts; dicts pass through =
 
 console.log('\n=== execution: a shorthand effect resolves through the real engine ===');
 (() => {
-  // Author a synthetic on-cast effect via shorthand, normalize it, then apply it
-  // and assert the engine actually drew a card (proves the desugar is executable,
-  // not just shape-correct).
+  // Proves the desugar is executable, not just shape-correct.
   RUN.start({ cards: Array(12).fill('plains'), colors: ['W'] }, null);
   RUN.startNextGame();
   const G = ENGINE.state();
