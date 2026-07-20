@@ -80,6 +80,11 @@ is never seen and needs no design.
 - **Section frames / headers** — the `woodbar` carved panel and `.picker-header` cover them.
 - **`ctrl_progress`** — baked but currently unused. Available if a meter is ever wanted; an
   unspent asset rather than a gap.
+- **`gem_spent`** — baked, and verified to have **no concept behind it**: the mana pool models
+  only *available* mana (`{W,U,B,R,G,C}` counts); nothing tracks *spent* pips. Using this art
+  would mean inventing a feature, which is a design call, not a reskin. Parked deliberately.
+- **`ctrl_segmented`** — was briefly used for the board phase track, then dropped: its fixed
+  cells cannot align to variable-width phase labels. Unspent again.
 
 ## Interim state
 
