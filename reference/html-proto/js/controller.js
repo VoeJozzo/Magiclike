@@ -2587,14 +2587,14 @@ function showManaColorPicker(card, colors, onPick) {
     G: { bg:'#ccffcc', fg:'#1a5a1a',  label:'Green ({G})' },
   };
   const dimmer = document.createElement('div');
-  dimmer.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:1300;padding:24px';
+  dimmer.className = 'picker-overlay vis';
   const box = document.createElement('div');
-  box.style.cssText = 'background:#1a1a26;border:2px solid #5a5a7a;border-radius:10px;padding:18px 16px;text-align:center;font-family:Georgia,serif;max-width:300px;width:100%';
+  box.className = 'picker-box picker-box-compact';
   const title = document.createElement('div');
-  title.style.cssText = 'color:#ffe7a0;font-size:14px;font-weight:bold;margin-bottom:4px';
+  title.className = 'picker-title';
   title.textContent = 'Tap ' + card.name + ' for:';
   const sub = document.createElement('div');
-  sub.style.cssText = 'color:#aaa;font-size:11px;margin-bottom:14px;font-style:italic';
+  sub.className = 'picker-subtitle';
   sub.textContent = 'Choose a color to add to your mana pool.';
   box.appendChild(title);
   box.appendChild(sub);
@@ -2604,7 +2604,9 @@ function showManaColorPicker(card, colors, onPick) {
     const info = COLOR_INFO[color] || { bg:'#888', fg:'#000', label: color };
     const b = document.createElement('button');
     b.textContent = info.label;
-    b.style.cssText = `background:${info.bg};color:${info.fg};border:1px solid #444;border-radius:5px;padding:8px 14px;font-size:13px;font-weight:bold;cursor:pointer;font-family:inherit`;
+    b.className = 'choice-btn choice-btn-sm';
+    b.style.background = info.bg;
+    b.style.color = info.fg;
     b.onclick = () => {
       document.body.removeChild(dimmer);
       onPick(color);
@@ -2614,7 +2616,7 @@ function showManaColorPicker(card, colors, onPick) {
   box.appendChild(btnRow);
   const cancel = document.createElement('button');
   cancel.textContent = 'Cancel';
-  cancel.style.cssText = 'margin-top:14px;background:#222;color:#aaa;border:1px solid #444;border-radius:5px;padding:6px 12px;font-size:11px;cursor:pointer;font-family:inherit';
+  cancel.className = 'choice-btn choice-btn-sm';
   cancel.onclick = () => document.body.removeChild(dimmer);
   box.appendChild(cancel);
   dimmer.appendChild(box);
@@ -2633,14 +2635,14 @@ function showManaColorPicker(card, colors, onPick) {
 // cancels. v1.0.64.
 function showAbilityPicker(card, options) {
   const dimmer = document.createElement('div');
-  dimmer.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:1300;padding:24px';
+  dimmer.className = 'picker-overlay vis';
   const box = document.createElement('div');
-  box.style.cssText = 'background:#1a1a26;border:2px solid #5a5a7a;border-radius:10px;padding:18px 16px;text-align:center;font-family:Georgia,serif;max-width:340px;width:100%';
+  box.className = 'picker-box picker-box-compact';
   const title = document.createElement('div');
-  title.style.cssText = 'color:#ffe7a0;font-size:14px;font-weight:bold;margin-bottom:4px';
+  title.className = 'picker-title';
   title.textContent = card.name;
   const sub = document.createElement('div');
-  sub.style.cssText = 'color:#aaa;font-size:11px;margin-bottom:14px;font-style:italic';
+  sub.className = 'picker-subtitle';
   sub.textContent = 'Choose an ability to activate.';
   box.appendChild(title);
   box.appendChild(sub);
@@ -2652,7 +2654,7 @@ function showAbilityPicker(card, options) {
     // {W}", "{T}: Draw 1"). Route through renderManaSymbols so the
     // pips render instead of literal {X} text.
     b.innerHTML = renderManaSymbols(escapeHtml(opt.label));
-    b.style.cssText = 'background:#2a2a36;color:#ddd;border:1px solid #555;border-radius:5px;padding:10px 12px;font-size:12px;cursor:pointer;font-family:inherit;text-align:left';
+    b.className = 'choice-btn choice-btn-sm';
     b.onclick = () => {
       document.body.removeChild(dimmer);
       opt.onPick();
@@ -2662,7 +2664,7 @@ function showAbilityPicker(card, options) {
   box.appendChild(btnCol);
   const cancel = document.createElement('button');
   cancel.textContent = 'Cancel';
-  cancel.style.cssText = 'margin-top:14px;background:#222;color:#aaa;border:1px solid #444;border-radius:5px;padding:6px 12px;font-size:11px;cursor:pointer;font-family:inherit';
+  cancel.className = 'choice-btn choice-btn-sm';
   cancel.onclick = () => document.body.removeChild(dimmer);
   box.appendChild(cancel);
   dimmer.appendChild(box);
@@ -3279,11 +3281,11 @@ function showStatsExportPicker(jsonPretty, filename) {
   const sizeKb = (jsonPretty.length / 1024).toFixed(1);
   const title = document.createElement('div');
   title.textContent = `Export stats (${sizeKb} KB)`;
-  title.style.cssText = 'color:#ffd700;font-size:14px;font-weight:bold;letter-spacing:1px';
+  title.className = 'picker-title';
   box.appendChild(title);
 
   const subtitle = document.createElement('div');
-  subtitle.style.cssText = 'color:#aaa;font-size:11px;line-height:1.5';
+  subtitle.className = 'picker-subtitle';
   subtitle.textContent =
     'The Claude in-app browser blocks several download paths. ' +
     'The compressed copy works in the sandbox; use it if your data is large.';
@@ -3295,8 +3297,8 @@ function showStatsExportPicker(jsonPretty, filename) {
       background:#222;border:1px solid #444;color:#ddd;padding:10px 14px;
       border-radius:5px;cursor:pointer;font-size:12px;font-family:inherit;
       text-align:left;line-height:1.5`;
-    b.innerHTML = `<div class="btn-label" style="color:#88ccff;font-weight:bold"></div>` +
-                  `<div class="btn-hint" style="color:#888;font-size:10px;margin-top:2px"></div>`;
+    b.innerHTML = `<div class="btn-label"></div>` +
+                  `<div class="btn-hint"></div>`;
     b.querySelector('.btn-label').textContent = label;
     b.querySelector('.btn-hint').textContent = hint;
     b.onclick = onClick;
@@ -3381,12 +3383,12 @@ function showStatsExportTextarea(payload, compressed) {
     max-width:520px;width:100%;max-height:80vh;display:flex;flex-direction:column;gap:10px`;
   const sizeKb = (payload.length / 1024).toFixed(1);
   const title = document.createElement('div');
-  title.style.cssText = 'color:#ddd;font-size:12px;line-height:1.5';
+  title.className = 'export-note';
   title.innerHTML = compressed
-    ? `<div style="color:#ffd700;font-weight:bold;margin-bottom:4px">Compressed picklog (${sizeKb} KB)</div>` +
+    ? `<div class="export-head">Compressed picklog (${sizeKb} KB)</div>` +
       `Tap <b>Copy</b> below. If that fails, long-press the text → Select All → Copy. ` +
       `Then paste the whole block to Claude — including the prefix.`
-    : `<div style="color:#ffd700;font-weight:bold;margin-bottom:4px">Raw picklog (${sizeKb} KB)</div>` +
+    : `<div class="export-head">Raw picklog (${sizeKb} KB)</div>` +
       `Tap <b>Copy</b> below. If that fails, long-press the text → Select All → Copy.`;
   const ta = document.createElement('textarea');
   ta.value = payload;
@@ -3397,7 +3399,7 @@ function showStatsExportTextarea(payload, compressed) {
     border:1px solid #333;border-radius:4px;padding:8px;font-family:monospace;
     font-size:11px;resize:none;word-break:break-all`;
   const status = document.createElement('div');
-  status.style.cssText = 'color:#888;font-size:10px;min-height:14px';
+  status.className = 'export-status';
 
   const btnRow = document.createElement('div');
   btnRow.style.cssText = 'display:flex;gap:8px';
@@ -3417,7 +3419,8 @@ function showStatsExportTextarea(payload, compressed) {
     ta.setSelectionRange(0, ta.value.length);   // mobile-friendly select-all
     let ok = false;
     try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
-    status.style.color = ok ? '#aaffaa' : '#ff8888';
+    status.classList.toggle('export-status-ok', ok);
+      status.classList.toggle('export-status-bad', !ok);
     status.textContent = ok
       ? `Copied ${sizeKb} KB. Paste it into the chat.`
       : 'Copy command not allowed. Long-press the text → Select All → Copy manually.';

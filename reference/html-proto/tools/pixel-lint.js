@@ -176,6 +176,29 @@ globalThis.PixelLint = (() => {
     return out;
   }
 
+  // Hardcoded presentation in JS. Inline styles sit near the top of CSS's
+  // specificity order, so a fixed colour/border written onto an element as it is
+  // built SILENTLY beats any stylesheet rule — every reskin attempt looks valid
+  // and renders unchanged. This is the trap that blocked the menu buttons
+  // (START_BTN_STYLE), the prompt buttons (makeChoiceButton) and the mana pips.
+  //
+  // The line drawn is static vs DYNAMIC, not "inline styles are bad": a value the
+  // stylesheet cannot know — a tooltip position, a per-table accent passed as
+  // data, a bar width being visualised — legitimately belongs inline. So this
+  // flags only literal colours and fixed border/padding/radius, which are almost
+  // never computed. Returns findings; the caller decides what is a violation.
+  function jsInlineStyles(source, { file = '' } = {}) {
+    const STYLE = /\.style\.cssText\s*=|\.style\.[a-zA-Z]+\s*=|style=["'`]/;
+    const STATIC = /#[0-9a-fA-F]{3,6}|border:\s*\d|padding:\s*\d|border-radius:\s*\d/;
+    const out = [];
+    source.split(/\r?\n/).forEach((line, i) => {
+      if (!STYLE.test(line)) return;
+      if (!STATIC.test(line)) return;          // computed value — allowed
+      out.push({ file, line: i + 1, text: line.trim().slice(0, 120) });
+    });
+    return out;
+  }
+
   function audit(id, { palette, scale = 1, lines = [] } = {}) {
     const cen = census(id);
     const closure = palette ? paletteClosure(id, palette) : null;
@@ -192,5 +215,5 @@ globalThis.PixelLint = (() => {
   }
 
   return { fromImage, census, paletteClosure, runDivisibility, bandMap, audit,
-           parseBorderImages, sliceFit, sliceSpecMatch };
+           parseBorderImages, sliceFit, sliceSpecMatch, jsInlineStyles };
 })();

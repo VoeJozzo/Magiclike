@@ -737,12 +737,12 @@ function openGraveyardTargetPicker(validTargets, prompt) {
   if (!items.length) return;
   const dimmer = document.createElement('div');
   dimmer.id = 'graveTargetPicker';
-  dimmer.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.72);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:1300;padding:24px;gap:12px';
+  dimmer.className = 'picker-overlay vis';
   const title = document.createElement('div');
-  title.style.cssText = 'color:#ffe7a0;font-size:15px;font-weight:bold;font-family:Georgia,serif;text-align:center';
+  title.className = 'picker-title';
   title.textContent = prompt.title || 'Choose a card';
   const sub = document.createElement('div');
-  sub.style.cssText = 'color:#aaa;font-size:11px;font-style:italic;font-family:Georgia,serif';
+  sub.className = 'picker-subtitle';
   sub.textContent = prompt.subtitle || 'Choose from any graveyard.';
   const host = document.createElement('div');
   host.style.cssText = 'display:flex;flex-wrap:wrap;gap:10px;justify-content:center;align-items:flex-start;max-width:90vw;max-height:62vh;overflow:auto';
@@ -750,7 +750,7 @@ function openGraveyardTargetPicker(validTargets, prompt) {
   renderCardPicker(host, items, (iid) => { close(); submitGraveyardTarget(iid); });
   const cancel = document.createElement('button');
   cancel.textContent = 'Cancel';
-  cancel.style.cssText = 'background:#2a2a36;color:#ddd;border:1px solid #555;border-radius:5px;padding:8px 16px;font-size:12px;cursor:pointer;font-family:Georgia,serif';
+  cancel.className = 'choice-btn choice-btn-sm';
   cancel.onclick = () => { close(); CONTROLLER.cancelTarget(); render(); };
   dimmer.appendChild(title);
   dimmer.appendChild(sub);
