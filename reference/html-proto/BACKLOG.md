@@ -21,6 +21,20 @@ The following items live in `docs/DIVERGENCE.md` as their primary tracker. Liste
 
 ### Other
 
+- **Mana-symbol rendering has no single source of truth** (Joe flagged, board-reskin
+  session) — symbols silently degrade to letters/emoji whenever a surface misses the art
+  wiring, and it keeps recurring. Root cause: pip art is duplicated/optional per render
+  path instead of centralized. Two failure modes: (1) `renderManaPool` had its OWN
+  `.mp*` letter-in-a-colored-circle pips running parallel to `renderManaSymbols`' `.mana-*`
+  SVG pips — fixed this session (pool now routes through `renderManaSymbols`, `.mp*` deleted),
+  but it's evidence of the pattern; (2) the SVG art is CSS-keyed via the relative path
+  `../../assets/mana/*.svg`, which only resolves when served from the **repo root** — wrong
+  serve root → 404 → silent fallback to the underlying glyph (emoji for WUBRG, letter for
+  C/T/X). Durable fix (deferred, Joe's call): make `renderManaSymbols` the ONE pip renderer
+  (audit for any other hand-rolled pip markup), make a missing-SVG failure **loud** (a boot
+  check that fetches one mana SVG and warns on 404, instead of degrading silently), and/or
+  kill the path fragility (inline the SVGs or use a root-absolute path so serve context stops
+  mattering).
 - **"target opponent" vs "your opponent" text voice** (Joe, Wave 2 — parked at
   "tentatively fine") — a 1v1 roguelike can fairly render implicit opp-targets
   as "Your opponent loses 1 life" instead of MTG's "target opponent." ~5-line
@@ -102,3 +116,7 @@ The following items live in `docs/DIVERGENCE.md` as their primary tracker. Liste
 - **v2.1.12 — bare-catch breadcrumbs** — `controller.js` Modal focus-restore + fullscreen request now `console.warn` instead of swallowing.
 - **SVG pips: already shipped, item retired** — {C} disc landed v2.1.9 (`assets/mana/C.svg`, also the disc under numeric pips — number overlay by design) and {T} v2.1.10 (`assets/keywords/tap.svg`). {X} remains CSS letter-on-disc but is dead styling: no card carries an X cost (verified 2026-06-09); revisit only when an X-cost card is designed.
 - **Browser-verified the two "not testable from Node" PR #5 leftovers** (2026-06-09, preview MCP at v2.1.10+local): all 13 `Modal`-managed modals open/close cleanly (`.vis` + `role`/`aria-modal` + LIFO stack, Escape closes dismissible / spares flow-gates), and the trigger-generator clickthrough end-to-end on Architect's Codex — 3-condition step → 3-effect step → assembled trigger on card + run slot, plus the keep/replace compare step on a later redraw ("Keep" preserves). Zero console errors. (Mercurial Adept rolls from the pre-seeded pool — no picker; the picker flow is Codex `build_on_draw`.)
+
+## De-jank Phylactery (splice interaction)
+
+Phylactery's loss-prevention is detected via `hasPhylacteryProtection()` = `slots.some(s => s.tplId === 'phylactery')` (engine.js). That checks the slot BASE tplId, so a Phylactery spliced in as a STAPLE (it moves into `stapledTpls`, slot base becomes the other card) is not detected -> protection silently stops. Phylactery is `stapleable:false` for now as a stopgap. Real fix: make the detection also see stapled components (or generalize slot-membership checks). Applies to any run-rule keyed on `slot.tplId === X` for a card that can be spliced.

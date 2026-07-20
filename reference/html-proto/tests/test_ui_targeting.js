@@ -27,9 +27,9 @@ function game() {
   G.you.mana = { W: 9, U: 9, B: 9, R: 9, G: 9, C: 9 };
   return G;
 }
-const TOUGH = Object.keys(CARDS).find(id => hasType(CARDS[id], 'Creature') && (CARDS[id].toughness || 0) >= 4 && !CARDS[id].special);
+const TOUGH = Object.keys(CARDS).find(id => hasType(CARDS[id], 'Creature') && (CARDS[id].toughness || 0) >= 4 && !isUndraftable(CARDS[id]));
 const VANILLA = Object.keys(CARDS).find(id => hasType(CARDS[id], 'Creature') && !CARDS[id].target
-  && !(CARDS[id].triggers || []).length && !(CARDS[id].abilities || []).length && !CARDS[id].special);
+  && !(CARDS[id].triggers || []).length && !(CARDS[id].abilities || []).length && !isUndraftable(CARDS[id]));
 
 console.log('=== top-level target() spell enters targeting, then casts on a creature ===');
 (() => {

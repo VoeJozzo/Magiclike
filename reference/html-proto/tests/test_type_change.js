@@ -87,7 +87,7 @@ console.log('\n=== set_types: a creature becomes ONLY an artifact (neutralized) 
 (() => {
   // Use a real single-type creature from the pool (not an explicit-multi-type
   // robot — set_types should neutralize a plain creature, not a co-typed one).
-  const crId = Object.keys(CARDS).find(id => hasType(CARDS[id], 'Creature') && !CARDS[id].special && CARDS[id].cost
+  const crId = Object.keys(CARDS).find(id => hasType(CARDS[id], 'Creature') && !isUndraftable(CARDS[id]) && CARDS[id].cost
     && !(Array.isArray(CARDS[id].types) && CARDS[id].types.filter(t => isCardTypeTag(t)).length > 1));
   const { G, inst } = spawn(crId);
   check('starts a Creature', hasType(inst, 'Creature') && ENGINE.canCreatureAttack(inst));
@@ -186,7 +186,7 @@ console.log('\n=== 6 artifact lands (WUBRG + C), mana DERIVED from basic subtype
   const inPool = (id) => {
     // Re-derive the pool predicate (draftPool is cached/internal): non-land OR artifact-land, non-special.
     const c = CARDS[id];
-    return !c.special && (!hasType(c, 'Land') || hasType(c, 'Artifact'));
+    return !isUndraftable(c) && (!hasType(c, 'Land') || hasType(c, 'Artifact'));
   };
   check('artifact lands qualify for the draft pool', lands.every(inPool));
   check('basic lands still excluded from the draft pool', !inPool('forest') && !inPool('plains'));
@@ -262,7 +262,7 @@ console.log('\n=== #4: the AI has tooling — it casts a neutralize spell at an 
 
 console.log('\n=== staple same-class UNION: Artifact co-type rides along ===');
 (() => {
-  const vanilla = Object.keys(CARDS).find(id => hasType(CARDS[id], 'Creature') && !CARDS[id].special && CARDS[id].cost && !(Array.isArray(CARDS[id].types) && CARDS[id].types.filter(t => isCardTypeTag(t)).length > 1) && !CARDS[id].triggers && !CARDS[id].abilities);
+  const vanilla = Object.keys(CARDS).find(id => hasType(CARDS[id], 'Creature') && !isUndraftable(CARDS[id]) && CARDS[id].cost && !(Array.isArray(CARDS[id].types) && CARDS[id].types.filter(t => isCardTypeTag(t)).length > 1) && !CARDS[id].triggers && !CARDS[id].abilities);
   // Artifact creature as the STAPLE onto a vanilla creature base (the direction
   // that used to drop Artifact — base had no types[]).
   const syn = ENGINE.synthesizeStapledTemplate(vanilla, ['copper_golem']);
@@ -282,7 +282,7 @@ console.log('\n=== staple same-class UNION: Artifact co-type rides along ===');
   // id-normalization every card carries types[], so the merge legitimately has
   // one too — the real invariant is that it stays a plain Creature with no
   // Artifact/Enchantment co-type bolted on, governing as Creature.
-  const vanilla2 = Object.keys(CARDS).find(id => id !== vanilla && hasType(CARDS[id], 'Creature') && !CARDS[id].special && CARDS[id].cost && !(Array.isArray(CARDS[id].types) && CARDS[id].types.filter(t => isCardTypeTag(t)).length > 1) && !CARDS[id].triggers && !CARDS[id].abilities);
+  const vanilla2 = Object.keys(CARDS).find(id => id !== vanilla && hasType(CARDS[id], 'Creature') && !isUndraftable(CARDS[id]) && CARDS[id].cost && !(Array.isArray(CARDS[id].types) && CARDS[id].types.filter(t => isCardTypeTag(t)).length > 1) && !CARDS[id].triggers && !CARDS[id].abilities);
   const synPlain = ENGINE.synthesizeStapledTemplate(vanilla, [vanilla2]);
   check('vanilla Cr + vanilla Cr staple → governs Creature, no spurious Artifact co-type',
     governingType(synPlain) === 'Creature' && !hasType(synPlain, 'Artifact') && !hasType(synPlain, 'Enchantment'));

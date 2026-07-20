@@ -1,5 +1,6 @@
 {
   "card_id": "bleach",
+  "boss": true,
   "art": "art.png",
   "cost": {
     "W": 1
@@ -21,7 +22,6 @@
     }
   ],
   "name": "Bleach",
-  "special": true,
   "keywords": [
     "flash"
   ],

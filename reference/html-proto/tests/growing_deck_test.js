@@ -16,9 +16,21 @@ function countSpells(tplIds) {
   return tplIds.filter(id => CARDS[id] && !hasType(CARDS[id], 'Land')).length;
 }
 
+// Growing mode opens with the boon pick (#0) before any buckets exist; the
+// picked boon later rides into the deck as an extra card ahead of the picks.
+function pickThroughBoonPhase() {
+  const boon = DRAFT.getPlayerPack()[0];
+  DRAFT.pickPlayer(boon);
+  return boon;
+}
+
 // --- §1 run-start bucket draft (DRAFT 'growing' mode) ------------------------
 {
   DRAFT.startDraft('growing');
+  check('growing mode opens in the boon phase (pick #0)', DRAFT.isBoonPhase());
+  check('no bucket offer during the boon phase', DRAFT.getBucketOffer().length === 0);
+  const boon = pickThroughBoonPhase();
+  check('boon pick ends the boon phase', !DRAFT.isBoonPhase());
   check('growing draft starts with a 3-bucket offer', DRAFT.getBucketOffer().length === 3);
   check('growing draft has no card pack', DRAFT.getPlayerPack().length === 0);
   check('progress counts buckets: 0/5', (() => {
@@ -41,17 +53,22 @@ function countSpells(tplIds) {
   check('complete after 5 bucket picks', DRAFT.isComplete());
 
   const deck = DRAFT.getPlayerDeck();
-  check('player deck = 15 spells + 10 lands', (() => {
+  // The boon may itself be a land (City of Brass, Phylactery), so the spell
+  // count is derived from the picked boon rather than pinned to a literal.
+  const boonSpells = hasType(CARDS[boon], 'Land') ? 0 : 1;
+  check('player deck = boon + 15 spells + 10 lands', (() => {
     const spells = countSpells(deck.cards);
-    return deck.cards.length === 25 && spells === 15;
-  })(), `${deck.cards.length} cards, ${countSpells(deck.cards)} spells`);
+    return deck.cards.length === 26 && spells === 15 + boonSpells;
+  })(), `${deck.cards.length} cards, ${countSpells(deck.cards)} spells, boon=${boon}`);
+  check('boon rides ahead of the bucket picks', deck.cards[0] === boon);
   check('player deck mode passthrough = growing', deck.mode === 'growing');
   check('deck colors derived from picks', Array.isArray(deck.colors) && deck.colors.length >= 1);
 
   // --- §2 RUN.start stores growing config ------------------------------------
   RUN.start(deck, null);
   const slots = RUN.getSlots();
-  check('run slots match deck size', slots.length === 25);
+  check('run slots match deck size', slots.length === deck.cards.length,
+    `${slots.length} slots, ${deck.cards.length} cards`);
 
   // --- §3 addBucket reward: two-phase commit ---------------------------------
   const deckTplIds = slots.map(s => s.tplId);
@@ -93,6 +110,7 @@ function countSpells(tplIds) {
   // Fresh minimal growing run far under target: growth candidates should
   // appear in (nearly) every offer.
   DRAFT.startDraft('growing');
+  pickThroughBoonPhase();
   for (let i = 0; i < 5; i++) DRAFT.pickBucketOffer(0);
   RUN.start(DRAFT.getPlayerDeck(), null);
   let sawAddBucket = 0;
@@ -106,7 +124,8 @@ function countSpells(tplIds) {
     const r = RUN.getReward();
     if (r && r.phase === 'mixed' && r.candidates.some(c => c.kind === 'addBucket')) sawAddBucket++;
   }
-  // 15-spell start → deficit 8 → weight 16 vs table sum 23: P(offer has one) ≈ 0.8.
+  // 15-or-16-spell start (boon may add one) → deficit 7-8 → weight 14-16 vs
+  // table sum 23: P(offer has one) ≈ 0.8.
   check('under target: addBucket appears in most offers', sawAddBucket >= 6, `${sawAddBucket}/12`);
 
   // Grow the deck to target: weight must drop to zero (classic reward table).

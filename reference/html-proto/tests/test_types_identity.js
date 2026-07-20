@@ -121,7 +121,7 @@ console.log('\n=== multi-type governance + carry-through (the Phase-4 generaliza
     hasType(legendRobot, 'Legendary') && typeLine(legendRobot).startsWith('Legendary '), typeLine(legendRobot));
 
   // makeCard carries the template types[] onto the runtime instance end-to-end.
-  const baseId = Object.keys(CARDS).find(id => hasType(CARDS[id], 'Creature') && !CARDS[id].special && CARDS[id].cost);
+  const baseId = Object.keys(CARDS).find(id => hasType(CARDS[id], 'Creature') && !isUndraftable(CARDS[id]) && CARDS[id].cost);
   CARDS.__robotProbe = Object.assign({}, CARDS[baseId], { name: 'Robot Probe', types: ['Artifact', 'Creature'] });
   const inst = ENGINE.makeCard('__robotProbe', [], 0);
   check('makeCard carries types[] onto the instance (no legacy type/sub)',

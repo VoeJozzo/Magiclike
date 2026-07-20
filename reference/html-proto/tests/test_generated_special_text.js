@@ -15,12 +15,13 @@ function check(label, ok, info) {
 }
 function r(c) { return describeCardSegments(c, { skipKeywords: false }).map(x => x.text).join(''); }
 
-console.log('=== `special` alone no longer forces authored text ===');
+console.log('=== boon/boss status alone does not force authored text ===');
 (() => {
-  // vileEdict / symmetricize / endomorph / bleach / embargo are special:true but
+  // vileEdict / symmetricize / bleach / embargo (bosses) and endomorph (boon)
   // carry NO custom_text → they must generate from their effects.
   for (const id of ['vile_edict', 'symmetricize', 'endomorph', 'bleach', 'embargo']) {
-    check(id + ' is special but not custom_text', CARDS[id].special === true && CARDS[id].custom_text !== true);
+    check(id + ' is undraftable but not custom_text',
+      isUndraftable(CARDS[id]) && CARDS[id].custom_text !== true);
   }
 })();
 

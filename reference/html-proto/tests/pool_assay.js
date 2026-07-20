@@ -31,7 +31,7 @@ const LAND = { W: 'plains', U: 'island', B: 'swamp', R: 'mountain', G: 'forest' 
 
 const pool = Object.keys(CARDS).filter(id => {
   const c = CARDS[id];
-  if (!c || c.special || hasType(c, 'Basic') || hasType(c, 'Land')) return false;
+  if (!c || isUndraftable(c) || hasType(c, 'Basic') || hasType(c, 'Land')) return false;
   if (typeof c.draftWeight === 'number' && c.draftWeight <= 0) return false;
   return true;
 });

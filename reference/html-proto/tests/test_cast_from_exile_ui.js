@@ -42,7 +42,7 @@ function grantExileCast(G, tplId) {
   return card;
 }
 
-const TOUGH = Object.keys(CARDS).find(id => hasType(CARDS[id], 'Creature') && (CARDS[id].toughness || 0) >= 4 && !CARDS[id].special);
+const TOUGH = Object.keys(CARDS).find(id => hasType(CARDS[id], 'Creature') && (CARDS[id].toughness || 0) >= 4 && !isUndraftable(CARDS[id]));
 
 console.log('=== targeted stolen spell (Lightning Bolt) casts from exile at the opponent face ===');
 (() => {

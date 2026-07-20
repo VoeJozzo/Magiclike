@@ -52,7 +52,7 @@ proof('A14b',
     // case above can't catch this — a land contributes no keywords.)
     const staple = Object.values(CARDS).find(c =>
       (c.keywords || []).includes('flying') && (c.types || []).includes('Creature')
-      && !c.custom_text && !c.special);
+      && !c.custom_text && !isUndraftable(c));
     if (!staple) throw new Error('no plain flying creature in the pool to staple');
     const card = ENGINE.makeCard('mercurial_adept', [], 0, undefined, undefined, [staple.tplId]);
     const text = segsToText(describeCardSegments(card, {}));

@@ -188,7 +188,10 @@ function render() {
   // Shared with the Space/Enter keyboard path — see CONTROLLER.humanOwesDeclaration.
   const showDone = CONTROLLER.humanOwesDeclaration();
   const btnDone = document.getElementById('btnDone');
-  btnDone.style.display = showDone ? 'block' : 'none';
+  // visibility, not display: the button keeps its row in the .acts column even
+  // when hidden, so the center bar doesn't grow/shrink as you flip through
+  // phases (it used to jump when Done appeared at declare-attackers).
+  btnDone.style.visibility = showDone ? 'visible' : 'hidden';
   btnDone.textContent = G.phase === 'COMBAT_ATTACK' ? 'Done Attacking' : 'Done Blocking';
 
   const expectedActor = ENGINE.expectedActor();
@@ -326,9 +329,7 @@ function render() {
     const btns = document.getElementById('numberChoiceButtons');
     btns.innerHTML = '';
     for (let n = p.min; n <= p.max; n++) {
-      btns.appendChild(makeChoiceButton(String(n),
-        'border:2px solid #cc44aa;color:#ee88cc;padding:14px 22px;font-family:inherit;font-size:24px;font-weight:bold;cursor:pointer;border-radius:6px;min-width:60px;transition:transform .1s,background .1s',
-        '#3a1840', '#5a2860',
+      btns.appendChild(makeChoiceButton(String(n), 'choice-btn-big',
         () => CONTROLLER.numberChoice(n)));
     }
   } else {
@@ -349,10 +350,8 @@ function render() {
     ];
     for (const entry of labels) {
       btns.appendChild(makeChoiceButton(
-        `<div style="font-size:11px;opacity:0.7;letter-spacing:0.1em;text-transform:uppercase">${entry.label}</div><div style="font-size:24px;font-weight:bold;margin-top:4px">${entry.value}</div>`,
-        'border:2px solid #88aacc;color:#aaccee;padding:12px 20px;font-family:inherit;cursor:pointer;border-radius:6px;min-width:90px;transition:transform .1s,background .1s',
-        '#152030', '#1e2c44',
-        () => CONTROLLER.symmetricizeChoice(entry.which)));
+        `<div class="choice-btn-label">${entry.label}</div><div class="choice-btn-value">${entry.value}</div>`,
+        '', () => CONTROLLER.symmetricizeChoice(entry.which)));
     }
   } else {
     Modal.hide('symmetricizeChoiceModal');
@@ -371,13 +370,9 @@ function render() {
       `${p.source} entered.<br>Pay ${costStr} to use its stapled effect?`;
     const btns = document.getElementById('optionalCostButtons');
     btns.innerHTML = '';
-    btns.appendChild(makeChoiceButton(`Pay ${costStr}`,
-      'border:2px solid #66bb88;color:#bfe9cc;padding:12px 20px;font-family:inherit;cursor:pointer;border-radius:6px;min-width:90px;transition:transform .1s,background .1s',
-      '#15241a', '#1e3426',
+    btns.appendChild(makeChoiceButton(`Pay ${costStr}`, '',
       () => CONTROLLER.optionalCost(true)));
-    btns.appendChild(makeChoiceButton('Decline',
-      'border:2px solid #886666;color:#e9cccc;padding:12px 20px;font-family:inherit;cursor:pointer;border-radius:6px;min-width:90px;transition:transform .1s,background .1s',
-      '#241515', '#341e1e',
+    btns.appendChild(makeChoiceButton('Decline', 'choice-btn-decline',
       () => CONTROLLER.optionalCost(false)));
   } else {
     Modal.hide('optionalCostModal');
@@ -742,12 +737,12 @@ function openGraveyardTargetPicker(validTargets, prompt) {
   if (!items.length) return;
   const dimmer = document.createElement('div');
   dimmer.id = 'graveTargetPicker';
-  dimmer.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.72);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:1300;padding:24px;gap:12px';
+  dimmer.className = 'picker-overlay vis';
   const title = document.createElement('div');
-  title.style.cssText = 'color:#ffe7a0;font-size:15px;font-weight:bold;font-family:Georgia,serif;text-align:center';
+  title.className = 'picker-title';
   title.textContent = prompt.title || 'Choose a card';
   const sub = document.createElement('div');
-  sub.style.cssText = 'color:#aaa;font-size:11px;font-style:italic;font-family:Georgia,serif';
+  sub.className = 'picker-subtitle';
   sub.textContent = prompt.subtitle || 'Choose from any graveyard.';
   const host = document.createElement('div');
   host.style.cssText = 'display:flex;flex-wrap:wrap;gap:10px;justify-content:center;align-items:flex-start;max-width:90vw;max-height:62vh;overflow:auto';
@@ -755,7 +750,7 @@ function openGraveyardTargetPicker(validTargets, prompt) {
   renderCardPicker(host, items, (iid) => { close(); submitGraveyardTarget(iid); });
   const cancel = document.createElement('button');
   cancel.textContent = 'Cancel';
-  cancel.style.cssText = 'background:#2a2a36;color:#ddd;border:1px solid #555;border-radius:5px;padding:8px 16px;font-size:12px;cursor:pointer;font-family:Georgia,serif';
+  cancel.className = 'choice-btn choice-btn-sm';
   cancel.onclick = () => { close(); CONTROLLER.cancelTarget(); render(); };
   dimmer.appendChild(title);
   dimmer.appendChild(sub);
@@ -788,23 +783,27 @@ function segmentsToHtml(segs) {
 function renderManaPool(id, mana) {
   const el = document.getElementById(id);
   el.innerHTML = '';
+  // Route pool pips through the ONE pip renderer (renderManaSymbols → .mana-*
+  // SVG art) instead of the old letter-in-a-colored-circle .mp* divs. Single
+  // source of truth for mana-symbol art — see the .mpool .mana sizing rule.
+  let html = '';
   for (const c of ['W','U','B','R','G','C']) {
-    for (let i=0; i<(mana[c]||0); i++) el.innerHTML += `<div class="mp mp${c}">${c}</div>`;
+    for (let i=0; i<(mana[c]||0); i++) html += renderManaSymbols('{' + c + '}');
   }
+  el.innerHTML = html;
 }
 
 // One option button for the choice-modal prompts (pick-a-number / symmetricize
-// / edict). Centralizes the create + lift-on-hover (background swap + translateY)
-// + onclick boilerplate the three prompts used to each spell out. `css` is the
-// per-modal layout/border/color (no background — that's set from normalBg so it
-// can't drift from the hover swap). `html` is trusted markup (our own data).
-function makeChoiceButton(html, css, normalBg, hoverBg, onclick) {
+// / optional-cost). Takes a CLASS, not an inline style string: inline styles beat
+// the stylesheet, which is what kept these on the old flat look and blocked the
+// pixel-chrome tiles (the same trap START_BTN_STYLE fell into). Colour comes from
+// the modal's --picker-accent-text, so each prompt keeps its signature accent
+// without per-call-site colour strings, and hover/press come from the tile art
+// instead of a hand-rolled background swap. `html` is trusted markup (our own data).
+function makeChoiceButton(html, extraClass, onclick) {
   const b = document.createElement('button');
   b.innerHTML = html;
-  b.style.cssText = css;
-  b.style.background = normalBg;
-  b.onmouseover = () => { b.style.background = hoverBg; b.style.transform = 'translateY(-2px)'; };
-  b.onmouseout  = () => { b.style.background = normalBg; b.style.transform = 'translateY(0)'; };
+  b.className = 'choice-btn' + (extraClass ? ' ' + extraClass : '');
   b.onclick = onclick;
   return b;
 }

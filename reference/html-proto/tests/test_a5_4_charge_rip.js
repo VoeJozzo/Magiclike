@@ -23,8 +23,9 @@ const stapleTpl = Object.keys(CARDS).find(k => k !== baseTpl && hasType(CARDS[k]
 
 console.log('=== A5-4: out-of-charges rip fixes up cached slot pointers ===');
 (() => {
-  // Boot a run with the Stapler boon so its slot is appended LAST.
-  RUN.start({ cards: Array(5).fill('plains'), colors: ['W'] }, 'stapler');
+  // Deck lists Stapler LAST so its slot lands at the end — the slot-pointer
+  // fixup case this test exists to pin.
+  RUN.start({ cards: [...Array(5).fill('plains'), 'stapler'], colors: ['W'] });
   RUN.startNextGame();
   const G = ENGINE.state();
   setup.startMainPhase('you');
@@ -32,7 +33,7 @@ console.log('=== A5-4: out-of-charges rip fixes up cached slot pointers ===');
 
   const slots0 = RUN.getSlots();
   const staplerIdx = slots0.findIndex(s => s.tplId === 'stapler');
-  check('Stapler boon slot appended last', staplerIdx === slots0.length - 1, 'idx=' + staplerIdx + ' len=' + slots0.length);
+  check('Stapler slot is last', staplerIdx === slots0.length - 1, 'idx=' + staplerIdx + ' len=' + slots0.length);
   check('Stapler slot carries charges', typeof slots0[staplerIdx].charges === 'number', 'charges=' + slots0[staplerIdx].charges);
   // Drive it to its FINAL charge so this activation rips it.
   slots0[staplerIdx].charges = 1;

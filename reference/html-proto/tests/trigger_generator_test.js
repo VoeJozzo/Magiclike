@@ -251,7 +251,7 @@ console.log("\n=== Architect's Codex template (build_on_draw / procedural path) 
   if (tpl) {
     check('Codex template exists', !!tpl);
     check('Codex has build_on_draw flag', tpl.build_on_draw === true);
-    check('Codex marked special', tpl.special === true);
+    check('Codex marked as a boon (undraftable)', tpl.boon === true);
   } else {
     console.log('  (architectsCodex not in CARDS -- skipping)');
   }

@@ -240,13 +240,13 @@ function showCardBrowser() {
   // Header — title + close. Sticky so it stays visible while scrolling
   // through what is potentially 100+ cards.
   const header = document.createElement('div');
-  header.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;padding:8px 4px;border-bottom:1px solid #444;position:sticky;top:-16px;background:rgba(0,0,0,.96);z-index:1';
+  header.className = 'browser-head';
   const title = document.createElement('h2');
   title.textContent = 'CARD BROWSER';
-  title.style.cssText = 'color:#ffd700;margin:0;font-size:16px;letter-spacing:.08em';
+  title.className = 'browser-title';
   const closeBtn = document.createElement('button');
   closeBtn.textContent = 'Close';
-  closeBtn.style.cssText = 'padding:6px 14px;background:#332;border:1px solid #663;color:#ccc;cursor:pointer;border-radius:3px;font-family:inherit;font-size:12px';
+  closeBtn.className = 'choice-btn choice-btn-sm';
   closeBtn.onclick = () => { Modal.hide('cardBrowserModal'); };
   header.appendChild(title);
   header.appendChild(closeBtn);
@@ -289,7 +289,10 @@ function showCardBrowser() {
 
     const heading = document.createElement('h3');
     heading.textContent = g.label + ' — ' + g.cards.length + ' cards';
-    heading.style.cssText = 'color:' + g.tone + ';font-size:13px;letter-spacing:.1em;margin:0 0 8px;border-left:3px solid ' + g.tone + ';padding:2px 0 2px 8px;text-transform:uppercase';
+    // Tone is per-group data, so it stays inline; the rest is .browser-group-head.
+    heading.className = 'browser-group-head';
+    heading.style.color = g.tone;
+    heading.style.borderLeft = '3px solid ' + g.tone;
     section.appendChild(heading);
 
     const grid = document.createElement('div');
@@ -310,17 +313,22 @@ function showCardBrowser() {
 
 // Start-screen button styles, named so the factory below is the single place
 // button construction (create → text → style → onclick → append) lives.
-const START_BTN_STYLE = {
-  primary:   'padding:10px 20px;background:#2a4a2a;border:1px solid #4a8a4a;color:#aaffaa;border-radius:4px;cursor:pointer;font-size:14px',
-  cube:      'padding:10px 20px;background:#3a3a1a;border:1px solid #888844;color:#ddcc88;border-radius:4px;cursor:pointer;font-size:14px',
-  discard:   'padding:8px 20px;background:#2a2a2a;border:1px solid #555;color:#aaa;border-radius:4px;cursor:pointer;font-size:12px',
-  secondary: 'padding:8px 20px;background:#1a1a2a;border:1px solid #444;color:#aaa;border-radius:4px;cursor:pointer;font-size:12px',
-  sandbox:   'padding:8px 20px;background:#2a1a3a;border:1px solid #8855aa;color:#ddb3ff;border-radius:4px;cursor:pointer;font-size:12px',
+// Start-screen button variants. These map to CSS classes rather than inline
+// style strings: inline styles beat the stylesheet, which pinned these buttons
+// to the old flat look and blocked the pixel-chrome tiles. Styling now lives in
+// one place (.start-btn* in magiclike_engine.html). `discard` and `secondary`
+// were visually identical muted small buttons, so they share `start-btn-minor`.
+const START_BTN_CLASS = {
+  primary:   'start-btn start-btn-primary',
+  cube:      'start-btn start-btn-cube',
+  discard:   'start-btn start-btn-minor',
+  secondary: 'start-btn start-btn-minor',
+  sandbox:   'start-btn start-btn-sandbox',
 };
 function makeStartBtn(parent, text, styleKey, onclick) {
   const b = document.createElement('button');
   b.textContent = text;
-  b.style.cssText = START_BTN_STYLE[styleKey];
+  b.className = START_BTN_CLASS[styleKey] || START_BTN_CLASS.secondary;
   b.onclick = onclick;
   parent.appendChild(b);
   return b;
@@ -618,58 +626,19 @@ function continueRun() {
     showStartScreen();
   }
 }
-// Transient pre-run choice; consumed by RUN.start when the run begins.
-let pendingNeowModifier = null;
 let pendingDraftMode = 'classic';
 
 function newRun(mode) {
   clearTransientGameUi();
-  // Desert Cube skips Neow (cube+boon interaction not designed).
   Modal.hide('gameover');
-  pendingNeowModifier = null;
   pendingDraftMode = mode || 'classic';
-  if (pendingDraftMode === 'desertCube') {
-    DRAFT.startDraft(pendingDraftMode);
-    inDraft = true;
-    renderDraft();
-    return;
-  }
-  showNeowChoice();
+  // The boon is now the draft's pick #0 (see DRAFT.startDraft), so every mode
+  // -- including Desert Cube (no boon) -- goes straight into the draft screen.
+  DRAFT.startDraft(pendingDraftMode);
+  inDraft = true;
+  renderDraft();
 }
 
-function showNeowChoice() {
-  // alwaysOffered boons fill stable left positions; rest random-fill.
-  const TARGET_BOONS = 3;
-  const allIds = Object.keys(RUN_MODIFIERS);
-  const alwaysIds = allIds.filter(id => RUN_MODIFIERS[id].alwaysOffered);
-  const poolIds = allIds.filter(id => !RUN_MODIFIERS[id].alwaysOffered);
-
-  const shuffledPool = poolIds.slice();
-  for (let i = shuffledPool.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffledPool[i], shuffledPool[j]] = [shuffledPool[j], shuffledPool[i]];
-  }
-  const fillCount = Math.max(0, TARGET_BOONS - alwaysIds.length);
-  const randomIds = shuffledPool.slice(0, fillCount);
-
-  const offered = [...alwaysIds, ...randomIds];
-
-  // Each boon renders AS the card it grants (every current RUN_MODIFIERS id is a
-  // real card tplId); a modifier with no card backing falls back to a synthetic
-  // "Boon" card. Routed through the shared card-pick modal.
-  const items = offered.map(id => {
-    const m = RUN_MODIFIERS[id];
-    if (CARDS[m.id]) return { card: ENGINE.makeCard(m.id), value: id };
-    const boonArt = '✦';
-    return { synthetic: { name: m.name || '', type: 'Boon', text: m.text || '', art: boonArt, color: 'C', scale: 2 }, value: id };
-  });
-  showCardPickModal({
-    title: 'A Boon Awaits',
-    subtitle: 'Choose a gift to shape your run.',
-    items, onPick: pickNeow,
-    accent: '#4a90c8', accentText: '#9bd0ff',   // boon blue
-  });
-}
 
 // Unified card-pick modal — the one popup behind the Neow boons AND the post-draft
 // land offer (previously two separate modals). Fills the shared #cardPickModal
@@ -692,13 +661,6 @@ function showCardPickModal({ title, subtitle, items, onPick, colorTpls, accent, 
   Modal.show('cardPickModal', { dismissible: false });
 }
 
-function pickNeow(id) {
-  pendingNeowModifier = id;
-  Modal.hide('cardPickModal');
-  DRAFT.startDraft(pendingDraftMode);
-  inDraft = true;
-  renderDraft();
-}
 
 function pickDraft(tplId) {
   if (!inDraft) return;
@@ -719,8 +681,7 @@ function afterDraftPick() {
     inDraft = false;
     document.getElementById('draftScreen').classList.remove('vis');
     const playerDeck = DRAFT.getPlayerDeck();
-    RUN.start(playerDeck, pendingNeowModifier);
-    pendingNeowModifier = null;
+    RUN.start(playerDeck);
     lastGameRecorded = false;
     if (RUN.getPostDraftOffer()) {
       renderPostDraftOffer();
@@ -1129,19 +1090,11 @@ function renderMap() {
   levelsContainer.innerHTML = '';
   // Bottom-up render: root at bottom, exit at top (climbing-the-tower feel).
   const levels = Object.keys(byLevel).map(Number).sort((a, b) => b - a);
-  const iconFor = (node) => {
-    if (node.type === 'boss') {
-      if (node.constructedId) {
-        const spec = DRAFT.getConstructedDeck(node.constructedId);
-        if (spec && spec.icon) return spec.icon;
-      }
-      return '👹';
-    }
-    switch (node.type) {
-      case 'combat': return '⚔';
-      default:       return '?';
-    }
-  };
+  // Placeholder text glyphs for node icons; real pixel-art icons come from the
+  // pixellab pipeline later (the design's SVG icons were rejected in review).
+  // Boss nodes get NO face glyph: the boss tile + corner gem already mark them,
+  // and a letter on top was a third, redundant boss signal.
+  const PLACEHOLDER_ICON = { combat: 'C', elite: 'E', shop: '$', event: '?', rest: 'R', boss: '' };
   // Tooltip combines type + color (e.g., "Red Draft Deck"). Constructed nodes use deck name.
   const COLOR_NAME = {W:'White', U:'Blue', B:'Black', R:'Red', G:'Green'};
   const labelForType = (type) => {
@@ -1169,25 +1122,25 @@ function renderMap() {
       const el = document.createElement('div');
       el.className = 'map-node';
       el.id = 'map-' + n.id;
-      el.textContent = iconFor(n);
+      const mi = document.createElement('span');
+      mi.className = 'mi';
+      mi.textContent = PLACEHOLDER_ICON[n.type] ?? '?';
+      el.appendChild(mi);
       el.title = tooltipFor(n);
-      // Constructed: ring = spec's first color + ★ badge. Boss: 👹 badge.
+      // Corner badge = the node's color gem (constructed decks ring with
+      // their first color). Pure art: .map-color-badge paints gem_<C>.png.
       let ringColor = n.color;
-      let isConstructed = false;
-      const isBoss = (n.type === 'boss');
       if (n.constructedId) {
         const spec = DRAFT.getConstructedDeck(n.constructedId);
         if (spec && spec.colors && spec.colors.length > 0) {
           ringColor = spec.colors[0];
-          isConstructed = true;
         }
       }
-      if (isBoss) el.classList.add('boss');
+      if (n.type === 'boss') el.classList.add('boss');
       if (ringColor) {
         el.classList.add('col-' + ringColor);
         const badge = document.createElement('div');
         badge.className = 'map-color-badge col-' + ringColor;
-        badge.textContent = isBoss ? iconFor(n) : (isConstructed ? '★' : ringColor);
         el.appendChild(badge);
       }
       if (n.id === current) el.classList.add('current');
@@ -1226,13 +1179,16 @@ function renderMap() {
       const y2 = tr.top + tr.height / 2 - canvasRect.top;
       const fromVisited = visited.has(e.from);
       const toLegal = legal.has(e.to);
-      const stroke = (fromVisited && toLegal) ? '#66ddaa' :
-                     fromVisited ? '#3a5a4a' : '#2a3540';
+      const stroke = (fromVisited && toLegal) ? '#7fd06a' :   // open (visited -> legal): green
+                     fromVisited ? '#a02619' :                 // travelled: heraldic red
+                     '#7a5a28';                                // future: brown
       const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
       line.setAttribute('x1', x1); line.setAttribute('y1', y1);
       line.setAttribute('x2', x2); line.setAttribute('y2', y2);
       line.setAttribute('stroke', stroke);
-      line.setAttribute('stroke-width', '2');
+      line.setAttribute('stroke-width', '3');
+      line.setAttribute('shape-rendering', 'crispEdges');
+      if (!fromVisited) line.setAttribute('stroke-dasharray', '5 4');   // future edges dashed
       svg.appendChild(line);
     }
   });
@@ -1598,9 +1554,27 @@ function renderReward() {
     return;
   }
 }
+// Pick #0: the boon offer on the draft screen. Same picker as the packs; the
+// chosen card lands on DRAFT.state.boon and later rides into the deck.
+function renderBoonPhase() {
+  document.getElementById('draftPickNum').textContent = '0';
+  const totalEl = document.getElementById('draftPickTotal');
+  if (totalEl) totalEl.textContent = DRAFT.getProgress().total;
+  const subtitleEl = document.getElementById('draftSubtitle');
+  if (subtitleEl) subtitleEl.textContent = "✦ A boon awaits - your run's first pick. Choose one.";
+  renderCardPicker(
+    document.getElementById('draftPack'),
+    DRAFT.getPlayerPack().map(tplId => ({ card: ENGINE.makeCard(tplId), value: tplId })),
+    pickDraft,
+  );
+  document.getElementById('draftPicksList').textContent = '(none yet)';
+  renderColorHud('draftColors', []);
+}
+
 function renderDraft() {
   const screen = document.getElementById('draftScreen');
   screen.classList.add('vis');
+  if (DRAFT.isBoonPhase()) { renderBoonPhase(); return; }
   const progress = DRAFT.getProgress();
   document.getElementById('draftPickNum').textContent = (progress.picked + 1);
   // Total varies by mode — classic = 23 spell picks, Desert Cube = 40 full
@@ -1638,16 +1612,15 @@ function renderDraft() {
       pickDraft,
     );
   }
-  // Footer: list of picks so far. If the player picked a Neow boon, show
-  // it as the first entry with a ✦ marker so it's visually distinct from
-  // drafted picks — gives continuity with the deck the boon will join at
-  // RUN.start time (whether that boon adds a card to the deck or modifies
-  // existing slots, the player sees they've already "committed" to it).
+  // Footer: list of picks so far. If the player picked a Neow boon, show it as the
+  // first entry with a ✦ marker so it's visually distinct from drafted picks — the
+  // player sees they've already committed to the card it grants.
   const picks = DRAFT._state() ? DRAFT._state().youPicks : [];
   const draftedNames = picks.map(id => CARDS[id].name);
+  const _st = DRAFT._state();
   let boonName = null;
-  if (pendingNeowModifier && RUN_MODIFIERS[pendingNeowModifier]) {
-    boonName = '✦ ' + RUN_MODIFIERS[pendingNeowModifier].name;
+  if (_st && _st.boon && CARDS[_st.boon]) {
+    boonName = '✦ ' + CARDS[_st.boon].name;   // the draft's pick #0 -- a real card
   }
   const allEntries = boonName ? [boonName, ...draftedNames] : draftedNames;
   const summary = allEntries.join(', ');
@@ -2600,14 +2573,14 @@ function showManaColorPicker(card, colors, onPick) {
     G: { bg:'#ccffcc', fg:'#1a5a1a',  label:'Green ({G})' },
   };
   const dimmer = document.createElement('div');
-  dimmer.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:1300;padding:24px';
+  dimmer.className = 'picker-overlay vis';
   const box = document.createElement('div');
-  box.style.cssText = 'background:#1a1a26;border:2px solid #5a5a7a;border-radius:10px;padding:18px 16px;text-align:center;font-family:Georgia,serif;max-width:300px;width:100%';
+  box.className = 'picker-box picker-box-compact';
   const title = document.createElement('div');
-  title.style.cssText = 'color:#ffe7a0;font-size:14px;font-weight:bold;margin-bottom:4px';
+  title.className = 'picker-title';
   title.textContent = 'Tap ' + card.name + ' for:';
   const sub = document.createElement('div');
-  sub.style.cssText = 'color:#aaa;font-size:11px;margin-bottom:14px;font-style:italic';
+  sub.className = 'picker-subtitle';
   sub.textContent = 'Choose a color to add to your mana pool.';
   box.appendChild(title);
   box.appendChild(sub);
@@ -2617,7 +2590,9 @@ function showManaColorPicker(card, colors, onPick) {
     const info = COLOR_INFO[color] || { bg:'#888', fg:'#000', label: color };
     const b = document.createElement('button');
     b.textContent = info.label;
-    b.style.cssText = `background:${info.bg};color:${info.fg};border:1px solid #444;border-radius:5px;padding:8px 14px;font-size:13px;font-weight:bold;cursor:pointer;font-family:inherit`;
+    b.className = 'choice-btn choice-btn-sm';
+    b.style.background = info.bg;
+    b.style.color = info.fg;
     b.onclick = () => {
       document.body.removeChild(dimmer);
       onPick(color);
@@ -2627,7 +2602,7 @@ function showManaColorPicker(card, colors, onPick) {
   box.appendChild(btnRow);
   const cancel = document.createElement('button');
   cancel.textContent = 'Cancel';
-  cancel.style.cssText = 'margin-top:14px;background:#222;color:#aaa;border:1px solid #444;border-radius:5px;padding:6px 12px;font-size:11px;cursor:pointer;font-family:inherit';
+  cancel.className = 'choice-btn choice-btn-sm';
   cancel.onclick = () => document.body.removeChild(dimmer);
   box.appendChild(cancel);
   dimmer.appendChild(box);
@@ -2646,14 +2621,14 @@ function showManaColorPicker(card, colors, onPick) {
 // cancels. v1.0.64.
 function showAbilityPicker(card, options) {
   const dimmer = document.createElement('div');
-  dimmer.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:1300;padding:24px';
+  dimmer.className = 'picker-overlay vis';
   const box = document.createElement('div');
-  box.style.cssText = 'background:#1a1a26;border:2px solid #5a5a7a;border-radius:10px;padding:18px 16px;text-align:center;font-family:Georgia,serif;max-width:340px;width:100%';
+  box.className = 'picker-box picker-box-compact';
   const title = document.createElement('div');
-  title.style.cssText = 'color:#ffe7a0;font-size:14px;font-weight:bold;margin-bottom:4px';
+  title.className = 'picker-title';
   title.textContent = card.name;
   const sub = document.createElement('div');
-  sub.style.cssText = 'color:#aaa;font-size:11px;margin-bottom:14px;font-style:italic';
+  sub.className = 'picker-subtitle';
   sub.textContent = 'Choose an ability to activate.';
   box.appendChild(title);
   box.appendChild(sub);
@@ -2665,7 +2640,7 @@ function showAbilityPicker(card, options) {
     // {W}", "{T}: Draw 1"). Route through renderManaSymbols so the
     // pips render instead of literal {X} text.
     b.innerHTML = renderManaSymbols(escapeHtml(opt.label));
-    b.style.cssText = 'background:#2a2a36;color:#ddd;border:1px solid #555;border-radius:5px;padding:10px 12px;font-size:12px;cursor:pointer;font-family:inherit;text-align:left';
+    b.className = 'choice-btn choice-btn-sm';
     b.onclick = () => {
       document.body.removeChild(dimmer);
       opt.onPick();
@@ -2675,7 +2650,7 @@ function showAbilityPicker(card, options) {
   box.appendChild(btnCol);
   const cancel = document.createElement('button');
   cancel.textContent = 'Cancel';
-  cancel.style.cssText = 'margin-top:14px;background:#222;color:#aaa;border:1px solid #444;border-radius:5px;padding:6px 12px;font-size:11px;cursor:pointer;font-family:inherit';
+  cancel.className = 'choice-btn choice-btn-sm';
   cancel.onclick = () => document.body.removeChild(dimmer);
   box.appendChild(cancel);
   dimmer.appendChild(box);
@@ -2716,23 +2691,27 @@ function escapeStatsAttribute(s) {
 // rows are pre-sorted; we slice to defaultN unless expanded.
 function renderTableWithToolbar(opts) {
   const { id, title, subtitle, rows: allRows, color, columns, defaultN } = opts;
-  if (!allRows.length) return `<div style="color:#666;font-size:10px;font-style:italic">${title}: no data yet</div>`;
+  if (!allRows.length) return `<div class="tbl-note">${title}: no data yet</div>`;
 
   const expanded = !!STATS_UI.expanded[id];
   const visibleRows = expanded ? allRows : allRows.slice(0, defaultN);
   const canExpand = allRows.length > defaultN;
 
-  let html = `<div style="display:flex;align-items:center;justify-content:space-between;margin:14px 0 4px;gap:8px;flex-wrap:wrap">`;
-  html += `<div style="color:${color};font-size:10px;font-weight:bold;letter-spacing:.1em">${title.toUpperCase()}</div>`;
-  html += `<div style="display:flex;gap:4px">`;
-  html += `<button onclick="CONTROLLER.copyTableAsTsv('${id}')" style="background:#1a2a3a;border:1px solid #335;color:#88ccff;font-size:9px;padding:3px 8px;border-radius:3px;cursor:pointer;font-family:inherit">copy</button>`;
+  // Presentation lives in CSS (.tbl-*); only `color` is inlined, because it is
+  // the one genuinely DYNAMIC value here — each table passes its own accent, so
+  // no stylesheet rule could know it. Everything else was static and is now a
+  // class, so the panels restyle from one place.
+  let html = `<div class="tbl-head">`;
+  html += `<div class="tbl-title" style="color:${color}">${title.toUpperCase()}</div>`;
+  html += `<div class="tbl-actions">`;
+  html += `<button class="tbl-btn" onclick="CONTROLLER.copyTableAsTsv('${id}')">copy</button>`;
   if (canExpand) {
-    html += `<button onclick="CONTROLLER.toggleStatsTable('${id}')" style="background:#1a1a2a;border:1px solid #335;color:#aaa;font-size:9px;padding:3px 8px;border-radius:3px;cursor:pointer;font-family:inherit">${expanded ? 'show top ' + defaultN : 'show all (' + allRows.length + ')'}</button>`;
+    html += `<button class="tbl-btn" onclick="CONTROLLER.toggleStatsTable('${id}')">${expanded ? 'show top ' + defaultN : 'show all (' + allRows.length + ')'}</button>`;
   }
   html += `</div></div>`;
 
   if (subtitle) {
-    html += `<div style="color:#666;font-size:9px;margin-bottom:4px;font-style:italic">${subtitle}</div>`;
+    html += `<div class="tbl-sub">${subtitle}</div>`;
   }
 
   // Hidden textarea holding the TSV form, used by copyTableAsTsv. We
@@ -2753,15 +2732,17 @@ function renderTableWithToolbar(opts) {
 
   // The actual visible table.
   const gridCols = columns.map(c => c.width || '1fr').join(' ');
-  html += '<div style="background:#0a0a14;border-radius:3px;overflow:hidden">';
-  html += `<div style="display:grid;grid-template-columns:${gridCols};gap:5px;padding:5px 8px;background:#181828;font-size:9px;color:#888;letter-spacing:.05em">`;
+  // grid-template-columns is computed per table (column widths are caller data),
+  // so it stays inline; the surface/rules come from .tbl-grid*.
+  html += '<div class="tbl-grid">';
+  html += `<div class="tbl-grid-head" style="grid-template-columns:${gridCols}">`;
   for (const c of columns) {
     const align = c.align === 'right' ? 'text-align:right' : '';
     html += `<div style="${align}"${c.title ? ' title="' + c.title + '"' : ''}>${c.header}</div>`;
   }
   html += `</div>`;
   for (const r of visibleRows) {
-    html += `<div style="display:grid;grid-template-columns:${gridCols};gap:5px;padding:4px 8px;font-size:10px;border-top:1px solid #1a1a2a">`;
+    html += `<div class="tbl-grid-row" style="grid-template-columns:${gridCols}">`;
     for (const c of columns) {
       const align = c.align === 'right' ? 'text-align:right;' : '';
       // Per-column color: explicit `c.color`, or `c.colorize(row, tableColor)`
@@ -2979,11 +2960,11 @@ function renderStatsContent() {
     .sort((a, b) => (b.avgRunGames || 0) - (a.avgRunGames || 0));
 
   const summary = `
-    <div style="background:#1a1a2a;border-radius:4px;padding:8px 10px;margin-bottom:10px;font-size:11px">
-      <div><span style="color:#888">Drafts logged:</span> <span style="color:#ffd700">${drafts.length}</span></div>
-      <div><span style="color:#888">Games played:</span> <span style="color:#ffd700">${totalGames}</span></div>
-      <div><span style="color:#888">Runs ended:</span> <span style="color:#ff8888">${losses}</span> <span style="color:#666;font-size:10px">(no win condition yet)</span></div>
-      <div><span style="color:#888">Cards with ≥3 offers:</span> <span style="color:#ffd700">${rows.length}</span></div>
+    <div class="stat-block">
+      <div><span class="stat-label">Drafts logged:</span> <span class="stat-value">${drafts.length}</span></div>
+      <div><span class="stat-label">Games played:</span> <span class="stat-value">${totalGames}</span></div>
+      <div><span class="stat-label">Runs ended:</span> <span class="stat-value-bad">${losses}</span> <span class="stat-hint">(no win condition yet)</span></div>
+      <div><span class="stat-label">Cards with ≥3 offers:</span> <span class="stat-value">${rows.length}</span></div>
     </div>
   `;
 
@@ -3005,7 +2986,7 @@ function renderStatsContent() {
   const botByRun = rowsWithRunData.slice().reverse();            // ascending = worst first
 
   const empty = drafts.length === 0
-    ? '<div style="color:#888;text-align:center;padding:20px;font-style:italic">No drafts logged yet. Pick cards in the draft screen to start building data.</div>'
+    ? '<div class="tbl-empty">No drafts logged yet. Pick cards in the draft screen to start building data.</div>'
     : '';
 
   document.getElementById('statsContent').innerHTML =
@@ -3076,8 +3057,8 @@ function insightsHtml(drafts, perCardRows) {
           key: 'combo',
           header: 'COMBO',
           fmt: r => r.combo === '(unknown)'
-            ? '<span style="color:#666;font-style:italic">unknown</span>'
-            : r.combo.split('').map(c => `<span class="draft-pip col-${c}" style="padding:0 4px;font-size:10px">${c}</span>`).join(' '),
+            ? '<span class="tbl-note">unknown</span>'
+            : r.combo.split('').map(c => `<span class="draft-pip draft-pip-sm col-${c}">${c}</span>`).join(' '),
           // Override TSV format so we don't get HTML in the copied output.
           tsvFmt: r => r.combo,
           width: '1fr',
@@ -3109,22 +3090,21 @@ function insightsHtml(drafts, perCardRows) {
     const maxCount = Math.max(...Object.values(lossDist));
     // TSV form for the copy button.
     const lossTsv = ['GAME\tLOSSES', ...games.map(g => `${g}\t${lossDist[g]}`)].join('\n');
-    html += `<div style="display:flex;align-items:center;justify-content:space-between;margin:14px 0 4px;gap:8px;flex-wrap:wrap">`;
-    html += `<div style="color:#ff8888;font-size:10px;font-weight:bold;letter-spacing:.1em">LOSSES BY GAME #</div>`;
-    html += `<button onclick="CONTROLLER.copyTableAsTsv('lossHist')" style="background:#1a2a3a;border:1px solid #335;color:#88ccff;font-size:9px;padding:3px 8px;border-radius:3px;cursor:pointer;font-family:inherit">copy</button>`;
+    html += `<div class="tbl-head">`;
+    html += `<div class="tbl-title" style="color:#e0a09a">LOSSES BY GAME #</div>`;
+    html += `<button class="tbl-btn" onclick="CONTROLLER.copyTableAsTsv('lossHist')">copy</button>`;
     html += `</div>`;
-    html += `<div style="color:#666;font-size:9px;margin-bottom:4px;font-style:italic">When did losses happen? Avg loss at game ${avgLossGame} (${totalLosses} loss${totalLosses === 1 ? '' : 'es'} total).</div>`;
+    html += `<div class="tbl-sub">When did losses happen? Avg loss at game ${avgLossGame} (${totalLosses} loss${totalLosses === 1 ? '' : 'es'} total).</div>`;
     html += `<textarea id="statsTsv-lossHist" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" aria-hidden="true">${escapeStatsAttribute(lossTsv)}</textarea>`;
-    html += '<div style="background:#0a0a14;border-radius:3px;padding:6px 8px;display:flex;flex-direction:column;gap:3px">';
+    html += '<div class="tbl-well" style="display:flex;flex-direction:column;gap:3px">';
     for (const g of games) {
       const count = lossDist[g];
       const barWidth = Math.round((count / maxCount) * 100);
-      html += `<div style="display:flex;align-items:center;gap:6px;font-size:10px">
-        <div style="width:48px;color:#aaa">Game ${g}</div>
-        <div style="flex:1;background:#1a0a14;border-radius:2px;overflow:hidden;height:14px">
-          <div style="background:#cc4444;height:100%;width:${barWidth}%"></div>
-        </div>
-        <div style="width:24px;text-align:right;color:#ddd">${count}</div>
+      // Only the bar WIDTH is inline — it is the datum being visualised.
+      html += `<div class="hist-row">
+        <div class="hist-label">Game ${g}</div>
+        <div class="hist-track"><div class="hist-fill" style="width:${barWidth}%"></div></div>
+        <div class="hist-count">${count}</div>
       </div>`;
     }
     html += '</div>';
@@ -3222,11 +3202,11 @@ function insightsHtml(drafts, perCardRows) {
   if (drafts.length > 0) {
     const BATCH_SIZE = 10;
     const numBatches = Math.ceil(drafts.length / BATCH_SIZE);
-    html += `<div style="display:flex;align-items:center;justify-content:space-between;margin:14px 0 4px;gap:8px;flex-wrap:wrap">`;
-    html += `<div style="color:#ffaa66;font-size:10px;font-weight:bold;letter-spacing:.1em">RAW DRAFTS — BY BATCH</div>`;
+    html += `<div class="tbl-head">`;
+    html += `<div class="tbl-title" style="color:#e6b07a">RAW DRAFTS — BY BATCH</div>`;
     html += `</div>`;
-    html += `<div style="color:#666;font-size:9px;margin-bottom:6px;font-style:italic">Pick-by-pick TSV. One row per pick: draft_id, pick_n, picked, offered (3 cards, pipe-joined), colors_so_far, final_colors, result, games. Each batch ≈ ${BATCH_SIZE} drafts. Size shown on button — if it shows "copied!" but pasting truncates, batch is too big for clipboard transport.</div>`;
-    html += `<div style="background:#0a0a14;border-radius:3px;padding:8px;display:flex;flex-wrap:wrap;gap:6px">`;
+    html += `<div class="tbl-sub">Pick-by-pick TSV. One row per pick: draft_id, pick_n, picked, offered (3 cards, pipe-joined), colors_so_far, final_colors, result, games. Each batch ≈ ${BATCH_SIZE} drafts. Size shown on button — if it shows "copied!" but pasting truncates, batch is too big for clipboard transport.</div>`;
+    html += `<div class="tbl-well" style="display:flex;flex-wrap:wrap;gap:6px">`;
     for (let b = 0; b < numBatches; b++) {
       const startIdx = b * BATCH_SIZE;
       const endIdx = Math.min(startIdx + BATCH_SIZE, drafts.length);
@@ -3237,7 +3217,7 @@ function insightsHtml(drafts, perCardRows) {
       // larger or smaller depending on card name lengths.
       const batchTsv = buildDraftsBatchTsv(drafts, startIdx, endIdx);
       const sizeKb = (batchTsv.length / 1024).toFixed(1);
-      html += `<button onclick="CONTROLLER.copyDraftsBatch(${startIdx},${endIdx})" style="background:#1a2218;border:1px solid #4a5a3a;color:#ccddaa;font-size:10px;padding:5px 10px;border-radius:3px;cursor:pointer;font-family:inherit">drafts ${startId}–${endId} (${sizeKb}KB)</button>`;
+      html += `<button class="tbl-btn" onclick="CONTROLLER.copyDraftsBatch(${startIdx},${endIdx})">drafts ${startId}–${endId} (${sizeKb}KB)</button>`;
     }
     html += `</div>`;
   }
@@ -3287,11 +3267,11 @@ function showStatsExportPicker(jsonPretty, filename) {
   const sizeKb = (jsonPretty.length / 1024).toFixed(1);
   const title = document.createElement('div');
   title.textContent = `Export stats (${sizeKb} KB)`;
-  title.style.cssText = 'color:#ffd700;font-size:14px;font-weight:bold;letter-spacing:1px';
+  title.className = 'picker-title';
   box.appendChild(title);
 
   const subtitle = document.createElement('div');
-  subtitle.style.cssText = 'color:#aaa;font-size:11px;line-height:1.5';
+  subtitle.className = 'picker-subtitle';
   subtitle.textContent =
     'The Claude in-app browser blocks several download paths. ' +
     'The compressed copy works in the sandbox; use it if your data is large.';
@@ -3303,8 +3283,8 @@ function showStatsExportPicker(jsonPretty, filename) {
       background:#222;border:1px solid #444;color:#ddd;padding:10px 14px;
       border-radius:5px;cursor:pointer;font-size:12px;font-family:inherit;
       text-align:left;line-height:1.5`;
-    b.innerHTML = `<div class="btn-label" style="color:#88ccff;font-weight:bold"></div>` +
-                  `<div class="btn-hint" style="color:#888;font-size:10px;margin-top:2px"></div>`;
+    b.innerHTML = `<div class="btn-label"></div>` +
+                  `<div class="btn-hint"></div>`;
     b.querySelector('.btn-label').textContent = label;
     b.querySelector('.btn-hint').textContent = hint;
     b.onclick = onClick;
@@ -3389,12 +3369,12 @@ function showStatsExportTextarea(payload, compressed) {
     max-width:520px;width:100%;max-height:80vh;display:flex;flex-direction:column;gap:10px`;
   const sizeKb = (payload.length / 1024).toFixed(1);
   const title = document.createElement('div');
-  title.style.cssText = 'color:#ddd;font-size:12px;line-height:1.5';
+  title.className = 'export-note';
   title.innerHTML = compressed
-    ? `<div style="color:#ffd700;font-weight:bold;margin-bottom:4px">Compressed picklog (${sizeKb} KB)</div>` +
+    ? `<div class="export-head">Compressed picklog (${sizeKb} KB)</div>` +
       `Tap <b>Copy</b> below. If that fails, long-press the text → Select All → Copy. ` +
       `Then paste the whole block to Claude — including the prefix.`
-    : `<div style="color:#ffd700;font-weight:bold;margin-bottom:4px">Raw picklog (${sizeKb} KB)</div>` +
+    : `<div class="export-head">Raw picklog (${sizeKb} KB)</div>` +
       `Tap <b>Copy</b> below. If that fails, long-press the text → Select All → Copy.`;
   const ta = document.createElement('textarea');
   ta.value = payload;
@@ -3405,7 +3385,7 @@ function showStatsExportTextarea(payload, compressed) {
     border:1px solid #333;border-radius:4px;padding:8px;font-family:monospace;
     font-size:11px;resize:none;word-break:break-all`;
   const status = document.createElement('div');
-  status.style.cssText = 'color:#888;font-size:10px;min-height:14px';
+  status.className = 'export-status';
 
   const btnRow = document.createElement('div');
   btnRow.style.cssText = 'display:flex;gap:8px';
@@ -3425,7 +3405,8 @@ function showStatsExportTextarea(payload, compressed) {
     ta.setSelectionRange(0, ta.value.length);   // mobile-friendly select-all
     let ok = false;
     try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
-    status.style.color = ok ? '#aaffaa' : '#ff8888';
+    status.classList.toggle('export-status-ok', ok);
+      status.classList.toggle('export-status-bad', !ok);
     status.textContent = ok
       ? `Copied ${sizeKb} KB. Paste it into the chat.`
       : 'Copy command not allowed. Long-press the text → Select All → Copy manually.';

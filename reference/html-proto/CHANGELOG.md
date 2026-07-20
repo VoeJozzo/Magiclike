@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.2.38`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.2.39`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -3125,3 +3125,29 @@ migration + its test fixture (start() stopped writing the field in v2.2.36),
 and the stale run.js comment pointing at the startNextGame auto-advance
 that v2.2.36 deleted. New pins: R32b (all 6 Walls, build + re-derive) and
 A14b (keyword prints once). Suite 151 files / 2983 green; lint clean.
+
+v2.2.39: PR #150 review fixes. The special→boon/boss rename swept the engine
+but not the tests pinning the old flag: five files crashed on deleted API
+(RUN_MODIFIERS iteration; RUN.start's dropped modifier arg; getBucketOffer
+before the boon phase rolls buckets) and four more pinned `.special`
+literally. boon_art test rewritten for the pick-#0 world (boon pool fills a
+3-offer, every boon has art + is undraftable, phase gates in and out,
+desertCube skips); growing_deck traverses the boon phase and derives deck
+size/spell count from the picked boon; the four Stapler tests put 'stapler'
+in the deck instead of the extinct modifier arg. Vacuous pins de-vacuized:
+buckets §6b never-offered sweep, draft_pool filter/expected-pool, and a
+dozen plain-creature finders now use isUndraftable (newly exposed via
+_setup) instead of the always-absent `.special`. test_mana pins the
+RATIFIED splice rule: splice exclusion is the stapleable axis alone, so
+boons are legal staples (City of Brass accepted, stapleable:false
+Phylactery rejected). Engine: getBucketOffer no longer throws during the
+boon phase; runState drops the never-read colors + modifier:null fields
+(completing v2.2.38's migration cut); map boss nodes drop the 'B' face
+letter — the boss tile + corner gem already carry it — deleting iconFor and
+the dead .mi boss CSS. Bake: gem_spent's dead double-assign and the unused
+spent param removed, docstring no longer claims to read CSS files (specs
+are inline constants); pixel-lint documents parseBorderImages' keyword-only
+blind spot. Stale special/RUN_MODIFIERS references swept from comments
+(engine, draft, steal-gate, buckets, CLAUDE.md registry list, _setup
+globals); CLAUDE.md's "3 bucket picks" corrected to 5. Suite 151 files /
+3003 green; lint clean.

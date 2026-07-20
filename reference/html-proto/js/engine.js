@@ -65,7 +65,6 @@ const MERCURIAL_TRIGGER_POOL = [
 function isSpliceableBase(tplId) {
   const tpl = CARDS[tplId];
   if (!tpl) return false;
-  if (tpl.special) return false;
   if (tpl.stapleable === false) return false;
   if (tpl.effects && tpl.effects.modes) return false;
   return true;
@@ -73,7 +72,6 @@ function isSpliceableBase(tplId) {
 function isSpliceableStaple(tplId) {
   const tpl = CARDS[tplId];
   if (!tpl) return false;
-  if (tpl.special) return false;
   if (tpl.stapleable === false) return false;
   if (tpl.effects && tpl.effects.modes) return false;
   return true;
@@ -5971,8 +5969,9 @@ function checkLifeTotals() {
 }
 
 // Phylactery boon predicate. True iff `who` is the player AND runState has
-// at least one un-ripped Phylactery slot. Phylactery is special:true so opp
-// can never have it; this defensively returns false for opp regardless.
+// at least one un-ripped Phylactery slot. Phylactery is a boon (never in
+// draft/offer pools) so opp can never have it; this defensively returns
+// false for opp regardless.
 function hasPhylacteryProtection(who) {
   if (who !== 'you') return false;
   if (typeof RUN === 'undefined' || !RUN.getSlots) return false;

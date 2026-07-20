@@ -135,7 +135,7 @@ const EXPOSED = [
   'ENGINE', 'AI', 'RUN', 'DRAFT', 'CARDS', 'STICKERS', 'BUCKETS',
   // §7b cast-path coverage sets (ai.js module scope).
   'TARGET_SCORED_KINDS', 'NOT_TARGET_SCORED_KINDS',
-  'CONTROLLER', 'PICKLOG', 'VERSION', 'Modal', 'RUN_MODIFIERS', 'SETTINGS',
+  'CONTROLLER', 'PICKLOG', 'VERSION', 'Modal', 'SETTINGS',
   // Card-load surface (cards.js, module-scope).
   'ingestCard', 'basicLandTypeColors',
   // tplId rename plumbing — exposed for tplid_renames_test.
@@ -189,7 +189,7 @@ const EXPOSED = [
   // Unified type system (types.js, all module-scope, no IIFE — Phase 1).
   'TYPE_REGISTRY', 'typeRegistryEntry', 'typeCategory', 'isCardTypeTag',
   'typesOf', 'hasType', 'addType', 'subtypesOf', 'governingType',
-  'isPermanent', 'typeLine', 'typeLineParts',
+  'isPermanent', 'typeLine', 'typeLineParts', 'isUndraftable',
 ];
 
 // Card templates now live in cards/<tplId>/card.json. The browser-side

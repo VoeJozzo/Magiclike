@@ -37,9 +37,9 @@ function boot() {
 console.log('=== colorless boss card data + constructed registry ===');
 (() => {
   const ids = ['equatorial_engine', 'artifice_triumphant', 'ingenuity_unbounded'];
-  check('all three special cards load', ids.every(id => CARDS[id]), ids.filter(id => !CARDS[id]).join(', '));
-  check('all three cards are boss-only specials, excluded from normal draft offers',
-    ids.every(id => CARDS[id].special === true));
+  check('all three boss cards load', ids.every(id => CARDS[id]), ids.filter(id => !CARDS[id]).join(', '));
+  check('all three cards are boss-only, excluded from normal draft offers',
+    ids.every(id => CARDS[id].boss === true && isUndraftable(CARDS[id])));
   check('Equatorial Engine is an Artifact Land that taps for {C}{C}',
     hasType(CARDS.equatorial_engine, 'Artifact')
     && hasType(CARDS.equatorial_engine, 'Land')

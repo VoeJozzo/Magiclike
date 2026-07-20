@@ -25,10 +25,10 @@ function cloneSlot(targetIdx) {
 
 console.log('=== A5-5: cloning a half-used Stapler photocopies its REMAINING charges ===');
 (() => {
-  RUN.start({ cards: Array(5).fill('mountain'), colors: ['R'] }, 'stapler');
+  RUN.start({ cards: [...Array(5).fill('mountain'), 'stapler'], colors: ['R'] });
   const slots = RUN.getSlots();
   const stIdx = slots.findIndex(s => s.tplId === 'stapler');
-  check('Stapler boon slot present', stIdx >= 0, 'idx=' + stIdx);
+  check('Stapler slot present', stIdx >= 0, 'idx=' + stIdx);
   check('Stapler slot starts at 3 charges', slots[stIdx].charges === 3, 'charges=' + slots[stIdx].charges);
   slots[stIdx].charges = 1;   // half-used
 
@@ -61,13 +61,13 @@ console.log('\n=== A5-5 review: a charged clone Stapler SURVIVES the original ri
   const baseTpl = Object.keys(CARDS).find(k => hasType(CARDS[k], 'Creature') && isSpliceableBase(k));
   const stapleTpl = Object.keys(CARDS).find(k => k !== baseTpl && hasType(CARDS[k], 'Creature') && isSpliceableStaple(k));
 
-  RUN.start({ cards: Array(5).fill('plains'), colors: ['W'] }, 'stapler');
+  RUN.start({ cards: [...Array(5).fill('plains'), 'stapler'], colors: ['W'] });
   RUN.startNextGame();
   const G = ENGINE.state();
   setup.startMainPhase('you');
   G.you.mana = { C: 9, W: 9, U: 9, B: 9, R: 9, G: 9 };
 
-  // Two independent Stapler slots: the boon original (1 charge, about to rip) and
+  // Two independent Stapler slots: the original (1 charge, about to rip) and
   // a clone right after it (3 charges). Set up directly to avoid the reward/map flow.
   const slots = RUN.getSlots();
   const origIdx = slots.findIndex(s => s.tplId === 'stapler');

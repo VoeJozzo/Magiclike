@@ -27,8 +27,8 @@ function castETB(tplId, caster) {
   RUN.startNextGame();
   const G = setup.startMainPhase(caster);
   G[caster].mana = { W: 9, U: 9, B: 9, R: 9, G: 9, C: 9 };
-  const c1 = Object.keys(CARDS).find(k => hasType(CARDS[k], 'Creature') && !CARDS[k].special);
-  const c2 = Object.keys(CARDS).find(k => hasType(CARDS[k], 'Creature') && !CARDS[k].special && k !== c1);
+  const c1 = Object.keys(CARDS).find(k => hasType(CARDS[k], 'Creature') && !isUndraftable(CARDS[k]));
+  const c2 = Object.keys(CARDS).find(k => hasType(CARDS[k], 'Creature') && !isUndraftable(CARDS[k]) && k !== c1);
   const oc = caster === 'you' ? 'opp' : 'you';
   // Both sides get two creatures so every target taxonomy has >1 legal option.
   G[caster].battlefield.push(mk(c1, caster), mk(c2, caster));

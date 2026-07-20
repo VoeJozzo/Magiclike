@@ -667,7 +667,7 @@ function buildKillCdf() {
   const tou = [];
   for (const id of Object.keys(CARDS)) {
     const tpl = CARDS[id];
-    if (!tpl || tpl.special || !hasType(tpl, 'Creature')) continue;
+    if (!tpl || !hasType(tpl, 'Creature')) continue;   // special creatures (boons/bosses) ARE real creatures -> count them in the toughness baseline
     if (typeof tpl.toughness !== 'number') continue;
     tou.push(tpl.toughness);
   }
@@ -699,7 +699,7 @@ function ensurePool() {
     // explicitly undraftable cards are seen, never offered.
     const a = analyze(tpl);
     _byId[id] = a;
-    if (tpl.special) continue;
+    if (isUndraftable(tpl)) continue;
     const w = tpl.draftWeight;
     if (typeof w === 'number' && w <= 0) continue;
     _pool.push(a);
