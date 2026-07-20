@@ -318,9 +318,7 @@ function render() {
     const btns = document.getElementById('numberChoiceButtons');
     btns.innerHTML = '';
     for (let n = p.min; n <= p.max; n++) {
-      btns.appendChild(makeChoiceButton(String(n),
-        'border:2px solid #cc44aa;color:#ee88cc;padding:14px 22px;font-family:inherit;font-size:24px;font-weight:bold;cursor:pointer;border-radius:6px;min-width:60px;transition:transform .1s,background .1s',
-        '#3a1840', '#5a2860',
+      btns.appendChild(makeChoiceButton(String(n), 'choice-btn-big',
         () => CONTROLLER.numberChoice(n)));
     }
   } else {
@@ -341,10 +339,8 @@ function render() {
     ];
     for (const entry of labels) {
       btns.appendChild(makeChoiceButton(
-        `<div style="font-size:11px;opacity:0.7;letter-spacing:0.1em;text-transform:uppercase">${entry.label}</div><div style="font-size:24px;font-weight:bold;margin-top:4px">${entry.value}</div>`,
-        'border:2px solid #88aacc;color:#aaccee;padding:12px 20px;font-family:inherit;cursor:pointer;border-radius:6px;min-width:90px;transition:transform .1s,background .1s',
-        '#152030', '#1e2c44',
-        () => CONTROLLER.symmetricizeChoice(entry.which)));
+        `<div class="choice-btn-label">${entry.label}</div><div class="choice-btn-value">${entry.value}</div>`,
+        '', () => CONTROLLER.symmetricizeChoice(entry.which)));
     }
   } else {
     Modal.hide('symmetricizeChoiceModal');
@@ -365,13 +361,9 @@ function render() {
       `${p.source} entered.<br>Pay ${costStr} to use its stapled effect?`;
     const btns = document.getElementById('optionalCostButtons');
     btns.innerHTML = '';
-    btns.appendChild(makeChoiceButton(`Pay ${costStr}`,
-      'border:2px solid #66bb88;color:#bfe9cc;padding:12px 20px;font-family:inherit;cursor:pointer;border-radius:6px;min-width:90px;transition:transform .1s,background .1s',
-      '#15241a', '#1e3426',
+    btns.appendChild(makeChoiceButton(`Pay ${costStr}`, '',
       () => CONTROLLER.optionalCost(true)));
-    btns.appendChild(makeChoiceButton('Decline',
-      'border:2px solid #886666;color:#e9cccc;padding:12px 20px;font-family:inherit;cursor:pointer;border-radius:6px;min-width:90px;transition:transform .1s,background .1s',
-      '#241515', '#341e1e',
+    btns.appendChild(makeChoiceButton('Decline', 'choice-btn-decline',
       () => CONTROLLER.optionalCost(false)));
   } else {
     Modal.hide('optionalCostModal');
@@ -793,17 +785,16 @@ function renderManaPool(id, mana) {
 }
 
 // One option button for the choice-modal prompts (pick-a-number / symmetricize
-// / edict). Centralizes the create + lift-on-hover (background swap + translateY)
-// + onclick boilerplate the three prompts used to each spell out. `css` is the
-// per-modal layout/border/color (no background — that's set from normalBg so it
-// can't drift from the hover swap). `html` is trusted markup (our own data).
-function makeChoiceButton(html, css, normalBg, hoverBg, onclick) {
+// / optional-cost). Takes a CLASS, not an inline style string: inline styles beat
+// the stylesheet, which is what kept these on the old flat look and blocked the
+// pixel-chrome tiles (the same trap START_BTN_STYLE fell into). Colour comes from
+// the modal's --picker-accent-text, so each prompt keeps its signature accent
+// without per-call-site colour strings, and hover/press come from the tile art
+// instead of a hand-rolled background swap. `html` is trusted markup (our own data).
+function makeChoiceButton(html, extraClass, onclick) {
   const b = document.createElement('button');
   b.innerHTML = html;
-  b.style.cssText = css;
-  b.style.background = normalBg;
-  b.onmouseover = () => { b.style.background = hoverBg; b.style.transform = 'translateY(-2px)'; };
-  b.onmouseout  = () => { b.style.background = normalBg; b.style.transform = 'translateY(0)'; };
+  b.className = 'choice-btn' + (extraClass ? ' ' + extraClass : '');
   b.onclick = onclick;
   return b;
 }

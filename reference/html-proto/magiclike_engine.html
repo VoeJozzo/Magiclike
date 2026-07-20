@@ -827,14 +827,21 @@ button:disabled{opacity:.4;cursor:not-allowed}
 #cardBrowserModal.vis{display:block}
 #triggerBuildModal{position:fixed;inset:0;background:rgba(0,0,0,.88);display:none;align-items:center;justify-content:center;z-index:1100;padding:20px;box-sizing:border-box}
 #triggerBuildModal.vis{display:flex}
-#numberChoiceModal{position:fixed;inset:0;background:rgba(0,0,0,.92);display:none;align-items:center;justify-content:center;z-index:1100;padding:20px;box-sizing:border-box}
-#numberChoiceModal.vis{display:flex}
-#symmetricizeChoiceModal{position:fixed;inset:0;background:rgba(0,0,0,.92);display:none;align-items:center;justify-content:center;z-index:1100;padding:20px;box-sizing:border-box}
-#symmetricizeChoiceModal.vis{display:flex}
-#edictChoiceModal{position:fixed;inset:0;background:rgba(0,0,0,.92);display:none;align-items:center;justify-content:center;z-index:1100;padding:20px;box-sizing:border-box}
-#edictChoiceModal.vis{display:flex}
-#optionalCostModal{position:fixed;inset:0;background:rgba(0,0,0,.92);display:none;align-items:center;justify-content:center;z-index:1100;padding:20px;box-sizing:border-box}
-#optionalCostModal.vis{display:flex}
+/* The four prompt modals compose .picker-overlay now (identical fixed/inset/
+   z-index/padding rules deleted rather than duplicated). The one genuine
+   difference is kept: these are short prompts, so they centre vertically
+   where the kit top-aligns its taller card pickers. */
+#numberChoiceModal,#symmetricizeChoiceModal,#edictChoiceModal,#optionalCostModal{align-items:center}
+/* Prompt-modal option buttons. One rule for every prompt: the accent is
+   inherited from the modal's --picker-accent-text rather than restated per
+   call site, so a new prompt gets the right colour for free. */
+.choice-btn{border-style:solid;border-width:4px 4px 14px 4px;border-image:url(assets/ui/pxbtn_rest.png) 2 2 7 2 fill round;image-rendering:pixelated;background:none;border-radius:0;color:var(--picker-accent-text,#e9dcbe);font-family:inherit;font-weight:700;cursor:pointer;padding:8px 18px;min-width:90px;text-shadow:1px 1px 0 var(--iron)}
+.choice-btn:hover:not(:disabled){border-image:url(assets/ui/pxbtn_hover.png) 2 2 9 2 fill round;filter:brightness(1.08)}
+.choice-btn:active:not(:disabled){border-image:url(assets/ui/pxbtn_press.png) 2 2 3 2 fill round;border-bottom-width:6px;margin-bottom:8px}
+.choice-btn-big{font-size:24px;padding:10px 22px;min-width:64px}
+.choice-btn-decline{color:#e0a09a}
+.choice-btn-label{font-size:11px;opacity:.7;letter-spacing:.1em;text-transform:uppercase}
+.choice-btn-value{font-size:24px;font-weight:bold;margin-top:4px}
 /* --- map screen: pixel-chrome reskin (baked tiles via border-image / background-image) --- */
 #mapBox{--iron:#13170e;--wood-hi:#6d7c4c;--gold:#ffd86a;--heral:#a02619;--moss:#a7b487;background:none;border:none;border-radius:0;box-shadow:none;padding:0;max-width:400px;width:100%;text-align:center;margin:auto;image-rendering:pixelated}
 #mapCanvas{position:relative;width:100%;min-height:300px;box-sizing:border-box;background:#c1a96f;border-style:solid;border-width:12px;border-image:url(assets/ui/woodbar_src.png) 6 round;image-rendering:pixelated;padding:28px 0;overflow:hidden}
@@ -1096,32 +1103,36 @@ body.ai-thinking #status{
     </div>
   </div>
 </div>
-<div id="numberChoiceModal">
-  <div id="numberChoiceBox" style="background:#1a0820;border:2px solid #cc44aa;border-radius:8px;padding:24px 20px;max-width:480px;width:100%;font-family:Georgia,serif;color:#ddd;box-shadow:0 0 30px rgba(204,68,170,.3)">
-    <h2 id="numberChoiceTitle" style="color:#ee88cc;font-size:18px;margin:0 0 8px 0;text-align:center;letter-spacing:0.1em">👹 THE BARGAIN</h2>
-    <div id="numberChoiceSubtitle" style="color:#aaa;font-size:12px;text-align:center;margin-bottom:18px;font-style:italic;line-height:1.5"></div>
-    <div id="numberChoiceButtons" style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap"></div>
+<!-- The four prompt modals below were byte-identical forks of one shape
+     (overlay > box > title > subtitle > row of choices), differing only in
+     accent colour. They now COMPOSE the .picker-* kit; the accent survives as
+     --picker-accent-text so each prompt still reads at a glance. -->
+<div id="numberChoiceModal" class="picker-overlay">
+  <div id="numberChoiceBox" class="picker-box" style="--picker-accent-text:#e59ccd;max-width:480px">
+    <div class="picker-header"><h2 id="numberChoiceTitle" class="picker-title">👹 THE BARGAIN</h2></div>
+    <div id="numberChoiceSubtitle" class="picker-subtitle"></div>
+    <div id="numberChoiceButtons" class="picker-row"></div>
   </div>
 </div>
-<div id="symmetricizeChoiceModal">
-  <div id="symmetricizeChoiceBox" style="background:#0a0e1a;border:2px solid #88aacc;border-radius:8px;padding:24px 20px;max-width:520px;width:100%;font-family:Georgia,serif;color:#ddd;box-shadow:0 0 30px rgba(136,170,204,.3)">
-    <h2 style="color:#aaccee;font-size:18px;margin:0 0 8px 0;text-align:center;letter-spacing:0.1em">⚖ SYMMETRICIZE</h2>
-    <div id="symmetricizeChoiceSubtitle" style="color:#aaa;font-size:12px;text-align:center;margin-bottom:18px;font-style:italic;line-height:1.5"></div>
-    <div id="symmetricizeChoiceButtons" style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap"></div>
+<div id="symmetricizeChoiceModal" class="picker-overlay">
+  <div id="symmetricizeChoiceBox" class="picker-box" style="--picker-accent-text:#a8c8e8;max-width:520px">
+    <div class="picker-header"><h2 class="picker-title">⚖ SYMMETRICIZE</h2></div>
+    <div id="symmetricizeChoiceSubtitle" class="picker-subtitle"></div>
+    <div id="symmetricizeChoiceButtons" class="picker-row"></div>
   </div>
 </div>
-<div id="edictChoiceModal">
-  <div id="edictChoiceBox" style="background:#0a0e1a;border:2px solid #cc8888;border-radius:8px;padding:24px 20px;max-width:520px;width:100%;font-family:Georgia,serif;color:#ddd;box-shadow:0 0 30px rgba(204,136,136,.3)">
-    <h2 style="color:#eeaaaa;font-size:18px;margin:0 0 8px 0;text-align:center;letter-spacing:0.1em">☠ FORCED SACRIFICE</h2>
-    <div id="edictChoiceSubtitle" style="color:#aaa;font-size:12px;text-align:center;margin-bottom:18px;font-style:italic;line-height:1.5"></div>
-    <div id="edictChoiceButtons" style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap"></div>
+<div id="edictChoiceModal" class="picker-overlay">
+  <div id="edictChoiceBox" class="picker-box" style="--picker-accent-text:#e0a09a;max-width:520px">
+    <div class="picker-header"><h2 class="picker-title">☠ FORCED SACRIFICE</h2></div>
+    <div id="edictChoiceSubtitle" class="picker-subtitle"></div>
+    <div id="edictChoiceButtons" class="picker-row"></div>
   </div>
 </div>
-<div id="optionalCostModal">
-  <div id="optionalCostBox" style="background:#0a140e;border:2px solid #66bb88;border-radius:8px;padding:24px 20px;max-width:520px;width:100%;font-family:Georgia,serif;color:#ddd;box-shadow:0 0 30px rgba(102,187,136,.3)">
-    <h2 style="color:#9fdfb5;font-size:18px;margin:0 0 8px 0;text-align:center;letter-spacing:0.1em">✦ OPTIONAL COST</h2>
-    <div id="optionalCostSubtitle" style="color:#aaa;font-size:12px;text-align:center;margin-bottom:18px;font-style:italic;line-height:1.5"></div>
-    <div id="optionalCostButtons" style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap"></div>
+<div id="optionalCostModal" class="picker-overlay">
+  <div id="optionalCostBox" class="picker-box" style="--picker-accent-text:#9fdfb5;max-width:520px">
+    <div class="picker-header"><h2 class="picker-title">✦ OPTIONAL COST</h2></div>
+    <div id="optionalCostSubtitle" class="picker-subtitle"></div>
+    <div id="optionalCostButtons" class="picker-row"></div>
   </div>
 </div>
 <div id="modalChoiceModal"><div id="modalChoiceBox"><h2>CHOOSE A MODE</h2><div id="modalChoiceCardName"></div><div id="modalChoiceList"></div><button id="modalChoiceCancelBtn" onclick="CONTROLLER.cancelModalChoice()">Cancel</button></div></div>
