@@ -57,7 +57,7 @@ console.log('\n=== v1->v2 save migration translates every PERSISTED tplId carrie
   // (git-verified at df2fd38^: save() stored {version, runState}; youPicks/
   // currentPack lived on DRAFT's in-memory `state`, never on the save). The
   // real tplId carriers are: slots, the mid-game snapshot (a deep-clone of
-  // slots), pendingReward.replacementPack (two shapes), and the modifier id.
+  // slots) and pendingReward.replacementPack (two shapes).
   const v1Blob = {
     version: 1,
     runState: {
@@ -71,7 +71,6 @@ console.log('\n=== v1->v2 save migration translates every PERSISTED tplId carrie
         { tplId: 'fireImp', stickers: [] },
         { tplId: 'zealot', stickers: [], stapledTpls: ['merfolk'] },
       ],
-      modifier: 'cityOfBrass',   // a renamed id (cityOfBrass -> city_of_brass)
       // 'mixed'-phase reward (Shape A): a transform candidate carries replacementPack.
       pendingReward: {
         phase: 'mixed',
@@ -94,7 +93,6 @@ console.log('\n=== v1->v2 save migration translates every PERSISTED tplId carrie
   check('A9-1: midGameSlotsSnapshot[0] fireImp -> cinder_sprite', migrated.runState.midGameSlotsSnapshot[0].tplId === 'cinder_sprite');
   check('A9-1: midGameSlotsSnapshot[1] zealot -> holy_zealot', migrated.runState.midGameSlotsSnapshot[1].tplId === 'holy_zealot');
   check('A9-1: snapshot stapledTpls merfolk -> merfolk_looter', migrated.runState.midGameSlotsSnapshot[1].stapledTpls[0] === 'merfolk_looter');
-  check('A9-1: modifier cityOfBrass -> city_of_brass', migrated.runState.modifier === 'city_of_brass');
   check('A9-1: reward candidate replacementPack[0] fireImp -> cinder_sprite', migrated.runState.pendingReward.candidates[0].replacementPack[0] === 'cinder_sprite');
   check('A9-1: reward candidate replacementPack[1] merfolk -> merfolk_looter', migrated.runState.pendingReward.candidates[0].replacementPack[1] === 'merfolk_looter');
   check('sticker_id empower untouched (never a tplId)', migrated.runState.pendingReward.candidates[1].sticker_id === 'empower');

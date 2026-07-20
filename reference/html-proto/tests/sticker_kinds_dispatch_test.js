@@ -62,10 +62,15 @@ console.log('=== applyStickersToCard: each kind mutates correctly ===');
 
 {
   // remove_keyword: lose_defender strips a Wall's (subtype-derived) defender so it can attack.
-  const card = freshCard('wall_of_omens', ['lose_defender']);
-  ENGINE.applySubtypeKeywords(card);   // Wall→defender is derived, not printed on the card
+  // The precondition rides an UNSTICKERED card: applySubtypeKeywords honors
+  // remove_keyword stickers, so a stickered Wall never passes through a state
+  // where it has defender — there is no intermediate to observe.
+  const bare = freshCard('wall_of_omens', []);
+  ENGINE.applySubtypeKeywords(bare);   // Wall→defender is derived, not printed on the card
   check('lose_defender precondition: wall_of_omens has defender via its Wall subtype',
-    card.keywords.includes('defender'));
+    bare.keywords.includes('defender'));
+  const card = freshCard('wall_of_omens', ['lose_defender']);
+  ENGINE.applySubtypeKeywords(card);
   applyStickersToCard(card);
   check("remove_keyword strips 'defender' from card.keywords",
     !card.keywords.includes('defender'));

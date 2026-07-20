@@ -43,6 +43,27 @@ proof('A14',
     };
   });
 
+proof('A14b',
+  "A staple's keywords print once on the merged card, not twice",
+  () => {
+    // The A14 section renders the staple half's text; the custom-text branch
+    // ALSO prepends keywords the base template lacks. A keyword-bearing
+    // staple hits both, so the display path must not double it. (The swamp
+    // case above can't catch this — a land contributes no keywords.)
+    const staple = Object.values(CARDS).find(c =>
+      (c.keywords || []).includes('flying') && (c.types || []).includes('Creature')
+      && !c.custom_text && !c.special);
+    if (!staple) throw new Error('no plain flying creature in the pool to staple');
+    const card = ENGINE.makeCard('mercurial_adept', [], 0, undefined, undefined, [staple.tplId]);
+    const text = segsToText(describeCardSegments(card, {}));
+    const hits = (text.match(/Flying/gi) || []).length;
+    return {
+      ok: hits === 1,
+      info: 'mercurial_adept+' + staple.tplId + ' display text mentions Flying ' + hits
+        + ' time(s): "' + text.slice(0, 90) + '..."',
+    };
+  });
+
 proof('N7',
   "Card text renders the live target value 'permanent_or_spell' as English, never the raw key",
   () => {
@@ -56,18 +77,48 @@ proof('N7',
 proof('A12/A13',
   "The opponent's sticker-burst odds derive from the player reward weights (single source, cannot drift)",
   () => {
-    const src = setup.getSource();
-    const i = src.indexOf('const burstRoll');
-    if (i < 0) throw new Error('burst-roll site not found in source');
-    const region = src.slice(Math.max(0, i - 600), i + 200);
-    const derived = /REWARD_TYPE_WEIGHTS\.sticker/.test(region)
-      && /REWARD_TYPE_WEIGHTS\.threeStickersBlind/.test(region)
-      && !/Math\.random\(\)\s*\*\s*\d/.test(region);
+    // True-by-logic: both sides of the equality are computed from
+    // REWARD_TYPE_WEIGHTS here, so retuning the weights can never redden this
+    // — only decoupling the burst roll from them can. Probes sit just inside
+    // each boundary, which is exactly what a hand-copied literal would move.
+    const w = RUN.REWARD_TYPE_WEIGHTS;
+    const total = w.sticker + w.twoStickers + w.threeStickersBlind;
+    const bS = w.sticker / total;                       // 1 → 2 boundary
+    const bD = (w.sticker + w.twoStickers) / total;     // 2 → 3 boundary
+    const eps = 1e-9;
+    const cases = [
+      [0, 1], [bS - eps, 1],
+      [bS, 2], [bD - eps, 2],
+      [bD, 3], [1 - eps, 3],
+    ];
+    const got = cases.map(([r]) => DRAFT._burstSizeForRollForTest(r));
+    const want = cases.map(([, n]) => n);
     return {
-      ok: derived,
-      info: derived
-        ? 'burst odds read REWARD_TYPE_WEIGHTS at roll time — no literals to drift'
-        : 'burst-roll site still carries hand-copied literals instead of reading REWARD_TYPE_WEIGHTS',
+      ok: JSON.stringify(got) === JSON.stringify(want),
+      info: 'weights ' + JSON.stringify(w) + ' → boundaries ' + bS.toFixed(4) + '/' + bD.toFixed(4)
+        + ' | burst sizes at probes: got ' + JSON.stringify(got) + ' want ' + JSON.stringify(want),
+    };
+  });
+
+proof('R32b',
+  'A "Loses Defender" sticker survives the subtype rule — on a Wall (whose defender is subtype-derived) and across a re-derive',
+  () => {
+    // The sticker exists to let a Wall attack. Both keyword paths must honor
+    // it: makeCard's build AND intrinsicKeywords' re-derive (leave-play, EOT
+    // grant strip) — otherwise SUBTYPE_KEYWORDS.Wall silently hands defender
+    // back and the reward buys nothing.
+    const walls = Object.values(CARDS).filter(c => (c.types || []).includes('Wall'));
+    const bad = [];
+    for (const tpl of walls) {
+      const card = ENGINE.makeCard(tpl.tplId, ['lose_defender']);
+      const built = (card.keywords || []).includes('defender');
+      const rederived = ENGINE.intrinsicKeywords(card).includes('defender');
+      if (built || rederived) bad.push(tpl.tplId + (built ? ' (build)' : '') + (rederived ? ' (re-derive)' : ''));
+    }
+    return {
+      ok: walls.length > 0 && bad.length === 0,
+      info: walls.length + ' Wall card(s) checked; still defender after the sticker: '
+        + (bad.length ? bad.join(', ') : 'none'),
     };
   });
 

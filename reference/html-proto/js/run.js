@@ -300,7 +300,6 @@ const MIGRATIONS = {
     const rs = blob.runState || {};
     migrateSlotTplIds(rs.slots);
     migrateSlotTplIds(rs.midGameSlotsSnapshot);
-    if (rs.modifier) rs.modifier = renameTplId(rs.modifier);
     const pr = rs.pendingReward;
     if (pr) {
       // Shape A — 'mixed' phase: each transform candidate carries replacementPack.
@@ -721,9 +720,7 @@ function recordResult(winner, playedSlotIdxs, claimedKeywords) {
       } else {
         // 1+ successors → a click-the-node choice. A SINGLE successor is a
         // one-option choice (identical map UI to a fork), not a separate
-        // auto-advance behind a "Continue" button. (The startNextGame
-        // single-successor auto-advance is kept as a back-compat fallback for
-        // saves made before this — see startNextGame.)
+        // auto-advance behind a "Continue" button.
         runState.pendingMapChoice = { options: successors };
       }
     }

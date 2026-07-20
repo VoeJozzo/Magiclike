@@ -1246,8 +1246,11 @@ function describeCardSegments(card, opts) {
       if (!CARDS[sid]) continue;
       // landManaExplicit: a staple half's mana ability must PRINT — the merged
       // card's type line doesn't convey it the way a standalone land's does.
+      // skipKeywords: the staple's keywords are already on the merged card, so
+      // the preamble above prints them once; printing them here too reads as
+      // "Flying. … [Abyss Lurker] Flying."
       const stapleSegs = describeCardSegments(CARDS[sid],
-        Object.assign({}, opts, { landManaExplicit: true }));
+        Object.assign({}, opts, { landManaExplicit: true, skipKeywords: true }));
       if (stapleSegs.length) {
         sections.push([plainSeg('[' + (CARDS[sid].name || sid) + '] '), ...stapleSegs]);
       }

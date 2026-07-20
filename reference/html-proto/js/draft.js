@@ -394,9 +394,22 @@ function applyOpponentClones(slots, n) {
   }
 }
 
+// Map a [0,1) roll to a burst size of 1/2/3, splitting the interval by the
+// player's sticker : twoStickers : threeStickersBlind reward weights, read at
+// roll time so opp's burst shape can never drift from the player's reward
+// shape (audit A12/A13 — the old literals froze a pre-v1.0.46 ratio).
+// Exported as a seam because the boundaries are the whole invariant and only
+// a chosen roll can pin them.
+function burstSizeForRoll(roll01) {
+  const w = RUN.REWARD_TYPE_WEIGHTS;
+  const wS = w.sticker, wD = w.twoStickers, wT = w.threeStickersBlind;
+  const r = roll01 * (wS + wD + wT);
+  return (r < wS) ? 1 : (r < wS + wD) ? 2 : 3;
+}
+
 // Distribute N stickers across opp's deck. Bursts of 1/2/3 mirror the
-// player's sticker/twoStickers/threeStickersBlind reward weights (12:3:2)
-// so distribution shapes match.
+// player's sticker/twoStickers/threeStickersBlind reward weights so
+// distribution shapes match.
 function applyOpponentStickers(slots, n) {
   const oppColors = deckColorsFromSlots(slots);
   // Bursts concentrate stickers on a single slot — produces polarized threats
@@ -430,17 +443,8 @@ function applyOpponentStickers(slots, n) {
       const score = intrinsicCardValue(tpl) + stickerBonus;
       if (score > bestSlotScore) { bestSlotScore = score; bestSlotIdx = i; }
     }
-    // Roll a burst size mirroring the player reward weights, derived at roll
-    // time from REWARD_TYPE_WEIGHTS (single/double/triple = sticker :
-    // twoStickers : threeStickersBlind) so the two can never drift again
-    // (audit A12/A13 — the old literals froze a pre-v1.0.46 ratio). Cap at
-    // remaining budget so the last burst doesn't overspend.
-    const wS = RUN.REWARD_TYPE_WEIGHTS.sticker;
-    const wD = RUN.REWARD_TYPE_WEIGHTS.twoStickers;
-    const wT = RUN.REWARD_TYPE_WEIGHTS.threeStickersBlind;
-    const burstRoll = Math.random() * (wS + wD + wT);
-    let burstSize = (burstRoll < wS) ? 1 : (burstRoll < wS + wD) ? 2 : 3;
-    burstSize = Math.min(burstSize, remaining);
+    // Cap at remaining budget so the last burst doesn't overspend.
+    const burstSize = Math.min(burstSizeForRoll(Math.random()), remaining);
     // Apply `burstSize` stickers to the chosen slot. Each sticker re-rolls
     // the candidate offer (since prior stickers may make the slot eligible
     // for new ones, or saturate non-stackable slots), and we re-check
@@ -871,6 +875,8 @@ return {
   // The game's deck-color rule — exported so stats/export surfaces report
   // through it instead of re-deriving (audit A10).
   summarizeColors,
+  // Test seam: opp's burst-size boundaries (audit A12/A13).
+  _burstSizeForRollForTest: burstSizeForRoll,
   // Heuristic card picker. Exposed for the self-play harness (heuristic-drafted
   // player mode) and any other consumer that wants to drive a programmatic
   // draft with the same scorer opp uses.

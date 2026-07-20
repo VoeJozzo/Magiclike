@@ -724,13 +724,28 @@ function remapEffectSlots(effects, offset) {
 // Keywords implied by creature subtype — card data need not repeat these.
 const SUBTYPE_KEYWORDS = { Angel: ['flying'], Dragon: ['flying'], Treefolk: ['reach'], Wall: ['defender'] };
 
+// Keywords a remove_keyword sticker strips from this card. Every keyword
+// derivation subtracts these LAST, so the sticker beats both the printed
+// keyword and the subtype rule: a Wall that bought "Loses Defender" can
+// attack, and still can after it bounces. Without this the subtype rule
+// re-adds defender behind the sticker's back and the reward buys nothing.
+function stickerRemovedKeywords(card) {
+  const out = new Set();
+  for (const sId of (card && card.stickers) || []) {
+    const s = resolveSticker(sId);
+    if (s && s.kind === 'remove_keyword' && s.keyword) out.add(s.keyword);
+  }
+  return out;
+}
+
 // Append the subtype-implied keywords for `subtypes` onto `kw` in place (deduped).
 // Shared by makeCard's eager injection AND intrinsicKeywords' re-derivation, so
 // every keyword-build path applies the rule identically — a Dragon that bounces,
 // dies-and-returns, or sheds an until-EOT grant keeps its flying.
-function addSubtypeKeywords(subtypes, kw) {
+function addSubtypeKeywords(subtypes, kw, removed) {
   for (const st of subtypes) {
     for (const k of (SUBTYPE_KEYWORDS[st] || [])) {
+      if (removed && removed.has(k)) continue;
       if (!kw.includes(k)) kw.push(k);
     }
   }
@@ -738,7 +753,7 @@ function addSubtypeKeywords(subtypes, kw) {
 }
 
 function applySubtypeKeywords(card) {
-  addSubtypeKeywords(subtypesOf(card), card.keywords);
+  addSubtypeKeywords(subtypesOf(card), card.keywords, stickerRemovedKeywords(card));
 }
 
 // Runtime instance-state keys owned by the engine — the copy-by-default loop
@@ -983,8 +998,9 @@ function intrinsicKeywords(card) {
   // Subtype-implied keywords are part of the intrinsic set, so every re-derive
   // path (resetInPlayState on leave-play, the EOT eotGrants cleanup) preserves
   // them rather than silently dropping a Dragon's flying / a Wall's defender.
-  addSubtypeKeywords(subtypesOf(card), kw);
-  return kw;
+  const removed = stickerRemovedKeywords(card);
+  addSubtypeKeywords(subtypesOf(card), kw, removed);
+  return removed.size ? kw.filter(k => !removed.has(k)) : kw;
 }
 
 
@@ -3987,7 +4003,7 @@ function collectUnknownTriggerRefs(trig, id, out) {
   if ('stackable' in trig && typeof trig.stackable !== 'boolean' && out.badStackable) {
     out.badStackable.push(id);
   }
-  if (trig.condition != null && typeof trig.condition !== 'function') {
+  if (trig.condition != null) {
     _collectUnknownAtomics(trig.condition, out.unknownAtomics, id);
   }
   for (const e of (trig.effects || [])) {

@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.2.37`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.2.38`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -3096,3 +3096,32 @@ coherence > 0) that only a chosen-seed entry point can exercise — a straight
 kill would have weakened genuine test power, so the ruling's intent (not a
 production API) was executed in the safe direction. API comment updated;
 sole test call site retargeted. No behavior change.
+
+v2.2.38: PR #148 review fixes. Two behavior bugs the audit's own reorder
+introduced or left standing, plus the residue the kill batches missed.
+(1) remove_keyword now beats the subtype rule. The v2.2.36 makeCard reorder
+(stickers before applySubtypeKeywords, audit R32) made `lose_defender` a
+complete no-op on all 6 Wall-subtype cards: the sticker stripped defender,
+then SUBTYPE_KEYWORDS.Wall handed it straight back. intrinsicKeywords had
+the same hole on the re-derive side and additionally never honored a
+PRINTED defender's removal, so a stickered Iron Sentinel regained it on
+leave-play. Both paths now subtract stickerRemovedKeywords() last — one
+rule, both directions. (Joe's ruling on the symmetric half — a subtype
+sticker that rolls Wall grants defender and can brick a creature — is WAD,
+2026-07-20.) (2) The A14 staple-text section no longer double-prints the
+staple's keywords ("Flying. … [Abyss Lurker] Flying."): the custom-text
+branch already prepends keywords the base template lacks, so the staple
+section renders with skipKeywords. The A14 proof used a Swamp, which
+contributes no keywords and so could not see this. (3) The A12/A13 proof
+was a source-text regex over draft.js — it would pass any refactor that
+read REWARD_TYPE_WEIGHTS and then ignored them. Replaced with a true-by-
+logic boundary pin against a small `burstSizeForRoll` seam; both sides
+compute from the weights table, so retuning the weights can't redden it.
+Cuts: the `.draft-pick` CSS family (14 rules, no emitter — v2.2.35 removed
+the class from one rule and left the rest), collectUnknownTriggerRefs'
+`typeof condition !== 'function'` guard (triggers.js dropped its twin in
+v2.2.35; no function-valued condition exists), the runState.modifier rename
+migration + its test fixture (start() stopped writing the field in v2.2.36),
+and the stale run.js comment pointing at the startNextGame auto-advance
+that v2.2.36 deleted. New pins: R32b (all 6 Walls, build + re-derive) and
+A14b (keyword prints once). Suite 151 files / 2983 green; lint clean.
