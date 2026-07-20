@@ -678,24 +678,32 @@ button:disabled{opacity:.4;cursor:not-allowed}
 /* Board action bar — pxbtn pixel tiles (scoped to .acts so the global button{}
    base and modal/kit buttons are untouched). rest/hover/press states + a primary
    variant for End Turn and a heraldic-red tint for Concede. */
-.acts button{border-style:solid;border-width:5px;border-image:url(assets/ui/pxbtn_rest.png) 2 fill round;image-rendering:pixelated;background:none;border-radius:0;color:#e9dcbe;font-family:inherit;font-weight:700;letter-spacing:.02em;text-shadow:1px 1px 0 var(--iron);padding:5px 12px}
-.acts button:hover:not(:disabled){border-image:url(assets/ui/pxbtn_hover.png) 2 fill round;background:none;filter:brightness(1.06)}
-.acts button:active:not(:disabled){border-image:url(assets/ui/pxbtn_press.png) 2 fill round;transform:translateY(1px)}
-.acts .btn-end{border-image:url(assets/ui/pxbtn_primary_rest.png) 2 fill round;color:#f8efd2}
-.acts .btn-end:hover:not(:disabled){border-image:url(assets/ui/pxbtn_hover.png) 2 fill round}
+/* pxbtn 9-slice. The tile is BTN_H=22px of button BODY plus `black_off` rows of
+   drop shadow that live BELOW the button (bake_ui_tiles.py: rest 5, hover 7,
+   press 1). So the bottom slice is 2px iron edge + black_off = 7/9/3 — not the
+   uniform `2` this first shipped with, which pushed the shadow up into the
+   middle fill and left labels sitting on it. Borders are a clean 2x of slice.
+   Hover keeps the rest border-width (no reflow on hover); :active shrinks the
+   bottom border and adds the same amount as margin, so the button visibly
+   sinks into its shadow without nudging its neighbours. */
+.acts button{border-style:solid;border-width:4px 4px 14px 4px;border-image:url(assets/ui/pxbtn_rest.png) 2 2 7 2 fill round;image-rendering:pixelated;background:none;border-radius:0;color:#e9dcbe;font-family:inherit;font-weight:700;letter-spacing:.02em;text-shadow:1px 1px 0 var(--iron);padding:3px 12px}
+.acts button:hover:not(:disabled){border-image:url(assets/ui/pxbtn_hover.png) 2 2 9 2 fill round;background:none;filter:brightness(1.06)}
+.acts button:active:not(:disabled){border-image:url(assets/ui/pxbtn_press.png) 2 2 3 2 fill round;border-bottom-width:6px;margin-bottom:8px}
+.acts .btn-end{border-image:url(assets/ui/pxbtn_primary_rest.png) 2 2 7 2 fill round;color:#f8efd2}
+.acts .btn-end:hover:not(:disabled){border-image:url(assets/ui/pxbtn_hover.png) 2 2 9 2 fill round}
 .acts .btn-skip{color:#cfe0d6}
 .acts .btn-pass{color:#a9c6d6}
 .acts .btn-d{color:#e6a09a}
 /* Menu / popup primary buttons (main menu run buttons + game-over "New Run").
    Same pxbtn tiles as the board, primary variant — these are the headline
    actions on their screens. Scoped by id/parent so other buttons are untouched. */
-#gameover-btn, .start-btn{border-style:solid;border-width:5px;border-image:url(assets/ui/pxbtn_rest.png) 2 fill round;image-rendering:pixelated;background:none;border-radius:0;color:#e9dcbe;font-family:inherit;font-weight:700;letter-spacing:.03em;font-size:13px;text-shadow:1px 1px 0 var(--iron);padding:8px 18px;cursor:pointer}
-#gameover-btn:hover:not(:disabled), .start-btn:hover:not(:disabled){border-image:url(assets/ui/pxbtn_hover.png) 2 fill round;background:none;filter:brightness(1.06)}
-#gameover-btn:active:not(:disabled), .start-btn:active:not(:disabled){border-image:url(assets/ui/pxbtn_press.png) 2 fill round;transform:translateY(1px)}
+#gameover-btn, .start-btn{border-style:solid;border-width:4px 4px 14px 4px;border-image:url(assets/ui/pxbtn_rest.png) 2 2 7 2 fill round;image-rendering:pixelated;background:none;border-radius:0;color:#e9dcbe;font-family:inherit;font-weight:700;letter-spacing:.03em;font-size:13px;text-shadow:1px 1px 0 var(--iron);padding:6px 18px;cursor:pointer}
+#gameover-btn:hover:not(:disabled), .start-btn:hover:not(:disabled){border-image:url(assets/ui/pxbtn_hover.png) 2 2 9 2 fill round;background:none;filter:brightness(1.06)}
+#gameover-btn:active:not(:disabled), .start-btn:active:not(:disabled){border-image:url(assets/ui/pxbtn_press.png) 2 2 3 2 fill round;border-bottom-width:6px;margin-bottom:8px}
 /* Variants differ only in label colour/size — the tile art stays one source of
    truth. Primary (start a run / New Run) gets the gold-rimmed primary tile. */
-#gameover-btn, .start-btn-primary{border-image:url(assets/ui/pxbtn_primary_rest.png) 2 fill round;color:#f4ead0;font-size:14px}
-#gameover-btn:hover:not(:disabled), .start-btn-primary:hover:not(:disabled){border-image:url(assets/ui/pxbtn_hover.png) 2 fill round}
+#gameover-btn, .start-btn-primary{border-image:url(assets/ui/pxbtn_primary_rest.png) 2 2 7 2 fill round;color:#f4ead0;font-size:14px}
+#gameover-btn:hover:not(:disabled), .start-btn-primary:hover:not(:disabled){border-image:url(assets/ui/pxbtn_hover.png) 2 2 9 2 fill round}
 .start-btn-cube{color:#e6d79a;font-size:14px}
 .start-btn-minor{color:#9aa886;font-size:12px;padding:6px 16px}
 .start-btn-sandbox{color:#c4a3d8}
@@ -830,7 +838,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
 .map-color-badge.col-R{background-image:url(assets/ui/gem_R.png)}
 .map-color-badge.col-G{background-image:url(assets/ui/gem_G.png)}
 #mapEdges{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:1;image-rendering:pixelated}
-#mapContinue{display:none;margin:12px auto 0;border-style:solid;border-width:4px;border-image:url(assets/ui/pxbtn_primary_rest.png) 2 fill round;image-rendering:pixelated;background:none;color:#f4ead0;font-family:inherit;font-weight:700;font-size:17px;letter-spacing:.04em;padding:8px 30px;text-shadow:2px 2px 0 var(--iron);cursor:pointer;border-radius:0}
+#mapContinue{display:none;margin:12px auto 0;border-style:solid;border-width:4px 4px 14px 4px;border-image:url(assets/ui/pxbtn_primary_rest.png) 2 2 7 2 fill round;image-rendering:pixelated;background:none;color:#f4ead0;font-family:inherit;font-weight:700;font-size:17px;letter-spacing:.04em;padding:6px 30px;text-shadow:2px 2px 0 var(--iron);cursor:pointer;border-radius:0}
 #mapContinue:hover:not(:disabled){filter:brightness(1.08)}
 #mapContinue:disabled{opacity:.45;cursor:not-allowed}
 #mapTooltip{position:absolute;display:none;background:#0a1218;border:1px solid #66ddaa;border-radius:4px;padding:6px 10px;color:#bbe;font-size:11px;letter-spacing:0.05em;text-transform:uppercase;font-family:Georgia,serif;pointer-events:none;z-index:10;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.6)}

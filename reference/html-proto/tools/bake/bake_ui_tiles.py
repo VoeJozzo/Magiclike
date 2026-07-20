@@ -45,6 +45,15 @@ BTN_STATES = {
     "hover": dict(edge_h=4, black_off=7, top_hi_a=0.18, bot_sh_a=0.26, bot_sh_px=2),
     "press": dict(edge_h=0, black_off=1, top_hi_a=0.10, bot_sh_a=0.30, bot_sh_px=1),
 }
+# Intended 9-slice for consumers (CSS border-image / Godot StyleBoxTexture),
+# recorded here for the same reason WOODBAR_SLICE is. The button BODY is BTN_H
+# tall; each state's image is BTN_H + black_off, and those extra rows are drop
+# shadow that belongs BELOW the button. So the bottom inset is the 2px iron edge
+# plus black_off — it is NOT symmetric with the other three sides. Slicing all
+# four at 2 (an easy mistake) pulls the shadow up into the middle fill and the
+# label ends up sitting on it.
+BTN_SLICE = {name: dict(L=2, R=2, T=2, B=2 + p["black_off"])
+             for name, p in BTN_STATES.items()}   # rest B=7, hover B=9, press B=3
 
 
 def make_button(ramp, edge_hex, edge_h, black_off, top_hi_a, bot_sh_a, bot_sh_px):
