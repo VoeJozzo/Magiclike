@@ -1928,9 +1928,6 @@ function pickBestActivation(state, who, abilityActs) {
         const toSelf = !t || (t.kind === 'player' && t.who === who);
         score = toSelf ? (state[who].life <= 10 ? 2 + amt : -2) : -100;
       }
-    } else if (eff.kind === 'damage' && eff.target === 'player' && !act.targets) {
-      // Drain-tax abilities (legacy damage-to-player shape).
-      score = 8;
     } else if (eff.kind === 'affect_creature' && act.targets) {
       const t = act.targets[0];
       if (t.kind === 'creature') {

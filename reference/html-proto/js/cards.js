@@ -115,22 +115,13 @@ async function loadCards() {
       console.warn('Card text contains ~ outside custom_text flag:', card.tplId);
     }
   }
-  // Defensive: warn if the loaded count doesn't match the manifest. A
-  // missing card.json (404) would resolve to a parse error and reject the
-  // Promise.all, so reaching here with a mismatched count would only
-  // happen if a manifest entry deserialized to something falsy.
-  if (cards.length !== manifest.length) {
-    console.warn('Card load count mismatch:', cards.length, 'vs', manifest.length);
-  }
 }
 
 // TOKENS — minted by effects. Vanish on leave-play (dies-triggers still fire).
 const TOKENS = {
-  spirit_w_1_1:  {name:'Spirit',  types:['Creature','Spirit'],  power:1, toughness:1, art:'👻', color:'W', text:'Flying', keywords:['flying']},
+  spirit_w_1_1:  {name:'Spirit',  types:['Creature','Spirit'],  power:1, toughness:1, art:'👻', color:'W', keywords:['flying']},
   soldier_w_1_1: {name:'Soldier', types:['Creature','Human','Soldier'], power:1, toughness:1, art:'⚔', color:'W'},
-  goblin_r_1_1:  {name:'Goblin',  types:['Creature','Goblin'],  power:1, toughness:1, art:'👺', color:'R', text:'Haste', keywords:['haste']},
-  saproling_g_1_1: {name:'Saproling', types:['Creature','Saproling'], power:1, toughness:1, art:'🌱', color:'G'},
-  bear_g_2_2:    {name:'Bear',    types:['Creature','Bear'],    power:2, toughness:2, art:'🐻', color:'G'},
+  goblin_r_1_1:  {name:'Goblin',  types:['Creature','Goblin'],  power:1, toughness:1, art:'👺', color:'R', keywords:['haste']},
 };
 
 // SHARED CONSTANTS — new keywords here auto-become available stickers.
@@ -340,7 +331,6 @@ const KEYWORD_REMINDER = {
   flash: 'You may cast it any time you could cast an instant.',
   unblockable: "It can't be blocked.",
   innate: 'It starts in your opening hand.',
-  tap: 'The tap symbol — appears in activated-ability costs.',
 };
 // Per-keyword sticker offer weight. Higher = more common in pair offers.
 // Keeping it minimal for now — tune as we get playtest signal.

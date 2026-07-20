@@ -17,7 +17,6 @@ const COLOR_TO_LAND = { W:'plains', U:'island', B:'swamp', R:'mountain', G:'fore
 const DESERT_CUBE_LAND_PROB = 1 / 3;
 
 // Lazy-cached because CARDS is populated async by loadCards() (v1.0.134).
-// oppPool() kept separate for future archetype divergence.
 let _draftPoolCache = null;
 function draftPool() {
   if (_draftPoolCache === null) {
@@ -36,7 +35,6 @@ function draftPool() {
   }
   return _draftPoolCache;
 }
-function oppPool() { return draftPool(); }
 
 let state = null;
 
@@ -109,7 +107,6 @@ const CONSTRUCTED_DECKS = {
   goblinAggro: {
     name: 'Goblin Aggro',
     colors: ['R'],
-    description: 'Cheap goblins, burn finishers',
     cards: [
       'goblin_piercer', 'goblin_piercer', 'raging_goblin', 'raging_goblin',
       'goblin_raider', 'goblin_raider', 'goblin_duelist', 'goblin_duelist',
@@ -122,7 +119,6 @@ const CONSTRUCTED_DECKS = {
   spiritTribal: {
     name: 'Spirit Tribal',
     colors: ['W'],
-    description: 'Spirits, removal, evasion',
     cards: [
       'savannah_lions', 'white_knight', 'white_knight',
       'devoted_watcher', 'devoted_watcher', 'phantom_warrior', 'phantom_warrior',
@@ -135,7 +131,6 @@ const CONSTRUCTED_DECKS = {
   aristocrats: {
     name: 'Aristocrats',
     colors: ['B', 'R'],
-    description: 'Sacrifice synergies, drain effects',
     cards: [
       'goblin_piercer', 'goblin_raider', 'vampire_bat', 'vampire_bat',
       'rakdos_cadet', 'rakdos_cadet', 'cult_priest', 'cult_priest',
@@ -149,7 +144,6 @@ const CONSTRUCTED_DECKS = {
     name: 'Archdemon of Bargains',
     icon: '👹',
     colors: ['B'],
-    description: 'Mono-black demonic toolbox: removal, drain, recursion',
     isBoss: true,
     cards: [
       'archdemon_of_bargains',
@@ -167,7 +161,6 @@ const CONSTRUCTED_DECKS = {
     name: 'The Balancer',
     icon: '⚖',
     colors: ['W'],
-    description: 'Mono-white control: taxation, exile, equalization',
     isBoss: true,
     cards: [
       'city_guardian', 'city_guardian',
@@ -188,7 +181,6 @@ const CONSTRUCTED_DECKS = {
     name: 'Equatorial Artificer',
     icon: 'C',
     colors: [],
-    description: 'Colorless artifact boss: fast artifact mana unlocks demanding colored spells',
     isBoss: true,
     cards: [
       'ingenuity_unbounded',
@@ -233,7 +225,7 @@ function buildOpponentDeck(numStickers, numStaples, numClones, colorAffinity, co
     if (picks.length < TOTAL_PICKS) {
       console.warn(`Constructed deck "${constructedId}" has ${picks.length} cards; padding to ${TOTAL_PICKS}.`);
       for (let i = picks.length; i < TOTAL_PICKS; i++) {
-        const pack = rollPack(oppPool(), picks);
+        const pack = rollPack(draftPool(), picks);
         if (!pack.length) break;
         picks.push(pickFromPack(pack, picks));
       }
@@ -242,7 +234,7 @@ function buildOpponentDeck(numStickers, numStaples, numClones, colorAffinity, co
     picks = [];
     // colorAffinity forces pick 1 same-color → biases via pickFromPack's commitment logic.
     if (colorAffinity) {
-      const sameColorPool = oppPool().filter(id => {
+      const sameColorPool = draftPool().filter(id => {
         const c = CARDS[id];
         return c && c.color === colorAffinity;
       });
@@ -259,7 +251,7 @@ function buildOpponentDeck(numStickers, numStaples, numClones, colorAffinity, co
       }
     }
     for (let i = picks.length; i < pickTarget; i++) {
-      const pack = rollPack(oppPool(), picks);
+      const pack = rollPack(draftPool(), picks);
       if (!pack.length) break;
       const chosen = pickFromPack(pack, picks);
       picks.push(chosen);
@@ -402,9 +394,22 @@ function applyOpponentClones(slots, n) {
   }
 }
 
+// Map a [0,1) roll to a burst size of 1/2/3, splitting the interval by the
+// player's sticker : twoStickers : threeStickersBlind reward weights, read at
+// roll time so opp's burst shape can never drift from the player's reward
+// shape (audit A12/A13 — the old literals froze a pre-v1.0.46 ratio).
+// Exported as a seam because the boundaries are the whole invariant and only
+// a chosen roll can pin them.
+function burstSizeForRoll(roll01) {
+  const w = RUN.REWARD_TYPE_WEIGHTS;
+  const wS = w.sticker, wD = w.twoStickers, wT = w.threeStickersBlind;
+  const r = roll01 * (wS + wD + wT);
+  return (r < wS) ? 1 : (r < wS + wD) ? 2 : 3;
+}
+
 // Distribute N stickers across opp's deck. Bursts of 1/2/3 mirror the
-// player's sticker/twoStickers/threeStickersBlind reward weights (12:3:2)
-// so distribution shapes match.
+// player's sticker/twoStickers/threeStickersBlind reward weights so
+// distribution shapes match.
 function applyOpponentStickers(slots, n) {
   const oppColors = deckColorsFromSlots(slots);
   // Bursts concentrate stickers on a single slot — produces polarized threats
@@ -438,12 +443,8 @@ function applyOpponentStickers(slots, n) {
       const score = intrinsicCardValue(tpl) + stickerBonus;
       if (score > bestSlotScore) { bestSlotScore = score; bestSlotIdx = i; }
     }
-    // Roll a burst size mirroring player reward weights: 12:3:2 for
-    // single/double/triple → 70.6%/17.6%/11.8%. Cap at remaining budget so
-    // the last burst doesn't overspend.
-    const burstRoll = Math.random() * 17;
-    let burstSize = (burstRoll < 12) ? 1 : (burstRoll < 15) ? 2 : 3;
-    burstSize = Math.min(burstSize, remaining);
+    // Cap at remaining budget so the last burst doesn't overspend.
+    const burstSize = Math.min(burstSizeForRoll(Math.random()), remaining);
     // Apply `burstSize` stickers to the chosen slot. Each sticker re-rolls
     // the candidate offer (since prior stickers may make the slot eligible
     // for new ones, or saturate non-stackable slots), and we re-check
@@ -488,8 +489,8 @@ function scoreOpponentSticker(sticker, slot) {
     return tier;
   }
   // (innate is now a keyword — valued via the keyword tier map above.)
-  // Land-color fixing: old grant_mana_ability + the new add_type land stickers.
-  if (sticker.kind === 'grant_mana_ability' || sticker.kind === 'add_type') return 7;
+  // Land-color fixing (add_type land stickers).
+  if (sticker.kind === 'add_type') return 7;
   if (sticker.kind === 'cost_mod') {
     // Bigger cards benefit more. For stapled slots, the merged cost is
     // higher than the base alone — a costMinus1 on a Lions+Bolt at WR
@@ -500,10 +501,6 @@ function scoreOpponentSticker(sticker, slot) {
       : 0;
     return 4 + totalCost;
   }
-  // Unreachable in offers: no trigger-kind sticker is ever offered by
-  // stickersForSlot — scarified (weight 0, applied only by its dedicated
-  // in-game effect) is the one trigger-kind sticker.
-  if (sticker.kind === 'trigger') return 10;
   if (sticker.kind === 'subtype') {
     // Opp's decks aren't tribal-themed, so a stickered subtype is usually
     // inert. Score 1 — not zero (opp can still pick one if nothing else is
@@ -859,7 +856,6 @@ function getPlayerDeck() {
   return {
     cards,
     colors,
-    picks: state.youPicks.slice(),
     mode: state.mode,
   };
 }
@@ -876,6 +872,11 @@ return {
   // Land allocation for arbitrary pip counts — BUCKETS colors each bucket's
   // 2 lands through this so the largest-remainder logic stays single-sourced.
   allocLandsFor: (pips, count) => allocLands(pips, count),
+  // The game's deck-color rule — exported so stats/export surfaces report
+  // through it instead of re-deriving (audit A10).
+  summarizeColors,
+  // Test seam: opp's burst-size boundaries (audit A12/A13).
+  _burstSizeForRollForTest: burstSizeForRoll,
   // Heuristic card picker. Exposed for the self-play harness (heuristic-drafted
   // player mode) and any other consumer that wants to drive a programmatic
   // draft with the same scorer opp uses.

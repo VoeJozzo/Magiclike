@@ -360,7 +360,7 @@ function check(label, ok, info) {
 // Invariants (real randomness, like §3): coherence is >0 because growBucket
 // only adds positive-edge cards, so an internal edge always exists.
 {
-  const b = BUCKETS.rollBucket('goblin_chieftain', []);
+  const b = BUCKETS._rollBucketForTest('goblin_chieftain', []);
   check('seeded bucket contains its seed AT cards[0] (the story contract)',
     b.cards[0] === 'goblin_chieftain');
   check('seeded goblin bucket coherence > 0', b.coherence > 0, `coherence=${b.coherence}`);

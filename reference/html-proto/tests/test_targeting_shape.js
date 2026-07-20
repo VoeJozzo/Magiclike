@@ -1,5 +1,5 @@
-// Canonical targeting-shape API (engine.js objectNeedsTarget / primaryLegalTargets
-// / probeTargetsForObject). This is the single source of truth the §3.5 "top-
+// Canonical targeting-shape API (engine.js objectNeedsTarget /
+// probeTargetsForObject). This is the single source of truth the §3.5 "top-
 // level target() step" introduced — three consumers (clickHand, the castable
 // highlight, the trigger prompt) each drifted and broke when they hand-rolled
 // the "does this need a target" check. They all route through these now; this
@@ -42,21 +42,6 @@ console.log('=== objectNeedsTarget recognizes all three shapes (+ none) ===');
     !ENGINE.objectNeedsTarget({ effects: { modes: [[{ kind: 'damage', target: 'creature' }]] } }));
 })();
 
-console.log('\n=== primaryLegalTargets resolves per shape (+ honors target_filter / hexproof) ===');
-(() => {
-  const G = game();
-  G.opp.battlefield.push(mkCreature('opp', { color: 'W', colors: ['W'] }));     // white
-  G.opp.battlefield.push(mkCreature('opp', { color: 'B', colors: ['B'] }));     // black
-  // top-level creature → both creatures
-  check('top-level creature → 2 targets', ENGINE.primaryLegalTargets({ target: 'creature' }, 'you').length === 2);
-  // target_filter not_color:B → only the white one
-  check('target_filter (not_color B) excludes the black creature',
-    ENGINE.primaryLegalTargets({ target: 'creature', target_filter: { not_color: 'B' } }, 'you').length === 1);
-  // hexproof opp creature excluded
-  G.opp.battlefield.push(mkCreature('opp', { color: 'R', colors: ['R'], keywords: ['hexproof'] }));
-  check('hexproof opp creature excluded from a top-level creature filter',
-    ENGINE.primaryLegalTargets({ target: 'creature' }, 'you').length === 2);
-})();
 
 console.log('\n=== probeTargetsForObject builds a legality stand-in (null when no legal target) ===');
 (() => {

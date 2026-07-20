@@ -21,6 +21,11 @@ The design *aim* is that every persistent per-slot change flows through a single
 
 Empower and subtype **rolls resolve at application time** and are stored in the sticker (then applied additively at effect resolution), so there's no cross-instance leakage from shared mutation. A sticker persists across leave-play and re-ETB within a run — unlike an end-of-turn keyword grant — and clears when the run ends.
 
+Two rulings on how stickers interact with the subtype-implied keyword rule (Joe, 2026-07-20), both settled — don't re-open them as bugs:
+
+1. **A rolled subtype carries its implied keywords, downside included.** Rolling Dragon grants flying; rolling Wall grants *defender*, which can brick the creature. Working as designed — a subtype roll is a real identity change, not a menu of upsides.
+2. **A `remove_keyword` sticker outranks the subtype rule.** The sticker is the later, more specific statement about the card, so it is subtracted *last* in every keyword derivation — both the build path and the leave-play/EOT re-derive. Otherwise "Loses Defender" on a Wall buys nothing, since the subtype rule hands defender straight back.
+
 This is realized in the [[html-proto]]; the [[godot]] port hasn't built it yet (a reserved seam exists in `CardInstance.effective_keywords()` — see [[cross-engine-port]]). The concrete sticker types, weights, and legality rules live in [[1300-stickers]] (§1301–§1305).
 
 ## See also

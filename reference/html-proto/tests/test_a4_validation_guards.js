@@ -116,7 +116,6 @@ console.log('\n=== A4-17: required-param schema entries ===');
     { tplId: 'kwMissing', target: 'creature', effects: [{ kind: 'grant_keyword' }] },
     { tplId: 'tokUnknown', effects: [{ kind: 'create_tokens', token_id: 'no_such_token' }] },
     { tplId: 'dmgExprOk', target: 'creature', effects: [{ kind: 'damage', amount: { from: 'source_power' } }] },
-    { tplId: 'tokAliasOk', effects: [{ kind: 'create_tokens', token_id: 'goblin' }] },
   ]));
   check('damage without amount flagged', r.schemaErrors.some(e => e.startsWith('dmgNoAmt:')),
     r.schemaErrors.join('; '));
@@ -126,7 +125,6 @@ console.log('\n=== A4-17: required-param schema entries ===');
   check('grant_keyword without keyword flagged', r.schemaErrors.some(e => e.startsWith('kwMissing:')));
   check('create_tokens with unknown token flagged', r.schemaErrors.some(e => e.startsWith('tokUnknown:')));
   check('expression amount ({from:...}) accepted', !r.schemaErrors.some(e => e.startsWith('dmgExprOk:')));
-  check('legacy token alias accepted', !r.schemaErrors.some(e => e.startsWith('tokAliasOk:')));
 })();
 
 console.log('\n=== A4-17: targeted kinds need a target source (targetErrors) ===');

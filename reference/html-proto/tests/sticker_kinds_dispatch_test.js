@@ -62,10 +62,15 @@ console.log('=== applyStickersToCard: each kind mutates correctly ===');
 
 {
   // remove_keyword: lose_defender strips a Wall's (subtype-derived) defender so it can attack.
-  const card = freshCard('wall_of_omens', ['lose_defender']);
-  ENGINE.applySubtypeKeywords(card);   // Wall→defender is derived, not printed on the card
+  // The precondition rides an UNSTICKERED card: applySubtypeKeywords honors
+  // remove_keyword stickers, so a stickered Wall never passes through a state
+  // where it has defender — there is no intermediate to observe.
+  const bare = freshCard('wall_of_omens', []);
+  ENGINE.applySubtypeKeywords(bare);   // Wall→defender is derived, not printed on the card
   check('lose_defender precondition: wall_of_omens has defender via its Wall subtype',
-    card.keywords.includes('defender'));
+    bare.keywords.includes('defender'));
+  const card = freshCard('wall_of_omens', ['lose_defender']);
+  ENGINE.applySubtypeKeywords(card);
   applyStickersToCard(card);
   check("remove_keyword strips 'defender' from card.keywords",
     !card.keywords.includes('defender'));
@@ -212,9 +217,7 @@ console.log('\n=== stickersForSlot: each kind reflects into view correctly ===')
 
 console.log('\n=== stickerBadgesHtml: only non-redundant kinds render (Q2) ===');
 
-// KEPT — info no other frame element surfaces. (grant_mana_ability is also a
-// kept kind, but no registry sticker uses it post-Q3 — land stickers are now
-// add_type — so it's exercised only by inline/boss descriptors, not here.)
+// KEPT — info no other frame element surfaces.
 {
   const roll = { location: 'abilities', subIdx: 0, effIdx: 0, modeIdx: null, field: 'amount' };
   const html = stickerBadgesHtml(['empower'], false, [roll], 'spitfire_bastion');

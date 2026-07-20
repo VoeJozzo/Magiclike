@@ -436,7 +436,7 @@ function validateAllCardConditions(cards) {
       if (trig.event && !VALID_TRIGGER_EVENTS.has(trig.event)) {
         unknownEvents.push(cardId + '.' + trig.event);
       }
-      if (trig.condition != null && typeof trig.condition !== 'function') {
+      if (trig.condition != null) {
         _collectUnknownAtomics(trig.condition, unknownAtomics, cardId);
       }
     }
@@ -449,9 +449,8 @@ function validateAllCardConditions(cards) {
 // Resolve: composable condition → legacy closure → fire unconditionally.
 function evalTriggerCondition(trig, self, evt, who) {
   // Codex-generated trigger guard: refuse to fire when source caused the event.
-  // Reads sourceIid (legacy events) or source_iid (unified card_zone_change).
   if (trig.noSelfCascade && evt) {
-    const sid = evt.sourceIid != null ? evt.sourceIid : evt.source_iid;
+    const sid = evt.source_iid;
     if (sid != null && sid === self.iid) return false;
   }
   // Composable `condition` (string / array / {op|name} dict). JSON wire can't

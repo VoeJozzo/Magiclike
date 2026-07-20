@@ -75,7 +75,7 @@ function targetNoun(eff) {
   if (t === 'graveyard_card') return 'target card';  // detail composed by graveyardCardPhrase (see withFilter)
   if (t === 'permanent')return 'target permanent';
   if (t === 'spell')    return 'target spell';
-  if (t === 'card')     return 'target card';
+  if (t === 'permanent_or_spell') return 'target permanent or spell';
   return t || '';
 }
 
@@ -119,7 +119,6 @@ function searchFilterNoun(filter, includeCard) {
   if (!filter) return 'card';
   if (typeof filter === 'string') return filter.toLowerCase() + suffix;
   if (filter.subtype) return filter.subtype.toLowerCase() + suffix;
-  if (filter.sub) return filter.sub.toLowerCase() + suffix;
   if (filter.type) return filter.type.toLowerCase() + suffix;
   return 'card';
 }
@@ -148,7 +147,6 @@ function describeAmount(amount) {
       target_toughness: "the target's toughness",
       source_power:     "this creature's power",
       source_toughness: "this creature's toughness",
-      mana_spent:       'mana spent on it',
     };
     return dynMap[amount.from] || ('X (' + amount.from + ')');
   }
@@ -496,7 +494,7 @@ function describeEffect(eff, tplEff) {
       if (eff.duration === 'eot') parts.push(' until end of turn');
       const segs = [plainSeg(parts.join(''))];
       const riders = [];
-      if (eff.untap || eff.untap_on_take) riders.push('untap it');
+      if (eff.untap) riders.push('untap it');
       if (eff.grant_haste) riders.push('it gains haste until end of turn');
       if (riders.length > 0) {
         const cap = riders.map(r => r.charAt(0).toUpperCase() + r.slice(1)).join('. ');
@@ -1178,12 +1176,6 @@ function keywordPreambleSegs(keywords, stickerKws) {
   return segs;
 }
 
-// Keyword list as a flat "Flying, Vigilance" string (no period). Delegates to
-// the segment version so there's one source of truth for display names/filtering.
-function keywordPreamble(keywords) {
-  return keywordPreambleSegs(keywords).map(s => s.text).join('');
-}
-
 // Flat string for storage/logging. UI uses describeCardSegments for highlights.
 // skipKeywords:true keeps the stored text free of the keyword preamble so
 // successive engine regenerations (engine.js makeCard's card.text refresh,
@@ -1211,8 +1203,8 @@ function describeCardSegments(card, opts) {
     // effects) aren't in the static text and need to be surfaced. We
     // compute granted = card.keywords \ tpl.keywords and prepend just
     // those, mirroring how non-special cards inline their full preamble.
-    // Skipped when opts.skipKeywords (the classic frame renders its own
-    // keyword badges via nativeKeywordBadgesHtml).
+    // Skipped when opts.skipKeywords (the card frame renders its own
+    // keyword badges via keywordIconsHtml).
     //
     // Sections must be flattened before return because consumers
     // (segmentsToHtml, the test harness) expect a flat array of segment
@@ -1246,6 +1238,23 @@ function describeCardSegments(card, opts) {
     // (audit A10-3; substitution is idempotent once baked into card.text).
     const staticText = formatTriggerText(card.text || tpl.text || '', card.name || tpl.name);
     if (staticText) sections.push([plainSeg(staticText)]);
+    // Stapled halves: authored text can't know what a staple added, so append
+    // each staple's generated text — the merged card reads complete without
+    // losing the authored voice (audit A14, Joe's option (c), 2026-07-18).
+    const stapledIds = (card.stapledFrom && card.stapledFrom.stapledTpls) || [];
+    for (const sid of stapledIds) {
+      if (!CARDS[sid]) continue;
+      // landManaExplicit: a staple half's mana ability must PRINT — the merged
+      // card's type line doesn't convey it the way a standalone land's does.
+      // skipKeywords: the staple's keywords are already on the merged card, so
+      // the preamble above prints them once; printing them here too reads as
+      // "Flying. … [Abyss Lurker] Flying."
+      const stapleSegs = describeCardSegments(CARDS[sid],
+        Object.assign({}, opts, { landManaExplicit: true, skipKeywords: true }));
+      if (stapleSegs.length) {
+        sections.push([plainSeg('[' + (CARDS[sid].name || sid) + '] '), ...stapleSegs]);
+      }
+    }
     const out = [];
     for (let i = 0; i < sections.length; i++) {
       if (i > 0) out.push(plainSeg(' '));
@@ -1328,7 +1337,7 @@ function describeCardSegments(card, opts) {
       // invisible. A choose-form ability whose colors are ALL conveyed (e.g. a
       // Forest with an "Also a Island" sticker → "Basic Land — Forest Island")
       // is suppressed too, mirroring paper dual lands.
-      if (hasType(card,'Land') && ab.cost && ab.cost.tap && !ab.cost.mana
+      if (!opts.landManaExplicit && hasType(card,'Land') && ab.cost && ab.cost.tap && !ab.cost.mana
           && ab.effects && ab.effects.length === 1 && ab.effects[0].kind === 'add_mana') {
         const eff = ab.effects[0];
         const produced = manaEffectColors(eff);

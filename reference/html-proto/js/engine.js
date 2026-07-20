@@ -1,10 +1,7 @@
 // Mercurial Adept's trigger pool. makeCard rolls one fresh per game from
 // this pool, so the same slot has a different personality each fight.
-// `label` is shown in the card popup repertoire — but only for LEGACY saves:
-// the repertoire gates on slot.triggerPool (controller.js), which post-cutover
-// slots (trigger_pool_seed) never carry, so in current saves the card's
-// authored face text is the player's only description of this pool — keep
-// card.json's text in sync with these entries (audit A10-2).
+// The card's authored face text is the player's only description of this
+// pool — keep card.json's text in sync with these entries (audit A10-2).
 const MERCURIAL_TRIGGER_POOL = [
   {
     label: 'Striker',
@@ -50,8 +47,7 @@ const MERCURIAL_TRIGGER_POOL = [
   },
 ];
 
-// Mercurial Adept now seeds her pool via trigger_pool_seed:'mercurial' (see makePlayer).
-// Pre-v1.0.0 saves carried an embedded triggerPool on the slot — still works via the slot-level path.
+// Mercurial Adept seeds her pool via trigger_pool_seed:'mercurial' (see makePlayer).
 
 
 // ENGINE — game rules, state, phase machine.
@@ -728,13 +724,28 @@ function remapEffectSlots(effects, offset) {
 // Keywords implied by creature subtype — card data need not repeat these.
 const SUBTYPE_KEYWORDS = { Angel: ['flying'], Dragon: ['flying'], Treefolk: ['reach'], Wall: ['defender'] };
 
+// Keywords a remove_keyword sticker strips from this card. Every keyword
+// derivation subtracts these LAST, so the sticker beats both the printed
+// keyword and the subtype rule: a Wall that bought "Loses Defender" can
+// attack, and still can after it bounces. Without this the subtype rule
+// re-adds defender behind the sticker's back and the reward buys nothing.
+function stickerRemovedKeywords(card) {
+  const out = new Set();
+  for (const sId of (card && card.stickers) || []) {
+    const s = resolveSticker(sId);
+    if (s && s.kind === 'remove_keyword' && s.keyword) out.add(s.keyword);
+  }
+  return out;
+}
+
 // Append the subtype-implied keywords for `subtypes` onto `kw` in place (deduped).
 // Shared by makeCard's eager injection AND intrinsicKeywords' re-derivation, so
 // every keyword-build path applies the rule identically — a Dragon that bounces,
 // dies-and-returns, or sheds an until-EOT grant keeps its flying.
-function addSubtypeKeywords(subtypes, kw) {
+function addSubtypeKeywords(subtypes, kw, removed) {
   for (const st of subtypes) {
     for (const k of (SUBTYPE_KEYWORDS[st] || [])) {
+      if (removed && removed.has(k)) continue;
       if (!kw.includes(k)) kw.push(k);
     }
   }
@@ -742,7 +753,7 @@ function addSubtypeKeywords(subtypes, kw) {
 }
 
 function applySubtypeKeywords(card) {
-  addSubtypeKeywords(subtypesOf(card), card.keywords);
+  addSubtypeKeywords(subtypesOf(card), card.keywords, stickerRemovedKeywords(card));
 }
 
 // Runtime instance-state keys owned by the engine — the copy-by-default loop
@@ -881,10 +892,13 @@ function makeCard(tplId, stickers, slotIdx, empowerRolls, bonusTrigger, stapledT
     const v = tpl[k];
     card[k] = (v && typeof v === 'object') ? JSON.parse(JSON.stringify(v)) : v;
   }
-  // Order: subtype-implied → stickers → bonusTrigger. (Elystra's permanent_eot
-  // buffs ride the stat_boost/kw_* stickers applied by applyStickersToCard above.)
-  applySubtypeKeywords(card);
+  // Order: stickers → subtype-implied → bonusTrigger. Stickers first so a
+  // rolled subtype's type is on the card when applySubtypeKeywords derives
+  // the implied keyword (a sticker-rolled Dragon has flying at build, same
+  // as every re-derive path — audit R32). Elystra's permanent_eot buffs
+  // ride the stat_boost/kw_* stickers.
   applyStickersToCard(card);
+  applySubtypeKeywords(card);
   // bonusTrigger: slot-persistent trigger (today written by the Architect's
   // Codex ability finalize — see finalizeBuild; boon extras can also seed
   // one). Stored as data so it survives save/load; condId form is required
@@ -984,8 +998,9 @@ function intrinsicKeywords(card) {
   // Subtype-implied keywords are part of the intrinsic set, so every re-derive
   // path (resetInPlayState on leave-play, the EOT eotGrants cleanup) preserves
   // them rather than silently dropping a Dragon's flying / a Wall's defender.
-  addSubtypeKeywords(subtypesOf(card), kw);
-  return kw;
+  const removed = stickerRemovedKeywords(card);
+  addSubtypeKeywords(subtypesOf(card), kw, removed);
+  return removed.size ? kw.filter(k => !removed.has(k)) : kw;
 }
 
 
@@ -1017,11 +1032,11 @@ function makePlayer(name, deck, ownerSide) {
   // for player → runState.slots[i] for sticker persistence, for opp → transient.
   const cards = deck.map((entry, i) => {
     if (typeof entry === 'string') return makeCard(entry, undefined, i, undefined);
-    // Bonus trigger: fixed bonusTrigger (locked at run-start) OR triggerPool
-    // (rolled fresh per game). Fixed wins. Slot-level pool overrides template seed.
+    // Bonus trigger: fixed bonusTrigger (locked at run-start) OR the
+    // template's pool seed (rolled fresh per game). Fixed wins.
     let bonus = entry.bonusTrigger;
-    let pool = Array.isArray(entry.triggerPool) ? entry.triggerPool : null;
-    if (!pool && !bonus) {
+    let pool = null;
+    if (!bonus) {
       const tpl = CARDS[entry.tplId];
       if (tpl && tpl.trigger_pool_seed === 'mercurial') {
         pool = MERCURIAL_TRIGGER_POOL;
@@ -1034,9 +1049,9 @@ function makePlayer(name, deck, ownerSide) {
       bonus = cloneTriggerData(pick);
     }
     if (bonus) {
-      // Audit A3-5 stale-save guard: a persisted bonusTrigger (or embedded
-      // slot triggerPool pick) predating an id rename would silently no-op
-      // for the whole run. Warn loudly; still attach (behavior-neutral).
+      // Audit A3-5 stale-save guard: a persisted bonusTrigger predating an
+      // id rename would silently no-op for the whole run. Warn loudly;
+      // still attach (behavior-neutral).
       const refs = { unknownKinds: [], unknownTokens: [], unknownAtomics: [], unknownEvents: [] };
       collectUnknownTriggerRefs(bonus, 'bonusTrigger(' + entry.tplId + ')', refs);
       const bad = refs.unknownKinds.concat(refs.unknownTokens, refs.unknownAtomics, refs.unknownEvents);
@@ -1629,7 +1644,6 @@ function sacValueOnBoard(card) {
   if (kw.includes('defender')) v -= 1;
   for (const ab of (card.abilities || [])) v += abilityValue(ab);
   // thisEnters already fired → 0.3× (residual for flicker plays).
-  const FREQ_ONCE = new Set(['thisEnters', 'thisDies']);
   for (const trig of (card.triggers || [])) {
     if (!trig.effects || !trig.effects.length) continue;
     const perFiring = abilityValue({ effects: trig.effects });
@@ -2243,7 +2257,6 @@ function normalizeSearchFilter(filter) {
 function matchesSearchFilter(card, filter) {
   filter = normalizeSearchFilter(filter);
   if (filter.type && !hasType(card, filter.type)) return false;
-  if (filter.sub && !hasType(card, filter.sub)) return false;
   if (filter.subtype && !hasType(card, filter.subtype)) return false;
   return true;
 }
@@ -2344,16 +2357,6 @@ const ABSORB_KEYWORD_PRIORITY = {
   reach: 1, menace: 1,
 };
 
-// Legacy save safety: older Codex outputs used bare-name token ids ('goblin'
-// etc.). Module-scope (not inside create_tokens) so the EFFECT_SCHEMA
-// create_tokens validator accepts the same aliases the handler resolves.
-const TOKEN_ALIAS = {
-  goblin: 'goblin_r_1_1',
-  soldier: 'soldier_w_1_1',
-  spirit: 'spirit_w_1_1',
-  bear: 'bear_g_2_2',
-  saproling: 'saproling_g_1_1',
-};
 
 const EFFECTS = {
   damage(ctx, params, target) {
@@ -2984,7 +2987,6 @@ const EFFECTS = {
   // Mint tokens. Params: token_id (TOKENS key), count (default 1), controller ('self'|'opp').
   create_tokens(ctx, params) {
     let token_id = params.token_id;
-    if (token_id && TOKEN_ALIAS[token_id]) token_id = TOKEN_ALIAS[token_id];
     if (!token_id || !TOKENS[token_id]) {
       log(`${ctx.sourceName} fizzles — unknown token ${token_id}.`, 'sp');
       return;
@@ -3154,7 +3156,6 @@ const EFFECTS = {
     if (!Array.isArray(G.delayedTriggers)) G.delayedTriggers = [];
     G.delayedTriggers.push({
       fireAt: 'endStep',
-      fireFor: 'either',
       effect: 'deferredEffects',
       effects: (params.effects || []).map(e => ({...e})),
       target: target || ctx.chosen || null,
@@ -3168,8 +3169,7 @@ const EFFECTS = {
   // steal variant (permanent run-slot transfer) — delegated to the proven
   // steal handler. Otherwise it's a control change (Mind Control / Threaten):
   // pluck from the current controller, push to the caster, with optional
-  // untap_on_take / grant_haste / duration (eot). Accepts both the new
-  // snake_case param names and the legacy ones during cutover. The card
+  // untap / grant_haste / duration (eot). The card
   // migration is done — gainControl is retired (no handler; effect_migration_test
   // pins it GONE). steal remains permanently BY DESIGN as the runtime-internal
   // transfer_ownership delegate (it is not in card data).
@@ -3196,7 +3196,7 @@ const EFFECTS = {
     // attacker could legally be assigned to block itself. Shares the A2-3
     // helper: one "leaves combat" concept.
     removeFromCombat(card.iid);
-    if (params.untap_on_take || params.untap) card.tapped = false;
+    if (params.untap) card.tapped = false;
     if (params.grant_haste) applyGrant(card, 'haste', ctx.sourceIid, true);
     if (params.duration === 'eot') card.tempControlUntilEot = true;
     log(`${ctx.sourceName} — ${pname(toCtrl)} gains control of ${card.name}` +
@@ -3769,7 +3769,7 @@ const EFFECT_SCHEMA = {
     ? null : 'add_mana missing amounts/choose'),
   grant_keyword: (e) => (e.keyword ? null : 'grant_keyword missing keyword'),
   create_tokens: (e) => {
-    const id = e.token_id && TOKEN_ALIAS[e.token_id] ? TOKEN_ALIAS[e.token_id] : e.token_id;
+    const id = e.token_id;
     return (id && TOKENS[id]) ? null : 'create_tokens unknown token_id "' + e.token_id + '"';
   },
   grant_cast_permission: (e) => {
@@ -3811,8 +3811,6 @@ const MATCH_FILTER_KEYS = new Set([
   'not_token', 'spliceable_base', 'spliceable_staple',
   // graveyard_card search axes (consumed in getValidTargets, not matchFilter)
   'graveyards', 'select',
-  // library-search axis (matchesSearchFilter's `sub` shorthand)
-  'sub',
   // Source-exclusion axis ("exile ANOTHER target creature you control" —
   // Tideglass Broker). NOT consumed by matchFilter (which has no source in
   // scope): enforced in the ts* trigger-targeting layer, which threads the
@@ -4005,7 +4003,7 @@ function collectUnknownTriggerRefs(trig, id, out) {
   if ('stackable' in trig && typeof trig.stackable !== 'boolean' && out.badStackable) {
     out.badStackable.push(id);
   }
-  if (trig.condition != null && typeof trig.condition !== 'function') {
+  if (trig.condition != null) {
     _collectUnknownAtomics(trig.condition, out.unknownAtomics, id);
   }
   for (const e of (trig.effects || [])) {
@@ -5197,15 +5195,6 @@ function objectNeedsTarget(obj) {
   if (obj.target) return true;
   if (Array.isArray(obj.target_slots) && obj.target_slots.length > 0) return true;
   return Array.isArray(obj.effects) && obj.effects.some(effectNeedsTarget);
-}
-// Legal targets for the object's PRIMARY slot — for "is there any legal target?"
-// and the trigger >1-choice rule.
-function primaryLegalTargets(obj, who) {
-  if (!obj) return [];
-  if (obj.target) return targetsForFilter(obj.target, who, obj.target_filter);
-  if (Array.isArray(obj.target_slots) && obj.target_slots.length > 0) return getValidTargets(obj.target_slots[0], who);
-  const eff = Array.isArray(obj.effects) ? obj.effects.find(effectNeedsTarget) : null;
-  return eff ? getValidTargets(eff, who) : [];
 }
 // Build the probe/fake targets array for a legality check on `obj`, covering all
 // three shapes. Returns targets[] (indexed by slot), or null if a required slot
@@ -7033,11 +7022,7 @@ function doDeclareAttackers(who, cardIids) {
   // Done after the tap so triggers see the post-tap state.
   for (const iid of cardIids) {
     const f = findCard(iid); if (!f) continue;
-    // attacker/defender are DEAD legacy payload fields — the condId vocabulary
-    // is fully retired (DIVERGENCE E2) and grep finds zero consumers of either.
-    // Composable triggers read subject_card/defender_key. Removing the dead
-    // pair was suite-green but is a payload change — staged, not shipped here.
-    emit({type: 'attacks', attacker: f.card, controller: who, defender: opp(who),
+    emit({type: 'attacks', controller: who,
           subject_iid: f.card.iid, subject_card: f.card, defender_key: opp(who)});
   }
   // Phase advances via priority round (or skip-combat fast-path in step).
@@ -8071,10 +8056,7 @@ function step() {
         if (Array.isArray(G.delayedTriggers) && G.delayedTriggers.length > 0) {
           const stillPending = [];
           for (const dt of G.delayedTriggers) {
-            // 'fireFor' is whose end step the trigger fires on: 'either',
-            // 'you', or 'opp'. Default to 'either' for v1 simplicity.
-            const matchesPlayer = !dt.fireFor || dt.fireFor === 'either' || dt.fireFor === ap;
-            if (dt.fireAt === 'endStep' && matchesPlayer) {
+            if (dt.fireAt === 'endStep') {
               if (dt.effect === 'deferredEffects' && Array.isArray(dt.effects)) {
                 // Apply the scheduled effects on the captured target (e.g.
                 // exile_until_eot's move_card(exile→battlefield)). Tokens that
@@ -8355,7 +8337,7 @@ return {
   // Audit A3-5 — boot validation for the generated-trigger data tables.
   validateGeneratedTriggerTables,
   // Canonical targeting-shape API (single source of truth across UI consumers).
-  objectNeedsTarget, primaryLegalTargets, probeTargetsForObject,
+  objectNeedsTarget, probeTargetsForObject,
   // §7b coverage seam: the dispatch table + the coverage report. The valuation
   // classification sets (VALUED/UNVALUED_EFFECT_KINDS) now live on AI (review #6).
   EFFECTS, effectCoverageReport,

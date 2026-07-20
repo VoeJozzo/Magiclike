@@ -224,7 +224,7 @@ function runOneGame(gameIdx) {
         if (!native) continue;
         for (const c of ['W','U','B','R','G']) {
           if (c === native) continue;
-          RUN.applyStickerToSlot(i, 'landColor_' + c);
+          RUN.applyStickerToSlot(i, 'land_color_' + c.toLowerCase());
         }
       }
     }
