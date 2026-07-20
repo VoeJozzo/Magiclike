@@ -95,6 +95,11 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
 
 .parea{display:flex;flex-direction:column;flex:1;padding:4px;min-height:0}
 .pinfo{display:flex;align-items:center;gap:8px;padding:6px 12px;border-style:solid;border-width:11px 8px 9px 8px;border-image:url(assets/ui/woodbar_src.png) 11 8 9 8 fill round;image-rendering:pixelated;border-radius:0;margin-bottom:3px;flex-shrink:0}
+/* The persistent ⚙ / 🔭 controls are position:fixed top-left (they must float
+   above every screen, so they can't be moved into the bar), which left them
+   sitting on top of the opponent's name. Reserve a gutter so they occupy
+   deliberate empty space instead of covering text. */
+#oppArea .pinfo{padding-left:78px}
 .life{font-size:18px;font-weight:bold;color:var(--gold);min-width:30px;text-shadow:1px 1px 0 var(--iron)}
 .pname{font-weight:bold;font-size:12px;min-width:80px;color:#f4ead0;text-shadow:1px 1px 0 var(--iron)}
 .mpool{display:flex;gap:2px;flex-wrap:wrap}
@@ -644,7 +649,9 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
 .stickers-row-big{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;margin-top:6px}
 .stickers-row-big .stk-badge{font-size:10px;padding:2px 7px}
 
-#mid{background:linear-gradient(#1a2016,#12160d);border-top:2px solid var(--iron);border-bottom:2px solid var(--iron);box-shadow:inset 0 1px 0 rgba(109,124,76,.28),inset 0 -1px 0 rgba(0,0,0,.5);padding:6px 8px;display:flex;align-items:center;gap:10px;min-height:62px;flex-shrink:0}
+/* flex-wrap so the horizontal action row drops BELOW the phase track on narrow
+   screens instead of squeezing it into a tall wrapped block (or overflowing). */
+#mid{background:linear-gradient(#1a2016,#12160d);border-top:2px solid var(--iron);border-bottom:2px solid var(--iron);box-shadow:inset 0 1px 0 rgba(109,124,76,.28),inset 0 -1px 0 rgba(0,0,0,.5);padding:6px 8px;display:flex;align-items:center;flex-wrap:wrap;gap:10px;min-height:62px;flex-shrink:0}
 .phases{display:flex;gap:2px;flex-wrap:wrap;border:2px solid var(--iron);background:#12160d;image-rendering:pixelated;padding:2px}
 .ph{min-width:34px;text-align:center;padding:2px 4px;border-radius:0;font-size:9px;background:#1b2213;color:#8a9670;box-shadow:inset 0 0 0 1px rgba(19,23,14,.6);white-space:nowrap}
 .ph.on{background:rgba(255,216,106,.16);color:var(--gold);font-weight:bold;box-shadow:inset 0 0 0 1px var(--gold)}
@@ -667,11 +674,12 @@ body{background:#0c0c10;color:#ddd;font-family:Georgia,serif;height:100vh;displa
 #stackBannerTitle{color:var(--gold);font-weight:bold;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;text-shadow:1px 1px 0 var(--iron);display:flex;justify-content:space-between;align-items:center}
 #stackBannerHint{color:var(--moss);font-size:10px;font-style:italic}
 #stackBannerItems{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
-/* Fixed width (not min-width) so a long contextual label ("Done Attacking")
-   can't widen the column and shift the center bar sideways. The Done button
-   reserves its row via visibility rather than display (see render.js), so the
-   bar keeps a constant height as you flip through phases. */
-.acts{display:flex;flex-direction:column;gap:3px;width:156px;flex:0 0 auto}
+/* Horizontal action row — a vertical stack made the centre bar ~250px tall and
+   ate the board. Each button carries a min-width so a contextual label swap
+   ("Pass" -> "To Combat", "Done Attacking" -> "Done Blocking") can't resize the
+   row, and Done reserves its slot via visibility (see render.js), so the bar is
+   a constant size as you flip through phases. */
+.acts{display:flex;flex-direction:row;align-items:center;justify-content:center;flex-wrap:wrap;gap:6px;flex:0 1 auto;margin:0 auto}
 button{padding:4px 10px;border:1px solid #444;background:#1e1e2e;color:#ddd;border-radius:3px;cursor:pointer;font-size:11px;font-family:Georgia,serif}
 button:hover:not(:disabled){background:#2e2e4e;border-color:#666}
 button:disabled{opacity:.4;cursor:not-allowed}
@@ -686,7 +694,9 @@ button:disabled{opacity:.4;cursor:not-allowed}
    Hover keeps the rest border-width (no reflow on hover); :active shrinks the
    bottom border and adds the same amount as margin, so the button visibly
    sinks into its shadow without nudging its neighbours. */
-.acts button{border-style:solid;border-width:4px 4px 14px 4px;border-image:url(assets/ui/pxbtn_rest.png) 2 2 7 2 fill round;image-rendering:pixelated;background:none;border-radius:0;color:#e9dcbe;font-family:inherit;font-weight:700;letter-spacing:.02em;text-shadow:1px 1px 0 var(--iron);padding:3px 12px}
+.acts button{border-style:solid;border-width:4px 4px 14px 4px;border-image:url(assets/ui/pxbtn_rest.png) 2 2 7 2 fill round;image-rendering:pixelated;background:none;border-radius:0;color:#e9dcbe;font-family:inherit;font-weight:700;letter-spacing:.02em;text-shadow:1px 1px 0 var(--iron);padding:3px 12px;min-width:88px;white-space:nowrap}
+/* Sized for its longest label ("Done Attacking") so the swap to "Done Blocking" doesn't resize the row. */
+#btnDone{min-width:124px}
 .acts button:hover:not(:disabled){border-image:url(assets/ui/pxbtn_hover.png) 2 2 9 2 fill round;background:none;filter:brightness(1.06)}
 .acts button:active:not(:disabled){border-image:url(assets/ui/pxbtn_press.png) 2 2 3 2 fill round;border-bottom-width:6px;margin-bottom:8px}
 .acts .btn-end{border-image:url(assets/ui/pxbtn_primary_rest.png) 2 2 7 2 fill round;color:#f8efd2}
@@ -707,7 +717,10 @@ button:disabled{opacity:.4;cursor:not-allowed}
 .start-btn-cube{color:#e6d79a;font-size:14px}
 .start-btn-minor{color:#9aa886;font-size:12px;padding:6px 16px}
 .start-btn-sandbox{color:#c4a3d8}
-#version{position:fixed;top:38px;right:8px;font-size:11px;color:#ffd700;background:#000;padding:2px 6px;border-radius:3px;border:1px solid #ffd700;z-index:1;font-family:monospace;font-weight:bold;opacity:0.7}
+/* Was fixed at top:38px/right:8px with a solid black fill, which put an opaque
+   black slab across the opponent's zone counters. Moved down to the status
+   strip and recoloured to the wood palette so it stops reading as a black bar. */
+#version{position:fixed;bottom:3px;right:8px;font-size:10px;color:var(--moss);background:rgba(0,0,0,.35);padding:1px 6px;border-radius:0;border:1px solid var(--iron);z-index:1;font-family:monospace;font-weight:bold;opacity:.75}
 /* Persistent in-game settings gear. Lives top-left, fixed-position, so
    the user can re-open the settings panel from anywhere (start screen,
    mid-game, draft, reward, etc.) without going back to the menu. */
