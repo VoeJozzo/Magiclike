@@ -12,6 +12,7 @@ GLOWS are separate runtime layers and are NOT produced here.
 
 Run:  python bake_ui_tiles.py         (emits into ../../assets/ui/)
 """
+import json
 import os
 from PIL import Image, ImageDraw
 
@@ -240,7 +241,22 @@ def main():
     tiles["ctrl_segmented"] = make_seg()
     for name, im in tiles.items():
         im.save(os.path.join(out, name + ".png"))
-    print(f"emitted {len(tiles)} tiles -> {out}")
+
+    # 9-slice manifest, emitted beside the art. The intended insets used to live
+    # only in this file's constants, so consumers hand-copied them and drifted —
+    # twice, silently (button labels rendered on the drop shadow; the info bar
+    # rendered hollow). Writing them out lets CSS/Godot and tools/pixel-lint.js
+    # diff against one authoritative source. Only 9-sliced tiles appear here;
+    # gems/nodes/ctrl tiles are drawn whole and are deliberately absent.
+    slices = {"woodbar_src": WOODBAR_SLICE}
+    for name, s in BTN_SLICE.items():
+        slices[f"pxbtn_{name}"] = s
+    slices["pxbtn_primary_rest"] = BTN_SLICE["rest"]   # recolour of rest, same geometry
+    with open(os.path.join(out, "_slices.json"), "w", encoding="utf-8") as f:
+        json.dump(slices, f, indent=2, sort_keys=True)
+        f.write("\n")
+
+    print(f"emitted {len(tiles)} tiles + _slices.json ({len(slices)} sliced) -> {out}")
     for name, im in sorted(tiles.items()):
         print(f"  {name:22} {im.size[0]}x{im.size[1]}")
 

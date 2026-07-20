@@ -18,9 +18,12 @@
      exceptions don't false-positive.
    - bandMap — color runs along a row/col: a structure fingerprint to diff
      an asset (or render) against its intended band layout.
-   - sliceFit — every CSS `border-image` slice actually fits the tile it
-     names. Pure/text-based (no canvas), so it audits the STYLESHEET rather
-     than a rendered image. See the note above parseBorderImages for why.
+   - sliceFit — every CSS `border-image` slice actually FITS the tile it names
+     (insets that overflow collapse the middle region and `fill` paints
+     nothing). Pure/text-based (no canvas): audits the STYLESHEET, not a render.
+   - sliceSpecMatch — every slice also MATCHES the generator's intended insets
+     (assets/ui/_slices.json, emitted by tools/bake/bake_ui_tiles.py). Catches
+     slices that fit but are structurally wrong. See the notes on each fn.
 
    Slice audit usage:
      eval(await readFile('tools/pixel-lint.js'));
@@ -32,6 +35,12 @@
        dims[d.path] = { width: img.width, height: img.height };
      }
      log(PixelLint.sliceFit(decls, dims));    // [] === clean
+     const spec = JSON.parse(await readFile('assets/ui/_slices.json'));
+     log(PixelLint.sliceSpecMatch(decls, spec, {
+       // #mapCanvas deliberately frames the map with a thin uniform woodbar
+       // instead of the carved plank the documented slice describes.
+       allow: ['woodbar_src@6,6,6,6'],
+     }));                                     // [] === clean
    ============================================================================ */
 globalThis.PixelLint = (() => {
   function key(d, i) { return d[i] + ',' + d[i+1] + ',' + d[i+2] + ',' + d[i+3]; }
@@ -138,6 +147,35 @@ globalThis.PixelLint = (() => {
     return bad;
   }
 
+  // spec: the contents of assets/ui/_slices.json, which the bake emits from its
+  // own BTN_SLICE / WOODBAR_SLICE constants. This catches the class sliceFit
+  // cannot: a slice that FITS the tile but doesn't match how the tile was built
+  // — the pxbtn labels-on-the-shadow bug (uniform 2 on 72x27: dimensionally
+  // legal, structurally wrong).
+  //
+  // A mismatch is not automatically a bug: a tile can be legitimately reused a
+  // different way (#mapCanvas frames the map with a thin uniform woodbar rather
+  // than the carved plank the slice describes). Sanctioned variants go in
+  // `allow` as '<tile>@T,R,B,L' signatures, so an exception stays explicit and
+  // reviewable instead of being silently tolerated by a looser rule.
+  function sliceSpecMatch(decls, spec, { allow = [] } = {}) {
+    const ok = new Set(allow);
+    const seen = new Set(), out = [];
+    for (const d of decls) {
+      const tile = d.path.split('/').pop().replace(/\.png$/, '');
+      const want = spec[tile];
+      if (!want) continue;                       // not a 9-sliced tile
+      const g = d.slice;
+      const sig = tile + '@' + [g.T, g.R, g.B, g.L].join(',');
+      if (ok.has(sig) || seen.has(sig)) continue;
+      seen.add(sig);
+      if (g.T !== want.T || g.R !== want.R || g.B !== want.B || g.L !== want.L)
+        out.push({ tile, sig, got: g, want,
+          why: `slice ${g.T} ${g.R} ${g.B} ${g.L} != generator's ${want.T} ${want.R} ${want.B} ${want.L}` });
+    }
+    return out;
+  }
+
   function audit(id, { palette, scale = 1, lines = [] } = {}) {
     const cen = census(id);
     const closure = palette ? paletteClosure(id, palette) : null;
@@ -154,5 +192,5 @@ globalThis.PixelLint = (() => {
   }
 
   return { fromImage, census, paletteClosure, runDivisibility, bandMap, audit,
-           parseBorderImages, sliceFit };
+           parseBorderImages, sliceFit, sliceSpecMatch };
 })();
