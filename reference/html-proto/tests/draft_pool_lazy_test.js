@@ -34,21 +34,21 @@ console.log('=== draftPool: rollTransformPack returns a non-empty pack ===');
       'first entry: ' + JSON.stringify(pack[0]));
     check('no BASIC lands in the draft pool (all nonbasic lands are allowed)',
       pack.every(id => !hasType(CARDS[id], 'Basic')));
-    check('no special cards in the draft pool (filter intact)',
-      pack.every(id => !CARDS[id].special));
+    check('no undraftable (boon/boss) cards in the draft pool (filter intact)',
+      pack.every(id => !isUndraftable(CARDS[id])));
   }
 }
 
 console.log('\n=== draftPool: matches the documented filter ===');
 {
   // Re-derive the expected pool here and compare counts. Must match draftPool()'s
-  // real predicate: non-special, and either non-land OR a NONBASIC land. Only
-  // BASIC lands are excluded — they're auto-allocated after the draft; every
-  // nonbasic land (artifact lands, utility lands like Deepseam Quarry) drafts
-  // like any other pick.
+  // real predicate: draftable (not a boon/boss), and either non-land OR a
+  // NONBASIC land. Only BASIC lands are excluded — they're auto-allocated after
+  // the draft; every nonbasic land (artifact lands, utility lands like Deepseam
+  // Quarry) drafts like any other pick.
   const expected = Object.keys(CARDS).filter(id => {
     const c = CARDS[id];
-    return !c.special && !hasType(c, 'Basic');
+    return !isUndraftable(c) && !hasType(c, 'Basic');
   });
   // Pull pack multiple times and union the unique tplIds — should be a
   // subset of expected, and over many rolls should cover most of it.
@@ -71,7 +71,7 @@ console.log('\n=== colorless cards are offered every slot (not bucketed away) ==
   // appeared in 0% of packs. They now compete in every slot.
   const colorlessCreatures = new Set(Object.keys(CARDS).filter(id => {
     const c = CARDS[id];
-    return hasType(c, 'Creature') && !c.special && !c.color;
+    return hasType(c, 'Creature') && !isUndraftable(c) && !c.color;
   }));
   check('there ARE colorless creatures to offer', colorlessCreatures.size > 0, colorlessCreatures.size + ' cards');
   let seen = 0;

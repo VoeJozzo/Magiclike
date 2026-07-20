@@ -2,10 +2,11 @@
 """
 bake_ui_tiles.py — the single source of truth for Magiclike's baked UI chrome.
 
-Reads the design-doctrine CSS specs (campaign-ui.css / screens.css) and computes
-each tile PIXEL-EXACT (no browser anti-aliasing, no fractional scaling). The PNGs
-under assets/ui/ are OUTPUTS of this script; edit the spec here and re-run rather
-than hand-editing the images.
+The tile specs (transcribed from the design doctrine's campaign-ui.css /
+screens.css) live INLINE below as constants; each tile is computed PIXEL-EXACT
+(no browser anti-aliasing, no fractional scaling). The PNGs under assets/ui/
+are OUTPUTS of this script; edit the spec here and re-run rather than
+hand-editing the images.
 
 Layer rule: this bakes CHROME only. Text (Pixelify), creature/icon ART, and state
 GLOWS are separate runtime layers and are NOT produced here.
@@ -131,14 +132,12 @@ def _diamond(img, cx, cy, r, fillc=None, border=None, alpha=255):
             elif d < r and fillc is not None: _put(img, cx + dx, cy + dy, fillc + (alpha,))
 
 
-def make_gem(color, spent=False):
+def make_gem(color):
     img = Image.new("RGBA", (GEM_CANVAS, GEM_CANVAS), (0, 0, 0, 0)); gx = gy = 5
-    if not spent:
-        _diamond(img, gx + 1, gy + 1, GEM_R, fillc=(0, 0, 0), border=(0, 0, 0), alpha=90)
+    _diamond(img, gx + 1, gy + 1, GEM_R, fillc=(0, 0, 0), border=(0, 0, 0), alpha=90)
     _diamond(img, gx, gy, GEM_R, fillc=color, border=rgb(IRON))
-    if not spent:
-        for (sx, sy) in [(gx - 1, gy - 2), (gx - 2, gy - 1)]:
-            _put(img, sx, sy, (255, 255, 255, 190))
+    for (sx, sy) in [(gx - 1, gy - 2), (gx - 2, gy - 1)]:
+        _put(img, sx, sy, (255, 255, 255, 190))
     return img
 
 
@@ -229,7 +228,6 @@ def main():
     tiles["woodbar_src"] = make_woodbar_source()
     for k, c in GEM_COLS.items():
         tiles[f"gem_{k}"] = make_gem(c)
-    tiles["gem_spent"] = make_gem((0, 0, 0), spent=True)
     tiles["gem_spent"] = Image.new("RGBA", (GEM_CANVAS, GEM_CANVAS), (0, 0, 0, 0))
     _diamond(tiles["gem_spent"], 5, 5, GEM_R, fillc=GEM_SPENT, border=rgb(IRON))
     tiles["node_base"] = make_node(26, NODE_BANDS, IRON)

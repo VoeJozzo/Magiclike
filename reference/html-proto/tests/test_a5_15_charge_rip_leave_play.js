@@ -15,7 +15,7 @@ const stapleTpl = Object.keys(CARDS).find(k => k !== baseTpl && hasType(CARDS[k]
 
 console.log('=== A5-15: charge-rip routes battlefield removal through leave-play discipline ===');
 (() => {
-  RUN.start({ cards: Array(5).fill('plains'), colors: ['W'] }, 'stapler');
+  RUN.start({ cards: [...Array(5).fill('plains'), 'stapler'], colors: ['W'] });
   RUN.startNextGame();
   const G = ENGINE.state();
   setup.startMainPhase('you');

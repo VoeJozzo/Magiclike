@@ -1,7 +1,7 @@
 // Audit A4-15 — the steal handler wrote the HUMAN's persisted run state for
 // ANY controller: RUN.appendSlot was the lone RUN-writing call without the
 // 'you' gate every sibling handler has (endomorph_absorb, apply_sticker,
-// rip). An opp-controlled Steal (latent today — steal is special:true and no
+// rip). An opp-controlled Steal (latent today — steal is a boon and no
 // opp deck carries it, but test_boss_removal_ai pins that the AI CAN cast
 // it) appended the stolen slot to the VICTIM's run deck: a duplicate of your
 // own card, persisted into your save.

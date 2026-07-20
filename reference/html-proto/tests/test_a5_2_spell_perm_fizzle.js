@@ -32,7 +32,7 @@ const stapleLand = Object.keys(CARDS).find(k => hasType(CARDS[k], 'Land') && isS
 
 console.log('=== A5-2: a creature spell stapled onto a battlefield land FIZZLES (no data loss) ===');
 (() => {
-  RUN.start({ cards: ['mountain', 'plains', 'swamp', 'forest'], colors: ['R', 'W', 'B', 'G'] }, 'stapler');
+  RUN.start({ cards: ['mountain', 'plains', 'swamp', 'forest', 'stapler'], colors: ['R', 'W', 'B', 'G'] });
   RUN.startNextGame();
   const G = ENGINE.state();
   setup.startMainPhase('you');
@@ -41,7 +41,7 @@ console.log('=== A5-2: a creature spell stapled onto a battlefield land FIZZLES 
   const slotsLen0 = slots0.length;
   const staplerSlot0 = slots0.find(s => s.tplId === 'stapler');
   const charges0 = staplerSlot0.charges;
-  check('precondition: stapler boon slot has charges', typeof charges0 === 'number', 'charges=' + charges0);
+  check('precondition: stapler slot has charges', typeof charges0 === 'number', 'charges=' + charges0);
 
   // Battlefield land (the would-be staple permanent), owned by you with a run slot.
   const land = mk(stapleLand, 'you'); land.slotIdx = 0;

@@ -445,8 +445,6 @@ function start(playerDeck) {
   });
   runState = {
     slots,
-    colors: playerDeck.colors,
-    modifier: null,
     gameNum: 0,
     wins: 0,
     active: true,

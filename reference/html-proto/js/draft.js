@@ -20,13 +20,13 @@ const DESERT_CUBE_LAND_PROB = 1 / 3;
 let _draftPoolCache = null;
 function draftPool() {
   if (_draftPoolCache === null) {
-    // Exclude BASIC lands (they're auto-allocated after the draft) and `special`
-    // cards (boss/run-only — including run-boon lands like City of Brass, which
-    // arrive via the "Polychrome Pact" modifier, not packs). Everything else —
-    // spells, creatures, and every other nonbasic land (artifact lands, utility
+    // Exclude BASIC lands (they're auto-allocated after the draft) and
+    // undraftable cards (boons come from pick #0, bosses from boss decks —
+    // including boon lands like City of Brass). Everything else — spells,
+    // creatures, and every other nonbasic land (artifact lands, utility
     // lands like Deepseam Quarry) — drafts like any other pick, matching MtG
     // where nonbasic lands appear in packs. `Basic` is a land-only supertype, so
-    // excluding it (plus the special carve-out) is the whole land rule.
+    // excluding it (plus the undraftable carve-out) is the whole land rule.
     _draftPoolCache = Object.keys(CARDS).filter(id => {
       const c = CARDS[id];
       if (isUndraftable(c)) return false;
@@ -105,7 +105,8 @@ function isBoonPhase() { return !!(state && state.boonPhase); }
 
 // --- Growing Deck run-start draft ---
 function getBucketOffer() {
-  return (state && state.mode === 'growing') ? state.bucketOffer.slice() : [];
+  // `|| []`: during the boon phase (pick #0) the buckets aren't rolled yet.
+  return (state && state.mode === 'growing') ? (state.bucketOffer || []).slice() : [];
 }
 
 function pickBucketOffer(idx) {

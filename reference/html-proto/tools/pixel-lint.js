@@ -116,6 +116,11 @@ globalThis.PixelLint = (() => {
   // values (BTN_SLICE / WOODBAR_SLICE in tools/bake/bake_ui_tiles.py), which
   // means the bake emitting them as a manifest the linter can read. Not done.
   function parseBorderImages(cssText) {
+    // BLIND SPOT: only matches declarations that END in a repeat keyword
+    // (round/stretch/repeat/space) with plain-integer slice values. A valid
+    // `border-image` that omits the keyword (defaults to stretch) or uses
+    // percentages silently escapes BOTH slice checks. House style always
+    // writes the keyword; keep doing that or widen this regex.
     const re = /border-image:\s*url\(\s*['"]?([^'")]+)['"]?\s*\)\s*([\d\s]+?)(\s+fill)?\s+(?:round|stretch|repeat|space)/g;
     const out = [];
     let m;

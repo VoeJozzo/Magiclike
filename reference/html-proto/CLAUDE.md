@@ -4,7 +4,7 @@ Magic: The Gathering-style card game. `magiclike_engine.html` plus a `js/` folde
 
 ## Version
 
-**Current: `v2.2.38`** — source of truth: `js/main.js` `const VERSION` (keep in sync on bump). Full version history: [`CHANGELOG.md`](CHANGELOG.md).
+**Current: `v2.2.39`** — source of truth: `js/main.js` `const VERSION` (keep in sync on bump). Full version history: [`CHANGELOG.md`](CHANGELOG.md).
 
 ## File structure
 
@@ -18,7 +18,7 @@ Also in the repo: `index.html` at the repo root — a small redirect that points
 |---|---|
 | `cards/<tplId>/card.json` | One file per card template (341 cards). Each folder also holds `art.png` for cards with PNG art (`art` may instead be an emoji string). `cards/_manifest.json` lists every folder name — sync pinned by `tests/manifest_test.js`. |
 | `js/settings.js` | `SETTINGS` IIFE — user-tunable display config (card frame style, per-element font + size multipliers, popup text scale, mana symbol sizes, devtools flag). `localStorage` at `magiclike_settings_v1`. `applyFontsToRoot()` pushes saved values into `:root` CSS vars at boot before the first paint. |
-| `js/cards.js` | `CARDS = {}` + `async loadCards()` fetcher (populates CARDS from the per-card JSONs at boot). Also holds `TOKENS`, `KEYWORDS`, `STICKERS`, `EMPOWER_FIELDS`, `KEYWORD_DISPLAY`, `KEYWORD_STICKER_WEIGHTS`, `RUN_MODIFIERS` — the shared registries that don't fit the per-card model — plus the §305.6 basic-land-mana layer (`BASIC_LAND_MANA`, `basicLandTypeColors`, `grantBasicLandMana`). |
+| `js/cards.js` | `CARDS = {}` + `async loadCards()` fetcher (populates CARDS from the per-card JSONs at boot). Also holds `TOKENS`, `KEYWORDS`, `STICKERS`, `EMPOWER_FIELDS`, `KEYWORD_DISPLAY`, `KEYWORD_STICKER_WEIGHTS` — the shared registries that don't fit the per-card model — plus the §305.6 basic-land-mana layer (`BASIC_LAND_MANA`, `basicLandTypeColors`, `grantBasicLandMana`). |
 | `js/keyword-icons.js` | `KEYWORD_ICON_SVG` — inline-ready keyword coin SVGs (generated from `assets/keywords/<kw>.svg`; glyph ink is `currentColor`, disc/rim are CSS vars so the source class recolors the coin). |
 | `js/types.js` | Unified type identity — `TYPE_REGISTRY` + the accessor layer (`typesOf`, `hasType`, `addType`, `subtypesOf`, `governingType`, `isPermanent`, `typeLineParts`/`typeLine`). The SOLE source of truth for a card's type line. |
 | `js/engine.js` | Mercurial trigger pool, splice eligibility helpers (`isSpliceableBase`, `canonicalSplicePair`, `isCompatibleStaplePair`, `remapEmpowerRollForStaple`, etc.), general helpers (`tplForSlot`, `deckColorsFromSlots`, `fakeTargetsForLegality`), `ENGINE` IIFE (state, mana, triggers, phases, combat, synthesis, `EFFECTS` dispatch ~25 kinds). |
@@ -26,7 +26,7 @@ Also in the repo: `index.html` at the repo root — a small redirect that points
 | `js/stickers.js` | Sticker pipeline — runtime application (`weightedPick`, `applyStickersToCard`, `applyOneStickerToRuntimeCard`, `applyRandomStickersToSide`, `empowerRollLabel`, `applyEmpowerRoll`) and deck-construction helpers (`rollSubtypeFromDeck`, `pushStickerWithRoll`, `stickersForSlot`). Late-binds to `ENGINE.synthesizeStapledTemplate`, `tplForSlot`, `deckColorsFromSlots`. |
 | `js/buckets.js` | `BUCKETS` IIFE — synergy-graph bucket generation for the Growing Deck (`docs/plans/plan-bucket-draft.md`): PROVIDES/WANTS extraction from card structure, labeled producer/consumer edges, seed-and-grow with softmax sampling, per-slot value fill for stranded seats (whole-bundle `fallback: true` only on seeding starvation; a bucket's identity is its story — seed at `cards[0]` + `why[]` — not a derived name, killed v2.2.22), boot theme-health report. Late-binds to `DRAFT.allocLandsFor` and `ENGINE.getCardValue`. |
 | `js/ai.js` | `AI` IIFE — decision logic, combat sim, lethal detection |
-| `js/draft.js` | `DRAFT` IIFE — pack generation, color-aware sampling, 23-pick player draft + 'growing' bucket-draft mode (3 bucket picks via `getBucketOffer`/`pickBucketOffer`), opp deck construction with optional `numPicks` size mirror (incl. constructed-deck registry: Goblin Aggro, Spirit Tribal, Aristocrats, Archdemon Boss, Balancer Boss) |
+| `js/draft.js` | `DRAFT` IIFE — pack generation, color-aware sampling, 23-pick player draft + 'growing' bucket-draft mode (5 bucket picks via `getBucketOffer`/`pickBucketOffer`), opp deck construction with optional `numPicks` size mirror (incl. constructed-deck registry: Goblin Aggro, Spirit Tribal, Aristocrats, Archdemon Boss, Balancer Boss) |
 | `js/run.js` | `RUN` IIFE — roguelike meta (map generation, rewards incl. the two-phase `addBucket` growth reward, post-draft offers), save/load to `magiclike_run_v1` localStorage key, schema migrations, `runState.config` run mode |
 | `js/picklog.js` | `PICKLOG` IIFE — draft pick analytics, `magiclike_picklog_v1` storage, exposed on `window.PICKLOG` for console queries |
 | `js/controller.js` | `CONTROLLER` IIFE — input handling, modals, AI scheduling, plus the meta-game render helpers it owns (renderMap, renderReward, renderDraft, renderStatsContent, …) |

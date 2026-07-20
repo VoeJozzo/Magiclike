@@ -373,17 +373,21 @@ function check(label, ok, info) {
     lands.join(','));
 }
 
-// --- §6b special cards: seen by the graph, never offered ----------------------
+// --- §6b undraftable cards (boons/bosses): seen by the graph, never offered ---
 {
-  check('special cards are analyzed (deck presence exerts pull)',
+  check('undraftable cards are analyzed (deck presence exerts pull)',
     !!BUCKETS.analyzeCard('elystra_the_immortal') && !!BUCKETS.analyzeCard('endomorph'));
-  let offeredSpecial = false;
+  // Guard the guard: the pool must actually contain undraftable cards, or the
+  // never-offered sweep below passes vacuously.
+  check('boon/boss cards exist to be excluded',
+    Object.values(CARDS).some(c => isUndraftable(c)));
+  let offeredUndraftable = false;
   for (let i = 0; i < 25; i++) {
     for (const b of BUCKETS.rollBucketOffer([])) {
-      for (const id of b.cards) if (CARDS[id] && CARDS[id].special) offeredSpecial = true;
+      for (const id of b.cards) if (CARDS[id] && isUndraftable(CARDS[id])) offeredUndraftable = true;
     }
   }
-  check('...but special cards never appear in offers', !offeredSpecial);
+  check('...but undraftable cards never appear in offers', !offeredUndraftable);
 }
 
 // --- §6c synergy hints: the custom_text of the graph --------------------------
@@ -391,7 +395,7 @@ function check(label, ok, info) {
   // Inject a synthetic custom-kind card that declares its synergy by hand.
   CARDS.__hint_test = {
     tplId: '__hint_test', name: 'Hint Tester', types: ['Creature', 'Horror'],
-    cost: { B: 1 }, power: 1, toughness: 1, special: true,
+    cost: { B: 1 }, power: 1, toughness: 1, boon: true,
     synergy: { wants: { your_dies: 3, bogusResource: 5 }, provides: { fodder: 2 } },
   };
   BUCKETS._resetCacheForTest();
@@ -436,7 +440,7 @@ function check(label, ok, info) {
 {
   // The synergy-hint mechanism's design exemplar finally uses it: Elystra's
   // permanence (EOT effects stick forever) is declared as wants:trick on the
-  // card. She's special (never offered), but a deck holding her must pull
+  // card. She's a boon (never offered), but a deck holding her must pull
   // trick spells into offers via seed affinity.
   const w2 = (id) => BUCKETS.analyzeCard(id);
   const ely = BUCKETS.analyzeCard('elystra_the_immortal');

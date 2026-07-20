@@ -79,7 +79,7 @@ console.log('\n=== Demonic Tutor: the "you lose 2 life" is self life loss (after
   const myLife0 = G.you.life;
   // seed library with a creature so the search has something to find (and so it
   // opens a HUMAN search prompt rather than fizzling with nothing to fetch).
-  const findable = mk(Object.keys(CARDS).find(k => hasType(CARDS[k], 'Creature') && !CARDS[k].special), 'you');
+  const findable = mk(Object.keys(CARDS).find(k => hasType(CARDS[k], 'Creature') && !isUndraftable(CARDS[k])), 'you');
   G.you.library.push(findable);
   const dt = mk('demonic_tutor', 'you'); G.you.hand.push(dt);
   ENGINE.executeAction('you', { type: 'castSpell', cardIid: dt.iid });

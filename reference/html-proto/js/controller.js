@@ -1092,20 +1092,9 @@ function renderMap() {
   const levels = Object.keys(byLevel).map(Number).sort((a, b) => b - a);
   // Placeholder text glyphs for node icons; real pixel-art icons come from the
   // pixellab pipeline later (the design's SVG icons were rejected in review).
-  const PLACEHOLDER_ICON = { combat: 'C', elite: 'E', shop: '$', event: '?', rest: 'R', boss: 'B' };
-  const iconFor = (node) => {
-    if (node.type === 'boss') {
-      if (node.constructedId) {
-        const spec = DRAFT.getConstructedDeck(node.constructedId);
-        if (spec && spec.icon) return spec.icon;
-      }
-      return '👹';
-    }
-    switch (node.type) {
-      case 'combat': return '⚔';
-      default:       return '?';
-    }
-  };
+  // Boss nodes get NO face glyph: the boss tile + corner gem already mark them,
+  // and a letter on top was a third, redundant boss signal.
+  const PLACEHOLDER_ICON = { combat: 'C', elite: 'E', shop: '$', event: '?', rest: 'R', boss: '' };
   // Tooltip combines type + color (e.g., "Red Draft Deck"). Constructed nodes use deck name.
   const COLOR_NAME = {W:'White', U:'Blue', B:'Black', R:'Red', G:'Green'};
   const labelForType = (type) => {
@@ -1135,26 +1124,23 @@ function renderMap() {
       el.id = 'map-' + n.id;
       const mi = document.createElement('span');
       mi.className = 'mi';
-      mi.textContent = PLACEHOLDER_ICON[n.type] || iconFor(n);
+      mi.textContent = PLACEHOLDER_ICON[n.type] ?? '?';
       el.appendChild(mi);
       el.title = tooltipFor(n);
-      // Constructed: ring = spec's first color + ★ badge. Boss: 👹 badge.
+      // Corner badge = the node's color gem (constructed decks ring with
+      // their first color). Pure art: .map-color-badge paints gem_<C>.png.
       let ringColor = n.color;
-      let isConstructed = false;
-      const isBoss = (n.type === 'boss');
       if (n.constructedId) {
         const spec = DRAFT.getConstructedDeck(n.constructedId);
         if (spec && spec.colors && spec.colors.length > 0) {
           ringColor = spec.colors[0];
-          isConstructed = true;
         }
       }
-      if (isBoss) el.classList.add('boss');
+      if (n.type === 'boss') el.classList.add('boss');
       if (ringColor) {
         el.classList.add('col-' + ringColor);
         const badge = document.createElement('div');
         badge.className = 'map-color-badge col-' + ringColor;
-        badge.textContent = isBoss ? iconFor(n) : (isConstructed ? '★' : ringColor);
         el.appendChild(badge);
       }
       if (n.id === current) el.classList.add('current');
