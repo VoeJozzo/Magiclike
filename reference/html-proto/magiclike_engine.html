@@ -831,7 +831,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
    z-index/padding rules deleted rather than duplicated). The one genuine
    difference is kept: these are short prompts, so they centre vertically
    where the kit top-aligns its taller card pickers. */
-#numberChoiceModal,#symmetricizeChoiceModal,#edictChoiceModal,#optionalCostModal{align-items:center}
+#numberChoiceModal,#symmetricizeChoiceModal,#optionalCostModal{align-items:center}
 /* Prompt-modal option buttons. One rule for every prompt: the accent is
    inherited from the modal's --picker-accent-text rather than restated per
    call site, so a new prompt gets the right colour for free. */
@@ -1119,13 +1119,6 @@ body.ai-thinking #status{
     <div class="picker-header"><h2 class="picker-title">⚖ SYMMETRICIZE</h2></div>
     <div id="symmetricizeChoiceSubtitle" class="picker-subtitle"></div>
     <div id="symmetricizeChoiceButtons" class="picker-row"></div>
-  </div>
-</div>
-<div id="edictChoiceModal" class="picker-overlay">
-  <div id="edictChoiceBox" class="picker-box" style="--picker-accent-text:#e0a09a;max-width:520px">
-    <div class="picker-header"><h2 class="picker-title">☠ FORCED SACRIFICE</h2></div>
-    <div id="edictChoiceSubtitle" class="picker-subtitle"></div>
-    <div id="edictChoiceButtons" class="picker-row"></div>
   </div>
 </div>
 <div id="optionalCostModal" class="picker-overlay">

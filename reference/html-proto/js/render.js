@@ -345,12 +345,10 @@ function render() {
   } else {
     Modal.hide('symmetricizeChoiceModal');
   }
-  // Edict forced-sacrifice (GAP 2): selection is now IN-PLACE — the eligible
+  // Edict forced-sacrifice (GAP 2): selection is IN-PLACE — the eligible
   // permanents glow on the battlefield (see the .targetable branch in the
   // per-card render) and a click sacks one (clickBattlefield → edictChoice). The
-  // status bar shows the prompt (see the status-bar block below). No modal —
-  // simpler/clearer than the popup it replaced. Force-hide any stale modal.
-  Modal.hide('edictChoiceModal');
+  // status bar shows the prompt (see the status-bar block below).
   // Optional-cost trigger (Land+Spell staple ETB). The controller may pay the
   // stapled spell's mana cost to use its effect, or decline.
   if (G.pendingOptionalCost && G.pendingOptionalCost.who === 'you') {
