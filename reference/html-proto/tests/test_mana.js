@@ -1,7 +1,7 @@
-// Lands and creature dorks both produce mana through a tap-for-mana ability,
-// not a separate extraManaColors field. Covers land/ability consistency, the
-// add_mana choose form (City of Brass), summoning-sickness gating (lands vs
-// dorks), the landColor sticker, payMana auto-tap, and the land staple-merge.
+// Lands and creature dorks both produce mana through a tap-for-mana ability.
+// Covers land/ability consistency, the add_mana choose form (City of Brass),
+// summoning-sickness gating (lands vs dorks), the landColor sticker, payMana
+// auto-tap, and the land staple-merge.
 
 const setup = require('./_setup');
 setup.loadEngine();

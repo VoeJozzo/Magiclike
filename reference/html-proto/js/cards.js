@@ -27,7 +27,7 @@ const CARDS = {};
 //
 // Wire    →  JS-internal
 //   card_id  →  tplId
-//   (derived) →  color, colors (computed from cost; not stored in JSON)
+//   (derived) →  color, colors (from cost; authored values are kept but discouraged — see cards/CLAUDE.md)
 function ingestCard(card) {
   if (card == null || typeof card !== 'object') return card;
   if (Object.prototype.hasOwnProperty.call(card, 'card_id')) {

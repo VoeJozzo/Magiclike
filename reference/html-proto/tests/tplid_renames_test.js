@@ -52,11 +52,11 @@ for (const [oldId, newId] of Object.entries(RENAMES)) {
 
 console.log('\n=== v1->v2 save migration translates every PERSISTED tplId carrier (audit A9-1) ===');
 {
-  // A v1 save blob using ONLY fields that actually persist on runState
-  // (git-verified at df2fd38^: save() stored {version, runState}; youPicks/
-  // currentPack lived on DRAFT's in-memory `state`, never on the save). The
-  // real tplId carriers are: slots, the mid-game snapshot (a deep-clone of
-  // slots) and pendingReward.replacementPack (two shapes).
+  // A v1 save blob using ONLY fields that actually persist on runState:
+  // save() stores {version, runState}; youPicks/currentPack live on DRAFT's
+  // in-memory `state`, never on the save. The real tplId carriers are: slots,
+  // the mid-game snapshot (a deep-clone of slots) and pendingReward.replacementPack
+  // (two shapes).
   const v1Blob = {
     version: 1,
     runState: {

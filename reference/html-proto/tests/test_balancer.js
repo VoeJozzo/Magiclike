@@ -82,8 +82,7 @@ console.log('\n=== embargo/bleach card.json are decomposed (no bespoke kinds) ==
 
 console.log('\n=== stale-sticker prune: unknown/legacy sticker ids are dropped on load ===');
 (() => {
-  // The §3.8 rename migrations retired 2026-07-18 (audit batch H); the prune
-  // is the standing safety net — any id the registry doesn't know is dropped.
+  // The prune is the standing safety net — any id the registry doesn't know is dropped.
   const blob = {
     version: SAVE_VERSION,
     runState: {

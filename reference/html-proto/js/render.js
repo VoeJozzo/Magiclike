@@ -169,15 +169,10 @@ function render() {
   renderOppHand(G.opp.hand);
   renderBf('youBf', G.you.battlefield, 'you');
   renderBf('oppBf', G.opp.battlefield, 'opp');
-  // Active-turn battlefield glow follows the actual turn (audit A35 — the
-  // class used to sit statically on the player's side).
-  // The opp === true branch is effectively unobservable today: opp turns
-  // resolve on a deliberately very fast timer, so no render lands while opp
-  // is active (PR #148 review, 2026-07-20 — repeated attempts to catch such a
-  // frame at runtime found none; the you-side branch is confirmed live).
-  // Correct by construction, but UNEXERCISED — if turn pacing ever slows, or
-  // the glow misbehaves during opp's turn, start here rather than assuming
-  // this line has ever run with a true second argument.
+  // Battlefield glow follows the active player. The opp branch is
+  // effectively unexercised: opp turns resolve on a fast timer, so a render
+  // rarely if ever lands while opp is active. Don't assume it works — if
+  // turn pacing changes or the glow misbehaves for opp, start here.
   document.getElementById('youBf').classList.toggle('aturn', G.activePlayer === 'you');
   document.getElementById('oppBf').classList.toggle('aturn', G.activePlayer === 'opp');
 
@@ -350,7 +345,7 @@ function render() {
   } else {
     Modal.hide('symmetricizeChoiceModal');
   }
-  // Edict forced-sacrifice (GAP 2): selection is IN-PLACE — the eligible
+  // Edict forced-sacrifice: selection is IN-PLACE — the eligible
   // permanents glow on the battlefield (see the .targetable branch in the
   // per-card render) and a click sacks one (clickBattlefield submits
   // edictChoice). The status bar shows the prompt (status-bar block below).

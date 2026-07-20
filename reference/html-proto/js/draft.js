@@ -16,7 +16,7 @@ const COLORS = ['W','U','B','R','G'];
 const COLOR_TO_LAND = { W:'plains', U:'island', B:'swamp', R:'mountain', G:'forest' };
 const DESERT_CUBE_LAND_PROB = 1 / 3;
 
-// Lazy-cached because CARDS is populated async by loadCards() (v1.0.134).
+// Lazy-cached because CARDS is populated async by loadCards().
 let _draftPoolCache = null;
 function draftPool() {
   if (_draftPoolCache === null) {
@@ -412,7 +412,7 @@ function applyOpponentClones(slots, n) {
 // Map a [0,1) roll to a burst size of 1/2/3, splitting the interval by the
 // player's sticker : twoStickers : threeStickersBlind reward weights, read at
 // roll time so opp's burst shape can never drift from the player's reward
-// shape (audit A12/A13 — the old literals froze a pre-v1.0.46 ratio).
+// shape (audit A12/A13).
 // Exported as a seam because the boundaries are the whole invariant and only
 // a chosen roll can pin them.
 function burstSizeForRoll(roll01) {
@@ -499,7 +499,6 @@ function scoreOpponentSticker(sticker, slot) {
     }[sticker.keyword] || 5;
     return tier;
   }
-  // (innate is now a keyword — valued via the keyword tier map above.)
   // Land-color fixing (add_type land stickers).
   if (sticker.kind === 'add_type') return 7;
   if (sticker.kind === 'cost_mod') {

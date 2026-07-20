@@ -446,7 +446,7 @@ function evalTriggerCondition(trig, self, evt, who) {
     if (sid != null && sid === self.iid) return false;
   }
   // Composable `condition` (string / array / {op|name} dict). JSON wire can't
-  // hold a function, so this is the only shape post-migration.
+  // hold a function, so this is the only shape.
   if (trig.condition != null) {
     return evaluateCondition(trig.condition, {
       state: ENGINE.state(), source: self, event: evt, who: who,

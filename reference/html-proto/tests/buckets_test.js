@@ -294,9 +294,8 @@ function check(label, ok, info) {
 }
 
 // --- §3b color fence mechanism (deterministic) ------------------------------
-// colorFitFactor(card, deckColors) is the pure weight multiplier the old
-// sampled off-color-rate + second-color checks only measured the effect of.
-// Pinning it directly needs no rolls and no threshold.
+// colorFitFactor(card, deckColors) is the pure weight multiplier for color
+// fit; pinning it directly needs no rolls and no threshold.
 {
   const fit = BUCKETS._colorFitForTest;
   // Factor 1 = no fence. Guards the SPELLSTORM×3 lockout, where this returned
@@ -412,8 +411,7 @@ function check(label, ok, info) {
   check('bucket lands cover every needed color (U3/B1 → island+swamp)',
     lands.includes('island') && lands.includes('swamp'), lands.join(','));
 
-  // Reinforcements must never sell the player their own deck back: sample a
-  // few fallbacks and check none reprint a card the deck already holds.
+  // Reinforcements must never sell the player their own deck back.
   const deck = ['skyfire_drakelord', 'mind_control', 'final_strike', 'island', 'island'];
   let soldOwnCard = false;
   let rolls = 0, seen = 0;

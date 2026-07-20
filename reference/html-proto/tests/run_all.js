@@ -33,7 +33,6 @@ const CATEGORY_A = [
   'composable_predicates_test.js',
   // DIVERGENCE E2 — condId -> composable condition migration (golden).
   'trigger_migration_test.js',
-  // Mass scope groundwork.
   'test_effects_scope.js',
   // target()/chooses() targeting + structural hexproof.
   'test_targeting.js',
@@ -353,7 +352,7 @@ const CATEGORY_A = [
   // Audit A11-1 — slot/effect-level target strings validated at boot (an
   // unknown name = a silently-uncastable card); the live pool stays clean.
   'test_a11_target_string_validation.js',
-  // Synthesis/staple fix batch (Stapler/Splice).
+  // Synthesis/staple (Stapler/Splice).
   // A5-4 — out-of-charges rip routes through the shared slot-pointer fixup
   // so a merged slot minted above the stapler keeps a valid cached slotIdx.
   'test_a5_4_charge_rip.js',
@@ -438,9 +437,8 @@ const CATEGORY_A = [
   // cause+trig payload, budget-as-meta-rule containment (including the
   // take-up budget move and drain-concat handling).
   'wave2_ability_triggered_test.js',
-  // Audit bug proofs (2026-07-17/18): each asserts the correct behavior a
-  // vibecode-audit finding showed was broken; flipped green by the batch-I
-  // fixes (v2.2.36) and kept as the regression pin for that bug class.
+  // Audit bug proofs: each asserts the behavior a vibecode-audit finding
+  // showed was broken, kept as the regression pin for that bug class.
   'proofs_audit.js',
 ];
 

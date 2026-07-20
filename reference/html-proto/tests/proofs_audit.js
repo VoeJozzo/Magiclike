@@ -1,8 +1,6 @@
-// AUDIT BUG PROOFS — born 2026-07-17 as deliberately-failing demonstrations
-// of vibecode-audit findings (each proof asserts the CORRECT behavior, so a
-// FAIL meant "bug confirmed"). The batch-I fixes (v2.2.36) flipped them
-// green; the file is now registered in run_all.js as the regression pin for
-// that bug class. A CONFIRMED result here means a fixed bug came back.
+// Regression pin (registered in run_all.js): each proof asserts the CORRECT
+// engine behavior for one audit finding, identified by id. A CONFIRMED
+// result means a previously fixed bug has come back.
 const setup = require('./_setup');
 setup.loadEngine();
 
@@ -130,9 +128,9 @@ proof('R60/R61',
     const li = slots.findIndex(s => s.tplId === 'plains');
     if (li < 0) throw new Error('no plains slot after RUN.start');
     const before = (RUN.getSlots()[li].stickers || []).length;
-    RUN.applyStickerToSlot(li, 'land_color_' + 'U'.toLowerCase());  // the id the harness now builds
+    RUN.applyStickerToSlot(li, 'land_color_' + 'U'.toLowerCase());  // canonical land-color sticker id
     const afterCanonical = (RUN.getSlots()[li].stickers || []).length;
-    RUN.applyStickerToSlot(li, 'landColor_B');                       // the retired camelCase form must stay dead
+    RUN.applyStickerToSlot(li, 'landColor_B');                       // legacy camelCase id — must not apply
     const afterLegacy = (RUN.getSlots()[li].stickers || []).length;
     return {
       ok: afterCanonical - before === 1 && afterLegacy === afterCanonical,
@@ -143,4 +141,4 @@ proof('R60/R61',
 console.log('---');
 console.log('PROOF SUMMARY: ' + confirmed + ' bug(s) confirmed, ' + absent + ' not confirmed, ' + errored + ' proof error(s)');
 console.log('\n=== TOTAL: ' + absent + ' passed, ' + (confirmed + errored) + ' failed ===');
-process.exit(confirmed === 0 && errored === 0 ? 0 : 1);  // regression pin since v2.2.36
+process.exit(confirmed === 0 && errored === 0 ? 0 : 1);

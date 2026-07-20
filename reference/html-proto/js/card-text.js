@@ -2,7 +2,8 @@
 // Returns {text, highlight}[] segments — bumped values get highlight:true
 // (empower visual emphasis). describeCardText is the flat-string wrapper.
 // Cards with custom_text:true (Endomorph, Codex, Elystra) keep hand-authored text.
-// Sole ENGINE dependency: synthesizeStapledTemplate (guarded for load order).
+// ENGINE dependencies: sevToNum, plus addSubtypeKeywords and
+// synthesizeStapledTemplate (those two guarded for load order).
 
 const COLOR_NAMES = { W: 'White', U: 'Blue', B: 'Black', R: 'Red', G: 'Green' };
 const NUM_WORDS = { 1: 'one', 2: 'two', 3: 'three', 4: 'four', 5: 'five' };
@@ -24,7 +25,6 @@ function formatTriggerText(template, cardName) {
   return (template || '').replace(/~/g, escapeHtml(cardName || ''));
 }
 
-// eff.target → noun phrase. 'player' = "target opponent" for damage/discard, "target player" for gain_life.
 const STAT_PHRASE = { total_mana_cost: 'total mana cost' };
 // Compose the English for a `graveyard_card` target from its filter axes:
 // type/not_type/subtype (adjectives on "card"), `select` (a superlative clause),
@@ -1227,7 +1227,7 @@ function describeCardSegments(card, opts) {
     if (staticText) sections.push([plainSeg(staticText)]);
     // Stapled halves: authored text can't know what a staple added, so append
     // each staple's generated text — the merged card reads complete without
-    // losing the authored voice (audit A14, Joe's option (c), 2026-07-18).
+    // losing the authored voice (audit A14).
     const stapledIds = (card.stapledFrom && card.stapledFrom.stapledTpls) || [];
     for (const sid of stapledIds) {
       if (!CARDS[sid]) continue;

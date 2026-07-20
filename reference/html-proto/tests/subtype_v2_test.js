@@ -1,5 +1,4 @@
-// Exactly one 'subtype' sticker exists; legacy subtype_<tribe> stickers
-// migrate to it plus a subtypeRolls entry.
+// Exactly one 'subtype' sticker exists.
 
 const setup = require('./_setup');
 setup.loadEngine();

@@ -20,7 +20,7 @@
 //   §3 growBucket()   — seed-and-grow: start from a seed, twice add the
 //                       softmax-sampled best companion under constraints
 //                       (≤2 colors, castable in deck colors, curve spread).
-//   §4 rollOffer()    — compose a 3-bucket offer: seeds sampled from the
+//   §4 rollBucketOffer() — compose a 3-bucket offer: seeds sampled from the
 //                       whole legal pool, each card weighted by its deck-
 //                       affinity (weights-as-weights: the wishlist shapes
 //                       the odds, not the outcomes). Every grown bucket
@@ -1009,7 +1009,7 @@ return {
   rollBucketOffer,
   landsForCards,
   themeHealthReport,
-  // Introspection (tests + future UI copy):
+  // Introspection (tests; edgeBetween also backs constellation's hover tooltips):
   analyzeCard: (tplId) => { ensurePool(); return _byId[tplId] || null; },
   edgeBetween: (aId, bId) => {
     ensurePool();

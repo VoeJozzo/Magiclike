@@ -245,7 +245,6 @@ console.log('\n=== stickerBadgesHtml: only non-redundant kinds render (Q2) ===')
 console.log('\n=== Q1: sticker-granted text is flagged for coloring ===');
 
 {
-  // Sticker-granted keyword → its keyword-preamble segment carries sticker:true.
   const card = freshCard('savannah_lions', ['kw_flying']);
   applyStickersToCard(card);
   const segs = describeCardSegments(card, { skipKeywords: false });
@@ -253,7 +252,6 @@ console.log('\n=== Q1: sticker-granted text is flagged for coloring ===');
   check('sticker-granted keyword segment flagged sticker:true', !!flyingSeg && flyingSeg.sticker === true);
 }
 {
-  // An intrinsic keyword is NOT flagged (only sticker-granted ones color).
   const card = freshCard('air_elemental', []);  // 4/4 with intrinsic flying
   applyStickersToCard(card);
   const segs = describeCardSegments(card, { skipKeywords: false });

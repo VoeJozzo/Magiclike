@@ -154,7 +154,7 @@ eqText(segsToText(describeEffect({ kind: 'grant_cast_permission', from_zone: 'ex
 
 console.log('\n=== describeEffect: tokens (count-bumped wording) ===');
 // Canonical token ids resolve the TOKENS template, so the full token
-// description (color, stats, keywords) renders. Word count: "one", "two", ...
+// description (color, stats, keywords) renders. Count wording: 1 → "a", N>1 → word ("two", ...).
 eqText(segsToText(describeEffect({ kind: 'create_tokens', count: 1, token_id: 'goblin_r_1_1' })),
        'create a red 1/1 Goblin token with haste', 'create 1 token uses "a"');
 eqText(segsToText(describeEffect({ kind: 'create_tokens', count: 2, token_id: 'goblin_r_1_1' })),

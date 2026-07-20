@@ -141,7 +141,7 @@ const EXPOSED = [
   // exposed for the A3-13 condition-aliasing and A3-5 table-validation tests.
   'MERCURIAL_TRIGGER_POOL',
   'evalTriggerCondition',
-  // Composable-predicate surface (triggers.js, module-scope — Slice 2 / E2).
+  // Composable-predicate surface (triggers.js, module-scope).
   'ATOMIC_PREDICATES', 'evaluateCondition', '_parseCall',
   // Effect-shorthand parser (triggers.js, module-scope — §5.1/§5.2).
   '_parseEffectCall', 'desugarEffectString', 'normalizeCardEffects',
@@ -180,7 +180,7 @@ const EXPOSED = [
   'bumpedSeg', 'bumpedDerived',
   'segsToText', 'capitalize', 'capitalizeSegs',
   'triggerPreamble', 'abilityCostPhrase',
-  // Unified type system (types.js, all module-scope, no IIFE — Phase 1).
+  // Unified type system (types.js, all module-scope, no IIFE).
   'TYPE_REGISTRY', 'typeRegistryEntry', 'typeCategory', 'isCardTypeTag',
   'typesOf', 'hasType', 'addType', 'subtypesOf', 'governingType',
   'isPermanent', 'typeLine', 'typeLineParts', 'isUndraftable',

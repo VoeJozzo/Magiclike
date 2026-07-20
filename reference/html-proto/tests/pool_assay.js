@@ -10,7 +10,7 @@
 //                       clumpiness = the same connector recurring, NOT card-set
 //                       overlap (measured Jaccard of same-theme buckets is only
 //                       ~0.17-0.24 — contents already vary).
-//   2. PLANS PER PAIR — distinct bucket names seen across 75 offered buckets
+//   2. PLANS PER PAIR — distinct bucket seed cards seen across 75 offered buckets
 //                       for each color pair. Target: >= 12 everywhere (the
 //                       level of the pairs that don't feel clumpy).
 //   3. HOOK HISTOGRAM — strong synergy edges (weight >= 2) per pool card.
@@ -64,9 +64,8 @@ for (const [label, deck] of Object.entries(DECKS)) {
 
 // ---- 2. Plans per pair ------------------------------------------------------
 console.log('\n=== 2 · PLANS PER COLOR PAIR (distinct seed cards in 75 buckets; target >= 12) ===');
-// Bucket names died at v2.2.22 (identity = the seed + why[]), so plan
-// diversity counts distinct SEED cards — the doctrine's own identity field
-// (audit R58/R59: the old bb.name read collected only undefined).
+// A bucket's identity is its seed card + why[], not a name field, so plan
+// diversity below counts distinct seed cards (audit R58/R59).
 const pairs = [['W','U'],['U','B'],['B','R'],['R','G'],['G','W'],['W','B'],['U','R'],['B','G'],['R','W'],['G','U']];
 const pairResults = [];
 for (const [a, b] of pairs) {

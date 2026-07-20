@@ -1,9 +1,7 @@
-// Canonical targeting-shape API (engine.js objectNeedsTarget /
-// probeTargetsForObject). This is the single source of truth the §3.5 "top-
-// level target() step" introduced — three consumers (clickHand, the castable
-// highlight, the trigger prompt) each drifted and broke when they hand-rolled
-// the "does this need a target" check. They all route through these now; this
-// test pins the API across every targeting shape so it can't silently regress.
+// Canonical targeting-shape API (engine.js objectNeedsTarget / probeTargetsForObject).
+// clickHand, the castable highlight, and the trigger prompt all route through these
+// instead of hand-rolling a "does this need a target" check — this test pins the API
+// across every targeting shape so it can't silently regress.
 
 const setup = require('./_setup');
 setup.loadEngine();

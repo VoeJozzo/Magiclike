@@ -377,7 +377,6 @@ function load() {
         slot.stickers = slot.stickers.filter(s =>
           (s && typeof s === 'object' && s.kind) || STICKERS[s]);
         stalePruned += before - slot.stickers.length;
-        // Backfill empowerRolls for empower stickers without recorded rolls.
         const empowerCount = slot.stickers.filter(id => id === 'empower').length;
         if (!Array.isArray(slot.empowerRolls)) slot.empowerRolls = [];
         while (slot.empowerRolls.length < empowerCount) {
@@ -1047,7 +1046,7 @@ function pickRewardCandidate(idx) {
   if (cand.kind === 'clone') {
     // Deep-clone all slot state (stickers, staples, empowerRolls, bonusTrigger,
     // charges) so the player gets the merged/buffed version, not just the base.
-    // Elystra's permanent buffs ride along inside stickers now (audit A5-6/A5-7).
+    // Elystra's permanent buffs ride along inside stickers (audit A5-6/A5-7).
     const orig = runState.slots[cand.slotIdx];
     if (!orig) {
       runState.pendingReward = null;
@@ -1076,7 +1075,7 @@ function pickRewardCandidate(idx) {
       };
     }
     if (typeof orig.charges === 'number') {
-      // A5-5 (Joe Option A, PR #98): photocopy the REMAINING charges. A clone
+      // A5-5: photocopy the REMAINING charges. A clone
       // of a half-used Stapler is half-used — without this the clone slot has no
       // charges field, the engine charge gate reads it as infinite (never
       // decrements, never rips), and the UI shows "3 charges" forever.
@@ -1239,7 +1238,7 @@ function applySplice(baseSlotIdx, stapleSlotIdx) {
   // (engine.js mergeSpliceData). Stickers are slot-scoped and just concat;
   // empower rolls remap (effect indices shift when arrays concatenate / move
   // into an ETB trigger); subtype concat; bonusTrigger: base wins. (Elystra's
-  // permanent buffs are stickers now, so they ride the sticker concat.)
+  // permanent buffs are stickers, so they ride the sticker concat.)
   const merged = mergeSpliceData(
     { tplId: baseSlot.tplId, stickers: baseSlot.stickers, empowerRolls: baseSlot.empowerRolls,
       subtypeRolls: baseSlot.subtypeRolls,

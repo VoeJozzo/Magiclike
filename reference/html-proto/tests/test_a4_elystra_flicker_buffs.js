@@ -42,13 +42,12 @@ console.log('=== A4-16: flicker (move_card bf→exile) banks Elystra\'s pending 
   ely.sick = false;
   G.you.battlefield.push(ely);
   const ctx = { controller: 'you', sourceName: 'Test Pump', sourceIid: null };
-  // This turn's pending gains: +2/+2 EOT and an EOT keyword grant.
   ENGINE.applyEffect(ctx, { kind: 'pump', power: 2, toughness: 2 },
     { kind: 'creature', iid: ely.iid });
   ENGINE.applyEffect(ctx, { kind: 'grant_keyword', keyword: 'flying', duration: 'eot' },
     { kind: 'creature', iid: ely.iid });
   check('pump landed as temp (pre-flicker)', ely.tempPower === 2 && ely.tempTou === 2);
-  // Cloudshift's first half: move_card battlefield → exile.
+  // Cloudshift's first half.
   ENGINE.applyEffect({ controller: 'you', sourceName: 'Cloudshift', sourceIid: null },
     { kind: 'move_card', from_zone: 'battlefield', to_zone: 'exile', selector: 'target' },
     { kind: 'creature', iid: ely.iid });
@@ -62,9 +61,9 @@ console.log('=== A4-16: flicker (move_card bf→exile) banks Elystra\'s pending 
     (slot.stickers || []).includes('kw_flying'),
     'stickers=' + JSON.stringify(slot && slot.stickers));
 
-  // Cloudshift's second half: return from exile — the banked buffs re-apply
-  // (the stat_boost modifier survives resetInPlayState and the kw_flying sticker
-  // is re-derived by intrinsicKeywords on permanent_eot arrivals).
+  // Cloudshift's second half — the banked buffs re-apply: the stat_boost
+  // modifier survives resetInPlayState, and the kw_flying sticker is
+  // re-derived by intrinsicKeywords on permanent_eot arrivals.
   ENGINE.applyEffect({ controller: 'you', sourceName: 'Cloudshift', sourceIid: null },
     { kind: 'move_card', from_zone: 'exile', to_zone: 'battlefield', selector: 'target' },
     { kind: 'graveyard_card', iid: ely.iid });

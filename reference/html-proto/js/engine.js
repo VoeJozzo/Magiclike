@@ -149,9 +149,9 @@ function remapEmpowerRollForStaple(roll, baseIsCreature, stapleIsCreature, baseI
   if (roll.location !== 'effects') return roll;
   // A5-8: a spell staple on ANY permanent base (Creature OR Land) collapses into
   // an ETB trigger — mergeStapleInto's basePermanent dispatch treats both the
-  // same. The gate was creature-only, so an empower roll on a spell stapled onto
-  // a LAND base stayed location:'effects' and silently no-op'd (the merged card
-  // has no effects[] — the spell became a trigger). Widen it to any permanent.
+  // same, so a roll on a spell staple must relocate to location:'triggers'
+  // regardless of which permanent type is the base (the merged card has no
+  // effects[] — the spell became a trigger).
   if (baseIsPermanent) {
     return {
       ...roll,
@@ -1222,7 +1222,7 @@ function copySourceRef(ctx) {
 // `target.kind === 'player'` first (see the damage handler) before calling.
 function resolveTarget(ctx, target) {
   // Missing/iid-less target → the SAME logged fizzle as a stale target
-  // (audit A4-17). Before this guard a misauthored no-target effect threw a
+  // (audit A4-17). Without this guard, a misauthored no-target effect throws a
   // raw TypeError out of executeAction mid-resolution, stranding the spell
   // in NO zone (popped from hand and stack, never reaching the graveyard).
   if (!target || target.iid == null) {
@@ -3139,15 +3139,13 @@ const EFFECTS = {
       sourceIid: ctx.sourceIid,
     });
   },
-  // Unified control-change primitive (effects-refactor §4.2 / decision 11):
-  // replaces gainControl (both defs) + steal. transfer_ownership:true is the
-  // steal variant (permanent run-slot transfer) — delegated to the proven
-  // steal handler. Otherwise it's a control change (Mind Control / Threaten):
-  // pluck from the current controller, push to the caster, with optional
-  // untap / grant_haste / duration (eot). The card
-  // migration is done — gainControl is retired (no handler; effect_migration_test
-  // pins it GONE). steal remains permanently BY DESIGN as the runtime-internal
-  // transfer_ownership delegate (it is not in card data).
+  // Unified control-change primitive (effects-refactor §4.2 / decision 11).
+  // transfer_ownership:true is the steal variant (permanent run-slot transfer)
+  // — delegated to the proven steal handler. Otherwise it's a control change
+  // (Mind Control / Threaten): pluck from the current controller, push to the
+  // caster, with optional untap / grant_haste / duration (eot). steal remains
+  // permanently BY DESIGN as the runtime-internal transfer_ownership delegate
+  // (it is not in card data).
   change_control(ctx, params, target) {
     if (params.transfer_ownership) { EFFECTS.steal(ctx, params, target); return; }
     const f = resolveTarget(ctx, target);
@@ -4537,10 +4535,9 @@ function pickBestTriggerTarget(eff, valid, controller) {
       return sorted[0];
     }
   }
-  // Grave-return pick: the migrated shape is move_card graveyard->hand
-  // (tools/migrate-effects.js collapsed the retired `returnFromGraveyard` kind
-  // into it); grant_cast_permission still recalls from a yard too. Value-pick
-  // the best returnable card, deriving WHICH graveyard each candidate sits in
+  // Grave-return pick: move_card(graveyard→hand) and grant_cast_permission both
+  // recall from a yard, so both route here. Value-pick the best returnable
+  // card, deriving WHICH graveyard each candidate sits in
   // from its own stamped `controller` tag (getValidTargets stamps it per yard),
   // NOT a single binary yard — so cross-/multi-yard filters value correctly.
   // (findCard can't see graveyard cards, so look up by iid in the stamped
