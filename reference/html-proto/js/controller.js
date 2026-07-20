@@ -241,13 +241,13 @@ function showCardBrowser() {
   // Header — title + close. Sticky so it stays visible while scrolling
   // through what is potentially 100+ cards.
   const header = document.createElement('div');
-  header.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;padding:8px 4px;border-bottom:1px solid #444;position:sticky;top:-16px;background:rgba(0,0,0,.96);z-index:1';
+  header.className = 'browser-head';
   const title = document.createElement('h2');
   title.textContent = 'CARD BROWSER';
-  title.style.cssText = 'color:#ffd700;margin:0;font-size:16px;letter-spacing:.08em';
+  title.className = 'browser-title';
   const closeBtn = document.createElement('button');
   closeBtn.textContent = 'Close';
-  closeBtn.style.cssText = 'padding:6px 14px;background:#332;border:1px solid #663;color:#ccc;cursor:pointer;border-radius:3px;font-family:inherit;font-size:12px';
+  closeBtn.className = 'choice-btn choice-btn-sm';
   closeBtn.onclick = () => { Modal.hide('cardBrowserModal'); };
   header.appendChild(title);
   header.appendChild(closeBtn);
@@ -290,7 +290,10 @@ function showCardBrowser() {
 
     const heading = document.createElement('h3');
     heading.textContent = g.label + ' — ' + g.cards.length + ' cards';
-    heading.style.cssText = 'color:' + g.tone + ';font-size:13px;letter-spacing:.1em;margin:0 0 8px;border-left:3px solid ' + g.tone + ';padding:2px 0 2px 8px;text-transform:uppercase';
+    // Tone is per-group data, so it stays inline; the rest is .browser-group-head.
+    heading.className = 'browser-group-head';
+    heading.style.color = g.tone;
+    heading.style.borderLeft = '3px solid ' + g.tone;
     section.appendChild(heading);
 
     const grid = document.createElement('div');
@@ -2730,7 +2733,7 @@ function escapeStatsAttribute(s) {
 // rows are pre-sorted; we slice to defaultN unless expanded.
 function renderTableWithToolbar(opts) {
   const { id, title, subtitle, rows: allRows, color, columns, defaultN } = opts;
-  if (!allRows.length) return `<div style="color:#666;font-size:10px;font-style:italic">${title}: no data yet</div>`;
+  if (!allRows.length) return `<div class="tbl-note">${title}: no data yet</div>`;
 
   const expanded = !!STATS_UI.expanded[id];
   const visibleRows = expanded ? allRows : allRows.slice(0, defaultN);
@@ -2771,15 +2774,17 @@ function renderTableWithToolbar(opts) {
 
   // The actual visible table.
   const gridCols = columns.map(c => c.width || '1fr').join(' ');
-  html += '<div style="background:#0a0a14;border-radius:3px;overflow:hidden">';
-  html += `<div style="display:grid;grid-template-columns:${gridCols};gap:5px;padding:5px 8px;background:#181828;font-size:9px;color:#888;letter-spacing:.05em">`;
+  // grid-template-columns is computed per table (column widths are caller data),
+  // so it stays inline; the surface/rules come from .tbl-grid*.
+  html += '<div class="tbl-grid">';
+  html += `<div class="tbl-grid-head" style="grid-template-columns:${gridCols}">`;
   for (const c of columns) {
     const align = c.align === 'right' ? 'text-align:right' : '';
     html += `<div style="${align}"${c.title ? ' title="' + c.title + '"' : ''}>${c.header}</div>`;
   }
   html += `</div>`;
   for (const r of visibleRows) {
-    html += `<div style="display:grid;grid-template-columns:${gridCols};gap:5px;padding:4px 8px;font-size:10px;border-top:1px solid #1a1a2a">`;
+    html += `<div class="tbl-grid-row" style="grid-template-columns:${gridCols}">`;
     for (const c of columns) {
       const align = c.align === 'right' ? 'text-align:right;' : '';
       // Per-column color: explicit `c.color`, or `c.colorize(row, tableColor)`
@@ -3001,11 +3006,11 @@ function renderStatsContent() {
     .sort((a, b) => (b.avgRunGames || 0) - (a.avgRunGames || 0));
 
   const summary = `
-    <div style="background:#1a1a2a;border-radius:4px;padding:8px 10px;margin-bottom:10px;font-size:11px">
-      <div><span style="color:#888">Drafts logged:</span> <span style="color:#ffd700">${drafts.length}</span></div>
-      <div><span style="color:#888">Games played:</span> <span style="color:#ffd700">${totalGames}</span></div>
-      <div><span style="color:#888">Runs ended:</span> <span style="color:#ff8888">${losses}</span> <span style="color:#666;font-size:10px">(no win condition yet)</span></div>
-      <div><span style="color:#888">Cards with ≥3 offers:</span> <span style="color:#ffd700">${rows.length}</span></div>
+    <div class="stat-block">
+      <div><span class="stat-label">Drafts logged:</span> <span class="stat-value">${drafts.length}</span></div>
+      <div><span class="stat-label">Games played:</span> <span class="stat-value">${totalGames}</span></div>
+      <div><span class="stat-label">Runs ended:</span> <span class="stat-value-bad">${losses}</span> <span class="stat-hint">(no win condition yet)</span></div>
+      <div><span class="stat-label">Cards with ≥3 offers:</span> <span class="stat-value">${rows.length}</span></div>
     </div>
   `;
 
@@ -3027,7 +3032,7 @@ function renderStatsContent() {
   const botByRun = rowsWithRunData.slice().reverse();            // ascending = worst first
 
   const empty = drafts.length === 0
-    ? '<div style="color:#888;text-align:center;padding:20px;font-style:italic">No drafts logged yet. Pick cards in the draft screen to start building data.</div>'
+    ? '<div class="tbl-empty">No drafts logged yet. Pick cards in the draft screen to start building data.</div>'
     : '';
 
   document.getElementById('statsContent').innerHTML =
@@ -3098,8 +3103,8 @@ function insightsHtml(drafts, perCardRows) {
           key: 'combo',
           header: 'COMBO',
           fmt: r => r.combo === '(unknown)'
-            ? '<span style="color:#666;font-style:italic">unknown</span>'
-            : r.combo.split('').map(c => `<span class="draft-pip col-${c}" style="padding:0 4px;font-size:10px">${c}</span>`).join(' '),
+            ? '<span class="tbl-note">unknown</span>'
+            : r.combo.split('').map(c => `<span class="draft-pip draft-pip-sm col-${c}">${c}</span>`).join(' '),
           // Override TSV format so we don't get HTML in the copied output.
           tsvFmt: r => r.combo,
           width: '1fr',
@@ -3131,22 +3136,21 @@ function insightsHtml(drafts, perCardRows) {
     const maxCount = Math.max(...Object.values(lossDist));
     // TSV form for the copy button.
     const lossTsv = ['GAME\tLOSSES', ...games.map(g => `${g}\t${lossDist[g]}`)].join('\n');
-    html += `<div style="display:flex;align-items:center;justify-content:space-between;margin:14px 0 4px;gap:8px;flex-wrap:wrap">`;
-    html += `<div style="color:#ff8888;font-size:10px;font-weight:bold;letter-spacing:.1em">LOSSES BY GAME #</div>`;
-    html += `<button onclick="CONTROLLER.copyTableAsTsv('lossHist')" style="background:#1a2a3a;border:1px solid #335;color:#88ccff;font-size:9px;padding:3px 8px;border-radius:3px;cursor:pointer;font-family:inherit">copy</button>`;
+    html += `<div class="tbl-head">`;
+    html += `<div class="tbl-title" style="color:#e0a09a">LOSSES BY GAME #</div>`;
+    html += `<button class="tbl-btn" onclick="CONTROLLER.copyTableAsTsv('lossHist')">copy</button>`;
     html += `</div>`;
-    html += `<div style="color:#666;font-size:9px;margin-bottom:4px;font-style:italic">When did losses happen? Avg loss at game ${avgLossGame} (${totalLosses} loss${totalLosses === 1 ? '' : 'es'} total).</div>`;
+    html += `<div class="tbl-sub">When did losses happen? Avg loss at game ${avgLossGame} (${totalLosses} loss${totalLosses === 1 ? '' : 'es'} total).</div>`;
     html += `<textarea id="statsTsv-lossHist" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" aria-hidden="true">${escapeStatsAttribute(lossTsv)}</textarea>`;
-    html += '<div style="background:#0a0a14;border-radius:3px;padding:6px 8px;display:flex;flex-direction:column;gap:3px">';
+    html += '<div class="tbl-well" style="display:flex;flex-direction:column;gap:3px">';
     for (const g of games) {
       const count = lossDist[g];
       const barWidth = Math.round((count / maxCount) * 100);
-      html += `<div style="display:flex;align-items:center;gap:6px;font-size:10px">
-        <div style="width:48px;color:#aaa">Game ${g}</div>
-        <div style="flex:1;background:#1a0a14;border-radius:2px;overflow:hidden;height:14px">
-          <div style="background:#cc4444;height:100%;width:${barWidth}%"></div>
-        </div>
-        <div style="width:24px;text-align:right;color:#ddd">${count}</div>
+      // Only the bar WIDTH is inline — it is the datum being visualised.
+      html += `<div class="hist-row">
+        <div class="hist-label">Game ${g}</div>
+        <div class="hist-track"><div class="hist-fill" style="width:${barWidth}%"></div></div>
+        <div class="hist-count">${count}</div>
       </div>`;
     }
     html += '</div>';
@@ -3244,11 +3248,11 @@ function insightsHtml(drafts, perCardRows) {
   if (drafts.length > 0) {
     const BATCH_SIZE = 10;
     const numBatches = Math.ceil(drafts.length / BATCH_SIZE);
-    html += `<div style="display:flex;align-items:center;justify-content:space-between;margin:14px 0 4px;gap:8px;flex-wrap:wrap">`;
-    html += `<div style="color:#ffaa66;font-size:10px;font-weight:bold;letter-spacing:.1em">RAW DRAFTS — BY BATCH</div>`;
+    html += `<div class="tbl-head">`;
+    html += `<div class="tbl-title" style="color:#e6b07a">RAW DRAFTS — BY BATCH</div>`;
     html += `</div>`;
-    html += `<div style="color:#666;font-size:9px;margin-bottom:6px;font-style:italic">Pick-by-pick TSV. One row per pick: draft_id, pick_n, picked, offered (3 cards, pipe-joined), colors_so_far, final_colors, result, games. Each batch ≈ ${BATCH_SIZE} drafts. Size shown on button — if it shows "copied!" but pasting truncates, batch is too big for clipboard transport.</div>`;
-    html += `<div style="background:#0a0a14;border-radius:3px;padding:8px;display:flex;flex-wrap:wrap;gap:6px">`;
+    html += `<div class="tbl-sub">Pick-by-pick TSV. One row per pick: draft_id, pick_n, picked, offered (3 cards, pipe-joined), colors_so_far, final_colors, result, games. Each batch ≈ ${BATCH_SIZE} drafts. Size shown on button — if it shows "copied!" but pasting truncates, batch is too big for clipboard transport.</div>`;
+    html += `<div class="tbl-well" style="display:flex;flex-wrap:wrap;gap:6px">`;
     for (let b = 0; b < numBatches; b++) {
       const startIdx = b * BATCH_SIZE;
       const endIdx = Math.min(startIdx + BATCH_SIZE, drafts.length);
@@ -3259,7 +3263,7 @@ function insightsHtml(drafts, perCardRows) {
       // larger or smaller depending on card name lengths.
       const batchTsv = buildDraftsBatchTsv(drafts, startIdx, endIdx);
       const sizeKb = (batchTsv.length / 1024).toFixed(1);
-      html += `<button onclick="CONTROLLER.copyDraftsBatch(${startIdx},${endIdx})" style="background:#1a2218;border:1px solid #4a5a3a;color:#ccddaa;font-size:10px;padding:5px 10px;border-radius:3px;cursor:pointer;font-family:inherit">drafts ${startId}–${endId} (${sizeKb}KB)</button>`;
+      html += `<button class="tbl-btn" onclick="CONTROLLER.copyDraftsBatch(${startIdx},${endIdx})">drafts ${startId}–${endId} (${sizeKb}KB)</button>`;
     }
     html += `</div>`;
   }
