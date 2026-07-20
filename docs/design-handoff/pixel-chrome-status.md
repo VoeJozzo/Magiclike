@@ -45,7 +45,7 @@ use `StyleBoxTexture`). 18 tiles in `reference/html-proto/assets/ui/`.
 | **Boon / land modal** | ✅ reskinned — now the SAME `.picker-*` kit as draft |
 | **Rewards** | ✅ inherits the kit (zero reward-specific chrome written); **live-verified** end-to-end (real win → real reward → tiles); kind-sampling caveat in TODO 3 |
 | **Search (in-game tutor)** | ✅ folded into the kit (compact/centered overrides kept) |
-| **Settings** | ⛔ BLOCKED — needs a pixel dropdown from the design agent (see `settings-ui-gap.md`) |
+| **Settings** | ⛔ BLOCKED — needs pixel form controls from the design agent (see `control-gaps.md`) |
 | **Board** | 🟡 chrome pass + review round done — full chrome (`b1e5ad9e`), then review fixes: de-striped battlefield (dropped woodbar `fill`), uniform phase chips (dropped misaligned `ctrl_segmented`), unified mana pool onto `renderManaSymbols` (was a divergent `.mp*` letter system), and a **desktop layout media query** (base was mobile-only, no `@media`; desktop now caps battlefields to ~2 rows + centers the board — mobile untouched). All verified live via computed styles/measurements. Still worth a human eyeball on final aesthetics |
 
 All 5 card-picker shells (draft/boon/reward/search) + the map header (via `.lg`) COMPOSE
@@ -106,7 +106,7 @@ one `.picker-*` kit — no forks. Change the dossier once, all follow.
    middle path is extracting shared LOGIC helpers (event-binding/focus/cleanup), not a factory.
 
 ## Handoffs to OTHER workflows (not this one)
-- **Settings pixel dropdown** → design agent (`settings-ui-gap.md`).
+- **Settings pixel dropdown** → design agent (`control-gaps.md`).
 - **Node icons + boss node icon** → pixellab art pipeline. The design's SVG node icons were
   REJECTED; node icons are placeholder text; the boss node is still an emoji.
 
