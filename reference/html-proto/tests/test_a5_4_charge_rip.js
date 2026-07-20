@@ -68,7 +68,6 @@ console.log('=== A5-4: out-of-charges rip fixes up cached slot pointers ===');
   const merged = G.you.battlefield.find(c => c.iid === baseIid);
   check('merged base moved to your battlefield', !!merged, merged ? 'iid=' + merged.iid : 'NOT FOUND');
 
-  // Core regression: merged.slotIdx must stay in bounds after the rip.
   check('merged slot pointer in bounds', merged && merged.slotIdx >= 0 && merged.slotIdx < slots.length,
     merged ? 'slotIdx=' + merged.slotIdx + ' len=' + slots.length : 'no merged card');
   check('slots[merged.slotIdx] IS the merged base card', merged && slots[merged.slotIdx] && slots[merged.slotIdx].tplId === baseTpl,
@@ -78,7 +77,6 @@ console.log('=== A5-4: out-of-charges rip fixes up cached slot pointers ===');
   check('Stapler slot removed', !slots.some(s => s.tplId === 'stapler'));
   check('slots length: +1 mint, -1 stapler rip', slots.length === slotsBefore, 'before=' + slotsBefore + ' after=' + slots.length);
 
-  // No played-slot pointer is left out of range after the remap.
   const stalePlayed = [...G.you.playedSlotIdxs].filter(i => i >= slots.length);
   check('playedSlotIdxs has no out-of-range pointer', stalePlayed.length === 0, 'stale=' + JSON.stringify(stalePlayed));
 })();

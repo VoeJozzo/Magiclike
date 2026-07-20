@@ -280,19 +280,13 @@ function migrateSlotTplIds(slots) {
 
 const MIGRATIONS = {
   // v1->v2 tplId rename. The renames must reach every place a tplId actually
-  // persists on a SAVED runState. Git-verified at df2fd38^ (where SAVE_VERSION
-  // was 1 and save() stored {version, runState}): those places are the live
-  // slots; the mid-game slots snapshot (a deep-clone of slots taken at game
-  // start); a pending transform reward's replacementPack (two shapes — a
-  // 'mixed'-phase candidate, and the committed 'transformPick' phase); and the
-  // run modifier (boon) id (e.g. cityOfBrass -> city_of_brass). The PREVIOUS
-  // migration was written against a PHANTOM shape: it renamed four fields that
-  // never existed on a persisted runState (pendingNeowModifier / currentPack /
-  // youPicks / oppDecks — youPicks/currentPack live on DRAFT's in-memory state,
-  // not the save) and MISSED the snapshot, so loading an old mid-game save
-  // resurrected dead tplIds and the next deck build threw "Unknown card",
-  // wiping the run (audit A9-1). (A9-10's later version-gap miss is a non-issue
-  // per Joe — solo player, two-week-old saves — so SAVE_VERSION stays 2.)
+  // persists on a SAVED runState: the live slots; the mid-game slots snapshot
+  // (a deep-clone of slots taken at game start); a pending transform reward's
+  // replacementPack (two shapes — a 'mixed'-phase candidate, and the
+  // committed 'transformPick' phase); and the run modifier (boon) id (e.g.
+  // cityOfBrass -> city_of_brass). (A9-10's later version-gap miss is a
+  // non-issue per Joe — solo player, two-week-old saves — so SAVE_VERSION
+  // stays 2.)
   1: (blob) => {
     const rs = blob.runState || {};
     migrateSlotTplIds(rs.slots);
@@ -1151,8 +1145,7 @@ function pickRewardCandidate(idx) {
   }
 }
 
-// Player chose a replacement card from the transform pack. Replace the slot
-// (no stickers carry over — fresh slot) and clear the pending reward.
+// No stickers carry over onto the replacement — a fresh slot, by design.
 function pickTransformReplacement(tplId) {
   if (!runState || !runState.pendingReward) return;
   if (runState.pendingReward.phase !== 'transformPick') return;

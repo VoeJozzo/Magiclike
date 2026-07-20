@@ -187,9 +187,8 @@ console.log('\n=== 6 artifact lands (WUBRG + C), mana DERIVED from basic subtype
 
 console.log('\n=== end-to-end: cast awakenVault through the real action flow ===');
 (() => {
-  // The type-change spells are the first cards to use a top-level target:'permanent'
-  // step — drive a full executeAction cast → resolve to prove that path works,
-  // not just the effect handler in isolation.
+  // Drive a full executeAction cast → resolve to prove the target:'permanent'
+  // step works end-to-end, not just the effect handler in isolation.
   RUN.start({ cards: Array(12).fill('plains'), colors: ['W'] }, null);
   RUN.startNextGame();
   const G = setup.startMainPhase('you');
@@ -254,8 +253,6 @@ console.log('\n=== #4: the AI has tooling — it casts a neutralize spell at an 
 console.log('\n=== staple same-class UNION: Artifact co-type rides along ===');
 (() => {
   const vanilla = Object.keys(CARDS).find(id => hasType(CARDS[id], 'Creature') && !isUndraftable(CARDS[id]) && CARDS[id].cost && !(Array.isArray(CARDS[id].types) && CARDS[id].types.filter(t => isCardTypeTag(t)).length > 1) && !CARDS[id].triggers && !CARDS[id].abilities);
-  // Artifact creature as the STAPLE onto a vanilla creature base (the direction
-  // that used to drop Artifact — base had no types[]).
   const syn = ENGINE.synthesizeStapledTemplate(vanilla, ['copper_golem']);
   check('Cr base + artifact-Cr staple → merged is BOTH Artifact and Creature',
     hasType(syn, 'Artifact') && hasType(syn, 'Creature') && governingType(syn) === 'Creature');
@@ -268,9 +265,9 @@ console.log('\n=== staple same-class UNION: Artifact co-type rides along ===');
   const synArtLand = ENGINE.synthesizeStapledTemplate(vanilla, ['gilded_seat']);
   check('Cr base + artifact-Land staple → Artifact rides, Land collapses',
     hasType(synArtLand, 'Artifact') && hasType(synArtLand, 'Creature') && !hasType(synArtLand, 'Land'));
-  // Post id-normalization every card carries types[], so the merge legitimately
-  // has one too — the invariant is it stays a plain Creature with no
-  // Artifact/Enchantment co-type bolted on, governing as Creature.
+  // Every card carries types[], so the merge legitimately has one too — the
+  // invariant is it stays a plain Creature with no Artifact/Enchantment
+  // co-type bolted on, governing as Creature.
   const vanilla2 = Object.keys(CARDS).find(id => id !== vanilla && hasType(CARDS[id], 'Creature') && !isUndraftable(CARDS[id]) && CARDS[id].cost && !(Array.isArray(CARDS[id].types) && CARDS[id].types.filter(t => isCardTypeTag(t)).length > 1) && !CARDS[id].triggers && !CARDS[id].abilities);
   const synPlain = ENGINE.synthesizeStapledTemplate(vanilla, [vanilla2]);
   check('vanilla Cr + vanilla Cr staple → governs Creature, no spurious Artifact co-type',

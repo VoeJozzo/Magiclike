@@ -53,8 +53,6 @@ for (const cond of GENERATOR_CONDITIONS) {
   check(desc + ': has sourceLive boolean',
     typeof cond.sourceLive === 'boolean');
   check(desc + ': has text', typeof cond.text === 'string' && cond.text.length > 0);
-  // Composable shape: valid event + a condition array that classifies
-  // back to its archetype id.
   check(desc + ': event is a recognized trigger event',
     VALID_TRIGGER_EVENTS.has(cond.event));
   check(desc + ': condition is an array', Array.isArray(cond.condition));
@@ -62,9 +60,7 @@ for (const cond of GENERATOR_CONDITIONS) {
     triggerArchetype({event: cond.event, condition: cond.condition}) === cond.id);
 }
 
-// One roll through the real build flow (the only production path): pick a
-// condition from the offered three, then an effect from the three offered
-// for it, assemble.
+// The only production path for assembling a generated trigger.
 function rollAssembled() {
   const conds = generateConditionOptions();
   const cond = conds[Math.floor(Math.random() * conds.length)];

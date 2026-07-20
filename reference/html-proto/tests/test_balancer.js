@@ -62,8 +62,6 @@ console.log('\n=== bleach: apply_sticker(set_color C, folds cost) + move_card(bf
     !G.you.battlefield.some(c => c.iid === inst.iid) && G.you.exile.some(c => c.iid === inst.iid));
   check('set_color sticker persisted on the slot (the "Forever" bleaching)',
     RUN.getSlots()[0].stickers.some(s => s && s.kind === 'set_color'));
-  // The upside: rebuilding the card from its run-slot yields a colorless cost
-  // (castable off any mana in future games).
   const rebuilt = ENGINE.makeCard(CR, RUN.getSlots()[0].stickers, 0);
   check('rebuilt-from-slot card has colorless cost (no colored pips)',
     !['W', 'U', 'B', 'R', 'G'].some(k => rebuilt.cost && rebuilt.cost[k]),

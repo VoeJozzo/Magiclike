@@ -311,13 +311,9 @@ function showCardBrowser() {
   document.getElementById('cardBrowserModal').scrollTop = 0;
 }
 
-// Start-screen button styles, named so the factory below is the single place
-// button construction (create → text → style → onclick → append) lives.
-// Start-screen button variants. These map to CSS classes rather than inline
-// style strings: inline styles beat the stylesheet, which pinned these buttons
-// to the old flat look and blocked the pixel-chrome tiles. Styling now lives in
-// one place (.start-btn* in magiclike_engine.html). `discard` and `secondary`
-// were visually identical muted small buttons, so they share `start-btn-minor`.
+// Start-screen button variants map to CSS classes, not inline style strings —
+// inline styles would override the stylesheet's .start-btn* rules. `discard`
+// and `secondary` are both muted small buttons, so they share `start-btn-minor`.
 const START_BTN_CLASS = {
   primary:   'start-btn start-btn-primary',
   cube:      'start-btn start-btn-cube',
@@ -631,7 +627,7 @@ function newRun(mode) {
   clearTransientGameUi();
   Modal.hide('gameover');
   pendingDraftMode = mode || 'classic';
-  // The boon is now the draft's pick #0 (see DRAFT.startDraft), so every mode
+  // The boon is the draft's pick #0 (see DRAFT.startDraft), so every mode
   // -- including Desert Cube (no boon) -- goes straight into the draft screen.
   DRAFT.startDraft(pendingDraftMode);
   inDraft = true;
@@ -1083,10 +1079,9 @@ function renderMap() {
   levelsContainer.innerHTML = '';
   // Bottom-up render: root at bottom, exit at top (climbing-the-tower feel).
   const levels = Object.keys(byLevel).map(Number).sort((a, b) => b - a);
-  // Placeholder text glyphs for node icons; real pixel-art icons come from the
-  // pixellab pipeline later (the design's SVG icons were rejected in review).
-  // Boss nodes get NO face glyph: the boss tile + corner gem already mark them,
-  // and a letter on top was a third, redundant boss signal.
+  // Placeholder text glyphs for node icons. Boss nodes get NO face glyph: the
+  // boss tile + corner gem already mark them, and a letter on top would be a
+  // third, redundant boss signal.
   const PLACEHOLDER_ICON = { combat: 'C', elite: 'E', shop: '$', event: '?', rest: 'R', boss: '' };
   // Tooltip combines type + color (e.g., "Red Draft Deck"). Constructed nodes use deck name.
   const COLOR_NAME = {W:'White', U:'Blue', B:'Black', R:'Red', G:'Green'};
@@ -2689,8 +2684,8 @@ function renderTableWithToolbar(opts) {
 
   // Presentation lives in CSS (.tbl-*); only `color` is inlined, because it is
   // the one genuinely DYNAMIC value here — each table passes its own accent, so
-  // no stylesheet rule could know it. Everything else was static and is now a
-  // class, so the panels restyle from one place.
+  // no stylesheet rule could know it. Everything else is a class, so the panels
+  // restyle from one place.
   let html = `<div class="tbl-head">`;
   html += `<div class="tbl-title" style="color:${color}">${title.toUpperCase()}</div>`;
   html += `<div class="tbl-actions">`;
@@ -2935,7 +2930,7 @@ function renderStatsContent() {
         picks: s.picks,
         offers: s.offers,
         pickRate: s.pickRate,
-        pickOverRate: s.winRate,        // renamed in the UI; same number
+        pickOverRate: s.winRate,        // same number; UI label differs
         avgRunGames,                     // null if never picked
         avgPickPos,                      // null if never picked
         runSampleSize: runs.length,

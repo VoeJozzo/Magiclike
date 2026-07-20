@@ -97,14 +97,11 @@ console.log('\n=== payMana prefers a fixed land over City of Brass for a needed 
 console.log('\n=== staple: creature + land gains a tap-for-mana ability ===');
 (() => {
   if (!ENGINE.synthesizeStapledTemplate) { check('synthesizeStapledTemplate available', false); return; }
-  // A vanilla creature + forest → gains a {T}: Add {G} ability.
   const cr = Object.values(CARDS).find(c => hasType(c, 'Creature') && !c.abilities && !isUndraftable(c));
   const merged = ENGINE.synthesizeStapledTemplate(cr.tplId, ['forest']);
   const manaAbs = (merged.abilities || []).filter(ab => ab.cost && ab.cost.tap && ab.effects && ab.effects[0] && ab.effects[0].kind === 'add_mana');
   check('vanilla creature + forest gains a tap-for-mana ability', manaAbs.length === 1, 'count=' + manaAbs.length);
   check('the gained ability produces {G}', JSON.stringify(ENGINE.landProducibleColors({ types: ['Land'], abilities: manaAbs })) === JSON.stringify(['G']));
-  // Card text is regenerated from the merged abilities by describeCardText,
-  // not hand-concatenated.
   check('describeCardText regenerates the gained mana ability text', /\{T\}.*add \{G\}/i.test(describeCardText(merged)), JSON.stringify(describeCardText(merged)));
 })();
 
@@ -112,9 +109,9 @@ console.log('\n=== City of Brass is a boon: out of draft, but a LEGAL splice sta
 (() => {
   // City of Brass is the boon pool's any-color land (draft pick #0), so it is
   // undraftable — but splice exclusion is a SEPARATE axis (`stapleable:false`),
-  // and boons without that flag are legal splice components (ratified
-  // 2026-07-20). Phylactery carries the flag (its slot-keyed protection can't
-  // see stapled components), so it pins the axis actually doing the work.
+  // and boons without that flag are legal splice components. Phylactery
+  // carries the flag (its slot-keyed protection can't see stapled
+  // components), so it pins the axis actually doing the work.
   check('City of Brass is a boon (undraftable)', isUndraftable(CARDS.city_of_brass));
   const cr = Object.values(CARDS).find(c => hasType(c, 'Creature') && !c.abilities && !isUndraftable(c));
   check('a boon without stapleable:false is accepted as a splice staple',

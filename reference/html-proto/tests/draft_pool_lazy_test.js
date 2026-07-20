@@ -1,9 +1,6 @@
 // draftPool() / oppPool() must be lazy: CARDS is empty at module-load time,
 // so a pool computed eagerly would freeze to an empty array and the draft
 // screen would offer no cards.
-//
-// This test verifies the pools have content after the engine and cards
-// have loaded, catching any regression to eager evaluation.
 
 const setup = require('./_setup');
 setup.loadEngine();
@@ -39,17 +36,13 @@ console.log('=== draftPool: rollTransformPack returns a non-empty pack ===');
 
 console.log('\n=== draftPool: matches the documented filter ===');
 {
-  // Re-derive the expected pool here and compare counts. Must match draftPool()'s
-  // real predicate: draftable (not a boon/boss), and either non-land OR a
-  // NONBASIC land. Only BASIC lands are excluded — they're auto-allocated after
-  // the draft; every nonbasic land (artifact lands, utility lands like Deepseam
-  // Quarry) drafts like any other pick.
+  // Must match draftPool()'s real predicate. Only BASIC lands are excluded —
+  // they're auto-allocated after the draft; every nonbasic land (artifact
+  // lands, utility lands like Deepseam Quarry) drafts like any other pick.
   const expected = Object.keys(CARDS).filter(id => {
     const c = CARDS[id];
     return !isUndraftable(c) && !hasType(c, 'Basic');
   });
-  // Pull pack multiple times and union the unique tplIds — should be a
-  // subset of expected, and over many rolls should cover most of it.
   const seen = new Set();
   for (let i = 0; i < 200; i++) {
     for (const id of DRAFT.rollTransformPack([])) seen.add(id);

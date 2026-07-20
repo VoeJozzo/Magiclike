@@ -181,7 +181,7 @@ function render() {
   const btnDone = document.getElementById('btnDone');
   // visibility, not display: the button keeps its row in the .acts column even
   // when hidden, so the center bar doesn't grow/shrink as you flip through
-  // phases (it used to jump when Done appeared at declare-attackers).
+  // phases.
   btnDone.style.visibility = showDone ? 'visible' : 'hidden';
   btnDone.textContent = G.phase === 'COMBAT_ATTACK' ? 'Done Attacking' : 'Done Blocking';
 
@@ -578,8 +578,8 @@ function drawTargetLines() {
   });
 }
 
-// Valence → line color (red=harm, green=benefit, orange=neutral). Post-collapse
-// (§3.5/§3.8) live kinds; move_card and pump are shape-dependent (draw vs bounce;
+// Valence → line color (red=harm, green=benefit, orange=neutral). §3.5/§3.8
+// live effect kinds; move_card and pump are shape-dependent (draw vs bounce;
 // buff vs weaken) — classified by from/to and sign in classifyValence, not by
 // flat membership.
 const HARMFUL_KINDS = new Set([
@@ -771,8 +771,8 @@ function renderManaPool(id, mana) {
   const el = document.getElementById(id);
   el.innerHTML = '';
   // Route pool pips through the ONE pip renderer (renderManaSymbols → .mana-*
-  // SVG art) instead of the old letter-in-a-colored-circle .mp* divs. Single
-  // source of truth for mana-symbol art — see the .mpool .mana sizing rule.
+  // SVG art) — single source of truth for mana-symbol art; see the .mpool
+  // .mana sizing rule.
   let html = '';
   for (const c of ['W','U','B','R','G','C']) {
     for (let i=0; i<(mana[c]||0); i++) html += renderManaSymbols('{' + c + '}');
@@ -782,9 +782,8 @@ function renderManaPool(id, mana) {
 
 // One option button for the choice-modal prompts (pick-a-number / symmetricize
 // / optional-cost). Takes a CLASS, not an inline style string: inline styles beat
-// the stylesheet, which is what kept these on the old flat look and blocked the
-// pixel-chrome tiles (the same trap START_BTN_STYLE fell into). Colour comes from
-// the modal's --picker-accent-text, so each prompt keeps its signature accent
+// the stylesheet, which would block the pixel-chrome tile styling. Colour comes
+// from the modal's --picker-accent-text, so each prompt keeps its signature accent
 // without per-call-site colour strings, and hover/press come from the tile art
 // instead of a hand-rolled background swap. `html` is trusted markup (our own data).
 function makeChoiceButton(html, extraClass, onclick) {

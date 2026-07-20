@@ -113,8 +113,8 @@ globalThis.PixelLint = (() => {
   // shadow bug used a uniform 2 on a 72x27 tile (2+2=4 fits both axes, so it
   // passes here) when the bottom inset should have been 2 + black_off. Catching
   // that needs the consumer's slice compared against the generator's intended
-  // values (BTN_SLICE / WOODBAR_SLICE in tools/bake/bake_ui_tiles.py), which
-  // means the bake emitting them as a manifest the linter can read. Not done.
+  // values — sliceSpecMatch below does that, reading the bake-emitted manifest
+  // (assets/ui/_slices.json, from BTN_SLICE / WOODBAR_SLICE in bake_ui_tiles.py).
   function parseBorderImages(cssText) {
     // BLIND SPOT: only matches declarations that END in a repeat keyword
     // (round/stretch/repeat/space) with plain-integer slice values. A valid

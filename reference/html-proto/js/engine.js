@@ -2150,7 +2150,7 @@ function numToSev(n) { return SEVERITY_LADDER[Math.max(1, Math.min(4, n)) - 1]; 
 // affect_creature path collects all leavers first (pass 1) and emits them
 // together afterwards with the whole batch as extraSources (pass 2) —
 // checkDeaths' simultaneity contract. Single-target callers pass no batch
-// and emit immediately, exactly as before. sourceIid follows the A3-11
+// and emit immediately. sourceIid follows the A3-11
 // attribution rule per-arm: undefined for destroy (causality is killedBy),
 // the effect's source for bounce/exile.
 function deferOrEmitLeave(batch, card, controller, destZone, sourceIid) {
@@ -4406,9 +4406,8 @@ function drainTriggers() {
     // is the seam every trigger passes exactly once (see resolveTrigger's
     // header for why the increment moved out of resolution).
     G.triggerChainDepth = (G.triggerChainDepth || 0) + 1;
-    // ability_triggered (Wave 2, Joe's spec — built at his direction after
-    // the MTG-model review settled the semantics): announce every triggered
-    // ability at FIRE time, before any fizzle check — per MTG 603, an
+    // ability_triggered: announce every triggered ability at FIRE time,
+    // before any fizzle check — per MTG 603, an
     // ability that triggers-then-fizzles-at-targeting still TRIGGERED. This
     // take-up point is the one seam every fired trigger passes through
     // (auto-pick, human-prompt, and the stackable:false immediate arm), so
@@ -5415,7 +5414,7 @@ function moveToGraveyard(card, controller, batch) {
   // (Archdemon of Bargains) fire after.
   // A4-4: mass-scope destroy defers this emit into `batch` (see
   // deferOrEmitLeave) so simultaneous deaths see each other; single-target
-  // callers pass no batch and emit immediately, as always.
+  // callers pass no batch and emit immediately.
   deferOrEmitLeave(batch, card, controller, 'graveyard', undefined);
 }
 
@@ -5769,9 +5768,9 @@ function leavesPlayPreservingBuffs(card) {
 //   - G.blockers entries whose KEY (the blocker) is the leaving iid: the
 //     key is retired to a 'gone:<iid>' tombstone that no live card can
 //     findCard-match, but the ENTRY survives — an attacker that was blocked
-//     STAYS blocked when its blocker leaves combat (MTG 509/510.1c; the
-//     pre-existing engine behavior, which dealCombatDamage realizes as
-//     wasBlocked=true with zero living blockers). Deleting the entry would
+//     STAYS blocked when its blocker leaves combat (MTG 509/510.1c;
+//     dealCombatDamage realizes this as wasBlocked=true with zero living
+//     blockers). Deleting the entry would
 //     wrongly flip the attacker to unblocked; keeping the live key would
 //     let a bounced-and-re-cast blocker re-inherit its block (the A2-3
 //     symmetric hole).
@@ -6855,7 +6854,7 @@ function doActivateAbility(who, cardIid, abilityIdx, targets, sacIid) {
   // non-mana abilities — provisional semantics per plan-stackable.md §6 Q1
   // (drain-time-immediate recommended); subject to Joe's design pass;
   // DORMANT — nothing is unstackable yet (every shipped ability defaults
-  // stackable). This is byte-for-byte today's pre-A3-2 inline resolution.
+  // stackable).
   runAbilityEffects(entry);
   if (!isMana) {
     log(`${G[who].name} activates ${card.name}${targets && targets[0] ? ' on ' + targets[0].label : ''}.`, who === 'you' ? 'sp' : 'ai');
@@ -7089,7 +7088,7 @@ function doEdictChoice(who, iid) {
   log(`${pname(who)} chooses ${picked.label}.`, 'sp');
   // A4-23 leg-1: shared replay (re-defers if a trailing effect opens another
   // human pause). ctx.chosen is set, so non-self trailing effects (sacrifice/
-  // annihilate/rip) operate on the pick exactly as before.
+  // annihilate/rip) operate on the pick.
   resumeTrailingEffects(ctx, p.trailingEffects);
   drainTriggers();
 }

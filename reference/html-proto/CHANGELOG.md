@@ -2,7 +2,7 @@
 
 Version history for the html-proto rules engine, newest entries appended on each version bump. (Moved out of `CLAUDE.md` on 2026-06-02 to keep that doc navigable; see `CLAUDE.md` for the current `VERSION`, the module map, and structure.)
 
-**Current: `v2.2.42`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
+**Current: `v2.2.43`** (source of truth: `js/main.js` `const VERSION` — keep this line in sync on bump). v2.0.0 was the
 Slice 3 effects/targeting refactor (atomic-effect collapse, unified `target()`
 step with restriction `target_filter`, `move_card`, mana-as-ability, sticker
 pipeline, splice harmonization). v2.0.1: post-refactor bug-fix sweep — boss
@@ -3186,3 +3186,14 @@ in JSON" (authored values are kept but discouraged per cards/CLAUDE.md),
 card_text_test token count-wording claim (1 renders "a"), and
 pool_assay's "bucket names" metric header (names died v2.2.22; it counts
 seed cards). Suite 151 files / 2984 green; lint clean.
+
+v2.2.43: comment-doctrine pass over the 35 code files PR #150 added or
+edited (incl. tools/pixel-lint.js and the Python tile baker; same
+editor+adversarial-reviewer machinery as v2.2.40/42). 21 files edited —
+16 comments deleted, 32 trimmed; zero over-deletions, zero code drift.
+Three contradictions verified code-right and truth-fixed: pixel-lint's
+"Not done" claim about slice-spec checking (sliceSpecMatch does it),
+types.js's hasType doc stranded above isUndraftable (rehomed), and
+pool_assay's "top-card recurrence" census claim (never implemented — the
+string only ever existed in the header). Suite 151 files / 3004 green;
+lint clean.

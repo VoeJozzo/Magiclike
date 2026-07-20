@@ -39,7 +39,7 @@ console.log('=== A5-5: cloning a half-used Stapler photocopies its REMAINING cha
 console.log('\n=== control: cloning a non-charges slot adds NO charges field (guard is a pure superset) ===');
 (() => {
   RUN.start({ cards: Array(5).fill('mountain'), colors: ['R'] }, 'stapler');
-  const after = cloneSlot(0);   // slot 0 is a mountain — no charges
+  const after = cloneSlot(0);
   const clone = after[1];
   check('mountain clone inserted', clone && clone.tplId === 'mountain', clone ? clone.tplId : 'none');
   check('mountain clone has NO charges field', clone && !('charges' in clone),
@@ -61,8 +61,7 @@ console.log('\n=== A5-5 review: a charged clone Stapler SURVIVES the original ri
   setup.startMainPhase('you');
   G.you.mana = { C: 9, W: 9, U: 9, B: 9, R: 9, G: 9 };
 
-  // Two independent Stapler slots: the original (1 charge, about to rip) and
-  // a clone right after it (3 charges). Set up directly to avoid the reward/map flow.
+  // Set up directly (not via cloneSlot) to avoid the reward/map flow.
   const slots = RUN.getSlots();
   const origIdx = slots.findIndex(s => s.tplId === 'stapler');
   slots.splice(origIdx + 1, 0, { tplId: 'stapler', stickers: [], charges: 3 });

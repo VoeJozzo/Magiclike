@@ -16,7 +16,7 @@
 //   3. HOOK HISTOGRAM — strong synergy edges (weight >= 2) per pool card.
 //                       The "vanilla ocean" count: cards with zero strong
 //                       edges can never connect anything.
-//   4. TRIBE CENSUS   — members / payoffs / top-card recurrence per tribe.
+//   4. TRIBE CENSUS   — members / payoffs per tribe.
 //
 // History: docs/plans/plan-bucket-draft.md; the measured findings behind the
 // metric choices are in the Depth Assay session notes (2026-07-07): member

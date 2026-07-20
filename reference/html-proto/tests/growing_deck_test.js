@@ -107,8 +107,6 @@ function pickThroughBoonPhase() {
 
 // --- §5 growth weight: addBucket offered while under target, gone at target --
 {
-  // Fresh minimal growing run far under target: growth candidates should
-  // appear in (nearly) every offer.
   DRAFT.startDraft('growing');
   pickThroughBoonPhase();
   for (let i = 0; i < 5; i++) DRAFT.pickBucketOffer(0);

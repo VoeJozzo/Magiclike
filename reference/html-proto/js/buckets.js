@@ -260,7 +260,7 @@ function analyze(tpl) {
     // provide etb is priced separately and automatically by the specificity
     // weighting (idf) in the edge function — measured offer histograms:
     // The Processional 51% of offers vs. an ETB-payoff deck pre-idf, 14%
-    // with it (one identity theme among several, which is correct).
+    // with it (one identity theme among several).
     bump(provides, 'etb', cost <= 3 ? 0.75 : 0.4);
   }
   if (isSpellCard) bump(provides, 'spellcast', 1);

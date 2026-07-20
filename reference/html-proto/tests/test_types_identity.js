@@ -105,7 +105,7 @@ console.log('\n=== multi-type governance + carry-through (the Phase-4 generaliza
   const robot = { types: ['Creature', 'Construct'] };
   check('robot hasType both Creature and Construct', hasType(robot, 'Creature') && hasType(robot, 'Construct'));
 
-  // RISK #1 (QA): the Legendary supertype must survive an explicit types[] — else
+  // The Legendary supertype must survive an explicit types[] — else
   // a legendary multi-type card silently loses the legend rule.
   const legendRobot = { types: ['Artifact', 'Creature'], legendary: true };
   check('legendary + types[]: Legendary tag unioned in, NOT dropped',

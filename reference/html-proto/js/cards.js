@@ -1,14 +1,8 @@
-// Card data registry + async loader.
-//
-// Card templates used to live inline in this file as one giant CARDS = {...}
-// object literal. They now live in cards/<tplId>/card.json — one folder per
-// card. This file:
-//   - declares CARDS as an empty object at module-load time
-//   - exposes loadCards() which fetches cards/_manifest.json + each
-//     card.json in parallel and populates CARDS
-//   - keeps the supporting registries that don't fit the per-card model
-//     (TOKENS, KEYWORDS, STICKERS, EMPOWER_FIELDS, KEYWORD_DISPLAY,
-//     KEYWORD_STICKER_WEIGHTS) inline below
+// Card data registry + async loader. Card templates live in
+// cards/<tplId>/card.json — one folder per card; this file declares CARDS as
+// an empty object, exposes loadCards() to populate it from the manifest, and
+// holds the supporting registries that don't fit the per-card model (TOKENS,
+// KEYWORDS, STICKERS, EMPOWER_FIELDS, KEYWORD_DISPLAY, KEYWORD_STICKER_WEIGHTS).
 //
 // CARDS starts empty. Every consumer reads it via `CARDS[tplId]` at runtime
 // (never at module-load), so the empty-initial state is fine — by the time
@@ -422,7 +416,7 @@ STICKERS['scarified'] = {
   text: 'When this enters the battlefield, its controller loses 1 life.',
   appliesTo: (c) => hasType(c, 'Creature'),
   stackable: true,         // multiple scarifications stack — each fires on ETB
-  weight: 0,               // not in random pools
+  weight: 0,
   kind: 'trigger',
   trigger: {
     event: 'card_zone_change',

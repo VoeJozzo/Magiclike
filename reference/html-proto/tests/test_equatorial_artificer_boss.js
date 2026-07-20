@@ -96,7 +96,7 @@ console.log('\n=== Artifice Triumphant neutralizes permanently and grants reanim
   ENGINE.executeAction('you', { type: 'activateAbility', cardIid: knight.iid, abilityIdx });
   check('Equatorial tapped and Ingenuity let {C}{C} pay the white activation cost',
     equator.tapped && G.you.mana.C === 1);
-  settle(G);   // resolves the granted ability off the stack
+  settle(G);
   check('target is a creature again until end of turn',
     hasType(knight, 'Artifact') && hasType(knight, 'Creature'));
   const slot = RUN.getSlots()[0];
@@ -126,7 +126,7 @@ console.log('\n=== Artifice Triumphant colorless activation is intentionally fre
   check('colorless target can reactivate with no mana available',
     ENGINE.isLegalAction('you', { type: 'activateAbility', cardIid: colossus.iid, abilityIdx }));
   ENGINE.executeAction('you', { type: 'activateAbility', cardIid: colossus.iid, abilityIdx });
-  settle(G);   // resolves the granted ability off the stack
+  settle(G);
   check('free activation makes the colorless target a creature until end of turn',
     hasType(colossus, 'Artifact') && hasType(colossus, 'Creature'));
   check('colors_of_source cannot be paid without a source-card resolution',
@@ -156,7 +156,7 @@ console.log('\n=== Artifice Triumphant target shows the activated-ability glow a
     activationGlowAvailable(colossus, 'opp') === false);
   const abilityIdx = (colossus.abilities || []).findIndex(ab => ab._sticker_ability_id === 'artifice_triumphant_reanimate');
   ENGINE.executeAction('you', { type: 'activateAbility', cardIid: colossus.iid, abilityIdx });
-  settle(G);   // resolves the granted ability off the stack
+  settle(G);
   check('glow drops once it is already a Creature again (re-activation is a no-op)',
     activationGlowAvailable(colossus, 'you') === false && hasType(colossus, 'Creature'));
 })();

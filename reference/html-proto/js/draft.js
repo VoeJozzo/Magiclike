@@ -68,7 +68,7 @@ function startDraft(mode) {
     boon: null,
   };
   // Boon = the run's pick #0: a card chosen from the boon pool, offered in every
-  // mode that used to show the Neow boon modal (classic + growing, NOT desertCube).
+  // mode that shows the Neow boon modal (classic + growing, NOT desertCube).
   // pickPlayer's boon branch stores it, then beginPacks() starts the real draft.
   if (state.mode !== 'desertCube') {
     state.boonPhase = true;
@@ -861,7 +861,7 @@ function getPlayerDeck() {
     ? state.youPicks.slice()
     : [...state.youPicks, ...allocLands(pips)];
   // The boon (pick #0) rides along as an extra card; its colour is NOT in `pips`,
-  // so land allocation still reflects only the drafted spells (as before).
+  // so land allocation still reflects only the drafted spells.
   const cards = state.boon ? [state.boon, ...base] : base;
   return {
     cards,
