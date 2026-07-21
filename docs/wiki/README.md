@@ -36,6 +36,7 @@ It is **docs-as-code, in wiki form** — co-located with the code (so it's versi
 
 **Cross-engine**
 - [cross-engine-port.md](cross-engine-port.md) — the durable Godot ↔ html-proto relationship.
+- [ui-asset-layer.md](ui-asset-layer.md) — how pixel chrome reaches the screen (bake → lint → consume), and the two rules that keep it from drifting: generated assets publish their consumption contract; presentation lives in the stylesheet, not the DOM-building code.
 - [html-proto.md](html-proto.md) — the reference implementation, in brief.
 
 **Canon (the rulebook)**
